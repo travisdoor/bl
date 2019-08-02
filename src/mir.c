@@ -1,3 +1,23 @@
+//************************************************************************************************
+// bl
+//
+// File:   mir.c
+// Author: Martin Dorazil
+// Date:   3/15/18
+//
+// Copyright 2018 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
@@ -229,6 +249,9 @@ typedef struct {
 		MirType *entry_TypeInfo_ptr;
 		MirType *entry_TypeInfo_slice;
 		/* OTHER END */
+
+		/* Cache scope containing '#compiler' flagged symbols.  */
+		Scope *cache;
 	} builtin_types;
 } Context;
 
@@ -321,8 +344,11 @@ type_cmp(MirType *first, MirType *second);
 static ScopeEntry *
 register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool is_builtin, bool enable_groups);
 
+static void
+cache_builtin(Context *cnt, ScopeEntry *entry);
+
 static MirType *
-lookup_provided_type(Context *cnt, ID *id);
+lookup_builtin(Context *cnt, ID *id);
 
 /* ctors */
 static bool
@@ -1720,6 +1746,7 @@ register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool is_builtin, 
 	    &cnt->builder->scope_arenas, SCOPE_ENTRY_INCOMPLETE, id, node, is_builtin);
 
 	scope_insert(scope, entry);
+	if (is_builtin) cache_builtin(cnt, entry);
 	return entry;
 
 COLLIDE : {
@@ -1748,12 +1775,27 @@ COLLIDE : {
 }
 }
 
-MirType *
-lookup_provided_type(Context *cnt, ID *id)
+void
+cache_builtin(Context *cnt, ScopeEntry *entry)
 {
-	Scope *     gscope = cnt->assembly->gscope;
-	ScopeEntry *found  = scope_lookup(gscope, id, true, false);
-	if (found ? found->kind == SCOPE_ENTRY_INCOMPLETE : true) return NULL;
+	assert(entry);
+	ScopeEntry *collision = scope_lookup(cnt->builtin_types.cache, entry->id, true, false);
+	if (collision) {
+		bl_abort("Duplicate compiler internal '%s'.", entry->id->str);
+	}
+
+	bl_log("register builtin: %s", entry->id->str);
+	scope_insert(cnt->builtin_types.cache, entry);
+}
+
+MirType *
+lookup_builtin(Context *cnt, ID *id)
+{
+	Scope *     scope = cnt->builtin_types.cache;
+	ScopeEntry *found = scope_lookup(scope, id, true, false);
+
+	if (!found) bl_abort("Missing compiler internal symbol '%s'", id->str);
+	if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
 
 	assert(found->kind == SCOPE_ENTRY_VAR);
 
@@ -2212,7 +2254,7 @@ get_cast_op(MirType *from, MirType *to)
 }
 
 static inline bool
-can_impl_cast(MirType *from, MirType *to)
+can_impl_cast(Context *cnt, MirType *from, MirType *to)
 {
 	assert(from && to);
 	switch (from->kind) {
@@ -2228,6 +2270,9 @@ can_impl_cast(MirType *from, MirType *to)
 	default:
 		break;
 	}
+
+	MirType *tmp = lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_ANY]);
+	assert(tmp);
 	return false;
 }
 
@@ -2243,8 +2288,19 @@ try_impl_cast(Context *cnt, MirInstr *src, MirType *expected_type, bool *valid)
 		return src;
 	}
 
+#if 0
+	{
+		char tmp1[256];
+		mir_type_to_str(tmp1, array_size(tmp1), src_type, true);
+
+		char tmp2[256];
+		mir_type_to_str(tmp2, array_size(tmp2), expected_type, true);
+		bl_log("Try make implicit cast from '%s' to '%s'", tmp1, tmp2);
+	}
+#endif
+
 	/* try create implicit cast */
-	if (can_impl_cast(src_type, expected_type)) {
+	if (can_impl_cast(cnt, src_type, expected_type)) {
 		if (src->kind == MIR_INSTR_CONST) {
 			/* constant numeric literal */
 			src->value.type = expected_type;
@@ -2253,9 +2309,6 @@ try_impl_cast(Context *cnt, MirInstr *src, MirType *expected_type, bool *valid)
 		}
 
 		/* insert cast */
-		MirInstrBlock *block = src->owner_block;
-		assert(block);
-
 		MirInstrCast *cast = create_instr(cnt, MIR_INSTR_CAST, src->node, MirInstrCast *);
 		cast->base.value.type = expected_type;
 		cast->next            = src;
@@ -3993,7 +4046,7 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 		bo_htbl_insert_empty(cnt->analyze.RTTI_entry_types, (uint64_t)type);
 
 	/* Resolve TypeInfo struct type */
-	MirType *ret_type = lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO]);
+	MirType *ret_type = lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO]);
 	if (!ret_type) return ANALYZE_POSTPONE;
 
 	ret_type = create_type_ptr(cnt, ret_type);
@@ -4019,7 +4072,7 @@ analyze_instr_type_kind(Context *cnt, MirInstrTypeKind *type_kind)
 	}
 
 	/* Resolve TypeKind struct type */
-	MirType *ret_type = lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_KIND]);
+	MirType *ret_type          = lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_KIND]);
 	type_kind->base.value.type = ret_type;
 
 	type_kind->base.value.data.v_s32 = type->kind;
@@ -4498,8 +4551,8 @@ analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
 		elem_type = type_vargs->elem_type->value.data.v_ptr.data.type;
 	} else {
 		/* use Any */
-		elem_type = lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_ANY]);
-		if (!elem_type) return builtin_ids[MIR_BUILTIN_ID_ANY].hash;
+		elem_type = lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_ANY]);
+		if (!elem_type) return builtin_ids[MIR_BUILTIN_ID_TYPE_ANY].hash;
 	}
 
 	assert(elem_type);
@@ -5928,43 +5981,43 @@ exec_gen_RTTI_types(Context *cnt)
 
 	{ /* Preload RTTI provided types */
 		cnt->builtin_types.entry_TypeKind =
-		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_KIND]);
+		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_KIND]);
 
 		cnt->builtin_types.entry_TypeInfo =
-		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO]);
+		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO]);
 
 		cnt->builtin_types.entry_TypeInfoType =
-		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_TYPE]);
+		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_TYPE]);
 
 		cnt->builtin_types.entry_TypeInfoVoid =
-		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_VOID]);
+		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_VOID]);
 
 		cnt->builtin_types.entry_TypeInfoInt =
-		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_INT]);
+		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_INT]);
 
 		cnt->builtin_types.entry_TypeInfoReal =
-		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_REAL]);
+		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_REAL]);
 
 		cnt->builtin_types.entry_TypeInfoFn =
-		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_FN]);
+		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_FN]);
 
 		cnt->builtin_types.entry_TypeInfoPtr =
-		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_PTR]);
+		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_PTR]);
 
 		cnt->builtin_types.entry_TypeInfoBool =
-		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_BOOL]);
+		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_BOOL]);
 
 		cnt->builtin_types.entry_TypeInfoArray =
-		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_ARRAY]);
+		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_ARRAY]);
 
 		cnt->builtin_types.entry_TypeInfoStruct =
-		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_STRUCT]);
+		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_STRUCT]);
 
 		cnt->builtin_types.entry_TypeInfoEnum =
-		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_ENUM]);
+		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_ENUM]);
 
 		cnt->builtin_types.entry_TypeInfoNull =
-		    lookup_provided_type(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_NULL]);
+		    lookup_builtin(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_INFO_NULL]);
 
 		cnt->builtin_types.entry_TypeInfo_ptr =
 		    create_type_ptr(cnt, cnt->builtin_types.entry_TypeInfo);
@@ -7944,6 +7997,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 	Ast *      ast_value     = entity->data.decl_entity.value;
 	const bool is_mutable    = entity->data.decl_entity.mutable;
 	const bool is_in_gscope  = entity->data.decl_entity.in_gscope;
+	const bool is_compiler   = is_flag(entity->data.decl_entity.flags, FLAG_COMPILER);
 	bool       enable_groups = false;
 
 	assert(ast_name && "Missing entity name.");
@@ -8031,7 +8085,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		}
 	}
 
-	register_symbol(cnt, ast_name, id, scope, false, enable_groups);
+	register_symbol(cnt, ast_name, id, scope, is_compiler, enable_groups);
 	return result;
 }
 
@@ -8488,6 +8542,8 @@ mir_instr_name(MirInstr *instr)
 		return "InstrTypeEnum";
 	case MIR_INSTR_DECL_VARIANT:
 		return "InstrDeclVariant";
+	case MIR_INSTR_TOANY:
+		return "InstrToAny";
 	}
 
 	return "UNKNOWN";
@@ -8891,6 +8947,7 @@ mir_run(Builder *builder, Assembly *assembly)
 	cnt.tmp_sh                   = bo_string_new(1024);
 	cnt.analyze.waiting          = bo_htbl_new_bo(bo_typeof(BArray), true, ANALYZE_TABLE_SIZE);
 	cnt.type_table               = assembly->type_table;
+	cnt.builtin_types.cache = scope_create(&builder->scope_arenas, SCOPE_DEFAULT, NULL, 64);
 
 	/* initialize all builtin types */
 	init_builtins(&cnt);

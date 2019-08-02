@@ -278,6 +278,9 @@ static void
 print_instr_vargs(MirInstrVArgs *vargs, FILE *stream);
 
 static void
+print_instr_toany(MirInstrToAny *toany, FILE *stream);
+
+static void
 print_instr_br(MirInstrBr *br, FILE *stream);
 
 static void
@@ -584,6 +587,12 @@ print_instr_vargs(MirInstrVArgs *vargs, FILE *stream)
 		fprintf(stream, "<invalid values>");
 	}
 	fprintf(stream, "}");
+}
+
+void
+print_instr_toany(MirInstrToAny *toany, FILE *stream)
+{
+	print_instr_head(&toany->base, stream, "toany");
 }
 
 void
@@ -1018,6 +1027,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
 		break;
 	case MIR_INSTR_PHI:
 		print_instr_phi((MirInstrPhi *)instr, stream);
+		break;
+	case MIR_INSTR_TOANY:
+		print_instr_toany((MirInstrToAny *)instr, stream);
 		break;
 	default:
 		break;

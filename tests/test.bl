@@ -3,5 +3,14 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
+    i := 10;
+    foo(i, i);
+    
     return 0;
+};
+
+foo :: fn (v: ...) {
+    loop i := 0; i < v.len; i += 1 {
+        tmp := v[i];
+    }
 };
