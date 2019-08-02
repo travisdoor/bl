@@ -360,14 +360,14 @@ bo_array_empty(BArray *self)
   return self->size == 0;
 }
 
-const size_t
+size_t
 bo_array_size(BArray *self)
 {
   bo_assert(bo_is_typeof(self, BArray), "invalid array");
   return self->size;
 }
 
-const size_t
+size_t
 bo_array_capacity(BArray *self)
 {
   bo_assert(bo_is_typeof(self, BArray), "invalid array");
@@ -388,7 +388,7 @@ bo_array_data(BArray *self)
   return self->data;
 }
 
-const size_t
+size_t
 bo_array_data_size(BArray *self)
 {
   bo_assert(bo_is_typeof(self, BArray), "invalid array");

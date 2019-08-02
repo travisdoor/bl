@@ -141,7 +141,7 @@ static Ast *
 parse_decl(Context *cnt);
 
 static Ast *
-parse_decl_member(Context *cnt, bool type_only, int32_t order);
+parse_decl_member(Context *cnt, bool type_only);
 
 static Ast *
 parse_decl_arg(Context *cnt, bool type_only);
@@ -487,7 +487,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive);
 		}
 
-		Scope *scope = scope_create(cnt->scope_arenas, cnt->scope, 8, false);
+		Scope *scope = scope_create(cnt->scope_arenas, SCOPE_DEFAULT, cnt->scope, 8);
 		push_scope(cnt, scope);
 
 		Ast *block = parse_block(cnt);
@@ -574,15 +574,14 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		 * in AST node.
 		 */
 		Scope *scope = scope_create(&cnt->builder->scope_arenas,
+		                            SCOPE_PRIVATE,
 		                            cnt->assembly->gscope,
-		                            EXPECTED_PRIVATE_SCOPE_COUNT,
-		                            false);
+		                            EXPECTED_PRIVATE_SCOPE_COUNT);
 
 		/* Make all other declarations in file nested in private scope */
 		cnt->unit->private_scope = scope;
 		cnt->scope               = scope;
 
-		bl_warning_issue(49);
 		return ast_create_node(cnt->ast_arena, AST_PRIVATE, tok_directive);
 	}
 
@@ -894,7 +893,7 @@ parse_expr_cast(Context *cnt)
 }
 
 Ast *
-parse_decl_member(Context *cnt, bool type_only, int32_t order)
+parse_decl_member(Context *cnt, bool type_only)
 {
 	Token *tok_begin = tokens_peek(cnt->tokens);
 	Ast *  name      = NULL;
@@ -1102,7 +1101,7 @@ parse_stmt_loop(Context *cnt)
 	Ast *loop = ast_create_node(cnt->ast_arena, AST_STMT_LOOP, tok_begin);
 	push_inloop(cnt);
 
-	Scope *scope = scope_create(cnt->scope_arenas, cnt->scope, 8, false);
+	Scope *scope = scope_create(cnt->scope_arenas, SCOPE_DEFAULT, cnt->scope, 8);
 	push_scope(cnt, scope);
 
 	if (!while_true) {
@@ -1409,7 +1408,7 @@ parse_expr_lit_fn(Context *cnt)
 
 	Ast *fn = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FN, tok_fn);
 
-	Scope *scope = scope_create(cnt->scope_arenas, cnt->scope, 32, false);
+	Scope *scope = scope_create(cnt->scope_arenas, SCOPE_DEFAULT, cnt->scope, 32);
 	push_scope(cnt, scope);
 
 	Ast *type = parse_type_fn(cnt, true);
@@ -1553,7 +1552,7 @@ parse_type_enum(Context *cnt)
 	Token *tok_enum = tokens_consume_if(cnt->tokens, SYM_ENUM);
 	if (!tok_enum) return NULL;
 
-	Scope *scope = scope_create(cnt->scope_arenas, cnt->scope, 512, false);
+	Scope *scope = scope_create(cnt->scope_arenas, SCOPE_DEFAULT, cnt->scope, 512);
 	push_scope(cnt, scope);
 
 	Ast *enm                    = ast_create_node(cnt->ast_arena, AST_TYPE_ENUM, tok_enum);
@@ -1766,7 +1765,7 @@ parse_type_struct(Context *cnt)
 	Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
 	if (!tok_struct) return NULL;
 
-	Scope *scope = scope_create(cnt->scope_arenas, cnt->scope, 256, false);
+	Scope *scope = scope_create(cnt->scope_arenas, SCOPE_DEFAULT, cnt->scope, 256);
 	push_scope(cnt, scope);
 
 	parse_flags_for_curr_decl(cnt);
@@ -1794,8 +1793,7 @@ parse_type_struct(Context *cnt)
 	                       tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK;
 	type_struct->data.type_strct.raw = type_only;
 NEXT:
-	tmp = parse_decl_member(
-	    cnt, type_only, (int32_t)bo_array_size(type_struct->data.type_strct.members));
+	tmp = parse_decl_member(cnt, type_only);
 	if (tmp) {
 		bo_array_push_back(type_struct->data.type_strct.members, tmp);
 
@@ -1980,7 +1978,7 @@ parse_block(Context *cnt)
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
 	if (!tok_begin) return NULL;
 
-	Scope *scope = scope_create(cnt->scope_arenas, cnt->scope, 1024, false);
+	Scope *scope = scope_create(cnt->scope_arenas, SCOPE_DEFAULT, cnt->scope, 1024);
 	push_scope(cnt, scope);
 
 	Ast *block = ast_create_node(cnt->ast_arena, AST_BLOCK, tok_begin);
@@ -2114,7 +2112,7 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit)
 
 	if (!assembly->gscope)
 		assembly->gscope =
-		    scope_create(&builder->scope_arenas, NULL, EXPECTED_GSCOPE_COUNT, true);
+		    scope_create(&builder->scope_arenas, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT);
 
 	Context cnt = {.builder      = builder,
 	               .assembly     = assembly,

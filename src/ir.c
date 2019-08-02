@@ -676,7 +676,7 @@ gen_as_const(Context *cnt, MirConstValue *value)
 		break;
 
 	case MIR_TYPE_NULL:
-		assert(value->data.v_ptr.any == NULL);
+		assert(value->data.v_ptr.data.any == NULL);
 		llvm_value = LLVMConstNull(llvm_type);
 		break;
 
@@ -687,7 +687,9 @@ gen_as_const(Context *cnt, MirConstValue *value)
 		if (type->kind == MIR_TYPE_FN) {
 			/* Constant pointer to the function. Value must contains pointer to MirFn
 			 * instance! */
-			MirFn *fn = value->data.v_ptr.any ? value->data.v_ptr.value->data.v_ptr.fn : NULL;
+			MirFn *fn = value->data.v_ptr.data.any
+			                ? value->data.v_ptr.data.value->data.v_ptr.data.fn
+			                : NULL;
 			assert(fn && "Function pointer not set for compile time known constant "
 			             "pointer to function.");
 
@@ -696,7 +698,7 @@ gen_as_const(Context *cnt, MirConstValue *value)
 			break;
 		} else {
 			/* value must contains pointer to constant variable */
-			MirVar *pointed = value->data.v_ptr.var;
+			MirVar *pointed = value->data.v_ptr.data.var;
 			assert(pointed && pointed->llvm_value &&
 			       "Invalid const pointer to variable.");
 
@@ -740,7 +742,7 @@ gen_as_const(Context *cnt, MirConstValue *value)
 			assert(len_value && str_value);
 
 			const uint64_t len = len_value->data.v_u64;
-			const char *   str = str_value->data.v_ptr.str;
+			const char *   str = str_value->data.v_ptr.data.str;
 			assert(str);
 
 			LLVMValueRef const_vals[2];
@@ -1026,7 +1028,7 @@ gen_instr_call(Context *cnt, MirInstrCall *call)
 
 	LLVMValueRef llvm_fn = callee->llvm_value
 	                           ? callee->llvm_value
-	                           : gen_fn_proto(cnt, callee->value.data.v_ptr.fn);
+	                           : gen_fn_proto(cnt, callee->value.data.v_ptr.data.fn);
 
 	const size_t  llvm_argc = call->args ? bo_array_size(call->args) : 0;
 	LLVMValueRef *llvm_args = NULL;
@@ -1239,7 +1241,7 @@ gen_allocas(Context *cnt, MirFn *fn)
 void
 gen_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
-	MirFn *fn = fn_proto->base.value.data.v_ptr.fn;
+	MirFn *fn = fn_proto->base.value.data.v_ptr.data.fn;
 	/* unused function */
 	if (fn->ref_count == 0) return;
 	gen_fn_proto(cnt, fn);

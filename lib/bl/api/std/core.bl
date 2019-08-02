@@ -188,7 +188,8 @@ print :: fn (format: string, nums: ...s64) {
     if tmp.len > 0 { _print_string(tmp); }
 };
 
-// #private
+#private
+
 _print_string :: fn (str: string) {
     os_write(OS_STDOUT, str.ptr, str.len);
 };

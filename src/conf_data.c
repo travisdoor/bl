@@ -75,7 +75,7 @@ conf_data_get_str(ConfData *data, const char *key)
 	ConfDataValue *value = conf_data_get(data, key);
 	if (value->kind != CDV_STRING)
 		bl_abort("Invalid type of conf value '%s', expected is string.");
-	return value->v_str;
+	return value->data.v_str;
 }
 
 int
@@ -84,5 +84,5 @@ conf_data_get_int(ConfData *data, const char *key)
 	ConfDataValue *value = conf_data_get(data, key);
 	if (value->kind != CDV_INT)
 		bl_abort("Invalid type of conf value '%s', expected is int.");
-	return value->v_int;
+	return value->data.v_int;
 }

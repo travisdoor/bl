@@ -95,7 +95,7 @@ bool
 tokens_next_is_not(Tokens *tokens, Sym sym);
 
 bool
-tokens_is_seq(Tokens *tokens, int32_t cnt, ...);
+tokens_is_seq(Tokens *tokens, size_t cnt, ...);
 
 void
 tokens_reset_iter(Tokens *tokens);

@@ -3,11 +3,5 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-    foo();
     return 0;
 };
-
-foo :: fn() {
-    print("hello 2\n");
-};
-

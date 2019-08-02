@@ -42,7 +42,7 @@ typedef struct ConfDataValue {
 	union {
 		const char *v_str;
 		int   v_int;
-	};
+	} data;
 
 	ConfDataValueKind kind;
 } ConfDataValue;

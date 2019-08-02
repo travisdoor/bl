@@ -73,10 +73,16 @@ typedef struct ScopeEntry {
 	ScopeEntryData data;
 } ScopeEntry;
 
+typedef enum ScopeKind {
+	SCOPE_GLOBAL,
+	SCOPE_PRIVATE,
+	SCOPE_DEFAULT,
+} ScopeKind;
+
 typedef struct Scope {
+	ScopeKind     kind;
 	struct Scope *parent;
 	BHashTable *  entries;
-	bool          is_global;
 } Scope;
 
 void
@@ -86,7 +92,7 @@ void
 scope_arenas_terminate(ScopeArenas *arenas);
 
 Scope *
-scope_create(ScopeArenas *arenas, Scope *parent, size_t size, bool is_global);
+scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size);
 
 ScopeEntry *
 scope_create_entry(ScopeArenas *  arenas,
@@ -99,6 +105,6 @@ void
 scope_insert(Scope *scope, ScopeEntry *entry);
 
 ScopeEntry *
-scope_lookup(Scope *scope, ID *id, bool in_tree);
+scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_gscope);
 
 #endif

@@ -179,7 +179,7 @@ bo_array_empty(BArray *self);
  * @param self
  * @return Count of elements in array.
  */
-extern BO_EXPORT const size_t
+extern BO_EXPORT size_t
 bo_array_size(BArray *self);
 
 /**
@@ -188,7 +188,7 @@ bo_array_size(BArray *self);
  * @param self
  * @return Capacity.
  */
-extern BO_EXPORT const size_t
+extern BO_EXPORT size_t
 bo_array_capacity(BArray *self);
 
 /**
@@ -212,7 +212,7 @@ bo_array_data(BArray *self);
  * @param self
  * @return Element size.
  */
-extern BO_EXPORT const size_t
+extern BO_EXPORT size_t
 bo_array_data_size(BArray *self);
 
 /**
