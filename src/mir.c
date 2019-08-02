@@ -208,6 +208,10 @@ typedef struct {
 	/* Builtins */
 	struct BuiltinTypes {
 		/* PROVIDED BEGIN */
+		/* TODO: replace those entries with lookup_buildin call... */
+		/* TODO: replace those entries with lookup_buildin call... */
+		/* TODO: replace those entries with lookup_buildin call... */
+		/* TODO: replace those entries with lookup_buildin call... */
 		MirType *entry_type;
 		MirType *entry_s8;
 		MirType *entry_s16;
