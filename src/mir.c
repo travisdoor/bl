@@ -1777,7 +1777,7 @@ cache_builtin(Context *cnt, ScopeEntry *entry)
 MirType *
 lookup_builtin(Context *cnt, MirBuiltinIdKind kind)
 {
-	ID *id =&builtin_ids[kind];
+	ID *        id    = &builtin_ids[kind];
 	Scope *     scope = cnt->builtin_types.cache;
 	ScopeEntry *found = scope_lookup(scope, id, true, false);
 
@@ -2260,6 +2260,10 @@ can_impl_cast(Context *cnt, MirType *from, MirType *to)
 
 	MirType *tmp = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_ANY);
 	assert(tmp);
+
+	if (to == tmp) {
+		bl_log("try to cast to Any type");
+	}
 	return false;
 }
 
@@ -2287,30 +2291,31 @@ try_impl_cast(Context *cnt, MirInstr *src, MirType *expected_type, bool *valid)
 #endif
 
 	/* try create implicit cast */
-	if (can_impl_cast(cnt, src_type, expected_type)) {
-		if (src->kind == MIR_INSTR_CONST) {
-			/* constant numeric literal */
-			src->value.type = expected_type;
-			/* TODO: check constant overflow */
-			return src;
-		}
+	if (!can_impl_cast(cnt, src_type, expected_type)) {
 
-		/* insert cast */
-		MirInstrCast *cast = create_instr(cnt, MIR_INSTR_CAST, src->node, MirInstrCast *);
-		cast->base.value.type = expected_type;
-		cast->next            = src;
-		cast->op              = get_cast_op(src_type, expected_type);
-		ref_instr(&cast->base);
-
-		insert_instr_after(src, &cast->base);
-		analyze_instr_rq(cnt, &cast->base);
-
-		return &cast->base;
+		error_types(cnt, src->value.type, expected_type, src->node, NULL);
+		*valid = false;
+		return src;
 	}
 
-	error_types(cnt, src->value.type, expected_type, src->node, NULL);
-	*valid = false;
-	return src;
+	if (src->kind == MIR_INSTR_CONST) {
+		/* constant numeric literal */
+		src->value.type = expected_type;
+		/* TODO: check constant overflow */
+		return src;
+	}
+
+	/* insert cast */
+	MirInstrCast *cast    = create_instr(cnt, MIR_INSTR_CAST, src->node, MirInstrCast *);
+	cast->base.value.type = expected_type;
+	cast->next            = src;
+	cast->op              = get_cast_op(src_type, expected_type);
+	ref_instr(&cast->base);
+
+	insert_instr_after(src, &cast->base);
+	analyze_instr_rq(cnt, &cast->base);
+
+	return &cast->base;
 }
 
 MirInstr *
@@ -5766,7 +5771,7 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	{ /* Build TypeInfo entry members. */
 		/* .kind */
 		BArray * type_info_members = create_arr(cnt, sizeof(MirConstValue *));
-		MirType *tmp_type = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO);
+		MirType *tmp_type          = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO);
 		assert(tmp_type);
 		tmp                        = create_const_value(cnt, tmp_type);
 		tmp->data.v_struct.members = type_info_members;
