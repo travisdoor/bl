@@ -1771,7 +1771,6 @@ cache_builtin(Context *cnt, ScopeEntry *entry)
 		bl_abort("Duplicate compiler internal '%s'.", entry->id->str);
 	}
 
-	bl_log("register builtin: %s", entry->id->str);
 	scope_insert(cnt->builtin_types.cache, entry);
 }
 
