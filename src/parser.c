@@ -244,9 +244,6 @@ static Ast *
 parse_expr_type_info(Context *cnt);
 
 static Ast *
-parse_expr_type_kind(Context *cnt);
-
-static Ast *
 parse_expr_alignof(Context *cnt);
 
 static inline bool
@@ -755,47 +752,6 @@ parse_expr_type_info(Context *cnt)
 }
 
 Ast *
-parse_expr_type_kind(Context *cnt)
-{
-	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_TYPEKIND);
-	if (!tok_begin) return NULL;
-
-	Token *tok = tokens_consume(cnt->tokens);
-	if (!token_is(tok, SYM_LPAREN)) {
-		parse_error(cnt,
-		            ERR_MISSING_BRACKET,
-		            tok_begin,
-		            BUILDER_CUR_WORD,
-		            "Expected '(' after typekind operator.");
-		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin);
-	}
-
-	Ast *kind = ast_create_node(cnt->ast_arena, AST_EXPR_TYPE_KIND, tok_begin);
-	kind->data.expr_type_kind.node = parse_expr(cnt);
-	if (!kind->data.expr_type_kind.node) {
-		Token *tok_err = tokens_peek(cnt->tokens);
-		parse_error(
-		    cnt, ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "Expected expression.");
-		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err);
-	}
-
-	tok = tokens_consume(cnt->tokens);
-	if (!token_is(tok, SYM_RPAREN)) {
-		parse_error(cnt,
-		            ERR_MISSING_BRACKET,
-		            tok,
-		            BUILDER_CUR_WORD,
-		            "Expected ')' after typekind operator.");
-		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
-		return ast_create_node(cnt->ast_arena, AST_BAD, tok);
-	}
-
-	return kind;
-}
-
-Ast *
 parse_expr_alignof(Context *cnt)
 {
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_ALIGNOF);
@@ -1282,7 +1238,6 @@ parse_expr_atom(Context *cnt)
 	if ((expr = parse_expr_sizeof(cnt))) return expr;
 	if ((expr = parse_expr_alignof(cnt))) return expr;
 	if ((expr = parse_expr_type_info(cnt))) return expr;
-	if ((expr = parse_expr_type_kind(cnt))) return expr;
 
 	return NULL;
 }

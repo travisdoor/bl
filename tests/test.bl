@@ -3,19 +3,22 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
-    i := 10;
-    foo(i);
-    
+    a := 10;
+
+    { // here we generate extra to Any
+        bar(a);
+    }
+
     return 0;
 };
 
-foo :: fn (args: ...) {
-    loop i := 0; i < args.len; i += 1 {
-        v := args[i];
-        if v.type_info.kind == TypeKind.Int {
-            print("passed int value\n");
-        } else {
-            print("passed other type value\n");
-        }
+bar :: fn (v: Any) {
+    print("type kind = %\n", cast(s64) v.type_info.kind);
+};
+
+foo :: fn (v: ...) {
+    loop i := 0; i < v.len; i += 1 {
+        print("arg %; type = %\n", i, cast(s64) v[i].type_info.kind);
     }
 };
+

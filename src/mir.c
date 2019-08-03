@@ -149,7 +149,6 @@ union _MirInstr {
 	MirInstrCompound    init;
 	MirInstrVArgs       vargs;
 	MirInstrTypeInfo    type_info;
-	MirInstrTypeKind    type_kind;
 	MirInstrPhi         phi;
 };
 
@@ -479,9 +478,6 @@ static MirInstr *
 append_instr_alignof(Context *cnt, Ast *node, MirInstr *expr);
 
 static MirInstr *
-append_instr_type_kind(Context *cnt, Ast *node, MirInstr *expr);
-
-static MirInstr *
 create_instr_elem_ptr(Context * cnt,
                       Ast *     node,
                       MirInstr *arr_ptr,
@@ -718,9 +714,6 @@ static MirInstr *
 ast_expr_type_info(Context *cnt, Ast *type_info);
 
 static MirInstr *
-ast_expr_type_kind(Context *cnt, Ast *type_kind);
-
-static MirInstr *
 ast_expr_alignof(Context *cnt, Ast *szof);
 
 static MirInstr *
@@ -880,9 +873,6 @@ analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof);
 
 static uint64_t
 analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
-
-static uint64_t
-analyze_instr_type_kind(Context *cnt, MirInstrTypeKind *type_kind);
 
 static uint64_t
 analyze_instr_alignof(Context *cnt, MirInstrAlignof *alof);
@@ -1506,10 +1496,19 @@ is_load_needed(MirInstr *instr)
 }
 
 static inline bool
-is_to_any_needed(Context *cnt, MirType *dest_type)
+is_to_any_needed(Context *cnt, MirInstr *src, MirType *dest_type)
 {
-	if (!dest_type) return false;
-	return lookup_builtin(cnt, MIR_BUILTIN_ID_ANY) == dest_type;
+	if (!dest_type || !src) return false;
+	MirType *any_type = lookup_builtin(cnt, MIR_BUILTIN_ID_ANY);
+
+	if (dest_type != any_type) return false;
+
+	if (is_load_needed(src)) {
+		MirType *src_type = src->value.type;
+		if (mir_deref_type(src_type) == any_type) return false;
+	}
+
+	return true;
 }
 
 static inline void
@@ -2157,26 +2156,27 @@ insert_to_any(Context *cnt, MirInstr *src)
 	MirType *any_type = lookup_builtin(cnt, MIR_BUILTIN_ID_ANY);
 	assert(any_type);
 
-	MirInstr *type_info;
-	{ /* generate type info */
-		type_info = create_instr_type_info(cnt, src->node, src);
-		ref_instr(type_info);
-		insert_instr_after(src, type_info);
-
-		analyze_instr_rq(cnt, type_info);
-	}
-
 	MirInstr *addrof;
 	{ /* generate address of */
 		addrof = create_instr_addrof(cnt, src->node, src);
 		ref_instr(addrof);
-		insert_instr_after(type_info, addrof);
+		insert_instr_after(src, addrof);
 
 		analyze_instr_rq(cnt, addrof);
 	}
 
 	/* cast pointer to *u8 */
 	addrof = insert_cast(cnt, addrof, cnt->builtin_types.entry_u8_ptr);
+
+	MirInstr *type_info;
+	{ /* generate type info */
+		type_info = create_instr_type_info(cnt, src->node, src);
+		ref_instr(type_info);
+		insert_instr_after(addrof, type_info);
+
+		analyze_instr_rq(cnt, type_info);
+	}
+
 
 	MirInstrCompound *any;
 	{ /* generate any compound  */
@@ -2190,7 +2190,7 @@ insert_to_any(Context *cnt, MirInstr *src)
 		bo_array_push_back(any->values, addrof);
 
 		ref_instr(&any->base);
-		insert_instr_after(addrof, &any->base);
+		insert_instr_after(type_info, &any->base);
 
 		analyze_instr_rq(cnt, &any->base);
 	}
@@ -2604,18 +2604,6 @@ append_instr_type_info(Context *cnt, Ast *node, MirInstr *expr)
 	MirInstr *tmp = create_instr_type_info(cnt, node, expr);
 	push_into_curr_block(cnt, tmp);
 	return tmp;
-}
-
-MirInstr *
-append_instr_type_kind(Context *cnt, Ast *node, MirInstr *expr)
-{
-	ref_instr(expr);
-	MirInstrTypeKind *tmp = create_instr(cnt, MIR_INSTR_TYPE_KIND, node, MirInstrTypeKind *);
-	tmp->base.comptime    = true;
-	tmp->expr             = expr;
-
-	push_into_curr_block(cnt, &tmp->base);
-	return &tmp->base;
 }
 
 MirInstr *
@@ -3414,7 +3402,6 @@ reduce_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_TYPE_ENUM:
 	case MIR_INSTR_SIZEOF:
 	case MIR_INSTR_ALIGNOF:
-	case MIR_INSTR_TYPE_KIND:
 	case MIR_INSTR_MEMBER_PTR: {
 		erase_instr(instr);
 		break;
@@ -3726,7 +3713,7 @@ analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 		value = &bo_array_at(values, i, MirInstr *);
 
 		/* convert to any if needed */
-		if (is_to_any_needed(cnt, vargs->type)) *value = insert_to_any(cnt, *value);
+		if (is_to_any_needed(cnt, *value, vargs->type)) *value = insert_to_any(cnt, *value);
 
 		/* generate load instruction if needed */
 		if (is_load_needed(*value)) *value = insert_load(cnt, *value);
@@ -4130,30 +4117,6 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 	ret_type = create_type_ptr(cnt, ret_type);
 
 	type_info->base.value.type = ret_type;
-
-	return ANALYZE_PASSED;
-}
-
-uint64_t
-analyze_instr_type_kind(Context *cnt, MirInstrTypeKind *type_kind)
-{
-	assert(type_kind->expr);
-	if (is_load_needed(type_kind->expr)) type_kind->expr = insert_load(cnt, type_kind->expr);
-	reduce_instr(cnt, type_kind->expr);
-
-	MirType *type = type_kind->expr->value.type;
-	assert(type);
-
-	if (type->kind == MIR_TYPE_TYPE) {
-		type = type_kind->expr->value.data.v_ptr.data.type;
-		assert(type);
-	}
-
-	/* Resolve TypeKind struct type */
-	MirType *ret_type          = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_KIND);
-	type_kind->base.value.type = ret_type;
-
-	type_kind->base.value.data.v_s32 = type->kind;
 
 	return ANALYZE_PASSED;
 }
@@ -5248,7 +5211,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 			call_arg        = &bo_array_at(call->args, i, MirInstr *);
 			callee_arg_type = bo_array_at(type->data.fn.arg_types, i, MirType *);
 
-			if (is_to_any_needed(cnt, callee_arg_type))
+			if (is_to_any_needed(cnt, *call_arg, callee_arg_type))
 				*call_arg = insert_to_any(cnt, *call_arg);
 
 			if (is_load_needed(*call_arg)) *call_arg = insert_load(cnt, *call_arg);
@@ -5446,9 +5409,6 @@ analyze_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_TYPE_INFO:
 		state = analyze_instr_type_info(cnt, (MirInstrTypeInfo *)instr);
-		break;
-	case MIR_INSTR_TYPE_KIND:
-		state = analyze_instr_type_kind(cnt, (MirInstrTypeKind *)instr);
 		break;
 	case MIR_INSTR_PHI:
 		state = analyze_instr_phi(cnt, (MirInstrPhi *)instr);
@@ -6244,6 +6204,9 @@ exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 void
 exec_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
+	// HACK: cleanup stack
+	exec_fetch_value(cnt, type_info->expr);
+
 	MirVar *type_info_var = type_info->expr_type->rtti.var;
 	assert(type_info_var);
 
@@ -6934,10 +6897,8 @@ exec_instr_store(Context *cnt, MirInstrStore *store)
 	/* loads destination (in case it is not direct reference to declaration) and
 	 * source from stack
 	 */
-	MirType *src_type  = store->src->value.type;
-	MirType *dest_type = store->dest->value.type;
-	assert(src_type && dest_type);
-	assert(mir_is_pointer_type(dest_type));
+	MirType *src_type = store->src->value.type;
+	assert(src_type);
 
 	MirStackPtr dest_ptr = exec_fetch_value(cnt, store->dest);
 	MirStackPtr src_ptr  = exec_fetch_value(cnt, store->src);
@@ -7715,16 +7676,6 @@ ast_expr_type_info(Context *cnt, Ast *type_info)
 
 	MirInstr *expr = ast(cnt, ast_node);
 	return append_instr_type_info(cnt, type_info, expr);
-}
-
-MirInstr *
-ast_expr_type_kind(Context *cnt, Ast *type_kind)
-{
-	Ast *ast_node = type_kind->data.expr_type_kind.node;
-	assert(ast_node);
-
-	MirInstr *expr = ast(cnt, ast_node);
-	return append_instr_type_kind(cnt, type_kind, expr);
 }
 
 MirInstr *
@@ -8517,8 +8468,6 @@ ast(Context *cnt, Ast *node)
 		return ast_expr_compound(cnt, node);
 	case AST_EXPR_TYPE_INFO:
 		return ast_expr_type_info(cnt, node);
-	case AST_EXPR_TYPE_KIND:
-		return ast_expr_type_kind(cnt, node);
 
 	case AST_LOAD:
 	case AST_LINK:
@@ -8600,8 +8549,6 @@ mir_instr_name(MirInstr *instr)
 		return "InstrVArgs";
 	case MIR_INSTR_TYPE_INFO:
 		return "InstrTypeInfo";
-	case MIR_INSTR_TYPE_KIND:
-		return "InstrTypeKind";
 	case MIR_INSTR_PHI:
 		return "InstrPhi";
 	case MIR_INSTR_TYPE_ENUM:
