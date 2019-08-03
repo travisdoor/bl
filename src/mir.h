@@ -114,8 +114,8 @@ typedef enum MirBuiltinIdKind {
 	MIR_BUILTIN_ID_MAIN,
 	MIR_BUILTIN_ID_ARR_LEN,
 	MIR_BUILTIN_ID_ARR_PTR,
-	MIR_BUILTIN_ID_ANY,
 
+	MIR_BUILTIN_ID_ANY,
 	MIR_BUILTIN_ID_TYPE_KIND,
 	MIR_BUILTIN_ID_TYPE_INFO,
 	MIR_BUILTIN_ID_TYPE_INFO_TYPE,
@@ -206,7 +206,6 @@ typedef enum MirInstrKind {
 	MIR_INSTR_COMPOUND,
 	MIR_INSTR_VARGS,
 	MIR_INSTR_TYPE_INFO,
-	MIR_INSTR_TYPE_KIND,
 	MIR_INSTR_PHI,
 } MirInstrKind;
 
@@ -302,7 +301,7 @@ struct MirTypeFn {
 };
 
 struct MirTypePtr {
-	MirType *next;
+	MirType *expr;
 };
 
 struct MirTypeStruct {
@@ -504,7 +503,7 @@ struct MirInstrCast {
 
 	MirCastOp op;
 	MirInstr *type;
-	MirInstr *next;
+	MirInstr *expr;
 };
 
 struct MirInstrSizeof {
@@ -734,7 +733,7 @@ static inline MirType *
 mir_deref_type(MirType *ptr)
 {
 	if (!mir_is_pointer_type(ptr)) return NULL;
-	return ptr->data.ptr.next;
+	return ptr->data.ptr.expr;
 }
 
 void

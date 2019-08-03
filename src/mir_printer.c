@@ -251,9 +251,6 @@ static void
 print_instr_type_info(MirInstrTypeInfo *type_info, FILE *stream);
 
 static void
-print_instr_type_kind(MirInstrTypeKind *type_kind, FILE *stream);
-
-static void
 print_instr_alignof(MirInstrAlignof *szof, FILE *stream);
 
 static void
@@ -541,14 +538,18 @@ print_instr_cast(MirInstrCast *cast, FILE *stream)
 		bl_unimplemented;
 	}
 
-	fprintf(stream, "%%%llu", (unsigned long long)cast->next->id);
+	fprintf(stream, "%%%llu", (unsigned long long)cast->expr->id);
 }
 
 void
 print_instr_compound(MirInstrCompound *init, FILE *stream)
 {
 	print_instr_head(&init->base, stream, "compound");
-	print_comptime_value_or_id(init->type, stream);
+	if (init->type) {
+		print_comptime_value_or_id(init->type, stream);
+	} else {
+		print_type(init->base.value.type, false, stream, true);
+	}
 
 	fprintf(stream, " {");
 	BArray *values = init->values;
@@ -599,13 +600,6 @@ print_instr_type_info(MirInstrTypeInfo *type_info, FILE *stream)
 {
 	print_instr_head(&type_info->base, stream, "typeinfo");
 	print_comptime_value_or_id(type_info->expr, stream);
-}
-
-void
-print_instr_type_kind(MirInstrTypeKind *type_kind, FILE *stream)
-{
-	print_instr_head(&type_kind->base, stream, "typekind");
-	print_comptime_value_or_id(type_kind->expr, stream);
 }
 
 void
@@ -1012,9 +1006,6 @@ mir_print_instr(MirInstr *instr, FILE *stream)
 		break;
 	case MIR_INSTR_TYPE_INFO:
 		print_instr_type_info((MirInstrTypeInfo *)instr, stream);
-		break;
-	case MIR_INSTR_TYPE_KIND:
-		print_instr_type_kind((MirInstrTypeKind *)instr, stream);
 		break;
 	case MIR_INSTR_PHI:
 		print_instr_phi((MirInstrPhi *)instr, stream);

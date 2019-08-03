@@ -63,7 +63,6 @@
   sm(COMPILER,       "compiler") \
   sm(CONTINUE,       "continue") \
   sm(TYPEINFO,       "typeinfo") \
-  sm(TYPEKIND,       "typekind") \
   sm(UNREACHABLE,    "unreachable") \
   sm(AT,             "@") \
   sm(LCOMMENT,       "//") \

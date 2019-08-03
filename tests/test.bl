@@ -3,5 +3,21 @@
 #load "std/core.bl"
 
 main :: fn () s32 {
+    a := 10;
+    b := 10;
+
+    foo(a, a, a, b);
+
     return 0;
 };
+
+bar :: fn (v: Any) {
+    print("type kind = %\n", cast(s64) v.type_info.kind);
+};
+
+foo :: fn (v: ...) {
+    loop i := 0; i < v.len; i += 1 {
+        print("arg %; type = %\n", i, cast(s64) v[i].type_info.kind);
+    }
+};
+
