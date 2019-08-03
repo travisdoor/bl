@@ -442,7 +442,7 @@ gen_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 void
 gen_instr_cast(Context *cnt, MirInstrCast *cast)
 {
-	LLVMValueRef llvm_src       = cast->next->llvm_value;
+	LLVMValueRef llvm_src       = cast->expr->llvm_value;
 	LLVMTypeRef  llvm_dest_type = cast->base.value.type->llvm_type;
 	LLVMOpcode   llvm_op;
 	assert(llvm_src && llvm_dest_type);

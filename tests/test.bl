@@ -4,13 +4,18 @@
 
 main :: fn () s32 {
     i := 10;
-    foo(i, i);
+    foo(i);
     
     return 0;
 };
 
-foo :: fn (v: ...) {
-    loop i := 0; i < v.len; i += 1 {
-        tmp := v[i];
+foo :: fn (args: ...) {
+    loop i := 0; i < args.len; i += 1 {
+        v := args[i];
+        if v.type_info.kind == TypeKind.Int {
+            print("passed int value\n");
+        } else {
+            print("passed other type value\n");
+        }
     }
 };

@@ -88,7 +88,6 @@ typedef struct MirInstrVArgs       MirInstrVArgs;
 typedef struct MirInstrTypeInfo    MirInstrTypeInfo;
 typedef struct MirInstrTypeKind    MirInstrTypeKind;
 typedef struct MirInstrPhi         MirInstrPhi;
-typedef struct MirInstrToAny       MirInstrToAny;
 
 typedef union MirConstValueData MirConstValueData;
 
@@ -116,7 +115,7 @@ typedef enum MirBuiltinIdKind {
 	MIR_BUILTIN_ID_ARR_LEN,
 	MIR_BUILTIN_ID_ARR_PTR,
 
-	MIR_BUILTIN_ID_TYPE_ANY,
+	MIR_BUILTIN_ID_ANY,
 	MIR_BUILTIN_ID_TYPE_KIND,
 	MIR_BUILTIN_ID_TYPE_INFO,
 	MIR_BUILTIN_ID_TYPE_INFO_TYPE,
@@ -209,7 +208,6 @@ typedef enum MirInstrKind {
 	MIR_INSTR_TYPE_INFO,
 	MIR_INSTR_TYPE_KIND,
 	MIR_INSTR_PHI,
-	MIR_INSTR_TOANY,
 } MirInstrKind;
 
 typedef enum MirCastOp {
@@ -304,7 +302,7 @@ struct MirTypeFn {
 };
 
 struct MirTypePtr {
-	MirType *next;
+	MirType *expr;
 };
 
 struct MirTypeStruct {
@@ -506,7 +504,7 @@ struct MirInstrCast {
 
 	MirCastOp op;
 	MirInstr *type;
-	MirInstr *next;
+	MirInstr *expr;
 };
 
 struct MirInstrSizeof {
@@ -703,13 +701,6 @@ struct MirInstrPhi {
 	BArray *incoming_blocks;
 };
 
-struct MirInstrToAny {
-	MirInstr base;
-
-	MirVar *  tmp;
-	MirInstr *value;
-};
-
 /* public */
 static inline bool
 mir_is_pointer_type(MirType *type)
@@ -743,7 +734,7 @@ static inline MirType *
 mir_deref_type(MirType *ptr)
 {
 	if (!mir_is_pointer_type(ptr)) return NULL;
-	return ptr->data.ptr.next;
+	return ptr->data.ptr.expr;
 }
 
 void
