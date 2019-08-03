@@ -4,10 +4,9 @@
 
 main :: fn () s32 {
     a := 10;
+    b := 10;
 
-    { // here we generate extra to Any
-        bar(a);
-    }
+    foo(a, a, a, b);
 
     return 0;
 };
