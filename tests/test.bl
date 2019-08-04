@@ -1,7 +1,5 @@
 /* playground */
 
-#load "std/core.bl"
-
 main :: fn () s32 {
     i : u64 = 18446744073709551615;
     j := -204;
