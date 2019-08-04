@@ -1495,6 +1495,24 @@ is_load_needed(MirInstr *instr)
 	return true;
 }
 
+/*
+static inline bool
+is_to_arr_slice_needed(MirInstr *src, MirType *dest_type)
+{
+        if (!dest_type || !src) return false;
+        if (!mir_is_slice_type(dest_type) && !mir_is_string_type(dest_type)) return false;
+
+        if (is_load_needed(src)) {
+                MirType *src_type = src->value.type;
+                src_type          = mir_deref_type(src_type);
+
+                if (mir_is_slice_type(src_type)) return false;
+        }
+
+        return true;
+}
+*/
+
 static inline bool
 is_to_any_needed(Context *cnt, MirInstr *src, MirType *dest_type)
 {
@@ -1604,24 +1622,21 @@ sh_type_struct(Context *cnt, ID *id, BArray *members, bool is_packed, MirTypeStr
 	BString *tmp = cnt->tmp_sh;
 	bo_string_clear(tmp);
 
-	if (id) {
-		bo_string_append(tmp, id->str);
-		bo_string_append(tmp, "{");
+	if (is_flag(kind, MIR_TS_STRING)) {
+		bo_string_append(tmp, "ss.");
+	} else if (is_flag(kind, MIR_TS_VARGS)) {
+		bo_string_append(tmp, "sv.");
+	} else if (is_flag(kind, MIR_TS_SLICE)) {
+		bo_string_append(tmp, "sl.");
 	} else {
-		switch (kind) {
-		case MIR_TS_NONE:
-			bo_string_append(tmp, "s{");
-			break;
-		case MIR_TS_SLICE:
-			bo_string_append(tmp, "sl{");
-			break;
-		case MIR_TS_STRING:
-			bl_unimplemented;
-		case MIR_TS_VARGS:
-			bl_unimplemented;
-		}
+		bo_string_append(tmp, "s.");
 	}
 
+	if (id) {
+		bo_string_append(tmp, id->str);
+	}
+
+	bo_string_append(tmp, "{");
 	if (members) {
 		MirType *member_type;
 		barray_foreach(members, member_type)
@@ -1644,11 +1659,9 @@ sh_type_enum(Context *cnt, ID *id, MirType *base_type, BArray *variants)
 	BString *tmp = cnt->tmp_sh;
 	bo_string_clear(tmp);
 
-	if (id) {
-		bo_string_append(tmp, id->str);
-	} else {
-		bo_string_append(tmp, "e");
-	}
+	bo_string_append(tmp, "e.");
+
+	if (id) bo_string_append(tmp, id->str);
 
 	bo_string_append(tmp, "(");
 	bo_string_append(tmp, base_type->id.str);
@@ -1684,14 +1697,14 @@ sh_type_enum(Context *cnt, ID *id, MirType *base_type, BArray *variants)
  *
  * Hashing rules:
  *
- * | Type       | Rules                       |
- * |------------+-----------------------------|
- * | Null       | n.<type>                    |
- * | Pointer    | p.<type>                    |
- * | Function   | f(<arg1,...>)<return type>  |
- * | Array      | <len>.<type>                |
- * | Structures | <name|s|sl>{<member1,...>}  |
- * | Enumerator | <name|e>(<type>){<1,2,...>} |
+ * | Type       | Rules                           |
+ * |------------+---------------------------------|
+ * | Null       | n.<type>                        |
+ * | Pointer    | p.<type>                        |
+ * | Function   | f(<arg1,...>)<return type>      |
+ * | Array      | <len>.<type>                    |
+ * | Structures | <s|sl|sv|ss>.<name>{<m1,...>}   |
+ * | Enumerator | <e>.<name>(<type>){<1,2,...>}   |
  */
 bool
 create_type(Context *cnt, MirType **out_type, const char *sh)
@@ -1976,6 +1989,30 @@ create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type)
 }
 
 MirType *
+create_type_vargs(Context *cnt, MirType *elem_ptr_type)
+{
+	assert(mir_is_pointer_type(elem_ptr_type));
+	BArray *members = create_arr(cnt, sizeof(MirType *));
+	bo_array_reserve(members, 2);
+	/* Slice layout struct { usize, *T } */
+	bo_array_push_back(members, cnt->builtin_types.entry_usize);
+	bo_array_push_back(members, elem_ptr_type);
+	return create_type_struct(cnt, NULL, NULL, members, false, MIR_TS_VARGS);
+}
+
+MirType *
+create_type_string(Context *cnt)
+{
+	BArray *members = create_arr(cnt, sizeof(MirType *));
+	bo_array_reserve(members, 2);
+	/* Slice layout struct { usize, *T } */
+	bo_array_push_back(members, cnt->builtin_types.entry_usize);
+	bo_array_push_back(members, cnt->builtin_types.entry_u8_ptr);
+	return create_type_struct(
+	    cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_STRING], NULL, members, false, MIR_TS_STRING);
+}
+
+MirType *
 create_type_enum(Context *cnt, ID *id, Scope *scope, MirType *base_type, BArray *variants)
 {
 	assert(base_type);
@@ -1989,23 +2026,6 @@ create_type_enum(Context *cnt, ID *id, Scope *scope, MirType *base_type, BArray 
 		init_type_llvm_ABI(cnt, tmp);
 	}
 
-	return tmp;
-}
-
-MirType *
-create_type_vargs(Context *cnt, MirType *elem_ptr_type)
-{
-	MirType *tmp         = create_type_slice(cnt, NULL, elem_ptr_type);
-	tmp->data.strct.kind = MIR_TS_VARGS;
-	return tmp;
-}
-
-MirType *
-create_type_string(Context *cnt)
-{
-	MirType *tmp = create_type_slice(
-	    cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_STRING], cnt->builtin_types.entry_u8_ptr);
-	tmp->data.strct.kind = MIR_TS_STRING;
 	return tmp;
 }
 
@@ -2176,7 +2196,6 @@ insert_to_any(Context *cnt, MirInstr *src)
 
 		analyze_instr_rq(cnt, type_info);
 	}
-
 
 	MirInstrCompound *any;
 	{ /* generate any compound  */

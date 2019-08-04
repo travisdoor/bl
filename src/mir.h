@@ -712,21 +712,21 @@ static inline bool
 mir_is_slice_type(MirType *type)
 {
 	assert(type);
-	return type->kind == MIR_TYPE_STRUCT && (type->data.strct.kind & MIR_TS_SLICE);
+	return type->kind == MIR_TYPE_STRUCT && is_flag(type->data.strct.kind, MIR_TS_SLICE);
 }
 
 static inline bool
 mir_is_vargs_type(MirType *type)
 {
 	assert(type);
-	return type->kind == MIR_TYPE_STRUCT && (type->data.strct.kind == MIR_TS_VARGS);
+	return type->kind == MIR_TYPE_STRUCT && is_flag(type->data.strct.kind, MIR_TS_VARGS);
 }
 
 static inline bool
 mir_is_string_type(MirType *type)
 {
 	assert(type);
-	return type->kind == MIR_TYPE_STRUCT && (type->data.strct.kind == MIR_TS_STRING);
+	return type->kind == MIR_TYPE_STRUCT && is_flag(type->data.strct.kind, MIR_TS_STRING);
 }
 
 static inline MirType *
