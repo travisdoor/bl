@@ -34,6 +34,6 @@ OS_STDERR :: 2;
 
 write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
 
-os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
+__os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return write(fd, buf, count);
 };

@@ -50,6 +50,8 @@
 #define NO_REF_COUNTING                 -1
 #define VERBOSE_EXEC                    false 
 #define VERBOSE_ANALYZE                 false
+#define SLICE_LEN_INDEX                 0
+#define SLICE_PTR_INDEX                 1
 // clang-format on
 
 // Debug helpers
@@ -988,6 +990,37 @@ static void
 exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *src_value);
 
 /* INLINES */
+static inline MirType *
+get_slice_len_type(MirType *slice_type)
+{
+	assert(mir_is_slice_type(slice_type));
+	assert(slice_type->data.strct.members);
+	return bo_array_at(slice_type->data.strct.members, SLICE_LEN_INDEX, MirType *);
+}
+
+static inline MirType *
+get_slice_ptr_type(MirType *slice_type)
+{
+	assert(mir_is_slice_type(slice_type));
+	assert(slice_type->data.strct.members);
+	return bo_array_at(slice_type->data.strct.members, SLICE_PTR_INDEX, MirType *);
+}
+
+/*
+static inline bool
+is_elem_type_of_slice_same(MirType *first, MirType *second)
+{
+	assert(first && second);
+	assert(mir_is_slice_type(first) && "Not slice type.");
+	assert(mir_is_slice_type(second) && "Not slice type.");
+
+	MirType *first_elem_type  = get_slice_ptr_type(first);
+	MirType *second_elem_type = get_slice_ptr_type(second);
+
+	return type_cmp(first_elem_type, second_elem_type);
+}
+*/
+
 static inline void
 set_const_ptr(MirConstPtr *value, void *ptr, MirConstPtrKind kind)
 {
@@ -2341,18 +2374,19 @@ static inline bool
 can_impl_cast(Context *cnt, MirType *from, MirType *to)
 {
 	assert(from && to);
-	switch (from->kind) {
-	case MIR_TYPE_INT:
-		switch (to->kind) {
-		case MIR_TYPE_INT:
-			return true; // int to int
-		default:
-			break;
-		}
-		break;
 
-	default:
-		break;
+	/* cast int to int */
+	if (from->kind == MIR_TYPE_INT && to->kind == MIR_TYPE_INT) return true;
+
+	/* cast vargs vs string vs slice */
+	if (mir_is_slice_type(from) && mir_is_slice_type(to)) {
+		char from_name[256];
+		mir_type_to_str(from_name, 256, from, true);
+
+		char to_name[256];
+		mir_type_to_str(to_name, 256, to, true);
+
+		bl_log("try to implicit cast: %s to %s", from_name, to_name);
 	}
 
 	return false;
@@ -2983,16 +3017,17 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 	{ /* initialize constant slice */
 		BArray *members = create_arr(cnt, sizeof(MirConstValue *));
 		bo_array_reserve(members, 2);
-		BArray *       member_types = cnt->builtin_types.entry_string->data.strct.members;
 		MirConstValue *value;
 
 		/* string slice len */
-		value = create_const_value(cnt, bo_array_at(member_types, 0, MirType *));
+		value =
+		    create_const_value(cnt, get_slice_len_type(cnt->builtin_types.entry_string));
 		value->data.v_u64 = strlen(str);
 		bo_array_push_back(members, value);
 
 		/* string slice ptr */
-		value = create_const_value(cnt, bo_array_at(member_types, 1, MirType *));
+		value =
+		    create_const_value(cnt, get_slice_ptr_type(cnt->builtin_types.entry_string));
 
 		MirConstPtr *const_ptr = &value->data.v_ptr;
 		set_const_ptr(const_ptr, (void *)str, MIR_CP_STR);
@@ -3349,8 +3384,11 @@ type_cmp(MirType *first, MirType *second)
 		if (mir_is_slice_type(first)) {
 			/* second in not slice! */
 			if (!mir_is_slice_type(second)) return false;
+
 			/* validate slice kinds */
-			if (first->data.strct.kind != second->data.strct.kind) return false;
+
+			return type_cmp(get_slice_ptr_type(first), get_slice_ptr_type(second));
+			//if (first->data.strct.kind != second->data.strct.kind) return false;
 		}
 
 		/* HACK: here we compare named types if there is some name, later we
@@ -3803,7 +3841,7 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		assert(members);
 
 		/* setup type */
-		MirType *elem_type = bo_array_at(members, 1, MirType *);
+		MirType *elem_type = bo_array_at(members, SLICE_PTR_INDEX, MirType *);
 		assert(elem_type);
 		elem_ptr->base.value.type = elem_type;
 
@@ -3898,8 +3936,8 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			/* slice!!! */
 			BArray *slice_members = target_type->data.strct.members;
 			assert(slice_members);
-			MirType *len_type = bo_array_at(slice_members, 0, MirType *);
-			MirType *ptr_type = bo_array_at(slice_members, 1, MirType *);
+			MirType *len_type = bo_array_at(slice_members, SLICE_LEN_INDEX, MirType *);
+			MirType *ptr_type = bo_array_at(slice_members, SLICE_PTR_INDEX, MirType *);
 
 			if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN ||
 			    is_builtin(ast_member_ident, MIR_BUILTIN_ID_ARR_LEN)) {
@@ -6257,11 +6295,8 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 
 	if (elem_ptr->target_is_slice) {
 		assert(mir_is_slice_type(arr_type));
-		BArray *members = arr_type->data.strct.members;
-		assert(members);
-
-		MirType *len_type = bo_array_at(members, 0, MirType *);
-		MirType *ptr_type = bo_array_at(members, 1, MirType *);
+		MirType *len_type = get_slice_len_type(arr_type);
+		MirType *ptr_type = get_slice_ptr_type(arr_type);
 
 		MirType *elem_type = mir_deref_type(ptr_type);
 		assert(elem_type);
@@ -6818,8 +6853,8 @@ exec_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 			                                        vargs_tmp->value.type->llvm_type,
 			                                        0);
 
-			MirType *len_type =
-			    bo_array_at(vargs_tmp->value.type->data.strct.members, 0, MirType *);
+			MirType *len_type = bo_array_at(
+			    vargs_tmp->value.type->data.strct.members, SLICE_LEN_INDEX, MirType *);
 			len_tmp.v_u64 = bo_array_size(values);
 			memcpy(len_ptr, &len_tmp, len_type->store_size_bytes);
 		}
@@ -6832,8 +6867,8 @@ exec_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 			                                        vargs_tmp->value.type->llvm_type,
 			                                        1);
 
-			MirType *ptr_type =
-			    bo_array_at(vargs_tmp->value.type->data.strct.members, 1, MirType *);
+			MirType *ptr_type = bo_array_at(
+			    vargs_tmp->value.type->data.strct.members, SLICE_PTR_INDEX, MirType *);
 			ptr_tmp.v_ptr.data.any = arr_tmp_ptr;
 			memcpy(ptr_ptr, &ptr_tmp, ptr_type->store_size_bytes);
 		}
@@ -8644,7 +8679,7 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 			append_buf(buf, len, "...");
 
 			if (members) {
-				tmp = bo_array_at(members, 1, MirType *);
+				tmp = bo_array_at(members, SLICE_PTR_INDEX, MirType *);
 				tmp = mir_deref_type(tmp);
 				_type_to_str(buf, len, tmp, true);
 			}
@@ -8652,7 +8687,7 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 			append_buf(buf, len, "[]");
 
 			if (members) {
-				tmp = bo_array_at(members, 1, MirType *);
+				tmp = bo_array_at(members, SLICE_PTR_INDEX, MirType *);
 				tmp = mir_deref_type(tmp);
 				_type_to_str(buf, len, tmp, true);
 			}

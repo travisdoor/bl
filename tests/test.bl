@@ -2,11 +2,11 @@
 
 #load "std/core.bl"
 
-foo :: fn (v: []Any) {};
-bar :: fn (v: ...) {};
-
 main :: fn () s32 {
-    "hello";
+    i : u64 = 18446744073709551615;
+    j := -204;
+
+    print("i = % and j = %\n", i, j);
     return 0;
 };
 

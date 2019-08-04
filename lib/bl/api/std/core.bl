@@ -28,8 +28,8 @@
 
 #load "c.bl"
 #load "debug.bl"
-//#load "print.bl"
-#load "print_old.bl"
+#load "print.bl"
+//#load "print_old.bl"
 
 /*
  * TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 
