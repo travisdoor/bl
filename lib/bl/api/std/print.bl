@@ -28,6 +28,9 @@
 
 PrintMaxLength :: 4096;
 
+/*
+ * Print to the stdout.
+ */
 print :: fn (format: string, args: ...) {
     buf := {:[PrintMaxLength]u8: 0};
 
@@ -38,6 +41,14 @@ print :: fn (format: string, args: ...) {
     
     w := __print(tmp, format, args);
     __os_write(OS_STDOUT, buf.ptr, w);
+};
+
+/*
+ * Print to the buffer.
+ * @return Count of written characters.
+ */
+bprint :: fn (buf: []u8, format: string, args: ...Any) s32 {
+    return __print(buf, format, args);
 };
 
 #private
