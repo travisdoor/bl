@@ -49,7 +49,7 @@ print :: fn (format: string, args: ...) {
  * Print to the buffer.
  * @return Count of written characters.
  */
-bprint :: fn (buf: []u8, format: string, args: ...Any) s32 {
+bprint :: fn (buf: []u8, format: string, args: ...) s32 {
     return __print(buf, format, args);
 };
 
