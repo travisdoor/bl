@@ -1,17 +1,9 @@
-/* playground */
-
-main :: fn () s32 {
+#test "printing" {
     i : u64 = 18446744073709551615;
     j := -204;
     f := 1235.215f;
     d := -0.00215;
 
     w := print("i = %\nj = %\nf = %\nd = %\n", i, j, f, d);
-    print("written % characters\n", w);
-
-    return 0;
+    assert(w == 64);
 };
-
-
-
-
