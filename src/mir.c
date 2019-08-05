@@ -783,6 +783,9 @@ reduce_instr(Context *cnt, MirInstr *instr);
 static uint64_t
 analyze_instr(Context *cnt, MirInstr *instr);
 
+static bool
+analyze_slot_input(Context *cnt, MirInstr *input, MirType *slot_type, bool enable_casting);
+
 static uint64_t
 analyze_instr_compound(Context *cnt, MirInstrCompound *init);
 
@@ -5383,6 +5386,18 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 	}
 
 	return ANALYZE_PASSED;
+}
+
+bool
+analyze_slot_input(Context *cnt, MirInstr *input, MirType *slot_type, bool enable_casting)
+{
+	/*
+	 * Perform analyze of input instruction passed to input slot of other instruction.
+	 * 1) Generate Load if needed.
+	 * 2) Generate cast when casting is enabled and slot_type is not NULL.
+	 * 3) Generate error if input and slot_type does not match and cannot be implicitly casted.
+	 */
+	return false;
 }
 
 uint64_t
