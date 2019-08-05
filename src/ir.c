@@ -916,44 +916,51 @@ gen_instr_binop(Context *cnt, MirInstrBinop *binop)
 	LLVMValueRef rhs = fetch_value(cnt, binop->rhs);
 	assert(lhs && rhs);
 
-	LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(lhs));
-	const bool   float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
+	MirType *  type           = binop->lhs->value.type;
+	const bool real_type      = type->kind == MIR_TYPE_REAL;
+	const bool signed_integer = type->kind == MIR_TYPE_INT && type->data.integer.is_signed;
 
 	switch (binop->op) {
 	case BINOP_ADD:
-		if (float_kind)
+		if (real_type)
 			binop->base.llvm_value = LLVMBuildFAdd(cnt->llvm_builder, lhs, rhs, "");
 		else
 			binop->base.llvm_value = LLVMBuildAdd(cnt->llvm_builder, lhs, rhs, "");
 		break;
 
 	case BINOP_SUB:
-		if (float_kind)
+		if (real_type)
 			binop->base.llvm_value = LLVMBuildFSub(cnt->llvm_builder, lhs, rhs, "");
 		else
 			binop->base.llvm_value = LLVMBuildSub(cnt->llvm_builder, lhs, rhs, "");
 		break;
 
 	case BINOP_MUL:
-		if (float_kind)
+		if (real_type)
 			binop->base.llvm_value = LLVMBuildFMul(cnt->llvm_builder, lhs, rhs, "");
 		else
 			binop->base.llvm_value = LLVMBuildMul(cnt->llvm_builder, lhs, rhs, "");
 		break;
 
 	case BINOP_DIV:
-		if (float_kind)
+		if (real_type)
 			binop->base.llvm_value = LLVMBuildFDiv(cnt->llvm_builder, lhs, rhs, "");
-		else
+		else if (signed_integer)
 			binop->base.llvm_value = LLVMBuildSDiv(cnt->llvm_builder, lhs, rhs, "");
+		else
+			binop->base.llvm_value = LLVMBuildUDiv(cnt->llvm_builder, lhs, rhs, "");
+
 		break;
 
 	case BINOP_MOD:
-		binop->base.llvm_value = LLVMBuildSRem(cnt->llvm_builder, lhs, rhs, "");
+		if (signed_integer)
+			binop->base.llvm_value = LLVMBuildSRem(cnt->llvm_builder, lhs, rhs, "");
+		else
+			binop->base.llvm_value = LLVMBuildURem(cnt->llvm_builder, lhs, rhs, "");
 		break;
 
 	case BINOP_EQ:
-		if (float_kind)
+		if (real_type)
 			binop->base.llvm_value =
 			    LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOEQ, lhs, rhs, "");
 		else
@@ -962,7 +969,7 @@ gen_instr_binop(Context *cnt, MirInstrBinop *binop)
 		break;
 
 	case BINOP_NEQ:
-		if (float_kind)
+		if (real_type)
 			binop->base.llvm_value =
 			    LLVMBuildFCmp(cnt->llvm_builder, LLVMRealONE, lhs, rhs, "");
 		else
@@ -971,39 +978,55 @@ gen_instr_binop(Context *cnt, MirInstrBinop *binop)
 		break;
 
 	case BINOP_GREATER:
-		if (float_kind)
+		if (real_type)
 			binop->base.llvm_value =
 			    LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOGT, lhs, rhs, "");
 		else
 			binop->base.llvm_value =
-			    LLVMBuildICmp(cnt->llvm_builder, LLVMIntSGT, lhs, rhs, "");
+			    LLVMBuildICmp(cnt->llvm_builder,
+			                  signed_integer ? LLVMIntSGT : LLVMIntUGT,
+			                  lhs,
+			                  rhs,
+			                  "");
 		break;
 
 	case BINOP_LESS:
-		if (float_kind)
+		if (real_type)
 			binop->base.llvm_value =
 			    LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLT, lhs, rhs, "");
 		else
 			binop->base.llvm_value =
-			    LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLT, lhs, rhs, "");
+			    LLVMBuildICmp(cnt->llvm_builder,
+			                  signed_integer ? LLVMIntSLT : LLVMIntULT,
+			                  lhs,
+			                  rhs,
+			                  "");
 		break;
 
 	case BINOP_GREATER_EQ:
-		if (float_kind)
+		if (real_type)
 			binop->base.llvm_value =
 			    LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOGE, lhs, rhs, "");
 		else
 			binop->base.llvm_value =
-			    LLVMBuildICmp(cnt->llvm_builder, LLVMIntSGE, lhs, rhs, "");
+			    LLVMBuildICmp(cnt->llvm_builder,
+			                  signed_integer ? LLVMIntSGE : LLVMIntUGE,
+			                  lhs,
+			                  rhs,
+			                  "");
 		break;
 
 	case BINOP_LESS_EQ:
-		if (float_kind)
+		if (real_type)
 			binop->base.llvm_value =
 			    LLVMBuildFCmp(cnt->llvm_builder, LLVMRealOLE, lhs, rhs, "");
 		else
 			binop->base.llvm_value =
-			    LLVMBuildICmp(cnt->llvm_builder, LLVMIntSLE, lhs, rhs, "");
+			    LLVMBuildICmp(cnt->llvm_builder,
+			                  signed_integer ? LLVMIntSLE : LLVMIntULE,
+			                  lhs,
+			                  rhs,
+			                  "");
 		break;
 
 	case BINOP_AND:

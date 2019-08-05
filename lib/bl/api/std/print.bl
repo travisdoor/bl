@@ -1,0 +1,208 @@
+//************************************************************************************************
+// bl
+//
+// File:   print.bl 
+// Author: Martin Dorazil
+// Date:   3/8/19
+//
+// Copyright 2019 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//************************************************************************************************
+
+#load "std/math.bl"
+
+PrintMaxLength :: 4096;
+
+/*
+ * Print to the stdout.
+ */
+print :: fn (format: string, args: ...) {
+    buf := {:[PrintMaxLength]u8: 0};
+
+    // HACK: use implicit conversion later!!!
+    // HACK: use implicit conversion later!!!
+    // HACK: use implicit conversion later!!!
+    tmp := {:[]u8: buf.len, buf.ptr };
+    
+    w := __print(tmp, format, args);
+    __os_write(OS_STDOUT, buf.ptr, w);
+};
+
+/*
+ * Print to the buffer.
+ * @return Count of written characters.
+ */
+bprint :: fn (buf: []u8, format: string, args: ...Any) s32 {
+    return __print(buf, format, args);
+};
+
+#private
+
+__print :: fn (buf: []u8, format: string, args: []Any) s32 {
+    cur := 0;
+    argi := 0;
+
+    loop i := 0; i < format.len; i += 1 {
+        c := format[i];
+
+        if c == '%' {
+            // print argument if there is one
+            if argi < args.len {
+                cur += __print_any(buf, cur, &args[argi]); 
+                argi += 1;
+            } else {
+                cur += __print_string(buf, cur, "(null)");
+            }
+        } else {
+            cur += __print_char(buf, cur, c);
+        }
+    }
+
+    return cur;
+};
+
+__print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
+    if any.type_info.kind == TypeKind.Int {
+        // Integer
+        info := cast(*TypeInfoInt) any.type_info;
+
+        if info.is_signed {
+            int := __s64_from_u8_ptr(any.data, info.bitcount);
+            if int < 0 { // negative number
+                cur += __print_string(buf, cur, "-");
+                int = -int;
+            }
+
+            return __print_u64(buf, cur, int);
+        } else {
+            int := __u64_from_u8_ptr(any.data, info.bitcount);
+            return __print_u64(buf, cur, int);
+        } 
+
+    } else if any.type_info.kind == TypeKind.Real {
+        // Real
+        info := cast(*TypeInfoReal) any.type_info;
+
+        real := __f64_from_u8_ptr(any.data, info.bitcount);
+        if real < 0. {
+            cur += __print_string(buf, cur, "-");
+            real = -real;
+        }
+
+        return __print_f64(buf, cur, real);
+
+    }
+
+    // TODO: support more types
+
+    return cur;
+};
+
+__print_string :: fn (buf: []u8, cur: s32, str: string) s32 {
+    i := 0;
+    loop ; i < str.len; i += 1 {
+        bi := cur + i;
+        if bi >= buf.len { break; }
+
+        buf[bi] = str[i];
+    }
+
+    return i;
+};
+
+__print_char :: fn (buf: []u8, cur: s32, c: u8) s32 {
+    if cur >= buf.len { return 0; }
+    buf[cur] = c;
+    return 1;
+};
+
+__print_u64 :: fn (buf: []u8, cur: s32, v: u64) s32 {
+    if v == 0 {
+        return __print_string(buf, cur, "0");
+    }
+
+    div : u64 = 10000000000000000000;
+    hit_non_zero := false;
+
+    loop div > 0 {
+        d := v / div;
+        v %= div;
+        div /= 10;
+
+        if d != 0 { hit_non_zero = true; }
+
+        if hit_non_zero {
+            cur += __print_char(buf, cur, d + '0');
+        }
+    }
+
+    return cur;
+};
+
+__print_f64 :: fn (buf: []u8, cur: s32, v: f64) s32 {
+    precision :: 0.000001;
+    m := cast(s32) log10(v);
+
+    if m < 0 { m = 0; }
+
+    // convert the number
+    loop v > precision || m >= 0 {
+        weight := pow(10., cast(f64) m);
+
+        if weight > 0. {
+            d := cast(u8) floor(v / weight);
+            v -= ((cast(f64) d) * weight);
+
+            cur += __print_char(buf, cur, d + '0');
+        }
+
+        if m == 0 && v > 0. {
+            cur += __print_char(buf, cur, '.');
+        }
+        m -= 1;
+    }
+
+    return cur;
+};
+
+__s64_from_u8_ptr :: fn (ptr: *u8, bitcount: s32) s64 {
+    if bitcount == 64 { return ^ cast(*s64) ptr; }
+    if bitcount == 32 { return ^ cast(*s32) ptr; }
+    if bitcount == 16 { return ^ cast(*s16) ptr; }
+    if bitcount ==  8 { return ^ cast(*s8)  ptr; }
+
+    return 0;
+};
+
+__u64_from_u8_ptr :: fn (ptr: *u8, bitcount: s32) u64 {
+    if bitcount == 64 { return ^ cast(*u64) ptr; }
+    if bitcount == 32 { return ^ cast(*u32) ptr; }
+    if bitcount == 16 { return ^ cast(*u16) ptr; }
+    if bitcount ==  8 { return ^ cast(*u8)  ptr; }
+
+    return 0;
+};
+
+__f64_from_u8_ptr :: fn (ptr: *u8, bitcount: s32) f64 {
+    if bitcount == 64 { return ^ cast(*f64) ptr; }
+    if bitcount == 32 { return cast(f64) (^ cast(*f32) ptr); }
+
+    return 0.;
+};
