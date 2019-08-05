@@ -1565,10 +1565,8 @@ is_to_any_needed(Context *cnt, MirInstr *src, MirType *dest_type)
 
 	if (dest_type != any_type) return false;
 
-	if (is_load_needed(src)) {
-		MirType *src_type = src->value.type;
-		if (mir_deref_type(src_type) == any_type) return false;
-	}
+	MirType *src_type = src->value.type;
+	if (mir_is_pointer_type(src_type) && mir_deref_type(src_type) == any_type) return false;
 
 	return true;
 }

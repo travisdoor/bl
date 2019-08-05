@@ -223,6 +223,7 @@ typedef enum MirCastOp {
 	MIR_CAST_UITOFP,
 	MIR_CAST_PTRTOINT,
 	MIR_CAST_INTTOPTR,
+	MIR_CAST_TOANY,
 } MirCastOp;
 
 /* ALLOCATORS */
