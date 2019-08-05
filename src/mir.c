@@ -453,6 +453,9 @@ static MirInstr *
 _create_instr(Context *cnt, MirInstrKind kind, Ast *node);
 
 static MirInstr *
+dup_instr(Context *cnt, MirInstr *instr);
+
+static MirInstr *
 create_instr_call_comptime(Context *cnt, Ast *node, MirInstr *fn);
 
 static MirInstr *
@@ -990,6 +993,14 @@ static void
 exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *src_value);
 
 /* INLINES */
+static inline bool
+is_allocated_object(MirInstr *instr)
+{
+	return instr->kind == MIR_INSTR_DECL_REF || instr->kind == MIR_INSTR_ELEM_PTR ||
+	       instr->kind == MIR_INSTR_MEMBER_PTR || instr->kind == MIR_INSTR_FN_PROTO ||
+	       instr->kind == MIR_INSTR_COMPOUND;
+}
+
 static inline MirType *
 get_slice_len_type(MirType *slice_type)
 {
@@ -1010,14 +1021,14 @@ get_slice_ptr_type(MirType *slice_type)
 static inline bool
 is_elem_type_of_slice_same(MirType *first, MirType *second)
 {
-	assert(first && second);
-	assert(mir_is_slice_type(first) && "Not slice type.");
-	assert(mir_is_slice_type(second) && "Not slice type.");
+        assert(first && second);
+        assert(mir_is_slice_type(first) && "Not slice type.");
+        assert(mir_is_slice_type(second) && "Not slice type.");
 
-	MirType *first_elem_type  = get_slice_ptr_type(first);
-	MirType *second_elem_type = get_slice_ptr_type(second);
+        MirType *first_elem_type  = get_slice_ptr_type(first);
+        MirType *second_elem_type = get_slice_ptr_type(second);
 
-	return type_cmp(first_elem_type, second_elem_type);
+        return type_cmp(first_elem_type, second_elem_type);
 }
 */
 
@@ -1129,8 +1140,8 @@ static inline void
 analyze_instr_rq(Context *cnt, MirInstr *instr)
 {
 	if (analyze_instr(cnt, instr) != ANALYZE_PASSED)
-		bl_abort("invalid analyze of compiler-generated instruction: %s",
-		         mir_instr_name(instr));
+		bl_warning("invalid analyze of compiler-generated instruction: %s",
+		           mir_instr_name(instr));
 }
 
 static inline const char *
@@ -2209,6 +2220,8 @@ insert_to_any(Context *cnt, MirInstr *src)
 	MirType *any_type = lookup_builtin(cnt, MIR_BUILTIN_ID_ANY);
 	assert(any_type);
 
+	if (!is_allocated_object(src)) bl_warning_issue(53);
+
 	MirInstr *addrof;
 	{ /* generate address of */
 		addrof = create_instr_addrof(cnt, src->node, src);
@@ -2221,11 +2234,18 @@ insert_to_any(Context *cnt, MirInstr *src)
 	/* cast pointer to *u8 */
 	addrof = insert_cast(cnt, addrof, cnt->builtin_types.entry_u8_ptr);
 
+	MirInstr *src_copy;
+	{ /* duplicate decl ref since we need to keep later stack execution consistent */
+		src_copy = dup_instr(cnt, src);
+		insert_instr_after(addrof, src_copy);
+		analyze_instr_rq(cnt, src_copy);
+	}
+
 	MirInstr *type_info;
 	{ /* generate type info */
-		type_info = create_instr_type_info(cnt, src->node, src);
+		type_info = create_instr_type_info(cnt, src_copy->node, src_copy);
 		ref_instr(type_info);
-		insert_instr_after(addrof, type_info);
+		insert_instr_after(src_copy, type_info);
 
 		analyze_instr_rq(cnt, type_info);
 	}
@@ -2425,16 +2445,28 @@ try_impl_cast(Context *cnt, MirInstr *src, MirType *expected_type, bool *valid)
 	return insert_cast(cnt, src, expected_type);
 }
 
+static uint64_t _id_counter = 0;
+
 MirInstr *
 _create_instr(Context *cnt, MirInstrKind kind, Ast *node)
 {
-	static uint64_t id_counter = 0;
-
 	MirInstr *tmp = arena_alloc(&cnt->module->arenas.instr_arena);
 	tmp->kind     = kind;
 	tmp->node     = node;
-	tmp->id       = id_counter++;
+	tmp->id       = _id_counter++;
 
+	return tmp;
+}
+
+MirInstr *
+dup_instr(Context *cnt, MirInstr *instr)
+{
+	assert(instr);
+
+	MirInstr *tmp = arena_alloc(&cnt->module->arenas.instr_arena);
+	memcpy(tmp, instr, sizeof(union _MirInstr));
+	tmp->id   = _id_counter++;
+	tmp->next = tmp->prev = NULL;
 	return tmp;
 }
 
@@ -3388,7 +3420,7 @@ type_cmp(MirType *first, MirType *second)
 			/* validate slice kinds */
 
 			return type_cmp(get_slice_ptr_type(first), get_slice_ptr_type(second));
-			//if (first->data.strct.kind != second->data.strct.kind) return false;
+			// if (first->data.strct.kind != second->data.strct.kind) return false;
 		}
 
 		/* HACK: here we compare named types if there is some name, later we
@@ -4051,11 +4083,7 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 	MirInstr *src = addrof->src;
 	assert(src);
 
-	const bool valid = src->kind == MIR_INSTR_DECL_REF || src->kind == MIR_INSTR_ELEM_PTR ||
-	                   src->kind == MIR_INSTR_MEMBER_PTR || src->kind == MIR_INSTR_FN_PROTO ||
-	                   src->kind == MIR_INSTR_COMPOUND;
-
-	if (!valid) {
+	if (!is_allocated_object(src)) {
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_EXPECTED_DECL,

@@ -26,6 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#load "std/math.bl"
+
 PrintMaxLength :: 4096;
 
 /*
@@ -156,9 +158,7 @@ __print_f64 :: fn (buf: []u8, cur: s32, v: f64) s32 {
     precision :: 0.000001;
     m := cast(s32) log10(v);
 
-    if m < 1 {
-        m = 0;
-    }
+    if m < 0 { m = 0; }
 
     // convert the number
     loop v > precision || m >= 0 {
