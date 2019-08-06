@@ -1283,6 +1283,24 @@ void
 gen_instr(Context *cnt, MirInstr *instr)
 {
 	switch (instr->kind) {
+	case MIR_INSTR_INVALID:
+		bl_abort("Invalid instruction");
+
+	case MIR_INSTR_CONST:
+	case MIR_INSTR_SIZEOF:
+	case MIR_INSTR_ALIGNOF:
+	case MIR_INSTR_DECL_VARIANT:
+	case MIR_INSTR_DECL_MEMBER:
+	case MIR_INSTR_TYPE_FN:
+	case MIR_INSTR_TYPE_STRUCT:
+	case MIR_INSTR_TYPE_PTR:
+	case MIR_INSTR_TYPE_ARRAY:
+	case MIR_INSTR_TYPE_SLICE:
+	case MIR_INSTR_TYPE_VARGS:
+	case MIR_INSTR_TYPE_ENUM:
+
+		break;
+
 	case MIR_INSTR_BINOP:
 		gen_instr_binop(cnt, (MirInstrBinop *)instr);
 		break;
@@ -1346,13 +1364,11 @@ gen_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_PHI:
 		gen_instr_phi(cnt, (MirInstrPhi *)instr);
 		break;
-
 	case MIR_INSTR_COMPOUND:
 		gen_instr_compound(cnt, NULL, (MirInstrCompound *)instr);
 		break;
-
-	default:
-		bl_warning("unimplemented LLVM generation for %s", mir_instr_name(instr));
+	case MIR_INSTR_TOANY:
+		bl_unimplemented;
 		break;
 	}
 }

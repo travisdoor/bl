@@ -28,8 +28,8 @@
 
 #load "c.bl"
 #load "debug.bl"
-#load "print.bl"
-//#load "print_old.bl"
+//#load "print.bl"
+#load "print_old.bl"
 
 /*
  * TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 
@@ -161,3 +161,6 @@ cstr_to_str :: fn (cstr: *u8) string {
     return {:string: strlen(cstr), cstr};
 };
 
+os_exec_cmd :: fn (cmd: string) s32 {
+    return system(cmd.ptr);
+};

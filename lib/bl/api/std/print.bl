@@ -109,7 +109,11 @@ __print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
         }
 
         return __print_f64(buf, cur, real);
-
+    } else if any.type_info.kind == TypeKind.Bool {
+        // Real
+        b := ^ cast(*bool) any.data;
+        if b { return __print_string(buf, cur, "true"); }
+        else { return __print_string(buf, cur, "false"); }
     }
 
     // TODO: support more types

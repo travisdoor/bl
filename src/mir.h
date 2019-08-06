@@ -88,6 +88,7 @@ typedef struct MirInstrVArgs       MirInstrVArgs;
 typedef struct MirInstrTypeInfo    MirInstrTypeInfo;
 typedef struct MirInstrTypeKind    MirInstrTypeKind;
 typedef struct MirInstrPhi         MirInstrPhi;
+typedef struct MirInstrToAny       MirInstrToAny;
 
 typedef union MirConstValueData MirConstValueData;
 
@@ -207,6 +208,7 @@ typedef enum MirInstrKind {
 	MIR_INSTR_VARGS,
 	MIR_INSTR_TYPE_INFO,
 	MIR_INSTR_PHI,
+	MIR_INSTR_TOANY,
 } MirInstrKind;
 
 typedef enum MirCastOp {
@@ -223,7 +225,6 @@ typedef enum MirCastOp {
 	MIR_CAST_UITOFP,
 	MIR_CAST_PTRTOINT,
 	MIR_CAST_INTTOPTR,
-	MIR_CAST_TOANY,
 } MirCastOp;
 
 /* ALLOCATORS */
@@ -699,6 +700,12 @@ struct MirInstrPhi {
 
 	BArray *incoming_values;
 	BArray *incoming_blocks;
+};
+
+struct MirInstrToAny {
+	MirInstr base;
+
+	MirInstr *expr;
 };
 
 /* public */

@@ -38,6 +38,11 @@ sqrt    :: fn (x: f64) f64 #extern;
 floor   :: fn (x: f64) f64 #extern;
 rand    :: fn () s32 #extern;
 srand   :: fn (seed: u32) #extern;
+sinf    :: fn (n: f32) f32 #extern;
+cosf    :: fn (n: f32) f32 #extern;
+powf    :: fn (base: f32, exponent: f32) f32 #extern;
+sqrtf   :: fn (x: f32) f32 #extern;
+floorf  :: fn (x: f32) f32 #extern;
 /* Lib C functions */
 
 Vec2 :: struct {

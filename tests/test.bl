@@ -1,15 +1,26 @@
 /* playground */
 
 main :: fn () s32 {
+    /*
     arr := {:[2]s32: 1, 2 };
     i := 1;
     foo(arr[i]);
+    */
 
+    ptr := null;
+    if (null == null) {}
+    if (null == ptr) {}
+    if (ptr == null) {}
+    
+    ptr();
     return 0;
 };
 
-foo :: fn (v: Any) {
+foo :: fn () *u64 {
+    return null;
 };
+
+
 
 
 

@@ -106,7 +106,7 @@ else()
     )
 
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wextra -Wno-unused-parameter -Wno-missing-braces -O0 -fsanitize=address -Wdeprecated-declarations")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Werror -Wall -Wextra -Wno-unused-parameter -Wno-missing-braces -O0 -fsanitize=address -Wdeprecated-declarations")
 endif()
 
 target_include_directories(blc PRIVATE

@@ -35,3 +35,4 @@ malloc  :: fn (size: usize) *u8 #extern;
 free    :: fn (ptr: *u8) #extern;
 realloc :: fn (ptr: *u8, size: usize) *u8 #extern;
 strlen  :: fn (str: *u8) usize #extern;
+system  :: fn (cmd: *u8) s32 #extern;

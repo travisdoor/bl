@@ -21,6 +21,8 @@
     "ptrtoint"
     "inttoptr"
     "noopcast"
+    "toany"
+    "arrtoslice"
     "zext"
     "sext"
     "trunc"
