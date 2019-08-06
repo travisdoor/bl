@@ -999,6 +999,13 @@ static void
 exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *src_value);
 
 /* INLINES */
+static inline void
+schedule_RTTI_generation(Context *cnt, MirType *type)
+{
+	if (!bo_htbl_has_key(cnt->analyze.RTTI_entry_types, (uint64_t)type))
+		bo_htbl_insert_empty(cnt->analyze.RTTI_entry_types, (uint64_t)type);
+}
+
 static inline bool
 setup_instr_const_null(Context *cnt, MirInstr *instr, MirType *type)
 {
@@ -3440,10 +3447,15 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 		bl_abort_issue(53);
 	}
 
-	/*
+	MirType *expr_type = expr->value.type;
+	assert(mir_is_pointer_type(expr_type));
+
+	toany->expr_type = mir_deref_type(expr_type);
+	schedule_RTTI_generation(cnt, toany->expr_type);
+
 	const char *tmp_var_name = gen_uq_name(cnt, IMPL_ANY_TMP);
-	MirVar *tmp_var = create_var_impl(cnt, tmp_var_name, toany->base.type, false, false, false);
-	*/
+	toany->tmp =
+	    create_var_impl(cnt, tmp_var_name, toany->base.value.type, false, false, false);
 
 	return ANALYZE_PASSED;
 }
@@ -4085,8 +4097,8 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 	}
 
 	type_info->expr_type = type;
-	if (!bo_htbl_has_key(cnt->analyze.RTTI_entry_types, (uint64_t)type))
-		bo_htbl_insert_empty(cnt->analyze.RTTI_entry_types, (uint64_t)type);
+
+	schedule_RTTI_generation(cnt, type);
 
 	ret_type                   = create_type_ptr(cnt, ret_type);
 	type_info->base.value.type = ret_type;
@@ -4968,7 +4980,8 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		/* validate types or infer */
 		if (var->value.type) {
 			bool is_valid;
-			decl->init = analyze_slot_input(cnt, &is_valid, decl->init, var->value.type, false);
+			decl->init =
+			    analyze_slot_input(cnt, &is_valid, decl->init, var->value.type, false);
 			if (!is_valid) return ANALYZE_FAILED;
 		} else {
 			decl->init = analyze_slot_input(cnt, NULL, decl->init, NULL, false);
@@ -5242,7 +5255,6 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
 
 	MirType *dest_type = mir_deref_type(dest->value.type);
 	assert(dest_type && "store destination has invalid base type");
-
 
 	bool is_valid;
 	store->src = analyze_slot_input(cnt, &is_valid, store->src, dest_type, false);

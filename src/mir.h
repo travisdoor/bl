@@ -705,6 +705,8 @@ struct MirInstrPhi {
 struct MirInstrToAny {
 	MirInstr base;
 
+	MirType * expr_type;
+	MirVar *  tmp;
 	MirInstr *expr;
 };
 

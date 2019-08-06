@@ -7,17 +7,15 @@ main :: fn () s32 {
     foo(arr[i]);
     */
 
-    ptr := null;
-    if (null == null) {}
-    if (null == ptr) {}
-    if (ptr == null) {}
-    
-    ptr();
-    return 0;
-};
+    i := 10;
+    t := true;
+    f := false;
+    ptr := &i;
 
-foo :: fn () *u64 {
-    return null;
+    print("hello world\n");
+    print("i = %\nt = %\nf = %\nptr = %\n", i, t, f, ptr);
+
+    return 0;
 };
 
 

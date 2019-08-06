@@ -257,6 +257,12 @@ gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
 static void
 gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
 
+static void
+gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
+
+static void
+gen_instr_toany(Context *cnt, MirInstrToAny *toany);
+
 static LLVMValueRef
 gen_as_const(Context *cnt, MirConstValue *value);
 
@@ -1208,6 +1214,46 @@ gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 }
 
 void
+gen_instr_toany(Context *cnt, MirInstrToAny *toany)
+{
+	LLVMValueRef llvm_tmp       = toany->tmp->llvm_value;
+	LLVMValueRef llvm_type_info = toany->expr_type->rtti.var->llvm_value;
+	LLVMValueRef llvm_data      = toany->expr->llvm_value;
+
+	assert(llvm_type_info && "Missing LLVM value for RTTI variable.");
+	assert(llvm_tmp);
+
+	MirType *   any_type = toany->base.value.type;
+	LLVMTypeRef llvm_any_type_info_type =
+	    bo_array_at(any_type->data.strct.members, 0, MirType *)->llvm_type;
+
+	LLVMTypeRef llvm_any_data_type =
+	    bo_array_at(any_type->data.strct.members, 1, MirType *)->llvm_type;
+
+	{ /* setup tmp variable */
+		LLVMValueRef llvm_dest;
+
+		/* pointer to type info */
+		llvm_dest = LLVMBuildStructGEP(cnt->llvm_builder, llvm_tmp, 0, "");
+
+		llvm_type_info = LLVMBuildPointerCast(
+		    cnt->llvm_builder, llvm_type_info, llvm_any_type_info_type, "");
+
+		LLVMBuildStore(cnt->llvm_builder, llvm_type_info, llvm_dest);
+
+		/* pointer to data */
+		llvm_dest = LLVMBuildStructGEP(cnt->llvm_builder, llvm_tmp, 1, "");
+
+		llvm_data = LLVMBuildPointerCast(
+		    cnt->llvm_builder, llvm_data, llvm_any_data_type, "");
+
+		LLVMBuildStore(cnt->llvm_builder, llvm_data, llvm_dest);
+	}
+
+	toany->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, "");
+}
+
+void
 gen_instr_block(Context *cnt, MirInstrBlock *block)
 {
 	MirFn *fn = block->owner_fn;
@@ -1368,7 +1414,7 @@ gen_instr(Context *cnt, MirInstr *instr)
 		gen_instr_compound(cnt, NULL, (MirInstrCompound *)instr);
 		break;
 	case MIR_INSTR_TOANY:
-		bl_unimplemented;
+		gen_instr_toany(cnt, (MirInstrToAny *)instr);
 		break;
 	}
 }
