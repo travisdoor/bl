@@ -1223,7 +1223,7 @@ gen_instr_toany(Context *cnt, MirInstrToAny *toany)
 	assert(llvm_type_info && "Missing LLVM value for RTTI variable.");
 	assert(llvm_tmp);
 
-	MirType *   any_type = toany->base.value.type;
+	MirType *   any_type = mir_deref_type(toany->base.value.type);
 	LLVMTypeRef llvm_any_type_info_type =
 	    bo_array_at(any_type->data.strct.members, 0, MirType *)->llvm_type;
 
@@ -1250,7 +1250,7 @@ gen_instr_toany(Context *cnt, MirInstrToAny *toany)
 		LLVMBuildStore(cnt->llvm_builder, llvm_data, llvm_dest);
 	}
 
-	toany->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, "");
+	toany->base.llvm_value = llvm_tmp;
 }
 
 void

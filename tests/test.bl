@@ -15,7 +15,25 @@ main :: fn () s32 {
     print("hello world\n");
     print("i = %\nt = %\nf = %\nptr = %\n", i, t, f, ptr);
 
+    foo(i);
+    //bar(i);
+
     return 0;
+};
+
+bar :: fn (v: ...s32) {
+};
+
+foo :: fn (v: Any) {
+    if v.type_info.kind == TypeKind.Int {
+        log("INT");
+    }
+};
+
+log :: fn (s: string) {
+    puts :: fn (v: *u8) #extern;
+
+    puts(s.ptr);
 };
 
 

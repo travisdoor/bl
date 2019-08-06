@@ -57,12 +57,6 @@ bprint :: fn (buf: []u8, format: string, args: ...) s32 {
 
 #private
 
-log :: fn (s: string) {
-    puts :: fn (v: *u8) #extern;
-
-    puts(s.ptr);
-};
-
 __print :: fn (buf: []u8, format: string, args: []Any) s32 {
     cur := 0;
     argi := 0;
