@@ -3,7 +3,8 @@
 main :: fn () s32 {
     v : u64 = 123;
     debug_print(v);
-    print("v: %\n", v);
+    foo(v);
+
     return 0;
 };
 
@@ -11,6 +12,11 @@ debug_print :: fn (v: u64) {
     format := "%d\n";
     printf :: fn (format: *u8, n: u64) s32 #extern;
     printf(format.ptr, v);
+};
+
+foo :: fn (v: Any) {
+    tmp := ^ cast(*u64) v.data;
+    debug_print(tmp);
 };
 
 
