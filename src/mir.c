@@ -118,6 +118,24 @@
 #define _log_pop_stack
 #endif
 
+#if BL_DEBUG
+#define _chck_size() sizeof(void *)
+#define _chck_write(_ptr, _data_size) memcpy((_ptr) + (_data_size), &(_ptr), _chck_size())
+#define _chck_validate(_ptr, _data_size)                                                           \
+	if ((*(intptr_t *)((_ptr) + (_data_size))) != (intptr_t)(_ptr)) {                          \
+		bl_abort("Stack memory malformed!");                                               \
+	}
+#else
+#define _chck_size() 0
+#define _chck_write(_ptr, _data_size)                                                              \
+	while (0) {                                                                                \
+	}
+
+#define _chck_validate(_ptr, _data_size)                                                           \
+	while (0) {                                                                                \
+	}
+#endif
+
 union _MirInstr {
 	MirInstrBlock       block;
 	MirInstrDeclVar     var;
@@ -1251,9 +1269,10 @@ exec_abort(Context *cnt, int32_t report_stack_nesting)
 }
 
 static inline size_t
-exec_stack_alloc_size(const size_t size)
+exec_stack_alloc_size(size_t size)
 {
 	assert(size != 0);
+	size += _chck_size();
 	return size + (MAX_ALIGNMENT - (size % MAX_ALIGNMENT));
 }
 
@@ -1263,6 +1282,9 @@ exec_stack_alloc(Context *cnt, size_t size)
 {
 	assert(size && "trying to allocate 0 bits on stack");
 
+#if BL_DEBUG
+	const size_t orig_size = size;
+#endif
 	size = exec_stack_alloc_size(size);
 	cnt->exec.stack->used_bytes += size;
 	if (cnt->exec.stack->used_bytes > cnt->exec.stack->allocated_bytes) {
@@ -1277,6 +1299,8 @@ exec_stack_alloc(Context *cnt, size_t size)
 		bl_warning("BAD ALIGNMENT %p, %d bytes", mem, size);
 	}
 
+	_chck_write(mem, orig_size);
+
 	return mem;
 }
 
@@ -1284,11 +1308,18 @@ exec_stack_alloc(Context *cnt, size_t size)
 static inline MirStackPtr
 exec_stack_free(Context *cnt, size_t size)
 {
+#if BL_DEBUG
+	const size_t orig_size = size;
+#endif
+
 	size                = exec_stack_alloc_size(size);
 	MirStackPtr new_top = cnt->exec.stack->top_ptr - size;
 	if (new_top < (uint8_t *)(cnt->exec.stack->ra + 1)) bl_abort("Stack underflow!!!");
 	cnt->exec.stack->top_ptr = new_top;
 	cnt->exec.stack->used_bytes -= size;
+
+	_chck_validate(new_top, orig_size);
+
 	return new_top;
 }
 
@@ -8731,7 +8762,7 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 		break;
 
 	case MIR_TYPE_STRUCT: {
-		BArray *members = type->data.strct.members;
+		BArray * members = type->data.strct.members;
 		MirType *tmp;
 
 		if (mir_is_vargs_type(type)) {

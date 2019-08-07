@@ -1,42 +1,13 @@
 /* playground */
 
 main :: fn () s32 {
-    /*
-    arr := {:[2]s32: 1, 2 };
-    i := 1;
-    foo(arr[i]);
-    */
+    ptr : *s32;
+    ptr = cast(*s32) 0x123456789AB;
 
-    i := 10;
-    t := true;
-    f := false;
-    ptr := &i;
-
-    print("hello world\n");
-    print("i = %\nt = %\nf = %\nptr = %\n", i, t, f, ptr);
-
-    foo(i);
-    //bar(i);
+    print("ptr = %\n", ptr);
 
     return 0;
 };
-
-bar :: fn (v: ...s32) {
-};
-
-foo :: fn (v: Any) {
-    if v.type_info.kind == TypeKind.Int {
-        log("INT");
-    }
-};
-
-log :: fn (s: string) {
-    puts :: fn (v: *u8) #extern;
-
-    puts(s.ptr);
-};
-
-
 
 
 
