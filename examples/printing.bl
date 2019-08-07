@@ -1,0 +1,12 @@
+#load "std/debug.bl"
+
+#test "printing" {
+    print("Hello biscuit!!!\n");
+
+    i := 10;
+    t := true;
+    f := false;
+    ptr := &i;
+
+    print("i = %\nt = %\nf = %\nptr = %\n", i, t, f, ptr);
+};

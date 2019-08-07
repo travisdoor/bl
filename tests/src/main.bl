@@ -1,7 +1,7 @@
 /* Main testing suite. */
 
 /* Language tests */
-//#load "test_print.bl"
+#load "test_print.bl"
 #load "test_fundamental_types.bl"
 #load "test_type_infer.bl"
 #load "test_simple_assignments.bl"
