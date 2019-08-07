@@ -1,13 +1,18 @@
 /* playground */
 
 main :: fn () s32 {
-    ptr : *s32;
-    ptr = cast(*s32) 0x123456789AB;
-
-    print("ptr = %\n", ptr);
-
+    v : u64 = 123;
+    debug_print(v);
+    print("v: %\n", v);
     return 0;
 };
+
+debug_print :: fn (v: u64) {
+    format := "%d\n";
+    printf :: fn (format: *u8, n: u64) s32 #extern;
+    printf(format.ptr, v);
+};
+
 
 
 

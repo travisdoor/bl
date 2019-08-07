@@ -51,6 +51,7 @@
 #define NO_REF_COUNTING                 -1
 #define VERBOSE_EXEC                    false 
 #define VERBOSE_ANALYZE                 false
+#define CHCK_STACK                      true
 #define SLICE_LEN_INDEX                 0
 #define SLICE_PTR_INDEX                 1
 // clang-format on
@@ -118,7 +119,7 @@
 #define _log_pop_stack
 #endif
 
-#if BL_DEBUG
+#if BL_DEBUG && CHCK_STACK
 #define _chck_size() sizeof(void *)
 #define _chck_write(_ptr, _data_size) memcpy((_ptr) + (_data_size), &(_ptr), _chck_size())
 #define _chck_validate(_ptr, _data_size)                                                           \
@@ -1282,7 +1283,7 @@ exec_stack_alloc(Context *cnt, size_t size)
 {
 	assert(size && "trying to allocate 0 bits on stack");
 
-#if BL_DEBUG
+#if BL_DEBUG && CHCK_STACK
 	const size_t orig_size = size;
 #endif
 	size = exec_stack_alloc_size(size);
@@ -1308,7 +1309,7 @@ exec_stack_alloc(Context *cnt, size_t size)
 static inline MirStackPtr
 exec_stack_free(Context *cnt, size_t size)
 {
-#if BL_DEBUG
+#if BL_DEBUG && CHCK_STACK
 	const size_t orig_size = size;
 #endif
 
@@ -6265,7 +6266,6 @@ void
 exec_instr_toany(Context *cnt, MirInstrToAny *toany)
 {
 	MirVar *    tmp      = toany->tmp;
-	MirStackPtr data_ptr = exec_fetch_value(cnt, toany->expr);
 	MirStackPtr tmp_ptr  = exec_read_stack_ptr(cnt, tmp->rel_stack_ptr, tmp->is_in_gscope);
 	MirType *   tmp_type = tmp->value.type;
 
@@ -6283,6 +6283,7 @@ exec_instr_toany(Context *cnt, MirInstrToAny *toany)
 	}
 
 	{ // set data
+		MirStackPtr data_ptr  = exec_fetch_value(cnt, toany->expr);
 		MirStackPtr dest      = tmp_ptr + get_struct_elem_offest(cnt, tmp_type, 1);
 		MirType *   data_type = get_struct_elem_type(tmp_type, 1);
 
