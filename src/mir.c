@@ -1028,6 +1028,15 @@ get_struct_elem_offest(Context *cnt, MirType *type, uint32_t i)
 	return LLVMOffsetOfElement(cnt->module->llvm_td, type->llvm_type, (unsigned long)i);
 }
 
+static inline ptrdiff_t
+get_array_elem_offset(MirType *type, uint32_t i)
+{
+	assert(type->kind == MIR_TYPE_ARRAY && "Expected array type");
+	MirType *elem_type = type->data.array.elem_type;
+	assert(elem_type);
+	return elem_type->store_size_bytes * i;
+}
+
 static inline MirType *
 get_struct_elem_type(MirType *type, uint32_t i)
 {
@@ -5811,9 +5820,7 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 
 				/* copy all elems to variable allocated memory on the stack */
 				MirStackPtr elem_dest_ptr =
-				    dest_ptr + (elem->type->store_size_bytes * i);
-				assert(elem_dest_ptr);
-
+				    dest_ptr + get_array_elem_offset(src_type, i);
 				exec_copy_comptime_to_stack(cnt, elem_dest_ptr, elem);
 			}
 		}
@@ -6442,6 +6449,9 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 				exec_abort(cnt, 0);
 			}
 		}
+
+		if (elem_ptr->arr_ptr->comptime) bl_abort_issue(57);
+
 		result.v_ptr.data.stack_ptr =
 		    (MirStackPtr)((arr_ptr) + (index.v_u64 * elem_type->store_size_bytes));
 
@@ -6867,7 +6877,7 @@ exec_instr_compound(Context *cnt, MirStackPtr tmp_ptr, MirInstrCompound *cmp)
 				break;
 
 			case MIR_TYPE_ARRAY:
-				elem_ptr = tmp_ptr + elem_type->store_size_bytes * i;
+				elem_ptr = tmp_ptr + get_array_elem_offset(type, i);
 				break;
 
 			default:
@@ -7397,10 +7407,10 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 			(_result)._v_T = _lhs._v_T % _rhs._v_T;                                    \
 			break;                                                                     \
 		case BINOP_AND:                                                                    \
-			(_result)._v_T = _lhs._v_T & _rhs._v_T;                                  \
+			(_result)._v_T = _lhs._v_T & _rhs._v_T;                                    \
 			break;                                                                     \
 		case BINOP_OR:                                                                     \
-			(_result)._v_T = _lhs._v_T | _rhs._v_T;                                  \
+			(_result)._v_T = _lhs._v_T | _rhs._v_T;                                    \
 			break;                                                                     \
 		default:                                                                           \
 			bl_unimplemented;                                                          \

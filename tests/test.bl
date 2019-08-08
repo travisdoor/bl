@@ -2,24 +2,9 @@
 
 main :: fn () s32 {
     i := 10;
-    i_ptr := &i;
+    ptr := &i;
 
-    num : u64 = 0xFFFF;
-    debug_print(num & 0xF000);
-    
-    //print("%\n", i_ptr);
-    //debug_print(cast(u64) i_ptr);
+    print("ptr = %\n", ptr);
 
     return 0;
 };
-
-debug_print :: fn (v: u64) {
-    format := "%p\n";
-    printf :: fn (format: *u8, n: u64) s32 #extern;
-    printf(format.ptr, v);
-};
-
-
-
-
-
