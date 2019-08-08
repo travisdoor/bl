@@ -7397,10 +7397,10 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 			(_result)._v_T = _lhs._v_T % _rhs._v_T;                                    \
 			break;                                                                     \
 		case BINOP_AND:                                                                    \
-			(_result).v_bool = _lhs._v_T & _rhs._v_T;                                  \
+			(_result)._v_T = _lhs._v_T & _rhs._v_T;                                  \
 			break;                                                                     \
 		case BINOP_OR:                                                                     \
-			(_result).v_bool = _lhs._v_T | _rhs._v_T;                                  \
+			(_result)._v_T = _lhs._v_T | _rhs._v_T;                                  \
 			break;                                                                     \
 		default:                                                                           \
 			bl_unimplemented;                                                          \

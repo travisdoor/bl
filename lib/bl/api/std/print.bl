@@ -151,14 +151,13 @@ __print_u64_hex :: fn (buf: []u8, cur: s32, v: u64) s32 {
     }
 
     digits :: {:[16]u8: '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
-    base :: 0xf; 
-    div : u64 = 0xf000000000000000;
+    mask : u64 = 0xf000000000000000;
     hit_non_zero := false;
 
-    loop div > 0 {
-        d := v / div;
-        v %= div;
-        div /= base;
+    loop i := 0; i < 16; i += 1 {
+        d := v & mask;
+        v = v << 4;
+        d = d >> 60;
 
         if d != 0 { hit_non_zero = true; }
 

@@ -2,8 +2,14 @@
 
 main :: fn () s32 {
     i := 10;
-    i = i >> 1;
-    i = i << 1;
+    i_ptr := &i;
+
+    num : u64 = 0xFFFF;
+    debug_print(num & 0xF000);
+    
+    //print("%\n", i_ptr);
+    //debug_print(cast(u64) i_ptr);
+
     return 0;
 };
 

@@ -1044,7 +1044,10 @@ gen_instr_binop(Context *cnt, MirInstrBinop *binop)
 		break;
 
 	case BINOP_SHR:
-		binop->base.llvm_value = LLVMBuildAShr(cnt->llvm_builder, lhs, rhs, "");
+		if (signed_integer)
+			binop->base.llvm_value = LLVMBuildAShr(cnt->llvm_builder, lhs, rhs, "");
+		else
+			binop->base.llvm_value = LLVMBuildLShr(cnt->llvm_builder, lhs, rhs, "");
 		break;
 
 	case BINOP_SHL:
