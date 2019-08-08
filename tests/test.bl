@@ -1,10 +1,19 @@
 /* playground */
 
 main :: fn () s32 {
-    i := 10;
-    ptr := &i;
-
-    print("ptr = %\n", ptr);
-
+    //print("some number is = %\n", 10);
+    foo(10);
     return 0;
+};
+
+foo :: fn (v: Any) {
+    data := ^ cast(*s32) v.data;
+    debug_print(data);
+};
+
+debug_print :: fn (v: s32) {
+    printf :: fn (s: *u8, i: s32) s32 #extern;
+    tmp := "%d\n";
+
+    printf(tmp.ptr, v);
 };

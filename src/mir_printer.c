@@ -433,7 +433,7 @@ void
 print_instr_toany(MirInstrToAny *toany, FILE *stream)
 {
 	print_instr_head(&toany->base, stream, "toany");
-	fprintf(stream, "%%%llu", (unsigned long long)toany->expr->id);
+	print_comptime_value_or_id(toany->expr, stream);
 }
 
 void

@@ -40,9 +40,10 @@
 #define RESOLVE_TYPE_FN_NAME            ".type"
 #define INIT_VALUE_FN_NAME              ".init"
 #define IMPL_FN_NAME                    ".impl"
-#define IMPL_VARGS_TMP_ARR              ".vargs_arr"
+#define IMPL_VARGS_TMP_ARR              ".vargs.arr"
 #define IMPL_VARGS_TMP                  ".vargs"
 #define IMPL_ANY_TMP                    ".any"
+#define IMPL_ANY_EXPR_TMP               ".any.expr"
 #define IMPL_COMPOUND_TMP               ".compound"
 #define IMPL_RTTI_ENTRY                 ".rtti"
 #define DEFAULT_EXEC_FRAME_STACK_SIZE   2097152 // 2MB
@@ -3510,19 +3511,29 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 	MirInstr *expr = toany->expr;
 	assert(expr && "Missing expression as toany input.");
 
-	if (!is_allocated_object(expr)) {
-		bl_abort_issue(53);
-	}
-
 	MirType *toany_type = mir_deref_type(toany->base.value.type);
 	MirType *expr_type  = expr->value.type;
-	assert(mir_is_pointer_type(expr_type));
 
-	toany->expr_type = mir_deref_type(expr_type);
+	reduce_instr(cnt, toany->expr);
+
+	if (!is_allocated_object(expr)) {
+		/* Target expression is not allocated object on the stack, so we need to crate
+		 * temporary variable containing the value and fetch pointer to this variable. */
+		const char *tmp_var_name = gen_uq_name(cnt, IMPL_ANY_EXPR_TMP);
+		toany->expr_tmp =
+		    create_var_impl(cnt, tmp_var_name, expr_type, false, false, false);
+
+		toany->expr_type = expr_type;
+	} else {
+		toany->expr_type = mir_deref_type(expr_type);
+	}
+
 	schedule_RTTI_generation(cnt, toany->expr_type);
 
-	const char *tmp_var_name = gen_uq_name(cnt, IMPL_ANY_TMP);
-	toany->tmp = create_var_impl(cnt, tmp_var_name, toany_type, false, false, false);
+	{ /* Tmp variable for Any */
+		const char *tmp_var_name = gen_uq_name(cnt, IMPL_ANY_TMP);
+		toany->tmp = create_var_impl(cnt, tmp_var_name, toany_type, false, false, false);
+	}
 
 	return ANALYZE_PASSED;
 }
@@ -6273,6 +6284,7 @@ void
 exec_instr_toany(Context *cnt, MirInstrToAny *toany)
 {
 	MirVar *    tmp      = toany->tmp;
+	MirVar *    expr_tmp = toany->expr_tmp;
 	MirStackPtr tmp_ptr  = exec_read_stack_ptr(cnt, tmp->rel_stack_ptr, tmp->is_in_gscope);
 	MirType *   tmp_type = tmp->value.type;
 
@@ -6289,11 +6301,22 @@ exec_instr_toany(Context *cnt, MirInstrToAny *toany)
 		memcpy(dest, &rtti_ptr, type_info_type->store_size_bytes);
 	}
 
-	{ // set data
-		MirStackPtr data_ptr  = exec_fetch_value(cnt, toany->expr);
-		MirStackPtr dest      = tmp_ptr + get_struct_elem_offest(cnt, tmp_type, 1);
-		MirType *   data_type = get_struct_elem_type(tmp_type, 1);
+	MirStackPtr data_ptr  = exec_fetch_value(cnt, toany->expr);
+	MirStackPtr dest      = tmp_ptr + get_struct_elem_offest(cnt, tmp_type, 1);
+	MirType *   data_type = get_struct_elem_type(tmp_type, 1);
 
+	if (expr_tmp) { // set data
+		MirStackPtr expr_tmp_ptr =
+		    exec_read_stack_ptr(cnt, expr_tmp->rel_stack_ptr, expr_tmp->is_in_gscope);
+
+		if (toany->expr->comptime) {
+			exec_copy_comptime_to_stack(cnt, expr_tmp_ptr, (MirConstValue *)data_ptr);
+		} else {
+			bl_unimplemented;
+		}
+
+		memcpy(dest, &expr_tmp_ptr, data_type->store_size_bytes);
+	} else {
 		memcpy(dest, data_ptr, data_type->store_size_bytes);
 	}
 
@@ -6311,7 +6334,7 @@ exec_instr_phi(Context *cnt, MirInstrPhi *phi)
 	const size_t c = bo_array_size(phi->incoming_values);
 	assert(c > 0);
 
-	MirInstr *     value;
+	MirInstr *     value = NULL;
 	MirInstrBlock *block;
 	for (size_t i = 0; i < c; ++i) {
 		value = bo_array_at(phi->incoming_values, i, MirInstr *);
