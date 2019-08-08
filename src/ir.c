@@ -1043,6 +1043,14 @@ gen_instr_binop(Context *cnt, MirInstrBinop *binop)
 		binop->base.llvm_value = LLVMBuildOr(cnt->llvm_builder, lhs, rhs, "");
 		break;
 
+	case BINOP_SHR:
+		binop->base.llvm_value = LLVMBuildAShr(cnt->llvm_builder, lhs, rhs, "");
+		break;
+
+	case BINOP_SHL:
+		binop->base.llvm_value = LLVMBuildShl(cnt->llvm_builder, lhs, rhs, "");
+		break;
+
 	default:
 		bl_abort("Invalid binary operation.");
 	}
@@ -1244,8 +1252,8 @@ gen_instr_toany(Context *cnt, MirInstrToAny *toany)
 		/* pointer to data */
 		llvm_dest = LLVMBuildStructGEP(cnt->llvm_builder, llvm_tmp, 1, "");
 
-		llvm_data = LLVMBuildPointerCast(
-		    cnt->llvm_builder, llvm_data, llvm_any_data_type, "");
+		llvm_data =
+		    LLVMBuildPointerCast(cnt->llvm_builder, llvm_data, llvm_any_data_type, "");
 
 		LLVMBuildStore(cnt->llvm_builder, llvm_data, llvm_dest);
 	}

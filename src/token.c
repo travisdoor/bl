@@ -78,6 +78,11 @@ token_prec(Token *token)
 	case SYM_MINUS:
 		return (TokenPrecedence){.priority = 20, .associativity = TOKEN_ASSOC_LEFT};
 
+		/* >> << */
+	case SYM_SHR:
+	case SYM_SHL:
+		return (TokenPrecedence){.priority = 18, .associativity = TOKEN_ASSOC_LEFT};
+
 		/* < > <= >= */
 	case SYM_LESS:
 	case SYM_GREATER:

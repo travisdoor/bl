@@ -130,6 +130,8 @@ typedef enum {
 	BINOP_LOGIC_OR,
 	BINOP_AND,
 	BINOP_OR,
+	BINOP_SHR,
+	BINOP_SHL,
 } BinopKind;
 
 typedef enum {

@@ -6287,10 +6287,7 @@ exec_instr_toany(Context *cnt, MirInstrToAny *toany)
 		MirStackPtr dest      = tmp_ptr + get_struct_elem_offest(cnt, tmp_type, 1);
 		MirType *   data_type = get_struct_elem_type(tmp_type, 1);
 
-		MirConstValueData tmp = {0};
-		tmp.v_ptr.data.any    = data_ptr;
-
-		memcpy(dest, &tmp, data_type->store_size_bytes);
+		memcpy(dest, data_ptr, data_type->store_size_bytes);
 	}
 
 	exec_push_stack(cnt, &tmp_ptr, toany->base.value.type);
@@ -7353,66 +7350,69 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
 void
 exec_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
-// clang-format off
 #define _binop_int(_op, _lhs, _rhs, _result, _v_T)                                                 \
-  case BINOP_ADD:                                                                                  \
-    (_result)._v_T = _lhs._v_T + _rhs._v_T;                                                        \
-    break;                                                                                         \
-  case BINOP_SUB:                                                                                  \
-    (_result)._v_T = _lhs._v_T - _rhs._v_T;                                                        \
-    break;                                                                                         \
-  case BINOP_MUL:                                                                                  \
-    (_result)._v_T = _lhs._v_T * _rhs._v_T;                                                        \
-    break;                                                                                         \
-  case BINOP_DIV:                                                                                  \
-    assert(_rhs._v_T != 0 && "divide by zero, this should be an error");                           \
-    (_result)._v_T = _lhs._v_T / _rhs._v_T;                                                        \
-    break;                                                                                         \
-  case BINOP_EQ:                                                                                   \
-    (_result).v_bool = _lhs._v_T == _rhs._v_T;                                                     \
-    break;                                                                                         \
-  case BINOP_NEQ:                                                                                  \
-    (_result).v_bool = _lhs._v_T != _rhs._v_T;                                                     \
-    break;                                                                                         \
-  case BINOP_LESS:                                                                                 \
-    (_result).v_bool = _lhs._v_T < _rhs._v_T;                                                      \
-    break;                                                                                         \
-  case BINOP_LESS_EQ:                                                                              \
-    (_result).v_bool = _lhs._v_T == _rhs._v_T;                                                     \
-    break;                                                                                         \
-  case BINOP_GREATER:                                                                              \
-    (_result).v_bool = _lhs._v_T > _rhs._v_T;                                                      \
-    break;                                                                                         \
-  case BINOP_GREATER_EQ:                                                                           \
-    (_result).v_bool = _lhs._v_T >= _rhs._v_T;                                                     \
-    break;                                                                                         
+	case BINOP_ADD:                                                                            \
+		(_result)._v_T = _lhs._v_T + _rhs._v_T;                                            \
+		break;                                                                             \
+	case BINOP_SUB:                                                                            \
+		(_result)._v_T = _lhs._v_T - _rhs._v_T;                                            \
+		break;                                                                             \
+	case BINOP_MUL:                                                                            \
+		(_result)._v_T = _lhs._v_T * _rhs._v_T;                                            \
+		break;                                                                             \
+	case BINOP_DIV:                                                                            \
+		assert(_rhs._v_T != 0 && "divide by zero, this should be an error");               \
+		(_result)._v_T = _lhs._v_T / _rhs._v_T;                                            \
+		break;                                                                             \
+	case BINOP_EQ:                                                                             \
+		(_result).v_bool = _lhs._v_T == _rhs._v_T;                                         \
+		break;                                                                             \
+	case BINOP_NEQ:                                                                            \
+		(_result).v_bool = _lhs._v_T != _rhs._v_T;                                         \
+		break;                                                                             \
+	case BINOP_LESS:                                                                           \
+		(_result).v_bool = _lhs._v_T < _rhs._v_T;                                          \
+		break;                                                                             \
+	case BINOP_LESS_EQ:                                                                        \
+		(_result).v_bool = _lhs._v_T == _rhs._v_T;                                         \
+		break;                                                                             \
+	case BINOP_GREATER:                                                                        \
+		(_result).v_bool = _lhs._v_T > _rhs._v_T;                                          \
+		break;                                                                             \
+	case BINOP_GREATER_EQ:                                                                     \
+		(_result).v_bool = _lhs._v_T >= _rhs._v_T;                                         \
+		break;
 
 #define binop_case_int(_op, _lhs, _rhs, _result, _v_T)                                             \
-  case sizeof(_lhs._v_T): {                                                                        \
-    switch (_op) {                                                                                 \
-      _binop_int(_op, _lhs, _rhs, _result, _v_T)                                 		   \
-    case BINOP_MOD:                             						   \
-      (_result)._v_T = _lhs._v_T % _rhs._v_T;                                                      \
-      break;                                                                                       \
-    case BINOP_AND:                                                                                \
-      (_result).v_bool = _lhs._v_T & _rhs._v_T;                                                    \
-      break;                                                                                       \
-    case BINOP_OR:                                                                                 \
-      (_result).v_bool = _lhs._v_T | _rhs._v_T;                                                    \
-      break;                                                                                       \
-    default:                                                                                       \
-      bl_unimplemented;                                                                            \
-    }                                                                                              \
-  } break;
+	case sizeof(_lhs._v_T): {                                                                  \
+		switch (_op) {                                                                     \
+			_binop_int(_op, _lhs, _rhs, _result, _v_T);                                \
+		case BINOP_SHR:                                                                    \
+			(_result)._v_T = _lhs._v_T >> _rhs._v_T;                                   \
+			break;                                                                     \
+		case BINOP_SHL:                                                                    \
+			(_result)._v_T = _lhs._v_T << _rhs._v_T;                                   \
+			break;                                                                     \
+		case BINOP_MOD:                                                                    \
+			(_result)._v_T = _lhs._v_T % _rhs._v_T;                                    \
+			break;                                                                     \
+		case BINOP_AND:                                                                    \
+			(_result).v_bool = _lhs._v_T & _rhs._v_T;                                  \
+			break;                                                                     \
+		case BINOP_OR:                                                                     \
+			(_result).v_bool = _lhs._v_T | _rhs._v_T;                                  \
+			break;                                                                     \
+		default:                                                                           \
+			bl_unimplemented;                                                          \
+		}                                                                                  \
+	} break;
 
-#define binop_case_real(_op, _lhs, _rhs, _result, _v_T)                                             \
-  case sizeof(_lhs._v_T): {                                                                        \
-    switch (_op) {                                                                                 \
-      _binop_int(_op, _lhs, _rhs, _result, _v_T)                                 		   \
-    default:                                                                                       \
-      bl_unimplemented;                                                                            \
-    }                                                                                              \
-  } break;
+#define binop_case_real(_op, _lhs, _rhs, _result, _v_T)                                            \
+	case sizeof(_lhs._v_T): {                                                                  \
+		switch (_op) {                                                                     \
+			_binop_int(_op, _lhs, _rhs, _result, _v_T) default : bl_unimplemented;     \
+		}                                                                                  \
+	} break;
 	// clang-format on
 
 	/* binop expects lhs and rhs on stack in exact order and push result again

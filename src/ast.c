@@ -195,6 +195,8 @@ const char *
 ast_binop_to_str(BinopKind op)
 {
 	switch (op) {
+	case BINOP_INVALID:
+		return "<invalid>";
 	case BINOP_ASSIGN:
 		return "=";
 	case BINOP_ADD_ASSIGN:
@@ -233,8 +235,14 @@ ast_binop_to_str(BinopKind op)
 		return "&&";
 	case BINOP_LOGIC_OR:
 		return "||";
-	default:
-		return "invalid";
+	case BINOP_AND:
+		return "&";
+	case BINOP_OR:
+		return "|";
+	case BINOP_SHR:
+		return ">>";
+	case BINOP_SHL:
+		return "<<";
 	}
 }
 
