@@ -62,7 +62,7 @@
 		if (instr) {                                                                       \
 			fprintf(stdout,                                                            \
 			        "%6llu %20s  PUSH RA\n",                                           \
-			        (unsigned long long)cnt->exec.stack->pc->id,                       \
+			        cnt->exec.stack->pc->id,                                           \
 			        mir_instr_name(cnt->exec.stack->pc));                              \
 		} else {                                                                           \
 			fprintf(stdout, "     - %20s  PUSH RA\n", "Terminal");                     \
@@ -73,7 +73,7 @@
 	{                                                                                          \
 		fprintf(stdout,                                                                    \
 		        "%6llu %20s  POP RA\n",                                                    \
-		        (unsigned long long)cnt->exec.stack->pc->id,                               \
+		        cnt->exec.stack->pc->id,                                                   \
 		        mir_instr_name(cnt->exec.stack->pc));                                      \
 	}
 
@@ -104,7 +104,7 @@
 		mir_type_to_str(type_name, 256, type, true);                                       \
 		fprintf(stdout,                                                                    \
 		        "%6llu %20s  POP     (%luB, %p) %s\n",                                     \
-		        (unsigned long long)cnt->exec.stack->pc->id,                               \
+		        cnt->exec.stack->pc->id,                                                   \
 		        mir_instr_name(cnt->exec.stack->pc),                                       \
 		        size,                                                                      \
 		        cnt->exec.stack->top_ptr - size,                                           \
@@ -5199,7 +5199,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 			return ANALYZE_FAILED;
 		}
 
-		MirType *vargs_type = mir_get_fn_arg_type(type, (uint32_t) callee_argc);
+		MirType *vargs_type = mir_get_fn_arg_type(type, (uint32_t)callee_argc);
 		assert(mir_is_vargs_type(vargs_type) && "VArgs is expected to be last!!!");
 
 		vargs_type = mir_get_struct_elem_type(vargs_type, 1);
@@ -6502,7 +6502,8 @@ exec_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		const int64_t index = member->index;
 
 		/* let the llvm solve poiner offest */
-		const ptrdiff_t ptr_offset = get_struct_elem_offest(cnt, target_type, (uint32_t) index);
+		const ptrdiff_t ptr_offset =
+		    get_struct_elem_offest(cnt, target_type, (uint32_t)index);
 
 		result.v_ptr.data.stack_ptr = ptr + ptr_offset; // pointer shift
 	} else {
@@ -6877,11 +6878,11 @@ exec_instr_compound(Context *cnt, MirStackPtr tmp_ptr, MirInstrCompound *cmp)
 			switch (type->kind) {
 
 			case MIR_TYPE_STRUCT:
-				elem_ptr = tmp_ptr + get_struct_elem_offest(cnt, type, (uint32_t) i);
+				elem_ptr = tmp_ptr + get_struct_elem_offest(cnt, type, (uint32_t)i);
 				break;
 
 			case MIR_TYPE_ARRAY:
-				elem_ptr = tmp_ptr + get_array_elem_offset(type, (uint32_t) i);
+				elem_ptr = tmp_ptr + get_array_elem_offset(type, (uint32_t)i);
 				break;
 
 			default:
