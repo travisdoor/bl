@@ -311,6 +311,10 @@ sym_to_binop_kind(Sym sm)
 		return BINOP_AND;
 	case SYM_OR:
 		return BINOP_OR;
+	case SYM_SHR:
+		return BINOP_SHR;
+	case SYM_SHL:
+		return BINOP_SHL;
 	default:
 		bl_abort("unknown binop operation!!!");
 	}

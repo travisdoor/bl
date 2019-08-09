@@ -181,7 +181,8 @@ print_const_value(MirConstValue *value, FILE *stream)
 		break;
 	}
 	case MIR_TYPE_NULL:
-		fprintf(stream, "null");
+		fprintf(stream, "null_");
+		print_type(type->data.null.base_type, false, stream, true);
 		break;
 	case MIR_TYPE_STRUCT: {
 		BArray *   members             = data->v_struct.members;
@@ -237,6 +238,9 @@ print_const_value(MirConstValue *value, FILE *stream)
 		fprintf(stream, "<cannot read value>");
 	}
 }
+
+static void
+print_instr_toany(MirInstrToAny *toany, FILE *stream);
 
 static void
 print_instr_phi(MirInstrPhi *phi, FILE *stream);
@@ -426,6 +430,13 @@ print_instr_phi(MirInstrPhi *phi, FILE *stream)
 }
 
 void
+print_instr_toany(MirInstrToAny *toany, FILE *stream)
+{
+	print_instr_head(&toany->base, stream, "toany");
+	print_comptime_value_or_id(toany->expr, stream);
+}
+
+void
 print_instr_type_struct(MirInstrTypeStruct *type_struct, FILE *stream)
 {
 	print_instr_head(&type_struct->base, stream, "const struct");
@@ -534,8 +545,6 @@ print_instr_cast(MirInstrCast *cast, FILE *stream)
 	case MIR_CAST_INVALID:
 		print_instr_head(&cast->base, stream, "<invalid cast>");
 		break;
-	default:
-		bl_unimplemented;
 	}
 
 	fprintf(stream, "%%%llu", (unsigned long long)cast->expr->id);
@@ -908,6 +917,9 @@ void
 mir_print_instr(MirInstr *instr, FILE *stream)
 {
 	switch (instr->kind) {
+	case MIR_INSTR_BLOCK:
+		break;
+		
 	case MIR_INSTR_INVALID:
 		fprintf(stream, RED("INVALID"));
 		break;
@@ -1010,7 +1022,8 @@ mir_print_instr(MirInstr *instr, FILE *stream)
 	case MIR_INSTR_PHI:
 		print_instr_phi((MirInstrPhi *)instr, stream);
 		break;
-	default:
+	case MIR_INSTR_TOANY:
+		print_instr_toany((MirInstrToAny *)instr, stream);
 		break;
 	}
 

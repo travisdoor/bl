@@ -83,16 +83,18 @@
   sm(NEQ,            "!=") \
   sm(GREATER_EQ,     ">=") \
   sm(LESS_EQ,        "<=") \
-  sm(LOGIC_AND,      "&&") \
-  sm(GREATER,        ">") \
-  sm(LESS,           "<") \
-  sm(LOGIC_OR,       "||") /* logical end */ \
-  sm(PLUS_ASSIGN,    "+=") /* assign bebin */ \
+  sm(PLUS_ASSIGN,    "+=") \
   sm(MINUS_ASSIGN,   "-=") \
   sm(ASTERISK_ASSIGN,"*=") \
   sm(SLASH_ASSIGN,   "/=") \
   sm(PERCENT_ASSIGN, "%=") \
-  sm(ASSIGN,         "=") /* assign end */\
+  sm(LOGIC_AND,      "&&") \
+  sm(SHR,            ">>") \
+  sm(SHL,            "<<") \
+  sm(LOGIC_OR,       "||") \
+  sm(GREATER,        ">") \
+  sm(LESS,           "<") \
+  sm(ASSIGN,         "=") \
   sm(AND,            "&") \
   sm(OR,             "|") \
   sm(CARET,          "^") \
@@ -101,7 +103,7 @@
   sm(PERCENT,        "%") \
   sm(PLUS,           "+") \
   sm(MINUS,          "-") \
-  sm(ASTERISK,       "*") \
+  sm(ASTERISK,       "*") /* logical end */ \
   sm(DOT,            ".") \
   sm(NONE,           "") \
 

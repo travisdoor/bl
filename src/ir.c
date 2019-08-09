@@ -257,6 +257,12 @@ gen_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
 static void
 gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
 
+static void
+gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
+
+static void
+gen_instr_toany(Context *cnt, MirInstrToAny *toany);
+
 static LLVMValueRef
 gen_as_const(Context *cnt, MirConstValue *value);
 
@@ -1037,6 +1043,17 @@ gen_instr_binop(Context *cnt, MirInstrBinop *binop)
 		binop->base.llvm_value = LLVMBuildOr(cnt->llvm_builder, lhs, rhs, "");
 		break;
 
+	case BINOP_SHR:
+		if (signed_integer)
+			binop->base.llvm_value = LLVMBuildAShr(cnt->llvm_builder, lhs, rhs, "");
+		else
+			binop->base.llvm_value = LLVMBuildLShr(cnt->llvm_builder, lhs, rhs, "");
+		break;
+
+	case BINOP_SHL:
+		binop->base.llvm_value = LLVMBuildShl(cnt->llvm_builder, lhs, rhs, "");
+		break;
+
 	default:
 		bl_abort("Invalid binary operation.");
 	}
@@ -1194,8 +1211,7 @@ gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 		    LLVMBuildStructGEP(cnt->llvm_builder, vargs->vargs_tmp->llvm_value, 0, "");
 		LLVMBuildStore(cnt->llvm_builder, llvm_len, llvm_dest);
 
-		LLVMTypeRef llvm_ptr_type =
-		    bo_array_at(vargs_type->data.strct.members, 1, MirType *)->llvm_type;
+		LLVMTypeRef  llvm_ptr_type = mir_get_struct_elem_type(vargs_type, 1)->llvm_type;
 		LLVMValueRef llvm_ptr =
 		    vargs->arr_tmp ? vargs->arr_tmp->llvm_value : LLVMConstNull(llvm_ptr_type);
 		llvm_dest =
@@ -1205,6 +1221,53 @@ gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 	}
 
 	vargs->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, vargs->vargs_tmp->llvm_value, "");
+}
+
+void
+gen_instr_toany(Context *cnt, MirInstrToAny *toany)
+{
+	LLVMValueRef llvm_tmp       = toany->tmp->llvm_value;
+	LLVMValueRef llvm_type_info = toany->expr_type->rtti.var->llvm_value;
+	LLVMValueRef llvm_data      = toany->expr->llvm_value;
+
+	assert(llvm_type_info && "Missing LLVM value for RTTI variable.");
+	assert(llvm_tmp);
+
+	MirType *   any_type                = mir_deref_type(toany->base.value.type);
+	LLVMTypeRef llvm_any_type_info_type = mir_get_struct_elem_type(any_type, 0)->llvm_type;
+	LLVMTypeRef llvm_any_data_type      = mir_get_struct_elem_type(any_type, 1)->llvm_type;
+
+	/* use tmp for expression */
+	if (toany->expr_tmp) {
+		MirVar *expr_tmp = toany->expr_tmp;
+		assert(expr_tmp->llvm_value && "Missing tmp variable");
+
+		llvm_data = gen_as_const(cnt, &toany->expr->value);
+		LLVMBuildStore(cnt->llvm_builder, llvm_data, expr_tmp->llvm_value);
+		llvm_data = expr_tmp->llvm_value;
+	}
+
+	{ /* setup tmp variable */
+		LLVMValueRef llvm_dest;
+
+		/* pointer to type info */
+		llvm_dest = LLVMBuildStructGEP(cnt->llvm_builder, llvm_tmp, 0, "");
+
+		llvm_type_info = LLVMBuildPointerCast(
+		    cnt->llvm_builder, llvm_type_info, llvm_any_type_info_type, "");
+
+		LLVMBuildStore(cnt->llvm_builder, llvm_type_info, llvm_dest);
+
+		/* pointer to data */
+		llvm_dest = LLVMBuildStructGEP(cnt->llvm_builder, llvm_tmp, 1, "");
+
+		llvm_data =
+		    LLVMBuildPointerCast(cnt->llvm_builder, llvm_data, llvm_any_data_type, "");
+
+		LLVMBuildStore(cnt->llvm_builder, llvm_data, llvm_dest);
+	}
+
+	toany->base.llvm_value = llvm_tmp;
 }
 
 void
@@ -1283,6 +1346,24 @@ void
 gen_instr(Context *cnt, MirInstr *instr)
 {
 	switch (instr->kind) {
+	case MIR_INSTR_INVALID:
+		bl_abort("Invalid instruction");
+
+	case MIR_INSTR_CONST:
+	case MIR_INSTR_SIZEOF:
+	case MIR_INSTR_ALIGNOF:
+	case MIR_INSTR_DECL_VARIANT:
+	case MIR_INSTR_DECL_MEMBER:
+	case MIR_INSTR_TYPE_FN:
+	case MIR_INSTR_TYPE_STRUCT:
+	case MIR_INSTR_TYPE_PTR:
+	case MIR_INSTR_TYPE_ARRAY:
+	case MIR_INSTR_TYPE_SLICE:
+	case MIR_INSTR_TYPE_VARGS:
+	case MIR_INSTR_TYPE_ENUM:
+
+		break;
+
 	case MIR_INSTR_BINOP:
 		gen_instr_binop(cnt, (MirInstrBinop *)instr);
 		break;
@@ -1346,13 +1427,11 @@ gen_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_PHI:
 		gen_instr_phi(cnt, (MirInstrPhi *)instr);
 		break;
-
 	case MIR_INSTR_COMPOUND:
 		gen_instr_compound(cnt, NULL, (MirInstrCompound *)instr);
 		break;
-
-	default:
-		bl_warning("unimplemented LLVM generation for %s", mir_instr_name(instr));
+	case MIR_INSTR_TOANY:
+		gen_instr_toany(cnt, (MirInstrToAny *)instr);
 		break;
 	}
 }

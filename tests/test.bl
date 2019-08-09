@@ -1,17 +1,7 @@
 /* playground */
 
 main :: fn () s32 {
-    i : u64 = 18446744073709551615;
-    j := -204;
-    f := 1235.215f;
-    d := -0.00215;
-
-    w := print("i = %\nj = %\nf = %\nd = %\n", i, j, f, d);
-    print("written % characters\n", w);
-
+    print("some number is = %\n", 10, 10);
     return 0;
 };
-
-
-
 
