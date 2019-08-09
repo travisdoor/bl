@@ -1227,7 +1227,7 @@ void
 gen_instr_toany(Context *cnt, MirInstrToAny *toany)
 {
 	LLVMValueRef llvm_tmp       = toany->tmp->llvm_value;
-	LLVMValueRef llvm_type_info = toany->expr_type->rtti.var->llvm_value;
+	LLVMValueRef llvm_type_info = toany->rtti_type->rtti.var->llvm_value;
 	LLVMValueRef llvm_data      = toany->expr->llvm_value;
 
 	assert(llvm_type_info && "Missing LLVM value for RTTI variable.");
@@ -1262,7 +1262,9 @@ gen_instr_toany(Context *cnt, MirInstrToAny *toany)
 		llvm_dest = LLVMBuildStructGEP(cnt->llvm_builder, llvm_tmp, 1, "");
 
 		llvm_data =
-		    LLVMBuildPointerCast(cnt->llvm_builder, llvm_data, llvm_any_data_type, "");
+		    llvm_data
+		        ? LLVMBuildPointerCast(cnt->llvm_builder, llvm_data, llvm_any_data_type, "")
+		        : LLVMConstNull(llvm_any_data_type);
 
 		LLVMBuildStore(cnt->llvm_builder, llvm_data, llvm_dest);
 	}

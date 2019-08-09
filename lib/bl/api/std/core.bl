@@ -28,7 +28,6 @@
 
 #load "c.bl"
 #load "debug.bl"
-#load "print.bl"
 
 /*
  * TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 
@@ -55,6 +54,7 @@ TypeKind :: enum #compiler {
  */
 TypeInfo :: struct #compiler {
     kind: TypeKind,
+    size: usize
 };
 
 /*

@@ -1069,9 +1069,13 @@ setup_instr_const_null(Context *cnt, MirInstr *instr, MirType *type)
 static inline bool
 is_allocated_object(MirInstr *instr)
 {
-	return instr->kind == MIR_INSTR_DECL_REF || instr->kind == MIR_INSTR_ELEM_PTR ||
-	       instr->kind == MIR_INSTR_MEMBER_PTR || instr->kind == MIR_INSTR_FN_PROTO ||
-	       instr->kind == MIR_INSTR_COMPOUND;
+	if (instr->kind == MIR_INSTR_DECL_REF) return true;
+	if (instr->kind == MIR_INSTR_ELEM_PTR) return true;
+	if (instr->kind == MIR_INSTR_MEMBER_PTR) return true;
+	if (instr->kind == MIR_INSTR_FN_PROTO) return true;
+	if (instr->kind == MIR_INSTR_COMPOUND) return true;
+
+	return false;
 }
 
 /*
@@ -2979,14 +2983,14 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 		MirConstValue *value;
 
 		/* string slice len */
-		value =
-		    create_const_value(cnt, mir_get_slice_len_type(cnt->builtin_types.entry_string));
+		value             = create_const_value(cnt,
+                                           mir_get_slice_len_type(cnt->builtin_types.entry_string));
 		value->data.v_u64 = strlen(str);
 		bo_array_push_back(members, value);
 
 		/* string slice ptr */
-		value =
-		    create_const_value(cnt, mir_get_slice_ptr_type(cnt->builtin_types.entry_string));
+		value = create_const_value(cnt,
+		                           mir_get_slice_ptr_type(cnt->builtin_types.entry_string));
 
 		MirConstPtr *const_ptr = &value->data.v_ptr;
 		set_const_ptr(const_ptr, (void *)str, MIR_CP_STR);
@@ -3346,7 +3350,8 @@ type_cmp(MirType *first, MirType *second)
 
 			/* validate slice kinds */
 
-			return type_cmp(mir_get_slice_ptr_type(first), mir_get_slice_ptr_type(second));
+			return type_cmp(mir_get_slice_ptr_type(first),
+			                mir_get_slice_ptr_type(second));
 			// if (first->data.strct.kind != second->data.strct.kind) return false;
 		}
 
@@ -3476,7 +3481,7 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 	assert(expr && "Missing expression as toany input.");
 
 	MirType *toany_type = mir_deref_type(toany->base.value.type);
-	MirType *expr_type  = expr->value.type;
+	MirType *rtti_type  = expr->value.type;
 
 	reduce_instr(cnt, toany->expr);
 
@@ -3485,19 +3490,23 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 		 * temporary variable containing the value and fetch pointer to this variable. */
 		const char *tmp_var_name = gen_uq_name(cnt, IMPL_ANY_EXPR_TMP);
 		toany->expr_tmp =
-		    create_var_impl(cnt, tmp_var_name, expr_type, false, false, false);
-
-		toany->expr_type = expr_type;
-	} else {
-		toany->expr_type = mir_deref_type(expr_type);
+		    create_var_impl(cnt, tmp_var_name, rtti_type, false, false, false);
+	} else if (is_load_needed(expr)) {
+		rtti_type = mir_deref_type(rtti_type);
 	}
 
-	schedule_RTTI_generation(cnt, toany->expr_type);
+	assert(rtti_type);
+	schedule_RTTI_generation(cnt, rtti_type);
 
 	{ /* Tmp variable for Any */
 		const char *tmp_var_name = gen_uq_name(cnt, IMPL_ANY_TMP);
 		toany->tmp = create_var_impl(cnt, tmp_var_name, toany_type, false, false, false);
 	}
+
+	toany->rtti_type = rtti_type;
+	toany->has_data  = toany->rtti_type->kind != MIR_TYPE_TYPE &&
+	                  toany->rtti_type->kind != MIR_TYPE_VOID &&
+	                  toany->rtti_type->kind != MIR_TYPE_NULL;
 
 	return ANALYZE_PASSED;
 }
@@ -5934,8 +5943,13 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 
 		tmp_type = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_KIND);
 		assert(tmp_type);
+
 		tmp             = create_const_value(cnt, tmp_type);
 		tmp->data.v_s32 = type->kind;
+		bo_array_push_back(type_info_members, tmp);
+
+		tmp             = create_const_value(cnt, cnt->builtin_types.entry_usize);
+		tmp->data.v_u64 = type->store_size_bytes;
 		bo_array_push_back(type_info_members, tmp);
 	}
 
@@ -6253,7 +6267,7 @@ exec_instr_toany(Context *cnt, MirInstrToAny *toany)
 	MirType *   tmp_type = tmp->value.type;
 
 	{ // set type info
-		MirVar *expr_type_rtti = toany->expr_type->rtti.var;
+		MirVar *expr_type_rtti = toany->rtti_type->rtti.var;
 		assert(expr_type_rtti);
 
 		MirStackPtr dest           = tmp_ptr + get_struct_elem_offest(cnt, tmp_type, 0);
@@ -6265,11 +6279,14 @@ exec_instr_toany(Context *cnt, MirInstrToAny *toany)
 		memcpy(dest, &rtti_ptr, type_info_type->store_size_bytes);
 	}
 
-	MirStackPtr data_ptr  = exec_fetch_value(cnt, toany->expr);
+	MirStackPtr data_ptr = exec_fetch_value(cnt, toany->expr);
+
 	MirStackPtr dest      = tmp_ptr + get_struct_elem_offest(cnt, tmp_type, 1);
 	MirType *   data_type = mir_get_struct_elem_type(tmp_type, 1);
 
-	if (expr_tmp) { // set data
+	if (!toany->has_data) {
+		memset(dest, 0, data_type->store_size_bytes);
+	} else if (expr_tmp) { // set data
 		MirStackPtr expr_tmp_ptr =
 		    exec_read_stack_ptr(cnt, expr_tmp->rel_stack_ptr, expr_tmp->is_in_gscope);
 
