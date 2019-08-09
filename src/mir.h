@@ -150,7 +150,6 @@ typedef enum MirTypeKind {
 	MIR_TYPE_STRUCT  = 9,
 	MIR_TYPE_ENUM    = 10,
 	MIR_TYPE_NULL    = 11,
-	MIR_TYPE_STRING  = 12,
 } MirTypeKind;
 
 typedef enum MirTypeStructKind {
