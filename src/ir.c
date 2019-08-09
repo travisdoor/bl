@@ -1211,8 +1211,7 @@ gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 		    LLVMBuildStructGEP(cnt->llvm_builder, vargs->vargs_tmp->llvm_value, 0, "");
 		LLVMBuildStore(cnt->llvm_builder, llvm_len, llvm_dest);
 
-		LLVMTypeRef llvm_ptr_type =
-		    bo_array_at(vargs_type->data.strct.members, 1, MirType *)->llvm_type;
+		LLVMTypeRef  llvm_ptr_type = mir_get_struct_elem_type(vargs_type, 1)->llvm_type;
 		LLVMValueRef llvm_ptr =
 		    vargs->arr_tmp ? vargs->arr_tmp->llvm_value : LLVMConstNull(llvm_ptr_type);
 		llvm_dest =
@@ -1234,12 +1233,19 @@ gen_instr_toany(Context *cnt, MirInstrToAny *toany)
 	assert(llvm_type_info && "Missing LLVM value for RTTI variable.");
 	assert(llvm_tmp);
 
-	MirType *   any_type = mir_deref_type(toany->base.value.type);
-	LLVMTypeRef llvm_any_type_info_type =
-	    bo_array_at(any_type->data.strct.members, 0, MirType *)->llvm_type;
+	MirType *   any_type                = mir_deref_type(toany->base.value.type);
+	LLVMTypeRef llvm_any_type_info_type = mir_get_struct_elem_type(any_type, 0)->llvm_type;
+	LLVMTypeRef llvm_any_data_type      = mir_get_struct_elem_type(any_type, 1)->llvm_type;
 
-	LLVMTypeRef llvm_any_data_type =
-	    bo_array_at(any_type->data.strct.members, 1, MirType *)->llvm_type;
+	/* use tmp for expression */
+	if (toany->expr_tmp) {
+		MirVar *expr_tmp = toany->expr_tmp;
+		assert(expr_tmp->llvm_value && "Missing tmp variable");
+
+		llvm_data = gen_as_const(cnt, &toany->expr->value);
+		LLVMBuildStore(cnt->llvm_builder, llvm_data, expr_tmp->llvm_value);
+		llvm_data = expr_tmp->llvm_value;
+	}
 
 	{ /* setup tmp variable */
 		LLVMValueRef llvm_dest;

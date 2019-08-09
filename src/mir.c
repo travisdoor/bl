@@ -53,8 +53,6 @@
 #define VERBOSE_EXEC                    false 
 #define VERBOSE_ANALYZE                 false
 #define CHCK_STACK                      true
-#define SLICE_LEN_INDEX                 0
-#define SLICE_PTR_INDEX                 1
 // clang-format on
 
 // Debug helpers
@@ -1036,40 +1034,6 @@ get_array_elem_offset(MirType *type, uint32_t i)
 	MirType *elem_type = type->data.array.elem_type;
 	assert(elem_type);
 	return elem_type->store_size_bytes * i;
-}
-
-static inline MirType *
-get_struct_elem_type(MirType *type, uint32_t i)
-{
-	assert(type->kind == MIR_TYPE_STRUCT && "Expected structure type");
-	BArray *members = type->data.strct.members;
-	assert(members && bo_array_size(members) > i);
-	return bo_array_at(members, i, MirType *);
-}
-
-static inline MirType *
-get_fn_arg_type(MirType *type, uint32_t i)
-{
-	assert(type->kind == MIR_TYPE_FN && "Expected function type");
-	BArray *args = type->data.fn.arg_types;
-	if (!args) return NULL;
-
-	assert(bo_array_size(args) > i);
-	return bo_array_at(args, i, MirType *);
-}
-
-static inline MirType *
-get_slice_len_type(MirType *slice_type)
-{
-	assert(mir_is_slice_type(slice_type));
-	return get_struct_elem_type(slice_type, SLICE_LEN_INDEX);
-}
-
-static inline MirType *
-get_slice_ptr_type(MirType *slice_type)
-{
-	assert(mir_is_slice_type(slice_type));
-	return get_struct_elem_type(slice_type, SLICE_PTR_INDEX);
 }
 
 static inline void
@@ -3016,13 +2980,13 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 
 		/* string slice len */
 		value =
-		    create_const_value(cnt, get_slice_len_type(cnt->builtin_types.entry_string));
+		    create_const_value(cnt, mir_get_slice_len_type(cnt->builtin_types.entry_string));
 		value->data.v_u64 = strlen(str);
 		bo_array_push_back(members, value);
 
 		/* string slice ptr */
 		value =
-		    create_const_value(cnt, get_slice_ptr_type(cnt->builtin_types.entry_string));
+		    create_const_value(cnt, mir_get_slice_ptr_type(cnt->builtin_types.entry_string));
 
 		MirConstPtr *const_ptr = &value->data.v_ptr;
 		set_const_ptr(const_ptr, (void *)str, MIR_CP_STR);
@@ -3228,7 +3192,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 
 			MirType *tmp_arg;
 			for (size_t i = 0; i < argc; ++i) {
-				tmp_arg = get_fn_arg_type(type, i);
+				tmp_arg = mir_get_fn_arg_type(type, i);
 				assert(tmp_arg->llvm_type);
 				llvm_args[i] = tmp_arg->llvm_type;
 			}
@@ -3382,7 +3346,7 @@ type_cmp(MirType *first, MirType *second)
 
 			/* validate slice kinds */
 
-			return type_cmp(get_slice_ptr_type(first), get_slice_ptr_type(second));
+			return type_cmp(mir_get_slice_ptr_type(first), mir_get_slice_ptr_type(second));
 			// if (first->data.strct.kind != second->data.strct.kind) return false;
 		}
 
@@ -3685,7 +3649,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 		MirType *  member_type;
 		for (size_t i = 0; i < valc; ++i) {
 			value_ref   = &bo_array_at(values, i, MirInstr *);
-			member_type = get_struct_elem_type(type, i);
+			member_type = mir_get_struct_elem_type(type, i);
 
 			bool is_valid;
 			(*value_ref) =
@@ -3838,7 +3802,7 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		 */
 
 		/* setup type */
-		MirType *elem_type = get_slice_ptr_type(arr_type);
+		MirType *elem_type = mir_get_slice_ptr_type(arr_type);
 		assert(elem_type);
 		elem_ptr->base.value.type = elem_type;
 
@@ -3940,8 +3904,8 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 
 		if (is_flag(target_type->data.strct.kind, MIR_TS_SLICE)) {
 			/* slice!!! */
-			MirType *len_type = get_slice_len_type(target_type);
-			MirType *ptr_type = get_slice_ptr_type(target_type);
+			MirType *len_type = mir_get_slice_len_type(target_type);
+			MirType *ptr_type = mir_get_slice_ptr_type(target_type);
 
 			if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN ||
 			    is_builtin(ast_member_ident, MIR_BUILTIN_ID_ARR_LEN)) {
@@ -4293,7 +4257,7 @@ analyze_instr_arg(Context *cnt, MirInstrArg *arg)
 	MirFn *fn = arg->base.owner_block->owner_fn;
 	assert(fn);
 
-	MirType *type = get_fn_arg_type(fn->type, arg->i);
+	MirType *type = mir_get_fn_arg_type(fn->type, arg->i);
 	assert(type);
 	arg->base.value.type = type;
 
@@ -5226,10 +5190,10 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 			return ANALYZE_FAILED;
 		}
 
-		MirType *vargs_type = get_fn_arg_type(type, callee_argc);
+		MirType *vargs_type = mir_get_fn_arg_type(type, callee_argc);
 		assert(mir_is_vargs_type(vargs_type) && "VArgs is expected to be last!!!");
 
-		vargs_type = get_struct_elem_type(vargs_type, 1);
+		vargs_type = mir_get_struct_elem_type(vargs_type, 1);
 		assert(vargs_type && mir_is_pointer_type(vargs_type));
 
 		vargs_type = mir_deref_type(vargs_type);
@@ -5288,7 +5252,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 
 		for (size_t i = 0; i < callee_argc && valid; ++i) {
 			call_arg        = &bo_array_at(call->args, i, MirInstr *);
-			callee_arg_type = get_fn_arg_type(type, i);
+			callee_arg_type = mir_get_fn_arg_type(type, i);
 
 			(*call_arg) =
 			    analyze_slot_input(cnt, &valid, *call_arg, callee_arg_type, true);
@@ -6293,7 +6257,7 @@ exec_instr_toany(Context *cnt, MirInstrToAny *toany)
 		assert(expr_type_rtti);
 
 		MirStackPtr dest           = tmp_ptr + get_struct_elem_offest(cnt, tmp_type, 0);
-		MirType *   type_info_type = get_struct_elem_type(tmp_type, 0);
+		MirType *   type_info_type = mir_get_struct_elem_type(tmp_type, 0);
 
 		MirStackPtr rtti_ptr = exec_read_stack_ptr(
 		    cnt, expr_type_rtti->rel_stack_ptr, expr_type_rtti->is_in_gscope);
@@ -6303,7 +6267,7 @@ exec_instr_toany(Context *cnt, MirInstrToAny *toany)
 
 	MirStackPtr data_ptr  = exec_fetch_value(cnt, toany->expr);
 	MirStackPtr dest      = tmp_ptr + get_struct_elem_offest(cnt, tmp_type, 1);
-	MirType *   data_type = get_struct_elem_type(tmp_type, 1);
+	MirType *   data_type = mir_get_struct_elem_type(tmp_type, 1);
 
 	if (expr_tmp) { // set data
 		MirStackPtr expr_tmp_ptr =
@@ -6422,8 +6386,8 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 
 	if (elem_ptr->target_is_slice) {
 		assert(mir_is_slice_type(arr_type));
-		MirType *len_type = get_slice_len_type(arr_type);
-		MirType *ptr_type = get_slice_ptr_type(arr_type);
+		MirType *len_type = mir_get_slice_len_type(arr_type);
+		MirType *ptr_type = mir_get_slice_ptr_type(arr_type);
 
 		MirType *elem_type = mir_deref_type(ptr_type);
 		assert(elem_type);
@@ -6971,9 +6935,9 @@ exec_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 			MirConstValueData len_tmp = {0};
 			MirStackPtr       len_ptr =
 			    vargs_tmp_ptr +
-			    get_struct_elem_offest(cnt, vargs_tmp->value.type, SLICE_LEN_INDEX);
+			    get_struct_elem_offest(cnt, vargs_tmp->value.type, MIR_SLICE_LEN_INDEX);
 
-			MirType *len_type = get_slice_len_type(vargs_tmp->value.type);
+			MirType *len_type = mir_get_slice_len_type(vargs_tmp->value.type);
 
 			len_tmp.v_u64 = bo_array_size(values);
 			memcpy(len_ptr, &len_tmp, len_type->store_size_bytes);
@@ -6984,9 +6948,9 @@ exec_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 			MirConstValueData ptr_tmp = {0};
 			MirStackPtr       ptr_ptr =
 			    vargs_tmp_ptr +
-			    get_struct_elem_offest(cnt, vargs_tmp->value.type, SLICE_PTR_INDEX);
+			    get_struct_elem_offest(cnt, vargs_tmp->value.type, MIR_SLICE_PTR_INDEX);
 
-			MirType *ptr_type = get_slice_ptr_type(vargs_tmp->value.type);
+			MirType *ptr_type = mir_get_slice_ptr_type(vargs_tmp->value.type);
 
 			ptr_tmp.v_ptr.data.any = arr_tmp_ptr;
 			memcpy(ptr_ptr, &ptr_tmp, ptr_type->store_size_bytes);
@@ -8803,7 +8767,7 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 			append_buf(buf, len, "...");
 
 			if (members) {
-				tmp = get_slice_ptr_type(type);
+				tmp = mir_get_slice_ptr_type(type);
 				tmp = mir_deref_type(tmp);
 				_type_to_str(buf, len, tmp, true);
 			}
@@ -8811,7 +8775,7 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 			append_buf(buf, len, "[]");
 
 			if (members) {
-				tmp = get_slice_ptr_type(type);
+				tmp = mir_get_slice_ptr_type(type);
 				tmp = mir_deref_type(tmp);
 				_type_to_str(buf, len, tmp, true);
 			}

@@ -37,6 +37,9 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
 
+#define MIR_SLICE_LEN_INDEX 0
+#define MIR_SLICE_PTR_INDEX 1
+
 struct Assembly;
 struct Builder;
 
@@ -745,6 +748,40 @@ mir_deref_type(MirType *ptr)
 {
 	if (!mir_is_pointer_type(ptr)) return NULL;
 	return ptr->data.ptr.expr;
+}
+
+static inline MirType *
+mir_get_struct_elem_type(MirType *type, uint32_t i)
+{
+	assert(type->kind == MIR_TYPE_STRUCT && "Expected structure type");
+	BArray *members = type->data.strct.members;
+	assert(members && bo_array_size(members) > i);
+	return bo_array_at(members, i, MirType *);
+}
+
+static inline MirType *
+mir_get_fn_arg_type(MirType *type, uint32_t i)
+{
+	assert(type->kind == MIR_TYPE_FN && "Expected function type");
+	BArray *args = type->data.fn.arg_types;
+	if (!args) return NULL;
+
+	assert(bo_array_size(args) > i);
+	return bo_array_at(args, i, MirType *);
+}
+
+static inline MirType *
+mir_get_slice_len_type(MirType *slice_type)
+{
+	assert(mir_is_slice_type(slice_type));
+	return mir_get_struct_elem_type(slice_type, MIR_SLICE_LEN_INDEX);
+}
+
+static inline MirType *
+mir_get_slice_ptr_type(MirType *slice_type)
+{
+	assert(mir_is_slice_type(slice_type));
+	return mir_get_struct_elem_type(slice_type, MIR_SLICE_PTR_INDEX);
 }
 
 void
