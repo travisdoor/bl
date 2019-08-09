@@ -39,7 +39,7 @@ print_address(Ast *node, FILE *stream)
 {
 #if BL_DEBUG
 	if (node)
-		fprintf(stream, YELLOW(" %d "), node->_serial);
+		fprintf(stream, YELLOW(" %llu "), node->_serial);
 	else
 		fprintf(stream, RED(" (null) "));
 #else

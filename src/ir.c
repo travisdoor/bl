@@ -659,7 +659,6 @@ gen_as_const(Context *cnt, MirConstValue *value)
 
 	switch (type->kind) {
 	case MIR_TYPE_INT: {
-		bl_log("%llu", value->data.v_u64);
 		llvm_value =
 		    LLVMConstInt(llvm_type, value->data.v_u64, type->data.integer.is_signed);
 		break;
