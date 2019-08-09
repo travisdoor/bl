@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   core.bl 
+// File:   core.bl
 // Author: Martin Dorazil
 // Date:   2/11/19
 //
@@ -154,7 +154,7 @@ Any :: struct #compiler {
 };
 
 /*
- * Converts C string to BL string. 
+ * Converts C string to BL string.
  */
 cstr_to_str :: fn (cstr: *u8) string {
     return {:string: strlen(cstr), cstr};
