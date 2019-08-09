@@ -407,7 +407,7 @@ struct Ast {
 	} data;
 
 #if BL_DEBUG
-	int32_t _serial;
+	uint64_t _serial;
 #endif
 };
 

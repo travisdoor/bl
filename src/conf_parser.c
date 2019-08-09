@@ -59,7 +59,7 @@ parse_key_value_rq(Context *cnt)
 		break;
 	case SYM_NUM:
 		tmp.kind  = CDV_INT;
-		tmp.data.v_int = tok_value->value.u;
+		tmp.data.v_int = (int) tok_value->value.u;
 		break;
 	default:
 		builder_msg(cnt->builder,

@@ -244,6 +244,8 @@ ast_binop_to_str(BinopKind op)
 	case BINOP_SHL:
 		return "<<";
 	}
+
+	return "invalid";
 }
 
 const char *

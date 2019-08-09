@@ -3195,7 +3195,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 			if (!llvm_args) bl_abort("bad alloc");
 
 			MirType *tmp_arg;
-			for (size_t i = 0; i < argc; ++i) {
+			for (uint32_t i = 0; i < argc; ++i) {
 				tmp_arg = mir_get_fn_arg_type(type, i);
 				assert(tmp_arg->llvm_type);
 				llvm_args[i] = tmp_arg->llvm_type;
@@ -3656,7 +3656,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 		/* Else iterate over values */
 		MirInstr **value_ref;
 		MirType *  member_type;
-		for (size_t i = 0; i < valc; ++i) {
+		for (uint32_t i = 0; i < valc; ++i) {
 			value_ref   = &bo_array_at(values, i, MirInstr *);
 			member_type = mir_get_struct_elem_type(type, i);
 
@@ -5199,7 +5199,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 			return ANALYZE_FAILED;
 		}
 
-		MirType *vargs_type = mir_get_fn_arg_type(type, callee_argc);
+		MirType *vargs_type = mir_get_fn_arg_type(type, (uint32_t) callee_argc);
 		assert(mir_is_vargs_type(vargs_type) && "VArgs is expected to be last!!!");
 
 		vargs_type = mir_get_struct_elem_type(vargs_type, 1);
@@ -5259,7 +5259,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 		MirType *  callee_arg_type;
 		bool       valid = true;
 
-		for (size_t i = 0; i < callee_argc && valid; ++i) {
+		for (uint32_t i = 0; i < callee_argc && valid; ++i) {
 			call_arg        = &bo_array_at(call->args, i, MirInstr *);
 			callee_arg_type = mir_get_fn_arg_type(type, i);
 
@@ -5777,7 +5777,7 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 
 			assert(members);
 			const size_t memc = bo_array_size(members);
-			for (size_t i = 0; i < memc; ++i) {
+			for (uint32_t i = 0; i < memc; ++i) {
 				member = bo_array_at(members, i, MirConstValue *);
 
 				/* copy all members to variable allocated memory on the stack */
@@ -5799,7 +5799,7 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 
 			assert(elems);
 			const size_t memc = bo_array_size(elems);
-			for (size_t i = 0; i < memc; ++i) {
+			for (uint32_t i = 0; i < memc; ++i) {
 				elem = bo_array_at(elems, i, MirConstValue *);
 
 				/* copy all elems to variable allocated memory on the stack */
@@ -6502,7 +6502,7 @@ exec_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		const int64_t index = member->index;
 
 		/* let the llvm solve poiner offest */
-		const ptrdiff_t ptr_offset = get_struct_elem_offest(cnt, target_type, index);
+		const ptrdiff_t ptr_offset = get_struct_elem_offest(cnt, target_type, (uint32_t) index);
 
 		result.v_ptr.data.stack_ptr = ptr + ptr_offset; // pointer shift
 	} else {
@@ -6877,11 +6877,11 @@ exec_instr_compound(Context *cnt, MirStackPtr tmp_ptr, MirInstrCompound *cmp)
 			switch (type->kind) {
 
 			case MIR_TYPE_STRUCT:
-				elem_ptr = tmp_ptr + get_struct_elem_offest(cnt, type, i);
+				elem_ptr = tmp_ptr + get_struct_elem_offest(cnt, type, (uint32_t) i);
 				break;
 
 			case MIR_TYPE_ARRAY:
-				elem_ptr = tmp_ptr + get_array_elem_offset(type, i);
+				elem_ptr = tmp_ptr + get_array_elem_offset(type, (uint32_t) i);
 				break;
 
 			default:

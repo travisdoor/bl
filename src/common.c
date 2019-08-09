@@ -42,7 +42,7 @@ bool
 get_current_exec_path(char *buf, size_t buf_size)
 {
 #if defined(BL_PLATFORM_WIN)
-	return (bool)GetModuleFileNameA(NULL, buf, buf_size);
+	return (bool)GetModuleFileNameA(NULL, buf, (DWORD) buf_size);
 #elif defined(BL_PLATFORM_LINUX)
 	return readlink("/proc/self/exe", buf, buf_size) != -1;
 #elif defined(BL_PLATFORM_MACOS)

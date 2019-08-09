@@ -659,6 +659,7 @@ gen_as_const(Context *cnt, MirConstValue *value)
 
 	switch (type->kind) {
 	case MIR_TYPE_INT: {
+		bl_log("%llu", value->data.v_u64);
 		llvm_value =
 		    LLVMConstInt(llvm_type, value->data.v_u64, type->data.integer.is_signed);
 		break;
@@ -766,7 +767,7 @@ gen_as_const(Context *cnt, MirConstValue *value)
 				llvm_members[i] = gen_as_const(cnt, member);
 			}
 
-			llvm_value = LLVMConstNamedStruct(llvm_type, llvm_members, memc);
+			llvm_value = LLVMConstNamedStruct(llvm_type, llvm_members, (unsigned int) memc);
 			bl_free(llvm_members);
 			break;
 		}

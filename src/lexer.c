@@ -315,7 +315,7 @@ scan_number(Context *cnt, Token *tok)
 	tok->src.col   = cnt->col;
 	tok->value.str = cnt->c;
 
-	unsigned long n    = 0;
+	uint64_t n    = 0;
 	int32_t       len  = 0;
 	int32_t       base = 10;
 	int32_t       buf  = 0;
@@ -366,7 +366,7 @@ scan_number(Context *cnt, Token *tok)
 	return true;
 
 scan_double : {
-	unsigned long e = 1;
+	uint64_t e = 1;
 
 	while (true) {
 		buf = c_to_number(*(cnt->c), 10);
