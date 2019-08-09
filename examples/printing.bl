@@ -1,4 +1,5 @@
 #load "std/debug.bl"
+#load "std/print.bl"
 
 #test "printing" {
     print("Hello biscuit!!!\n");

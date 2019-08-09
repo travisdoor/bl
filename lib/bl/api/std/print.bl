@@ -109,16 +109,52 @@ __print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
         }
 
         return __print_f64(buf, cur, real);
+
     } else if any.type_info.kind == TypeKind.Ptr {
         // Pointer
         ptr := ^ cast(*u64) any.data;
+        if ptr == 0 {
+            return __print_string(buf, cur, "null");
+        }
+
         return __print_u64_hex(buf, cur, ptr);
+
     } else if any.type_info.kind == TypeKind.Bool {
         // Bool
         b := ^ cast(*bool) any.data;
         if b { return __print_string(buf, cur, "true"); }
         else { return __print_string(buf, cur, "false"); }
+
+    } else if any.type_info.kind == TypeKind.Array {
+        info := cast(*TypeInfoArray) any.type_info;
+        elem_size := info.elem.size;
+
+        tmp : Any;
+        tmp.type_info = info.elem;
+
+        cur = __print_string(buf, cur, "[");
+
+        loop i := 0; i < info.len; i += 1 {
+            tmp.data = cast(*u8) (cast(usize) any.data + i * elem_size);
+            cur = __print_any(buf, cur, &tmp);
+
+            if i < info.len - 1 {
+                cur = __print_string(buf, cur, ", ");
+            }
+        }
+        
+        return __print_string(buf, cur, "]");
+
+    } else if any.type_info.kind == TypeKind.Type {
+        return __print_string(buf, cur, "(type)");
+
+    } else if any.type_info.kind == TypeKind.Null {
+        return __print_string(buf, cur, "(null)");
+
+    } else if any.type_info.kind == TypeKind.Void {
+        return __print_string(buf, cur, "(void)");
     }
+
 
     // TODO: support more types
 

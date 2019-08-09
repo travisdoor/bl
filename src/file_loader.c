@@ -59,7 +59,7 @@ file_loader_run(Builder *builder, Unit *unit)
 		return;
 	}
 
-	FILE *f = fopen(unit->filepath, "r");
+	FILE *f = fopen(unit->filepath, "rb+");
 
 	if (f == NULL) {
 		load_error(builder,

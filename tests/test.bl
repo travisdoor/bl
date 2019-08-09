@@ -1,7 +1,10 @@
 /* playground */
 
+#load "std/print.bl"
+
 main :: fn () s32 {
-    print("some number is = %\n", 10, 10);
+    arr := {:[5]s32: 1, 2, 3, 4, 5 };
+    print("array = %\n", arr);
     return 0;
 };
 

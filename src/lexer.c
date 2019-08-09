@@ -494,10 +494,12 @@ scan:
 	/* When symbol is unknown report error */
 	scan_error(cnt,
 	           ERR_INVALID_TOKEN,
-	           "%s %d:%d unexpected token.",
+	           "%s %d:%d Unexpected token '%c' (%d)",
 	           cnt->unit->name,
 	           cnt->line,
-	           cnt->col);
+	           cnt->col,
+		   *cnt->c,
+		   *cnt->c);
 push_token:
 	tok.src.unit = cnt->unit;
 	tokens_push(cnt->tokens, &tok);
