@@ -59,13 +59,7 @@ file_loader_run(Builder *builder, Unit *unit)
 		return;
 	}
 
-#if BL_PLATFORM_WIN
-#define OPEN_FLAGS "rb+"
-#else
-#define OPEN_FLAGS "r"
-#endif
-
-	FILE *f = fopen(unit->filepath, OPEN_FLAGS);
+	FILE *f = fopen(unit->filepath, "rb");
 
 	if (f == NULL) {
 		load_error(builder,
