@@ -62,7 +62,8 @@ print_help(void)
 	        "  -verbose            = Verbose mode.\n"
 	        "  -no-api             = Don't load internal api.\n"
 	        "  -force-test-to-llvm = Force llvm generation of unit tests.\n"
-	        "  -configure          = Generate config file.\n");
+	        "  -configure          = Generate config file.\n"
+	        "  -debug              = Debug mode build.\n");
 }
 
 static void
@@ -162,6 +163,8 @@ main(int32_t argc, char *argv[])
 			build_flags |= BUILDER_NO_API;
 		} else if (arg_is("force-test-to-llvm")) {
 			build_flags |= BUILDER_FORCE_TEST_LLVM;
+		} else if (arg_is("debug")) {
+			build_flags |= BUILDER_DEBUG_BUILD;
 		} else if (arg_is("configure")) {
 			configure = true;
 		} else {

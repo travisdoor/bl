@@ -47,6 +47,7 @@
 #endif
 
 typedef struct {
+	bool        debug_build;
 	Builder *   builder;
 	Assembly *  assembly;
 	BHashTable *gstring_cache;
@@ -55,6 +56,7 @@ typedef struct {
 	LLVMModuleRef     llvm_module;
 	LLVMTargetDataRef llvm_td;
 	LLVMBuilderRef    llvm_builder;
+	LLVMDIBuilderRef  llvm_dibuilder;
 
 	/* Constants */
 	LLVMValueRef llvm_const_i64;
@@ -72,6 +74,9 @@ typedef struct {
 	LLVMValueRef llvm_instrinsic_memset;
 	LLVMValueRef llvm_intrinsic_memcpy;
 } Context;
+
+static void
+init_debug_info(Context *cnt);
 
 static inline LLVMValueRef
 create_trap_fn(Context *cnt)
@@ -766,7 +771,8 @@ gen_as_const(Context *cnt, MirConstValue *value)
 				llvm_members[i] = gen_as_const(cnt, member);
 			}
 
-			llvm_value = LLVMConstNamedStruct(llvm_type, llvm_members, (unsigned int) memc);
+			llvm_value =
+			    LLVMConstNamedStruct(llvm_type, llvm_members, (unsigned int)memc);
 			bl_free(llvm_members);
 			break;
 		}
@@ -1438,6 +1444,35 @@ gen_instr(Context *cnt, MirInstr *instr)
 	}
 }
 
+static void
+init_debug_info(Context *cnt)
+{
+	cnt->debug_build = true;
+	cnt->llvm_dibuilder = LLVMCreateDIBuilder(cnt->llvm_module);
+
+	const char *debug_filename = "test.debug";
+	const char *producer       = "blc";
+
+	LLVMMetadataRef llvm_meta = LLVMDIBuilderCreateFile(
+	    cnt->llvm_dibuilder, debug_filename, strlen(debug_filename), NULL, 0);
+
+	LLVMDIBuilderCreateCompileUnit(cnt->llvm_dibuilder,
+	                               LLVMDWARFSourceLanguageC,
+	                               llvm_meta,
+	                               producer,
+	                               strlen(producer),
+	                               false,
+	                               "",
+	                               0,
+	                               1,
+	                               debug_filename,
+	                               strlen(debug_filename),
+	                               LLVMDWARFEmissionFull,
+	                               0,
+	                               false,
+	                               false);
+}
+
 /* public */
 void
 ir_run(Builder *builder, Assembly *assembly)
@@ -1465,6 +1500,8 @@ ir_run(Builder *builder, Assembly *assembly)
 	cnt.llvm_instrinsic_memset = create_memset_fn(&cnt);
 	cnt.llvm_intrinsic_memcpy  = create_memcpy_fn(&cnt);
 
+	if (is_flag(builder->flags, BUILDER_DEBUG_BUILD)) init_debug_info(&cnt);
+
 	gen_RTTI_types(&cnt);
 
 	MirInstr *ginstr;
@@ -1482,5 +1519,6 @@ ir_run(Builder *builder, Assembly *assembly)
 #endif
 
 	LLVMDisposeBuilder(cnt.llvm_builder);
+	LLVMDisposeDIBuilder(cnt.llvm_dibuilder);
 	bo_unref(cnt.gstring_cache);
 }
