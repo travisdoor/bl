@@ -3113,6 +3113,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 		type->alignment        = __alignof(MirType *);
 		type->size_bits        = sizeof(MirType *) * 8;
 		type->store_size_bytes = sizeof(MirType *);
+
 		break;
 	}
 
@@ -3124,6 +3125,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 		type->alignment        = tmp->alignment;
 		type->size_bits        = tmp->size_bits;
 		type->store_size_bytes = tmp->store_size_bytes;
+
 		break;
 	}
 
@@ -3132,6 +3134,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 		type->size_bits        = 0;
 		type->store_size_bytes = 0;
 		type->llvm_type        = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
+
 		break;
 	}
 
@@ -3141,6 +3144,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 		type->size_bits = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
 		type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
 		type->alignment = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
+
 		break;
 	}
 
@@ -3155,6 +3159,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 		type->size_bits = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
 		type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
 		type->alignment = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
+
 		break;
 	}
 
@@ -9073,13 +9078,15 @@ mir_new_module(const char *name)
 	LLVMSetModuleDataLayout(llvm_module, llvm_td);
 	LLVMSetTarget(llvm_module, triple);
 
-	tmp->global_instrs = bo_array_new(sizeof(MirInstr *));
-	tmp->RTTI_tmp_vars = bo_array_new(sizeof(MirVar *));
-	tmp->llvm_cnt      = llvm_context;
-	tmp->llvm_module   = llvm_module;
-	tmp->llvm_tm       = llvm_tm;
-	tmp->llvm_td       = llvm_td;
-	tmp->llvm_triple   = triple;
+	tmp->global_instrs  = bo_array_new(sizeof(MirInstr *));
+	tmp->RTTI_tmp_vars  = bo_array_new(sizeof(MirVar *));
+	tmp->llvm_cnt       = llvm_context;
+	tmp->llvm_module    = llvm_module;
+	tmp->llvm_tm        = llvm_tm;
+	tmp->llvm_td        = llvm_td;
+	tmp->llvm_triple    = triple;
+	tmp->llvm_dibuilder = LLVMCreateDIBuilder(llvm_module);
+
 	return tmp;
 }
 
@@ -9097,6 +9104,7 @@ mir_delete_module(MirModule *module)
 	LLVMDisposeMessage(module->llvm_triple);
 	LLVMDisposeTargetData(module->llvm_td);
 	LLVMContextDispose(module->llvm_cnt);
+	LLVMDisposeDIBuilder(module->llvm_dibuilder);
 
 	bl_free(module);
 }

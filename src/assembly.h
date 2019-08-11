@@ -37,6 +37,7 @@
 #include <dyncall.h>
 #include <dynload.h>
 #include <llvm-c/Core.h>
+#include <llvm-c/DebugInfo.h>
 #include <llvm-c/ExecutionEngine.h>
 
 struct MirModule;
@@ -49,6 +50,7 @@ typedef struct Assembly {
 	char *            name;       /* assembly name */
 	Scope *           gscope;     /* global scope of the assembly */
 	struct MirModule *mir_module;
+	LLVMMetadataRef   llvm_meta;
 
 	/* DynCall/Lib data used for external method execution in compile time */
 	struct {

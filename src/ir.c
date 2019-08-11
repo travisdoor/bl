@@ -305,6 +305,7 @@ gen_global_var_proto(Context *cnt, MirVar *var)
 	/* Linkage should be later set by user. */
 	LLVMSetLinkage(var->llvm_value, LLVMPrivateLinkage);
 	LLVMSetAlignment(var->llvm_value, var->value.type->alignment);
+
 	return var->llvm_value;
 }
 
@@ -1448,29 +1449,36 @@ static void
 init_debug_info(Context *cnt)
 {
 	cnt->debug_build = true;
-	cnt->llvm_dibuilder = LLVMCreateDIBuilder(cnt->llvm_module);
 
-	const char *debug_filename = "test.debug";
-	const char *producer       = "blc";
+	const char *producer = "blc version " BL_VERSION;
 
-	LLVMMetadataRef llvm_meta = LLVMDIBuilderCreateFile(
-	    cnt->llvm_dibuilder, debug_filename, strlen(debug_filename), NULL, 0);
+	BArray *units = cnt->assembly->units;
+	Unit *  u;
 
-	LLVMDIBuilderCreateCompileUnit(cnt->llvm_dibuilder,
-	                               LLVMDWARFSourceLanguageC,
-	                               llvm_meta,
-	                               producer,
-	                               strlen(producer),
-	                               false,
-	                               "",
-	                               0,
-	                               1,
-	                               debug_filename,
-	                               strlen(debug_filename),
-	                               LLVMDWARFEmissionFull,
-	                               0,
-	                               false,
-	                               false);
+	barray_foreach(units, u)
+	{
+		u->llvm_meta = LLVMDIBuilderCreateFile(cnt->llvm_dibuilder,
+		                                       u->filename,
+		                                       strlen(u->filename),
+		                                       u->dirpath,
+		                                       strlen(u->dirpath));
+
+		LLVMDIBuilderCreateCompileUnit(cnt->llvm_dibuilder,
+		                               LLVMDWARFSourceLanguageC,
+		                               u->llvm_meta,
+		                               producer,
+		                               strlen(producer),
+		                               false,
+		                               "",
+		                               0,
+		                               1,
+		                               "",
+		                               0,
+		                               LLVMDWARFEmissionFull,
+		                               1,
+		                               false,
+		                               false);
+	}
 }
 
 /* public */
@@ -1479,13 +1487,14 @@ ir_run(Builder *builder, Assembly *assembly)
 {
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));
-	cnt.builder       = builder;
-	cnt.assembly      = assembly;
-	cnt.gstring_cache = bo_htbl_new(sizeof(LLVMValueRef), 1024);
-	cnt.llvm_cnt      = assembly->mir_module->llvm_cnt;
-	cnt.llvm_module   = assembly->mir_module->llvm_module;
-	cnt.llvm_td       = assembly->mir_module->llvm_td;
-	cnt.llvm_builder  = LLVMCreateBuilderInContext(assembly->mir_module->llvm_cnt);
+	cnt.builder        = builder;
+	cnt.assembly       = assembly;
+	cnt.gstring_cache  = bo_htbl_new(sizeof(LLVMValueRef), 1024);
+	cnt.llvm_cnt       = assembly->mir_module->llvm_cnt;
+	cnt.llvm_module    = assembly->mir_module->llvm_module;
+	cnt.llvm_td        = assembly->mir_module->llvm_td;
+	cnt.llvm_builder   = LLVMCreateBuilderInContext(assembly->mir_module->llvm_cnt);
+	cnt.llvm_dibuilder = assembly->mir_module->llvm_dibuilder;
 
 	cnt.llvm_void_type = LLVMVoidTypeInContext(cnt.llvm_cnt);
 	cnt.llvm_i1_type   = LLVMInt1TypeInContext(cnt.llvm_cnt);
@@ -1519,6 +1528,5 @@ ir_run(Builder *builder, Assembly *assembly)
 #endif
 
 	LLVMDisposeBuilder(cnt.llvm_builder);
-	LLVMDisposeDIBuilder(cnt.llvm_dibuilder);
 	bo_unref(cnt.gstring_cache);
 }

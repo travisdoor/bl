@@ -3,8 +3,6 @@
 #load "std/print.bl"
 
 main :: fn () s32 {
-    i := 1234;
-    print("array = %\n", i);
     return 0;
 };
 

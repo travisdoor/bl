@@ -42,7 +42,7 @@ bool
 get_current_exec_path(char *buf, size_t buf_size)
 {
 #if defined(BL_PLATFORM_WIN)
-	return (bool)GetModuleFileNameA(NULL, buf, (DWORD) buf_size);
+	return (bool)GetModuleFileNameA(NULL, buf, (DWORD)buf_size);
 #elif defined(BL_PLATFORM_LINUX)
 	return readlink("/proc/self/exe", buf, buf_size) != -1;
 #elif defined(BL_PLATFORM_MACOS)
@@ -156,11 +156,32 @@ get_dir_from_filepath(char *buf, const size_t l, const char *filepath)
 
 	char *ptr = strrchr(filepath, PATH_SEPARATORC);
 	if (!ptr) return false;
-	if (filepath == ptr) return strdup(filepath);
+	if (filepath == ptr) {
+		strncpy(buf, filepath, strlen(filepath));
+		return true;
+	}
 
 	size_t len = ptr - filepath;
 	if (len + 1 > l) bl_abort("path too long!!!");
 	strncpy(buf, filepath, len);
+
+	return true;
+}
+
+bool
+get_filename_from_filepath(char *buf, const size_t l, const char *filepath)
+{
+	if (!filepath) return false;
+
+	char *ptr = strrchr(filepath, PATH_SEPARATORC);
+	if (!ptr || filepath == ptr) {
+		strncpy(buf, filepath, strlen(filepath));
+		return true;
+	}
+
+	size_t len = strlen(filepath) - (ptr - filepath);
+	if (len + 1 > l) bl_abort("path too long!!!");
+	strncpy(buf, ptr + 1, len);
 
 	return true;
 }

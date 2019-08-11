@@ -2069,9 +2069,10 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit)
 	root->data.ublock.unit = unit;
 	unit->ast              = root;
 
-	if (!assembly->gscope)
+	if (!assembly->gscope) {
 		assembly->gscope =
 		    scope_create(&builder->scope_arenas, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT);
+	}
 
 	Context cnt = {.builder      = builder,
 	               .assembly     = assembly,

@@ -92,6 +92,9 @@ bool
 get_dir_from_filepath(char *buf, const size_t l, const char *filepath);
 
 bool
+get_filename_from_filepath(char *buf, const size_t l, const char *filepath);
+
+bool
 search_file(const char *filepath, char **out_filepath, char **out_dirpath, const char *wdir);
 
 bool

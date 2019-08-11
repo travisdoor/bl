@@ -80,9 +80,9 @@ typedef enum ScopeKind {
 } ScopeKind;
 
 typedef struct Scope {
-	ScopeKind     kind;
-	struct Scope *parent;
-	BHashTable *  entries;
+	ScopeKind       kind;
+	struct Scope *  parent;
+	BHashTable *    entries;
 } Scope;
 
 void

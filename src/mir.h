@@ -251,6 +251,7 @@ struct MirModule {
 	LLVMTargetDataRef    llvm_td;       // LLVM Target data.
 	LLVMTargetMachineRef llvm_tm;       // LLVM Machine.
 	char *               llvm_triple;   // LLVM triple.
+	LLVMDIBuilderRef     llvm_dibuilder;
 };
 
 /* FN */
@@ -333,13 +334,14 @@ struct MirTypeArray {
 };
 
 struct MirType {
-	MirTypeKind kind;
-	ID *        user_id;
-	ID          id;
-	LLVMTypeRef llvm_type;
-	size_t      size_bits;
-	size_t      store_size_bytes;
-	int32_t     alignment;
+	MirTypeKind     kind;
+	ID *            user_id;
+	ID              id;
+	LLVMTypeRef     llvm_type;
+	LLVMMetadataRef llvm_meta;
+	size_t          size_bits;
+	size_t          store_size_bytes;
+	int32_t         alignment;
 
 	/*
 	 * Every unique type will cause generation of type info global constant in program data

@@ -63,6 +63,7 @@ scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size)
 	scope->entries = bo_htbl_new(sizeof(ScopeEntry *), size);
 	scope->parent  = parent;
 	scope->kind    = kind;
+
 	return scope;
 }
 
