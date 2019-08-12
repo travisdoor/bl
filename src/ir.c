@@ -584,11 +584,7 @@ gen_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	} else {
 		/* builtin member */
 
-		MirType *target_type = mir_deref_type(member_ptr->target_ptr->value.type);
-
 		/* Valid only for slice types, we generate direct replacement for arrays. */
-		assert(mir_is_slice_type(target_type));
-
 		if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN) {
 			/* .len */
 			member_ptr->base.llvm_value =
@@ -741,42 +737,45 @@ gen_as_const(Context *cnt, MirConstValue *value)
 		break;
 	}
 
+	case MIR_TYPE_STRING: {
+		BArray *     members = value->data.v_struct.members;
+		const size_t memc    = bo_array_size(members);
+		assert(members);
+		assert(memc == 2 && "not slice string?");
+
+		MirConstValue *len_value = bo_array_at(members, 0, MirConstValue *);
+		MirConstValue *str_value = bo_array_at(members, 1, MirConstValue *);
+		assert(len_value && str_value);
+
+		const uint64_t len = len_value->data.v_u64;
+		const char *   str = str_value->data.v_ptr.data.str;
+		assert(str);
+
+		LLVMValueRef const_vals[2];
+		const_vals[0] = LLVMConstInt(len_value->type->llvm_type, len, false);
+		const_vals[1] = gen_global_string_ptr(cnt, str, len);
+
+		llvm_value = LLVMConstNamedStruct(llvm_type, const_vals, 2);
+		break;
+	}
+
+	case MIR_TYPE_SLICE:
+	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT: {
 		BArray *     members = value->data.v_struct.members;
 		const size_t memc    = bo_array_size(members);
 
-		if (type->data.strct.kind == MIR_TS_STRING) {
-			assert(members);
-			assert(memc == 2 && "not slice string?");
+		MirConstValue *member;
+		LLVMValueRef * llvm_members = bl_malloc(sizeof(LLVMValueRef) * memc);
 
-			MirConstValue *len_value = bo_array_at(members, 0, MirConstValue *);
-			MirConstValue *str_value = bo_array_at(members, 1, MirConstValue *);
-			assert(len_value && str_value);
-
-			const uint64_t len = len_value->data.v_u64;
-			const char *   str = str_value->data.v_ptr.data.str;
-			assert(str);
-
-			LLVMValueRef const_vals[2];
-			const_vals[0] = LLVMConstInt(len_value->type->llvm_type, len, false);
-			const_vals[1] = gen_global_string_ptr(cnt, str, len);
-
-			llvm_value = LLVMConstNamedStruct(llvm_type, const_vals, 2);
-			break;
-		} else {
-			MirConstValue *member;
-			LLVMValueRef * llvm_members = bl_malloc(sizeof(LLVMValueRef) * memc);
-
-			barray_foreach(members, member)
-			{
-				llvm_members[i] = gen_as_const(cnt, member);
-			}
-
-			llvm_value =
-			    LLVMConstNamedStruct(llvm_type, llvm_members, (unsigned int)memc);
-			bl_free(llvm_members);
-			break;
+		barray_foreach(members, member)
+		{
+			llvm_members[i] = gen_as_const(cnt, member);
 		}
+
+		llvm_value = LLVMConstNamedStruct(llvm_type, llvm_members, (unsigned int)memc);
+		bl_free(llvm_members);
+		break;
 	}
 
 	case MIR_TYPE_ENUM: {
@@ -904,6 +903,9 @@ gen_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 				                               "");
 				break;
 
+			case MIR_TYPE_STRING:
+			case MIR_TYPE_SLICE:
+			case MIR_TYPE_VARGS:
 			case MIR_TYPE_STRUCT:
 				llvm_value_dest = LLVMBuildStructGEP(
 				    cnt->llvm_builder, tmp_var->llvm_value, (unsigned int)i, "");
@@ -1188,7 +1190,7 @@ gen_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 	BArray * values     = vargs->values;
 	assert(values);
 	const size_t vargsc = bo_array_size(values);
-	assert(vargs_type && mir_is_vargs_type(vargs_type));
+	assert(vargs_type && vargs_type->kind == MIR_TYPE_VARGS);
 
 	/* Setup tmp array values. */
 	if (vargsc > 0) {

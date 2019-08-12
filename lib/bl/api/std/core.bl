@@ -45,6 +45,9 @@ TypeKind :: enum #compiler {
     Struct :: 9,
     Enum   :: 10,
     Null   :: 11,
+    String :: 12,
+    VArgs  :: 13,
+    Slice  :: 14,
 };
 
 /*
@@ -142,6 +145,18 @@ TypeInfoEnum :: struct #compiler {
  * Type information for null type.
  */
 TypeInfoNull :: struct #compiler {
+    base: TypeInfo,
+};
+
+TypeInfoString :: struct #compiler {
+    base: TypeInfo,
+};
+
+TypeInfoSlice :: struct #compiler {
+    base: TypeInfo,
+};
+
+TypeInfoVArgs :: struct #compiler {
     base: TypeInfo,
 };
 
