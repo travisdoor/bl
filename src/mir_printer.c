@@ -184,6 +184,9 @@ print_const_value(MirConstValue *value, FILE *stream)
 		fprintf(stream, "null_");
 		print_type(type->data.null.base_type, false, stream, true);
 		break;
+	case MIR_TYPE_STRING:
+	case MIR_TYPE_SLICE:
+	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT: {
 		BArray *   members             = data->v_struct.members;
 		const bool is_zero_initializer = data->v_struct.is_zero_initializer;

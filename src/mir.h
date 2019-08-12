@@ -133,6 +133,9 @@ typedef enum MirBuiltinIdKind {
 	MIR_BUILTIN_ID_TYPE_INFO_STRUCT,
 	MIR_BUILTIN_ID_TYPE_INFO_ENUM,
 	MIR_BUILTIN_ID_TYPE_INFO_NULL,
+	MIR_BUILTIN_ID_TYPE_INFO_STRING,
+	MIR_BUILTIN_ID_TYPE_INFO_VARGS,
+	MIR_BUILTIN_ID_TYPE_INFO_SLICE,
 
 	_MIR_BUILTIN_ID_COUNT,
 } MirBuiltinIdKind;
@@ -150,14 +153,10 @@ typedef enum MirTypeKind {
 	MIR_TYPE_STRUCT  = 9,
 	MIR_TYPE_ENUM    = 10,
 	MIR_TYPE_NULL    = 11,
+	MIR_TYPE_STRING  = 12,
+	MIR_TYPE_VARGS   = 13,
+	MIR_TYPE_SLICE   = 14,
 } MirTypeKind;
-
-typedef enum MirTypeStructKind {
-	MIR_TS_NONE   = 0x0, // ordinary user structure
-	MIR_TS_SLICE  = 0x1, // slice
-	MIR_TS_STRING = 0x3, // string slice
-	MIR_TS_VARGS  = 0x5, // vargs slice
-} MirTypeStructKind;
 
 typedef enum MirConstPtrKind {
 	MIR_CP_UNKNOWN,
@@ -311,10 +310,9 @@ struct MirTypePtr {
 };
 
 struct MirTypeStruct {
-	MirTypeStructKind kind;
-	Scope *           scope;
-	BArray *          members;
-	bool              is_packed;
+	Scope * scope;
+	BArray *members;
+	bool    is_packed;
 };
 
 /* Enum variants must be baked into enum type. */
@@ -725,27 +723,6 @@ mir_is_pointer_type(MirType *type)
 	return type->kind == MIR_TYPE_PTR;
 }
 
-static inline bool
-mir_is_slice_type(MirType *type)
-{
-	assert(type);
-	return type->kind == MIR_TYPE_STRUCT && is_flag(type->data.strct.kind, MIR_TS_SLICE);
-}
-
-static inline bool
-mir_is_vargs_type(MirType *type)
-{
-	assert(type);
-	return type->kind == MIR_TYPE_STRUCT && is_flag(type->data.strct.kind, MIR_TS_VARGS);
-}
-
-static inline bool
-mir_is_string_type(MirType *type)
-{
-	assert(type);
-	return type->kind == MIR_TYPE_STRUCT && is_flag(type->data.strct.kind, MIR_TS_STRING);
-}
-
 static inline MirType *
 mir_deref_type(MirType *ptr)
 {
@@ -753,10 +730,17 @@ mir_deref_type(MirType *ptr)
 	return ptr->data.ptr.expr;
 }
 
+static inline bool
+mir_is_composit_type(MirType *type)
+{
+	return type->kind == MIR_TYPE_STRUCT || type->kind == MIR_TYPE_STRING ||
+	       type->kind == MIR_TYPE_SLICE || type->kind == MIR_TYPE_VARGS;
+}
+
 static inline MirType *
 mir_get_struct_elem_type(MirType *type, uint32_t i)
 {
-	assert(type->kind == MIR_TYPE_STRUCT && "Expected structure type");
+	assert(mir_is_composit_type(type) && "Expected structure type");
 	BArray *members = type->data.strct.members;
 	assert(members && bo_array_size(members) > i);
 	return bo_array_at(members, i, MirType *);
@@ -771,20 +755,6 @@ mir_get_fn_arg_type(MirType *type, uint32_t i)
 
 	assert(bo_array_size(args) > i);
 	return bo_array_at(args, i, MirType *);
-}
-
-static inline MirType *
-mir_get_slice_len_type(MirType *slice_type)
-{
-	assert(mir_is_slice_type(slice_type));
-	return mir_get_struct_elem_type(slice_type, MIR_SLICE_LEN_INDEX);
-}
-
-static inline MirType *
-mir_get_slice_ptr_type(MirType *slice_type)
-{
-	assert(mir_is_slice_type(slice_type));
-	return mir_get_struct_elem_type(slice_type, MIR_SLICE_PTR_INDEX);
 }
 
 void
