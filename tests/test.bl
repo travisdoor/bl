@@ -1,8 +1,29 @@
 /* playground */
 
 #load "std/print.bl"
+#load "std/string.bl"
 
 main :: fn () s32 {
+
+    s := string_new();
+    string_append(&s, "this ");
+    string_append(&s, "is ");
+    string_append(&s, "heap ");
+    string_append(&s, "allocated ");
+    string_append(&s, "string ");
+    string_append(&s, true);
+    string_append(&s, false);
+    string_append(&s, 1235);
+    string_append(&s, -1235);
+    string_append(&s, 0.64);
+    print("%\n", s);
+
+    s2 := string_concatenate("I'm ", "Martin ", "and ", "I'm ", 29, " years old!!!");
+    print("%\n", s2);
+
+    string_free(s);
+    string_free(s2);
+    
     return 0;
 };
 
