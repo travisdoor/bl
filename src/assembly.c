@@ -40,6 +40,8 @@ static void
 init_dl(Assembly *assembly)
 {
 	assembly->dl.libs = bo_array_new(sizeof(NativeLib));
+	assembly->dl.lib_paths = bo_array_new(sizeof(char *));
+
 	DCCallVM *vm      = dcNewCallVM(4096);
 	dcMode(vm, DC_CALL_C_DEFAULT);
 	assembly->dl.vm = vm;
@@ -49,9 +51,9 @@ static void
 native_lib_terminate(NativeLib *lib)
 {
 	if (lib->handle) dlFreeLibrary(lib->handle);
-	free(lib->dirpath);
 	free(lib->filename);
 	free(lib->filepath);
+	free(lib->dir);
 }
 
 static void
@@ -63,8 +65,12 @@ terminate_dl(Assembly *assembly)
 		native_lib_terminate(lib);
 	}
 
+	char *p;
+	barray_foreach(assembly->dl.lib_paths, p) free(p);
+
 	dcFree(assembly->dl.vm);
 	bo_unref(assembly->dl.libs);
+	bo_unref(assembly->dl.lib_paths);
 }
 
 /* public */
@@ -147,11 +153,13 @@ assembly_add_link(Assembly *assembly, Token *token)
 DCpointer
 assembly_find_extern(Assembly *assembly, const char *symbol)
 {
-	void * handle = NULL;
-	DLLib *lib;
-	barray_foreach(assembly->dl.libs, lib)
-	{
-		handle = dlFindSymbol(lib, symbol);
+	void *       handle = NULL;
+	NativeLib *  lib;
+	const size_t count = bo_array_size(assembly->dl.libs);
+
+	for (size_t i = 0; i < count; ++i) {
+		lib    = &bo_array_at(assembly->dl.libs, i, NativeLib);
+		handle = dlFindSymbol(lib->handle, symbol);
 		if (handle) break;
 	}
 

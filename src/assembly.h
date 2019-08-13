@@ -54,6 +54,7 @@ typedef struct Assembly {
 
 	/* DynCall/Lib data used for external method execution in compile time */
 	struct {
+		BArray *  lib_paths;
 		BArray *  libs;
 		DCCallVM *vm;
 	} dl;
@@ -65,7 +66,7 @@ typedef struct NativeLib {
 	const char *  user_name;
 	char *        filename;
 	char *        filepath;
-	char *        dirpath;
+	char *        dir;
 	bool          is_internal;
 } NativeLib;
 

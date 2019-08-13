@@ -4365,7 +4365,6 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		fn->extern_entry = assembly_find_extern(cnt->assembly, fn->llvm_name);
 
 		if (!fn->extern_entry) {
-			bl_warning_issue(27);
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_UNKNOWN_SYMBOL,

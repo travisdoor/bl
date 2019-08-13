@@ -29,15 +29,56 @@
 #include "config.h"
 #include "stages.h"
 
+#ifdef BL_PLATFORM_WIN
+static const char *link_flag = "";
+static const char *link_path_flag = "/LIBPATH";
+static const char *cmd       = "call \"%s\" %s && \"%s\" %s.obj /OUT:%s.exe %s";
+#else
+static const char *link_flag = "-l";
+static const char *link_path_flag = "-L";
+static const char *cmd       = "%s %s.o -o %s %s";
+#endif
+
+typedef struct {
+	Builder * builder;
+	Assembly *assembly;
+} Context;
+
+static void
+add_lib_paths(Context *cnt, char *buf, size_t len)
+{
+
+	const char *dir;
+	barray_foreach(cnt->assembly->dl.lib_paths, dir)
+	{
+		strncat(buf, " ", len);
+		strncat(buf, link_path_flag, len);
+		strncat(buf, dir, len);
+	}
+}
+
+static void
+add_libs(Context *cnt, char *buf, size_t len)
+{
+	NativeLib *lib;
+	for (size_t i = 0; i < bo_array_size(cnt->assembly->dl.libs); ++i) {
+		lib = &bo_array_at(cnt->assembly->dl.libs, i, NativeLib);
+		if (lib->is_internal) continue;
+		if (!lib->user_name) continue;
+
+		strncat(buf, " ", len);
+		strncat(buf, link_flag, len);
+		strncat(buf, lib->user_name, len);
+	}
+}
+
 void
 native_bin_run(Builder *builder, Assembly *assembly)
 {
-	char buf[2048] = {0};
+	char    buf[4096] = {0};
+	Context cnt       = {.builder = builder, .assembly = assembly};
 
 #ifdef BL_PLATFORM_WIN
-	const char *link_flag = "";
-	const char *cmd       = "call \"%s\" %s && \"%s\" %s.obj /OUT:%s.exe %s";
-
 	const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);
 	{ /* setup link command */
 		const char *vc_vars_all = conf_data_get_str(builder->conf, CONF_VC_VARS_ALL_KEY);
@@ -53,26 +94,15 @@ native_bin_run(Builder *builder, Assembly *assembly)
 		        opt);
 	}
 #else
-	const char *link_flag = "-l";
-	const char *cmd       = "%s %s.o -o %s %s";
-
-	const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);
-	{ /* setup link command */
-		const char *opt = conf_data_get_str(builder->conf, CONF_LINKER_OPT_KEY);
-		sprintf(buf, cmd, linker_exec, assembly->name, assembly->name, opt);
-	}
+        const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);
+        { /* setup link command */
+                const char *opt = conf_data_get_str(builder->conf, CONF_LINKER_OPT_KEY);
+                snprintf(buf, array_size(buf), cmd, linker_exec, assembly->name, assembly->name, opt);
+        }
 #endif
 
-	NativeLib *lib;
-	for (size_t i = 0; i < bo_array_size(assembly->dl.libs); ++i) {
-		lib = &bo_array_at(assembly->dl.libs, i, NativeLib);
-		if (lib->is_internal) continue;
-		if (!lib->user_name) continue;
-
-		strcat(buf, " ");
-		strcat(buf, link_flag);
-		strcat(buf, lib->user_name);
-	}
+	add_lib_paths(&cnt, buf, array_size(buf));
+	add_libs(&cnt, buf, array_size(buf));
 
 	msg_log("Running native linker...");
 	if (is_flag(builder->flags, BUILDER_VERBOSE)) msg_log("%s", buf);

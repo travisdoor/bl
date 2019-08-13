@@ -186,90 +186,19 @@ get_filename_from_filepath(char *buf, const size_t l, const char *filepath)
 	return true;
 }
 
-bool
-search_file(const char *filepath, char **out_filepath, char **out_dirpath, const char *wdir)
+
+void
+platform_lib_name(const char *name, char *buffer, size_t max_len)
 {
-	if (filepath == NULL) goto NOT_FOUND;
+	if (!name) return;
 
-	char        tmp[PATH_MAX] = {0};
-	const char *rpath         = tmp;
-
-	/* Lookup in working directory. */
-	if (wdir) {
-		strncpy(tmp, wdir, PATH_MAX);
-		strcat(tmp, PATH_SEPARATOR);
-		strcat(tmp, filepath);
-
-		if (file_exists(tmp)) {
-			goto FOUND;
-		}
-	}
-
-	rpath = brealpath(filepath, tmp, PATH_MAX);
-
-	if (rpath != NULL) {
-		goto FOUND;
-	}
-
-	/* file has not been found in current working direcotry -> search in LIB_DIR */
-	if (ENV_LIB_DIR) {
-		char tmp_lib_dir[PATH_MAX];
-
-		strcpy(tmp_lib_dir, ENV_LIB_DIR);
-		strcat(tmp_lib_dir, PATH_SEPARATOR);
-		strcat(tmp_lib_dir, filepath);
-
-		rpath = brealpath(tmp_lib_dir, tmp, PATH_MAX);
-
-		if (rpath != NULL) {
-			goto FOUND;
-		}
-	}
-
-	/* file has not been found in current working direcotry -> search in PATH */
-	{
-		char   tmp_env[PATH_MAX];
-		char * env          = strdup(getenv(ENV_PATH));
-		char * s            = env;
-		char * p            = NULL;
-		size_t filepath_len = strlen(filepath);
-
-		do {
-			p = strchr(s, ENVPATH_SEPARATOR);
-			if (p != NULL) {
-				p[0] = 0;
-			}
-
-			if (strlen(s) + filepath_len + strlen(PATH_SEPARATOR) >= PATH_MAX)
-				bl_abort("path too long");
-
-			strcpy(&tmp_env[0], s);
-			strcat(&tmp_env[0], PATH_SEPARATOR);
-			strcat(&tmp_env[0], filepath);
-
-			rpath = brealpath(&tmp_env[0], tmp, PATH_MAX);
-
-			s = p + 1;
-		} while (p != NULL && rpath == NULL);
-
-		free(env);
-		if (rpath) {
-			goto FOUND;
-		}
-	}
-
-NOT_FOUND:
-	return false;
-
-FOUND:
-	/* Absolute file path. */
-	*out_filepath = strdup(rpath);
-
-	/* Absolute directory path. */
-	memset(tmp, 0, array_size(tmp));
-	if (get_dir_from_filepath(tmp, PATH_MAX, *out_filepath)) {
-		*out_dirpath = strdup(tmp);
-	}
-
-	return true;
+#ifdef BL_PLATFORM_MACOS
+	snprintf(buffer, max_len, "lib%s.dylib", name);
+#elif defined(BL_PLATFORM_LINUX)
+	snprintf(buffer, max_len, "lib%s.so", name);
+#elif defined(BL_PLATFORM_WIN)
+	snprintf(buffer, max_len, "%s.dll", name);
+#else
+	bl_abort("Unknown dynamic library format.");
+#endif
 }

@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.0)
-project(bl VERSION 0.4.2 LANGUAGES C)
+project(bl VERSION 0.4.2)
 
 # Must use GNUInstallDirs to install libraries into correct
 # locations on all platforms.
 include(GNUInstallDirs)
 
 set(CMAKE_C_STANDARD 99)
+set(CMAKE_CXX_STANDARD 11)
 set(HAVE_64_BIT 1)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -28,6 +29,9 @@ add_subdirectory(deps/dyncall-1.0)
 
 # deps
 find_package(LLVM REQUIRED CONFIG)
+
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 set(HEADER_FILES
         src/conf_data.h
@@ -78,36 +82,30 @@ set(SOURCE_FILES
         src/mir_printer.c
         src/ast.c)
 
+add_definitions(${LLVM_DEFINITIONS})
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
 
-add_definitions(${LLVM_DEFINITIONS})
+llvm_map_components_to_libnames(LLVM_LIBS core all)
 
 if (MSVC)
-    llvm_map_components_to_libnames(LLVM_LIBS core all)
-
     target_link_libraries(blc PUBLIC
         shlwapi
-	${LLVM_LIBS}
-	dynload_s
-	dyncall_s
-	bobject
-	${CMAKE_DL_LIBS}
     )
 
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /wd4996 /MDd")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd")
 else()
-    target_link_libraries(blc PUBLIC
-        LLVM
-	dynload_s
-	dyncall_s
-	bobject
-	${CMAKE_DL_LIBS}
-    )
-
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Werror -Wall -Wextra -Wno-unused-parameter -Wno-missing-braces -O0 -fsanitize=address -Wdeprecated-declarations")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Werror -Wall -Wextra -Wno-unused-parameter -Wno-missing-braces -O0 -Wdeprecated-declarations")
 endif()
+
+target_link_libraries(blc PUBLIC
+    dynload_s
+    dyncall_s
+    bobject
+    ${CMAKE_DL_LIBS}
+    ${LLVM_LIBS}
+)
 
 target_include_directories(blc PRIVATE
     src

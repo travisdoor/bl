@@ -95,9 +95,6 @@ bool
 get_filename_from_filepath(char *buf, const size_t l, const char *filepath);
 
 bool
-search_file(const char *filepath, char **out_filepath, char **out_dirpath, const char *wdir);
-
-bool
 get_current_exec_path(char *buf, size_t buf_size);
 
 bool
@@ -114,5 +111,8 @@ align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment);
 
 void
 print_bits(int32_t const size, void const *const ptr);
+
+void
+platform_lib_name(const char *name, char *buffer, size_t max_len);
 
 #endif

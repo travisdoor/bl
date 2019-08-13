@@ -66,6 +66,7 @@ printf "/*\n * blc config file\n */\n\n" >> $CONFIG_FILE
 echo LIB_DIR \"$LIB_DIR\" >> $CONFIG_FILE
 echo LINKER_EXEC \"$LINKER_EXEC\" >> $CONFIG_FILE
 echo LINKER_OPT \"$LINKER_OPT\" >> $CONFIG_FILE
+echo LINKER_LIB_PATH \"/usr/lib:/usr/local/lib\" >> $CONFIG_FILE
 
 if [ $STATUS -eq 0 ]; then
     CONFIG_FILE=$(realpath $CONFIG_FILE)
