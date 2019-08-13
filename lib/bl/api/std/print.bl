@@ -48,6 +48,23 @@ print :: fn (format: string, args: ...) s32 {
 };
 
 /*
+ * Print to the stderr.
+ * @return Count of written characters.
+ */
+eprint :: fn (format: string, args: ...) s32 {
+    buf := {:[PrintMaxLength]u8: 0};
+
+    // HACK: use implicit conversion later!!!
+    // HACK: use implicit conversion later!!!
+    // HACK: use implicit conversion later!!!
+    tmp := {:[]u8: buf.len, buf.ptr };
+
+    w := __print(tmp, format, args);
+    __os_write(OS_STDERR, buf.ptr, w);
+    return w;
+};
+
+/*
  * Print to the buffer.
  * @return Count of written characters.
  */

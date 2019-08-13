@@ -83,7 +83,7 @@ native_bin_run(Builder *builder, Assembly *assembly)
 		            ERR_LIB_NOT_FOUND,
 		            NULL,
 		            BUILDER_CUR_WORD,
-		            "Cannot execute native linker '%s'",
-		            linker_exec);
+		            "Native link execution failed '%s'",
+		            buf);
 	}
 }
