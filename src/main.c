@@ -231,7 +231,7 @@ main(int32_t argc, char *argv[])
 	}
 #endif
 
-	Assembly *assembly = assembly_new(assembly_name);
+	Assembly *assembly = assembly_new(builder, assembly_name);
 	free(assembly_name);
 
 	while (*argv != NULL) {

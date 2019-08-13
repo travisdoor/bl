@@ -764,7 +764,7 @@ const char *
 mir_instr_name(MirInstr *instr);
 
 MirModule *
-mir_new_module(const char *name);
+mir_new_module(struct Builder *builder, const char *name);
 
 void
 mir_delete_module(MirModule *module);

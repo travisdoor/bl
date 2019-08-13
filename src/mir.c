@@ -9081,7 +9081,7 @@ init_builtins(Context *cnt)
 }
 
 MirModule *
-mir_new_module(const char *name)
+mir_new_module(Builder *builder, const char *name)
 {
 	MirModule *tmp = bl_malloc(sizeof(MirModule));
 	if (!tmp) bl_abort("bad alloc");
@@ -9103,12 +9103,8 @@ mir_new_module(const char *name)
 		abort();
 	}
 
-	/* TODO: set opt level */
-#if BL_DEBUG
 	LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelDefault;
-#else
-	LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelAggressive;
-#endif
+	if (is_flag(builder->flags, BUILDER_DEBUG_BUILD)) opt_lvl = LLVMCodeGenLevelAggressive;
 
 	LLVMContextRef llvm_context = LLVMContextCreate();
 	LLVMModuleRef  llvm_module  = LLVMModuleCreateWithNameInContext(name, llvm_context);

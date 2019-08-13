@@ -41,6 +41,7 @@
 #include <llvm-c/ExecutionEngine.h>
 
 struct MirModule;
+struct Builder;
 
 typedef struct Assembly {
 	BArray *          units;      /* array of all units in assembly */
@@ -71,7 +72,7 @@ typedef struct NativeLib {
 } NativeLib;
 
 Assembly *
-assembly_new(const char *name);
+assembly_new(struct Builder *builder, const char *name);
 
 void
 assembly_delete(Assembly *assembly);

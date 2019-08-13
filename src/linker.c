@@ -91,7 +91,8 @@ search_library(Context *   cnt,
 static void
 set_lib_paths(Context *cnt)
 {
-	const char *lib_path = conf_data_get_str(cnt->builder->conf, CONF_LINKER_LIB_PATH_KEY);
+	char        tmp[PATH_MAX] = {0};
+	const char *lib_path      = conf_data_get_str(cnt->builder->conf, CONF_LINKER_LIB_PATH_KEY);
 	if (!strlen(lib_path)) return;
 
 	int32_t     len;
@@ -104,8 +105,11 @@ set_lib_paths(Context *cnt)
 		if (*c == ENVPATH_SEPARATOR || done) {
 			len = c - begin;
 			if (len - 1 > 0) {
-				char *tmp = strndup(begin, len);
-				bo_array_push_back(cnt->lib_paths, tmp);
+				strncpy(tmp, begin, len);
+				if (file_exists(tmp)) {
+					char *dup = strndup(begin, len);
+					bo_array_push_back(cnt->lib_paths, dup);
+				}
 
 				begin = c + 1;
 			}

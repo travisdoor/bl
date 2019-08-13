@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #include "assembly.h"
+#include "builder.h"
 #include "blmemory.h"
 #include "mir.h"
 #include "unit.h"
@@ -75,7 +76,7 @@ terminate_dl(Assembly *assembly)
 
 /* public */
 Assembly *
-assembly_new(const char *name)
+assembly_new(Builder *builder, const char *name)
 {
 	Assembly *assembly = bl_calloc(1, sizeof(Assembly));
 	if (!assembly) bl_abort("bad alloc");
@@ -87,7 +88,7 @@ assembly_new(const char *name)
 
 	init_dl(assembly);
 
-	assembly->mir_module = mir_new_module(assembly->name);
+	assembly->mir_module = mir_new_module(builder, assembly->name);
 
 	bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
 	return assembly;
