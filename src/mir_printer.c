@@ -427,7 +427,7 @@ print_instr_phi(MirInstrPhi *phi, FILE *stream)
 		fprintf(stream, "[");
 		print_comptime_value_or_id(value, stream);
 		fprintf(stream, ", ");
-		fprintf(stream, "%%%s_%llu", block->name, block->base.id);
+		fprintf(stream, "%%%s_%llu", block->name, (unsigned long long)block->base.id);
 		fprintf(stream, "] ");
 	}
 }
@@ -681,9 +681,9 @@ print_instr_cond_br(MirInstrCondBr *cond_br, FILE *stream)
 	fprintf(stream,
 	        " ? %%%s_%llu : %%%s_%llu",
 	        cond_br->then_block->name,
-	        cond_br->then_block->base.id,
+	        (unsigned long long)cond_br->then_block->base.id,
 	        cond_br->else_block->name,
-	        cond_br->else_block->base.id);
+	        (unsigned long long)cond_br->else_block->base.id);
 }
 
 void
@@ -703,7 +703,8 @@ void
 print_instr_br(MirInstrBr *br, FILE *stream)
 {
 	print_instr_head(&br->base, stream, "br");
-	fprintf(stream, "%%%s_%llu", br->then_block->name, br->then_block->base.id);
+	fprintf(
+	    stream, "%%%s_%llu", br->then_block->name, (unsigned long long)br->then_block->base.id);
 }
 
 void
@@ -857,9 +858,13 @@ print_instr_block(MirInstrBlock *block, FILE *stream)
 {
 	if (block->base.prev) fprintf(stream, "\n");
 #if BL_DEBUG
-	fprintf(stream, "%%%s_%llu (%u):", block->name, block->base.id, block->base.ref_count);
+	fprintf(stream,
+	        "%%%s_%llu (%u):",
+	        block->name,
+	        (unsigned long long)block->base.id,
+	        block->base.ref_count);
 #else
-	fprintf(stream, "%%%s_%llu:", block->name, block->base.id);
+	fprintf(stream, "%%%s_%llu:", block->name, (unsigned long long)block->base.id);
 #endif
 	if (!block->base.ref_count)
 		fprintf(stream, " // NEVER REACHED\n");
@@ -888,7 +893,7 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 	if (fn->llvm_name)
 		fprintf(stream, "@%s ", fn->llvm_name);
 	else
-		fprintf(stream, "@%llu ", fn_proto->base.id);
+		fprintf(stream, "@%llu ", (unsigned long long)fn_proto->base.id);
 
 #if BL_DEBUG
 	fprintf(stream, "(%d) : ", fn->ref_count);
