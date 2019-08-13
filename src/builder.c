@@ -53,12 +53,19 @@ llvm_init(void)
 {
 	if (llvm_initialized) return;
 
+	LLVMInitializeX86Target();
+	LLVMInitializeX86TargetInfo();
+	LLVMInitializeX86TargetMC();
+	LLVMInitializeX86AsmPrinter();
+
+	/*
 	LLVMInitializeAllTargetInfos();
 	LLVMInitializeAllTargets();
 	LLVMInitializeAllTargetMCs();
 	LLVMInitializeAllAsmParsers();
 	LLVMInitializeAllAsmPrinters();
 	LLVMLinkInMCJIT();
+	*/
 	llvm_initialized = true;
 }
 

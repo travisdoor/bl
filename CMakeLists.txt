@@ -85,7 +85,7 @@ set(SOURCE_FILES
 add_definitions(${LLVM_DEFINITIONS})
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
 
-llvm_map_components_to_libnames(LLVM_LIBS core all)
+llvm_map_components_to_libnames(LLVM_LIBS core support X86 passes)
 
 if (MSVC)
     target_link_libraries(blc PUBLIC
