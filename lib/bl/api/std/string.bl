@@ -46,7 +46,7 @@ string_copy :: fn (v: string) string {
     return tmp;
 };
 
-string_free :: fn (v: string) {
+string_delete :: fn (v: string) {
     free_block(v.ptr);
 };
 

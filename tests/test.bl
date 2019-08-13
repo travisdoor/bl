@@ -21,8 +21,8 @@ main :: fn () s32 {
     s2 := string_concatenate("I'm ", "Martin ", "and ", "I'm ", 29, " years old!!!");
     print("%\n", s2);
 
-    string_free(s);
-    string_free(s2);
+    string_delete(s);
+    string_delete(s2);
     
     return 0;
 };
