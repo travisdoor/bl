@@ -26,18 +26,47 @@
 // SOFTWARE.
 //************************************************************************************************
 
+/*
+ * @title mem_alloc 
+ *
+ * @desc
+ * Allocate memory on the heap. Allocated memory must be freed with [[MEM_FREE][=mem_free=]].
+ * @ver 0.4.2
+ */
 mem_alloc :: fn (size: usize) *u8 {
     return malloc(size);
 };
 
+/*
+ * @title mem_realloc <<MEM_FREE>>
+ *
+ * @desc
+ * Reallocate memory on the heap and copy data from previous allocation. Allocated memory must 
+ * be freed with [[MEM_FREE][=mem_free=]].
+ * @ver 0.4.2
+ */
 mem_realloc :: fn (ptr: *u8, size: usize) *u8 {
     return realloc(ptr, size);
 };
 
+/*
+ * @title mem_free <<MEM_FREE>>
+ *
+ * @desc
+ * Free allocated memory.
+ * @ver 0.4.2
+ */
 mem_free :: fn (ptr: *u8) {
     free(ptr);
 };
 
+/*
+ * @title mem_copy
+ *
+ * @desc
+ * Copy count of bytes from source to destination.
+ * @ver 0.4.2
+ */
 mem_copy :: fn (dest: *u8, src: *u8, size: usize) {
     m := size / sizeof(u64);
     d := size - m * sizeof(u64);
