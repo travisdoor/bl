@@ -29,8 +29,12 @@
 #load "std/print.bl"
 
 string_new :: fn () string {
+    return string_new_reserved(0);
+};
+
+string_new_reserved :: fn (size: usize) string {
     tmp : string;
-    tmp.ptr = alloc_block(0);
+    tmp.ptr = alloc_block(size);
     tmp.len = 0;
 
     return tmp;
@@ -112,6 +116,7 @@ alloc_block :: fn (size: usize) *u8 {
 
     alloc_size := size + sizeof(BlockHead);
     tmp := cast(*BlockHead) mem_alloc(alloc_size);
+    if tmp == null { abort(); }
     tmp.allocated_size = size; 
 
     return cast(*u8) (cast(usize) tmp + sizeof(BlockHead));

@@ -2,6 +2,7 @@
 
 #load "std/print.bl"
 #load "std/string.bl"
+#load "std/file.bl"
 
 main :: fn () s32 {
 
@@ -23,7 +24,21 @@ main :: fn () s32 {
 
     string_delete(s);
     string_delete(s2);
+
+    f := file_open("test.bl");
+    data := file_read_all(f);
+    print("\n%\n", data);
+    file_close(f);
     
     return 0;
 };
 
+
+/*
+ * @title foo
+ * This is foo
+ * and this is all about foo...
+ * 
+ * @example examples/foo.bl
+ */
+foo :: fn () {};
