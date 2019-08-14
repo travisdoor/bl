@@ -1,0 +1,24 @@
+array_new :: fn () []?T {
+    info := typeinfo(T);
+    info.size;
+    ...
+};
+
+array_delete :: fn (arr: []?T) {
+};
+
+array_push :: fn (arr: []?T, v: T) {
+};
+
+/* use */
+arr : []s32 = array_new();
+array_delete(arr);
+array_push(arr, 12);
+
+
+/* another option */
+array_push :: fn (T: type, arr: []T, v: T) {
+};
+
+value := 10;
+array_push(typeof(value), arr, value);
