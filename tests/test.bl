@@ -28,6 +28,7 @@ main :: fn () s32 {
     f := file_open("test.bl");
     data := file_read_all(f);
     print("\n%\n", data);
+    string_delete(data);
     file_close(f);
     
     return 0;
@@ -36,9 +37,18 @@ main :: fn () s32 {
 
 /*
  * @title foo
+ * @desc
  * This is foo
- * and this is all about foo...
+ * and this is all about the foo...
  * 
- * @example examples/foo.bl
+ * @example examples/printing.bl
  */
 foo :: fn () {};
+
+/*
+ * @title bar
+ * @desc
+ *      Bar jak cip
+ * 
+ * @example examples/printing.bl
+ */

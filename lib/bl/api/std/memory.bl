@@ -30,6 +30,10 @@ mem_alloc :: fn (size: usize) *u8 {
     return malloc(size);
 };
 
+mem_realloc :: fn (ptr: *u8, size: usize) *u8 {
+    return realloc(ptr, size);
+};
+
 mem_free :: fn (ptr: *u8) {
     free(ptr);
 };

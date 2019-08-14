@@ -31,8 +31,12 @@
 PrintMaxLength :: 4096;
 
 /*
+ * @title print
+ *
+ * @desc
  * Print to the stdout.
- * @return Count of written characters.
+ *
+ * @example examples/printing.bl 
  */
 print :: fn (format: string, args: ...) s32 {
     buf := {:[PrintMaxLength]u8: 0};
@@ -48,8 +52,10 @@ print :: fn (format: string, args: ...) s32 {
 };
 
 /*
+ * @title eprint
+ *
+ * @desc
  * Print to the stderr.
- * @return Count of written characters.
  */
 eprint :: fn (format: string, args: ...) s32 {
     buf := {:[PrintMaxLength]u8: 0};
@@ -65,8 +71,10 @@ eprint :: fn (format: string, args: ...) s32 {
 };
 
 /*
- * Print to the buffer.
- * @return Count of written characters.
+ * @title bprint
+ *
+ * @desc
+ * Print into the preallocated buffer.
  */
 bprint :: fn (buf: []u8, format: string, args: ...) s32 {
     return print_impl(buf, format, args);

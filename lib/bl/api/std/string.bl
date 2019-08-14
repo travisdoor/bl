@@ -89,6 +89,18 @@ string_concatenate :: fn (args: ...) string {
     return tmp;
 };
 
+string_compare_n :: fn (first: string, second: string, n: s32) bool
+{
+    if first.len < n { return false; }
+    if second.len < n { return false; }
+
+    loop i := 0; i < n; i += 1 {
+        if first[i] != second[i] { return false; }
+    }
+
+    return true;
+};
+
 #private
 
 BlockSize :: 64 - sizeof(BlockHead);
