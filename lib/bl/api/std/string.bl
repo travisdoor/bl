@@ -151,6 +151,23 @@ string_concatenate :: fn (args: ...) string {
 };
 
 /*
+ * @title string_compare
+ *
+ * @desc
+ * Compare two input strings and return =true= if they are same.
+ * @ver 0.4.2
+ */
+string_compare :: fn (first: string, second: string) bool {
+    if first.len != second.len { return false; } 
+
+    loop i := 0; i < first.len; i += 1 {
+        if first[i] != second[i] { return false; }
+    }
+
+    return true;
+};
+
+/*
  * @title TODO string_compare_n
  * @ver 0.4.2
  */
