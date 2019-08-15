@@ -1,24 +1,47 @@
-array_new :: fn () []?T {
-    info := typeinfo(T);
-    info.size;
-    ...
-};
+//************************************************************************************************
+//* Polymorphic methods ? operator
+//************************************************************************************************
 
-array_delete :: fn (arr: []?T) {
-};
+/* DECLS */
+array_new    :: fn () []?T {};
+array_delete :: fn (arr: []?T) {};
+array_push   :: fn (arr: []?T, v: T) {};
 
-array_push :: fn (arr: []?T, v: T) {
-};
-
-/* use */
-arr : []s32 = array_new();
+/* USE */
+arr : []s32 = array_new(); // value type must be specified
 array_delete(arr);
 array_push(arr, 12);
 
 
-/* another option */
-array_push :: fn (T: type, arr: []T, v: T) {
-};
 
-value := 10;
-array_push(typeof(value), arr, value);
+
+
+//************************************************************************************************
+//* Type as value in compiletime
+//************************************************************************************************
+
+/* DECLS */
+array_new    :: fn (T: type) T {};
+array_delete :: fn (T: type, arr: []T) {};
+array_push   :: fn (T: type, arr: []T, v: T) {};
+
+/* USE */
+arr := array_new(s32);
+array_delete(s32, arr);
+array_push(s32, arr, value);
+
+
+
+
+//************************************************************************************************
+//* Method overloading 
+//************************************************************************************************
+
+foo :: fn () {};
+foo :: fn (v: s32) {};
+foo :: fn (v: bool) {};
+
+MethodGroup array under scope entry 'foo'
+    - "f.()"
+    - "f.(s32)"
+    - "f.(bool)"

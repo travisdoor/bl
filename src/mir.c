@@ -1662,7 +1662,7 @@ sh_type_fn(Context *cnt, MirType *ret_type, BArray *arg_types, bool is_vargs)
 	BString *tmp = cnt->tmp_sh;
 	bo_string_clear(tmp);
 
-	bo_string_append(tmp, "f(");
+	bo_string_append(tmp, "f.(");
 
 	/* append all arg types isd */
 	if (arg_types) {
@@ -1798,7 +1798,7 @@ sh_type_enum(Context *cnt, ID *id, MirType *base_type, BArray *variants)
  * |------------+---------------------------------|
  * | Null       | n.<type>                        |
  * | Pointer    | p.<type>                        |
- * | Function   | f(<arg1,...>)<return type>      |
+ * | Function   | f.(<arg1,...>)<return type>     |
  * | Array      | <len>.<type>                    |
  * | Structures | <s|sl|sv|ss>.<name>{<m1,...>}   |
  * | Enumerator | <e>.<name>(<type>){<1,2,...>}   |
