@@ -255,16 +255,17 @@ struct MirModule {
 
 /* FN */
 struct MirFn {
-	MirInstr *   prototype;
-	ID *         id;
-	Ast *        decl_node;
-	MirType *    type;
-	Scope *      scope;
-	BArray *     variables;
-	int32_t      ref_count;
-	const char * llvm_name;
-	LLVMValueRef llvm_value;
-	bool         analyzed_for_cmptime_exec;
+	MirInstr *      prototype;
+	ID *            id;
+	Ast *           decl_node;
+	MirType *       type;
+	Scope *         scope;
+	BArray *        variables;
+	int32_t         ref_count;
+	const char *    llvm_name;
+	LLVMValueRef    llvm_value;
+	LLVMMetadataRef llvm_meta;
+	bool            analyzed_for_cmptime_exec;
 
 	DCpointer   extern_entry;
 	int32_t     flags;
