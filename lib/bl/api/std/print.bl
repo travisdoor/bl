@@ -47,8 +47,9 @@ print :: fn (format: string, args: ...) s32 {
     // HACK: use implicit conversion later!!!
     // HACK: use implicit conversion later!!!
     tmp := {:[]u8: buf.len, buf.ptr };
+    tmp2 := {:[]Any: args.len, args.ptr };
 
-    w := print_impl(tmp, format, args);
+    w := print_impl(tmp, format, tmp2);
     __os_write(OS_STDOUT, buf.ptr, w);
     return w;
 };
@@ -67,8 +68,9 @@ eprint :: fn (format: string, args: ...) s32 {
     // HACK: use implicit conversion later!!!
     // HACK: use implicit conversion later!!!
     tmp := {:[]u8: buf.len, buf.ptr };
+    tmp2 := {:[]Any: args.len, args.ptr };
 
-    w := print_impl(tmp, format, args);
+    w := print_impl(tmp, format, tmp2);
     __os_write(OS_STDERR, buf.ptr, w);
     return w;
 };
@@ -81,7 +83,8 @@ eprint :: fn (format: string, args: ...) s32 {
  * @ver 0.4.2
  */
 bprint :: fn (buf: []u8, format: string, args: ...) s32 {
-    return print_impl(buf, format, args);
+    tmp := {:[]Any: args.len, args.ptr };
+    return print_impl(buf, format, tmp);
 };
 
 #private

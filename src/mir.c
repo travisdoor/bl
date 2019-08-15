@@ -349,9 +349,6 @@ execute_entry_fn(Context *cnt);
 static void
 execute_test_cases(Context *cnt);
 
-static bool
-type_cmp(MirType *first, MirType *second);
-
 static ScopeEntry *
 register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool is_builtin, bool enable_groups);
 
@@ -1023,6 +1020,13 @@ static void
 exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *src_value);
 
 /* INLINES */
+static inline bool
+type_cmp(MirType *first, MirType *second)
+{
+	assert(first && second);
+	return first->id.hash == second->id.hash;
+}
+
 static inline ptrdiff_t
 get_struct_elem_offest(Context *cnt, MirType *type, uint32_t i)
 {
@@ -1080,21 +1084,6 @@ is_allocated_object(MirInstr *instr)
 
 	return false;
 }
-
-/*
-static inline bool
-is_elem_type_of_slice_same(MirType *first, MirType *second)
-{
-        assert(first && second);
-        assert(mir_is_slice_type(first) && "Not slice type.");
-        assert(mir_is_slice_type(second) && "Not slice type.");
-
-        MirType *first_elem_type  = get_slice_ptr_type(first);
-        MirType *second_elem_type = get_slice_ptr_type(second);
-
-        return type_cmp(first_elem_type, second_elem_type);
-}
-*/
 
 static inline void
 set_const_ptr(MirConstPtr *value, void *ptr, MirConstPtrKind kind)
@@ -3300,122 +3289,6 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 	default:
 		bl_unimplemented;
 	}
-}
-
-bool
-type_cmp(MirType *first, MirType *second)
-{
-	assert(first && second);
-	/* null vs ptr / ptr vs null / null vs null*/
-	if ((first->kind == MIR_TYPE_PTR && second->kind == MIR_TYPE_NULL) ||
-	    (first->kind == MIR_TYPE_NULL && second->kind == MIR_TYPE_PTR) ||
-	    (first->kind == MIR_TYPE_NULL && second->kind == MIR_TYPE_NULL))
-		return true;
-
-	if (!(mir_is_composit_type(first) && mir_is_composit_type(second)) &&
-	    first->kind != second->kind)
-		return false;
-
-	switch (first->kind) {
-	case MIR_TYPE_INT: {
-		return first->data.integer.bitcount == second->data.integer.bitcount &&
-		       first->data.integer.is_signed == second->data.integer.is_signed;
-	}
-
-	case MIR_TYPE_REAL: {
-		return first->data.real.bitcount == second->data.real.bitcount;
-	}
-
-	case MIR_TYPE_PTR: {
-		return type_cmp(mir_deref_type(first), mir_deref_type(second));
-	}
-
-	case MIR_TYPE_ENUM: {
-		/* HACK: here we compare named types if there is some name, later we
-		 * prefer to create some kind of type hashing. */
-		if (first->user_id && second->user_id &&
-		    first->user_id->hash == second->user_id->hash)
-			return true;
-
-		return false;
-	}
-
-	case MIR_TYPE_FN: {
-		if (!type_cmp(first->data.fn.ret_type, second->data.fn.ret_type)) return false;
-		BArray *     fargs = first->data.fn.arg_types;
-		BArray *     sargs = second->data.fn.arg_types;
-		const size_t fargc = fargs ? bo_array_size(fargs) : 0;
-		const size_t sargc = sargs ? bo_array_size(sargs) : 0;
-
-		if (fargc != sargc) return false;
-
-		MirType *ftmp, *stmp;
-		if (fargc) {
-			barray_foreach(fargs, ftmp)
-			{
-				stmp = bo_array_at(sargs, i, MirType *);
-				assert(stmp && ftmp);
-				if (!type_cmp(ftmp, stmp)) return false;
-			}
-		}
-
-		return true;
-	}
-
-	case MIR_TYPE_ARRAY: {
-		if (first->data.array.len != second->data.array.len) return false;
-		return type_cmp(first->data.array.elem_type, second->data.array.elem_type);
-	}
-
-	case MIR_TYPE_VARGS:
-	case MIR_TYPE_SLICE:
-	case MIR_TYPE_STRUCT: {
-		/* HACK: here we compare named types if there is some name, later we
-		 * prefer to create some kind of type hashing. */
-		if (first->user_id && second->user_id &&
-		    first->user_id->hash == second->user_id->hash)
-			return true;
-
-		BArray *fmems = first->data.strct.members;
-		BArray *smems = second->data.strct.members;
-		assert(fmems && smems);
-
-		/* Different count of members. */
-		if (bo_array_size(fmems) != bo_array_size(smems)) return false;
-
-		/* Compare members types. */
-		MirType *ftmp;
-		MirType *stmp;
-		barray_foreach(fmems, ftmp)
-		{
-			stmp = bo_array_at(smems, i, MirType *);
-			assert(fmems && smems);
-
-			if (!type_cmp(ftmp, stmp)) return false;
-		}
-
-		return true;
-	}
-
-	case MIR_TYPE_VOID:
-	case MIR_TYPE_TYPE:
-	case MIR_TYPE_BOOL:
-	case MIR_TYPE_STRING:
-		return true;
-
-	default:
-		break;
-	}
-
-#if BL_DEBUG
-	char tmp_first[256];
-	char tmp_second[256];
-	mir_type_to_str(tmp_first, 256, first, true);
-	mir_type_to_str(tmp_second, 256, second, true);
-	msg_warning("missing type comparation for types %s and %s!!!", tmp_first, tmp_second);
-#endif
-
-	return false;
 }
 
 /* analyze */
