@@ -251,6 +251,7 @@ struct MirModule {
 	LLVMTargetMachineRef llvm_tm;       // LLVM Machine.
 	char *               llvm_triple;   // LLVM triple.
 	LLVMDIBuilderRef     llvm_dibuilder;
+	LLVMMetadataRef      llvm_compile_unit;
 };
 
 /* FN */

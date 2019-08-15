@@ -374,23 +374,6 @@ emit_DI_unit(Context *cnt, Unit *unit)
 	                                               unit->dirpath,
 	                                               strlen(unit->dirpath));
 
-	const char *producer = "blc version " BL_VERSION;
-	LLVMDIBuilderCreateCompileUnit(cnt->llvm_dibuilder,
-	                               LLVMDWARFSourceLanguageC,
-	                               unit->llvm_file_meta,
-	                               producer,
-	                               strlen(producer),
-	                               false,
-	                               "",
-	                               0,
-	                               1,
-	                               "",
-	                               0,
-	                               LLVMDWARFEmissionFull,
-	                               1,
-	                               false,
-	                               false);
-
 	return unit->llvm_file_meta;
 }
 
@@ -522,7 +505,7 @@ emit_DI_fn(Context *cnt, MirFn *fn)
 	LLVMMetadataRef unit_meta = emit_DI_unit(cnt, fn_src->unit);
 	LLVMMetadataRef type_meta = emit_DI_type(cnt, fn->type);
 
-	LLVMDIFlags llvm_di_flags = LLVMDIFlagPrototyped;
+	LLVMDIFlags llvm_di_flags = LLVMDIFlagStaticMember;
 
 	fn->llvm_meta =
 	    LLVMDIBuilderCreateFunction(cnt->llvm_dibuilder,
@@ -1646,6 +1629,32 @@ emit_instr(Context *cnt, MirInstr *instr)
 	}
 }
 
+static void
+init_DI(Context *cnt)
+{
+	const char *producer = "blc version " BL_VERSION;
+
+	LLVMMetadataRef llvm_assembly_meta = LLVMDIBuilderCreateFile(
+	    cnt->llvm_dibuilder, cnt->assembly->name, strlen(cnt->assembly->name), ".", 1);
+
+	cnt->assembly->mir_module->llvm_compile_unit =
+	    LLVMDIBuilderCreateCompileUnit(cnt->llvm_dibuilder,
+	                                   LLVMDWARFSourceLanguageC99,
+	                                   llvm_assembly_meta,
+	                                   producer,
+	                                   strlen(producer),
+	                                   false,
+	                                   "",
+	                                   0,
+	                                   1,
+	                                   "",
+	                                   0,
+	                                   LLVMDWARFEmissionFull,
+	                                   1,
+	                                   false,
+	                                   false);
+}
+
 /* public */
 void
 ir_run(Builder *builder, Assembly *assembly)
@@ -1674,6 +1683,8 @@ ir_run(Builder *builder, Assembly *assembly)
 	cnt.llvm_instrinsic_memset = create_memset_fn(&cnt);
 	cnt.llvm_intrinsic_memcpy  = create_memcpy_fn(&cnt);
 	cnt.debug_build            = is_flag(builder->flags, BUILDER_DEBUG_BUILD);
+
+	if (cnt.debug_build) init_DI(&cnt);
 
 	emit_RTTI_types(&cnt);
 
