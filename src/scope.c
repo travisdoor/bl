@@ -57,12 +57,13 @@ scope_arenas_terminate(ScopeArenas *arenas)
 }
 
 Scope *
-scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size)
+scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size, struct Location *loc)
 {
-	Scope *scope   = arena_alloc(&arenas->scope_arena);
-	scope->entries = bo_htbl_new(sizeof(ScopeEntry *), size);
-	scope->parent  = parent;
-	scope->kind    = kind;
+	Scope *scope    = arena_alloc(&arenas->scope_arena);
+	scope->entries  = bo_htbl_new(sizeof(ScopeEntry *), size);
+	scope->parent   = parent;
+	scope->kind     = kind;
+	scope->location = loc;
 
 	return scope;
 }

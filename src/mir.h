@@ -255,17 +255,17 @@ struct MirModule {
 
 /* FN */
 struct MirFn {
-	MirInstr *      prototype;
-	ID *            id;
-	Ast *           decl_node;
-	MirType *       type;
-	Scope *         scope;
-	BArray *        variables;
-	int32_t         ref_count;
-	const char *    llvm_name;
-	LLVMValueRef    llvm_value;
-	LLVMMetadataRef llvm_meta;
-	bool            analyzed_for_cmptime_exec;
+	MirInstr *   prototype;
+	ID *         id;
+	Ast *        decl_node;
+	Scope *      decl_scope; /* scope in which functon is declared */
+	Scope *      body_scope; /* function body scope if there is one (optional) */
+	MirType *    type;
+	BArray *     variables;
+	int32_t      ref_count;
+	const char * llvm_name;
+	LLVMValueRef llvm_value;
+	bool         analyzed_for_cmptime_exec;
 
 	DCpointer   extern_entry;
 	int32_t     flags;
@@ -286,7 +286,7 @@ struct MirMember {
 	ID *     id;
 	Ast *    decl_node;
 	MirType *type;
-	Scope *  scope;
+	Scope *  decl_scope;
 	int64_t  index;
 };
 
@@ -417,7 +417,7 @@ struct MirConstValue {
 struct MirVariant {
 	ID *           id;
 	Ast *          decl_node;
-	Scope *        scope;
+	Scope *        decl_scope;
 	MirConstValue *value;
 };
 
@@ -426,7 +426,7 @@ struct MirVar {
 	MirConstValue       value; /* contains also allocated type */
 	ID *                id;
 	Ast *               decl_node;
-	Scope *             scope;
+	Scope *             decl_scope;
 	int32_t             ref_count;
 	bool                is_mutable;
 	bool                comptime;

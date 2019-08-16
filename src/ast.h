@@ -155,11 +155,6 @@ struct AstLink {
 };
 
 struct AstIdent {
-	/* TODO: remove and use base scope in Ast base object.*/
-	/* TODO: remove and use base scope in Ast base object.*/
-	/* TODO: remove and use base scope in Ast base object.*/
-	struct Scope *scope;
-
 	ID id;
 };
 
@@ -454,7 +449,7 @@ ast_is_type(Ast *node)
 }
 
 Ast *
-ast_create_node(struct Arena *arena, AstKind c, struct Token *tok);
+ast_create_node(struct Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope);
 
 const char *
 ast_binop_to_str(BinopKind op);

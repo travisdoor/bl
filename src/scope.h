@@ -81,10 +81,13 @@ typedef enum ScopeKind {
 } ScopeKind;
 
 typedef struct Scope {
-	ScopeKind       kind;
-	struct Scope *  parent;
-	BHashTable *    entries;
-	LLVMMetadataRef llvm_meta;
+	ScopeKind        kind;
+	struct Scope *   parent;
+	BHashTable *     entries;
+	LLVMMetadataRef  llvm_meta; /* Optional ID data*/
+	struct Location *location;  /* Optional scope start location in the source file (ex.:
+	                               function body  starting with '{'). Note: global scope has no
+	                               location data. */
 } Scope;
 
 void
@@ -94,7 +97,7 @@ void
 scope_arenas_terminate(ScopeArenas *arenas);
 
 Scope *
-scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size);
+scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size, struct Location *loc);
 
 ScopeEntry *
 scope_create_entry(ScopeArenas *  arenas,

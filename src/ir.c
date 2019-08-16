@@ -288,6 +288,15 @@ static LLVMMetadataRef
 emit_DI_fn(Context *cnt, MirFn *fn);
 
 static LLVMMetadataRef
+emit_DI_var(Context *cnt, MirVar *var);
+
+static LLVMMetadataRef
+emit_DI_arg(Context *cnt, MirInstrArg *arg);
+
+static LLVMMetadataRef
+emit_DI_scope(Context *cnt, Scope *scope);
+
+static LLVMMetadataRef
 emit_DI_instr_location(Context *cnt, MirInstr *instr);
 
 static LLVMMetadataRef
@@ -367,12 +376,32 @@ emit_basic_block(Context *cnt, MirInstrBlock *block)
 
 /* impl */
 LLVMMetadataRef
+emit_DI_scope(Context *cnt, Scope *scope)
+{
+	assert(scope);
+	if (scope->llvm_meta) return scope->llvm_meta;
+
+	assert(scope->location && "Missing scope location info.");
+
+	LLVMMetadataRef llvm_parent_meta = emit_DI_scope(cnt, scope->parent);
+	LLVMMetadataRef llvm_meta =
+	    LLVMDIBuilderCreateLexicalBlock(cnt->llvm_dibuilder,
+	                                    llvm_parent_meta,
+	                                    scope->location->unit->llvm_file_meta,
+	                                    scope->location->line,
+	                                    scope->location->col);
+	scope->llvm_meta = llvm_meta;
+
+	return llvm_meta;
+}
+
+LLVMMetadataRef
 emit_DI_instr_location(Context *cnt, MirInstr *instr)
 {
 	if (!instr->node) return NULL;
 
 	Location *      location   = instr->node->location;
-	LLVMMetadataRef scope_meta = NULL;
+	LLVMMetadataRef scope_meta = emit_DI_scope(cnt, instr->node->parent_scope);
 	LLVMMetadataRef llvm_meta  = LLVMDIBuilderCreateDebugLocation(
             cnt->llvm_cnt, location->line, location->col, scope_meta, NULL);
 
@@ -514,7 +543,7 @@ emit_DI_type(Context *cnt, MirType *type)
 LLVMMetadataRef
 emit_DI_fn(Context *cnt, MirFn *fn)
 {
-	if (fn->llvm_meta) return fn->llvm_meta;
+	if (fn->decl_scope->llvm_meta) return fn->decl_scope->llvm_meta;
 	assert(fn->decl_node && "Generating debug info of implicit function???");
 	Location *fn_src = fn->decl_node->location;
 
@@ -524,24 +553,70 @@ emit_DI_fn(Context *cnt, MirFn *fn)
 
 	LLVMDIFlags llvm_di_flags = LLVMDIFlagStaticMember;
 
-	fn->llvm_meta =
-	    LLVMDIBuilderCreateFunction(cnt->llvm_dibuilder,
-	                                unit_meta,
-	                                fn->id->str,
-	                                strlen(fn->id->str),
-	                                fn->llvm_name,
-	                                strlen(fn->llvm_name),
-	                                unit_meta,
-	                                fn_src->line,
-	                                type_meta,
-	                                fn->scope->kind != SCOPE_GLOBAL, // is local for unit ???
-	                                true,
-	                                0,             // scope line ???
-	                                llvm_di_flags, // look at LLVMDIFlags
-	                                false);
+	LLVMMetadataRef llvm_meta = LLVMDIBuilderCreateFunction(
+	    cnt->llvm_dibuilder,
+	    unit_meta,
+	    fn->id->str,
+	    strlen(fn->id->str),
+	    fn->llvm_name,
+	    strlen(fn->llvm_name),
+	    unit_meta,
+	    fn_src->line,
+	    type_meta,
+	    fn->decl_scope->kind != SCOPE_GLOBAL, // is local for unit ???
+	    true,
+	    0,             // scope line ???
+	    llvm_di_flags, // look at LLVMDIFlags
+	    false);
 
-	LLVMSetSubprogram(fn->llvm_value, fn->llvm_meta);
-	return fn->llvm_meta;
+	LLVMSetSubprogram(fn->llvm_value, llvm_meta);
+	if (fn->body_scope) fn->body_scope->llvm_meta = llvm_meta;
+
+	return llvm_meta;
+}
+
+LLVMMetadataRef
+emit_DI_var(Context *cnt, MirVar *var)
+{
+	if (!var->decl_node) return NULL;
+
+	const char *    name       = var->id->str;
+	Location *      location   = var->decl_node->location;
+	LLVMMetadataRef scope_meta = emit_DI_scope(cnt, var->decl_scope);
+	LLVMMetadataRef type_meta  = emit_DI_type(cnt, var->value.type);
+
+	return LLVMDIBuilderCreateAutoVariable(cnt->llvm_dibuilder,
+	                                       scope_meta,
+	                                       name,
+	                                       strlen(name),
+	                                       location->unit->llvm_file_meta,
+	                                       location->line,
+	                                       type_meta,
+	                                       true,
+	                                       LLVMDIFlagZero,
+	                                       var->value.type->alignment * 8);
+}
+
+LLVMMetadataRef
+emit_DI_arg(Context *cnt, MirInstrArg *arg)
+{
+	if (!arg->base.node) return NULL;
+
+	const char *    name       = LLVMGetValueName(arg->base.llvm_value);
+	Location *      location   = arg->base.node->location;
+	LLVMMetadataRef scope_meta = emit_DI_scope(cnt, arg->base.node->parent_scope);
+	LLVMMetadataRef type_meta  = emit_DI_type(cnt, arg->base.value.type);
+
+	return LLVMDIBuilderCreateParameterVariable(cnt->llvm_dibuilder,
+	                                            scope_meta,
+	                                            name,
+	                                            strlen(name),
+	                                            arg->i,
+	                                            location->unit->llvm_file_meta,
+	                                            location->line,
+	                                            type_meta,
+	                                            true,
+	                                            LLVMDIFlagZero);
 }
 
 void
@@ -731,6 +806,8 @@ emit_instr_arg(Context *cnt, MirInstrArg *arg)
 	assert(llvm_fn);
 
 	arg->base.llvm_value = LLVMGetParam(llvm_fn, arg->i);
+
+	if (cnt->debug_build) emit_DI_arg(cnt, arg);
 }
 
 void
@@ -1533,6 +1610,8 @@ emit_allocas(Context *cnt, MirFn *fn)
 
 		var->llvm_value = LLVMBuildAlloca(cnt->llvm_builder, var_type, var_name);
 		LLVMSetAlignment(var->llvm_value, var_alignment);
+
+		if (cnt->debug_build) emit_DI_var(cnt, var);
 	}
 }
 

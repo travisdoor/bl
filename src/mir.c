@@ -1487,7 +1487,7 @@ commit_fn(Context *cnt, MirFn *fn)
 	ID *id = fn->id;
 	assert(id);
 
-	ScopeEntry *entry = scope_lookup(fn->scope, id, true, false);
+	ScopeEntry *entry = scope_lookup(fn->decl_scope, id, true, false);
 	assert(entry && "cannot commit unregistred function");
 
 	entry->kind    = SCOPE_ENTRY_FN;
@@ -1502,7 +1502,7 @@ commit_variant(Context *cnt, MirVariant *v)
 	ID *id = v->id;
 	assert(id);
 
-	ScopeEntry *entry = scope_lookup(v->scope, id, false, true);
+	ScopeEntry *entry = scope_lookup(v->decl_scope, id, false, true);
 	assert(entry && "cannot commit unregistred variant");
 
 	entry->kind         = SCOPE_ENTRY_VARIANT;
@@ -1515,7 +1515,7 @@ commit_member(Context *cnt, MirMember *member)
 	ID *id = member->id;
 	assert(id);
 
-	ScopeEntry *entry = scope_lookup(member->scope, id, false, true);
+	ScopeEntry *entry = scope_lookup(member->decl_scope, id, false, true);
 	assert(entry && "cannot commit unregistred member");
 
 	entry->kind        = SCOPE_ENTRY_MEMBER;
@@ -1528,7 +1528,7 @@ commit_var(Context *cnt, MirVar *var)
 	ID *id = var->id;
 	assert(id);
 
-	ScopeEntry *entry = scope_lookup(var->scope, id, true, false);
+	ScopeEntry *entry = scope_lookup(var->decl_scope, id, true, false);
 	assert(entry && "cannot commit unregistred var");
 
 	entry->kind     = SCOPE_ENTRY_VAR;
@@ -2144,7 +2144,7 @@ create_var(Context *cnt,
 	MirVar *tmp       = arena_alloc(&cnt->module->arenas.var_arena);
 	tmp->id           = id;
 	tmp->value.type   = alloc_type;
-	tmp->scope        = scope;
+	tmp->decl_scope   = scope;
 	tmp->decl_node    = decl_node;
 	tmp->is_mutable   = is_mutable;
 	tmp->is_in_gscope = is_in_gscope;
@@ -2197,26 +2197,26 @@ create_fn(Context *        cnt,
           int32_t          flags,
           MirInstrFnProto *prototype)
 {
-	MirFn *tmp     = arena_alloc(&cnt->module->arenas.fn_arena);
-	tmp->variables = create_arr(cnt, sizeof(MirVar *));
-	tmp->llvm_name = llvm_name;
-	tmp->id        = id;
-	tmp->scope     = scope;
-	tmp->flags     = flags;
-	tmp->decl_node = node;
-	tmp->prototype = &prototype->base;
+	MirFn *tmp      = arena_alloc(&cnt->module->arenas.fn_arena);
+	tmp->variables  = create_arr(cnt, sizeof(MirVar *));
+	tmp->llvm_name  = llvm_name;
+	tmp->id         = id;
+	tmp->decl_scope = scope;
+	tmp->flags      = flags;
+	tmp->decl_node  = node;
+	tmp->prototype  = &prototype->base;
 	return tmp;
 }
 
 MirMember *
 create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t index, MirType *type)
 {
-	MirMember *tmp = arena_alloc(&cnt->module->arenas.member_arena);
-	tmp->decl_node = node;
-	tmp->id        = id;
-	tmp->index     = index;
-	tmp->type      = type;
-	tmp->scope     = scope;
+	MirMember *tmp  = arena_alloc(&cnt->module->arenas.member_arena);
+	tmp->decl_node  = node;
+	tmp->id         = id;
+	tmp->index      = index;
+	tmp->type       = type;
+	tmp->decl_scope = scope;
 	return tmp;
 }
 
@@ -2226,7 +2226,7 @@ create_variant(Context *cnt, Ast *node, ID *id, Scope *scope, MirConstValue *val
 	MirVariant *tmp = arena_alloc(&cnt->module->arenas.variant_arena);
 	tmp->decl_node  = node;
 	tmp->id         = id;
-	tmp->scope      = scope;
+	tmp->decl_scope = scope;
 	tmp->value      = value;
 	return tmp;
 }
@@ -2851,7 +2851,7 @@ append_instr_decl_var(Context * cnt,
 
 	tmp->var = create_var(cnt,
 	                      node,
-	                      node->data.ident.scope,
+	                      node->parent_scope,
 	                      &node->data.ident.id,
 	                      NULL,
 	                      is_mutable,
@@ -2903,7 +2903,7 @@ append_instr_decl_variant(Context *cnt, Ast *node, MirInstr *value)
 
 	assert(node && node->kind == AST_IDENT);
 	ID *   id    = &node->data.ident.id;
-	Scope *scope = node->data.ident.scope;
+	Scope *scope = node->parent_scope;
 	tmp->variant = create_variant(cnt, node, id, scope, NULL);
 
 	push_into_curr_block(cnt, &tmp->base);
@@ -4454,9 +4454,9 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 			/* setup and provide member */
 			member = decl_member->member;
 			assert(member);
-			member->type  = member_type;
-			member->scope = scope;
-			member->index = i;
+			member->type       = member_type;
+			member->decl_scope = scope;
+			member->index      = i;
 
 			commit_member(cnt, member);
 		}
@@ -7839,7 +7839,7 @@ ast_expr_ref(Context *cnt, Ast *ref)
 	assert(ident);
 	assert(ident->kind == AST_IDENT);
 
-	Scope *scope = ident->data.ident.scope;
+	Scope *scope = ident->parent_scope;
 	Unit * unit  = ident->location->unit;
 	assert(unit);
 	assert(scope);
@@ -7896,6 +7896,9 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 	/* external functions has no body */
 	if (!ast_block) return &fn_proto->base;
 
+	/* Set body scope for DI. */
+	fn->body_scope = ast_block->parent_scope;
+
 	/* create block for initialization locals and arguments */
 	MirInstrBlock *init_block =
 	    append_block(cnt, fn_proto->base.value.data.v_ptr.data.fn, "entry");
@@ -7922,7 +7925,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 				register_symbol(cnt,
 				                ast_arg_name,
 				                &ast_arg_name->data.ident.id,
-				                ast_arg_name->data.ident.scope,
+				                ast_arg_name->parent_scope,
 				                false,
 				                false);
 			}
@@ -8091,7 +8094,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 	assert(ast_name && "Missing entity name.");
 	assert(ast_name->kind == AST_IDENT && "Expected identificator.");
 
-	Scope *scope = ast_name->data.ident.scope;
+	Scope *scope = ast_name->parent_scope;
 	ID *   id    = &ast_name->data.ident.id;
 
 	if (ast_value && ast_value->kind == AST_EXPR_LIT_FN) {
@@ -8109,10 +8112,10 @@ ast_decl_entity(Context *cnt, Ast *entity)
 				    gen_uq_name(cnt, ast_name->data.ident.id.str);
 		}
 
-		value->value.data.v_ptr.data.fn->scope     = scope;
-		value->value.data.v_ptr.data.fn->id        = id;
-		value->value.data.v_ptr.data.fn->decl_node = ast_name;
-		value->value.data.v_ptr.data.fn->flags     = entity->data.decl_entity.flags;
+		value->value.data.v_ptr.data.fn->decl_scope = scope;
+		value->value.data.v_ptr.data.fn->id         = id;
+		value->value.data.v_ptr.data.fn->decl_node  = ast_name;
+		value->value.data.v_ptr.data.fn->flags      = entity->data.decl_entity.flags;
 
 		if (ast_type) {
 			((MirInstrFnProto *)value)->user_type =
@@ -8127,6 +8130,10 @@ ast_decl_entity(Context *cnt, Ast *entity)
 			assert(!cnt->entry_fn);
 			cnt->entry_fn            = value->value.data.v_ptr.data.fn;
 			cnt->entry_fn->ref_count = 1; /* main must be generated into LLVM */
+
+			/* TODO: set flag for fn instance to use it later for DI generation */
+			/* TODO: set flag for fn instance to use it later for DI generation */
+			/* TODO: set flag for fn instance to use it later for DI generation */
 		}
 	} else {
 		/* other declaration types */
@@ -8202,12 +8209,8 @@ ast_decl_member(Context *cnt, Ast *arg)
 		assert(ast_name->kind == AST_IDENT);
 		result = append_instr_decl_member(cnt, ast_name, result);
 
-		register_symbol(cnt,
-		                ast_name,
-		                &ast_name->data.ident.id,
-		                ast_name->data.ident.scope,
-		                false,
-		                false);
+		register_symbol(
+		    cnt, ast_name, &ast_name->data.ident.id, ast_name->parent_scope, false, false);
 	}
 
 	assert(result);
@@ -8224,7 +8227,7 @@ ast_decl_variant(Context *cnt, Ast *variant)
 	MirInstr *value = ast(cnt, ast_value);
 
 	register_symbol(
-	    cnt, ast_name, &ast_name->data.ident.id, ast_name->data.ident.scope, false, false);
+	    cnt, ast_name, &ast_name->data.ident.id, ast_name->parent_scope, false, false);
 
 	return append_instr_decl_variant(cnt, ast_name, value);
 }
@@ -8235,7 +8238,7 @@ ast_type_ref(Context *cnt, Ast *type_ref)
 	Ast *ident = type_ref->data.type_ref.ident;
 	assert(ident);
 
-	Scope *scope = ident->data.ident.scope;
+	Scope *scope = ident->parent_scope;
 	Unit * unit  = ident->location->unit;
 	assert(unit);
 	assert(scope);
@@ -9035,7 +9038,8 @@ mir_run(Builder *builder, Assembly *assembly)
 	cnt.tmp_sh                   = bo_string_new(1024);
 	cnt.analyze.waiting          = bo_htbl_new_bo(bo_typeof(BArray), true, ANALYZE_TABLE_SIZE);
 	cnt.type_table               = assembly->type_table;
-	cnt.builtin_types.cache = scope_create(&builder->scope_arenas, SCOPE_DEFAULT, NULL, 64);
+	cnt.builtin_types.cache =
+	    scope_create(&builder->scope_arenas, SCOPE_DEFAULT, NULL, 64, NULL);
 
 	/* initialize all builtin types */
 	init_builtins(&cnt);

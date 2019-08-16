@@ -63,11 +63,12 @@ node_dtor(Ast *node)
 }
 
 Ast *
-ast_create_node(struct Arena *arena, AstKind c, struct Token *tok)
+ast_create_node(struct Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope)
 {
-	Ast *node      = arena_alloc(arena);
-	node->kind     = c;
-	node->location = tok ? &tok->location : NULL;
+	Ast *node          = arena_alloc(arena);
+	node->kind         = c;
+	node->parent_scope = parent_scope;
+	node->location     = tok ? &tok->location : NULL;
 
 #if BL_DEBUG
 	static uint64_t serial = 0;
