@@ -27,8 +27,8 @@
 //************************************************************************************************
 
 #include "assembly.h"
-#include "builder.h"
 #include "blmemory.h"
+#include "builder.h"
 #include "mir.h"
 #include "unit.h"
 #include <bobject/containers/hash.h>
@@ -40,10 +40,10 @@
 static void
 init_dl(Assembly *assembly)
 {
-	assembly->dl.libs = bo_array_new(sizeof(NativeLib));
+	assembly->dl.libs      = bo_array_new(sizeof(NativeLib));
 	assembly->dl.lib_paths = bo_array_new(sizeof(char *));
 
-	DCCallVM *vm      = dcNewCallVM(4096);
+	DCCallVM *vm = dcNewCallVM(4096);
 	dcMode(vm, DC_CALL_C_DEFAULT);
 	assembly->dl.vm = vm;
 }

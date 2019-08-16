@@ -33,8 +33,9 @@
 #include <assert.h>
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
+#include <llvm-c/Types.h>
 
-struct Src;
+struct Location;
 struct Ast;
 struct MirInstr;
 struct MirType;
@@ -83,6 +84,7 @@ typedef struct Scope {
 	ScopeKind       kind;
 	struct Scope *  parent;
 	BHashTable *    entries;
+	LLVMMetadataRef llvm_meta;
 } Scope;
 
 void

@@ -186,7 +186,6 @@ get_filename_from_filepath(char *buf, const size_t l, const char *filepath)
 	return true;
 }
 
-
 void
 platform_lib_name(const char *name, char *buffer, size_t max_len)
 {

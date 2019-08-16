@@ -43,18 +43,18 @@ token_printer_run(Unit *unit)
 		tok = &bo_array_at(tokens_arr, i, Token);
 
 		if (line == -1) {
-			line = tok->src.line;
+			line = tok->location.line;
 			fprintf(stdout, "%d: ", line);
-		} else if (tok->src.line != line) {
-			line = tok->src.line;
+		} else if (tok->location.line != line) {
+			line = tok->location.line;
 			fprintf(stdout, "\n%d: ", line);
 		}
 
 		fprintf(stdout,
 		        "[" YELLOW("'%s'") " %i:%i], ",
 		        sym_strings[tok->sym],
-		        tok->src.line,
-		        tok->src.col);
+		        tok->location.line,
+		        tok->location.col);
 	}
 
 	fprintf(stdout, "\n");

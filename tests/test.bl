@@ -3,5 +3,6 @@
 #load "std/print.bl"
 
 main :: fn () s32 {
+    print("hello word!!!\n");
     return 0;
 };

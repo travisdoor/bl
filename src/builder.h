@@ -78,7 +78,7 @@ typedef enum {
 
 typedef enum { BUILDER_CUR_AFTER, BUILDER_CUR_WORD, BUILDER_CUR_BEFORE } BuilderCurPos;
 
-struct Src;
+struct Location;
 
 Builder *
 builder_new(void);
@@ -99,12 +99,12 @@ void
 builder_warning(Builder *builder, const char *format, ...);
 
 void
-builder_msg(Builder *      builder,
-            BuilderMsgType type,
-            int32_t        code,
-            struct Src *   src,
-            BuilderCurPos  pos,
-            const char *   format,
+builder_msg(Builder *        builder,
+            BuilderMsgType   type,
+            int32_t          code,
+            struct Location *src,
+            BuilderCurPos    pos,
+            const char *     format,
             ...);
 
 BString *

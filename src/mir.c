@@ -1066,7 +1066,7 @@ setup_instr_const_null(Context *cnt, MirInstr *instr, MirType *type)
 	builder_msg(cnt->builder,
 	            BUILDER_MSG_ERROR,
 	            ERR_INVALID_TYPE,
-	            instr->node->src,
+	            instr->node->location,
 	            BUILDER_CUR_WORD,
 	            "Invalid use of null constant.");
 
@@ -1474,7 +1474,7 @@ error_types(Context *cnt, MirType *from, MirType *to, Ast *loc, const char *msg)
 	builder_msg(cnt->builder,
 	            BUILDER_MSG_ERROR,
 	            ERR_INVALID_TYPE,
-	            loc->src,
+	            loc->location,
 	            BUILDER_CUR_WORD,
 	            msg,
 	            tmp_from,
@@ -1837,8 +1837,8 @@ register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool is_builtin, 
 		if (!is_private) goto COLLIDE;
 
 		const bool collision_in_same_unit =
-		    (node ? node->src->unit : NULL) ==
-		    (collision->node ? collision->node->src->unit : NULL);
+		    (node ? node->location->unit : NULL) ==
+		    (collision->node ? collision->node->location->unit : NULL);
 
 		if (collision_in_same_unit) {
 			goto COLLIDE;
@@ -1861,7 +1861,7 @@ COLLIDE : {
 	builder_msg(cnt->builder,
 	            BUILDER_MSG_ERROR,
 	            ERR_DUPLICATE_SYMBOL,
-	            node ? node->src : NULL,
+	            node ? node->location : NULL,
 	            BUILDER_CUR_WORD,
 	            err_msg,
 	            id->str);
@@ -1870,7 +1870,7 @@ COLLIDE : {
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_NOTE,
 		            0,
-		            collision->node->src,
+		            collision->node->location,
 		            BUILDER_CUR_WORD,
 		            "Previous declaration found here.");
 	}
@@ -3452,7 +3452,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_INVALID_TYPE,
-			            instr_type->node->src,
+			            instr_type->node->location,
 			            BUILDER_CUR_WORD,
 			            "Expected type before compound expression.");
 			return ANALYZE_FAILED;
@@ -3490,7 +3490,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_INVALID_INITIALIZER,
-			            cmp->base.node->src,
+			            cmp->base.node->location,
 			            BUILDER_CUR_WORD,
 			            "Array initializer must explicitly set all array elements of "
 			            "the array or "
@@ -3535,7 +3535,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_INVALID_INITIALIZER,
-			            cmp->base.node->src,
+			            cmp->base.node->location,
 			            BUILDER_CUR_WORD,
 			            "Structure initializer must explicitly set all members of the "
 			            "structure or initialize structure to 0 by zero initializer "
@@ -3572,7 +3572,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_INVALID_INITIALIZER,
-			            value->node->src,
+			            value->node->location,
 			            BUILDER_CUR_WORD,
 			            "One value only is expected for non-agragate types.");
 			return ANALYZE_FAILED;
@@ -3663,7 +3663,7 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
-		            elem_ptr->arr_ptr->node->src,
+		            elem_ptr->arr_ptr->node->location,
 		            BUILDER_CUR_WORD,
 		            "Expected array type or slice.");
 		return ANALYZE_FAILED;
@@ -3681,7 +3681,7 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 				builder_msg(cnt->builder,
 				            BUILDER_MSG_ERROR,
 				            ERR_BOUND_CHECK_FAILED,
-				            elem_ptr->index->node->src,
+				            elem_ptr->index->node->location,
 				            BUILDER_CUR_WORD,
 				            "Array index is out of the bounds (%llu)",
 				            i);
@@ -3714,7 +3714,7 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
-		            arr_ptr->node->src,
+		            arr_ptr->node->location,
 		            BUILDER_CUR_WORD,
 		            "Expected array or slice type.");
 		return ANALYZE_FAILED;
@@ -3735,7 +3735,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
-		            target_ptr->node->src,
+		            target_ptr->node->location,
 		            BUILDER_CUR_WORD,
 		            "Expected structure type.");
 		return ANALYZE_FAILED;
@@ -3784,7 +3784,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_INVALID_MEMBER_ACCESS,
-			            ast_member_ident->src,
+			            ast_member_ident->location,
 			            BUILDER_CUR_WORD,
 			            "Unknown member.");
 		}
@@ -3824,7 +3824,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_UNKNOWN_SYMBOL,
-			            member_ptr->member_ident->src,
+			            member_ptr->member_ident->location,
 			            BUILDER_CUR_WORD,
 			            "Unknown slice member.");
 			return ANALYZE_FAILED;
@@ -3844,7 +3844,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_UNKNOWN_SYMBOL,
-			            member_ptr->member_ident->src,
+			            member_ptr->member_ident->location,
 			            BUILDER_CUR_WORD,
 			            "Unknown structure member.");
 			return ANALYZE_FAILED;
@@ -3887,7 +3887,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_UNKNOWN_SYMBOL,
-			            member_ptr->member_ident->src,
+			            member_ptr->member_ident->location,
 			            BUILDER_CUR_WORD,
 			            "Unknown enumerator variant.");
 			return ANALYZE_FAILED;
@@ -3913,7 +3913,7 @@ INVALID:
 	builder_msg(cnt->builder,
 	            BUILDER_MSG_ERROR,
 	            ERR_INVALID_MEMBER_ACCESS,
-	            target_ptr->node->src,
+	            target_ptr->node->location,
 	            BUILDER_CUR_WORD,
 	            "Expected structure or enumerator type.");
 	return ANALYZE_FAILED;
@@ -3929,7 +3929,7 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_EXPECTED_DECL,
-		            addrof->base.node->src,
+		            addrof->base.node->location,
 		            BUILDER_CUR_WORD,
 		            "Cannot take the address of unallocated object.");
 		return ANALYZE_FAILED;
@@ -3939,7 +3939,7 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_ADDRES_MODE,
-		            addrof->base.node->src,
+		            addrof->base.node->location,
 		            BUILDER_CUR_WORD,
 		            "Cannot take address of constant.");
 	}
@@ -4241,7 +4241,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_UNKNOWN_SYMBOL,
-			            fn_proto->base.node->src,
+			            fn_proto->base.node->location,
 			            BUILDER_CUR_WORD,
 			            "External symbol '%s' not found.",
 			            fn->llvm_name);
@@ -4292,7 +4292,7 @@ analyze_instr_load(Context *cnt, MirInstrLoad *load)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
-		            src->node->src,
+		            src->node->location,
 		            BUILDER_CUR_WORD,
 		            "Expected pointer.");
 		return ANALYZE_FAILED;
@@ -4385,7 +4385,7 @@ analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *variant_instr)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_INVALID_EXPR,
-			            variant_instr->value->node->src,
+			            variant_instr->value->node->location,
 			            BUILDER_CUR_WORD,
 			            "Enum variant value must be compile time known.");
 			return ANALYZE_FAILED;
@@ -4441,7 +4441,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 				builder_msg(cnt->builder,
 				            BUILDER_MSG_ERROR,
 				            ERR_INVALID_TYPE,
-				            (*member_instr)->node->src,
+				            (*member_instr)->node->location,
 				            BUILDER_CUR_WORD,
 				            "Invalid type of the structure member, functions can "
 				            "be referenced only by pointers.");
@@ -4491,7 +4491,7 @@ analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
-		            type_slice->elem_type->node->src,
+		            type_slice->elem_type->node->location,
 		            BUILDER_CUR_WORD,
 		            "Expected type.");
 		return ANALYZE_FAILED;
@@ -4524,7 +4524,7 @@ analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_INVALID_TYPE,
-			            type_vargs->elem_type->node->src,
+			            type_vargs->elem_type->node->location,
 			            BUILDER_CUR_WORD,
 			            "Expected type.");
 			return ANALYZE_FAILED;
@@ -4568,7 +4568,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_EXPECTED_CONST,
-		            type_arr->len->node->src,
+		            type_arr->len->node->location,
 		            BUILDER_CUR_WORD,
 		            "Array size must be compile-time constant.");
 		return ANALYZE_FAILED;
@@ -4578,7 +4578,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
-		            type_arr->elem_type->node->src,
+		            type_arr->elem_type->node->location,
 		            BUILDER_CUR_WORD,
 		            "Expected type.");
 		return ANALYZE_FAILED;
@@ -4592,7 +4592,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_ARR_SIZE,
-		            type_arr->len->node->src,
+		            type_arr->len->node->location,
 		            BUILDER_CUR_WORD,
 		            "Array size cannot be 0.");
 		return ANALYZE_FAILED;
@@ -4638,7 +4638,7 @@ analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_INVALID_TYPE,
-			            type_enum->base_type->node->src,
+			            type_enum->base_type->node->location,
 			            BUILDER_CUR_WORD,
 			            "Base type of enumerator must be an integer type.");
 			return ANALYZE_FAILED;
@@ -4697,7 +4697,7 @@ analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_INVALID_TYPE,
-			            type_ptr->type->node->src,
+			            type_ptr->type->node->location,
 			            BUILDER_CUR_WORD,
 			            "Expected type name.");
 			return ANALYZE_FAILED;
@@ -4711,7 +4711,7 @@ analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
-		            type_ptr->base.node->src,
+		            type_ptr->base.node->location,
 		            BUILDER_CUR_WORD,
 		            "Cannot create pointer to type.");
 		return ANALYZE_FAILED;
@@ -4869,7 +4869,7 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_EXPR,
-		            ret->base.node->src,
+		            ret->base.node->location,
 		            BUILDER_CUR_AFTER,
 		            "Expected return value.");
 		return ANALYZE_FAILED;
@@ -4880,7 +4880,7 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_EXPR,
-		            ret->value->node->src,
+		            ret->value->node->location,
 		            BUILDER_CUR_WORD,
 		            "Unexpected return value.");
 		return ANALYZE_FAILED;
@@ -4934,7 +4934,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_UNINITIALIZED,
-		            decl->base.node->src,
+		            decl->base.node->location,
 		            BUILDER_CUR_WORD,
 		            "All globals must be initialized to compile time known value.");
 		return ANALYZE_FAILED;
@@ -4948,7 +4948,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_MUTABILITY,
-		            decl->base.node->src,
+		            decl->base.node->location,
 		            BUILDER_CUR_WORD,
 		            "Type declaration must be immutable.");
 		return ANALYZE_FAILED;
@@ -4959,7 +4959,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
-		            decl->base.node->src,
+		            decl->base.node->location,
 		            BUILDER_CUR_WORD,
 		            "Invalid type of the variable, functions can be referenced "
 		            "only by pointers.");
@@ -4969,7 +4969,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
-		            decl->base.node->src,
+		            decl->base.node->location,
 		            BUILDER_CUR_WORD,
 		            "Cannot allocate unsized type.");
 		return ANALYZE_FAILED;
@@ -4979,7 +4979,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_WARNING,
 		            0,
-		            decl->base.node->src,
+		            decl->base.node->location,
 		            BUILDER_CUR_WORD,
 		            "Unused declaration.");
 	}
@@ -5047,7 +5047,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_EXPECTED_FUNC,
-		            call->callee->node->src,
+		            call->callee->node->location,
 		            BUILDER_CUR_WORD,
 		            "Expected a function name.");
 		return ANALYZE_FAILED;
@@ -5086,7 +5086,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_INVALID_ARG_COUNT,
-			            call->base.node->src,
+			            call->base.node->location,
 			            BUILDER_CUR_WORD,
 			            "Expected at least %u %s, but called with %u.",
 			            callee_argc,
@@ -5139,7 +5139,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_INVALID_ARG_COUNT,
-			            call->base.node->src,
+			            call->base.node->location,
 			            BUILDER_CUR_WORD,
 			            "Expected %u %s, but called with %u.",
 			            callee_argc,
@@ -5178,7 +5178,7 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_EXPR,
-		            store->base.node->src,
+		            store->base.node->location,
 		            BUILDER_CUR_WORD,
 		            "Left hand side of the expression cannot be assigned.");
 		return ANALYZE_FAILED;
@@ -5188,7 +5188,7 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_INVALID_EXPR,
-		            store->base.node->src,
+		            store->base.node->location,
 		            BUILDER_CUR_WORD,
 		            "Cannot assign to constant.");
 	}
@@ -5224,7 +5224,7 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_MISSING_RETURN,
-			            fn->decl_node->src,
+			            fn->decl_node->location,
 			            BUILDER_CUR_WORD,
 			            "Not every path inside function return value.");
 		}
@@ -5582,7 +5582,7 @@ analyze_report_unresolved(Context *cnt)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_UNKNOWN_SYMBOL,
-			            instr->node->src,
+			            instr->node->location,
 			            BUILDER_CUR_WORD,
 			            "Unknown symbol.");
 		}
@@ -5633,7 +5633,7 @@ exec_print_call_stack(Context *cnt, size_t max_nesting)
 
 	if (!instr) return;
 	/* print last instruction */
-	builder_msg(cnt->builder, BUILDER_MSG_LOG, 0, instr->node->src, BUILDER_CUR_WORD, "");
+	builder_msg(cnt->builder, BUILDER_MSG_LOG, 0, instr->node->location, BUILDER_CUR_WORD, "");
 
 	while (fr) {
 		instr = fr->callee;
@@ -5646,7 +5646,7 @@ exec_print_call_stack(Context *cnt, size_t max_nesting)
 		}
 
 		builder_msg(
-		    cnt->builder, BUILDER_MSG_LOG, 0, instr->node->src, BUILDER_CUR_WORD, "");
+		    cnt->builder, BUILDER_MSG_LOG, 0, instr->node->location, BUILDER_CUR_WORD, "");
 		++n;
 	}
 }
@@ -7840,7 +7840,7 @@ ast_expr_ref(Context *cnt, Ast *ref)
 	assert(ident->kind == AST_IDENT);
 
 	Scope *scope = ident->data.ident.scope;
-	Unit * unit  = ident->src->unit;
+	Unit * unit  = ident->location->unit;
 	assert(unit);
 	assert(scope);
 
@@ -8167,7 +8167,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_EXPECTED_FUNC,
-			            ast_name->src,
+			            ast_name->location,
 			            BUILDER_CUR_WORD,
 			            "Main is expected to be a function.");
 		}
@@ -8236,7 +8236,7 @@ ast_type_ref(Context *cnt, Ast *type_ref)
 	assert(ident);
 
 	Scope *scope = ident->data.ident.scope;
-	Unit * unit  = ident->src->unit;
+	Unit * unit  = ident->location->unit;
 	assert(unit);
 	assert(scope);
 
@@ -8330,7 +8330,7 @@ ast_type_enum(Context *cnt, Ast *type_enum)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_EMPTY_ENUM,
-		            type_enum->src,
+		            type_enum->location,
 		            BUILDER_CUR_WORD,
 		            "Empty enumerator.");
 		return NULL;
@@ -8377,7 +8377,7 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_EMPTY_STRUCT,
-		            type_struct->src,
+		            type_struct->location,
 		            BUILDER_CUR_WORD,
 		            "Empty structure.");
 		return NULL;
@@ -8858,8 +8858,8 @@ execute_test_cases(Context *cnt)
 		assert(is_flag(test_fn->flags, FLAG_TEST));
 		exec_fn(cnt, test_fn, NULL, NULL);
 
-		line = test_fn->decl_node ? test_fn->decl_node->src->line : -1;
-		file = test_fn->decl_node ? test_fn->decl_node->src->unit->filepath : "?";
+		line = test_fn->decl_node ? test_fn->decl_node->location->line : -1;
+		file = test_fn->decl_node ? test_fn->decl_node->location->unit->filepath : "?";
 
 		msg_log("[ %s ] (%llu/%llu) %s:%d '%s'",
 		        cnt->exec.stack->aborted ? RED("FAILED") : GREEN("PASSED"),
@@ -8989,14 +8989,13 @@ mir_new_module(Builder *builder, const char *name)
 	LLVMSetModuleDataLayout(llvm_module, llvm_td);
 	LLVMSetTarget(llvm_module, triple);
 
-	tmp->global_instrs  = bo_array_new(sizeof(MirInstr *));
-	tmp->RTTI_tmp_vars  = bo_array_new(sizeof(MirVar *));
-	tmp->llvm_cnt       = llvm_context;
-	tmp->llvm_module    = llvm_module;
-	tmp->llvm_tm        = llvm_tm;
-	tmp->llvm_td        = llvm_td;
-	tmp->llvm_triple    = triple;
-	tmp->llvm_dibuilder = LLVMCreateDIBuilder(llvm_module);
+	tmp->global_instrs = bo_array_new(sizeof(MirInstr *));
+	tmp->RTTI_tmp_vars = bo_array_new(sizeof(MirVar *));
+	tmp->llvm_cnt      = llvm_context;
+	tmp->llvm_module   = llvm_module;
+	tmp->llvm_tm       = llvm_tm;
+	tmp->llvm_td       = llvm_td;
+	tmp->llvm_triple   = triple;
 
 	return tmp;
 }
@@ -9015,7 +9014,6 @@ mir_delete_module(MirModule *module)
 	LLVMDisposeMessage(module->llvm_triple);
 	LLVMDisposeTargetData(module->llvm_td);
 	LLVMContextDispose(module->llvm_cnt);
-	LLVMDisposeDIBuilder(module->llvm_dibuilder);
 
 	bl_free(module);
 }

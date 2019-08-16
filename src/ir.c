@@ -288,6 +288,9 @@ static LLVMMetadataRef
 emit_DI_fn(Context *cnt, MirFn *fn);
 
 static LLVMMetadataRef
+emit_DI_instr_location(Context *cnt, MirInstr *instr);
+
+static LLVMMetadataRef
 emit_DI_unit(Context *cnt, Unit *unit);
 
 static LLVMMetadataRef
@@ -363,6 +366,20 @@ emit_basic_block(Context *cnt, MirInstrBlock *block)
 }
 
 /* impl */
+LLVMMetadataRef
+emit_DI_instr_location(Context *cnt, MirInstr *instr)
+{
+	if (!instr->node) return NULL;
+
+	Location *      location   = instr->node->location;
+	LLVMMetadataRef scope_meta = NULL;
+	LLVMMetadataRef llvm_meta  = LLVMDIBuilderCreateDebugLocation(
+            cnt->llvm_cnt, location->line, location->col, scope_meta, NULL);
+
+	LLVMInstructionSetDebugLoc(instr->llvm_value, llvm_meta);
+	return llvm_meta;
+}
+
 LLVMMetadataRef
 emit_DI_unit(Context *cnt, Unit *unit)
 {
@@ -499,7 +516,7 @@ emit_DI_fn(Context *cnt, MirFn *fn)
 {
 	if (fn->llvm_meta) return fn->llvm_meta;
 	assert(fn->decl_node && "Generating debug info of implicit function???");
-	Src *fn_src = fn->decl_node->src;
+	Location *fn_src = fn->decl_node->location;
 
 	// LLVMMetadataRef scope_meta = emit_DI_scope(cnt, fn->scope);
 	LLVMMetadataRef unit_meta = emit_DI_unit(cnt, fn_src->unit);
@@ -1280,6 +1297,8 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	call->base.llvm_value =
 	    LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, (unsigned int)llvm_argc, "");
 	bl_free(llvm_args);
+
+	if (cnt->debug_build) emit_DI_instr_location(cnt, &call->base);
 }
 
 void
@@ -1633,6 +1652,7 @@ static void
 init_DI(Context *cnt)
 {
 	const char *producer = "blc version " BL_VERSION;
+	cnt->llvm_dibuilder  = LLVMCreateDIBuilder(cnt->llvm_module);
 
 	LLVMMetadataRef llvm_assembly_meta = LLVMDIBuilderCreateFile(
 	    cnt->llvm_dibuilder, cnt->assembly->name, strlen(cnt->assembly->name), ".", 1);
@@ -1655,29 +1675,32 @@ init_DI(Context *cnt)
 	                                   false);
 }
 
+static void
+terminate_DI(Context *cnt)
+{
+	LLVMDIBuilderFinalize(cnt->llvm_dibuilder);
+	LLVMDisposeDIBuilder(cnt->llvm_dibuilder);
+}
+
 /* public */
 void
 ir_run(Builder *builder, Assembly *assembly)
 {
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));
-	cnt.builder        = builder;
-	cnt.assembly       = assembly;
-	cnt.gstring_cache  = bo_htbl_new(sizeof(LLVMValueRef), 1024);
-	cnt.llvm_cnt       = assembly->mir_module->llvm_cnt;
-	cnt.llvm_module    = assembly->mir_module->llvm_module;
-	cnt.llvm_td        = assembly->mir_module->llvm_td;
-	cnt.llvm_builder   = LLVMCreateBuilderInContext(assembly->mir_module->llvm_cnt);
-	cnt.llvm_dibuilder = assembly->mir_module->llvm_dibuilder;
-
-	cnt.llvm_void_type = LLVMVoidTypeInContext(cnt.llvm_cnt);
-	cnt.llvm_i1_type   = LLVMInt1TypeInContext(cnt.llvm_cnt);
-	cnt.llvm_i8_type   = LLVMInt8TypeInContext(cnt.llvm_cnt);
-	cnt.llvm_i32_type  = LLVMInt32TypeInContext(cnt.llvm_cnt);
-	cnt.llvm_i64_type  = LLVMInt64TypeInContext(cnt.llvm_cnt);
-
-	cnt.llvm_i8_ptr_type = LLVMPointerType(cnt.llvm_i8_type, 0);
-
+	cnt.builder                = builder;
+	cnt.assembly               = assembly;
+	cnt.gstring_cache          = bo_htbl_new(sizeof(LLVMValueRef), 1024);
+	cnt.llvm_cnt               = assembly->mir_module->llvm_cnt;
+	cnt.llvm_module            = assembly->mir_module->llvm_module;
+	cnt.llvm_td                = assembly->mir_module->llvm_td;
+	cnt.llvm_builder           = LLVMCreateBuilderInContext(assembly->mir_module->llvm_cnt);
+	cnt.llvm_void_type         = LLVMVoidTypeInContext(cnt.llvm_cnt);
+	cnt.llvm_i1_type           = LLVMInt1TypeInContext(cnt.llvm_cnt);
+	cnt.llvm_i8_type           = LLVMInt8TypeInContext(cnt.llvm_cnt);
+	cnt.llvm_i32_type          = LLVMInt32TypeInContext(cnt.llvm_cnt);
+	cnt.llvm_i64_type          = LLVMInt64TypeInContext(cnt.llvm_cnt);
+	cnt.llvm_i8_ptr_type       = LLVMPointerType(cnt.llvm_i8_type, 0);
 	cnt.llvm_const_i64         = LLVMConstInt(cnt.llvm_i64_type, 0, false);
 	cnt.llvm_instrinsic_trap   = create_trap_fn(&cnt);
 	cnt.llvm_instrinsic_memset = create_memset_fn(&cnt);
@@ -1693,6 +1716,8 @@ ir_run(Builder *builder, Assembly *assembly)
 	{
 		emit_instr(&cnt, ginstr);
 	}
+
+	if (cnt.debug_build) terminate_DI(&cnt);
 
 #if BL_DEBUG
 	char *error = NULL;

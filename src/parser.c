@@ -38,7 +38,7 @@
 		builder_msg((cnt)->builder,                                                        \
 		            BUILDER_MSG_ERROR,                                                     \
 		            (kind),                                                                \
-		            &(tok)->src,                                                           \
+		            &(tok)->location,                                                      \
 		            (pos),                                                                 \
 		            (format),                                                              \
 		            ##__VA_ARGS__);                                                        \
@@ -49,7 +49,7 @@
 		builder_msg((cnt)->builder,                                                        \
 		            BUILDER_MSG_WARNING,                                                   \
 		            0,                                                                     \
-		            &(tok)->src,                                                           \
+		            &(tok)->location,                                                      \
 		            (pos),                                                                 \
 		            (format),                                                              \
 		            ##__VA_ARGS__);                                                        \
@@ -60,7 +60,7 @@
 		builder_msg((cnt)->builder,                                                        \
 		            BUILDER_MSG_NOTE,                                                      \
 		            0,                                                                     \
-		            &(tok)->src,                                                           \
+		            &(tok)->location,                                                      \
 		            (pos),                                                                 \
 		            (format),                                                              \
 		            ##__VA_ARGS__);                                                        \
@@ -867,7 +867,7 @@ parse_decl_member(Context *cnt, bool type_only)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_EXPECTED_TYPE,
-			            name->src,
+			            name->location,
 			            BUILDER_CUR_AFTER,
 			            "expected colon after struct member name");
 		}
@@ -897,7 +897,7 @@ parse_decl_arg(Context *cnt, bool type_only)
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_EXPECTED_TYPE,
-			            name->src,
+			            name->location,
 			            BUILDER_CUR_AFTER,
 			            "expected colon after argument name");
 		}

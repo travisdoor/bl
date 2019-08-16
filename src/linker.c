@@ -36,7 +36,7 @@
 			builder_msg(builder,                                                       \
 			            BUILDER_MSG_ERROR,                                             \
 			            (code),                                                        \
-			            &(tok)->src,                                                   \
+			            &(tok)->location,                                              \
 			            (pos),                                                         \
 			            (format),                                                      \
 			            ##__VA_ARGS__);                                                \

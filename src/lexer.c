@@ -108,9 +108,9 @@ scan_comment(Context *cnt, const char *term)
 bool
 scan_ident(Context *cnt, Token *tok)
 {
-	tok->src.line = cnt->line;
-	tok->src.col  = cnt->col;
-	tok->sym      = SYM_IDENT;
+	tok->location.line = cnt->line;
+	tok->location.col  = cnt->col;
+	tok->sym           = SYM_IDENT;
 
 	char *begin = cnt->c;
 
@@ -130,7 +130,7 @@ scan_ident(Context *cnt, Token *tok)
 	bo_string_appendn(cstr, begin, len);
 	tok->value.str = bo_string_get(cstr);
 
-	tok->src.len = len;
+	tok->location.len = len;
 	cnt->col += len;
 	return true;
 }
@@ -165,9 +165,9 @@ scan_string(Context *cnt, Token *tok)
 		return false;
 	}
 
-	tok->src.line = cnt->line;
-	tok->src.col  = cnt->col;
-	tok->sym      = SYM_STRING;
+	tok->location.line = cnt->line;
+	tok->location.col  = cnt->col;
+	tok->sym           = SYM_STRING;
 
 	/* eat " */
 	cnt->c++;
@@ -218,9 +218,9 @@ scan:
 		bo_string_appendn(cstr, &c, 1);
 	}
 exit:
-	tok->value.str = bo_string_get(cstr);
-	tok->src.len   = len;
-	tok->src.col   = tok->src.col + 1;
+	tok->value.str    = bo_string_get(cstr);
+	tok->location.len = len;
+	tok->location.col = tok->location.col + 1;
 	cnt->col += len + 2;
 	return true;
 }
@@ -229,10 +229,10 @@ bool
 scan_char(Context *cnt, Token *tok)
 {
 	if (*cnt->c != '\'') return false;
-	tok->src.line = cnt->line;
-	tok->src.col  = cnt->col;
-	tok->src.len  = 0;
-	tok->sym      = SYM_CHAR;
+	tok->location.line = cnt->line;
+	tok->location.col  = cnt->col;
+	tok->location.len  = 0;
+	tok->sym           = SYM_CHAR;
 
 	/* eat ' */
 	cnt->c++;
@@ -258,11 +258,11 @@ scan_char(Context *cnt, Token *tok)
 		/* special character */
 		tok->value.c = scan_specch(*(cnt->c + 1));
 		cnt->c += 2;
-		tok->src.len = 2;
+		tok->location.len = 2;
 		break;
 	default:
-		tok->value.c = *cnt->c;
-		tok->src.len = 1;
+		tok->value.c      = *cnt->c;
+		tok->location.len = 1;
 		cnt->c++;
 	}
 
@@ -311,14 +311,14 @@ c_to_number(char c, int32_t base)
 bool
 scan_number(Context *cnt, Token *tok)
 {
-	tok->src.line  = cnt->line;
-	tok->src.col   = cnt->col;
-	tok->value.str = cnt->c;
+	tok->location.line = cnt->line;
+	tok->location.col  = cnt->col;
+	tok->value.str     = cnt->c;
 
 	uint64_t n    = 0;
-	int32_t       len  = 0;
-	int32_t       base = 10;
-	int32_t       buf  = 0;
+	int32_t  len  = 0;
+	int32_t  base = 10;
+	int32_t  buf  = 0;
 
 	if (strncmp(cnt->c, "0x", 2) == 0) {
 		base = 16;
@@ -359,7 +359,7 @@ scan_number(Context *cnt, Token *tok)
 
 	if (len == 0) return false;
 
-	tok->src.len = len;
+	tok->location.len = len;
 	cnt->col += len;
 	tok->sym     = SYM_NUM;
 	tok->value.u = n;
@@ -395,7 +395,7 @@ scan_double : {
 
 	tok->value.d = n / (double)e;
 
-	tok->src.len = len;
+	tok->location.len = len;
 	cnt->col += len;
 
 	return true;
@@ -407,8 +407,8 @@ scan(Context *cnt)
 {
 	Token tok;
 scan:
-	tok.src.line = cnt->line;
-	tok.src.col  = cnt->col;
+	tok.location.line = cnt->line;
+	tok.location.col  = cnt->col;
 
 	/*
 	 * Ignored characters
@@ -447,8 +447,8 @@ scan:
 		len = strlen(sym_strings[i]);
 		if (strncmp(cnt->c, sym_strings[i], len) == 0) {
 			cnt->c += len;
-			tok.sym     = (Sym)i;
-			tok.src.len = (int32_t)len;
+			tok.sym          = (Sym)i;
+			tok.location.len = (int32_t)len;
 
 			/*
 			 * Two joined symbols will be parsed as identifier.
@@ -498,10 +498,10 @@ scan:
 	           cnt->unit->name,
 	           cnt->line,
 	           cnt->col,
-		   *cnt->c,
-		   *cnt->c);
+	           *cnt->c,
+	           *cnt->c);
 push_token:
-	tok.src.unit = cnt->unit;
+	tok.location.unit = cnt->unit;
 	tokens_push(cnt->tokens, &tok);
 	goto scan;
 }

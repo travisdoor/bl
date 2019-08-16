@@ -52,14 +52,14 @@ print_address(Ast *node, FILE *stream)
 static inline void
 _print_head(Ast *node, int32_t pad, FILE *stream)
 {
-	if (node->src)
+	if (node->location)
 		fprintf(stream,
 		        "\n%*s" GREEN("%s ") CYAN("<%d:%d>"),
 		        pad * 2,
 		        "",
 		        ast_get_name(node),
-		        node->src->line,
-		        node->src->col);
+		        node->location->line,
+		        node->location->col);
 	else
 		fprintf(stream,
 		        "\n%*s" GREEN("%s ") CYAN("<IMPLICIT>"),

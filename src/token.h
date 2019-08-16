@@ -123,12 +123,12 @@ typedef enum {
 extern char *sym_strings[];
 
 struct Unit;
-typedef struct Src {
+typedef struct Location {
 	int32_t      line;
 	int32_t      col;
 	int32_t      len;
 	struct Unit *unit;
-} Src;
+} Location;
 
 typedef union {
 	const char *       str;
@@ -139,7 +139,7 @@ typedef union {
 
 typedef struct Token {
 	Sym        sym;
-	Src        src;
+	Location   location;
 	TokenValue value;
 } Token;
 

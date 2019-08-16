@@ -79,7 +79,7 @@ compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags)
 		if (unit->loaded_from) {
 			msg_log("Compile: %s (loaded from '%s')",
 			        unit->name,
-			        unit->loaded_from->src.unit->name);
+			        unit->loaded_from->location.unit->name);
 		} else {
 			msg_log("Compile: %s", unit->name);
 		}
@@ -270,7 +270,7 @@ void
 builder_msg(Builder *      builder,
             BuilderMsgType type,
             int32_t        code,
-            Src *          src,
+            Location *     src,
             BuilderCurPos  pos,
             const char *   format,
             ...)

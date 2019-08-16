@@ -28,6 +28,7 @@
 
 #include "ast.h"
 #include "arena.h"
+#include "token.h"
 
 #define ARENA_CHUNK_COUNT 256
 
@@ -62,11 +63,11 @@ node_dtor(Ast *node)
 }
 
 Ast *
-ast_create_node(Arena *arena, AstKind c, Token *tok)
+ast_create_node(struct Arena *arena, AstKind c, struct Token *tok)
 {
-	Ast *node  = arena_alloc(arena);
-	node->kind = c;
-	node->src  = tok ? &tok->src : NULL;
+	Ast *node      = arena_alloc(arena);
+	node->kind     = c;
+	node->location = tok ? &tok->location : NULL;
 
 #if BL_DEBUG
 	static uint64_t serial = 0;
