@@ -547,6 +547,7 @@ emit_DI_fn(Context *cnt, MirFn *fn)
 	assert(fn->decl_node && "Generating debug info of implicit function???");
 	Location *fn_src = fn->decl_node->location;
 
+	bl_log("emit DI fn: %s", fn->llvm_name);
 	// LLVMMetadataRef scope_meta = emit_DI_scope(cnt, fn->scope);
 	LLVMMetadataRef unit_meta = emit_DI_unit(cnt, fn_src->unit);
 	LLVMMetadataRef type_meta = emit_DI_type(cnt, fn->type);
@@ -580,6 +581,7 @@ emit_DI_var(Context *cnt, MirVar *var)
 {
 	if (!var->decl_node) return NULL;
 
+	bl_log("emit DI var: %s", var->llvm_name);
 	const char *    name       = var->id->str;
 	Location *      location   = var->decl_node->location;
 	LLVMMetadataRef scope_meta = emit_DI_scope(cnt, var->decl_scope);
@@ -1611,7 +1613,7 @@ emit_allocas(Context *cnt, MirFn *fn)
 		var->llvm_value = LLVMBuildAlloca(cnt->llvm_builder, var_type, var_name);
 		LLVMSetAlignment(var->llvm_value, var_alignment);
 
-		if (cnt->debug_build) emit_DI_var(cnt, var);
+		if (cnt->debug_build && !is_flag(fn->flags, FLAG_EXTERN)) emit_DI_var(cnt, var);
 	}
 }
 

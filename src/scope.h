@@ -77,6 +77,10 @@ typedef struct ScopeEntry {
 typedef enum ScopeKind {
 	SCOPE_GLOBAL,
 	SCOPE_PRIVATE,
+	/* TODO: scope kinds??? */
+	/* TODO: scope kinds??? */
+	/* TODO: scope kinds??? */
+	/* TODO: scope kinds??? */
 	SCOPE_DEFAULT,
 } ScopeKind;
 
