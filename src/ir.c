@@ -581,23 +581,7 @@ LLVMMetadataRef
 emit_DI_var(Context *cnt, MirVar *var)
 {
 	if (!var->decl_node) return NULL;
-
-	bl_log("emit DI var: %s", var->llvm_name);
-	const char *    name       = var->id->str;
-	Location *      location   = var->decl_node->location;
-	LLVMMetadataRef scope_meta = emit_DI_scope(cnt, var->decl_scope);
-	LLVMMetadataRef type_meta  = emit_DI_type(cnt, var->value.type);
-
-	return LLVMDIBuilderCreateAutoVariable(cnt->llvm_dibuilder,
-	                                       scope_meta,
-	                                       name,
-	                                       strlen(name),
-	                                       location->unit->llvm_file_meta,
-	                                       location->line,
-	                                       type_meta,
-	                                       true,
-	                                       LLVMDIFlagZero,
-	                                       var->value.type->alignment * 8);
+	return NULL;
 }
 
 LLVMMetadataRef
