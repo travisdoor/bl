@@ -29,12 +29,12 @@
 #include "assembly.h"
 #include "builder.h"
 #include "common.h"
+#include "llvm_di.h"
 #include "mir.h"
 #include "unit.h"
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Core.h>
-#include <llvm-c/DebugInfo.h>
-#include <llvm-c/Linker.h>
+//#include <llvm-c/DebugInfo.h>
 
 #define LLVM_INSTRINSIC_TRAP "llvm.debugtrap"
 #define LLVM_INSTRINSIC_MEMSET "llvm.memset.p0i8.i64"
@@ -45,16 +45,6 @@
 #else
 #define NAMED_VARS false
 #endif
-
-// clang-format off
-#define DW_ATE_ADDRESS       1
-#define DW_ATE_BOOLEAN       2
-#define DW_ATE_FLOAT         4
-#define DW_ATE_SIGNED        5
-#define DW_ATE_SIGNED_CHAR   6
-#define DW_ATE_UNSIGNED      7
-#define DW_ATE_UNSIGNED_CHAR 8
-// clang-format on
 
 typedef struct {
 	bool        debug_build;
@@ -284,27 +274,6 @@ emit_global_string_ptr(Context *cnt, const char *str, size_t len);
 static void
 emit_allocas(Context *cnt, MirFn *fn);
 
-static LLVMMetadataRef
-emit_DI_fn(Context *cnt, MirFn *fn);
-
-static LLVMMetadataRef
-emit_DI_var(Context *cnt, MirVar *var);
-
-static LLVMMetadataRef
-emit_DI_arg(Context *cnt, MirInstrArg *arg);
-
-static LLVMMetadataRef
-emit_DI_scope(Context *cnt, Scope *scope);
-
-static LLVMMetadataRef
-emit_DI_instr_location(Context *cnt, MirInstr *instr);
-
-static LLVMMetadataRef
-emit_DI_unit(Context *cnt, Unit *unit);
-
-static LLVMMetadataRef
-emit_DI_type(Context *cnt, MirType *type);
-
 static inline LLVMValueRef
 emit_fn_proto(Context *cnt, MirFn *fn)
 {
@@ -315,7 +284,7 @@ emit_fn_proto(Context *cnt, MirFn *fn)
 		fn->llvm_value =
 		    LLVMAddFunction(cnt->llvm_module, fn->llvm_name, fn->type->llvm_type);
 
-		if (cnt->debug_build) emit_DI_fn(cnt, fn);
+		if (cnt->debug_build) llvm_di_create_fn(cnt->llvm_dibuilder, fn);
 	}
 
 	return fn->llvm_value;
@@ -375,221 +344,6 @@ emit_basic_block(Context *cnt, MirInstrBlock *block)
 }
 
 /* impl */
-LLVMMetadataRef
-emit_DI_scope(Context *cnt, Scope *scope)
-{
-	assert(scope);
-	if (scope->llvm_meta) return scope->llvm_meta;
-
-	assert(scope->location && "Missing scope location info.");
-
-	LLVMMetadataRef llvm_parent_meta = emit_DI_scope(cnt, scope->parent);
-	LLVMMetadataRef llvm_meta =
-	    LLVMDIBuilderCreateLexicalBlock(cnt->llvm_dibuilder,
-	                                    llvm_parent_meta,
-	                                    scope->location->unit->llvm_file_meta,
-	                                    scope->location->line,
-	                                    scope->location->col);
-	scope->llvm_meta = llvm_meta;
-
-	return llvm_meta;
-}
-
-LLVMMetadataRef
-emit_DI_instr_location(Context *cnt, MirInstr *instr)
-{
-	if (!instr->node) return NULL;
-
-	Location *      location   = instr->node->location;
-	LLVMMetadataRef scope_meta = emit_DI_scope(cnt, instr->node->parent_scope);
-	LLVMMetadataRef llvm_meta  = LLVMDIBuilderCreateDebugLocation(
-            cnt->llvm_cnt, location->line, location->col, scope_meta, NULL);
-
-
-	//LLVMInstructionSetDebugLoc(instr->llvm_value, llvm_meta);
-	return llvm_meta;
-}
-
-LLVMMetadataRef
-emit_DI_unit(Context *cnt, Unit *unit)
-{
-	if (unit->llvm_file_meta) return unit->llvm_file_meta;
-
-	unit->llvm_file_meta = LLVMDIBuilderCreateFile(cnt->llvm_dibuilder,
-	                                               unit->filename,
-	                                               strlen(unit->filename),
-	                                               unit->dirpath,
-	                                               strlen(unit->dirpath));
-
-	return unit->llvm_file_meta;
-}
-
-LLVMMetadataRef
-emit_DI_type(Context *cnt, MirType *type)
-{
-	if (type->llvm_meta) return type->llvm_meta;
-
-	LLVMMetadataRef llvm_meta = NULL;
-
-	switch (type->kind) {
-	case MIR_TYPE_INT: {
-		llvm_meta = LLVMDIBuilderCreateBasicType(
-		    cnt->llvm_dibuilder,
-		    type->user_id->str,
-		    strlen(type->user_id->str),
-		    type->size_bits,
-		    type->data.integer.is_signed ? DW_ATE_SIGNED : DW_ATE_UNSIGNED,
-		    LLVMDIFlagZero); // LLVMDIFlags  ???
-		break;
-	}
-
-	case MIR_TYPE_BOOL: {
-		llvm_meta = LLVMDIBuilderCreateBasicType(cnt->llvm_dibuilder,
-		                                         type->user_id->str,
-		                                         strlen(type->user_id->str),
-		                                         type->size_bits,
-		                                         DW_ATE_BOOLEAN,
-		                                         LLVMDIFlagZero); // LLVMDIFlags  ???
-		break;
-	}
-
-	case MIR_TYPE_REAL: {
-		llvm_meta = LLVMDIBuilderCreateBasicType(cnt->llvm_dibuilder,
-		                                         type->user_id->str,
-		                                         strlen(type->user_id->str),
-		                                         type->size_bits,
-		                                         DW_ATE_FLOAT,
-		                                         LLVMDIFlagZero); // LLVMDIFlags  ???
-		break;
-	}
-
-	case MIR_TYPE_VOID: {
-		llvm_meta = LLVMDIBuilderCreateBasicType(cnt->llvm_dibuilder,
-		                                         type->user_id->str,
-		                                         strlen(type->user_id->str),
-		                                         type->size_bits,
-		                                         DW_ATE_UNSIGNED_CHAR,
-		                                         LLVMDIFlagZero); // LLVMDIFlags  ???
-		break;
-	}
-
-	case MIR_TYPE_NULL: {
-		llvm_meta = LLVMDIBuilderCreateNullPtrType(cnt->llvm_dibuilder);
-		break;
-	}
-
-	case MIR_TYPE_PTR: {
-		LLVMMetadataRef llvm_pointee_meta = emit_DI_type(cnt, mir_deref_type(type));
-		llvm_meta                         = LLVMDIBuilderCreatePointerType(
-                    cnt->llvm_dibuilder,
-                    llvm_pointee_meta,
-                    type->size_bits,
-                    type->alignment * 8,
-                    0,
-                    type->user_id ? type->user_id->str : type->id.str,
-                    strlen(type->user_id ? type->user_id->str : type->id.str));
-		break;
-	}
-
-	case MIR_TYPE_ARRAY: {
-		LLVMMetadataRef llvm_elem_meta = emit_DI_type(cnt, type->data.array.elem_type);
-		llvm_meta                      = LLVMDIBuilderCreateArrayType(cnt->llvm_dibuilder,
-                                                         type->data.array.len,
-                                                         type->alignment * 8,
-                                                         llvm_elem_meta,
-                                                         NULL, // Subscripts ???
-                                                         0); //  Subscripts count ???
-		break;
-	}
-
-	case MIR_TYPE_FN: {
-		LLVMMetadataRef *llvm_arg_metas = NULL;
-		BArray *         arg_types      = type->data.fn.arg_types;
-		const size_t     argc =
-		    (arg_types ? bo_array_size(arg_types) : 0) + 1 /* 0th is return type */;
-
-		llvm_arg_metas = bl_malloc(argc * sizeof(LLVMMetadataRef));
-
-		llvm_arg_metas[0] = emit_DI_type(cnt, type->data.fn.ret_type);
-
-		if (arg_types) { /* include arg types metas */
-			MirType *arg_type;
-			barray_foreach(arg_types, arg_type)
-			{
-				/* +1 0th is return type */
-				llvm_arg_metas[i + 1] = emit_DI_type(cnt, arg_type);
-			}
-		}
-
-		llvm_meta = LLVMDIBuilderCreateSubroutineType(cnt->llvm_dibuilder,
-		                                              NULL, // File ???
-		                                              llvm_arg_metas,
-		                                              argc,
-		                                              LLVMDIFlagPublic); // Flags ???
-		bl_free(llvm_arg_metas);
-		break;
-	}
-
-	default:
-		bl_warning("Missing generation of DI for type: '%s'",
-		           type->user_id ? type->user_id->str : type->id.str);
-		break;
-	}
-
-	// assert(llvm_meta);
-	type->llvm_meta = llvm_meta;
-	return type->llvm_meta;
-}
-
-LLVMMetadataRef
-emit_DI_fn(Context *cnt, MirFn *fn)
-{
-	if (fn->decl_scope->llvm_meta) return fn->decl_scope->llvm_meta;
-	assert(fn->decl_node && "Generating debug info of implicit function???");
-	Location *fn_src = fn->decl_node->location;
-
-	bl_log("emit DI fn: %s", fn->llvm_name);
-	// LLVMMetadataRef scope_meta = emit_DI_scope(cnt, fn->scope);
-	LLVMMetadataRef unit_meta = emit_DI_unit(cnt, fn_src->unit);
-	LLVMMetadataRef type_meta = emit_DI_type(cnt, fn->type);
-
-	LLVMDIFlags llvm_di_flags = LLVMDIFlagStaticMember;
-
-	LLVMMetadataRef llvm_meta = LLVMDIBuilderCreateFunction(
-	    cnt->llvm_dibuilder,
-	    unit_meta,
-	    fn->id->str,
-	    strlen(fn->id->str),
-	    fn->llvm_name,
-	    strlen(fn->llvm_name),
-	    unit_meta,
-	    fn_src->line,
-	    type_meta,
-	    fn->decl_scope->kind != SCOPE_GLOBAL, // is local for unit ???
-	    true,
-	    0,             // scope line ???
-	    llvm_di_flags, // look at LLVMDIFlags
-	    false);
-
-	LLVMSetSubprogram(fn->llvm_value, llvm_meta);
-	if (fn->body_scope) fn->body_scope->llvm_meta = llvm_meta;
-
-	return llvm_meta;
-}
-
-LLVMMetadataRef
-emit_DI_var(Context *cnt, MirVar *var)
-{
-	if (!var->decl_node) return NULL;
-	return NULL;
-}
-
-LLVMMetadataRef
-emit_DI_arg(Context *cnt, MirInstrArg *arg)
-{
-	return NULL;
-}
-
 void
 emit_RTTI_types(Context *cnt)
 {
@@ -777,8 +531,6 @@ emit_instr_arg(Context *cnt, MirInstrArg *arg)
 	assert(llvm_fn);
 
 	arg->base.llvm_value = LLVMGetParam(llvm_fn, arg->i);
-
-	if (cnt->debug_build) emit_DI_arg(cnt, arg);
 }
 
 void
@@ -1346,7 +1098,7 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	    LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, (unsigned int)llvm_argc, "");
 	bl_free(llvm_args);
 
-	if (cnt->debug_build) emit_DI_instr_location(cnt, &call->base);
+	//if (cnt->debug_build) llvm_di_set_instr_location(cnt->llvm_dibuilder, &call->base);
 }
 
 void
@@ -1581,8 +1333,6 @@ emit_allocas(Context *cnt, MirFn *fn)
 
 		var->llvm_value = LLVMBuildAlloca(cnt->llvm_builder, var_type, var_name);
 		LLVMSetAlignment(var->llvm_value, var_alignment);
-
-		if (cnt->debug_build && !is_flag(fn->flags, FLAG_EXTERN)) emit_DI_var(cnt, var);
 	}
 }
 
@@ -1701,35 +1451,16 @@ emit_instr(Context *cnt, MirInstr *instr)
 static void
 init_DI(Context *cnt)
 {
-	const char *producer = "blc version " BL_VERSION;
-	cnt->llvm_dibuilder  = LLVMCreateDIBuilder(cnt->llvm_module);
-
-	LLVMMetadataRef llvm_assembly_meta = LLVMDIBuilderCreateFile(
-	    cnt->llvm_dibuilder, cnt->assembly->name, strlen(cnt->assembly->name), ".", 1);
-
+	cnt->llvm_dibuilder = llvm_di_new_di_builder(cnt->llvm_module);
 	cnt->assembly->mir_module->llvm_compile_unit =
-	    LLVMDIBuilderCreateCompileUnit(cnt->llvm_dibuilder,
-	                                   LLVMDWARFSourceLanguageC99,
-	                                   llvm_assembly_meta,
-	                                   producer,
-	                                   strlen(producer),
-	                                   false,
-	                                   "",
-	                                   0,
-	                                   1,
-	                                   "",
-	                                   0,
-	                                   LLVMDWARFEmissionFull,
-	                                   1,
-	                                   false,
-	                                   false);
+	    llvm_di_create_assembly(cnt->llvm_dibuilder, cnt->assembly);
 }
 
 static void
 terminate_DI(Context *cnt)
 {
-	LLVMDIBuilderFinalize(cnt->llvm_dibuilder);
-	LLVMDisposeDIBuilder(cnt->llvm_dibuilder);
+	llvm_di_builder_finalize(cnt->llvm_dibuilder);
+	llvm_di_delete_di_builder(cnt->llvm_dibuilder);
 }
 
 /* public */

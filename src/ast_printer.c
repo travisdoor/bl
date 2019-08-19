@@ -323,7 +323,7 @@ print_decl_entity(Ast *entity, int32_t pad, FILE *stream)
 	fprintf(stream,
 	        "'%s' '%s'",
 	        entity->data.decl.name->data.ident.id.str,
-	        entity->data.decl_entity.mutable ? "mutable" : "immutable");
+	        entity->data.decl_entity.mut ? "mutable" : "immutable");
 
 	print_flags(entity->data.decl_entity.flags, stream);
 	print_node((Ast *)entity->data.decl_entity.value, pad + 1, stream);

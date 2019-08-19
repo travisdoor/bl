@@ -1808,7 +1808,7 @@ parse_decl(Context *cnt)
 
 	Ast *decl = ast_create_node(cnt->ast_arena, AST_DECL_ENTITY, tok_ident, cnt->scope);
 	decl->data.decl.name           = ident;
-	decl->data.decl_entity.mutable = true;
+	decl->data.decl_entity.mut     = true;
 
 	push_curr_decl(cnt, decl);
 
@@ -1817,7 +1817,7 @@ parse_decl(Context *cnt)
 	if (!tok_assign) tok_assign = tokens_consume_if(cnt->tokens, SYM_COLON);
 
 	if (tok_assign) {
-		decl->data.decl_entity.mutable = token_is(tok_assign, SYM_ASSIGN);
+		decl->data.decl_entity.mut = token_is(tok_assign, SYM_ASSIGN);
 
 		/* parse declaration expression */
 		decl->data.decl_entity.value = parse_expr(cnt);

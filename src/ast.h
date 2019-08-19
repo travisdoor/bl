@@ -204,7 +204,7 @@ struct AstDeclEntity {
 	Ast *          value;
 	int32_t        flags;
 	bool           in_gscope;
-	bool mutable;
+	bool           mut;
 };
 
 struct AstDeclMember {
@@ -360,7 +360,7 @@ struct Ast {
 	struct Scope *   parent_scope; /* Scope in which is AST node. */
 
 	union {
-		struct AstPrivate private;
+		struct AstPrivate       priv;
 		struct AstLoad          load;
 		struct AstLink          link;
 		struct AstIdent         ident;

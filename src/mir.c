@@ -8086,7 +8086,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 	Ast *      ast_name      = entity->data.decl.name;
 	Ast *      ast_type      = entity->data.decl.type;
 	Ast *      ast_value     = entity->data.decl_entity.value;
-	const bool is_mutable    = entity->data.decl_entity.mutable;
+	const bool is_mutable    = entity->data.decl_entity.mut;
 	const bool is_in_gscope  = entity->data.decl_entity.in_gscope;
 	const bool is_compiler   = is_flag(entity->data.decl_entity.flags, FLAG_COMPILER);
 	bool       enable_groups = false;

@@ -37,7 +37,7 @@
 #include <dyncall.h>
 #include <dynload.h>
 #include <llvm-c/Core.h>
-#include <llvm-c/DebugInfo.h>
+#include <llvm-c/Types.h>
 #include <llvm-c/ExecutionEngine.h>
 
 struct MirModule;

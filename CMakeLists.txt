@@ -51,6 +51,7 @@ set(HEADER_FILES
         src/mir.h
         src/mir_printer.h
         src/arena.h
+	src/llvm_di.h
         src/ast.h)
 
 set(SOURCE_FILES
@@ -80,7 +81,7 @@ set(SOURCE_FILES
         src/ir.c
         src/ir_opt.c
         src/mir_printer.c
-        src/ast.c)
+        src/ast.c src/llvm_di.cpp)
 
 add_definitions(${LLVM_DEFINITIONS})
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
@@ -96,7 +97,7 @@ if (MSVC)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd")
 else()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Werror -Wall -Wextra -Wno-unused-parameter -Wno-missing-braces -O0 -Wdeprecated-declarations")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Werror -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -O0 -Wdeprecated-declarations")
 endif()
 
 target_link_libraries(blc PUBLIC
