@@ -120,7 +120,6 @@ llvm_di_get_or_create_fn(LLVMDIBuilderRef builder_ref, MirFn *fn)
 
 	auto func = unwrap<Function>(fn->llvm_value);
 	func->setSubprogram(di);
-	builder->finalizeSubprogram(di);
 
 	fn->llvm_meta = wrap(di);
 	return fn->llvm_meta;
