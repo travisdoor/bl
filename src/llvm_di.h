@@ -38,46 +38,6 @@
 extern "C" {
 #endif
 
-typedef enum {
-	LLVMDIFlagZero                = 0,
-	LLVMDIFlagPrivate             = 1,
-	LLVMDIFlagProtected           = 2,
-	LLVMDIFlagPublic              = 3,
-	LLVMDIFlagFwdDecl             = 1 << 2,
-	LLVMDIFlagAppleBlock          = 1 << 3,
-	LLVMDIFlagBlockByrefStruct    = 1 << 4,
-	LLVMDIFlagVirtual             = 1 << 5,
-	LLVMDIFlagArtificial          = 1 << 6,
-	LLVMDIFlagExplicit            = 1 << 7,
-	LLVMDIFlagPrototyped          = 1 << 8,
-	LLVMDIFlagObjcClassComplete   = 1 << 9,
-	LLVMDIFlagObjectPointer       = 1 << 10,
-	LLVMDIFlagVector              = 1 << 11,
-	LLVMDIFlagStaticMember        = 1 << 12,
-	LLVMDIFlagLValueReference     = 1 << 13,
-	LLVMDIFlagRValueReference     = 1 << 14,
-	LLVMDIFlagReserved            = 1 << 15,
-	LLVMDIFlagSingleInheritance   = 1 << 16,
-	LLVMDIFlagMultipleInheritance = 2 << 16,
-	LLVMDIFlagVirtualInheritance  = 3 << 16,
-	LLVMDIFlagIntroducedVirtual   = 1 << 18,
-	LLVMDIFlagBitField            = 1 << 19,
-	LLVMDIFlagNoReturn            = 1 << 20,
-	LLVMDIFlagMainSubprogram      = 1 << 21,
-	LLVMDIFlagTypePassByValue     = 1 << 22,
-	LLVMDIFlagTypePassByReference = 1 << 23,
-	LLVMDIFlagEnumClass           = 1 << 24,
-	LLVMDIFlagFixedEnum           = LLVMDIFlagEnumClass, // Deprecated.
-	LLVMDIFlagThunk               = 1 << 25,
-	LLVMDIFlagTrivial             = 1 << 26,
-	LLVMDIFlagBigEndian           = 1 << 27,
-	LLVMDIFlagLittleEndian        = 1 << 28,
-	LLVMDIFlagIndirectVirtualBase = (1 << 2) | (1 << 5),
-	LLVMDIFlagAccessibility       = LLVMDIFlagPrivate | LLVMDIFlagProtected | LLVMDIFlagPublic,
-	LLVMDIFlagPtrToMemberRep = LLVMDIFlagSingleInheritance | LLVMDIFlagMultipleInheritance |
-	                           LLVMDIFlagVirtualInheritance
-} LLVMDIFlags;
-
 LLVMDIBuilderRef
 llvm_di_new_di_builder(LLVMModuleRef module);
 
@@ -88,16 +48,16 @@ void
 llvm_di_builder_finalize(LLVMDIBuilderRef builder);
 
 void
-llvm_di_set_subprogram(LLVMValueRef func, LLVMMetadataRef sp);
+llvm_di_finalize_fn(LLVMDIBuilderRef builder_ref, struct MirFn *fn);
 
 void
 llvm_di_set_instr_location(LLVMDIBuilderRef builder_ref, struct MirInstr *instr);
 
 LLVMMetadataRef
-llvm_di_create_assembly(LLVMDIBuilderRef builder_ref, struct Assembly *assembly);
+llvm_di_get_or_create_assembly(LLVMDIBuilderRef builder_ref, struct Assembly *assembly);
 
 LLVMMetadataRef
-llvm_di_create_fn(LLVMDIBuilderRef builder_ref, struct MirFn *fn);
+llvm_di_get_or_create_fn(LLVMDIBuilderRef builder_ref, struct MirFn *fn);
 
 LLVMMetadataRef
 llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, struct MirType *type);

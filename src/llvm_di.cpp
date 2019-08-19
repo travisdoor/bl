@@ -60,12 +60,6 @@ unwrapDI(LLVMMetadataRef Ref)
 	return (DIT *)(Ref ? unwrap<MDNode>(Ref) : nullptr);
 }
 
-static DINode::DIFlags
-map_from_llvmDIFlags(LLVMDIFlags Flags)
-{
-	return static_cast<DINode::DIFlags>(Flags);
-}
-
 LLVMDIBuilderRef
 llvm_di_new_di_builder(LLVMModuleRef module)
 {
@@ -92,42 +86,28 @@ llvm_di_builder_finalize(LLVMDIBuilderRef builder)
 }
 
 LLVMMetadataRef
-llvm_di_create_lexical_block(LLVMDIBuilderRef builder,
-                             LLVMMetadataRef  scope,
-                             LLVMMetadataRef  file,
-                             unsigned         line,
-                             unsigned         col)
+llvm_di_get_or_create_assembly(LLVMDIBuilderRef builder_ref, Assembly *assembly)
 {
-	return wrap(unwrap(builder)->createLexicalBlock(
-	    unwrapDI<DIScope>(scope), unwrapDI<DIFile>(file), line, col));
-}
-
-void
-llvm_di_set_subprogram(LLVMValueRef func, LLVMMetadataRef sp)
-{
-	unwrap<Function>(func)->setSubprogram(unwrap<DISubprogram>(sp));
-}
-
-LLVMMetadataRef
-llvm_di_create_assembly(LLVMDIBuilderRef builder_ref, Assembly *assembly)
-{
+	if (assembly->llvm.di_meta) return assembly->llvm.di_meta;
 	const char *producer = "blc version " BL_VERSION;
 
 	auto builder = unwrap(builder_ref);
 	auto file    = builder->createFile({assembly->name, strlen(assembly->name)}, ".");
 	auto cu = builder->createCompileUnit(dwarf::DW_LANG_C99, file, producer, false, "", 0, "");
 
-	return wrap(cu);
+	assembly->llvm.di_meta = wrap(cu);
+	return assembly->llvm.di_meta;
 }
 
 LLVMMetadataRef
-llvm_di_create_fn(LLVMDIBuilderRef builder_ref, struct MirFn *fn)
+llvm_di_get_or_create_fn(LLVMDIBuilderRef builder_ref, MirFn *fn)
 {
+	if (fn->llvm_meta) return fn->llvm_meta;
 	auto builder  = unwrap(builder_ref);
 	auto location = fn->decl_node->location;
 
-	auto file  = unwrap<DIFile>(llvm_di_get_or_create_unit(builder_ref, location->unit));
-	auto type  = unwrap<DISubroutineType>(llvm_di_get_or_create_type(builder_ref, fn->type));
+	auto file  = unwrapDI<DIFile>(llvm_di_get_or_create_unit(builder_ref, location->unit));
+	auto type  = unwrapDI<DISubroutineType>(llvm_di_get_or_create_type(builder_ref, fn->type));
 	auto scope = file; // TODO
 
 	auto di = builder->createFunction(scope,
@@ -140,8 +120,18 @@ llvm_di_create_fn(LLVMDIBuilderRef builder_ref, struct MirFn *fn)
 
 	auto func = unwrap<Function>(fn->llvm_value);
 	func->setSubprogram(di);
+	builder->finalizeSubprogram(di);
 
-	return wrap(di);
+	fn->llvm_meta = wrap(di);
+	return fn->llvm_meta;
+}
+
+void
+llvm_di_finalize_fn(LLVMDIBuilderRef builder_ref, MirFn *fn)
+{
+	assert(fn->llvm_meta && "Cannot finalize function without DI metadata.");
+	auto builder = unwrap(builder_ref);
+	builder->finalizeSubprogram(unwrapDI<DISubprogram>(fn->llvm_meta));
 }
 
 void
@@ -150,7 +140,7 @@ llvm_di_set_instr_location(LLVMDIBuilderRef builder_ref, MirInstr *instr)
 	assert(instr->node);
 	assert(instr->node->parent_scope->llvm_meta);
 
-	auto scope = unwrap<DIScope>(instr->node->parent_scope->llvm_meta);
+	auto scope = unwrapDI<DIScope>(instr->node->parent_scope->llvm_meta);
 
 	auto instruction = unwrap<Instruction>(instr->llvm_value);
 	instruction->setDebugLoc(
@@ -227,7 +217,7 @@ llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, MirType *type)
 	}
 
 	case MIR_TYPE_FN: {
-		SmallVector<Metadata *, 8> args;
+		SmallVector<Metadata *, 16> args;
 		args.push_back(
 		    unwrap(llvm_di_get_or_create_type(builder_ref, type->data.fn.ret_type)));
 
@@ -245,7 +235,7 @@ llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, MirType *type)
 	}
 
 	default:
-		return nullptr;
+		di = builder->createBasicType(name, type->size_bits, dwarf::DW_ATE_unsigned);
 	}
 
 	type->llvm_meta = wrap(di);

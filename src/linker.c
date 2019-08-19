@@ -101,8 +101,8 @@ set_lib_paths(Context *cnt)
 	bool        done  = false;
 
 	while (!done) {
-		done = *c++ == '\0';
-		if (*c == ENVPATH_SEPARATOR || done) {
+		done = *(c++) == '\0';
+		if (done || *c == ENVPATH_SEPARATOR) {
 			len = c - begin;
 			if (len - 1 > 0) {
 				strncpy(tmp, begin, len);

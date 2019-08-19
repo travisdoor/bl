@@ -35,6 +35,6 @@ void
 mir_print_instr(MirInstr *instr, FILE *stream);
 
 void
-mir_print_module(MirModule *module, FILE *stream);
+mir_print_assembly(Assembly *assembly, FILE *stream);
 
 #endif

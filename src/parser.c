@@ -1807,8 +1807,8 @@ parse_decl(Context *cnt)
 	tokens_consume(cnt->tokens);
 
 	Ast *decl = ast_create_node(cnt->ast_arena, AST_DECL_ENTITY, tok_ident, cnt->scope);
-	decl->data.decl.name           = ident;
-	decl->data.decl_entity.mut     = true;
+	decl->data.decl.name       = ident;
+	decl->data.decl_entity.mut = true;
 
 	push_curr_decl(cnt, decl);
 

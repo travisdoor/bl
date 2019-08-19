@@ -81,7 +81,8 @@ set(SOURCE_FILES
         src/ir.c
         src/ir_opt.c
         src/mir_printer.c
-        src/ast.c src/llvm_di.cpp)
+        src/ast.c
+        src/llvm_di.cpp)
 
 add_definitions(${LLVM_DEFINITIONS})
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
@@ -97,7 +98,9 @@ if (MSVC)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd")
 else()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Werror -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -O0 -Wdeprecated-declarations")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -O0 -fsanitize=address")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -O0 -fsanitize=address")
+    set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
 endif()
 
 target_link_libraries(blc PUBLIC

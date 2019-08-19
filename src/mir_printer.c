@@ -1040,9 +1040,8 @@ mir_print_instr(MirInstr *instr, FILE *stream)
 }
 
 void
-mir_print_module(MirModule *module, FILE *stream)
+mir_print_assembly(Assembly *assembly, FILE *stream)
 {
-	assert(module);
 	MirInstr *instr;
-	barray_foreach(module->global_instrs, instr) mir_print_instr(instr, stream);
+	barray_foreach(assembly->MIR.global_instrs, instr) mir_print_instr(instr, stream);
 }

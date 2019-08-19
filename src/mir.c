@@ -192,7 +192,6 @@ typedef struct MirStack {
 typedef struct {
 	Builder *   builder;
 	Assembly *  assembly;
-	MirModule * module;
 	BArray *    test_cases;
 	BString *   tmp_sh;
 	BHashTable *type_table;
@@ -1031,7 +1030,7 @@ static inline ptrdiff_t
 get_struct_elem_offest(Context *cnt, MirType *type, uint32_t i)
 {
 	assert(mir_is_composit_type(type) && "Expected structure type");
-	return LLVMOffsetOfElement(cnt->module->llvm_td, type->llvm_type, (unsigned long)i);
+	return LLVMOffsetOfElement(cnt->assembly->llvm.TD, type->llvm_type, (unsigned long)i);
 }
 
 static inline ptrdiff_t
@@ -1148,8 +1147,8 @@ static inline void
 push_into_gscope(Context *cnt, MirInstr *instr)
 {
 	assert(instr);
-	instr->id = bo_array_size(cnt->module->global_instrs);
-	bo_array_push_back(cnt->module->global_instrs, instr);
+	instr->id = bo_array_size(cnt->assembly->MIR.global_instrs);
+	bo_array_push_back(cnt->assembly->MIR.global_instrs, instr);
 };
 
 static inline void
@@ -1806,7 +1805,7 @@ create_type(Context *cnt, MirType **out_type, const char *sh)
 		assert(*out_type);
 		return false;
 	} else {
-		MirType *tmp = arena_alloc(&cnt->module->arenas.type_arena);
+		MirType *tmp = arena_alloc(&cnt->assembly->MIR.type_arena);
 
 		BString *copy = builder_create_cached_str(cnt->builder);
 		bo_string_append(copy, sh);
@@ -2141,7 +2140,7 @@ create_var(Context *cnt,
            uint32_t flags)
 {
 	assert(id);
-	MirVar *tmp       = arena_alloc(&cnt->module->arenas.var_arena);
+	MirVar *tmp       = arena_alloc(&cnt->assembly->MIR.var_arena);
 	tmp->id           = id;
 	tmp->value.type   = alloc_type;
 	tmp->decl_scope   = scope;
@@ -2166,7 +2165,7 @@ create_var_impl(Context *   cnt,
                 bool        comptime)
 {
 	assert(name);
-	MirVar *tmp       = arena_alloc(&cnt->module->arenas.var_arena);
+	MirVar *tmp       = arena_alloc(&cnt->assembly->MIR.var_arena);
 	tmp->value.type   = alloc_type;
 	tmp->is_mutable   = is_mutable;
 	tmp->is_in_gscope = is_in_gscope;
@@ -2183,7 +2182,7 @@ create_var_impl(Context *   cnt,
 BArray *
 create_arr(Context *cnt, size_t size)
 {
-	BArray **tmp = arena_alloc(&cnt->module->arenas.array_arena);
+	BArray **tmp = arena_alloc(&cnt->assembly->MIR.array_arena);
 	*tmp         = bo_array_new(size);
 	return *tmp;
 }
@@ -2197,7 +2196,7 @@ create_fn(Context *        cnt,
           int32_t          flags,
           MirInstrFnProto *prototype)
 {
-	MirFn *tmp      = arena_alloc(&cnt->module->arenas.fn_arena);
+	MirFn *tmp      = arena_alloc(&cnt->assembly->MIR.fn_arena);
 	tmp->variables  = create_arr(cnt, sizeof(MirVar *));
 	tmp->llvm_name  = llvm_name;
 	tmp->id         = id;
@@ -2211,7 +2210,7 @@ create_fn(Context *        cnt,
 MirMember *
 create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t index, MirType *type)
 {
-	MirMember *tmp  = arena_alloc(&cnt->module->arenas.member_arena);
+	MirMember *tmp  = arena_alloc(&cnt->assembly->MIR.member_arena);
 	tmp->decl_node  = node;
 	tmp->id         = id;
 	tmp->index      = index;
@@ -2223,7 +2222,7 @@ create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t index, MirT
 MirVariant *
 create_variant(Context *cnt, Ast *node, ID *id, Scope *scope, MirConstValue *value)
 {
-	MirVariant *tmp = arena_alloc(&cnt->module->arenas.variant_arena);
+	MirVariant *tmp = arena_alloc(&cnt->assembly->MIR.variant_arena);
 	tmp->decl_node  = node;
 	tmp->id         = id;
 	tmp->decl_scope = scope;
@@ -2235,7 +2234,7 @@ MirConstValue *
 create_const_value(Context *cnt, MirType *type)
 {
 	assert(type);
-	MirConstValue *tmp = arena_alloc(&cnt->module->arenas.value_arena);
+	MirConstValue *tmp = arena_alloc(&cnt->assembly->MIR.value_arena);
 	tmp->type          = type;
 	tmp->addr_mode     = MIR_VAM_LVALUE_CONST;
 	return tmp;
@@ -2394,7 +2393,7 @@ static uint64_t _id_counter = 0;
 MirInstr *
 _create_instr(Context *cnt, MirInstrKind kind, Ast *node)
 {
-	MirInstr *tmp = arena_alloc(&cnt->module->arenas.instr_arena);
+	MirInstr *tmp = arena_alloc(&cnt->assembly->MIR.instr_arena);
 	tmp->kind     = kind;
 	tmp->node     = node;
 	tmp->id       = _id_counter++;
@@ -3137,41 +3136,44 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 		type->alignment        = 0;
 		type->size_bits        = 0;
 		type->store_size_bytes = 0;
-		type->llvm_type        = LLVMVoidTypeInContext(cnt->module->llvm_cnt);
+		type->llvm_type        = LLVMVoidTypeInContext(cnt->assembly->llvm.cnt);
 
 		break;
 	}
 
 	case MIR_TYPE_INT: {
-		type->llvm_type = LLVMIntTypeInContext(cnt->module->llvm_cnt,
+		type->llvm_type = LLVMIntTypeInContext(cnt->assembly->llvm.cnt,
 		                                       (unsigned int)type->data.integer.bitcount);
-		type->size_bits = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
-		type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
-		type->alignment = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
+		type->size_bits = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
+		type->store_size_bytes =
+		    LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
+		type->alignment = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
 
 		break;
 	}
 
 	case MIR_TYPE_REAL: {
 		if (type->data.real.bitcount == 32)
-			type->llvm_type = LLVMFloatTypeInContext(cnt->module->llvm_cnt);
+			type->llvm_type = LLVMFloatTypeInContext(cnt->assembly->llvm.cnt);
 		else if (type->data.real.bitcount == 64)
-			type->llvm_type = LLVMDoubleTypeInContext(cnt->module->llvm_cnt);
+			type->llvm_type = LLVMDoubleTypeInContext(cnt->assembly->llvm.cnt);
 		else
 			bl_abort("invalid floating point type");
 
-		type->size_bits = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
-		type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
-		type->alignment = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
+		type->size_bits = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
+		type->store_size_bytes =
+		    LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
+		type->alignment = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
 
 		break;
 	}
 
 	case MIR_TYPE_BOOL: {
-		type->llvm_type = LLVMIntTypeInContext(cnt->module->llvm_cnt, 1);
-		type->size_bits = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
-		type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
-		type->alignment = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
+		type->llvm_type = LLVMIntTypeInContext(cnt->assembly->llvm.cnt, 1);
+		type->size_bits = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
+		type->store_size_bytes =
+		    LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
+		type->alignment = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
 		break;
 	}
 
@@ -3181,9 +3183,10 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 		assert(tmp);
 		assert(tmp->llvm_type);
 		type->llvm_type = LLVMPointerType(tmp->llvm_type, 0);
-		type->size_bits = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
-		type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
-		type->alignment = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
+		type->size_bits = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
+		type->store_size_bytes =
+		    LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
+		type->alignment = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
 		break;
 	}
 
@@ -3212,7 +3215,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 		}
 
 		llvm_ret =
-		    tmp_ret ? tmp_ret->llvm_type : LLVMVoidTypeInContext(cnt->module->llvm_cnt);
+		    tmp_ret ? tmp_ret->llvm_type : LLVMVoidTypeInContext(cnt->assembly->llvm.cnt);
 		assert(llvm_ret);
 
 		type->llvm_type = LLVMFunctionType(llvm_ret, llvm_args, (unsigned int)argc, false);
@@ -3229,9 +3232,10 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 		const unsigned int len = (const unsigned int)type->data.array.len;
 
 		type->llvm_type = LLVMArrayType(llvm_elem_type, len);
-		type->size_bits = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
-		type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
-		type->alignment = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
+		type->size_bits = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
+		type->store_size_bytes =
+		    LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
+		type->alignment = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
 		break;
 	}
 
@@ -3261,16 +3265,17 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 		/* named structure type */
 		if (type->user_id) {
 			type->llvm_type =
-			    LLVMStructCreateNamed(cnt->module->llvm_cnt, type->user_id->str);
+			    LLVMStructCreateNamed(cnt->assembly->llvm.cnt, type->user_id->str);
 			LLVMStructSetBody(
 			    type->llvm_type, llvm_members, (unsigned long)memc, is_packed);
 		} else {
 			type->llvm_type = LLVMStructTypeInContext(
-			    cnt->module->llvm_cnt, llvm_members, (unsigned long)memc, is_packed);
+			    cnt->assembly->llvm.cnt, llvm_members, (unsigned long)memc, is_packed);
 		}
-		type->size_bits = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
-		type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
-		type->alignment = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
+		type->size_bits = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
+		type->store_size_bytes =
+		    LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
+		type->alignment = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
 		free(llvm_members);
 		break;
 	}
@@ -3280,9 +3285,10 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 		assert(llvm_base_type);
 
 		type->llvm_type = llvm_base_type;
-		type->size_bits = LLVMSizeOfTypeInBits(cnt->module->llvm_td, type->llvm_type);
-		type->store_size_bytes = LLVMStoreSizeOfType(cnt->module->llvm_td, type->llvm_type);
-		type->alignment = LLVMABIAlignmentOfType(cnt->module->llvm_td, type->llvm_type);
+		type->size_bits = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
+		type->store_size_bytes =
+		    LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
+		type->alignment = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
 		break;
 	}
 
@@ -5470,7 +5476,7 @@ analyze(Context *cnt)
 {
 	if (cnt->analyze.verbose_pre) {
 		MirInstr *instr;
-		BArray *  globals = cnt->module->global_instrs;
+		BArray *  globals = cnt->assembly->MIR.global_instrs;
 		barray_foreach(globals, instr)
 		{
 			mir_print_instr(instr, stdout);
@@ -5556,7 +5562,7 @@ analyze(Context *cnt)
 
 	if (cnt->analyze.verbose_post) {
 		MirInstr *instr;
-		BArray *  globals = cnt->module->global_instrs;
+		BArray *  globals = cnt->assembly->MIR.global_instrs;
 		barray_foreach(globals, instr)
 		{
 			mir_print_instr(instr, stdout);
@@ -5816,7 +5822,7 @@ static inline void
 _push_RTTI_var(Context *cnt, MirVar *var)
 {
 	/* Push into RTTI table */
-	bo_array_push_back(cnt->module->RTTI_tmp_vars, var);
+	bo_array_push_back(cnt->assembly->MIR.RTTI_tmp_vars, var);
 	MirStackPtr var_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr, true);
 	assert(var_ptr);
 
@@ -8636,38 +8642,6 @@ mir_instr_name(MirInstr *instr)
 	return "UNKNOWN";
 }
 
-static void
-arenas_init(struct MirArenas *arenas)
-{
-	arena_init(&arenas->instr_arena, sizeof(union _MirInstr), ARENA_CHUNK_COUNT, NULL);
-	arena_init(&arenas->type_arena, sizeof(MirType), ARENA_CHUNK_COUNT, NULL);
-	arena_init(&arenas->var_arena, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
-	arena_init(&arenas->fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, NULL);
-	arena_init(&arenas->member_arena, sizeof(MirMember), ARENA_CHUNK_COUNT, NULL);
-	arena_init(&arenas->variant_arena, sizeof(MirVariant), ARENA_CHUNK_COUNT, NULL);
-	arena_init(&arenas->value_arena,
-	           sizeof(MirConstValue),
-	           ARENA_CHUNK_COUNT / 2,
-	           (ArenaElemDtor)value_dtor);
-	arena_init(&arenas->array_arena,
-	           sizeof(BArray *),
-	           ARENA_CHUNK_COUNT / 2,
-	           (ArenaElemDtor)array_dtor);
-}
-
-static void
-arenas_terminate(struct MirArenas *arenas)
-{
-	arena_terminate(&arenas->instr_arena);
-	arena_terminate(&arenas->value_arena);
-	arena_terminate(&arenas->var_arena);
-	arena_terminate(&arenas->fn_arena);
-	arena_terminate(&arenas->member_arena);
-	arena_terminate(&arenas->variant_arena);
-	arena_terminate(&arenas->array_arena);
-	arena_terminate(&arenas->type_arena);
-}
-
 /* public */
 static void
 _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
@@ -8956,69 +8930,36 @@ init_builtins(Context *cnt)
 	}
 }
 
-MirModule *
-mir_new_module(Builder *builder, const char *name)
+void
+mir_arenas_init(Assembly *assembly)
 {
-	MirModule *tmp = bl_malloc(sizeof(MirModule));
-	if (!tmp) bl_abort("bad alloc");
-
-	arenas_init(&tmp->arenas);
-
-	/* init LLVM */
-	char *triple    = LLVMGetDefaultTargetTriple();
-	char *cpu       = /*LLVMGetHostCPUName()*/ "";
-	char *features  = /*LLVMGetHostCPUFeatures()*/ "";
-	char *error_msg = NULL;
-
-	msg_log("Target: %s", triple);
-
-	LLVMTargetRef llvm_target = NULL;
-	if (LLVMGetTargetFromTriple(triple, &llvm_target, &error_msg)) {
-		msg_error("cannot get target with error: %s", error_msg);
-		LLVMDisposeMessage(error_msg);
-		abort();
-	}
-
-	LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelDefault;
-	if (is_flag(builder->flags, BUILDER_DEBUG_BUILD)) opt_lvl = LLVMCodeGenLevelAggressive;
-
-	LLVMContextRef llvm_context = LLVMContextCreate();
-	LLVMModuleRef  llvm_module  = LLVMModuleCreateWithNameInContext(name, llvm_context);
-
-	LLVMTargetMachineRef llvm_tm = LLVMCreateTargetMachine(
-	    llvm_target, triple, cpu, features, opt_lvl, LLVMRelocDefault, LLVMCodeModelDefault);
-
-	LLVMTargetDataRef llvm_td = LLVMCreateTargetDataLayout(llvm_tm);
-	LLVMSetModuleDataLayout(llvm_module, llvm_td);
-	LLVMSetTarget(llvm_module, triple);
-
-	tmp->global_instrs = bo_array_new(sizeof(MirInstr *));
-	tmp->RTTI_tmp_vars = bo_array_new(sizeof(MirVar *));
-	tmp->llvm_cnt      = llvm_context;
-	tmp->llvm_module   = llvm_module;
-	tmp->llvm_tm       = llvm_tm;
-	tmp->llvm_td       = llvm_td;
-	tmp->llvm_triple   = triple;
-
-	return tmp;
+	arena_init(&assembly->MIR.instr_arena, sizeof(union _MirInstr), ARENA_CHUNK_COUNT, NULL);
+	arena_init(&assembly->MIR.type_arena, sizeof(MirType), ARENA_CHUNK_COUNT, NULL);
+	arena_init(&assembly->MIR.var_arena, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
+	arena_init(&assembly->MIR.fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, NULL);
+	arena_init(&assembly->MIR.member_arena, sizeof(MirMember), ARENA_CHUNK_COUNT, NULL);
+	arena_init(&assembly->MIR.variant_arena, sizeof(MirVariant), ARENA_CHUNK_COUNT, NULL);
+	arena_init(&assembly->MIR.value_arena,
+	           sizeof(MirConstValue),
+	           ARENA_CHUNK_COUNT / 2,
+	           (ArenaElemDtor)value_dtor);
+	arena_init(&assembly->MIR.array_arena,
+	           sizeof(BArray *),
+	           ARENA_CHUNK_COUNT / 2,
+	           (ArenaElemDtor)array_dtor);
 }
 
 void
-mir_delete_module(MirModule *module)
+mir_arenas_terminate(Assembly *assembly)
 {
-	if (!module) return;
-	bo_unref(module->global_instrs);
-	bo_unref(module->RTTI_tmp_vars);
-
-	arenas_terminate(&module->arenas);
-
-	LLVMDisposeModule(module->llvm_module);
-	LLVMDisposeTargetMachine(module->llvm_tm);
-	LLVMDisposeMessage(module->llvm_triple);
-	LLVMDisposeTargetData(module->llvm_td);
-	LLVMContextDispose(module->llvm_cnt);
-
-	bl_free(module);
+	arena_terminate(&assembly->MIR.instr_arena);
+	arena_terminate(&assembly->MIR.value_arena);
+	arena_terminate(&assembly->MIR.var_arena);
+	arena_terminate(&assembly->MIR.fn_arena);
+	arena_terminate(&assembly->MIR.member_arena);
+	arena_terminate(&assembly->MIR.variant_arena);
+	arena_terminate(&assembly->MIR.array_arena);
+	arena_terminate(&assembly->MIR.type_arena);
 }
 
 void
@@ -9028,7 +8969,6 @@ mir_run(Builder *builder, Assembly *assembly)
 	memset(&cnt, 0, sizeof(Context));
 	cnt.builder                  = builder;
 	cnt.assembly                 = assembly;
-	cnt.module                   = assembly->mir_module;
 	cnt.analyze.verbose_pre      = is_flag(builder->flags, BUILDER_VERBOSE_MIR_PRE);
 	cnt.analyze.verbose_post     = is_flag(builder->flags, BUILDER_VERBOSE_MIR_POST);
 	cnt.analyze.queue            = bo_list_new(sizeof(MirInstr *));

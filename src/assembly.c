@@ -49,6 +49,52 @@ init_dl(Assembly *assembly)
 }
 
 static void
+init_llvm(Assembly *assembly, Builder *builder)
+{
+	/* init LLVM */
+	char *triple    = LLVMGetDefaultTargetTriple();
+	char *cpu       = /*LLVMGetHostCPUName()*/ "";
+	char *features  = /*LLVMGetHostCPUFeatures()*/ "";
+	char *error_msg = NULL;
+
+	msg_log("Target: %s", triple);
+
+	LLVMTargetRef llvm_target = NULL;
+	if (LLVMGetTargetFromTriple(triple, &llvm_target, &error_msg)) {
+		msg_error("cannot get target with error: %s", error_msg);
+		LLVMDisposeMessage(error_msg);
+		abort();
+	}
+
+	LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelDefault;
+	if (is_not_flag(builder->flags, BUILDER_DEBUG_BUILD)) opt_lvl = LLVMCodeGenLevelAggressive;
+
+	LLVMContextRef llvm_context = LLVMContextCreate();
+	LLVMModuleRef llvm_module = LLVMModuleCreateWithNameInContext(assembly->name, llvm_context);
+
+	LLVMTargetMachineRef llvm_tm = LLVMCreateTargetMachine(
+	    llvm_target, triple, cpu, features, opt_lvl, LLVMRelocDefault, LLVMCodeModelDefault);
+
+	LLVMTargetDataRef llvm_td = LLVMCreateTargetDataLayout(llvm_tm);
+	LLVMSetModuleDataLayout(llvm_module, llvm_td);
+	LLVMSetTarget(llvm_module, triple);
+
+	assembly->llvm.cnt    = llvm_context;
+	assembly->llvm.module = llvm_module;
+	assembly->llvm.TM     = llvm_tm;
+	assembly->llvm.TD     = llvm_td;
+	assembly->llvm.triple = triple;
+}
+
+static void
+init_mir(Assembly *assembly)
+{
+	mir_arenas_init(assembly);
+	assembly->MIR.global_instrs = bo_array_new(sizeof(MirInstr *));
+	assembly->MIR.RTTI_tmp_vars = bo_array_new(sizeof(MirVar *));
+}
+
+static void
 native_lib_terminate(NativeLib *lib)
 {
 	if (lib->handle) dlFreeLibrary(lib->handle);
@@ -74,6 +120,25 @@ terminate_dl(Assembly *assembly)
 	bo_unref(assembly->dl.lib_paths);
 }
 
+static void
+terminate_llvm(Assembly *assembly)
+{
+	LLVMDisposeModule(assembly->llvm.module);
+	LLVMDisposeTargetMachine(assembly->llvm.TM);
+	LLVMDisposeMessage(assembly->llvm.triple);
+	LLVMDisposeTargetData(assembly->llvm.TD);
+	LLVMContextDispose(assembly->llvm.cnt);
+}
+
+static void
+terminate_mir(Assembly *assembly)
+{
+	bo_unref(assembly->MIR.global_instrs);
+	bo_unref(assembly->MIR.RTTI_tmp_vars);
+
+	mir_arenas_terminate(assembly);
+}
+
 /* public */
 Assembly *
 assembly_new(Builder *builder, const char *name)
@@ -86,11 +151,12 @@ assembly_new(Builder *builder, const char *name)
 	assembly->link_cache = bo_htbl_new(sizeof(Token *), EXPECTED_LINK_COUNT);
 	assembly->type_table = bo_htbl_new(sizeof(MirType *), 8192);
 
-	init_dl(assembly);
-
-	assembly->mir_module = mir_new_module(builder, assembly->name);
-
 	bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
+
+	init_dl(assembly);
+	init_mir(assembly);
+	init_llvm(assembly, builder);
+
 	return assembly;
 }
 
@@ -110,9 +176,9 @@ assembly_delete(Assembly *assembly)
 	bo_unref(assembly->link_cache);
 	bo_unref(assembly->type_table);
 
-	mir_delete_module(assembly->mir_module);
-
 	terminate_dl(assembly);
+	terminate_mir(assembly);
+	terminate_llvm(assembly);
 	bl_free(assembly);
 }
 

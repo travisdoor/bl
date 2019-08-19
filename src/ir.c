@@ -283,8 +283,6 @@ emit_fn_proto(Context *cnt, MirFn *fn)
 	if (!fn->llvm_value) {
 		fn->llvm_value =
 		    LLVMAddFunction(cnt->llvm_module, fn->llvm_name, fn->type->llvm_type);
-
-		if (cnt->debug_build) llvm_di_create_fn(cnt->llvm_dibuilder, fn);
 	}
 
 	return fn->llvm_value;
@@ -347,7 +345,7 @@ emit_basic_block(Context *cnt, MirInstrBlock *block)
 void
 emit_RTTI_types(Context *cnt)
 {
-	BArray *table = cnt->assembly->mir_module->RTTI_tmp_vars;
+	BArray *table = cnt->assembly->MIR.RTTI_tmp_vars;
 	assert(table);
 
 	MirVar *     var;
@@ -1098,7 +1096,7 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	    LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, (unsigned int)llvm_argc, "");
 	bl_free(llvm_args);
 
-	//if (cnt->debug_build) llvm_di_set_instr_location(cnt->llvm_dibuilder, &call->base);
+	// if (cnt->debug_build) llvm_di_set_instr_location(cnt->llvm_dibuilder, &call->base);
 }
 
 void
@@ -1344,6 +1342,8 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	if (fn->ref_count == 0) return;
 	emit_fn_proto(cnt, fn);
 
+	if (cnt->debug_build) llvm_di_get_or_create_fn(cnt->llvm_dibuilder, fn);
+
 	if (is_not_flag(fn->flags, FLAG_EXTERN)) {
 		MirInstr *block = (MirInstr *)fn->first_block;
 
@@ -1352,6 +1352,8 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 			block = block->next;
 		}
 	}
+
+	if (cnt->debug_build) llvm_di_finalize_fn(cnt->llvm_dibuilder, fn);
 }
 
 void
@@ -1452,14 +1454,18 @@ static void
 init_DI(Context *cnt)
 {
 	cnt->llvm_dibuilder = llvm_di_new_di_builder(cnt->llvm_module);
-	cnt->assembly->mir_module->llvm_compile_unit =
-	    llvm_di_create_assembly(cnt->llvm_dibuilder, cnt->assembly);
+	llvm_di_get_or_create_assembly(cnt->llvm_dibuilder, cnt->assembly);
+}
+
+static void
+finalize_DI(Context *cnt)
+{
+	llvm_di_builder_finalize(cnt->llvm_dibuilder);
 }
 
 static void
 terminate_DI(Context *cnt)
 {
-	llvm_di_builder_finalize(cnt->llvm_dibuilder);
 	llvm_di_delete_di_builder(cnt->llvm_dibuilder);
 }
 
@@ -1472,10 +1478,10 @@ ir_run(Builder *builder, Assembly *assembly)
 	cnt.builder                = builder;
 	cnt.assembly               = assembly;
 	cnt.gstring_cache          = bo_htbl_new(sizeof(LLVMValueRef), 1024);
-	cnt.llvm_cnt               = assembly->mir_module->llvm_cnt;
-	cnt.llvm_module            = assembly->mir_module->llvm_module;
-	cnt.llvm_td                = assembly->mir_module->llvm_td;
-	cnt.llvm_builder           = LLVMCreateBuilderInContext(assembly->mir_module->llvm_cnt);
+	cnt.llvm_cnt               = assembly->llvm.cnt;
+	cnt.llvm_module            = assembly->llvm.module;
+	cnt.llvm_td                = assembly->llvm.TD;
+	cnt.llvm_builder           = LLVMCreateBuilderInContext(assembly->llvm.cnt);
 	cnt.llvm_void_type         = LLVMVoidTypeInContext(cnt.llvm_cnt);
 	cnt.llvm_i1_type           = LLVMInt1TypeInContext(cnt.llvm_cnt);
 	cnt.llvm_i8_type           = LLVMInt8TypeInContext(cnt.llvm_cnt);
@@ -1493,12 +1499,12 @@ ir_run(Builder *builder, Assembly *assembly)
 	emit_RTTI_types(&cnt);
 
 	MirInstr *ginstr;
-	barray_foreach(assembly->mir_module->global_instrs, ginstr)
+	barray_foreach(assembly->MIR.global_instrs, ginstr)
 	{
 		emit_instr(&cnt, ginstr);
 	}
 
-	if (cnt.debug_build) terminate_DI(&cnt);
+	if (cnt.debug_build) finalize_DI(&cnt);
 
 #if BL_DEBUG
 	char *error = NULL;
@@ -1507,6 +1513,8 @@ ir_run(Builder *builder, Assembly *assembly)
 	}
 	LLVMDisposeMessage(error);
 #endif
+
+	if (cnt.debug_build) terminate_DI(&cnt);
 
 	LLVMDisposeBuilder(cnt.llvm_builder);
 	bo_unref(cnt.gstring_cache);

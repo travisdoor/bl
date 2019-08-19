@@ -55,8 +55,6 @@ print_header(const char *name, const char *filename, FILE *stream)
 void
 mir_writer_run(Assembly *assembly)
 {
-	assert(assembly->mir_module);
-
 	char *export_file = bl_malloc(sizeof(char) * (strlen(assembly->name) + 5));
 	if (!export_file) bl_abort("bad alloc");
 	strcpy(export_file, assembly->name);
@@ -70,7 +68,7 @@ mir_writer_run(Assembly *assembly)
 	}
 
 	print_header(assembly->name, export_file, f);
-	mir_print_module(assembly->mir_module, f);
+	mir_print_assembly(assembly, f);
 
 	fclose(f);
 	msg_log("Mir code written into " GREEN("%s"), export_file);

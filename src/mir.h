@@ -29,7 +29,6 @@
 #ifndef BL_MIR_H
 #define BL_MIR_H
 
-#include "arena.h"
 #include "assembly.h"
 #include "ast.h"
 #include <bobject/containers/array.h>
@@ -46,7 +45,6 @@ struct Builder;
 typedef ptrdiff_t MirRelativeStackPtr;
 typedef uint8_t * MirStackPtr;
 
-typedef struct MirModule     MirModule;
 typedef struct MirType       MirType;
 typedef struct MirVar        MirVar;
 typedef struct MirFn         MirFn;
@@ -241,31 +239,20 @@ struct MirArenas {
 	Arena array_arena;
 };
 
-struct MirModule {
-	struct MirArenas     arenas;        // Allocator arenas.
-	BArray *             global_instrs; // All global instructions.
-	BArray *             RTTI_tmp_vars; // Temporary variables used by RTTI.
-	LLVMModuleRef        llvm_module;   // LLVM Module.
-	LLVMContextRef       llvm_cnt;      // LLVM Context.
-	LLVMTargetDataRef    llvm_td;       // LLVM Target data.
-	LLVMTargetMachineRef llvm_tm;       // LLVM Machine.
-	char *               llvm_triple;   // LLVM triple.
-	LLVMMetadataRef      llvm_compile_unit;
-};
-
 /* FN */
 struct MirFn {
-	MirInstr *   prototype;
-	ID *         id;
-	Ast *        decl_node;
-	Scope *      decl_scope; /* scope in which functon is declared */
-	Scope *      body_scope; /* function body scope if there is one (optional) */
-	MirType *    type;
-	BArray *     variables;
-	int32_t      ref_count;
-	const char * llvm_name;
-	LLVMValueRef llvm_value;
-	bool         analyzed_for_cmptime_exec;
+	MirInstr *      prototype;
+	ID *            id;
+	Ast *           decl_node;
+	Scope *         decl_scope; /* scope in which functon is declared */
+	Scope *         body_scope; /* function body scope if there is one (optional) */
+	MirType *       type;
+	BArray *        variables;
+	int32_t         ref_count;
+	const char *    llvm_name;
+	LLVMValueRef    llvm_value;
+	LLVMMetadataRef llvm_meta;
+	bool            analyzed_for_cmptime_exec;
 
 	DCpointer   extern_entry;
 	int32_t     flags;
@@ -764,11 +751,11 @@ mir_type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name);
 const char *
 mir_instr_name(MirInstr *instr);
 
-MirModule *
-mir_new_module(struct Builder *builder, const char *name);
+void
+mir_arenas_init(Assembly *assembly);
 
 void
-mir_delete_module(MirModule *module);
+mir_arenas_terminate(Assembly *assembly);
 
 void
 mir_run(struct Builder *builder, struct Assembly *assembly);
