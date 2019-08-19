@@ -405,7 +405,8 @@ emit_DI_instr_location(Context *cnt, MirInstr *instr)
 	LLVMMetadataRef llvm_meta  = LLVMDIBuilderCreateDebugLocation(
             cnt->llvm_cnt, location->line, location->col, scope_meta, NULL);
 
-	LLVMInstructionSetDebugLoc(instr->llvm_value, llvm_meta);
+
+	//LLVMInstructionSetDebugLoc(instr->llvm_value, llvm_meta);
 	return llvm_meta;
 }
 
@@ -602,23 +603,7 @@ emit_DI_var(Context *cnt, MirVar *var)
 LLVMMetadataRef
 emit_DI_arg(Context *cnt, MirInstrArg *arg)
 {
-	if (!arg->base.node) return NULL;
-
-	const char *    name       = LLVMGetValueName(arg->base.llvm_value);
-	Location *      location   = arg->base.node->location;
-	LLVMMetadataRef scope_meta = emit_DI_scope(cnt, arg->base.node->parent_scope);
-	LLVMMetadataRef type_meta  = emit_DI_type(cnt, arg->base.value.type);
-
-	return LLVMDIBuilderCreateParameterVariable(cnt->llvm_dibuilder,
-	                                            scope_meta,
-	                                            name,
-	                                            strlen(name),
-	                                            arg->i,
-	                                            location->unit->llvm_file_meta,
-	                                            location->line,
-	                                            type_meta,
-	                                            true,
-	                                            LLVMDIFlagZero);
+	return NULL;
 }
 
 void
