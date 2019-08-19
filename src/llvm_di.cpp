@@ -53,13 +53,6 @@
 
 using namespace llvm;
 
-template <typename DIT>
-DIT *
-unwrapDI(LLVMMetadataRef Ref)
-{
-	return (DIT *)(Ref ? unwrap<MDNode>(Ref) : nullptr);
-}
-
 LLVMDIBuilderRef
 llvm_di_new_di_builder(LLVMModuleRef module)
 {
@@ -106,9 +99,9 @@ llvm_di_get_or_create_fn(LLVMDIBuilderRef builder_ref, MirFn *fn)
 	auto builder  = unwrap(builder_ref);
 	auto location = fn->decl_node->location;
 
-	auto file  = unwrapDI<DIFile>(llvm_di_get_or_create_unit(builder_ref, location->unit));
-	auto type  = unwrapDI<DISubroutineType>(llvm_di_get_or_create_type(builder_ref, fn->type));
-	auto scope = file; // TODO
+	auto file  = unwrap<DIFile>(llvm_di_get_or_create_unit(builder_ref, location->unit));
+	auto type  = unwrap<DISubroutineType>(llvm_di_get_or_create_type(builder_ref, fn->type));
+	auto scope = unwrap<DIScope>(llvm_di_get_or_create_unit(builder_ref, location->unit)); // TODO
 
 	auto di = builder->createFunction(scope,
 	                                  {fn->id->str, strlen(fn->id->str)},
@@ -117,9 +110,6 @@ llvm_di_get_or_create_fn(LLVMDIBuilderRef builder_ref, MirFn *fn)
 	                                  location->line,
 	                                  type,
 	                                  0);
-
-	auto func = unwrap<Function>(fn->llvm_value);
-	func->setSubprogram(di);
 
 	fn->llvm_meta = wrap(di);
 	return fn->llvm_meta;
@@ -130,7 +120,11 @@ llvm_di_finalize_fn(LLVMDIBuilderRef builder_ref, MirFn *fn)
 {
 	assert(fn->llvm_meta && "Cannot finalize function without DI metadata.");
 	auto builder = unwrap(builder_ref);
-	builder->finalizeSubprogram(unwrapDI<DISubprogram>(fn->llvm_meta));
+	auto sp = unwrap<DISubprogram>(fn->llvm_meta);
+	builder->finalizeSubprogram(sp);
+
+        auto func = unwrap<Function>(fn->llvm_value);
+        func->setSubprogram(sp);
 }
 
 void
@@ -139,7 +133,7 @@ llvm_di_set_instr_location(LLVMDIBuilderRef builder_ref, MirInstr *instr)
 	assert(instr->node);
 	assert(instr->node->parent_scope->llvm_meta);
 
-	auto scope = unwrapDI<DIScope>(instr->node->parent_scope->llvm_meta);
+	auto scope = unwrap<DIScope>(instr->node->parent_scope->llvm_meta);
 
 	auto instruction = unwrap<Instruction>(instr->llvm_value);
 	instruction->setDebugLoc(
@@ -200,14 +194,14 @@ llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, MirType *type)
 
 	case MIR_TYPE_PTR: {
 		auto pointeeType =
-		    unwrapDI<DIType>(llvm_di_get_or_create_type(builder_ref, type->data.ptr.expr));
+		    unwrap<DIType>(llvm_di_get_or_create_type(builder_ref, type->data.ptr.expr));
 
 		di = builder->createPointerType(pointeeType, type->size_bits, type->alignment * 8);
 		break;
 	}
 
 	case MIR_TYPE_ARRAY: {
-		auto elem_type = unwrapDI<DIType>(
+		auto elem_type = unwrap<DIType>(
 		    llvm_di_get_or_create_type(builder_ref, type->data.array.elem_type));
 
 		di = builder->createArrayType(
@@ -234,7 +228,7 @@ llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, MirType *type)
 	}
 
 	default:
-		di = builder->createBasicType(name, type->size_bits, dwarf::DW_ATE_unsigned);
+		return nullptr;
 	}
 
 	type->llvm_meta = wrap(di);
