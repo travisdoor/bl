@@ -42,16 +42,10 @@ LLVMDIBuilderRef
 llvm_di_new_di_builder(LLVMModuleRef module);
 
 void
-llvm_di_delete_di_builder(LLVMDIBuilderRef builder);
+llvm_di_delete_di_builder(LLVMDIBuilderRef builder_ref);
 
 void
-llvm_di_builder_finalize(LLVMDIBuilderRef builder);
-
-void
-llvm_di_finalize_fn(LLVMDIBuilderRef builder_ref, struct MirFn *fn);
-
-void
-llvm_di_set_instr_location(LLVMDIBuilderRef builder_ref, struct MirInstr *instr);
+llvm_di_builder_finalize(LLVMDIBuilderRef builder_ref);
 
 LLVMMetadataRef
 llvm_di_get_or_create_assembly(LLVMDIBuilderRef builder_ref, struct Assembly *assembly);
@@ -64,6 +58,19 @@ llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, struct MirType *type);
 
 LLVMMetadataRef
 llvm_di_get_or_create_unit(LLVMDIBuilderRef builder_ref, struct Unit *unit);
+
+LLVMMetadataRef
+llvm_di_get_or_create_lex_scope(LLVMDIBuilderRef builder_ref, struct Scope *scope);
+
+LLVMMetadataRef
+llvm_di_get_of_create_var(LLVMDIBuilderRef  builder_ref,
+                          LLVMBasicBlockRef bb_ref,
+                          struct MirVar *   var);
+
+void
+llvm_di_set_current_location(LLVMDIBuilderRef builder_ref,
+                             LLVMBuilderRef   ir_builder_ref,
+                             struct MirInstr *instr);
 
 #ifdef __cplusplus
 }

@@ -135,7 +135,7 @@ static Ast *
 parse_ident(Context *cnt);
 
 static Ast *
-parse_block(Context *cnt);
+parse_block(Context *cnt, bool create_scope);
 
 static Ast *
 parse_decl(Context *cnt);
@@ -488,15 +488,21 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, cnt->scope);
 		}
 
-		Ast *block = parse_block(cnt);
+		Scope *scope = scope_create(cnt->scope_arenas, SCOPE_FN, cnt->scope, 256, NULL);
+		push_scope(cnt, scope);
+
+		Ast *block = parse_block(cnt, false);
 		if (!block) {
 			parse_error(cnt,
 			            ERR_INVALID_DIRECTIVE,
 			            tok_directive,
 			            BUILDER_CUR_AFTER,
 			            "Expected body of the test case '{...}'.");
+			pop_scope(cnt);
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, cnt->scope);
 		}
+
+		scope->location = block->location;
 
 		parse_semicolon_rq(cnt);
 
@@ -505,6 +511,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		test->data.test_case.desc  = tok_desc->value.str;
 		test->data.test_case.block = block;
 
+		pop_scope(cnt);
 		return test;
 	}
 
@@ -1003,7 +1010,7 @@ parse_stmt_if(Context *cnt)
 		tokens_consume_till(cnt->tokens, SYM_LBLOCK);
 	}
 
-	stmt_if->data.stmt_if.true_stmt = parse_block(cnt);
+	stmt_if->data.stmt_if.true_stmt = parse_block(cnt, true);
 	if (!stmt_if->data.stmt_if.true_stmt) {
 		Token *tok_err = tokens_consume(cnt->tokens);
 		parse_error(
@@ -1019,7 +1026,7 @@ parse_stmt_if(Context *cnt)
 	if (tokens_consume_if(cnt->tokens, SYM_ELSE)) {
 		stmt_if->data.stmt_if.false_stmt = parse_stmt_if(cnt);
 		if (!stmt_if->data.stmt_if.false_stmt)
-			stmt_if->data.stmt_if.false_stmt = parse_block(cnt);
+			stmt_if->data.stmt_if.false_stmt = parse_block(cnt, true);
 		if (!stmt_if->data.stmt_if.false_stmt) {
 			Token *tok_err = tokens_consume(cnt->tokens);
 			parse_error(
@@ -1060,7 +1067,7 @@ parse_stmt_loop(Context *cnt)
 	push_inloop(cnt);
 
 	Scope *scope =
-	    scope_create(cnt->scope_arenas, SCOPE_DEFAULT, cnt->scope, 8, &tok_begin->location);
+	    scope_create(cnt->scope_arenas, SCOPE_LEXICAL, cnt->scope, 128, &tok_begin->location);
 	push_scope(cnt, scope);
 
 	if (!while_true) {
@@ -1084,7 +1091,7 @@ parse_stmt_loop(Context *cnt)
 	}
 
 	/* block */
-	loop->data.stmt_loop.block = parse_block(cnt);
+	loop->data.stmt_loop.block = parse_block(cnt, false);
 	if (!loop->data.stmt_loop.block) {
 		Token *tok_err = tokens_peek(cnt->tokens);
 		parse_error(
@@ -1366,8 +1373,7 @@ parse_expr_lit_fn(Context *cnt)
 
 	Ast *fn = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FN, tok_fn, cnt->scope);
 
-	Scope *scope =
-	    scope_create(cnt->scope_arenas, SCOPE_DEFAULT, cnt->scope, 32, &tok_fn->location);
+	Scope *scope = scope_create(cnt->scope_arenas, SCOPE_FN, cnt->scope, 256, &tok_fn->location);
 	push_scope(cnt, scope);
 
 	Ast *type = parse_type_fn(cnt, true);
@@ -1379,7 +1385,7 @@ parse_expr_lit_fn(Context *cnt)
 	parse_flags_for_curr_decl(cnt);
 
 	/* parse block (block is optional function body can be external) */
-	fn->data.expr_fn.block = parse_block(cnt);
+	fn->data.expr_fn.block = parse_block(cnt, false);
 
 	pop_scope(cnt);
 	return fn;
@@ -1524,7 +1530,7 @@ parse_type_enum(Context *cnt)
 	}
 
 	Scope *scope =
-	    scope_create(cnt->scope_arenas, SCOPE_DEFAULT, cnt->scope, 512, &tok->location);
+	    scope_create(cnt->scope_arenas, SCOPE_TYPE, cnt->scope, 512, &tok->location);
 	enm->data.type_enm.scope = scope;
 	push_scope(cnt, scope);
 
@@ -1736,7 +1742,7 @@ parse_type_struct(Context *cnt)
 	}
 
 	Scope *scope =
-	    scope_create(cnt->scope_arenas, SCOPE_DEFAULT, cnt->scope, 256, &tok->location);
+	    scope_create(cnt->scope_arenas, SCOPE_TYPE, cnt->scope, 256, &tok->location);
 	push_scope(cnt, scope);
 
 	Ast *type_struct = ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct, cnt->scope);
@@ -1932,14 +1938,17 @@ parse_expr_type(Context *cnt)
 }
 
 Ast *
-parse_block(Context *cnt)
+parse_block(Context *cnt, bool create_scope)
 {
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
 	if (!tok_begin) return NULL;
 
-	Scope *scope =
-	    scope_create(cnt->scope_arenas, SCOPE_DEFAULT, cnt->scope, 1024, &tok_begin->location);
-	push_scope(cnt, scope);
+	Scope *prev_scope = cnt->scope;
+	if (create_scope) {
+		Scope *scope = scope_create(
+		    cnt->scope_arenas, SCOPE_LEXICAL, cnt->scope, 1024, &tok_begin->location);
+		cnt->scope = scope;
+	}
 
 	Ast *block = ast_create_node(cnt->ast_arena, AST_BLOCK, tok_begin, cnt->scope);
 
@@ -1996,7 +2005,7 @@ NEXT:
 		goto NEXT;
 	}
 
-	if ((tmp = parse_block(cnt))) {
+	if ((tmp = parse_block(cnt, true))) {
 		bo_array_push_back(block->data.block.nodes, tmp);
 		goto NEXT;
 	}
@@ -2016,11 +2025,11 @@ NEXT:
 		            BUILDER_CUR_AFTER,
 		            "Expected end of block '}'.");
 		parse_note(cnt, tok_begin, BUILDER_CUR_WORD, "Block starting here.");
-		pop_scope(cnt);
+		if (create_scope) cnt->scope = prev_scope;
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, cnt->scope);
 	}
 
-	pop_scope(cnt);
+	if (create_scope) cnt->scope = prev_scope;
 	return block;
 }
 

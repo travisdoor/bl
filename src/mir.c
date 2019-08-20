@@ -413,6 +413,7 @@ create_var(Context *cnt,
            MirType *alloc_type,
            bool     is_mutable,
            bool     is_in_gscope,
+           int32_t  order, /* pass -1 if none */
            uint32_t flags);
 
 static MirVar *
@@ -431,7 +432,6 @@ create_fn(Context *        cnt,
           Ast *            node,
           ID *             id,
           const char *     llvm_name,
-          Scope *          scope,
           int32_t          flags,
           MirInstrFnProto *prototype);
 
@@ -593,6 +593,7 @@ append_instr_decl_var(Context * cnt,
                       MirInstr *init,
                       bool      is_mutable,
                       bool      is_in_gscope,
+                      int32_t   order, /* -1 of none */
                       uint32_t  flags);
 
 static MirInstr *
@@ -1486,7 +1487,7 @@ commit_fn(Context *cnt, MirFn *fn)
 	ID *id = fn->id;
 	assert(id);
 
-	ScopeEntry *entry = scope_lookup(fn->decl_scope, id, true, false);
+	ScopeEntry *entry = scope_lookup(fn->decl_node->parent_scope, id, true, false);
 	assert(entry && "cannot commit unregistred function");
 
 	entry->kind    = SCOPE_ENTRY_FN;
@@ -2116,17 +2117,16 @@ create_type_enum(Context *cnt, ID *id, Scope *scope, MirType *base_type, BArray 
 	return tmp;
 }
 
-/* Push into globals or locals of function. For local variables current function must be
- * set. */
 static inline void
-_push_var_into_module(Context *cnt, MirVar *var)
+push_var(Context *cnt, MirVar *var)
 {
 	assert(var);
-	if (!var->is_in_gscope) {
-		MirFn *fn = get_current_fn(cnt);
-		assert(fn);
-		bo_array_push_back(fn->variables, var);
-	}
+
+	if (var->is_in_gscope) return;
+
+	MirFn *fn = get_current_fn(cnt);
+	assert(fn);
+	bo_array_push_back(fn->variables, var);
 }
 
 MirVar *
@@ -2137,6 +2137,7 @@ create_var(Context *cnt,
            MirType *alloc_type,
            bool     is_mutable,
            bool     is_in_gscope,
+           int32_t  order, /* pass -1 if none */
            uint32_t flags)
 {
 	assert(id);
@@ -2150,9 +2151,10 @@ create_var(Context *cnt,
 	tmp->llvm_name    = id->str;
 	tmp->flags        = flags;
 	tmp->gen_llvm     = true;
+	tmp->is_arg_tmp   = order > -1;
+	tmp->order        = order;
 
-	_push_var_into_module(cnt, tmp);
-
+	push_var(cnt, tmp);
 	return tmp;
 }
 
@@ -2173,9 +2175,9 @@ create_var_impl(Context *   cnt,
 	tmp->is_implicit  = true;
 	tmp->gen_llvm     = true;
 	tmp->comptime     = comptime;
+	tmp->order        = -1;
 
-	_push_var_into_module(cnt, tmp);
-
+	push_var(cnt, tmp);
 	return tmp;
 }
 
@@ -2192,18 +2194,16 @@ create_fn(Context *        cnt,
           Ast *            node,
           ID *             id,
           const char *     llvm_name,
-          Scope *          scope,
           int32_t          flags,
           MirInstrFnProto *prototype)
 {
-	MirFn *tmp      = arena_alloc(&cnt->assembly->MIR.fn_arena);
-	tmp->variables  = create_arr(cnt, sizeof(MirVar *));
-	tmp->llvm_name  = llvm_name;
-	tmp->id         = id;
-	tmp->decl_scope = scope;
-	tmp->flags      = flags;
-	tmp->decl_node  = node;
-	tmp->prototype  = &prototype->base;
+	MirFn *tmp     = arena_alloc(&cnt->assembly->MIR.fn_arena);
+	tmp->variables = create_arr(cnt, sizeof(MirVar *));
+	tmp->llvm_name = llvm_name;
+	tmp->id        = id;
+	tmp->flags     = flags;
+	tmp->decl_node = node;
+	tmp->prototype = &prototype->base;
 	return tmp;
 }
 
@@ -2838,6 +2838,7 @@ append_instr_decl_var(Context * cnt,
                       MirInstr *init,
                       bool      is_mutable,
                       bool      is_in_gscope,
+                      int32_t   order,
                       uint32_t  flags)
 {
 	ref_instr(type);
@@ -2855,6 +2856,7 @@ append_instr_decl_var(Context * cnt,
 	                      NULL,
 	                      is_mutable,
 	                      is_in_gscope,
+	                      order,
 	                      flags);
 
 	if (is_in_gscope) {
@@ -7528,7 +7530,7 @@ ast_test_case(Context *cnt, Ast *test)
 	fn_proto->base.value.type = cnt->builtin_types.entry_test_case_fn;
 
 	const char *llvm_name = gen_uq_name(cnt, TEST_CASE_FN_NAME);
-	MirFn *     fn        = create_fn(cnt, test, NULL, llvm_name, NULL, FLAG_TEST, fn_proto);
+	MirFn *     fn        = create_fn(cnt, test, NULL, llvm_name, FLAG_TEST, fn_proto);
 
 	if (is_flag(cnt->builder->flags, BUILDER_FORCE_TEST_LLVM)) ++fn->ref_count;
 	assert(test->data.test_case.desc);
@@ -7895,7 +7897,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 
 	MirInstrBlock *prev_block = get_current_block(cnt);
 	MirFn *        fn =
-	    create_fn(cnt, lit_fn, NULL, NULL, NULL, 0, fn_proto); /* TODO: based on user flag!!! */
+	    create_fn(cnt, lit_fn, NULL, NULL, 0, fn_proto); /* TODO: based on user flag!!! */
 	fn_proto->base.value.data.v_ptr.data.fn = fn;
 
 	/* function body */
@@ -7926,7 +7928,8 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 
 				/* create tmp declaration for arg variable */
 				MirInstr *arg = append_instr_arg(cnt, NULL, (unsigned long)i);
-				append_instr_decl_var(cnt, ast_arg_name, NULL, arg, true, false, 0);
+				append_instr_decl_var(
+				    cnt, ast_arg_name, NULL, arg, true, false, i, 0);
 
 				register_symbol(cnt,
 				                ast_arg_name,
@@ -8118,10 +8121,9 @@ ast_decl_entity(Context *cnt, Ast *entity)
 				    gen_uq_name(cnt, ast_name->data.ident.id.str);
 		}
 
-		value->value.data.v_ptr.data.fn->decl_scope = scope;
-		value->value.data.v_ptr.data.fn->id         = id;
-		value->value.data.v_ptr.data.fn->decl_node  = ast_name;
-		value->value.data.v_ptr.data.fn->flags      = entity->data.decl_entity.flags;
+		value->value.data.v_ptr.data.fn->id        = id;
+		value->value.data.v_ptr.data.fn->decl_node = ast_name;
+		value->value.data.v_ptr.data.fn->flags     = entity->data.decl_entity.flags;
 
 		if (ast_type) {
 			((MirInstrFnProto *)value)->user_type =
@@ -8172,6 +8174,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		                      value,
 		                      is_mutable,
 		                      is_in_gscope,
+		                      -1,
 		                      entity->data.decl_entity.flags);
 
 		cnt->ast.current_entity_id = NULL;
@@ -8434,7 +8437,7 @@ ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *f
 	MirInstr *     fn_proto   = append_instr_fn_proto(cnt, NULL, NULL, NULL);
 	fn_proto->value.type      = final_fn_type;
 	fn_proto->value.data.v_ptr.data.fn =
-	    create_fn(cnt, NULL, NULL, fn_name, NULL, 0, (MirInstrFnProto *)fn_proto);
+	    create_fn(cnt, NULL, NULL, fn_name, 0, (MirInstrFnProto *)fn_proto);
 	fn_proto->value.data.v_ptr.data.fn->type = final_fn_type;
 
 	MirInstrBlock *entry = append_block(cnt, fn_proto->value.data.v_ptr.data.fn, "entry");
@@ -8979,7 +8982,7 @@ mir_run(Builder *builder, Assembly *assembly)
 	cnt.analyze.waiting          = bo_htbl_new_bo(bo_typeof(BArray), true, ANALYZE_TABLE_SIZE);
 	cnt.type_table               = assembly->type_table;
 	cnt.builtin_types.cache =
-	    scope_create(&builder->scope_arenas, SCOPE_DEFAULT, NULL, 64, NULL);
+	    scope_create(&builder->scope_arenas, SCOPE_GLOBAL, NULL, 64, NULL);
 
 	/* initialize all builtin types */
 	init_builtins(&cnt);

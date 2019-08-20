@@ -456,6 +456,9 @@ emit_instr_cast(Context *cnt, MirInstrCast *cast)
 	LLVMOpcode   llvm_op;
 	assert(llvm_src && llvm_dest_type);
 
+	if (cnt->debug_build)
+		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &cast->base);
+
 	switch (cast->op) {
 	case MIR_CAST_BITCAST:
 		llvm_op = LLVMBitCast;
@@ -538,6 +541,10 @@ emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 	LLVMValueRef llvm_index   = fetch_value(cnt, elem_ptr->index);
 	assert(llvm_arr_ptr && llvm_index);
 
+	if (cnt->debug_build)
+		llvm_di_set_current_location(
+		    cnt->llvm_dibuilder, cnt->llvm_builder, &elem_ptr->base);
+
 	if (elem_ptr->target_is_slice) {
 		/* special case for slices */
 		llvm_arr_ptr = LLVMBuildStructGEP(cnt->llvm_builder, llvm_arr_ptr, 1, "");
@@ -566,6 +573,10 @@ emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 {
 	LLVMValueRef llvm_target_ptr = fetch_value(cnt, member_ptr->target_ptr);
 	assert(llvm_target_ptr);
+
+	if (cnt->debug_build)
+		llvm_di_set_current_location(
+		    cnt->llvm_dibuilder, cnt->llvm_builder, &member_ptr->base);
 
 	if (member_ptr->builtin_id == MIR_BUILTIN_ID_NONE) {
 		assert(member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
@@ -601,6 +612,10 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 	LLVMValueRef   llvm_src  = fetch_value(cnt, load->src);
 	const unsigned alignment = load->base.value.type->alignment;
 	assert(llvm_src);
+
+	if (cnt->debug_build)
+		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &load->base);
+
 	load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
 	LLVMSetAlignment(load->base.llvm_value, alignment);
 }
@@ -798,6 +813,10 @@ emit_instr_store(Context *cnt, MirInstrStore *store)
 	LLVMValueRef   ptr       = fetch_value(cnt, store->dest);
 	const unsigned alignment = store->src->value.type->alignment;
 	assert(val && ptr);
+
+	if (cnt->debug_build)
+		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &store->base);
+
 	store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
 	LLVMSetAlignment(store->base.llvm_value, alignment);
 }
@@ -810,6 +829,9 @@ emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 
 	LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(llvm_val));
 	const bool   float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
+
+	if (cnt->debug_build)
+		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &unop->base);
 
 	switch (unop->op) {
 	case UNOP_NOT: {
@@ -852,6 +874,9 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 
 	MirType *type = tmp_var->value.type;
 	assert(type);
+
+	if (cnt->debug_build)
+		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &cmp->base);
 
 	/*
 	 * Initializer variants:
@@ -931,6 +956,9 @@ emit_instr_binop(Context *cnt, MirInstrBinop *binop)
 	MirType *  type           = binop->lhs->value.type;
 	const bool real_type      = type->kind == MIR_TYPE_REAL;
 	const bool signed_integer = type->kind == MIR_TYPE_INT && type->data.integer.is_signed;
+
+	if (cnt->debug_build)
+		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &binop->base);
 
 	switch (binop->op) {
 	case BINOP_ADD:
@@ -1091,12 +1119,15 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 		}
 	}
 
+	if (cnt->debug_build) {
+		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &call->base);
+		// llvm_di_set_instr_location(cnt->llvm_dibuilder, &call->base);
+	}
+
 	assert(llvm_fn);
 	call->base.llvm_value =
 	    LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, (unsigned int)llvm_argc, "");
 	bl_free(llvm_args);
-
-	// if (cnt->debug_build) llvm_di_set_instr_location(cnt->llvm_dibuilder, &call->base);
 }
 
 void
@@ -1129,6 +1160,10 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 			if (decl->init->kind == MIR_INSTR_COMPOUND) {
 				emit_instr_compound(cnt, var, (MirInstrCompound *)decl->init);
 			} else {
+				if (cnt->debug_build)
+					llvm_di_set_current_location(
+					    cnt->llvm_dibuilder, cnt->llvm_builder, &decl->base);
+
 				/* use simple store */
 				LLVMValueRef llvm_init = fetch_value(cnt, decl->init);
 				assert(llvm_init);
@@ -1141,6 +1176,9 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 void
 emit_instr_ret(Context *cnt, MirInstrRet *ret)
 {
+	if (cnt->debug_build)
+		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &ret->base);
+
 	LLVMValueRef llvm_ret;
 	if (ret->value) {
 		LLVMValueRef llvm_ret_value = fetch_value(cnt, ret->value);
@@ -1323,7 +1361,6 @@ emit_allocas(Context *cnt, MirFn *fn)
 #else
 		var_name = "";
 #endif
-
 		var_type      = var->value.type->llvm_type;
 		var_alignment = (unsigned int)var->value.type->alignment;
 
@@ -1331,6 +1368,12 @@ emit_allocas(Context *cnt, MirFn *fn)
 
 		var->llvm_value = LLVMBuildAlloca(cnt->llvm_builder, var_type, var_name);
 		LLVMSetAlignment(var->llvm_value, var_alignment);
+
+		/* generate DI for debug build */
+		if (cnt->debug_build) {
+			LLVMBasicBlockRef bb = LLVMGetInsertBlock(cnt->llvm_builder);
+			llvm_di_get_of_create_var(cnt->llvm_dibuilder, bb, var);
+		}
 	}
 }
 
@@ -1342,9 +1385,12 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	if (fn->ref_count == 0) return;
 	emit_fn_proto(cnt, fn);
 
-	if (cnt->debug_build) llvm_di_get_or_create_fn(cnt->llvm_dibuilder, fn);
-
 	if (is_not_flag(fn->flags, FLAG_EXTERN)) {
+		if (cnt->debug_build) {
+			llvm_di_get_or_create_fn(cnt->llvm_dibuilder, fn);
+			llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, NULL);
+		}
+
 		MirInstr *block = (MirInstr *)fn->first_block;
 
 		while (block) {
@@ -1352,8 +1398,6 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 			block = block->next;
 		}
 	}
-
-	if (cnt->debug_build) llvm_di_finalize_fn(cnt->llvm_dibuilder, fn);
 }
 
 void

@@ -241,18 +241,16 @@ struct MirArenas {
 
 /* FN */
 struct MirFn {
-	MirInstr *      prototype;
-	ID *            id;
-	Ast *           decl_node;
-	Scope *         decl_scope; /* scope in which functon is declared */
-	Scope *         body_scope; /* function body scope if there is one (optional) */
-	MirType *       type;
-	BArray *        variables;
-	int32_t         ref_count;
-	const char *    llvm_name;
-	LLVMValueRef    llvm_value;
-	LLVMMetadataRef llvm_meta;
-	bool            analyzed_for_cmptime_exec;
+	MirInstr *   prototype;
+	ID *         id;
+	Ast *        decl_node;
+	Scope *      body_scope; /* function body scope if there is one (optional) */
+	MirType *    type;
+	BArray *     variables;
+	int32_t      ref_count;
+	const char * llvm_name;
+	LLVMValueRef llvm_value;
+	bool         analyzed_for_cmptime_exec;
 
 	DCpointer   extern_entry;
 	int32_t     flags;
@@ -262,7 +260,6 @@ struct MirFn {
 	MirInstrBlock *first_block;
 	MirInstrBlock *last_block;
 	int32_t        block_count;
-	// int32_t        instr_count;
 
 	MirConstValueData *exec_ret_value;
 };
@@ -415,10 +412,12 @@ struct MirVar {
 	Ast *               decl_node;
 	Scope *             decl_scope;
 	int32_t             ref_count;
+	int32_t             order; /* coresponding function argument id if is_arg_tmp == true */
 	bool                is_mutable;
 	bool                comptime;
 	bool                is_in_gscope;
 	bool                is_implicit;
+	bool                is_arg_tmp; /* variable is function argument temp */
 	bool                gen_llvm;
 	uint32_t            flags;
 	MirRelativeStackPtr rel_stack_ptr;
