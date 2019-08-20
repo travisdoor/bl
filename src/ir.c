@@ -41,7 +41,7 @@
 #define LLVM_INTRINSIC_MEMCPY "llvm.memcpy.p0i8.p0i8.i64"
 
 #if BL_DEBUG
-#define NAMED_VARS true
+#define NAMED_VARS false 
 #else
 #define NAMED_VARS false
 #endif
@@ -1121,7 +1121,6 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 
 	if (cnt->debug_build) {
 		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &call->base);
-		// llvm_di_set_instr_location(cnt->llvm_dibuilder, &call->base);
 	}
 
 	assert(llvm_fn);
@@ -1155,6 +1154,12 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	} else {
 		assert(var->llvm_value);
 
+		/* generate DI for debug build */
+		if (cnt->debug_build) {
+			LLVMBasicBlockRef bb = LLVMGetInsertBlock(cnt->llvm_builder);
+			llvm_di_get_of_create_var(cnt->llvm_dibuilder, bb, var);
+		}
+
 		if (decl->init) {
 			/* There is special handling for initialization via compound instruction */
 			if (decl->init->kind == MIR_INSTR_COMPOUND) {
@@ -1166,13 +1171,6 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 				LLVMBuildStore(cnt->llvm_builder, llvm_init, var->llvm_value);
 			}
 		}
-
-		/* generate DI for debug build */
-		if (cnt->debug_build) {
-			LLVMBasicBlockRef bb = LLVMGetInsertBlock(cnt->llvm_builder);
-			llvm_di_get_of_create_var(cnt->llvm_dibuilder, bb, var);
-		}
-
 	}
 }
 

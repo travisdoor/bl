@@ -1,13 +1,10 @@
 /* playground */
 
+#load "std/print.bl"
+
 main :: fn () s32 {
-    i := 20;
-    j := 30;
-    foobar(i, j);
-    
+    i := 10;
+    print("i = %\n", i);
     return 0;
 };
 
-foobar :: fn (homo: s32, kokot: s32) {
-    o := homo;
-};
