@@ -45,7 +45,7 @@ static DIScope *
 get_scope(DIBuilder *builder, Scope *scope, Unit *unit = nullptr)
 {
 	DIScope *        result      = nullptr;
-	LLVMDIBuilderRef builder_ref = cast(LLVMDIBuilderRef)(builder);
+	auto builder_ref = cast(LLVMDIBuilderRef)(builder);
 	switch (scope->kind) {
 	case SCOPE_FN:
 		result = cast(DIScope *)(scope->llvm_meta);
@@ -140,7 +140,7 @@ llvm_di_get_or_create_fn(LLVMDIBuilderRef builder_ref, MirFn *fn)
 	                                  location->line,
 	                                  type,
 	                                  0,
-	                                  DINode::FlagPrototyped,
+	                                  DINode::FlagStaticMember,
 	                                  DISubprogram::toSPFlags(false, true, false));
 
 	auto func = cast(Function *)(fn->llvm_value);
@@ -208,21 +208,23 @@ llvm_di_get_of_create_var(LLVMDIBuilderRef builder_ref, LLVMBasicBlockRef bb_ref
 	auto type     = cast(DIType *)(llvm_di_get_or_create_type(builder_ref, var->value.type));
 	auto name     = StringRef(var->id->str, strlen(var->id->str));
 
+	DILocalVariable *di = nullptr;
+
 	if (var->is_arg_tmp) { /* function argument tmp */
 		assert(var->order > -1);
-		auto di = builder->createParameterVariable(
+		di = builder->createParameterVariable(
 		    scope, name, var->order + 1, file, location->line, type, true);
-
-		builder->insertDeclare(storage,
-		                       di,
-		                       builder->createExpression(),
-		                       DebugLoc::get(location->line, location->col, scope),
-		                       bb);
-
-		return cast(LLVMMetadataRef)(di);
+	} else {
+		di = builder->createAutoVariable(scope,
+		                                 name,
+		                                 file,
+		                                 location->line,
+		                                 type,
+		                                 true,
+		                                 DINode::FlagZero,
+		                                 var->value.type->alignment * 8);
 	}
 
-	auto di = builder->createAutoVariable(scope, name, file, location->line, type);
 	builder->insertDeclare(storage,
 	                       di,
 	                       builder->createExpression(),
@@ -262,7 +264,7 @@ llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, MirType *type)
 	}
 
 	case MIR_TYPE_VOID: {
-		di = builder->createBasicType(name, type->size_bits, dwarf::DW_ATE_unsigned_char);
+		di = builder->createBasicType(name, 8, dwarf::DW_ATE_unsigned_char);
 		break;
 	}
 

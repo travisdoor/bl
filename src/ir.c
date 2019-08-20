@@ -1160,16 +1160,19 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 			if (decl->init->kind == MIR_INSTR_COMPOUND) {
 				emit_instr_compound(cnt, var, (MirInstrCompound *)decl->init);
 			} else {
-				if (cnt->debug_build)
-					llvm_di_set_current_location(
-					    cnt->llvm_dibuilder, cnt->llvm_builder, &decl->base);
-
 				/* use simple store */
 				LLVMValueRef llvm_init = fetch_value(cnt, decl->init);
 				assert(llvm_init);
 				LLVMBuildStore(cnt->llvm_builder, llvm_init, var->llvm_value);
 			}
 		}
+
+		/* generate DI for debug build */
+		if (cnt->debug_build) {
+			LLVMBasicBlockRef bb = LLVMGetInsertBlock(cnt->llvm_builder);
+			llvm_di_get_of_create_var(cnt->llvm_dibuilder, bb, var);
+		}
+
 	}
 }
 
@@ -1368,12 +1371,6 @@ emit_allocas(Context *cnt, MirFn *fn)
 
 		var->llvm_value = LLVMBuildAlloca(cnt->llvm_builder, var_type, var_name);
 		LLVMSetAlignment(var->llvm_value, var_alignment);
-
-		/* generate DI for debug build */
-		if (cnt->debug_build) {
-			LLVMBasicBlockRef bb = LLVMGetInsertBlock(cnt->llvm_builder);
-			llvm_di_get_of_create_var(cnt->llvm_dibuilder, bb, var);
-		}
 	}
 }
 
