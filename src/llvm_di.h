@@ -51,10 +51,12 @@ LLVMMetadataRef
 llvm_di_get_or_create_assembly(LLVMDIBuilderRef builder_ref, struct Assembly *assembly);
 
 LLVMMetadataRef
-llvm_di_get_or_create_fn(LLVMDIBuilderRef builder_ref, struct MirFn *fn);
+llvm_di_get_or_create_fn(LLVMDIBuilderRef builder_ref, struct Assembly *assembly, struct MirFn *fn);
 
 LLVMMetadataRef
-llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, struct MirType *type);
+llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref,
+                           struct Assembly *assembly,
+                           struct MirType * type);
 
 LLVMMetadataRef
 llvm_di_get_or_create_unit(LLVMDIBuilderRef builder_ref, struct Unit *unit);
@@ -64,6 +66,7 @@ llvm_di_get_or_create_lex_scope(LLVMDIBuilderRef builder_ref, struct Scope *scop
 
 LLVMMetadataRef
 llvm_di_get_of_create_var(LLVMDIBuilderRef  builder_ref,
+                          struct Assembly * assembly,
                           LLVMBasicBlockRef bb_ref,
                           struct MirVar *   var);
 

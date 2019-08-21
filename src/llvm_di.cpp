@@ -36,6 +36,7 @@
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
+#include <llvm/Target/TargetMachine.h>
 
 #define cast(T) reinterpret_cast<T>
 
@@ -44,8 +45,8 @@ using namespace llvm;
 static DIScope *
 get_scope(DIBuilder *builder, Scope *scope, Unit *unit = nullptr)
 {
-	DIScope *        result      = nullptr;
-	auto builder_ref = cast(LLVMDIBuilderRef)(builder);
+	DIScope *result      = nullptr;
+	auto     builder_ref = cast(LLVMDIBuilderRef)(builder);
 	switch (scope->kind) {
 	case SCOPE_FN:
 		result = cast(DIScope *)(scope->llvm_meta);
@@ -96,7 +97,12 @@ llvm_di_get_or_create_assembly(LLVMDIBuilderRef builder_ref, Assembly *assembly)
 	auto file    = builder->createFile({assembly->name, strlen(assembly->name)}, ".");
 	auto cu = builder->createCompileUnit(dwarf::DW_LANG_C99, file, producer, false, "", 1, "");
 
-	assembly->llvm.di_meta = cast(LLVMMetadataRef)(cu);
+	auto module = cast(Module *)(assembly->llvm.module);
+	module->addModuleFlag(
+	    Module::ModFlagBehavior::Warning, "Debug Info Version", DEBUG_METADATA_VERSION);
+
+	assembly->llvm.di_meta      = cast(LLVMMetadataRef)(cu);
+	assembly->llvm.di_file_meta = cast(LLVMMetadataRef)(file);
 	return assembly->llvm.di_meta;
 }
 
@@ -121,7 +127,7 @@ llvm_di_get_or_create_lex_scope(LLVMDIBuilderRef builder_ref, Scope *scope)
 }
 
 LLVMMetadataRef
-llvm_di_get_or_create_fn(LLVMDIBuilderRef builder_ref, MirFn *fn)
+llvm_di_get_or_create_fn(LLVMDIBuilderRef builder_ref, Assembly *assembly, MirFn *fn)
 {
 	assert(fn->decl_node);
 
@@ -130,8 +136,9 @@ llvm_di_get_or_create_fn(LLVMDIBuilderRef builder_ref, MirFn *fn)
 	auto builder  = cast(DIBuilder *)(builder_ref);
 	auto location = fn->decl_node->location;
 	auto file     = cast(DIFile *)(llvm_di_get_or_create_unit(builder_ref, location->unit));
-	auto type     = cast(DISubroutineType *)(llvm_di_get_or_create_type(builder_ref, fn->type));
-	auto scope    = get_scope(builder, fn->decl_node->parent_scope, location->unit);
+	auto type =
+	    cast(DISubroutineType *)(llvm_di_get_or_create_type(builder_ref, assembly, fn->type));
+	auto scope = get_scope(builder, fn->decl_node->parent_scope, location->unit);
 
 	auto di = builder->createFunction(scope,
 	                                  {fn->id->str, strlen(fn->id->str)},
@@ -186,7 +193,10 @@ llvm_di_get_or_create_unit(LLVMDIBuilderRef builder_ref, Unit *unit)
 }
 
 LLVMMetadataRef
-llvm_di_get_of_create_var(LLVMDIBuilderRef builder_ref, LLVMBasicBlockRef bb_ref, MirVar *var)
+llvm_di_get_of_create_var(LLVMDIBuilderRef  builder_ref,
+                          Assembly *        assembly,
+                          LLVMBasicBlockRef bb_ref,
+                          MirVar *          var)
 {
 	auto builder = cast(DIBuilder *)(builder_ref);
 	auto bb      = cast(BasicBlock *)(bb_ref);
@@ -205,8 +215,9 @@ llvm_di_get_of_create_var(LLVMDIBuilderRef builder_ref, LLVMBasicBlockRef bb_ref
 	auto scope    = get_scope(builder, var->decl_scope);
 	auto location = var->decl_node->location;
 	auto file     = cast(DIFile *)(llvm_di_get_or_create_unit(builder_ref, location->unit));
-	auto type     = cast(DIType *)(llvm_di_get_or_create_type(builder_ref, var->value.type));
-	auto name     = StringRef(var->id->str, strlen(var->id->str));
+	auto type =
+	    cast(DIType *)(llvm_di_get_or_create_type(builder_ref, assembly, var->value.type));
+	auto name = StringRef(var->id->str, strlen(var->id->str));
 
 	DILocalVariable *di = nullptr;
 
@@ -235,7 +246,7 @@ llvm_di_get_of_create_var(LLVMDIBuilderRef builder_ref, LLVMBasicBlockRef bb_ref
 }
 
 LLVMMetadataRef
-llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, MirType *type)
+llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, Assembly *assembly, MirType *type)
 {
 	if (type->llvm_meta) return type->llvm_meta;
 	auto    builder = cast(DIBuilder *)(builder_ref);
@@ -274,8 +285,8 @@ llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, MirType *type)
 	}
 
 	case MIR_TYPE_PTR: {
-		auto pointeeType =
-		    cast(DIType *)(llvm_di_get_or_create_type(builder_ref, type->data.ptr.expr));
+		auto pointeeType = cast(DIType *)(
+		    llvm_di_get_or_create_type(builder_ref, assembly, type->data.ptr.expr));
 
 		di = builder->createPointerType(pointeeType, type->size_bits, type->alignment * 8);
 		break;
@@ -283,7 +294,7 @@ llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, MirType *type)
 
 	case MIR_TYPE_ARRAY: {
 		auto elem_type = cast(DIType *)(
-		    llvm_di_get_or_create_type(builder_ref, type->data.array.elem_type));
+		    llvm_di_get_or_create_type(builder_ref, assembly, type->data.array.elem_type));
 
 		di = builder->createArrayType(
 		    type->data.array.len, type->alignment * 8, elem_type, nullptr);
@@ -293,18 +304,83 @@ llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, MirType *type)
 	case MIR_TYPE_FN: {
 		SmallVector<Metadata *, 16> args;
 		args.push_back(cast(Metadata *)(
-		    llvm_di_get_or_create_type(builder_ref, type->data.fn.ret_type)));
+		    llvm_di_get_or_create_type(builder_ref, assembly, type->data.fn.ret_type)));
 
 		auto arg_types = type->data.fn.arg_types;
 		if (arg_types) {
 			for (size_t i = 0; i < bo_array_size(arg_types); ++i) {
 				auto arg_type = bo_array_at(arg_types, i, MirType *);
 				args.push_back(cast(Metadata *)(
-				    llvm_di_get_or_create_type(builder_ref, arg_type)));
+				    llvm_di_get_or_create_type(builder_ref, assembly, arg_type)));
 			}
 		}
 
 		di = builder->createSubroutineType(builder->getOrCreateTypeArray(args));
+		break;
+	}
+
+	case MIR_TYPE_STRUCT:
+	case MIR_TYPE_SLICE:
+	case MIR_TYPE_VARGS:
+	case MIR_TYPE_STRING: {
+		assert(assembly);
+		auto bl_scope = type->data.strct.scope;
+		auto td       = cast(DataLayout *)(assembly->llvm.TD);
+		auto stype    = cast(StructType *)(type->llvm_type);
+		auto cname    = type->user_id ? type->user_id->str : type->id.str;
+		auto name     = StringRef(cname, strlen(cname));
+
+		DIScope *scope = nullptr;
+		DIFile * file  = nullptr;
+		unsigned line  = 0;
+
+		if (bl_scope) {
+			assert(bl_scope->parent && "Missing parent scope of the structure.");
+			scope = cast(DIScope *)(bl_scope->parent->llvm_meta);
+			file  = cast(DIFile *)(bl_scope->parent->llvm_meta);
+		} else {
+			scope = cast(DIScope *)(assembly->llvm.di_meta);
+			file  = cast(DIFile *)(assembly->llvm.di_file_meta);
+		}
+
+		auto sdi = builder->createStructType(scope,
+		                                     name,
+		                                     file,
+		                                     line,
+		                                     type->size_bits,
+		                                     type->alignment * 8,
+		                                     DINode::DIFlags::FlagPublic,
+		                                     nullptr,
+		                                     nullptr);
+
+		SmallVector<Metadata *, 32> members;
+		{ /* setup elems DI */
+			const size_t memc = bo_array_size(type->data.strct.members);
+			for (size_t i = 0; i < memc; ++i) {
+				auto member = bo_array_at(type->data.strct.members, i, MirType *);
+				auto member_type = cast(DIType *)(
+				    llvm_di_get_or_create_type(builder_ref, assembly, member));
+
+				char tmp[8] = {0};
+				sprintf(tmp, "m_%lu", i);
+
+				auto mdi = builder->createMemberType(
+				    sdi,
+				    {tmp, strlen(tmp)},
+				    file,
+				    0,
+				    member_type->getSizeInBits(),
+				    member_type->getAlignInBits(),
+				    td->getStructLayout(stype)->getElementOffsetInBits(i),
+				    DINode::DIFlags::FlagPublic,
+				    member_type);
+				members.push_back(mdi);
+			}
+		}
+
+		sdi->replaceElements(builder->getOrCreateArray(members));
+
+		di = sdi;
 		break;
 	}
 

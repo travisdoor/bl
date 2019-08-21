@@ -4,6 +4,8 @@
 
 main :: fn () s32 {
     i := 10;
+    text := "hello";
+    
     print("i = %\n", i);
     return 0;
 };

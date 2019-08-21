@@ -65,12 +65,13 @@ typedef struct Assembly {
 	} MIR;
 
 	struct {
-		LLVMModuleRef        module;  // LLVM Module.
-		LLVMContextRef       cnt;     // LLVM Context.
-		LLVMTargetDataRef    TD;      // LLVM Target data.
-		LLVMTargetMachineRef TM;      // LLVM Machine.
-		char *               triple;  // LLVM triple.
-		LLVMMetadataRef      di_meta; // LLVM Compile unit DI meta (optional)
+		LLVMModuleRef        module;       // LLVM Module.
+		LLVMContextRef       cnt;          // LLVM Context.
+		LLVMTargetDataRef    TD;           // LLVM Target data.
+		LLVMTargetMachineRef TM;           // LLVM Machine.
+		char *               triple;       // LLVM triple.
+		LLVMMetadataRef      di_meta;      // LLVM Compile unit DI meta (optional)
+		LLVMMetadataRef      di_file_meta; // LLVM dummy file for CU (optional)
 	} llvm;
 
 	/* DynCall/Lib data used for external method execution in compile time */

@@ -267,9 +267,9 @@ struct MirFn {
 /* MEMBER */
 
 struct MirMember {
+	MirType *type;
 	ID *     id;
 	Ast *    decl_node;
-	MirType *type;
 	Scope *  decl_scope;
 	int64_t  index;
 };
@@ -295,7 +295,7 @@ struct MirTypePtr {
 };
 
 struct MirTypeStruct {
-	Scope * scope;
+	Scope * scope; /* struct body scope */
 	BArray *members;
 	bool    is_packed;
 };

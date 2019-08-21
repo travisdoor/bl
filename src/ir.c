@@ -41,7 +41,7 @@
 #define LLVM_INTRINSIC_MEMCPY "llvm.memcpy.p0i8.p0i8.i64"
 
 #if BL_DEBUG
-#define NAMED_VARS false 
+#define NAMED_VARS false
 #else
 #define NAMED_VARS false
 #endif
@@ -1157,7 +1157,7 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		/* generate DI for debug build */
 		if (cnt->debug_build) {
 			LLVMBasicBlockRef bb = LLVMGetInsertBlock(cnt->llvm_builder);
-			llvm_di_get_of_create_var(cnt->llvm_dibuilder, bb, var);
+			llvm_di_get_of_create_var(cnt->llvm_dibuilder, cnt->assembly, bb, var);
 		}
 
 		if (decl->init) {
@@ -1230,6 +1230,9 @@ emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 	const size_t vargsc = bo_array_size(values);
 	assert(vargs_type && vargs_type->kind == MIR_TYPE_VARGS);
 
+	if (cnt->debug_build)
+		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, NULL);
+
 	/* Setup tmp array values. */
 	if (vargsc > 0) {
 		MirInstr *   value;
@@ -1279,6 +1282,9 @@ emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 
 	assert(llvm_type_info && "Missing LLVM value for RTTI variable.");
 	assert(llvm_tmp);
+
+	if (cnt->debug_build)
+		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, NULL);
 
 	MirType *   any_type                = mir_deref_type(toany->base.value.type);
 	LLVMTypeRef llvm_any_type_info_type = mir_get_struct_elem_type(any_type, 0)->llvm_type;
@@ -1382,7 +1388,7 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
 	if (is_not_flag(fn->flags, FLAG_EXTERN)) {
 		if (cnt->debug_build) {
-			llvm_di_get_or_create_fn(cnt->llvm_dibuilder, fn);
+			llvm_di_get_or_create_fn(cnt->llvm_dibuilder, cnt->assembly, fn);
 			llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, NULL);
 		}
 
