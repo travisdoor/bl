@@ -357,9 +357,9 @@ llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, Assembly *assembly, Mir
 		{ /* setup elems DI */
 			const size_t memc = bo_array_size(type->data.strct.members);
 			for (size_t i = 0; i < memc; ++i) {
-				auto member = bo_array_at(type->data.strct.members, i, MirType *);
+				auto member = bo_array_at(type->data.strct.members, i, MirMember *);
 				auto member_type = cast(DIType *)(
-				    llvm_di_get_or_create_type(builder_ref, assembly, member));
+				    llvm_di_get_or_create_type(builder_ref, assembly, member->type));
 
 				char tmp[8] = {0};
 				sprintf(tmp, "m_%lu", i);

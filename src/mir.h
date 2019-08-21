@@ -265,7 +265,6 @@ struct MirFn {
 };
 
 /* MEMBER */
-
 struct MirMember {
 	MirType *type;
 	ID *     id;
@@ -285,8 +284,8 @@ struct MirTypeReal {
 };
 
 struct MirTypeFn {
-	MirType *ret_type;
 	BArray * arg_types;
+	MirType *ret_type;
 	bool     is_vargs;
 };
 
@@ -295,8 +294,8 @@ struct MirTypePtr {
 };
 
 struct MirTypeStruct {
-	Scope * scope; /* struct body scope */
-	BArray *members;
+	Scope * scope;   /* struct body scope */
+	BArray *members; /* MirMember */
 	bool    is_packed;
 };
 
@@ -730,7 +729,7 @@ mir_get_struct_elem_type(MirType *type, uint32_t i)
 	assert(mir_is_composit_type(type) && "Expected structure type");
 	BArray *members = type->data.strct.members;
 	assert(members && bo_array_size(members) > i);
-	return bo_array_at(members, i, MirType *);
+	return bo_array_at(members, i, MirMember *)->type;
 }
 
 static inline MirType *

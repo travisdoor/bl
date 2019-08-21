@@ -46,6 +46,9 @@
 #define NAMED_VARS false
 #endif
 
+SmallArrayType(value, LLVMValueRef, 32);
+SmallArrayType(value64, LLVMValueRef, 64);
+
 typedef struct {
 	bool        debug_build;
 	Builder *   builder;
@@ -640,22 +643,23 @@ emit_global_string_ptr(Context *cnt, const char *str, size_t len)
 		    LLVMArrayType(cnt->llvm_i8_type, (unsigned int)len + 1);
 		llvm_str = LLVMAddGlobal(cnt->llvm_module, llvm_str_arr_type, ".str");
 
-		LLVMValueRef *llvm_chars = bl_malloc(sizeof(LLVMValueRef) * (len + 1));
-		if (!llvm_chars) bl_abort("bad alloc");
+		SmallArray_value64 llvm_chars;
+		sa_init_value64(&llvm_chars);
 
 		for (size_t i = 0; i < len + 1; ++i) {
-			llvm_chars[i] = LLVMConstInt(cnt->llvm_i8_type, str[i], true);
+			sa_push_value64(&llvm_chars, LLVMConstInt(cnt->llvm_i8_type, str[i], true));
 		}
 
 		LLVMValueRef llvm_str_arr =
-		    LLVMConstArray(cnt->llvm_i8_type, llvm_chars, (unsigned int)len + 1);
+		    LLVMConstArray(cnt->llvm_i8_type, llvm_chars.data, (unsigned int)len + 1);
 		LLVMSetInitializer(llvm_str, llvm_str_arr);
 		LLVMSetLinkage(llvm_str, LLVMPrivateLinkage);
 		LLVMSetGlobalConstant(llvm_str, true);
 		LLVMSetAlignment(llvm_str, LLVMABIAlignmentOfType(cnt->llvm_td, llvm_str_arr_type));
 		LLVMSetUnnamedAddr(llvm_str, true);
 		llvm_str = LLVMConstBitCast(llvm_str, cnt->llvm_i8_ptr_type);
-		bl_free(llvm_chars);
+
+		sa_terminate_value64(&llvm_chars);
 	}
 
 	bo_htbl_insert(cnt->gstring_cache, hash, llvm_str);
@@ -737,15 +741,17 @@ emit_as_const(Context *cnt, MirConstValue *value)
 
 		assert(elems);
 		assert(len == bo_array_size(elems));
-		LLVMValueRef *llvm_elems = bl_malloc(sizeof(LLVMValueRef) * len);
+
+		SmallArray_value llvm_elems;
+		sa_init_value(&llvm_elems);
 
 		for (size_t i = 0; i < len; ++i) {
-			elem          = bo_array_at(elems, i, MirConstValue *);
-			llvm_elems[i] = emit_as_const(cnt, elem);
+			elem = bo_array_at(elems, i, MirConstValue *);
+			sa_push_value(&llvm_elems, emit_as_const(cnt, elem));
 		}
 
-		llvm_value = LLVMConstArray(llvm_elem_type, llvm_elems, (unsigned int)len);
-		bl_free(llvm_elems);
+		llvm_value = LLVMConstArray(llvm_elem_type, llvm_elems.data, (unsigned int)len);
+		sa_terminate_value(&llvm_elems);
 		break;
 	}
 
@@ -778,15 +784,15 @@ emit_as_const(Context *cnt, MirConstValue *value)
 		const size_t memc    = bo_array_size(members);
 
 		MirConstValue *member;
-		LLVMValueRef * llvm_members = bl_malloc(sizeof(LLVMValueRef) * memc);
+
+		SmallArray_value llvm_members;
+		sa_init_value(&llvm_members);
 
 		barray_foreach(members, member)
-		{
-			llvm_members[i] = emit_as_const(cnt, member);
-		}
+		    sa_push_value(&llvm_members, emit_as_const(cnt, member));
 
-		llvm_value = LLVMConstNamedStruct(llvm_type, llvm_members, (unsigned int)memc);
-		bl_free(llvm_members);
+		llvm_value = LLVMConstNamedStruct(llvm_type, llvm_members.data, (unsigned int)memc);
+		sa_terminate_value(&llvm_members);
 		break;
 	}
 
@@ -1104,19 +1110,13 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	                           ? callee->llvm_value
 	                           : emit_fn_proto(cnt, callee->value.data.v_ptr.data.fn);
 
-	const size_t  llvm_argc = call->args ? bo_array_size(call->args) : 0;
-	LLVMValueRef *llvm_args = NULL;
+	const size_t     llvm_argc = call->args ? bo_array_size(call->args) : 0;
+	SmallArray_value llvm_args;
+	sa_init_value(&llvm_args);
 
 	if (llvm_argc) {
-		llvm_args = bl_malloc(sizeof(LLVMValueRef) * llvm_argc);
-		if (!llvm_args) bl_abort("bad alloc");
-
 		MirInstr *arg;
-
-		barray_foreach(call->args, arg)
-		{
-			llvm_args[i] = fetch_value(cnt, arg);
-		}
+		barray_foreach(call->args, arg) sa_push_value(&llvm_args, fetch_value(cnt, arg));
 	}
 
 	if (cnt->debug_build) {
@@ -1125,8 +1125,9 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 
 	assert(llvm_fn);
 	call->base.llvm_value =
-	    LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args, (unsigned int)llvm_argc, "");
-	bl_free(llvm_args);
+	    LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args.data, (unsigned int)llvm_argc, "");
+
+	sa_terminate_value(&llvm_args);
 }
 
 void

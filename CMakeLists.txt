@@ -35,6 +35,7 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 set(HEADER_FILES
+        src/small_array.h
         src/conf_data.h
         src/bldebug.h
         src/error.h 

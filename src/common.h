@@ -34,6 +34,7 @@
 #include "config.h"
 #include "error.h"
 #include "messages.h"
+#include "small_array.h"
 #include <limits.h>
 
 #if defined(BL_COMPILER_CLANG) || defined(BL_COMPILER_GNUC)

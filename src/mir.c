@@ -333,6 +333,11 @@ value_dtor(MirConstValue *value)
 }
 
 static void
+type_dtor(MirType **type)
+{
+}
+
+static void
 array_dtor(BArray **arr)
 {
 	bo_unref(*arr);
@@ -393,7 +398,7 @@ create_type_struct(Context *   cnt,
                    MirTypeKind kind,
                    ID *        id,
                    Scope *     scope,
-                   BArray *    members,
+                   BArray *    members, /* MirMember */
                    bool        is_packed);
 
 static MirType *
@@ -1724,11 +1729,11 @@ sh_type_struct(Context *cnt, MirTypeKind kind, ID *id, BArray *members, bool is_
 
 	bo_string_append(tmp, "{");
 	if (members) {
-		MirType *member_type;
-		barray_foreach(members, member_type)
+		MirMember *member;
+		barray_foreach(members, member)
 		{
-			assert(member_type->id.str);
-			bo_string_append(tmp, member_type->id.str);
+			assert(member->type->id.str);
+			bo_string_append(tmp, member->type->id.str);
 
 			if (i != bo_array_size(members) - 1) bo_string_append(tmp, ",");
 		}
@@ -2043,7 +2048,7 @@ create_type_struct(Context *   cnt,
                    MirTypeKind kind,
                    ID *        id,
                    Scope *     scope,
-                   BArray *    members,
+                   BArray *    members, /* MirMember */
                    bool        is_packed)
 {
 	MirType *tmp = NULL;
@@ -2065,11 +2070,17 @@ MirType *
 create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type)
 {
 	assert(mir_is_pointer_type(elem_ptr_type));
-	BArray *members = create_arr(cnt, sizeof(MirType *));
+	BArray *members = create_arr(cnt, sizeof(MirMember *));
 	bo_array_reserve(members, 2);
+
 	/* Slice layout struct { usize, *T } */
-	bo_array_push_back(members, cnt->builtin_types.entry_usize);
-	bo_array_push_back(members, elem_ptr_type);
+
+	MirMember *tmp;
+	tmp = create_member(cnt, NULL, NULL, NULL, 0, cnt->builtin_types.entry_usize); // TODO
+	bo_array_push_back(members, tmp);
+
+	tmp = create_member(cnt, NULL, NULL, NULL, 1, elem_ptr_type); // TODO
+	bo_array_push_back(members, tmp);
 
 	return create_type_struct(cnt, MIR_TYPE_SLICE, id, NULL, members, false);
 }
@@ -2080,9 +2091,13 @@ create_type_vargs(Context *cnt, MirType *elem_ptr_type)
 	assert(mir_is_pointer_type(elem_ptr_type));
 	BArray *members = create_arr(cnt, sizeof(MirType *));
 	bo_array_reserve(members, 2);
-	/* Slice layout struct { usize, *T } */
-	bo_array_push_back(members, cnt->builtin_types.entry_usize);
-	bo_array_push_back(members, elem_ptr_type);
+
+	MirMember *tmp;
+	tmp = create_member(cnt, NULL, NULL, NULL, 0, cnt->builtin_types.entry_usize); // TODO
+	bo_array_push_back(members, tmp);
+
+	tmp = create_member(cnt, NULL, NULL, NULL, 1, elem_ptr_type); // TODO
+	bo_array_push_back(members, tmp);
 
 	return create_type_struct(cnt, MIR_TYPE_VARGS, NULL, NULL, members, false);
 }
@@ -2092,9 +2107,15 @@ create_type_string(Context *cnt)
 {
 	BArray *members = create_arr(cnt, sizeof(MirType *));
 	bo_array_reserve(members, 2);
+
 	/* Slice layout struct { usize, *T } */
-	bo_array_push_back(members, cnt->builtin_types.entry_usize);
-	bo_array_push_back(members, cnt->builtin_types.entry_u8_ptr);
+
+	MirMember *tmp;
+	tmp = create_member(cnt, NULL, NULL, NULL, 0, cnt->builtin_types.entry_usize); // TODO
+	bo_array_push_back(members, tmp);
+
+	tmp = create_member(cnt, NULL, NULL, NULL, 1, cnt->builtin_types.entry_u8_ptr); // TODO
+	bo_array_push_back(members, tmp);
 
 	return create_type_struct(
 	    cnt, MIR_TYPE_STRING, &builtin_ids[MIR_BUILTIN_ID_TYPE_STRING], NULL, members, false);
@@ -3247,6 +3268,7 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 	case MIR_TYPE_STRUCT: {
 		BArray *members = type->data.strct.members;
 		assert(members);
+
 		const bool   is_packed = type->data.strct.is_packed;
 		const size_t memc      = bo_array_size(members);
 		assert(memc > 0);
@@ -3256,11 +3278,11 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 			llvm_members = bl_malloc(memc * sizeof(LLVMTypeRef));
 			if (!llvm_members) bl_abort("bad alloc");
 
-			MirType *tmp;
+			MirMember *tmp;
 			barray_foreach(members, tmp)
 			{
-				assert(tmp->llvm_type);
-				llvm_members[i] = tmp->llvm_type;
+				assert(tmp->type->llvm_type);
+				llvm_members[i] = tmp->type->llvm_type;
 			}
 		}
 
@@ -4425,12 +4447,11 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 	if (type_struct->members) {
 		MirInstr **         member_instr;
 		MirInstrDeclMember *decl_member;
-		MirMember *         member;
 		MirType *           member_type;
 		Scope *             scope = type_struct->scope;
 		const size_t        memc  = bo_array_size(type_struct->members);
 
-		members = create_arr(cnt, sizeof(MirType *));
+		members = create_arr(cnt, sizeof(MirMember *));
 		bo_array_reserve(members, bo_array_size(type_struct->members));
 
 		for (size_t i = 0; i < memc; ++i) {
@@ -4457,14 +4478,15 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 			}
 
 			assert(member_type);
-			bo_array_push_back(members, member_type);
 
 			/* setup and provide member */
-			member = decl_member->member;
+			MirMember *member = decl_member->member;
 			assert(member);
 			member->type       = member_type;
 			member->decl_scope = scope;
 			member->index      = i;
+
+			bo_array_push_back(members, member);
 
 			commit_member(cnt, member);
 		}
@@ -5951,13 +5973,13 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 
 			rtti_var_arr->value.data.v_array.elems = elems;
 
-			MirType *member_type;
-			barray_foreach(type->data.strct.members, member_type)
+			MirMember *member;
+			barray_foreach(type->data.strct.members, member)
 			{
 				tmp =
 				    create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_ptr);
 
-				MirVar *rtti_base_type = exec_gen_type_RTTI(cnt, member_type);
+				MirVar *rtti_base_type = exec_gen_type_RTTI(cnt, member->type);
 
 				set_const_ptr(&tmp->data.v_ptr, rtti_base_type, MIR_CP_VAR);
 				bo_array_push_back(elems, tmp);
@@ -8671,10 +8693,10 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 		break;
 
 	case MIR_TYPE_SLICE: {
-		BArray *members = type->data.strct.members;
+		const bool has_members = (bool)type->data.strct.members;
 		append_buf(buf, len, "[]");
 
-		if (members) {
+		if (has_members) {
 			MirType *tmp = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
 			tmp          = mir_deref_type(tmp);
 			_type_to_str(buf, len, tmp, true);
@@ -8683,10 +8705,10 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 	}
 
 	case MIR_TYPE_VARGS: {
-		BArray *members = type->data.strct.members;
+		const bool has_members = (bool)type->data.strct.members;
 		append_buf(buf, len, "...");
 
-		if (members) {
+		if (has_members) {
 			MirType *tmp = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
 			tmp          = mir_deref_type(tmp);
 			_type_to_str(buf, len, tmp, true);
@@ -8695,14 +8717,14 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 	}
 
 	case MIR_TYPE_STRUCT: {
-		BArray * members = type->data.strct.members;
-		MirType *tmp;
+		BArray *   members = type->data.strct.members;
+		MirMember *tmp;
 
 		append_buf(buf, len, "struct{");
 		if (members) {
 			barray_foreach(members, tmp)
 			{
-				_type_to_str(buf, len, tmp, true);
+				_type_to_str(buf, len, tmp->type, true);
 				if (i < bo_array_size(members) - 1) append_buf(buf, len, ", ");
 			}
 		}
@@ -8937,15 +8959,25 @@ void
 mir_arenas_init(Assembly *assembly)
 {
 	arena_init(&assembly->MIR.instr_arena, sizeof(union _MirInstr), ARENA_CHUNK_COUNT, NULL);
-	arena_init(&assembly->MIR.type_arena, sizeof(MirType), ARENA_CHUNK_COUNT, NULL);
+
+	arena_init(&assembly->MIR.type_arena,
+	           sizeof(MirType),
+	           ARENA_CHUNK_COUNT,
+	           (ArenaElemDtor)type_dtor);
+
 	arena_init(&assembly->MIR.var_arena, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
+
 	arena_init(&assembly->MIR.fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, NULL);
+
 	arena_init(&assembly->MIR.member_arena, sizeof(MirMember), ARENA_CHUNK_COUNT, NULL);
+
 	arena_init(&assembly->MIR.variant_arena, sizeof(MirVariant), ARENA_CHUNK_COUNT, NULL);
+
 	arena_init(&assembly->MIR.value_arena,
 	           sizeof(MirConstValue),
 	           ARENA_CHUNK_COUNT / 2,
 	           (ArenaElemDtor)value_dtor);
+
 	arena_init(&assembly->MIR.array_arena,
 	           sizeof(BArray *),
 	           ARENA_CHUNK_COUNT / 2,
