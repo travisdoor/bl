@@ -34,6 +34,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+/*
+ * Generates small array with suffix N, type T and static size S. Memory allocations are produced
+ * only when count of elements is going to be greater than S value.
+ */
 #define SmallArrayType(N, T, S)                                                                    \
 	typedef struct SmallArray_##N {                                                            \
 		T      tmp[S];                                                                     \
