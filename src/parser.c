@@ -1964,6 +1964,7 @@ parse_block(Context *cnt, bool create_scope)
 	Token *tok;
 	Ast *  tmp;
 	block->data.block.nodes = bo_array_new(sizeof(Ast *));
+	bo_array_reserve(block->data.block.nodes, 64);
 
 NEXT:
 	if (tokens_current_is(cnt->tokens, SYM_SEMICOLON)) {
@@ -2047,6 +2048,8 @@ parse_ublock_content(Context *cnt, Ast *ublock)
 {
 	assert(ublock->kind == AST_UBLOCK);
 	ublock->data.ublock.nodes = bo_array_new(sizeof(Ast *));
+	bo_array_reserve(ublock->data.ublock.nodes, 64);
+
 	Ast *tmp;
 NEXT:
 	if (parse_semicolon(cnt)) goto NEXT;
