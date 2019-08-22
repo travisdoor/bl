@@ -308,8 +308,9 @@ llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, Assembly *assembly, Mir
 
 		auto arg_types = type->data.fn.arg_types;
 		if (arg_types) {
-			for (size_t i = 0; i < bo_array_size(arg_types); ++i) {
-				auto arg_type = bo_array_at(arg_types, i, MirType *);
+			MirType *arg_type;
+			sarray_foreach(arg_types, arg_type)
+			{
 				args.push_back(cast(Metadata *)(
 				    llvm_di_get_or_create_type(builder_ref, assembly, arg_type)));
 			}
@@ -355,11 +356,13 @@ llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, Assembly *assembly, Mir
 
 		SmallVector<Metadata *, 32> members;
 		{ /* setup elems DI */
-			const size_t memc = bo_array_size(type->data.strct.members);
-			for (size_t i = 0; i < memc; ++i) {
-				auto member = bo_array_at(type->data.strct.members, i, MirMember *);
-				auto member_type = cast(DIType *)(
-				    llvm_di_get_or_create_type(builder_ref, assembly, member->type));
+			auto smembers = type->data.strct.members;
+
+			MirMember *member;
+			sarray_foreach(smembers, member)
+			{
+				auto member_type = cast(DIType *)(llvm_di_get_or_create_type(
+				    builder_ref, assembly, member->type));
 
 				char tmp[8] = {0};
 				sprintf(tmp, "m_%lu", i);

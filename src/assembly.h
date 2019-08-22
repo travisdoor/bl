@@ -59,6 +59,7 @@ typedef struct Assembly {
 		Arena variant_arena;
 		Arena value_arena;
 		Arena array_arena;
+		Arena small_array_arena;
 
 		BArray *global_instrs; // All global instructions.
 		BArray *RTTI_tmp_vars; // Temporary variables used by RTTI.

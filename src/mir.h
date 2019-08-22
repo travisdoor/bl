@@ -93,6 +93,11 @@ typedef struct MirInstrToAny       MirInstrToAny;
 
 typedef union MirConstValueData MirConstValueData;
 
+SmallArrayType(Type, MirType *, 16);
+SmallArrayType(Member, MirMember *, 16);
+SmallArrayType(Variant, MirVariant *, 16);
+SmallArrayType(Instr, MirInstr *, 16);
+
 typedef enum MirBuiltinIdKind {
 	MIR_BUILTIN_ID_NONE = -1,
 
@@ -284,9 +289,9 @@ struct MirTypeReal {
 };
 
 struct MirTypeFn {
-	BArray * arg_types;
-	MirType *ret_type;
-	bool     is_vargs;
+	MirType *        ret_type;
+	SmallArray_Type *arg_types;
+	bool             is_vargs;
 };
 
 struct MirTypePtr {
@@ -294,16 +299,16 @@ struct MirTypePtr {
 };
 
 struct MirTypeStruct {
-	Scope * scope;   /* struct body scope */
-	BArray *members; /* MirMember */
-	bool    is_packed;
+	Scope *            scope; /* struct body scope */
+	SmallArray_Member *members;
+	bool               is_packed;
 };
 
 /* Enum variants must be baked into enum type. */
 struct MirTypeEnum {
-	Scope *  scope;
-	MirType *base_type;
-	BArray * variants; /* MirVariant * */
+	Scope *             scope;
+	MirType *           base_type;
+	SmallArray_Variant *variants; /* MirVariant * */
 };
 
 struct MirTypeNull {
@@ -570,8 +575,8 @@ struct MirInstrFnProto {
 struct MirInstrTypeFn {
 	MirInstr base;
 
-	MirInstr *ret_type;
-	BArray *  arg_types;
+	MirInstr *        ret_type;
+	SmallArray_Instr *arg_types;
 };
 
 struct MirInstrTypeStruct {
@@ -727,20 +732,21 @@ static inline MirType *
 mir_get_struct_elem_type(MirType *type, uint32_t i)
 {
 	assert(mir_is_composit_type(type) && "Expected structure type");
-	BArray *members = type->data.strct.members;
-	assert(members && bo_array_size(members) > i);
-	return bo_array_at(members, i, MirMember *)->type;
+	SmallArray_Member *members = type->data.strct.members;
+	assert(members && members->size > i);
+
+	return members->data[i]->type;
 }
 
 static inline MirType *
 mir_get_fn_arg_type(MirType *type, uint32_t i)
 {
 	assert(type->kind == MIR_TYPE_FN && "Expected function type");
-	BArray *args = type->data.fn.arg_types;
+	SmallArray_Type *args = type->data.fn.arg_types;
 	if (!args) return NULL;
+	assert(args->size > i);
 
-	assert(bo_array_size(args) > i);
-	return bo_array_at(args, i, MirType *);
+	return args->data[i];
 }
 
 void

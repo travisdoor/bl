@@ -49,6 +49,10 @@
 
 #define is_not_flag(_v, _flag) ((bool)((_v & _flag) != _flag))
 
+#define sarray_foreach(arr, it)                                                                    \
+	if ((arr)->size)                                                                           \
+		for (size_t i = 0; i < (arr)->size && ((it) = (arr)->data[i]); ++i)
+
 #define barray_foreach(arr, it)                                                                    \
 	if (bo_array_size((arr)))                                                                  \
 		for (size_t i = 0;                                                                 \

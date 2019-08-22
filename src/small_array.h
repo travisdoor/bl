@@ -29,10 +29,18 @@
 #ifndef BL_SMALL_ARRAY_H
 #define BL_SMALL_ARRAY_H
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+typedef struct SmallArrayAny {
+	void * data;
+	size_t size;
+	size_t allocated;
+	char   tmp[1];
+} SmallArrayAny;
 
 /*
  * Generates small array with suffix N, type T and static size S. Memory allocations are produced
@@ -40,27 +48,22 @@
  */
 #define SmallArrayType(N, T, S)                                                                    \
 	typedef struct SmallArray_##N {                                                            \
-		T      tmp[S];                                                                     \
 		T *    data;                                                                       \
-		size_t allocated;                                                                  \
 		size_t size;                                                                       \
+		size_t allocated;                                                                  \
+		T      tmp[S];                                                                     \
 	} SmallArray_##N;                                                                          \
                                                                                                    \
-	static inline void sa_init_##N(SmallArray_##N *arr)                                        \
+	static inline void sa_resize_##N(SmallArray_##N *arr, size_t desired_size)                 \
 	{                                                                                          \
-		arr->data      = &arr->tmp[0];                                                     \
-		arr->allocated = 0;                                                                \
-		arr->size      = 0;                                                                \
-	}                                                                                          \
-                                                                                                   \
-	static inline void sa_terminate_##N(SmallArray_##N *arr)                                   \
-	{                                                                                          \
-		if (arr->allocated > 0) {                                                          \
-			free(arr->data);                                                           \
-		}                                                                                  \
-		arr->size      = 0;                                                                \
-		arr->allocated = 0;                                                                \
-		arr->data      = &arr->tmp[0];                                                     \
+		assert(arr->size == 0 && "Cannot resize non-empty array.");                        \
+		if (desired_size <= S) goto SETUP;                                                 \
+		if (desired_size <= arr->allocated) goto SETUP;                                    \
+		arr->allocated = desired_size;                                                     \
+		arr->data      = (T *)realloc(arr->data, arr->allocated * sizeof(T));              \
+	SETUP:                                                                                     \
+		arr->size = desired_size;                                                          \
+		memset(arr->data, 0, sizeof(T) * arr->size);                                       \
 	}                                                                                          \
                                                                                                    \
 	static inline void sa_push_##N(SmallArray_##N *arr, T v)                                   \
@@ -78,5 +81,26 @@
 		}                                                                                  \
 		arr->data[arr->size++] = v;                                                        \
 	}
+
+#define sa_init(Arr) _sa_init((SmallArrayAny *)(Arr))
+static inline void
+_sa_init(SmallArrayAny *arr)
+{
+	arr->data      = &arr->tmp[0];
+	arr->allocated = 0;
+	arr->size      = 0;
+}
+
+#define sa_terminate(Arr) _sa_terminate((SmallArrayAny *)(Arr))
+static inline void
+_sa_terminate(SmallArrayAny *arr)
+{
+	if (arr->allocated > 0) {
+		free(arr->data);
+	}
+	arr->size      = 0;
+	arr->allocated = 0;
+	arr->data      = NULL;
+}
 
 #endif

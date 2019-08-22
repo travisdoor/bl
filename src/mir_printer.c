@@ -389,10 +389,10 @@ print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
 	fprintf(stream, "(");
 	if (type_fn->arg_types) {
 		MirInstr *tmp;
-		barray_foreach(type_fn->arg_types, tmp)
+		sarray_foreach(type_fn->arg_types, tmp)
 		{
 			fprintf(stream, "%%%llu", (unsigned long long)tmp->id);
-			if (i + 1 < bo_array_size(type_fn->arg_types)) fprintf(stream, ", ");
+			if (i + 1 < type_fn->arg_types->size) fprintf(stream, ", ");
 		}
 	}
 

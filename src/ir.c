@@ -644,7 +644,7 @@ emit_global_string_ptr(Context *cnt, const char *str, size_t len)
 		llvm_str = LLVMAddGlobal(cnt->llvm_module, llvm_str_arr_type, ".str");
 
 		SmallArray_value64 llvm_chars;
-		sa_init_value64(&llvm_chars);
+		sa_init(&llvm_chars);
 
 		for (size_t i = 0; i < len + 1; ++i) {
 			sa_push_value64(&llvm_chars, LLVMConstInt(cnt->llvm_i8_type, str[i], true));
@@ -659,7 +659,7 @@ emit_global_string_ptr(Context *cnt, const char *str, size_t len)
 		LLVMSetUnnamedAddr(llvm_str, true);
 		llvm_str = LLVMConstBitCast(llvm_str, cnt->llvm_i8_ptr_type);
 
-		sa_terminate_value64(&llvm_chars);
+		sa_terminate(&llvm_chars);
 	}
 
 	bo_htbl_insert(cnt->gstring_cache, hash, llvm_str);
@@ -743,7 +743,7 @@ emit_as_const(Context *cnt, MirConstValue *value)
 		assert(len == bo_array_size(elems));
 
 		SmallArray_value llvm_elems;
-		sa_init_value(&llvm_elems);
+		sa_init(&llvm_elems);
 
 		for (size_t i = 0; i < len; ++i) {
 			elem = bo_array_at(elems, i, MirConstValue *);
@@ -751,7 +751,7 @@ emit_as_const(Context *cnt, MirConstValue *value)
 		}
 
 		llvm_value = LLVMConstArray(llvm_elem_type, llvm_elems.data, (unsigned int)len);
-		sa_terminate_value(&llvm_elems);
+		sa_terminate(&llvm_elems);
 		break;
 	}
 
@@ -786,13 +786,13 @@ emit_as_const(Context *cnt, MirConstValue *value)
 		MirConstValue *member;
 
 		SmallArray_value llvm_members;
-		sa_init_value(&llvm_members);
+		sa_init(&llvm_members);
 
 		barray_foreach(members, member)
 		    sa_push_value(&llvm_members, emit_as_const(cnt, member));
 
 		llvm_value = LLVMConstNamedStruct(llvm_type, llvm_members.data, (unsigned int)memc);
-		sa_terminate_value(&llvm_members);
+		sa_terminate(&llvm_members);
 		break;
 	}
 
@@ -1112,7 +1112,7 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 
 	const size_t     llvm_argc = call->args ? bo_array_size(call->args) : 0;
 	SmallArray_value llvm_args;
-	sa_init_value(&llvm_args);
+	sa_init(&llvm_args);
 
 	if (llvm_argc) {
 		MirInstr *arg;
@@ -1127,7 +1127,7 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	call->base.llvm_value =
 	    LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args.data, (unsigned int)llvm_argc, "");
 
-	sa_terminate_value(&llvm_args);
+	sa_terminate(&llvm_args);
 }
 
 void
