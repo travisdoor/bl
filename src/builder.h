@@ -59,11 +59,11 @@
 #define COMPILE_FAIL 1
 
 typedef struct Builder {
-	uint32_t    flags;
-	int32_t     total_lines;
-	int32_t     errorc;
-	BArray *    str_cache;
-	ConfData *  conf;
+	uint32_t  flags;
+	int32_t   total_lines;
+	int32_t   errorc;
+	BArray *  str_cache;
+	ConfData *conf;
 } Builder;
 
 typedef enum {

@@ -109,11 +109,7 @@ void
 scope_delete(Scope *scope);
 
 ScopeEntry *
-scope_create_entry(Arena *  arena,
-                   ScopeEntryKind kind,
-                   ID *           id,
-                   struct Ast *   node,
-                   bool           is_buildin);
+scope_create_entry(Arena *arena, ScopeEntryKind kind, ID *id, struct Ast *node, bool is_buildin);
 
 void
 scope_insert(Scope *scope, ScopeEntry *entry);
