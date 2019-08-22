@@ -42,6 +42,11 @@ struct MirType;
 struct MirFn;
 struct MirVar;
 
+typedef struct ScopeArenas {
+	Arena scopes;
+	Arena entries;
+} ScopeArenas;
+
 typedef enum ScopeEntryKind {
 	SCOPE_ENTRY_INCOMPLETE,
 	SCOPE_ENTRY_TYPE,
@@ -88,28 +93,20 @@ typedef struct Scope {
 } Scope;
 
 void
-scope_arena_init(Arena *arena);
+scope_arenas_init(ScopeArenas *arenas);
 
 void
-scope_arena_terminate(Arena *arena);
-
-void
-scope_entry_arena_init(Arena *arena);
-
-void
-scope_entry_arena_terminate(Arena *arena);
+scope_arenas_terminate(ScopeArenas *arenas);
 
 Scope *
-scope_create(Arena *arena, ScopeKind kind, Scope *parent, size_t size, struct Location *loc);
-
-Scope *
-scope_new(ScopeKind kind, Scope *parent, size_t size, struct Location *loc);
-
-void
-scope_delete(Scope *scope);
+scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size, struct Location *loc);
 
 ScopeEntry *
-scope_create_entry(Arena *arena, ScopeEntryKind kind, ID *id, struct Ast *node, bool is_buildin);
+scope_create_entry(ScopeArenas *  arenas,
+                   ScopeEntryKind kind,
+                   ID *           id,
+                   struct Ast *   node,
+                   bool           is_buildin);
 
 void
 scope_insert(Scope *scope, ScopeEntry *entry);

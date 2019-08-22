@@ -31,10 +31,6 @@
 
 #define ARENA_CHUNK_COUNT 256
 
-union _SmallArrays {
-	SmallArray_Ast ast;
-};
-
 static void
 node_dtor(Ast *node)
 {
@@ -73,20 +69,15 @@ ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct Scope *parent
 
 /* public */
 void
-ast_arenas_init(AstArenas *arenas)
+ast_arena_init(Arena *arena)
 {
-	arena_init(&arenas->nodes, sizeof(Ast), ARENA_CHUNK_COUNT, (ArenaElemDtor)node_dtor);
-	arena_init(&arenas->small_arrays,
-	           sizeof(union _SmallArrays),
-	           ARENA_CHUNK_COUNT,
-	           (ArenaElemDtor)small_array_dtor);
+	arena_init(arena, sizeof(Ast), ARENA_CHUNK_COUNT, (ArenaElemDtor)node_dtor);
 }
 
 void
-ast_arenas_terminate(AstArenas *arenas)
+ast_arena_terminate(Arena *arena)
 {
-	arena_terminate(&arenas->nodes);
-	arena_terminate(&arenas->small_arrays);
+	arena_terminate(arena);
 }
 
 const char *

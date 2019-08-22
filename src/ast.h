@@ -41,8 +41,6 @@ struct Token;
 struct Location;
 typedef struct Ast Ast;
 
-SmallArrayType(Ast, Ast *, 16);
-
 typedef enum {
 	AST_BAD,
 	AST_LOAD,
@@ -414,16 +412,11 @@ struct Ast {
 #endif
 };
 
-typedef struct {
-	Arena nodes;
-	Arena small_arrays;
-} AstArenas;
+void
+ast_arena_init(Arena *arena);
 
 void
-ast_arenas_init(AstArenas *arenas);
-
-void
-ast_arenas_terminate(AstArenas *arenas);
+ast_arena_terminate(Arena *arena);
 
 void
 ast_small_array_arena_init(struct Arena *arena);

@@ -35,7 +35,10 @@
 #include "error.h"
 #include "messages.h"
 #include "small_array.h"
+#include <bobject/containers/array.h>
 #include <limits.h>
+
+struct Assembly;
 
 #if defined(BL_COMPILER_CLANG) || defined(BL_COMPILER_GNUC)
 #define DEPRECATED __attribute__((deprecated))
@@ -79,6 +82,13 @@
 	for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);             \
 	     bo_list_iter_next((list), &(it)))
 
+SmallArrayType(Ast, struct Ast *, 16);
+SmallArrayType(Type, struct MirType *, 16);
+SmallArrayType(Member, struct MirMember *, 16);
+SmallArrayType(Variant, struct MirVariant *, 16);
+SmallArrayType(Instr, struct MirInstr *, 16);
+SmallArrayType(ConstValue, struct MirConstValue *, 16);
+
 typedef struct ID {
 	const char *str;
 	uint64_t    hash;
@@ -119,5 +129,21 @@ print_bits(int32_t const size, void const *const ptr);
 
 void
 platform_lib_name(const char *name, char *buffer, size_t max_len);
+
+/*
+ * Creates BArray inside Assembly arena.
+ * Note: no free is needed.
+ */
+BArray *
+create_arr(struct Assembly *assembly, size_t size);
+
+/*
+ * Creates SmallArray inside Assembly arena.
+ * Note: no free is needed.
+ */
+void *
+_create_sarr(struct Assembly *cnt, size_t arr_size);
+
+#define create_sarr(T, Asm) ((T *)_create_sarr((Asm), sizeof(T)))
 
 #endif

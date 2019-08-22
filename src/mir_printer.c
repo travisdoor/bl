@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #include "mir_printer.h"
+#include "assembly.h"
 #include "ast.h"
 
 static void

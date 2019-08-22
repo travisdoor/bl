@@ -30,6 +30,7 @@
 #define BL_ASSEMBLY_BL
 
 #include "arena.h"
+#include "mir.h"
 #include "scope.h"
 #include "unit.h"
 #include <bobject/containers/array.h>
@@ -43,7 +44,14 @@ struct MirModule;
 struct Builder;
 
 typedef struct Assembly {
-	Arena       scope_entry_arena;
+	struct {
+		ScopeArenas scope;
+		MirArenas   mir;
+		Arena       ast;
+		Arena       array;       /* used for all BArrays */
+		Arena       small_array; /* used for all SmallArrays */
+	} arenas;
+
 	BArray *    units;      /* array of all units in assembly */
 	BHashTable *unit_cache; /* cache for loading only unique units */
 	BHashTable *link_cache; /* all linked externals libraries passed to linker */
@@ -52,16 +60,6 @@ typedef struct Assembly {
 	Scope *     gscope;     /* global scope of the assembly */
 
 	struct {
-		Arena instr_arena;
-		Arena type_arena;
-		Arena var_arena;
-		Arena fn_arena;
-		Arena member_arena;
-		Arena variant_arena;
-		Arena value_arena;
-		Arena array_arena;
-		Arena small_array_arena;
-
 		BArray *global_instrs; // All global instructions.
 		BArray *RTTI_tmp_vars; // Temporary variables used by RTTI.
 	} MIR;

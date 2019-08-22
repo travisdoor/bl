@@ -35,8 +35,30 @@
 #include <string.h>
 
 #define EXPECTED_GSCOPE_COUNT 4096
+#define EXPECTED_ARRAY_COUNT 256
 #define EXPECTED_UNIT_COUNT 512
 #define EXPECTED_LINK_COUNT 32
+
+union _SmallArrays {
+	SmallArray_Type       type;
+	SmallArray_Member     member;
+	SmallArray_Variant    variant;
+	SmallArray_Instr      instr;
+	SmallArray_ConstValue cv;
+	SmallArray_Ast        ast;
+};
+
+static void
+barray_dtor(BArray **arr)
+{
+	bo_unref(*arr);
+}
+
+static void
+small_array_dtor(SmallArrayAny *arr)
+{
+	sa_terminate(arr);
+}
 
 static void
 init_dl(Assembly *assembly)
@@ -90,7 +112,7 @@ init_llvm(Assembly *assembly, Builder *builder)
 static void
 init_mir(Assembly *assembly)
 {
-	mir_arenas_init(assembly);
+	mir_arenas_init(&assembly->arenas.mir);
 	assembly->MIR.global_instrs = bo_array_new(sizeof(MirInstr *));
 	assembly->MIR.RTTI_tmp_vars = bo_array_new(sizeof(MirVar *));
 }
@@ -137,7 +159,7 @@ terminate_mir(Assembly *assembly)
 	bo_unref(assembly->MIR.global_instrs);
 	bo_unref(assembly->MIR.RTTI_tmp_vars);
 
-	mir_arenas_terminate(assembly);
+	mir_arenas_terminate(&assembly->arenas.mir);
 }
 
 /* public */
@@ -151,15 +173,26 @@ assembly_new(Builder *builder, const char *name)
 	assembly->unit_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
 	assembly->link_cache = bo_htbl_new(sizeof(Token *), EXPECTED_LINK_COUNT);
 	assembly->type_table = bo_htbl_new(sizeof(MirType *), 8192);
-	assembly->gscope     = scope_new(SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT, NULL);
 
 	bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
-	scope_entry_arena_init(&assembly->scope_entry_arena);
+
+	scope_arenas_init(&assembly->arenas.scope);
+	ast_arena_init(&assembly->arenas.ast);
+	arena_init(&assembly->arenas.array,
+	           sizeof(BArray *),
+	           EXPECTED_ARRAY_COUNT,
+	           (ArenaElemDtor)barray_dtor);
+	arena_init(&assembly->arenas.small_array,
+	           sizeof(union _SmallArrays),
+	           EXPECTED_ARRAY_COUNT,
+	           (ArenaElemDtor)small_array_dtor);
 
 	init_dl(assembly);
 	init_mir(assembly);
 	init_llvm(assembly, builder);
 
+	assembly->gscope =
+	    scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT, NULL);
 	return assembly;
 }
 
@@ -174,8 +207,10 @@ assembly_delete(Assembly *assembly)
 		unit_delete(unit);
 	}
 
-	scope_delete(assembly->gscope);
-	scope_entry_arena_terminate(&assembly->scope_entry_arena);
+	arena_terminate(&assembly->arenas.small_array);
+	arena_terminate(&assembly->arenas.array);
+	ast_arena_terminate(&assembly->arenas.ast);
+	scope_arenas_terminate(&assembly->arenas.scope);
 
 	bo_unref(assembly->units);
 	bo_unref(assembly->unit_cache);

@@ -96,12 +96,12 @@ typedef enum {
 } HashDirective;
 
 typedef struct {
-	Builder * builder;
-	Assembly *assembly;
-	Unit *    unit;
-	Arena *   ast_arena;
-	Arena *   scope_arena;
-	Tokens *  tokens;
+	Builder *    builder;
+	Assembly *   assembly;
+	Unit *       unit;
+	Arena *      ast_arena;
+	ScopeArenas *scope_arenas;
+	Tokens *     tokens;
 
 	/* tmps */
 	Scope *scope;
@@ -117,9 +117,6 @@ sym_to_binop_kind(Sym sm);
 
 static UnopKind
 sym_to_unop_kind(Sym sm);
-
-static void *
-create_sarr(Context *cnt);
 
 static void
 parse_ublock_content(Context *cnt, Ast *ublock);
@@ -267,13 +264,6 @@ static Ast *
 parse_expr_compound(Context *cnt);
 
 // impl
-void *
-create_sarr(Context *cnt)
-{
-	SmallArrayAny *tmp = arena_alloc(&cnt->unit->ast_arenas.small_arrays);
-	sa_init(tmp);
-	return tmp;
-}
 
 BinopKind
 sym_to_binop_kind(Sym sm)
@@ -498,7 +488,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, cnt->scope);
 		}
 
-		Scope *scope = scope_create(cnt->scope_arena, SCOPE_FN, cnt->scope, 256, NULL);
+		Scope *scope = scope_create(cnt->scope_arenas, SCOPE_FN, cnt->scope, 256, NULL);
 		push_scope(cnt, scope);
 
 		Ast *block = parse_block(cnt, false);
@@ -588,7 +578,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		 * Private scope contains only global entity declarations with 'private' flag set
 		 * in AST node.
 		 */
-		Scope *scope = scope_create(&cnt->unit->scope_arena,
+		Scope *scope = scope_create(cnt->scope_arenas,
 		                            SCOPE_PRIVATE,
 		                            cnt->assembly->gscope,
 		                            EXPECTED_PRIVATE_SCOPE_COUNT,
@@ -655,7 +645,8 @@ value:
 	tmp = parse_expr(cnt);
 	if (tmp) {
 		if (!compound->data.expr_compound.values)
-			compound->data.expr_compound.values = create_sarr(cnt);
+			compound->data.expr_compound.values =
+			    create_sarr(SmallArray_Ast, cnt->assembly);
 
 		sa_push_Ast(compound->data.expr_compound.values, tmp);
 
@@ -1078,7 +1069,7 @@ parse_stmt_loop(Context *cnt)
 	push_inloop(cnt);
 
 	Scope *scope =
-	    scope_create(cnt->scope_arena, SCOPE_LEXICAL, cnt->scope, 128, &tok_begin->location);
+	    scope_create(cnt->scope_arenas, SCOPE_LEXICAL, cnt->scope, 128, &tok_begin->location);
 	push_scope(cnt, scope);
 
 	if (!while_true) {
@@ -1384,7 +1375,8 @@ parse_expr_lit_fn(Context *cnt)
 
 	Ast *fn = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FN, tok_fn, cnt->scope);
 
-	Scope *scope = scope_create(cnt->scope_arena, SCOPE_FN, cnt->scope, 256, &tok_fn->location);
+	Scope *scope =
+	    scope_create(cnt->scope_arenas, SCOPE_FN, cnt->scope, 256, &tok_fn->location);
 	push_scope(cnt, scope);
 
 	Ast *type = parse_type_fn(cnt, true);
@@ -1528,7 +1520,7 @@ parse_type_enum(Context *cnt)
 	if (!tok_enum) return NULL;
 
 	Ast *enm = ast_create_node(cnt->ast_arena, AST_TYPE_ENUM, tok_enum, cnt->scope);
-	enm->data.type_enm.variants = create_sarr(cnt);
+	enm->data.type_enm.variants = create_sarr(SmallArray_Ast, cnt->assembly);
 	enm->data.type_enm.type     = parse_type(cnt);
 
 	parse_flags_for_curr_decl(cnt);
@@ -1540,7 +1532,7 @@ parse_type_enum(Context *cnt)
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok, cnt->scope);
 	}
 
-	Scope *scope = scope_create(cnt->scope_arena, SCOPE_TYPE, cnt->scope, 512, &tok->location);
+	Scope *scope = scope_create(cnt->scope_arenas, SCOPE_TYPE, cnt->scope, 512, &tok->location);
 	enm->data.type_enm.scope = scope;
 	push_scope(cnt, scope);
 
@@ -1699,7 +1691,8 @@ parse_type_fn(Context *cnt, bool named_args)
 NEXT:
 	tmp = parse_decl_arg(cnt, !named_args);
 	if (tmp) {
-		if (!fn->data.type_fn.args) fn->data.type_fn.args = create_sarr(cnt);
+		if (!fn->data.type_fn.args)
+			fn->data.type_fn.args = create_sarr(SmallArray_Ast, cnt->assembly);
 
 		sa_push_Ast(fn->data.type_fn.args, tmp);
 
@@ -1752,13 +1745,13 @@ parse_type_struct(Context *cnt)
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_struct, cnt->scope);
 	}
 
-	Scope *scope = scope_create(cnt->scope_arena, SCOPE_TYPE, cnt->scope, 256, &tok->location);
+	Scope *scope = scope_create(cnt->scope_arenas, SCOPE_TYPE, cnt->scope, 256, &tok->location);
 	push_scope(cnt, scope);
 
 	Ast *type_struct = ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct, cnt->scope);
 	type_struct->data.type_strct.scope   = scope;
 	type_struct->data.type_strct.raw     = false;
-	type_struct->data.type_strct.members = create_sarr(cnt);
+	type_struct->data.type_strct.members = create_sarr(SmallArray_Ast, cnt->assembly);
 
 	/* parse members */
 	bool       rq = false;
@@ -1875,7 +1868,8 @@ parse_expr_call(Context *cnt, Ast *prev)
 arg:
 	tmp = parse_expr(cnt);
 	if (tmp) {
-		if (!call->data.expr_call.args) call->data.expr_call.args = create_sarr(cnt);
+		if (!call->data.expr_call.args)
+			call->data.expr_call.args = create_sarr(SmallArray_Ast, cnt->assembly);
 		sa_push_Ast(call->data.expr_call.args, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
@@ -1955,7 +1949,7 @@ parse_block(Context *cnt, bool create_scope)
 	Scope *prev_scope = cnt->scope;
 	if (create_scope) {
 		Scope *scope = scope_create(
-		    cnt->scope_arena, SCOPE_LEXICAL, cnt->scope, 1024, &tok_begin->location);
+		    cnt->scope_arenas, SCOPE_LEXICAL, cnt->scope, 1024, &tok_begin->location);
 		cnt->scope = scope;
 	}
 
@@ -2089,15 +2083,15 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit)
 {
 	assert(assembly->gscope && "Missing global scope for assembly.");
 
-	Context cnt = {.builder     = builder,
-	               .assembly    = assembly,
-	               .scope       = assembly->gscope,
-	               .unit        = unit,
-	               .ast_arena   = &unit->ast_arenas.nodes,
-	               .scope_arena = &unit->scope_arena,
-	               .tokens      = &unit->tokens,
-	               .curr_decl   = NULL,
-	               .inside_loop = false};
+	Context cnt = {.builder      = builder,
+	               .assembly     = assembly,
+	               .scope        = assembly->gscope,
+	               .unit         = unit,
+	               .ast_arena    = &assembly->arenas.ast,
+	               .scope_arenas = &assembly->arenas.scope,
+	               .tokens       = &unit->tokens,
+	               .curr_decl    = NULL,
+	               .inside_loop  = false};
 
 	Ast *root              = ast_create_node(cnt.ast_arena, AST_UBLOCK, NULL, cnt.scope);
 	root->data.ublock.unit = unit;

@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #include "llvm_di.h"
+#include "assembly.h"
 #include "mir.h"
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/DIBuilder.h>

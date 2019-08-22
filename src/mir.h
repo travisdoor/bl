@@ -29,10 +29,14 @@
 #ifndef BL_MIR_H
 #define BL_MIR_H
 
-#include "assembly.h"
+#include "arena.h"
 #include "ast.h"
+#include "common.h"
+#include "scope.h"
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
+#include <dyncall.h>
+#include <dynload.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
 
@@ -41,6 +45,7 @@
 
 struct Assembly;
 struct Builder;
+struct Unit;
 
 typedef ptrdiff_t MirRelativeStackPtr;
 typedef uint8_t * MirStackPtr;
@@ -93,11 +98,15 @@ typedef struct MirInstrToAny       MirInstrToAny;
 
 typedef union MirConstValueData MirConstValueData;
 
-SmallArrayType(Type, MirType *, 16);
-SmallArrayType(Member, MirMember *, 16);
-SmallArrayType(Variant, MirVariant *, 16);
-SmallArrayType(Instr, MirInstr *, 16);
-SmallArrayType(ConstValue, MirConstValue *, 16);
+typedef struct MirArenas {
+	Arena instr;
+	Arena type;
+	Arena var;
+	Arena fn;
+	Arena member;
+	Arena variant;
+	Arena value;
+} MirArenas;
 
 typedef enum MirBuiltinIdKind {
 	MIR_BUILTIN_ID_NONE = -1,
@@ -232,18 +241,6 @@ typedef enum MirCastOp {
 	MIR_CAST_PTRTOINT,
 	MIR_CAST_INTTOPTR,
 } MirCastOp;
-
-/* ALLOCATORS */
-struct MirArenas {
-	Arena instr_arena;
-	Arena type_arena;
-	Arena var_arena;
-	Arena fn_arena;
-	Arena member_arena;
-	Arena variant_arena;
-	Arena value_arena;
-	Arena array_arena;
-};
 
 /* FN */
 struct MirFn {
@@ -633,10 +630,10 @@ struct MirInstrCall {
 struct MirInstrDeclRef {
 	MirInstr base;
 
-	Unit *      parent_unit;
-	ID *        rid;
-	Scope *     scope;
-	ScopeEntry *scope_entry;
+	struct Unit *parent_unit;
+	ID *         rid;
+	Scope *      scope;
+	ScopeEntry * scope_entry;
 };
 
 struct MirInstrUnreachable {
@@ -751,16 +748,16 @@ mir_get_fn_arg_type(MirType *type, uint32_t i)
 }
 
 void
+mir_arenas_init(MirArenas *arenas);
+
+void
+mir_arenas_terminate(MirArenas *arenas);
+
+void
 mir_type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name);
 
 const char *
 mir_instr_name(MirInstr *instr);
-
-void
-mir_arenas_init(Assembly *assembly);
-
-void
-mir_arenas_terminate(Assembly *assembly);
 
 void
 mir_run(struct Builder *builder, struct Assembly *assembly);

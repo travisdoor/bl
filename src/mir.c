@@ -138,15 +138,6 @@
 
 SmallArrayType(LLVMType, LLVMTypeRef, 8);
 
-union _SmallArrays {
-	SmallArray_Type       type;
-	SmallArray_LLVMType   llvm_type;
-	SmallArray_Member     member;
-	SmallArray_Variant    variant;
-	SmallArray_Instr      instr;
-	SmallArray_ConstValue cv;
-};
-
 union _MirInstr {
 	MirInstrBlock       block;
 	MirInstrDeclVar     var;
@@ -329,32 +320,6 @@ static ID builtin_ids[_MIR_BUILTIN_ID_COUNT] = {
 };
 // clang-format on
 
-static void
-value_dtor(MirConstValue *value)
-{
-	if (!value->type) return;
-
-	switch (value->type->kind) {
-	case MIR_TYPE_ARRAY:
-		bo_unref(value->data.v_array.elems);
-		break;
-	default:
-		break;
-	}
-}
-
-static void
-small_array_dtor(SmallArrayAny **_arr)
-{
-	sa_terminate(_arr);
-}
-
-static void
-array_dtor(BArray **arr)
-{
-	bo_unref(*arr);
-}
-
 /* FW decls */
 static void
 init_builtins(Context *cnt);
@@ -444,12 +409,6 @@ create_var_impl(Context *   cnt,
                 bool        is_mutable,
                 bool        is_in_gscope,
                 bool        comptime);
-
-static BArray *
-create_arr(Context *cnt, size_t size);
-
-static void *
-create_sarr(Context *cnt);
 
 static MirFn *
 create_fn(Context *        cnt,
@@ -1830,7 +1789,7 @@ create_type(Context *cnt, MirType **out_type, const char *sh)
 		assert(*out_type);
 		return false;
 	} else {
-		MirType *tmp = arena_alloc(&cnt->assembly->MIR.type_arena);
+		MirType *tmp = arena_alloc(&cnt->assembly->arenas.mir.type);
 
 		BString *copy = builder_create_cached_str(cnt->builder);
 		bo_string_append(copy, sh);
@@ -1871,7 +1830,7 @@ register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool is_builtin, 
 
 	/* no collision */
 	ScopeEntry *entry = scope_create_entry(
-	    &cnt->assembly->scope_entry_arena, SCOPE_ENTRY_INCOMPLETE, id, node, is_builtin);
+	    &cnt->assembly->arenas.scope, SCOPE_ENTRY_INCOMPLETE, id, node, is_builtin);
 
 	scope_insert(scope, entry);
 	if (is_builtin) cache_builtin(cnt, entry);
@@ -2089,7 +2048,7 @@ MirType *
 create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type)
 {
 	assert(mir_is_pointer_type(elem_ptr_type));
-	SmallArray_Member *members = create_sarr(cnt);
+	SmallArray_Member *members = create_sarr(SmallArray_Member, cnt->assembly);
 
 	/* Slice layout struct { usize, *T } */
 
@@ -2107,7 +2066,7 @@ MirType *
 create_type_vargs(Context *cnt, MirType *elem_ptr_type)
 {
 	assert(mir_is_pointer_type(elem_ptr_type));
-	SmallArray_Member *members = create_sarr(cnt);
+	SmallArray_Member *members = create_sarr(SmallArray_Member, cnt->assembly);
 
 	/* Slice layout struct { usize, *T } */
 
@@ -2124,15 +2083,26 @@ create_type_vargs(Context *cnt, MirType *elem_ptr_type)
 MirType *
 create_type_string(Context *cnt)
 {
-	SmallArray_Member *members = create_sarr(cnt);
+	SmallArray_Member *members = create_sarr(SmallArray_Member, cnt->assembly);
 
 	/* Slice layout struct { usize, *T } */
 
 	MirMember *tmp;
-	tmp = create_member(cnt, NULL, NULL, NULL, 0, cnt->builtin_types.entry_usize); // TODO
+	tmp = create_member(cnt,
+	                    NULL,
+	                    &builtin_ids[MIR_BUILTIN_ID_ARR_LEN],
+	                    NULL,
+	                    0,
+	                    cnt->builtin_types.entry_usize); // TODO
 	sa_push_Member(members, tmp);
 
-	tmp = create_member(cnt, NULL, NULL, NULL, 1, cnt->builtin_types.entry_u8_ptr); // TODO
+	tmp = create_member(cnt,
+	                    NULL,
+	                    &builtin_ids[MIR_BUILTIN_ID_ARR_PTR],
+	                    NULL,
+	                    1,
+	                    cnt->builtin_types.entry_u8_ptr); // TODO
+
 	sa_push_Member(members, tmp);
 
 	return create_type_struct(
@@ -2184,7 +2154,7 @@ create_var(Context *cnt,
            uint32_t flags)
 {
 	assert(id);
-	MirVar *tmp       = arena_alloc(&cnt->assembly->MIR.var_arena);
+	MirVar *tmp       = arena_alloc(&cnt->assembly->arenas.mir.var);
 	tmp->id           = id;
 	tmp->value.type   = alloc_type;
 	tmp->decl_scope   = scope;
@@ -2210,7 +2180,7 @@ create_var_impl(Context *   cnt,
                 bool        comptime)
 {
 	assert(name);
-	MirVar *tmp       = arena_alloc(&cnt->assembly->MIR.var_arena);
+	MirVar *tmp       = arena_alloc(&cnt->assembly->arenas.mir.var);
 	tmp->value.type   = alloc_type;
 	tmp->is_mutable   = is_mutable;
 	tmp->is_in_gscope = is_in_gscope;
@@ -2224,22 +2194,6 @@ create_var_impl(Context *   cnt,
 	return tmp;
 }
 
-BArray *
-create_arr(Context *cnt, size_t size)
-{
-	BArray **tmp = arena_alloc(&cnt->assembly->MIR.array_arena);
-	*tmp         = bo_array_new(size);
-	return *tmp;
-}
-
-void *
-create_sarr(Context *cnt)
-{
-	SmallArrayAny *tmp = arena_alloc(&cnt->assembly->MIR.small_array_arena);
-	sa_init(tmp);
-	return tmp;
-}
-
 MirFn *
 create_fn(Context *        cnt,
           Ast *            node,
@@ -2248,8 +2202,8 @@ create_fn(Context *        cnt,
           int32_t          flags,
           MirInstrFnProto *prototype)
 {
-	MirFn *tmp     = arena_alloc(&cnt->assembly->MIR.fn_arena);
-	tmp->variables = create_arr(cnt, sizeof(MirVar *));
+	MirFn *tmp     = arena_alloc(&cnt->assembly->arenas.mir.fn);
+	tmp->variables = create_arr(cnt->assembly, sizeof(MirVar *));
 	tmp->llvm_name = llvm_name;
 	tmp->id        = id;
 	tmp->flags     = flags;
@@ -2261,7 +2215,7 @@ create_fn(Context *        cnt,
 MirMember *
 create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t index, MirType *type)
 {
-	MirMember *tmp  = arena_alloc(&cnt->assembly->MIR.member_arena);
+	MirMember *tmp  = arena_alloc(&cnt->assembly->arenas.mir.member);
 	tmp->decl_node  = node;
 	tmp->id         = id;
 	tmp->index      = index;
@@ -2273,7 +2227,7 @@ create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t index, MirT
 MirVariant *
 create_variant(Context *cnt, Ast *node, ID *id, Scope *scope, MirConstValue *value)
 {
-	MirVariant *tmp = arena_alloc(&cnt->assembly->MIR.variant_arena);
+	MirVariant *tmp = arena_alloc(&cnt->assembly->arenas.mir.variant);
 	tmp->decl_node  = node;
 	tmp->id         = id;
 	tmp->decl_scope = scope;
@@ -2285,7 +2239,7 @@ MirConstValue *
 create_const_value(Context *cnt, MirType *type)
 {
 	assert(type);
-	MirConstValue *tmp = arena_alloc(&cnt->assembly->MIR.value_arena);
+	MirConstValue *tmp = arena_alloc(&cnt->assembly->arenas.mir.value);
 	tmp->type          = type;
 	tmp->addr_mode     = MIR_VAM_LVALUE_CONST;
 	return tmp;
@@ -2444,7 +2398,7 @@ static uint64_t _id_counter = 0;
 MirInstr *
 _create_instr(Context *cnt, MirInstrKind kind, Ast *node)
 {
-	MirInstr *tmp = arena_alloc(&cnt->assembly->MIR.instr_arena);
+	MirInstr *tmp = arena_alloc(&cnt->assembly->arenas.mir.instr);
 	tmp->kind     = kind;
 	tmp->node     = node;
 	tmp->id       = _id_counter++;
@@ -2607,8 +2561,8 @@ MirInstr *
 append_instr_phi(Context *cnt, Ast *node)
 {
 	MirInstrPhi *tmp     = create_instr(cnt, MIR_INSTR_PHI, node, MirInstrPhi *);
-	tmp->incoming_values = create_sarr(cnt);
-	tmp->incoming_blocks = create_sarr(cnt);
+	tmp->incoming_values = create_sarr(SmallArray_Instr, cnt->assembly);
+	tmp->incoming_blocks = create_sarr(SmallArray_Instr, cnt->assembly);
 	push_into_curr_block(cnt, &tmp->base);
 	return &tmp->base;
 }
@@ -3031,7 +2985,7 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 	tmp->value.addr_mode = MIR_VAM_LVALUE_CONST;
 
 	{ /* initialize constant slice */
-		SmallArray_ConstValue *members = create_sarr(cnt);
+		SmallArray_ConstValue *members = create_sarr(SmallArray_ConstValue, cnt->assembly);
 		MirConstValue *        value;
 
 		/* string slice len */
@@ -4379,7 +4333,7 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 	SmallArray_Type *arg_types = NULL;
 	if (type_fn->arg_types) {
 		const size_t argc = type_fn->arg_types->size;
-		arg_types         = create_sarr(cnt);
+		arg_types         = create_sarr(SmallArray_Type, cnt->assembly);
 
 		MirInstr **arg_type_ref;
 		MirType *  tmp;
@@ -4479,7 +4433,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 		Scope *             scope = type_struct->scope;
 		const size_t        memc  = type_struct->members->size;
 
-		members = create_sarr(cnt);
+		members = create_sarr(SmallArray_Member, cnt->assembly);
 
 		for (size_t i = 0; i < memc; ++i) {
 			member_instr = &type_struct->members->data[i];
@@ -4707,7 +4661,7 @@ analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 
 	assert(base_type && "Invalid enum base type.");
 
-	SmallArray_Variant *variants = create_sarr(cnt);
+	SmallArray_Variant *variants = create_sarr(SmallArray_Variant, cnt->assembly);
 
 	/* Iterate over all enum variants and validate them. */
 	MirInstr *  it;
@@ -5162,7 +5116,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 
 		/* Prepare vargs values. */
 		const size_t      vargsc = call_argc - callee_argc;
-		SmallArray_Instr *values = create_sarr(cnt);
+		SmallArray_Instr *values = create_sarr(SmallArray_Instr, cnt->assembly);
 		MirInstr *        vargs  = create_instr_vargs_impl(cnt, vargs_type, values);
 		ref_instr(vargs);
 
@@ -5897,13 +5851,14 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 	MirConstValue *rtti_value = &rtti_var->value;
 
 	/* set base TypeInfo data */
-	SmallArray_ConstValue *members = create_sarr(cnt);
+	SmallArray_ConstValue *members = create_sarr(SmallArray_ConstValue, cnt->assembly);
 
 	MirConstValue *tmp;
 	{ /* Build TypeInfo entry members. */
 		/* .kind */
-		SmallArray_ConstValue *type_info_members = create_sarr(cnt);
-		MirType *              tmp_type = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO);
+		SmallArray_ConstValue *type_info_members =
+		    create_sarr(SmallArray_ConstValue, cnt->assembly);
+		MirType *tmp_type = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO);
 		assert(tmp_type);
 		tmp                        = create_const_value(cnt, tmp_type);
 		tmp->data.v_struct.members = type_info_members;
@@ -6000,7 +5955,8 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		{ /* Members array */
 			rtti_var_arr = _create_and_alloc_RTTI_var(cnt, rtti_var_arr_type);
 
-			SmallArray_ConstValue *elems = create_sarr(cnt);
+			SmallArray_ConstValue *elems =
+			    create_sarr(SmallArray_ConstValue, cnt->assembly);
 
 			rtti_var_arr->value.data.v_array.elems = elems;
 
@@ -6022,8 +5978,9 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_slice);
 
 		{ /* .args slice */
-			SmallArray_ConstValue *slice_members = create_sarr(cnt);
-			tmp->data.v_struct.members           = slice_members;
+			SmallArray_ConstValue *slice_members =
+			    create_sarr(SmallArray_ConstValue, cnt->assembly);
+			tmp->data.v_struct.members = slice_members;
 
 			MirConstValue *slice_member_tmp =
 			    create_const_value(cnt, cnt->builtin_types.entry_usize);
@@ -6052,7 +6009,8 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		{ /* Args array */
 			rtti_var_arr = _create_and_alloc_RTTI_var(cnt, rtti_var_arr_type);
 
-			SmallArray_ConstValue *elems           = create_sarr(cnt);
+			SmallArray_ConstValue *elems =
+			    create_sarr(SmallArray_ConstValue, cnt->assembly);
 			rtti_var_arr->value.data.v_array.elems = elems;
 
 			MirType *arg_type;
@@ -6073,8 +6031,9 @@ exec_gen_type_RTTI(Context *cnt, MirType *type)
 		tmp = create_const_value(cnt, cnt->builtin_types.entry_TypeInfo_slice);
 
 		{ /* .members slice */
-			SmallArray_ConstValue *slice_members = create_sarr(cnt);
-			tmp->data.v_struct.members           = slice_members;
+			SmallArray_ConstValue *slice_members =
+			    create_sarr(SmallArray_ConstValue, cnt->assembly);
+			tmp->data.v_struct.members = slice_members;
 
 			MirConstValue *slice_member_tmp =
 			    create_const_value(cnt, cnt->builtin_types.entry_usize);
@@ -7748,7 +7707,7 @@ ast_expr_compound(Context *cnt, Ast *cmp)
 
 	assert(ast_type);
 
-	SmallArray_Instr *values = create_sarr(cnt);
+	SmallArray_Instr *values = create_sarr(SmallArray_Instr, cnt->assembly);
 	sa_resize_Instr(values, valc);
 
 	Ast *     ast_value;
@@ -7870,7 +7829,7 @@ ast_expr_call(Context *cnt, Ast *call)
 	SmallArray_Ast *ast_args   = call->data.expr_call.args;
 	assert(ast_callee);
 
-	SmallArray_Instr *args = create_sarr(cnt);
+	SmallArray_Instr *args = create_sarr(SmallArray_Instr, cnt->assembly);
 
 	/* arguments need to be generated into reverse order due to bytecode call
 	 * conventions */
@@ -8325,7 +8284,7 @@ ast_type_fn(Context *cnt, Ast *type_fn)
 	SmallArray_Instr *arg_types = NULL;
 	if (ast_arg_types && ast_arg_types->size) {
 		const size_t c = ast_arg_types->size;
-		arg_types      = create_sarr(cnt);
+		arg_types      = create_sarr(SmallArray_Instr, cnt->assembly);
 		sa_resize_Instr(arg_types, c);
 
 		Ast *     ast_arg_type;
@@ -8405,7 +8364,7 @@ ast_type_enum(Context *cnt, Ast *type_enum)
 	Scope *scope = type_enum->data.type_enm.scope;
 	assert(scope);
 
-	SmallArray_Instr *variants = create_sarr(cnt);
+	SmallArray_Instr *variants = create_sarr(SmallArray_Instr, cnt->assembly);
 
 	/* Build variant instructions */
 	MirInstr *variant;
@@ -8446,7 +8405,7 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 		return NULL;
 	}
 
-	SmallArray_Instr *members = create_sarr(cnt);
+	SmallArray_Instr *members = create_sarr(SmallArray_Instr, cnt->assembly);
 
 	MirInstr *tmp = NULL;
 	Ast *     ast_member;
@@ -8984,48 +8943,33 @@ init_builtins(Context *cnt)
 }
 
 void
-mir_arenas_init(Assembly *assembly)
+mir_arenas_init(MirArenas *arenas)
 {
-	arena_init(&assembly->MIR.instr_arena, sizeof(union _MirInstr), ARENA_CHUNK_COUNT, NULL);
+	arena_init(&arenas->instr, sizeof(union _MirInstr), ARENA_CHUNK_COUNT, NULL);
 
-	arena_init(&assembly->MIR.type_arena, sizeof(MirType), ARENA_CHUNK_COUNT, NULL);
+	arena_init(&arenas->type, sizeof(MirType), ARENA_CHUNK_COUNT, NULL);
 
-	arena_init(&assembly->MIR.var_arena, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
+	arena_init(&arenas->var, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
 
-	arena_init(&assembly->MIR.fn_arena, sizeof(MirFn), ARENA_CHUNK_COUNT, NULL);
+	arena_init(&arenas->fn, sizeof(MirFn), ARENA_CHUNK_COUNT, NULL);
 
-	arena_init(&assembly->MIR.member_arena, sizeof(MirMember), ARENA_CHUNK_COUNT, NULL);
+	arena_init(&arenas->member, sizeof(MirMember), ARENA_CHUNK_COUNT, NULL);
 
-	arena_init(&assembly->MIR.variant_arena, sizeof(MirVariant), ARENA_CHUNK_COUNT, NULL);
+	arena_init(&arenas->variant, sizeof(MirVariant), ARENA_CHUNK_COUNT, NULL);
 
-	arena_init(&assembly->MIR.value_arena,
-	           sizeof(MirConstValue),
-	           ARENA_CHUNK_COUNT / 2,
-	           (ArenaElemDtor)value_dtor);
-
-	arena_init(&assembly->MIR.array_arena,
-	           sizeof(BArray *),
-	           ARENA_CHUNK_COUNT / 2,
-	           (ArenaElemDtor)array_dtor);
-
-	arena_init(&assembly->MIR.small_array_arena,
-	           sizeof(union _SmallArrays),
-	           ARENA_CHUNK_COUNT / 2,
-	           (ArenaElemDtor)small_array_dtor);
+	arena_init(&arenas->value, sizeof(MirConstValue), ARENA_CHUNK_COUNT / 2, NULL);
 }
 
 void
-mir_arenas_terminate(Assembly *assembly)
+mir_arenas_terminate(MirArenas *arenas)
 {
-	arena_terminate(&assembly->MIR.instr_arena);
-	arena_terminate(&assembly->MIR.value_arena);
-	arena_terminate(&assembly->MIR.var_arena);
-	arena_terminate(&assembly->MIR.fn_arena);
-	arena_terminate(&assembly->MIR.member_arena);
-	arena_terminate(&assembly->MIR.variant_arena);
-	arena_terminate(&assembly->MIR.array_arena);
-	arena_terminate(&assembly->MIR.type_arena);
-	arena_terminate(&assembly->MIR.small_array_arena);
+	arena_terminate(&arenas->fn);
+	arena_terminate(&arenas->instr);
+	arena_terminate(&arenas->member);
+	arena_terminate(&arenas->type);
+	arena_terminate(&arenas->value);
+	arena_terminate(&arenas->var);
+	arena_terminate(&arenas->variant);
 }
 
 void
@@ -9045,7 +8989,7 @@ mir_run(Builder *builder, Assembly *assembly)
 	cnt.analyze.waiting          = bo_htbl_new_bo(bo_typeof(BArray), true, ANALYZE_TABLE_SIZE);
 	cnt.type_table               = assembly->type_table;
 	cnt.builtin_types.cache =
-	    scope_create(&assembly->scope_entry_arena, SCOPE_GLOBAL, NULL, 64, NULL);
+	    scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, 64, NULL);
 
 	/* initialize all builtin types */
 	init_builtins(&cnt);
