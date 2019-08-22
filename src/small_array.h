@@ -56,14 +56,12 @@ typedef struct SmallArrayAny {
                                                                                                    \
 	static inline void sa_resize_##N(SmallArray_##N *arr, size_t desired_size)                 \
 	{                                                                                          \
-		assert(arr->size == 0 && "Cannot resize non-empty array.");                        \
 		if (desired_size <= S) goto SETUP;                                                 \
 		if (desired_size <= arr->allocated) goto SETUP;                                    \
 		arr->allocated = desired_size;                                                     \
 		arr->data      = (T *)realloc(arr->data, arr->allocated * sizeof(T));              \
 	SETUP:                                                                                     \
 		arr->size = desired_size;                                                          \
-		memset(arr->data, 0, sizeof(T) * arr->size);                                       \
 	}                                                                                          \
                                                                                                    \
 	static inline void sa_push_##N(SmallArray_##N *arr, T v)                                   \

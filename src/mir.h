@@ -97,6 +97,7 @@ SmallArrayType(Type, MirType *, 16);
 SmallArrayType(Member, MirMember *, 16);
 SmallArrayType(Variant, MirVariant *, 16);
 SmallArrayType(Instr, MirInstr *, 16);
+SmallArrayType(ConstValue, MirConstValue *, 16);
 
 typedef enum MirBuiltinIdKind {
 	MIR_BUILTIN_ID_NONE = -1,
@@ -385,13 +386,13 @@ union MirConstValueData {
 	MirConstPtr v_ptr;
 
 	struct {
-		BArray *members; // array of MirConstValues *
-		bool    is_zero_initializer;
+		SmallArray_ConstValue *members; // array of MirConstValues *
+		bool                   is_zero_initializer;
 	} v_struct;
 
 	struct {
-		BArray *elems; // array of MirConstValues *
-		bool    is_zero_initializer;
+		SmallArray_ConstValue *elems; // array of MirConstValues *
+		bool                   is_zero_initializer;
 	} v_array;
 };
 
@@ -582,19 +583,19 @@ struct MirInstrTypeFn {
 struct MirInstrTypeStruct {
 	MirInstr base;
 
-	ID *    id;
-	Scope * scope;
-	BArray *members;
-	bool    is_packed;
+	ID *              id;
+	Scope *           scope;
+	SmallArray_Instr *members;
+	bool              is_packed;
 };
 
 struct MirInstrTypeEnum {
 	MirInstr base;
 
-	ID *      id;
-	Scope *   scope;
-	BArray *  variants;
-	MirInstr *base_type;
+	ID *              id;
+	Scope *           scope;
+	SmallArray_Instr *variants;
+	MirInstr *        base_type;
 };
 
 struct MirInstrTypePtr {
@@ -625,8 +626,8 @@ struct MirInstrTypeVArgs {
 struct MirInstrCall {
 	MirInstr base;
 
-	MirInstr *callee;
-	BArray *  args;
+	MirInstr *        callee;
+	SmallArray_Instr *args;
 };
 
 struct MirInstrDeclRef {
@@ -659,20 +660,20 @@ struct MirInstrBr {
 struct MirInstrCompound {
 	MirInstr base;
 
-	MirInstr *type;
-	BArray *  values;
-	MirVar *  tmp_var;
-	bool      is_naked;
-	bool      is_zero_initialized;
+	MirInstr *        type;
+	SmallArray_Instr *values;
+	MirVar *          tmp_var;
+	bool              is_naked;
+	bool              is_zero_initialized;
 };
 
 struct MirInstrVArgs {
 	MirInstr base;
 
-	MirVar * arr_tmp;
-	MirVar * vargs_tmp;
-	MirType *type;
-	BArray * values;
+	MirVar *          arr_tmp;
+	MirVar *          vargs_tmp;
+	MirType *         type;
+	SmallArray_Instr *values;
 };
 
 struct MirInstrTypeInfo {
@@ -692,8 +693,8 @@ struct MirInstrTypeKind {
 struct MirInstrPhi {
 	MirInstr base;
 
-	BArray *incoming_values;
-	BArray *incoming_blocks;
+	SmallArray_Instr *incoming_values;
+	SmallArray_Instr *incoming_blocks;
 };
 
 struct MirInstrToAny {

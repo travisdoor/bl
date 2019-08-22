@@ -405,25 +405,29 @@ emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 	LLVMValueRef llvm_phi =
 	    LLVMBuildPhi(cnt->llvm_builder, phi->base.value.type->llvm_type, "");
 
-	const size_t       count   = bo_array_size(phi->incoming_blocks);
-	LLVMValueRef *     llvm_iv = bl_malloc(sizeof(LLVMValueRef) * count);
-	LLVMBasicBlockRef *llvm_ib = bl_malloc(sizeof(LLVMBasicBlockRef) * count);
-	if (llvm_iv == NULL || llvm_ib == NULL) bl_abort("bad alloc");
+	const size_t count = phi->incoming_blocks->size;
+
+	SmallArray_value llvm_iv;
+	SmallArray_value llvm_ib;
+
+	sa_init(&llvm_iv);
+	sa_init(&llvm_ib);
 
 	MirInstr *     value;
 	MirInstrBlock *block;
 	for (size_t i = 0; i < count; ++i) {
-		value = bo_array_at(phi->incoming_values, i, MirInstr *);
-		block = bo_array_at(phi->incoming_blocks, i, MirInstrBlock *);
+		value = phi->incoming_values->data[i];
+		block = (MirInstrBlock *)phi->incoming_blocks->data[i];
 
-		llvm_iv[i] = fetch_value(cnt, value);
-		llvm_ib[i] = emit_basic_block(cnt, block);
+		sa_push_value(&llvm_iv, fetch_value(cnt, value));
+		sa_push_value(&llvm_ib, LLVMBasicBlockAsValue(emit_basic_block(cnt, block)));
 	}
 
-	LLVMAddIncoming(llvm_phi, llvm_iv, llvm_ib, (unsigned int)count);
+	LLVMAddIncoming(
+	    llvm_phi, llvm_iv.data, (LLVMBasicBlockRef *)llvm_ib.data, (unsigned int)count);
 
-	bl_free(llvm_iv);
-	bl_free(llvm_ib);
+	sa_terminate(&llvm_iv);
+	sa_terminate(&llvm_ib);
 
 	phi->base.llvm_value = llvm_phi;
 }
@@ -736,17 +740,17 @@ emit_as_const(Context *cnt, MirConstValue *value)
 		LLVMTypeRef  llvm_elem_type = type->data.array.elem_type->llvm_type;
 		assert(len && llvm_elem_type);
 
-		BArray *       elems = value->data.v_array.elems;
-		MirConstValue *elem;
+		SmallArray_ConstValue *elems = value->data.v_array.elems;
+		MirConstValue *        elem;
 
 		assert(elems);
-		assert(len == bo_array_size(elems));
+		assert(len == elems->size);
 
 		SmallArray_value llvm_elems;
 		sa_init(&llvm_elems);
 
 		for (size_t i = 0; i < len; ++i) {
-			elem = bo_array_at(elems, i, MirConstValue *);
+			elem = elems->data[i];
 			sa_push_value(&llvm_elems, emit_as_const(cnt, elem));
 		}
 
@@ -756,13 +760,13 @@ emit_as_const(Context *cnt, MirConstValue *value)
 	}
 
 	case MIR_TYPE_STRING: {
-		BArray *     members = value->data.v_struct.members;
-		const size_t memc    = bo_array_size(members);
+		SmallArray_ConstValue *members = value->data.v_struct.members;
+		const size_t           memc    = members->size;
 		assert(members);
 		assert(memc == 2 && "not slice string?");
 
-		MirConstValue *len_value = bo_array_at(members, 0, MirConstValue *);
-		MirConstValue *str_value = bo_array_at(members, 1, MirConstValue *);
+		MirConstValue *len_value = members->data[0];
+		MirConstValue *str_value = members->data[1];
 		assert(len_value && str_value);
 
 		const uint64_t len = len_value->data.v_u64;
@@ -780,15 +784,15 @@ emit_as_const(Context *cnt, MirConstValue *value)
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT: {
-		BArray *     members = value->data.v_struct.members;
-		const size_t memc    = bo_array_size(members);
+		SmallArray_ConstValue *members = value->data.v_struct.members;
+		const size_t           memc    = members->size;
 
 		MirConstValue *member;
 
 		SmallArray_value llvm_members;
 		sa_init(&llvm_members);
 
-		barray_foreach(members, member)
+		sarray_foreach(members, member)
 		    sa_push_value(&llvm_members, emit_as_const(cnt, member));
 
 		llvm_value = LLVMConstNamedStruct(llvm_type, llvm_members.data, (unsigned int)memc);
@@ -909,14 +913,14 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 
 		build_call_memcpy(cnt, llvm_tmp, llvm_const, llvm_size, llvm_alignment);
 	} else {
-		BArray *     values = cmp->values;
-		MirInstr *   value;
-		LLVMValueRef llvm_value;
-		LLVMValueRef llvm_value_dest;
-		LLVMValueRef llvm_indices[2];
+		SmallArray_Instr *values = cmp->values;
+		MirInstr *        value;
+		LLVMValueRef      llvm_value;
+		LLVMValueRef      llvm_value_dest;
+		LLVMValueRef      llvm_indices[2];
 		llvm_indices[0] = cnt->llvm_const_i64;
 
-		barray_foreach(values, value)
+		sarray_foreach(values, value)
 		{
 			llvm_value = fetch_value(cnt, value);
 			assert(llvm_value);
@@ -1110,13 +1114,13 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	                           ? callee->llvm_value
 	                           : emit_fn_proto(cnt, callee->value.data.v_ptr.data.fn);
 
-	const size_t     llvm_argc = call->args ? bo_array_size(call->args) : 0;
+	const size_t     llvm_argc = call->args ? call->args->size : 0;
 	SmallArray_value llvm_args;
 	sa_init(&llvm_args);
 
 	if (llvm_argc) {
 		MirInstr *arg;
-		barray_foreach(call->args, arg) sa_push_value(&llvm_args, fetch_value(cnt, arg));
+		sarray_foreach(call->args, arg) sa_push_value(&llvm_args, fetch_value(cnt, arg));
 	}
 
 	if (cnt->debug_build) {
@@ -1225,10 +1229,10 @@ emit_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 void
 emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 {
-	MirType *vargs_type = vargs->base.value.type;
-	BArray * values     = vargs->values;
+	MirType *         vargs_type = vargs->base.value.type;
+	SmallArray_Instr *values     = vargs->values;
 	assert(values);
-	const size_t vargsc = bo_array_size(values);
+	const size_t vargsc = values->size;
 	assert(vargs_type && vargs_type->kind == MIR_TYPE_VARGS);
 
 	if (cnt->debug_build)
@@ -1242,7 +1246,7 @@ emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 		LLVMValueRef llvm_indices[2];
 		llvm_indices[0] = cnt->llvm_const_i64;
 
-		barray_foreach(values, value)
+		sarray_foreach(values, value)
 		{
 			llvm_value = fetch_value(cnt, value);
 			assert(llvm_value);
