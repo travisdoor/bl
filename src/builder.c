@@ -156,17 +156,12 @@ builder_new(void)
 	/* initialize LLVM statics */
 	llvm_init();
 
-	scope_arenas_init(&builder->scope_arenas);
-	ast_arena_init(&builder->ast_arena);
-
 	return builder;
 }
 
 void
 builder_delete(Builder *builder)
 {
-	scope_arenas_terminate(&builder->scope_arenas);
-	arena_terminate(&builder->ast_arena);
 	conf_data_delete(builder->conf);
 	bo_unref(builder->str_cache);
 	bl_free(builder);

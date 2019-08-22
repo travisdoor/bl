@@ -29,7 +29,6 @@
 #ifndef BL_BUILDER_H
 #define BL_BUILDER_H
 
-#include "arena.h"
 #include "assembly.h"
 #include "conf_data.h"
 #include "error.h"
@@ -60,8 +59,6 @@
 #define COMPILE_FAIL 1
 
 typedef struct Builder {
-	Arena       ast_arena;
-	ScopeArenas scope_arenas;
 	uint32_t    flags;
 	int32_t     total_lines;
 	int32_t     errorc;

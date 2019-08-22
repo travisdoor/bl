@@ -42,24 +42,33 @@ scope_dtor(Scope *scope)
 }
 
 void
-scope_arenas_init(ScopeArenas *arenas)
+scope_arena_init(Arena *arena)
 {
-	arena_init(
-	    &arenas->scope_arena, sizeof(Scope), ARENA_CHUNK_COUNT, (ArenaElemDtor)scope_dtor);
-	arena_init(&arenas->entry_arena, sizeof(ScopeEntry), ARENA_CHUNK_COUNT, NULL);
+	arena_init(arena, sizeof(Scope), ARENA_CHUNK_COUNT, (ArenaElemDtor)scope_dtor);
 }
 
 void
-scope_arenas_terminate(ScopeArenas *arenas)
+scope_arena_terminate(Arena *arena)
 {
-	arena_terminate(&arenas->scope_arena);
-	arena_terminate(&arenas->entry_arena);
+	arena_terminate(arena);
+}
+
+void
+scope_entry_arena_init(Arena *arena)
+{
+	arena_init(arena, sizeof(ScopeEntry), ARENA_CHUNK_COUNT, NULL);
+}
+
+void
+scope_entry_arena_terminate(Arena *arena)
+{
+	arena_terminate(arena);
 }
 
 Scope *
-scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size, struct Location *loc)
+scope_create(Arena *arena, ScopeKind kind, Scope *parent, size_t size, struct Location *loc)
 {
-	Scope *scope    = arena_alloc(&arenas->scope_arena);
+	Scope *scope    = arena_alloc(arena);
 	scope->entries  = bo_htbl_new(sizeof(ScopeEntry *), size);
 	scope->parent   = parent;
 	scope->kind     = kind;
@@ -68,14 +77,28 @@ scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size, st
 	return scope;
 }
 
-ScopeEntry *
-scope_create_entry(ScopeArenas *  arenas,
-                   ScopeEntryKind kind,
-                   ID *           id,
-                   struct Ast *   node,
-                   bool           is_buildin)
+Scope *
+scope_new(ScopeKind kind, Scope *parent, size_t size, struct Location *loc)
 {
-	ScopeEntry *entry = arena_alloc(&arenas->entry_arena);
+	Scope *scope    = bl_malloc(sizeof(Scope));
+	scope->entries  = bo_htbl_new(sizeof(ScopeEntry *), size);
+	scope->parent   = parent;
+	scope->kind     = kind;
+	scope->location = loc;
+
+	return scope;
+}
+
+void
+scope_delete(Scope *scope)
+{
+	scope_dtor(scope);
+}
+
+ScopeEntry *
+scope_create_entry(Arena *arena, ScopeEntryKind kind, ID *id, struct Ast *node, bool is_buildin)
+{
+	ScopeEntry *entry = arena_alloc(arena);
 	entry->id         = id;
 	entry->kind       = kind;
 	entry->node       = node;

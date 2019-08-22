@@ -140,12 +140,19 @@ unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
 	unit->ast         = NULL;
 
 	tokens_init(&unit->tokens);
+
+	scope_arena_init(&unit->scope_arena);
+	ast_arena_init(&unit->ast_arena);
+
 	return unit;
 }
 
 void
 unit_delete(Unit *unit)
 {
+	scope_arena_terminate(&unit->scope_arena);
+	arena_terminate(&unit->ast_arena);
+
 	free(unit->filepath);
 	free(unit->dirpath);
 	free(unit->src);

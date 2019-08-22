@@ -1871,7 +1871,7 @@ register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool is_builtin, 
 
 	/* no collision */
 	ScopeEntry *entry = scope_create_entry(
-	    &cnt->builder->scope_arenas, SCOPE_ENTRY_INCOMPLETE, id, node, is_builtin);
+	    &cnt->assembly->scope_entry_arena, SCOPE_ENTRY_INCOMPLETE, id, node, is_builtin);
 
 	scope_insert(scope, entry);
 	if (is_builtin) cache_builtin(cnt, entry);
@@ -9045,7 +9045,7 @@ mir_run(Builder *builder, Assembly *assembly)
 	cnt.analyze.waiting          = bo_htbl_new_bo(bo_typeof(BArray), true, ANALYZE_TABLE_SIZE);
 	cnt.type_table               = assembly->type_table;
 	cnt.builtin_types.cache =
-	    scope_create(&builder->scope_arenas, SCOPE_GLOBAL, NULL, 64, NULL);
+	    scope_create(&assembly->scope_entry_arena, SCOPE_GLOBAL, NULL, 64, NULL);
 
 	/* initialize all builtin types */
 	init_builtins(&cnt);

@@ -51,11 +51,6 @@ typedef enum ScopeEntryKind {
 	SCOPE_ENTRY_VARIANT,
 } ScopeEntryKind;
 
-typedef struct ScopeArenas {
-	Arena scope_arena;
-	Arena entry_arena;
-} ScopeArenas;
-
 typedef union ScopeEntryData {
 	struct MirType *   type;
 	struct MirFn *     fn;
@@ -93,16 +88,28 @@ typedef struct Scope {
 } Scope;
 
 void
-scope_arenas_init(ScopeArenas *arenas);
+scope_arena_init(Arena *arena);
 
 void
-scope_arenas_terminate(ScopeArenas *arenas);
+scope_arena_terminate(Arena *arena);
+
+void
+scope_entry_arena_init(Arena *arena);
+
+void
+scope_entry_arena_terminate(Arena *arena);
 
 Scope *
-scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size, struct Location *loc);
+scope_create(Arena *arena, ScopeKind kind, Scope *parent, size_t size, struct Location *loc);
+
+Scope *
+scope_new(ScopeKind kind, Scope *parent, size_t size, struct Location *loc);
+
+void
+scope_delete(Scope *scope);
 
 ScopeEntry *
-scope_create_entry(ScopeArenas *  arenas,
+scope_create_entry(Arena *  arena,
                    ScopeEntryKind kind,
                    ID *           id,
                    struct Ast *   node,

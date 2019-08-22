@@ -29,8 +29,10 @@
 #ifndef BL_UNIT_H
 #define BL_UNIT_H
 
+#include "arena.h"
 #include "ast.h"
 #include "config.h"
+#include "scope.h"
 #include "tokens.h"
 #include <llvm-c/Core.h>
 
@@ -38,6 +40,9 @@ struct Token;
 
 /* class Unit object members */
 typedef struct Unit {
+	Arena ast_arena;
+	Arena scope_arena;
+
 	Tokens          tokens;        /* Unit tokens as lexer output. */
 	Ast *           ast;           /* Abstract Syntax Tree */
 	struct Scope *  private_scope; /* Unit private scope (#private). */

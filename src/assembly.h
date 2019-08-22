@@ -43,6 +43,7 @@ struct MirModule;
 struct Builder;
 
 typedef struct Assembly {
+	Arena       scope_entry_arena;
 	BArray *    units;      /* array of all units in assembly */
 	BHashTable *unit_cache; /* cache for loading only unique units */
 	BHashTable *link_cache; /* all linked externals libraries passed to linker */
