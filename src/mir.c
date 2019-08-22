@@ -7735,28 +7735,28 @@ ast_stmt_return(Context *cnt, Ast *ret)
 MirInstr *
 ast_expr_compound(Context *cnt, Ast *cmp)
 {
-	BArray *  ast_values = cmp->data.expr_compound.values;
-	Ast *     ast_type   = cmp->data.expr_compound.type;
-	MirInstr *type       = ast(cnt, ast_type);
+	SmallArray_Ast *ast_values = cmp->data.expr_compound.values;
+	Ast *           ast_type   = cmp->data.expr_compound.type;
+	MirInstr *      type       = ast(cnt, ast_type);
 	assert(type);
 
 	if (!ast_values) {
 		return append_instr_compound(cnt, cmp, type, NULL);
 	}
 
-	const size_t valc = bo_array_size(ast_values);
+	const size_t valc = ast_values->size;
 
 	assert(ast_type);
 
 	SmallArray_Instr *values = create_sarr(cnt);
-	sa_resize_Instr(values, bo_array_size(ast_values));
+	sa_resize_Instr(values, valc);
 
 	Ast *     ast_value;
 	MirInstr *value;
 
 	/* Values must be appended in reverse order. */
 	for (size_t i = valc; i-- > 0;) {
-		ast_value = bo_array_at(ast_values, i, Ast *);
+		ast_value = ast_values->data[i];
 		value     = ast(cnt, ast_value);
 		assert(value);
 		values->data[i] = value;
@@ -7866,8 +7866,8 @@ ast_expr_null(Context *cnt, Ast *nl)
 MirInstr *
 ast_expr_call(Context *cnt, Ast *call)
 {
-	Ast *   ast_callee = call->data.expr_call.ref;
-	BArray *ast_args   = call->data.expr_call.args;
+	Ast *           ast_callee = call->data.expr_call.ref;
+	SmallArray_Ast *ast_args   = call->data.expr_call.args;
 	assert(ast_callee);
 
 	SmallArray_Instr *args = create_sarr(cnt);
@@ -7875,12 +7875,12 @@ ast_expr_call(Context *cnt, Ast *call)
 	/* arguments need to be generated into reverse order due to bytecode call
 	 * conventions */
 	if (ast_args) {
-		const size_t argc = bo_array_size(ast_args);
+		const size_t argc = ast_args->size;
 		sa_resize_Instr(args, argc);
 		MirInstr *arg;
 		Ast *     ast_arg;
 		for (size_t i = argc; i-- > 0;) {
-			ast_arg = bo_array_at(ast_args, i, Ast *);
+			ast_arg = ast_args->data[i];
 			arg     = ast(cnt, ast_arg);
 
 			args->data[i] = arg;
@@ -7966,14 +7966,14 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 
 	/* build MIR for fn arguments */
 	{
-		BArray *ast_args = ast_fn_type->data.type_fn.args;
+		SmallArray_Ast *ast_args = ast_fn_type->data.type_fn.args;
 		if (ast_args) {
 			Ast *ast_arg;
 			Ast *ast_arg_name;
 
-			const size_t argc = bo_array_size(ast_args);
+			const size_t argc = ast_args->size;
 			for (size_t i = argc; i-- > 0;) {
-				ast_arg = bo_array_at(ast_args, i, Ast *);
+				ast_arg = ast_args->data[i];
 				assert(ast_arg->kind == AST_DECL_ARG);
 				ast_arg_name = ast_arg->data.decl.name;
 				assert(ast_arg_name);
@@ -8312,8 +8312,8 @@ ast_type_ref(Context *cnt, Ast *type_ref)
 MirInstr *
 ast_type_fn(Context *cnt, Ast *type_fn)
 {
-	Ast *   ast_ret_type  = type_fn->data.type_fn.ret_type;
-	BArray *ast_arg_types = type_fn->data.type_fn.args;
+	Ast *           ast_ret_type  = type_fn->data.type_fn.ret_type;
+	SmallArray_Ast *ast_arg_types = type_fn->data.type_fn.args;
 
 	/* return type */
 	MirInstr *ret_type = NULL;
@@ -8323,15 +8323,15 @@ ast_type_fn(Context *cnt, Ast *type_fn)
 	}
 
 	SmallArray_Instr *arg_types = NULL;
-	if (ast_arg_types && bo_array_size(ast_arg_types)) {
-		const size_t c = bo_array_size(ast_arg_types);
+	if (ast_arg_types && ast_arg_types->size) {
+		const size_t c = ast_arg_types->size;
 		arg_types      = create_sarr(cnt);
 		sa_resize_Instr(arg_types, c);
 
 		Ast *     ast_arg_type;
 		MirInstr *arg_type;
 		for (size_t i = c; i-- > 0;) {
-			ast_arg_type = bo_array_at(ast_arg_types, i, Ast *);
+			ast_arg_type = ast_arg_types->data[i];
 			arg_type     = ast(cnt, ast_arg_type);
 			ref_instr(arg_type);
 			arg_types->data[i] = arg_type;
@@ -8385,11 +8385,11 @@ ast_type_vargs(Context *cnt, Ast *type_vargs)
 MirInstr *
 ast_type_enum(Context *cnt, Ast *type_enum)
 {
-	BArray *ast_variants  = type_enum->data.type_enm.variants;
-	Ast *   ast_base_type = type_enum->data.type_enm.type;
+	SmallArray_Ast *ast_variants  = type_enum->data.type_enm.variants;
+	Ast *           ast_base_type = type_enum->data.type_enm.type;
 	assert(ast_variants);
 
-	const size_t varc = bo_array_size(ast_variants);
+	const size_t varc = ast_variants->size;
 	if (varc == 0) {
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
@@ -8410,7 +8410,7 @@ ast_type_enum(Context *cnt, Ast *type_enum)
 	/* Build variant instructions */
 	MirInstr *variant;
 	Ast *     ast_variant;
-	barray_foreach(ast_variants, ast_variant)
+	sarray_foreach(ast_variants, ast_variant)
 	{
 		variant = ast(cnt, ast_variant);
 		assert(variant);
@@ -8427,15 +8427,15 @@ ast_type_enum(Context *cnt, Ast *type_enum)
 MirInstr *
 ast_type_struct(Context *cnt, Ast *type_struct)
 {
-	BArray *   ast_members = type_struct->data.type_strct.members;
-	const bool is_raw      = type_struct->data.type_strct.raw;
+	SmallArray_Ast *ast_members = type_struct->data.type_strct.members;
+	const bool      is_raw      = type_struct->data.type_strct.raw;
 	if (is_raw) {
 		bl_abort_issue(31);
 	}
 
 	assert(ast_members);
 
-	const size_t memc = bo_array_size(ast_members);
+	const size_t memc = ast_members->size;
 	if (memc == 0) {
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
@@ -8450,7 +8450,7 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 
 	MirInstr *tmp = NULL;
 	Ast *     ast_member;
-	barray_foreach(ast_members, ast_member)
+	sarray_foreach(ast_members, ast_member)
 	{
 		tmp = ast(cnt, ast_member);
 		assert(tmp);

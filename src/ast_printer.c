@@ -259,7 +259,7 @@ print_type_struct(Ast *strct, int32_t pad, FILE *stream)
 	print_head(strct, pad, stream);
 
 	Ast *node;
-	barray_foreach(strct->data.type_strct.members, node)
+	sarray_foreach(strct->data.type_strct.members, node)
 	{
 		print_node(node, pad + 1, stream);
 	}
@@ -271,7 +271,7 @@ print_type_enum(Ast *enm, int32_t pad, FILE *stream)
 	print_head(enm, pad, stream);
 
 	Ast *node;
-	barray_foreach(enm->data.type_enm.variants, node)
+	sarray_foreach(enm->data.type_enm.variants, node)
 	{
 		print_node(node, pad + 1, stream);
 	}
@@ -521,7 +521,7 @@ print_expr_call(Ast *call, int32_t pad, FILE *stream)
 
 	if (call->data.expr_call.args) {
 		Ast *arg;
-		barray_foreach(call->data.expr_call.args, arg) print_node(arg, pad + 1, stream);
+		sarray_foreach(call->data.expr_call.args, arg) print_node(arg, pad + 1, stream);
 	}
 }
 
@@ -530,10 +530,10 @@ print_expr_compound(Ast *expr_compound, int32_t pad, FILE *stream)
 {
 	print_head(expr_compound, pad, stream);
 
-	BArray *exprs = expr_compound->data.expr_compound.values;
+	SmallArray_Ast *exprs = expr_compound->data.expr_compound.values;
 	if (exprs) {
 		Ast *value;
-		barray_foreach(exprs, value)
+		sarray_foreach(exprs, value)
 		{
 			print_node(value, pad + 1, stream);
 		}

@@ -118,6 +118,9 @@ sym_to_binop_kind(Sym sm);
 static UnopKind
 sym_to_unop_kind(Sym sm);
 
+static void *
+create_sarr(Context *cnt);
+
 static void
 parse_ublock_content(Context *cnt, Ast *ublock);
 
@@ -264,6 +267,14 @@ static Ast *
 parse_expr_compound(Context *cnt);
 
 // impl
+void *
+create_sarr(Context *cnt)
+{
+	SmallArrayAny *tmp = arena_alloc(&cnt->unit->ast_arenas.small_arrays);
+	sa_init(tmp);
+	return tmp;
+}
+
 BinopKind
 sym_to_binop_kind(Sym sm)
 {
@@ -644,8 +655,9 @@ value:
 	tmp = parse_expr(cnt);
 	if (tmp) {
 		if (!compound->data.expr_compound.values)
-			compound->data.expr_compound.values = bo_array_new(sizeof(Ast *));
-		bo_array_push_back(compound->data.expr_compound.values, tmp);
+			compound->data.expr_compound.values = create_sarr(cnt);
+
+		sa_push_Ast(compound->data.expr_compound.values, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -1516,7 +1528,7 @@ parse_type_enum(Context *cnt)
 	if (!tok_enum) return NULL;
 
 	Ast *enm = ast_create_node(cnt->ast_arena, AST_TYPE_ENUM, tok_enum, cnt->scope);
-	enm->data.type_enm.variants = bo_array_new(sizeof(Ast *));
+	enm->data.type_enm.variants = create_sarr(cnt);
 	enm->data.type_enm.type     = parse_type(cnt);
 
 	parse_flags_for_curr_decl(cnt);
@@ -1541,7 +1553,7 @@ NEXT:
 	tmp = parse_decl_variant(cnt, prev_tmp);
 	if (tmp) {
 		prev_tmp = tmp;
-		bo_array_push_back(enm->data.type_enm.variants, tmp);
+		sa_push_Ast(enm->data.type_enm.variants, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -1687,8 +1699,9 @@ parse_type_fn(Context *cnt, bool named_args)
 NEXT:
 	tmp = parse_decl_arg(cnt, !named_args);
 	if (tmp) {
-		if (!fn->data.type_fn.args) fn->data.type_fn.args = bo_array_new(sizeof(Ast *));
-		bo_array_push_back(fn->data.type_fn.args, tmp);
+		if (!fn->data.type_fn.args) fn->data.type_fn.args = create_sarr(cnt);
+
+		sa_push_Ast(fn->data.type_fn.args, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -1745,7 +1758,7 @@ parse_type_struct(Context *cnt)
 	Ast *type_struct = ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct, cnt->scope);
 	type_struct->data.type_strct.scope   = scope;
 	type_struct->data.type_strct.raw     = false;
-	type_struct->data.type_strct.members = bo_array_new(sizeof(Ast *));
+	type_struct->data.type_strct.members = create_sarr(cnt);
 
 	/* parse members */
 	bool       rq = false;
@@ -1756,7 +1769,7 @@ parse_type_struct(Context *cnt)
 NEXT:
 	tmp = parse_decl_member(cnt, type_only);
 	if (tmp) {
-		bo_array_push_back(type_struct->data.type_strct.members, tmp);
+		sa_push_Ast(type_struct->data.type_strct.members, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -1862,9 +1875,8 @@ parse_expr_call(Context *cnt, Ast *prev)
 arg:
 	tmp = parse_expr(cnt);
 	if (tmp) {
-		if (!call->data.expr_call.args)
-			call->data.expr_call.args = bo_array_new(sizeof(Ast *));
-		bo_array_push_back(call->data.expr_call.args, tmp);
+		if (!call->data.expr_call.args) call->data.expr_call.args = create_sarr(cnt);
+		sa_push_Ast(call->data.expr_call.args, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -2078,13 +2090,13 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit)
 	               .assembly    = assembly,
 	               .scope       = assembly->gscope,
 	               .unit        = unit,
-	               .ast_arena   = &unit->ast_arena,
+	               .ast_arena   = &unit->ast_arenas.nodes,
 	               .scope_arena = &unit->scope_arena,
 	               .tokens      = &unit->tokens,
 	               .curr_decl   = NULL,
 	               .inside_loop = false};
 
-	Ast *root              = ast_create_node(&unit->ast_arena, AST_UBLOCK, NULL, cnt.scope);
+	Ast *root              = ast_create_node(cnt.ast_arena, AST_UBLOCK, NULL, cnt.scope);
 	root->data.ublock.unit = unit;
 	unit->ast              = root;
 

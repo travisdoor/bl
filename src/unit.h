@@ -40,8 +40,8 @@ struct Token;
 
 /* class Unit object members */
 typedef struct Unit {
-	Arena ast_arena;
-	Arena scope_arena;
+	AstArenas ast_arenas;
+	Arena     scope_arena;
 
 	Tokens          tokens;        /* Unit tokens as lexer output. */
 	Ast *           ast;           /* Abstract Syntax Tree */

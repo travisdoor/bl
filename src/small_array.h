@@ -68,12 +68,10 @@ typedef struct SmallArrayAny {
 	{                                                                                          \
 		const bool on_heap = arr->allocated;                                               \
 		if (!on_heap && arr->size == S) {                                                  \
-			puts("alloc");                                                             \
 			arr->allocated = S * 2;                                                    \
 			arr->data      = (T *)malloc(sizeof(T) * arr->allocated);                  \
 			memcpy(arr->data, arr->tmp, sizeof(T) * S);                                \
 		} else if (on_heap && arr->size == arr->allocated) {                               \
-			puts("realloc");                                                           \
 			arr->allocated *= 2;                                                       \
 			arr->data = (T *)realloc(arr->data, arr->allocated * sizeof(T));           \
 		}                                                                                  \

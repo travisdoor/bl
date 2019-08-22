@@ -29,17 +29,19 @@
 #ifndef BL_AST_H
 #define BL_AST_H
 
+#include "arena.h"
 #include "common.h"
 #include <bobject/containers/array.h>
 #include <bobject/containers/hash.h>
 #include <bobject/containers/htbl.h>
 #include <bobject/containers/list.h>
 
-struct Arena;
 struct Scope;
 struct Token;
 struct Location;
 typedef struct Ast Ast;
+
+SmallArrayType(Ast, Ast *, 16);
 
 typedef enum {
 	AST_BAD,
@@ -230,20 +232,20 @@ struct AstTypeSlice {
 };
 
 struct AstTypeFn {
-	Ast *   ret_type;
-	BArray *args;
+	Ast *           ret_type;
+	SmallArray_Ast *args;
 };
 
 struct AstTypeStruct {
-	struct Scope *scope;
-	BArray *      members;
-	bool          raw;
+	struct Scope *  scope;
+	SmallArray_Ast *members;
+	bool            raw;
 };
 
 struct AstTypeEnum {
-	struct Scope *scope;
-	Ast *         type;
-	BArray *      variants;
+	struct Scope *  scope;
+	Ast *           type;
+	SmallArray_Ast *variants;
 };
 
 struct AstTypePtr {
@@ -263,8 +265,8 @@ struct AstExprType {
 };
 
 struct AstExprCompound {
-	Ast *   type;
-	BArray *values;
+	Ast *           type;
+	SmallArray_Ast *values;
 };
 
 struct AstExprLitFn {
@@ -312,9 +314,9 @@ struct AstExprBinop {
 };
 
 struct AstExprCall {
-	Ast *   ref;
-	BArray *args;
-	bool    run;
+	Ast *           ref;
+	SmallArray_Ast *args;
+	bool            run;
 };
 
 struct AstExprMember {
@@ -412,8 +414,19 @@ struct Ast {
 #endif
 };
 
+typedef struct {
+	Arena nodes;
+	Arena small_arrays;
+} AstArenas;
+
 void
-ast_arena_init(struct Arena *arena);
+ast_arenas_init(AstArenas *arenas);
+
+void
+ast_arenas_terminate(AstArenas *arenas);
+
+void
+ast_small_array_arena_init(struct Arena *arena);
 
 static inline bool
 ast_binop_is_assign(BinopKind op)

@@ -46,8 +46,8 @@
 #define NAMED_VARS false
 #endif
 
-SmallArrayType(value, LLVMValueRef, 32);
-SmallArrayType(value64, LLVMValueRef, 64);
+SmallArrayType(LLVMValue, LLVMValueRef, 32);
+SmallArrayType(LLVMValue64, LLVMValueRef, 64);
 
 typedef struct {
 	bool        debug_build;
@@ -407,8 +407,8 @@ emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 
 	const size_t count = phi->incoming_blocks->size;
 
-	SmallArray_value llvm_iv;
-	SmallArray_value llvm_ib;
+	SmallArray_LLVMValue llvm_iv;
+	SmallArray_LLVMValue llvm_ib;
 
 	sa_init(&llvm_iv);
 	sa_init(&llvm_ib);
@@ -419,8 +419,8 @@ emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 		value = phi->incoming_values->data[i];
 		block = (MirInstrBlock *)phi->incoming_blocks->data[i];
 
-		sa_push_value(&llvm_iv, fetch_value(cnt, value));
-		sa_push_value(&llvm_ib, LLVMBasicBlockAsValue(emit_basic_block(cnt, block)));
+		sa_push_LLVMValue(&llvm_iv, fetch_value(cnt, value));
+		sa_push_LLVMValue(&llvm_ib, LLVMBasicBlockAsValue(emit_basic_block(cnt, block)));
 	}
 
 	LLVMAddIncoming(
@@ -647,11 +647,12 @@ emit_global_string_ptr(Context *cnt, const char *str, size_t len)
 		    LLVMArrayType(cnt->llvm_i8_type, (unsigned int)len + 1);
 		llvm_str = LLVMAddGlobal(cnt->llvm_module, llvm_str_arr_type, ".str");
 
-		SmallArray_value64 llvm_chars;
+		SmallArray_LLVMValue64 llvm_chars;
 		sa_init(&llvm_chars);
 
 		for (size_t i = 0; i < len + 1; ++i) {
-			sa_push_value64(&llvm_chars, LLVMConstInt(cnt->llvm_i8_type, str[i], true));
+			sa_push_LLVMValue64(&llvm_chars,
+			                    LLVMConstInt(cnt->llvm_i8_type, str[i], true));
 		}
 
 		LLVMValueRef llvm_str_arr =
@@ -746,12 +747,12 @@ emit_as_const(Context *cnt, MirConstValue *value)
 		assert(elems);
 		assert(len == elems->size);
 
-		SmallArray_value llvm_elems;
+		SmallArray_LLVMValue llvm_elems;
 		sa_init(&llvm_elems);
 
 		for (size_t i = 0; i < len; ++i) {
 			elem = elems->data[i];
-			sa_push_value(&llvm_elems, emit_as_const(cnt, elem));
+			sa_push_LLVMValue(&llvm_elems, emit_as_const(cnt, elem));
 		}
 
 		llvm_value = LLVMConstArray(llvm_elem_type, llvm_elems.data, (unsigned int)len);
@@ -789,11 +790,11 @@ emit_as_const(Context *cnt, MirConstValue *value)
 
 		MirConstValue *member;
 
-		SmallArray_value llvm_members;
+		SmallArray_LLVMValue llvm_members;
 		sa_init(&llvm_members);
 
 		sarray_foreach(members, member)
-		    sa_push_value(&llvm_members, emit_as_const(cnt, member));
+		    sa_push_LLVMValue(&llvm_members, emit_as_const(cnt, member));
 
 		llvm_value = LLVMConstNamedStruct(llvm_type, llvm_members.data, (unsigned int)memc);
 		sa_terminate(&llvm_members);
@@ -1114,13 +1115,14 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	                           ? callee->llvm_value
 	                           : emit_fn_proto(cnt, callee->value.data.v_ptr.data.fn);
 
-	const size_t     llvm_argc = call->args ? call->args->size : 0;
-	SmallArray_value llvm_args;
+	const size_t         llvm_argc = call->args ? call->args->size : 0;
+	SmallArray_LLVMValue llvm_args;
 	sa_init(&llvm_args);
 
 	if (llvm_argc) {
 		MirInstr *arg;
-		sarray_foreach(call->args, arg) sa_push_value(&llvm_args, fetch_value(cnt, arg));
+		sarray_foreach(call->args, arg)
+		    sa_push_LLVMValue(&llvm_args, fetch_value(cnt, arg));
 	}
 
 	if (cnt->debug_build) {
