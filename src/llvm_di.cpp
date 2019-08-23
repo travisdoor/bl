@@ -43,37 +43,47 @@
 
 using namespace llvm;
 
-static DIScope *
-get_scope(DIBuilder *builder, Scope *scope, Unit *unit = nullptr)
+static Module::ModFlagBehavior
+map_to_llvmModFlagBehavior(LLVMModuleFlagBehavior Behavior)
 {
-	DIScope *result      = nullptr;
-	auto     builder_ref = cast(LLVMDIBuilderRef)(builder);
-	switch (scope->kind) {
-	case SCOPE_FN:
-		result = cast(DIScope *)(scope->llvm_meta);
-		break;
-	case SCOPE_LEXICAL:
-		result = cast(DIScope *)(llvm_di_get_or_create_lex_scope(builder_ref, scope));
-		break;
-	case SCOPE_GLOBAL:
-	case SCOPE_PRIVATE:
-		assert(unit && "Expected file unit passed for global scope.");
-		result = cast(DIScope *)(llvm_di_get_or_create_unit(builder_ref, unit));
-		break;
-
-	default:
-		abort();
+	switch (Behavior) {
+	case LLVMModuleFlagBehaviorError:
+		return Module::ModFlagBehavior::Error;
+	case LLVMModuleFlagBehaviorWarning:
+		return Module::ModFlagBehavior::Warning;
+	case LLVMModuleFlagBehaviorRequire:
+		return Module::ModFlagBehavior::Require;
+	case LLVMModuleFlagBehaviorOverride:
+		return Module::ModFlagBehavior::Override;
+	case LLVMModuleFlagBehaviorAppend:
+		return Module::ModFlagBehavior::Append;
+	case LLVMModuleFlagBehaviorAppendUnique:
+		return Module::ModFlagBehavior::AppendUnique;
 	}
-
-	assert(result && "Cannot get scope ID!");
-	return result;
+	llvm_unreachable("Unknown LLVMModuleFlagBehavior");
 }
 
 /* public */
-LLVMDIBuilderRef
-llvm_di_new_di_builder(LLVMModuleRef module)
+void
+llvm_add_module_flag_int(LLVMModuleRef          module_ref,
+                         LLVMModuleFlagBehavior behavior,
+                         const char *           key,
+                         int32_t                val)
 {
-	return cast(LLVMDIBuilderRef)(new DIBuilder(*unwrap(module)));
+	auto module = cast(Module *)(module_ref);
+	module->addModuleFlag(map_to_llvmModFlagBehavior(behavior), {key, strlen(key)}, val);
+}
+
+int32_t
+llvm_get_dwarf_version(void)
+{
+	return DEBUG_METADATA_VERSION;
+}
+
+LLVMDIBuilderRef
+llvm_di_new_di_builder(LLVMModuleRef module_ref)
+{
+	return cast(LLVMDIBuilderRef)(new DIBuilder(*cast(Module *)(module_ref)));
 }
 
 void
@@ -83,308 +93,51 @@ llvm_di_delete_di_builder(LLVMDIBuilderRef builder_ref)
 }
 
 void
-llvm_di_builder_finalize(LLVMDIBuilderRef builder)
+llvm_di_builder_finalize(LLVMDIBuilderRef builder_ref)
 {
-	cast(DIBuilder *)(builder)->finalize();
+	cast(DIBuilder *)(builder_ref)->finalize();
 }
 
 LLVMMetadataRef
-llvm_di_get_or_create_assembly(LLVMDIBuilderRef builder_ref, Assembly *assembly)
+llvm_di_create_compile_unit(LLVMDIBuilderRef builder_ref,
+                            LLVMMetadataRef  file_ref,
+                            const char *     producer)
 {
-	if (assembly->llvm.di_meta) return assembly->llvm.di_meta;
-	const char *producer = "blc version " BL_VERSION;
-
 	auto builder = cast(DIBuilder *)(builder_ref);
-	auto file    = builder->createFile({assembly->name, strlen(assembly->name)}, ".");
+	auto file    = cast(DIFile *)(file_ref);
 	auto cu = builder->createCompileUnit(dwarf::DW_LANG_C99, file, producer, false, "", 1, "");
 
-	auto module = cast(Module *)(assembly->llvm.module);
-	module->addModuleFlag(
-	    Module::ModFlagBehavior::Warning, "Debug Info Version", DEBUG_METADATA_VERSION);
-
-	assembly->llvm.di_meta      = cast(LLVMMetadataRef)(cu);
-	assembly->llvm.di_file_meta = cast(LLVMMetadataRef)(file);
-	return assembly->llvm.di_meta;
+	return cast(LLVMMetadataRef)(cu);
 }
 
 LLVMMetadataRef
-llvm_di_get_or_create_lex_scope(LLVMDIBuilderRef builder_ref, Scope *scope)
-{
-	if (scope->llvm_meta) return scope->llvm_meta;
-
-	auto builder = cast(DIBuilder *)(builder_ref);
-
-	assert(scope->kind == SCOPE_LEXICAL);
-	assert(scope->parent->kind != SCOPE_GLOBAL &&
-	       "Cannot generate lexical block in global scope!");
-
-	auto di_scope = get_scope(builder, scope->parent);
-	auto location = scope->location;
-	auto di_file  = cast(DIFile *)(location->unit->llvm_file_meta);
-
-	auto di = builder->createLexicalBlock(di_scope, di_file, location->line, location->col);
-	scope->llvm_meta = cast(LLVMMetadataRef)(di);
-	return scope->llvm_meta;
-}
-
-LLVMMetadataRef
-llvm_di_get_or_create_fn(LLVMDIBuilderRef builder_ref, Assembly *assembly, MirFn *fn)
-{
-	assert(fn->decl_node);
-
-	if (fn->body_scope->llvm_meta) return fn->body_scope->llvm_meta;
-
-	auto builder  = cast(DIBuilder *)(builder_ref);
-	auto location = fn->decl_node->location;
-	auto file     = cast(DIFile *)(llvm_di_get_or_create_unit(builder_ref, location->unit));
-	auto type =
-	    cast(DISubroutineType *)(llvm_di_get_or_create_type(builder_ref, assembly, fn->type));
-	auto scope = get_scope(builder, fn->decl_node->parent_scope, location->unit);
-
-	auto di = builder->createFunction(scope,
-	                                  {fn->id->str, strlen(fn->id->str)},
-	                                  {fn->llvm_name, strlen(fn->llvm_name)},
-	                                  file,
-	                                  location->line,
-	                                  type,
-	                                  0,
-	                                  DINode::FlagStaticMember,
-	                                  DISubprogram::toSPFlags(false, true, false));
-
-	auto func = cast(Function *)(fn->llvm_value);
-	func->setSubprogram(di);
-
-	fn->body_scope->llvm_meta = cast(LLVMMetadataRef)(di);
-	return fn->body_scope->llvm_meta;
-}
-
-void
-llvm_di_set_current_location(LLVMDIBuilderRef builder_ref,
-                             LLVMBuilderRef   ir_builder_ref,
-                             MirInstr *       instr)
-{
-	auto builder   = cast(DIBuilder *)(builder_ref);
-	auto irbuilder = cast(IRBuilder<> *)(ir_builder_ref);
-
-	if (!instr) {
-		irbuilder->SetCurrentDebugLocation(DebugLoc());
-		return;
-	}
-
-	if (!instr->node) return;
-	if (!instr->node->location) return;
-
-	auto scope    = get_scope(builder, instr->node->parent_scope);
-	auto location = instr->node->location;
-
-	irbuilder->SetCurrentDebugLocation(DebugLoc::get(location->line, location->col, scope));
-}
-
-LLVMMetadataRef
-llvm_di_get_or_create_unit(LLVMDIBuilderRef builder_ref, Unit *unit)
-{
-	if (unit->llvm_file_meta) return unit->llvm_file_meta;
-	auto builder = cast(DIBuilder *)(builder_ref);
-
-	auto di = builder->createFile({unit->filename, strlen(unit->filename)},
-	                              {unit->dirpath, strlen(unit->dirpath)});
-
-	unit->llvm_file_meta = cast(LLVMMetadataRef)(di);
-	return unit->llvm_file_meta;
-}
-
-LLVMMetadataRef
-llvm_di_get_of_create_var(LLVMDIBuilderRef  builder_ref,
-                          Assembly *        assembly,
-                          LLVMBasicBlockRef bb_ref,
-                          MirVar *          var)
+llvm_di_create_file(LLVMDIBuilderRef builder_ref, const char *filename, const char *dir)
 {
 	auto builder = cast(DIBuilder *)(builder_ref);
-	auto bb      = cast(BasicBlock *)(bb_ref);
-
-	if (var->is_implicit) {
-		bl_warning("Should we generate impl variable ID???");
-		return nullptr;
-	}
-
-	if (var->is_in_gscope) {
-		bl_warning("Missing DI for global variables.");
-		return nullptr;
-	}
-
-	auto storage  = cast(Value *)(var->llvm_value);
-	auto scope    = get_scope(builder, var->decl_scope);
-	auto location = var->decl_node->location;
-	auto file     = cast(DIFile *)(llvm_di_get_or_create_unit(builder_ref, location->unit));
-	auto type =
-	    cast(DIType *)(llvm_di_get_or_create_type(builder_ref, assembly, var->value.type));
-	auto name = StringRef(var->id->str, strlen(var->id->str));
-
-	DILocalVariable *di = nullptr;
-
-	if (var->is_arg_tmp) { /* function argument tmp */
-		assert(var->order > -1);
-		di = builder->createParameterVariable(
-		    scope, name, var->order + 1, file, location->line, type, true);
-	} else {
-		di = builder->createAutoVariable(scope,
-		                                 name,
-		                                 file,
-		                                 location->line,
-		                                 type,
-		                                 true,
-		                                 DINode::FlagZero,
-		                                 var->value.type->alignment * 8);
-	}
-
-	builder->insertDeclare(storage,
-	                       di,
-	                       builder->createExpression(),
-	                       DebugLoc::get(location->line, location->col, scope),
-	                       bb);
-
-	return cast(LLVMMetadataRef)(di);
+	auto file    = builder->createFile({filename, strlen(filename)}, {dir, strlen(dir)});
+	return cast(LLVMMetadataRef)(file);
 }
 
 LLVMMetadataRef
-llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, Assembly *assembly, MirType *type)
+llvm_di_create_fn_fwd_decl(LLVMBuilderRef  builder_ref,
+                           LLVMMetadataRef scope,
+                           const char *    name,
+                           const char *    linkage_name,
+                           LLVMMetadataRef file,
+                           unsigned        line,
+                           LLVMMetadataRef type,
+                           unsigned        scope_line)
 {
-	if (type->llvm_meta) return type->llvm_meta;
-	auto    builder = cast(DIBuilder *)(builder_ref);
-	DIType *di      = nullptr;
+	auto builder = cast(DIBuilder *)(builder_ref);
+	auto fn      = builder->createTempFunctionFwdDecl(cast(DIScope *)(scope),
+                                                     {name, strlen(name)},
+                                                     {linkage_name, strlen(linkage_name)},
+                                                     cast(DIFile *)(file),
+                                                     line,
+                                                     cast(DISubroutineType *)(type),
+                                                     scope_line);
 
-	auto name = type->user_id ? StringRef(type->user_id->str, strlen(type->user_id->str))
-	                          : StringRef(type->id.str, strlen(type->id.str));
-
-	switch (type->kind) {
-	case MIR_TYPE_INT: {
-		di = builder->createBasicType(
-		    name,
-		    type->size_bits,
-		    type->data.integer.is_signed ? dwarf::DW_ATE_signed : dwarf::DW_ATE_unsigned);
-		break;
-	}
-
-	case MIR_TYPE_REAL: {
-		di = builder->createBasicType(name, type->size_bits, dwarf::DW_ATE_float);
-		break;
-	}
-
-	case MIR_TYPE_BOOL: {
-		di = builder->createBasicType(name, type->size_bits, dwarf::DW_ATE_boolean);
-		break;
-	}
-
-	case MIR_TYPE_VOID: {
-		di = builder->createBasicType(name, 8, dwarf::DW_ATE_unsigned_char);
-		break;
-	}
-
-	case MIR_TYPE_NULL: {
-		di = builder->createNullPtrType();
-		break;
-	}
-
-	case MIR_TYPE_PTR: {
-		auto pointeeType = cast(DIType *)(
-		    llvm_di_get_or_create_type(builder_ref, assembly, type->data.ptr.expr));
-
-		di = builder->createPointerType(pointeeType, type->size_bits, type->alignment * 8);
-		break;
-	}
-
-	case MIR_TYPE_ARRAY: {
-		auto elem_type = cast(DIType *)(
-		    llvm_di_get_or_create_type(builder_ref, assembly, type->data.array.elem_type));
-
-		di = builder->createArrayType(
-		    type->data.array.len, elem_type->getAlignInBits(), elem_type, nullptr);
-		break;
-	}
-
-	case MIR_TYPE_FN: {
-		SmallVector<Metadata *, 16> args;
-		args.push_back(cast(Metadata *)(
-		    llvm_di_get_or_create_type(builder_ref, assembly, type->data.fn.ret_type)));
-
-		auto arg_types = type->data.fn.arg_types;
-		if (arg_types) {
-			MirType *arg_type;
-			sarray_foreach(arg_types, arg_type)
-			{
-				args.push_back(cast(Metadata *)(
-				    llvm_di_get_or_create_type(builder_ref, assembly, arg_type)));
-			}
-		}
-
-		di = builder->createSubroutineType(builder->getOrCreateTypeArray(args));
-		break;
-	}
-
-	case MIR_TYPE_STRUCT:
-	case MIR_TYPE_STRING: {
-		auto       td          = cast(DataLayout *)(assembly->llvm.TD);
-		auto       llvm_type   = cast(StructType *)(type->llvm_type);
-		const bool is_implicit = type->data.strct.scope->parent == NULL;
-
-		auto name = type->user_id
-		                ? StringRef(type->user_id->str, strlen(type->user_id->str))
-		                : "implicit";
-
-		DIScope *scope = nullptr;
-		DIFile * file  = nullptr;
-
-		if (is_implicit) {
-			scope = cast(DIScope *)(assembly->llvm.di_meta);
-			file  = cast(DIFile *)(assembly->llvm.di_file_meta);
-		} else {
-			auto unit    = type->data.strct.scope->location->unit;
-			auto b_scope = type->data.strct.scope->parent;
-			scope        = get_scope(builder, b_scope, unit);
-			file         = cast(DIFile *)(unit->llvm_file_meta);
-		}
-
-		auto struct_di = builder->createStructType(scope,
-		                                           name,
-		                                           file,
-		                                           0, // TODO
-		                                           type->size_bits,
-		                                           type->alignment * 8,
-		                                           DINode::DIFlags::FlagZero,
-		                                           nullptr,
-		                                           nullptr);
-
-		SmallVector<Metadata *, 32> mems_di;
-		MirMember *                 member;
-		sarray_foreach(type->data.strct.members, member)
-		{
-			auto m_type = cast(DIType *)(
-			    llvm_di_get_or_create_type(builder_ref, assembly, member->type));
-			auto m_name = StringRef(member->id->str, strlen(member->id->str));
-
-			auto m_di = builder->createMemberType(
-			    struct_di,
-			    m_name,
-			    file,
-			    0, // Line number
-			    m_type->getSizeInBits(),
-			    m_type->getAlignInBits(),
-			    td->getStructLayout(llvm_type)->getElementOffsetInBits(i),
-			    DINode::DIFlags::FlagZero,
-			    m_type);
-
-			mems_di.push_back(m_di);
-		}
-
-		struct_di->replaceElements(builder->getOrCreateArray(mems_di));
-		di = struct_di;
-		break;
-	}
-
-	default:
-		di = builder->createBasicType(name, type->size_bits, dwarf::DW_ATE_unsigned_char);
-	}
-
-	type->llvm_meta = cast(LLVMMetadataRef)(di);
-	return type->llvm_meta;
+	return cast(LLVMMetadataRef)(fn);
 }
+
+/*-----------------*/

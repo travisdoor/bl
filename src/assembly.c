@@ -29,6 +29,7 @@
 #include "assembly.h"
 #include "blmemory.h"
 #include "builder.h"
+#include "llvm_di.h"
 #include "mir.h"
 #include "unit.h"
 #include <bobject/containers/hash.h>
@@ -72,7 +73,31 @@ init_dl(Assembly *assembly)
 }
 
 static void
-init_llvm(Assembly *assembly, Builder *builder)
+init_DI(Assembly *assembly)
+{
+	const char *  producer    = "blc version " BL_VERSION;
+	Scope *       gscope      = assembly->gscope;
+	LLVMModuleRef llvm_module = assembly->llvm.module;
+
+	/* setup module flags for debug */
+	llvm_add_module_flag_int(llvm_module,
+	                         LLVMModuleFlagBehaviorWarning,
+	                         "Debug Info Version",
+	                         llvm_get_dwarf_version());
+
+	/* create DI builder */
+	assembly->llvm.di_builder = llvm_di_new_di_builder(llvm_module);
+
+	/* create dummy file used as DI global scope */
+	gscope->llvm_di_meta = llvm_di_create_file(assembly->llvm.di_builder, assembly->name, ".");
+
+	/* create main compile unit */
+	assembly->llvm.di_meta =
+	    llvm_di_create_compile_unit(assembly->llvm.di_builder, gscope->llvm_di_meta, producer);
+}
+
+static void
+init_llvm(Assembly *assembly)
 {
 	/* init LLVM */
 	char *triple    = LLVMGetDefaultTargetTriple();
@@ -90,7 +115,20 @@ init_llvm(Assembly *assembly, Builder *builder)
 	}
 
 	LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelDefault;
-	if (is_not_flag(builder->flags, BUILDER_DEBUG_BUILD)) opt_lvl = LLVMCodeGenLevelAggressive;
+	switch (assembly->options.opt_lvl) {
+	case OPT_NONE:
+		opt_lvl = LLVMCodeGenLevelNone;
+		break;
+	case OPT_LESS:
+		opt_lvl = LLVMCodeGenLevelLess;
+		break;
+	case OPT_DEFAULT:
+		opt_lvl = LLVMCodeGenLevelDefault;
+		break;
+	case OPT_AGGRESSIVE:
+		opt_lvl = LLVMCodeGenLevelAggressive;
+		break;
+	}
 
 	LLVMContextRef llvm_context = LLVMContextCreate();
 	LLVMModuleRef llvm_module = LLVMModuleCreateWithNameInContext(assembly->name, llvm_context);
@@ -154,6 +192,12 @@ terminate_llvm(Assembly *assembly)
 }
 
 static void
+terminate_DI(Assembly *assembly)
+{
+	llvm_di_delete_di_builder(assembly->llvm.di_builder);
+}
+
+static void
 terminate_mir(Assembly *assembly)
 {
 	bo_unref(assembly->MIR.global_instrs);
@@ -164,7 +208,7 @@ terminate_mir(Assembly *assembly)
 
 /* public */
 Assembly *
-assembly_new(Builder *builder, const char *name)
+assembly_new(const char *name)
 {
 	Assembly *assembly = bl_calloc(1, sizeof(Assembly));
 	if (!assembly) bl_abort("bad alloc");
@@ -187,12 +231,12 @@ assembly_new(Builder *builder, const char *name)
 	           EXPECTED_ARRAY_COUNT,
 	           (ArenaElemDtor)small_array_dtor);
 
-	init_dl(assembly);
-	init_mir(assembly);
-	init_llvm(assembly, builder);
-
 	assembly->gscope =
 	    scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT, NULL);
+
+	init_dl(assembly);
+	init_mir(assembly);
+
 	return assembly;
 }
 
@@ -207,6 +251,8 @@ assembly_delete(Assembly *assembly)
 		unit_delete(unit);
 	}
 
+	terminate_DI(assembly);
+
 	arena_terminate(&assembly->arenas.small_array);
 	arena_terminate(&assembly->arenas.array);
 	ast_arena_terminate(&assembly->arenas.ast);
@@ -216,11 +262,24 @@ assembly_delete(Assembly *assembly)
 	bo_unref(assembly->unit_cache);
 	bo_unref(assembly->link_cache);
 	bo_unref(assembly->type_table);
-
 	terminate_dl(assembly);
 	terminate_mir(assembly);
 	terminate_llvm(assembly);
 	bl_free(assembly);
+}
+
+void
+assembly_setup(Assembly *assembly, uint32_t flags, OptLvl opt_lvl)
+{
+	assembly->options.debug_mode         = is_flag(flags, BUILDER_FLAG_DEBUG_BUILD);
+	assembly->options.verbose_mode       = is_flag(flags, BUILDER_FLAG_VERBOSE);
+	assembly->options.force_test_to_llvm = is_flag(flags, BUILDER_FLAG_FORCE_TEST_LLVM);
+	assembly->options.run_tests          = is_flag(flags, BUILDER_FLAG_RUN_TESTS);
+	assembly->options.run_main           = is_flag(flags, BUILDER_FLAG_RUN);
+	assembly->options.opt_lvl            = opt_lvl;
+	
+	init_llvm(assembly);
+	if (assembly->options.debug_mode) init_DI(assembly);
 }
 
 void

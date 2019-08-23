@@ -36,27 +36,25 @@
 #include <bobject/containers/array.h>
 #include <bobject/containers/string.h>
 
-// clang-format off
-#define BUILDER_RUN              0x00000002
-#define BUILDER_PRINT_TOKENS     0x00000004
-#define BUILDER_PRINT_AST        0x00000008
-#define BUILDER_LOAD_FROM_FILE   0x00000010
-#define BUILDER_SYNTAX_ONLY      0x00000020
-#define BUILDER_EMIT_LLVM        0x00000040
-#define BUILDER_RUN_TESTS        0x00000080
-#define BUILDER_NO_BIN           0x00000100
-#define BUILDER_NO_WARN          0x00000200
-#define BUILDER_VERBOSE          0x00000400
-#define BUILDER_VERBOSE_MIR_PRE  0x00000800
-#define BUILDER_VERBOSE_MIR_POST 0x00001000
-#define BUILDER_NO_API           0x00002000
-#define BUILDER_EMIT_MIR         0x00004000
-#define BUILDER_FORCE_TEST_LLVM  0x00008000
-#define BUILDER_DEBUG_BUILD      0x00010000
-// clang-format on
-
 #define COMPILE_OK 0
 #define COMPILE_FAIL 1
+
+typedef enum {
+	BUILDER_FLAG_RUN             = 1 << 1,
+	BUILDER_FLAG_PRINT_TOKENS    = 1 << 2,
+	BUILDER_FLAG_PRINT_AST       = 1 << 3,
+	BUILDER_FLAG_LOAD_FROM_FILE  = 1 << 4,
+	BUILDER_FLAG_SYNTAX_ONLY     = 1 << 5,
+	BUILDER_FLAG_EMIT_LLVM       = 1 << 6,
+	BUILDER_FLAG_RUN_TESTS       = 1 << 7,
+	BUILDER_FLAG_NO_BIN          = 1 << 8,
+	BUILDER_FLAG_NO_WARN         = 1 << 9,
+	BUILDER_FLAG_VERBOSE         = 1 << 10,
+	BUILDER_FLAG_NO_API          = 1 << 11,
+	BUILDER_FLAG_EMIT_MIR        = 1 << 12,
+	BUILDER_FLAG_FORCE_TEST_LLVM = 1 << 13,
+	BUILDER_FLAG_DEBUG_BUILD     = 1 << 14,
+} BuilderFlags;
 
 typedef struct Builder {
 	uint32_t  flags;
@@ -87,7 +85,7 @@ int
 builder_load_conf_file(Builder *builder, const char *filepath);
 
 int
-builder_compile(Builder *builder, Assembly *assembly, uint32_t flags);
+builder_compile(Builder *builder, Assembly *assembly, uint32_t flags, OptLvl opt_lvl);
 
 void
 builder_error(Builder *builder, const char *format, ...);

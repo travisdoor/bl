@@ -33,13 +33,23 @@
 #define BL_LLVM_DI_H
 
 #include <llvm-c/Types.h>
+#include <llvm-c/Core.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+void
+llvm_add_module_flag_int(LLVMModuleRef          module_ref,
+                         LLVMModuleFlagBehavior behavior,
+                         const char *           key,
+                         int32_t                val);
+
+int32_t
+llvm_get_dwarf_version(void);
+
 LLVMDIBuilderRef
-llvm_di_new_di_builder(LLVMModuleRef module);
+llvm_di_new_di_builder(LLVMModuleRef module_ref);
 
 void
 llvm_di_delete_di_builder(LLVMDIBuilderRef builder_ref);
@@ -48,32 +58,12 @@ void
 llvm_di_builder_finalize(LLVMDIBuilderRef builder_ref);
 
 LLVMMetadataRef
-llvm_di_get_or_create_assembly(LLVMDIBuilderRef builder_ref, struct Assembly *assembly);
+llvm_di_create_compile_unit(LLVMDIBuilderRef builder_ref,
+                            LLVMMetadataRef  file_ref,
+                            const char *     producer);
 
 LLVMMetadataRef
-llvm_di_get_or_create_fn(LLVMDIBuilderRef builder_ref, struct Assembly *assembly, struct MirFn *fn);
-
-LLVMMetadataRef
-llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref,
-                           struct Assembly *assembly,
-                           struct MirType * type);
-
-LLVMMetadataRef
-llvm_di_get_or_create_unit(LLVMDIBuilderRef builder_ref, struct Unit *unit);
-
-LLVMMetadataRef
-llvm_di_get_or_create_lex_scope(LLVMDIBuilderRef builder_ref, struct Scope *scope);
-
-LLVMMetadataRef
-llvm_di_get_of_create_var(LLVMDIBuilderRef  builder_ref,
-                          struct Assembly * assembly,
-                          LLVMBasicBlockRef bb_ref,
-                          struct MirVar *   var);
-
-void
-llvm_di_set_current_location(LLVMDIBuilderRef builder_ref,
-                             LLVMBuilderRef   ir_builder_ref,
-                             struct MirInstr *instr);
+llvm_di_create_file(LLVMDIBuilderRef builder_ref, const char *filename, const char *dir);
 
 #ifdef __cplusplus
 }

@@ -106,7 +106,7 @@ native_bin_run(Builder *builder, Assembly *assembly)
 	add_libs(&cnt, buf, array_size(buf));
 
 	msg_log("Running native linker...");
-	if (is_flag(builder->flags, BUILDER_VERBOSE)) msg_log("%s", buf);
+	if (assembly->options.verbose_mode) msg_log("%s", buf);
 	/* TODO: handle error */
 	if (system(buf) != 0) {
 		builder_msg(builder,

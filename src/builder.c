@@ -75,7 +75,7 @@ llvm_init(void)
 int
 compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags)
 {
-	if (is_flag(flags, BUILDER_VERBOSE)) {
+	if (is_flag(flags, BUILDER_FLAG_VERBOSE)) {
 		if (unit->loaded_from) {
 			msg_log("Compile: %s (loaded from '%s')",
 			        unit->name,
@@ -85,7 +85,7 @@ compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags)
 		}
 	}
 
-	if (is_flag(flags, BUILDER_LOAD_FROM_FILE)) {
+	if (is_flag(flags, BUILDER_FLAG_LOAD_FROM_FILE)) {
 		file_loader_run(builder, unit);
 		interrupt_on_error(builder);
 	}
@@ -93,7 +93,7 @@ compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags)
 	lexer_run(builder, unit);
 	interrupt_on_error(builder);
 
-	if (is_flag(flags, BUILDER_PRINT_TOKENS)) {
+	if (is_flag(flags, BUILDER_FLAG_PRINT_TOKENS)) {
 		token_printer_run(unit);
 		interrupt_on_error(builder);
 	}
@@ -106,7 +106,7 @@ compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags)
 int
 compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 {
-	if (is_flag(flags, BUILDER_PRINT_AST)) {
+	if (is_flag(flags, BUILDER_FLAG_PRINT_AST)) {
 		ast_printer_run(assembly, stdout);
 	}
 	interrupt_on_error(builder);
@@ -114,9 +114,9 @@ compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 	linker_run(builder, assembly);
 	interrupt_on_error(builder);
 
-	if (is_not_flag(flags, BUILDER_SYNTAX_ONLY)) {
+	if (is_not_flag(flags, BUILDER_FLAG_SYNTAX_ONLY)) {
 		mir_run(builder, assembly);
-		if (is_flag(flags, BUILDER_EMIT_MIR)) mir_writer_run(assembly);
+		if (is_flag(flags, BUILDER_FLAG_EMIT_MIR)) mir_writer_run(assembly);
 		interrupt_on_error(builder);
 
 		ir_run(builder, assembly);
@@ -125,12 +125,12 @@ compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 		ir_opt_run(builder, assembly);
 		interrupt_on_error(builder);
 
-		if (is_flag(flags, BUILDER_EMIT_LLVM)) {
+		if (is_flag(flags, BUILDER_FLAG_EMIT_LLVM)) {
 			bc_writer_run(builder, assembly);
 			interrupt_on_error(builder);
 		}
 
-		if (is_not_flag(flags, BUILDER_NO_BIN)) {
+		if (is_not_flag(flags, BUILDER_FLAG_NO_BIN)) {
 			obj_writer_run(builder, assembly);
 			interrupt_on_error(builder);
 			native_bin_run(builder, assembly);
@@ -196,7 +196,7 @@ builder_load_conf_file(Builder *builder, const char *filepath)
 }
 
 int
-builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
+builder_compile(Builder *builder, Assembly *assembly, uint32_t flags, OptLvl opt_lvl)
 {
 	clock_t begin = clock();
 	Unit *  unit;
@@ -205,6 +205,8 @@ builder_compile(Builder *builder, Assembly *assembly, uint32_t flags)
 	builder->flags = flags;
 	msg_log("Compile assembly: %s", assembly->name);
 
+	assembly_setup(assembly, flags, opt_lvl);
+	
 	{
 		unit = unit_new_file(CORE_SOURCE_FILE, NULL, NULL);
 		if (!assembly_add_unit_unique(assembly, unit)) {
@@ -271,7 +273,7 @@ builder_msg(Builder *      builder,
             ...)
 {
 	if (type == BUILDER_MSG_ERROR && builder->errorc > MAX_ERROR_REPORTED) return;
-	if (is_flag(builder->flags, BUILDER_NO_WARN) && type == BUILDER_MSG_WARNING) return;
+	if (is_flag(builder->flags, BUILDER_FLAG_NO_WARN) && type == BUILDER_MSG_WARNING) return;
 
 	BString *tmp              = bo_string_new(MAX_MSG_LEN);
 	char     msg[MAX_MSG_LEN] = {0};

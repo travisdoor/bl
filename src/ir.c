@@ -463,9 +463,6 @@ emit_instr_cast(Context *cnt, MirInstrCast *cast)
 	LLVMOpcode   llvm_op;
 	assert(llvm_src && llvm_dest_type);
 
-	if (cnt->debug_build)
-		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &cast->base);
-
 	switch (cast->op) {
 	case MIR_CAST_BITCAST:
 		llvm_op = LLVMBitCast;
@@ -548,10 +545,6 @@ emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 	LLVMValueRef llvm_index   = fetch_value(cnt, elem_ptr->index);
 	assert(llvm_arr_ptr && llvm_index);
 
-	if (cnt->debug_build)
-		llvm_di_set_current_location(
-		    cnt->llvm_dibuilder, cnt->llvm_builder, &elem_ptr->base);
-
 	if (elem_ptr->target_is_slice) {
 		/* special case for slices */
 		llvm_arr_ptr = LLVMBuildStructGEP(cnt->llvm_builder, llvm_arr_ptr, 1, "");
@@ -580,10 +573,6 @@ emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 {
 	LLVMValueRef llvm_target_ptr = fetch_value(cnt, member_ptr->target_ptr);
 	assert(llvm_target_ptr);
-
-	if (cnt->debug_build)
-		llvm_di_set_current_location(
-		    cnt->llvm_dibuilder, cnt->llvm_builder, &member_ptr->base);
 
 	if (member_ptr->builtin_id == MIR_BUILTIN_ID_NONE) {
 		assert(member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
@@ -619,9 +608,6 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 	LLVMValueRef   llvm_src  = fetch_value(cnt, load->src);
 	const unsigned alignment = load->base.value.type->alignment;
 	assert(llvm_src);
-
-	if (cnt->debug_build)
-		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &load->base);
 
 	load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
 	LLVMSetAlignment(load->base.llvm_value, alignment);
@@ -825,9 +811,6 @@ emit_instr_store(Context *cnt, MirInstrStore *store)
 	const unsigned alignment = store->src->value.type->alignment;
 	assert(val && ptr);
 
-	if (cnt->debug_build)
-		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &store->base);
-
 	store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
 	LLVMSetAlignment(store->base.llvm_value, alignment);
 }
@@ -840,9 +823,6 @@ emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 
 	LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(llvm_val));
 	const bool   float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
-
-	if (cnt->debug_build)
-		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &unop->base);
 
 	switch (unop->op) {
 	case UNOP_NOT: {
@@ -885,9 +865,6 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 
 	MirType *type = tmp_var->value.type;
 	assert(type);
-
-	if (cnt->debug_build)
-		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &cmp->base);
 
 	/*
 	 * Initializer variants:
@@ -967,9 +944,6 @@ emit_instr_binop(Context *cnt, MirInstrBinop *binop)
 	MirType *  type           = binop->lhs->value.type;
 	const bool real_type      = type->kind == MIR_TYPE_REAL;
 	const bool signed_integer = type->kind == MIR_TYPE_INT && type->data.integer.is_signed;
-
-	if (cnt->debug_build)
-		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &binop->base);
 
 	switch (binop->op) {
 	case BINOP_ADD:
@@ -1125,10 +1099,6 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 		    sa_push_LLVMValue(&llvm_args, fetch_value(cnt, arg));
 	}
 
-	if (cnt->debug_build) {
-		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &call->base);
-	}
-
 	assert(llvm_fn);
 	call->base.llvm_value =
 	    LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args.data, (unsigned int)llvm_argc, "");
@@ -1162,11 +1132,6 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		assert(var->llvm_value);
 
 		/* generate DI for debug build */
-		if (cnt->debug_build) {
-			LLVMBasicBlockRef bb = LLVMGetInsertBlock(cnt->llvm_builder);
-			llvm_di_get_of_create_var(cnt->llvm_dibuilder, cnt->assembly, bb, var);
-		}
-
 		if (decl->init) {
 			/* There is special handling for initialization via compound instruction */
 			if (decl->init->kind == MIR_INSTR_COMPOUND) {
@@ -1184,9 +1149,6 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 void
 emit_instr_ret(Context *cnt, MirInstrRet *ret)
 {
-	if (cnt->debug_build)
-		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, &ret->base);
-
 	LLVMValueRef llvm_ret;
 	if (ret->value) {
 		LLVMValueRef llvm_ret_value = fetch_value(cnt, ret->value);
@@ -1237,9 +1199,6 @@ emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 	const size_t vargsc = values->size;
 	assert(vargs_type && vargs_type->kind == MIR_TYPE_VARGS);
 
-	if (cnt->debug_build)
-		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, NULL);
-
 	/* Setup tmp array values. */
 	if (vargsc > 0) {
 		MirInstr *   value;
@@ -1289,9 +1248,6 @@ emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 
 	assert(llvm_type_info && "Missing LLVM value for RTTI variable.");
 	assert(llvm_tmp);
-
-	if (cnt->debug_build)
-		llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, NULL);
 
 	MirType *   any_type                = mir_deref_type(toany->base.value.type);
 	LLVMTypeRef llvm_any_type_info_type = mir_get_struct_elem_type(any_type, 0)->llvm_type;
@@ -1394,11 +1350,6 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	emit_fn_proto(cnt, fn);
 
 	if (is_not_flag(fn->flags, FLAG_EXTERN)) {
-		if (cnt->debug_build) {
-			llvm_di_get_or_create_fn(cnt->llvm_dibuilder, cnt->assembly, fn);
-			llvm_di_set_current_location(cnt->llvm_dibuilder, cnt->llvm_builder, NULL);
-		}
-
 		MirInstr *block = (MirInstr *)fn->first_block;
 
 		while (block) {
@@ -1502,25 +1453,6 @@ emit_instr(Context *cnt, MirInstr *instr)
 	}
 }
 
-static void
-init_DI(Context *cnt)
-{
-	cnt->llvm_dibuilder = llvm_di_new_di_builder(cnt->llvm_module);
-	llvm_di_get_or_create_assembly(cnt->llvm_dibuilder, cnt->assembly);
-}
-
-static void
-finalize_DI(Context *cnt)
-{
-	llvm_di_builder_finalize(cnt->llvm_dibuilder);
-}
-
-static void
-terminate_DI(Context *cnt)
-{
-	llvm_di_delete_di_builder(cnt->llvm_dibuilder);
-}
-
 /* public */
 void
 ir_run(Builder *builder, Assembly *assembly)
@@ -1544,9 +1476,8 @@ ir_run(Builder *builder, Assembly *assembly)
 	cnt.llvm_instrinsic_trap   = create_trap_fn(&cnt);
 	cnt.llvm_instrinsic_memset = create_memset_fn(&cnt);
 	cnt.llvm_intrinsic_memcpy  = create_memcpy_fn(&cnt);
-	cnt.debug_build            = is_flag(builder->flags, BUILDER_DEBUG_BUILD);
-
-	if (cnt.debug_build) init_DI(&cnt);
+	cnt.llvm_dibuilder         = assembly->llvm.di_builder;
+	cnt.debug_build            = assembly->options.debug_mode;
 
 	emit_RTTI_types(&cnt);
 
@@ -1556,7 +1487,9 @@ ir_run(Builder *builder, Assembly *assembly)
 		emit_instr(&cnt, ginstr);
 	}
 
-	if (cnt.debug_build) finalize_DI(&cnt);
+	if (cnt.debug_build) {
+		llvm_di_builder_finalize(cnt.llvm_dibuilder);
+	}
 
 #if BL_DEBUG
 	char *error = NULL;
@@ -1565,8 +1498,6 @@ ir_run(Builder *builder, Assembly *assembly)
 	}
 	LLVMDisposeMessage(error);
 #endif
-
-	if (cnt.debug_build) terminate_DI(&cnt);
 
 	LLVMDisposeBuilder(cnt.llvm_builder);
 	bo_unref(cnt.gstring_cache);

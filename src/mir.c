@@ -2096,8 +2096,7 @@ create_type_string(Context *cnt)
 	SmallArray_Member *members = create_sarr(SmallArray_Member, cnt->assembly);
 
 	/* Slice layout struct { usize, *T } */
-	Scope *body_scope =
-	    scope_create(&cnt->assembly->arenas.scope, SCOPE_TYPE, NULL, 2, NULL);
+	Scope *body_scope = scope_create(&cnt->assembly->arenas.scope, SCOPE_TYPE, NULL, 2, NULL);
 
 	MirMember *tmp;
 	tmp = create_member(cnt,
@@ -7560,7 +7559,7 @@ ast_test_case(Context *cnt, Ast *test)
 	const char *llvm_name = gen_uq_name(cnt, TEST_CASE_FN_NAME);
 	MirFn *     fn        = create_fn(cnt, test, NULL, llvm_name, FLAG_TEST, fn_proto);
 
-	if (is_flag(cnt->builder->flags, BUILDER_FORCE_TEST_LLVM)) ++fn->ref_count;
+	if (cnt->assembly->options.force_test_to_llvm) ++fn->ref_count;
 	assert(test->data.test_case.desc);
 	fn->test_case_desc                      = test->data.test_case.desc;
 	fn_proto->base.value.data.v_ptr.data.fn = fn;
@@ -8996,8 +8995,8 @@ mir_run(Builder *builder, Assembly *assembly)
 	memset(&cnt, 0, sizeof(Context));
 	cnt.builder                  = builder;
 	cnt.assembly                 = assembly;
-	cnt.analyze.verbose_pre      = is_flag(builder->flags, BUILDER_VERBOSE_MIR_PRE);
-	cnt.analyze.verbose_post     = is_flag(builder->flags, BUILDER_VERBOSE_MIR_POST);
+	cnt.analyze.verbose_pre      = false;
+	cnt.analyze.verbose_post     = false;
 	cnt.analyze.queue            = bo_list_new(sizeof(MirInstr *));
 	cnt.analyze.RTTI_entry_types = bo_htbl_new(0, 1024);
 	cnt.test_cases               = bo_array_new(sizeof(MirFn *));
@@ -9028,8 +9027,8 @@ mir_run(Builder *builder, Assembly *assembly)
 
 	exec_gen_RTTI_types(&cnt);
 
-	if (is_flag(builder->flags, BUILDER_RUN_TESTS)) execute_test_cases(&cnt);
-	if (is_flag(builder->flags, BUILDER_RUN)) execute_entry_fn(&cnt);
+	if (assembly->options.run_tests) execute_test_cases(&cnt);
+	if (assembly->options.run_main) execute_entry_fn(&cnt);
 
 SKIP:
 	bo_unref(cnt.analyze.queue);
