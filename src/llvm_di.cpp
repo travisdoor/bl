@@ -298,7 +298,7 @@ llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, Assembly *assembly, Mir
 		    llvm_di_get_or_create_type(builder_ref, assembly, type->data.array.elem_type));
 
 		di = builder->createArrayType(
-		    type->data.array.len, type->alignment * 8, elem_type, nullptr);
+		    type->data.array.len, elem_type->getAlignInBits(), elem_type, nullptr);
 		break;
 	}
 
@@ -318,6 +318,66 @@ llvm_di_get_or_create_type(LLVMDIBuilderRef builder_ref, Assembly *assembly, Mir
 		}
 
 		di = builder->createSubroutineType(builder->getOrCreateTypeArray(args));
+		break;
+	}
+
+	case MIR_TYPE_STRUCT:
+	case MIR_TYPE_STRING: {
+		auto       td          = cast(DataLayout *)(assembly->llvm.TD);
+		auto       llvm_type   = cast(StructType *)(type->llvm_type);
+		const bool is_implicit = type->data.strct.scope->parent == NULL;
+
+		auto name = type->user_id
+		                ? StringRef(type->user_id->str, strlen(type->user_id->str))
+		                : "implicit";
+
+		DIScope *scope = nullptr;
+		DIFile * file  = nullptr;
+
+		if (is_implicit) {
+			scope = cast(DIScope *)(assembly->llvm.di_meta);
+			file  = cast(DIFile *)(assembly->llvm.di_file_meta);
+		} else {
+			auto unit    = type->data.strct.scope->location->unit;
+			auto b_scope = type->data.strct.scope->parent;
+			scope        = get_scope(builder, b_scope, unit);
+			file         = cast(DIFile *)(unit->llvm_file_meta);
+		}
+
+		auto struct_di = builder->createStructType(scope,
+		                                           name,
+		                                           file,
+		                                           0, // TODO
+		                                           type->size_bits,
+		                                           type->alignment * 8,
+		                                           DINode::DIFlags::FlagZero,
+		                                           nullptr,
+		                                           nullptr);
+
+		SmallVector<Metadata *, 32> mems_di;
+		MirMember *                 member;
+		sarray_foreach(type->data.strct.members, member)
+		{
+			auto m_type = cast(DIType *)(
+			    llvm_di_get_or_create_type(builder_ref, assembly, member->type));
+			auto m_name = StringRef(member->id->str, strlen(member->id->str));
+
+			auto m_di = builder->createMemberType(
+			    struct_di,
+			    m_name,
+			    file,
+			    0, // Line number
+			    m_type->getSizeInBits(),
+			    m_type->getAlignInBits(),
+			    td->getStructLayout(llvm_type)->getElementOffsetInBits(i),
+			    DINode::DIFlags::FlagZero,
+			    m_type);
+
+			mems_di.push_back(m_di);
+		}
+
+		struct_di->replaceElements(builder->getOrCreateArray(mems_di));
+		di = struct_di;
 		break;
 	}
 

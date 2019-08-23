@@ -1535,6 +1535,16 @@ provide_builtin_type(Context *cnt, MirType *type)
 }
 
 static inline void
+provide_builtin_member(Context *cnt, Scope *scope, MirMember *member)
+{
+	ScopeEntry *entry = register_symbol(cnt, NULL, member->id, scope, true, false);
+	if (!entry) return;
+
+	entry->kind        = SCOPE_ENTRY_MEMBER;
+	entry->data.member = member;
+}
+
+static inline void
 unref_instr(MirInstr *instr)
 {
 	if (!instr || instr->ref_count == NO_REF_COUNTING) return;
@@ -2086,27 +2096,35 @@ create_type_string(Context *cnt)
 	SmallArray_Member *members = create_sarr(SmallArray_Member, cnt->assembly);
 
 	/* Slice layout struct { usize, *T } */
+	Scope *body_scope =
+	    scope_create(&cnt->assembly->arenas.scope, SCOPE_TYPE, NULL, 2, NULL);
 
 	MirMember *tmp;
 	tmp = create_member(cnt,
 	                    NULL,
 	                    &builtin_ids[MIR_BUILTIN_ID_ARR_LEN],
-	                    NULL,
+	                    body_scope,
 	                    0,
 	                    cnt->builtin_types.entry_usize); // TODO
 	sa_push_Member(members, tmp);
+	provide_builtin_member(cnt, body_scope, tmp);
 
 	tmp = create_member(cnt,
 	                    NULL,
 	                    &builtin_ids[MIR_BUILTIN_ID_ARR_PTR],
-	                    NULL,
+	                    body_scope,
 	                    1,
 	                    cnt->builtin_types.entry_u8_ptr); // TODO
 
 	sa_push_Member(members, tmp);
+	provide_builtin_member(cnt, body_scope, tmp);
 
-	return create_type_struct(
-	    cnt, MIR_TYPE_STRING, &builtin_ids[MIR_BUILTIN_ID_TYPE_STRING], NULL, members, false);
+	return create_type_struct(cnt,
+	                          MIR_TYPE_STRING,
+	                          &builtin_ids[MIR_BUILTIN_ID_TYPE_STRING],
+	                          body_scope,
+	                          members,
+	                          false);
 }
 
 MirType *
@@ -3814,8 +3832,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	}
 
 	/* Slice, string, vargs type */
-	if (target_type->kind == MIR_TYPE_SLICE || target_type->kind == MIR_TYPE_STRING ||
-	    target_type->kind == MIR_TYPE_VARGS) {
+	if (target_type->kind == MIR_TYPE_SLICE || target_type->kind == MIR_TYPE_VARGS) {
 		reduce_instr(cnt, member_ptr->target_ptr);
 		/* slice!!! */
 		MirType *len_type = mir_get_struct_elem_type(target_type, MIR_SLICE_LEN_INDEX);
@@ -3847,7 +3864,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	}
 
 	/* struct type */
-	if (target_type->kind == MIR_TYPE_STRUCT) {
+	if (target_type->kind == MIR_TYPE_STRUCT || target_type->kind == MIR_TYPE_STRING) {
 		reduce_instr(cnt, member_ptr->target_ptr);
 		/* lookup for member inside struct */
 		Scope *     scope = target_type->data.strct.scope;

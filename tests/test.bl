@@ -5,6 +5,16 @@
 main :: fn () s32 {
     i := 10;
     text := "hello";
+    foo: struct {
+        i: s32,
+        j: bool,
+        k: [2]s32
+    };
+
+    foo.i = 666;
+    foo.j = false;
+    foo.k[0] = 0;
+    foo.k[1] = 1;
     
     print("i = %\n", i);
     return 0;
