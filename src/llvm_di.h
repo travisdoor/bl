@@ -32,12 +32,23 @@
 #ifndef BL_LLVM_DI_H
 #define BL_LLVM_DI_H
 
-#include <llvm-c/Types.h>
 #include <llvm-c/Core.h>
+#include <llvm-c/Types.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef enum {
+	DW_ATE_adderess      = 1,
+	DW_ATE_boolean       = 2,
+	DW_ATE_complex_float = 3,
+	DW_ATE_float         = 4,
+	DW_ATE_signed        = 5,
+	DW_ATE_signed_char   = 6,
+	DW_ATE_unsigned      = 7,
+	DW_ATE_unsigned_char = 8,
+} DW_ATE_Encoding;
 
 void
 llvm_add_module_flag_int(LLVMModuleRef          module_ref,
@@ -64,6 +75,83 @@ llvm_di_create_compile_unit(LLVMDIBuilderRef builder_ref,
 
 LLVMMetadataRef
 llvm_di_create_file(LLVMDIBuilderRef builder_ref, const char *filename, const char *dir);
+
+LLVMMetadataRef
+llvm_di_create_fn_fwd_decl(LLVMDIBuilderRef builder_ref,
+                           LLVMMetadataRef  scope_ref,
+                           const char *     name,
+                           const char *     linkage_name,
+                           LLVMMetadataRef  file_ref,
+                           unsigned         line,
+                           LLVMMetadataRef  type_ref,
+                           unsigned         scope_line);
+
+LLVMMetadataRef
+llvm_di_create_lexical_scope(LLVMDIBuilderRef builder_ref,
+                             LLVMMetadataRef  scope_ref,
+                             LLVMMetadataRef  file_ref,
+                             unsigned         line,
+                             unsigned         col);
+LLVMMetadataRef
+llvm_di_create_fn(LLVMDIBuilderRef builder_ref,
+                  LLVMMetadataRef  scope_ref,
+                  const char *     name,
+                  const char *     linkage_name,
+                  LLVMMetadataRef  file_ref,
+                  unsigned         line,
+                  LLVMMetadataRef  type_ref,
+                  unsigned         scope_line);
+
+LLVMMetadataRef
+llvm_di_create_auto_variable(LLVMDIBuilderRef builder_ref,
+                             LLVMMetadataRef  scope_ref,
+                             const char *     name,
+                             LLVMMetadataRef  file_ref,
+                             unsigned         line,
+                             LLVMMetadataRef  type_ref);
+
+LLVMMetadataRef
+llvm_di_replace_fn(LLVMDIBuilderRef builder_ref, LLVMMetadataRef temp_ref, LLVMMetadataRef fn_ref);
+
+void
+llvm_di_set_current_location(LLVMBuilderRef  builder_ref,
+                             unsigned        line,
+                             unsigned        col,
+                             LLVMMetadataRef scope_ref,
+                             bool            implicit);
+
+void
+llvm_di_reset_current_location(LLVMBuilderRef builder_ref);
+
+LLVMMetadataRef
+llvm_di_create_basic_type(LLVMDIBuilderRef builder_ref,
+                          const char *     name,
+                          unsigned         size_in_bits,
+                          DW_ATE_Encoding  encoding);
+
+LLVMMetadataRef
+llvm_di_create_function_type(LLVMDIBuilderRef builder_ref,
+                             LLVMMetadataRef *params,
+                             unsigned         paramsc);
+
+LLVMMetadataRef
+llvm_di_create_array_type(LLVMDIBuilderRef builder_ref,
+                          uint64_t         size_in_bits,
+                          uint32_t         align_in_bits,
+                          LLVMMetadataRef  type_ref,
+                          uint64_t         elem_count);
+
+void
+llvm_di_set_subprogram(LLVMValueRef fn_ref, LLVMMetadataRef subprogram_ref);
+
+void
+llvm_di_insert_declare(LLVMDIBuilderRef  builder_ref,
+                       LLVMValueRef      storage_ref,
+                       LLVMMetadataRef   var_info_ref,
+                       unsigned          line,
+                       unsigned          col,
+                       LLVMMetadataRef   scope_ref,
+                       LLVMBasicBlockRef bb_ref);
 
 #ifdef __cplusplus
 }

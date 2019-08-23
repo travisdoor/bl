@@ -29,6 +29,7 @@
 #include "mir.h"
 #include "builder.h"
 #include "common.h"
+#include "llvm_di.h"
 #include "mir_printer.h"
 #include "unit.h"
 
@@ -137,6 +138,7 @@
 #endif
 
 SmallArrayType(LLVMType, LLVMTypeRef, 8);
+SmallArrayType(LLVMMetadata, LLVMMetadataRef, 16);
 
 union _MirInstr {
 	MirInstrBlock       block;
@@ -198,6 +200,7 @@ typedef struct {
 	BString *   tmp_sh;
 	BHashTable *type_table;
 	MirFn *     entry_fn;
+	bool        debug_mode;
 
 	/* AST -> MIR generation */
 	struct {
@@ -218,7 +221,8 @@ typedef struct {
 		bool        verbose_pre;
 		bool        verbose_post;
 
-		BHashTable *RTTI_entry_types;
+		BHashTable *     RTTI_entry_types;
+		LLVMDIBuilderRef llvm_di_builder;
 	} analyze;
 
 	/* MIR compile time execution. */
@@ -390,6 +394,9 @@ create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type);
 
 static MirType *
 create_type_vargs(Context *cnt, MirType *elem_ptr_type);
+
+static void
+init_llvm_type_int(Context *cnt, MirType *type);
 
 static MirVar *
 create_var(Context *cnt,
@@ -772,6 +779,9 @@ ast_expr_compound(Context *cnt, Ast *cmp);
 /* this will also set size and alignment of the type */
 static void
 init_type_llvm_ABI(Context *cnt, MirType *type);
+
+static void
+init_type_llvm_DI(Context *cnt, MirType *type);
 
 /* analyze */
 static void
@@ -1916,6 +1926,10 @@ create_type_type(Context *cnt)
 	if (create_type(cnt, &tmp, builtin_ids[MIR_BUILTIN_ID_TYPE_TYPE].str)) {
 		tmp->kind    = MIR_TYPE_TYPE;
 		tmp->user_id = &builtin_ids[MIR_BUILTIN_ID_TYPE_TYPE];
+
+		// TODO: replace with custom method
+		// TODO: replace with custom method
+		// TODO: replace with custom method
 		init_type_llvm_ABI(cnt, tmp);
 	}
 	return tmp;
@@ -1931,6 +1945,7 @@ create_type_null(Context *cnt, MirType *base_type)
 		tmp->user_id             = &builtin_ids[MIR_BUILTIN_ID_NULL];
 		tmp->data.null.base_type = base_type;
 		init_type_llvm_ABI(cnt, tmp);
+		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
 	}
 	return tmp;
 }
@@ -1942,7 +1957,12 @@ create_type_void(Context *cnt)
 	if (create_type(cnt, &tmp, builtin_ids[MIR_BUILTIN_ID_TYPE_VOID].str)) {
 		tmp->kind    = MIR_TYPE_VOID;
 		tmp->user_id = &builtin_ids[MIR_BUILTIN_ID_TYPE_VOID];
+
+		// TODO: replace with custom method
+		// TODO: replace with custom method
+		// TODO: replace with custom method
 		init_type_llvm_ABI(cnt, tmp);
+		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
 	}
 	return tmp;
 }
@@ -1954,7 +1974,12 @@ create_type_bool(Context *cnt)
 	if (create_type(cnt, &tmp, builtin_ids[MIR_BUILTIN_ID_TYPE_BOOL].str)) {
 		tmp->kind    = MIR_TYPE_BOOL;
 		tmp->user_id = &builtin_ids[MIR_BUILTIN_ID_TYPE_BOOL];
+
+		// TODO: replace with custom method
+		// TODO: replace with custom method
+		// TODO: replace with custom method
 		init_type_llvm_ABI(cnt, tmp);
+		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
 	}
 	return tmp;
 }
@@ -1970,7 +1995,8 @@ create_type_int(Context *cnt, ID *id, int32_t bitcount, bool is_signed)
 		tmp->user_id                = id;
 		tmp->data.integer.bitcount  = bitcount;
 		tmp->data.integer.is_signed = is_signed;
-		init_type_llvm_ABI(cnt, tmp);
+
+		init_llvm_type_int(cnt, tmp);
 	}
 	return tmp;
 }
@@ -1984,7 +2010,12 @@ create_type_real(Context *cnt, ID *id, int32_t bitcount)
 		tmp->kind               = MIR_TYPE_REAL;
 		tmp->user_id            = id;
 		tmp->data.real.bitcount = bitcount;
+
+		// TODO: replace with custom method
+		// TODO: replace with custom method
+		// TODO: replace with custom method
 		init_type_llvm_ABI(cnt, tmp);
+		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
 	}
 	return tmp;
 }
@@ -1996,7 +2027,12 @@ create_type_ptr(Context *cnt, MirType *src_type)
 	if (create_type(cnt, &tmp, sh_type_ptr(cnt, src_type))) {
 		tmp->kind          = MIR_TYPE_PTR;
 		tmp->data.ptr.expr = src_type;
+
+		// TODO: replace with custom method
+		// TODO: replace with custom method
+		// TODO: replace with custom method
 		init_type_llvm_ABI(cnt, tmp);
+		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
 	}
 
 	return tmp;
@@ -2011,7 +2047,12 @@ create_type_fn(Context *cnt, MirType *ret_type, SmallArray_Type *arg_types, bool
 		tmp->data.fn.arg_types = arg_types;
 		tmp->data.fn.is_vargs  = is_vargs;
 		tmp->data.fn.ret_type  = ret_type ? ret_type : cnt->builtin_types.entry_void;
+
+		// TODO: replace with custom method
+		// TODO: replace with custom method
+		// TODO: replace with custom method
 		init_type_llvm_ABI(cnt, tmp);
+		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
 	}
 
 	return tmp;
@@ -2025,7 +2066,12 @@ create_type_array(Context *cnt, MirType *elem_type, size_t len)
 		tmp->kind                 = MIR_TYPE_ARRAY;
 		tmp->data.array.elem_type = elem_type;
 		tmp->data.array.len       = len;
+
+		// TODO: replace with custom method
+		// TODO: replace with custom method
+		// TODO: replace with custom method
 		init_type_llvm_ABI(cnt, tmp);
+		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
 	}
 
 	return tmp;
@@ -2048,7 +2094,11 @@ create_type_struct(Context *          cnt,
 		tmp->data.strct.is_packed = is_packed;
 		tmp->user_id              = id;
 
+		// TODO: replace with custom method
+		// TODO: replace with custom method
+		// TODO: replace with custom method
 		init_type_llvm_ABI(cnt, tmp);
+		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
 	}
 
 	return tmp;
@@ -2142,9 +2192,40 @@ create_type_enum(Context *           cnt,
 		tmp->data.enm.variants  = variants;
 		tmp->user_id            = id;
 		init_type_llvm_ABI(cnt, tmp);
+		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
 	}
 
 	return tmp;
+}
+
+void
+init_llvm_type_int(Context *cnt, MirType *type)
+{
+	type->llvm_type        = LLVMIntTypeInContext(cnt->assembly->llvm.cnt,
+                                               (unsigned int)type->data.integer.bitcount);
+	type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
+	type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
+	type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
+
+	if (!cnt->debug_mode) return;
+
+	const char *    name = type->user_id ? type->user_id->str : type->id.str;
+	DW_ATE_Encoding encoding;
+
+	if (type->data.integer.is_signed) {
+		if (type->size_bits == 8)
+			encoding = DW_ATE_signed_char;
+		else
+			encoding = DW_ATE_signed;
+	} else {
+		if (type->size_bits == 8)
+			encoding = DW_ATE_unsigned_char;
+		else
+			encoding = DW_ATE_unsigned;
+	}
+
+	type->llvm_meta = llvm_di_create_basic_type(
+	    cnt->analyze.llvm_di_builder, name, type->size_bits, encoding);
 }
 
 static inline void
@@ -3164,17 +3245,6 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 		break;
 	}
 
-	case MIR_TYPE_INT: {
-		type->llvm_type = LLVMIntTypeInContext(cnt->assembly->llvm.cnt,
-		                                       (unsigned int)type->data.integer.bitcount);
-		type->size_bits = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
-		type->store_size_bytes =
-		    LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
-		type->alignment = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
-
-		break;
-	}
-
 	case MIR_TYPE_REAL: {
 		if (type->data.real.bitcount == 32)
 			type->llvm_type = LLVMFloatTypeInContext(cnt->assembly->llvm.cnt);
@@ -3319,6 +3389,69 @@ init_type_llvm_ABI(Context *cnt, MirType *type)
 
 	default:
 		bl_unimplemented;
+	}
+}
+
+void
+init_type_llvm_DI(Context *cnt, MirType *type)
+{
+	assert(type);
+
+	const char *   name = type->user_id ? type->user_id->str : type->id.str;
+	const unsigned size = type->size_bits;
+
+	switch (type->kind) {
+	case MIR_TYPE_REAL: {
+		type->llvm_meta = llvm_di_create_basic_type(
+		    cnt->analyze.llvm_di_builder, name, size, DW_ATE_float);
+		return;
+	}
+
+	case MIR_TYPE_BOOL: {
+		type->llvm_meta = llvm_di_create_basic_type(
+		    cnt->analyze.llvm_di_builder, name, size, DW_ATE_unsigned_char);
+		return;
+	}
+
+	case MIR_TYPE_VOID: {
+		type->llvm_meta = llvm_di_create_basic_type(
+		    cnt->analyze.llvm_di_builder, name, 8, DW_ATE_unsigned_char);
+		return;
+	}
+
+	case MIR_TYPE_ARRAY: {
+		type->llvm_meta = llvm_di_create_array_type(cnt->analyze.llvm_di_builder,
+		                                            size,
+		                                            type->alignment * 8,
+		                                            type->data.array.elem_type->llvm_meta,
+		                                            type->data.array.len);
+		return;
+	}
+
+	case MIR_TYPE_FN: {
+		SmallArray_LLVMMetadata params;
+		sa_init(&params);
+
+		/* return type is first */
+		sa_push_LLVMMetadata(&params, type->data.fn.ret_type->llvm_meta);
+
+		if (type->data.fn.arg_types) {
+			MirType *it;
+			sarray_foreach(type->data.fn.arg_types, it)
+			    sa_push_LLVMMetadata(&params, it->llvm_meta);
+		}
+
+		type->llvm_meta = llvm_di_create_function_type(
+		    cnt->analyze.llvm_di_builder, params.data, params.size);
+
+		sa_terminate(&params);
+		return;
+	}
+
+	default:
+		type->llvm_meta = llvm_di_create_basic_type(
+		    cnt->analyze.llvm_di_builder, name, 8, DW_ATE_unsigned_char);
+		break;
 	}
 }
 
@@ -8995,14 +9128,16 @@ mir_run(Builder *builder, Assembly *assembly)
 	memset(&cnt, 0, sizeof(Context));
 	cnt.builder                  = builder;
 	cnt.assembly                 = assembly;
+	cnt.debug_mode               = assembly->options.debug_mode;
 	cnt.analyze.verbose_pre      = false;
 	cnt.analyze.verbose_post     = false;
 	cnt.analyze.queue            = bo_list_new(sizeof(MirInstr *));
 	cnt.analyze.RTTI_entry_types = bo_htbl_new(0, 1024);
+	cnt.analyze.waiting          = bo_htbl_new_bo(bo_typeof(BArray), true, ANALYZE_TABLE_SIZE);
+	cnt.analyze.llvm_di_builder  = assembly->llvm.di_builder;
 	cnt.test_cases               = bo_array_new(sizeof(MirFn *));
 	cnt.exec.stack               = exec_new_stack(DEFAULT_EXEC_FRAME_STACK_SIZE);
 	cnt.tmp_sh                   = bo_string_new(1024);
-	cnt.analyze.waiting          = bo_htbl_new_bo(bo_typeof(BArray), true, ANALYZE_TABLE_SIZE);
 	cnt.type_table               = assembly->type_table;
 	cnt.builtin_types.cache =
 	    scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, 64, NULL);

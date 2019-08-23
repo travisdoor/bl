@@ -27,8 +27,6 @@
 //************************************************************************************************
 
 #include "llvm_di.h"
-#include "assembly.h"
-#include "mir.h"
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/DebugInfoMetadata.h>
@@ -119,25 +117,174 @@ llvm_di_create_file(LLVMDIBuilderRef builder_ref, const char *filename, const ch
 }
 
 LLVMMetadataRef
-llvm_di_create_fn_fwd_decl(LLVMBuilderRef  builder_ref,
-                           LLVMMetadataRef scope,
-                           const char *    name,
-                           const char *    linkage_name,
-                           LLVMMetadataRef file,
-                           unsigned        line,
-                           LLVMMetadataRef type,
-                           unsigned        scope_line)
+llvm_di_create_lexical_scope(LLVMDIBuilderRef builder_ref,
+                             LLVMMetadataRef  scope_ref,
+                             LLVMMetadataRef  file_ref,
+                             unsigned         line,
+                             unsigned         col)
 {
 	auto builder = cast(DIBuilder *)(builder_ref);
-	auto fn      = builder->createTempFunctionFwdDecl(cast(DIScope *)(scope),
+	auto scope   = builder->createLexicalBlock(
+            cast(DIScope *)(scope_ref), cast(DIFile *)(file_ref), line, col);
+
+	return cast(LLVMMetadataRef)(scope);
+}
+
+LLVMMetadataRef
+llvm_di_create_fn_fwd_decl(LLVMDIBuilderRef builder_ref,
+                           LLVMMetadataRef  scope_ref,
+                           const char *     name,
+                           const char *     linkage_name,
+                           LLVMMetadataRef  file_ref,
+                           unsigned         line,
+                           LLVMMetadataRef  type_ref,
+                           unsigned         scope_line)
+{
+	auto builder = cast(DIBuilder *)(builder_ref);
+	auto fn      = builder->createTempFunctionFwdDecl(cast(DIScope *)(scope_ref),
                                                      {name, strlen(name)},
                                                      {linkage_name, strlen(linkage_name)},
-                                                     cast(DIFile *)(file),
+                                                     cast(DIFile *)(file_ref),
                                                      line,
-                                                     cast(DISubroutineType *)(type),
+                                                     cast(DISubroutineType *)(type_ref),
                                                      scope_line);
 
 	return cast(LLVMMetadataRef)(fn);
 }
 
-/*-----------------*/
+LLVMMetadataRef
+llvm_di_create_fn(LLVMDIBuilderRef builder_ref,
+                  LLVMMetadataRef  scope_ref,
+                  const char *     name,
+                  const char *     linkage_name,
+                  LLVMMetadataRef  file_ref,
+                  unsigned         line,
+                  LLVMMetadataRef  type_ref,
+                  unsigned         scope_line)
+{
+	auto builder = cast(DIBuilder *)(builder_ref);
+	auto fn      = builder->createFunction(cast(DIScope *)(scope_ref),
+                                          {name, strlen(name)},
+                                          {linkage_name, strlen(linkage_name)},
+                                          cast(DIFile *)(file_ref),
+                                          line,
+                                          cast(DISubroutineType *)(type_ref),
+                                          scope_line,
+                                          DINode::FlagStaticMember,
+                                          DISubprogram::toSPFlags(false, true, false));
+
+	return cast(LLVMMetadataRef)(fn);
+}
+
+LLVMMetadataRef
+llvm_di_replace_fn(LLVMDIBuilderRef builder_ref, LLVMMetadataRef temp_ref, LLVMMetadataRef fn_ref)
+{
+	auto builder = cast(DIBuilder *)(builder_ref);
+	auto fn      = cast(DISubprogram *)(fn_ref);
+	auto replaced =
+	    builder->replaceTemporary<DISubprogram>(reinterpret_cast<TempMDNode &&>(temp_ref), fn);
+	return cast(LLVMMetadataRef)(replaced);
+}
+
+void
+llvm_di_set_current_location(LLVMBuilderRef  builder_ref,
+                             unsigned        line,
+                             unsigned        col,
+                             LLVMMetadataRef scope_ref,
+                             bool            implicit)
+{
+	auto builder = cast(IRBuilder<> *)(builder_ref);
+	auto scope   = cast(DIScope *)(scope_ref);
+	builder->SetCurrentDebugLocation(DebugLoc::get(line, col, scope, nullptr, implicit));
+}
+
+void
+llvm_di_reset_current_location(LLVMBuilderRef builder_ref)
+{
+	auto builder = cast(IRBuilder<> *)(builder_ref);
+	builder->SetCurrentDebugLocation(DebugLoc());
+}
+
+LLVMMetadataRef
+llvm_di_create_basic_type(LLVMDIBuilderRef builder_ref,
+                          const char *     name,
+                          unsigned         size_in_bits,
+                          DW_ATE_Encoding  encoding)
+{
+	auto builder = cast(DIBuilder *)(builder_ref);
+	auto type    = builder->createBasicType({name, strlen(name)}, size_in_bits, encoding);
+
+	return cast(LLVMMetadataRef)(type);
+}
+
+LLVMMetadataRef
+llvm_di_create_function_type(LLVMDIBuilderRef builder_ref,
+                             LLVMMetadataRef *params,
+                             unsigned         paramsc)
+{
+	auto builder = cast(DIBuilder *)(builder_ref);
+
+	auto tmp  = builder->getOrCreateTypeArray({cast(Metadata **)(params), paramsc});
+	auto type = builder->createSubroutineType(tmp);
+
+	return cast(LLVMMetadataRef)(type);
+}
+
+LLVMMetadataRef
+llvm_di_create_array_type(LLVMDIBuilderRef builder_ref,
+                          uint64_t         size_in_bits,
+                          uint32_t         align_in_bits,
+                          LLVMMetadataRef  type_ref,
+                          uint64_t         elem_count)
+{
+	auto                       builder = cast(DIBuilder *)(builder_ref);
+	SmallVector<Metadata *, 1> subrange;
+	subrange.push_back(builder->getOrCreateSubrange(0, elem_count));
+	auto type = builder->createArrayType(size_in_bits,
+	                                     align_in_bits,
+	                                     cast(DIType *)(type_ref),
+	                                     builder->getOrCreateArray(subrange));
+	return cast(LLVMMetadataRef)(type);
+}
+
+void
+llvm_di_set_subprogram(LLVMValueRef fn_ref, LLVMMetadataRef subprogram_ref)
+{
+	auto func = cast(Function *)(fn_ref);
+	func->setSubprogram(cast(DISubprogram *)(subprogram_ref));
+}
+
+LLVMMetadataRef
+llvm_di_create_auto_variable(LLVMDIBuilderRef builder_ref,
+                             LLVMMetadataRef  scope_ref,
+                             const char *     name,
+                             LLVMMetadataRef  file_ref,
+                             unsigned         line,
+                             LLVMMetadataRef  type_ref)
+{
+	auto builder = cast(DIBuilder *)(builder_ref);
+	auto var     = builder->createAutoVariable(cast(DIScope *)(scope_ref),
+                                               {name, strlen(name)},
+                                               cast(DIFile *)(file_ref),
+                                               line,
+                                               cast(DIType *)(type_ref));
+	return cast(LLVMMetadataRef)(var);
+}
+
+void
+llvm_di_insert_declare(LLVMDIBuilderRef  builder_ref,
+                       LLVMValueRef      storage_ref,
+                       LLVMMetadataRef   var_info_ref,
+                       unsigned          line,
+                       unsigned          col,
+                       LLVMMetadataRef   scope_ref,
+                       LLVMBasicBlockRef bb_ref)
+{
+	auto builder = cast(DIBuilder *)(builder_ref);
+
+	builder->insertDeclare(cast(Value *)(storage_ref),
+	                       cast(DILocalVariable *)(var_info_ref),
+	                       builder->createExpression(),
+	                       DebugLoc::get(line, col, cast(DIScope *)(scope_ref)),
+	                       cast(BasicBlock *)(bb_ref));
+}

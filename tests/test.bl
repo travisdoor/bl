@@ -15,7 +15,13 @@ main :: fn () s32 {
     foo.j = false;
     foo.k[0] = 0;
     foo.k[1] = 1;
-    
+
+    k: [2]s32;
+    k[0] = 0;
+    k[1] = 1;
+
+    b := true;
+
     print("i = %\n", i);
     return 0;
 };

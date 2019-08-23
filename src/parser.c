@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #include "common.h"
+#include "llvm_di.h"
 #include "stages.h"
 #include <setjmp.h>
 
@@ -96,12 +97,14 @@ typedef enum {
 } HashDirective;
 
 typedef struct {
-	Builder *    builder;
-	Assembly *   assembly;
-	Unit *       unit;
-	Arena *      ast_arena;
-	ScopeArenas *scope_arenas;
-	Tokens *     tokens;
+	Builder *        builder;
+	Assembly *       assembly;
+	Unit *           unit;
+	Arena *          ast_arena;
+	ScopeArenas *    scope_arenas;
+	Tokens *         tokens;
+	bool             debug_mode;
+	LLVMDIBuilderRef llvm_di_builder;
 
 	/* tmps */
 	Scope *scope;
@@ -112,6 +115,9 @@ typedef struct {
 
 /* helpers */
 /* fw decls */
+static void
+emit_DI_scope(Context *cnt, Scope *scope);
+
 static BinopKind
 sym_to_binop_kind(Sym sm);
 
@@ -264,6 +270,17 @@ static Ast *
 parse_expr_compound(Context *cnt);
 
 // impl
+void
+emit_DI_scope(Context *cnt, Scope *scope)
+{
+	assert(cnt->scope->llvm_di_meta);
+	assert(cnt->unit->llvm_file_meta);
+	scope->llvm_di_meta = llvm_di_create_lexical_scope(cnt->llvm_di_builder,
+	                                                   cnt->scope->llvm_di_meta,
+	                                                   cnt->unit->llvm_file_meta,
+	                                                   scope->location->line,
+	                                                   scope->location->col);
+}
 
 BinopKind
 sym_to_binop_kind(Sym sm)
@@ -489,6 +506,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		}
 
 		Scope *scope = scope_create(cnt->scope_arenas, SCOPE_FN, cnt->scope, 256, NULL);
+		if (cnt->debug_mode) emit_DI_scope(cnt, scope);
 		push_scope(cnt, scope);
 
 		Ast *block = parse_block(cnt, false);
@@ -583,6 +601,8 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		                            cnt->assembly->gscope,
 		                            EXPECTED_PRIVATE_SCOPE_COUNT,
 		                            &tok_directive->location);
+
+		scope->llvm_di_meta = scope->parent->llvm_di_meta;
 
 		/* Make all other declarations in file nested in private scope */
 		cnt->unit->private_scope = scope;
@@ -1070,6 +1090,9 @@ parse_stmt_loop(Context *cnt)
 
 	Scope *scope =
 	    scope_create(cnt->scope_arenas, SCOPE_LEXICAL, cnt->scope, 128, &tok_begin->location);
+
+	if (cnt->debug_mode) emit_DI_scope(cnt, scope);
+
 	push_scope(cnt, scope);
 
 	if (!while_true) {
@@ -1377,6 +1400,18 @@ parse_expr_lit_fn(Context *cnt)
 
 	Scope *scope =
 	    scope_create(cnt->scope_arenas, SCOPE_FN, cnt->scope, 256, &tok_fn->location);
+
+	if (cnt->debug_mode) {
+		scope->llvm_di_meta = llvm_di_create_fn_fwd_decl(cnt->llvm_di_builder,
+		                                                 cnt->scope->llvm_di_meta,
+		                                                 "",
+		                                                 "",
+		                                                 cnt->unit->llvm_file_meta,
+		                                                 0,
+		                                                 NULL,
+		                                                 0);
+	}
+
 	push_scope(cnt, scope);
 
 	Ast *type = parse_type_fn(cnt, true);
@@ -1533,6 +1568,7 @@ parse_type_enum(Context *cnt)
 	}
 
 	Scope *scope = scope_create(cnt->scope_arenas, SCOPE_TYPE, cnt->scope, 512, &tok->location);
+	//if (cnt->debug_mode) emit_DI_scope(cnt, scope);
 	enm->data.type_enm.scope = scope;
 	push_scope(cnt, scope);
 
@@ -1746,6 +1782,7 @@ parse_type_struct(Context *cnt)
 	}
 
 	Scope *scope = scope_create(cnt->scope_arenas, SCOPE_TYPE, cnt->scope, 256, &tok->location);
+	//if (cnt->debug_mode) emit_DI_scope(cnt, scope);
 	push_scope(cnt, scope);
 
 	Ast *type_struct = ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct, cnt->scope);
@@ -1950,6 +1987,9 @@ parse_block(Context *cnt, bool create_scope)
 	if (create_scope) {
 		Scope *scope = scope_create(
 		    cnt->scope_arenas, SCOPE_LEXICAL, cnt->scope, 1024, &tok_begin->location);
+
+		if (cnt->debug_mode) emit_DI_scope(cnt, scope);
+
 		cnt->scope = scope;
 	}
 
@@ -2083,19 +2123,26 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit)
 {
 	assert(assembly->gscope && "Missing global scope for assembly.");
 
-	Context cnt = {.builder      = builder,
-	               .assembly     = assembly,
-	               .scope        = assembly->gscope,
-	               .unit         = unit,
-	               .ast_arena    = &assembly->arenas.ast,
-	               .scope_arenas = &assembly->arenas.scope,
-	               .tokens       = &unit->tokens,
-	               .curr_decl    = NULL,
-	               .inside_loop  = false};
+	Context cnt = {.builder         = builder,
+	               .assembly        = assembly,
+	               .scope           = assembly->gscope,
+	               .unit            = unit,
+	               .ast_arena       = &assembly->arenas.ast,
+	               .scope_arenas    = &assembly->arenas.scope,
+	               .tokens          = &unit->tokens,
+	               .debug_mode      = assembly->options.debug_mode,
+	               .llvm_di_builder = assembly->llvm.di_builder,
+	               .curr_decl       = NULL,
+	               .inside_loop     = false};
 
 	Ast *root              = ast_create_node(cnt.ast_arena, AST_UBLOCK, NULL, cnt.scope);
 	root->data.ublock.unit = unit;
 	unit->ast              = root;
+
+	if (cnt.debug_mode) {
+		unit->llvm_file_meta =
+		    llvm_di_create_file(cnt.llvm_di_builder, unit->filename, unit->dirpath);
+	}
 
 	parse_ublock_content(&cnt, unit->ast);
 }

@@ -50,7 +50,7 @@ SmallArrayType(LLVMValue, LLVMValueRef, 32);
 SmallArrayType(LLVMValue64, LLVMValueRef, 64);
 
 typedef struct {
-	bool        debug_build;
+	bool        debug_mode;
 	Builder *   builder;
 	Assembly *  assembly;
 	BHashTable *gstring_cache;
@@ -59,7 +59,7 @@ typedef struct {
 	LLVMModuleRef     llvm_module;
 	LLVMTargetDataRef llvm_td;
 	LLVMBuilderRef    llvm_builder;
-	LLVMDIBuilderRef  llvm_dibuilder;
+	LLVMDIBuilderRef  llvm_di_builder;
 
 	/* Constants */
 	LLVMValueRef llvm_const_i64;
@@ -189,6 +189,15 @@ build_call_memcpy(Context *    cnt,
 
 	return llvm_result;
 }
+
+static void
+emit_DI_instr_loc(Context *cnt, MirInstr *instr);
+
+static void
+emit_DI_fn(Context *cnt, MirFn *fn);
+
+static void
+emit_DI_var(Context *cnt, MirVar *var);
 
 static void
 emit_RTTI_types(Context *cnt);
@@ -345,6 +354,65 @@ emit_basic_block(Context *cnt, MirInstrBlock *block)
 }
 
 /* impl */
+void
+emit_DI_instr_loc(Context *cnt, MirInstr *instr)
+{
+	if (!instr) {
+		llvm_di_reset_current_location(cnt->llvm_builder);
+		return;
+	}
+
+	if (instr->node) {
+		LLVMMetadataRef llvm_scope = instr->node->parent_scope->llvm_di_meta;
+		Location *      location   = instr->node->location;
+		llvm_di_set_current_location(
+		    cnt->llvm_builder, location->line, location->col, llvm_scope, false);
+	}
+}
+
+void
+emit_DI_fn(Context *cnt, MirFn *fn)
+{
+	LLVMMetadataRef tmp = llvm_di_create_fn(cnt->llvm_di_builder,
+	                                        fn->decl_node->parent_scope->llvm_di_meta,
+	                                        fn->id->str,
+	                                        fn->llvm_name,
+	                                        fn->decl_node->location->unit->llvm_file_meta,
+	                                        fn->decl_node->location->line,
+	                                        fn->type->llvm_meta,
+	                                        fn->decl_node->location->line);
+
+	fn->body_scope->llvm_di_meta =
+	    llvm_di_replace_fn(cnt->llvm_di_builder, fn->body_scope->llvm_di_meta, tmp);
+
+	llvm_di_set_subprogram(fn->llvm_value, fn->body_scope->llvm_di_meta);
+}
+
+void
+emit_DI_var(Context *cnt, MirVar *var)
+{
+	if (!var->decl_node) return;
+
+	Location *      location   = var->decl_node->location;
+	LLVMMetadataRef llvm_scope = var->decl_node->parent_scope->llvm_di_meta;
+	LLVMMetadataRef llvm_file  = location->unit->llvm_file_meta;
+
+	LLVMMetadataRef llvm_meta = llvm_di_create_auto_variable(cnt->llvm_di_builder,
+	                                                         llvm_scope,
+	                                                         var->id->str,
+	                                                         llvm_file,
+	                                                         location->line,
+	                                                         var->value.type->llvm_meta);
+
+	llvm_di_insert_declare(cnt->llvm_di_builder,
+	                       var->llvm_value,
+	                       llvm_meta,
+	                       location->line,
+	                       location->col,
+	                       llvm_scope,
+	                       LLVMGetInsertBlock(cnt->llvm_builder));
+}
+
 void
 emit_RTTI_types(Context *cnt)
 {
@@ -811,6 +879,8 @@ emit_instr_store(Context *cnt, MirInstrStore *store)
 	const unsigned alignment = store->src->value.type->alignment;
 	assert(val && ptr);
 
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &store->base);
+
 	store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
 	LLVMSetAlignment(store->base.llvm_value, alignment);
 }
@@ -823,6 +893,8 @@ emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 
 	LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(llvm_val));
 	const bool   float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
+
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unop->base);
 
 	switch (unop->op) {
 	case UNOP_NOT: {
@@ -940,6 +1012,8 @@ emit_instr_binop(Context *cnt, MirInstrBinop *binop)
 	LLVMValueRef lhs = fetch_value(cnt, binop->lhs);
 	LLVMValueRef rhs = fetch_value(cnt, binop->rhs);
 	assert(lhs && rhs);
+
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &binop->base);
 
 	MirType *  type           = binop->lhs->value.type;
 	const bool real_type      = type->kind == MIR_TYPE_REAL;
@@ -1099,6 +1173,8 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 		    sa_push_LLVMValue(&llvm_args, fetch_value(cnt, arg));
 	}
 
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &call->base);
+
 	assert(llvm_fn);
 	call->base.llvm_value =
 	    LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args.data, (unsigned int)llvm_argc, "");
@@ -1130,6 +1206,11 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		LLVMSetInitializer(var->llvm_value, tmp);
 	} else {
 		assert(var->llvm_value);
+
+		if (cnt->debug_mode) {
+			emit_DI_var(cnt, var);
+			emit_DI_instr_loc(cnt, &decl->base);
+		}
 
 		/* generate DI for debug build */
 		if (decl->init) {
@@ -1350,6 +1431,11 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	emit_fn_proto(cnt, fn);
 
 	if (is_not_flag(fn->flags, FLAG_EXTERN)) {
+		if (cnt->debug_mode) {
+			emit_DI_instr_loc(cnt, NULL);
+			emit_DI_fn(cnt, fn);
+		}
+
 		MirInstr *block = (MirInstr *)fn->first_block;
 
 		while (block) {
@@ -1476,8 +1562,8 @@ ir_run(Builder *builder, Assembly *assembly)
 	cnt.llvm_instrinsic_trap   = create_trap_fn(&cnt);
 	cnt.llvm_instrinsic_memset = create_memset_fn(&cnt);
 	cnt.llvm_intrinsic_memcpy  = create_memcpy_fn(&cnt);
-	cnt.llvm_dibuilder         = assembly->llvm.di_builder;
-	cnt.debug_build            = assembly->options.debug_mode;
+	cnt.llvm_di_builder        = assembly->llvm.di_builder;
+	cnt.debug_mode             = assembly->options.debug_mode;
 
 	emit_RTTI_types(&cnt);
 
@@ -1487,8 +1573,8 @@ ir_run(Builder *builder, Assembly *assembly)
 		emit_instr(&cnt, ginstr);
 	}
 
-	if (cnt.debug_build) {
-		llvm_di_builder_finalize(cnt.llvm_dibuilder);
+	if (cnt.debug_mode) {
+		llvm_di_builder_finalize(cnt.llvm_di_builder);
 	}
 
 #if BL_DEBUG
