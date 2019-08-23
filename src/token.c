@@ -30,7 +30,7 @@
 
 char *sym_strings[] = {
 #define sm(tok, str) str,
-    _SYMBOLS_LIST
+#include "token.def"
 #undef sm
 };
 
