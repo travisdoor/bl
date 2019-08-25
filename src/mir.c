@@ -2101,6 +2101,8 @@ create_type_struct_special(Context *cnt, MirTypeKind kind, ID *id, MirType *elem
 	assert(mir_is_pointer_type(elem_ptr_type));
 	assert(kind == MIR_TYPE_STRING || kind == MIR_TYPE_VARGS || kind == MIR_TYPE_SLICE);
 
+	/* PERFORMANCE: due to reusing of the types we can create members and scope which will
+	 * not be later used because same type already exists. */
 	SmallArray_Member *members = create_sarr(SmallArray_Member, cnt->assembly);
 
 	/* Slice layout struct { usize, *T } */
@@ -2412,6 +2414,7 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 	if (type->user_id) {
 		struct_name = type->user_id->str;
 	} else {
+		/* NOTE: string has buildin ID */
 		switch (type->kind) {
 		case MIR_TYPE_STRUCT: {
 			struct_name = "struct";
@@ -2427,6 +2430,7 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 			struct_name = "vargs";
 			break;
 		}
+
 		default:
 			bl_abort("cannot get struct name for DI");
 		}
@@ -2486,7 +2490,7 @@ init_llvm_type_enum(Context *cnt, MirType *type)
 
 	/*** DI ***/
 	if (!cnt->debug_mode) return;
-	const char *name = type->user_id ? type->user_id->str : type->id.str;
+	const char *name = type->user_id ? type->user_id->str : "enum";
 
 	SmallArray_LLVMMetadata llvm_elems;
 	sa_init(&llvm_elems);
