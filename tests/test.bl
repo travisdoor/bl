@@ -2,17 +2,23 @@
 
 #load "std/print.bl"
 
+Foo :: struct {
+    i: s32,
+    j: bool,
+    k: [2]s32
+};
+
+Enum :: enum {
+    A, B, C
+};
+
 main :: fn () s32 {
     i := 10;
     text := "hello";
-    foo: struct {
-        i: s32,
-        j: bool,
-        k: [2]s32
-    };
 
+    foo : Foo;
     foo.i = 666;
-    foo.j = false;
+    foo.j = true;
     foo.k[0] = 0;
     foo.k[1] = 1;
 
@@ -21,6 +27,8 @@ main :: fn () s32 {
     k[1] = 1;
 
     b := true;
+
+    e := Enum.A;
 
     print("i = %\n", i);
     return 0;

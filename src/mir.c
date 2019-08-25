@@ -398,6 +398,36 @@ create_type_vargs(Context *cnt, MirType *elem_ptr_type);
 static void
 init_llvm_type_int(Context *cnt, MirType *type);
 
+static void
+init_llvm_type_real(Context *cnt, MirType *type);
+
+static void
+init_llvm_type_ptr(Context *cnt, MirType *type);
+
+static void
+init_llvm_type_null(Context *cnt, MirType *type);
+
+static void
+init_llvm_type_void(Context *cnt, MirType *type);
+
+static void
+init_llvm_type_bool(Context *cnt, MirType *type);
+
+static void
+init_llvm_type_fn(Context *cnt, MirType *type);
+
+static void
+init_llvm_type_array(Context *cnt, MirType *type);
+
+static void
+init_llvm_type_struct(Context *cnt, MirType *type);
+
+static void
+init_llvm_type_enum(Context *cnt, MirType *type);
+
+static void
+init_llvm_DI_scope(Context *cnt, Scope *scope);
+
 static MirVar *
 create_var(Context *cnt,
            Ast *    decl_node,
@@ -775,13 +805,6 @@ ast_expr_unary(Context *cnt, Ast *unop);
 
 static MirInstr *
 ast_expr_compound(Context *cnt, Ast *cmp);
-
-/* this will also set size and alignment of the type */
-static void
-init_type_llvm_ABI(Context *cnt, MirType *type);
-
-static void
-init_type_llvm_DI(Context *cnt, MirType *type);
 
 /* analyze */
 static void
@@ -1924,13 +1947,12 @@ create_type_type(Context *cnt)
 {
 	MirType *tmp = NULL;
 	if (create_type(cnt, &tmp, builtin_ids[MIR_BUILTIN_ID_TYPE_TYPE].str)) {
-		tmp->kind    = MIR_TYPE_TYPE;
-		tmp->user_id = &builtin_ids[MIR_BUILTIN_ID_TYPE_TYPE];
-
-		// TODO: replace with custom method
-		// TODO: replace with custom method
-		// TODO: replace with custom method
-		init_type_llvm_ABI(cnt, tmp);
+		/* NOTE: TypeType has no LLVM representation */
+		tmp->kind             = MIR_TYPE_TYPE;
+		tmp->user_id          = &builtin_ids[MIR_BUILTIN_ID_TYPE_TYPE];
+		tmp->alignment        = __alignof(MirType *);
+		tmp->size_bits        = sizeof(MirType *) * 8;
+		tmp->store_size_bytes = sizeof(MirType *);
 	}
 	return tmp;
 }
@@ -1944,8 +1966,8 @@ create_type_null(Context *cnt, MirType *base_type)
 		tmp->kind                = MIR_TYPE_NULL;
 		tmp->user_id             = &builtin_ids[MIR_BUILTIN_ID_NULL];
 		tmp->data.null.base_type = base_type;
-		init_type_llvm_ABI(cnt, tmp);
-		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
+
+		init_llvm_type_null(cnt, tmp);
 	}
 	return tmp;
 }
@@ -1958,11 +1980,7 @@ create_type_void(Context *cnt)
 		tmp->kind    = MIR_TYPE_VOID;
 		tmp->user_id = &builtin_ids[MIR_BUILTIN_ID_TYPE_VOID];
 
-		// TODO: replace with custom method
-		// TODO: replace with custom method
-		// TODO: replace with custom method
-		init_type_llvm_ABI(cnt, tmp);
-		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
+		init_llvm_type_void(cnt, tmp);
 	}
 	return tmp;
 }
@@ -1975,11 +1993,7 @@ create_type_bool(Context *cnt)
 		tmp->kind    = MIR_TYPE_BOOL;
 		tmp->user_id = &builtin_ids[MIR_BUILTIN_ID_TYPE_BOOL];
 
-		// TODO: replace with custom method
-		// TODO: replace with custom method
-		// TODO: replace with custom method
-		init_type_llvm_ABI(cnt, tmp);
-		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
+		init_llvm_type_bool(cnt, tmp);
 	}
 	return tmp;
 }
@@ -2011,11 +2025,7 @@ create_type_real(Context *cnt, ID *id, int32_t bitcount)
 		tmp->user_id            = id;
 		tmp->data.real.bitcount = bitcount;
 
-		// TODO: replace with custom method
-		// TODO: replace with custom method
-		// TODO: replace with custom method
-		init_type_llvm_ABI(cnt, tmp);
-		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
+		init_llvm_type_real(cnt, tmp);
 	}
 	return tmp;
 }
@@ -2028,11 +2038,7 @@ create_type_ptr(Context *cnt, MirType *src_type)
 		tmp->kind          = MIR_TYPE_PTR;
 		tmp->data.ptr.expr = src_type;
 
-		// TODO: replace with custom method
-		// TODO: replace with custom method
-		// TODO: replace with custom method
-		init_type_llvm_ABI(cnt, tmp);
-		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
+		init_llvm_type_ptr(cnt, tmp);
 	}
 
 	return tmp;
@@ -2048,11 +2054,7 @@ create_type_fn(Context *cnt, MirType *ret_type, SmallArray_Type *arg_types, bool
 		tmp->data.fn.is_vargs  = is_vargs;
 		tmp->data.fn.ret_type  = ret_type ? ret_type : cnt->builtin_types.entry_void;
 
-		// TODO: replace with custom method
-		// TODO: replace with custom method
-		// TODO: replace with custom method
-		init_type_llvm_ABI(cnt, tmp);
-		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
+		init_llvm_type_fn(cnt, tmp);
 	}
 
 	return tmp;
@@ -2067,11 +2069,7 @@ create_type_array(Context *cnt, MirType *elem_type, size_t len)
 		tmp->data.array.elem_type = elem_type;
 		tmp->data.array.len       = len;
 
-		// TODO: replace with custom method
-		// TODO: replace with custom method
-		// TODO: replace with custom method
-		init_type_llvm_ABI(cnt, tmp);
-		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
+		init_llvm_type_array(cnt, tmp);
 	}
 
 	return tmp;
@@ -2094,11 +2092,7 @@ create_type_struct(Context *          cnt,
 		tmp->data.strct.is_packed = is_packed;
 		tmp->user_id              = id;
 
-		// TODO: replace with custom method
-		// TODO: replace with custom method
-		// TODO: replace with custom method
-		init_type_llvm_ABI(cnt, tmp);
-		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
+		init_llvm_type_struct(cnt, tmp);
 	}
 
 	return tmp;
@@ -2146,7 +2140,10 @@ create_type_string(Context *cnt)
 	SmallArray_Member *members = create_sarr(SmallArray_Member, cnt->assembly);
 
 	/* Slice layout struct { usize, *T } */
-	Scope *body_scope = scope_create(&cnt->assembly->arenas.scope, SCOPE_TYPE, NULL, 2, NULL);
+	Scope *body_scope = scope_create(
+	    &cnt->assembly->arenas.scope, SCOPE_TYPE_STRUCT, cnt->assembly->gscope, 2, NULL);
+
+	if (cnt->debug_mode) init_llvm_DI_scope(cnt, body_scope);
 
 	MirMember *tmp;
 	tmp = create_member(cnt,
@@ -2154,7 +2151,8 @@ create_type_string(Context *cnt)
 	                    &builtin_ids[MIR_BUILTIN_ID_ARR_LEN],
 	                    body_scope,
 	                    0,
-	                    cnt->builtin_types.entry_usize); // TODO
+	                    cnt->builtin_types.entry_usize);
+
 	sa_push_Member(members, tmp);
 	provide_builtin_member(cnt, body_scope, tmp);
 
@@ -2163,7 +2161,7 @@ create_type_string(Context *cnt)
 	                    &builtin_ids[MIR_BUILTIN_ID_ARR_PTR],
 	                    body_scope,
 	                    1,
-	                    cnt->builtin_types.entry_u8_ptr); // TODO
+	                    cnt->builtin_types.entry_u8_ptr);
 
 	sa_push_Member(members, tmp);
 	provide_builtin_member(cnt, body_scope, tmp);
@@ -2191,8 +2189,8 @@ create_type_enum(Context *           cnt,
 		tmp->data.enm.base_type = base_type;
 		tmp->data.enm.variants  = variants;
 		tmp->user_id            = id;
-		init_type_llvm_ABI(cnt, tmp);
-		if (cnt->debug_mode) init_type_llvm_DI(cnt, tmp);
+
+		init_llvm_type_enum(cnt, tmp);
 	}
 
 	return tmp;
@@ -2207,6 +2205,7 @@ init_llvm_type_int(Context *cnt, MirType *type)
 	type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
 	type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
 
+	/*** DI ***/
 	if (!cnt->debug_mode) return;
 
 	const char *    name = type->user_id ? type->user_id->str : type->id.str;
@@ -2226,6 +2225,373 @@ init_llvm_type_int(Context *cnt, MirType *type)
 
 	type->llvm_meta = llvm_di_create_basic_type(
 	    cnt->analyze.llvm_di_builder, name, type->size_bits, encoding);
+}
+
+void
+init_llvm_type_real(Context *cnt, MirType *type)
+{
+	if (type->data.real.bitcount == 32)
+		type->llvm_type = LLVMFloatTypeInContext(cnt->assembly->llvm.cnt);
+	else if (type->data.real.bitcount == 64)
+		type->llvm_type = LLVMDoubleTypeInContext(cnt->assembly->llvm.cnt);
+	else
+		bl_abort("invalid floating point type");
+
+	type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
+	type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
+	type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
+
+	/*** DI ***/
+	if (!cnt->debug_mode) return;
+
+	const char *name = type->user_id ? type->user_id->str : type->id.str;
+
+	type->llvm_meta = llvm_di_create_basic_type(
+	    cnt->analyze.llvm_di_builder, name, type->size_bits, DW_ATE_float);
+}
+
+void
+init_llvm_type_ptr(Context *cnt, MirType *type)
+{
+	MirType *tmp = mir_deref_type(type);
+	/* Pointer to Type has no LLVM representation and cannot not be generated into IR.*/
+	if (tmp->kind == MIR_TYPE_TYPE) return;
+
+	assert(tmp);
+	assert(tmp->llvm_type);
+	type->llvm_type        = LLVMPointerType(tmp->llvm_type, 0);
+	type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
+	type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
+	type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
+
+	/*** DI ***/
+	if (!cnt->debug_mode) return;
+
+	const char *name = type->user_id ? type->user_id->str : type->id.str;
+	type->llvm_meta  = llvm_di_create_pointer_type(cnt->analyze.llvm_di_builder,
+                                                      tmp->llvm_meta,
+                                                      type->size_bits,
+                                                      type->alignment * 8,
+                                                      name);
+}
+
+void
+init_llvm_type_void(Context *cnt, MirType *type)
+{
+	type->alignment        = 0;
+	type->size_bits        = 0;
+	type->store_size_bytes = 0;
+	type->llvm_type        = LLVMVoidTypeInContext(cnt->assembly->llvm.cnt);
+
+	/*** DI ***/
+	if (!cnt->debug_mode) return;
+
+	type->llvm_meta = llvm_di_create_basic_type(
+	    cnt->analyze.llvm_di_builder, "void", 8, DW_ATE_unsigned_char);
+}
+
+void
+init_llvm_type_null(Context *cnt, MirType *type)
+{
+	MirType *tmp = type->data.null.base_type;
+	assert(tmp);
+	assert(tmp->llvm_type);
+	type->llvm_type        = tmp->llvm_type;
+	type->alignment        = tmp->alignment;
+	type->size_bits        = tmp->size_bits;
+	type->store_size_bytes = tmp->store_size_bytes;
+
+	/*** DI ***/
+	if (!cnt->debug_mode) return;
+	type->llvm_meta = llvm_di_create_null_type(cnt->analyze.llvm_di_builder);
+}
+
+void
+init_llvm_type_bool(Context *cnt, MirType *type)
+{
+	type->llvm_type        = LLVMIntTypeInContext(cnt->assembly->llvm.cnt, 1);
+	type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
+	type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
+	type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
+
+	/*** DI ***/
+	if (!cnt->debug_mode) return;
+
+	const char *name = type->user_id ? type->user_id->str : type->id.str;
+	type->llvm_meta =
+	    llvm_di_create_basic_type(cnt->analyze.llvm_di_builder, name, 8, DW_ATE_boolean);
+}
+
+void
+init_llvm_type_fn(Context *cnt, MirType *type)
+{
+	MirType *tmp_ret = type->data.fn.ret_type;
+	if (tmp_ret->kind == MIR_TYPE_TYPE) {
+		return;
+	}
+
+	SmallArray_Type *arg_types = type->data.fn.arg_types;
+	size_t           argc      = arg_types ? arg_types->size : 0;
+
+	SmallArray_LLVMType llvm_args;
+	sa_init(&llvm_args);
+	LLVMTypeRef llvm_ret = NULL;
+
+	if (argc) {
+		MirType *tmp_arg;
+		sarray_foreach(arg_types, tmp_arg)
+		{
+			assert(tmp_arg->llvm_type);
+			sa_push_LLVMType(&llvm_args, tmp_arg->llvm_type);
+		}
+	}
+
+	llvm_ret = tmp_ret ? tmp_ret->llvm_type : LLVMVoidTypeInContext(cnt->assembly->llvm.cnt);
+	assert(llvm_ret);
+
+	type->llvm_type = LLVMFunctionType(llvm_ret, llvm_args.data, (unsigned int)argc, false);
+	type->alignment = __alignof(MirFn *);
+	type->size_bits = sizeof(MirFn *) * 8;
+	type->store_size_bytes = sizeof(MirFn *);
+
+	sa_terminate(&llvm_args);
+
+	/*** DI ***/
+	if (!cnt->debug_mode) return;
+	SmallArray_LLVMMetadata params;
+	sa_init(&params);
+
+	/* return type is first */
+	sa_push_LLVMMetadata(&params, type->data.fn.ret_type->llvm_meta);
+
+	if (type->data.fn.arg_types) {
+		MirType *it;
+		sarray_foreach(type->data.fn.arg_types, it)
+		    sa_push_LLVMMetadata(&params, it->llvm_meta);
+	}
+
+	type->llvm_meta =
+	    llvm_di_create_function_type(cnt->analyze.llvm_di_builder, params.data, params.size);
+
+	sa_terminate(&params);
+}
+
+void
+init_llvm_type_array(Context *cnt, MirType *type)
+{
+	LLVMTypeRef llvm_elem_type = type->data.array.elem_type->llvm_type;
+	assert(llvm_elem_type);
+	const unsigned int len = (const unsigned int)type->data.array.len;
+
+	type->llvm_type        = LLVMArrayType(llvm_elem_type, len);
+	type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
+	type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
+	type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
+
+	/*** DI ***/
+	if (!cnt->debug_mode) return;
+	type->llvm_meta = llvm_di_create_array_type(cnt->analyze.llvm_di_builder,
+	                                            type->size_bits,
+	                                            type->alignment * 8,
+	                                            type->data.array.elem_type->llvm_meta,
+	                                            type->data.array.len);
+}
+
+void
+init_llvm_type_struct(Context *cnt, MirType *type)
+{
+	SmallArray_Member *members = type->data.strct.members;
+	assert(members);
+
+	const bool   is_packed = type->data.strct.is_packed;
+	const size_t memc      = members->size;
+	assert(memc > 0);
+	SmallArray_LLVMType llvm_members;
+	sa_init(&llvm_members);
+
+	{
+		MirMember *tmp;
+		sarray_foreach(members, tmp)
+		{
+			assert(tmp->type->llvm_type);
+			sa_push_LLVMType(&llvm_members, tmp->type->llvm_type);
+		}
+	}
+
+	/* named structure type */
+	if (type->user_id) {
+		type->llvm_type =
+		    LLVMStructCreateNamed(cnt->assembly->llvm.cnt, type->user_id->str);
+		LLVMStructSetBody(
+		    type->llvm_type, llvm_members.data, (unsigned long)memc, is_packed);
+	} else {
+		type->llvm_type = LLVMStructTypeInContext(
+		    cnt->assembly->llvm.cnt, llvm_members.data, (unsigned long)memc, is_packed);
+	}
+
+	type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
+	type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
+	type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
+
+	sa_terminate(&llvm_members);
+
+	/*** DI ***/
+	if (!cnt->debug_mode) return;
+	/* HACK: remove when anonymous structures will have metadata for scope!!! */
+	/* HACK: remove when anonymous structures will have metadata for scope!!! */
+	/* HACK: remove when anonymous structures will have metadata for scope!!! */
+	if (!type->data.strct.scope) goto HACK;
+	if (!type->data.strct.scope->llvm_di_meta) goto HACK;
+
+	const bool      is_implicit = !type->data.strct.scope->location;
+	LLVMMetadataRef llvm_file;
+	unsigned        struct_line;
+
+	if (is_implicit) {
+		struct_line = 0;
+		llvm_file   = cnt->assembly->gscope->llvm_di_meta;
+	} else {
+		Location *location = type->data.strct.scope->location;
+		llvm_file          = location->unit->llvm_file_meta;
+		struct_line        = location->line;
+	}
+
+	LLVMMetadataRef llvm_scope  = type->data.strct.scope->llvm_di_meta;
+	const char *    struct_name = type->user_id ? type->user_id->str : type->id.str;
+
+	SmallArray_LLVMMetadata llvm_elems;
+	sa_init(&llvm_elems);
+
+	MirMember *elem;
+	sarray_foreach(type->data.strct.members, elem)
+	{
+		unsigned        elem_line = elem->decl_node ? elem->decl_node->location->line : 0;
+		LLVMMetadataRef llvm_elem =
+		    llvm_di_create_member_type(cnt->analyze.llvm_di_builder,
+		                               llvm_scope,
+		                               elem->id->str,
+		                               llvm_file,
+		                               elem_line,
+		                               elem->type->size_bits,
+		                               elem->type->alignment * 8,
+		                               get_struct_elem_offest(cnt, type, i) * 8,
+		                               elem->type->llvm_meta);
+
+		sa_push_LLVMMetadata(&llvm_elems, llvm_elem);
+	}
+
+	LLVMMetadataRef llvm_struct =
+	    llvm_di_create_struct_type(cnt->analyze.llvm_di_builder,
+	                               type->data.strct.scope->parent->llvm_di_meta,
+	                               struct_name,
+	                               llvm_file,
+	                               struct_line,
+	                               type->size_bits,
+	                               type->alignment * 8,
+	                               llvm_elems.data,
+	                               llvm_elems.size);
+
+	type->llvm_meta = llvm_di_replace_temporary(
+	    cnt->analyze.llvm_di_builder, type->data.strct.scope->llvm_di_meta, llvm_struct);
+
+	sa_terminate(&llvm_elems);
+	return;
+
+HACK:
+	type->llvm_meta = llvm_di_create_basic_type(
+	    cnt->analyze.llvm_di_builder, "<MISSING DI>", 8, DW_ATE_unsigned_char);
+}
+
+void
+init_llvm_type_enum(Context *cnt, MirType *type)
+{
+	MirType *base_type = type->data.enm.base_type;
+	assert(base_type->kind == MIR_TYPE_INT);
+	LLVMTypeRef llvm_base_type = base_type->llvm_type;
+	assert(llvm_base_type);
+
+	type->llvm_type        = llvm_base_type;
+	type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
+	type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
+	type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
+
+	/*** DI ***/
+	if (!cnt->debug_mode) return;
+	const char *name = type->user_id ? type->user_id->str : type->id.str;
+
+	SmallArray_LLVMMetadata llvm_elems;
+	sa_init(&llvm_elems);
+
+	MirVariant *variant;
+	sarray_foreach(type->data.enm.variants, variant)
+	{
+		LLVMMetadataRef llvm_variant =
+		    llvm_di_create_enum_variant(cnt->analyze.llvm_di_builder,
+		                                variant->id->str,
+		                                variant->value->data.v_u64,
+		                                !base_type->data.integer.is_signed);
+
+		sa_push_LLVMMetadata(&llvm_elems, llvm_variant);
+	}
+
+	LLVMMetadataRef llvm_type =
+	    llvm_di_create_enum_type(cnt->analyze.llvm_di_builder,
+	                             type->data.enm.scope->parent->llvm_di_meta,
+	                             name,
+	                             type->data.enm.scope->location->unit->llvm_file_meta,
+	                             type->data.enm.scope->location->line,
+	                             type->size_bits,
+	                             type->alignment * 8,
+	                             llvm_elems.data,
+	                             llvm_elems.size,
+	                             base_type->llvm_meta);
+
+	type->llvm_meta = llvm_di_replace_temporary(
+	    cnt->analyze.llvm_di_builder, type->data.enm.scope->llvm_di_meta, llvm_type);
+	sa_terminate(&llvm_elems);
+}
+
+void
+init_llvm_DI_scope(Context *cnt, Scope *scope)
+{
+	switch (scope->kind) {
+	case SCOPE_LEXICAL: {
+		assert(scope->location);
+		LLVMMetadataRef llvm_parent_scope = scope->parent->llvm_di_meta;
+		LLVMMetadataRef llvm_unit         = scope->location->unit->llvm_file_meta;
+
+		assert(llvm_parent_scope);
+		assert(llvm_unit);
+
+		scope->llvm_di_meta = llvm_di_create_lexical_scope(cnt->analyze.llvm_di_builder,
+		                                                   llvm_parent_scope,
+		                                                   llvm_unit,
+		                                                   scope->location->line,
+		                                                   scope->location->col);
+		break;
+	}
+
+	case SCOPE_FN: {
+		scope->llvm_di_meta = llvm_di_create_fn_fwd_decl(
+		    cnt->analyze.llvm_di_builder, NULL, "", "", NULL, 0, NULL, 0);
+		break;
+	}
+
+	case SCOPE_TYPE_STRUCT: {
+		scope->llvm_di_meta = llvm_di_create_replecable_composite_type(
+		    cnt->analyze.llvm_di_builder, DW_TAG_structure_type, "", NULL, NULL, 0);
+		break;
+	}
+
+	case SCOPE_TYPE_ENUM: {
+		scope->llvm_di_meta = llvm_di_create_replecable_composite_type(
+		    cnt->analyze.llvm_di_builder, DW_TAG_enumeration_type, "", NULL, NULL, 0);
+		break;
+	}
+
+	default:
+		bl_abort("unsuported scope type for DI generation");
+	}
 }
 
 static inline void
@@ -3207,252 +3573,6 @@ create_instr_vargs_impl(Context *cnt, MirType *type, SmallArray_Instr *values)
 	tmp->values        = values;
 
 	return &tmp->base;
-}
-
-/* LLVM */
-void
-init_type_llvm_ABI(Context *cnt, MirType *type)
-{
-	if (!type) return;
-
-	switch (type->kind) {
-	case MIR_TYPE_TYPE: {
-		type->alignment        = __alignof(MirType *);
-		type->size_bits        = sizeof(MirType *) * 8;
-		type->store_size_bytes = sizeof(MirType *);
-
-		break;
-	}
-
-	case MIR_TYPE_NULL: {
-		MirType *tmp = type->data.null.base_type;
-		assert(tmp);
-		assert(tmp->llvm_type);
-		type->llvm_type        = tmp->llvm_type;
-		type->alignment        = tmp->alignment;
-		type->size_bits        = tmp->size_bits;
-		type->store_size_bytes = tmp->store_size_bytes;
-
-		break;
-	}
-
-	case MIR_TYPE_VOID: {
-		type->alignment        = 0;
-		type->size_bits        = 0;
-		type->store_size_bytes = 0;
-		type->llvm_type        = LLVMVoidTypeInContext(cnt->assembly->llvm.cnt);
-
-		break;
-	}
-
-	case MIR_TYPE_REAL: {
-		if (type->data.real.bitcount == 32)
-			type->llvm_type = LLVMFloatTypeInContext(cnt->assembly->llvm.cnt);
-		else if (type->data.real.bitcount == 64)
-			type->llvm_type = LLVMDoubleTypeInContext(cnt->assembly->llvm.cnt);
-		else
-			bl_abort("invalid floating point type");
-
-		type->size_bits = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
-		type->store_size_bytes =
-		    LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
-		type->alignment = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
-
-		break;
-	}
-
-	case MIR_TYPE_BOOL: {
-		type->llvm_type = LLVMIntTypeInContext(cnt->assembly->llvm.cnt, 1);
-		type->size_bits = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
-		type->store_size_bytes =
-		    LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
-		type->alignment = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
-		break;
-	}
-
-	case MIR_TYPE_PTR: {
-		MirType *tmp = mir_deref_type(type);
-		if (tmp->kind == MIR_TYPE_TYPE) break;
-		assert(tmp);
-		assert(tmp->llvm_type);
-		type->llvm_type = LLVMPointerType(tmp->llvm_type, 0);
-		type->size_bits = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
-		type->store_size_bytes =
-		    LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
-		type->alignment = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
-		break;
-	}
-
-	case MIR_TYPE_FN: {
-		MirType *tmp_ret = type->data.fn.ret_type;
-		if (tmp_ret->kind == MIR_TYPE_TYPE) {
-			break;
-		}
-
-		SmallArray_Type *arg_types = type->data.fn.arg_types;
-		size_t           argc      = arg_types ? arg_types->size : 0;
-
-		SmallArray_LLVMType llvm_args;
-		sa_init(&llvm_args);
-		LLVMTypeRef llvm_ret = NULL;
-
-		if (argc) {
-			MirType *tmp_arg;
-			sarray_foreach(arg_types, tmp_arg)
-			{
-				assert(tmp_arg->llvm_type);
-				sa_push_LLVMType(&llvm_args, tmp_arg->llvm_type);
-			}
-		}
-
-		llvm_ret =
-		    tmp_ret ? tmp_ret->llvm_type : LLVMVoidTypeInContext(cnt->assembly->llvm.cnt);
-		assert(llvm_ret);
-
-		type->llvm_type =
-		    LLVMFunctionType(llvm_ret, llvm_args.data, (unsigned int)argc, false);
-		type->alignment        = __alignof(MirFn *);
-		type->size_bits        = sizeof(MirFn *) * 8;
-		type->store_size_bytes = sizeof(MirFn *);
-
-		sa_terminate(&llvm_args);
-		break;
-	}
-
-	case MIR_TYPE_ARRAY: {
-		LLVMTypeRef llvm_elem_type = type->data.array.elem_type->llvm_type;
-		assert(llvm_elem_type);
-		const unsigned int len = (const unsigned int)type->data.array.len;
-
-		type->llvm_type = LLVMArrayType(llvm_elem_type, len);
-		type->size_bits = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
-		type->store_size_bytes =
-		    LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
-		type->alignment = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
-		break;
-	}
-
-	case MIR_TYPE_SLICE:
-	case MIR_TYPE_STRING:
-	case MIR_TYPE_VARGS:
-	case MIR_TYPE_STRUCT: {
-		SmallArray_Member *members = type->data.strct.members;
-		assert(members);
-
-		const bool   is_packed = type->data.strct.is_packed;
-		const size_t memc      = members->size;
-		assert(memc > 0);
-		SmallArray_LLVMType llvm_members;
-		sa_init(&llvm_members);
-
-		{
-			MirMember *tmp;
-			sarray_foreach(members, tmp)
-			{
-				assert(tmp->type->llvm_type);
-				sa_push_LLVMType(&llvm_members, tmp->type->llvm_type);
-			}
-		}
-
-		/* named structure type */
-		if (type->user_id) {
-			type->llvm_type =
-			    LLVMStructCreateNamed(cnt->assembly->llvm.cnt, type->user_id->str);
-			LLVMStructSetBody(
-			    type->llvm_type, llvm_members.data, (unsigned long)memc, is_packed);
-		} else {
-			type->llvm_type = LLVMStructTypeInContext(cnt->assembly->llvm.cnt,
-			                                          llvm_members.data,
-			                                          (unsigned long)memc,
-			                                          is_packed);
-		}
-		type->size_bits = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
-		type->store_size_bytes =
-		    LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
-		type->alignment = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
-
-		sa_terminate(&llvm_members);
-		break;
-	}
-
-	case MIR_TYPE_ENUM: {
-		LLVMTypeRef llvm_base_type = type->data.enm.base_type->llvm_type;
-		assert(llvm_base_type);
-
-		type->llvm_type = llvm_base_type;
-		type->size_bits = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
-		type->store_size_bytes =
-		    LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
-		type->alignment = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
-		break;
-	}
-
-	default:
-		bl_unimplemented;
-	}
-}
-
-void
-init_type_llvm_DI(Context *cnt, MirType *type)
-{
-	assert(type);
-
-	const char *   name = type->user_id ? type->user_id->str : type->id.str;
-	const unsigned size = type->size_bits;
-
-	switch (type->kind) {
-	case MIR_TYPE_REAL: {
-		type->llvm_meta = llvm_di_create_basic_type(
-		    cnt->analyze.llvm_di_builder, name, size, DW_ATE_float);
-		return;
-	}
-
-	case MIR_TYPE_BOOL: {
-		type->llvm_meta = llvm_di_create_basic_type(
-		    cnt->analyze.llvm_di_builder, name, size, DW_ATE_unsigned_char);
-		return;
-	}
-
-	case MIR_TYPE_VOID: {
-		type->llvm_meta = llvm_di_create_basic_type(
-		    cnt->analyze.llvm_di_builder, name, 8, DW_ATE_unsigned_char);
-		return;
-	}
-
-	case MIR_TYPE_ARRAY: {
-		type->llvm_meta = llvm_di_create_array_type(cnt->analyze.llvm_di_builder,
-		                                            size,
-		                                            type->alignment * 8,
-		                                            type->data.array.elem_type->llvm_meta,
-		                                            type->data.array.len);
-		return;
-	}
-
-	case MIR_TYPE_FN: {
-		SmallArray_LLVMMetadata params;
-		sa_init(&params);
-
-		/* return type is first */
-		sa_push_LLVMMetadata(&params, type->data.fn.ret_type->llvm_meta);
-
-		if (type->data.fn.arg_types) {
-			MirType *it;
-			sarray_foreach(type->data.fn.arg_types, it)
-			    sa_push_LLVMMetadata(&params, it->llvm_meta);
-		}
-
-		type->llvm_meta = llvm_di_create_function_type(
-		    cnt->analyze.llvm_di_builder, params.data, params.size);
-
-		sa_terminate(&params);
-		return;
-	}
-
-	default:
-		type->llvm_meta = llvm_di_create_basic_type(
-		    cnt->analyze.llvm_di_builder, name, 8, DW_ATE_unsigned_char);
-		break;
-	}
 }
 
 /* analyze */
@@ -7674,6 +7794,8 @@ ast_ublock(Context *cnt, Ast *ublock)
 void
 ast_block(Context *cnt, Ast *block)
 {
+	if (cnt->debug_mode) init_llvm_DI_scope(cnt, block->parent_scope);
+
 	Ast *tmp;
 	barray_foreach(block->data.block.nodes, tmp) ast(cnt, tmp);
 }
@@ -8512,6 +8634,7 @@ ast_type_enum(Context *cnt, Ast *type_enum)
 
 	Scope *scope = type_enum->data.type_enm.scope;
 	assert(scope);
+	if (cnt->debug_mode) init_llvm_DI_scope(cnt, scope);
 
 	SmallArray_Instr *variants = create_sarr(SmallArray_Instr, cnt->assembly);
 
@@ -8567,6 +8690,8 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 
 	Scope *scope = type_struct->data.type_strct.scope;
 	assert(scope);
+
+	if (cnt->debug_mode) init_llvm_DI_scope(cnt, scope);
 
 	/* Consume declaration identificator. */
 	ID *id                     = cnt->ast.current_entity_id;

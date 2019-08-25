@@ -79,7 +79,8 @@ typedef enum ScopeKind {
 	SCOPE_PRIVATE,
 	SCOPE_FN,
 	SCOPE_LEXICAL,
-	SCOPE_TYPE,
+	SCOPE_TYPE_STRUCT,
+	SCOPE_TYPE_ENUM,
 } ScopeKind;
 
 typedef struct Scope {

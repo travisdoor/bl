@@ -50,6 +50,14 @@ typedef enum {
 	DW_ATE_unsigned_char = 8,
 } DW_ATE_Encoding;
 
+typedef enum {
+#define HANDLE_DW_TAG(ID, NAME, VERSION, VENDOR) DW_TAG_##NAME = ID,
+#include "llvm/BinaryFormat/Dwarf.def"
+	DW_TAG_lo_user   = 0x4080,
+	DW_TAG_hi_user   = 0xffff,
+	DW_TAG_user_base = 0x1000 ///< Recommended base for user tags.
+} DW_TAG;
+
 void
 llvm_add_module_flag_int(LLVMModuleRef          module_ref,
                          LLVMModuleFlagBehavior behavior,
@@ -111,7 +119,9 @@ llvm_di_create_auto_variable(LLVMDIBuilderRef builder_ref,
                              LLVMMetadataRef  type_ref);
 
 LLVMMetadataRef
-llvm_di_replace_fn(LLVMDIBuilderRef builder_ref, LLVMMetadataRef temp_ref, LLVMMetadataRef fn_ref);
+llvm_di_replace_temporary(LLVMDIBuilderRef builder_ref,
+                          LLVMMetadataRef  temp_ref,
+                          LLVMMetadataRef  replacement_ref);
 
 void
 llvm_di_set_current_location(LLVMBuilderRef  builder_ref,
@@ -122,6 +132,14 @@ llvm_di_set_current_location(LLVMBuilderRef  builder_ref,
 
 void
 llvm_di_reset_current_location(LLVMBuilderRef builder_ref);
+
+LLVMMetadataRef
+llvm_di_create_replecable_composite_type(LLVMDIBuilderRef builder_ref,
+                                         DW_TAG           tag,
+                                         const char *     name,
+                                         LLVMMetadataRef  scope_ref,
+                                         LLVMMetadataRef  file_ref,
+                                         unsigned         line);
 
 LLVMMetadataRef
 llvm_di_create_basic_type(LLVMDIBuilderRef builder_ref,
@@ -135,11 +153,61 @@ llvm_di_create_function_type(LLVMDIBuilderRef builder_ref,
                              unsigned         paramsc);
 
 LLVMMetadataRef
+llvm_di_create_pointer_type(LLVMDIBuilderRef builder_ref,
+                            LLVMMetadataRef  pointee_type_ref,
+                            uint64_t         size_in_bits,
+                            uint32_t         align_in_bits,
+                            const char *     name);
+
+LLVMMetadataRef
 llvm_di_create_array_type(LLVMDIBuilderRef builder_ref,
                           uint64_t         size_in_bits,
                           uint32_t         align_in_bits,
                           LLVMMetadataRef  type_ref,
                           uint64_t         elem_count);
+
+LLVMMetadataRef
+llvm_di_create_enum_type(LLVMDIBuilderRef builder_ref,
+                         LLVMMetadataRef  scope_ref,
+                         const char *     name,
+                         LLVMMetadataRef  file_ref,
+                         unsigned         line,
+                         uint64_t         size_in_bits,
+                         uint32_t         align_in_bits,
+                         LLVMMetadataRef *elems,
+                         size_t           elemsc,
+                         LLVMMetadataRef  type_ref);
+
+LLVMMetadataRef
+llvm_di_create_enum_variant(LLVMDIBuilderRef builder_ref,
+                            const char *     name,
+                            uint64_t         val,
+                            bool             is_unsigned);
+
+LLVMMetadataRef
+llvm_di_create_null_type(LLVMDIBuilderRef builder_ref);
+
+LLVMMetadataRef
+llvm_di_create_struct_type(LLVMDIBuilderRef builder_ref,
+                           LLVMMetadataRef  scope_ref,
+                           const char *     name,
+                           LLVMMetadataRef  file_ref,
+                           unsigned         line,
+                           uint64_t         size_in_bits,
+                           uint32_t         align_in_bits,
+                           LLVMMetadataRef *elems,
+                           uint64_t         elemsc);
+
+LLVMMetadataRef
+llvm_di_create_member_type(LLVMDIBuilderRef builder_ref,
+                           LLVMMetadataRef  scope_ref,
+                           const char *     name,
+                           LLVMMetadataRef  file_ref,
+                           unsigned         line,
+                           uint64_t         size_in_bits,
+                           uint32_t         align_in_bits,
+                           uint64_t         offset_in_bits,
+                           LLVMMetadataRef  type_ref);
 
 void
 llvm_di_set_subprogram(LLVMValueRef fn_ref, LLVMMetadataRef subprogram_ref);

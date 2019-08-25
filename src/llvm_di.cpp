@@ -153,6 +153,22 @@ llvm_di_create_fn_fwd_decl(LLVMDIBuilderRef builder_ref,
 }
 
 LLVMMetadataRef
+llvm_di_create_replecable_composite_type(LLVMDIBuilderRef builder_ref,
+                                         DW_TAG           tag,
+                                         const char *     name,
+                                         LLVMMetadataRef  scope_ref,
+                                         LLVMMetadataRef  file_ref,
+                                         unsigned         line)
+{
+	auto builder = cast(DIBuilder *)(builder_ref);
+
+	auto type = builder->createReplaceableCompositeType(
+	    tag, {name, strlen(name)}, cast(DIScope *)(scope_ref), cast(DIFile *)(file_ref), line);
+
+	return cast(LLVMMetadataRef)(type);
+}
+
+LLVMMetadataRef
 llvm_di_create_fn(LLVMDIBuilderRef builder_ref,
                   LLVMMetadataRef  scope_ref,
                   const char *     name,
@@ -177,12 +193,13 @@ llvm_di_create_fn(LLVMDIBuilderRef builder_ref,
 }
 
 LLVMMetadataRef
-llvm_di_replace_fn(LLVMDIBuilderRef builder_ref, LLVMMetadataRef temp_ref, LLVMMetadataRef fn_ref)
+llvm_di_replace_temporary(LLVMDIBuilderRef builder_ref,
+                          LLVMMetadataRef  temp_ref,
+                          LLVMMetadataRef  replacement_ref)
 {
-	auto builder = cast(DIBuilder *)(builder_ref);
-	auto fn      = cast(DISubprogram *)(fn_ref);
-	auto replaced =
-	    builder->replaceTemporary<DISubprogram>(reinterpret_cast<TempMDNode &&>(temp_ref), fn);
+	auto builder  = cast(DIBuilder *)(builder_ref);
+	auto replaced = builder->replaceTemporary(TempDIType(cast(DIType *)(temp_ref)),
+	                                          cast(DIType *)(replacement_ref));
 	return cast(LLVMMetadataRef)(replaced);
 }
 
@@ -237,13 +254,129 @@ llvm_di_create_array_type(LLVMDIBuilderRef builder_ref,
                           LLVMMetadataRef  type_ref,
                           uint64_t         elem_count)
 {
-	auto                       builder = cast(DIBuilder *)(builder_ref);
+	auto builder = cast(DIBuilder *)(builder_ref);
+
 	SmallVector<Metadata *, 1> subrange;
 	subrange.push_back(builder->getOrCreateSubrange(0, elem_count));
 	auto type = builder->createArrayType(size_in_bits,
 	                                     align_in_bits,
 	                                     cast(DIType *)(type_ref),
 	                                     builder->getOrCreateArray(subrange));
+	return cast(LLVMMetadataRef)(type);
+}
+
+LLVMMetadataRef
+llvm_di_create_enum_type(LLVMDIBuilderRef builder_ref,
+                         LLVMMetadataRef  scope_ref,
+                         const char *     name,
+                         LLVMMetadataRef  file_ref,
+                         unsigned         line,
+                         uint64_t         size_in_bits,
+                         uint32_t         align_in_bits,
+                         LLVMMetadataRef *elems,
+                         size_t           elemsc,
+                         LLVMMetadataRef  type_ref)
+{
+	auto builder = cast(DIBuilder *)(builder_ref);
+	auto type    = builder->createEnumerationType(
+            cast(DIScope *)(scope_ref),
+            {name, strlen(name)},
+            cast(DIFile *)(file_ref),
+            line,
+            size_in_bits,
+            align_in_bits,
+            builder->getOrCreateArray({cast(Metadata **)(elems), elemsc}),
+            cast(DIType *)(type_ref),
+            "",
+            true);
+	return cast(LLVMMetadataRef)(type);
+}
+
+LLVMMetadataRef
+llvm_di_create_enum_variant(LLVMDIBuilderRef builder_ref,
+                            const char *     name,
+                            uint64_t         val,
+                            bool             is_unsigned)
+{
+	auto builder = cast(DIBuilder *)(builder_ref);
+	auto variant = builder->createEnumerator({name, strlen(name)}, val, is_unsigned);
+
+	return cast(LLVMMetadataRef)(variant);
+}
+
+LLVMMetadataRef
+llvm_di_create_pointer_type(LLVMDIBuilderRef builder_ref,
+                            LLVMMetadataRef  pointee_type_ref,
+                            uint64_t         size_in_bits,
+                            uint32_t         align_in_bits,
+                            const char *     name)
+{
+	auto builder = cast(DIBuilder *)(builder_ref);
+	auto type    = builder->createPointerType(cast(DIType *)(pointee_type_ref),
+                                               size_in_bits,
+                                               align_in_bits,
+                                               None,
+                                               {name, strlen(name)});
+
+	return cast(LLVMMetadataRef)(type);
+}
+
+LLVMMetadataRef
+llvm_di_create_null_type(LLVMDIBuilderRef builder_ref)
+{
+	auto builder = cast(DIBuilder *)(builder_ref);
+	auto type    = builder->createNullPtrType();
+	return cast(LLVMMetadataRef)(type);
+}
+
+LLVMMetadataRef
+llvm_di_create_struct_type(LLVMDIBuilderRef builder_ref,
+                           LLVMMetadataRef  scope_ref,
+                           const char *     name,
+                           LLVMMetadataRef  file_ref,
+                           unsigned         line,
+                           uint64_t         size_in_bits,
+                           uint32_t         align_in_bits,
+                           LLVMMetadataRef *elems,
+                           uint64_t         elemsc)
+{
+	auto builder = cast(DIBuilder *)(builder_ref);
+	auto type    = builder->createStructType(
+            cast(DIScope *)(scope_ref),
+            {name, strlen(name)},
+            cast(DIFile *)(file_ref),
+            line,
+            size_in_bits,
+            align_in_bits,
+            DINode::DIFlags::FlagZero,
+            nullptr,
+            builder->getOrCreateArray({cast(Metadata **)(elems), elemsc}));
+
+	return cast(LLVMMetadataRef)(type);
+}
+
+LLVMMetadataRef
+llvm_di_create_member_type(LLVMDIBuilderRef builder_ref,
+                           LLVMMetadataRef  scope_ref,
+                           const char *     name,
+                           LLVMMetadataRef  file_ref,
+                           unsigned         line,
+                           uint64_t         size_in_bits,
+                           uint32_t         align_in_bits,
+                           uint64_t         offset_in_bits,
+                           LLVMMetadataRef  type_ref)
+{
+	auto builder = cast(DIBuilder *)(builder_ref);
+	auto type    = builder->createMemberType(cast(DIScope *)(scope_ref),
+                                              {name, strlen(name)},
+                                              cast(DIFile *)(file_ref),
+                                              line,
+                                              size_in_bits,
+                                              align_in_bits,
+                                              offset_in_bits,
+                                              DINode::DIFlags::FlagZero,
+                                              cast(DIType *)(type_ref));
+
 	return cast(LLVMMetadataRef)(type);
 }
 

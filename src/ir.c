@@ -383,7 +383,7 @@ emit_DI_fn(Context *cnt, MirFn *fn)
 	                                        fn->decl_node->location->line);
 
 	fn->body_scope->llvm_di_meta =
-	    llvm_di_replace_fn(cnt->llvm_di_builder, fn->body_scope->llvm_di_meta, tmp);
+	    llvm_di_replace_temporary(cnt->llvm_di_builder, fn->body_scope->llvm_di_meta, tmp);
 
 	llvm_di_set_subprogram(fn->llvm_value, fn->body_scope->llvm_di_meta);
 }
@@ -1230,6 +1230,8 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 void
 emit_instr_ret(Context *cnt, MirInstrRet *ret)
 {
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &ret->base);
+
 	LLVMValueRef llvm_ret;
 	if (ret->value) {
 		LLVMValueRef llvm_ret_value = fetch_value(cnt, ret->value);
