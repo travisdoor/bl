@@ -1,39 +1,25 @@
 /* playground */
 
 #load "std/print.bl"
-
-Foo :: struct {
-    i: s32,
-    j: bool,
-    k: [2]s32
-};
-
-Enum :: enum {
-    A, B, C
-};
+#load "std/memory.bl"
 
 main :: fn () s32 {
-    i := 10;
-    text := "hello";
+    a := 0;
+    defer {
+        print("So 'a' is %\n", a);
+        print("And this is the last message.\n", a);
+    };
 
-    print("i = %\n", i);
+    a = 20;
 
-    b := true;
-    e := Enum.A;
+    print("Value of 'a' will be printed at the scope end!\n");
 
-    foo : Foo;
-    foo.i = 666;
-    foo.j = true;
-    foo.k[0] = 0;
-    foo.k[1] = 1;
-
-    k: [2]s32;
-    k[0] = 0;
-    k[1] = 1;
-
-    sl := {:[]s32: k.len, k.ptr };
-
-    print("hello world\n", 10);
     return 0;
 };
+
+// expected output:
+// hello
+// 3
+// 2
+// 1
 

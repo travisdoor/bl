@@ -687,6 +687,9 @@ static void
 ast_block(Context *cnt, Ast *block);
 
 static void
+ast_defer_block(Context *cnt, Ast *block);
+
+static void
 ast_stmt_if(Context *cnt, Ast *stmt_if);
 
 static void
@@ -7740,6 +7743,11 @@ ast_block(Context *cnt, Ast *block)
 
 	Ast *tmp;
 	barray_foreach(block->data.block.nodes, tmp) ast(cnt, tmp);
+
+	/* Generate all defers inside this scope block, this operation must be skipped when block
+	 * contains terminal statement (ex.: return); defers must be generated before this terminal,
+	 * so this has been already called. */
+	if (!block->data.block.has_return) ast_defer_block(cnt, block);
 }
 
 void
@@ -7898,8 +7906,24 @@ ast_stmt_continue(Context *cnt, Ast *cont)
 }
 
 void
+ast_defer_block(Context *cnt, Ast *block)
+{
+	SmallArray_Ast *defer_nodes = block->data.block.defer_nodes;
+	if (defer_nodes) {
+		Ast *defer_node;
+		for (size_t i = defer_nodes->size; i-- > 0;) {
+			defer_node = defer_nodes->data[i];
+			ast(cnt, defer_node->data.stmt_defer.expr);
+		}
+	}
+}
+
+void
 ast_stmt_return(Context *cnt, Ast *ret)
 {
+	/* Generate all defers if there are any right before return statement. */
+	ast_defer_block(cnt, ret->data.stmt_return.block);
+
 	MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
 	append_instr_ret(cnt, ret, value, false);
 }
@@ -8780,6 +8804,7 @@ ast(Context *cnt, Ast *node)
 	case AST_LOAD:
 	case AST_LINK:
 	case AST_PRIVATE:
+	case AST_STMT_DEFER:
 		break;
 	default:
 		bl_abort("invalid node %s", ast_get_name(node));

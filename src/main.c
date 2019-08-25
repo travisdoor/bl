@@ -163,7 +163,6 @@ main(int32_t argc, char *argv[])
 			build_flags |= BUILDER_FLAG_FORCE_TEST_LLVM;
 		} else if (arg_is("debug")) {
 			build_flags |= BUILDER_FLAG_DEBUG_BUILD;
-			bl_warning_issue(44);
 		} else if (arg_is("configure")) {
 			configure = true;
 		} else if (arg_is("opt-none")) {

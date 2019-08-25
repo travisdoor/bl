@@ -97,12 +97,12 @@ typedef enum {
 } HashDirective;
 
 typedef struct {
-	Builder *        builder;
-	Assembly *       assembly;
-	Unit *           unit;
-	Arena *          ast_arena;
-	ScopeArenas *    scope_arenas;
-	Tokens *         tokens;
+	Builder *    builder;
+	Assembly *   assembly;
+	Unit *       unit;
+	Arena *      ast_arena;
+	ScopeArenas *scope_arenas;
+	Tokens *     tokens;
 
 	/* tmps */
 	Scope *scope;
@@ -190,6 +190,9 @@ parse_stmt_break(Context *cnt);
 
 static Ast *
 parse_stmt_continue(Context *cnt);
+
+static Ast *
+parse_stmt_defer(Context *cnt);
 
 /* EXPRESSIONS */
 static Ast *
@@ -1145,6 +1148,33 @@ parse_stmt_continue(Context *cnt)
 }
 
 Ast *
+parse_stmt_defer(Context *cnt)
+{
+	Token *tok = tokens_consume_if(cnt->tokens, SYM_DEFER);
+	if (!tok) return NULL;
+
+	Ast *expr = NULL;
+	expr      = parse_block(cnt, true);
+	if (!expr) expr = parse_expr(cnt);
+
+	if (!expr) {
+		parse_error(cnt,
+		            ERR_EXPECTED_EXPR,
+		            tok,
+		            BUILDER_CUR_WORD,
+		            "Expected block or expression after 'defer' statement.");
+
+		Token *tok_err = tokens_peek(cnt->tokens);
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, cnt->scope);
+	}
+
+	Ast *defer = ast_create_node(cnt->ast_arena, AST_STMT_DEFER, tok, cnt->scope);
+	defer->data.stmt_defer.expr = expr;
+
+	return defer;
+}
+
+Ast *
 parse_expr(Context *cnt)
 {
 	return _parse_expr(cnt, 0);
@@ -1536,7 +1566,8 @@ parse_type_enum(Context *cnt)
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok, cnt->scope);
 	}
 
-	Scope *scope = scope_create(cnt->scope_arenas, SCOPE_TYPE_ENUM, cnt->scope, 512, &tok->location);
+	Scope *scope =
+	    scope_create(cnt->scope_arenas, SCOPE_TYPE_ENUM, cnt->scope, 512, &tok->location);
 	enm->data.type_enm.scope = scope;
 	push_scope(cnt, scope);
 
@@ -1749,7 +1780,8 @@ parse_type_struct(Context *cnt)
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_struct, cnt->scope);
 	}
 
-	Scope *scope = scope_create(cnt->scope_arenas, SCOPE_TYPE_STRUCT, cnt->scope, 256, &tok->location);
+	Scope *scope =
+	    scope_create(cnt->scope_arenas, SCOPE_TYPE_STRUCT, cnt->scope, 256, &tok->location);
 	push_scope(cnt, scope);
 
 	Ast *type_struct = ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct, cnt->scope);
@@ -1983,6 +2015,8 @@ NEXT:
 	if ((tmp = parse_stmt_return(cnt))) {
 		if ((tmp)->kind != AST_BAD) parse_semicolon_rq(cnt);
 		bo_array_push_back(block->data.block.nodes, tmp);
+		tmp->data.stmt_return.block  = block;
+		block->data.block.has_return = true;
 		goto NEXT;
 	}
 
@@ -2005,6 +2039,17 @@ NEXT:
 	if ((tmp = parse_stmt_continue(cnt))) {
 		if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
 		bo_array_push_back(block->data.block.nodes, tmp);
+		goto NEXT;
+	}
+
+	if ((tmp = parse_stmt_defer(cnt))) {
+		if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
+		bo_array_push_back(block->data.block.nodes, tmp);
+
+		if (!block->data.block.defer_nodes)
+			block->data.block.defer_nodes = create_sarr(SmallArray_Ast, cnt->assembly);
+		sa_push_Ast(block->data.block.defer_nodes, tmp);
+
 		goto NEXT;
 	}
 
@@ -2088,15 +2133,15 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit)
 {
 	assert(assembly->gscope && "Missing global scope for assembly.");
 
-	Context cnt = {.builder         = builder,
-	               .assembly        = assembly,
-	               .scope           = assembly->gscope,
-	               .unit            = unit,
-	               .ast_arena       = &assembly->arenas.ast,
-	               .scope_arenas    = &assembly->arenas.scope,
-	               .tokens          = &unit->tokens,
-	               .curr_decl       = NULL,
-	               .inside_loop     = false};
+	Context cnt = {.builder      = builder,
+	               .assembly     = assembly,
+	               .scope        = assembly->gscope,
+	               .unit         = unit,
+	               .ast_arena    = &assembly->arenas.ast,
+	               .scope_arenas = &assembly->arenas.scope,
+	               .tokens       = &unit->tokens,
+	               .curr_decl    = NULL,
+	               .inside_loop  = false};
 
 	Ast *root              = ast_create_node(cnt.ast_arena, AST_UBLOCK, NULL, cnt.scope);
 	root->data.ublock.unit = unit;

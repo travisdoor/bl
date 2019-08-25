@@ -17,6 +17,7 @@ sm(LOAD,           "load")
 sm(LINK,           "link")
 sm(TEST,           "test")
 sm(FALSE,          "false")
+sm(DEFER,          "defer")
 sm(BREAK,          "break")\
 sm(EXTERN,         "extern")
 sm(RETURN,         "return")

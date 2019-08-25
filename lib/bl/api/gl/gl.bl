@@ -28,7 +28,28 @@
 
 #link "GL"
 
+/*
+uint32_t GLbitfield
+uint8_t  GLboolean
+int8_t   GLbyte
+float    GLclampf
+uint32_t GLenum
+float    GLfloat
+int32_t  GLint
+int16_t  GLshort
+int32_t  GLsizei
+uint8_t  GLubyte
+uint32_t GLuint
+uint16_t GLushort
+void     GLvoid
+*/
+
 GL_COLOR_BUFFER_BIT :: 0x00004000;
 
-glClearColor :: fn (red: f32, green: f32, blue: f32, alpha: f32) #extern;
-glClear :: fn (mask: u32) #extern;
+glClearColor    :: fn (red: f32, green: f32, blue: f32, alpha: f32) #extern;
+glClear         :: fn (mask: u32) #extern;
+glCreateShader  :: fn (kind: u32) u32 #extern;
+glShaderSource  :: fn (shader: u32, count: s32, str: *u8, lenght: s32) #extern;
+glCompileShader :: fn (shader: u32) #extern;
+glCreateProgram :: fn () u32 #extern;
+glAttachShader  :: fn (program: u32, shader: u32) #extern;

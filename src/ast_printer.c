@@ -126,6 +126,9 @@ static void
 print_stmt_return(Ast *ret, int32_t pad, FILE *stream);
 
 static void
+print_stmt_defer(Ast *defer, int32_t pad, FILE *stream);
+
+static void
 print_decl_entity(Ast *entity, int32_t pad, FILE *stream);
 
 static void
@@ -313,6 +316,13 @@ print_stmt_return(Ast *ret, int32_t pad, FILE *stream)
 {
 	print_head(ret, pad, stream);
 	print_node(ret->data.stmt_return.expr, pad + 1, stream);
+}
+
+void
+print_stmt_defer(Ast *defer, int32_t pad, FILE *stream)
+{
+	print_head(defer, pad, stream);
+	print_node(defer->data.stmt_defer.expr, pad + 1, stream);
 }
 
 void
@@ -606,6 +616,10 @@ print_node(Ast *node, int32_t pad, FILE *stream)
 
 	case AST_STMT_RETURN:
 		print_stmt_return(node, pad, stream);
+		break;
+
+	case AST_STMT_DEFER:
+		print_stmt_defer(node, pad, stream);
 		break;
 
 	case AST_STMT_IF:
