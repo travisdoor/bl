@@ -389,11 +389,8 @@ create_type_enum(Context *           cnt,
                  MirType *           base_type,
                  SmallArray_Variant *variants);
 
-static MirType *
-create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type);
-
-static MirType *
-create_type_vargs(Context *cnt, MirType *elem_ptr_type);
+MirType *
+create_type_struct_special(Context *cnt, MirTypeKind kind, ID *id, MirType *elem_ptr_type);
 
 static void
 init_llvm_type_int(Context *cnt, MirType *type);
@@ -1570,7 +1567,7 @@ provide_builtin_type(Context *cnt, MirType *type)
 static inline void
 provide_builtin_member(Context *cnt, Scope *scope, MirMember *member)
 {
-	ScopeEntry *entry = register_symbol(cnt, NULL, member->id, scope, true, false);
+	ScopeEntry *entry = register_symbol(cnt, NULL, member->id, scope, false, false);
 	if (!entry) return;
 
 	entry->kind        = SCOPE_ENTRY_MEMBER;
@@ -2099,51 +2096,16 @@ create_type_struct(Context *          cnt,
 }
 
 MirType *
-create_type_slice(Context *cnt, ID *id, MirType *elem_ptr_type)
+create_type_struct_special(Context *cnt, MirTypeKind kind, ID *id, MirType *elem_ptr_type)
 {
 	assert(mir_is_pointer_type(elem_ptr_type));
-	SmallArray_Member *members = create_sarr(SmallArray_Member, cnt->assembly);
+	assert(kind == MIR_TYPE_STRING || kind == MIR_TYPE_VARGS || kind == MIR_TYPE_SLICE);
 
-	/* Slice layout struct { usize, *T } */
-
-	MirMember *tmp;
-	tmp = create_member(cnt, NULL, NULL, NULL, 0, cnt->builtin_types.entry_usize); // TODO
-	sa_push_Member(members, tmp);
-
-	tmp = create_member(cnt, NULL, NULL, NULL, 1, elem_ptr_type); // TODO
-	sa_push_Member(members, tmp);
-
-	return create_type_struct(cnt, MIR_TYPE_SLICE, id, NULL, members, false);
-}
-
-MirType *
-create_type_vargs(Context *cnt, MirType *elem_ptr_type)
-{
-	assert(mir_is_pointer_type(elem_ptr_type));
-	SmallArray_Member *members = create_sarr(SmallArray_Member, cnt->assembly);
-
-	/* Slice layout struct { usize, *T } */
-
-	MirMember *tmp;
-	tmp = create_member(cnt, NULL, NULL, NULL, 0, cnt->builtin_types.entry_usize); // TODO
-	sa_push_Member(members, tmp);
-
-	tmp = create_member(cnt, NULL, NULL, NULL, 1, elem_ptr_type); // TODO
-	sa_push_Member(members, tmp);
-
-	return create_type_struct(cnt, MIR_TYPE_VARGS, NULL, NULL, members, false);
-}
-
-MirType *
-create_type_string(Context *cnt)
-{
 	SmallArray_Member *members = create_sarr(SmallArray_Member, cnt->assembly);
 
 	/* Slice layout struct { usize, *T } */
 	Scope *body_scope = scope_create(
 	    &cnt->assembly->arenas.scope, SCOPE_TYPE_STRUCT, cnt->assembly->gscope, 2, NULL);
-
-	if (cnt->debug_mode) init_llvm_DI_scope(cnt, body_scope);
 
 	MirMember *tmp;
 	tmp = create_member(cnt,
@@ -2156,22 +2118,13 @@ create_type_string(Context *cnt)
 	sa_push_Member(members, tmp);
 	provide_builtin_member(cnt, body_scope, tmp);
 
-	tmp = create_member(cnt,
-	                    NULL,
-	                    &builtin_ids[MIR_BUILTIN_ID_ARR_PTR],
-	                    body_scope,
-	                    1,
-	                    cnt->builtin_types.entry_u8_ptr);
+	tmp = create_member(
+	    cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_PTR], body_scope, 1, elem_ptr_type);
 
 	sa_push_Member(members, tmp);
 	provide_builtin_member(cnt, body_scope, tmp);
 
-	return create_type_struct(cnt,
-	                          MIR_TYPE_STRING,
-	                          &builtin_ids[MIR_BUILTIN_ID_TYPE_STRING],
-	                          body_scope,
-	                          members,
-	                          false);
+	return create_type_struct(cnt, kind, id, body_scope, members, false);
 }
 
 MirType *
@@ -2437,11 +2390,9 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 
 	/*** DI ***/
 	if (!cnt->debug_mode) return;
-	/* HACK: remove when anonymous structures will have metadata for scope!!! */
-	/* HACK: remove when anonymous structures will have metadata for scope!!! */
-	/* HACK: remove when anonymous structures will have metadata for scope!!! */
-	if (!type->data.strct.scope) goto HACK;
-	if (!type->data.strct.scope->llvm_di_meta) goto HACK;
+
+	assert(type->data.strct.scope);
+	if (!type->data.strct.scope->llvm_di_meta) init_llvm_DI_scope(cnt, type->data.strct.scope);
 
 	const bool      is_implicit = !type->data.strct.scope->location;
 	LLVMMetadataRef llvm_file;
@@ -2456,8 +2407,30 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 		struct_line        = location->line;
 	}
 
-	LLVMMetadataRef llvm_scope  = type->data.strct.scope->llvm_di_meta;
-	const char *    struct_name = type->user_id ? type->user_id->str : type->id.str;
+	LLVMMetadataRef llvm_scope = type->data.strct.scope->llvm_di_meta;
+	const char *    struct_name;
+	if (type->user_id) {
+		struct_name = type->user_id->str;
+	} else {
+		switch (type->kind) {
+		case MIR_TYPE_STRUCT: {
+			struct_name = "struct";
+			break;
+		}
+
+		case MIR_TYPE_SLICE: {
+			struct_name = "slice";
+			break;
+		}
+
+		case MIR_TYPE_VARGS: {
+			struct_name = "vargs";
+			break;
+		}
+		default:
+			bl_abort("cannot get struct name for DI");
+		}
+	}
 
 	SmallArray_LLVMMetadata llvm_elems;
 	sa_init(&llvm_elems);
@@ -2496,10 +2469,6 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 
 	sa_terminate(&llvm_elems);
 	return;
-
-HACK:
-	type->llvm_meta = llvm_di_create_basic_type(
-	    cnt->analyze.llvm_di_builder, "<MISSING DI>", 8, DW_ATE_unsigned_char);
 }
 
 void
@@ -3900,7 +3869,7 @@ analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 	SmallArray_Instr *values = vargs->values;
 	assert(type && values);
 
-	type = create_type_vargs(cnt, create_type_ptr(cnt, type));
+	type = create_type_struct_special(cnt, MIR_TYPE_VARGS, NULL, create_type_ptr(cnt, type));
 
 	const size_t valc = values->size;
 
@@ -4083,40 +4052,9 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		target_type = mir_deref_type(target_type);
 	}
 
-	/* Slice, string, vargs type */
-	if (target_type->kind == MIR_TYPE_SLICE || target_type->kind == MIR_TYPE_VARGS) {
-		reduce_instr(cnt, member_ptr->target_ptr);
-		/* slice!!! */
-		MirType *len_type = mir_get_struct_elem_type(target_type, MIR_SLICE_LEN_INDEX);
-		MirType *ptr_type = mir_get_struct_elem_type(target_type, MIR_SLICE_PTR_INDEX);
-
-		if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN ||
-		    is_builtin(ast_member_ident, MIR_BUILTIN_ID_ARR_LEN)) {
-			/* .len builtin member of slices */
-			member_ptr->builtin_id           = MIR_BUILTIN_ID_ARR_LEN;
-			member_ptr->base.value.type      = create_type_ptr(cnt, len_type);
-			member_ptr->base.value.addr_mode = target_ptr->value.addr_mode;
-		} else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR ||
-		           is_builtin(ast_member_ident, MIR_BUILTIN_ID_ARR_PTR)) {
-			/* .ptr builtin member of slices */
-			member_ptr->builtin_id           = MIR_BUILTIN_ID_ARR_PTR;
-			member_ptr->base.value.type      = create_type_ptr(cnt, ptr_type);
-			member_ptr->base.value.addr_mode = target_ptr->value.addr_mode;
-		} else {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
-			            ERR_UNKNOWN_SYMBOL,
-			            member_ptr->member_ident->location,
-			            BUILDER_CUR_WORD,
-			            "Unknown slice member.");
-			return ANALYZE_FAILED;
-		}
-
-		return ANALYZE_PASSED;
-	}
-
 	/* struct type */
-	if (target_type->kind == MIR_TYPE_STRUCT || target_type->kind == MIR_TYPE_STRING) {
+	if (target_type->kind == MIR_TYPE_STRUCT || target_type->kind == MIR_TYPE_STRING ||
+	    target_type->kind == MIR_TYPE_SLICE || target_type->kind == MIR_TYPE_VARGS) {
 		reduce_instr(cnt, member_ptr->target_ptr);
 		/* lookup for member inside struct */
 		Scope *     scope = target_type->data.strct.scope;
@@ -4782,7 +4720,7 @@ analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 	assert(elem_type);
 
 	elem_type = create_type_ptr(cnt, elem_type);
-	elem_type = create_type_slice(cnt, id, elem_type);
+	elem_type = create_type_struct_special(cnt, MIR_TYPE_SLICE, id, elem_type);
 
 	{ /* set const pointer value */
 		MirConstPtr *const_ptr = &type_slice->base.value.data.v_ptr;
@@ -4821,7 +4759,7 @@ analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
 	assert(elem_type);
 
 	elem_type = create_type_ptr(cnt, elem_type);
-	elem_type = create_type_vargs(cnt, elem_type);
+	elem_type = create_type_struct_special(cnt, MIR_TYPE_VARGS, NULL, elem_type);
 
 	{ /* set const pointer value */
 		MirConstPtr *const_ptr = &type_vargs->base.value.data.v_ptr;
@@ -6362,8 +6300,8 @@ exec_gen_RTTI_types(Context *cnt)
 		cnt->builtin_types.entry_TypeInfo_ptr =
 		    create_type_ptr(cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO));
 
-		cnt->builtin_types.entry_TypeInfo_slice =
-		    create_type_slice(cnt, NULL, cnt->builtin_types.entry_TypeInfo_ptr);
+		cnt->builtin_types.entry_TypeInfo_slice = create_type_struct_special(
+		    cnt, MIR_TYPE_SLICE, NULL, cnt->builtin_types.entry_TypeInfo_ptr);
 	}
 
 	bo_iterator_t it;
@@ -9193,7 +9131,11 @@ init_builtins(Context *cnt)
 		bt->entry_f32    = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_F32], 32);
 		bt->entry_f64    = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_F64], 64);
 		bt->entry_u8_ptr = create_type_ptr(cnt, bt->entry_u8);
-		bt->entry_string = create_type_string(cnt);
+		bt->entry_string =
+		    create_type_struct_special(cnt,
+		                               MIR_TYPE_STRING,
+		                               &builtin_ids[MIR_BUILTIN_ID_TYPE_STRING],
+		                               bt->entry_u8_ptr);
 
 		bt->entry_resolve_type_fn = create_type_fn(cnt, bt->entry_type, NULL, false);
 		bt->entry_test_case_fn    = create_type_fn(cnt, bt->entry_void, NULL, false);
