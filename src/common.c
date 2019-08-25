@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #include "common.h"
+#include "assembly.h"
 #include <bobject/containers/hash.h>
 #include <time.h>
 
@@ -186,7 +187,6 @@ get_filename_from_filepath(char *buf, const size_t l, const char *filepath)
 	return true;
 }
 
-
 void
 platform_lib_name(const char *name, char *buffer, size_t max_len)
 {
@@ -201,4 +201,24 @@ platform_lib_name(const char *name, char *buffer, size_t max_len)
 #else
 	bl_abort("Unknown dynamic library format.");
 #endif
+}
+
+BArray *
+create_arr(Assembly *assembly, size_t size)
+{
+	BArray **tmp = arena_alloc(&assembly->arenas.array);
+	*tmp         = bo_array_new(size);
+	return *tmp;
+}
+
+void *
+_create_sarr(Assembly *assembly, size_t arr_size)
+{
+	assert(arr_size <= assembly->arenas.small_array.elem_size_in_bytes &&
+	       "SmallArray is too big to be allocated inside arena, make array smaller or arena "
+	       "bigger.");
+
+	SmallArrayAny *tmp = arena_alloc(&assembly->arenas.small_array);
+	sa_init(tmp);
+	return tmp;
 }

@@ -36,7 +36,7 @@
 			builder_msg(builder,                                                       \
 			            BUILDER_MSG_ERROR,                                             \
 			            (code),                                                        \
-			            &(tok)->src,                                                   \
+			            &(tok)->location,                                              \
 			            (pos),                                                         \
 			            (format),                                                      \
 			            ##__VA_ARGS__);                                                \
@@ -47,7 +47,6 @@
 typedef struct {
 	Assembly *assembly;
 	Builder * builder;
-	bool      verbose;
 	BArray *  lib_paths;
 } Context;
 
@@ -63,7 +62,7 @@ search_library(Context *   cnt,
 
 	platform_lib_name(lib_name, lib_name_full, array_size(lib_name_full));
 
-	if (cnt->verbose) msg_log("- Looking for: '%s'", lib_name_full);
+	if (cnt->assembly->options.verbose_mode) msg_log("- Looking for: '%s'", lib_name_full);
 
 	const char *dir;
 	barray_foreach(cnt->lib_paths, dir)
@@ -76,7 +75,8 @@ search_library(Context *   cnt,
 		strcat(lib_filepath, lib_name_full);
 
 		if (file_exists(lib_filepath)) {
-			if (cnt->verbose) msg_log("  Found: '%s'", lib_filepath);
+			if (cnt->assembly->options.verbose_mode)
+				msg_log("  Found: '%s'", lib_filepath);
 			if (out_lib_name) (*out_lib_name) = strdup(lib_name_full);
 			if (out_lib_dir) (*out_lib_dir) = strdup(dir);
 			if (out_lib_filepath) (*out_lib_filepath) = strdup(lib_filepath);
@@ -84,7 +84,7 @@ search_library(Context *   cnt,
 		}
 	}
 
-	if (cnt->verbose) msg_log("  Not found: '%s'", lib_filepath);
+	if (cnt->assembly->options.verbose_mode) msg_log("  Not found: '%s'", lib_filepath);
 	return false;
 }
 
@@ -101,8 +101,8 @@ set_lib_paths(Context *cnt)
 	bool        done  = false;
 
 	while (!done) {
-		done = *c++ == '\0';
-		if (*c == ENVPATH_SEPARATOR || done) {
+		done = *(c++) == '\0';
+		if (done || *c == ENVPATH_SEPARATOR) {
 			len = c - begin;
 			if (len - 1 > 0) {
 				strncpy(tmp, begin, len);
@@ -166,12 +166,10 @@ link_working_environment(Context *cnt)
 void
 linker_run(Builder *builder, Assembly *assembly)
 {
-	Context cnt = {.assembly  = assembly,
-	               .builder   = builder,
-	               .verbose   = is_flag(builder->flags, BUILDER_VERBOSE),
-	               .lib_paths = assembly->dl.lib_paths};
+	Context cnt = {
+	    .assembly = assembly, .builder = builder, .lib_paths = assembly->dl.lib_paths};
 
-	if (cnt.verbose) {
+	if (cnt.assembly->options.verbose_mode) {
 		msg_log("Running runtime linker...");
 	}
 

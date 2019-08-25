@@ -33,13 +33,19 @@
 #include <assert.h>
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
+#include <llvm-c/Types.h>
 
-struct Src;
+struct Location;
 struct Ast;
 struct MirInstr;
 struct MirType;
 struct MirFn;
 struct MirVar;
+
+typedef struct ScopeArenas {
+	Arena scopes;
+	Arena entries;
+} ScopeArenas;
 
 typedef enum ScopeEntryKind {
 	SCOPE_ENTRY_INCOMPLETE,
@@ -49,11 +55,6 @@ typedef enum ScopeEntryKind {
 	SCOPE_ENTRY_MEMBER,
 	SCOPE_ENTRY_VARIANT,
 } ScopeEntryKind;
-
-typedef struct ScopeArenas {
-	Arena scope_arena;
-	Arena entry_arena;
-} ScopeArenas;
 
 typedef union ScopeEntryData {
 	struct MirType *   type;
@@ -76,13 +77,20 @@ typedef struct ScopeEntry {
 typedef enum ScopeKind {
 	SCOPE_GLOBAL,
 	SCOPE_PRIVATE,
-	SCOPE_DEFAULT,
+	SCOPE_FN,
+	SCOPE_LEXICAL,
+	SCOPE_TYPE_STRUCT,
+	SCOPE_TYPE_ENUM,
 } ScopeKind;
 
 typedef struct Scope {
-	ScopeKind       kind;
-	struct Scope *  parent;
-	BHashTable *    entries;
+	ScopeKind        kind;
+	struct Scope *   parent;
+	BHashTable *     entries;
+	LLVMMetadataRef  llvm_di_meta; /* Optional ID data*/
+	struct Location *location;     /* Optional scope start location in the source file (ex.:
+	                                  function body  starting with '{'). Note: global scope has no
+	                                  location data. */
 } Scope;
 
 void
@@ -92,7 +100,7 @@ void
 scope_arenas_terminate(ScopeArenas *arenas);
 
 Scope *
-scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size);
+scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size, struct Location *loc);
 
 ScopeEntry *
 scope_create_entry(ScopeArenas *  arenas,

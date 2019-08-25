@@ -29,15 +29,16 @@
 #ifndef BL_AST_H
 #define BL_AST_H
 
+#include "arena.h"
 #include "common.h"
-#include "scope.h"
-#include "token.h"
 #include <bobject/containers/array.h>
 #include <bobject/containers/hash.h>
 #include <bobject/containers/htbl.h>
 #include <bobject/containers/list.h>
 
-struct Arena;
+struct Scope;
+struct Token;
+struct Location;
 typedef struct Ast Ast;
 
 typedef enum {
@@ -154,8 +155,7 @@ struct AstLink {
 };
 
 struct AstIdent {
-	Scope *scope;
-	ID     id;
+	ID id;
 };
 
 struct AstUBlock {
@@ -204,7 +204,7 @@ struct AstDeclEntity {
 	Ast *          value;
 	int32_t        flags;
 	bool           in_gscope;
-	bool mutable;
+	bool           mut;
 };
 
 struct AstDeclMember {
@@ -230,20 +230,20 @@ struct AstTypeSlice {
 };
 
 struct AstTypeFn {
-	Ast *   ret_type;
-	BArray *args;
+	Ast *           ret_type;
+	SmallArray_Ast *args;
 };
 
 struct AstTypeStruct {
-	Scope * scope;
-	BArray *members;
-	bool    raw;
+	struct Scope *  scope;
+	SmallArray_Ast *members;
+	bool            raw;
 };
 
 struct AstTypeEnum {
-	Scope * scope;
-	Ast *   type;
-	BArray *variants;
+	struct Scope *  scope;
+	Ast *           type;
+	SmallArray_Ast *variants;
 };
 
 struct AstTypePtr {
@@ -263,8 +263,8 @@ struct AstExprType {
 };
 
 struct AstExprCompound {
-	Ast *   type;
-	BArray *values;
+	Ast *           type;
+	SmallArray_Ast *values;
 };
 
 struct AstExprLitFn {
@@ -312,9 +312,9 @@ struct AstExprBinop {
 };
 
 struct AstExprCall {
-	Ast *   ref;
-	BArray *args;
-	bool    run;
+	Ast *           ref;
+	SmallArray_Ast *args;
+	bool            run;
 };
 
 struct AstExprMember {
@@ -355,11 +355,12 @@ struct AstExprDeref {
 
 /* AST base type */
 struct Ast {
-	AstKind kind;
-	Src *   src;
+	AstKind          kind;
+	struct Location *location;     /* Location in source file. */
+	struct Scope *   parent_scope; /* Scope in which is AST node. */
 
 	union {
-		struct AstPrivate private;
+		struct AstPrivate       priv;
 		struct AstLoad          load;
 		struct AstLink          link;
 		struct AstIdent         ident;
@@ -412,7 +413,13 @@ struct Ast {
 };
 
 void
-ast_arena_init(struct Arena *arena);
+ast_arena_init(Arena *arena);
+
+void
+ast_arena_terminate(Arena *arena);
+
+void
+ast_small_array_arena_init(struct Arena *arena);
 
 static inline bool
 ast_binop_is_assign(BinopKind op)
@@ -448,7 +455,7 @@ ast_is_type(Ast *node)
 }
 
 Ast *
-ast_create_node(struct Arena *arena, AstKind c, Token *tok);
+ast_create_node(struct Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope);
 
 const char *
 ast_binop_to_str(BinopKind op);

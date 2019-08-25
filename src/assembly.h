@@ -29,6 +29,8 @@
 #ifndef BL_ASSEMBLY_BL
 #define BL_ASSEMBLY_BL
 
+#include "arena.h"
+#include "mir.h"
 #include "scope.h"
 #include "unit.h"
 #include <bobject/containers/array.h>
@@ -36,22 +38,41 @@
 #include <bobject/containers/list.h>
 #include <dyncall.h>
 #include <dynload.h>
-#include <llvm-c/Core.h>
-#include <llvm-c/DebugInfo.h>
 #include <llvm-c/ExecutionEngine.h>
 
 struct MirModule;
 struct Builder;
 
+typedef enum OptLvl {
+	OPT_NONE,
+	OPT_LESS,
+	OPT_DEFAULT,
+	OPT_AGGRESSIVE,
+} OptLvl;
+
 typedef struct Assembly {
-	BArray *          units;      /* array of all units in assembly */
-	BHashTable *      unit_cache; /* cache for loading only unique units */
-	BHashTable *      link_cache; /* all linked externals libraries passed to linker */
-	BHashTable *      type_table; /* type table key: type ID, value: *MirType */
-	char *            name;       /* assembly name */
-	Scope *           gscope;     /* global scope of the assembly */
-	struct MirModule *mir_module;
-	LLVMMetadataRef   llvm_meta;
+	struct {
+		ScopeArenas scope;
+		MirArenas   mir;
+		Arena       ast;
+		Arena       array;       /* used for all BArrays */
+		Arena       small_array; /* used for all SmallArrays */
+	} arenas;
+
+	struct {
+		BArray *global_instrs; // All global instructions.
+		BArray *RTTI_tmp_vars; // Temporary variables used by RTTI.
+	} MIR;
+
+	struct {
+		LLVMModuleRef        module;     // LLVM Module.
+		LLVMContextRef       cnt;        // LLVM Context.
+		LLVMTargetDataRef    TD;         // LLVM Target data.
+		LLVMTargetMachineRef TM;         // LLVM Machine.
+		char *               triple;     // LLVM triple.
+		LLVMMetadataRef      di_meta;    // LLVM Compile unit DI meta (optional)
+		LLVMDIBuilderRef     di_builder; // LLVM debug information builder
+	} llvm;
 
 	/* DynCall/Lib data used for external method execution in compile time */
 	struct {
@@ -59,6 +80,22 @@ typedef struct Assembly {
 		BArray *  libs;
 		DCCallVM *vm;
 	} dl;
+
+	BArray *    units;      /* array of all units in assembly */
+	BHashTable *unit_cache; /* cache for loading only unique units */
+	BHashTable *link_cache; /* all linked externals libraries passed to linker */
+	BHashTable *type_table; /* type table key: type ID, value: *MirType */
+	char *      name;       /* assembly name */
+	Scope *     gscope;     /* global scope of the assembly */
+
+	struct {
+		bool   debug_mode; /* indicates whether assembly produce debug informations */
+		bool   verbose_mode;
+		bool   force_test_to_llvm;
+		bool   run_tests;
+		bool   run_main;
+		OptLvl opt_lvl; /* level of optimization passed to LLVM */
+	} options;
 } Assembly;
 
 typedef struct NativeLib {
@@ -72,10 +109,13 @@ typedef struct NativeLib {
 } NativeLib;
 
 Assembly *
-assembly_new(struct Builder *builder, const char *name);
+assembly_new(const char *name);
 
 void
 assembly_delete(Assembly *assembly);
+
+void
+assembly_setup(Assembly *assembly, uint32_t flags, OptLvl opt_lvl);
 
 void
 assembly_add_unit(Assembly *assembly, Unit *unit);

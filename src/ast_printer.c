@@ -52,14 +52,14 @@ print_address(Ast *node, FILE *stream)
 static inline void
 _print_head(Ast *node, int32_t pad, FILE *stream)
 {
-	if (node->src)
+	if (node->location)
 		fprintf(stream,
 		        "\n%*s" GREEN("%s ") CYAN("<%d:%d>"),
 		        pad * 2,
 		        "",
 		        ast_get_name(node),
-		        node->src->line,
-		        node->src->col);
+		        node->location->line,
+		        node->location->col);
 	else
 		fprintf(stream,
 		        "\n%*s" GREEN("%s ") CYAN("<IMPLICIT>"),
@@ -259,7 +259,7 @@ print_type_struct(Ast *strct, int32_t pad, FILE *stream)
 	print_head(strct, pad, stream);
 
 	Ast *node;
-	barray_foreach(strct->data.type_strct.members, node)
+	sarray_foreach(strct->data.type_strct.members, node)
 	{
 		print_node(node, pad + 1, stream);
 	}
@@ -271,7 +271,7 @@ print_type_enum(Ast *enm, int32_t pad, FILE *stream)
 	print_head(enm, pad, stream);
 
 	Ast *node;
-	barray_foreach(enm->data.type_enm.variants, node)
+	sarray_foreach(enm->data.type_enm.variants, node)
 	{
 		print_node(node, pad + 1, stream);
 	}
@@ -323,7 +323,7 @@ print_decl_entity(Ast *entity, int32_t pad, FILE *stream)
 	fprintf(stream,
 	        "'%s' '%s'",
 	        entity->data.decl.name->data.ident.id.str,
-	        entity->data.decl_entity.mutable ? "mutable" : "immutable");
+	        entity->data.decl_entity.mut ? "mutable" : "immutable");
 
 	print_flags(entity->data.decl_entity.flags, stream);
 	print_node((Ast *)entity->data.decl_entity.value, pad + 1, stream);
@@ -521,7 +521,7 @@ print_expr_call(Ast *call, int32_t pad, FILE *stream)
 
 	if (call->data.expr_call.args) {
 		Ast *arg;
-		barray_foreach(call->data.expr_call.args, arg) print_node(arg, pad + 1, stream);
+		sarray_foreach(call->data.expr_call.args, arg) print_node(arg, pad + 1, stream);
 	}
 }
 
@@ -530,10 +530,10 @@ print_expr_compound(Ast *expr_compound, int32_t pad, FILE *stream)
 {
 	print_head(expr_compound, pad, stream);
 
-	BArray *exprs = expr_compound->data.expr_compound.values;
+	SmallArray_Ast *exprs = expr_compound->data.expr_compound.values;
 	if (exprs) {
 		Ast *value;
-		barray_foreach(exprs, value)
+		sarray_foreach(exprs, value)
 		{
 			print_node(value, pad + 1, stream);
 		}

@@ -30,13 +30,13 @@
 #include "stages.h"
 
 #ifdef BL_PLATFORM_WIN
-static const char *link_flag = "";
+static const char *link_flag      = "";
 static const char *link_path_flag = "/LIBPATH";
-static const char *cmd       = "call \"%s\" %s && \"%s\" %s.obj /OUT:%s.exe %s";
+static const char *cmd            = "call \"%s\" %s && \"%s\" %s.obj /OUT:%s.exe %s";
 #else
-static const char *link_flag = "-l";
+static const char *link_flag      = "-l";
 static const char *link_path_flag = "-L";
-static const char *cmd       = "%s %s.o -o %s %s";
+static const char *cmd            = "%s %s.o -o %s %s";
 #endif
 
 typedef struct {
@@ -97,7 +97,8 @@ native_bin_run(Builder *builder, Assembly *assembly)
         const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);
         { /* setup link command */
                 const char *opt = conf_data_get_str(builder->conf, CONF_LINKER_OPT_KEY);
-                snprintf(buf, array_size(buf), cmd, linker_exec, assembly->name, assembly->name, opt);
+                snprintf(
+                    buf, array_size(buf), cmd, linker_exec, assembly->name, assembly->name, opt);
         }
 #endif
 
@@ -105,7 +106,7 @@ native_bin_run(Builder *builder, Assembly *assembly)
 	add_libs(&cnt, buf, array_size(buf));
 
 	msg_log("Running native linker...");
-	if (is_flag(builder->flags, BUILDER_VERBOSE)) msg_log("%s", buf);
+	if (assembly->options.verbose_mode) msg_log("%s", buf);
 	/* TODO: handle error */
 	if (system(buf) != 0) {
 		builder_msg(builder,

@@ -31,6 +31,7 @@
 
 #include "ast.h"
 #include "config.h"
+#include "scope.h"
 #include "tokens.h"
 #include <llvm-c/Core.h>
 
@@ -47,7 +48,7 @@ typedef struct Unit {
 	char *          name;          /* Unit name */
 	char *          src;           /* Unit raw source data. */
 	struct Token *  loaded_from;   /* Optionally set when unit is loaded from another unit. */
-	LLVMMetadataRef llvm_meta;
+	LLVMMetadataRef llvm_file_meta;
 } Unit;
 
 Unit *

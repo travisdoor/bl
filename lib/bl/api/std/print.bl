@@ -58,7 +58,7 @@ print :: fn (format: string, args: ...) s32 {
  * @title eprint
  *
  * @desc
- * Print to the stderr. Look at [[PRINT][print]] for more informations.
+ * Print to the stderr. Look at [[PRINT][print]] for more information.
  * @ver 0.4.2
  */
 eprint :: fn (format: string, args: ...) s32 {

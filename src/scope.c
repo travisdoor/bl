@@ -44,25 +44,25 @@ scope_dtor(Scope *scope)
 void
 scope_arenas_init(ScopeArenas *arenas)
 {
-	arena_init(
-	    &arenas->scope_arena, sizeof(Scope), ARENA_CHUNK_COUNT, (ArenaElemDtor)scope_dtor);
-	arena_init(&arenas->entry_arena, sizeof(ScopeEntry), ARENA_CHUNK_COUNT, NULL);
+	arena_init(&arenas->scopes, sizeof(Scope), ARENA_CHUNK_COUNT, (ArenaElemDtor)scope_dtor);
+	arena_init(&arenas->entries, sizeof(ScopeEntry), ARENA_CHUNK_COUNT, NULL);
 }
 
 void
 scope_arenas_terminate(ScopeArenas *arenas)
 {
-	arena_terminate(&arenas->scope_arena);
-	arena_terminate(&arenas->entry_arena);
+	arena_terminate(&arenas->scopes);
+	arena_terminate(&arenas->entries);
 }
 
 Scope *
-scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size)
+scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size, struct Location *loc)
 {
-	Scope *scope   = arena_alloc(&arenas->scope_arena);
-	scope->entries = bo_htbl_new(sizeof(ScopeEntry *), size);
-	scope->parent  = parent;
-	scope->kind    = kind;
+	Scope *scope    = arena_alloc(&arenas->scopes);
+	scope->entries  = bo_htbl_new(sizeof(ScopeEntry *), size);
+	scope->parent   = parent;
+	scope->kind     = kind;
+	scope->location = loc;
 
 	return scope;
 }
@@ -74,7 +74,7 @@ scope_create_entry(ScopeArenas *  arenas,
                    struct Ast *   node,
                    bool           is_buildin)
 {
-	ScopeEntry *entry = arena_alloc(&arenas->entry_arena);
+	ScopeEntry *entry = arena_alloc(&arenas->entries);
 	entry->id         = id;
 	entry->kind       = kind;
 	entry->node       = node;

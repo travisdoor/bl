@@ -30,10 +30,13 @@
 #define BL_MIR_H
 
 #include "arena.h"
-#include "assembly.h"
 #include "ast.h"
+#include "common.h"
+#include "scope.h"
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
+#include <dyncall.h>
+#include <dynload.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
 
@@ -42,11 +45,11 @@
 
 struct Assembly;
 struct Builder;
+struct Unit;
 
 typedef ptrdiff_t MirRelativeStackPtr;
 typedef uint8_t * MirStackPtr;
 
-typedef struct MirModule     MirModule;
 typedef struct MirType       MirType;
 typedef struct MirVar        MirVar;
 typedef struct MirFn         MirFn;
@@ -94,6 +97,16 @@ typedef struct MirInstrPhi         MirInstrPhi;
 typedef struct MirInstrToAny       MirInstrToAny;
 
 typedef union MirConstValueData MirConstValueData;
+
+typedef struct MirArenas {
+	Arena instr;
+	Arena type;
+	Arena var;
+	Arena fn;
+	Arena member;
+	Arena variant;
+	Arena value;
+} MirArenas;
 
 typedef enum MirBuiltinIdKind {
 	MIR_BUILTIN_ID_NONE = -1,
@@ -229,37 +242,13 @@ typedef enum MirCastOp {
 	MIR_CAST_INTTOPTR,
 } MirCastOp;
 
-/* ALLOCATORS */
-struct MirArenas {
-	Arena instr_arena;
-	Arena type_arena;
-	Arena var_arena;
-	Arena fn_arena;
-	Arena member_arena;
-	Arena variant_arena;
-	Arena value_arena;
-	Arena array_arena;
-};
-
-struct MirModule {
-	struct MirArenas     arenas;        // Allocator arenas.
-	BArray *             global_instrs; // All global instructions.
-	BArray *             RTTI_tmp_vars; // Temporary variables used by RTTI.
-	LLVMModuleRef        llvm_module;   // LLVM Module.
-	LLVMContextRef       llvm_cnt;      // LLVM Context.
-	LLVMTargetDataRef    llvm_td;       // LLVM Target data.
-	LLVMTargetMachineRef llvm_tm;       // LLVM Machine.
-	char *               llvm_triple;   // LLVM triple.
-	LLVMDIBuilderRef     llvm_dibuilder;
-};
-
 /* FN */
 struct MirFn {
 	MirInstr *   prototype;
 	ID *         id;
 	Ast *        decl_node;
+	Scope *      body_scope; /* function body scope if there is one (optional) */
 	MirType *    type;
-	Scope *      scope;
 	BArray *     variables;
 	int32_t      ref_count;
 	const char * llvm_name;
@@ -274,18 +263,16 @@ struct MirFn {
 	MirInstrBlock *first_block;
 	MirInstrBlock *last_block;
 	int32_t        block_count;
-	// int32_t        instr_count;
 
 	MirConstValueData *exec_ret_value;
 };
 
 /* MEMBER */
-
 struct MirMember {
+	MirType *type;
 	ID *     id;
 	Ast *    decl_node;
-	MirType *type;
-	Scope *  scope;
+	Scope *  decl_scope;
 	int64_t  index;
 };
 
@@ -300,9 +287,9 @@ struct MirTypeReal {
 };
 
 struct MirTypeFn {
-	MirType *ret_type;
-	BArray * arg_types;
-	bool     is_vargs;
+	MirType *        ret_type;
+	SmallArray_Type *arg_types;
+	bool             is_vargs;
 };
 
 struct MirTypePtr {
@@ -310,16 +297,16 @@ struct MirTypePtr {
 };
 
 struct MirTypeStruct {
-	Scope * scope;
-	BArray *members;
-	bool    is_packed;
+	Scope *            scope; /* struct body scope */
+	SmallArray_Member *members;
+	bool               is_packed;
 };
 
 /* Enum variants must be baked into enum type. */
 struct MirTypeEnum {
-	Scope *  scope;
-	MirType *base_type;
-	BArray * variants; /* MirVariant * */
+	Scope *             scope;
+	MirType *           base_type;
+	SmallArray_Variant *variants; /* MirVariant * */
 };
 
 struct MirTypeNull {
@@ -396,13 +383,13 @@ union MirConstValueData {
 	MirConstPtr v_ptr;
 
 	struct {
-		BArray *members; // array of MirConstValues *
-		bool    is_zero_initializer;
+		SmallArray_ConstValue *members; // array of MirConstValues *
+		bool                   is_zero_initializer;
 	} v_struct;
 
 	struct {
-		BArray *elems; // array of MirConstValues *
-		bool    is_zero_initializer;
+		SmallArray_ConstValue *elems; // array of MirConstValues *
+		bool                   is_zero_initializer;
 	} v_array;
 };
 
@@ -416,7 +403,7 @@ struct MirConstValue {
 struct MirVariant {
 	ID *           id;
 	Ast *          decl_node;
-	Scope *        scope;
+	Scope *        decl_scope;
 	MirConstValue *value;
 };
 
@@ -425,12 +412,14 @@ struct MirVar {
 	MirConstValue       value; /* contains also allocated type */
 	ID *                id;
 	Ast *               decl_node;
-	Scope *             scope;
+	Scope *             decl_scope;
 	int32_t             ref_count;
+	int32_t             order; /* coresponding function argument id if is_arg_tmp == true */
 	bool                is_mutable;
 	bool                comptime;
 	bool                is_in_gscope;
 	bool                is_implicit;
+	bool                is_arg_tmp; /* variable is function argument temp */
 	bool                gen_llvm;
 	uint32_t            flags;
 	MirRelativeStackPtr rel_stack_ptr;
@@ -584,26 +573,26 @@ struct MirInstrFnProto {
 struct MirInstrTypeFn {
 	MirInstr base;
 
-	MirInstr *ret_type;
-	BArray *  arg_types;
+	MirInstr *        ret_type;
+	SmallArray_Instr *arg_types;
 };
 
 struct MirInstrTypeStruct {
 	MirInstr base;
 
-	ID *    id;
-	Scope * scope;
-	BArray *members;
-	bool    is_packed;
+	ID *              id;
+	Scope *           scope;
+	SmallArray_Instr *members;
+	bool              is_packed;
 };
 
 struct MirInstrTypeEnum {
 	MirInstr base;
 
-	ID *      id;
-	Scope *   scope;
-	BArray *  variants;
-	MirInstr *base_type;
+	ID *              id;
+	Scope *           scope;
+	SmallArray_Instr *variants;
+	MirInstr *        base_type;
 };
 
 struct MirInstrTypePtr {
@@ -634,17 +623,17 @@ struct MirInstrTypeVArgs {
 struct MirInstrCall {
 	MirInstr base;
 
-	MirInstr *callee;
-	BArray *  args;
+	MirInstr *        callee;
+	SmallArray_Instr *args;
 };
 
 struct MirInstrDeclRef {
 	MirInstr base;
 
-	Unit *      parent_unit;
-	ID *        rid;
-	Scope *     scope;
-	ScopeEntry *scope_entry;
+	struct Unit *parent_unit;
+	ID *         rid;
+	Scope *      scope;
+	ScopeEntry * scope_entry;
 };
 
 struct MirInstrUnreachable {
@@ -668,20 +657,20 @@ struct MirInstrBr {
 struct MirInstrCompound {
 	MirInstr base;
 
-	MirInstr *type;
-	BArray *  values;
-	MirVar *  tmp_var;
-	bool      is_naked;
-	bool      is_zero_initialized;
+	MirInstr *        type;
+	SmallArray_Instr *values;
+	MirVar *          tmp_var;
+	bool              is_naked;
+	bool              is_zero_initialized;
 };
 
 struct MirInstrVArgs {
 	MirInstr base;
 
-	MirVar * arr_tmp;
-	MirVar * vargs_tmp;
-	MirType *type;
-	BArray * values;
+	MirVar *          arr_tmp;
+	MirVar *          vargs_tmp;
+	MirType *         type;
+	SmallArray_Instr *values;
 };
 
 struct MirInstrTypeInfo {
@@ -701,8 +690,8 @@ struct MirInstrTypeKind {
 struct MirInstrPhi {
 	MirInstr base;
 
-	BArray *incoming_values;
-	BArray *incoming_blocks;
+	SmallArray_Instr *incoming_values;
+	SmallArray_Instr *incoming_blocks;
 };
 
 struct MirInstrToAny {
@@ -741,33 +730,34 @@ static inline MirType *
 mir_get_struct_elem_type(MirType *type, uint32_t i)
 {
 	assert(mir_is_composit_type(type) && "Expected structure type");
-	BArray *members = type->data.strct.members;
-	assert(members && bo_array_size(members) > i);
-	return bo_array_at(members, i, MirType *);
+	SmallArray_Member *members = type->data.strct.members;
+	assert(members && members->size > i);
+
+	return members->data[i]->type;
 }
 
 static inline MirType *
 mir_get_fn_arg_type(MirType *type, uint32_t i)
 {
 	assert(type->kind == MIR_TYPE_FN && "Expected function type");
-	BArray *args = type->data.fn.arg_types;
+	SmallArray_Type *args = type->data.fn.arg_types;
 	if (!args) return NULL;
+	assert(args->size > i);
 
-	assert(bo_array_size(args) > i);
-	return bo_array_at(args, i, MirType *);
+	return args->data[i];
 }
+
+void
+mir_arenas_init(MirArenas *arenas);
+
+void
+mir_arenas_terminate(MirArenas *arenas);
 
 void
 mir_type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name);
 
 const char *
 mir_instr_name(MirInstr *instr);
-
-MirModule *
-mir_new_module(struct Builder *builder, const char *name);
-
-void
-mir_delete_module(MirModule *module);
 
 void
 mir_run(struct Builder *builder, struct Assembly *assembly);

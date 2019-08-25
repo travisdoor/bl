@@ -35,6 +35,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef BL_NO_COLOR
 #define COLOR_END
 #define MAGENTA_BEGIN
@@ -130,5 +134,7 @@ _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...);
 		_log(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented");                          \
 		abort();                                                                           \
 	}
-
+#ifdef __cplusplus
+}
+#endif
 #endif

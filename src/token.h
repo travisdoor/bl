@@ -32,87 +32,11 @@
 #include <bobject/bobject.h>
 #include <stdio.h>
 
-// clang-format off
-#define _SYMBOLS_LIST \
-  sm(EOF = 0,        "end") \
-  sm(IDENT,          "identifier") \
-  sm(STRING,         "string") \
-  sm(CHAR,           "char") \
-  sm(NUM,            "number") \
-  sm(FLOAT,          "float") \
-  sm(DOUBLE,         "double") \
-  sm(IF,             "if") /* must be first */ \
-  sm(FN,             "fn") \
-  sm(CAST,           "cast") \
-  sm(ELSE,           "else") \
-  sm(TRUE,           "true") \
-  sm(NULL,           "null") \
-  sm(ENUM,           "enum") \
-  sm(LOOP,           "loop")\
-  sm(LOAD,           "load") \
-  sm(LINK,           "link") \
-  sm(TEST,           "test") \
-  sm(FALSE,          "false") \
-  sm(BREAK,          "break")\
-  sm(EXTERN,         "extern") \
-  sm(RETURN,         "return") \
-  sm(SIZEOF,         "sizeof") \
-  sm(STRUCT,         "struct") \
-  sm(PRIVATE,        "private") \
-  sm(ALIGNOF,        "alignof") \
-  sm(COMPILER,       "compiler") \
-  sm(CONTINUE,       "continue") \
-  sm(TYPEINFO,       "typeinfo") \
-  sm(UNREACHABLE,    "unreachable") \
-  sm(AT,             "@") \
-  sm(LCOMMENT,       "//") \
-  sm(LBCOMMENT,      "/*") \
-  sm(RBCOMMENT,      "*/") \
-  sm(HASH,           "#") \
-  sm(LBLOCK,         "{") \
-  sm(RBLOCK,         "}") \
-  sm(LBRACKET,       "[") \
-  sm(RBRACKET,       "]") \
-  sm(LPAREN,         "(") \
-  sm(RPAREN,         ")") \
-  sm(COMMA,          ",") \
-  sm(SEMICOLON,      ";") \
-  sm(COLON,          ":") \
-  sm(VARGS,          "...") \
-  sm(EQ,             "==") /* logical begin */ \
-  sm(NEQ,            "!=") \
-  sm(GREATER_EQ,     ">=") \
-  sm(LESS_EQ,        "<=") \
-  sm(PLUS_ASSIGN,    "+=") \
-  sm(MINUS_ASSIGN,   "-=") \
-  sm(ASTERISK_ASSIGN,"*=") \
-  sm(SLASH_ASSIGN,   "/=") \
-  sm(PERCENT_ASSIGN, "%=") \
-  sm(LOGIC_AND,      "&&") \
-  sm(SHR,            ">>") \
-  sm(SHL,            "<<") \
-  sm(LOGIC_OR,       "||") \
-  sm(GREATER,        ">") \
-  sm(LESS,           "<") \
-  sm(ASSIGN,         "=") \
-  sm(AND,            "&") \
-  sm(OR,             "|") \
-  sm(CARET,          "^") \
-  sm(NOT,            "!") \
-  sm(SLASH,          "/") \
-  sm(PERCENT,        "%") \
-  sm(PLUS,           "+") \
-  sm(MINUS,          "-") \
-  sm(ASTERISK,       "*") /* logical end */ \
-  sm(DOT,            ".") \
-  sm(NONE,           "") \
-
 typedef enum {
 #define sm(tok, str) SYM_##tok,
-  _SYMBOLS_LIST
+#include "token.def"
 #undef sm
 } Sym;
-// clang-format on
 
 typedef enum {
 	TOKEN_ASSOC_NONE,
@@ -123,12 +47,12 @@ typedef enum {
 extern char *sym_strings[];
 
 struct Unit;
-typedef struct Src {
+typedef struct Location {
 	int32_t      line;
 	int32_t      col;
 	int32_t      len;
 	struct Unit *unit;
-} Src;
+} Location;
 
 typedef union {
 	const char *       str;
@@ -139,7 +63,7 @@ typedef union {
 
 typedef struct Token {
 	Sym        sym;
-	Src        src;
+	Location   location;
 	TokenValue value;
 } Token;
 

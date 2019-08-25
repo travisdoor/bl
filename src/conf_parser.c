@@ -42,7 +42,7 @@ parse_key_value_rq(Context *cnt)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_UNEXPECTED_SYMBOL,
-		            &tok_ident->src,
+		            &tok_ident->location,
 		            BUILDER_CUR_WORD,
 		            "Expected key identificator.");
 		return false;
@@ -54,18 +54,18 @@ parse_key_value_rq(Context *cnt)
 
 	switch (tok_value->sym) {
 	case SYM_STRING:
-		tmp.kind  = CDV_STRING;
+		tmp.kind       = CDV_STRING;
 		tmp.data.v_str = tok_value->value.str;
 		break;
 	case SYM_NUM:
-		tmp.kind  = CDV_INT;
-		tmp.data.v_int = (int) tok_value->value.u;
+		tmp.kind       = CDV_INT;
+		tmp.data.v_int = (int)tok_value->value.u;
 		break;
 	default:
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_UNEXPECTED_SYMBOL,
-		            &tok_ident->src,
+		            &tok_ident->location,
 		            BUILDER_CUR_AFTER,
 		            "Expected value after key identificator.");
 
@@ -79,7 +79,7 @@ parse_key_value_rq(Context *cnt)
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,
 		            ERR_DUPLICATE_SYMBOL,
-		            &tok_ident->src,
+		            &tok_ident->location,
 		            BUILDER_CUR_WORD,
 		            "Duplicate symbol in conf scope.");
 	} else {

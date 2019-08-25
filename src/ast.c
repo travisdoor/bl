@@ -27,7 +27,7 @@
 //************************************************************************************************
 
 #include "ast.h"
-#include "arena.h"
+#include "token.h"
 
 #define ARENA_CHUNK_COUNT 256
 
@@ -41,32 +41,24 @@ node_dtor(Ast *node)
 	case AST_BLOCK:
 		bo_unref(node->data.block.nodes);
 		break;
-	case AST_EXPR_CALL:
-		bo_unref(node->data.expr_call.args);
-		break;
-	case AST_EXPR_COMPOUND:
-		bo_unref(node->data.expr_compound.values);
-		break;
-	case AST_TYPE_FN:
-		bo_unref(node->data.type_fn.args);
-		break;
-	case AST_TYPE_STRUCT:
-		bo_unref(node->data.type_strct.members);
-		break;
-	case AST_TYPE_ENUM:
-		bo_unref(node->data.type_enm.variants);
-		break;
 	default:
 		break;
 	}
 }
 
-Ast *
-ast_create_node(Arena *arena, AstKind c, Token *tok)
+static void
+small_array_dtor(SmallArrayAny *arr)
 {
-	Ast *node  = arena_alloc(arena);
-	node->kind = c;
-	node->src  = tok ? &tok->src : NULL;
+	sa_terminate(arr);
+}
+
+Ast *
+ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope)
+{
+	Ast *node          = arena_alloc(arena);
+	node->kind         = c;
+	node->parent_scope = parent_scope;
+	node->location     = tok ? &tok->location : NULL;
 
 #if BL_DEBUG
 	static uint64_t serial = 0;
@@ -77,9 +69,15 @@ ast_create_node(Arena *arena, AstKind c, Token *tok)
 
 /* public */
 void
-ast_arena_init(struct Arena *arena)
+ast_arena_init(Arena *arena)
 {
 	arena_init(arena, sizeof(Ast), ARENA_CHUNK_COUNT, (ArenaElemDtor)node_dtor);
+}
+
+void
+ast_arena_terminate(Arena *arena)
+{
+	arena_terminate(arena);
 }
 
 const char *

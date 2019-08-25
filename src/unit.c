@@ -75,10 +75,10 @@ search_source_file(const char *filepath, char **out_filepath, char **out_dirpath
 
 	/* file has not been found in current working direcotry -> search in PATH */
 	{
-		char   tmp_env[PATH_MAX] = {0};
-		char * env          = strdup(getenv(ENV_PATH));
-		char * s            = env;
-		char * p            = NULL;
+		char  tmp_env[PATH_MAX] = {0};
+		char *env               = strdup(getenv(ENV_PATH));
+		char *s                 = env;
+		char *p                 = NULL;
 
 		do {
 			p = strchr(s, ENVPATH_SEPARATOR);
@@ -140,6 +140,7 @@ unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
 	unit->ast         = NULL;
 
 	tokens_init(&unit->tokens);
+
 	return unit;
 }
 
