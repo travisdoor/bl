@@ -1030,6 +1030,9 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *var);
 static void
 exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 
+static void
+exec_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref);
+
 static bool
 exec_fn(Context *cnt, MirFn *fn, SmallArray_Instr *args, MirConstValueData *out_value);
 
@@ -1109,6 +1112,7 @@ setup_instr_const_null(Context *cnt, MirInstr *instr, MirType *type)
 static inline bool
 is_allocated_object(MirInstr *instr)
 {
+	if (instr->kind == MIR_INSTR_DECL_DIRECT_REF) return true;
 	if (instr->kind == MIR_INSTR_DECL_REF) return true;
 	if (instr->kind == MIR_INSTR_ELEM_PTR) return true;
 	if (instr->kind == MIR_INSTR_MEMBER_PTR) return true;
@@ -1421,7 +1425,8 @@ exec_stack_alloc_local_vars(Context *cnt, MirFn *fn)
 static inline MirStackPtr
 exec_fetch_value(Context *cnt, MirInstr *src)
 {
-	if (src->comptime || src->kind == MIR_INSTR_DECL_REF) {
+	if (src->comptime || src->kind == MIR_INSTR_DECL_REF ||
+	    src->kind == MIR_INSTR_DECL_DIRECT_REF) {
 		return (MirStackPtr)&src->value.data;
 	}
 
@@ -3676,6 +3681,12 @@ reduce_instr(Context *cnt, MirInstr *instr)
 		break;
 	}
 
+	case MIR_INSTR_DECL_DIRECT_REF: {
+		exec_instr_decl_direct_ref(cnt, (MirInstrDeclDirectRef *)instr);
+		erase_instr(instr);
+		break;
+	}
+
 	case MIR_INSTR_ADDROF: {
 		exec_instr_addrof(cnt, (MirInstrAddrOf *)instr);
 		erase_instr(instr);
@@ -4435,8 +4446,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		/* set pointer to variable const value directly when variable is compile
 		 * time known
 		 */
-		if (var->comptime)
-			set_const_ptr(&ref->base.value.data.v_ptr, var, MIR_CP_VAR);
+		if (var->comptime) set_const_ptr(&ref->base.value.data.v_ptr, var, MIR_CP_VAR);
 		break;
 	}
 
@@ -6455,6 +6465,9 @@ exec_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_DECL_REF:
 		exec_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
 		break;
+	case MIR_INSTR_DECL_DIRECT_REF:
+		exec_instr_decl_direct_ref(cnt, (MirInstrDeclDirectRef *)instr);
+		break;
 	case MIR_INSTR_STORE:
 		exec_instr_store(cnt, (MirInstrStore *)instr);
 		break;
@@ -7072,6 +7085,24 @@ exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	default:
 		bl_abort("invalid declaration reference");
 	}
+}
+
+void
+exec_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref)
+{
+	assert(ref->ref->kind == MIR_INSTR_DECL_VAR);
+	MirVar *var = ((MirInstrDeclVar *)ref->ref)->var;
+	assert(var);
+
+	const bool  use_static_segment = var->is_in_gscope;
+	MirStackPtr real_ptr           = NULL;
+	if (var->comptime) {
+		real_ptr = (MirStackPtr)&var->value;
+	} else {
+		real_ptr = exec_read_stack_ptr(cnt, var->rel_stack_ptr, use_static_segment);
+	}
+
+	ref->base.value.data.v_ptr.data.stack_ptr = real_ptr;
 }
 
 void
