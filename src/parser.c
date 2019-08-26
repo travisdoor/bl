@@ -71,12 +71,6 @@ SmallArrayType(Scope64, Scope *, 64);
 
 /* swap current compound with _cmp and create temporary variable with previous one */
 
-#define push_inloop(_cnt)                                                                          \
-	bool _prev_inloop   = (_cnt)->inside_loop;                                                 \
-	(_cnt)->inside_loop = true;
-
-#define pop_inloop(_cnt) (_cnt)->inside_loop = _prev_inloop;
-
 #define scope_push(_cnt, _scope) sa_push_Scope64(&(_cnt)->_scope_stack, (_scope))
 #define scope_pop(_cnt) sa_pop_Scope64(&(_cnt)->_scope_stack)
 #define scope_get(_cnt) sa_last_Scope64(&(_cnt)->_scope_stack)
@@ -1085,8 +1079,9 @@ parse_stmt_loop(Context *cnt)
 
 	const bool while_true = tokens_current_is(cnt->tokens, SYM_LBLOCK);
 
-	Ast *loop = ast_create_node(cnt->ast_arena, AST_STMT_LOOP, tok_begin, scope_get(cnt));
-	push_inloop(cnt);
+	Ast *      loop = ast_create_node(cnt->ast_arena, AST_STMT_LOOP, tok_begin, scope_get(cnt));
+	const bool prev_in_loop = cnt->inside_loop;
+	cnt->inside_loop        = true;
 
 	Scope *scope = scope_create(
 	    cnt->scope_arenas, SCOPE_LEXICAL, scope_get(cnt), 128, &tok_begin->location);
@@ -1119,12 +1114,12 @@ parse_stmt_loop(Context *cnt)
 		Token *tok_err = tokens_peek(cnt->tokens);
 		parse_error(
 		    cnt, ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "Expected loop body block.");
-		pop_inloop(cnt);
+		cnt->inside_loop = prev_in_loop;
 		scope_pop(cnt);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, scope_get(cnt));
 	}
 
-	pop_inloop(cnt);
+	cnt->inside_loop = prev_in_loop;
 	scope_pop(cnt);
 	return loop;
 }
