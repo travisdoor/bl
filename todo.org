@@ -1,0 +1,33 @@
+* defer statement
+  - defer must be executed at the end of the scope
+  - when defer has not been reached it should not be executed
+  - return should call all previous defers
+  - defers must be called after return value is evaluated
+  - generate only once
+
+  if_block:
+  ...
+  eval return value
+  br defer_block
+
+  body_block:
+  ...
+  eval return value
+  br defer_block
+
+  return_block_A:
+  ret value
+
+  return_block_B:
+  ret value
+
+  defer_block: 
+  call terminate()
+  br return_block_A or return_block_B
+
+  Implementation [0%]
+  - [ ] Tmp for return value
+  - [ ] Create return block
+  - [ ] Store somewhere all defers in scope context (into the Scope ???)
+  - [ ] Generate defer blocks
+  - [ ] Connect all blocks
