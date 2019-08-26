@@ -3,7 +3,16 @@
 #load "std/print.bl"
 
 main :: fn () s32 {
-    defer print("hello world\n");
+    defer print("A\n");
+
+    if true {
+        defer print("B\n");
+        defer print("C\n");
+        defer print("D\n");
+    } 
+    
+    defer print("E\n");
+
     return 0;
 };
 

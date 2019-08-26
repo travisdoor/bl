@@ -57,7 +57,7 @@ ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct Scope *parent
 {
 	Ast *node          = arena_alloc(arena);
 	node->kind         = c;
-	node->parent_scope = parent_scope;
+	node->owner_scope = parent_scope;
 	node->location     = tok ? &tok->location : NULL;
 
 #if BL_DEBUG

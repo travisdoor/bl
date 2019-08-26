@@ -2022,6 +2022,8 @@ NEXT:
 	if ((tmp = parse_stmt_return(cnt))) {
 		if ((tmp)->kind != AST_BAD) parse_semicolon_rq(cnt);
 		bo_array_push_back(block->data.block.nodes, tmp);
+		block->data.block.has_return = true;
+		tmp->data.stmt_return.owner_block = block;
 		goto NEXT;
 	}
 

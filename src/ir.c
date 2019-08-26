@@ -366,7 +366,7 @@ emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 	}
 
 	if (instr->node) {
-		LLVMMetadataRef llvm_scope = instr->node->parent_scope->llvm_di_meta;
+		LLVMMetadataRef llvm_scope = instr->node->owner_scope->llvm_di_meta;
 		Location *      location   = instr->node->location;
 		llvm_di_set_current_location(
 		    cnt->llvm_builder, location->line, location->col, llvm_scope, false);
@@ -377,7 +377,7 @@ void
 emit_DI_fn(Context *cnt, MirFn *fn)
 {
 	LLVMMetadataRef tmp = llvm_di_create_fn(cnt->llvm_di_builder,
-	                                        fn->decl_node->parent_scope->llvm_di_meta,
+	                                        fn->decl_node->owner_scope->llvm_di_meta,
 	                                        fn->id->str,
 	                                        fn->llvm_name,
 	                                        fn->decl_node->location->unit->llvm_file_meta,
@@ -397,7 +397,7 @@ emit_DI_var(Context *cnt, MirVar *var)
 	if (!var->decl_node) return;
 
 	Location *      location   = var->decl_node->location;
-	LLVMMetadataRef llvm_scope = var->decl_node->parent_scope->llvm_di_meta;
+	LLVMMetadataRef llvm_scope = var->decl_node->owner_scope->llvm_di_meta;
 	LLVMMetadataRef llvm_file  = location->unit->llvm_file_meta;
 
 	LLVMMetadataRef llvm_meta = llvm_di_create_auto_variable(cnt->llvm_di_builder,

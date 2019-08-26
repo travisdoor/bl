@@ -139,9 +139,6 @@
 	}
 #endif
 
-SmallArrayType(LLVMType, LLVMTypeRef, 8);
-SmallArrayType(LLVMMetadata, LLVMMetadataRef, 16);
-
 union _MirInstr {
 	MirInstrBlock         block;
 	MirInstrDeclVar       var;
@@ -196,6 +193,10 @@ typedef struct MirStack {
 	bool           aborted;         /* true when execution was aborted */
 } MirStack;
 
+SmallArrayType(LLVMType, LLVMTypeRef, 8);
+SmallArrayType(LLVMMetadata, LLVMMetadataRef, 16);
+SmallArrayType(DeferStack, Ast *, 64);
+
 typedef struct {
 	Builder *   builder;
 	Assembly *  assembly;
@@ -207,11 +208,12 @@ typedef struct {
 
 	/* AST -> MIR generation */
 	struct {
-		MirInstrBlock *current_block;
-		MirInstrBlock *break_block;
-		MirInstrBlock *exit_block;
-		MirInstrBlock *continue_block;
-		ID *           current_entity_id; /* Sometimes used for named structures */
+		SmallArray_DeferStack defer_stack;
+		MirInstrBlock *       current_block;
+		MirInstrBlock *       break_block;
+		MirInstrBlock *       exit_block;
+		MirInstrBlock *       continue_block;
+		ID *                  current_entity_id; /* Sometimes used for named structures */
 	} ast;
 
 	/* Analyze MIR generated from AST */
@@ -701,6 +703,9 @@ static void
 ast_unrecheable(Context *cnt, Ast *unr);
 
 static void
+ast_defer_block(Context *cnt, Ast *block, bool whole_tree);
+
+static void
 ast_block(Context *cnt, Ast *block);
 
 static void
@@ -708,6 +713,9 @@ ast_stmt_if(Context *cnt, Ast *stmt_if);
 
 static void
 ast_stmt_return(Context *cnt, Ast *ret);
+
+static void
+ast_stmt_defer(Context *cnt, Ast *defer);
 
 static void
 ast_stmt_loop(Context *cnt, Ast *loop);
@@ -1525,7 +1533,7 @@ commit_fn(Context *cnt, MirFn *fn)
 	ID *id = fn->id;
 	assert(id);
 
-	ScopeEntry *entry = scope_lookup(fn->decl_node->parent_scope, id, true, false);
+	ScopeEntry *entry = scope_lookup(fn->decl_node->owner_scope, id, true, false);
 	assert(entry && "cannot commit unregistred function");
 
 	entry->kind    = SCOPE_ENTRY_FN;
@@ -3331,7 +3339,7 @@ append_instr_decl_var(Context * cnt,
 
 	tmp->var = create_var(cnt,
 	                      node,
-	                      node->parent_scope,
+	                      node->owner_scope,
 	                      &node->data.ident.id,
 	                      NULL,
 	                      is_mutable,
@@ -3418,7 +3426,7 @@ append_instr_decl_variant(Context *cnt, Ast *node, MirInstr *value)
 
 	assert(node && node->kind == AST_IDENT);
 	ID *   id    = &node->data.ident.id;
-	Scope *scope = node->parent_scope;
+	Scope *scope = node->owner_scope;
 	tmp->variant = create_variant(cnt, node, id, scope, NULL);
 
 	push_into_curr_block(cnt, &tmp->base);
@@ -7859,6 +7867,23 @@ exec_instr_unop(Context *cnt, MirInstrUnop *unop)
 
 /* MIR builting */
 void
+ast_defer_block(Context *cnt, Ast *block, bool whole_tree)
+{
+	SmallArray_DeferStack *stack = &cnt->ast.defer_stack;
+	Ast *                  defer;
+
+	while (stack->size > 0) {
+		defer = stack->data[stack->size - 1];
+
+		if (defer->owner_scope != block->owner_scope) break;
+		sa_pop_DeferStack(stack);
+		bl_log("pop defer %d", defer->owner_scope->location->line);
+
+		ast(cnt, defer->data.stmt_defer.expr);
+	}
+}
+
+void
 ast_ublock(Context *cnt, Ast *ublock)
 {
 	Ast *tmp;
@@ -7868,10 +7893,12 @@ ast_ublock(Context *cnt, Ast *ublock)
 void
 ast_block(Context *cnt, Ast *block)
 {
-	if (cnt->debug_mode) init_llvm_DI_scope(cnt, block->parent_scope);
+	if (cnt->debug_mode) init_llvm_DI_scope(cnt, block->owner_scope);
 
 	Ast *tmp;
 	barray_foreach(block->data.block.nodes, tmp) ast(cnt, tmp);
+
+	if (!block->data.block.has_return) ast_defer_block(cnt, block, false);
 }
 
 void
@@ -8045,8 +8072,21 @@ ast_stmt_return(Context *cnt, Ast *ret)
 		append_instr_store(cnt, ret, value, ref);
 	}
 
+
+	ast_defer_block(cnt, ret->data.stmt_return.owner_block, true);
+
 	assert(cnt->ast.exit_block);
 	append_instr_br(cnt, ret, cnt->ast.exit_block);
+}
+
+void
+ast_stmt_defer(Context *cnt, Ast *defer)
+{
+	Ast *ast_expr = defer->data.stmt_defer.expr;
+	assert(ast_expr && "Missing defer expression.");
+
+	/* push new defer record */
+	sa_push_DeferStack(&cnt->ast.defer_stack, defer);
 }
 
 MirInstr *
@@ -8216,7 +8256,7 @@ ast_expr_ref(Context *cnt, Ast *ref)
 	assert(ident);
 	assert(ident->kind == AST_IDENT);
 
-	Scope *scope = ident->parent_scope;
+	Scope *scope = ident->owner_scope;
 	Unit * unit  = ident->location->unit;
 	assert(unit);
 	assert(scope);
@@ -8276,7 +8316,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 	if (!ast_block) return &fn_proto->base;
 
 	/* Set body scope for DI. */
-	fn->body_scope = ast_block->parent_scope;
+	fn->body_scope = ast_block->owner_scope;
 
 	/* create block for initialization locals and arguments */
 	MirInstrBlock *init_block =
@@ -8326,7 +8366,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 			register_symbol(cnt,
 			                ast_arg_name,
 			                &ast_arg_name->data.ident.id,
-			                ast_arg_name->parent_scope,
+			                ast_arg_name->owner_scope,
 			                false,
 			                false);
 		}
@@ -8498,7 +8538,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 	assert(ast_name && "Missing entity name.");
 	assert(ast_name->kind == AST_IDENT && "Expected identificator.");
 
-	Scope *scope = ast_name->parent_scope;
+	Scope *scope = ast_name->owner_scope;
 	ID *   id    = &ast_name->data.ident.id;
 
 	if (ast_value && ast_value->kind == AST_EXPR_LIT_FN) {
@@ -8614,7 +8654,7 @@ ast_decl_member(Context *cnt, Ast *arg)
 		result = append_instr_decl_member(cnt, ast_name, result);
 
 		register_symbol(
-		    cnt, ast_name, &ast_name->data.ident.id, ast_name->parent_scope, false, false);
+		    cnt, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false, false);
 	}
 
 	assert(result);
@@ -8631,7 +8671,7 @@ ast_decl_variant(Context *cnt, Ast *variant)
 	MirInstr *value = ast(cnt, ast_value);
 
 	register_symbol(
-	    cnt, ast_name, &ast_name->data.ident.id, ast_name->parent_scope, false, false);
+	    cnt, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false, false);
 
 	return append_instr_decl_variant(cnt, ast_name, value);
 }
@@ -8642,7 +8682,7 @@ ast_type_ref(Context *cnt, Ast *type_ref)
 	Ast *ident = type_ref->data.type_ref.ident;
 	assert(ident);
 
-	Scope *scope = ident->parent_scope;
+	Scope *scope = ident->owner_scope;
 	Unit * unit  = ident->location->unit;
 	assert(unit);
 	assert(scope);
@@ -8864,6 +8904,9 @@ ast(Context *cnt, Ast *node)
 	case AST_UNREACHABLE:
 		ast_unrecheable(cnt, node);
 		break;
+	case AST_STMT_DEFER:
+		ast_stmt_defer(cnt, node);
+		break;
 	case AST_STMT_RETURN:
 		ast_stmt_return(cnt, node);
 		break;
@@ -8951,7 +8994,6 @@ ast(Context *cnt, Ast *node)
 	case AST_LOAD:
 	case AST_LINK:
 	case AST_PRIVATE:
-	case AST_STMT_DEFER:
 		break;
 	default:
 		bl_abort("invalid node %s", ast_get_name(node));
@@ -9387,6 +9429,8 @@ mir_run(Builder *builder, Assembly *assembly)
 	cnt.builtin_types.cache =
 	    scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, 64, NULL);
 
+	sa_init(&cnt.ast.defer_stack);
+
 	/* initialize all builtin types */
 	init_builtins(&cnt);
 
@@ -9417,5 +9461,6 @@ SKIP:
 	bo_unref(cnt.test_cases);
 	bo_unref(cnt.tmp_sh);
 
+	sa_terminate(&cnt.ast.defer_stack);
 	exec_delete_stack(cnt.exec.stack);
 }
