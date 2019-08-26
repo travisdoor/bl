@@ -31,6 +31,8 @@
 #include "stages.h"
 #include <setjmp.h>
 
+SmallArrayType(Ast64, Ast *, 64);
+
 #define EXPECTED_PRIVATE_SCOPE_COUNT 256
 
 #define parse_error(cnt, kind, tok, pos, format, ...)                                              \
@@ -68,12 +70,6 @@
 
 /* swap current compound with _cmp and create temporary variable with previous one */
 
-#define push_curr_decl(_cnt, _decl)                                                                \
-	Ast *const _prev_decl = (_cnt)->curr_decl;                                                 \
-	(_cnt)->curr_decl     = (_decl);
-
-#define pop_curr_decl(_cnt) (_cnt)->curr_decl = _prev_decl;
-
 #define push_inloop(_cnt)                                                                          \
 	bool _prev_inloop   = (_cnt)->inside_loop;                                                 \
 	(_cnt)->inside_loop = true;
@@ -97,16 +93,16 @@ typedef enum {
 } HashDirective;
 
 typedef struct {
-	Builder *    builder;
-	Assembly *   assembly;
-	Unit *       unit;
-	Arena *      ast_arena;
-	ScopeArenas *scope_arenas;
-	Tokens *     tokens;
+	SmallArray_Ast64 curr_decl;
+	Builder *        builder;
+	Assembly *       assembly;
+	Unit *           unit;
+	Arena *          ast_arena;
+	ScopeArenas *    scope_arenas;
+	Tokens *         tokens;
 
 	/* tmps */
 	Scope *scope;
-	Ast *  curr_decl;
 	bool   inside_loop;
 	bool   inside_private_scope;
 } Context;
@@ -357,7 +353,8 @@ parse_flags_for_curr_decl(Context *cnt)
 
 	HashDirective found = HD_NONE;
 
-	const bool is_curr_decl_valid = cnt->curr_decl && cnt->curr_decl->kind == AST_DECL_ENTITY;
+	const bool is_curr_decl_valid =
+	    cnt->curr_decl.size && sa_last_Ast64(&cnt->curr_decl)->kind == AST_DECL_ENTITY;
 
 	/* flags are accepted only for named declarations */
 	uint32_t accepted = is_curr_decl_valid ? HD_EXTERN | HD_COMPILER : HD_NONE;
@@ -380,7 +377,7 @@ parse_flags_for_curr_decl(Context *cnt)
 		accepted &= ~found;
 	}
 
-	if (is_curr_decl_valid) cnt->curr_decl->data.decl_entity.flags |= flags;
+	if (is_curr_decl_valid) sa_last_Ast64(&cnt->curr_decl)->data.decl_entity.flags |= flags;
 }
 
 /*
@@ -988,8 +985,8 @@ parse_stmt_return(Context *cnt)
 	if (!tok_begin) return NULL;
 
 	Ast *ret = ast_create_node(cnt->ast_arena, AST_STMT_RETURN, tok_begin, cnt->scope);
-	assert(cnt->curr_decl);
-	ret->data.stmt_return.fn_decl = cnt->curr_decl;
+	assert(cnt->curr_decl.size);
+	ret->data.stmt_return.fn_decl = sa_last_Ast64(&cnt->curr_decl);
 	ret->data.stmt_return.expr    = parse_expr(cnt);
 	return ret;
 }
@@ -1854,7 +1851,7 @@ parse_decl(Context *cnt)
 	decl->data.decl.name       = ident;
 	decl->data.decl_entity.mut = true;
 
-	push_curr_decl(cnt, decl);
+	sa_push_Ast64(&cnt->curr_decl, decl);
 
 	decl->data.decl.type = parse_type(cnt);
 	Token *tok_assign    = tokens_consume_if(cnt->tokens, SYM_ASSIGN);
@@ -1873,14 +1870,14 @@ parse_decl(Context *cnt)
 				            tok_assign,
 				            BUILDER_CUR_AFTER,
 				            "Expected binding of declaration to some value.");
-				pop_curr_decl(cnt);
+				sa_pop_Ast64(&cnt->curr_decl);
 				return ast_create_node(
 				    cnt->ast_arena, AST_BAD, tok_ident, cnt->scope);
 			}
 		}
 	}
 
-	pop_curr_decl(cnt);
+	sa_pop_Ast64(&cnt->curr_decl);
 	return decl;
 }
 
@@ -2135,6 +2132,8 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit)
 	               .curr_decl    = NULL,
 	               .inside_loop  = false};
 
+	sa_init(&cnt.curr_decl);
+
 	Ast *root              = ast_create_node(cnt.ast_arena, AST_UBLOCK, NULL, cnt.scope);
 	root->data.ublock.unit = unit;
 	unit->ast              = root;
@@ -2145,4 +2144,5 @@ parser_run(Builder *builder, Assembly *assembly, Unit *unit)
 	}
 
 	parse_ublock_content(&cnt, unit->ast);
+	sa_terminate(&cnt.curr_decl);
 }

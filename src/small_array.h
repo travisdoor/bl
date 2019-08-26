@@ -76,6 +76,17 @@ typedef struct SmallArrayAny {
 			arr->data = (T *)realloc(arr->data, arr->allocated * sizeof(T));           \
 		}                                                                                  \
 		arr->data[arr->size++] = v;                                                        \
+	}                                                                                          \
+                                                                                                   \
+	static inline T sa_pop_##N(SmallArray_##N *arr)                                            \
+	{                                                                                          \
+		return arr->data[arr->size--];                                                     \
+	}                                                                                          \
+                                                                                                   \
+	static inline T sa_last_##N(SmallArray_##N *arr)                                           \
+	{                                                                                          \
+		assert(arr->size && "Cannot get last element from empty array.");                  \
+		return arr->data[arr->size - 1];                                                   \
 	}
 
 #define sa_init(Arr) _sa_init((SmallArrayAny *)(Arr))

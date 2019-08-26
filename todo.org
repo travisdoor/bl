@@ -24,10 +24,25 @@
   defer_block: 
   call terminate()
   br return_block_A or return_block_B
+  
 
-  Implementation [0%]
-  - [ ] Tmp for return value
-  - [ ] Create return block
+  Code:
+  #+BEGIN_SRC bl
+  foo :: fn () s32 {
+      defer A;         // push A
+      if expr {
+          defer B;     // push B
+	  return 1;    // B, A 
+      }                // pop B
+      
+      defer C;         // push C
+      return 0;        // C, A
+  } 
+  #+END_SRC
+
+  Implementation [40%]
+  - [X] Tmp for return value
+  - [X] Create return block
   - [ ] Store somewhere all defers in scope context (into the Scope ???)
   - [ ] Generate defer blocks
   - [ ] Connect all blocks

@@ -3,7 +3,7 @@
 #load "std/print.bl"
 
 main :: fn () s32 {
-    print("hello world\n");
+    defer print("hello world\n");
     return 0;
 };
 
