@@ -788,9 +788,18 @@ void
 print_instr_decl_ref(MirInstrDeclRef *ref, FILE *stream)
 {
 	print_instr_head(&ref->base, stream, "declref");
-	const char *name = ref->rid->str;
 
+	const char *name = ref->rid->str;
 	fprintf(stream, "%s", name);
+}
+
+void
+print_instr_decl_direct_ref(MirInstrDeclDirectRef *ref, FILE *stream)
+{
+	print_instr_head(&ref->base, stream, "declref");
+
+	print_comptime_value_or_id(ref->ref, stream);
+	fprintf(stream, " /* direct */");
 }
 
 void
@@ -1028,6 +1037,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
 		break;
 	case MIR_INSTR_TOANY:
 		print_instr_toany((MirInstrToAny *)instr, stream);
+		break;
+	case MIR_INSTR_DECL_DIRECT_REF:
+		print_instr_decl_direct_ref((MirInstrDeclDirectRef *)instr, stream);
 		break;
 	}
 

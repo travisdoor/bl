@@ -224,6 +224,9 @@ static void
 emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 
 static void
+emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref);
+
+static void
 emit_instr_cast(Context *cnt, MirInstrCast *cast);
 
 static void
@@ -464,6 +467,18 @@ emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		bl_unimplemented;
 	}
 
+	assert(ref->base.llvm_value);
+}
+
+void
+emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref)
+{
+	assert(ref->ref && ref->ref->kind == MIR_INSTR_DECL_VAR);
+
+	MirVar *var = ((MirInstrDeclVar *)ref->ref)->var;
+	assert(var);
+	
+	ref->base.llvm_value = var->llvm_value;
 	assert(ref->base.llvm_value);
 }
 
@@ -1466,7 +1481,6 @@ emit_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_TYPE_SLICE:
 	case MIR_INSTR_TYPE_VARGS:
 	case MIR_INSTR_TYPE_ENUM:
-
 		break;
 
 	case MIR_INSTR_BINOP:
@@ -1537,6 +1551,9 @@ emit_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_TOANY:
 		emit_instr_toany(cnt, (MirInstrToAny *)instr);
+		break;
+	case MIR_INSTR_DECL_DIRECT_REF:
+		emit_instr_decl_direct_ref(cnt, (MirInstrDeclDirectRef *)instr);
 		break;
 	}
 }

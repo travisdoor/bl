@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #include "mir.h"
+#include "ast.h"
 #include "builder.h"
 #include "common.h"
 #include "llvm_di.h"
@@ -47,6 +48,7 @@
 #define IMPL_ANY_EXPR_TMP               ".any.expr"
 #define IMPL_COMPOUND_TMP               ".compound"
 #define IMPL_RTTI_ENTRY                 ".rtti"
+#define IMPL_RET_TMP                    ".ret"
 #define DEFAULT_EXEC_FRAME_STACK_SIZE   2097152 // 2MB
 #define DEFAULT_EXEC_CALL_STACK_NESTING 10000
 #define MAX_ALIGNMENT                   8
@@ -141,41 +143,42 @@ SmallArrayType(LLVMType, LLVMTypeRef, 8);
 SmallArrayType(LLVMMetadata, LLVMMetadataRef, 16);
 
 union _MirInstr {
-	MirInstrBlock       block;
-	MirInstrDeclVar     var;
-	MirInstrDeclMember  member;
-	MirInstrDeclVariant variant;
-	MirInstrConst       cnst;
-	MirInstrLoad        load;
-	MirInstrStore       store;
-	MirInstrRet         ret;
-	MirInstrBinop       binop;
-	MirInstrFnProto     fn_proto;
-	MirInstrDeclRef     decl_ref;
-	MirInstrCall        call;
-	MirInstrUnreachable unreachable;
-	MirInstrCondBr      cond_br;
-	MirInstrBr          br;
-	MirInstrUnop        unop;
-	MirInstrArg         arg;
-	MirInstrElemPtr     elem_ptr;
-	MirInstrMemberPtr   member_ptr;
-	MirInstrAddrOf      addrof;
-	MirInstrTypeArray   type_array;
-	MirInstrTypeSlice   type_slice;
-	MirInstrTypeVArgs   type_vargs;
-	MirInstrTypePtr     type_ptr;
-	MirInstrTypeStruct  type_struct;
-	MirInstrTypeFn      type_fn;
-	MirInstrTypeEnum    type_enum;
-	MirInstrCast        cast;
-	MirInstrSizeof      szof;
-	MirInstrAlignof     alof;
-	MirInstrCompound    init;
-	MirInstrVArgs       vargs;
-	MirInstrTypeInfo    type_info;
-	MirInstrPhi         phi;
-	MirInstrToAny       toany;
+	MirInstrBlock         block;
+	MirInstrDeclVar       var;
+	MirInstrDeclMember    member;
+	MirInstrDeclVariant   variant;
+	MirInstrConst         cnst;
+	MirInstrLoad          load;
+	MirInstrStore         store;
+	MirInstrRet           ret;
+	MirInstrBinop         binop;
+	MirInstrFnProto       fn_proto;
+	MirInstrDeclRef       decl_ref;
+	MirInstrDeclDirectRef decl_direct_ref;
+	MirInstrCall          call;
+	MirInstrUnreachable   unreachable;
+	MirInstrCondBr        cond_br;
+	MirInstrBr            br;
+	MirInstrUnop          unop;
+	MirInstrArg           arg;
+	MirInstrElemPtr       elem_ptr;
+	MirInstrMemberPtr     member_ptr;
+	MirInstrAddrOf        addrof;
+	MirInstrTypeArray     type_array;
+	MirInstrTypeSlice     type_slice;
+	MirInstrTypeVArgs     type_vargs;
+	MirInstrTypePtr       type_ptr;
+	MirInstrTypeStruct    type_struct;
+	MirInstrTypeFn        type_fn;
+	MirInstrTypeEnum      type_enum;
+	MirInstrCast          cast;
+	MirInstrSizeof        szof;
+	MirInstrAlignof       alof;
+	MirInstrCompound      init;
+	MirInstrVArgs         vargs;
+	MirInstrTypeInfo      type_info;
+	MirInstrPhi           phi;
+	MirInstrToAny         toany;
 };
 
 typedef struct MirFrame {
@@ -206,6 +209,7 @@ typedef struct {
 	struct {
 		MirInstrBlock *current_block;
 		MirInstrBlock *break_block;
+		MirInstrBlock *exit_block;
 		MirInstrBlock *continue_block;
 		ID *           current_entity_id; /* Sometimes used for named structures */
 	} ast;
@@ -601,6 +605,9 @@ append_instr_decl_ref(Context *   cnt,
                       ScopeEntry *scope_entry);
 
 static MirInstr *
+append_instr_decl_direct_ref(Context *cnt, MirInstr *ref);
+
+static MirInstr *
 append_instr_call(Context *cnt, Ast *node, MirInstr *callee, SmallArray_Instr *args);
 
 static MirInstr *
@@ -612,6 +619,16 @@ append_instr_decl_var(Context * cnt,
                       bool      is_in_gscope,
                       int32_t   order, /* -1 of none */
                       uint32_t  flags);
+
+static MirInstr *
+append_instr_decl_var_impl(Context *   cnt,
+                           const char *name,
+                           MirInstr *  type,
+                           MirInstr *  init,
+                           bool        is_mutable,
+                           bool        is_in_gscope,
+                           int32_t     order, /* -1 of none */
+                           uint32_t    flags);
 
 static MirInstr *
 append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type);
@@ -900,6 +917,9 @@ analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *variant_instr);
 
 static uint64_t
 analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
+
+static uint64_t
+analyze_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref);
 
 static uint64_t
 analyze_instr_const(Context *cnt, MirInstrConst *cnst);
@@ -3253,6 +3273,19 @@ append_instr_decl_ref(Context *   cnt,
 }
 
 MirInstr *
+append_instr_decl_direct_ref(Context *cnt, MirInstr *ref)
+{
+	assert(ref);
+	ref_instr(ref);
+	MirInstrDeclDirectRef *tmp =
+	    create_instr(cnt, MIR_INSTR_DECL_DIRECT_REF, NULL, MirInstrDeclDirectRef *);
+	tmp->ref = ref;
+
+	push_into_curr_block(cnt, &tmp->base);
+	return &tmp->base;
+}
+
+MirInstr *
 append_instr_call(Context *cnt, Ast *node, MirInstr *callee, SmallArray_Instr *args)
 {
 	assert(callee);
@@ -3300,6 +3333,40 @@ append_instr_decl_var(Context * cnt,
 	                      is_in_gscope,
 	                      order,
 	                      flags);
+
+	if (is_in_gscope) {
+		push_into_gscope(cnt, &tmp->base);
+		analyze_push_back(cnt, &tmp->base);
+	} else {
+		push_into_curr_block(cnt, &tmp->base);
+	}
+
+	if (init && init->kind == MIR_INSTR_COMPOUND) {
+		((MirInstrCompound *)init)->is_naked = false;
+	}
+
+	return &tmp->base;
+}
+
+MirInstr *
+append_instr_decl_var_impl(Context *   cnt,
+                           const char *name,
+                           MirInstr *  type,
+                           MirInstr *  init,
+                           bool        is_mutable,
+                           bool        is_in_gscope,
+                           int32_t     order,
+                           uint32_t    flags)
+{
+	ref_instr(type);
+	ref_instr(init);
+	MirInstrDeclVar *tmp = create_instr(cnt, MIR_INSTR_DECL_VAR, NULL, MirInstrDeclVar *);
+	tmp->base.ref_count  = NO_REF_COUNTING;
+	tmp->base.value.type = cnt->builtin_types.entry_void;
+	tmp->type            = type;
+	tmp->init            = init;
+
+	tmp->var = create_var_impl(cnt, name, NULL, is_mutable, is_in_gscope, false);
 
 	if (is_in_gscope) {
 		push_into_gscope(cnt, &tmp->base);
@@ -4369,7 +4436,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		 * time known
 		 */
 		if (var->comptime)
-			set_const_ptr(&ref->base.value.data.v_ptr, found->data.var, MIR_CP_VAR);
+			set_const_ptr(&ref->base.value.data.v_ptr, var, MIR_CP_VAR);
 		break;
 	}
 
@@ -4378,6 +4445,32 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	}
 
 	ref->scope_entry = found;
+	return ANALYZE_PASSED;
+}
+
+uint64_t
+analyze_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref)
+{
+	assert(ref->ref && "Missing declaration reference for direct ref.");
+	assert(ref->ref->kind == MIR_INSTR_DECL_VAR && "Expected variable declaration.");
+	assert(ref->ref->analyzed && "Reference not analyzed.");
+
+	MirVar *var = ((MirInstrDeclVar *)ref->ref)->var;
+	assert(var);
+	++var->ref_count;
+	MirType *type = var->value.type;
+	assert(type);
+
+	type                      = create_type_ptr(cnt, type);
+	ref->base.value.type      = type;
+	ref->base.comptime        = var->comptime;
+	ref->base.value.addr_mode = var->is_mutable ? MIR_VAM_LVALUE : MIR_VAM_LVALUE_CONST;
+
+	/* set pointer to variable const value directly when variable is compile
+	 * time known
+	 */
+	if (var->comptime) set_const_ptr(&ref->base.value.data.v_ptr, var, MIR_CP_VAR);
+
 	return ANALYZE_PASSED;
 }
 
@@ -4449,6 +4542,11 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
 	MirFn *fn = fn_proto->base.value.data.v_ptr.data.fn;
 	assert(fn);
+
+	if (fn->ret_tmp) {
+		assert(fn->ret_tmp->kind == MIR_INSTR_DECL_VAR);
+		((MirInstrDeclVar *)fn->ret_tmp)->var->value.type = value->type->data.fn.ret_type;
+	}
 
 	/* implicit functions has no name -> generate one */
 	if (!fn->llvm_name) {
@@ -5213,7 +5311,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		var->value = decl->init->value;
 	}
 
-	commit_var(cnt, decl->var);
+	if (!decl->var->is_implicit) commit_var(cnt, decl->var);
 
 	/* Type declaration should not be generated in LLVM. */
 	var->gen_llvm = var->value.type->kind != MIR_TYPE_TYPE;
@@ -5652,6 +5750,9 @@ analyze_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_TOANY:
 		state = analyze_instr_toany(cnt, (MirInstrToAny *)instr);
+		break;
+	case MIR_INSTR_DECL_DIRECT_REF:
+		state = analyze_instr_decl_direct_ref(cnt, (MirInstrDeclDirectRef *)instr);
 		break;
 	}
 
@@ -7900,8 +8001,21 @@ ast_stmt_continue(Context *cnt, Ast *cont)
 void
 ast_stmt_return(Context *cnt, Ast *ret)
 {
+	/* Return statement produce only setup of .ret temporary and break into the exit block of
+	 * the function. */
 	MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
-	append_instr_ret(cnt, ret, value, false);
+
+	MirFn *fn = get_current_fn(cnt);
+	assert(fn);
+
+	if (fn->ret_tmp) {
+		assert(value && "this should be an error");
+		MirInstr *ref = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
+		append_instr_store(cnt, ret, value, ref);
+	}
+
+	assert(cnt->ast.exit_block);
+	append_instr_br(cnt, ret, cnt->ast.exit_block);
 }
 
 MirInstr *
@@ -8119,8 +8233,10 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 	    cnt, ast_fn_type, RESOLVE_TYPE_FN_NAME, cnt->builtin_types.entry_resolve_type_fn);
 	assert(fn_proto->type);
 
-	MirInstrBlock *prev_block = get_current_block(cnt);
-	MirFn *        fn =
+	MirInstrBlock *prev_block      = get_current_block(cnt);
+	MirInstrBlock *prev_exit_block = cnt->ast.exit_block;
+
+	MirFn *fn =
 	    create_fn(cnt, lit_fn, NULL, NULL, 0, fn_proto); /* TODO: based on user flag!!! */
 	fn_proto->base.value.data.v_ptr.data.fn = fn;
 
@@ -8134,40 +8250,64 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 	/* create block for initialization locals and arguments */
 	MirInstrBlock *init_block =
 	    append_block(cnt, fn_proto->base.value.data.v_ptr.data.fn, "entry");
+
+	/* Every user generated function must contain exit block; this block is invoked last in
+	 * every function a eventually can return .ret value stored in temporary storage. When ast
+	 * parser hit user defined 'return' statement it sets up .ret temporary if there is one and
+	 * produce break into exit block. This approach is needed due to defer statement, because we
+	 * need to call defer blocks after return value evaluation and before terminal instruction
+	 * of the function. Last defer block always breaks into the exit block. */
+	cnt->ast.exit_block = append_block(cnt, fn_proto->base.value.data.v_ptr.data.fn, "exit");
+
+	if (ast_fn_type->data.type_fn.ret_type) {
+		set_current_block(cnt, init_block);
+		fn->ret_tmp = append_instr_decl_var_impl(
+		    cnt, gen_uq_name(cnt, IMPL_RET_TMP), NULL, NULL, true, false, -1, 0);
+
+		set_current_block(cnt, cnt->ast.exit_block);
+		MirInstr *ret_init = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
+
+		append_instr_ret(cnt, NULL, ret_init, false);
+	} else {
+		set_current_block(cnt, cnt->ast.exit_block);
+		append_instr_ret(cnt, NULL, NULL, false);
+	}
+
 	set_current_block(cnt, init_block);
 
 	/* build MIR for fn arguments */
-	{
-		SmallArray_Ast *ast_args = ast_fn_type->data.type_fn.args;
-		if (ast_args) {
-			Ast *ast_arg;
-			Ast *ast_arg_name;
+	SmallArray_Ast *ast_args = ast_fn_type->data.type_fn.args;
+	if (ast_args) {
+		Ast *ast_arg;
+		Ast *ast_arg_name;
 
-			const size_t argc = ast_args->size;
-			for (size_t i = argc; i-- > 0;) {
-				ast_arg = ast_args->data[i];
-				assert(ast_arg->kind == AST_DECL_ARG);
-				ast_arg_name = ast_arg->data.decl.name;
-				assert(ast_arg_name);
+		const size_t argc = ast_args->size;
+		for (size_t i = argc; i-- > 0;) {
+			ast_arg = ast_args->data[i];
+			assert(ast_arg->kind == AST_DECL_ARG);
+			ast_arg_name = ast_arg->data.decl.name;
+			assert(ast_arg_name);
 
-				/* create tmp declaration for arg variable */
-				MirInstr *arg = append_instr_arg(cnt, NULL, (unsigned long)i);
-				append_instr_decl_var(
-				    cnt, ast_arg_name, NULL, arg, true, false, i, 0);
+			/* create tmp declaration for arg variable */
+			MirInstr *arg = append_instr_arg(cnt, NULL, (unsigned long)i);
+			append_instr_decl_var(cnt, ast_arg_name, NULL, arg, true, false, i, 0);
 
-				register_symbol(cnt,
-				                ast_arg_name,
-				                &ast_arg_name->data.ident.id,
-				                ast_arg_name->parent_scope,
-				                false,
-				                false);
-			}
+			register_symbol(cnt,
+			                ast_arg_name,
+			                &ast_arg_name->data.ident.id,
+			                ast_arg_name->parent_scope,
+			                false,
+			                false);
 		}
 	}
 
 	/* generate body instructions */
 	ast(cnt, ast_block);
 
+	if (!is_block_terminated(get_current_block(cnt)))
+		append_instr_br(cnt, NULL, cnt->ast.exit_block);
+
+	cnt->ast.exit_block = prev_exit_block;
 	set_current_block(cnt, prev_block);
 	return &fn_proto->base;
 }
@@ -8818,6 +8958,8 @@ mir_instr_name(MirInstr *instr)
 		return "InstrCall";
 	case MIR_INSTR_DECL_REF:
 		return "InstrDeclRef";
+	case MIR_INSTR_DECL_DIRECT_REF:
+		return "InstrDeclDirectRef";
 	case MIR_INSTR_UNREACHABLE:
 		return "InstrUnreachable";
 	case MIR_INSTR_TYPE_FN:

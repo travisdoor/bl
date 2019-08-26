@@ -1,25 +1,13 @@
 /* playground */
 
 #load "std/print.bl"
-#load "std/memory.bl"
 
 main :: fn () s32 {
-    status := init();
-    defer terminate();
-
-    if status == 1 {
-        return -1;
-        // defer here
-    }
-    
+    print("hello world\n");
     return 0;
-    // defer here
 };
 
-init :: fn () s32 {
-    return 1;
-};
-
-terminate :: fn () {
+foo :: fn () s32 {
+    return 10;
 };
 
