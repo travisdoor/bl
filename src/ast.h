@@ -164,9 +164,7 @@ struct AstUBlock {
 };
 
 struct AstBlock {
-	BArray *        nodes;
-	SmallArray_Ast *defer_nodes;
-	bool            has_return;
+	BArray *nodes;
 };
 
 struct AstTestCase {
@@ -177,7 +175,6 @@ struct AstTestCase {
 struct AstStmtReturn {
 	Ast *expr;
 	Ast *fn_decl;
-	Ast *block;
 };
 
 struct AstStmtDefer {

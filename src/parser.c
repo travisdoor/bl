@@ -1154,15 +1154,14 @@ parse_stmt_defer(Context *cnt)
 	if (!tok) return NULL;
 
 	Ast *expr = NULL;
-	expr      = parse_block(cnt, true);
-	if (!expr) expr = parse_expr(cnt);
+	expr      = parse_expr(cnt);
 
 	if (!expr) {
 		parse_error(cnt,
 		            ERR_EXPECTED_EXPR,
 		            tok,
 		            BUILDER_CUR_WORD,
-		            "Expected block or expression after 'defer' statement.");
+		            "Expected expression after 'defer' statement.");
 
 		Token *tok_err = tokens_peek(cnt->tokens);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, cnt->scope);
@@ -2015,8 +2014,6 @@ NEXT:
 	if ((tmp = parse_stmt_return(cnt))) {
 		if ((tmp)->kind != AST_BAD) parse_semicolon_rq(cnt);
 		bo_array_push_back(block->data.block.nodes, tmp);
-		tmp->data.stmt_return.block  = block;
-		block->data.block.has_return = true;
 		goto NEXT;
 	}
 
@@ -2045,11 +2042,6 @@ NEXT:
 	if ((tmp = parse_stmt_defer(cnt))) {
 		if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
 		bo_array_push_back(block->data.block.nodes, tmp);
-
-		if (!block->data.block.defer_nodes)
-			block->data.block.defer_nodes = create_sarr(SmallArray_Ast, cnt->assembly);
-		sa_push_Ast(block->data.block.defer_nodes, tmp);
-
 		goto NEXT;
 	}
 
