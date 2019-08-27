@@ -398,9 +398,12 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 	if (!tok_hash) return NULL;
 
 	Token *tok_directive = tokens_consume(cnt->tokens);
-	switch (tok_directive->sym) {
+	if (tok_directive->sym != SYM_IDENT) goto INVALID;
 
-	case SYM_LOAD: {
+	const char *directive = tok_directive->value.str;
+	assert(directive);
+
+	if (strcmp(directive, "load") == 0) {
 		/* load <string> */
 		set_satisfied(HD_LOAD);
 		if (is_not_flag(expected_mask, HD_LOAD)) {
@@ -436,7 +439,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		return load;
 	}
 
-	case SYM_LINK: {
+	if (strcmp(directive, "link") == 0) {
 		/* link <string> */
 		set_satisfied(HD_LINK);
 		if (is_not_flag(expected_mask, HD_LINK)) {
@@ -469,7 +472,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		return link;
 	}
 
-	case SYM_TEST: {
+	if (strcmp(directive, "test") == 0) {
 		/* test <string> {} */
 		set_satisfied(HD_TEST);
 
@@ -522,7 +525,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		return test;
 	}
 
-	case SYM_EXTERN: {
+	if (strcmp(directive, "extern") == 0) {
 		set_satisfied(HD_EXTERN);
 		if (is_not_flag(expected_mask, HD_EXTERN)) {
 			parse_error(cnt,
@@ -537,7 +540,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		return NULL;
 	}
 
-	case SYM_COMPILER: {
+	if (strcmp(directive, "compiler") == 0) {
 		set_satisfied(HD_COMPILER);
 		if (is_not_flag(expected_mask, HD_COMPILER)) {
 			parse_error(cnt,
@@ -552,7 +555,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		return NULL;
 	}
 
-	case SYM_PRIVATE: {
+	if (strcmp(directive, "private") == 0) {
 		set_satisfied(HD_PRIVATE);
 
 		if (is_not_flag(expected_mask, HD_PRIVATE)) {
@@ -604,14 +607,10 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		return ast_create_node(cnt->ast_arena, AST_PRIVATE, tok_directive, scope_get(cnt));
 	}
 
-	default:
-		break;
-	}
-
+INVALID:
 	parse_error(
 	    cnt, ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unknown directive.");
 	return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
-
 #undef set_satisfied
 }
 
@@ -2022,7 +2021,7 @@ NEXT:
 	if ((tmp = parse_stmt_return(cnt))) {
 		if ((tmp)->kind != AST_BAD) parse_semicolon_rq(cnt);
 		bo_array_push_back(block->data.block.nodes, tmp);
-		block->data.block.has_return = true;
+		block->data.block.has_return      = true;
 		tmp->data.stmt_return.owner_block = block;
 		goto NEXT;
 	}

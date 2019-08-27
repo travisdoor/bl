@@ -56,6 +56,7 @@ string_new_reserved :: fn (size: usize) string {
     tmp.ptr = alloc_block(size);
     tmp.len = 0;
 
+    set_terminator(tmp);
     return tmp;
 };
 
@@ -75,6 +76,7 @@ string_copy :: fn (v: string) string {
 
     mem_copy(tmp.ptr, v.ptr, v.len);
 
+    set_terminator(tmp);
     return tmp;
 };
 
@@ -101,6 +103,7 @@ string_delete :: fn (v: string) {
  */
 string_clear :: fn (v: *string) {
     v.len = 0;
+    set_terminator(^v);
 };
 
 /*
@@ -136,6 +139,8 @@ string_append :: fn (v: *string, add: Any) {
     v.ptr = make_more_room_if_needed(v.ptr, new_len);
     mem_copy(cast(*u8) (cast(u64) v.ptr + v.len) , add_ptr, add_len);
     v.len = new_len;
+
+    set_terminator(^v);
 };
 
 /*
@@ -213,7 +218,7 @@ alloc_block :: fn (size: usize) *u8 {
     d := size / StringBlockSize + 1;
     size = d * StringBlockSize;
 
-    alloc_size := size + sizeof(BlockHead);
+    alloc_size := size + sizeof(BlockHead) + sizeof(u8);
     tmp := cast(*BlockHead) mem_alloc(alloc_size);
     if tmp == null { abort(); }
     tmp.allocated_size = size; 
@@ -232,4 +237,10 @@ get_allocation_ptr :: fn (ptr: *u8) *u8 {
 get_allocated_size :: fn (ptr: *u8) usize {
     head := cast(*BlockHead) get_allocation_ptr(ptr);
     return head.allocated_size;
+};
+
+set_terminator :: fn (v: string) {
+    v.len += 1;
+    v[v.len - 1] = 0;
+    v.len -= 1;
 };
