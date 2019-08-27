@@ -30,20 +30,55 @@
 
 File :: *u8; 
 
+/*
+ * @title file_create
+ *
+ * @decl file_create :: fn (filename: string) File
+ * @desc
+ * Create and open new file for writing. Return =null= when file cannot be created.
+ * Caller is responsible for closing file.
+ * @ver 0.4.2
+ */
 file_create :: fn (filename: string) File {
     mode := "w+";
     return fopen(filename.ptr, mode.ptr); 
 };
 
+/*
+ * @title file_open
+ *
+ * @decl file_open:: fn (filename: string) File
+ * @desc
+ * Open file for reading and writing. Return =null= when file was not found.
+ * Caller is responsible for closing file.
+ * @ver 0.4.2
+ */
 file_open :: fn (filename: string) File {
     mode := "rw";
     return fopen(filename.ptr, mode.ptr); 
 };
 
+/*
+ * @title file_close
+ *
+ * @decl file_close :: fn (file: File)
+ * @desc
+ * Close opened file.
+ * @ver 0.4.2
+ */
 file_close :: fn (file: File) {
     fclose(file);
 };
 
+/*
+ * @title file_read_all
+ *
+ * @decl file_read_all :: fn (file: File) string
+ * @desc
+ * Load content of file into the =string= buffer. Caller is responsible for
+ * free created buffer.
+ * @ver 0.4.2
+ */
 file_read_all :: fn (file: File) string {
     fseek(file, 0, SeekEnd);
     size := ftell(file);
