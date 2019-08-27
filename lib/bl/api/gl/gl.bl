@@ -44,29 +44,61 @@ uint16_t GLushort
 void     GLvoid
 */
 
-GL_COLOR_BUFFER_BIT :: 0x00004000;
-GL_VERTEX_SHADER    :: 0x8B31;
-GL_FRAGMENT_SHADER  :: 0x8B30;
-GL_COMPILE_STATUS   :: 0x8B81;
-GL_INFO_LOG_LENGTH  :: 0x8B84;
-GL_LINK_STATUS      :: 0x8B82;
+GL_TRUE  :: 1;
+GL_FALSE :: 0;
 
+GL_BYTE           :: 0x1400;
+GL_UNSIGNED_BYTE  :: 0x1401;
+GL_SHORT          :: 0x1402;
+GL_UNSIGNED_SHORT :: 0x1403;
+GL_INT            :: 0x1404;
+GL_UNSIGNED_INT   :: 0x1405;
+GL_FLOAT          :: 0x1406;
+GL_DOUBLE         :: 0x140A;
 
-glClearColor        :: fn (red: f32, green: f32, blue: f32, alpha: f32) #extern;
-glClear             :: fn (mask: u32) #extern;
-glCreateShader      :: fn (kind: u32) u32 #extern;
-glShaderSource      :: fn (shader: u32, count: s32, str: **u8, lenght: s32) #extern;
-glCompileShader     :: fn (shader: u32) #extern;
-glCreateProgram     :: fn () u32 #extern;
-glAttachShader      :: fn (program: u32, shader: u32) #extern;
-glDetachShader      :: fn (program: u32, shader: u32) #extern;
-glGetShaderiv       :: fn (shader: u32, pname: u32, params: *s32) #extern; 
-glGetProgramiv      :: fn (program: u32, pname: u32, params: *s32) #extern; 
-glGetShaderInfoLog  :: fn (shader: u32, bufSize: s32, length: *s32, infoLog: *u8) #extern; 
-glGetProgramInfoLog :: fn (program: u32, bufSize: s32, length: *s32, infoLog: *u8) #extern; 
-glDeleteProgram     :: fn (program: u32) #extern;
-glDeleteShader      :: fn (shader: u32) #extern;
-glLinkProgram       :: fn (program: u32) #extern;
-glUseProgram        :: fn (program: u32) #extern;
+GL_POINTS         :: 0x0000;
+GL_LINES          :: 0x0001;
+GL_LINE_LOOP      :: 0x0002;
+GL_LINE_STRIP     :: 0x0003;
+GL_TRIANGLES      :: 0x0004;
+GL_TRIANGLE_STRIP :: 0x0005;
+GL_TRIANGLE_FAN   :: 0x0006;
+
+GL_COLOR_BUFFER_BIT     :: 0x00004000;
+GL_VERTEX_SHADER        :: 0x8B31;
+GL_FRAGMENT_SHADER      :: 0x8B30;
+GL_COMPILE_STATUS       :: 0x8B81;
+GL_INFO_LOG_LENGTH      :: 0x8B84;
+GL_LINK_STATUS          :: 0x8B82;
+GL_ARRAY_BUFFER         :: 0x8892;
+GL_STATIC_DRAW          :: 0x88E4;
+GL_ELEMENT_ARRAY_BUFFER :: 0x8893;
+
+glClearColor              :: fn (red: f32, green: f32, blue: f32, alpha: f32) #extern;
+glClear                   :: fn (mask: u32) #extern;
+glCreateShader            :: fn (kind: u32) u32 #extern;
+glShaderSource            :: fn (shader: u32, count: s32, str: **u8, lenght: s32) #extern;
+glCompileShader           :: fn (shader: u32) #extern;
+glCreateProgram           :: fn () u32 #extern;
+glAttachShader            :: fn (program: u32, shader: u32) #extern;
+glDetachShader            :: fn (program: u32, shader: u32) #extern;
+glGetShaderiv             :: fn (shader: u32, pname: u32, params: *s32) #extern; 
+glGetProgramiv            :: fn (program: u32, pname: u32, params: *s32) #extern; 
+glGetShaderInfoLog        :: fn (shader: u32, bufSize: s32, length: *s32, infoLog: *u8) #extern; 
+glGetProgramInfoLog       :: fn (program: u32, bufSize: s32, length: *s32, infoLog: *u8) #extern; 
+glDeleteProgram           :: fn (program: u32) #extern;
+glDeleteShader            :: fn (shader: u32) #extern;
+glLinkProgram             :: fn (program: u32) #extern;
+glUseProgram              :: fn (program: u32) #extern;
+glGenBuffers              :: fn (n: s32, buffers: *u32) #extern;
+glBindBuffer              :: fn (target: u32, buffer: u32) #extern;
+glBufferData              :: fn (target: u32, size: usize, data: *u8, usage: u32) #extern;
+glDrawElements            :: fn (mode: u32, count: s32, tp: u32, indices: *u8) #extern;
+glBindVertexArray         :: fn (array: u32) #extern;
+glDeleteVertexArrays      :: fn (n: s32, arrays: *u32) #extern;
+glGenVertexArrays         :: fn (n: s32, arrays: *u32) #extern;
+glVertexAttribPointer     :: fn (index: u32, size: s32, tp: u32, normalized: s32, stride: s32, pointer: *u8) #extern;
+glEnableVertexAttribArray :: fn (index: u32) #extern;
+glDeleteBuffers           :: fn (n: s32, buffers: *u32) #extern;
 
                    

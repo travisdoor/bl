@@ -4317,16 +4317,21 @@ analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof)
 {
 	assert(szof->expr);
 
-	szof->expr = analyze_slot_input(cnt, NULL, szof->expr, NULL, false);
-
 	MirType *type = szof->expr->value.type;
 	assert(type);
+
+	reduce_instr(cnt, szof->expr);
+	if (is_load_needed(szof->expr)) {
+		type = mir_deref_type(type);
+	}
+	//szof->expr = analyze_slot_input(cnt, NULL, szof->expr, NULL, false);
 
 	if (type->kind == MIR_TYPE_TYPE) {
 		type = szof->expr->value.data.v_ptr.data.type;
 		assert(type);
 	}
 
+	bl_log("size: %d", type->store_size_bytes);
 	szof->base.value.data.v_u64 = type->store_size_bytes;
 	return ANALYZE_PASSED;
 }
@@ -4589,7 +4594,22 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	} else {
 		/* Add entry block of the function into analyze queue. */
 		MirInstr *entry_block = (MirInstr *)fn->first_block;
-		assert(entry_block);
+		if (!entry_block) {
+			/* TODO: not the best place to do this check, move into ast generation later
+			 */
+			/* TODO: not the best place to do this check, move into ast generation later
+			 */
+			/* TODO: not the best place to do this check, move into ast generation later
+			 */
+			builder_msg(cnt->builder,
+			            BUILDER_MSG_ERROR,
+			            ERR_EXPECTED_BODY,
+			            fn_proto->base.node->location,
+			            BUILDER_CUR_WORD,
+			            "Missing function body.");
+			return ANALYZE_FAILED;
+		}
+
 		analyze_push_front(cnt, entry_block);
 	}
 
@@ -8565,8 +8585,9 @@ ast_decl_entity(Context *cnt, Ast *entity)
 
 	if (ast_value && ast_value->kind == AST_EXPR_LIT_FN) {
 		/* recognised function */
-		MirInstr *value = ast(cnt, ast_value);
-		enable_groups   = true;
+		const int32_t flags = entity->data.decl_entity.flags;
+		MirInstr *    value = ast(cnt, ast_value);
+		enable_groups       = true;
 		if (is_in_gscope) {
 			value->value.data.v_ptr.data.fn->llvm_name = ast_name->data.ident.id.str;
 		} else {
@@ -8580,7 +8601,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 
 		value->value.data.v_ptr.data.fn->id        = id;
 		value->value.data.v_ptr.data.fn->decl_node = ast_name;
-		value->value.data.v_ptr.data.fn->flags     = entity->data.decl_entity.flags;
+		value->value.data.v_ptr.data.fn->flags     = flags;
 
 		if (ast_type) {
 			((MirInstrFnProto *)value)->user_type =
