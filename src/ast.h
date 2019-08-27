@@ -165,6 +165,7 @@ struct AstUBlock {
 
 struct AstBlock {
 	BArray *nodes;
+	bool    has_return;
 };
 
 struct AstTestCase {
@@ -175,6 +176,7 @@ struct AstTestCase {
 struct AstStmtReturn {
 	Ast *expr;
 	Ast *fn_decl;
+	Ast *owner_block;
 };
 
 struct AstStmtDefer {
@@ -356,8 +358,8 @@ struct AstExprDeref {
 /* AST base type */
 struct Ast {
 	AstKind          kind;
-	struct Location *location;     /* Location in source file. */
-	struct Scope *   parent_scope; /* Scope in which is AST node. */
+	struct Location *location;    /* Location in source file. */
+	struct Scope *   owner_scope; /* Scope in which is AST node. */
 
 	union {
 		struct AstPrivate       priv;
