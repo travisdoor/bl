@@ -8075,9 +8075,24 @@ ast_stmt_return(Context *cnt, Ast *ret)
 	assert(fn);
 
 	if (fn->ret_tmp) {
-		assert(value && "this should be an error");
+		if (!value) {
+			builder_msg(cnt->builder,
+			            BUILDER_MSG_ERROR,
+			            ERR_EXPECTED_EXPR,
+			            ret->location,
+			            BUILDER_CUR_AFTER,
+			            "Expected return value.");
+		}
+
 		MirInstr *ref = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
 		append_instr_store(cnt, ret, value, ref);
+	} else if (value) {
+		builder_msg(cnt->builder,
+		            BUILDER_MSG_ERROR,
+		            ERR_UNEXPECTED_EXPR,
+		            value->node->location,
+		            BUILDER_CUR_WORD,
+		            "Unexpected return value.");
 	}
 
 	ast_defer_block(cnt, ret->data.stmt_return.owner_block, true);
