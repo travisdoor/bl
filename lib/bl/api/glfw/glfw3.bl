@@ -41,6 +41,7 @@ GLFW_OPENGL_FORWARD_COMPAT :: 0x00022006;
 glfwInit :: fn () s32 #extern;
 glfwTerminate :: fn () #extern;
 glfwCreateWindow :: fn (width: s32, height: s32, title: *u8, monitor: *u8, share: *u8) *GLFWwindow #extern;
+glfwDestroyWindow :: fn	(window: *GLFWwindow) #extern;
 glfwMakeContextCurrent :: fn (window: *GLFWwindow) #extern;
 glfwWindowShouldClose :: fn (window: *GLFWwindow) s32 #extern;
 glfwPollEvents :: fn () #extern;
