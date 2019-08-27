@@ -7872,12 +7872,14 @@ ast_defer_block(Context *cnt, Ast *block, bool whole_tree)
 	SmallArray_DeferStack *stack = &cnt->ast.defer_stack;
 	Ast *                  defer;
 
-	while (stack->size > 0) {
-		defer = stack->data[stack->size - 1];
+	for (size_t i = stack->size; i-- > 0;) {
+		defer = stack->data[i];
 
-		if (defer->owner_scope != block->owner_scope) break;
-		sa_pop_DeferStack(stack);
-		bl_log("pop defer %d", defer->owner_scope->location->line);
+		if (defer->owner_scope == block->owner_scope) {
+			sa_pop_DeferStack(stack);
+		} else if (!whole_tree) {
+			break;
+		}
 
 		ast(cnt, defer->data.stmt_defer.expr);
 	}
@@ -7924,6 +7926,12 @@ ast_test_case(Context *cnt, Ast *test)
 
 	MirInstrBlock *entry_block =
 	    append_block(cnt, fn_proto->base.value.data.v_ptr.data.fn, "entry");
+
+	cnt->ast.exit_block = append_block(cnt, fn_proto->base.value.data.v_ptr.data.fn, "exit");
+
+	set_current_block(cnt, cnt->ast.exit_block);
+	append_instr_ret(cnt, NULL, NULL, false);
+
 	set_current_block(cnt, entry_block);
 
 	/* generate body instructions */
@@ -8071,7 +8079,6 @@ ast_stmt_return(Context *cnt, Ast *ret)
 		MirInstr *ref = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
 		append_instr_store(cnt, ret, value, ref);
 	}
-
 
 	ast_defer_block(cnt, ret->data.stmt_return.owner_block, true);
 

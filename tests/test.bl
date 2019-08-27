@@ -5,10 +5,11 @@
 main :: fn () s32 {
     defer print("A\n");
 
-    if true {
+    if false {
         defer print("B\n");
         defer print("C\n");
         defer print("D\n");
+        return 0;
     } 
     
     defer print("E\n");
