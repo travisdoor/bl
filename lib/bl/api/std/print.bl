@@ -33,6 +33,7 @@ PrintMaxLength :: 4096;
 /*
  * @title print <<PRINT>>
  *
+ * @decl print :: fn (format: string, args: ...) s32
  * @desc
  * Print to the stdout. The =print= method accept format string and variable count of input arguments passed. 
  * New line is not printed at the end. Use =%= as a format character.
@@ -57,6 +58,7 @@ print :: fn (format: string, args: ...) s32 {
 /*
  * @title eprint
  *
+ * @decl eprint :: fn (format: string, args: ...) s32
  * @desc
  * Print to the stderr. Look at [[PRINT][print]] for more information.
  * @ver 0.4.2
@@ -78,6 +80,7 @@ eprint :: fn (format: string, args: ...) s32 {
 /*
  * @title bprint
  *
+ * @decl bprint :: fn (buf: []u8, format: string, args: ...) s32
  * @desc
  * Print into the preallocated buffer.
  * @ver 0.4.2
