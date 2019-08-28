@@ -176,6 +176,7 @@ union _MirInstr {
 	MirInstrTypeInfo      type_info;
 	MirInstrPhi           phi;
 	MirInstrToAny         toany;
+	MirInstrWU            wu;
 };
 
 typedef struct MirFrame {
@@ -495,6 +496,9 @@ _create_instr(Context *cnt, MirInstrKind kind, Ast *node);
 
 static MirInstr *
 create_instr_call_comptime(Context *cnt, Ast *node, MirInstr *fn);
+
+static MirInstr *
+append_instr_wu(Context *cnt, Ast *node);
 
 static MirInstr *
 append_instr_arg(Context *cnt, Ast *node, unsigned i);
@@ -850,6 +854,8 @@ analyze_slot_input(Context * cnt,
                    MirInstr *input,
                    MirType * slot_type,
                    bool      enable_special_cast);
+static uint64_t
+analyze_instr_wu(Context *cnt, MirInstrWU *instr);
 
 static uint64_t
 analyze_instr_compound(Context *cnt, MirInstrCompound *init);
@@ -1078,6 +1084,38 @@ type_cmp(MirType *first, MirType *second)
 {
 	assert(first && second);
 	return first->id.hash == second->id.hash;
+}
+
+static inline MirInstrBlock *
+get_current_block(Context *cnt)
+{
+	return cnt->ast.current_block;
+}
+
+static inline MirFn *
+get_current_fn(Context *cnt)
+{
+	return cnt->ast.current_block ? cnt->ast.current_block->owner_fn : NULL;
+}
+
+static inline void
+terminate_block(MirInstrBlock *block, MirInstr *terminator)
+{
+	assert(block);
+	if (block->terminal) bl_abort("basic block '%s' already terminated!", block->name);
+	block->terminal = terminator;
+}
+
+static inline bool
+is_block_terminated(MirInstrBlock *block)
+{
+	return block->terminal;
+}
+
+static inline bool
+is_current_block_terminated(Context *cnt)
+{
+	return get_current_block(cnt)->terminal;
 }
 
 static inline ptrdiff_t
@@ -1469,20 +1507,6 @@ exec_set_pc(Context *cnt, MirInstr *instr)
 }
 /* execute end */
 
-static inline void
-terminate_block(MirInstrBlock *block, MirInstr *terminator)
-{
-	assert(block);
-	if (block->terminal) bl_abort("basic block '%s' already terminated!", block->name);
-	block->terminal = terminator;
-}
-
-static inline bool
-is_block_terminated(MirInstrBlock *block)
-{
-	return block->terminal;
-}
-
 static inline bool
 is_builtin(Ast *ident, MirBuiltinIdKind kind)
 {
@@ -1501,18 +1525,6 @@ static inline void
 set_current_block(Context *cnt, MirInstrBlock *block)
 {
 	cnt->ast.current_block = block;
-}
-
-static inline MirInstrBlock *
-get_current_block(Context *cnt)
-{
-	return cnt->ast.current_block;
-}
-
-static inline MirFn *
-get_current_fn(Context *cnt)
-{
-	return cnt->ast.current_block ? cnt->ast.current_block->owner_fn : NULL;
 }
 
 static inline void
@@ -2734,10 +2746,6 @@ push_into_curr_block(Context *cnt, MirInstr *instr)
 	MirInstrBlock *block = get_current_block(cnt);
 	assert(block);
 
-	if (is_block_terminated(block)) {
-		bl_log("unrecheable code!!!!");
-	}
-					 
 	instr->owner_block = block;
 	instr->prev        = block->last_instr;
 
@@ -2922,6 +2930,16 @@ create_instr_call_comptime(Context *cnt, Ast *node, MirInstr *fn)
 	tmp->callee        = fn;
 
 	ref_instr(fn);
+	return &tmp->base;
+}
+
+MirInstr *
+append_instr_wu(Context *cnt, Ast *node)
+{
+	MirInstrWU *tmp      = create_instr(cnt, MIR_INSTR_WU, node, MirInstrWU *);
+	tmp->base.value.type = cnt->builtin_types.entry_void;
+	tmp->base.ref_count  = NO_REF_COUNTING;
+	push_into_curr_block(cnt, &tmp->base);
 	return &tmp->base;
 }
 
@@ -3170,9 +3188,9 @@ append_instr_cond_br(Context *      cnt,
 	tmp->else_block      = else_block;
 
 	MirInstrBlock *block = get_current_block(cnt);
-	terminate_block(block, &tmp->base);
 
 	push_into_curr_block(cnt, &tmp->base);
+	terminate_block(block, &tmp->base);
 	return &tmp->base;
 }
 
@@ -3187,9 +3205,9 @@ append_instr_br(Context *cnt, Ast *node, MirInstrBlock *then_block)
 	tmp->then_block      = then_block;
 
 	MirInstrBlock *block = get_current_block(cnt);
-	terminate_block(block, &tmp->base);
 
 	push_into_curr_block(cnt, &tmp->base);
+	terminate_block(block, &tmp->base);
 	return &tmp->base;
 }
 
@@ -3612,9 +3630,9 @@ append_instr_ret(Context *cnt, Ast *node, MirInstr *value, bool allow_fn_ret_typ
 	tmp->allow_fn_ret_type_override = allow_fn_ret_type_override;
 
 	MirInstrBlock *block = get_current_block(cnt);
-	terminate_block(block, &tmp->base);
 
 	push_into_curr_block(cnt, &tmp->base);
+	terminate_block(block, &tmp->base);
 	return &tmp->base;
 }
 
@@ -3785,7 +3803,22 @@ erase_instr_tree(MirInstr *instr)
 			break;
 		}
 
+		case MIR_INSTR_VARGS: {
+			MirInstrVArgs *vargs = (MirInstrVArgs *)top;
+			if (vargs->values) {
+				MirInstr *it;
+				sarray_foreach(vargs->values, it)
+				{
+					unref_instr(it);
+					sa_push_Instr64(&queue, it);
+				}
+			}
+			break;
+		}
+
 		case MIR_INSTR_BLOCK:
+			continue;
+
 		case MIR_INSTR_DECL_REF:
 		case MIR_INSTR_CONST:
 			break;
@@ -5739,6 +5772,19 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
 }
 
 uint64_t
+analyze_instr_wu(Context *cnt, MirInstrWU *instr)
+{
+	assert(instr->base.node);
+	builder_msg(cnt->builder,
+	            BUILDER_MSG_WARNING,
+	            0,
+	            instr->base.node->location,
+	            BUILDER_CUR_NONE,
+	            "Unrecheable code.");
+	return ANALYZE_PASSED;
+}
+
+uint64_t
 analyze_instr_block(Context *cnt, MirInstrBlock *block)
 {
 	assert(block);
@@ -5962,6 +6008,9 @@ analyze_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_DECL_DIRECT_REF:
 		state = analyze_instr_decl_direct_ref(cnt, (MirInstrDeclDirectRef *)instr);
+		break;
+	case MIR_INSTR_WU:
+		state = analyze_instr_wu(cnt, (MirInstrWU *)instr);
 		break;
 	}
 
@@ -6634,7 +6683,6 @@ exec_instr(Context *cnt, MirInstr *instr)
 	if (!instr->analyzed) {
 		bl_abort("instruction %s has not been analyzed!", mir_instr_name(instr));
 	}
-	// if (instr->ref_count == 0) return;
 
 	switch (instr->kind) {
 	case MIR_INSTR_CAST:
@@ -8263,12 +8311,6 @@ ast_stmt_return(Context *cnt, Ast *ret)
 	 * the function. */
 	MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
 
-	MirInstrBlock *current_block = get_current_block(cnt);
-	if (is_block_terminated(current_block)) {
-		bl_log("block already terminated!!!!");
-		return;
-	}
-
 	MirFn *fn = get_current_fn(cnt);
 	assert(fn);
 
@@ -9302,6 +9344,8 @@ mir_instr_name(MirInstr *instr)
 		return "InstrDeclVariant";
 	case MIR_INSTR_TOANY:
 		return "InstrToAny";
+	case MIR_INSTR_WU:
+		return "InstrWU";
 	}
 
 	return "UNKNOWN";

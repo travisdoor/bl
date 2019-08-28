@@ -44,6 +44,7 @@ extern "C" {
 #define MAGENTA_BEGIN
 #define CYAN_BEGIN
 #define RED_BEGIN
+#define RED_BG_BEGIN
 #define YELLOW_BEGIN
 #define GREEN_BEGIN
 #define BLUE_BEGIN
@@ -52,6 +53,7 @@ extern "C" {
 #define MAGENTA_BEGIN "\x1b[35m"
 #define CYAN_BEGIN "\x1b[36m"
 #define RED_BEGIN "\x1b[31m"
+#define RED_BG_BEGIN "\x1b[41m"
 #define YELLOW_BEGIN "\x1b[33m"
 #define BLUE_BEGIN "\x1b[34m"
 #define GREEN_BEGIN "\x1b[32m"

@@ -279,9 +279,30 @@ builder_msg(Builder *      builder,
 	char     msg[MAX_MSG_LEN] = {0};
 
 	if (src) {
-		int32_t line = src->line;
-		int32_t col  = src->col;
-		int32_t len  = src->len;
+		int32_t line     = src->line;
+		int32_t col      = src->col;
+		int32_t len      = src->len;
+		char *  color    = NULL;
+		char *  msg_mark = NULL;
+
+		switch (type) {
+		case BUILDER_MSG_ERROR:
+			color    = RED_BEGIN;
+			msg_mark = "E";
+			break;
+		case BUILDER_MSG_LOG:
+			color    = GREEN_BEGIN;
+			msg_mark = "";
+			break;
+		case BUILDER_MSG_NOTE:
+			color    = BLUE_BEGIN;
+			msg_mark = "N";
+			break;
+		case BUILDER_MSG_WARNING:
+			color    = YELLOW_BEGIN;
+			msg_mark = "W";
+			break;
+		}
 
 		switch (pos) {
 		case BUILDER_CUR_AFTER:
@@ -296,20 +317,18 @@ builder_msg(Builder *      builder,
 			col -= col < 1 ? 0 : 1;
 			len = 1;
 			break;
+
+		case BUILDER_CUR_NONE:
+			break;
 		}
 
 		if (code == 0) {
 			snprintf(msg, MAX_MSG_LEN, "%s:%d:%d ", src->unit->filepath, line, col);
 		} else {
-			const char *mark = "E";
-			if (type == BUILDER_MSG_LOG) mark = "";
-			if (type == BUILDER_MSG_NOTE) mark = "N";
-			if (type == BUILDER_MSG_WARNING) mark = "W";
-
 			snprintf(msg,
 			         MAX_MSG_LEN,
 			         "[%s%04d] %s:%d:%d ",
-			         mark,
+			         msg_mark,
 			         code,
 			         src->unit->filepath,
 			         line,
@@ -334,25 +353,27 @@ builder_msg(Builder *      builder,
 
 		line_str = unit_get_src_ln(src->unit, src->line, &line_len);
 		if (line_str && line_len) {
-			sprintf(msg, CYAN("\n%*d"), pad, src->line);
+			bo_string_append(tmp, color);
+			sprintf(msg, "\n>%*d", pad - 1, src->line);
 			bo_string_append(tmp, &msg[0]);
 			bo_string_append(tmp, " | ");
 			bo_string_appendn(tmp, line_str, line_len);
+			bo_string_append(tmp, COLOR_END);
+		}
+
+		if (pos != BUILDER_CUR_NONE) {
 			sprintf(msg, "\n%*s", pad, "");
 			bo_string_append(tmp, &msg[0]);
 			bo_string_append(tmp, " | ");
-		}
 
-		for (int32_t i = 0; i < col + len - 1; ++i) {
-			if (i < col - 1)
-				bo_string_append(tmp, " ");
-			else {
-				const char *marker = RED("^");
-				if (type == BUILDER_MSG_LOG) marker = GREEN("^");
-				if (type == BUILDER_MSG_NOTE) marker = BLUE("^");
-				if (type == BUILDER_MSG_WARNING) marker = YELLOW("^");
-				bo_string_append(tmp, marker);
+			bo_string_append(tmp, color);
+			for (int32_t i = 0; i < col + len - 1; ++i) {
+				if (i < col - 1)
+					bo_string_append(tmp, " ");
+				else
+					bo_string_append(tmp, "^");
 			}
+			bo_string_append(tmp, COLOR_END);
 		}
 
 		line_str = unit_get_src_ln(src->unit, src->line + 1, &line_len);

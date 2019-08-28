@@ -6,7 +6,16 @@
 main :: fn () s32 {
     return 0;
     print("hell");
-    //return 0;
+
+    loop i := 0; i < 1231; i += 1 {
+        return 0;
+        print("hell");
+        return 0;
+        print("hell");
+        return 0;
+    }
+
+        print("hell");
 };
 
 

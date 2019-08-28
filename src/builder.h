@@ -71,7 +71,7 @@ typedef enum {
 	BUILDER_MSG_LOG,
 } BuilderMsgType;
 
-typedef enum { BUILDER_CUR_AFTER, BUILDER_CUR_WORD, BUILDER_CUR_BEFORE } BuilderCurPos;
+typedef enum { BUILDER_CUR_AFTER, BUILDER_CUR_WORD, BUILDER_CUR_BEFORE, BUILDER_CUR_NONE } BuilderCurPos;
 
 struct Location;
 
