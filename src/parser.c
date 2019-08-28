@@ -1655,11 +1655,20 @@ parse_type_arr(Context *cnt)
 		            ERR_MISSING_BRACKET,
 		            tok_end,
 		            BUILDER_CUR_WORD,
-		            "Expected ']' after array size expression.");
+		            "Expected closing ']' after array size expression.");
 	}
 
 	arr->data.type_arr.elem_type = parse_type(cnt);
-	assert(arr->data.type_arr.elem_type);
+	if (!arr->data.type_arr.elem_type) {
+		Token *tok_err = tokens_peek(cnt->tokens);
+		parse_error(cnt,
+		            ERR_INVALID_TYPE,
+		            tok_err,
+		            BUILDER_CUR_WORD,
+		            "Expected array element type.");
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, scope_get(cnt));
+	}
+
 	return arr;
 }
 
@@ -1683,7 +1692,7 @@ parse_type_slice(Context *cnt)
 		            ERR_INVALID_TYPE,
 		            tok_begin,
 		            BUILDER_CUR_AFTER,
-		            "Expected slice type after '[]'.");
+		            "Expected slice element type.");
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, scope_get(cnt));
 	}
 

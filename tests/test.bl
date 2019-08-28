@@ -1,15 +1,13 @@
 /* playground */
 
 #load "std/print.bl"
+#load "std/memory.bl"
 
 main :: fn () s32 {
-    foo :: fn (v: s32) s32 {
-        return v;
-    };
-
-    ptr := &foo;
-
-    return ptr(10);
+    arr :[10];
+    return 0;
 };
+
+
 
 
