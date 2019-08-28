@@ -4317,14 +4317,11 @@ analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof)
 {
 	assert(szof->expr);
 
+	szof->expr = analyze_slot_input(cnt, NULL, szof->expr, NULL, false);
+
 	MirType *type = szof->expr->value.type;
 	assert(type);
 
-	reduce_instr(cnt, szof->expr);
-	if (is_load_needed(szof->expr)) {
-		type = mir_deref_type(type);
-	}
-	//szof->expr = analyze_slot_input(cnt, NULL, szof->expr, NULL, false);
 
 	if (type->kind == MIR_TYPE_TYPE) {
 		type = szof->expr->value.data.v_ptr.data.type;
