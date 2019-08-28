@@ -2734,6 +2734,10 @@ push_into_curr_block(Context *cnt, MirInstr *instr)
 	MirInstrBlock *block = get_current_block(cnt);
 	assert(block);
 
+	if (is_block_terminated(block)) {
+		bl_log("unrecheable code!!!!");
+	}
+					 
 	instr->owner_block = block;
 	instr->prev        = block->last_instr;
 
@@ -8258,6 +8262,12 @@ ast_stmt_return(Context *cnt, Ast *ret)
 	/* Return statement produce only setup of .ret temporary and break into the exit block of
 	 * the function. */
 	MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
+
+	MirInstrBlock *current_block = get_current_block(cnt);
+	if (is_block_terminated(current_block)) {
+		bl_log("block already terminated!!!!");
+		return;
+	}
 
 	MirFn *fn = get_current_fn(cnt);
 	assert(fn);
