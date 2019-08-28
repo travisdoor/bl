@@ -277,7 +277,7 @@ assembly_setup(Assembly *assembly, uint32_t flags, OptLvl opt_lvl)
 	assembly->options.run_tests          = is_flag(flags, BUILDER_FLAG_RUN_TESTS);
 	assembly->options.run_main           = is_flag(flags, BUILDER_FLAG_RUN);
 	assembly->options.opt_lvl            = opt_lvl;
-	
+
 	init_llvm(assembly);
 	if (assembly->options.debug_mode) init_DI(assembly);
 }

@@ -206,7 +206,7 @@ builder_compile(Builder *builder, Assembly *assembly, uint32_t flags, OptLvl opt
 	msg_log("Compile assembly: %s", assembly->name);
 
 	assembly_setup(assembly, flags, opt_lvl);
-	
+
 	{
 		unit = unit_new_file(CORE_SOURCE_FILE, NULL, NULL);
 		if (!assembly_add_unit_unique(assembly, unit)) {

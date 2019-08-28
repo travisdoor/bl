@@ -671,7 +671,7 @@ print_instr_unop(MirInstrUnop *unop, FILE *stream)
 
 	const char *op = ast_unop_to_str(unop->op);
 	fprintf(stream, "%s", op);
-	print_comptime_value_or_id(unop->instr, stream);
+	print_comptime_value_or_id(unop->expr, stream);
 }
 
 void
@@ -898,18 +898,14 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 	fprintf(stream, "\n");
 
 	if (fn_proto->base.analyzed) fprintf(stream, "// analyzed\n");
-	if (fn->ref_count == 0) fprintf(stream, "// no LLVM\n");
+	if (!fn->emit_llvm) fprintf(stream, "// no LLVM\n");
 
 	if (fn->llvm_name)
 		fprintf(stream, "@%s ", fn->llvm_name);
 	else
 		fprintf(stream, "@%llu ", (unsigned long long)fn_proto->base.id);
 
-#if BL_DEBUG
-	fprintf(stream, "(%d) : ", fn->ref_count);
-#else
-	fprintf(stream, " : ");
-#endif
+	fprintf(stream, ": ");
 	print_type(fn->type, false, stream, false);
 	fprintf(stream, " : ");
 

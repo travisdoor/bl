@@ -55,10 +55,10 @@ small_array_dtor(SmallArrayAny *arr)
 Ast *
 ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope)
 {
-	Ast *node          = arena_alloc(arena);
-	node->kind         = c;
+	Ast *node         = arena_alloc(arena);
+	node->kind        = c;
 	node->owner_scope = parent_scope;
-	node->location     = tok ? &tok->location : NULL;
+	node->location    = tok ? &tok->location : NULL;
 
 #if BL_DEBUG
 	static uint64_t serial = 0;

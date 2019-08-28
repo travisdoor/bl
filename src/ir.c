@@ -293,6 +293,7 @@ static inline LLVMValueRef
 emit_fn_proto(Context *cnt, MirFn *fn)
 {
 	assert(fn);
+	if (!fn->emit_llvm) return NULL;
 
 	fn->llvm_value = LLVMGetNamedFunction(cnt->llvm_module, fn->llvm_name);
 	if (!fn->llvm_value) {
@@ -378,7 +379,7 @@ emit_DI_fn(Context *cnt, MirFn *fn)
 {
 	LLVMMetadataRef tmp = llvm_di_create_fn(cnt->llvm_di_builder,
 	                                        fn->decl_node->owner_scope->llvm_di_meta,
-	                                        fn->id->str,
+	                                        fn->id ? fn->id->str : fn->llvm_name,
 	                                        fn->llvm_name,
 	                                        fn->decl_node->location->unit->llvm_file_meta,
 	                                        fn->decl_node->location->line,
@@ -477,7 +478,7 @@ emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref)
 
 	MirVar *var = ((MirInstrDeclVar *)ref->ref)->var;
 	assert(var);
-	
+
 	ref->base.llvm_value = var->llvm_value;
 	assert(ref->base.llvm_value);
 }
@@ -903,7 +904,7 @@ emit_instr_store(Context *cnt, MirInstrStore *store)
 void
 emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
-	LLVMValueRef llvm_val = fetch_value(cnt, unop->instr);
+	LLVMValueRef llvm_val = fetch_value(cnt, unop->expr);
 	assert(llvm_val);
 
 	LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(llvm_val));
@@ -1444,7 +1445,7 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
 	MirFn *fn = fn_proto->base.value.data.v_ptr.data.fn;
 	/* unused function */
-	if (fn->ref_count == 0) return;
+	if (!fn->emit_llvm) return;
 	emit_fn_proto(cnt, fn);
 
 	if (is_not_flag(fn->flags, FLAG_EXTERN)) {

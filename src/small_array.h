@@ -80,7 +80,7 @@ typedef struct SmallArrayAny {
                                                                                                    \
 	static inline T sa_pop_##N(SmallArray_##N *arr)                                            \
 	{                                                                                          \
-		return arr->data[arr->size--];                                                     \
+		return arr->data[--arr->size];                                                     \
 	}                                                                                          \
                                                                                                    \
 	static inline T sa_last_##N(SmallArray_##N *arr)                                           \

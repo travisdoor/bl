@@ -252,10 +252,10 @@ struct MirFn {
 	Scope *      body_scope; /* function body scope if there is one (optional) */
 	MirType *    type;
 	BArray *     variables;
-	int32_t      ref_count;
 	const char * llvm_name;
 	LLVMValueRef llvm_value;
 	bool         analyzed_for_cmptime_exec;
+	bool         emit_llvm;
 
 	DCpointer   extern_entry;
 	int32_t     flags;
@@ -563,7 +563,7 @@ struct MirInstrUnop {
 	MirInstr base;
 
 	UnopKind  op;
-	MirInstr *instr;
+	MirInstr *expr;
 };
 
 struct MirInstrFnProto {

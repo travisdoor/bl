@@ -186,7 +186,7 @@ main(int32_t argc, char *argv[])
 	if (opt_lvl == -1) {
 		opt_lvl = is_flag(build_flags, BUILDER_FLAG_DEBUG_BUILD) ? OPT_NONE : OPT_DEFAULT;
 	}
-	
+
 	if (configure) {
 		if (generate_conf() != 0) {
 			msg_error("Cannot generate '%s' file. If you are compiler developer please "
