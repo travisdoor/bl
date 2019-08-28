@@ -4,7 +4,7 @@
 #load "std/memory.bl"
 
 main :: fn () s32 {
-    arr :[10];
+    return 0;
     return 0;
 };
 
