@@ -96,7 +96,6 @@ typedef struct MirInstrTypeInfo      MirInstrTypeInfo;
 typedef struct MirInstrTypeKind      MirInstrTypeKind;
 typedef struct MirInstrPhi           MirInstrPhi;
 typedef struct MirInstrToAny         MirInstrToAny;
-typedef struct MirInstrWU            MirInstrWU;
 
 typedef union MirConstValueData MirConstValueData;
 
@@ -227,7 +226,6 @@ typedef enum MirInstrKind {
 	MIR_INSTR_TYPE_INFO,
 	MIR_INSTR_PHI,
 	MIR_INSTR_TOANY,
-	MIR_INSTR_WU,
 } MirInstrKind;
 
 typedef enum MirCastOp {
@@ -715,10 +713,6 @@ struct MirInstrToAny {
 	MirVar *  tmp;
 	MirVar *  expr_tmp; /* optional */
 	MirInstr *expr;
-};
-
-struct MirInstrWU {
-	MirInstr base;
 };
 
 /* public */

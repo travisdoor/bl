@@ -1471,7 +1471,6 @@ emit_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_INVALID:
 		bl_abort("Invalid instruction");
 
-	case MIR_INSTR_WU:
 	case MIR_INSTR_CONST:
 	case MIR_INSTR_SIZEOF:
 	case MIR_INSTR_ALIGNOF:

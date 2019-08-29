@@ -176,7 +176,6 @@ union _MirInstr {
 	MirInstrTypeInfo      type_info;
 	MirInstrPhi           phi;
 	MirInstrToAny         toany;
-	MirInstrWU            wu;
 };
 
 typedef struct MirFrame {
@@ -499,9 +498,6 @@ _create_instr(Context *cnt, MirInstrKind kind, Ast *node);
 
 static MirInstr *
 create_instr_call_comptime(Context *cnt, Ast *node, MirInstr *fn);
-
-static MirInstr *
-append_instr_wu(Context *cnt, Ast *node);
 
 static MirInstr *
 append_instr_arg(Context *cnt, Ast *node, unsigned i);
@@ -857,8 +853,6 @@ analyze_slot_input(Context * cnt,
                    MirInstr *input,
                    MirType * slot_type,
                    bool      enable_special_cast);
-static uint64_t
-analyze_instr_wu(Context *cnt, MirInstrWU *instr);
 
 static uint64_t
 analyze_instr_compound(Context *cnt, MirInstrCompound *init);
@@ -2952,16 +2946,6 @@ create_instr_call_comptime(Context *cnt, Ast *node, MirInstr *fn)
 	tmp->callee        = fn;
 
 	ref_instr(fn);
-	return &tmp->base;
-}
-
-MirInstr *
-append_instr_wu(Context *cnt, Ast *node)
-{
-	MirInstrWU *tmp      = create_instr(cnt, MIR_INSTR_WU, node, MirInstrWU *);
-	tmp->base.value.type = cnt->builtin_types.entry_void;
-	tmp->base.ref_count  = NO_REF_COUNTING;
-	append_current_block(cnt, &tmp->base);
 	return &tmp->base;
 }
 
@@ -5803,19 +5787,6 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
 }
 
 uint64_t
-analyze_instr_wu(Context *cnt, MirInstrWU *instr)
-{
-	assert(instr->base.node);
-	builder_msg(cnt->builder,
-	            BUILDER_MSG_WARNING,
-	            0,
-	            instr->base.node->location,
-	            BUILDER_CUR_NONE,
-	            "Unrecheable code.");
-	return ANALYZE_PASSED;
-}
-
-uint64_t
 analyze_instr_block(Context *cnt, MirInstrBlock *block)
 {
 	assert(block);
@@ -6039,9 +6010,6 @@ analyze_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_DECL_DIRECT_REF:
 		state = analyze_instr_decl_direct_ref(cnt, (MirInstrDeclDirectRef *)instr);
-		break;
-	case MIR_INSTR_WU:
-		state = analyze_instr_wu(cnt, (MirInstrWU *)instr);
 		break;
 	}
 
@@ -9378,8 +9346,6 @@ mir_instr_name(MirInstr *instr)
 		return "InstrDeclVariant";
 	case MIR_INSTR_TOANY:
 		return "InstrToAny";
-	case MIR_INSTR_WU:
-		return "InstrWU";
 	}
 
 	return "UNKNOWN";

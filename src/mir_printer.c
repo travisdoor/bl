@@ -348,9 +348,6 @@ print_instr_unop(MirInstrUnop *unop, FILE *stream);
 static void
 print_instr_arg(MirInstrArg *arg, FILE *stream);
 
-static void
-print_instr_wu(MirInstrWU *wu, FILE *stream);
-
 /* impl */
 void
 print_comptime_value_or_id(MirInstr *instr, FILE *stream)
@@ -893,12 +890,6 @@ print_instr_block(MirInstrBlock *block, FILE *stream)
 }
 
 void
-print_instr_wu(MirInstrWU *wu, FILE *stream)
-{
-	print_instr_head(&wu->base, stream, "$warn_unrecheable");
-}
-
-void
 print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 {
 	MirFn *fn = fn_proto->base.value.data.v_ptr.data.fn;
@@ -1045,9 +1036,6 @@ mir_print_instr(MirInstr *instr, FILE *stream)
 		break;
 	case MIR_INSTR_DECL_DIRECT_REF:
 		print_instr_decl_direct_ref((MirInstrDeclDirectRef *)instr, stream);
-		break;
-	case MIR_INSTR_WU:
-		print_instr_wu((MirInstrWU *)instr, stream);
 		break;
 	}
 
