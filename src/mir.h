@@ -443,6 +443,7 @@ struct MirInstr {
 	int32_t ref_count;
 	bool    analyzed;
 	bool    comptime;
+	bool    unrechable;
 
 	MirInstr *prev;
 	MirInstr *next;
@@ -571,8 +572,9 @@ struct MirInstrUnop {
 struct MirInstrFnProto {
 	MirInstr base;
 
-	MirInstr *type;
-	MirInstr *user_type;
+	MirInstr *       type;
+	MirInstr *       user_type;
+	struct Location *first_unrechable_locataion;
 };
 
 struct MirInstrTypeFn {

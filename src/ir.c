@@ -1404,6 +1404,7 @@ emit_instr_block(Context *cnt, MirInstrBlock *block)
 
 	MirInstr *instr = block->entry_instr;
 	while (instr) {
+		if (instr->unrechable) break;
 		emit_instr(cnt, instr);
 		instr = instr->next;
 	}

@@ -1053,9 +1053,10 @@ mir_print_instr(MirInstr *instr, FILE *stream)
 
 	const bool is_naked_compound =
 	    instr->kind == MIR_INSTR_COMPOUND && ((MirInstrCompound *)instr)->is_naked;
-	if (instr->comptime || is_naked_compound) fprintf(stream, " // ");
+	if (instr->comptime || is_naked_compound || instr->unrechable) fprintf(stream, " // ");
 
 	fprintf(stream, "%s", instr->comptime ? "comptime " : "");
+	fprintf(stream, "%s", instr->unrechable ? "unrechable " : "");
 	fprintf(stream, "%s", is_naked_compound ? "naked" : "");
 	fprintf(stream, "\n");
 }
