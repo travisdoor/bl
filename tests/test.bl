@@ -4,20 +4,18 @@
 #load "std/memory.bl"
 
 main :: fn () s32 {
+    i := fib(36);
+    print("reusult = %\n", i);
     return 0;
-    print("hell");
-
-    loop i := 0; i < 1231; i += 1 {
-        return 0;
-        print("hell");
-        return 0;
-        print("hell");
-        return 0;
-    }
-
-        print("hell");
 };
 
+fib :: fn (n: s32) s32 {
+    if n == 0 || n == 1 {
+        return n;
+    } else {
+        return fib(n-1) + fib(n-2);
+    }
+};
 
 
 

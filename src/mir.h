@@ -572,7 +572,7 @@ struct MirInstrFnProto {
 
 	MirInstr *       type;
 	MirInstr *       user_type;
-	struct Location *first_unrechable_locataion;
+	struct Location *first_unrechable_location;
 };
 
 struct MirInstrTypeFn {

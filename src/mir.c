@@ -1211,8 +1211,8 @@ insert_instr_after(MirInstr *after, MirInstr *instr)
 	assert(after && instr);
 
 	MirInstrBlock *block = after->owner_block;
-	instr->unrechable = after->unrechable;
-	
+	instr->unrechable    = after->unrechable;
+
 	instr->next = after->next;
 	instr->prev = after;
 	if (after->next) after->next->prev = instr;
@@ -1228,7 +1228,7 @@ insert_instr_before(MirInstr *before, MirInstr *instr)
 	assert(before && instr);
 
 	MirInstrBlock *block = before->owner_block;
-	instr->unrechable = before->unrechable;
+	instr->unrechable    = before->unrechable;
 
 	instr->next = before;
 	instr->prev = before->prev;
@@ -2749,8 +2749,8 @@ maybe_mark_as_unrechable(MirInstrBlock *block, MirInstr *instr)
 	instr->unrechable         = true;
 	MirFn *          fn       = block->owner_fn;
 	MirInstrFnProto *fn_proto = (MirInstrFnProto *)fn->prototype;
-	if (!fn_proto->first_unrechable_locataion && instr->node)
-		fn_proto->first_unrechable_locataion = instr->node->location;
+	if (!fn_proto->first_unrechable_location && instr->node)
+		fn_proto->first_unrechable_location = instr->node->location;
 }
 
 void
@@ -4824,13 +4824,13 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
 	if (fn->id) commit_fn(cnt, fn);
 
-	if (fn_proto->first_unrechable_locataion) {
+	if (fn_proto->first_unrechable_location) {
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_WARNING,
 		            0,
-		            fn_proto->first_unrechable_locataion,
+		            fn_proto->first_unrechable_location,
 		            BUILDER_CUR_NONE,
-		            "Unrecheable code starting here.");
+		            "Unrechable code detected.");
 	}
 
 	return ANALYZE_PASSED;
@@ -5791,13 +5791,14 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 {
 	assert(block);
 
+	MirFn *fn = block->owner_fn;
+	assert(fn);
+	MirInstrFnProto *fn_proto = (MirInstrFnProto *)fn->prototype;
+
 	/* append implicit return for void functions or generate error when last
 	 * block is not terminated
 	 */
 	if (!is_block_terminated(block)) {
-		MirFn *fn = block->owner_fn;
-		assert(fn);
-
 		if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
 			set_current_block(cnt, block);
 			append_instr_ret(cnt, NULL, NULL, false);
@@ -5808,6 +5809,20 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 			            fn->decl_node->location,
 			            BUILDER_CUR_WORD,
 			            "Not every path inside function return value.");
+		}
+	}
+
+	if (block->base.ref_count == 0 && !fn_proto->first_unrechable_location) {
+		MirInstr *first_instr = block->entry_instr;
+		if (first_instr && first_instr->node) {
+			fn_proto->first_unrechable_location = first_instr->node->location;
+
+			builder_msg(cnt->builder,
+			            BUILDER_MSG_WARNING,
+			            0,
+			            fn_proto->first_unrechable_location,
+			            BUILDER_CUR_NONE,
+			            "Unrechable code detected.");
 		}
 	}
 
@@ -8313,31 +8328,33 @@ ast_stmt_return(Context *cnt, Ast *ret)
 	 * the function. */
 	MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
 
-	MirFn *fn = get_current_fn(cnt);
-	assert(fn);
+	if (!is_current_block_terminated(cnt)) {
+		MirFn *fn = get_current_fn(cnt);
+		assert(fn);
 
-	if (fn->ret_tmp) {
-		if (!value) {
+		if (fn->ret_tmp) {
+			if (!value) {
+				builder_msg(cnt->builder,
+				            BUILDER_MSG_ERROR,
+				            ERR_EXPECTED_EXPR,
+				            ret->location,
+				            BUILDER_CUR_AFTER,
+				            "Expected return value.");
+			}
+
+			MirInstr *ref = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
+			append_instr_store(cnt, ret, value, ref);
+		} else if (value) {
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
-			            ERR_EXPECTED_EXPR,
-			            ret->location,
-			            BUILDER_CUR_AFTER,
-			            "Expected return value.");
+			            ERR_UNEXPECTED_EXPR,
+			            value->node->location,
+			            BUILDER_CUR_WORD,
+			            "Unexpected return value.");
 		}
 
-		MirInstr *ref = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
-		append_instr_store(cnt, ret, value, ref);
-	} else if (value) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
-		            ERR_UNEXPECTED_EXPR,
-		            value->node->location,
-		            BUILDER_CUR_WORD,
-		            "Unexpected return value.");
+		ast_defer_block(cnt, ret->data.stmt_return.owner_block, true);
 	}
-
-	ast_defer_block(cnt, ret->data.stmt_return.owner_block, true);
 
 	assert(cnt->ast.exit_block);
 	append_instr_br(cnt, ret, cnt->ast.exit_block);
