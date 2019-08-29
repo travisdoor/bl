@@ -107,7 +107,7 @@ TypeInfoFn :: struct #compiler {
  */
 TypeInfoPtr :: struct #compiler {
     base: TypeInfo,
-    pointed: *TypeInfo // Type information for pointed type.
+    pointee: *TypeInfo // Type information for pointed type.
 };
 
 /*

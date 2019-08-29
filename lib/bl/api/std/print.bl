@@ -28,7 +28,7 @@
 
 #load "std/math.bl"
 
-PrintMaxLength :: 4096;
+PRINT_MAX_LENGTH :: 4096;
 
 /*
  * @title print <<PRINT>>
@@ -42,7 +42,7 @@ PrintMaxLength :: 4096;
  * @ver 0.4.2
  */
 print :: fn (format: string, args: ...) s32 {
-    buf := {:[PrintMaxLength]u8: 0};
+    buf := {:[PRINT_MAX_LENGTH]u8: 0};
 
     // HACK: use implicit conversion later!!!
     // HACK: use implicit conversion later!!!
@@ -64,7 +64,7 @@ print :: fn (format: string, args: ...) s32 {
  * @ver 0.4.2
  */
 eprint :: fn (format: string, args: ...) s32 {
-    buf := {:[PrintMaxLength]u8: 0};
+    buf := {:[PRINT_MAX_LENGTH]u8: 0};
 
     // HACK: use implicit conversion later!!!
     // HACK: use implicit conversion later!!!

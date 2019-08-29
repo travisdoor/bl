@@ -80,13 +80,13 @@ file_close :: fn (file: File) {
  * @ver 0.4.2
  */
 file_read_all :: fn (file: File) string {
-    fseek(file, 0, SeekEnd);
+    fseek(file, 0, SEEK_END);
     size := ftell(file);
     if size == 0 {
         return string_new();
     }
 
-    fseek(file, 0, SeekSet);
+    fseek(file, 0, SEEK_SET);
     tmp := string_new_reserved(size * sizeof(u8));
     read := fread(tmp.ptr, sizeof(u8), size, file);
     tmp.len = read;
@@ -95,6 +95,6 @@ file_read_all :: fn (file: File) string {
 
 #private
 
-SeekSet :: 0;
-SeekCur :: 1;
-SeekEnd :: 2;
+SEEK_SET :: 0;
+SEEK_CUR :: 1;
+SEEK_END :: 2;

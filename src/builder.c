@@ -376,11 +376,12 @@ builder_msg(Builder *      builder,
 			bo_string_append(tmp, COLOR_END);
 		}
 
+		sprintf(msg, "\n%*d", pad, src->line + 1);
+		bo_string_append(tmp, &msg[0]);
+		bo_string_append(tmp, " | ");
+
 		line_str = unit_get_src_ln(src->unit, src->line + 1, &line_len);
 		if (line_str && line_len) {
-			sprintf(msg, "\n%*d", pad, src->line + 1);
-			bo_string_append(tmp, &msg[0]);
-			bo_string_append(tmp, " | ");
 			bo_string_appendn(tmp, line_str, line_len);
 		}
 	} else {
