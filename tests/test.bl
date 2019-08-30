@@ -49,6 +49,8 @@ print_info :: fn (info: *TypeInfo) {
         i := cast(*TypeInfoStruct) info;
 
         loop j := 0; j < i.members.len; j += 1 {
+            tmp := i.member_names[j];
+            print("%: ", tmp);
             print_info(i.members[j]);
             if j < i.members.len - 1 { print(", "); }
         }

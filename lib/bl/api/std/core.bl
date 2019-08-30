@@ -99,7 +99,8 @@ TypeInfoFn :: struct #compiler {
     base: TypeInfo,
     args: []*TypeInfo, // Function arguments.
     ret: *TypeInfo, // Return type.
-    is_vargs: bool // True when function is vargs.
+    is_vargs: bool, // True when function is vargs.
+    name: string // TODO:
 };
 
 /*
@@ -132,6 +133,7 @@ TypeInfoArray :: struct #compiler {
 TypeInfoStruct :: struct #compiler {
     base: TypeInfo,
     members: []*TypeInfo, // Structure members type information.
+    member_names: []string // TODO:
 };
 
 /*
