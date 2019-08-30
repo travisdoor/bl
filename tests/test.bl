@@ -12,7 +12,7 @@ main :: fn () s32 {
     Enum :: enum u8 { A, B, C };
     e := Enum.A;
 
-    Foo :: struct { first: s32, second: bool};
+    Foo :: struct { first: s32, second: bool, third: Enum};
     foo := {:Foo: 0};
 
     print_info(typeinfo(i));
@@ -26,7 +26,10 @@ main :: fn () s32 {
 
     print_info(typeinfo(foo));
     print("\n");
-    
+
+    print_info(typeinfo(print_info));
+    print("\n");
+
     return 0;
 };
 
@@ -41,6 +44,17 @@ print_info :: fn (info: *TypeInfo) {
         i := cast(*TypeInfoEnum) info;
         print_info(i.base_type);
 
+    } else if info.kind == TypeKind.Fn {
+        print("fn (");
+        i := cast(*TypeInfoFn) info;
+
+        loop j := 0; j < i.args.len; j += 1 {
+            print_info(i.args[j]);
+            if j < i.args.len - 1 { print(", "); }
+        }
+        print(") ");
+        print_info(i.ret);
+
     } else if info.kind == TypeKind.Bool {
         print("bool");
 
@@ -49,8 +63,10 @@ print_info :: fn (info: *TypeInfo) {
         i := cast(*TypeInfoStruct) info;
 
         loop j := 0; j < i.members.len; j += 1 {
-            tmp := i.member_names[j];
-            print("%: ", tmp);
+            if i.member_names.len > 0 {
+                print("%: ", i.member_names[j]);
+            }
+
             print_info(i.members[j]);
             if j < i.members.len - 1 { print(", "); }
         }
