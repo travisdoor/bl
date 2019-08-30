@@ -183,7 +183,6 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
         }
         
         return print_string(buf, cur, "]");
-
     } else { 
         return print_string(buf, cur, any.type_info.name);
     }

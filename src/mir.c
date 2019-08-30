@@ -1192,6 +1192,7 @@ is_allocated_object(MirInstr *instr)
 	if (instr->kind == MIR_INSTR_FN_PROTO) return true;
 	if (instr->kind == MIR_INSTR_COMPOUND) return true;
 	if (instr->kind == MIR_INSTR_LOAD) return true;
+	if (instr->kind == MIR_INSTR_TYPE_INFO) return true;
 
 	return false;
 }
@@ -3994,8 +3995,8 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 
 	reduce_instr(cnt, toany->expr);
 
-	MirInstr *expr = toany->expr;
-	MirType *rtti_type  = expr->value.type;
+	MirInstr *expr      = toany->expr;
+	MirType * rtti_type = expr->value.type;
 
 	if (!is_allocated_object(expr)) {
 		/* Target expression is not allocated object on the stack, so we need to crate
@@ -4006,6 +4007,8 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 	} else if (is_load_needed(expr)) {
 		rtti_type = mir_deref_type(rtti_type);
 	}
+
+
 
 	assert(rtti_type);
 	schedule_RTTI_generation(cnt, rtti_type);
