@@ -4,10 +4,12 @@
 #load "std/memory.bl"
 
 main :: fn () s32 {
-    print("% % %\n", 10, true, "hello");
-
     i := 10;
     ptr := &i;
+
+    print("%\n", ^ptr);
+
+    print("% % % %\n", 10, true, "hello", s32);
 
     Enum :: enum u8 { A, B, C };
     e := Enum.A;
@@ -40,13 +42,13 @@ print_info :: fn (info: *TypeInfo) {
         print_info(i.pointee);
 
     } else if info.kind == TypeKind.Enum {
-        print("enum ");
+        print("% ", info.name);
         i := cast(*TypeInfoEnum) info;
         print_info(i.base_type);
 
     } else if info.kind == TypeKind.Fn {
-        print("fn (");
         i := cast(*TypeInfoFn) info;
+        print("% (", info.name);
 
         loop j := 0; j < i.args.len; j += 1 {
             print_info(i.args[j]);
@@ -56,12 +58,11 @@ print_info :: fn (info: *TypeInfo) {
         print_info(i.ret);
 
     } else if info.kind == TypeKind.Bool {
-        print("bool");
+        print("% ", info.name);
 
     } else if info.kind == TypeKind.Struct {
-        print("struct {");
         i := cast(*TypeInfoStruct) info;
-
+        print("% {", info.name);
         loop j := 0; j < i.members.len; j += 1 {
             if i.member_names.len > 0 {
                 print("%: ", i.member_names[j]);
@@ -73,15 +74,6 @@ print_info :: fn (info: *TypeInfo) {
 
         print("}");
     } else if info.kind == TypeKind.Int {
-        i := cast(*TypeInfoInt) info;
-
-        if i.is_signed {
-            print("s");
-        } else {
-            print("u");
-        }
-        
-        print("%", i.bitcount);
+        print("% ", info.name);
     }
 };
-

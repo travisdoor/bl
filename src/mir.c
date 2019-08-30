@@ -1191,6 +1191,7 @@ is_allocated_object(MirInstr *instr)
 	if (instr->kind == MIR_INSTR_MEMBER_PTR) return true;
 	if (instr->kind == MIR_INSTR_FN_PROTO) return true;
 	if (instr->kind == MIR_INSTR_COMPOUND) return true;
+	if (instr->kind == MIR_INSTR_LOAD) return true;
 
 	return false;
 }
@@ -3988,13 +3989,13 @@ reduce_instr(Context *cnt, MirInstr *instr)
 uint64_t
 analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 {
-	MirInstr *expr = toany->expr;
-	assert(expr && "Missing expression as toany input.");
-
 	MirType *toany_type = mir_deref_type(toany->base.value.type);
-	MirType *rtti_type  = expr->value.type;
+	assert(toany->expr && "Missing expression as toany input.");
 
 	reduce_instr(cnt, toany->expr);
+
+	MirInstr *expr = toany->expr;
+	MirType *rtti_type  = expr->value.type;
 
 	if (!is_allocated_object(expr)) {
 		/* Target expression is not allocated object on the stack, so we need to crate
@@ -7065,7 +7066,7 @@ exec_instr_toany(Context *cnt, MirInstrToAny *toany)
 		if (toany->expr->comptime) {
 			exec_copy_comptime_to_stack(cnt, expr_tmp_ptr, (MirConstValue *)data_ptr);
 		} else {
-			bl_unimplemented;
+			memcpy(expr_tmp_ptr, data_ptr, data_type->store_size_bytes);
 		}
 
 		memcpy(dest, &expr_tmp_ptr, data_type->store_size_bytes);

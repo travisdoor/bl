@@ -184,14 +184,8 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
         
         return print_string(buf, cur, "]");
 
-    } else if any.type_info.kind == TypeKind.Type {
-        return print_string(buf, cur, "(type)");
-
-    } else if any.type_info.kind == TypeKind.Null {
-        return print_string(buf, cur, "(null)");
-
-    } else if any.type_info.kind == TypeKind.Void {
-        return print_string(buf, cur, "(void)");
+    } else { 
+        return print_string(buf, cur, any.type_info.name);
     }
 
 
