@@ -35,20 +35,21 @@
  * safe casting.
  */
 TypeKind :: enum #compiler {
-    Type   :: 1,
-    Void   :: 2,
-    Int    :: 3,
-    Real   :: 4,
-    Fn     :: 5,
-    Ptr    :: 6,
-    Bool   :: 7,
-    Array  :: 8,
-    Struct :: 9,
-    Enum   :: 10,
-    Null   :: 11,
-    String :: 12,
-    VArgs  :: 13,
-    Slice  :: 14,
+    Type         :: 1,
+    Void         :: 2,
+    Int          :: 3,
+    Real         :: 4,
+    Fn           :: 5,
+    Ptr          :: 6,
+    Bool         :: 7,
+    Array        :: 8,
+    Struct       :: 9,
+    Enum         :: 10,
+    Null         :: 11,
+    String       :: 12,
+    VArgs        :: 13,
+    Slice        :: 14,
+    StructMember :: 15,
 };
 
 /*
@@ -161,6 +162,24 @@ TypeInfoSlice :: struct #compiler {
 
 TypeInfoVArgs :: struct #compiler {
     base: TypeInfo,
+};
+
+TypeStructMember :: struct #compiler {
+    base: TypeInfo,
+    base_type: *TypeInfo,
+    offset_bytes: s32,
+    index: s32
+};
+
+TypeEnumVariant :: struct #compiler {
+    base: TypeInfo,
+    base_type: *TypeInfo,
+    value: u64
+};
+
+TypeFnArgument :: struct #compiler {
+    base: TypeInfo,
+    base_type: *TypeInfo,
 };
 
 /*

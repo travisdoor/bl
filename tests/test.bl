@@ -10,8 +10,6 @@ main :: fn () s32 {
     i := 10;
     ptr := &i;
 
-    print("%\n", Foo);
-
     print("% % % %\n", 10, true, "hello", s32);
 
     e := Enum.A;

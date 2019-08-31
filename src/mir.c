@@ -295,42 +295,43 @@ typedef enum {
  * later. */
 // clang-format off
 static ID builtin_ids[_MIR_BUILTIN_ID_COUNT] = {
-    {.str = "type",           .hash = 0},
-    {.str = "s8",             .hash = 0},
-    {.str = "s16",            .hash = 0},
-    {.str = "s32",            .hash = 0},
-    {.str = "s64",            .hash = 0},
-    {.str = "u8",             .hash = 0},
-    {.str = "u16",            .hash = 0},
-    {.str = "u32",            .hash = 0},
-    {.str = "u64",            .hash = 0},
-    {.str = "usize",          .hash = 0},
-    {.str = "bool",           .hash = 0},
-    {.str = "f32",            .hash = 0},
-    {.str = "f64",            .hash = 0},
-    {.str = "void",           .hash = 0},
-    {.str = "string",         .hash = 0},
-    {.str = "null_t",         .hash = 0},
-    {.str = "main",           .hash = 0},
-    {.str = "len",            .hash = 0},
-    {.str = "ptr",            .hash = 0},
-    {.str = "Any",            .hash = 0},
-    {.str = "TypeKind",       .hash = 0},
-    {.str = "TypeInfo",       .hash = 0},
-    {.str = "TypeInfoType",   .hash = 0},
-    {.str = "TypeInfoVoid",   .hash = 0},
-    {.str = "TypeInfoInt",    .hash = 0},
-    {.str = "TypeInfoReal",   .hash = 0},
-    {.str = "TypeInfoFn",     .hash = 0},
-    {.str = "TypeInfoPtr",    .hash = 0},
-    {.str = "TypeInfoBool",   .hash = 0},
-    {.str = "TypeInfoArray",  .hash = 0},
-    {.str = "TypeInfoStruct", .hash = 0},
-    {.str = "TypeInfoEnum",   .hash = 0},
-    {.str = "TypeInfoNull",   .hash = 0},
-    {.str = "TypeInfoString", .hash = 0},
-    {.str = "TypeInfoSlice",  .hash = 0},
-    {.str = "TypeInfoVArgs",  .hash = 0},
+    {.str = "type",                  .hash = 0},
+    {.str = "s8",                    .hash = 0},
+    {.str = "s16",                   .hash = 0},
+    {.str = "s32",                   .hash = 0},
+    {.str = "s64",                   .hash = 0},
+    {.str = "u8",                    .hash = 0},
+    {.str = "u16",                   .hash = 0},
+    {.str = "u32",                   .hash = 0},
+    {.str = "u64",                   .hash = 0},
+    {.str = "usize",                 .hash = 0},
+    {.str = "bool",                  .hash = 0},
+    {.str = "f32",                   .hash = 0},
+    {.str = "f64",                   .hash = 0},
+    {.str = "void",                  .hash = 0},
+    {.str = "string",                .hash = 0},
+    {.str = "null_t",                .hash = 0},
+    {.str = "main",                  .hash = 0},
+    {.str = "len",                   .hash = 0},
+    {.str = "ptr",                   .hash = 0},
+    {.str = "Any",                   .hash = 0},
+    {.str = "TypeKind",              .hash = 0},
+    {.str = "TypeInfo",              .hash = 0},
+    {.str = "TypeInfoType",          .hash = 0},
+    {.str = "TypeInfoVoid",          .hash = 0},
+    {.str = "TypeInfoInt",           .hash = 0},
+    {.str = "TypeInfoReal",          .hash = 0},
+    {.str = "TypeInfoFn",            .hash = 0},
+    {.str = "TypeInfoPtr",           .hash = 0},
+    {.str = "TypeInfoBool",          .hash = 0},
+    {.str = "TypeInfoArray",         .hash = 0},
+    {.str = "TypeInfoStruct",        .hash = 0},
+    {.str = "TypeInfoEnum",          .hash = 0},
+    {.str = "TypeInfoNull",          .hash = 0},
+    {.str = "TypeInfoString",        .hash = 0},
+    {.str = "TypeInfoSlice",         .hash = 0},
+    {.str = "TypeInfoVArgs",         .hash = 0},
+    {.str = "TypeInfoStructMember",  .hash = 0},
 };
 // clang-format on
 
@@ -6744,6 +6745,19 @@ exec_gen_RTTI_slice_of_strings(Context *cnt, SmallArray_String *strings)
 	    init_or_create_const_var_ptr(cnt, NULL, create_type_ptr(cnt, array_type), array_var));
 
 	return init_or_create_const_struct(cnt, NULL, cnt->builtin_types.t_TypeInfo_slice, m);
+}
+
+static inline MirConstValue *
+exec_gen_RTTI_member(Context *cnt, MirMember *member)
+{
+	/*
+	 * TypeStructMember :: struct #compiler {
+	 *     base: TypeInfo,
+	 *     base_type: *TypeInfo
+	 * };
+	 */
+
+	bl_unimplemented;
 }
 
 static inline MirVar *
