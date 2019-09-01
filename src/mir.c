@@ -4070,7 +4070,18 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 	 * we get resulting any structure containing type info for Type and type info for s32 as
 	 * data pointer. This is how we can later implement for example printing of type layout. */
 	if (rtti_type->kind == MIR_TYPE_TYPE) {
-		MirType *specification_type = expr->value.data.v_ptr.data.type;
+		MirConstPtr *cp                 = &expr->value.data.v_ptr;
+		MirType *    specification_type = NULL;
+
+		/* HACK: There is probably better solution, here we handle situation when type is
+		 * not fundamental type but custom type declaration where actual type is stored in
+		 * constant variable. */
+		if (cp->kind == MIR_CP_TYPE) {
+			specification_type = cp->data.type;
+		} else if (cp->kind == MIR_CP_VAR) {
+			specification_type = cp->data.var->value.data.v_ptr.data.type;
+		}
+
 		assert(specification_type);
 		schedule_RTTI_generation(cnt, specification_type);
 		toany->rtti_type_specification = specification_type;
@@ -6869,7 +6880,8 @@ exec_gen_RTTI_struct(Context *cnt, MirType *type)
 
 	SmallArray_ConstValue *m = create_sarr(SmallArray_ConstValue, cnt->assembly);
 	/* .base */
-	sa_push_ConstValue(m, exec_gen_RTTI_base(cnt, type->kind));
+	sa_push_ConstValue(
+	    m, exec_gen_RTTI_base(cnt, MIR_TYPE_STRUCT)); /* use same for MIR_TYPE_SLICE!!! */
 
 	/* name */
 	sa_push_ConstValue(
@@ -6971,16 +6983,6 @@ exec_gen_RTTI(Context *cnt, MirType *type)
 		    cnt, type, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_STRING));
 		return type->rtti.var;
 
-	case MIR_TYPE_SLICE:
-		type->rtti.var = exec_gen_RTTI_empty(
-		    cnt, type, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_SLICE));
-		return type->rtti.var;
-
-	case MIR_TYPE_VARGS:
-		type->rtti.var = exec_gen_RTTI_empty(
-		    cnt, type, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_VARGS));
-		return type->rtti.var;
-
 	case MIR_TYPE_INT:
 		type->rtti.var = exec_gen_RTTI_int(cnt, type);
 		return type->rtti.var;
@@ -7001,6 +7003,8 @@ exec_gen_RTTI(Context *cnt, MirType *type)
 		type->rtti.var = exec_gen_RTTI_array(cnt, type);
 		return type->rtti.var;
 
+	case MIR_TYPE_SLICE:
+	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT:
 		type->rtti.var = exec_gen_RTTI_struct(cnt, type);
 		return type->rtti.var;
@@ -7009,9 +7013,13 @@ exec_gen_RTTI(Context *cnt, MirType *type)
 		type->rtti.var = exec_gen_RTTI_fn(cnt, type);
 		return type->rtti.var;
 
-	default:
-		bl_abort("missing RTTI generation");
+	case MIR_TYPE_INVALID:
+		break;
 	}
+
+	char type_name[256];
+	mir_type_to_str(type_name, 256, type, true);
+	bl_abort("missing RTTI generation for type '%s'", type_name);
 }
 
 /*
@@ -10103,10 +10111,7 @@ mir_run(Builder *builder, Assembly *assembly)
 
 	/* Gen MIR from AST pass */
 	Unit *unit;
-	barray_foreach(assembly->units, unit)
-	{
-		ast(&cnt, unit->ast);
-	}
+	barray_foreach(assembly->units, unit) ast(&cnt, unit->ast);
 
 	if (builder->errorc) goto SKIP;
 

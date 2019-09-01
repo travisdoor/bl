@@ -56,5 +56,5 @@
 
     assert(info.base.kind == TypeKind.Fn);
     assert(info.args.len == 2);
-    assert(info.ret != null);
+    assert(info.ret_type != null);
 };
