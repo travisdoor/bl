@@ -39,12 +39,9 @@ print_info :: fn (info: *TypeInfo) {
         print("*");
         i := cast(*TypeInfoPtr) info;
         print_info(i.pointee);
-
     } else if info.kind == TypeKind.Enum {
-        print("enum ");
         i := cast(*TypeInfoEnum) info;
-        print_info(i.base_type);
-
+        print("%", i.name);
     } else if info.kind == TypeKind.Fn {
         i := cast(*TypeInfoFn) info;
         print("fn (");
@@ -58,21 +55,24 @@ print_info :: fn (info: *TypeInfo) {
 
     } else if info.kind == TypeKind.Bool {
         print("bool");
-
     } else if info.kind == TypeKind.Struct {
         i := cast(*TypeInfoStruct) info;
-        print("struct {");
+        print("% {", i.name);
         loop j := 0; j < i.members.len; j += 1 {
-            if i.member_names.len > 0 {
-                print("%: ", i.member_names[j]);
-            }
-
-            print_info(i.members[j]);
+            member := i.members[j];
+            print("%: ", member.name);
+            print_info(member.base_type);
             if j < i.members.len - 1 { print(", "); }
         }
 
         print("}");
     } else if info.kind == TypeKind.Int {
-        print("int");
+        i := cast(*TypeInfoInt) info;
+        if i.is_signed {
+            print("s%", i.bitcount);
+        } else {
+            print("u%", i.bitcount);
+        }
+
     }
 };

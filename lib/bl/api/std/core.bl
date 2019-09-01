@@ -132,7 +132,7 @@ TypeInfoStruct :: struct #compiler {
     base: TypeInfo,
 
     name: string,
-    members: []*TypeInfo, // Structure members type information.
+    members: []TypeInfoStructMember, // Structure members type information.
 };
 
 /*
@@ -140,6 +140,7 @@ TypeInfoStruct :: struct #compiler {
  */
 TypeInfoEnum :: struct #compiler {
     base: TypeInfo,
+    name: string,
     base_type: *TypeInfo // Enum base-type type information.
 };
 
