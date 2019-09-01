@@ -8,13 +8,13 @@
             print_info(i.pointee);
 
         } else if info.kind == TypeKind.Enum {
-            print("% ", info.name);
+            print("enum ");
             i := cast(*TypeInfoEnum) info;
             print_info(i.base_type);
 
         } else if info.kind == TypeKind.Fn {
             i := cast(*TypeInfoFn) info;
-            print("% (", info.name);
+            print("fn (");
 
             loop j := 0; j < i.args.len; j += 1 {
                 print_info(i.args[j]);
@@ -24,11 +24,11 @@
             print_info(i.ret);
 
         } else if info.kind == TypeKind.Bool {
-            print("% ", info.name);
+            print("bool ");
 
         } else if info.kind == TypeKind.Struct {
             i := cast(*TypeInfoStruct) info;
-            print("% {", info.name);
+            print("struct {");
             loop j := 0; j < i.members.len; j += 1 {
                 if i.member_names.len > 0 {
                     print("%: ", i.member_names[j]);
@@ -40,7 +40,7 @@
 
             print("}");
         } else if info.kind == TypeKind.Int {
-            print("% ", info.name);
+            print("int ");
         }
     };
 

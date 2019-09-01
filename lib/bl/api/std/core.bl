@@ -49,7 +49,6 @@ TypeKind :: enum #compiler {
     String       :: 12,
     VArgs        :: 13,
     Slice        :: 14,
-    StructMember :: 15,
 };
 
 /*
@@ -58,9 +57,7 @@ TypeKind :: enum #compiler {
  * descriptive informations about the type.
  */
 TypeInfo :: struct #compiler {
-    kind: TypeKind,
-    size: usize,
-    name: string
+    kind: TypeKind
 };
 
 /*
@@ -133,8 +130,9 @@ TypeInfoArray :: struct #compiler {
  */
 TypeInfoStruct :: struct #compiler {
     base: TypeInfo,
+
+    name: string,
     members: []*TypeInfo, // Structure members type information.
-    member_names: []string,
 };
 
 /*
@@ -164,22 +162,11 @@ TypeInfoVArgs :: struct #compiler {
     base: TypeInfo,
 };
 
-TypeStructMember :: struct #compiler {
-    base: TypeInfo,
+TypeInfoStructMember :: struct #compiler {
+    name: string,
     base_type: *TypeInfo,
     offset_bytes: s32,
     index: s32
-};
-
-TypeEnumVariant :: struct #compiler {
-    base: TypeInfo,
-    base_type: *TypeInfo,
-    value: u64
-};
-
-TypeFnArgument :: struct #compiler {
-    base: TypeInfo,
-    base_type: *TypeInfo,
 };
 
 /*

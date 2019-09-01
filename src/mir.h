@@ -51,14 +51,6 @@ typedef ptrdiff_t MirRelativeStackPtr;
 typedef uint8_t * MirStackPtr;
 
 typedef struct MirType       MirType;
-typedef struct MirTypeInt    MirTypeInt;
-typedef struct MirTypeReal   MirTypeReal;
-typedef struct MirTypeFn     MirTypeFn;
-typedef struct MirTypePtr    MirTypePtr;
-typedef struct MirTypeStruct MirTypeStruct;
-typedef struct MirTypeEnum   MirTypeEnum;
-typedef struct MirTypeNull   MirTypeNull;
-typedef struct MirTypeArray  MirTypeArray;
 typedef struct MirMember     MirMember;
 typedef struct MirVariant    MirVariant;
 typedef struct MirVar        MirVar;
@@ -164,22 +156,21 @@ typedef enum MirBuiltinIdKind {
 } MirBuiltinIdKind;
 
 typedef enum MirTypeKind {
-	MIR_TYPE_INVALID       = 0,
-	MIR_TYPE_TYPE          = 1,
-	MIR_TYPE_VOID          = 2,
-	MIR_TYPE_INT           = 3,
-	MIR_TYPE_REAL          = 4,
-	MIR_TYPE_FN            = 5,
-	MIR_TYPE_PTR           = 6,
-	MIR_TYPE_BOOL          = 7,
-	MIR_TYPE_ARRAY         = 8,
-	MIR_TYPE_STRUCT        = 9,
-	MIR_TYPE_ENUM          = 10,
-	MIR_TYPE_NULL          = 11,
-	MIR_TYPE_STRING        = 12,
-	MIR_TYPE_VARGS         = 13,
-	MIR_TYPE_SLICE         = 14,
-	MIR_TYPE_STRUCT_MEMBER = 15,
+	MIR_TYPE_INVALID = 0,
+	MIR_TYPE_TYPE    = 1,
+	MIR_TYPE_VOID    = 2,
+	MIR_TYPE_INT     = 3,
+	MIR_TYPE_REAL    = 4,
+	MIR_TYPE_FN      = 5,
+	MIR_TYPE_PTR     = 6,
+	MIR_TYPE_BOOL    = 7,
+	MIR_TYPE_ARRAY   = 8,
+	MIR_TYPE_STRUCT  = 9,
+	MIR_TYPE_ENUM    = 10,
+	MIR_TYPE_NULL    = 11,
+	MIR_TYPE_STRING  = 12,
+	MIR_TYPE_VARGS   = 13,
+	MIR_TYPE_SLICE   = 14,
 } MirTypeKind;
 
 typedef enum MirConstPtrKind {
@@ -286,6 +277,7 @@ struct MirMember {
 	ID *     id;
 	Ast *    decl_node;
 	Scope *  decl_scope;
+	int32_t  offset_bytes;
 	int64_t  index;
 };
 
@@ -350,14 +342,14 @@ struct MirType {
 	} rtti;
 
 	union {
-		MirTypeInt    integer;
-		MirTypeFn     fn;
-		MirTypePtr    ptr;
-		MirTypeReal   real;
-		MirTypeArray  array;
-		MirTypeStruct strct;
-		MirTypeEnum   enm;
-		MirTypeNull   null;
+		struct MirTypeInt    integer;
+		struct MirTypeFn     fn;
+		struct MirTypePtr    ptr;
+		struct MirTypeReal   real;
+		struct MirTypeArray  array;
+		struct MirTypeStruct strct;
+		struct MirTypeEnum   enm;
+		struct MirTypeNull   null;
 	} data;
 };
 

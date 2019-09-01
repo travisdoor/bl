@@ -164,27 +164,8 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
         if b { return print_string(buf, cur, "true"); }
         else { return print_string(buf, cur, "false"); }
 
-    } else if any.type_info.kind == TypeKind.Array {
-        info := cast(*TypeInfoArray) any.type_info;
-        elem_size := info.elem.size;
-
-        tmp : Any;
-        tmp.type_info = info.elem;
-
-        cur = print_string(buf, cur, "[");
-
-        loop i := 0; i < info.len; i += 1 {
-            tmp.data = cast(*u8) (cast(usize) any.data + i * elem_size);
-            cur = print_any(buf, cur, &tmp);
-
-            if i < info.len - 1 {
-                cur = print_string(buf, cur, ", ");
-            }
-        }
-        
-        return print_string(buf, cur, "]");
     } else { 
-        return print_string(buf, cur, any.type_info.name);
+        return print_string(buf, cur, "<unknown>");
     }
 
 
