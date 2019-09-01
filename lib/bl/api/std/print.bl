@@ -121,7 +121,7 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
         info := cast(*TypeInfoInt) any.type_info;
 
         if info.is_signed {
-            int := s64_from_u8_ptr(any.data, info.bitcount);
+            int := s64_from_u8_ptr(any.data, info.bit_count);
             if int < 0 { // negative number
                 cur = print_string(buf, cur, "-");
                 int = -int;
@@ -129,7 +129,7 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
 
             return print_u64(buf, cur, int);
         } else {
-            int := u64_from_u8_ptr(any.data, info.bitcount);
+            int := u64_from_u8_ptr(any.data, info.bit_count);
             return print_u64(buf, cur, int);
         } 
 
@@ -137,7 +137,7 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
         // Real
         info := cast(*TypeInfoReal) any.type_info;
 
-        real := f64_from_u8_ptr(any.data, info.bitcount);
+        real := f64_from_u8_ptr(any.data, info.bit_count);
         if real < 0. {
             cur = print_string(buf, cur, "-");
             real = -real;
@@ -268,27 +268,27 @@ print_f64 :: fn (buf: []u8, cur: s32, v: f64) s32 {
     return cur;
 };
 
-s64_from_u8_ptr :: fn (ptr: *u8, bitcount: s32) s64 {
-    if bitcount == 64 { return ^ cast(*s64) ptr; }
-    if bitcount == 32 { return ^ cast(*s32) ptr; }
-    if bitcount == 16 { return ^ cast(*s16) ptr; }
-    if bitcount ==  8 { return ^ cast(*s8)  ptr; }
+s64_from_u8_ptr :: fn (ptr: *u8, bit_count: s32) s64 {
+    if bit_count == 64 { return ^ cast(*s64) ptr; }
+    if bit_count == 32 { return ^ cast(*s32) ptr; }
+    if bit_count == 16 { return ^ cast(*s16) ptr; }
+    if bit_count ==  8 { return ^ cast(*s8)  ptr; }
 
     return 0;
 };
 
-u64_from_u8_ptr :: fn (ptr: *u8, bitcount: s32) u64 {
-    if bitcount == 64 { return ^ cast(*u64) ptr; }
-    if bitcount == 32 { return ^ cast(*u32) ptr; }
-    if bitcount == 16 { return ^ cast(*u16) ptr; }
-    if bitcount ==  8 { return ^ cast(*u8)  ptr; }
+u64_from_u8_ptr :: fn (ptr: *u8, bit_count: s32) u64 {
+    if bit_count == 64 { return ^ cast(*u64) ptr; }
+    if bit_count == 32 { return ^ cast(*u32) ptr; }
+    if bit_count == 16 { return ^ cast(*u16) ptr; }
+    if bit_count ==  8 { return ^ cast(*u8)  ptr; }
 
     return 0;
 };
 
-f64_from_u8_ptr :: fn (ptr: *u8, bitcount: s32) f64 {
-    if bitcount == 64 { return ^ cast(*f64) ptr; }
-    if bitcount == 32 { return cast(f64) (^ cast(*f32) ptr); }
+f64_from_u8_ptr :: fn (ptr: *u8, bit_count: s32) f64 {
+    if bit_count == 64 { return ^ cast(*f64) ptr; }
+    if bit_count == 32 { return cast(f64) (^ cast(*f32) ptr); }
 
     return 0.;
 };

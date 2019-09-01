@@ -1,71 +1,60 @@
 #load "std/print.bl"
 
-#test "typeinfo" {
-    print_info :: fn (info: *TypeInfo) {
-        if info.kind == TypeKind.Ptr {
-            print("*");
-            i := cast(*TypeInfoPtr) info;
-            print_info(i.pointee);
-
-        } else if info.kind == TypeKind.Enum {
-            print("enum ");
-            i := cast(*TypeInfoEnum) info;
-            print_info(i.base_type);
-
-        } else if info.kind == TypeKind.Fn {
-            i := cast(*TypeInfoFn) info;
-            print("fn (");
-
-            loop j := 0; j < i.args.len; j += 1 {
-                print_info(i.args[j]);
-                if j < i.args.len - 1 { print(", "); }
-            }
-            print(") ");
-            print_info(i.ret);
-
-        } else if info.kind == TypeKind.Bool {
-            print("bool ");
-
-        } else if info.kind == TypeKind.Struct {
-            i := cast(*TypeInfoStruct) info;
-            print("struct {");
-            loop j := 0; j < i.members.len; j += 1 {
-                if i.member_names.len > 0 {
-                    print("%: ", i.member_names[j]);
-                }
-
-                print_info(i.members[j]);
-                if j < i.members.len - 1 { print(", "); }
-            }
-
-            print("}");
-        } else if info.kind == TypeKind.Int {
-            print("int ");
-        }
-    };
-
-    i := 10;
-    ptr := &i;
-
-    Enum :: enum u8 { A, B, C };
-    e := Enum.A;
-
-    Foo :: struct { first: s32, second: bool, third: Enum};
-    foo := {:Foo: 0};
-
-    print_info(typeinfo(i));
-    print("\n");
-
-    print_info(typeinfo(ptr));
-    print("\n");
-
-    print_info(typeinfo(e));
-    print("\n");
-
-    print_info(typeinfo(foo));
-    print("\n");
-
-    print_info(typeinfo(print_info));
-    print("\n");
+#test "typeinfo - fundamental" {
+    info := cast(*TypeInfoInt) typeinfo(s32);
+    assert(info.base.kind == TypeKind.Int);
+    assert(info.size_bytes == sizeof(s32));
+    assert(info.bit_count == sizeof(s32) * 8);
+    assert(info.is_signed);
 };
 
+#test "typeinfo - ptr" {
+    T :: *s32;
+    info := cast(*TypeInfoPtr) typeinfo(T);
+
+    assert(info.base.kind == TypeKind.Ptr);
+    assert(info.pointee_type != null);
+};
+
+#test "typeinfo - array" {
+    T :: [10]s32;
+    info := cast(*TypeInfoArray) typeinfo(T);
+
+    assert(info.base.kind == TypeKind.Array);
+    assert(info.size_bytes == sizeof(T));
+    assert(info.elem_type != null);
+    assert(info.len == 10);
+};
+
+#test "typeinfo - enum" {
+    T :: enum s32 { A, B, C };
+    info := cast(*TypeInfoEnum) typeinfo(T);
+
+    assert(info.base.kind == TypeKind.Enum);
+    assert(info.base_type != null);
+    assert(info.variants.len == 3);
+    assert(info.variants[0].value == 0);
+    assert(info.variants[1].value == 1);
+    assert(info.variants[2].value == 2);
+};
+
+#test "typeinfo - struct" {
+    T :: struct { A: s32, B: bool, C: f32 };
+    info := cast(*TypeInfoStruct) typeinfo(T);
+
+    assert(info.base.kind == TypeKind.Struct);
+    assert(info.size_bytes == sizeof(T));
+    assert(info.members.len == 3);
+    assert(info.members[0].index == 0);
+    assert(info.members[1].index == 1);
+    assert(info.members[2].index == 2);
+};
+
+#test "typeinfo - fn" {
+    T :: fn (i: s32, j: bool) s32 {};
+    info := cast(*TypeInfoFn) typeinfo(T);
+
+    assert(info.base.kind == TypeKind.Fn);
+    assert(info.args.len == 2);
+    assert(info.ret != null);
+};

@@ -41,7 +41,15 @@ print_info :: fn (info: *TypeInfo) {
         print_info(i.pointee);
     } else if info.kind == TypeKind.Enum {
         i := cast(*TypeInfoEnum) info;
-        print("%", i.name);
+        print("% {", i.name);
+
+        loop j := 0; j < i.variants.len; j += 1 {
+            variant := i.variants[j];
+            print("% :: %", variant.name, variant.value);
+            if j < i.variants.len - 1 { print(", "); }
+        }
+
+        print("}");
     } else if info.kind == TypeKind.Fn {
         i := cast(*TypeInfoFn) info;
         print("fn (");
@@ -69,9 +77,9 @@ print_info :: fn (info: *TypeInfo) {
     } else if info.kind == TypeKind.Int {
         i := cast(*TypeInfoInt) info;
         if i.is_signed {
-            print("s%", i.bitcount);
+            print("s%", i.bit_count);
         } else {
-            print("u%", i.bitcount);
+            print("u%", i.bit_count);
         }
 
     }

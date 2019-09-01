@@ -18,6 +18,5 @@
 #load "test_vargs.bl"
 #load "test_enums.bl"
 #load "test_compounds.bl"
-#load "test_rtti.bl"
 #load "test_strings.bl"
 #load "test_typeinfo.bl"

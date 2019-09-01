@@ -9,7 +9,7 @@
         // safe cast to *TypeInfoInt
         info_int := cast(*TypeInfoInt) info;
 
-        print("bitcount = %\n", info_int.bitcount);
+        print("bit_count = %\n", info_int.bit_count);
 
         if info_int.is_signed {
             print("signed\n");

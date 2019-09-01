@@ -79,7 +79,9 @@ TypeInfoVoid :: struct #compiler {
  */
 TypeInfoInt :: struct #compiler {
     base: TypeInfo,
-    bitcount: s32, // Bitcount.
+
+    size_bytes: usize,
+    bit_count: s32, // Bitcount.
     is_signed: bool, // True when signed.
 };
 
@@ -88,7 +90,9 @@ TypeInfoInt :: struct #compiler {
  */
 TypeInfoReal :: struct #compiler {
     base: TypeInfo,
-    bitcount: s32 // Bitcount
+
+    size_bytes: usize,
+    bit_count: s32 // Bitcount
 };
 
 /*
@@ -96,6 +100,7 @@ TypeInfoReal :: struct #compiler {
  */
 TypeInfoFn :: struct #compiler {
     base: TypeInfo,
+
     args: []*TypeInfo, // Function arguments.
     ret: *TypeInfo, // Return type.
     is_vargs: bool, // True when function is vargs.
@@ -106,7 +111,8 @@ TypeInfoFn :: struct #compiler {
  */
 TypeInfoPtr :: struct #compiler {
     base: TypeInfo,
-    pointee: *TypeInfo // Type information for pointed type.
+
+    pointee_type: *TypeInfo // Type information for pointed type.
 };
 
 /*
@@ -121,7 +127,10 @@ TypeInfoBool :: struct #compiler {
  */
 TypeInfoArray :: struct #compiler {
     base: TypeInfo,
-    elem: *TypeInfo, // Element type information.
+
+    name: string,
+    size_bytes: usize, 
+    elem_type: *TypeInfo, // Element type information.
     len: usize // Array lenght.
 };
 
@@ -131,7 +140,8 @@ TypeInfoArray :: struct #compiler {
 TypeInfoStruct :: struct #compiler {
     base: TypeInfo,
 
-    name: string,
+    name: string, // struct name if there is one
+    size_bytes: usize,
     members: []TypeInfoStructMember, // Structure members type information.
 };
 
@@ -140,8 +150,10 @@ TypeInfoStruct :: struct #compiler {
  */
 TypeInfoEnum :: struct #compiler {
     base: TypeInfo,
-    name: string,
-    base_type: *TypeInfo // Enum base-type type information.
+    
+    name: string, // enum name if there is one
+    base_type: *TypeInfo, // Enum base-type type information.
+    variants: []TypeInfoEnumVariant
 };
 
 /*
@@ -170,8 +182,13 @@ TypeInfoStructMember :: struct #compiler {
     index: s32
 };
 
+TypeInfoEnumVariant :: struct #compiler {
+    name: string,
+    value: s64
+};
+
 /*
- * Any type structure. Any value can be implicitly casted to this container.
+ * Any type structure. Any value can be implicitly casted to this container on function call.
  */
 Any :: struct #compiler {
     type_info: *TypeInfo,
