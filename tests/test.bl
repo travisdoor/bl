@@ -1,86 +1,8 @@
 /* playground */
 
 #load "std/print.bl"
-#load "std/memory.bl"
-
-Foo :: struct { first: s32, second: bool, third: Enum};
-Enum :: enum u8 { A, B, C };
 
 main :: fn () s32 {
-    i := 10;
-    ptr := &i;
-
-    print("% % % %\n", 10, true, "hello", s32);
-
-    e := Enum.A;
-
-    foo := {:Foo: 0};
-
-    print_info(typeinfo(i));
-    print("\n");
-
-    print_info(typeinfo(ptr));
-    print("\n");
-
-    print_info(typeinfo(e));
-    print("\n");
-
-    print_info(typeinfo(foo));
-    print("\n");
-
-    print_info(typeinfo(print_info));
-    print("\n");
-
     return 0;
 };
 
-print_info :: fn (info: *TypeInfo) {
-    if info.kind == TypeKind.Ptr {
-        print("*");
-        i := cast(*TypeInfoPtr) info;
-        print_info(i.pointee);
-    } else if info.kind == TypeKind.Enum {
-        i := cast(*TypeInfoEnum) info;
-        print("% {", i.name);
-
-        loop j := 0; j < i.variants.len; j += 1 {
-            variant := i.variants[j];
-            print("% :: %", variant.name, variant.value);
-            if j < i.variants.len - 1 { print(", "); }
-        }
-
-        print("}");
-    } else if info.kind == TypeKind.Fn {
-        i := cast(*TypeInfoFn) info;
-        print("fn (");
-
-        loop j := 0; j < i.args.len; j += 1 {
-            print_info(i.args[j]);
-            if j < i.args.len - 1 { print(", "); }
-        }
-        print(") ");
-        print_info(i.ret);
-
-    } else if info.kind == TypeKind.Bool {
-        print("bool");
-    } else if info.kind == TypeKind.Struct {
-        i := cast(*TypeInfoStruct) info;
-        print("% {", i.name);
-        loop j := 0; j < i.members.len; j += 1 {
-            member := i.members[j];
-            print("%: ", member.name);
-            print_info(member.base_type);
-            if j < i.members.len - 1 { print(", "); }
-        }
-
-        print("}");
-    } else if info.kind == TypeKind.Int {
-        i := cast(*TypeInfoInt) info;
-        if i.is_signed {
-            print("s%", i.bit_count);
-        } else {
-            print("u%", i.bit_count);
-        }
-
-    }
-};
