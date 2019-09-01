@@ -4063,10 +4063,20 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 		toany->tmp = create_var_impl(cnt, tmp_var_name, toany_type, false, false, false);
 	}
 
+	toany->has_data = rtti_type->kind != MIR_TYPE_VOID && rtti_type->kind != MIR_TYPE_NULL;
+
+	/* When we pass type declaration reference as an expression into the toany instruction we
+	 * need include pointer to type info of the real type passed. That means when we pass 's32'
+	 * we get resulting any structure containing type info for Type and type info for s32 as
+	 * data pointer. This is how we can later implement for example printing of type layout. */
+	if (rtti_type->kind == MIR_TYPE_TYPE) {
+		MirType *specification_type = expr->value.data.v_ptr.data.type;
+		assert(specification_type);
+		schedule_RTTI_generation(cnt, specification_type);
+		toany->rtti_type_specification = specification_type;
+	}
+
 	toany->rtti_type = rtti_type;
-	toany->has_data  = toany->rtti_type->kind != MIR_TYPE_TYPE &&
-	                  toany->rtti_type->kind != MIR_TYPE_VOID &&
-	                  toany->rtti_type->kind != MIR_TYPE_NULL;
 
 	return ANALYZE_PASSED;
 }
@@ -7136,26 +7146,35 @@ exec_instr_toany(Context *cnt, MirInstrToAny *toany)
 	MirStackPtr tmp_ptr  = exec_read_stack_ptr(cnt, tmp->rel_stack_ptr, tmp->is_in_gscope);
 	MirType *   tmp_type = tmp->value.type;
 
-	{ // set type info
-		MirVar *expr_type_rtti = toany->rtti_type->rtti.var;
-		assert(expr_type_rtti);
+	/* type_info */
+	MirVar *expr_type_rtti = toany->rtti_type->rtti.var;
+	assert(expr_type_rtti);
 
-		MirStackPtr dest           = tmp_ptr + get_struct_elem_offest(cnt, tmp_type, 0);
-		MirType *   type_info_type = mir_get_struct_elem_type(tmp_type, 0);
+	MirStackPtr dest           = tmp_ptr + get_struct_elem_offest(cnt, tmp_type, 0);
+	MirType *   type_info_type = mir_get_struct_elem_type(tmp_type, 0);
 
-		MirStackPtr rtti_ptr = exec_read_stack_ptr(
-		    cnt, expr_type_rtti->rel_stack_ptr, expr_type_rtti->is_in_gscope);
+	MirStackPtr rtti_ptr =
+	    exec_read_stack_ptr(cnt, expr_type_rtti->rel_stack_ptr, expr_type_rtti->is_in_gscope);
 
-		memcpy(dest, &rtti_ptr, type_info_type->store_size_bytes);
-	}
+	memcpy(dest, &rtti_ptr, type_info_type->store_size_bytes);
 
 	MirStackPtr data_ptr = exec_fetch_value(cnt, toany->expr);
 
-	MirStackPtr dest      = tmp_ptr + get_struct_elem_offest(cnt, tmp_type, 1);
-	MirType *   data_type = mir_get_struct_elem_type(tmp_type, 1);
+	/* data */
+	dest               = tmp_ptr + get_struct_elem_offest(cnt, tmp_type, 1);
+	MirType *data_type = mir_get_struct_elem_type(tmp_type, 1);
 
 	if (!toany->has_data) {
 		memset(dest, 0, data_type->store_size_bytes);
+	} else if (toany->rtti_type_specification) {
+		/* Use type specificaiton as an data value. */
+		MirVar *spec_type_rtti = toany->rtti_type_specification->rtti.var;
+		assert(spec_type_rtti);
+
+		MirStackPtr rtti_spec_ptr = exec_read_stack_ptr(
+		    cnt, spec_type_rtti->rel_stack_ptr, spec_type_rtti->is_in_gscope);
+
+		memcpy(dest, &rtti_spec_ptr, cnt->builtin_types.t_TypeInfo_ptr->store_size_bytes);
 	} else if (expr_tmp) { // set data
 		MirStackPtr expr_tmp_ptr =
 		    exec_read_stack_ptr(cnt, expr_tmp->rel_stack_ptr, expr_tmp->is_in_gscope);

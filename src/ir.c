@@ -1360,6 +1360,8 @@ emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 		llvm_data = emit_as_const(cnt, &toany->expr->value);
 		LLVMBuildStore(cnt->llvm_builder, llvm_data, expr_tmp->llvm_value);
 		llvm_data = expr_tmp->llvm_value;
+	} else if (toany->rtti_type_specification) {
+		llvm_data = toany->rtti_type_specification->rtti.var->llvm_value;
 	}
 
 	{ /* setup tmp variable */

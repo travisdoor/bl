@@ -3,11 +3,5 @@
 #load "std/print.bl"
 
 main :: fn () s32 {
-    test(s32);
     return 0;
-};
-
-test :: fn (v: Any) {
-    data := v.data;
-    return;
 };

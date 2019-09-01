@@ -711,8 +711,11 @@ struct MirInstrPhi {
 struct MirInstrToAny {
 	MirInstr base;
 
+	/* CLEANUP: We try to handle expressions, constants and types passed into ToAny instruction
+	 * and maybe there is cleaner solution, but for now it works. */
 	bool      has_data;
 	MirType * rtti_type;
+	MirType * rtti_type_specification; /* optional */
 	MirVar *  tmp;
 	MirVar *  expr_tmp; /* optional */
 	MirInstr *expr;
