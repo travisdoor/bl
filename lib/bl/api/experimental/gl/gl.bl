@@ -28,21 +28,22 @@
 
 #link "GL"
 
-/*
-uint32_t GLbitfield
-uint8_t  GLboolean
-int8_t   GLbyte
-float    GLclampf
-uint32_t GLenum
-float    GLfloat
-int32_t  GLint
-int16_t  GLshort
-int32_t  GLsizei
-uint8_t  GLubyte
-uint32_t GLuint
-uint16_t GLushort
-void     GLvoid
-*/
+// TODO: Use these types
+// TODO: Use these types
+// TODO: Use these types
+GLbitfield :: u32;
+GLboolean  :: u8; 
+GLbyte     :: s8;
+GLclampf   :: f32; 
+GLenum     :: u32;
+GLfloat    :: f32;
+GLint      :: s32;
+GLshort    :: s16;
+GLsizei    :: s32;
+GLubyte    :: u8;
+GLuint     :: u32; 
+GLushort   :: u16; 
+GLvoid     :: u8; 
 
 GL_TRUE  :: 1;
 GL_FALSE :: 0;

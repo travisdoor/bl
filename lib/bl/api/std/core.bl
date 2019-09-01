@@ -35,20 +35,18 @@
  * safe casting.
  */
 TypeKind :: enum #compiler {
-    Type   :: 1,
-    Void   :: 2,
-    Int    :: 3,
-    Real   :: 4,
-    Fn     :: 5,
-    Ptr    :: 6,
-    Bool   :: 7,
-    Array  :: 8,
-    Struct :: 9,
-    Enum   :: 10,
-    Null   :: 11,
-    String :: 12,
-    VArgs  :: 13,
-    Slice  :: 14,
+    Type         :: 1,
+    Void         :: 2,
+    Int          :: 3,
+    Real         :: 4,
+    Fn           :: 5,
+    Ptr          :: 6,
+    Bool         :: 7,
+    Array        :: 8,
+    Struct       :: 9,
+    Enum         :: 10,
+    Null         :: 11,
+    String       :: 12,
 };
 
 /*
@@ -57,15 +55,14 @@ TypeKind :: enum #compiler {
  * descriptive informations about the type.
  */
 TypeInfo :: struct #compiler {
-    kind: TypeKind,
-    size: usize
+    kind: TypeKind
 };
 
 /*
  * Type information for 'type' type.
  */
 TypeInfoType :: struct #compiler {
-    base: TypeInfo
+    base: TypeInfo,
 };
 
 /*
@@ -80,7 +77,9 @@ TypeInfoVoid :: struct #compiler {
  */
 TypeInfoInt :: struct #compiler {
     base: TypeInfo,
-    bitcount: s32, // Bitcount.
+
+    size_bytes: usize,
+    bit_count: s32, // Bitcount.
     is_signed: bool, // True when signed.
 };
 
@@ -89,7 +88,9 @@ TypeInfoInt :: struct #compiler {
  */
 TypeInfoReal :: struct #compiler {
     base: TypeInfo,
-    bitcount: s32 // Bitcount
+
+    size_bytes: usize,
+    bit_count: s32 // Bitcount
 };
 
 /*
@@ -97,9 +98,11 @@ TypeInfoReal :: struct #compiler {
  */
 TypeInfoFn :: struct #compiler {
     base: TypeInfo,
+
+    // TODO: create TypeInfoFnArgument structure
     args: []*TypeInfo, // Function arguments.
-    ret: *TypeInfo, // Return type.
-    is_vargs: bool // True when function is vargs.
+    ret_type: *TypeInfo, // Return type.
+    is_vargs: bool, // True when function is vargs.
 };
 
 /*
@@ -107,7 +110,8 @@ TypeInfoFn :: struct #compiler {
  */
 TypeInfoPtr :: struct #compiler {
     base: TypeInfo,
-    pointed: *TypeInfo // Type information for pointed type.
+
+    pointee_type: *TypeInfo // Type information for pointed type.
 };
 
 /*
@@ -122,7 +126,10 @@ TypeInfoBool :: struct #compiler {
  */
 TypeInfoArray :: struct #compiler {
     base: TypeInfo,
-    elem: *TypeInfo, // Element type information.
+
+    name: string,
+    size_bytes: usize, 
+    elem_type: *TypeInfo, // Element type information.
     len: usize // Array lenght.
 };
 
@@ -131,7 +138,10 @@ TypeInfoArray :: struct #compiler {
  */
 TypeInfoStruct :: struct #compiler {
     base: TypeInfo,
-    members: []*TypeInfo, // Structure members type information.
+
+    name: string, // struct name if there is one
+    size_bytes: usize,
+    members: []TypeInfoStructMember, // Structure members type information.
 };
 
 /*
@@ -139,7 +149,10 @@ TypeInfoStruct :: struct #compiler {
  */
 TypeInfoEnum :: struct #compiler {
     base: TypeInfo,
-    base_type: *TypeInfo // Enum base-type type information.
+    
+    name: string, // enum name if there is one
+    base_type: *TypeInfo, // Enum base-type type information.
+    variants: []TypeInfoEnumVariant
 };
 
 /*
@@ -153,16 +166,20 @@ TypeInfoString :: struct #compiler {
     base: TypeInfo,
 };
 
-TypeInfoSlice :: struct #compiler {
-    base: TypeInfo,
+TypeInfoStructMember :: struct #compiler {
+    name: string,
+    base_type: *TypeInfo,
+    offset_bytes: s32,
+    index: s32
 };
 
-TypeInfoVArgs :: struct #compiler {
-    base: TypeInfo,
+TypeInfoEnumVariant :: struct #compiler {
+    name: string,
+    value: s64
 };
 
 /*
- * Any type structure. Any value can be implicitly casted to this container.
+ * Any type structure. Any value can be implicitly casted to this container on function call.
  */
 Any :: struct #compiler {
     type_info: *TypeInfo,

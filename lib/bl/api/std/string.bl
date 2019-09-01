@@ -28,14 +28,14 @@
 
 #load "std/print.bl"
 
-StringBlockSize :: 64 - sizeof(BlockHead);
+STRING_BLOCK_SIZE :: 64 - sizeof(BlockHead);
 
 /*
  * @title string_new <<STRING_NEW>>
  * @decl string_new fn () string
  * @desc
  * Create an empty heap allocated string. New string instance has preallocated chunk of memory
- * equal to =StringBlockSize= constant. Use [[STRING_DELETE][=string_delete=]] method to free
+ * equal to =STRING_BLOCK_SIZE= constant. Use [[STRING_DELETE][=string_delete=]] method to free
  * allocated memory.
  * @ver 0.4.2
  */
@@ -127,7 +127,7 @@ string_append :: fn (v: *string, add: Any) {
         add_len = str.len;
     } else {
         // other values than string
-        buf := {:[PrintMaxLength]u8: 0};
+        buf := {:[PRINT_MAX_LENGTH]u8: 0};
         tmp := {:[]u8: buf.len, buf.ptr };
 
         bprint(tmp, "%", add);
@@ -215,8 +215,8 @@ make_more_room_if_needed :: fn (ptr: *u8, size: usize) *u8 {
 };
 
 alloc_block :: fn (size: usize) *u8 {
-    d := size / StringBlockSize + 1;
-    size = d * StringBlockSize;
+    d := size / STRING_BLOCK_SIZE + 1;
+    size = d * STRING_BLOCK_SIZE;
 
     alloc_size := size + sizeof(BlockHead) + sizeof(u8);
     tmp := cast(*BlockHead) mem_alloc(alloc_size);

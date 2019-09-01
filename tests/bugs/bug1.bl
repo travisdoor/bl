@@ -1,5 +1,3 @@
-/* playground */
-
 #load "std/print.bl"
 
 EntityKind :: enum {
@@ -22,13 +20,13 @@ main :: fn () s32 {
     foo : Entity;
     foo.kind = EntityKind.Player;
     foo.position = {:Vec3: 125.15f, 0.53f, 12.19f };
-    foo.name = "Kokot";
+    foo.name = "This is the name";
     foo.eq[0] = 16;
     foo.eq[1] = 43;
     foo.eq[2] = -265;
     foo.eq[3] = 0xF2;
 
-    print("%\n", foo);
+    print("%\n", foo); // name not printed in -r
 
     print("\n\n");
     return 0;

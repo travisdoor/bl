@@ -51,10 +51,10 @@ typedef ptrdiff_t MirRelativeStackPtr;
 typedef uint8_t * MirStackPtr;
 
 typedef struct MirType       MirType;
-typedef struct MirVar        MirVar;
-typedef struct MirFn         MirFn;
 typedef struct MirMember     MirMember;
 typedef struct MirVariant    MirVariant;
+typedef struct MirVar        MirVar;
+typedef struct MirFn         MirFn;
 typedef struct MirConstValue MirConstValue;
 typedef struct MirConstPtr   MirConstPtr;
 
@@ -150,6 +150,8 @@ typedef enum MirBuiltinIdKind {
 	MIR_BUILTIN_ID_TYPE_INFO_STRING,
 	MIR_BUILTIN_ID_TYPE_INFO_VARGS,
 	MIR_BUILTIN_ID_TYPE_INFO_SLICE,
+	MIR_BUILTIN_ID_TYPE_INFO_STRUCT_MEMBER,
+	MIR_BUILTIN_ID_TYPE_INFO_ENUM_VARIANT,
 
 	_MIR_BUILTIN_ID_COUNT,
 } MirBuiltinIdKind;
@@ -276,6 +278,7 @@ struct MirMember {
 	ID *     id;
 	Ast *    decl_node;
 	Scope *  decl_scope;
+	int32_t  offset_bytes;
 	int64_t  index;
 };
 
@@ -332,8 +335,8 @@ struct MirType {
 	int32_t         alignment;
 
 	/*
-	 * Every unique type will cause generation of type info global constant in program data
-	 * segment.
+	 * Every unique type will cause generation of type info global constant in program
+	 * data segment.
 	 */
 	struct {
 		MirVar *var;
@@ -708,8 +711,11 @@ struct MirInstrPhi {
 struct MirInstrToAny {
 	MirInstr base;
 
+	/* CLEANUP: We try to handle expressions, constants and types passed into ToAny instruction
+	 * and maybe there is cleaner solution, but for now it works. */
 	bool      has_data;
 	MirType * rtti_type;
+	MirType * rtti_type_specification; /* optional */
 	MirVar *  tmp;
 	MirVar *  expr_tmp; /* optional */
 	MirInstr *expr;

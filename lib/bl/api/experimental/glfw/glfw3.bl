@@ -37,13 +37,17 @@ GLFW_OPENGL_ANY_PROFILE    ::          0;
 GLFW_OPENGL_CORE_PROFILE   :: 0x00032001;
 GLFW_OPENGL_COMPAT_PROFILE :: 0x00032002;
 GLFW_OPENGL_FORWARD_COMPAT :: 0x00022006;
+GLFW_NO_API                ::          0;
+GLFW_CLIENT_API            :: 0x00022001;
 
 glfwInit :: fn () s32 #extern;
 glfwTerminate :: fn () #extern;
 glfwCreateWindow :: fn (width: s32, height: s32, title: *u8, monitor: *u8, share: *u8) *GLFWwindow #extern;
-glfwDestroyWindow :: fn	(window: *GLFWwindow) #extern;
+glfwDestroyWindow :: fn (window: *GLFWwindow) #extern;
 glfwMakeContextCurrent :: fn (window: *GLFWwindow) #extern;
 glfwWindowShouldClose :: fn (window: *GLFWwindow) s32 #extern;
 glfwPollEvents :: fn () #extern;
 glfwWindowHint :: fn (hint: s32, value: s32) #extern;
 glfwSwapBuffers :: fn (window: *GLFWwindow) #extern;
+glfwVulkanSupported :: fn () s32 #extern;
+glfwGetRequiredInstanceExtensions :: fn (count: *u32) **u8 #extern;
