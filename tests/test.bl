@@ -33,6 +33,12 @@ main :: fn () s32 {
 
     print("%\n", foo);
 
+    test(10, 20, 30);
+
     print("\n\n");
     return 0;
+};
+
+test :: fn (args: ...) {
+    print("%\n", args);
 };

@@ -198,11 +198,16 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
             return print_string(buf, cur, "}");
         }
 
+        // we are printing slice
         len := u64_from_u8_ptr(cast(*u8) (cast(usize) any.data + info.members[0].offset_bytes), 64);
         ptr := ptr_from_ptr(cast(*u8) (cast(usize) any.data + info.members[1].offset_bytes));
 
         if len == 0 {
             return print_string(buf, cur, "[]");
+        }
+
+        if ptr == null {
+            return print_string(buf, cur, "[<null>]");
         }
 
         cur = print_string(buf, cur, "[");
