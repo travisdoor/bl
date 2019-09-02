@@ -2,5 +2,9 @@
   - [ ] fn typedef
     Recognise this as function type definition.
     T :: fn (i: s32, j: bool) s32; 
+
   - [ ] Invalid llvm for
     print("kind %\n", cast(s32) (cast(*TypeInfo) data).kind);
+    
+* stuff
+  - test non-compile known global initializations
