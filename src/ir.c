@@ -807,6 +807,11 @@ emit_as_const(Context *cnt, MirConstValue *value)
 	}
 
 	case MIR_TYPE_ARRAY: {
+		if (value->data.v_array.is_zero_initializer) {
+			llvm_value = LLVMConstNull(llvm_type);
+			break;
+		}
+
 		const size_t len            = type->data.array.len;
 		LLVMTypeRef  llvm_elem_type = type->data.array.elem_type->llvm_type;
 		assert(len && llvm_elem_type);
@@ -831,6 +836,11 @@ emit_as_const(Context *cnt, MirConstValue *value)
 	}
 
 	case MIR_TYPE_STRING: {
+		if (value->data.v_struct.is_zero_initializer) {
+			llvm_value = LLVMConstNull(llvm_type);
+			break;
+		}
+
 		SmallArray_ConstValue *members = value->data.v_struct.members;
 		const size_t           memc    = members->size;
 		assert(members);
@@ -855,8 +865,14 @@ emit_as_const(Context *cnt, MirConstValue *value)
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT: {
+		if (value->data.v_struct.is_zero_initializer) {
+			llvm_value = LLVMConstNull(llvm_type);
+			break;
+		}
+
 		SmallArray_ConstValue *members = value->data.v_struct.members;
-		const size_t           memc    = members->size;
+		assert(members && "Missing struct members.");
+		const size_t memc = members->size;
 
 		MirConstValue *member;
 
@@ -940,6 +956,10 @@ emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 void
 emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 {
+	if (cmp->base.comptime) {
+		cmp->base.llvm_value = emit_as_const(cnt, &cmp->base.value);
+		return;
+	}
 	/*
 	 * Temporary variable for naked compounds is implicitly generated variable. When compound is
 	 * used for variable initialization, variable's allocated memory is used directly and MirVar
@@ -1019,7 +1039,7 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 		}
 	}
 
-	cmp->base.llvm_value = llvm_tmp;
+	cmp->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, "");
 }
 
 void
