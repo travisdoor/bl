@@ -3,7 +3,7 @@
 #test "typeinfo - fundamental" {
     info := cast(*TypeInfoInt) typeinfo(s32);
     assert(info.base.kind == TypeKind.Int);
-    assert(info.size_bytes == sizeof(s32));
+    assert(info.base.size_bytes == sizeof(s32));
     assert(info.bit_count == sizeof(s32) * 8);
     assert(info.is_signed);
 };
@@ -21,7 +21,7 @@
     info := cast(*TypeInfoArray) typeinfo(T);
 
     assert(info.base.kind == TypeKind.Array);
-    assert(info.size_bytes == sizeof(T));
+    assert(info.base.size_bytes == sizeof(T));
     assert(info.elem_type != null);
     assert(info.len == 10);
 };
@@ -43,7 +43,7 @@
     info := cast(*TypeInfoStruct) typeinfo(T);
 
     assert(info.base.kind == TypeKind.Struct);
-    assert(info.size_bytes == sizeof(T));
+    assert(info.base.size_bytes == sizeof(T));
     assert(info.members.len == 3);
     assert(info.members[0].index == 0);
     assert(info.members[1].index == 1);

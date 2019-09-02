@@ -12,7 +12,8 @@ Entity :: struct {
     kind: EntityKind,
     position: Vec3,
     name: string,
-    eq: [4]s32
+    eq: [4]s32,
+    sl: []s32
 };
 
 main :: fn () s32 {
@@ -27,6 +28,8 @@ main :: fn () s32 {
     foo.eq[1] = 43;
     foo.eq[2] = -265;
     foo.eq[3] = 0xF2;
+    foo.sl.ptr = foo.eq.ptr;
+    foo.sl.len = foo.eq.len;
 
     print("%\n", foo);
 

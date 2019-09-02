@@ -1001,7 +1001,7 @@ static MirVar *
 exec_gen_RTTI(Context *cnt, MirType *type);
 
 static MirConstValue *
-exec_gen_RTTI_base(Context *cnt, int32_t kind);
+exec_gen_RTTI_base(Context *cnt, int32_t kind, size_t size_bytes);
 
 static MirVar *
 exec_gen_RTTI_empty(Context *cnt, MirType *type, MirType *rtti_type);
@@ -6512,7 +6512,7 @@ _push_RTTI_var(Context *cnt, MirVar *var)
 }
 
 MirConstValue *
-exec_gen_RTTI_base(Context *cnt, int32_t kind)
+exec_gen_RTTI_base(Context *cnt, int32_t kind, size_t size_bytes)
 {
 	MirType *struct_type = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO);
 	assert(struct_type);
@@ -6526,24 +6526,22 @@ exec_gen_RTTI_base(Context *cnt, int32_t kind)
 	/* kind */
 	sa_push_ConstValue(m, init_or_create_const_integer(cnt, NULL, kind_type, kind));
 
+	/* size_bytes */
+	sa_push_ConstValue(
+	    m, init_or_create_const_integer(cnt, NULL, cnt->builtin_types.t_usize, size_bytes));
+
 	return init_or_create_const_struct(cnt, NULL, struct_type, m);
 }
 
 MirVar *
 exec_gen_RTTI_empty(Context *cnt, MirType *type, MirType *rtti_type)
 {
-	/*
-	 * TypeInfoInt :: struct {
-	 *     base: TypeInfo,
-	 * };
-	 */
-
 	MirVar *       rtti_var   = _create_and_alloc_RTTI_var(cnt, rtti_type);
 	MirConstValue *rtti_value = &rtti_var->value;
 
 	SmallArray_ConstValue *m = create_sarr(SmallArray_ConstValue, cnt->assembly);
 	/* .base */
-	sa_push_ConstValue(m, exec_gen_RTTI_base(cnt, type->kind));
+	sa_push_ConstValue(m, exec_gen_RTTI_base(cnt, type->kind, type->store_size_bytes));
 
 	/* set members */
 	rtti_value->data.v_struct.members = m;
@@ -6565,12 +6563,7 @@ exec_gen_RTTI_int(Context *cnt, MirType *type)
 
 	SmallArray_ConstValue *m = create_sarr(SmallArray_ConstValue, cnt->assembly);
 	/* .base */
-	sa_push_ConstValue(m, exec_gen_RTTI_base(cnt, type->kind));
-
-	/* .size_bytes */
-	sa_push_ConstValue(m,
-	                   init_or_create_const_integer(
-	                       cnt, NULL, cnt->builtin_types.t_usize, type->store_size_bytes));
+	sa_push_ConstValue(m, exec_gen_RTTI_base(cnt, type->kind, type->store_size_bytes));
 
 	/* .bitcount */
 	sa_push_ConstValue(
@@ -6598,12 +6591,7 @@ exec_gen_RTTI_real(Context *cnt, MirType *type)
 
 	SmallArray_ConstValue *m = create_sarr(SmallArray_ConstValue, cnt->assembly);
 	/* .base */
-	sa_push_ConstValue(m, exec_gen_RTTI_base(cnt, type->kind));
-
-	/* .size_bytes */
-	sa_push_ConstValue(m,
-	                   init_or_create_const_integer(
-	                       cnt, NULL, cnt->builtin_types.t_usize, type->store_size_bytes));
+	sa_push_ConstValue(m, exec_gen_RTTI_base(cnt, type->kind, type->store_size_bytes));
 
 	/* .bitcount */
 	sa_push_ConstValue(
@@ -6628,7 +6616,7 @@ exec_gen_RTTI_ptr(Context *cnt, MirType *type)
 
 	SmallArray_ConstValue *m = create_sarr(SmallArray_ConstValue, cnt->assembly);
 	/* .base */
-	sa_push_ConstValue(m, exec_gen_RTTI_base(cnt, type->kind));
+	sa_push_ConstValue(m, exec_gen_RTTI_base(cnt, type->kind, type->store_size_bytes));
 
 	sa_push_ConstValue(m,
 	                   init_or_create_const_var_ptr(
@@ -6707,7 +6695,7 @@ exec_gen_RTTI_enum(Context *cnt, MirType *type)
 
 	SmallArray_ConstValue *m = create_sarr(SmallArray_ConstValue, cnt->assembly);
 	/* .base */
-	sa_push_ConstValue(m, exec_gen_RTTI_base(cnt, type->kind));
+	sa_push_ConstValue(m, exec_gen_RTTI_base(cnt, type->kind, type->store_size_bytes));
 
 	/* .name */
 	sa_push_ConstValue(m,
@@ -6742,17 +6730,12 @@ exec_gen_RTTI_array(Context *cnt, MirType *type)
 
 	SmallArray_ConstValue *m = create_sarr(SmallArray_ConstValue, cnt->assembly);
 	/* .base */
-	sa_push_ConstValue(m, exec_gen_RTTI_base(cnt, type->kind));
+	sa_push_ConstValue(m, exec_gen_RTTI_base(cnt, type->kind, type->store_size_bytes));
 
 	/* .name */
 	sa_push_ConstValue(m,
 	                   init_or_create_const_string(
 	                       cnt, NULL, type->user_id ? type->user_id->str : "<implicit_array>"));
-
-	/* .size_bytes */
-	sa_push_ConstValue(m,
-	                   init_or_create_const_integer(
-	                       cnt, NULL, cnt->builtin_types.t_usize, type->store_size_bytes));
 
 	/* .base_type */
 	sa_push_ConstValue(m,
@@ -6881,7 +6864,9 @@ exec_gen_RTTI_struct(Context *cnt, MirType *type)
 	SmallArray_ConstValue *m = create_sarr(SmallArray_ConstValue, cnt->assembly);
 	/* .base */
 	sa_push_ConstValue(
-	    m, exec_gen_RTTI_base(cnt, MIR_TYPE_STRUCT)); /* use same for MIR_TYPE_SLICE!!! */
+	    m,
+	    exec_gen_RTTI_base(
+	        cnt, MIR_TYPE_STRUCT, type->store_size_bytes)); /* use same for MIR_TYPE_SLICE!!! */
 
 	/* name */
 	sa_push_ConstValue(
@@ -6889,13 +6874,14 @@ exec_gen_RTTI_struct(Context *cnt, MirType *type)
 	    init_or_create_const_string(
 	        cnt, NULL, type->user_id ? type->user_id->str : "<implicit_struct>"));
 
-	/* .size_bytes */
-	sa_push_ConstValue(m,
-	                   init_or_create_const_integer(
-	                       cnt, NULL, cnt->builtin_types.t_usize, type->store_size_bytes));
-
 	/* .members */
 	sa_push_ConstValue(m, exec_gen_RTTI_slice_of_struct_members(cnt, type->data.strct.members));
+
+	/* .is_slice */
+	sa_push_ConstValue(
+	    m,
+	    init_or_create_const_bool(
+	        cnt, NULL, type->kind == MIR_TYPE_SLICE || type->kind == MIR_TYPE_VARGS));
 
 	/* set members */
 	rtti_value->data.v_struct.members = m;
@@ -6914,7 +6900,7 @@ exec_gen_RTTI_fn(Context *cnt, MirType *type)
 
 	SmallArray_ConstValue *m = create_sarr(SmallArray_ConstValue, cnt->assembly);
 	/* .base */
-	sa_push_ConstValue(m, exec_gen_RTTI_base(cnt, type->kind));
+	sa_push_ConstValue(m, exec_gen_RTTI_base(cnt, type->kind, type->store_size_bytes));
 
 	/* .args */
 	SmallArray_Type types;

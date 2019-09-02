@@ -35,18 +35,18 @@
  * safe casting.
  */
 TypeKind :: enum #compiler {
-    Type         :: 1,
-    Void         :: 2,
-    Int          :: 3,
-    Real         :: 4,
-    Fn           :: 5,
-    Ptr          :: 6,
-    Bool         :: 7,
-    Array        :: 8,
-    Struct       :: 9,
-    Enum         :: 10,
-    Null         :: 11,
-    String       :: 12,
+    Type   :: 1,
+    Void   :: 2,
+    Int    :: 3,
+    Real   :: 4,
+    Fn     :: 5,
+    Ptr    :: 6,
+    Bool   :: 7,
+    Array  :: 8,
+    Struct :: 9,
+    Enum   :: 10,
+    Null   :: 11,
+    String :: 12,
 };
 
 /*
@@ -55,7 +55,8 @@ TypeKind :: enum #compiler {
  * descriptive informations about the type.
  */
 TypeInfo :: struct #compiler {
-    kind: TypeKind
+    kind: TypeKind,
+    size_bytes: usize
 };
 
 /*
@@ -78,7 +79,6 @@ TypeInfoVoid :: struct #compiler {
 TypeInfoInt :: struct #compiler {
     base: TypeInfo,
 
-    size_bytes: usize,
     bit_count: s32, // Bitcount.
     is_signed: bool, // True when signed.
 };
@@ -89,7 +89,6 @@ TypeInfoInt :: struct #compiler {
 TypeInfoReal :: struct #compiler {
     base: TypeInfo,
 
-    size_bytes: usize,
     bit_count: s32 // Bitcount
 };
 
@@ -128,7 +127,6 @@ TypeInfoArray :: struct #compiler {
     base: TypeInfo,
 
     name: string,
-    size_bytes: usize, 
     elem_type: *TypeInfo, // Element type information.
     len: usize // Array lenght.
 };
@@ -140,8 +138,8 @@ TypeInfoStruct :: struct #compiler {
     base: TypeInfo,
 
     name: string, // struct name if there is one
-    size_bytes: usize,
     members: []TypeInfoStructMember, // Structure members type information.
+    is_slice: bool
 };
 
 /*

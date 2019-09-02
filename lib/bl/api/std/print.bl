@@ -150,7 +150,12 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
         return print_string(buf, cur, str);
     } else if any.type_info.kind == TypeKind.Array {
         info := cast(*TypeInfoArray) any.type_info;
-        elem_size := info.size_bytes / info.len;
+
+        if info.len == 0 {
+            return print_string(buf, cur, "[]");
+        }
+
+        elem_size := info.elem_type.size_bytes;
 
         tmp : Any;
         tmp.type_info = info.elem_type;
@@ -172,24 +177,54 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
 
         tmp : Any;
 
-        cur = print_string(buf, cur, info.name);
-        cur = print_string(buf, cur, " {");
+        if !info.is_slice {
+            cur = print_string(buf, cur, info.name);
+            cur = print_string(buf, cur, " {");
 
-        loop i := 0; i < info.members.len; i += 1 {
-            member := info.members[i];
-            cur = print_string(buf, cur, member.name);
-            cur = print_string(buf, cur, " = ");
-            tmp.data = cast(*u8) (cast(usize) any.data + member.offset_bytes);
-            tmp.type_info = member.base_type;
+            loop i := 0; i < info.members.len; i += 1 {
+                member := info.members[i];
+                cur = print_string(buf, cur, member.name);
+                cur = print_string(buf, cur, " = ");
+                tmp.data = cast(*u8) (cast(usize) any.data + member.offset_bytes);
+                tmp.type_info = member.base_type;
 
-            cur = print_any(buf, cur, &tmp);
+                cur = print_any(buf, cur, &tmp);
 
-            if i < info.members.len - 1 {
-                cur = print_string(buf, cur, ", ");
+                if i < info.members.len - 1 {
+                    cur = print_string(buf, cur, ", ");
+                }
+            }
+
+            return print_string(buf, cur, "}");
+        }
+
+        len := u64_from_u8_ptr(cast(*u8) (cast(usize) any.data + info.members[0].offset_bytes), 64);
+        ptr := ptr_from_ptr(cast(*u8) (cast(usize) any.data + info.members[1].offset_bytes));
+
+        if len == 0 {
+            return print_string(buf, cur, "[]");
+        }
+
+        cur = print_string(buf, cur, "[");
+
+        elem_type := (cast(*TypeInfoPtr)info.members[1].base_type).pointee_type;
+        elem_size := elem_type.size_bytes;
+
+        tmp.type_info = elem_type;
+
+        if elem_size > 0 {
+            loop i := 0; i < len; i += 1 {
+                tmp.data = cast(*u8) (cast(usize) ptr + i * elem_size);
+                cur = print_any(buf, cur, &tmp);
+
+                if i < len - 1 {
+                    cur = print_string(buf, cur, ", ");
+                }
             }
         }
-        
-        return print_string(buf, cur, "}");
+
+        return print_string(buf, cur, "]");
+
     } else if any.type_info.kind == TypeKind.Ptr {
         // Pointer
         ptr := ^ cast(*u64) any.data;
@@ -323,6 +358,7 @@ print_type :: fn (buf: []u8, cur: s32, info: *TypeInfo) s32 {
 };
 
 print_string :: fn (buf: []u8, cur: s32, str: string) s32 {
+    if str.ptr == null { return cur; }
     i := 0;
     loop ; i < str.len; i += 1 {
         bi := cur + i;
@@ -439,4 +475,8 @@ f64_from_u8_ptr :: fn (ptr: *u8, bit_count: s32) f64 {
     if bit_count == 32 { return cast(f64) (^ cast(*f32) ptr); }
 
     return 0.;
+};
+
+ptr_from_ptr :: fn (ptr: *u8) *u8 {
+    return cast(*u8) ^ cast(*usize) ptr;
 };
