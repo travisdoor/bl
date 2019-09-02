@@ -1,7 +1,5 @@
 /* playground */
 
-#load "std/print.bl"
-
 EntityKind :: enum {
     Player,
     Enemy,
@@ -10,35 +8,22 @@ EntityKind :: enum {
 
 Entity :: struct {
     kind: EntityKind,
-    position: Vec3,
-    name: string,
-    eq: [4]s32,
-    sl: []s32
+    i: s32,
+    f: f32
 };
 
+entity := {:Entity: 0};
+foo := {:s32: 0 };
+
 main :: fn () s32 {
-    print("\n\n");
-    print("%\n", Entity);
-
-    foo : Entity;
-    foo.kind = EntityKind.Player;
-    foo.position = {:Vec3: 125.15f, 0.53f, 12.19f };
-    foo.name = "Kokot";
-    foo.eq[0] = 16;
-    foo.eq[1] = 43;
-    foo.eq[2] = -265;
-    foo.eq[3] = 0xF2;
-    foo.sl.ptr = foo.eq.ptr;
-    foo.sl.len = foo.eq.len;
-
-    print("%\n", foo);
-
-    test(10, 20, 30);
-
-    print("\n\n");
+    bar := {:[4]s32: 1, 2, 3, 4 };
+    zoo := {:[4]s32: 0 };
+    boo := homo();
+    i := 10;
+    roo := {:s32: i};
     return 0;
 };
 
-test :: fn (args: ...) {
-    print("%\n", args);
+homo :: fn () Entity {
+    return {:Entity: 0};
 };

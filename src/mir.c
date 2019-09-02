@@ -486,6 +486,12 @@ static MirConstValue *
 init_or_create_const_var_ptr(Context *cnt, MirConstValue *v, MirType *type, MirVar *var);
 
 static MirConstValue *
+init_or_create_const_array(Context *              cnt,
+                           MirConstValue *        v,
+                           MirType *              elem_type,
+                           SmallArray_ConstValue *elems);
+
+static MirConstValue *
 init_or_create_const_struct(Context *              cnt,
                             MirConstValue *        v,
                             MirType *              type,
@@ -1095,9 +1101,6 @@ exec_instr_unop(Context *cnt, MirInstrUnop *unop);
 
 static void
 exec_instr_call(Context *cnt, MirInstrCall *call);
-
-static MirConstValue *
-exec_call_top_lvl(Context *cnt, MirInstrCall *call);
 
 static void
 exec_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice);
@@ -2845,6 +2848,20 @@ init_or_create_const_var_ptr(Context *cnt, MirConstValue *v, MirType *type, MirV
 }
 
 MirConstValue *
+init_or_create_const_array(Context *              cnt,
+                           MirConstValue *        v,
+                           MirType *              elem_type,
+                           SmallArray_ConstValue *elems)
+{
+	if (!v) v = arena_alloc(&cnt->assembly->arenas.mir.value);
+	v->type               = create_type_array(cnt, elem_type, elems->size);
+	v->addr_mode          = MIR_VAM_LVALUE_CONST;
+	v->data.v_array.elems = elems;
+
+	return v;
+}
+
+MirConstValue *
 init_or_create_const_struct(Context *              cnt,
                             MirConstValue *        v,
                             MirType *              type,
@@ -4130,10 +4147,9 @@ analyze_instr_phi(Context *cnt, MirInstrPhi *phi)
 uint64_t
 analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 {
-	SmallArray_Instr *values = cmp->values;
-
 	/* Setup compound type. */
-	MirType *type = cmp->base.value.type;
+	MirType *         type   = cmp->base.value.type;
+	SmallArray_Instr *values = cmp->values;
 	if (!type) {
 		/* generate load instruction if needed */
 
@@ -4154,31 +4170,37 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 
 	assert(type);
 
-	MirInstr *   value;
-	const size_t valc      = values ? values->size : 0;
-	bool         comptime  = true;
-	bool         zero_init = false;
+	if (!values) {
+		builder_msg(cnt->builder,
+		            BUILDER_MSG_ERROR,
+		            ERR_INVALID_INITIALIZER,
+		            cmp->type->node->location,
+		            BUILDER_CUR_AFTER,
+		            "Expected value after ':'.");
+		return ANALYZE_FAILED;
+	}
+
+	cmp->base.value.type = type;
+	cmp->base.comptime   = true; /* can be overriden later */
 
 	/* Check if array is supposed to be initilialized to {0} */
-	if (valc == 1) {
-		value = values->data[0];
+	if (values->size == 1) {
+		MirInstr *value = values->data[0];
 		if (value->kind == MIR_INSTR_CONST && value->value.type->kind == MIR_TYPE_INT &&
 		    value->value.data.v_u64 == 0) {
 			reduce_instr(cnt, value);
-			zero_init = true;
+			cmp->is_zero_initialized = true;
 		}
 	}
 
-	cmp->is_zero_initialized = zero_init;
-
 	switch (type->kind) {
 	case MIR_TYPE_ARRAY: {
-		if (zero_init) {
+		if (cmp->is_zero_initialized) {
 			cmp->base.value.data.v_array.is_zero_initializer = true;
 			break;
 		}
 
-		if (valc != type->data.array.len) {
+		if (values->size != type->data.array.len) {
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_INVALID_INITIALIZER,
@@ -4189,13 +4211,13 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 			            "initialize array to 0 by zero initializer {0}. Expected is "
 			            "%llu but given %llu.",
 			            (unsigned long long)type->data.array.len,
-			            (unsigned long long)valc);
+			            (unsigned long long)values->size);
 			return ANALYZE_FAILED;
 		}
 
 		/* Else iterate over values */
 		MirInstr **value_ref;
-		for (size_t i = 0; i < valc; ++i) {
+		for (size_t i = 0; i < values->size; ++i) {
 			value_ref = &values->data[i];
 
 			bool is_valid;
@@ -4203,11 +4225,15 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 			    cnt, &is_valid, *value_ref, type->data.array.elem_type, false);
 			if (!is_valid) return ANALYZE_FAILED;
 
-			comptime = (*value_ref)->comptime ? comptime : false;
+			cmp->base.comptime = (*value_ref)->comptime ? cmp->base.comptime : false;
 		}
 
 		// NOTE: Instructions can be used as values!!!
-		cmp->base.value.data.v_array.elems = (SmallArray_ConstValue *)values;
+		if (cmp->base.comptime)
+			init_or_create_const_array(cnt,
+			                           &cmp->base.value,
+			                           type->data.array.elem_type,
+			                           (SmallArray_ConstValue *)values);
 		break;
 	}
 
@@ -4215,15 +4241,13 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 	case MIR_TYPE_STRING:
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT: {
-		comptime = true;
-
-		if (zero_init) {
+		if (cmp->is_zero_initialized) {
 			cmp->base.value.data.v_struct.is_zero_initializer = true;
 			break;
 		}
 
 		const size_t memc = type->data.strct.members->size;
-		if (valc != memc) {
+		if (values->size != memc) {
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_INVALID_INITIALIZER,
@@ -4233,14 +4257,14 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 			            "structure or initialize structure to 0 by zero initializer "
 			            "{0}. Expected is %llu but given %llu.",
 			            (unsigned long long)memc,
-			            (unsigned long long)valc);
+			            (unsigned long long)values->size);
 			return ANALYZE_FAILED;
 		}
 
 		/* Else iterate over values */
 		MirInstr **value_ref;
 		MirType *  member_type;
-		for (uint32_t i = 0; i < valc; ++i) {
+		for (uint32_t i = 0; i < values->size; ++i) {
 			value_ref   = &values->data[i];
 			member_type = mir_get_struct_elem_type(type, i);
 
@@ -4249,18 +4273,20 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 			    analyze_slot_input(cnt, &is_valid, *value_ref, member_type, false);
 			if (!is_valid) return ANALYZE_FAILED;
 
-			comptime = (*value_ref)->comptime ? comptime : false;
+			cmp->base.comptime = (*value_ref)->comptime ? cmp->base.comptime : false;
 		}
 
 		// NOTE: Instructions can be used as values!!!
-		cmp->base.value.data.v_struct.members = (SmallArray_ConstValue *)values;
+		if (cmp->base.comptime)
+			init_or_create_const_struct(
+			    cnt, &cmp->base.value, type, (SmallArray_ConstValue *)values);
 		break;
 	}
 
 	default: {
 		/* Non-agregate type. */
-		if (valc > 1) {
-			value = values->data[1];
+		if (values->size > 1) {
+			MirInstr *value = values->data[1];
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
 			            ERR_INVALID_INITIALIZER,
@@ -4276,26 +4302,18 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 		(*value_ref) = analyze_slot_input(cnt, &is_valid, *value_ref, type, false);
 		if (!is_valid) return ANALYZE_FAILED;
 
-		comptime = (*value_ref)->comptime ? comptime : false;
-
-		// NOTE: Instructions can be used as values!!!
-		cmp->base.value = (*value_ref)->value;
+		cmp->base.comptime = (*value_ref)->comptime;
+		if (cmp->base.comptime) cmp->base.value = (*value_ref)->value;
 	}
 	}
 
-	/*
-	 * Create tmp variable for naked compound if needed.
-	 */
-	if (cmp->is_naked) {
-		cmp->base.value.type = create_type_ptr(cnt, type);
-		cmp->base.comptime   = false;
+	if (!cmp->base.comptime && cmp->is_naked) {
+		/* For naked non-compile time compounds we need to generate implicit temp storage to
+		 * keep all data. */
 
 		const char *tmp_name = gen_uq_name(cnt, IMPL_COMPOUND_TMP);
 		MirVar *    tmp_var  = create_var_impl(cnt, tmp_name, type, true, false, false);
 		cmp->tmp_var         = tmp_var;
-	} else {
-		cmp->base.value.type = type;
-		cmp->base.comptime   = comptime;
 	}
 
 	return ANALYZE_PASSED;
@@ -4484,7 +4502,8 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	}
 
 	if (target_type->kind == MIR_TYPE_PTR) {
-		/* We try to access structure member via pointer so we need one more load. */
+		/* We try to access structure member via pointer so we need one more load.
+		 */
 
 		member_ptr->target_ptr = insert_instr_load(cnt, member_ptr->target_ptr);
 		assert(member_ptr->target_ptr);
@@ -4676,8 +4695,8 @@ analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof)
 		assert(type);
 	}
 
-	/* sizeof operator needs only type of input expression so we can erase whole call tree
-	 * generated to get this expression */
+	/* sizeof operator needs only type of input expression so we can erase whole call
+	 * tree generated to get this expression */
 	unref_instr(szof->expr);
 	erase_instr_tree(szof->expr);
 	szof->base.value.data.v_u64 = type->store_size_bytes;
@@ -4746,8 +4765,8 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		/* search in current tree and ignore global scope */
 		found = scope_lookup(ref->scope, ref->rid, true, true);
 
-		/* lookup in private scope and global scope also (private scope has global scope as
-		 * parent every time) */
+		/* lookup in private scope and global scope also (private scope has global
+		 * scope as parent every time) */
 		if (!found) found = scope_lookup(private_scope, ref->rid, true, false);
 	}
 
@@ -4946,11 +4965,14 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		/* Add entry block of the function into analyze queue. */
 		MirInstr *entry_block = (MirInstr *)fn->first_block;
 		if (!entry_block) {
-			/* TODO: not the best place to do this check, move into ast generation later
+			/* TODO: not the best place to do this check, move into ast
+			 * generation later
 			 */
-			/* TODO: not the best place to do this check, move into ast generation later
+			/* TODO: not the best place to do this check, move into ast
+			 * generation later
 			 */
-			/* TODO: not the best place to do this check, move into ast generation later
+			/* TODO: not the best place to do this check, move into ast
+			 * generation later
 			 */
 			builder_msg(cnt->builder,
 			            BUILDER_MSG_ERROR,
@@ -5116,8 +5138,9 @@ analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *variant_instr)
 		variant_instr->variant->value = &variant_instr->value->value;
 	} else {
 		/*
-		 * CLENUP: Automatic initialization value is set in parser, mabye we will prefer to
-		 * do automatic initialization here instead of doing so in parser pass.
+		 * CLENUP: Automatic initialization value is set in parser, mabye we will
+		 * prefer to do automatic initialization here instead of doing so in parser
+		 * pass.
 		 */
 		abort();
 	}
@@ -5463,8 +5486,8 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 	if (!is_valid) return ANALYZE_FAILED;
 
 	/*
-	 * This is special case when lhs is null constant; in such case base type of this null must
-	 * corespond with rhs type (due to LLVM IR null type policy).
+	 * This is special case when lhs is null constant; in such case base type of this
+	 * null must corespond with rhs type (due to LLVM IR null type policy).
 	 */
 	if (lhs_is_null && !setup_instr_const_null(cnt, binop->lhs, binop->rhs->value.type)) {
 		return ANALYZE_FAILED;
@@ -5627,8 +5650,11 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
 	if (decl->init) {
 		if (decl->init->kind == MIR_INSTR_CALL && decl->init->comptime) {
+			// MirInstr *callee = (MirInstrCall *)decl->init;
 			if (analyze_instr(cnt, decl->init) != ANALYZE_PASSED)
 				return ANALYZE_POSTPONE;
+
+			/* TODO: check if funciton can be called in compile time??? */
 			exec_call_top_lvl(cnt, (MirInstrCall *)decl->init);
 		}
 
@@ -5738,9 +5764,9 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 	assert(call->callee);
 
 	/*
-	 * Direct call is call without any reference lookup, usually call to anonymous function,
-	 * type resolver or variable initializer. Contant value of callee instruction must containt
-	 * pointer to the MirFn object.
+	 * Direct call is call without any reference lookup, usually call to anonymous
+	 * function, type resolver or variable initializer. Contant value of callee
+	 * instruction must containt pointer to the MirFn object.
 	 */
 	const MirInstrKind callee_kind = call->callee->kind;
 	const bool         is_direct_call =
@@ -5779,8 +5805,9 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 			/* Direct call of anonymous function. */
 
 			/*
-			 * CLENUP: Function reference counting is not clear, we can decide to count
-			 * references direcly inside MirFn or in function prototype instruction.
+			 * CLENUP: Function reference counting is not clear, we can decide
+			 * to count references direcly inside MirFn or in function prototype
+			 * instruction.
 			 */
 			// ++fn->ref_count;
 			fn->emit_llvm = true;
@@ -5981,8 +6008,8 @@ analyze_slot_input(Context * cnt,
 	 * Perform analyze of input instruction passed to input slot of other instruction.
 	 * 1) Generate Load if needed.
 	 * 2) Generate cast when casting is enabled and slot_type is not NULL.
-	 * 3) Generate error if input and slot_type does not match and cannot be implicitly casted.
-	 * 4) Reduce instruction.
+	 * 3) Generate error if input and slot_type does not match and cannot be implicitly
+	 * casted. 4) Reduce instruction.
 	 */
 
 	assert(input);
@@ -6422,7 +6449,8 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 			for (uint32_t i = 0; i < memc; ++i) {
 				member = members->data[i];
 
-				/* copy all members to variable allocated memory on the stack */
+				/* copy all members to variable allocated memory on the
+				 * stack */
 				MirStackPtr elem_dest_ptr =
 				    dest_ptr + get_struct_elem_offest(cnt, src_type, i);
 				assert(elem_dest_ptr);
@@ -6444,7 +6472,8 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 			for (uint32_t i = 0; i < memc; ++i) {
 				elem = elems->data[i];
 
-				/* copy all elems to variable allocated memory on the stack */
+				/* copy all elems to variable allocated memory on the stack
+				 */
 				MirStackPtr elem_dest_ptr =
 				    dest_ptr + get_array_elem_offset(src_type, i);
 				exec_copy_comptime_to_stack(cnt, elem_dest_ptr, elem);
@@ -6497,8 +6526,8 @@ _create_and_alloc_RTTI_var(Context *cnt, MirType *type)
 }
 
 /*
- * Push RTTI variable to the array of RTTIs, do stack allocation for execution and push current
- * value on the stack.
+ * Push RTTI variable to the array of RTTIs, do stack allocation for execution and push
+ * current value on the stack.
  */
 static inline void
 _push_RTTI_var(Context *cnt, MirVar *var)
@@ -7736,81 +7765,59 @@ exec_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref)
 void
 exec_instr_compound(Context *cnt, MirStackPtr tmp_ptr, MirInstrCompound *cmp)
 {
-	MirType *type    = cmp->base.value.type;
-	MirVar * tmp_var = cmp->tmp_var;
-
-	bool push_tmp_ptr = false;
-
-	/* We expect compound to be naked when no tmp_ptr has been passed into this function. */
-	if (!tmp_ptr) {
-		assert(cmp->is_naked);
-		assert(tmp_var);
-		assert(!tmp_var->is_in_gscope);
-		assert(type && type->kind == MIR_TYPE_PTR);
-
-		tmp_ptr = exec_read_stack_ptr(cnt, tmp_var->rel_stack_ptr, false);
-
-		type         = cmp->tmp_var->value.type;
-		push_tmp_ptr = true;
+	if (cmp->base.comptime) {
+		/* non-naked */
+		if (tmp_ptr) exec_copy_comptime_to_stack(cnt, tmp_ptr, &cmp->base.value);
+		return;
 	}
 
-	assert(tmp_ptr && "Missing temporary allocation for compound.");
-	assert(type);
+	const bool will_push = tmp_ptr == NULL;
+	if (will_push) {
+		assert(cmp->tmp_var && "Missing temp variable for compound.");
+		tmp_ptr = exec_read_stack_ptr(
+		    cnt, cmp->tmp_var->rel_stack_ptr, cmp->tmp_var->is_in_gscope);
+	}
 
-	SmallArray_Instr *values = cmp->values;
+	assert(tmp_ptr);
 
-	assert(values);
+	MirType *   type = cmp->base.value.type;
+	MirType *   elem_type;
+	MirStackPtr elem_ptr = tmp_ptr;
 
-	MirStackPtr value_ptr;
-	MirInstr *  value;
+	MirInstr *value;
+	sarray_foreach(cmp->values, value)
+	{
+		elem_type = value->value.type;
+		switch (type->kind) {
 
-	if (cmp->is_zero_initialized) {
-		memset(tmp_ptr, 0, type->store_size_bytes);
-	} else {
-		MirType *   elem_type;
-		MirStackPtr elem_ptr = tmp_ptr;
+		case MIR_TYPE_STRING:
+		case MIR_TYPE_SLICE:
+		case MIR_TYPE_VARGS:
+		case MIR_TYPE_STRUCT:
+			elem_ptr = tmp_ptr + get_struct_elem_offest(cnt, type, (uint32_t)i);
+			break;
 
-		sarray_foreach(values, value)
-		{
-			elem_type = value->value.type;
-			switch (type->kind) {
+		case MIR_TYPE_ARRAY:
+			elem_ptr = tmp_ptr + get_array_elem_offset(type, (uint32_t)i);
+			break;
 
-			case MIR_TYPE_STRING:
-			case MIR_TYPE_SLICE:
-			case MIR_TYPE_VARGS:
-			case MIR_TYPE_STRUCT:
-				elem_ptr = tmp_ptr + get_struct_elem_offest(cnt, type, (uint32_t)i);
-				break;
+		default:
+			assert(i == 0 && "Invalid elem count for non-agregate type!!!");
+		}
 
-			case MIR_TYPE_ARRAY:
-				elem_ptr = tmp_ptr + get_array_elem_offset(type, (uint32_t)i);
-				break;
-
-			default:
-				assert(i == 0 && "Invalid elem count for non-agregate type!!!");
-			}
-
-			if (value->comptime) {
-				exec_copy_comptime_to_stack(cnt, elem_ptr, &value->value);
+		if (value->comptime) {
+			exec_copy_comptime_to_stack(cnt, elem_ptr, &value->value);
+		} else {
+			if (value->kind == MIR_INSTR_COMPOUND) {
+				exec_instr_compound(cnt, elem_ptr, (MirInstrCompound *)value);
 			} else {
-				if (value->kind == MIR_INSTR_COMPOUND) {
-					exec_instr_compound(
-					    cnt, elem_ptr, (MirInstrCompound *)value);
-				} else {
-					value_ptr = exec_fetch_value(cnt, value);
-					memcpy(elem_ptr, value_ptr, elem_type->store_size_bytes);
-				}
+				MirStackPtr value_ptr = exec_fetch_value(cnt, value);
+				memcpy(elem_ptr, value_ptr, elem_type->store_size_bytes);
 			}
 		}
 	}
 
-	/*
-	 * Push pointer to tmp var on the stack. This is done for all naked compounds.
-	 */
-	if (push_tmp_ptr) {
-		MirStackPtr real_ptr = exec_read_stack_ptr(cnt, tmp_var->rel_stack_ptr, false);
-		exec_push_stack(cnt, &real_ptr, cmp->base.value.type);
-	}
+	if (will_push) exec_push_stack(cnt, tmp_ptr, cmp->base.value.type);
 }
 
 void
@@ -7908,8 +7915,8 @@ exec_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		assert(var_ptr);
 
 		if (decl->init->comptime) {
-			/* Compile time constants of agregate type are stored in different way, we
-			 * need to produce decomposition of those data. */
+			/* Compile time constants of agregate type are stored in different
+			 * way, we need to produce decomposition of those data. */
 			exec_copy_comptime_to_stack(cnt, var_ptr, &decl->init->value);
 		} else {
 			if (decl->init->kind == MIR_INSTR_COMPOUND) {
@@ -7989,6 +7996,8 @@ exec_call_top_lvl(Context *cnt, MirInstrCall *call)
 	assert(callee_val->type && callee_val->type->kind == MIR_TYPE_FN);
 
 	MirFn *fn = callee_val->data.v_ptr.data.fn;
+	if (!fn->analyzed_for_cmptime_exec)
+		bl_abort("Function is not fully analyzed for compile time execution!!!");
 	exec_fn(cnt, fn, call->args, (MirConstValueData *)&call->base.value);
 	return &call->base.value;
 }
@@ -8707,8 +8716,8 @@ ast_stmt_continue(Context *cnt, Ast *cont)
 void
 ast_stmt_return(Context *cnt, Ast *ret)
 {
-	/* Return statement produce only setup of .ret temporary and break into the exit block of
-	 * the function. */
+	/* Return statement produce only setup of .ret temporary and break into the exit
+	 * block of the function. */
 	MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
 
 	if (!is_current_block_terminated(cnt)) {
@@ -8986,12 +8995,13 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 	MirInstrBlock *init_block =
 	    append_block(cnt, fn_proto->base.value.data.v_ptr.data.fn, "entry");
 
-	/* Every user generated function must contain exit block; this block is invoked last in
-	 * every function a eventually can return .ret value stored in temporary storage. When ast
-	 * parser hit user defined 'return' statement it sets up .ret temporary if there is one and
-	 * produce break into exit block. This approach is needed due to defer statement, because we
-	 * need to call defer blocks after return value evaluation and before terminal instruction
-	 * of the function. Last defer block always breaks into the exit block. */
+	/* Every user generated function must contain exit block; this block is invoked last
+	 * in every function a eventually can return .ret value stored in temporary storage.
+	 * When ast parser hit user defined 'return' statement it sets up .ret temporary if
+	 * there is one and produce break into exit block. This approach is needed due to
+	 * defer statement, because we need to call defer blocks after return value
+	 * evaluation and before terminal instruction of the function. Last defer block
+	 * always breaks into the exit block. */
 	cnt->ast.exit_block = append_block(cnt, fn_proto->base.value.data.v_ptr.data.fn, "exit");
 
 	if (ast_fn_type->data.type_fn.ret_type) {
@@ -9239,9 +9249,12 @@ ast_decl_entity(Context *cnt, Ast *entity)
 			cnt->entry_fn = value->value.data.v_ptr.data.fn;
 			ref_instr(cnt->entry_fn->prototype); /* main must be generated into LLVM */
 
-			/* TODO: set flag for fn instance to use it later for DI generation */
-			/* TODO: set flag for fn instance to use it later for DI generation */
-			/* TODO: set flag for fn instance to use it later for DI generation */
+			/* TODO: set flag for fn instance to use it later for DI generation
+			 */
+			/* TODO: set flag for fn instance to use it later for DI generation
+			 */
+			/* TODO: set flag for fn instance to use it later for DI generation
+			 */
 		}
 	} else {
 		/* other declaration types */
