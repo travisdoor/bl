@@ -1,29 +1,12 @@
 /* playground */
 
-EntityKind :: enum {
-    Player,
-    Enemy,
-    Building
+Foo :: struct {
+    vki: s32,
+    foo: s32
 };
 
-Entity :: struct {
-    kind: EntityKind,
-    i: s32,
-    f: f32
-};
-
-entity := {:Entity: 0};
-foo := {:s32: 0 };
+foo := {:Foo: 0 };
 
 main :: fn () s32 {
-    bar := {:[4]s32: 1, 2, 3, 4 };
-    zoo := {:[4]s32: 0 };
-    boo := homo();
-    i := 10;
-    roo := {:s32: i};
     return 0;
-};
-
-homo :: fn () Entity {
-    return {:Entity: 0};
 };

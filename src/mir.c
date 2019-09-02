@@ -4152,7 +4152,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 	SmallArray_Instr *values = cmp->values;
 	if (!type) {
 		/* generate load instruction if needed */
-
+		assert(cmp->type->analyzed);
 		cmp->type = analyze_slot_input(cnt, NULL, cmp->type, NULL, false);
 
 		MirInstr *instr_type = cmp->type;
