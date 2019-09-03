@@ -64,6 +64,10 @@ typedef struct {
 	/* Constants */
 	LLVMValueRef llvm_const_i64;
 
+	/* Attributes */
+	LLVMAttributeRef llvm_attribute_no_inline;
+	LLVMAttributeRef llvm_attribute_always_inline;
+
 	/* Types */
 	LLVMTypeRef llvm_void_type;
 	LLVMTypeRef llvm_i1_type;
@@ -299,6 +303,16 @@ emit_fn_proto(Context *cnt, MirFn *fn)
 	if (!fn->llvm_value) {
 		fn->llvm_value =
 		    LLVMAddFunction(cnt->llvm_module, fn->llvm_name, fn->type->llvm_type);
+
+		if (is_flag(fn->flags, FLAG_INLINE))
+			LLVMAddAttributeAtIndex(fn->llvm_value,
+			                        LLVMAttributeFunctionIndex,
+			                        cnt->llvm_attribute_always_inline);
+
+		if (is_flag(fn->flags, FLAG_NO_INLINE))
+			LLVMAddAttributeAtIndex(fn->llvm_value,
+			                        LLVMAttributeFunctionIndex,
+			                        cnt->llvm_attribute_no_inline);
 	}
 
 	return fn->llvm_value;
@@ -1607,6 +1621,16 @@ ir_run(Builder *builder, Assembly *assembly)
 	cnt.llvm_intrinsic_memcpy  = create_memcpy_fn(&cnt);
 	cnt.llvm_di_builder        = assembly->llvm.di_builder;
 	cnt.debug_mode             = assembly->options.debug_mode;
+
+	unsigned attribute_no_inline_id =
+	    LLVMGetEnumAttributeKindForName("noinline", strlen("noinline"));
+	unsigned attribute_always_inline_id =
+	    LLVMGetEnumAttributeKindForName("alwaysinline", strlen("alwaysinline"));
+
+	cnt.llvm_attribute_always_inline =
+	    LLVMCreateEnumAttribute(cnt.llvm_cnt, attribute_always_inline_id, 0);
+	cnt.llvm_attribute_no_inline =
+	    LLVMCreateEnumAttribute(cnt.llvm_cnt, attribute_no_inline_id, 0);
 
 	emit_RTTI_types(&cnt);
 

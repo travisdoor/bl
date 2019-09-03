@@ -28,7 +28,7 @@
 
 #link "glfw"
 
-GLFWwindow :: struct { handle: *u8 };
+GLFWwindow :: u8;
 
 GLFW_CONTEXT_VERSION_MAJOR :: 0x00022002;
 GLFW_CONTEXT_VERSION_MINOR :: 0x00022003;

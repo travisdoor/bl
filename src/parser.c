@@ -82,13 +82,15 @@ SmallArrayType(Scope64, Scope *, 64);
 #define decl_get(_cnt) ((_cnt)->_decl_stack.size ? sa_last_Ast64(&(_cnt)->_decl_stack) : NULL)
 
 typedef enum {
-	HD_NONE     = 1 << 0,
-	HD_LOAD     = 1 << 1,
-	HD_LINK     = 1 << 2,
-	HD_TEST     = 1 << 3,
-	HD_EXTERN   = 1 << 4,
-	HD_COMPILER = 1 << 5,
-	HD_PRIVATE  = 1 << 6,
+	HD_NONE      = 1 << 0,
+	HD_LOAD      = 1 << 1,
+	HD_LINK      = 1 << 2,
+	HD_TEST      = 1 << 3,
+	HD_EXTERN    = 1 << 4,
+	HD_COMPILER  = 1 << 5,
+	HD_PRIVATE   = 1 << 6,
+	HD_INLINE    = 1 << 7,
+	HD_NO_INLINE = 1 << 8,
 } HashDirective;
 
 typedef struct {
@@ -121,7 +123,7 @@ static Ast *
 parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfied);
 
 static void
-parse_flags_for_curr_decl(Context *cnt);
+parse_flags_for_curr_decl(Context *cnt, uint32_t acceped_flags);
 
 static Ast *
 parse_unrecheable(Context *cnt);
@@ -346,7 +348,7 @@ parse_expr_ref(Context *cnt)
 }
 
 void
-parse_flags_for_curr_decl(Context *cnt)
+parse_flags_for_curr_decl(Context *cnt, uint32_t acceped_flags)
 {
 	uint32_t flags = 0;
 
@@ -355,7 +357,7 @@ parse_flags_for_curr_decl(Context *cnt)
 	const bool is_curr_decl_valid = decl_get(cnt) && decl_get(cnt)->kind == AST_DECL_ENTITY;
 
 	/* flags are accepted only for named declarations */
-	uint32_t accepted = is_curr_decl_valid ? HD_EXTERN | HD_COMPILER : HD_NONE;
+	uint32_t accepted = is_curr_decl_valid ? acceped_flags : HD_NONE;
 
 	while (true) {
 		parse_hash_directive(cnt, accepted, &found);
@@ -366,6 +368,12 @@ parse_flags_for_curr_decl(Context *cnt)
 			flags |= FLAG_EXTERN;
 		} else if (is_flag(found, HD_COMPILER)) {
 			flags |= FLAG_COMPILER;
+		} else if (is_flag(found, HD_INLINE)) {
+			flags |= FLAG_INLINE;
+			found |= HD_NO_INLINE;
+		} else if (is_flag(found, HD_NO_INLINE)) {
+			flags |= FLAG_NO_INLINE;
+			found |= HD_INLINE;
 		} else {
 			bl_abort("Unexpected flag!!!");
 		}
@@ -543,6 +551,36 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 	if (strcmp(directive, "compiler") == 0) {
 		set_satisfied(HD_COMPILER);
 		if (is_not_flag(expected_mask, HD_COMPILER)) {
+			parse_error(cnt,
+			            ERR_UNEXPECTED_DIRECTIVE,
+			            tok_directive,
+			            BUILDER_CUR_WORD,
+			            "Unexpected directive.");
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
+		}
+
+		return NULL;
+	}
+
+	if (strcmp(directive, "inline") == 0) {
+		set_satisfied(HD_INLINE);
+		if (is_not_flag(expected_mask, HD_INLINE)) {
+			parse_error(cnt,
+			            ERR_UNEXPECTED_DIRECTIVE,
+			            tok_directive,
+			            BUILDER_CUR_WORD,
+			            "Unexpected directive.");
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
+		}
+
+		return NULL;
+	}
+
+	if (strcmp(directive, "no_inline") == 0) {
+		set_satisfied(HD_NO_INLINE);
+		if (is_not_flag(expected_mask, HD_NO_INLINE)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -1427,7 +1465,7 @@ parse_expr_lit_fn(Context *cnt)
 	fn->data.expr_fn.type = type;
 
 	/* parse flags */
-	parse_flags_for_curr_decl(cnt);
+	parse_flags_for_curr_decl(cnt, HD_EXTERN | HD_NO_INLINE| HD_INLINE | HD_COMPILER);
 
 	/* parse block (block is optional function body can be external) */
 	fn->data.expr_fn.block = parse_block(cnt, false);
@@ -1563,7 +1601,7 @@ parse_type_enum(Context *cnt)
 	enm->data.type_enm.variants = create_sarr(SmallArray_Ast, cnt->assembly);
 	enm->data.type_enm.type     = parse_type(cnt);
 
-	parse_flags_for_curr_decl(cnt);
+	parse_flags_for_curr_decl(cnt, HD_COMPILER);
 
 	Token *tok = tokens_consume(cnt->tokens);
 	if (token_is_not(tok, SYM_LBLOCK)) {
@@ -1783,7 +1821,7 @@ parse_type_struct(Context *cnt)
 	Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
 	if (!tok_struct) return NULL;
 
-	parse_flags_for_curr_decl(cnt);
+	parse_flags_for_curr_decl(cnt, HD_COMPILER);
 
 	Token *tok = tokens_consume(cnt->tokens);
 	if (tok->sym != SYM_LBLOCK) {

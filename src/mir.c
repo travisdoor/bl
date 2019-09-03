@@ -9253,13 +9253,6 @@ ast_decl_entity(Context *cnt, Ast *entity)
 			assert(!cnt->entry_fn);
 			cnt->entry_fn = value->value.data.v_ptr.data.fn;
 			ref_instr(cnt->entry_fn->prototype); /* main must be generated into LLVM */
-
-			/* TODO: set flag for fn instance to use it later for DI generation
-			 */
-			/* TODO: set flag for fn instance to use it later for DI generation
-			 */
-			/* TODO: set flag for fn instance to use it later for DI generation
-			 */
 		}
 	} else {
 		/* other declaration types */

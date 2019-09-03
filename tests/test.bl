@@ -1,11 +1,6 @@
 /* playground */
 
-Foo :: struct {
-    bar: s32,
-    boo: s32
-};
-
-foo := {:Foo: 0 };
+#load "std/print.bl"
 
 main :: fn () s32 {
     return 0;
