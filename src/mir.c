@@ -3944,6 +3944,13 @@ erase_instr_tree(MirInstr *instr)
 			break;
 		}
 
+		case MIR_INSTR_TYPE_PTR: {
+			MirInstrTypePtr *tp = (MirInstrTypePtr *)top;
+			unref_instr(tp->type);
+			sa_push_Instr64(&queue, tp->type);
+			break;
+		}
+
 		case MIR_INSTR_VARGS: {
 			MirInstrVArgs *vargs = (MirInstrVArgs *)top;
 			if (vargs->values) {

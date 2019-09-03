@@ -35,6 +35,7 @@ malloc  :: fn (size: usize) *u8 #extern;
 free    :: fn (ptr: *u8) #extern;
 realloc :: fn (ptr: *u8, size: usize) *u8 #extern;
 strlen  :: fn (str: *u8) usize #extern;
+strcmp  :: fn (first: *u8, second: *u8) s32 #extern;
 system  :: fn (cmd: *u8) s32 #extern;
 fopen   :: fn (filename: *u8, mode: *u8) *u8 #extern;
 fclose  :: fn (handle: *u8) s32 #extern;

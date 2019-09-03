@@ -141,7 +141,7 @@ static Ast *
 parse_decl_member(Context *cnt, bool type_only);
 
 static Ast *
-parse_decl_arg(Context *cnt, bool type_only);
+parse_decl_arg(Context *cnt, bool rq_named);
 
 static Ast *
 parse_decl_variant(Context *cnt, Ast *prev);
@@ -159,7 +159,7 @@ static Ast *
 parse_type_slice(Context *cnt);
 
 static Ast *
-parse_type_fn(Context *cnt, bool named_args);
+parse_type_fn(Context *cnt, bool rq_named_args);
 
 static Ast *
 parse_type_struct(Context *cnt);
@@ -941,26 +941,30 @@ parse_decl_member(Context *cnt, bool type_only)
 }
 
 Ast *
-parse_decl_arg(Context *cnt, bool type_only)
+parse_decl_arg(Context *cnt, bool rq_named)
 {
 	Token *tok_begin = tokens_peek(cnt->tokens);
 	Ast *  name      = NULL;
 	Ast *  type      = NULL;
 
-	if (type_only) {
-		type = parse_type(cnt);
-	} else {
+	if (tokens_current_is(cnt->tokens, SYM_RPAREN)) return NULL;
+
+	if (tokens_is_seq(cnt->tokens, 2, SYM_IDENT, SYM_COLON)) {
 		name = parse_ident(cnt);
-		if (name && !tokens_consume_if(cnt->tokens, SYM_COLON)) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
-			            ERR_EXPECTED_TYPE,
-			            name->location,
-			            BUILDER_CUR_AFTER,
-			            "expected colon after argument name");
-		}
-		type = parse_type(cnt);
+		tokens_consume(cnt->tokens);
+	} else if (rq_named) {
+		Token *tok_err = tokens_peek(cnt->tokens);
+		builder_msg(cnt->builder,
+		            BUILDER_MSG_ERROR,
+		            ERR_EXPECTED_NAME,
+		            &tok_err->location,
+		            BUILDER_CUR_AFTER,
+		            "Expected argument name.");
+
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, scope_get(cnt));
 	}
+
+	type = parse_type(cnt);
 
 	if (!type && !name) return NULL;
 	Ast *arg = ast_create_node(cnt->ast_arena, AST_DECL_ARG, tok_begin, scope_get(cnt));
@@ -1465,7 +1469,7 @@ parse_expr_lit_fn(Context *cnt)
 	fn->data.expr_fn.type = type;
 
 	/* parse flags */
-	parse_flags_for_curr_decl(cnt, HD_EXTERN | HD_NO_INLINE| HD_INLINE | HD_COMPILER);
+	parse_flags_for_curr_decl(cnt, HD_EXTERN | HD_NO_INLINE | HD_INLINE | HD_COMPILER);
 
 	/* parse block (block is optional function body can be external) */
 	fn->data.expr_fn.block = parse_block(cnt, false);
@@ -1755,7 +1759,7 @@ parse_type(Context *cnt)
 }
 
 Ast *
-parse_type_fn(Context *cnt, bool named_args)
+parse_type_fn(Context *cnt, bool rq_named_args)
 {
 	Token *tok_fn = tokens_consume_if(cnt->tokens, SYM_FN);
 	if (!tok_fn) return NULL;
@@ -1777,7 +1781,7 @@ parse_type_fn(Context *cnt, bool named_args)
 	Ast *tmp;
 
 NEXT:
-	tmp = parse_decl_arg(cnt, !named_args);
+	tmp = parse_decl_arg(cnt, rq_named_args);
 	if (tmp) {
 		if (!fn->data.type_fn.args)
 			fn->data.type_fn.args = create_sarr(SmallArray_Ast, cnt->assembly);
