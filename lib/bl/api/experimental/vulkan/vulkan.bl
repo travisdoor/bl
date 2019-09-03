@@ -500,6 +500,6 @@ vkEnumerateInstanceExtensionProperties :: fn (pLayerName: *u8, pPropertyCount: *
 vkCreateInstance :: fn (pCreateInfo: *VkInstanceCreateInfo, pAllocator: *VkAllocationCallbacks, pInstance: *VkInstance) VkResult #extern;
 vkDestroyInstance :: fn (instance: VkInstance, pAllocator: *VkAllocationCallbacks) #extern;
 
-VK_MAKE_VERSION :: fn (major: u32, minor: u32, patch: u32) u32 {
+VK_MAKE_VERSION :: fn (major: u32, minor: u32, patch: u32) u32 #inline {
     return ((major) << 22) | ((minor) << 12) | (patch);
 };
