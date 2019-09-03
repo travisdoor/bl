@@ -5654,7 +5654,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 			if (analyze_instr(cnt, decl->init) != ANALYZE_PASSED)
 				return ANALYZE_POSTPONE;
 
-			/* TODO: check if funciton can be called in compile time??? */
+			/* TODO: check if fucntion can be called in compile time??? */
 			exec_call_top_lvl(cnt, (MirInstrCall *)decl->init);
 		}
 
@@ -8253,8 +8253,13 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
 		/* TODO: remove */
 		/* set fn execution resulting instruction */
 		if (fn->exec_ret_value) {
-			const size_t size = ret_type->store_size_bytes;
-			memcpy(fn->exec_ret_value, ret_data_ptr, size);
+			if (ret->value->comptime) {
+				const size_t size = sizeof(MirConstValue);
+				memcpy(fn->exec_ret_value, ret_data_ptr, size);
+			} else {
+				const size_t size = ret_type->store_size_bytes;
+				memcpy(fn->exec_ret_value, ret_data_ptr, size);
+			}
 		}
 
 		/* discard return value pointer if result is not used on caller side,

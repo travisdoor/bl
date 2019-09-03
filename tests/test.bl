@@ -1,8 +1,8 @@
 /* playground */
 
 Foo :: struct {
-    vki: s32,
-    foo: s32
+    bar: s32,
+    boo: s32
 };
 
 foo := {:Foo: 0 };
