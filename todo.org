@@ -1,10 +1,19 @@
-* bugs [0%]
-  - [ ] fn typedef
+* Release 0.5.0 (1st Oct 2019) [28%]
+  - [ ] Complete missing erase cases.
+  - [ ] Fix global immutables. 
+  - [ ] Implicit casting array to slice.
+  - [ ] Validation of global's initializers to be compile time known.
+  - [ ] Improve documentation.
+  - [X] Defer statement.
+  - [X] Runtime type info. 
+  - [X] First version of LLVM DI. 
+
+* Bugs [33%]
+  - [X] fn typedef
     Recognise this as function type definition.
     T :: fn (i: s32, j: bool) s32; 
 
   - [ ] Invalid llvm for
     print("kind %\n", cast(s32) (cast(*TypeInfo) data).kind);
     
-* stuff
-  - test non-compile known global initializations
+  - [ ] VK_NULL_HANDLE :: null; cannot be used

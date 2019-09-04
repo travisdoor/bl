@@ -1,3 +1,32 @@
+//************************************************************************************************
+// bl
+//
+// File:   vulkan.bl
+// Author: Martin Dorazil
+// Date:   4/9/19
+//
+// Copyright 2019 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//************************************************************************************************
+
+
 #link "MoltenVK"
 
 VK_API_VERSION_1_0 :: 0x400000000;
@@ -10,11 +39,14 @@ VK_MAX_DESCRIPTION_SIZE :: 256;
 
 VkInstance :: *u8;
 VkPhysicalDevice :: *u8;
+VkDevice :: *u8;
 VkFlags :: u32;
 VkBool32 :: u32;
 VkDeviceSize :: u64;
 VkSampleMask :: u32;
 VkInstanceCreateFlags :: VkFlags;
+VkQueueFlags :: VkFlags;
+VkDeviceQueueCreateFlags :: VkFlags;
 
 // allocation callbacks types
 PFN_vkAllocationFunction :: * fn (pUserData: *u8, size: usize, alignment: usize, allocationScope: VkSystemAllocationScope);
@@ -64,6 +96,15 @@ VkResult :: enum {
     RESULT_MAX_ENUM :: 0x7FFFFFFF
 };
 
+VkQueueFlagBits :: enum {
+    GRAPHICS_BIT :: 0x00000001,
+    COMPUTE_BIT :: 0x00000002,
+    TRANSFER_BIT :: 0x00000004,
+    SPARSE_BINDING_BIT :: 0x00000008,
+    PROTECTED_BIT :: 0x00000010,
+    FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
+};
+
 VkSystemAllocationScope :: enum  {
     COMMAND :: 0,
     OBJECT :: 1,
@@ -83,6 +124,12 @@ VkInternalAllocationType :: enum {
     RANGE_SIZE :: (EXECUTABLE - EXECUTABLE + 1),
     MAX_ENUM :: 0x7FFFFFFF
 };
+
+VkDeviceQueueCreateFlagBits :: enum {
+    PROTECTED_BIT :: 0x00000001,
+    MAX_ENUM :: 0x7FFFFFFF
+};
+
 
 VkStructureType :: enum {
     APPLICATION_INFO :: 0,
@@ -490,6 +537,12 @@ VkStructureType :: enum {
     MAX_ENUM :: 0x7FFFFFFF
 };
 
+VkExtent3D :: struct {
+    width: u32,
+    height: u32,
+    depth: u32
+};
+
 VkExtensionProperties :: struct {
     extensionName : [VK_MAX_EXTENSION_NAME_SIZE]u8,
     specVersion : u32
@@ -516,6 +569,15 @@ VkInstanceCreateInfo :: struct {
     ppEnabledExtensionNames: *u8 
 };
 
+VkDeviceQueueCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    flags: VkDeviceQueueCreateFlags,
+    queueFamilyIndex: u32,
+    queueCount: u32,
+    pQueuePriorities: *f32
+};
+
 // INCOMPLETE: missing function callback types
 VkAllocationCallbacks :: struct {
     pUserData: *u8,
@@ -533,11 +595,19 @@ VkLayerProperties :: struct {
     description: [VK_MAX_DESCRIPTION_SIZE]u8
 };
 
+VkQueueFamilyProperties :: struct {
+    queueFlags: VkQueueFlags, 
+    queueCount: u32,
+    timestampValidBits: u32,
+    minImageTransferGranularity: VkExtent3D
+};
+
 vkEnumerateInstanceLayerProperties :: fn (pPropertyCount: *u32, pProperties: *VkLayerProperties) VkResult #extern;
 vkEnumeratePhysicalDevices :: fn (instance: VkInstance, pPhysicalDeviceCount: *u32, pPhysicalDevices: *VkPhysicalDevice) VkResult #extern;
 vkEnumerateInstanceExtensionProperties :: fn (pLayerName: *u8, pPropertyCount: *u32, pProperties: *VkExtensionProperties) VkResult #extern;
 vkCreateInstance :: fn (pCreateInfo: *VkInstanceCreateInfo, pAllocator: *VkAllocationCallbacks, pInstance: *VkInstance) VkResult #extern;
 vkDestroyInstance :: fn (instance: VkInstance, pAllocator: *VkAllocationCallbacks) #extern;
+vkGetPhysicalDeviceQueueFamilyProperties :: fn (physicalDevice: VkPhysicalDevice, pQueueFamilyPropertyCount: *u32, pQueueFamilyProperties: *VkQueueFamilyProperties) #extern;
 
 VK_MAKE_VERSION :: fn (major: u32, minor: u32, patch: u32) u32 #inline {
     return ((major) << 22) | ((minor) << 12) | (patch);

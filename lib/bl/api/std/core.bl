@@ -184,11 +184,4 @@ Any :: struct #compiler {
     data: *u8
 };
 
-/*
- * Converts C string to BL string.
- */
-/*cstr_to_str :: fn (cstr: *u8) string {
-    return {:string: strlen(cstr), cstr};
-};
-*/
 

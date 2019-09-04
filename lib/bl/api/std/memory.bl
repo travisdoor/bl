@@ -26,6 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#load "std/utils.bl"
+
 /*
  * @title mem_alloc 
  *
@@ -36,6 +38,10 @@
  */
 mem_alloc :: fn (size: usize) *u8 {
     return malloc(size);
+};
+
+mem_calloc :: fn (size: usize) *u8 {
+    return calloc(size);
 };
 
 /*
@@ -90,10 +96,4 @@ mem_copy :: fn (dest: *u8, src: *u8, size: usize) {
         dest = ptr_shift_bytes(dest, 1);
         src = ptr_shift_bytes(src, 1);
     }
-};
-
-#private
-
-ptr_shift_bytes :: fn (ptr: *u8, bytes: usize) *u8 {
-    return cast(*u8) (cast(usize) ptr + bytes);
 };

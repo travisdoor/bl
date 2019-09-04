@@ -1,11 +1,11 @@
 //************************************************************************************************
 // bl
 //
-// File:   c.bl
+// File:   utils.bl
 // Author: Martin Dorazil
-// Date:   13/2/19
+// Date:   4/9/19
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2019 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,20 +26,17 @@
 // SOFTWARE.
 //************************************************************************************************
 
-RAND_MAX :: 2147483647;
+is_flag_u32 :: fn (v: u32, flag: u32) bool #inline {
+    return (v & flag) > 0;
+};
 
-putchar :: fn (c: s32) s32 #extern;
-memset  :: fn (str: *u8, c: s32, n: usize) *u8 #extern;
-abort   :: fn () #extern;
-malloc  :: fn (size: usize) *u8 #extern;
-calloc  :: fn (size: usize) *u8 #extern;
-free    :: fn (ptr: *u8) #extern;
-realloc :: fn (ptr: *u8, size: usize) *u8 #extern;
-strlen  :: fn (str: *u8) usize #extern;
-strcmp  :: fn (first: *u8, second: *u8) s32 #extern;
-system  :: fn (cmd: *u8) s32 #extern;
-fopen   :: fn (filename: *u8, mode: *u8) *u8 #extern;
-fclose  :: fn (handle: *u8) s32 #extern;
-fseek   :: fn (handle: *u8, offest: s32, origin: s32) s32 #extern;
-fread   :: fn (ptr: *u8, size: usize, count: usize, handle: *u8) usize #extern;
-ftell   :: fn (handle: *u8) s32 #extern;
+/*
+ * Converts C string to BL string.
+ */
+cstr_to_str :: fn (cstr: *u8) string #inline {
+    return {:string: strlen(cstr), cstr};
+};
+
+ptr_shift_bytes :: fn (ptr: *u8, bytes: usize) *u8 #inline {
+    return cast(*u8) (cast(usize) ptr + bytes);
+};
