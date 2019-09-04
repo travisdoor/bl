@@ -54,6 +54,7 @@ typedef enum {
 	BUILDER_FLAG_EMIT_MIR        = 1 << 12,
 	BUILDER_FLAG_FORCE_TEST_LLVM = 1 << 13,
 	BUILDER_FLAG_DEBUG_BUILD     = 1 << 14,
+	BUILDER_FLAG_NO_LLVM         = 1 << 15,
 } BuilderFlags;
 
 typedef struct Builder {

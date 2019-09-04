@@ -64,7 +64,9 @@ print_help(void)
 	        "  -opt-<none|less|default|aggressive> = Set optimization level. (use 'default' "
 	        "when not specified)\n"
 	        "  -debug                              = Debug mode build. (when opt level is not "
-	        "specified 'none' is used)\n");
+	        "specified 'none' is used)\n"
+		"  -no-llvm                            = Disable LLVM backend.\n"
+		);
 }
 
 static void
@@ -163,6 +165,8 @@ main(int32_t argc, char *argv[])
 			build_flags |= BUILDER_FLAG_FORCE_TEST_LLVM;
 		} else if (arg_is("debug")) {
 			build_flags |= BUILDER_FLAG_DEBUG_BUILD;
+		} else if (arg_is("no-llvm")) {
+			build_flags |= BUILDER_FLAG_NO_LLVM;
 		} else if (arg_is("configure")) {
 			configure = true;
 		} else if (arg_is("opt-none")) {

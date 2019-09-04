@@ -114,28 +114,29 @@ compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
 	linker_run(builder, assembly);
 	interrupt_on_error(builder);
 
-	if (is_not_flag(flags, BUILDER_FLAG_SYNTAX_ONLY)) {
-		mir_run(builder, assembly);
-		if (is_flag(flags, BUILDER_FLAG_EMIT_MIR)) mir_writer_run(assembly);
+	if (is_flag(flags, BUILDER_FLAG_SYNTAX_ONLY)) return COMPILE_OK;
+
+	mir_run(builder, assembly);
+	if (is_flag(flags, BUILDER_FLAG_EMIT_MIR)) mir_writer_run(assembly);
+	interrupt_on_error(builder);
+
+	if (is_flag(flags, BUILDER_FLAG_NO_LLVM)) return COMPILE_OK;
+	ir_run(builder, assembly);
+	interrupt_on_error(builder);
+
+	ir_opt_run(builder, assembly);
+	interrupt_on_error(builder);
+
+	if (is_flag(flags, BUILDER_FLAG_EMIT_LLVM)) {
+		bc_writer_run(builder, assembly);
 		interrupt_on_error(builder);
+	}
 
-		ir_run(builder, assembly);
+	if (is_not_flag(flags, BUILDER_FLAG_NO_BIN)) {
+		obj_writer_run(builder, assembly);
 		interrupt_on_error(builder);
-
-		ir_opt_run(builder, assembly);
+		native_bin_run(builder, assembly);
 		interrupt_on_error(builder);
-
-		if (is_flag(flags, BUILDER_FLAG_EMIT_LLVM)) {
-			bc_writer_run(builder, assembly);
-			interrupt_on_error(builder);
-		}
-
-		if (is_not_flag(flags, BUILDER_FLAG_NO_BIN)) {
-			obj_writer_run(builder, assembly);
-			interrupt_on_error(builder);
-			native_bin_run(builder, assembly);
-			interrupt_on_error(builder);
-		}
 	}
 
 	return COMPILE_OK;
