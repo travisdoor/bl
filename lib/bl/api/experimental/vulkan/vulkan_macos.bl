@@ -1,11 +1,11 @@
 //************************************************************************************************
 // bl
 //
-// File:   glfw3.bl 
+// File:   vulkan_macos.bl
 // Author: Martin Dorazil
-// Date:   12/8/19
+// Date:   4/9/19
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2019 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,30 +26,20 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#link "glfw"
+#link "MoltenVK"
+#load "vulkan.bl"
 
-GLFWwindow :: u8;
+VK_MVK_macos_surface :: 1;
+VK_MVK_MACOS_SURFACE_SPEC_VERSION :: 2;
+VK_MVK_MACOS_SURFACE_EXTENSION_NAME :: "VK_MVK_macos_surface";
 
-GLFW_CONTEXT_VERSION_MAJOR :: 0x00022002;
-GLFW_CONTEXT_VERSION_MINOR :: 0x00022003;
-GLFW_OPENGL_PROFILE        :: 0x00022008;
-GLFW_OPENGL_ANY_PROFILE    ::          0;
-GLFW_OPENGL_CORE_PROFILE   :: 0x00032001;
-GLFW_OPENGL_COMPAT_PROFILE :: 0x00032002;
-GLFW_OPENGL_FORWARD_COMPAT :: 0x00022006;
-GLFW_NO_API                ::          0;
-GLFW_CLIENT_API            :: 0x00022001;
+VkMacOSSurfaceCreateFlagsMVK :: VkFlags;
 
-glfwInit :: fn () s32 #extern;
-glfwTerminate :: fn () #extern;
-glfwCreateWindow :: fn (width: s32, height: s32, title: *u8, monitor: *u8, share: *u8) *GLFWwindow #extern;
-glfwDestroyWindow :: fn (window: *GLFWwindow) #extern;
-glfwMakeContextCurrent :: fn (window: *GLFWwindow) #extern;
-glfwWindowShouldClose :: fn (window: *GLFWwindow) s32 #extern;
-glfwPollEvents :: fn () #extern;
-glfwWindowHint :: fn (hint: s32, value: s32) #extern;
-glfwSwapBuffers :: fn (window: *GLFWwindow) #extern;
-glfwVulkanSupported :: fn () s32 #extern;
-glfwGetRequiredInstanceExtensions :: fn (count: *u32) **u8 #extern;
-// TODO: define only with vulkan!!!
-glfwCreateWindowSurface :: fn (instance: VkInstance, window:  *GLFWwindow, allocator: *VkAllocationCallbacks, surface: *VkSurfaceKHR) VkResult #extern;
+VkMacOSSurfaceCreateInfoMVK :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    flags: VkMacOSSurfaceCreateFlagsMVK, 
+    pView: *u8
+};
+
+vkCreateMacOSSurfaceMVK :: fn (instance: VkInstance, pCreateInfo: *VkMacOSSurfaceCreateInfoMVK, pAllocator: *VkAllocationCallbacks, pSurface: *VkSurfaceKHR) VkResult #extern;
