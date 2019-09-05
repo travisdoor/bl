@@ -35,6 +35,7 @@ VK_MAX_MEMORY_TYPES :: 32;
 VK_MAX_MEMORY_HEAPS :: 16;
 VK_MAX_EXTENSION_NAME_SIZE :: 256;
 VK_MAX_DESCRIPTION_SIZE :: 256;
+VK_KHR_SWAPCHAIN_EXTENSION_NAME :: "VK_KHR_swapchain";
 
 VkInstance :: *u8;
 VkPhysicalDevice :: *u8;
@@ -687,6 +688,8 @@ vkCreateDevice :: fn (physicalDevice: VkPhysicalDevice, pCreateInfo: *VkDeviceCr
 vkDestroyDevice :: fn (device: VkDevice, pAllocator: *VkAllocationCallbacks) #extern;
 vkGetDeviceQueue :: fn (device: VkDevice, queueFamilyIndex: u32, queueIndex: u32, pQueue: *VkQueue) #extern;
 vkDestroySurfaceKHR :: fn (instance: VkInstance, surface: VkSurfaceKHR, pAllocator: *VkAllocationCallbacks) #extern;
+vkGetPhysicalDeviceSurfaceSupportKHR :: fn (physicalDevice: VkPhysicalDevice, queueFamilyIndex: u32, surface: VkSurfaceKHR, pSupported: *VkBool32) VkResult #extern;
+vkEnumerateDeviceExtensionProperties :: fn (physicalDevice: VkPhysicalDevice, pLayerName: *u8, pPropertyCount: *u32, pProperties: *VkExtensionProperties) VkResult #extern;
 
 VK_MAKE_VERSION :: fn (major: u32, minor: u32, patch: u32) u32 #inline {
     return ((major) << 22) | ((minor) << 12) | (patch);
