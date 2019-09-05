@@ -307,6 +307,7 @@ struct AstExprRef {
 struct AstExprCast {
 	Ast *type;
 	Ast *next;
+	bool auto_cast;
 };
 
 struct AstExprBinop {
