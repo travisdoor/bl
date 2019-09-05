@@ -40,8 +40,8 @@ mem_alloc :: fn (size: usize) *u8 {
     return malloc(size);
 };
 
-mem_calloc :: fn (size: usize) *u8 {
-    return calloc(size);
+mem_calloc :: fn (num: usize, size: usize) *u8 {
+    return calloc(num, size);
 };
 
 /*

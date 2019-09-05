@@ -970,16 +970,18 @@ emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 void
 emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 {
-	if (cmp->base.comptime) {
+	if (cmp->base.comptime && !_tmp_var) {
 		cmp->base.llvm_value = emit_as_const(cnt, &cmp->base.value);
 		return;
 	}
+
 	/*
 	 * Temporary variable for naked compounds is implicitly generated variable. When compound is
 	 * used for variable initialization, variable's allocated memory is used directly and MirVar
 	 * must be passed in parameters.
 	 */
 	MirVar *tmp_var = _tmp_var ? _tmp_var : cmp->tmp_var;
+
 	assert(tmp_var && "Missing temporary variable");
 
 	LLVMValueRef llvm_tmp = tmp_var->llvm_value;

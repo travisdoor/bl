@@ -26,7 +26,7 @@
 // SOFTWARE.
 //************************************************************************************************
 
-//#link "MoltenVK"
+#link "vulkan"
 
 VK_API_VERSION_1_0 :: 0x400000000;
 VK_MAX_PHYSICAL_DEVICE_NAME_SIZE :: 256;

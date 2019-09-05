@@ -4467,9 +4467,9 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN ||
 		    is_builtin(ast_member_ident, MIR_BUILTIN_ID_ARR_LEN)) {
 			/* .len */
-			// assert(member_ptr->target_ptr->kind == MIR_INSTR_DECL_REF);
-			erase_instr(member_ptr->target_ptr);
 			/* mutate instruction into constant */
+			unref_instr(member_ptr->target_ptr);
+			erase_instr_tree(member_ptr->target_ptr);
 			MirInstr *len         = mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
 			len->comptime         = true;
 			len->value.type       = cnt->builtin_types.t_usize;
@@ -7255,7 +7255,7 @@ exec_instr_phi(Context *cnt, MirInstrPhi *phi)
 		MirStackPtr value_ptr = exec_fetch_value(cnt, value);
 
 		if (phi->base.comptime) {
-			memcpy(&phi->base.value.data, value_ptr, phi_type->store_size_bytes);
+			memcpy(&phi->base.value.data, value_ptr, sizeof(phi->base.value.data));
 		} else {
 			exec_push_stack(cnt, value_ptr, phi_type);
 		}
@@ -7279,7 +7279,7 @@ exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 	ptr = ((MirConstValueData *)ptr)->v_ptr.data.stack_ptr;
 
 	if (addrof->base.comptime) {
-		memcpy(&addrof->base.value.data, ptr, type->store_size_bytes);
+		memcpy(&addrof->base.value.data, ptr, sizeof(addrof->base.value.data));
 	} else {
 		exec_push_stack(cnt, (MirStackPtr)&ptr, type);
 	}
@@ -7481,14 +7481,14 @@ exec_instr_cast(Context *cnt, MirInstrCast *cast)
 		break;
 
 		// clang-format off
-    switch (src_type->store_size_bytes)
-    {
-      sext_case(tmp, v_s8)
-      sext_case(tmp, v_s16)
-      sext_case(tmp, v_s32)
-    default:
-      bl_abort("Invalid sext cast!");
-    }
+		switch (src_type->store_size_bytes)
+		{
+			sext_case(tmp, v_s8)
+				sext_case(tmp, v_s16)
+				sext_case(tmp, v_s32)
+		default:
+			bl_abort("Invalid sext cast!");
+		}
 		// clang-format on
 
 #undef sext_case
@@ -7957,7 +7957,7 @@ exec_instr_load(Context *cnt, MirInstrLoad *load)
 	}
 
 	if (load->base.comptime) {
-		memcpy(&load->base.value.data, src_ptr, dest_type->store_size_bytes);
+		memcpy(&load->base.value.data, src_ptr, sizeof(load->base.value.data));
 	} else {
 		exec_push_stack(cnt, src_ptr, dest_type);
 	}
@@ -7978,7 +7978,11 @@ exec_instr_store(Context *cnt, MirInstrStore *store)
 	dest_ptr = ((MirConstValueData *)dest_ptr)->v_ptr.data.stack_ptr;
 
 	assert(dest_ptr && src_ptr);
-	memcpy(dest_ptr, src_ptr, src_type->store_size_bytes);
+	if (store->src->comptime) {
+		exec_copy_comptime_to_stack(cnt, dest_ptr, &store->src->value);
+	} else {
+		memcpy(dest_ptr, src_ptr, src_type->store_size_bytes);
+	}
 }
 
 void
