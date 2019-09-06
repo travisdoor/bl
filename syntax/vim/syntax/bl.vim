@@ -3,6 +3,7 @@ if exists("b:current_syntax")
 endif
 
 syntax keyword blCast cast
+syntax keyword blAuto auto
 
 syntax keyword blStruct struct
 syntax keyword blEnum enum
@@ -45,6 +46,7 @@ syntax match blLineComment "//.*" contains=blCommentNote
 syntax region blBlockComment start=/\v\/\*/ end=/\v\*\// contains=blBlockComment, blCommentNote
 
 highlight link blCast Keyword
+highlight link blAuto Keyword
 highlight link blReturn Keyword
 highlight link blBreak Keyword
 highlight link blContinue Keyword

@@ -3,5 +3,11 @@
 #load "std/print.bl"
 
 main :: fn () s32 {
+    i: *u8;
+    u: *u32;
+
+    //u = auto i;
+    
+    j := auto 10;
     return 0;
 };

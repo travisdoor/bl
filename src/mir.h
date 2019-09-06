@@ -505,6 +505,7 @@ struct MirInstrCast {
 	MirCastOp op;
 	MirInstr *type;
 	MirInstr *expr;
+	bool      auto_cast;
 };
 
 struct MirInstrSizeof {

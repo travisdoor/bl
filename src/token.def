@@ -8,6 +8,7 @@ sm(DOUBLE,         "double")
 sm(IF,             "if") /* must be first */
 sm(FN,             "fn")
 sm(CAST,           "cast")
+sm(CAST_AUTO,      "auto")
 sm(ELSE,           "else")
 sm(TRUE,           "true")
 sm(NULL,           "null")

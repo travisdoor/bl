@@ -370,7 +370,11 @@ void
 print_expr_cast(Ast *cast, int32_t pad, FILE *stream)
 {
 	print_head(cast, pad, stream);
-	print_node(cast->data.expr_cast.type, pad + 1, stream);
+	if (cast->data.expr_cast.auto_cast) {
+		fprintf(stream, "<auto>");
+	} else {
+		print_node(cast->data.expr_cast.type, pad + 1, stream);
+	}
 	print_node(cast->data.expr_cast.next, pad + 1, stream);
 }
 

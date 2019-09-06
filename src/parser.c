@@ -232,6 +232,9 @@ static Ast *
 parse_expr_cast(Context *cnt);
 
 static Ast *
+parse_expr_cast_auto(Context *cnt);
+
+static Ast *
 parse_expr_lit(Context *cnt);
 
 static Ast *
@@ -855,6 +858,30 @@ parse_expr_alignof(Context *cnt)
 }
 
 Ast *
+parse_expr_cast_auto(Context *cnt)
+{
+	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_CAST_AUTO);
+	if (!tok_begin) return NULL;
+
+	Ast *cast = ast_create_node(cnt->ast_arena, AST_EXPR_CAST, tok_begin, scope_get(cnt));
+	cast->data.expr_cast.auto_cast = true;
+
+	cast->data.expr_cast.next = _parse_expr(cnt, token_prec(tok_begin).priority);
+	if (!cast->data.expr_cast.next) {
+		Token *tok = tokens_peek(cnt->tokens);
+		parse_error(cnt,
+		            ERR_EXPECTED_EXPR,
+		            tok,
+		            BUILDER_CUR_WORD,
+		            "Expected expression after auto cast.");
+		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok, scope_get(cnt));
+	}
+
+	return cast;
+}
+
+Ast *
 parse_expr_cast(Context *cnt)
 {
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_CAST);
@@ -1330,6 +1357,7 @@ parse_expr_atom(Context *cnt)
 	if ((expr = parse_expr_deref(cnt))) return expr;
 	if ((expr = parse_expr_addrof(cnt))) return expr;
 	if ((expr = parse_expr_cast(cnt))) return expr;
+	if ((expr = parse_expr_cast_auto(cnt))) return expr;
 	if ((expr = parse_expr_sizeof(cnt))) return expr;
 	if ((expr = parse_expr_alignof(cnt))) return expr;
 	if ((expr = parse_expr_type_info(cnt))) return expr;
