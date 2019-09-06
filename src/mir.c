@@ -1256,6 +1256,8 @@ setup_instr_auto_cast(Context *cnt, MirInstr *instr, MirType *type)
 	assert(instr->kind == MIR_INSTR_CAST);
 	instr->value.type = type;
 
+	bl_log("setup auto cast");
+
 	return analyze_instr_cast(cnt, (MirInstrCast *)instr, true).state == ANALYZE_PASSED;
 }
 
@@ -3009,7 +3011,10 @@ get_cast_op(MirType *from, MirType *to)
 	const size_t tsize = to->size_bits;
 
 	switch (from->kind) {
-	case MIR_TYPE_ENUM:
+	case MIR_TYPE_ENUM: {
+		return get_cast_op(from->data.enm.base_type, to);
+	}
+
 	case MIR_TYPE_INT: {
 		/* from integer */
 		switch (to->kind) {

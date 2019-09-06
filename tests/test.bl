@@ -2,12 +2,10 @@
 
 #load "std/print.bl"
 
-main :: fn () s32 {
-    i: *u8;
-    u: *u32;
+Enum :: enum { A, B };
 
-    //u = auto i;
-    
-    j := auto 10;
+main :: fn () s32 {
+    e := Enum.A;
+    j : u32 = auto e;
     return 0;
 };
