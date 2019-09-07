@@ -5,7 +5,10 @@
 Enum :: enum { A, B };
 
 main :: fn () s32 {
-    e := Enum.A;
+    e := Enum.B;
     j : u32 = auto e;
+    print("%\n", j);
+    print("%\n", Enum.B);
+    //assert(cast(s32) Enum.B == 1);
     return 0;
 };

@@ -510,6 +510,9 @@ void
 print_instr_cast(MirInstrCast *cast, FILE *stream)
 {
 	switch (cast->op) {
+	case MIR_CAST_NONE:
+		print_instr_head(&cast->base, stream, "nocast");
+		break;
 	case MIR_CAST_BITCAST:
 		print_instr_head(&cast->base, stream, "bitcast");
 		break;

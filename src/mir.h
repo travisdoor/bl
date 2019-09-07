@@ -232,6 +232,7 @@ typedef enum MirInstrKind {
 
 typedef enum MirCastOp {
 	MIR_CAST_INVALID,
+	MIR_CAST_NONE,
 	MIR_CAST_BITCAST,
 	MIR_CAST_SEXT,
 	MIR_CAST_ZEXT,

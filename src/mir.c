@@ -1256,14 +1256,15 @@ setup_instr_auto_cast(Context *cnt, MirInstr *instr, MirType *type)
 	assert(instr->kind == MIR_INSTR_CAST);
 	instr->value.type = type;
 
-	bl_log("setup auto cast");
-
 	return analyze_instr_cast(cnt, (MirInstrCast *)instr, true).state == ANALYZE_PASSED;
 }
 
 static inline bool
 is_allocated_object(MirInstr *instr)
 {
+	/* CLEANUP: is this good solution??? */
+	/* CLEANUP: is this good solution??? */
+	/* CLEANUP: is this good solution??? */
 	if (instr->kind == MIR_INSTR_DECL_DIRECT_REF) return true;
 	if (instr->kind == MIR_INSTR_DECL_REF) return true;
 	if (instr->kind == MIR_INSTR_ELEM_PTR) return true;
@@ -3010,11 +3011,10 @@ get_cast_op(MirType *from, MirType *to)
 	const size_t fsize = from->size_bits;
 	const size_t tsize = to->size_bits;
 
-	switch (from->kind) {
-	case MIR_TYPE_ENUM: {
-		return get_cast_op(from->data.enm.base_type, to);
-	}
+	if (type_cmp(from, to)) return MIR_CAST_NONE;
 
+	switch (from->kind) {
+	case MIR_TYPE_ENUM: 
 	case MIR_TYPE_INT: {
 		/* from integer */
 		switch (to->kind) {
@@ -4103,6 +4103,9 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 	MirInstr *expr      = toany->expr;
 	MirType * rtti_type = expr->value.type;
 
+	// HACK: Generate tmp rather only for comptime expresions??? 
+	// HACK: Generate tmp rather only for comptime expresions??? 
+	// HACK: Generate tmp rather only for comptime expresions??? 
 	if (!is_allocated_object(expr)) {
 		/* Target expression is not allocated object on the stack, so we need to crate
 		 * temporary variable containing the value and fetch pointer to this variable. */
@@ -7522,6 +7525,7 @@ exec_instr_cast(Context *cnt, MirInstrCast *cast)
 	MirConstValueData tmp       = {0};
 
 	switch (cast->op) {
+	case MIR_CAST_NONE:
 	case MIR_CAST_BITCAST:
 		/* bitcast is always noop */
 		break;
