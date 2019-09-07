@@ -36,12 +36,17 @@ VK_MAX_MEMORY_HEAPS :: 16;
 VK_MAX_EXTENSION_NAME_SIZE :: 256;
 VK_MAX_DESCRIPTION_SIZE :: 256;
 VK_KHR_SWAPCHAIN_EXTENSION_NAME :: "VK_KHR_swapchain";
+VK_TRUE :: 1;
+VK_FALSE :: 0;
 
 VkInstance :: *u8;
 VkPhysicalDevice :: *u8;
 VkDevice :: *u8;
 VkQueue :: *u8;
 VkSurfaceKHR :: *u8;
+VkSwapchainKHR :: *u8;
+VkImage :: *u8;
+VkImageView :: *u8;
 
 VkFlags :: u32;
 VkBool32 :: u32;
@@ -55,6 +60,9 @@ VkDeviceCreateFlags :: VkFlags;
 VkSurfaceTransformFlagsKHR :: VkFlags;
 VkCompositeAlphaFlagsKHR :: VkFlags;
 VkImageUsageFlags :: VkFlags;
+VkSwapchainCreateFlagsKHR :: VkFlags;
+VkImageViewCreateFlags :: VkFlags;
+VkImageAspectFlags :: VkFlags;
 
 // allocation callbacks types
 PFN_vkAllocationFunction :: * fn (pUserData: *u8, size: usize, alignment: usize, allocationScope: VkSystemAllocationScope);
@@ -139,6 +147,33 @@ VkImageUsageFlagBits :: enum  {
     FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
 };
 
+VkImageAspectFlagBits :: enum {
+    COLOR_BIT :: 0x00000001,
+    DEPTH_BIT :: 0x00000002,
+    STENCIL_BIT :: 0x00000004,
+    METADATA_BIT :: 0x00000008,
+    PLANE_0_BIT :: 0x00000010,
+    PLANE_1_BIT :: 0x00000020,
+    PLANE_2_BIT :: 0x00000040,
+    MEMORY_PLANE_0_BIT_EXT :: 0x00000080,
+    MEMORY_PLANE_1_BIT_EXT :: 0x00000100,
+    MEMORY_PLANE_2_BIT_EXT :: 0x00000200,
+    MEMORY_PLANE_3_BIT_EXT :: 0x00000400,
+    PLANE_0_BIT_KHR :: PLANE_0_BIT,
+    PLANE_1_BIT_KHR :: PLANE_1_BIT,
+    PLANE_2_BIT_KHR :: PLANE_2_BIT,
+    FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
+};
+
+VkSharingMode :: enum {
+    EXCLUSIVE :: 0,
+    CONCURRENT :: 1,
+    BEGIN_RANGE :: EXCLUSIVE,
+    END_RANGE :: CONCURRENT,
+    RANGE_SIZE :: (CONCURRENT - EXCLUSIVE + 1),
+    MAX_ENUM :: 0x7FFFFFFF
+};
+
 VkQueueFlagBits :: enum {
     GRAPHICS_BIT :: 0x00000001,
     COMPUTE_BIT :: 0x00000002,
@@ -173,6 +208,12 @@ VkDeviceQueueCreateFlagBits :: enum {
     MAX_ENUM :: 0x7FFFFFFF
 };
 
+VkSwapchainCreateFlagBitsKHR :: enum {
+    SPLIT_INSTANCE_BIND_REGIONS_BIT_KHR :: 0x00000001,
+    PROTECTED_BIT_KHR :: 0x00000002,
+    MUTABLE_FORMAT_BIT_KHR :: 0x00000004,
+    FLAG_BITS_MAX_ENUM_KHR :: 0x7FFFFFFF
+};
 
 VkStructureType :: enum {
     APPLICATION_INFO :: 0,
@@ -886,6 +927,38 @@ VkPresentModeKHR :: enum {
     MAX_ENUM_KHR :: 0x7FFFFFFF
 };
 
+VkImageViewType :: enum {
+    _1D :: 0,
+    _2D :: 1,
+    _3D :: 2,
+    CUBE :: 3,
+    _1D_ARRAY :: 4,
+    _2D_ARRAY :: 5,
+    CUBE_ARRAY :: 6,
+    BEGIN_RANGE :: _1D,
+    END_RANGE :: CUBE_ARRAY,
+    RANGE_SIZE :: (CUBE_ARRAY - _1D + 1),
+    MAX_ENUM :: 0x7FFFFFFF
+};
+
+VkImageViewCreateFlagBits :: enum {
+    FRAGMENT_DENSITY_MAP_DYNAMIC_BIT_EXT :: 0x00000001,
+    FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
+};
+
+VkComponentSwizzle :: enum {
+    IDENTITY :: 0,
+    ZERO :: 1,
+    ONE :: 2,
+    R :: 3,
+    G :: 4,
+    B :: 5,
+    A :: 6,
+    BEGIN_RANGE :: IDENTITY,
+    END_RANGE :: A,
+    RANGE_SIZE :: (A - IDENTITY + 1),
+    MAX_ENUM :: 0x7FFFFFFF
+};
 
 VkExtent3D :: struct {
     width: u32,
@@ -1009,7 +1082,53 @@ VkDeviceCreateInfo :: struct {
     pEnabledFeatures: *VkPhysicalDeviceFeatures
 };
 
-// INCOMPLETE: missing function callback types
+VkImageViewCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    flags: VkImageViewCreateFlags,
+    image: VkImage,
+    viewType: VkImageViewType,
+    format: VkFormat,
+    components: VkComponentMapping,
+    subresourceRange: VkImageSubresourceRange
+};
+
+VkSwapchainCreateInfoKHR :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    flags: VkSwapchainCreateFlagsKHR,
+    surface: VkSurfaceKHR,
+    minImageCount: u32,                        
+    imageFormat: VkFormat,
+    imageColorSpace: VkColorSpaceKHR,
+    imageExtent: VkExtent2D,
+    imageArrayLayers: u32,
+    imageUsage: VkImageUsageFlags,
+    imageSharingMode: VkSharingMode,
+    queueFamilyIndexCount: u32,
+    pQueueFamilyIndices:   *u32,     
+    preTransform: VkSurfaceTransformFlagBitsKHR,
+    compositeAlpha: VkCompositeAlphaFlagBitsKHR,
+    presentMode: VkPresentModeKHR,
+    clipped: VkBool32,
+    oldSwapchain: VkSwapchainKHR,
+};
+
+VkComponentMapping :: struct {
+    r: VkComponentSwizzle,
+    g: VkComponentSwizzle,
+    b: VkComponentSwizzle,
+    a: VkComponentSwizzle,
+};
+
+VkImageSubresourceRange :: struct {
+    aspectMask: VkImageAspectFlags,
+    baseMipLevel: u32,
+    levelCount: u32,
+    baseArrayLayer: u32,
+    layerCount: u32,
+};
+
 VkAllocationCallbacks :: struct {
     pUserData: *u8,
     pfnAllocation: PFN_vkAllocationFunction,
@@ -1059,6 +1178,13 @@ vkDestroySurfaceKHR :: fn (instance: VkInstance, surface: VkSurfaceKHR, pAllocat
 vkGetPhysicalDeviceSurfaceSupportKHR :: fn (physicalDevice: VkPhysicalDevice, queueFamilyIndex: u32, surface: VkSurfaceKHR, pSupported: *VkBool32) VkResult #extern;
 vkEnumerateDeviceExtensionProperties :: fn (physicalDevice: VkPhysicalDevice, pLayerName: *u8, pPropertyCount: *u32, pProperties: *VkExtensionProperties) VkResult #extern;
 vkGetPhysicalDeviceSurfaceCapabilitiesKHR :: fn (physicalDevice: VkPhysicalDevice, surface: VkSurfaceKHR, pSurfaceCapabilities: *VkSurfaceCapabilitiesKHR) VkResult #extern;
+vkGetPhysicalDeviceSurfaceFormatsKHR :: fn (physicalDevice: VkPhysicalDevice, surface: VkSurfaceKHR, pSurfaceFormatCount: *u32, pSurfaceFormats: *VkSurfaceFormatKHR) VkResult #extern;
+vkGetPhysicalDeviceSurfacePresentModesKHR :: fn (physicalDevice: VkPhysicalDevice, surface: VkSurfaceKHR, pPresentModeCount: *u32, pPresentModes: *VkPresentModeKHR) VkResult #extern;
+vkCreateSwapchainKHR :: fn (device: VkDevice, pCreateInfo: *VkSwapchainCreateInfoKHR, pAllocator: *VkAllocationCallbacks, pSwapchain: *VkSwapchainKHR) VkResult #extern;
+vkDestroySwapchainKHR :: fn (device: VkDevice,  swapchain: VkSwapchainKHR, pAllocator: *VkAllocationCallbacks) #extern;
+vkGetSwapchainImagesKHR :: fn (device: VkDevice, swapchain: VkSwapchainKHR, pSwapchainImageCount: *u32, pSwapchainImages: *VkImage) VkResult #extern;
+vkCreateImageView :: fn (device: VkDevice, pCreateInfo: *VkImageViewCreateInfo, pAllocator: *VkAllocationCallbacks, pView: *VkImageView) VkResult #extern;
+vkDestroyImageView :: fn (device: VkDevice, imageView: VkImageView, pAllocator: *VkAllocationCallbacks) #extern;
 
 VK_MAKE_VERSION :: fn (major: u32, minor: u32, patch: u32) u32 #inline {
     return ((major) << 22) | ((minor) << 12) | (patch);

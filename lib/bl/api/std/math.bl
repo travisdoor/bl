@@ -67,6 +67,16 @@ iVec3 :: struct {
     z: s32,
 };
 
-lerp :: fn (a: f32, b: f32, fraction: f32) f32 {
+lerp :: fn (a: f32, b: f32, fraction: f32) f32 #inline {
     return a + fraction * (b - a);
+};
+
+max_u32 :: fn (a: u32, b: u32) u32 #inline {
+    if a > b { return a; } 
+    return b;
+};
+
+min_u32 :: fn (a: u32, b: u32) u32 #inline {
+    if a < b { return a; } 
+    return b;
 };

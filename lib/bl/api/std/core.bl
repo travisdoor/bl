@@ -30,6 +30,36 @@
 #load "debug.bl"
 #load "memory.bl"
 
+_AllocFn :: * fn (size: usize) *u8;
+_FreeFn :: * fn (p: *u8);
+
+// BL global context 
+_Context :: struct {
+    /* Default memory allocation function. */
+    alloc_fn: _AllocFn,
+
+    /* Defualt memory free function. */
+    free_fn: _FreeFn,
+};
+
+_context := {:_Context: &malloc, &free};
+
+S8_MIN :: -128;
+S8_MAX :: 127;
+S16_MIN :: -32768;
+S16_MAX :: 32767;
+S32_MIN :: -2147483648;
+S32_MAX :: 2147483647;
+// TODO: s64
+
+U8_MIN :: 0;
+U8_MAX :: 255;
+U16_MIN :: 0;
+U16_MAX :: 65535;
+U32_MIN :: 0;
+U32_MAX :: 4294967295;
+// TODO: u64
+
 /*
  * TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 
  * safe casting.

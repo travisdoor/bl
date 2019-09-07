@@ -37,11 +37,12 @@
  * @ver 0.4.2
  */
 mem_alloc :: fn (size: usize) *u8 {
-    return malloc(size);
+    return _context.alloc_fn(size); 
 };
 
 mem_calloc :: fn (num: usize, size: usize) *u8 {
-    return calloc(num, size);
+    tmp := _context.alloc_fn(size * num);
+    return memset(tmp, 0, size * num);
 };
 
 /*
@@ -54,7 +55,13 @@ mem_calloc :: fn (num: usize, size: usize) *u8 {
  * @ver 0.4.2
  */
 mem_realloc :: fn (ptr: *u8, size: usize) *u8 {
-    return realloc(ptr, size);
+    if ptr == null { return _context.alloc_fn(size); }
+    tmp := _context.alloc_fn(size);
+
+    mem_copy(tmp, ptr, size);
+    _context.free_fn(ptr);
+
+    return tmp;
 };
 
 /*
@@ -66,7 +73,7 @@ mem_realloc :: fn (ptr: *u8, size: usize) *u8 {
  * @ver 0.4.2
  */
 mem_free :: fn (ptr: *u8) {
-    free(ptr);
+    _context.free_fn(ptr);
 };
 
 /*
