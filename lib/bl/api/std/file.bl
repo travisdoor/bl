@@ -30,7 +30,7 @@
 
 File :: *u8; 
 
-FileOpenFlags :: enum {
+FileOpenModes :: enum {
     Read,
     Write,
     Binary
@@ -55,22 +55,23 @@ file_create :: fn (filename: string) File {
  *
  * @decl file_open:: fn (filename: string) File
  * @desc
- * Open file for reading and writing when no flags are specified. Return =null= when file was not found.
+ * Open file for reading and writing when no modes are specified. Return =null= when file was not found.
  * Caller is responsible for closing file.
  * @ver 0.4.2
  */
-file_open :: fn (filename: string, flags: ...FileOpenFlags) File {
+file_open :: fn (filename: string, modes: ...FileOpenModes) File {
     mode := {:[4]u8: 0};
 
-    if flags.len == 0 {
+    if modes.len == 0 {
         mode[0] = 'r';
         mode[1] = 'w';
     } else {
-        loop i := 0; i < flags.len; i += 1 {
-            flag := flags[i];
-            if flag == FileOpenFlags.Read { mode[0] = 'r'; }
-            if flag == FileOpenFlags.Write { mode[1] = 'w'; }
-            if flag == FileOpenFlags.Binary { mode[3] = 'b'; }
+        loop i := 0; i < modes.len; i += 1 {
+            if i >= mode.len - 1 { break; }
+            m := modes[i];
+            if m == FileOpenModes.Read { mode[i] = 'r'; }
+            if m == FileOpenModes.Write { mode[i] = 'w'; }
+            if m == FileOpenModes.Binary { mode[i] = 'b'; }
         }
     }
 
