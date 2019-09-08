@@ -28,14 +28,6 @@
 
 #load "std/utils.bl"
 
-/*
- * @title mem_alloc 
- *
- * @decl mem_alloc :: fn (size: usize) *u8
- * @desc
- * Allocate memory on the heap. Allocated memory must be freed with [[MEM_FREE][=mem_free=]].
- * @ver 0.4.2
- */
 mem_alloc :: fn (size: usize) *u8 {
     return _context.alloc_fn(size); 
 };
@@ -45,15 +37,6 @@ mem_calloc :: fn (num: usize, size: usize) *u8 {
     return memset(tmp, 0, size * num);
 };
 
-/*
- * @title mem_realloc <<MEM_FREE>>
- *
- * @decl mem_realloc :: fn (ptr: *u8, size: usize) *u8 
- * @desc
- * Reallocate memory on the heap and copy data from previous allocation. Allocated memory must 
- * be freed with [[MEM_FREE][=mem_free=]].
- * @ver 0.4.2
- */
 mem_realloc :: fn (ptr: *u8, size: usize) *u8 {
     if ptr == null { return _context.alloc_fn(size); }
     tmp := _context.alloc_fn(size);
@@ -64,26 +47,10 @@ mem_realloc :: fn (ptr: *u8, size: usize) *u8 {
     return tmp;
 };
 
-/*
- * @title mem_free <<MEM_FREE>>
- *
- * @decl mem_free :: fn (ptr: *u8) 
- * @desc
- * Free allocated memory.
- * @ver 0.4.2
- */
 mem_free :: fn (ptr: *u8) {
     _context.free_fn(ptr);
 };
 
-/*
- * @title mem_copy
- *
- * @decl mem_copy :: fn (dest: *u8, src: *u8, size: usize)
- * @desc
- * Copy count of bytes from source to destination.
- * @ver 0.4.2
- */
 mem_copy :: fn (dest: *u8, src: *u8, size: usize) {
     m := size / sizeof(u64);
     d := size - m * sizeof(u64);

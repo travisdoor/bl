@@ -30,27 +30,10 @@
 
 STRING_BLOCK_SIZE :: 64 - sizeof(BlockHead);
 
-/*
- * @title string_new <<STRING_NEW>>
- * @decl string_new fn () string
- * @desc
- * Create an empty heap allocated string. New string instance has preallocated chunk of memory
- * equal to =STRING_BLOCK_SIZE= constant. Use [[STRING_DELETE][=string_delete=]] method to free
- * allocated memory.
- * @ver 0.4.2
- */
 string_new :: fn () string {
     return string_new_reserved(0);
 };
 
-/*
- * @title string_new_reserved
- * @decl string_new_reserved :: fn (size: usize) string
- * @desc
- * Create an empty heap allocated string with reserved memory size. Use [[STRING_DELETE][=string_delete=]] 
- * method to free allocated memory.
- * @ver 0.4.2
- */
 string_new_reserved :: fn (size: usize) string {
     tmp : string;
     tmp.ptr = alloc_block(size);
@@ -60,15 +43,6 @@ string_new_reserved :: fn (size: usize) string {
     return tmp;
 };
 
-/*
- * @title string_copy 
- *
- * @decl string_copy :: fn (v: string) string 
- * @desc
- * Creates clone of passed string. Returned string is allocated in new memory chunk and must
- * be deleted. Use [[STRING_DELETE][=string_delete=]] method to free allocated memory.
- * @ver 0.4.2
- */
 string_copy :: fn (v: string) string {
     tmp : string;
     tmp.ptr = alloc_block(v.len);
@@ -80,41 +54,16 @@ string_copy :: fn (v: string) string {
     return tmp;
 };
 
-/*
- * @title string_delete <<STRING_DELETE>>
- *
- * @decl string_delete :: fn (v: string) 
- * @desc
- * Free memory allocated by [[STRING_NEW][=string_new=]] function.
- * @ver 0.4.2
- */
 string_delete :: fn (v: string) {
     if v.ptr == null { return; }
     free_block(v.ptr);
 };
 
-/*
- * @title string_clear 
- *
- * @decl string_clear :: fn (v: string) 
- * @desc
- * Clear the string. Memory allocated by string stay untouched. 
- * @ver 0.4.2
- */
 string_clear :: fn (v: *string) {
     v.len = 0;
     set_terminator(^v);
 };
 
-/*
- * @title string_append
- *
- * @decl string_append :: fn (v: *string, add: Any) 
- * @desc
- * Append =Any= value to the existing string. New allocation is done only in case when passed string
- * does not have enough space to keep the result. 
- * @ver 0.4.2
- */
 string_append :: fn (v: *string, add: Any) {
     new_len : usize = 0;
     add_len : usize = 0;
@@ -143,15 +92,6 @@ string_append :: fn (v: *string, add: Any) {
     set_terminator(^v);
 };
 
-/*
- * @title string_concatenate
- *
- * @decl string_concatenate :: fn (args: ...) string 
- * @desc
- * Concatenate passed values into one string. One or more allocation are done when more space is needed.
- * Use [[STRING_DELETE][=string_delete=]] method to free allocated memory.
- * @ver 0.4.2
- */
 string_concatenate :: fn (args: ...) string {
     tmp := string_new();
     loop i := 0; i < args.len; i += 1 {
@@ -161,14 +101,6 @@ string_concatenate :: fn (args: ...) string {
     return tmp;
 };
 
-/*
- * @title string_compare
- *
- * @decl string_compare :: fn (first: string, second: string) bool
- * @desc
- * Compare two input strings and return =true= if they are same.
- * @ver 0.4.2
- */
 string_compare :: fn (first: string, second: string) bool {
     if first.len != second.len { return false; } 
 
@@ -179,10 +111,6 @@ string_compare :: fn (first: string, second: string) bool {
     return true;
 };
 
-/*
- * @title TODO string_compare_n
- * @ver 0.4.2
- */
 string_compare_n :: fn (first: string, second: string, n: s32) bool
 {
     if first.len < n { return false; }
