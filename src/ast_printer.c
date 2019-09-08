@@ -144,6 +144,12 @@ static void
 print_bad(Ast *bad, int32_t pad, FILE *stream);
 
 static void
+print_expr_line(Ast *line, int32_t pad, FILE *stream);
+
+static void
+print_expr_file(Ast *file, int32_t pad, FILE *stream);
+
+static void
 print_expr_unary(Ast *unary, int32_t pad, FILE *stream);
 
 static void
@@ -376,6 +382,18 @@ print_expr_cast(Ast *cast, int32_t pad, FILE *stream)
 		print_node(cast->data.expr_cast.type, pad + 1, stream);
 	}
 	print_node(cast->data.expr_cast.next, pad + 1, stream);
+}
+
+void
+print_expr_line(Ast *line, int32_t pad, FILE *stream)
+{
+	print_head(line, pad, stream);
+}
+
+void
+print_expr_file(Ast *file, int32_t pad, FILE *stream)
+{
+	print_head(file, pad, stream);
 }
 
 void
@@ -684,6 +702,14 @@ print_node(Ast *node, int32_t pad, FILE *stream)
 
 	case AST_EXPR_UNARY:
 		print_expr_unary(node, pad, stream);
+		break;
+
+	case AST_EXPR_LINE:
+		print_expr_line(node, pad, stream);
+		break;
+
+	case AST_EXPR_FILE:
+		print_expr_file(node, pad, stream);
 		break;
 
 	case AST_EXPR_ADDROF:

@@ -139,8 +139,10 @@ ast_get_name(const Ast *n)
 		return "TypePtr";
 	case AST_TYPE_VARGS:
 		return "TypeVargs";
-	case AST_EXPR_TYPE:
-		return "ExprType";
+	case AST_EXPR_FILE:
+		return "ExprFile";
+	case AST_EXPR_LINE:
+		return "ExprLine";
 	case AST_EXPR_REF:
 		return "ExprRef";
 	case AST_EXPR_CAST:

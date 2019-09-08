@@ -47,6 +47,7 @@ VkSurfaceKHR :: *u8;
 VkSwapchainKHR :: *u8;
 VkImage :: *u8;
 VkImageView :: *u8;
+VkShaderModule :: *u8;
 
 VkFlags :: u32;
 VkBool32 :: u32;
@@ -63,6 +64,7 @@ VkImageUsageFlags :: VkFlags;
 VkSwapchainCreateFlagsKHR :: VkFlags;
 VkImageViewCreateFlags :: VkFlags;
 VkImageAspectFlags :: VkFlags;
+VkShaderModuleCreateFlags :: VkFlags;
 
 // allocation callbacks types
 PFN_vkAllocationFunction :: * fn (pUserData: *u8, size: usize, alignment: usize, allocationScope: VkSystemAllocationScope);
@@ -1114,6 +1116,14 @@ VkSwapchainCreateInfoKHR :: struct {
     oldSwapchain: VkSwapchainKHR,
 };
 
+VkShaderModuleCreateInfo :: struct {
+   sType: VkStructureType,
+   pNext: *u8,                  
+   flags: VkShaderModuleCreateFlags,
+   codeSize: usize, 
+   pCode: *u8
+};
+
 VkComponentMapping :: struct {
     r: VkComponentSwizzle,
     g: VkComponentSwizzle,
@@ -1185,6 +1195,7 @@ vkDestroySwapchainKHR :: fn (device: VkDevice,  swapchain: VkSwapchainKHR, pAllo
 vkGetSwapchainImagesKHR :: fn (device: VkDevice, swapchain: VkSwapchainKHR, pSwapchainImageCount: *u32, pSwapchainImages: *VkImage) VkResult #extern;
 vkCreateImageView :: fn (device: VkDevice, pCreateInfo: *VkImageViewCreateInfo, pAllocator: *VkAllocationCallbacks, pView: *VkImageView) VkResult #extern;
 vkDestroyImageView :: fn (device: VkDevice, imageView: VkImageView, pAllocator: *VkAllocationCallbacks) #extern;
+vkCreateShaderModule :: fn (device: VkDevice, pCreateInfo: *VkShaderModuleCreateInfo, pAllocator: *VkAllocationCallbacks, pShaderModule: *VkShaderModule) VkResult #extern;
 
 VK_MAKE_VERSION :: fn (major: u32, minor: u32, patch: u32) u32 #inline {
     return ((major) << 22) | ((minor) << 12) | (patch);

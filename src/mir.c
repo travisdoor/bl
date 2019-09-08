@@ -825,6 +825,12 @@ static MirInstr *
 ast_type_enum(Context *cnt, Ast *type_enum);
 
 static MirInstr *
+ast_expr_line(Context *cnt, Ast *line);
+
+static MirInstr *
+ast_expr_file(Context *cnt, Ast *file);
+
+static MirInstr *
 ast_expr_addrof(Context *cnt, Ast *addrof);
 
 static MirInstr *
@@ -8872,6 +8878,19 @@ ast_expr_compound(Context *cnt, Ast *cmp)
 }
 
 MirInstr *
+ast_expr_line(Context *cnt, Ast *line) {
+	const int32_t l = line->data.expr_line.line;
+	return append_instr_const_int(cnt, line, l);
+};
+
+MirInstr *
+ast_expr_file(Context *cnt, Ast *file)
+{
+	const char *f = file->data.expr_file.filename;
+	return append_instr_const_string(cnt, file, f);
+}
+
+MirInstr *
 ast_expr_addrof(Context *cnt, Ast *addrof)
 {
 	MirInstr *src = ast(cnt, addrof->data.expr_addrof.next);
@@ -9700,6 +9719,10 @@ ast(Context *cnt, Ast *node)
 		return ast_type_vargs(cnt, node);
 	case AST_TYPE_ENUM:
 		return ast_type_enum(cnt, node);
+	case AST_EXPR_FILE:
+		return ast_expr_file(cnt, node);
+	case AST_EXPR_LINE:
+		return ast_expr_line(cnt, node);
 	case AST_EXPR_ADDROF:
 		return ast_expr_addrof(cnt, node);
 	case AST_EXPR_CAST:

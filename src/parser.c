@@ -91,6 +91,8 @@ typedef enum {
 	HD_PRIVATE   = 1 << 6,
 	HD_INLINE    = 1 << 7,
 	HD_NO_INLINE = 1 << 8,
+	HD_FILE      = 1 << 9,
+	HD_LINE      = 1 << 10,
 } HashDirective;
 
 typedef struct {
@@ -534,6 +536,44 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 
 		scope_pop(cnt);
 		return test;
+	}
+
+	if (strcmp(directive, "file") == 0) {
+		set_satisfied(HD_FILE);
+		if (is_not_flag(expected_mask, HD_FILE)) {
+			parse_error(cnt,
+			            ERR_UNEXPECTED_DIRECTIVE,
+			            tok_directive,
+			            BUILDER_CUR_WORD,
+			            "Unexpected directive.");
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
+		}
+
+		Ast *file =
+		    ast_create_node(cnt->ast_arena, AST_EXPR_FILE, tok_directive, scope_get(cnt));
+
+		file->data.expr_file.filename = tok_directive->location.unit->filepath;
+		return file;
+	}
+
+	if (strcmp(directive, "line") == 0) {
+		set_satisfied(HD_LINE);
+		if (is_not_flag(expected_mask, HD_LINE)) {
+			parse_error(cnt,
+			            ERR_UNEXPECTED_DIRECTIVE,
+			            tok_directive,
+			            BUILDER_CUR_WORD,
+			            "Unexpected directive.");
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
+		}
+
+		Ast *line =
+		    ast_create_node(cnt->ast_arena, AST_EXPR_LINE, tok_directive, scope_get(cnt));
+
+		line->data.expr_line.line = tok_directive->location.line;
+		return line;
 	}
 
 	if (strcmp(directive, "extern") == 0) {
@@ -1315,6 +1355,7 @@ parse_expr_primary(Context *cnt)
 	if ((expr = parse_expr_type(cnt))) return expr;
 	if ((expr = parse_expr_null(cnt))) return expr;
 	if ((expr = parse_expr_compound(cnt))) return expr;
+	if ((expr = parse_hash_directive(cnt, HD_FILE | HD_LINE, NULL))) return expr;
 
 	return NULL;
 }

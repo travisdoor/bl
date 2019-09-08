@@ -74,6 +74,8 @@ typedef enum {
 	AST_TYPE_VARGS,
 	_AST_TYPE_LAST,
 	_AST_EXPR_FIRST,
+	AST_EXPR_FILE,
+	AST_EXPR_LINE,
 	AST_EXPR_TYPE,
 	AST_EXPR_REF,
 	AST_EXPR_CAST,
@@ -262,6 +264,14 @@ struct AstTypeRef {
 	Ast *ident;
 };
 
+struct AstExprFile {
+	const char *filename;
+};
+
+struct AstExprLine {
+	int32_t line;
+};
+
 struct AstExprType {
 	Ast *type;
 };
@@ -389,6 +399,8 @@ struct Ast {
 		struct AstTypeEnum      type_enm;
 		struct AstTypePtr       type_ptr;
 		struct AstTypeVargs     type_vargs;
+		struct AstExprFile      expr_file;
+		struct AstExprLine      expr_line;
 		struct AstExprType      expr_type;
 		struct AstExprLitFn     expr_fn;
 		struct AstExprLitInt    expr_integer;
