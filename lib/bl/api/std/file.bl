@@ -28,8 +28,28 @@
 
 #load "std/string.bl"
 
+/*
+ * @title File
+ * @decl File :: *u8; 
+ * @desc
+ * File handler. 
+ * 
+ * @ver 0.4.2
+ */
 File :: *u8; 
 
+/*
+ * @title FileOpenModes 
+ *
+ * @decl 
+ * FileOpenModes :: enum { Read, Write, Binary };
+ * @desc
+ * File open modes:
+ * - Read - Open file for reading.
+ * - Write - Open file for writing.
+ * - Binary - Open file as binary file. 
+ * @ver 0.4.2
+ */
 FileOpenModes :: enum {
     Read,
     Write,
@@ -53,7 +73,7 @@ file_create :: fn (filename: string) File {
 /*
  * @title file_open
  *
- * @decl file_open:: fn (filename: string) File
+ * @decl file_open:: fn (filename: string, modes: ...FileOpenModes) File
  * @desc
  * Open file for reading and writing when no modes are specified. Return =null= when file was not found.
  * Caller is responsible for closing file.
@@ -84,6 +104,8 @@ file_open :: fn (filename: string, modes: ...FileOpenModes) File {
  * @decl file_close :: fn (file: File)
  * @desc
  * Close opened file.
+ *
+ * And so on.
  * @ver 0.4.2
  */
 file_close :: fn (file: File) {
