@@ -65,6 +65,16 @@ VkSwapchainCreateFlagsKHR :: VkFlags;
 VkImageViewCreateFlags :: VkFlags;
 VkImageAspectFlags :: VkFlags;
 VkShaderModuleCreateFlags :: VkFlags;
+VkPipelineShaderStageCreateFlags :: VkFlags;
+VkPipelineVertexInputStateCreateFlags :: VkFlags;
+VkPipelineInputAssemblyStateCreateFlags :: VkFlags;
+VkPipelineTessellationStateCreateFlags :: VkFlags;
+VkPipelineViewportStateCreateFlags :: VkFlags;
+VkPipelineRasterizationStateCreateFlags :: VkFlags;
+VkCullModeFlags :: VkFlags;
+VkPipelineMultisampleStateCreateFlags :: VkFlags;
+VkPipelineDepthStencilStateCreateFlags :: VkFlags;
+VkPipelineColorBlendStateCreateFlags :: VkFlags;
 
 // allocation callbacks types
 PFN_vkAllocationFunction :: * fn (pUserData: *u8, size: usize, alignment: usize, allocationScope: VkSystemAllocationScope);
@@ -149,6 +159,17 @@ VkImageUsageFlagBits :: enum  {
     FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
 };
 
+VkSampleCountFlagBits :: enum {
+    _1_BIT :: 0x00000001,
+    _2_BIT :: 0x00000002,
+    _4_BIT :: 0x00000004,
+    _8_BIT :: 0x00000008,
+    _16_BIT :: 0x00000010,
+    _32_BIT :: 0x00000020,
+    _64_BIT :: 0x00000040,
+    FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
+};
+
 VkImageAspectFlagBits :: enum {
     COLOR_BIT :: 0x00000001,
     DEPTH_BIT :: 0x00000002,
@@ -165,6 +186,64 @@ VkImageAspectFlagBits :: enum {
     PLANE_1_BIT_KHR :: PLANE_1_BIT,
     PLANE_2_BIT_KHR :: PLANE_2_BIT,
     FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
+};
+
+VkPipelineCreateFlagBits :: enum {
+    DISABLE_OPTIMIZATION_BIT :: 0x00000001,
+    ALLOW_DERIVATIVES_BIT :: 0x00000002,
+    DERIVATIVE_BIT :: 0x00000004,
+    VIEW_INDEX_FROM_DEVICE_INDEX_BIT :: 0x00000008,
+    DISPATCH_BASE :: 0x00000010,
+    DEFER_COMPILE_BIT_NV :: 0x00000020,
+    VIEW_INDEX_FROM_DEVICE_INDEX_BIT_KHR :: VIEW_INDEX_FROM_DEVICE_INDEX_BIT,
+    DISPATCH_BASE_KHR :: DISPATCH_BASE,
+    FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
+};
+
+VkCullModeFlagBits :: enum {
+    NONE :: 0,
+    FRONT_BIT :: 0x00000001,
+    BACK_BIT :: 0x00000002,
+    FRONT_AND_BACK :: 0x00000003,
+    FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
+};
+
+VkFrontFace :: enum {
+    COUNTER_CLOCKWISE :: 0,
+    CLOCKWISE :: 1,
+    BEGIN_RANGE :: COUNTER_CLOCKWISE,
+    END_RANGE :: CLOCKWISE,
+    RANGE_SIZE :: (CLOCKWISE - COUNTER_CLOCKWISE + 1),
+    MAX_ENUM :: 0x7FFFFFFF
+};
+
+VkPrimitiveTopology :: enum {
+    POINT_LIST :: 0,
+    LINE_LIST :: 1,
+    LINE_STRIP :: 2,
+    TRIANGLE_LIST :: 3,
+    TRIANGLE_STRIP :: 4,
+    TRIANGLE_FAN :: 5,
+    LINE_LIST_WITH_ADJACENCY :: 6,
+    LINE_STRIP_WITH_ADJACENCY :: 7,
+    TRIANGLE_LIST_WITH_ADJACENCY :: 8,
+    TRIANGLE_STRIP_WITH_ADJACENCY :: 9,
+    PATCH_LIST :: 10,
+    BEGIN_RANGE :: POINT_LIST,
+    END_RANGE :: PATCH_LIST,
+    RANGE_SIZE :: (PATCH_LIST - POINT_LIST + 1),
+    MAX_ENUM :: 0x7FFFFFFF
+};
+
+VkPolygonMode :: enum {
+    FILL :: 0,
+    LINE :: 1,
+    POINT :: 2,
+    FILL_RECTANGLE_NV :: 1000153000,
+    BEGIN_RANGE :: FILL,
+    END_RANGE :: POINT,
+    RANGE_SIZE :: (POINT - FILL + 1),
+    MAX_ENUM :: 0x7FFFFFFF
 };
 
 VkSharingMode :: enum {
@@ -215,6 +294,15 @@ VkSwapchainCreateFlagBitsKHR :: enum {
     PROTECTED_BIT_KHR :: 0x00000002,
     MUTABLE_FORMAT_BIT_KHR :: 0x00000004,
     FLAG_BITS_MAX_ENUM_KHR :: 0x7FFFFFFF
+};
+
+VkVertexInputRate :: enum {
+    VERTEX :: 0,
+    INSTANCE :: 1,
+    BEGIN_RANGE :: VERTEX,
+    END_RANGE :: INSTANCE,
+    RANGE_SIZE :: (INSTANCE - VERTEX + 1),
+    MAX_ENUM :: 0x7FFFFFFF
 };
 
 VkStructureType :: enum {
@@ -943,6 +1031,26 @@ VkImageViewType :: enum {
     MAX_ENUM :: 0x7FFFFFFF
 };
 
+VkShaderStageFlagBits :: enum {
+    VERTEX_BIT :: 0x00000001,
+    TESSELLATION_CONTROL_BIT :: 0x00000002,
+    TESSELLATION_EVALUATION_BIT :: 0x00000004,
+    GEOMETRY_BIT :: 0x00000008,
+    FRAGMENT_BIT :: 0x00000010,
+    COMPUTE_BIT :: 0x00000020,
+    ALL_GRAPHICS :: 0x0000001F,
+    ALL :: 0x7FFFFFFF,
+    RAYGEN_BIT_NV :: 0x00000100,
+    ANY_HIT_BIT_NV :: 0x00000200,
+    CLOSEST_HIT_BIT_NV :: 0x00000400,
+    MISS_BIT_NV :: 0x00000800,
+    INTERSECTION_BIT_NV :: 0x00001000,
+    CALLABLE_BIT_NV :: 0x00002000,
+    TASK_BIT_NV :: 0x00000040,
+    MESH_BIT_NV :: 0x00000080,
+    FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
+};
+
 VkImageViewCreateFlagBits :: enum {
     FRAGMENT_DENSITY_MAP_DYNAMIC_BIT_EXT :: 0x00000001,
     FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
@@ -971,6 +1079,25 @@ VkExtent3D :: struct {
 VkExtent2D :: struct {
     width: u32,
     height: u32,
+};
+
+VkOffset2D :: struct {
+    x: s32, 
+    y: s32
+};
+
+VkRect2D :: struct {
+    offset: VkOffset2D,
+    extent: VkExtent2D 
+};
+
+VkViewport :: struct {
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    minDepth: f32,
+    maxDepth: f32,
 };
 
 VkPhysicalDeviceFeatures :: struct {
@@ -1051,6 +1178,18 @@ VkApplicationInfo :: struct {
     apiVersion: u32
 };
 
+VkPipelineMultisampleStateCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    flags: VkPipelineMultisampleStateCreateFlags,
+    rasterizationSamples: VkSampleCountFlagBits,
+    sampleShadingEnable: VkBool32,
+    minSampleShading: f32,
+    pSampleMask: *VkSampleMask,
+    alphaToCoverageEnable: VkBool32,
+    alphaToOneEnable: VkBool32,
+};
+
 VkInstanceCreateInfo :: struct {
     sType: VkStructureType, 
     pNext: *u8,
@@ -1060,6 +1199,45 @@ VkInstanceCreateInfo :: struct {
     ppEnabledLayerNames: *u8,
     enabledExtensionCount: u32,
     ppEnabledExtensionNames: *u8 
+};
+
+VkPipelineRasterizationStateCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8, 
+    flags: VkPipelineRasterizationStateCreateFlags,
+    depthClampEnable: VkBool32,
+    rasterizerDiscardEnable: VkBool32,
+    polygonMode: VkPolygonMode,
+    cullMode: VkCullModeFlags,
+    frontFace: VkFrontFace,
+    depthBiasEnable: VkBool32,
+    depthBiasConstantFactor: f32,
+    depthBiasClamp: f32,
+    depthBiasSlopeFactor: f32,
+    lineWidth: f32,
+};
+
+VkPipelineViewportStateCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8, 
+    flags: VkPipelineViewportStateCreateFlags,
+    viewportCount: u32, 
+    pViewports: *VkViewport,
+    scissorCount: u32,
+    pScissors: *VkRect2D
+};
+
+VkSpecializationMapEntry :: struct {
+    constantID: u32,
+    offset: u32, 
+    size: usize
+};
+
+VkSpecializationInfo :: struct {
+    mapEntryCount: u32,
+    pMapEntries: *VkSpecializationMapEntry,
+    dataSize: usize, 
+    pData: *u8, 
 };
 
 VkDeviceQueueCreateInfo :: struct {
@@ -1116,12 +1294,53 @@ VkSwapchainCreateInfoKHR :: struct {
     oldSwapchain: VkSwapchainKHR,
 };
 
+VkPipelineShaderStageCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    flags: VkPipelineShaderStageCreateFlags,
+    stage: VkShaderStageFlagBits,
+    module: VkShaderModule,
+    pName: *u8,
+    pSpecializationInfo: *VkSpecializationInfo,
+};
+
+VkPipelineInputAssemblyStateCreateInfo :: struct {
+	sType: VkStructureType,
+	pNext: *u8, 
+	flags: VkPipelineInputAssemblyStateCreateFlags,
+	topology: VkPrimitiveTopology,
+    primitiveRestartEnable: VkBool32
+};
+
 VkShaderModuleCreateInfo :: struct {
    sType: VkStructureType,
    pNext: *u8,                  
    flags: VkShaderModuleCreateFlags,
    codeSize: usize, 
    pCode: *u8
+};
+
+VkPipelineVertexInputStateCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8, 
+    flags: VkPipelineVertexInputStateCreateFlags,
+    vertexBindingDescriptionCount: u32,
+    pVertexBindingDescriptions: *VkVertexInputBindingDescription,
+    vertexAttributeDescriptionCount: u32,  
+    pVertexAttributeDescriptions: *VkVertexInputAttributeDescription
+};
+
+VkVertexInputBindingDescription :: struct {
+    binding: u32,
+    stride: u32,
+    inputRate: VkVertexInputRate
+};
+
+VkVertexInputAttributeDescription :: struct {
+    location: u32,
+    binding: u32,
+    format: VkFormat,
+    offset: u32
 };
 
 VkComponentMapping :: struct {
@@ -1196,6 +1415,7 @@ vkGetSwapchainImagesKHR :: fn (device: VkDevice, swapchain: VkSwapchainKHR, pSwa
 vkCreateImageView :: fn (device: VkDevice, pCreateInfo: *VkImageViewCreateInfo, pAllocator: *VkAllocationCallbacks, pView: *VkImageView) VkResult #extern;
 vkDestroyImageView :: fn (device: VkDevice, imageView: VkImageView, pAllocator: *VkAllocationCallbacks) #extern;
 vkCreateShaderModule :: fn (device: VkDevice, pCreateInfo: *VkShaderModuleCreateInfo, pAllocator: *VkAllocationCallbacks, pShaderModule: *VkShaderModule) VkResult #extern;
+vkDestroyShaderModule :: fn (device: VkDevice, shaderModule: VkShaderModule, pAllocator: *VkAllocationCallbacks) #extern;
 
 VK_MAKE_VERSION :: fn (major: u32, minor: u32, patch: u32) u32 #inline {
     return ((major) << 22) | ((minor) << 12) | (patch);

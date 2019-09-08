@@ -16,12 +16,13 @@ syntax keyword blBreak break
 syntax keyword blContinue continue 
 syntax keyword blUnreachable unreachable
 
-syntax keyword blDataType void string u8 u16 u32 u64 s8 s16 s32 s64 bool usize type
+syntax keyword blDataType void string u8 u16 u32 u64 s8 s16 s32 s64 bool usize type f32 f64
 syntax keyword blBool true false
 syntax keyword blNull null
 
 syntax keyword blReturn return
 syntax keyword blDefer defer
+syntax keyword blAuto auto
 syntax keyword blSizeof sizeof 
 syntax keyword blTypeInfo typeinfo
 
@@ -52,6 +53,7 @@ highlight link blBreak Keyword
 highlight link blContinue Keyword
 highlight link blUnreachable Keyword
 highlight link blDefer Operator
+highlight link blAuto Operator 
 highlight link blSizeof Operator
 highlight link blTypeInfo Operator
 
