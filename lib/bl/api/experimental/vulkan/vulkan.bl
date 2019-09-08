@@ -48,6 +48,8 @@ VkSwapchainKHR :: *u8;
 VkImage :: *u8;
 VkImageView :: *u8;
 VkShaderModule :: *u8;
+VkPipelineLayout :: *u8;
+VkDescriptorSetLayout :: *u8;
 
 VkFlags :: u32;
 VkBool32 :: u32;
@@ -75,6 +77,10 @@ VkCullModeFlags :: VkFlags;
 VkPipelineMultisampleStateCreateFlags :: VkFlags;
 VkPipelineDepthStencilStateCreateFlags :: VkFlags;
 VkPipelineColorBlendStateCreateFlags :: VkFlags;
+VkColorComponentFlags :: VkFlags;
+VkPipelineDynamicStateCreateFlags :: VkFlags;
+VkPipelineLayoutCreateFlags :: VkFlags;
+VkShaderStageFlags :: VkFlags;
 
 // allocation callbacks types
 PFN_vkAllocationFunction :: * fn (pUserData: *u8, size: usize, alignment: usize, allocationScope: VkSystemAllocationScope);
@@ -145,6 +151,36 @@ VkCompositeAlphaFlagBitsKHR :: enum {
     FLAG_BITS_MAX_ENUM_KHR :: 0x7FFFFFFF
 };
 
+VkDynamicState :: enum {
+    VIEWPORT :: 0,
+    SCISSOR :: 1,
+    LINE_WIDTH :: 2,
+    DEPTH_BIAS :: 3,
+    BLEND_CONSTANTS :: 4,
+    DEPTH_BOUNDS :: 5,
+    STENCIL_COMPARE_MASK :: 6,
+    STENCIL_WRITE_MASK :: 7,
+    STENCIL_REFERENCE :: 8,
+    VIEWPORT_W_SCALING_NV :: 1000087000,
+    DISCARD_RECTANGLE_EXT :: 1000099000,
+    SAMPLE_LOCATIONS_EXT :: 1000143000,
+    VIEWPORT_SHADING_RATE_PALETTE_NV :: 1000164004,
+    VIEWPORT_COARSE_SAMPLE_ORDER_NV :: 1000164006,
+    EXCLUSIVE_SCISSOR_NV :: 1000205001,
+    BEGIN_RANGE :: VIEWPORT,
+    END_RANGE :: STENCIL_REFERENCE,
+    RANGE_SIZE :: (STENCIL_REFERENCE - VIEWPORT + 1),
+    MAX_ENUM :: 0x7FFFFFFF
+};
+
+VkColorComponentFlagBits :: enum {
+    R_BIT :: 0x00000001,
+    G_BIT :: 0x00000002,
+    B_BIT :: 0x00000004,
+    A_BIT :: 0x00000008,
+    FLAG_BITS_MAX_ENUM :: 0x7FFFFFFE
+};
+
 VkImageUsageFlagBits :: enum  {
     TRANSFER_SRC_BIT :: 0x00000001,
     TRANSFER_DST_BIT :: 0x00000002,
@@ -207,6 +243,91 @@ VkCullModeFlagBits :: enum {
     FRONT_AND_BACK :: 0x00000003,
     FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
 };
+
+VkBlendFactor :: enum {
+    ZERO :: 0,
+    ONE :: 1,
+    SRC_COLOR :: 2,
+    ONE_MINUS_SRC_COLOR :: 3,
+    DST_COLOR :: 4,
+    ONE_MINUS_DST_COLOR :: 5,
+    SRC_ALPHA :: 6,
+    ONE_MINUS_SRC_ALPHA :: 7,
+    DST_ALPHA :: 8,
+    ONE_MINUS_DST_ALPHA :: 9,
+    CONSTANT_COLOR :: 10,
+    ONE_MINUS_CONSTANT_COLOR :: 11,
+    CONSTANT_ALPHA :: 12,
+    ONE_MINUS_CONSTANT_ALPHA :: 13,
+    SRC_ALPHA_SATURATE :: 14,
+    SRC1_COLOR :: 15,
+    ONE_MINUS_SRC1_COLOR :: 16,
+    SRC1_ALPHA :: 17,
+    ONE_MINUS_SRC1_ALPHA :: 18,
+    BEGIN_RANGE :: ZERO,
+    END_RANGE :: ONE_MINUS_SRC1_ALPHA,
+    RANGE_SIZE :: (ONE_MINUS_SRC1_ALPHA - ZERO + 1),
+    MAX_ENUM :: 0x7FFFFFFF
+};
+
+VkBlendOp :: enum {
+    ADD :: 0,
+    SUBTRACT :: 1,
+    REVERSE_SUBTRACT :: 2,
+    MIN :: 3,
+    MAX :: 4,
+    ZERO_EXT :: 1000148000,
+    SRC_EXT :: 1000148001,
+    DST_EXT :: 1000148002,
+    SRC_OVER_EXT :: 1000148003,
+    DST_OVER_EXT :: 1000148004,
+    SRC_IN_EXT :: 1000148005,
+    DST_IN_EXT :: 1000148006,
+    SRC_OUT_EXT :: 1000148007,
+    DST_OUT_EXT :: 1000148008,
+    SRC_ATOP_EXT :: 1000148009,
+    DST_ATOP_EXT :: 1000148010,
+    XOR_EXT :: 1000148011,
+    MULTIPLY_EXT :: 1000148012,
+    SCREEN_EXT :: 1000148013,
+    OVERLAY_EXT :: 1000148014,
+    DARKEN_EXT :: 1000148015,
+    LIGHTEN_EXT :: 1000148016,
+    COLORDODGE_EXT :: 1000148017,
+    COLORBURN_EXT :: 1000148018,
+    HARDLIGHT_EXT :: 1000148019,
+    SOFTLIGHT_EXT :: 1000148020,
+    DIFFERENCE_EXT :: 1000148021,
+    EXCLUSION_EXT :: 1000148022,
+    INVERT_EXT :: 1000148023,
+    INVERT_RGB_EXT :: 1000148024,
+    LINEARDODGE_EXT :: 1000148025,
+    LINEARBURN_EXT :: 1000148026,
+    VIVIDLIGHT_EXT :: 1000148027,
+    LINEARLIGHT_EXT :: 1000148028,
+    PINLIGHT_EXT :: 1000148029,
+    HARDMIX_EXT :: 1000148030,
+    HSL_HUE_EXT :: 1000148031,
+    HSL_SATURATION_EXT :: 1000148032,
+    HSL_COLOR_EXT :: 1000148033,
+    HSL_LUMINOSITY_EXT :: 1000148034,
+    PLUS_EXT :: 1000148035,
+    PLUS_CLAMPED_EXT :: 1000148036,
+    PLUS_CLAMPED_ALPHA_EXT :: 1000148037,
+    PLUS_DARKER_EXT :: 1000148038,
+    MINUS_EXT :: 1000148039,
+    MINUS_CLAMPED_EXT :: 1000148040,
+    CONTRAST_EXT :: 1000148041,
+    INVERT_OVG_EXT :: 1000148042,
+    RED_EXT :: 1000148043,
+    GREEN_EXT :: 1000148044,
+    BLUE_EXT :: 1000148045,
+    BEGIN_RANGE :: ADD,
+    END_RANGE :: MAX,
+    RANGE_SIZE :: (MAX - ADD + 1),
+    MAX_ENUM :: 0x7FFFFFFF
+};
+
 
 VkFrontFace :: enum {
     COUNTER_CLOCKWISE :: 0,
@@ -1091,6 +1212,12 @@ VkRect2D :: struct {
     extent: VkExtent2D 
 };
 
+VkPushConstantRange :: struct {
+    stageFlags: VkShaderStageFlags,
+    offset: u32, 
+    size: u32,
+};
+
 VkViewport :: struct {
     x: f32,
     y: f32,
@@ -1178,6 +1305,28 @@ VkApplicationInfo :: struct {
     apiVersion: u32
 };
 
+VkPipelineLayoutCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    flags: VkPipelineLayoutCreateFlags,
+    setLayoutCount: u32,
+    pSetLayouts: *VkDescriptorSetLayout,
+    pushConstantRangeCount: u32, 
+    pPushConstantRanges: *VkPushConstantRange,
+};
+
+
+VkPipelineColorBlendAttachmentState :: struct {
+    blendEnable: VkBool32,
+    srcColorBlendFactor: VkBlendFactor,
+    dstColorBlendFactor: VkBlendFactor,
+    colorBlendOp: VkBlendOp,
+    srcAlphaBlendFactor: VkBlendFactor,
+    dstAlphaBlendFactor: VkBlendFactor,
+    alphaBlendOp: VkBlendOp,
+    colorWriteMask: VkColorComponentFlags,
+};
+
 VkPipelineMultisampleStateCreateInfo :: struct {
     sType: VkStructureType,
     pNext: *u8,
@@ -1188,6 +1337,14 @@ VkPipelineMultisampleStateCreateInfo :: struct {
     pSampleMask: *VkSampleMask,
     alphaToCoverageEnable: VkBool32,
     alphaToOneEnable: VkBool32,
+};
+
+VkPipelineDynamicStateCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8, 
+    flags: VkPipelineDynamicStateCreateFlags,
+    dynamicStateCount: u32, 
+    pDynamicStates: *VkDynamicState
 };
 
 VkInstanceCreateInfo :: struct {
@@ -1416,6 +1573,8 @@ vkCreateImageView :: fn (device: VkDevice, pCreateInfo: *VkImageViewCreateInfo, 
 vkDestroyImageView :: fn (device: VkDevice, imageView: VkImageView, pAllocator: *VkAllocationCallbacks) #extern;
 vkCreateShaderModule :: fn (device: VkDevice, pCreateInfo: *VkShaderModuleCreateInfo, pAllocator: *VkAllocationCallbacks, pShaderModule: *VkShaderModule) VkResult #extern;
 vkDestroyShaderModule :: fn (device: VkDevice, shaderModule: VkShaderModule, pAllocator: *VkAllocationCallbacks) #extern;
+vkCreatePipelineLayout :: fn (device: VkDevice, pCreateInfo: *VkPipelineLayoutCreateInfo, pAllocator: *VkAllocationCallbacks,pPipelineLayout: *VkPipelineLayout) VkResult #extern;
+vkDestroyPipelineLayout :: fn (device: VkDevice, pipelineLayout: VkPipelineLayout, pAllocator: *VkAllocationCallbacks) #extern;
 
 VK_MAKE_VERSION :: fn (major: u32, minor: u32, patch: u32) u32 #inline {
     return ((major) << 22) | ((minor) << 12) | (patch);
