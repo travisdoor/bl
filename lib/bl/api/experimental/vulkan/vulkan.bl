@@ -51,6 +51,10 @@ VkShaderModule :: *u8;
 VkPipelineLayout :: *u8;
 VkDescriptorSetLayout :: *u8;
 VkRenderPass :: *u8;
+VkPipeline :: *u8;
+VkPipelineCache :: *u8;
+VkFramebuffer :: *u8;
+VkCommandPool :: *u8;
 
 VkFlags :: u32;
 VkBool32 :: u32;
@@ -90,6 +94,8 @@ VkPipelineStageFlags  :: VkFlags;
 VkMemoryMapFlags :: VkFlags;
 VkAccessFlags :: VkFlags;
 VkDependencyFlags :: VkFlags;
+VkPipelineCreateFlags :: VkFlags;
+VkCommandPoolCreateFlags :: VkFlags;
 
 // allocation callbacks types
 PFN_vkAllocationFunction :: * fn (pUserData: *u8, size: usize, alignment: usize, allocationScope: VkSystemAllocationScope);
@@ -152,12 +158,31 @@ VkSurfaceTransformFlagBitsKHR :: enum {
     FLAG_BITS_MAX_ENUM_KHR :: 0x7FFFFFFF
 };
 
+VkCommandPoolCreateFlagBits :: enum {
+    TRANSIENT_BIT :: 0x00000001,
+    RESET_COMMAND_BUFFER_BIT :: 0x00000002,
+    PROTECTED_BIT :: 0x00000004,
+    FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
+};
+
 VkDependencyFlagBits :: enum {
     BY_REGION_BIT :: 0x00000001,
     DEVICE_GROUP_BIT :: 0x00000004,
     VIEW_LOCAL_BIT :: 0x00000002,
     VIEW_LOCAL_BIT_KHR :: VIEW_LOCAL_BIT,
     DEVICE_GROUP_BIT_KHR :: DEVICE_GROUP_BIT,
+    FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
+};
+
+VkPipelineCreateFlagBits :: enum {
+    DISABLE_OPTIMIZATION_BIT :: 0x00000001,
+    ALLOW_DERIVATIVES_BIT :: 0x00000002,
+    DERIVATIVE_BIT :: 0x00000004,
+    VIEW_INDEX_FROM_DEVICE_INDEX_BIT :: 0x00000008,
+    DISPATCH_BASE :: 0x00000010,
+    DEFER_COMPILE_BIT_NV :: 0x00000020,
+    VIEW_INDEX_FROM_DEVICE_INDEX_BIT_KHR :: VIEW_INDEX_FROM_DEVICE_INDEX_BIT,
+    DISPATCH_BASE_KHR :: DISPATCH_BASE,
     FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
 };
 
@@ -244,6 +269,44 @@ VkPipelineBindPoint :: enum {
     MAX_ENUM :: 0x7FFFFFFF
 };
 
+VkStencilOp :: enum {
+    KEEP :: 0,
+    ZERO :: 1,
+    REPLACE :: 2,
+    INCREMENT_AND_CLAMP :: 3,
+    DECREMENT_AND_CLAMP :: 4,
+    INVERT :: 5,
+    INCREMENT_AND_WRAP :: 6,
+    DECREMENT_AND_WRAP :: 7,
+    BEGIN_RANGE :: KEEP,
+    END_RANGE :: DECREMENT_AND_WRAP,
+    RANGE_SIZE :: (DECREMENT_AND_WRAP - KEEP + 1),
+    MAX_ENUM :: 0x7FFFFFFF
+};
+
+VkLogicOp :: enum {
+    CLEAR :: 0,
+    AND :: 1,
+    AND_REVERSE :: 2,
+    COPY :: 3,
+    AND_INVERTED :: 4,
+    NO_OP :: 5,
+    XOR :: 6,
+    OR :: 7,
+    NOR :: 8,
+    EQUIVALENT :: 9,
+    INVERT :: 10,
+    OR_REVERSE :: 11,
+    COPY_INVERTED :: 12,
+    OR_INVERTED :: 13,
+    NAND :: 14,
+    SET :: 15,
+    BEGIN_RANGE :: CLEAR,
+    END_RANGE :: SET,
+    RANGE_SIZE :: (SET - CLEAR + 1),
+    MAX_ENUM :: 0x7FFFFFFF
+};
+
 VkCompositeAlphaFlagBitsKHR :: enum {
     OPAQUE_BIT_KHR :: 0x00000001,
     PRE_MULTIPLIED_BIT_KHR :: 0x00000002,
@@ -258,6 +321,21 @@ VkAttachmentStoreOp :: enum {
     BEGIN_RANGE :: STORE,
     END_RANGE :: DONT_CARE,
     RANGE_SIZE :: (DONT_CARE - STORE + 1),
+    MAX_ENUM :: 0x7FFFFFFF
+};
+
+VkCompareOp :: enum {
+    NEVER :: 0,
+    LESS :: 1,
+    EQUAL :: 2,
+    LESS_OR_EQUAL :: 3,
+    GREATER :: 4,
+    NOT_EQUAL :: 5,
+    GREATER_OR_EQUAL :: 6,
+    ALWAYS :: 7,
+    BEGIN_RANGE :: NEVER,
+    END_RANGE :: ALWAYS,
+    RANGE_SIZE :: (ALWAYS - NEVER + 1),
     MAX_ENUM :: 0x7FFFFFFF
 };
 
@@ -346,18 +424,6 @@ VkImageAspectFlagBits :: enum {
     PLANE_0_BIT_KHR :: PLANE_0_BIT,
     PLANE_1_BIT_KHR :: PLANE_1_BIT,
     PLANE_2_BIT_KHR :: PLANE_2_BIT,
-    FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
-};
-
-VkPipelineCreateFlagBits :: enum {
-    DISABLE_OPTIMIZATION_BIT :: 0x00000001,
-    ALLOW_DERIVATIVES_BIT :: 0x00000002,
-    DERIVATIVE_BIT :: 0x00000004,
-    VIEW_INDEX_FROM_DEVICE_INDEX_BIT :: 0x00000008,
-    DISPATCH_BASE :: 0x00000010,
-    DEFER_COMPILE_BIT_NV :: 0x00000020,
-    VIEW_INDEX_FROM_DEVICE_INDEX_BIT_KHR :: VIEW_INDEX_FROM_DEVICE_INDEX_BIT,
-    DISPATCH_BASE_KHR :: DISPATCH_BASE,
     FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
 };
 
@@ -1376,6 +1442,16 @@ VkViewport :: struct {
     maxDepth: f32,
 };
 
+VkStencilOpState :: struct {
+    failOp: VkStencilOp,
+    passOp: VkStencilOp,
+    depthFailOp: VkStencilOp,
+    compareOp: VkCompareOp,
+    compareMask: u32, 
+    writeMask: u32,
+    reference: u32
+};
+
 VkPhysicalDeviceFeatures :: struct {
     robustBufferAccess: VkBool32,
     fullDrawIndexUint32: VkBool32,
@@ -1492,6 +1568,58 @@ VkApplicationInfo :: struct {
     pEngineName: *u8,
     engineVersion: u32,
     apiVersion: u32
+};
+
+VkCommandPoolCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    flags: VkCommandPoolCreateFlags, 
+    queueFamilyIndex: u32 
+};
+
+VkFramebufferCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    flags: VkFramebufferCreateFlags,
+    renderPass: VkRenderPass,
+    attachmentCount: u32, 
+    pAttachments: *VkImageView,
+    width: u32, 
+    height: u32,
+    layers: u32 
+};
+
+VkPipelineColorBlendStateCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    flags: VkPipelineColorBlendStateCreateFlags,
+    logicOpEnable: VkBool32,
+    logicOp: VkLogicOp,
+    attachmentCount: u32, 
+    pAttachments: *VkPipelineColorBlendAttachmentState,
+    blendConstants: [4]f32,
+};
+
+VkPipelineTessellationStateCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    flags: VkPipelineTessellationStateCreateFlags,
+    patchControlPoints: u32,
+};
+
+VkPipelineDepthStencilStateCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    flags: VkPipelineDepthStencilStateCreateFlags,
+    depthTestEnable: VkBool32,
+    depthWriteEnable: VkBool32,
+    depthCompareOp: VkCompareOp,
+    depthBoundsTestEnable: VkBool32,
+    stencilTestEnable: VkBool32,
+    front: VkStencilOpState,
+    back: VkStencilOpState,
+    minDepthBounds: f32,
+    maxDepthBounds: f32 
 };
 
 VkRenderPassCreateInfo :: struct {
@@ -1688,6 +1816,28 @@ VkPipelineVertexInputStateCreateInfo :: struct {
     pVertexAttributeDescriptions: *VkVertexInputAttributeDescription
 };
 
+VkGraphicsPipelineCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    flags: VkPipelineCreateFlags,
+    stageCount: u32,
+    pStages: *VkPipelineShaderStageCreateInfo,
+    pVertexInputState: *VkPipelineVertexInputStateCreateInfo,
+    pInputAssemblyState: *VkPipelineInputAssemblyStateCreateInfo,
+    pTessellationState: *VkPipelineTessellationStateCreateInfo, 
+    pViewportState: *VkPipelineViewportStateCreateInfo,
+    pRasterizationState: *VkPipelineRasterizationStateCreateInfo,
+    pMultisampleState: *VkPipelineMultisampleStateCreateInfo,
+    pDepthStencilState: *VkPipelineDepthStencilStateCreateInfo,
+    pColorBlendState: *VkPipelineColorBlendStateCreateInfo,
+    pDynamicState: *VkPipelineDynamicStateCreateInfo,
+    layout: VkPipelineLayout,
+    renderPass: VkRenderPass,
+    subpass: u32,
+    basePipelineHandle: VkPipeline,
+    basePipelineIndex: u32 
+};
+
 VkVertexInputBindingDescription :: struct {
     binding: u32,
     stride: u32,
@@ -1778,6 +1928,10 @@ vkCreatePipelineLayout :: fn (device: VkDevice, pCreateInfo: *VkPipelineLayoutCr
 vkDestroyPipelineLayout :: fn (device: VkDevice, pipelineLayout: VkPipelineLayout, pAllocator: *VkAllocationCallbacks) #extern;
 vkCreateRenderPass :: fn (device: VkDevice, pCreateInfo: *VkRenderPassCreateInfo, pAllocator: *VkAllocationCallbacks, pRenderPass: *VkRenderPass) VkResult #extern;
 vkDestroyRenderPass :: fn (device: VkDevice, renderPass: VkRenderPass, pAllocator: *VkAllocationCallbacks) #extern;
+vkCreateGraphicsPipelines :: fn (device: VkDevice, pipelineCache: VkPipelineCache, createInfoCount: u32, pCreateInfos: *VkGraphicsPipelineCreateInfo, pAllocator: *VkAllocationCallbacks, pPipelines: *VkPipeline) VkResult #extern;
+vkDestroyPipeline :: fn (device: VkDevice, pipeline: VkPipeline, pAllocator: *VkAllocationCallbacks) #extern;
+vkCreateFramebuffer :: fn (device: VkDevice, pCreateInfo: *VkFramebufferCreateInfo, pAllocator: *VkAllocationCallbacks, pFramebuffer: *VkFramebuffer) VkResult #extern; 
+vkDestroyFramebuffer :: fn (device: VkDevice, framebuffer: VkFramebuffer, pAllocator: *VkAllocationCallbacks) #extern;
 
 VK_MAKE_VERSION :: fn (major: u32, minor: u32, patch: u32) u32 #inline {
     return ((major) << 22) | ((minor) << 12) | (patch);
