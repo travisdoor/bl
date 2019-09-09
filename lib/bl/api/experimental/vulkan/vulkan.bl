@@ -55,6 +55,7 @@ VkPipeline :: *u8;
 VkPipelineCache :: *u8;
 VkFramebuffer :: *u8;
 VkCommandPool :: *u8;
+VkCommandBuffer :: *u8;
 
 VkFlags :: u32;
 VkBool32 :: u32;
@@ -306,6 +307,16 @@ VkLogicOp :: enum {
     RANGE_SIZE :: (SET - CLEAR + 1),
     MAX_ENUM :: 0x7FFFFFFF
 };
+
+VkCommandBufferLevel :: enum {
+    PRIMARY :: 0,
+    SECONDARY :: 1,
+    BEGIN_RANGE :: PRIMARY,
+    END_RANGE :: SECONDARY,
+    RANGE_SIZE :: (SECONDARY - PRIMARY + 1),
+    MAX_ENUM :: 0x7FFFFFFF
+};
+
 
 VkCompositeAlphaFlagBitsKHR :: enum {
     OPAQUE_BIT_KHR :: 0x00000001,
@@ -1570,6 +1581,14 @@ VkApplicationInfo :: struct {
     apiVersion: u32
 };
 
+VkCommandBufferAllocateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    commandPool: VkCommandPool,
+    level: VkCommandBufferLevel,
+    commandBufferCount: u32,
+};
+
 VkCommandPoolCreateInfo :: struct {
     sType: VkStructureType,
     pNext: *u8,
@@ -1932,7 +1951,10 @@ vkCreateGraphicsPipelines :: fn (device: VkDevice, pipelineCache: VkPipelineCach
 vkDestroyPipeline :: fn (device: VkDevice, pipeline: VkPipeline, pAllocator: *VkAllocationCallbacks) #extern;
 vkCreateFramebuffer :: fn (device: VkDevice, pCreateInfo: *VkFramebufferCreateInfo, pAllocator: *VkAllocationCallbacks, pFramebuffer: *VkFramebuffer) VkResult #extern; 
 vkDestroyFramebuffer :: fn (device: VkDevice, framebuffer: VkFramebuffer, pAllocator: *VkAllocationCallbacks) #extern;
-
+vkCreateCommandPool :: fn (device: VkDevice, pCreateInfo: *VkCommandPoolCreateInfo, pAllocator: *VkAllocationCallbacks, pCommandPool: *VkCommandPool) VkResult #extern;
+vkDestroyCommandPool :: fn (device: VkDevice, commandPool: VkCommandPool, pAllocator: *VkAllocationCallbacks) #extern;
+vkAllocateCommandBuffers :: fn (device: VkDevice, pAllocateInfo: *VkCommandBufferAllocateInfo, pCommandBuffers: *VkCommandBuffer) VkResult #extern;
+                                       
 VK_MAKE_VERSION :: fn (major: u32, minor: u32, patch: u32) u32 #inline {
     return ((major) << 22) | ((minor) << 12) | (patch);
 };
