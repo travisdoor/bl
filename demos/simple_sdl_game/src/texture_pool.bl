@@ -1,0 +1,53 @@
+texture_pool : *TexturePool = null;
+
+TextureId :: enum {
+    Balloon,
+    Player,
+
+    Explosion,
+
+    LevelSky,
+    LevelHills1,
+    LevelClouds1,
+    LevelHills2,
+    LevelClouds2,
+    
+    Count
+};
+
+TexturePool :: struct {
+    textures: [cast(usize) TextureId.Count] *SDL_Texture
+};
+
+texture_pool_init :: fn (renderer: *SDL_Renderer) {
+    texture_pool = cast(*TexturePool) malloc(sizeof(TexturePool));
+
+    texture_pool.textures[cast(usize) TextureId.Balloon] = texture_pool_load(renderer, "data/balloon.png");
+    texture_pool.textures[cast(usize) TextureId.Player] = texture_pool_load(renderer, "data/player.png");
+    texture_pool.textures[cast(usize) TextureId.Explosion] = texture_pool_load(renderer, "data/explosion.png");
+
+    texture_pool.textures[cast(usize) TextureId.LevelSky] = texture_pool_load(renderer, "data/sky.png");
+    texture_pool.textures[cast(usize) TextureId.LevelHills1] = texture_pool_load(renderer, "data/rocks_1.png");
+    texture_pool.textures[cast(usize) TextureId.LevelClouds1] = texture_pool_load(renderer, "data/clouds_2.png");
+    texture_pool.textures[cast(usize) TextureId.LevelHills2] = texture_pool_load(renderer, "data/rocks_2.png");
+    texture_pool.textures[cast(usize) TextureId.LevelClouds2] = texture_pool_load(renderer, "data/clouds_1.png");
+};
+
+texture_pool_terminate :: fn () {
+    loop i := 0; i < cast(s32) TextureId.Count; i += 1 {
+        tex := texture_pool.textures[i];
+        SDL_DestroyTexture(tex);
+    }
+};
+
+texture_pool_get :: fn (id: TextureId) *SDL_Texture {
+    return texture_pool.textures[cast(usize) id];
+};
+
+texture_pool_load :: fn (renderer: *SDL_Renderer, filepath: string) *SDL_Texture {
+    surface := load_surface(filepath);
+    texture := SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_FreeSurface(surface);
+
+    return texture;
+};

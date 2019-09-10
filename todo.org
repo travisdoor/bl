@@ -1,5 +1,6 @@
-* Release 0.5.0 (1st Oct 2019) [28%]
+* Release 0.5.0 (1st Oct 2019) [33%]
   - [ ] Complete missing erase cases.
+  - [ ] LLVM DI fine tunning and globals.
   - [ ] Fix global immutables. 
   - [ ] Implicit casting array to slice.
   - [ ] Validation of global's initializers to be compile time known.
@@ -8,7 +9,7 @@
   - [X] Runtime type info. 
   - [X] First version of LLVM DI. 
 
-* Bugs [33%]
+* Bugs [20%]
   - [X] fn typedef
     Recognise this as function type definition.
     T :: fn (i: s32, j: bool) s32; 
@@ -17,3 +18,9 @@
     print("kind %\n", cast(s32) (cast(*TypeInfo) data).kind);
     
   - [ ] VK_NULL_HANDLE :: null; cannot be used
+
+  - [ ] Wrong initialization of globals with defined type:
+    Foo : u64 : 10;
+    
+  - [ ] Unstable function pointers and invalid error reporting locaitons.
+

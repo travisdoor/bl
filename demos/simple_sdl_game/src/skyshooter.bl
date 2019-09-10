@@ -1,0 +1,140 @@
+#load "std/core.bl"
+#load "std/math.bl"
+#load "std/print.bl"
+#load "experimental/sdl2/sdl2_image.bl"
+#load "experimental/sdl2/sdl2.bl"
+#load "level.bl"
+#load "common.bl"
+#load "entity.bl"
+#load "player.bl"
+#load "enemy.bl"
+#load "animation.bl"
+#load "texture_pool.bl"
+
+Title           := "Sky Shooter!!!";
+ScreenWidth     :: 1024;
+ScreenHeight    :: 768;
+Fullscreen      :: false;
+FPS             :: 60;
+FrameDuration   :: 1000 / FPS;
+MaxTimePerFrame :: 200;
+
+Game :: struct {
+    window: *SDL_Window,
+    renderer: *SDL_Renderer,
+    will_quit: bool,
+
+    level: *Level,
+};
+
+main :: fn () s32 {
+    game: Game;
+
+    game_init(&game);
+    game_loop(&game);
+    game_terminate(&game);
+
+    return 0;
+};
+
+game_init :: fn (game: *Game) {
+    srand(666);
+    print("Initialize SDL.\n");
+
+    if SDL_Init(SDL_INIT_VIDEO) != 0 {
+        print("Unable to init SDL\n");
+        abort();
+    } else {
+        print("SDL initialized.\n");
+    }
+
+    flags := SDL_WINDOW_SHOWN;
+
+    if Fullscreen { flags = flags | SDL_WINDOW_FULLSCREEN; }
+
+    game.window = SDL_CreateWindow(
+        Title.ptr,
+        100,
+        100,
+        ScreenWidth,
+        ScreenHeight,
+        flags
+    );
+
+    if game.window == null {
+        print("Cannot create window.\n");
+        abort();
+    }
+
+    game.renderer = SDL_CreateRenderer(game.window, -1,
+                                       SDL_RENDERER_ACCELERATED);
+                                       //| SDL_RENDERER_PRESENTVSYNC);
+
+    if game.renderer == null {
+        print("Cannot create renderer.\n");
+        abort();
+    }
+    
+    SDL_SetRenderDrawColor(game.renderer, 0, 0, 0, 255);
+    game.will_quit = false;
+
+    // init texture pool
+    texture_pool_init(game.renderer);
+
+    // init level
+    game.level = level_new(game);
+};
+
+game_terminate :: fn (game: *Game) {
+    level_delete(game.level);
+    texture_pool_terminate();
+    SDL_DestroyRenderer(game.renderer);
+    SDL_DestroyWindow(game.window);
+    SDL_Quit();
+    print("Exiting.\n");
+};
+
+game_loop :: fn (game: *Game) {
+    last := SDL_GetTicks();
+
+    loop !game.will_quit {
+        current := SDL_GetTicks();
+        dt := cast(f32) (current - last);
+
+        game_handle_input(game);
+        game_update(game, dt);
+        game_render(game);
+
+        last = current;
+    }
+};
+
+game_handle_input :: fn(game: *Game) {
+    event := {:SDL_Event: 0};
+
+    level_handle_input(game.level);
+
+    loop SDL_PollEvent(&event) != 0 {
+        if event.type == SDL_EventType.QUIT {
+            game.will_quit = true;    
+        } else if event.type == SDL_EventType.KEYDOWN {
+            if (cast(*SDL_KeyboardEvent) &event).keysym == SDL_Scancode.ESCAPE {
+                game.will_quit = true;    
+            } else if (cast(*SDL_KeyboardEvent) &event).keysym == SDL_Scancode.SPACE {
+
+            }
+        }
+    }
+};
+
+game_render :: fn (game: *Game) {
+    SDL_RenderClear(game.renderer);
+
+    level_render(game.level, game);
+
+    SDL_RenderPresent(game.renderer);
+};
+
+game_update :: fn (game: *Game, dt: f32) {
+    level_update(game.level, dt);
+};

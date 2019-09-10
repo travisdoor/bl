@@ -105,6 +105,7 @@ VkCommandBufferUsageFlags :: VkFlags;
 VkQueryControlFlags :: VkFlags;
 VkQueryPipelineStatisticFlags :: VkFlags;
 VkSemaphoreCreateFlags :: VkFlags;
+VkFenceCreateFlags :: VkFlags;
 
 // allocation callbacks types
 PFN_vkAllocationFunction :: * fn (pUserData: *u8, size: usize, alignment: usize, allocationScope: VkSystemAllocationScope);
@@ -174,6 +175,11 @@ VkSurfaceTransformFlagBitsKHR :: enum {
     HORIZONTAL_MIRROR_ROTATE_270_BIT_KHR :: 0x00000080,
     INHERIT_BIT_KHR :: 0x00000100,
     FLAG_BITS_MAX_ENUM_KHR :: 0x7FFFFFFF
+};
+
+VkFenceCreateFlagBits :: enum {
+    SIGNALED_BIT :: 0x00000001,
+    FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
 };
 
 VkQueryPipelineStatisticFlagBits :: enum {
@@ -1639,19 +1645,19 @@ VkSubpassDescription :: struct {
     pPreserveAttachments: u32,
 };
 
-VkAttachmentReference :: struct {
-    attachment: u32,
-    layout: VkImageLayout
-};
-
 VkSubpassDependency :: struct {
-    srcSubpass: u32, 
+    srcSubpass: u32,
     dstSubpass: u32,
     srcStageMask: VkPipelineStageFlags,
     dstStageMask: VkPipelineStageFlags,
     srcAccessMask: VkAccessFlags,
     dstAccessMask: VkAccessFlags,
     dependencyFlags: VkDependencyFlags
+};
+
+VkAttachmentReference :: struct {
+    attachment: u32,
+    layout: VkImageLayout
 };
 
 VkApplicationInfo :: struct {
@@ -1663,6 +1669,18 @@ VkApplicationInfo :: struct {
     engineVersion: u32,
     apiVersion: u32
 };
+
+VkPresentInfoKHR :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    waitSemaphoreCount: u32,
+    pWaitSemaphores: *VkSemaphore,
+    swapchainCount: u32,
+    pSwapchains: *VkSwapchainKHR,
+    pImageIndices: *u32, 
+    pResults: *VkResult
+};
+
 
 VkSubmitInfo :: struct {
     sType: VkStructureType,
@@ -1681,6 +1699,13 @@ VkSemaphoreCreateInfo :: struct {
     pNext: *u8, 
     flags: VkSemaphoreCreateFlags,
 };
+
+VkFenceCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8, 
+    flags: VkFenceCreateFlags,
+};
+
 
 VkRenderPassBeginInfo :: struct {
     sType: VkStructureType,
@@ -2092,6 +2117,14 @@ vkEndCommandBuffer :: fn (commandBuffer: VkCommandBuffer) VkResult #extern;
 vkCreateSemaphore :: fn (device: VkDevice, pCreateInfo: *VkSemaphoreCreateInfo, pAllocator: *VkAllocationCallbacks, pSemaphore: *VkSemaphore) VkResult #extern;
 vkDestroySemaphore:: fn (device: VkDevice, semaphore: VkSemaphore, pAllocator: *VkAllocationCallbacks) #extern;
 vkAcquireNextImageKHR :: fn (device: VkDevice, swapchain: VkSwapchainKHR, timeout: u64, semaphore: VkSemaphore, fence: VkFence, pImageIndex: *u32) VkResult #extern;
+vkQueueSubmit :: fn (queue: VkQueue, submitCount: u32, pSubmits: *VkSubmitInfo, fence: VkFence) VkResult #extern;
+vkQueuePresentKHR :: fn (queue: VkQueue, pPresentInfo: *VkPresentInfoKHR) VkResult #extern;
+vkDeviceWaitIdle :: fn (device: VkDevice) VkResult #extern;
+vkCreateFence :: fn (device: VkDevice, pCreateInfo: *VkFenceCreateInfo, pAllocator: *VkAllocationCallbacks, pFence: *VkFence) VkResult #extern;
+vkDestroyFence :: fn (device: VkDevice, fence: VkFence, pAllocator: *VkAllocationCallbacks) #extern;
+vkResetFences :: fn (device: VkDevice, fenceCount: u32, pFences: *VkFence) VkResult #extern;
+vkGetFenceStatus :: fn (device: VkDevice, fence: VkFence) VkResult #extern;
+vkWaitForFences :: fn (device: VkDevice, fenceCount: u32, pFences: *VkFence, waitAll: VkBool32, timeout: u32) VkResult #extern;
 
 VK_MAKE_VERSION :: fn (major: u32, minor: u32, patch: u32) u32 #inline {
     return ((major) << 22) | ((minor) << 12) | (patch);
