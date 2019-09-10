@@ -8125,6 +8125,10 @@ exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
 	MirConstValueData tmp = {0};
 	exec_read_value(&tmp, val_ptr, type);
 
+	if (type->kind == MIR_TYPE_ENUM) {
+		type = type->data.enm.base_type;
+	}
+
 	switch (type->kind) {
 	case MIR_TYPE_INT: {
 		switch (type->store_size_bytes) {

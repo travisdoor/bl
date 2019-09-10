@@ -97,6 +97,11 @@ VkAccessFlags :: VkFlags;
 VkDependencyFlags :: VkFlags;
 VkPipelineCreateFlags :: VkFlags;
 VkCommandPoolCreateFlags :: VkFlags;
+VkBufferUsageFlags :: VkFlags;
+VkBufferViewCreateFlags :: VkFlags;
+VkCommandBufferUsageFlags :: VkFlags;
+VkQueryControlFlags :: VkFlags;
+VkQueryPipelineStatisticFlags :: VkFlags;
 
 // allocation callbacks types
 PFN_vkAllocationFunction :: * fn (pUserData: *u8, size: usize, alignment: usize, allocationScope: VkSystemAllocationScope);
@@ -146,6 +151,15 @@ VkResult :: enum {
     RESULT_MAX_ENUM :: 0x7FFFFFFF
 };
 
+VkSubpassContents :: enum {
+    INLINE :: 0,
+    SECONDARY_COMMAND_BUFFERS :: 1,
+    BEGIN_RANGE :: INLINE,
+    END_RANGE :: SECONDARY_COMMAND_BUFFERS,
+    RANGE_SIZE :: (SECONDARY_COMMAND_BUFFERS - INLINE + 1),
+    MAX_ENUM :: 0x7FFFFFFF
+};
+
 VkSurfaceTransformFlagBitsKHR :: enum {
     IDENTITY_BIT_KHR :: 0x00000001,
     ROTATE_90_BIT_KHR :: 0x00000002,
@@ -157,6 +171,33 @@ VkSurfaceTransformFlagBitsKHR :: enum {
     HORIZONTAL_MIRROR_ROTATE_270_BIT_KHR :: 0x00000080,
     INHERIT_BIT_KHR :: 0x00000100,
     FLAG_BITS_MAX_ENUM_KHR :: 0x7FFFFFFF
+};
+
+VkQueryPipelineStatisticFlagBits :: enum {
+    INPUT_ASSEMBLY_VERTICES_BIT :: 0x00000001,
+    INPUT_ASSEMBLY_PRIMITIVES_BIT :: 0x00000002,
+    VERTEX_SHADER_INVOCATIONS_BIT :: 0x00000004,
+    GEOMETRY_SHADER_INVOCATIONS_BIT :: 0x00000008,
+    GEOMETRY_SHADER_PRIMITIVES_BIT :: 0x00000010,
+    CLIPPING_INVOCATIONS_BIT :: 0x00000020,
+    CLIPPING_PRIMITIVES_BIT :: 0x00000040,
+    FRAGMENT_SHADER_INVOCATIONS_BIT :: 0x00000080,
+    TESSELLATION_CONTROL_SHADER_PATCHES_BIT :: 0x00000100,
+    TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT :: 0x00000200,
+    COMPUTE_SHADER_INVOCATIONS_BIT :: 0x00000400,
+    FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
+};
+
+VkQueryControlFlagBits :: enum {
+    PRECISE_BIT :: 0x00000001,
+    FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
+};
+
+VkCommandBufferUsageFlagBits :: enum {
+    ONE_TIME_SUBMIT_BIT :: 0x00000001,
+    RENDER_PASS_CONTINUE_BIT :: 0x00000002,
+    SIMULTANEOUS_USE_BIT :: 0x00000004,
+    FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
 };
 
 VkCommandPoolCreateFlagBits :: enum {
@@ -184,6 +225,24 @@ VkPipelineCreateFlagBits :: enum {
     DEFER_COMPILE_BIT_NV :: 0x00000020,
     VIEW_INDEX_FROM_DEVICE_INDEX_BIT_KHR :: VIEW_INDEX_FROM_DEVICE_INDEX_BIT,
     DISPATCH_BASE_KHR :: DISPATCH_BASE,
+    FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
+};
+
+VkBufferUsageFlagBits :: enum {
+    TRANSFER_SRC_BIT :: 0x00000001,
+    TRANSFER_DST_BIT :: 0x00000002,
+    UNIFORM_TEXEL_BUFFER_BIT :: 0x00000004,
+    STORAGE_TEXEL_BUFFER_BIT :: 0x00000008,
+    UNIFORM_BUFFER_BIT :: 0x00000010,
+    STORAGE_BUFFER_BIT :: 0x00000020,
+    INDEX_BUFFER_BIT :: 0x00000040,
+    VERTEX_BUFFER_BIT :: 0x00000080,
+    INDIRECT_BUFFER_BIT :: 0x00000100,
+    TRANSFORM_FEEDBACK_BUFFER_BIT_EXT :: 0x00000800,
+    TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT :: 0x00001000,
+    CONDITIONAL_RENDERING_BIT_EXT :: 0x00000200,
+    RAY_TRACING_BIT_NV :: 0x00000400,
+    SHADER_DEVICE_ADDRESS_BIT_EXT :: 0x00020000,
     FLAG_BITS_MAX_ENUM :: 0x7FFFFFFF
 };
 
@@ -1417,6 +1476,27 @@ VkComponentSwizzle :: enum {
     MAX_ENUM :: 0x7FFFFFFF
 };
 
+/*
+typedef union VkClearColorValue {
+    float       float32[4];
+    int32_t     int32[4];
+    uint32_t    uint32[4];
+} VkClearColorValue;
+
+typedef struct VkClearDepthStencilValue {
+    float       depth;
+    uint32_t    stencil;
+} VkClearDepthStencilValue;
+
+typedef union VkClearValue {
+    VkClearColorValue           color;
+    VkClearDepthStencilValue    depthStencil;
+};
+*/
+
+// HACK: original declaration is union
+VkClearValue :: [4]f32;
+
 VkExtent3D :: struct {
     width: u32,
     height: u32,
@@ -1579,6 +1659,34 @@ VkApplicationInfo :: struct {
     pEngineName: *u8,
     engineVersion: u32,
     apiVersion: u32
+};
+
+VkRenderPassBeginInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    renderPass: VkRenderPass,
+    framebuffer: VkFramebuffer,
+    renderArea: VkRect2D,
+    clearValueCount: u32,
+    pClearValues: *VkClearValue,
+};
+
+VkCommandBufferInheritanceInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    renderPass: VkRenderPass,
+    subpass: u32, 
+    framebuffer: VkFramebuffer,
+    occlusionQueryEnable: VkBool32,
+    queryFlags: VkQueryControlFlags,
+    pipelineStatistics: VkQueryPipelineStatisticFlags,
+};
+
+VkCommandBufferBeginInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    flags: VkCommandBufferUsageFlags,
+    pInheritanceInfo: *VkCommandBufferInheritanceInfo
 };
 
 VkCommandBufferAllocateInfo :: struct {
@@ -1954,7 +2062,13 @@ vkDestroyFramebuffer :: fn (device: VkDevice, framebuffer: VkFramebuffer, pAlloc
 vkCreateCommandPool :: fn (device: VkDevice, pCreateInfo: *VkCommandPoolCreateInfo, pAllocator: *VkAllocationCallbacks, pCommandPool: *VkCommandPool) VkResult #extern;
 vkDestroyCommandPool :: fn (device: VkDevice, commandPool: VkCommandPool, pAllocator: *VkAllocationCallbacks) #extern;
 vkAllocateCommandBuffers :: fn (device: VkDevice, pAllocateInfo: *VkCommandBufferAllocateInfo, pCommandBuffers: *VkCommandBuffer) VkResult #extern;
-                                       
+vkBeginCommandBuffer :: fn (commandBuffer: VkCommandBuffer, pBeginInfo: *VkCommandBufferBeginInfo) VkResult #extern;
+vkCmdBeginRenderPass :: fn (commandBuffer: VkCommandBuffer, pRenderPassBegin: *VkRenderPassBeginInfo, contents: VkSubpassContents) #extern;
+vkCmdBindPipeline :: fn (commandBuffer: VkCommandBuffer, pipelineBindPoint: VkPipelineBindPoint, pipeline: VkPipeline) #extern;
+vkCmdDraw :: fn (commandBuffer: VkCommandBuffer, vertexCount: u32, instanceCount: u32, firstVertex: u32, firstInstance: u32) #extern;
+vkCmdEndRenderPass :: fn (commandBuffer: VkCommandBuffer) #extern;
+vkEndCommandBuffer :: fn (commandBuffer: VkCommandBuffer) VkResult #extern;
+
 VK_MAKE_VERSION :: fn (major: u32, minor: u32, patch: u32) u32 #inline {
     return ((major) << 22) | ((minor) << 12) | (patch);
 };
