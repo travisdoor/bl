@@ -50,7 +50,8 @@ S16_MIN :: -32768;
 S16_MAX :: 32767;
 S32_MIN :: -2147483648;
 S32_MAX :: 2147483647;
-// TODO: s64
+//S64_MIN :: cast(s64) -9223372036854775808;
+//S64_MAX :: cast(s64) 9223372036854775807;
 
 U8_MIN :: 0;
 U8_MAX :: 255;
@@ -58,7 +59,8 @@ U16_MIN :: 0;
 U16_MAX :: 65535;
 U32_MIN :: 0;
 U32_MAX :: 4294967295;
-// TODO: u64
+//U64_MIN :: cast(u64) 0;
+//U64_MAX :: cast(u64) 18446744073709551615;
 
 /*
  * TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 

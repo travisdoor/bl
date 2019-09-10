@@ -56,6 +56,8 @@ VkPipelineCache :: *u8;
 VkFramebuffer :: *u8;
 VkCommandPool :: *u8;
 VkCommandBuffer :: *u8;
+VkSemaphore :: *u8;
+VkFence :: *u8;
 
 VkFlags :: u32;
 VkBool32 :: u32;
@@ -102,6 +104,7 @@ VkBufferViewCreateFlags :: VkFlags;
 VkCommandBufferUsageFlags :: VkFlags;
 VkQueryControlFlags :: VkFlags;
 VkQueryPipelineStatisticFlags :: VkFlags;
+VkSemaphoreCreateFlags :: VkFlags;
 
 // allocation callbacks types
 PFN_vkAllocationFunction :: * fn (pUserData: *u8, size: usize, alignment: usize, allocationScope: VkSystemAllocationScope);
@@ -1661,6 +1664,24 @@ VkApplicationInfo :: struct {
     apiVersion: u32
 };
 
+VkSubmitInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8,
+    waitSemaphoreCount: u32,
+    pWaitSemaphores: *VkSemaphore,
+    pWaitDstStageMask: *VkPipelineStageFlags,
+    commandBufferCount: u32,
+    pCommandBuffers: *VkCommandBuffer,
+    signalSemaphoreCount: u32,
+    pSignalSemaphores: *VkSemaphore
+};
+
+VkSemaphoreCreateInfo :: struct {
+    sType: VkStructureType,
+    pNext: *u8, 
+    flags: VkSemaphoreCreateFlags,
+};
+
 VkRenderPassBeginInfo :: struct {
     sType: VkStructureType,
     pNext: *u8,
@@ -2068,6 +2089,9 @@ vkCmdBindPipeline :: fn (commandBuffer: VkCommandBuffer, pipelineBindPoint: VkPi
 vkCmdDraw :: fn (commandBuffer: VkCommandBuffer, vertexCount: u32, instanceCount: u32, firstVertex: u32, firstInstance: u32) #extern;
 vkCmdEndRenderPass :: fn (commandBuffer: VkCommandBuffer) #extern;
 vkEndCommandBuffer :: fn (commandBuffer: VkCommandBuffer) VkResult #extern;
+vkCreateSemaphore :: fn (device: VkDevice, pCreateInfo: *VkSemaphoreCreateInfo, pAllocator: *VkAllocationCallbacks, pSemaphore: *VkSemaphore) VkResult #extern;
+vkDestroySemaphore:: fn (device: VkDevice, semaphore: VkSemaphore, pAllocator: *VkAllocationCallbacks) #extern;
+vkAcquireNextImageKHR :: fn (device: VkDevice, swapchain: VkSwapchainKHR, timeout: u64, semaphore: VkSemaphore, fence: VkFence, pImageIndex: *u32) VkResult #extern;
 
 VK_MAKE_VERSION :: fn (major: u32, minor: u32, patch: u32) u32 #inline {
     return ((major) << 22) | ((minor) << 12) | (patch);
