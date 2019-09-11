@@ -842,7 +842,7 @@ print_instr_ret(MirInstrRet *ret, FILE *stream)
 {
 	print_instr_head(&ret->base, stream, "ret");
 	if (ret->value) print_comptime_value_or_id(ret->value, stream);
-	if (ret->allow_fn_ret_type_override) fprintf(stream, " // can override");
+	if (ret->infer_type) fprintf(stream, " // infer");
 }
 
 void

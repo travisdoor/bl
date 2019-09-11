@@ -1,8 +1,9 @@
 /* playground */
 
-#load "std/print.bl"
+//#load "std/print.bl"
+
 
 main :: fn () s32 {
-    print("file: % line: %\n", #file, #line);
+    foo :: 10;
     return 0;
 };

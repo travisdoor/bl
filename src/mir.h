@@ -554,7 +554,7 @@ struct MirInstrRet {
 	MirInstr base;
 
 	MirInstr *value;
-	bool      allow_fn_ret_type_override;
+	bool      infer_type;
 };
 
 struct MirInstrBinop {

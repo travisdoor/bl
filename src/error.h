@@ -105,6 +105,7 @@ typedef enum {
 	ERR_EMPTY_ENUM              = 69,
 	ERR_INVALID_DIRECTIVE       = 70,
 	ERR_UNEXPECTED_EXPR         = 71,
+	ERR_EXPECTED_COMPTIME       = 72,
 } Error;
 
 #endif // BL_ERROR_H
