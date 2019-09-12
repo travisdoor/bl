@@ -1478,6 +1478,7 @@ parse_expr_lit(Context *cnt)
 	case SYM_NUM:
 		lit = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_INT, tok, scope_get(cnt));
 		lit->data.expr_integer.val = tok->value.u;
+		lit->data.expr_integer.overflow = tok->overflow;
 		break;
 
 	case SYM_CHAR:
@@ -1504,11 +1505,13 @@ parse_expr_lit(Context *cnt)
 	case SYM_DOUBLE:
 		lit = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_DOUBLE, tok, scope_get(cnt));
 		lit->data.expr_double.val = tok->value.d;
+		lit->data.expr_double.overflow = tok->overflow;
 		break;
 
 	case SYM_FLOAT:
 		lit = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FLOAT, tok, scope_get(cnt));
 		lit->data.expr_float.val = (float)tok->value.d;
+		lit->data.expr_float.overflow = tok->overflow;
 		break;
 
 	default:

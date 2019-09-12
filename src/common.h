@@ -127,6 +127,9 @@ align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment);
 void
 print_bits(int32_t const size, void const *const ptr);
 
+int
+count_bits(uint64_t n);
+
 void
 platform_lib_name(const char *name, char *buffer, size_t max_len);
 

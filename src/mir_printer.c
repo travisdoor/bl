@@ -901,7 +901,7 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 	fprintf(stream, "\n");
 
 	if (fn_proto->base.analyzed) fprintf(stream, "// analyzed\n");
-	if (fn->is_ghost) fprintf(stream, "// no LLVM\n");
+	if (!fn->emit_llvm) fprintf(stream, "// no LLVM\n");
 
 	if (fn->llvm_name)
 		fprintf(stream, "@%s ", fn->llvm_name);

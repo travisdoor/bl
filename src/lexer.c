@@ -28,6 +28,7 @@
 
 #include "common.h"
 #include "stages.h"
+#include <float.h>
 #include <setjmp.h>
 #include <string.h>
 
@@ -314,8 +315,9 @@ scan_number(Context *cnt, Token *tok)
 	tok->location.line = cnt->line;
 	tok->location.col  = cnt->col;
 	tok->value.str     = cnt->c;
+	tok->overflow      = false;
 
-	uint64_t n    = 0;
+	uint64_t n = 0, prev_n = 0;
 	int32_t  len  = 0;
 	int32_t  base = 10;
 	int32_t  buf  = 0;
@@ -352,9 +354,12 @@ scan_number(Context *cnt, Token *tok)
 			break;
 		}
 
-		n = n * base + buf;
+		prev_n = n;
+		n      = n * base + buf;
+
 		len++;
 		cnt->c++;
+		if (n < prev_n) tok->overflow = true;
 	}
 
 	if (len == 0) return false;
@@ -374,10 +379,13 @@ scan_double : {
 			break;
 		}
 
-		n = n * 10 + buf;
+		prev_n = n;
+		n      = n * 10 + buf;
 		e *= 10;
 		len++;
 		cnt->c++;
+
+		if (n < prev_n) tok->overflow = true;
 	}
 
 	/*
@@ -394,6 +402,7 @@ scan_double : {
 	}
 
 	tok->value.d = n / (double)e;
+	if (tok->value.d > FLT_MAX) tok->overflow = true;
 
 	tok->location.len = len;
 	cnt->col += len;

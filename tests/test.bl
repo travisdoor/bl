@@ -1,12 +1,14 @@
 /* playground */
 
-//#load "std/print.bl"
+#load "std/print.bl"
 
-foo : string : 9223372036854775807;
+foo :: 18446744073709551615;
+bar : u8 : 9223372036854775808;
+homo : u8 : auto 10;
 
 main :: fn () s32 {
-
-    //print("%\n", foo);
+    print("%\n", foo);
+    print("%\n", bar);
     
     return 0;
 };

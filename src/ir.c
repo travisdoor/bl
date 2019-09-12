@@ -297,7 +297,7 @@ static inline LLVMValueRef
 emit_fn_proto(Context *cnt, MirFn *fn)
 {
 	assert(fn);
-	if (fn->is_ghost) return NULL;
+	if (!fn->emit_llvm) return NULL;
 
 	fn->llvm_value = LLVMGetNamedFunction(cnt->llvm_module, fn->llvm_name);
 	if (!fn->llvm_value) {
@@ -1487,7 +1487,7 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
 	MirFn *fn = fn_proto->base.value.data.v_ptr.data.fn;
 	/* unused function */
-	if (fn->is_ghost) return;
+	if (!fn->emit_llvm) return;
 	emit_fn_proto(cnt, fn);
 
 	if (is_not_flag(fn->flags, FLAG_EXTERN)) {
