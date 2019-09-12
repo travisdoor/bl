@@ -484,7 +484,7 @@ create_fn(Context *        cnt,
           const char *     llvm_name,
           int32_t          flags,
           MirInstrFnProto *prototype,
-          bool             emit_llvm);
+          bool             is_ghost);
 
 static MirMember *
 create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t index, MirType *type);
@@ -2823,7 +2823,7 @@ create_fn(Context *        cnt,
           const char *     llvm_name,
           int32_t          flags,
           MirInstrFnProto *prototype,
-          bool             emit_llvm)
+          bool             is_ghost)
 {
 	MirFn *tmp     = arena_alloc(&cnt->assembly->arenas.mir.fn);
 	tmp->variables = create_arr(cnt->assembly, sizeof(MirVar *));
@@ -2832,7 +2832,7 @@ create_fn(Context *        cnt,
 	tmp->flags     = flags;
 	tmp->decl_node = node;
 	tmp->prototype = &prototype->base;
-	tmp->emit_llvm = emit_llvm;
+	tmp->is_ghost  = is_ghost;
 	return tmp;
 }
 
@@ -3831,6 +3831,12 @@ append_instr_ret(Context *cnt, Ast *node, MirInstr *value, bool infer_type)
 
 	append_current_block(cnt, &tmp->base);
 	if (!is_block_terminated(block)) terminate_block(block, &tmp->base);
+
+	MirFn *fn = block->owner_fn;
+	assert(fn);
+
+	fn->terminal_instr = tmp;
+
 	return &tmp->base;
 }
 
@@ -5703,15 +5709,14 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	MirVar *var = decl->var;
 	assert(var);
 
+	/* CLEANUP: make also muttable variable to be compile time if they are set to comptime
+	 * init value? */
 	bool is_decl_comptime = !var->is_mutable;
-	bool infer_type       = !var->value.type;
 
-	if (decl->type) {
+	if (decl->type && var->value.type == NULL) {
 		AnalyzeResult result = analyze_resolve_type(cnt, decl->type, &var->value.type);
 		if (result.state != ANALYZE_PASSED) return result;
 	}
-
-	assert(decl->init || !infer_type);
 
 	if (var->is_in_gscope) { // global variable
 		/* All globals must be initialized. */
@@ -5721,7 +5726,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 			            ERR_UNINITIALIZED,
 			            decl->base.node->location,
 			            BUILDER_CUR_WORD,
-			            "All globals must be initializede.");
+			            "All globals must be initialized.");
 			return analyze_result(ANALYZE_FAILED, 0);
 		}
 
@@ -5745,8 +5750,16 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		 * is needed (user specified expected type directly), we must disable type infering
 		 * of terminal instruction in initializer and set exact type we are expecting to be
 		 * returned by the initializer function. */
-		if (!infer_type) {
-			bl_unimplemented;
+		if (var->value.type) {
+			MirInstrCall *initializer_call = (MirInstrCall *)decl->init;
+			MirFn *       fn               = get_callee(initializer_call);
+			MirInstrRet * terminal         = fn->terminal_instr;
+			assert(terminal);
+
+			if (terminal->infer_type) {
+				terminal->infer_type = false;
+				fn->type = create_type_fn(cnt, NULL, var->value.type, NULL, false);
+			}
 		}
 
 		/* Analyze and execute initializer. This could lead to POSTPONE when initializer
@@ -5757,26 +5770,28 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		/* Execute only when analyze passed. */
 		exec_call_top_lvl(cnt, (MirInstrCall *)decl->init);
 
-		if (infer_type) {
+		/* Infer type if needed */
+		if (!var->value.type) {
 			var->value.type = decl->init->value.type;
 		}
 
 		is_decl_comptime &= decl->init->comptime;
 	} else { // local variable
 		if (decl->init) {
-			if (infer_type) {
-				decl->init = analyze_slot_input(cnt, NULL, decl->init, NULL, false);
-				/* infer type */
-				MirType *type = decl->init->value.type;
-				assert(type);
-				var->value.type = type;
-			} else {
+			if (var->value.type) {
 				bool is_valid;
 				decl->init = analyze_slot_input(
 				    cnt, &is_valid, decl->init, var->value.type, false);
 
 				if (!is_valid) return analyze_result(ANALYZE_FAILED, 0);
+			} else {
+				decl->init = analyze_slot_input(cnt, NULL, decl->init, NULL, false);
+				/* infer type */
+				MirType *type = decl->init->value.type;
+				assert(type);
+				var->value.type = type;
 			}
+
 			is_decl_comptime &= decl->init->comptime;
 		}
 	}
@@ -5911,7 +5926,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 			 * instruction.
 			 */
 			// ++fn->ref_count;
-			fn->emit_llvm = true;
+			fn->is_ghost = false;
 		}
 	}
 
@@ -6382,6 +6397,12 @@ analyze(Context *cnt)
 			skip = false;
 		}
 
+		if (ip->kind == MIR_INSTR_FN_PROTO) {
+			assert(ip->value.data.v_ptr.kind == MIR_CP_FN);
+			MirFn *fn = ip->value.data.v_ptr.data.fn;
+			assert(fn);
+			if (fn->is_ghost) continue;
+		}
 		result = analyze_instr(cnt, ip);
 
 		switch (result.state) {
@@ -8684,21 +8705,20 @@ ast_test_case(Context *cnt, Ast *test)
 
 	fn_proto->base.value.type = cnt->builtin_types.t_test_case_fn;
 
-	const bool emit_llvm = cnt->assembly->options.force_test_to_llvm;
+	const bool is_ghost = !cnt->assembly->options.force_test_to_llvm;
 
 	const char *llvm_name = gen_uq_name(cnt, TEST_CASE_FN_NAME);
-	MirFn *     fn = create_fn(cnt, test, NULL, llvm_name, FLAG_TEST, fn_proto, emit_llvm);
+	MirFn *     fn = create_fn(cnt, test, NULL, llvm_name, FLAG_TEST, fn_proto, is_ghost);
 
 	assert(test->data.test_case.desc);
-	fn->test_case_desc                      = test->data.test_case.desc;
-	fn_proto->base.value.data.v_ptr.data.fn = fn;
+	fn->test_case_desc = test->data.test_case.desc;
+	set_const_ptr(&fn_proto->base.value.data.v_ptr, fn, MIR_CP_FN);
 
 	bo_array_push_back(cnt->test_cases, fn);
 
-	MirInstrBlock *entry_block =
-	    append_block(cnt, fn_proto->base.value.data.v_ptr.data.fn, "entry");
+	MirInstrBlock *entry_block = append_block(cnt, fn, "entry");
 
-	cnt->ast.exit_block = append_block(cnt, fn_proto->base.value.data.v_ptr.data.fn, "exit");
+	cnt->ast.exit_block = append_block(cnt, fn, "exit");
 
 	set_current_block(cnt, cnt->ast.exit_block);
 	append_instr_ret(cnt, NULL, NULL, false);
@@ -9123,9 +9143,9 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 	MirInstrBlock *prev_block      = get_current_block(cnt);
 	MirInstrBlock *prev_exit_block = cnt->ast.exit_block;
 
-	MirFn *fn =
-	    create_fn(cnt, lit_fn, NULL, NULL, 0, fn_proto, true); /* TODO: based on user flag!!! */
-	fn_proto->base.value.data.v_ptr.data.fn = fn;
+	MirFn *fn = create_fn(
+	    cnt, lit_fn, NULL, NULL, 0, fn_proto, false); /* TODO: based on user flag!!! */
+	set_const_ptr(&fn_proto->base.value.data.v_ptr, fn, MIR_CP_FN);
 
 	/* function body */
 	/* external functions has no body */
@@ -9135,8 +9155,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 	fn->body_scope = ast_block->owner_scope;
 
 	/* create block for initialization locals and arguments */
-	MirInstrBlock *init_block =
-	    append_block(cnt, fn_proto->base.value.data.v_ptr.data.fn, "entry");
+	MirInstrBlock *init_block = append_block(cnt, fn, "entry");
 
 	/* Every user generated function must contain exit block; this block is invoked last
 	 * in every function a eventually can return .ret value stored in temporary storage.
@@ -9145,7 +9164,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 	 * defer statement, because we need to call defer blocks after return value
 	 * evaluation and before terminal instruction of the function. Last defer block
 	 * always breaks into the exit block. */
-	cnt->ast.exit_block = append_block(cnt, fn_proto->base.value.data.v_ptr.data.fn, "exit");
+	cnt->ast.exit_block = append_block(cnt, fn, "exit");
 
 	if (ast_fn_type->data.type_fn.ret_type) {
 		set_current_block(cnt, init_block);
@@ -9686,11 +9705,13 @@ ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *f
 	MirInstrBlock *prev_block = get_current_block(cnt);
 	MirInstr *     fn_proto   = append_instr_fn_proto(cnt, NULL, NULL, NULL);
 	fn_proto->value.type      = final_fn_type;
-	fn_proto->value.data.v_ptr.data.fn =
-	    create_fn(cnt, NULL, NULL, fn_name, 0, (MirInstrFnProto *)fn_proto, false);
-	fn_proto->value.data.v_ptr.data.fn->type = final_fn_type;
 
-	MirInstrBlock *entry = append_block(cnt, fn_proto->value.data.v_ptr.data.fn, "entry");
+	MirFn *fn = create_fn(cnt, NULL, NULL, fn_name, 0, (MirInstrFnProto *)fn_proto, true);
+	set_const_ptr(&fn_proto->value.data.v_ptr, fn, MIR_CP_FN);
+
+	fn->type = final_fn_type;
+
+	MirInstrBlock *entry = append_block(cnt, fn, "entry");
 	set_current_block(cnt, entry);
 
 	MirInstr *result = ast(cnt, node);

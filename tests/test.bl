@@ -2,8 +2,11 @@
 
 //#load "std/print.bl"
 
+foo : string : 9223372036854775807;
 
 main :: fn () s32 {
-    foo :: 10;
+
+    //print("%\n", foo);
+    
     return 0;
 };

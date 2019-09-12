@@ -258,7 +258,11 @@ struct MirFn {
 	const char * llvm_name;
 	LLVMValueRef llvm_value;
 	bool         analyzed_for_cmptime_exec;
-	bool         emit_llvm;
+
+	/* Ghost function is usually internal compiler generated function like type resolver, global
+	 * initializer, etc. This functions are analyzed ad hoc when they are going to be executed
+	 * during compilation. Ghosts should never have LLVM IR representation. */
+	bool is_ghost;
 
 	DCpointer   extern_entry;
 	int32_t     flags;
@@ -270,7 +274,12 @@ struct MirFn {
 	int32_t        block_count;
 
 	MirConstValueData *exec_ret_value;
-	MirInstr *         ret_tmp;
+
+	/* Teporary variable used for return value. */
+	MirInstr *ret_tmp;
+
+	/* Return instruction of function. */
+	MirInstrRet *terminal_instr;
 };
 
 /* MEMBER */
