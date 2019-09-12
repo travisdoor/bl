@@ -270,7 +270,12 @@ struct MirFn {
 	int32_t        block_count;
 
 	MirConstValueData *exec_ret_value;
-	MirInstr *         ret_tmp;
+
+	/* Teporary variable used for return value. */
+	MirInstr *ret_tmp;
+
+	/* Return instruction of function. */
+	MirInstrRet *terminal_instr;
 };
 
 /* MEMBER */
@@ -554,7 +559,7 @@ struct MirInstrRet {
 	MirInstr base;
 
 	MirInstr *value;
-	bool      allow_fn_ret_type_override;
+	bool      infer_type;
 };
 
 struct MirInstrBinop {
@@ -578,6 +583,7 @@ struct MirInstrFnProto {
 	MirInstr *       type;
 	MirInstr *       user_type;
 	struct Location *first_unrechable_location;
+	bool             pushed_for_analyze;
 };
 
 struct MirInstrTypeFn {

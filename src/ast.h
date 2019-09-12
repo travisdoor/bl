@@ -288,14 +288,17 @@ struct AstExprLitFn {
 
 struct AstExprLitInt {
 	uint64_t val;
+	bool     overflow;
 };
 
 struct AstExprLitFloat {
 	float val;
+	bool  overflow;
 };
 
 struct AstExprLitDouble {
 	double val;
+	bool   overflow;
 };
 
 struct AstExprLitChar {

@@ -65,6 +65,7 @@ typedef struct Token {
 	Sym        sym;
 	Location   location;
 	TokenValue value;
+	bool       overflow;
 } Token;
 
 /* sizeof this structure is 8 bytes so it can be passed by value */

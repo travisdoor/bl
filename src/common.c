@@ -150,6 +150,17 @@ print_bits(int32_t const size, void const *const ptr)
 	puts("");
 }
 
+int
+count_bits(uint64_t n)
+{
+	int count = 0;
+	while (n) {
+		count++;
+		n = n >> 1;
+	}
+	return count;
+}
+
 bool
 get_dir_from_filepath(char *buf, const size_t l, const char *filepath)
 {

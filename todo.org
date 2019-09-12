@@ -1,4 +1,4 @@
-* Release 0.5.0 (1st Oct 2019) [33%]
+* Release 0.5.0 (1st Oct 2019) [27%]
   - [ ] Complete missing erase cases.
   - [ ] LLVM DI fine tunning and globals.
   - [ ] Fix global immutables. 
@@ -8,8 +8,11 @@
   - [X] Defer statement.
   - [X] Runtime type info. 
   - [X] First version of LLVM DI. 
+  - [ ] #extern "name"
+  - [ ] len in arrays and slices as s64 not u64
+  - [ ] enable implicit casting only to bigger integer type and check signed unsigned also 
 
-* Bugs [20%]
+* Bugs [40%]
   - [X] fn typedef
     Recognise this as function type definition.
     T :: fn (i: s32, j: bool) s32; 
@@ -19,7 +22,7 @@
     
   - [ ] VK_NULL_HANDLE :: null; cannot be used
 
-  - [ ] Wrong initialization of globals with defined type:
+  - [X] Wrong initialization of globals with defined type:
     Foo : u64 : 10;
     
   - [ ] Unstable function pointers and invalid error reporting locaitons.
