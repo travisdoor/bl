@@ -10,6 +10,7 @@
   - [X] First version of LLVM DI. 
   - [ ] #extern "name"
   - [ ] len in arrays and slices as s64 not u64
+  - [ ] enable implicit casting only to bigger integer type and check signed unsigned also 
 
 * Bugs [40%]
   - [X] fn typedef

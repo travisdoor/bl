@@ -4,7 +4,7 @@
 
 foo :: 18446744073709551615;
 bar : u8 : 9223372036854775808;
-homo : u8 : auto 10;
+homo : string : 10;
 
 main :: fn () s32 {
     print("%\n", foo);
