@@ -5,7 +5,10 @@
 main :: fn () s32 {
     i : u8 = 10;
     j : u16 = 10;
-    i + j;
+    j = i + j;
+    j = j + i;
+    j = j + j;
+    null == null;
     return 0;
 };
 

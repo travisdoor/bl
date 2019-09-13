@@ -1223,8 +1223,7 @@ can_impl_cast(MirType *from, MirType *to)
 {
 	if (from->kind != to->kind) return false;
 	if (from->kind != MIR_TYPE_INT) return false;
-	return true;
-	/*
+	// return true;
 	if (from->data.integer.is_signed != to->data.integer.is_signed) return false;
 
 	const size_t fb = from->data.integer.bitcount;
@@ -1233,7 +1232,6 @@ can_impl_cast(MirType *from, MirType *to)
 	if (fb > tb) return false;
 
 	return true;
-	*/
 }
 
 static inline bool
@@ -5647,25 +5645,55 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 	 ((_type)->kind == MIR_TYPE_ENUM && (_op == BINOP_EQ || _op == BINOP_NEQ)))
 
 	const bool lhs_is_null = binop->lhs->value.type->kind == MIR_TYPE_NULL;
+	const bool rhs_is_null = binop->rhs->value.type->kind == MIR_TYPE_NULL;
 
 	bool is_valid;
-	binop->lhs = analyze_slot_input(cnt, &is_valid, binop->lhs, NULL, ASI_LOAD_WITH_REDUCTION);
+	binop->lhs = analyze_slot_input(cnt, &is_valid, binop->lhs, NULL, ASI_ENABLE_INSERT_LOAD);
 	binop->rhs = analyze_slot_input(cnt,
 	                                &is_valid,
 	                                binop->rhs,
-	                                lhs_is_null ? NULL : binop->lhs->value.type,
-	                                lhs_is_null ? ASI_LOAD_WITH_REDUCTION : ASI_DEFAULT);
+	                                binop->lhs->value.type,
+	                                ASI_ENABLE_SET_AUTOCAST | ASI_ENABLE_INSERT_LOAD);
+
 	if (!is_valid) return analyze_result(ANALYZE_FAILED, 0);
 
-	/*
-	const bool promote_ltype = can_impl_cast(binop->lhs->value.type, binop->rhs->value.type);
-	const bool promote_rtype = can_impl_cast(binop->rhs->value.type, binop->lhs->value.type);
+	const bool promote_LtoR = can_impl_cast(binop->lhs->value.type, binop->rhs->value.type);
+	const bool promote_RtoL = can_impl_cast(binop->rhs->value.type, binop->lhs->value.type);
 
-	bl_log("promote type: L: %s; R: %s",
-	       promote_ltype ? "TRUE" : "FALSE",
-	       promote_rtype ? "TRUE" : "FALSE");
-	*/
+	if (promote_LtoR) {
+		binop->lhs =
+		    analyze_slot_input(cnt,
+		                       &is_valid,
+		                       binop->lhs,
+		                       binop->rhs->value.type,
+		                       ASI_ENABLE_TYPE_VALIDATION | ASI_ENABLE_SET_CONST_LIT);
+	} else if (promote_RtoL) {
+		binop->rhs =
+		    analyze_slot_input(cnt,
+		                       &is_valid,
+		                       binop->rhs,
+		                       binop->lhs->value.type,
+		                       ASI_ENABLE_TYPE_VALIDATION | ASI_ENABLE_SET_CONST_LIT);
+	} else if (lhs_is_null) {
+		binop->lhs = analyze_slot_input(
+		    cnt, &is_valid, binop->lhs, binop->rhs->value.type, ASI_ENABLE_SET_NULL);
+	} else if (rhs_is_null) {
+		binop->rhs = analyze_slot_input(
+		    cnt, &is_valid, binop->rhs, binop->lhs->value.type, ASI_ENABLE_SET_NULL);
 
+	} else {
+		binop->rhs =
+		    analyze_slot_input(cnt,
+		                       &is_valid,
+		                       binop->rhs,
+		                       binop->lhs->value.type,
+		                       ASI_ENABLE_TYPE_VALIDATION | ASI_ENABLE_SET_CONST_LIT);
+	}
+
+	binop->lhs = analyze_slot_input(cnt, &is_valid, binop->lhs, NULL, ASI_ENABLE_REDUCTION);
+	binop->rhs = analyze_slot_input(cnt, &is_valid, binop->rhs, NULL, ASI_ENABLE_REDUCTION);
+
+	if (!is_valid) return analyze_result(ANALYZE_FAILED, 0);
 	/*
 	 * This is special case when lhs is null constant; in such case base type of this
 	 * null must corespond with rhs type (due to LLVM IR null type policy).
@@ -6150,8 +6178,8 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 			call_arg        = &call->args->data[i];
 			callee_arg_type = mir_get_fn_arg_type(type, i);
 
-			(*call_arg) = analyze_slot_input(
-			    cnt, &valid, *call_arg, callee_arg_type, ASI_FULL);
+			(*call_arg) =
+			    analyze_slot_input(cnt, &valid, *call_arg, callee_arg_type, ASI_FULL);
 		}
 	}
 

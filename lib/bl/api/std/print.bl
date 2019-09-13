@@ -373,7 +373,7 @@ print_u64_hex :: fn (buf: []u8, cur: s32, v: u64) s32 {
         if d != 0 { hit_non_zero = true; }
 
         if hit_non_zero {
-            cur = print_char(buf, cur, digits[d]);
+            cur = print_char(buf, cur, digits[auto d]);
         }
     }
 
@@ -385,7 +385,7 @@ print_u64 :: fn (buf: []u8, cur: s32, v: u64) s32 {
         return print_string(buf, cur, "0");
     }
 
-    base :: 10;
+    base : u64 : 10;
     div : u64 = 10000000000000000000;
     hit_non_zero := false;
 
@@ -397,7 +397,7 @@ print_u64 :: fn (buf: []u8, cur: s32, v: u64) s32 {
         if d != 0 { hit_non_zero = true; }
 
         if hit_non_zero {
-            cur = print_char(buf, cur, d + '0');
+            cur = print_char(buf, cur, auto d + '0');
         }
     }
 
