@@ -34,7 +34,7 @@ is_flag_u32 :: fn (v: u32, flag: u32) bool #inline {
  * Converts C string to BL string.
  */
 cstr_to_str :: fn (cstr: *u8) string #inline {
-    return {:string: strlen(cstr), cstr};
+    return {:string: auto strlen(cstr), cstr};
 };
 
 ptr_shift_bytes :: fn (ptr: *u8, bytes: usize) *u8 #inline {

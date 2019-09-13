@@ -327,7 +327,7 @@ struct MirTypeNull {
 
 struct MirTypeArray {
 	MirType *elem_type;
-	size_t   len;
+	int64_t  len;
 };
 
 struct MirType {

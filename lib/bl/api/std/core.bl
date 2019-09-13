@@ -160,7 +160,7 @@ TypeInfoArray :: struct #compiler {
 
     name: string,
     elem_type: *TypeInfo, // Element type information.
-    len: usize // Array lenght.
+    len: s64 // Array lenght.
 };
 
 /*
