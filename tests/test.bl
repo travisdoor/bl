@@ -3,12 +3,7 @@
 //#load "std/print.bl"
 
 main :: fn () s32 {
-    i : u8 = 10;
-    j : u16 = 10;
-    j = i + j;
-    j = j + i;
-    j = j + j;
-    null == null;
+    foo := 1 + sizeof(s32); // LHS -> change to usize
     return 0;
 };
 

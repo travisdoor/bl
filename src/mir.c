@@ -5694,13 +5694,6 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 	binop->rhs = analyze_slot_input(cnt, &is_valid, binop->rhs, NULL, ASI_ENABLE_REDUCTION);
 
 	if (!is_valid) return analyze_result(ANALYZE_FAILED, 0);
-	/*
-	 * This is special case when lhs is null constant; in such case base type of this
-	 * null must corespond with rhs type (due to LLVM IR null type policy).
-	 */
-	if (lhs_is_null && !setup_instr_const_null(cnt, binop->lhs, binop->rhs->value.type)) {
-		return analyze_result(ANALYZE_FAILED, 0);
-	}
 
 	MirInstr *lhs = binop->lhs;
 	MirInstr *rhs = binop->rhs;

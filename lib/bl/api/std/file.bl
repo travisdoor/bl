@@ -66,13 +66,13 @@ file_close :: fn (file: File) {
 
 file_read_all :: fn (file: File) string {
     fseek(file, 0, SEEK_END);
-    size := ftell(file);
+    size := cast(usize) ftell(file);
     if size == 0 {
         return string_new();
     }
 
     fseek(file, 0, SEEK_SET);
-    tmp := string_new_reserved(size * auto sizeof(u8));
+    tmp := string_new_reserved(size * sizeof(u8));
     read := fread(tmp.ptr, sizeof(u8), size, file);
     tmp.len = read;
     return tmp;
