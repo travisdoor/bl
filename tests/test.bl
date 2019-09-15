@@ -4,11 +4,7 @@
 
 main :: fn () s32 {
     foo := 1 + sizeof(s32); // LHS -> change to usize
+    bar := sizeof(s32) + 1; // LHS -> change to usize
+    ptr := null == null;
     return 0;
 };
-
-
-/*
-u8 > u16
-
-*/

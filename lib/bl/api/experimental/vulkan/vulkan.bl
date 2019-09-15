@@ -28,7 +28,7 @@
 
 #link "vulkan"
 
-VK_API_VERSION_1_0 :: 0x400000000;
+VK_API_VERSION_1_0 : u32 : 0x400000000;
 VK_MAX_PHYSICAL_DEVICE_NAME_SIZE :: 256;
 VK_UUID_SIZE :: 16;
 VK_MAX_MEMORY_TYPES :: 32;
@@ -36,8 +36,8 @@ VK_MAX_MEMORY_HEAPS :: 16;
 VK_MAX_EXTENSION_NAME_SIZE :: 256;
 VK_MAX_DESCRIPTION_SIZE :: 256;
 VK_KHR_SWAPCHAIN_EXTENSION_NAME :: "VK_KHR_swapchain";
-VK_TRUE :: 1;
-VK_FALSE :: 0;
+VK_TRUE : u32 : 1;
+VK_FALSE : u32 : 0;
 
 VkInstance :: *u8;
 VkPhysicalDevice :: *u8;
@@ -2124,7 +2124,7 @@ vkCreateFence :: fn (device: VkDevice, pCreateInfo: *VkFenceCreateInfo, pAllocat
 vkDestroyFence :: fn (device: VkDevice, fence: VkFence, pAllocator: *VkAllocationCallbacks) #extern;
 vkResetFences :: fn (device: VkDevice, fenceCount: u32, pFences: *VkFence) VkResult #extern;
 vkGetFenceStatus :: fn (device: VkDevice, fence: VkFence) VkResult #extern;
-vkWaitForFences :: fn (device: VkDevice, fenceCount: u32, pFences: *VkFence, waitAll: VkBool32, timeout: u32) VkResult #extern;
+vkWaitForFences :: fn (device: VkDevice, fenceCount: u32, pFences: *VkFence, waitAll: VkBool32, timeout: u64) VkResult #extern;
 
 VK_MAKE_VERSION :: fn (major: u32, minor: u32, patch: u32) u32 #inline {
     return ((major) << 22) | ((minor) << 12) | (patch);

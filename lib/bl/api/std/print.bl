@@ -40,7 +40,7 @@ print :: fn (format: string, args: ...) s32 {
     tmp2 := {:[]Any: args.len, args.ptr };
 
     w := print_impl(tmp, format, tmp2);
-    __os_write(OS_STDOUT, buf.ptr, w);
+    __os_write(OS_STDOUT, buf.ptr, auto w);
     return w;
 };
 
@@ -54,7 +54,7 @@ eprint :: fn (format: string, args: ...) s32 {
     tmp2 := {:[]Any: args.len, args.ptr };
 
     w := print_impl(tmp, format, tmp2);
-    __os_write(OS_STDERR, buf.ptr, w);
+    __os_write(OS_STDERR, buf.ptr, auto w);
     return w;
 };
 
@@ -100,7 +100,7 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
                 int = -int;
             }
 
-            return print_u64(buf, cur, int);
+            return print_u64(buf, cur, auto int);
         } else {
             int := u64_from_u8_ptr(any.data, info.bit_count);
             return print_u64(buf, cur, int);
@@ -135,11 +135,11 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
 
         cur = print_string(buf, cur, "[");
 
-        loop i := 0; i < info.len; i += 1 {
+        loop i : usize = 0; i < auto info.len; i += 1 {
             tmp.data = cast(*u8) (cast(usize) any.data + i * elem_size);
             cur = print_any(buf, cur, &tmp);
 
-            if i < info.len - 1 {
+            if i < auto info.len - 1 {
                 cur = print_string(buf, cur, ", ");
             }
         }
@@ -158,7 +158,7 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
                 member := info.members[i];
                 cur = print_string(buf, cur, member.name);
                 cur = print_string(buf, cur, " = ");
-                tmp.data = cast(*u8) (cast(usize) any.data + member.offset_bytes);
+                tmp.data = cast(*u8) (cast(usize) any.data + auto member.offset_bytes);
                 tmp.type_info = member.base_type;
 
                 cur = print_any(buf, cur, &tmp);
@@ -172,8 +172,8 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
         }
 
         // we are printing slice
-        len := u64_from_u8_ptr(cast(*u8) (cast(usize) any.data + info.members[0].offset_bytes), 64);
-        ptr := ptr_from_ptr(cast(*u8) (cast(usize) any.data + info.members[1].offset_bytes));
+        len := u64_from_u8_ptr(cast(*u8) (cast(usize) any.data + auto info.members[0].offset_bytes), 64);
+        ptr := ptr_from_ptr(cast(*u8) (cast(usize) any.data + auto info.members[1].offset_bytes));
 
         if len == 0 {
             return print_string(buf, cur, "[]");
@@ -191,7 +191,7 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
         tmp.type_info = elem_type;
 
         if elem_size > 0 {
-            loop i := 0; i < len; i += 1 {
+            loop i : usize = 0; i < len; i += 1 {
                 tmp.data = cast(*u8) (cast(usize) ptr + i * elem_size);
                 cur = print_any(buf, cur, &tmp);
 
@@ -237,7 +237,7 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
             value = -value;
         }
 
-        return print_u64(buf, cur, value);
+        return print_u64(buf, cur, auto value);
     } else if any.type_info.kind == TypeKind.Type {
         // Type
         return print_type(buf, cur, cast(*TypeInfo) any.data);
@@ -260,11 +260,11 @@ print_type :: fn (buf: []u8, cur: s32, info: *TypeInfo) s32 {
             cur = print_string(buf, cur, "u");
         }
 
-        return print_u64(buf, cur, c.bit_count);
+        return print_u64(buf, cur, auto c.bit_count);
     } else if info.kind == TypeKind.Real {
         c := cast(*TypeInfoReal) info;
         cur = print_string(buf, cur, "f");
-        return print_u64(buf, cur, c.bit_count);
+        return print_u64(buf, cur, auto c.bit_count);
     } else if info.kind == TypeKind.Bool{
         return print_string(buf, cur, "bool");
     } else if info.kind == TypeKind.Ptr {
@@ -274,7 +274,7 @@ print_type :: fn (buf: []u8, cur: s32, info: *TypeInfo) s32 {
     } else if info.kind == TypeKind.Array {
         c := cast(*TypeInfoArray) info;
         cur = print_string(buf, cur, "[");
-        cur = print_u64(buf, cur, c.len);
+        cur = print_u64(buf, cur, auto c.len);
         cur = print_string(buf, cur, "]");
 
         return print_type(buf, cur, c.elem_type);
@@ -318,7 +318,7 @@ print_type :: fn (buf: []u8, cur: s32, info: *TypeInfo) s32 {
             variant := c.variants[i];
             cur = print_string(buf, cur, variant.name);
             cur = print_string(buf, cur, " :: ");
-            cur = print_u64(buf, cur, variant.value);
+            cur = print_u64(buf, cur, auto variant.value);
 
             if i < c.variants.len - 1 { cur = print_string(buf, cur, ", "); }
         }

@@ -1256,8 +1256,8 @@ can_impl_cast(MirType *from, MirType *to)
 {
 	if (from->kind != to->kind) return false;
 	if (from->kind != MIR_TYPE_INT) return false;
-	return true;
-	/* TODO: enable after correct type propagation of contants
+	// return true;
+	// TODO: enable after correct type propagation of contants
 	if (from->data.integer.is_signed != to->data.integer.is_signed) return false;
 
 	const size_t fb = from->data.integer.bitcount;
@@ -1266,7 +1266,6 @@ can_impl_cast(MirType *from, MirType *to)
 	if (fb > tb) return false;
 
 	return true;
-	*/
 }
 
 /* CLEANUP: remove */
@@ -5717,22 +5716,51 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 	 ((_type)->kind == MIR_TYPE_BOOL && ast_binop_is_logic(_op)) ||                            \
 	 ((_type)->kind == MIR_TYPE_ENUM && (_op == BINOP_EQ || _op == BINOP_NEQ)))
 
-	const bool lhs_is_null = binop->lhs->value.type->kind == MIR_TYPE_NULL;
+	{ /* Handle type propagation. */
+		MirType *lhs_type = binop->lhs->value.type;
+		MirType *rhs_type = binop->rhs->value.type;
 
-	// TODO: use different approach
-	bool is_valid;
-	binop->lhs = analyze_slot_input(cnt, &is_valid, binop->lhs, NULL, false);
-	binop->rhs = analyze_slot_input(
-	    cnt, &is_valid, binop->rhs, lhs_is_null ? NULL : binop->lhs->value.type, false);
+		if (is_load_needed(binop->lhs)) lhs_type = mir_deref_type(lhs_type);
+		if (is_load_needed(binop->rhs)) rhs_type = mir_deref_type(rhs_type);
 
-	if (!is_valid) return analyze_result(ANALYZE_FAILED, 0);
+		const bool lhs_is_null = binop->lhs->value.type->kind == MIR_TYPE_NULL;
+		const bool lhs_is_const_int =
+		    binop->lhs->kind == MIR_INSTR_CONST && lhs_type->kind == MIR_TYPE_INT;
+		const bool can_propagate_LtoR =
+		    can_impl_cast(lhs_type, rhs_type) || lhs_is_const_int;
 
-	/*
-	 * This is special case when lhs is null constant; in such case base type of this
-	 * null must corespond with rhs type (due to LLVM IR null type policy).
-	 */
-	if (lhs_is_null && !setup_instr_const_null(cnt, binop->lhs, binop->rhs->value.type)) {
-		return analyze_result(ANALYZE_FAILED, 0);
+		char type_nameL[256];
+		mir_type_to_str(type_nameL, 256, lhs_type, true);
+		char type_nameR[256];
+		mir_type_to_str(type_nameR, 256, rhs_type, true);
+
+		if (can_propagate_LtoR) {
+			if (analyze_slot(cnt, &analyze_slot_conf_default, &binop->lhs, rhs_type) !=
+			    ANALYZE_PASSED)
+				return analyze_result(ANALYZE_FAILED, 0);
+
+			if (analyze_slot(cnt, &analyze_slot_conf_basic, &binop->rhs, NULL) !=
+			    ANALYZE_PASSED)
+				return analyze_result(ANALYZE_FAILED, 0);
+		} else {
+			if (analyze_slot(cnt, &analyze_slot_conf_basic, &binop->lhs, NULL) !=
+			    ANALYZE_PASSED)
+				return analyze_result(ANALYZE_FAILED, 0);
+
+			if (analyze_slot(
+			        cnt,
+			        lhs_is_null ? &analyze_slot_conf_basic : &analyze_slot_conf_default,
+			        &binop->rhs,
+			        lhs_is_null ? NULL : binop->lhs->value.type) != ANALYZE_PASSED)
+				return analyze_result(ANALYZE_FAILED, 0);
+
+			if (lhs_is_null) {
+				if (analyze_stage_set_null(
+				        cnt, &binop->lhs, binop->rhs->value.type) !=
+				    ANALYZE_STAGE_BREAK)
+					return analyze_result(ANALYZE_FAILED, 0);
+			}
+		}
 	}
 
 	MirInstr *lhs = binop->lhs;
@@ -5769,12 +5797,33 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 AnalyzeResult
 analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
+	MirType *type = unop->expr->value.type;
+	if (unop->op == UNOP_NEG && unop->expr->kind == MIR_INSTR_CONST &&
+	    type->kind == MIR_TYPE_INT) {
+		const uint64_t val          = unop->expr->value.data.v_u64;
+		const int32_t  desired_bits = count_bits(val);
+
+		if (desired_bits <= 32)
+			type = cnt->builtin_types.t_s32;
+		else if (desired_bits <= 64)
+			type = cnt->builtin_types.t_s64;
+
+		unref_instr(unop->expr);
+		erase_instr_tree(unop->expr);
+
+		mutate_instr(&unop->base, MIR_INSTR_CONST);
+		unop->base.comptime = true;
+		init_or_create_const_integer(cnt, &unop->base.value, type, val);
+
+		return analyze_result(ANALYZE_PASSED, 0);
+	}
+
 	if (analyze_slot(cnt, &analyze_slot_conf_basic, &unop->expr, NULL) != ANALYZE_PASSED) {
 		return analyze_result(ANALYZE_FAILED, 0);
 	}
 
 	assert(unop->expr && unop->expr->analyzed);
-	MirType *type = unop->expr->value.type;
+	type = unop->expr->value.type;
 	assert(type);
 	unop->base.value.type = type;
 
@@ -5973,6 +6022,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 				/* infer type */
 				MirType *type = decl->init->value.type;
 				assert(type);
+				if (type->kind == MIR_TYPE_NULL) type = type->data.null.base_type;
 				var->value.type = type;
 			}
 
