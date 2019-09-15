@@ -241,7 +241,7 @@ pick_physical_device :: fn (r: *Renderer) {
     }
 };
 
-DeviceQueueCreateInfos :: [sizeof(QueueFamilyIndices) / sizeof(Opt_u32)]VkDeviceQueueCreateInfo;
+DeviceQueueCreateInfos :: [auto (sizeof(QueueFamilyIndices) / sizeof(Opt_u32))]VkDeviceQueueCreateInfo;
 
 create_logical_device :: fn (r: *Renderer) {
     print("Creating device\n");

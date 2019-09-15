@@ -1059,10 +1059,10 @@ parse_decl_variant(Context *cnt, Ast *prev)
 	} else if (prev) {
 		assert(prev->kind == AST_DECL_VARIANT);
 		Ast *addition =
-		    ast_create_node(cnt->ast_arena, AST_EXPR_LIT_INT, NULL, scope_get(cnt));
+		    ast_create_node(cnt->ast_arena, AST_EXPR_LIT_INT, tok_begin, scope_get(cnt));
 		addition->data.expr_integer.val = 1;
 
-		Ast *binop = ast_create_node(cnt->ast_arena, AST_EXPR_BINOP, NULL, scope_get(cnt));
+		Ast *binop = ast_create_node(cnt->ast_arena, AST_EXPR_BINOP, tok_begin, scope_get(cnt));
 		binop->data.expr_binop.kind = BINOP_ADD;
 		binop->data.expr_binop.lhs  = prev->data.decl_variant.value;
 		binop->data.expr_binop.rhs  = addition;
