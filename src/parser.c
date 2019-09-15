@@ -1050,7 +1050,6 @@ parse_decl_variant(Context *cnt, Ast *prev)
 	Ast *var = ast_create_node(cnt->ast_arena, AST_DECL_VARIANT, tok_begin, scope_get(cnt));
 
 	/* TODO: Validate correcly '::' */
-	/* TODO: Automatic values set in MIR later??? */
 	Token *tok_assign = tokens_consume_if(cnt->tokens, SYM_COLON);
 	tok_assign        = tokens_consume_if(cnt->tokens, SYM_COLON);
 	if (tok_assign) {

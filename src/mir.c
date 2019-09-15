@@ -316,9 +316,9 @@ typedef struct {
 } AnalyzeResult;
 
 typedef enum {
-	ANALYZE_STAGE_APPLIED,
+	ANALYZE_STAGE_BREAK,
+	ANALYZE_STAGE_CONTINUE,
 	ANALYZE_STAGE_FAILED,
-	ANALYZE_STAGE_PASSED,
 } AnalyzeStageState;
 
 typedef AnalyzeStageState (*AnalyzeStageFn)(Context *, MirInstr **, MirType *);
@@ -1256,7 +1256,8 @@ can_impl_cast(MirType *from, MirType *to)
 {
 	if (from->kind != to->kind) return false;
 	if (from->kind != MIR_TYPE_INT) return false;
-	// return true;
+	return true;
+	/* TODO: enable after correct type propagation of contants
 	if (from->data.integer.is_signed != to->data.integer.is_signed) return false;
 
 	const size_t fb = from->data.integer.bitcount;
@@ -1265,6 +1266,7 @@ can_impl_cast(MirType *from, MirType *to)
 	if (fb > tb) return false;
 
 	return true;
+	*/
 }
 
 /* CLEANUP: remove */
@@ -4877,7 +4879,7 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast, bool analyze_op_only)
 	MirType *expr_type = cast->expr->value.type;
 
 	/* Setup const int type. */
-	if (analyze_stage_set_const_int(cnt, &cast->expr, dest_type) == ANALYZE_STAGE_APPLIED) {
+	if (analyze_stage_set_const_int(cnt, &cast->expr, dest_type) == ANALYZE_STAGE_BREAK) {
 		cast->op = MIR_CAST_NONE;
 		goto DONE;
 	}
@@ -5636,9 +5638,11 @@ analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 		variant                            = variant_instr->variant;
 		assert(variant && "Missing variant.");
 
-                if (analyze_slot(cnt, &analyze_slot_conf_default, &variant_instr->value, base_type) != ANALYZE_PASSED) {
-        		return analyze_result(ANALYZE_FAILED, 0);
-                }
+		if (analyze_slot(
+		        cnt, &analyze_slot_conf_default, &variant_instr->value, base_type) !=
+		    ANALYZE_PASSED) {
+			return analyze_result(ANALYZE_FAILED, 0);
+		}
 
 		reduce_instr(cnt, &variant_instr->base);
 
@@ -5660,7 +5664,10 @@ analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 {
 	assert(type_ptr->type);
 
-	type_ptr->type = analyze_slot_input(cnt, NULL, type_ptr->type, NULL, false);
+	if (analyze_slot(cnt, &analyze_slot_conf_basic, &type_ptr->type, NULL) != ANALYZE_PASSED) {
+		return analyze_result(ANALYZE_FAILED, 0);
+	}
+
 	assert(type_ptr->type->comptime);
 
 	{ /* Target value must be a type. */
@@ -5712,6 +5719,7 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 
 	const bool lhs_is_null = binop->lhs->value.type->kind == MIR_TYPE_NULL;
 
+	// TODO: use different approach
 	bool is_valid;
 	binop->lhs = analyze_slot_input(cnt, &is_valid, binop->lhs, NULL, false);
 	binop->rhs = analyze_slot_input(
@@ -5761,7 +5769,9 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 AnalyzeResult
 analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
-	unop->expr = analyze_slot_input(cnt, NULL, unop->expr, NULL, false);
+	if (analyze_slot(cnt, &analyze_slot_conf_basic, &unop->expr, NULL) != ANALYZE_PASSED) {
+		return analyze_result(ANALYZE_FAILED, 0);
+	}
 
 	assert(unop->expr && unop->expr->analyzed);
 	MirType *type = unop->expr->value.type;
@@ -5792,14 +5802,15 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 	assert(fn_type->kind == MIR_TYPE_FN);
 
 	if (ret->value) {
-		bool is_valid;
-		ret->value = analyze_slot_input(cnt,
-		                                &is_valid,
-		                                ret->value,
-		                                ret->infer_type ? NULL : fn_type->data.fn.ret_type,
-		                                false);
-
-		if (!is_valid) return analyze_result(ANALYZE_FAILED, 0);
+		const AnalyzeSlotConfig *conf =
+		    ret->infer_type ? &analyze_slot_conf_basic : &analyze_slot_conf_default;
+		if (analyze_slot(cnt,
+		                 conf,
+		                 &ret->value,
+		                 ret->infer_type ? NULL : fn_type->data.fn.ret_type) !=
+		    ANALYZE_PASSED) {
+			return analyze_result(ANALYZE_FAILED, 0);
+		}
 	}
 
 	MirInstr *value = ret->value;
@@ -5946,13 +5957,19 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	} else { // local variable
 		if (decl->init) {
 			if (var->value.type) {
-				bool is_valid;
-				decl->init = analyze_slot_input(
-				    cnt, &is_valid, decl->init, var->value.type, false);
-
-				if (!is_valid) return analyze_result(ANALYZE_FAILED, 0);
+				if (analyze_slot(cnt,
+				                 &analyze_slot_conf_default,
+				                 &decl->init,
+				                 var->value.type) != ANALYZE_PASSED) {
+					return analyze_result(ANALYZE_FAILED, 0);
+				}
 			} else {
-				decl->init = analyze_slot_input(cnt, NULL, decl->init, NULL, false);
+				if (analyze_slot(
+				        cnt, &analyze_slot_conf_basic, &decl->init, NULL) !=
+				    ANALYZE_PASSED) {
+					return analyze_result(ANALYZE_FAILED, 0);
+				}
+
 				/* infer type */
 				MirType *type = decl->init->value.type;
 				assert(type);
@@ -6065,7 +6082,9 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 		return analyze_result(ANALYZE_POSTPONE, 0);
 	}
 
-	call->callee = analyze_slot_input(cnt, NULL, call->callee, NULL, false);
+	if (analyze_slot(cnt, &analyze_slot_conf_basic, &call->callee, NULL) != ANALYZE_PASSED) {
+		return analyze_result(ANALYZE_FAILED, 0);
+	}
 
 	MirType *type = call->callee->value.type;
 	assert(type && "invalid type of called object");
@@ -6201,8 +6220,10 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 			call_arg        = &call->args->data[i];
 			callee_arg_type = mir_get_fn_arg_type(type, i);
 
-			(*call_arg) =
-			    analyze_slot_input(cnt, &valid, *call_arg, callee_arg_type, true);
+			if (analyze_slot(cnt, &analyze_slot_conf_full, call_arg, callee_arg_type) !=
+			    ANALYZE_PASSED) {
+				return analyze_result(ANALYZE_FAILED, 0);
+			}
 		}
 	}
 
@@ -6238,9 +6259,10 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
 	MirType *dest_type = mir_deref_type(dest->value.type);
 	assert(dest_type && "store destination has invalid base type");
 
-	bool is_valid;
-	store->src = analyze_slot_input(cnt, &is_valid, store->src, dest_type, false);
-	if (!is_valid) return analyze_result(ANALYZE_FAILED, 0);
+	if (analyze_slot(cnt, &analyze_slot_conf_default, &store->src, dest_type) !=
+	    ANALYZE_PASSED) {
+		return analyze_result(ANALYZE_FAILED, 0);
+	}
 
 	reduce_instr(cnt, store->dest);
 
@@ -6297,11 +6319,11 @@ analyze_slot(Context *cnt, const AnalyzeSlotConfig *conf, MirInstr **input, MirT
 	for (int32_t i = 0; i < conf->count; ++i) {
 		state = conf->stages[i](cnt, input, slot_type);
 		switch (state) {
-		case ANALYZE_STAGE_APPLIED:
+		case ANALYZE_STAGE_BREAK:
 			goto DONE;
 		case ANALYZE_STAGE_FAILED:
 			goto FAILED;
-		case ANALYZE_STAGE_PASSED:
+		case ANALYZE_STAGE_CONTINUE:
 			break;
 		}
 	}
@@ -6318,10 +6340,9 @@ analyze_stage_load(Context *cnt, MirInstr **input, MirType *slot_type)
 {
 	if (is_load_needed(*input)) {
 		*input = insert_instr_load(cnt, *input);
-		return ANALYZE_STAGE_APPLIED;
 	}
 
-	return ANALYZE_STAGE_PASSED;
+	return ANALYZE_STAGE_CONTINUE;
 }
 
 AnalyzeStageState
@@ -6330,17 +6351,17 @@ analyze_stage_set_null(Context *cnt, MirInstr **input, MirType *slot_type)
 	assert(slot_type);
 	MirInstr *_input = *input;
 
-	if (_input->kind != MIR_INSTR_CONST) return ANALYZE_STAGE_PASSED;
-	if (_input->value.type->kind != MIR_TYPE_NULL) return ANALYZE_STAGE_PASSED;
+	if (_input->kind != MIR_INSTR_CONST) return ANALYZE_STAGE_CONTINUE;
+	if (_input->value.type->kind != MIR_TYPE_NULL) return ANALYZE_STAGE_CONTINUE;
 
 	if (slot_type->kind == MIR_TYPE_NULL) {
 		_input->value.type = slot_type;
-		return ANALYZE_STAGE_APPLIED;
+		return ANALYZE_STAGE_BREAK;
 	}
 
 	if (mir_is_pointer_type(slot_type)) {
 		_input->value.type = create_type_null(cnt, slot_type);
-		return ANALYZE_STAGE_APPLIED;
+		return ANALYZE_STAGE_BREAK;
 	}
 
 	builder_msg(cnt->builder,
@@ -6359,15 +6380,15 @@ analyze_stage_set_auto(Context *cnt, MirInstr **input, MirType *slot_type)
 	assert(slot_type);
 	MirInstr *_input = *input;
 
-	if (_input->kind != MIR_INSTR_CAST) return ANALYZE_STAGE_PASSED;
-	if (!((MirInstrCast *)_input)->auto_cast) return ANALYZE_STAGE_PASSED;
+	if (_input->kind != MIR_INSTR_CAST) return ANALYZE_STAGE_CONTINUE;
+	if (!((MirInstrCast *)_input)->auto_cast) return ANALYZE_STAGE_CONTINUE;
 
 	_input->value.type = slot_type;
 	if (analyze_instr_cast(cnt, (MirInstrCast *)_input, true).state != ANALYZE_PASSED) {
 		return ANALYZE_STAGE_FAILED;
 	}
 
-	return ANALYZE_STAGE_APPLIED;
+	return ANALYZE_STAGE_BREAK;
 }
 
 AnalyzeStageState
@@ -6376,12 +6397,12 @@ analyze_stage_toany(Context *cnt, MirInstr **input, MirType *slot_type)
 	assert(slot_type);
 
 	/* check any */
-	if (!is_to_any_needed(cnt, *input, slot_type)) return ANALYZE_STAGE_PASSED;
+	if (!is_to_any_needed(cnt, *input, slot_type)) return ANALYZE_STAGE_CONTINUE;
 
 	*input = insert_instr_toany(cnt, *input);
 	*input = insert_instr_load(cnt, *input);
 
-	return ANALYZE_STAGE_APPLIED;
+	return ANALYZE_STAGE_BREAK;
 }
 
 AnalyzeStageState
@@ -6390,29 +6411,29 @@ analyze_stage_set_const_int(Context *cnt, MirInstr **input, MirType *slot_type)
 	assert(slot_type);
 
 	MirInstr *_input = *input;
-	if (_input->value.type->kind != MIR_TYPE_INT) return ANALYZE_STAGE_PASSED;
-	if (slot_type->kind != MIR_TYPE_INT) return ANALYZE_STAGE_PASSED;
-	if (_input->kind != MIR_INSTR_CONST) return ANALYZE_STAGE_PASSED;
+	if (_input->value.type->kind != MIR_TYPE_INT) return ANALYZE_STAGE_CONTINUE;
+	if (slot_type->kind != MIR_TYPE_INT) return ANALYZE_STAGE_CONTINUE;
+	if (_input->kind != MIR_INSTR_CONST) return ANALYZE_STAGE_CONTINUE;
 
 	_input->value.type = slot_type;
-	return ANALYZE_STAGE_APPLIED;
+	return ANALYZE_STAGE_BREAK;
 }
 
 AnalyzeStageState
 analyze_stage_implicit_cast(Context *cnt, MirInstr **input, MirType *slot_type)
 {
-	if (type_cmp((*input)->value.type, slot_type)) return ANALYZE_STAGE_APPLIED;
-	if (!can_impl_cast((*input)->value.type, slot_type)) return ANALYZE_STAGE_PASSED;
+	if (type_cmp((*input)->value.type, slot_type)) return ANALYZE_STAGE_BREAK;
+	if (!can_impl_cast((*input)->value.type, slot_type)) return ANALYZE_STAGE_CONTINUE;
 
 	*input = insert_instr_cast(cnt, *input, slot_type);
-	return ANALYZE_STAGE_APPLIED;
+	return ANALYZE_STAGE_BREAK;
 }
 
 AnalyzeStageState
 analyze_stage_report_type_mismatch(Context *cnt, MirInstr **input, MirType *slot_type)
 {
 	error_types(cnt, (*input)->value.type, slot_type, (*input)->node, NULL);
-	return ANALYZE_STAGE_PASSED;
+	return ANALYZE_STAGE_CONTINUE;
 }
 
 MirInstr *
