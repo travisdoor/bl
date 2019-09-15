@@ -1,10 +1,8 @@
 /* playground */
 
-//#load "std/print.bl"
+#load "std/print.bl"
 
 main :: fn () s32 {
-    foo := 1 + sizeof(s32); // LHS -> change to usize
-    bar := sizeof(s32) + 1; // LHS -> change to usize
-    ptr := null == null;
+    print("%\n", S64_MIN);
     return 0;
 };

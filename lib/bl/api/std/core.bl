@@ -44,8 +44,8 @@ _Context :: struct {
 
 _context := {:_Context: &malloc, &free};
 
-S8_MIN : s8 : -128;
-S8_MAX : s8 : 127;
+S8_MIN  : s8 : -128;
+S8_MAX  : s8 : 127;
 S16_MIN : s16 : -32768;
 S16_MAX : s16 : 32767;
 S32_MIN : s32 : -2147483648;
@@ -53,8 +53,8 @@ S32_MAX : s32 : 2147483647;
 S64_MIN : s64 : -9223372036854775808;
 S64_MAX : s64 : 9223372036854775807;
 
-U8_MIN : u8 : 0;
-U8_MAX : u8 : 255;
+U8_MIN  : u8 : 0;
+U8_MAX  : u8 : 255;
 U16_MIN : u16 : 0;
 U16_MAX : u16 : 65535;
 U32_MIN : u32 : 0;
