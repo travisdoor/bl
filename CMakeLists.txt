@@ -124,6 +124,7 @@ endif()
 target_link_libraries(blc PUBLIC
     dynload_s
     dyncall_s
+    dyncallback_s
     bobject
     ${CMAKE_DL_LIBS}
     ${LLVM_LIBS}
@@ -133,6 +134,7 @@ target_include_directories(blc PRIVATE
     src
     deps/dyncall-1.0/dyncall
     deps/dyncall-1.0/dynload
+    deps/dyncall-1.0/dyncallback
     deps/bobject/include
     ${LLVM_INCLUDE_DIRS}
 )
