@@ -33,6 +33,7 @@
 #include "llvm_di.h"
 #include "mir_printer.h"
 #include "unit.h"
+#include <dyncall_callback.h>
 
 // Constants
 // clang-format off
@@ -246,6 +247,9 @@ typedef struct {
 	struct {
 		/* stack header is also allocated on the stack :) */
 		MirStack *stack;
+
+		// TEST:
+		DCCallback *dc_callback_handler;
 	} exec;
 
 	/* Builtins */
@@ -1193,6 +1197,9 @@ exec_instr_binop(Context *cnt, MirInstrBinop *binop);
 
 static void
 exec_instr_unop(Context *cnt, MirInstrUnop *unop);
+
+static void
+exec_extern_call(Context *cnt, MirFn *fn, MirInstrCall *call);
 
 static void
 exec_instr_call(Context *cnt, MirInstrCall *call);
@@ -8462,6 +8469,41 @@ exec_fn(Context *cnt, MirFn *fn, SmallArray_Instr *args, MirConstValueData *out_
 	return does_return_value && !cnt->exec.stack->aborted;
 }
 
+static char
+_dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata)
+{
+	bl_log("callback handler here!!!");
+	return 's';
+}
+
+static char *
+_dyncall_generate_signature(MirType *fn_type)
+{
+	const size_t argc     = fn_type->data.fn.arg_types ? fn_type->data.fn.arg_types->size : 0;
+	const size_t sig_size = argc + 3; /* add space for ')' return value and terminator */
+	char *       sig      = bl_malloc(sizeof(char) * sig_size);
+
+	size_t i = 0;
+	for (; i < argc; ++i) {
+		MirType *arg_type = fn_type->data.fn.arg_types->data[i];
+		switch (arg_type->kind) {
+		case MIR_TYPE_PTR:
+			sig[i] = DC_SIGCHAR_POINTER;
+			break;
+		case MIR_TYPE_INT:
+			sig[i] = DC_SIGCHAR_INT;
+			break;
+		default:
+			bl_unimplemented;
+		}
+	}
+
+	sig[i++] = DC_SIGCHAR_ENDARG;
+	sig[i++] = DC_SIGCHAR_VOID;
+	sig[i++] = '\0';
+	return sig;
+}
+
 static inline void
 exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
 {
@@ -8511,14 +8553,134 @@ exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
 		break;
 	}
 
-	case MIR_TYPE_NULL:
-	case MIR_TYPE_PTR: {
+	case MIR_TYPE_NULL: {
 		dcArgPointer(vm, (DCpointer)tmp.v_ptr.data.any);
+		break;
+	}
+
+	case MIR_TYPE_PTR: {
+		if (mir_deref_type(type)->kind == MIR_TYPE_FN) {
+			MirType *fn_type = mir_deref_type(type);
+			char *   sig     = _dyncall_generate_signature(fn_type);
+			bl_log("generated signature: %s", sig);
+
+			DCCallback *handle =
+			    dcbNewCallback(sig, &_dyncall_cb_handler, NULL);
+
+			bl_free(sig);
+
+			dcArgPointer(vm, (DCpointer)handle);
+			dcbFreeCallback(handle);
+		} else {
+			dcArgPointer(vm, (DCpointer)tmp.v_ptr.data.any);
+		}
 		break;
 	}
 
 	default:
 		bl_abort("unsupported external call argument type");
+	}
+}
+
+void
+exec_extern_call(Context *cnt, MirFn *fn, MirInstrCall *call)
+{
+	MirType *ret_type = fn->type->data.fn.ret_type;
+	bl_assert(ret_type);
+
+	DCCallVM *vm = cnt->assembly->dl.vm;
+	bl_assert(vm);
+
+	/* call setup and clenup */
+	bl_assert(fn->extern_entry);
+	dcMode(vm, DC_CALL_C_DEFAULT);
+	dcReset(vm);
+
+	/* pop all arguments from the stack */
+	MirStackPtr       arg_ptr;
+	SmallArray_Instr *arg_values = call->args;
+	if (arg_values) {
+		MirInstr *arg_value;
+		sarray_foreach(arg_values, arg_value)
+		{
+			arg_ptr = exec_fetch_value(cnt, arg_value);
+			exec_push_dc_arg(cnt, arg_ptr, arg_value->value.type);
+		}
+	}
+
+	bool does_return = true;
+
+	MirConstValueData result = {0};
+	switch (ret_type->kind) {
+	case MIR_TYPE_INT:
+		switch (ret_type->store_size_bytes) {
+		case sizeof(char):
+			result.v_s8 = dcCallChar(vm, fn->extern_entry);
+			break;
+		case sizeof(short):
+			result.v_s16 = dcCallShort(vm, fn->extern_entry);
+			break;
+		case sizeof(int):
+			result.v_s32 = dcCallInt(vm, fn->extern_entry);
+			break;
+		case sizeof(long long):
+			result.v_s64 = dcCallLongLong(vm, fn->extern_entry);
+			break;
+		default:
+			bl_abort("unsupported integer size for external call result");
+		}
+		break;
+
+	case MIR_TYPE_ENUM:
+		switch (ret_type->data.enm.base_type->store_size_bytes) {
+		case sizeof(char):
+			result.v_s8 = dcCallChar(vm, fn->extern_entry);
+			break;
+		case sizeof(short):
+			result.v_s16 = dcCallShort(vm, fn->extern_entry);
+			break;
+		case sizeof(int):
+			result.v_s32 = dcCallInt(vm, fn->extern_entry);
+			break;
+		case sizeof(long long):
+			result.v_s64 = dcCallLongLong(vm, fn->extern_entry);
+			break;
+		default:
+			bl_abort("unsupported integer size for external call result");
+		}
+		break;
+
+	case MIR_TYPE_PTR:
+		result.v_ptr.data.any = dcCallPointer(vm, fn->extern_entry);
+		break;
+
+	case MIR_TYPE_REAL: {
+		switch (ret_type->store_size_bytes) {
+		case sizeof(float):
+			result.v_f32 = dcCallFloat(vm, fn->extern_entry);
+			break;
+		case sizeof(double):
+			result.v_f64 = dcCallDouble(vm, fn->extern_entry);
+			break;
+		default:
+			bl_abort("unsupported real number size for external call "
+			         "result");
+		}
+		break;
+	}
+
+	case MIR_TYPE_VOID:
+		dcCallVoid(vm, fn->extern_entry);
+		does_return = false;
+		break;
+
+	default:
+		bl_abort("unsupported external call return type");
+	}
+
+	/* PUSH result only if it is used */
+	if (call->base.ref_count > 1 && does_return) {
+		exec_push_stack(cnt, (MirStackPtr)&result, ret_type);
 	}
 }
 
@@ -8552,100 +8714,7 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
 	bl_assert(ret_type);
 
 	if (is_flag(fn->flags, FLAG_EXTERN)) {
-		DCCallVM *vm = cnt->assembly->dl.vm;
-		bl_assert(vm);
-
-		/* call setup and clenup */
-		bl_assert(fn->extern_entry);
-		dcMode(vm, DC_CALL_C_DEFAULT);
-		dcReset(vm);
-
-		/* pop all arguments from the stack */
-		MirStackPtr       arg_ptr;
-		SmallArray_Instr *arg_values = call->args;
-		if (arg_values) {
-			MirInstr *arg_value;
-			sarray_foreach(arg_values, arg_value)
-			{
-				arg_ptr = exec_fetch_value(cnt, arg_value);
-				exec_push_dc_arg(cnt, arg_ptr, arg_value->value.type);
-			}
-		}
-
-		bool does_return = true;
-
-		MirConstValueData result = {0};
-		switch (ret_type->kind) {
-		case MIR_TYPE_INT:
-			switch (ret_type->store_size_bytes) {
-			case sizeof(char):
-				result.v_s8 = dcCallChar(vm, fn->extern_entry);
-				break;
-			case sizeof(short):
-				result.v_s16 = dcCallShort(vm, fn->extern_entry);
-				break;
-			case sizeof(int):
-				result.v_s32 = dcCallInt(vm, fn->extern_entry);
-				break;
-			case sizeof(long long):
-				result.v_s64 = dcCallLongLong(vm, fn->extern_entry);
-				break;
-			default:
-				bl_abort("unsupported integer size for external call result");
-			}
-			break;
-
-		case MIR_TYPE_ENUM:
-			switch (ret_type->data.enm.base_type->store_size_bytes) {
-			case sizeof(char):
-				result.v_s8 = dcCallChar(vm, fn->extern_entry);
-				break;
-			case sizeof(short):
-				result.v_s16 = dcCallShort(vm, fn->extern_entry);
-				break;
-			case sizeof(int):
-				result.v_s32 = dcCallInt(vm, fn->extern_entry);
-				break;
-			case sizeof(long long):
-				result.v_s64 = dcCallLongLong(vm, fn->extern_entry);
-				break;
-			default:
-				bl_abort("unsupported integer size for external call result");
-			}
-			break;
-
-		case MIR_TYPE_PTR:
-			result.v_ptr.data.any = dcCallPointer(vm, fn->extern_entry);
-			break;
-
-		case MIR_TYPE_REAL: {
-			switch (ret_type->store_size_bytes) {
-			case sizeof(float):
-				result.v_f32 = dcCallFloat(vm, fn->extern_entry);
-				break;
-			case sizeof(double):
-				result.v_f64 = dcCallDouble(vm, fn->extern_entry);
-				break;
-			default:
-				bl_abort("unsupported real number size for external call "
-				         "result");
-			}
-			break;
-		}
-
-		case MIR_TYPE_VOID:
-			dcCallVoid(vm, fn->extern_entry);
-			does_return = false;
-			break;
-
-		default:
-			bl_abort("unsupported external call return type");
-		}
-
-		/* PUSH result only if it is used */
-		if (call->base.ref_count > 1 && does_return) {
-			exec_push_stack(cnt, (MirStackPtr)&result, ret_type);
-		}
+		exec_extern_call(cnt, fn, call);
 	} else {
 		/* Push current frame stack top. (Later poped by ret instruction)*/
 		exec_push_ra(cnt, &call->base);
@@ -10625,6 +10694,8 @@ SKIP:
 	bo_unref(cnt.analyze.RTTI_entry_types);
 	bo_unref(cnt.test_cases);
 	bo_unref(cnt.tmp_sh);
+
+	dcbFreeCallback(cnt.exec.dc_callback_handler);
 
 	sa_terminate(&cnt.ast.defer_stack);
 	exec_delete_stack(cnt.exec.stack);
