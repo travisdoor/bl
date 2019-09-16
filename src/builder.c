@@ -407,7 +407,7 @@ builder_msg(Builder *      builder,
 	bo_unref(tmp);
 
 #if ASSERT_ON_CMP_ERROR
-	if (type == BUILDER_MSG_ERROR) assert(false);
+	if (type == BUILDER_MSG_ERROR) bl_assert(false);
 #endif
 }
 

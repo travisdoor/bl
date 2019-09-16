@@ -87,7 +87,7 @@
 #endif
 
 #if BL_DEBUG
-#define ASSERT_ON_CMP_ERROR 0
+#define ASSERT_ON_CMP_ERROR 1
 #else
 #define ASSERT_ON_CMP_ERROR 0
 #endif

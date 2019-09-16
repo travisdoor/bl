@@ -83,7 +83,7 @@ ast_arena_terminate(Arena *arena)
 const char *
 ast_get_name(const Ast *n)
 {
-	assert(n);
+	bl_assert(n);
 	switch (n->kind) {
 	case AST_BAD:
 		return "Bad";

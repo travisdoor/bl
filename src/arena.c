@@ -55,7 +55,7 @@ get_from_chunk(Arena *arena, ArenaChunk *chunk, int32_t i)
 	 * sizeof(node_t) + MAX_ALIGNMENT) */
 	ptrdiff_t adj;
 	align_ptr_up(&elem, MAX_ALIGNMENT, &adj);
-	assert(adj < MAX_ALIGNMENT);
+	bl_assert(adj < MAX_ALIGNMENT);
 	return elem;
 }
 
@@ -113,7 +113,7 @@ arena_alloc(Arena *arena)
 	void *elem = get_from_chunk(arena, arena->current_chunk, arena->current_chunk->count);
 	arena->current_chunk->count++;
 
-	assert(is_aligned(elem, MAX_ALIGNMENT) && "unaligned allocation of arena element");
+	bl_assert(is_aligned(elem, MAX_ALIGNMENT) && "unaligned allocation of arena element");
 
 	return elem;
 }
