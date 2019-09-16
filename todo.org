@@ -15,7 +15,9 @@
   - [ ] remove ';' at the end of function declaration 
   - [ ] remove ';' at the end struct and enum
 
-* Bugs [40%]
+* Bugs [33%]
+  - [ ] functions pointers passed during comptime execution cannot be used as an callbacks in external functions because they are not compatible with C ABI calling conventions. This will be by the way quite hard to fix :(.
+
   - [X] fn typedef
     Recognise this as function type definition.
     T :: fn (i: s32, j: bool) s32; 

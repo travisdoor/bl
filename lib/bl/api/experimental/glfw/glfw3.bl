@@ -43,6 +43,9 @@ GLFW_TRUE                  :: 1;
 GLFW_FALSE                 :: 0;
 GLFW_RESIZABLE             :: 0x00020003;
 
+GLFWwindowsizefun :: * fn (*GLFWwindow, s32, s32);
+GLFWframebuffersizefun :: * fn (*GLFWwindow, s32, s32);
+
 glfwInit :: fn () s32 #extern;
 glfwTerminate :: fn () #extern;
 glfwCreateWindow :: fn (width: s32, height: s32, title: *u8, monitor: *u8, share: *u8) *GLFWwindow #extern;
@@ -57,3 +60,9 @@ glfwGetRequiredInstanceExtensions :: fn (count: *u32) **u8 #extern;
 // TODO: define only with vulkan!!!
 glfwCreateWindowSurface :: fn (instance: VkInstance, window:  *GLFWwindow, allocator: *VkAllocationCallbacks, surface: *VkSurfaceKHR) VkResult #extern;
 glfwGetFramebufferSize :: fn (window: *GLFWwindow, width: *u32, height: *u32) #extern;
+glfwSetWindowSizeCallback :: fn (window: *GLFWwindow, cbfun: GLFWwindowsizefun) GLFWwindowsizefun #extern;
+glfwSetWindowUserPointer :: fn (window: *GLFWwindow, pointer: *u8) #extern;
+glfwGetWindowUserPointer :: fn (window: *GLFWwindow) *u8 #extern;
+glfwSetFramebufferSizeCallback :: fn (window: *GLFWwindow, cbfun: GLFWframebuffersizefun) GLFWframebuffersizefun #extern;
+glfwWaitEvents :: fn () #extern;
+
