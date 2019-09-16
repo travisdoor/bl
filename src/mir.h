@@ -36,6 +36,7 @@
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
 #include <dyncall.h>
+#include <dyncall_callback.h>
 #include <dynload.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
@@ -261,6 +262,7 @@ struct MirFn {
 	bool         emit_llvm;
 
 	DCpointer   extern_entry;
+	DCCallback *extern_callback_handle;
 	int32_t     flags;
 	const char *test_case_desc;
 
@@ -579,7 +581,7 @@ struct MirInstrUnop {
 
 	UnopKind  op;
 	MirInstr *expr;
-	
+
 	/* volatile type flag, if true, this instruction can change type during analyze pass, this
 	 * is used for const integer literals like (-123) */
 	bool volatile_type;

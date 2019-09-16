@@ -33,7 +33,6 @@
 #include "llvm_di.h"
 #include "mir_printer.h"
 #include "unit.h"
-#include <dyncall_callback.h>
 
 // Constants
 // clang-format off
@@ -190,7 +189,7 @@ union _MirInstr {
 
 typedef struct MirFrame {
 	struct MirFrame *prev;
-	MirInstr *       callee;
+	MirInstr *       caller;
 } MirFrame;
 
 typedef struct MirStack {
@@ -208,6 +207,7 @@ SmallArrayType(LLVMMetadata, LLVMMetadataRef, 16);
 SmallArrayType(DeferStack, Ast *, 64);
 SmallArrayType(Instr64, MirInstr *, 64);
 SmallArrayType(String, const char *, 64);
+SmallArrayType(Char, char, 128);
 
 typedef struct {
 	Builder *   builder;
@@ -246,10 +246,8 @@ typedef struct {
 	/* MIR compile time execution. */
 	struct {
 		/* stack header is also allocated on the stack :) */
-		MirStack *stack;
-
-		// TEST:
-		DCCallback *dc_callback_handler;
+		MirStack *      stack;
+		SmallArray_Char dyncall_sig_tmp;
 	} exec;
 
 	/* Builtins */
@@ -292,6 +290,11 @@ typedef struct {
 		Scope *cache;
 	} builtin_types;
 } Context;
+
+typedef struct {
+	Context *cnt;
+	MirFn *  fn;
+} DyncallCBContext;
 
 typedef enum {
 	/* Analyze pass failed. */
@@ -376,6 +379,12 @@ static ID builtin_ids[_MIR_BUILTIN_ID_COUNT] = {
     {.str = "TypeInfoEnumVariant",   .hash = 0},
 };
 // clang-format on
+
+static void
+fn_dtor(MirFn **fn)
+{
+	dcbFreeCallback((*fn)->extern_callback_handle);
+}
 
 /* FW decls */
 static void
@@ -1098,6 +1107,20 @@ analyze(Context *cnt);
 static void
 analyze_report_unresolved(Context *cnt);
 
+/* dyncall */
+
+static char
+dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata);
+
+static const char *
+dyncall_generate_signature(Context *cnt, MirType *type);
+
+static DCCallback *
+dyncall_fetch_callback(Context *cnt, MirFn *fn);
+
+static void
+dyncall_push_arg(Context *cnt, MirStackPtr val_ptr, MirType *type);
+
 /* execute */
 static void
 exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *src_value);
@@ -1226,7 +1249,7 @@ static void
 exec_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref);
 
 static bool
-exec_fn(Context *cnt, MirFn *fn, SmallArray_Instr *args, MirConstValueData *out_value);
+exec_fn(Context *cnt, MirFn *fn, SmallArray_ConstValue *args, MirConstValueData *out_value);
 
 static MirConstValue *
 exec_call_top_lvl(Context *cnt, MirInstrCall *call);
@@ -1600,7 +1623,7 @@ exec_push_ra(Context *cnt, MirInstr *instr)
 {
 	MirFrame *prev      = cnt->exec.stack->ra;
 	MirFrame *tmp       = (MirFrame *)exec_stack_alloc(cnt, sizeof(MirFrame));
-	tmp->callee         = instr;
+	tmp->caller         = instr;
 	tmp->prev           = prev;
 	cnt->exec.stack->ra = tmp;
 	_log_push_ra;
@@ -1610,7 +1633,7 @@ static inline MirInstr *
 exec_pop_ra(Context *cnt)
 {
 	if (!cnt->exec.stack->ra) return NULL;
-	MirInstr *callee = cnt->exec.stack->ra->callee;
+	MirInstr *caller = cnt->exec.stack->ra->caller;
 
 	_log_pop_ra;
 
@@ -1619,7 +1642,7 @@ exec_pop_ra(Context *cnt)
 	cnt->exec.stack->used_bytes = cnt->exec.stack->top_ptr - new_top_ptr;
 	cnt->exec.stack->top_ptr    = new_top_ptr;
 	cnt->exec.stack->ra         = cnt->exec.stack->ra->prev;
-	return callee;
+	return caller;
 }
 
 static inline MirStackPtr
@@ -6833,7 +6856,7 @@ exec_print_call_stack(Context *cnt, size_t max_nesting)
 	builder_msg(cnt->builder, BUILDER_MSG_LOG, 0, instr->node->location, BUILDER_CUR_WORD, "");
 
 	while (fr) {
-		instr = fr->callee;
+		instr = fr->caller;
 		fr    = fr->prev;
 		if (!instr) break;
 
@@ -7699,7 +7722,8 @@ exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 	ptr = ((MirConstValueData *)ptr)->v_ptr.data.stack_ptr;
 
 	if (addrof->base.comptime) {
-		memcpy(&addrof->base.value.data, ptr, sizeof(addrof->base.value.data));
+		// memcpy(&addrof->base.value.data, ptr, sizeof(addrof->base.value.data));
+		set_const_ptr(&addrof->base.value.data.v_ptr, *(MirStackPtr **)ptr, MIR_CP_VALUE);
 	} else {
 		exec_push_stack(cnt, (MirStackPtr)&ptr, type);
 	}
@@ -8093,7 +8117,7 @@ exec_instr_arg(Context *cnt, MirInstrArg *arg)
 	MirFn *fn = arg->base.owner_block->owner_fn;
 	bl_assert(fn);
 
-	MirInstrCall *    caller     = (MirInstrCall *)exec_get_ra(cnt)->callee;
+	MirInstrCall *    caller     = (MirInstrCall *)exec_get_ra(cnt)->caller;
 	SmallArray_Instr *arg_values = caller->args;
 	bl_assert(arg_values);
 	MirInstr *curr_arg_value = arg_values->data[arg->i];
@@ -8429,12 +8453,13 @@ exec_call_top_lvl(Context *cnt, MirInstrCall *call)
 	MirFn *fn = get_callee(call);
 	if (!fn->analyzed_for_cmptime_exec)
 		bl_abort("Function is not fully analyzed for compile time execution!!!");
-	exec_fn(cnt, fn, call->args, (MirConstValueData *)&call->base.value);
+	exec_fn(
+	    cnt, fn, (SmallArray_ConstValue *)call->args, (MirConstValueData *)&call->base.value);
 	return &call->base.value;
 }
 
 bool
-exec_fn(Context *cnt, MirFn *fn, SmallArray_Instr *args, MirConstValueData *out_value)
+exec_fn(Context *cnt, MirFn *fn, SmallArray_ConstValue *args, MirConstValueData *out_value)
 {
 	bl_assert(fn);
 	MirType *ret_type = fn->type->data.fn.ret_type;
@@ -8469,43 +8494,123 @@ exec_fn(Context *cnt, MirFn *fn, SmallArray_Instr *args, MirConstValueData *out_
 	return does_return_value && !cnt->exec.stack->aborted;
 }
 
-static char
-_dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata)
+char
+dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata)
 {
-	bl_log("callback handler here!!!");
-	return 's';
-}
+	MirFn *  fn  = ((DyncallCBContext *)userdata)->fn;
+	Context *cnt = ((DyncallCBContext *)userdata)->cnt;
+	bl_assert(fn && cnt);
 
-static char *
-_dyncall_generate_signature(MirType *fn_type)
-{
-	const size_t argc     = fn_type->data.fn.arg_types ? fn_type->data.fn.arg_types->size : 0;
-	const size_t sig_size = argc + 3; /* add space for ')' return value and terminator */
-	char *       sig      = bl_malloc(sizeof(char) * sig_size);
+	SmallArray_ConstValue bargs;
+	sa_init(args);
 
-	size_t i = 0;
-	for (; i < argc; ++i) {
-		MirType *arg_type = fn_type->data.fn.arg_types->data[i];
-		switch (arg_type->kind) {
-		case MIR_TYPE_PTR:
-			sig[i] = DC_SIGCHAR_POINTER;
-			break;
-		case MIR_TYPE_INT:
-			sig[i] = DC_SIGCHAR_INT;
-			break;
-		default:
-			bl_unimplemented;
-		}
+	MirType *arg_type;
+	sarray_foreach(fn->type->data.fn.arg_types, arg_type)
+	{
 	}
 
-	sig[i++] = DC_SIGCHAR_ENDARG;
-	sig[i++] = DC_SIGCHAR_VOID;
-	sig[i++] = '\0';
-	return sig;
+	MirConstValueData ret     = {0};
+	const bool        ret_set = exec_fn(cnt, fn, NULL, &ret);
+	if (ret_set) {
+	}
+
+	sa_terminate(&bargs);
+	return DC_SIGCHAR_VOID;
 }
 
-static inline void
-exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
+void
+_dyncall_generate_signature(Context *cnt, MirType *type)
+{
+	SmallArray_Char *tmp = &cnt->exec.dyncall_sig_tmp;
+
+	switch (type->kind) {
+	case MIR_TYPE_FN: {
+		if (type->data.fn.arg_types) {
+			MirType *arg_type;
+			sarray_foreach(type->data.fn.arg_types, arg_type)
+			{
+				_dyncall_generate_signature(cnt, arg_type);
+			}
+		}
+		sa_push_Char(tmp, DC_SIGCHAR_ENDARG);
+		_dyncall_generate_signature(cnt, type->data.fn.ret_type);
+		break;
+	}
+
+	case MIR_TYPE_INT: {
+		const bool is_signed = type->data.integer.is_signed;
+		switch (type->data.integer.bitcount) {
+		case 8:
+			sa_push_Char(tmp, is_signed ? DC_SIGCHAR_CHAR : DC_SIGCHAR_UCHAR);
+			break;
+		case 16:
+			sa_push_Char(tmp, is_signed ? DC_SIGCHAR_SHORT : DC_SIGCHAR_USHORT);
+			break;
+		case 32:
+			sa_push_Char(tmp, is_signed ? DC_SIGCHAR_INT : DC_SIGCHAR_UINT);
+			break;
+		case 64:
+			sa_push_Char(tmp, is_signed ? DC_SIGCHAR_LONGLONG : DC_SIGCHAR_ULONGLONG);
+			break;
+		}
+		break;
+	}
+
+	case MIR_TYPE_REAL: {
+		switch (type->data.real.bitcount) {
+		case 32:
+			sa_push_Char(tmp, DC_SIGCHAR_FLOAT);
+			break;
+		case 64:
+			sa_push_Char(tmp, DC_SIGCHAR_DOUBLE);
+			break;
+		}
+		break;
+	}
+
+	case MIR_TYPE_NULL:
+	case MIR_TYPE_PTR: {
+		sa_push_Char(tmp, DC_SIGCHAR_POINTER);
+		break;
+	}
+
+	case MIR_TYPE_VOID: {
+		sa_push_Char(tmp, DC_SIGCHAR_VOID);
+		break;
+	}
+
+	default:
+		bl_abort("Unsupported external callback type.");
+	}
+}
+
+const char *
+dyncall_generate_signature(Context *cnt, MirType *type)
+{
+	SmallArray_Char *tmp = &cnt->exec.dyncall_sig_tmp;
+	tmp->size            = 0; /* reset size */
+
+	_dyncall_generate_signature(cnt, type);
+	sa_push_Char(tmp, '\0');
+
+	return tmp->data;
+}
+
+DCCallback *
+dyncall_fetch_callback(Context *cnt, MirFn *fn)
+{
+	if (fn->extern_callback_handle) return fn->extern_callback_handle;
+
+	const char *sig = dyncall_generate_signature(cnt, fn->type);
+	bl_log("generated signature: %s", sig);
+	fn->extern_callback_handle =
+	    dcbNewCallback(sig, &dyncall_cb_handler, &(DyncallCBContext){cnt, fn});
+
+	return fn->extern_callback_handle;
+}
+
+void
+dyncall_push_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
 {
 	bl_assert(type);
 
@@ -8520,17 +8625,17 @@ exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
 
 	switch (type->kind) {
 	case MIR_TYPE_INT: {
-		switch (type->store_size_bytes) {
-		case sizeof(int64_t):
+		switch (type->data.integer.bitcount) {
+		case 64:
 			dcArgLongLong(vm, tmp.v_s64);
 			break;
-		case sizeof(int32_t):
+		case 32:
 			dcArgInt(vm, (DCint)tmp.v_s32);
 			break;
-		case sizeof(int16_t):
+		case 16:
 			dcArgShort(vm, (DCshort)tmp.v_s16);
 			break;
-		case sizeof(int8_t):
+		case 8:
 			dcArgChar(vm, (DCchar)tmp.v_s8);
 			break;
 		default:
@@ -8540,11 +8645,11 @@ exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
 	}
 
 	case MIR_TYPE_REAL: {
-		switch (type->store_size_bytes) {
-		case sizeof(float):
+		switch (type->data.real.bitcount) {
+		case 32:
 			dcArgFloat(vm, tmp.v_f32);
 			break;
-		case sizeof(double):
+		case 64:
 			dcArgDouble(vm, tmp.v_f64);
 			break;
 		default:
@@ -8560,17 +8665,18 @@ exec_push_dc_arg(Context *cnt, MirStackPtr val_ptr, MirType *type)
 
 	case MIR_TYPE_PTR: {
 		if (mir_deref_type(type)->kind == MIR_TYPE_FN) {
-			MirType *fn_type = mir_deref_type(type);
-			char *   sig     = _dyncall_generate_signature(fn_type);
-			bl_log("generated signature: %s", sig);
+			MirConstValue *value = (MirConstValue *)val_ptr;
+			bl_assert(value->type->kind == MIR_TYPE_PTR);
+			bl_assert(value->data.v_ptr.data.any);
+			bl_assert(value->data.v_ptr.kind == MIR_CP_VALUE);
 
-			DCCallback *handle =
-			    dcbNewCallback(sig, &_dyncall_cb_handler, NULL);
+			value = value->data.v_ptr.data.value;
+			bl_assert(value->type->kind == MIR_TYPE_FN);
+			bl_assert(value->data.v_ptr.data.any);
+			bl_assert(value->data.v_ptr.kind == MIR_CP_FN);
 
-			bl_free(sig);
-
-			dcArgPointer(vm, (DCpointer)handle);
-			dcbFreeCallback(handle);
+			MirFn *fn = value->data.v_ptr.data.fn;
+			dcArgPointer(vm, (DCpointer)dyncall_fetch_callback(cnt, fn));
 		} else {
 			dcArgPointer(vm, (DCpointer)tmp.v_ptr.data.any);
 		}
@@ -8604,7 +8710,7 @@ exec_extern_call(Context *cnt, MirFn *fn, MirInstrCall *call)
 		sarray_foreach(arg_values, arg_value)
 		{
 			arg_ptr = exec_fetch_value(cnt, arg_value);
-			exec_push_dc_arg(cnt, arg_ptr, arg_value->value.type);
+			dyncall_push_arg(cnt, arg_ptr, arg_value->value.type);
 		}
 	}
 
@@ -8710,8 +8816,6 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
 	}
 
 	bl_assert(fn->type);
-	MirType *ret_type = fn->type->data.fn.ret_type;
-	bl_assert(ret_type);
 
 	if (is_flag(fn->flags, FLAG_EXTERN)) {
 		exec_extern_call(cnt, fn, call);
@@ -8734,7 +8838,7 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
 	bl_assert(fn);
 
 	/* read callee from frame stack */
-	MirInstrCall *caller = (MirInstrCall *)exec_get_ra(cnt)->callee;
+	MirInstrCall *caller = (MirInstrCall *)exec_get_ra(cnt)->caller;
 
 	MirType *   ret_type     = NULL;
 	MirStackPtr ret_data_ptr = NULL;
@@ -10624,7 +10728,7 @@ mir_arenas_init(MirArenas *arenas)
 
 	arena_init(&arenas->var, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
 
-	arena_init(&arenas->fn, sizeof(MirFn), ARENA_CHUNK_COUNT, NULL);
+	arena_init(&arenas->fn, sizeof(MirFn), ARENA_CHUNK_COUNT, (ArenaElemDtor)&fn_dtor);
 
 	arena_init(&arenas->member, sizeof(MirMember), ARENA_CHUNK_COUNT, NULL);
 
@@ -10667,6 +10771,7 @@ mir_run(Builder *builder, Assembly *assembly)
 	    scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, 64, NULL);
 
 	sa_init(&cnt.ast.defer_stack);
+	sa_init(&cnt.exec.dyncall_sig_tmp);
 
 	/* initialize all builtin types */
 	init_builtins(&cnt);
@@ -10695,8 +10800,15 @@ SKIP:
 	bo_unref(cnt.test_cases);
 	bo_unref(cnt.tmp_sh);
 
-	dcbFreeCallback(cnt.exec.dc_callback_handler);
-
+	sa_terminate(&cnt.exec.dyncall_sig_tmp);
 	sa_terminate(&cnt.ast.defer_stack);
 	exec_delete_stack(cnt.exec.stack);
+}
+
+typedef void (*Fn)(int);
+
+void
+test_call(Fn callback)
+{
+	callback(10);
 }

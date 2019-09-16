@@ -2,9 +2,14 @@
 
 #load "std/print.bl"
 
+Fn :: * fn (s32);
+test_call :: fn (callback: Fn) #extern;
+
 main :: fn () s32 {
-    Vector3 :: struct { x: s32, y: s32, z: s32 };
-    v := {:Vector3: 1, 2, 3};
-    print("%\n", v);
+    test_call(&callback);
     return 0;
+};
+
+callback :: fn (i: s32) {
+    print("hello from BL %\n", i);
 };
