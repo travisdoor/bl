@@ -921,15 +921,6 @@ reduce_instr(Context *cnt, MirInstr *instr);
 static AnalyzeResult
 analyze_instr(Context *cnt, MirInstr *instr);
 
-/* Analyze instruction slot input based on configuration flags, usualy we produce loading or
- * implicit casting and other validations here. */
-MirInstr *
-analyze_slot_input(Context * cnt,
-                   bool *    out_valid,
-                   MirInstr *input,
-                   MirType * slot_type,
-                   bool      enable_special_cast);
-
 static AnalyzeState
 analyze_slot(Context *cnt, const AnalyzeSlotConfig *conf, MirInstr **input, MirType *slot_type);
 
@@ -1268,15 +1259,6 @@ can_impl_cast(MirType *from, MirType *to)
 	return true;
 }
 
-/* CLEANUP: remove */
-DEPRECATED static inline bool
-setup_instr_const_int(MirInstrConst *instr, MirType *type)
-{
-	assert(type && instr);
-	instr->base.value.type = type;
-	return true;
-}
-
 static inline MirFn *
 get_callee(MirInstrCall *call)
 {
@@ -1348,40 +1330,6 @@ schedule_RTTI_generation(Context *cnt, MirType *type)
 {
 	if (!bo_htbl_has_key(cnt->analyze.RTTI_entry_types, (uint64_t)type))
 		bo_htbl_insert_empty(cnt->analyze.RTTI_entry_types, (uint64_t)type);
-}
-
-// CLEANUP: remove
-DEPRECATED static inline bool
-setup_instr_const_null(Context *cnt, MirInstr *instr, MirType *type)
-{
-	if (type->kind == MIR_TYPE_NULL) {
-		instr->value.type = type;
-		return true;
-	}
-
-	if (mir_is_pointer_type(type)) {
-		instr->value.type = create_type_null(cnt, type);
-		return true;
-	}
-
-	builder_msg(cnt->builder,
-	            BUILDER_MSG_ERROR,
-	            ERR_INVALID_TYPE,
-	            instr->node->location,
-	            BUILDER_CUR_WORD,
-	            "Invalid use of null constant.");
-
-	return false;
-}
-
-// CLEANUP: remove
-DEPRECATED static inline bool
-setup_instr_auto_cast(Context *cnt, MirInstr *instr, MirType *type)
-{
-	assert(instr->kind == MIR_INSTR_CAST);
-	instr->value.type = type;
-
-	return analyze_instr_cast(cnt, (MirInstrCast *)instr, true).state == ANALYZE_PASSED;
 }
 
 static inline bool
@@ -6484,80 +6432,6 @@ analyze_stage_report_type_mismatch(Context *cnt, MirInstr **input, MirType *slot
 {
 	error_types(cnt, (*input)->value.type, slot_type, (*input)->node, NULL);
 	return ANALYZE_STAGE_CONTINUE;
-}
-
-MirInstr *
-analyze_slot_input(Context * cnt,
-                   bool *    out_valid,
-                   MirInstr *input,
-                   MirType * slot_type /* optional */,
-                   bool      enable_special_cast)
-{
-	assert(input);
-	MirType *input_type = input->value.type;
-
-	if (out_valid) *out_valid = true;
-
-	if (!slot_type) {
-		/* slot type not specified, insert only load if needed */
-		if (is_load_needed(input)) input = insert_instr_load(cnt, input);
-		goto VALID;
-	}
-
-	if (input_type && input_type->kind == MIR_TYPE_NULL) {
-		if (!setup_instr_const_null(cnt, input, slot_type)) goto INVALID_NO_MSG;
-
-		goto VALID;
-	}
-
-	/* Setup auto cast destination type. */
-	if (input->kind == MIR_INSTR_CAST && ((MirInstrCast *)input)->auto_cast) {
-		if (!setup_instr_auto_cast(cnt, input, slot_type)) goto INVALID_NO_MSG;
-
-		goto VALID;
-	}
-
-	if (enable_special_cast) {
-		/* check any */
-		if (is_to_any_needed(cnt, input, slot_type)) {
-			input = insert_instr_toany(cnt, input);
-			input = insert_instr_load(cnt, input);
-			goto VALID;
-		}
-
-		/* TODO: check array to slice */
-	}
-
-	/* regular implicit cast */
-	if (is_load_needed(input)) input = insert_instr_load(cnt, input);
-	input_type = input->value.type;
-
-	/* both types are same -> no cast is needed */
-	if (type_cmp(input_type, slot_type)) {
-		goto VALID;
-	}
-
-	const bool impl_cast = input_type->kind == MIR_TYPE_INT && slot_type->kind == MIR_TYPE_INT;
-	if (impl_cast) {
-		if (input->kind == MIR_INSTR_CONST) {
-			/* constant numeric literal */
-			input->value.type = slot_type;
-			goto VALID;
-		}
-
-		input = insert_instr_cast(cnt, input, slot_type);
-		goto VALID;
-	}
-
-	error_types(cnt, input->value.type, slot_type, input->node, NULL);
-
-INVALID_NO_MSG:
-	if (out_valid) *out_valid = false;
-	return input;
-
-VALID:
-	reduce_instr(cnt, input);
-	return input;
 }
 
 AnalyzeResult
