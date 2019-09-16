@@ -258,7 +258,7 @@ struct MirFn {
 	BArray *     variables;
 	const char * llvm_name;
 	LLVMValueRef llvm_value;
-	bool         analyzed_for_cmptime_exec;
+	bool         fully_analyzed;
 	bool         emit_llvm;
 
 	DCpointer   extern_entry;

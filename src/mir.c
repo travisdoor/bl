@@ -189,7 +189,8 @@ union _MirInstr {
 
 typedef struct MirFrame {
 	struct MirFrame *prev;
-	MirInstr *       caller;
+	MirInstr *       caller; /* CLEANUP: try to remove */
+	Location *       caller_location;
 } MirFrame;
 
 typedef struct MirStack {
@@ -1619,13 +1620,14 @@ exec_stack_free(Context *cnt, size_t size)
 }
 
 static inline void
-exec_push_ra(Context *cnt, MirInstr *instr)
+exec_push_ra(Context *cnt, MirInstr *instr, Location *caller_location)
 {
-	MirFrame *prev      = cnt->exec.stack->ra;
-	MirFrame *tmp       = (MirFrame *)exec_stack_alloc(cnt, sizeof(MirFrame));
-	tmp->caller         = instr;
-	tmp->prev           = prev;
-	cnt->exec.stack->ra = tmp;
+	MirFrame *prev       = cnt->exec.stack->ra;
+	MirFrame *tmp        = (MirFrame *)exec_stack_alloc(cnt, sizeof(MirFrame));
+	tmp->caller          = instr;
+	tmp->caller_location = caller_location;
+	tmp->prev            = prev;
+	cnt->exec.stack->ra  = tmp;
 	_log_push_ra;
 }
 
@@ -5223,6 +5225,8 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 			            BUILDER_CUR_WORD,
 			            "External symbol '%s' not found.",
 			            fn->llvm_name);
+		} else {
+			fn->fully_analyzed = true;
 		}
 	} else {
 		/* Add entry block of the function into analyze queue. */
@@ -6197,8 +6201,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 		MirFn *fn = call->callee->value.data.v_ptr.data.fn;
 		bl_assert(fn && "Missing function reference for direct call!");
 		if (call->base.comptime) {
-			if (!fn->analyzed_for_cmptime_exec)
-				return analyze_result(ANALYZE_POSTPONE, 0);
+			if (!fn->fully_analyzed) return analyze_result(ANALYZE_POSTPONE, 0);
 		} else if (call->callee->kind == MIR_INSTR_FN_PROTO) {
 			/* Direct call of anonymous function. */
 
@@ -6666,7 +6669,7 @@ analyze_try_get_next(MirInstr *instr)
 			/* Instruction is last instruction of the function body, so the
 			 * function can be executed in compile time if needed, we need to
 			 * set flag with this information here. */
-			owner_block->owner_fn->analyzed_for_cmptime_exec = true;
+			owner_block->owner_fn->fully_analyzed = true;
 #if BL_DEBUG && VERBOSE_ANALYZE
 			printf("Analyze: " BLUE("Function '%s' completely analyzed.\n"),
 			       owner_block->owner_fn->llvm_name);
@@ -6856,8 +6859,8 @@ exec_print_call_stack(Context *cnt, size_t max_nesting)
 	builder_msg(cnt->builder, BUILDER_MSG_LOG, 0, instr->node->location, BUILDER_CUR_WORD, "");
 
 	while (fr) {
-		instr = fr->caller;
-		fr    = fr->prev;
+		Location *loc = fr->caller_location;
+		fr            = fr->prev;
 		if (!instr) break;
 
 		if (max_nesting && n == max_nesting) {
@@ -6865,14 +6868,14 @@ exec_print_call_stack(Context *cnt, size_t max_nesting)
 			break;
 		}
 
-		builder_msg(
-		    cnt->builder, BUILDER_MSG_LOG, 0, instr->node->location, BUILDER_CUR_WORD, "");
+		builder_msg(cnt->builder, BUILDER_MSG_LOG, 0, loc, BUILDER_CUR_WORD, "");
 		++n;
 	}
 }
 
 /*
- * Produce decomposition of compile time known value to the stack location.
+ * Produce decomposition of compile time known value to the stack location. Stack location must have
+ * enough allocated space.
  */
 void
 exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *src_value)
@@ -8128,7 +8131,8 @@ exec_instr_arg(Context *cnt, MirInstrArg *arg)
 
 		exec_copy_comptime_to_stack(cnt, dest, &curr_arg_value->value);
 	} else {
-		/* resolve argument pointer */
+		/* Arguments are located in reverse order right before return address on the stack
+		 * so we can find them inside loop adjusting address up on the stack. */
 		MirInstr *arg_value = NULL;
 		/* starting point */
 		MirStackPtr arg_ptr = (MirStackPtr)cnt->exec.stack->ra;
@@ -8451,10 +8455,8 @@ exec_call_top_lvl(Context *cnt, MirInstrCall *call)
 	bl_assert(call && call->base.analyzed);
 
 	MirFn *fn = get_callee(call);
-	if (!fn->analyzed_for_cmptime_exec)
-		bl_abort("Function is not fully analyzed for compile time execution!!!");
-	exec_fn(
-	    cnt, fn, (SmallArray_ConstValue *)call->args, (MirConstValueData *)&call->base.value);
+	if (call->args) bl_abort("exec call top level has not implemented passing of arguments");
+	exec_fn(cnt, fn, NULL, (MirConstValueData *)&call->base.value);
 	return &call->base.value;
 }
 
@@ -8462,12 +8464,18 @@ bool
 exec_fn(Context *cnt, MirFn *fn, SmallArray_ConstValue *args, MirConstValueData *out_value)
 {
 	bl_assert(fn);
+
+	if (!fn->fully_analyzed)
+		bl_abort("Function is not fully analyzed for compile time execution!!!");
+
 	MirType *ret_type = fn->type->data.fn.ret_type;
 	bl_assert(ret_type);
 	const bool does_return_value = ret_type->kind != MIR_TYPE_VOID;
 
 	/* push terminal frame on stack */
-	exec_push_ra(cnt, NULL);
+	Location *loc =
+	    fn->prototype ? fn->prototype->node ? fn->prototype->node->location : NULL : NULL;
+	exec_push_ra(cnt, NULL, loc);
 
 	/* allocate local variables */
 	exec_stack_alloc_local_vars(cnt, fn);
@@ -8820,8 +8828,12 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
 	if (is_flag(fn->flags, FLAG_EXTERN)) {
 		exec_extern_call(cnt, fn, call);
 	} else {
+		/* CLEANUP: use exec_fn */
+		/* CLEANUP: use exec_fn */
+		/* CLEANUP: use exec_fn */
+
 		/* Push current frame stack top. (Later poped by ret instruction)*/
-		exec_push_ra(cnt, &call->base);
+		exec_push_ra(cnt, &call->base, call->base.node->location);
 		bl_assert(fn->first_block->entry_instr);
 
 		exec_stack_alloc_local_vars(cnt, fn);
@@ -8851,7 +8863,7 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
 		ret_data_ptr = exec_fetch_value(cnt, ret->value);
 		bl_assert(ret_data_ptr);
 
-		/* TODO: remove */
+		/* CLEANUP: remove */
 		/* set fn execution resulting instruction */
 		if (fn->exec_ret_value) {
 			if (ret->value->comptime) {
@@ -8863,6 +8875,7 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
 			}
 		}
 
+		/* CLEANUP: remove; push always and eventually pop unused result on caller side. */
 		/* discard return value pointer if result is not used on caller side,
 		 * this solution is kinda messy... */
 		if (!(caller && caller->base.ref_count > 1)) ret_data_ptr = NULL;

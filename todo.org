@@ -32,3 +32,11 @@
     
   - [ ] Unstable function pointers and invalid error reporting locations.
 
+
+* Calling convention changes [16%]
+  - [ ] merge somehow funcitions exec_instr_call, exec_call_top_lvl and exec_fn
+  - [ ] remove fn->exec_ret_value push on the stack instead
+  - [ ] do unused return value cleanup in call end instead of terminal instruction
+  - [ ] argument cleanup and push in call???
+  - [ ] remove caller from frame top
+  - [X] repair print stack trace
