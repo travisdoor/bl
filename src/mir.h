@@ -579,6 +579,7 @@ struct MirInstrUnop {
 
 	UnopKind  op;
 	MirInstr *expr;
+	
 	/* volatile type flag, if true, this instruction can change type during analyze pass, this
 	 * is used for const integer literals like (-123) */
 	bool volatile_type;

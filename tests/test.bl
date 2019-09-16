@@ -2,12 +2,7 @@
 
 #load "std/print.bl"
 
-MIN  : s8 : -(127 + 1);
-MAX  : s8 : 127;
-
 main :: fn () s32 {
-    i := 0b10101;
-    print("%\n", MIN);
-    print("%\n", MAX);
+    sizeof("foo");
     return 0;
 };

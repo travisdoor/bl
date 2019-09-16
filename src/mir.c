@@ -4091,6 +4091,60 @@ erase_instr_tree(MirInstr *instr)
 			break;
 		}
 
+		case MIR_INSTR_TYPE_ENUM: {
+			MirInstrTypeEnum *te = (MirInstrTypeEnum *)top;
+			unref_instr(te->base_type);
+			sa_push_Instr64(&queue, te->base_type);
+
+			MirInstr *it;
+			sarray_foreach(te->variants, it)
+			{
+				unref_instr(it);
+				sa_push_Instr64(&queue, it);
+			}
+			break;
+		}
+
+		case MIR_INSTR_TYPE_FN: {
+			MirInstrTypeFn *tf = (MirInstrTypeFn *)top;
+			unref_instr(tf->ret_type);
+			sa_push_Instr64(&queue, tf->ret_type);
+
+			if (tf->arg_types) {
+				MirInstr *it;
+				sarray_foreach(tf->arg_types, it)
+				{
+					unref_instr(it);
+					sa_push_Instr64(&queue, it);
+				}
+			}
+			break;
+		}
+
+		case MIR_INSTR_TYPE_ARRAY: {
+			MirInstrTypeArray *ta = (MirInstrTypeArray *)top;
+			unref_instr(ta->elem_type);
+			unref_instr(ta->len);
+			sa_push_Instr64(&queue, ta->elem_type);
+			sa_push_Instr64(&queue, ta->len);
+			break;
+		}
+
+		case MIR_INSTR_TYPE_SLICE:
+		case MIR_INSTR_TYPE_STRUCT: {
+			MirInstrTypeStruct *ts = (MirInstrTypeStruct *)top;
+
+			if (ts->members) {
+				MirInstr *it;
+				sarray_foreach(ts->members, it)
+				{
+					unref_instr(it);
+					sa_push_Instr64(&queue, it);
+				}
+			}
+			break;
+		}
+
 		case MIR_INSTR_VARGS: {
 			MirInstrVArgs *vargs = (MirInstrVArgs *)top;
 			if (vargs->values) {

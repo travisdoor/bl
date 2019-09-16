@@ -1,9 +1,9 @@
-* Release 0.5.0 (1st Oct 2019) [33%]
-  - [ ] Complete missing erase cases.
+* Release 0.5.0 (1st Oct 2019) [46%]
+  - [X] Complete missing erase cases.
   - [ ] LLVM DI fine tunning and globals.
-  - [ ] Fix global immutables. 
+  - [X] Fix global immutables. 
   - [ ] Implicit casting array to slice.
-  - [ ] Validation of global's initializers to be compile time known.
+  - [X] Validation of global's initializers to be compile time known.
   - [ ] Improve documentation.
   - [X] Defer statement.
   - [X] Runtime type info. 
@@ -12,6 +12,8 @@
   - [X] len in arrays and slices as s64 not u64
   - [ ] enable implicit casting only to bigger integer type and check signed unsigned also 
   - [ ] warn about unused casts (auto also) 
+  - [ ] remove ';' at the end of function declaration 
+  - [ ] remove ';' at the end struct and enum
 
 * Bugs [40%]
   - [X] fn typedef
