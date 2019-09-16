@@ -3,6 +3,8 @@
 #load "std/print.bl"
 
 main :: fn () s32 {
-    sizeof("foo");
+    Vector3 :: struct { x: s32, y: s32, z: s32 };
+    v := {:Vector3: 1, 2, 3};
+    print("%\n", v);
     return 0;
 };

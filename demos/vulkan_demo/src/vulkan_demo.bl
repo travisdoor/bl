@@ -54,6 +54,7 @@ glfw_init :: fn () {
     }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    //glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     app.window = glfwCreateWindow(WindowW, WindowH, WindowTitle.ptr, null, null);
     if app.window == null {

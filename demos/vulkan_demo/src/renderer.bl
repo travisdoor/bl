@@ -22,16 +22,10 @@ Renderer :: struct {
     in_flight_fences: [MAX_FRAMES_IN_FLIGHT]VkFence,
 
     current_frame: s64,
-    
-    validation_layers: [1]string,
-    device_extensions: [1]string,
 };
 
 renderer_new :: fn () *Renderer {
     r := cast(*Renderer) mem_calloc(1, sizeof(Renderer));
-
-    r.validation_layers = {:[1]string: "VK_LAYER_KHRONOS_validation"};
-    r.device_extensions = {:[1]string: VK_KHR_SWAPCHAIN_EXTENSION_NAME};
     
     create_instance(r);
     create_surface(r);
@@ -52,32 +46,15 @@ renderer_new :: fn () *Renderer {
 renderer_delete :: fn (r: *Renderer) {
     vkDeviceWaitIdle(r.device);
 
+    cleanup_swap_chain(r);
+
     loop i := 0; i < MAX_FRAMES_IN_FLIGHT; i += 1 {
         vkDestroySemaphore(r.device, r.image_available_semaphore[i], null);
         vkDestroySemaphore(r.device, r.render_finished_semaphore[i], null);
         vkDestroyFence(r.device, r.in_flight_fences[i], null);
     }
 
-    mem_free(auto r.command_buffers.ptr);
-
     vkDestroyCommandPool(r.device, r.command_pool, null);
-    loop i := 0; i < r.swap_chain_framebuffers.len; i += 1 {
-        vkDestroyFramebuffer(r.device, r.swap_chain_framebuffers[i], null);
-    }
-
-    mem_free(auto r.swap_chain_framebuffers.ptr);
-
-    vkDestroyPipeline(r.device, r.graphics_pipeline, null);
-    vkDestroyPipelineLayout(r.device, r.pipeline_layout, null);
-    vkDestroyRenderPass(r.device, r.render_pass, null);
-
-    loop i := 0; i < r.swap_chain_image_views.len; i += 1 {
-        vkDestroyImageView(r.device, r.swap_chain_image_views[i], null);
-    }
-    mem_free(auto r.swap_chain_image_views.ptr);
-    mem_free(auto r.swap_chain_images.ptr);
-
-    vkDestroySwapchainKHR(r.device, r.swap_chain, null);
     vkDestroySurfaceKHR(r.vki, r.surface, null);
     vkDestroyDevice(r.device, null);
     vkDestroyInstance(r.vki, null);
@@ -87,10 +64,16 @@ renderer_delete :: fn (r: *Renderer) {
 
 renderer_draw_frame :: fn (r: *Renderer) {
     vkWaitForFences(r.device, 1, &r.in_flight_fences[r.current_frame], VK_TRUE, U64_MAX);
-    vkResetFences(r.device, 1, &r.in_flight_fences[r.current_frame]);
 
     image_index: u32;
-    vkAcquireNextImageKHR(r.device, r.swap_chain, U64_MAX, r.image_available_semaphore[r.current_frame], null, &image_index);
+    result := vkAcquireNextImageKHR(r.device, r.swap_chain, U64_MAX, r.image_available_semaphore[r.current_frame], null, &image_index);
+    if result == VkResult.ERROR_OUT_OF_DATE_KHR {
+        recreate_swap_chain(r);
+        return;
+    } else if result != VkResult.SUCCESS && result != VkResult.SUBOPTIMAL_KHR {
+        eprint("Failed to acquire swap chain image!");
+        abort();
+    }
 
     wait_semaphores := {:[1]VkSemaphore: r.image_available_semaphore[r.current_frame]};
     signal_semaphores := {:[1]VkSemaphore: r.render_finished_semaphore[r.current_frame]};
@@ -105,6 +88,8 @@ renderer_draw_frame :: fn (r: *Renderer) {
     submit_info.pCommandBuffers = &r.command_buffers[auto image_index];
     submit_info.signalSemaphoreCount = signal_semaphores.len;
     submit_info.pSignalSemaphores = signal_semaphores.ptr; 
+
+    vkResetFences(r.device, 1, &r.in_flight_fences[r.current_frame]);
 
     if vkQueueSubmit(r.graphics_queue, 1, &submit_info, r.in_flight_fences[r.current_frame]) != VkResult.SUCCESS {
         eprint("Failed to submit draw command buffer!\n");
@@ -129,6 +114,8 @@ renderer_draw_frame :: fn (r: *Renderer) {
 #private
 ENABLE_VALIDATION_LAYERS :: true;
 MAX_FRAMES_IN_FLIGHT :: 2;
+ValidationLayers := {:[1]string: "VK_LAYER_KHRONOS_validation"};
+DeviceExtensions := {:[1]string: VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
 Opt_u32 :: struct { v: u32, is_valid: bool };
 
@@ -144,8 +131,8 @@ SwapChainSupportDetails :: struct {
 };
 
 create_instance :: fn (r: *Renderer) {
-    o := r.validation_layers.len;
-    c_validation_layers := string_array_to_c_array({:[]string: r.validation_layers.len, &r.validation_layers[0]});
+    o := ValidationLayers.len;
+    c_validation_layers := string_array_to_c_array({:[]string: ValidationLayers.len, &ValidationLayers[0]});
     defer mem_free(c_validation_layers);
 
     if ENABLE_VALIDATION_LAYERS && !check_validation_layer_support(r) {
@@ -173,7 +160,7 @@ create_instance :: fn (r: *Renderer) {
     create_info.ppEnabledExtensionNames = auto glfw_extensions;
 
     if ENABLE_VALIDATION_LAYERS {
-        create_info.enabledLayerCount = r.validation_layers.len;
+        create_info.enabledLayerCount = ValidationLayers.len;
         create_info.ppEnabledLayerNames = c_validation_layers;
     } else {
         create_info.enabledLayerCount = 0;
@@ -259,8 +246,8 @@ create_logical_device :: fn (r: *Renderer) {
         ^used += 1;
     };
     
-    c_validation_layers := string_array_to_c_array({:[]string: r.validation_layers.len, r.validation_layers.ptr});
-    c_device_extensions := string_array_to_c_array({:[]string: r.device_extensions.len, r.device_extensions.ptr});
+    c_validation_layers := string_array_to_c_array({:[]string: ValidationLayers.len, ValidationLayers.ptr});
+    c_device_extensions := string_array_to_c_array({:[]string: DeviceExtensions.len, DeviceExtensions.ptr});
     defer mem_free(c_validation_layers);
     defer mem_free(c_device_extensions);
 
@@ -280,11 +267,11 @@ create_logical_device :: fn (r: *Renderer) {
     create_info.queueCreateInfoCount = queue_create_infos_count;
     create_info.pEnabledFeatures = &device_features;
 
-    create_info.enabledExtensionCount = r.device_extensions.len;
+    create_info.enabledExtensionCount = DeviceExtensions.len;
     create_info.ppEnabledExtensionNames = c_device_extensions;
 
     if ENABLE_VALIDATION_LAYERS {
-        create_info.enabledLayerCount = r.validation_layers.len;
+        create_info.enabledLayerCount = ValidationLayers.len;
         create_info.ppEnabledLayerNames = c_validation_layers;
     } else {
         create_info.enabledLayerCount = 0;
@@ -362,6 +349,41 @@ create_swap_chain :: fn (r: *Renderer) {
 
     r.swap_chain_image_format = surface_format.format;
     r.swap_chain_extent = extent;
+};
+
+recreate_swap_chain :: fn (r: *Renderer) {
+    vkDeviceWaitIdle(r.device);
+
+    cleanup_swap_chain(r);
+
+    create_swap_chain(r);
+    create_image_views(r);
+    create_render_pass(r);
+    create_graphics_pipeline(r);
+    create_frame_buffers(r);
+    create_command_buffers(r);
+};
+
+cleanup_swap_chain :: fn (r: *Renderer) {
+    loop i := 0; i < r.swap_chain_framebuffers.len; i += 1 {
+        vkDestroyFramebuffer(r.device, r.swap_chain_framebuffers[i], null);
+    }
+
+    vkFreeCommandBuffers(r.device, r.command_pool, auto r.command_buffers.len, r.command_buffers.ptr);
+
+    mem_free(auto r.swap_chain_framebuffers.ptr);
+
+    vkDestroyPipeline(r.device, r.graphics_pipeline, null);
+    vkDestroyPipelineLayout(r.device, r.pipeline_layout, null);
+    vkDestroyRenderPass(r.device, r.render_pass, null);
+
+    loop i := 0; i < r.swap_chain_image_views.len; i += 1 {
+        vkDestroyImageView(r.device, r.swap_chain_image_views[i], null);
+    }
+    mem_free(auto r.swap_chain_image_views.ptr);
+    mem_free(auto r.swap_chain_images.ptr);
+
+    vkDestroySwapchainKHR(r.device, r.swap_chain, null);
 };
 
 create_image_views :: fn (r: *Renderer) {
@@ -778,7 +800,9 @@ choose_swap_extent :: fn (capabilities: *VkSurfaceCapabilitiesKHR) VkExtent2D {
     if capabilities.currentExtent.width != U32_MAX {
         return capabilities.currentExtent;
     } else {
-        actual_extent := {:VkExtent2D: auto WindowW, auto WindowH};
+        actual_extent := {:VkExtent2D: 0 };
+        glfwGetFramebufferSize(app.window, &actual_extent.width, &actual_extent.height);
+
         actual_extent.width = max_u32(capabilities.minImageExtent.width, min_u32(capabilities.maxImageExtent.width, actual_extent.width));
         actual_extent.height = max_u32(capabilities.minImageExtent.height, min_u32(capabilities.maxImageExtent.height, actual_extent.height));
 
@@ -796,8 +820,8 @@ check_validation_layer_support :: fn (r: *Renderer) bool {
     vkEnumerateInstanceLayerProperties(auto &available_layers.len, available_layers.ptr);
 
     print("Desired layers:\n");
-    loop j := 0; j < r.validation_layers.len; j += 1 {
-        print("    %\n", r.validation_layers[j]);
+    loop j := 0; j < ValidationLayers.len; j += 1 {
+        print("    %\n", ValidationLayers[j]);
     }
 
     print("Available layers:\n");
@@ -806,9 +830,9 @@ check_validation_layer_support :: fn (r: *Renderer) bool {
         print("    %\n", tmp);
     }
 
-    loop i := 0; i < r.validation_layers.len; i += 1 {
+    loop i := 0; i < ValidationLayers.len; i += 1 {
         found := false;
-        desired_name := r.validation_layers[i].ptr;
+        desired_name := ValidationLayers[i].ptr;
 
         loop j := 0; j < available_layers.len; j += 1 {
             available_name := available_layers[j].layerName.ptr;
@@ -836,8 +860,8 @@ check_device_extension_support :: fn (r: *Renderer, device: VkPhysicalDevice) bo
     vkEnumerateDeviceExtensionProperties(device, null, auto &available_extensions.len, available_extensions.ptr);
 
     print("Desired extensions:\n");
-    loop j := 0; j < r.device_extensions.len; j += 1 {
-        print("    %\n", r.device_extensions[j]);
+    loop j := 0; j < DeviceExtensions.len; j += 1 {
+        print("    %\n", DeviceExtensions[j]);
     }
 
     print("Available extensions:\n");
@@ -846,9 +870,9 @@ check_device_extension_support :: fn (r: *Renderer, device: VkPhysicalDevice) bo
         print("    %\n", tmp);
     }
 
-    loop i := 0; i < r.device_extensions.len; i += 1 {
+    loop i := 0; i < DeviceExtensions.len; i += 1 {
         found := false;
-        desired_name := r.device_extensions[i].ptr;
+        desired_name := DeviceExtensions[i].ptr;
 
         loop j := 0; j < available_extensions.len; j += 1 {
             available_name := available_extensions[j].extensionName.ptr;

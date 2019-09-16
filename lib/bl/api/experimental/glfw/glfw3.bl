@@ -39,6 +39,9 @@ GLFW_OPENGL_COMPAT_PROFILE :: 0x00032002;
 GLFW_OPENGL_FORWARD_COMPAT :: 0x00022006;
 GLFW_NO_API                ::          0;
 GLFW_CLIENT_API            :: 0x00022001;
+GLFW_TRUE                  :: 1;
+GLFW_FALSE                 :: 0;
+GLFW_RESIZABLE             :: 0x00020003;
 
 glfwInit :: fn () s32 #extern;
 glfwTerminate :: fn () #extern;
@@ -53,3 +56,4 @@ glfwVulkanSupported :: fn () s32 #extern;
 glfwGetRequiredInstanceExtensions :: fn (count: *u32) **u8 #extern;
 // TODO: define only with vulkan!!!
 glfwCreateWindowSurface :: fn (instance: VkInstance, window:  *GLFWwindow, allocator: *VkAllocationCallbacks, surface: *VkSurfaceKHR) VkResult #extern;
+glfwGetFramebufferSize :: fn (window: *GLFWwindow, width: *u32, height: *u32) #extern;

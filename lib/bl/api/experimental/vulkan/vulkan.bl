@@ -2125,6 +2125,7 @@ vkDestroyFence :: fn (device: VkDevice, fence: VkFence, pAllocator: *VkAllocatio
 vkResetFences :: fn (device: VkDevice, fenceCount: u32, pFences: *VkFence) VkResult #extern;
 vkGetFenceStatus :: fn (device: VkDevice, fence: VkFence) VkResult #extern;
 vkWaitForFences :: fn (device: VkDevice, fenceCount: u32, pFences: *VkFence, waitAll: VkBool32, timeout: u64) VkResult #extern;
+vkFreeCommandBuffers :: fn (device: VkDevice, commandPool: VkCommandPool, commandBufferCount: u32, pCommandBuffers: *VkCommandBuffer) #extern;
 
 VK_MAKE_VERSION :: fn (major: u32, minor: u32, patch: u32) u32 #inline {
     return ((major) << 22) | ((minor) << 12) | (patch);
