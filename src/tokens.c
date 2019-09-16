@@ -226,7 +226,7 @@ tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal)
 bool
 tokens_lookahead(Tokens *tokens, TokenCmpFunc cmp)
 {
-	assert(cmp);
+	bl_assert(cmp);
 	bool                 found  = false;
 	size_t               marker = tokens_get_marker(tokens);
 	Token *              curr   = NULL;

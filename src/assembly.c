@@ -111,7 +111,7 @@ init_llvm(Assembly *assembly)
 	if (LLVMGetTargetFromTriple(triple, &llvm_target, &error_msg)) {
 		msg_error("cannot get target with error: %s", error_msg);
 		LLVMDisposeMessage(error_msg);
-		abort();
+		bl_abort("cannot get target");
 	}
 
 	LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelDefault;
@@ -309,7 +309,7 @@ assembly_add_link(Assembly *assembly, Token *token)
 {
 	if (!token) return;
 
-	assert(token->sym == SYM_STRING);
+	bl_assert(token->sym == SYM_STRING);
 
 	uint64_t hash = bo_hash_from_str(token->value.str);
 	if (bo_htbl_has_key(assembly->link_cache, hash)) return;

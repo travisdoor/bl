@@ -65,7 +65,7 @@ get_current_exec_dir(char *buf, size_t buf_size)
 void
 id_init(ID *id, const char *str)
 {
-	assert(id);
+	bl_assert(id);
 	id->hash = bo_hash_from_str(str);
 	id->str  = str;
 }
@@ -84,8 +84,8 @@ const char *
 brealpath(const char *file, char *out, int32_t out_len)
 {
 	const char *resolved = NULL;
-	assert(out);
-	assert(out_len);
+	bl_assert(out);
+	bl_assert(out_len);
 	if (!file) return resolved;
 
 #if defined(BL_PLATFORM_WIN)
@@ -99,7 +99,7 @@ brealpath(const char *file, char *out, int32_t out_len)
 void
 date_time(char *buf, int32_t len, const char *format)
 {
-	assert(buf && len);
+	bl_assert(buf && len);
 	time_t     timer;
 	struct tm *tm_info;
 
@@ -125,7 +125,7 @@ align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
 	}
 
 	const size_t mask = alignment - 1;
-	assert((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
+	bl_assert((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
 	const uintptr_t i_unaligned  = (uintptr_t)(*p);
 	const uintptr_t misalignment = i_unaligned & mask;
 
@@ -225,9 +225,9 @@ create_arr(Assembly *assembly, size_t size)
 void *
 _create_sarr(Assembly *assembly, size_t arr_size)
 {
-	assert(arr_size <= assembly->arenas.small_array.elem_size_in_bytes &&
-	       "SmallArray is too big to be allocated inside arena, make array smaller or arena "
-	       "bigger.");
+	bl_assert(arr_size <= assembly->arenas.small_array.elem_size_in_bytes &&
+	          "SmallArray is too big to be allocated inside arena, make array smaller or arena "
+	          "bigger.");
 
 	SmallArrayAny *tmp = arena_alloc(&assembly->arenas.small_array);
 	sa_init(tmp);

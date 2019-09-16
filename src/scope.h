@@ -30,7 +30,6 @@
 #define BL_SCOPE_H
 
 #include "arena.h"
-#include <assert.h>
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
 #include <llvm-c/Types.h>

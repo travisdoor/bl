@@ -11,6 +11,7 @@
   - [ ] #extern "name"
   - [X] len in arrays and slices as s64 not u64
   - [ ] enable implicit casting only to bigger integer type and check signed unsigned also 
+  - [ ] warn about unused casts (auto also) 
 
 * Bugs [40%]
   - [X] fn typedef
@@ -25,5 +26,5 @@
   - [X] Wrong initialization of globals with defined type:
     Foo : u64 : 10;
     
-  - [ ] Unstable function pointers and invalid error reporting locaitons.
+  - [ ] Unstable function pointers and invalid error reporting locations.
 

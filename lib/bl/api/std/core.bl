@@ -44,23 +44,23 @@ _Context :: struct {
 
 _context := {:_Context: &malloc, &free};
 
-S8_MIN :: -128;
-S8_MAX :: 127;
-S16_MIN :: -32768;
-S16_MAX :: 32767;
-S32_MIN :: -2147483648;
-S32_MAX :: 2147483647;
-S64_MIN :: -9223372036854775808;
-S64_MAX :: 9223372036854775807;
+S8_MIN  : s8 : -128;
+S8_MAX  : s8 : 127;
+S16_MIN : s16 : -32768;
+S16_MAX : s16 : 32767;
+S32_MIN : s32 : -2147483648;
+S32_MAX : s32 : 2147483647;
+S64_MIN : s64 : -9223372036854775808;
+S64_MAX : s64 : 9223372036854775807;
 
-U8_MIN :: 0;
-U8_MAX :: 255;
-U16_MIN :: 0;
-U16_MAX :: 65535;
-U32_MIN :: 0;
-U32_MAX :: 4294967295;
-U64_MIN :: 0;
-U64_MAX :: 18446744073709551615;
+U8_MIN  : u8 : 0;
+U8_MAX  : u8 : 255;
+U16_MIN : u16 : 0;
+U16_MAX : u16 : 65535;
+U32_MIN : u32 : 0;
+U32_MAX : u32 : 4294967295;
+U64_MIN : u64 : 0;
+U64_MAX : u64 : 18446744073709551615;
 
 /*
  * TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 

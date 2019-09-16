@@ -191,7 +191,7 @@ linker_run(Builder *builder, Assembly *assembly)
 	bhtbl_foreach(cache, it)
 	{
 		token = bo_htbl_iter_peek_value(cache, &it, Token *);
-		assert(token);
+		bl_assert(token);
 
 		if (!link_lib(&cnt, token->value.str, token)) {
 			link_error(builder,

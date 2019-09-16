@@ -1,16 +1,13 @@
 /* playground */
 
-//#load "std/print.bl"
+#load "std/print.bl"
+
+MIN  : s8 : -(127 + 1);
+MAX  : s8 : 127;
 
 main :: fn () s32 {
-    i : u8 = 10;
-    j : u16 = 10;
-    i + j;
+    i := 0b10101;
+    print("%\n", MIN);
+    print("%\n", MAX);
     return 0;
 };
-
-
-/*
-u8 > u16
-
-*/

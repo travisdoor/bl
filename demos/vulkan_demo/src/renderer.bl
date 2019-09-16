@@ -1,5 +1,3 @@
-#load "experimental/vulkan/vulkan_macos.bl"
-
 Renderer :: struct {
     vki: VkInstance,
     surface: VkSurfaceKHR,
@@ -23,7 +21,7 @@ Renderer :: struct {
     render_finished_semaphore: [MAX_FRAMES_IN_FLIGHT]VkSemaphore,
     in_flight_fences: [MAX_FRAMES_IN_FLIGHT]VkFence,
 
-    current_frame: u64,
+    current_frame: s64,
     
     validation_layers: [1]string,
     device_extensions: [1]string,
@@ -88,11 +86,11 @@ renderer_delete :: fn (r: *Renderer) {
 };
 
 renderer_draw_frame :: fn (r: *Renderer) {
-    vkWaitForFences(r.device, 1, &r.in_flight_fences[r.current_frame], VK_TRUE, 0xffffffffffffffff);
+    vkWaitForFences(r.device, 1, &r.in_flight_fences[r.current_frame], VK_TRUE, U64_MAX);
     vkResetFences(r.device, 1, &r.in_flight_fences[r.current_frame]);
 
     image_index: u32;
-    vkAcquireNextImageKHR(r.device, r.swap_chain, 0xffffffffffffffff, r.image_available_semaphore[r.current_frame], null, &image_index);
+    vkAcquireNextImageKHR(r.device, r.swap_chain, U64_MAX, r.image_available_semaphore[r.current_frame], null, &image_index);
 
     wait_semaphores := {:[1]VkSemaphore: r.image_available_semaphore[r.current_frame]};
     signal_semaphores := {:[1]VkSemaphore: r.render_finished_semaphore[r.current_frame]};
@@ -104,7 +102,7 @@ renderer_draw_frame :: fn (r: *Renderer) {
     submit_info.pWaitSemaphores = wait_semaphores.ptr;
     submit_info.pWaitDstStageMask = wait_stages.ptr;
     submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &r.command_buffers[image_index];
+    submit_info.pCommandBuffers = &r.command_buffers[auto image_index];
     submit_info.signalSemaphoreCount = signal_semaphores.len;
     submit_info.pSignalSemaphores = signal_semaphores.ptr; 
 
@@ -223,7 +221,7 @@ pick_physical_device :: fn (r: *Renderer) {
         abort();
     }
 
-    devices.ptr = auto mem_alloc(sizeof(VkPhysicalDevice) * devices.len);
+    devices.ptr = auto mem_alloc(sizeof(VkPhysicalDevice) * auto devices.len);
     defer mem_free(auto devices.ptr);
 
     vkEnumeratePhysicalDevices(r.vki, auto &devices.len, devices.ptr);
@@ -241,14 +239,14 @@ pick_physical_device :: fn (r: *Renderer) {
     }
 };
 
-DeviceQueueCreateInfos :: [sizeof(QueueFamilyIndices) / sizeof(Opt_u32)]VkDeviceQueueCreateInfo;
+DeviceQueueCreateInfos :: [auto (sizeof(QueueFamilyIndices) / sizeof(Opt_u32))]VkDeviceQueueCreateInfo;
 
 create_logical_device :: fn (r: *Renderer) {
     print("Creating device\n");
     add_queue_create_info :: fn (infos: *DeviceQueueCreateInfos, used: *u32, q: u32, priority: f32) {
         // check duplicity
-        loop i := 0; i < ^used; i += 1 {
-            if (^infos)[i].queueFamilyIndex  == q { return; }
+        loop i : u32 = 0; i < ^used; i += 1 {
+            if (^infos)[auto i].queueFamilyIndex  == q { return; }
         }
         
         queue_create_info := {:VkDeviceQueueCreateInfo: 0};
@@ -257,7 +255,7 @@ create_logical_device :: fn (r: *Renderer) {
         queue_create_info.queueCount = 1;
         queue_create_info.pQueuePriorities = &priority;
 
-        (^infos)[^used] = queue_create_info;
+        (^infos)[auto ^used] = queue_create_info;
         ^used += 1;
     };
     
@@ -359,7 +357,7 @@ create_swap_chain :: fn (r: *Renderer) {
     }
 
     res := vkGetSwapchainImagesKHR(r.device, r.swap_chain, auto &r.swap_chain_images.len, null);
-    r.swap_chain_images.ptr = auto mem_alloc(sizeof(VkImage) * r.swap_chain_images.len);
+    r.swap_chain_images.ptr = auto mem_alloc(sizeof(VkImage) * auto r.swap_chain_images.len);
     vkGetSwapchainImagesKHR(r.device, r.swap_chain, auto &r.swap_chain_images.len, r.swap_chain_images.ptr);
 
     r.swap_chain_image_format = surface_format.format;
@@ -368,7 +366,7 @@ create_swap_chain :: fn (r: *Renderer) {
 
 create_image_views :: fn (r: *Renderer) {
     r.swap_chain_image_views.len = r.swap_chain_images.len;
-    r.swap_chain_image_views.ptr = auto mem_alloc(sizeof(VkImageView) * r.swap_chain_image_views.len);
+    r.swap_chain_image_views.ptr = auto mem_alloc(sizeof(VkImageView) * auto r.swap_chain_image_views.len);
 
     loop i := 0; i < r.swap_chain_image_views.len; i += 1 {
         create_info := {:VkImageViewCreateInfo: 0 };
@@ -583,7 +581,7 @@ create_graphics_pipeline :: fn (r: *Renderer) {
 
 create_frame_buffers :: fn (r: *Renderer) {
     r.swap_chain_framebuffers.len = r.swap_chain_image_views.len;
-    r.swap_chain_framebuffers.ptr = auto mem_calloc(1, sizeof(VkFramebuffer) * r.swap_chain_framebuffers.len);
+    r.swap_chain_framebuffers.ptr = auto mem_calloc(1, sizeof(VkFramebuffer) * auto r.swap_chain_framebuffers.len);
 
     loop i := 0; i < r.swap_chain_image_views.len; i += 1 {
         attachments := {:[1]VkImageView: r.swap_chain_image_views[i]};
@@ -620,13 +618,13 @@ create_command_pool :: fn (r: *Renderer) {
 
 create_command_buffers :: fn (r: *Renderer) {
     r.command_buffers.len = r.swap_chain_framebuffers.len;
-    r.command_buffers.ptr = auto mem_calloc(1, sizeof(VkCommandBuffer) * r.command_buffers.len);
+    r.command_buffers.ptr = auto mem_calloc(1, sizeof(VkCommandBuffer) * auto r.command_buffers.len);
 
     alloc_info := {:VkCommandBufferAllocateInfo: 0 };
     alloc_info.sType = VkStructureType.COMMAND_BUFFER_ALLOCATE_INFO;
     alloc_info.commandPool = r.command_pool;
     alloc_info.level = VkCommandBufferLevel.PRIMARY;
-    alloc_info.commandBufferCount = r.command_buffers.len;
+    alloc_info.commandBufferCount = auto r.command_buffers.len;
 
     if vkAllocateCommandBuffers(r.device, &alloc_info, r.command_buffers.ptr) != VkResult.SUCCESS {
         eprint("Failed to allocate command buffers!\n");
@@ -670,7 +668,7 @@ create_command_buffers :: fn (r: *Renderer) {
 create_shader_module :: fn (r: *Renderer, code: string) VkShaderModule {
     create_info := {:VkShaderModuleCreateInfo: 0 };
     create_info.sType = VkStructureType.SHADER_MODULE_CREATE_INFO;
-    create_info.codeSize = code.len;
+    create_info.codeSize = auto code.len;
     create_info.pCode = code.ptr;
 
     shader_module: VkShaderModule;
@@ -714,13 +712,13 @@ find_queue_families :: fn (r: *Renderer, device: VkPhysicalDevice) QueueFamilyIn
     families := {:[]VkQueueFamilyProperties: 0};
     vkGetPhysicalDeviceQueueFamilyProperties(device, auto &families.len, null);
 
-    families.ptr = auto mem_alloc(sizeof(VkQueueFamilyProperties) * families.len);
+    families.ptr = auto mem_alloc(sizeof(VkQueueFamilyProperties) * auto families.len);
     defer mem_free(auto families.ptr);
 
     vkGetPhysicalDeviceQueueFamilyProperties(device, auto &families.len, families.ptr);
 
-    loop i := 0; i < families.len; i += 1 {
-        if is_flag_u32(families[i].queueFlags, auto VkQueueFlagBits.GRAPHICS_BIT) {
+    loop i : u32 = 0; i < auto families.len; i += 1 {
+        if is_flag_u32(families[auto i].queueFlags, auto VkQueueFlagBits.GRAPHICS_BIT) {
             indices.graphics_family = {:Opt_u32: i, true };
         }
 
@@ -740,11 +738,11 @@ query_swap_chain_support :: fn (r: *Renderer, device: VkPhysicalDevice) SwapChai
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, r.surface, &details.capabilities);
 
     vkGetPhysicalDeviceSurfaceFormatsKHR(device, r.surface, auto &details.formats.len, null);
-    details.formats.ptr = auto mem_alloc(sizeof(VkSurfaceFormatKHR) * details.formats.len);
+    details.formats.ptr = auto mem_alloc(sizeof(VkSurfaceFormatKHR) * auto details.formats.len);
     vkGetPhysicalDeviceSurfaceFormatsKHR(device, r.surface, auto &details.formats.len, details.formats.ptr);
 
     vkGetPhysicalDeviceSurfacePresentModesKHR(device, r.surface, auto &details.present_modes.len, null);
-    details.present_modes.ptr = auto mem_alloc(sizeof(VkSurfaceFormatKHR) * details.present_modes.len);
+    details.present_modes.ptr = auto mem_alloc(sizeof(VkSurfaceFormatKHR) * auto details.present_modes.len);
     vkGetPhysicalDeviceSurfacePresentModesKHR(device, r.surface, auto &details.present_modes.len, details.present_modes.ptr);
 
     return details;
@@ -780,7 +778,7 @@ choose_swap_extent :: fn (capabilities: *VkSurfaceCapabilitiesKHR) VkExtent2D {
     if capabilities.currentExtent.width != U32_MAX {
         return capabilities.currentExtent;
     } else {
-        actual_extent := {:VkExtent2D: WindowW, WindowH};
+        actual_extent := {:VkExtent2D: auto WindowW, auto WindowH};
         actual_extent.width = max_u32(capabilities.minImageExtent.width, min_u32(capabilities.maxImageExtent.width, actual_extent.width));
         actual_extent.height = max_u32(capabilities.minImageExtent.height, min_u32(capabilities.maxImageExtent.height, actual_extent.height));
 
@@ -792,7 +790,7 @@ check_validation_layer_support :: fn (r: *Renderer) bool {
     available_layers := {:[]VkLayerProperties: 0};
     vkEnumerateInstanceLayerProperties(auto &available_layers.len, null);
 
-    available_layers.ptr = auto mem_alloc(sizeof(VkLayerProperties) * available_layers.len);
+    available_layers.ptr = auto mem_alloc(sizeof(VkLayerProperties) * auto available_layers.len);
     defer mem_free(auto available_layers.ptr);
 
     vkEnumerateInstanceLayerProperties(auto &available_layers.len, available_layers.ptr);
@@ -832,7 +830,7 @@ check_device_extension_support :: fn (r: *Renderer, device: VkPhysicalDevice) bo
     available_extensions := {:[]VkExtensionProperties: 0};
     vkEnumerateDeviceExtensionProperties(device, null, auto &available_extensions.len, null);
 
-    available_extensions.ptr = auto mem_alloc(sizeof(VkExtensionProperties) * available_extensions.len);
+    available_extensions.ptr = auto mem_alloc(sizeof(VkExtensionProperties) * auto available_extensions.len);
     defer mem_free(auto available_extensions.ptr);
 
     vkEnumerateDeviceExtensionProperties(device, null, auto &available_extensions.len, available_extensions.ptr);
@@ -869,10 +867,10 @@ check_device_extension_support :: fn (r: *Renderer, device: VkPhysicalDevice) bo
 };
 
 string_array_to_c_array :: fn (arr: []string) *u8 #inline {
-    tmp := mem_calloc(arr.len, sizeof(*u8));
+    tmp := mem_calloc(auto arr.len, sizeof(*u8));
 
     loop i := 0; i < arr.len; i += 1 {
-        dest := cast(**u8) (cast(usize) tmp + i * sizeof(*u8));
+        dest := cast(**u8) (cast(usize) tmp + cast(usize) i * sizeof(*u8));
         ^dest = arr[i].ptr;
     }
 

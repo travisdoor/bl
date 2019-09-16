@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #include "bldebug.h"
+#include "common.h"
 #include <stdarg.h>
 
 #define MAX_LOG_MSG_SIZE 2048
@@ -57,4 +58,26 @@ _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...)
 	}
 
 	va_end(args);
+}
+
+void
+print_trace(void)
+{
+#if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
+#include <execinfo.h>
+	void * tmp[32];
+	size_t size;
+	char **strings;
+	size_t i;
+
+	size    = backtrace(tmp, array_size(tmp));
+	strings = backtrace_symbols(tmp, size);
+
+	printf("Obtained %zd stack frames.\n", size);
+
+	for (i = 1; i < size; i++)
+		printf("%s\n", strings[i]);
+
+	free(strings);
+#endif
 }

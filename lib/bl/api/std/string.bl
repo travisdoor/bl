@@ -45,10 +45,10 @@ string_new_reserved :: fn (size: usize) string {
 
 string_copy :: fn (v: string) string {
     tmp : string;
-    tmp.ptr = alloc_block(v.len);
+    tmp.ptr = alloc_block(auto v.len);
     tmp.len = v.len;
 
-    mem_copy(tmp.ptr, v.ptr, v.len);
+    mem_copy(tmp.ptr, v.ptr, auto v.len);
 
     set_terminator(tmp);
     return tmp;
@@ -65,8 +65,8 @@ string_clear :: fn (v: *string) {
 };
 
 string_append :: fn (v: *string, add: Any) {
-    new_len : usize = 0;
-    add_len : usize = 0;
+    new_len : s64 = 0;
+    add_len : s64 = 0;
     add_ptr : *u8   = null;
 
     if add.type_info.kind == TypeKind.String {
@@ -80,13 +80,13 @@ string_append :: fn (v: *string, add: Any) {
         tmp := {:[]u8: buf.len, buf.ptr };
 
         bprint(tmp, "%", add);
-        add_len = strlen(buf.ptr);
+        add_len = auto strlen(buf.ptr);
         add_ptr = buf.ptr;
         new_len = v.len + add_len;
     }
 
-    v.ptr = make_more_room_if_needed(v.ptr, new_len);
-    mem_copy(cast(*u8) (cast(u64) v.ptr + v.len) , add_ptr, add_len);
+    v.ptr = make_more_room_if_needed(v.ptr, auto new_len);
+    mem_copy(cast(*u8) (cast(u64) v.ptr + auto v.len) , add_ptr, auto add_len);
     v.len = new_len;
 
     set_terminator(^v);

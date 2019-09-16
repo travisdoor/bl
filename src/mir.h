@@ -568,6 +568,10 @@ struct MirInstrBinop {
 	BinopKind op;
 	MirInstr *lhs;
 	MirInstr *rhs;
+
+	/* volatile type flag, if true, this instruction can change type during analyze pass, this
+	 * is used for const integer literals like (123 * 123) */
+	bool volatile_type;
 };
 
 struct MirInstrUnop {
@@ -575,6 +579,9 @@ struct MirInstrUnop {
 
 	UnopKind  op;
 	MirInstr *expr;
+	/* volatile type flag, if true, this instruction can change type during analyze pass, this
+	 * is used for const integer literals like (-123) */
+	bool volatile_type;
 };
 
 struct MirInstrFnProto {
@@ -733,7 +740,7 @@ struct MirInstrToAny {
 static inline bool
 mir_is_pointer_type(MirType *type)
 {
-	assert(type);
+	bl_assert(type);
 	return type->kind == MIR_TYPE_PTR;
 }
 
@@ -754,9 +761,9 @@ mir_is_composit_type(MirType *type)
 static inline MirType *
 mir_get_struct_elem_type(MirType *type, uint32_t i)
 {
-	assert(mir_is_composit_type(type) && "Expected structure type");
+	bl_assert(mir_is_composit_type(type) && "Expected structure type");
 	SmallArray_Member *members = type->data.strct.members;
-	assert(members && members->size > i);
+	bl_assert(members && members->size > i);
 
 	return members->data[i]->type;
 }
@@ -764,10 +771,10 @@ mir_get_struct_elem_type(MirType *type, uint32_t i)
 static inline MirType *
 mir_get_fn_arg_type(MirType *type, uint32_t i)
 {
-	assert(type->kind == MIR_TYPE_FN && "Expected function type");
+	bl_assert(type->kind == MIR_TYPE_FN && "Expected function type");
 	SmallArray_Type *args = type->data.fn.arg_types;
 	if (!args) return NULL;
-	assert(args->size > i);
+	bl_assert(args->size > i);
 
 	return args->data[i];
 }
