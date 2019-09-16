@@ -4,7 +4,7 @@
     info := cast(*TypeInfoInt) typeinfo(s32);
     assert(info.base.kind == TypeKind.Int);
     assert(info.base.size_bytes == sizeof(s32));
-    assert(info.bit_count == sizeof(s32) * 8);
+    assert(info.bit_count == auto sizeof(s32) * 8);
     assert(info.is_signed);
 };
 

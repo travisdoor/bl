@@ -3,7 +3,7 @@ LEVEL_LAYER_HILLS1  :: 1;
 LEVEL_LAYER_CLOUDS1 :: 2;
 LEVEL_LAYER_HILLS2  :: 3;
 LEVEL_LAYER_CLOUDS2 :: 4;
-PLAYER_ID           :: cast(usize) 0;
+PLAYER_ID           :: 0;
 
 Level :: struct {
     layers: [5]*LevelLayer,

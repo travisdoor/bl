@@ -940,9 +940,8 @@ analyze_stage_set_auto(Context *cnt, MirInstr **input, MirType *slot_type);
 static AnalyzeStageState
 analyze_stage_toany(Context *cnt, MirInstr **input, MirType *slot_type);
 
-/* Do implicit cast if possible. */
 static AnalyzeStageState
-analyze_stage_set_const_int(Context *cnt, MirInstr **input, MirType *slot_type);
+analyze_stage_set_volatile_expr(Context *cnt, MirInstr **input, MirType *slot_type);
 
 /* Do implicit cast if possible. */
 static AnalyzeStageState
@@ -951,16 +950,12 @@ analyze_stage_implicit_cast(Context *cnt, MirInstr **input, MirType *slot_type);
 static AnalyzeStageState
 analyze_stage_report_type_mismatch(Context *cnt, MirInstr **input, MirType *slot_type);
 
-static AnalyzeStageState
-analyze_stage_set_mutable_expr(Context *cnt, MirInstr **input, MirType *slot_type);
-
 static const AnalyzeSlotConfig analyze_slot_conf_basic = {.count  = 1,
                                                           .stages = {analyze_stage_load}};
 
-static const AnalyzeSlotConfig analyze_slot_conf_default = {.count  = 7,
+static const AnalyzeSlotConfig analyze_slot_conf_default = {.count  = 6,
                                                             .stages = {
-                                                                analyze_stage_set_const_int,
-                                                                analyze_stage_set_mutable_expr,
+                                                                analyze_stage_set_volatile_expr,
                                                                 analyze_stage_set_null,
                                                                 analyze_stage_set_auto,
                                                                 analyze_stage_load,
@@ -968,10 +963,9 @@ static const AnalyzeSlotConfig analyze_slot_conf_default = {.count  = 7,
                                                                 analyze_stage_report_type_mismatch,
                                                             }};
 
-static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 8,
+static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 7,
                                                          .stages = {
-                                                             analyze_stage_set_const_int,
-                                                             analyze_stage_set_mutable_expr,
+                                                             analyze_stage_set_volatile_expr,
                                                              analyze_stage_set_null,
                                                              analyze_stage_set_auto,
                                                              analyze_stage_toany,
@@ -1247,6 +1241,30 @@ static void
 exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *src_value);
 
 /* INLINES */
+
+/* Determinate if instruction has volatile type, that means we can change type of the value during
+ * analyze pass as needed. This is used for constant integer literals. */
+static inline bool
+is_volatile_expr(MirInstr *instr)
+{
+	MirType *type = instr->value.type;
+
+	if (!type) return false;
+	if (type->kind != MIR_TYPE_INT) return false;
+
+	switch (instr->kind) {
+	case MIR_INSTR_CONST:
+		/* Integer constant literals has always volatile type. */
+		return true;
+	case MIR_INSTR_UNOP:
+		return ((MirInstrUnop *)instr)->volatile_type;
+	case MIR_INSTR_BINOP:
+		return ((MirInstrBinop *)instr)->volatile_type;
+	default:
+		return false;
+	}
+}
+
 static inline bool
 can_impl_cast(MirType *from, MirType *to)
 {
@@ -4140,13 +4158,7 @@ reduce_instr(Context *cnt, MirInstr *instr)
 	}
 
 	case MIR_INSTR_UNOP: {
-		MirInstrUnop *unop = (MirInstrUnop *)instr;
-		exec_instr_unop(cnt, unop);
-
-		if (unop->mutate_to_literal) {
-			bl_log("mutate unop to const literal");
-		}
-
+		exec_instr_unop(cnt, (MirInstrUnop *)instr);
 		erase_instr(instr);
 		break;
 	}
@@ -4837,7 +4849,7 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast, bool analyze_op_only)
 	MirType *expr_type = cast->expr->value.type;
 
 	/* Setup const int type. */
-	if (analyze_stage_set_const_int(cnt, &cast->expr, dest_type) == ANALYZE_STAGE_BREAK) {
+	if (analyze_stage_set_volatile_expr(cnt, &cast->expr, dest_type) == ANALYZE_STAGE_BREAK) {
 		cast->op = MIR_CAST_NONE;
 		goto DONE;
 	}
@@ -5749,6 +5761,8 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 	 */
 	if (lhs->comptime && rhs->comptime) binop->base.comptime = true;
 
+	binop->volatile_type = is_volatile_expr(lhs) && is_volatile_expr(rhs);
+
 	return analyze_result(ANALYZE_PASSED, 0);
 #undef is_valid
 }
@@ -5757,35 +5771,8 @@ AnalyzeResult
 analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
 	MirType *type = unop->expr->value.type;
-	/*
-	if (unop->op == UNOP_NEG && unop->expr->kind == MIR_INSTR_CONST &&
-	    type->kind == MIR_TYPE_INT) {
-	        const uint64_t val          = unop->expr->value.data.v_u64;
-	        const int32_t  desired_bits = count_bits(val);
-
-	        if (desired_bits <= 32)
-	                type = cnt->builtin_types.t_s32;
-	        else if (desired_bits <= 64)
-	                type = cnt->builtin_types.t_s64;
-
-	        unref_instr(unop->expr);
-	        erase_instr_tree(unop->expr);
-
-	        mutate_instr(&unop->base, MIR_INSTR_CONST);
-	        unop->base.comptime = true;
-	        init_or_create_const_integer(cnt, &unop->base.value, type, val);
-
-	        return analyze_result(ANALYZE_PASSED, 0);
-	}
-	*/
-
 	if (analyze_slot(cnt, &analyze_slot_conf_basic, &unop->expr, NULL) != ANALYZE_PASSED) {
 		return analyze_result(ANALYZE_FAILED, 0);
-	}
-
-	if (unop->op == UNOP_NEG && unop->expr->kind == MIR_INSTR_CONST &&
-	    type->kind == MIR_TYPE_INT) {
-		unop->mutate_to_literal = true;
 	}
 
 	bl_assert(unop->expr && unop->expr->analyzed);
@@ -5794,6 +5781,7 @@ analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 	unop->base.value.type = type;
 
 	unop->base.comptime = unop->expr->comptime;
+	unop->volatile_type = is_volatile_expr(unop->expr);
 
 	return analyze_result(ANALYZE_PASSED, 0);
 }
@@ -6422,30 +6410,14 @@ analyze_stage_toany(Context *cnt, MirInstr **input, MirType *slot_type)
 }
 
 AnalyzeStageState
-analyze_stage_set_const_int(Context *cnt, MirInstr **input, MirType *slot_type)
+analyze_stage_set_volatile_expr(Context *cnt, MirInstr **input, MirType *slot_type)
 {
 	bl_assert(slot_type);
-
-	MirInstr *_input = *input;
-	if (_input->value.type->kind != MIR_TYPE_INT) return ANALYZE_STAGE_CONTINUE;
 	if (slot_type->kind != MIR_TYPE_INT) return ANALYZE_STAGE_CONTINUE;
-	if (_input->kind != MIR_INSTR_CONST) return ANALYZE_STAGE_CONTINUE;
+	if (!is_volatile_expr(*input)) return ANALYZE_STAGE_CONTINUE;
 
-	_input->value.type = slot_type;
+	(*input)->value.type = slot_type;
 	return ANALYZE_STAGE_BREAK;
-}
-
-AnalyzeStageState
-analyze_stage_set_mutable_expr(Context *cnt, MirInstr **input, MirType *slot_type)
-{
-	bl_assert(slot_type);
-	MirInstr *_input = *input;
-
-	if (_input->kind == MIR_INSTR_UNOP && ((MirInstrUnop *)_input)->mutate_to_literal) {
-		bl_log("mutate unop to lit");
-	}
-
-	return ANALYZE_STAGE_CONTINUE;
 }
 
 AnalyzeStageState

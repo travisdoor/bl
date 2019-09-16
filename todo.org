@@ -26,5 +26,5 @@
   - [X] Wrong initialization of globals with defined type:
     Foo : u64 : 10;
     
-  - [ ] Unstable function pointers and invalid error reporting locaitons.
+  - [ ] Unstable function pointers and invalid error reporting locations.
 
