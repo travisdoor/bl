@@ -813,12 +813,27 @@ emit_as_const(Context *cnt, MirConstValue *value)
 			bl_assert(llvm_value);
 			break;
 		} else {
-			/* value must contains pointer to constant variable */
-			MirVar *pointed = value->data.v_ptr.data.var;
-			bl_assert(pointed && pointed->llvm_value &&
-			          "Invalid const pointer to variable.");
+			switch (value->data.v_ptr.kind) {
+			case MIR_CP_VAR: {
+				/* value must contains pointer to constant variable */
+				MirVar *pointed = value->data.v_ptr.data.var;
+				bl_assert(pointed && pointed->llvm_value &&
+				          "Invalid const pointer to variable.");
 
-			llvm_value = pointed->llvm_value;
+				llvm_value = pointed->llvm_value;
+				break;
+			}
+
+			default: {
+				/* Only null constants are allowed here */
+				bl_assert(
+				    value->data.v_ptr.data.any == NULL &&
+				    "Only pointers to fn and var can be generated as constants in "
+				    "LLVM IR.");
+				llvm_value = LLVMConstNull(llvm_type);
+			}
+			}
+
 			break;
 		}
 	}

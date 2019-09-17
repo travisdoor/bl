@@ -271,8 +271,6 @@ struct MirFn {
 	MirInstrBlock *last_block;
 	int32_t        block_count;
 
-	MirConstValueData *exec_ret_value;
-
 	/* Teporary variable used for return value. */
 	MirInstr *ret_tmp;
 
