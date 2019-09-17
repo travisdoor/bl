@@ -190,6 +190,7 @@ union _MirInstr {
 typedef struct MirFrame {
 	struct MirFrame *prev;
 	MirInstrCall *   caller; /* Optional */
+	bool             will_return;
 } MirFrame;
 
 typedef struct MirStack {
@@ -1251,9 +1252,9 @@ exec_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref);
 static bool
 exec_fn(Context *              cnt,
         MirFn *                fn,
-        MirInstrCall *         call,     /* Optional */
-        SmallArray_ConstValue *args,     /* Optional */
-        MirConstValueData *    out_value /* Optional */
+        MirInstrCall *         call,   /* Optional */
+        SmallArray_ConstValue *args,   /* Optional */
+        MirStackPtr *          out_ptr /* Optional */
 );
 
 static bool
@@ -1651,11 +1652,12 @@ exec_stack_free(Context *cnt, size_t size)
 }
 
 static inline void
-exec_push_ra(Context *cnt, MirInstrCall *caller)
+exec_push_ra(Context *cnt, MirInstrCall *caller, bool will_return)
 {
 	MirFrame *prev      = cnt->exec.stack->ra;
 	MirFrame *tmp       = (MirFrame *)exec_stack_alloc(cnt, sizeof(MirFrame));
 	tmp->caller         = caller;
+	tmp->will_return    = will_return;
 	tmp->prev           = prev;
 	cnt->exec.stack->ra = tmp;
 	_log_push_ra;
@@ -8492,7 +8494,8 @@ exec_instr_call_comptime(Context *cnt, MirInstrCall *call)
 
 	MirFn *fn = get_callee(call);
 	if (call->args) bl_abort("exec call top level has not implemented passing of arguments");
-	return exec_fn(cnt, fn, call, NULL, (MirConstValueData *)&call->base.value);
+
+	return exec_fn(cnt, fn, call, NULL, NULL);
 }
 
 bool
@@ -8500,19 +8503,22 @@ exec_fn(Context *              cnt,
         MirFn *                fn,
         MirInstrCall *         call,
         SmallArray_ConstValue *args,
-        MirConstValueData *    out_value)
+        MirStackPtr *          out_ptr)
 {
 	bl_assert(fn);
 
 	if (!fn->fully_analyzed)
 		bl_abort("Function is not fully analyzed for compile time execution!!!");
 
-	MirType *ret_type = fn->type->data.fn.ret_type;
-	bl_assert(ret_type);
-	const bool does_return_value = ret_type->kind != MIR_TYPE_VOID;
+	MirType *  ret_type             = fn->type->data.fn.ret_type;
+	const bool does_return_value    = ret_type->kind != MIR_TYPE_VOID;
+	const bool is_return_value_used = call ? call->base.ref_count > 1 : true;
+	const bool is_caller_comptime   = call ? call->base.comptime : false;
+	const bool pop_return_value =
+	    does_return_value && is_return_value_used && !is_caller_comptime;
 
 	/* push terminal frame on stack */
-	exec_push_ra(cnt, call);
+	exec_push_ra(cnt, call, does_return_value && is_return_value_used);
 
 	/* allocate local variables */
 	exec_stack_alloc_local_vars(cnt, fn);
@@ -8533,7 +8539,14 @@ exec_fn(Context *              cnt,
 		if (exec_get_pc(cnt) == prev) exec_set_pc(cnt, instr->next);
 	}
 
-	return does_return_value && !cnt->exec.stack->aborted;
+	if (cnt->exec.stack->aborted) return false;
+
+	if (pop_return_value) {
+		MirStackPtr ret_ptr = exec_pop_stack(cnt, ret_type);
+		(*out_ptr)          = ret_ptr;
+	}
+
+	return true;
 }
 
 char
@@ -8551,10 +8564,8 @@ dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata
 	{
 	}
 
-	MirConstValueData ret     = {0};
-	const bool        ret_set = exec_fn(cnt, fn, NULL, NULL, &ret);
-	if (ret_set) {
-	}
+	// TODO:
+	exec_fn(cnt, fn, NULL, NULL, NULL);
 
 	sa_terminate(&bargs);
 	return DC_SIGCHAR_VOID;
@@ -8862,8 +8873,11 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
 	if (is_flag(fn->flags, FLAG_EXTERN)) {
 		exec_extern_call(cnt, fn, call);
 	} else {
+		const bool does_return_value    = fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID;
+		const bool is_return_value_used = call->base.ref_count > 1;
+
 		/* Push current frame stack top. (Later poped by ret instruction)*/
-		exec_push_ra(cnt, call);
+		exec_push_ra(cnt, call, does_return_value && is_return_value_used);
 		bl_assert(fn->first_block->entry_instr);
 
 		exec_stack_alloc_local_vars(cnt, fn);
@@ -8881,20 +8895,16 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
 
 	/* read callee from frame stack */
 	MirInstrCall *caller       = (MirInstrCall *)exec_get_ra(cnt)->caller;
+	const bool    will_return  = exec_get_ra(cnt)->will_return;
 	MirType *     ret_type     = fn->type->data.fn.ret_type;
 	MirStackPtr   ret_data_ptr = NULL;
 
-	/* Function does not return value when return type is void. */
-	const bool has_value = ret_type->kind != MIR_TYPE_VOID;
 	/* Determinate if caller instruction is comptime, if caller does not exist we are going to
 	 * push result on the stack. */
 	const bool is_caller_comptime = caller ? caller->base.comptime : false;
-	/* HACK: call has by default ref_count = 1 when returned value is not used, greater than 1
-	 * when it's used.*/
-	const bool is_return_used = caller ? caller->base.ref_count > 1 : true;
 
 	/* pop return value from stack */
-	if (has_value) {
+	if (will_return) {
 		bl_assert(ret->value && "Expected return value.");
 		ret_data_ptr = exec_fetch_value(cnt, ret->value);
 		bl_assert(ret_data_ptr);
@@ -8917,7 +8927,7 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
 	}
 
 	/* push return value on the stack if there is one */
-	if (has_value && is_return_used) {
+	if (will_return) {
 		if (is_caller_comptime) {
 			if (ret->value->comptime) {
 				caller->base.value.data = ret->value->value.data;
@@ -10637,13 +10647,17 @@ execute_entry_fn(Context *cnt)
 	}
 
 	/* tmp return value storage */
-	MirConstValueData result = {0};
-	if (exec_fn(cnt, cnt->entry_fn, NULL, NULL, &result)) {
-		int64_t tmp = result.v_s64;
-		msg_log("Execution finished with state: %lld\n", (long long)tmp);
+	MirStackPtr ret_ptr = NULL;
+	if (exec_fn(cnt, cnt->entry_fn, NULL, NULL, &ret_ptr)) {
+		if (ret_ptr) {
+			MirConstValueData tmp = {0};
+			exec_read_value(&tmp, ret_ptr, fn_type->data.fn.ret_type);
+			msg_log("Execution finished with state: %lld\n", (long long)tmp.v_s64);
+		} else {
+			msg_log("Execution finished without errors");
+		}
 	} else {
-		msg_log("Execution finished %s\n",
-		        cnt->exec.stack->aborted ? "with errors" : "without errors");
+		msg_log("Execution finished with errors");
 	}
 }
 
