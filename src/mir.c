@@ -190,7 +190,6 @@ union _MirInstr {
 typedef struct MirFrame {
 	struct MirFrame *prev;
 	MirInstrCall *   caller; /* Optional */
-	bool             will_return;
 } MirFrame;
 
 typedef struct MirStack {
@@ -254,10 +253,6 @@ typedef struct {
 	/* Builtins */
 	struct BuiltinTypes {
 		/* PROVIDED BEGIN */
-		/* TODO: replace those entries with lookup_buildin call... */
-		/* TODO: replace those entries with lookup_buildin call... */
-		/* TODO: replace those entries with lookup_buildin call... */
-		/* TODO: replace those entries with lookup_buildin call... */
 		MirType *t_type;
 		MirType *t_s8;
 		MirType *t_s16;
@@ -1249,6 +1244,20 @@ exec_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 static void
 exec_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref);
 
+/*
+ * Execute function, there are several possible behaviors based on function configuration:
+ * 1) When we pass only mandatory arguments, executor will expect non-compiletime function call with
+ *    no passed arguments, return value will be pushed on stack in case called function return one.
+ * 2) When call instruction is specified executor will deside where to put return value, if call is
+ *    compiletime, const value is used, when call is runtime, value is pushed on the stack.
+ * 3) When out_ptr is specified, executor will set this pointer to stack allocation or to const
+ *    value.
+ * 4) When arguments are specified, call instruction is ignored event if it's specified, all
+ *    arguments must be compile time known.
+ *
+ * Function will return true on success. When called function does not return any value out_ptr will
+ * be keept untouched.
+ */
 static bool
 exec_fn(Context *              cnt,
         MirFn *                fn,
@@ -1368,22 +1377,6 @@ is_current_block_terminated(Context *cnt)
 	return get_current_block(cnt)->terminal;
 }
 
-static inline ptrdiff_t
-get_struct_elem_offest(Context *cnt, MirType *type, uint32_t i)
-{
-	bl_assert(mir_is_composit_type(type) && "Expected structure type");
-	return LLVMOffsetOfElement(cnt->assembly->llvm.TD, type->llvm_type, (unsigned long)i);
-}
-
-static inline ptrdiff_t
-get_array_elem_offset(MirType *type, uint32_t i)
-{
-	bl_assert(type->kind == MIR_TYPE_ARRAY && "Expected array type");
-	MirType *elem_type = type->data.array.elem_type;
-	bl_assert(elem_type);
-	return elem_type->store_size_bytes * i;
-}
-
 static inline void
 schedule_RTTI_generation(Context *cnt, MirType *type)
 {
@@ -1407,13 +1400,6 @@ is_allocated_object(MirInstr *instr)
 	if (instr->kind == MIR_INSTR_TYPE_INFO) return true;
 
 	return false;
-}
-
-static inline void
-set_const_ptr(MirConstPtr *value, void *ptr, MirConstPtrKind kind)
-{
-	value->data.any = ptr;
-	value->kind     = kind;
 }
 
 static inline MirInstr *
@@ -1570,15 +1556,15 @@ exec_read_value(MirConstValueData *dest, MirStackPtr src, MirType *type)
 		break;
 
 	case MIR_TYPE_FN:
-		set_const_ptr(&dest->v_ptr, *(MirFn **)src, MIR_CP_FN);
+		mir_set_const_ptr(&dest->v_ptr, *(MirFn **)src, MIR_CP_FN);
 		break;
 
 	case MIR_TYPE_TYPE:
-		set_const_ptr(&dest->v_ptr, *(MirType **)src, MIR_CP_TYPE);
+		mir_set_const_ptr(&dest->v_ptr, *(MirType **)src, MIR_CP_TYPE);
 		break;
 
 	case MIR_TYPE_PTR:
-		set_const_ptr(&dest->v_ptr, *(void **)src, MIR_CP_UNKNOWN);
+		mir_set_const_ptr(&dest->v_ptr, *(void **)src, MIR_CP_UNKNOWN);
 		break;
 
 	default: {
@@ -1652,12 +1638,11 @@ exec_stack_free(Context *cnt, size_t size)
 }
 
 static inline void
-exec_push_ra(Context *cnt, MirInstrCall *caller, bool will_return)
+exec_push_ra(Context *cnt, MirInstrCall *caller)
 {
 	MirFrame *prev      = cnt->exec.stack->ra;
 	MirFrame *tmp       = (MirFrame *)exec_stack_alloc(cnt, sizeof(MirFrame));
 	tmp->caller         = caller;
-	tmp->will_return    = will_return;
 	tmp->prev           = prev;
 	cnt->exec.stack->ra = tmp;
 	_log_push_ra;
@@ -2708,7 +2693,8 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 	sa_terminate(&llvm_members);
 
 	/* set offsets for members */
-	sarray_foreach(members, member) member->offset_bytes = get_struct_elem_offest(cnt, type, i);
+	sarray_foreach(members, member) member->offset_bytes =
+	    mir_get_struct_elem_offest(cnt->assembly, type, i);
 
 	/*** DI ***/
 	if (!cnt->debug_mode) return;
@@ -2763,16 +2749,16 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 	sarray_foreach(type->data.strct.members, elem)
 	{
 		unsigned        elem_line = elem->decl_node ? elem->decl_node->location->line : 0;
-		LLVMMetadataRef llvm_elem =
-		    llvm_di_create_member_type(cnt->analyze.llvm_di_builder,
-		                               llvm_scope,
-		                               elem->id->str,
-		                               llvm_file,
-		                               elem_line,
-		                               elem->type->size_bits,
-		                               elem->type->alignment * 8,
-		                               get_struct_elem_offest(cnt, type, i) * 8,
-		                               elem->type->llvm_meta);
+		LLVMMetadataRef llvm_elem = llvm_di_create_member_type(
+		    cnt->analyze.llvm_di_builder,
+		    llvm_scope,
+		    elem->id->str,
+		    llvm_file,
+		    elem_line,
+		    elem->type->size_bits,
+		    elem->type->alignment * 8,
+		    mir_get_struct_elem_offest(cnt->assembly, type, i) * 8,
+		    elem->type->llvm_meta);
 
 		sa_push_LLVMMetadata(&llvm_elems, llvm_elem);
 	}
@@ -3032,7 +3018,7 @@ init_or_create_const_var_ptr(Context *cnt, MirConstValue *v, MirType *type, MirV
 	v->type      = type;
 	v->addr_mode = MIR_VAM_LVALUE_CONST;
 
-	set_const_ptr(&v->data.v_ptr, var, MIR_CP_VAR);
+	mir_set_const_ptr(&v->data.v_ptr, var, MIR_CP_VAR);
 	return v;
 }
 
@@ -3082,7 +3068,7 @@ init_or_create_const_string(Context *cnt, MirConstValue *v, const char *str)
 	    cnt, mir_get_struct_elem_type(cnt->builtin_types.t_string, MIR_SLICE_PTR_INDEX));
 
 	MirConstPtr *const_ptr = &ptr->data.v_ptr;
-	set_const_ptr(const_ptr, (void *)str, MIR_CP_STR);
+	mir_set_const_ptr(const_ptr, (void *)str, MIR_CP_STR);
 	sa_push_ConstValue(m, ptr);
 
 	v->data.v_struct.members = m;
@@ -3952,7 +3938,7 @@ append_instr_const_null(Context *cnt, Ast *node)
 	tmp->comptime   = true;
 	tmp->value.type = create_type_null(cnt, cnt->builtin_types.t_u8_ptr);
 
-	set_const_ptr(&tmp->value.data.v_ptr, NULL, MIR_CP_VALUE);
+	mir_set_const_ptr(&tmp->value.data.v_ptr, NULL, MIR_CP_VALUE);
 
 	append_current_block(cnt, tmp);
 	return tmp;
@@ -5099,14 +5085,14 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		ref->base.value.type = type;
 		ref->base.comptime   = true;
 		ref_instr(fn->prototype);
-		set_const_ptr(&ref->base.value.data.v_ptr, found->data.fn, MIR_CP_FN);
+		mir_set_const_ptr(&ref->base.value.data.v_ptr, found->data.fn, MIR_CP_FN);
 		break;
 	}
 
 	case SCOPE_ENTRY_TYPE: {
 		ref->base.value.type = cnt->builtin_types.t_type;
 		ref->base.comptime   = true;
-		set_const_ptr(&ref->base.value.data.v_ptr, found->data.type, MIR_CP_TYPE);
+		mir_set_const_ptr(&ref->base.value.data.v_ptr, found->data.type, MIR_CP_TYPE);
 		break;
 	}
 
@@ -5121,7 +5107,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		ref->base.value.type      = type;
 		ref->base.comptime        = true;
 		ref->base.value.addr_mode = MIR_VAM_LVALUE_CONST;
-		set_const_ptr(&ref->base.value.data.v_ptr, variant->value, MIR_CP_VALUE);
+		mir_set_const_ptr(&ref->base.value.data.v_ptr, variant->value, MIR_CP_VALUE);
 
 		break;
 	}
@@ -5141,7 +5127,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		/* set pointer to variable const value directly when variable is compile
 		 * time known
 		 */
-		if (var->comptime) set_const_ptr(&ref->base.value.data.v_ptr, var, MIR_CP_VAR);
+		if (var->comptime) mir_set_const_ptr(&ref->base.value.data.v_ptr, var, MIR_CP_VAR);
 		break;
 	}
 
@@ -5174,7 +5160,7 @@ analyze_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref)
 	/* set pointer to variable const value directly when variable is compile
 	 * time known
 	 */
-	if (var->comptime) set_const_ptr(&ref->base.value.data.v_ptr, var, MIR_CP_VAR);
+	if (var->comptime) mir_set_const_ptr(&ref->base.value.data.v_ptr, var, MIR_CP_VAR);
 
 	return analyze_result(ANALYZE_PASSED, 0);
 }
@@ -5404,7 +5390,7 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 
 	{
 		MirConstPtr *const_ptr = &type_fn->base.value.data.v_ptr;
-		set_const_ptr(
+		mir_set_const_ptr(
 		    const_ptr, create_type_fn(cnt, NULL, ret_type, arg_types, is_vargs), MIR_CP_FN);
 	}
 
@@ -5527,7 +5513,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
                                                   members,
                                                   type_struct->is_packed);
 
-		set_const_ptr(const_ptr, tmp, MIR_CP_TYPE);
+		mir_set_const_ptr(const_ptr, tmp, MIR_CP_TYPE);
 	}
 	return analyze_result(ANALYZE_PASSED, 0);
 }
@@ -5566,7 +5552,7 @@ analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 
 	{ /* set const pointer value */
 		MirConstPtr *const_ptr = &type_slice->base.value.data.v_ptr;
-		set_const_ptr(const_ptr, elem_type, MIR_CP_TYPE);
+		mir_set_const_ptr(const_ptr, elem_type, MIR_CP_TYPE);
 	}
 
 	return analyze_result(ANALYZE_PASSED, 0);
@@ -5609,7 +5595,7 @@ analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
 
 	{ /* set const pointer value */
 		MirConstPtr *const_ptr = &type_vargs->base.value.data.v_ptr;
-		set_const_ptr(const_ptr, elem_type, MIR_CP_TYPE);
+		mir_set_const_ptr(const_ptr, elem_type, MIR_CP_TYPE);
 	}
 
 	return analyze_result(ANALYZE_PASSED, 0);
@@ -5678,7 +5664,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 
 	{ /* set const pointer value */
 		MirConstPtr *const_ptr = &type_arr->base.value.data.v_ptr;
-		set_const_ptr(const_ptr, elem_type, MIR_CP_TYPE);
+		mir_set_const_ptr(const_ptr, elem_type, MIR_CP_TYPE);
 	}
 
 	return analyze_result(ANALYZE_PASSED, 0);
@@ -5746,7 +5732,7 @@ analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 
 	{ /* set const pointer value */
 		MirConstPtr *const_ptr = &type_enum->base.value.data.v_ptr;
-		set_const_ptr(const_ptr, enum_type, MIR_CP_TYPE);
+		mir_set_const_ptr(const_ptr, enum_type, MIR_CP_TYPE);
 	}
 
 	return analyze_result(ANALYZE_PASSED, 0);
@@ -5795,7 +5781,7 @@ analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 
 	{ /* set const pointer value */
 		MirConstPtr *const_ptr = &type_ptr->base.value.data.v_ptr;
-		set_const_ptr(const_ptr, tmp, MIR_CP_TYPE);
+		mir_set_const_ptr(const_ptr, tmp, MIR_CP_TYPE);
 	}
 
 	return analyze_result(ANALYZE_PASSED, 0);
@@ -6941,7 +6927,8 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 				/* copy all members to variable allocated memory on the
 				 * stack */
 				MirStackPtr elem_dest_ptr =
-				    dest_ptr + get_struct_elem_offest(cnt, src_type, i);
+				    dest_ptr +
+				    mir_get_struct_elem_offest(cnt->assembly, src_type, i);
 				bl_assert(elem_dest_ptr);
 				exec_copy_comptime_to_stack(cnt, elem_dest_ptr, member);
 			}
@@ -6964,7 +6951,7 @@ exec_copy_comptime_to_stack(Context *cnt, MirStackPtr dest_ptr, MirConstValue *s
 				/* copy all elems to variable allocated memory on the stack
 				 */
 				MirStackPtr elem_dest_ptr =
-				    dest_ptr + get_array_elem_offset(src_type, i);
+				    dest_ptr + mir_get_array_elem_offset(src_type, i);
 				exec_copy_comptime_to_stack(cnt, elem_dest_ptr, elem);
 			}
 		}
@@ -7662,7 +7649,7 @@ exec_instr_toany(Context *cnt, MirInstrToAny *toany)
 	MirVar *expr_type_rtti = toany->rtti_type->rtti.var;
 	bl_assert(expr_type_rtti);
 
-	MirStackPtr dest           = tmp_ptr + get_struct_elem_offest(cnt, tmp_type, 0);
+	MirStackPtr dest = tmp_ptr + mir_get_struct_elem_offest(cnt->assembly, tmp_type, 0);
 	MirType *   type_info_type = mir_get_struct_elem_type(tmp_type, 0);
 
 	MirStackPtr rtti_ptr =
@@ -7673,7 +7660,7 @@ exec_instr_toany(Context *cnt, MirInstrToAny *toany)
 	MirStackPtr data_ptr = exec_fetch_value(cnt, toany->expr);
 
 	/* data */
-	dest               = tmp_ptr + get_struct_elem_offest(cnt, tmp_type, 1);
+	dest               = tmp_ptr + mir_get_struct_elem_offest(cnt->assembly, tmp_type, 1);
 	MirType *data_type = mir_get_struct_elem_type(tmp_type, 1);
 
 	if (!toany->has_data) {
@@ -7762,7 +7749,8 @@ exec_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 
 	if (addrof->base.comptime) {
 		// memcpy(&addrof->base.value.data, ptr, sizeof(addrof->base.value.data));
-		set_const_ptr(&addrof->base.value.data.v_ptr, *(MirStackPtr **)ptr, MIR_CP_VALUE);
+		mir_set_const_ptr(
+		    &addrof->base.value.data.v_ptr, *(MirStackPtr **)ptr, MIR_CP_VALUE);
 	} else {
 		exec_push_stack(cnt, (MirStackPtr)&ptr, type);
 	}
@@ -7810,10 +7798,12 @@ exec_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		MirType *elem_type = mir_deref_type(ptr_type);
 		bl_assert(elem_type);
 
-		MirConstValueData ptr_tmp           = {0};
-		MirConstValueData len_tmp           = {0};
-		const ptrdiff_t   len_member_offset = get_struct_elem_offest(cnt, arr_type, 0);
-		const ptrdiff_t   ptr_member_offset = get_struct_elem_offest(cnt, arr_type, 1);
+		MirConstValueData ptr_tmp = {0};
+		MirConstValueData len_tmp = {0};
+		const ptrdiff_t   len_member_offset =
+		    mir_get_struct_elem_offest(cnt->assembly, arr_type, 0);
+		const ptrdiff_t ptr_member_offset =
+		    mir_get_struct_elem_offest(cnt->assembly, arr_type, 1);
 
 		MirStackPtr ptr_ptr = arr_ptr + ptr_member_offset;
 		MirStackPtr len_ptr = arr_ptr + len_member_offset;
@@ -7892,9 +7882,6 @@ exec_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	ptr             = ((MirConstValueData *)ptr)->v_ptr.data.stack_ptr;
 	bl_assert(ptr);
 
-	LLVMTypeRef llvm_target_type = target_type->llvm_type;
-	bl_assert(llvm_target_type && "missing LLVM struct type ref");
-
 	if (member_ptr->builtin_id == MIR_BUILTIN_ID_NONE) {
 		bl_assert(member_ptr->scope_entry &&
 		          member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
@@ -7904,18 +7891,20 @@ exec_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 
 		/* let the llvm solve poiner offest */
 		const ptrdiff_t ptr_offset =
-		    get_struct_elem_offest(cnt, target_type, (uint32_t)index);
+		    mir_get_struct_elem_offest(cnt->assembly, target_type, (uint32_t)index);
 
 		result.v_ptr.data.stack_ptr = ptr + ptr_offset; // pointer shift
 	} else {
 		/* builtin member */
 		if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR) {
 			/* slice .ptr */
-			const ptrdiff_t ptr_offset  = get_struct_elem_offest(cnt, target_type, 1);
+			const ptrdiff_t ptr_offset =
+			    mir_get_struct_elem_offest(cnt->assembly, target_type, 1);
 			result.v_ptr.data.stack_ptr = ptr + ptr_offset; // pointer shift
 		} else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN) {
 			/* slice .len*/
-			const ptrdiff_t len_offset  = get_struct_elem_offest(cnt, target_type, 0);
+			const ptrdiff_t len_offset =
+			    mir_get_struct_elem_offest(cnt->assembly, target_type, 0);
 			result.v_ptr.data.stack_ptr = ptr + len_offset; // pointer shift
 		} else {
 			bl_abort("invalid slice member!");
@@ -8289,11 +8278,12 @@ exec_instr_compound(Context *cnt, MirStackPtr tmp_ptr, MirInstrCompound *cmp)
 		case MIR_TYPE_SLICE:
 		case MIR_TYPE_VARGS:
 		case MIR_TYPE_STRUCT:
-			elem_ptr = tmp_ptr + get_struct_elem_offest(cnt, type, (uint32_t)i);
+			elem_ptr =
+			    tmp_ptr + mir_get_struct_elem_offest(cnt->assembly, type, (uint32_t)i);
 			break;
 
 		case MIR_TYPE_ARRAY:
-			elem_ptr = tmp_ptr + get_array_elem_offset(type, (uint32_t)i);
+			elem_ptr = tmp_ptr + mir_get_array_elem_offset(type, (uint32_t)i);
 			break;
 
 		default:
@@ -8355,8 +8345,9 @@ exec_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 		{
 			MirConstValueData len_tmp = {0};
 			MirStackPtr       len_ptr =
-			    vargs_tmp_ptr +
-			    get_struct_elem_offest(cnt, vargs_tmp->value.type, MIR_SLICE_LEN_INDEX);
+			    vargs_tmp_ptr + mir_get_struct_elem_offest(cnt->assembly,
+			                                               vargs_tmp->value.type,
+			                                               MIR_SLICE_LEN_INDEX);
 
 			MirType *len_type =
 			    mir_get_struct_elem_type(vargs_tmp->value.type, MIR_SLICE_LEN_INDEX);
@@ -8369,8 +8360,9 @@ exec_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 		{
 			MirConstValueData ptr_tmp = {0};
 			MirStackPtr       ptr_ptr =
-			    vargs_tmp_ptr +
-			    get_struct_elem_offest(cnt, vargs_tmp->value.type, MIR_SLICE_PTR_INDEX);
+			    vargs_tmp_ptr + mir_get_struct_elem_offest(cnt->assembly,
+			                                               vargs_tmp->value.type,
+			                                               MIR_SLICE_PTR_INDEX);
 
 			MirType *ptr_type =
 			    mir_get_struct_elem_type(vargs_tmp->value.type, MIR_SLICE_PTR_INDEX);
@@ -8518,7 +8510,7 @@ exec_fn(Context *              cnt,
 	    does_return_value && is_return_value_used && !is_caller_comptime;
 
 	/* push terminal frame on stack */
-	exec_push_ra(cnt, call, does_return_value && is_return_value_used);
+	exec_push_ra(cnt, call);
 
 	/* allocate local variables */
 	exec_stack_alloc_local_vars(cnt, fn);
@@ -8543,7 +8535,9 @@ exec_fn(Context *              cnt,
 
 	if (pop_return_value) {
 		MirStackPtr ret_ptr = exec_pop_stack(cnt, ret_type);
-		(*out_ptr)          = ret_ptr;
+		if (out_ptr) (*out_ptr) = ret_ptr;
+	} else if (is_caller_comptime) {
+		if (out_ptr) (*out_ptr) = (MirStackPtr)&call->base.value.data;
 	}
 
 	return true;
@@ -8873,11 +8867,8 @@ exec_instr_call(Context *cnt, MirInstrCall *call)
 	if (is_flag(fn->flags, FLAG_EXTERN)) {
 		exec_extern_call(cnt, fn, call);
 	} else {
-		const bool does_return_value    = fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID;
-		const bool is_return_value_used = call->base.ref_count > 1;
-
 		/* Push current frame stack top. (Later poped by ret instruction)*/
-		exec_push_ra(cnt, call, does_return_value && is_return_value_used);
+		exec_push_ra(cnt, call);
 		bl_assert(fn->first_block->entry_instr);
 
 		exec_stack_alloc_local_vars(cnt, fn);
@@ -8895,19 +8886,15 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
 
 	/* read callee from frame stack */
 	MirInstrCall *caller       = (MirInstrCall *)exec_get_ra(cnt)->caller;
-	const bool    will_return  = exec_get_ra(cnt)->will_return;
 	MirType *     ret_type     = fn->type->data.fn.ret_type;
 	MirStackPtr   ret_data_ptr = NULL;
 
-	/* Determinate if caller instruction is comptime, if caller does not exist we are going to
-	 * push result on the stack. */
-	const bool is_caller_comptime = caller ? caller->base.comptime : false;
-
 	/* pop return value from stack */
-	if (will_return) {
-		bl_assert(ret->value && "Expected return value.");
+	if (ret->value) {
 		ret_data_ptr = exec_fetch_value(cnt, ret->value);
 		bl_assert(ret_data_ptr);
+
+		if (caller ? caller->base.ref_count == 1 : false) ret_data_ptr = NULL;
 	}
 
 	/* do frame stack rollback */
@@ -8927,7 +8914,10 @@ exec_instr_ret(Context *cnt, MirInstrRet *ret)
 	}
 
 	/* push return value on the stack if there is one */
-	if (will_return) {
+	if (ret_data_ptr) {
+		/* Determinate if caller instruction is comptime, if caller does not exist we are
+		 * going to push result on the stack. */
+		const bool is_caller_comptime = caller ? caller->base.comptime : false;
 		if (is_caller_comptime) {
 			if (ret->value->comptime) {
 				caller->base.value.data = ret->value->value.data;
@@ -9225,7 +9215,7 @@ ast_test_case(Context *cnt, Ast *test)
 
 	bl_assert(test->data.test_case.desc);
 	fn->test_case_desc = test->data.test_case.desc;
-	set_const_ptr(&fn_proto->base.value.data.v_ptr, fn, MIR_CP_FN);
+	mir_set_const_ptr(&fn_proto->base.value.data.v_ptr, fn, MIR_CP_FN);
 
 	bo_array_push_back(cnt->test_cases, fn);
 
@@ -9701,7 +9691,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 
 	MirFn *fn =
 	    create_fn(cnt, lit_fn, NULL, NULL, 0, fn_proto, true); /* TODO: based on user flag!!! */
-	set_const_ptr(&fn_proto->base.value.data.v_ptr, fn, MIR_CP_FN);
+	mir_set_const_ptr(&fn_proto->base.value.data.v_ptr, fn, MIR_CP_FN);
 
 	/* function body */
 	/* external functions has no body */
@@ -10263,7 +10253,7 @@ ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *f
 	fn_proto->value.type      = final_fn_type;
 
 	MirFn *fn = create_fn(cnt, NULL, NULL, fn_name, 0, (MirInstrFnProto *)fn_proto, false);
-	set_const_ptr(&fn_proto->value.data.v_ptr, fn, MIR_CP_FN);
+	mir_set_const_ptr(&fn_proto->value.data.v_ptr, fn, MIR_CP_FN);
 
 	fn->type = final_fn_type;
 
@@ -10771,6 +10761,22 @@ init_builtins(Context *cnt)
 		provide_builtin_type(cnt, bt->t_f64);
 		provide_builtin_type(cnt, bt->t_string);
 	}
+}
+
+ptrdiff_t
+mir_get_struct_elem_offest(Assembly *assembly, MirType *type, uint32_t i)
+{
+	bl_assert(mir_is_composit_type(type) && "Expected structure type");
+	return LLVMOffsetOfElement(assembly->llvm.TD, type->llvm_type, (unsigned long)i);
+}
+
+ptrdiff_t
+mir_get_array_elem_offset(MirType *type, uint32_t i)
+{
+	bl_assert(type->kind == MIR_TYPE_ARRAY && "Expected array type");
+	MirType *elem_type = type->data.array.elem_type;
+	bl_assert(elem_type);
+	return elem_type->store_size_bytes * i;
 }
 
 void

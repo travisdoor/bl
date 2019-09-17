@@ -769,6 +769,20 @@ mir_get_struct_elem_type(MirType *type, uint32_t i)
 	return members->data[i]->type;
 }
 
+static inline void
+mir_set_const_ptr(MirConstPtr *value, void *ptr, MirConstPtrKind kind)
+{
+	value->data.any = ptr;
+	value->kind     = kind;
+}
+
+
+ptrdiff_t
+mir_get_struct_elem_offest(struct Assembly *assembly, MirType *type, uint32_t i);
+
+ptrdiff_t
+mir_get_array_elem_offset(MirType *type, uint32_t i);
+
 static inline MirType *
 mir_get_fn_arg_type(MirType *type, uint32_t i)
 {
