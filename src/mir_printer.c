@@ -37,7 +37,7 @@ static inline void
 print_type(MirType *type, bool aligned, FILE *stream, bool prefer_name)
 {
 	char tmp[256];
-	mir_type_to_str(tmp, array_size(tmp), type, prefer_name);
+	mir_type_to_str(tmp, ARRAY_SIZE(tmp), type, prefer_name);
 	if (aligned)
 		fprintf(stream, "%16s", tmp);
 	else
@@ -67,9 +67,9 @@ print_flags(uint32_t flags, FILE *stream)
 {
 	if (flags == 0) return;
 
-	if (is_flag(flags, FLAG_EXTERN)) fprintf(stream, "#extern");
-	if (is_flag(flags, FLAG_COMPILER)) fprintf(stream, " #compiler");
-	if (is_flag(flags, FLAG_TEST)) fprintf(stream, " #test");
+	if (IS_FLAG(flags, FLAG_EXTERN)) fprintf(stream, "#extern");
+	if (IS_FLAG(flags, FLAG_COMPILER)) fprintf(stream, " #compiler");
+	if (IS_FLAG(flags, FLAG_TEST)) fprintf(stream, " #test");
 }
 
 static inline void
@@ -390,7 +390,7 @@ print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
 	fprintf(stream, "(");
 	if (type_fn->arg_types) {
 		MirInstr *tmp;
-		sarray_foreach(type_fn->arg_types, tmp)
+		SARRAY_FOREACH(type_fn->arg_types, tmp)
 		{
 			fprintf(stream, "%%%llu", (unsigned long long)tmp->id);
 			if (i + 1 < type_fn->arg_types->size) fprintf(stream, ", ");
@@ -448,7 +448,7 @@ print_instr_type_struct(MirInstrTypeStruct *type_struct, FILE *stream)
 
 	SmallArray_Instr *members = type_struct->members;
 	MirInstr *        member;
-	sarray_foreach(members, member)
+	SARRAY_FOREACH(members, member)
 	{
 		print_comptime_value_or_id(member, stream);
 		if (i + 1 < members->size) fprintf(stream, ", ");
@@ -465,7 +465,7 @@ print_instr_type_enum(MirInstrTypeEnum *type_enum, FILE *stream)
 
 	SmallArray_Instr *variants = type_enum->variants;
 	MirInstr *        variant;
-	sarray_foreach(variants, variant)
+	SARRAY_FOREACH(variants, variant)
 	{
 		fprintf(stream, "%%%llu", (unsigned long long)variant->id);
 		if (i + 1 < variants->size) fprintf(stream, ", ");
@@ -571,7 +571,7 @@ print_instr_compound(MirInstrCompound *init, FILE *stream)
 	SmallArray_Instr *values = init->values;
 	if (values) {
 		MirInstr *value;
-		sarray_foreach(values, value)
+		SARRAY_FOREACH(values, value)
 		{
 			print_comptime_value_or_id(value, stream);
 			if (i < values->size - 1) fprintf(stream, ", ");
@@ -592,7 +592,7 @@ print_instr_vargs(MirInstrVArgs *vargs, FILE *stream)
 	SmallArray_Instr *values = vargs->values;
 	if (values) {
 		MirInstr *value;
-		sarray_foreach(values, value)
+		SARRAY_FOREACH(values, value)
 		{
 			print_comptime_value_or_id(value, stream);
 			if (i < values->size - 1) fprintf(stream, ", ");
@@ -828,7 +828,7 @@ print_instr_call(MirInstrCall *call, FILE *stream)
 	fprintf(stream, "(");
 	if (call->args) {
 		MirInstr *tmp;
-		sarray_foreach(call->args, tmp)
+		SARRAY_FOREACH(call->args, tmp)
 		{
 			print_comptime_value_or_id(tmp, stream);
 			if (i < call->args->size - 1) fprintf(stream, ", ");
@@ -1056,5 +1056,5 @@ void
 mir_print_assembly(Assembly *assembly, FILE *stream)
 {
 	MirInstr *instr;
-	barray_foreach(assembly->MIR.global_instrs, instr) mir_print_instr(instr, stream);
+	BARRAY_FOREACH(assembly->MIR.global_instrs, instr) mir_print_instr(instr, stream);
 }

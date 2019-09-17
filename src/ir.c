@@ -304,12 +304,12 @@ emit_fn_proto(Context *cnt, MirFn *fn)
 		fn->llvm_value =
 		    LLVMAddFunction(cnt->llvm_module, fn->llvm_name, fn->type->llvm_type);
 
-		if (is_flag(fn->flags, FLAG_INLINE))
+		if (IS_FLAG(fn->flags, FLAG_INLINE))
 			LLVMAddAttributeAtIndex(fn->llvm_value,
 			                        LLVMAttributeFunctionIndex,
 			                        cnt->llvm_attribute_always_inline);
 
-		if (is_flag(fn->flags, FLAG_NO_INLINE))
+		if (IS_FLAG(fn->flags, FLAG_NO_INLINE))
 			LLVMAddAttributeAtIndex(fn->llvm_value,
 			                        LLVMAttributeFunctionIndex,
 			                        cnt->llvm_attribute_no_inline);
@@ -656,7 +656,7 @@ emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		llvm_indices[0] = llvm_index;
 
 		elem_ptr->base.llvm_value = LLVMBuildInBoundsGEP(
-		    cnt->llvm_builder, llvm_arr_ptr, llvm_indices, array_size(llvm_indices), "");
+		    cnt->llvm_builder, llvm_arr_ptr, llvm_indices, ARRAY_SIZE(llvm_indices), "");
 
 		return;
 	}
@@ -666,7 +666,7 @@ emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 	llvm_indices[1] = llvm_index;
 
 	elem_ptr->base.llvm_value = LLVMBuildGEP(
-	    cnt->llvm_builder, llvm_arr_ptr, llvm_indices, array_size(llvm_indices), "");
+	    cnt->llvm_builder, llvm_arr_ptr, llvm_indices, ARRAY_SIZE(llvm_indices), "");
 }
 
 void
@@ -911,7 +911,7 @@ emit_as_const(Context *cnt, MirConstValue *value)
 		SmallArray_LLVMValue llvm_members;
 		sa_init(&llvm_members);
 
-		sarray_foreach(members, member)
+		SARRAY_FOREACH(members, member)
 		    sa_push_LLVMValue(&llvm_members, emit_as_const(cnt, member));
 
 		llvm_value = LLVMConstNamedStruct(llvm_type, llvm_members.data, (unsigned int)memc);
@@ -1040,7 +1040,7 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 		LLVMValueRef      llvm_indices[2];
 		llvm_indices[0] = cnt->llvm_const_i64;
 
-		sarray_foreach(values, value)
+		SARRAY_FOREACH(values, value)
 		{
 			llvm_value = fetch_value(cnt, value);
 			bl_assert(llvm_value);
@@ -1051,7 +1051,7 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 				llvm_value_dest = LLVMBuildGEP(cnt->llvm_builder,
 				                               llvm_tmp,
 				                               llvm_indices,
-				                               array_size(llvm_indices),
+				                               ARRAY_SIZE(llvm_indices),
 				                               "");
 				break;
 
@@ -1239,7 +1239,7 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 
 	if (llvm_argc) {
 		MirInstr *arg;
-		sarray_foreach(call->args, arg)
+		SARRAY_FOREACH(call->args, arg)
 		    sa_push_LLVMValue(&llvm_args, fetch_value(cnt, arg));
 	}
 
@@ -1360,7 +1360,7 @@ emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 		LLVMValueRef llvm_indices[2];
 		llvm_indices[0] = cnt->llvm_const_i64;
 
-		sarray_foreach(values, value)
+		SARRAY_FOREACH(values, value)
 		{
 			llvm_value = fetch_value(cnt, value);
 			bl_assert(llvm_value);
@@ -1368,7 +1368,7 @@ emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 			llvm_value_dest = LLVMBuildGEP(cnt->llvm_builder,
 			                               vargs->arr_tmp->llvm_value,
 			                               llvm_indices,
-			                               array_size(llvm_indices),
+			                               ARRAY_SIZE(llvm_indices),
 			                               "");
 			LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
 		}
@@ -1476,7 +1476,7 @@ emit_allocas(Context *cnt, MirFn *fn)
 	unsigned    var_alignment;
 	MirVar *    var;
 
-	barray_foreach(fn->variables, var)
+	BARRAY_FOREACH(fn->variables, var)
 	{
 		bl_assert(var);
 
@@ -1505,7 +1505,7 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	if (!fn->emit_llvm) return;
 	emit_fn_proto(cnt, fn);
 
-	if (is_not_flag(fn->flags, FLAG_EXTERN)) {
+	if (IS_NOT_FLAG(fn->flags, FLAG_EXTERN)) {
 		if (cnt->debug_mode) {
 			emit_DI_instr_loc(cnt, NULL);
 			emit_DI_fn(cnt, fn);
@@ -1655,7 +1655,7 @@ ir_run(Builder *builder, Assembly *assembly)
 	emit_RTTI_types(&cnt);
 
 	MirInstr *ginstr;
-	barray_foreach(assembly->MIR.global_instrs, ginstr)
+	BARRAY_FOREACH(assembly->MIR.global_instrs, ginstr)
 	{
 		emit_instr(&cnt, ginstr);
 	}

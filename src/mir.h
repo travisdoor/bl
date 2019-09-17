@@ -412,29 +412,26 @@ struct MirConstValue {
 /* VARIANT */
 struct MirVariant {
 	ID *           id;
-	Ast *          decl_node;
 	Scope *        decl_scope;
 	MirConstValue *value;
 };
 
 /* VAR */
 struct MirVar {
-	MirConstValue       value; /* contains also allocated type */
-	ID *                id;
-	Ast *               decl_node;
-	Scope *             decl_scope;
-	int32_t             ref_count;
-	int32_t             order; /* coresponding function argument id if is_arg_tmp == true */
-	bool                is_mutable;
-	bool                comptime;
-	bool                is_in_gscope;
-	bool                is_implicit;
-	bool                is_arg_tmp; /* variable is function argument temp */
-	bool                gen_llvm;
-	uint32_t            flags;
+	MirConstValue      value; /* contains also allocated type */
+	ID *               id;
+	Ast *              decl_node;
+	Scope *            decl_scope;
+	int32_t            ref_count;
+	bool               is_mutable;
+	bool               comptime;
+	bool               is_in_gscope;
+	bool               is_implicit;
+	bool               gen_llvm;
+	uint32_t           flags;
 	VMRelativeStackPtr rel_stack_ptr;
-	LLVMValueRef        llvm_value;
-	const char *        llvm_name;
+	LLVMValueRef       llvm_value;
+	const char *       llvm_name;
 };
 
 struct MirInstr {
@@ -711,8 +708,6 @@ struct MirInstrTypeInfo {
 
 struct MirInstrTypeKind {
 	MirInstr base;
-
-	MirInstr *expr;
 };
 
 struct MirInstrPhi {

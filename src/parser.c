@@ -369,14 +369,14 @@ parse_flags_for_curr_decl(Context *cnt, uint32_t acceped_flags)
 
 		if (found == HD_NONE) break;
 
-		if (is_flag(found, HD_EXTERN)) {
+		if (IS_FLAG(found, HD_EXTERN)) {
 			flags |= FLAG_EXTERN;
-		} else if (is_flag(found, HD_COMPILER)) {
+		} else if (IS_FLAG(found, HD_COMPILER)) {
 			flags |= FLAG_COMPILER;
-		} else if (is_flag(found, HD_INLINE)) {
+		} else if (IS_FLAG(found, HD_INLINE)) {
 			flags |= FLAG_INLINE;
 			found |= HD_NO_INLINE;
-		} else if (is_flag(found, HD_NO_INLINE)) {
+		} else if (IS_FLAG(found, HD_NO_INLINE)) {
 			flags |= FLAG_NO_INLINE;
 			found |= HD_INLINE;
 		} else {
@@ -419,7 +419,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 	if (strcmp(directive, "load") == 0) {
 		/* load <string> */
 		set_satisfied(HD_LOAD);
-		if (is_not_flag(expected_mask, HD_LOAD)) {
+		if (IS_NOT_FLAG(expected_mask, HD_LOAD)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -455,7 +455,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 	if (strcmp(directive, "link") == 0) {
 		/* link <string> */
 		set_satisfied(HD_LINK);
-		if (is_not_flag(expected_mask, HD_LINK)) {
+		if (IS_NOT_FLAG(expected_mask, HD_LINK)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -489,7 +489,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		/* test <string> {} */
 		set_satisfied(HD_TEST);
 
-		if (is_not_flag(expected_mask, HD_TEST)) {
+		if (IS_NOT_FLAG(expected_mask, HD_TEST)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -540,7 +540,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 
 	if (strcmp(directive, "file") == 0) {
 		set_satisfied(HD_FILE);
-		if (is_not_flag(expected_mask, HD_FILE)) {
+		if (IS_NOT_FLAG(expected_mask, HD_FILE)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -559,7 +559,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 
 	if (strcmp(directive, "line") == 0) {
 		set_satisfied(HD_LINE);
-		if (is_not_flag(expected_mask, HD_LINE)) {
+		if (IS_NOT_FLAG(expected_mask, HD_LINE)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -578,7 +578,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 
 	if (strcmp(directive, "extern") == 0) {
 		set_satisfied(HD_EXTERN);
-		if (is_not_flag(expected_mask, HD_EXTERN)) {
+		if (IS_NOT_FLAG(expected_mask, HD_EXTERN)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -593,7 +593,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 
 	if (strcmp(directive, "compiler") == 0) {
 		set_satisfied(HD_COMPILER);
-		if (is_not_flag(expected_mask, HD_COMPILER)) {
+		if (IS_NOT_FLAG(expected_mask, HD_COMPILER)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -608,7 +608,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 
 	if (strcmp(directive, "inline") == 0) {
 		set_satisfied(HD_INLINE);
-		if (is_not_flag(expected_mask, HD_INLINE)) {
+		if (IS_NOT_FLAG(expected_mask, HD_INLINE)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -623,7 +623,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 
 	if (strcmp(directive, "no_inline") == 0) {
 		set_satisfied(HD_NO_INLINE);
-		if (is_not_flag(expected_mask, HD_NO_INLINE)) {
+		if (IS_NOT_FLAG(expected_mask, HD_NO_INLINE)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -639,7 +639,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 	if (strcmp(directive, "private") == 0) {
 		set_satisfied(HD_PRIVATE);
 
-		if (is_not_flag(expected_mask, HD_PRIVATE)) {
+		if (IS_NOT_FLAG(expected_mask, HD_PRIVATE)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,

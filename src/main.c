@@ -188,7 +188,7 @@ main(int32_t argc, char *argv[])
 #undef arg_is
 
 	if (opt_lvl == -1) {
-		opt_lvl = is_flag(build_flags, BUILDER_FLAG_DEBUG_BUILD) ? OPT_NONE : OPT_DEFAULT;
+		opt_lvl = IS_FLAG(build_flags, BUILDER_FLAG_DEBUG_BUILD) ? OPT_NONE : OPT_DEFAULT;
 	}
 
 	if (configure) {

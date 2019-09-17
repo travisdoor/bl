@@ -46,38 +46,38 @@ struct Assembly;
 #define DEPRECATED
 #endif
 
-#define array_size(_array) (sizeof(_array) / sizeof(_array[0]))
+#define ARRAY_SIZE(_array) (sizeof(_array) / sizeof(_array[0]))
 
-#define is_flag(_v, _flag) ((bool)((_v & _flag) == _flag))
+#define IS_FLAG(_v, _flag) ((bool)((_v & _flag) == _flag))
 
-#define is_not_flag(_v, _flag) ((bool)((_v & _flag) != _flag))
+#define IS_NOT_FLAG(_v, _flag) ((bool)((_v & _flag) != _flag))
 
-#define sarray_foreach(arr, it)                                                                    \
+#define SARRAY_FOREACH(arr, it)                                                                    \
 	if ((arr)->size)                                                                           \
 		for (size_t i = 0; i < (arr)->size && ((it) = (arr)->data[i]); ++i)
 
-#define barray_foreach(arr, it)                                                                    \
+#define BARRAY_FOREACH(arr, it)                                                                    \
 	if (bo_array_size((arr)))                                                                  \
 		for (size_t i = 0;                                                                 \
 		     i < bo_array_size((arr)) && ((it) = bo_array_at((arr), i, void *));           \
 		     ++i)
 
-#define blist_foreach(list, it)                                                                    \
+#define BLIST_FOREACH(list, it)                                                                    \
 	(it) = bo_list_begin((list));                                                              \
 	for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);             \
 	     bo_list_iter_next((list), &(it)))
 
-#define array_foreach(arr, it)                                                                     \
+#define ARRAY_FOREACH(arr, it)                                                                     \
 	for (size_t _keep = 1, i = 0, _size = ARRAY_SIZE((arr)); _keep && i != _size;              \
 	     _keep = !_keep, i++)                                                                  \
 		for (it = (arr)[i]; _keep; _keep = !_keep)
 
-#define bhtbl_foreach(htbl, it)                                                                    \
+#define BHTBL_FOREACH(htbl, it)                                                                    \
 	(it) = bo_htbl_begin((htbl));                                                              \
 	for (bo_iterator_t end = bo_htbl_end((htbl)); !bo_iterator_equal(&(it), &end);             \
 	     bo_htbl_iter_next((htbl), &(it)))
 
-#define blist_foreach(list, it)                                                                    \
+#define BLIST_FOREACH(list, it)                                                                    \
 	(it) = bo_list_begin((list));                                                              \
 	for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);             \
 	     bo_list_iter_next((list), &(it)))

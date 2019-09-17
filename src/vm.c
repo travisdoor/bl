@@ -461,7 +461,7 @@ stack_alloc_local_vars(VM *vm, MirFn *fn)
 	/* Init all stack variables. */
 	BArray *vars = fn->variables;
 	MirVar *var;
-	barray_foreach(vars, var)
+	BARRAY_FOREACH(vars, var)
 	{
 		if (var->comptime) continue;
 		stack_alloc_var(vm, var);
@@ -614,7 +614,7 @@ dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata
 	sa_init(args);
 
 	MirType *arg_type;
-	sarray_foreach(fn->type->data.fn.arg_types, arg_type)
+	SARRAY_FOREACH(fn->type->data.fn.arg_types, arg_type)
 	{
 	}
 
@@ -634,7 +634,7 @@ _dyncall_generate_signature(VM *vm, MirType *type)
 	case MIR_TYPE_FN: {
 		if (type->data.fn.arg_types) {
 			MirType *arg_type;
-			sarray_foreach(type->data.fn.arg_types, arg_type)
+			SARRAY_FOREACH(type->data.fn.arg_types, arg_type)
 			{
 				_dyncall_generate_signature(vm, arg_type);
 			}
@@ -818,7 +818,7 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 	SmallArray_Instr *arg_values = call->args;
 	if (arg_values) {
 		MirInstr *arg_value;
-		sarray_foreach(arg_values, arg_value)
+		SARRAY_FOREACH(arg_values, arg_value)
 		{
 			arg_ptr = fetch_value(vm, arg_value);
 			dyncall_push_arg(vm, arg_ptr, arg_value->value.type);
@@ -1660,7 +1660,7 @@ interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 	VMStackPtr elem_ptr = tmp_ptr;
 
 	MirInstr *value;
-	sarray_foreach(cmp->values, value)
+	SARRAY_FOREACH(cmp->values, value)
 	{
 		elem_type = value->value.type;
 		switch (type->kind) {
@@ -1713,7 +1713,7 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 	{
 		MirInstr * value;
 		VMStackPtr value_ptr;
-		sarray_foreach(values, value)
+		SARRAY_FOREACH(values, value)
 		{
 			const size_t value_size = value->value.type->store_size_bytes;
 			VMStackPtr   dest       = arr_tmp_ptr + i * value_size;
@@ -1879,7 +1879,7 @@ interp_instr_call(VM *vm, MirInstrCall *call)
 
 	bl_assert(fn->type);
 
-	if (is_flag(fn->flags, FLAG_EXTERN)) {
+	if (IS_FLAG(fn->flags, FLAG_EXTERN)) {
 		interp_extern_call(vm, fn, call);
 	} else {
 		/* Push current frame stack top. (Later poped by ret instruction)*/
@@ -1920,7 +1920,7 @@ interp_instr_ret(VM *vm, MirInstrRet *ret)
 		SmallArray_Instr *arg_values = caller->args;
 		if (arg_values) {
 			MirInstr *arg_value;
-			sarray_foreach(arg_values, arg_value)
+			SARRAY_FOREACH(arg_values, arg_value)
 			{
 				if (arg_value->comptime) continue;
 				pop_stack(vm, arg_value->value.type);

@@ -377,7 +377,6 @@ create_var(Context *cnt,
            MirType *alloc_type,
            bool     is_mutable,
            bool     is_in_gscope,
-           int32_t  order, /* pass -1 if none */
            uint32_t flags);
 
 static MirVar *
@@ -401,7 +400,7 @@ static MirMember *
 create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t index, MirType *type);
 
 static MirVariant *
-create_variant(Context *cnt, Ast *node, ID *id, Scope *scope, MirConstValue *value);
+create_variant(Context *cnt, ID *id, Scope *scope, MirConstValue *value);
 
 static MirConstValue *
 create_const_value(Context *cnt, MirType *type);
@@ -1249,7 +1248,7 @@ analyze_notify_provided(Context *cnt, uint64_t hash)
 	bl_assert(wq);
 
 	MirInstr *instr;
-	barray_foreach(wq, instr)
+	BARRAY_FOREACH(wq, instr)
 	{
 		analyze_push_back(cnt, instr);
 	}
@@ -1504,7 +1503,7 @@ sh_type_fn(Context *cnt, MirType *ret_type, SmallArray_Type *arg_types, bool is_
 	/* append all arg types isd */
 	if (arg_types) {
 		MirType *arg_type;
-		sarray_foreach(arg_types, arg_type)
+		SARRAY_FOREACH(arg_types, arg_type)
 		{
 			bl_assert(arg_type->id.str);
 			bo_string_append(tmp, arg_type->id.str);
@@ -1573,7 +1572,7 @@ sh_type_struct(Context *cnt, MirTypeKind kind, ID *id, SmallArray_Member *member
 	bo_string_append(tmp, "{");
 	if (members) {
 		MirMember *member;
-		sarray_foreach(members, member)
+		SARRAY_FOREACH(members, member)
 		{
 			bl_assert(member->type->id.str);
 			bo_string_append(tmp, member->type->id.str);
@@ -1604,13 +1603,13 @@ sh_type_enum(Context *cnt, ID *id, MirType *base_type, SmallArray_Variant *varia
 	bo_string_append(tmp, "{");
 	if (variants) {
 		MirVariant *variant;
-		sarray_foreach(variants, variant)
+		SARRAY_FOREACH(variants, variant)
 		{
 			bl_assert(variant->value);
 
 			char value_str[35];
 			snprintf(value_str,
-			         array_size(value_str),
+			         ARRAY_SIZE(value_str),
 			         "%lld",
 			         (long long)variant->value->data.v_s64);
 			bo_string_append(tmp, value_str);
@@ -1753,7 +1752,7 @@ lookup_builtin(Context *cnt, MirBuiltinIdKind kind)
 
 	MirVar *var = found->data.var;
 
-	if (!is_flag(var->flags, FLAG_COMPILER))
+	if (!IS_FLAG(var->flags, FLAG_COMPILER))
 		bl_abort("Internally used symbol '%s' declared without '#compiler' flag!",
 		         var->llvm_name);
 
@@ -2120,7 +2119,7 @@ init_llvm_type_fn(Context *cnt, MirType *type)
 
 	if (argc) {
 		MirType *tmp_arg;
-		sarray_foreach(arg_types, tmp_arg)
+		SARRAY_FOREACH(arg_types, tmp_arg)
 		{
 			bl_assert(tmp_arg->llvm_type);
 			sa_push_LLVMType(&llvm_args, tmp_arg->llvm_type);
@@ -2147,7 +2146,7 @@ init_llvm_type_fn(Context *cnt, MirType *type)
 
 	if (type->data.fn.arg_types) {
 		MirType *it;
-		sarray_foreach(type->data.fn.arg_types, it)
+		SARRAY_FOREACH(type->data.fn.arg_types, it)
 		    sa_push_LLVMMetadata(&params, it->llvm_meta);
 	}
 
@@ -2191,7 +2190,7 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 	sa_init(&llvm_members);
 
 	MirMember *member;
-	sarray_foreach(members, member)
+	SARRAY_FOREACH(members, member)
 	{
 		bl_assert(member->type->llvm_type);
 		sa_push_LLVMType(&llvm_members, member->type->llvm_type);
@@ -2215,7 +2214,7 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 	sa_terminate(&llvm_members);
 
 	/* set offsets for members */
-	sarray_foreach(members, member) member->offset_bytes =
+	SARRAY_FOREACH(members, member) member->offset_bytes =
 	    mir_get_struct_elem_offest(cnt->assembly, type, i);
 
 	/*** DI ***/
@@ -2268,7 +2267,7 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 	sa_init(&llvm_elems);
 
 	MirMember *elem;
-	sarray_foreach(type->data.strct.members, elem)
+	SARRAY_FOREACH(type->data.strct.members, elem)
 	{
 		unsigned        elem_line = elem->decl_node ? elem->decl_node->location->line : 0;
 		LLVMMetadataRef llvm_elem = llvm_di_create_member_type(
@@ -2324,7 +2323,7 @@ init_llvm_type_enum(Context *cnt, MirType *type)
 	sa_init(&llvm_elems);
 
 	MirVariant *variant;
-	sarray_foreach(type->data.enm.variants, variant)
+	SARRAY_FOREACH(type->data.enm.variants, variant)
 	{
 		LLVMMetadataRef llvm_variant =
 		    llvm_di_create_enum_variant(cnt->analyze.llvm_di_builder,
@@ -2415,7 +2414,6 @@ create_var(Context *cnt,
            MirType *alloc_type,
            bool     is_mutable,
            bool     is_in_gscope,
-           int32_t  order, /* pass -1 if none */
            uint32_t flags)
 {
 	bl_assert(id);
@@ -2429,8 +2427,6 @@ create_var(Context *cnt,
 	tmp->llvm_name    = id->str;
 	tmp->flags        = flags;
 	tmp->gen_llvm     = true;
-	tmp->is_arg_tmp   = order > -1;
-	tmp->order        = order;
 
 	push_var(cnt, tmp);
 	return tmp;
@@ -2453,7 +2449,6 @@ create_var_impl(Context *   cnt,
 	tmp->is_implicit  = true;
 	tmp->gen_llvm     = true;
 	tmp->comptime     = comptime;
-	tmp->order        = -1;
 
 	push_var(cnt, tmp);
 	return tmp;
@@ -2492,10 +2487,9 @@ create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t index, MirT
 }
 
 MirVariant *
-create_variant(Context *cnt, Ast *node, ID *id, Scope *scope, MirConstValue *value)
+create_variant(Context *cnt, ID *id, Scope *scope, MirConstValue *value)
 {
 	MirVariant *tmp = arena_alloc(&cnt->assembly->arenas.mir.variant);
-	tmp->decl_node  = node;
 	tmp->id         = id;
 	tmp->decl_scope = scope;
 	tmp->value      = value;
@@ -2819,7 +2813,7 @@ append_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, SmallArray_Ins
 
 	if (arg_types) {
 		MirInstr *it;
-		sarray_foreach(arg_types, it)
+		SARRAY_FOREACH(arg_types, it)
 		{
 			ref_instr(it);
 		}
@@ -2848,7 +2842,7 @@ append_instr_type_struct(Context *         cnt,
 
 	if (members) {
 		MirInstr *it;
-		sarray_foreach(members, it)
+		SARRAY_FOREACH(members, it)
 		{
 			ref_instr(it);
 		}
@@ -2876,7 +2870,7 @@ append_instr_type_enum(Context *         cnt,
 
 	if (variants) {
 		MirInstr *it;
-		sarray_foreach(variants, it)
+		SARRAY_FOREACH(variants, it)
 		{
 			ref_instr(it);
 		}
@@ -2965,7 +2959,7 @@ append_instr_compound(Context *cnt, Ast *node, MirInstr *type, SmallArray_Instr 
 {
 	if (values) {
 		MirInstr *value;
-		sarray_foreach(values, value) ref_instr(value);
+		SARRAY_FOREACH(values, value) ref_instr(value);
 	}
 	ref_instr(type);
 
@@ -3248,7 +3242,7 @@ append_instr_call(Context *cnt, Ast *node, MirInstr *callee, SmallArray_Instr *a
 	/* reference all arguments */
 	if (args) {
 		MirInstr *instr;
-		sarray_foreach(args, instr) ref_instr(instr);
+		SARRAY_FOREACH(args, instr) ref_instr(instr);
 	}
 
 	append_current_block(cnt, &tmp->base);
@@ -3280,7 +3274,6 @@ append_instr_decl_var(Context * cnt,
 	                      NULL,
 	                      is_mutable,
 	                      is_in_gscope,
-	                      order,
 	                      flags);
 
 	if (is_in_gscope) {
@@ -3363,7 +3356,7 @@ append_instr_decl_variant(Context *cnt, Ast *node, MirInstr *value)
 	bl_assert(node && node->kind == AST_IDENT);
 	ID *   id    = &node->data.ident.id;
 	Scope *scope = node->owner_scope;
-	tmp->variant = create_variant(cnt, node, id, scope, NULL);
+	tmp->variant = create_variant(cnt, id, scope, NULL);
 
 	append_current_block(cnt, &tmp->base);
 	return &tmp->base;
@@ -3634,7 +3627,7 @@ erase_instr_tree(MirInstr *instr)
 			MirInstrCall *call = (MirInstrCall *)top;
 			if (call->args) {
 				MirInstr *it;
-				sarray_foreach(call->args, it)
+				SARRAY_FOREACH(call->args, it)
 				{
 					unref_instr(it);
 					sa_push_Instr64(&queue, it);
@@ -3670,7 +3663,7 @@ erase_instr_tree(MirInstr *instr)
 			sa_push_Instr64(&queue, te->base_type);
 
 			MirInstr *it;
-			sarray_foreach(te->variants, it)
+			SARRAY_FOREACH(te->variants, it)
 			{
 				unref_instr(it);
 				sa_push_Instr64(&queue, it);
@@ -3685,7 +3678,7 @@ erase_instr_tree(MirInstr *instr)
 
 			if (tf->arg_types) {
 				MirInstr *it;
-				sarray_foreach(tf->arg_types, it)
+				SARRAY_FOREACH(tf->arg_types, it)
 				{
 					unref_instr(it);
 					sa_push_Instr64(&queue, it);
@@ -3709,7 +3702,7 @@ erase_instr_tree(MirInstr *instr)
 
 			if (ts->members) {
 				MirInstr *it;
-				sarray_foreach(ts->members, it)
+				SARRAY_FOREACH(ts->members, it)
 				{
 					unref_instr(it);
 					sa_push_Instr64(&queue, it);
@@ -3722,7 +3715,7 @@ erase_instr_tree(MirInstr *instr)
 			MirInstrVArgs *vargs = (MirInstrVArgs *)top;
 			if (vargs->values) {
 				MirInstr *it;
-				sarray_foreach(vargs->values, it)
+				SARRAY_FOREACH(vargs->values, it)
 				{
 					unref_instr(it);
 					sa_push_Instr64(&queue, it);
@@ -4755,7 +4748,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		ref_instr(fn->prototype);
 	}
 
-	if (is_flag(fn->flags, FLAG_EXTERN)) {
+	if (IS_FLAG(fn->flags, FLAG_EXTERN)) {
 		/* lookup external function exec handle */
 		bl_assert(fn->llvm_name);
 		fn->extern_entry = assembly_find_extern(cnt->assembly, fn->llvm_name);
@@ -5233,7 +5226,7 @@ analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 	MirInstr *  it;
 	MirVariant *variant;
 
-	sarray_foreach(variant_instrs, it)
+	SARRAY_FOREACH(variant_instrs, it)
 	{
 		MirInstrDeclVariant *variant_instr = (MirInstrDeclVariant *)it;
 		variant                            = variant_instr->variant;
@@ -6229,7 +6222,7 @@ analyze(Context *cnt)
 	if (cnt->analyze.verbose_pre) {
 		MirInstr *instr;
 		BArray *  globals = cnt->assembly->MIR.global_instrs;
-		barray_foreach(globals, instr)
+		BARRAY_FOREACH(globals, instr)
 		{
 			mir_print_instr(instr, stdout);
 		}
@@ -6320,7 +6313,7 @@ analyze(Context *cnt)
 	if (cnt->analyze.verbose_post) {
 		MirInstr *instr;
 		BArray *  globals = cnt->assembly->MIR.global_instrs;
-		barray_foreach(globals, instr)
+		BARRAY_FOREACH(globals, instr)
 		{
 			mir_print_instr(instr, stdout);
 		}
@@ -6334,11 +6327,11 @@ analyze_report_unresolved(Context *cnt)
 	BArray *      wq;
 	bo_iterator_t iter;
 
-	bhtbl_foreach(cnt->analyze.waiting, iter)
+	BHTBL_FOREACH(cnt->analyze.waiting, iter)
 	{
 		wq = bo_htbl_iter_peek_value(cnt->analyze.waiting, &iter, BArray *);
 		bl_assert(wq);
-		barray_foreach(wq, instr)
+		BARRAY_FOREACH(wq, instr)
 		{
 			bl_assert(instr);
 
@@ -6509,7 +6502,7 @@ gen_RTTI_slice_of_enum_variants(Context *cnt, SmallArray_Variant *variants)
 	SmallArray_ConstValue *elems       = create_sarr(SmallArray_ConstValue, cnt->assembly);
 
 	MirVariant *variant;
-	sarray_foreach(variants, variant)
+	SARRAY_FOREACH(variants, variant)
 	{
 		sa_push_ConstValue(elems, gen_RTTI_enum_variant(cnt, variant));
 	}
@@ -6607,7 +6600,7 @@ gen_RTTI_slice_of_TypeInfo_ptr(Context *cnt, SmallArray_Type *types)
 	SmallArray_ConstValue *elems       = create_sarr(SmallArray_ConstValue, cnt->assembly);
 
 	MirType *type;
-	sarray_foreach(types, type)
+	SARRAY_FOREACH(types, type)
 	{
 		sa_push_ConstValue(
 		    elems,
@@ -6673,7 +6666,7 @@ gen_RTTI_slice_of_struct_members(Context *cnt, SmallArray_Member *members)
 	SmallArray_ConstValue *elems       = create_sarr(SmallArray_ConstValue, cnt->assembly);
 
 	MirMember *member;
-	sarray_foreach(members, member)
+	SARRAY_FOREACH(members, member)
 	{
 		sa_push_ConstValue(elems, gen_RTTI_struct_member(cnt, member));
 	}
@@ -6746,7 +6739,7 @@ gen_RTTI_fn(Context *cnt, MirType *type)
 
 	MirType *it;
 	if (type->data.fn.arg_types) {
-		sarray_foreach(type->data.fn.arg_types, it)
+		SARRAY_FOREACH(type->data.fn.arg_types, it)
 		{
 			sa_push_Type(&types, it);
 		}
@@ -6879,7 +6872,7 @@ gen_RTTI_types(Context *cnt)
 
 	bo_iterator_t it;
 	MirType *     type;
-	bhtbl_foreach(table, it)
+	BHTBL_FOREACH(table, it)
 	{
 		type = (MirType *)bo_htbl_iter_peek_key(table, &it);
 		gen_RTTI(cnt, type);
@@ -6910,7 +6903,7 @@ void
 ast_ublock(Context *cnt, Ast *ublock)
 {
 	Ast *tmp;
-	barray_foreach(ublock->data.ublock.nodes, tmp) ast(cnt, tmp);
+	BARRAY_FOREACH(ublock->data.ublock.nodes, tmp) ast(cnt, tmp);
 }
 
 void
@@ -6919,7 +6912,7 @@ ast_block(Context *cnt, Ast *block)
 	if (cnt->debug_mode) init_llvm_DI_scope(cnt, block->owner_scope);
 
 	Ast *tmp;
-	barray_foreach(block->data.block.nodes, tmp) ast(cnt, tmp);
+	BARRAY_FOREACH(block->data.block.nodes, tmp) ast(cnt, tmp);
 
 	if (!block->data.block.has_return) ast_defer_block(cnt, block, false);
 }
@@ -7638,7 +7631,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 	Ast *      ast_value     = entity->data.decl_entity.value;
 	const bool is_mutable    = entity->data.decl_entity.mut;
 	const bool is_in_gscope  = entity->data.decl_entity.in_gscope;
-	const bool is_compiler   = is_flag(entity->data.decl_entity.flags, FLAG_COMPILER);
+	const bool is_compiler   = IS_FLAG(entity->data.decl_entity.flags, FLAG_COMPILER);
 	bool       enable_groups = false;
 
 	bl_assert(ast_name && "Missing entity name.");
@@ -7655,7 +7648,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		if (is_in_gscope) {
 			value->value.data.v_ptr.data.fn->llvm_name = ast_name->data.ident.id.str;
 		} else {
-			if (is_flag(entity->data.decl_entity.flags, FLAG_EXTERN))
+			if (IS_FLAG(entity->data.decl_entity.flags, FLAG_EXTERN))
 				value->value.data.v_ptr.data.fn->llvm_name =
 				    ast_name->data.ident.id.str;
 			else
@@ -7897,7 +7890,7 @@ ast_type_enum(Context *cnt, Ast *type_enum)
 	/* Build variant instructions */
 	MirInstr *variant;
 	Ast *     ast_variant;
-	sarray_foreach(ast_variants, ast_variant)
+	SARRAY_FOREACH(ast_variants, ast_variant)
 	{
 		variant = ast(cnt, ast_variant);
 		bl_assert(variant);
@@ -7937,7 +7930,7 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 
 	MirInstr *tmp = NULL;
 	Ast *     ast_member;
-	sarray_foreach(ast_members, ast_member)
+	SARRAY_FOREACH(ast_members, ast_member)
 	{
 		tmp = ast(cnt, ast_member);
 		bl_assert(tmp);
@@ -8250,7 +8243,7 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 
 		append_buf(buf, len, "struct{");
 		if (members) {
-			sarray_foreach(members, tmp)
+			SARRAY_FOREACH(members, tmp)
 			{
 				_type_to_str(buf, len, tmp->type, true);
 				if (i < members->size - 1) append_buf(buf, len, ", ");
@@ -8267,7 +8260,7 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 
 		if (variants) {
 			MirVariant *variant;
-			sarray_foreach(variants, variant)
+			SARRAY_FOREACH(variants, variant)
 			{
 				append_buf(buf, len, variant->id->str);
 				append_buf(buf, len, " :: ");
@@ -8275,7 +8268,7 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 				if (variant->value) {
 					char value_str[35];
 					snprintf(value_str,
-					         array_size(value_str),
+					         ARRAY_SIZE(value_str),
 					         "%lld",
 					         (long long)variant->value->data.v_s64);
 					append_buf(buf, len, value_str);
@@ -8296,7 +8289,7 @@ _type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name)
 		MirType *        tmp;
 		SmallArray_Type *arg_types = type->data.fn.arg_types;
 		if (arg_types) {
-			sarray_foreach(arg_types, tmp)
+			SARRAY_FOREACH(arg_types, tmp)
 			{
 				_type_to_str(buf, len, tmp, true);
 				if (i < arg_types->size - 1) append_buf(buf, len, ", ");
@@ -8386,9 +8379,9 @@ execute_test_cases(Context *cnt)
 	int32_t      line;
 	const char * file;
 
-	barray_foreach(cnt->test_cases, test_fn)
+	BARRAY_FOREACH(cnt->test_cases, test_fn)
 	{
-		bl_assert(is_flag(test_fn->flags, FLAG_TEST));
+		bl_assert(IS_FLAG(test_fn->flags, FLAG_TEST));
 		const bool passed = 
 		vm_execute_fn(&cnt->vm, test_fn, NULL);
 
@@ -8562,7 +8555,7 @@ mir_run(Builder *builder, Assembly *assembly)
 
 	/* Gen MIR from AST pass */
 	Unit *unit;
-	barray_foreach(assembly->units, unit) ast(&cnt, unit->ast);
+	BARRAY_FOREACH(assembly->units, unit) ast(&cnt, unit->ast);
 
 	if (builder->errorc) goto SKIP;
 

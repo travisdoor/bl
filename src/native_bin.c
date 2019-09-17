@@ -49,7 +49,7 @@ add_lib_paths(Context *cnt, char *buf, size_t len)
 {
 
 	const char *dir;
-	barray_foreach(cnt->assembly->dl.lib_paths, dir)
+	BARRAY_FOREACH(cnt->assembly->dl.lib_paths, dir)
 	{
 		strncat(buf, " ", len);
 		strncat(buf, link_path_flag, len);
@@ -98,12 +98,12 @@ native_bin_run(Builder *builder, Assembly *assembly)
         { /* setup link command */
                 const char *opt = conf_data_get_str(builder->conf, CONF_LINKER_OPT_KEY);
                 snprintf(
-                    buf, array_size(buf), cmd, linker_exec, assembly->name, assembly->name, opt);
+                    buf, ARRAY_SIZE(buf), cmd, linker_exec, assembly->name, assembly->name, opt);
         }
 #endif
 
-	add_lib_paths(&cnt, buf, array_size(buf));
-	add_libs(&cnt, buf, array_size(buf));
+	add_lib_paths(&cnt, buf, ARRAY_SIZE(buf));
+	add_libs(&cnt, buf, ARRAY_SIZE(buf));
 
 	msg_log("Running native linker...");
 	if (assembly->options.verbose_mode) msg_log("%s", buf);

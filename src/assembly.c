@@ -174,7 +174,7 @@ terminate_dl(Assembly *assembly)
 	}
 
 	char *p;
-	barray_foreach(assembly->dl.lib_paths, p) free(p);
+	BARRAY_FOREACH(assembly->dl.lib_paths, p) free(p);
 
 	dcFree(assembly->dl.vm);
 	bo_unref(assembly->dl.libs);
@@ -246,7 +246,7 @@ assembly_delete(Assembly *assembly)
 	free(assembly->name);
 
 	Unit *unit;
-	barray_foreach(assembly->units, unit)
+	BARRAY_FOREACH(assembly->units, unit)
 	{
 		unit_delete(unit);
 	}
@@ -271,11 +271,11 @@ assembly_delete(Assembly *assembly)
 void
 assembly_setup(Assembly *assembly, uint32_t flags, OptLvl opt_lvl)
 {
-	assembly->options.debug_mode         = is_flag(flags, BUILDER_FLAG_DEBUG_BUILD);
-	assembly->options.verbose_mode       = is_flag(flags, BUILDER_FLAG_VERBOSE);
-	assembly->options.force_test_to_llvm = is_flag(flags, BUILDER_FLAG_FORCE_TEST_LLVM);
-	assembly->options.run_tests          = is_flag(flags, BUILDER_FLAG_RUN_TESTS);
-	assembly->options.run_main           = is_flag(flags, BUILDER_FLAG_RUN);
+	assembly->options.debug_mode         = IS_FLAG(flags, BUILDER_FLAG_DEBUG_BUILD);
+	assembly->options.verbose_mode       = IS_FLAG(flags, BUILDER_FLAG_VERBOSE);
+	assembly->options.force_test_to_llvm = IS_FLAG(flags, BUILDER_FLAG_FORCE_TEST_LLVM);
+	assembly->options.run_tests          = IS_FLAG(flags, BUILDER_FLAG_RUN_TESTS);
+	assembly->options.run_main           = IS_FLAG(flags, BUILDER_FLAG_RUN);
 	assembly->options.opt_lvl            = opt_lvl;
 
 	init_llvm(assembly);
