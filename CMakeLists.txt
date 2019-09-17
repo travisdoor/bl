@@ -55,6 +55,7 @@ set(HEADER_FILES
         src/mir_printer.h
         src/arena.h
 	src/llvm_di.h
+	src/vm.h
         src/ast.h)
 
 set(SOURCE_FILES
@@ -82,6 +83,7 @@ set(SOURCE_FILES
         src/common.c 
         src/mir.c
         src/ir.c
+        src/vm.c
         src/ir_opt.c
         src/mir_printer.c
         src/ast.c

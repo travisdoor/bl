@@ -33,6 +33,7 @@
 #include "ast.h"
 #include "common.h"
 #include "scope.h"
+#include "vm.h"
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
 #include <dyncall.h>
@@ -47,9 +48,6 @@
 struct Assembly;
 struct Builder;
 struct Unit;
-
-typedef ptrdiff_t MirRelativeStackPtr;
-typedef uint8_t * MirStackPtr;
 
 typedef struct MirType       MirType;
 typedef struct MirMember     MirMember;
@@ -362,13 +360,13 @@ struct MirType {
 
 struct MirConstPtr {
 	union {
-		MirType *           type;          /* type value */
-		MirConstValue *     value;         /* remove */
-		MirFn *             fn;            /* function */
-		MirVar *            var;           /* variable */
-		MirStackPtr         stack_ptr;     /* absolute pointer to the stack */
-		MirRelativeStackPtr rel_stack_ptr; /* relative pointer to the stack */
-		const char *        str;           /* constant string array */
+		MirType *          type;          /* type value */
+		MirConstValue *    value;         /* remove */
+		MirFn *            fn;            /* function */
+		MirVar *           var;           /* variable */
+		VMStackPtr         stack_ptr;     /* absolute pointer to the stack */
+		VMRelativeStackPtr rel_stack_ptr; /* relative pointer to the stack */
+		const char *       str;           /* constant string array */
 
 		void *any; /* universal pointer value */
 	} data;
@@ -434,7 +432,7 @@ struct MirVar {
 	bool                is_arg_tmp; /* variable is function argument temp */
 	bool                gen_llvm;
 	uint32_t            flags;
-	MirRelativeStackPtr rel_stack_ptr;
+	VMRelativeStackPtr rel_stack_ptr;
 	LLVMValueRef        llvm_value;
 	const char *        llvm_name;
 };
@@ -775,7 +773,6 @@ mir_set_const_ptr(MirConstPtr *value, void *ptr, MirConstPtrKind kind)
 	value->data.any = ptr;
 	value->kind     = kind;
 }
-
 
 ptrdiff_t
 mir_get_struct_elem_offest(struct Assembly *assembly, MirType *type, uint32_t i);

@@ -88,6 +88,7 @@ SmallArrayType(Member, struct MirMember *, 16);
 SmallArrayType(Variant, struct MirVariant *, 16);
 SmallArrayType(Instr, struct MirInstr *, 16);
 SmallArrayType(ConstValue, struct MirConstValue *, 16);
+SmallArrayType(Char, char, 128);
 
 typedef struct ID {
 	const char *str;
