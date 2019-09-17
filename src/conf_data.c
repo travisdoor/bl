@@ -63,7 +63,7 @@ conf_data_get(ConfData *data, const char *key)
 	bo_iterator_t  end  = bo_htbl_end(data);
 
 	if (bo_iterator_equal(&it, &end)) {
-		bl_abort("Missing conf entry '%s'.", key);
+		BL_ABORT("Missing conf entry '%s'.", key);
 	}
 
 	return &bo_htbl_iter_peek_value(data, &it, ConfDataValue);
@@ -74,7 +74,7 @@ conf_data_get_str(ConfData *data, const char *key)
 {
 	ConfDataValue *value = conf_data_get(data, key);
 	if (value->kind != CDV_STRING)
-		bl_abort("Invalid type of conf value '%s', expected is string.");
+		BL_ABORT("Invalid type of conf value '%s', expected is string.");
 	return value->data.v_str;
 }
 
@@ -82,6 +82,6 @@ int
 conf_data_get_int(ConfData *data, const char *key)
 {
 	ConfDataValue *value = conf_data_get(data, key);
-	if (value->kind != CDV_INT) bl_abort("Invalid type of conf value '%s', expected is int.");
+	if (value->kind != CDV_INT) BL_ABORT("Invalid type of conf value '%s', expected is int.");
 	return value->data.v_int;
 }

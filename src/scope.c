@@ -37,7 +37,7 @@
 static void
 scope_dtor(Scope *scope)
 {
-	bl_assert(scope);
+	BL_ASSERT(scope);
 	bo_unref(scope->entries);
 }
 
@@ -85,9 +85,9 @@ scope_create_entry(ScopeArenas *  arenas,
 void
 scope_insert(Scope *scope, ScopeEntry *entry)
 {
-	bl_assert(scope);
-	bl_assert(entry && entry->id);
-	bl_assert(!bo_htbl_has_key(scope->entries, entry->id->hash) && "duplicate scope entry key!!!");
+	BL_ASSERT(scope);
+	BL_ASSERT(entry && entry->id);
+	BL_ASSERT(!bo_htbl_has_key(scope->entries, entry->id->hash) && "duplicate scope entry key!!!");
 	entry->parent_scope = scope;
 	bo_htbl_insert(scope->entries, entry->id->hash, entry);
 }
@@ -95,7 +95,7 @@ scope_insert(Scope *scope, ScopeEntry *entry)
 ScopeEntry *
 scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_gscope)
 {
-	bl_assert(scope && id);
+	BL_ASSERT(scope && id);
 
 	while (scope) {
 		if (ignore_gscope && scope->kind == SCOPE_GLOBAL) break;

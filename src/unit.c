@@ -122,7 +122,7 @@ Unit *
 unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
 {
 	Unit *unit = bl_calloc(1, sizeof(Unit));
-	if (!unit) bl_abort("bad alloc");
+	if (!unit) BL_ABORT("bad alloc");
 
 	search_source_file(
 	    filepath, &unit->filepath, &unit->dirpath, parent_unit ? parent_unit->dirpath : NULL);
@@ -133,7 +133,7 @@ unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
 	if (get_filename_from_filepath(tmp, ARRAY_SIZE(tmp), filepath)) {
 		unit->filename = strdup(tmp);
 	} else {
-		bl_abort("invalid file");
+		BL_ABORT("invalid file");
 	}
 
 	unit->loaded_from = loaded_from;

@@ -456,21 +456,21 @@ ast_binop_is_logic(BinopKind op)
 static inline bool
 ast_is_expr(Ast *node)
 {
-	bl_assert(node);
+	BL_ASSERT(node);
 	return node->kind > _AST_EXPR_FIRST && node->kind < _AST_EXPR_LAST;
 }
 
 static inline bool
 ast_is_decl(Ast *node)
 {
-	bl_assert(node);
+	BL_ASSERT(node);
 	return node->kind > _AST_DECL_FIRST && node->kind < _AST_DECL_LAST;
 }
 
 static inline bool
 ast_is_type(Ast *node)
 {
-	bl_assert(node);
+	BL_ASSERT(node);
 	return node->kind > _AST_TYPE_FIRST && node->kind < _AST_TYPE_LAST;
 }
 

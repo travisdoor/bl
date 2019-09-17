@@ -147,7 +147,7 @@ Builder *
 builder_new(void)
 {
 	Builder *builder = bl_calloc(1, sizeof(Builder));
-	if (!builder) bl_abort("bad alloc");
+	if (!builder) BL_ABORT("bad alloc");
 
 	builder->flags     = 0;
 	builder->errorc    = 0;
@@ -407,7 +407,7 @@ builder_msg(Builder *      builder,
 	bo_unref(tmp);
 
 #if ASSERT_ON_CMP_ERROR
-	if (type == BUILDER_MSG_ERROR) bl_assert(false);
+	if (type == BUILDER_MSG_ERROR) BL_ASSERT(false);
 #endif
 }
 

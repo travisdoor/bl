@@ -87,8 +87,8 @@ file_loader_run(Builder *builder, Unit *unit)
 	fseek(f, 0, SEEK_SET);
 
 	char *src = calloc(fsize + 1, sizeof(char));
-	if (src == NULL) bl_abort("bad alloc");
-	if (!fread(src, sizeof(char), fsize, f)) bl_abort("cannot read file %s", unit->name);
+	if (src == NULL) BL_ABORT("bad alloc");
+	if (!fread(src, sizeof(char), fsize, f)) BL_ABORT("cannot read file %s", unit->name);
 
 	src[fsize] = '\0';
 	fclose(f);

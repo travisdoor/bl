@@ -111,7 +111,7 @@ init_llvm(Assembly *assembly)
 	if (LLVMGetTargetFromTriple(triple, &llvm_target, &error_msg)) {
 		msg_error("cannot get target with error: %s", error_msg);
 		LLVMDisposeMessage(error_msg);
-		bl_abort("cannot get target");
+		BL_ABORT("cannot get target");
 	}
 
 	LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelDefault;
@@ -211,7 +211,7 @@ Assembly *
 assembly_new(const char *name)
 {
 	Assembly *assembly = bl_calloc(1, sizeof(Assembly));
-	if (!assembly) bl_abort("bad alloc");
+	if (!assembly) BL_ABORT("bad alloc");
 	assembly->name       = strdup(name);
 	assembly->units      = bo_array_new(sizeof(Unit *));
 	assembly->unit_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
@@ -309,7 +309,7 @@ assembly_add_link(Assembly *assembly, Token *token)
 {
 	if (!token) return;
 
-	bl_assert(token->sym == SYM_STRING);
+	BL_ASSERT(token->sym == SYM_STRING);
 
 	uint64_t hash = bo_hash_from_str(token->value.str);
 	if (bo_htbl_has_key(assembly->link_cache, hash)) return;

@@ -84,7 +84,7 @@ print_const_value(MirConstValue *value, FILE *stream)
 		fprintf(stream, format, data->T);                                                  \
 		break;
 
-	bl_assert(type);
+	BL_ASSERT(type);
 
 	switch (type->kind) {
 	case MIR_TYPE_INT: {
@@ -729,7 +729,7 @@ void
 print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 {
 	MirVar *var = decl->var;
-	bl_assert(var);
+	BL_ASSERT(var);
 
 	const char *name = var->llvm_name ? var->llvm_name : "<unknown>";
 
@@ -762,10 +762,10 @@ void
 print_instr_decl_variant(MirInstrDeclVariant *var, FILE *stream)
 {
 	print_instr_head(&var->base, stream, "declvariant");
-	bl_assert(var->variant);
+	BL_ASSERT(var->variant);
 
 	MirVariant *variant = var->variant;
-	bl_assert(variant);
+	BL_ASSERT(variant);
 
 	fprintf(stream, "%s", variant->id->str);
 
@@ -781,7 +781,7 @@ print_instr_decl_member(MirInstrDeclMember *decl, FILE *stream)
 	print_instr_head(&decl->base, stream, "declmember");
 
 	MirMember *member = decl->member;
-	bl_assert(member);
+	BL_ASSERT(member);
 
 	fprintf(stream, "%s : ", member->id->str);
 	print_comptime_value_or_id(decl->type, stream);
@@ -849,7 +849,7 @@ void
 print_instr_store(MirInstrStore *store, FILE *stream)
 {
 	print_instr_head(&store->base, stream, "store");
-	bl_assert(store->src && store->src);
+	BL_ASSERT(store->src && store->src);
 	print_comptime_value_or_id(store->src, stream);
 	fprintf(stream, " -> %%%llu", (unsigned long long)store->dest->id);
 	// print_comptime_value_or_id(store->dest, stream);
@@ -859,7 +859,7 @@ void
 print_instr_binop(MirInstrBinop *binop, FILE *stream)
 {
 	print_instr_head(&binop->base, stream, "binop");
-	bl_assert(binop->lhs && binop->rhs);
+	BL_ASSERT(binop->lhs && binop->rhs);
 	const char *op = ast_binop_to_str(binop->op);
 	print_comptime_value_or_id(binop->lhs, stream);
 	fprintf(stream, " %s ", op);
@@ -896,7 +896,7 @@ void
 print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 {
 	MirFn *fn = fn_proto->base.value.data.v_ptr.data.fn;
-	bl_assert(fn);
+	BL_ASSERT(fn);
 
 	fprintf(stream, "\n");
 

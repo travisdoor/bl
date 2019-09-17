@@ -68,7 +68,7 @@ search_library(Context *   cnt,
 	BARRAY_FOREACH(cnt->lib_paths, dir)
 	{
 		if (strlen(dir) + strlen(PATH_SEPARATOR) + strlen(lib_name_full) >= PATH_MAX)
-			bl_abort("Path too long");
+			BL_ABORT("Path too long");
 
 		strcpy(lib_filepath, dir);
 		strcat(lib_filepath, PATH_SEPARATOR);
@@ -120,7 +120,7 @@ set_lib_paths(Context *cnt)
 static bool
 link_lib(Context *cnt, const char *name, Token *token)
 {
-	if (!name) bl_abort("invalid lib name");
+	if (!name) BL_ABORT("invalid lib name");
 	NativeLib lib   = {0};
 	lib.user_name   = strdup(name);
 	lib.linked_from = token;
@@ -191,7 +191,7 @@ linker_run(Builder *builder, Assembly *assembly)
 	BHTBL_FOREACH(cache, it)
 	{
 		token = bo_htbl_iter_peek_value(cache, &it, Token *);
-		bl_assert(token);
+		BL_ASSERT(token);
 
 		if (!link_lib(&cnt, token->value.str, token)) {
 			link_error(builder,

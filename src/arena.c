@@ -40,7 +40,7 @@ alloc_chunk(Arena *arena)
 {
 	const size_t chunk_size_in_bytes = arena->elem_size_in_bytes * arena->elems_per_chunk;
 	ArenaChunk * chunk               = bl_malloc(chunk_size_in_bytes);
-	if (!chunk) bl_abort("bad alloc");
+	if (!chunk) BL_ABORT("bad alloc");
 
 	memset(chunk, 0, chunk_size_in_bytes);
 	chunk->count = 1;
@@ -55,7 +55,7 @@ get_from_chunk(Arena *arena, ArenaChunk *chunk, int32_t i)
 	 * sizeof(node_t) + MAX_ALIGNMENT) */
 	ptrdiff_t adj;
 	align_ptr_up(&elem, MAX_ALIGNMENT, &adj);
-	bl_assert(adj < MAX_ALIGNMENT);
+	BL_ASSERT(adj < MAX_ALIGNMENT);
 	return elem;
 }
 
@@ -113,7 +113,7 @@ arena_alloc(Arena *arena)
 	void *elem = get_from_chunk(arena, arena->current_chunk, arena->current_chunk->count);
 	arena->current_chunk->count++;
 
-	bl_assert(is_aligned(elem, MAX_ALIGNMENT) && "unaligned allocation of arena element");
+	BL_ASSERT(is_aligned(elem, MAX_ALIGNMENT) && "unaligned allocation of arena element");
 
 	return elem;
 }

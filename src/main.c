@@ -83,7 +83,7 @@ setup_env(void)
 	char tmp[PATH_MAX] = {0};
 
 	if (!get_current_exec_dir(tmp, PATH_MAX)) {
-		bl_abort("Cannot locate compiler executable path.");
+		BL_ABORT("Cannot locate compiler executable path.");
 	}
 
 	ENV_EXEC_DIR = strdup(tmp);
@@ -91,7 +91,7 @@ setup_env(void)
 	strcat(tmp, PATH_SEPARATOR ".." PATH_SEPARATOR);
 	strcat(tmp, BL_CONF_FILE);
 
-	if (strlen(tmp) == 0) bl_abort("Invalid conf file path.");
+	if (strlen(tmp) == 0) BL_ABORT("Invalid conf file path.");
 	ENV_CONF_FILEPATH = strdup(tmp);
 	atexit(free_env);
 }

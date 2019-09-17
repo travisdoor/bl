@@ -88,17 +88,17 @@ void
 print_trace(void);
 
 #ifdef BL_DEBUG
-#define bl_log(format, ...)                                                                        \
+#define BL_LOG(format, ...)                                                                        \
 	{                                                                                          \
 		_log(LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                      \
 	}
 
-#define bl_warning(format, ...)                                                                    \
+#define BL_WARNING(format, ...)                                                                    \
 	{                                                                                          \
 		_log(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                  \
 	}
 
-#define bl_assert(e)                                                                               \
+#define BL_ASSERT(e)                                                                               \
 	if (!(e)) {                                                                                \
 		print_trace();                                                                     \
 		assert(e);                                                                         \
@@ -106,28 +106,28 @@ print_trace(void);
 
 #else /* !BL_DEBUG */
 
-#define bl_log(format, ...)                                                                        \
+#define BL_LOG(format, ...)                                                                        \
 	while (0) {                                                                                \
 	}
 
-#define bl_warning(format, ...)                                                                    \
+#define BL_WARNING(format, ...)                                                                    \
 	while (0) {                                                                                \
 	}
 
-#define bl_assert(e)                                                                               \
+#define BL_ASSERT(e)                                                                               \
 	while (0) {                                                                                \
 	}
 
 #endif /* BL_DEBUG */
 
-#define bl_abort(format, ...)                                                                      \
+#define BL_ABORT(format, ...)                                                                      \
 	{                                                                                          \
 		_log(LOG_ABORT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                    \
 		print_trace();                                                                     \
 		abort();                                                                           \
 	}
 
-#define bl_abort_issue(N)                                                                          \
+#define BL_ABORT_ISSUE(N)                                                                          \
 	{                                                                                          \
 		_log(LOG_ABORT,                                                                    \
 		     __FILENAME__,                                                                 \
@@ -137,9 +137,9 @@ print_trace(void);
 		abort();                                                                           \
 	}
 
-#define bl_assert_magic(O, M, MSG) assert((O)->_magic == &(M) && MSG)
+#define BL_ASSERT_MAGIC(O, M, MSG) assert((O)->_magic == &(M) && MSG)
 
-#define bl_warning_issue(N)                                                                        \
+#define BL_WARNING_ISSUE(N)                                                                        \
 	{                                                                                          \
 		_log(LOG_WARNING,                                                                  \
 		     __FILENAME__,                                                                 \
@@ -147,7 +147,7 @@ print_trace(void);
 		     "Issue: https://github.com/travisdoor/bl/issues/" #N);                        \
 	}
 
-#define bl_unimplemented                                                                           \
+#define BL_UNIMPLEMENTED                                                                           \
 	{                                                                                          \
 		_log(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented");                          \
 		print_trace();                                                                     \

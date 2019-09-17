@@ -37,7 +37,7 @@ void
 bc_writer_run(Builder *builder, Assembly *assembly)
 {
 	char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
-	if (!export_file) bl_abort("bad alloc");
+	if (!export_file) BL_ABORT("bad alloc");
 	strcpy(export_file, assembly->name);
 	strcat(export_file, ".ll");
 

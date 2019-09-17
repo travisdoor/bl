@@ -734,7 +734,7 @@ struct MirInstrToAny {
 static inline bool
 mir_is_pointer_type(MirType *type)
 {
-	bl_assert(type);
+	BL_ASSERT(type);
 	return type->kind == MIR_TYPE_PTR;
 }
 
@@ -755,9 +755,9 @@ mir_is_composit_type(MirType *type)
 static inline MirType *
 mir_get_struct_elem_type(MirType *type, uint32_t i)
 {
-	bl_assert(mir_is_composit_type(type) && "Expected structure type");
+	BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
 	SmallArray_Member *members = type->data.strct.members;
-	bl_assert(members && members->size > i);
+	BL_ASSERT(members && members->size > i);
 
 	return members->data[i]->type;
 }
@@ -778,10 +778,10 @@ mir_get_array_elem_offset(MirType *type, uint32_t i);
 static inline MirType *
 mir_get_fn_arg_type(MirType *type, uint32_t i)
 {
-	bl_assert(type->kind == MIR_TYPE_FN && "Expected function type");
+	BL_ASSERT(type->kind == MIR_TYPE_FN && "Expected function type");
 	SmallArray_Type *args = type->data.fn.arg_types;
 	if (!args) return NULL;
-	bl_assert(args->size > i);
+	BL_ASSERT(args->size > i);
 
 	return args->data[i];
 }

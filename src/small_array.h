@@ -85,7 +85,7 @@ typedef struct SmallArrayAny {
                                                                                                    \
 	static inline T sa_last_##N(SmallArray_##N *arr)                                           \
 	{                                                                                          \
-		bl_assert(arr->size && "Cannot get last element from empty array.");               \
+		BL_ASSERT(arr->size && "Cannot get last element from empty array.");               \
 		return arr->data[arr->size - 1];                                                   \
 	}
 
