@@ -688,11 +688,14 @@ dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata
 	          "External callback handler must be invoked from main thread.");
 
 	DyncallCBContext *cnt = (DyncallCBContext *)userdata;
-	BL_ASSERT(cnt && cnt->fn && cnt->vm);
+	MirFn *           fn  = cnt->fn;
+	VM *              vm  = cnt->vm;
+	BL_ASSERT(fn && vm);
 
+	MirType *  ret_type     = fn->type->data.fn.ret_type;
 	const bool is_fn_extern = IS_FLAG(cnt->fn->flags, FLAG_EXTERN);
-	const bool has_args     = cnt->fn->type->data.fn.arg_types;
-	const bool has_return   = cnt->fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID;
+	const bool has_args     = fn->type->data.fn.arg_types;
+	const bool has_return   = ret_type->kind != MIR_TYPE_VOID;
 
 	if (is_fn_extern) {
 		/* TODO: external callback */
@@ -705,28 +708,29 @@ dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata
 	sa_init(&arg_tmp);
 
 	if (has_args) {
-		SmallArray_TypePtr *arg_types = cnt->fn->type->data.fn.arg_types;
+		SmallArray_TypePtr *arg_types = fn->type->data.fn.arg_types;
 		sa_resize_ConstValue(&arg_tmp, arg_types->size);
 
 		MirType *it;
 		SARRAY_FOREACH(arg_types, it)
 		{
 			arg_tmp.data[i].type = it;
-			dyncall_cb_read_arg(cnt->vm, &arg_tmp.data[i], args);
+			dyncall_cb_read_arg(vm, &arg_tmp.data[i], args);
 		}
 	}
 
-	execute_fn_impl_top_level(cnt->vm, cnt->fn, &arg_tmp, NULL);
-	sa_terminate(&arg_tmp);
-
-	if (has_return) {
-		/* TODO: handle return value */
-		/* TODO: handle return value */
-		/* TODO: handle return value */
-		BL_ABORT("Callback return value is not implemented yet.");
+	VMStackPtr ret_ptr = NULL;
+	if (!execute_fn_impl_top_level(vm, fn, &arg_tmp, &ret_ptr)) {
+		result->L = 0;
+	} else if (has_return) {
+		BL_ASSERT(ret_ptr && "Function is supposed to return some value.");
+		MirConstValueData tmp = {0};
+		read_value(&tmp, ret_ptr, ret_type);
+		result->L = tmp.v_s64;
 	}
 
-	return DC_SIGCHAR_VOID;
+	sa_terminate(&arg_tmp);
+	return dyncall_generate_signature(vm, ret_type)[0];
 }
 
 void
@@ -1084,7 +1088,7 @@ _execute_fn_top_level(VM *                   vm,
 		interp_instr(vm, instr);
 
 		/* stack head can be changed by br instructions */
-		if (get_pc(vm) == prev) set_pc(vm, instr->next);
+		if (!get_pc(vm) || get_pc(vm) == prev) set_pc(vm, instr->next);
 	}
 
 	if (vm->stack->aborted) return false;
@@ -2057,9 +2061,7 @@ interp_instr_call(VM *vm, MirInstrCall *call)
 	BL_ASSERT(fn->type);
 
 	if (IS_FLAG(fn->flags, FLAG_EXTERN)) {
-		//push_ra(vm, &call->base);
 		interp_extern_call(vm, fn, call);
-		//pop_ra(vm);
 	} else {
 		/* Push current frame stack top. (Later poped by ret instruction)*/
 		push_ra(vm, &call->base);
@@ -2453,10 +2455,11 @@ vm_read_stack_value(MirConstValue *dest, VMStackPtr src)
 	read_value(&dest->data, src, dest->type);
 }
 
-typedef void (*Fn)();
+typedef int (*Fn)(int, float, bool);
 
 void
 test_call(Fn callback)
 {
-	callback();
+	int res = callback(10, 0.4f, false);
+	BL_LOG("res = %i", res);
 }

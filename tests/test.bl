@@ -2,7 +2,7 @@
 
 #load "std/print.bl"
 
-Fn :: * fn ();
+Fn :: * fn (s32, f32, bool) s32;
 test_call :: fn (callback: Fn) #extern;
 
 main :: fn () s32 {
@@ -14,6 +14,12 @@ main :: fn () s32 {
     return 0;
 };
 
-callback :: fn () {
-    print("hello from callback\n");
+callback :: fn (i: s32, j: f32, k: bool) s32 {
+    print("Passed: %; %; %\n", i, j, k);
+    foo();
+    return 666;
+};
+
+foo :: fn () {
+    unreachable;
 };
