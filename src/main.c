@@ -268,6 +268,5 @@ main(int32_t argc, char *argv[])
 
 	assembly_delete(assembly);
 	builder_delete(builder);
-
 	return state;
 }

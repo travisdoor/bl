@@ -2454,12 +2454,3 @@ vm_read_stack_value(MirConstValue *dest, VMStackPtr src)
 	memset(&dest->data, 0, sizeof(dest->data));
 	read_value(&dest->data, src, dest->type);
 }
-
-typedef int (*Fn)(int, float, bool);
-
-void
-test_call(Fn callback)
-{
-	int res = callback(10, 0.4f, false);
-	BL_LOG("res = %i", res);
-}
