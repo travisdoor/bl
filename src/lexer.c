@@ -303,7 +303,7 @@ c_to_number(char c, int32_t base)
 		}
 		break;
 	default:
-		bl_abort("invalid number base");
+		BL_ABORT("invalid number base");
 	}
 
 	return -1;

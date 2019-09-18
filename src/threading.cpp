@@ -1,11 +1,11 @@
 //************************************************************************************************
 // bl
 //
-// File:   bc_writer.c
+// File:   threading.cpp
 // Author: Martin Dorazil
-// Date:   14.2.18
+// Date:   9/17/19
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2019 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,34 +26,15 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "assembly.h"
-#include "bldebug.h"
-#include "error.h"
-#include "stages.h"
-#include <llvm-c/BitWriter.h>
-#include <string.h>
+#include <thread>
+#include "threading.h"
 
-void
-bc_writer_run(Builder *builder, Assembly *assembly)
+#define CAST(T) reinterpret_cast<T>
+
+using namespace std;
+
+uint64_t
+thread_get_id(void)
 {
-	char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
-	if (!export_file) BL_ABORT("bad alloc");
-	strcpy(export_file, assembly->name);
-	strcat(export_file, ".ll");
-
-	char *str = LLVMPrintModuleToString(assembly->llvm.module);
-
-	FILE *f = fopen(export_file, "w");
-	if (f == NULL) {
-		builder_error(builder, "cannot open file %s", export_file);
-		free(export_file);
-		return;
-	}
-	fprintf(f, "%s\n", str);
-	fclose(f);
-	LLVMDisposeMessage(str);
-
-	msg_log("Byte code written into " GREEN("%s"), export_file);
-
-	free(export_file);
+	return hash<thread::id>{}(this_thread::get_id());
 }

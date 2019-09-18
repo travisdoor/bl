@@ -31,8 +31,8 @@
 #include "stages.h"
 #include <setjmp.h>
 
-SmallArrayType(Ast64, Ast *, 64);
-SmallArrayType(Scope64, Scope *, 64);
+SmallArrayType(AstPtr64, Ast *, 64);
+SmallArrayType(ScopePtr64, Scope *, 64);
 
 #define EXPECTED_PRIVATE_SCOPE_COUNT 256
 
@@ -71,15 +71,15 @@ SmallArrayType(Scope64, Scope *, 64);
 
 /* swap current compound with _cmp and create temporary variable with previous one */
 
-#define scope_push(_cnt, _scope) sa_push_Scope64(&(_cnt)->_scope_stack, (_scope))
-#define scope_pop(_cnt) sa_pop_Scope64(&(_cnt)->_scope_stack)
-#define scope_get(_cnt) sa_last_Scope64(&(_cnt)->_scope_stack)
+#define scope_push(_cnt, _scope) sa_push_ScopePtr64(&(_cnt)->_scope_stack, (_scope))
+#define scope_pop(_cnt) sa_pop_ScopePtr64(&(_cnt)->_scope_stack)
+#define scope_get(_cnt) sa_last_ScopePtr64(&(_cnt)->_scope_stack)
 #define scope_set(_cnt, _scope)                                                                    \
 	((_cnt)->_scope_stack.data[(_cnt)->_scope_stack.size - 1]) = (_scope)
 
-#define decl_push(_cnt, _decl) sa_push_Ast64(&(_cnt)->_decl_stack, (_decl))
-#define decl_pop(_cnt) sa_pop_Ast64(&(_cnt)->_decl_stack)
-#define decl_get(_cnt) ((_cnt)->_decl_stack.size ? sa_last_Ast64(&(_cnt)->_decl_stack) : NULL)
+#define decl_push(_cnt, _decl) sa_push_AstPtr64(&(_cnt)->_decl_stack, (_decl))
+#define decl_pop(_cnt) sa_pop_AstPtr64(&(_cnt)->_decl_stack)
+#define decl_get(_cnt) ((_cnt)->_decl_stack.size ? sa_last_AstPtr64(&(_cnt)->_decl_stack) : NULL)
 
 typedef enum {
 	HD_NONE      = 1 << 0,
@@ -96,14 +96,14 @@ typedef enum {
 } HashDirective;
 
 typedef struct {
-	SmallArray_Ast64   _decl_stack;
-	SmallArray_Scope64 _scope_stack;
-	Builder *          builder;
-	Assembly *         assembly;
-	Unit *             unit;
-	Arena *            ast_arena;
-	ScopeArenas *      scope_arenas;
-	Tokens *           tokens;
+	SmallArray_AstPtr64   _decl_stack;
+	SmallArray_ScopePtr64 _scope_stack;
+	Builder *             builder;
+	Assembly *            assembly;
+	Unit *                unit;
+	Arena *               ast_arena;
+	ScopeArenas *         scope_arenas;
+	Tokens *              tokens;
 
 	/* tmps */
 	bool inside_loop;
@@ -321,7 +321,7 @@ sym_to_binop_kind(Sym sm)
 	case SYM_SHL:
 		return BINOP_SHL;
 	default:
-		bl_abort("unknown binop operation!!!");
+		BL_ABORT("unknown binop operation!!!");
 	}
 }
 
@@ -336,7 +336,7 @@ sym_to_unop_kind(Sym sm)
 	case SYM_NOT:
 		return UNOP_NOT;
 	default:
-		bl_abort("unknown unop operation!!!");
+		BL_ABORT("unknown unop operation!!!");
 	}
 }
 
@@ -369,18 +369,18 @@ parse_flags_for_curr_decl(Context *cnt, uint32_t acceped_flags)
 
 		if (found == HD_NONE) break;
 
-		if (is_flag(found, HD_EXTERN)) {
+		if (IS_FLAG(found, HD_EXTERN)) {
 			flags |= FLAG_EXTERN;
-		} else if (is_flag(found, HD_COMPILER)) {
+		} else if (IS_FLAG(found, HD_COMPILER)) {
 			flags |= FLAG_COMPILER;
-		} else if (is_flag(found, HD_INLINE)) {
+		} else if (IS_FLAG(found, HD_INLINE)) {
 			flags |= FLAG_INLINE;
 			found |= HD_NO_INLINE;
-		} else if (is_flag(found, HD_NO_INLINE)) {
+		} else if (IS_FLAG(found, HD_NO_INLINE)) {
 			flags |= FLAG_NO_INLINE;
 			found |= HD_INLINE;
 		} else {
-			bl_abort("Unexpected flag!!!");
+			BL_ABORT("Unexpected flag!!!");
 		}
 
 		/* Remove found flag from accepted mask (multiple flags of same type are not
@@ -414,12 +414,12 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 	if (tok_directive->sym != SYM_IDENT) goto INVALID;
 
 	const char *directive = tok_directive->value.str;
-	bl_assert(directive);
+	BL_ASSERT(directive);
 
 	if (strcmp(directive, "load") == 0) {
 		/* load <string> */
 		set_satisfied(HD_LOAD);
-		if (is_not_flag(expected_mask, HD_LOAD)) {
+		if (IS_NOT_FLAG(expected_mask, HD_LOAD)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -455,7 +455,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 	if (strcmp(directive, "link") == 0) {
 		/* link <string> */
 		set_satisfied(HD_LINK);
-		if (is_not_flag(expected_mask, HD_LINK)) {
+		if (IS_NOT_FLAG(expected_mask, HD_LINK)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -489,7 +489,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 		/* test <string> {} */
 		set_satisfied(HD_TEST);
 
-		if (is_not_flag(expected_mask, HD_TEST)) {
+		if (IS_NOT_FLAG(expected_mask, HD_TEST)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -540,7 +540,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 
 	if (strcmp(directive, "file") == 0) {
 		set_satisfied(HD_FILE);
-		if (is_not_flag(expected_mask, HD_FILE)) {
+		if (IS_NOT_FLAG(expected_mask, HD_FILE)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -559,7 +559,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 
 	if (strcmp(directive, "line") == 0) {
 		set_satisfied(HD_LINE);
-		if (is_not_flag(expected_mask, HD_LINE)) {
+		if (IS_NOT_FLAG(expected_mask, HD_LINE)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -578,7 +578,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 
 	if (strcmp(directive, "extern") == 0) {
 		set_satisfied(HD_EXTERN);
-		if (is_not_flag(expected_mask, HD_EXTERN)) {
+		if (IS_NOT_FLAG(expected_mask, HD_EXTERN)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -593,7 +593,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 
 	if (strcmp(directive, "compiler") == 0) {
 		set_satisfied(HD_COMPILER);
-		if (is_not_flag(expected_mask, HD_COMPILER)) {
+		if (IS_NOT_FLAG(expected_mask, HD_COMPILER)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -608,7 +608,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 
 	if (strcmp(directive, "inline") == 0) {
 		set_satisfied(HD_INLINE);
-		if (is_not_flag(expected_mask, HD_INLINE)) {
+		if (IS_NOT_FLAG(expected_mask, HD_INLINE)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -623,7 +623,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 
 	if (strcmp(directive, "no_inline") == 0) {
 		set_satisfied(HD_NO_INLINE);
-		if (is_not_flag(expected_mask, HD_NO_INLINE)) {
+		if (IS_NOT_FLAG(expected_mask, HD_NO_INLINE)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -639,7 +639,7 @@ parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfi
 	if (strcmp(directive, "private") == 0) {
 		set_satisfied(HD_PRIVATE);
 
-		if (is_not_flag(expected_mask, HD_PRIVATE)) {
+		if (IS_NOT_FLAG(expected_mask, HD_PRIVATE)) {
 			parse_error(cnt,
 			            ERR_UNEXPECTED_DIRECTIVE,
 			            tok_directive,
@@ -740,9 +740,9 @@ value:
 	if (tmp) {
 		if (!compound->data.expr_compound.values)
 			compound->data.expr_compound.values =
-			    create_sarr(SmallArray_Ast, cnt->assembly);
+			    create_sarr(SmallArray_AstPtr, cnt->assembly);
 
-		sa_push_Ast(compound->data.expr_compound.values, tmp);
+		sa_push_AstPtr(compound->data.expr_compound.values, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -1054,9 +1054,9 @@ parse_decl_variant(Context *cnt, Ast *prev)
 	tok_assign        = tokens_consume_if(cnt->tokens, SYM_COLON);
 	if (tok_assign) {
 		var->data.decl_variant.value = parse_expr(cnt);
-		if (!var->data.decl_variant.value) bl_abort("Expected enum variant value");
+		if (!var->data.decl_variant.value) BL_ABORT("Expected enum variant value");
 	} else if (prev) {
-		bl_assert(prev->kind == AST_DECL_VARIANT);
+		BL_ASSERT(prev->kind == AST_DECL_VARIANT);
 		Ast *addition =
 		    ast_create_node(cnt->ast_arena, AST_EXPR_LIT_INT, tok_begin, scope_get(cnt));
 		addition->data.expr_integer.val = 1;
@@ -1075,7 +1075,7 @@ parse_decl_variant(Context *cnt, Ast *prev)
 		var->data.decl_variant.value->data.expr_integer.val = 0;
 	}
 
-	bl_assert(var->data.decl_variant.value);
+	BL_ASSERT(var->data.decl_variant.value);
 	var->data.decl.name = name;
 	return var;
 }
@@ -1201,12 +1201,12 @@ parse_stmt_loop(Context *cnt)
 			/* for loop construct loop [init]; [condition]; [increment] {} */
 			loop->data.stmt_loop.init = parse_decl(cnt);
 			if (!parse_semicolon_rq(cnt)) {
-				bl_assert(false);
+				BL_ASSERT(false);
 			}
 
 			loop->data.stmt_loop.condition = parse_expr(cnt);
 			if (!parse_semicolon_rq(cnt)) {
-				bl_assert(false);
+				BL_ASSERT(false);
 			}
 
 			loop->data.stmt_loop.increment = parse_expr(cnt);
@@ -1536,7 +1536,7 @@ parse_expr_lit_fn(Context *cnt)
 	scope_push(cnt, scope);
 
 	Ast *type = parse_type_fn(cnt, true);
-	bl_assert(type);
+	BL_ASSERT(type);
 
 	fn->data.expr_fn.type = type;
 
@@ -1652,7 +1652,7 @@ parse_type_ptr(Context *cnt)
 
 	Ast *ptr = ast_create_node(cnt->ast_arena, AST_TYPE_PTR, tok_begin, scope_get(cnt));
 	ptr->data.type_ptr.type = parse_type(cnt);
-	bl_assert(ptr->data.type_ptr.type);
+	BL_ASSERT(ptr->data.type_ptr.type);
 	return ptr;
 }
 
@@ -1674,7 +1674,7 @@ parse_type_enum(Context *cnt)
 	if (!tok_enum) return NULL;
 
 	Ast *enm = ast_create_node(cnt->ast_arena, AST_TYPE_ENUM, tok_enum, scope_get(cnt));
-	enm->data.type_enm.variants = create_sarr(SmallArray_Ast, cnt->assembly);
+	enm->data.type_enm.variants = create_sarr(SmallArray_AstPtr, cnt->assembly);
 	enm->data.type_enm.type     = parse_type(cnt);
 
 	parse_flags_for_curr_decl(cnt, HD_COMPILER);
@@ -1700,7 +1700,7 @@ NEXT:
 	tmp = parse_decl_variant(cnt, prev_tmp);
 	if (tmp) {
 		prev_tmp = tmp;
-		sa_push_Ast(enm->data.type_enm.variants, tmp);
+		sa_push_AstPtr(enm->data.type_enm.variants, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -1761,7 +1761,7 @@ parse_type_arr(Context *cnt)
 
 	Ast *arr = ast_create_node(cnt->ast_arena, AST_TYPE_ARR, tok_begin, scope_get(cnt));
 	arr->data.type_arr.len = parse_expr(cnt);
-	bl_assert(arr->data.type_arr.len);
+	BL_ASSERT(arr->data.type_arr.len);
 
 	Token *tok_end = tokens_consume_if(cnt->tokens, SYM_RBRACKET);
 	if (!tok_end) {
@@ -1856,9 +1856,9 @@ NEXT:
 	tmp = parse_decl_arg(cnt, rq_named_args);
 	if (tmp) {
 		if (!fn->data.type_fn.args)
-			fn->data.type_fn.args = create_sarr(SmallArray_Ast, cnt->assembly);
+			fn->data.type_fn.args = create_sarr(SmallArray_AstPtr, cnt->assembly);
 
-		sa_push_Ast(fn->data.type_fn.args, tmp);
+		sa_push_AstPtr(fn->data.type_fn.args, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -1917,7 +1917,7 @@ parse_type_struct(Context *cnt)
 	    ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct, scope_get(cnt));
 	type_struct->data.type_strct.scope   = scope;
 	type_struct->data.type_strct.raw     = false;
-	type_struct->data.type_strct.members = create_sarr(SmallArray_Ast, cnt->assembly);
+	type_struct->data.type_strct.members = create_sarr(SmallArray_AstPtr, cnt->assembly);
 
 	/* parse members */
 	bool       rq = false;
@@ -1928,7 +1928,7 @@ parse_type_struct(Context *cnt)
 NEXT:
 	tmp = parse_decl_member(cnt, type_only);
 	if (tmp) {
-		sa_push_Ast(type_struct->data.type_strct.members, tmp);
+		sa_push_AstPtr(type_struct->data.type_strct.members, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -2035,8 +2035,8 @@ arg:
 	tmp = parse_expr(cnt);
 	if (tmp) {
 		if (!call->data.expr_call.args)
-			call->data.expr_call.args = create_sarr(SmallArray_Ast, cnt->assembly);
-		sa_push_Ast(call->data.expr_call.args, tmp);
+			call->data.expr_call.args = create_sarr(SmallArray_AstPtr, cnt->assembly);
+		sa_push_AstPtr(call->data.expr_call.args, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -2214,7 +2214,7 @@ NEXT:
 void
 parse_ublock_content(Context *cnt, Ast *ublock)
 {
-	bl_assert(ublock->kind == AST_UBLOCK);
+	BL_ASSERT(ublock->kind == AST_UBLOCK);
 	ublock->data.ublock.nodes = bo_array_new(sizeof(Ast *));
 	bo_array_reserve(ublock->data.ublock.nodes, 64);
 
@@ -2255,7 +2255,7 @@ NEXT:
 void
 parser_run(Builder *builder, Assembly *assembly, Unit *unit)
 {
-	bl_assert(assembly->gscope && "Missing global scope for assembly.");
+	BL_ASSERT(assembly->gscope && "Missing global scope for assembly.");
 
 	Context cnt = {.builder      = builder,
 	               .assembly     = assembly,

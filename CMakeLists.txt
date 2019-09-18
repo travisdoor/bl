@@ -55,6 +55,8 @@ set(HEADER_FILES
         src/mir_printer.h
         src/arena.h
 	src/llvm_di.h
+	src/vm.h
+	src/threading.h
         src/ast.h)
 
 set(SOURCE_FILES
@@ -82,9 +84,11 @@ set(SOURCE_FILES
         src/common.c 
         src/mir.c
         src/ir.c
+        src/vm.c
         src/ir_opt.c
         src/mir_printer.c
         src/ast.c
+	src/threading.cpp
         src/llvm_di.cpp)
 
 add_definitions(${LLVM_DEFINITIONS})
@@ -124,6 +128,7 @@ endif()
 target_link_libraries(blc PUBLIC
     dynload_s
     dyncall_s
+    dyncallback_s
     bobject
     ${CMAKE_DL_LIBS}
     ${LLVM_LIBS}
@@ -133,6 +138,7 @@ target_include_directories(blc PRIVATE
     src
     deps/dyncall-1.0/dyncall
     deps/dyncall-1.0/dynload
+    deps/dyncall-1.0/dyncallback
     deps/bobject/include
     ${LLVM_INCLUDE_DIRS}
 )

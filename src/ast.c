@@ -83,7 +83,7 @@ ast_arena_terminate(Arena *arena)
 const char *
 ast_get_name(const Ast *n)
 {
-	bl_assert(n);
+	BL_ASSERT(n);
 	switch (n->kind) {
 	case AST_BAD:
 		return "Bad";
@@ -187,7 +187,7 @@ ast_get_name(const Ast *n)
 		return "ExprLitBool";
 
 	default:
-		bl_abort("invalid ast node");
+		BL_ABORT("invalid ast node");
 	}
 }
 

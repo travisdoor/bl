@@ -60,15 +60,15 @@ search_library(Context *   cnt,
 	char lib_filepath[PATH_MAX] = {0};
 	char lib_name_full[256]     = {0};
 
-	platform_lib_name(lib_name, lib_name_full, array_size(lib_name_full));
+	platform_lib_name(lib_name, lib_name_full, ARRAY_SIZE(lib_name_full));
 
 	if (cnt->assembly->options.verbose_mode) msg_log("- Looking for: '%s'", lib_name_full);
 
 	const char *dir;
-	barray_foreach(cnt->lib_paths, dir)
+	BARRAY_FOREACH(cnt->lib_paths, dir)
 	{
 		if (strlen(dir) + strlen(PATH_SEPARATOR) + strlen(lib_name_full) >= PATH_MAX)
-			bl_abort("Path too long");
+			BL_ABORT("Path too long");
 
 		strcpy(lib_filepath, dir);
 		strcat(lib_filepath, PATH_SEPARATOR);
@@ -120,7 +120,7 @@ set_lib_paths(Context *cnt)
 static bool
 link_lib(Context *cnt, const char *name, Token *token)
 {
-	if (!name) bl_abort("invalid lib name");
+	if (!name) BL_ABORT("invalid lib name");
 	NativeLib lib   = {0};
 	lib.user_name   = strdup(name);
 	lib.linked_from = token;
@@ -188,10 +188,10 @@ linker_run(Builder *builder, Assembly *assembly)
 	BHashTable *  cache = assembly->link_cache;
 	Token *       token;
 	bo_iterator_t it;
-	bhtbl_foreach(cache, it)
+	BHTBL_FOREACH(cache, it)
 	{
 		token = bo_htbl_iter_peek_value(cache, &it, Token *);
-		bl_assert(token);
+		BL_ASSERT(token);
 
 		if (!link_lib(&cnt, token->value.str, token)) {
 			link_error(builder,

@@ -41,12 +41,12 @@
 #define EXPECTED_LINK_COUNT 32
 
 union _SmallArrays {
-	SmallArray_Type       type;
-	SmallArray_Member     member;
-	SmallArray_Variant    variant;
-	SmallArray_Instr      instr;
-	SmallArray_ConstValue cv;
-	SmallArray_Ast        ast;
+	SmallArray_TypePtr       type;
+	SmallArray_MemberPtr     member;
+	SmallArray_VariantPtr    variant;
+	SmallArray_InstrPtr      instr;
+	SmallArray_ConstValuePtr cv;
+	SmallArray_AstPtr        ast;
 };
 
 static void
@@ -111,7 +111,7 @@ init_llvm(Assembly *assembly)
 	if (LLVMGetTargetFromTriple(triple, &llvm_target, &error_msg)) {
 		msg_error("cannot get target with error: %s", error_msg);
 		LLVMDisposeMessage(error_msg);
-		bl_abort("cannot get target");
+		BL_ABORT("cannot get target");
 	}
 
 	LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelDefault;
@@ -174,7 +174,7 @@ terminate_dl(Assembly *assembly)
 	}
 
 	char *p;
-	barray_foreach(assembly->dl.lib_paths, p) free(p);
+	BARRAY_FOREACH(assembly->dl.lib_paths, p) free(p);
 
 	dcFree(assembly->dl.vm);
 	bo_unref(assembly->dl.libs);
@@ -211,7 +211,7 @@ Assembly *
 assembly_new(const char *name)
 {
 	Assembly *assembly = bl_calloc(1, sizeof(Assembly));
-	if (!assembly) bl_abort("bad alloc");
+	if (!assembly) BL_ABORT("bad alloc");
 	assembly->name       = strdup(name);
 	assembly->units      = bo_array_new(sizeof(Unit *));
 	assembly->unit_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
@@ -246,7 +246,7 @@ assembly_delete(Assembly *assembly)
 	free(assembly->name);
 
 	Unit *unit;
-	barray_foreach(assembly->units, unit)
+	BARRAY_FOREACH(assembly->units, unit)
 	{
 		unit_delete(unit);
 	}
@@ -271,11 +271,11 @@ assembly_delete(Assembly *assembly)
 void
 assembly_setup(Assembly *assembly, uint32_t flags, OptLvl opt_lvl)
 {
-	assembly->options.debug_mode         = is_flag(flags, BUILDER_FLAG_DEBUG_BUILD);
-	assembly->options.verbose_mode       = is_flag(flags, BUILDER_FLAG_VERBOSE);
-	assembly->options.force_test_to_llvm = is_flag(flags, BUILDER_FLAG_FORCE_TEST_LLVM);
-	assembly->options.run_tests          = is_flag(flags, BUILDER_FLAG_RUN_TESTS);
-	assembly->options.run_main           = is_flag(flags, BUILDER_FLAG_RUN);
+	assembly->options.debug_mode         = IS_FLAG(flags, BUILDER_FLAG_DEBUG_BUILD);
+	assembly->options.verbose_mode       = IS_FLAG(flags, BUILDER_FLAG_VERBOSE);
+	assembly->options.force_test_to_llvm = IS_FLAG(flags, BUILDER_FLAG_FORCE_TEST_LLVM);
+	assembly->options.run_tests          = IS_FLAG(flags, BUILDER_FLAG_RUN_TESTS);
+	assembly->options.run_main           = IS_FLAG(flags, BUILDER_FLAG_RUN);
 	assembly->options.opt_lvl            = opt_lvl;
 
 	init_llvm(assembly);
@@ -309,7 +309,7 @@ assembly_add_link(Assembly *assembly, Token *token)
 {
 	if (!token) return;
 
-	bl_assert(token->sym == SYM_STRING);
+	BL_ASSERT(token->sym == SYM_STRING);
 
 	uint64_t hash = bo_hash_from_str(token->value.str);
 	if (bo_htbl_has_key(assembly->link_cache, hash)) return;

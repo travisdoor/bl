@@ -74,10 +74,10 @@ static inline void
 print_flags(int32_t flags, FILE *stream)
 {
 	if (!flags) return;
-	if (is_flag(flags, FLAG_EXTERN)) fprintf(stream, " #extern");
-	if (is_flag(flags, FLAG_TEST)) fprintf(stream, " #test");
-	if (is_flag(flags, FLAG_COMPILER)) fprintf(stream, " #compiler");
-	if (is_flag(flags, FLAG_PRIVATE)) fprintf(stream, " #private");
+	if (IS_FLAG(flags, FLAG_EXTERN)) fprintf(stream, " #extern");
+	if (IS_FLAG(flags, FLAG_TEST)) fprintf(stream, " #test");
+	if (IS_FLAG(flags, FLAG_COMPILER)) fprintf(stream, " #compiler");
+	if (IS_FLAG(flags, FLAG_PRIVATE)) fprintf(stream, " #private");
 }
 
 static void
@@ -217,7 +217,7 @@ print_ublock(Ast *ublock, int32_t pad, FILE *stream)
 	fprintf(stream, "%s", ublock->data.ublock.unit->name);
 
 	Ast *tmp = NULL;
-	barray_foreach(ublock->data.ublock.nodes, tmp) print_node(tmp, pad + 1, stream);
+	BARRAY_FOREACH(ublock->data.ublock.nodes, tmp) print_node(tmp, pad + 1, stream);
 }
 
 void
@@ -225,7 +225,7 @@ print_block(Ast *block, int32_t pad, FILE *stream)
 {
 	print_head(block, pad, stream);
 	Ast *tmp = NULL;
-	barray_foreach(block->data.block.nodes, tmp) print_node(tmp, pad + 1, stream);
+	BARRAY_FOREACH(block->data.block.nodes, tmp) print_node(tmp, pad + 1, stream);
 }
 
 void
@@ -268,7 +268,7 @@ print_type_struct(Ast *strct, int32_t pad, FILE *stream)
 	print_head(strct, pad, stream);
 
 	Ast *node;
-	sarray_foreach(strct->data.type_strct.members, node)
+	SARRAY_FOREACH(strct->data.type_strct.members, node)
 	{
 		print_node(node, pad + 1, stream);
 	}
@@ -280,7 +280,7 @@ print_type_enum(Ast *enm, int32_t pad, FILE *stream)
 	print_head(enm, pad, stream);
 
 	Ast *node;
-	sarray_foreach(enm->data.type_enm.variants, node)
+	SARRAY_FOREACH(enm->data.type_enm.variants, node)
 	{
 		print_node(node, pad + 1, stream);
 	}
@@ -553,7 +553,7 @@ print_expr_call(Ast *call, int32_t pad, FILE *stream)
 
 	if (call->data.expr_call.args) {
 		Ast *arg;
-		sarray_foreach(call->data.expr_call.args, arg) print_node(arg, pad + 1, stream);
+		SARRAY_FOREACH(call->data.expr_call.args, arg) print_node(arg, pad + 1, stream);
 	}
 }
 
@@ -562,10 +562,10 @@ print_expr_compound(Ast *expr_compound, int32_t pad, FILE *stream)
 {
 	print_head(expr_compound, pad, stream);
 
-	SmallArray_Ast *exprs = expr_compound->data.expr_compound.values;
+	SmallArray_AstPtr *exprs = expr_compound->data.expr_compound.values;
 	if (exprs) {
 		Ast *value;
-		sarray_foreach(exprs, value)
+		SARRAY_FOREACH(exprs, value)
 		{
 			print_node(value, pad + 1, stream);
 		}
@@ -760,7 +760,7 @@ void
 ast_printer_run(Assembly *assembly, FILE *stream)
 {
 	Unit *unit;
-	barray_foreach(assembly->units, unit)
+	BARRAY_FOREACH(assembly->units, unit)
 	{
 		print_node(unit->ast, 0, stream);
 	}

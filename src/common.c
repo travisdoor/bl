@@ -39,6 +39,8 @@
 #include <mach-o/dyld.h>
 #endif
 
+uint64_t main_thread_id = 0;
+
 bool
 get_current_exec_path(char *buf, size_t buf_size)
 {
@@ -65,7 +67,7 @@ get_current_exec_dir(char *buf, size_t buf_size)
 void
 id_init(ID *id, const char *str)
 {
-	bl_assert(id);
+	BL_ASSERT(id);
 	id->hash = bo_hash_from_str(str);
 	id->str  = str;
 }
@@ -84,8 +86,8 @@ const char *
 brealpath(const char *file, char *out, int32_t out_len)
 {
 	const char *resolved = NULL;
-	bl_assert(out);
-	bl_assert(out_len);
+	BL_ASSERT(out);
+	BL_ASSERT(out_len);
 	if (!file) return resolved;
 
 #if defined(BL_PLATFORM_WIN)
@@ -99,7 +101,7 @@ brealpath(const char *file, char *out, int32_t out_len)
 void
 date_time(char *buf, int32_t len, const char *format)
 {
-	bl_assert(buf && len);
+	BL_ASSERT(buf && len);
 	time_t     timer;
 	struct tm *tm_info;
 
@@ -125,7 +127,7 @@ align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
 	}
 
 	const size_t mask = alignment - 1;
-	bl_assert((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
+	BL_ASSERT((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
 	const uintptr_t i_unaligned  = (uintptr_t)(*p);
 	const uintptr_t misalignment = i_unaligned & mask;
 
@@ -174,7 +176,7 @@ get_dir_from_filepath(char *buf, const size_t l, const char *filepath)
 	}
 
 	size_t len = ptr - filepath;
-	if (len + 1 > l) bl_abort("path too long!!!");
+	if (len + 1 > l) BL_ABORT("path too long!!!");
 	strncpy(buf, filepath, len);
 
 	return true;
@@ -192,7 +194,7 @@ get_filename_from_filepath(char *buf, const size_t l, const char *filepath)
 	}
 
 	size_t len = strlen(filepath) - (ptr - filepath);
-	if (len + 1 > l) bl_abort("path too long!!!");
+	if (len + 1 > l) BL_ABORT("path too long!!!");
 	strncpy(buf, ptr + 1, len);
 
 	return true;
@@ -210,7 +212,7 @@ platform_lib_name(const char *name, char *buffer, size_t max_len)
 #elif defined(BL_PLATFORM_WIN)
 	snprintf(buffer, max_len, "%s.dll", name);
 #else
-	bl_abort("Unknown dynamic library format.");
+	BL_ABORT("Unknown dynamic library format.");
 #endif
 }
 
@@ -225,7 +227,7 @@ create_arr(Assembly *assembly, size_t size)
 void *
 _create_sarr(Assembly *assembly, size_t arr_size)
 {
-	bl_assert(arr_size <= assembly->arenas.small_array.elem_size_in_bytes &&
+	BL_ASSERT(arr_size <= assembly->arenas.small_array.elem_size_in_bytes &&
 	          "SmallArray is too big to be allocated inside arena, make array smaller or arena "
 	          "bigger.");
 

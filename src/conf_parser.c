@@ -74,7 +74,7 @@ parse_key_value_rq(Context *cnt)
 	}
 
 	const char *key = tok_ident->value.str;
-	bl_assert(key);
+	BL_ASSERT(key);
 	if (conf_data_has_key(cnt->builder->conf, key)) {
 		builder_msg(cnt->builder,
 		            BUILDER_MSG_ERROR,

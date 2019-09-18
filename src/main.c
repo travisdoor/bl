@@ -83,7 +83,7 @@ setup_env(void)
 	char tmp[PATH_MAX] = {0};
 
 	if (!get_current_exec_dir(tmp, PATH_MAX)) {
-		bl_abort("Cannot locate compiler executable path.");
+		BL_ABORT("Cannot locate compiler executable path.");
 	}
 
 	ENV_EXEC_DIR = strdup(tmp);
@@ -91,7 +91,7 @@ setup_env(void)
 	strcat(tmp, PATH_SEPARATOR ".." PATH_SEPARATOR);
 	strcat(tmp, BL_CONF_FILE);
 
-	if (strlen(tmp) == 0) bl_abort("Invalid conf file path.");
+	if (strlen(tmp) == 0) BL_ABORT("Invalid conf file path.");
 	ENV_CONF_FILEPATH = strdup(tmp);
 	atexit(free_env);
 }
@@ -122,12 +122,14 @@ main(int32_t argc, char *argv[])
 {
 	setlocale(LC_ALL, "C");
 	setup_env();
+	main_thread_id = thread_get_id();
 
 	uint32_t build_flags = BUILDER_FLAG_LOAD_FROM_FILE;
 
 	puts("Compiler version: " BL_VERSION " (pre-alpha)");
 #ifdef BL_DEBUG
 	puts("Running in DEBUG mode");
+	printf("Main thread ID: 0x%llx\n", main_thread_id);
 #endif
 
 #define arg_is(_arg) (strcmp(&argv[optind][1], _arg) == 0)
@@ -188,7 +190,7 @@ main(int32_t argc, char *argv[])
 #undef arg_is
 
 	if (opt_lvl == -1) {
-		opt_lvl = is_flag(build_flags, BUILDER_FLAG_DEBUG_BUILD) ? OPT_NONE : OPT_DEFAULT;
+		opt_lvl = IS_FLAG(build_flags, BUILDER_FLAG_DEBUG_BUILD) ? OPT_NONE : OPT_DEFAULT;
 	}
 
 	if (configure) {
