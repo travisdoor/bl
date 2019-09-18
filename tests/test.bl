@@ -2,18 +2,18 @@
 
 #load "std/print.bl"
 
-Fn :: * fn (s32, bool, bool);
+Fn :: * fn ();
 test_call :: fn (callback: Fn) #extern;
 
 main :: fn () s32 {
     loop i := 0; i < 100; i += 1 {
-        print("here!!!\n");
         test_call(&callback);
     }
 
+    print("after\n");
     return 0;
 };
 
-callback :: fn (i: s32, j: bool, k: bool) {
-    print("passed %, %, %\n", i, j, k);
+callback :: fn () {
+    print("hello from callback\n");
 };

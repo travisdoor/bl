@@ -41,11 +41,11 @@
 #if BL_DEBUG && VERBOSE_EXEC
 #define LOG_PUSH_RA                                                                                \
 	{                                                                                          \
-		if (instr) {                                                                       \
+		if (vm->stack->pc) {                                                               \
 			fprintf(stdout,                                                            \
 			        "%6llu %20s  PUSH RA\n",                                           \
-			        cnt->exec.stack->pc->id,                                           \
-			        mir_instr_name(cnt->exec.stack->pc));                              \
+			        vm->stack->pc->id,                                                 \
+			        mir_instr_name(vm->stack->pc));                                    \
 		} else {                                                                           \
 			fprintf(stdout, "     - %20s  PUSH RA\n", "Terminal");                     \
 		}                                                                                  \
@@ -55,19 +55,19 @@
 	{                                                                                          \
 		fprintf(stdout,                                                                    \
 		        "%6llu %20s  POP RA\n",                                                    \
-		        cnt->exec.stack->pc->id,                                                   \
-		        mir_instr_name(cnt->exec.stack->pc));                                      \
+		        vm->stack->pc->id,                                                         \
+		        mir_instr_name(vm->stack->pc));                                            \
 	}
 
 #define LOG_PUSH_STACK                                                                             \
 	{                                                                                          \
 		char type_name[256];                                                               \
 		mir_type_to_str(type_name, 256, type, true);                                       \
-		if (cnt->exec.stack->pc) {                                                         \
+		if (vm->stack->pc) {                                                               \
 			fprintf(stdout,                                                            \
 			        "%6llu %20s  PUSH    (%luB, %p) %s\n",                             \
-			        (unsigned long long)cnt->exec.stack->pc->id,                       \
-			        mir_instr_name(cnt->exec.stack->pc),                               \
+			        (unsigned long long)vm->stack->pc->id,                             \
+			        mir_instr_name(vm->stack->pc),                                     \
 			        size,                                                              \
 			        tmp,                                                               \
 			        type_name);                                                        \
@@ -86,10 +86,10 @@
 		mir_type_to_str(type_name, 256, type, true);                                       \
 		fprintf(stdout,                                                                    \
 		        "%6llu %20s  POP     (%luB, %p) %s\n",                                     \
-		        cnt->exec.stack->pc->id,                                                   \
-		        mir_instr_name(cnt->exec.stack->pc),                                       \
+		        vm->stack->pc->id,                                                         \
+		        mir_instr_name(vm->stack->pc),                                             \
 		        size,                                                                      \
-		        cnt->exec.stack->top_ptr - size,                                           \
+		        vm->stack->top_ptr - size,                                                 \
 		        type_name);                                                                \
 	}
 
@@ -701,10 +701,10 @@ dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata
 		BL_ABORT("External function used as callback is not supported yet!");
 	}
 
-	if (has_args) {
-		SmallArray_ConstValue arg_tmp;
-		sa_init(&arg_tmp);
+	SmallArray_ConstValue arg_tmp;
+	sa_init(&arg_tmp);
 
+	if (has_args) {
 		SmallArray_TypePtr *arg_types = cnt->fn->type->data.fn.arg_types;
 		sa_resize_ConstValue(&arg_tmp, arg_types->size);
 
@@ -714,24 +714,10 @@ dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata
 			arg_tmp.data[i].type = it;
 			dyncall_cb_read_arg(cnt->vm, &arg_tmp.data[i], args);
 		}
-
-		/* Push all arguments in reverse order on the stack. */
-		for (size_t i = arg_types->size; i-- > 0;) {
-			VMStackPtr dest_ptr = push_stack_empty(cnt->vm, arg_types->data[i]);
-			copy_comptime_to_stack(cnt->vm, dest_ptr, &arg_tmp.data[i]);
-		}
-
-		sa_terminate(&arg_tmp);
 	}
 
-	/* Push current frame stack top. (Later poped by ret instruction) */
-	push_ra(cnt->vm, NULL);
-	BL_ASSERT(cnt->fn->first_block->entry_instr);
-
-	stack_alloc_local_vars(cnt->vm, cnt->fn);
-
-	/* setup entry instruction */
-	set_pc(cnt->vm, cnt->fn->first_block->entry_instr);
+	execute_fn_impl_top_level(cnt->vm, cnt->fn, &arg_tmp, NULL);
+	sa_terminate(&arg_tmp);
 
 	if (has_return) {
 		/* TODO: handle return value */
@@ -1055,24 +1041,25 @@ _execute_fn_top_level(VM *                   vm,
 	if (!fn->fully_analyzed)
 		BL_ABORT("Function is not fully analyzed for compile time execution!!!");
 
-	MirType *  ret_type             = fn->type->data.fn.ret_type;
+	MirType *           ret_type  = fn->type->data.fn.ret_type;
+	SmallArray_TypePtr *arg_types = fn->type->data.fn.arg_types;
+
 	const bool does_return_value    = ret_type->kind != MIR_TYPE_VOID;
 	const bool is_return_value_used = call ? call->ref_count > 1 : true;
 	const bool is_caller_comptime   = call ? call->comptime : false;
 	const bool pop_return_value =
 	    does_return_value && is_return_value_used && !is_caller_comptime;
+	const size_t argc = arg_types ? arg_types->size : 0;
 
 	if (args) {
 		BL_ASSERT(
 		    !call &&
 		    "Caller instruction cannot be used when call arguments are passed explicitly.");
-		SmallArray_TypePtr *arg_types = fn->type->data.fn.arg_types;
 
-		BL_ASSERT(arg_types->size == args->size &&
-		          "Invalid count of eplicitly passed arguments");
+		BL_ASSERT(argc == args->size && "Invalid count of eplicitly passed arguments");
 
 		/* Push all arguments in reverse order on the stack. */
-		for (size_t i = arg_types->size; i-- > 0;) {
+		for (size_t i = argc; i-- > 0;) {
 			VMStackPtr dest_ptr = push_stack_empty(vm, arg_types->data[i]);
 			copy_comptime_to_stack(vm, dest_ptr, &args->data[i]);
 		}
@@ -2070,7 +2057,9 @@ interp_instr_call(VM *vm, MirInstrCall *call)
 	BL_ASSERT(fn->type);
 
 	if (IS_FLAG(fn->flags, FLAG_EXTERN)) {
+		//push_ra(vm, &call->base);
 		interp_extern_call(vm, fn, call);
+		//pop_ra(vm);
 	} else {
 		/* Push current frame stack top. (Later poped by ret instruction)*/
 		push_ra(vm, &call->base);
@@ -2117,7 +2106,7 @@ interp_instr_ret(VM *vm, MirInstrRet *ret)
 			}
 		}
 	} else {
-		/* When caller was not specified we expect all argumenst to be pushed on the stack
+		/* When caller was not specified we expect all arguments to be pushed on the stack
 		 * so we must clear them all. Remember they were pushed in reverse order, so now we
 		 * have to pop them in order they are defined. */
 
@@ -2464,10 +2453,10 @@ vm_read_stack_value(MirConstValue *dest, VMStackPtr src)
 	read_value(&dest->data, src, dest->type);
 }
 
-typedef void (*Fn)(int, bool, bool);
+typedef void (*Fn)();
 
 void
 test_call(Fn callback)
 {
-	callback(10, true, false);
+	callback();
 }
