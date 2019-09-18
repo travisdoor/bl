@@ -122,12 +122,14 @@ main(int32_t argc, char *argv[])
 {
 	setlocale(LC_ALL, "C");
 	setup_env();
+	main_thread_id = thread_get_id();
 
 	uint32_t build_flags = BUILDER_FLAG_LOAD_FROM_FILE;
 
 	puts("Compiler version: " BL_VERSION " (pre-alpha)");
 #ifdef BL_DEBUG
 	puts("Running in DEBUG mode");
+	printf("Main thread ID: 0x%llx\n", main_thread_id);
 #endif
 
 #define arg_is(_arg) (strcmp(&argv[optind][1], _arg) == 0)

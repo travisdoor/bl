@@ -118,10 +118,7 @@
 	}
 #endif
 
-typedef struct {
-	VM *   vm;
-	MirFn *fn;
-} DyncallCBContext;
+SmallArrayType(ConstValue, MirConstValue, 32);
 
 /*************/
 /* fwd decls */
@@ -135,6 +132,9 @@ copy_comptime_to_stack(VM *vm, VMStackPtr dest_ptr, MirConstValue *src_value);
 /* zero max nesting = unlimited nesting */
 static void
 print_call_stack(VM *vm, size_t max_nesting);
+
+static void
+dyncall_cb_read_arg(VM *vm, MirConstValue *dest, DCArgs *src);
 
 static char
 dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata);
@@ -151,15 +151,18 @@ dyncall_fetch_callback(VM *vm, MirFn *fn);
 static void
 dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type);
 
-/* CLEANUP: to revision */
-/* CLEANUP: to revision */
-/* CLEANUP: to revision */
 static bool
-execute_fn(VM *                   vm,
-           MirFn *                fn,
-           MirInstr *             call,   /* Optional */
-           SmallArray_ConstValue *args,   /* Optional */
-           VMStackPtr *           out_ptr /* Optional */
+execute_fn_top_level(VM *vm, MirInstr *call, VMStackPtr *out_ptr);
+
+static bool
+execute_fn_impl_top_level(VM *vm, MirFn *fn, SmallArray_ConstValue *args, VMStackPtr *out_ptr);
+
+static bool
+_execute_fn_top_level(VM *                   vm,
+                      MirFn *                fn,
+                      MirInstr *             call,   /* Optional */
+                      SmallArray_ConstValue *args,   /* Optional */
+                      VMStackPtr *           out_ptr /* Optional */
 );
 
 static void
@@ -237,6 +240,17 @@ interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref);
 /***********/
 /* inlines */
 /***********/
+static inline MirFn *
+get_callee(MirInstrCall *call)
+{
+	MirConstValue *callee_val = &call->callee->value;
+	BL_ASSERT(callee_val->type && callee_val->type->kind == MIR_TYPE_FN);
+
+	MirFn *fn = callee_val->data.v_ptr.data.fn;
+	BL_ASSERT(fn);
+	return fn;
+}
+
 static inline void
 exec_abort(VM *vm, int32_t report_stack_nesting)
 {
@@ -531,8 +545,8 @@ copy_comptime_to_stack(VM *vm, VMStackPtr dest_ptr, MirConstValue *src_value)
 		if (src_value->data.v_struct.is_zero_initializer) {
 			memset(dest_ptr, 0, src_type->store_size_bytes);
 		} else {
-			SmallArray_ConstValue *members = data->v_struct.members;
-			MirConstValue *        member;
+			SmallArray_ConstValuePtr *members = data->v_struct.members;
+			MirConstValue *           member;
 
 			BL_ASSERT(members);
 			const size_t memc = members->size;
@@ -555,8 +569,8 @@ copy_comptime_to_stack(VM *vm, VMStackPtr dest_ptr, MirConstValue *src_value)
 		if (src_value->data.v_array.is_zero_initializer) {
 			memset(dest_ptr, 0, src_type->store_size_bytes);
 		} else {
-			SmallArray_ConstValue *elems = data->v_array.elems;
-			MirConstValue *        elem;
+			SmallArray_ConstValuePtr *elems = data->v_array.elems;
+			MirConstValue *           elem;
 
 			BL_ASSERT(elems);
 			const size_t memc = elems->size;
@@ -603,25 +617,129 @@ copy_comptime_to_stack(VM *vm, VMStackPtr dest_ptr, MirConstValue *src_value)
 	}
 }
 
+void
+dyncall_cb_read_arg(VM *vm, MirConstValue *dest, DCArgs *src)
+{
+	BL_ASSERT(dest->type && "Argument destination has no type specified.");
+
+	memset(&dest->data, 0, sizeof(dest->data));
+
+	switch (dest->type->kind) {
+	case MIR_TYPE_INT: {
+		const size_t bitcount = dest->type->data.integer.bitcount;
+		switch (bitcount) {
+		case 8:
+			dest->data.v_u8 = dcbArgUChar(src);
+			break;
+		case 16:
+			dest->data.v_u16 = dcbArgUShort(src);
+			break;
+		case 32:
+			dest->data.v_u32 = dcbArgULong(src);
+			break;
+		case 64:
+			dest->data.v_u64 = dcbArgULongLong(src);
+			break;
+		default:
+			BL_ABORT("invalid bitcount");
+		}
+
+		break;
+	}
+
+	case MIR_TYPE_REAL: {
+		const size_t bitcount = dest->type->data.real.bitcount;
+		switch (bitcount) {
+		case 32:
+			dest->data.v_f32 = dcbArgFloat(src);
+			break;
+		case 64:
+			dest->data.v_f64 = dcbArgDouble(src);
+			break;
+		default:
+			BL_ABORT("invalid bitcount");
+		}
+
+		break;
+	}
+
+	case MIR_TYPE_BOOL: {
+		dest->data.v_bool = dcbArgBool(src);
+		break;
+	}
+
+	case MIR_TYPE_PTR: {
+		mir_set_const_ptr(&dest->data.v_ptr, dcbArgPointer(src), MIR_CP_STACK);
+		break;
+	}
+
+	default:
+		BL_UNIMPLEMENTED;
+	}
+}
+
 char
 dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata)
 {
-	MirFn *fn = ((DyncallCBContext *)userdata)->fn;
-	VM *   vm = ((DyncallCBContext *)userdata)->vm;
-	BL_ASSERT(fn && vm);
+	/* TODO: External callback can be invoked from different thread. This can cause problems for
+	 * now since interpreter is strictly single-threaded, but we must handle such situation in
+	 * future. */
+	BL_ASSERT(thread_get_id() == main_thread_id &&
+	          "External callback handler must be invoked from main thread.");
 
-	SmallArray_ConstValue bargs;
-	sa_init(args);
+	DyncallCBContext *cnt = (DyncallCBContext *)userdata;
+	BL_ASSERT(cnt && cnt->fn && cnt->vm);
 
-	MirType *arg_type;
-	SARRAY_FOREACH(fn->type->data.fn.arg_types, arg_type)
-	{
+	const bool is_fn_extern = IS_FLAG(cnt->fn->flags, FLAG_EXTERN);
+	const bool has_args     = cnt->fn->type->data.fn.arg_types;
+	const bool has_return   = cnt->fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID;
+
+	if (is_fn_extern) {
+		/* TODO: external callback */
+		/* TODO: external callback */
+		/* TODO: external callback */
+		BL_ABORT("External function used as callback is not supported yet!");
 	}
 
-	// TODO:
-	// exec_fn(cnt, fn, NULL, NULL, NULL);
+	if (has_args) {
+		SmallArray_ConstValue arg_tmp;
+		sa_init(&arg_tmp);
 
-	sa_terminate(&bargs);
+		SmallArray_TypePtr *arg_types = cnt->fn->type->data.fn.arg_types;
+		sa_resize_ConstValue(&arg_tmp, arg_types->size);
+
+		MirType *it;
+		SARRAY_FOREACH(arg_types, it)
+		{
+			arg_tmp.data[i].type = it;
+			dyncall_cb_read_arg(cnt->vm, &arg_tmp.data[i], args);
+		}
+
+		/* Push all arguments in reverse order on the stack. */
+		for (size_t i = arg_types->size; i-- > 0;) {
+			VMStackPtr dest_ptr = push_stack_empty(cnt->vm, arg_types->data[i]);
+			copy_comptime_to_stack(cnt->vm, dest_ptr, &arg_tmp.data[i]);
+		}
+
+		sa_terminate(&arg_tmp);
+	}
+
+	/* Push current frame stack top. (Later poped by ret instruction) */
+	push_ra(cnt->vm, NULL);
+	BL_ASSERT(cnt->fn->first_block->entry_instr);
+
+	stack_alloc_local_vars(cnt->vm, cnt->fn);
+
+	/* setup entry instruction */
+	set_pc(cnt->vm, cnt->fn->first_block->entry_instr);
+
+	if (has_return) {
+		/* TODO: handle return value */
+		/* TODO: handle return value */
+		/* TODO: handle return value */
+		BL_ABORT("Callback return value is not implemented yet.");
+	}
+
 	return DC_SIGCHAR_VOID;
 }
 
@@ -686,6 +804,11 @@ _dyncall_generate_signature(VM *vm, MirType *type)
 		break;
 	}
 
+	case MIR_TYPE_BOOL: {
+		sa_push_Char(tmp, DC_SIGCHAR_BOOL);
+		break;
+	}
+
 	default:
 		BL_ABORT("Unsupported external callback type.");
 	}
@@ -706,14 +829,16 @@ dyncall_generate_signature(VM *vm, MirType *type)
 DCCallback *
 dyncall_fetch_callback(VM *vm, MirFn *fn)
 {
-	if (fn->extern_callback_handle) return fn->extern_callback_handle;
+	if (fn->dyncall.extern_callback_handle) return fn->dyncall.extern_callback_handle;
 
 	const char *sig = dyncall_generate_signature(vm, fn->type);
-	BL_LOG("generated signature: %s", sig);
-	fn->extern_callback_handle =
-	    dcbNewCallback(sig, &dyncall_cb_handler, &(DyncallCBContext){vm, fn});
 
-	return fn->extern_callback_handle;
+	fn->dyncall.context = (DyncallCBContext){.fn = fn, .vm = vm};
+
+	fn->dyncall.extern_callback_handle =
+	    dcbNewCallback(sig, &dyncall_cb_handler, &fn->dyncall.context);
+
+	return fn->dyncall.extern_callback_handle;
 }
 
 void
@@ -735,6 +860,11 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 	}
 
 	switch (type->kind) {
+	case MIR_TYPE_BOOL: {
+		dcArgBool(dvm, tmp.v_bool);
+		break;
+	}
+
 	case MIR_TYPE_INT: {
 		switch (type->data.integer.bitcount) {
 		case 64:
@@ -809,13 +939,13 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 	BL_ASSERT(vm);
 
 	/* call setup and clenup */
-	BL_ASSERT(fn->extern_entry);
+	BL_ASSERT(fn->dyncall.extern_entry);
 	dcMode(dvm, DC_CALL_C_DEFAULT);
 	dcReset(dvm);
 
 	/* pop all arguments from the stack */
-	VMStackPtr        arg_ptr;
-	SmallArray_Instr *arg_values = call->args;
+	VMStackPtr           arg_ptr;
+	SmallArray_InstrPtr *arg_values = call->args;
 	if (arg_values) {
 		MirInstr *arg_value;
 		SARRAY_FOREACH(arg_values, arg_value)
@@ -832,16 +962,16 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 	case MIR_TYPE_INT:
 		switch (ret_type->store_size_bytes) {
 		case sizeof(char):
-			result.v_s8 = dcCallChar(dvm, fn->extern_entry);
+			result.v_s8 = dcCallChar(dvm, fn->dyncall.extern_entry);
 			break;
 		case sizeof(short):
-			result.v_s16 = dcCallShort(dvm, fn->extern_entry);
+			result.v_s16 = dcCallShort(dvm, fn->dyncall.extern_entry);
 			break;
 		case sizeof(int):
-			result.v_s32 = dcCallInt(dvm, fn->extern_entry);
+			result.v_s32 = dcCallInt(dvm, fn->dyncall.extern_entry);
 			break;
 		case sizeof(long long):
-			result.v_s64 = dcCallLongLong(dvm, fn->extern_entry);
+			result.v_s64 = dcCallLongLong(dvm, fn->dyncall.extern_entry);
 			break;
 		default:
 			BL_ABORT("unsupported integer size for external call result");
@@ -851,16 +981,16 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 	case MIR_TYPE_ENUM:
 		switch (ret_type->data.enm.base_type->store_size_bytes) {
 		case sizeof(char):
-			result.v_s8 = dcCallChar(dvm, fn->extern_entry);
+			result.v_s8 = dcCallChar(dvm, fn->dyncall.extern_entry);
 			break;
 		case sizeof(short):
-			result.v_s16 = dcCallShort(dvm, fn->extern_entry);
+			result.v_s16 = dcCallShort(dvm, fn->dyncall.extern_entry);
 			break;
 		case sizeof(int):
-			result.v_s32 = dcCallInt(dvm, fn->extern_entry);
+			result.v_s32 = dcCallInt(dvm, fn->dyncall.extern_entry);
 			break;
 		case sizeof(long long):
-			result.v_s64 = dcCallLongLong(dvm, fn->extern_entry);
+			result.v_s64 = dcCallLongLong(dvm, fn->dyncall.extern_entry);
 			break;
 		default:
 			BL_ABORT("unsupported integer size for external call result");
@@ -868,16 +998,16 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 		break;
 
 	case MIR_TYPE_PTR:
-		result.v_ptr.data.any = dcCallPointer(dvm, fn->extern_entry);
+		result.v_ptr.data.any = dcCallPointer(dvm, fn->dyncall.extern_entry);
 		break;
 
 	case MIR_TYPE_REAL: {
 		switch (ret_type->store_size_bytes) {
 		case sizeof(float):
-			result.v_f32 = dcCallFloat(dvm, fn->extern_entry);
+			result.v_f32 = dcCallFloat(dvm, fn->dyncall.extern_entry);
 			break;
 		case sizeof(double):
-			result.v_f64 = dcCallDouble(dvm, fn->extern_entry);
+			result.v_f64 = dcCallDouble(dvm, fn->dyncall.extern_entry);
 			break;
 		default:
 			BL_ABORT("unsupported real number size for external call "
@@ -887,7 +1017,7 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 	}
 
 	case MIR_TYPE_VOID:
-		dcCallVoid(dvm, fn->extern_entry);
+		dcCallVoid(dvm, fn->dyncall.extern_entry);
 		does_return = false;
 		break;
 
@@ -902,7 +1032,23 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 }
 
 bool
-execute_fn(VM *vm, MirFn *fn, MirInstr *call, SmallArray_ConstValue *args, VMStackPtr *out_ptr)
+execute_fn_top_level(VM *vm, MirInstr *call, VMStackPtr *out_ptr)
+{
+	return _execute_fn_top_level(vm, get_callee((MirInstrCall *)call), call, NULL, out_ptr);
+}
+
+bool
+execute_fn_impl_top_level(VM *vm, MirFn *fn, SmallArray_ConstValue *args, VMStackPtr *out_ptr)
+{
+	return _execute_fn_top_level(vm, fn, NULL, args, out_ptr);
+}
+
+bool
+_execute_fn_top_level(VM *                   vm,
+                      MirFn *                fn,
+                      MirInstr *             call,
+                      SmallArray_ConstValue *args,
+                      VMStackPtr *           out_ptr)
 {
 	BL_ASSERT(fn);
 
@@ -915,6 +1061,22 @@ execute_fn(VM *vm, MirFn *fn, MirInstr *call, SmallArray_ConstValue *args, VMSta
 	const bool is_caller_comptime   = call ? call->comptime : false;
 	const bool pop_return_value =
 	    does_return_value && is_return_value_used && !is_caller_comptime;
+
+	if (args) {
+		BL_ASSERT(
+		    !call &&
+		    "Caller instruction cannot be used when call arguments are passed explicitly.");
+		SmallArray_TypePtr *arg_types = fn->type->data.fn.arg_types;
+
+		BL_ASSERT(arg_types->size == args->size &&
+		          "Invalid count of eplicitly passed arguments");
+
+		/* Push all arguments in reverse order on the stack. */
+		for (size_t i = arg_types->size; i-- > 0;) {
+			VMStackPtr dest_ptr = push_stack_empty(vm, arg_types->data[i]);
+			copy_comptime_to_stack(vm, dest_ptr, &args->data[i]);
+		}
+	}
 
 	/* push terminal frame on stack */
 	push_ra(vm, call);
@@ -1535,32 +1697,60 @@ interp_instr_cast(VM *vm, MirInstrCast *cast)
 void
 interp_instr_arg(VM *vm, MirInstrArg *arg)
 {
-	/* arguments must be pushed before RA in reverse order */
-	MirInstrCall *    caller     = (MirInstrCall *)get_ra(vm)->caller;
-	SmallArray_Instr *arg_values = caller->args;
-	BL_ASSERT(arg_values);
-	MirInstr *curr_arg_value = arg_values->data[arg->i];
+	/* Caller is optional, when we call function implicitly there is no call instruction which
+	 * we can use, so we need to handle also this situation. In such case we expect all
+	 * arguments to be already pushed on the stack. */
+	MirInstrCall *caller = (MirInstrCall *)get_ra(vm)->caller;
 
-	if (curr_arg_value->comptime) {
-		MirType *  type = curr_arg_value->value.type;
-		VMStackPtr dest = push_stack_empty(vm, type);
+	if (caller) {
+		SmallArray_InstrPtr *arg_values = caller->args;
+		BL_ASSERT(arg_values);
+		MirInstr *curr_arg_value = arg_values->data[arg->i];
 
-		copy_comptime_to_stack(vm, dest, &curr_arg_value->value);
-	} else {
-		/* Arguments are located in reverse order right before return address on the stack
-		 * so we can find them inside loop adjusting address up on the stack. */
-		MirInstr *arg_value = NULL;
-		/* starting point */
-		VMStackPtr arg_ptr = (VMStackPtr)vm->stack->ra;
-		for (uint32_t i = 0; i <= arg->i; ++i) {
-			arg_value = arg_values->data[i];
-			BL_ASSERT(arg_value);
-			if (arg_value->comptime) continue;
-			arg_ptr -= stack_alloc_size(arg_value->value.type->store_size_bytes);
+		if (curr_arg_value->comptime) {
+			MirType *  type = curr_arg_value->value.type;
+			VMStackPtr dest = push_stack_empty(vm, type);
+
+			copy_comptime_to_stack(vm, dest, &curr_arg_value->value);
+		} else {
+			/* Arguments are located in reverse order right before return address on the
+			 * stack
+			 * so we can find them inside loop adjusting address up on the stack. */
+			MirInstr *arg_value = NULL;
+			/* starting point */
+			VMStackPtr arg_ptr = (VMStackPtr)vm->stack->ra;
+			for (uint32_t i = 0; i <= arg->i; ++i) {
+				arg_value = arg_values->data[i];
+				BL_ASSERT(arg_value);
+				if (arg_value->comptime) continue;
+				arg_ptr -=
+				    stack_alloc_size(arg_value->value.type->store_size_bytes);
+			}
+
+			push_stack(vm, (VMStackPtr)arg_ptr, arg->base.value.type);
 		}
 
-		push_stack(vm, (VMStackPtr)arg_ptr, arg->base.value.type);
+		return;
 	}
+
+	/* Caller instruction not specified!!! */
+	MirFn *fn = arg->base.owner_block->owner_fn;
+	BL_ASSERT(fn && "Arg instruction cannot determinate current function");
+
+	/* All arguments must be already on the stack in reverse order. */
+	SmallArray_TypePtr *arg_types = fn->type->data.fn.arg_types;
+	BL_ASSERT(arg_types && "Function has no arguments");
+
+	MirType *arg_type;
+	/* starting point */
+	VMStackPtr arg_ptr = (VMStackPtr)vm->stack->ra;
+	for (uint32_t i = 0; i <= arg->i; ++i) {
+		arg_type = arg_types->data[i];
+		BL_ASSERT(arg_type);
+		arg_ptr -= stack_alloc_size(arg_type->store_size_bytes);
+	}
+
+	push_stack(vm, (VMStackPtr)arg_ptr, arg->base.value.type);
 }
 
 void
@@ -1699,9 +1889,9 @@ interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 void
 interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 {
-	SmallArray_Instr *values    = vargs->values;
-	MirVar *          arr_tmp   = vargs->arr_tmp;
-	MirVar *          vargs_tmp = vargs->vargs_tmp;
+	SmallArray_InstrPtr *values    = vargs->values;
+	MirVar *             arr_tmp   = vargs->arr_tmp;
+	MirVar *             vargs_tmp = vargs->vargs_tmp;
 
 	BL_ASSERT(vargs_tmp->value.type->kind == MIR_TYPE_VARGS);
 	BL_ASSERT(vargs_tmp->rel_stack_ptr && "Unalocated vargs slice!!!");
@@ -1917,13 +2107,26 @@ interp_instr_ret(VM *vm, MirInstrRet *ret)
 
 	/* clean up all arguments from the stack */
 	if (caller) {
-		SmallArray_Instr *arg_values = caller->args;
+		SmallArray_InstrPtr *arg_values = caller->args;
 		if (arg_values) {
 			MirInstr *arg_value;
 			SARRAY_FOREACH(arg_values, arg_value)
 			{
 				if (arg_value->comptime) continue;
 				pop_stack(vm, arg_value->value.type);
+			}
+		}
+	} else {
+		/* When caller was not specified we expect all argumenst to be pushed on the stack
+		 * so we must clear them all. Remember they were pushed in reverse order, so now we
+		 * have to pop them in order they are defined. */
+
+		SmallArray_TypePtr *arg_types = fn->type->data.fn.arg_types;
+		if (arg_types) {
+			MirType *arg_type;
+			SARRAY_FOREACH(arg_types, arg_type)
+			{
+				pop_stack(vm, arg_type);
 			}
 		}
 	}
@@ -2213,8 +2416,7 @@ bool
 vm_execute_fn(VM *vm, MirFn *fn, VMStackPtr *out_ptr)
 {
 	vm->stack->aborted = false;
-
-	return execute_fn(vm, fn, NULL, NULL, out_ptr);
+	return execute_fn_impl_top_level(vm, fn, NULL, out_ptr);
 }
 
 bool
@@ -2223,16 +2425,9 @@ vm_execute_instr_top_level_call(VM *vm, MirInstrCall *call)
 	BL_ASSERT(call && call->base.analyzed);
 
 	assert(call->base.comptime && "Top level call is expected to be comptime.");
-
-	MirConstValue *callee_val = &call->callee->value;
-	BL_ASSERT(callee_val->type && callee_val->type->kind == MIR_TYPE_FN);
-
-	MirFn *fn = callee_val->data.v_ptr.data.fn;
-	BL_ASSERT(fn);
-
 	if (call->args) BL_ABORT("exec call top level has not implemented passing of arguments");
 
-	return execute_fn(vm, fn, &call->base, NULL, NULL);
+	return execute_fn_top_level(vm, &call->base, NULL);
 }
 
 VMStackPtr
@@ -2267,4 +2462,12 @@ vm_read_stack_value(MirConstValue *dest, VMStackPtr src)
 	assert(dest->type);
 	memset(&dest->data, 0, sizeof(dest->data));
 	read_value(&dest->data, src, dest->type);
+}
+
+typedef void (*Fn)(int, bool, bool);
+
+void
+test_call(Fn callback)
+{
+	callback(10, true, false);
 }

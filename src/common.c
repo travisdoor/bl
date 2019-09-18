@@ -39,6 +39,8 @@
 #include <mach-o/dyld.h>
 #endif
 
+uint64_t main_thread_id = 0;
+
 bool
 get_current_exec_path(char *buf, size_t buf_size)
 {

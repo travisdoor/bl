@@ -2,14 +2,18 @@
 
 #load "std/print.bl"
 
-Fn :: * fn (s32);
+Fn :: * fn (s32, bool, bool);
 test_call :: fn (callback: Fn) #extern;
 
 main :: fn () s32 {
-    test_call(&callback);
+    loop i := 0; i < 100; i += 1 {
+        print("here!!!\n");
+        test_call(&callback);
+    }
+
     return 0;
 };
 
-callback :: fn (i: s32) {
-    print("hello from BL %\n", i);
+callback :: fn (i: s32, j: bool, k: bool) {
+    print("passed %, %, %\n", i, j, k);
 };

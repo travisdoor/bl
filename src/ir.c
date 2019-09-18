@@ -848,8 +848,8 @@ emit_as_const(Context *cnt, MirConstValue *value)
 		LLVMTypeRef  llvm_elem_type = type->data.array.elem_type->llvm_type;
 		BL_ASSERT(len && llvm_elem_type);
 
-		SmallArray_ConstValue *elems = value->data.v_array.elems;
-		MirConstValue *        elem;
+		SmallArray_ConstValuePtr *elems = value->data.v_array.elems;
+		MirConstValue *           elem;
 
 		BL_ASSERT(elems);
 		BL_ASSERT(len == elems->size);
@@ -873,8 +873,8 @@ emit_as_const(Context *cnt, MirConstValue *value)
 			break;
 		}
 
-		SmallArray_ConstValue *members = value->data.v_struct.members;
-		const size_t           memc    = members->size;
+		SmallArray_ConstValuePtr *members = value->data.v_struct.members;
+		const size_t              memc    = members->size;
 		BL_ASSERT(members);
 		BL_ASSERT(memc == 2 && "not slice string?");
 
@@ -902,7 +902,7 @@ emit_as_const(Context *cnt, MirConstValue *value)
 			break;
 		}
 
-		SmallArray_ConstValue *members = value->data.v_struct.members;
+		SmallArray_ConstValuePtr *members = value->data.v_struct.members;
 		BL_ASSERT(members && "Missing struct members.");
 		const size_t memc = members->size;
 
@@ -912,7 +912,7 @@ emit_as_const(Context *cnt, MirConstValue *value)
 		sa_init(&llvm_members);
 
 		SARRAY_FOREACH(members, member)
-		    sa_push_LLVMValue(&llvm_members, emit_as_const(cnt, member));
+		sa_push_LLVMValue(&llvm_members, emit_as_const(cnt, member));
 
 		llvm_value = LLVMConstNamedStruct(llvm_type, llvm_members.data, (unsigned int)memc);
 		sa_terminate(&llvm_members);
@@ -1033,11 +1033,11 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 
 		build_call_memcpy(cnt, llvm_tmp, llvm_const, llvm_size, llvm_alignment);
 	} else {
-		SmallArray_Instr *values = cmp->values;
-		MirInstr *        value;
-		LLVMValueRef      llvm_value;
-		LLVMValueRef      llvm_value_dest;
-		LLVMValueRef      llvm_indices[2];
+		SmallArray_InstrPtr *values = cmp->values;
+		MirInstr *           value;
+		LLVMValueRef         llvm_value;
+		LLVMValueRef         llvm_value_dest;
+		LLVMValueRef         llvm_indices[2];
 		llvm_indices[0] = cnt->llvm_const_i64;
 
 		SARRAY_FOREACH(values, value)
@@ -1240,7 +1240,7 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	if (llvm_argc) {
 		MirInstr *arg;
 		SARRAY_FOREACH(call->args, arg)
-		    sa_push_LLVMValue(&llvm_args, fetch_value(cnt, arg));
+		sa_push_LLVMValue(&llvm_args, fetch_value(cnt, arg));
 	}
 
 	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &call->base);
@@ -1346,8 +1346,8 @@ emit_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 void
 emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 {
-	MirType *         vargs_type = vargs->base.value.type;
-	SmallArray_Instr *values     = vargs->values;
+	MirType *            vargs_type = vargs->base.value.type;
+	SmallArray_InstrPtr *values     = vargs->values;
 	BL_ASSERT(values);
 	const size_t vargsc = values->size;
 	BL_ASSERT(vargs_type && vargs_type->kind == MIR_TYPE_VARGS);

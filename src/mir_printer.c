@@ -189,8 +189,8 @@ print_const_value(MirConstValue *value, FILE *stream)
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT: {
-		SmallArray_ConstValue *members             = data->v_struct.members;
-		const bool             is_zero_initializer = data->v_struct.is_zero_initializer;
+		SmallArray_ConstValuePtr *members             = data->v_struct.members;
+		const bool                is_zero_initializer = data->v_struct.is_zero_initializer;
 
 		if (is_zero_initializer) {
 			fprintf(stream, "{zero initialized}");
@@ -213,8 +213,8 @@ print_const_value(MirConstValue *value, FILE *stream)
 		break;
 	}
 	case MIR_TYPE_ARRAY: {
-		SmallArray_ConstValue *elems               = data->v_array.elems;
-		const bool             is_zero_initializer = data->v_array.is_zero_initializer;
+		SmallArray_ConstValuePtr *elems               = data->v_array.elems;
+		const bool                is_zero_initializer = data->v_array.is_zero_initializer;
 
 		if (is_zero_initializer) {
 			fprintf(stream, "{zero initialized}");
@@ -446,8 +446,8 @@ print_instr_type_struct(MirInstrTypeStruct *type_struct, FILE *stream)
 	print_instr_head(&type_struct->base, stream, "const struct");
 	fprintf(stream, "{");
 
-	SmallArray_Instr *members = type_struct->members;
-	MirInstr *        member;
+	SmallArray_InstrPtr *members = type_struct->members;
+	MirInstr *           member;
 	SARRAY_FOREACH(members, member)
 	{
 		print_comptime_value_or_id(member, stream);
@@ -463,8 +463,8 @@ print_instr_type_enum(MirInstrTypeEnum *type_enum, FILE *stream)
 	print_instr_head(&type_enum->base, stream, "const enum");
 	fprintf(stream, "{");
 
-	SmallArray_Instr *variants = type_enum->variants;
-	MirInstr *        variant;
+	SmallArray_InstrPtr *variants = type_enum->variants;
+	MirInstr *           variant;
 	SARRAY_FOREACH(variants, variant)
 	{
 		fprintf(stream, "%%%llu", (unsigned long long)variant->id);
@@ -568,7 +568,7 @@ print_instr_compound(MirInstrCompound *init, FILE *stream)
 	}
 
 	fprintf(stream, " {");
-	SmallArray_Instr *values = init->values;
+	SmallArray_InstrPtr *values = init->values;
 	if (values) {
 		MirInstr *value;
 		SARRAY_FOREACH(values, value)
@@ -589,7 +589,7 @@ print_instr_vargs(MirInstrVArgs *vargs, FILE *stream)
 	print_type(vargs->type, false, stream, true);
 
 	fprintf(stream, " {");
-	SmallArray_Instr *values = vargs->values;
+	SmallArray_InstrPtr *values = vargs->values;
 	if (values) {
 		MirInstr *value;
 		SARRAY_FOREACH(values, value)

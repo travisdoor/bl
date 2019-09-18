@@ -35,6 +35,7 @@
 #include "error.h"
 #include "messages.h"
 #include "small_array.h"
+#include "threading.h"
 #include <bobject/containers/array.h>
 #include <limits.h>
 
@@ -82,12 +83,14 @@ struct Assembly;
 	for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);             \
 	     bo_list_iter_next((list), &(it)))
 
-SmallArrayType(Ast, struct Ast *, 16);
-SmallArrayType(Type, struct MirType *, 16);
-SmallArrayType(Member, struct MirMember *, 16);
-SmallArrayType(Variant, struct MirVariant *, 16);
-SmallArrayType(Instr, struct MirInstr *, 16);
-SmallArrayType(ConstValue, struct MirConstValue *, 16);
+extern uint64_t main_thread_id;
+
+SmallArrayType(AstPtr, struct Ast *, 16);
+SmallArrayType(TypePtr, struct MirType *, 16);
+SmallArrayType(MemberPtr, struct MirMember *, 16);
+SmallArrayType(VariantPtr, struct MirVariant *, 16);
+SmallArrayType(InstrPtr, struct MirInstr *, 16);
+SmallArrayType(ConstValuePtr, struct MirConstValue *, 16);
 SmallArrayType(Char, char, 128);
 
 typedef struct ID {

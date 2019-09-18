@@ -56,6 +56,7 @@ set(HEADER_FILES
         src/arena.h
 	src/llvm_di.h
 	src/vm.h
+	src/threading.h
         src/ast.h)
 
 set(SOURCE_FILES
@@ -87,6 +88,7 @@ set(SOURCE_FILES
         src/ir_opt.c
         src/mir_printer.c
         src/ast.c
+	src/threading.cpp
         src/llvm_di.cpp)
 
 add_definitions(${LLVM_DEFINITIONS})

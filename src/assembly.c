@@ -41,12 +41,12 @@
 #define EXPECTED_LINK_COUNT 32
 
 union _SmallArrays {
-	SmallArray_Type       type;
-	SmallArray_Member     member;
-	SmallArray_Variant    variant;
-	SmallArray_Instr      instr;
-	SmallArray_ConstValue cv;
-	SmallArray_Ast        ast;
+	SmallArray_TypePtr       type;
+	SmallArray_MemberPtr     member;
+	SmallArray_VariantPtr    variant;
+	SmallArray_InstrPtr      instr;
+	SmallArray_ConstValuePtr cv;
+	SmallArray_AstPtr        ast;
 };
 
 static void

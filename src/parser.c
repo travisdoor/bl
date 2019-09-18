@@ -31,8 +31,8 @@
 #include "stages.h"
 #include <setjmp.h>
 
-SmallArrayType(Ast64, Ast *, 64);
-SmallArrayType(Scope64, Scope *, 64);
+SmallArrayType(AstPtr64, Ast *, 64);
+SmallArrayType(ScopePtr64, Scope *, 64);
 
 #define EXPECTED_PRIVATE_SCOPE_COUNT 256
 
@@ -71,15 +71,15 @@ SmallArrayType(Scope64, Scope *, 64);
 
 /* swap current compound with _cmp and create temporary variable with previous one */
 
-#define scope_push(_cnt, _scope) sa_push_Scope64(&(_cnt)->_scope_stack, (_scope))
-#define scope_pop(_cnt) sa_pop_Scope64(&(_cnt)->_scope_stack)
-#define scope_get(_cnt) sa_last_Scope64(&(_cnt)->_scope_stack)
+#define scope_push(_cnt, _scope) sa_push_ScopePtr64(&(_cnt)->_scope_stack, (_scope))
+#define scope_pop(_cnt) sa_pop_ScopePtr64(&(_cnt)->_scope_stack)
+#define scope_get(_cnt) sa_last_ScopePtr64(&(_cnt)->_scope_stack)
 #define scope_set(_cnt, _scope)                                                                    \
 	((_cnt)->_scope_stack.data[(_cnt)->_scope_stack.size - 1]) = (_scope)
 
-#define decl_push(_cnt, _decl) sa_push_Ast64(&(_cnt)->_decl_stack, (_decl))
-#define decl_pop(_cnt) sa_pop_Ast64(&(_cnt)->_decl_stack)
-#define decl_get(_cnt) ((_cnt)->_decl_stack.size ? sa_last_Ast64(&(_cnt)->_decl_stack) : NULL)
+#define decl_push(_cnt, _decl) sa_push_AstPtr64(&(_cnt)->_decl_stack, (_decl))
+#define decl_pop(_cnt) sa_pop_AstPtr64(&(_cnt)->_decl_stack)
+#define decl_get(_cnt) ((_cnt)->_decl_stack.size ? sa_last_AstPtr64(&(_cnt)->_decl_stack) : NULL)
 
 typedef enum {
 	HD_NONE      = 1 << 0,
@@ -96,14 +96,14 @@ typedef enum {
 } HashDirective;
 
 typedef struct {
-	SmallArray_Ast64   _decl_stack;
-	SmallArray_Scope64 _scope_stack;
-	Builder *          builder;
-	Assembly *         assembly;
-	Unit *             unit;
-	Arena *            ast_arena;
-	ScopeArenas *      scope_arenas;
-	Tokens *           tokens;
+	SmallArray_AstPtr64   _decl_stack;
+	SmallArray_ScopePtr64 _scope_stack;
+	Builder *             builder;
+	Assembly *            assembly;
+	Unit *                unit;
+	Arena *               ast_arena;
+	ScopeArenas *         scope_arenas;
+	Tokens *              tokens;
 
 	/* tmps */
 	bool inside_loop;
@@ -740,9 +740,9 @@ value:
 	if (tmp) {
 		if (!compound->data.expr_compound.values)
 			compound->data.expr_compound.values =
-			    create_sarr(SmallArray_Ast, cnt->assembly);
+			    create_sarr(SmallArray_AstPtr, cnt->assembly);
 
-		sa_push_Ast(compound->data.expr_compound.values, tmp);
+		sa_push_AstPtr(compound->data.expr_compound.values, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -1674,7 +1674,7 @@ parse_type_enum(Context *cnt)
 	if (!tok_enum) return NULL;
 
 	Ast *enm = ast_create_node(cnt->ast_arena, AST_TYPE_ENUM, tok_enum, scope_get(cnt));
-	enm->data.type_enm.variants = create_sarr(SmallArray_Ast, cnt->assembly);
+	enm->data.type_enm.variants = create_sarr(SmallArray_AstPtr, cnt->assembly);
 	enm->data.type_enm.type     = parse_type(cnt);
 
 	parse_flags_for_curr_decl(cnt, HD_COMPILER);
@@ -1700,7 +1700,7 @@ NEXT:
 	tmp = parse_decl_variant(cnt, prev_tmp);
 	if (tmp) {
 		prev_tmp = tmp;
-		sa_push_Ast(enm->data.type_enm.variants, tmp);
+		sa_push_AstPtr(enm->data.type_enm.variants, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -1856,9 +1856,9 @@ NEXT:
 	tmp = parse_decl_arg(cnt, rq_named_args);
 	if (tmp) {
 		if (!fn->data.type_fn.args)
-			fn->data.type_fn.args = create_sarr(SmallArray_Ast, cnt->assembly);
+			fn->data.type_fn.args = create_sarr(SmallArray_AstPtr, cnt->assembly);
 
-		sa_push_Ast(fn->data.type_fn.args, tmp);
+		sa_push_AstPtr(fn->data.type_fn.args, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -1917,7 +1917,7 @@ parse_type_struct(Context *cnt)
 	    ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct, scope_get(cnt));
 	type_struct->data.type_strct.scope   = scope;
 	type_struct->data.type_strct.raw     = false;
-	type_struct->data.type_strct.members = create_sarr(SmallArray_Ast, cnt->assembly);
+	type_struct->data.type_strct.members = create_sarr(SmallArray_AstPtr, cnt->assembly);
 
 	/* parse members */
 	bool       rq = false;
@@ -1928,7 +1928,7 @@ parse_type_struct(Context *cnt)
 NEXT:
 	tmp = parse_decl_member(cnt, type_only);
 	if (tmp) {
-		sa_push_Ast(type_struct->data.type_strct.members, tmp);
+		sa_push_AstPtr(type_struct->data.type_strct.members, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -2035,8 +2035,8 @@ arg:
 	tmp = parse_expr(cnt);
 	if (tmp) {
 		if (!call->data.expr_call.args)
-			call->data.expr_call.args = create_sarr(SmallArray_Ast, cnt->assembly);
-		sa_push_Ast(call->data.expr_call.args, tmp);
+			call->data.expr_call.args = create_sarr(SmallArray_AstPtr, cnt->assembly);
+		sa_push_AstPtr(call->data.expr_call.args, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;

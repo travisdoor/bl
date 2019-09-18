@@ -562,7 +562,7 @@ print_expr_compound(Ast *expr_compound, int32_t pad, FILE *stream)
 {
 	print_head(expr_compound, pad, stream);
 
-	SmallArray_Ast *exprs = expr_compound->data.expr_compound.values;
+	SmallArray_AstPtr *exprs = expr_compound->data.expr_compound.values;
 	if (exprs) {
 		Ast *value;
 		SARRAY_FOREACH(exprs, value)

@@ -236,20 +236,20 @@ struct AstTypeSlice {
 };
 
 struct AstTypeFn {
-	Ast *           ret_type;
-	SmallArray_Ast *args;
+	Ast *              ret_type;
+	SmallArray_AstPtr *args;
 };
 
 struct AstTypeStruct {
-	struct Scope *  scope;
-	SmallArray_Ast *members;
-	bool            raw;
+	struct Scope *     scope;
+	SmallArray_AstPtr *members;
+	bool               raw;
 };
 
 struct AstTypeEnum {
-	struct Scope *  scope;
-	Ast *           type;
-	SmallArray_Ast *variants;
+	struct Scope *     scope;
+	Ast *              type;
+	SmallArray_AstPtr *variants;
 };
 
 struct AstTypePtr {
@@ -277,8 +277,8 @@ struct AstExprType {
 };
 
 struct AstExprCompound {
-	Ast *           type;
-	SmallArray_Ast *values;
+	Ast *              type;
+	SmallArray_AstPtr *values;
 };
 
 struct AstExprLitFn {
@@ -330,9 +330,9 @@ struct AstExprBinop {
 };
 
 struct AstExprCall {
-	Ast *           ref;
-	SmallArray_Ast *args;
-	bool            run;
+	Ast *              ref;
+	SmallArray_AstPtr *args;
+	bool               run;
 };
 
 struct AstExprMember {

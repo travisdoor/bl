@@ -63,7 +63,7 @@ typedef struct VM {
 	VMStack *        stack;
 	struct Assembly *assembly;
 	struct Builder * builder;
-	SmallArray_Char dyncall_sig_tmp;
+	SmallArray_Char  dyncall_sig_tmp;
 } VM;
 
 void
