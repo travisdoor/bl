@@ -404,6 +404,50 @@ llvm_di_create_auto_variable(LLVMDIBuilderRef builder_ref,
 	return CAST(LLVMMetadataRef)(var);
 }
 
+LLVMMetadataRef
+llvm_di_create_global_variable(LLVMDIBuilderRef builder_ref,
+                               LLVMMetadataRef  scope_ref,
+                               const char *     name,
+                               LLVMMetadataRef  file_ref,
+                               unsigned         line,
+                               LLVMMetadataRef  type_ref)
+{
+
+	auto builder = CAST(DIBuilder *)(builder_ref);
+
+	auto var = builder->createTempGlobalVariableFwdDecl(CAST(DIScope *)(scope_ref),
+	                                                    {name, strlen(name)},
+	                                                    {name, strlen(name)},
+	                                                    CAST(DIFile *)(file_ref),
+	                                                    line,
+	                                                    CAST(DIType *)(type_ref),
+	                                                    false);
+
+	return CAST(LLVMMetadataRef)(var);
+}
+
+LLVMMetadataRef
+llvm_di_create_global_variable_expression(LLVMDIBuilderRef builder_ref,
+                                          LLVMMetadataRef  scope_ref,
+                                          const char *     name,
+                                          LLVMMetadataRef  file_ref,
+                                          unsigned         line,
+                                          LLVMMetadataRef  type_ref)
+{
+	auto builder = CAST(DIBuilder *)(builder_ref);
+
+	auto var = builder->createGlobalVariableExpression(CAST(DIScope *)(scope_ref),
+	                                                   {name, strlen(name)},
+	                                                   {name, strlen(name)},
+	                                                   CAST(DIFile *)(file_ref),
+	                                                   line,
+	                                                   CAST(DIType *)(type_ref),
+	                                                   true,
+	                                                   NULL);
+
+	return CAST(LLVMMetadataRef)(var);
+}
+
 void
 llvm_di_insert_declare(LLVMDIBuilderRef  builder_ref,
                        LLVMValueRef      storage_ref,

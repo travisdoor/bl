@@ -391,14 +391,22 @@ emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 void
 emit_DI_fn(Context *cnt, MirFn *fn)
 {
+	if (!fn->decl_node) return;
+
+	Location *      location   = fn->decl_node->location;
+	LLVMMetadataRef llvm_file  = location->unit->llvm_file_meta;
+	LLVMMetadataRef llvm_scope = fn->decl_node->owner_scope->llvm_di_meta
+	                                 ? fn->decl_node->owner_scope->llvm_di_meta
+	                                 : llvm_file;
+
 	LLVMMetadataRef tmp = llvm_di_create_fn(cnt->llvm_di_builder,
-	                                        fn->decl_node->owner_scope->llvm_di_meta,
+	                                        llvm_scope,
 	                                        fn->id ? fn->id->str : fn->llvm_name,
 	                                        fn->llvm_name,
-	                                        fn->decl_node->location->unit->llvm_file_meta,
-	                                        fn->decl_node->location->line,
+	                                        llvm_file,
+	                                        location->line,
 	                                        fn->type->llvm_meta,
-	                                        fn->decl_node->location->line);
+	                                        location->line);
 
 	fn->body_scope->llvm_di_meta =
 	    llvm_di_replace_temporary(cnt->llvm_di_builder, fn->body_scope->llvm_di_meta, tmp);
@@ -412,23 +420,42 @@ emit_DI_var(Context *cnt, MirVar *var)
 	if (!var->decl_node) return;
 
 	Location *      location   = var->decl_node->location;
-	LLVMMetadataRef llvm_scope = var->decl_node->owner_scope->llvm_di_meta;
 	LLVMMetadataRef llvm_file  = location->unit->llvm_file_meta;
+	LLVMMetadataRef llvm_scope = var->decl_node->owner_scope->llvm_di_meta
+	                                 ? var->decl_node->owner_scope->llvm_di_meta
+	                                 : llvm_file;
 
-	LLVMMetadataRef llvm_meta = llvm_di_create_auto_variable(cnt->llvm_di_builder,
-	                                                         llvm_scope,
-	                                                         var->id->str,
-	                                                         llvm_file,
-	                                                         location->line,
-	                                                         var->value.type->llvm_meta);
+	if (var->is_in_gscope) {
+		llvm_di_set_current_location(
+		    cnt->llvm_builder, location->line, location->col, llvm_scope, false);
 
-	llvm_di_insert_declare(cnt->llvm_di_builder,
-	                       var->llvm_value,
-	                       llvm_meta,
-	                       location->line,
-	                       location->col,
-	                       llvm_scope,
-	                       LLVMGetInsertBlock(cnt->llvm_builder));
+		LLVMMetadataRef llvm_meta =
+		    llvm_di_create_global_variable_expression(cnt->llvm_di_builder,
+		                                              llvm_scope,
+		                                              var->id->str,
+		                                              llvm_file,
+		                                              location->line,
+		                                              var->value.type->llvm_meta);
+
+		LLVMGlobalSetMetadata(var->llvm_value, 0, llvm_meta);
+
+	} else {
+		LLVMMetadataRef llvm_meta =
+		    llvm_di_create_auto_variable(cnt->llvm_di_builder,
+		                                 llvm_scope,
+		                                 var->id->str,
+		                                 llvm_file,
+		                                 location->line,
+		                                 var->value.type->llvm_meta);
+
+		llvm_di_insert_declare(cnt->llvm_di_builder,
+		                       var->llvm_value,
+		                       llvm_meta,
+		                       location->line,
+		                       location->col,
+		                       llvm_scope,
+		                       LLVMGetInsertBlock(cnt->llvm_builder));
+	}
 }
 
 void
@@ -1274,6 +1301,11 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
 		emit_global_var_proto(cnt, var);
 		LLVMSetInitializer(var->llvm_value, tmp);
+
+		if (cnt->debug_mode) {
+			emit_DI_var(cnt, var);
+			// emit_DI_instr_loc(cnt, &decl->base);
+		}
 	} else {
 		BL_ASSERT(var->llvm_value);
 

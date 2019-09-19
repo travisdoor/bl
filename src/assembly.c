@@ -89,11 +89,15 @@ init_DI(Assembly *assembly)
 	assembly->llvm.di_builder = llvm_di_new_di_builder(llvm_module);
 
 	/* create dummy file used as DI global scope */
-	gscope->llvm_di_meta = llvm_di_create_file(assembly->llvm.di_builder, assembly->name, ".");
+	// gscope->llvm_di_meta = llvm_di_create_file(assembly->llvm.di_builder, assembly->name,
+	// ".");
+	gscope->llvm_di_meta = NULL;
+	LLVMMetadataRef llvm_dummy_file_meta =
+	    llvm_di_create_file(assembly->llvm.di_builder, assembly->name, ".");
 
 	/* create main compile unit */
 	assembly->llvm.di_meta =
-	    llvm_di_create_compile_unit(assembly->llvm.di_builder, gscope->llvm_di_meta, producer);
+	    llvm_di_create_compile_unit(assembly->llvm.di_builder, llvm_dummy_file_meta, producer);
 }
 
 static void

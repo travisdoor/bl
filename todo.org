@@ -1,4 +1,4 @@
-* Release 0.5.0 (1st Oct 2019) [46%]
+* Release 0.5.0 (1st Oct 2019) [43%]
   - [X] Complete missing erase cases.
   - [ ] LLVM DI fine tunning and globals.
   - [X] Fix global immutables. 
@@ -14,6 +14,7 @@
   - [ ] warn about unused casts (auto also) 
   - [ ] remove ';' at the end of function declaration 
   - [ ] remove ';' at the end struct and enum
+  - [ ] make builder gloabal 
 
 * Bugs [33%]
   - [ ] functions pointers passed during comptime execution cannot be used as an callbacks in external functions because they are not compatible with C ABI calling conventions. This will be by the way quite hard to fix :(. http://www.dyncall.org/docs/dyncallback.3.html

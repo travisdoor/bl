@@ -119,6 +119,22 @@ llvm_di_create_auto_variable(LLVMDIBuilderRef builder_ref,
                              LLVMMetadataRef  type_ref);
 
 LLVMMetadataRef
+llvm_di_create_global_variable(LLVMDIBuilderRef builder_ref,
+                               LLVMMetadataRef  scope_ref,
+                               const char *     name,
+                               LLVMMetadataRef  file_ref,
+                               unsigned         line,
+                               LLVMMetadataRef  type_ref);
+
+LLVMMetadataRef
+llvm_di_create_global_variable_expression(LLVMDIBuilderRef builder_ref,
+                                          LLVMMetadataRef  scope_ref,
+                                          const char *     name,
+                                          LLVMMetadataRef  file_ref,
+                                          unsigned         line,
+                                          LLVMMetadataRef  type_ref);
+
+LLVMMetadataRef
 llvm_di_replace_temporary(LLVMDIBuilderRef builder_ref,
                           LLVMMetadataRef  temp_ref,
                           LLVMMetadataRef  replacement_ref);
