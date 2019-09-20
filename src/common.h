@@ -89,6 +89,7 @@ SmallArrayType(AstPtr, struct Ast *, 16);
 SmallArrayType(TypePtr, struct MirType *, 16);
 SmallArrayType(MemberPtr, struct MirMember *, 16);
 SmallArrayType(VariantPtr, struct MirVariant *, 16);
+SmallArrayType(ArgPtr, struct MirArg *, 16);
 SmallArrayType(InstrPtr, struct MirInstr *, 16);
 SmallArrayType(ConstValuePtr, struct MirConstValue *, 16);
 SmallArrayType(Char, char, 128);

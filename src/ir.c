@@ -1588,6 +1588,7 @@ emit_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_ALIGNOF:
 	case MIR_INSTR_DECL_VARIANT:
 	case MIR_INSTR_DECL_MEMBER:
+	case MIR_INSTR_DECL_ARG:
 	case MIR_INSTR_TYPE_FN:
 	case MIR_INSTR_TYPE_STRUCT:
 	case MIR_INSTR_TYPE_PTR:

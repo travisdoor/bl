@@ -160,9 +160,9 @@ execute_fn_impl_top_level(VM *vm, MirFn *fn, SmallArray_ConstValue *args, VMStac
 static bool
 _execute_fn_top_level(VM *                   vm,
                       MirFn *                fn,
-                      MirInstr *             call,   /* Optional */
-                      SmallArray_ConstValue *args,   /* Optional */
-                      VMStackPtr *           out_ptr /* Optional */
+                      MirInstr *             call,       /* Optional */
+                      SmallArray_ConstValue *arg_values, /* Optional */
+                      VMStackPtr *           out_ptr     /* Optional */
 );
 
 static void
@@ -679,7 +679,7 @@ dyncall_cb_read_arg(VM *vm, MirConstValue *dest, DCArgs *src)
 }
 
 char
-dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata)
+dyncall_cb_handler(DCCallback *cb, DCArgs *dc_args, DCValue *result, void *userdata)
 {
 	/* TODO: External callback can be invoked from different thread. This can cause problems for
 	 * now since interpreter is strictly single-threaded, but we must handle such situation in
@@ -694,7 +694,7 @@ dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata
 
 	MirType *  ret_type     = fn->type->data.fn.ret_type;
 	const bool is_fn_extern = IS_FLAG(cnt->fn->flags, FLAG_EXTERN);
-	const bool has_args     = fn->type->data.fn.arg_types;
+	const bool has_args     = fn->type->data.fn.args;
 	const bool has_return   = ret_type->kind != MIR_TYPE_VOID;
 
 	if (is_fn_extern) {
@@ -708,14 +708,14 @@ dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata
 	sa_init(&arg_tmp);
 
 	if (has_args) {
-		SmallArray_TypePtr *arg_types = fn->type->data.fn.arg_types;
-		sa_resize_ConstValue(&arg_tmp, arg_types->size);
+		SmallArray_ArgPtr *args = fn->type->data.fn.args;
+		sa_resize_ConstValue(&arg_tmp, args->size);
 
-		MirType *it;
-		SARRAY_FOREACH(arg_types, it)
+		MirArg *it;
+		SARRAY_FOREACH(args, it)
 		{
-			arg_tmp.data[i].type = it;
-			dyncall_cb_read_arg(vm, &arg_tmp.data[i], args);
+			arg_tmp.data[i].type = it->type;
+			dyncall_cb_read_arg(vm, &arg_tmp.data[i], dc_args);
 		}
 	}
 
@@ -740,11 +740,11 @@ _dyncall_generate_signature(VM *vm, MirType *type)
 
 	switch (type->kind) {
 	case MIR_TYPE_FN: {
-		if (type->data.fn.arg_types) {
-			MirType *arg_type;
-			SARRAY_FOREACH(type->data.fn.arg_types, arg_type)
+		if (type->data.fn.args) {
+			MirArg *arg;
+			SARRAY_FOREACH(type->data.fn.args, arg)
 			{
-				_dyncall_generate_signature(vm, arg_type);
+				_dyncall_generate_signature(vm, arg->type);
 			}
 		}
 		sa_push_Char(tmp, DC_SIGCHAR_ENDARG);
@@ -1091,7 +1091,7 @@ bool
 _execute_fn_top_level(VM *                   vm,
                       MirFn *                fn,
                       MirInstr *             call,
-                      SmallArray_ConstValue *args,
+                      SmallArray_ConstValue *arg_values,
                       VMStackPtr *           out_ptr)
 {
 	BL_ASSERT(fn);
@@ -1099,15 +1099,15 @@ _execute_fn_top_level(VM *                   vm,
 	if (!fn->fully_analyzed)
 		BL_ABORT("Function is not fully analyzed for compile time execution!!!");
 
-	MirType *           ret_type  = fn->type->data.fn.ret_type;
-	SmallArray_TypePtr *arg_types = fn->type->data.fn.arg_types;
+	MirType *          ret_type = fn->type->data.fn.ret_type;
+	SmallArray_ArgPtr *args     = fn->type->data.fn.args;
 
 	const bool does_return_value    = ret_type->kind != MIR_TYPE_VOID;
 	const bool is_return_value_used = call ? call->ref_count > 1 : true;
 	const bool is_caller_comptime   = call ? call->comptime : false;
 	const bool pop_return_value =
 	    does_return_value && is_return_value_used && !is_caller_comptime;
-	const size_t argc = arg_types ? arg_types->size : 0;
+	const size_t argc = args ? args->size : 0;
 
 	if (args) {
 		BL_ASSERT(
@@ -1118,8 +1118,8 @@ _execute_fn_top_level(VM *                   vm,
 
 		/* Push all arguments in reverse order on the stack. */
 		for (size_t i = argc; i-- > 0;) {
-			VMStackPtr dest_ptr = push_stack_empty(vm, arg_types->data[i]);
-			copy_comptime_to_stack(vm, dest_ptr, &args->data[i]);
+			VMStackPtr dest_ptr = push_stack_empty(vm, args->data[i]->type);
+			copy_comptime_to_stack(vm, dest_ptr, &arg_values->data[i]);
 		}
 	}
 
@@ -1783,16 +1783,13 @@ interp_instr_arg(VM *vm, MirInstrArg *arg)
 	BL_ASSERT(fn && "Arg instruction cannot determinate current function");
 
 	/* All arguments must be already on the stack in reverse order. */
-	SmallArray_TypePtr *arg_types = fn->type->data.fn.arg_types;
-	BL_ASSERT(arg_types && "Function has no arguments");
+	SmallArray_ArgPtr *args = fn->type->data.fn.args;
+	BL_ASSERT(args && "Function has no arguments");
 
-	MirType *arg_type;
 	/* starting point */
 	VMStackPtr arg_ptr = (VMStackPtr)vm->stack->ra;
 	for (uint32_t i = 0; i <= arg->i; ++i) {
-		arg_type = arg_types->data[i];
-		BL_ASSERT(arg_type);
-		arg_ptr -= stack_alloc_size(arg_type->store_size_bytes);
+		arg_ptr -= stack_alloc_size(args->data[i]->type->store_size_bytes);
 	}
 
 	push_stack(vm, (VMStackPtr)arg_ptr, arg->base.value.type);
@@ -2166,12 +2163,12 @@ interp_instr_ret(VM *vm, MirInstrRet *ret)
 		 * so we must clear them all. Remember they were pushed in reverse order, so now we
 		 * have to pop them in order they are defined. */
 
-		SmallArray_TypePtr *arg_types = fn->type->data.fn.arg_types;
-		if (arg_types) {
-			MirType *arg_type;
-			SARRAY_FOREACH(arg_types, arg_type)
+		SmallArray_ArgPtr *args = fn->type->data.fn.args;
+		if (args) {
+			MirArg *arg;
+			SARRAY_FOREACH(args, arg)
 			{
-				pop_stack(vm, arg_type);
+				pop_stack(vm, arg->type);
 			}
 		}
 	}

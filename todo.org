@@ -15,9 +15,11 @@
   - [ ] remove ';' at the end struct and enum
 
 * Ideas 
-    - make builder gloabal 
-    - enable implicit casting only to bigger integer type and check signed unsigned also 
-    - reimplement LLVM-C binding
+  - [ ] make builder global
+  - [ ] enable implicit casting only to bigger integer type and check signed unsigned also 
+  - [ ] reimplement LLVM-C binding
+  - [ ] add MirArg
+  - [ ] document instruction Arg
 
 * Bugs [33%]
   - [ ] functions pointers passed during comptime execution cannot be used as an callbacks in external functions because they are not compatible with C ABI calling conventions. This will be by the way quite hard to fix :(. http://www.dyncall.org/docs/dyncallback.3.html

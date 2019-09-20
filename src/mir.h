@@ -49,10 +49,10 @@ struct Assembly;
 struct Builder;
 struct Unit;
 
-typedef struct MirType    MirType;
-typedef struct MirMember  MirMember;
-typedef struct MirVariant MirVariant;
-// typedef struct MirArg MirArg;
+typedef struct MirType       MirType;
+typedef struct MirMember     MirMember;
+typedef struct MirVariant    MirVariant;
+typedef struct MirArg        MirArg;
 typedef struct MirVar        MirVar;
 typedef struct MirFn         MirFn;
 typedef struct MirConstValue MirConstValue;
@@ -64,6 +64,7 @@ typedef struct MirInstrBlock         MirInstrBlock;
 typedef struct MirInstrDeclVar       MirInstrDeclVar;
 typedef struct MirInstrDeclMember    MirInstrDeclMember;
 typedef struct MirInstrDeclVariant   MirInstrDeclVariant;
+typedef struct MirInstrDeclArg       MirInstrDeclArg;
 typedef struct MirInstrConst         MirInstrConst;
 typedef struct MirInstrLoad          MirInstrLoad;
 typedef struct MirInstrStore         MirInstrStore;
@@ -106,6 +107,7 @@ typedef struct MirArenas {
 	Arena fn;
 	Arena member;
 	Arena variant;
+	Arena arg;
 	Arena value;
 } MirArenas;
 
@@ -196,6 +198,7 @@ typedef enum MirInstrKind {
 	MIR_INSTR_DECL_VAR,
 	MIR_INSTR_DECL_MEMBER,
 	MIR_INSTR_DECL_VARIANT,
+	MIR_INSTR_DECL_ARG,
 	MIR_INSTR_CONST,
 	MIR_INSTR_LOAD,
 	MIR_INSTR_STORE,
@@ -296,6 +299,15 @@ struct MirMember {
 	int64_t  index;
 };
 
+/* FUNCTION ARGUMENT */
+struct MirArg {
+	MirType *type;
+	ID *     id;
+	Ast *    decl_node;
+	Scope *  decl_scope;
+	bool     llvm_byval;
+};
+
 /* TYPE */
 struct MirTypeInt {
 	int32_t bitcount;
@@ -307,9 +319,9 @@ struct MirTypeReal {
 };
 
 struct MirTypeFn {
-	MirType *           ret_type;
-	SmallArray_TypePtr *arg_types;
-	bool                is_vargs;
+	MirType *          ret_type;
+	SmallArray_ArgPtr *args;
+	bool               is_vargs;
 };
 
 struct MirTypePtr {
@@ -493,6 +505,13 @@ struct MirInstrDeclVariant {
 	MirInstr *  value; /* Optional. */
 };
 
+struct MirInstrDeclArg {
+	MirInstr base;
+
+	MirArg *  arg;
+	MirInstr *type;
+};
+
 struct MirInstrElemPtr {
 	MirInstr base;
 
@@ -603,7 +622,7 @@ struct MirInstrTypeFn {
 	MirInstr base;
 
 	MirInstr *           ret_type;
-	SmallArray_InstrPtr *arg_types;
+	SmallArray_InstrPtr *args;
 };
 
 struct MirInstrTypeStruct {
@@ -789,11 +808,11 @@ static inline MirType *
 mir_get_fn_arg_type(MirType *type, uint32_t i)
 {
 	BL_ASSERT(type->kind == MIR_TYPE_FN && "Expected function type");
-	SmallArray_TypePtr *args = type->data.fn.arg_types;
+	SmallArray_ArgPtr *args = type->data.fn.args;
 	if (!args) return NULL;
 	BL_ASSERT(args->size > i);
 
-	return args->data[i];
+	return args->data[i]->type;
 }
 
 void

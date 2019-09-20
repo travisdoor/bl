@@ -47,6 +47,7 @@ union _SmallArrays {
 	SmallArray_InstrPtr      instr;
 	SmallArray_ConstValuePtr cv;
 	SmallArray_AstPtr        ast;
+	SmallArray_ArgPtr        arg;
 };
 
 static void

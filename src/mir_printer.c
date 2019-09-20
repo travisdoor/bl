@@ -325,6 +325,9 @@ static void
 print_instr_decl_variant(MirInstrDeclVariant *var, FILE *stream);
 
 static void
+print_instr_decl_arg(MirInstrDeclArg *decl, FILE *stream);
+
+static void
 print_instr_const(MirInstrConst *ci, FILE *stream);
 
 static void
@@ -388,12 +391,12 @@ print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
 {
 	print_instr_head(&type_fn->base, stream, "const fn");
 	fprintf(stream, "(");
-	if (type_fn->arg_types) {
+	if (type_fn->args) {
 		MirInstr *tmp;
-		SARRAY_FOREACH(type_fn->arg_types, tmp)
+		SARRAY_FOREACH(type_fn->args, tmp)
 		{
 			fprintf(stream, "%%%llu", (unsigned long long)tmp->id);
-			if (i + 1 < type_fn->arg_types->size) fprintf(stream, ", ");
+			if (i + 1 < type_fn->args->size) fprintf(stream, ", ");
 		}
 	}
 
@@ -776,6 +779,18 @@ print_instr_decl_variant(MirInstrDeclVariant *var, FILE *stream)
 }
 
 void
+print_instr_decl_arg(MirInstrDeclArg *decl, FILE *stream)
+{
+	print_instr_head(&decl->base, stream, "declarg");
+
+	MirArg *arg = decl->arg;
+	BL_ASSERT(arg)
+
+	fprintf(stream, "%s : ", arg->id->str);
+	print_comptime_value_or_id(decl->type, stream);
+}
+
+void
 print_instr_decl_member(MirInstrDeclMember *decl, FILE *stream)
 {
 	print_instr_head(&decl->base, stream, "declmember");
@@ -946,6 +961,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
 		break;
 	case MIR_INSTR_DECL_MEMBER:
 		print_instr_decl_member((MirInstrDeclMember *)instr, stream);
+		break;
+	case MIR_INSTR_DECL_ARG:
+		print_instr_decl_arg((MirInstrDeclArg *)instr, stream);
 		break;
 	case MIR_INSTR_CONST:
 		print_instr_const((MirInstrConst *)instr, stream);
