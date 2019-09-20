@@ -1,6 +1,6 @@
 /* playground */
 
-Foo := 10;
+#load "std/print.bl"
 
 main :: fn () s32 {
     return 0;

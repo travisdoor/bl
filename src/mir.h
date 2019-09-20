@@ -49,9 +49,10 @@ struct Assembly;
 struct Builder;
 struct Unit;
 
-typedef struct MirType       MirType;
-typedef struct MirMember     MirMember;
-typedef struct MirVariant    MirVariant;
+typedef struct MirType    MirType;
+typedef struct MirMember  MirMember;
+typedef struct MirVariant MirVariant;
+// typedef struct MirArg MirArg;
 typedef struct MirVar        MirVar;
 typedef struct MirFn         MirFn;
 typedef struct MirConstValue MirConstValue;

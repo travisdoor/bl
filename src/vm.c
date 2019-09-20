@@ -754,17 +754,17 @@ _dyncall_generate_signature(VM *vm, MirType *type)
 
 	case MIR_TYPE_INT: {
 		const bool is_signed = type->data.integer.is_signed;
-		switch (type->data.integer.bitcount) {
-		case 8:
+		switch (type->store_size_bytes) {
+		case 1:
 			sa_push_Char(tmp, is_signed ? DC_SIGCHAR_CHAR : DC_SIGCHAR_UCHAR);
 			break;
-		case 16:
+		case 2:
 			sa_push_Char(tmp, is_signed ? DC_SIGCHAR_SHORT : DC_SIGCHAR_USHORT);
 			break;
-		case 32:
+		case 4:
 			sa_push_Char(tmp, is_signed ? DC_SIGCHAR_INT : DC_SIGCHAR_UINT);
 			break;
-		case 64:
+		case 8:
 			sa_push_Char(tmp, is_signed ? DC_SIGCHAR_LONGLONG : DC_SIGCHAR_ULONGLONG);
 			break;
 		}
@@ -772,11 +772,11 @@ _dyncall_generate_signature(VM *vm, MirType *type)
 	}
 
 	case MIR_TYPE_REAL: {
-		switch (type->data.real.bitcount) {
-		case 32:
+		switch (type->store_size_bytes) {
+		case 4:
 			sa_push_Char(tmp, DC_SIGCHAR_FLOAT);
 			break;
-		case 64:
+		case 8:
 			sa_push_Char(tmp, DC_SIGCHAR_DOUBLE);
 			break;
 		}
@@ -794,13 +794,33 @@ _dyncall_generate_signature(VM *vm, MirType *type)
 		break;
 	}
 
-	case MIR_TYPE_BOOL: {
-		sa_push_Char(tmp, DC_SIGCHAR_BOOL);
+	case MIR_TYPE_STRUCT: {
+		SmallArray_MemberPtr *members = type->data.strct.members;
+		MirMember *           member;
+		SARRAY_FOREACH(members, member)
+		{
+			_dyncall_generate_signature(vm, member->type);
+		}
 		break;
 	}
 
-	default:
-		BL_ABORT("Unsupported external callback type.");
+	case MIR_TYPE_ENUM: {
+		_dyncall_generate_signature(vm, type->data.enm.base_type);
+		break;
+	}
+
+	case MIR_TYPE_ARRAY: {
+		for (int64_t i = 0; i < type->data.array.len; i += 1) {
+			_dyncall_generate_signature(vm, type->data.array.elem_type);
+		}
+		break;
+	}
+
+	default: {
+		char type_name[256];
+		mir_type_to_str(type_name, 256, type, true);
+		BL_ABORT("Unsupported DC-signature type '%s'.", type_name);
+	}
 	}
 }
 
@@ -843,7 +863,6 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 	DCCallVM *dvm = vm->assembly->dl.vm;
 	BL_ASSERT(dvm);
 	MirConstValueData tmp = {0};
-	read_value(&tmp, val_ptr, type);
 
 	if (type->kind == MIR_TYPE_ENUM) {
 		type = type->data.enm.base_type;
@@ -851,23 +870,25 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 
 	switch (type->kind) {
 	case MIR_TYPE_BOOL: {
+		read_value(&tmp, val_ptr, type);
 		dcArgBool(dvm, tmp.v_bool);
 		break;
 	}
 
 	case MIR_TYPE_INT: {
-		switch (type->data.integer.bitcount) {
-		case 64:
-			dcArgLongLong(dvm, tmp.v_s64);
+		read_value(&tmp, val_ptr, type);
+		switch (type->store_size_bytes) {
+		case 1:
+			dcArgChar(dvm, (DCchar)tmp.v_s8);
 			break;
-		case 32:
-			dcArgInt(dvm, (DCint)tmp.v_s32);
-			break;
-		case 16:
+		case 2:
 			dcArgShort(dvm, (DCshort)tmp.v_s16);
 			break;
+		case 4:
+			dcArgInt(dvm, (DCint)tmp.v_s32);
+			break;
 		case 8:
-			dcArgChar(dvm, (DCchar)tmp.v_s8);
+			dcArgLongLong(dvm, tmp.v_s64);
 			break;
 		default:
 			BL_ABORT("unsupported external call integer argument type");
@@ -876,11 +897,12 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 	}
 
 	case MIR_TYPE_REAL: {
-		switch (type->data.real.bitcount) {
-		case 32:
+		read_value(&tmp, val_ptr, type);
+		switch (type->store_size_bytes) {
+		case 4:
 			dcArgFloat(dvm, tmp.v_f32);
 			break;
-		case 64:
+		case 8:
 			dcArgDouble(dvm, tmp.v_f64);
 			break;
 		default:
@@ -890,11 +912,26 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 	}
 
 	case MIR_TYPE_NULL: {
+		read_value(&tmp, val_ptr, type);
 		dcArgPointer(dvm, (DCpointer)tmp.v_ptr.data.any);
 		break;
 	}
 
+	case MIR_TYPE_STRUCT: {
+		BL_ABORT(
+		    "External function taking structure argument by value cannot be executed by "
+		    "interpreter on this platform.");
+		break;
+	}
+
+	case MIR_TYPE_ARRAY: {
+		BL_ABORT("External function taking array argument by value cannot be executed by "
+		         "interpreter on this platform.");
+		break;
+	}
+
 	case MIR_TYPE_PTR: {
+		read_value(&tmp, val_ptr, type);
 		if (mir_deref_type(type)->kind == MIR_TYPE_FN) {
 			MirConstValue *value = (MirConstValue *)val_ptr;
 			BL_ASSERT(value->type->kind == MIR_TYPE_PTR);
@@ -951,16 +988,16 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 	switch (ret_type->kind) {
 	case MIR_TYPE_INT:
 		switch (ret_type->store_size_bytes) {
-		case sizeof(char):
+		case 1:
 			result.v_s8 = dcCallChar(dvm, fn->dyncall.extern_entry);
 			break;
-		case sizeof(short):
+		case 2:
 			result.v_s16 = dcCallShort(dvm, fn->dyncall.extern_entry);
 			break;
-		case sizeof(int):
+		case 4:
 			result.v_s32 = dcCallInt(dvm, fn->dyncall.extern_entry);
 			break;
-		case sizeof(long long):
+		case 8:
 			result.v_s64 = dcCallLongLong(dvm, fn->dyncall.extern_entry);
 			break;
 		default:
@@ -970,16 +1007,16 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 
 	case MIR_TYPE_ENUM:
 		switch (ret_type->data.enm.base_type->store_size_bytes) {
-		case sizeof(char):
+		case 1:
 			result.v_s8 = dcCallChar(dvm, fn->dyncall.extern_entry);
 			break;
-		case sizeof(short):
+		case 2:
 			result.v_s16 = dcCallShort(dvm, fn->dyncall.extern_entry);
 			break;
-		case sizeof(int):
+		case 4:
 			result.v_s32 = dcCallInt(dvm, fn->dyncall.extern_entry);
 			break;
-		case sizeof(long long):
+		case 8:
 			result.v_s64 = dcCallLongLong(dvm, fn->dyncall.extern_entry);
 			break;
 		default:
@@ -993,14 +1030,14 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 
 	case MIR_TYPE_REAL: {
 		switch (ret_type->store_size_bytes) {
-		case sizeof(float):
+		case 4:
 			result.v_f32 = dcCallFloat(dvm, fn->dyncall.extern_entry);
 			break;
-		case sizeof(double):
+		case 8:
 			result.v_f64 = dcCallDouble(dvm, fn->dyncall.extern_entry);
 			break;
 		default:
-			BL_ABORT("unsupported real number size for external call "
+			BL_ABORT("Unsupported real number size for external call "
 			         "result");
 		}
 		break;
@@ -1011,8 +1048,25 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 		does_return = false;
 		break;
 
-	default:
-		BL_ABORT("unsupported external call return type");
+	case MIR_TYPE_STRUCT: {
+		BL_ABORT("External function '%s' returning structure cannot be executed by "
+		         "interpreter on "
+		         "this platform.",
+		         fn->id->str);
+	}
+
+	case MIR_TYPE_ARRAY: {
+		BL_ABORT(
+		    "External function '%s' returning array cannot be executed by interpreter on "
+		    "this platform.",
+		    fn->id->str);
+	}
+
+	default: {
+		char type_name[256];
+		mir_type_to_str(type_name, 256, ret_type, true);
+		BL_ABORT("Unsupported external call return type '%s'", type_name);
+	}
 	}
 
 	/* PUSH result only if it is used */
