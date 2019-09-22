@@ -58,12 +58,14 @@ typedef enum {
 } BuilderFlags;
 
 typedef struct Builder {
-	uint32_t  flags;
-	int32_t   total_lines;
-	int32_t   errorc;
+	u32       flags;
+	s32       total_lines;
+	s32       errorc;
 	BArray *  str_cache;
 	ConfData *conf;
 } Builder;
+
+/* Builder global instance */
 
 typedef enum {
 	BUILDER_MSG_ERROR,
@@ -72,7 +74,12 @@ typedef enum {
 	BUILDER_MSG_LOG,
 } BuilderMsgType;
 
-typedef enum { BUILDER_CUR_AFTER, BUILDER_CUR_WORD, BUILDER_CUR_BEFORE, BUILDER_CUR_NONE } BuilderCurPos;
+typedef enum {
+	BUILDER_CUR_AFTER,
+	BUILDER_CUR_WORD,
+	BUILDER_CUR_BEFORE,
+	BUILDER_CUR_NONE
+} BuilderCurPos;
 
 struct Location;
 
@@ -86,7 +93,7 @@ int
 builder_load_conf_file(Builder *builder, const char *filepath);
 
 int
-builder_compile(Builder *builder, Assembly *assembly, uint32_t flags, OptLvl opt_lvl);
+builder_compile(Builder *builder, Assembly *assembly, u32 flags, OptLvl opt_lvl);
 
 void
 builder_error(Builder *builder, const char *format, ...);
@@ -97,7 +104,7 @@ builder_warning(Builder *builder, const char *format, ...);
 void
 builder_msg(Builder *        builder,
             BuilderMsgType   type,
-            int32_t          code,
+            s32              code,
             struct Location *src,
             BuilderCurPos    pos,
             const char *     format,

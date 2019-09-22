@@ -61,8 +61,8 @@ ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct Scope *parent
 	node->location    = tok ? &tok->location : NULL;
 
 #if BL_DEBUG
-	static uint64_t serial = 0;
-	node->_serial          = serial++;
+	static u64 serial = 0;
+	node->_serial     = serial++;
 #endif
 	return node;
 }

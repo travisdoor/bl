@@ -778,7 +778,7 @@ LLVMValueRef
 emit_global_string_ptr(Context *cnt, const char *str, size_t len)
 {
 	BL_ASSERT(str && len)
-	uint64_t      hash  = bo_hash_from_str(str);
+	u64           hash  = bo_hash_from_str(str);
 	bo_iterator_t found = bo_htbl_find(cnt->gstring_cache, hash);
 	bo_iterator_t end   = bo_htbl_end(cnt->gstring_cache);
 
@@ -837,10 +837,10 @@ emit_as_const(Context *cnt, MirConstValue *value)
 	case MIR_TYPE_REAL: {
 		const size_t size = type->store_size_bytes;
 
-		if (size == sizeof(float)) { // float
-			llvm_value = LLVMConstReal(llvm_type, (double)value->data.v_f32);
+		if (size == sizeof(f32)) { // float
+			llvm_value = LLVMConstReal(llvm_type, (f64)value->data.v_f32);
 			break;
-		} else if (size == sizeof(double)) { // double
+		} else if (size == sizeof(f64)) { // double
 			llvm_value = LLVMConstReal(llvm_type, value->data.v_f64);
 			break;
 		}
@@ -942,8 +942,8 @@ emit_as_const(Context *cnt, MirConstValue *value)
 		MirConstValue *str_value = members->data[1];
 		BL_ASSERT(len_value && str_value)
 
-		const uint64_t len = len_value->data.v_u64;
-		const char *   str = str_value->data.v_ptr.data.str;
+		const u64   len = len_value->data.v_u64;
+		const char *str = str_value->data.v_ptr.data.str;
 		BL_ASSERT(str)
 
 		LLVMValueRef const_vals[2];

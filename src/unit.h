@@ -57,6 +57,6 @@ void
 unit_delete(Unit *unit);
 
 const char *
-unit_get_src_ln(Unit *unit, int32_t line, long *len);
+unit_get_src_ln(Unit *unit, s32 line, long *len);
 
 #endif

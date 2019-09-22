@@ -50,7 +50,7 @@ print_address(Ast *node, FILE *stream)
 #define print_head(_node, _pad, _stream) _print_head((Ast *)(_node), (_pad), (_stream))
 
 static inline void
-_print_head(Ast *node, int32_t pad, FILE *stream)
+_print_head(Ast *node, s32 pad, FILE *stream)
 {
 	if (node->location)
 		fprintf(stream,
@@ -71,7 +71,7 @@ _print_head(Ast *node, int32_t pad, FILE *stream)
 }
 
 static inline void
-print_flags(int32_t flags, FILE *stream)
+print_flags(s32 flags, FILE *stream)
 {
 	if (!flags) return;
 	if (IS_FLAG(flags, FLAG_EXTERN)) fprintf(stream, " #extern");
@@ -81,137 +81,137 @@ print_flags(int32_t flags, FILE *stream)
 }
 
 static void
-print_node(Ast *node, int32_t pad, FILE *stream);
+print_node(Ast *node, s32 pad, FILE *stream);
 
 static void
-print_ublock(Ast *ublock, int32_t pad, FILE *stream);
+print_ublock(Ast *ublock, s32 pad, FILE *stream);
 
 static void
-print_test_case(Ast *test, int32_t pad, FILE *stream);
+print_test_case(Ast *test, s32 pad, FILE *stream);
 
 static void
-print_load(Ast *load, int32_t pad, FILE *stream);
+print_load(Ast *load, s32 pad, FILE *stream);
 
 static void
-print_link(Ast *link, int32_t pad, FILE *stream);
+print_link(Ast *link, s32 pad, FILE *stream);
 
 static void
-print_private(Ast *private, int32_t pad, FILE *stream);
+print_private(Ast *private, s32 pad, FILE *stream);
 
 static void
-print_block(Ast *block, int32_t pad, FILE *stream);
+print_block(Ast *block, s32 pad, FILE *stream);
 
 static void
-print_unrecheable(Ast *unr, int32_t pad, FILE *stream);
+print_unrecheable(Ast *unr, s32 pad, FILE *stream);
 
 static void
-print_type_struct(Ast *strct, int32_t pad, FILE *stream);
+print_type_struct(Ast *strct, s32 pad, FILE *stream);
 
 static void
-print_type_enum(Ast *enm, int32_t pad, FILE *stream);
+print_type_enum(Ast *enm, s32 pad, FILE *stream);
 
 static void
-print_stmt_if(Ast *stmt_if, int32_t pad, FILE *stream);
+print_stmt_if(Ast *stmt_if, s32 pad, FILE *stream);
 
 static void
-print_stmt_loop(Ast *loop, int32_t pad, FILE *stream);
+print_stmt_loop(Ast *loop, s32 pad, FILE *stream);
 
 static void
-print_stmt_break(Ast *br, int32_t pad, FILE *stream);
+print_stmt_break(Ast *br, s32 pad, FILE *stream);
 
 static void
-print_stmt_continue(Ast *cnt, int32_t pad, FILE *stream);
+print_stmt_continue(Ast *cnt, s32 pad, FILE *stream);
 
 static void
-print_stmt_return(Ast *ret, int32_t pad, FILE *stream);
+print_stmt_return(Ast *ret, s32 pad, FILE *stream);
 
 static void
-print_stmt_defer(Ast *defer, int32_t pad, FILE *stream);
+print_stmt_defer(Ast *defer, s32 pad, FILE *stream);
 
 static void
-print_decl_entity(Ast *entity, int32_t pad, FILE *stream);
+print_decl_entity(Ast *entity, s32 pad, FILE *stream);
 
 static void
-print_decl_arg(Ast *arg, int32_t pad, FILE *stream);
+print_decl_arg(Ast *arg, s32 pad, FILE *stream);
 
 static void
-print_decl_member(Ast *member, int32_t pad, FILE *stream);
+print_decl_member(Ast *member, s32 pad, FILE *stream);
 
 static void
-print_decl_variant(Ast *variant, int32_t pad, FILE *stream);
+print_decl_variant(Ast *variant, s32 pad, FILE *stream);
 
 static void
-print_bad(Ast *bad, int32_t pad, FILE *stream);
+print_bad(Ast *bad, s32 pad, FILE *stream);
 
 static void
-print_expr_line(Ast *line, int32_t pad, FILE *stream);
+print_expr_line(Ast *line, s32 pad, FILE *stream);
 
 static void
-print_expr_file(Ast *file, int32_t pad, FILE *stream);
+print_expr_file(Ast *file, s32 pad, FILE *stream);
 
 static void
-print_expr_unary(Ast *unary, int32_t pad, FILE *stream);
+print_expr_unary(Ast *unary, s32 pad, FILE *stream);
 
 static void
-print_expr_cast(Ast *cast, int32_t pad, FILE *stream);
+print_expr_cast(Ast *cast, s32 pad, FILE *stream);
 
 static void
-print_expr_member(Ast *member, int32_t pad, FILE *stream);
+print_expr_member(Ast *member, s32 pad, FILE *stream);
 
 static void
-print_expr_addrof(Ast *addrof, int32_t pad, FILE *stream);
+print_expr_addrof(Ast *addrof, s32 pad, FILE *stream);
 
 static void
-print_expr_sizeof(Ast *szof, int32_t pad, FILE *stream);
+print_expr_sizeof(Ast *szof, s32 pad, FILE *stream);
 
 static void
-print_expr_type_info(Ast *type_info, int32_t pad, FILE *stream);
+print_expr_type_info(Ast *type_info, s32 pad, FILE *stream);
 
 static void
-print_expr_deref(Ast *deref, int32_t pad, FILE *stream);
+print_expr_deref(Ast *deref, s32 pad, FILE *stream);
 
 static void
-print_expr_binop(Ast *binop, int32_t pad, FILE *stream);
+print_expr_binop(Ast *binop, s32 pad, FILE *stream);
 
 static void
-print_expr_type(Ast *expr_type, int32_t pad, FILE *stream);
+print_expr_type(Ast *expr_type, s32 pad, FILE *stream);
 
 static void
-print_expr_compound(Ast *expr_compound, int32_t pad, FILE *stream);
+print_expr_compound(Ast *expr_compound, s32 pad, FILE *stream);
 
 static void
-print_expr_ref(Ast *ref, int32_t pad, FILE *stream);
+print_expr_ref(Ast *ref, s32 pad, FILE *stream);
 
 static void
-print_expr_lit_int(Ast *lit, int32_t pad, FILE *stream);
+print_expr_lit_int(Ast *lit, s32 pad, FILE *stream);
 
 static void
-print_expr_lit_float(Ast *lit, int32_t pad, FILE *stream);
+print_expr_lit_float(Ast *lit, s32 pad, FILE *stream);
 
 static void
-print_expr_lit_double(Ast *lit, int32_t pad, FILE *stream);
+print_expr_lit_double(Ast *lit, s32 pad, FILE *stream);
 
 static void
-print_expr_lit_char(Ast *lit, int32_t pad, FILE *stream);
+print_expr_lit_char(Ast *lit, s32 pad, FILE *stream);
 
 static void
-print_expr_lit_bool(Ast *lit, int32_t pad, FILE *stream);
+print_expr_lit_bool(Ast *lit, s32 pad, FILE *stream);
 
 static void
-print_expr_lit_string(Ast *lit, int32_t pad, FILE *stream);
+print_expr_lit_string(Ast *lit, s32 pad, FILE *stream);
 
 static void
-print_expr_lit_fn(Ast *fn, int32_t pad, FILE *stream);
+print_expr_lit_fn(Ast *fn, s32 pad, FILE *stream);
 
 static void
-print_expr_call(Ast *call, int32_t pad, FILE *stream);
+print_expr_call(Ast *call, s32 pad, FILE *stream);
 
 static void
-print_expr_elem(Ast *elem, int32_t pad, FILE *stream);
+print_expr_elem(Ast *elem, s32 pad, FILE *stream);
 
 /* impl */
 void
-print_ublock(Ast *ublock, int32_t pad, FILE *stream)
+print_ublock(Ast *ublock, s32 pad, FILE *stream)
 {
 	print_head(ublock, pad, stream);
 	fprintf(stream, "%s", ublock->data.ublock.unit->name);
@@ -221,7 +221,7 @@ print_ublock(Ast *ublock, int32_t pad, FILE *stream)
 }
 
 void
-print_block(Ast *block, int32_t pad, FILE *stream)
+print_block(Ast *block, s32 pad, FILE *stream)
 {
 	print_head(block, pad, stream);
 	Ast *tmp = NULL;
@@ -229,7 +229,7 @@ print_block(Ast *block, int32_t pad, FILE *stream)
 }
 
 void
-print_test_case(Ast *test, int32_t pad, FILE *stream)
+print_test_case(Ast *test, s32 pad, FILE *stream)
 {
 	print_head(test, pad, stream);
 	fprintf(stream, "%s", test->data.test_case.desc);
@@ -237,33 +237,33 @@ print_test_case(Ast *test, int32_t pad, FILE *stream)
 }
 
 void
-print_load(Ast *load, int32_t pad, FILE *stream)
+print_load(Ast *load, s32 pad, FILE *stream)
 {
 	print_head(load, pad, stream);
 	fprintf(stream, "%s", load->data.load.filepath);
 }
 
 void
-print_link(Ast *link, int32_t pad, FILE *stream)
+print_link(Ast *link, s32 pad, FILE *stream)
 {
 	print_head(link, pad, stream);
 	fprintf(stream, "%s", link->data.link.lib);
 }
 
 void
-print_private(Ast *private, int32_t pad, FILE *stream)
+print_private(Ast *private, s32 pad, FILE *stream)
 {
 	print_head(private, pad, stream);
 }
 
 void
-print_unrecheable(Ast *unr, int32_t pad, FILE *stream)
+print_unrecheable(Ast *unr, s32 pad, FILE *stream)
 {
 	print_head(unr, pad, stream);
 }
 
 void
-print_type_struct(Ast *strct, int32_t pad, FILE *stream)
+print_type_struct(Ast *strct, s32 pad, FILE *stream)
 {
 	print_head(strct, pad, stream);
 
@@ -275,7 +275,7 @@ print_type_struct(Ast *strct, int32_t pad, FILE *stream)
 }
 
 void
-print_type_enum(Ast *enm, int32_t pad, FILE *stream)
+print_type_enum(Ast *enm, s32 pad, FILE *stream)
 {
 	print_head(enm, pad, stream);
 
@@ -287,7 +287,7 @@ print_type_enum(Ast *enm, int32_t pad, FILE *stream)
 }
 
 void
-print_stmt_if(Ast *stmt_if, int32_t pad, FILE *stream)
+print_stmt_if(Ast *stmt_if, s32 pad, FILE *stream)
 {
 	print_head(stmt_if, pad, stream);
 	print_node(stmt_if->data.stmt_if.test, pad + 1, stream);
@@ -296,7 +296,7 @@ print_stmt_if(Ast *stmt_if, int32_t pad, FILE *stream)
 }
 
 void
-print_stmt_loop(Ast *loop, int32_t pad, FILE *stream)
+print_stmt_loop(Ast *loop, s32 pad, FILE *stream)
 {
 	print_head(loop, pad, stream);
 	print_node(loop->data.stmt_loop.init, pad + 1, stream);
@@ -306,33 +306,33 @@ print_stmt_loop(Ast *loop, int32_t pad, FILE *stream)
 }
 
 void
-print_stmt_break(Ast *br, int32_t pad, FILE *stream)
+print_stmt_break(Ast *br, s32 pad, FILE *stream)
 {
 	print_head(br, pad, stream);
 }
 
 void
-print_stmt_continue(Ast *cnt, int32_t pad, FILE *stream)
+print_stmt_continue(Ast *cnt, s32 pad, FILE *stream)
 {
 	print_head(cnt, pad, stream);
 }
 
 void
-print_stmt_return(Ast *ret, int32_t pad, FILE *stream)
+print_stmt_return(Ast *ret, s32 pad, FILE *stream)
 {
 	print_head(ret, pad, stream);
 	print_node(ret->data.stmt_return.expr, pad + 1, stream);
 }
 
 void
-print_stmt_defer(Ast *defer, int32_t pad, FILE *stream)
+print_stmt_defer(Ast *defer, s32 pad, FILE *stream)
 {
 	print_head(defer, pad, stream);
 	print_node(defer->data.stmt_defer.expr, pad + 1, stream);
 }
 
 void
-print_decl_entity(Ast *entity, int32_t pad, FILE *stream)
+print_decl_entity(Ast *entity, s32 pad, FILE *stream)
 {
 	print_head(entity, pad, stream);
 
@@ -346,34 +346,34 @@ print_decl_entity(Ast *entity, int32_t pad, FILE *stream)
 }
 
 void
-print_decl_arg(Ast *arg, int32_t pad, FILE *stream)
+print_decl_arg(Ast *arg, s32 pad, FILE *stream)
 {
 	print_head(arg, pad, stream);
 	fprintf(stream, "'%s'", arg->data.decl.name->data.ident.id.str);
 }
 
 void
-print_decl_member(Ast *member, int32_t pad, FILE *stream)
+print_decl_member(Ast *member, s32 pad, FILE *stream)
 {
 	print_head(member, pad, stream);
 	fprintf(stream, "'%s'", member->data.decl.name->data.ident.id.str);
 }
 
 void
-print_decl_variant(Ast *variant, int32_t pad, FILE *stream)
+print_decl_variant(Ast *variant, s32 pad, FILE *stream)
 {
 	print_head(variant, pad, stream);
 	fprintf(stream, "'%s'", variant->data.decl.name->data.ident.id.str);
 }
 
 void
-print_bad(Ast *bad, int32_t pad, FILE *stream)
+print_bad(Ast *bad, s32 pad, FILE *stream)
 {
 	print_head(bad, pad, stream);
 }
 
 void
-print_expr_cast(Ast *cast, int32_t pad, FILE *stream)
+print_expr_cast(Ast *cast, s32 pad, FILE *stream)
 {
 	print_head(cast, pad, stream);
 	if (cast->data.expr_cast.auto_cast) {
@@ -385,19 +385,19 @@ print_expr_cast(Ast *cast, int32_t pad, FILE *stream)
 }
 
 void
-print_expr_line(Ast *line, int32_t pad, FILE *stream)
+print_expr_line(Ast *line, s32 pad, FILE *stream)
 {
 	print_head(line, pad, stream);
 }
 
 void
-print_expr_file(Ast *file, int32_t pad, FILE *stream)
+print_expr_file(Ast *file, s32 pad, FILE *stream)
 {
 	print_head(file, pad, stream);
 }
 
 void
-print_expr_unary(Ast *unary, int32_t pad, FILE *stream)
+print_expr_unary(Ast *unary, s32 pad, FILE *stream)
 {
 	print_head(unary, pad, stream);
 
@@ -422,7 +422,7 @@ print_expr_unary(Ast *unary, int32_t pad, FILE *stream)
 }
 
 void
-print_expr_member(Ast *member, int32_t pad, FILE *stream)
+print_expr_member(Ast *member, s32 pad, FILE *stream)
 {
 	print_head(member, pad, stream);
 
@@ -432,35 +432,35 @@ print_expr_member(Ast *member, int32_t pad, FILE *stream)
 }
 
 void
-print_expr_addrof(Ast *addrof, int32_t pad, FILE *stream)
+print_expr_addrof(Ast *addrof, s32 pad, FILE *stream)
 {
 	print_head(addrof, pad, stream);
 	print_node(addrof->data.expr_addrof.next, pad + 1, stream);
 }
 
 void
-print_expr_sizeof(Ast *szof, int32_t pad, FILE *stream)
+print_expr_sizeof(Ast *szof, s32 pad, FILE *stream)
 {
 	print_head(szof, pad, stream);
 	print_node(szof->data.expr_sizeof.node, pad + 1, stream);
 }
 
 void
-print_expr_type_info(Ast *type_info, int32_t pad, FILE *stream)
+print_expr_type_info(Ast *type_info, s32 pad, FILE *stream)
 {
 	print_head(type_info, pad, stream);
 	print_node(type_info->data.expr_type_info.node, pad + 1, stream);
 }
 
 void
-print_expr_deref(Ast *deref, int32_t pad, FILE *stream)
+print_expr_deref(Ast *deref, s32 pad, FILE *stream)
 {
 	print_head(deref, pad, stream);
 	print_node(deref->data.expr_deref.next, pad + 1, stream);
 }
 
 void
-print_expr_elem(Ast *elem, int32_t pad, FILE *stream)
+print_expr_elem(Ast *elem, s32 pad, FILE *stream)
 {
 	print_head(elem, pad, stream);
 	print_node(elem->data.expr_elem.index, pad + 1, stream);
@@ -468,7 +468,7 @@ print_expr_elem(Ast *elem, int32_t pad, FILE *stream)
 }
 
 void
-print_expr_binop(Ast *binop, int32_t pad, FILE *stream)
+print_expr_binop(Ast *binop, s32 pad, FILE *stream)
 {
 	print_head(binop, pad, stream);
 	fprintf(stream, "'%s' ", ast_binop_to_str(binop->data.expr_binop.kind));
@@ -477,56 +477,56 @@ print_expr_binop(Ast *binop, int32_t pad, FILE *stream)
 }
 
 void
-print_expr_type(Ast *expr_type, int32_t pad, FILE *stream)
+print_expr_type(Ast *expr_type, s32 pad, FILE *stream)
 {
 	print_head(expr_type, pad, stream);
 	print_node(expr_type->data.expr_type.type, pad + 1, stream);
 }
 
 void
-print_expr_ref(Ast *ref, int32_t pad, FILE *stream)
+print_expr_ref(Ast *ref, s32 pad, FILE *stream)
 {
 	print_head(ref, pad, stream);
 	fprintf(stream, "'%s' ", ref->data.expr_ref.ident->data.ident.id.str);
 }
 
 void
-print_expr_lit_int(Ast *lit, int32_t pad, FILE *stream)
+print_expr_lit_int(Ast *lit, s32 pad, FILE *stream)
 {
 	print_head(lit, pad, stream);
 	fprintf(stream, "%llu ", (long long unsigned)lit->data.expr_integer.val);
 }
 
 void
-print_expr_lit_float(Ast *lit, int32_t pad, FILE *stream)
+print_expr_lit_float(Ast *lit, s32 pad, FILE *stream)
 {
 	print_head(lit, pad, stream);
 	fprintf(stream, "%f ", lit->data.expr_float.val);
 }
 
 void
-print_expr_lit_double(Ast *lit, int32_t pad, FILE *stream)
+print_expr_lit_double(Ast *lit, s32 pad, FILE *stream)
 {
 	print_head(lit, pad, stream);
 	fprintf(stream, "%f ", lit->data.expr_double.val);
 }
 
 void
-print_expr_lit_char(Ast *lit, int32_t pad, FILE *stream)
+print_expr_lit_char(Ast *lit, s32 pad, FILE *stream)
 {
 	print_head(lit, pad, stream);
 	fprintf(stream, "%c ", lit->data.expr_character.val);
 }
 
 void
-print_expr_lit_bool(Ast *lit, int32_t pad, FILE *stream)
+print_expr_lit_bool(Ast *lit, s32 pad, FILE *stream)
 {
 	print_head(lit, pad, stream);
 	fprintf(stream, "%s ", lit->data.expr_boolean.val ? "true" : "false");
 }
 
 void
-print_expr_lit_string(Ast *lit, int32_t pad, FILE *stream)
+print_expr_lit_string(Ast *lit, s32 pad, FILE *stream)
 {
 	print_head(lit, pad, stream);
 
@@ -538,14 +538,14 @@ print_expr_lit_string(Ast *lit, int32_t pad, FILE *stream)
 }
 
 void
-print_expr_lit_fn(Ast *fn, int32_t pad, FILE *stream)
+print_expr_lit_fn(Ast *fn, s32 pad, FILE *stream)
 {
 	print_head(fn, pad, stream);
 	print_node(fn->data.expr_fn.block, pad + 1, stream);
 }
 
 void
-print_expr_call(Ast *call, int32_t pad, FILE *stream)
+print_expr_call(Ast *call, s32 pad, FILE *stream)
 {
 	print_head(call, pad, stream);
 
@@ -558,7 +558,7 @@ print_expr_call(Ast *call, int32_t pad, FILE *stream)
 }
 
 void
-print_expr_compound(Ast *expr_compound, int32_t pad, FILE *stream)
+print_expr_compound(Ast *expr_compound, s32 pad, FILE *stream)
 {
 	print_head(expr_compound, pad, stream);
 
@@ -573,7 +573,7 @@ print_expr_compound(Ast *expr_compound, int32_t pad, FILE *stream)
 }
 
 void
-print_node(Ast *node, int32_t pad, FILE *stream)
+print_node(Ast *node, s32 pad, FILE *stream)
 {
 	if (!node) return;
 	switch (node->kind) {

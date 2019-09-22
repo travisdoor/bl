@@ -29,6 +29,7 @@
 #ifndef BL_THREADING_H
 #define BL_THREADING_H
 
+#include "common.h"
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -39,7 +40,7 @@ typedef void *Thread;
 typedef void *Mutex;
 typedef void (*ThreadFn)();
 
-uint64_t
+u64
 thread_get_id(void);
 
 Thread

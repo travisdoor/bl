@@ -42,7 +42,7 @@ struct MirVar;
 struct MirConstValue;
 
 typedef ptrdiff_t VMRelativeStackPtr;
-typedef uint8_t * VMStackPtr;
+typedef u8 *      VMStackPtr;
 
 typedef struct VMFrame {
 	struct VMFrame * prev;

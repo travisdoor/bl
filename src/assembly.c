@@ -274,7 +274,7 @@ assembly_delete(Assembly *assembly)
 }
 
 void
-assembly_setup(Assembly *assembly, uint32_t flags, OptLvl opt_lvl)
+assembly_setup(Assembly *assembly, u32 flags, OptLvl opt_lvl)
 {
 	assembly->options.debug_mode         = IS_FLAG(flags, BUILDER_FLAG_DEBUG_BUILD);
 	assembly->options.verbose_mode       = IS_FLAG(flags, BUILDER_FLAG_VERBOSE);
@@ -296,7 +296,7 @@ assembly_add_unit(Assembly *assembly, Unit *unit)
 bool
 assembly_add_unit_unique(Assembly *assembly, Unit *unit)
 {
-	uint64_t hash = 0;
+	u64 hash = 0;
 	if (unit->filepath)
 		hash = bo_hash_from_str(unit->filepath);
 	else
@@ -316,7 +316,7 @@ assembly_add_link(Assembly *assembly, Token *token)
 
 	BL_ASSERT(token->sym == SYM_STRING);
 
-	uint64_t hash = bo_hash_from_str(token->value.str);
+	u64 hash = bo_hash_from_str(token->value.str);
 	if (bo_htbl_has_key(assembly->link_cache, hash)) return;
 
 	bo_htbl_insert(assembly->link_cache, hash, token);

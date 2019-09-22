@@ -39,15 +39,12 @@ typedef struct Arena {
 	struct ArenaChunk *first_chunk;
 	struct ArenaChunk *current_chunk;
 	size_t             elem_size_in_bytes;
-	int32_t            elems_per_chunk;
+	s32                elems_per_chunk;
 	ArenaElemDtor      elem_dtor;
 } Arena;
 
 void
-arena_init(Arena *       arena,
-           size_t        elem_size_in_bytes,
-           int32_t       elems_per_chunk,
-           ArenaElemDtor elem_dtor);
+arena_init(Arena *arena, size_t elem_size_in_bytes, s32 elems_per_chunk, ArenaElemDtor elem_dtor);
 
 void
 arena_terminate(Arena *arena);

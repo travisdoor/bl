@@ -208,7 +208,7 @@ struct AstDecl {
 struct AstDeclEntity {
 	struct AstDecl base;
 	Ast *          value;
-	int32_t        flags;
+	s32            flags;
 	bool           in_gscope;
 	bool           mut;
 };
@@ -269,7 +269,7 @@ struct AstExprFile {
 };
 
 struct AstExprLine {
-	int32_t line;
+	s32 line;
 };
 
 struct AstExprType {
@@ -287,22 +287,22 @@ struct AstExprLitFn {
 };
 
 struct AstExprLitInt {
-	uint64_t val;
-	bool     overflow;
+	u64  val;
+	bool overflow;
 };
 
 struct AstExprLitFloat {
-	float val;
-	bool  overflow;
+	f32  val;
+	bool overflow;
 };
 
 struct AstExprLitDouble {
-	double val;
-	bool   overflow;
+	f64  val;
+	bool overflow;
 };
 
 struct AstExprLitChar {
-	uint8_t val;
+	u8 val;
 };
 
 struct AstExprLitString {
@@ -336,9 +336,9 @@ struct AstExprCall {
 };
 
 struct AstExprMember {
-	Ast *   ident;
-	Ast *   next;
-	int32_t i;
+	Ast *ident;
+	Ast *next;
+	s32  i;
 };
 
 struct AstExprElem {
@@ -428,7 +428,7 @@ struct Ast {
 	} data;
 
 #if BL_DEBUG
-	uint64_t _serial;
+	u64 _serial;
 #endif
 };
 

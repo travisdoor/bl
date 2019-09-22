@@ -41,10 +41,10 @@
 #define MAX_ERROR_REPORTED 10
 
 static int
-compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags);
+compile_unit(Builder *builder, Unit *unit, Assembly *assembly, u32 flags);
 
 static int
-compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags);
+compile_assembly(Builder *builder, Assembly *assembly, u32 flags);
 
 static bool llvm_initialized = false;
 
@@ -73,7 +73,7 @@ llvm_init(void)
 	if ((_builder)->errorc) return COMPILE_FAIL;
 
 int
-compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags)
+compile_unit(Builder *builder, Unit *unit, Assembly *assembly, u32 flags)
 {
 	if (IS_FLAG(flags, BUILDER_FLAG_VERBOSE)) {
 		if (unit->loaded_from) {
@@ -104,7 +104,7 @@ compile_unit(Builder *builder, Unit *unit, Assembly *assembly, uint32_t flags)
 }
 
 int
-compile_assembly(Builder *builder, Assembly *assembly, uint32_t flags)
+compile_assembly(Builder *builder, Assembly *assembly, u32 flags)
 {
 	if (IS_FLAG(flags, BUILDER_FLAG_PRINT_AST)) {
 		ast_printer_run(assembly, stdout);
@@ -197,11 +197,11 @@ builder_load_conf_file(Builder *builder, const char *filepath)
 }
 
 int
-builder_compile(Builder *builder, Assembly *assembly, uint32_t flags, OptLvl opt_lvl)
+builder_compile(Builder *builder, Assembly *assembly, u32 flags, OptLvl opt_lvl)
 {
 	clock_t begin = clock();
 	Unit *  unit;
-	int32_t state = COMPILE_OK;
+	s32     state = COMPILE_OK;
 
 	builder->flags = flags;
 	msg_log("Compile assembly: %s", assembly->name);
@@ -226,7 +226,7 @@ builder_compile(Builder *builder, Assembly *assembly, uint32_t flags, OptLvl opt
 	if (state == COMPILE_OK) state = compile_assembly(builder, assembly, flags);
 
 	clock_t end        = clock();
-	double  time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+	f64     time_spent = (f64)(end - begin) / CLOCKS_PER_SEC;
 
 	msg_log("Compiled %i lines in %f seconds.", builder->total_lines, time_spent);
 	if (state != COMPILE_OK) {
@@ -267,7 +267,7 @@ builder_warning(Builder *builder, const char *format, ...)
 void
 builder_msg(Builder *      builder,
             BuilderMsgType type,
-            int32_t        code,
+            s32            code,
             Location *     src,
             BuilderCurPos  pos,
             const char *   format,
@@ -280,11 +280,11 @@ builder_msg(Builder *      builder,
 	char     msg[MAX_MSG_LEN] = {0};
 
 	if (src) {
-		int32_t line     = src->line;
-		int32_t col      = src->col;
-		int32_t len      = src->len;
-		char *  color    = NULL;
-		char *  msg_mark = NULL;
+		s32   line     = src->line;
+		s32   col      = src->col;
+		s32   len      = src->len;
+		char *color    = NULL;
+		char *msg_mark = NULL;
 
 		switch (type) {
 		case BUILDER_MSG_ERROR:
@@ -342,7 +342,7 @@ builder_msg(Builder *      builder,
 		va_end(args);
 		bo_string_append(tmp, &msg[0]);
 
-		int32_t     pad      = sprintf(msg, "%d", src->line) + 2;
+		s32         pad      = sprintf(msg, "%d", src->line) + 2;
 		long        line_len = 0;
 		const char *line_str = unit_get_src_ln(src->unit, src->line - 1, &line_len);
 		if (line_str && line_len) {
@@ -368,7 +368,7 @@ builder_msg(Builder *      builder,
 			bo_string_append(tmp, " | ");
 
 			bo_string_append(tmp, color);
-			for (int32_t i = 0; i < col + len - 1; ++i) {
+			for (s32 i = 0; i < col + len - 1; ++i) {
 				if (i < col - 1)
 					bo_string_append(tmp, " ");
 				else

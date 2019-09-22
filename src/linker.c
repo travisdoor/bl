@@ -95,7 +95,7 @@ set_lib_paths(Context *cnt)
 	const char *lib_path      = conf_data_get_str(cnt->builder->conf, CONF_LINKER_LIB_PATH_KEY);
 	if (!strlen(lib_path)) return;
 
-	int32_t     len;
+	s32         len;
 	const char *begin = lib_path;
 	const char *c     = lib_path;
 	bool        done  = false;

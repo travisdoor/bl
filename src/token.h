@@ -29,6 +29,7 @@
 #ifndef BL_TOKEN_H
 #define BL_TOKEN_H
 
+#include "common.h"
 #include <bobject/bobject.h>
 #include <stdio.h>
 
@@ -48,17 +49,17 @@ extern char *sym_strings[];
 
 struct Unit;
 typedef struct Location {
-	int32_t      line;
-	int32_t      col;
-	int32_t      len;
+	s32          line;
+	s32          col;
+	s32          len;
 	struct Unit *unit;
 } Location;
 
 typedef union {
-	const char *       str;
-	char               c;
-	double             d;
-	unsigned long long u;
+	const char *str;
+	char        c;
+	f64         d;
+	u64         u;
 } TokenValue;
 
 typedef struct Token {
@@ -70,7 +71,7 @@ typedef struct Token {
 
 /* sizeof this structure is 8 bytes so it can be passed by value */
 typedef struct {
-	int32_t            priority;
+	s32                priority;
 	TokenAssociativity associativity;
 } TokenPrecedence;
 

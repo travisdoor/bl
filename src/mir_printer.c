@@ -63,7 +63,7 @@ print_instr_head(MirInstr *instr, FILE *stream, const char *name)
 }
 
 static inline void
-print_flags(uint32_t flags, FILE *stream)
+print_flags(u32 flags, FILE *stream)
 {
 	if (flags == 0) return;
 
@@ -130,7 +130,7 @@ print_const_value(MirConstValue *value, FILE *stream)
 		break;
 	}
 	case MIR_TYPE_REAL:
-		if (type->store_size_bytes == sizeof(float)) {
+		if (type->store_size_bytes == sizeof(f32)) {
 			fprintf(stream, "%f", data->v_f32);
 		} else {
 			fprintf(stream, "%f", data->v_f64);

@@ -35,11 +35,21 @@
 #include "error.h"
 #include "messages.h"
 #include "small_array.h"
-#include "threading.h"
 #include <bobject/containers/array.h>
 #include <limits.h>
 
 struct Assembly;
+
+typedef uint8_t  u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+typedef int8_t   s8;
+typedef int16_t  s16;
+typedef int32_t  s32;
+typedef int64_t  s64;
+typedef float    f32;
+typedef double   f64;
 
 #if defined(BL_COMPILER_CLANG) || defined(BL_COMPILER_GNUC)
 #define DEPRECATED __attribute__((deprecated))
@@ -83,7 +93,7 @@ struct Assembly;
 	for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);             \
 	     bo_list_iter_next((list), &(it)))
 
-extern uint64_t main_thread_id;
+extern u64 main_thread_id;
 
 SmallArrayType(AstPtr, struct Ast *, 16);
 SmallArrayType(TypePtr, struct MirType *, 16);
@@ -96,7 +106,7 @@ SmallArrayType(Char, char, 128);
 
 typedef struct ID {
 	const char *str;
-	uint64_t    hash;
+	u64         hash;
 } ID;
 
 void
@@ -106,7 +116,7 @@ bool
 file_exists(const char *filepath);
 
 const char *
-brealpath(const char *file, char *out, int32_t out_len);
+brealpath(const char *file, char *out, s32 out_len);
 
 bool
 get_dir_from_filepath(char *buf, const size_t l, const char *filepath);
@@ -121,7 +131,7 @@ bool
 get_current_exec_dir(char *buf, size_t buf_size);
 
 void
-date_time(char *buf, int32_t len, const char *format);
+date_time(char *buf, s32 len, const char *format);
 
 bool
 is_aligned(const void *p, size_t alignment);
@@ -130,10 +140,10 @@ void
 align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment);
 
 void
-print_bits(int32_t const size, void const *const ptr);
+print_bits(s32 const size, void const *const ptr);
 
 int
-count_bits(uint64_t n);
+count_bits(u64 n);
 
 void
 platform_lib_name(const char *name, char *buffer, size_t max_len);

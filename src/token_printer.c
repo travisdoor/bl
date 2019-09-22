@@ -38,7 +38,7 @@ token_printer_run(Unit *unit)
 
 	const size_t c = bo_array_size(tokens_arr);
 	Token *      tok;
-	int32_t      line = -1;
+	s32          line = -1;
 	for (size_t i = 0; i < c; ++i) {
 		tok = &bo_array_at(tokens_arr, i, Token);
 

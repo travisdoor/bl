@@ -48,8 +48,8 @@ typedef struct context {
 	Tokens * tokens;
 	jmp_buf  jmp_error;
 	char *   c;
-	int32_t  line;
-	int32_t  col;
+	s32      line;
+	s32      col;
 } Context;
 
 static void
@@ -71,7 +71,7 @@ static bool
 scan_number(Context *cnt, Token *tok);
 
 static inline int
-c_to_number(char c, int32_t base);
+c_to_number(char c, s32 base);
 
 static char
 scan_specch(char c);
@@ -115,7 +115,7 @@ scan_ident(Context *cnt, Token *tok)
 
 	char *begin = cnt->c;
 
-	int32_t len = 0;
+	s32 len = 0;
 	while (true) {
 		if (!is_intend_c(*cnt->c)) {
 			break;
@@ -175,7 +175,7 @@ scan_string(Context *cnt, Token *tok)
 
 	BString *cstr = builder_create_cached_str(cnt->builder);
 	char     c;
-	int32_t  len = 0;
+	s32      len = 0;
 
 scan:
 	while (true) {
@@ -282,7 +282,7 @@ scan_char(Context *cnt, Token *tok)
 }
 
 int
-c_to_number(char c, int32_t base)
+c_to_number(char c, s32 base)
 {
 	switch (base) {
 	case 16:
@@ -317,10 +317,10 @@ scan_number(Context *cnt, Token *tok)
 	tok->value.str     = cnt->c;
 	tok->overflow      = false;
 
-	uint64_t n = 0, prev_n = 0;
-	int32_t  len  = 0;
-	int32_t  base = 10;
-	int32_t  buf  = 0;
+	u64 n = 0, prev_n = 0;
+	s32      len  = 0;
+	s32      base = 10;
+	s32      buf  = 0;
 
 	if (strncmp(cnt->c, "0x", 2) == 0) {
 		base = 16;
@@ -371,7 +371,7 @@ scan_number(Context *cnt, Token *tok)
 	return true;
 
 scan_double : {
-	uint64_t e = 1;
+	u64 e = 1;
 
 	while (true) {
 		buf = c_to_number(*(cnt->c), 10);
@@ -401,7 +401,7 @@ scan_double : {
 		tok->sym = SYM_DOUBLE;
 	}
 
-	tok->value.d = n / (double)e;
+	tok->value.d = n / (f64)e;
 	if (tok->value.d > FLT_MAX) tok->overflow = true;
 
 	tok->location.len = len;
@@ -452,12 +452,12 @@ scan:
 	 * Scan symbols described directly as strings.
 	 */
 	size_t len = 0;
-	for (int32_t i = SYM_IF; i < SYM_NONE; ++i) {
+	for (s32 i = SYM_IF; i < SYM_NONE; ++i) {
 		len = strlen(sym_strings[i]);
 		if (strncmp(cnt->c, sym_strings[i], len) == 0) {
 			cnt->c += len;
 			tok.sym          = (Sym)i;
-			tok.location.len = (int32_t)len;
+			tok.location.len = (s32)len;
 
 			/*
 			 * Two joined symbols will be parsed as identifier.
@@ -486,7 +486,7 @@ scan:
 				           cnt->col);
 			}
 			default:
-				cnt->col += (int32_t)len;
+				cnt->col += (s32)len;
 				goto push_token;
 			}
 		}
@@ -527,7 +527,7 @@ lexer_run(Builder *builder, Unit *unit)
 	    .col     = 1,
 	};
 
-	int32_t error = 0;
+	s32 error = 0;
 	if ((error = setjmp(cnt.jmp_error))) return;
 
 	scan(&cnt);

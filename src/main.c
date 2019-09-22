@@ -32,6 +32,7 @@
 #include "error.h"
 #include "messages.h"
 #include "unit.h"
+#include "threading.h"
 #include <locale.h>
 #include <stdio.h>
 #include <string.h>
@@ -65,8 +66,7 @@ print_help(void)
 	        "when not specified)\n"
 	        "  -debug                              = Debug mode build. (when opt level is not "
 	        "specified 'none' is used)\n"
-		"  -no-llvm                            = Disable LLVM backend.\n"
-		);
+	        "  -no-llvm                            = Disable LLVM backend.\n");
 }
 
 static void
@@ -118,13 +118,13 @@ generate_conf(void)
 }
 
 int
-main(int32_t argc, char *argv[])
+main(s32 argc, char *argv[])
 {
 	setlocale(LC_ALL, "C");
 	setup_env();
 	main_thread_id = thread_get_id();
 
-	uint32_t build_flags = BUILDER_FLAG_LOAD_FROM_FILE;
+	u32 build_flags = BUILDER_FLAG_LOAD_FROM_FILE;
 
 	puts("Compiler version: " BL_VERSION " (pre-alpha)");
 #ifdef BL_DEBUG
@@ -134,10 +134,10 @@ main(int32_t argc, char *argv[])
 
 #define arg_is(_arg) (strcmp(&argv[optind][1], _arg) == 0)
 
-	bool    help      = false;
-	bool    configure = false;
-	int32_t opt_lvl   = -1;
-	int32_t optind;
+	bool help      = false;
+	bool configure = false;
+	s32  opt_lvl   = -1;
+	s32  optind;
 	for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
 		if (arg_is("ast-dump")) {
 			build_flags |= BUILDER_FLAG_PRINT_AST;
@@ -260,7 +260,7 @@ main(int32_t argc, char *argv[])
 		argv++;
 	}
 
-	int32_t state = builder_compile(builder, assembly, build_flags, opt_lvl);
+	s32 state = builder_compile(builder, assembly, build_flags, opt_lvl);
 
 	char date[26];
 	date_time(date, 26, "%d-%m-%Y %H:%M:%S");

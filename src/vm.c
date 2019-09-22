@@ -29,6 +29,7 @@
 #include "vm.h"
 #include "builder.h"
 #include "mir.h"
+#include "threading.h"
 
 #define MAX_ALIGNMENT 8
 #define VERBOSE_EXEC false
@@ -252,7 +253,7 @@ get_callee(MirInstrCall *call)
 }
 
 static inline void
-exec_abort(VM *vm, int32_t report_stack_nesting)
+exec_abort(VM *vm, s32 report_stack_nesting)
 {
 	print_call_stack(vm, report_stack_nesting);
 	vm->stack->aborted = true;
@@ -304,7 +305,7 @@ stack_free(VM *vm, size_t size)
 
 	size               = stack_alloc_size(size);
 	VMStackPtr new_top = vm->stack->top_ptr - size;
-	if (new_top < (uint8_t *)(vm->stack->ra + 1)) BL_ABORT("Stack underflow!!!");
+	if (new_top < (u8 *)(vm->stack->ra + 1)) BL_ABORT("Stack underflow!!!");
 	vm->stack->top_ptr = new_top;
 	vm->stack->used_bytes -= size;
 
@@ -521,7 +522,7 @@ reset_stack(VMStack *stack)
 	stack->aborted    = false;
 	const size_t size = stack_alloc_size(sizeof(VMStack));
 	stack->used_bytes = size;
-	stack->top_ptr    = (uint8_t *)stack + size;
+	stack->top_ptr    = (u8 *)stack + size;
 }
 
 /*
@@ -550,7 +551,7 @@ copy_comptime_to_stack(VM *vm, VMStackPtr dest_ptr, MirConstValue *src_value)
 
 			BL_ASSERT(members);
 			const size_t memc = members->size;
-			for (uint32_t i = 0; i < memc; ++i) {
+			for (u32 i = 0; i < memc; ++i) {
 				member = members->data[i];
 
 				/* copy all members to variable allocated memory on the
@@ -574,7 +575,7 @@ copy_comptime_to_stack(VM *vm, VMStackPtr dest_ptr, MirConstValue *src_value)
 
 			BL_ASSERT(elems);
 			const size_t memc = elems->size;
-			for (uint32_t i = 0; i < memc; ++i) {
+			for (u32 i = 0; i < memc; ++i) {
 				elem = elems->data[i];
 
 				/* copy all elems to variable allocated memory on the stack
@@ -810,7 +811,7 @@ _dyncall_generate_signature(VM *vm, MirType *type)
 	}
 
 	case MIR_TYPE_ARRAY: {
-		for (int64_t i = 0; i < type->data.array.len; i += 1) {
+		for (s64 i = 0; i < type->data.array.len; i += 1) {
 			_dyncall_generate_signature(vm, type->data.array.elem_type);
 		}
 		break;
@@ -1434,7 +1435,7 @@ interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 		BL_ASSERT(elem_type);
 
 		{
-			const int64_t len = arr_type->data.array.len;
+			const s64 len = arr_type->data.array.len;
 			if (index.v_s64 >= len) {
 				msg_error("Array index is out of the bounds! Array index "
 				          "is: %lli, "
@@ -1488,11 +1489,11 @@ interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 		          member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
 		MirMember *member = member_ptr->scope_entry->data.member;
 		BL_ASSERT(member);
-		const int64_t index = member->index;
+		const s64 index = member->index;
 
 		/* let the llvm solve poiner offest */
 		const ptrdiff_t ptr_offset =
-		    mir_get_struct_elem_offest(vm->assembly, target_type, (uint32_t)index);
+		    mir_get_struct_elem_offest(vm->assembly, target_type, (u32)index);
 
 		result.v_ptr.data.stack_ptr = ptr + ptr_offset; // pointer shift
 	} else {
@@ -1554,7 +1555,7 @@ interp_instr_cast(VM *vm, MirInstrCast *cast)
 
 #define sext_case(v, T)                                                                            \
 	case sizeof(v.T):                                                                          \
-		tmp.v_s64 = (int64_t)tmp.T;                                                        \
+		tmp.v_s64 = (s64)tmp.T;                                                            \
 		break;
 
 		// clang-format off
@@ -1583,7 +1584,7 @@ interp_instr_cast(VM *vm, MirInstrCast *cast)
 		VMStackPtr from_ptr = fetch_value(vm, cast->expr);
 		read_value(&tmp, from_ptr, src_type);
 
-		tmp.v_f64 = (double)tmp.v_f32;
+		tmp.v_f64 = (f64)tmp.v_f32;
 
 		if (cast->base.comptime)
 			memcpy(&cast->base.value.data, &tmp, sizeof(tmp));
@@ -1597,7 +1598,7 @@ interp_instr_cast(VM *vm, MirInstrCast *cast)
 		VMStackPtr from_ptr = fetch_value(vm, cast->expr);
 		read_value(&tmp, from_ptr, src_type);
 
-		tmp.v_f32 = (float)tmp.v_f64;
+		tmp.v_f32 = (f32)tmp.v_f64;
 
 		if (cast->base.comptime)
 			memcpy(&cast->base.value.data, &tmp, sizeof(tmp));
@@ -1611,10 +1612,10 @@ interp_instr_cast(VM *vm, MirInstrCast *cast)
 		VMStackPtr from_ptr = fetch_value(vm, cast->expr);
 		read_value(&tmp, from_ptr, src_type);
 
-		if (src_type->store_size_bytes == sizeof(float))
-			tmp.v_s32 = (int32_t)tmp.v_f32;
+		if (src_type->store_size_bytes == sizeof(f32))
+			tmp.v_s32 = (s32)tmp.v_f32;
 		else
-			tmp.v_s64 = (int64_t)tmp.v_f64;
+			tmp.v_s64 = (s64)tmp.v_f64;
 
 		if (cast->base.comptime)
 			memcpy(&cast->base.value.data, &tmp, sizeof(tmp));
@@ -1628,10 +1629,10 @@ interp_instr_cast(VM *vm, MirInstrCast *cast)
 		VMStackPtr from_ptr = fetch_value(vm, cast->expr);
 		read_value(&tmp, from_ptr, src_type);
 
-		if (src_type->store_size_bytes == sizeof(float))
-			tmp.v_u64 = (uint64_t)tmp.v_f32;
+		if (src_type->store_size_bytes == sizeof(f32))
+			tmp.v_u64 = (u64)tmp.v_f32;
 		else
-			tmp.v_u64 = (uint64_t)tmp.v_f64;
+			tmp.v_u64 = (u64)tmp.v_f64;
 
 		if (cast->base.comptime)
 			memcpy(&cast->base.value.data, &tmp, sizeof(tmp));
@@ -1644,34 +1645,34 @@ interp_instr_cast(VM *vm, MirInstrCast *cast)
 		VMStackPtr from_ptr = fetch_value(vm, cast->expr);
 		read_value(&tmp, from_ptr, src_type);
 
-		if (dest_type->store_size_bytes == sizeof(float)) {
+		if (dest_type->store_size_bytes == sizeof(f32)) {
 			switch (src_type->store_size_bytes) {
 			case sizeof(tmp.v_s8):
-				tmp.v_f32 = (float)tmp.v_s8;
+				tmp.v_f32 = (f32)tmp.v_s8;
 				break;
 			case sizeof(tmp.v_s16):
-				tmp.v_f32 = (float)tmp.v_s16;
+				tmp.v_f32 = (f32)tmp.v_s16;
 				break;
 			case sizeof(tmp.v_s32):
-				tmp.v_f32 = (float)tmp.v_s32;
+				tmp.v_f32 = (f32)tmp.v_s32;
 				break;
 			case sizeof(tmp.v_s64):
-				tmp.v_f32 = (float)tmp.v_s64;
+				tmp.v_f32 = (f32)tmp.v_s64;
 				break;
 			}
 		} else {
 			switch (src_type->store_size_bytes) {
 			case sizeof(tmp.v_s8):
-				tmp.v_f64 = (double)tmp.v_s8;
+				tmp.v_f64 = (f64)tmp.v_s8;
 				break;
 			case sizeof(tmp.v_s16):
-				tmp.v_f64 = (double)tmp.v_s16;
+				tmp.v_f64 = (f64)tmp.v_s16;
 				break;
 			case sizeof(tmp.v_s32):
-				tmp.v_f64 = (double)tmp.v_s32;
+				tmp.v_f64 = (f64)tmp.v_s32;
 				break;
 			case sizeof(tmp.v_s64):
-				tmp.v_f64 = (double)tmp.v_s64;
+				tmp.v_f64 = (f64)tmp.v_s64;
 				break;
 			}
 		}
@@ -1687,10 +1688,10 @@ interp_instr_cast(VM *vm, MirInstrCast *cast)
 		VMStackPtr from_ptr = fetch_value(vm, cast->expr);
 		read_value(&tmp, from_ptr, src_type);
 
-		if (dest_type->store_size_bytes == sizeof(float))
-			tmp.v_f32 = (float)tmp.v_u64;
+		if (dest_type->store_size_bytes == sizeof(f32))
+			tmp.v_f32 = (f32)tmp.v_u64;
 		else
-			tmp.v_f64 = (double)tmp.v_u64;
+			tmp.v_f64 = (f64)tmp.v_u64;
 
 		if (cast->base.comptime)
 			memcpy(&cast->base.value.data, &tmp, sizeof(tmp));
@@ -1764,7 +1765,7 @@ interp_instr_arg(VM *vm, MirInstrArg *arg)
 			MirInstr *arg_value = NULL;
 			/* starting point */
 			VMStackPtr arg_ptr = (VMStackPtr)vm->stack->ra;
-			for (uint32_t i = 0; i <= arg->i; ++i) {
+			for (u32 i = 0; i <= arg->i; ++i) {
 				arg_value = arg_values->data[i];
 				BL_ASSERT(arg_value);
 				if (arg_value->comptime) continue;
@@ -1788,7 +1789,7 @@ interp_instr_arg(VM *vm, MirInstrArg *arg)
 
 	/* starting point */
 	VMStackPtr arg_ptr = (VMStackPtr)vm->stack->ra;
-	for (uint32_t i = 0; i <= arg->i; ++i) {
+	for (u32 i = 0; i <= arg->i; ++i) {
 		arg_ptr -= stack_alloc_size(args->data[i]->type->store_size_bytes);
 	}
 
@@ -1901,12 +1902,11 @@ interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 		case MIR_TYPE_SLICE:
 		case MIR_TYPE_VARGS:
 		case MIR_TYPE_STRUCT:
-			elem_ptr =
-			    tmp_ptr + mir_get_struct_elem_offest(vm->assembly, type, (uint32_t)i);
+			elem_ptr = tmp_ptr + mir_get_struct_elem_offest(vm->assembly, type, (u32)i);
 			break;
 
 		case MIR_TYPE_ARRAY:
-			elem_ptr = tmp_ptr + mir_get_array_elem_offset(type, (uint32_t)i);
+			elem_ptr = tmp_ptr + mir_get_array_elem_offset(type, (u32)i);
 			break;
 
 		default:

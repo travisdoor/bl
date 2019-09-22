@@ -267,13 +267,13 @@ struct MirFn {
 	bool         emit_llvm;
 	bool         is_in_gscope;
 
-	int32_t     flags;
+	s32         flags;
 	const char *test_case_desc;
 
 	/* pointer to the first block inside function body */
 	MirInstrBlock *first_block;
 	MirInstrBlock *last_block;
-	int32_t        block_count;
+	s32            block_count;
 
 	/* Teporary variable used for return value. */
 	MirInstr *ret_tmp;
@@ -294,8 +294,8 @@ struct MirMember {
 	ID *     id;
 	Ast *    decl_node;
 	Scope *  decl_scope;
-	int32_t  offset_bytes;
-	int64_t  index;
+	s32      offset_bytes;
+	s64      index;
 };
 
 /* FUNCTION ARGUMENT */
@@ -309,12 +309,12 @@ struct MirArg {
 
 /* TYPE */
 struct MirTypeInt {
-	int32_t bitcount;
-	bool    is_signed;
+	s32  bitcount;
+	bool is_signed;
 };
 
 struct MirTypeReal {
-	int32_t bitcount;
+	s32 bitcount;
 };
 
 struct MirTypeFn {
@@ -346,7 +346,7 @@ struct MirTypeNull {
 
 struct MirTypeArray {
 	MirType *elem_type;
-	int64_t  len;
+	s64      len;
 };
 
 struct MirType {
@@ -357,7 +357,7 @@ struct MirType {
 	LLVMMetadataRef llvm_meta;
 	size_t          size_bits;
 	size_t          store_size_bytes;
-	int32_t         alignment;
+	s32             alignment;
 
 	/*
 	 * Every unique type will cause generation of type info global constant in program
@@ -398,18 +398,18 @@ struct MirConstPtr {
 /* VALUE */
 union MirConstValueData {
 	/* atomic types */
-	int64_t  v_s64;
-	int32_t  v_s32;
-	int16_t  v_s16;
-	int8_t   v_s8;
-	uint64_t v_u64;
-	uint32_t v_u32;
-	uint16_t v_u16;
-	uint8_t  v_u8;
-	float    v_f32;
-	double   v_f64;
-	bool     v_bool;
-	char     v_char;
+	s64  v_s64;
+	s32  v_s32;
+	s16  v_s16;
+	s8   v_s8;
+	u64  v_u64;
+	u32  v_u32;
+	u16  v_u16;
+	u8   v_u8;
+	f32  v_f32;
+	f64  v_f64;
+	bool v_bool;
+	char v_char;
 
 	MirConstPtr v_ptr;
 
@@ -443,13 +443,13 @@ struct MirVar {
 	ID *               id;
 	Ast *              decl_node;
 	Scope *            decl_scope;
-	int32_t            ref_count;
+	s32                ref_count;
 	bool               is_mutable;
 	bool               comptime;
 	bool               is_in_gscope;
 	bool               is_implicit;
 	bool               gen_llvm;
-	uint32_t           flags;
+	u32                flags;
 	VMRelativeStackPtr rel_stack_ptr;
 	LLVMValueRef       llvm_value;
 	const char *       llvm_name;
@@ -458,15 +458,15 @@ struct MirVar {
 struct MirInstr {
 	MirConstValue  value; // must be first
 	MirInstrKind   kind;
-	uint64_t       id;
+	u64            id;
 	Ast *          node;
 	MirInstrBlock *owner_block;
 	LLVMValueRef   llvm_value;
 
-	int32_t ref_count;
-	bool    analyzed;
-	bool    comptime;
-	bool    unrechable;
+	s32  ref_count;
+	bool analyzed;
+	bool comptime;
+	bool unrechable;
 
 	MirInstr *prev;
 	MirInstr *next;
@@ -786,7 +786,7 @@ mir_is_composit_type(MirType *type)
 }
 
 static inline MirType *
-mir_get_struct_elem_type(MirType *type, uint32_t i)
+mir_get_struct_elem_type(MirType *type, u32 i)
 {
 	BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
 	SmallArray_MemberPtr *members = type->data.strct.members;
@@ -803,13 +803,13 @@ mir_set_const_ptr(MirConstPtr *value, void *ptr, MirConstPtrKind kind)
 }
 
 ptrdiff_t
-mir_get_struct_elem_offest(struct Assembly *assembly, MirType *type, uint32_t i);
+mir_get_struct_elem_offest(struct Assembly *assembly, MirType *type, u32 i);
 
 ptrdiff_t
-mir_get_array_elem_offset(MirType *type, uint32_t i);
+mir_get_array_elem_offset(MirType *type, u32 i);
 
 static inline MirType *
-mir_get_fn_arg_type(MirType *type, uint32_t i)
+mir_get_fn_arg_type(MirType *type, u32 i)
 {
 	BL_ASSERT(type->kind == MIR_TYPE_FN && "Expected function type");
 	SmallArray_ArgPtr *args = type->data.fn.args;
@@ -826,7 +826,7 @@ void
 mir_arenas_terminate(MirArenas *arenas);
 
 void
-mir_type_to_str(char *buf, int32_t len, MirType *type, bool prefer_name);
+mir_type_to_str(char *buf, s32 len, MirType *type, bool prefer_name);
 
 const char *
 mir_instr_name(MirInstr *instr);

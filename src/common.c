@@ -39,7 +39,7 @@
 #include <mach-o/dyld.h>
 #endif
 
-uint64_t main_thread_id = 0;
+u64 main_thread_id = 0;
 
 bool
 get_current_exec_path(char *buf, size_t buf_size)
@@ -49,7 +49,7 @@ get_current_exec_path(char *buf, size_t buf_size)
 #elif defined(BL_PLATFORM_LINUX)
 	return readlink("/proc/self/exe", buf, buf_size) != -1;
 #elif defined(BL_PLATFORM_MACOS)
-	return _NSGetExecutablePath(buf, (uint32_t *)&buf_size) != -1;
+	return _NSGetExecutablePath(buf, (u32 *)&buf_size) != -1;
 #endif
 	return false;
 }
@@ -83,7 +83,7 @@ file_exists(const char *filepath)
 }
 
 const char *
-brealpath(const char *file, char *out, int32_t out_len)
+brealpath(const char *file, char *out, s32 out_len)
 {
 	const char *resolved = NULL;
 	BL_ASSERT(out);
@@ -99,7 +99,7 @@ brealpath(const char *file, char *out, int32_t out_len)
 }
 
 void
-date_time(char *buf, int32_t len, const char *format)
+date_time(char *buf, s32 len, const char *format)
 {
 	BL_ASSERT(buf && len);
 	time_t     timer;
@@ -137,11 +137,11 @@ align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
 }
 
 void
-print_bits(int32_t const size, void const *const ptr)
+print_bits(s32 const size, void const *const ptr)
 {
 	unsigned char *b = (unsigned char *)ptr;
 	unsigned char  byte;
-	int32_t        i, j;
+	s32            i, j;
 
 	for (i = size - 1; i >= 0; i--) {
 		for (j = 7; j >= 0; j--) {
@@ -153,7 +153,7 @@ print_bits(int32_t const size, void const *const ptr)
 }
 
 int
-count_bits(uint64_t n)
+count_bits(u64 n)
 {
 	int count = 0;
 	while (n) {

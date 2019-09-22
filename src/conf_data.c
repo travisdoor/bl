@@ -44,23 +44,23 @@ conf_data_delete(ConfData *data)
 bool
 conf_data_has_key(ConfData *data, const char *key)
 {
-	const uint64_t hash = bo_hash_from_str(key);
+	const u64 hash = bo_hash_from_str(key);
 	return bo_htbl_has_key(data, hash);
 }
 
 void
 conf_data_add(ConfData *data, const char *key, ConfDataValue *value)
 {
-	const uint64_t hash = bo_hash_from_str(key);
+	const u64 hash = bo_hash_from_str(key);
 	bo_htbl_insert(data, hash, *value);
 }
 
 ConfDataValue *
 conf_data_get(ConfData *data, const char *key)
 {
-	const uint64_t hash = bo_hash_from_str(key);
-	bo_iterator_t  it   = bo_htbl_find(data, hash);
-	bo_iterator_t  end  = bo_htbl_end(data);
+	const u64     hash = bo_hash_from_str(key);
+	bo_iterator_t it   = bo_htbl_find(data, hash);
+	bo_iterator_t end  = bo_htbl_end(data);
 
 	if (bo_iterator_equal(&it, &end)) {
 		BL_ABORT("Missing conf entry '%s'.", key);

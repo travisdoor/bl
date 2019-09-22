@@ -114,7 +114,7 @@ void
 assembly_delete(Assembly *assembly);
 
 void
-assembly_setup(Assembly *assembly, uint32_t flags, OptLvl opt_lvl);
+assembly_setup(Assembly *assembly, u32 flags, OptLvl opt_lvl);
 
 void
 assembly_add_unit(Assembly *assembly, Unit *unit);

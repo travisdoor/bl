@@ -157,9 +157,9 @@ unit_delete(Unit *unit)
 }
 
 const char *
-unit_get_src_ln(Unit *unit, int32_t line, long *len)
+unit_get_src_ln(Unit *unit, s32 line, long *len)
 {
-	int32_t     l    = 1;
+	s32         l    = 1;
 	const char *iter = unit->src;
 	while (iter && l != line) {
 		++l;

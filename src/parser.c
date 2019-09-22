@@ -122,10 +122,10 @@ static void
 parse_ublock_content(Context *cnt, Ast *ublock);
 
 static Ast *
-parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfied);
+parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied);
 
 static void
-parse_flags_for_curr_decl(Context *cnt, uint32_t acceped_flags);
+parse_flags_for_curr_decl(Context *cnt, u32 acceped_flags);
 
 static Ast *
 parse_unrecheable(Context *cnt);
@@ -198,7 +198,7 @@ static Ast *
 parse_expr(Context *cnt);
 
 static Ast *
-_parse_expr(Context *cnt, int32_t p);
+_parse_expr(Context *cnt, s32 p);
 
 static Ast *
 parse_expr_atom(Context *cnt);
@@ -353,16 +353,16 @@ parse_expr_ref(Context *cnt)
 }
 
 void
-parse_flags_for_curr_decl(Context *cnt, uint32_t acceped_flags)
+parse_flags_for_curr_decl(Context *cnt, u32 acceped_flags)
 {
-	uint32_t flags = 0;
+	u32 flags = 0;
 
 	HashDirective found = HD_NONE;
 
 	const bool is_curr_decl_valid = decl_get(cnt) && decl_get(cnt)->kind == AST_DECL_ENTITY;
 
 	/* flags are accepted only for named declarations */
-	uint32_t accepted = is_curr_decl_valid ? acceped_flags : HD_NONE;
+	u32 accepted = is_curr_decl_valid ? acceped_flags : HD_NONE;
 
 	while (true) {
 		parse_hash_directive(cnt, accepted, &found);
@@ -398,7 +398,7 @@ parse_flags_for_curr_decl(Context *cnt, uint32_t acceped_flags)
  * <#><load|link|test|extern|compiler>
  */
 Ast *
-parse_hash_directive(Context *cnt, int32_t expected_mask, HashDirective *satisfied)
+parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 {
 #define set_satisfied(_hd)                                                                         \
 	{                                                                                          \
@@ -1298,7 +1298,7 @@ parse_expr(Context *cnt)
 }
 
 Ast *
-_parse_expr(Context *cnt, int32_t p)
+_parse_expr(Context *cnt, s32 p)
 {
 	Ast *lhs = parse_expr_atom(cnt);
 	Ast *tmp = NULL;
@@ -1314,9 +1314,9 @@ _parse_expr(Context *cnt, int32_t p)
 	       token_prec(tokens_peek(cnt->tokens)).priority >= p) {
 		Token *op = tokens_consume(cnt->tokens);
 
-		const int32_t q = token_prec(op).associativity == TOKEN_ASSOC_LEFT
-		                      ? token_prec(op).priority + 1
-		                      : token_prec(op).priority;
+		const s32 q = token_prec(op).associativity == TOKEN_ASSOC_LEFT
+		                  ? token_prec(op).priority + 1
+		                  : token_prec(op).priority;
 
 		Ast *rhs = _parse_expr(cnt, q);
 		if (!lhs || !rhs) {
@@ -1483,7 +1483,7 @@ parse_expr_lit(Context *cnt)
 
 	case SYM_CHAR:
 		lit = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_CHAR, tok, scope_get(cnt));
-		lit->data.expr_character.val = (uint8_t)tok->value.c;
+		lit->data.expr_character.val = (u8)tok->value.c;
 
 		break;
 
@@ -1510,7 +1510,7 @@ parse_expr_lit(Context *cnt)
 
 	case SYM_FLOAT:
 		lit = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FLOAT, tok, scope_get(cnt));
-		lit->data.expr_float.val      = (float)tok->value.d;
+		lit->data.expr_float.val      = (f32)tok->value.d;
 		lit->data.expr_float.overflow = tok->overflow;
 		break;
 

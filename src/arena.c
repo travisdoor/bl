@@ -32,7 +32,7 @@
 
 typedef struct ArenaChunk {
 	struct ArenaChunk *next;
-	int32_t            count;
+	s32                count;
 } ArenaChunk;
 
 static inline ArenaChunk *
@@ -48,7 +48,7 @@ alloc_chunk(Arena *arena)
 }
 
 static inline void *
-get_from_chunk(Arena *arena, ArenaChunk *chunk, int32_t i)
+get_from_chunk(Arena *arena, ArenaChunk *chunk, s32 i)
 {
 	void *elem = (void *)((char *)chunk + (i * arena->elem_size_in_bytes));
 	/* New node pointer in chunk must be aligned. (ALLOCATED SIZE FOR EVERY NODE MUST BE
@@ -65,7 +65,7 @@ free_chunk(Arena *arena, ArenaChunk *chunk)
 	if (!chunk) return NULL;
 
 	ArenaChunk *next = chunk->next;
-	for (int32_t i = 0; i < chunk->count - 1; ++i) {
+	for (s32 i = 0; i < chunk->count - 1; ++i) {
 		if (arena->elem_dtor) arena->elem_dtor(get_from_chunk(arena, chunk, i + 1));
 	}
 
@@ -74,10 +74,7 @@ free_chunk(Arena *arena, ArenaChunk *chunk)
 }
 
 void
-arena_init(Arena *       arena,
-           size_t        elem_size_in_bytes,
-           int32_t       elems_per_chunk,
-           ArenaElemDtor elem_dtor)
+arena_init(Arena *arena, size_t elem_size_in_bytes, s32 elems_per_chunk, ArenaElemDtor elem_dtor)
 {
 	arena->elem_size_in_bytes = elem_size_in_bytes + MAX_ALIGNMENT;
 	arena->elems_per_chunk    = elems_per_chunk;
