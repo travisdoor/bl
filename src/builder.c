@@ -43,10 +43,10 @@
 Builder builder;
 
 static int
-compile_unit(Unit *unit, Assembly *assembly, u32 flags);
+compile_unit(Unit *unit, Assembly *assembly);
 
 static int
-compile_assembly(Assembly *assembly, u32 flags);
+compile_assembly(Assembly *assembly);
 
 static bool llvm_initialized = false;
 
@@ -75,9 +75,9 @@ llvm_init(void)
 	if (builder.errorc) return COMPILE_FAIL;
 
 int
-compile_unit(Unit *unit, Assembly *assembly, u32 flags)
+compile_unit(Unit *unit, Assembly *assembly)
 {
-	if (IS_FLAG(flags, BUILDER_FLAG_VERBOSE)) {
+    if (builder.options.verbose) {
 		if (unit->loaded_from) {
 			msg_log("Compile: %s (loaded from '%s')",
 			        unit->name,
@@ -87,15 +87,13 @@ compile_unit(Unit *unit, Assembly *assembly, u32 flags)
 		}
 	}
 
-	if (IS_FLAG(flags, BUILDER_FLAG_LOAD_FROM_FILE)) {
 		file_loader_run(unit);
 		INTERRUPT_ON_ERROR;
-	}
 
 	lexer_run(unit);
 	INTERRUPT_ON_ERROR;
 
-	if (IS_FLAG(flags, BUILDER_FLAG_PRINT_TOKENS)) {
+    if (builder.options.print_tokens) {
 		token_printer_run(unit);
 		INTERRUPT_ON_ERROR;
 	}
@@ -106,9 +104,9 @@ compile_unit(Unit *unit, Assembly *assembly, u32 flags)
 }
 
 int
-compile_assembly(Assembly *assembly, u32 flags)
+compile_assembly(Assembly *assembly)
 {
-	if (IS_FLAG(flags, BUILDER_FLAG_PRINT_AST)) {
+	if (builder.options.print_ast) {
 		ast_printer_run(assembly, stdout);
 	}
 	INTERRUPT_ON_ERROR;
@@ -116,25 +114,25 @@ compile_assembly(Assembly *assembly, u32 flags)
 	linker_run(assembly);
 	INTERRUPT_ON_ERROR;
 
-	if (IS_FLAG(flags, BUILDER_FLAG_SYNTAX_ONLY)) return COMPILE_OK;
+	if (builder.options.syntax_only) return COMPILE_OK;
 
 	mir_run(assembly);
-	if (IS_FLAG(flags, BUILDER_FLAG_EMIT_MIR)) mir_writer_run(assembly);
+	if (builder.options.emit_mir) mir_writer_run(assembly);
 	INTERRUPT_ON_ERROR;
 
-	if (IS_FLAG(flags, BUILDER_FLAG_NO_LLVM)) return COMPILE_OK;
+	if (builder.options.no_llvm) return COMPILE_OK;
 	ir_run(assembly);
 	INTERRUPT_ON_ERROR;
 
 	ir_opt_run(assembly);
 	INTERRUPT_ON_ERROR;
 
-	if (IS_FLAG(flags, BUILDER_FLAG_EMIT_LLVM)) {
+	if (builder.options.emit_llvm) {
 		bc_writer_run(assembly);
 		INTERRUPT_ON_ERROR;
 	}
 
-	if (IS_NOT_FLAG(flags, BUILDER_FLAG_NO_BIN)) {
+	if (!builder.options.no_bin) {
 		obj_writer_run(assembly);
 		INTERRUPT_ON_ERROR;
 		native_bin_run(assembly);
@@ -145,10 +143,68 @@ compile_assembly(Assembly *assembly, u32 flags)
 }
 
 /* public */
+s32
+builder_parse_options(s32 argc, char *argv[])
+{
+#define arg_is(_arg) (strcmp(&argv[optind][1], _arg) == 0)
+
+	builder.options.opt_level = OPT_NOT_SPECIFIED;
+	s32  optind;
+	for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
+		if (arg_is("ast-dump")) {
+			builder.options.print_ast = true;
+		} else if (arg_is("h") || arg_is("help")) {
+			builder.options.print_help = true;
+		} else if (arg_is("lex-dump")) {
+			builder.options.print_tokens = true;
+		} else if (arg_is("syntax-only")) {
+			builder.options.syntax_only = true;
+		} else if (arg_is("emit-llvm")) {
+			builder.options.emit_llvm = true;
+		} else if (arg_is("emit-mir")) {
+			builder.options.emit_mir= true;
+		} else if (arg_is("r") || arg_is("run")) {
+			builder.options.run= true;
+		} else if (arg_is("rt") || arg_is("run-tests")) {
+			builder.options.run_tests= true;
+		} else if (arg_is("no-bin")) {
+			builder.options.no_bin= true;
+		} else if (arg_is("no-warning")) {
+			builder.options.no_warn= true;
+		} else if (arg_is("verbose")) {
+			builder.options.verbose= true;
+		} else if (arg_is("no-api")) {
+			builder.options.no_api= true;
+		} else if (arg_is("force-test-to-llvm")) {
+			builder.options.force_test_llvm= true;
+		} else if (arg_is("debug")) {
+			builder.options.debug_build= true;
+		} else if (arg_is("no-llvm")) {
+			builder.options.no_llvm= true;
+		} else if (arg_is("configure")) {
+			builder.options.run_configure= true;
+		} else if (arg_is("opt-none")) {
+			builder.options.opt_level = OPT_NONE;
+		} else if (arg_is("opt-less")) {
+			builder.options.opt_level = OPT_LESS;
+		} else if (arg_is("opt-default")) {
+			builder.options.opt_level = OPT_DEFAULT;
+		} else if (arg_is("opt-aggressive")) {
+			builder.options.opt_level = OPT_AGGRESSIVE;
+		} else {
+			msg_error("invalid params '%s'", &argv[optind][1]);
+			return -1;
+		}
+	}
+	argv += optind;
+	return optind;
+#undef arg_is
+}
+
 void
 builder_init(void)
 {
-	builder.flags     = 0;
+	memset(&builder, 0, sizeof(Builder));
 	builder.errorc    = 0;
 	builder.str_cache = bo_array_new_bo(bo_typeof(BString), true);
 	builder.conf      = conf_data_new();
@@ -193,16 +249,13 @@ builder_load_conf_file(const char *filepath)
 }
 
 int
-builder_compile(Assembly *assembly, u32 flags, OptLvl opt_lvl)
+builder_compile(Assembly *assembly)
 {
 	clock_t begin = clock();
 	Unit *  unit;
 	s32     state = COMPILE_OK;
 
-	builder.flags = flags;
 	msg_log("Compile assembly: %s", assembly->name);
-
-	assembly_setup(assembly, flags, opt_lvl);
 
 	{
 		unit = unit_new_file(CORE_SOURCE_FILE, NULL, NULL);
@@ -214,12 +267,12 @@ builder_compile(Assembly *assembly, u32 flags, OptLvl opt_lvl)
 	BARRAY_FOREACH(assembly->units, unit)
 	{
 		/* IDEA: can run in separate thread */
-		if ((state = compile_unit(unit, assembly, flags)) != COMPILE_OK) {
+		if ((state = compile_unit(unit, assembly)) != COMPILE_OK) {
 			break;
 		}
 	}
 
-	if (state == COMPILE_OK) state = compile_assembly(assembly, flags);
+	if (state == COMPILE_OK) state = compile_assembly(assembly);
 
 	clock_t end        = clock();
 	f64     time_spent = (f64)(end - begin) / CLOCKS_PER_SEC;
@@ -269,7 +322,7 @@ builder_msg(BuilderMsgType type,
             ...)
 {
 	if (type == BUILDER_MSG_ERROR && builder.errorc > MAX_ERROR_REPORTED) return;
-	if (IS_FLAG(builder.flags, BUILDER_FLAG_NO_WARN) && type == BUILDER_MSG_WARNING) return;
+	if (builder.options.no_warn && type == BUILDER_MSG_WARNING) return;
 
 	BString *tmp              = bo_string_new(MAX_MSG_LEN);
 	char     msg[MAX_MSG_LEN] = {0};

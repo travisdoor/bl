@@ -30,7 +30,7 @@
 
 char *sym_strings[] = {
 #define sm(tok, str) str,
-#include "token.def"
+#include "token.inc"
 #undef sm
 };
 

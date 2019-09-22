@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 4.10.0, 2019-09-21T14:32:06. -->
+<!-- Written by QtCreator 4.10.0, 2019-09-22T21:22:48. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -77,6 +77,8 @@
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.0">
     <valuelist type="QVariantList" key="CMake.Configuration">
      <value type="QString">CMAKE_BUILD_TYPE:STRING=Debug</value>
+     <value type="QString">CMAKE_CXX_COMPILER:FILEPATH=/usr/local/bin/clang++</value>
+     <value type="QString">CMAKE_C_COMPILER:FILEPATH=/usr/local/bin/clang</value>
     </valuelist>
     <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/Users/travis/Develop/bl/build</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">

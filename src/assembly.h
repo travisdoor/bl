@@ -42,13 +42,6 @@
 struct MirModule;
 struct Builder;
 
-typedef enum OptLvl {
-	OPT_NONE,
-	OPT_LESS,
-	OPT_DEFAULT,
-	OPT_AGGRESSIVE,
-} OptLvl;
-
 typedef struct Assembly {
 	struct {
 		ScopeArenas scope;
@@ -86,15 +79,6 @@ typedef struct Assembly {
 	BHashTable *type_table; /* type table key: type ID, value: *MirType */
 	char *      name;       /* assembly name */
 	Scope *     gscope;     /* global scope of the assembly */
-
-	struct {
-		bool   debug_mode; /* indicates whether assembly produce debug informations */
-		bool   verbose_mode;
-		bool   force_test_to_llvm;
-		bool   run_tests;
-		bool   run_main;
-		OptLvl opt_lvl; /* level of optimization passed to LLVM */
-	} options;
 } Assembly;
 
 typedef struct NativeLib {
@@ -112,9 +96,6 @@ assembly_new(const char *name);
 
 void
 assembly_delete(Assembly *assembly);
-
-void
-assembly_setup(Assembly *assembly, u32 flags, OptLvl opt_lvl);
 
 void
 assembly_add_unit(Assembly *assembly, Unit *unit);

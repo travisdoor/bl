@@ -119,27 +119,16 @@ init_llvm(Assembly *assembly)
 		BL_ABORT("cannot get target");
 	}
 
-	LLVMCodeGenOptLevel opt_lvl = LLVMCodeGenLevelDefault;
-	switch (assembly->options.opt_lvl) {
-	case OPT_NONE:
-		opt_lvl = LLVMCodeGenLevelNone;
-		break;
-	case OPT_LESS:
-		opt_lvl = LLVMCodeGenLevelLess;
-		break;
-	case OPT_DEFAULT:
-		opt_lvl = LLVMCodeGenLevelDefault;
-		break;
-	case OPT_AGGRESSIVE:
-		opt_lvl = LLVMCodeGenLevelAggressive;
-		break;
-	}
-
 	LLVMContextRef llvm_context = LLVMContextCreate();
 	LLVMModuleRef llvm_module = LLVMModuleCreateWithNameInContext(assembly->name, llvm_context);
 
-	LLVMTargetMachineRef llvm_tm = LLVMCreateTargetMachine(
-	    llvm_target, triple, cpu, features, opt_lvl, LLVMRelocDefault, LLVMCodeModelDefault);
+	LLVMTargetMachineRef llvm_tm = LLVMCreateTargetMachine(llvm_target,
+	                                                       triple,
+	                                                       cpu,
+	                                                       features,
+	                                                       builder.options.opt_level,
+	                                                       LLVMRelocDefault,
+	                                                       LLVMCodeModelDefault);
 
 	LLVMTargetDataRef llvm_td = LLVMCreateTargetDataLayout(llvm_tm);
 	LLVMSetModuleDataLayout(llvm_module, llvm_td);
@@ -242,6 +231,9 @@ assembly_new(const char *name)
 	init_dl(assembly);
 	init_mir(assembly);
 
+	init_llvm(assembly);
+	if (builder.options.debug_build) init_DI(assembly);
+
 	return assembly;
 }
 
@@ -271,20 +263,6 @@ assembly_delete(Assembly *assembly)
 	terminate_mir(assembly);
 	terminate_llvm(assembly);
 	bl_free(assembly);
-}
-
-void
-assembly_setup(Assembly *assembly, u32 flags, OptLvl opt_lvl)
-{
-	assembly->options.debug_mode         = IS_FLAG(flags, BUILDER_FLAG_DEBUG_BUILD);
-	assembly->options.verbose_mode       = IS_FLAG(flags, BUILDER_FLAG_VERBOSE);
-	assembly->options.force_test_to_llvm = IS_FLAG(flags, BUILDER_FLAG_FORCE_TEST_LLVM);
-	assembly->options.run_tests          = IS_FLAG(flags, BUILDER_FLAG_RUN_TESTS);
-	assembly->options.run_main           = IS_FLAG(flags, BUILDER_FLAG_RUN);
-	assembly->options.opt_lvl            = opt_lvl;
-
-	init_llvm(assembly);
-	if (assembly->options.debug_mode) init_DI(assembly);
 }
 
 void

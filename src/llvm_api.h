@@ -51,7 +51,7 @@ extern "C" {
 /* This def declarations must matc with 'llvm/IR/Attributes.inc'*/
 typedef enum {
 	LLVM_ATTRIBUTE_NONE,
-#include "llvm_attributes.def"
+#include "llvm_attributes.inc"
 } LLVMAttributeKind;
 
 LLVMAttributeRef

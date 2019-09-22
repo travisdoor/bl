@@ -35,7 +35,7 @@
 
 typedef enum {
 #define sm(tok, str) SYM_##tok,
-#include "token.def"
+#include "token.inc"
 #undef sm
 } Sym;
 

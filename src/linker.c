@@ -60,7 +60,7 @@ search_library(Context *   cnt,
 
 	platform_lib_name(lib_name, lib_name_full, ARRAY_SIZE(lib_name_full));
 
-	if (cnt->assembly->options.verbose_mode) msg_log("- Looking for: '%s'", lib_name_full);
+	if (builder.options.verbose) msg_log("- Looking for: '%s'", lib_name_full);
 
 	const char *dir;
 	BARRAY_FOREACH(cnt->lib_paths, dir)
@@ -73,8 +73,7 @@ search_library(Context *   cnt,
 		strcat(lib_filepath, lib_name_full);
 
 		if (file_exists(lib_filepath)) {
-			if (cnt->assembly->options.verbose_mode)
-				msg_log("  Found: '%s'", lib_filepath);
+			if (builder.options.verbose) msg_log("  Found: '%s'", lib_filepath);
 			if (out_lib_name) (*out_lib_name) = strdup(lib_name_full);
 			if (out_lib_dir) (*out_lib_dir) = strdup(dir);
 			if (out_lib_filepath) (*out_lib_filepath) = strdup(lib_filepath);
@@ -82,7 +81,7 @@ search_library(Context *   cnt,
 		}
 	}
 
-	if (cnt->assembly->options.verbose_mode) msg_log("  Not found: '%s'", lib_filepath);
+	if (builder.options.verbose) msg_log("  Not found: '%s'", lib_filepath);
 	return false;
 }
 
@@ -166,7 +165,7 @@ linker_run(Assembly *assembly)
 {
 	Context cnt = {.assembly = assembly, .lib_paths = assembly->dl.lib_paths};
 
-	if (cnt.assembly->options.verbose_mode) {
+	if (builder.options.verbose) {
 		msg_log("Running runtime linker...");
 	}
 

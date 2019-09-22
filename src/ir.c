@@ -1729,7 +1729,7 @@ ir_run(Assembly *assembly)
 	cnt.llvm_instrinsic_memset = create_memset_fn(&cnt);
 	cnt.llvm_intrinsic_memcpy  = create_memcpy_fn(&cnt);
 	cnt.llvm_di_builder        = assembly->llvm.di_builder;
-	cnt.debug_mode             = assembly->options.debug_mode;
+	cnt.debug_mode             = builder.options.debug_build;
 
 	emit_RTTI_types(&cnt);
 

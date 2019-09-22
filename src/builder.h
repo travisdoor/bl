@@ -39,30 +39,41 @@
 #define COMPILE_OK 0
 #define COMPILE_FAIL 1
 
-typedef enum {
-	BUILDER_FLAG_RUN             = 1 << 1,
-	BUILDER_FLAG_PRINT_TOKENS    = 1 << 2,
-	BUILDER_FLAG_PRINT_AST       = 1 << 3,
-	BUILDER_FLAG_LOAD_FROM_FILE  = 1 << 4,
-	BUILDER_FLAG_SYNTAX_ONLY     = 1 << 5,
-	BUILDER_FLAG_EMIT_LLVM       = 1 << 6,
-	BUILDER_FLAG_RUN_TESTS       = 1 << 7,
-	BUILDER_FLAG_NO_BIN          = 1 << 8,
-	BUILDER_FLAG_NO_WARN         = 1 << 9,
-	BUILDER_FLAG_VERBOSE         = 1 << 10,
-	BUILDER_FLAG_NO_API          = 1 << 11,
-	BUILDER_FLAG_EMIT_MIR        = 1 << 12,
-	BUILDER_FLAG_FORCE_TEST_LLVM = 1 << 13,
-	BUILDER_FLAG_DEBUG_BUILD     = 1 << 14,
-	BUILDER_FLAG_NO_LLVM         = 1 << 15,
-} BuilderFlags;
+typedef enum OptLevel {
+	OPT_NOT_SPECIFIED = -1,
+	OPT_NONE          = 0,
+	OPT_LESS          = 1,
+	OPT_DEFAULT       = 2,
+	OPT_AGGRESSIVE    = 3,
+} OptLevel;
+
+typedef struct BuilderOpions {
+	OptLevel opt_level;
+	bool     print_help;
+	bool     print_tokens;
+	bool     print_ast;
+	bool     run;
+	bool     run_tests;
+	bool     run_configure;
+	bool     no_bin;
+	bool     no_warn;
+	bool     no_api;
+	bool     no_llvm;
+	bool     emit_llvm;
+	bool     emit_mir;
+	bool     load_from_file;
+	bool     syntax_only;
+	bool     verbose;
+	bool     force_test_llvm;
+	bool     debug_build;
+} BuilderOptions;
 
 typedef struct Builder {
-	u32       flags;
-	s32       total_lines;
-	s32       errorc;
-	BArray *  str_cache;
-	ConfData *conf;
+	BuilderOptions options;
+	s32            total_lines;
+	s32            errorc;
+	BArray *       str_cache;
+	ConfData *     conf;
 } Builder;
 
 /* Builder global instance */
@@ -90,11 +101,14 @@ builder_init(void);
 void
 builder_terminate(void);
 
+s32
+builder_parse_options(s32 argc, char *argv[]);
+
 int
 builder_load_conf_file(const char *filepath);
 
 int
-builder_compile(Assembly *assembly, u32 flags, OptLvl opt_lvl);
+builder_compile(Assembly *assembly);
 
 void
 builder_error(const char *format, ...);

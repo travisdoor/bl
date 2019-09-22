@@ -6979,7 +6979,7 @@ ast_test_case(Context *cnt, Ast *test)
 
 	fn_proto->base.value.type = cnt->builtin_types.t_test_case_fn;
 
-	const bool  emit_llvm    = cnt->assembly->options.force_test_to_llvm;
+	const bool  emit_llvm    = builder.options.force_test_llvm;
 	const char *linkage_name = gen_uq_name(TEST_CASE_FN_NAME);
 	const bool  is_in_gscope =
 	    test->owner_scope->kind == SCOPE_GLOBAL || test->owner_scope->kind == SCOPE_PRIVATE;
@@ -8574,7 +8574,7 @@ mir_run(Assembly *assembly)
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));
 	cnt.assembly                 = assembly;
-	cnt.debug_mode               = assembly->options.debug_mode;
+	cnt.debug_mode               = builder.options.debug_build;
 	cnt.analyze.verbose_pre      = false;
 	cnt.analyze.verbose_post     = false;
 	cnt.analyze.queue            = bo_list_new(sizeof(MirInstr *));
@@ -8608,8 +8608,8 @@ mir_run(Assembly *assembly)
 
 	gen_RTTI_types(&cnt);
 
-	if (assembly->options.run_tests) execute_test_cases(&cnt);
-	if (assembly->options.run_main) execute_entry_fn(&cnt);
+	if (builder.options.run_tests) execute_test_cases(&cnt);
+	if (builder.options.run) execute_entry_fn(&cnt);
 
 SKIP:
 	bo_unref(cnt.analyze.queue);

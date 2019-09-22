@@ -39,7 +39,7 @@ ir_opt_run(Assembly *assembly)
 	LLVMTargetMachineRef llvm_tm     = assembly->llvm.TM;
 
 	LLVMPassManagerBuilderRef llvm_pm_builder = LLVMPassManagerBuilderCreate();
-	LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, assembly->options.opt_lvl);
+	LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, builder.options.opt_level);
 
 	LLVMPassManagerRef llvm_pm = LLVMCreatePassManager();
 	LLVMAddAnalysisPasses(llvm_tm, llvm_pm);

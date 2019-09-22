@@ -15,7 +15,7 @@
   - [ ] remove ';' at the end struct and enum
 
 * Ideas 
-  - [ ] make builder global
+  - [X] make builder global
   - [ ] enable implicit casting only to bigger integer type and check signed unsigned also 
   - [ ] reimplement LLVM-C binding
   - [X] add MirArg
