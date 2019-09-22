@@ -36,20 +36,19 @@
 	(((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || ((c) >= '0' && (c) <= '9') || \
 	 (c) == '_')
 
-#define scan_error(cnt, code, format, ...)                                                         \
+#define scan_error(code, format, ...)                                                              \
 	{                                                                                          \
-		builder_error((cnt)->builder, (format), ##__VA_ARGS__);                            \
+		builder_error((format), ##__VA_ARGS__);                                            \
 		longjmp((cnt)->jmp_error, code);                                                   \
 	}
 
 typedef struct context {
-	Builder *builder;
-	Unit *   unit;
-	Tokens * tokens;
-	jmp_buf  jmp_error;
-	char *   c;
-	s32      line;
-	s32      col;
+	Unit *  unit;
+	Tokens *tokens;
+	jmp_buf jmp_error;
+	char *  c;
+	s32     line;
+	s32     col;
 } Context;
 
 static void
@@ -88,8 +87,7 @@ scan_comment(Context *cnt, const char *term)
 			/*
 			 * Unterminated comment
 			 */
-			scan_error(cnt,
-			           ERR_UNTERMINATED_COMMENT,
+			scan_error(ERR_UNTERMINATED_COMMENT,
 			           "%s %d:%d unterminated comment block.",
 			           cnt->unit->name,
 			           cnt->line,
@@ -127,7 +125,10 @@ scan_ident(Context *cnt, Token *tok)
 
 	if (len == 0) return false;
 
-	BString *cstr = builder_create_cached_str(cnt->builder);
+	/* RACECOND */
+	/* RACECOND */
+	/* RACECOND */
+	BString *cstr = builder_create_cached_str();
 	bo_string_appendn(cstr, begin, len);
 	tok->value.str = bo_string_get(cstr);
 
@@ -173,7 +174,10 @@ scan_string(Context *cnt, Token *tok)
 	/* eat " */
 	cnt->c++;
 
-	BString *cstr = builder_create_cached_str(cnt->builder);
+	/* RACECOND */
+	/* RACECOND */
+	/* RACECOND */
+	BString *cstr = builder_create_cached_str();
 	char     c;
 	s32      len = 0;
 
@@ -198,8 +202,7 @@ scan:
 			}
 		}
 		case '\0': {
-			scan_error(cnt,
-			           ERR_UNTERMINATED_STRING,
+			scan_error(ERR_UNTERMINATED_STRING,
 			           "%s %d:%d unterminated string.",
 			           cnt->unit->name,
 			           cnt->line,
@@ -240,16 +243,14 @@ scan_char(Context *cnt, Token *tok)
 
 	switch (*cnt->c) {
 	case '\'': {
-		scan_error(cnt,
-		           ERR_EMPTY,
+		scan_error(ERR_EMPTY,
 		           "%s %d:%d expected character in ''.",
 		           cnt->unit->name,
 		           cnt->line,
 		           cnt->col);
 	}
 	case '\0': {
-		scan_error(cnt,
-		           ERR_UNTERMINATED_STRING,
+		scan_error(ERR_UNTERMINATED_STRING,
 		           "%s %d:%d unterminated character.",
 		           cnt->unit->name,
 		           cnt->line,
@@ -269,8 +270,7 @@ scan_char(Context *cnt, Token *tok)
 
 	/* eat ' */
 	if (*cnt->c != '\'') {
-		scan_error(cnt,
-		           ERR_UNTERMINATED_STRING,
+		scan_error(ERR_UNTERMINATED_STRING,
 		           "%s %d:%d unterminated character expected '.",
 		           cnt->unit->name,
 		           cnt->line,
@@ -318,9 +318,9 @@ scan_number(Context *cnt, Token *tok)
 	tok->overflow      = false;
 
 	u64 n = 0, prev_n = 0;
-	s32      len  = 0;
-	s32      base = 10;
-	s32      buf  = 0;
+	s32 len  = 0;
+	s32 base = 10;
+	s32 buf  = 0;
 
 	if (strncmp(cnt->c, "0x", 2) == 0) {
 		base = 16;
@@ -336,8 +336,7 @@ scan_number(Context *cnt, Token *tok)
 		if (*(cnt->c) == '.') {
 
 			if (base != 10) {
-				scan_error(cnt,
-				           ERR_INVALID_TOKEN,
+				scan_error(ERR_INVALID_TOKEN,
 				           "%s %d:%d invalid suffix.",
 				           cnt->unit->name,
 				           cnt->line,
@@ -478,8 +477,7 @@ scan:
 				scan_comment(cnt, sym_strings[SYM_RBCOMMENT]);
 				goto scan;
 			case SYM_RBCOMMENT: {
-				scan_error(cnt,
-				           ERR_INVALID_TOKEN,
+				scan_error(ERR_INVALID_TOKEN,
 				           "%s %d:%d unexpected token.",
 				           cnt->unit->name,
 				           cnt->line,
@@ -501,8 +499,7 @@ scan:
 	if (scan_char(cnt, &tok)) goto push_token;
 
 	/* When symbol is unknown report error */
-	scan_error(cnt,
-	           ERR_INVALID_TOKEN,
+	scan_error(ERR_INVALID_TOKEN,
 	           "%s %d:%d Unexpected token '%c' (%d)",
 	           cnt->unit->name,
 	           cnt->line,
@@ -516,15 +513,14 @@ push_token:
 }
 
 void
-lexer_run(Builder *builder, Unit *unit)
+lexer_run(Unit *unit)
 {
 	Context cnt = {
-	    .builder = builder,
-	    .tokens  = &unit->tokens,
-	    .unit    = unit,
-	    .c       = unit->src,
-	    .line    = 1,
-	    .col     = 1,
+	    .tokens = &unit->tokens,
+	    .unit   = unit,
+	    .c      = unit->src,
+	    .line   = 1,
+	    .col    = 1,
 	};
 
 	s32 error = 0;
@@ -532,5 +528,5 @@ lexer_run(Builder *builder, Unit *unit)
 
 	scan(&cnt);
 
-	builder->total_lines += cnt.line;
+	builder.total_lines += cnt.line;
 }

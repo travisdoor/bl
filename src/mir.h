@@ -832,6 +832,6 @@ const char *
 mir_instr_name(MirInstr *instr);
 
 void
-mir_run(struct Builder *builder, struct Assembly *assembly);
+mir_run(struct Assembly *assembly);
 
 #endif

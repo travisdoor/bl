@@ -33,7 +33,7 @@
 #include "llvm_api.h"
 
 void
-ir_opt_run(Builder *builder, Assembly *assembly)
+ir_opt_run(Assembly *assembly)
 {
 	LLVMModuleRef        llvm_module = assembly->llvm.module;
 	LLVMTargetMachineRef llvm_tm     = assembly->llvm.TM;

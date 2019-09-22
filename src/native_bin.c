@@ -40,7 +40,6 @@ static const char *cmd            = "%s %s.o -o %s %s";
 #endif
 
 typedef struct {
-	Builder * builder;
 	Assembly *assembly;
 } Context;
 
@@ -73,15 +72,15 @@ add_libs(Context *cnt, char *buf, size_t len)
 }
 
 void
-native_bin_run(Builder *builder, Assembly *assembly)
+native_bin_run(Assembly *assembly)
 {
 	char    buf[4096] = {0};
-	Context cnt       = {.builder = builder, .assembly = assembly};
+	Context cnt       = {.assembly = assembly};
 
 #ifdef BL_PLATFORM_WIN
-	const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);
+	const char *linker_exec = conf_data_get_str(builder.conf, CONF_LINKER_EXEC_KEY);
 	{ /* setup link command */
-		const char *vc_vars_all = conf_data_get_str(builder->conf, CONF_VC_VARS_ALL_KEY);
+		const char *vc_vars_all = conf_data_get_str(builder.conf, CONF_VC_VARS_ALL_KEY);
 		const char *vc_arch     = "x64"; // TODO: set by compiler target arch
 		const char *opt         = conf_data_get_str(builder->conf, CONF_LINKER_OPT_KEY);
 		sprintf(buf,
@@ -94,9 +93,9 @@ native_bin_run(Builder *builder, Assembly *assembly)
 		        opt);
 	}
 #else
-        const char *linker_exec = conf_data_get_str(builder->conf, CONF_LINKER_EXEC_KEY);
+        const char *linker_exec = conf_data_get_str(builder.conf, CONF_LINKER_EXEC_KEY);
         { /* setup link command */
-                const char *opt = conf_data_get_str(builder->conf, CONF_LINKER_OPT_KEY);
+                const char *opt = conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
                 snprintf(
                     buf, ARRAY_SIZE(buf), cmd, linker_exec, assembly->name, assembly->name, opt);
         }
@@ -109,8 +108,7 @@ native_bin_run(Builder *builder, Assembly *assembly)
 	if (assembly->options.verbose_mode) msg_log("%s", buf);
 	/* TODO: handle error */
 	if (system(buf) != 0) {
-		builder_msg(builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_LIB_NOT_FOUND,
 		            NULL,
 		            BUILDER_CUR_WORD,

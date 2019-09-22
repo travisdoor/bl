@@ -40,11 +40,13 @@
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
 
-static int
-compile_unit(Builder *builder, Unit *unit, Assembly *assembly, u32 flags);
+Builder builder;
 
 static int
-compile_assembly(Builder *builder, Assembly *assembly, u32 flags);
+compile_unit(Unit *unit, Assembly *assembly, u32 flags);
+
+static int
+compile_assembly(Assembly *assembly, u32 flags);
 
 static bool llvm_initialized = false;
 
@@ -69,11 +71,11 @@ llvm_init(void)
 	llvm_initialized = true;
 }
 
-#define interrupt_on_error(_builder)                                                               \
-	if ((_builder)->errorc) return COMPILE_FAIL;
+#define INTERRUPT_ON_ERROR                                                                         \
+	if (builder.errorc) return COMPILE_FAIL;
 
 int
-compile_unit(Builder *builder, Unit *unit, Assembly *assembly, u32 flags)
+compile_unit(Unit *unit, Assembly *assembly, u32 flags)
 {
 	if (IS_FLAG(flags, BUILDER_FLAG_VERBOSE)) {
 		if (unit->loaded_from) {
@@ -86,110 +88,104 @@ compile_unit(Builder *builder, Unit *unit, Assembly *assembly, u32 flags)
 	}
 
 	if (IS_FLAG(flags, BUILDER_FLAG_LOAD_FROM_FILE)) {
-		file_loader_run(builder, unit);
-		interrupt_on_error(builder);
+		file_loader_run(unit);
+		INTERRUPT_ON_ERROR;
 	}
 
-	lexer_run(builder, unit);
-	interrupt_on_error(builder);
+	lexer_run(unit);
+	INTERRUPT_ON_ERROR;
 
 	if (IS_FLAG(flags, BUILDER_FLAG_PRINT_TOKENS)) {
 		token_printer_run(unit);
-		interrupt_on_error(builder);
+		INTERRUPT_ON_ERROR;
 	}
 
-	parser_run(builder, assembly, unit);
+	parser_run(assembly, unit);
 
 	return COMPILE_OK;
 }
 
 int
-compile_assembly(Builder *builder, Assembly *assembly, u32 flags)
+compile_assembly(Assembly *assembly, u32 flags)
 {
 	if (IS_FLAG(flags, BUILDER_FLAG_PRINT_AST)) {
 		ast_printer_run(assembly, stdout);
 	}
-	interrupt_on_error(builder);
+	INTERRUPT_ON_ERROR;
 
-	linker_run(builder, assembly);
-	interrupt_on_error(builder);
+	linker_run(assembly);
+	INTERRUPT_ON_ERROR;
 
 	if (IS_FLAG(flags, BUILDER_FLAG_SYNTAX_ONLY)) return COMPILE_OK;
 
-	mir_run(builder, assembly);
+	mir_run(assembly);
 	if (IS_FLAG(flags, BUILDER_FLAG_EMIT_MIR)) mir_writer_run(assembly);
-	interrupt_on_error(builder);
+	INTERRUPT_ON_ERROR;
 
 	if (IS_FLAG(flags, BUILDER_FLAG_NO_LLVM)) return COMPILE_OK;
-	ir_run(builder, assembly);
-	interrupt_on_error(builder);
+	ir_run(assembly);
+	INTERRUPT_ON_ERROR;
 
-	ir_opt_run(builder, assembly);
-	interrupt_on_error(builder);
+	ir_opt_run(assembly);
+	INTERRUPT_ON_ERROR;
 
 	if (IS_FLAG(flags, BUILDER_FLAG_EMIT_LLVM)) {
-		bc_writer_run(builder, assembly);
-		interrupt_on_error(builder);
+		bc_writer_run(assembly);
+		INTERRUPT_ON_ERROR;
 	}
 
 	if (IS_NOT_FLAG(flags, BUILDER_FLAG_NO_BIN)) {
-		obj_writer_run(builder, assembly);
-		interrupt_on_error(builder);
-		native_bin_run(builder, assembly);
-		interrupt_on_error(builder);
+		obj_writer_run(assembly);
+		INTERRUPT_ON_ERROR;
+		native_bin_run(assembly);
+		INTERRUPT_ON_ERROR;
 	}
 
 	return COMPILE_OK;
 }
 
 /* public */
-Builder *
-builder_new(void)
+void
+builder_init(void)
 {
-	Builder *builder = bl_calloc(1, sizeof(Builder));
-	if (!builder) BL_ABORT("bad alloc");
-
-	builder->flags     = 0;
-	builder->errorc    = 0;
-	builder->str_cache = bo_array_new_bo(bo_typeof(BString), true);
-	builder->conf      = conf_data_new();
+	builder.flags     = 0;
+	builder.errorc    = 0;
+	builder.str_cache = bo_array_new_bo(bo_typeof(BString), true);
+	builder.conf      = conf_data_new();
 
 	/* initialize LLVM statics */
 	llvm_init();
-
-	return builder;
 }
 
 void
-builder_delete(Builder *builder)
+builder_terminate(void)
 {
-	conf_data_delete(builder->conf);
-	bo_unref(builder->str_cache);
-	bl_free(builder);
+	conf_data_delete(builder.conf);
+	bo_unref(builder.str_cache);
 }
 
 int
-builder_load_conf_file(Builder *builder, const char *filepath)
+builder_load_conf_file(const char *filepath)
 {
 	Unit *unit = unit_new_file(filepath, NULL, NULL);
 
 	/* load */
-	file_loader_run(builder, unit);
-	interrupt_on_error(builder);
+	file_loader_run(unit);
+	INTERRUPT_ON_ERROR;
 
 	/* use standart lexer */
-	lexer_run(builder, unit);
-	interrupt_on_error(builder);
+	lexer_run(unit);
+	INTERRUPT_ON_ERROR;
 
 	/* print output */
 	/*
 	token_printer_run(unit);
-	interrupt_on_error(builder);
+	INTERRUPT_ON_ERROR(builder);
 	*/
 
 	/* print output */
-	conf_parser_run(builder, unit);
-	interrupt_on_error(builder);
+	conf_parser_run(unit);
+	INTERRUPT_ON_ERROR;
 
 	unit_delete(unit);
 
@@ -197,13 +193,13 @@ builder_load_conf_file(Builder *builder, const char *filepath)
 }
 
 int
-builder_compile(Builder *builder, Assembly *assembly, u32 flags, OptLvl opt_lvl)
+builder_compile(Assembly *assembly, u32 flags, OptLvl opt_lvl)
 {
 	clock_t begin = clock();
 	Unit *  unit;
 	s32     state = COMPILE_OK;
 
-	builder->flags = flags;
+	builder.flags = flags;
 	msg_log("Compile assembly: %s", assembly->name);
 
 	assembly_setup(assembly, flags, opt_lvl);
@@ -218,17 +214,17 @@ builder_compile(Builder *builder, Assembly *assembly, u32 flags, OptLvl opt_lvl)
 	BARRAY_FOREACH(assembly->units, unit)
 	{
 		/* IDEA: can run in separate thread */
-		if ((state = compile_unit(builder, unit, assembly, flags)) != COMPILE_OK) {
+		if ((state = compile_unit(unit, assembly, flags)) != COMPILE_OK) {
 			break;
 		}
 	}
 
-	if (state == COMPILE_OK) state = compile_assembly(builder, assembly, flags);
+	if (state == COMPILE_OK) state = compile_assembly(assembly, flags);
 
 	clock_t end        = clock();
 	f64     time_spent = (f64)(end - begin) / CLOCKS_PER_SEC;
 
-	msg_log("Compiled %i lines in %f seconds.", builder->total_lines, time_spent);
+	msg_log("Compiled %i lines in %f seconds.", builder.total_lines, time_spent);
 	if (state != COMPILE_OK) {
 		msg_log("There were errors, sorry...");
 	}
@@ -237,9 +233,9 @@ builder_compile(Builder *builder, Assembly *assembly, u32 flags, OptLvl opt_lvl)
 }
 
 void
-builder_error(Builder *builder, const char *format, ...)
+builder_error(const char *format, ...)
 {
-	if (builder->errorc > MAX_ERROR_REPORTED) return;
+	if (builder.errorc > MAX_ERROR_REPORTED) return;
 	char error[MAX_MSG_LEN] = {0};
 
 	va_list args;
@@ -248,11 +244,11 @@ builder_error(Builder *builder, const char *format, ...)
 	va_end(args);
 
 	msg_error("%s", &error[0]);
-	builder->errorc++;
+	builder.errorc++;
 }
 
 void
-builder_warning(Builder *builder, const char *format, ...)
+builder_warning(const char *format, ...)
 {
 	char warning[MAX_MSG_LEN] = {0};
 
@@ -265,16 +261,15 @@ builder_warning(Builder *builder, const char *format, ...)
 }
 
 void
-builder_msg(Builder *      builder,
-            BuilderMsgType type,
+builder_msg(BuilderMsgType type,
             s32            code,
             Location *     src,
             BuilderCurPos  pos,
             const char *   format,
             ...)
 {
-	if (type == BUILDER_MSG_ERROR && builder->errorc > MAX_ERROR_REPORTED) return;
-	if (IS_FLAG(builder->flags, BUILDER_FLAG_NO_WARN) && type == BUILDER_MSG_WARNING) return;
+	if (type == BUILDER_MSG_ERROR && builder.errorc > MAX_ERROR_REPORTED) return;
+	if (IS_FLAG(builder.flags, BUILDER_FLAG_NO_WARN) && type == BUILDER_MSG_WARNING) return;
 
 	BString *tmp              = bo_string_new(MAX_MSG_LEN);
 	char     msg[MAX_MSG_LEN] = {0};
@@ -394,7 +389,7 @@ builder_msg(Builder *      builder,
 	}
 
 	if (type == BUILDER_MSG_ERROR) {
-		builder->errorc++;
+		builder.errorc++;
 		msg_error("%s", bo_string_get(tmp));
 	} else if (type == BUILDER_MSG_WARNING) {
 		msg_warning("%s", bo_string_get(tmp));
@@ -412,9 +407,9 @@ builder_msg(Builder *      builder,
 }
 
 BString *
-builder_create_cached_str(Builder *builder)
+builder_create_cached_str(void)
 {
 	BString *str = bo_string_new(64);
-	bo_array_push_back(builder->str_cache, str);
+	bo_array_push_back(builder.str_cache, str);
 	return str;
 }

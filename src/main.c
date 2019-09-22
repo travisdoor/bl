@@ -31,8 +31,8 @@
 #include "builder.h"
 #include "error.h"
 #include "messages.h"
-#include "unit.h"
 #include "threading.h"
+#include "unit.h"
 #include <locale.h>
 #include <stdio.h>
 #include <string.h>
@@ -220,11 +220,11 @@ main(s32 argc, char *argv[])
 		exit(EXIT_SUCCESS);
 	}
 
-	Builder *builder = builder_new();
-	builder_load_conf_file(builder, ENV_CONF_FILEPATH);
+	builder_init();
+	builder_load_conf_file(ENV_CONF_FILEPATH);
 
 	/* setup LIB_DIR */
-	ENV_LIB_DIR = strdup(conf_data_get_str(builder->conf, CONF_LIB_DIR_KEY));
+	ENV_LIB_DIR = strdup(conf_data_get_str(builder.conf, CONF_LIB_DIR_KEY));
 
 	/*
 	 * HACK: use name of first file as assembly name
@@ -260,13 +260,13 @@ main(s32 argc, char *argv[])
 		argv++;
 	}
 
-	s32 state = builder_compile(builder, assembly, build_flags, opt_lvl);
+	s32 state = builder_compile(assembly, build_flags, opt_lvl);
 
 	char date[26];
 	date_time(date, 26, "%d-%m-%Y %H:%M:%S");
 	msg_log("\nFinished at %s", date);
 
 	assembly_delete(assembly);
-	builder_delete(builder);
+	builder_terminate();
 	return state;
 }

@@ -66,6 +66,7 @@ typedef struct Builder {
 } Builder;
 
 /* Builder global instance */
+extern Builder builder;
 
 typedef enum {
 	BUILDER_MSG_ERROR,
@@ -83,27 +84,26 @@ typedef enum {
 
 struct Location;
 
-Builder *
-builder_new(void);
+void
+builder_init(void);
 
 void
-builder_delete(Builder *builder);
+builder_terminate(void);
 
 int
-builder_load_conf_file(Builder *builder, const char *filepath);
+builder_load_conf_file(const char *filepath);
 
 int
-builder_compile(Builder *builder, Assembly *assembly, u32 flags, OptLvl opt_lvl);
+builder_compile(Assembly *assembly, u32 flags, OptLvl opt_lvl);
 
 void
-builder_error(Builder *builder, const char *format, ...);
+builder_error(const char *format, ...);
 
 void
-builder_warning(Builder *builder, const char *format, ...);
+builder_warning(const char *format, ...);
 
 void
-builder_msg(Builder *        builder,
-            BuilderMsgType   type,
+builder_msg(BuilderMsgType   type,
             s32              code,
             struct Location *src,
             BuilderCurPos    pos,
@@ -111,6 +111,6 @@ builder_msg(Builder *        builder,
             ...);
 
 BString *
-builder_create_cached_str(Builder *builder);
+builder_create_cached_str(void);
 
 #endif

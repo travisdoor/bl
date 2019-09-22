@@ -495,7 +495,7 @@ print_call_stack(VM *vm, size_t max_nesting)
 
 	if (!instr) return;
 	/* print last instruction */
-	builder_msg(vm->builder, BUILDER_MSG_LOG, 0, instr->node->location, BUILDER_CUR_WORD, "");
+	builder_msg(BUILDER_MSG_LOG, 0, instr->node->location, BUILDER_CUR_WORD, "");
 
 	while (fr) {
 		instr = (MirInstr *)fr->caller;
@@ -507,8 +507,7 @@ print_call_stack(VM *vm, size_t max_nesting)
 			break;
 		}
 
-		builder_msg(
-		    vm->builder, BUILDER_MSG_LOG, 0, instr->node->location, BUILDER_CUR_WORD, "");
+		builder_msg(BUILDER_MSG_LOG, 0, instr->node->location, BUILDER_CUR_WORD, "");
 		++n;
 	}
 }
@@ -2421,7 +2420,7 @@ interp_instr_unop(VM *vm, MirInstrUnop *unop)
 
 /* public */
 void
-vm_init(VM *vm, Assembly *assembly, Builder *builder, size_t stack_size)
+vm_init(VM *vm, Assembly *assembly, size_t stack_size)
 {
 	if (stack_size == 0) BL_ABORT("invalid frame stack size");
 
@@ -2436,7 +2435,6 @@ vm_init(VM *vm, Assembly *assembly, Builder *builder, size_t stack_size)
 
 	vm->stack    = stack;
 	vm->assembly = assembly;
-	vm->builder  = builder;
 
 	sa_init(&vm->dyncall_sig_tmp);
 }

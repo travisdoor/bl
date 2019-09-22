@@ -33,7 +33,7 @@
 #include <string.h>
 
 void
-bc_writer_run(Builder *builder, Assembly *assembly)
+bc_writer_run(Assembly *assembly)
 {
 	char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
 	if (!export_file) BL_ABORT("bad alloc");
@@ -44,7 +44,7 @@ bc_writer_run(Builder *builder, Assembly *assembly)
 
 	FILE *f = fopen(export_file, "w");
 	if (f == NULL) {
-		builder_error(builder, "cannot open file %s", export_file);
+		builder_error("Cannot open file %s", export_file);
 		free(export_file);
 		return;
 	}

@@ -30,8 +30,7 @@
 #include "stages.h"
 
 typedef struct {
-	Builder *builder;
-	Tokens * tokens;
+	Tokens *tokens;
 } Context;
 
 static bool
@@ -39,8 +38,7 @@ parse_key_value_rq(Context *cnt)
 {
 	Token *tok_ident = tokens_consume(cnt->tokens);
 	if (token_is_not(tok_ident, SYM_IDENT)) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_UNEXPECTED_SYMBOL,
 		            &tok_ident->location,
 		            BUILDER_CUR_WORD,
@@ -62,8 +60,7 @@ parse_key_value_rq(Context *cnt)
 		tmp.data.v_int = (int)tok_value->value.u;
 		break;
 	default:
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_UNEXPECTED_SYMBOL,
 		            &tok_ident->location,
 		            BUILDER_CUR_AFTER,
@@ -75,15 +72,14 @@ parse_key_value_rq(Context *cnt)
 
 	const char *key = tok_ident->value.str;
 	BL_ASSERT(key);
-	if (conf_data_has_key(cnt->builder->conf, key)) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+	if (conf_data_has_key(builder.conf, key)) {
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_DUPLICATE_SYMBOL,
 		            &tok_ident->location,
 		            BUILDER_CUR_WORD,
 		            "Duplicate symbol in conf scope.");
 	} else {
-		conf_data_add(cnt->builder->conf, key, &tmp);
+		conf_data_add(builder.conf, key, &tmp);
 	}
 
 	return true;
@@ -98,9 +94,9 @@ parse_top_level(Context *cnt)
 }
 
 void
-conf_parser_run(Builder *builder, Unit *unit)
+conf_parser_run(Unit *unit)
 {
-	Context cnt = {.builder = builder, .tokens = &unit->tokens};
+	Context cnt = {.tokens = &unit->tokens};
 
 	parse_top_level(&cnt);
 }

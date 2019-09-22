@@ -62,12 +62,11 @@ typedef struct VMStack {
 typedef struct VM {
 	VMStack *        stack;
 	struct Assembly *assembly;
-	struct Builder * builder;
 	SmallArray_Char  dyncall_sig_tmp;
 } VM;
 
 void
-vm_init(VM *vm, struct Assembly *assembly, struct Builder *builder, size_t stack_size);
+vm_init(VM *vm, struct Assembly *assembly, size_t stack_size);
 
 void
 vm_terminate(VM *vm);

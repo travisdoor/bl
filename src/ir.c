@@ -47,7 +47,6 @@
 SmallArrayType(LLVMValue, LLVMValueRef, 32) SmallArrayType(LLVMValue64, LLVMValueRef, 64);
 
 typedef struct {
-	Builder *   builder;
 	Assembly *  assembly;
 	BHashTable *gstring_cache;
 
@@ -1709,11 +1708,10 @@ emit_instr(Context *cnt, MirInstr *instr)
 
 /* public */
 void
-ir_run(Builder *builder, Assembly *assembly)
+ir_run(Assembly *assembly)
 {
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));
-	cnt.builder                = builder;
 	cnt.assembly               = assembly;
 	cnt.gstring_cache          = bo_htbl_new(sizeof(LLVMValueRef), 1024);
 	cnt.llvm_cnt               = assembly->llvm.cnt;

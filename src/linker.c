@@ -30,23 +30,21 @@
 #include "error.h"
 #include "stages.h"
 
-#define link_error(builder, code, tok, pos, format, ...)                                           \
+#define link_error(code, tok, pos, format, ...)                                                    \
 	{                                                                                          \
 		if (tok)                                                                           \
-			builder_msg(builder,                                                       \
-			            BUILDER_MSG_ERROR,                                             \
+			builder_msg(BUILDER_MSG_ERROR,                                             \
 			            (code),                                                        \
 			            &(tok)->location,                                              \
 			            (pos),                                                         \
 			            (format),                                                      \
 			            ##__VA_ARGS__);                                                \
 		else                                                                               \
-			builder_error(builder, (format), ##__VA_ARGS__);                           \
+			builder_error((format), ##__VA_ARGS__);                                    \
 	}
 
 typedef struct {
 	Assembly *assembly;
-	Builder * builder;
 	BArray *  lib_paths;
 } Context;
 
@@ -92,7 +90,7 @@ static void
 set_lib_paths(Context *cnt)
 {
 	char        tmp[PATH_MAX] = {0};
-	const char *lib_path      = conf_data_get_str(cnt->builder->conf, CONF_LINKER_LIB_PATH_KEY);
+	const char *lib_path      = conf_data_get_str(builder.conf, CONF_LINKER_LIB_PATH_KEY);
 	if (!strlen(lib_path)) return;
 
 	s32         len;
@@ -164,10 +162,9 @@ link_working_environment(Context *cnt)
 }
 
 void
-linker_run(Builder *builder, Assembly *assembly)
+linker_run(Assembly *assembly)
 {
-	Context cnt = {
-	    .assembly = assembly, .builder = builder, .lib_paths = assembly->dl.lib_paths};
+	Context cnt = {.assembly = assembly, .lib_paths = assembly->dl.lib_paths};
 
 	if (cnt.assembly->options.verbose_mode) {
 		msg_log("Running runtime linker...");
@@ -177,11 +174,8 @@ linker_run(Builder *builder, Assembly *assembly)
 
 	if (!link_working_environment(&cnt)) {
 		Token *dummy = NULL;
-		link_error(builder,
-		           ERR_LIB_NOT_FOUND,
-		           dummy,
-		           BUILDER_CUR_WORD,
-		           "Cannot link working environment.");
+		link_error(
+		    ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link working environment.");
 		return;
 	}
 
@@ -194,8 +188,7 @@ linker_run(Builder *builder, Assembly *assembly)
 		BL_ASSERT(token);
 
 		if (!link_lib(&cnt, token->value.str, token)) {
-			link_error(builder,
-			           ERR_LIB_NOT_FOUND,
+			link_error(ERR_LIB_NOT_FOUND,
 			           token,
 			           BUILDER_CUR_WORD,
 			           "Unresolved external library '%s'",

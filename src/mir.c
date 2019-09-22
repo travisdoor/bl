@@ -109,7 +109,6 @@ SmallArrayType(String, const char *, 64);
 
 typedef struct {
 	VM          vm;
-	Builder *   builder;
 	Assembly *  assembly;
 	BArray *    test_cases;
 	BString *   tmp_sh;
@@ -1276,10 +1275,13 @@ analyze_instr_rq(Context *cnt, MirInstr *instr)
 }
 
 static inline const char *
-gen_uq_name(Context *cnt, const char *prefix)
+gen_uq_name(const char *prefix)
 {
 	static s32 ui = 0;
-	BString *  s  = builder_create_cached_str(cnt->builder);
+	/* RACECOND */
+	/* RACECOND */
+	/* RACECOND */
+	BString *s = builder_create_cached_str();
 
 	bo_string_append(s, prefix);
 	char ui_str[22];
@@ -1309,7 +1311,7 @@ set_current_block(Context *cnt, MirInstrBlock *block)
 }
 
 static inline void
-error_types(Context *cnt, MirType *from, MirType *to, Ast *loc, const char *msg)
+error_types(MirType *from, MirType *to, Ast *loc, const char *msg)
 {
 	BL_ASSERT(from && to);
 	if (!msg) msg = "No implicit cast for type '%s' and '%s'.";
@@ -1319,8 +1321,7 @@ error_types(Context *cnt, MirType *from, MirType *to, Ast *loc, const char *msg)
 	mir_type_to_str(tmp_from, 256, from, true);
 	mir_type_to_str(tmp_to, 256, to, true);
 
-	builder_msg(cnt->builder,
-	            BUILDER_MSG_ERROR,
+	builder_msg(BUILDER_MSG_ERROR,
 	            ERR_INVALID_TYPE,
 	            loc->location,
 	            BUILDER_CUR_WORD,
@@ -1670,7 +1671,7 @@ create_type(Context *cnt, MirType **out_type, const char *sh)
 	} else {
 		MirType *tmp = arena_alloc(&cnt->assembly->arenas.mir.type);
 
-		BString *copy = builder_create_cached_str(cnt->builder);
+		BString *copy = builder_create_cached_str();
 		bo_string_append(copy, sh);
 
 		tmp->id.str  = bo_string_get(copy);
@@ -1720,8 +1721,7 @@ COLLIDE : {
 	                    ? "Symbol name colision with compiler builtin '%s'."
 	                    : "Duplicate symbol";
 
-	builder_msg(cnt->builder,
-	            BUILDER_MSG_ERROR,
+	builder_msg(BUILDER_MSG_ERROR,
 	            ERR_DUPLICATE_SYMBOL,
 	            node ? node->location : NULL,
 	            BUILDER_CUR_WORD,
@@ -1729,8 +1729,7 @@ COLLIDE : {
 	            id->str);
 
 	if (collision->node) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_NOTE,
+		builder_msg(BUILDER_MSG_NOTE,
 		            0,
 		            collision->node->location,
 		            BUILDER_CUR_WORD,
@@ -3907,7 +3906,7 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 	if (!is_allocated_object(expr)) {
 		/* Target expression is not allocated object on the stack, so we need to crate
 		 * temporary variable containing the value and fetch pointer to this variable. */
-		const char *tmp_var_name = gen_uq_name(cnt, IMPL_ANY_EXPR_TMP);
+		const char *tmp_var_name = gen_uq_name(IMPL_ANY_EXPR_TMP);
 		toany->expr_tmp =
 		    create_var_impl(cnt, tmp_var_name, rtti_type, false, false, false);
 	} else if (is_load_needed(expr)) {
@@ -3918,7 +3917,7 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 	schedule_RTTI_generation(cnt, rtti_type);
 
 	{ /* Tmp variable for Any */
-		const char *tmp_var_name = gen_uq_name(cnt, IMPL_ANY_TMP);
+		const char *tmp_var_name = gen_uq_name(IMPL_ANY_TMP);
 		toany->tmp = create_var_impl(cnt, tmp_var_name, toany_type, false, false, false);
 	}
 
@@ -4002,8 +4001,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 
 		MirInstr *instr_type = cmp->type;
 		if (instr_type->value.type->kind != MIR_TYPE_TYPE) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_TYPE,
 			            instr_type->node->location,
 			            BUILDER_CUR_WORD,
@@ -4016,8 +4014,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 	BL_ASSERT(type);
 
 	if (!values) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_INITIALIZER,
 		            cmp->type->node->location,
 		            BUILDER_CUR_AFTER,
@@ -4046,8 +4043,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 		}
 
 		if (values->size != (size_t)type->data.array.len) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_INITIALIZER,
 			            cmp->base.node->location,
 			            BUILDER_CUR_WORD,
@@ -4094,8 +4090,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 
 		const size_t memc = type->data.strct.members->size;
 		if (values->size != memc) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_INITIALIZER,
 			            cmp->base.node->location,
 			            BUILDER_CUR_WORD,
@@ -4132,8 +4127,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 		/* Non-agregate type. */
 		if (values->size > 1) {
 			MirInstr *value = values->data[1];
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_INITIALIZER,
 			            value->node->location,
 			            BUILDER_CUR_WORD,
@@ -4158,7 +4152,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 		/* For naked non-compile time compounds we need to generate implicit temp storage to
 		 * keep all data. */
 
-		const char *tmp_name = gen_uq_name(cnt, IMPL_COMPOUND_TMP);
+		const char *tmp_name = gen_uq_name(IMPL_COMPOUND_TMP);
 		MirVar *    tmp_var  = create_var_impl(cnt, tmp_name, type, true, false, false);
 		cmp->tmp_var         = tmp_var;
 	}
@@ -4179,14 +4173,14 @@ analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 
 	if (valc > 0) {
 		/* Prepare tmp array for values */
-		const char *tmp_name = gen_uq_name(cnt, IMPL_VARGS_TMP_ARR);
+		const char *tmp_name = gen_uq_name(IMPL_VARGS_TMP_ARR);
 		MirType *   tmp_type = create_type_array(cnt, vargs->type, valc);
 		vargs->arr_tmp       = create_var_impl(cnt, tmp_name, tmp_type, true, false, false);
 	}
 
 	{
 		/* Prepare tmp slice for vargs */
-		const char *tmp_name = gen_uq_name(cnt, IMPL_VARGS_TMP);
+		const char *tmp_name = gen_uq_name(IMPL_VARGS_TMP);
 		vargs->vargs_tmp     = create_var_impl(cnt, tmp_name, type, true, false, false);
 	}
 
@@ -4219,8 +4213,7 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 	BL_ASSERT(arr_ptr->value.type);
 
 	if (!mir_is_pointer_type(arr_ptr->value.type)) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
 		            elem_ptr->arr_ptr->node->location,
 		            BUILDER_CUR_WORD,
@@ -4237,8 +4230,7 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 			const s64 len = arr_type->data.array.len;
 			const s64 i   = elem_ptr->index->value.data.v_u64;
 			if (i >= len || i < 0) {
-				builder_msg(cnt->builder,
-				            BUILDER_MSG_ERROR,
+				builder_msg(BUILDER_MSG_ERROR,
 				            ERR_BOUND_CHECK_FAILED,
 				            elem_ptr->index->node->location,
 				            BUILDER_CUR_WORD,
@@ -4272,8 +4264,7 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		/* this is important!!! */
 		elem_ptr->target_is_slice = true;
 	} else {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
 		            arr_ptr->node->location,
 		            BUILDER_CUR_WORD,
@@ -4293,8 +4284,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	MirType *target_type = target_ptr->value.type;
 
 	if (target_type->kind != MIR_TYPE_PTR) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
 		            target_ptr->node->location,
 		            BUILDER_CUR_WORD,
@@ -4343,8 +4333,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			addrof_elem->src = elem_ptr;
 			analyze_instr_rq(cnt, &addrof_elem->base);
 		} else {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_MEMBER_ACCESS,
 			            ast_member_ident->location,
 			            BUILDER_CUR_WORD,
@@ -4373,8 +4362,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		ID *        rid   = &ast_member_ident->data.ident.id;
 		ScopeEntry *found = scope_lookup(scope, rid, false, true);
 		if (!found) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_UNKNOWN_SYMBOL,
 			            member_ptr->member_ident->location,
 			            BUILDER_CUR_WORD,
@@ -4418,8 +4406,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		ID *        rid   = &ast_member_ident->data.ident.id;
 		ScopeEntry *found = scope_lookup(scope, rid, false, true);
 		if (!found) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_UNKNOWN_SYMBOL,
 			            member_ptr->member_ident->location,
 			            BUILDER_CUR_WORD,
@@ -4444,8 +4431,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 
 	/* Invalid */
 INVALID:
-	builder_msg(cnt->builder,
-	            BUILDER_MSG_ERROR,
+	builder_msg(BUILDER_MSG_ERROR,
 	            ERR_INVALID_MEMBER_ACCESS,
 	            target_ptr->node->location,
 	            BUILDER_CUR_WORD,
@@ -4460,8 +4446,7 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 	BL_ASSERT(src);
 
 	if (!is_allocated_object(src)) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_EXPECTED_DECL,
 		            addrof->base.node->location,
 		            BUILDER_CUR_WORD,
@@ -4470,8 +4455,7 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 	}
 
 	if (src->value.addr_mode == MIR_VAM_LVALUE_CONST) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_ADDRES_MODE,
 		            addrof->base.node->location,
 		            BUILDER_CUR_WORD,
@@ -4533,7 +4517,7 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast, bool analyze_op_only)
 	cast->op = get_cast_op(expr_type, dest_type);
 	if (cast->op == MIR_CAST_INVALID) {
 		error_types(
-		    cnt, expr_type, dest_type, cast->base.node, "Invalid cast from '%s' to '%s'.");
+		    expr_type, dest_type, cast->base.node, "Invalid cast from '%s' to '%s'.");
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
@@ -4771,8 +4755,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 			if (result.state != ANALYZE_PASSED) return result;
 
 			if (!type_cmp(fn_type, user_fn_type)) {
-				error_types(
-				    cnt, fn_type, user_fn_type, fn_proto->user_type->node, NULL);
+				error_types(fn_type, user_fn_type, fn_proto->user_type->node, NULL);
 			}
 		}
 
@@ -4804,11 +4787,11 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 			if (IS_FLAG(fn->flags, FLAG_EXTERN))
 				fn->linkage_name = fn->id->str;
 			else
-				fn->linkage_name = gen_uq_name(cnt, fn->id->str);
+				fn->linkage_name = gen_uq_name(fn->id->str);
 		}
 	} else {
 		/* Anonymous function use implicit unique name. */
-		fn->linkage_name = gen_uq_name(cnt, IMPL_FN_NAME);
+		fn->linkage_name = gen_uq_name(IMPL_FN_NAME);
 	}
 
 	BL_ASSERT(fn->linkage_name && "Function without linkage name!");
@@ -4819,8 +4802,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		fn->dyncall.extern_entry = assembly_find_extern(cnt->assembly, fn->linkage_name);
 
 		if (!fn->dyncall.extern_entry) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_UNKNOWN_SYMBOL,
 			            fn_proto->base.node->location,
 			            BUILDER_CUR_WORD,
@@ -4842,8 +4824,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 			/* TODO: not the best place to do this check, move into ast
 			 * generation later
 			 */
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_EXPECTED_BODY,
 			            fn_proto->base.node->location,
 			            BUILDER_CUR_WORD,
@@ -4857,8 +4838,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	if (fn->id) commit_fn(cnt, fn);
 
 	if (fn_proto->first_unrechable_location) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_WARNING,
+		builder_msg(BUILDER_MSG_WARNING,
 		            0,
 		            fn_proto->first_unrechable_location,
 		            BUILDER_CUR_NONE,
@@ -4899,8 +4879,7 @@ analyze_instr_load(Context *cnt, MirInstrLoad *load)
 	MirInstr *src = load->src;
 	BL_ASSERT(src);
 	if (!mir_is_pointer_type(src->value.type)) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
 		            src->node->location,
 		            BUILDER_CUR_WORD,
@@ -4951,7 +4930,6 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 			is_vargs = arg->type->kind == MIR_TYPE_VARGS;
 			if (is_vargs && i != type_fn->args->size - 1) {
 				builder_msg(
-				    cnt->builder,
 				    BUILDER_MSG_ERROR,
 				    ERR_INVALID_TYPE,
 				    arg->decl_node->location,
@@ -5006,8 +4984,7 @@ analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *variant_instr)
 	if (variant_instr->value) {
 		/* User defined initialization value. */
 		if (!variant_instr->value->comptime) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_EXPR,
 			            variant_instr->value->node->location,
 			            BUILDER_CUR_WORD,
@@ -5081,8 +5058,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 			member_type = decl_member->type->value.data.v_ptr.data.type;
 
 			if (member_type->kind == MIR_TYPE_FN) {
-				builder_msg(cnt->builder,
-				            BUILDER_MSG_ERROR,
+				builder_msg(BUILDER_MSG_ERROR,
 				            ERR_INVALID_TYPE,
 				            (*member_instr)->node->location,
 				            BUILDER_CUR_WORD,
@@ -5136,8 +5112,7 @@ analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 	}
 
 	if (type_slice->elem_type->value.type->kind != MIR_TYPE_TYPE) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
 		            type_slice->elem_type->node->location,
 		            BUILDER_CUR_WORD,
@@ -5171,8 +5146,7 @@ analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
 		}
 
 		if (type_vargs->elem_type->value.type->kind != MIR_TYPE_TYPE) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_TYPE,
 			            type_vargs->elem_type->node->location,
 			            BUILDER_CUR_WORD,
@@ -5221,8 +5195,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 
 	/* len */
 	if (!type_arr->len->comptime) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_EXPECTED_CONST,
 		            type_arr->len->node->location,
 		            BUILDER_CUR_WORD,
@@ -5231,8 +5204,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 	}
 
 	if (type_arr->elem_type->value.type->kind != MIR_TYPE_TYPE) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
 		            type_arr->elem_type->node->location,
 		            BUILDER_CUR_WORD,
@@ -5245,8 +5217,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 
 	const s64 len = type_arr->len->value.data.v_s64;
 	if (len == 0) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_ARR_SIZE,
 		            type_arr->len->node->location,
 		            BUILDER_CUR_WORD,
@@ -5291,8 +5262,7 @@ analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 
 		/* Enum type must be integer! */
 		if (base_type->kind != MIR_TYPE_INT) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_TYPE,
 			            type_enum->base_type->node->location,
 			            BUILDER_CUR_WORD,
@@ -5355,8 +5325,7 @@ analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 		BL_ASSERT(src_type);
 
 		if (src_type->kind != MIR_TYPE_TYPE) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_TYPE,
 			            type_ptr->type->node->location,
 			            BUILDER_CUR_WORD,
@@ -5369,8 +5338,7 @@ analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 	BL_ASSERT(src_type_value);
 
 	if (src_type_value->kind == MIR_TYPE_TYPE) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
 		            type_ptr->base.node->location,
 		            BUILDER_CUR_WORD,
@@ -5454,8 +5422,7 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 	const bool rhs_valid = is_valid(rhs->value.type, binop->op);
 
 	if (!(lhs_valid && rhs_valid)) {
-		error_types(cnt,
-		            lhs->value.type,
+		error_types(lhs->value.type,
 		            rhs->value.type,
 		            binop->base.node,
 		            "invalid operation for %s type");
@@ -5563,8 +5530,7 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 
 	/* return value is expected, but it's not provided */
 	if (expected_ret_value && !value) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_EXPR,
 		            ret->base.node->location,
 		            BUILDER_CUR_AFTER,
@@ -5574,8 +5540,7 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 
 	/* return value is not expected, but it's provided */
 	if (!expected_ret_value && value) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_EXPR,
 		            ret->value->node->location,
 		            BUILDER_CUR_WORD,
@@ -5604,8 +5569,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	if (var->is_in_gscope) { // global variable
 		/* All globals must be initialized. */
 		if (!decl->init) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_UNINITIALIZED,
 			            decl->base.node->location,
 			            BUILDER_CUR_WORD,
@@ -5616,7 +5580,6 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		/* Global initializer must be compile time known. */
 		if (!decl->init->comptime) {
 			builder_msg(
-			    cnt->builder,
 			    BUILDER_MSG_ERROR,
 			    ERR_EXPECTED_COMPTIME,
 			    decl->init->node->location,
@@ -5701,8 +5664,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	}
 
 	if (var->value.type->kind == MIR_TYPE_TYPE && var->is_mutable) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_MUTABILITY,
 		            decl->base.node->location,
 		            BUILDER_CUR_WORD,
@@ -5712,8 +5674,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
 	if (var->value.type->kind == MIR_TYPE_FN) {
 		/* Allocated type is function. */
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
 		            decl->base.node->location,
 		            BUILDER_CUR_WORD,
@@ -5722,8 +5683,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		return ANALYZE_RESULT(FAILED, 0);
 	} else if (var->value.type->kind == MIR_TYPE_VOID) {
 		/* Allocated type is void type. */
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
 		            decl->base.node->location,
 		            BUILDER_CUR_WORD,
@@ -5732,8 +5692,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	}
 
 	if (decl->base.ref_count == 0) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_WARNING,
+		builder_msg(BUILDER_MSG_WARNING,
 		            0,
 		            decl->base.node->location,
 		            BUILDER_CUR_WORD,
@@ -5807,8 +5766,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 	}
 
 	if (type->kind != MIR_TYPE_FN) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_EXPECTED_FUNC,
 		            call->callee->node->location,
 		            BUILDER_CUR_WORD,
@@ -5848,8 +5806,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 		/* This is gonna be tricky... */
 		--callee_argc;
 		if ((call_argc < callee_argc)) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_ARG_COUNT,
 			            call->base.node->location,
 			            BUILDER_CUR_WORD,
@@ -5907,8 +5864,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 		sa_push_InstrPtr(call->args, vargs);
 	} else {
 		if ((callee_argc != call_argc)) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_ARG_COUNT,
 			            call->base.node->location,
 			            BUILDER_CUR_WORD,
@@ -5954,8 +5910,7 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
 	BL_ASSERT(dest->analyzed);
 
 	if (!mir_is_pointer_type(dest->value.type)) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_EXPR,
 		            store->base.node->location,
 		            BUILDER_CUR_WORD,
@@ -5964,8 +5919,7 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
 	}
 
 	if (dest->value.addr_mode == MIR_VAM_LVALUE_CONST) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_EXPR,
 		            store->base.node->location,
 		            BUILDER_CUR_WORD,
@@ -6002,8 +5956,7 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 			set_current_block(cnt, block);
 			append_instr_ret(cnt, NULL, NULL, false);
 		} else {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_MISSING_RETURN,
 			            fn->decl_node->location,
 			            BUILDER_CUR_WORD,
@@ -6016,8 +5969,7 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 		if (first_instr && first_instr->node) {
 			fn_proto->first_unrechable_location = first_instr->node->location;
 
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_WARNING,
+			builder_msg(BUILDER_MSG_WARNING,
 			            0,
 			            fn_proto->first_unrechable_location,
 			            BUILDER_CUR_NONE,
@@ -6080,8 +6032,7 @@ analyze_stage_set_null(Context *cnt, MirInstr **input, MirType *slot_type)
 		return ANALYZE_STAGE_BREAK;
 	}
 
-	builder_msg(cnt->builder,
-	            BUILDER_MSG_ERROR,
+	builder_msg(BUILDER_MSG_ERROR,
 	            ERR_INVALID_TYPE,
 	            _input->node->location,
 	            BUILDER_CUR_WORD,
@@ -6145,7 +6096,7 @@ analyze_stage_implicit_cast(Context *cnt, MirInstr **input, MirType *slot_type)
 AnalyzeStageState
 analyze_stage_report_type_mismatch(Context *cnt, MirInstr **input, MirType *slot_type)
 {
-	error_types(cnt, (*input)->value.type, slot_type, (*input)->node, NULL);
+	error_types((*input)->value.type, slot_type, (*input)->node, NULL);
 	return ANALYZE_STAGE_CONTINUE;
 }
 
@@ -6430,8 +6381,7 @@ analyze_report_unresolved(Context *cnt)
 		{
 			BL_ASSERT(instr);
 
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_UNKNOWN_SYMBOL,
 			            instr->node->location,
 			            BUILDER_CUR_WORD,
@@ -6447,7 +6397,7 @@ analyze_report_unresolved(Context *cnt)
 static inline MirVar *
 gen_RTTI_var(Context *cnt, MirType *type, MirConstValueData *value)
 {
-	const char *name = gen_uq_name(cnt, IMPL_RTTI_ENTRY);
+	const char *name = gen_uq_name(IMPL_RTTI_ENTRY);
 	MirVar *    var  = create_var_impl(cnt, name, type, false, true, false);
 	var->value.data  = *value;
 
@@ -7030,7 +6980,7 @@ ast_test_case(Context *cnt, Ast *test)
 	fn_proto->base.value.type = cnt->builtin_types.t_test_case_fn;
 
 	const bool  emit_llvm    = cnt->assembly->options.force_test_to_llvm;
-	const char *linkage_name = gen_uq_name(cnt, TEST_CASE_FN_NAME);
+	const char *linkage_name = gen_uq_name(TEST_CASE_FN_NAME);
 	const bool  is_in_gscope =
 	    test->owner_scope->kind == SCOPE_GLOBAL || test->owner_scope->kind == SCOPE_PRIVATE;
 	MirFn *fn =
@@ -7194,8 +7144,7 @@ ast_stmt_return(Context *cnt, Ast *ret)
 
 		if (fn->ret_tmp) {
 			if (!value) {
-				builder_msg(cnt->builder,
-				            BUILDER_MSG_ERROR,
+				builder_msg(BUILDER_MSG_ERROR,
 				            ERR_EXPECTED_EXPR,
 				            ret->location,
 				            BUILDER_CUR_AFTER,
@@ -7205,8 +7154,7 @@ ast_stmt_return(Context *cnt, Ast *ret)
 			MirInstr *ref = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
 			append_instr_store(cnt, ret, value, ref);
 		} else if (value) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_UNEXPECTED_EXPR,
 			            value->node->location,
 			            BUILDER_CUR_WORD,
@@ -7350,7 +7298,6 @@ ast_expr_lit_int(Context *cnt, Ast *expr)
 
 	if (expr->data.expr_integer.overflow) {
 		builder_msg(
-		    cnt->builder,
 		    BUILDER_MSG_ERROR,
 		    ERR_NUM_LIT_OVERFLOW,
 		    expr->location,
@@ -7378,8 +7325,7 @@ MirInstr *
 ast_expr_lit_float(Context *cnt, Ast *expr)
 {
 	if (expr->data.expr_float.overflow) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_NUM_LIT_OVERFLOW,
 		            expr->location,
 		            BUILDER_CUR_WORD,
@@ -7393,8 +7339,7 @@ MirInstr *
 ast_expr_lit_double(Context *cnt, Ast *expr)
 {
 	if (expr->data.expr_double.overflow) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_NUM_LIT_OVERFLOW,
 		            expr->location,
 		            BUILDER_CUR_WORD,
@@ -7547,7 +7492,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn, Ast *decl_node, bool is_in_gscope, u3
 	if (ast_fn_type->data.type_fn.ret_type) {
 		set_current_block(cnt, init_block);
 		fn->ret_tmp = append_instr_decl_var_impl(
-		    cnt, gen_uq_name(cnt, IMPL_RET_TMP), NULL, NULL, true, false, -1, 0);
+		    cnt, gen_uq_name(IMPL_RET_TMP), NULL, NULL, true, false, -1, 0);
 
 		set_current_block(cnt, cnt->ast.exit_block);
 		MirInstr *ret_init = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
@@ -7812,8 +7757,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		cnt->ast.current_entity_id = NULL;
 
 		if (is_builtin(ast_name, MIR_BUILTIN_ID_MAIN)) {
-			builder_msg(cnt->builder,
-			            BUILDER_MSG_ERROR,
+			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_EXPECTED_FUNC,
 			            ast_name->location,
 			            BUILDER_CUR_WORD,
@@ -7972,8 +7916,7 @@ ast_type_enum(Context *cnt, Ast *type_enum)
 
 	const size_t varc = ast_variants->size;
 	if (varc == 0) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_EMPTY_ENUM,
 		            type_enum->location,
 		            BUILDER_CUR_WORD,
@@ -8019,8 +7962,7 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 
 	const size_t memc = ast_members->size;
 	if (memc == 0) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_EMPTY_STRUCT,
 		            type_struct->location,
 		            BUILDER_CUR_WORD,
@@ -8627,11 +8569,10 @@ mir_arenas_terminate(MirArenas *arenas)
 }
 
 void
-mir_run(Builder *builder, Assembly *assembly)
+mir_run(Assembly *assembly)
 {
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));
-	cnt.builder                  = builder;
 	cnt.assembly                 = assembly;
 	cnt.debug_mode               = assembly->options.debug_mode;
 	cnt.analyze.verbose_pre      = false;
@@ -8646,7 +8587,7 @@ mir_run(Builder *builder, Assembly *assembly)
 	cnt.builtin_types.cache =
 	    scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, 64, NULL);
 
-	vm_init(&cnt.vm, assembly, builder, VM_STACK_SIZE);
+	vm_init(&cnt.vm, assembly, VM_STACK_SIZE);
 
 	sa_init(&cnt.ast.defer_stack);
 
@@ -8657,13 +8598,13 @@ mir_run(Builder *builder, Assembly *assembly)
 	Unit *unit;
 	BARRAY_FOREACH(assembly->units, unit) ast(&cnt, unit->ast);
 
-	if (builder->errorc) goto SKIP;
+	if (builder.errorc) goto SKIP;
 
 	/* Analyze pass */
 	analyze(&cnt);
 	analyze_report_unresolved(&cnt);
 
-	if (builder->errorc) goto SKIP;
+	if (builder.errorc) goto SKIP;
 
 	gen_RTTI_types(&cnt);
 

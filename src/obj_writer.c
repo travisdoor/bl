@@ -39,7 +39,7 @@
 
 /* Emit assembly object file. */
 void
-obj_writer_run(Builder *builder, Assembly *assembly)
+obj_writer_run(Assembly *assembly)
 {
 	char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + strlen(OBJ_EXT) + 1));
 	if (!filename) BL_ABORT("bad alloc");
