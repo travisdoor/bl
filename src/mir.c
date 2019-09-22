@@ -392,10 +392,11 @@ static MirFn *
 create_fn(Context *        cnt,
           Ast *            node,
           ID *             id,
-          const char *     llvm_name,
+          const char *     linkage_name,
           int32_t          flags,
           MirInstrFnProto *prototype,
-          bool             emit_llvm);
+          bool             emit_llvm,
+          bool             is_in_gscope);
 
 static MirMember *
 create_member(Context *cnt, Ast *node, ID *id, Scope *scope, int64_t index, MirType *type);
@@ -798,7 +799,7 @@ static MirInstr *
 ast_expr_lit_bool(Context *cnt, Ast *expr);
 
 static MirInstr *
-ast_expr_lit_fn(Context *cnt, Ast *lit_fn);
+ast_expr_lit_fn(Context *cnt, Ast *lit_fn, Ast *decl_node, bool is_in_gscope, uint32_t flags);
 
 static MirInstr *
 ast_expr_lit_string(Context *cnt, Ast *lit_string);
@@ -2132,11 +2133,16 @@ init_llvm_type_fn(Context *cnt, MirType *type)
 	LLVMTypeRef llvm_ret = NULL;
 
 	if (argc) {
-		MirArg *arg;
+		MirArg *    arg;
+		LLVMTypeRef llvm_arg_type;
 		SARRAY_FOREACH(args, arg)
 		{
-			BL_ASSERT(arg->type->llvm_type)
-			sa_push_LLVMType(&llvm_args, arg->type->llvm_type);
+			llvm_arg_type = arg->type->llvm_type;
+			BL_ASSERT(llvm_arg_type);
+			if (arg->llvm_byval) {
+				llvm_arg_type = LLVMPointerType(llvm_arg_type, 0);
+			}
+			sa_push_LLVMType(&llvm_args, llvm_arg_type);
 		}
 	}
 
@@ -2474,19 +2480,21 @@ MirFn *
 create_fn(Context *        cnt,
           Ast *            node,
           ID *             id,
-          const char *     llvm_name,
+          const char *     linkage_name,
           int32_t          flags,
           MirInstrFnProto *prototype,
-          bool             emit_llvm)
+          bool             emit_llvm,
+          bool             is_in_gscope)
 {
-	MirFn *tmp     = arena_alloc(&cnt->assembly->arenas.mir.fn);
-	tmp->variables = create_arr(cnt->assembly, sizeof(MirVar *));
-	tmp->llvm_name = llvm_name;
-	tmp->id        = id;
-	tmp->flags     = flags;
-	tmp->decl_node = node;
-	tmp->prototype = &prototype->base;
-	tmp->emit_llvm = emit_llvm;
+	MirFn *tmp        = arena_alloc(&cnt->assembly->arenas.mir.fn);
+	tmp->variables    = create_arr(cnt->assembly, sizeof(MirVar *));
+	tmp->linkage_name = linkage_name;
+	tmp->id           = id;
+	tmp->flags        = flags;
+	tmp->decl_node    = node;
+	tmp->prototype    = &prototype->base;
+	tmp->emit_llvm    = emit_llvm;
+	tmp->is_in_gscope = is_in_gscope;
 	return tmp;
 }
 
@@ -4646,7 +4654,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		ref->base.value.type = type;
 		ref->base.comptime   = true;
 		ref_instr(fn->prototype);
-		mir_set_const_ptr(&ref->base.value.data.v_ptr, found->data.fn, MIR_CP_FN);
+		mir_set_const_ptr(&ref->base.value.data.v_ptr, fn, MIR_CP_FN);
 		break;
 	}
 
@@ -4788,16 +4796,27 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	/* set type name */
 	fn_proto->base.value.type->user_id = fn->id;
 
-	/* implicit functions has no name -> generate one */
-	if (!fn->llvm_name) {
-		fn->llvm_name = gen_uq_name(cnt, IMPL_FN_NAME);
-		ref_instr(fn->prototype);
+	/* Setup function linkage name, this will be later used by LLVM backend. */
+	if (fn->id) {
+		if (fn->is_in_gscope) {
+			fn->linkage_name = fn->id->str;
+		} else {
+			if (IS_FLAG(fn->flags, FLAG_EXTERN))
+				fn->linkage_name = fn->id->str;
+			else
+				fn->linkage_name = gen_uq_name(cnt, fn->id->str);
+		}
+	} else {
+		/* Anonymous function use implicit unique name. */
+		fn->linkage_name = gen_uq_name(cnt, IMPL_FN_NAME);
 	}
+
+	BL_ASSERT(fn->linkage_name && "Function without linkage name!");
 
 	if (IS_FLAG(fn->flags, FLAG_EXTERN)) {
 		/* lookup external function exec handle */
-		BL_ASSERT(fn->llvm_name);
-		fn->dyncall.extern_entry = assembly_find_extern(cnt->assembly, fn->llvm_name);
+		BL_ASSERT(fn->linkage_name);
+		fn->dyncall.extern_entry = assembly_find_extern(cnt->assembly, fn->linkage_name);
 
 		if (!fn->dyncall.extern_entry) {
 			builder_msg(cnt->builder,
@@ -4806,7 +4825,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 			            fn_proto->base.node->location,
 			            BUILDER_CUR_WORD,
 			            "External symbol '%s' not found.",
-			            fn->llvm_name);
+			            fn->linkage_name);
 		} else {
 			fn->fully_analyzed = true;
 		}
@@ -5027,8 +5046,6 @@ analyze_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
 	BL_ASSERT(decl->type->value.data.v_ptr.data.any);
 	BL_ASSERT(decl->type->value.data.v_ptr.kind == MIR_CP_TYPE);
 	MirType *type = decl->type->value.data.v_ptr.data.type;
-
-	decl->arg->llvm_byval = type->store_size_bytes > cnt->builtin_types.t_u8_ptr->store_size_bytes;
 
 	decl->arg->type = type;
 	return ANALYZE_RESULT(PASSED, 0);
@@ -5906,16 +5923,22 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 	/* validate argument types */
 	if (callee_argc) {
 		MirInstr **call_arg;
-		MirType *  callee_arg_type;
+		MirArg *   callee_arg;
 		bool       valid = true;
 
 		for (uint32_t i = 0; i < callee_argc && valid; ++i) {
-			call_arg        = &call->args->data[i];
-			callee_arg_type = mir_get_fn_arg_type(type, i);
+			call_arg   = &call->args->data[i];
+			callee_arg = type->data.fn.args->data[i];
+			BL_ASSERT(callee_arg);
 
-			if (analyze_slot(cnt, &analyze_slot_conf_full, call_arg, callee_arg_type) !=
+			if (analyze_slot(
+			        cnt, &analyze_slot_conf_full, call_arg, callee_arg->type) !=
 			    ANALYZE_PASSED) {
 				return ANALYZE_RESULT(FAILED, 0);
+			}
+
+			if ((*call_arg)->kind == MIR_INSTR_LOAD && callee_arg->llvm_byval) {
+				((MirInstrLoad *)(*call_arg))->no_llvm = true;
 			}
 		}
 	}
@@ -6277,7 +6300,7 @@ analyze_try_get_next(MirInstr *instr)
 			owner_block->owner_fn->fully_analyzed = true;
 #if BL_DEBUG && VERBOSE_ANALYZE
 			printf("Analyze: " BLUE("Function '%s' completely analyzed.\n"),
-			       owner_block->owner_fn->llvm_name);
+			       owner_block->owner_fn->linkage_name);
 #endif
 		}
 
@@ -7006,9 +7029,12 @@ ast_test_case(Context *cnt, Ast *test)
 
 	fn_proto->base.value.type = cnt->builtin_types.t_test_case_fn;
 
-	const bool  emit_llvm = cnt->assembly->options.force_test_to_llvm;
-	const char *llvm_name = gen_uq_name(cnt, TEST_CASE_FN_NAME);
-	MirFn *     fn = create_fn(cnt, test, NULL, llvm_name, FLAG_TEST, fn_proto, emit_llvm);
+	const bool  emit_llvm    = cnt->assembly->options.force_test_to_llvm;
+	const char *linkage_name = gen_uq_name(cnt, TEST_CASE_FN_NAME);
+	const bool  is_in_gscope =
+	    test->owner_scope->kind == SCOPE_GLOBAL || test->owner_scope->kind == SCOPE_PRIVATE;
+	MirFn *fn =
+	    create_fn(cnt, test, NULL, linkage_name, FLAG_TEST, fn_proto, emit_llvm, is_in_gscope);
 
 	BL_ASSERT(test->data.test_case.desc);
 	fn->test_case_desc = test->data.test_case.desc;
@@ -7467,7 +7493,7 @@ ast_expr_member(Context *cnt, Ast *member)
 }
 
 MirInstr *
-ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
+ast_expr_lit_fn(Context *cnt, Ast *lit_fn, Ast *decl_node, bool is_in_gscope, uint32_t flags)
 {
 	/* creates function prototype */
 	Ast *ast_block   = lit_fn->data.expr_fn.block;
@@ -7476,6 +7502,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 	MirInstrFnProto *fn_proto =
 	    (MirInstrFnProto *)append_instr_fn_proto(cnt, lit_fn, NULL, NULL, true);
 
+	/* Generate type resolver for function type. */
 	fn_proto->type = ast_create_impl_fn_call(
 	    cnt, ast_fn_type, RESOLVE_TYPE_FN_NAME, cnt->builtin_types.t_resolve_type_fn);
 	BL_ASSERT(fn_proto->type);
@@ -7483,13 +7510,24 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn)
 	MirInstrBlock *prev_block      = get_current_block(cnt);
 	MirInstrBlock *prev_exit_block = cnt->ast.exit_block;
 
-	MirFn *fn =
-	    create_fn(cnt, lit_fn, NULL, NULL, 0, fn_proto, true); /* TODO: based on user flag!!! */
+	MirFn *fn = create_fn(cnt,
+	                      decl_node ? decl_node : lit_fn,
+	                      decl_node ? &decl_node->data.ident.id : NULL,
+	                      NULL,
+	                      flags,
+	                      fn_proto,
+	                      true,
+	                      is_in_gscope);
+
 	mir_set_const_ptr(&fn_proto->base.value.data.v_ptr, fn, MIR_CP_FN);
 
 	/* function body */
 	/* external functions has no body */
-	if (!ast_block) return &fn_proto->base;
+	if (IS_FLAG(flags, FLAG_EXTERN)) {
+		return &fn_proto->base;
+	}
+
+	BL_ASSERT(ast_block && "Non-external function literal without block!");
 
 	/* Set body scope for DI. */
 	fn->body_scope = ast_block->owner_scope;
@@ -7718,24 +7756,10 @@ ast_decl_entity(Context *cnt, Ast *entity)
 	ID *   id    = &ast_name->data.ident.id;
 
 	if (ast_value && ast_value->kind == AST_EXPR_LIT_FN) {
-		/* recognised function */
+		/* recognised named function declaraton */
 		const int32_t flags = entity->data.decl_entity.flags;
-		MirInstr *    value = ast(cnt, ast_value);
-		enable_groups       = true;
-		if (is_in_gscope) {
-			value->value.data.v_ptr.data.fn->llvm_name = ast_name->data.ident.id.str;
-		} else {
-			if (IS_FLAG(entity->data.decl_entity.flags, FLAG_EXTERN))
-				value->value.data.v_ptr.data.fn->llvm_name =
-				    ast_name->data.ident.id.str;
-			else
-				value->value.data.v_ptr.data.fn->llvm_name =
-				    gen_uq_name(cnt, ast_name->data.ident.id.str);
-		}
-
-		value->value.data.v_ptr.data.fn->id        = id;
-		value->value.data.v_ptr.data.fn->decl_node = ast_name;
-		value->value.data.v_ptr.data.fn->flags     = flags;
+		MirInstr *value = ast_expr_lit_fn(cnt, ast_value, ast_name, is_in_gscope, flags);
+		enable_groups   = true;
 
 		if (ast_type) {
 			((MirInstrFnProto *)value)->user_type =
@@ -8047,7 +8071,8 @@ ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *f
 	MirInstr *     fn_proto   = append_instr_fn_proto(cnt, NULL, NULL, NULL, false);
 	fn_proto->value.type      = final_fn_type;
 
-	MirFn *fn = create_fn(cnt, NULL, NULL, fn_name, 0, (MirInstrFnProto *)fn_proto, false);
+	MirFn *fn =
+	    create_fn(cnt, NULL, NULL, fn_name, 0, (MirInstrFnProto *)fn_proto, false, true);
 	mir_set_const_ptr(&fn_proto->value.data.v_ptr, fn, MIR_CP_FN);
 
 	fn->type = final_fn_type;
@@ -8145,7 +8170,7 @@ ast(Context *cnt, Ast *node)
 	case AST_EXPR_LIT_BOOL:
 		return ast_expr_lit_bool(cnt, node);
 	case AST_EXPR_LIT_FN:
-		return ast_expr_lit_fn(cnt, node);
+		return ast_expr_lit_fn(cnt, node, NULL, false, 0);
 	case AST_EXPR_LIT_STRING:
 		return ast_expr_lit_string(cnt, node);
 	case AST_EXPR_LIT_CHAR:

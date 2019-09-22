@@ -60,6 +60,7 @@ set(HEADER_FILES
 	src/llvm_di.h
 	src/vm.h
 	src/threading.h
+	src/llvm_api.h
         src/ast.h)
 
 set(SOURCE_FILES
@@ -92,6 +93,7 @@ set(SOURCE_FILES
         src/mir_printer.c
         src/ast.c
 	src/threading.cpp
+	src/llvm_api.cpp
         src/llvm_di.cpp)
 
 add_definitions(${LLVM_DEFINITIONS})

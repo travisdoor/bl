@@ -39,8 +39,6 @@
 #include <dyncall.h>
 #include <dyncall_callback.h>
 #include <dynload.h>
-#include <llvm-c/Core.h>
-#include <llvm-c/ExecutionEngine.h>
 
 #define MIR_SLICE_LEN_INDEX 0
 #define MIR_SLICE_PTR_INDEX 1
@@ -263,10 +261,11 @@ struct MirFn {
 	Scope *      body_scope; /* function body scope if there is one (optional) */
 	MirType *    type;
 	BArray *     variables;
-	const char * llvm_name;
+	const char * linkage_name;
 	LLVMValueRef llvm_value;
 	bool         fully_analyzed;
 	bool         emit_llvm;
+	bool         is_in_gscope;
 
 	int32_t     flags;
 	const char *test_case_desc;
@@ -564,6 +563,11 @@ struct MirInstrLoad {
 	MirInstr base;
 
 	MirInstr *src;
+
+	/* LLVM IR should not pass larger structures by value but MIR needs load for correct
+	 * execution, when we set this flag LLVM IR generator will skip generation of this
+	 * instruction. */
+	bool no_llvm;
 };
 
 struct MirInstrStore {

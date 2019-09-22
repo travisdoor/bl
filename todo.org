@@ -18,8 +18,10 @@
   - [ ] make builder global
   - [ ] enable implicit casting only to bigger integer type and check signed unsigned also 
   - [ ] reimplement LLVM-C binding
-  - [ ] add MirArg
+  - [X] add MirArg
   - [ ] document instruction Arg
+  - [ ] pass Any and vargs by pointers implicitly in llvm IR
+  - [ ] support of #extend hash directive for struct inherritance? 
 
 * Bugs [33%]
   - [ ] functions pointers passed during comptime execution cannot be used as an callbacks in external functions because they are not compatible with C ABI calling conventions. This will be by the way quite hard to fix :(. http://www.dyncall.org/docs/dyncallback.3.html

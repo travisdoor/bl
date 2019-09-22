@@ -1,11 +1,11 @@
 //************************************************************************************************
 // bl
 //
-// File:   obj_writer.c
+// File:   llvm_api.h
 // Author: Martin Dorazil
-// Date:   28/02/2018
+// Date:   9/21/19
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2019 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,36 +26,43 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "llvm_api.h"
-#include "common.h"
-#include "error.h"
-#include "stages.h"
+#ifndef BL_LLVM_API_H
+#define BL_LLVM_API_H
 
-#ifdef BL_PLATFORM_WIN
-#define OBJ_EXT ".obj"
-#else
-#define OBJ_EXT ".o"
+#include <llvm-c/Analysis.h>
+#include <llvm-c/BitWriter.h>
+#include <llvm-c/Core.h>
+#include <llvm-c/ExecutionEngine.h>
+#include <llvm-c/Linker.h>
+#include <llvm-c/TargetMachine.h>
+#include <llvm-c/Transforms/PassManagerBuilder.h>
+#include <llvm-c/Transforms/Vectorize.h>
+#include <llvm-c/Types.h>
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-/* Emit assembly object file. */
-void
-obj_writer_run(Builder *builder, Assembly *assembly)
-{
-	char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + strlen(OBJ_EXT) + 1));
-	if (!filename) BL_ABORT("bad alloc");
-	strcpy(filename, assembly->name);
-	strcat(filename, OBJ_EXT);
+/* TODO: intrinsic generators */
 
-	char *error_msg = NULL;
-	remove(filename);
-	if (LLVMTargetMachineEmitToFile(
-	        assembly->llvm.TM, assembly->llvm.module, filename, LLVMObjectFile, &error_msg)) {
-		msg_error("Cannot emit object file: %s with error: %s", filename, error_msg);
+/* Custom C wrapper for LLVM C++ API, this is kinda needed because original C API for LLVM is
+ * incomplete. All used calls to original API should be replaced by this wrapper later. */
 
-		LLVMDisposeMessage(error_msg);
-		bl_free(filename);
-		return;
-	}
+/* This def declarations must matc with 'llvm/IR/Attributes.inc'*/
+typedef enum {
+	LLVM_ATTRIBUTE_NONE,
+#include "llvm_attributes.def"
+} LLVMAttributeKind;
 
-	bl_free(filename);
+LLVMAttributeRef
+llvm_create_attribute(LLVMContextRef context_ref, LLVMAttributeKind kind);
+
+LLVMAttributeRef
+llvm_create_attribute_type(LLVMContextRef    context_ref,
+                           LLVMAttributeKind kind,
+                           LLVMTypeRef       type_ref);
+
+#ifdef __cplusplus
 }
+#endif
+#endif

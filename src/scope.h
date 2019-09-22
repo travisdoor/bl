@@ -30,9 +30,9 @@
 #define BL_SCOPE_H
 
 #include "arena.h"
+#include "llvm_api.h"
 #include <bobject/containers/array.h>
 #include <bobject/containers/htbl.h>
-#include <llvm-c/Types.h>
 
 struct Location;
 struct Ast;

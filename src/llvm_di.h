@@ -32,8 +32,7 @@
 #ifndef BL_LLVM_DI_H
 #define BL_LLVM_DI_H
 
-#include <llvm-c/Core.h>
-#include <llvm-c/Types.h>
+#include "llvm_api.h"
 
 #ifdef __cplusplus
 extern "C" {

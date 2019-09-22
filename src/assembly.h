@@ -38,7 +38,6 @@
 #include <bobject/containers/list.h>
 #include <dyncall.h>
 #include <dynload.h>
-#include <llvm-c/ExecutionEngine.h>
 
 struct MirModule;
 struct Builder;

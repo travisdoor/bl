@@ -33,7 +33,6 @@
 #include "config.h"
 #include "scope.h"
 #include "tokens.h"
-#include <llvm-c/Core.h>
 
 struct Token;
 

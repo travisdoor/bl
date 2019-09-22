@@ -30,25 +30,16 @@
 #include "bldebug.h"
 #include "error.h"
 #include "stages.h"
-#include <llvm-c/Analysis.h>
-#include <llvm-c/Transforms/PassManagerBuilder.h>
-#include <llvm-c/Transforms/Vectorize.h>
+#include "llvm_api.h"
 
 void
 ir_opt_run(Builder *builder, Assembly *assembly)
 {
-	/* TODO: set by user!!! */
-#if BL_DEBUG
-	const unsigned opt_lvl = 0;
-#else
-	const unsigned opt_lvl = 3;
-#endif
-
 	LLVMModuleRef        llvm_module = assembly->llvm.module;
 	LLVMTargetMachineRef llvm_tm     = assembly->llvm.TM;
 
 	LLVMPassManagerBuilderRef llvm_pm_builder = LLVMPassManagerBuilderCreate();
-	LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, opt_lvl);
+	LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, assembly->options.opt_lvl);
 
 	LLVMPassManagerRef llvm_pm = LLVMCreatePassManager();
 	LLVMAddAnalysisPasses(llvm_tm, llvm_pm);

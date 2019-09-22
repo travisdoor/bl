@@ -172,7 +172,7 @@ print_const_value(MirConstValue *value, FILE *stream)
 			                ? data->v_ptr.data.value->data.v_ptr.data.fn
 			                : NULL;
 			if (fn) {
-				fprintf(stream, "&%s", fn->llvm_name ? fn->llvm_name : fn->id->str);
+				fprintf(stream, "&%s", fn->linkage_name ? fn->linkage_name : fn->id->str);
 			} else {
 				fprintf(stream, "<invalid>");
 			}
@@ -583,6 +583,8 @@ print_instr_compound(MirInstrCompound *init, FILE *stream)
 		fprintf(stream, "<invalid values>");
 	}
 	fprintf(stream, "}");
+
+	if (init->is_naked) fprintf(stream, " /* naked */");
 }
 
 void
@@ -719,6 +721,7 @@ print_instr_load(MirInstrLoad *load, FILE *stream)
 {
 	print_instr_head(&load->base, stream, "load");
 	print_comptime_value_or_id(load->src, stream);
+	if (load->no_llvm) fprintf(stream, " /* no LLVM */");
 }
 
 void
@@ -833,7 +836,7 @@ print_instr_call(MirInstrCall *call, FILE *stream)
 	print_instr_head(&call->base, stream, "call");
 
 	const char *callee_name = call->callee->value.data.v_ptr.data.fn
-	                              ? call->callee->value.data.v_ptr.data.fn->llvm_name
+	                              ? call->callee->value.data.v_ptr.data.fn->linkage_name
 	                              : NULL;
 	if (callee_name)
 		fprintf(stream, "@%s", callee_name);
@@ -857,7 +860,7 @@ print_instr_ret(MirInstrRet *ret, FILE *stream)
 {
 	print_instr_head(&ret->base, stream, "ret");
 	if (ret->value) print_comptime_value_or_id(ret->value, stream);
-	if (ret->infer_type) fprintf(stream, " // infer");
+	if (ret->infer_type) fprintf(stream, " /* infer */");
 }
 
 void
@@ -895,7 +898,7 @@ print_instr_block(MirInstrBlock *block, FILE *stream)
 	fprintf(stream, "%%%s_%llu:", block->name, (unsigned long long)block->base.id);
 #endif
 	if (!block->base.ref_count)
-		fprintf(stream, " // NEVER REACHED\n");
+		fprintf(stream, " /* NEVER REACHED */\n");
 	else
 		fprintf(stream, "\n");
 
@@ -915,11 +918,11 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 
 	fprintf(stream, "\n");
 
-	if (fn_proto->base.analyzed) fprintf(stream, "// analyzed\n");
-	if (!fn->emit_llvm) fprintf(stream, "// no LLVM\n");
+	if (fn_proto->base.analyzed) fprintf(stream, "/* analyzed */\n");
+	if (!fn->emit_llvm) fprintf(stream, "/* no LLVM */\n");
 
-	if (fn->llvm_name)
-		fprintf(stream, "@%s ", fn->llvm_name);
+	if (fn->linkage_name)
+		fprintf(stream, "@%s ", fn->linkage_name);
 	else
 		fprintf(stream, "@%llu ", (unsigned long long)fn_proto->base.id);
 
@@ -1060,13 +1063,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
 		break;
 	}
 
-	const bool is_naked_compound =
-	    instr->kind == MIR_INSTR_COMPOUND && ((MirInstrCompound *)instr)->is_naked;
-	if (instr->comptime || is_naked_compound || instr->unrechable) fprintf(stream, " // ");
+	if (instr->comptime) fprintf(stream, " /* comptime */");
+	if (instr->unrechable) fprintf(stream, " /* unrechable */");
 
-	fprintf(stream, "%s", instr->comptime ? "comptime " : "");
-	fprintf(stream, "%s", instr->unrechable ? "unrechable " : "");
-	fprintf(stream, "%s", is_naked_compound ? "naked" : "");
 	fprintf(stream, "\n");
 }
 

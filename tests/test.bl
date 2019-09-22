@@ -1,9 +1,22 @@
 /* playground */
 
-#load "std/print.bl"
+Foo :: struct {
+    i: s32,
+    j: s32,
+    k: s32,
+};
 
-Fn :: *fn (s32);
+printf :: fn (f: *u8, i: s32) s32 #extern;
 
 main :: fn () s32 {
+    foo := {:Foo: 10, 20, 30 };
+    res := func(foo);
+
+    format := "result = %d\n";
+    printf(format.ptr, res);
     return 0;
+};
+
+func :: fn (foo: Foo) s32 {
+    return foo.i + foo.j + foo.k;
 };

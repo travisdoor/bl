@@ -30,7 +30,6 @@
 #include "bldebug.h"
 #include "error.h"
 #include "stages.h"
-#include <llvm-c/BitWriter.h>
 #include <string.h>
 
 void

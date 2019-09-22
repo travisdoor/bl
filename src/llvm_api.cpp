@@ -1,11 +1,11 @@
 //************************************************************************************************
 // bl
 //
-// File:   obj_writer.c
+// File:   llvm_api.cpp
 // Author: Martin Dorazil
-// Date:   28/02/2018
+// Date:   9/21/19
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2019 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,35 +27,25 @@
 //************************************************************************************************
 
 #include "llvm_api.h"
-#include "common.h"
-#include "error.h"
-#include "stages.h"
+#include "llvm/IR/Attributes.h"
 
-#ifdef BL_PLATFORM_WIN
-#define OBJ_EXT ".obj"
-#else
-#define OBJ_EXT ".o"
-#endif
+#define CAST(T) reinterpret_cast<T>
 
-/* Emit assembly object file. */
-void
-obj_writer_run(Builder *builder, Assembly *assembly)
+using namespace llvm;
+
+LLVMAttributeRef
+llvm_create_attribute(LLVMContextRef context_ref, LLVMAttributeKind kind)
 {
-	char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + strlen(OBJ_EXT) + 1));
-	if (!filename) BL_ABORT("bad alloc");
-	strcpy(filename, assembly->name);
-	strcat(filename, OBJ_EXT);
+	return CAST(LLVMAttributeRef)(
+	    Attribute::get(*CAST(LLVMContext *)(context_ref), (Attribute::AttrKind)kind)
+	        .getRawPointer());
+}
 
-	char *error_msg = NULL;
-	remove(filename);
-	if (LLVMTargetMachineEmitToFile(
-	        assembly->llvm.TM, assembly->llvm.module, filename, LLVMObjectFile, &error_msg)) {
-		msg_error("Cannot emit object file: %s with error: %s", filename, error_msg);
-
-		LLVMDisposeMessage(error_msg);
-		bl_free(filename);
-		return;
-	}
-
-	bl_free(filename);
+LLVMAttributeRef
+llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef type_ref)
+{
+	return CAST(LLVMAttributeRef)(Attribute::get(*CAST(LLVMContext *)(context_ref),
+	                                             (Attribute::AttrKind)kind,
+	                                             CAST(Type *)(type_ref))
+	                                  .getRawPointer());
 }
