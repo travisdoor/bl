@@ -4,7 +4,7 @@
 #include "deleteme_global.h"
 
 struct Foo {
-    int i,j,k;
+    long long i,j,k;
 };
 
 DELETEME_EXPORT void foo(struct Foo foo);
