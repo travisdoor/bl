@@ -42,6 +42,14 @@ llvm_create_attribute(LLVMContextRef context_ref, LLVMAttributeKind kind)
 }
 
 LLVMAttributeRef
+llvm_create_attribute_int(LLVMContextRef context_ref, LLVMAttributeKind kind, s32 v)
+{
+	return CAST(LLVMAttributeRef)(
+	    Attribute::get(*CAST(LLVMContext *)(context_ref), (Attribute::AttrKind)kind, v)
+	        .getRawPointer());
+}
+
+LLVMAttributeRef
 llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef type_ref)
 {
 	return CAST(LLVMAttributeRef)(Attribute::get(*CAST(LLVMContext *)(context_ref),

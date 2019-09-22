@@ -1,29 +1,17 @@
 /* playground */
 
 #link "deleteme"
-#load "std/print.bl"
 
 Foo :: struct {
-    i: s32,
-    j: s32,
-    k: s32,
+    i: s64,
+    j: s64,
+    k: s64,
 };
 
 foo :: fn (foo: Foo) #extern;
 
 main :: fn () s32 {
     data := {:Foo: 10, 40, 30};
-    print("%\n", data);
-    print("%\n", alignof(data.i));
-    print("%\n", alignof(data.j));
-    print("%\n", alignof(data.k));
-
-    tmp := &data.i;
-    print("%\n", tmp);
-    tmp = &data.j;
-    print("%\n", tmp);
-    tmp = &data.k;
-    print("%\n", tmp);
     foo(data);
     return 0;
 };
