@@ -304,7 +304,6 @@ struct MirArg {
 	ID *     id;
 	Ast *    decl_node;
 	Scope *  decl_scope;
-	bool     llvm_byval;
 };
 
 /* TYPE */
@@ -563,11 +562,6 @@ struct MirInstrLoad {
 	MirInstr base;
 
 	MirInstr *src;
-
-	/* LLVM IR should not pass larger structures by value but MIR needs load for correct
-	 * execution, when we set this flag LLVM IR generator will skip generation of this
-	 * instruction. */
-	bool no_llvm;
 };
 
 struct MirInstrStore {

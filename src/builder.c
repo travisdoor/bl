@@ -77,7 +77,7 @@ llvm_init(void)
 int
 compile_unit(Unit *unit, Assembly *assembly)
 {
-    if (builder.options.verbose) {
+	if (builder.options.verbose) {
 		if (unit->loaded_from) {
 			msg_log("Compile: %s (loaded from '%s')",
 			        unit->name,
@@ -87,13 +87,13 @@ compile_unit(Unit *unit, Assembly *assembly)
 		}
 	}
 
-		file_loader_run(unit);
-		INTERRUPT_ON_ERROR;
+	file_loader_run(unit);
+	INTERRUPT_ON_ERROR;
 
 	lexer_run(unit);
 	INTERRUPT_ON_ERROR;
 
-    if (builder.options.print_tokens) {
+	if (builder.options.print_tokens) {
 		token_printer_run(unit);
 		INTERRUPT_ON_ERROR;
 	}
@@ -149,7 +149,7 @@ builder_parse_options(s32 argc, char *argv[])
 #define arg_is(_arg) (strcmp(&argv[optind][1], _arg) == 0)
 
 	builder.options.opt_level = OPT_NOT_SPECIFIED;
-	s32  optind;
+	s32 optind;
 	for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
 		if (arg_is("ast-dump")) {
 			builder.options.print_ast = true;
@@ -162,27 +162,27 @@ builder_parse_options(s32 argc, char *argv[])
 		} else if (arg_is("emit-llvm")) {
 			builder.options.emit_llvm = true;
 		} else if (arg_is("emit-mir")) {
-			builder.options.emit_mir= true;
+			builder.options.emit_mir = true;
 		} else if (arg_is("r") || arg_is("run")) {
-			builder.options.run= true;
+			builder.options.run = true;
 		} else if (arg_is("rt") || arg_is("run-tests")) {
-			builder.options.run_tests= true;
+			builder.options.run_tests = true;
 		} else if (arg_is("no-bin")) {
-			builder.options.no_bin= true;
+			builder.options.no_bin = true;
 		} else if (arg_is("no-warning")) {
-			builder.options.no_warn= true;
+			builder.options.no_warn = true;
 		} else if (arg_is("verbose")) {
-			builder.options.verbose= true;
+			builder.options.verbose = true;
 		} else if (arg_is("no-api")) {
-			builder.options.no_api= true;
+			builder.options.no_api = true;
 		} else if (arg_is("force-test-to-llvm")) {
-			builder.options.force_test_llvm= true;
+			builder.options.force_test_llvm = true;
 		} else if (arg_is("debug")) {
-			builder.options.debug_build= true;
+			builder.options.debug_build = true;
 		} else if (arg_is("no-llvm")) {
-			builder.options.no_llvm= true;
+			builder.options.no_llvm = true;
 		} else if (arg_is("configure")) {
-			builder.options.run_configure= true;
+			builder.options.run_configure = true;
 		} else if (arg_is("opt-none")) {
 			builder.options.opt_level = OPT_NONE;
 		} else if (arg_is("opt-less")) {
@@ -232,12 +232,6 @@ builder_load_conf_file(const char *filepath)
 	/* use standart lexer */
 	lexer_run(unit);
 	INTERRUPT_ON_ERROR;
-
-	/* print output */
-	/*
-	token_printer_run(unit);
-	INTERRUPT_ON_ERROR(builder);
-	*/
 
 	/* print output */
 	conf_parser_run(unit);

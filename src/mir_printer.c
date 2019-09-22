@@ -721,7 +721,6 @@ print_instr_load(MirInstrLoad *load, FILE *stream)
 {
 	print_instr_head(&load->base, stream, "load");
 	print_comptime_value_or_id(load->src, stream);
-	if (load->no_llvm) fprintf(stream, " /* no LLVM */");
 }
 
 void

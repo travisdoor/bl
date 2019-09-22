@@ -2138,9 +2138,6 @@ init_llvm_type_fn(Context *cnt, MirType *type)
 		{
 			llvm_arg_type = arg->type->llvm_type;
 			BL_ASSERT(llvm_arg_type);
-			if (arg->llvm_byval) {
-				llvm_arg_type = LLVMPointerType(llvm_arg_type, 0);
-			}
 			sa_push_LLVMType(&llvm_args, llvm_arg_type);
 		}
 	}
@@ -5891,10 +5888,6 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 			        cnt, &analyze_slot_conf_full, call_arg, callee_arg->type) !=
 			    ANALYZE_PASSED) {
 				return ANALYZE_RESULT(FAILED, 0);
-			}
-
-			if ((*call_arg)->kind == MIR_INSTR_LOAD && callee_arg->llvm_byval) {
-				((MirInstrLoad *)(*call_arg))->no_llvm = true;
 			}
 		}
 	}

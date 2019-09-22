@@ -297,23 +297,6 @@ emit_fn_proto(Context *cnt, MirFn *fn)
 		fn->llvm_value =
 		    LLVMAddFunction(cnt->llvm_module, fn->linkage_name, fn->type->llvm_type);
 
-		SmallArray_ArgPtr *args = fn->type->data.fn.args;
-		if (args) {
-			MirArg *arg;
-			SARRAY_FOREACH(args, arg)
-			{
-				if (arg->llvm_byval) {
-					LLVMTypeRef llvm_byval_type = arg->type->llvm_type;
-
-					LLVMAttributeRef llvm_attr = llvm_create_attribute_type(
-					    cnt->llvm_cnt, LLVM_ATTRIBUTE_BYVAL, llvm_byval_type);
-
-					LLVMAddAttributeAtIndex(
-					    fn->llvm_value, (unsigned)i + 1, llvm_attr);
-				}
-			}
-		}
-
 		if (IS_FLAG(fn->flags, FLAG_INLINE)) {
 			LLVMAttributeRef llvm_attr =
 			    llvm_create_attribute(cnt->llvm_cnt, LLVM_ATTRIBUTE_ALWAYSINLINE);
@@ -686,12 +669,6 @@ emit_instr_arg(Context *cnt, MirInstrArg *arg)
 	BL_ASSERT(llvm_fn);
 
 	arg->base.llvm_value = LLVMGetParam(llvm_fn, arg->i);
-
-	/* Check if argument is byval. */
-	const bool llvm_byval = fn->type->data.fn.args->data[arg->i]->llvm_byval;
-	if (llvm_byval) {
-		arg->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, arg->base.llvm_value, "");
-	}
 }
 
 void
@@ -765,12 +742,8 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 	const unsigned alignment = (const unsigned)load->base.value.type->alignment;
 	BL_ASSERT(llvm_src);
 
-	if (load->no_llvm) {
-		load->base.llvm_value = llvm_src;
-	} else {
-		load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
-		LLVMSetAlignment(load->base.llvm_value, alignment);
-	}
+	load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
+	LLVMSetAlignment(load->base.llvm_value, alignment);
 }
 
 LLVMValueRef
@@ -1316,22 +1289,6 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	BL_ASSERT(llvm_fn)
 	call->base.llvm_value =
 	    LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args.data, (unsigned int)llvm_argc, "");
-
-	if (llvm_argc) {
-		MirArg *arg;
-		SARRAY_FOREACH(callee_type->data.fn.args, arg)
-		{
-			if (arg->llvm_byval) {
-				// LLVMSetInstrParamAlignment(LLVMValueRef Instr, unsigned int
-				// index, unsigned int Align);
-				LLVMTypeRef      llvm_byval_type = arg->type->llvm_type;
-				LLVMAttributeRef llvm_attr       = llvm_create_attribute_type(
-                                    cnt->llvm_cnt, LLVM_ATTRIBUTE_BYVAL, llvm_byval_type);
-				LLVMAddCallSiteAttribute(
-				    call->base.llvm_value, (unsigned)i + 1, llvm_attr);
-			}
-		}
-	}
 
 	sa_terminate(&llvm_args);
 }
