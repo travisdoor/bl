@@ -39,6 +39,8 @@
 #include <llvm-c/Transforms/Vectorize.h>
 #include <llvm-c/Types.h>
 
+#include "common.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -56,6 +58,9 @@ typedef enum {
 
 LLVMAttributeRef
 llvm_create_attribute(LLVMContextRef context_ref, LLVMAttributeKind kind);
+
+LLVMAttributeRef
+llvm_create_attribute_int(LLVMContextRef context_ref, LLVMAttributeKind kind, s32 v);
 
 LLVMAttributeRef
 llvm_create_attribute_type(LLVMContextRef    context_ref,
