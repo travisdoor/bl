@@ -1492,16 +1492,121 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	MirFn *      fn      = callee->value.data.v_ptr.data.fn;
 	LLVMValueRef llvm_fn = callee->llvm_value ? callee->llvm_value : emit_fn_proto(cnt, fn);
 
-	const size_t         llvm_argc = call->args ? call->args->size : 0;
+	const size_t         argc = call->args ? call->args->size : 0;
 	SmallArray_LLVMValue llvm_args;
 	sa_init(&llvm_args);
 
-	if (llvm_argc) {
-		MirInstr *arg;
-		SARRAY_FOREACH(call->args, arg)
+	SmallArray_LLVMType llvm_callee_arg_types;
+	sa_init(&llvm_callee_arg_types);
+
+	if (callee_type->data.fn.has_byval) BL_LOG("call byval fn");
+
+	if (argc) {
+		MirInstr *arg_instr;
+		MirArg *  arg;
+		sa_resize_LLVMType(&llvm_callee_arg_types, argc);
+		LLVMGetParamTypes(callee_type->llvm_type, llvm_callee_arg_types.data);
+
+		SARRAY_FOREACH(call->args, arg_instr)
 		{
-			LLVMValueRef llvm_arg = fetch_value(cnt, arg);
-			sa_push_LLVMValue(&llvm_args, llvm_arg);
+			arg                   = callee_type->data.fn.args->data[i];
+			LLVMValueRef llvm_arg = fetch_value(cnt, arg_instr);
+
+			switch (arg->llvm_easgm) {
+			case LLVM_EASGM_NONE: { /* Default behavior. */
+				sa_push_LLVMValue(&llvm_args, llvm_arg);
+				break;
+			}
+
+			case LLVM_EASGM_8:
+			case LLVM_EASGM_16:
+			case LLVM_EASGM_32:
+			case LLVM_EASGM_64: {
+				/* TODO: build allocas at the begining of the function!!! */
+				/* TODO: build allocas at the begining of the function!!! */
+				/* TODO: build allocas at the begining of the function!!! */
+				LLVMValueRef llvm_struct_tmp =
+				    LLVMBuildAlloca(cnt->llvm_builder, arg->type->llvm_type, "");
+				LLVMValueRef llvm_tmp = LLVMBuildAlloca(
+				    cnt->llvm_builder, llvm_callee_arg_types.data[i], "");
+
+				LLVMBuildStore(cnt->llvm_builder,
+				               LLVMGetParam(fn->llvm_value, i),
+				               llvm_struct_tmp);
+
+				LLVMValueRef llvm_tmp_size =
+				    LLVMConstInt(cnt->llvm_i64_type,
+				                 LLVMStoreSizeOfType(cnt->llvm_td,
+				                                     llvm_callee_arg_types.data[i]),
+				                 false);
+
+				LLVMValueRef llvm_tmp_alig =
+				    LLVMConstInt(cnt->llvm_i64_type,
+				                 LLVMABIAlignmentOfType(
+				                     cnt->llvm_td, llvm_callee_arg_types.data[i]),
+				                 false);
+
+				build_call_memcpy(
+				    cnt, llvm_tmp, llvm_struct_tmp, llvm_tmp_size, llvm_tmp_alig);
+
+				sa_push_LLVMValue(&llvm_args,
+				                  LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, ""));
+				break;
+			}
+
+			case LLVM_EASGM_64_8:
+			case LLVM_EASGM_64_16:
+			case LLVM_EASGM_64_32:
+			case LLVM_EASGM_64_64: {
+				LLVMValueRef llvm_struct_tmp =
+				    LLVMBuildAlloca(cnt->llvm_builder, arg->type->llvm_type, "");
+
+				LLVMTypeRef llvm_tmp_type = LLVMStructTypeInContext(
+				    cnt->llvm_cnt, &llvm_callee_arg_types.data[i], 2, false);
+				LLVMValueRef llvm_tmp =
+				    LLVMBuildAlloca(cnt->llvm_builder, llvm_tmp_type, "");
+
+				LLVMBuildStore(cnt->llvm_builder,
+				               LLVMGetParam(fn->llvm_value, i),
+				               llvm_struct_tmp);
+
+				LLVMValueRef llvm_tmp_size =
+				    LLVMConstInt(cnt->llvm_i64_type,
+				                 LLVMStoreSizeOfType(cnt->llvm_td, llvm_tmp_type),
+				                 false);
+
+				LLVMValueRef llvm_tmp_alig = LLVMConstInt(
+				    cnt->llvm_i64_type,
+				    LLVMABIAlignmentOfType(cnt->llvm_td, llvm_tmp_type),
+				    false);
+
+				build_call_memcpy(
+				    cnt, llvm_tmp, llvm_struct_tmp, llvm_tmp_size, llvm_tmp_alig);
+
+				LLVMValueRef llvm_tmp_1 =
+				    LLVMBuildStructGEP(cnt->llvm_builder, llvm_tmp, 0, "");
+				llvm_tmp_1 = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp_1, "");
+
+				LLVMValueRef llvm_tmp_2 =
+				    LLVMBuildStructGEP(cnt->llvm_builder, llvm_tmp, 1, "");
+				llvm_tmp_2 = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp_2, "");
+
+				sa_push_LLVMValue(&llvm_args, llvm_tmp_1);
+				sa_push_LLVMValue(&llvm_args, llvm_tmp_2);
+				break;
+			}
+
+			case LLVM_EASGM_BYVAL: {
+				LLVMValueRef llvm_struct_tmp =
+				    LLVMBuildAlloca(cnt->llvm_builder, arg->type->llvm_type, "");
+				LLVMBuildStore(cnt->llvm_builder,
+				               LLVMGetParam(fn->llvm_value, i),
+				               llvm_struct_tmp);
+				sa_push_LLVMValue(&llvm_args, llvm_struct_tmp);
+
+				break;
+			}
+			}
 		}
 	}
 
@@ -1509,8 +1614,9 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 
 	BL_ASSERT(llvm_fn)
 	call->base.llvm_value =
-	    LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args.data, (unsigned int)llvm_argc, "");
+	    LLVMBuildCall(cnt->llvm_builder, llvm_fn, llvm_args.data, llvm_args.size, "");
 
+	sa_terminate(&llvm_callee_arg_types);
 	sa_terminate(&llvm_args);
 }
 

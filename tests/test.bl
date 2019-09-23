@@ -1,15 +1,13 @@
 /* playground */
 
-#link "deleteme"
-
 Foo :: struct {
     j: s32,
-    i: s64,
+    i: s32
 };
 
-foo :: fn (foo: Foo, i: s32) s32 #extern;
-
 main :: fn () s32 {
-    data := {:Foo: 10, 20};
-    return foo(data, 666);
+    return foo({:Foo: 10, 20}, 666);
+};
+
+foo :: fn (foo: Foo, i: s32) s32  {
 };

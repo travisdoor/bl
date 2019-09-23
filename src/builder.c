@@ -209,6 +209,9 @@ builder_init(void)
 	builder.str_cache = bo_array_new_bo(bo_typeof(BString), true);
 	builder.conf      = conf_data_new();
 
+	/* TODO: this is invalid for Windows MSVC DLLs??? */
+	builder.options.promote_structs_into_registers = true;
+
 	/* initialize LLVM statics */
 	llvm_init();
 }
