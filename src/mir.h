@@ -353,7 +353,6 @@ struct MirTypeStruct {
 	Scope *               scope; /* struct body scope */
 	SmallArray_MemberPtr *members;
 	bool                  is_packed;
-	size_t                minimal_size;
 };
 
 /* Enum variants must be baked into enum type. */

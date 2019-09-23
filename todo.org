@@ -20,7 +20,7 @@
   - [ ] reimplement LLVM-C binding
   - [X] add MirArg
   - [ ] document instruction Arg
-  - [ ] pass Any and vargs by pointers implicitly in llvm IR
+  - [ ] pass all structures passed by value as pointers into the functions and make copy inside. 
   - [ ] support of #extend hash directive for struct inherritance? 
 
 * Bugs [28%]

@@ -2212,11 +2212,6 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 	{
 		BL_ASSERT(member->type->llvm_type);
 		sa_push_LLVMType(&llvm_members, member->type->llvm_type);
-		type->data.strct.minimal_size += member->type->store_size_bytes;
-
-		if (i < members->size - 1) {
-			type->data.strct.minimal_size += member->type->alignment;
-		}
 	}
 
 	/* named structure type */
@@ -4740,6 +4735,23 @@ analyze_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
+static inline size_t
+struct_split_fit(Context *cnt, MirType *struct_type, size_t bound, size_t *start)
+{
+	s32    so     = mir_get_struct_elem_offest(cnt->assembly, struct_type, *start);
+	size_t offset = 0;
+	size_t size   = 0;
+	size_t total  = 0;
+	for (; *start < struct_type->data.strct.members->size; ++(*start)) {
+		offset = mir_get_struct_elem_offest(cnt->assembly, struct_type, *start) - so;
+		size   = mir_get_struct_elem_type(struct_type, *start)->store_size_bytes;
+		if (offset + size > bound) return bound;
+		total = offset + size;
+	}
+
+	return total > 1 ? next_pow_2(total) : total;
+}
+
 AnalyzeResult
 analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
@@ -4821,44 +4833,56 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 			{
 				/* Composit types. */
 				if (mir_is_composit_type(arg->type)) {
-					BL_WARNING_ISSUE(29);
+					size_t start = 0;
+					s32    low   = 0;
+					s32    high  = 0;
+					low          = struct_split_fit(
+                                            cnt, arg->type, sizeof(size_t), &start);
 
-					switch (arg->type->data.strct.minimal_size) {
-					case 1:
-						arg->llvm_easgm = LLVM_EASGM_8;
-						break;
-					case 2:
-						arg->llvm_easgm = LLVM_EASGM_16;
-						break;
-					case 3:
-					case 4:
-						arg->llvm_easgm = LLVM_EASGM_32;
-						break;
-					case 5:
-					case 6:
-					case 7:
-					case 8:
-						arg->llvm_easgm = LLVM_EASGM_64;
-						break;
-					case 9:
-						arg->llvm_easgm = LLVM_EASGM_64_8;
-						break;
-					case 10:
-						arg->llvm_easgm = LLVM_EASGM_64_16;
-						break;
-					case 11:
-					case 12:
-						arg->llvm_easgm = LLVM_EASGM_64_32;
-						break;
-					case 13:
-					case 14:
-					case 15:
-					case 16:
-						arg->llvm_easgm = LLVM_EASGM_64_64;
-						break;
-					default:
+					if (start < arg->type->data.strct.members->size)
+						high = struct_split_fit(
+						    cnt, arg->type, sizeof(size_t), &start);
+
+					if (start < arg->type->data.strct.members->size) {
 						arg->llvm_easgm = LLVM_EASGM_BYVAL;
-						break;
+					} else {
+						switch (low) {
+						case 1:
+							arg->llvm_easgm = LLVM_EASGM_8;
+							break;
+						case 2:
+							arg->llvm_easgm = LLVM_EASGM_16;
+							break;
+						case 4:
+							arg->llvm_easgm = LLVM_EASGM_32;
+							break;
+						case 8: {
+							switch (high) {
+							case 0:
+								arg->llvm_easgm = LLVM_EASGM_64;
+								break;
+							case 1:
+								arg->llvm_easgm = LLVM_EASGM_64_8;
+								break;
+							case 2:
+								arg->llvm_easgm = LLVM_EASGM_64_16;
+								break;
+							case 4:
+								arg->llvm_easgm = LLVM_EASGM_64_32;
+								break;
+							case 8:
+								arg->llvm_easgm = LLVM_EASGM_64_64;
+								break;
+							default:
+								BL_ASSERT(false);
+								break;
+							}
+							break;
+						}
+						default:
+							BL_ASSERT(false);
+							break;
+						}
 					}
 				}
 

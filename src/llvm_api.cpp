@@ -50,3 +50,11 @@ llvm_create_attribute_int(LLVMContextRef context_ref, LLVMAttributeKind kind, s3
 	        .getRawPointer());
 }
 
+LLVMAttributeRef
+llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef v)
+{
+	return CAST(LLVMAttributeRef)(Attribute::get(*CAST(LLVMContext *)(context_ref),
+	                                             (Attribute::AttrKind)kind,
+	                                             CAST(Type *)(v))
+	                                  .getRawPointer());
+}

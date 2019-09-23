@@ -235,3 +235,15 @@ _create_sarr(Assembly *assembly, size_t arr_size)
 	sa_init(tmp);
 	return tmp;
 }
+
+u32
+next_pow_2(u32 n)
+{
+	u32 p = 1;
+	if (n && !(n & (n - 1))) return n;
+
+	while (p < n)
+		p <<= 1;
+
+	return p;
+}
