@@ -2212,7 +2212,11 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 	{
 		BL_ASSERT(member->type->llvm_type);
 		sa_push_LLVMType(&llvm_members, member->type->llvm_type);
-		type->data.strct.packed_size += member->type->store_size_bytes;
+		type->data.strct.minimal_size += member->type->store_size_bytes;
+
+		if (i < members->size - 1) {
+			type->data.strct.minimal_size += member->type->alignment;
+		}
 	}
 
 	/* named structure type */
@@ -4819,7 +4823,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 				if (mir_is_composit_type(arg->type)) {
 					BL_WARNING_ISSUE(29);
 
-					switch (arg->type->data.strct.packed_size) {
+					switch (arg->type->data.strct.minimal_size) {
 					case 1:
 						arg->llvm_easgm = LLVM_EASGM_8;
 						break;
@@ -4865,8 +4869,8 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		}
 
 		if (fn->llvm_extern_wrap) {
-			const char *tmp = fn->linkage_name;
-			fn->linkage_name = gen_uq_name(fn->linkage_name);
+			const char *tmp       = fn->linkage_name;
+			fn->linkage_name      = gen_uq_name(fn->linkage_name);
 			fn->linkage_orig_name = tmp;
 		}
 	} else {
