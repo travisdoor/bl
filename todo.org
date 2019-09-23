@@ -20,10 +20,10 @@
   - [ ] reimplement LLVM-C binding
   - [X] add MirArg
   - [ ] document instruction Arg
-  - [ ] pass Any and vargs by pointers implicitly in llvm IR
+  - [ ] pass all structures passed by value as pointers into the functions and make copy inside. 
   - [ ] support of #extend hash directive for struct inherritance? 
 
-* Bugs [33%]
+* Bugs [28%]
   - [ ] functions pointers passed during comptime execution cannot be used as an callbacks in external functions because they are not compatible with C ABI calling conventions. This will be by the way quite hard to fix :(. http://www.dyncall.org/docs/dyncallback.3.html
 
   - [X] fn typedef
@@ -39,6 +39,9 @@
     Foo : u64 : 10;
     
   - [ ] Unstable function pointers and invalid error reporting locations.
+  - [ ] Create implicit wrapper to match SystemV calling convetions when passing larger arguments by value.
+    - structures smaller than 16B split into two i64, larger use pass byval attribute
+    - add information to externals needed this changes
 
 
 * parser race conditions

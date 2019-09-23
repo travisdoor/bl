@@ -190,6 +190,20 @@ typedef enum MirValueAddressMode {
 	MIR_VAM_RVALUE,
 } MirValueAddressMode;
 
+/* External function arguments passing composit types by value needs special handling in IR. */
+typedef enum LLVMExternArgStructGenerationMode {
+	LLVM_EASGM_NONE,  /* No special handling */
+	LLVM_EASGM_8,     /* Promote composit as i8 */
+	LLVM_EASGM_16,    /* Promote composit as i16 */
+	LLVM_EASGM_32,    /* Promote composit as i32 */
+	LLVM_EASGM_64,    /* Promote composit as i64 */
+	LLVM_EASGM_64_8,  /* Promote composit as i64, i8 */
+	LLVM_EASGM_64_16, /* Promote composit as i64, i16 */
+	LLVM_EASGM_64_32, /* Promote composit as i64, i32 */
+	LLVM_EASGM_64_64, /* Promote composit as i64, i64 */
+	LLVM_EASGM_BYVAL, /* Promote composit as byval */
+} LLVMExternArgStructGenerationMode;
+
 typedef enum MirInstrKind {
 	MIR_INSTR_INVALID,
 	MIR_INSTR_BLOCK,
@@ -255,13 +269,20 @@ typedef struct {
 
 /* FN */
 struct MirFn {
-	MirInstr *   prototype; /* Must be first!!! */
-	ID *         id;
-	Ast *        decl_node;
-	Scope *      body_scope; /* function body scope if there is one (optional) */
-	MirType *    type;
-	BArray *     variables;
-	const char * linkage_name;
+	/* Must be first!!! */
+	MirInstr *prototype;
+	ID *      id;
+	Ast *     decl_node;
+
+	/* function body scope if there is one (optional) */
+	Scope *     body_scope;
+	MirType *   type;
+	BArray *    variables;
+	const char *linkage_name;
+	const char *linkage_orig_name;
+
+	/* Valid only for external functions, implicit wrapper is needed in IR when true. */
+	bool         llvm_extern_wrap;
 	LLVMValueRef llvm_value;
 	bool         fully_analyzed;
 	bool         emit_llvm;
@@ -304,6 +325,8 @@ struct MirArg {
 	ID *     id;
 	Ast *    decl_node;
 	Scope *  decl_scope;
+
+	LLVMExternArgStructGenerationMode llvm_easgm;
 };
 
 /* TYPE */
@@ -508,6 +531,7 @@ struct MirInstrDeclArg {
 
 	MirArg *  arg;
 	MirInstr *type;
+	bool      llvm_byval;
 };
 
 struct MirInstrElemPtr {

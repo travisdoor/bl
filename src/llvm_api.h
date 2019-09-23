@@ -62,6 +62,9 @@ llvm_create_attribute(LLVMContextRef context_ref, LLVMAttributeKind kind);
 LLVMAttributeRef
 llvm_create_attribute_int(LLVMContextRef context_ref, LLVMAttributeKind kind, s32 v);
 
+LLVMAttributeRef
+llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef v);
+
 #ifdef __cplusplus
 }
 #endif

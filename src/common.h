@@ -162,6 +162,9 @@ create_arr(struct Assembly *assembly, size_t size);
 void *
 _create_sarr(struct Assembly *cnt, size_t arr_size);
 
+u32
+next_pow_2(u32 n);
+
 #define create_sarr(T, Asm) ((T *)_create_sarr((Asm), sizeof(T)))
 
 #endif
