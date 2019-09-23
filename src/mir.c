@@ -4808,6 +4808,20 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		} else {
 			fn->fully_analyzed = true;
 		}
+
+#ifdef BL_PLATFORM_MACOS
+		SmallArray_ArgPtr *args = fn->type->data.fn.args;
+		if (args) {
+			MirArg *arg;
+			SARRAY_FOREACH(args, arg)
+			{
+				if (mir_is_composit_type(arg->type) ||
+				    arg->type->kind == MIR_TYPE_ARRAY) {
+					BL_WARNING_ISSUE(29);
+				}
+			}
+		}
+#endif
 	} else {
 		/* Add entry block of the function into analyze queue. */
 		MirInstr *entry_block = (MirInstr *)fn->first_block;

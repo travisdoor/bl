@@ -3,9 +3,9 @@
 #link "deleteme"
 
 Foo :: struct {
-    i: s64,
-    j: s64,
-    k: s64,
+    i: s32,
+    j: s32,
+    k: s32,
 };
 
 foo :: fn (foo: Foo) #extern;

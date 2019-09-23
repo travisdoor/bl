@@ -27,7 +27,8 @@
 //************************************************************************************************
 
 #include "llvm_api.h"
-#include "llvm/IR/Attributes.h"
+#include <llvm/IR/Attributes.h>
+#include <llvm/IR/Type.h>
 
 #define CAST(T) reinterpret_cast<T>
 
@@ -49,11 +50,3 @@ llvm_create_attribute_int(LLVMContextRef context_ref, LLVMAttributeKind kind, s3
 	        .getRawPointer());
 }
 
-LLVMAttributeRef
-llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef type_ref)
-{
-	return CAST(LLVMAttributeRef)(Attribute::get(*CAST(LLVMContext *)(context_ref),
-	                                             (Attribute::AttrKind)kind,
-	                                             CAST(Type *)(type_ref))
-	                                  .getRawPointer());
-}
