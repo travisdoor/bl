@@ -1,7 +1,8 @@
 #include "deleteme.h"
-#include <stdio.h>
+//#include <stdio.h>
 
-void foo(struct Foo foo)
+void foo(struct Foo foo, int i)
 {
-    printf("\ni = %d, j = %d, k = %d\n", foo.i, foo.j, foo.k);
+  //printf("foo.i = %d, foo.j = %d\n", foo.i, foo.j);
+  //printf("i = %d\n", i);
 }

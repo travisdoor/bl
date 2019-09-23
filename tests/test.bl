@@ -3,15 +3,15 @@
 #link "deleteme"
 
 Foo :: struct {
+    o: s8,
     i: s32,
-    j: s32,
-    k: s32,
+    k: s8,
 };
 
-foo :: fn (foo: Foo) #extern;
+foo :: fn (foo: Foo, i: s32) #extern;
 
 main :: fn () s32 {
-    data := {:Foo: 10, 40, 30};
-    foo(data);
+    data := {:Foo: 5, 10, 20};
+    foo(data, 666);
     return 0;
 };

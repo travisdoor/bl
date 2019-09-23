@@ -2212,6 +2212,7 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 	{
 		BL_ASSERT(member->type->llvm_type);
 		sa_push_LLVMType(&llvm_members, member->type->llvm_type);
+		type->data.strct.packed_size += member->type->store_size_bytes;
 	}
 
 	/* named structure type */
@@ -4809,19 +4810,65 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 			fn->fully_analyzed = true;
 		}
 
-#ifdef BL_PLATFORM_MACOS
 		SmallArray_ArgPtr *args = fn->type->data.fn.args;
 		if (args) {
 			MirArg *arg;
 			SARRAY_FOREACH(args, arg)
 			{
-				if (mir_is_composit_type(arg->type) ||
-				    arg->type->kind == MIR_TYPE_ARRAY) {
+				/* Composit types. */
+				if (mir_is_composit_type(arg->type)) {
 					BL_WARNING_ISSUE(29);
+
+					switch (arg->type->data.strct.packed_size) {
+					case 1:
+						arg->llvm_easgm = LLVM_EASGM_8;
+						break;
+					case 2:
+						arg->llvm_easgm = LLVM_EASGM_16;
+						break;
+					case 3:
+					case 4:
+						arg->llvm_easgm = LLVM_EASGM_32;
+						break;
+					case 5:
+					case 6:
+					case 7:
+					case 8:
+						arg->llvm_easgm = LLVM_EASGM_64;
+						break;
+					case 9:
+						arg->llvm_easgm = LLVM_EASGM_64_8;
+						break;
+					case 10:
+						arg->llvm_easgm = LLVM_EASGM_64_16;
+						break;
+					case 11:
+					case 12:
+						arg->llvm_easgm = LLVM_EASGM_64_32;
+						break;
+					case 13:
+					case 14:
+					case 15:
+					case 16:
+						arg->llvm_easgm = LLVM_EASGM_64_64;
+						break;
+					default:
+						arg->llvm_easgm = LLVM_EASGM_BYVAL;
+						break;
+					}
 				}
+
+				fn->llvm_extern_wrap = fn->llvm_extern_wrap
+				                           ? true
+				                           : arg->llvm_easgm != LLVM_EASGM_NONE;
 			}
 		}
-#endif
+
+		if (fn->llvm_extern_wrap) {
+			const char *tmp = fn->linkage_name;
+			fn->linkage_name = gen_uq_name(fn->linkage_name);
+			fn->linkage_orig_name = tmp;
+		}
 	} else {
 		/* Add entry block of the function into analyze queue. */
 		MirInstr *entry_block = (MirInstr *)fn->first_block;
