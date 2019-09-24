@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #include "llvm_api.h"
+#include <llvm/Config/llvm-config.h>
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/Type.h>
 
@@ -53,8 +54,14 @@ llvm_create_attribute_int(LLVMContextRef context_ref, LLVMAttributeKind kind, s3
 LLVMAttributeRef
 llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef v)
 {
+#if LLVM_VERSION_MAJOR == 10
 	return CAST(LLVMAttributeRef)(Attribute::get(*CAST(LLVMContext *)(context_ref),
 	                                             (Attribute::AttrKind)kind,
 	                                             CAST(Type *)(v))
 	                                  .getRawPointer());
+#else
+	return CAST(LLVMAttributeRef)(
+	    Attribute::get(*CAST(LLVMContext *)(context_ref), (Attribute::AttrKind)kind)
+	        .getRawPointer());
+#endif
 }
