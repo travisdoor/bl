@@ -2153,6 +2153,8 @@ init_llvm_type_fn(Context *cnt, MirType *type)
 		MirArg *arg;
 		SARRAY_FOREACH(args, arg)
 		{
+			arg->llvm_index = llvm_args.size;
+
 			/* Composit types. */
 			if (builder.options.promote_structs_into_registers &&
 			    mir_is_composit_type(arg->type)) {

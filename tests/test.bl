@@ -1,13 +1,21 @@
 /* playground */
 
+#load "std/print.bl"
+
 Foo :: struct {
-    j: s32,
-    i: s32
+    j: s64,
+    k: s64,
+    l: s8,
 };
 
-main :: fn () s32 {
-    return foo({:Foo: 10, 20}, 666);
+main :: fn (argc: s32) s32 {
+    data := {:Foo: auto argc, 20, 66};
+
+    loop {
+        return foo(data, data, 666);
+    }
 };
 
-foo :: fn (foo: Foo, i: s32) s32  {
+foo :: fn (foo: Foo, foo2: Foo, i: s32) s32  {
+    print("%; %; %\n", foo, foo, i);
 };

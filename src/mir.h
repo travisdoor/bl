@@ -326,6 +326,10 @@ struct MirArg {
 	Ast *    decl_node;
 	Scope *  decl_scope;
 
+	/* This is index of this argument in LLVM IR not in MIR, it can be different based on
+	 * compiler configuration (vix. System V ABI) */
+	u32 llvm_index;
+
 	LLVMExternArgStructGenerationMode llvm_easgm;
 };
 
