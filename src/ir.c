@@ -1383,9 +1383,9 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	LLVMValueRef llvm_result = NULL;
 	/* SRET must come first!!! */
 	if (callee_type->data.fn.has_sret) {
+		/* PERFORMANCE: Reuse ret_tmp inside function??? */
 		INSERT_TMP(llvm_tmp, callee_type->data.fn.ret_type->llvm_type);
 		sa_push_LLVMValue(&llvm_args, llvm_tmp);
-		llvm_result = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, "");
 	}
 
 	if (has_args) {
@@ -1477,13 +1477,15 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	LLVMValueRef llvm_call =
 	    LLVMBuildCall(cnt->llvm_builder, llvm_called_fn, llvm_args.data, llvm_args.size, "");
 
-	/* PERFORMANCE: LLVM API requires to set call side attributes after call is created. */
 	if (callee_type->data.fn.has_sret) {
 		LLVMAddCallSiteAttribute(llvm_call,
 		                         LLVM_SRET_INDEX + 1,
 		                         llvm_create_attribute(cnt->llvm_cnt, LLVM_ATTR_STRUCTRET));
+
+		llvm_result = LLVMBuildLoad(cnt->llvm_builder, llvm_args.data[LLVM_SRET_INDEX], "");
 	}
 
+	/* PERFORMANCE: LLVM API requires to set call side attributes after call is created. */
 	if (has_byval_arg) {
 		BL_ASSERT(has_args);
 		SmallArray_ArgPtr *args = callee_type->data.fn.args;
@@ -1492,10 +1494,8 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 		{
 			if (arg->llvm_easgm != LLVM_EASGM_BYVAL) continue;
 
-			LLVMAttributeRef llvm_atrbt =
-			    llvm_create_attribute_type(cnt->llvm_cnt,
-			                               LLVM_ATTR_BYVAL,
-			                               llvm_callee_arg_types.data[arg->llvm_index]);
+			LLVMAttributeRef llvm_atrbt = llvm_create_attribute_type(
+			    cnt->llvm_cnt, LLVM_ATTR_BYVAL, arg->type->llvm_type);
 			LLVMAddCallSiteAttribute(llvm_call, arg->llvm_index + 1, llvm_atrbt);
 		}
 	}

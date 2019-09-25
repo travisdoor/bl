@@ -32,6 +32,7 @@
 
   - [ ] Invalid llvm for
     print("kind %\n", cast(s32) (cast(*TypeInfo) data).kind);
+    print("%\n", call_some_function());
     
   - [ ] VK_NULL_HANDLE :: null; cannot be used
 
