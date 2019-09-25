@@ -10,7 +10,7 @@ struct Foo {
 };
 
 
-DELETEME_EXPORT struct Foo foo(struct Foo foo, int i);
+DELETEME_EXPORT void foo(struct Foo foo, int i);
 DELETEME_EXPORT struct Foo bar(void);
 
 #endif // DELETEME_H
