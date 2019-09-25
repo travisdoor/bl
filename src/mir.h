@@ -279,10 +279,7 @@ struct MirFn {
 	MirType *   type;
 	BArray *    variables;
 	const char *linkage_name;
-	const char *linkage_orig_name;
 
-	/* Valid only for external functions, implicit wrapper is needed in IR when true. */
-	bool         llvm_extern_wrap;
 	LLVMValueRef llvm_value;
 	bool         fully_analyzed;
 	bool         emit_llvm;

@@ -10,10 +10,7 @@ Foo :: struct {
 
 main :: fn (argc: s32) s32 {
     data := {:Foo: auto argc, 20, 66};
-
-    loop {
-        return foo(data, data, 666);
-    }
+    return foo(data, data, 666);
 };
 
 foo :: fn (foo: Foo, foo2: Foo, i: s32) s32  {

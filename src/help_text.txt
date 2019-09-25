@@ -18,4 +18,5 @@ Options\n\
   -configure                          = Generate config file.\n\
   -opt-<none|less|default|aggressive> = Set optimization level. (use 'default' when not specified)\n\
   -debug                              = Debug mode build. (when opt level is not specified 'none' is used)\n\
+  -reg-split-<on|off>                 = Enable or disable spplitting structures passed into the function by value into registers\n\
   -no-llvm                            = Disable LLVM backend."

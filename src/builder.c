@@ -183,6 +183,10 @@ builder_parse_options(s32 argc, char *argv[])
 			builder.options.no_llvm = true;
 		} else if (arg_is("configure")) {
 			builder.options.run_configure = true;
+		} else if (arg_is("reg-split-on")) {
+			builder.options.reg_split = true;
+		} else if (arg_is("reg-split-off")) {
+			builder.options.reg_split = false;
 		} else if (arg_is("opt-none")) {
 			builder.options.opt_level = OPT_NONE;
 		} else if (arg_is("opt-less")) {
@@ -210,7 +214,12 @@ builder_init(void)
 	builder.conf      = conf_data_new();
 
 	/* TODO: this is invalid for Windows MSVC DLLs??? */
-	builder.options.promote_structs_into_registers = true;
+
+#if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
+	builder.options.reg_split = true;
+#else
+	builder.options.reg_split = false;
+#endif
 
 	/* initialize LLVM statics */
 	llvm_init();

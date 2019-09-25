@@ -66,7 +66,7 @@ typedef struct BuilderOpions {
 	bool     verbose;
 	bool     force_test_llvm;
 	bool     debug_build;
-	bool     promote_structs_into_registers;
+	bool     reg_split;
 } BuilderOptions;
 
 typedef struct Builder {

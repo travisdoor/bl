@@ -288,221 +288,6 @@ emit_global_string_ptr(Context *cnt, const char *str, size_t len);
 static void
 emit_allocas(Context *cnt, MirFn *fn);
 
-/* PERFORMANCE: We create implicit wrapper for all externals containing at least one argument
- * passing structure by value. We try to split the passed structure into 8B registers, as require C
- * ABI call convetion. */
-static LLVMValueRef
-emit_extern_wrapper_fn(Context *cnt, MirFn *fn)
-{
-	fn->llvm_value = LLVMAddFunction(cnt->llvm_module, fn->linkage_name, fn->type->llvm_type);
-
-	/* Allways inline this function call */
-	LLVMAttributeRef llvm_attr =
-	    llvm_create_attribute(cnt->llvm_cnt, LLVM_ATTRIBUTE_ALWAYSINLINE);
-	LLVMAddAttributeAtIndex(fn->llvm_value, (unsigned)LLVMAttributeFunctionIndex, llvm_attr);
-
-	BL_ASSERT(fn->type->data.fn.args &&
-	          "No need to generate wrapper for external function without arguments.");
-
-	/* Build external fn definition. */
-	SmallArray_LLVMType llvm_arg_types;
-	sa_init(&llvm_arg_types);
-	LLVMTypeRef llvm_ret_type = fn->type->data.fn.ret_type->llvm_type;
-	BL_ASSERT(llvm_ret_type && "Missing external function return type.");
-
-	SmallArray_ArgPtr *args = fn->type->data.fn.args;
-	MirArg *           arg;
-	SARRAY_FOREACH(args, arg)
-	{
-		switch (arg->llvm_easgm) {
-		case LLVM_EASGM_8:
-			sa_push_LLVMType(&llvm_arg_types, LLVMInt8TypeInContext(cnt->llvm_cnt));
-			break;
-		case LLVM_EASGM_16:
-			sa_push_LLVMType(&llvm_arg_types, LLVMInt16TypeInContext(cnt->llvm_cnt));
-			break;
-		case LLVM_EASGM_32:
-			sa_push_LLVMType(&llvm_arg_types, LLVMInt32TypeInContext(cnt->llvm_cnt));
-			break;
-		case LLVM_EASGM_64:
-			sa_push_LLVMType(&llvm_arg_types, LLVMInt64TypeInContext(cnt->llvm_cnt));
-			break;
-		case LLVM_EASGM_64_8:
-			sa_push_LLVMType(&llvm_arg_types, LLVMInt64TypeInContext(cnt->llvm_cnt));
-			sa_push_LLVMType(&llvm_arg_types, LLVMInt8TypeInContext(cnt->llvm_cnt));
-			break;
-		case LLVM_EASGM_64_16:
-			sa_push_LLVMType(&llvm_arg_types, LLVMInt64TypeInContext(cnt->llvm_cnt));
-			sa_push_LLVMType(&llvm_arg_types, LLVMInt16TypeInContext(cnt->llvm_cnt));
-			break;
-		case LLVM_EASGM_64_32:
-			sa_push_LLVMType(&llvm_arg_types, LLVMInt64TypeInContext(cnt->llvm_cnt));
-			sa_push_LLVMType(&llvm_arg_types, LLVMInt32TypeInContext(cnt->llvm_cnt));
-			break;
-		case LLVM_EASGM_64_64:
-			sa_push_LLVMType(&llvm_arg_types, LLVMInt64TypeInContext(cnt->llvm_cnt));
-			sa_push_LLVMType(&llvm_arg_types, LLVMInt64TypeInContext(cnt->llvm_cnt));
-			break;
-		case LLVM_EASGM_BYVAL: {
-			sa_push_LLVMType(&llvm_arg_types, LLVMPointerType(arg->type->llvm_type, 0));
-			break;
-		}
-
-		case LLVM_EASGM_NONE:
-			sa_push_LLVMType(&llvm_arg_types, arg->type->llvm_type);
-			break;
-		}
-	}
-
-	LLVMTypeRef llvm_fn_type =
-	    LLVMFunctionType(llvm_ret_type, llvm_arg_types.data, llvm_arg_types.size, false);
-	LLVMValueRef llvm_orig_fn =
-	    LLVMAddFunction(cnt->llvm_module, fn->linkage_orig_name, llvm_fn_type);
-
-	/* Generate wrapper body. User code will call this wrapper instead of direct call to the
-	 * external function, wrapper must do the conversion of passed structure to expected EASGM
-	 * configuration to provide compatibility with C call convetions. I'm not sure if this is
-	 * needed on other platforms or it's valid only for UNIX with SystemV. */
-
-	/* Prepare main block. */
-	LLVMBasicBlockRef llvm_block      = LLVMAppendBasicBlock(fn->llvm_value, "entry");
-	LLVMBasicBlockRef llvm_prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
-	LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_block);
-
-	bool has_byval         = false;
-	bool does_return_value = fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID;
-
-	/* Build extern fn call args */
-	SmallArray_LLVMValue llvm_args;
-	sa_init(&llvm_args);
-	SARRAY_FOREACH(args, arg)
-	{
-		switch (arg->llvm_easgm) {
-		case LLVM_EASGM_8:
-		case LLVM_EASGM_16:
-		case LLVM_EASGM_32:
-		case LLVM_EASGM_64: {
-			LLVMValueRef llvm_struct_tmp =
-			    LLVMBuildAlloca(cnt->llvm_builder, arg->type->llvm_type, "");
-			LLVMValueRef llvm_tmp =
-			    LLVMBuildAlloca(cnt->llvm_builder, llvm_arg_types.data[i], "");
-
-			LLVMBuildStore(
-			    cnt->llvm_builder, LLVMGetParam(fn->llvm_value, i), llvm_struct_tmp);
-
-			LLVMValueRef llvm_tmp_size =
-			    LLVMConstInt(cnt->llvm_i64_type,
-			                 LLVMStoreSizeOfType(cnt->llvm_td, llvm_arg_types.data[i]),
-			                 false);
-
-			LLVMValueRef llvm_tmp_alig = LLVMConstInt(
-			    cnt->llvm_i64_type,
-			    LLVMABIAlignmentOfType(cnt->llvm_td, llvm_arg_types.data[i]),
-			    false);
-
-			build_call_memcpy(
-			    cnt, llvm_tmp, llvm_struct_tmp, llvm_tmp_size, llvm_tmp_alig);
-
-			sa_push_LLVMValue(&llvm_args,
-			                  LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, ""));
-			break;
-		}
-
-		case LLVM_EASGM_64_8:
-		case LLVM_EASGM_64_16:
-		case LLVM_EASGM_64_32:
-		case LLVM_EASGM_64_64: {
-			LLVMValueRef llvm_struct_tmp =
-			    LLVMBuildAlloca(cnt->llvm_builder, arg->type->llvm_type, "");
-
-			LLVMTypeRef llvm_tmp_type = LLVMStructTypeInContext(
-			    cnt->llvm_cnt, &llvm_arg_types.data[i], 2, false);
-			LLVMValueRef llvm_tmp =
-			    LLVMBuildAlloca(cnt->llvm_builder, llvm_tmp_type, "");
-
-			LLVMBuildStore(
-			    cnt->llvm_builder, LLVMGetParam(fn->llvm_value, i), llvm_struct_tmp);
-
-			LLVMValueRef llvm_tmp_size =
-			    LLVMConstInt(cnt->llvm_i64_type,
-			                 LLVMStoreSizeOfType(cnt->llvm_td, llvm_tmp_type),
-			                 false);
-
-			LLVMValueRef llvm_tmp_alig =
-			    LLVMConstInt(cnt->llvm_i64_type,
-			                 LLVMABIAlignmentOfType(cnt->llvm_td, llvm_tmp_type),
-			                 false);
-
-			build_call_memcpy(
-			    cnt, llvm_tmp, llvm_struct_tmp, llvm_tmp_size, llvm_tmp_alig);
-
-			LLVMValueRef llvm_tmp_1 =
-			    LLVMBuildStructGEP(cnt->llvm_builder, llvm_tmp, 0, "");
-			llvm_tmp_1 = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp_1, "");
-
-			LLVMValueRef llvm_tmp_2 =
-			    LLVMBuildStructGEP(cnt->llvm_builder, llvm_tmp, 1, "");
-			llvm_tmp_2 = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp_2, "");
-
-			sa_push_LLVMValue(&llvm_args, llvm_tmp_1);
-			sa_push_LLVMValue(&llvm_args, llvm_tmp_2);
-			break;
-		}
-
-		case LLVM_EASGM_BYVAL: {
-			has_byval = has_byval ? has_byval : true;
-			LLVMValueRef llvm_struct_tmp =
-			    LLVMBuildAlloca(cnt->llvm_builder, arg->type->llvm_type, "");
-			LLVMBuildStore(
-			    cnt->llvm_builder, LLVMGetParam(fn->llvm_value, i), llvm_struct_tmp);
-			sa_push_LLVMValue(&llvm_args, llvm_struct_tmp);
-
-			break;
-		}
-
-		case LLVM_EASGM_NONE: {
-			sa_push_LLVMValue(&llvm_args, LLVMGetParam(fn->llvm_value, i));
-			break;
-		}
-		}
-	}
-
-	LLVMValueRef llvm_call =
-	    LLVMBuildCall(cnt->llvm_builder, llvm_orig_fn, llvm_args.data, llvm_args.size, "");
-
-	/* PERFORMANCE: LLVM shitty stuff, we cannot set callside attributes before call is created.
-	 */
-	if (has_byval) {
-		SARRAY_FOREACH(args, arg)
-		{
-			if (arg->llvm_easgm != LLVM_EASGM_BYVAL) continue;
-			/* Setup attributes. */
-			LLVMAttributeRef llvm_attr = llvm_create_attribute_type(
-			    cnt->llvm_cnt, LLVM_ATTRIBUTE_BYVAL, arg->type->llvm_type);
-
-			LLVMAddCallSiteAttribute(llvm_call, (unsigned)i + 1, llvm_attr);
-
-			/* Setup attributes. */
-			llvm_attr = llvm_create_attribute_type(
-			    cnt->llvm_cnt, LLVM_ATTRIBUTE_BYVAL, arg->type->llvm_type);
-
-			LLVMAddAttributeAtIndex(llvm_orig_fn, (unsigned)i + 1, llvm_attr);
-		}
-	}
-
-	if (does_return_value) {
-		LLVMBuildRet(cnt->llvm_builder, llvm_call);
-	} else {
-		LLVMBuildRetVoid(cnt->llvm_builder);
-	}
-
-	sa_terminate(&llvm_args);
-	sa_terminate(&llvm_arg_types);
-
-	LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_prev_block);
-	return fn->llvm_value;
-}
-
 static inline LLVMValueRef
 emit_fn_proto(Context *cnt, MirFn *fn)
 {
@@ -512,11 +297,24 @@ emit_fn_proto(Context *cnt, MirFn *fn)
 	fn->llvm_value = LLVMGetNamedFunction(cnt->llvm_module, fn->linkage_name);
 	if (fn->llvm_value) return fn->llvm_value;
 
-	if (fn->llvm_extern_wrap) {
-		return emit_extern_wrapper_fn(cnt, fn);
-	} else {
-		fn->llvm_value =
-		    LLVMAddFunction(cnt->llvm_module, fn->linkage_name, fn->type->llvm_type);
+	fn->llvm_value = LLVMAddFunction(cnt->llvm_module, fn->linkage_name, fn->type->llvm_type);
+
+	/* PERFORMANCE: LLVM shitty stuff, we cannot set callside attributes before call is created.
+	 */
+	if (fn->type->data.fn.has_byval) {
+		SmallArray_ArgPtr *args = fn->type->data.fn.args;
+		BL_ASSERT(args);
+
+		MirArg *arg;
+		SARRAY_FOREACH(args, arg)
+		{
+			if (arg->llvm_easgm != LLVM_EASGM_BYVAL) continue;
+			/* Setup attributes. */
+			LLVMAttributeRef llvm_attr = llvm_create_attribute_type(
+			    cnt->llvm_cnt, LLVM_ATTRIBUTE_BYVAL, arg->type->llvm_type);
+
+			LLVMAddAttributeAtIndex(fn->llvm_value, arg->llvm_index + 1, llvm_attr);
+		}
 	}
 
 	if (IS_FLAG(fn->flags, FLAG_INLINE)) {
@@ -938,9 +736,9 @@ emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg_instr)
 	}
 
 	case LLVM_EASGM_BYVAL: {
-		/* TODO: */
-		/* TODO: */
-		/* TODO: */
+		LLVMValueRef llvm_arg = LLVMGetParam(llvm_fn, arg->llvm_index);
+		llvm_arg              = LLVMBuildLoad(cnt->llvm_builder, llvm_arg, "");
+		llvm_arg              = LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_dest);
 		break;
 	}
 	}
@@ -1667,7 +1465,7 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	if (has_byval_arg) {
 		BL_ASSERT(has_args);
 		SmallArray_ArgPtr *args = callee_type->data.fn.args;
-		MirArg *          arg;
+		MirArg *           arg;
 		SARRAY_FOREACH(args, arg)
 		{
 			if (arg->llvm_easgm != LLVM_EASGM_BYVAL) continue;

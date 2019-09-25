@@ -2142,14 +2142,14 @@ init_llvm_type_fn(Context *cnt, MirType *type)
 	}
 
 	SmallArray_ArgPtr *args      = type->data.fn.args;
-	size_t             argc      = args ? args->size : 0;
+	const bool         has_args  = args;
 	bool               has_byval = false;
 
 	SmallArray_LLVMType llvm_args;
 	sa_init(&llvm_args);
 	LLVMTypeRef llvm_ret = NULL;
 
-	if (argc) {
+	if (has_args) {
 		MirArg *arg;
 		SARRAY_FOREACH(args, arg)
 		{
@@ -2175,7 +2175,8 @@ init_llvm_type_fn(Context *cnt, MirType *type)
 					arg->llvm_easgm = LLVM_EASGM_BYVAL;
 
 					BL_ASSERT(arg->type->llvm_type);
-					sa_push_LLVMType(&llvm_args, arg->type->llvm_type);
+					sa_push_LLVMType(&llvm_args,
+					                 LLVMPointerType(arg->type->llvm_type, 0));
 				} else {
 					switch (low) {
 					case 1:
