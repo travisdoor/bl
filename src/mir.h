@@ -345,6 +345,7 @@ struct MirTypeFn {
 	SmallArray_ArgPtr *args;
 	bool               is_vargs;
 	bool               has_byval;
+	bool               has_sret;
 };
 
 struct MirTypePtr {

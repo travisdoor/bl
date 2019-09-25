@@ -4,15 +4,21 @@
 
 Foo :: struct {
     j: s64,
-    k: s64,
+    k: s8,
     l: s8,
 };
 
 main :: fn (argc: s32) s32 {
     data := {:Foo: auto argc, 20, 66};
-    return foo(data, data, 666);
+    result := foo(data, data, 666);
+    print("%\n", result);
+    return 0;
 };
 
-foo :: fn (foo: Foo, foo2: Foo, i: s32) s32  {
+
+// when return fits into one register -> return as int
+// when it's bigget use sret argument as first one
+foo :: fn (foo: Foo, foo2: Foo, i: s32) Foo {
     print("%; %; %\n", foo, foo, i);
+    return {:Foo: 10, 20, 30};
 };

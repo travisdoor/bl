@@ -1,10 +1,13 @@
 #include "deleteme.h"
-#include <stdio.h>
 
-int
+struct Foo
 foo(struct Foo foo, int i)
 {
-	printf("foo.i = %lli, foo.j = %i\n", foo.i, foo.j);
-	printf("i = %d\n", i);
-	return 10;
+  struct Foo tmp = bar();
+  return tmp;
 }
+
+struct Foo
+bar(void) {
+  return (struct Foo){10};
+};

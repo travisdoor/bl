@@ -1552,23 +1552,25 @@ interp_instr_cast(VM *vm, MirInstrCast *cast)
 		VMStackPtr from_ptr = fetch_value(vm, cast->expr);
 		read_value(&tmp, from_ptr, src_type);
 
-#define sext_case(v, T)                                                                            \
+		/******************************************************************************************/
+#define SECT_CASE(v, T)                                                                            \
 	case sizeof(v.T):                                                                          \
 		tmp.v_s64 = (s64)tmp.T;                                                            \
 		break;
+		/******************************************************************************************/
 
 		// clang-format off
 		switch (src_type->store_size_bytes)
 		{
-			sext_case(tmp, v_s8)
-				sext_case(tmp, v_s16)
-				sext_case(tmp, v_s32)
+			SECT_CASE(tmp, v_s8)
+				SECT_CASE(tmp, v_s16)
+				SECT_CASE(tmp, v_s32)
 		default:
 			BL_ABORT("Invalid sext cast!");
 		}
 		// clang-format on
 
-#undef sext_case
+#undef SECT_CASE
 
 		if (cast->base.comptime)
 			memcpy(&cast->base.value.data, &tmp, sizeof(tmp));
@@ -2201,7 +2203,8 @@ interp_instr_ret(VM *vm, MirInstrRet *ret)
 void
 interp_instr_binop(VM *vm, MirInstrBinop *binop)
 {
-#define _binop_int(_op, _lhs, _rhs, _result, _v_T)                                                 \
+	/******************************************************************************************/
+#define _BINOP_INT(_op, _lhs, _rhs, _result, _v_T)                                                 \
 	case BINOP_ADD:                                                                            \
 		(_result)._v_T = _lhs._v_T + _rhs._v_T;                                            \
 		break;                                                                             \
@@ -2233,11 +2236,13 @@ interp_instr_binop(VM *vm, MirInstrBinop *binop)
 	case BINOP_GREATER_EQ:                                                                     \
 		(_result).v_bool = _lhs._v_T >= _rhs._v_T;                                         \
 		break;
+	/******************************************************************************************/
 
-#define binop_case_int(_op, _lhs, _rhs, _result, _v_T)                                             \
+	/******************************************************************************************/
+#define BINOP_CASE_INT(_op, _lhs, _rhs, _result, _v_T)                                             \
 	case sizeof(_lhs._v_T): {                                                                  \
 		switch (_op) {                                                                     \
-			_binop_int(_op, _lhs, _rhs, _result, _v_T);                                \
+			_BINOP_INT(_op, _lhs, _rhs, _result, _v_T);                                \
 		case BINOP_SHR:                                                                    \
 			(_result)._v_T = _lhs._v_T >> _rhs._v_T;                                   \
 			break;                                                                     \
@@ -2257,13 +2262,16 @@ interp_instr_binop(VM *vm, MirInstrBinop *binop)
 			BL_UNIMPLEMENTED;                                                          \
 		}                                                                                  \
 	} break;
+	/******************************************************************************************/
 
-#define binop_case_real(_op, _lhs, _rhs, _result, _v_T)                                            \
+	/******************************************************************************************/
+#define BINOP_CASE_REAL(_op, _lhs, _rhs, _result, _v_T)                                            \
 	case sizeof(_lhs._v_T): {                                                                  \
 		switch (_op) {                                                                     \
-			_binop_int(_op, _lhs, _rhs, _result, _v_T) default : BL_UNIMPLEMENTED;     \
+			_BINOP_INT(_op, _lhs, _rhs, _result, _v_T) default : BL_UNIMPLEMENTED;     \
 		}                                                                                  \
 	} break;
+	/******************************************************************************************/
 	// clang-format on
 
 	/* binop expects lhs and rhs on stack in exact order and push result again
@@ -2292,19 +2300,19 @@ interp_instr_binop(VM *vm, MirInstrBinop *binop)
 	case MIR_TYPE_INT: {
 		if (type->data.integer.is_signed) {
 			switch (s) {
-				binop_case_int(binop->op, lhs, rhs, result, v_s8);
-				binop_case_int(binop->op, lhs, rhs, result, v_s16);
-				binop_case_int(binop->op, lhs, rhs, result, v_s32);
-				binop_case_int(binop->op, lhs, rhs, result, v_s64);
+				BINOP_CASE_INT(binop->op, lhs, rhs, result, v_s8);
+				BINOP_CASE_INT(binop->op, lhs, rhs, result, v_s16);
+				BINOP_CASE_INT(binop->op, lhs, rhs, result, v_s32);
+				BINOP_CASE_INT(binop->op, lhs, rhs, result, v_s64);
 			default:
 				BL_ABORT("invalid integer data type");
 			}
 		} else {
 			switch (s) {
-				binop_case_int(binop->op, lhs, rhs, result, v_u8);
-				binop_case_int(binop->op, lhs, rhs, result, v_u16);
-				binop_case_int(binop->op, lhs, rhs, result, v_u32);
-				binop_case_int(binop->op, lhs, rhs, result, v_u64);
+				BINOP_CASE_INT(binop->op, lhs, rhs, result, v_u8);
+				BINOP_CASE_INT(binop->op, lhs, rhs, result, v_u16);
+				BINOP_CASE_INT(binop->op, lhs, rhs, result, v_u32);
+				BINOP_CASE_INT(binop->op, lhs, rhs, result, v_u64);
 			default:
 				BL_ABORT("invalid integer data type");
 			}
@@ -2314,8 +2322,8 @@ interp_instr_binop(VM *vm, MirInstrBinop *binop)
 
 	case MIR_TYPE_REAL: {
 		switch (s) {
-			binop_case_real(binop->op, lhs, rhs, result, v_f32);
-			binop_case_real(binop->op, lhs, rhs, result, v_f64);
+			BINOP_CASE_REAL(binop->op, lhs, rhs, result, v_f32);
+			BINOP_CASE_REAL(binop->op, lhs, rhs, result, v_f64);
 		default:
 			BL_ABORT("invalid real data type");
 		}
@@ -2330,14 +2338,15 @@ interp_instr_binop(VM *vm, MirInstrBinop *binop)
 		memcpy(&binop->base.value.data, &result, sizeof(result));
 	else
 		push_stack(vm, &result, binop->base.value.type);
-#undef binop_case_int
-#undef binop_case_real
-#undef _binop_int
+#undef BINOP_CASE_INT
+#undef BINOP_CASE_REAL
+#undef _BINOP_INT
 }
 
 void
 interp_instr_unop(VM *vm, MirInstrUnop *unop)
 {
+	/******************************************************************************************/
 #define unop_case(_op, _value, _result, _v_T)                                                      \
 	case sizeof(_value._v_T): {                                                                \
 		switch (_op) {                                                                     \
@@ -2354,6 +2363,7 @@ interp_instr_unop(VM *vm, MirInstrUnop *unop)
 			BL_UNIMPLEMENTED;                                                          \
 		}                                                                                  \
 	} break;
+	/******************************************************************************************/
 
 	BL_ASSERT(unop->base.value.type);
 	MirType *  value_type = unop->expr->value.type;

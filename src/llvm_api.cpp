@@ -30,10 +30,20 @@
 #include <llvm/Config/llvm-config.h>
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/Type.h>
+#include <llvm/ADT/StringSwitch.h>
 
 #define CAST(T) reinterpret_cast<T>
 
 using namespace llvm;
+
+#define GET_ATTR_KIND_FROM_NAME
+#include "llvm/IR/Attributes.inc"
+
+LLVMAttributeKind
+llvm_get_attribute_kind(const char *name)
+{
+	return getAttrKindFromName({name, strlen(name)});
+}
 
 LLVMAttributeRef
 llvm_create_attribute(LLVMContextRef context_ref, LLVMAttributeKind kind)

@@ -39,6 +39,13 @@
 #include <llvm-c/Transforms/Vectorize.h>
 #include <llvm-c/Types.h>
 
+#define LLVM_SRET_INDEX 0
+#define LLVM_ATTR_NOINLINE llvm_get_attribute_kind("noinline")
+#define LLVM_ATTR_ALWAYSINLINE llvm_get_attribute_kind("alwaysinline")
+#define LLVM_ATTR_BYVAL llvm_get_attribute_kind("byval")
+#define LLVM_ATTR_NOALIAS llvm_get_attribute_kind("noalias")
+#define LLVM_ATTR_STRUCTRET llvm_get_attribute_kind("sret")
+
 #include "common.h"
 
 #ifdef __cplusplus
@@ -50,11 +57,10 @@ extern "C" {
 /* Custom C wrapper for LLVM C++ API, this is kinda needed because original C API for LLVM is
  * incomplete. All used calls to original API should be replaced by this wrapper later. */
 
-/* This def declarations must matc with 'llvm/IR/Attributes.inc'*/
-typedef enum {
-	LLVM_ATTRIBUTE_NONE,
-#include "llvm_attributes.inc"
-} LLVMAttributeKind;
+typedef s32 LLVMAttributeKind;
+
+LLVMAttributeKind
+llvm_get_attribute_kind(const char *name);
 
 LLVMAttributeRef
 llvm_create_attribute(LLVMContextRef context_ref, LLVMAttributeKind kind);

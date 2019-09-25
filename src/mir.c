@@ -2136,18 +2136,35 @@ struct_split_fit(Context *cnt, MirType *struct_type, size_t bound, size_t *start
 void
 init_llvm_type_fn(Context *cnt, MirType *type)
 {
-	MirType *tmp_ret = type->data.fn.ret_type;
-	if (tmp_ret->kind == MIR_TYPE_TYPE) {
+	MirType *ret_type = type->data.fn.ret_type;
+
+	LLVMTypeRef        llvm_ret  = NULL;
+	SmallArray_ArgPtr *args      = type->data.fn.args;
+	const bool         has_args  = args;
+	const bool         has_ret   = ret_type;
+	bool               has_byval = false;
+
+	if (has_ret && ret_type->kind == MIR_TYPE_TYPE) {
 		return;
 	}
 
-	SmallArray_ArgPtr *args      = type->data.fn.args;
-	const bool         has_args  = args;
-	bool               has_byval = false;
-
 	SmallArray_LLVMType llvm_args;
 	sa_init(&llvm_args);
-	LLVMTypeRef llvm_ret = NULL;
+
+	if (has_ret) {
+		if (builder.options.reg_split && mir_is_composit_type(ret_type) &&
+		    ret_type->store_size_bytes > sizeof(size_t)) {
+			type->data.fn.has_sret = true;
+			sa_push_LLVMType(&llvm_args, LLVMPointerType(ret_type->llvm_type, 0));
+			llvm_ret = LLVMVoidTypeInContext(cnt->assembly->llvm.cnt);
+		} else {
+			llvm_ret = ret_type->llvm_type;
+		}
+	} else {
+		llvm_ret = LLVMVoidTypeInContext(cnt->assembly->llvm.cnt);
+	}
+
+	BL_ASSERT(llvm_ret);
 
 	if (has_args) {
 		MirArg *arg;
@@ -2156,8 +2173,7 @@ init_llvm_type_fn(Context *cnt, MirType *type)
 			arg->llvm_index = llvm_args.size;
 
 			/* Composit types. */
-			if (builder.options.promote_structs_into_registers &&
-			    mir_is_composit_type(arg->type)) {
+			if (builder.options.reg_split && mir_is_composit_type(arg->type)) {
 				LLVMContextRef llvm_cnt = cnt->assembly->llvm.cnt;
 				size_t         start    = 0;
 				s32            low      = 0;
@@ -2255,9 +2271,6 @@ init_llvm_type_fn(Context *cnt, MirType *type)
 			}
 		}
 	}
-
-	llvm_ret = tmp_ret ? tmp_ret->llvm_type : LLVMVoidTypeInContext(cnt->assembly->llvm.cnt);
-	BL_ASSERT(llvm_ret);
 
 	type->llvm_type         = LLVMFunctionType(llvm_ret, llvm_args.data, llvm_args.size, false);
 	type->alignment         = __alignof(MirFn *);
