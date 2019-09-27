@@ -104,7 +104,8 @@ set_lib_paths(Context *cnt)
 			if (len - 1 > 0) {
 				strncpy(tmp, begin, len);
 				if (file_exists(tmp)) {
-					char *dup = strndup(begin, len);
+					char *dup = malloc(sizeof(char) * len);
+					memcpy(dup, begin, len);
 					bo_array_push_back(cnt->lib_paths, dup);
 				}
 
