@@ -28,6 +28,7 @@
 
 #include "threading.h"
 #include <thread>
+#include <mutex>
 
 #define CAST(T) reinterpret_cast<T>
 
