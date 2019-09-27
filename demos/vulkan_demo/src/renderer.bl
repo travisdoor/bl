@@ -22,6 +22,7 @@ Renderer :: struct {
     in_flight_fences: [MAX_FRAMES_IN_FLIGHT]VkFence,
 
     current_frame: s64,
+    frame_buffer_resized: bool
 };
 
 renderer_new :: fn () *Renderer {
@@ -39,6 +40,9 @@ renderer_new :: fn () *Renderer {
     create_command_pool(r);
     create_command_buffers(r);
     create_sync_objects(r);
+
+    glfwSetWindowUserPointer(app.window, auto r);
+    glfwSetFramebufferSizeCallback(app.window, &handle_window_resize);
 
     return r;
 };
@@ -71,7 +75,7 @@ renderer_draw_frame :: fn (r: *Renderer) {
         recreate_swap_chain(r);
         return;
     } else if result != VkResult.SUCCESS && result != VkResult.SUBOPTIMAL_KHR {
-        eprint("Failed to acquire swap chain image!");
+        eprint("Failed to acquire swap chain image!\n");
         abort();
     }
 
@@ -107,7 +111,15 @@ renderer_draw_frame :: fn (r: *Renderer) {
     present_info.pSwapchains = swap_chains.ptr;
     present_info.pImageIndices = &image_index;
 
-    vkQueuePresentKHR(r.present_queue, &present_info); 
+    result = vkQueuePresentKHR(r.present_queue, &present_info); 
+    if result == VkResult.ERROR_OUT_OF_DATE_KHR || result == VkResult.SUBOPTIMAL_KHR || r.frame_buffer_resized {
+        r.frame_buffer_resized = false;
+        recreate_swap_chain(r);
+    } else if (result != VkResult.SUCCESS) {
+        eprint("Failed to present swap chain image!\n");
+        abort();
+    }
+
     r.current_frame = (r.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 };
 
@@ -161,7 +173,7 @@ create_instance :: fn (r: *Renderer) {
 
     if ENABLE_VALIDATION_LAYERS {
         create_info.enabledLayerCount = ValidationLayers.len;
-        create_info.ppEnabledLayerNames = c_validation_layers;
+        create_info.ppEnabledLayerNames = auto c_validation_layers;
     } else {
         create_info.enabledLayerCount = 0;
     }
@@ -268,11 +280,11 @@ create_logical_device :: fn (r: *Renderer) {
     create_info.pEnabledFeatures = &device_features;
 
     create_info.enabledExtensionCount = DeviceExtensions.len;
-    create_info.ppEnabledExtensionNames = c_device_extensions;
+    create_info.ppEnabledExtensionNames = auto c_device_extensions;
 
     if ENABLE_VALIDATION_LAYERS {
         create_info.enabledLayerCount = ValidationLayers.len;
-        create_info.ppEnabledLayerNames = c_validation_layers;
+        create_info.ppEnabledLayerNames = auto c_validation_layers;
     } else {
         create_info.enabledLayerCount = 0;
     }        
@@ -352,6 +364,8 @@ create_swap_chain :: fn (r: *Renderer) {
 };
 
 recreate_swap_chain :: fn (r: *Renderer) {
+    wait_when_minimized();
+
     vkDeviceWaitIdle(r.device);
 
     cleanup_swap_chain(r);
@@ -362,6 +376,16 @@ recreate_swap_chain :: fn (r: *Renderer) {
     create_graphics_pipeline(r);
     create_frame_buffers(r);
     create_command_buffers(r);
+};
+
+wait_when_minimized :: fn () {
+    width : u32 = 0;
+    height : u32 = 0;
+
+    loop width == 0 || height == 0 {
+        glfwGetFramebufferSize(app.window, &width, &height);
+        glfwWaitEvents();
+    }
 };
 
 cleanup_swap_chain :: fn (r: *Renderer) {
@@ -726,6 +750,11 @@ create_sync_objects :: fn (r: *Renderer) {
             abort();
         }
     }
+};
+
+handle_window_resize :: fn (window: *GLFWwindow, width: s32, height: s32) {
+    renderer := cast(*Renderer) glfwGetWindowUserPointer(window);
+    renderer.frame_buffer_resized = true;
 };
 
 find_queue_families :: fn (r: *Renderer, device: VkPhysicalDevice) QueueFamilyIndices {

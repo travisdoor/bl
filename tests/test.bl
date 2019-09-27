@@ -1,22 +1,7 @@
 /* playground */
 
-#load "std/print.bl"
-
-Foo :: struct {
-    j: s64,
-    k: s8,
-    l: s8,
-};
+#load "/Users/travis/Desktop/vulkan/vulkan_macos.bl"
 
 main :: fn () {
-    result := foo({:Foo: 10, 20, 30});
-    print("%\n", result);
     return;
-};
-
-
-// when return fits into one register -> return as int
-// when it's bigget use sret argument as first one
-foo :: fn (data: Foo) Foo {
-    return data;
 };

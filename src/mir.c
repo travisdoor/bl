@@ -4926,16 +4926,19 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		BL_ASSERT(fn->linkage_name);
 		fn->dyncall.extern_entry = assembly_find_extern(cnt->assembly, fn->linkage_name);
 
+		/* I'm not sure if we want this...
 		if (!fn->dyncall.extern_entry) {
 			builder_msg(BUILDER_MSG_ERROR,
-			            ERR_UNKNOWN_SYMBOL,
-			            fn_proto->base.node->location,
-			            BUILDER_CUR_WORD,
-			            "External symbol '%s' not found.",
-			            fn->linkage_name);
+				ERR_UNKNOWN_SYMBOL,
+				fn_proto->base.node->location,
+				BUILDER_CUR_WORD,
+				"External symbol '%s' not found.",
+				fn->linkage_name);
 		} else {
 			fn->fully_analyzed = true;
 		}
+		*/
+		fn->fully_analyzed = true;
 	} else {
 		/* Add entry block of the function into analyze queue. */
 		MirInstr *entry_block = (MirInstr *)fn->first_block;
@@ -7593,7 +7596,13 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn, Ast *decl_node, bool is_in_gscope, u3
 		return &fn_proto->base;
 	}
 
-	BL_ASSERT(ast_block && "Non-external function literal without block!");
+	if (!ast_block) {
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_EXPECTED_BODY,
+		            decl_node ? decl_node->location : lit_fn->location,
+		            BUILDER_CUR_WORD,
+		            "Missing function body.");
+	}
 
 	/* Set body scope for DI. */
 	fn->body_scope = ast_block->owner_scope;
@@ -7640,8 +7649,8 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn, Ast *decl_node, bool is_in_gscope, u3
 			BL_ASSERT(ast_arg_name);
 
 			/* create tmp declaration for arg variable */
-			MirInstr *arg = append_instr_arg(cnt, NULL, (unsigned long)i);
-			append_instr_decl_var(cnt, ast_arg_name, NULL, arg, true, false, i, 0);
+			MirInstr *arg = append_instr_arg(cnt, NULL, (u32)i);
+			append_instr_decl_var(cnt, ast_arg_name, NULL, arg, true, false, (s32)i, 0);
 
 			register_symbol(cnt,
 			                ast_arg_name,

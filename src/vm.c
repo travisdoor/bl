@@ -966,7 +966,12 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 	BL_ASSERT(vm);
 
 	/* call setup and clenup */
-	BL_ASSERT(fn->dyncall.extern_entry);
+	if (!fn->dyncall.extern_entry) {
+		msg_error("External function '%s' not found!", fn->linkage_name);
+		exec_abort(vm, 0);
+		return;
+	}
+
 	dcMode(dvm, DC_CALL_C_DEFAULT);
 	dcReset(dvm);
 
