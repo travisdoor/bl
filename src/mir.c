@@ -392,7 +392,7 @@ create_fn(Context *        cnt,
           Ast *            node,
           ID *             id,
           const char *     linkage_name,
-          s32              flags,
+          u32              flags,
           MirInstrFnProto *prototype,
           bool             emit_llvm,
           bool             is_in_gscope);
@@ -1080,8 +1080,8 @@ can_impl_cast(MirType *from, MirType *to)
 	// TODO: enable after correct type propagation of contants
 	if (from->data.integer.is_signed != to->data.integer.is_signed) return false;
 
-	const size_t fb = from->data.integer.bitcount;
-	const size_t tb = to->data.integer.bitcount;
+	const s32 fb = from->data.integer.bitcount;
+	const s32 tb = to->data.integer.bitcount;
 
 	if (fb > tb) return false;
 
@@ -1538,7 +1538,7 @@ sh_type_fn(Context *cnt, MirType *ret_type, SmallArray_ArgPtr *args, bool is_var
 }
 
 static inline const char *
-sh_type_arr(Context *cnt, MirType *elem_type, size_t len)
+sh_type_arr(Context *cnt, MirType *elem_type, s64 len)
 {
 	BL_ASSERT(elem_type->id.str);
 	BString *tmp = cnt->tmp_sh;
@@ -2033,7 +2033,7 @@ init_llvm_type_real(Context *cnt, MirType *type)
 
 	type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
 	type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
-	type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
+	type->alignment = (s32)LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
 
 	/*** DI ***/
 	if (!cnt->debug_mode) return;
@@ -2041,7 +2041,7 @@ init_llvm_type_real(Context *cnt, MirType *type)
 	const char *name = type->user_id ? type->user_id->str : type->id.str;
 
 	type->llvm_meta = llvm_di_create_basic_type(
-	    cnt->analyze.llvm_di_builder, name, type->size_bits, DW_ATE_float);
+	    cnt->analyze.llvm_di_builder, name, (unsigned)type->size_bits, DW_ATE_float);
 }
 
 void
@@ -2056,7 +2056,7 @@ init_llvm_type_ptr(Context *cnt, MirType *type)
 	type->llvm_type        = LLVMPointerType(tmp->llvm_type, 0);
 	type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
 	type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
-	type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
+	type->alignment = (s32)LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
 
 	/*** DI ***/
 	if (!cnt->debug_mode) return;
@@ -2065,7 +2065,7 @@ init_llvm_type_ptr(Context *cnt, MirType *type)
 	type->llvm_meta  = llvm_di_create_pointer_type(cnt->analyze.llvm_di_builder,
                                                       tmp->llvm_meta,
                                                       type->size_bits,
-                                                      type->alignment * 8,
+                                                      (unsigned)type->alignment * 8,
                                                       name);
 }
 
@@ -2106,7 +2106,7 @@ init_llvm_type_bool(Context *cnt, MirType *type)
 	type->llvm_type        = LLVMIntTypeInContext(cnt->assembly->llvm.cnt, 1);
 	type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
 	type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
-	type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
+	type->alignment = (s32)LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
 
 	/*** DI ***/
 	if (!cnt->debug_mode) return;
@@ -2117,20 +2117,21 @@ init_llvm_type_bool(Context *cnt, MirType *type)
 }
 
 static inline size_t
-struct_split_fit(Context *cnt, MirType *struct_type, size_t bound, size_t *start)
+struct_split_fit(Context *cnt, MirType *struct_type, u32 bound, u32 *start)
 {
-	s32    so     = mir_get_struct_elem_offest(cnt->assembly, struct_type, *start);
-	size_t offset = 0;
-	size_t size   = 0;
-	size_t total  = 0;
+	s64 so     = mir_get_struct_elem_offest(cnt->assembly, struct_type, *start);
+	u32 offset = 0;
+	u32 size   = 0;
+	u32 total  = 0;
 	for (; *start < struct_type->data.strct.members->size; ++(*start)) {
-		offset = mir_get_struct_elem_offest(cnt->assembly, struct_type, *start) - so;
-		size   = mir_get_struct_elem_type(struct_type, *start)->store_size_bytes;
+		offset =
+		    (u32)mir_get_struct_elem_offest(cnt->assembly, struct_type, *start) - (u32)so;
+		size = (u32)mir_get_struct_elem_type(struct_type, *start)->store_size_bytes;
 		if (offset + size > bound) return bound;
 		total = offset + size;
 	}
 
-	return total > 1 ? next_pow_2(total) : total;
+	return total > 1 ? next_pow_2((u32)total) : total;
 }
 
 void
@@ -2170,14 +2171,14 @@ init_llvm_type_fn(Context *cnt, MirType *type)
 		MirArg *arg;
 		SARRAY_FOREACH(args, arg)
 		{
-			arg->llvm_index = llvm_args.size;
+			arg->llvm_index = (u32)llvm_args.size;
 
 			/* Composit types. */
 			if (builder.options.reg_split && mir_is_composit_type(arg->type)) {
 				LLVMContextRef llvm_cnt = cnt->assembly->llvm.cnt;
-				size_t         start    = 0;
-				s32            low      = 0;
-				s32            high     = 0;
+				u32            start    = 0;
+				size_t         low      = 0;
+				size_t         high     = 0;
 
 				if (!has_byval) has_byval = true;
 
@@ -2272,7 +2273,8 @@ init_llvm_type_fn(Context *cnt, MirType *type)
 		}
 	}
 
-	type->llvm_type         = LLVMFunctionType(llvm_ret, llvm_args.data, llvm_args.size, false);
+	type->llvm_type =
+	    LLVMFunctionType(llvm_ret, llvm_args.data, (unsigned)llvm_args.size, false);
 	type->alignment         = __alignof(MirFn *);
 	type->size_bits         = sizeof(MirFn *) * 8;
 	type->store_size_bytes  = sizeof(MirFn *);
@@ -2296,8 +2298,8 @@ init_llvm_type_fn(Context *cnt, MirType *type)
 		}
 	}
 
-	type->llvm_meta =
-	    llvm_di_create_function_type(cnt->analyze.llvm_di_builder, params.data, params.size);
+	type->llvm_meta = llvm_di_create_function_type(
+	    cnt->analyze.llvm_di_builder, params.data, (unsigned)params.size);
 
 	sa_terminate(&params);
 }
@@ -2312,15 +2314,15 @@ init_llvm_type_array(Context *cnt, MirType *type)
 	type->llvm_type        = LLVMArrayType(llvm_elem_type, len);
 	type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
 	type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
-	type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
+	type->alignment = (s32)LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
 
 	/*** DI ***/
 	if (!cnt->debug_mode) return;
 	type->llvm_meta = llvm_di_create_array_type(cnt->analyze.llvm_di_builder,
 	                                            type->size_bits,
-	                                            type->alignment * 8,
+	                                            (unsigned)type->alignment * 8,
 	                                            type->data.array.elem_type->llvm_meta,
-	                                            type->data.array.len);
+	                                            (unsigned)type->data.array.len);
 }
 
 void
@@ -2346,22 +2348,21 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 	if (type->user_id) {
 		type->llvm_type =
 		    LLVMStructCreateNamed(cnt->assembly->llvm.cnt, type->user_id->str);
-		LLVMStructSetBody(
-		    type->llvm_type, llvm_members.data, (unsigned long)memc, is_packed);
+		LLVMStructSetBody(type->llvm_type, llvm_members.data, (unsigned)memc, is_packed);
 	} else {
 		type->llvm_type = LLVMStructTypeInContext(
-		    cnt->assembly->llvm.cnt, llvm_members.data, (unsigned long)memc, is_packed);
+		    cnt->assembly->llvm.cnt, llvm_members.data, (unsigned)memc, is_packed);
 	}
 
 	type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
 	type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
-	type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
+	type->alignment = (s32)LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
 
 	sa_terminate(&llvm_members);
 
 	/* set offsets for members */
 	SARRAY_FOREACH(members, member)
-	member->offset_bytes = mir_get_struct_elem_offest(cnt->assembly, type, i);
+	member->offset_bytes = (s32)mir_get_struct_elem_offest(cnt->assembly, type, (u32)i);
 
 	/*** DI ***/
 	if (!cnt->debug_mode) return;
@@ -2379,7 +2380,7 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 	} else {
 		Location *location = type->data.strct.scope->location;
 		llvm_file          = location->unit->llvm_file_meta;
-		struct_line        = location->line;
+		struct_line        = (unsigned)location->line;
 	}
 
 	LLVMMetadataRef llvm_scope = type->data.strct.scope->llvm_di_meta;
@@ -2415,7 +2416,8 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 	MirMember *elem;
 	SARRAY_FOREACH(type->data.strct.members, elem)
 	{
-		unsigned        elem_line = elem->decl_node ? elem->decl_node->location->line : 0;
+		unsigned elem_line =
+		    elem->decl_node ? (unsigned)elem->decl_node->location->line : 0;
 		LLVMMetadataRef llvm_elem = llvm_di_create_member_type(
 		    cnt->analyze.llvm_di_builder,
 		    llvm_scope,
@@ -2423,8 +2425,8 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 		    llvm_file,
 		    elem_line,
 		    elem->type->size_bits,
-		    elem->type->alignment * 8,
-		    mir_get_struct_elem_offest(cnt->assembly, type, i) * 8,
+		    (unsigned)elem->type->alignment * 8,
+		    (unsigned)mir_get_struct_elem_offest(cnt->assembly, type, (u32)i) * 8,
 		    elem->type->llvm_meta);
 
 		sa_push_LLVMMetadata(&llvm_elems, llvm_elem);
@@ -2437,7 +2439,7 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 	                               llvm_file,
 	                               struct_line,
 	                               type->size_bits,
-	                               type->alignment * 8,
+	                               (unsigned)type->alignment * 8,
 	                               llvm_elems.data,
 	                               llvm_elems.size);
 
@@ -2459,7 +2461,7 @@ init_llvm_type_enum(Context *cnt, MirType *type)
 	type->llvm_type        = llvm_base_type;
 	type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
 	type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
-	type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
+	type->alignment = (s32)LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
 
 	/*** DI ***/
 	if (!cnt->debug_mode) return;
@@ -2485,9 +2487,9 @@ init_llvm_type_enum(Context *cnt, MirType *type)
 	                             type->data.enm.scope->parent->llvm_di_meta,
 	                             name,
 	                             type->data.enm.scope->location->unit->llvm_file_meta,
-	                             type->data.enm.scope->location->line,
+	                             (unsigned)type->data.enm.scope->location->line,
 	                             type->size_bits,
-	                             type->alignment * 8,
+	                             (unsigned)type->alignment * 8,
 	                             llvm_elems.data,
 	                             llvm_elems.size,
 	                             base_type->llvm_meta);
@@ -2512,8 +2514,8 @@ init_llvm_DI_scope(Context *cnt, Scope *scope)
 		scope->llvm_di_meta = llvm_di_create_lexical_scope(cnt->analyze.llvm_di_builder,
 		                                                   llvm_parent_scope,
 		                                                   llvm_unit,
-		                                                   scope->location->line,
-		                                                   scope->location->col);
+		                                                   (unsigned)scope->location->line,
+		                                                   (unsigned)scope->location->col);
 		break;
 	}
 
@@ -2605,7 +2607,7 @@ create_fn(Context *        cnt,
           Ast *            node,
           ID *             id,
           const char *     linkage_name,
-          s32              flags,
+          u32              flags,
           MirInstrFnProto *prototype,
           bool             emit_llvm,
           bool             is_in_gscope)
@@ -2704,7 +2706,7 @@ init_or_create_const_array(Context *                 cnt,
                            SmallArray_ConstValuePtr *elems)
 {
 	if (!v) v = arena_alloc(&cnt->assembly->arenas.mir.value);
-	v->type               = create_type_array(cnt, elem_type, elems->size);
+	v->type               = create_type_array(cnt, elem_type, (s64)elems->size);
 	v->addr_mode          = MIR_VAM_LVALUE_CONST;
 	v->data.v_array.elems = elems;
 
@@ -2860,7 +2862,6 @@ get_cast_op(MirType *from, MirType *to)
 		default:
 			return MIR_CAST_INVALID;
 		}
-		break;
 	}
 
 	case MIR_TYPE_PTR: {
@@ -2879,7 +2880,6 @@ get_cast_op(MirType *from, MirType *to)
 		default:
 			return MIR_CAST_INVALID;
 		}
-		break;
 	}
 
 	case MIR_TYPE_REAL: {
@@ -2903,14 +2903,11 @@ get_cast_op(MirType *from, MirType *to)
 		default:
 			return MIR_CAST_INVALID;
 		}
-		break;
 	}
 
 	default:
 		return MIR_CAST_INVALID;
 	}
-
-	return MIR_CAST_INVALID;
 }
 
 static u64 _id_counter = 0;
@@ -4433,7 +4430,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			MirInstr *len         = mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
 			len->comptime         = true;
 			len->value.type       = cnt->builtin_types.t_s64;
-			len->value.data.v_u64 = target_type->data.array.len;
+			len->value.data.v_s64 = target_type->data.array.len;
 		} else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR ||
 		           is_builtin(ast_member_ident, MIR_BUILTIN_ID_ARR_PTR)) {
 			/* .ptr -> This will be replaced by:
@@ -4726,7 +4723,7 @@ analyze_instr_alignof(Context *cnt, MirInstrAlignof *alof)
 		BL_ASSERT(type);
 	}
 
-	alof->base.value.data.v_u64 = type->alignment;
+	alof->base.value.data.v_s32 = type->alignment;
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -4928,14 +4925,14 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
 		/* I'm not sure if we want this...
 		if (!fn->dyncall.extern_entry) {
-			builder_msg(BUILDER_MSG_ERROR,
-				ERR_UNKNOWN_SYMBOL,
-				fn_proto->base.node->location,
-				BUILDER_CUR_WORD,
-				"External symbol '%s' not found.",
-				fn->linkage_name);
+		        builder_msg(BUILDER_MSG_ERROR,
+		                ERR_UNKNOWN_SYMBOL,
+		                fn_proto->base.node->location,
+		                BUILDER_CUR_WORD,
+		                "External symbol '%s' not found.",
+		                fn->linkage_name);
 		} else {
-			fn->fully_analyzed = true;
+		        fn->fully_analyzed = true;
 		}
 		*/
 		fn->fully_analyzed = true;
@@ -5202,7 +5199,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 			BL_ASSERT(member);
 			member->type       = member_type;
 			member->decl_scope = scope;
-			member->index      = i;
+			member->index      = (s64)i;
 
 			sa_push_MemberPtr(members, member);
 
@@ -5377,8 +5374,7 @@ analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 	Scope *              scope          = type_enum->scope;
 	BL_ASSERT(variant_instrs);
 	BL_ASSERT(scope);
-	const size_t varc = variant_instrs->size;
-	BL_ASSERT(varc);
+	BL_ASSERT(variant_instrs->size);
 
 	/*
 	 * Validate and settup enum base type.
@@ -6545,7 +6541,7 @@ gen_RTTI_base(Context *cnt, s32 kind, size_t size_bytes)
 	BL_ASSERT(kind_type);
 
 	/* kind */
-	sa_push_ConstValuePtr(m, init_or_create_const_integer(cnt, NULL, kind_type, kind));
+	sa_push_ConstValuePtr(m, init_or_create_const_integer(cnt, NULL, kind_type, (u64)kind));
 
 	/* size_bytes */
 	sa_push_ConstValuePtr(
@@ -6561,7 +6557,7 @@ gen_RTTI_empty(Context *cnt, MirType *type, MirType *rtti_type)
 
 	SmallArray_ConstValuePtr *m = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
 	/* .base */
-	sa_push_ConstValuePtr(m, gen_RTTI_base(cnt, type->kind, type->store_size_bytes));
+	sa_push_ConstValuePtr(m, gen_RTTI_base(cnt, (s32)type->kind, type->store_size_bytes));
 
 	/* set members */
 	rtti_value.v_struct.members = m;
@@ -6580,11 +6576,11 @@ gen_RTTI_int(Context *cnt, MirType *type)
 
 	SmallArray_ConstValuePtr *m = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
 	/* .base */
-	sa_push_ConstValuePtr(m, gen_RTTI_base(cnt, type->kind, type->store_size_bytes));
+	sa_push_ConstValuePtr(m, gen_RTTI_base(cnt, (s32)type->kind, type->store_size_bytes));
 
 	/* .bitcount */
 	sa_push_ConstValuePtr(
-	    m, init_or_create_const_integer(cnt, NULL, cnt->builtin_types.t_s32, bitcount));
+	    m, init_or_create_const_integer(cnt, NULL, cnt->builtin_types.t_s32, (u64)bitcount));
 
 	/* .is_signed */
 	sa_push_ConstValuePtr(m, init_or_create_const_bool(cnt, NULL, is_signed));
@@ -6605,11 +6601,11 @@ gen_RTTI_real(Context *cnt, MirType *type)
 
 	SmallArray_ConstValuePtr *m = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
 	/* .base */
-	sa_push_ConstValuePtr(m, gen_RTTI_base(cnt, type->kind, type->store_size_bytes));
+	sa_push_ConstValuePtr(m, gen_RTTI_base(cnt, (s32)type->kind, type->store_size_bytes));
 
 	/* .bitcount */
 	sa_push_ConstValuePtr(
-	    m, init_or_create_const_integer(cnt, NULL, cnt->builtin_types.t_s32, bitcount));
+	    m, init_or_create_const_integer(cnt, NULL, cnt->builtin_types.t_s32, (u64)bitcount));
 
 	/* set members */
 	rtti_value.v_struct.members = m;
@@ -6627,7 +6623,7 @@ gen_RTTI_ptr(Context *cnt, MirType *type)
 
 	SmallArray_ConstValuePtr *m = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
 	/* .base */
-	sa_push_ConstValuePtr(m, gen_RTTI_base(cnt, type->kind, type->store_size_bytes));
+	sa_push_ConstValuePtr(m, gen_RTTI_base(cnt, (s32)type->kind, type->store_size_bytes));
 
 	sa_push_ConstValuePtr(m,
 	                      init_or_create_const_var_ptr(
@@ -6653,7 +6649,7 @@ gen_RTTI_enum_variant(Context *cnt, MirVariant *variant)
 	/* .value */
 	sa_push_ConstValuePtr(m,
 	                      init_or_create_const_integer(
-	                          cnt, NULL, cnt->builtin_types.t_s64, variant->value->data.v_s64));
+	                          cnt, NULL, cnt->builtin_types.t_s64, variant->value->data.v_u64));
 
 	return init_or_create_const_struct(
 	    cnt, NULL, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_ENUM_VARIANT), m);
@@ -6664,7 +6660,7 @@ gen_RTTI_slice_of_enum_variants(Context *cnt, SmallArray_VariantPtr *variants)
 {
 	/* First build-up an array variable containing pointers to TypeInfo. */
 	MirType *array_type = create_type_array(
-	    cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_ENUM_VARIANT), variants->size);
+	    cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_ENUM_VARIANT), (s64)variants->size);
 	// MirVar *array_var = _create_and_alloc_RTTI_var(cnt, array_type);
 
 	MirConstValueData         array_value = {0};
@@ -6704,7 +6700,7 @@ gen_RTTI_enum(Context *cnt, MirType *type)
 
 	SmallArray_ConstValuePtr *m = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
 	/* .base */
-	sa_push_ConstValuePtr(m, gen_RTTI_base(cnt, type->kind, type->store_size_bytes));
+	sa_push_ConstValuePtr(m, gen_RTTI_base(cnt, (s32)type->kind, type->store_size_bytes));
 
 	/* .name */
 	sa_push_ConstValuePtr(
@@ -6737,7 +6733,7 @@ gen_RTTI_array(Context *cnt, MirType *type)
 
 	SmallArray_ConstValuePtr *m = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
 	/* .base */
-	sa_push_ConstValuePtr(m, gen_RTTI_base(cnt, type->kind, type->store_size_bytes));
+	sa_push_ConstValuePtr(m, gen_RTTI_base(cnt, (s32)type->kind, type->store_size_bytes));
 
 	/* .name */
 	sa_push_ConstValuePtr(
@@ -6751,7 +6747,7 @@ gen_RTTI_array(Context *cnt, MirType *type)
 	                          cnt, NULL, cnt->builtin_types.t_TypeInfo_ptr, rtti_pointed));
 
 	sa_push_ConstValuePtr(
-	    m, init_or_create_const_integer(cnt, NULL, cnt->builtin_types.t_s64, len));
+	    m, init_or_create_const_integer(cnt, NULL, cnt->builtin_types.t_s64, (u64)len));
 
 	/* set members */
 	rtti_value.v_struct.members = m;
@@ -6765,7 +6761,7 @@ gen_RTTI_slice_of_TypeInfo_ptr(Context *cnt, SmallArray_TypePtr *types)
 {
 	/* First build-up an array variable containing pointers to TypeInfo. */
 	MirType *array_type =
-	    create_type_array(cnt, cnt->builtin_types.t_TypeInfo_ptr, types->size);
+	    create_type_array(cnt, cnt->builtin_types.t_TypeInfo_ptr, (s64)types->size);
 
 	MirConstValueData         array_value = {0};
 	SmallArray_ConstValuePtr *elems = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
@@ -6816,11 +6812,12 @@ gen_RTTI_struct_member(Context *cnt, MirMember *member)
 	/* .offset_bytes */
 	sa_push_ConstValuePtr(m,
 	                      init_or_create_const_integer(
-	                          cnt, NULL, cnt->builtin_types.t_s32, member->offset_bytes));
+	                          cnt, NULL, cnt->builtin_types.t_s32, (u64)member->offset_bytes));
 
 	/* .index */
 	sa_push_ConstValuePtr(
-	    m, init_or_create_const_integer(cnt, NULL, cnt->builtin_types.t_s32, member->index));
+	    m,
+	    init_or_create_const_integer(cnt, NULL, cnt->builtin_types.t_s32, (u64)member->index));
 
 	return init_or_create_const_struct(
 	    cnt, NULL, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_STRUCT_MEMBER), m);
@@ -6831,7 +6828,7 @@ gen_RTTI_slice_of_struct_members(Context *cnt, SmallArray_MemberPtr *members)
 {
 	/* First build-up an array variable containing pointers to TypeInfo. */
 	MirType *array_type = create_type_array(
-	    cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_STRUCT_MEMBER), members->size);
+	    cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_STRUCT_MEMBER), (s64)members->size);
 
 	MirConstValueData         array_value = {0};
 	SmallArray_ConstValuePtr *elems = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
@@ -6902,7 +6899,7 @@ gen_RTTI_fn(Context *cnt, MirType *type)
 
 	SmallArray_ConstValuePtr *m = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
 	/* .base */
-	sa_push_ConstValuePtr(m, gen_RTTI_base(cnt, type->kind, type->store_size_bytes));
+	sa_push_ConstValuePtr(m, gen_RTTI_base(cnt, (s32)type->kind, type->store_size_bytes));
 
 	/* .args */
 	SmallArray_TypePtr types;
@@ -7336,7 +7333,7 @@ MirInstr *
 ast_expr_line(Context *cnt, Ast *line)
 {
 	const s32 l = line->data.expr_line.line;
-	return append_instr_const_int(cnt, line, cnt->builtin_types.t_s32, l);
+	return append_instr_const_int(cnt, line, cnt->builtin_types.t_s32, (u64)l);
 };
 
 MirInstr *
@@ -7482,7 +7479,7 @@ ast_expr_lit_bool(Context *cnt, Ast *expr)
 MirInstr *
 ast_expr_lit_char(Context *cnt, Ast *expr)
 {
-	return append_instr_const_char(cnt, expr, expr->data.expr_character.val);
+	return append_instr_const_char(cnt, expr, (s8)expr->data.expr_character.val);
 }
 
 MirInstr *
@@ -7583,7 +7580,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn, Ast *decl_node, bool is_in_gscope, u3
 	                      decl_node ? decl_node : lit_fn,
 	                      decl_node ? &decl_node->data.ident.id : NULL,
 	                      NULL,
-	                      flags,
+	                      (u32)flags,
 	                      fn_proto,
 	                      true,
 	                      is_in_gscope);
@@ -8660,7 +8657,7 @@ ptrdiff_t
 mir_get_struct_elem_offest(Assembly *assembly, MirType *type, u32 i)
 {
 	BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
-	return LLVMOffsetOfElement(assembly->llvm.TD, type->llvm_type, (unsigned long)i);
+	return (ptrdiff_t)LLVMOffsetOfElement(assembly->llvm.TD, type->llvm_type, i);
 }
 
 ptrdiff_t
@@ -8669,7 +8666,7 @@ mir_get_array_elem_offset(MirType *type, u32 i)
 	BL_ASSERT(type->kind == MIR_TYPE_ARRAY && "Expected array type");
 	MirType *elem_type = type->data.array.elem_type;
 	BL_ASSERT(elem_type);
-	return elem_type->store_size_bytes * i;
+	return (ptrdiff_t)elem_type->store_size_bytes * i;
 }
 
 void

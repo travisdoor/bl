@@ -285,7 +285,7 @@ struct MirFn {
 	bool         emit_llvm;
 	bool         is_in_gscope;
 
-	s32         flags;
+    u32         flags;
 	const char *test_case_desc;
 
 	/* pointer to the first block inside function body */
