@@ -45,6 +45,7 @@
   - [X] Create implicit wrapper to match SystemV calling convetions when passing larger arguments by value.
     - structures smaller than 16B split into two i64, larger use pass byval attribute
     - add information to externals needed this changes
+  - [ ] System V call conventions are incomplete for returning structures smaller than 16B by value.
 
 
 * parser race conditions
