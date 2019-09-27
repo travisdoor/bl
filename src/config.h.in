@@ -66,7 +66,7 @@
 #endif
 
 #ifdef BL_COMPILER_MSVC
-#include <Windows.h>
+#define NOMINMAX /* WTF??? */
 #endif
 
 #define ENV_PATH "PATH"

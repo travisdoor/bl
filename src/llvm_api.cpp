@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #include "llvm_api.h"
+#include <cmath>
 #include <llvm/Config/llvm-config.h>
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/Type.h>
