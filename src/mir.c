@@ -2116,39 +2116,167 @@ init_llvm_type_bool(Context *cnt, MirType *type)
 	    llvm_di_create_basic_type(cnt->analyze.llvm_di_builder, name, 8, DW_ATE_boolean);
 }
 
+static inline size_t
+struct_split_fit(Context *cnt, MirType *struct_type, size_t bound, size_t *start)
+{
+	s32    so     = mir_get_struct_elem_offest(cnt->assembly, struct_type, *start);
+	size_t offset = 0;
+	size_t size   = 0;
+	size_t total  = 0;
+	for (; *start < struct_type->data.strct.members->size; ++(*start)) {
+		offset = mir_get_struct_elem_offest(cnt->assembly, struct_type, *start) - so;
+		size   = mir_get_struct_elem_type(struct_type, *start)->store_size_bytes;
+		if (offset + size > bound) return bound;
+		total = offset + size;
+	}
+
+	return total > 1 ? next_pow_2(total) : total;
+}
+
 void
 init_llvm_type_fn(Context *cnt, MirType *type)
 {
-	MirType *tmp_ret = type->data.fn.ret_type;
-	if (tmp_ret->kind == MIR_TYPE_TYPE) {
+	MirType *ret_type = type->data.fn.ret_type;
+
+	LLVMTypeRef        llvm_ret  = NULL;
+	SmallArray_ArgPtr *args      = type->data.fn.args;
+	const bool         has_args  = args;
+	const bool         has_ret   = ret_type;
+	bool               has_byval = false;
+
+	if (has_ret && ret_type->kind == MIR_TYPE_TYPE) {
 		return;
 	}
 
-	SmallArray_ArgPtr *args = type->data.fn.args;
-	size_t             argc = args ? args->size : 0;
-
 	SmallArray_LLVMType llvm_args;
 	sa_init(&llvm_args);
-	LLVMTypeRef llvm_ret = NULL;
 
-	if (argc) {
-		MirArg *    arg;
-		LLVMTypeRef llvm_arg_type;
+	if (has_ret) {
+		if (builder.options.reg_split && mir_is_composit_type(ret_type) &&
+		    ret_type->store_size_bytes > 16) {
+			type->data.fn.has_sret = true;
+			sa_push_LLVMType(&llvm_args, LLVMPointerType(ret_type->llvm_type, 0));
+			llvm_ret = LLVMVoidTypeInContext(cnt->assembly->llvm.cnt);
+		} else {
+			llvm_ret = ret_type->llvm_type;
+		}
+	} else {
+		llvm_ret = LLVMVoidTypeInContext(cnt->assembly->llvm.cnt);
+	}
+
+	BL_ASSERT(llvm_ret);
+
+	if (has_args) {
+		MirArg *arg;
 		SARRAY_FOREACH(args, arg)
 		{
-			llvm_arg_type = arg->type->llvm_type;
-			BL_ASSERT(llvm_arg_type);
-			sa_push_LLVMType(&llvm_args, llvm_arg_type);
+			arg->llvm_index = llvm_args.size;
+
+			/* Composit types. */
+			if (builder.options.reg_split && mir_is_composit_type(arg->type)) {
+				LLVMContextRef llvm_cnt = cnt->assembly->llvm.cnt;
+				size_t         start    = 0;
+				s32            low      = 0;
+				s32            high     = 0;
+
+				if (!has_byval) has_byval = true;
+
+				low = struct_split_fit(cnt, arg->type, sizeof(size_t), &start);
+
+				if (start < arg->type->data.strct.members->size)
+					high = struct_split_fit(
+					    cnt, arg->type, sizeof(size_t), &start);
+
+				if (start < arg->type->data.strct.members->size) {
+					arg->llvm_easgm = LLVM_EASGM_BYVAL;
+
+					BL_ASSERT(arg->type->llvm_type);
+					sa_push_LLVMType(&llvm_args,
+					                 LLVMPointerType(arg->type->llvm_type, 0));
+				} else {
+					switch (low) {
+					case 1:
+						arg->llvm_easgm = LLVM_EASGM_8;
+						sa_push_LLVMType(&llvm_args,
+						                 LLVMInt8TypeInContext(llvm_cnt));
+						break;
+					case 2:
+						arg->llvm_easgm = LLVM_EASGM_16;
+						sa_push_LLVMType(&llvm_args,
+						                 LLVMInt16TypeInContext(llvm_cnt));
+						break;
+					case 4:
+						arg->llvm_easgm = LLVM_EASGM_32;
+						sa_push_LLVMType(&llvm_args,
+						                 LLVMInt32TypeInContext(llvm_cnt));
+						break;
+					case 8: {
+						switch (high) {
+						case 0:
+							arg->llvm_easgm = LLVM_EASGM_64;
+							sa_push_LLVMType(
+							    &llvm_args,
+							    LLVMInt64TypeInContext(llvm_cnt));
+							break;
+						case 1:
+							arg->llvm_easgm = LLVM_EASGM_64_8;
+							sa_push_LLVMType(
+							    &llvm_args,
+							    LLVMInt64TypeInContext(llvm_cnt));
+							sa_push_LLVMType(
+							    &llvm_args,
+							    LLVMInt8TypeInContext(llvm_cnt));
+							break;
+						case 2:
+							arg->llvm_easgm = LLVM_EASGM_64_16;
+							sa_push_LLVMType(
+							    &llvm_args,
+							    LLVMInt64TypeInContext(llvm_cnt));
+							sa_push_LLVMType(
+							    &llvm_args,
+							    LLVMInt16TypeInContext(llvm_cnt));
+							break;
+						case 4:
+							arg->llvm_easgm = LLVM_EASGM_64_32;
+							sa_push_LLVMType(
+							    &llvm_args,
+							    LLVMInt64TypeInContext(llvm_cnt));
+							sa_push_LLVMType(
+							    &llvm_args,
+							    LLVMInt32TypeInContext(llvm_cnt));
+							break;
+						case 8:
+							arg->llvm_easgm = LLVM_EASGM_64_64;
+							sa_push_LLVMType(
+							    &llvm_args,
+							    LLVMInt64TypeInContext(llvm_cnt));
+							sa_push_LLVMType(
+							    &llvm_args,
+							    LLVMInt64TypeInContext(llvm_cnt));
+							break;
+						default:
+							BL_ASSERT(false);
+							break;
+						}
+						break;
+					}
+					default:
+						BL_ASSERT(false);
+						break;
+					}
+				}
+			} else {
+				BL_ASSERT(arg->type->llvm_type);
+				sa_push_LLVMType(&llvm_args, arg->type->llvm_type);
+			}
 		}
 	}
 
-	llvm_ret = tmp_ret ? tmp_ret->llvm_type : LLVMVoidTypeInContext(cnt->assembly->llvm.cnt);
-	BL_ASSERT(llvm_ret);
-
-	type->llvm_type = LLVMFunctionType(llvm_ret, llvm_args.data, (unsigned int)argc, false);
-	type->alignment = __alignof(MirFn *);
-	type->size_bits = sizeof(MirFn *) * 8;
-	type->store_size_bytes = sizeof(MirFn *);
+	type->llvm_type         = LLVMFunctionType(llvm_ret, llvm_args.data, llvm_args.size, false);
+	type->alignment         = __alignof(MirFn *);
+	type->size_bits         = sizeof(MirFn *) * 8;
+	type->store_size_bytes  = sizeof(MirFn *);
+	type->data.fn.has_byval = has_byval;
 
 	sa_terminate(&llvm_args);
 
@@ -4735,23 +4863,6 @@ analyze_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
-static inline size_t
-struct_split_fit(Context *cnt, MirType *struct_type, size_t bound, size_t *start)
-{
-	s32    so     = mir_get_struct_elem_offest(cnt->assembly, struct_type, *start);
-	size_t offset = 0;
-	size_t size   = 0;
-	size_t total  = 0;
-	for (; *start < struct_type->data.strct.members->size; ++(*start)) {
-		offset = mir_get_struct_elem_offest(cnt->assembly, struct_type, *start) - so;
-		size   = mir_get_struct_elem_type(struct_type, *start)->store_size_bytes;
-		if (offset + size > bound) return bound;
-		total = offset + size;
-	}
-
-	return total > 1 ? next_pow_2(total) : total;
-}
-
 AnalyzeResult
 analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
@@ -4824,78 +4935,6 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 			            fn->linkage_name);
 		} else {
 			fn->fully_analyzed = true;
-		}
-
-		SmallArray_ArgPtr *args = fn->type->data.fn.args;
-		if (args) {
-			MirArg *arg;
-			SARRAY_FOREACH(args, arg)
-			{
-				/* Composit types. */
-				if (mir_is_composit_type(arg->type)) {
-					size_t start = 0;
-					s32    low   = 0;
-					s32    high  = 0;
-					low          = struct_split_fit(
-                                            cnt, arg->type, sizeof(size_t), &start);
-
-					if (start < arg->type->data.strct.members->size)
-						high = struct_split_fit(
-						    cnt, arg->type, sizeof(size_t), &start);
-
-					if (start < arg->type->data.strct.members->size) {
-						arg->llvm_easgm = LLVM_EASGM_BYVAL;
-					} else {
-						switch (low) {
-						case 1:
-							arg->llvm_easgm = LLVM_EASGM_8;
-							break;
-						case 2:
-							arg->llvm_easgm = LLVM_EASGM_16;
-							break;
-						case 4:
-							arg->llvm_easgm = LLVM_EASGM_32;
-							break;
-						case 8: {
-							switch (high) {
-							case 0:
-								arg->llvm_easgm = LLVM_EASGM_64;
-								break;
-							case 1:
-								arg->llvm_easgm = LLVM_EASGM_64_8;
-								break;
-							case 2:
-								arg->llvm_easgm = LLVM_EASGM_64_16;
-								break;
-							case 4:
-								arg->llvm_easgm = LLVM_EASGM_64_32;
-								break;
-							case 8:
-								arg->llvm_easgm = LLVM_EASGM_64_64;
-								break;
-							default:
-								BL_ASSERT(false);
-								break;
-							}
-							break;
-						}
-						default:
-							BL_ASSERT(false);
-							break;
-						}
-					}
-				}
-
-				fn->llvm_extern_wrap = fn->llvm_extern_wrap
-				                           ? true
-				                           : arg->llvm_easgm != LLVM_EASGM_NONE;
-			}
-		}
-
-		if (fn->llvm_extern_wrap) {
-			const char *tmp       = fn->linkage_name;
-			fn->linkage_name      = gen_uq_name(fn->linkage_name);
-			fn->linkage_orig_name = tmp;
 		}
 	} else {
 		/* Add entry block of the function into analyze queue. */

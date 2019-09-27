@@ -1,15 +1,22 @@
 /* playground */
 
-#link "deleteme"
+#load "std/print.bl"
 
 Foo :: struct {
-    j: s32,
-    i: s64,
+    j: s64,
+    k: s8,
+    l: s8,
 };
 
-foo :: fn (foo: Foo, i: s32) s32 #extern;
+main :: fn () {
+    result := foo({:Foo: 10, 20, 30});
+    print("%\n", result);
+    return;
+};
 
-main :: fn () s32 {
-    data := {:Foo: 10, 20};
-    return foo(data, 666);
+
+// when return fits into one register -> return as int
+// when it's bigget use sret argument as first one
+foo :: fn (data: Foo) Foo {
+    return data;
 };

@@ -4,11 +4,13 @@
 #include "deleteme_global.h"
 
 struct Foo {
-	int j;
-	long long i;
+	long j;
+	long i;
+	long k;
 };
 
 
-DELETEME_EXPORT int foo(struct Foo foo, int i);
+DELETEME_EXPORT void foo(struct Foo foo, int i);
+DELETEME_EXPORT struct Foo bar(void);
 
 #endif // DELETEME_H

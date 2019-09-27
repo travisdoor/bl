@@ -279,10 +279,7 @@ struct MirFn {
 	MirType *   type;
 	BArray *    variables;
 	const char *linkage_name;
-	const char *linkage_orig_name;
 
-	/* Valid only for external functions, implicit wrapper is needed in IR when true. */
-	bool         llvm_extern_wrap;
 	LLVMValueRef llvm_value;
 	bool         fully_analyzed;
 	bool         emit_llvm;
@@ -326,6 +323,10 @@ struct MirArg {
 	Ast *    decl_node;
 	Scope *  decl_scope;
 
+	/* This is index of this argument in LLVM IR not in MIR, it can be different based on
+	 * compiler configuration (vix. System V ABI) */
+	u32 llvm_index;
+
 	LLVMExternArgStructGenerationMode llvm_easgm;
 };
 
@@ -343,6 +344,8 @@ struct MirTypeFn {
 	MirType *          ret_type;
 	SmallArray_ArgPtr *args;
 	bool               is_vargs;
+	bool               has_byval;
+	bool               has_sret;
 };
 
 struct MirTypePtr {

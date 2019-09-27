@@ -27,12 +27,23 @@
 //************************************************************************************************
 
 #include "llvm_api.h"
+#include <llvm/Config/llvm-config.h>
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/Type.h>
+#include <llvm/ADT/StringSwitch.h>
 
 #define CAST(T) reinterpret_cast<T>
 
 using namespace llvm;
+
+#define GET_ATTR_KIND_FROM_NAME
+#include "llvm/IR/Attributes.inc"
+
+LLVMAttributeKind
+llvm_get_attribute_kind(const char *name)
+{
+	return getAttrKindFromName({name, strlen(name)});
+}
 
 LLVMAttributeRef
 llvm_create_attribute(LLVMContextRef context_ref, LLVMAttributeKind kind)
@@ -53,8 +64,14 @@ llvm_create_attribute_int(LLVMContextRef context_ref, LLVMAttributeKind kind, s3
 LLVMAttributeRef
 llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef v)
 {
+#if LLVM_VERSION_MAJOR == 10
 	return CAST(LLVMAttributeRef)(Attribute::get(*CAST(LLVMContext *)(context_ref),
 	                                             (Attribute::AttrKind)kind,
 	                                             CAST(Type *)(v))
 	                                  .getRawPointer());
+#else
+	return CAST(LLVMAttributeRef)(
+	    Attribute::get(*CAST(LLVMContext *)(context_ref), (Attribute::AttrKind)kind)
+	        .getRawPointer());
+#endif
 }
