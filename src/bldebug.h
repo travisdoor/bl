@@ -40,14 +40,14 @@ extern "C" {
 #endif
 
 #ifdef BL_NO_COLOR
-#define COLOR_END
-#define MAGENTA_BEGIN
-#define CYAN_BEGIN
-#define RED_BEGIN
-#define RED_BG_BEGIN
-#define YELLOW_BEGIN
-#define GREEN_BEGIN
-#define BLUE_BEGIN
+#define COLOR_END ""
+#define MAGENTA_BEGIN ""
+#define CYAN_BEGIN ""
+#define RED_BEGIN ""
+#define RED_BG_BEGIN ""
+#define YELLOW_BEGIN ""
+#define GREEN_BEGIN ""
+#define BLUE_BEGIN ""
 #else
 #define COLOR_END "\x1b[0m"
 #define MAGENTA_BEGIN "\x1b[35m"
