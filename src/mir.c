@@ -4057,7 +4057,7 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 	 * need include pointer to type info of the real type passed. That means when we pass 's32'
 	 * we get resulting any structure containing type info for Type and type info for s32 as
 	 * data pointer. This is how we can later implement for example printing of type layout. */
-	if (rtti_type->kind == MIR_TYPE_TYPE) {
+	if (rtti_type->kind == MIR_TYPE_TYPE || rtti_type->kind == MIR_TYPE_FN) {
 		MirConstPtr *cp                 = &expr->value.data.v_ptr;
 		MirType *    specification_type = NULL;
 
@@ -4068,9 +4068,11 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 			specification_type = cp->data.type;
 		} else if (cp->kind == MIR_CP_VAR) {
 			specification_type = cp->data.var->value.data.v_ptr.data.type;
+		} else if (cp->kind == MIR_CP_FN) {
+			specification_type = cp->data.fn->type;
 		}
 
-		BL_ASSERT(specification_type);
+		BL_ASSERT(specification_type && "Missing type specification data!");
 		schedule_RTTI_generation(cnt, specification_type);
 		toany->rtti_type_specification = specification_type;
 	}
@@ -6669,7 +6671,6 @@ gen_RTTI_slice_of_enum_variants(Context *cnt, SmallArray_VariantPtr *variants)
 	/* First build-up an array variable containing pointers to TypeInfo. */
 	MirType *array_type = create_type_array(
 	    cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_ENUM_VARIANT), (s64)variants->size);
-	// MirVar *array_var = _create_and_alloc_RTTI_var(cnt, array_type);
 
 	MirConstValueData         array_value = {0};
 	SmallArray_ConstValuePtr *elems = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
@@ -6854,32 +6855,35 @@ gen_RTTI_fn_arg(Context *cnt, MirArg *arg)
 MirConstValue *
 gen_RTTI_slice_of_fn_args(Context *cnt, SmallArray_ArgPtr *args)
 {
-	if (!args) {
-		return;
-	}
+	const size_t argc = args ? args->size : 0;
 
 	/* First build-up an array variable containing pointers to TypeInfo. */
-	MirType *array_type = create_type_array(
-	    cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_FN_ARG), (s64)args->size);
+	MirType *array_type =
+	    create_type_array(cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_FN_ARG), argc);
 
-	MirConstValueData         array_value = {0};
-	SmallArray_ConstValuePtr *elems = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
+	MirVar *array_var = NULL;
 
-	MirArg *arg;
-	SARRAY_FOREACH(args, arg)
-	{
-		sa_push_ConstValuePtr(elems, gen_RTTI_fn_arg(cnt, arg));
+	if (argc) {
+		MirConstValueData         array_value = {0};
+		SmallArray_ConstValuePtr *elems =
+		    create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
+
+		MirArg *arg;
+		SARRAY_FOREACH(args, arg)
+		{
+			sa_push_ConstValuePtr(elems, gen_RTTI_fn_arg(cnt, arg));
+		}
+
+		array_value.v_array.elems = elems;
+		array_var                 = gen_RTTI_var(cnt, array_type, &array_value);
 	}
-
-	array_value.v_array.elems = elems;
-	MirVar *array_var         = gen_RTTI_var(cnt, array_type, &array_value);
 
 	/* Create slice. */
 	SmallArray_ConstValuePtr *m = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
 
 	/* len */
 	sa_push_ConstValuePtr(
-	    m, init_or_create_const_integer(cnt, NULL, cnt->builtin_types.t_s64, args->size));
+	    m, init_or_create_const_integer(cnt, NULL, cnt->builtin_types.t_s64, argc));
 
 	/* ptr */
 	sa_push_ConstValuePtr(

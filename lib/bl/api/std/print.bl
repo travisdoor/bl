@@ -241,7 +241,12 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
     } else if any.type_info.kind == TypeKind.Type {
         // Type
         return print_type(buf, cur, cast(*TypeInfo) any.data);
+    } else if any.type_info.kind == TypeKind.Fn {
+        // Fn
+        return print_type(buf, cur, cast(*TypeInfo) any.data);
+
     } else { 
+        print("unknown %\n", ^any.type_info);
         return print_string(buf, cur, "<unknown>");
     }
 
