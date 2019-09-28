@@ -32,6 +32,8 @@
 
 #define CAST(T) reinterpret_cast<T>
 
+/* TODO: Get rid of std and implement pthreads + windows threads instead. */
+
 using namespace std;
 
 uint64_t

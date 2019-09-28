@@ -295,12 +295,11 @@ print_type :: fn (buf: []u8, cur: s32, info: *TypeInfo) s32 {
         return print_string(buf, cur, "}");
     } else if info.kind == TypeKind.Fn {
         c := cast(*TypeInfoFn) info;
-        //cur = print_string(buf, cur, c.name);
         cur = print_string(buf, cur, "fn (");
 
         loop i := 0; i < c.args.len; i += 1 {
             arg := c.args[i];
-            cur = print_type(buf, cur, arg);
+            cur = print_type(buf, cur, arg.base_type);
 
             if i < c.args.len - 1 { cur = print_string(buf, cur, ", "); }
         }

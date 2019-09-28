@@ -171,6 +171,7 @@ typedef struct {
 		MirType *t_TypeInfo_slice;
 		MirType *t_TypeInfoStructMembers_slice;
 		MirType *t_TypeInfoEnumVariants_slice;
+		MirType *t_TypeInfoFnArgs_slice;
 		/* OTHER END */
 
 		/* Cache scope containing '#compiler' flagged symbols.  */
@@ -259,6 +260,7 @@ static ID builtin_ids[_MIR_BUILTIN_ID_COUNT] = {
     {.str = "TypeInfoVArgs",         .hash = 0},
     {.str = "TypeInfoStructMember",  .hash = 0},
     {.str = "TypeInfoEnumVariant",   .hash = 0},
+    {.str = "TypeInfoFnArg",         .hash = 0},
 };
 // clang-format on
 
@@ -1035,7 +1037,13 @@ static MirConstValue *
 gen_RTTI_struct_member(Context *cnt, MirMember *member);
 
 static MirConstValue *
+gen_RTTI_fn_arg(Context *cnt, MirArg *arg);
+
+static MirConstValue *
 gen_RTTI_slice_of_struct_members(Context *cnt, SmallArray_MemberPtr *members);
+
+static MirConstValue *
+gen_RTTI_slice_of_fn_args(Context *cnt, SmallArray_ArgPtr *args);
 
 static MirVar *
 gen_RTTI_struct(Context *cnt, MirType *type);
@@ -6824,6 +6832,64 @@ gen_RTTI_struct_member(Context *cnt, MirMember *member)
 }
 
 MirConstValue *
+gen_RTTI_fn_arg(Context *cnt, MirArg *arg)
+{
+	SmallArray_ConstValuePtr *m = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
+
+	/* .name */
+	sa_push_ConstValuePtr(
+	    m,
+	    init_or_create_const_string(cnt, NULL, arg->id ? arg->id->str : "<implicit_argument>"));
+
+	/* .base_type */
+	sa_push_ConstValuePtr(
+	    m,
+	    init_or_create_const_var_ptr(
+	        cnt, NULL, cnt->builtin_types.t_TypeInfo_ptr, gen_RTTI(cnt, arg->type)));
+
+	return init_or_create_const_struct(
+	    cnt, NULL, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_STRUCT_MEMBER), m);
+}
+
+MirConstValue *
+gen_RTTI_slice_of_fn_args(Context *cnt, SmallArray_ArgPtr *args)
+{
+	if (!args) {
+		return;
+	}
+
+	/* First build-up an array variable containing pointers to TypeInfo. */
+	MirType *array_type = create_type_array(
+	    cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_FN_ARG), (s64)args->size);
+
+	MirConstValueData         array_value = {0};
+	SmallArray_ConstValuePtr *elems = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
+
+	MirArg *arg;
+	SARRAY_FOREACH(args, arg)
+	{
+		sa_push_ConstValuePtr(elems, gen_RTTI_fn_arg(cnt, arg));
+	}
+
+	array_value.v_array.elems = elems;
+	MirVar *array_var         = gen_RTTI_var(cnt, array_type, &array_value);
+
+	/* Create slice. */
+	SmallArray_ConstValuePtr *m = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
+
+	/* len */
+	sa_push_ConstValuePtr(
+	    m, init_or_create_const_integer(cnt, NULL, cnt->builtin_types.t_s64, args->size));
+
+	/* ptr */
+	sa_push_ConstValuePtr(
+	    m,
+	    init_or_create_const_var_ptr(cnt, NULL, create_type_ptr(cnt, array_type), array_var));
+
+	return init_or_create_const_struct(cnt, NULL, cnt->builtin_types.t_TypeInfoFnArgs_slice, m);
+}
+
+MirConstValue *
 gen_RTTI_slice_of_struct_members(Context *cnt, SmallArray_MemberPtr *members)
 {
 	/* First build-up an array variable containing pointers to TypeInfo. */
@@ -6902,21 +6968,7 @@ gen_RTTI_fn(Context *cnt, MirType *type)
 	sa_push_ConstValuePtr(m, gen_RTTI_base(cnt, (s32)type->kind, type->store_size_bytes));
 
 	/* .args */
-	SmallArray_TypePtr types;
-	sa_init(&types);
-
-	/* TODO: make RTTI for function arguments more descriptive and include whole Arg
-	 * informations instead of type only. */
-	MirArg *it;
-	if (type->data.fn.args) {
-		SARRAY_FOREACH(type->data.fn.args, it)
-		{
-			BL_ASSERT(it->type)
-			sa_push_TypePtr(&types, it->type);
-		}
-	}
-
-	sa_push_ConstValuePtr(m, gen_RTTI_slice_of_TypeInfo_ptr(cnt, &types));
+	sa_push_ConstValuePtr(m, gen_RTTI_slice_of_fn_args(cnt, type->data.fn.args));
 
 	/* .ret */
 	sa_push_ConstValuePtr(m,
@@ -6934,7 +6986,7 @@ gen_RTTI_fn(Context *cnt, MirType *type)
 	/* setup type RTTI and push */
 	MirVar *rtti_var =
 	    gen_RTTI_var(cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_FN), &rtti_value);
-	sa_terminate(&types);
+
 	return rtti_var;
 }
 
@@ -7039,6 +7091,12 @@ gen_RTTI_types(Context *cnt)
 		    NULL,
 		    create_type_ptr(cnt,
 		                    lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_ENUM_VARIANT)));
+
+		cnt->builtin_types.t_TypeInfoFnArgs_slice = create_type_struct_special(
+		    cnt,
+		    MIR_TYPE_SLICE,
+		    NULL,
+		    create_type_ptr(cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_FN_ARG)));
 	}
 
 	bo_iterator_t it;

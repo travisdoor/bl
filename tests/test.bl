@@ -1,7 +1,10 @@
 /* playground */
 
-#load "/Users/travis/Desktop/vulkan/vulkan_macos.bl"
+#load "std/print.bl"
+
+foo :: fn () {};
 
 main :: fn () {
+    print("%\n", foo);
     return;
 };
