@@ -848,7 +848,7 @@ void
 mir_arenas_terminate(MirArenas *arenas);
 
 void
-mir_type_to_str(char *buf, s32 len, MirType *type, bool prefer_name);
+mir_type_to_str(char *buf, size_t len, MirType *type, bool prefer_name);
 
 const char *
 mir_instr_name(MirInstr *instr);

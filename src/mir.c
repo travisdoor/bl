@@ -418,6 +418,9 @@ static MirConstValue *
 init_or_create_const_bool(Context *cnt, MirConstValue *v, bool b);
 
 static MirConstValue *
+init_or_create_const_null(Context *cnt, MirConstValue *v, MirType *type);
+
+static MirConstValue *
 init_or_create_const_var_ptr(Context *cnt, MirConstValue *v, MirType *type, MirVar *var);
 
 static MirConstValue *
@@ -2681,6 +2684,17 @@ init_or_create_const_integer(Context *cnt, MirConstValue *v, MirType *type, u64 
 	v->type       = type;
 	v->addr_mode  = MIR_VAM_LVALUE_CONST;
 	v->data.v_u64 = i;
+
+	return v;
+}
+
+MirConstValue *
+init_or_create_const_null(Context *cnt, MirConstValue *v, MirType *type)
+{
+	if (!v) v = arena_alloc(&cnt->assembly->arenas.mir.value);
+	v->type                = type;
+	v->addr_mode           = MIR_VAM_LVALUE_CONST;
+	v->data.v_ptr.data.any = NULL;
 
 	return v;
 }
@@ -6857,11 +6871,15 @@ gen_RTTI_slice_of_fn_args(Context *cnt, SmallArray_ArgPtr *args)
 {
 	const size_t argc = args ? args->size : 0;
 
-	/* First build-up an array variable containing pointers to TypeInfo. */
 	MirType *array_type =
 	    create_type_array(cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_FN_ARG), argc);
 
-	MirVar *array_var = NULL;
+	/* Create slice. */
+	SmallArray_ConstValuePtr *m = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
+
+	/* len */
+	sa_push_ConstValuePtr(
+	    m, init_or_create_const_integer(cnt, NULL, cnt->builtin_types.t_s64, argc));
 
 	if (argc) {
 		MirConstValueData         array_value = {0};
@@ -6875,20 +6893,16 @@ gen_RTTI_slice_of_fn_args(Context *cnt, SmallArray_ArgPtr *args)
 		}
 
 		array_value.v_array.elems = elems;
-		array_var                 = gen_RTTI_var(cnt, array_type, &array_value);
+		MirVar *array_var         = gen_RTTI_var(cnt, array_type, &array_value);
+
+		/* ptr */
+		sa_push_ConstValuePtr(m,
+		                      init_or_create_const_var_ptr(
+		                          cnt, NULL, create_type_ptr(cnt, array_type), array_var));
+	} else {
+		/* ptr */
+		sa_push_ConstValuePtr(m, init_or_create_const_null(cnt, NULL, array_type));
 	}
-
-	/* Create slice. */
-	SmallArray_ConstValuePtr *m = create_sarr(SmallArray_ConstValuePtr, cnt->assembly);
-
-	/* len */
-	sa_push_ConstValuePtr(
-	    m, init_or_create_const_integer(cnt, NULL, cnt->builtin_types.t_s64, argc));
-
-	/* ptr */
-	sa_push_ConstValuePtr(
-	    m,
-	    init_or_create_const_var_ptr(cnt, NULL, create_type_ptr(cnt, array_type), array_var));
 
 	return init_or_create_const_struct(cnt, NULL, cnt->builtin_types.t_TypeInfoFnArgs_slice, m);
 }
@@ -8426,7 +8440,7 @@ mir_instr_name(MirInstr *instr)
 
 /* public */
 static void
-_type_to_str(char *buf, s32 len, MirType *type, bool prefer_name)
+_type_to_str(char *buf, size_t len, MirType *type, bool prefer_name)
 {
 #define append_buf(buf, len, str)                                                                  \
 	{                                                                                          \
@@ -8564,7 +8578,7 @@ _type_to_str(char *buf, s32 len, MirType *type, bool prefer_name)
 }
 
 void
-mir_type_to_str(char *buf, s32 len, MirType *type, bool prefer_name)
+mir_type_to_str(char *buf, size_t len, MirType *type, bool prefer_name)
 {
 	if (!buf || !len) return;
 	buf[0] = '\0';
