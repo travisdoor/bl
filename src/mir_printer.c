@@ -172,7 +172,9 @@ print_const_value(MirConstValue *value, FILE *stream)
 			                ? data->v_ptr.data.value->data.v_ptr.data.fn
 			                : NULL;
 			if (fn) {
-				fprintf(stream, "&%s", fn->linkage_name ? fn->linkage_name : fn->id->str);
+				fprintf(stream,
+				        "&%s",
+				        fn->linkage_name ? fn->linkage_name : fn->id->str);
 			} else {
 				fprintf(stream, "<invalid>");
 			}
@@ -1072,5 +1074,8 @@ void
 mir_print_assembly(Assembly *assembly, FILE *stream)
 {
 	MirInstr *instr;
-	BARRAY_FOREACH(assembly->MIR.global_instrs, instr) mir_print_instr(instr, stream);
+	TARRAY_FOREACH(MirInstr *, &assembly->MIR.global_instrs, instr)
+	{
+		mir_print_instr(instr, stream);
+	}
 }

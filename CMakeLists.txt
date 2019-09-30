@@ -30,6 +30,7 @@ set(BL_CONF_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.conf)
 
 add_subdirectory(deps/bobject)
 add_subdirectory(deps/dyncall-1.0)
+add_subdirectory(deps/tlib-c)
 
 # deps
 find_package(LLVM REQUIRED CONFIG)
@@ -133,6 +134,7 @@ target_link_libraries(blc PUBLIC
     dyncall_s
     dyncallback_s
     bobject
+    tlib
     ${CMAKE_DL_LIBS}
     ${LLVM_LIBS}
 )
@@ -143,6 +145,7 @@ target_include_directories(blc PRIVATE
     deps/dyncall-1.0/dynload
     deps/dyncall-1.0/dyncallback
     deps/bobject/include
+    deps/tlib-c/include
     ${LLVM_INCLUDE_DIRS}
 )
 

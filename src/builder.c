@@ -209,9 +209,10 @@ void
 builder_init(void)
 {
 	memset(&builder, 0, sizeof(Builder));
-	builder.errorc    = 0;
-	builder.str_cache = bo_array_new_bo(bo_typeof(BString), true);
-	builder.conf      = conf_data_new();
+	builder.errorc = 0;
+	builder.conf   = conf_data_new();
+
+	tarray_init(&builder.str_cache, sizeof(TString *));
 
 	/* TODO: this is invalid for Windows MSVC DLLs??? */
 
@@ -229,7 +230,14 @@ void
 builder_terminate(void)
 {
 	conf_data_delete(builder.conf);
-	bo_unref(builder.str_cache);
+
+	TString *it;
+	TARRAY_FOREACH(TString *, &builder.str_cache, it)
+	{
+		tstring_delete(it);
+	}
+
+	tarray_terminate(&builder.str_cache);
 }
 
 int
@@ -270,7 +278,7 @@ builder_compile(Assembly *assembly)
 		}
 	}
 
-	BARRAY_FOREACH(assembly->units, unit)
+	TARRAY_FOREACH(Unit *, &assembly->units, unit)
 	{
 		/* IDEA: can run in separate thread */
 		if ((state = compile_unit(unit, assembly)) != COMPILE_OK) {
@@ -465,10 +473,11 @@ builder_msg(BuilderMsgType type,
 #endif
 }
 
-BString *
+TString *
 builder_create_cached_str(void)
 {
-	BString *str = bo_string_new(64);
-	bo_array_push_back(builder.str_cache, str);
+	TString *str = tstring_new();
+	tarray_push(&builder.str_cache, str);
+
 	return str;
 }

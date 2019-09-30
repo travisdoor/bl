@@ -71,9 +71,9 @@ typedef struct BuilderOpions {
 
 typedef struct Builder {
 	BuilderOptions options;
+	TArray         str_cache;
 	s32            total_lines;
 	s32            errorc;
-	BArray *       str_cache;
 	ConfData *     conf;
 } Builder;
 
@@ -125,7 +125,7 @@ builder_msg(BuilderMsgType   type,
             const char *     format,
             ...);
 
-BString *
+TString *
 builder_create_cached_str(void);
 
 #endif

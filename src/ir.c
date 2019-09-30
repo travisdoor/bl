@@ -1916,7 +1916,7 @@ ir_run(Assembly *assembly)
 	emit_RTTI_types(&cnt);
 
 	MirInstr *ginstr;
-	BARRAY_FOREACH(assembly->MIR.global_instrs, ginstr)
+	TARRAY_FOREACH(MirInstr *, &assembly->MIR.global_instrs, ginstr)
 	{
 		emit_instr(&cnt, ginstr);
 	}

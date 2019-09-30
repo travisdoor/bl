@@ -760,7 +760,7 @@ void
 ast_printer_run(Assembly *assembly, FILE *stream)
 {
 	Unit *unit;
-	BARRAY_FOREACH(assembly->units, unit)
+	TARRAY_FOREACH(Unit *, &assembly->units, unit)
 	{
 		print_node(unit->ast, 0, stream);
 	}

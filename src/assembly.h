@@ -52,7 +52,7 @@ typedef struct Assembly {
 	} arenas;
 
 	struct {
-		BArray *global_instrs; // All global instructions.
+		TArray  global_instrs; // All global instructions.
 		BArray *RTTI_tmp_vars; // Temporary variables used by RTTI.
 	} MIR;
 
@@ -68,12 +68,12 @@ typedef struct Assembly {
 
 	/* DynCall/Lib data used for external method execution in compile time */
 	struct {
-		BArray *  lib_paths;
-		BArray *  libs;
+		TArray    lib_paths;
+		TArray    libs;
 		DCCallVM *vm;
 	} dl;
 
-	BArray *    units;      /* array of all units in assembly */
+	TArray      units;      /* array of all units in assembly */
 	BHashTable *unit_cache; /* cache for loading only unique units */
 	BHashTable *link_cache; /* all linked externals libraries passed to linker */
 	BHashTable *type_table; /* type table key: type ID, value: *MirType */

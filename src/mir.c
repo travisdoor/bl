@@ -1236,8 +1236,8 @@ static inline void
 push_into_gscope(Context *cnt, MirInstr *instr)
 {
 	BL_ASSERT(instr);
-	instr->id = bo_array_size(cnt->assembly->MIR.global_instrs);
-	bo_array_push_back(cnt->assembly->MIR.global_instrs, instr);
+	instr->id = cnt->assembly->MIR.global_instrs.size;
+	tarray_push(&cnt->assembly->MIR.global_instrs, instr);
 };
 
 static inline void
@@ -1292,13 +1292,13 @@ gen_uq_name(const char *prefix)
 	/* RACECOND */
 	/* RACECOND */
 	/* RACECOND */
-	BString *s = builder_create_cached_str();
+	TString *s = builder_create_cached_str();
 
-	bo_string_append(s, prefix);
+	tstring_append(s, prefix);
 	char ui_str[22];
 	sprintf(ui_str, ".%i", ui++);
-	bo_string_append(s, ui_str);
-	return bo_string_get(s);
+	tstring_append(s, ui_str);
+	return s->data;
 }
 
 static inline bool
@@ -1682,10 +1682,10 @@ create_type(Context *cnt, MirType **out_type, const char *sh)
 	} else {
 		MirType *tmp = arena_alloc(&cnt->assembly->arenas.mir.type);
 
-		BString *copy = builder_create_cached_str();
-		bo_string_append(copy, sh);
+		TString *copy = builder_create_cached_str();
+		tstring_append(copy, sh);
 
-		tmp->id.str  = bo_string_get(copy);
+		tmp->id.str  = copy->data;
 		tmp->id.hash = hash;
 
 		// BL_LOG("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
@@ -6411,8 +6411,8 @@ analyze(Context *cnt)
 {
 	if (cnt->analyze.verbose_pre) {
 		MirInstr *instr;
-		BArray *  globals = cnt->assembly->MIR.global_instrs;
-		BARRAY_FOREACH(globals, instr)
+		TArray *  globals = &cnt->assembly->MIR.global_instrs;
+		TARRAY_FOREACH(MirInstr *, globals, instr)
 		{
 			mir_print_instr(instr, stdout);
 		}
@@ -6502,8 +6502,8 @@ analyze(Context *cnt)
 
 	if (cnt->analyze.verbose_post) {
 		MirInstr *instr;
-		BArray *  globals = cnt->assembly->MIR.global_instrs;
-		BARRAY_FOREACH(globals, instr)
+		TArray *  globals = &cnt->assembly->MIR.global_instrs;
+		TARRAY_FOREACH(MirInstr *, globals, instr)
 		{
 			mir_print_instr(instr, stdout);
 		}
@@ -8799,7 +8799,7 @@ mir_run(Assembly *assembly)
 
 	/* Gen MIR from AST pass */
 	Unit *unit;
-	BARRAY_FOREACH(assembly->units, unit) ast(&cnt, unit->ast);
+	TARRAY_FOREACH(Unit *, &assembly->units, unit) ast(&cnt, unit->ast);
 
 	if (builder.errorc) goto SKIP;
 

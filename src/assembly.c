@@ -65,8 +65,8 @@ small_array_dtor(SmallArrayAny *arr)
 static void
 init_dl(Assembly *assembly)
 {
-	assembly->dl.libs      = bo_array_new(sizeof(NativeLib));
-	assembly->dl.lib_paths = bo_array_new(sizeof(char *));
+	tarray_init(&assembly->dl.libs, sizeof(NativeLib));
+	tarray_init(&assembly->dl.lib_paths, sizeof(char *));
 
 	DCCallVM *vm = dcNewCallVM(4096);
 	dcMode(vm, DC_CALL_C_DEFAULT);
@@ -145,7 +145,7 @@ static void
 init_mir(Assembly *assembly)
 {
 	mir_arenas_init(&assembly->arenas.mir);
-	assembly->MIR.global_instrs = bo_array_new(sizeof(MirInstr *));
+	tarray_init(&assembly->MIR.global_instrs, sizeof(MirInstr *));
 	assembly->MIR.RTTI_tmp_vars = bo_array_new(sizeof(MirVar *));
 }
 
@@ -162,17 +162,17 @@ static void
 terminate_dl(Assembly *assembly)
 {
 	NativeLib *lib;
-	for (size_t i = 0; i < bo_array_size(assembly->dl.libs); ++i) {
-		lib = &bo_array_at(assembly->dl.libs, i, NativeLib);
+	for (size_t i = 0; i < assembly->dl.libs.size; ++i) {
+		lib = &tarray_at(NativeLib, &assembly->dl.libs, i);
 		native_lib_terminate(lib);
 	}
 
 	char *p;
-	BARRAY_FOREACH(assembly->dl.lib_paths, p) free(p);
+	TARRAY_FOREACH(char *, &assembly->dl.lib_paths, p) free(p);
 
 	dcFree(assembly->dl.vm);
-	bo_unref(assembly->dl.libs);
-	bo_unref(assembly->dl.lib_paths);
+	tarray_terminate(&assembly->dl.libs);
+	tarray_terminate(&assembly->dl.lib_paths);
 }
 
 static void
@@ -194,7 +194,7 @@ terminate_DI(Assembly *assembly)
 static void
 terminate_mir(Assembly *assembly)
 {
-	bo_unref(assembly->MIR.global_instrs);
+	tarray_terminate(&assembly->MIR.global_instrs);
 	bo_unref(assembly->MIR.RTTI_tmp_vars);
 
 	mir_arenas_terminate(&assembly->arenas.mir);
@@ -206,13 +206,11 @@ assembly_new(const char *name)
 {
 	Assembly *assembly = bl_calloc(1, sizeof(Assembly));
 	if (!assembly) BL_ABORT("bad alloc");
-	assembly->name       = strdup(name);
-	assembly->units      = bo_array_new(sizeof(Unit *));
+	assembly->name = strdup(name);
+	tarray_init(&assembly->units, sizeof(Unit *));
 	assembly->unit_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
 	assembly->link_cache = bo_htbl_new(sizeof(Token *), EXPECTED_LINK_COUNT);
 	assembly->type_table = bo_htbl_new(sizeof(MirType *), 8192);
-
-	bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
 
 	scope_arenas_init(&assembly->arenas.scope);
 	ast_arena_init(&assembly->arenas.ast);
@@ -243,7 +241,7 @@ assembly_delete(Assembly *assembly)
 	free(assembly->name);
 
 	Unit *unit;
-	BARRAY_FOREACH(assembly->units, unit)
+	TARRAY_FOREACH(Unit *, &assembly->units, unit)
 	{
 		unit_delete(unit);
 	}
@@ -255,7 +253,7 @@ assembly_delete(Assembly *assembly)
 	ast_arena_terminate(&assembly->arenas.ast);
 	scope_arenas_terminate(&assembly->arenas.scope);
 
-	bo_unref(assembly->units);
+	tarray_terminate(&assembly->units);
 	bo_unref(assembly->unit_cache);
 	bo_unref(assembly->link_cache);
 	bo_unref(assembly->type_table);
@@ -268,7 +266,7 @@ assembly_delete(Assembly *assembly)
 void
 assembly_add_unit(Assembly *assembly, Unit *unit)
 {
-	bo_array_push_back(assembly->units, unit);
+	tarray_push(&assembly->units, unit);
 }
 
 bool
@@ -303,12 +301,11 @@ assembly_add_link(Assembly *assembly, Token *token)
 DCpointer
 assembly_find_extern(Assembly *assembly, const char *symbol)
 {
-	void *       handle = NULL;
-	NativeLib *  lib;
-	const size_t count = bo_array_size(assembly->dl.libs);
+	void *     handle = NULL;
+	NativeLib *lib;
 
-	for (size_t i = 0; i < count; ++i) {
-		lib    = &bo_array_at(assembly->dl.libs, i, NativeLib);
+	for (size_t i = 0; i < assembly->dl.libs.size; ++i) {
+		lib    = &tarray_at(NativeLib, &assembly->dl.libs, i);
 		handle = dlFindSymbol(lib->handle, symbol);
 		if (handle) break;
 	}

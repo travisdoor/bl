@@ -45,7 +45,7 @@
 
 typedef struct {
 	Assembly *assembly;
-	BArray *  lib_paths;
+	TArray *  lib_paths;
 } Context;
 
 static bool
@@ -63,7 +63,7 @@ search_library(Context *   cnt,
 	if (builder.options.verbose) msg_log("- Looking for: '%s'", lib_name_full);
 
 	const char *dir;
-	BARRAY_FOREACH(cnt->lib_paths, dir)
+	TARRAY_FOREACH(const char *, cnt->lib_paths, dir)
 	{
 		if (strlen(dir) + strlen(PATH_SEPARATOR) + strlen(lib_name_full) >= PATH_MAX)
 			BL_ABORT("Path too long");
@@ -104,9 +104,11 @@ set_lib_paths(Context *cnt)
 			if (len - 1 > 0) {
 				strncpy(tmp, begin, len);
 				if (file_exists(tmp)) {
-					char *dup = malloc(sizeof(char) * len);
+					char *dup = malloc(sizeof(char) * len + 1);
 					memcpy(dup, begin, len);
-					bo_array_push_back(cnt->lib_paths, dup);
+					dup[len] = '\0';
+
+					tarray_push(cnt->lib_paths, dup);
 				}
 
 				begin = c + 1;
@@ -134,7 +136,7 @@ link_lib(Context *cnt, const char *name, Token *token)
 		return false;
 	}
 
-	bo_array_push_back(cnt->assembly->dl.libs, lib);
+	tarray_push(&cnt->assembly->dl.libs, lib);
 	return true;
 }
 
@@ -157,14 +159,14 @@ link_working_environment(Context *cnt)
 	                        .filepath    = NULL,
 	                        .is_internal = true};
 
-	bo_array_push_back(cnt->assembly->dl.libs, native_lib);
+	tarray_push(&cnt->assembly->dl.libs, native_lib);
 	return true;
 }
 
 void
 linker_run(Assembly *assembly)
 {
-	Context cnt = {.assembly = assembly, .lib_paths = assembly->dl.lib_paths};
+	Context cnt = {.assembly = assembly, .lib_paths = &assembly->dl.lib_paths};
 
 	if (builder.options.verbose) {
 		msg_log("Running runtime linker...");
