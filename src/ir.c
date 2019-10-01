@@ -70,63 +70,12 @@ typedef struct {
 	LLVMTypeRef llvm_i8_ptr_type;
 
 	/* Intrinsics */
-	LLVMValueRef llvm_instrinsic_trap;
-	LLVMValueRef llvm_instrinsic_memset;
+	LLVMValueRef llvm_intrinsic_trap;
+	LLVMValueRef llvm_intrinsic_memset;
 	LLVMValueRef llvm_intrinsic_memcpy;
 
 	bool debug_mode;
 } Context;
-
-static inline LLVMValueRef
-create_trap_fn(Context *cnt)
-{
-	LLVMTypeRef llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, NULL, 0, false);
-	return LLVMAddFunction(cnt->llvm_module, LLVM_INTRINSIC_TRAP_NAME, llvm_fn_type);
-}
-
-static inline LLVMValueRef
-create_memset_fn(Context *cnt)
-{
-#ifdef BL_PLATFORM_LINUX
-	LLVMTypeRef llvm_args[5] = {cnt->llvm_i8_ptr_type,
-	                            cnt->llvm_i8_type,
-	                            cnt->llvm_i64_type,
-	                            cnt->llvm_i32_type,
-	                            cnt->llvm_i1_type};
-
-	LLVMTypeRef llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 5, false);
-#else
-	LLVMTypeRef llvm_args[4] = {
-	    cnt->llvm_i8_ptr_type, cnt->llvm_i8_type, cnt->llvm_i64_type, cnt->llvm_i1_type};
-
-	LLVMTypeRef llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 4, false);
-#endif
-
-	LLVMValueRef llvm_fn =
-	    LLVMAddFunction(cnt->llvm_module, LLVM_INTRINSIC_MEMSET_NAME, llvm_fn_type);
-	return llvm_fn;
-}
-
-static inline LLVMValueRef
-create_memcpy_fn(Context *cnt)
-{
-#ifdef BL_PLATFORM_LINUX
-	LLVMTypeRef llvm_args[5] = {cnt->llvm_i8_ptr_type,
-	                            cnt->llvm_i8_ptr_type,
-	                            cnt->llvm_i64_type,
-	                            cnt->llvm_i32_type,
-	                            cnt->llvm_i1_type};
-	LLVMTypeRef llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 5, false);
-#else
-	LLVMTypeRef llvm_args[4] = {
-	    cnt->llvm_i8_ptr_type, cnt->llvm_i8_ptr_type, cnt->llvm_i64_type, cnt->llvm_i1_type};
-	LLVMTypeRef  llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, llvm_args, 4, false);
-#endif
-
-	LLVMValueRef llvm_fn =
-	    LLVMAddFunction(cnt->llvm_module, LLVM_INTRINSIC_MEMCPY_NAME, llvm_fn_type);
-	return llvm_fn;
-}
 
 static inline LLVMValueRef
 build_call_memset_0(Context *    cnt,
@@ -134,26 +83,14 @@ build_call_memset_0(Context *    cnt,
                     LLVMValueRef llvm_size,
                     LLVMValueRef llvm_alignment)
 {
-#ifdef BL_PLATFORM_LINUX
-	LLVMValueRef llvm_args[5] = {
-	    LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
-	    LLVMConstInt(cnt->llvm_i8_type, 0, false),
-	    llvm_size,
-	    llvm_alignment,
-	    LLVMConstInt(cnt->llvm_i1_type, 0, false)};
-
-	LLVMValueRef llvm_result =
-	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_instrinsic_memset, llvm_args, 5, "");
-#else
 	LLVMValueRef llvm_args[4] = {
 	    LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
 	    LLVMConstInt(cnt->llvm_i8_type, 0, false),
 	    llvm_size,
 	    LLVMConstInt(cnt->llvm_i1_type, 0, false)};
 
-	LLVMValueRef llvm_result =
-	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_instrinsic_memset, llvm_args, 4, "");
-#endif
+	LLVMValueRef llvm_result = LLVMBuildCall(
+	    cnt->llvm_builder, cnt->llvm_intrinsic_memset, llvm_args, TARRAY_SIZE(llvm_args), "");
 
 	return llvm_result;
 }
@@ -165,26 +102,14 @@ build_call_memcpy(Context *    cnt,
                   LLVMValueRef llvm_size,
                   LLVMValueRef llvm_alignment)
 {
-#ifdef BL_PLATFORM_LINUX
-	LLVMValueRef llvm_args[5] = {
-	    LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
-	    LLVMBuildBitCast(cnt->llvm_builder, llvm_src_ptr, cnt->llvm_i8_ptr_type, ""),
-	    llvm_size,
-	    llvm_alignment,
-	    LLVMConstInt(cnt->llvm_i1_type, 0, false)};
-
-	LLVMValueRef llvm_result =
-	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_intrinsic_memcpy, llvm_args, 5, "");
-#else
 	LLVMValueRef llvm_args[4] = {
 	    LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
 	    LLVMBuildBitCast(cnt->llvm_builder, llvm_src_ptr, cnt->llvm_i8_ptr_type, ""),
 	    llvm_size,
 	    LLVMConstInt(cnt->llvm_i1_type, 0, false)};
 
-	LLVMValueRef llvm_result =
-	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_intrinsic_memcpy, llvm_args, 4, "");
-#endif
+	LLVMValueRef llvm_result = LLVMBuildCall(
+	    cnt->llvm_builder, cnt->llvm_intrinsic_memcpy, llvm_args, TARRAY_SIZE(llvm_args), "");
 
 	return llvm_result;
 }
@@ -592,7 +517,7 @@ void
 emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
 	unr->base.llvm_value =
-	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_instrinsic_trap, NULL, 0, "");
+	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_intrinsic_trap, NULL, 0, "");
 }
 
 void
@@ -1895,10 +1820,27 @@ emit_instr(Context *cnt, MirInstr *instr)
 static void
 init_intrinsics(Context *cnt)
 {
-	u32 id;
-	id = llvm_lookup_intrinsic_id(LLVM_INTRINSIC_MEMSET_NAME);
-	id = llvm_lookup_intrinsic_id(LLVM_INTRINSIC_MEMCPY_NAME);
-	id = llvm_lookup_intrinsic_id(LLVM_INTRINSIC_TRAP_NAME);
+	u32         id;
+	LLVMTypeRef llvm_args[8];
+
+	/* @llvm.memset.p0i8.i32(i8* <dest>, i8 <val>, i64 <len>, i1 <isvolatile>) */
+	id                         = llvm_lookup_intrinsic_id(LLVM_INTRINSIC_MEMSET_NAME);
+	llvm_args[0]               = cnt->llvm_i8_ptr_type;
+	llvm_args[1]               = cnt->llvm_i64_type;
+	cnt->llvm_intrinsic_memset = llvm_get_intrinsic_decl(cnt->llvm_module, id, llvm_args, 2);
+	BL_ASSERT(cnt->llvm_intrinsic_memset);
+
+	/* @llvm.memcpy.p0i8.p0i8.i64(i8* <dest>, i8* <src>, i64 <len>, i1 <isvolatile>) */
+	id                         = llvm_lookup_intrinsic_id(LLVM_INTRINSIC_MEMCPY_NAME);
+	llvm_args[0]               = cnt->llvm_i8_ptr_type;
+	llvm_args[1]               = cnt->llvm_i8_ptr_type;
+	llvm_args[2]               = cnt->llvm_i64_type;
+	cnt->llvm_intrinsic_memcpy = llvm_get_intrinsic_decl(cnt->llvm_module, id, llvm_args, 3);
+	BL_ASSERT(cnt->llvm_intrinsic_memcpy);
+
+	id                       = llvm_lookup_intrinsic_id(LLVM_INTRINSIC_TRAP_NAME);
+	cnt->llvm_intrinsic_trap = llvm_get_intrinsic_decl(cnt->llvm_module, id, NULL, 0);
+	BL_ASSERT(cnt->llvm_intrinsic_trap);
 }
 
 /* public */
@@ -1907,23 +1849,20 @@ ir_run(Assembly *assembly)
 {
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));
-	cnt.assembly               = assembly;
-	cnt.llvm_cnt               = assembly->llvm.cnt;
-	cnt.llvm_module            = assembly->llvm.module;
-	cnt.llvm_td                = assembly->llvm.TD;
-	cnt.llvm_builder           = LLVMCreateBuilderInContext(assembly->llvm.cnt);
-	cnt.llvm_void_type         = LLVMVoidTypeInContext(cnt.llvm_cnt);
-	cnt.llvm_i1_type           = LLVMInt1TypeInContext(cnt.llvm_cnt);
-	cnt.llvm_i8_type           = LLVMInt8TypeInContext(cnt.llvm_cnt);
-	cnt.llvm_i32_type          = LLVMInt32TypeInContext(cnt.llvm_cnt);
-	cnt.llvm_i64_type          = LLVMInt64TypeInContext(cnt.llvm_cnt);
-	cnt.llvm_i8_ptr_type       = LLVMPointerType(cnt.llvm_i8_type, 0);
-	cnt.llvm_const_i64         = LLVMConstInt(cnt.llvm_i64_type, 0, false);
-	cnt.llvm_instrinsic_trap   = create_trap_fn(&cnt);
-	cnt.llvm_instrinsic_memset = create_memset_fn(&cnt);
-	cnt.llvm_intrinsic_memcpy  = create_memcpy_fn(&cnt);
-	cnt.llvm_di_builder        = assembly->llvm.di_builder;
-	cnt.debug_mode             = builder.options.debug_build;
+	cnt.assembly         = assembly;
+	cnt.llvm_cnt         = assembly->llvm.cnt;
+	cnt.llvm_module      = assembly->llvm.module;
+	cnt.llvm_td          = assembly->llvm.TD;
+	cnt.llvm_builder     = LLVMCreateBuilderInContext(assembly->llvm.cnt);
+	cnt.llvm_void_type   = LLVMVoidTypeInContext(cnt.llvm_cnt);
+	cnt.llvm_i1_type     = LLVMInt1TypeInContext(cnt.llvm_cnt);
+	cnt.llvm_i8_type     = LLVMInt8TypeInContext(cnt.llvm_cnt);
+	cnt.llvm_i32_type    = LLVMInt32TypeInContext(cnt.llvm_cnt);
+	cnt.llvm_i64_type    = LLVMInt64TypeInContext(cnt.llvm_cnt);
+	cnt.llvm_i8_ptr_type = LLVMPointerType(cnt.llvm_i8_type, 0);
+	cnt.llvm_const_i64   = LLVMConstInt(cnt.llvm_i64_type, 0, false);
+	cnt.llvm_di_builder  = assembly->llvm.di_builder;
+	cnt.debug_mode       = builder.options.debug_build;
 	thtbl_init(&cnt.gstring_cache, sizeof(LLVMValueRef), 1024);
 
 	init_intrinsics(&cnt);
