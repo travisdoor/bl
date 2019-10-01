@@ -28,10 +28,12 @@
 
 #include "llvm_api.h"
 #include <cmath>
+#include <llvm/ADT/StringSwitch.h>
 #include <llvm/Config/llvm-config.h>
 #include <llvm/IR/Attributes.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Type.h>
-#include <llvm/ADT/StringSwitch.h>
 
 #define CAST(T) reinterpret_cast<T>
 
@@ -75,4 +77,29 @@ llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, L
 	    Attribute::get(*CAST(LLVMContext *)(context_ref), (Attribute::AttrKind)kind)
 	        .getRawPointer());
 #endif
+}
+
+u32
+llvm_lookup_intrinsic_id(const char *name)
+{
+	return Function::lookupIntrinsicID({name, strlen(name)});
+}
+
+static Intrinsic::ID
+llvm_map_to_intrinsic_id(unsigned ID)
+{
+	assert(ID < llvm::Intrinsic::num_intrinsics && "Intrinsic ID out of range");
+	return llvm::Intrinsic::ID(ID);
+}
+
+LLVMValueRef
+llvm_get_intrinsic_decl(LLVMModuleRef mod_ref,
+                        u32           id,
+                        LLVMTypeRef * param_types_ref,
+                        usize         param_types_count)
+{
+	ArrayRef<Type *> types(CAST(Type **)(param_types_ref), param_types_count);
+
+	auto iid = llvm_map_to_intrinsic_id(id);
+	return wrap(llvm::Intrinsic::getDeclaration(CAST(Module *)(mod_ref), iid, types));
 }

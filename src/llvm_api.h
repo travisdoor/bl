@@ -71,6 +71,9 @@ llvm_create_attribute_int(LLVMContextRef context_ref, LLVMAttributeKind kind, s3
 LLVMAttributeRef
 llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef v);
 
+u32
+llvm_lookup_intrinsic_id(const char *name);
+
 #ifdef __cplusplus
 }
 #endif

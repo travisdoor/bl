@@ -34,9 +34,9 @@
 #include "mir.h"
 #include "unit.h"
 
-#define LLVM_INSTRINSIC_TRAP "llvm.debugtrap"
-#define LLVM_INSTRINSIC_MEMSET "llvm.memset.p0i8.i64"
-#define LLVM_INTRINSIC_MEMCPY "llvm.memcpy.p0i8.p0i8.i64"
+#define LLVM_INTRINSIC_TRAP_NAME "llvm.debugtrap"
+#define LLVM_INTRINSIC_MEMSET_NAME "llvm.memset"
+#define LLVM_INTRINSIC_MEMCPY_NAME "llvm.memcpy"
 
 #if BL_DEBUG
 #define NAMED_VARS true
@@ -81,7 +81,7 @@ static inline LLVMValueRef
 create_trap_fn(Context *cnt)
 {
 	LLVMTypeRef llvm_fn_type = LLVMFunctionType(cnt->llvm_void_type, NULL, 0, false);
-	return LLVMAddFunction(cnt->llvm_module, LLVM_INSTRINSIC_TRAP, llvm_fn_type);
+	return LLVMAddFunction(cnt->llvm_module, LLVM_INTRINSIC_TRAP_NAME, llvm_fn_type);
 }
 
 static inline LLVMValueRef
@@ -103,7 +103,7 @@ create_memset_fn(Context *cnt)
 #endif
 
 	LLVMValueRef llvm_fn =
-	    LLVMAddFunction(cnt->llvm_module, LLVM_INSTRINSIC_MEMSET, llvm_fn_type);
+	    LLVMAddFunction(cnt->llvm_module, LLVM_INTRINSIC_MEMSET_NAME, llvm_fn_type);
 	return llvm_fn;
 }
 
@@ -124,7 +124,7 @@ create_memcpy_fn(Context *cnt)
 #endif
 
 	LLVMValueRef llvm_fn =
-	    LLVMAddFunction(cnt->llvm_module, LLVM_INTRINSIC_MEMCPY, llvm_fn_type);
+	    LLVMAddFunction(cnt->llvm_module, LLVM_INTRINSIC_MEMCPY_NAME, llvm_fn_type);
 	return llvm_fn;
 }
 
@@ -1892,6 +1892,15 @@ emit_instr(Context *cnt, MirInstr *instr)
 	}
 }
 
+static void
+init_intrinsics(Context *cnt)
+{
+	u32 id;
+	id = llvm_lookup_intrinsic_id(LLVM_INTRINSIC_MEMSET_NAME);
+	id = llvm_lookup_intrinsic_id(LLVM_INTRINSIC_MEMCPY_NAME);
+	id = llvm_lookup_intrinsic_id(LLVM_INTRINSIC_TRAP_NAME);
+}
+
 /* public */
 void
 ir_run(Assembly *assembly)
@@ -1915,9 +1924,9 @@ ir_run(Assembly *assembly)
 	cnt.llvm_intrinsic_memcpy  = create_memcpy_fn(&cnt);
 	cnt.llvm_di_builder        = assembly->llvm.di_builder;
 	cnt.debug_mode             = builder.options.debug_build;
-
 	thtbl_init(&cnt.gstring_cache, sizeof(LLVMValueRef), 1024);
 
+	init_intrinsics(&cnt);
 	emit_RTTI_types(&cnt);
 
 	MirInstr *ginstr;
