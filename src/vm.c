@@ -474,9 +474,9 @@ stack_alloc_local_vars(VM *vm, MirFn *fn)
 {
 	BL_ASSERT(fn);
 	/* Init all stack variables. */
-	BArray *vars = fn->variables;
+	TArray *vars = fn->variables;
 	MirVar *var;
-	BARRAY_FOREACH(vars, var)
+	TARRAY_FOREACH(MirVar *, vars, var)
 	{
 		if (var->comptime) continue;
 		stack_alloc_var(vm, var);

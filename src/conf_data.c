@@ -32,41 +32,41 @@
 ConfData *
 conf_data_new(void)
 {
-	return bo_htbl_new(sizeof(ConfDataValue), 32);
+	return thtbl_new(sizeof(ConfDataValue), 32);
 }
 
 void
 conf_data_delete(ConfData *data)
 {
-	bo_unref(data);
+	thtbl_delete(data);
 }
 
 bool
 conf_data_has_key(ConfData *data, const char *key)
 {
-	const u64 hash = bo_hash_from_str(key);
-	return bo_htbl_has_key(data, hash);
+	const u64 hash = thash_from_str(key);
+	return thtbl_has_key(data, hash);
 }
 
 void
 conf_data_add(ConfData *data, const char *key, ConfDataValue *value)
 {
-	const u64 hash = bo_hash_from_str(key);
-	bo_htbl_insert(data, hash, *value);
+	const u64 hash = thash_from_str(key);
+	thtbl_insert(data, hash, *value);
 }
 
 ConfDataValue *
 conf_data_get(ConfData *data, const char *key)
 {
-	const u64     hash = bo_hash_from_str(key);
-	bo_iterator_t it   = bo_htbl_find(data, hash);
-	bo_iterator_t end  = bo_htbl_end(data);
+	const u64     hash = thash_from_str(key);
+	TIterator it   = thtbl_find(data, hash);
+	TIterator end  = thtbl_end(data);
 
-	if (bo_iterator_equal(&it, &end)) {
+	if (TITERATOR_EQUAL(it, end)) {
 		BL_ABORT("Missing conf entry '%s'.", key);
 	}
 
-	return &bo_htbl_iter_peek_value(data, &it, ConfDataValue);
+	return &thtbl_iter_peek_value(ConfDataValue, it);
 }
 
 const char *

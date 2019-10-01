@@ -110,9 +110,9 @@ SmallArrayType(String, const char *, 64);
 typedef struct {
 	VM          vm;
 	Assembly *  assembly;
-	BArray *    test_cases;
-	BString *   tmp_sh;
-	BHashTable *type_table;
+	TArray      test_cases;
+	TString     tmp_sh;
+	THashTable *type_table;
 	MirFn *     entry_fn;
 	bool        debug_mode;
 
@@ -129,7 +129,7 @@ typedef struct {
 	/* Analyze MIR generated from AST */
 	struct {
 		/* Instructions waiting for analyze. */
-		BList *queue;
+		TList queue;
 
 		/* Hash table of arrays. Hash is ID of symbol and array contains queue
 		 * of waiting instructions (DeclRefs). */
@@ -137,7 +137,7 @@ typedef struct {
 		bool        verbose_pre;
 		bool        verbose_post;
 
-		BHashTable *     RTTI_entry_types;
+		THashTable       RTTI_entry_types;
 		LLVMDIBuilderRef llvm_di_builder;
 	} analyze;
 
@@ -1152,8 +1152,8 @@ is_current_block_terminated(Context *cnt)
 static inline void
 schedule_RTTI_generation(Context *cnt, MirType *type)
 {
-	if (!bo_htbl_has_key(cnt->analyze.RTTI_entry_types, (u64)type))
-		bo_htbl_insert_empty(cnt->analyze.RTTI_entry_types, (u64)type);
+	if (!thtbl_has_key(&cnt->analyze.RTTI_entry_types, (u64)type))
+		thtbl_insert_empty(&cnt->analyze.RTTI_entry_types, (u64)type);
 }
 
 static inline bool
@@ -1244,14 +1244,14 @@ static inline void
 analyze_push_back(Context *cnt, MirInstr *instr)
 {
 	BL_ASSERT(instr);
-	bo_list_push_back(cnt->analyze.queue, instr);
+	tlist_push_back(&cnt->analyze.queue, instr);
 }
 
 static inline void
 analyze_push_front(Context *cnt, MirInstr *instr)
 {
 	BL_ASSERT(instr);
-	bo_list_push_front(cnt->analyze.queue, instr);
+	tlist_push_front(&cnt->analyze.queue, instr);
 }
 
 static inline void
@@ -1496,32 +1496,31 @@ static inline const char *
 sh_type_null(Context *cnt, MirType *base_type)
 {
 	BL_ASSERT(base_type->id.str);
-	BString *tmp = cnt->tmp_sh;
-	bo_string_clear(tmp);
-	bo_string_append(tmp, "n.");
-	bo_string_append(tmp, base_type->id.str);
-	return bo_string_get(tmp);
+	TString *tmp = &cnt->tmp_sh;
+	tstring_clear(tmp);
+	tstring_append(tmp, "n.");
+	tstring_append(tmp, base_type->id.str);
+	return tmp->data;
 }
 
 static inline const char *
 sh_type_ptr(Context *cnt, MirType *src_type)
 {
 	BL_ASSERT(src_type->id.str);
-	BString *tmp = cnt->tmp_sh;
-	bo_string_clear(tmp);
-	bo_string_append(tmp, "p.");
-	bo_string_append(tmp, src_type->id.str);
-	return bo_string_get(tmp);
+	TString *tmp = &cnt->tmp_sh;
+	tstring_clear(tmp);
+	tstring_append(tmp, "p.");
+	tstring_append(tmp, src_type->id.str);
+	return tmp->data;
 }
 
 static inline const char *
 sh_type_fn(Context *cnt, MirType *ret_type, SmallArray_ArgPtr *args, bool is_vargs)
 {
 	// BL_ASSERT(src_type->id.str);
-	BString *tmp = cnt->tmp_sh;
-	bo_string_clear(tmp);
-
-	bo_string_append(tmp, "f.(");
+	TString *tmp = &cnt->tmp_sh;
+	tstring_clear(tmp);
+	tstring_append(tmp, "f.(");
 
 	/* append all arg types isd */
 	if (args) {
@@ -1529,39 +1528,39 @@ sh_type_fn(Context *cnt, MirType *ret_type, SmallArray_ArgPtr *args, bool is_var
 		SARRAY_FOREACH(args, arg)
 		{
 			BL_ASSERT(arg->type->id.str);
-			bo_string_append(tmp, arg->type->id.str);
+			tstring_append(tmp, arg->type->id.str);
 
-			if (i != args->size - 1) bo_string_append(tmp, ",");
+			if (i != args->size - 1) tstring_append(tmp, ",");
 		}
 	}
 
-	bo_string_append(tmp, ")");
+	tstring_append(tmp, ")");
 
 	if (ret_type) {
 		BL_ASSERT(ret_type->id.str);
-		bo_string_append(tmp, ret_type->id.str);
+		tstring_append(tmp, ret_type->id.str);
 	} else {
 		/* implicit return void */
-		bo_string_append(tmp, cnt->builtin_types.t_void->id.str);
+		tstring_append(tmp, cnt->builtin_types.t_void->id.str);
 	}
 
-	return bo_string_get(tmp);
+	return tmp->data;
 }
 
 static inline const char *
 sh_type_arr(Context *cnt, MirType *elem_type, s64 len)
 {
 	BL_ASSERT(elem_type->id.str);
-	BString *tmp = cnt->tmp_sh;
-	bo_string_clear(tmp);
+	TString *tmp = &cnt->tmp_sh;
+	tstring_clear(tmp);
 
 	char ui_str[21];
 	sprintf(ui_str, "%llu", (unsigned long long)len);
 
-	bo_string_append(tmp, ui_str);
-	bo_string_append(tmp, ".");
-	bo_string_append(tmp, elem_type->id.str);
-	return bo_string_get(tmp);
+	tstring_append(tmp, ui_str);
+	tstring_append(tmp, ".");
+	tstring_append(tmp, elem_type->id.str);
+	return tmp->data;
 }
 
 static inline const char *
@@ -1572,62 +1571,62 @@ sh_type_struct(Context *             cnt,
                bool                  is_packed)
 {
 	BL_ASSERT(!is_packed);
-	BString *tmp = cnt->tmp_sh;
-	bo_string_clear(tmp);
+	TString *tmp = &cnt->tmp_sh;
+	tstring_clear(tmp);
 
 	switch (kind) {
 	case MIR_TYPE_STRUCT:
-		bo_string_append(tmp, "s.");
+		tstring_append(tmp, "s.");
 		break;
 	case MIR_TYPE_SLICE:
-		bo_string_append(tmp, "sl.");
+		tstring_append(tmp, "sl.");
 		break;
 	case MIR_TYPE_STRING:
-		bo_string_append(tmp, "ss.");
+		tstring_append(tmp, "ss.");
 		break;
 	case MIR_TYPE_VARGS:
-		bo_string_append(tmp, "sv.");
+		tstring_append(tmp, "sv.");
 		break;
 	default:
 		BL_ABORT("Expected struct base type.");
 	}
 
 	if (id) {
-		bo_string_append(tmp, id->str);
+		tstring_append(tmp, id->str);
 	}
 
-	bo_string_append(tmp, "{");
+	tstring_append(tmp, "{");
 	if (members) {
 		MirMember *member;
 		SARRAY_FOREACH(members, member)
 		{
 			BL_ASSERT(member->type->id.str);
-			bo_string_append(tmp, member->type->id.str);
+			tstring_append(tmp, member->type->id.str);
 
-			if (i != members->size - 1) bo_string_append(tmp, ",");
+			if (i != members->size - 1) tstring_append(tmp, ",");
 		}
 	}
 
-	bo_string_append(tmp, "}");
-	return bo_string_get(tmp);
+	tstring_append(tmp, "}");
+	return tmp->data;
 }
 
 static inline const char *
 sh_type_enum(Context *cnt, ID *id, MirType *base_type, SmallArray_VariantPtr *variants)
 {
 	BL_ASSERT(base_type->id.str);
-	BString *tmp = cnt->tmp_sh;
-	bo_string_clear(tmp);
+	TString *tmp = &cnt->tmp_sh;
+	tstring_clear(tmp);
 
-	bo_string_append(tmp, "e.");
+	tstring_append(tmp, "e.");
 
-	if (id) bo_string_append(tmp, id->str);
+	if (id) tstring_append(tmp, id->str);
 
-	bo_string_append(tmp, "(");
-	bo_string_append(tmp, base_type->id.str);
-	bo_string_append(tmp, ")");
+	tstring_append(tmp, "(");
+	tstring_append(tmp, base_type->id.str);
+	tstring_append(tmp, ")");
 
-	bo_string_append(tmp, "{");
+	tstring_append(tmp, "{");
 	if (variants) {
 		MirVariant *variant;
 		SARRAY_FOREACH(variants, variant)
@@ -1639,13 +1638,13 @@ sh_type_enum(Context *cnt, ID *id, MirType *base_type, SmallArray_VariantPtr *va
 			         ARRAY_SIZE(value_str),
 			         "%lld",
 			         (long long)variant->value->data.v_s64);
-			bo_string_append(tmp, value_str);
+			tstring_append(tmp, value_str);
 
-			if (i != variants->size - 1) bo_string_append(tmp, ",");
+			if (i != variants->size - 1) tstring_append(tmp, ",");
 		}
 	}
-	bo_string_append(tmp, "}");
-	return bo_string_get(tmp);
+	tstring_append(tmp, "}");
+	return tmp->data;
 }
 
 /* impl */
@@ -1671,12 +1670,12 @@ create_type(Context *cnt, MirType **out_type, const char *sh)
 {
 	BL_ASSERT(out_type);
 	BL_ASSERT(sh);
-	u64 hash = bo_hash_from_str(sh);
+	u64 hash = thash_from_str(sh);
 
-	bo_iterator_t found = bo_htbl_find(cnt->type_table, hash);
-	bo_iterator_t end   = bo_htbl_end(cnt->type_table);
-	if (!bo_iterator_equal(&found, &end)) {
-		*out_type = bo_htbl_iter_peek_value(cnt->type_table, &found, MirType *);
+	TIterator found = thtbl_find(cnt->type_table, hash);
+	TIterator end   = thtbl_end(cnt->type_table);
+	if (!TITERATOR_EQUAL(found, end)) {
+		*out_type = thtbl_iter_peek_value(MirType *, found);
 		BL_ASSERT(*out_type);
 		return false;
 	} else {
@@ -1689,7 +1688,7 @@ create_type(Context *cnt, MirType **out_type, const char *sh)
 		tmp->id.hash = hash;
 
 		// BL_LOG("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
-		bo_htbl_insert(cnt->type_table, tmp->id.hash, tmp);
+		thtbl_insert(cnt->type_table, tmp->id.hash, tmp);
 		*out_type = tmp;
 
 		return true;
@@ -2562,7 +2561,7 @@ push_var(Context *cnt, MirVar *var)
 
 	MirFn *fn = get_current_fn(cnt);
 	BL_ASSERT(fn);
-	bo_array_push_back(fn->variables, var);
+	tarray_push(fn->variables, var);
 }
 
 MirVar *
@@ -6421,14 +6420,14 @@ analyze(Context *cnt)
 	/* PERFORMANCE: use array??? */
 	/* PERFORMANCE: use array??? */
 	/* PERFORMANCE: use array??? */
-	BList *       q = cnt->analyze.queue;
+	TList *       q = &cnt->analyze.queue;
 	AnalyzeResult result;
 	size_t        postpone_loop_count = 0;
 	MirInstr *    ip                  = NULL;
 	MirInstr *    prev_ip             = NULL;
 	bool          skip                = false;
 
-	if (bo_list_empty(q)) return;
+	if (tlist_empty(q)) return;
 
 	while (true) {
 		prev_ip = ip;
@@ -6439,10 +6438,10 @@ analyze(Context *cnt)
 		}
 
 		if (!ip) {
-			if (bo_list_empty(q)) break;
+			if (tlist_empty(q)) break;
 
-			ip = bo_list_front(q, MirInstr *);
-			bo_list_pop_front(q);
+			ip = tlist_front(MirInstr *, q);
+			tlist_pop_front(q);
 			skip = false;
 		}
 
@@ -6471,7 +6470,7 @@ analyze(Context *cnt)
 #endif
 
 			skip = true;
-			if (postpone_loop_count++ < bo_list_size(q)) bo_list_push_back(q, ip);
+			if (postpone_loop_count++ < q->size) tlist_push_back(q, ip);
 			break;
 
 		case ANALYZE_WAITING: {
@@ -6548,7 +6547,7 @@ gen_RTTI_var(Context *cnt, MirType *type, MirConstValueData *value)
 	vm_create_implicit_global(&cnt->vm, var);
 
 	/* Push into RTTI table */
-	bo_array_push_back(cnt->assembly->MIR.RTTI_tmp_vars, var);
+	tarray_push(&cnt->assembly->MIR.RTTI_tmp_vars, var);
 	return var;
 }
 
@@ -7086,8 +7085,8 @@ gen_RTTI(Context *cnt, MirType *type)
 void
 gen_RTTI_types(Context *cnt)
 {
-	BHashTable *table = cnt->analyze.RTTI_entry_types;
-	if (bo_htbl_size(table) == 0) return;
+	THashTable *table = &cnt->analyze.RTTI_entry_types;
+	if (table->size == 0) return;
 
 	{ /* Preload RTTI provided types */
 		cnt->builtin_types.t_TypeInfo_ptr =
@@ -7117,11 +7116,11 @@ gen_RTTI_types(Context *cnt)
 		    create_type_ptr(cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_FN_ARG)));
 	}
 
-	bo_iterator_t it;
+	TIterator it;
 	MirType *     type;
-	BHTBL_FOREACH(table, it)
+	THTBL_FOREACH(table, it)
 	{
-		type = (MirType *)bo_htbl_iter_peek_key(table, &it);
+		type = (MirType *)thtbl_iter_peek_key(it);
 		gen_RTTI(cnt, type);
 	}
 }
@@ -7187,7 +7186,7 @@ ast_test_case(Context *cnt, Ast *test)
 	fn->test_case_desc = test->data.test_case.desc;
 	mir_set_const_ptr(&fn_proto->base.value.data.v_ptr, fn, MIR_CP_FN);
 
-	bo_array_push_back(cnt->test_cases, fn);
+	tarray_push(&cnt->test_cases, fn);
 
 	MirInstrBlock *entry_block = append_block(cnt, fn, "entry");
 
@@ -8623,13 +8622,13 @@ execute_test_cases(Context *cnt)
 {
 	msg_log("\nExecuting test cases...");
 
-	const size_t c      = bo_array_size(cnt->test_cases);
-	s32          failed = 0;
-	MirFn *      test_fn;
-	s32          line;
-	const char * file;
+	const usize c      = cnt->test_cases.size;
+	s32         failed = 0;
+	MirFn *     test_fn;
+	s32         line;
+	const char *file;
 
-	BARRAY_FOREACH(cnt->test_cases, test_fn)
+	TARRAY_FOREACH(MirFn *, &cnt->test_cases, test_fn)
 	{
 		BL_ASSERT(IS_FLAG(test_fn->flags, FLAG_TEST));
 		const bool passed = vm_execute_fn(&cnt->vm, test_fn, NULL);
@@ -8677,7 +8676,7 @@ init_builtins(Context *cnt)
 	{
 		// initialize all hashes once
 		for (s32 i = 0; i < _MIR_BUILTIN_ID_COUNT; ++i) {
-			builtin_ids[i].hash = bo_hash_from_str(builtin_ids[i].str);
+			builtin_ids[i].hash = thash_from_str(builtin_ids[i].str);
 		}
 	}
 
@@ -8776,20 +8775,20 @@ mir_run(Assembly *assembly)
 {
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));
-	cnt.assembly                 = assembly;
-	cnt.debug_mode               = builder.options.debug_build;
-	cnt.analyze.verbose_pre      = false;
-	cnt.analyze.verbose_post     = false;
-	cnt.analyze.queue            = bo_list_new(sizeof(MirInstr *));
-	cnt.analyze.RTTI_entry_types = bo_htbl_new(0, 1024);
-	cnt.analyze.waiting          = bo_htbl_new_bo(bo_typeof(BArray), true, ANALYZE_TABLE_SIZE);
-	cnt.analyze.llvm_di_builder  = assembly->llvm.di_builder;
-	cnt.test_cases               = bo_array_new(sizeof(MirFn *));
-	cnt.tmp_sh                   = bo_string_new(1024);
-	cnt.type_table               = assembly->type_table;
+	cnt.assembly                = assembly;
+	cnt.debug_mode              = builder.options.debug_build;
+	cnt.analyze.verbose_pre     = false;
+	cnt.analyze.verbose_post    = false;
+	cnt.analyze.waiting         = bo_htbl_new_bo(bo_typeof(BArray), true, ANALYZE_TABLE_SIZE);
+	cnt.analyze.llvm_di_builder = assembly->llvm.di_builder;
+	cnt.type_table              = &assembly->type_table;
 	cnt.builtin_types.cache =
 	    scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, 64, NULL);
 
+	thtbl_init(&cnt.analyze.RTTI_entry_types, 0, 1024);
+	tlist_init(&cnt.analyze.queue, sizeof(MirInstr *));
+	tstring_init(&cnt.tmp_sh);
+	tarray_init(&cnt.test_cases, sizeof(MirFn *));
 	vm_init(&cnt.vm, assembly, VM_STACK_SIZE);
 
 	sa_init(&cnt.ast.defer_stack);
@@ -8815,11 +8814,11 @@ mir_run(Assembly *assembly)
 	if (builder.options.run) execute_entry_fn(&cnt);
 
 SKIP:
-	bo_unref(cnt.analyze.queue);
+	tlist_terminate(&cnt.analyze.queue);
 	bo_unref(cnt.analyze.waiting);
-	bo_unref(cnt.analyze.RTTI_entry_types);
-	bo_unref(cnt.test_cases);
-	bo_unref(cnt.tmp_sh);
+	thtbl_terminate(&cnt.analyze.RTTI_entry_types);
+	tarray_terminate(&cnt.test_cases);
+	tstring_terminate(&cnt.tmp_sh);
 
 	sa_terminate(&cnt.ast.defer_stack);
 

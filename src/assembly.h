@@ -47,13 +47,13 @@ typedef struct Assembly {
 		ScopeArenas scope;
 		MirArenas   mir;
 		Arena       ast;
-		Arena       array;       /* used for all BArrays */
+		Arena       array;       /* used for all TArrays */
 		Arena       small_array; /* used for all SmallArrays */
 	} arenas;
 
 	struct {
-		TArray  global_instrs; // All global instructions.
-		BArray *RTTI_tmp_vars; // Temporary variables used by RTTI.
+		TArray global_instrs; // All global instructions.
+		TArray RTTI_tmp_vars; // Temporary variables used by RTTI.
 	} MIR;
 
 	struct {
@@ -74,9 +74,9 @@ typedef struct Assembly {
 	} dl;
 
 	TArray      units;      /* array of all units in assembly */
-	BHashTable *unit_cache; /* cache for loading only unique units */
-	BHashTable *link_cache; /* all linked externals libraries passed to linker */
-	BHashTable *type_table; /* type table key: type ID, value: *MirType */
+	THashTable  unit_cache; /* cache for loading only unique units */
+	THashTable  link_cache; /* all linked externals libraries passed to linker */
+	THashTable  type_table; /* type table key: type ID, value: *MirType */
 	char *      name;       /* assembly name */
 	Scope *     gscope;     /* global scope of the assembly */
 } Assembly;

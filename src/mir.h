@@ -278,7 +278,7 @@ struct MirFn {
 	/* function body scope if there is one (optional) */
 	Scope *     body_scope;
 	MirType *   type;
-	BArray *    variables;
+	TArray *    variables;
 	const char *linkage_name;
 
 	LLVMValueRef llvm_value;
@@ -286,7 +286,7 @@ struct MirFn {
 	bool         emit_llvm;
 	bool         is_in_gscope;
 
-    u32         flags;
+	u32         flags;
 	const char *test_case_desc;
 
 	/* pointer to the first block inside function body */

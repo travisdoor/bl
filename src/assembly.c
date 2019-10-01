@@ -51,9 +51,9 @@ union _SmallArrays {
 };
 
 static void
-barray_dtor(BArray **arr)
+tarray_dtor(TArray **arr)
 {
-	bo_unref(*arr);
+	tarray_delete(*arr);
 }
 
 static void
@@ -146,7 +146,7 @@ init_mir(Assembly *assembly)
 {
 	mir_arenas_init(&assembly->arenas.mir);
 	tarray_init(&assembly->MIR.global_instrs, sizeof(MirInstr *));
-	assembly->MIR.RTTI_tmp_vars = bo_array_new(sizeof(MirVar *));
+	tarray_init(&assembly->MIR.RTTI_tmp_vars, sizeof(MirVar *));
 }
 
 static void
@@ -195,7 +195,7 @@ static void
 terminate_mir(Assembly *assembly)
 {
 	tarray_terminate(&assembly->MIR.global_instrs);
-	bo_unref(assembly->MIR.RTTI_tmp_vars);
+	tarray_terminate(&assembly->MIR.RTTI_tmp_vars);
 
 	mir_arenas_terminate(&assembly->arenas.mir);
 }
@@ -208,16 +208,16 @@ assembly_new(const char *name)
 	if (!assembly) BL_ABORT("bad alloc");
 	assembly->name = strdup(name);
 	tarray_init(&assembly->units, sizeof(Unit *));
-	assembly->unit_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
-	assembly->link_cache = bo_htbl_new(sizeof(Token *), EXPECTED_LINK_COUNT);
-	assembly->type_table = bo_htbl_new(sizeof(MirType *), 8192);
+	thtbl_init(&assembly->unit_cache, 0, EXPECTED_UNIT_COUNT);
+	thtbl_init(&assembly->link_cache, sizeof(Token *), EXPECTED_LINK_COUNT);
+	thtbl_init(&assembly->type_table, sizeof(MirType *), 8192);
 
 	scope_arenas_init(&assembly->arenas.scope);
 	ast_arena_init(&assembly->arenas.ast);
 	arena_init(&assembly->arenas.array,
-	           sizeof(BArray *),
+	           sizeof(TArray *),
 	           EXPECTED_ARRAY_COUNT,
-	           (ArenaElemDtor)barray_dtor);
+	           (ArenaElemDtor)tarray_dtor);
 	arena_init(&assembly->arenas.small_array,
 	           sizeof(union _SmallArrays),
 	           EXPECTED_ARRAY_COUNT,
@@ -254,9 +254,9 @@ assembly_delete(Assembly *assembly)
 	scope_arenas_terminate(&assembly->arenas.scope);
 
 	tarray_terminate(&assembly->units);
-	bo_unref(assembly->unit_cache);
-	bo_unref(assembly->link_cache);
-	bo_unref(assembly->type_table);
+	thtbl_terminate(&assembly->unit_cache);
+	thtbl_terminate(&assembly->link_cache);
+	thtbl_terminate(&assembly->type_table);
 	terminate_dl(assembly);
 	terminate_mir(assembly);
 	terminate_llvm(assembly);
@@ -274,13 +274,13 @@ assembly_add_unit_unique(Assembly *assembly, Unit *unit)
 {
 	u64 hash = 0;
 	if (unit->filepath)
-		hash = bo_hash_from_str(unit->filepath);
+		hash = thash_from_str(unit->filepath);
 	else
-		hash = bo_hash_from_str(unit->name);
+		hash = thash_from_str(unit->name);
 
-	if (bo_htbl_has_key(assembly->unit_cache, hash)) return false;
+	if (thtbl_has_key(&assembly->unit_cache, hash)) return false;
 
-	bo_htbl_insert_empty(assembly->unit_cache, hash);
+	thtbl_insert_empty(&assembly->unit_cache, hash);
 	assembly_add_unit(assembly, unit);
 	return true;
 }
@@ -292,10 +292,10 @@ assembly_add_link(Assembly *assembly, Token *token)
 
 	BL_ASSERT(token->sym == SYM_STRING);
 
-	u64 hash = bo_hash_from_str(token->value.str);
-	if (bo_htbl_has_key(assembly->link_cache, hash)) return;
+	u64 hash = thash_from_str(token->value.str);
+	if (thtbl_has_key(&assembly->link_cache, hash)) return;
 
-	bo_htbl_insert(assembly->link_cache, hash, token);
+	thtbl_insert(&assembly->link_cache, hash, token);
 }
 
 DCpointer

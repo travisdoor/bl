@@ -49,8 +49,8 @@ SmallArrayType(LLVMValue64, LLVMValueRef, 64);
 SmallArrayType(LLVMType, LLVMTypeRef, 32);
 
 typedef struct {
-	Assembly *  assembly;
-	BHashTable *gstring_cache;
+	Assembly * assembly;
+	THashTable gstring_cache;
 
 	LLVMContextRef    llvm_cnt;
 	LLVMModuleRef     llvm_module;
@@ -495,17 +495,14 @@ emit_DI_var(Context *cnt, MirVar *var)
 void
 emit_RTTI_types(Context *cnt)
 {
-	BArray *table = cnt->assembly->MIR.RTTI_tmp_vars;
-	BL_ASSERT(table)
+	TArray *table = &cnt->assembly->MIR.RTTI_tmp_vars;
 
 	MirVar *     var;
 	LLVMValueRef llvm_var, llvm_value;
 	LLVMTypeRef  llvm_var_type;
 
-	const size_t count = bo_array_size(table);
-
-	for (size_t i = 0; i < count; ++i) {
-		var = bo_array_at(table, i, MirVar *);
+	for (size_t i = 0; i < table->size; ++i) {
+		var = tarray_at(MirVar *, table, i);
 		BL_ASSERT(var)
 
 		llvm_var      = emit_global_var_proto(cnt, var);
@@ -835,12 +832,12 @@ LLVMValueRef
 emit_global_string_ptr(Context *cnt, const char *str, size_t len)
 {
 	BL_ASSERT(str)
-	u64           hash  = bo_hash_from_str(str);
-	bo_iterator_t found = bo_htbl_find(cnt->gstring_cache, hash);
-	bo_iterator_t end   = bo_htbl_end(cnt->gstring_cache);
+	u64       hash  = bo_hash_from_str(str);
+	TIterator found = thtbl_find(&cnt->gstring_cache, hash);
+	TIterator end   = thtbl_end(&cnt->gstring_cache);
 
-	if (!bo_iterator_equal(&found, &end)) {
-		return bo_htbl_iter_peek_value(cnt->gstring_cache, &found, LLVMValueRef);
+	if (!TITERATOR_EQUAL(found, end)) {
+		return thtbl_iter_peek_value(LLVMValueRef, found);
 	}
 
 	/* Generate global string constant */
@@ -870,7 +867,7 @@ emit_global_string_ptr(Context *cnt, const char *str, size_t len)
 		sa_terminate(&llvm_chars);
 	}
 
-	bo_htbl_insert(cnt->gstring_cache, hash, llvm_str);
+	thtbl_insert(&cnt->gstring_cache, hash, llvm_str);
 	return llvm_str;
 }
 
@@ -1344,15 +1341,23 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 {
 	/******************************************************************************************/
 #define INSERT_TMP(_name, _type)                                                                   \
-	LLVMBasicBlockRef llvm_prev_block = LLVMGetInsertBlock(cnt->llvm_builder);                 \
+	LLVMValueRef _name = NULL;                                                                 \
+	{                                                                                          \
+		LLVMBasicBlockRef llvm_prev_block = LLVMGetInsertBlock(cnt->llvm_builder);         \
                                                                                                    \
-	LLVMBasicBlockRef llvm_entry_block =                                                       \
-	    LLVMValueAsBasicBlock(call->base.owner_block->owner_fn->first_block->base.llvm_value); \
+		LLVMBasicBlockRef llvm_entry_block = LLVMValueAsBasicBlock(                        \
+		    call->base.owner_block->owner_fn->first_block->base.llvm_value);               \
                                                                                                    \
-	LLVMPositionBuilderBefore(cnt->llvm_builder, LLVMGetLastInstruction(llvm_entry_block));    \
+		if (LLVMGetLastInstruction(llvm_entry_block)) {                                    \
+			LLVMPositionBuilderBefore(cnt->llvm_builder,                               \
+			                          LLVMGetLastInstruction(llvm_entry_block));       \
+		} else {                                                                           \
+			LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_entry_block);             \
+		}                                                                                  \
                                                                                                    \
-	LLVMValueRef _name = LLVMBuildAlloca(cnt->llvm_builder, _type, "");                        \
-	LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_prev_block);
+		_name = LLVMBuildAlloca(cnt->llvm_builder, _type, "");                             \
+		LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_prev_block);                      \
+	}                                                                                          \
 	/******************************************************************************************/
 
 	MirInstr *callee = call->callee;
@@ -1749,10 +1754,9 @@ emit_allocas(Context *cnt, MirFn *fn)
 	unsigned    var_alignment;
 	MirVar *    var;
 
-	BARRAY_FOREACH(fn->variables, var)
+	TARRAY_FOREACH(MirVar *, fn->variables, var)
 	{
 		BL_ASSERT(var)
-
 		if (!var->gen_llvm) continue;
 
 #if NAMED_VARS
@@ -1895,7 +1899,6 @@ ir_run(Assembly *assembly)
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));
 	cnt.assembly               = assembly;
-	cnt.gstring_cache          = bo_htbl_new(sizeof(LLVMValueRef), 1024);
 	cnt.llvm_cnt               = assembly->llvm.cnt;
 	cnt.llvm_module            = assembly->llvm.module;
 	cnt.llvm_td                = assembly->llvm.TD;
@@ -1912,6 +1915,8 @@ ir_run(Assembly *assembly)
 	cnt.llvm_intrinsic_memcpy  = create_memcpy_fn(&cnt);
 	cnt.llvm_di_builder        = assembly->llvm.di_builder;
 	cnt.debug_mode             = builder.options.debug_build;
+
+	thtbl_init(&cnt.gstring_cache, sizeof(LLVMValueRef), 1024);
 
 	emit_RTTI_types(&cnt);
 
@@ -1934,5 +1939,5 @@ ir_run(Assembly *assembly)
 #endif
 
 	LLVMDisposeBuilder(cnt.llvm_builder);
-	bo_unref(cnt.gstring_cache);
+	thtbl_terminate(&cnt.gstring_cache);
 }

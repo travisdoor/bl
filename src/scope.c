@@ -38,7 +38,7 @@ static void
 scope_dtor(Scope *scope)
 {
 	BL_ASSERT(scope);
-	bo_unref(scope->entries);
+	thtbl_terminate(&scope->entries);
 }
 
 void
@@ -59,10 +59,11 @@ Scope *
 scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size, struct Location *loc)
 {
 	Scope *scope    = arena_alloc(&arenas->scopes);
-	scope->entries  = bo_htbl_new(sizeof(ScopeEntry *), size);
 	scope->parent   = parent;
 	scope->kind     = kind;
 	scope->location = loc;
+
+	thtbl_init(&scope->entries, sizeof(ScopeEntry *), size);
 
 	return scope;
 }
@@ -87,9 +88,10 @@ scope_insert(Scope *scope, ScopeEntry *entry)
 {
 	BL_ASSERT(scope);
 	BL_ASSERT(entry && entry->id);
-	BL_ASSERT(!bo_htbl_has_key(scope->entries, entry->id->hash) && "duplicate scope entry key!!!");
+	BL_ASSERT(!thtbl_has_key(&scope->entries, entry->id->hash) &&
+	          "duplicate scope entry key!!!");
 	entry->parent_scope = scope;
-	bo_htbl_insert(scope->entries, entry->id->hash, entry);
+	thtbl_insert(&scope->entries, entry->id->hash, entry);
 }
 
 ScopeEntry *
@@ -99,8 +101,8 @@ scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_gscope)
 
 	while (scope) {
 		if (ignore_gscope && scope->kind == SCOPE_GLOBAL) break;
-		if (bo_htbl_has_key(scope->entries, id->hash))
-			return bo_htbl_at(scope->entries, id->hash, ScopeEntry *);
+		if (thtbl_has_key(&scope->entries, id->hash))
+			return thtbl_at(ScopeEntry *, &scope->entries, id->hash);
 
 		if (in_tree)
 			scope = scope->parent;

@@ -181,12 +181,12 @@ linker_run(Assembly *assembly)
 		return;
 	}
 
-	BHashTable *  cache = assembly->link_cache;
-	Token *       token;
-	bo_iterator_t it;
-	BHTBL_FOREACH(cache, it)
+	THashTable *cache = &assembly->link_cache;
+	Token *     token;
+	TIterator   it;
+	THTBL_FOREACH(cache, it)
 	{
-		token = bo_htbl_iter_peek_value(cache, &it, Token *);
+		token = thtbl_iter_peek_value(Token *, it);
 		BL_ASSERT(token);
 
 		if (!link_lib(&cnt, token->value.str, token)) {

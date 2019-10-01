@@ -85,7 +85,7 @@ typedef enum ScopeKind {
 typedef struct Scope {
 	ScopeKind        kind;
 	struct Scope *   parent;
-	BHashTable *     entries;
+	THashTable       entries;
 	LLVMMetadataRef  llvm_di_meta; /* Optional ID data*/
 	struct Location *location;     /* Optional scope start location in the source file (ex.:
 	                                  function body  starting with '{'). Note: global scope has no

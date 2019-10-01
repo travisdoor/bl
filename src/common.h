@@ -142,7 +142,7 @@ platform_lib_name(const char *name, char *buffer, size_t max_len);
  * Creates BArray inside Assembly arena.
  * Note: no free is needed.
  */
-BArray *
+TArray *
 create_arr(struct Assembly *assembly, size_t size);
 
 /*

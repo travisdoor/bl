@@ -338,8 +338,9 @@ builder_msg(BuilderMsgType type,
 	if (type == BUILDER_MSG_ERROR && builder.errorc > MAX_ERROR_REPORTED) return;
 	if (builder.options.no_warn && type == BUILDER_MSG_WARNING) return;
 
-	BString *tmp              = bo_string_new(MAX_MSG_LEN);
-	char     msg[MAX_MSG_LEN] = {0};
+	TString tmp;
+	tstring_init(&tmp);
+	char msg[MAX_MSG_LEN] = {0};
 
 	if (src) {
 		s32   line     = src->line;
@@ -402,71 +403,71 @@ builder_msg(BuilderMsgType type,
 		va_start(args, format);
 		vsnprintf(msg + strlen(msg), MAX_MSG_LEN - strlen(msg), format, args);
 		va_end(args);
-		bo_string_append(tmp, &msg[0]);
+		tstring_append(&tmp, &msg[0]);
 
 		s32         pad      = sprintf(msg, "%d", src->line) + 2;
 		long        line_len = 0;
 		const char *line_str = unit_get_src_ln(src->unit, src->line - 1, &line_len);
 		if (line_str && line_len) {
 			sprintf(msg, "\n%*d", pad, src->line - 1);
-			bo_string_append(tmp, &msg[0]);
-			bo_string_append(tmp, " | ");
-			bo_string_appendn(tmp, line_str, line_len);
+			tstring_append(&tmp, &msg[0]);
+			tstring_append(&tmp, " | ");
+			tstring_append_n(&tmp, line_str, line_len);
 		}
 
 		line_str = unit_get_src_ln(src->unit, src->line, &line_len);
 		if (line_str && line_len) {
-			bo_string_append(tmp, color);
+			tstring_append(&tmp, color);
 			sprintf(msg, "\n>%*d", pad - 1, src->line);
-			bo_string_append(tmp, &msg[0]);
-			bo_string_append(tmp, " | ");
-			bo_string_appendn(tmp, line_str, line_len);
-			bo_string_append(tmp, COLOR_END);
+			tstring_append(&tmp, &msg[0]);
+			tstring_append(&tmp, " | ");
+			tstring_append_n(&tmp, line_str, line_len);
+			tstring_append(&tmp, COLOR_END);
 		}
 
 		if (pos != BUILDER_CUR_NONE) {
 			sprintf(msg, "\n%*s", pad, "");
-			bo_string_append(tmp, &msg[0]);
-			bo_string_append(tmp, " | ");
+			tstring_append(&tmp, &msg[0]);
+			tstring_append(&tmp, " | ");
 
-			bo_string_append(tmp, color);
+			tstring_append(&tmp, color);
 			for (s32 i = 0; i < col + len - 1; ++i) {
 				if (i < col - 1)
-					bo_string_append(tmp, " ");
+					tstring_append(&tmp, " ");
 				else
-					bo_string_append(tmp, "^");
+					tstring_append(&tmp, "^");
 			}
-			bo_string_append(tmp, COLOR_END);
+			tstring_append(&tmp, COLOR_END);
 		}
 
 		sprintf(msg, "\n%*d", pad, src->line + 1);
-		bo_string_append(tmp, &msg[0]);
-		bo_string_append(tmp, " | ");
+		tstring_append(&tmp, &msg[0]);
+		tstring_append(&tmp, " | ");
 
 		line_str = unit_get_src_ln(src->unit, src->line + 1, &line_len);
 		if (line_str && line_len) {
-			bo_string_appendn(tmp, line_str, line_len);
+			tstring_append_n(&tmp, line_str, line_len);
 		}
 	} else {
 		va_list args;
 		va_start(args, format);
 		vsnprintf(msg + strlen(msg), MAX_MSG_LEN - strlen(msg), format, args);
 		va_end(args);
-		bo_string_append(tmp, &msg[0]);
+		tstring_append(&tmp, &msg[0]);
 	}
 
 	if (type == BUILDER_MSG_ERROR) {
 		builder.errorc++;
-		msg_error("%s", bo_string_get(tmp));
+		msg_error("%s", tmp.data);
 	} else if (type == BUILDER_MSG_WARNING) {
-		msg_warning("%s", bo_string_get(tmp));
+		msg_warning("%s", tmp.data);
 	} else if (type == BUILDER_MSG_LOG) {
-		msg_log("%s", bo_string_get(tmp));
+		msg_log("%s", tmp.data);
 	} else {
-		msg_note("%s", bo_string_get(tmp));
+		msg_note("%s", tmp.data);
 	}
 
-	bo_unref(tmp);
+	tstring_terminate(&tmp);
 
 #if ASSERT_ON_CMP_ERROR
 	if (type == BUILDER_MSG_ERROR) BL_ASSERT(false);
