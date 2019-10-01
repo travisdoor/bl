@@ -32,7 +32,6 @@
 #include "llvm_di.h"
 #include "mir.h"
 #include "unit.h"
-#include <bobject/containers/hash.h>
 #include <string.h>
 
 #define EXPECTED_GSCOPE_COUNT 4096
@@ -41,13 +40,13 @@
 #define EXPECTED_LINK_COUNT 32
 
 union _SmallArrays {
-	SmallArray_TypePtr       type;
-	SmallArray_MemberPtr     member;
-	SmallArray_VariantPtr    variant;
-	SmallArray_InstrPtr      instr;
-	SmallArray_ConstValuePtr cv;
-	SmallArray_AstPtr        ast;
-	SmallArray_ArgPtr        arg;
+	TSmallArray_TypePtr       type;
+	TSmallArray_MemberPtr     member;
+	TSmallArray_VariantPtr    variant;
+	TSmallArray_InstrPtr      instr;
+	TSmallArray_ConstValuePtr cv;
+	TSmallArray_AstPtr        ast;
+	TSmallArray_ArgPtr        arg;
 };
 
 static void
@@ -57,9 +56,9 @@ tarray_dtor(TArray **arr)
 }
 
 static void
-small_array_dtor(SmallArrayAny *arr)
+small_array_dtor(TSmallArrayAny *arr)
 {
-	sa_terminate(arr);
+	tsa_terminate(arr);
 }
 
 static void

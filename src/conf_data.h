@@ -30,7 +30,6 @@
 #define BL_CONF_DATA_H
 
 #include "common.h"
-#include <bobject/containers/htbl.h>
 
 typedef enum ConfDataValueKind {
 	CDV_UNKNOWN,

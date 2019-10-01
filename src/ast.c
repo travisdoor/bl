@@ -36,10 +36,10 @@ node_dtor(Ast *node)
 {
 	switch (node->kind) {
 	case AST_UBLOCK:
-		bo_unref(node->data.ublock.nodes);
+		tarray_delete(node->data.ublock.nodes);
 		break;
 	case AST_BLOCK:
-		bo_unref(node->data.block.nodes);
+		tarray_delete(node->data.block.nodes);
 		break;
 	default:
 		break;
@@ -47,9 +47,9 @@ node_dtor(Ast *node)
 }
 
 static void
-small_array_dtor(SmallArrayAny *arr)
+small_array_dtor(TSmallArrayAny *arr)
 {
-	sa_terminate(arr);
+	tsa_terminate(arr);
 }
 
 Ast *

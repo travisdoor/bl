@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(bl VERSION 0.4.2)
+project(bl VERSION 0.5.0)
 
 # Must use GNUInstallDirs to install libraries into correct
 # locations on all platforms.
@@ -28,7 +28,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 set(BL_CONF_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.conf)
 
-add_subdirectory(deps/bobject)
 add_subdirectory(deps/dyncall-1.0)
 add_subdirectory(deps/tlib-c)
 
@@ -39,7 +38,6 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 set(HEADER_FILES
-        src/small_array.h
         src/conf_data.h
         src/bldebug.h
         src/error.h 
@@ -133,7 +131,6 @@ target_link_libraries(blc PUBLIC
     dynload_s
     dyncall_s
     dyncallback_s
-    bobject
     tlib
     ${CMAKE_DL_LIBS}
     ${LLVM_LIBS}
@@ -144,7 +141,6 @@ target_include_directories(blc PRIVATE
     deps/dyncall-1.0/dyncall
     deps/dyncall-1.0/dynload
     deps/dyncall-1.0/dyncallback
-    deps/bobject/include
     deps/tlib-c/include
     ${LLVM_INCLUDE_DIRS}
 )

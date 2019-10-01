@@ -28,7 +28,6 @@
 
 #include "common.h"
 #include "assembly.h"
-#include <bobject/containers/hash.h>
 #include <time.h>
 
 #ifndef BL_COMPILER_MSVC
@@ -231,8 +230,8 @@ _create_sarr(Assembly *assembly, size_t arr_size)
 	          "SmallArray is too big to be allocated inside arena, make array smaller or arena "
 	          "bigger.");
 
-	SmallArrayAny *tmp = arena_alloc(&assembly->arenas.small_array);
-	sa_init(tmp);
+	TSmallArrayAny *tmp = arena_alloc(&assembly->arenas.small_array);
+	tsa_init(tmp);
 	return tmp;
 }
 

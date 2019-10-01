@@ -33,9 +33,6 @@
 #include "mir.h"
 #include "scope.h"
 #include "unit.h"
-#include <bobject/containers/array.h>
-#include <bobject/containers/htbl.h>
-#include <bobject/containers/list.h>
 #include <dyncall.h>
 #include <dynload.h>
 

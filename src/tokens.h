@@ -30,8 +30,6 @@
 #define BL_TOKENS_H
 
 #include "token.h"
-#include <bobject/bobject.h>
-#include <bobject/containers/array.h>
 
 typedef struct Tokens {
 	TArray  buf;

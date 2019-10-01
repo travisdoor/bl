@@ -119,7 +119,7 @@
 	}
 #endif
 
-SmallArrayType(ConstValue, MirConstValue, 32);
+TSMALL_ARRAY_TYPE(ConstValue, MirConstValue, 32);
 
 /*************/
 /* fwd decls */
@@ -156,14 +156,14 @@ static bool
 execute_fn_top_level(VM *vm, MirInstr *call, VMStackPtr *out_ptr);
 
 static bool
-execute_fn_impl_top_level(VM *vm, MirFn *fn, SmallArray_ConstValue *args, VMStackPtr *out_ptr);
+execute_fn_impl_top_level(VM *vm, MirFn *fn, TSmallArray_ConstValue *args, VMStackPtr *out_ptr);
 
 static bool
-_execute_fn_top_level(VM *                   vm,
-                      MirFn *                fn,
-                      MirInstr *             call,       /* Optional */
-                      SmallArray_ConstValue *arg_values, /* Optional */
-                      VMStackPtr *           out_ptr     /* Optional */
+_execute_fn_top_level(VM *                    vm,
+                      MirFn *                 fn,
+                      MirInstr *              call,       /* Optional */
+                      TSmallArray_ConstValue *arg_values, /* Optional */
+                      VMStackPtr *            out_ptr     /* Optional */
 );
 
 static void
@@ -545,8 +545,8 @@ copy_comptime_to_stack(VM *vm, VMStackPtr dest_ptr, MirConstValue *src_value)
 		if (src_value->data.v_struct.is_zero_initializer) {
 			memset(dest_ptr, 0, src_type->store_size_bytes);
 		} else {
-			SmallArray_ConstValuePtr *members = data->v_struct.members;
-			MirConstValue *           member;
+			TSmallArray_ConstValuePtr *members = data->v_struct.members;
+			MirConstValue *            member;
 
 			BL_ASSERT(members);
 			const size_t memc = members->size;
@@ -569,8 +569,8 @@ copy_comptime_to_stack(VM *vm, VMStackPtr dest_ptr, MirConstValue *src_value)
 		if (src_value->data.v_array.is_zero_initializer) {
 			memset(dest_ptr, 0, src_type->store_size_bytes);
 		} else {
-			SmallArray_ConstValuePtr *elems = data->v_array.elems;
-			MirConstValue *           elem;
+			TSmallArray_ConstValuePtr *elems = data->v_array.elems;
+			MirConstValue *            elem;
 
 			BL_ASSERT(elems);
 			const size_t memc = elems->size;
@@ -704,15 +704,15 @@ dyncall_cb_handler(DCCallback *cb, DCArgs *dc_args, DCValue *result, void *userd
 		BL_ABORT("External function used as callback is not supported yet!");
 	}
 
-	SmallArray_ConstValue arg_tmp;
-	sa_init(&arg_tmp);
+	TSmallArray_ConstValue arg_tmp;
+	tsa_init(&arg_tmp);
 
 	if (has_args) {
-		SmallArray_ArgPtr *args = fn->type->data.fn.args;
-		sa_resize_ConstValue(&arg_tmp, args->size);
+		TSmallArray_ArgPtr *args = fn->type->data.fn.args;
+		tsa_resize_ConstValue(&arg_tmp, args->size);
 
 		MirArg *it;
-		SARRAY_FOREACH(args, it)
+		TSA_FOREACH(args, it)
 		{
 			arg_tmp.data[i].type = it->type;
 			dyncall_cb_read_arg(vm, &arg_tmp.data[i], dc_args);
@@ -729,25 +729,25 @@ dyncall_cb_handler(DCCallback *cb, DCArgs *dc_args, DCValue *result, void *userd
 		result->L = tmp.v_s64;
 	}
 
-	sa_terminate(&arg_tmp);
+	tsa_terminate(&arg_tmp);
 	return dyncall_generate_signature(vm, ret_type)[0];
 }
 
 void
 _dyncall_generate_signature(VM *vm, MirType *type)
 {
-	SmallArray_Char *tmp = &vm->dyncall_sig_tmp;
+	TSmallArray_Char *tmp = &vm->dyncall_sig_tmp;
 
 	switch (type->kind) {
 	case MIR_TYPE_FN: {
 		if (type->data.fn.args) {
 			MirArg *arg;
-			SARRAY_FOREACH(type->data.fn.args, arg)
+			TSA_FOREACH(type->data.fn.args, arg)
 			{
 				_dyncall_generate_signature(vm, arg->type);
 			}
 		}
-		sa_push_Char(tmp, DC_SIGCHAR_ENDARG);
+		tsa_push_Char(tmp, DC_SIGCHAR_ENDARG);
 		_dyncall_generate_signature(vm, type->data.fn.ret_type);
 		break;
 	}
@@ -756,16 +756,16 @@ _dyncall_generate_signature(VM *vm, MirType *type)
 		const bool is_signed = type->data.integer.is_signed;
 		switch (type->store_size_bytes) {
 		case 1:
-			sa_push_Char(tmp, is_signed ? DC_SIGCHAR_CHAR : DC_SIGCHAR_UCHAR);
+			tsa_push_Char(tmp, is_signed ? DC_SIGCHAR_CHAR : DC_SIGCHAR_UCHAR);
 			break;
 		case 2:
-			sa_push_Char(tmp, is_signed ? DC_SIGCHAR_SHORT : DC_SIGCHAR_USHORT);
+			tsa_push_Char(tmp, is_signed ? DC_SIGCHAR_SHORT : DC_SIGCHAR_USHORT);
 			break;
 		case 4:
-			sa_push_Char(tmp, is_signed ? DC_SIGCHAR_INT : DC_SIGCHAR_UINT);
+			tsa_push_Char(tmp, is_signed ? DC_SIGCHAR_INT : DC_SIGCHAR_UINT);
 			break;
 		case 8:
-			sa_push_Char(tmp, is_signed ? DC_SIGCHAR_LONGLONG : DC_SIGCHAR_ULONGLONG);
+			tsa_push_Char(tmp, is_signed ? DC_SIGCHAR_LONGLONG : DC_SIGCHAR_ULONGLONG);
 			break;
 		}
 		break;
@@ -774,10 +774,10 @@ _dyncall_generate_signature(VM *vm, MirType *type)
 	case MIR_TYPE_REAL: {
 		switch (type->store_size_bytes) {
 		case 4:
-			sa_push_Char(tmp, DC_SIGCHAR_FLOAT);
+			tsa_push_Char(tmp, DC_SIGCHAR_FLOAT);
 			break;
 		case 8:
-			sa_push_Char(tmp, DC_SIGCHAR_DOUBLE);
+			tsa_push_Char(tmp, DC_SIGCHAR_DOUBLE);
 			break;
 		}
 		break;
@@ -785,19 +785,19 @@ _dyncall_generate_signature(VM *vm, MirType *type)
 
 	case MIR_TYPE_NULL:
 	case MIR_TYPE_PTR: {
-		sa_push_Char(tmp, DC_SIGCHAR_POINTER);
+		tsa_push_Char(tmp, DC_SIGCHAR_POINTER);
 		break;
 	}
 
 	case MIR_TYPE_VOID: {
-		sa_push_Char(tmp, DC_SIGCHAR_VOID);
+		tsa_push_Char(tmp, DC_SIGCHAR_VOID);
 		break;
 	}
 
 	case MIR_TYPE_STRUCT: {
-		SmallArray_MemberPtr *members = type->data.strct.members;
-		MirMember *           member;
-		SARRAY_FOREACH(members, member)
+		TSmallArray_MemberPtr *members = type->data.strct.members;
+		MirMember *            member;
+		TSA_FOREACH(members, member)
 		{
 			_dyncall_generate_signature(vm, member->type);
 		}
@@ -827,11 +827,11 @@ _dyncall_generate_signature(VM *vm, MirType *type)
 const char *
 dyncall_generate_signature(VM *vm, MirType *type)
 {
-	SmallArray_Char *tmp = &vm->dyncall_sig_tmp;
-	tmp->size            = 0; /* reset size */
+	TSmallArray_Char *tmp = &vm->dyncall_sig_tmp;
+	tmp->size             = 0; /* reset size */
 
 	_dyncall_generate_signature(vm, type);
-	sa_push_Char(tmp, '\0');
+	tsa_push_Char(tmp, '\0');
 
 	return tmp->data;
 }
@@ -976,11 +976,11 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 	dcReset(dvm);
 
 	/* pop all arguments from the stack */
-	VMStackPtr           arg_ptr;
-	SmallArray_InstrPtr *arg_values = call->args;
+	VMStackPtr            arg_ptr;
+	TSmallArray_InstrPtr *arg_values = call->args;
 	if (arg_values) {
 		MirInstr *arg_value;
-		SARRAY_FOREACH(arg_values, arg_value)
+		TSA_FOREACH(arg_values, arg_value)
 		{
 			arg_ptr = fetch_value(vm, arg_value);
 			dyncall_push_arg(vm, arg_ptr, arg_value->value.type);
@@ -1087,25 +1087,25 @@ execute_fn_top_level(VM *vm, MirInstr *call, VMStackPtr *out_ptr)
 }
 
 bool
-execute_fn_impl_top_level(VM *vm, MirFn *fn, SmallArray_ConstValue *args, VMStackPtr *out_ptr)
+execute_fn_impl_top_level(VM *vm, MirFn *fn, TSmallArray_ConstValue *args, VMStackPtr *out_ptr)
 {
 	return _execute_fn_top_level(vm, fn, NULL, args, out_ptr);
 }
 
 bool
-_execute_fn_top_level(VM *                   vm,
-                      MirFn *                fn,
-                      MirInstr *             call,
-                      SmallArray_ConstValue *arg_values,
-                      VMStackPtr *           out_ptr)
+_execute_fn_top_level(VM *                    vm,
+                      MirFn *                 fn,
+                      MirInstr *              call,
+                      TSmallArray_ConstValue *arg_values,
+                      VMStackPtr *            out_ptr)
 {
 	BL_ASSERT(fn);
 
 	if (!fn->fully_analyzed)
 		BL_ABORT("Function is not fully analyzed for compile time execution!!!");
 
-	MirType *          ret_type = fn->type->data.fn.ret_type;
-	SmallArray_ArgPtr *args     = fn->type->data.fn.args;
+	MirType *           ret_type = fn->type->data.fn.ret_type;
+	TSmallArray_ArgPtr *args     = fn->type->data.fn.args;
 
 	const bool does_return_value    = ret_type->kind != MIR_TYPE_VOID;
 	const bool is_return_value_used = call ? call->ref_count > 1 : true;
@@ -1755,7 +1755,7 @@ interp_instr_arg(VM *vm, MirInstrArg *arg)
 	MirInstrCall *caller = (MirInstrCall *)get_ra(vm)->caller;
 
 	if (caller) {
-		SmallArray_InstrPtr *arg_values = caller->args;
+		TSmallArray_InstrPtr *arg_values = caller->args;
 		BL_ASSERT(arg_values);
 		MirInstr *curr_arg_value = arg_values->data[arg->i];
 
@@ -1790,7 +1790,7 @@ interp_instr_arg(VM *vm, MirInstrArg *arg)
 	BL_ASSERT(fn && "Arg instruction cannot determinate current function");
 
 	/* All arguments must be already on the stack in reverse order. */
-	SmallArray_ArgPtr *args = fn->type->data.fn.args;
+	TSmallArray_ArgPtr *args = fn->type->data.fn.args;
 	BL_ASSERT(args && "Function has no arguments");
 
 	/* starting point */
@@ -1899,7 +1899,7 @@ interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 	VMStackPtr elem_ptr = tmp_ptr;
 
 	MirInstr *value;
-	SARRAY_FOREACH(cmp->values, value)
+	TSA_FOREACH(cmp->values, value)
 	{
 		elem_type = value->value.type;
 		switch (type->kind) {
@@ -1937,9 +1937,9 @@ interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 void
 interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 {
-	SmallArray_InstrPtr *values    = vargs->values;
-	MirVar *             arr_tmp   = vargs->arr_tmp;
-	MirVar *             vargs_tmp = vargs->vargs_tmp;
+	TSmallArray_InstrPtr *values    = vargs->values;
+	MirVar *              arr_tmp   = vargs->arr_tmp;
+	MirVar *              vargs_tmp = vargs->vargs_tmp;
 
 	BL_ASSERT(vargs_tmp->value.type->kind == MIR_TYPE_VARGS);
 	BL_ASSERT(vargs_tmp->rel_stack_ptr && "Unalocated vargs slice!!!");
@@ -1951,7 +1951,7 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 	{
 		MirInstr * value;
 		VMStackPtr value_ptr;
-		SARRAY_FOREACH(values, value)
+		TSA_FOREACH(values, value)
 		{
 			const size_t value_size = value->value.type->store_size_bytes;
 			VMStackPtr   dest       = arr_tmp_ptr + i * value_size;
@@ -2155,10 +2155,10 @@ interp_instr_ret(VM *vm, MirInstrRet *ret)
 
 	/* clean up all arguments from the stack */
 	if (caller) {
-		SmallArray_InstrPtr *arg_values = caller->args;
+		TSmallArray_InstrPtr *arg_values = caller->args;
 		if (arg_values) {
 			MirInstr *arg_value;
-			SARRAY_FOREACH(arg_values, arg_value)
+			TSA_FOREACH(arg_values, arg_value)
 			{
 				if (arg_value->comptime) continue;
 				pop_stack(vm, arg_value->value.type);
@@ -2169,10 +2169,10 @@ interp_instr_ret(VM *vm, MirInstrRet *ret)
 		 * so we must clear them all. Remember they were pushed in reverse order, so now we
 		 * have to pop them in order they are defined. */
 
-		SmallArray_ArgPtr *args = fn->type->data.fn.args;
+		TSmallArray_ArgPtr *args = fn->type->data.fn.args;
 		if (args) {
 			MirArg *arg;
-			SARRAY_FOREACH(args, arg)
+			TSA_FOREACH(args, arg)
 			{
 				pop_stack(vm, arg->type);
 			}
@@ -2451,13 +2451,13 @@ vm_init(VM *vm, Assembly *assembly, size_t stack_size)
 	vm->stack    = stack;
 	vm->assembly = assembly;
 
-	sa_init(&vm->dyncall_sig_tmp);
+	tsa_init(&vm->dyncall_sig_tmp);
 }
 
 void
 vm_terminate(VM *vm)
 {
-	sa_terminate(&vm->dyncall_sig_tmp);
+	tsa_terminate(&vm->dyncall_sig_tmp);
 	bl_free(vm->stack);
 }
 

@@ -70,7 +70,7 @@ print_trace(void)
 	char **strings;
 	size_t i;
 
-	size    = backtrace(tmp, ARRAY_SIZE(tmp));
+	size    = backtrace(tmp, TARRAY_SIZE(tmp));
 	strings = backtrace_symbols(tmp, size);
 
 	printf("Obtained %zd stack frames.\n", size);

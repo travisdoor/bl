@@ -37,7 +37,7 @@ static inline void
 print_type(MirType *type, bool aligned, FILE *stream, bool prefer_name)
 {
 	char tmp[256];
-	mir_type_to_str(tmp, ARRAY_SIZE(tmp), type, prefer_name);
+	mir_type_to_str(tmp, TARRAY_SIZE(tmp), type, prefer_name);
 	if (aligned)
 		fprintf(stream, "%16s", tmp);
 	else
@@ -191,8 +191,8 @@ print_const_value(MirConstValue *value, FILE *stream)
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT: {
-		SmallArray_ConstValuePtr *members             = data->v_struct.members;
-		const bool                is_zero_initializer = data->v_struct.is_zero_initializer;
+		TSmallArray_ConstValuePtr *members             = data->v_struct.members;
+		const bool                 is_zero_initializer = data->v_struct.is_zero_initializer;
 
 		if (is_zero_initializer) {
 			fprintf(stream, "{zero initialized}");
@@ -215,8 +215,8 @@ print_const_value(MirConstValue *value, FILE *stream)
 		break;
 	}
 	case MIR_TYPE_ARRAY: {
-		SmallArray_ConstValuePtr *elems               = data->v_array.elems;
-		const bool                is_zero_initializer = data->v_array.is_zero_initializer;
+		TSmallArray_ConstValuePtr *elems               = data->v_array.elems;
+		const bool                 is_zero_initializer = data->v_array.is_zero_initializer;
 
 		if (is_zero_initializer) {
 			fprintf(stream, "{zero initialized}");
@@ -395,7 +395,7 @@ print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
 	fprintf(stream, "(");
 	if (type_fn->args) {
 		MirInstr *tmp;
-		SARRAY_FOREACH(type_fn->args, tmp)
+		TSA_FOREACH(type_fn->args, tmp)
 		{
 			fprintf(stream, "%%%llu", (unsigned long long)tmp->id);
 			if (i + 1 < type_fn->args->size) fprintf(stream, ", ");
@@ -451,9 +451,9 @@ print_instr_type_struct(MirInstrTypeStruct *type_struct, FILE *stream)
 	print_instr_head(&type_struct->base, stream, "const struct");
 	fprintf(stream, "{");
 
-	SmallArray_InstrPtr *members = type_struct->members;
-	MirInstr *           member;
-	SARRAY_FOREACH(members, member)
+	TSmallArray_InstrPtr *members = type_struct->members;
+	MirInstr *            member;
+	TSA_FOREACH(members, member)
 	{
 		print_comptime_value_or_id(member, stream);
 		if (i + 1 < members->size) fprintf(stream, ", ");
@@ -468,9 +468,9 @@ print_instr_type_enum(MirInstrTypeEnum *type_enum, FILE *stream)
 	print_instr_head(&type_enum->base, stream, "const enum");
 	fprintf(stream, "{");
 
-	SmallArray_InstrPtr *variants = type_enum->variants;
-	MirInstr *           variant;
-	SARRAY_FOREACH(variants, variant)
+	TSmallArray_InstrPtr *variants = type_enum->variants;
+	MirInstr *            variant;
+	TSA_FOREACH(variants, variant)
 	{
 		fprintf(stream, "%%%llu", (unsigned long long)variant->id);
 		if (i + 1 < variants->size) fprintf(stream, ", ");
@@ -573,10 +573,10 @@ print_instr_compound(MirInstrCompound *init, FILE *stream)
 	}
 
 	fprintf(stream, " {");
-	SmallArray_InstrPtr *values = init->values;
+	TSmallArray_InstrPtr *values = init->values;
 	if (values) {
 		MirInstr *value;
-		SARRAY_FOREACH(values, value)
+		TSA_FOREACH(values, value)
 		{
 			print_comptime_value_or_id(value, stream);
 			if (i < values->size - 1) fprintf(stream, ", ");
@@ -596,10 +596,10 @@ print_instr_vargs(MirInstrVArgs *vargs, FILE *stream)
 	print_type(vargs->type, false, stream, true);
 
 	fprintf(stream, " {");
-	SmallArray_InstrPtr *values = vargs->values;
+	TSmallArray_InstrPtr *values = vargs->values;
 	if (values) {
 		MirInstr *value;
-		SARRAY_FOREACH(values, value)
+		TSA_FOREACH(values, value)
 		{
 			print_comptime_value_or_id(value, stream);
 			if (i < values->size - 1) fprintf(stream, ", ");
@@ -847,7 +847,7 @@ print_instr_call(MirInstrCall *call, FILE *stream)
 	fprintf(stream, "(");
 	if (call->args) {
 		MirInstr *tmp;
-		SARRAY_FOREACH(call->args, tmp)
+		TSA_FOREACH(call->args, tmp)
 		{
 			print_comptime_value_or_id(tmp, stream);
 			if (i < call->args->size - 1) fprintf(stream, ", ");

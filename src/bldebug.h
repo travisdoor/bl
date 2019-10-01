@@ -31,7 +31,6 @@
 
 #include "config.h"
 #include <assert.h>
-#include <bobject/bobject.h>
 #include <stdio.h>
 #include <stdlib.h>
 

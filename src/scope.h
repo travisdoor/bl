@@ -31,8 +31,6 @@
 
 #include "arena.h"
 #include "llvm_api.h"
-#include <bobject/containers/array.h>
-#include <bobject/containers/htbl.h>
 
 struct Location;
 struct Ast;

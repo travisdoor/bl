@@ -26,7 +26,6 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include <bobject/containers/string.h>
 #include <stdarg.h>
 #include <time.h>
 

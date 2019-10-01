@@ -217,7 +217,7 @@ print_ublock(Ast *ublock, s32 pad, FILE *stream)
 	fprintf(stream, "%s", ublock->data.ublock.unit->name);
 
 	Ast *tmp = NULL;
-	BARRAY_FOREACH(ublock->data.ublock.nodes, tmp) print_node(tmp, pad + 1, stream);
+	TARRAY_FOREACH(Ast *, ublock->data.ublock.nodes, tmp) print_node(tmp, pad + 1, stream);
 }
 
 void
@@ -225,7 +225,7 @@ print_block(Ast *block, s32 pad, FILE *stream)
 {
 	print_head(block, pad, stream);
 	Ast *tmp = NULL;
-	BARRAY_FOREACH(block->data.block.nodes, tmp) print_node(tmp, pad + 1, stream);
+	TARRAY_FOREACH(Ast *, block->data.block.nodes, tmp) print_node(tmp, pad + 1, stream);
 }
 
 void
@@ -268,7 +268,7 @@ print_type_struct(Ast *strct, s32 pad, FILE *stream)
 	print_head(strct, pad, stream);
 
 	Ast *node;
-	SARRAY_FOREACH(strct->data.type_strct.members, node)
+	TSA_FOREACH(strct->data.type_strct.members, node)
 	{
 		print_node(node, pad + 1, stream);
 	}
@@ -280,7 +280,7 @@ print_type_enum(Ast *enm, s32 pad, FILE *stream)
 	print_head(enm, pad, stream);
 
 	Ast *node;
-	SARRAY_FOREACH(enm->data.type_enm.variants, node)
+	TSA_FOREACH(enm->data.type_enm.variants, node)
 	{
 		print_node(node, pad + 1, stream);
 	}
@@ -553,7 +553,7 @@ print_expr_call(Ast *call, s32 pad, FILE *stream)
 
 	if (call->data.expr_call.args) {
 		Ast *arg;
-		SARRAY_FOREACH(call->data.expr_call.args, arg) print_node(arg, pad + 1, stream);
+		TSA_FOREACH(call->data.expr_call.args, arg) print_node(arg, pad + 1, stream);
 	}
 }
 
@@ -562,10 +562,10 @@ print_expr_compound(Ast *expr_compound, s32 pad, FILE *stream)
 {
 	print_head(expr_compound, pad, stream);
 
-	SmallArray_AstPtr *exprs = expr_compound->data.expr_compound.values;
+	TSmallArray_AstPtr *exprs = expr_compound->data.expr_compound.values;
 	if (exprs) {
 		Ast *value;
-		SARRAY_FOREACH(exprs, value)
+		TSA_FOREACH(exprs, value)
 		{
 			print_node(value, pad + 1, stream);
 		}

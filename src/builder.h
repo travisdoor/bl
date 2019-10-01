@@ -33,8 +33,6 @@
 #include "conf_data.h"
 #include "error.h"
 #include "mir.h"
-#include <bobject/containers/array.h>
-#include <bobject/containers/string.h>
 
 #define COMPILE_OK 0
 #define COMPILE_FAIL 1

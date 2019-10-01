@@ -58,7 +58,7 @@ search_library(Context *   cnt,
 	char lib_filepath[PATH_MAX] = {0};
 	char lib_name_full[256]     = {0};
 
-	platform_lib_name(lib_name, lib_name_full, ARRAY_SIZE(lib_name_full));
+	platform_lib_name(lib_name, lib_name_full, TARRAY_SIZE(lib_name_full));
 
 	if (builder.options.verbose) msg_log("- Looking for: '%s'", lib_name_full);
 

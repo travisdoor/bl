@@ -27,7 +27,6 @@
 //************************************************************************************************
 
 #include "conf_data.h"
-#include "bobject/containers/hash.h"
 
 ConfData *
 conf_data_new(void)

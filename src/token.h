@@ -30,7 +30,6 @@
 #define BL_TOKEN_H
 
 #include "common.h"
-#include <bobject/bobject.h>
 #include <stdio.h>
 
 typedef enum {
