@@ -36,7 +36,7 @@
 
 using namespace std;
 
-uint64_t
+u64
 thread_get_id(void)
 {
 	return hash<thread::id>{}(this_thread::get_id());
