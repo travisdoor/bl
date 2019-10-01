@@ -128,9 +128,9 @@ scan_ident(Context *cnt, Token *tok)
 	/* RACECOND */
 	/* RACECOND */
 	/* RACECOND */
-	BString *cstr = builder_create_cached_str();
-	bo_string_appendn(cstr, begin, len);
-	tok->value.str = bo_string_get(cstr);
+	TString *cstr = builder_create_cached_str();
+	tstring_append_n(cstr, begin, len);
+	tok->value.str = cstr->data;
 
 	tok->location.len = len;
 	cnt->col += len;
@@ -177,7 +177,7 @@ scan_string(Context *cnt, Token *tok)
 	/* RACECOND */
 	/* RACECOND */
 	/* RACECOND */
-	BString *cstr = builder_create_cached_str();
+	TString *cstr = builder_create_cached_str();
 	char     c;
 	s32      len = 0;
 
@@ -219,10 +219,10 @@ scan:
 			len++;
 			cnt->c++;
 		}
-		bo_string_appendn(cstr, &c, 1);
+		tstring_append_n(cstr, &c, 1);
 	}
 exit:
-	tok->value.str    = bo_string_get(cstr);
+	tok->value.str    = cstr->data;
 	tok->location.len = len;
 	tok->location.col = tok->location.col + 1;
 	cnt->col += len + 2;

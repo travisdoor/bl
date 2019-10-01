@@ -30,7 +30,6 @@
 #define BL_CONF_DATA_H
 
 #include "common.h"
-#include <bobject/containers/htbl.h>
 
 typedef enum ConfDataValueKind {
 	CDV_UNKNOWN,
@@ -47,7 +46,7 @@ typedef struct ConfDataValue {
 	ConfDataValueKind kind;
 } ConfDataValue;
 
-typedef BHashTable ConfData;
+typedef THashTable ConfData;
 
 ConfData *
 conf_data_new(void);

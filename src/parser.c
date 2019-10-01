@@ -31,8 +31,8 @@
 #include "stages.h"
 #include <setjmp.h>
 
-SmallArrayType(AstPtr64, Ast *, 64);
-SmallArrayType(ScopePtr64, Scope *, 64);
+TSMALL_ARRAY_TYPE(AstPtr64, Ast *, 64);
+TSMALL_ARRAY_TYPE(ScopePtr64, Scope *, 64);
 
 #define EXPECTED_PRIVATE_SCOPE_COUNT 256
 
@@ -56,15 +56,15 @@ SmallArrayType(ScopePtr64, Scope *, 64);
 
 /* swap current compound with _cmp and create temporary variable with previous one */
 
-#define scope_push(_cnt, _scope) sa_push_ScopePtr64(&(_cnt)->_scope_stack, (_scope))
-#define scope_pop(_cnt) sa_pop_ScopePtr64(&(_cnt)->_scope_stack)
-#define scope_get(_cnt) sa_last_ScopePtr64(&(_cnt)->_scope_stack)
+#define scope_push(_cnt, _scope) tsa_push_ScopePtr64(&(_cnt)->_scope_stack, (_scope))
+#define scope_pop(_cnt) tsa_pop_ScopePtr64(&(_cnt)->_scope_stack)
+#define scope_get(_cnt) tsa_last_ScopePtr64(&(_cnt)->_scope_stack)
 #define scope_set(_cnt, _scope)                                                                    \
 	((_cnt)->_scope_stack.data[(_cnt)->_scope_stack.size - 1]) = (_scope)
 
-#define decl_push(_cnt, _decl) sa_push_AstPtr64(&(_cnt)->_decl_stack, (_decl))
-#define decl_pop(_cnt) sa_pop_AstPtr64(&(_cnt)->_decl_stack)
-#define decl_get(_cnt) ((_cnt)->_decl_stack.size ? sa_last_AstPtr64(&(_cnt)->_decl_stack) : NULL)
+#define decl_push(_cnt, _decl) tsa_push_AstPtr64(&(_cnt)->_decl_stack, (_decl))
+#define decl_pop(_cnt) tsa_pop_AstPtr64(&(_cnt)->_decl_stack)
+#define decl_get(_cnt) ((_cnt)->_decl_stack.size ? tsa_last_AstPtr64(&(_cnt)->_decl_stack) : NULL)
 
 typedef enum {
 	HD_NONE      = 1 << 0,
@@ -81,13 +81,13 @@ typedef enum {
 } HashDirective;
 
 typedef struct {
-	SmallArray_AstPtr64   _decl_stack;
-	SmallArray_ScopePtr64 _scope_stack;
-	Assembly *            assembly;
-	Unit *                unit;
-	Arena *               ast_arena;
-	ScopeArenas *         scope_arenas;
-	Tokens *              tokens;
+	TSmallArray_AstPtr64   _decl_stack;
+	TSmallArray_ScopePtr64 _scope_stack;
+	Assembly *             assembly;
+	Unit *                 unit;
+	Arena *                ast_arena;
+	ScopeArenas *          scope_arenas;
+	Tokens *               tokens;
 
 	/* tmps */
 	bool inside_loop;
@@ -706,9 +706,9 @@ value:
 	if (tmp) {
 		if (!compound->data.expr_compound.values)
 			compound->data.expr_compound.values =
-			    create_sarr(SmallArray_AstPtr, cnt->assembly);
+			    create_sarr(TSmallArray_AstPtr, cnt->assembly);
 
-		sa_push_AstPtr(compound->data.expr_compound.values, tmp);
+		tsa_push_AstPtr(compound->data.expr_compound.values, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -1603,7 +1603,7 @@ parse_type_enum(Context *cnt)
 	if (!tok_enum) return NULL;
 
 	Ast *enm = ast_create_node(cnt->ast_arena, AST_TYPE_ENUM, tok_enum, scope_get(cnt));
-	enm->data.type_enm.variants = create_sarr(SmallArray_AstPtr, cnt->assembly);
+	enm->data.type_enm.variants = create_sarr(TSmallArray_AstPtr, cnt->assembly);
 	enm->data.type_enm.type     = parse_type(cnt);
 
 	parse_flags_for_curr_decl(cnt, HD_COMPILER);
@@ -1629,7 +1629,7 @@ NEXT:
 	tmp = parse_decl_variant(cnt, prev_tmp);
 	if (tmp) {
 		prev_tmp = tmp;
-		sa_push_AstPtr(enm->data.type_enm.variants, tmp);
+		tsa_push_AstPtr(enm->data.type_enm.variants, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -1775,9 +1775,9 @@ NEXT:
 	tmp = parse_decl_arg(cnt, rq_named_args);
 	if (tmp) {
 		if (!fn->data.type_fn.args)
-			fn->data.type_fn.args = create_sarr(SmallArray_AstPtr, cnt->assembly);
+			fn->data.type_fn.args = create_sarr(TSmallArray_AstPtr, cnt->assembly);
 
-		sa_push_AstPtr(fn->data.type_fn.args, tmp);
+		tsa_push_AstPtr(fn->data.type_fn.args, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -1831,7 +1831,7 @@ parse_type_struct(Context *cnt)
 	    ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct, scope_get(cnt));
 	type_struct->data.type_strct.scope   = scope;
 	type_struct->data.type_strct.raw     = false;
-	type_struct->data.type_strct.members = create_sarr(SmallArray_AstPtr, cnt->assembly);
+	type_struct->data.type_strct.members = create_sarr(TSmallArray_AstPtr, cnt->assembly);
 
 	/* parse members */
 	bool       rq = false;
@@ -1842,7 +1842,7 @@ parse_type_struct(Context *cnt)
 NEXT:
 	tmp = parse_decl_member(cnt, type_only);
 	if (tmp) {
-		sa_push_AstPtr(type_struct->data.type_strct.members, tmp);
+		tsa_push_AstPtr(type_struct->data.type_strct.members, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -1946,8 +1946,8 @@ arg:
 	tmp = parse_expr(cnt);
 	if (tmp) {
 		if (!call->data.expr_call.args)
-			call->data.expr_call.args = create_sarr(SmallArray_AstPtr, cnt->assembly);
-		sa_push_AstPtr(call->data.expr_call.args, tmp);
+			call->data.expr_call.args = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+		tsa_push_AstPtr(call->data.expr_call.args, tmp);
 
 		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
 			rq = true;
@@ -2032,8 +2032,7 @@ parse_block(Context *cnt, bool create_scope)
 
 	Token *tok;
 	Ast *  tmp;
-	block->data.block.nodes = bo_array_new(sizeof(Ast *));
-	bo_array_reserve(block->data.block.nodes, 64);
+	block->data.block.nodes = tarray_new(sizeof(Ast *));
 
 NEXT:
 	if (tokens_current_is(cnt->tokens, SYM_SEMICOLON)) {
@@ -2046,59 +2045,59 @@ NEXT:
 
 	if ((tmp = (Ast *)parse_decl(cnt))) {
 		if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
-		bo_array_push_back(block->data.block.nodes, tmp);
+		tarray_push(block->data.block.nodes, tmp);
 		goto NEXT;
 	}
 
 	if ((tmp = parse_stmt_return(cnt))) {
 		if ((tmp)->kind != AST_BAD) parse_semicolon_rq(cnt);
-		bo_array_push_back(block->data.block.nodes, tmp);
+		tarray_push(block->data.block.nodes, tmp);
 		block->data.block.has_return      = true;
 		tmp->data.stmt_return.owner_block = block;
 		goto NEXT;
 	}
 
 	if ((tmp = parse_stmt_if(cnt))) {
-		bo_array_push_back(block->data.block.nodes, tmp);
+		tarray_push(block->data.block.nodes, tmp);
 		goto NEXT;
 	}
 
 	if ((tmp = parse_stmt_loop(cnt))) {
-		bo_array_push_back(block->data.block.nodes, tmp);
+		tarray_push(block->data.block.nodes, tmp);
 		goto NEXT;
 	}
 
 	if ((tmp = parse_stmt_break(cnt))) {
 		if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
-		bo_array_push_back(block->data.block.nodes, tmp);
+		tarray_push(block->data.block.nodes, tmp);
 		goto NEXT;
 	}
 
 	if ((tmp = parse_stmt_continue(cnt))) {
 		if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
-		bo_array_push_back(block->data.block.nodes, tmp);
+		tarray_push(block->data.block.nodes, tmp);
 		goto NEXT;
 	}
 
 	if ((tmp = parse_stmt_defer(cnt))) {
 		if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
-		bo_array_push_back(block->data.block.nodes, tmp);
+		tarray_push(block->data.block.nodes, tmp);
 		goto NEXT;
 	}
 
 	if ((tmp = parse_expr(cnt))) {
 		if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
-		bo_array_push_back(block->data.block.nodes, tmp);
+		tarray_push(block->data.block.nodes, tmp);
 		goto NEXT;
 	}
 
 	if ((tmp = parse_block(cnt, true))) {
-		bo_array_push_back(block->data.block.nodes, tmp);
+		tarray_push(block->data.block.nodes, tmp);
 		goto NEXT;
 	}
 
 	if ((tmp = parse_unrecheable(cnt))) {
-		bo_array_push_back(block->data.block.nodes, tmp);
+		tarray_push(block->data.block.nodes, tmp);
 		parse_semicolon_rq(cnt);
 		goto NEXT;
 	}
@@ -2121,8 +2120,7 @@ void
 parse_ublock_content(Context *cnt, Ast *ublock)
 {
 	BL_ASSERT(ublock->kind == AST_UBLOCK);
-	ublock->data.ublock.nodes = bo_array_new(sizeof(Ast *));
-	bo_array_reserve(ublock->data.ublock.nodes, 64);
+	ublock->data.ublock.nodes = tarray_new(sizeof(Ast *));
 
 	Ast *tmp;
 NEXT:
@@ -2136,14 +2134,14 @@ NEXT:
 			if (cnt->inside_private_scope) tmp->data.decl_entity.flags |= FLAG_PRIVATE;
 		}
 
-		bo_array_push_back(ublock->data.ublock.nodes, tmp);
+		tarray_push(ublock->data.ublock.nodes, tmp);
 		goto NEXT;
 	}
 
 	/* load, link, test, private - enabled in global scope */
 	const int enabled_hd = HD_LOAD | HD_LINK | HD_TEST | HD_PRIVATE;
 	if ((tmp = parse_hash_directive(cnt, enabled_hd, NULL))) {
-		bo_array_push_back(ublock->data.ublock.nodes, tmp);
+		tarray_push(ublock->data.ublock.nodes, tmp);
 		goto NEXT;
 	}
 
@@ -2169,8 +2167,8 @@ parser_run(Assembly *assembly, Unit *unit)
 	               .tokens       = &unit->tokens,
 	               .inside_loop  = false};
 
-	sa_init(&cnt._decl_stack);
-	sa_init(&cnt._scope_stack);
+	tsa_init(&cnt._decl_stack);
+	tsa_init(&cnt._scope_stack);
 
 	scope_push(&cnt, assembly->gscope);
 
@@ -2184,6 +2182,6 @@ parser_run(Assembly *assembly, Unit *unit)
 	}
 
 	parse_ublock_content(&cnt, unit->ast);
-	sa_terminate(&cnt._decl_stack);
-	sa_terminate(&cnt._scope_stack);
+	tsa_terminate(&cnt._decl_stack);
+	tsa_terminate(&cnt._scope_stack);
 }

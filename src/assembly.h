@@ -33,9 +33,6 @@
 #include "mir.h"
 #include "scope.h"
 #include "unit.h"
-#include <bobject/containers/array.h>
-#include <bobject/containers/htbl.h>
-#include <bobject/containers/list.h>
 #include <dyncall.h>
 #include <dynload.h>
 
@@ -47,13 +44,13 @@ typedef struct Assembly {
 		ScopeArenas scope;
 		MirArenas   mir;
 		Arena       ast;
-		Arena       array;       /* used for all BArrays */
+		Arena       array;       /* used for all TArrays */
 		Arena       small_array; /* used for all SmallArrays */
 	} arenas;
 
 	struct {
-		BArray *global_instrs; // All global instructions.
-		BArray *RTTI_tmp_vars; // Temporary variables used by RTTI.
+		TArray global_instrs; // All global instructions.
+		TArray RTTI_tmp_vars; // Temporary variables used by RTTI.
 	} MIR;
 
 	struct {
@@ -68,15 +65,15 @@ typedef struct Assembly {
 
 	/* DynCall/Lib data used for external method execution in compile time */
 	struct {
-		BArray *  lib_paths;
-		BArray *  libs;
+		TArray    lib_paths;
+		TArray    libs;
 		DCCallVM *vm;
 	} dl;
 
-	BArray *    units;      /* array of all units in assembly */
-	BHashTable *unit_cache; /* cache for loading only unique units */
-	BHashTable *link_cache; /* all linked externals libraries passed to linker */
-	BHashTable *type_table; /* type table key: type ID, value: *MirType */
+	TArray      units;      /* array of all units in assembly */
+	THashTable  unit_cache; /* cache for loading only unique units */
+	THashTable  link_cache; /* all linked externals libraries passed to linker */
+	THashTable  type_table; /* type table key: type ID, value: *MirType */
 	char *      name;       /* assembly name */
 	Scope *     gscope;     /* global scope of the assembly */
 } Assembly;

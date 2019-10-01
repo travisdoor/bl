@@ -43,9 +43,9 @@ search_source_file(const char *filepath, char **out_filepath, char **out_dirpath
 
 	/* Lookup in working directory. */
 	if (wdir) {
-		strncpy(tmp, wdir, ARRAY_SIZE(tmp));
-		strncat(tmp, PATH_SEPARATOR, ARRAY_SIZE(tmp));
-		strncat(tmp, filepath, ARRAY_SIZE(tmp));
+		strncpy(tmp, wdir, TARRAY_SIZE(tmp));
+		strncat(tmp, PATH_SEPARATOR, TARRAY_SIZE(tmp));
+		strncat(tmp, filepath, TARRAY_SIZE(tmp));
 
 		if (file_exists(tmp)) {
 			goto FOUND;
@@ -62,9 +62,9 @@ search_source_file(const char *filepath, char **out_filepath, char **out_dirpath
 	if (ENV_LIB_DIR) {
 		char tmp_lib_dir[PATH_MAX];
 
-		strncpy(tmp_lib_dir, ENV_LIB_DIR, ARRAY_SIZE(tmp_lib_dir));
-		strncat(tmp_lib_dir, PATH_SEPARATOR, ARRAY_SIZE(tmp_lib_dir));
-		strncat(tmp_lib_dir, filepath, ARRAY_SIZE(tmp_lib_dir));
+		strncpy(tmp_lib_dir, ENV_LIB_DIR, TARRAY_SIZE(tmp_lib_dir));
+		strncat(tmp_lib_dir, PATH_SEPARATOR, TARRAY_SIZE(tmp_lib_dir));
+		strncat(tmp_lib_dir, filepath, TARRAY_SIZE(tmp_lib_dir));
 
 		rpath = brealpath(tmp_lib_dir, tmp, PATH_MAX);
 
@@ -86,9 +86,9 @@ search_source_file(const char *filepath, char **out_filepath, char **out_dirpath
 				p[0] = 0;
 			}
 
-			strncpy(tmp_env, s, ARRAY_SIZE(tmp_env));
-			strncat(tmp_env, PATH_SEPARATOR, ARRAY_SIZE(tmp_env));
-			strncat(tmp_env, filepath, ARRAY_SIZE(tmp_env));
+			strncpy(tmp_env, s, TARRAY_SIZE(tmp_env));
+			strncat(tmp_env, PATH_SEPARATOR, TARRAY_SIZE(tmp_env));
+			strncat(tmp_env, filepath, TARRAY_SIZE(tmp_env));
 
 			rpath = brealpath(&tmp_env[0], tmp, PATH_MAX);
 
@@ -109,7 +109,7 @@ FOUND:
 	*out_filepath = strdup(rpath);
 
 	/* Absolute directory path. */
-	memset(tmp, 0, ARRAY_SIZE(tmp));
+	memset(tmp, 0, TARRAY_SIZE(tmp));
 	if (get_dir_from_filepath(tmp, PATH_MAX, *out_filepath)) {
 		*out_dirpath = strdup(tmp);
 	}
@@ -130,7 +130,7 @@ unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
 	unit->name = strdup(filepath);
 
 	char tmp[PATH_MAX] = {0};
-	if (get_filename_from_filepath(tmp, ARRAY_SIZE(tmp), filepath)) {
+	if (get_filename_from_filepath(tmp, TARRAY_SIZE(tmp), filepath)) {
 		unit->filename = strdup(tmp);
 	} else {
 		BL_ABORT("invalid file");

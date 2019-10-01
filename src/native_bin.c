@@ -44,38 +44,39 @@ typedef struct {
 } Context;
 
 static void
-add_lib_paths(Context *cnt, char *buf, size_t len)
+add_lib_paths(Context *cnt, TString *buf)
 {
 
 	const char *dir;
-	BARRAY_FOREACH(cnt->assembly->dl.lib_paths, dir)
+	TARRAY_FOREACH(const char *, &cnt->assembly->dl.lib_paths, dir)
 	{
-		strncat(buf, " ", len);
-		strncat(buf, link_path_flag, len);
-		strncat(buf, dir, len);
+		tstring_append(buf, " ");
+		tstring_append(buf, link_path_flag);
+		tstring_append(buf, dir);
 	}
 }
 
 static void
-add_libs(Context *cnt, char *buf, size_t len)
+add_libs(Context *cnt, TString *buf)
 {
 	NativeLib *lib;
-	for (size_t i = 0; i < bo_array_size(cnt->assembly->dl.libs); ++i) {
-		lib = &bo_array_at(cnt->assembly->dl.libs, i, NativeLib);
+	for (size_t i = 0; i < cnt->assembly->dl.libs.size; ++i) {
+		lib = &tarray_at(NativeLib, &cnt->assembly->dl.libs, i);
 		if (lib->is_internal) continue;
 		if (!lib->user_name) continue;
 
-		strncat(buf, " ", len);
-		strncat(buf, link_flag, len);
-		strncat(buf, lib->user_name, len);
+		tstring_append(buf, " ");
+		tstring_append(buf, link_flag);
+		tstring_append(buf, lib->user_name);
 	}
 }
 
 void
 native_bin_run(Assembly *assembly)
 {
-	char    buf[4096] = {0};
-	Context cnt       = {.assembly = assembly};
+	TString buf;
+	tstring_init(&buf);
+	Context cnt = {.assembly = assembly};
 
 #ifdef BL_PLATFORM_WIN
 	const char *linker_exec = conf_data_get_str(builder.conf, CONF_LINKER_EXEC_KEY);
@@ -83,31 +84,30 @@ native_bin_run(Assembly *assembly)
 		const char *vc_vars_all = conf_data_get_str(builder.conf, CONF_VC_VARS_ALL_KEY);
 		const char *vc_arch     = "x64"; // TODO: set by compiler target arch
 		const char *opt         = conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
-		sprintf(buf,
-		        cmd,
-		        vc_vars_all,
-		        vc_arch,
-		        linker_exec,
-		        assembly->name,
-		        assembly->name,
-		        opt);
+		tstring_setf(buf,
+		             cmd,
+		             vc_vars_all,
+		             vc_arch,
+		             linker_exec,
+		             assembly->name,
+		             assembly->name,
+		             opt);
 	}
 #else
         const char *linker_exec = conf_data_get_str(builder.conf, CONF_LINKER_EXEC_KEY);
         { /* setup link command */
                 const char *opt = conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
-                snprintf(
-                    buf, ARRAY_SIZE(buf), cmd, linker_exec, assembly->name, assembly->name, opt);
+                tstring_setf(&buf, cmd, linker_exec, assembly->name, assembly->name, opt);
         }
 #endif
 
-	add_lib_paths(&cnt, buf, ARRAY_SIZE(buf));
-	add_libs(&cnt, buf, ARRAY_SIZE(buf));
+	add_lib_paths(&cnt, &buf);
+	add_libs(&cnt, &buf);
 
 	msg_log("Running native linker...");
-	if (builder.options.verbose) msg_log("%s", buf);
+	if (builder.options.verbose) msg_log("%s", buf.data);
 	/* TODO: handle error */
-	if (system(buf) != 0) {
+	if (system(buf.data) != 0) {
 		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_LIB_NOT_FOUND,
 		            NULL,
@@ -115,4 +115,6 @@ native_bin_run(Assembly *assembly)
 		            "Native link execution failed '%s'",
 		            buf);
 	}
+
+	tstring_terminate(&buf);
 }

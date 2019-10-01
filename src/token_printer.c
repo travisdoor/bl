@@ -32,15 +32,15 @@
 void
 token_printer_run(Unit *unit)
 {
-	BArray *tokens_arr = unit->tokens.buf;
+	TArray *tokens_arr = &unit->tokens.buf;
 
 	fprintf(stdout, "Tokens: \n");
 
-	const size_t c = bo_array_size(tokens_arr);
-	Token *      tok;
-	s32          line = -1;
+	const usize c = tokens_arr->size;
+	Token *     tok;
+	s32         line = -1;
 	for (size_t i = 0; i < c; ++i) {
-		tok = &bo_array_at(tokens_arr, i, Token);
+		tok = &tarray_at(Token, tokens_arr, i);
 
 		if (line == -1) {
 			line = tok->location.line;

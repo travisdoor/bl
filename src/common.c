@@ -28,7 +28,6 @@
 
 #include "common.h"
 #include "assembly.h"
-#include <bobject/containers/hash.h>
 #include <time.h>
 
 #ifndef BL_COMPILER_MSVC
@@ -68,7 +67,7 @@ void
 id_init(ID *id, const char *str)
 {
 	BL_ASSERT(id);
-	id->hash = bo_hash_from_str(str);
+	id->hash = thash_from_str(str);
 	id->str  = str;
 }
 
@@ -216,11 +215,11 @@ platform_lib_name(const char *name, char *buffer, size_t max_len)
 #endif
 }
 
-BArray *
+TArray *
 create_arr(Assembly *assembly, size_t size)
 {
-	BArray **tmp = arena_alloc(&assembly->arenas.array);
-	*tmp         = bo_array_new(size);
+	TArray **tmp = arena_alloc(&assembly->arenas.array);
+	*tmp         = tarray_new(size);
 	return *tmp;
 }
 
@@ -231,8 +230,8 @@ _create_sarr(Assembly *assembly, size_t arr_size)
 	          "SmallArray is too big to be allocated inside arena, make array smaller or arena "
 	          "bigger.");
 
-	SmallArrayAny *tmp = arena_alloc(&assembly->arenas.small_array);
-	sa_init(tmp);
+	TSmallArrayAny *tmp = arena_alloc(&assembly->arenas.small_array);
+	tsa_init(tmp);
 	return tmp;
 }
 

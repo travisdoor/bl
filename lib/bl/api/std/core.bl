@@ -130,8 +130,7 @@ TypeInfoReal :: struct #compiler {
 TypeInfoFn :: struct #compiler {
     base: TypeInfo,
 
-    // TODO: create TypeInfoFnArgument structure
-    args: []*TypeInfo, // Function arguments.
+    args: []*TypeInfoFnArg, // Function arguments.
     ret_type: *TypeInfo, // Return type.
     is_vargs: bool, // True when function is vargs.
 };
@@ -206,6 +205,11 @@ TypeInfoStructMember :: struct #compiler {
 TypeInfoEnumVariant :: struct #compiler {
     name: string,
     value: s64
+};
+
+TypeInfoFnArg :: struct #compiler {
+    name: string,
+    base_type: *TypeInfo
 };
 
 /*

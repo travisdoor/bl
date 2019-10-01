@@ -34,22 +34,11 @@
 #include "config.h"
 #include "error.h"
 #include "messages.h"
-#include "small_array.h"
-#include <bobject/containers/array.h>
 #include <limits.h>
+#include <stddef.h>
+#include <tlib/tlib.h>
 
 struct Assembly;
-
-typedef uint8_t  u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef int8_t   s8;
-typedef int16_t  s16;
-typedef int32_t  s32;
-typedef int64_t  s64;
-typedef float    f32;
-typedef double   f64;
 
 #if defined(BL_COMPILER_CLANG) || defined(BL_COMPILER_GNUC)
 #define DEPRECATED __attribute__((deprecated))
@@ -57,52 +46,24 @@ typedef double   f64;
 #define DEPRECATED
 #endif
 
-#define ARRAY_SIZE(_array) (sizeof(_array) / sizeof(_array[0]))
-
 #define IS_FLAG(_v, _flag) ((bool)((_v & _flag) == _flag))
-
 #define IS_NOT_FLAG(_v, _flag) ((bool)((_v & _flag) != _flag))
-
-#define SARRAY_FOREACH(arr, it)                                                                    \
-	if ((arr)->size)                                                                           \
-		for (size_t i = 0; i < (arr)->size && ((it) = (arr)->data[i]); ++i)
-
-#define BARRAY_FOREACH(arr, it)                                                                    \
-	if (bo_array_size((arr)))                                                                  \
-		for (size_t i = 0;                                                                 \
-		     i < bo_array_size((arr)) && ((it) = bo_array_at((arr), i, void *));           \
-		     ++i)
-
-#define BLIST_FOREACH(list, it)                                                                    \
-	(it) = bo_list_begin((list));                                                              \
-	for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);             \
-	     bo_list_iter_next((list), &(it)))
 
 #define ARRAY_FOREACH(arr, it)                                                                     \
 	for (size_t _keep = 1, i = 0, _size = ARRAY_SIZE((arr)); _keep && i != _size;              \
 	     _keep = !_keep, i++)                                                                  \
 		for (it = (arr)[i]; _keep; _keep = !_keep)
 
-#define BHTBL_FOREACH(htbl, it)                                                                    \
-	(it) = bo_htbl_begin((htbl));                                                              \
-	for (bo_iterator_t end = bo_htbl_end((htbl)); !bo_iterator_equal(&(it), &end);             \
-	     bo_htbl_iter_next((htbl), &(it)))
-
-#define BLIST_FOREACH(list, it)                                                                    \
-	(it) = bo_list_begin((list));                                                              \
-	for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);             \
-	     bo_list_iter_next((list), &(it)))
-
 extern u64 main_thread_id;
 
-SmallArrayType(AstPtr, struct Ast *, 16);
-SmallArrayType(TypePtr, struct MirType *, 16);
-SmallArrayType(MemberPtr, struct MirMember *, 16);
-SmallArrayType(VariantPtr, struct MirVariant *, 16);
-SmallArrayType(ArgPtr, struct MirArg *, 16);
-SmallArrayType(InstrPtr, struct MirInstr *, 16);
-SmallArrayType(ConstValuePtr, struct MirConstValue *, 16);
-SmallArrayType(Char, char, 128);
+TSMALL_ARRAY_TYPE(AstPtr, struct Ast *, 16);
+TSMALL_ARRAY_TYPE(TypePtr, struct MirType *, 16);
+TSMALL_ARRAY_TYPE(MemberPtr, struct MirMember *, 16);
+TSMALL_ARRAY_TYPE(VariantPtr, struct MirVariant *, 16);
+TSMALL_ARRAY_TYPE(ArgPtr, struct MirArg *, 16);
+TSMALL_ARRAY_TYPE(InstrPtr, struct MirInstr *, 16);
+TSMALL_ARRAY_TYPE(ConstValuePtr, struct MirConstValue *, 16);
+TSMALL_ARRAY_TYPE(Char, char, 128);
 
 typedef struct ID {
 	const char *str;
@@ -152,7 +113,7 @@ platform_lib_name(const char *name, char *buffer, size_t max_len);
  * Creates BArray inside Assembly arena.
  * Note: no free is needed.
  */
-BArray *
+TArray *
 create_arr(struct Assembly *assembly, size_t size);
 
 /*

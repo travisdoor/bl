@@ -30,11 +30,9 @@
 #define BL_TOKENS_H
 
 #include "token.h"
-#include <bobject/bobject.h>
-#include <bobject/containers/array.h>
 
 typedef struct Tokens {
-	BArray *buf;
+	TArray  buf;
 	size_t  iter;
 } Tokens;
 
@@ -115,7 +113,7 @@ tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal);
 bool
 tokens_lookahead(Tokens *tokens, TokenCmpFunc cmp);
 
-BArray *
+TArray *
 tokens_get_all(Tokens *tokens);
 
 #endif

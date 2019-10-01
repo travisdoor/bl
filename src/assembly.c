@@ -32,7 +32,6 @@
 #include "llvm_di.h"
 #include "mir.h"
 #include "unit.h"
-#include <bobject/containers/hash.h>
 #include <string.h>
 
 #define EXPECTED_GSCOPE_COUNT 4096
@@ -41,32 +40,32 @@
 #define EXPECTED_LINK_COUNT 32
 
 union _SmallArrays {
-	SmallArray_TypePtr       type;
-	SmallArray_MemberPtr     member;
-	SmallArray_VariantPtr    variant;
-	SmallArray_InstrPtr      instr;
-	SmallArray_ConstValuePtr cv;
-	SmallArray_AstPtr        ast;
-	SmallArray_ArgPtr        arg;
+	TSmallArray_TypePtr       type;
+	TSmallArray_MemberPtr     member;
+	TSmallArray_VariantPtr    variant;
+	TSmallArray_InstrPtr      instr;
+	TSmallArray_ConstValuePtr cv;
+	TSmallArray_AstPtr        ast;
+	TSmallArray_ArgPtr        arg;
 };
 
 static void
-barray_dtor(BArray **arr)
+tarray_dtor(TArray **arr)
 {
-	bo_unref(*arr);
+	tarray_delete(*arr);
 }
 
 static void
-small_array_dtor(SmallArrayAny *arr)
+small_array_dtor(TSmallArrayAny *arr)
 {
-	sa_terminate(arr);
+	tsa_terminate(arr);
 }
 
 static void
 init_dl(Assembly *assembly)
 {
-	assembly->dl.libs      = bo_array_new(sizeof(NativeLib));
-	assembly->dl.lib_paths = bo_array_new(sizeof(char *));
+	tarray_init(&assembly->dl.libs, sizeof(NativeLib));
+	tarray_init(&assembly->dl.lib_paths, sizeof(char *));
 
 	DCCallVM *vm = dcNewCallVM(4096);
 	dcMode(vm, DC_CALL_C_DEFAULT);
@@ -145,8 +144,8 @@ static void
 init_mir(Assembly *assembly)
 {
 	mir_arenas_init(&assembly->arenas.mir);
-	assembly->MIR.global_instrs = bo_array_new(sizeof(MirInstr *));
-	assembly->MIR.RTTI_tmp_vars = bo_array_new(sizeof(MirVar *));
+	tarray_init(&assembly->MIR.global_instrs, sizeof(MirInstr *));
+	tarray_init(&assembly->MIR.RTTI_tmp_vars, sizeof(MirVar *));
 }
 
 static void
@@ -162,17 +161,17 @@ static void
 terminate_dl(Assembly *assembly)
 {
 	NativeLib *lib;
-	for (size_t i = 0; i < bo_array_size(assembly->dl.libs); ++i) {
-		lib = &bo_array_at(assembly->dl.libs, i, NativeLib);
+	for (size_t i = 0; i < assembly->dl.libs.size; ++i) {
+		lib = &tarray_at(NativeLib, &assembly->dl.libs, i);
 		native_lib_terminate(lib);
 	}
 
 	char *p;
-	BARRAY_FOREACH(assembly->dl.lib_paths, p) free(p);
+	TARRAY_FOREACH(char *, &assembly->dl.lib_paths, p) free(p);
 
 	dcFree(assembly->dl.vm);
-	bo_unref(assembly->dl.libs);
-	bo_unref(assembly->dl.lib_paths);
+	tarray_terminate(&assembly->dl.libs);
+	tarray_terminate(&assembly->dl.lib_paths);
 }
 
 static void
@@ -194,8 +193,8 @@ terminate_DI(Assembly *assembly)
 static void
 terminate_mir(Assembly *assembly)
 {
-	bo_unref(assembly->MIR.global_instrs);
-	bo_unref(assembly->MIR.RTTI_tmp_vars);
+	tarray_terminate(&assembly->MIR.global_instrs);
+	tarray_terminate(&assembly->MIR.RTTI_tmp_vars);
 
 	mir_arenas_terminate(&assembly->arenas.mir);
 }
@@ -206,20 +205,18 @@ assembly_new(const char *name)
 {
 	Assembly *assembly = bl_calloc(1, sizeof(Assembly));
 	if (!assembly) BL_ABORT("bad alloc");
-	assembly->name       = strdup(name);
-	assembly->units      = bo_array_new(sizeof(Unit *));
-	assembly->unit_cache = bo_htbl_new(0, EXPECTED_UNIT_COUNT);
-	assembly->link_cache = bo_htbl_new(sizeof(Token *), EXPECTED_LINK_COUNT);
-	assembly->type_table = bo_htbl_new(sizeof(MirType *), 8192);
-
-	bo_array_reserve(assembly->units, EXPECTED_UNIT_COUNT);
+	assembly->name = strdup(name);
+	tarray_init(&assembly->units, sizeof(Unit *));
+	thtbl_init(&assembly->unit_cache, 0, EXPECTED_UNIT_COUNT);
+	thtbl_init(&assembly->link_cache, sizeof(Token *), EXPECTED_LINK_COUNT);
+	thtbl_init(&assembly->type_table, sizeof(MirType *), 8192);
 
 	scope_arenas_init(&assembly->arenas.scope);
 	ast_arena_init(&assembly->arenas.ast);
 	arena_init(&assembly->arenas.array,
-	           sizeof(BArray *),
+	           sizeof(TArray *),
 	           EXPECTED_ARRAY_COUNT,
-	           (ArenaElemDtor)barray_dtor);
+	           (ArenaElemDtor)tarray_dtor);
 	arena_init(&assembly->arenas.small_array,
 	           sizeof(union _SmallArrays),
 	           EXPECTED_ARRAY_COUNT,
@@ -243,7 +240,7 @@ assembly_delete(Assembly *assembly)
 	free(assembly->name);
 
 	Unit *unit;
-	BARRAY_FOREACH(assembly->units, unit)
+	TARRAY_FOREACH(Unit *, &assembly->units, unit)
 	{
 		unit_delete(unit);
 	}
@@ -255,10 +252,10 @@ assembly_delete(Assembly *assembly)
 	ast_arena_terminate(&assembly->arenas.ast);
 	scope_arenas_terminate(&assembly->arenas.scope);
 
-	bo_unref(assembly->units);
-	bo_unref(assembly->unit_cache);
-	bo_unref(assembly->link_cache);
-	bo_unref(assembly->type_table);
+	tarray_terminate(&assembly->units);
+	thtbl_terminate(&assembly->unit_cache);
+	thtbl_terminate(&assembly->link_cache);
+	thtbl_terminate(&assembly->type_table);
 	terminate_dl(assembly);
 	terminate_mir(assembly);
 	terminate_llvm(assembly);
@@ -268,7 +265,7 @@ assembly_delete(Assembly *assembly)
 void
 assembly_add_unit(Assembly *assembly, Unit *unit)
 {
-	bo_array_push_back(assembly->units, unit);
+	tarray_push(&assembly->units, unit);
 }
 
 bool
@@ -276,13 +273,13 @@ assembly_add_unit_unique(Assembly *assembly, Unit *unit)
 {
 	u64 hash = 0;
 	if (unit->filepath)
-		hash = bo_hash_from_str(unit->filepath);
+		hash = thash_from_str(unit->filepath);
 	else
-		hash = bo_hash_from_str(unit->name);
+		hash = thash_from_str(unit->name);
 
-	if (bo_htbl_has_key(assembly->unit_cache, hash)) return false;
+	if (thtbl_has_key(&assembly->unit_cache, hash)) return false;
 
-	bo_htbl_insert_empty(assembly->unit_cache, hash);
+	thtbl_insert_empty(&assembly->unit_cache, hash);
 	assembly_add_unit(assembly, unit);
 	return true;
 }
@@ -294,21 +291,20 @@ assembly_add_link(Assembly *assembly, Token *token)
 
 	BL_ASSERT(token->sym == SYM_STRING);
 
-	u64 hash = bo_hash_from_str(token->value.str);
-	if (bo_htbl_has_key(assembly->link_cache, hash)) return;
+	u64 hash = thash_from_str(token->value.str);
+	if (thtbl_has_key(&assembly->link_cache, hash)) return;
 
-	bo_htbl_insert(assembly->link_cache, hash, token);
+	thtbl_insert(&assembly->link_cache, hash, token);
 }
 
 DCpointer
 assembly_find_extern(Assembly *assembly, const char *symbol)
 {
-	void *       handle = NULL;
-	NativeLib *  lib;
-	const size_t count = bo_array_size(assembly->dl.libs);
+	void *     handle = NULL;
+	NativeLib *lib;
 
-	for (size_t i = 0; i < count; ++i) {
-		lib    = &bo_array_at(assembly->dl.libs, i, NativeLib);
+	for (size_t i = 0; i < assembly->dl.libs.size; ++i) {
+		lib    = &tarray_at(NativeLib, &assembly->dl.libs, i);
 		handle = dlFindSymbol(lib->handle, symbol);
 		if (handle) break;
 	}

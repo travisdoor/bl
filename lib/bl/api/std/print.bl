@@ -241,7 +241,12 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
     } else if any.type_info.kind == TypeKind.Type {
         // Type
         return print_type(buf, cur, cast(*TypeInfo) any.data);
+    } else if any.type_info.kind == TypeKind.Fn {
+        // Fn
+        return print_type(buf, cur, cast(*TypeInfo) any.data);
+
     } else { 
+        print("unknown %\n", ^any.type_info);
         return print_string(buf, cur, "<unknown>");
     }
 
@@ -295,12 +300,11 @@ print_type :: fn (buf: []u8, cur: s32, info: *TypeInfo) s32 {
         return print_string(buf, cur, "}");
     } else if info.kind == TypeKind.Fn {
         c := cast(*TypeInfoFn) info;
-        //cur = print_string(buf, cur, c.name);
         cur = print_string(buf, cur, "fn (");
 
         loop i := 0; i < c.args.len; i += 1 {
             arg := c.args[i];
-            cur = print_type(buf, cur, arg);
+            cur = print_type(buf, cur, arg.base_type);
 
             if i < c.args.len - 1 { cur = print_string(buf, cur, ", "); }
         }

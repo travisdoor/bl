@@ -1,7 +1,12 @@
 /* playground */
 
-#load "/Users/travis/Desktop/vulkan/vulkan_macos.bl"
+#load "std/print.bl"
+
+foo :: fn (a: s32, b: s32) {};
+bar :: fn (a: s32, b: s32) {};
 
 main :: fn () {
+    //print("%\n", foo);
+    //print("%\n", bar);
     return;
 };

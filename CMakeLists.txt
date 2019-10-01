@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(bl VERSION 0.4.2)
+project(bl VERSION 0.5.0)
 
 # Must use GNUInstallDirs to install libraries into correct
 # locations on all platforms.
@@ -16,8 +16,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(DEFAULT_BUILD_TYPE "Release")
 set(CMAKE_C_FLAGS_DEBUG "-DBL_DEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-DBL_DEBUG")
-set(USE_SANITIZERS_ADDRESS 0)
-set(USE_SANITIZERS_THREAD 0)
+set(USE_SANITIZERS 1)
 
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
@@ -29,8 +28,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 set(BL_CONF_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.conf)
 
-add_subdirectory(deps/bobject)
 add_subdirectory(deps/dyncall-1.0)
+add_subdirectory(deps/tlib-c)
 
 # deps
 find_package(LLVM REQUIRED CONFIG)
@@ -39,7 +38,6 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 set(HEADER_FILES
-        src/small_array.h
         src/conf_data.h
         src/bldebug.h
         src/error.h 
@@ -122,17 +120,10 @@ else()
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG -fno-strict-aliasing -fno-exceptions -fno-rtti")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-strict-aliasing -fno-exceptions -fno-rtti -g -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -O0")
 
-    # SANITIZERS
-    if (${USE_SANITIZERS_ADDRESS}) 
-	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
-	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
-	set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
-    endif()
-
-    if (${USE_SANITIZERS_THREAD}) 
-	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=thread")
-	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=thread")
-	set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=thread")
+    if (${USE_SANITIZERS})
+	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fsanitize=address -fno-omit-frame-pointer")
+	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_C_FLAGS_RELEASE} -fsanitize=address -fno-omit-frame-pointer")
+	set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address")
     endif()
 endif()
 
@@ -140,7 +131,7 @@ target_link_libraries(blc PUBLIC
     dynload_s
     dyncall_s
     dyncallback_s
-    bobject
+    tlib
     ${CMAKE_DL_LIBS}
     ${LLVM_LIBS}
 )
@@ -150,7 +141,7 @@ target_include_directories(blc PRIVATE
     deps/dyncall-1.0/dyncall
     deps/dyncall-1.0/dynload
     deps/dyncall-1.0/dyncallback
-    deps/bobject/include
+    deps/tlib-c/include
     ${LLVM_INCLUDE_DIRS}
 )
 

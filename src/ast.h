@@ -31,10 +31,6 @@
 
 #include "arena.h"
 #include "common.h"
-#include <bobject/containers/array.h>
-#include <bobject/containers/hash.h>
-#include <bobject/containers/htbl.h>
-#include <bobject/containers/list.h>
 
 struct Scope;
 struct Token;
@@ -163,12 +159,12 @@ struct AstIdent {
 };
 
 struct AstUBlock {
-	BArray *     nodes;
+	TArray *     nodes;
 	struct Unit *unit;
 };
 
 struct AstBlock {
-	BArray *nodes;
+	TArray *nodes;
 	bool    has_return;
 };
 
@@ -236,20 +232,20 @@ struct AstTypeSlice {
 };
 
 struct AstTypeFn {
-	Ast *              ret_type;
-	SmallArray_AstPtr *args;
+	Ast *               ret_type;
+	TSmallArray_AstPtr *args;
 };
 
 struct AstTypeStruct {
-	struct Scope *     scope;
-	SmallArray_AstPtr *members;
-	bool               raw;
+	struct Scope *      scope;
+	TSmallArray_AstPtr *members;
+	bool                raw;
 };
 
 struct AstTypeEnum {
-	struct Scope *     scope;
-	Ast *              type;
-	SmallArray_AstPtr *variants;
+	struct Scope *      scope;
+	Ast *               type;
+	TSmallArray_AstPtr *variants;
 };
 
 struct AstTypePtr {
@@ -277,8 +273,8 @@ struct AstExprType {
 };
 
 struct AstExprCompound {
-	Ast *              type;
-	SmallArray_AstPtr *values;
+	Ast *               type;
+	TSmallArray_AstPtr *values;
 };
 
 struct AstExprLitFn {
@@ -330,9 +326,9 @@ struct AstExprBinop {
 };
 
 struct AstExprCall {
-	Ast *              ref;
-	SmallArray_AstPtr *args;
-	bool               run;
+	Ast *               ref;
+	TSmallArray_AstPtr *args;
+	bool                run;
 };
 
 struct AstExprMember {
