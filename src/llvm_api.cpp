@@ -101,5 +101,6 @@ llvm_get_intrinsic_decl(LLVMModuleRef mod_ref,
 	ArrayRef<Type *> types(CAST(Type **)(param_types_ref), param_types_count);
 
 	auto iid = llvm_map_to_intrinsic_id(id);
-	return wrap(llvm::Intrinsic::getDeclaration(CAST(Module *)(mod_ref), iid, types));
+	return CAST(LLVMValueRef)(
+	    llvm::Intrinsic::getDeclaration(CAST(Module *)(mod_ref), iid, types));
 }

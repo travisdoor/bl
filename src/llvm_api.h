@@ -74,6 +74,12 @@ llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, L
 u32
 llvm_lookup_intrinsic_id(const char *name);
 
+LLVMValueRef
+llvm_get_intrinsic_decl(LLVMModuleRef mod_ref,
+                        u32           id,
+                        LLVMTypeRef * param_types_ref,
+                        usize         param_types_count);
+
 #ifdef __cplusplus
 }
 #endif
