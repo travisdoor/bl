@@ -66,13 +66,13 @@ void
 llvm_add_module_flag_int(LLVMModuleRef          module_ref,
                          LLVMModuleFlagBehavior behavior,
                          const char *           key,
-                         int32_t                val)
+                         s32                    val)
 {
 	auto module = CAST(Module *)(module_ref);
 	module->addModuleFlag(map_to_llvmModFlagBehavior(behavior), {key, strlen(key)}, val);
 }
 
-int32_t
+s32
 llvm_get_dwarf_version(void)
 {
 	return DEBUG_METADATA_VERSION;
@@ -249,10 +249,10 @@ llvm_di_create_function_type(LLVMDIBuilderRef builder_ref,
 
 LLVMMetadataRef
 llvm_di_create_array_type(LLVMDIBuilderRef builder_ref,
-                          uint64_t         size_in_bits,
-                          uint32_t         align_in_bits,
+                          u64              size_in_bits,
+                          u32              align_in_bits,
                           LLVMMetadataRef  type_ref,
-                          uint64_t         elem_count)
+                          u64              elem_count)
 {
 	auto builder = CAST(DIBuilder *)(builder_ref);
 
@@ -271,8 +271,8 @@ llvm_di_create_enum_type(LLVMDIBuilderRef builder_ref,
                          const char *     name,
                          LLVMMetadataRef  file_ref,
                          unsigned         line,
-                         uint64_t         size_in_bits,
-                         uint32_t         align_in_bits,
+                         u64              size_in_bits,
+                         u32              align_in_bits,
                          LLVMMetadataRef *elems,
                          size_t           elemsc,
                          LLVMMetadataRef  type_ref)
@@ -295,7 +295,7 @@ llvm_di_create_enum_type(LLVMDIBuilderRef builder_ref,
 LLVMMetadataRef
 llvm_di_create_enum_variant(LLVMDIBuilderRef builder_ref,
                             const char *     name,
-                            uint64_t         val,
+                            u64              val,
                             bool             is_unsigned)
 {
 	auto builder = CAST(DIBuilder *)(builder_ref);
@@ -307,8 +307,8 @@ llvm_di_create_enum_variant(LLVMDIBuilderRef builder_ref,
 LLVMMetadataRef
 llvm_di_create_pointer_type(LLVMDIBuilderRef builder_ref,
                             LLVMMetadataRef  pointee_type_ref,
-                            uint64_t         size_in_bits,
-                            uint32_t         align_in_bits,
+                            u64              size_in_bits,
+                            u32              align_in_bits,
                             const char *     name)
 {
 	auto builder = CAST(DIBuilder *)(builder_ref);
@@ -335,10 +335,10 @@ llvm_di_create_struct_type(LLVMDIBuilderRef builder_ref,
                            const char *     name,
                            LLVMMetadataRef  file_ref,
                            unsigned         line,
-                           uint64_t         size_in_bits,
-                           uint32_t         align_in_bits,
+                           u64              size_in_bits,
+                           u32              align_in_bits,
                            LLVMMetadataRef *elems,
-                           uint64_t         elemsc)
+                           u64              elemsc)
 {
 	auto builder = CAST(DIBuilder *)(builder_ref);
 	auto type    = builder->createStructType(
@@ -361,9 +361,9 @@ llvm_di_create_member_type(LLVMDIBuilderRef builder_ref,
                            const char *     name,
                            LLVMMetadataRef  file_ref,
                            unsigned         line,
-                           uint64_t         size_in_bits,
-                           uint32_t         align_in_bits,
-                           uint64_t         offset_in_bits,
+                           u64              size_in_bits,
+                           u32              align_in_bits,
+                           u64              offset_in_bits,
                            LLVMMetadataRef  type_ref)
 {
 	auto builder = CAST(DIBuilder *)(builder_ref);
