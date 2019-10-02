@@ -84,7 +84,7 @@ native_bin_run(Assembly *assembly)
 		const char *vc_vars_all = conf_data_get_str(builder.conf, CONF_VC_VARS_ALL_KEY);
 		const char *vc_arch     = "x64"; // TODO: set by compiler target arch
 		const char *opt         = conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
-		tstring_setf(buf,
+		tstring_setf(&buf,
 		             cmd,
 		             vc_vars_all,
 		             vc_arch,
