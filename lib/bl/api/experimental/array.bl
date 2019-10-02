@@ -30,22 +30,28 @@ Array :: struct {
     len: s64,
     data: *u8,
     allocated: usize,
-    elem_size: usize
+    T: TypeInfo
 };
 
 array_new :: fn (T: Any) *Array {
     if T.type_info.kind != TypeKind.Type {
         panic("Array expects type passed as T not '%'", T.type_info.kind);
     }
+
+    arr := cast(*Array) mem_alloc(sizeof(Array));
+    arr.T = ^ cast(*TypeInfo) T.data;
+    arr.len = 0;
+    arr.allocated = 0;
+    arr.data = null;
+    return arr;
 };
 
-array_delete :: fn (T: Any) {
-};
+array_delete :: fn (arr: *Array) {
+    if arr.allocated > 0 {
+        mem_free(arr.data);
+    }
 
-array_init :: fn (arr: *Array, T: Any) {
-};
-
-array_terminate :: fn (arr: *Array) {
+    mem_free(auto arr);
 };
 
 #private
