@@ -39,7 +39,7 @@
 #endif
 
 #ifdef BL_PLATFORM_WIN
-#incldue <windows.h>
+#include <windows.h>
 #endif
 
 u64 main_thread_id = 0;
