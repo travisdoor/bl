@@ -38,6 +38,10 @@
 #include <mach-o/dyld.h>
 #endif
 
+#ifdef BL_PLATFORM_WINDOWS
+#incldue <windows.h>
+#endif
+
 u64 main_thread_id = 0;
 
 bool
