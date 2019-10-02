@@ -285,7 +285,6 @@ print_type :: fn (buf: []u8, cur: s32, info: *TypeInfo) s32 {
         return print_type(buf, cur, c.elem_type);
     } else if info.kind == TypeKind.Struct {
         c := cast(*TypeInfoStruct) info;
-        //cur = print_string(buf, cur, c.name);
         cur = print_string(buf, cur, "struct {");
 
         loop i := 0; i < c.members.len; i += 1 {
@@ -304,6 +303,8 @@ print_type :: fn (buf: []u8, cur: s32, info: *TypeInfo) s32 {
 
         loop i := 0; i < c.args.len; i += 1 {
             arg := c.args[i];
+            cur = print_string(buf, cur, arg.name);
+            cur = print_string(buf, cur, ": ");
             cur = print_type(buf, cur, arg.base_type);
 
             if i < c.args.len - 1 { cur = print_string(buf, cur, ", "); }

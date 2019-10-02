@@ -2396,7 +2396,7 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 	}
 
 	LLVMMetadataRef llvm_scope = type->data.strct.scope->llvm_di_meta;
-	const char *    struct_name;
+	const char *    struct_name = "<implicit_struct>";
 	if (type->user_id) {
 		struct_name = type->user_id->str;
 	} else {
@@ -2418,7 +2418,8 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 		}
 
 		default:
-			BL_ABORT("cannot get struct name for DI");
+			/* use default implicit name */
+			break; 
 		}
 	}
 
@@ -6866,7 +6867,7 @@ gen_RTTI_fn_arg(Context *cnt, MirArg *arg)
 	        cnt, NULL, cnt->builtin_types.t_TypeInfo_ptr, gen_RTTI(cnt, arg->type)));
 
 	return init_or_create_const_struct(
-	    cnt, NULL, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_STRUCT_MEMBER), m);
+	    cnt, NULL, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_FN_ARG), m);
 }
 
 MirConstValue *

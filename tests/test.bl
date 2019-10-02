@@ -5,8 +5,12 @@
 foo :: fn (a: s32, b: s32) {};
 bar :: fn (a: s32, b: s32) {};
 
+Foo :: struct {
+    i: s32, j: s32 
+};
+
 main :: fn () {
-    //print("%\n", foo);
-    //print("%\n", bar);
+    print("%\n", foo);
+    print("%\n", Foo);
     return;
 };
