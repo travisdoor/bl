@@ -50,7 +50,7 @@ struct Assembly;
 #define IS_NOT_FLAG(_v, _flag) ((bool)((_v & _flag) != _flag))
 
 #define ARRAY_FOREACH(arr, it)                                                                     \
-	for (size_t _keep = 1, i = 0, _size = ARRAY_SIZE((arr)); _keep && i != _size;              \
+	for (usize _keep = 1, i = 0, _size = ARRAY_SIZE((arr)); _keep && i != _size;               \
 	     _keep = !_keep, i++)                                                                  \
 		for (it = (arr)[i]; _keep; _keep = !_keep)
 
@@ -80,25 +80,25 @@ const char *
 brealpath(const char *file, char *out, s32 out_len);
 
 bool
-get_dir_from_filepath(char *buf, const size_t l, const char *filepath);
+get_dir_from_filepath(char *buf, const usize l, const char *filepath);
 
 bool
-get_filename_from_filepath(char *buf, const size_t l, const char *filepath);
+get_filename_from_filepath(char *buf, const usize l, const char *filepath);
 
 bool
-get_current_exec_path(char *buf, size_t buf_size);
+get_current_exec_path(char *buf, usize buf_size);
 
 bool
-get_current_exec_dir(char *buf, size_t buf_size);
+get_current_exec_dir(char *buf, usize buf_size);
 
 void
 date_time(char *buf, s32 len, const char *format);
 
 bool
-is_aligned(const void *p, size_t alignment);
+is_aligned(const void *p, usize alignment);
 
 void
-align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment);
+align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment);
 
 void
 print_bits(s32 const size, void const *const ptr);
@@ -107,21 +107,21 @@ int
 count_bits(u64 n);
 
 void
-platform_lib_name(const char *name, char *buffer, size_t max_len);
+platform_lib_name(const char *name, char *buffer, usize max_len);
 
 /*
  * Creates BArray inside Assembly arena.
  * Note: no free is needed.
  */
 TArray *
-create_arr(struct Assembly *assembly, size_t size);
+create_arr(struct Assembly *assembly, usize size);
 
 /*
  * Creates SmallArray inside Assembly arena.
  * Note: no free is needed.
  */
 void *
-_create_sarr(struct Assembly *cnt, size_t arr_size);
+_create_sarr(struct Assembly *cnt, usize arr_size);
 
 u32
 next_pow_2(u32 n);

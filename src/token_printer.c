@@ -39,7 +39,7 @@ token_printer_run(Unit *unit)
 	const usize c = tokens_arr->size;
 	Token *     tok;
 	s32         line = -1;
-	for (size_t i = 0; i < c; ++i) {
+	for (usize i = 0; i < c; ++i) {
 		tok = &tarray_at(Token, tokens_arr, i);
 
 		if (line == -1) {

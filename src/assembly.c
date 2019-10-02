@@ -161,7 +161,7 @@ static void
 terminate_dl(Assembly *assembly)
 {
 	NativeLib *lib;
-	for (size_t i = 0; i < assembly->dl.libs.size; ++i) {
+	for (usize i = 0; i < assembly->dl.libs.size; ++i) {
 		lib = &tarray_at(NativeLib, &assembly->dl.libs, i);
 		native_lib_terminate(lib);
 	}
@@ -303,7 +303,7 @@ assembly_find_extern(Assembly *assembly, const char *symbol)
 	void *     handle = NULL;
 	NativeLib *lib;
 
-	for (size_t i = 0; i < assembly->dl.libs.size; ++i) {
+	for (usize i = 0; i < assembly->dl.libs.size; ++i) {
 		lib    = &tarray_at(NativeLib, &assembly->dl.libs, i);
 		handle = dlFindSymbol(lib->handle, symbol);
 		if (handle) break;

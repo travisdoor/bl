@@ -208,7 +208,7 @@ static LLVMValueRef
 emit_as_const(Context *cnt, MirConstValue *value);
 
 static LLVMValueRef
-emit_global_string_ptr(Context *cnt, const char *str, size_t len);
+emit_global_string_ptr(Context *cnt, const char *str, usize len);
 
 static void
 emit_allocas(Context *cnt, MirFn *fn);
@@ -426,7 +426,7 @@ emit_RTTI_types(Context *cnt)
 	LLVMValueRef llvm_var, llvm_value;
 	LLVMTypeRef  llvm_var_type;
 
-	for (size_t i = 0; i < table->size; ++i) {
+	for (usize i = 0; i < table->size; ++i) {
 		var = tarray_at(MirVar *, table, i);
 		BL_ASSERT(var)
 
@@ -486,7 +486,7 @@ emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 	LLVMValueRef llvm_phi =
 	    LLVMBuildPhi(cnt->llvm_builder, phi->base.value.type->llvm_type, "");
 
-	const size_t count = phi->incoming_blocks->size;
+	const usize count = phi->incoming_blocks->size;
 
 	TSmallArray_LLVMValue llvm_iv;
 	TSmallArray_LLVMValue llvm_ib;
@@ -496,7 +496,7 @@ emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 
 	MirInstr *     value;
 	MirInstrBlock *block;
-	for (size_t i = 0; i < count; ++i) {
+	for (usize i = 0; i < count; ++i) {
 		value = phi->incoming_values->data[i];
 		block = (MirInstrBlock *)phi->incoming_blocks->data[i];
 
@@ -754,7 +754,7 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 }
 
 LLVMValueRef
-emit_global_string_ptr(Context *cnt, const char *str, size_t len)
+emit_global_string_ptr(Context *cnt, const char *str, usize len)
 {
 	BL_ASSERT(str)
 	u64       hash  = thash_from_str(str);
@@ -775,7 +775,7 @@ emit_global_string_ptr(Context *cnt, const char *str, size_t len)
 		TSmallArray_LLVMValue64 llvm_chars;
 		tsa_init(&llvm_chars);
 
-		for (size_t i = 0; i < len + 1; ++i) {
+		for (usize i = 0; i < len + 1; ++i) {
 			tsa_push_LLVMValue64(&llvm_chars,
 			                     LLVMConstInt(cnt->llvm_i8_type, str[i], true));
 		}
@@ -813,7 +813,7 @@ emit_as_const(Context *cnt, MirConstValue *value)
 	}
 
 	case MIR_TYPE_REAL: {
-		const size_t size = type->store_size_bytes;
+		const usize size = type->store_size_bytes;
 
 		if (size == sizeof(f32)) { // float
 			llvm_value = LLVMConstReal(llvm_type, (f64)value->data.v_f32);
@@ -882,8 +882,8 @@ emit_as_const(Context *cnt, MirConstValue *value)
 			break;
 		}
 
-		const size_t len            = (size_t)type->data.array.len;
-		LLVMTypeRef  llvm_elem_type = type->data.array.elem_type->llvm_type;
+		const usize len            = (usize)type->data.array.len;
+		LLVMTypeRef llvm_elem_type = type->data.array.elem_type->llvm_type;
 		BL_ASSERT(len && llvm_elem_type)
 
 		TSmallArray_ConstValuePtr *elems = value->data.v_array.elems;
@@ -895,7 +895,7 @@ emit_as_const(Context *cnt, MirConstValue *value)
 		TSmallArray_LLVMValue llvm_elems;
 		tsa_init(&llvm_elems);
 
-		for (size_t i = 0; i < len; ++i) {
+		for (usize i = 0; i < len; ++i) {
 			elem = elems->data[i];
 			tsa_push_LLVMValue(&llvm_elems, emit_as_const(cnt, elem));
 		}
@@ -912,7 +912,7 @@ emit_as_const(Context *cnt, MirConstValue *value)
 		}
 
 		TSmallArray_ConstValuePtr *members = value->data.v_struct.members;
-		const size_t               memc    = members->size;
+		const usize                memc    = members->size;
 		BL_ASSERT(members)
 		BL_ASSERT(memc == 2 && "not slice string?")
 
@@ -942,7 +942,7 @@ emit_as_const(Context *cnt, MirConstValue *value)
 
 		TSmallArray_ConstValuePtr *members = value->data.v_struct.members;
 		BL_ASSERT(members && "Missing struct members.")
-		const size_t memc = members->size;
+		const usize memc = members->size;
 
 		MirConstValue *member;
 
@@ -1552,7 +1552,7 @@ emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 	MirType *             vargs_type = vargs->base.value.type;
 	TSmallArray_InstrPtr *values     = vargs->values;
 	BL_ASSERT(values)
-	const size_t vargsc = values->size;
+	const usize vargsc = values->size;
 	BL_ASSERT(vargs_type && vargs_type->kind == MIR_TYPE_VARGS)
 
 	/* Setup tmp array values. */

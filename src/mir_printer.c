@@ -88,7 +88,7 @@ print_const_value(MirConstValue *value, FILE *stream)
 
 	switch (type->kind) {
 	case MIR_TYPE_INT: {
-		const size_t s = type->store_size_bytes;
+		const usize s = type->store_size_bytes;
 		if (type->data.integer.is_signed) {
 			switch (s) {
 			case sizeof(data->v_s8):
@@ -202,9 +202,9 @@ print_const_value(MirConstValue *value, FILE *stream)
 			fprintf(stream, "{");
 
 			MirConstValue *member;
-			const size_t   memc = members->size;
+			const usize    memc = members->size;
 
-			for (size_t i = 0; i < memc; ++i) {
+			for (usize i = 0; i < memc; ++i) {
 				member = members->data[i];
 				print_const_value(member, stream);
 				if (i + 1 < memc) fprintf(stream, ", ");
@@ -225,9 +225,9 @@ print_const_value(MirConstValue *value, FILE *stream)
 
 			if (elems) {
 				MirConstValue *elem;
-				const size_t   elc = elems->size;
+				const usize    elc = elems->size;
 
-				for (size_t i = 0; i < elc; ++i) {
+				for (usize i = 0; i < elc; ++i) {
 					elem = elems->data[i];
 					print_const_value(elem, stream);
 					if (i + 1 < elc) fprintf(stream, ", ");
@@ -420,13 +420,13 @@ print_instr_phi(MirInstrPhi *phi, FILE *stream)
 
 	MirInstr *     value;
 	MirInstrBlock *block;
-	const size_t   c = phi->incoming_values->size;
+	const usize    c = phi->incoming_values->size;
 
 	if (c == 0) {
 		fprintf(stream, "<empty incomes>");
 	}
 
-	for (size_t i = 0; i < c; ++i) {
+	for (usize i = 0; i < c; ++i) {
 		value = phi->incoming_values->data[i];
 		block = (MirInstrBlock *)phi->incoming_blocks->data[i];
 

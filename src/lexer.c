@@ -78,7 +78,7 @@ scan_specch(char c);
 bool
 scan_comment(Context *cnt, const char *term)
 {
-	const size_t len = strlen(term);
+	const usize len = strlen(term);
 	while (true) {
 		if (*cnt->c == '\n') {
 			cnt->line++;
@@ -450,7 +450,7 @@ scan:
 	/*
 	 * Scan symbols described directly as strings.
 	 */
-	size_t len = 0;
+	usize len = 0;
 	for (s32 i = SYM_IF; i < SYM_NONE; ++i) {
 		len = strlen(sym_strings[i]);
 		if (strncmp(cnt->c, sym_strings[i], len) == 0) {

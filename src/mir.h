@@ -379,8 +379,8 @@ struct MirType {
 	ID              id;
 	LLVMTypeRef     llvm_type;
 	LLVMMetadataRef llvm_meta;
-	size_t          size_bits;
-	size_t          store_size_bytes;
+	usize           size_bits;
+	usize           store_size_bytes;
 	s32             alignment;
 
 	/*
@@ -846,7 +846,7 @@ void
 mir_arenas_terminate(MirArenas *arenas);
 
 void
-mir_type_to_str(char *buf, size_t len, MirType *type, bool prefer_name);
+mir_type_to_str(char *buf, usize len, MirType *type, bool prefer_name);
 
 const char *
 mir_instr_name(MirInstr *instr);

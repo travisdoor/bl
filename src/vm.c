@@ -132,7 +132,7 @@ copy_comptime_to_stack(VM *vm, VMStackPtr dest_ptr, MirConstValue *src_value);
 
 /* zero max nesting = unlimited nesting */
 static void
-print_call_stack(VM *vm, size_t max_nesting);
+print_call_stack(VM *vm, usize max_nesting);
 
 static void
 dyncall_cb_read_arg(VM *vm, MirConstValue *dest, DCArgs *src);
@@ -259,8 +259,8 @@ exec_abort(VM *vm, s32 report_stack_nesting)
 	vm->stack->aborted = true;
 }
 
-static inline size_t
-stack_alloc_size(size_t size)
+static inline usize
+stack_alloc_size(usize size)
 {
 	BL_ASSERT(size != 0);
 	size += CHCK_SIZE();
@@ -269,12 +269,12 @@ stack_alloc_size(size_t size)
 
 /* allocate memory on frame stack, size is in bits!!! */
 static inline VMStackPtr
-stack_alloc(VM *vm, size_t size)
+stack_alloc(VM *vm, usize size)
 {
 	BL_ASSERT(size && "trying to allocate 0 bits on stack");
 
 #if BL_DEBUG && CHCK_STACK
-	const size_t orig_size = size;
+	const usize orig_size = size;
 #endif
 	size = stack_alloc_size(size);
 	vm->stack->used_bytes += size;
@@ -297,10 +297,10 @@ stack_alloc(VM *vm, size_t size)
 
 /* shift stack top by the size in bytes */
 static inline VMStackPtr
-stack_free(VM *vm, size_t size)
+stack_free(VM *vm, usize size)
 {
 #if BL_DEBUG && CHCK_STACK
-	const size_t orig_size = size;
+	const usize orig_size = size;
 #endif
 
 	size               = stack_alloc_size(size);
@@ -345,7 +345,7 @@ static inline VMStackPtr
 push_stack_empty(VM *vm, MirType *type)
 {
 	BL_ASSERT(type);
-	const size_t size = type->store_size_bytes;
+	const usize size = type->store_size_bytes;
 	BL_ASSERT(size && "pushing zero sized data on stack");
 	VMStackPtr tmp = stack_alloc(vm, size);
 
@@ -357,8 +357,8 @@ static inline VMStackPtr
 push_stack(VM *vm, void *value, MirType *type)
 {
 	BL_ASSERT(value && "try to push NULL value");
-	VMStackPtr   tmp  = push_stack_empty(vm, type);
-	const size_t size = type->store_size_bytes;
+	VMStackPtr  tmp  = push_stack_empty(vm, type);
+	const usize size = type->store_size_bytes;
 	memcpy(tmp, value, size);
 
 	/* pointer relative to frame top */
@@ -369,7 +369,7 @@ static inline VMStackPtr
 pop_stack(VM *vm, MirType *type)
 {
 	BL_ASSERT(type);
-	const size_t size = type->store_size_bytes;
+	const usize size = type->store_size_bytes;
 	BL_ASSERT(size && "popping zero sized data on stack");
 
 	LOG_POP_STACK;
@@ -408,7 +408,7 @@ static inline void
 read_value(MirConstValueData *dest, VMStackPtr src, MirType *type)
 {
 	BL_ASSERT(dest && src && type);
-	const size_t size = type->store_size_bytes;
+	const usize size = type->store_size_bytes;
 
 	switch (type->kind) {
 	case MIR_TYPE_INT:
@@ -487,11 +487,11 @@ stack_alloc_local_vars(VM *vm, MirFn *fn)
 /* impl */
 /********/
 void
-print_call_stack(VM *vm, size_t max_nesting)
+print_call_stack(VM *vm, usize max_nesting)
 {
 	MirInstr *instr = vm->stack->pc;
 	VMFrame * fr    = vm->stack->ra;
-	size_t    n     = 0;
+	usize     n     = 0;
 
 	if (!instr) return;
 	/* print last instruction */
@@ -519,7 +519,7 @@ reset_stack(VMStack *stack)
 	stack->ra         = NULL;
 	stack->prev_block = NULL;
 	stack->aborted    = false;
-	const size_t size = stack_alloc_size(sizeof(VMStack));
+	const usize size  = stack_alloc_size(sizeof(VMStack));
 	stack->used_bytes = size;
 	stack->top_ptr    = (u8 *)stack + size;
 }
@@ -549,7 +549,7 @@ copy_comptime_to_stack(VM *vm, VMStackPtr dest_ptr, MirConstValue *src_value)
 			MirConstValue *            member;
 
 			BL_ASSERT(members);
-			const size_t memc = members->size;
+			const usize memc = members->size;
 			for (u32 i = 0; i < memc; ++i) {
 				member = members->data[i];
 
@@ -573,7 +573,7 @@ copy_comptime_to_stack(VM *vm, VMStackPtr dest_ptr, MirConstValue *src_value)
 			MirConstValue *            elem;
 
 			BL_ASSERT(elems);
-			const size_t memc = elems->size;
+			const usize memc = elems->size;
 			for (u32 i = 0; i < memc; ++i) {
 				elem = elems->data[i];
 
@@ -626,7 +626,7 @@ dyncall_cb_read_arg(VM *vm, MirConstValue *dest, DCArgs *src)
 
 	switch (dest->type->kind) {
 	case MIR_TYPE_INT: {
-		const size_t bitcount = dest->type->data.integer.bitcount;
+		const usize bitcount = dest->type->data.integer.bitcount;
 		switch (bitcount) {
 		case 8:
 			dest->data.v_u8 = dcbArgUChar(src);
@@ -648,7 +648,7 @@ dyncall_cb_read_arg(VM *vm, MirConstValue *dest, DCArgs *src)
 	}
 
 	case MIR_TYPE_REAL: {
-		const size_t bitcount = dest->type->data.real.bitcount;
+		const usize bitcount = dest->type->data.real.bitcount;
 		switch (bitcount) {
 		case 32:
 			dest->data.v_f32 = dcbArgFloat(src);
@@ -1112,7 +1112,7 @@ _execute_fn_top_level(VM *                    vm,
 	const bool is_caller_comptime   = call ? call->comptime : false;
 	const bool pop_return_value =
 	    does_return_value && is_return_value_used && !is_caller_comptime;
-	const size_t argc = args ? args->size : 0;
+	const usize argc = args ? args->size : 0;
 
 	if (args) {
 		BL_ASSERT(
@@ -1122,7 +1122,7 @@ _execute_fn_top_level(VM *                    vm,
 		BL_ASSERT(argc == args->size && "Invalid count of eplicitly passed arguments");
 
 		/* Push all arguments in reverse order on the stack. */
-		for (size_t i = argc; i-- > 0;) {
+		for (usize i = argc; i-- > 0;) {
 			VMStackPtr dest_ptr = push_stack_empty(vm, args->data[i]->type);
 			copy_comptime_to_stack(vm, dest_ptr, &arg_values->data[i]);
 		}
@@ -1306,12 +1306,12 @@ interp_instr_phi(VM *vm, MirInstrPhi *phi)
 	BL_ASSERT(phi->incoming_blocks && phi->incoming_values);
 	BL_ASSERT(phi->incoming_blocks->size == phi->incoming_values->size);
 
-	const size_t c = phi->incoming_values->size;
+	const usize c = phi->incoming_values->size;
 	BL_ASSERT(c > 0);
 
 	MirInstr *     value = NULL;
 	MirInstrBlock *block;
-	for (size_t i = 0; i < c; ++i) {
+	for (usize i = 0; i < c; ++i) {
 		value = phi->incoming_values->data[i];
 		block = (MirInstrBlock *)phi->incoming_blocks->data[i];
 
@@ -1709,8 +1709,8 @@ interp_instr_cast(VM *vm, MirInstrCast *cast)
 	case MIR_CAST_INTTOPTR:
 	case MIR_CAST_PTRTOINT: {
 		/* noop for same sizes */
-		const size_t src_size  = src_type->store_size_bytes;
-		const size_t dest_size = dest_type->store_size_bytes;
+		const usize src_size  = src_type->store_size_bytes;
+		const usize dest_size = dest_type->store_size_bytes;
 
 		if (src_size != dest_size) {
 			/* trunc or zero extend */
@@ -1953,8 +1953,8 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 		VMStackPtr value_ptr;
 		TSA_FOREACH(values, value)
 		{
-			const size_t value_size = value->value.type->store_size_bytes;
-			VMStackPtr   dest       = arr_tmp_ptr + i * value_size;
+			const usize value_size = value->value.type->store_size_bytes;
+			VMStackPtr  dest       = arr_tmp_ptr + i * value_size;
 
 			if (value->comptime) {
 				copy_comptime_to_stack(vm, dest, &value->value);
@@ -2295,7 +2295,7 @@ interp_instr_binop(VM *vm, MirInstrBinop *binop)
 	read_value(&lhs, lhs_ptr, type);
 	read_value(&rhs, rhs_ptr, type);
 
-	const size_t s = type->store_size_bytes;
+	const usize s = type->store_size_bytes;
 
 	switch (type->kind) {
 	case MIR_TYPE_ENUM:
@@ -2385,7 +2385,7 @@ interp_instr_unop(VM *vm, MirInstrUnop *unop)
 	switch (type->kind) {
 	case MIR_TYPE_BOOL:
 	case MIR_TYPE_INT: {
-		const size_t s = type->store_size_bytes;
+		const usize s = type->store_size_bytes;
 		if (type->data.integer.is_signed) {
 			switch (s) {
 				unop_case(unop->op, value, result, v_s8);
@@ -2409,7 +2409,7 @@ interp_instr_unop(VM *vm, MirInstrUnop *unop)
 	}
 
 	case MIR_TYPE_REAL: {
-		const size_t s = type->store_size_bytes;
+		const usize s = type->store_size_bytes;
 
 		switch (s) {
 			unop_case(unop->op, value, result, v_f32);
@@ -2435,7 +2435,7 @@ interp_instr_unop(VM *vm, MirInstrUnop *unop)
 
 /* public */
 void
-vm_init(VM *vm, Assembly *assembly, size_t stack_size)
+vm_init(VM *vm, Assembly *assembly, usize stack_size)
 {
 	if (stack_size == 0) BL_ABORT("invalid frame stack size");
 

@@ -1007,7 +1007,7 @@ static MirVar *
 gen_RTTI(Context *cnt, MirType *type);
 
 static MirConstValue *
-gen_RTTI_base(Context *cnt, s32 kind, size_t size_bytes);
+gen_RTTI_base(Context *cnt, s32 kind, usize size_bytes);
 
 static MirVar *
 gen_RTTI_empty(Context *cnt, MirType *type, MirType *rtti_type);
@@ -2128,7 +2128,7 @@ init_llvm_type_bool(Context *cnt, MirType *type)
 	    llvm_di_create_basic_type(cnt->analyze.llvm_di_builder, name, 8, DW_ATE_boolean);
 }
 
-static inline size_t
+static inline usize
 struct_split_fit(Context *cnt, MirType *struct_type, u32 bound, u32 *start)
 {
 	s64 so     = mir_get_struct_elem_offest(cnt->assembly, struct_type, *start);
@@ -2189,16 +2189,16 @@ init_llvm_type_fn(Context *cnt, MirType *type)
 			if (builder.options.reg_split && mir_is_composit_type(arg->type)) {
 				LLVMContextRef llvm_cnt = cnt->assembly->llvm.cnt;
 				u32            start    = 0;
-				size_t         low      = 0;
-				size_t         high     = 0;
+				usize          low      = 0;
+				usize          high     = 0;
 
 				if (!has_byval) has_byval = true;
 
-				low = struct_split_fit(cnt, arg->type, sizeof(size_t), &start);
+				low = struct_split_fit(cnt, arg->type, sizeof(usize), &start);
 
 				if (start < arg->type->data.strct.members->size)
-					high = struct_split_fit(
-					    cnt, arg->type, sizeof(size_t), &start);
+					high =
+					    struct_split_fit(cnt, arg->type, sizeof(usize), &start);
 
 				if (start < arg->type->data.strct.members->size) {
 					arg->llvm_easgm = LLVM_EASGM_BYVAL;
@@ -2343,8 +2343,8 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 	TSmallArray_MemberPtr *members = type->data.strct.members;
 	BL_ASSERT(members);
 
-	const bool   is_packed = type->data.strct.is_packed;
-	const size_t memc      = members->size;
+	const bool  is_packed = type->data.strct.is_packed;
+	const usize memc      = members->size;
 	BL_ASSERT(memc > 0);
 	TSmallArray_LLVMType llvm_members;
 	tsa_init(&llvm_members);
@@ -2395,7 +2395,7 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 		struct_line        = (unsigned)location->line;
 	}
 
-	LLVMMetadataRef llvm_scope = type->data.strct.scope->llvm_di_meta;
+	LLVMMetadataRef llvm_scope  = type->data.strct.scope->llvm_di_meta;
 	const char *    struct_name = "<implicit_struct>";
 	if (type->user_id) {
 		struct_name = type->user_id->str;
@@ -2419,7 +2419,7 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 
 		default:
 			/* use default implicit name */
-			break; 
+			break;
 		}
 	}
 
@@ -2853,8 +2853,8 @@ get_cast_op(MirType *from, MirType *to)
 {
 	BL_ASSERT(from);
 	BL_ASSERT(to);
-	const size_t fsize = from->size_bits;
-	const size_t tsize = to->size_bits;
+	const usize fsize = from->size_bits;
+	const usize tsize = to->size_bits;
 
 	if (type_cmp(from, to)) return MIR_CAST_NONE;
 
@@ -4104,14 +4104,14 @@ analyze_instr_phi(Context *cnt, MirInstrPhi *phi)
 	BL_ASSERT(phi->incoming_blocks && phi->incoming_values);
 	BL_ASSERT(phi->incoming_values->size == phi->incoming_blocks->size);
 
-	const size_t count = phi->incoming_values->size;
+	const usize count = phi->incoming_values->size;
 
 	bool       comptime = true;
 	MirInstr **value_ref;
 	MirInstr * block;
 	MirType *  type = NULL;
 
-	for (size_t i = 0; i < count; ++i) {
+	for (usize i = 0; i < count; ++i) {
 		value_ref = &phi->incoming_values->data[i];
 		block     = phi->incoming_blocks->data[i];
 		BL_ASSERT(block && block->kind == MIR_INSTR_BLOCK)
@@ -4190,7 +4190,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 			break;
 		}
 
-		if (values->size != (size_t)type->data.array.len) {
+		if (values->size != (usize)type->data.array.len) {
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_INITIALIZER,
 			            cmp->base.node->location,
@@ -4206,7 +4206,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 
 		/* Else iterate over values */
 		MirInstr **value_ref;
-		for (size_t i = 0; i < values->size; ++i) {
+		for (usize i = 0; i < values->size; ++i) {
 			value_ref = &values->data[i];
 
 			if (analyze_slot(cnt,
@@ -4236,7 +4236,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 			break;
 		}
 
-		const size_t memc = type->data.strct.members->size;
+		const usize memc = type->data.strct.members->size;
 		if (values->size != memc) {
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_INITIALIZER,
@@ -4317,7 +4317,7 @@ analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 
 	type = create_type_struct_special(cnt, MIR_TYPE_VARGS, NULL, create_type_ptr(cnt, type));
 
-	const size_t valc = values->size;
+	const usize valc = values->size;
 
 	if (valc > 0) {
 		/* Prepare tmp array for values */
@@ -4335,7 +4335,7 @@ analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 	MirInstr **value;
 	bool       is_valid = true;
 
-	for (size_t i = 0; i < valc && is_valid; ++i) {
+	for (usize i = 0; i < valc && is_valid; ++i) {
 		value = &values->data[i];
 
 		if (analyze_slot(cnt, &analyze_slot_conf_full, value, vargs->type) !=
@@ -5059,12 +5059,12 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 
 	TSmallArray_ArgPtr *args = NULL;
 	if (type_fn->args) {
-		const size_t argc = type_fn->args->size;
-		args              = create_sarr(TSmallArray_ArgPtr, cnt->assembly);
+		const usize argc = type_fn->args->size;
+		args             = create_sarr(TSmallArray_ArgPtr, cnt->assembly);
 
 		MirInstrDeclArg **arg_ref;
 		MirArg *          arg;
-		for (size_t i = 0; i < argc; ++i) {
+		for (usize i = 0; i < argc; ++i) {
 			BL_ASSERT(type_fn->args->data[i]->kind == MIR_INSTR_DECL_ARG);
 			arg_ref = (MirInstrDeclArg **)&type_fn->args->data[i];
 			BL_ASSERT((*arg_ref)->base.comptime);
@@ -5189,11 +5189,11 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 		MirInstrDeclMember *decl_member;
 		MirType *           member_type;
 		Scope *             scope = type_struct->scope;
-		const size_t        memc  = type_struct->members->size;
+		const usize         memc  = type_struct->members->size;
 
 		members = create_sarr(TSmallArray_MemberPtr, cnt->assembly);
 
-		for (size_t i = 0; i < memc; ++i) {
+		for (usize i = 0; i < memc; ++i) {
 			member_instr = &type_struct->members->data[i];
 
 			if (analyze_slot(cnt, &analyze_slot_conf_basic, member_instr, NULL) !=
@@ -5949,8 +5949,8 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 	/* validate arguments */
 	const bool is_vargs = type->data.fn.is_vargs;
 
-	size_t       callee_argc = type->data.fn.args ? type->data.fn.args->size : 0;
-	const size_t call_argc   = call->args ? call->args->size : 0;
+	usize       callee_argc = type->data.fn.args ? type->data.fn.args->size : 0;
+	const usize call_argc   = call->args ? call->args->size : 0;
 
 	if (is_vargs) {
 		/* This is gonna be tricky... */
@@ -5976,7 +5976,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 		vargs_type = mir_deref_type(vargs_type);
 
 		/* Prepare vargs values. */
-		const size_t          vargsc = call_argc - callee_argc;
+		const usize           vargsc = call_argc - callee_argc;
 		TSmallArray_InstrPtr *values = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
 		MirInstr *            vargs  = create_instr_vargs_impl(cnt, vargs_type, values);
 		ref_instr(vargs);
@@ -5987,7 +5987,7 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 			// TODO: check it this is ok!!!
 			// TODO: check it this is ok!!!
 			// TODO: check it this is ok!!!
-			for (size_t i = 0; i < vargsc; ++i) {
+			for (usize i = 0; i < vargsc; ++i) {
 				tsa_push_InstrPtr(values, call->args->data[callee_argc + i]);
 			}
 
@@ -6425,7 +6425,7 @@ analyze(Context *cnt)
 	/* PERFORMANCE: use array??? */
 	TList *       q = &cnt->analyze.queue;
 	AnalyzeResult result;
-	size_t        postpone_loop_count = 0;
+	usize         postpone_loop_count = 0;
 	MirInstr *    ip                  = NULL;
 	MirInstr *    prev_ip             = NULL;
 	bool          skip                = false;
@@ -6555,7 +6555,7 @@ gen_RTTI_var(Context *cnt, MirType *type, MirConstValueData *value)
 }
 
 MirConstValue *
-gen_RTTI_base(Context *cnt, s32 kind, size_t size_bytes)
+gen_RTTI_base(Context *cnt, s32 kind, usize size_bytes)
 {
 	MirType *struct_type = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO);
 	BL_ASSERT(struct_type);
@@ -6873,7 +6873,7 @@ gen_RTTI_fn_arg(Context *cnt, MirArg *arg)
 MirConstValue *
 gen_RTTI_slice_of_fn_args(Context *cnt, TSmallArray_ArgPtr *args)
 {
-	const size_t argc = args ? args->size : 0;
+	const usize argc = args ? args->size : 0;
 
 	MirType *array_type =
 	    create_type_array(cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_FN_ARG), argc);
@@ -7137,7 +7137,7 @@ ast_defer_block(Context *cnt, Ast *block, bool whole_tree)
 	TSmallArray_DeferStack *stack = &cnt->ast.defer_stack;
 	Ast *                   defer;
 
-	for (size_t i = stack->size; i-- > 0;) {
+	for (usize i = stack->size; i-- > 0;) {
 		defer = stack->data[i];
 
 		if (defer->owner_scope == block->owner_scope) {
@@ -7388,7 +7388,7 @@ ast_expr_compound(Context *cnt, Ast *cmp)
 		return append_instr_compound(cnt, cmp, type, NULL);
 	}
 
-	const size_t valc = ast_values->size;
+	const usize valc = ast_values->size;
 
 	BL_ASSERT(ast_type);
 
@@ -7399,7 +7399,7 @@ ast_expr_compound(Context *cnt, Ast *cmp)
 	MirInstr *value;
 
 	/* Values must be appended in reverse order. */
-	for (size_t i = valc; i-- > 0;) {
+	for (usize i = valc; i-- > 0;) {
 		ast_value = ast_values->data[i];
 		value     = ast(cnt, ast_value);
 		BL_ASSERT(value);
@@ -7580,11 +7580,11 @@ ast_expr_call(Context *cnt, Ast *call)
 	/* arguments need to be generated into reverse order due to bytecode call
 	 * conventions */
 	if (ast_args) {
-		const size_t argc = ast_args->size;
+		const usize argc = ast_args->size;
 		tsa_resize_InstrPtr(args, argc);
 		MirInstr *arg;
 		Ast *     ast_arg;
-		for (size_t i = argc; i-- > 0;) {
+		for (usize i = argc; i-- > 0;) {
 			ast_arg = ast_args->data[i];
 			arg     = ast(cnt, ast_arg);
 
@@ -7718,8 +7718,8 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn, Ast *decl_node, bool is_in_gscope, u3
 		Ast *ast_arg;
 		Ast *ast_arg_name;
 
-		const size_t argc = ast_args->size;
-		for (size_t i = argc; i-- > 0;) {
+		const usize argc = ast_args->size;
+		for (usize i = argc; i-- > 0;) {
 			ast_arg = ast_args->data[i];
 			BL_ASSERT(ast_arg->kind == AST_DECL_ARG);
 			ast_arg_name = ast_arg->data.decl.name;
@@ -8056,13 +8056,13 @@ ast_type_fn(Context *cnt, Ast *type_fn)
 
 	TSmallArray_InstrPtr *args = NULL;
 	if (ast_arg_types && ast_arg_types->size) {
-		const size_t c = ast_arg_types->size;
-		args           = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
+		const usize c = ast_arg_types->size;
+		args          = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
 		tsa_resize_InstrPtr(args, c);
 
 		Ast *     ast_arg_type;
 		MirInstr *arg;
-		for (size_t i = c; i-- > 0;) {
+		for (usize i = c; i-- > 0;) {
 			ast_arg_type = ast_arg_types->data[i];
 			arg          = ast(cnt, ast_arg_type);
 			ref_instr(arg);
@@ -8121,7 +8121,7 @@ ast_type_enum(Context *cnt, Ast *type_enum)
 	Ast *               ast_base_type = type_enum->data.type_enm.type;
 	BL_ASSERT(ast_variants);
 
-	const size_t varc = ast_variants->size;
+	const usize varc = ast_variants->size;
 	if (varc == 0) {
 		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_EMPTY_ENUM,
@@ -8167,7 +8167,7 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 
 	BL_ASSERT(ast_members);
 
-	const size_t memc = ast_members->size;
+	const usize memc = ast_members->size;
 	if (memc == 0) {
 		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_EMPTY_STRUCT,
@@ -8444,11 +8444,11 @@ mir_instr_name(MirInstr *instr)
 
 /* public */
 static void
-_type_to_str(char *buf, size_t len, MirType *type, bool prefer_name)
+_type_to_str(char *buf, usize len, MirType *type, bool prefer_name)
 {
 #define append_buf(buf, len, str)                                                                  \
 	{                                                                                          \
-		const size_t filled = strlen(buf);                                                 \
+		const usize filled = strlen(buf);                                                  \
 		snprintf((buf) + filled, (len)-filled, "%s", str);                                 \
 	}
 	if (!buf) return;
@@ -8582,7 +8582,7 @@ _type_to_str(char *buf, size_t len, MirType *type, bool prefer_name)
 }
 
 void
-mir_type_to_str(char *buf, size_t len, MirType *type, bool prefer_name)
+mir_type_to_str(char *buf, usize len, MirType *type, bool prefer_name)
 {
 	if (!buf || !len) return;
 	buf[0] = '\0';

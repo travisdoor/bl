@@ -56,7 +56,7 @@ scope_arenas_terminate(ScopeArenas *arenas)
 }
 
 Scope *
-scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size, struct Location *loc)
+scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, usize size, struct Location *loc)
 {
 	Scope *scope    = arena_alloc(&arenas->scopes);
 	scope->parent   = parent;

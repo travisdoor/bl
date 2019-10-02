@@ -66,9 +66,9 @@ print_trace(void)
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
 #include <execinfo.h>
 	void * tmp[32];
-	size_t size;
+	usize  size;
 	char **strings;
-	size_t i;
+	usize  i;
 
 	size    = backtrace(tmp, TARRAY_SIZE(tmp));
 	strings = backtrace_symbols(tmp, size);

@@ -60,7 +60,7 @@ static void
 add_libs(Context *cnt, TString *buf)
 {
 	NativeLib *lib;
-	for (size_t i = 0; i < cnt->assembly->dl.libs.size; ++i) {
+	for (usize i = 0; i < cnt->assembly->dl.libs.size; ++i) {
 		lib = &tarray_at(NativeLib, &cnt->assembly->dl.libs, i);
 		if (lib->is_internal) continue;
 		if (!lib->user_name) continue;

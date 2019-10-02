@@ -51,8 +51,8 @@ typedef struct VMFrame {
 
 typedef struct VMStack {
 	VMStackPtr            top_ptr;         /* pointer to top of the stack */
-	size_t                used_bytes;      /* size of the used stack in bytes */
-	size_t                allocated_bytes; /* total allocated size of the stack in bytes */
+	usize                 used_bytes;      /* size of the used stack in bytes */
+	usize                 allocated_bytes; /* total allocated size of the stack in bytes */
 	VMFrame *             ra;              /* current frame beginning (return address)*/
 	struct MirInstr *     pc;         /* currently executed instruction (program counter) */
 	struct MirInstrBlock *prev_block; /* used by phi instruction */
@@ -66,7 +66,7 @@ typedef struct VM {
 } VM;
 
 void
-vm_init(VM *vm, struct Assembly *assembly, size_t stack_size);
+vm_init(VM *vm, struct Assembly *assembly, usize stack_size);
 
 void
 vm_terminate(VM *vm);
