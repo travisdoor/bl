@@ -54,4 +54,10 @@ array_delete :: fn (arr: *Array) {
     mem_free(auto arr);
 };
 
+array_push :: fn (arr: *Array, v: Any) {
+};
+
+array_at :: fn (arr: *Array, i: s64) *u8 {
+}
+
 #private
