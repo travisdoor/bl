@@ -33,6 +33,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <tlib/tlib.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -81,7 +82,7 @@ extern "C" {
 typedef enum { LOG_ASSERT, LOG_ABORT, LOG_WARNING, LOG_MSG } bl_log_msg_type_e;
 
 void
-_log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...);
+_log(bl_log_msg_type_e t, const char *file, s32 line, const char *msg, ...);
 
 void
 print_trace(void);
