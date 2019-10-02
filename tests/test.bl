@@ -1,17 +1,9 @@
 /* playground */
 
-#load "std/print.bl"
-
-foo :: fn (a: s32, b: s32) {};
-bar :: fn (a: s32, b: s32) {};
-
-Foo :: struct {
-    i: s32, j: s32 
-};
+#load "experimental/array.bl"
 
 main :: fn () {
-    print("%\n", foo);
-    print("%\n", Foo);
-    return;
+    arr := array_new(s32);
+    array_delete(arr);
 };
 

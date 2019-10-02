@@ -29,9 +29,11 @@
 #load "c.bl"
 #load "debug.bl"
 #load "memory.bl"
+#load "print.bl"
 
 _AllocFn :: * fn (size: usize) *u8;
 _FreeFn :: * fn (p: *u8);
+_PrintLogFn :: * fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32);
 
 // BL global context 
 _Context :: struct {
@@ -40,9 +42,12 @@ _Context :: struct {
 
     /* Defualt memory free function. */
     free_fn: _FreeFn,
+
+    /* Defualt debug log function. */
+    print_log_fn: _PrintLogFn,
 };
 
-_context := {:_Context: &malloc, &free};
+_context := {:_Context: &malloc, &free, &_print_log};
 
 S8_MIN  : s8 : -128;
 S8_MAX  : s8 : 127;

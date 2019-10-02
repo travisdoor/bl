@@ -26,6 +26,54 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#load "std/utils.bl"
+
+/* Print debug log using _context.print_log_fn function. */
+print_log :: fn (format: string, args: ...) {
+    tmp := {:[]Any: args.len, args.ptr };
+    _context.print_log_fn(PrintLogKind.Message, format, tmp, #file, #line);
+};
+
+/* Print debug warning using _context.print_log_fn function. */
+print_warn :: fn (format: string, args: ...) {
+    tmp := {:[]Any: args.len, args.ptr };
+    _context.print_log_fn(PrintLogKind.Warning, format, tmp, #file, #line);
+};
+
+/* Print debug error using _context.print_log_fn function. */
+print_err :: fn (format: string, args: ...) {
+    tmp := {:[]Any: args.len, args.ptr };
+    _context.print_log_fn(PrintLogKind.Error, format, tmp, #file, #line);
+};
+
+/* 
+ * Abort execution and eventually print panic message if there is one specified.
+ * Example:
+ * panic(); // abort without any messages
+ * panic("oops!"); // abort with message prited out.
+ * panic("Failed with error: %", errn); // first argument passed acts like formating string
+ */
+panic :: fn (args: ...) {
+    if args.len == 0 {
+        unreachable;
+    }
+
+    tmp := {:[]Any: args.len, args.ptr };
+    format := "no message";
+
+    arg := args[0];
+    if arg.type_info.kind == TypeKind.String {
+        format = ^cast(*string) arg.data;
+        tmp = {:[]Any:
+                args.len - 1,
+                auto ptr_shift_bytes(auto args.ptr, sizeof(arg))};
+    }
+
+    _context.print_log_fn(PrintLogKind.Panic, format, tmp, "", 0);
+
+    unreachable;
+};
+
 assert :: fn (cond: bool) {
     if !cond {
         unreachable;
