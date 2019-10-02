@@ -29,32 +29,53 @@
 #ifndef BL_ASSEMBLY_BL
 #define BL_ASSEMBLY_BL
 
+#include "arena.h"
+#include "mir.h"
 #include "scope.h"
 #include "unit.h"
-#include <bobject/containers/array.h>
-#include <bobject/containers/htbl.h>
-#include <bobject/containers/list.h>
 #include <dyncall.h>
 #include <dynload.h>
-#include <llvm-c/Core.h>
-#include <llvm-c/ExecutionEngine.h>
 
 struct MirModule;
+struct Builder;
 
 typedef struct Assembly {
-	BArray *          units;      /* array of all units in assembly */
-	BHashTable *      unit_cache; /* cache for loading only unique units */
-	BHashTable *      link_cache; /* all linked externals libraries passed to linker */
-	BHashTable *      type_table; /* type table key: type ID, value: *MirType */
-	char *            name;       /* assembly name */
-	Scope *           gscope;     /* global scope of the assembly */
-	struct MirModule *mir_module;
+	struct {
+		ScopeArenas scope;
+		MirArenas   mir;
+		Arena       ast;
+		Arena       array;       /* used for all TArrays */
+		Arena       small_array; /* used for all SmallArrays */
+	} arenas;
+
+	struct {
+		TArray global_instrs; // All global instructions.
+		TArray RTTI_tmp_vars; // Temporary variables used by RTTI.
+	} MIR;
+
+	struct {
+		LLVMModuleRef        module;     // LLVM Module.
+		LLVMContextRef       cnt;        // LLVM Context.
+		LLVMTargetDataRef    TD;         // LLVM Target data.
+		LLVMTargetMachineRef TM;         // LLVM Machine.
+		char *               triple;     // LLVM triple.
+		LLVMMetadataRef      di_meta;    // LLVM Compile unit DI meta (optional)
+		LLVMDIBuilderRef     di_builder; // LLVM debug information builder
+	} llvm;
 
 	/* DynCall/Lib data used for external method execution in compile time */
 	struct {
-		BArray *  libs;
+		TArray    lib_paths;
+		TArray    libs;
 		DCCallVM *vm;
 	} dl;
+
+	TArray      units;      /* array of all units in assembly */
+	THashTable  unit_cache; /* cache for loading only unique units */
+	THashTable  link_cache; /* all linked externals libraries passed to linker */
+	THashTable  type_table; /* type table key: type ID, value: *MirType */
+	char *      name;       /* assembly name */
+	Scope *     gscope;     /* global scope of the assembly */
 } Assembly;
 
 typedef struct NativeLib {
@@ -63,7 +84,7 @@ typedef struct NativeLib {
 	const char *  user_name;
 	char *        filename;
 	char *        filepath;
-	char *        dirpath;
+	char *        dir;
 	bool          is_internal;
 } NativeLib;
 

@@ -84,5 +84,6 @@ endif()
 
 add_subdirectory(dynload)
 add_subdirectory(dyncall)
+add_subdirectory(dyncallback)
 
 

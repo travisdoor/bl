@@ -1,0 +1,18 @@
+#load "std/debug.bl"
+#load "std/string.bl"
+
+#test "strings" {
+    s1 := string_new();
+    assert(s1.ptr != null);
+    assert(s1.len == 0);
+
+    string_append(&s1, "foo");
+    assert(string_compare("foo", s1));
+
+    string_append(&s1, 12);
+    assert(string_compare("foo12", s1));
+
+    string_append(&s1, true);
+    assert(string_compare("foo12true", s1));
+
+};

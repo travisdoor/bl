@@ -31,6 +31,7 @@
 #include "builder.h"
 #include "error.h"
 #include "messages.h"
+#include "threading.h"
 #include "unit.h"
 #include <locale.h>
 #include <stdio.h>
@@ -39,31 +40,6 @@
 char *ENV_EXEC_DIR      = NULL;
 char *ENV_LIB_DIR       = NULL;
 char *ENV_CONF_FILEPATH = NULL;
-
-static void
-print_help(void)
-{
-	fprintf(stdout,
-	        "Usage\n\n"
-	        "  blc [options] <source-files>\n\n"
-	        "Options\n"
-	        "  -h, -help           = Print usage information and exit.\n"
-	        "  -r, -run            = Execute 'main' method in compile time.\n"
-	        "  -rt, -run-tests     = Execute all unit tests in compile time.\n"
-	        "  -emit-llvm          = Write LLVM-IR to file.\n"
-	        "  -emit-mir           = Write MIR to file.\n"
-	        "  -ast-dump           = Print AST.\n"
-	        "  -lex-dump           = Print output of lexer.\n"
-	        "  -mir-pre-dump       = Print output of MIR pre analyze stage.\n"
-	        "  -mir-post-dump      = Print output of MIR post analyze stage.\n"
-	        "  -syntax-only        = Check syntax and exit.\n"
-	        "  -no-bin             = Don't write binary to disk.\n"
-	        "  -no-warning         = Ignore all warnings.\n"
-	        "  -verbose            = Verbose mode.\n"
-	        "  -no-api             = Don't load internal api.\n"
-	        "  -force-test-to-llvm = Force llvm generation of unit tests.\n"
-	        "  -configure          = Generate config file.\n");
-}
 
 static void
 free_env(void)
@@ -79,7 +55,7 @@ setup_env(void)
 	char tmp[PATH_MAX] = {0};
 
 	if (!get_current_exec_dir(tmp, PATH_MAX)) {
-		bl_abort("Cannot locate compiler executable path.");
+		BL_ABORT("Cannot locate compiler executable path.");
 	}
 
 	ENV_EXEC_DIR = strdup(tmp);
@@ -87,7 +63,7 @@ setup_env(void)
 	strcat(tmp, PATH_SEPARATOR ".." PATH_SEPARATOR);
 	strcat(tmp, BL_CONF_FILE);
 
-	if (strlen(tmp) == 0) bl_abort("Invalid conf file path.");
+	if (strlen(tmp) == 0) BL_ABORT("Invalid conf file path.");
 	ENV_CONF_FILEPATH = strdup(tmp);
 	atexit(free_env);
 }
@@ -114,78 +90,57 @@ generate_conf(void)
 }
 
 int
-main(int32_t argc, char *argv[])
+main(s32 argc, char *argv[])
 {
+    const char *help_text =
+#include "help_text.txt"
+	    ;
+
 	setlocale(LC_ALL, "C");
 	setup_env();
-
-	uint32_t build_flags = BUILDER_LOAD_FROM_FILE;
+	main_thread_id = thread_get_id();
 
 	puts("Compiler version: " BL_VERSION " (pre-alpha)");
 #ifdef BL_DEBUG
 	puts("Running in DEBUG mode");
+	printf("Main thread ID: 0x%llx\n", main_thread_id);
 #endif
 
-#define arg_is(_arg) (strcmp(&argv[optind][1], _arg) == 0)
+	builder_init();
+	s32 next_arg = builder_parse_options(argc, argv);
+	if (next_arg == -1) {
+		fprintf(stdout, "%s", help_text);
+		builder_terminate();
 
-	bool    help      = false;
-	bool    configure = false;
-	int32_t optind;
-	for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
-		if (arg_is("ast-dump")) {
-			build_flags |= BUILDER_PRINT_AST;
-		} else if (arg_is("h") || arg_is("help")) {
-			help = true;
-		} else if (arg_is("lex-dump")) {
-			build_flags |= BUILDER_PRINT_TOKENS;
-		} else if (arg_is("mir-pre-dump")) {
-			build_flags |= BUILDER_VERBOSE_MIR_PRE;
-		} else if (arg_is("mir-post-dump")) {
-			build_flags |= BUILDER_VERBOSE_MIR_POST;
-		} else if (arg_is("syntax-only")) {
-			build_flags |= BUILDER_SYNTAX_ONLY;
-		} else if (arg_is("emit-llvm")) {
-			build_flags |= BUILDER_EMIT_LLVM;
-		} else if (arg_is("emit-mir")) {
-			build_flags |= BUILDER_EMIT_MIR;
-		} else if (arg_is("r") || arg_is("run")) {
-			build_flags |= BUILDER_RUN;
-		} else if (arg_is("rt") || arg_is("run-tests")) {
-			build_flags |= BUILDER_RUN_TESTS;
-		} else if (arg_is("no-bin")) {
-			build_flags |= BUILDER_NO_BIN;
-		} else if (arg_is("no-warning")) {
-			build_flags |= BUILDER_NO_WARN;
-		} else if (arg_is("verbose")) {
-			build_flags |= BUILDER_VERBOSE;
-		} else if (arg_is("no-api")) {
-			build_flags |= BUILDER_NO_API;
-		} else if (arg_is("force-test-to-llvm")) {
-			build_flags |= BUILDER_FORCE_TEST_LLVM;
-		} else if (arg_is("configure")) {
-			configure = true;
-		} else {
-			msg_error("invalid params '%s'", &argv[optind][1]);
-			print_help();
-			exit(EXIT_FAILURE);
-		}
+		exit(EXIT_FAILURE);
 	}
-	argv += optind;
 
-#undef arg_is
+	/* We choose correct optimization level based on debug mode if user don't specify one
+	 * explicitly. */
+	if (builder.options.opt_level == OPT_NOT_SPECIFIED) {
+		builder.options.opt_level = builder.options.debug_build ? OPT_NONE : OPT_DEFAULT;
+	}
 
-	if (configure) {
+	/* Run configure if needed. */
+	if (builder.options.run_configure) {
 		if (generate_conf() != 0) {
 			msg_error("Cannot generate '%s' file. If you are compiler developer please "
 			          "run configuration script in 'install' directory.",
 			          ENV_CONF_FILEPATH);
+			builder_terminate();
 			exit(EXIT_FAILURE);
 		}
+
+		builder_terminate();
 		exit(EXIT_SUCCESS);
 	}
 
-	if (help) {
-		print_help();
+	argv += next_arg;
+
+	if (builder.options.print_help) {
+        fprintf(stdout,  "%s",help_text);
+		builder_terminate();
+
 		exit(EXIT_SUCCESS);
 	}
 
@@ -193,19 +148,22 @@ main(int32_t argc, char *argv[])
 		msg_error("Configuration file '%s' not found, run 'blc -configure' to "
 		          "generate one.",
 		          ENV_CONF_FILEPATH);
+
+		builder_terminate();
 		exit(EXIT_FAILURE);
 	}
 
 	if (*argv == NULL) {
 		msg_warning("nothing to do, no input files, sorry :(");
+
+		builder_terminate();
 		exit(EXIT_SUCCESS);
 	}
 
-	Builder *builder = builder_new();
-	builder_load_conf_file(builder, ENV_CONF_FILEPATH);
+	builder_load_conf_file(ENV_CONF_FILEPATH);
 
 	/* setup LIB_DIR */
-	ENV_LIB_DIR = strdup(conf_data_get_str(builder->conf, CONF_LIB_DIR_KEY));
+	ENV_LIB_DIR = strdup(conf_data_get_str(builder.conf, CONF_LIB_DIR_KEY));
 
 	/*
 	 * HACK: use name of first file as assembly name
@@ -241,14 +199,13 @@ main(int32_t argc, char *argv[])
 		argv++;
 	}
 
-	int32_t state = builder_compile(builder, assembly, build_flags);
+	s32 state = builder_compile(assembly);
 
 	char date[26];
 	date_time(date, 26, "%d-%m-%Y %H:%M:%S");
 	msg_log("\nFinished at %s", date);
 
 	assembly_delete(assembly);
-	builder_delete(builder);
-
+	builder_terminate();
 	return state;
 }

@@ -1,0 +1,49 @@
+Player :: struct {
+    base: Entity
+};
+
+player_new :: fn (game: *Game, id: s32) *Entity {
+    self := cast(*Player) malloc(sizeof(Player));
+
+    initial_position := {:Vec2: 50.f, 200.f};
+    size := {:Vec2: 100.f, 43.f};
+
+    entity_init(
+        cast(*Entity) self,
+        game,
+        EntityKind.Player,
+        id,
+        TextureId.Player,
+        &initial_position,
+        &size,
+        0.2f);
+
+    self.base.f_dtor = null;
+    self.base.f_update = &player_update;
+
+    return cast(*Entity) self;
+};
+
+player_update :: fn (_self: *u8, dt: f32) {
+    self := cast(*Player) _self;
+    self.base.speed.x = lerp(self.base.speed.x, self.base.dir.x * self.base.max_speed, dt * 0.005f);
+    self.base.speed.y = lerp(self.base.speed.y, self.base.dir.y * self.base.max_speed, dt * 0.005f);
+};
+
+player_handle_input :: fn (self: *Player) {
+    if SDL_KeyPressed(SDL_Scancode.A) || SDL_KeyPressed(SDL_Scancode.LEFT)  {
+        self.base.dir.x = -1.0f;
+    } else if SDL_KeyPressed(SDL_Scancode.D) || SDL_KeyPressed(SDL_Scancode.RIGHT) {
+        self.base.dir.x = 1.f;
+    } else {
+        self.base.dir.x = 0.f;
+    }
+
+    if SDL_KeyPressed(SDL_Scancode.S) || SDL_KeyPressed(SDL_Scancode.DOWN) {
+        self.base.dir.y = 1.f;
+    } else if SDL_KeyPressed(SDL_Scancode.W) || SDL_KeyPressed(SDL_Scancode.UP)  {
+        self.base.dir.y = -1.f;
+    } else {
+        self.base.dir.y = 0.f;
+    }
+};

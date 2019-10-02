@@ -68,3 +68,4 @@ tests/pdisk-generator
 src/config.h
 install/uninstall.sh
 /etc/
+*.txt.user

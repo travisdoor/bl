@@ -33,19 +33,19 @@
 void
 tokens_init(Tokens *tokens)
 {
-	tokens->buf = bo_array_new(sizeof(Token));
+	tarray_init(&tokens->buf, sizeof(Token));
 }
 
 void
 tokens_terminate(Tokens *tokens)
 {
-	bo_unref(tokens->buf);
+	tarray_terminate(&tokens->buf);
 }
 
 void
 tokens_push(Tokens *tokens, Token *t)
 {
-	bo_array_push_back(tokens->buf, *t);
+	tarray_push(&tokens->buf, *t);
 }
 
 Token *
@@ -63,19 +63,19 @@ tokens_peek_2nd(Tokens *tokens)
 Token *
 tokens_peek_last(Tokens *tokens)
 {
-	const size_t i = bo_array_size(tokens->buf);
+	const size_t i = tokens->buf.size;
 	if (i == 0) {
 		return NULL;
 	}
 
-	return &bo_array_at(tokens->buf, i, Token);
+	return &tarray_at(Token, &tokens->buf, i);
 }
 
 Token *
 tokens_peek_prev(Tokens *tokens)
 {
 	if (tokens->iter > 0) {
-		return &bo_array_at(tokens->buf, tokens->iter - 1, Token);
+		return &tarray_at(Token, &tokens->buf, tokens->iter - 1);
 	}
 	return NULL;
 }
@@ -84,7 +84,7 @@ Token *
 tokens_peek_nth(Tokens *tokens, size_t n)
 {
 	const size_t i = tokens->iter + n - 1;
-	if (i < bo_array_size(tokens->buf)) return &bo_array_at(tokens->buf, i, Token);
+	if (i < tokens->buf.size) return &tarray_at(Token, &tokens->buf, i);
 
 	return NULL;
 }
@@ -92,8 +92,7 @@ tokens_peek_nth(Tokens *tokens, size_t n)
 Token *
 tokens_consume(Tokens *tokens)
 {
-	if (tokens->iter < bo_array_size(tokens->buf))
-		return &bo_array_at(tokens->buf, tokens->iter++, Token);
+	if (tokens->iter < tokens->buf.size) return &tarray_at(Token, &tokens->buf, tokens->iter++);
 
 	return NULL;
 }
@@ -102,8 +101,8 @@ Token *
 tokens_consume_if(Tokens *tokens, Sym sym)
 {
 	Token *tok;
-	if (tokens->iter < bo_array_size(tokens->buf)) {
-		tok = &bo_array_at(tokens->buf, tokens->iter, Token);
+	if (tokens->iter < tokens->buf.size) {
+		tok = &tarray_at(Token, &tokens->buf, tokens->iter);
 		if (tok->sym == sym) {
 			tokens->iter++;
 			return tok;
@@ -116,41 +115,41 @@ tokens_consume_if(Tokens *tokens, Sym sym)
 bool
 tokens_current_is(Tokens *tokens, Sym sym)
 {
-	return (&bo_array_at(tokens->buf, tokens->iter, Token))->sym == sym;
+	return (&tarray_at(Token, &tokens->buf, tokens->iter))->sym == sym;
 }
 
 bool
 tokens_previous_is(Tokens *tokens, Sym sym)
 {
 	if (tokens->iter > 0)
-		return (&bo_array_at(tokens->buf, tokens->iter - 1, Token))->sym == sym;
+		return (&tarray_at(Token, &tokens->buf, tokens->iter - 1))->sym == sym;
 	return false;
 }
 
 bool
 tokens_next_is(Tokens *tokens, Sym sym)
 {
-	return (&bo_array_at(tokens->buf, tokens->iter + 1, Token))->sym == sym;
+	return (&tarray_at(Token, &tokens->buf, tokens->iter + 1))->sym == sym;
 }
 
 bool
 tokens_current_is_not(Tokens *tokens, Sym sym)
 {
-	return (&bo_array_at(tokens->buf, tokens->iter, Token))->sym != sym;
+	return (&tarray_at(Token, &tokens->buf, tokens->iter))->sym != sym;
 }
 
 bool
 tokens_next_is_not(Tokens *tokens, Sym sym)
 {
-	return (&bo_array_at(tokens->buf, tokens->iter + 1, Token))->sym != sym;
+	return (&tarray_at(Token, &tokens->buf, tokens->iter + 1))->sym != sym;
 }
 
 bool
-tokens_is_seq(Tokens *tokens, int32_t cnt, ...)
+tokens_is_seq(Tokens *tokens, size_t cnt, ...)
 {
-	bool   ret = true;
-	size_t c   = bo_array_size(tokens->buf);
-	Sym    sym = SYM_EOF;
+	bool  ret = true;
+	usize c   = tokens->buf.size;
+	Sym   sym = SYM_EOF;
 	cnt += (int)tokens->iter;
 
 	va_list valist;
@@ -158,7 +157,7 @@ tokens_is_seq(Tokens *tokens, int32_t cnt, ...)
 
 	for (size_t i = tokens->iter; i < cnt && i < c; ++i) {
 		sym = va_arg(valist, Sym);
-		if ((&bo_array_at(tokens->buf, i, Token))->sym != sym) {
+		if ((&tarray_at(Token, &tokens->buf, i))->sym != sym) {
 			ret = false;
 			break;
 		}
@@ -186,16 +185,16 @@ tokens_reset_iter(Tokens *tokens)
 	tokens->iter = 0;
 }
 
-BArray *
+TArray *
 tokens_get_all(Tokens *tokens)
 {
-	return tokens->buf;
+	return &tokens->buf;
 }
 
 int
 tokens_count(Tokens *tokens)
 {
-	return (int)bo_array_size(tokens->buf);
+	return (int)tokens->buf.size;
 }
 
 void
@@ -226,7 +225,7 @@ tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal)
 bool
 tokens_lookahead(Tokens *tokens, TokenCmpFunc cmp)
 {
-	assert(cmp);
+	BL_ASSERT(cmp);
 	bool                 found  = false;
 	size_t               marker = tokens_get_marker(tokens);
 	Token *              curr   = NULL;

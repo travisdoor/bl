@@ -30,8 +30,7 @@
 #include "stages.h"
 
 typedef struct {
-	Builder *builder;
-	Tokens * tokens;
+	Tokens *tokens;
 } Context;
 
 static bool
@@ -39,10 +38,9 @@ parse_key_value_rq(Context *cnt)
 {
 	Token *tok_ident = tokens_consume(cnt->tokens);
 	if (token_is_not(tok_ident, SYM_IDENT)) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_UNEXPECTED_SYMBOL,
-		            &tok_ident->src,
+		            &tok_ident->location,
 		            BUILDER_CUR_WORD,
 		            "Expected key identificator.");
 		return false;
@@ -54,18 +52,17 @@ parse_key_value_rq(Context *cnt)
 
 	switch (tok_value->sym) {
 	case SYM_STRING:
-		tmp.kind  = CDV_STRING;
-		tmp.v_str = tok_value->value.str;
+		tmp.kind       = CDV_STRING;
+		tmp.data.v_str = tok_value->value.str;
 		break;
 	case SYM_NUM:
-		tmp.kind  = CDV_INT;
-		tmp.v_int = tok_value->value.u;
+		tmp.kind       = CDV_INT;
+		tmp.data.v_int = (int)tok_value->value.u;
 		break;
 	default:
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_UNEXPECTED_SYMBOL,
-		            &tok_ident->src,
+		            &tok_ident->location,
 		            BUILDER_CUR_AFTER,
 		            "Expected value after key identificator.");
 
@@ -74,16 +71,15 @@ parse_key_value_rq(Context *cnt)
 	}
 
 	const char *key = tok_ident->value.str;
-	assert(key);
-	if (conf_data_has_key(cnt->builder->conf, key)) {
-		builder_msg(cnt->builder,
-		            BUILDER_MSG_ERROR,
+	BL_ASSERT(key);
+	if (conf_data_has_key(builder.conf, key)) {
+		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_DUPLICATE_SYMBOL,
-		            &tok_ident->src,
+		            &tok_ident->location,
 		            BUILDER_CUR_WORD,
 		            "Duplicate symbol in conf scope.");
 	} else {
-		conf_data_add(cnt->builder->conf, key, &tmp);
+		conf_data_add(builder.conf, key, &tmp);
 	}
 
 	return true;
@@ -98,9 +94,9 @@ parse_top_level(Context *cnt)
 }
 
 void
-conf_parser_run(Builder *builder, Unit *unit)
+conf_parser_run(Unit *unit)
 {
-	Context cnt = {.builder = builder, .tokens = &unit->tokens};
+	Context cnt = {.tokens = &unit->tokens};
 
 	parse_top_level(&cnt);
 }

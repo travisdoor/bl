@@ -35,6 +35,10 @@
 #include "error.h"
 #include "messages.h"
 #include <limits.h>
+#include <stddef.h>
+#include <tlib/tlib.h>
+
+struct Assembly;
 
 #if defined(BL_COMPILER_CLANG) || defined(BL_COMPILER_GNUC)
 #define DEPRECATED __attribute__((deprecated))
@@ -42,41 +46,28 @@
 #define DEPRECATED
 #endif
 
-#define array_size(_array) (sizeof(_array) / sizeof(_array[0]))
+#define IS_FLAG(_v, _flag) ((bool)((_v & _flag) == _flag))
+#define IS_NOT_FLAG(_v, _flag) ((bool)((_v & _flag) != _flag))
 
-#define is_flag(_v, _flag) ((bool)((_v & _flag) == _flag))
-
-#define is_not_flag(_v, _flag) ((bool)((_v & _flag) != _flag))
-
-#define barray_foreach(arr, it)                                                                    \
-	if (bo_array_size((arr)))                                                                  \
-		for (size_t i = 0;                                                                 \
-		     i < bo_array_size((arr)) && ((it) = bo_array_at((arr), i, void *));           \
-		     ++i)
-
-#define blist_foreach(list, it)                                                                    \
-	(it) = bo_list_begin((list));                                                              \
-	for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);             \
-	     bo_list_iter_next((list), &(it)))
-
-#define array_foreach(arr, it)                                                                     \
+#define ARRAY_FOREACH(arr, it)                                                                     \
 	for (size_t _keep = 1, i = 0, _size = ARRAY_SIZE((arr)); _keep && i != _size;              \
 	     _keep = !_keep, i++)                                                                  \
 		for (it = (arr)[i]; _keep; _keep = !_keep)
 
-#define bhtbl_foreach(htbl, it)                                                                    \
-	(it) = bo_htbl_begin((htbl));                                                              \
-	for (bo_iterator_t end = bo_htbl_end((htbl)); !bo_iterator_equal(&(it), &end);             \
-	     bo_htbl_iter_next((htbl), &(it)))
+extern u64 main_thread_id;
 
-#define blist_foreach(list, it)                                                                    \
-	(it) = bo_list_begin((list));                                                              \
-	for (bo_iterator_t end = bo_list_end((list)); !bo_iterator_equal(&(it), &end);             \
-	     bo_list_iter_next((list), &(it)))
+TSMALL_ARRAY_TYPE(AstPtr, struct Ast *, 16);
+TSMALL_ARRAY_TYPE(TypePtr, struct MirType *, 16);
+TSMALL_ARRAY_TYPE(MemberPtr, struct MirMember *, 16);
+TSMALL_ARRAY_TYPE(VariantPtr, struct MirVariant *, 16);
+TSMALL_ARRAY_TYPE(ArgPtr, struct MirArg *, 16);
+TSMALL_ARRAY_TYPE(InstrPtr, struct MirInstr *, 16);
+TSMALL_ARRAY_TYPE(ConstValuePtr, struct MirConstValue *, 16);
+TSMALL_ARRAY_TYPE(Char, char, 128);
 
 typedef struct ID {
 	const char *str;
-	uint64_t    hash;
+	u64         hash;
 } ID;
 
 void
@@ -86,13 +77,13 @@ bool
 file_exists(const char *filepath);
 
 const char *
-brealpath(const char *file, char *out, int32_t out_len);
+brealpath(const char *file, char *out, s32 out_len);
 
 bool
 get_dir_from_filepath(char *buf, const size_t l, const char *filepath);
 
 bool
-search_file(const char *filepath, char **out_filepath, char **out_dirpath, const char *wdir);
+get_filename_from_filepath(char *buf, const size_t l, const char *filepath);
 
 bool
 get_current_exec_path(char *buf, size_t buf_size);
@@ -101,7 +92,7 @@ bool
 get_current_exec_dir(char *buf, size_t buf_size);
 
 void
-date_time(char *buf, int32_t len, const char *format);
+date_time(char *buf, s32 len, const char *format);
 
 bool
 is_aligned(const void *p, size_t alignment);
@@ -110,6 +101,31 @@ void
 align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment);
 
 void
-print_bits(int32_t const size, void const *const ptr);
+print_bits(s32 const size, void const *const ptr);
+
+int
+count_bits(u64 n);
+
+void
+platform_lib_name(const char *name, char *buffer, size_t max_len);
+
+/*
+ * Creates BArray inside Assembly arena.
+ * Note: no free is needed.
+ */
+TArray *
+create_arr(struct Assembly *assembly, size_t size);
+
+/*
+ * Creates SmallArray inside Assembly arena.
+ * Note: no free is needed.
+ */
+void *
+_create_sarr(struct Assembly *cnt, size_t arr_size);
+
+u32
+next_pow_2(u32 n);
+
+#define create_sarr(T, Asm) ((T *)_create_sarr((Asm), sizeof(T)))
 
 #endif

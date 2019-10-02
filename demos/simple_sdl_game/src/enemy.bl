@@ -1,0 +1,37 @@
+Enemy :: struct {
+    base: Entity,
+    floating_offset: f32
+};
+
+enemy_new :: fn (game: *Game, id: s32, x: f32, y: f32, speed: f32) *Entity {
+    self := cast(*Enemy) malloc(sizeof(Enemy));
+
+    initial_position := {:Vec2: x, y};
+    size := {:Vec2: 60.f, 85.f};
+
+    entity_init(
+        cast(*Entity) self,
+        game,
+        EntityKind.Enemy,
+        id,
+        TextureId.Balloon,
+        &initial_position,
+        &size,
+        speed);
+
+    self.floating_offset = rand_range(0.f, 10.f);
+    self.base.f_update = &enemy_update;
+    self.base.f_dtor = null;
+
+    return cast(*Entity) self;
+};
+
+enemy_update :: fn (_self: *u8, dt: f32) {
+    self := cast(*Enemy) _self;
+    self.base.speed.y = sinf(cast(f32) SDL_GetTicks() * 0.001f + self.floating_offset) * 0.05f;
+    self.base.speed.x = -self.base.max_speed;
+
+    if self.base.position.x < -self.base.size.x {
+        self.base.position.x = cast(f32) ScreenWidth; 
+    }
+};

@@ -14,6 +14,7 @@ realpath() {
     echo "$REALPATH"
 }
 
+CMD_TOOLS="/Library/Developer/CommandLineTools"
 WDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 echo working directory: $WDIR
 cd $WDIR
@@ -31,8 +32,16 @@ else
     $STATUS=1
 fi
 
+echo "- Looking XCode command line tools"
+if [ -z "$CMD_TOOLS" ]; then
+    echo "  error: Cannot find XCode command line tools. Use 'xcode-select --install' to fix this."
+    $STATUS=1
+else
+    echo "  FOUND - $CMD_TOOLS"
+fi
+
 echo "- Looking for ld"
-LINKER_EXEC=$(which ld run)
+LINKER_EXEC="$CMD_TOOLS/usr/bin/ld"
 if [ -z "$LINKER_EXEC" ]; then
     echo "  error: Cannot find 'ld' linker. You can try to set correct path manually in etc/bl.conf file."
     $STATUS=1
@@ -41,7 +50,7 @@ else
 fi
 
 echo "- Looking for C runtime objects"
-CRT_O="/usr/lib/crt1.o"
+CRT_O="$CMD_TOOLS/SDKs/MacOSX.sdk/usr/lib/crt1.o"
 if [ -e "$CRT_O" ]; then
     echo "  FOUND - $CRT_O"
 else
@@ -57,6 +66,7 @@ printf "/*\n * blc config file\n */\n\n" >> $CONFIG_FILE
 echo LIB_DIR \"$LIB_DIR\" >> $CONFIG_FILE
 echo LINKER_EXEC \"$LINKER_EXEC\" >> $CONFIG_FILE
 echo LINKER_OPT \"$LINKER_OPT\" >> $CONFIG_FILE
+echo LINKER_LIB_PATH \"/usr/lib:/usr/local/lib\" >> $CONFIG_FILE
 
 if [ $STATUS -eq 0 ]; then
     CONFIG_FILE=$(realpath $CONFIG_FILE)

@@ -1,0 +1,57 @@
+* Release 0.5.0 (1st Oct 2019) [57%]
+  - [X] Complete missing erase cases.
+  - [X] LLVM DI fine tunning and globals.
+  - [X] Fix global immutables. 
+  - [ ] Implicit casting array to slice.
+  - [X] Validation of global's initializers to be compile time known.
+  - [ ] Improve documentation.
+  - [X] Defer statement.
+  - [X] Runtime type info. 
+  - [X] First version of LLVM DI. 
+  - [ ] #extern "name"
+  - [X] len in arrays and slices as s64 not u64
+  - [ ] warn about unused casts (auto also) 
+  - [ ] remove ';' at the end of function declaration 
+  - [ ] remove ';' at the end struct and enum
+  - [ ] RTTI for function arguments.
+
+* Ideas 
+  - [X] make builder global
+  - [X] enable implicit casting only to bigger integer type and check signed unsigned also 
+  - [ ] reimplement LLVM-C binding
+  - [X] add MirArg
+  - [ ] document instruction Arg
+  - [ ] pass all structures passed by value as pointers into the functions and make copy inside. 
+  - [ ] support of #extend hash directive for struct inherritance? 
+  - [ ] replace , by ; in structs and enums  
+  - [ ] #flags enum?
+  - [ ] Simple structure inherritance with #using, #base or some keyword?
+  - [ ] Update documentation (we are using recursive git repository)
+  - [ ] Switch to tlib-c 
+
+* Bugs [42%]
+  - [ ] functions pointers passed during comptime execution cannot be used as an callbacks in external functions because they are not compatible with C ABI calling conventions. This will be by the way quite hard to fix :(. http://www.dyncall.org/docs/dyncallback.3.html
+
+  - [X] fn typedef
+    Recognise this as function type definition.
+    T :: fn (i: s32, j: bool) s32; 
+
+  - [ ] Invalid llvm for
+    print("kind %\n", cast(s32) (cast(*TypeInfo) data).kind);
+    print("%\n", call_some_function());
+    
+  - [ ] VK_NULL_HANDLE :: null; cannot be used
+
+  - [X] Wrong initialization of globals with defined type:
+    Foo : u64 : 10;
+    
+  - [ ] Unstable function pointers and invalid error reporting locations.
+  - [X] Create implicit wrapper to match SystemV calling convetions when passing larger arguments by value.
+    - structures smaller than 16B split into two i64, larger use pass byval attribute
+    - add information to externals needed this changes
+  - [ ] System V call conventions are incomplete for returning structures smaller than 16B by value.
+
+
+* parser race conditions
+  - arena_alloc 
+  - create scope

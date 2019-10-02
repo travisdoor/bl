@@ -1,17 +1,22 @@
 cmake_minimum_required(VERSION 3.0)
-project(bl VERSION 0.4.1 LANGUAGES C)
+project(bl VERSION 0.5.0)
 
 # Must use GNUInstallDirs to install libraries into correct
 # locations on all platforms.
 include(GNUInstallDirs)
 
 set(CMAKE_C_STANDARD 99)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 set(HAVE_64_BIT 1)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Set a default build type if none was specified
 set(DEFAULT_BUILD_TYPE "Release")
 set(CMAKE_C_FLAGS_DEBUG "-DBL_DEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-DBL_DEBUG")
+set(USE_SANITIZERS 1)
 
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
@@ -23,11 +28,14 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 set(BL_CONF_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.conf)
 
-add_subdirectory(deps/bobject)
 add_subdirectory(deps/dyncall-1.0)
+add_subdirectory(deps/tlib-c)
 
 # deps
 find_package(LLVM REQUIRED CONFIG)
+
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 set(HEADER_FILES
         src/conf_data.h
@@ -47,6 +55,10 @@ set(HEADER_FILES
         src/mir.h
         src/mir_printer.h
         src/arena.h
+	src/llvm_di.h
+	src/vm.h
+	src/threading.h
+	src/llvm_api.h
         src/ast.h)
 
 set(SOURCE_FILES
@@ -74,46 +86,62 @@ set(SOURCE_FILES
         src/common.c 
         src/mir.c
         src/ir.c
+        src/vm.c
         src/ir_opt.c
         src/mir_printer.c
-        src/ast.c)
-
-add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
+        src/ast.c
+	src/threading.cpp
+	src/llvm_api.cpp
+        src/llvm_di.cpp)
 
 add_definitions(${LLVM_DEFINITIONS})
+add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
+
+llvm_map_components_to_libnames(LLVM_LIBS core support X86 passes)
 
 if (MSVC)
-    llvm_map_components_to_libnames(LLVM_LIBS core all)
-
     target_link_libraries(blc PUBLIC
         shlwapi
-	${LLVM_LIBS}
-	dynload_s
-	dyncall_s
-	bobject
-	${CMAKE_DL_LIBS}
     )
 
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /wd4996 /MDd")
+    # C 
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /wd4996 /MD")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd")
-else()
-    target_link_libraries(blc PUBLIC
-        LLVM
-	dynload_s
-	dyncall_s
-	bobject
-	${CMAKE_DL_LIBS}
-    )
 
+    # CXX 
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /wd4996 /MD")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd")
+else()
+    # C 
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wno-missing-braces -O0 -fsanitize=address -Wdeprecated-declarations")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -O0")
+
+    # CXX 
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG -fno-strict-aliasing -fno-exceptions -fno-rtti")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-strict-aliasing -fno-exceptions -fno-rtti -g -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -O0")
+
+    if (${USE_SANITIZERS})
+	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fsanitize=address -fno-omit-frame-pointer")
+	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_C_FLAGS_RELEASE} -fsanitize=address -fno-omit-frame-pointer")
+	set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address")
+    endif()
 endif()
+
+target_link_libraries(blc PUBLIC
+    dynload_s
+    dyncall_s
+    dyncallback_s
+    tlib
+    ${CMAKE_DL_LIBS}
+    ${LLVM_LIBS}
+)
 
 target_include_directories(blc PRIVATE
     src
     deps/dyncall-1.0/dyncall
     deps/dyncall-1.0/dynload
-    deps/bobject/include
+    deps/dyncall-1.0/dyncallback
+    deps/tlib-c/include
     ${LLVM_INCLUDE_DIRS}
 )
 

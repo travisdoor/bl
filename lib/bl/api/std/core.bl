@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   core.bl 
+// File:   core.bl
 // Author: Martin Dorazil
 // Date:   2/11/19
 //
@@ -28,6 +28,39 @@
 
 #load "c.bl"
 #load "debug.bl"
+#load "memory.bl"
+
+_AllocFn :: * fn (size: usize) *u8;
+_FreeFn :: * fn (p: *u8);
+
+// BL global context 
+_Context :: struct {
+    /* Default memory allocation function. */
+    alloc_fn: _AllocFn,
+
+    /* Defualt memory free function. */
+    free_fn: _FreeFn,
+};
+
+_context := {:_Context: &malloc, &free};
+
+S8_MIN  : s8 : -128;
+S8_MAX  : s8 : 127;
+S16_MIN : s16 : -32768;
+S16_MAX : s16 : 32767;
+S32_MIN : s32 : -2147483648;
+S32_MAX : s32 : 2147483647;
+S64_MIN : s64 : -9223372036854775808;
+S64_MAX : s64 : 9223372036854775807;
+
+U8_MIN  : u8 : 0;
+U8_MAX  : u8 : 255;
+U16_MIN : u16 : 0;
+U16_MAX : u16 : 65535;
+U32_MIN : u32 : 0;
+U32_MAX : u32 : 4294967295;
+U64_MIN : u64 : 0;
+U64_MAX : u64 : 18446744073709551615;
 
 /*
  * TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 
@@ -45,6 +78,7 @@ TypeKind :: enum #compiler {
     Struct :: 9,
     Enum   :: 10,
     Null   :: 11,
+    String :: 12,
 };
 
 /*
@@ -54,13 +88,14 @@ TypeKind :: enum #compiler {
  */
 TypeInfo :: struct #compiler {
     kind: TypeKind,
+    size_bytes: usize
 };
 
 /*
  * Type information for 'type' type.
  */
 TypeInfoType :: struct #compiler {
-    base: TypeInfo
+    base: TypeInfo,
 };
 
 /*
@@ -75,7 +110,8 @@ TypeInfoVoid :: struct #compiler {
  */
 TypeInfoInt :: struct #compiler {
     base: TypeInfo,
-    bitcount: s32, // Bitcount.
+
+    bit_count: s32, // Bitcount.
     is_signed: bool, // True when signed.
 };
 
@@ -84,7 +120,8 @@ TypeInfoInt :: struct #compiler {
  */
 TypeInfoReal :: struct #compiler {
     base: TypeInfo,
-    bitcount: s32 // Bitcount
+
+    bit_count: s32 // Bitcount
 };
 
 /*
@@ -92,9 +129,10 @@ TypeInfoReal :: struct #compiler {
  */
 TypeInfoFn :: struct #compiler {
     base: TypeInfo,
-    args: []*TypeInfo, // Function arguments.
-    ret: *TypeInfo, // Return type.
-    is_vargs: bool // True when function is vargs.
+
+    args: []*TypeInfoFnArg, // Function arguments.
+    ret_type: *TypeInfo, // Return type.
+    is_vargs: bool, // True when function is vargs.
 };
 
 /*
@@ -102,7 +140,8 @@ TypeInfoFn :: struct #compiler {
  */
 TypeInfoPtr :: struct #compiler {
     base: TypeInfo,
-    pointed: *TypeInfo // Type information for pointed type.
+
+    pointee_type: *TypeInfo // Type information for pointed type.
 };
 
 /*
@@ -117,8 +156,10 @@ TypeInfoBool :: struct #compiler {
  */
 TypeInfoArray :: struct #compiler {
     base: TypeInfo,
-    elem: *TypeInfo, // Element type information.
-    len: usize // Array lenght.
+
+    name: string,
+    elem_type: *TypeInfo, // Element type information.
+    len: s64 // Array lenght.
 };
 
 /*
@@ -126,7 +167,10 @@ TypeInfoArray :: struct #compiler {
  */
 TypeInfoStruct :: struct #compiler {
     base: TypeInfo,
-    members: []*TypeInfo, // Structure members type information.
+
+    name: string, // struct name if there is one
+    members: []TypeInfoStructMember, // Structure members type information.
+    is_slice: bool
 };
 
 /*
@@ -134,7 +178,10 @@ TypeInfoStruct :: struct #compiler {
  */
 TypeInfoEnum :: struct #compiler {
     base: TypeInfo,
-    base_type: *TypeInfo // Enum base-type type information.
+    
+    name: string, // enum name if there is one
+    base_type: *TypeInfo, // Enum base-type type information.
+    variants: []TypeInfoEnumVariant
 };
 
 /*
@@ -144,165 +191,33 @@ TypeInfoNull :: struct #compiler {
     base: TypeInfo,
 };
 
+TypeInfoString :: struct #compiler {
+    base: TypeInfo,
+};
+
+TypeInfoStructMember :: struct #compiler {
+    name: string,
+    base_type: *TypeInfo,
+    offset_bytes: s32,
+    index: s32
+};
+
+TypeInfoEnumVariant :: struct #compiler {
+    name: string,
+    value: s64
+};
+
+TypeInfoFnArg :: struct #compiler {
+    name: string,
+    base_type: *TypeInfo
+};
+
 /*
- * Any type structure. Any value can be implicitly casted to this container.
+ * Any type structure. Any value can be implicitly casted to this container on function call.
  */
 Any :: struct #compiler {
     type_info: *TypeInfo,
     data: *u8
 };
 
-/*
- * Converts C string to BL string. 
- */
-cstr_to_str :: fn (cstr: *u8) string {
-    return {:string: strlen(cstr), cstr};
-};
 
-// Printing
-// TODO: all functions should use one buffer and call write only once prer 'print' call.
-print :: fn (format: string, nums: ...s64) {
-    tmp := {:string: 0, format.ptr }; 
-    ni := 0;
-
-    loop i := 0; i < format.len; i += 1 {
-        c := format[i];
-
-        if c == '%' {
-            print_string(tmp);
-            if ni < nums.len {
-                print_s64(nums[ni]); 
-                ni += 1;
-            } else {
-                print_string("(null)");
-            }
-
-            tmp.len = 0;
-            if i + 1 < format.len {
-                tmp.ptr = &format[i + 1];
-            }
-        } else {
-            tmp.len += 1;
-        }
-    }
-
-    if tmp.len > 0 { print_string(tmp); }
-};
-
-// #private
-print_floats :: fn (format: string, nums: ...f64) {
-    tmp := {:string: 0, format.ptr }; 
-    ni := 0;
-
-    loop i := 0; i < format.len; i += 1 {
-        c := format[i];
-
-        if c == '%' {
-            print_string(tmp);
-            if ni < nums.len {
-                print_f64(nums[ni]); 
-                ni += 1;
-            } else {
-                print_string("(null)");
-            }
-
-            tmp.len = 0;
-            if i + 1 < format.len {
-                tmp.ptr = &format[i + 1];
-            }
-        } else {
-            tmp.len += 1;
-        }
-    }
-
-    if tmp.len > 0 { print_string(tmp); }
-};
-
-print_string :: fn (str: string) {
-    os_write(OS_STDOUT, str.ptr, str.len);
-};
-
-print_s64 :: fn (v: s64) {
-    buf      : [21]u8;
-    negative :: v < 1;
-    c := 0;
-
-    if negative {
-        v = -v;
-    }
-
-    if v == 0 {
-        buf[0] = '0';
-        os_write(OS_STDOUT, buf.ptr, 1);
-        return;
-    }
-
-    loop v > 0 {
-        d := v % 10;
-        buf[c] = d + '0';
-        v /= 10;
-        c += 1;
-    }
-
-    if negative {
-        buf[c] = '-';
-        c += 1;
-    }
-
-    _print_reverse_buffer({:[]u8: buf.len, buf.ptr}, 0, c - 1);
-
-    os_write(OS_STDOUT, buf.ptr, c);
-};
-
-print_f64 :: fn (v: f64) {
-    precision :: 0.000001;
-    buf: [32]u8;
-    negative :: v < 0.;
-    c := 0;
-
-    if negative {
-        v = -v;
-    }
-
-    m := cast(s32) log10(v);
-
-    if negative {
-        buf[c] = '-';
-        c += 1;
-    }
-
-    if m < 1 {
-        m = 0;
-    }
-
-    // convert the number
-    loop v > precision || m >= 0 {
-        weight := pow(10., cast(f64) m);
-
-        if weight > 0. {
-            digit := cast(u8) floor(v / weight);
-            v -= ((cast(f64) digit) * weight);
-
-            buf[c] = digit + '0';
-            c += 1;
-        }
-
-        if m == 0 && v > 0. {
-            buf[c] = '.';
-            c += 1;
-        }
-        m -= 1;
-    }
-
-    os_write(OS_STDOUT, buf.ptr, c);
-};
-
-_print_reverse_buffer :: fn (buf: []u8, i: s32, j: s32) {
-    loop i < j {
-        tmp := buf[i];
-        buf[i] = buf[j];
-        buf[j] = tmp;
-        i += 1;
-        j -= 1;
-    }
-};

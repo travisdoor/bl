@@ -1,0 +1,3 @@
+[submodule "deps/tlib-c"]
+	path = deps/tlib-c
+	url = https://github.com/travisdoor/tlib-c.git 

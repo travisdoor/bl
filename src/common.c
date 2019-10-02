@@ -27,7 +27,7 @@
 //************************************************************************************************
 
 #include "common.h"
-#include <bobject/containers/hash.h>
+#include "assembly.h"
 #include <time.h>
 
 #ifndef BL_COMPILER_MSVC
@@ -38,15 +38,21 @@
 #include <mach-o/dyld.h>
 #endif
 
+#ifdef BL_PLATFORM_WIN
+#include <windows.h>
+#endif
+
+u64 main_thread_id = 0;
+
 bool
 get_current_exec_path(char *buf, size_t buf_size)
 {
 #if defined(BL_PLATFORM_WIN)
-	return (bool)GetModuleFileNameA(NULL, buf, buf_size);
+	return (bool)GetModuleFileNameA(NULL, buf, (DWORD)buf_size);
 #elif defined(BL_PLATFORM_LINUX)
 	return readlink("/proc/self/exe", buf, buf_size) != -1;
 #elif defined(BL_PLATFORM_MACOS)
-	return _NSGetExecutablePath(buf, (uint32_t *)&buf_size) != -1;
+	return _NSGetExecutablePath(buf, (u32 *)&buf_size) != -1;
 #endif
 	return false;
 }
@@ -64,8 +70,8 @@ get_current_exec_dir(char *buf, size_t buf_size)
 void
 id_init(ID *id, const char *str)
 {
-	assert(id);
-	id->hash = bo_hash_from_str(str);
+	BL_ASSERT(id);
+	id->hash = thash_from_str(str);
 	id->str  = str;
 }
 
@@ -80,11 +86,11 @@ file_exists(const char *filepath)
 }
 
 const char *
-brealpath(const char *file, char *out, int32_t out_len)
+brealpath(const char *file, char *out, s32 out_len)
 {
 	const char *resolved = NULL;
-	assert(out);
-	assert(out_len);
+	BL_ASSERT(out);
+	BL_ASSERT(out_len);
 	if (!file) return resolved;
 
 #if defined(BL_PLATFORM_WIN)
@@ -96,9 +102,9 @@ brealpath(const char *file, char *out, int32_t out_len)
 }
 
 void
-date_time(char *buf, int32_t len, const char *format)
+date_time(char *buf, s32 len, const char *format)
 {
-	assert(buf && len);
+	BL_ASSERT(buf && len);
 	time_t     timer;
 	struct tm *tm_info;
 
@@ -124,7 +130,7 @@ align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
 	}
 
 	const size_t mask = alignment - 1;
-	assert((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
+	BL_ASSERT((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
 	const uintptr_t i_unaligned  = (uintptr_t)(*p);
 	const uintptr_t misalignment = i_unaligned & mask;
 
@@ -134,11 +140,11 @@ align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
 }
 
 void
-print_bits(int32_t const size, void const *const ptr)
+print_bits(s32 const size, void const *const ptr)
 {
 	unsigned char *b = (unsigned char *)ptr;
 	unsigned char  byte;
-	int32_t        i, j;
+	s32            i, j;
 
 	for (i = size - 1; i >= 0; i--) {
 		for (j = 7; j >= 0; j--) {
@@ -149,6 +155,17 @@ print_bits(int32_t const size, void const *const ptr)
 	puts("");
 }
 
+int
+count_bits(u64 n)
+{
+	int count = 0;
+	while (n) {
+		count++;
+		n = n >> 1;
+	}
+	return count;
+}
+
 bool
 get_dir_from_filepath(char *buf, const size_t l, const char *filepath)
 {
@@ -156,99 +173,80 @@ get_dir_from_filepath(char *buf, const size_t l, const char *filepath)
 
 	char *ptr = strrchr(filepath, PATH_SEPARATORC);
 	if (!ptr) return false;
-	if (filepath == ptr) return strdup(filepath);
+	if (filepath == ptr) {
+		strncpy(buf, filepath, strlen(filepath));
+		return true;
+	}
 
 	size_t len = ptr - filepath;
-	if (len + 1 > l) bl_abort("path too long!!!");
+	if (len + 1 > l) BL_ABORT("path too long!!!");
 	strncpy(buf, filepath, len);
 
 	return true;
 }
 
 bool
-search_file(const char *filepath, char **out_filepath, char **out_dirpath, const char *wdir)
+get_filename_from_filepath(char *buf, const size_t l, const char *filepath)
 {
-	if (filepath == NULL) goto NOT_FOUND;
+	if (!filepath) return false;
 
-	char        tmp[PATH_MAX] = {0};
-	const char *rpath         = tmp;
-
-	/* Lookup in working directory. */
-	if (wdir) {
-		strncpy(tmp, wdir, PATH_MAX);
-		strcat(tmp, PATH_SEPARATOR);
-		strcat(tmp, filepath);
-
-		if (file_exists(tmp)) {
-			goto FOUND;
-		}
+	char *ptr = strrchr(filepath, PATH_SEPARATORC);
+	if (!ptr || filepath == ptr) {
+		strncpy(buf, filepath, strlen(filepath));
+		return true;
 	}
 
-	rpath = brealpath(filepath, tmp, PATH_MAX);
-
-	if (rpath != NULL) {
-		goto FOUND;
-	}
-
-	/* file has not been found in current working direcotry -> search in LIB_DIR */
-	if (ENV_LIB_DIR) {
-		char tmp_lib_dir[PATH_MAX];
-
-		strcpy(tmp_lib_dir, ENV_LIB_DIR);
-		strcat(tmp_lib_dir, PATH_SEPARATOR);
-		strcat(tmp_lib_dir, filepath);
-
-		rpath = brealpath(tmp_lib_dir, tmp, PATH_MAX);
-
-		if (rpath != NULL) {
-			goto FOUND;
-		}
-	}
-
-	/* file has not been found in current working direcotry -> search in PATH */
-	{
-		char   tmp_env[PATH_MAX];
-		char * env          = strdup(getenv(ENV_PATH));
-		char * s            = env;
-		char * p            = NULL;
-		size_t filepath_len = strlen(filepath);
-
-		do {
-			p = strchr(s, ENVPATH_SEPARATOR);
-			if (p != NULL) {
-				p[0] = 0;
-			}
-
-			if (strlen(s) + filepath_len + strlen(PATH_SEPARATOR) >= PATH_MAX)
-				bl_abort("path too long");
-
-			strcpy(&tmp_env[0], s);
-			strcat(&tmp_env[0], PATH_SEPARATOR);
-			strcat(&tmp_env[0], filepath);
-
-			rpath = brealpath(&tmp_env[0], tmp, PATH_MAX);
-
-			s = p + 1;
-		} while (p != NULL && rpath == NULL);
-
-		free(env);
-		if (rpath) {
-			goto FOUND;
-		}
-	}
-
-NOT_FOUND:
-	return false;
-
-FOUND:
-	/* Absolute file path. */
-	*out_filepath = strdup(rpath);
-
-	/* Absolute directory path. */
-	memset(tmp, 0, array_size(tmp));
-	if (get_dir_from_filepath(tmp, PATH_MAX, *out_filepath)) {
-		*out_dirpath = strdup(tmp);
-	}
+	size_t len = strlen(filepath) - (ptr - filepath);
+	if (len + 1 > l) BL_ABORT("path too long!!!");
+	strncpy(buf, ptr + 1, len);
 
 	return true;
+}
+
+void
+platform_lib_name(const char *name, char *buffer, size_t max_len)
+{
+	if (!name) return;
+
+#ifdef BL_PLATFORM_MACOS
+	snprintf(buffer, max_len, "lib%s.dylib", name);
+#elif defined(BL_PLATFORM_LINUX)
+	snprintf(buffer, max_len, "lib%s.so", name);
+#elif defined(BL_PLATFORM_WIN)
+	snprintf(buffer, max_len, "%s.dll", name);
+#else
+	BL_ABORT("Unknown dynamic library format.");
+#endif
+}
+
+TArray *
+create_arr(Assembly *assembly, size_t size)
+{
+	TArray **tmp = arena_alloc(&assembly->arenas.array);
+	*tmp         = tarray_new(size);
+	return *tmp;
+}
+
+void *
+_create_sarr(Assembly *assembly, size_t arr_size)
+{
+	BL_ASSERT(arr_size <= assembly->arenas.small_array.elem_size_in_bytes &&
+	          "SmallArray is too big to be allocated inside arena, make array smaller or arena "
+	          "bigger.");
+
+	TSmallArrayAny *tmp = arena_alloc(&assembly->arenas.small_array);
+	tsa_init(tmp);
+	return tmp;
+}
+
+u32
+next_pow_2(u32 n)
+{
+	u32 p = 1;
+	if (n && !(n & (n - 1))) return n;
+
+	while (p < n)
+		p <<= 1;
+
+	return p;
 }

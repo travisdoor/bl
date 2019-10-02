@@ -33,9 +33,9 @@
  * Values set automatically during build by cmake.
  */
 #define BL_VERSION "@PROJECT_VERSION@"
-#define BL_VERSION_MAJOR @PROJECT_VERSION_MAJOR @
-#define BL_VERSION_MINOR @PROJECT_VERSION_MINOR @
-#define BL_VERSION_PATCH @PROJECT_VERSION_PATCH @
+#define BL_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define BL_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define BL_VERSION_PATCH @PROJECT_VERSION_PATCH@
 
 #define BL_CONF_FILE "@BL_CONF_FILE@"
 
@@ -66,7 +66,7 @@
 #endif
 
 #ifdef BL_COMPILER_MSVC
-#include <Windows.h>
+#define NOMINMAX /* WTF??? */
 #endif
 
 #define ENV_PATH "PATH"
@@ -92,10 +92,12 @@
 #define ASSERT_ON_CMP_ERROR 0
 #endif
 
+#define VM_STACK_SIZE   2097152 // 2MB
 #define BL_CONFIGURE_SH "@BL_CONFIGURE_SH@"
 
 #define CONF_LINKER_EXEC_KEY "LINKER_EXEC"
 #define CONF_LINKER_OPT_KEY "LINKER_OPT"
+#define CONF_LINKER_LIB_PATH_KEY "LINKER_LIB_PATH"
 #define CONF_LIB_DIR_KEY "LIB_DIR"
 
 extern char *ENV_LIB_DIR;

@@ -29,45 +29,54 @@
 #ifndef BL_BUILDER_H
 #define BL_BUILDER_H
 
-#include "arena.h"
 #include "assembly.h"
 #include "conf_data.h"
 #include "error.h"
 #include "mir.h"
-#include <bobject/containers/array.h>
-#include <bobject/containers/string.h>
-
-// clang-format off
-#define BUILDER_RUN              0x00000002
-#define BUILDER_PRINT_TOKENS     0x00000004
-#define BUILDER_PRINT_AST        0x00000008
-#define BUILDER_LOAD_FROM_FILE   0x00000010
-#define BUILDER_SYNTAX_ONLY      0x00000020
-#define BUILDER_EMIT_LLVM        0x00000040
-#define BUILDER_RUN_TESTS        0x00000080
-#define BUILDER_NO_BIN           0x00000100
-#define BUILDER_NO_WARN          0x00000200
-#define BUILDER_VERBOSE          0x00000400
-#define BUILDER_VERBOSE_MIR_PRE  0x00000800
-#define BUILDER_VERBOSE_MIR_POST 0x00001000
-#define BUILDER_NO_API           0x00002000
-#define BUILDER_EMIT_MIR         0x00004000
-#define BUILDER_FORCE_TEST_LLVM  0x00008000
-#define BUILDER_FORCE_TEST_LLVM  0x00008000
-// clang-format on
 
 #define COMPILE_OK 0
 #define COMPILE_FAIL 1
 
+typedef enum OptLevel {
+	OPT_NOT_SPECIFIED = -1,
+	OPT_NONE          = 0,
+	OPT_LESS          = 1,
+	OPT_DEFAULT       = 2,
+	OPT_AGGRESSIVE    = 3,
+} OptLevel;
+
+typedef struct BuilderOpions {
+	OptLevel opt_level;
+	bool     print_help;
+	bool     print_tokens;
+	bool     print_ast;
+	bool     run;
+	bool     run_tests;
+	bool     run_configure;
+	bool     no_bin;
+	bool     no_warn;
+	bool     no_api;
+	bool     no_llvm;
+	bool     emit_llvm;
+	bool     emit_mir;
+	bool     load_from_file;
+	bool     syntax_only;
+	bool     verbose;
+	bool     force_test_llvm;
+	bool     debug_build;
+	bool     reg_split;
+} BuilderOptions;
+
 typedef struct Builder {
-	Arena       ast_arena;
-	ScopeArenas scope_arenas;
-	uint32_t    flags;
-	int32_t     total_lines;
-	int32_t     errorc;
-	BArray *    str_cache;
-	ConfData *  conf;
+	BuilderOptions options;
+	TArray         str_cache;
+	s32            total_lines;
+	s32            errorc;
+	ConfData *     conf;
 } Builder;
+
+/* Builder global instance */
+extern Builder builder;
 
 typedef enum {
 	BUILDER_MSG_ERROR,
@@ -76,38 +85,45 @@ typedef enum {
 	BUILDER_MSG_LOG,
 } BuilderMsgType;
 
-typedef enum { BUILDER_CUR_AFTER, BUILDER_CUR_WORD, BUILDER_CUR_BEFORE } BuilderCurPos;
+typedef enum {
+	BUILDER_CUR_AFTER,
+	BUILDER_CUR_WORD,
+	BUILDER_CUR_BEFORE,
+	BUILDER_CUR_NONE
+} BuilderCurPos;
 
-struct Src;
-
-Builder *
-builder_new(void);
+struct Location;
 
 void
-builder_delete(Builder *builder);
+builder_init(void);
+
+void
+builder_terminate(void);
+
+s32
+builder_parse_options(s32 argc, char *argv[]);
 
 int
-builder_load_conf_file(Builder *builder, const char *filepath);
+builder_load_conf_file(const char *filepath);
 
 int
-builder_compile(Builder *builder, Assembly *assembly, uint32_t flags);
+builder_compile(Assembly *assembly);
 
 void
-builder_error(Builder *builder, const char *format, ...);
+builder_error(const char *format, ...);
 
 void
-builder_warning(Builder *builder, const char *format, ...);
+builder_warning(const char *format, ...);
 
 void
-builder_msg(Builder *      builder,
-            BuilderMsgType type,
-            int32_t        code,
-            struct Src *   src,
-            BuilderCurPos  pos,
-            const char *   format,
+builder_msg(BuilderMsgType   type,
+            s32              code,
+            struct Location *src,
+            BuilderCurPos    pos,
+            const char *     format,
             ...);
 
-BString *
-builder_create_cached_str(Builder *builder);
+TString *
+builder_create_cached_str(void);
 
 #endif

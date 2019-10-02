@@ -1,0 +1,464 @@
+//************************************************************************************************
+// bl
+//
+// File:   print.bl 
+// Author: Martin Dorazil
+// Date:   3/8/19
+//
+// Copyright 2019 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//************************************************************************************************
+
+#load "std/math.bl"
+
+PRINT_MAX_LENGTH :: 4096;
+
+print :: fn (format: string, args: ...) s32 {
+    buf := {:[PRINT_MAX_LENGTH]u8: 0};
+
+    // HACK: use implicit conversion later!!!
+    // HACK: use implicit conversion later!!!
+    // HACK: use implicit conversion later!!!
+    tmp := {:[]u8: buf.len, buf.ptr };
+    tmp2 := {:[]Any: args.len, args.ptr };
+
+    w := print_impl(tmp, format, tmp2);
+    __os_write(OS_STDOUT, buf.ptr, auto w);
+    return w;
+};
+
+eprint :: fn (format: string, args: ...) s32 {
+    buf := {:[PRINT_MAX_LENGTH]u8: 0};
+
+    // HACK: use implicit conversion later!!!
+    // HACK: use implicit conversion later!!!
+    // HACK: use implicit conversion later!!!
+    tmp := {:[]u8: buf.len, buf.ptr };
+    tmp2 := {:[]Any: args.len, args.ptr };
+
+    w := print_impl(tmp, format, tmp2);
+    __os_write(OS_STDERR, buf.ptr, auto w);
+    return w;
+};
+
+bprint :: fn (buf: []u8, format: string, args: ...) s32 {
+    tmp := {:[]Any: args.len, args.ptr };
+    return print_impl(buf, format, tmp);
+};
+
+#private
+
+print_impl :: fn (buf: []u8, format: string, args: []Any) s32 {
+    cur := 0;
+    argi := 0;
+
+    loop i := 0; i < format.len; i += 1 {
+        c := format[i];
+
+        if c == '%' {
+            // print argument if there is one
+            if argi < args.len {
+                cur = print_any(buf, cur, &args[argi]); 
+                argi += 1;
+            } else {
+                cur = print_string(buf, cur, "(null)");
+            }
+        } else {
+            cur = print_char(buf, cur, c);
+        }
+    }
+
+    return cur;
+};
+
+print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
+    if any.type_info.kind == TypeKind.Int {
+        // Integer
+        info := cast(*TypeInfoInt) any.type_info;
+
+        if info.is_signed {
+            int := s64_from_u8_ptr(any.data, info.bit_count);
+            if int < 0 { // negative number
+                cur = print_string(buf, cur, "-");
+                int = -int;
+            }
+
+            return print_u64(buf, cur, auto int);
+        } else {
+            int := u64_from_u8_ptr(any.data, info.bit_count);
+            return print_u64(buf, cur, int);
+        } 
+
+    } else if any.type_info.kind == TypeKind.Real {
+        // Real
+        info := cast(*TypeInfoReal) any.type_info;
+
+        real := f64_from_u8_ptr(any.data, info.bit_count);
+        if real < 0. {
+            cur = print_string(buf, cur, "-");
+            real = -real;
+        }
+
+        return print_f64(buf, cur, real);
+    } else if any.type_info.kind == TypeKind.String {
+        str := ^ cast(*string) any.data;
+
+        return print_string(buf, cur, str);
+    } else if any.type_info.kind == TypeKind.Array {
+        info := cast(*TypeInfoArray) any.type_info;
+
+        if info.len == 0 {
+            return print_string(buf, cur, "[]");
+        }
+
+        elem_size := info.elem_type.size_bytes;
+
+        tmp : Any;
+        tmp.type_info = info.elem_type;
+
+        cur = print_string(buf, cur, "[");
+
+        loop i : usize = 0; i < auto info.len; i += 1 {
+            tmp.data = cast(*u8) (cast(usize) any.data + i * elem_size);
+            cur = print_any(buf, cur, &tmp);
+
+            if i < auto info.len - 1 {
+                cur = print_string(buf, cur, ", ");
+            }
+        }
+        
+        return print_string(buf, cur, "]");
+    } else if any.type_info.kind == TypeKind.Struct {
+        info := cast(*TypeInfoStruct) any.type_info;
+
+        tmp : Any;
+
+        if !info.is_slice {
+            cur = print_string(buf, cur, info.name);
+            cur = print_string(buf, cur, " {");
+
+            loop i := 0; i < info.members.len; i += 1 {
+                member := info.members[i];
+                cur = print_string(buf, cur, member.name);
+                cur = print_string(buf, cur, " = ");
+                tmp.data = cast(*u8) (cast(usize) any.data + auto member.offset_bytes);
+                tmp.type_info = member.base_type;
+
+                cur = print_any(buf, cur, &tmp);
+
+                if i < info.members.len - 1 {
+                    cur = print_string(buf, cur, ", ");
+                }
+            }
+
+            return print_string(buf, cur, "}");
+        }
+
+        // we are printing slice
+        len := u64_from_u8_ptr(cast(*u8) (cast(usize) any.data + auto info.members[0].offset_bytes), 64);
+        ptr := ptr_from_ptr(cast(*u8) (cast(usize) any.data + auto info.members[1].offset_bytes));
+
+        if len == 0 {
+            return print_string(buf, cur, "[]");
+        }
+
+        if ptr == null {
+            return print_string(buf, cur, "[<null>]");
+        }
+
+        cur = print_string(buf, cur, "[");
+
+        elem_type := (cast(*TypeInfoPtr)info.members[1].base_type).pointee_type;
+        elem_size := elem_type.size_bytes;
+
+        tmp.type_info = elem_type;
+
+        if elem_size > 0 {
+            loop i : usize = 0; i < len; i += 1 {
+                tmp.data = cast(*u8) (cast(usize) ptr + i * elem_size);
+                cur = print_any(buf, cur, &tmp);
+
+                if i < len - 1 {
+                    cur = print_string(buf, cur, ", ");
+                }
+            }
+        }
+
+        return print_string(buf, cur, "]");
+
+    } else if any.type_info.kind == TypeKind.Ptr {
+        // Pointer
+        ptr := ^ cast(*u64) any.data;
+        if ptr == 0 {
+            return print_string(buf, cur, "null");
+        }
+
+        return print_u64_hex(buf, cur, ptr);
+
+    } else if any.type_info.kind == TypeKind.Bool {
+        // Bool
+        b := ^ cast(*bool) any.data;
+        if b { return print_string(buf, cur, "true"); }
+        else { return print_string(buf, cur, "false"); }
+    } else if any.type_info.kind == TypeKind.Enum {
+        // Enum 
+        info := cast(*TypeInfoEnum) any.type_info;
+        info_base_type := cast(*TypeInfoInt) info.base_type;
+
+        value := s64_from_u8_ptr(any.data, info_base_type.bit_count); 
+
+        loop i := 0; i < info.variants.len; i += 1 {
+            if info.variants[i].value == value {
+                cur = print_string(buf, cur, info.name);
+                cur = print_string(buf, cur, ".");
+                return print_string(buf, cur, info.variants[i].name);
+            }
+        }
+
+        if value < 0 { // negative number
+            cur = print_string(buf, cur, "-");
+            value = -value;
+        }
+
+        return print_u64(buf, cur, auto value);
+    } else if any.type_info.kind == TypeKind.Type {
+        // Type
+        return print_type(buf, cur, cast(*TypeInfo) any.data);
+    } else if any.type_info.kind == TypeKind.Fn {
+        // Fn
+        return print_type(buf, cur, cast(*TypeInfo) any.data);
+
+    } else { 
+        print("unknown %\n", ^any.type_info);
+        return print_string(buf, cur, "<unknown>");
+    }
+
+
+    // TODO: support more types
+
+    return cur;
+};
+
+print_type :: fn (buf: []u8, cur: s32, info: *TypeInfo) s32 {
+    if info.kind == TypeKind.Int {
+        c := cast(*TypeInfoInt) info;
+        if c.is_signed {
+            cur = print_string(buf, cur, "s");
+        } else {
+            cur = print_string(buf, cur, "u");
+        }
+
+        return print_u64(buf, cur, auto c.bit_count);
+    } else if info.kind == TypeKind.Real {
+        c := cast(*TypeInfoReal) info;
+        cur = print_string(buf, cur, "f");
+        return print_u64(buf, cur, auto c.bit_count);
+    } else if info.kind == TypeKind.Bool{
+        return print_string(buf, cur, "bool");
+    } else if info.kind == TypeKind.Ptr {
+        c := cast(*TypeInfoPtr) info;
+        cur = print_string(buf, cur, "*");
+        return print_type(buf, cur, c.pointee_type);
+    } else if info.kind == TypeKind.Array {
+        c := cast(*TypeInfoArray) info;
+        cur = print_string(buf, cur, "[");
+        cur = print_u64(buf, cur, auto c.len);
+        cur = print_string(buf, cur, "]");
+
+        return print_type(buf, cur, c.elem_type);
+    } else if info.kind == TypeKind.Struct {
+        c := cast(*TypeInfoStruct) info;
+        //cur = print_string(buf, cur, c.name);
+        cur = print_string(buf, cur, "struct {");
+
+        loop i := 0; i < c.members.len; i += 1 {
+            member := c.members[i];
+            cur = print_string(buf, cur, member.name);
+            cur = print_string(buf, cur, ": ");
+            cur = print_type(buf, cur, member.base_type);
+
+            if i < c.members.len - 1 { cur = print_string(buf, cur, ", "); }
+        }
+
+        return print_string(buf, cur, "}");
+    } else if info.kind == TypeKind.Fn {
+        c := cast(*TypeInfoFn) info;
+        cur = print_string(buf, cur, "fn (");
+
+        loop i := 0; i < c.args.len; i += 1 {
+            arg := c.args[i];
+            cur = print_type(buf, cur, arg.base_type);
+
+            if i < c.args.len - 1 { cur = print_string(buf, cur, ", "); }
+        }
+
+        cur = print_string(buf, cur, ") ");
+        return print_type(buf, cur, c.ret_type);
+    } else if info.kind == TypeKind.Enum {
+        c := cast(*TypeInfoEnum) info;
+        //cur = print_string(buf, cur, c.name);
+        cur = print_string(buf, cur, "enum ");
+        cur = print_type(buf, cur, c.base_type);
+        cur = print_string(buf, cur, " {");
+
+        loop i := 0; i < c.variants.len; i += 1 {
+            variant := c.variants[i];
+            cur = print_string(buf, cur, variant.name);
+            cur = print_string(buf, cur, " :: ");
+            cur = print_u64(buf, cur, auto variant.value);
+
+            if i < c.variants.len - 1 { cur = print_string(buf, cur, ", "); }
+        }
+
+        return print_string(buf, cur, "}");
+    } else if info.kind == TypeKind.String {
+        return print_string(buf, cur, "string");
+    } else if info.kind == TypeKind.Void {
+        return print_string(buf, cur, "void");
+    } else if info.kind == TypeKind.Null {
+        return print_string(buf, cur, "null");
+    } 
+
+    return 0;
+};
+
+print_string :: fn (buf: []u8, cur: s32, str: string) s32 {
+    if str.ptr == null { return cur; }
+    i := 0;
+    loop ; i < str.len; i += 1 {
+        bi := cur + i;
+        if bi >= buf.len { break; }
+
+        buf[bi] = str[i];
+    }
+
+    return cur + i;
+};
+
+print_char :: fn (buf: []u8, cur: s32, c: u8) s32 {
+    if cur >= buf.len { return 0; }
+    buf[cur] = c;
+    return cur + 1;
+};
+
+print_u64_hex :: fn (buf: []u8, cur: s32, v: u64) s32 {
+    cur = print_string(buf, cur, "0x");
+
+    if v == 0 {
+        return print_string(buf, cur, "0");
+    }
+
+    digits := {:[16]u8: '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+    mask : u64 = 0xf000000000000000;
+    hit_non_zero := false;
+
+    loop i := 0; i < 16; i += 1 {
+        d := v & mask;
+        v = v << 4;
+        d = d >> 60;
+
+        if d != 0 { hit_non_zero = true; }
+
+        if hit_non_zero {
+            cur = print_char(buf, cur, digits[auto d]);
+        }
+    }
+
+    return cur;
+};
+
+print_u64 :: fn (buf: []u8, cur: s32, v: u64) s32 {
+    if v == 0 {
+        return print_string(buf, cur, "0");
+    }
+
+    base : u64 : 10;
+    div : u64 = 10000000000000000000;
+    hit_non_zero := false;
+
+    loop div > 0 {
+        d := v / div;
+        v %= div;
+        div /= base;
+
+        if d != 0 { hit_non_zero = true; }
+
+        if hit_non_zero {
+            cur = print_char(buf, cur, auto d + '0');
+        }
+    }
+
+    return cur;
+};
+
+print_f64 :: fn (buf: []u8, cur: s32, v: f64) s32 {
+    precision :: 0.000001;
+    m := cast(s32) log10(v);
+
+    if m < 0 { m = 0; }
+
+    // convert the number
+    loop v > precision || m >= 0 {
+        weight := pow(10., cast(f64) m);
+
+        if weight > 0. {
+            d := cast(u8) floor(v / weight);
+            v -= ((cast(f64) d) * weight);
+
+            cur = print_char(buf, cur, d + '0');
+        }
+
+        if m == 0 && v > 0. {
+            cur = print_char(buf, cur, '.');
+        }
+        m -= 1;
+    }
+
+    return cur;
+};
+
+s64_from_u8_ptr :: fn (ptr: *u8, bit_count: s32) s64 {
+    if bit_count == 64 { return ^ cast(*s64) ptr; }
+    if bit_count == 32 { return ^ cast(*s32) ptr; }
+    if bit_count == 16 { return ^ cast(*s16) ptr; }
+    if bit_count ==  8 { return ^ cast(*s8)  ptr; }
+
+    return 0;
+};
+
+u64_from_u8_ptr :: fn (ptr: *u8, bit_count: s32) u64 {
+    if bit_count == 64 { return ^ cast(*u64) ptr; }
+    if bit_count == 32 { return ^ cast(*u32) ptr; }
+    if bit_count == 16 { return ^ cast(*u16) ptr; }
+    if bit_count ==  8 { return ^ cast(*u8)  ptr; }
+
+    return 0;
+};
+
+f64_from_u8_ptr :: fn (ptr: *u8, bit_count: s32) f64 {
+    if bit_count == 64 { return ^ cast(*f64) ptr; }
+    if bit_count == 32 { return cast(f64) (^ cast(*f32) ptr); }
+
+    return 0.;
+};
+
+ptr_from_ptr :: fn (ptr: *u8) *u8 {
+    return cast(*u8) ^ cast(*usize) ptr;
+};
