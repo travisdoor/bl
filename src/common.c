@@ -38,7 +38,7 @@
 #include <mach-o/dyld.h>
 #endif
 
-#ifdef BL_PLATFORM_WINDOWS
+#ifdef BL_PLATFORM_WIN
 #incldue <windows.h>
 #endif
 
