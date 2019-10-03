@@ -45,23 +45,23 @@ sqrtf   :: fn (x: f32) f32 #extern;
 floorf  :: fn (x: f32) f32 #extern;
 /* Lib C functions */
 
-Vec2 :: struct {
+v2 :: struct {
     x: f32,
     y: f32
 };
 
-Vec3 :: struct {
+v3 :: struct {
     x: f32,
     y: f32,
     z: f32,
 };
 
-iVec2 :: struct {
+iv2 :: struct {
     x: s32,
     y: s32
 };
 
-iVec3 :: struct {
+iv3 :: struct {
     x: s32,
     y: s32,
     z: s32,

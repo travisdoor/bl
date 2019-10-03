@@ -9,11 +9,11 @@ Entity :: struct {
     kind: EntityKind,
     id: s32,
     texture: *SDL_Texture,
-    position: Vec2,
-    size: Vec2,
+    position: v2,
+    size: v2,
     destroy_anim: *Animation,
-    speed: Vec2,
-    dir: Vec2,
+    speed: v2,
+    dir: v2,
     max_speed: f32,
     is_alive: bool,
 
@@ -28,8 +28,8 @@ entity_init :: fn (self: *Entity,
                    kind: EntityKind,
                    id: s32,
                    texture_id: TextureId,
-                   position: *Vec2,
-                   size: *Vec2,
+                   position: *v2,
+                   size: *v2,
                    max_speed: f32) {
 
     self.texture = texture_pool_get(texture_id);
@@ -37,8 +37,8 @@ entity_init :: fn (self: *Entity,
     self.id = id;
     self.position = ^position;
     self.size = ^size;
-    self.speed = {:Vec2: 0};
-    self.dir = {:Vec2: 0};
+    self.speed = {:v2: 0};
+    self.dir = {:v2: 0};
     self.max_speed = max_speed;
     self.is_alive = true;
 
@@ -46,7 +46,7 @@ entity_init :: fn (self: *Entity,
     self.f_update = null;
     self.f_on_colide = null;
 
-    frames := {:iVec2: 8, 6};
+    frames := {:iv2: 8, 6};
     self.destroy_anim = anim_new(game, TextureId.Explosion, &frames);
 };
 

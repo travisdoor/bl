@@ -6,8 +6,8 @@ Enemy :: struct {
 enemy_new :: fn (game: *Game, id: s32, x: f32, y: f32, speed: f32) *Entity {
     self := cast(*Enemy) malloc(sizeof(Enemy));
 
-    initial_position := {:Vec2: x, y};
-    size := {:Vec2: 60.f, 85.f};
+    initial_position := {:v2: x, y};
+    size := {:v2: 60.f, 85.f};
 
     entity_init(
         cast(*Entity) self,

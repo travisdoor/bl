@@ -70,11 +70,12 @@ array_push :: fn (arr: *Array, v: Any) {
               arr.T.kind);
     }
 
-    ensure_space(arr, auto arr.len + 1, false);
-    
-    if v.data != null {
-        mem_copy(elem_ptr(arr, arr.len), v.data, arr.T.size_bytes);
+    if v.data == null {
+        panic("Invalid value (null).");
     }
+
+    ensure_space(arr, auto arr.len + 1, false);
+    mem_copy(elem_ptr(arr, arr.len), v.data, arr.T.size_bytes);
     
     arr.len += 1;
 };

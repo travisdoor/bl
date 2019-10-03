@@ -5,8 +5,8 @@ Player :: struct {
 player_new :: fn (game: *Game, id: s32) *Entity {
     self := cast(*Player) malloc(sizeof(Player));
 
-    initial_position := {:Vec2: 50.f, 200.f};
-    size := {:Vec2: 100.f, 43.f};
+    initial_position := {:v2: 50.f, 200.f};
+    size := {:v2: 100.f, 43.f};
 
     entity_init(
         cast(*Entity) self,
