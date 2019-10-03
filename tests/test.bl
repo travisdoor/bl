@@ -4,6 +4,16 @@
 
 main :: fn () {
     arr := array_new(s32);
+
+    loop i := 0; i < 100; i += 1 {
+        array_push(arr, i);
+    }
+
+    loop i := 0; i < 100; i += 1 {
+        v := ^cast(*s32) array_at(arr, i);
+        assert(v == i);
+    }
+    
     array_delete(arr);
 };
 
