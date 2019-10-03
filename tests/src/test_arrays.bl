@@ -56,6 +56,7 @@
   assert(arr[9] == 9);
 };
 
+/*
 #test "dynamic array init" {
     arr := array_new(s32);
     assert(arr.len == 0);
@@ -89,3 +90,4 @@
 
     array_delete(arr);
 };
+*/

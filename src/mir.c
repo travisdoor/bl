@@ -1083,6 +1083,16 @@ is_volatile_expr(MirInstr *instr)
 }
 
 static inline bool
+is_pointer_to_type_type(MirType *type)
+{
+	while (mir_is_pointer_type(type)) {
+		type = mir_deref_type(type);
+	}
+
+	return type->kind == MIR_TYPE_TYPE;
+}
+
+static inline bool
 can_impl_cast(MirType *from, MirType *to)
 {
 	if (from->kind != to->kind) return false;
@@ -1159,6 +1169,7 @@ schedule_RTTI_generation(Context *cnt, MirType *type)
 static inline bool
 is_allocated_object(MirInstr *instr)
 {
+#if 0
 	/* CLEANUP: is this good solution??? */
 	/* CLEANUP: is this good solution??? */
 	/* CLEANUP: is this good solution??? */
@@ -1172,6 +1183,12 @@ is_allocated_object(MirInstr *instr)
 	if (instr->kind == MIR_INSTR_TYPE_INFO) return true;
 
 	return false;
+#endif
+	MirType *type = instr->value.type;
+	if (is_pointer_to_type_type(type)) return false;
+	if (!mir_is_pointer_type(type)) return false;
+	
+	return true;
 }
 
 static inline MirInstr *
