@@ -56,7 +56,6 @@
   assert(arr[9] == 9);
 };
 
-/*
 #test "dynamic array init" {
     arr := array_new(s32);
     assert(arr.len == 0);
@@ -90,4 +89,29 @@
 
     array_delete(arr);
 };
-*/
+
+#test "dynamic array data struct" {
+    Foo :: struct {
+        i: s32, j: s32, k: s32
+    };
+
+    arr := array_new(Foo);
+    
+    loop i := 0; i < 1024; i += 1 {
+        v := {:Foo: i, i, i};
+        array_push(arr, v);
+    }
+
+    loop i := 0; i < 1024; i += 1 {
+        v := ^cast(*Foo) array_at(arr, i);
+        assert(v.i == i);
+        assert(v.j == i);
+        assert(v.k == i);
+    }
+    
+    array_clear(arr);
+    assert(arr.len == 0);
+    assert(arr.data != null);
+
+    array_delete(arr);
+};

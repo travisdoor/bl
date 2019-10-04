@@ -184,8 +184,12 @@ typedef enum MirConstPtrKind {
 } MirConstPtrKind;
 
 typedef enum MirValueAddressMode {
+	/* Value points to memory allocation on the stack or heap. */
 	MIR_VAM_LVALUE,
+	/* Value points to memeory allocation on the stack or heap but value itself is immutable and
+	   cannot be modified. */
 	MIR_VAM_LVALUE_CONST,
+	/* Does not point to allocated memory (ex: const literals). */
 	MIR_VAM_RVALUE,
 } MirValueAddressMode;
 
