@@ -31,8 +31,7 @@
 
 * Bugs [40%]
   - [X] functions pointers passed during comptime execution cannot be used as an callbacks in external functions because they are not compatible with C ABI calling conventions. This will be by the way quite hard to fix :(. http://www.dyncall.org/docs/dyncallback.3.html
-  - [X] fn typedef
-    Recognise this as function type definition.
+  - [X] fn typedef Recognise this as function type definition.
     T :: fn (i: s32, j: bool) s32; 
   - [ ] Invalid llvm for
     print("kind %\n", cast(s32) (cast(*TypeInfo) data).kind);
@@ -55,6 +54,8 @@
   - arena_alloc 
   - create scope
 
-* release notes 0.6.0
+* release notes 0.5.1
     - bug fix https://github.com/travisdoor/bl/issues/60
     - bug fix https://github.com/travisdoor/bl/issues/54
+    - bug fix https://github.com/travisdoor/bl/issues/61
+    - bug fix https://github.com/travisdoor/bl/issues/62

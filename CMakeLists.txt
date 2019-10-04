@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(bl VERSION 0.6.0)
+project(bl VERSION 0.5.1)
 
 # Must use GNUInstallDirs to install libraries into correct
 # locations on all platforms.
@@ -32,7 +32,7 @@ add_subdirectory(deps/dyncall-1.0)
 add_subdirectory(deps/tlib-c)
 
 # deps
-find_package(LLVM REQUIRED CONFIG)
+find_package(LLVM 8.0.0 REQUIRED CONFIG)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")

@@ -74,10 +74,10 @@ array_push :: fn (arr: *Array, v: Any) {
         panic("Invalid value (null).");
     }
 
-    ensure_space(arr, auto arr.len + 1, false);
-    mem_copy(elem_ptr(arr, arr.len), v.data, arr.T.size_bytes);
-    
     arr.len += 1;
+    ensure_space(arr, auto arr.len, false);
+    mem_copy(elem_ptr(arr, arr.len - 1), v.data, arr.T.size_bytes);
+    
 };
 
 array_at :: fn (arr: *Array, i: s64) *u8 {
@@ -88,7 +88,7 @@ array_at :: fn (arr: *Array, i: s64) *u8 {
 ALLOC_BLOCK_SIZE : usize : 32;
 
 elem_ptr :: fn (arr: *Array, i: s64) *u8 #inline {
-    if i > arr.len {
+    if i >= arr.len {
         panic("Element index out of range, index is % but array size is %.",
               i,
               arr.len);
@@ -105,12 +105,15 @@ ensure_space :: fn (arr: *Array, space: usize, exact: bool) {
         if !exact {
             space = ALLOC_BLOCK_SIZE;
         }
-
-        arr.data = mem_alloc(space * arr.T.size_bytes);
     } else {
-            space *= 2;
-            arr.data = mem_realloc(arr.data, space * arr.T.size_bytes);
+        space *= 2;
     }
 
+    elem_size := arr.T.size_bytes;
+    tmp := arr.data;
+
+    arr.data = mem_alloc(space * elem_size); 
+    mem_copy(arr.data, tmp, arr.allocated * elem_size);
+    
     arr.allocated = space;
 };
