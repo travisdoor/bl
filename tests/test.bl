@@ -1,27 +1,13 @@
 /* playground */
 
-#load "experimental/array.bl"
+#load "std/file.bl"
 
 main :: fn () s32 {
-    print("%\n", 10);
-    print("%\n", *s32);
-    print("%\n", 10 + 10);
-    print("%\n", **s32);
-    print("%\n", "Hello world.");
-    print("%\n", foo());
-    print("%\n", struct { i: s32} );
-    print("%\n", foo );
+    file := file_open(#file);
+    defer file_close(file);
 
-    arr := array_new(s32);
-    loop i := 0; i < 33; i += 1 {
-        array_push(arr, 10);
-    }
-    array_delete(arr);
-    
+    content := file_read_all(file);
+    print("%\n", content);
+
     return 0;
 };
-
-foo :: fn () s32 {
-    return 10;
-};
-

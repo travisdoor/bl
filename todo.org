@@ -59,3 +59,4 @@
     - bug fix https://github.com/travisdoor/bl/issues/54
     - bug fix https://github.com/travisdoor/bl/issues/61
     - bug fix https://github.com/travisdoor/bl/issues/62
+    - bug fix crash when we have too much function arguments

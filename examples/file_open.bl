@@ -1,11 +1,9 @@
 #load "std/file.bl"
-#load "std/print.bl"
 
 #test "file open" {
     file := file_open(#file);
-    assert(file != null);
     defer file_close(file);
 
-    tmp := file_read_all(file);
-    print("%\n", tmp);
+    content := file_read_all(file);
+    print("%\n", content);
 };

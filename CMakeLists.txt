@@ -32,7 +32,7 @@ add_subdirectory(deps/dyncall-1.0)
 add_subdirectory(deps/tlib-c)
 
 # deps
-find_package(LLVM 8.0.0 REQUIRED CONFIG)
+find_package(LLVM CONFIG)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")

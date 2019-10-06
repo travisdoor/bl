@@ -43,8 +43,12 @@ cosf    :: fn (n: f32) f32 #extern;
 powf    :: fn (base: f32, exponent: f32) f32 #extern;
 sqrtf   :: fn (x: f32) f32 #extern;
 floorf  :: fn (x: f32) f32 #extern;
+tanf    :: fn (x: f32) f32 #extern;
 /* Lib C functions */
 
+//************************************************************************************************
+// Types
+//************************************************************************************************
 v2 :: struct {
     x: f32,
     y: f32
@@ -67,6 +71,18 @@ iv3 :: struct {
     z: s32,
 };
 
+/**
+ * Matrix layout
+ * | m[0]  m[1]  m[2]  m[3]  |
+ * | m[4]  m[5]  m[6]  m[7]  |
+ * | m[8]  m[9]  m[10] m[11] |
+ * | m[12] m[13] m[14] m[15] |
+ */
+mat4f :: [16]f32;
+
+//************************************************************************************************
+// Functions
+//************************************************************************************************
 lerp :: fn (a: f32, b: f32, fraction: f32) f32 #inline {
     return a + fraction * (b - a);
 };
@@ -79,4 +95,48 @@ max_u32 :: fn (a: u32, b: u32) u32 #inline {
 min_u32 :: fn (a: u32, b: u32) u32 #inline {
     if a < b { return a; } 
     return b;
+};
+
+mat4f_init :: fn (out_mat: *mat4f,
+                  m00: f32, m10: f32, m20: f32, m30: f32,
+                  m01: f32, m11: f32, m21: f32, m31: f32,
+                  m02: f32, m12: f32, m22: f32, m32: f32,
+                  m03: f32, m13: f32, m23: f32, m33: f32) #inline
+{
+    (^out_mat)[0]  = m00;
+    (^out_mat)[1]  = m10;
+    (^out_mat)[2]  = m20;
+    (^out_mat)[3]  = m30;
+    (^out_mat)[4]  = m01;
+    (^out_mat)[5]  = m11;
+    (^out_mat)[6]  = m21;
+    (^out_mat)[7]  = m31;
+    (^out_mat)[8]  = m02;
+    (^out_mat)[9]  = m12;
+    (^out_mat)[10] = m22;
+    (^out_mat)[11] = m32;
+    (^out_mat)[12] = m03;
+    (^out_mat)[13] = m13;
+    (^out_mat)[14] = m23;
+    (^out_mat)[15] = m33;
+};
+
+mat4f_identity :: fn (out_mat: *mat4f) #inline {
+    mat4f_init(out_mat,
+        1.f, 0.f, 0.f, 0.f,
+        0.f, 1.f, 0.f, 0.f,
+        0.f, 0.f, 1.f, 0.f,
+        0.f, 0.f, 0.f, 1.f
+    );
+};
+
+mat4f_perspective :: fn (out_mat: *mat4f, fov_rad: f32, aspect: f32, near: f32, far: f32) #inline {
+    f := 1.f / tanf(fov_rad / 2.f);
+
+    mat4f_init(out_mat,
+               f / aspect, 0.f, 0.f, 0.f,
+               0.f, f, 0.f, 0.f,
+               0.f, 0.f, (far + near) / (near - far), (2.f * far * near) / (near - far),
+               0.f, 0.f, -1.f, 0.f
+    );
 };
