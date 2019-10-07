@@ -39,3 +39,11 @@ write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return write(fd, buf, count);
 };
+
+time_now_ms :: fn () f64 {
+    return cast(f64) mach_absolute_time() / 1000000.0;
+};
+
+#private
+
+mach_absolute_time :: fn () u64 #extern;

@@ -39,3 +39,10 @@ write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return write(fd, buf, count);
 };
+
+time_now_ms :: fn () f64 {
+    panic("Unimplemented!");
+};
+
+#private
+

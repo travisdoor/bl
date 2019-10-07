@@ -38,7 +38,7 @@ PrintLogKind :: enum u8 {
 };
 
 print :: fn (format: string, args: ...) s32 {
-    buf := {:[PRINT_MAX_LENGTH]u8: 0};
+    buf: [PRINT_MAX_LENGTH]u8;
 
     // HACK: use implicit conversion later!!!
     // HACK: use implicit conversion later!!!
@@ -52,7 +52,7 @@ print :: fn (format: string, args: ...) s32 {
 };
 
 eprint :: fn (format: string, args: ...) s32 {
-    buf := {:[PRINT_MAX_LENGTH]u8: 0};
+    buf: [PRINT_MAX_LENGTH]u8;
 
     // HACK: use implicit conversion later!!!
     // HACK: use implicit conversion later!!!
@@ -67,7 +67,9 @@ eprint :: fn (format: string, args: ...) s32 {
 
 bprint :: fn (buf: []u8, format: string, args: ...) s32 {
     tmp := {:[]Any: args.len, args.ptr };
-    return print_impl(buf, format, tmp);
+    w := print_impl(buf, format, tmp);
+    w += print_char(buf, w, '\0');
+    return w;
 };
 
 _print_log :: fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32) {

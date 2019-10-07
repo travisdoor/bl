@@ -145,6 +145,13 @@ v3_muls :: fn (a: v3, s: f32) v3 #inline {
     return a;
 };
 
+v3_mul :: fn (a: v3, b: v3) v3 #inline {
+    a.x *= b.x;
+    a.y *= b.y;
+    a.z *= b.z;
+    return a;
+};
+
 v3_add :: fn (a: v3, b: v3) v3 #inline 
 {
     a.x += b.x;
