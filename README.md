@@ -37,13 +37,6 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 
 ## Instalation
 
-   Instructions are [here](https://travisdoor.github.io/bl/index.html)
+   Instructions are [here](http://biscuitlang.org)
 
-# Releases
-
-## 0.4.1 pre-alpha
-
--   [source](https://github.com/travisdoor/bl)
--   [documentation](https://travisdoor.github.io/bl/documentation.html)
--   [MIR - documentation](https://travisdoor.github.io/bl/MIR.html)
 
