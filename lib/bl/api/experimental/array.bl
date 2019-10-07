@@ -28,7 +28,7 @@
 
 Array :: struct {
     len: s64,
-    data: *u8,
+    ptr: *u8,
     allocated: usize,
     T: *TypeInfo
 };
@@ -42,13 +42,13 @@ array_new :: fn (T: Any) *Array {
     arr.T = cast(*TypeInfo) T.data;
     arr.len = 0;
     arr.allocated = 0;
-    arr.data = null;
+    arr.ptr = null;
     return arr;
 };
 
 array_delete :: fn (arr: *Array) {
     if arr.allocated > 0 {
-        mem_free(arr.data);
+        mem_free(arr.ptr);
     }
 
     mem_free(auto arr);
@@ -94,7 +94,7 @@ elem_ptr :: fn (arr: *Array, i: s64) *u8 #inline {
               arr.len);
     }
 
-    return ptr_shift_bytes(arr.data, cast(usize) i * arr.T.size_bytes);
+    return ptr_shift_bytes(arr.ptr, cast(usize) i * arr.T.size_bytes);
 };
 
 ensure_space :: fn (arr: *Array, space: usize, exact: bool) {
@@ -110,10 +110,10 @@ ensure_space :: fn (arr: *Array, space: usize, exact: bool) {
     }
 
     elem_size := arr.T.size_bytes;
-    tmp := arr.data;
+    tmp := arr.ptr;
 
-    arr.data = mem_alloc(space * elem_size); 
-    mem_copy(arr.data, tmp, arr.allocated * elem_size);
+    arr.ptr = mem_alloc(space * elem_size); 
+    mem_copy(arr.ptr, tmp, arr.allocated * elem_size);
     
     arr.allocated = space;
 };

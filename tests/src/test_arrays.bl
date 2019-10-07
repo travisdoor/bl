@@ -59,13 +59,13 @@
 #test "dynamic array init" {
     arr := array_new(s32);
     assert(arr.len == 0);
-    assert(arr.data == null);
+    assert(arr.ptr == null);
     assert(arr.allocated == 0);
     assert(arr.T == typeinfo(s32));
 
     array_reserve(arr, 256);
     assert(arr.len == 0);
-    assert(arr.data != null);
+    assert(arr.ptr != null);
     assert(arr.allocated == 256);
     
     array_delete(arr);
@@ -85,7 +85,7 @@
     
     array_clear(arr);
     assert(arr.len == 0);
-    assert(arr.data != null);
+    assert(arr.ptr != null);
 
     array_delete(arr);
 };
@@ -111,7 +111,7 @@
     
     array_clear(arr);
     assert(arr.len == 0);
-    assert(arr.data != null);
+    assert(arr.ptr != null);
 
     array_delete(arr);
 };
