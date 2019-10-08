@@ -90,3 +90,5 @@ Camera :: struct #extends Entity {
     mv: mat4
 };
 
+- *Camera can be implicitly casted to *Entity then?
+
