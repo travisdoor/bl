@@ -45,3 +45,48 @@ MethodGroup array under scope entry 'foo'
     - "f.()"
     - "f.(s32)"
     - "f.(bool)"
+
+//************************************************************************************************
+//* Operators
+//************************************************************************************************
+
+// + | (v3 vs v3), (v3 vs f32)
+// / | (v3 vs f32)
+v3 :: struct {
+    x: f32,
+    y: f32,
+    z: f32
+};
+
+// assign operator to the type based on return type
+#operator + :: fn (a: v3, b: v3) v3 {
+    return {:v3: a.x + b.x, a.y + b.y, a.z + b.z};
+};
+
+// we need to have group of implicit functions for all operators (now we have 2 for + operator)
+#operator + :: fn (a: v3, b: f32) v3 {
+    return {:v3: a.x + b, a.y + b, a.z + b};
+};
+
+#operator / :: fn (a: v3, b: f32) v3 {
+    return {:v3: a.x / b, a.y / b, a.z / b};
+};
+
+vector + 10.f;
+vector + vector;
+10.f + vector;
+
+//************************************************************************************************
+//* Struct inheritance
+//************************************************************************************************
+
+Entity :: struct {
+    position: v3,
+    rotation: quat
+};
+
+Camera :: struct #extends Entity {
+    mp: mat4,
+    mv: mat4
+};
+

@@ -4,6 +4,7 @@
 #load "std/math.bl"
 #load "std/file.bl"
 #load "experimental/glfw/glfw3.bl"
+#load "experimental/glfw/glfw3_vulkan.bl"
 #load "experimental/vulkan/vulkan_macos.bl"
 
 #load "renderer.bl"

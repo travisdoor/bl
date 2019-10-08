@@ -4926,13 +4926,14 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
 	/* Setup function linkage name, this will be later used by LLVM backend. */
 	if (fn->id) {
-		if (fn->is_in_gscope) {
+		if (IS_FLAG(fn->flags, FLAG_EXTERN)) {
+			fn->linkage_name = fn->id->str;
+		} else if (IS_FLAG(fn->flags, FLAG_PRIVATE)) {
+			fn->linkage_name = gen_uq_name(fn->id->str);
+		} else if (fn->is_in_gscope) {
 			fn->linkage_name = fn->id->str;
 		} else {
-			if (IS_FLAG(fn->flags, FLAG_EXTERN))
-				fn->linkage_name = fn->id->str;
-			else
-				fn->linkage_name = gen_uq_name(fn->id->str);
+			fn->linkage_name = gen_uq_name(fn->id->str);
 		}
 	} else {
 		/* Anonymous function use implicit unique name. */

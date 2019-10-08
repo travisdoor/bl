@@ -77,7 +77,7 @@ array_push :: fn (arr: *Array, v: Any) {
     arr.len += 1;
     ensure_space(arr, auto arr.len, false);
     mem_copy(elem_ptr(arr, arr.len - 1), v.data, arr.T.size_bytes);
-    
+
 };
 
 array_at :: fn (arr: *Array, i: s64) *u8 {
@@ -113,7 +113,10 @@ ensure_space :: fn (arr: *Array, space: usize, exact: bool) {
     tmp := arr.ptr;
 
     arr.ptr = mem_alloc(space * elem_size); 
-    mem_copy(arr.ptr, tmp, arr.allocated * elem_size);
+    if tmp != null {
+        mem_copy(arr.ptr, tmp, arr.allocated * elem_size);
+        mem_free(tmp);
+    }
     
     arr.allocated = space;
 };

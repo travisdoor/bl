@@ -379,8 +379,8 @@ recreate_swap_chain :: fn (r: *Renderer) {
 };
 
 wait_when_minimized :: fn () {
-    width : u32 = 0;
-    height : u32 = 0;
+    width := 0;
+    height := 0;
 
     loop width == 0 || height == 0 {
         glfwGetFramebufferSize(app.window, &width, &height);
@@ -830,7 +830,7 @@ choose_swap_extent :: fn (capabilities: *VkSurfaceCapabilitiesKHR) VkExtent2D {
         return capabilities.currentExtent;
     } else {
         actual_extent := {:VkExtent2D: 0 };
-        glfwGetFramebufferSize(app.window, &actual_extent.width, &actual_extent.height);
+        glfwGetFramebufferSize(app.window, auto &actual_extent.width, auto &actual_extent.height);
 
         actual_extent.width = u32_max(capabilities.minImageExtent.width, u32_min(capabilities.maxImageExtent.width, actual_extent.width));
         actual_extent.height = u32_max(capabilities.minImageExtent.height, u32_min(capabilities.maxImageExtent.height, actual_extent.height));
