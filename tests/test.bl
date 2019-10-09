@@ -2,9 +2,10 @@
 
 Entity :: struct {
     name: string,
-    update: *Entity
+    self: *Entity
 };
 
 main :: fn () s32 {
+    foo: Entity;
     return 0;
 };

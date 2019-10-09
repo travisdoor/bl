@@ -70,6 +70,11 @@ print_flags(u32 flags, FILE *stream)
 	if (IS_FLAG(flags, FLAG_EXTERN)) fprintf(stream, "#extern");
 	if (IS_FLAG(flags, FLAG_COMPILER)) fprintf(stream, " #compiler");
 	if (IS_FLAG(flags, FLAG_TEST)) fprintf(stream, " #test");
+	if (IS_FLAG(flags, FLAG_INLINE)) fprintf(stream, " #inline");
+	if (IS_FLAG(flags, FLAG_NO_INLINE)) fprintf(stream, " #noinline");
+	if (IS_FLAG(flags, FLAG_PRIVATE)) fprintf(stream, " #private");
+
+	fprintf(stream, " ");
 }
 
 static inline void

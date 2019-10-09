@@ -4767,11 +4767,13 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		if (!found) found = scope_lookup(private_scope, ref->rid, true, false);
 	}
 
-	if (found ? found->kind == SCOPE_ENTRY_INCOMPLETE : true) {
-		if (found->kind == SCOPE_ENTRY_INCOMPLETE)
-			BL_LOG("found incomplete %s", found->id->str);
-		return ANALYZE_RESULT(WAITING, ref->rid->hash);
+	if (!found) return ANALYZE_RESULT(WAITING, ref->rid->hash);
+
+	if (found->kind == SCOPE_ENTRY_INCOMPLETE && ref->can_be_incomplete) {
+		BL_LOG("found incomplete structure member pointer %s", found->id->str);
 	}
+
+	if (found->kind == SCOPE_ENTRY_INCOMPLETE) return ANALYZE_RESULT(WAITING, ref->rid->hash);
 
 	switch (found->kind) {
 	case SCOPE_ENTRY_FN: {
@@ -7949,10 +7951,10 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		/* initialize value */
 		MirInstr *value = NULL;
 		if (is_in_gscope) {
-			/* Initialization of global variables must be done in implicit
-			 * initializer function executed in compile time. Every
-			 * initialization function must be able to be executed in compile
-			 * time. */
+			/* Initialization of global variables must be done in
+			 * implicit initializer function executed in compile
+			 * time. Every initialization function must be able to
+			 * be executed in compile time. */
 			value =
 			    ast_value
 			        ? ast_create_impl_fn_call(cnt, ast_value, INIT_VALUE_FN_NAME, NULL)
@@ -8111,6 +8113,12 @@ ast_type_ptr(Context *cnt, Ast *type_ptr)
 	BL_ASSERT(ast_type && "invalid pointee type");
 	MirInstr *type = ast(cnt, ast_type);
 	BL_ASSERT(type);
+
+	if (type->kind == MIR_INSTR_DECL_REF) {
+		((MirInstrDeclRef *)type)->can_be_incomplete =
+		    type_ptr->owner_scope->kind == SCOPE_TYPE_STRUCT;
+	}
+
 	return append_instr_type_ptr(cnt, type_ptr, type);
 }
 

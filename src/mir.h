@@ -710,6 +710,15 @@ struct MirInstrDeclRef {
 	ID *         rid;
 	Scope *      scope;
 	ScopeEntry * scope_entry;
+
+	/* Only references then used as pointer inside struct can pass analyze even if they are
+	 * incomplete because those can point to structure itself (recursive dependency).
+	 *
+	 * Foo :: struct { 
+	 *     self: *Foo 
+	 * }; 
+	 */
+	bool can_be_incomplete;
 };
 
 struct MirInstrDeclDirectRef {
