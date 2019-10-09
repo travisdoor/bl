@@ -790,7 +790,7 @@ print_instr_decl_arg(MirInstrDeclArg *decl, FILE *stream)
 	MirArg *arg = decl->arg;
 	BL_ASSERT(arg)
 
-	fprintf(stream, "%s : ", arg->id->str);
+	fprintf(stream, "%s : ", arg->id ? arg->id->str : "-");
 	print_comptime_value_or_id(decl->type, stream);
 }
 

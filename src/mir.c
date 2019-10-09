@@ -4768,6 +4768,8 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	}
 
 	if (found ? found->kind == SCOPE_ENTRY_INCOMPLETE : true) {
+		if (found->kind == SCOPE_ENTRY_INCOMPLETE)
+			BL_LOG("found incomplete %s", found->id->str);
 		return ANALYZE_RESULT(WAITING, ref->rid->hash);
 	}
 
@@ -8813,6 +8815,9 @@ mir_run(Assembly *assembly)
 	TARRAY_FOREACH(Unit *, &assembly->units, unit) ast(&cnt, unit->ast);
 
 	if (builder.errorc) goto SKIP;
+
+	/* Skip analyze if no_analyze is set by user. */
+	if (builder.options.no_analyze) goto SKIP;
 
 	/* Analyze pass */
 	analyze(&cnt);

@@ -119,6 +119,7 @@ compile_assembly(Assembly *assembly)
 	if (builder.options.emit_mir) mir_writer_run(assembly);
 	INTERRUPT_ON_ERROR;
 
+	if (builder.options.no_analyze) return COMPILE_OK;
 	if (builder.options.no_llvm) return COMPILE_OK;
 	ir_run(assembly);
 	INTERRUPT_ON_ERROR;
@@ -174,6 +175,8 @@ builder_parse_options(s32 argc, char *argv[])
 			builder.options.verbose = true;
 		} else if (arg_is("no-api")) {
 			builder.options.no_api = true;
+		} else if (arg_is("no-analyze")) {
+			builder.options.no_analyze = true;
 		} else if (arg_is("force-test-to-llvm")) {
 			builder.options.force_test_llvm = true;
 		} else if (arg_is("debug")) {

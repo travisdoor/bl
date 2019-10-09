@@ -57,6 +57,7 @@ typedef struct BuilderOpions {
 	bool     no_warn;
 	bool     no_api;
 	bool     no_llvm;
+	bool     no_analyze;
 	bool     emit_llvm;
 	bool     emit_mir;
 	bool     load_from_file;
