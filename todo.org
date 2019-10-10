@@ -6,42 +6,16 @@
   - [ ] document instruction Arg
   - [ ] pass all structures passed by value as pointers into the functions and make copy inside. 
   - [ ] support of #extend hash directive for struct inherritance? 
-  - [ ] replace , by ; in structs and enums  
+  - [X] replace , by ; in structs and enums  
   - [ ] #flags enum?
   - [ ] Simple structure inherritance with #using, #base or some keyword?
   - [ ] Update documentation (we are using recursive git repository)
-  - [ ] Switch to tlib-c 
+  - [X] Switch to tlib-c 
   - [ ] Operator overloading
-
-* Bugs [45%]
-  - [X] functions pointers passed during comptime execution cannot be used as an callbacks in external functions because they are not compatible with C ABI calling conventions. This will be by the way quite hard to fix :(. http://www.dyncall.org/docs/dyncallback.3.html
-  - [X] fn typedef Recognise this as function type definition.
-	T :: fn (i: s32, j: bool) s32; 
-  - [ ] Invalid llvm for
-	print("kind %\n", cast(s32) (cast(*TypeInfo) data).kind);
-	print("%\n", call_some_function());
-	print("%\n", {:Foo: 1, 2, 3});
-  - [ ] VK_NULL_HANDLE :: null; cannot be used
-  - [X] Wrong initialization of globals with defined type:
-	Foo : u64 : 10;
-  - [ ] Unstable function pointers and invalid error reporting locations.
-  - [X] Create implicit wrapper to match SystemV calling convetions when passing larger arguments by value.
-	- structures smaller than 16B split into two i64, larger use pass byval attribute
-	- add information to externals needed this changes
-  - [ ] System V call conventions are incomplete for returning structures smaller than 16B by value.
-  - [ ] Compiler does not complain about missing return statement. 
-  - [ ] Invalid dereference of pointers to pointers 
-	e := ^cast(**Entity) array_at(em.entities, i);
-  - [X] Problems with private procedures with same name in multiple files? Probably we have some bug in LLVM naming conventions or function lookup. Registered callback function is not called in input handler in vulkan-test app.
 
 * parser race conditions
   - arena_alloc 
   - create scope
 
-* release notes 0.5.1
-    - bug fix https://github.com/travisdoor/bl/issues/60
-    - bug fix https://github.com/travisdoor/bl/issues/54
-    - bug fix https://github.com/travisdoor/bl/issues/61
-    - bug fix https://github.com/travisdoor/bl/issues/62
-    - bug fix crash when we have too much function arguments
-    - bug fix invalid linkage name generation for private functions
+* structure with pointer to self
+  

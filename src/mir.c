@@ -194,10 +194,6 @@ typedef enum {
 	/* In this case AnalyzeResult will contain hash of desired symbol which be satisfied later,
 	   instruction is pushed into waiting table. */
 	ANALYZE_WAITING = 3,
-
-	/* Rarely used state, instruction was not analyzed but analyzer continue to the following
-	   instruction. */
-	ANALYZE_INCOMPLETE = 4,
 } AnalyzeState;
 
 typedef struct {
@@ -1062,7 +1058,7 @@ gen_RTTI_types(Context *cnt);
 /* Determinate if instruction has volatile type, that means we can change type of the value during
  * analyze pass as needed. This is used for constant integer literals. */
 static inline bool
-is_volatile_expr(MirInstr *instr)
+is_instr_type_volatile(MirInstr *instr)
 {
 	MirType *type = instr->value.type;
 
@@ -4768,11 +4764,6 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	}
 
 	if (!found) return ANALYZE_RESULT(WAITING, ref->rid->hash);
-
-	if (found->kind == SCOPE_ENTRY_INCOMPLETE && ref->can_be_incomplete) {
-		BL_LOG("found incomplete structure member pointer %s", found->id->str);
-	}
-
 	if (found->kind == SCOPE_ENTRY_INCOMPLETE) return ANALYZE_RESULT(WAITING, ref->rid->hash);
 
 	switch (found->kind) {
@@ -5593,7 +5584,7 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 	/* TODO: I'm not sure if every binary operation is rvalue... */
 	/* TODO: I'm not sure if every binary operation is rvalue... */
 	binop->base.value.addr_mode = MIR_VAM_RVALUE;
-	binop->volatile_type        = is_volatile_expr(lhs) && is_volatile_expr(rhs);
+	binop->volatile_type        = is_instr_type_volatile(lhs) && is_instr_type_volatile(rhs);
 
 	return ANALYZE_RESULT(PASSED, 0);
 #undef is_valid
@@ -5613,7 +5604,7 @@ analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 	unop->base.value.type = type;
 
 	unop->base.comptime = unop->expr->comptime;
-	unop->volatile_type = is_volatile_expr(unop->expr);
+	unop->volatile_type = is_instr_type_volatile(unop->expr);
 
 	return ANALYZE_RESULT(PASSED, 0);
 }
@@ -6228,7 +6219,7 @@ analyze_stage_set_volatile_expr(Context *cnt, MirInstr **input, MirType *slot_ty
 {
 	BL_ASSERT(slot_type);
 	if (slot_type->kind != MIR_TYPE_INT) return ANALYZE_STAGE_CONTINUE;
-	if (!is_volatile_expr(*input)) return ANALYZE_STAGE_CONTINUE;
+	if (!is_instr_type_volatile(*input)) return ANALYZE_STAGE_CONTINUE;
 
 	(*input)->value.type = slot_type;
 	return ANALYZE_STAGE_BREAK;
@@ -6456,7 +6447,6 @@ analyze(Context *cnt)
 		result = analyze_instr(cnt, ip);
 
 		switch (result.state) {
-		case ANALYZE_INCOMPLETE:
 		case ANALYZE_PASSED:
 #if BL_DEBUG && VERBOSE_ANALYZE
 			printf("Analyze: [ " GREEN("PASSED") " ] %16s\n", mir_instr_name(ip));
@@ -8113,11 +8103,6 @@ ast_type_ptr(Context *cnt, Ast *type_ptr)
 	BL_ASSERT(ast_type && "invalid pointee type");
 	MirInstr *type = ast(cnt, ast_type);
 	BL_ASSERT(type);
-
-	if (type->kind == MIR_INSTR_DECL_REF) {
-		((MirInstrDeclRef *)type)->can_be_incomplete =
-		    type_ptr->owner_scope->kind == SCOPE_TYPE_STRUCT;
-	}
 
 	return append_instr_type_ptr(cnt, type_ptr, type);
 }
