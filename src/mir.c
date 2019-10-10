@@ -669,6 +669,10 @@ static MirInstr *
 create_instr_vargs_impl(Context *cnt, MirType *type, TSmallArray_InstrPtr *values);
 
 /* ast */
+#define AST_CREATE_TYPE_RECOLVER_CALL(_node)                                                       \
+	ast_create_impl_fn_call(                                                                   \
+	    cnt, (_node), RESOLVE_TYPE_FN_NAME, cnt->builtin_types.t_resolve_type_fn)
+
 static MirInstr *
 ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *fn_type);
 
@@ -5109,13 +5113,20 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 AnalyzeResult
 analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
 {
-	if (analyze_slot(cnt, &analyze_slot_conf_basic, &decl->type, NULL) != ANALYZE_PASSED) {
+	if (decl->type->kind == MIR_INSTR_CALL) {
+		MirType *     type   = NULL;
+		AnalyzeResult result = analyze_resolve_type(cnt, decl->type, &type);
+		if (result.state != ANALYZE_PASSED) return result;
+
+		mir_set_const_ptr(&decl->base.value.data.v_ptr, type, MIR_CP_TYPE);
+	} else if (analyze_slot(cnt, &analyze_slot_conf_basic, &decl->type, NULL) !=
+	           ANALYZE_PASSED) {
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
 	/* NOTE: Members will be provided by instr type struct because we need to
 	 * know right ordering of members inside structure layout. (index and llvm
-	 * element offet need to be calculated)*/
+	 * element offet needs to be calculated)*/
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -7465,8 +7476,7 @@ ast_expr_cast(Context *cnt, Ast *cast)
 
 	if (!auto_cast) {
 		BL_ASSERT(ast_type);
-		type = ast_create_impl_fn_call(
-		    cnt, ast_type, RESOLVE_TYPE_FN_NAME, cnt->builtin_types.t_resolve_type_fn);
+		type = AST_CREATE_TYPE_RECOLVER_CALL(ast_type);
 	}
 
 	MirInstr *next = ast(cnt, ast_next);
@@ -7669,8 +7679,8 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn, Ast *decl_node, bool is_in_gscope, u3
 	    (MirInstrFnProto *)append_instr_fn_proto(cnt, lit_fn, NULL, NULL, true);
 
 	/* Generate type resolver for function type. */
-	fn_proto->type = ast_create_impl_fn_call(
-	    cnt, ast_fn_type, RESOLVE_TYPE_FN_NAME, cnt->builtin_types.t_resolve_type_fn);
+
+	fn_proto->type = AST_CREATE_TYPE_RECOLVER_CALL(ast_fn_type);
 	BL_ASSERT(fn_proto->type);
 
 	MirInstrBlock *prev_block      = get_current_block(cnt);
@@ -7935,10 +7945,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 
 		if (ast_type) {
 			((MirInstrFnProto *)value)->user_type =
-			    ast_create_impl_fn_call(cnt,
-			                            ast_type,
-			                            RESOLVE_TYPE_FN_NAME,
-			                            cnt->builtin_types.t_resolve_type_fn);
+			    AST_CREATE_TYPE_RECOLVER_CALL(ast_type);
 		}
 
 		/* check main */
@@ -7949,12 +7956,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		}
 	} else {
 		/* other declaration types */
-		MirInstr *type = ast_type
-		                     ? ast_create_impl_fn_call(cnt,
-		                                               ast_type,
-		                                               RESOLVE_TYPE_FN_NAME,
-		                                               cnt->builtin_types.t_resolve_type_fn)
-		                     : NULL;
+		MirInstr *type = ast_type ? AST_CREATE_TYPE_RECOLVER_CALL(ast_type) : NULL;
 
 		cnt->ast.current_entity_id = &ast_name->data.ident.id;
 		/* initialize value */
@@ -8015,7 +8017,13 @@ ast_decl_member(Context *cnt, Ast *arg)
 	Ast *ast_name = arg->data.decl.name;
 
 	BL_ASSERT(ast_type);
-	MirInstr *result = ast(cnt, ast_type);
+	MirInstr *result = NULL;
+	if (ast_type->kind != AST_TYPE_PTR) {
+		result = ast(cnt, ast_type);
+	} else { /* pointer type in structure */
+		 /* generate type resolver function call for this */
+		result = AST_CREATE_TYPE_RECOLVER_CALL(ast_type);
+	}
 
 	/* named member? */
 	if (ast_name) {
@@ -8120,19 +8128,6 @@ ast_type_ptr(Context *cnt, Ast *type_ptr)
 {
 	Ast *ast_type = type_ptr->data.type_ptr.type;
 	BL_ASSERT(ast_type && "invalid pointee type");
-
-	if (ast_type->owner_scope->kind == SCOPE_TYPE_STRUCT) {
-		BL_LOG("Pointer type member inside struct must be handled by separate type "
-		       "resolver call!");
-
-		/* HACK: cannot use this, we create ast generation endless loop because type_ptr
-		 * node is allways in SCOPE_TYPE_STRUCT!!! */
-		/*
-		MirInstr resolver_call = ast_create_impl_fn_call(
-		    cnt, type_ptr, RESOLVE_TYPE_FN_NAME, cnt->builtin_types.t_resolve_type_fn);
-		return resolver_call;
-		*/
-	}
 
 	MirInstr *type = ast(cnt, ast_type);
 	BL_ASSERT(type);
