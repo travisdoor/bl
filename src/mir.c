@@ -8120,6 +8120,20 @@ ast_type_ptr(Context *cnt, Ast *type_ptr)
 {
 	Ast *ast_type = type_ptr->data.type_ptr.type;
 	BL_ASSERT(ast_type && "invalid pointee type");
+
+	if (ast_type->owner_scope->kind == SCOPE_TYPE_STRUCT) {
+		BL_LOG("Pointer type member inside struct must be handled by separate type "
+		       "resolver call!");
+
+		/* HACK: cannot use this, we create ast generation endless loop because type_ptr
+		 * node is allways in SCOPE_TYPE_STRUCT!!! */
+		/*
+		MirInstr resolver_call = ast_create_impl_fn_call(
+		    cnt, type_ptr, RESOLVE_TYPE_FN_NAME, cnt->builtin_types.t_resolve_type_fn);
+		return resolver_call;
+		*/
+	}
+
 	MirInstr *type = ast(cnt, ast_type);
 	BL_ASSERT(type);
 

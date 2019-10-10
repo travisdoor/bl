@@ -28,7 +28,7 @@
      2) When cannot be called continue to next the instruction otherwise use returned type
      3) Build struct type if possible
      4) If not, create Incomplete struct type containing calls to incomplete members
-     5) Finnis analyze pass of the struct type resolver
+     5) Finish analyze pass of the struct type resolver
      6) Set named variable to the type and mark as analyzed only if it's not of Incomplete type
      7) Push all waiting resolvers to analyze queue
   
