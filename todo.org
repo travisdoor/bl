@@ -18,4 +18,23 @@
   - create scope
 
 * structure with pointer to self
+  1) MIR generation pass
+     1) select only pointers inside structs
+     2) select only non-fundamental pointed types
+     3) create type resolver function for each
+     4) instead of const pointer append comptime call to type resolver inside original struct resolver
+  2) Analyze pass
+     1) Try to call type resolver
+     2) When cannot be called continue to next the instruction otherwise use returned type
+     3) Build struct type if possible
+     4) If not, create Incomplete struct type containing calls to incomplete members
+     5) Finnis analyze pass of the struct type resolver
+     6) Set named variable to the type and mark as analyzed only if it's not of Incomplete type
+     7) Push all waiting resolvers to analyze queue
   
+
+  #+begin_src C
+  struct TypeStructIncomplete {
+      Array waiting_resolvers;
+  };
+  #+end_src

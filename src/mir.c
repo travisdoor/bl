@@ -5502,11 +5502,13 @@ analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 AnalyzeResult
 analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
+	/******************************************************************************************/
 #define is_valid(_type, _op)                                                                       \
 	(((_type)->kind == MIR_TYPE_INT) || ((_type)->kind == MIR_TYPE_NULL) ||                    \
 	 ((_type)->kind == MIR_TYPE_REAL) || ((_type)->kind == MIR_TYPE_PTR) ||                    \
 	 ((_type)->kind == MIR_TYPE_BOOL && ast_binop_is_logic(_op)) ||                            \
 	 ((_type)->kind == MIR_TYPE_ENUM && (_op == BINOP_EQ || _op == BINOP_NEQ)))
+	/******************************************************************************************/
 
 	{ /* Handle type propagation. */
 		MirType *lhs_type = binop->lhs->value.type;
@@ -6407,6 +6409,26 @@ analyze_try_get_next(MirInstr *instr)
 void
 analyze(Context *cnt)
 {
+	/******************************************************************************************/
+#if BL_DEBUG && VERBOSE_ANALYZE
+#define LOG_ANALYZE_PASSED printf("Analyze: [ " GREEN("PASSED") " ] %16s\n", mir_instr_name(ip));
+
+#define LOG_ANALYZE_FAILED printf("Analyze: [ " RED("FAILED") " ] %16s\n", mir_instr_name(ip));
+
+#define LOG_ANALYZE_POSTPONE                                                                       \
+	printf("Analyze: [" MAGENTA("POSTPONE") "] %16s\n", mir_instr_name(ip));
+#define LOG_ANALYZE_WAITING                                                                        \
+	printf("Analyze: [  " YELLOW("WAIT") "  ] %16s is waiting for: '%llu'\n",                  \
+	       mir_instr_name(ip),                                                                 \
+	       (unsigned long long)state);
+#else
+#define LOG_ANALYZE_PASSED
+#define LOG_ANALYZE_FAILED
+#define LOG_ANALYZE_POSTPONE
+#define LOG_ANALYZE_WAITING
+#endif
+	/******************************************************************************************/
+
 	if (cnt->analyze.verbose_pre) {
 		MirInstr *instr;
 		TArray *  globals = &cnt->assembly->MIR.global_instrs;
@@ -6448,35 +6470,25 @@ analyze(Context *cnt)
 
 		switch (result.state) {
 		case ANALYZE_PASSED:
-#if BL_DEBUG && VERBOSE_ANALYZE
-			printf("Analyze: [ " GREEN("PASSED") " ] %16s\n", mir_instr_name(ip));
-#endif
+			LOG_ANALYZE_PASSED
 			postpone_loop_count = 0;
 			break;
 
 		case ANALYZE_FAILED:
-#if BL_DEBUG && VERBOSE_ANALYZE
-			printf("Analyze: [ " RED("FAILED") " ] %16s\n", mir_instr_name(ip));
-#endif
+			LOG_ANALYZE_FAILED
 			skip                = true;
 			postpone_loop_count = 0;
 			break;
 
 		case ANALYZE_POSTPONE:
-#if BL_DEBUG && VERBOSE_ANALYZE
-			printf("Analyze: [" MAGENTA("POSTPONE") "] %16s\n", mir_instr_name(ip));
-#endif
+			LOG_ANALYZE_POSTPONE
 
 			skip = true;
 			if (postpone_loop_count++ < q->size) tlist_push_back(q, ip);
 			break;
 
 		case ANALYZE_WAITING: {
-#if BL_DEBUG && VERBOSE_ANALYZE
-			printf("Analyze: [  " YELLOW("WAIT") "  ] %16s is waiting for: '%llu'\n",
-			       mir_instr_name(ip),
-			       (unsigned long long)state);
-#endif
+			LOG_ANALYZE_WAITING
 
 			TArray *  wq   = NULL;
 			TIterator iter = thtbl_find(&cnt->analyze.waiting, result.waiting_for);
@@ -6505,6 +6517,13 @@ analyze(Context *cnt)
 			mir_print_instr(instr, stdout);
 		}
 	}
+
+	/******************************************************************************************/
+#undef LOG_ANALYZE_PASSED
+#undef LOG_ANALYZE_FAILED
+#undef LOG_ANALYZE_POSTPONE
+#undef LOG_ANALYZE_WAITING
+	/******************************************************************************************/
 }
 
 void
@@ -8448,11 +8467,14 @@ mir_instr_name(MirInstr *instr)
 static void
 _type_to_str(char *buf, usize len, MirType *type, bool prefer_name)
 {
+	/******************************************************************************************/
 #define append_buf(buf, len, str)                                                                  \
 	{                                                                                          \
 		const usize filled = strlen(buf);                                                  \
 		snprintf((buf) + filled, (len)-filled, "%s", str);                                 \
 	}
+	/******************************************************************************************/
+
 	if (!buf) return;
 	if (!type) {
 		append_buf(buf, len, "<unknown>");
