@@ -2,12 +2,7 @@
 
 Entity :: struct {
     name: string,
-    update: * fn ()
     //self: *Entity
-};
-
-Foo :: struct {
-    i: s32
 };
 
 main :: fn () s32 {
