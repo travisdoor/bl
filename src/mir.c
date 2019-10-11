@@ -322,8 +322,7 @@ create_type_struct(Context *              cnt,
                    ID *                   id,
                    Scope *                scope,
                    TSmallArray_MemberPtr *members, /* MirMember */
-                   bool                   is_packed,
-                   bool                   is_incomplete);
+                   bool                   is_packed);
 
 static MirType *
 create_type_enum(Context *               cnt,
@@ -670,10 +669,6 @@ static MirInstr *
 create_instr_vargs_impl(Context *cnt, MirType *type, TSmallArray_InstrPtr *values);
 
 /* ast */
-#define AST_CREATE_TYPE_RECOLVER_CALL(_node)                                                       \
-	ast_create_impl_fn_call(                                                                   \
-	    cnt, (_node), RESOLVE_TYPE_FN_NAME, cnt->builtin_types.t_resolve_type_fn)
-
 static MirInstr *
 ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *fn_type);
 
@@ -1059,14 +1054,6 @@ static void
 gen_RTTI_types(Context *cnt);
 
 /* INLINES */
-
-/* Determinates if structure type is incomplete. */
-static inline bool
-is_type_struct_incomplete(MirType *type)
-{
-	if (type->kind != MIR_TYPE_STRUCT) return false;
-	return type->data.strct.is_incomplete;
-}
 
 /* Determinate if instruction has volatile type, that means we can change type of the value during
  * analyze pass as needed. This is used for constant integer literals. */
@@ -1930,21 +1917,18 @@ create_type_struct(Context *              cnt,
                    ID *                   id,
                    Scope *                scope,
                    TSmallArray_MemberPtr *members, /* MirMember */
-                   bool                   is_packed,
-                   bool                   is_incomplete)
+                   bool                   is_packed)
 {
 	MirType *tmp = NULL;
 
 	if (create_type(cnt, &tmp, sh_type_struct(cnt, kind, id, members, is_packed))) {
-		tmp->kind                     = kind;
-		tmp->data.strct.members       = members;
-		tmp->data.strct.scope         = scope;
-		tmp->data.strct.is_packed     = is_packed;
-		tmp->data.strct.is_incomplete = is_incomplete;
-		tmp->user_id                  = id;
+		tmp->kind                 = kind;
+		tmp->data.strct.members   = members;
+		tmp->data.strct.scope     = scope;
+		tmp->data.strct.is_packed = is_packed;
+		tmp->user_id              = id;
 
-		/* We cannot generate LLVM type for incomplete structure type. */
-		if (!is_incomplete) init_llvm_type_struct(cnt, tmp);
+		init_llvm_type_struct(cnt, tmp);
 	}
 
 	return tmp;
@@ -1981,7 +1965,7 @@ create_type_struct_special(Context *cnt, MirTypeKind kind, ID *id, MirType *elem
 	tsa_push_MemberPtr(members, tmp);
 	provide_builtin_member(cnt, body_scope, tmp);
 
-	return create_type_struct(cnt, kind, id, body_scope, members, false, false);
+	return create_type_struct(cnt, kind, id, body_scope, members, false);
 }
 
 MirType *
@@ -5125,31 +5109,13 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 AnalyzeResult
 analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
 {
-	if (decl->type->kind == MIR_INSTR_CALL) {
-		MirType *     type   = NULL;
-		AnalyzeResult result = analyze_resolve_type(cnt, decl->type, &type);
-		/* analyze failed for some reason */
-		if (result.state == ANALYZE_FAILED) return ANALYZE_RESULT(FAILED, 0);
-
-		if (result.state == ANALYZE_PASSED) {
-			/* analyze passed we can directly set the type */
-			mir_set_const_ptr(&decl->base.value.data.v_ptr, type, MIR_CP_TYPE);
-			decl->member->incomplete_type_resolver = NULL;
-		} else {
-			BL_ASSERT(decl->member && "Missing MirMember instance pointer!");
-			/* cannot get member type yet -> mark member as incomplete and continue with
-			 * analyze of the next instructions... */
-			decl->member->incomplete_type_resolver = (MirInstrCall *)decl->type;
-			BL_LOG("found incomplete struct member type");
-		}
-	} else if (analyze_slot(cnt, &analyze_slot_conf_basic, &decl->type, NULL) !=
-	           ANALYZE_PASSED) {
+	if (analyze_slot(cnt, &analyze_slot_conf_basic, &decl->type, NULL) != ANALYZE_PASSED) {
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
 	/* NOTE: Members will be provided by instr type struct because we need to
 	 * know right ordering of members inside structure layout. (index and llvm
-	 * element offet needs to be calculated)*/
+	 * element offet need to be calculated)*/
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -5209,42 +5175,31 @@ analyze_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
 AnalyzeResult
 analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 {
-	TSmallArray_MemberPtr *members       = NULL;
-	bool                   is_incomplete = false;
+	TSmallArray_MemberPtr *members = NULL;
 
-	if (!type_struct->members) goto SETUP;
+	if (type_struct->members) {
+		MirInstr **         member_instr;
+		MirInstrDeclMember *decl_member;
+		MirType *           member_type;
+		Scope *             scope = type_struct->scope;
+		const usize         memc  = type_struct->members->size;
 
-	MirInstr **         member_instr;
-	MirInstrDeclMember *decl_member;
-	MirType *           member_type;
-	Scope *             scope = type_struct->scope;
-	const usize         memc  = type_struct->members->size;
+		members = create_sarr(TSmallArray_MemberPtr, cnt->assembly);
 
-	members = create_sarr(TSmallArray_MemberPtr, cnt->assembly);
+		for (usize i = 0; i < memc; ++i) {
+			member_instr = &type_struct->members->data[i];
 
-	for (usize i = 0; i < memc; ++i) {
-		member_instr = &type_struct->members->data[i];
+			if (analyze_slot(cnt, &analyze_slot_conf_basic, member_instr, NULL) !=
+			    ANALYZE_PASSED) {
+				return ANALYZE_RESULT(FAILED, 0);
+			}
 
-		/* This is useful only for reduction of input instructions??? */
-		if (analyze_slot(cnt, &analyze_slot_conf_basic, member_instr, NULL) !=
-		    ANALYZE_PASSED) {
-			return ANALYZE_RESULT(FAILED, 0);
-		}
+			decl_member = (MirInstrDeclMember *)*member_instr;
+			BL_ASSERT(decl_member->base.kind == MIR_INSTR_DECL_MEMBER);
+			BL_ASSERT(decl_member->base.comptime);
 
-		decl_member = (MirInstrDeclMember *)*member_instr;
-		BL_ASSERT(decl_member->base.kind == MIR_INSTR_DECL_MEMBER);
-		BL_ASSERT(decl_member->base.comptime);
-
-		/* solve member type */
-		const bool is_member_incomplete = decl_member->member->incomplete_type_resolver;
-		if (is_member_incomplete) {
-			/* Resulting structure type will be incomplete type. */
-			is_incomplete = true;
-		} else {
-			/* Handle member as usual ... */
+			/* solve member type */
 			member_type = decl_member->type->value.data.v_ptr.data.type;
-			BL_ASSERT(member_type && "Missing type of struct member! Shouldn't be "
-			                         "MirMember marked as incomplete?");
 
 			if (member_type->kind == MIR_TYPE_FN) {
 				builder_msg(BUILDER_MSG_ERROR,
@@ -5255,35 +5210,33 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 				            "be referenced only by pointers.");
 				return ANALYZE_RESULT(FAILED, 0);
 			}
+
+			BL_ASSERT(member_type);
+
+			/* setup and provide member */
+			MirMember *member = decl_member->member;
+			BL_ASSERT(member);
+			member->type       = member_type;
+			member->decl_scope = scope;
+			member->index      = (s64)i;
+
+			tsa_push_MemberPtr(members, member);
+
+			commit_member(cnt, member);
 		}
-
-		/* setup and provide member */
-		MirMember *member = decl_member->member;
-		BL_ASSERT(member);
-		member->type       = member_type;
-		member->decl_scope = scope;
-		member->index      = (s64)i;
-
-		tsa_push_MemberPtr(members, member);
-
-		/* COMMIT MEMBER! */
-		commit_member(cnt, member);
 	}
 
-SETUP :
+	{ /* Setup const pointer. */
+		MirConstPtr *const_ptr = &type_struct->base.value.data.v_ptr;
+		MirType *    tmp       = create_type_struct(cnt,
+                                                  MIR_TYPE_STRUCT,
+                                                  type_struct->id,
+                                                  type_struct->scope,
+                                                  members,
+                                                  type_struct->is_packed);
 
-{ /* Setup const pointer. */
-	MirConstPtr *const_ptr = &type_struct->base.value.data.v_ptr;
-	MirType *    tmp       = create_type_struct(cnt,
-                                          MIR_TYPE_STRUCT,
-                                          type_struct->id,
-                                          type_struct->scope,
-                                          members,
-                                          type_struct->is_packed,
-                                          is_incomplete);
-
-	mir_set_const_ptr(const_ptr, tmp, MIR_CP_TYPE);
-}
+		mir_set_const_ptr(const_ptr, tmp, MIR_CP_TYPE);
+	}
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -7512,7 +7465,8 @@ ast_expr_cast(Context *cnt, Ast *cast)
 
 	if (!auto_cast) {
 		BL_ASSERT(ast_type);
-		type = AST_CREATE_TYPE_RECOLVER_CALL(ast_type);
+		type = ast_create_impl_fn_call(
+		    cnt, ast_type, RESOLVE_TYPE_FN_NAME, cnt->builtin_types.t_resolve_type_fn);
 	}
 
 	MirInstr *next = ast(cnt, ast_next);
@@ -7715,8 +7669,8 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn, Ast *decl_node, bool is_in_gscope, u3
 	    (MirInstrFnProto *)append_instr_fn_proto(cnt, lit_fn, NULL, NULL, true);
 
 	/* Generate type resolver for function type. */
-
-	fn_proto->type = AST_CREATE_TYPE_RECOLVER_CALL(ast_fn_type);
+	fn_proto->type = ast_create_impl_fn_call(
+	    cnt, ast_fn_type, RESOLVE_TYPE_FN_NAME, cnt->builtin_types.t_resolve_type_fn);
 	BL_ASSERT(fn_proto->type);
 
 	MirInstrBlock *prev_block      = get_current_block(cnt);
@@ -7981,7 +7935,10 @@ ast_decl_entity(Context *cnt, Ast *entity)
 
 		if (ast_type) {
 			((MirInstrFnProto *)value)->user_type =
-			    AST_CREATE_TYPE_RECOLVER_CALL(ast_type);
+			    ast_create_impl_fn_call(cnt,
+			                            ast_type,
+			                            RESOLVE_TYPE_FN_NAME,
+			                            cnt->builtin_types.t_resolve_type_fn);
 		}
 
 		/* check main */
@@ -7992,7 +7949,12 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		}
 	} else {
 		/* other declaration types */
-		MirInstr *type = ast_type ? AST_CREATE_TYPE_RECOLVER_CALL(ast_type) : NULL;
+		MirInstr *type = ast_type
+		                     ? ast_create_impl_fn_call(cnt,
+		                                               ast_type,
+		                                               RESOLVE_TYPE_FN_NAME,
+		                                               cnt->builtin_types.t_resolve_type_fn)
+		                     : NULL;
 
 		cnt->ast.current_entity_id = &ast_name->data.ident.id;
 		/* initialize value */
@@ -8053,13 +8015,7 @@ ast_decl_member(Context *cnt, Ast *arg)
 	Ast *ast_name = arg->data.decl.name;
 
 	BL_ASSERT(ast_type);
-	MirInstr *result = NULL;
-	if (ast_type->kind != AST_TYPE_PTR) {
-		result = ast(cnt, ast_type);
-	} else { /* pointer type in structure */
-		 /* generate type resolver function call for this */
-		result = AST_CREATE_TYPE_RECOLVER_CALL(ast_type);
-	}
+	MirInstr *result = ast(cnt, ast_type);
 
 	/* named member? */
 	if (ast_name) {
@@ -8164,7 +8120,6 @@ ast_type_ptr(Context *cnt, Ast *type_ptr)
 {
 	Ast *ast_type = type_ptr->data.type_ptr.type;
 	BL_ASSERT(ast_type && "invalid pointee type");
-
 	MirInstr *type = ast(cnt, ast_type);
 	BL_ASSERT(type);
 
