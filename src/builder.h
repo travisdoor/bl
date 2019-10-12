@@ -70,7 +70,7 @@ typedef struct BuilderOpions {
 
 typedef struct Builder {
 	BuilderOptions options;
-	TArray         str_cache;
+	Arena          str_cache;
 	s32            total_lines;
 	s32            errorc;
 	ConfData *     conf;

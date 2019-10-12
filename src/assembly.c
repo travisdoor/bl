@@ -210,6 +210,7 @@ assembly_new(const char *name)
 	thtbl_init(&assembly->unit_cache, 0, EXPECTED_UNIT_COUNT);
 	thtbl_init(&assembly->link_cache, sizeof(Token *), EXPECTED_LINK_COUNT);
 	thtbl_init(&assembly->type_table, sizeof(MirType *), 8192);
+	thtbl_init(&assembly->MIR.RTTI_vars, sizeof(MirVar *), 8192);
 
 	scope_arenas_init(&assembly->arenas.scope);
 	ast_arena_init(&assembly->arenas.ast);
@@ -253,6 +254,7 @@ assembly_delete(Assembly *assembly)
 	scope_arenas_terminate(&assembly->arenas.scope);
 
 	tarray_terminate(&assembly->units);
+	thtbl_terminate(&assembly->MIR.RTTI_vars);
 	thtbl_terminate(&assembly->unit_cache);
 	thtbl_terminate(&assembly->link_cache);
 	thtbl_terminate(&assembly->type_table);
@@ -311,3 +313,4 @@ assembly_find_extern(Assembly *assembly, const char *symbol)
 
 	return handle;
 }
+

@@ -50,6 +50,12 @@ compile_assembly(Assembly *assembly);
 static bool llvm_initialized = false;
 
 static void
+str_cache_dtor(TString *str)
+{
+	tstring_terminate(str);
+}
+
+static void
 llvm_init(void)
 {
 	if (llvm_initialized) return;
@@ -214,7 +220,7 @@ builder_init(void)
 	builder.errorc = 0;
 	builder.conf   = conf_data_new();
 
-	tarray_init(&builder.str_cache, sizeof(TString *));
+	arena_init(&builder.str_cache, sizeof(TString), 256, (ArenaElemDtor)str_cache_dtor);
 
 	/* TODO: this is invalid for Windows MSVC DLLs??? */
 
@@ -232,14 +238,7 @@ void
 builder_terminate(void)
 {
 	conf_data_delete(builder.conf);
-
-	TString *it;
-	TARRAY_FOREACH(TString *, &builder.str_cache, it)
-	{
-		tstring_delete(it);
-	}
-
-	tarray_terminate(&builder.str_cache);
+	arena_terminate(&builder.str_cache);
 }
 
 int
@@ -479,8 +478,8 @@ builder_msg(BuilderMsgType type,
 TString *
 builder_create_cached_str(void)
 {
-	TString *str = tstring_new();
-	tarray_push(&builder.str_cache, str);
+	TString *str = arena_alloc(&builder.str_cache);
+	tstring_init(str);
 
 	return str;
 }

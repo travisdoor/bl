@@ -317,11 +317,6 @@ struct MirMember {
 	Scope *  decl_scope;
 	s32      offset_bytes;
 	s64      index;
-
-	/* This one is set only if type of the member was not resolved during first analyze pass, we
-	 * can use this resolver in another pass during structure type completition. We use this as
-	 * workaround since structure can point to self. */
-	MirInstrCall *incomplete_type_resolver;
 };
 
 /* FUNCTION ARGUMENT */

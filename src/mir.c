@@ -285,7 +285,9 @@ cache_builtin(Context *cnt, ScopeEntry *entry);
 static MirType *
 lookup_builtin(Context *cnt, MirBuiltinIdKind kind);
 
-/* ctors */
+static void
+init_type_id(Context *cnt, MirType *type);
+
 static bool
 create_type(Context *cnt, MirType **out_type, const char *sh);
 
@@ -323,6 +325,9 @@ create_type_struct(Context *              cnt,
                    Scope *                scope,
                    TSmallArray_MemberPtr *members, /* MirMember */
                    bool                   is_packed);
+
+static MirType *
+create_fwd_type_struct(Context *cnt, Scope *scope);
 
 static MirType *
 create_type_enum(Context *               cnt,
@@ -1637,6 +1642,156 @@ sh_type_enum(Context *cnt, ID *id, MirType *base_type, TSmallArray_VariantPtr *v
 	return tmp->data;
 }
 
+void
+init_type_id(Context *cnt, MirType *type)
+{
+	BL_ASSERT(type && "Invalid type pointer!");
+	TString *tmp = &cnt->tmp_sh;
+	tstring_clear(tmp);
+
+	switch (type->kind) {
+	case MIR_TYPE_BOOL:
+	case MIR_TYPE_VOID:
+	case MIR_TYPE_TYPE:
+	case MIR_TYPE_INT: {
+		tstring_append(tmp, type->id.str);
+		break;
+	}
+
+	case MIR_TYPE_NULL: {
+		/* n.<name> */
+		tstring_clear(tmp);
+		tstring_append(tmp, "n.");
+		tstring_append(tmp, type->data.null.base_type->id.str);
+		break;
+	}
+
+	case MIR_TYPE_PTR: {
+		/* p.<name> */
+		tstring_clear(tmp);
+		tstring_append(tmp, "p.");
+		tstring_append(tmp, type->data.ptr.expr->id.str);
+		break;
+	}
+
+	case MIR_TYPE_FN: {
+		tstring_append(tmp, "f.(");
+
+		/* append all arg types isd */
+		if (type->data.fn.args) {
+			MirArg *arg;
+			TSA_FOREACH(type->data.fn.args, arg)
+			{
+				BL_ASSERT(arg->type->id.str);
+				tstring_append(tmp, arg->type->id.str);
+
+				if (i != type->data.fn.args->size - 1) tstring_append(tmp, ",");
+			}
+		}
+
+		tstring_append(tmp, ")");
+
+		if (type->data.fn.ret_type) {
+			BL_ASSERT(type->data.fn.ret_type->id.str);
+			tstring_append(tmp, type->data.fn.ret_type->id.str);
+		} else {
+			/* implicit return void */
+			tstring_append(tmp, cnt->builtin_types.t_void->id.str);
+		}
+		break;
+	}
+
+	case MIR_TYPE_ARRAY: {
+		char ui_str[21];
+		sprintf(ui_str, "%llu", (unsigned long long)type->data.array.len);
+
+		tstring_append(tmp, ui_str);
+		tstring_append(tmp, ".");
+		tstring_append(tmp, type->data.array.elem_type->id.str);
+		break;
+	}
+
+	case MIR_TYPE_STRUCT: {
+		switch (type->kind) {
+		case MIR_TYPE_STRUCT:
+			tstring_append(tmp, "s.");
+			break;
+		case MIR_TYPE_SLICE:
+			tstring_append(tmp, "sl.");
+			break;
+		case MIR_TYPE_STRING:
+			tstring_append(tmp, "ss.");
+			break;
+		case MIR_TYPE_VARGS:
+			tstring_append(tmp, "sv.");
+			break;
+		default:
+			BL_ABORT("Expected struct base type.");
+		}
+
+		if (type->user_id) {
+			tstring_append(tmp, type->user_id->str);
+		}
+
+		tstring_append(tmp, "{");
+		if (type->data.strct.members) {
+			MirMember *member;
+			TSA_FOREACH(type->data.strct.members, member)
+			{
+				BL_ASSERT(member->type->id.str);
+				tstring_append(tmp, member->type->id.str);
+
+				if (i != type->data.strct.members->size - 1)
+					tstring_append(tmp, ",");
+			}
+		}
+
+		tstring_append(tmp, "}");
+		break;
+	}
+
+	case MIR_TYPE_ENUM: {
+		tstring_append(tmp, "e.");
+
+		if (type->user_id) tstring_append(tmp, type->user_id->str);
+
+		tstring_append(tmp, "(");
+		tstring_append(tmp, type->data.enm.base_type->id.str);
+		tstring_append(tmp, ")");
+
+		tstring_append(tmp, "{");
+		if (type->data.enm.variants) {
+			MirVariant *variant;
+			TSA_FOREACH(type->data.enm.variants, variant)
+			{
+				BL_ASSERT(variant->value);
+
+				char value_str[35];
+				snprintf(value_str,
+				         TARRAY_SIZE(value_str),
+				         "%lld",
+				         (long long)variant->value->data.v_s64);
+				tstring_append(tmp, value_str);
+
+				if (i != type->data.enm.variants->size - 1)
+					tstring_append(tmp, ",");
+			}
+		}
+		tstring_append(tmp, "}");
+		break;
+	}
+
+	default:
+		BL_UNIMPLEMENTED;
+	}
+
+	TString *copy = builder_create_cached_str();
+	tstring_append(copy, tmp->data);
+
+	type->id.str  = copy->data;
+	type->id.hash = thash_from_str(copy->data);
+}
+
 /* impl */
 /* Fetch type, when type with same sh has been already created and can be
  * reused, this function return false and set out_type to already created type
@@ -1932,6 +2087,12 @@ create_type_struct(Context *              cnt,
 	}
 
 	return tmp;
+}
+
+MirType *
+create_fwd_type_struct(Context *cnt, Scope *scope)
+{
+	BL_UNIMPLEMENTED;
 }
 
 MirType *

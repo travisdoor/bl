@@ -49,18 +49,19 @@ typedef struct Assembly {
 	} arenas;
 
 	struct {
-		TArray global_instrs; // All global instructions.
-		TArray RTTI_tmp_vars; // Temporary variables used by RTTI.
+		TArray     global_instrs; /* All global instructions. */
+		TArray     RTTI_tmp_vars; /* Temporary variables used by RTTI. */
+		THashTable RTTI_vars;     /* Map type ids to RTTI vars. */
 	} MIR;
 
 	struct {
-		LLVMModuleRef        module;     // LLVM Module.
-		LLVMContextRef       cnt;        // LLVM Context.
-		LLVMTargetDataRef    TD;         // LLVM Target data.
-		LLVMTargetMachineRef TM;         // LLVM Machine.
-		char *               triple;     // LLVM triple.
-		LLVMMetadataRef      di_meta;    // LLVM Compile unit DI meta (optional)
-		LLVMDIBuilderRef     di_builder; // LLVM debug information builder
+		LLVMModuleRef        module;     /* LLVM Module. */
+		LLVMContextRef       cnt;        /* LLVM Context. */
+		LLVMTargetDataRef    TD;         /* LLVM Target data. */
+		LLVMTargetMachineRef TM;         /* LLVM Machine. */
+		char *               triple;     /* LLVM triple. */
+		LLVMMetadataRef      di_meta;    /* LLVM Compile unit DI meta (optional) */
+		LLVMDIBuilderRef     di_builder; /* LLVM debug information builder */
 	} llvm;
 
 	/* DynCall/Lib data used for external method execution in compile time */
@@ -70,12 +71,12 @@ typedef struct Assembly {
 		DCCallVM *vm;
 	} dl;
 
-	TArray      units;      /* array of all units in assembly */
-	THashTable  unit_cache; /* cache for loading only unique units */
-	THashTable  link_cache; /* all linked externals libraries passed to linker */
-	THashTable  type_table; /* type table key: type ID, value: *MirType */
-	char *      name;       /* assembly name */
-	Scope *     gscope;     /* global scope of the assembly */
+	TArray     units;      /* array of all units in assembly */
+	THashTable unit_cache; /* cache for loading only unique units */
+	THashTable link_cache; /* all linked externals libraries passed to linker */
+	THashTable type_table; /* type table key: type ID, value: *MirType CLEANUP: remove */
+	char *     name;       /* assembly name */
+	Scope *    gscope;     /* global scope of the assembly */
 } Assembly;
 
 typedef struct NativeLib {
@@ -105,5 +106,23 @@ assembly_add_unit_unique(Assembly *assembly, Unit *unit);
 
 DCpointer
 assembly_find_extern(Assembly *assembly, const char *symbol);
+
+static inline bool
+assembly_has_rtti(Assembly *assembly, u64 type_id)
+{
+	return thtbl_has_key(&assembly->MIR.RTTI_vars, type_id);
+}
+
+static inline MirVar *
+assembly_get_rtti(Assembly *assembly, u64 type_id)
+{
+	return thtbl_at(MirVar *, &assembly->MIR.RTTI_vars, type_id);
+}
+
+static inline void
+assembly_add_rtti(Assembly *assembly, u64 type_id, MirVar *rtti_var)
+{
+	thtbl_insert(&assembly->MIR.RTTI_vars, type_id, rtti_var);
+}
 
 #endif

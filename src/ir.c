@@ -524,8 +524,8 @@ void
 emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
 	MirType *type = type_info->expr_type;
-	BL_ASSERT(type)
-	BL_ASSERT(type->rtti.var)
+	BL_ASSERT(type);
+	BL_ASSERT(type->rtti.var);
 
 	LLVMValueRef llvm_var = type->rtti.var->llvm_value;
 	BL_ASSERT(llvm_var && "Missing LLVM value for RTTI variable.")
