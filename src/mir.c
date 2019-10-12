@@ -31,9 +31,9 @@
 #include "builder.h"
 #include "common.h"
 #include "llvm_di.h"
+#include "mir_instr.inc"
 #include "mir_printer.h"
 #include "unit.h"
-#include "mir_instr.inc"
 
 // Constants
 // clang-format off
@@ -221,6 +221,7 @@ static ID builtin_ids[_MIR_BUILTIN_ID_COUNT] = {
 };
 // clang-format on
 
+/* Arena destructor for functions. */
 static void
 fn_dtor(MirFn **fn)
 {
@@ -228,29 +229,41 @@ fn_dtor(MirFn **fn)
 }
 
 /* FW decls */
+/* Initialize all builtin types. */
 static void
 init_builtins(Context *cnt);
 
+/* Start top-level execution of entry function using MIR-VM. (Usualy 'main' funcition) */
 static void
 execute_entry_fn(Context *cnt);
 
+/* Execute all registered test cases in current assembly. */
 static void
 execute_test_cases(Context *cnt);
 
+/* Register incomplete scope entry for symbol. */
 static ScopeEntry *
 register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool is_builtin, bool enable_groups);
 
+/* Store scope entry for builtin into cache to be faster localized as needed. */
 static void
 cache_builtin(Context *cnt, ScopeEntry *entry);
 
+/* Look up builtin by builtin kind. */
 static MirType *
 lookup_builtin(Context *cnt, MirBuiltinIdKind kind);
 
+/* Initialize type ID. This function creates and set ID string and calculates integer hash from this
+ * string. The type.id.str could be also used as name for unnamed types. */
 static void
 init_type_id(Context *cnt, MirType *type);
 
-static bool
+BL_DEPRECATED static bool
 create_type(Context *cnt, MirType **out_type, const char *sh);
+
+/* Create new type. The 'user_id' is optional. */
+static MirType *
+create_type2(Context *cnt, MirTypeKind kind, ID *user_id);
 
 static MirType *
 create_type_type(Context *cnt);
@@ -1753,24 +1766,6 @@ init_type_id(Context *cnt, MirType *type)
 	type->id.hash = thash_from_str(copy->data);
 }
 
-/* impl */
-/* Fetch type, when type with same sh has been already created and can be
- * reused, this function return false and set out_type to already created type
- * from cache. When new type instance was created function will return true and
- * set out_type to new instance of type, new instance will be stored in cache
- * for later use also.
- *
- * Hashing rules:
- *
- * | Type       | Rules                           |
- * |------------+---------------------------------|
- * | Null       | n.<type>                        |
- * | Pointer    | p.<type>                        |
- * | Function   | f.(<arg1,...>)<return type>     |
- * | Array      | <len>.<type>                    |
- * | Structures | <s|sl|sv|ss>.<name>{<m1,...>}   |
- * | Enumerator | <e>.<name>(<type>){<1,2,...>}   |
- */
 bool
 create_type(Context *cnt, MirType **out_type, const char *sh)
 {
@@ -1801,6 +1796,16 @@ create_type(Context *cnt, MirType **out_type, const char *sh)
 	}
 
 	BL_ABORT("should not happend");
+}
+
+MirType *
+create_type2(Context *cnt, MirTypeKind kind, ID *user_id)
+{
+	MirType *type = arena_alloc(&cnt->assembly->arenas.mir.type);
+	type->kind = kind;
+	type->user_id = user_id;
+
+	return type;
 }
 
 ScopeEntry *

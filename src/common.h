@@ -41,9 +41,9 @@
 struct Assembly;
 
 #if defined(BL_COMPILER_CLANG) || defined(BL_COMPILER_GNUC)
-#define DEPRECATED __attribute__((deprecated))
+#define BL_DEPRECATED __attribute__((deprecated))
 #else
-#define DEPRECATED
+#define BL_DEPRECATED
 #endif
 
 #define IS_FLAG(_v, _flag) ((bool)((_v & _flag) == _flag))
