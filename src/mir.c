@@ -33,6 +33,7 @@
 #include "llvm_di.h"
 #include "mir_printer.h"
 #include "unit.h"
+#include "mir_instr.inc"
 
 // Constants
 // clang-format off
@@ -60,46 +61,6 @@
 	}
 
 #define CREATE_INSTR(_cnt, _kind, _node, _t) ((_t)_create_instr((_cnt), (_kind), (_node)))
-
-union _MirInstr {
-	MirInstrBlock         block;
-	MirInstrDeclVar       var;
-	MirInstrDeclMember    member;
-	MirInstrDeclVariant   variant;
-	MirInstrDeclArg       decl_arg;
-	MirInstrConst         cnst;
-	MirInstrLoad          load;
-	MirInstrStore         store;
-	MirInstrRet           ret;
-	MirInstrBinop         binop;
-	MirInstrFnProto       fn_proto;
-	MirInstrDeclRef       decl_ref;
-	MirInstrDeclDirectRef decl_direct_ref;
-	MirInstrCall          call;
-	MirInstrUnreachable   unreachable;
-	MirInstrCondBr        cond_br;
-	MirInstrBr            br;
-	MirInstrUnop          unop;
-	MirInstrArg           arg;
-	MirInstrElemPtr       elem_ptr;
-	MirInstrMemberPtr     member_ptr;
-	MirInstrAddrOf        addrof;
-	MirInstrTypeArray     type_array;
-	MirInstrTypeSlice     type_slice;
-	MirInstrTypeVArgs     type_vargs;
-	MirInstrTypePtr       type_ptr;
-	MirInstrTypeStruct    type_struct;
-	MirInstrTypeFn        type_fn;
-	MirInstrTypeEnum      type_enum;
-	MirInstrCast          cast;
-	MirInstrSizeof        szof;
-	MirInstrAlignof       alof;
-	MirInstrCompound      init;
-	MirInstrVArgs         vargs;
-	MirInstrTypeInfo      type_info;
-	MirInstrPhi           phi;
-	MirInstrToAny         toany;
-};
 
 TSMALL_ARRAY_TYPE(LLVMType, LLVMTypeRef, 8);
 TSMALL_ARRAY_TYPE(LLVMMetadata, LLVMMetadataRef, 16);
@@ -8937,7 +8898,7 @@ mir_get_array_elem_offset(MirType *type, u32 i)
 void
 mir_arenas_init(MirArenas *arenas)
 {
-	arena_init(&arenas->instr, sizeof(union _MirInstr), ARENA_CHUNK_COUNT, NULL);
+	arena_init(&arenas->instr, SIZEOF_MIR_INSTR, ARENA_CHUNK_COUNT, NULL);
 	arena_init(&arenas->type, sizeof(MirType), ARENA_CHUNK_COUNT, NULL);
 	arena_init(&arenas->var, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
 	arena_init(&arenas->fn, sizeof(MirFn), ARENA_CHUNK_COUNT, (ArenaElemDtor)&fn_dtor);
