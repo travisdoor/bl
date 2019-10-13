@@ -525,9 +525,11 @@ emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
 	MirType *type = type_info->expr_type;
 	BL_ASSERT(type);
-	BL_ASSERT(type->rtti.var);
 
-	LLVMValueRef llvm_var = type->rtti.var->llvm_value;
+	MirVar *rtti_var = assembly_get_rtti(cnt->assembly, type->id.hash);
+	BL_ASSERT(rtti_var);
+
+	LLVMValueRef llvm_var = rtti_var->llvm_value;
 	BL_ASSERT(llvm_var && "Missing LLVM value for RTTI variable.")
 
 	LLVMTypeRef llvm_dest_type = type_info->base.value.type->llvm_type;
@@ -1598,9 +1600,10 @@ emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 void
 emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 {
-	LLVMValueRef llvm_tmp       = toany->tmp->llvm_value;
-	LLVMValueRef llvm_type_info = toany->rtti_type->rtti.var->llvm_value;
-	LLVMValueRef llvm_data      = toany->expr->llvm_value;
+	LLVMValueRef llvm_tmp = toany->tmp->llvm_value;
+	LLVMValueRef llvm_type_info =
+	    assembly_get_rtti(cnt->assembly, toany->rtti_type->id.hash)->llvm_value;
+	LLVMValueRef llvm_data = toany->expr->llvm_value;
 
 	BL_ASSERT(llvm_type_info && "Missing LLVM value for RTTI variable.")
 	BL_ASSERT(llvm_tmp)
@@ -1618,7 +1621,9 @@ emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 		LLVMBuildStore(cnt->llvm_builder, llvm_data, expr_tmp->llvm_value);
 		llvm_data = expr_tmp->llvm_value;
 	} else if (toany->rtti_type_specification) {
-		llvm_data = toany->rtti_type_specification->rtti.var->llvm_value;
+		llvm_data =
+		    assembly_get_rtti(cnt->assembly, toany->rtti_type_specification->id.hash)
+		        ->llvm_value;
 	}
 
 	{ /* setup tmp variable */

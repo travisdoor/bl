@@ -146,6 +146,7 @@ init_mir(Assembly *assembly)
 	mir_arenas_init(&assembly->arenas.mir);
 	tarray_init(&assembly->MIR.global_instrs, sizeof(MirInstr *));
 	tarray_init(&assembly->MIR.RTTI_var_queue, sizeof(MirVar *));
+	thtbl_init(&assembly->MIR.RTTI_table, sizeof(MirVar *), 2048);
 }
 
 static void
@@ -193,6 +194,7 @@ terminate_DI(Assembly *assembly)
 static void
 terminate_mir(Assembly *assembly)
 {
+	thtbl_terminate(&assembly->MIR.RTTI_table);
 	tarray_terminate(&assembly->MIR.global_instrs);
 	tarray_terminate(&assembly->MIR.RTTI_var_queue);
 
@@ -309,4 +311,3 @@ assembly_find_extern(Assembly *assembly, const char *symbol)
 
 	return handle;
 }
-

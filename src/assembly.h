@@ -56,6 +56,9 @@ typedef struct Assembly {
 		 * Array must be in propper order due to references between types and related
 		 * sub-types.  */
 		TArray RTTI_var_queue;
+
+		/* Map type ids to RTTI variables. */
+		THashTable RTTI_table;
 	} MIR;
 
 	struct {
@@ -109,5 +112,23 @@ assembly_add_unit_unique(Assembly *assembly, Unit *unit);
 
 DCpointer
 assembly_find_extern(Assembly *assembly, const char *symbol);
+
+static inline bool
+assembly_has_rtti(Assembly *assembly, u64 type_id)
+{
+	return thtbl_has_key(&assembly->MIR.RTTI_table, type_id);
+}
+
+static inline MirVar *
+assembly_get_rtti(Assembly *assembly, u64 type_id)
+{
+	return thtbl_at(MirVar *, &assembly->MIR.RTTI_table, type_id);
+}
+
+static inline void
+assembly_add_rtti(Assembly *assembly, u64 type_id, MirVar *rtti_var)
+{
+	thtbl_insert(&assembly->MIR.RTTI_table, type_id, rtti_var);
+}
 
 #endif

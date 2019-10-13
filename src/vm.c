@@ -1252,7 +1252,11 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 	MirType *  tmp_type = tmp->value.type;
 
 	/* type_info */
-	MirVar *expr_type_rtti = toany->rtti_type->rtti.var;
+	MirVar *expr_type_rtti = toany->rtti_type->vm_rtti_var_cache;
+	if (!expr_type_rtti) {
+		expr_type_rtti = assembly_get_rtti(vm->assembly, toany->rtti_type->id.hash);
+		toany->rtti_type->vm_rtti_var_cache = expr_type_rtti;
+	}
 	BL_ASSERT(expr_type_rtti);
 
 	VMStackPtr dest           = tmp_ptr + mir_get_struct_elem_offest(vm->assembly, tmp_type, 0);
@@ -1273,7 +1277,12 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 		memset(dest, 0, data_type->store_size_bytes);
 	} else if (toany->rtti_type_specification) {
 		/* Use type specificaiton as an data value. */
-		MirVar *spec_type_rtti = toany->rtti_type_specification->rtti.var;
+		MirVar *spec_type_rtti = toany->rtti_type_specification->vm_rtti_var_cache;
+		if (!spec_type_rtti) {
+			spec_type_rtti = assembly_get_rtti(vm->assembly,
+			                                   toany->rtti_type_specification->id.hash);
+			toany->rtti_type_specification->vm_rtti_var_cache = spec_type_rtti;
+		}
 		BL_ASSERT(spec_type_rtti);
 
 		VMStackPtr rtti_spec_ptr =
@@ -1368,7 +1377,11 @@ interp_instr_type_info(VM *vm, MirInstrTypeInfo *type_info)
 	// HACK: cleanup stack
 	fetch_value(vm, type_info->expr);
 
-	MirVar *type_info_var = type_info->expr_type->rtti.var;
+	MirVar *type_info_var = type_info->expr_type->vm_rtti_var_cache;
+	if (!type_info_var) {
+		type_info_var = assembly_get_rtti(vm->assembly, type_info->expr_type->id.hash);
+		type_info->expr_type->vm_rtti_var_cache = type_info_var;
+	}
 	BL_ASSERT(type_info_var);
 
 	MirType *type = type_info->base.value.type;

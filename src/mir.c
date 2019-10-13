@@ -69,12 +69,12 @@ TSMALL_ARRAY_TYPE(InstrPtr64, MirInstr *, 64);
 TSMALL_ARRAY_TYPE(String, const char *, 64);
 
 typedef struct {
-	VM          vm;
-	Assembly *  assembly;
-	TArray      test_cases;
-	TString     tmp_sh;
-	MirFn *     entry_fn;
-	bool        debug_mode;
+	VM        vm;
+	Assembly *assembly;
+	TArray    test_cases;
+	TString   tmp_sh;
+	MirFn *   entry_fn;
+	bool      debug_mode;
 
 	/* AST -> MIR generation */
 	struct {
@@ -100,9 +100,6 @@ typedef struct {
 		/* Unique table of pointers to types later generated into RTTI, this table contains
 		 * only pointer to top level types used by typeinfo operator, not all sub-types. */
 		THashTable RTTI_entry_types; // TODO: remove
-
-		/* Map type id to RTTI global temporary variable. */
-		THashTable RTTI_var_table;
 
 		LLVMDIBuilderRef llvm_di_builder;
 	} analyze;
@@ -7117,72 +7114,77 @@ MirVar *
 gen_RTTI(Context *cnt, MirType *type)
 {
 	BL_ASSERT(type);
-	if (type->rtti.var) return type->rtti.var;
+	if (assembly_has_rtti(cnt->assembly, type->id.hash))
+		return assembly_get_rtti(cnt->assembly, type->id.hash);
 
-	/* NEW */
+	MirVar *rtti_var = NULL;
+
 	switch (type->kind) {
 	case MIR_TYPE_TYPE:
-		type->rtti.var =
+		rtti_var =
 		    gen_RTTI_empty(cnt, type, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_TYPE));
-		return type->rtti.var;
+		break;
 
 	case MIR_TYPE_VOID:
-		type->rtti.var =
+		rtti_var =
 		    gen_RTTI_empty(cnt, type, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_VOID));
-		return type->rtti.var;
+		break;
 
 	case MIR_TYPE_BOOL:
-		type->rtti.var =
+		rtti_var =
 		    gen_RTTI_empty(cnt, type, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_BOOL));
-		return type->rtti.var;
+		break;
 
 	case MIR_TYPE_NULL:
-		type->rtti.var =
+		rtti_var =
 		    gen_RTTI_empty(cnt, type, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_NULL));
-		return type->rtti.var;
+		break;
 
 	case MIR_TYPE_STRING:
-		type->rtti.var =
+		rtti_var =
 		    gen_RTTI_empty(cnt, type, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_STRING));
-		return type->rtti.var;
+		break;
 
 	case MIR_TYPE_INT:
-		type->rtti.var = gen_RTTI_int(cnt, type);
-		return type->rtti.var;
+		rtti_var = gen_RTTI_int(cnt, type);
+		break;
 
 	case MIR_TYPE_REAL:
-		type->rtti.var = gen_RTTI_real(cnt, type);
-		return type->rtti.var;
+		rtti_var = gen_RTTI_real(cnt, type);
+		break;
 
 	case MIR_TYPE_PTR:
-		type->rtti.var = gen_RTTI_ptr(cnt, type);
-		return type->rtti.var;
+		rtti_var = gen_RTTI_ptr(cnt, type);
+		break;
 
 	case MIR_TYPE_ENUM:
-		type->rtti.var = gen_RTTI_enum(cnt, type);
-		return type->rtti.var;
+		rtti_var = gen_RTTI_enum(cnt, type);
+		break;
 
 	case MIR_TYPE_ARRAY:
-		type->rtti.var = gen_RTTI_array(cnt, type);
-		return type->rtti.var;
+		rtti_var = gen_RTTI_array(cnt, type);
+		break;
 
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT:
-		type->rtti.var = gen_RTTI_struct(cnt, type);
-		return type->rtti.var;
+		rtti_var = gen_RTTI_struct(cnt, type);
+		break;
 
 	case MIR_TYPE_FN:
-		type->rtti.var = gen_RTTI_fn(cnt, type);
-		return type->rtti.var;
-
-	case MIR_TYPE_INVALID:
+		rtti_var = gen_RTTI_fn(cnt, type);
 		break;
+
+	default: {
+		char type_name[256];
+		mir_type_to_str(type_name, 256, type, true);
+		BL_ABORT("missing RTTI generation for type '%s'", type_name);
+	}
 	}
 
-	char type_name[256];
-	mir_type_to_str(type_name, 256, type, true);
-	BL_ABORT("missing RTTI generation for type '%s'", type_name);
+	BL_ASSERT(rtti_var);
+	assembly_add_rtti(cnt->assembly, type->id.hash, rtti_var);
+	return rtti_var;
 }
 
 /*
@@ -8893,7 +8895,6 @@ mir_run(Assembly *assembly)
 	cnt.builtin_types.cache =
 	    scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, 64, NULL);
 
-	thtbl_init(&cnt.analyze.RTTI_var_table, sizeof(MirVar *), 2048);
 	thtbl_init(&cnt.analyze.waiting, sizeof(TArray), ANALYZE_TABLE_SIZE);
 	thtbl_init(&cnt.analyze.RTTI_entry_types, 0, 1024);
 	tlist_init(&cnt.analyze.queue, sizeof(MirInstr *));
@@ -8928,7 +8929,6 @@ mir_run(Assembly *assembly)
 
 SKIP:
 	tlist_terminate(&cnt.analyze.queue);
-	thtbl_terminate(&cnt.analyze.RTTI_var_table);
 	thtbl_terminate(&cnt.analyze.waiting);
 	thtbl_terminate(&cnt.analyze.RTTI_entry_types);
 	tarray_terminate(&cnt.test_cases);

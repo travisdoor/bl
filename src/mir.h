@@ -388,16 +388,8 @@ struct MirType {
 	usize           store_size_bytes;
 	s32             alignment;
 
-	/*
-	 * Every unique type will cause generation of type info global constant in program
-	 * data segment.
-	 */
-	// CLEANUP: remove, use RTTI_var_table!!!
-	// CLEANUP: remove, use RTTI_var_table!!!
-	// CLEANUP: remove, use RTTI_var_table!!!
-	struct {
-		MirVar *var;
-	} rtti;
+	/* Optionally set pointer to RTTI var used by VM. */
+	MirVar *vm_rtti_var_cache;
 
 	union {
 		struct MirTypeInt    integer;
