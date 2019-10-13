@@ -57,6 +57,7 @@ typedef struct BuilderOpions {
 	bool     no_warn;
 	bool     no_api;
 	bool     no_llvm;
+	bool     no_analyze;
 	bool     emit_llvm;
 	bool     emit_mir;
 	bool     load_from_file;
@@ -69,7 +70,7 @@ typedef struct BuilderOpions {
 
 typedef struct Builder {
 	BuilderOptions options;
-	TArray         str_cache;
+	Arena          str_cache;
 	s32            total_lines;
 	s32            errorc;
 	ConfData *     conf;

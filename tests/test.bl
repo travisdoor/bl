@@ -1,13 +1,11 @@
 /* playground */
 
-#load "std/file.bl"
+Entity :: struct {
+    name: string,
+    //self: *Entity
+};
 
 main :: fn () s32 {
-    file := file_open(#file);
-    defer file_close(file);
-
-    content := file_read_all(file);
-    print("%\n", content);
-
+    foo: Entity;
     return 0;
 };

@@ -359,6 +359,7 @@ struct MirTypeStruct {
 	Scope *                scope; /* struct body scope */
 	TSmallArray_MemberPtr *members;
 	bool                   is_packed;
+	bool                   is_incomplete;
 };
 
 /* Enum variants must be baked into enum type. */
@@ -387,13 +388,8 @@ struct MirType {
 	usize           store_size_bytes;
 	s32             alignment;
 
-	/*
-	 * Every unique type will cause generation of type info global constant in program
-	 * data segment.
-	 */
-	struct {
-		MirVar *var;
-	} rtti;
+	/* Optionally set pointer to RTTI var used by VM. */
+	MirVar *vm_rtti_var_cache;
 
 	union {
 		struct MirTypeInt    integer;
