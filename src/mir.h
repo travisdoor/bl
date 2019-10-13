@@ -93,6 +93,7 @@ typedef struct MirInstrTypeInfo      MirInstrTypeInfo;
 typedef struct MirInstrTypeKind      MirInstrTypeKind;
 typedef struct MirInstrPhi           MirInstrPhi;
 typedef struct MirInstrToAny         MirInstrToAny;
+typedef struct MirInstrCST           MirInstrCST;
 
 typedef union MirConstValueData MirConstValueData;
 
@@ -246,6 +247,7 @@ typedef enum MirInstrKind {
 	MIR_INSTR_TYPE_INFO,
 	MIR_INSTR_PHI,
 	MIR_INSTR_TOANY,
+	MIR_INSTR_CST,
 } MirInstrKind;
 
 typedef enum MirCastOp {
@@ -359,7 +361,9 @@ struct MirTypeStruct {
 	Scope *                scope; /* struct body scope */
 	TSmallArray_MemberPtr *members;
 	bool                   is_packed;
-	bool                   is_incomplete;
+
+	/* Set true only for incomplete forward declarations of the struct. */
+	bool is_incomplete;
 };
 
 /* Enum variants must be baked into enum type. */
@@ -706,6 +710,9 @@ struct MirInstrDeclRef {
 	ID *         rid;
 	Scope *      scope;
 	ScopeEntry * scope_entry;
+
+	/* Set only for decl_refs inside struct member type resolvers. */
+	bool accept_incomplete_type;
 };
 
 struct MirInstrDeclDirectRef {
@@ -781,6 +788,15 @@ struct MirInstrToAny {
 	MirVar *  tmp;
 	MirVar *  expr_tmp; /* optional */
 	MirInstr *expr;
+};
+
+struct MirInstrCST {
+	MirInstr base;
+
+	MirInstr *            dest_type;
+	Scope *               scope;
+	TSmallArray_InstrPtr *members;
+	bool                  is_packed;
 };
 
 /* public */

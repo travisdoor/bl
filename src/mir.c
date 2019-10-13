@@ -62,6 +62,13 @@
 
 #define CREATE_INSTR(_cnt, _kind, _node, _t) ((_t)_create_instr((_cnt), (_kind), (_node)))
 
+#define CREATE_TYPE_RESOLVER_CALL(_ast)                                                            \
+	ast_create_impl_fn_call(                                                                   \
+	    cnt, (_ast), RESOLVE_TYPE_FN_NAME, cnt->builtin_types.t_resolve_type_fn)
+
+#define CREATE_VALUE_RESOLVER_CALL(_ast)                                                           \
+	ast_create_impl_fn_call(cnt, (_ast), INIT_VALUE_FN_NAME, NULL)
+
 TSMALL_ARRAY_TYPE(LLVMType, LLVMTypeRef, 8);
 TSMALL_ARRAY_TYPE(LLVMMetadata, LLVMMetadataRef, 16);
 TSMALL_ARRAY_TYPE(DeferStack, Ast *, 64);
@@ -299,8 +306,9 @@ create_type_struct(Context *              cnt,
                    TSmallArray_MemberPtr *members, /* MirMember */
                    bool                   is_packed);
 
+/* Create incomplete struct type placeholer to be filled later. */
 static MirType *
-create_fwd_type_struct(Context *cnt, Scope *scope);
+create_fwd_type_struct(Context *cnt);
 
 static MirType *
 create_type_enum(Context *               cnt,
@@ -1032,6 +1040,13 @@ static void
 gen_RTTI_types(Context *cnt);
 
 /* INLINES */
+
+/* Determinate if type is incomplete struct type. */
+static inline bool
+is_incomplete_struct_type(MirType *type)
+{
+	return type->kind == MIR_TYPE_STRUCT && type->data.strct.is_incomplete;
+}
 
 /* Determinate if instruction has volatile type, that means we can change type of the value during
  * analyze pass as needed. This is used for constant integer literals. */
@@ -2012,9 +2027,12 @@ create_type_struct(Context *              cnt,
 }
 
 MirType *
-create_fwd_type_struct(Context *cnt, Scope *scope)
+create_fwd_type_struct(Context *cnt)
 {
-	BL_UNIMPLEMENTED;
+	MirType *tmp                  = create_type(cnt, MIR_TYPE_STRUCT, NULL);
+	tmp->data.strct.is_incomplete = true;
+	init_llvm_type_struct(cnt, tmp);
+	return tmp;
 }
 
 MirType *
@@ -2406,6 +2424,13 @@ init_llvm_type_array(Context *cnt, MirType *type)
 void
 init_llvm_type_struct(Context *cnt, MirType *type)
 {
+	if (type->data.strct.is_incomplete) {
+		BL_ASSERT(type->user_id && "Missing user id for incomplete struct type.");
+		type->llvm_type =
+		    LLVMStructCreateNamed(cnt->assembly->llvm.cnt, type->user_id->str);
+		return;
+	}
+
 	TSmallArray_MemberPtr *members = type->data.strct.members;
 	BL_ASSERT(members);
 
@@ -2424,8 +2449,13 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 
 	/* named structure type */
 	if (type->user_id) {
-		type->llvm_type =
-		    LLVMStructCreateNamed(cnt->assembly->llvm.cnt, type->user_id->str);
+		if (type->llvm_type == NULL) {
+			/* Create new named type only if it's not already created (by incomplete
+			 * type declaration). */
+			type->llvm_type =
+			    LLVMStructCreateNamed(cnt->assembly->llvm.cnt, type->user_id->str);
+		}
+
 		LLVMStructSetBody(type->llvm_type, llvm_members.data, (unsigned)memc, is_packed);
 	} else {
 		type->llvm_type = LLVMStructTypeInContext(
@@ -4863,6 +4893,8 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		ref->base.value.type      = cnt->builtin_types.t_type;
 		ref->base.comptime        = true;
 		ref->base.value.addr_mode = MIR_VAM_LVALUE_CONST;
+
+		BL_ASSERT(!is_incomplete_struct_type(found->data.type));
 		mir_set_const_ptr(&ref->base.value.data.v_ptr, found->data.type, MIR_CP_TYPE);
 		break;
 	}
@@ -6446,6 +6478,9 @@ analyze_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_DECL_DIRECT_REF:
 		state = analyze_instr_decl_direct_ref(cnt, (MirInstrDeclDirectRef *)instr);
 		break;
+	case MIR_INSTR_CST:
+		BL_UNIMPLEMENTED;
+		break;
 	}
 
 	instr->analyzed = state.state == ANALYZE_PASSED;
@@ -7548,8 +7583,7 @@ ast_expr_cast(Context *cnt, Ast *cast)
 
 	if (!auto_cast) {
 		BL_ASSERT(ast_type);
-		type = ast_create_impl_fn_call(
-		    cnt, ast_type, RESOLVE_TYPE_FN_NAME, cnt->builtin_types.t_resolve_type_fn);
+		type = CREATE_TYPE_RESOLVER_CALL(ast_type);
 	}
 
 	MirInstr *next = ast(cnt, ast_next);
@@ -7752,8 +7786,7 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn, Ast *decl_node, bool is_in_gscope, u3
 	    (MirInstrFnProto *)append_instr_fn_proto(cnt, lit_fn, NULL, NULL, true);
 
 	/* Generate type resolver for function type. */
-	fn_proto->type = ast_create_impl_fn_call(
-	    cnt, ast_fn_type, RESOLVE_TYPE_FN_NAME, cnt->builtin_types.t_resolve_type_fn);
+	fn_proto->type = CREATE_TYPE_RESOLVER_CALL(ast_fn_type);
 	BL_ASSERT(fn_proto->type);
 
 	MirInstrBlock *prev_block      = get_current_block(cnt);
@@ -7989,16 +8022,20 @@ ast_expr_type(Context *cnt, Ast *type)
 {
 	Ast *next_type = type->data.expr_type.type;
 	BL_ASSERT(next_type);
+
 	return ast(cnt, next_type);
 }
 
 MirInstr *
 ast_decl_entity(Context *cnt, Ast *entity)
 {
-	MirInstr * result        = NULL;
-	Ast *      ast_name      = entity->data.decl.name;
-	Ast *      ast_type      = entity->data.decl.type;
-	Ast *      ast_value     = entity->data.decl_entity.value;
+	MirInstr * result         = NULL;
+	Ast *      ast_name       = entity->data.decl.name;
+	Ast *      ast_type       = entity->data.decl.type;
+	Ast *      ast_value      = entity->data.decl_entity.value;
+	const bool is_fn_decl     = ast_value && ast_value->kind == AST_EXPR_LIT_FN;
+	const bool is_struct_decl = ast_value && ast_value->kind == AST_EXPR_TYPE &&
+	                            ast_value->data.expr_type.type->kind == AST_TYPE_STRUCT;
 	const bool is_mutable    = entity->data.decl_entity.mut;
 	const bool is_in_gscope  = entity->data.decl_entity.in_gscope;
 	const bool is_compiler   = IS_FLAG(entity->data.decl_entity.flags, FLAG_COMPILER);
@@ -8010,18 +8047,14 @@ ast_decl_entity(Context *cnt, Ast *entity)
 	Scope *scope = ast_name->owner_scope;
 	ID *   id    = &ast_name->data.ident.id;
 
-	if (ast_value && ast_value->kind == AST_EXPR_LIT_FN) {
+	if (is_fn_decl) {
 		/* recognised named function declaraton */
 		const s32 flags = entity->data.decl_entity.flags;
 		MirInstr *value = ast_expr_lit_fn(cnt, ast_value, ast_name, is_in_gscope, flags);
 		enable_groups   = true;
 
 		if (ast_type) {
-			((MirInstrFnProto *)value)->user_type =
-			    ast_create_impl_fn_call(cnt,
-			                            ast_type,
-			                            RESOLVE_TYPE_FN_NAME,
-			                            cnt->builtin_types.t_resolve_type_fn);
+			((MirInstrFnProto *)value)->user_type = CREATE_TYPE_RESOLVER_CALL(ast_type);
 		}
 
 		/* check main */
@@ -8032,29 +8065,30 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		}
 	} else {
 		/* other declaration types */
-		MirInstr *type = ast_type
-		                     ? ast_create_impl_fn_call(cnt,
-		                                               ast_type,
-		                                               RESOLVE_TYPE_FN_NAME,
-		                                               cnt->builtin_types.t_resolve_type_fn)
-		                     : NULL;
+		MirInstr *type = ast_type ? CREATE_TYPE_RESOLVER_CALL(ast_type) : NULL;
 
 		cnt->ast.current_entity_id = &ast_name->data.ident.id;
 		/* initialize value */
 		MirInstr *value = NULL;
+		if (!ast_value) goto NO_VALUE;
+		/* TODO:
+		if (is_struct_decl) {
+		    // TODO: set to const type fwd decl
+		    // TODO: set current fwd decl
+		    // TODO: enable incomplete types for decl_ref instructions
+		    // TODO: generate value resolver
+		} else*/
 		if (is_in_gscope) {
 			/* Initialization of global variables must be done in
 			 * implicit initializer function executed in compile
 			 * time. Every initialization function must be able to
 			 * be executed in compile time. */
-			value =
-			    ast_value
-			        ? ast_create_impl_fn_call(cnt, ast_value, INIT_VALUE_FN_NAME, NULL)
-			        : NULL;
+			value = CREATE_VALUE_RESOLVER_CALL(ast_value);
 		} else {
 			value = ast(cnt, ast_value);
 		}
 
+	NO_VALUE:
 		append_instr_decl_var(cnt,
 		                      ast_name,
 		                      type,
@@ -8065,14 +8099,14 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		                      entity->data.decl_entity.flags);
 
 		cnt->ast.current_entity_id = NULL;
+	}
 
-		if (is_builtin(ast_name, MIR_BUILTIN_ID_MAIN)) {
-			builder_msg(BUILDER_MSG_ERROR,
-			            ERR_EXPECTED_FUNC,
-			            ast_name->location,
-			            BUILDER_CUR_WORD,
-			            "Main is expected to be a function.");
-		}
+	if (!is_fn_decl && is_builtin(ast_name, MIR_BUILTIN_ID_MAIN)) {
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_EXPECTED_FUNC,
+		            ast_name->location,
+		            BUILDER_CUR_WORD,
+		            "Main is expected to be a function.");
 	}
 
 	register_symbol(cnt, ast_name, id, scope, is_compiler, enable_groups);
@@ -8263,6 +8297,10 @@ ast_type_enum(Context *cnt, Ast *type_enum)
 MirInstr *
 ast_type_struct(Context *cnt, Ast *type_struct)
 {
+	/* Consume declaration identificator. */
+	ID *id                     = cnt->ast.current_entity_id;
+	cnt->ast.current_entity_id = NULL;
+
 	TSmallArray_AstPtr *ast_members = type_struct->data.type_strct.members;
 	const bool          is_raw      = type_struct->data.type_strct.raw;
 	if (is_raw) {
@@ -8296,10 +8334,6 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 	BL_ASSERT(scope);
 
 	if (cnt->debug_mode) init_llvm_DI_scope(cnt, scope);
-
-	/* Consume declaration identificator. */
-	ID *id                     = cnt->ast.current_entity_id;
-	cnt->ast.current_entity_id = NULL;
 
 	return append_instr_type_struct(cnt, type_struct, id, scope, members, false);
 }
@@ -8541,6 +8575,8 @@ mir_instr_name(MirInstr *instr)
 		return "InstrDeclVariant";
 	case MIR_INSTR_TOANY:
 		return "InstrToAny";
+	case MIR_INSTR_CST:
+		return "InstrCST";
 	}
 
 	return "UNKNOWN";

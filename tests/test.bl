@@ -2,6 +2,7 @@
 
 Entity :: struct {
     name: string,
+    homo : struct { i: s32, j: s32 },
     //self: *Entity
 };
 
