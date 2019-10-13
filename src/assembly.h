@@ -49,9 +49,13 @@ typedef struct Assembly {
 	} arenas;
 
 	struct {
-		TArray     global_instrs; /* All global instructions. */
-		TArray     RTTI_tmp_vars; /* Temporary variables used by RTTI. */
-		THashTable RTTI_vars;     /* Map type ids to RTTI vars. */
+		TArray global_instrs; /* All global instructions. */
+
+		/* Temporary variables used by RTTI. This is queue of all MirVars related to RTTI
+		 * generation, this array is used for generation of RTTI by LLVM IR and MIR-VM.
+		 * Array must be in propper order due to references between types and related
+		 * sub-types.  */
+		TArray RTTI_var_queue;
 	} MIR;
 
 	struct {
@@ -74,7 +78,6 @@ typedef struct Assembly {
 	TArray     units;      /* array of all units in assembly */
 	THashTable unit_cache; /* cache for loading only unique units */
 	THashTable link_cache; /* all linked externals libraries passed to linker */
-	THashTable type_table; /* type table key: type ID, value: *MirType CLEANUP: remove */
 	char *     name;       /* assembly name */
 	Scope *    gscope;     /* global scope of the assembly */
 } Assembly;
@@ -106,23 +109,5 @@ assembly_add_unit_unique(Assembly *assembly, Unit *unit);
 
 DCpointer
 assembly_find_extern(Assembly *assembly, const char *symbol);
-
-static inline bool
-assembly_has_rtti(Assembly *assembly, u64 type_id)
-{
-	return thtbl_has_key(&assembly->MIR.RTTI_vars, type_id);
-}
-
-static inline MirVar *
-assembly_get_rtti(Assembly *assembly, u64 type_id)
-{
-	return thtbl_at(MirVar *, &assembly->MIR.RTTI_vars, type_id);
-}
-
-static inline void
-assembly_add_rtti(Assembly *assembly, u64 type_id, MirVar *rtti_var)
-{
-	thtbl_insert(&assembly->MIR.RTTI_vars, type_id, rtti_var);
-}
 
 #endif

@@ -420,7 +420,7 @@ emit_DI_var(Context *cnt, MirVar *var)
 void
 emit_RTTI_types(Context *cnt)
 {
-	TArray *table = &cnt->assembly->MIR.RTTI_tmp_vars;
+	TArray *table = &cnt->assembly->MIR.RTTI_var_queue;
 
 	MirVar *     var;
 	LLVMValueRef llvm_var, llvm_value;

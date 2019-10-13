@@ -73,7 +73,6 @@ typedef struct {
 	Assembly *  assembly;
 	TArray      test_cases;
 	TString     tmp_sh;
-	THashTable *type_table;
 	MirFn *     entry_fn;
 	bool        debug_mode;
 
@@ -98,7 +97,13 @@ typedef struct {
 		bool       verbose_pre;
 		bool       verbose_post;
 
-		THashTable       RTTI_entry_types;
+		/* Unique table of pointers to types later generated into RTTI, this table contains
+		 * only pointer to top level types used by typeinfo operator, not all sub-types. */
+		THashTable RTTI_entry_types; // TODO: remove
+
+		/* Map type id to RTTI global temporary variable. */
+		THashTable RTTI_var_table;
+
 		LLVMDIBuilderRef llvm_di_builder;
 	} analyze;
 
@@ -258,12 +263,9 @@ lookup_builtin(Context *cnt, MirBuiltinIdKind kind);
 static void
 init_type_id(Context *cnt, MirType *type);
 
-BL_DEPRECATED static bool
-create_type(Context *cnt, MirType **out_type, const char *sh);
-
 /* Create new type. The 'user_id' is optional. */
 static MirType *
-create_type2(Context *cnt, MirTypeKind kind, ID *user_id);
+create_type(Context *cnt, MirTypeKind kind, ID *user_id);
 
 static MirType *
 create_type_type(Context *cnt);
@@ -1619,6 +1621,27 @@ sh_type_enum(Context *cnt, ID *id, MirType *base_type, TSmallArray_VariantPtr *v
 void
 init_type_id(Context *cnt, MirType *type)
 {
+	/******************************************************************************************/
+#define GEN_ID_STRUCT                                                                              \
+	if (type->user_id) {                                                                       \
+		tstring_append(tmp, type->user_id->str);                                           \
+	}                                                                                          \
+                                                                                                   \
+	tstring_append(tmp, "{");                                                                  \
+	if (type->data.strct.members) {                                                            \
+		MirMember *member;                                                                 \
+		TSA_FOREACH(type->data.strct.members, member)                                      \
+		{                                                                                  \
+			BL_ASSERT(member->type->id.str);                                           \
+			tstring_append(tmp, member->type->id.str);                                 \
+                                                                                                   \
+			if (i != type->data.strct.members->size - 1) tstring_append(tmp, ",");     \
+		}                                                                                  \
+	}                                                                                          \
+                                                                                                   \
+	tstring_append(tmp, "}");                                                                  \
+	/******************************************************************************************/
+
 	BL_ASSERT(type && "Invalid type pointer!");
 	TString *tmp = &cnt->tmp_sh;
 	tstring_clear(tmp);
@@ -1627,8 +1650,10 @@ init_type_id(Context *cnt, MirType *type)
 	case MIR_TYPE_BOOL:
 	case MIR_TYPE_VOID:
 	case MIR_TYPE_TYPE:
+	case MIR_TYPE_REAL:
 	case MIR_TYPE_INT: {
-		tstring_append(tmp, type->id.str);
+		BL_ASSERT(type->user_id);
+		tstring_append(tmp, type->user_id->str);
 		break;
 	}
 
@@ -1685,42 +1710,27 @@ init_type_id(Context *cnt, MirType *type)
 		break;
 	}
 
+	case MIR_TYPE_STRING: {
+		tstring_append(tmp, "ss.");
+		GEN_ID_STRUCT;
+		break;
+	}
+
+	case MIR_TYPE_SLICE: {
+		tstring_append(tmp, "sl.");
+		GEN_ID_STRUCT;
+		break;
+	}
+
+	case MIR_TYPE_VARGS: {
+		tstring_append(tmp, "sv.");
+		GEN_ID_STRUCT;
+		break;
+	}
+
 	case MIR_TYPE_STRUCT: {
-		switch (type->kind) {
-		case MIR_TYPE_STRUCT:
-			tstring_append(tmp, "s.");
-			break;
-		case MIR_TYPE_SLICE:
-			tstring_append(tmp, "sl.");
-			break;
-		case MIR_TYPE_STRING:
-			tstring_append(tmp, "ss.");
-			break;
-		case MIR_TYPE_VARGS:
-			tstring_append(tmp, "sv.");
-			break;
-		default:
-			BL_ABORT("Expected struct base type.");
-		}
-
-		if (type->user_id) {
-			tstring_append(tmp, type->user_id->str);
-		}
-
-		tstring_append(tmp, "{");
-		if (type->data.strct.members) {
-			MirMember *member;
-			TSA_FOREACH(type->data.strct.members, member)
-			{
-				BL_ASSERT(member->type->id.str);
-				tstring_append(tmp, member->type->id.str);
-
-				if (i != type->data.strct.members->size - 1)
-					tstring_append(tmp, ",");
-			}
-		}
-
-		tstring_append(tmp, "}");
+		tstring_append(tmp, "s.");
+		GEN_ID_STRUCT;
 		break;
 	}
 
@@ -1764,45 +1774,15 @@ init_type_id(Context *cnt, MirType *type)
 
 	type->id.str  = copy->data;
 	type->id.hash = thash_from_str(copy->data);
-}
 
-bool
-create_type(Context *cnt, MirType **out_type, const char *sh)
-{
-	BL_ASSERT(out_type);
-	BL_ASSERT(sh);
-	u64 hash = thash_from_str(sh);
-
-	TIterator found = thtbl_find(cnt->type_table, hash);
-	TIterator end   = thtbl_end(cnt->type_table);
-	if (!TITERATOR_EQUAL(found, end)) {
-		*out_type = thtbl_iter_peek_value(MirType *, found);
-		BL_ASSERT(*out_type);
-		return false;
-	} else {
-		MirType *tmp = arena_alloc(&cnt->assembly->arenas.mir.type);
-
-		TString *copy = builder_create_cached_str();
-		tstring_append(copy, sh);
-
-		tmp->id.str  = copy->data;
-		tmp->id.hash = hash;
-
-		// BL_LOG("new type: '%s' (%llu)", tmp->id.str, tmp->id.hash);
-		thtbl_insert(cnt->type_table, tmp->id.hash, tmp);
-		*out_type = tmp;
-
-		return true;
-	}
-
-	BL_ABORT("should not happend");
+#undef GEN_ID_STRUCT
 }
 
 MirType *
-create_type2(Context *cnt, MirTypeKind kind, ID *user_id)
+create_type(Context *cnt, MirTypeKind kind, ID *user_id)
 {
 	MirType *type = arena_alloc(&cnt->assembly->arenas.mir.type);
-	type->kind = kind;
+	type->kind    = kind;
 	type->user_id = user_id;
 
 	return type;
@@ -1901,15 +1881,14 @@ lookup_builtin(Context *cnt, MirBuiltinIdKind kind)
 MirType *
 create_type_type(Context *cnt)
 {
-	MirType *tmp = NULL;
-	if (create_type(cnt, &tmp, builtin_ids[MIR_BUILTIN_ID_TYPE_TYPE].str)) {
-		/* NOTE: TypeType has no LLVM representation */
-		tmp->kind             = MIR_TYPE_TYPE;
-		tmp->user_id          = &builtin_ids[MIR_BUILTIN_ID_TYPE_TYPE];
-		tmp->alignment        = __alignof(MirType *);
-		tmp->size_bits        = sizeof(MirType *) * 8;
-		tmp->store_size_bytes = sizeof(MirType *);
-	}
+	MirType *tmp = create_type(cnt, MIR_TYPE_TYPE, &builtin_ids[MIR_BUILTIN_ID_TYPE_TYPE]);
+	/* NOTE: TypeType has no LLVM representation */
+	tmp->alignment        = __alignof(MirType *);
+	tmp->size_bits        = sizeof(MirType *) * 8;
+	tmp->store_size_bytes = sizeof(MirType *);
+
+	init_type_id(cnt, tmp);
+
 	return tmp;
 }
 
@@ -1917,40 +1896,34 @@ MirType *
 create_type_null(Context *cnt, MirType *base_type)
 {
 	BL_ASSERT(base_type);
-	MirType *tmp = NULL;
-	if (create_type(cnt, &tmp, sh_type_null(cnt, base_type))) {
-		tmp->kind                = MIR_TYPE_NULL;
-		tmp->user_id             = &builtin_ids[MIR_BUILTIN_ID_NULL];
-		tmp->data.null.base_type = base_type;
+	MirType *tmp = create_type(cnt, MIR_TYPE_NULL, &builtin_ids[MIR_BUILTIN_ID_NULL]);
+	tmp->data.null.base_type = base_type;
 
-		init_llvm_type_null(cnt, tmp);
-	}
+	init_type_id(cnt, tmp);
+	init_llvm_type_null(cnt, tmp);
+
 	return tmp;
 }
 
 MirType *
 create_type_void(Context *cnt)
 {
-	MirType *tmp = NULL;
-	if (create_type(cnt, &tmp, builtin_ids[MIR_BUILTIN_ID_TYPE_VOID].str)) {
-		tmp->kind    = MIR_TYPE_VOID;
-		tmp->user_id = &builtin_ids[MIR_BUILTIN_ID_TYPE_VOID];
+	MirType *tmp = create_type(cnt, MIR_TYPE_VOID, &builtin_ids[MIR_BUILTIN_ID_TYPE_VOID]);
 
-		init_llvm_type_void(cnt, tmp);
-	}
+	init_type_id(cnt, tmp);
+	init_llvm_type_void(cnt, tmp);
+
 	return tmp;
 }
 
 MirType *
 create_type_bool(Context *cnt)
 {
-	MirType *tmp = NULL;
-	if (create_type(cnt, &tmp, builtin_ids[MIR_BUILTIN_ID_TYPE_BOOL].str)) {
-		tmp->kind    = MIR_TYPE_BOOL;
-		tmp->user_id = &builtin_ids[MIR_BUILTIN_ID_TYPE_BOOL];
+	MirType *tmp = create_type(cnt, MIR_TYPE_BOOL, &builtin_ids[MIR_BUILTIN_ID_TYPE_BOOL]);
 
-		init_llvm_type_bool(cnt, tmp);
-	}
+	init_type_id(cnt, tmp);
+	init_llvm_type_bool(cnt, tmp);
+
 	return tmp;
 }
 
@@ -1959,15 +1932,13 @@ create_type_int(Context *cnt, ID *id, s32 bitcount, bool is_signed)
 {
 	BL_ASSERT(id);
 	BL_ASSERT(bitcount > 0);
-	MirType *tmp = NULL;
-	if (create_type(cnt, &tmp, id->str)) {
-		tmp->kind                   = MIR_TYPE_INT;
-		tmp->user_id                = id;
-		tmp->data.integer.bitcount  = bitcount;
-		tmp->data.integer.is_signed = is_signed;
+	MirType *tmp                = create_type(cnt, MIR_TYPE_INT, id);
+	tmp->data.integer.bitcount  = bitcount;
+	tmp->data.integer.is_signed = is_signed;
 
-		init_llvm_type_int(cnt, tmp);
-	}
+	init_type_id(cnt, tmp);
+	init_llvm_type_int(cnt, tmp);
+
 	return tmp;
 }
 
@@ -1975,27 +1946,23 @@ MirType *
 create_type_real(Context *cnt, ID *id, s32 bitcount)
 {
 	BL_ASSERT(bitcount > 0);
-	MirType *tmp = NULL;
-	if (create_type(cnt, &tmp, id->str)) {
-		tmp->kind               = MIR_TYPE_REAL;
-		tmp->user_id            = id;
-		tmp->data.real.bitcount = bitcount;
+	MirType *tmp            = create_type(cnt, MIR_TYPE_REAL, id);
+	tmp->data.real.bitcount = bitcount;
 
-		init_llvm_type_real(cnt, tmp);
-	}
+	init_type_id(cnt, tmp);
+	init_llvm_type_real(cnt, tmp);
+
 	return tmp;
 }
 
 MirType *
 create_type_ptr(Context *cnt, MirType *src_type)
 {
-	MirType *tmp = NULL;
-	if (create_type(cnt, &tmp, sh_type_ptr(cnt, src_type))) {
-		tmp->kind          = MIR_TYPE_PTR;
-		tmp->data.ptr.expr = src_type;
+	MirType *tmp       = create_type(cnt, MIR_TYPE_PTR, NULL);
+	tmp->data.ptr.expr = src_type;
 
-		init_llvm_type_ptr(cnt, tmp);
-	}
+	init_type_id(cnt, tmp);
+	init_llvm_type_ptr(cnt, tmp);
 
 	return tmp;
 }
@@ -2003,16 +1970,13 @@ create_type_ptr(Context *cnt, MirType *src_type)
 MirType *
 create_type_fn(Context *cnt, ID *id, MirType *ret_type, TSmallArray_ArgPtr *args, bool is_vargs)
 {
-	MirType *tmp = NULL;
-	if (create_type(cnt, &tmp, sh_type_fn(cnt, ret_type, args, is_vargs))) {
-		tmp->kind             = MIR_TYPE_FN;
-		tmp->data.fn.args     = args;
-		tmp->data.fn.is_vargs = is_vargs;
-		tmp->data.fn.ret_type = ret_type ? ret_type : cnt->builtin_types.t_void;
-		tmp->user_id          = id;
+	MirType *tmp          = create_type(cnt, MIR_TYPE_FN, id);
+	tmp->data.fn.args     = args;
+	tmp->data.fn.is_vargs = is_vargs;
+	tmp->data.fn.ret_type = ret_type ? ret_type : cnt->builtin_types.t_void;
 
-		init_llvm_type_fn(cnt, tmp);
-	}
+	init_type_id(cnt, tmp);
+	init_llvm_type_fn(cnt, tmp);
 
 	return tmp;
 }
@@ -2020,14 +1984,12 @@ create_type_fn(Context *cnt, ID *id, MirType *ret_type, TSmallArray_ArgPtr *args
 MirType *
 create_type_array(Context *cnt, MirType *elem_type, s64 len)
 {
-	MirType *tmp = NULL;
-	if (create_type(cnt, &tmp, sh_type_arr(cnt, elem_type, len))) {
-		tmp->kind                 = MIR_TYPE_ARRAY;
-		tmp->data.array.elem_type = elem_type;
-		tmp->data.array.len       = len;
+	MirType *tmp              = create_type(cnt, MIR_TYPE_ARRAY, NULL);
+	tmp->data.array.elem_type = elem_type;
+	tmp->data.array.len       = len;
 
-		init_llvm_type_array(cnt, tmp);
-	}
+	init_type_id(cnt, tmp);
+	init_llvm_type_array(cnt, tmp);
 
 	return tmp;
 }
@@ -2040,17 +2002,14 @@ create_type_struct(Context *              cnt,
                    TSmallArray_MemberPtr *members, /* MirMember */
                    bool                   is_packed)
 {
-	MirType *tmp = NULL;
+	MirType *tmp = create_type(cnt, kind, id);
 
-	if (create_type(cnt, &tmp, sh_type_struct(cnt, kind, id, members, is_packed))) {
-		tmp->kind                 = kind;
-		tmp->data.strct.members   = members;
-		tmp->data.strct.scope     = scope;
-		tmp->data.strct.is_packed = is_packed;
-		tmp->user_id              = id;
+	tmp->data.strct.members   = members;
+	tmp->data.strct.scope     = scope;
+	tmp->data.strct.is_packed = is_packed;
 
-		init_llvm_type_struct(cnt, tmp);
-	}
+	init_type_id(cnt, tmp);
+	init_llvm_type_struct(cnt, tmp);
 
 	return tmp;
 }
@@ -2067,8 +2026,6 @@ create_type_struct_special(Context *cnt, MirTypeKind kind, ID *id, MirType *elem
 	BL_ASSERT(mir_is_pointer_type(elem_ptr_type));
 	BL_ASSERT(kind == MIR_TYPE_STRING || kind == MIR_TYPE_VARGS || kind == MIR_TYPE_SLICE);
 
-	/* PERFORMANCE: due to reusing of the types we can create members and scope which will
-	 * not be later used because same type already exists. */
 	TSmallArray_MemberPtr *members = create_sarr(TSmallArray_MemberPtr, cnt->assembly);
 
 	/* Slice layout struct { s64, *T } */
@@ -2103,16 +2060,13 @@ create_type_enum(Context *               cnt,
                  TSmallArray_VariantPtr *variants)
 {
 	BL_ASSERT(base_type);
-	MirType *tmp = NULL;
-	if (create_type(cnt, &tmp, sh_type_enum(cnt, id, base_type, variants))) {
-		tmp->kind               = MIR_TYPE_ENUM;
-		tmp->data.enm.scope     = scope;
-		tmp->data.enm.base_type = base_type;
-		tmp->data.enm.variants  = variants;
-		tmp->user_id            = id;
+	MirType *tmp            = create_type(cnt, MIR_TYPE_ENUM, id);
+	tmp->data.enm.scope     = scope;
+	tmp->data.enm.base_type = base_type;
+	tmp->data.enm.variants  = variants;
 
-		init_llvm_type_enum(cnt, tmp);
-	}
+	init_type_id(cnt, tmp);
+	init_llvm_type_enum(cnt, tmp);
 
 	return tmp;
 }
@@ -6691,7 +6645,7 @@ gen_RTTI_var(Context *cnt, MirType *type, MirConstValueData *value)
 	vm_create_implicit_global(&cnt->vm, var);
 
 	/* Push into RTTI table */
-	tarray_push(&cnt->assembly->MIR.RTTI_tmp_vars, var);
+	tarray_push(&cnt->assembly->MIR.RTTI_var_queue, var);
 	return var;
 }
 
@@ -8936,10 +8890,10 @@ mir_run(Assembly *assembly)
 	cnt.analyze.verbose_pre     = false;
 	cnt.analyze.verbose_post    = false;
 	cnt.analyze.llvm_di_builder = assembly->llvm.di_builder;
-	cnt.type_table              = &assembly->type_table;
 	cnt.builtin_types.cache =
 	    scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, 64, NULL);
 
+	thtbl_init(&cnt.analyze.RTTI_var_table, sizeof(MirVar *), 2048);
 	thtbl_init(&cnt.analyze.waiting, sizeof(TArray), ANALYZE_TABLE_SIZE);
 	thtbl_init(&cnt.analyze.RTTI_entry_types, 0, 1024);
 	tlist_init(&cnt.analyze.queue, sizeof(MirInstr *));
@@ -8974,6 +8928,7 @@ mir_run(Assembly *assembly)
 
 SKIP:
 	tlist_terminate(&cnt.analyze.queue);
+	thtbl_terminate(&cnt.analyze.RTTI_var_table);
 	thtbl_terminate(&cnt.analyze.waiting);
 	thtbl_terminate(&cnt.analyze.RTTI_entry_types);
 	tarray_terminate(&cnt.test_cases);

@@ -392,6 +392,9 @@ struct MirType {
 	 * Every unique type will cause generation of type info global constant in program
 	 * data segment.
 	 */
+	// CLEANUP: remove, use RTTI_var_table!!!
+	// CLEANUP: remove, use RTTI_var_table!!!
+	// CLEANUP: remove, use RTTI_var_table!!!
 	struct {
 		MirVar *var;
 	} rtti;
