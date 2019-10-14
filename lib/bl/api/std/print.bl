@@ -31,10 +31,10 @@
 PRINT_MAX_LENGTH :: 4096;
 
 PrintLogKind :: enum u8 {
-    Message,
-    Warning,
-    Error,
-    Panic
+    Message;
+    Warning;
+    Error;
+    Panic;
 };
 
 print :: fn (format: string, args: ...) s32 {

@@ -50,7 +50,7 @@
 #define IMPL_RTTI_ENTRY                 ".rtti"
 #define IMPL_RET_TMP                    ".ret"
 #define NO_REF_COUNTING                 -1
-#define VERBOSE_ANALYZE                 true
+#define VERBOSE_ANALYZE                 false 
 // clang-format on
 
 #define ANALYZE_RESULT(_state, _waiting_for)                                                       \

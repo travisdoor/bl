@@ -27,9 +27,9 @@
 //************************************************************************************************
 
 Array :: struct {
-    len: s64,
-    ptr: *u8,
-    allocated: usize,
+    len: s64;
+    ptr: *u8;
+    allocated: usize;
     T: *TypeInfo
 };
 

@@ -1,107 +1,107 @@
 #load "std/debug.bl"
 
 #test "slices" {
-  arr : [3]s32;
+    arr : [3]s32;
 
-  arr[0] = 10;
-  arr[1] = 20;
-  arr[2] = 30;
+    arr[0] = 10;
+    arr[1] = 20;
+    arr[2] = 30;
 
-  slice : []s32;
-  slice.ptr = arr.ptr;
-  slice.len = arr.len;
+    slice : []s32;
+    slice.ptr = arr.ptr;
+    slice.len = arr.len;
 
-  assert(slice.ptr == &arr[0]);
-  assert(slice.len == 3);
-  assert(slice[0] == 10);
-  assert(slice[1] == 20);
-  assert(slice[2] == 30);
+    assert(slice.ptr == &arr[0]);
+    assert(slice.len == 3);
+    assert(slice[0] == 10);
+    assert(slice[1] == 20);
+    assert(slice[2] == 30);
 };
 
 #test "structures" {
-  Foo :: struct {
-    _1: u8,
-    _2: s32,
-    _3: *s32,
-    _4: [10] s32
-  };
+    Foo :: struct {
+        _1: u8;
+        _2: s32;
+        _3: *s32;
+        _4: [10] s32
+    };
 
-  int := 10;
+    int := 10;
 
-  foo : Foo;
-  foo._1 = 10;
-  foo._2 = 666;
-  foo._3 = &int;
-  foo._4[0] = 10;
+    foo : Foo;
+    foo._1 = 10;
+    foo._2 = 666;
+    foo._3 = &int;
+    foo._4[0] = 10;
 
-  assert(foo._1 == 10);
-  assert(foo._2 == 666);
-  assert(foo._3 != null);
-  assert((foo._4)[0] == 10);
+    assert(foo._1 == 10);
+    assert(foo._2 == 666);
+    assert(foo._3 != null);
+    assert((foo._4)[0] == 10);
 };
 
 #test "implicit struct" {
-  foo : struct {
-    _1: u8,
-    _2: s32,
-    _3: *s32,
-    _4: [10] s32
-  };
+    foo : struct {
+        _1: u8;
+        _2: s32;
+        _3: *s32;
+        _4: [10] s32
+    };
 
-  int := 10;
+    int := 10;
 
-  foo._1 = 10;
-  foo._2 = 666;
-  foo._3 = &int;
-  foo._4[0] = 10;
+    foo._1 = 10;
+    foo._2 = 666;
+    foo._3 = &int;
+    foo._4[0] = 10;
 
-  assert(foo._1 == 10);
-  assert(foo._2 == 666);
-  assert(foo._3 != null);
-  assert((foo._4)[0] == 10);
+    assert(foo._1 == 10);
+    assert(foo._2 == 666);
+    assert(foo._3 != null);
+    assert((foo._4)[0] == 10);
 };
 
 #test "nested struct" {
-  Foo :: struct {
-    i: s32,
-    j: s32
-  };
+    Foo :: struct {
+        i: s32;
+        j: s32
+    };
 
-  Bar :: struct {
-    foo: Foo
-  };
+    Bar :: struct {
+        foo: Foo
+    };
 
-  bar : Bar;
-  bar.foo.i = 10;
-  bar.foo.j = 20;
+    bar : Bar;
+    bar.foo.i = 10;
+    bar.foo.j = 20;
 
-  assert((bar.foo).i == 10);
-  assert((bar.foo).j == 20);
+    assert((bar.foo).i == 10);
+    assert((bar.foo).j == 20);
 };
 
 #test "structure initialization" {
-  Foo :: struct {
-    i: s32,
-    j: s32
-  };
+    Foo :: struct {
+        i: s32;
+        j: s32
+    };
 
-  {
-    foo := {:Foo: 0 };
-    assert(foo.i == 0); 
-    assert(foo.j == 0); 
-  }
+    {
+        foo := {:Foo: 0 };
+        assert(foo.i == 0); 
+        assert(foo.j == 0); 
+    }
 
-  {
-    i := 10;
-    j := 20;
-    foo := {:Foo: i, j };
-    assert(foo.i == i); 
-    assert(foo.j == j); 
-  }
+    {
+        i := 10;
+        j := 20;
+        foo := {:Foo: i, j };
+        assert(foo.i == i); 
+        assert(foo.j == j); 
+    }
 };
 
 #test "strings" {
-  _1 := "hello";
-  assert(_1.ptr != null);
-  assert(_1.len == 5);
+    _1 := "hello";
+    assert(_1.ptr != null);
+    assert(_1.len == 5);
 };

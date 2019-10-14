@@ -1,14 +1,14 @@
 Animation :: struct {
-    texture: *SDL_Texture,
-    position: v2,
-    frames: iv2,
-    frame_size: iv2,
-    frame_count: s32,
-    current_frame: s32,
-    duration: f32,
-    frame_duration: f32,
-    time_from_last_frame: f32,
-    running: bool,
+    texture: *SDL_Texture;
+    position: v2;
+    frames: iv2;
+    frame_size: iv2;
+    frame_count: s32;
+    current_frame: s32;
+    duration: f32;
+    frame_duration: f32;
+    time_from_last_frame: f32;
+    running: bool;
 };
 
 anim_new :: fn (game: *Game,

@@ -1,22 +1,22 @@
 #load "std/debug.bl"
 
 SimpleEnum :: enum {
-    A, B, C
+    A; B; C
 };
 
 CustomEnumType :: enum u8 {
-    A, B, C
+    A; B; C
 };
 
 CustomEnumValues :: enum {
-    A :: 10,
-    B :: 20,
+    A :: 10;
+    B :: 20;
     C
 };
 
 CustomEnumValuesDeps :: enum {
-    A :: 10,
-    B :: A + 1,
+    A :: 10;
+    B :: A + 1;
     C :: A + B
 };
 

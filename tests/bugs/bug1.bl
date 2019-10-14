@@ -1,9 +1,9 @@
 #load "std/print.bl"
 
 EntityKind :: enum {
-    Player,
-    Enemy,
-    Building
+    Player;
+    Enemy;
+    Buildin;
 };
 
 Entity :: struct {

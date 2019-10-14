@@ -92,7 +92,7 @@
 
 #test "dynamic array data struct" {
     Foo :: struct {
-        i: s32, j: s32, k: s32
+        i: s32; j: s32; k: s32
     };
 
     arr := array_new(Foo);

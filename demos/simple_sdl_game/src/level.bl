@@ -6,13 +6,13 @@ LEVEL_LAYER_CLOUDS2 :: 4;
 PLAYER_ID           :: 0;
 
 Level :: struct {
-    layers: [5]*LevelLayer,
+    layers: [5]*LevelLayer;
     entities: [16]*Entity
 };
 
 LevelLayer :: struct {
-    texture: *SDL_Texture,
-    x_position: f32,
+    texture: *SDL_Texture;
+    x_position: f32;
     x_speed: f32
 };
 

@@ -6,10 +6,10 @@ main :: fn () s32 {
 };
 
 Entity :: struct {
-    name: string,
+    name: string;
     bar: Bar
 };
 
 Bar :: struct {
-    e: Entity
+    e: *Entity
 };

@@ -31,8 +31,8 @@
 File :: *u8; 
 
 FileOpenModes :: enum {
-    Read,
-    Write,
+    Read;
+    Write;
     Binary
 };
 

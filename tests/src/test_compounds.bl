@@ -38,7 +38,7 @@
 
 #test "compound structs" {
     Foo :: struct {
-        i: s32,
+        i: s32;
         j: s32
     };
 

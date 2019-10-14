@@ -86,6 +86,8 @@ Entity :: struct {
 };
 
 Camera :: struct #extends Entity {
+    //position: v3,
+    //rotation: quat
     mp: mat4,
     mv: mat4
 };
@@ -97,7 +99,7 @@ Camera :: struct #extends Entity {
 //************************************************************************************************
 
 switch expr {
-    0 {
+    case: {
         break;
     }
 }

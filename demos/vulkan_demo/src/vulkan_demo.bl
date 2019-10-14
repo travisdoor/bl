@@ -14,8 +14,8 @@ WindowW :: 800;
 WindowH :: 600;
 
 App :: struct {
-    renderer: *Renderer,
-    window: *GLFWwindow,
+    renderer: *Renderer;
+    window: *GLFWwindow;
 };
 
 app := {:App: 0};

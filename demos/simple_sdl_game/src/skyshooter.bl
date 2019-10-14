@@ -20,11 +20,11 @@ FrameDuration   :: 1000 / FPS;
 MaxTimePerFrame :: 200;
 
 Game :: struct {
-    window: *SDL_Window,
-    renderer: *SDL_Renderer,
-    will_quit: bool,
+    window: *SDL_Window;
+    renderer: *SDL_Renderer;
+    will_quit: bool;
 
-    level: *Level,
+    level: *Level;
 };
 
 main :: fn () s32 {

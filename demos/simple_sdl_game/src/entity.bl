@@ -1,26 +1,26 @@
 // Entity
 EntityKind :: enum u8 {
-    Player,
-    Missile,
+    Player;
+    Missile;
     Enemy
 };
 
 Entity :: struct {
-    kind: EntityKind,
-    id: s32,
-    texture: *SDL_Texture,
-    position: v2,
-    size: v2,
-    destroy_anim: *Animation,
-    speed: v2,
-    dir: v2,
-    max_speed: f32,
-    is_alive: bool,
+    kind: EntityKind;
+    id: s32;
+    texture: *SDL_Texture;
+    position: v2;
+    size: v2;
+    destroy_anim: *Animation;
+    speed: v2;
+    dir: v2;
+    max_speed: f32;
+    is_alive: bool;
 
     // virtual table
-    f_update: *fn (*u8, f32),
-    f_dtor: *fn (*u8),
-    f_on_colide : *fn (*u8),
+    f_update: *fn (*u8, f32);
+    f_dtor: *fn (*u8);
+    f_on_colide : *fn (*u8);
 };
 
 entity_init :: fn (self: *Entity,

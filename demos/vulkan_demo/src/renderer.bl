@@ -1,27 +1,27 @@
 Renderer :: struct {
-    vki: VkInstance,
-    surface: VkSurfaceKHR,
-    physical_device: VkPhysicalDevice,
-    device: VkDevice,
-    graphics_queue: VkQueue,
-    present_queue: VkQueue,
-    swap_chain: VkSwapchainKHR,
-    swap_chain_images: []VkImage,
-    swap_chain_image_format: VkFormat,
-    swap_chain_extent: VkExtent2D,
-    swap_chain_image_views: []VkImageView,
-    render_pass: VkRenderPass,
-    pipeline_layout: VkPipelineLayout,
-    graphics_pipeline: VkPipeline,
-    swap_chain_framebuffers: []VkFramebuffer,
-    command_pool: VkCommandPool,
-    command_buffers: []VkCommandBuffer,
+    vki: VkInstance;
+    surface: VkSurfaceKHR;
+    physical_device: VkPhysicalDevice;
+    device: VkDevice;
+    graphics_queue: VkQueue;
+    present_queue: VkQueue;
+    swap_chain: VkSwapchainKHR;
+    swap_chain_images: []VkImage;
+    swap_chain_image_format: VkFormat;
+    swap_chain_extent: VkExtent2D;
+    swap_chain_image_views: []VkImageView;
+    render_pass: VkRenderPass;
+    pipeline_layout: VkPipelineLayout;
+    graphics_pipeline: VkPipeline;
+    swap_chain_framebuffers: []VkFramebuffer;
+    command_pool: VkCommandPool;
+    command_buffers: []VkCommandBuffer;
 
-    image_available_semaphore: [MAX_FRAMES_IN_FLIGHT]VkSemaphore,
-    render_finished_semaphore: [MAX_FRAMES_IN_FLIGHT]VkSemaphore,
-    in_flight_fences: [MAX_FRAMES_IN_FLIGHT]VkFence,
+    image_available_semaphore: [MAX_FRAMES_IN_FLIGHT]VkSemaphore;
+    render_finished_semaphore: [MAX_FRAMES_IN_FLIGHT]VkSemaphore;
+    in_flight_fences: [MAX_FRAMES_IN_FLIGHT]VkFence;
 
-    current_frame: s64,
+    current_frame: s64;
     frame_buffer_resized: bool
 };
 
@@ -129,16 +129,16 @@ MAX_FRAMES_IN_FLIGHT :: 2;
 ValidationLayers := {:[1]string: "VK_LAYER_KHRONOS_validation"};
 DeviceExtensions := {:[1]string: VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
-Opt_u32 :: struct { v: u32, is_valid: bool };
+Opt_u32 :: struct { v: u32; is_valid: bool };
 
 QueueFamilyIndices :: struct  {
-    graphics_family: Opt_u32,
-    present_family: Opt_u32,
+    graphics_family: Opt_u32;
+    present_family: Opt_u32;
 };
 
 SwapChainSupportDetails :: struct {
-    capabilities: VkSurfaceCapabilitiesKHR,
-    formats: []VkSurfaceFormatKHR,
+    capabilities: VkSurfaceCapabilitiesKHR;
+    formats: []VkSurfaceFormatKHR;
     present_modes: []VkPresentModeKHR
 };
 

@@ -38,13 +38,13 @@ _PrintLogFn :: * fn (kind: PrintLogKind, format: string, args: []Any, file: stri
 // BL global context 
 _Context :: struct {
     /* Default memory allocation function. */
-    alloc_fn: _AllocFn,
+    alloc_fn: _AllocFn;
 
     /* Defualt memory free function. */
-    free_fn: _FreeFn,
+    free_fn: _FreeFn;
 
     /* Defualt debug log function. */
-    print_log_fn: _PrintLogFn,
+    print_log_fn: _PrintLogFn;
 };
 
 _context := {:_Context: &malloc, &free, &_print_log};
@@ -72,18 +72,18 @@ U64_MAX : u64 : 18446744073709551615;
  * safe casting.
  */
 TypeKind :: enum #compiler {
-    Type   :: 1,
-    Void   :: 2,
-    Int    :: 3,
-    Real   :: 4,
-    Fn     :: 5,
-    Ptr    :: 6,
-    Bool   :: 7,
-    Array  :: 8,
-    Struct :: 9,
-    Enum   :: 10,
-    Null   :: 11,
-    String :: 12,
+    Type   :: 1;
+    Void   :: 2;
+    Int    :: 3;
+    Real   :: 4;
+    Fn     :: 5;
+    Ptr    :: 6;
+    Bool   :: 7;
+    Array  :: 8;
+    Struct :: 9;
+    Enum   :: 10;
+    Null   :: 11;
+    String :: 12;
 };
 
 /*
@@ -92,7 +92,7 @@ TypeKind :: enum #compiler {
  * descriptive informations about the type.
  */
 TypeInfo :: struct #compiler {
-    kind: TypeKind,
+    kind: TypeKind;
     size_bytes: usize
 };
 
@@ -100,7 +100,7 @@ TypeInfo :: struct #compiler {
  * Type information for 'type' type.
  */
 TypeInfoType :: struct #compiler {
-    base: TypeInfo,
+    base: TypeInfo;
 };
 
 /*
@@ -114,17 +114,17 @@ TypeInfoVoid :: struct #compiler {
  * Type information for 's*' or 'u*' types.
  */
 TypeInfoInt :: struct #compiler {
-    base: TypeInfo,
+    base: TypeInfo;
 
-    bit_count: s32, // Bitcount.
-    is_signed: bool, // True when signed.
+    bit_count: s32; // Bitcount.
+    is_signed: bool; // True when signed.
 };
 
 /*
  * Type information for 'f*' types.
  */
 TypeInfoReal :: struct #compiler {
-    base: TypeInfo,
+    base: TypeInfo;
 
     bit_count: s32 // Bitcount
 };
@@ -133,18 +133,18 @@ TypeInfoReal :: struct #compiler {
  * Type information for function types.
  */
 TypeInfoFn :: struct #compiler {
-    base: TypeInfo,
+    base: TypeInfo;
 
-    args: []TypeInfoFnArg, // Function arguments.
-    ret_type: *TypeInfo, // Return type.
-    is_vargs: bool, // True when function is vargs.
+    args: []TypeInfoFnArg; // Function arguments.
+    ret_type: *TypeInfo; // Return type.
+    is_vargs: bool; // True when function is vargs.
 };
 
 /*
  * Type information for pointer types.
  */
 TypeInfoPtr :: struct #compiler {
-    base: TypeInfo,
+    base: TypeInfo;
 
     pointee_type: *TypeInfo // Type information for pointed type.
 };
@@ -153,17 +153,17 @@ TypeInfoPtr :: struct #compiler {
  * Type information for bool type.
  */
 TypeInfoBool :: struct #compiler {
-    base: TypeInfo,
+    base: TypeInfo;
 };
 
 /*
  * Type information for array type.
  */
 TypeInfoArray :: struct #compiler {
-    base: TypeInfo,
+    base: TypeInfo;
 
-    name: string,
-    elem_type: *TypeInfo, // Element type information.
+    name: string;
+    elem_type: *TypeInfo; // Element type information.
     len: s64 // Array lenght.
 };
 
@@ -171,10 +171,10 @@ TypeInfoArray :: struct #compiler {
  * Type information for structure type.
  */
 TypeInfoStruct :: struct #compiler {
-    base: TypeInfo,
+    base: TypeInfo;
 
-    name: string, // struct name if there is one
-    members: []TypeInfoStructMember, // Structure members type information.
+    name: string; // struct name if there is one
+    members: []TypeInfoStructMember; // Structure members type information.
     is_slice: bool
 };
 
@@ -182,10 +182,10 @@ TypeInfoStruct :: struct #compiler {
  * Type information for enm type.
  */
 TypeInfoEnum :: struct #compiler {
-    base: TypeInfo,
+    base: TypeInfo;
     
-    name: string, // enum name if there is one
-    base_type: *TypeInfo, // Enum base-type type information.
+    name: string; // enum name if there is one
+    base_type: *TypeInfo; // Enum base-type type information.
     variants: []TypeInfoEnumVariant
 };
 
@@ -193,27 +193,27 @@ TypeInfoEnum :: struct #compiler {
  * Type information for null type.
  */
 TypeInfoNull :: struct #compiler {
-    base: TypeInfo,
+    base: TypeInfo;
 };
 
 TypeInfoString :: struct #compiler {
-    base: TypeInfo,
+    base: TypeInfo;
 };
 
 TypeInfoStructMember :: struct #compiler {
-    name: string,
-    base_type: *TypeInfo,
-    offset_bytes: s32,
+    name: string;
+    base_type: *TypeInfo;
+    offset_bytes: s32;
     index: s32
 };
 
 TypeInfoEnumVariant :: struct #compiler {
-    name: string,
+    name: string;
     value: s64
 };
 
 TypeInfoFnArg :: struct #compiler {
-    name: string,
+    name: string;
     base_type: *TypeInfo
 };
 
@@ -221,7 +221,7 @@ TypeInfoFnArg :: struct #compiler {
  * Any type structure. Any value can be implicitly casted to this container on function call.
  */
 Any :: struct #compiler {
-    type_info: *TypeInfo,
+    type_info: *TypeInfo;
     data: *u8
 };
 

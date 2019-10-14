@@ -1631,7 +1631,7 @@ NEXT:
 		prev_tmp = tmp;
 		tsa_push_AstPtr(enm->data.type_enm.variants, tmp);
 
-		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
+		if (tokens_consume_if(cnt->tokens, SYM_SEMICOLON)) {
 			rq = true;
 			goto NEXT;
 		}
@@ -1641,7 +1641,7 @@ NEXT:
 			PARSE_ERROR(ERR_EXPECTED_NAME,
 			            tok_err,
 			            BUILDER_CUR_WORD,
-			            "Expected variant after comma ','.");
+			            "Expected variant after semicolon.");
 			scope_pop(cnt);
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok, scope_get(cnt));
 		}
@@ -1653,7 +1653,7 @@ NEXT:
 		    ERR_MISSING_BRACKET,
 		    tok,
 		    BUILDER_CUR_WORD,
-		    "Expected end of variant list '}' or another variant separated by comma.");
+		    "Expected end of variant list '}' or another variant separated by semicolon.");
 		scope_pop(cnt);
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok, scope_get(cnt));
@@ -1844,7 +1844,7 @@ NEXT:
 	if (tmp) {
 		tsa_push_AstPtr(type_struct->data.type_strct.members, tmp);
 
-		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
+		if (tokens_consume_if(cnt->tokens, SYM_SEMICOLON)) {
 			rq = true;
 			goto NEXT;
 		}
@@ -1854,7 +1854,7 @@ NEXT:
 			PARSE_ERROR(ERR_EXPECTED_NAME,
 			            tok_err,
 			            BUILDER_CUR_WORD,
-			            "Expected member after comma ','.");
+			            "Expected member after semicolon.");
 
 			scope_pop(cnt);
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok_struct, scope_get(cnt));
@@ -1867,7 +1867,7 @@ NEXT:
 		    ERR_MISSING_BRACKET,
 		    tok,
 		    BUILDER_CUR_WORD,
-		    "Expected end of member list '}' or another memeber separated by comma.");
+		    "Expected end of member list '}' or another memeber separated by semicolon.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		scope_pop(cnt);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_struct, scope_get(cnt));
