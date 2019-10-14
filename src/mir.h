@@ -109,49 +109,9 @@ typedef struct MirArenas {
 
 typedef enum MirBuiltinIdKind {
 	MIR_BUILTIN_ID_NONE = -1,
-
-	MIR_BUILTIN_ID_TYPE_TYPE,
-	MIR_BUILTIN_ID_TYPE_S8,
-	MIR_BUILTIN_ID_TYPE_S16,
-	MIR_BUILTIN_ID_TYPE_S32,
-	MIR_BUILTIN_ID_TYPE_S64,
-	MIR_BUILTIN_ID_TYPE_U8,
-	MIR_BUILTIN_ID_TYPE_U16,
-	MIR_BUILTIN_ID_TYPE_U32,
-	MIR_BUILTIN_ID_TYPE_U64,
-	MIR_BUILTIN_ID_TYPE_USIZE,
-	MIR_BUILTIN_ID_TYPE_BOOL,
-	MIR_BUILTIN_ID_TYPE_F32,
-	MIR_BUILTIN_ID_TYPE_F64,
-	MIR_BUILTIN_ID_TYPE_VOID,
-	MIR_BUILTIN_ID_TYPE_STRING,
-
-	MIR_BUILTIN_ID_NULL,
-	MIR_BUILTIN_ID_MAIN,
-	MIR_BUILTIN_ID_ARR_LEN,
-	MIR_BUILTIN_ID_ARR_PTR,
-
-	MIR_BUILTIN_ID_ANY,
-	MIR_BUILTIN_ID_TYPE_KIND,
-	MIR_BUILTIN_ID_TYPE_INFO,
-	MIR_BUILTIN_ID_TYPE_INFO_TYPE,
-	MIR_BUILTIN_ID_TYPE_INFO_VOID,
-	MIR_BUILTIN_ID_TYPE_INFO_INT,
-	MIR_BUILTIN_ID_TYPE_INFO_REAL,
-	MIR_BUILTIN_ID_TYPE_INFO_FN,
-	MIR_BUILTIN_ID_TYPE_INFO_PTR,
-	MIR_BUILTIN_ID_TYPE_INFO_BOOL,
-	MIR_BUILTIN_ID_TYPE_INFO_ARRAY,
-	MIR_BUILTIN_ID_TYPE_INFO_STRUCT,
-	MIR_BUILTIN_ID_TYPE_INFO_ENUM,
-	MIR_BUILTIN_ID_TYPE_INFO_NULL,
-	MIR_BUILTIN_ID_TYPE_INFO_STRING,
-	MIR_BUILTIN_ID_TYPE_INFO_VARGS,
-	MIR_BUILTIN_ID_TYPE_INFO_SLICE,
-	MIR_BUILTIN_ID_TYPE_INFO_STRUCT_MEMBER,
-	MIR_BUILTIN_ID_TYPE_INFO_ENUM_VARIANT,
-	MIR_BUILTIN_ID_TYPE_INFO_FN_ARG,
-
+#define GEN_BUILTIN_NAMES
+#include "mir.inc"
+#undef GEN_BUILTIN_NAMES
 	_MIR_BUILTIN_ID_COUNT,
 } MirBuiltinIdKind;
 
@@ -208,44 +168,10 @@ typedef enum LLVMExternArgStructGenerationMode {
 } LLVMExternArgStructGenerationMode;
 
 typedef enum MirInstrKind {
-	MIR_INSTR_INVALID,
-	MIR_INSTR_BLOCK,
-	MIR_INSTR_DECL_VAR,
-	MIR_INSTR_DECL_MEMBER,
-	MIR_INSTR_DECL_VARIANT,
-	MIR_INSTR_DECL_ARG,
-	MIR_INSTR_CONST,
-	MIR_INSTR_LOAD,
-	MIR_INSTR_STORE,
-	MIR_INSTR_BINOP,
-	MIR_INSTR_RET,
-	MIR_INSTR_FN_PROTO,
-	MIR_INSTR_TYPE_FN,
-	MIR_INSTR_TYPE_STRUCT,
-	MIR_INSTR_TYPE_PTR,
-	MIR_INSTR_TYPE_ARRAY,
-	MIR_INSTR_TYPE_SLICE,
-	MIR_INSTR_TYPE_VARGS,
-	MIR_INSTR_TYPE_ENUM,
-	MIR_INSTR_CALL,
-	MIR_INSTR_DECL_REF,
-	MIR_INSTR_DECL_DIRECT_REF,
-	MIR_INSTR_UNREACHABLE,
-	MIR_INSTR_COND_BR,
-	MIR_INSTR_BR,
-	MIR_INSTR_UNOP,
-	MIR_INSTR_ARG,
-	MIR_INSTR_ELEM_PTR,
-	MIR_INSTR_MEMBER_PTR,
-	MIR_INSTR_ADDROF,
-	MIR_INSTR_CAST,
-	MIR_INSTR_SIZEOF,
-	MIR_INSTR_ALIGNOF,
-	MIR_INSTR_COMPOUND,
-	MIR_INSTR_VARGS,
-	MIR_INSTR_TYPE_INFO,
-	MIR_INSTR_PHI,
-	MIR_INSTR_TOANY,
+	MIR_INSTR_INVALID = 0,
+#define GEN_INSTR_KINDS
+#include "mir.inc"
+#undef GEN_INSTR_KINDS
 } MirInstrKind;
 
 typedef enum MirCastOp {
@@ -359,7 +285,9 @@ struct MirTypeStruct {
 	Scope *                scope; /* struct body scope */
 	TSmallArray_MemberPtr *members;
 	bool                   is_packed;
-	bool                   is_incomplete;
+
+	/* Set true only for incomplete forward declarations of the struct. */
+	bool is_incomplete;
 };
 
 /* Enum variants must be baked into enum type. */
@@ -652,6 +580,8 @@ struct MirInstrTypeFn {
 struct MirInstrTypeStruct {
 	MirInstr base;
 
+	/* fwd_decl is optional pointer to forward declaration of this structure type.  */
+	MirInstr *            fwd_decl;
 	ID *                  id;
 	Scope *               scope;
 	TSmallArray_InstrPtr *members;
@@ -706,6 +636,9 @@ struct MirInstrDeclRef {
 	ID *         rid;
 	Scope *      scope;
 	ScopeEntry * scope_entry;
+
+	/* Set only for decl_refs inside struct member type resolvers. */
+	bool accept_incomplete_type;
 };
 
 struct MirInstrDeclDirectRef {

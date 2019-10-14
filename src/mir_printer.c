@@ -818,6 +818,7 @@ print_instr_decl_ref(MirInstrDeclRef *ref, FILE *stream)
 
 	const char *name = ref->rid->str;
 	fprintf(stream, "%s", name);
+	if (ref->accept_incomplete_type) fprintf(stream, " /* accept incomplete */");
 }
 
 void

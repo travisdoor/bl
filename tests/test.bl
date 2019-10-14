@@ -1,11 +1,15 @@
 /* playground */
 
-Entity :: struct {
-    name: string,
-    //self: *Entity
-};
-
 main :: fn () s32 {
     foo: Entity;
     return 0;
+};
+
+Entity :: struct {
+    name: string,
+    bar: Bar
+};
+
+Bar :: struct {
+    e: Entity
 };
