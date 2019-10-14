@@ -1,13 +1,18 @@
 /* playground */
 
-Entity :: struct {
-    name: string,
-    number: s32,
-    //homo : struct { i: s32, j: s32 },
-    self: *Entity
-};
-
 main :: fn () s32 {
     foo: Entity;
     return 0;
+};
+
+Entity :: struct {
+    name: string,
+    number: s32,
+    homo : struct { i: s32, j: s32 },
+    update: * fn (entity: *Entity),
+    bar: Bar
+};
+
+Bar :: struct {
+    entity: *Entity
 };

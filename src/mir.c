@@ -31,7 +31,6 @@
 #include "builder.h"
 #include "common.h"
 #include "llvm_di.h"
-#include "mir_instr.inc"
 #include "mir_printer.h"
 #include "unit.h"
 
@@ -64,10 +63,14 @@
 
 #define CREATE_TYPE_RESOLVER_CALL(_ast)                                                            \
 	ast_create_impl_fn_call(                                                                   \
-	    cnt, (_ast), RESOLVE_TYPE_FN_NAME, cnt->builtin_types.t_resolve_type_fn)
+	    cnt, (_ast), RESOLVE_TYPE_FN_NAME, cnt->builtin_types.t_resolve_type_fn, false)
 
-#define CREATE_VALUE_RESOLVER_CALL(_ast)                                                           \
-	ast_create_impl_fn_call(cnt, (_ast), INIT_VALUE_FN_NAME, NULL)
+#define CREATE_VALUE_RESOLVER_CALL(_ast, _analyze)                                                 \
+	ast_create_impl_fn_call(cnt, (_ast), INIT_VALUE_FN_NAME, NULL, (_analyze))
+
+#define GEN_INSTR_SIZEOF
+#include "mir.inc"
+#undef GEN_INSTR_SIZEOF
 
 TSMALL_ARRAY_TYPE(LLVMType, LLVMTypeRef, 8);
 TSMALL_ARRAY_TYPE(LLVMMetadata, LLVMMetadataRef, 16);
@@ -145,9 +148,6 @@ typedef struct {
 		MirType *t_TypeInfoEnumVariants_slice;
 		MirType *t_TypeInfoFnArgs_slice;
 		/* OTHER END */
-
-		/* Cache scope containing '#compiler' flagged symbols.  */
-		Scope *cache;
 	} builtin_types;
 } Context;
 
@@ -256,11 +256,10 @@ execute_test_cases(Context *cnt);
 static ScopeEntry *
 register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool is_builtin, bool enable_groups);
 
-/* Store scope entry for builtin into cache to be faster localized as needed. */
-static void
-cache_builtin(Context *cnt, ScopeEntry *entry);
-
-/* Look up builtin by builtin kind. */
+/* Lookup builtin by builtin kind in global scope. Return NULL even if builtin is valid symbol in
+ * case when it's not been analyzed yet or is incomplete struct type. In such case caller must
+ * postpone analyze process. This is an error in any post-analyze processing (every type must be
+ * complete when analyze pass id completed!). */
 static MirType *
 lookup_builtin(Context *cnt, MirBuiltinIdKind kind);
 
@@ -668,7 +667,11 @@ create_instr_vargs_impl(Context *cnt, MirType *type, TSmallArray_InstrPtr *value
 
 /* ast */
 static MirInstr *
-ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *fn_type);
+ast_create_impl_fn_call(Context *   cnt,
+                        Ast *       node,
+                        const char *fn_name,
+                        MirType *   fn_type,
+                        bool        schedule_analyze);
 
 static MirInstr *
 ast(Context *cnt, Ast *node);
@@ -1475,7 +1478,7 @@ is_to_any_needed(Context *cnt, MirInstr *src, MirType *dest_type)
 {
 	if (!dest_type || !src) return false;
 	MirType *any_type = lookup_builtin(cnt, MIR_BUILTIN_ID_ANY);
-
+	BL_ASSERT(any_type);
 	if (dest_type != any_type) return false;
 
 	if (is_load_needed(src)) {
@@ -1695,8 +1698,6 @@ init_type_id(Context *cnt, MirType *type)
 		tstring_append(tmp, "p.");
 		tstring_append(tmp, type->data.ptr.expr->id.str);
 
-		BL_LOG("new struct type %s", tmp->data);
-
 		break;
 	}
 
@@ -1848,7 +1849,6 @@ register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool is_builtin, 
 	    &cnt->assembly->arenas.scope, SCOPE_ENTRY_INCOMPLETE, id, node, is_builtin);
 
 	scope_insert(scope, entry);
-	if (is_builtin) cache_builtin(cnt, entry);
 	return entry;
 
 COLLIDE : {
@@ -1875,39 +1875,36 @@ COLLIDE : {
 }
 }
 
-void
-cache_builtin(Context *cnt, ScopeEntry *entry)
-{
-	BL_ASSERT(entry);
-	ScopeEntry *collision = scope_lookup(cnt->builtin_types.cache, entry->id, true, false);
-	if (collision) {
-		BL_ABORT("Duplicate compiler internal '%s'.", entry->id->str);
-	}
-
-	scope_insert(cnt->builtin_types.cache, entry);
-}
-
 MirType *
 lookup_builtin(Context *cnt, MirBuiltinIdKind kind)
 {
 	ID *        id    = &builtin_ids[kind];
-	Scope *     scope = cnt->builtin_types.cache;
+	Scope *     scope = cnt->assembly->gscope;
 	ScopeEntry *found = scope_lookup(scope, id, true, false);
 
 	if (!found) BL_ABORT("Missing compiler internal symbol '%s'", id->str);
 	if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
 
+	if (!found->is_buildin) {
+		builder_msg(BUILDER_MSG_WARNING,
+		            0,
+		            found->node ? found->node->location : NULL,
+		            BUILDER_CUR_WORD,
+		            "Builtins used by compiler must have '#compiler' flag!");
+	}
+
 	BL_ASSERT(found->kind == SCOPE_ENTRY_VAR);
 
 	MirVar *var = found->data.var;
 
-	if (!IS_FLAG(var->flags, FLAG_COMPILER))
-		BL_ABORT("Internally used symbol '%s' declared without '#compiler' flag!",
-		         var->llvm_name);
-
 	BL_ASSERT(var);
 	BL_ASSERT(var->comptime && var->value.type->kind == MIR_TYPE_TYPE);
 	BL_ASSERT(var->value.data.v_ptr.data.type);
+
+	/* Wait when internal is not complete!  */
+	if (is_incomplete_struct_type(var->value.data.v_ptr.data.type)) {
+		return NULL;
+	}
 
 	return var->value.data.v_ptr.data.type;
 }
@@ -1992,6 +1989,7 @@ create_type_real(Context *cnt, ID *id, s32 bitcount)
 MirType *
 create_type_ptr(Context *cnt, MirType *src_type)
 {
+	BL_ASSERT(src_type && "Invalid src type for pointer type.");
 	MirType *tmp       = create_type(cnt, MIR_TYPE_PTR, NULL);
 	tmp->data.ptr.expr = src_type;
 
@@ -4673,6 +4671,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	/* struct type */
 	if (target_type->kind == MIR_TYPE_STRUCT || target_type->kind == MIR_TYPE_STRING ||
 	    target_type->kind == MIR_TYPE_SLICE || target_type->kind == MIR_TYPE_VARGS) {
+		if (is_incomplete_struct_type(target_type)) return ANALYZE_RESULT(POSTPONE, 0);
 		reduce_instr(cnt, member_ptr->target_ptr);
 		/* lookup for member inside struct */
 		Scope *     scope = target_type->data.strct.scope;
@@ -4993,10 +4992,9 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 
 		/* Check if we try get reference to incomplete structure type. */
 		if (type->kind == MIR_TYPE_TYPE &&
-		    is_incomplete_struct_type(var->value.data.v_ptr.data.type)) {
-			if (ref->accept_incomplete_type)
-				BL_LOG("declaration reference accept incomplete types!!!");
-			BL_UNIMPLEMENTED;
+		    is_incomplete_struct_type(var->value.data.v_ptr.data.type) &&
+		    !ref->accept_incomplete_type) {
+			return ANALYZE_RESULT(POSTPONE, 0);
 		}
 
 		++var->ref_count;
@@ -5503,7 +5501,7 @@ analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
 		/* use Any */
 		elem_type = lookup_builtin(cnt, MIR_BUILTIN_ID_ANY);
 		if (!elem_type)
-			return ANALYZE_RESULT(WAITING, builtin_ids[MIR_BUILTIN_ID_ANY].hash);
+			return ANALYZE_RESULT(POSTPONE, 0);
 	}
 
 	BL_ASSERT(elem_type);
@@ -8184,7 +8182,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 			cnt->ast.enable_incomplete_decl_refs = true;
 
 			// Generate value resolver
-			CREATE_VALUE_RESOLVER_CALL(ast_value);
+			CREATE_VALUE_RESOLVER_CALL(ast_value, true);
 
 			cnt->ast.enable_incomplete_decl_refs = false;
 			cnt->ast.current_fwd_struct_decl     = NULL;
@@ -8193,7 +8191,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 			 * implicit initializer function executed in compile
 			 * time. Every initialization function must be able to
 			 * be executed in compile time. */
-			value = CREATE_VALUE_RESOLVER_CALL(ast_value);
+			value = CREATE_VALUE_RESOLVER_CALL(ast_value, false);
 		} else {
 			value = ast(cnt, ast_value);
 		}
@@ -8458,7 +8456,11 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 }
 
 MirInstr *
-ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *fn_type)
+ast_create_impl_fn_call(Context *   cnt,
+                        Ast *       node,
+                        const char *fn_name,
+                        MirType *   fn_type,
+                        bool        schedule_analyze)
 {
 	if (!node) return NULL;
 
@@ -8474,7 +8476,7 @@ ast_create_impl_fn_call(Context *cnt, Ast *node, const char *fn_name, MirType *f
 	}
 
 	MirInstrBlock *prev_block = get_current_block(cnt);
-	MirInstr *     fn_proto   = append_instr_fn_proto(cnt, NULL, NULL, NULL, false);
+	MirInstr *     fn_proto   = append_instr_fn_proto(cnt, NULL, NULL, NULL, schedule_analyze);
 	fn_proto->value.type      = final_fn_type;
 
 	MirFn *fn =
@@ -9045,8 +9047,6 @@ mir_run(Assembly *assembly)
 	cnt.analyze.verbose_pre     = false;
 	cnt.analyze.verbose_post    = false;
 	cnt.analyze.llvm_di_builder = assembly->llvm.di_builder;
-	cnt.builtin_types.cache =
-	    scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, 64, NULL);
 
 	thtbl_init(&cnt.analyze.waiting, sizeof(TArray), ANALYZE_TABLE_SIZE);
 	thtbl_init(&cnt.analyze.RTTI_entry_types, 0, 1024);
