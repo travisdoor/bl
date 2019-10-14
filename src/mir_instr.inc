@@ -36,5 +36,4 @@
 	MirInstrTypeInfo      type_info;\
 	MirInstrPhi           phi;\
 	MirInstrToAny         toany;\
-	MirInstrCST           cst;\
 })

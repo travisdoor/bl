@@ -305,9 +305,6 @@ static void
 print_instr_type_struct(MirInstrTypeStruct *type_struct, FILE *stream);
 
 static void
-print_instr_cst(MirInstrCST *cst, FILE *stream);
-
-static void
 print_instr_type_enum(MirInstrTypeEnum *type_enum, FILE *stream);
 
 static void
@@ -451,25 +448,6 @@ print_instr_toany(MirInstrToAny *toany, FILE *stream)
 {
 	print_instr_head(&toany->base, stream, "toany");
 	print_comptime_value_or_id(toany->expr, stream);
-}
-
-void
-print_instr_cst(MirInstrCST *cst, FILE *stream)
-{
-	print_instr_head(&cst->base, stream, "cst");
-	fprintf(stream, "{");
-
-	/*
-	TSmallArray_InstrPtr *members = type_struct->members;
-	MirInstr *            member;
-	TSA_FOREACH(members, member)
-	{
-		print_comptime_value_or_id(member, stream);
-		if (i + 1 < members->size) fprintf(stream, ", ");
-	}
-	*/
-
-	fprintf(stream, "}");
 }
 
 void
@@ -1088,9 +1066,6 @@ mir_print_instr(MirInstr *instr, FILE *stream)
 		break;
 	case MIR_INSTR_DECL_DIRECT_REF:
 		print_instr_decl_direct_ref((MirInstrDeclDirectRef *)instr, stream);
-		break;
-	case MIR_INSTR_CST:
-		print_instr_cst((MirInstrCST *)instr, stream);
 		break;
 	}
 

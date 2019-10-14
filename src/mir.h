@@ -93,7 +93,6 @@ typedef struct MirInstrTypeInfo      MirInstrTypeInfo;
 typedef struct MirInstrTypeKind      MirInstrTypeKind;
 typedef struct MirInstrPhi           MirInstrPhi;
 typedef struct MirInstrToAny         MirInstrToAny;
-typedef struct MirInstrCST           MirInstrCST;
 
 typedef union MirConstValueData MirConstValueData;
 
@@ -247,7 +246,6 @@ typedef enum MirInstrKind {
 	MIR_INSTR_TYPE_INFO,
 	MIR_INSTR_PHI,
 	MIR_INSTR_TOANY,
-	MIR_INSTR_CST,
 } MirInstrKind;
 
 typedef enum MirCastOp {
@@ -656,6 +654,8 @@ struct MirInstrTypeFn {
 struct MirInstrTypeStruct {
 	MirInstr base;
 
+	/* fwd_decl is optional pointer to forward declaration of this structure type.  */
+	MirInstr *            fwd_decl;
 	ID *                  id;
 	Scope *               scope;
 	TSmallArray_InstrPtr *members;
@@ -788,15 +788,6 @@ struct MirInstrToAny {
 	MirVar *  tmp;
 	MirVar *  expr_tmp; /* optional */
 	MirInstr *expr;
-};
-
-struct MirInstrCST {
-	MirInstr base;
-
-	MirInstr *            dest_type;
-	Scope *               scope;
-	TSmallArray_InstrPtr *members;
-	bool                  is_packed;
 };
 
 /* public */

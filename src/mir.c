@@ -91,6 +91,8 @@ typedef struct {
 		MirInstrBlock *        exit_block;
 		MirInstrBlock *        continue_block;
 		ID *                   current_entity_id; /* Sometimes used for named structures */
+		MirInstr *             current_fwd_struct_decl;
+		bool                   enable_incomplete_decl_refs;
 	} ast;
 
 	/* Analyze MIR generated from AST */
@@ -306,9 +308,18 @@ create_type_struct(Context *              cnt,
                    TSmallArray_MemberPtr *members, /* MirMember */
                    bool                   is_packed);
 
+/* Make incomplete type struct declaration complete. This function sets all desired information
+ * about struct to the forward declaration type. */
+static MirType *
+complete_type_struct(Context *              cnt,
+                     MirInstr *             fwd_decl,
+                     Scope *                scope,
+                     TSmallArray_MemberPtr *members,
+                     bool                   is_packed);
+
 /* Create incomplete struct type placeholer to be filled later. */
 static MirType *
-create_fwd_type_struct(Context *cnt);
+create_type_struct_incomplete(Context *cnt, ID *user_id);
 
 static MirType *
 create_type_enum(Context *               cnt,
@@ -522,6 +533,7 @@ static MirInstr *
 append_instr_type_struct(Context *             cnt,
                          Ast *                 node,
                          ID *                  id,
+                         MirInstr *            fwd_decl, /*Optional */
                          Scope *               scope,
                          TSmallArray_InstrPtr *members,
                          bool                  is_packed);
@@ -1682,6 +1694,9 @@ init_type_id(Context *cnt, MirType *type)
 		tstring_clear(tmp);
 		tstring_append(tmp, "p.");
 		tstring_append(tmp, type->data.ptr.expr->id.str);
+
+		BL_LOG("new struct type %s", tmp->data);
+
 		break;
 	}
 
@@ -1742,7 +1757,14 @@ init_type_id(Context *cnt, MirType *type)
 
 	case MIR_TYPE_STRUCT: {
 		tstring_append(tmp, "s.");
-		GEN_ID_STRUCT;
+		if (type->data.strct.is_incomplete) {
+			BL_ASSERT(type->user_id &&
+			          "Missing user id for incomplete structure type!");
+			tstring_append(tmp, type->user_id->str);
+		} else {
+			GEN_ID_STRUCT;
+		}
+
 		break;
 	}
 
@@ -2027,10 +2049,44 @@ create_type_struct(Context *              cnt,
 }
 
 MirType *
-create_fwd_type_struct(Context *cnt)
+complete_type_struct(Context *              cnt,
+                     MirInstr *             fwd_decl,
+                     Scope *                scope,
+                     TSmallArray_MemberPtr *members,
+                     bool                   is_packed)
 {
-	MirType *tmp                  = create_type(cnt, MIR_TYPE_STRUCT, NULL);
+	BL_ASSERT(fwd_decl && "Invalid fwd_decl pointer!");
+
+	BL_ASSERT(fwd_decl->value.type->kind == MIR_TYPE_TYPE &&
+	          "Forward struct declaration does not point to type definition!");
+
+	BL_ASSERT(fwd_decl->value.data.v_ptr.kind == MIR_CP_TYPE);
+
+	MirType *incomplete_type = fwd_decl->value.data.v_ptr.data.type;
+	BL_ASSERT(incomplete_type);
+
+	BL_ASSERT(incomplete_type->kind == MIR_TYPE_STRUCT &&
+	          "Incomplete type is not struct type!");
+
+	BL_ASSERT(incomplete_type->data.strct.is_incomplete &&
+	          "Incomplete struct type is not marked as incomplete!");
+
+	incomplete_type->data.strct.members       = members;
+	incomplete_type->data.strct.scope         = scope;
+	incomplete_type->data.strct.is_packed     = is_packed;
+	incomplete_type->data.strct.is_incomplete = false;
+
+	init_llvm_type_struct(cnt, incomplete_type);
+	return incomplete_type;
+}
+
+MirType *
+create_type_struct_incomplete(Context *cnt, ID *user_id)
+{
+	MirType *tmp                  = create_type(cnt, MIR_TYPE_STRUCT, user_id);
 	tmp->data.strct.is_incomplete = true;
+
+	init_type_id(cnt, tmp);
 	init_llvm_type_struct(cnt, tmp);
 	return tmp;
 }
@@ -3103,6 +3159,7 @@ MirInstr *
 append_instr_type_struct(Context *             cnt,
                          Ast *                 node,
                          ID *                  id,
+                         MirInstr *            fwd_decl,
                          Scope *               scope,
                          TSmallArray_InstrPtr *members,
                          bool                  is_packed)
@@ -3115,6 +3172,7 @@ append_instr_type_struct(Context *             cnt,
 	tmp->scope           = scope;
 	tmp->is_packed       = is_packed;
 	tmp->id              = id;
+	tmp->fwd_decl        = fwd_decl;
 
 	if (members) {
 		MirInstr *it;
@@ -3667,6 +3725,18 @@ create_instr_const_int(Context *cnt, Ast *node, MirType *type, u64 val)
 
 	init_or_create_const_integer(cnt, &tmp->value, type, val);
 
+	return tmp;
+}
+
+static MirInstr *
+create_instr_const_type(Context *cnt, Ast *node, MirType *type)
+{
+	MirInstr *tmp        = CREATE_INSTR(cnt, MIR_INSTR_CONST, node, MirInstr *);
+	tmp->comptime        = true;
+	tmp->value.addr_mode = MIR_VAM_RVALUE;
+	tmp->value.type      = cnt->builtin_types.t_type;
+
+	mir_set_const_ptr(&tmp->value.data.v_ptr, type, MIR_CP_TYPE);
 	return tmp;
 }
 
@@ -4894,7 +4964,6 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		ref->base.comptime        = true;
 		ref->base.value.addr_mode = MIR_VAM_LVALUE_CONST;
 
-		BL_ASSERT(!is_incomplete_struct_type(found->data.type));
 		mir_set_const_ptr(&ref->base.value.data.v_ptr, found->data.type, MIR_CP_TYPE);
 		break;
 	}
@@ -4918,9 +4987,19 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	case SCOPE_ENTRY_VAR: {
 		MirVar *var = found->data.var;
 		BL_ASSERT(var);
-		++var->ref_count;
+
 		MirType *type = var->value.type;
 		BL_ASSERT(type);
+
+		/* Check if we try get reference to incomplete structure type. */
+		if (type->kind == MIR_TYPE_TYPE &&
+		    is_incomplete_struct_type(var->value.data.v_ptr.data.type)) {
+			if (ref->accept_incomplete_type)
+				BL_LOG("declaration reference accept incomplete types!!!");
+			BL_UNIMPLEMENTED;
+		}
+
+		++var->ref_count;
 
 		type                      = create_type_ptr(cnt, type);
 		ref->base.value.type      = type;
@@ -5336,17 +5415,27 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 		}
 	}
 
-	{ /* Setup const pointer. */
-		MirConstPtr *const_ptr = &type_struct->base.value.data.v_ptr;
-		MirType *    tmp       = create_type_struct(cnt,
-                                                  MIR_TYPE_STRUCT,
-                                                  type_struct->id,
-                                                  type_struct->scope,
-                                                  members,
-                                                  type_struct->is_packed);
-
-		mir_set_const_ptr(const_ptr, tmp, MIR_CP_TYPE);
+	MirConstPtr *const_ptr   = &type_struct->base.value.data.v_ptr;
+	MirType *    result_type = NULL;
+	if (type_struct->fwd_decl) {
+		/* Type has fwd declaration. In this case we set all desired information about
+		 * struct type into previously created forward declaration. */
+		result_type = complete_type_struct(cnt,
+		                                   type_struct->fwd_decl,
+		                                   type_struct->scope,
+		                                   members,
+		                                   type_struct->is_packed);
+	} else {
+		result_type = create_type_struct(cnt,
+		                                 MIR_TYPE_STRUCT,
+		                                 type_struct->id,
+		                                 type_struct->scope,
+		                                 members,
+		                                 type_struct->is_packed);
 	}
+
+	BL_ASSERT(result_type);
+	mir_set_const_ptr(const_ptr, result_type, MIR_CP_TYPE);
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -5846,41 +5935,54 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 			return ANALYZE_RESULT(FAILED, 0);
 		}
 
-		/* Just to be sure we have call instruction. */
-		BL_ASSERT(decl->init->kind == MIR_INSTR_CALL &&
-		          "Global initializer is supposed to be comptime implicit call.");
+		if (decl->init->kind ==
+		    MIR_INSTR_CALL) { /* Initialized by call to value resolver function. */
+			              /* Just to be sure we have call instruction. */
+			BL_ASSERT(decl->init->kind == MIR_INSTR_CALL &&
+			          "Global initializer is supposed to be comptime implicit call.");
 
-		/* Since all globals are initialized by call to comptime function and no type infer
-		 * is needed (user specified expected type directly), we must disable type infering
-		 * of terminal instruction in initializer and set exact type we are expecting to be
-		 * returned by the initializer function. */
-		if (var->value.type) {
-			MirInstrCall *initializer_call = (MirInstrCall *)decl->init;
-			MirFn *       fn               = get_callee(initializer_call);
-			MirInstrRet * terminal         = fn->terminal_instr;
-			BL_ASSERT(terminal);
+			/* Since all globals are initialized by call to comptime function and no
+			 * type infer is needed (user specified expected type directly), we must
+			 * disable type infering of terminal instruction in initializer and set
+			 * exact type we are expecting to be returned by the initializer function.
+			 */
+			if (var->value.type) {
+				MirInstrCall *initializer_call = (MirInstrCall *)decl->init;
+				MirFn *       fn               = get_callee(initializer_call);
+				MirInstrRet * terminal         = fn->terminal_instr;
+				BL_ASSERT(terminal);
 
-			if (terminal->infer_type) {
-				terminal->infer_type = false;
-				fn->type = create_type_fn(cnt, NULL, var->value.type, NULL, false);
+				if (terminal->infer_type) {
+					terminal->infer_type = false;
+					fn->type =
+					    create_type_fn(cnt, NULL, var->value.type, NULL, false);
 
-				/* CLEANUP: why we need set type of the function also for fn
-				 * prototype ??? */
-				/* CLEANUP: why we need set type of the function also for fn
-				 * prototype ??? */
-				/* CLEANUP: why we need set type of the function also for fn
-				 * prototype ??? */
-				fn->prototype->value.type = fn->type;
+					/* CLEANUP: why we need set type of the function also for fn
+					 * prototype ??? */
+					/* CLEANUP: why we need set type of the function also for fn
+					 * prototype ??? */
+					/* CLEANUP: why we need set type of the function also for fn
+					 * prototype ??? */
+					fn->prototype->value.type = fn->type;
+				}
 			}
+
+			/* Analyze and execute initializer. This could lead to POSTPONE when
+			 * initializer function is not ready yet. */
+			AnalyzeResult result = analyze_instr(cnt, decl->init);
+			if (result.state != ANALYZE_PASSED) return result;
+
+			/* Execute only when analyze passed. */
+			vm_execute_instr_top_level_call(&cnt->vm, (MirInstrCall *)decl->init);
+
+		} else { /* Initialized by constant value. */
+			BL_ASSERT(decl->init->kind == MIR_INSTR_CONST &&
+			          "Initializer of global value must be either comptime function "
+			          "call or constant instruction.");
+
+			BL_ASSERT(decl->init->analyzed &&
+			          "Global variable const initializer is not analyzed!");
 		}
-
-		/* Analyze and execute initializer. This could lead to POSTPONE when initializer
-		 * function is not ready yet. */
-		AnalyzeResult result = analyze_instr(cnt, decl->init);
-		if (result.state != ANALYZE_PASSED) return result;
-
-		/* Execute only when analyze passed. */
-		vm_execute_instr_top_level_call(&cnt->vm, (MirInstrCall *)decl->init);
 
 		/* Infer type if needed */
 		if (!var->value.type) {
@@ -6477,9 +6579,6 @@ analyze_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_DECL_DIRECT_REF:
 		state = analyze_instr_decl_direct_ref(cnt, (MirInstrDeclDirectRef *)instr);
-		break;
-	case MIR_INSTR_CST:
-		BL_UNIMPLEMENTED;
 		break;
 	}
 
@@ -8071,14 +8170,25 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		/* initialize value */
 		MirInstr *value = NULL;
 		if (!ast_value) goto NO_VALUE;
-		/* TODO:
 		if (is_struct_decl) {
-		    // TODO: set to const type fwd decl
-		    // TODO: set current fwd decl
-		    // TODO: enable incomplete types for decl_ref instructions
-		    // TODO: generate value resolver
-		} else*/
-		if (is_in_gscope) {
+			// Set to const type fwd decl
+			MirType *fwd_decl_type =
+			    create_type_struct_incomplete(cnt, cnt->ast.current_entity_id);
+			value = create_instr_const_type(cnt, ast_value, fwd_decl_type);
+			analyze_instr_rq(cnt, value);
+
+			// Set current fwd decl
+			cnt->ast.current_fwd_struct_decl = value;
+
+			// Enable incomplete types for decl_ref instructions.
+			cnt->ast.enable_incomplete_decl_refs = true;
+
+			// Generate value resolver
+			CREATE_VALUE_RESOLVER_CALL(ast_value);
+
+			cnt->ast.enable_incomplete_decl_refs = false;
+			cnt->ast.current_fwd_struct_decl     = NULL;
+		} else if (is_in_gscope) {
 			/* Initialization of global variables must be done in
 			 * implicit initializer function executed in compile
 			 * time. Every initialization function must be able to
@@ -8240,6 +8350,11 @@ ast_type_ptr(Context *cnt, Ast *type_ptr)
 	MirInstr *type = ast(cnt, ast_type);
 	BL_ASSERT(type);
 
+	if (cnt->ast.enable_incomplete_decl_refs && type->kind == MIR_INSTR_DECL_REF) {
+		/* Enable incomplete types for pointers to declarations. */
+		((MirInstrDeclRef *)type)->accept_incomplete_type = true;
+	}
+
 	return append_instr_type_ptr(cnt, type_ptr, type);
 }
 
@@ -8301,6 +8416,10 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 	ID *id                     = cnt->ast.current_entity_id;
 	cnt->ast.current_entity_id = NULL;
 
+	/* Consume current struct fwd decl. */
+	MirInstr *fwd_decl               = cnt->ast.current_fwd_struct_decl;
+	cnt->ast.current_fwd_struct_decl = NULL;
+
 	TSmallArray_AstPtr *ast_members = type_struct->data.type_strct.members;
 	const bool          is_raw      = type_struct->data.type_strct.raw;
 	if (is_raw) {
@@ -8335,7 +8454,7 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 
 	if (cnt->debug_mode) init_llvm_DI_scope(cnt, scope);
 
-	return append_instr_type_struct(cnt, type_struct, id, scope, members, false);
+	return append_instr_type_struct(cnt, type_struct, id, fwd_decl, scope, members, false);
 }
 
 MirInstr *
@@ -8575,8 +8694,6 @@ mir_instr_name(MirInstr *instr)
 		return "InstrDeclVariant";
 	case MIR_INSTR_TOANY:
 		return "InstrToAny";
-	case MIR_INSTR_CST:
-		return "InstrCST";
 	}
 
 	return "UNKNOWN";
