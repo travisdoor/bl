@@ -50,7 +50,7 @@
 #define IMPL_RTTI_ENTRY                 ".rtti"
 #define IMPL_RET_TMP                    ".ret"
 #define NO_REF_COUNTING                 -1
-#define VERBOSE_ANALYZE                 false
+#define VERBOSE_ANALYZE                 true
 // clang-format on
 
 #define ANALYZE_RESULT(_state, _waiting_for)                                                       \
@@ -4671,7 +4671,8 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	/* struct type */
 	if (target_type->kind == MIR_TYPE_STRUCT || target_type->kind == MIR_TYPE_STRING ||
 	    target_type->kind == MIR_TYPE_SLICE || target_type->kind == MIR_TYPE_VARGS) {
-		if (is_incomplete_struct_type(target_type)) return ANALYZE_RESULT(POSTPONE, 0);
+		if (is_incomplete_struct_type(target_type))
+			return ANALYZE_RESULT(WAITING, target_type->user_id->hash);
 		reduce_instr(cnt, member_ptr->target_ptr);
 		/* lookup for member inside struct */
 		Scope *     scope = target_type->data.strct.scope;
@@ -4994,9 +4995,9 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		if (type->kind == MIR_TYPE_TYPE &&
 		    is_incomplete_struct_type(var->value.data.v_ptr.data.type) &&
 		    !ref->accept_incomplete_type) {
-			return ANALYZE_RESULT(POSTPONE, 0);
+			return ANALYZE_RESULT(WAITING,
+			                      var->value.data.v_ptr.data.type->user_id->hash);
 		}
-
 		++var->ref_count;
 
 		type                      = create_type_ptr(cnt, type);
@@ -5423,6 +5424,8 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 		                                   type_struct->scope,
 		                                   members,
 		                                   type_struct->is_packed);
+
+		analyze_notify_provided(cnt, result_type->user_id->hash);
 	} else {
 		result_type = create_type_struct(cnt,
 		                                 MIR_TYPE_STRUCT,
@@ -5501,7 +5504,7 @@ analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
 		/* use Any */
 		elem_type = lookup_builtin(cnt, MIR_BUILTIN_ID_ANY);
 		if (!elem_type)
-			return ANALYZE_RESULT(POSTPONE, 0);
+			return ANALYZE_RESULT(WAITING, builtin_ids[MIR_BUILTIN_ID_ANY].hash);
 	}
 
 	BL_ASSERT(elem_type);
@@ -6630,7 +6633,7 @@ analyze(Context *cnt)
 #define LOG_ANALYZE_WAITING                                                                        \
 	printf("Analyze: [  " YELLOW("WAIT") "  ] %16s is waiting for: '%llu'\n",                  \
 	       mir_instr_name(ip),                                                                 \
-	       (unsigned long long)state);
+	       (unsigned long long)result.waiting_for);
 #else
 #define LOG_ANALYZE_PASSED
 #define LOG_ANALYZE_FAILED
