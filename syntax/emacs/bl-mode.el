@@ -18,7 +18,7 @@
 
 (defconst bl-keywords
   '("if" "loop" "break" "continue" "else" "sizeof" "typeof" "alignof" "defer" "typeinfo" "typekind"
-    "struct" "enum" "fn" "return" "cast" "auto" ":" ":=" "unreachable")) 
+    "struct" "enum" "fn" "return" "cast" "auto" ":" ":=" "unreachable" "switch" "case" "->")) 
 
 (defconst bl-types
   '("s8" "s16" "s32" "s64" "u8" "u16" "u32" "u64" "f32" "f64" "bool" "usize" "void" "string"

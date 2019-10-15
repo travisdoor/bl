@@ -15,6 +15,7 @@ syntax keyword blFor loop
 syntax keyword blBreak break 
 syntax keyword blContinue continue 
 syntax keyword blUnreachable unreachable
+syntax keyword blSwitch switch ->
 
 syntax keyword blDataType void string u8 u16 u32 u64 s8 s16 s32 s64 bool usize type f32 f64
 syntax keyword blBool true false
@@ -68,6 +69,7 @@ highlight link blDynamicFunction Function
 
 highlight link blMacro Macro
 highlight link blIf Conditional
+highlight link blSwitch Conditional
 highlight link blElse Conditional
 highlight link blFor Repeat
 

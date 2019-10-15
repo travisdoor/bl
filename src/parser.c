@@ -2119,6 +2119,12 @@ NEXT:
 void
 parse_ublock_content(Context *cnt, Ast *ublock)
 {
+	/******************************************************************************************/
+#define RQ_SEMICOLON_AFTER(_node)                                                                  \
+	((_node)->data.decl_entity.value->kind != AST_EXPR_LIT_FN &&                               \
+	 (_node)->data.decl_entity.value->kind != AST_EXPR_TYPE)
+	/******************************************************************************************/
+
 	BL_ASSERT(ublock->kind == AST_UBLOCK);
 	ublock->data.ublock.nodes = tarray_new(sizeof(Ast *));
 
@@ -2128,7 +2134,8 @@ NEXT:
 
 	if ((tmp = parse_decl(cnt))) {
 		if (tmp->kind != AST_BAD) {
-			parse_semicolon_rq(cnt);
+			if (RQ_SEMICOLON_AFTER(tmp))
+				parse_semicolon_rq(cnt);
 			/* setup global scope flag for declaration */
 			tmp->data.decl_entity.in_gscope = true;
 			if (cnt->inside_private_scope) tmp->data.decl_entity.flags |= FLAG_PRIVATE;
@@ -2153,6 +2160,8 @@ NEXT:
 		            "Unexpected symbol in module body '%s'.",
 		            sym_strings[tok->sym]);
 	}
+
+#undef RQ_SEMICOLON_AFTER
 }
 
 void

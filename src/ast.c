@@ -159,6 +159,8 @@ ast_get_name(const Ast *n)
 		return "ExprSizeof";
 	case AST_EXPR_TYPE_INFO:
 		return "ExprTypeInfo";
+	case AST_EXPR_TYPE:
+		return "ExprType";
 	case AST_EXPR_ALIGNOF:
 		return "ExprAlignof";
 	case AST_EXPR_UNARY:
