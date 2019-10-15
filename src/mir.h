@@ -93,6 +93,7 @@ typedef struct MirInstrTypeInfo      MirInstrTypeInfo;
 typedef struct MirInstrTypeKind      MirInstrTypeKind;
 typedef struct MirInstrPhi           MirInstrPhi;
 typedef struct MirInstrToAny         MirInstrToAny;
+typedef struct MirInstrSwitch        MirInstrSwitch;
 
 typedef union MirConstValueData MirConstValueData;
 
@@ -714,6 +715,10 @@ struct MirInstrToAny {
 	MirVar *  tmp;
 	MirVar *  expr_tmp; /* optional */
 	MirInstr *expr;
+};
+
+struct MirInstrSwitch {
+	MirInstr base;
 };
 
 /* public */

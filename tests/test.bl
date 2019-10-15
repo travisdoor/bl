@@ -1,19 +1,43 @@
 /* playground */
 
+Month :: enum {
+    January;
+    February;
+    March;
+    April;
+    May;
+    June;
+    July;
+    August;
+    September;
+    October;
+    November;
+    December
+}
+
 main :: fn () s32 {
-    foo: Entity;
+    month := Month.March;
+
+    switch month {
+        Month.January;
+        Month.February {
+            print("February");
+        };
+
+        Month.March,
+        Month.April,
+        Month.May {
+            print("March, April or May\n");
+        };
+
+        Month.June;
+        Month.July;
+        Month.August;
+
+        default {
+            print("other month\n");
+        };
+    }
+    
     return 0;
-}
-
-Entity :: struct {
-    name: string;
-    bar: Bar
-}
-
-Bar :: struct {
-    e: *Entity
-}
-
-Enum :: enum {
-    A; B; C;
 }

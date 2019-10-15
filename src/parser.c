@@ -177,6 +177,12 @@ parse_stmt_continue(Context *cnt);
 static Ast *
 parse_stmt_defer(Context *cnt);
 
+static Ast *
+parse_stmt_switch(Context *cnt);
+
+static Ast *
+parse_stmt_case(Context *cnt);
+
 /* EXPRESSIONS */
 static Ast *
 parse_expr(Context *cnt);
@@ -1107,6 +1113,84 @@ parse_stmt_if(Context *cnt)
 	}
 
 	return stmt_if;
+}
+
+Ast *
+parse_stmt_switch(Context *cnt)
+{
+	Token *tok_switch = tokens_consume_if(cnt->tokens, SYM_SWITCH);
+	if (!tok_switch) return NULL;
+
+	Ast *expr = parse_expr(cnt);
+	BL_ASSERT(expr && "This should be an error!");
+
+	Token *tok = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
+	BL_ASSERT(tok && "This should be an error!");
+
+	TSmallArray_AstPtr *cases     = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+	Ast *               stmt_case = NULL;
+NEXT:
+	stmt_case = parse_stmt_case(cnt);
+	if (stmt_case) {
+		tsa_push_AstPtr(cases, stmt_case);
+		if (tokens_current_is_not(cnt->tokens, SYM_RBLOCK)) goto NEXT;
+	}
+
+	tok = tokens_consume_if(cnt->tokens, SYM_RBLOCK);
+	BL_ASSERT(tok && "This should be an error!");
+
+	Ast *stmt_switch =
+	    ast_create_node(cnt->ast_arena, AST_STMT_SWITCH, tok_switch, scope_get(cnt));
+
+	stmt_switch->data.stmt_switch.expr  = expr;
+	stmt_switch->data.stmt_switch.cases = cases;
+	return stmt_switch;
+}
+
+Ast *
+parse_stmt_case(Context *cnt)
+{
+	TSmallArray_AstPtr *exprs = NULL;
+	Ast *               block = NULL;
+	Ast *               expr  = NULL;
+	bool                rq    = false;
+
+	Token *tok_case = tokens_consume_if(cnt->tokens, SYM_DEFAULT);
+	if (tok_case) goto SKIP_EXPRS;
+
+	tok_case = tokens_peek(cnt->tokens);
+	exprs    = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+NEXT:
+	expr = parse_expr(cnt);
+	if (expr) {
+		tsa_push_AstPtr(exprs, expr);
+
+		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
+			rq = true;
+			goto NEXT;
+		}
+	} else if (rq) {
+		Token *tok_err = tokens_peek(cnt->tokens);
+		PARSE_ERROR(ERR_EXPECTED_NAME,
+		            tok_err,
+		            BUILDER_CUR_WORD,
+		            "Expected expression after comma.");
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, scope_get(cnt));
+	}
+
+SKIP_EXPRS:
+	block = parse_block(cnt, true);
+	if (!parse_semicolon_rq(cnt)) {
+		Token *tok_err = tokens_peek(cnt->tokens);
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, scope_get(cnt));
+	}
+
+	Ast *stmt_case = ast_create_node(cnt->ast_arena, AST_STMT_CASE, tok_case, scope_get(cnt));
+	stmt_case->data.stmt_case.exprs      = exprs;
+	stmt_case->data.stmt_case.is_default = !exprs;
+	stmt_case->data.stmt_case.block      = block;
+
+	return stmt_case;
 }
 
 static TokensLookaheadState
@@ -2062,6 +2146,11 @@ NEXT:
 		goto NEXT;
 	}
 
+	if ((tmp = parse_stmt_switch(cnt))) {
+		tarray_push(block->data.block.nodes, tmp);
+		goto NEXT;
+	}
+
 	if ((tmp = parse_stmt_loop(cnt))) {
 		tarray_push(block->data.block.nodes, tmp);
 		goto NEXT;
@@ -2134,8 +2223,7 @@ NEXT:
 
 	if ((tmp = parse_decl(cnt))) {
 		if (tmp->kind != AST_BAD) {
-			if (RQ_SEMICOLON_AFTER(tmp))
-				parse_semicolon_rq(cnt);
+			if (RQ_SEMICOLON_AFTER(tmp)) parse_semicolon_rq(cnt);
 			/* setup global scope flag for declaration */
 			tmp->data.decl_entity.in_gscope = true;
 			if (cnt->inside_private_scope) tmp->data.decl_entity.flags |= FLAG_PRIVATE;

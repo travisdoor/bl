@@ -273,9 +273,11 @@ builder_compile(Assembly *assembly)
 	msg_log("Compile assembly: %s", assembly->name);
 
 	/* include core source file */
-	unit = unit_new_file(CORE_SOURCE_FILE, NULL, NULL);
-	if (!assembly_add_unit_unique(assembly, unit)) {
-		unit_delete(unit);
+	if (!builder.options.no_api) {
+		unit = unit_new_file(CORE_SOURCE_FILE, NULL, NULL);
+		if (!assembly_add_unit_unique(assembly, unit)) {
+			unit_delete(unit);
+		}
 	}
 
 	TARRAY_FOREACH(Unit *, &assembly->units, unit)

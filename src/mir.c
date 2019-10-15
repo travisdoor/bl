@@ -6581,6 +6581,9 @@ analyze_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_DECL_DIRECT_REF:
 		state = analyze_instr_decl_direct_ref(cnt, (MirInstrDeclDirectRef *)instr);
 		break;
+	case MIR_INSTR_SWITCH:
+		BL_UNIMPLEMENTED;
+		break;
 	}
 
 	instr->analyzed = state.state == ANALYZE_PASSED;
@@ -8699,6 +8702,8 @@ mir_instr_name(MirInstr *instr)
 		return "InstrDeclVariant";
 	case MIR_INSTR_TOANY:
 		return "InstrToAny";
+	case MIR_INSTR_SWITCH:
+		return "InstrSwitch";
 	}
 
 	return "UNKNOWN";

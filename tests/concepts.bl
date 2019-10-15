@@ -99,15 +99,18 @@ Camera :: struct #extends Entity {
 //************************************************************************************************
 
 switch foo {
-    case A 
-    case C
-    case B -> print("Ahoj");
-    case D ->
+    case A; 
+    case C;
+    case B;
+        print("Ahoj");
+    case D;
         print("D");
         print("D");
         print("D");
-    case E
-    case F
-    case G -> break;
-    case -> print("default");
+    case E;
+    case F;
+    case G;
+       break;
+    case;
+        print("default");
 }

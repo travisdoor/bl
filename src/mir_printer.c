@@ -293,6 +293,9 @@ static void
 print_instr_br(MirInstrBr *br, FILE *stream);
 
 static void
+print_instr_switch(MirInstrSwitch *sw, FILE *stream);
+
+static void
 print_instr_unreachable(MirInstrUnreachable *unr, FILE *stream);
 
 static void
@@ -724,6 +727,12 @@ print_instr_br(MirInstrBr *br, FILE *stream)
 }
 
 void
+print_instr_switch(MirInstrSwitch *sw, FILE *stream)
+{
+	print_instr_head(&sw->base, stream, "switch");
+}
+
+void
 print_instr_load(MirInstrLoad *load, FILE *stream)
 {
 	print_instr_head(&load->base, stream, "load");
@@ -1022,6 +1031,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
 		break;
 	case MIR_INSTR_BR:
 		print_instr_br((MirInstrBr *)instr, stream);
+		break;
+	case MIR_INSTR_SWITCH:
+		print_instr_switch((MirInstrSwitch *)instr, stream);
 		break;
 	case MIR_INSTR_UNOP:
 		print_instr_unop((MirInstrUnop *)instr, stream);
