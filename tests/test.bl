@@ -30,8 +30,8 @@ main :: fn () s32 {
             print("March, April or May\n");
         };
 
-        Month.June;
-        Month.July;
+        Month.June,
+        Month.July,
         Month.August;
 
         default {

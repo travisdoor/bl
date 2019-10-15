@@ -730,6 +730,24 @@ void
 print_instr_switch(MirInstrSwitch *sw, FILE *stream)
 {
 	print_instr_head(&sw->base, stream, "switch");
+	print_comptime_value_or_id(sw->value, stream);
+	fprintf(stream, " {");
+
+	MirSwitchCase *c;
+	for (usize i = 0; i < sw->cases->size; ++i) {
+		c = &sw->cases->data[i];
+
+		print_comptime_value_or_id(c->on_value, stream);
+		fprintf(
+		    stream, ": %%%s_%llu", c->block->name, (unsigned long long)c->block->base.id);
+
+		if (i < sw->cases->size - 1) fprintf(stream, "; ");
+	}
+
+	fprintf(stream,
+	        "} else %%%s_%llu",
+	        sw->default_block->name,
+	        (unsigned long long)sw->default_block->base.id);
 }
 
 void

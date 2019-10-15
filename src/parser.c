@@ -1127,11 +1127,31 @@ parse_stmt_switch(Context *cnt)
 	Token *tok = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
 	BL_ASSERT(tok && "This should be an error!");
 
-	TSmallArray_AstPtr *cases     = create_sarr(TSmallArray_AstPtr, cnt->assembly);
-	Ast *               stmt_case = NULL;
+	TSmallArray_AstPtr *cases        = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+	Ast *               stmt_case    = NULL;
+	Ast *               default_case = NULL;
 NEXT:
 	stmt_case = parse_stmt_case(cnt);
-	if (stmt_case) {
+	if (stmt_case && stmt_case->kind != AST_BAD) {
+		if (stmt_case->data.stmt_case.is_default) {
+			if (default_case) {
+				builder_msg(
+				    BUILDER_MSG_ERROR,
+				    ERR_INVALID_SWITCH_CASE,
+				    stmt_case->location,
+				    BUILDER_CUR_WORD,
+				    "Switch statement cannot have more than one default cases.");
+
+				builder_msg(BUILDER_MSG_NOTE,
+				            0,
+				            default_case->location,
+				            BUILDER_CUR_WORD,
+				            "Previous found here.");
+			} else {
+				default_case = stmt_case;
+			}
+		}
+
 		tsa_push_AstPtr(cases, stmt_case);
 		if (tokens_current_is_not(cnt->tokens, SYM_RBLOCK)) goto NEXT;
 	}

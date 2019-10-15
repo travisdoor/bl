@@ -108,6 +108,13 @@ typedef struct MirArenas {
 	Arena value;
 } MirArenas;
 
+typedef struct MirSwitchCase {
+	MirInstr *     on_value;
+	MirInstrBlock *block;
+} MirSwitchCase;
+
+TSMALL_ARRAY_TYPE(SwitchCase, MirSwitchCase, 64);
+
 typedef enum MirBuiltinIdKind {
 	MIR_BUILTIN_ID_NONE = -1,
 #define GEN_BUILTIN_NAMES
@@ -719,6 +726,10 @@ struct MirInstrToAny {
 
 struct MirInstrSwitch {
 	MirInstr base;
+
+	MirInstr *              value;
+	MirInstrBlock *         default_block;
+	TSmallArray_SwitchCase *cases;
 };
 
 /* public */
