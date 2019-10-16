@@ -1,0 +1,36 @@
+Month :: enum {
+    January;
+    February;
+    March;
+    April;
+    May;
+    June;
+    July;
+    August;
+    September;
+    October;
+    November;
+    December
+}
+
+#test "switch example" {
+    month :: Month.February;
+
+    switch month {
+        Month.January; // case body is optional
+
+        Month.February {
+            print("February\n");
+        };
+
+        Month.March,
+        Month.April,
+        Month.May { // use comma for grouping
+            print("March, April or May\n");
+        };
+
+        default { // optional default case
+            print("other month...\n");
+        };
+    }
+}

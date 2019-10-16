@@ -510,7 +510,7 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 
 		scope->location = block->location;
 
-		parse_semicolon_rq(cnt);
+		//parse_semicolon_rq(cnt);
 
 		Ast *test =
 		    ast_create_node(cnt->ast_arena, AST_TEST_CASE, tok_directive, scope_get(cnt));
@@ -2233,6 +2233,7 @@ parse_ublock_content(Context *cnt, Ast *ublock)
 	/******************************************************************************************/
 #define RQ_SEMICOLON_AFTER(_node)                                                                  \
 	((_node)->data.decl_entity.value->kind != AST_EXPR_LIT_FN &&                               \
+	 (_node)->data.decl_entity.value->kind != AST_TEST_CASE &&                                 \
 	 (_node)->data.decl_entity.value->kind != AST_EXPR_TYPE)
 	/******************************************************************************************/
 
