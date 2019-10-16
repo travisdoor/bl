@@ -37,6 +37,7 @@
 	MirInstrTypeInfo      type_info;\
 	MirInstrPhi           phi;\
 	MirInstrToAny         toany;\
+	MirInstrSwitch        sw;\
 })
 #endif
 
@@ -78,6 +79,7 @@
 	MIR_INSTR_TYPE_INFO,
 	MIR_INSTR_PHI,
 	MIR_INSTR_TOANY,
+	MIR_INSTR_SWITCH,
 #endif
 
 #ifdef GEN_BUILTIN_NAMES

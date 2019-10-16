@@ -93,6 +93,7 @@ typedef struct MirInstrTypeInfo      MirInstrTypeInfo;
 typedef struct MirInstrTypeKind      MirInstrTypeKind;
 typedef struct MirInstrPhi           MirInstrPhi;
 typedef struct MirInstrToAny         MirInstrToAny;
+typedef struct MirInstrSwitch        MirInstrSwitch;
 
 typedef union MirConstValueData MirConstValueData;
 
@@ -106,6 +107,13 @@ typedef struct MirArenas {
 	Arena arg;
 	Arena value;
 } MirArenas;
+
+typedef struct MirSwitchCase {
+	MirInstr *     on_value;
+	MirInstrBlock *block;
+} MirSwitchCase;
+
+TSMALL_ARRAY_TYPE(SwitchCase, MirSwitchCase, 64);
 
 typedef enum MirBuiltinIdKind {
 	MIR_BUILTIN_ID_NONE = -1,
@@ -714,6 +722,15 @@ struct MirInstrToAny {
 	MirVar *  tmp;
 	MirVar *  expr_tmp; /* optional */
 	MirInstr *expr;
+};
+
+struct MirInstrSwitch {
+	MirInstr base;
+
+	MirInstr *              value;
+	MirInstrBlock *         default_block;
+	TSmallArray_SwitchCase *cases;
+	bool                    has_user_defined_default;
 };
 
 /* public */

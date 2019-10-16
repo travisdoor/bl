@@ -53,6 +53,7 @@
     "compound"
     "vargs"
     "phi"
+    "switch"
     "alignof")) 
 
 (defconst blm-types

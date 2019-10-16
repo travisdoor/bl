@@ -50,7 +50,7 @@
 #define IMPL_RTTI_ENTRY                 ".rtti"
 #define IMPL_RET_TMP                    ".ret"
 #define NO_REF_COUNTING                 -1
-#define VERBOSE_ANALYZE                 false 
+#define VERBOSE_ANALYZE                 false
 // clang-format on
 
 #define ANALYZE_RESULT(_state, _waiting_for)                                                       \
@@ -111,7 +111,7 @@ typedef struct {
 
 		/* Unique table of pointers to types later generated into RTTI, this table contains
 		 * only pointer to top level types used by typeinfo operator, not all sub-types. */
-		THashTable RTTI_entry_types; // TODO: remove
+		THashTable RTTI_entry_types; // INCOMPLETE: remove
 
 		LLVMDIBuilderRef llvm_di_builder;
 	} analyze;
@@ -523,6 +523,14 @@ static MirInstr *
 append_instr_br(Context *cnt, Ast *node, MirInstrBlock *then_block);
 
 static MirInstr *
+append_instr_switch(Context *               cnt,
+                    Ast *                   node,
+                    MirInstr *              value,
+                    MirInstrBlock *         default_block,
+                    bool                    user_defined_default,
+                    TSmallArray_SwitchCase *cases);
+
+static MirInstr *
 append_instr_load(Context *cnt, Ast *node, MirInstr *src);
 
 static MirInstr *
@@ -708,6 +716,9 @@ ast_stmt_break(Context *cnt, Ast *br);
 
 static void
 ast_stmt_continue(Context *cnt, Ast *cont);
+
+static void
+ast_stmt_switch(Context *cnt, Ast *stmt_switch);
 
 static MirInstr *
 ast_decl_entity(Context *cnt, Ast *entity);
@@ -926,6 +937,9 @@ static AnalyzeResult
 analyze_instr_br(Context *cnt, MirInstrBr *br);
 
 static AnalyzeResult
+analyze_instr_switch(Context *cnt, MirInstrSwitch *sw);
+
+static AnalyzeResult
 analyze_instr_load(Context *cnt, MirInstrLoad *load);
 
 static AnalyzeResult
@@ -1102,7 +1116,7 @@ can_impl_cast(MirType *from, MirType *to)
 	if (from->kind != to->kind) return false;
 	if (from->kind != MIR_TYPE_INT) return false;
 	// return true;
-	// TODO: enable after correct type propagation of contants
+	// INCOMPLETE: enable after correct type propagation of contants
 	if (from->data.integer.is_signed != to->data.integer.is_signed) return false;
 
 	const s32 fb = from->data.integer.bitcount;
@@ -3405,6 +3419,42 @@ append_instr_br(Context *cnt, Ast *node, MirInstrBlock *then_block)
 }
 
 MirInstr *
+append_instr_switch(Context *               cnt,
+                    Ast *                   node,
+                    MirInstr *              value,
+                    MirInstrBlock *         default_block,
+                    bool                    user_defined_default,
+                    TSmallArray_SwitchCase *cases)
+{
+	BL_ASSERT(default_block);
+	BL_ASSERT(cases);
+	BL_ASSERT(value);
+
+	ref_instr(&default_block->base);
+	ref_instr(value);
+
+	for (usize i = 0; i < cases->size; ++i) {
+		MirSwitchCase *c = &cases->data[i];
+		ref_instr(&c->block->base);
+		ref_instr(c->on_value);
+	}
+
+	MirInstrSwitch *tmp           = CREATE_INSTR(cnt, MIR_INSTR_SWITCH, node, MirInstrSwitch *);
+	tmp->base.ref_count           = NO_REF_COUNTING;
+	tmp->base.value.type          = cnt->builtin_types.t_void;
+	tmp->value                    = value;
+	tmp->default_block            = default_block;
+	tmp->cases                    = cases;
+	tmp->has_user_defined_default = user_defined_default;
+
+	MirInstrBlock *block = get_current_block(cnt);
+
+	append_current_block(cnt, &tmp->base);
+	if (!is_block_terminated(block)) terminate_block(block, &tmp->base);
+	return &tmp->base;
+}
+
+MirInstr *
 create_instr_elem_ptr(Context * cnt,
                       Ast *     node,
                       MirInstr *arr_ptr,
@@ -5147,13 +5197,13 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		/* Add entry block of the function into analyze queue. */
 		MirInstr *entry_block = (MirInstr *)fn->first_block;
 		if (!entry_block) {
-			/* TODO: not the best place to do this check, move into ast
+			/* INCOMPLETE: not the best place to do this check, move into ast
 			 * generation later
 			 */
-			/* TODO: not the best place to do this check, move into ast
+			/* INCOMPLETE: not the best place to do this check, move into ast
 			 * generation later
 			 */
-			/* TODO: not the best place to do this check, move into ast
+			/* INCOMPLETE: not the best place to do this check, move into ast
 			 * generation later
 			 */
 			builder_msg(BUILDER_MSG_ERROR,
@@ -5202,6 +5252,119 @@ AnalyzeResult
 analyze_instr_br(Context *cnt, MirInstrBr *br)
 {
 	BL_ASSERT(br->then_block);
+	return ANALYZE_RESULT(PASSED, 0);
+}
+
+/* True when switch contains same case value from start_from to the end of cases array. */
+static inline bool
+_analyze_switch_has_case_value(TSmallArray_SwitchCase *cases,
+                               usize                   start_from,
+                               MirInstr *              const_value)
+{
+	const s64 v = const_value->value.data.v_s64;
+	for (usize i = start_from; i < cases->size; ++i) {
+		MirSwitchCase *c  = &cases->data[i];
+		const s64      cv = c->on_value->value.data.v_s64;
+
+		if (v == cv) return true;
+	}
+
+	return false;
+}
+
+AnalyzeResult
+analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
+{
+	if (analyze_slot(cnt, &analyze_slot_conf_basic, &sw->value, NULL) != ANALYZE_PASSED) {
+		return ANALYZE_RESULT(FAILED, 0);
+	}
+
+	MirType *expected_case_type = sw->value->value.type;
+	BL_ASSERT(expected_case_type);
+
+	if (expected_case_type->kind != MIR_TYPE_INT && expected_case_type->kind != MIR_TYPE_ENUM) {
+		builder_msg(
+		    BUILDER_MSG_ERROR,
+		    ERR_INVALID_TYPE,
+		    sw->value->node->location,
+		    BUILDER_CUR_WORD,
+		    "Invalid type of switch expression. Only integer types and enums can be used.");
+
+		return ANALYZE_RESULT(FAILED, 0);
+	}
+
+	if (!sw->cases->size) {
+		builder_msg(BUILDER_MSG_WARNING,
+		            0,
+		            sw->base.node->location,
+		            BUILDER_CUR_WORD,
+		            "Empty switch statement.");
+
+		return ANALYZE_RESULT(PASSED, 0);
+	}
+
+	MirSwitchCase *c;
+	for (usize i = 0; i < sw->cases->size; ++i) {
+		c = &sw->cases->data[i];
+
+		if (!c->on_value->comptime) {
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_EXPECTED_COMPTIME,
+			            c->on_value->node->location,
+			            BUILDER_CUR_WORD,
+			            "Switch case value must be compile-time known.");
+			return ANALYZE_RESULT(FAILED, 0);
+		}
+
+		if (analyze_slot(cnt, &analyze_slot_conf_basic, &c->on_value, expected_case_type) !=
+		    ANALYZE_PASSED) {
+			return ANALYZE_RESULT(FAILED, 0);
+		}
+
+		if (_analyze_switch_has_case_value(sw->cases, i + 1, c->on_value)) {
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_DUPLICIT_SWITCH_CASE,
+			            c->on_value->node->location,
+			            BUILDER_CUR_WORD,
+			            "Switch already contains case for this value!");
+		}
+	}
+
+	s64 expected_case_count = expected_case_type->kind == MIR_TYPE_ENUM
+	                              ? expected_case_type->data.enm.variants->size
+	                              : -1;
+
+	if ((expected_case_count > (s64)sw->cases->size) && !sw->has_user_defined_default) {
+		builder_msg(BUILDER_MSG_WARNING,
+		            0,
+		            sw->base.node->location,
+		            BUILDER_CUR_WORD,
+		            "Switch does not handle all possible enumerator values.");
+
+		BL_ASSERT(expected_case_type->kind == MIR_TYPE_ENUM);
+		MirVariant *variant;
+		TSA_FOREACH(expected_case_type->data.enm.variants, variant)
+		{
+			bool hit = false;
+			for (usize i = 0; i < sw->cases->size; ++i) {
+				MirSwitchCase *c = &sw->cases->data[i];
+				if (c->on_value->value.data.v_s64 == variant->value->data.v_s64) {
+					hit = true;
+					break;
+				}
+			}
+
+			if (!hit) {
+				builder_msg(BUILDER_MSG_NOTE,
+				            0,
+				            NULL,
+				            BUILDER_CUR_NONE,
+				            "Missing case for: %s",
+				            variant->id->str);
+			}
+		}
+	}
+
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -5782,9 +5945,9 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 	 * in compile time also
 	 */
 	if (lhs->comptime && rhs->comptime) binop->base.comptime = true;
-	/* TODO: I'm not sure if every binary operation is rvalue... */
-	/* TODO: I'm not sure if every binary operation is rvalue... */
-	/* TODO: I'm not sure if every binary operation is rvalue... */
+	/* INCOMPLETE: I'm not sure if every binary operation is rvalue... */
+	/* INCOMPLETE: I'm not sure if every binary operation is rvalue... */
+	/* INCOMPLETE: I'm not sure if every binary operation is rvalue... */
 	binop->base.value.addr_mode = MIR_VAM_RVALUE;
 	binop->volatile_type        = is_instr_type_volatile(lhs) && is_instr_type_volatile(rhs);
 
@@ -6194,10 +6357,10 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 
 		if (vargsc > 0) {
 			/* One or more vargs passed. */
-			// TODO: check it this is ok!!!
-			// TODO: check it this is ok!!!
-			// TODO: check it this is ok!!!
-			// TODO: check it this is ok!!!
+			// INCOMPLETE: check it this is ok!!!
+			// INCOMPLETE: check it this is ok!!!
+			// INCOMPLETE: check it this is ok!!!
+			// INCOMPLETE: check it this is ok!!!
 			for (usize i = 0; i < vargsc; ++i) {
 				tsa_push_InstrPtr(values, call->args->data[callee_argc + i]);
 			}
@@ -6580,6 +6743,9 @@ analyze_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_DECL_DIRECT_REF:
 		state = analyze_instr_decl_direct_ref(cnt, (MirInstrDeclDirectRef *)instr);
+		break;
+	case MIR_INSTR_SWITCH:
+		state = analyze_instr_switch(cnt, (MirInstrSwitch *)instr);
 		break;
 	}
 
@@ -7571,6 +7737,65 @@ ast_stmt_continue(Context *cnt, Ast *cont)
 }
 
 void
+ast_stmt_switch(Context *cnt, Ast *stmt_switch)
+{
+	TSmallArray_AstPtr *ast_cases = stmt_switch->data.stmt_switch.cases;
+	BL_ASSERT(ast_cases);
+
+	TSmallArray_SwitchCase *cases = create_sarr(TSmallArray_SwitchCase, cnt->assembly);
+
+	MirFn *fn = get_current_fn(cnt);
+	BL_ASSERT(fn);
+
+	MirInstrBlock *src_block            = get_current_block(cnt);
+	MirInstrBlock *cont_block           = append_block(cnt, fn, "switch_continue");
+	MirInstrBlock *default_block        = cont_block;
+	bool           user_defined_default = false;
+
+	for (usize i = ast_cases->size; i-- > 0;) {
+		Ast *      ast_case   = ast_cases->data[i];
+		const bool is_default = ast_case->data.stmt_case.is_default;
+
+		MirInstrBlock *case_block = NULL;
+
+		if (ast_case->data.stmt_case.block) {
+			case_block =
+			    append_block(cnt, fn, is_default ? "switch_default" : "switch_case");
+			set_current_block(cnt, case_block);
+			ast(cnt, ast_case->data.stmt_case.block);
+			append_instr_br(cnt, ast_case, cont_block);
+		} else {
+			/* Handle empty cases. */
+			case_block = cont_block;
+		}
+
+		if (is_default) {
+			default_block        = case_block;
+			user_defined_default = true;
+			continue;
+		}
+
+		TSmallArray_AstPtr *ast_exprs = ast_case->data.stmt_case.exprs;
+
+		for (usize i = ast_exprs->size; i-- > 0;) {
+			Ast *ast_expr = ast_exprs->data[i];
+
+			set_current_block(cnt, src_block);
+			MirSwitchCase c = {.on_value = ast(cnt, ast_expr), .block = case_block};
+			tsa_push_SwitchCase(cases, c);
+		}
+	}
+
+	/* Generate instructions for switch value and create switch itself. */
+	set_current_block(cnt, src_block);
+
+	MirInstr *value = ast(cnt, stmt_switch->data.stmt_switch.expr);
+	append_instr_switch(cnt, stmt_switch, value, default_block, user_defined_default, cases);
+
+	set_current_block(cnt, cont_block);
+}
+
+void
 ast_stmt_return(Context *cnt, Ast *ret)
 {
 	/* Return statement produce only setup of .ret temporary and break into the exit
@@ -7678,7 +7903,7 @@ ast_expr_cast(Context *cnt, Ast *cast)
 	Ast *      ast_next  = cast->data.expr_cast.next;
 	BL_ASSERT(ast_next);
 
-	// TODO: const type!!!
+	// INCOMPLETE: const type!!!
 	MirInstr *type = NULL;
 
 	if (!auto_cast) {
@@ -8534,6 +8759,9 @@ ast(Context *cnt, Ast *node)
 	case AST_STMT_IF:
 		ast_stmt_if(cnt, node);
 		break;
+	case AST_STMT_SWITCH:
+		ast_stmt_switch(cnt, node);
+		break;
 	case AST_DECL_ENTITY:
 		return ast_decl_entity(cnt, node);
 	case AST_DECL_ARG:
@@ -8699,6 +8927,8 @@ mir_instr_name(MirInstr *instr)
 		return "InstrDeclVariant";
 	case MIR_INSTR_TOANY:
 		return "InstrToAny";
+	case MIR_INSTR_SWITCH:
+		return "InstrSwitch";
 	}
 
 	return "UNKNOWN";
@@ -8866,7 +9096,7 @@ execute_entry_fn(Context *cnt)
 	MirType *fn_type = cnt->entry_fn->type;
 	BL_ASSERT(fn_type && fn_type->kind == MIR_TYPE_FN);
 
-	/* TODO: support passing of arguments. */
+	/* INCOMPLETE: support passing of arguments. */
 	if (fn_type->data.fn.args) {
 		msg_error("Main function expects arguments, this is not supported yet!");
 		return;

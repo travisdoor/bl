@@ -194,6 +194,9 @@ static void
 interp_instr_br(VM *vm, MirInstrBr *br);
 
 static void
+interp_instr_switch(VM *vm, MirInstrSwitch *sw);
+
+static void
 interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr);
 
 static void
@@ -1237,6 +1240,9 @@ interp_instr(VM *vm, MirInstr *instr)
 	case MIR_INSTR_TOANY:
 		interp_instr_toany(vm, (MirInstrToAny *)instr);
 		break;
+	case MIR_INSTR_SWITCH:
+		interp_instr_switch(vm, (MirInstrSwitch *)instr);
+		break;
 
 	default:
 		BL_ABORT("missing execution for instruction: %s", mir_instr_name(instr));
@@ -1547,6 +1553,29 @@ interp_instr_br(VM *vm, MirInstrBr *br)
 	BL_ASSERT(br->then_block);
 	vm->stack->prev_block = br->base.owner_block;
 	set_pc(vm, br->then_block->entry_instr);
+}
+
+void
+interp_instr_switch(VM *vm, MirInstrSwitch *sw)
+{
+	VMStackPtr value_ptr = fetch_value(vm, sw->value);
+	BL_ASSERT(value_ptr);
+
+	MirConstValueData value = {0};
+	read_value(&value, value_ptr, sw->value->value.type);
+
+	vm->stack->prev_block = sw->base.owner_block;
+
+	TSmallArray_SwitchCase *cases = sw->cases;
+	for (usize i = 0; i < cases->size; ++i) {
+		MirSwitchCase *c = &cases->data[i];
+		if (value.v_s64 == c->on_value->value.data.v_s64) {
+			set_pc(vm, c->block->entry_instr);
+			return;
+		}
+	}
+
+	set_pc(vm, sw->default_block->entry_instr);
 }
 
 void

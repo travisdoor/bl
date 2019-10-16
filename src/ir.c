@@ -175,6 +175,9 @@ static void
 emit_instr_br(Context *cnt, MirInstrBr *br);
 
 static void
+emit_instr_switch(Context *cnt, MirInstrSwitch *sw);
+
+static void
 emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg);
 
 static void
@@ -1533,6 +1536,30 @@ emit_instr_br(Context *cnt, MirInstrBr *br)
 }
 
 void
+emit_instr_switch(Context *cnt, MirInstrSwitch *sw)
+{
+	MirInstr *              value         = sw->value;
+	MirInstrBlock *         default_block = sw->default_block;
+	TSmallArray_SwitchCase *cases         = sw->cases;
+
+	LLVMValueRef      llvm_value         = fetch_value(cnt, value);
+	LLVMBasicBlockRef llvm_default_block = emit_basic_block(cnt, default_block);
+
+	LLVMValueRef llvm_switch =
+	    LLVMBuildSwitch(cnt->llvm_builder, llvm_value, llvm_default_block, cases->size);
+
+	for (usize i = 0; i < cases->size; ++i) {
+		MirSwitchCase *   c             = &cases->data[i];
+		LLVMValueRef      llvm_on_value = fetch_value(cnt, c->on_value);
+		LLVMBasicBlockRef llvm_block    = emit_basic_block(cnt, c->block);
+
+		LLVMAddCase(llvm_switch, llvm_on_value, llvm_block);
+	}
+
+	sw->base.llvm_value = llvm_switch;
+}
+
+void
 emit_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 {
 	MirInstr *     cond       = br->cond;
@@ -1761,6 +1788,9 @@ emit_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_BR:
 		emit_instr_br(cnt, (MirInstrBr *)instr);
+		break;
+	case MIR_INSTR_SWITCH:
+		emit_instr_switch(cnt, (MirInstrSwitch *)instr);
 		break;
 	case MIR_INSTR_COND_BR:
 		emit_instr_cond_br(cnt, (MirInstrCondBr *)instr);

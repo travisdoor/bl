@@ -30,7 +30,6 @@
 #include "blmemory.h"
 #include "builder.h"
 #include "llvm_di.h"
-#include "mir.h"
 #include "unit.h"
 #include <string.h>
 
@@ -47,6 +46,7 @@ union _SmallArrays {
 	TSmallArray_ConstValuePtr cv;
 	TSmallArray_AstPtr        ast;
 	TSmallArray_ArgPtr        arg;
+	TSmallArray_SwitchCase    switch_case;
 };
 
 static void

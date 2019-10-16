@@ -59,6 +59,8 @@ typedef enum {
 	AST_STMT_BREAK,
 	AST_STMT_CONTINUE,
 	AST_STMT_DEFER,
+	AST_STMT_SWITCH,
+	AST_STMT_CASE,
 	_AST_TYPE_FIRST,
 	AST_TYPE_REF,
 	AST_TYPE_ARR,
@@ -99,12 +101,12 @@ typedef enum {
 } AstKind;
 
 typedef enum {
-	FLAG_EXTERN       = 1 << 0, /* methods marked as extern */
-	FLAG_TEST         = 1 << 1, /* test case */
-	FLAG_COMPILER     = 1 << 2, /* compiler internal */
-	FLAG_PRIVATE      = 1 << 3, /* declared in private scope */
-	FLAG_INLINE       = 1 << 4, /* inline function */
-	FLAG_NO_INLINE    = 1 << 5, /* no inline function */
+	FLAG_EXTERN    = 1 << 0, /* methods marked as extern */
+	FLAG_TEST      = 1 << 1, /* test case */
+	FLAG_COMPILER  = 1 << 2, /* compiler internal */
+	FLAG_PRIVATE   = 1 << 3, /* declared in private scope */
+	FLAG_INLINE    = 1 << 4, /* inline function */
+	FLAG_NO_INLINE = 1 << 5, /* no inline function */
 } AstFlag;
 
 /* map symbols to binary operation kind */
@@ -187,6 +189,17 @@ struct AstStmtIf {
 	Ast *test;
 	Ast *true_stmt;
 	Ast *false_stmt;
+};
+
+struct AstStmtSwitch {
+	Ast *               expr;
+	TSmallArray_AstPtr *cases;
+};
+
+struct AstStmtCase {
+	TSmallArray_AstPtr *exprs;
+	Ast *               block;
+	bool                is_default;
 };
 
 struct AstStmtLoop {
@@ -384,6 +397,8 @@ struct Ast {
 		struct AstStmtIf        stmt_if;
 		struct AstStmtLoop      stmt_loop;
 		struct AstStmtDefer     stmt_defer;
+		struct AstStmtSwitch    stmt_switch;
+		struct AstStmtCase      stmt_case;
 		struct AstTestCase      test_case;
 		struct AstDecl          decl;
 		struct AstDeclEntity    decl_entity;

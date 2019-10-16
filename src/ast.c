@@ -115,6 +115,10 @@ ast_get_name(const Ast *n)
 		return "StmtBreak";
 	case AST_STMT_CONTINUE:
 		return "StmtContinue";
+	case AST_STMT_SWITCH:
+		return "StmtSwitch";
+	case AST_STMT_CASE:
+		return "StmtCase";
 	case AST_DECL_ENTITY:
 		return "DeclEntity";
 	case AST_DECL_MEMBER:
