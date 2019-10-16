@@ -1175,6 +1175,8 @@ parse_stmt_case(Context *cnt)
 	Ast *               expr  = NULL;
 	bool                rq    = false;
 
+	if (tokens_current_is(cnt->tokens, SYM_RBLOCK)) return NULL;
+
 	Token *tok_case = tokens_consume_if(cnt->tokens, SYM_DEFAULT);
 	if (tok_case) goto SKIP_EXPRS;
 

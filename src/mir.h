@@ -730,6 +730,7 @@ struct MirInstrSwitch {
 	MirInstr *              value;
 	MirInstrBlock *         default_block;
 	TSmallArray_SwitchCase *cases;
+	bool                    has_user_defined_default;
 };
 
 /* public */

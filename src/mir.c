@@ -527,6 +527,7 @@ append_instr_switch(Context *               cnt,
                     Ast *                   node,
                     MirInstr *              value,
                     MirInstrBlock *         default_block,
+                    bool                    user_defined_default,
                     TSmallArray_SwitchCase *cases);
 
 static MirInstr *
@@ -3422,6 +3423,7 @@ append_instr_switch(Context *               cnt,
                     Ast *                   node,
                     MirInstr *              value,
                     MirInstrBlock *         default_block,
+                    bool                    user_defined_default,
                     TSmallArray_SwitchCase *cases)
 {
 	BL_ASSERT(default_block);
@@ -3437,12 +3439,13 @@ append_instr_switch(Context *               cnt,
 		ref_instr(c->on_value);
 	}
 
-	MirInstrSwitch *tmp  = CREATE_INSTR(cnt, MIR_INSTR_SWITCH, node, MirInstrSwitch *);
-	tmp->base.ref_count  = NO_REF_COUNTING;
-	tmp->base.value.type = cnt->builtin_types.t_void;
-	tmp->value           = value;
-	tmp->default_block   = default_block;
-	tmp->cases           = cases;
+	MirInstrSwitch *tmp           = CREATE_INSTR(cnt, MIR_INSTR_SWITCH, node, MirInstrSwitch *);
+	tmp->base.ref_count           = NO_REF_COUNTING;
+	tmp->base.value.type          = cnt->builtin_types.t_void;
+	tmp->value                    = value;
+	tmp->default_block            = default_block;
+	tmp->cases                    = cases;
+	tmp->has_user_defined_default = user_defined_default;
 
 	MirInstrBlock *block = get_current_block(cnt);
 
@@ -5252,6 +5255,23 @@ analyze_instr_br(Context *cnt, MirInstrBr *br)
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
+/* True when switch contains same case value from start_from to the end of cases array. */
+static inline bool
+_analyze_switch_has_case_value(TSmallArray_SwitchCase *cases,
+                               usize                   start_from,
+                               MirInstr *              const_value)
+{
+	const s64 v = const_value->value.data.v_s64;
+	for (usize i = start_from; i < cases->size; ++i) {
+		MirSwitchCase *c  = &cases->data[i];
+		const s64      cv = c->on_value->value.data.v_s64;
+
+		if (v == cv) return true;
+	}
+
+	return false;
+}
+
 AnalyzeResult
 analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
 {
@@ -5259,23 +5279,89 @@ analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
-	MirType *expected_case_value_type = sw->value->value.type;
-	BL_ASSERT(expected_case_value_type);
+	MirType *expected_case_type = sw->value->value.type;
+	BL_ASSERT(expected_case_type);
+
+	if (expected_case_type->kind != MIR_TYPE_INT && expected_case_type->kind != MIR_TYPE_ENUM) {
+		builder_msg(
+		    BUILDER_MSG_ERROR,
+		    ERR_INVALID_TYPE,
+		    sw->value->node->location,
+		    BUILDER_CUR_WORD,
+		    "Invalid type of switch expression. Only integer types and enums can be used.");
+
+		return ANALYZE_RESULT(FAILED, 0);
+	}
+
+	if (!sw->cases->size) {
+		builder_msg(BUILDER_MSG_WARNING,
+		            0,
+		            sw->base.node->location,
+		            BUILDER_CUR_WORD,
+		            "Empty switch statement.");
+
+		return ANALYZE_RESULT(PASSED, 0);
+	}
 
 	MirSwitchCase *c;
 	for (usize i = 0; i < sw->cases->size; ++i) {
 		c = &sw->cases->data[i];
 
-		/* INCOMPLETE: */
-		/* INCOMPLETE: */
-		/* INCOMPLETE: */
-		BL_ASSERT(c->on_value->comptime &&
-		          "Switch case value must be compile-time known. This should be an error.");
+		if (!c->on_value->comptime) {
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_EXPECTED_COMPTIME,
+			            c->on_value->node->location,
+			            BUILDER_CUR_WORD,
+			            "Switch case value must be compile-time known.");
+			return ANALYZE_RESULT(FAILED, 0);
+		}
 
-		if (analyze_slot(
-		        cnt, &analyze_slot_conf_basic, &c->on_value, expected_case_value_type) !=
+		if (analyze_slot(cnt, &analyze_slot_conf_basic, &c->on_value, expected_case_type) !=
 		    ANALYZE_PASSED) {
 			return ANALYZE_RESULT(FAILED, 0);
+		}
+
+		if (_analyze_switch_has_case_value(sw->cases, i + 1, c->on_value)) {
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_DUPLICIT_SWITCH_CASE,
+			            c->on_value->node->location,
+			            BUILDER_CUR_WORD,
+			            "Switch already contains case for this value!");
+		}
+	}
+
+	s64 expected_case_count = expected_case_type->kind == MIR_TYPE_ENUM
+	                              ? expected_case_type->data.enm.variants->size
+	                              : -1;
+
+	if ((expected_case_count > (s64)sw->cases->size) && !sw->has_user_defined_default) {
+		builder_msg(BUILDER_MSG_WARNING,
+		            0,
+		            sw->base.node->location,
+		            BUILDER_CUR_WORD,
+		            "Switch does not handle all possible enumerator values.");
+
+		BL_ASSERT(expected_case_type->kind == MIR_TYPE_ENUM);
+		MirVariant *variant;
+		TSA_FOREACH(expected_case_type->data.enm.variants, variant)
+		{
+			bool hit = false;
+			for (usize i = 0; i < sw->cases->size; ++i) {
+				MirSwitchCase *c = &sw->cases->data[i];
+				if (c->on_value->value.data.v_s64 == variant->value->data.v_s64) {
+					hit = true;
+					break;
+				}
+			}
+
+			if (!hit) {
+				builder_msg(BUILDER_MSG_NOTE,
+				            0,
+				            NULL,
+				            BUILDER_CUR_NONE,
+				            "Missing case for: %s",
+				            variant->id->str);
+			}
 		}
 	}
 
@@ -7655,16 +7741,16 @@ ast_stmt_switch(Context *cnt, Ast *stmt_switch)
 {
 	TSmallArray_AstPtr *ast_cases = stmt_switch->data.stmt_switch.cases;
 	BL_ASSERT(ast_cases);
-	if (!ast_cases->size) return;
 
-	TSmallArray_SwitchCase *cases         = create_sarr(TSmallArray_SwitchCase, cnt->assembly);
-	MirInstrBlock *         default_block = NULL;
+	TSmallArray_SwitchCase *cases = create_sarr(TSmallArray_SwitchCase, cnt->assembly);
 
 	MirFn *fn = get_current_fn(cnt);
 	BL_ASSERT(fn);
 
-	MirInstrBlock *src_block  = get_current_block(cnt);
-	MirInstrBlock *cont_block = append_block(cnt, fn, "switch_continue");
+	MirInstrBlock *src_block            = get_current_block(cnt);
+	MirInstrBlock *cont_block           = append_block(cnt, fn, "switch_continue");
+	MirInstrBlock *default_block        = cont_block;
+	bool           user_defined_default = false;
 
 	for (usize i = ast_cases->size; i-- > 0;) {
 		Ast *      ast_case   = ast_cases->data[i];
@@ -7684,7 +7770,8 @@ ast_stmt_switch(Context *cnt, Ast *stmt_switch)
 		}
 
 		if (is_default) {
-			default_block = case_block;
+			default_block        = case_block;
+			user_defined_default = true;
 			continue;
 		}
 
@@ -7703,7 +7790,7 @@ ast_stmt_switch(Context *cnt, Ast *stmt_switch)
 	set_current_block(cnt, src_block);
 
 	MirInstr *value = ast(cnt, stmt_switch->data.stmt_switch.expr);
-	append_instr_switch(cnt, stmt_switch, value, default_block, cases);
+	append_instr_switch(cnt, stmt_switch, value, default_block, user_defined_default, cases);
 
 	set_current_block(cnt, cont_block);
 }

@@ -16,12 +16,17 @@ Month :: enum {
 }
 
 main :: fn () s32 {
-    month := Month.March;
+    month := Month.February;
+
+    switch 10 {
+        1;
+        2;
+    }
 
     switch month {
         Month.January;
         Month.February {
-            print("February");
+            print("February\n");
         };
 
         Month.March,
@@ -30,14 +35,15 @@ main :: fn () s32 {
             print("March, April or May\n");
         };
 
-        Month.June,
-        Month.July,
-        Month.August;
-
         default {
-            print("other month\n");
+            print("other month...\n");
         };
     }
     
     return 0;
+}
+
+
+foo :: fn () s32 {
+    return 10;
 }
