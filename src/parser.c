@@ -78,6 +78,7 @@ typedef enum {
 	HD_NO_INLINE = 1 << 8,
 	HD_FILE      = 1 << 9,
 	HD_LINE      = 1 << 10,
+	HD_BASE      = 1 << 11,
 } HashDirective;
 
 typedef struct {
@@ -108,7 +109,7 @@ parse_ublock_content(Context *cnt, Ast *ublock);
 static Ast *
 parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied);
 
-static void
+static Ast *
 parse_flags_for_curr_decl(Context *cnt, u32 acceped_flags);
 
 static Ast *
@@ -342,10 +343,11 @@ parse_expr_ref(Context *cnt)
 	return ref;
 }
 
-void
+Ast *
 parse_flags_for_curr_decl(Context *cnt, u32 acceped_flags)
 {
-	u32 flags = 0;
+	u32  flags     = 0;
+	Ast *extension = NULL;
 
 	HashDirective found = HD_NONE;
 
@@ -355,7 +357,7 @@ parse_flags_for_curr_decl(Context *cnt, u32 acceped_flags)
 	u32 accepted = is_curr_decl_valid ? acceped_flags : HD_NONE;
 
 	while (true) {
-		parse_hash_directive(cnt, accepted, &found);
+		extension = parse_hash_directive(cnt, accepted, &found);
 
 		if (found == HD_NONE) break;
 
@@ -369,6 +371,9 @@ parse_flags_for_curr_decl(Context *cnt, u32 acceped_flags)
 		} else if (IS_FLAG(found, HD_NO_INLINE)) {
 			flags |= FLAG_NO_INLINE;
 			found |= HD_INLINE;
+		} else if (IS_FLAG(found, HD_BASE)) {
+			found |= HD_BASE;
+			BL_ASSERT(extension && "This should be an error!");
 		} else {
 			BL_ABORT("Unexpected flag!!!");
 		}
@@ -379,13 +384,14 @@ parse_flags_for_curr_decl(Context *cnt, u32 acceped_flags)
 	}
 
 	if (is_curr_decl_valid) decl_get(cnt)->data.decl_entity.flags |= flags;
+	return extension;
 }
 
 /*
  * Try to parse hash directive. List of enabled directives can be set by 'expected_mask',
  * 'satisfied' is optional output set to parsed directive id if there is one.
  *
- * <#><load|link|test|extern|compiler>
+ * <#><load|link|test|extern|compiler|inline|no_inline|base>
  */
 Ast *
 parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
@@ -510,7 +516,7 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 
 		scope->location = block->location;
 
-		//parse_semicolon_rq(cnt);
+		// parse_semicolon_rq(cnt);
 
 		Ast *test =
 		    ast_create_node(cnt->ast_arena, AST_TEST_CASE, tok_directive, scope_get(cnt));
@@ -537,6 +543,20 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 
 		file->data.expr_file.filename = tok_directive->location.unit->filepath;
 		return file;
+	}
+
+	if (strcmp(directive, "base") == 0) {
+		set_satisfied(HD_BASE);
+		if (IS_NOT_FLAG(expected_mask, HD_BASE)) {
+			PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+			            tok_directive,
+			            BUILDER_CUR_WORD,
+			            "Unexpected directive.");
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
+		}
+
+		return parse_type(cnt);
 	}
 
 	if (strcmp(directive, "line") == 0) {
@@ -1202,9 +1222,11 @@ NEXT:
 
 SKIP_EXPRS:
 	block = parse_block(cnt, true);
-	if (!parse_semicolon_rq(cnt)) {
+	if (!block && !parse_semicolon_rq(cnt)) {
 		Token *tok_err = tokens_peek(cnt->tokens);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, scope_get(cnt));
+	} else {
+		parse_semicolon(cnt);
 	}
 
 	Ast *stmt_case = ast_create_node(cnt->ast_arena, AST_STMT_CASE, tok_case, scope_get(cnt));
@@ -1920,7 +1942,7 @@ parse_type_struct(Context *cnt)
 	Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
 	if (!tok_struct) return NULL;
 
-	parse_flags_for_curr_decl(cnt, HD_COMPILER);
+	parse_flags_for_curr_decl(cnt, HD_COMPILER | HD_BASE);
 
 	Token *tok = tokens_consume(cnt->tokens);
 	if (tok->sym != SYM_LBLOCK) {
