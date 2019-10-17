@@ -209,6 +209,7 @@ static ID builtin_ids[_MIR_BUILTIN_ID_COUNT] = {
     {.str = "main",                  .hash = 0},
     {.str = "len",                   .hash = 0},
     {.str = "ptr",                   .hash = 0},
+    {.str = "base",                  .hash = 0},
     {.str = "Any",                   .hash = 0},
     {.str = "TypeKind",              .hash = 0},
     {.str = "TypeInfo",              .hash = 0},
@@ -304,7 +305,8 @@ create_type_struct(Context *              cnt,
                    MirTypeKind            kind,
                    ID *                   id,
                    Scope *                scope,
-                   TSmallArray_MemberPtr *members, /* MirMember */
+                   TSmallArray_MemberPtr *members,   /* MirMember */
+                   MirType *              base_type, /* optional */
                    bool                   is_packed);
 
 /* Make incomplete type struct declaration complete. This function sets all desired information
@@ -314,6 +316,7 @@ complete_type_struct(Context *              cnt,
                      MirInstr *             fwd_decl,
                      Scope *                scope,
                      TSmallArray_MemberPtr *members,
+                     MirType *              base_type, /* optional */
                      bool                   is_packed);
 
 /* Create incomplete struct type placeholer to be filled later. */
@@ -445,6 +448,9 @@ insert_instr_load(Context *cnt, MirInstr *src);
 
 static MirInstr *
 insert_instr_cast(Context *cnt, MirInstr *src, MirType *to_type);
+
+static MirInstr *
+insert_instr_addrof(Context *cnt, MirInstr *src);
 
 static MirInstr *
 insert_instr_toany(Context *cnt, MirInstr *expr);
@@ -611,6 +617,9 @@ append_instr_decl_var_impl(Context *   cnt,
 
 static MirInstr *
 append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type);
+
+static MirInstr *
+append_instr_decl_member_impl(Context *cnt, Ast *node, ID *id, MirInstr *type);
 
 static MirInstr *
 append_instr_decl_arg(Context *cnt, Ast *node, MirInstr *type);
@@ -1070,6 +1079,26 @@ gen_RTTI_types(Context *cnt);
 
 /* INLINES */
 
+/* Get struct base type if there is one. */
+static inline MirType *
+get_struct_base_type(MirType *struct_type)
+{
+	if (struct_type->kind != MIR_TYPE_STRUCT) return NULL;
+	MirType *base_type = struct_type->data.strct.base_type;
+	return base_type;
+}
+
+/* Get base type scope if there is one. */
+static inline Scope *
+get_base_type_scope(MirType *struct_type)
+{
+	MirType *base_type = get_struct_base_type(struct_type);
+	if (!base_type) return NULL;
+	if (!mir_is_composit_type(base_type)) return NULL;
+
+	return base_type->data.strct.scope;
+}
+
 /* Determinate if type is incomplete struct type. */
 static inline bool
 is_incomplete_struct_type(MirType *type)
@@ -1114,9 +1143,8 @@ static inline bool
 can_impl_cast(MirType *from, MirType *to)
 {
 	if (from->kind != to->kind) return false;
+
 	if (from->kind != MIR_TYPE_INT) return false;
-	// return true;
-	// INCOMPLETE: enable after correct type propagation of contants
 	if (from->data.integer.is_signed != to->data.integer.is_signed) return false;
 
 	const s32 fb = from->data.integer.bitcount;
@@ -2045,7 +2073,8 @@ create_type_struct(Context *              cnt,
                    MirTypeKind            kind,
                    ID *                   id,
                    Scope *                scope,
-                   TSmallArray_MemberPtr *members, /* MirMember */
+                   TSmallArray_MemberPtr *members,   /* MirMember */
+                   MirType *              base_type, /* optional */
                    bool                   is_packed)
 {
 	MirType *tmp = create_type(cnt, kind, id);
@@ -2053,6 +2082,7 @@ create_type_struct(Context *              cnt,
 	tmp->data.strct.members   = members;
 	tmp->data.strct.scope     = scope;
 	tmp->data.strct.is_packed = is_packed;
+	tmp->data.strct.base_type = base_type;
 
 	init_type_id(cnt, tmp);
 	init_llvm_type_struct(cnt, tmp);
@@ -2065,6 +2095,7 @@ complete_type_struct(Context *              cnt,
                      MirInstr *             fwd_decl,
                      Scope *                scope,
                      TSmallArray_MemberPtr *members,
+                     MirType *              base_type,
                      bool                   is_packed)
 {
 	BL_ASSERT(fwd_decl && "Invalid fwd_decl pointer!");
@@ -2087,6 +2118,7 @@ complete_type_struct(Context *              cnt,
 	incomplete_type->data.strct.scope         = scope;
 	incomplete_type->data.strct.is_packed     = is_packed;
 	incomplete_type->data.strct.is_incomplete = false;
+	incomplete_type->data.strct.base_type     = base_type;
 
 	init_llvm_type_struct(cnt, incomplete_type);
 	return incomplete_type;
@@ -2132,7 +2164,7 @@ create_type_struct_special(Context *cnt, MirTypeKind kind, ID *id, MirType *elem
 	tsa_push_MemberPtr(members, tmp);
 	provide_builtin_member(cnt, body_scope, tmp);
 
-	return create_type_struct(cnt, kind, id, body_scope, members, false);
+	return create_type_struct(cnt, kind, id, body_scope, members, NULL, false);
 }
 
 MirType *
@@ -2983,6 +3015,16 @@ insert_instr_cast(Context *cnt, MirInstr *src, MirType *to_type)
 }
 
 MirInstr *
+insert_instr_addrof(Context *cnt, MirInstr *src)
+{
+	MirInstr *addrof = create_instr_addrof(cnt, src->node, src);
+
+	insert_instr_after(src, addrof);
+	analyze_instr_rq(cnt, addrof);
+	return addrof;
+}
+
+MirInstr *
 insert_instr_toany(Context *cnt, MirInstr *expr)
 {
 	MirInstrToAny *toany   = CREATE_INSTR(cnt, MIR_INSTR_TOANY, expr->node, MirInstrToAny *);
@@ -3712,6 +3754,13 @@ append_instr_decl_var_impl(Context *   cnt,
 MirInstr *
 append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type)
 {
+	ID *id = node ? &node->data.ident.id : NULL;
+	return append_instr_decl_member_impl(cnt, node, id, type);
+}
+
+MirInstr *
+append_instr_decl_member_impl(Context *cnt, Ast *node, ID *id, MirInstr *type)
+{
 	ref_instr(type);
 	MirInstrDeclMember *tmp =
 	    CREATE_INSTR(cnt, MIR_INSTR_DECL_MEMBER, node, MirInstrDeclMember *);
@@ -3720,7 +3769,6 @@ append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type)
 	tmp->base.value.type = cnt->builtin_types.t_void;
 	tmp->type            = type;
 
-	ID *id      = node ? &node->data.ident.id : NULL;
 	tmp->member = create_member(cnt, node, id, NULL, -1, NULL);
 
 	append_current_block(cnt, &tmp->base);
@@ -4721,13 +4769,34 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	/* struct type */
 	if (target_type->kind == MIR_TYPE_STRUCT || target_type->kind == MIR_TYPE_STRING ||
 	    target_type->kind == MIR_TYPE_SLICE || target_type->kind == MIR_TYPE_VARGS) {
+		/* Check if structure type is complete, if not analyzer must wait for it!  */
 		if (is_incomplete_struct_type(target_type))
 			return ANALYZE_RESULT(WAITING, target_type->user_id->hash);
+
 		reduce_instr(cnt, member_ptr->target_ptr);
 		/* lookup for member inside struct */
-		Scope *     scope = target_type->data.strct.scope;
-		ID *        rid   = &ast_member_ident->data.ident.id;
-		ScopeEntry *found = scope_lookup(scope, rid, false, true);
+		Scope *scope = target_type->data.strct.scope;
+		/* lookup also in base_type scope if there is one */
+		Scope *     base_type_scope = get_base_type_scope(target_type);
+		ID *        rid             = &ast_member_ident->data.ident.id;
+		ScopeEntry *found           = scope_lookup(scope, rid, false, true);
+		if (!found && base_type_scope) {
+			found = scope_lookup(base_type_scope, rid, false, true);
+			if (found) {
+				/* HACK: Is seems to be the best way fro now just create implicit
+				 * cast to desired base type and use this as target, that also
+				 * should solve problems with deeper nesting (bitcast of pointer is
+				 * better then multiple GEPs?) */
+				member_ptr->target_ptr =
+				    insert_instr_addrof(cnt, member_ptr->target_ptr);
+
+				member_ptr->target_ptr = insert_instr_cast(
+				    cnt,
+				    member_ptr->target_ptr,
+				    create_type_ptr(cnt, get_struct_base_type(target_type)));
+			}
+		}
+
 		if (!found) {
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_UNKNOWN_SYMBOL,
@@ -5526,7 +5595,8 @@ analyze_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
 AnalyzeResult
 analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 {
-	TSmallArray_MemberPtr *members = NULL;
+	TSmallArray_MemberPtr *members   = NULL;
+	MirType *              base_type = NULL;
 
 	if (type_struct->members) {
 		MirInstr **         member_instr;
@@ -5571,8 +5641,13 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 			member->decl_scope = scope;
 			member->index      = (s64)i;
 
-			tsa_push_MemberPtr(members, member);
+			if (member->is_base) {
+				BL_ASSERT(!base_type &&
+				          "Structure cannot have more than one base type!");
+				base_type = member_type;
+			}
 
+			tsa_push_MemberPtr(members, member);
 			commit_member(cnt, member);
 		}
 	}
@@ -5586,6 +5661,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 		                                   type_struct->fwd_decl,
 		                                   type_struct->scope,
 		                                   members,
+		                                   base_type,
 		                                   type_struct->is_packed);
 
 		analyze_notify_provided(cnt, result_type->user_id->hash);
@@ -5595,6 +5671,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 		                                 type_struct->id,
 		                                 type_struct->scope,
 		                                 members,
+		                                 base_type,
 		                                 type_struct->is_packed);
 	}
 
@@ -8665,6 +8742,23 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 	}
 
 	TSmallArray_InstrPtr *members = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
+	Scope *               scope   = type_struct->data.type_strct.scope;
+	BL_ASSERT(scope);
+
+	Ast *ast_base_type = type_struct->data.type_strct.base_type;
+	if (ast_base_type) {
+		/* Structure has base type, in such case we generate implicit first member 'base'.
+		 */
+		MirInstr *base_type = ast(cnt, ast_base_type);
+		ID *      id        = &builtin_ids[MIR_BUILTIN_ID_STRUCT_BASE];
+		base_type = append_instr_decl_member_impl(cnt, ast_base_type, id, base_type);
+
+		MirMember *base_member = ((MirInstrDeclMember *)base_type)->member;
+		base_member->is_base   = true;
+		provide_builtin_member(cnt, scope, base_member);
+
+		tsa_push_InstrPtr(members, base_type);
+	}
 
 	MirInstr *tmp = NULL;
 	Ast *     ast_member;
@@ -8674,9 +8768,6 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 		BL_ASSERT(tmp);
 		tsa_push_InstrPtr(members, tmp);
 	}
-
-	Scope *scope = type_struct->data.type_strct.scope;
-	BL_ASSERT(scope);
 
 	if (cnt->debug_mode) init_llvm_DI_scope(cnt, scope);
 

@@ -6,9 +6,12 @@ Entity :: struct {
 }
 
 Player :: struct #base Entity {
-    name: string
+    name: string;
 };
 
 main :: fn () s32 {
+    p: Player;
+    p.base.id = 0;
+    p.id = 9;
     return 0;
 }

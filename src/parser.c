@@ -110,9 +110,6 @@ static Ast *
 parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied);
 
 static Ast *
-parse_flags_for_curr_decl(Context *cnt, u32 acceped_flags);
-
-static Ast *
 parse_unrecheable(Context *cnt);
 
 static Ast *
@@ -248,6 +245,9 @@ parse_semicolon(Context *cnt);
 static inline bool
 parse_semicolon_rq(Context *cnt);
 
+static inline bool
+hash_directive_to_flags(HashDirective hd, u32 *out_flags);
+
 static Ast *
 parse_expr_member(Context *cnt, Ast *prev);
 
@@ -341,50 +341,6 @@ parse_expr_ref(Context *cnt)
 	Ast *ref = ast_create_node(cnt->ast_arena, AST_EXPR_REF, tok, scope_get(cnt));
 	ref->data.expr_ref.ident = ident;
 	return ref;
-}
-
-Ast *
-parse_flags_for_curr_decl(Context *cnt, u32 acceped_flags)
-{
-	u32  flags     = 0;
-	Ast *extension = NULL;
-
-	HashDirective found = HD_NONE;
-
-	const bool is_curr_decl_valid = decl_get(cnt) && decl_get(cnt)->kind == AST_DECL_ENTITY;
-
-	/* flags are accepted only for named declarations */
-	u32 accepted = is_curr_decl_valid ? acceped_flags : HD_NONE;
-
-	while (true) {
-		extension = parse_hash_directive(cnt, accepted, &found);
-
-		if (found == HD_NONE) break;
-
-		if (IS_FLAG(found, HD_EXTERN)) {
-			flags |= FLAG_EXTERN;
-		} else if (IS_FLAG(found, HD_COMPILER)) {
-			flags |= FLAG_COMPILER;
-		} else if (IS_FLAG(found, HD_INLINE)) {
-			flags |= FLAG_INLINE;
-			found |= HD_NO_INLINE;
-		} else if (IS_FLAG(found, HD_NO_INLINE)) {
-			flags |= FLAG_NO_INLINE;
-			found |= HD_INLINE;
-		} else if (IS_FLAG(found, HD_BASE)) {
-			found |= HD_BASE;
-			BL_ASSERT(extension && "This should be an error!");
-		} else {
-			BL_ABORT("Unexpected flag!!!");
-		}
-
-		/* Remove found flag from accepted mask (multiple flags of same type are not
-		 * allowed). */
-		accepted &= ~found;
-	}
-
-	if (is_curr_decl_valid) decl_get(cnt)->data.decl_entity.flags |= flags;
-	return extension;
 }
 
 /*
@@ -1071,6 +1027,26 @@ parse_semicolon_rq(Context *cnt)
 	return true;
 }
 
+bool
+hash_directive_to_flags(HashDirective hd, u32 *out_flags)
+{
+#define FLAG_CASE(_c, _f)                                                                          \
+	case (_c):                                                                                 \
+		(*out_flags) |= (_f);                                                              \
+		return true;
+
+	switch (hd) {
+		FLAG_CASE(HD_EXTERN, FLAG_EXTERN);
+		FLAG_CASE(HD_COMPILER, FLAG_COMPILER);
+		FLAG_CASE(HD_INLINE, FLAG_INLINE);
+		FLAG_CASE(HD_NO_INLINE, FLAG_NO_INLINE);
+	default:
+		break;
+	}
+
+	return false;
+}
+
 Ast *
 parse_stmt_return(Context *cnt)
 {
@@ -1603,7 +1579,19 @@ parse_expr_lit_fn(Context *cnt)
 	fn->data.expr_fn.type = type;
 
 	/* parse flags */
-	parse_flags_for_curr_decl(cnt, HD_EXTERN | HD_NO_INLINE | HD_INLINE | HD_COMPILER);
+	Ast *curr_decl = decl_get(cnt);
+	if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
+		u32 accepted = HD_EXTERN | HD_NO_INLINE | HD_INLINE | HD_COMPILER;
+		u32 flags    = 0;
+		while (true) {
+			HashDirective found = HD_NONE;
+			parse_hash_directive(cnt, accepted, &found);
+			if (!hash_directive_to_flags(found, &flags)) break;
+			accepted &= ~found;
+		}
+
+		curr_decl->data.decl_entity.flags |= flags;
+	}
 
 	/* parse block (block is optional function body can be external) */
 	fn->data.expr_fn.block = parse_block(cnt, false);
@@ -1734,7 +1722,20 @@ parse_type_enum(Context *cnt)
 	enm->data.type_enm.variants = create_sarr(TSmallArray_AstPtr, cnt->assembly);
 	enm->data.type_enm.type     = parse_type(cnt);
 
-	parse_flags_for_curr_decl(cnt, HD_COMPILER);
+	/* parse flags */
+	Ast *curr_decl = decl_get(cnt);
+	if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
+		u32 accepted = HD_COMPILER;
+		u32 flags    = 0;
+		while (true) {
+			HashDirective found = HD_NONE;
+			parse_hash_directive(cnt, accepted, &found);
+			if (!hash_directive_to_flags(found, &flags)) break;
+			accepted &= ~found;
+		}
+
+		curr_decl->data.decl_entity.flags |= flags;
+	}
 
 	Token *tok = tokens_consume(cnt->tokens);
 	if (token_is_not(tok, SYM_LBLOCK)) {
@@ -1942,7 +1943,27 @@ parse_type_struct(Context *cnt)
 	Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
 	if (!tok_struct) return NULL;
 
-	parse_flags_for_curr_decl(cnt, HD_COMPILER | HD_BASE);
+	/* parse flags */
+	u32  accepted  = HD_COMPILER | HD_BASE;
+	u32  flags     = 0;
+	Ast *base_type = NULL;
+	while (true) {
+		Ast *         hd_extension;
+		HashDirective found = HD_NONE;
+		hd_extension        = parse_hash_directive(cnt, accepted, &found);
+		if (found == HD_BASE) {
+			BL_ASSERT(hd_extension);
+			base_type = hd_extension;
+		} else if (!hash_directive_to_flags(found, &flags)) {
+			break;
+		}
+		accepted &= ~found;
+	}
+
+	Ast *curr_decl = decl_get(cnt);
+	if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
+		curr_decl->data.decl_entity.flags |= flags;
+	}
 
 	Token *tok = tokens_consume(cnt->tokens);
 	if (tok->sym != SYM_LBLOCK) {
@@ -1957,9 +1978,10 @@ parse_type_struct(Context *cnt)
 
 	Ast *type_struct =
 	    ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct, scope_get(cnt));
-	type_struct->data.type_strct.scope   = scope;
-	type_struct->data.type_strct.raw     = false;
-	type_struct->data.type_strct.members = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+	type_struct->data.type_strct.scope     = scope;
+	type_struct->data.type_strct.raw       = false;
+	type_struct->data.type_strct.members   = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+	type_struct->data.type_strct.base_type = base_type;
 
 	/* parse members */
 	bool       rq = false;
