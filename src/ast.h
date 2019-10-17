@@ -253,6 +253,7 @@ struct AstTypeStruct {
 	struct Scope *      scope;
 	TSmallArray_AstPtr *members;
 	bool                raw;
+	Ast *               base_type;
 };
 
 struct AstTypeEnum {

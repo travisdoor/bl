@@ -1,49 +1,35 @@
 /* playground */
 
-Month :: enum {
-    January;
-    February;
-    March;
-    April;
-    May;
-    June;
-    July;
-    August;
-    September;
-    October;
-    November;
-    December
+Entity :: struct {
+    update: *fn (e: *Entity);
 }
 
+Player :: struct #base Entity {
+};
+
+Wall :: struct #base Entity {
+};
+
+Enemy :: struct #base Entity {
+};
+
 main :: fn () s32 {
-    month := Month.February;
+    p: Player;
+    p.update = & fn (e: *Entity) { print_log("I am Player!!!"); };
 
-    switch 10 {
-        1;
-        2;
-    }
+    w: Wall;
+    w.update = & fn (e: *Entity) { print_log("I am Wall!!!"); };
 
-    switch month {
-        Month.January;
-        Month.February {
-            print("February\n");
-        };
+    e: Enemy;
+    e.update = & fn (e: *Entity) { print_log("I am Enemy!!!"); };
 
-        Month.March,
-        Month.April,
-        Month.May {
-            print("March, April or May\n");
-        };
-
-        default {
-            print("other month...\n");
-        };
-    }
+    update(&p);
+    update(&w);
+    update(&e);
     
     return 0;
 }
 
-
-foo :: fn () s32 {
-    return 10;
+update :: fn (e: *Entity) {
+    e.update(e);
 }
