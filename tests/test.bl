@@ -1,17 +1,35 @@
 /* playground */
 
 Entity :: struct {
-    position: s32;
-    id: s32
+    update: *fn (e: *Entity);
 }
 
 Player :: struct #base Entity {
-    name: string;
+};
+
+Wall :: struct #base Entity {
+};
+
+Enemy :: struct #base Entity {
 };
 
 main :: fn () s32 {
     p: Player;
-    p.base.id = 0;
-    p.id = 9;
+    p.update = & fn (e: *Entity) { print_log("I am Player!!!"); };
+
+    w: Wall;
+    w.update = & fn (e: *Entity) { print_log("I am Wall!!!"); };
+
+    e: Enemy;
+    e.update = & fn (e: *Entity) { print_log("I am Enemy!!!"); };
+
+    update(&p);
+    update(&w);
+    update(&e);
+    
     return 0;
+}
+
+update :: fn (e: *Entity) {
+    e.update(e);
 }

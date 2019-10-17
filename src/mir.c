@@ -1081,7 +1081,7 @@ gen_RTTI_types(Context *cnt);
 
 /* Get struct base type if there is one. */
 static inline MirType *
-get_struct_base_type(MirType *struct_type)
+get_base_type(MirType *struct_type)
 {
 	if (struct_type->kind != MIR_TYPE_STRUCT) return NULL;
 	MirType *base_type = struct_type->data.strct.base_type;
@@ -1092,7 +1092,7 @@ get_struct_base_type(MirType *struct_type)
 static inline Scope *
 get_base_type_scope(MirType *struct_type)
 {
-	MirType *base_type = get_struct_base_type(struct_type);
+	MirType *base_type = get_base_type(struct_type);
 	if (!base_type) return NULL;
 	if (!mir_is_composit_type(base_type)) return NULL;
 
@@ -1140,9 +1140,33 @@ is_pointer_to_type_type(MirType *type)
 }
 
 static inline bool
+type_cmp(MirType *first, MirType *second)
+{
+	BL_ASSERT(first && second);
+	return first->id.hash == second->id.hash;
+}
+
+static inline bool
 can_impl_cast(MirType *from, MirType *to)
 {
 	if (from->kind != to->kind) return false;
+
+	/* Check base types for structs. */
+	if (from->kind == MIR_TYPE_PTR) {
+		from = mir_deref_type(from);
+		to   = mir_deref_type(to);
+
+		while (true) {
+			if (!from) return false;
+			if (type_cmp(from, to)) {
+				return true;
+			} else {
+				from = get_base_type(from);
+			}
+		}
+
+		return false;
+	}
 
 	if (from->kind != MIR_TYPE_INT) return false;
 	if (from->data.integer.is_signed != to->data.integer.is_signed) return false;
@@ -1164,13 +1188,6 @@ get_callee(MirInstrCall *call)
 	MirFn *fn = callee_val->data.v_ptr.data.fn;
 	BL_ASSERT(fn);
 	return fn;
-}
-
-static inline bool
-type_cmp(MirType *first, MirType *second)
-{
-	BL_ASSERT(first && second);
-	return first->id.hash == second->id.hash;
 }
 
 static inline MirInstrBlock *
@@ -4774,6 +4791,8 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			return ANALYZE_RESULT(WAITING, target_type->user_id->hash);
 
 		reduce_instr(cnt, member_ptr->target_ptr);
+
+#if 0
 		/* lookup for member inside struct */
 		Scope *scope = target_type->data.strct.scope;
 		/* lookup also in base_type scope if there is one */
@@ -4783,21 +4802,38 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		if (!found && base_type_scope) {
 			found = scope_lookup(base_type_scope, rid, false, true);
 			if (found) {
-				/* HACK: Is seems to be the best way fro now just create implicit
-				 * cast to desired base type and use this as target, that also
-				 * should solve problems with deeper nesting (bitcast of pointer is
-				 * better then multiple GEPs?) */
-				member_ptr->target_ptr =
-				    insert_instr_addrof(cnt, member_ptr->target_ptr);
-
-				member_ptr->target_ptr = insert_instr_cast(
-				    cnt,
-				    member_ptr->target_ptr,
-				    create_type_ptr(cnt, get_struct_base_type(target_type)));
 			}
+		}
+#endif
+
+		Scope *     scope = target_type->data.strct.scope;
+		ID *        rid   = &ast_member_ident->data.ident.id;
+		ScopeEntry *found = NULL;
+		MirType *   type  = target_type;
+
+		while (true) {
+			found = scope_lookup(scope, rid, false, true);
+			if (found) break;
+
+			scope = get_base_type_scope(type);
+			type  = get_base_type(type);
+			if (!scope) break;
+		}
+
+		/* Check if member was found in base type's scope. */
+		if (found && found->parent_scope != target_type->data.strct.scope) {
+			/* HACK: It seems to be the best way for now just create implicit
+			 * cast to desired base type and use this as target, that also
+			 * should solve problems with deeper nesting (bitcast of pointer is
+			 * better then multiple GEPs?) */
+			member_ptr->target_ptr = insert_instr_addrof(cnt, member_ptr->target_ptr);
+
+			member_ptr->target_ptr = insert_instr_cast(
+			    cnt, member_ptr->target_ptr, create_type_ptr(cnt, type));
 		}
 
 		if (!found) {
+			/* Member not found! */
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_UNKNOWN_SYMBOL,
 			            member_ptr->member_ident->location,
@@ -8731,8 +8767,9 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 
 	BL_ASSERT(ast_members);
 
+	Ast *ast_base_type = type_struct->data.type_strct.base_type;
 	const usize memc = ast_members->size;
-	if (memc == 0) {
+	if (!memc && !ast_base_type) {
 		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_EMPTY_STRUCT,
 		            type_struct->location,
@@ -8745,7 +8782,6 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 	Scope *               scope   = type_struct->data.type_strct.scope;
 	BL_ASSERT(scope);
 
-	Ast *ast_base_type = type_struct->data.type_strct.base_type;
 	if (ast_base_type) {
 		/* Structure has base type, in such case we generate implicit first member 'base'.
 		 */
