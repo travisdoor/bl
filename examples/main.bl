@@ -24,3 +24,4 @@
 #load "defer.bl"
 #load "file_open.bl"
 #load "switch.bl"
+#load "struct_extending.bl"

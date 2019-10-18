@@ -1,0 +1,1019 @@
+// generated from /usr/local/Cellar/sqlite/3.29.0/include/sqlite3.h
+
+#link "sqlite3"
+
+SQLITE_VERSION        :: "3.29.0";
+SQLITE_VERSION_NUMBER :: 3029000;
+SQLITE_SOURCE_ID      :: "2019-07-10 17:32:03 fc82b73eaac8b36950e527f12c4b5dc1e147e6f4ad2217ae43ad82882a88bfa6";
+
+SQLITE_OK         ::  0;   /* Successful result */
+SQLITE_ERROR      ::  1;   /* Generic error */
+SQLITE_INTERNAL   ::  2;   /* Internal logic error in SQLite */
+SQLITE_PERM       ::  3;   /* Access permission denied */
+SQLITE_ABORT      ::  4;   /* Callback routine requested an abort */
+SQLITE_BUSY       ::  5;   /* The database file is locked */
+SQLITE_LOCKED     ::  6;   /* A table in the database is locked */
+SQLITE_NOMEM      ::  7;   /* A malloc() failed */
+SQLITE_READONLY   ::  8;   /* Attempt to write a readonly database */
+SQLITE_INTERRUPT  ::  9;   /* Operation terminated by sqlite3_interrupt()*/
+SQLITE_IOERR      :: 10;   /* Some kind of disk I/O error occurred */
+SQLITE_CORRUPT    :: 11;   /* The database disk image is malformed */
+SQLITE_NOTFOUND   :: 12;   /* Unknown opcode in sqlite3_file_control() */
+SQLITE_FULL       :: 13;   /* Insertion failed because database is full */
+SQLITE_CANTOPEN   :: 14;   /* Unable to open the database file */
+SQLITE_PROTOCOL   :: 15;   /* Database lock protocol error */
+SQLITE_EMPTY      :: 16;   /* Internal use only */
+SQLITE_SCHEMA     :: 17;   /* The database schema changed */
+SQLITE_TOOBIG     :: 18;   /* String or BLOB exceeds size limit */
+SQLITE_CONSTRAINT :: 19;   /* Abort due to constraint violation */
+SQLITE_MISMATCH   :: 20;   /* Data type mismatch */
+SQLITE_MISUSE     :: 21;   /* Library used incorrectly */
+SQLITE_NOLFS      :: 22;   /* Uses OS features not supported on host */
+SQLITE_AUTH       :: 23;   /* Authorization denied */
+SQLITE_FORMAT     :: 24;   /* Not used */
+SQLITE_RANGE      :: 25;   /* 2nd parameter to sqlite3_bind out of range */
+SQLITE_NOTADB     :: 26;   /* File opened that is not a database file */
+SQLITE_NOTICE     :: 27;   /* Notifications from sqlite3_log() */
+SQLITE_WARNING    :: 28;   /* Warnings from sqlite3_log() */
+SQLITE_ROW        :: 100;  /* sqlite3_step() has another row ready */
+SQLITE_DONE       :: 101;  /* sqlite3_step() has finished executing */
+
+SQLITE_ERROR_MISSING_COLLSEQ  :: (SQLITE_ERROR | (1<<8));
+SQLITE_ERROR_RETRY            :: (SQLITE_ERROR | (2<<8));
+SQLITE_ERROR_SNAPSHOT         :: (SQLITE_ERROR | (3<<8));
+SQLITE_IOERR_READ             :: (SQLITE_IOERR | (1<<8));
+SQLITE_IOERR_SHORT_READ       :: (SQLITE_IOERR | (2<<8));
+SQLITE_IOERR_WRITE            :: (SQLITE_IOERR | (3<<8));
+SQLITE_IOERR_FSYNC            :: (SQLITE_IOERR | (4<<8));
+SQLITE_IOERR_DIR_FSYNC        :: (SQLITE_IOERR | (5<<8));
+SQLITE_IOERR_TRUNCATE         :: (SQLITE_IOERR | (6<<8));
+SQLITE_IOERR_FSTAT            :: (SQLITE_IOERR | (7<<8));
+SQLITE_IOERR_UNLOCK           :: (SQLITE_IOERR | (8<<8));
+SQLITE_IOERR_RDLOCK           :: (SQLITE_IOERR | (9<<8));
+SQLITE_IOERR_DELETE           :: (SQLITE_IOERR | (10<<8));
+SQLITE_IOERR_BLOCKED          :: (SQLITE_IOERR | (11<<8));
+SQLITE_IOERR_NOMEM            :: (SQLITE_IOERR | (12<<8));
+SQLITE_IOERR_ACCESS           :: (SQLITE_IOERR | (13<<8));
+SQLITE_IOERR_CHECKRESERVEDLOCK:: (SQLITE_IOERR | (14<<8));
+SQLITE_IOERR_LOCK             :: (SQLITE_IOERR | (15<<8));
+SQLITE_IOERR_CLOSE            :: (SQLITE_IOERR | (16<<8));
+SQLITE_IOERR_DIR_CLOSE        :: (SQLITE_IOERR | (17<<8));
+SQLITE_IOERR_SHMOPEN          :: (SQLITE_IOERR | (18<<8));
+SQLITE_IOERR_SHMSIZE          :: (SQLITE_IOERR | (19<<8));
+SQLITE_IOERR_SHMLOCK          :: (SQLITE_IOERR | (20<<8));
+SQLITE_IOERR_SHMMAP           :: (SQLITE_IOERR | (21<<8));
+SQLITE_IOERR_SEEK             :: (SQLITE_IOERR | (22<<8));
+SQLITE_IOERR_DELETE_NOENT     :: (SQLITE_IOERR | (23<<8));
+SQLITE_IOERR_MMAP             :: (SQLITE_IOERR | (24<<8));
+SQLITE_IOERR_GETTEMPPATH      :: (SQLITE_IOERR | (25<<8));
+SQLITE_IOERR_CONVPATH         :: (SQLITE_IOERR | (26<<8));
+SQLITE_IOERR_VNODE            :: (SQLITE_IOERR | (27<<8));
+SQLITE_IOERR_AUTH             :: (SQLITE_IOERR | (28<<8));
+SQLITE_IOERR_BEGIN_ATOMIC     :: (SQLITE_IOERR | (29<<8));
+SQLITE_IOERR_COMMIT_ATOMIC    :: (SQLITE_IOERR | (30<<8));
+SQLITE_IOERR_ROLLBACK_ATOMIC  :: (SQLITE_IOERR | (31<<8));
+SQLITE_LOCKED_SHAREDCACHE     :: (SQLITE_LOCKED |  (1<<8));
+SQLITE_LOCKED_VTAB            :: (SQLITE_LOCKED |  (2<<8));
+SQLITE_BUSY_RECOVERY          :: (SQLITE_BUSY   |  (1<<8));
+SQLITE_BUSY_SNAPSHOT          :: (SQLITE_BUSY   |  (2<<8));
+SQLITE_CANTOPEN_NOTEMPDIR     :: (SQLITE_CANTOPEN | (1<<8));
+SQLITE_CANTOPEN_ISDIR         :: (SQLITE_CANTOPEN | (2<<8));
+SQLITE_CANTOPEN_FULLPATH      :: (SQLITE_CANTOPEN | (3<<8));
+SQLITE_CANTOPEN_CONVPATH      :: (SQLITE_CANTOPEN | (4<<8));
+SQLITE_CANTOPEN_DIRTYWAL      :: (SQLITE_CANTOPEN | (5<<8)) /* Not Used */;
+SQLITE_CORRUPT_VTAB           :: (SQLITE_CORRUPT | (1<<8));
+SQLITE_CORRUPT_SEQUENCE       :: (SQLITE_CORRUPT | (2<<8));
+SQLITE_READONLY_RECOVERY      :: (SQLITE_READONLY | (1<<8));
+SQLITE_READONLY_CANTLOCK      :: (SQLITE_READONLY | (2<<8));
+SQLITE_READONLY_ROLLBACK      :: (SQLITE_READONLY | (3<<8));
+SQLITE_READONLY_DBMOVED       :: (SQLITE_READONLY | (4<<8));
+SQLITE_READONLY_CANTINIT      :: (SQLITE_READONLY | (5<<8));
+SQLITE_READONLY_DIRECTORY     :: (SQLITE_READONLY | (6<<8));
+SQLITE_ABORT_ROLLBACK         :: (SQLITE_ABORT | (2<<8));
+SQLITE_CONSTRAINT_CHECK       :: (SQLITE_CONSTRAINT | (1<<8));
+SQLITE_CONSTRAINT_COMMITHOOK  :: (SQLITE_CONSTRAINT | (2<<8));
+SQLITE_CONSTRAINT_FOREIGNKEY  :: (SQLITE_CONSTRAINT | (3<<8));
+SQLITE_CONSTRAINT_FUNCTION    :: (SQLITE_CONSTRAINT | (4<<8));
+SQLITE_CONSTRAINT_NOTNULL     :: (SQLITE_CONSTRAINT | (5<<8));
+SQLITE_CONSTRAINT_PRIMARYKEY  :: (SQLITE_CONSTRAINT | (6<<8));
+SQLITE_CONSTRAINT_TRIGGER     :: (SQLITE_CONSTRAINT | (7<<8));
+SQLITE_CONSTRAINT_UNIQUE      :: (SQLITE_CONSTRAINT | (8<<8));
+SQLITE_CONSTRAINT_VTAB        :: (SQLITE_CONSTRAINT | (9<<8));
+SQLITE_CONSTRAINT_ROWID       :: (SQLITE_CONSTRAINT |(10<<8));
+SQLITE_NOTICE_RECOVER_WAL     :: (SQLITE_NOTICE | (1<<8));
+SQLITE_NOTICE_RECOVER_ROLLBACK:: (SQLITE_NOTICE | (2<<8));
+SQLITE_WARNING_AUTOINDEX      :: (SQLITE_WARNING | (1<<8));
+SQLITE_AUTH_USER              :: (SQLITE_AUTH | (1<<8));
+SQLITE_OK_LOAD_PERMANENTLY    :: (SQLITE_OK | (1<<8));
+
+SQLITE_OPEN_READONLY        :: 0x00000001;  /* Ok for sqlite3_open_v2() */
+SQLITE_OPEN_READWRITE       :: 0x00000002;  /* Ok for sqlite3_open_v2() */
+SQLITE_OPEN_CREATE          :: 0x00000004;  /* Ok for sqlite3_open_v2() */
+SQLITE_OPEN_DELETEONCLOSE   :: 0x00000008;  /* VFS only */
+SQLITE_OPEN_EXCLUSIVE       :: 0x00000010;  /* VFS only */
+SQLITE_OPEN_AUTOPROXY       :: 0x00000020;  /* VFS only */
+SQLITE_OPEN_URI             :: 0x00000040;  /* Ok for sqlite3_open_v2() */
+SQLITE_OPEN_MEMORY          :: 0x00000080;  /* Ok for sqlite3_open_v2() */
+SQLITE_OPEN_MAIN_DB         :: 0x00000100;  /* VFS only */
+SQLITE_OPEN_TEMP_DB         :: 0x00000200;  /* VFS only */
+SQLITE_OPEN_TRANSIENT_DB    :: 0x00000400;  /* VFS only */
+SQLITE_OPEN_MAIN_JOURNAL    :: 0x00000800;  /* VFS only */
+SQLITE_OPEN_TEMP_JOURNAL    :: 0x00001000;  /* VFS only */
+SQLITE_OPEN_SUBJOURNAL      :: 0x00002000;  /* VFS only */
+SQLITE_OPEN_MASTER_JOURNAL  :: 0x00004000;  /* VFS only */
+SQLITE_OPEN_NOMUTEX         :: 0x00008000;  /* Ok for sqlite3_open_v2() */
+SQLITE_OPEN_FULLMUTEX       :: 0x00010000;  /* Ok for sqlite3_open_v2() */
+SQLITE_OPEN_SHAREDCACHE     :: 0x00020000;  /* Ok for sqlite3_open_v2() */
+SQLITE_OPEN_PRIVATECACHE    :: 0x00040000;  /* Ok for sqlite3_open_v2() */
+SQLITE_OPEN_WAL             :: 0x00080000;  /* VFS only */
+
+SQLITE_IOCAP_ATOMIC                :: 0x00000001;
+SQLITE_IOCAP_ATOMIC512             :: 0x00000002;
+SQLITE_IOCAP_ATOMIC1K              :: 0x00000004;
+SQLITE_IOCAP_ATOMIC2K              :: 0x00000008;
+SQLITE_IOCAP_ATOMIC4K              :: 0x00000010;
+SQLITE_IOCAP_ATOMIC8K              :: 0x00000020;
+SQLITE_IOCAP_ATOMIC16K             :: 0x00000040;
+SQLITE_IOCAP_ATOMIC32K             :: 0x00000080;
+SQLITE_IOCAP_ATOMIC64K             :: 0x00000100;
+SQLITE_IOCAP_SAFE_APPEND           :: 0x00000200;
+SQLITE_IOCAP_SEQUENTIAL            :: 0x00000400;
+SQLITE_IOCAP_UNDELETABLE_WHEN_OPEN :: 0x00000800;
+SQLITE_IOCAP_POWERSAFE_OVERWRITE   :: 0x00001000;
+SQLITE_IOCAP_IMMUTABLE             :: 0x00002000;
+SQLITE_IOCAP_BATCH_ATOMIC          :: 0x00004000;
+
+SQLITE_LOCK_NONE         :: 0;
+SQLITE_LOCK_SHARED       :: 1;
+SQLITE_LOCK_RESERVED     :: 2;
+SQLITE_LOCK_PENDING      :: 3;
+SQLITE_LOCK_EXCLUSIVE    :: 4;
+SQLITE_SYNC_NORMAL       :: 0x00002;
+SQLITE_SYNC_FULL         :: 0x00003;
+SQLITE_SYNC_DATAONLY     :: 0x00010;
+
+SQLITE_FCNTL_LOCKSTATE             ::  1;
+SQLITE_FCNTL_GET_LOCKPROXYFILE     ::  2;
+SQLITE_FCNTL_SET_LOCKPROXYFILE     ::  3;
+SQLITE_FCNTL_LAST_ERRNO            ::  4;
+SQLITE_FCNTL_SIZE_HINT             ::  5;
+SQLITE_FCNTL_CHUNK_SIZE            ::  6;
+SQLITE_FCNTL_FILE_POINTER          ::  7;
+SQLITE_FCNTL_SYNC_OMITTED          ::  8;
+SQLITE_FCNTL_WIN32_AV_RETRY        ::  9;
+SQLITE_FCNTL_PERSIST_WAL           :: 10;
+SQLITE_FCNTL_OVERWRITE             :: 11;
+SQLITE_FCNTL_VFSNAME               :: 12;
+SQLITE_FCNTL_POWERSAFE_OVERWRITE   :: 13;
+SQLITE_FCNTL_PRAGMA                :: 14;
+SQLITE_FCNTL_BUSYHANDLER           :: 15;
+SQLITE_FCNTL_TEMPFILENAME          :: 16;
+SQLITE_FCNTL_MMAP_SIZE             :: 18;
+SQLITE_FCNTL_TRACE                 :: 19;
+SQLITE_FCNTL_HAS_MOVED             :: 20;
+SQLITE_FCNTL_SYNC                  :: 21;
+SQLITE_FCNTL_COMMIT_PHASETWO       :: 22;
+SQLITE_FCNTL_WIN32_SET_HANDLE      :: 23;
+SQLITE_FCNTL_WAL_BLOCK             :: 24;
+SQLITE_FCNTL_ZIPVFS                :: 25;
+SQLITE_FCNTL_RBU                   :: 26;
+SQLITE_FCNTL_VFS_POINTER           :: 27;
+SQLITE_FCNTL_JOURNAL_POINTER       :: 28;
+SQLITE_FCNTL_WIN32_GET_HANDLE      :: 29;
+SQLITE_FCNTL_PDB                   :: 30;
+SQLITE_FCNTL_BEGIN_ATOMIC_WRITE    :: 31;
+SQLITE_FCNTL_COMMIT_ATOMIC_WRITE   :: 32;
+SQLITE_FCNTL_ROLLBACK_ATOMIC_WRITE :: 33;
+SQLITE_FCNTL_LOCK_TIMEOUT          :: 34;
+SQLITE_FCNTL_DATA_VERSION          :: 35;
+SQLITE_FCNTL_SIZE_LIMIT            :: 36;
+
+SQLITE_GET_LOCKPROXYFILE     :: SQLITE_FCNTL_GET_LOCKPROXYFILE;
+SQLITE_SET_LOCKPROXYFILE     :: SQLITE_FCNTL_SET_LOCKPROXYFILE;
+SQLITE_LAST_ERRNO            :: SQLITE_FCNTL_LAST_ERRNO;
+
+SQLITE_ACCESS_EXISTS    :: 0;
+SQLITE_ACCESS_READWRITE :: 1;   /* Used by PRAGMA temp_store_directory */
+SQLITE_ACCESS_READ      :: 2;   /* Unused */
+SQLITE_SHM_UNLOCK       :: 1;
+SQLITE_SHM_LOCK         :: 2;
+SQLITE_SHM_SHARED       :: 4;
+SQLITE_SHM_EXCLUSIVE    :: 8;
+SQLITE_SHM_NLOCK        :: 8;
+
+SQLITE_CONFIG_SINGLETHREAD        ::  1;  /* nil */
+SQLITE_CONFIG_MULTITHREAD         ::  2;  /* nil */
+SQLITE_CONFIG_SERIALIZED          ::  3;  /* nil */
+SQLITE_CONFIG_MALLOC              ::  4;  /* sqlite3_mem_methods* */
+SQLITE_CONFIG_GETMALLOC           ::  5;  /* sqlite3_mem_methods* */
+SQLITE_CONFIG_SCRATCH             ::  6;  /* No longer used */
+SQLITE_CONFIG_PAGECACHE           ::  7;  /* void*, int sz, int N */
+SQLITE_CONFIG_HEAP                ::  8;  /* void*, int nByte, int min */
+SQLITE_CONFIG_MEMSTATUS           ::  9;  /* boolean */
+SQLITE_CONFIG_MUTEX               :: 10;  /* sqlite3_mutex_methods* */
+SQLITE_CONFIG_GETMUTEX            :: 11;  /* sqlite3_mutex_methods* */
+SQLITE_CONFIG_LOOKASIDE           :: 13;  /* int int */
+SQLITE_CONFIG_PCACHE              :: 14;  /* no-op */
+SQLITE_CONFIG_GETPCACHE           :: 15;  /* no-op */
+SQLITE_CONFIG_LOG                 :: 16;  /* xFunc, void* */
+SQLITE_CONFIG_URI                 :: 17;  /* int */
+SQLITE_CONFIG_PCACHE2             :: 18;  /* sqlite3_pcache_methods2* */
+SQLITE_CONFIG_GETPCACHE2          :: 19;  /* sqlite3_pcache_methods2* */
+SQLITE_CONFIG_COVERING_INDEX_SCAN :: 20;  /* int */
+SQLITE_CONFIG_SQLLOG              :: 21;  /* xSqllog, void* */
+SQLITE_CONFIG_MMAP_SIZE           :: 22;  /* sqlite3_int64, sqlite3_int64 */
+SQLITE_CONFIG_WIN32_HEAPSIZE      :: 23;  /* int nByte */
+SQLITE_CONFIG_PCACHE_HDRSZ        :: 24;  /* int *psz */
+SQLITE_CONFIG_PMASZ               :: 25;  /* unsigned int szPma */
+SQLITE_CONFIG_STMTJRNL_SPILL      :: 26;  /* int nByte */
+SQLITE_CONFIG_SMALL_MALLOC        :: 27;  /* boolean */
+SQLITE_CONFIG_SORTERREF_SIZE      :: 28;  /* int nByte */
+SQLITE_CONFIG_MEMDB_MAXSIZE       :: 29;  /* sqlite3_int64 */
+
+SQLITE_DBCONFIG_MAINDBNAME            :: 1000; /* const char* */
+SQLITE_DBCONFIG_LOOKASIDE             :: 1001; /* void* int int */
+SQLITE_DBCONFIG_ENABLE_FKEY           :: 1002; /* int int* */
+SQLITE_DBCONFIG_ENABLE_TRIGGER        :: 1003; /* int int* */
+SQLITE_DBCONFIG_ENABLE_FTS3_TOKENIZER :: 1004; /* int int* */
+SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION :: 1005; /* int int* */
+SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE      :: 1006; /* int int* */
+SQLITE_DBCONFIG_ENABLE_QPSG           :: 1007; /* int int* */
+SQLITE_DBCONFIG_TRIGGER_EQP           :: 1008; /* int int* */
+SQLITE_DBCONFIG_RESET_DATABASE        :: 1009; /* int int* */
+SQLITE_DBCONFIG_DEFENSIVE             :: 1010; /* int int* */
+SQLITE_DBCONFIG_WRITABLE_SCHEMA       :: 1011; /* int int* */
+SQLITE_DBCONFIG_LEGACY_ALTER_TABLE    :: 1012; /* int int* */
+SQLITE_DBCONFIG_DQS_DML               :: 1013; /* int int* */
+SQLITE_DBCONFIG_DQS_DDL               :: 1014; /* int int* */
+SQLITE_DBCONFIG_MAX                   :: 1014; /* Largest DBCONFIG */
+
+SQLITE_DENY   :: 1;   /* Abort the SQL statement with an error */
+SQLITE_IGNORE :: 2;   /* Don't allow access, but don't generate an error */
+
+SQLITE_CREATE_INDEX        ::  1;   /* Index Name      Table Name      */
+SQLITE_CREATE_TABLE        ::  2;   /* Table Name      NULL            */
+SQLITE_CREATE_TEMP_INDEX   ::  3;   /* Index Name      Table Name      */
+SQLITE_CREATE_TEMP_TABLE   ::  4;   /* Table Name      NULL            */
+SQLITE_CREATE_TEMP_TRIGGER ::  5;   /* Trigger Name    Table Name      */
+SQLITE_CREATE_TEMP_VIEW    ::  6;   /* View Name       NULL            */
+SQLITE_CREATE_TRIGGER      ::  7;   /* Trigger Name    Table Name      */
+SQLITE_CREATE_VIEW         ::  8;   /* View Name       NULL            */
+SQLITE_DELETE              ::  9;   /* Table Name      NULL            */
+SQLITE_DROP_INDEX          :: 10;   /* Index Name      Table Name      */
+SQLITE_DROP_TABLE          :: 11;   /* Table Name      NULL            */
+SQLITE_DROP_TEMP_INDEX     :: 12;   /* Index Name      Table Name      */
+SQLITE_DROP_TEMP_TABLE     :: 13;   /* Table Name      NULL            */
+SQLITE_DROP_TEMP_TRIGGER   :: 14;   /* Trigger Name    Table Name      */
+SQLITE_DROP_TEMP_VIEW      :: 15;   /* View Name       NULL            */
+SQLITE_DROP_TRIGGER        :: 16;   /* Trigger Name    Table Name      */
+SQLITE_DROP_VIEW           :: 17;   /* View Name       NULL            */
+SQLITE_INSERT              :: 18;   /* Table Name      NULL            */
+SQLITE_PRAGMA              :: 19;   /* Pragma Name     1st arg or NULL */
+SQLITE_READ                :: 20;   /* Table Name      Column Name     */
+SQLITE_SELECT              :: 21;   /* NULL            NULL            */
+SQLITE_TRANSACTION         :: 22;   /* Operation       NULL            */
+SQLITE_UPDATE              :: 23;   /* Table Name      Column Name     */
+SQLITE_ATTACH              :: 24;   /* Filename        NULL            */
+SQLITE_DETACH              :: 25;   /* Database Name   NULL            */
+SQLITE_ALTER_TABLE         :: 26;   /* Database Name   Table Name      */
+SQLITE_REINDEX             :: 27;   /* Index Name      NULL            */
+SQLITE_ANALYZE             :: 28;   /* Table Name      NULL            */
+SQLITE_CREATE_VTABLE       :: 29;   /* Table Name      Module Name     */
+SQLITE_DROP_VTABLE         :: 30;   /* Table Name      Module Name     */
+SQLITE_FUNCTION            :: 31;   /* NULL            Function Name   */
+SQLITE_SAVEPOINT           :: 32;   /* Operation       Savepoint Name  */
+SQLITE_COPY                ::  0;   /* No longer used */
+SQLITE_RECURSIVE           :: 33;   /* NULL            NULL            */
+
+SQLITE_TRACE_STMT       :: 0x01;
+SQLITE_TRACE_PROFILE    :: 0x02;
+SQLITE_TRACE_ROW        :: 0x04;
+SQLITE_TRACE_CLOSE      :: 0x08;
+
+SQLITE_LIMIT_LENGTH                  ::  0;
+SQLITE_LIMIT_SQL_LENGTH              ::  1;
+SQLITE_LIMIT_COLUMN                  ::  2;
+SQLITE_LIMIT_EXPR_DEPTH              ::  3;
+SQLITE_LIMIT_COMPOUND_SELECT         ::  4;
+SQLITE_LIMIT_VDBE_OP                 ::  5;
+SQLITE_LIMIT_FUNCTION_ARG            ::  6;
+SQLITE_LIMIT_ATTACHED                ::  7;
+SQLITE_LIMIT_LIKE_PATTERN_LENGTH     ::  8;
+SQLITE_LIMIT_VARIABLE_NUMBER         ::  9;
+SQLITE_LIMIT_TRIGGER_DEPTH           :: 10;
+SQLITE_LIMIT_WORKER_THREADS          :: 11;
+
+SQLITE_PREPARE_PERSISTENT            :: 0x01;
+SQLITE_PREPARE_NORMALIZE             :: 0x02;
+SQLITE_PREPARE_NO_VTAB               :: 0x04;
+
+SQLITE_UTF8          :: 1;    /* IMP: R-37514-35566 */
+SQLITE_UTF16LE       :: 2;    /* IMP: R-03371-37637 */
+SQLITE_UTF16BE       :: 3;    /* IMP: R-51971-34154 */
+SQLITE_UTF16         :: 4;    /* Use native byte order */
+SQLITE_ANY           :: 5;    /* Deprecated */
+SQLITE_UTF16_ALIGNED :: 8;    /* sqlite3_create_collation only */
+
+SQLITE_DETERMINISTIC :: 0x800;
+
+SQLITE_WIN32_DATA_DIRECTORY_TYPE :: 1;
+SQLITE_WIN32_TEMP_DIRECTORY_TYPE :: 2;
+
+SQLITE_INDEX_SCAN_UNIQUE :: 1;     /* Scan visits at most 1 row */
+
+SQLITE_INDEX_CONSTRAINT_EQ       ::  2;
+SQLITE_INDEX_CONSTRAINT_GT       ::  4;
+SQLITE_INDEX_CONSTRAINT_LE       ::  8;
+SQLITE_INDEX_CONSTRAINT_LT       :: 16;
+SQLITE_INDEX_CONSTRAINT_GE       :: 32;
+SQLITE_INDEX_CONSTRAINT_MATCH    :: 64;
+SQLITE_INDEX_CONSTRAINT_LIKE     :: 65;
+SQLITE_INDEX_CONSTRAINT_GLOB     :: 66;
+SQLITE_INDEX_CONSTRAINT_REGEXP   :: 67;
+SQLITE_INDEX_CONSTRAINT_NE       :: 68;
+SQLITE_INDEX_CONSTRAINT_ISNOT    :: 69;
+SQLITE_INDEX_CONSTRAINT_ISNOTNULL:: 70;
+SQLITE_INDEX_CONSTRAINT_ISNULL   :: 71;
+SQLITE_INDEX_CONSTRAINT_IS       :: 72;
+SQLITE_INDEX_CONSTRAINT_FUNCTION :: 150;
+
+SQLITE_MUTEX_FAST           ::  0;
+SQLITE_MUTEX_RECURSIVE      ::  1;
+SQLITE_MUTEX_STATIC_MASTER  ::  2;
+SQLITE_MUTEX_STATIC_MEM     ::  3;  /* sqlite3_malloc() */
+SQLITE_MUTEX_STATIC_MEM2    ::  4;  /* NOT USED */
+SQLITE_MUTEX_STATIC_OPEN    ::  4;  /* sqlite3BtreeOpen() */
+SQLITE_MUTEX_STATIC_PRNG    ::  5;  /* sqlite3_randomness() */
+SQLITE_MUTEX_STATIC_LRU     ::  6;  /* lru page list */
+SQLITE_MUTEX_STATIC_LRU2    ::  7;  /* NOT USED */
+SQLITE_MUTEX_STATIC_PMEM    ::  7;  /* sqlite3PageMalloc() */
+SQLITE_MUTEX_STATIC_APP1    ::  8;  /* For use by application */
+SQLITE_MUTEX_STATIC_APP2    ::  9;  /* For use by application */
+SQLITE_MUTEX_STATIC_APP3    :: 10;  /* For use by application */
+SQLITE_MUTEX_STATIC_VFS1    :: 11;  /* For use by built-in VFS */
+SQLITE_MUTEX_STATIC_VFS2    :: 12;  /* For use by extension VFS */
+SQLITE_MUTEX_STATIC_VFS3    :: 13;  /* For use by application VFS */
+
+SQLITE_TESTCTRL_FIRST                  ::  5;
+SQLITE_TESTCTRL_PRNG_SAVE              ::  5;
+SQLITE_TESTCTRL_PRNG_RESTORE           ::  6;
+SQLITE_TESTCTRL_PRNG_RESET             ::  7;
+SQLITE_TESTCTRL_BITVEC_TEST            ::  8;
+SQLITE_TESTCTRL_FAULT_INSTALL          ::  9;
+SQLITE_TESTCTRL_BENIGN_MALLOC_HOOKS    :: 10;
+SQLITE_TESTCTRL_PENDING_BYTE           :: 11;
+SQLITE_TESTCTRL_ASSERT                 :: 12;
+SQLITE_TESTCTRL_ALWAYS                 :: 13;
+SQLITE_TESTCTRL_RESERVE                :: 14;
+SQLITE_TESTCTRL_OPTIMIZATIONS          :: 15;
+SQLITE_TESTCTRL_ISKEYWORD              :: 16  /* NOT USED */;
+SQLITE_TESTCTRL_SCRATCHMALLOC          :: 17  /* NOT USED */;
+SQLITE_TESTCTRL_INTERNAL_FUNCTIONS     :: 17;
+SQLITE_TESTCTRL_LOCALTIME_FAULT        :: 18;
+SQLITE_TESTCTRL_EXPLAIN_STMT           :: 19  /* NOT USED */;
+SQLITE_TESTCTRL_ONCE_RESET_THRESHOLD   :: 19;
+SQLITE_TESTCTRL_NEVER_CORRUPT          :: 20;
+SQLITE_TESTCTRL_VDBE_COVERAGE          :: 21;
+SQLITE_TESTCTRL_BYTEORDER              :: 22;
+SQLITE_TESTCTRL_ISINIT                 :: 23;
+SQLITE_TESTCTRL_SORTER_MMAP            :: 24;
+SQLITE_TESTCTRL_IMPOSTER               :: 25;
+SQLITE_TESTCTRL_PARSER_COVERAGE        :: 26;
+SQLITE_TESTCTRL_RESULT_INTREAL         :: 27;
+SQLITE_TESTCTRL_LAST                   :: 27  /* Largest TESTCTRL */;
+
+SQLITE_STATUS_MEMORY_USED         :: 0;
+SQLITE_STATUS_PAGECACHE_USED      :: 1;
+SQLITE_STATUS_PAGECACHE_OVERFLOW  :: 2;
+SQLITE_STATUS_SCRATCH_USED        :: 3  /* NOT USED */;
+SQLITE_STATUS_SCRATCH_OVERFLOW    :: 4  /* NOT USED */;
+SQLITE_STATUS_MALLOC_SIZE         :: 5;
+SQLITE_STATUS_PARSER_STACK        :: 6;
+SQLITE_STATUS_PAGECACHE_SIZE      :: 7;
+SQLITE_STATUS_SCRATCH_SIZE        :: 8  /* NOT USED */;
+SQLITE_STATUS_MALLOC_COUNT        :: 9;
+
+SQLITE_DBSTATUS_LOOKASIDE_USED      ::  0;
+SQLITE_DBSTATUS_CACHE_USED          ::  1;
+SQLITE_DBSTATUS_SCHEMA_USED         ::  2;
+SQLITE_DBSTATUS_STMT_USED           ::  3;
+SQLITE_DBSTATUS_LOOKASIDE_HIT       ::  4;
+SQLITE_DBSTATUS_LOOKASIDE_MISS_SIZE ::  5;
+SQLITE_DBSTATUS_LOOKASIDE_MISS_FULL ::  6;
+SQLITE_DBSTATUS_CACHE_HIT           ::  7;
+SQLITE_DBSTATUS_CACHE_MISS          ::  8;
+SQLITE_DBSTATUS_CACHE_WRITE         ::  9;
+SQLITE_DBSTATUS_DEFERRED_FKS        :: 10;
+SQLITE_DBSTATUS_CACHE_USED_SHARED   :: 11;
+SQLITE_DBSTATUS_CACHE_SPILL         :: 12;
+SQLITE_DBSTATUS_MAX                 :: 12   /* Largest defined DBSTATUS */;
+
+SQLITE_STMTSTATUS_FULLSCAN_STEP     :: 1;
+SQLITE_STMTSTATUS_SORT              :: 2;
+SQLITE_STMTSTATUS_AUTOINDEX         :: 3;
+SQLITE_STMTSTATUS_VM_STEP           :: 4;
+SQLITE_STMTSTATUS_REPREPARE         :: 5;
+SQLITE_STMTSTATUS_RUN               :: 6;
+SQLITE_STMTSTATUS_MEMUSED           :: 99;
+
+SQLITE_CHECKPOINT_PASSIVE  :: 0;  /* Do as much as possible w/o blocking */
+SQLITE_CHECKPOINT_FULL     :: 1;  /* Wait for writers, then checkpoint */
+SQLITE_CHECKPOINT_RESTART  :: 2;  /* Like FULL but wait for for readers */
+SQLITE_CHECKPOINT_TRUNCATE :: 3;  /* Like RESTART but also truncate WAL */
+
+SQLITE_VTAB_CONSTRAINT_SUPPORT :: 1;
+
+SQLITE_ROLLBACK :: 1;
+SQLITE_FAIL     :: 3;
+SQLITE_REPLACE  :: 5;
+
+SQLITE_SCANSTAT_NLOOP    :: 0;
+SQLITE_SCANSTAT_NVISIT   :: 1;
+SQLITE_SCANSTAT_EST      :: 2;
+SQLITE_SCANSTAT_NAME     :: 3;
+SQLITE_SCANSTAT_EXPLAIN  :: 4;
+SQLITE_SCANSTAT_SELECTID :: 5;
+
+SQLITE_SERIALIZE_NOCOPY :: 0x001;   /* Do no memory allocations */
+
+SQLITE_DESERIALIZE_FREEONCLOSE :: 1; /* Call sqlite3_free() on close */
+SQLITE_DESERIALIZE_RESIZEABLE  :: 2; /* Resize using sqlite3_realloc64() */
+SQLITE_DESERIALIZE_READONLY    :: 4; /* Database is read-only */
+
+NOT_WITHIN      :: 0;   /* Object completely outside of query region */
+PARTLY_WITHIN   :: 1;   /* Object partially overlaps query region */
+FULLY_WITHIN    :: 2;   /* Object fully contained within query region */
+
+SQLITE_CHANGESETSTART_INVERT        :: 0x0002;
+SQLITE_CHANGESETAPPLY_NOSAVEPOINT   :: 0x0001;
+SQLITE_CHANGESETAPPLY_INVERT        :: 0x0002;
+
+SQLITE_CHANGESET_DATA        :: 1;
+SQLITE_CHANGESET_NOTFOUND    :: 2;
+SQLITE_CHANGESET_CONFLICT    :: 3;
+SQLITE_CHANGESET_CONSTRAINT  :: 4;
+SQLITE_CHANGESET_FOREIGN_KEY :: 5;
+
+SQLITE_CHANGESET_OMIT      :: 0;
+SQLITE_CHANGESET_REPLACE   :: 1;
+SQLITE_CHANGESET_ABORT     :: 2;
+
+SQLITE_SESSION_CONFIG_STRMSIZE :: 1;
+
+sqlite3_libversion :: fn () *s8 #extern;
+sqlite3_sourceid :: fn () *s8 #extern;
+sqlite3_libversion_number :: fn () s32 #extern;
+sqlite3_compileoption_used :: fn (zOptName: *s8) s32 #extern;
+sqlite3_compileoption_get :: fn (N: s32) *s8 #extern;
+sqlite3_threadsafe :: fn () s32 #extern;
+
+sqlite3 :: *u8;
+sqlite3_str :: *u8;
+sqlite3_blob :: *u8;
+sqlite3_mutex :: *u8;
+sqlite3_api_routines :: *u8;
+sqlite3_stmt :: *u8;
+sqlite3_value :: *u8;
+sqlite3_context :: *u8;
+sqlite3_pcache :: *u8;
+sqlite3_backup :: *u8;
+sqlite3_int64 :: *u8;
+sqlite3_uint64 :: *u8;
+Fts5Context :: *u8;
+Fts5Tokenizer :: *u8;
+
+sqlite_int64 :: s64;
+sqlite_uint64 :: u64;
+sqlite3_rtree_dbl :: f64;
+
+sqlite3_close :: fn (_0: *sqlite3) s32 #extern;
+sqlite3_close_v2 :: fn (_0: *sqlite3) s32 #extern;
+sqlite3_callback :: *fn (_0: *u8, _1: s32, _2: **s8, _3: **s8) s32;
+
+sqlite3_exec :: fn (_0: *sqlite3, sql: *s8, callback: *fn (_0: *u8, _1: s32, _2: **s8, _3: **s8) s32, _3: *u8, errmsg: **s8) s32 #extern;
+
+sqlite3_file :: struct {
+    pMethods: *sqlite3_io_methods;
+};
+
+sqlite3_io_methods :: struct {
+    iVersion: s32;
+    xClose: *fn (_0: *sqlite3_file) s32;
+    xRead: *fn (_0: *sqlite3_file, _1: *u8, _2: s32, _3: sqlite3_int64) s32;
+    xWrite: *fn (_0: *sqlite3_file, _1: *u8, _2: s32, _3: sqlite3_int64) s32;
+    xTruncate: *fn (_0: *sqlite3_file, _1: sqlite3_int64) s32;
+    xSync: *fn (_0: *sqlite3_file, _1: s32) s32;
+    xFileSize: *fn (_0: *sqlite3_file, _1: *sqlite3_int64) s32;
+    xLock: *fn (_0: *sqlite3_file, _1: s32) s32;
+    xUnlock: *fn (_0: *sqlite3_file, _1: s32) s32;
+    xCheckReservedLock: *fn (_0: *sqlite3_file, _1: *s32) s32;
+    xFileControl: *fn (_0: *sqlite3_file, _1: s32, _2: *u8) s32;
+    xSectorSize: *fn (_0: *sqlite3_file) s32;
+    xDeviceCharacteristics: *fn (_0: *sqlite3_file) s32;
+    xShmMap: *fn (_0: *sqlite3_file, _1: s32, _2: s32, _3: s32, _4: **u8) s32;
+    xShmLock: *fn (_0: *sqlite3_file, _1: s32, _2: s32, _3: s32) s32;
+    xShmBarrier: *fn (_0: *sqlite3_file) ;
+    xShmUnmap: *fn (_0: *sqlite3_file, _1: s32) s32;
+    xFetch: *fn (_0: *sqlite3_file, _1: sqlite3_int64, _2: s32, _3: **u8) s32;
+    xUnfetch: *fn (_0: *sqlite3_file, _1: sqlite3_int64, _2: *u8) s32;
+};
+
+sqlite3_syscall_ptr :: *fn () ;
+
+sqlite3_vfs :: struct {
+    iVersion: s32;
+    szOsFile: s32;
+    mxPathname: s32;
+    pNext: *sqlite3_vfs;
+    zName: *s8;
+    pAppData: *u8;
+    xOpen: *fn (_0: *sqlite3_vfs, _1: *s8, _2: *sqlite3_file, _3: s32, _4: *s32) s32;
+    xDelete: *fn (_0: *sqlite3_vfs, _1: *s8, _2: s32) s32;
+    xAccess: *fn (_0: *sqlite3_vfs, _1: *s8, _2: s32, _3: *s32) s32;
+    xFullPathname: *fn (_0: *sqlite3_vfs, _1: *s8, _2: s32, _3: *s8) s32;
+    xDlOpen: *fn (_0: *sqlite3_vfs, _1: *s8) *u8;
+    xDlError: *fn (_0: *sqlite3_vfs, _1: s32, _2: *s8) ;
+    xDlSym: *fn (_0: *sqlite3_vfs, _1: *u8, _2: *s8) *fn () ;
+    xDlClose: *fn (_0: *sqlite3_vfs, _1: *u8) ;
+    xRandomness: *fn (_0: *sqlite3_vfs, _1: s32, _2: *s8) s32;
+    xSleep: *fn (_0: *sqlite3_vfs, _1: s32) s32;
+    xCurrentTime: *fn (_0: *sqlite3_vfs, _1: *f64) s32;
+    xGetLastError: *fn (_0: *sqlite3_vfs, _1: s32, _2: *s8) s32;
+    xCurrentTimeInt64: *fn (_0: *sqlite3_vfs, _1: *sqlite3_int64) s32;
+    xSetSystemCall: *fn (_0: *sqlite3_vfs, _1: *s8, _2: sqlite3_syscall_ptr) s32;
+    xGetSystemCall: *fn (_0: *sqlite3_vfs, _1: *s8) sqlite3_syscall_ptr;
+    xNextSystemCall: *fn (_0: *sqlite3_vfs, _1: *s8) *s8;
+};
+
+sqlite3_initialize :: fn () s32 #extern;
+sqlite3_shutdown :: fn () s32 #extern;
+sqlite3_os_init :: fn () s32 #extern;
+sqlite3_os_end :: fn () s32 #extern;
+sqlite3_config :: fn (_0: s32) s32 #extern;
+sqlite3_db_config :: fn (_0: *sqlite3, op: s32) s32 #extern;
+
+sqlite3_mem_methods :: struct {
+    xMalloc: *fn (_0: s32) *u8;
+    xFree: *fn (_0: *u8) ;
+    xRealloc: *fn (_0: *u8, _1: s32) *u8;
+    xSize: *fn (_0: *u8) s32;
+    xRoundup: *fn (_0: s32) s32;
+    xInit: *fn (_0: *u8) s32;
+    xShutdown: *fn (_0: *u8) ;
+    pAppData: *u8;
+};
+
+sqlite3_extended_result_codes :: fn (_0: *sqlite3, onoff: s32) s32 #extern;
+sqlite3_last_insert_rowid :: fn (_0: *sqlite3) sqlite3_int64 #extern;
+sqlite3_set_last_insert_rowid :: fn (_0: *sqlite3, _1: sqlite3_int64)  #extern;
+sqlite3_changes :: fn (_0: *sqlite3) s32 #extern;
+sqlite3_total_changes :: fn (_0: *sqlite3) s32 #extern;
+sqlite3_interrupt :: fn (_0: *sqlite3)  #extern;
+sqlite3_complete :: fn (sql: *s8) s32 #extern;
+sqlite3_complete16 :: fn (sql: *u8) s32 #extern;
+sqlite3_busy_handler :: fn (_0: *sqlite3, _1: *fn (_0: *u8, _1: s32) s32, _2: *u8) s32 #extern;
+sqlite3_busy_timeout :: fn (_0: *sqlite3, ms: s32) s32 #extern;
+sqlite3_get_table :: fn (db: *sqlite3, zSql: *s8, pazResult: ***s8, pnRow: *s32, pnColumn: *s32, pzErrmsg: **s8) s32 #extern;
+sqlite3_free_table :: fn (result: **s8)  #extern;
+sqlite3_mprintf :: fn (_0: *s8) *s8 #extern;
+sqlite3_vmprintf :: fn (_0: *s8, va_list: s32) *s8 #extern;
+sqlite3_snprintf :: fn (_0: s32, _1: *s8, _2: *s8) *s8 #extern;
+sqlite3_vsnprintf :: fn (_0: s32, _1: *s8, _2: *s8, va_list: s32) *s8 #extern;
+sqlite3_malloc :: fn (_0: s32) *u8 #extern;
+sqlite3_malloc64 :: fn (_0: sqlite3_uint64) *u8 #extern;
+sqlite3_realloc :: fn (_0: *u8, _1: s32) *u8 #extern;
+sqlite3_realloc64 :: fn (_0: *u8, _1: sqlite3_uint64) *u8 #extern;
+sqlite3_free :: fn (_0: *u8)  #extern;
+sqlite3_msize :: fn (_0: *u8) sqlite3_uint64 #extern;
+sqlite3_memory_used :: fn () sqlite3_int64 #extern;
+sqlite3_memory_highwater :: fn (resetFlag: s32) sqlite3_int64 #extern;
+sqlite3_randomness :: fn (N: s32, P: *u8)  #extern;
+sqlite3_set_authorizer :: fn (_0: *sqlite3, xAuth: *fn (_0: *u8, _1: s32, _2: *s8, _3: *s8, _4: *s8, _5: *s8) s32, pUserData: *u8) s32 #extern;
+sqlite3_trace :: fn (_0: *sqlite3, xTrace: *fn (_0: *u8, _1: *s8) , _2: *u8) *u8 #extern;
+sqlite3_profile :: fn (_0: *sqlite3, xProfile: *fn (_0: *u8, _1: *s8, _2: sqlite3_uint64) , _2: *u8) *u8 #extern;
+sqlite3_trace_v2 :: fn (_0: *sqlite3, uMask: u32, xCallback: *fn (_0: u32, _1: *u8, _2: *u8, _3: *u8) s32, pCtx: *u8) s32 #extern;
+sqlite3_progress_handler :: fn (_0: *sqlite3, _1: s32, _2: *fn (_0: *u8) s32, _3: *u8)  #extern;
+sqlite3_open :: fn (filename: *s8, ppDb: **sqlite3) s32 #extern;
+sqlite3_open16 :: fn (filename: *u8, ppDb: **sqlite3) s32 #extern;
+sqlite3_open_v2 :: fn (filename: *s8, ppDb: **sqlite3, flags: s32, zVfs: *s8) s32 #extern;
+sqlite3_uri_parameter :: fn (zFilename: *s8, zParam: *s8) *s8 #extern;
+sqlite3_uri_boolean :: fn (zFile: *s8, zParam: *s8, bDefault: s32) s32 #extern;
+sqlite3_uri_int64 :: fn (_0: *s8, _1: *s8, _2: sqlite3_int64) sqlite3_int64 #extern;
+sqlite3_errcode :: fn (db: *sqlite3) s32 #extern;
+sqlite3_extended_errcode :: fn (db: *sqlite3) s32 #extern;
+sqlite3_errmsg :: fn (_0: *sqlite3) *s8 #extern;
+sqlite3_errmsg16 :: fn (_0: *sqlite3) *u8 #extern;
+sqlite3_errstr :: fn (_0: s32) *s8 #extern;
+
+sqlite3_limit :: fn (_0: *sqlite3, id: s32, newVal: s32) s32 #extern;
+sqlite3_prepare :: fn (db: *sqlite3, zSql: *s8, nByte: s32, ppStmt: **sqlite3_stmt, pzTail: **s8) s32 #extern;
+sqlite3_prepare_v2 :: fn (db: *sqlite3, zSql: *s8, nByte: s32, ppStmt: **sqlite3_stmt, pzTail: **s8) s32 #extern;
+sqlite3_prepare_v3 :: fn (db: *sqlite3, zSql: *s8, nByte: s32, prepFlags: u32, ppStmt: **sqlite3_stmt, pzTail: **s8) s32 #extern;
+sqlite3_prepare16 :: fn (db: *sqlite3, zSql: *u8, nByte: s32, ppStmt: **sqlite3_stmt, pzTail: **u8) s32 #extern;
+sqlite3_prepare16_v2 :: fn (db: *sqlite3, zSql: *u8, nByte: s32, ppStmt: **sqlite3_stmt, pzTail: **u8) s32 #extern;
+sqlite3_prepare16_v3 :: fn (db: *sqlite3, zSql: *u8, nByte: s32, prepFlags: u32, ppStmt: **sqlite3_stmt, pzTail: **u8) s32 #extern;
+sqlite3_sql :: fn (pStmt: *sqlite3_stmt) *s8 #extern;
+sqlite3_expanded_sql :: fn (pStmt: *sqlite3_stmt) *s8 #extern;
+sqlite3_normalized_sql :: fn (pStmt: *sqlite3_stmt) *s8 #extern;
+sqlite3_stmt_readonly :: fn (pStmt: *sqlite3_stmt) s32 #extern;
+sqlite3_stmt_isexplain :: fn (pStmt: *sqlite3_stmt) s32 #extern;
+sqlite3_stmt_busy :: fn (_0: *sqlite3_stmt) s32 #extern;
+
+sqlite3_bind_blob :: fn (_0: *sqlite3_stmt, _1: s32, _2: *u8, n: s32, _4: *fn (_0: *u8) ) s32 #extern;
+sqlite3_bind_blob64 :: fn (_0: *sqlite3_stmt, _1: s32, _2: *u8, _3: sqlite3_uint64, _4: *fn (_0: *u8) ) s32 #extern;
+sqlite3_bind_double :: fn (_0: *sqlite3_stmt, _1: s32, _2: f64) s32 #extern;
+sqlite3_bind_int :: fn (_0: *sqlite3_stmt, _1: s32, _2: s32) s32 #extern;
+sqlite3_bind_int64 :: fn (_0: *sqlite3_stmt, _1: s32, _2: sqlite3_int64) s32 #extern;
+sqlite3_bind_null :: fn (_0: *sqlite3_stmt, _1: s32) s32 #extern;
+sqlite3_bind_text :: fn (_0: *sqlite3_stmt, _1: s32, _2: *s8, _3: s32, _4: *fn (_0: *u8) ) s32 #extern;
+sqlite3_bind_text16 :: fn (_0: *sqlite3_stmt, _1: s32, _2: *u8, _3: s32, _4: *fn (_0: *u8) ) s32 #extern;
+sqlite3_bind_text64 :: fn (_0: *sqlite3_stmt, _1: s32, _2: *s8, _3: sqlite3_uint64, _4: *fn (_0: *u8) , encoding: u8) s32 #extern;
+sqlite3_bind_value :: fn (_0: *sqlite3_stmt, _1: s32, _2: *sqlite3_value) s32 #extern;
+sqlite3_bind_pointer :: fn (_0: *sqlite3_stmt, _1: s32, _2: *u8, _3: *s8, _4: *fn (_0: *u8) ) s32 #extern;
+sqlite3_bind_zeroblob :: fn (_0: *sqlite3_stmt, _1: s32, n: s32) s32 #extern;
+sqlite3_bind_zeroblob64 :: fn (_0: *sqlite3_stmt, _1: s32, _2: sqlite3_uint64) s32 #extern;
+sqlite3_bind_parameter_count :: fn (_0: *sqlite3_stmt) s32 #extern;
+sqlite3_bind_parameter_name :: fn (_0: *sqlite3_stmt, _1: s32) *s8 #extern;
+sqlite3_bind_parameter_index :: fn (_0: *sqlite3_stmt, zName: *s8) s32 #extern;
+sqlite3_clear_bindings :: fn (_0: *sqlite3_stmt) s32 #extern;
+sqlite3_column_count :: fn (pStmt: *sqlite3_stmt) s32 #extern;
+sqlite3_column_name :: fn (_0: *sqlite3_stmt, N: s32) *s8 #extern;
+sqlite3_column_name16 :: fn (_0: *sqlite3_stmt, N: s32) *u8 #extern;
+sqlite3_column_database_name :: fn (_0: *sqlite3_stmt, _1: s32) *s8 #extern;
+sqlite3_column_database_name16 :: fn (_0: *sqlite3_stmt, _1: s32) *u8 #extern;
+sqlite3_column_table_name :: fn (_0: *sqlite3_stmt, _1: s32) *s8 #extern;
+sqlite3_column_table_name16 :: fn (_0: *sqlite3_stmt, _1: s32) *u8 #extern;
+sqlite3_column_origin_name :: fn (_0: *sqlite3_stmt, _1: s32) *s8 #extern;
+sqlite3_column_origin_name16 :: fn (_0: *sqlite3_stmt, _1: s32) *u8 #extern;
+sqlite3_column_decltype :: fn (_0: *sqlite3_stmt, _1: s32) *s8 #extern;
+sqlite3_column_decltype16 :: fn (_0: *sqlite3_stmt, _1: s32) *u8 #extern;
+sqlite3_step :: fn (_0: *sqlite3_stmt) s32 #extern;
+sqlite3_data_count :: fn (pStmt: *sqlite3_stmt) s32 #extern;
+sqlite3_column_blob :: fn (_0: *sqlite3_stmt, iCol: s32) *u8 #extern;
+sqlite3_column_double :: fn (_0: *sqlite3_stmt, iCol: s32) f64 #extern;
+sqlite3_column_int :: fn (_0: *sqlite3_stmt, iCol: s32) s32 #extern;
+sqlite3_column_int64 :: fn (_0: *sqlite3_stmt, iCol: s32) sqlite3_int64 #extern;
+sqlite3_column_text :: fn (_0: *sqlite3_stmt, iCol: s32) *u8 #extern;
+sqlite3_column_text16 :: fn (_0: *sqlite3_stmt, iCol: s32) *u8 #extern;
+sqlite3_column_value :: fn (_0: *sqlite3_stmt, iCol: s32) *sqlite3_value #extern;
+sqlite3_column_bytes :: fn (_0: *sqlite3_stmt, iCol: s32) s32 #extern;
+sqlite3_column_bytes16 :: fn (_0: *sqlite3_stmt, iCol: s32) s32 #extern;
+sqlite3_column_type :: fn (_0: *sqlite3_stmt, iCol: s32) s32 #extern;
+sqlite3_finalize :: fn (pStmt: *sqlite3_stmt) s32 #extern;
+sqlite3_reset :: fn (pStmt: *sqlite3_stmt) s32 #extern;
+sqlite3_create_function :: fn (db: *sqlite3, zFunctionName: *s8, nArg: s32, eTextRep: s32, pApp: *u8, xFunc: *fn (_0: *sqlite3_context, _1: s32, _2: **sqlite3_value) , xStep: *fn (_0: *sqlite3_context, _1: s32, _2: **sqlite3_value) , xFinal: *fn (_0: *sqlite3_context) ) s32 #extern;
+sqlite3_create_function16 :: fn (db: *sqlite3, zFunctionName: *u8, nArg: s32, eTextRep: s32, pApp: *u8, xFunc: *fn (_0: *sqlite3_context, _1: s32, _2: **sqlite3_value) , xStep: *fn (_0: *sqlite3_context, _1: s32, _2: **sqlite3_value) , xFinal: *fn (_0: *sqlite3_context) ) s32 #extern;
+sqlite3_create_function_v2 :: fn (db: *sqlite3, zFunctionName: *s8, nArg: s32, eTextRep: s32, pApp: *u8, xFunc: *fn (_0: *sqlite3_context, _1: s32, _2: **sqlite3_value) , xStep: *fn (_0: *sqlite3_context, _1: s32, _2: **sqlite3_value) , xFinal: *fn (_0: *sqlite3_context) , xDestroy: *fn (_0: *u8) ) s32 #extern;
+sqlite3_create_window_function :: fn (db: *sqlite3, zFunctionName: *s8, nArg: s32, eTextRep: s32, pApp: *u8, xStep: *fn (_0: *sqlite3_context, _1: s32, _2: **sqlite3_value) , xFinal: *fn (_0: *sqlite3_context) , xValue: *fn (_0: *sqlite3_context) , xInverse: *fn (_0: *sqlite3_context, _1: s32, _2: **sqlite3_value) , xDestroy: *fn (_0: *u8) ) s32 #extern;
+sqlite3_aggregate_count :: fn (_0: *sqlite3_context) s32 #extern;
+sqlite3_expired :: fn (_0: *sqlite3_stmt) s32 #extern;
+sqlite3_transfer_bindings :: fn (_0: *sqlite3_stmt, _1: *sqlite3_stmt) s32 #extern;
+sqlite3_global_recover :: fn () s32 #extern;
+sqlite3_thread_cleanup :: fn ()  #extern;
+sqlite3_memory_alarm :: fn (_0: *fn (_0: *u8, _1: sqlite3_int64, _2: s32) , _1: *u8, _2: sqlite3_int64) s32 #extern;
+sqlite3_value_blob :: fn (_0: *sqlite3_value) *u8 #extern;
+sqlite3_value_double :: fn (_0: *sqlite3_value) f64 #extern;
+sqlite3_value_int :: fn (_0: *sqlite3_value) s32 #extern;
+sqlite3_value_int64 :: fn (_0: *sqlite3_value) sqlite3_int64 #extern;
+sqlite3_value_pointer :: fn (_0: *sqlite3_value, _1: *s8) *u8 #extern;
+sqlite3_value_text :: fn (_0: *sqlite3_value) *u8 #extern;
+sqlite3_value_text16 :: fn (_0: *sqlite3_value) *u8 #extern;
+sqlite3_value_text16le :: fn (_0: *sqlite3_value) *u8 #extern;
+sqlite3_value_text16be :: fn (_0: *sqlite3_value) *u8 #extern;
+sqlite3_value_bytes :: fn (_0: *sqlite3_value) s32 #extern;
+sqlite3_value_bytes16 :: fn (_0: *sqlite3_value) s32 #extern;
+sqlite3_value_type :: fn (_0: *sqlite3_value) s32 #extern;
+sqlite3_value_numeric_type :: fn (_0: *sqlite3_value) s32 #extern;
+sqlite3_value_nochange :: fn (_0: *sqlite3_value) s32 #extern;
+sqlite3_value_frombind :: fn (_0: *sqlite3_value) s32 #extern;
+sqlite3_value_subtype :: fn (_0: *sqlite3_value) u32 #extern;
+sqlite3_value_dup :: fn (_0: *sqlite3_value) *sqlite3_value #extern;
+sqlite3_value_free :: fn (_0: *sqlite3_value)  #extern;
+sqlite3_aggregate_context :: fn (_0: *sqlite3_context, nBytes: s32) *u8 #extern;
+sqlite3_user_data :: fn (_0: *sqlite3_context) *u8 #extern;
+sqlite3_context_db_handle :: fn (_0: *sqlite3_context) *sqlite3 #extern;
+sqlite3_get_auxdata :: fn (_0: *sqlite3_context, N: s32) *u8 #extern;
+sqlite3_set_auxdata :: fn (_0: *sqlite3_context, N: s32, _2: *u8, _3: *fn (_0: *u8) )  #extern;
+sqlite3_destructor_type :: *fn (_0: *u8) ;
+
+sqlite3_result_blob :: fn (_0: *sqlite3_context, _1: *u8, _2: s32, _3: *fn (_0: *u8) )  #extern;
+sqlite3_result_blob64 :: fn (_0: *sqlite3_context, _1: *u8, _2: sqlite3_uint64, _3: *fn (_0: *u8) )  #extern;
+sqlite3_result_double :: fn (_0: *sqlite3_context, _1: f64)  #extern;
+sqlite3_result_error :: fn (_0: *sqlite3_context, _1: *s8, _2: s32)  #extern;
+sqlite3_result_error16 :: fn (_0: *sqlite3_context, _1: *u8, _2: s32)  #extern;
+sqlite3_result_error_toobig :: fn (_0: *sqlite3_context)  #extern;
+sqlite3_result_error_nomem :: fn (_0: *sqlite3_context)  #extern;
+sqlite3_result_error_code :: fn (_0: *sqlite3_context, _1: s32)  #extern;
+sqlite3_result_int :: fn (_0: *sqlite3_context, _1: s32)  #extern;
+sqlite3_result_int64 :: fn (_0: *sqlite3_context, _1: sqlite3_int64)  #extern;
+sqlite3_result_null :: fn (_0: *sqlite3_context)  #extern;
+sqlite3_result_text :: fn (_0: *sqlite3_context, _1: *s8, _2: s32, _3: *fn (_0: *u8) )  #extern;
+sqlite3_result_text64 :: fn (_0: *sqlite3_context, _1: *s8, _2: sqlite3_uint64, _3: *fn (_0: *u8) , encoding: u8)  #extern;
+sqlite3_result_text16 :: fn (_0: *sqlite3_context, _1: *u8, _2: s32, _3: *fn (_0: *u8) )  #extern;
+sqlite3_result_text16le :: fn (_0: *sqlite3_context, _1: *u8, _2: s32, _3: *fn (_0: *u8) )  #extern;
+sqlite3_result_text16be :: fn (_0: *sqlite3_context, _1: *u8, _2: s32, _3: *fn (_0: *u8) )  #extern;
+sqlite3_result_value :: fn (_0: *sqlite3_context, _1: *sqlite3_value)  #extern;
+sqlite3_result_pointer :: fn (_0: *sqlite3_context, _1: *u8, _2: *s8, _3: *fn (_0: *u8) )  #extern;
+sqlite3_result_zeroblob :: fn (_0: *sqlite3_context, n: s32)  #extern;
+sqlite3_result_zeroblob64 :: fn (_0: *sqlite3_context, n: sqlite3_uint64) s32 #extern;
+sqlite3_result_subtype :: fn (_0: *sqlite3_context, _1: u32)  #extern;
+sqlite3_create_collation :: fn (_0: *sqlite3, zName: *s8, eTextRep: s32, pArg: *u8, xCompare: *fn (_0: *u8, _1: s32, _2: *u8, _3: s32, _4: *u8) s32) s32 #extern;
+sqlite3_create_collation_v2 :: fn (_0: *sqlite3, zName: *s8, eTextRep: s32, pArg: *u8, xCompare: *fn (_0: *u8, _1: s32, _2: *u8, _3: s32, _4: *u8) s32, xDestroy: *fn (_0: *u8) ) s32 #extern;
+sqlite3_create_collation16 :: fn (_0: *sqlite3, zName: *u8, eTextRep: s32, pArg: *u8, xCompare: *fn (_0: *u8, _1: s32, _2: *u8, _3: s32, _4: *u8) s32) s32 #extern;
+sqlite3_collation_needed :: fn (_0: *sqlite3, _1: *u8, _2: *fn (_0: *u8, _1: *sqlite3, _2: s32, _3: *s8) ) s32 #extern;
+sqlite3_collation_needed16 :: fn (_0: *sqlite3, _1: *u8, _2: *fn (_0: *u8, _1: *sqlite3, _2: s32, _3: *u8) ) s32 #extern;
+sqlite3_sleep :: fn (_0: s32) s32 #extern;
+sqlite3_win32_set_directory :: fn (type: u32, zValue: *u8) s32 #extern;
+sqlite3_win32_set_directory8 :: fn (type: u32, zValue: *s8) s32 #extern;
+sqlite3_win32_set_directory16 :: fn (type: u32, zValue: *u8) s32 #extern;
+sqlite3_get_autocommit :: fn (_0: *sqlite3) s32 #extern;
+sqlite3_db_handle :: fn (_0: *sqlite3_stmt) *sqlite3 #extern;
+sqlite3_db_filename :: fn (db: *sqlite3, zDbName: *s8) *s8 #extern;
+sqlite3_db_readonly :: fn (db: *sqlite3, zDbName: *s8) s32 #extern;
+sqlite3_next_stmt :: fn (pDb: *sqlite3, pStmt: *sqlite3_stmt) *sqlite3_stmt #extern;
+sqlite3_commit_hook :: fn (_0: *sqlite3, _1: *fn (_0: *u8) s32, _2: *u8) *u8 #extern;
+sqlite3_rollback_hook :: fn (_0: *sqlite3, _1: *fn (_0: *u8) , _2: *u8) *u8 #extern;
+sqlite3_update_hook :: fn (_0: *sqlite3, _1: *fn (_0: *u8, _1: s32, _2: *s8, _3: *s8, _4: sqlite3_int64) , _2: *u8) *u8 #extern;
+sqlite3_enable_shared_cache :: fn (_0: s32) s32 #extern;
+sqlite3_release_memory :: fn (_0: s32) s32 #extern;
+sqlite3_db_release_memory :: fn (_0: *sqlite3) s32 #extern;
+sqlite3_soft_heap_limit64 :: fn (N: sqlite3_int64) sqlite3_int64 #extern;
+sqlite3_soft_heap_limit :: fn (N: s32)  #extern;
+sqlite3_table_column_metadata :: fn (db: *sqlite3, zDbName: *s8, zTableName: *s8, zColumnName: *s8, pzDataType: **s8, pzCollSeq: **s8, pNotNull: *s32, pPrimaryKey: *s32, pAutoinc: *s32) s32 #extern;
+sqlite3_load_extension :: fn (db: *sqlite3, zFile: *s8, zProc: *s8, pzErrMsg: **s8) s32 #extern;
+sqlite3_enable_load_extension :: fn (db: *sqlite3, onoff: s32) s32 #extern;
+sqlite3_auto_extension :: fn (xEntryPoint: *fn () ) s32 #extern;
+sqlite3_cancel_auto_extension :: fn (xEntryPoint: *fn () ) s32 #extern;
+sqlite3_reset_auto_extension :: fn ()  #extern;
+
+sqlite3_module :: struct {
+    iVersion: s32;
+    xCreate: *fn (_0: *sqlite3, _1: *u8, _2: s32, _3: **s8, _4: **sqlite3_vtab, _5: **s8) s32;
+    xConnect: *fn (_0: *sqlite3, _1: *u8, _2: s32, _3: **s8, _4: **sqlite3_vtab, _5: **s8) s32;
+    xBestIndex: *fn (_0: *sqlite3_vtab, _1: *sqlite3_index_info) s32;
+    xDisconnect: *fn (_0: *sqlite3_vtab) s32;
+    xDestroy: *fn (_0: *sqlite3_vtab) s32;
+    xOpen: *fn (_0: *sqlite3_vtab, _1: **sqlite3_vtab_cursor) s32;
+    xClose: *fn (_0: *sqlite3_vtab_cursor) s32;
+    xFilter: *fn (_0: *sqlite3_vtab_cursor, _1: s32, _2: *s8, _3: s32, _4: **sqlite3_value) s32;
+    xNext: *fn (_0: *sqlite3_vtab_cursor) s32;
+    xEof: *fn (_0: *sqlite3_vtab_cursor) s32;
+    xColumn: *fn (_0: *sqlite3_vtab_cursor, _1: *sqlite3_context, _2: s32) s32;
+    xRowid: *fn (_0: *sqlite3_vtab_cursor, _1: *sqlite3_int64) s32;
+    xUpdate: *fn (_0: *sqlite3_vtab, _1: s32, _2: **sqlite3_value, _3: *sqlite3_int64) s32;
+    xBegin: *fn (_0: *sqlite3_vtab) s32;
+    xSync: *fn (_0: *sqlite3_vtab) s32;
+    xCommit: *fn (_0: *sqlite3_vtab) s32;
+    xRollback: *fn (_0: *sqlite3_vtab) s32;
+    xFindFunction: *fn (_0: *sqlite3_vtab, _1: s32, _2: *s8, _3: **fn (_0: *sqlite3_context, _1: s32, _2: **sqlite3_value) , _4: **u8) s32;
+    xRename: *fn (_0: *sqlite3_vtab, _1: *s8) s32;
+    xSavepoint: *fn (_0: *sqlite3_vtab, _1: s32) s32;
+    xRelease: *fn (_0: *sqlite3_vtab, _1: s32) s32;
+    xRollbackTo: *fn (_0: *sqlite3_vtab, _1: s32) s32;
+    xShadowName: *fn (_0: *s8) s32;
+};
+
+sqlite3_index_info :: struct {
+    nConstraint: s32;
+    aConstraint: * struct {
+        iColumn: s32; 
+        op: u8;      
+        usable: u8; 
+        iTermOffset: s32;          
+    };            
+
+    nOrderBy: s32;
+    aOrderBy: *struct {
+        iColumn: s32;
+        desc: u8;
+    };
+
+    aConstraintUsage: *struct {
+        argvIndex: s32;
+        omit: u8;
+    };
+
+    idxNum: s32;
+    idxStr: *s8;
+    needToFreeIdxStr: s32;
+    orderByConsumed: s32;
+    estimatedCost: f64;
+    estimatedRows: sqlite3_int64;
+    idxFlags: s32;
+    colUsed: sqlite3_uint64;
+};
+
+sqlite3_create_module :: fn (db: *sqlite3, zName: *s8, p: *sqlite3_module, pClientData: *u8) s32 #extern;
+sqlite3_create_module_v2 :: fn (db: *sqlite3, zName: *s8, p: *sqlite3_module, pClientData: *u8, xDestroy: *fn (_0: *u8) ) s32 #extern;
+
+sqlite3_vtab :: struct {
+    pModule: *sqlite3_module;
+    nRef: s32;
+    zErrMsg: *s8;
+};
+
+sqlite3_vtab_cursor :: struct {
+    pVtab: *sqlite3_vtab;
+};
+
+sqlite3_declare_vtab :: fn (_0: *sqlite3, zSQL: *s8) s32 #extern;
+sqlite3_overload_function :: fn (_0: *sqlite3, zFuncName: *s8, nArg: s32) s32 #extern;
+
+sqlite3_blob_open :: fn (_0: *sqlite3, zDb: *s8, zTable: *s8, zColumn: *s8, iRow: sqlite3_int64, flags: s32, ppBlob: **sqlite3_blob) s32 #extern;
+sqlite3_blob_reopen :: fn (_0: *sqlite3_blob, _1: sqlite3_int64) s32 #extern;
+sqlite3_blob_close :: fn (_0: *sqlite3_blob) s32 #extern;
+sqlite3_blob_bytes :: fn (_0: *sqlite3_blob) s32 #extern;
+sqlite3_blob_read :: fn (_0: *sqlite3_blob, Z: *u8, N: s32, iOffset: s32) s32 #extern;
+sqlite3_blob_write :: fn (_0: *sqlite3_blob, z: *u8, n: s32, iOffset: s32) s32 #extern;
+sqlite3_vfs_find :: fn (zVfsName: *s8) *sqlite3_vfs #extern;
+sqlite3_vfs_register :: fn (_0: *sqlite3_vfs, makeDflt: s32) s32 #extern;
+sqlite3_vfs_unregister :: fn (_0: *sqlite3_vfs) s32 #extern;
+sqlite3_mutex_alloc :: fn (_0: s32) *sqlite3_mutex #extern;
+sqlite3_mutex_free :: fn (_0: *sqlite3_mutex)  #extern;
+sqlite3_mutex_enter :: fn (_0: *sqlite3_mutex)  #extern;
+sqlite3_mutex_try :: fn (_0: *sqlite3_mutex) s32 #extern;
+sqlite3_mutex_leave :: fn (_0: *sqlite3_mutex)  #extern;
+
+sqlite3_mutex_methods :: struct {
+    xMutexInit: *fn () s32;
+    xMutexEnd: *fn () s32;
+    xMutexAlloc: *fn (_0: s32) *sqlite3_mutex;
+    xMutexFree: *fn (_0: *sqlite3_mutex) ;
+    xMutexEnter: *fn (_0: *sqlite3_mutex) ;
+    xMutexTry: *fn (_0: *sqlite3_mutex) s32;
+    xMutexLeave: *fn (_0: *sqlite3_mutex) ;
+    xMutexHeld: *fn (_0: *sqlite3_mutex) s32;
+    xMutexNotheld: *fn (_0: *sqlite3_mutex) s32;
+};
+
+sqlite3_mutex_held :: fn (_0: *sqlite3_mutex) s32 #extern;
+sqlite3_mutex_notheld :: fn (_0: *sqlite3_mutex) s32 #extern;
+sqlite3_db_mutex :: fn (_0: *sqlite3) *sqlite3_mutex #extern;
+sqlite3_file_control :: fn (_0: *sqlite3, zDbName: *s8, op: s32, _3: *u8) s32 #extern;
+sqlite3_test_control :: fn (op: s32) s32 #extern;
+sqlite3_keyword_count :: fn () s32 #extern;
+sqlite3_keyword_name :: fn (_0: s32, _1: **s8, _2: *s32) s32 #extern;
+sqlite3_keyword_check :: fn (_0: *s8, _1: s32) s32 #extern;
+
+sqlite3_str_new :: fn (_0: *sqlite3) *sqlite3_str #extern;
+sqlite3_str_finish :: fn (_0: *sqlite3_str) *s8 #extern;
+sqlite3_str_appendf :: fn (_0: *sqlite3_str, zFormat: *s8)  #extern;
+sqlite3_str_vappendf :: fn (_0: *sqlite3_str, zFormat: *s8, va_list: s32)  #extern;
+sqlite3_str_append :: fn (_0: *sqlite3_str, zIn: *s8, N: s32)  #extern;
+sqlite3_str_appendall :: fn (_0: *sqlite3_str, zIn: *s8)  #extern;
+sqlite3_str_appendchar :: fn (_0: *sqlite3_str, N: s32, C: s8)  #extern;
+sqlite3_str_reset :: fn (_0: *sqlite3_str)  #extern;
+sqlite3_str_errcode :: fn (_0: *sqlite3_str) s32 #extern;
+sqlite3_str_length :: fn (_0: *sqlite3_str) s32 #extern;
+sqlite3_str_value :: fn (_0: *sqlite3_str) *s8 #extern;
+sqlite3_status :: fn (op: s32, pCurrent: *s32, pHighwater: *s32, resetFlag: s32) s32 #extern;
+sqlite3_status64 :: fn (op: s32, pCurrent: *sqlite3_int64, pHighwater: *sqlite3_int64, resetFlag: s32) s32 #extern;
+sqlite3_db_status :: fn (_0: *sqlite3, op: s32, pCur: *s32, pHiwtr: *s32, resetFlg: s32) s32 #extern;
+sqlite3_stmt_status :: fn (_0: *sqlite3_stmt, op: s32, resetFlg: s32) s32 #extern;
+
+sqlite3_pcache_page :: struct {
+    pBuf: *u8;
+    pExtra: *u8;
+};
+
+sqlite3_pcache_methods2 :: struct {
+    iVersion: s32;
+    pArg: *u8;
+    xInit: *fn (_0: *u8) s32;
+    xShutdown: *fn (_0: *u8) ;
+    xCreate: *fn (_0: s32, _1: s32, _2: s32) *sqlite3_pcache;
+    xCachesize: *fn (_0: *sqlite3_pcache, _1: s32) ;
+    xPagecount: *fn (_0: *sqlite3_pcache) s32;
+    xFetch: *fn (_0: *sqlite3_pcache, _1: u32, _2: s32) *sqlite3_pcache_page;
+    xUnpin: *fn (_0: *sqlite3_pcache, _1: *sqlite3_pcache_page, _2: s32) ;
+    xRekey: *fn (_0: *sqlite3_pcache, _1: *sqlite3_pcache_page, _2: u32, _3: u32) ;
+    xTruncate: *fn (_0: *sqlite3_pcache, _1: u32) ;
+    xDestroy: *fn (_0: *sqlite3_pcache) ;
+    xShrink: *fn (_0: *sqlite3_pcache) ;
+};
+
+sqlite3_pcache_methods :: struct {
+    pArg: *u8;
+    xInit: *fn (_0: *u8) s32;
+    xShutdown: *fn (_0: *u8) ;
+    xCreate: *fn (_0: s32, _1: s32) *sqlite3_pcache;
+    xCachesize: *fn (_0: *sqlite3_pcache, _1: s32) ;
+    xPagecount: *fn (_0: *sqlite3_pcache) s32;
+    xFetch: *fn (_0: *sqlite3_pcache, _1: u32, _2: s32) *u8;
+    xUnpin: *fn (_0: *sqlite3_pcache, _1: *u8, _2: s32) ;
+    xRekey: *fn (_0: *sqlite3_pcache, _1: *u8, _2: u32, _3: u32) ;
+    xTruncate: *fn (_0: *sqlite3_pcache, _1: u32) ;
+    xDestroy: *fn (_0: *sqlite3_pcache) ;
+};
+
+
+sqlite3_backup_init :: fn (pDest: *sqlite3, zDestName: *s8, pSource: *sqlite3, zSourceName: *s8) *sqlite3_backup #extern;
+sqlite3_backup_step :: fn (p: *sqlite3_backup, nPage: s32) s32 #extern;
+sqlite3_backup_finish :: fn (p: *sqlite3_backup) s32 #extern;
+sqlite3_backup_remaining :: fn (p: *sqlite3_backup) s32 #extern;
+sqlite3_backup_pagecount :: fn (p: *sqlite3_backup) s32 #extern;
+sqlite3_unlock_notify :: fn (pBlocked: *sqlite3, xNotify: *fn (_0: **u8, _1: s32) , pNotifyArg: *u8) s32 #extern;
+sqlite3_stricmp :: fn (_0: *s8, _1: *s8) s32 #extern;
+sqlite3_strnicmp :: fn (_0: *s8, _1: *s8, _2: s32) s32 #extern;
+sqlite3_strglob :: fn (zGlob: *s8, zStr: *s8) s32 #extern;
+sqlite3_strlike :: fn (zGlob: *s8, zStr: *s8, cEsc: u32) s32 #extern;
+sqlite3_log :: fn (iErrCode: s32, zFormat: *s8)  #extern;
+sqlite3_wal_hook :: fn (_0: *sqlite3, _1: *fn (_0: *u8, _1: *sqlite3, _2: *s8, _3: s32) s32, _2: *u8) *u8 #extern;
+sqlite3_wal_autocheckpoint :: fn (db: *sqlite3, N: s32) s32 #extern;
+sqlite3_wal_checkpoint :: fn (db: *sqlite3, zDb: *s8) s32 #extern;
+sqlite3_wal_checkpoint_v2 :: fn (db: *sqlite3, zDb: *s8, eMode: s32, pnLog: *s32, pnCkpt: *s32) s32 #extern;
+sqlite3_vtab_config :: fn (_0: *sqlite3, op: s32) s32 #extern;
+sqlite3_vtab_on_conflict :: fn (_0: *sqlite3) s32 #extern;
+sqlite3_vtab_nochange :: fn (_0: *sqlite3_context) s32 #extern;
+sqlite3_vtab_collation :: fn (_0: *sqlite3_index_info, _1: s32) *s8 #extern;
+sqlite3_stmt_scanstatus :: fn (pStmt: *sqlite3_stmt, idx: s32, iScanStatusOp: s32, pOut: *u8) s32 #extern;
+sqlite3_stmt_scanstatus_reset :: fn (_0: *sqlite3_stmt)  #extern;
+sqlite3_db_cacheflush :: fn (_0: *sqlite3) s32 #extern;
+sqlite3_system_errno :: fn (_0: *sqlite3) s32 #extern;
+
+sqlite3_snapshot :: struct {
+    hidden: [48]u8;
+};
+
+sqlite3_snapshot_get :: fn (db: *sqlite3, zSchema: *s8, ppSnapshot: **sqlite3_snapshot) s32 #extern;
+sqlite3_snapshot_open :: fn (db: *sqlite3, zSchema: *s8, pSnapshot: *sqlite3_snapshot) s32 #extern;
+sqlite3_snapshot_free :: fn (_0: *sqlite3_snapshot)  #extern;
+sqlite3_snapshot_cmp :: fn (p1: *sqlite3_snapshot, p2: *sqlite3_snapshot) s32 #extern;
+sqlite3_snapshot_recover :: fn (db: *sqlite3, zDb: *s8) s32 #extern;
+sqlite3_serialize :: fn (db: *sqlite3, zSchema: *s8, piSize: *sqlite3_int64, mFlags: u32) *u8 #extern;
+sqlite3_deserialize :: fn (db: *sqlite3, zSchema: *s8, pData: *u8, szDb: sqlite3_int64, szBuf: sqlite3_int64, mFlags: u32) s32 #extern;
+
+sqlite3_rtree_geometry_callback :: fn (db: *sqlite3, zGeom: *s8, xGeom: *fn (_0: *sqlite3_rtree_geometry, _1: s32, _2: *sqlite3_rtree_dbl, _3: *s32) s32, pContext: *u8) s32 #extern;
+
+sqlite3_rtree_geometry :: struct {
+    pContext: *u8;
+    nParam: s32;
+    aParam: *sqlite3_rtree_dbl;
+    pUser: *u8;
+    xDelUser: *fn (_0: *u8) ;
+};
+
+sqlite3_rtree_query_callback :: fn (db: *sqlite3, zQueryFunc: *s8, xQueryFunc: *fn (_0: *sqlite3_rtree_query_info) s32, pContext: *u8, xDestructor: *fn (_0: *u8) ) s32 #extern;
+
+sqlite3_rtree_query_info :: struct {
+    pContext: *u8;
+    nParam: s32;
+    aParam: *sqlite3_rtree_dbl;
+    pUser: *u8;
+    xDelUser: *fn (_0: *u8) ;
+    aCoord: *sqlite3_rtree_dbl;
+    anQueue: *u32;
+    nCoord: s32;
+    iLevel: s32;
+    mxLevel: s32;
+    iRowid: sqlite3_int64;
+    rParentScore: sqlite3_rtree_dbl;
+    eParentWithin: s32;
+    eWithin: s32;
+    rScore: sqlite3_rtree_dbl;
+    apSqlParam: **sqlite3_value;
+};
+
+fts5_extension_function :: *fn (_0: *Fts5ExtensionApi, _1: *Fts5Context, _2: *sqlite3_context, _3: s32, _4: **sqlite3_value) ;
+
+Fts5PhraseIter :: struct {
+    a: *u8;
+    b: *u8;
+};
+
+Fts5ExtensionApi :: struct {
+    iVersion: s32;
+    xUserData: *fn (_0: *Fts5Context) *u8;
+    xColumnCount: *fn (_0: *Fts5Context) s32;
+    xRowCount: *fn (_0: *Fts5Context, _1: *sqlite3_int64) s32;
+    xColumnTotalSize: *fn (_0: *Fts5Context, _1: s32, _2: *sqlite3_int64) s32;
+    xTokenize: *fn (_0: *Fts5Context, _1: *s8, _2: s32, _3: *u8, _4: *fn (_0: *u8, _1: s32, _2: *s8, _3: s32, _4: s32, _5: s32) s32) s32;
+    xPhraseCount: *fn (_0: *Fts5Context) s32;
+    xPhraseSize: *fn (_0: *Fts5Context, _1: s32) s32;
+    xInstCount: *fn (_0: *Fts5Context, _1: *s32) s32;
+    xInst: *fn (_0: *Fts5Context, _1: s32, _2: *s32, _3: *s32, _4: *s32) s32;
+    xRowid: *fn (_0: *Fts5Context) sqlite3_int64;
+    xColumnText: *fn (_0: *Fts5Context, _1: s32, _2: **s8, _3: *s32) s32;
+    xColumnSize: *fn (_0: *Fts5Context, _1: s32, _2: *s32) s32;
+    xQueryPhrase: *fn (_0: *Fts5Context, _1: s32, _2: *u8, _3: *fn (_0: *Fts5ExtensionApi, _1: *Fts5Context, _2: *u8) s32) s32;
+    xSetAuxdata: *fn (_0: *Fts5Context, _1: *u8, _2: *fn (_0: *u8) ) s32;
+    xGetAuxdata: *fn (_0: *Fts5Context, _1: s32) *u8;
+    xPhraseFirst: *fn (_0: *Fts5Context, _1: s32, _2: *Fts5PhraseIter, _3: *s32, _4: *s32) s32;
+    xPhraseNext: *fn (_0: *Fts5Context, _1: *Fts5PhraseIter, _2: *s32, _3: *s32) ;
+    xPhraseFirstColumn: *fn (_0: *Fts5Context, _1: s32, _2: *Fts5PhraseIter, _3: *s32) s32;
+    xPhraseNextColumn: *fn (_0: *Fts5Context, _1: *Fts5PhraseIter, _2: *s32) ;
+};
+
+fts5_tokenizer :: struct {
+    xCreate: *fn (_0: *u8, _1: **s8, _2: s32, _3: **Fts5Tokenizer) s32;
+    xDelete: *fn (_0: *Fts5Tokenizer) ;
+    xTokenize: *fn (_0: *Fts5Tokenizer, _1: *u8, _2: s32, _3: *s8, _4: s32, _5: *fn (_0: *u8, _1: s32, _2: *s8, _3: s32, _4: s32, _5: s32) s32) s32;
+};
+
+fts5_api :: struct {
+    iVersion: s32;
+    xCreateTokenizer: *fn (_0: *fts5_api, _1: *s8, _2: *u8, _3: *fts5_tokenizer, _4: *fn (_0: *u8) ) s32;
+    xFindTokenizer: *fn (_0: *fts5_api, _1: *s8, _2: **u8, _3: *fts5_tokenizer) s32;
+    xCreateFunction: *fn (_0: *fts5_api, _1: *s8, _2: *u8, _3: fts5_extension_function, _4: *fn (_0: *u8) ) s32;
+};
+
