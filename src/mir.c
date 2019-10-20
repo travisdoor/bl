@@ -873,6 +873,8 @@ analyze_stage_implicit_cast(Context *cnt, MirInstr **input, MirType *slot_type);
 static AnalyzeStageState
 analyze_stage_report_type_mismatch(Context *cnt, MirInstr **input, MirType *slot_type);
 
+static const AnalyzeSlotConfig analyze_slot_conf_reduce_only = {.count = 0};
+
 static const AnalyzeSlotConfig analyze_slot_conf_basic = {.count  = 1,
                                                           .stages = {analyze_stage_load}};
 
@@ -3021,37 +3023,40 @@ append_current_block(Context *cnt, MirInstr *instr)
 MirInstr *
 insert_instr_cast(Context *cnt, MirInstr *src, MirType *to_type)
 {
-	MirInstrCast *cast    = CREATE_INSTR(cnt, MIR_INSTR_CAST, src->node, MirInstrCast *);
-	cast->base.value.type = to_type;
-	cast->expr            = src;
-	ref_instr(&cast->base);
+	MirInstrCast *tmp    = CREATE_INSTR(cnt, MIR_INSTR_CAST, src->node, MirInstrCast *);
+	tmp->base.value.type = to_type;
+	tmp->base.implicit   = true;
+	tmp->expr            = src;
+	ref_instr(&tmp->base);
 
-	insert_instr_after(src, &cast->base);
-	analyze_instr_rq(cnt, &cast->base);
-	return &cast->base;
+	insert_instr_after(src, &tmp->base);
+	analyze_instr_rq(cnt, &tmp->base);
+	return &tmp->base;
 }
 
 MirInstr *
 insert_instr_addrof(Context *cnt, MirInstr *src)
 {
-	MirInstr *addrof = create_instr_addrof(cnt, src->node, src);
+	MirInstr *tmp = create_instr_addrof(cnt, src->node, src);
+	tmp->implicit = true;
 
-	insert_instr_after(src, addrof);
-	analyze_instr_rq(cnt, addrof);
-	return addrof;
+	insert_instr_after(src, tmp);
+	analyze_instr_rq(cnt, tmp);
+	return tmp;
 }
 
 MirInstr *
 insert_instr_toany(Context *cnt, MirInstr *expr)
 {
-	MirInstrToAny *toany   = CREATE_INSTR(cnt, MIR_INSTR_TOANY, expr->node, MirInstrToAny *);
-	toany->base.value.type = create_type_ptr(cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_ANY));
-	toany->expr            = expr;
-	ref_instr(&toany->base);
+	MirInstrToAny *tmp   = CREATE_INSTR(cnt, MIR_INSTR_TOANY, expr->node, MirInstrToAny *);
+	tmp->base.value.type = create_type_ptr(cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_ANY));
+	tmp->base.implicit   = true;
+	tmp->expr            = expr;
+	ref_instr(&tmp->base);
 
-	insert_instr_after(expr, &toany->base);
-	analyze_instr_rq(cnt, &toany->base);
-	return &toany->base;
+	insert_instr_after(expr, &tmp->base);
+	analyze_instr_rq(cnt, &tmp->base);
+	return &tmp->base;
 }
 
 MirInstr *
@@ -3061,12 +3066,12 @@ insert_instr_load(Context *cnt, MirInstr *src)
 	BL_ASSERT(src->value.type);
 	BL_ASSERT(src->value.type->kind == MIR_TYPE_PTR);
 	MirInstrLoad *tmp  = CREATE_INSTR(cnt, MIR_INSTR_LOAD, src->node, MirInstrLoad *);
+	tmp->base.implicit = true;
 	tmp->src           = src;
-	tmp->base.analyzed = true;
 
 	ref_instr(&tmp->base);
 	insert_instr_after(src, &tmp->base);
-	analyze_instr_load(cnt, tmp);
+	analyze_instr_rq(cnt, &tmp->base);
 
 	return &tmp->base;
 }
@@ -4774,13 +4779,13 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		return ANALYZE_RESULT(PASSED, 0);
 	}
 
+	bool additional_load_needed = false;
 	if (target_type->kind == MIR_TYPE_PTR) {
 		/* We try to access structure member via pointer so we need one more load.
 		 */
 
-		member_ptr->target_ptr = insert_instr_load(cnt, member_ptr->target_ptr);
-		BL_ASSERT(member_ptr->target_ptr);
-		target_type = mir_deref_type(target_type);
+		additional_load_needed = true;
+		target_type            = mir_deref_type(target_type);
 	}
 
 	/* struct type */
@@ -4790,21 +4795,12 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		if (is_incomplete_struct_type(target_type))
 			return ANALYZE_RESULT(WAITING, target_type->user_id->hash);
 
-		reduce_instr(cnt, member_ptr->target_ptr);
-
-#if 0
-		/* lookup for member inside struct */
-		Scope *scope = target_type->data.strct.scope;
-		/* lookup also in base_type scope if there is one */
-		Scope *     base_type_scope = get_base_type_scope(target_type);
-		ID *        rid             = &ast_member_ident->data.ident.id;
-		ScopeEntry *found           = scope_lookup(scope, rid, false, true);
-		if (!found && base_type_scope) {
-			found = scope_lookup(base_type_scope, rid, false, true);
-			if (found) {
-			}
+		if (additional_load_needed) {
+			member_ptr->target_ptr = insert_instr_load(cnt, member_ptr->target_ptr);
+			BL_ASSERT(member_ptr->target_ptr);
 		}
-#endif
+
+		reduce_instr(cnt, member_ptr->target_ptr);
 
 		Scope *     scope = target_type->data.strct.scope;
 		ID *        rid   = &ast_member_ident->data.ident.id;
@@ -4826,7 +4822,9 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			 * cast to desired base type and use this as target, that also
 			 * should solve problems with deeper nesting (bitcast of pointer is
 			 * better then multiple GEPs?) */
-			member_ptr->target_ptr = insert_instr_addrof(cnt, member_ptr->target_ptr);
+			if (is_load_needed(member_ptr->target_ptr))
+				member_ptr->target_ptr =
+				    insert_instr_addrof(cnt, member_ptr->target_ptr);
 
 			member_ptr->target_ptr = insert_instr_cast(
 			    cnt, member_ptr->target_ptr, create_type_ptr(cnt, type));
@@ -4861,6 +4859,12 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	/* Sub type member. */
 	if (target_type->kind == MIR_TYPE_TYPE) {
 		/* generate load instruction if needed */
+
+		/* HACK: probably not needed?
+		if (additional_load_needed) {
+		        member_ptr->target_ptr = insert_instr_load(cnt, member_ptr->target_ptr);
+		        BL_ASSERT(member_ptr->target_ptr);
+		        }*/
 
 		if (analyze_slot(cnt, &analyze_slot_conf_basic, &member_ptr->target_ptr, NULL) !=
 		    ANALYZE_PASSED) {
@@ -4942,13 +4946,13 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 		type = src->value.type;
 	}
 
-	addrof->base.value.type = type;
-	addrof->base.comptime   = addrof->src->comptime;
+	addrof->base.value.type      = type;
+	addrof->base.comptime        = addrof->src->comptime;
+	addrof->base.value.addr_mode = MIR_VAM_LVALUE_CONST;
 	BL_ASSERT(addrof->base.value.type && "invalid type");
 
 	reduce_instr(cnt, addrof->src);
 
-	addrof->base.value.addr_mode = src_addr_mode;
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -4963,8 +4967,10 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast, bool analyze_op_only)
 			if (result.state != ANALYZE_PASSED) return result;
 		}
 
-		if (analyze_slot(cnt, &analyze_slot_conf_basic, &cast->expr, NULL) !=
-		    ANALYZE_PASSED) {
+		const AnalyzeSlotConfig *config =
+		    cast->base.implicit ? &analyze_slot_conf_reduce_only : &analyze_slot_conf_basic;
+
+		if (analyze_slot(cnt, config, &cast->expr, dest_type) != ANALYZE_PASSED) {
 			return ANALYZE_RESULT(FAILED, 0);
 		}
 
@@ -5492,8 +5498,12 @@ analyze_instr_load(Context *cnt, MirInstrLoad *load)
 	load->base.value.type = type;
 
 	reduce_instr(cnt, src);
-	load->base.comptime        = src->comptime;
-	load->base.value.addr_mode = MIR_VAM_RVALUE;
+	load->base.comptime = src->comptime;
+	/* INCOMPLETE: is this correct??? */
+	/* INCOMPLETE: is this correct??? */
+	/* INCOMPLETE: is this correct??? */
+	load->base.value.addr_mode = src->value.addr_mode;
+	// load->base.value.addr_mode = MIR_VAM_RVALUE;
 
 	return ANALYZE_RESULT(PASSED, 0);
 }
@@ -8767,8 +8777,8 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 
 	BL_ASSERT(ast_members);
 
-	Ast *ast_base_type = type_struct->data.type_strct.base_type;
-	const usize memc = ast_members->size;
+	Ast *       ast_base_type = type_struct->data.type_strct.base_type;
+	const usize memc          = ast_members->size;
 	if (!memc && !ast_base_type) {
 		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_EMPTY_STRUCT,

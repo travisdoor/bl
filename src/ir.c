@@ -301,6 +301,8 @@ fetch_value(Context *cnt, MirInstr *instr)
 		/* Declaration references must be generated even if they are compile time. */
 		if (instr->kind == MIR_INSTR_DECL_REF) {
 			emit_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
+		} else if (instr->kind == MIR_INSTR_CAST) {
+			emit_instr_cast(cnt, (MirInstrCast *)instr);
 		} else {
 			instr->llvm_value = emit_as_const(cnt, &instr->value);
 		}
@@ -544,7 +546,7 @@ emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 void
 emit_instr_cast(Context *cnt, MirInstrCast *cast)
 {
-	LLVMValueRef llvm_src       = cast->expr->llvm_value;
+	LLVMValueRef llvm_src       = fetch_value(cnt, cast->expr);
 	LLVMTypeRef  llvm_dest_type = cast->base.value.type->llvm_type;
 	LLVMOpcode   llvm_op;
 	BL_ASSERT(llvm_src && llvm_dest_type)
