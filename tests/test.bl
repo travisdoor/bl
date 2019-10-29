@@ -1,9 +1,5 @@
 /* playground */
 
-FOO :: "hello";
-BAR :: 10;
-
 main :: fn () s32 {
-    print("%\n", BAR);
     return 0;
 }

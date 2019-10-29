@@ -41,18 +41,23 @@
 #define MIR_SLICE_LEN_INDEX 0
 #define MIR_SLICE_PTR_INDEX 1
 
+/* Helper macro for reading Const Expression Values of fundamental types. */
+#define MIR_CEV_READ_AS(T, src) (*((T *)(src)->data))
+#define MIR_CEV_WRITE_AS(T, dest, src) (*((T *)(dest)->data) = (src))
+
 struct Assembly;
 struct Builder;
 struct Unit;
 
-typedef struct MirType       MirType;
-typedef struct MirMember     MirMember;
-typedef struct MirVariant    MirVariant;
-typedef struct MirArg        MirArg;
-typedef struct MirVar        MirVar;
-typedef struct MirFn         MirFn;
-typedef struct MirConstValue MirConstValue;
-typedef struct MirConstPtr   MirConstPtr;
+typedef struct MirType           MirType;
+typedef struct MirMember         MirMember;
+typedef struct MirVariant        MirVariant;
+typedef struct MirArg            MirArg;
+typedef struct MirVar            MirVar;
+typedef struct MirFn             MirFn;
+typedef struct MirConstValue     MirConstValue;
+typedef struct MirConstPtr       MirConstPtr;
+typedef struct MirConstExprValue MirConstExprValue;
 
 typedef struct MirInstr              MirInstr;
 typedef struct MirInstrUnreachable   MirInstrUnreachable;
@@ -152,6 +157,8 @@ typedef enum MirConstPtrKind {
 } MirConstPtrKind;
 
 typedef enum MirValueAddressMode {
+	MIR_VAM_UNKNOWN,
+
 	/* Value points to memory allocation on the stack or heap. */
 	MIR_VAM_LVALUE,
 	/* Value points to memeory allocation on the stack or heap but value itself is immutable and
@@ -359,6 +366,14 @@ struct MirConstPtr {
 	MirConstPtrKind kind;
 };
 
+struct MirConstExprValue {
+	u8                  _tmp[16];
+	VMStackPtr          data;
+	MirType *           type;
+	MirValueAddressMode addr_mode;
+	bool                is_comptime;
+};
+
 /* VALUE */
 union MirConstValueData {
 	/* atomic types */
@@ -403,13 +418,12 @@ struct MirVariant {
 
 /* VAR */
 struct MirVar {
-	MirConstValue      value; /* contains also allocated type */
+	MirConstExprValue  value; /* contains also allocated type */
 	ID *               id;
 	Ast *              decl_node;
 	Scope *            decl_scope;
 	s32                ref_count;
 	bool               is_mutable;
-	bool               comptime;
 	bool               is_in_gscope;
 	bool               is_implicit;
 	bool               gen_llvm;
@@ -420,12 +434,13 @@ struct MirVar {
 };
 
 struct MirInstr {
-	MirConstValue  value; // must be first
-	MirInstrKind   kind;
-	u64            id;
-	Ast *          node;
-	MirInstrBlock *owner_block;
-	LLVMValueRef   llvm_value;
+	MirConstValue     value; // must be first
+	MirConstExprValue value2;
+	MirInstrKind      kind;
+	u64               id;
+	Ast *             node;
+	MirInstrBlock *   owner_block;
+	LLVMValueRef      llvm_value;
 
 	s32  ref_count;
 	bool analyzed;

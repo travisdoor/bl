@@ -241,16 +241,25 @@ interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref);
 static void
 interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref);
 
+static void
+eval_instr(VM *vm, MirInstr *instr);
+
+static void
+eval_instr_decl_ref(VM *vm, MirInstrDeclRef *decl_ref);
+
+static void
+eval_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *decl_ref);
+
 /***********/
 /* inlines */
 /***********/
 static inline MirFn *
 get_callee(MirInstrCall *call)
 {
-	MirConstValue *callee_val = &call->callee->value;
-	BL_ASSERT(callee_val->type && callee_val->type->kind == MIR_TYPE_FN);
+	MirConstExprValue *val = &call->callee->value2;
+	BL_ASSERT(val->type && val->type->kind == MIR_TYPE_FN);
 
-	MirFn *fn = callee_val->data.v_ptr.data.fn;
+	MirFn *fn = MIR_CEV_READ_AS(MirFn *, val);
 	BL_ASSERT(fn);
 	return fn;
 }
@@ -407,6 +416,13 @@ fetch_value(VM *vm, MirInstr *src)
 	return pop_stack(vm, src->value.type);
 }
 
+static inline VMStackPtr
+fetch_value2(VM *vm, MirConstExprValue *v)
+{
+	if (v->is_comptime) return v->data;
+	return pop_stack(vm, v->type);
+}
+
 static inline void
 read_value(MirConstValueData *dest, VMStackPtr src, MirType *type)
 {
@@ -464,7 +480,7 @@ static inline VMRelativeStackPtr
 stack_alloc_var(VM *vm, MirVar *var)
 {
 	BL_ASSERT(var);
-	BL_ASSERT(!var->comptime && "cannot allocate compile time constant");
+	BL_ASSERT(!var->value.is_comptime && "cannot allocate compile time constant");
 	/* allocate memory for variable on stack */
 
 	VMStackPtr tmp     = push_stack_empty(vm, var->value.type);
@@ -481,7 +497,7 @@ stack_alloc_local_vars(VM *vm, MirFn *fn)
 	MirVar *var;
 	TARRAY_FOREACH(MirVar *, vars, var)
 	{
-		if (var->comptime) continue;
+		if (var->value.is_comptime) continue;
 		stack_alloc_var(vm, var);
 	}
 }
@@ -1112,7 +1128,7 @@ _execute_fn_top_level(VM *                    vm,
 
 	const bool does_return_value    = ret_type->kind != MIR_TYPE_VOID;
 	const bool is_return_value_used = call ? call->ref_count > 1 : true;
-	const bool is_caller_comptime   = call ? call->comptime : false;
+	const bool is_caller_comptime   = call ? call->value2.is_comptime : false;
 	const bool pop_return_value =
 	    does_return_value && is_return_value_used && !is_caller_comptime;
 	const usize argc = args ? args->size : 0;
@@ -1159,7 +1175,7 @@ _execute_fn_top_level(VM *                    vm,
 		VMStackPtr ret_ptr = pop_stack(vm, ret_type);
 		if (out_ptr) (*out_ptr) = ret_ptr;
 	} else if (is_caller_comptime) {
-		if (out_ptr) (*out_ptr) = (VMStackPtr)&call->value.data;
+		if (out_ptr) (*out_ptr) = (VMStackPtr)&call->value2.data;
 	}
 
 	return true;
@@ -1172,6 +1188,9 @@ interp_instr(VM *vm, MirInstr *instr)
 	if (!instr->analyzed) {
 		BL_ABORT("instruction %s has not been analyzed!", mir_instr_name(instr));
 	}
+
+	/* Skip all comptimes. */
+	if (instr->value2.is_comptime) return;
 
 	switch (instr->kind) {
 	case MIR_INSTR_CAST:
@@ -1879,7 +1898,7 @@ interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref)
 
 		const bool use_static_segment = var->is_in_gscope;
 		VMStackPtr real_ptr           = NULL;
-		if (var->comptime) {
+		if (var->value.is_comptime) {
 			real_ptr = (VMStackPtr)&var->value;
 		} else {
 			real_ptr = read_stack_ptr(vm, var->rel_stack_ptr, use_static_segment);
@@ -1909,7 +1928,7 @@ interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref)
 
 	const bool use_static_segment = var->is_in_gscope;
 	VMStackPtr real_ptr           = NULL;
-	if (var->comptime) {
+	if (var->value.is_comptime) {
 		real_ptr = (VMStackPtr)&var->value;
 	} else {
 		real_ptr = read_stack_ptr(vm, var->rel_stack_ptr, use_static_segment);
@@ -2058,7 +2077,7 @@ interp_instr_decl_var(VM *vm, MirInstrDeclVar *decl)
 	 * already allocated variables will never be allocated again (in case
 	 * declaration is inside loop body!!!)
 	 */
-	if (var->comptime) return;
+	if (var->value.is_comptime) return;
 
 	const bool use_static_segment = var->is_in_gscope;
 
@@ -2186,7 +2205,7 @@ interp_instr_ret(VM *vm, MirInstrRet *ret)
 
 	/* pop return value from stack */
 	if (ret->value) {
-		ret_data_ptr = fetch_value(vm, ret->value);
+		ret_data_ptr = fetch_value2(vm, &ret->value->value2);
 		BL_ASSERT(ret_data_ptr);
 
 		if (caller ? caller->base.ref_count == 1 : false) ret_data_ptr = NULL;
@@ -2225,13 +2244,9 @@ interp_instr_ret(VM *vm, MirInstrRet *ret)
 	if (ret_data_ptr) {
 		/* Determinate if caller instruction is comptime, if caller does not exist we are
 		 * going to push result on the stack. */
-		const bool is_caller_comptime = caller ? caller->base.comptime : false;
+		const bool is_caller_comptime = caller ? caller->base.value2.is_comptime : false;
 		if (is_caller_comptime) {
-			if (ret->value->comptime) {
-				caller->base.value.data = ret->value->value.data;
-			} else {
-				read_value(&caller->base.value.data, ret_data_ptr, ret_type);
-			}
+			caller->base.value2.data = ret->value->value2.data;
 		} else {
 			if (ret->value->comptime) {
 				VMStackPtr dest = push_stack_empty(vm, ret_type);
@@ -2475,6 +2490,54 @@ interp_instr_unop(VM *vm, MirInstrUnop *unop)
 #undef unop
 }
 
+void
+eval_instr(VM *vm, MirInstr *instr)
+{
+	if (!instr) return;
+	BL_ASSERT(instr->value2.is_comptime);
+
+	switch (instr->kind) {
+	case MIR_INSTR_DECL_REF:
+		eval_instr_decl_ref(vm, (MirInstrDeclRef *)instr);
+		break;
+
+	case MIR_INSTR_DECL_DIRECT_REF:
+		eval_instr_decl_direct_ref(vm, (MirInstrDeclDirectRef *)instr);
+		break;
+
+	default:
+		BL_ABORT("Missing evaluation for instruction '%s'.", mir_instr_name(instr));
+	}
+}
+
+void
+eval_instr_decl_ref(VM *vm, MirInstrDeclRef *decl_ref)
+{
+	ScopeEntry *entry = decl_ref->scope_entry;
+	BL_ASSERT(entry);
+
+	switch (entry->kind) {
+	case SCOPE_ENTRY_TYPE:
+		MIR_CEV_WRITE_AS(MirType *, &decl_ref->base.value2, entry->data.type);
+		break;
+
+	case SCOPE_ENTRY_VAR:
+		MIR_CEV_WRITE_AS(
+		    VMStackPtr *, &decl_ref->base.value2, &entry->data.var->value.data);
+		break;
+
+	default:
+		BL_UNIMPLEMENTED;
+	}
+}
+
+void
+eval_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *decl_ref)
+{
+        MirVar *var = ((MirInstrDeclVar *)decl_ref->ref)->var;
+	MIR_CEV_WRITE_AS(VMStackPtr *, &decl_ref->base.value2, &var->value.data);
+}
+
 /* public */
 void
 vm_init(VM *vm, Assembly *assembly, usize stack_size)
@@ -2509,6 +2572,12 @@ vm_execute_instr(VM *vm, MirInstr *instr)
 	interp_instr(vm, instr);
 }
 
+void
+vm_eval_instr(VM *vm, struct MirInstr *instr)
+{
+	eval_instr(vm, instr);
+}
+
 bool
 vm_execute_fn(VM *vm, MirFn *fn, VMStackPtr *out_ptr)
 {
@@ -2521,7 +2590,7 @@ vm_execute_instr_top_level_call(VM *vm, MirInstrCall *call)
 {
 	BL_ASSERT(call && call->base.analyzed);
 
-	assert(call->base.comptime && "Top level call is expected to be comptime.");
+	assert(call->base.value2.is_comptime && "Top level call is expected to be comptime.");
 	if (call->args) BL_ABORT("exec call top level has not implemented passing of arguments");
 
 	return execute_fn_top_level(vm, &call->base, NULL);
@@ -2549,7 +2618,8 @@ vm_create_implicit_global(VM *vm, struct MirVar *var)
 
 	/* HACK: we can ignore relative pointers for globals. */
 	VMStackPtr var_ptr = (VMStackPtr)stack_alloc_var(vm, var);
-	copy_comptime_to_stack(vm, var_ptr, &var->value);
+	BL_UNIMPLEMENTED;
+	// copy_comptime_to_stack(vm, var_ptr, &var->value);
 	return var_ptr;
 }
 

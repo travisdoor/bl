@@ -58,7 +58,7 @@ print_instr_head(MirInstr *instr, FILE *stream, const char *name)
 #else
 	fprintf(stream, "  %%%-6llu", (unsigned long long)instr->id);
 #endif
-	print_type(instr->value.type, true, stream, true);
+	print_type(instr->value2.type, true, stream, true);
 	fprintf(stream, " %s ", name);
 }
 
@@ -947,7 +947,7 @@ print_instr_block(MirInstrBlock *block, FILE *stream)
 void
 print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 {
-	MirFn *fn = fn_proto->base.value.data.v_ptr.data.fn;
+	MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value2);
 	BL_ASSERT(fn);
 
 	fprintf(stream, "\n");
@@ -1100,7 +1100,7 @@ mir_print_instr(MirInstr *instr, FILE *stream)
 		break;
 	}
 
-	if (instr->comptime) fprintf(stream, " /* comptime */");
+	if (instr->value2.is_comptime) fprintf(stream, " /* comptime */");
 	if (instr->unrechable) fprintf(stream, " /* unrechable */");
 
 	fprintf(stream, "\n");

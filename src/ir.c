@@ -437,7 +437,8 @@ emit_RTTI_types(Context *cnt)
 
 		llvm_var      = emit_global_var_proto(cnt, var);
 		llvm_var_type = var->value.type->llvm_type;
-		llvm_value    = emit_as_const(cnt, &var->value);
+		BL_UNIMPLEMENTED;
+		//llvm_value    = emit_as_const(cnt, &var->value);
 
 		LLVMSetInitializer(llvm_var, llvm_value);
 		LLVMSetLinkage(llvm_var, LLVMPrivateLinkage);
