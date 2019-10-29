@@ -9271,59 +9271,56 @@ execute_test_cases(Context *cnt)
 void
 init_builtins(Context *cnt)
 {
-	{
-		// initialize all hashes once
-		for (s32 i = 0; i < _MIR_BUILTIN_ID_COUNT; ++i) {
-			builtin_ids[i].hash = thash_from_str(builtin_ids[i].str);
-		}
+#define PROVIDE(N) provide_builtin_type(cnt, bt->t_##N) // initialize all hashes once
+	for (s32 i = 0; i < _MIR_BUILTIN_ID_COUNT; ++i) {
+		builtin_ids[i].hash = thash_from_str(builtin_ids[i].str);
 	}
 
-	{ // TYPES
-		struct BuiltinTypes *bt = &cnt->builtin_types;
-		bt->t_type              = create_type_type(cnt);
-		bt->t_void              = create_type_void(cnt);
+	struct BuiltinTypes *bt = &cnt->builtin_types;
+	bt->t_type              = create_type_type(cnt);
+	bt->t_void              = create_type_void(cnt);
 
-		bt->t_s8  = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S8], 8, true);
-		bt->t_s16 = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S16], 16, true);
-		bt->t_s32 = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S32], 32, true);
-		bt->t_s64 = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S64], 64, true);
-		bt->t_u8  = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_U8], 8, false);
-		bt->t_u16 = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_U16], 16, false);
-		bt->t_u32 = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_U32], 32, false);
-		bt->t_u64 = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_U64], 64, false);
-		bt->t_usize =
-		    create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_USIZE], 64, false);
-		bt->t_bool   = create_type_bool(cnt);
-		bt->t_f32    = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_F32], 32);
-		bt->t_f64    = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_F64], 64);
-		bt->t_u8_ptr = create_type_ptr(cnt, bt->t_u8);
-		bt->t_string = create_type_struct_special(
-		    cnt, MIR_TYPE_STRING, &builtin_ids[MIR_BUILTIN_ID_TYPE_STRING], bt->t_u8_ptr);
+	bt->t_s8     = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S8], 8, true);
+	bt->t_s16    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S16], 16, true);
+	bt->t_s32    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S32], 32, true);
+	bt->t_s64    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S64], 64, true);
+	bt->t_u8     = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_U8], 8, false);
+	bt->t_u16    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_U16], 16, false);
+	bt->t_u32    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_U32], 32, false);
+	bt->t_u64    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_U64], 64, false);
+	bt->t_usize  = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_USIZE], 64, false);
+	bt->t_bool   = create_type_bool(cnt);
+	bt->t_f32    = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_F32], 32);
+	bt->t_f64    = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_F64], 64);
+	bt->t_u8_ptr = create_type_ptr(cnt, bt->t_u8);
+	bt->t_string = create_type_struct_special(
+	    cnt, MIR_TYPE_STRING, &builtin_ids[MIR_BUILTIN_ID_TYPE_STRING], bt->t_u8_ptr);
 
-		bt->t_string_ptr = create_type_ptr(cnt, bt->t_string);
+	bt->t_string_ptr = create_type_ptr(cnt, bt->t_string);
 
-		bt->t_string_slice =
-		    create_type_struct_special(cnt, MIR_TYPE_SLICE, NULL, bt->t_string_ptr);
+	bt->t_string_slice =
+	    create_type_struct_special(cnt, MIR_TYPE_SLICE, NULL, bt->t_string_ptr);
 
-		bt->t_resolve_type_fn = create_type_fn(cnt, NULL, bt->t_type, NULL, false);
-		bt->t_test_case_fn    = create_type_fn(cnt, NULL, bt->t_void, NULL, false);
+	bt->t_resolve_type_fn = create_type_fn(cnt, NULL, bt->t_type, NULL, false);
+	bt->t_test_case_fn    = create_type_fn(cnt, NULL, bt->t_void, NULL, false);
 
-		/* Provide types into global scope */
-		provide_builtin_type(cnt, bt->t_type);
-		provide_builtin_type(cnt, bt->t_s8);
-		provide_builtin_type(cnt, bt->t_s16);
-		provide_builtin_type(cnt, bt->t_s32);
-		provide_builtin_type(cnt, bt->t_s64);
-		provide_builtin_type(cnt, bt->t_u8);
-		provide_builtin_type(cnt, bt->t_u16);
-		provide_builtin_type(cnt, bt->t_u32);
-		provide_builtin_type(cnt, bt->t_u64);
-		provide_builtin_type(cnt, bt->t_usize);
-		provide_builtin_type(cnt, bt->t_bool);
-		provide_builtin_type(cnt, bt->t_f32);
-		provide_builtin_type(cnt, bt->t_f64);
-		provide_builtin_type(cnt, bt->t_string);
-	}
+	/* Provide types into global scope */
+	PROVIDE(type);
+	PROVIDE(s8);
+	PROVIDE(s16);
+	PROVIDE(s32);
+	PROVIDE(s64);
+	PROVIDE(u8);
+	PROVIDE(u16);
+	PROVIDE(u32);
+	PROVIDE(u64);
+	PROVIDE(usize);
+	PROVIDE(bool);
+	PROVIDE(f32);
+	PROVIDE(f64);
+	PROVIDE(string);
+
+#undef PROVIDE
 }
 
 ptrdiff_t
