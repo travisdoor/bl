@@ -1,5 +1,7 @@
 /* playground */
 
+FOO :: 10;
+
 main :: fn () s32 {
     i := 10;
     return i + 20;

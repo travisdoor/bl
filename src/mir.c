@@ -6032,13 +6032,13 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 	if (ret->infer_type) {
 		/* return is supposed to override function return type */
 		if (ret->value) {
-			BL_ASSERT(ret->value->value.type);
-			if (fn_type->data.fn.ret_type != ret->value->value.type) {
+			BL_ASSERT(ret->value->value2.type);
+			if (fn_type->data.fn.ret_type != ret->value->value2.type) {
 				MirFn *fn = get_current_fn(cnt);
 				BL_ASSERT(fn);
 				fn->type = create_type_fn(cnt,
 				                          NULL,
-				                          ret->value->value.type,
+				                          ret->value->value2.type,
 				                          fn_type->data.fn.args,
 				                          fn_type->data.fn.is_vargs);
 				fn_type  = fn->type;
@@ -6046,7 +6046,7 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 				 * prototype instruction, this is by the way only reason why
 				 * we need poinetr to prototype inside MirFn. Better
 				 * solution should be possible. */
-				fn->prototype->value.type = fn_type;
+				fn->prototype->value2.type = fn_type;
 			}
 		}
 	}
@@ -6109,7 +6109,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		}
 
 		/* Global initializer must be compile time known. */
-		if (!decl->init->comptime) {
+		if (!decl->init->value2.is_comptime) {
 			builder_msg(
 			    BUILDER_MSG_ERROR,
 			    ERR_EXPECTED_COMPTIME,
@@ -6141,13 +6141,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 					fn->type =
 					    create_type_fn(cnt, NULL, var->value.type, NULL, false);
 
-					/* CLEANUP: why we need set type of the function also for fn
-					 * prototype ??? */
-					/* CLEANUP: why we need set type of the function also for fn
-					 * prototype ??? */
-					/* CLEANUP: why we need set type of the function also for fn
-					 * prototype ??? */
-					fn->prototype->value.type = fn->type;
+					fn->prototype->value2.type = fn->type;
 				}
 			}
 
