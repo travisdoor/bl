@@ -2,5 +2,5 @@
 
 main :: fn () s32 {
     i := 10;
-    return i;
+    return i + 20;
 }

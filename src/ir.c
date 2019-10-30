@@ -1129,13 +1129,13 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 void
 emit_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
-	LLVMValueRef lhs = fetch_value(cnt, binop->lhs);
-	LLVMValueRef rhs = fetch_value(cnt, binop->rhs);
+	LLVMValueRef lhs = binop->lhs->llvm_value;
+	LLVMValueRef rhs = binop->rhs->llvm_value;
 	BL_ASSERT(lhs && rhs);
 
 	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &binop->base);
 
-	MirType *  type           = binop->lhs->value.type;
+	MirType *  type           = binop->lhs->value2.type;
 	const bool real_type      = type->kind == MIR_TYPE_REAL;
 	const bool signed_integer = type->kind == MIR_TYPE_INT && type->data.integer.is_signed;
 
