@@ -2109,12 +2109,12 @@ interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref)
 		const bool use_static_segment = var->is_in_gscope;
 		VMStackPtr real_ptr           = NULL;
 		if (var->value.is_comptime) {
-			real_ptr = (VMStackPtr)&var->value;
+			real_ptr = (VMStackPtr)&var->value.data;
 		} else {
 			real_ptr = read_stack_ptr(vm, var->rel_stack_ptr, use_static_segment);
 		}
 
-		ref->base.value.data.v_ptr.data.stack_ptr = real_ptr;
+                push_stack(vm, &real_ptr, ref->base.value2.type);
 		break;
 	}
 

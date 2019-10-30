@@ -1,6 +1,6 @@
 /* playground */
 
 main :: fn () s32 {
-    i :: 10;
-    return (-16) + 20;
+    i := 10;
+    return i;
 }

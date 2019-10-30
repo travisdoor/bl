@@ -6247,7 +6247,8 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
 	if (decl->base.value2.is_comptime && decl->init) {
 		/* initialize when known in compiletime */
-		BL_UNIMPLEMENTED_REGION(var->value = decl->init->value;)
+		var->value.data = decl->init->value2.data;
+		BL_ASSERT(var->value.data && "Incomplete comptime var initialization.");
 	}
 
 	if (!decl->var->is_implicit) commit_var(cnt, decl->var);
