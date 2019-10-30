@@ -638,7 +638,7 @@ append_instr_addrof(Context *cnt, Ast *node, MirInstr *src);
  * ref_count is ignored.
  */
 static void
-erase_instr_tree(MirInstr *instr);
+erase_instr_tree(MirInstr *instr, bool keep_root, bool force);
 
 static MirInstr *
 create_instr_vargs_impl(Context *cnt, MirType *type, TSmallArray_InstrPtr *values);
@@ -1085,7 +1085,7 @@ is_incomplete_struct_type(MirType *type)
 static inline bool
 is_instr_type_volatile(MirInstr *instr)
 {
-	MirType *type = instr->value.type;
+	MirType *type = instr->value2.type;
 
 	if (!type) return false;
 	if (type->kind != MIR_TYPE_INT) return false;
@@ -3690,10 +3690,11 @@ append_instr_decl_var(Context * cnt,
 	ref_instr(type);
 	ref_instr(init);
 	MirInstrDeclVar *tmp = CREATE_INSTR(cnt, MIR_INSTR_DECL_VAR, node, MirInstrDeclVar *);
-	tmp->base.ref_count  = NO_REF_COUNTING;
-	tmp->base.value.type = cnt->builtin_types.t_void;
-	tmp->type            = type;
-	tmp->init            = init;
+	init_const_expr_value(&tmp->base.value2, cnt->builtin_types.t_void, MIR_VAM_UNKNOWN, false);
+
+	tmp->base.ref_count = NO_REF_COUNTING;
+	tmp->type           = type;
+	tmp->init           = init;
 
 	tmp->var = create_var(cnt,
 	                      node,
@@ -3971,9 +3972,11 @@ append_instr_binop(Context *cnt, Ast *node, MirInstr *lhs, MirInstr *rhs, BinopK
 	ref_instr(lhs);
 	ref_instr(rhs);
 	MirInstrBinop *tmp = CREATE_INSTR(cnt, MIR_INSTR_BINOP, node, MirInstrBinop *);
-	tmp->lhs           = lhs;
-	tmp->rhs           = rhs;
-	tmp->op            = op;
+	init_const_expr_value(&tmp->base.value2, NULL, MIR_VAM_UNKNOWN, false);
+
+	tmp->lhs = lhs;
+	tmp->rhs = rhs;
+	tmp->op  = op;
 
 	append_current_block(cnt, &tmp->base);
 	return &tmp->base;
@@ -3985,8 +3988,10 @@ append_instr_unop(Context *cnt, Ast *node, MirInstr *instr, UnopKind op)
 	BL_ASSERT(instr);
 	ref_instr(instr);
 	MirInstrUnop *tmp = CREATE_INSTR(cnt, MIR_INSTR_UNOP, node, MirInstrUnop *);
-	tmp->expr         = instr;
-	tmp->op           = op;
+	init_const_expr_value(&tmp->base.value2, NULL, MIR_VAM_UNKNOWN, false);
+
+	tmp->expr = instr;
+	tmp->op   = op;
 
 	append_current_block(cnt, &tmp->base);
 	return &tmp->base;
@@ -4005,7 +4010,7 @@ create_instr_vargs_impl(Context *cnt, MirType *type, TSmallArray_InstrPtr *value
 
 /* analyze */
 void
-erase_instr_tree(MirInstr *instr)
+erase_instr_tree(MirInstr *instr, bool keep_root, bool force)
 {
 	if (!instr) return;
 
@@ -4021,8 +4026,10 @@ erase_instr_tree(MirInstr *instr)
 		if (!top) continue;
 
 		BL_ASSERT(top->analyzed && "Trying to erase not analyzed instruction.");
-		if (top->ref_count == NO_REF_COUNTING) continue;
-		if (top->ref_count > 0) continue;
+		if (!force) {
+			if (top->ref_count == NO_REF_COUNTING) continue;
+			if (top->ref_count > 0) continue;
+		}
 
 		switch (top->kind) {
 		case MIR_INSTR_BINOP: {
@@ -4199,6 +4206,7 @@ erase_instr_tree(MirInstr *instr)
 			BL_ABORT("Missing erase for instruction '%s'", mir_instr_name(top));
 		}
 
+		if (keep_root && top == instr) continue;
 		erase_instr(top);
 	}
 
@@ -4209,90 +4217,22 @@ void
 reduce_instr(Context *cnt, MirInstr *instr)
 {
 	if (!instr) return;
-
-	if (instr->value2.is_comptime) {
-		switch (instr->kind) {
-			// NEW!!!
-		case MIR_INSTR_DECL_REF:
-		case MIR_INSTR_DECL_VAR:
-		case MIR_INSTR_DECL_DIRECT_REF:
-		case MIR_INSTR_LOAD:
-		case MIR_INSTR_STORE:
-			vm_eval_instr(&cnt->vm, instr);
-			break;
-
-		default:
-			break;
-		}
-
-		return;
-	}
-
-	/* instruction unknown in compile time cannot be reduced */
-	if (!instr->comptime && instr->kind != MIR_INSTR_COMPOUND) return;
+	if (!instr->value2.is_comptime) return;
 
 	switch (instr->kind) {
-	case MIR_INSTR_CONST:
-	case MIR_INSTR_DECL_MEMBER:
-	case MIR_INSTR_DECL_VARIANT:
-	case MIR_INSTR_DECL_ARG:
-	case MIR_INSTR_TYPE_ARRAY:
-	case MIR_INSTR_TYPE_PTR:
-	case MIR_INSTR_TYPE_STRUCT:
-	case MIR_INSTR_TYPE_SLICE:
-	case MIR_INSTR_TYPE_VARGS:
-	case MIR_INSTR_TYPE_ENUM:
-	case MIR_INSTR_SIZEOF:
-	case MIR_INSTR_ALIGNOF:
-	case MIR_INSTR_MEMBER_PTR: {
-		erase_instr(instr);
-		break;
-	}
-
-	case MIR_INSTR_COMPOUND: {
-		if (!((MirInstrCompound *)instr)->is_naked) erase_instr(instr);
-		break;
-	}
-
-	case MIR_INSTR_BINOP: {
-		vm_execute_instr(&cnt->vm, instr);
-		erase_instr(instr);
-		break;
-	}
-
-	case MIR_INSTR_UNOP: {
-		vm_execute_instr(&cnt->vm, instr);
-		erase_instr(instr);
-		break;
-	}
-
-	case MIR_INSTR_CAST: {
-		vm_execute_instr(&cnt->vm, instr);
-		erase_instr(instr);
-		break;
-	}
-
-	case MIR_INSTR_LOAD: {
-		vm_execute_instr(&cnt->vm, instr);
-		erase_instr(instr);
-		break;
-	}
-
-	case MIR_INSTR_DECL_DIRECT_REF: {
-		vm_execute_instr(&cnt->vm, instr);
-		erase_instr(instr);
-		break;
-	}
-
-	case MIR_INSTR_ADDROF: {
-		vm_execute_instr(&cnt->vm, instr);
-		erase_instr(instr);
-		break;
-	}
-
-		// NEW!!!
 	case MIR_INSTR_DECL_REF:
+	case MIR_INSTR_DECL_DIRECT_REF:
+	case MIR_INSTR_DECL_VAR:
+	case MIR_INSTR_LOAD:
+	case MIR_INSTR_STORE:
 		vm_eval_instr(&cnt->vm, instr);
+		break;
+
+	case MIR_INSTR_BINOP:
+	case MIR_INSTR_UNOP:
+		vm_eval_instr(&cnt->vm, instr);
+		erase_instr_tree(instr, true, true);
+		mutate_instr(instr, MIR_INSTR_CONST);
 		break;
 
 	default:
@@ -4732,7 +4672,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			/* .len */
 			/* mutate instruction into constant */
 			unref_instr(member_ptr->target_ptr);
-			erase_instr_tree(member_ptr->target_ptr);
+			erase_instr_tree(member_ptr->target_ptr, false, false);
 			MirInstr *len         = mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
 			len->comptime         = true;
 			len->value.type       = cnt->builtin_types.t_s64;
@@ -5020,7 +4960,7 @@ analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof)
 	/* sizeof operator needs only type of input expression so we can erase whole call
 	 * tree generated to get this expression */
 	unref_instr(szof->expr);
-	erase_instr_tree(szof->expr);
+	erase_instr_tree(szof->expr, false, false);
 	szof->base.value.data.v_u64 = type->store_size_bytes;
 	return ANALYZE_RESULT(PASSED, 0);
 }
@@ -5961,22 +5901,17 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 	/******************************************************************************************/
 
 	{ /* Handle type propagation. */
-		MirType *lhs_type = binop->lhs->value.type;
-		MirType *rhs_type = binop->rhs->value.type;
+		MirType *lhs_type = binop->lhs->value2.type;
+		MirType *rhs_type = binop->rhs->value2.type;
 
 		if (is_load_needed(binop->lhs)) lhs_type = mir_deref_type(lhs_type);
 		if (is_load_needed(binop->rhs)) rhs_type = mir_deref_type(rhs_type);
 
-		const bool lhs_is_null = binop->lhs->value.type->kind == MIR_TYPE_NULL;
+		const bool lhs_is_null = binop->lhs->value2.type->kind == MIR_TYPE_NULL;
 		const bool lhs_is_const_int =
 		    binop->lhs->kind == MIR_INSTR_CONST && lhs_type->kind == MIR_TYPE_INT;
 		const bool can_propagate_LtoR =
 		    can_impl_cast(lhs_type, rhs_type) || lhs_is_const_int;
-
-		char type_nameL[256];
-		mir_type_to_str(type_nameL, 256, lhs_type, true);
-		char type_nameR[256];
-		mir_type_to_str(type_nameR, 256, rhs_type, true);
 
 		if (can_propagate_LtoR) {
 			if (analyze_slot(cnt, &analyze_slot_conf_default, &binop->lhs, rhs_type) !=
@@ -5995,12 +5930,12 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 			        cnt,
 			        lhs_is_null ? &analyze_slot_conf_basic : &analyze_slot_conf_default,
 			        &binop->rhs,
-			        lhs_is_null ? NULL : binop->lhs->value.type) != ANALYZE_PASSED)
+			        lhs_is_null ? NULL : binop->lhs->value2.type) != ANALYZE_PASSED)
 				return ANALYZE_RESULT(FAILED, 0);
 
 			if (lhs_is_null) {
 				if (analyze_stage_set_null(
-				        cnt, &binop->lhs, binop->rhs->value.type) !=
+				        cnt, &binop->lhs, binop->rhs->value2.type) !=
 				    ANALYZE_STAGE_BREAK)
 					return ANALYZE_RESULT(FAILED, 0);
 			}
@@ -6013,30 +5948,29 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 	BL_ASSERT(lhs->analyzed);
 	BL_ASSERT(rhs->analyzed);
 
-	const bool lhs_valid = is_valid(lhs->value.type, binop->op);
-	const bool rhs_valid = is_valid(rhs->value.type, binop->op);
+	const bool lhs_valid = is_valid(lhs->value2.type, binop->op);
+	const bool rhs_valid = is_valid(rhs->value2.type, binop->op);
 
 	if (!(lhs_valid && rhs_valid)) {
-		error_types(lhs->value.type,
-		            rhs->value.type,
+		error_types(lhs->value2.type,
+		            rhs->value2.type,
 		            binop->base.node,
 		            "invalid operation for %s type");
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
-	MirType *type = ast_binop_is_logic(binop->op) ? cnt->builtin_types.t_bool : lhs->value.type;
+	MirType *type =
+	    ast_binop_is_logic(binop->op) ? cnt->builtin_types.t_bool : lhs->value2.type;
 	BL_ASSERT(type);
-	binop->base.value.type = type;
+	binop->base.value2.type = type;
 
 	/* when binary operation has lhs and rhs values known in compile it is known
 	 * in compile time also
 	 */
-	if (lhs->comptime && rhs->comptime) binop->base.comptime = true;
-	/* INCOMPLETE: I'm not sure if every binary operation is rvalue... */
-	/* INCOMPLETE: I'm not sure if every binary operation is rvalue... */
-	/* INCOMPLETE: I'm not sure if every binary operation is rvalue... */
-	binop->base.value.addr_mode = MIR_VAM_RVALUE;
-	binop->volatile_type        = is_instr_type_volatile(lhs) && is_instr_type_volatile(rhs);
+	binop->base.value2.is_comptime = lhs->value2.is_comptime && rhs->value2.is_comptime;
+	binop->base.value2.addr_mode   = MIR_VAM_RVALUE;
+
+	binop->volatile_type = is_instr_type_volatile(lhs) && is_instr_type_volatile(rhs);
 
 	return ANALYZE_RESULT(PASSED, 0);
 #undef is_valid
@@ -6045,18 +5979,17 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 AnalyzeResult
 analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
-	MirType *type = unop->expr->value.type;
 	if (analyze_slot(cnt, &analyze_slot_conf_basic, &unop->expr, NULL) != ANALYZE_PASSED) {
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
 	BL_ASSERT(unop->expr && unop->expr->analyzed);
-	type = unop->expr->value.type;
+	MirType *type = unop->expr->value2.type;
 	BL_ASSERT(type);
-	unop->base.value.type = type;
 
-	unop->base.comptime = unop->expr->comptime;
-	unop->volatile_type = is_instr_type_volatile(unop->expr);
+	unop->base.value2.type        = type;
+	unop->base.value2.is_comptime = unop->expr->value2.is_comptime;
+	unop->volatile_type           = is_instr_type_volatile(unop->expr);
 
 	return ANALYZE_RESULT(PASSED, 0);
 }
@@ -6258,13 +6191,13 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 				}
 
 				/* infer type */
-				MirType *type = decl->init->value.type;
+				MirType *type = decl->init->value2.type;
 				BL_ASSERT(type);
 				if (type->kind == MIR_TYPE_NULL) type = type->data.null.base_type;
 				var->value.type = type;
 			}
 
-			is_decl_comptime &= decl->init->comptime;
+			is_decl_comptime &= decl->init->value2.is_comptime;
 		}
 	}
 
@@ -6312,7 +6245,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
 	reduce_instr(cnt, decl->init);
 
-	if (decl->base.comptime && decl->init) {
+	if (decl->base.value2.is_comptime && decl->init) {
 		/* initialize when known in compiletime */
 		BL_UNIMPLEMENTED_REGION(var->value = decl->init->value;)
 	}
@@ -6921,7 +6854,7 @@ analyze(Context *cnt)
 		ip      = skip ? NULL : analyze_try_get_next(ip);
 
 		if (prev_ip && prev_ip->analyzed) {
-			erase_instr_tree(prev_ip);
+			erase_instr_tree(prev_ip, false, false);
 		}
 
 		if (!ip) {

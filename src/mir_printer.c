@@ -30,6 +30,8 @@
 #include "assembly.h"
 #include "ast.h"
 
+#define PRINT_ANALYZED_COMPTIMES false
+
 static void
 print_comptime_value_or_id(MirInstr *instr, FILE *stream);
 
@@ -78,173 +80,73 @@ print_flags(u32 flags, FILE *stream)
 }
 
 static inline void
-print_const_value(MirConstValue *value, FILE *stream)
+print_const_value(MirConstExprValue *value, FILE *stream)
 {
-	MirType *          type = value->type;
-	MirConstValueData *data = &value->data;
+	MirType *type = value->type;
 	if (!type) return;
-
-#define print_case(format, T)                                                                      \
-	case sizeof(data->T):                                                                      \
-		fprintf(stream, format, data->T);                                                  \
-		break;
-
-	BL_ASSERT(type);
 
 	switch (type->kind) {
 	case MIR_TYPE_INT: {
-		const usize s = type->store_size_bytes;
-		if (type->data.integer.is_signed) {
-			switch (s) {
-			case sizeof(data->v_s8):
-				fprintf(stream, "%d", data->v_s8);
-				break;
-			case sizeof(data->v_s16):
-				fprintf(stream, "%d", data->v_s16);
-				break;
-			case sizeof(data->v_s32):
-				fprintf(stream, "%d", data->v_s32);
-				break;
-			case sizeof(data->v_s64):
-				fprintf(stream, "%lld", (long long)data->v_s64);
-				break;
-			default:
-				fprintf(stream, "<cannot read value>");
-				break;
-			}
-		} else {
-			switch (s) {
-			case sizeof(data->v_s8):
-				fprintf(stream, "%u", data->v_u8);
-				break;
-			case sizeof(data->v_s16):
-				fprintf(stream, "%u", data->v_u16);
-				break;
-			case sizeof(data->v_s32):
-				fprintf(stream, "%u", data->v_u32);
-				break;
-			case sizeof(data->v_s64):
-				fprintf(stream, "%llu", (unsigned long long)data->v_u64);
-				break;
-			default:
-				fprintf(stream, "<cannot read value>");
-				break;
-			}
+		const usize size = type->store_size_bytes;
+		switch (size) {
+		case sizeof(s8):
+			fprintf(stream, "%d", MIR_CEV_READ_AS(s8, value));
+			break;
+		case sizeof(s16):
+			fprintf(stream, "%d", MIR_CEV_READ_AS(s16, value));
+			break;
+		case sizeof(s32):
+			fprintf(stream, "%d", MIR_CEV_READ_AS(s32, value));
+			break;
+		case sizeof(s64):
+			fprintf(stream, "%lld", MIR_CEV_READ_AS(s64, value));
+			break;
+		default:
+			fprintf(stream, "<INVALID>");
 		}
-
 		break;
 	}
+
 	case MIR_TYPE_REAL:
-		if (type->store_size_bytes == sizeof(f32)) {
-			fprintf(stream, "%f", data->v_f32);
-		} else {
-			fprintf(stream, "%f", data->v_f64);
-		}
+		fprintf(stream, "<MISING_PRINT>");
 		break;
-	case MIR_TYPE_BOOL:
-		fprintf(stream, "%s", data->v_bool ? "true" : "false");
-		break;
-	case MIR_TYPE_TYPE:
-		print_type(data->v_ptr.data.type, false, stream, false);
-		break;
-	case MIR_TYPE_ENUM:
-		fprintf(stream, "%lld", (long long)data->v_s64);
-		break;
-	case MIR_TYPE_PTR: {
-		MirType *deref_type = mir_deref_type(type);
-		/* pointers to u8 is printed like strings */
-		if (deref_type->kind == MIR_TYPE_INT && deref_type->data.integer.bitcount == 8 &&
-		    deref_type->data.integer.is_signed == false) {
-			if (data->v_ptr.data.str == NULL) {
-				fprintf(stream, "<null>");
-				break;
-			}
 
-			char *tmp = strdup(data->v_ptr.data.str);
-			if (strtok(tmp, "\n")) {
-				fprintf(stream, "\"%s", strtok(tmp, "\n"));
-			} else {
-				fprintf(stream, "\"\"");
-				break;
-			}
-			char *next = strtok(NULL, "\n");
-			if (next && strlen(next)) fprintf(stdout, "...");
-			fprintf(stream, "\"");
-			free(tmp);
-		} else if (deref_type->kind == MIR_TYPE_FN) {
-			/* Pointer to function. */
-			MirFn *fn = data->v_ptr.data.any
-			                ? data->v_ptr.data.value->data.v_ptr.data.fn
-			                : NULL;
-			if (fn) {
-				fprintf(stream,
-				        "&%s",
-				        fn->linkage_name ? fn->linkage_name : fn->id->str);
-			} else {
-				fprintf(stream, "<invalid>");
-			}
-		} else {
-			fprintf(stream, "%p", data->v_ptr.data.any);
-		}
+	case MIR_TYPE_BOOL:
+		fprintf(stream, "<MISING_PRINT>");
+		break;
+
+	case MIR_TYPE_TYPE: {
+		MirType *type = MIR_CEV_READ_AS(MirType *, value);
+		print_type(type, false, stream, false);
 		break;
 	}
-	case MIR_TYPE_NULL:
-		fprintf(stream, "null_");
-		print_type(type->data.null.base_type, false, stream, true);
+
+	case MIR_TYPE_ENUM:
+		fprintf(stream, "<MISING_PRINT>");
 		break;
+
+	case MIR_TYPE_PTR: {
+		fprintf(stream, "<MISING_PRINT>");
+		break;
+	}
+
+	case MIR_TYPE_NULL:
+		fprintf(stream, "null");
+		break;
+
 	case MIR_TYPE_STRING:
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT: {
-		TSmallArray_ConstValuePtr *members             = data->v_struct.members;
-		const bool                 is_zero_initializer = data->v_struct.is_zero_initializer;
-
-		if (is_zero_initializer) {
-			fprintf(stream, "{zero initialized}");
-		} else if (!members) {
-			fprintf(stream, "{<null>}");
-		} else {
-			fprintf(stream, "{");
-
-			MirConstValue *member;
-			const usize    memc = members->size;
-
-			for (usize i = 0; i < memc; ++i) {
-				member = members->data[i];
-				print_const_value(member, stream);
-				if (i + 1 < memc) fprintf(stream, ", ");
-			}
-
-			fprintf(stream, "}");
-		}
+		fprintf(stream, "<MISING_PRINT>");
 		break;
 	}
+
 	case MIR_TYPE_ARRAY: {
-		TSmallArray_ConstValuePtr *elems               = data->v_array.elems;
-		const bool                 is_zero_initializer = data->v_array.is_zero_initializer;
-
-		if (is_zero_initializer) {
-			fprintf(stream, "{zero initialized}");
-		} else {
-			fprintf(stream, "{");
-
-			if (elems) {
-				MirConstValue *elem;
-				const usize    elc = elems->size;
-
-				for (usize i = 0; i < elc; ++i) {
-					elem = elems->data[i];
-					print_const_value(elem, stream);
-					if (i + 1 < elc) fprintf(stream, ", ");
-				}
-			} else {
-				fprintf(stream, "<cannot read value>");
-			}
-
-			fprintf(stream, "}");
-		}
+		fprintf(stream, "<MISING_PRINT>");
 		break;
 	}
+
 	default:
 		fprintf(stream, "<cannot read value>");
 	}
@@ -370,30 +272,18 @@ print_comptime_value_or_id(MirInstr *instr, FILE *stream)
 		return;
 	}
 
-	if (instr->kind == MIR_INSTR_COMPOUND && !((MirInstrCompound *)instr)->is_naked) {
-		print_const_value(&instr->value, stream);
-		return;
-	}
-
-	if (!instr->comptime || !instr->analyzed) {
+	if (!instr->value2.is_comptime || !instr->analyzed) {
 		fprintf(stream, "%%%llu", (unsigned long long)instr->id);
 		return;
 	}
 
 	/* Value is compile time known constant. */
-
 	if (instr->kind == MIR_INSTR_DECL_REF) {
 		fprintf(stream, "%s", ((MirInstrDeclRef *)instr)->rid->str);
 		return;
 	}
 
-	/* Comptime pointer */
-	if (instr->value.type->kind == MIR_TYPE_PTR) {
-		fprintf(stream, "%%%llu /* comptime */", (unsigned long long)instr->id);
-		return;
-	}
-
-	print_const_value(&instr->value, stream);
+	print_const_value(&instr->value2, stream);
 }
 
 void
@@ -861,7 +751,7 @@ void
 print_instr_const(MirInstrConst *cnst, FILE *stream)
 {
 	print_instr_head(&cnst->base, stream, "const");
-	print_const_value(&cnst->base.value, stream);
+	print_const_value(&cnst->base.value2, stream);
 }
 
 void
@@ -980,6 +870,10 @@ print_instr_fn_proto(MirInstrFnProto *fn_proto, FILE *stream)
 void
 mir_print_instr(MirInstr *instr, FILE *stream)
 {
+#if !PRINT_ANALYZED_COMPTIMES
+	if (instr->owner_block && instr->value2.is_comptime && instr->analyzed) return;
+#endif
+
 	switch (instr->kind) {
 	case MIR_INSTR_BLOCK:
 		break;
