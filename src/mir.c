@@ -397,6 +397,9 @@ init_or_create_const_string(Context *cnt, MirConstValue *v, const char *str);
 static MirInstrBlock *
 append_block(Context *cnt, MirFn *fn, const char *name);
 
+static MirInstrBlock *
+append_global_block(Context *cnt, const char *name);
+
 /* instructions */
 static void
 maybe_mark_as_unrechable(MirInstrBlock *block, MirInstr *instr);
@@ -3170,6 +3173,15 @@ append_block(Context *cnt, MirFn *fn, const char *name)
 	fn->last_block = tmp;
 
 	return tmp;
+}
+
+MirInstrBlock *
+append_global_block(Context *cnt, const char *name)
+{
+	MirInstrBlock *tmp = CREATE_INSTR(cnt, MIR_INSTR_BLOCK, NULL, MirInstrBlock *);
+	tmp->name          = name;
+
+	push_into_gscope(cnt, &tmp->base);
 }
 
 MirInstr *
@@ -8455,6 +8467,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 			 * time. Every initialization function must be able to
 			 * be executed in compile time. */
 			value = CREATE_VALUE_RESOLVER_CALL(ast_value, false);
+			append_gloabal_block(cnt, "global_initializer");
 		} else {
 			value = ast(cnt, ast_value);
 		}
