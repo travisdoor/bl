@@ -2,6 +2,11 @@
 
 FOO :: 10;
 
+Data :: struct {
+    i: s32;
+    j: bool;
+}
+
 main :: fn () s32 {
     i := 10;
     return i + 20;

@@ -30,7 +30,7 @@
 #include "assembly.h"
 #include "ast.h"
 
-#define PRINT_ANALYZED_COMPTIMES false
+#define PRINT_ANALYZED_COMPTIMES true
 
 static void
 print_comptime_value_or_id(MirInstr *instr, FILE *stream);
@@ -53,12 +53,13 @@ print_instr_head(MirInstr *instr, FILE *stream, const char *name)
 
 #if BL_DEBUG
 	if (instr->ref_count == -1) {
-		fprintf(stream, "  %%%-6llu (-)", (unsigned long long)instr->id);
+		fprintf(stream, "    %%%-6llu (-)", (unsigned long long)instr->id);
 	} else {
-		fprintf(stream, "  %%%-6llu (%d)", (unsigned long long)instr->id, instr->ref_count);
+		fprintf(
+		    stream, "    %%%-6llu (%d)", (unsigned long long)instr->id, instr->ref_count);
 	}
 #else
-	fprintf(stream, "  %%%-6llu", (unsigned long long)instr->id);
+	fprintf(stream, "    %%%-6llu", (unsigned long long)instr->id);
 #endif
 	print_type(instr->value2.type, true, stream, true);
 	fprintf(stream, " %s ", name);
@@ -151,6 +152,9 @@ print_const_value(MirConstExprValue *value, FILE *stream)
 		fprintf(stream, "<cannot read value>");
 	}
 }
+
+static void
+print_instr_set_initializer(MirInstrSetInitializer *si, FILE *stream);
 
 static void
 print_instr_toany(MirInstrToAny *toany, FILE *stream);
@@ -304,6 +308,20 @@ print_instr_type_fn(MirInstrTypeFn *type_fn, FILE *stream)
 
 	if (type_fn->ret_type)
 		fprintf(stream, " %%%llu", (unsigned long long)type_fn->ret_type->id);
+}
+
+void
+print_instr_set_initializer(MirInstrSetInitializer *si, FILE *stream)
+{
+	print_instr_head(&si->base, stream, "setinit");
+	print_comptime_value_or_id(si->src, stream);
+	fprintf(stream, " -> ");
+	MirInstrDeclVar *dest = (MirInstrDeclVar *)si->dest;
+	if (dest && dest->var->llvm_name) {
+                fprintf(stream, dest->var->llvm_name);
+        } else {
+                print_comptime_value_or_id(si->dest, stream);
+	}
 }
 
 void
@@ -811,7 +829,9 @@ print_instr_binop(MirInstrBinop *binop, FILE *stream)
 void
 print_instr_block(MirInstrBlock *block, FILE *stream)
 {
-	if (block->base.prev) fprintf(stream, "\n");
+	const bool is_global = !block->owner_fn;
+	if (block->base.prev || is_global) fprintf(stream, "\n");
+
 #if BL_DEBUG
 	fprintf(stream,
 	        "%%%s_%llu (%u):",
@@ -821,16 +841,25 @@ print_instr_block(MirInstrBlock *block, FILE *stream)
 #else
 	fprintf(stream, "%%%s_%llu:", block->name, (unsigned long long)block->base.id);
 #endif
-	if (!block->base.ref_count)
-		fprintf(stream, " /* NEVER REACHED */\n");
-	else
-		fprintf(stream, "\n");
+
+	if (is_global) {
+		fprintf(stream, " {\n");
+	} else {
+		if (!block->base.ref_count)
+			fprintf(stream, " /* NEVER REACHED */\n");
+		else
+			fprintf(stream, "\n");
+	}
 
 	MirInstr *tmp = block->entry_instr;
 
 	while (tmp) {
 		mir_print_instr(tmp, stream);
 		tmp = tmp->next;
+	}
+
+	if (is_global) {
+		fprintf(stream, "}");
 	}
 }
 
@@ -876,8 +905,8 @@ mir_print_instr(MirInstr *instr, FILE *stream)
 
 	switch (instr->kind) {
 	case MIR_INSTR_BLOCK:
+		print_instr_block((MirInstrBlock *)instr, stream);
 		break;
-
 	case MIR_INSTR_INVALID:
 		fprintf(stream, RED("INVALID"));
 		break;
@@ -991,6 +1020,9 @@ mir_print_instr(MirInstr *instr, FILE *stream)
 		break;
 	case MIR_INSTR_DECL_DIRECT_REF:
 		print_instr_decl_direct_ref((MirInstrDeclDirectRef *)instr, stream);
+		break;
+	case MIR_INSTR_SET_INITIALIZER:
+		print_instr_set_initializer((MirInstrSetInitializer *)instr, stream);
 		break;
 	}
 
