@@ -6088,11 +6088,9 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	MirVar *var = decl->var;
 	BL_ASSERT(var);
 
-	/* CLEANUP: make also muttable variable to be compile time if they are set to comptime
-	 * init value? */
 	bool is_decl_comptime = !var->is_mutable;
 
-	if (decl->type && var->value.type == NULL) {
+	if (decl->type && !var->value.type) {
 		AnalyzeResult result = analyze_resolve_type(cnt, decl->type, &var->value.type);
 		if (result.state != ANALYZE_PASSED) return result;
 	}
@@ -6164,7 +6162,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
 		/* Infer type if needed */
 		if (!var->value.type) {
-			var->value.type = decl->init->value.type;
+			var->value.type = decl->init->value2.type;
 		}
 
 		is_decl_comptime &= decl->init->comptime;

@@ -1459,9 +1459,9 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	if (var->is_in_gscope) {
 		/* OK variable is declared in global scope so we need different generation here*/
 		/* Generates destination for global if there is no one. Global variable can come
-		 * later than
-		 * it is used, so we call same function during generation of the declref instruction
-		 * IR. */
+		 * later than it is used, so we call same function during generation of the declref
+		 * instruction IR. */
+
 		/* Globals must be set to some value */
 		BL_ASSERT(decl->init);
 
@@ -1472,7 +1472,6 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
 		if (cnt->debug_mode) {
 			emit_DI_var(cnt, var);
-			// emit_DI_instr_loc(cnt, &decl->base);
 		}
 	} else {
 		BL_ASSERT(var->llvm_value);
