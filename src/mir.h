@@ -228,7 +228,7 @@ struct MirFn {
 	LLVMValueRef llvm_value;
 	bool         fully_analyzed;
 	bool         emit_llvm;
-	bool         is_in_gscope;
+	bool         is_global;
 
 	u32         flags;
 	const char *test_case_desc;
@@ -425,9 +425,9 @@ struct MirVar {
 	Scope *            decl_scope;
 	s32                ref_count;
 	bool               is_mutable;
-	bool               is_in_gscope;
+	bool               is_global;
 	bool               is_implicit;
-	bool               gen_llvm;
+	bool               emit_llvm;
 	u32                flags;
 	VMRelativeStackPtr rel_stack_ptr;
 	LLVMValueRef       llvm_value;
@@ -435,7 +435,7 @@ struct MirVar {
 };
 
 struct MirInstr {
-	MirConstValue     value; /* CLEANUP: remove */
+	MirConstValue     value;  /* CLEANUP: remove */
 	MirConstExprValue value2; /* CLEANUP: rename to value */
 	MirInstrKind      kind;
 	u64               id;
@@ -457,6 +457,7 @@ struct MirInstrBlock {
 	MirInstr base;
 
 	const char *name;
+	bool        emit_llvm;
 	MirInstr *  entry_instr;
 	MirInstr *  last_instr;
 	MirInstr *  terminal;

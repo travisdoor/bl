@@ -649,7 +649,7 @@ create_instr_vargs_impl(Context *cnt, MirType *type, TSmallArray_InstrPtr *value
 
 /* ast */
 static MirInstr *
-ast_create_global_initializer(Context *cnt, Ast *node);
+ast_create_global_initializer(Context *cnt, Ast *node, MirInstr *decl_var);
 
 static MirInstr *
 ast_create_impl_fn_call(Context *   cnt,
@@ -807,7 +807,10 @@ ast_expr_compound(Context *cnt, Ast *cmp);
 
 /* analyze */
 static void
-reduce_instr(Context *cnt, MirInstr *instr);
+evaluate(Context *cnt, MirInstr *instr);
+
+static AnalyzeResult
+analyze_var(Context *cnt, MirVar *var);
 
 static AnalyzeResult
 analyze_instr(Context *cnt, MirInstr *instr);
@@ -841,7 +844,7 @@ analyze_stage_implicit_cast(Context *cnt, MirInstr **input, MirType *slot_type);
 static AnalyzeStageState
 analyze_stage_report_type_mismatch(Context *cnt, MirInstr **input, MirType *slot_type);
 
-static const AnalyzeSlotConfig analyze_slot_conf_reduce_only = {.count = 0};
+static const AnalyzeSlotConfig analyze_slot_conf_dummy = {.count = 0};
 
 static const AnalyzeSlotConfig analyze_slot_conf_basic = {.count  = 1,
                                                           .stages = {analyze_stage_load}};
@@ -875,6 +878,9 @@ analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
 
 static AnalyzeResult
 analyze_instr_compound(Context *cnt, MirInstrCompound *cmp);
+
+static AnalyzeResult
+analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
 
 static AnalyzeResult
 analyze_instr_phi(Context *cnt, MirInstrPhi *phi);
@@ -1432,7 +1438,7 @@ commit_var(Context *cnt, MirVar *var)
 	entry->kind     = SCOPE_ENTRY_VAR;
 	entry->data.var = var;
 
-	if (var->is_in_gscope) analyze_notify_provided(cnt, id->hash);
+	if (var->is_global) analyze_notify_provided(cnt, id->hash);
 }
 
 /*
@@ -2756,7 +2762,7 @@ push_var(Context *cnt, MirVar *var)
 {
 	BL_ASSERT(var);
 
-	if (var->is_in_gscope) return;
+	if (var->is_global) return;
 
 	MirFn *fn = get_current_fn(cnt);
 	BL_ASSERT(fn);
@@ -2777,14 +2783,14 @@ create_var(Context *cnt,
 	MirVar *tmp = arena_alloc(&cnt->assembly->arenas.mir.var);
 	init_const_expr_value(&tmp->value, alloc_type, MIR_VAM_UNKNOWN, false);
 
-	tmp->id           = id;
-	tmp->decl_scope   = scope;
-	tmp->decl_node    = decl_node;
-	tmp->is_mutable   = is_mutable;
-	tmp->is_in_gscope = is_in_gscope;
-	tmp->llvm_name    = id->str;
-	tmp->flags        = flags;
-	tmp->gen_llvm     = true;
+	tmp->id         = id;
+	tmp->decl_scope = scope;
+	tmp->decl_node  = decl_node;
+	tmp->is_mutable = is_mutable;
+	tmp->is_global  = is_in_gscope;
+	tmp->llvm_name  = id->str;
+	tmp->flags      = flags;
+	tmp->emit_llvm  = true;
 
 	push_var(cnt, tmp);
 	return tmp;
@@ -2802,11 +2808,11 @@ create_var_impl(Context *   cnt,
 	MirVar *tmp = arena_alloc(&cnt->assembly->arenas.mir.var);
 	init_const_expr_value(&tmp->value, alloc_type, MIR_VAM_UNKNOWN, comptime);
 
-	tmp->is_mutable   = is_mutable;
-	tmp->is_in_gscope = is_in_gscope;
-	tmp->llvm_name    = name;
-	tmp->is_implicit  = true;
-	tmp->gen_llvm     = true;
+	tmp->is_mutable  = is_mutable;
+	tmp->is_global   = is_in_gscope;
+	tmp->llvm_name   = name;
+	tmp->is_implicit = true;
+	tmp->emit_llvm   = true;
 
 	push_var(cnt, tmp);
 	return tmp;
@@ -2830,7 +2836,7 @@ create_fn(Context *        cnt,
 	tmp->decl_node    = node;
 	tmp->prototype    = &prototype->base;
 	tmp->emit_llvm    = emit_llvm;
-	tmp->is_in_gscope = is_in_gscope;
+	tmp->is_global    = is_in_gscope;
 	return tmp;
 }
 
@@ -3164,6 +3170,7 @@ append_block(Context *cnt, MirFn *fn, const char *name)
 	MirInstrBlock *tmp = create_instr(cnt, MIR_INSTR_BLOCK, NULL);
 	tmp->name          = name;
 	tmp->owner_fn      = fn;
+	tmp->emit_llvm     = true;
 
 	if (!fn->first_block) {
 		fn->first_block = tmp;
@@ -3185,10 +3192,12 @@ append_global_block(Context *cnt, const char *name)
 	MirInstrBlock *tmp           = create_instr(cnt, MIR_INSTR_BLOCK, NULL);
 	tmp->base.value2.is_comptime = true;
 	tmp->name                    = name;
+	tmp->emit_llvm               = true;
 
 	ref_instr(&tmp->base);
 
 	push_into_gscope(cnt, &tmp->base);
+	analyze_push_back(cnt, &tmp->base);
 	return tmp;
 }
 
@@ -4246,9 +4255,11 @@ erase_instr_tree(MirInstr *instr, bool keep_root, bool force)
 }
 
 void
-reduce_instr(Context *cnt, MirInstr *instr)
+evaluate(Context *cnt, MirInstr *instr)
 {
 	if (!instr) return;
+
+	BL_ASSERT(instr->analyzed && "Non-analyzed instruction cannot be evaluated!");
 	if (!instr->value2.is_comptime) return;
 
 	switch (instr->kind) {
@@ -4257,6 +4268,7 @@ reduce_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_DECL_VAR:
 	case MIR_INSTR_LOAD:
 	case MIR_INSTR_STORE:
+	case MIR_INSTR_SET_INITIALIZER:
 		vm_eval_instr(&cnt->vm, instr);
 		break;
 
@@ -4296,7 +4308,7 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 	MirType *toany_type = mir_deref_type(toany->base.value.type);
 	BL_ASSERT(toany->expr && "Missing expression as toany input.");
 
-	reduce_instr(cnt, toany->expr);
+	// reduce_instr(cnt, toany->expr);
 
 	MirInstr *expr      = toany->expr;
 	MirType * rtti_type = expr->value.type;
@@ -4429,7 +4441,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 		MirInstr *value = values->data[0];
 		if (value->kind == MIR_INSTR_CONST && value->value.type->kind == MIR_TYPE_INT &&
 		    value->value.data.v_u64 == 0) {
-			reduce_instr(cnt, value);
+			// reduce_instr(cnt, value);
 			cmp->is_zero_initialized = true;
 		}
 	}
@@ -4560,6 +4572,99 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 }
 
 AnalyzeResult
+analyze_var(Context *cnt, MirVar *var)
+{
+	if (!var->value.type) {
+		BL_ABORT("unknown declaration type");
+	}
+
+	switch (var->value.type->kind) {
+	case MIR_TYPE_TYPE:
+		/* Disable LLVM generation of typedefs. */
+		var->emit_llvm = false;
+		if (!var->is_mutable) break;
+		/* Typedef must be immutable! */
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_INVALID_MUTABILITY,
+		            var->decl_node ? var->decl_node->location : NULL,
+		            BUILDER_CUR_WORD,
+		            "Type declaration must be immutable.");
+		return ANALYZE_RESULT(FAILED, 0);
+
+	case MIR_TYPE_FN:
+		/* Allocated type is function. */
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_INVALID_TYPE,
+		            var->decl_node ? var->decl_node->location : NULL,
+		            BUILDER_CUR_WORD,
+		            "Invalid type of the variable, functions can be referenced "
+		            "only by pointers.");
+		return ANALYZE_RESULT(FAILED, 0);
+
+	case MIR_TYPE_VOID:
+		/* Allocated type is void type. */
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_INVALID_TYPE,
+		            var->decl_node ? var->decl_node->location : NULL,
+		            BUILDER_CUR_WORD,
+		            "Cannot allocate unsized type.");
+		return ANALYZE_RESULT(FAILED, 0);
+
+	default:
+		break;
+	}
+
+	if (!var->is_implicit) commit_var(cnt, var);
+
+	/* Type declaration should not be generated in LLVM. */
+	var->emit_llvm = var->value.type->kind != MIR_TYPE_TYPE;
+
+	return ANALYZE_RESULT(PASSED, 0);
+}
+
+AnalyzeResult
+analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
+{
+	BL_ASSERT(si->dest && si->dest->kind == MIR_INSTR_DECL_VAR);
+	BL_ASSERT(si->src);
+
+	if (!si->dest->analyzed) return ANALYZE_RESULT(POSTPONE, 0); // PERFORMANCE: use wait???
+
+	MirVar *var = ((MirInstrDeclVar *)si->dest)->var;
+	BL_ASSERT(var && "Missing MirVar for variable declaration!");
+	BL_ASSERT(var->is_global && "Variable set by initializer must be in global scope!");
+
+	AnalyzeSlotConfig *config =
+	    var->value.type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
+
+	if (analyze_slot(cnt, config, &si->src, var->value.type) != ANALYZE_PASSED) {
+		return ANALYZE_RESULT(FAILED, 0);
+	}
+
+	/* Global initializer must be compile time known. */
+	if (!si->src->value2.is_comptime) {
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_EXPECTED_COMPTIME,
+		            si->src->node->location,
+		            BUILDER_CUR_WORD,
+		            "Global variables must be initialized with compile time known value.");
+		return ANALYZE_RESULT(FAILED, 0);
+	}
+
+	/* Infer variable type if needed. */
+	if (!var->value.type) var->value.type = si->src->value2.type;
+
+	/* Initializer value is quaranteed to be comptime so we just check variable mutablility.
+	 * (mutable valirables cannot be comptime) */
+	var->value.is_comptime = si->base.value2.is_comptime = !var->is_mutable;
+
+	AnalyzeResult state = analyze_var(cnt, var);
+	if (state.state != ANALYZE_PASSED) return state;
+
+	return ANALYZE_RESULT(PASSED, 0);
+}
+
+AnalyzeResult
 analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 {
 	MirType *             type   = vargs->type;
@@ -4671,7 +4776,7 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
-	reduce_instr(cnt, elem_ptr->arr_ptr);
+	// reduce_instr(cnt, elem_ptr->arr_ptr);
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -4766,7 +4871,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			BL_ASSERT(member_ptr->target_ptr);
 		}
 
-		reduce_instr(cnt, member_ptr->target_ptr);
+		// reduce_instr(cnt, member_ptr->target_ptr);
 
 		Scope *     scope = target_type->data.strct.scope;
 		ID *        rid   = &ast_member_ident->data.ident.id;
@@ -4917,7 +5022,7 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 	addrof->base.value.addr_mode = MIR_VAM_LVALUE_CONST;
 	BL_ASSERT(addrof->base.value.type && "invalid type");
 
-	reduce_instr(cnt, addrof->src);
+	// reduce_instr(cnt, addrof->src);
 
 	return ANALYZE_RESULT(PASSED, 0);
 }
@@ -4934,7 +5039,7 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast, bool analyze_op_only)
 		}
 
 		const AnalyzeSlotConfig *config =
-		    cast->base.implicit ? &analyze_slot_conf_reduce_only : &analyze_slot_conf_basic;
+		    cast->base.implicit ? &analyze_slot_conf_dummy : &analyze_slot_conf_basic;
 
 		if (analyze_slot(cnt, config, &cast->expr, dest_type) != ANALYZE_PASSED) {
 			return ANALYZE_RESULT(FAILED, 0);
@@ -5231,7 +5336,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 			fn->linkage_name = fn->id->str;
 		} else if (IS_FLAG(fn->flags, FLAG_PRIVATE)) {
 			fn->linkage_name = gen_uq_name(fn->id->str);
-		} else if (fn->is_in_gscope) {
+		} else if (fn->is_global) {
 			fn->linkage_name = fn->id->str;
 		} else {
 			fn->linkage_name = gen_uq_name(fn->id->str);
@@ -5441,7 +5546,7 @@ analyze_instr_load(Context *cnt, MirInstrLoad *load)
 	BL_ASSERT(type);
 	load->base.value2.type = type;
 
-	reduce_instr(cnt, src);
+	// reduce_instr(cnt, src);
 	load->base.value2.is_comptime = src->value2.is_comptime;
 	load->base.value2.addr_mode   = src->value2.addr_mode;
 
@@ -5779,7 +5884,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 	}
 
 	BL_ASSERT(type_arr->len->comptime && "this must be error");
-	reduce_instr(cnt, type_arr->len);
+	// reduce_instr(cnt, type_arr->len);
 
 	const s64 len = type_arr->len->value.data.v_s64;
 	if (len == 0) {
@@ -5793,7 +5898,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 
 	/* elem type */
 	BL_ASSERT(type_arr->elem_type->comptime);
-	reduce_instr(cnt, type_arr->elem_type);
+	// reduce_instr(cnt, type_arr->elem_type);
 
 	MirType *elem_type = type_arr->elem_type->value.data.v_ptr.data.type;
 	BL_ASSERT(elem_type);
@@ -5822,7 +5927,7 @@ analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 	 */
 	MirType *base_type;
 	if (type_enum->base_type) {
-		reduce_instr(cnt, type_enum->base_type);
+		// reduce_instr(cnt, type_enum->base_type);
 		base_type = type_enum->base_type->value.data.v_ptr.data.type;
 
 		/* Enum type must be integer! */
@@ -5859,7 +5964,7 @@ analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 			return ANALYZE_RESULT(FAILED, 0);
 		}
 
-		reduce_instr(cnt, &variant_instr->base);
+		// reduce_instr(cnt, &variant_instr->base);
 
 		tsa_push_VariantPtr(variants, variant);
 	}
@@ -6127,147 +6232,42 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		if (result.state != ANALYZE_PASSED) return result;
 	}
 
-	if (var->is_in_gscope) { // global variable
-		/* All globals must be initialized. */
-		if (!decl->init) {
-			builder_msg(BUILDER_MSG_ERROR,
-			            ERR_UNINITIALIZED,
-			            decl->base.node->location,
-			            BUILDER_CUR_WORD,
-			            "All globals must be initialized.");
-			return ANALYZE_RESULT(FAILED, 0);
-		}
+	if (var->is_global) {
+		/* Globals are set by initializer so we can skip all check, rest of the work is up
+		 * to set initializer instruction! */
+		return ANALYZE_RESULT(PASSED, 0);
+	}
 
-		/* Global initializer must be compile time known. */
-		if (!decl->init->value2.is_comptime) {
-			builder_msg(
-			    BUILDER_MSG_ERROR,
-			    ERR_EXPECTED_COMPTIME,
-			    decl->init->node->location,
-			    BUILDER_CUR_WORD,
-			    "Global variables must be initialized with compile time known value.");
-			return ANALYZE_RESULT(FAILED, 0);
-		}
-
-		if (decl->init->kind ==
-		    MIR_INSTR_CALL) { /* Initialized by call to value resolver function. */
-			              /* Just to be sure we have call instruction. */
-			BL_ASSERT(decl->init->kind == MIR_INSTR_CALL &&
-			          "Global initializer is supposed to be comptime implicit call.");
-
-			/* Since all globals are initialized by call to comptime function and no
-			 * type infer is needed (user specified expected type directly), we must
-			 * disable type infering of terminal instruction in initializer and set
-			 * exact type we are expecting to be returned by the initializer function.
-			 */
-			if (var->value.type) {
-				MirInstrCall *initializer_call = (MirInstrCall *)decl->init;
-				MirFn *       fn               = get_callee(initializer_call);
-				MirInstrRet * terminal         = fn->terminal_instr;
-				BL_ASSERT(terminal);
-
-				if (terminal->infer_type) {
-					terminal->infer_type = false;
-					fn->type =
-					    create_type_fn(cnt, NULL, var->value.type, NULL, false);
-
-					fn->prototype->value2.type = fn->type;
-				}
+	// local variable
+	if (decl->init) {
+		if (var->value.type) {
+			if (analyze_slot(
+			        cnt, &analyze_slot_conf_default, &decl->init, var->value.type) !=
+			    ANALYZE_PASSED) {
+				return ANALYZE_RESULT(FAILED, 0);
+			}
+		} else {
+			if (analyze_slot(cnt, &analyze_slot_conf_basic, &decl->init, NULL) !=
+			    ANALYZE_PASSED) {
+				return ANALYZE_RESULT(FAILED, 0);
 			}
 
-			/* Analyze and execute initializer. This could lead to POSTPONE when
-			 * initializer function is not ready yet. */
-			AnalyzeResult result = analyze_instr(cnt, decl->init);
-			if (result.state != ANALYZE_PASSED) return result;
-
-			/* Execute only when analyze passed. */
-			vm_execute_instr_top_level_call(&cnt->vm, (MirInstrCall *)decl->init);
-
-		} else { /* Initialized by constant value. */
-			BL_ASSERT(decl->init->kind == MIR_INSTR_CONST &&
-			          "Initializer of global value must be either comptime function "
-			          "call or constant instruction.");
-
-			BL_ASSERT(decl->init->analyzed &&
-			          "Global variable const initializer is not analyzed!");
+			/* infer type */
+			MirType *type = decl->init->value2.type;
+			BL_ASSERT(type);
+			if (type->kind == MIR_TYPE_NULL) type = type->data.null.base_type;
+			var->value.type = type;
 		}
 
-		/* Infer type if needed */
-		if (!var->value.type) {
-			var->value.type = decl->init->value2.type;
-		}
-
-		is_decl_comptime &= decl->init->comptime;
-	} else { // local variable
-		if (decl->init) {
-			if (var->value.type) {
-				if (analyze_slot(cnt,
-				                 &analyze_slot_conf_default,
-				                 &decl->init,
-				                 var->value.type) != ANALYZE_PASSED) {
-					return ANALYZE_RESULT(FAILED, 0);
-				}
-			} else {
-				if (analyze_slot(
-				        cnt, &analyze_slot_conf_basic, &decl->init, NULL) !=
-				    ANALYZE_PASSED) {
-					return ANALYZE_RESULT(FAILED, 0);
-				}
-
-				/* infer type */
-				MirType *type = decl->init->value2.type;
-				BL_ASSERT(type);
-				if (type->kind == MIR_TYPE_NULL) type = type->data.null.base_type;
-				var->value.type = type;
-			}
-
-			is_decl_comptime &= decl->init->value2.is_comptime;
-		}
+		is_decl_comptime &= decl->init->value2.is_comptime;
 	}
 
 	decl->base.value2.is_comptime = var->value.is_comptime = is_decl_comptime;
 
-	if (!var->value.type) {
-		BL_ABORT("unknown declaration type");
-	}
+	AnalyzeResult state = analyze_var(cnt, decl->var);
+	if (state.state != ANALYZE_PASSED) return state;
 
-	if (var->value.type->kind == MIR_TYPE_TYPE && var->is_mutable) {
-		builder_msg(BUILDER_MSG_ERROR,
-		            ERR_INVALID_MUTABILITY,
-		            decl->base.node->location,
-		            BUILDER_CUR_WORD,
-		            "Type declaration must be immutable.");
-		return ANALYZE_RESULT(FAILED, 0);
-	}
-
-	if (var->value.type->kind == MIR_TYPE_FN) {
-		/* Allocated type is function. */
-		builder_msg(BUILDER_MSG_ERROR,
-		            ERR_INVALID_TYPE,
-		            decl->base.node->location,
-		            BUILDER_CUR_WORD,
-		            "Invalid type of the variable, functions can be referenced "
-		            "only by pointers.");
-		return ANALYZE_RESULT(FAILED, 0);
-	} else if (var->value.type->kind == MIR_TYPE_VOID) {
-		/* Allocated type is void type. */
-		builder_msg(BUILDER_MSG_ERROR,
-		            ERR_INVALID_TYPE,
-		            decl->base.node->location,
-		            BUILDER_CUR_WORD,
-		            "Cannot allocate unsized type.");
-		return ANALYZE_RESULT(FAILED, 0);
-	}
-
-	if (decl->base.ref_count == 0) {
-		builder_msg(BUILDER_MSG_WARNING,
-		            0,
-		            decl->base.node->location,
-		            BUILDER_CUR_WORD,
-		            "Unused declaration.");
-	}
-
-	reduce_instr(cnt, decl->init);
+	// reduce_instr(cnt, decl->init);
 
 	if (decl->base.value2.is_comptime && decl->init) {
 		/* initialize when known in compiletime */
@@ -6275,12 +6275,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		BL_ASSERT(var->value.data && "Incomplete comptime var initialization.");
 	}
 
-	if (!decl->var->is_implicit) commit_var(cnt, decl->var);
-
-	/* Type declaration should not be generated in LLVM. */
-	var->gen_llvm = var->value.type->kind != MIR_TYPE_TYPE;
-
-	if (var->is_in_gscope) {
+	if (var->is_global) {
 		/* Global varibales which are not compile time constants are allocated
 		 * on the stack, one option is to do allocation every time when we
 		 * invoke comptime function execution, but we don't know which globals
@@ -6499,7 +6494,7 @@ analyze_instr_store(Context *cnt, MirInstrStore *store)
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
-	reduce_instr(cnt, store->dest);
+	// reduce_instr(cnt, store->dest);
 
 	return ANALYZE_RESULT(PASSED, 0);
 }
@@ -6510,8 +6505,12 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 	BL_ASSERT(block);
 
 	MirFn *fn = block->owner_fn;
-	BL_ASSERT(fn);
+	if (!fn) { /* block in global scope */
+		return ANALYZE_RESULT(PASSED, 0);
+	}
+
 	MirInstrFnProto *fn_proto = (MirInstrFnProto *)fn->prototype;
+	BL_ASSERT(fn_proto);
 
 	/* append implicit return for void functions or generate error when last
 	 * block is not terminated
@@ -6562,8 +6561,8 @@ analyze_slot(Context *cnt, const AnalyzeSlotConfig *conf, MirInstr **input, MirT
 	}
 
 DONE:
-	reduce_instr(cnt, *input);
 	return ANALYZE_PASSED;
+
 FAILED:
 	return ANALYZE_FAILED;
 }
@@ -6615,7 +6614,7 @@ analyze_stage_set_auto(Context *cnt, MirInstr **input, MirType *slot_type)
 	if (_input->kind != MIR_INSTR_CAST) return ANALYZE_STAGE_CONTINUE;
 	if (!((MirInstrCast *)_input)->auto_cast) return ANALYZE_STAGE_CONTINUE;
 
-	_input->value.type = slot_type;
+	_input->value2.type = slot_type;
 	if (analyze_instr_cast(cnt, (MirInstrCast *)_input, true).state != ANALYZE_PASSED) {
 		return ANALYZE_STAGE_FAILED;
 	}
@@ -6644,7 +6643,7 @@ analyze_stage_set_volatile_expr(Context *cnt, MirInstr **input, MirType *slot_ty
 	if (slot_type->kind != MIR_TYPE_INT) return ANALYZE_STAGE_CONTINUE;
 	if (!is_instr_type_volatile(*input)) return ANALYZE_STAGE_CONTINUE;
 
-	(*input)->value.type = slot_type;
+	(*input)->value2.type = slot_type;
 	return ANALYZE_STAGE_BREAK;
 }
 
@@ -6661,7 +6660,7 @@ analyze_stage_implicit_cast(Context *cnt, MirInstr **input, MirType *slot_type)
 AnalyzeStageState
 analyze_stage_report_type_mismatch(Context *cnt, MirInstr **input, MirType *slot_type)
 {
-	error_types((*input)->value.type, slot_type, (*input)->node, NULL);
+	error_types((*input)->value2.type, slot_type, (*input)->node, NULL);
 	return ANALYZE_STAGE_CONTINUE;
 }
 
@@ -6793,11 +6792,14 @@ analyze_instr(Context *cnt, MirInstr *instr)
 		state = analyze_instr_switch(cnt, (MirInstrSwitch *)instr);
 		break;
 	case MIR_INSTR_SET_INITIALIZER:
-		BL_UNIMPLEMENTED;
+		state = analyze_instr_set_initializer(cnt, (MirInstrSetInitializer *)instr);
 		break;
 	}
 
-	instr->analyzed = state.state == ANALYZE_PASSED;
+	if (state.state == ANALYZE_PASSED) {
+		instr->analyzed = true;
+		evaluate(cnt, instr);
+	}
 
 	return state;
 }
@@ -6815,7 +6817,7 @@ analyze_try_get_next(MirInstr *instr)
 	 * be the last block inside function, we try to get following one. */
 	MirInstrBlock *owner_block = instr->owner_block;
 	if (owner_block && instr == owner_block->last_instr) {
-		if (owner_block->base.next == NULL) {
+		if (owner_block->base.next == NULL && owner_block->owner_fn) {
 			/* Instruction is last instruction of the function body, so the
 			 * function can be executed in compile time if needed, we need to
 			 * set flag with this information here. */
@@ -8464,64 +8466,52 @@ ast_decl_entity(Context *cnt, Ast *entity)
 
 		cnt->ast.current_entity_id = &ast_name->data.ident.id;
 		/* initialize value */
-		MirInstr *init = NULL;
+		MirInstr *value = NULL;
+
+		if (!is_struct_decl && !is_in_gscope) {
+			value = ast(cnt, ast_value);
+		}
+
+		MirInstr *decl_var = append_instr_decl_var(cnt,
+		                                           ast_name,
+		                                           type,
+		                                           value,
+		                                           is_mutable,
+		                                           is_in_gscope,
+		                                           -1,
+		                                           entity->data.decl_entity.flags);
 
 		if (is_struct_decl) {
 			// Set to const type fwd decl
 			MirType *fwd_decl_type =
 			    create_type_struct_incomplete(cnt, cnt->ast.current_entity_id);
 
-			init = create_instr_const_type(cnt, ast_value, fwd_decl_type);
-			analyze_instr_rq(cnt, init);
+			value = create_instr_const_type(cnt, ast_value, fwd_decl_type);
+			analyze_instr_rq(cnt, value);
 
 			// Set current fwd decl
-			cnt->ast.current_fwd_struct_decl = init;
+			cnt->ast.current_fwd_struct_decl = value;
 
 			// Enable incomplete types for decl_ref instructions.
 			cnt->ast.enable_incomplete_decl_refs = true;
 
-			init =
-			    (MirInstrSetInitializer *)ast_create_global_initializer(cnt, ast_value);
-
-			// Generate value resolver
-			// CREATE_VALUE_RESOLVER_CALL(ast_value, true);
+			ast_create_global_initializer(cnt, ast_value, decl_var);
 
 			cnt->ast.enable_incomplete_decl_refs = false;
 			cnt->ast.current_fwd_struct_decl     = NULL;
 		} else if (is_in_gscope) {
-			/* Initialization of global variables must be done in
-			 * implicit initializer function executed in compile
-			 * time. Every initialization function must be able to
-			 * be executed in compile time. */
-			// value = CREATE_VALUE_RESOLVER_CALL(ast_value, false);
-
-			/* TEST */
-			/* TEST */
-			/* TEST */
-
-			/* INCOMPLETE: after this, we can remove support of mutable resolver
-			 * function return type!!! */
-
-			BL_ASSERT(ast_value &&
-			          "Missing global initialization, this should be an error.");
-
-			/* Generate implicit global initializer block. */
-			init = ast_create_global_initializer(cnt, ast_value);
-
-		} else {
-			init = ast(cnt, ast_value);
+			if (ast_value) {
+				/* Generate implicit global initializer block. */
+				ast_create_global_initializer(cnt, ast_value, decl_var);
+			} else {
+				builder_msg(BUILDER_MSG_ERROR,
+				            ERR_UNINITIALIZED,
+				            ast_name->location,
+				            BUILDER_CUR_WORD,
+				            "All globals must be initialized.");
+			}
 		}
 
-		MirInstr *decl_var = append_instr_decl_var(cnt,
-		                                           ast_name,
-		                                           type,
-		                                           init,
-		                                           is_mutable,
-		                                           is_in_gscope,
-		                                           -1,
-		                                           entity->data.decl_entity.flags);
-
-		if (initializer) initializer->dest = decl_var;
 		cnt->ast.current_entity_id = NULL;
 	}
 
@@ -8786,13 +8776,14 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 }
 
 MirInstr *
-ast_create_global_initializer(Context *cnt, Ast *node)
+ast_create_global_initializer(Context *cnt, Ast *node, MirInstr *decl_var)
 {
+	BL_ASSERT(decl_var);
 	MirInstrBlock *block = append_global_block(cnt, INIT_VALUE_FN_NAME);
 	set_current_block(cnt, block);
 	MirInstr *result = ast(cnt, node);
 
-	return append_instr_set_initializer(cnt, node, NULL, result);
+	return append_instr_set_initializer(cnt, node, decl_var, result);
 }
 
 MirInstr *

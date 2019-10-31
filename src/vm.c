@@ -32,7 +32,7 @@
 #include "threading.h"
 
 #define MAX_ALIGNMENT 8
-#define VERBOSE_EXEC true
+#define VERBOSE_EXEC false 
 #define CHCK_STACK true
 #define PTR_SIZE sizeof(void *) /* HACK: can cause problems with different build targets. */
 
@@ -271,6 +271,12 @@ eval_instr_binop(VM *vm, MirInstrBinop *binop);
 
 static void
 eval_instr_unop(VM *vm, MirInstrUnop *unop);
+
+static void
+eval_instr_load(VM *vm, MirInstrLoad *load);
+
+static void
+eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si);
 
 /***********/
 /* inlines */
@@ -825,8 +831,7 @@ copy_comptime_to_stack(VM *vm, VMStackPtr dest_ptr, MirConstValue *src_value)
 			MirVar *var = const_ptr->data.var;
 			BL_ASSERT(var);
 
-			VMStackPtr var_ptr =
-			    read_stack_ptr(vm, var->rel_stack_ptr, var->is_in_gscope);
+			VMStackPtr var_ptr = read_stack_ptr(vm, var->rel_stack_ptr, var->is_global);
 			memcpy(dest_ptr, &var_ptr, src_type->store_size_bytes);
 			break;
 		}
@@ -1483,7 +1488,7 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 {
 	MirVar *   tmp      = toany->tmp;
 	MirVar *   expr_tmp = toany->expr_tmp;
-	VMStackPtr tmp_ptr  = read_stack_ptr(vm, tmp->rel_stack_ptr, tmp->is_in_gscope);
+	VMStackPtr tmp_ptr  = read_stack_ptr(vm, tmp->rel_stack_ptr, tmp->is_global);
 	MirType *  tmp_type = tmp->value.type;
 
 	/* type_info */
@@ -1498,7 +1503,7 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 	MirType *  type_info_type = mir_get_struct_elem_type(tmp_type, 0);
 
 	VMStackPtr rtti_ptr =
-	    read_stack_ptr(vm, expr_type_rtti->rel_stack_ptr, expr_type_rtti->is_in_gscope);
+	    read_stack_ptr(vm, expr_type_rtti->rel_stack_ptr, expr_type_rtti->is_global);
 
 	memcpy(dest, &rtti_ptr, type_info_type->store_size_bytes);
 
@@ -1521,12 +1526,12 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 		BL_ASSERT(spec_type_rtti);
 
 		VMStackPtr rtti_spec_ptr =
-		    read_stack_ptr(vm, spec_type_rtti->rel_stack_ptr, spec_type_rtti->is_in_gscope);
+		    read_stack_ptr(vm, spec_type_rtti->rel_stack_ptr, spec_type_rtti->is_global);
 
 		memcpy(dest, &rtti_spec_ptr, PTR_SIZE);
 	} else if (expr_tmp) { // set data
 		VMStackPtr expr_tmp_ptr =
-		    read_stack_ptr(vm, expr_tmp->rel_stack_ptr, expr_tmp->is_in_gscope);
+		    read_stack_ptr(vm, expr_tmp->rel_stack_ptr, expr_tmp->is_global);
 
 		if (toany->expr->comptime) {
 			copy_comptime_to_stack(vm, expr_tmp_ptr, (MirConstValue *)data_ptr);
@@ -1622,8 +1627,7 @@ interp_instr_type_info(VM *vm, MirInstrTypeInfo *type_info)
 	MirType *type = type_info->base.value.type;
 	BL_ASSERT(type);
 
-	VMStackPtr ptr =
-	    read_stack_ptr(vm, type_info_var->rel_stack_ptr, type_info_var->is_in_gscope);
+	VMStackPtr ptr = read_stack_ptr(vm, type_info_var->rel_stack_ptr, type_info_var->is_global);
 
 	push_stack(vm, (VMStackPtr)&ptr, type);
 }
@@ -2106,7 +2110,7 @@ interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref)
 		MirVar *var = entry->data.var;
 		BL_ASSERT(var);
 
-		const bool use_static_segment = var->is_in_gscope;
+		const bool use_static_segment = var->is_global;
 		VMStackPtr real_ptr           = NULL;
 		if (var->value.is_comptime) {
 			real_ptr = (VMStackPtr)&var->value.data;
@@ -2114,7 +2118,7 @@ interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref)
 			real_ptr = read_stack_ptr(vm, var->rel_stack_ptr, use_static_segment);
 		}
 
-                push_stack(vm, &real_ptr, ref->base.value2.type);
+		push_stack(vm, &real_ptr, ref->base.value2.type);
 		break;
 	}
 
@@ -2136,7 +2140,7 @@ interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref)
 	MirVar *var = ((MirInstrDeclVar *)ref->ref)->var;
 	BL_ASSERT(var);
 
-	const bool use_static_segment = var->is_in_gscope;
+	const bool use_static_segment = var->is_global;
 	VMStackPtr real_ptr           = NULL;
 
 	if (var->value.is_comptime) {
@@ -2160,8 +2164,7 @@ interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 	const bool will_push = tmp_ptr == NULL;
 	if (will_push) {
 		BL_ASSERT(cmp->tmp_var && "Missing temp variable for compound.");
-		tmp_ptr =
-		    read_stack_ptr(vm, cmp->tmp_var->rel_stack_ptr, cmp->tmp_var->is_in_gscope);
+		tmp_ptr = read_stack_ptr(vm, cmp->tmp_var->rel_stack_ptr, cmp->tmp_var->is_global);
 	}
 
 	BL_ASSERT(tmp_ptr);
@@ -2290,7 +2293,7 @@ interp_instr_decl_var(VM *vm, MirInstrDeclVar *decl)
 	 */
 	if (var->value.is_comptime) return;
 
-	const bool use_static_segment = var->is_in_gscope;
+	const bool use_static_segment = var->is_global;
 
 	BL_ASSERT(var->rel_stack_ptr);
 
@@ -2507,9 +2510,34 @@ eval_instr(VM *vm, MirInstr *instr)
 		eval_instr_unop(vm, (MirInstrUnop *)instr);
 		break;
 
+	case MIR_INSTR_SET_INITIALIZER:
+		eval_instr_set_initializer(vm, (MirInstrSetInitializer *)instr);
+		break;
+
+	case MIR_INSTR_LOAD:
+		eval_instr_load(vm, (MirInstrLoad *)instr);
+		break;
+
 	default:
 		BL_ABORT("Missing evaluation for instruction '%s'.", mir_instr_name(instr));
 	}
+}
+
+void
+eval_instr_load(VM *vm, MirInstrLoad *load)
+{
+	VMStackPtr src = MIR_CEV_READ_AS(VMStackPtr, &load->src->value2);
+	src            = STACK_PTR_DEREF(src);
+	BL_ASSERT(src);
+
+	load->base.value2.data = src;
+}
+
+void
+eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si)
+{
+	MirVar *var     = ((MirInstrDeclVar *)si->dest)->var;
+	var->value.data = si->src->value2.data;
 }
 
 void
@@ -2628,7 +2656,7 @@ vm_create_global(VM *vm, struct MirInstrDeclVar *decl)
 {
 	MirVar *var = decl->var;
 	BL_ASSERT(var);
-	BL_ASSERT(var->is_in_gscope && "Allocated variable is supposed to be global variable.");
+	BL_ASSERT(var->is_global && "Allocated variable is supposed to be global variable.");
 
 	VMRelativeStackPtr var_ptr = stack_alloc_var(vm, var);
 	interp_instr_decl_var(vm, decl);
@@ -2641,7 +2669,7 @@ VMStackPtr
 vm_create_implicit_global(VM *vm, struct MirVar *var)
 {
 	BL_ASSERT(var);
-	BL_ASSERT(var->is_in_gscope && "Allocated variable is supposed to be global variable.");
+	BL_ASSERT(var->is_global && "Allocated variable is supposed to be global variable.");
 
 	/* HACK: we can ignore relative pointers for globals. */
 	VMStackPtr var_ptr = (VMStackPtr)stack_alloc_var(vm, var);

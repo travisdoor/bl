@@ -142,6 +142,9 @@ static void
 emit_instr_phi(Context *cnt, MirInstrPhi *phi);
 
 static void
+emit_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
+
+static void
 emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
 
 static void
@@ -389,7 +392,7 @@ emit_DI_var(Context *cnt, MirVar *var)
 	                                 ? var->decl_node->owner_scope->llvm_di_meta
 	                                 : llvm_file;
 
-	if (var->is_in_gscope) {
+	if (var->is_global) {
 		llvm_di_set_current_location(cnt->llvm_builder,
 		                             (unsigned)location->line,
 		                             (unsigned)location->col,
@@ -460,7 +463,7 @@ emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	switch (entry->kind) {
 	case SCOPE_ENTRY_VAR: {
 		MirVar *var = entry->data.var;
-		if (var->is_in_gscope)
+		if (var->is_global)
 			ref->base.llvm_value = emit_global_var_proto(cnt, var);
 		else
 			ref->base.llvm_value = var->llvm_value;
@@ -1448,6 +1451,16 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 }
 
 void
+emit_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
+{
+	MirVar *var = ((MirInstrDeclVar *)si->dest)->var;
+	BL_ASSERT(var->llvm_value);
+	BL_ASSERT(si->src->llvm_value);
+
+	LLVMSetInitializer(var->llvm_value, si->src->llvm_value);
+}
+
+void
 emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
 	MirVar *var = decl->var;
@@ -1456,19 +1469,8 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	/* skip when we should not generate LLVM representation */
 	if (var->value.type->kind == MIR_TYPE_TYPE) return;
 
-	if (var->is_in_gscope) {
-		/* OK variable is declared in global scope so we need different generation here*/
-		/* Generates destination for global if there is no one. Global variable can come
-		 * later than it is used, so we call same function during generation of the declref
-		 * instruction IR. */
-
-		/* Globals must be set to some value */
-		BL_ASSERT(decl->init);
-
-		LLVMValueRef tmp = fetch_value(cnt, decl->init);
-
+	if (var->is_global) {
 		emit_global_var_proto(cnt, var);
-		LLVMSetInitializer(var->llvm_value, tmp);
 
 		if (cnt->debug_mode) {
 			emit_DI_var(cnt, var);
@@ -1708,16 +1710,24 @@ emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 void
 emit_instr_block(Context *cnt, MirInstrBlock *block)
 {
-	MirFn *fn = block->owner_fn;
-	BL_ASSERT(fn->llvm_value);
-	LLVMBasicBlockRef llvm_block = emit_basic_block(cnt, block);
-	BL_ASSERT(llvm_block);
+	MirFn *    fn        = block->owner_fn;
+	const bool is_global = fn == NULL;
 
-	LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_block);
+	/* Global-scope blocks does not have LLVM equivalent, we can generate just the content of
+	 * our block, but every instruction must be comptime constant. */
+	if (!is_global) {
+		BL_ASSERT(fn->llvm_value);
+		LLVMBasicBlockRef llvm_block = emit_basic_block(cnt, block);
+		BL_ASSERT(llvm_block);
 
-	/* gen allocas fist in entry block!!! */
-	if (fn->first_block == block) {
-		emit_allocas(cnt, fn);
+		LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_block);
+
+		/* gen allocas fist in entry block!!! */
+		if (fn->first_block == block) {
+			emit_allocas(cnt, fn);
+		}
+	} else {
+		BL_ASSERT(block->base.value2.is_comptime);
 	}
 
 	MirInstr *instr = block->entry_instr;
@@ -1741,7 +1751,7 @@ emit_allocas(Context *cnt, MirFn *fn)
 	TARRAY_FOREACH(MirVar *, fn->variables, var)
 	{
 		BL_ASSERT(var);
-		if (!var->gen_llvm) continue;
+		if (!var->emit_llvm) continue;
 
 #if NAMED_VARS
 		var_name = var->llvm_name;
@@ -1877,6 +1887,9 @@ emit_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_CONST:
 		emit_instr_const(cnt, (MirInstrConst *)instr);
+		break;
+	case MIR_INSTR_SET_INITIALIZER:
+		emit_instr_set_initializer(cnt, (MirInstrSetInitializer *)instr);
 		break;
 	}
 }

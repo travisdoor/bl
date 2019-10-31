@@ -1,13 +1,10 @@
 /* playground */
 
-FOO :: 10;
-
-Data :: struct {
-    i: s32;
-    j: bool;
-}
+A :: 20;
+B :: 10 + 20 * A + C;
+C :: 123;
 
 main :: fn () s32 {
     i := 10;
-    return i + 20;
+    return i + 20 + C;
 }

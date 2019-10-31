@@ -30,7 +30,11 @@
 #include "assembly.h"
 #include "ast.h"
 
+#if BL_DEBUG
 #define PRINT_ANALYZED_COMPTIMES true
+#else
+#define PRINT_ANALYZED_COMPTIMES false
+#endif
 
 static void
 print_comptime_value_or_id(MirInstr *instr, FILE *stream);
@@ -318,9 +322,9 @@ print_instr_set_initializer(MirInstrSetInitializer *si, FILE *stream)
 	fprintf(stream, " -> ");
 	MirInstrDeclVar *dest = (MirInstrDeclVar *)si->dest;
 	if (dest && dest->var->llvm_name) {
-                fprintf(stream, dest->var->llvm_name);
-        } else {
-                print_comptime_value_or_id(si->dest, stream);
+		fprintf(stream, "%s", dest->var->llvm_name);
+	} else {
+		print_comptime_value_or_id(si->dest, stream);
 	}
 }
 
@@ -680,16 +684,13 @@ print_instr_decl_var(MirInstrDeclVar *decl, FILE *stream)
 
 	const char *name = var->llvm_name ? var->llvm_name : "<unknown>";
 
-	if (var->is_in_gscope) {
+	if (var->is_global) {
 		/* global scope variable */
 		fprintf(stream, "\n@%s : ", name);
 		print_type(var->value.type, false, stream, true);
 		fprintf(stream, " %s ", var->is_mutable ? "=" : ":");
-		if (decl->init) {
-			print_comptime_value_or_id(decl->init, stream);
-		} else {
-			fprintf(stream, "<uninitialized>");
-		}
+
+		print_const_value(&var->value, stream);
 	} else {
 		/* local scope variable */
 		print_instr_head(&decl->base, stream, "decl");
@@ -900,7 +901,9 @@ void
 mir_print_instr(MirInstr *instr, FILE *stream)
 {
 #if !PRINT_ANALYZED_COMPTIMES
-	if (instr->owner_block && instr->value2.is_comptime && instr->analyzed) return;
+	if ((instr->owner_block || instr->kind == MIR_INSTR_BLOCK) && instr->value2.is_comptime &&
+	    instr->analyzed)
+		return;
 #endif
 
 	switch (instr->kind) {
