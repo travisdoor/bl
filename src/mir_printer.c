@@ -131,7 +131,8 @@ print_const_value(MirConstExprValue *value, FILE *stream)
 		break;
 
 	case MIR_TYPE_PTR: {
-		fprintf(stream, "<MISING_PRINT>");
+		VMStackPtr ptr = MIR_CEV_READ_AS(VMStackPtr, value);
+		fprintf(stream, "%p", ptr);
 		break;
 	}
 

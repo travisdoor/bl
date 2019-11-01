@@ -301,6 +301,7 @@ emit_global_var_proto(Context *cnt, MirVar *var)
 static inline LLVMValueRef
 fetch_value(Context *cnt, MirInstr *instr)
 {
+	BL_ABORT("This should not be used!!!");
 	LLVMValueRef value = NULL;
 
 	if (instr->comptime && !instr->llvm_value) {
@@ -553,8 +554,8 @@ emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 void
 emit_instr_cast(Context *cnt, MirInstrCast *cast)
 {
-	LLVMValueRef llvm_src       = fetch_value(cnt, cast->expr);
-	LLVMTypeRef  llvm_dest_type = cast->base.value.type->llvm_type;
+	LLVMValueRef llvm_src       = cast->expr->llvm_value;
+	LLVMTypeRef  llvm_dest_type = cast->base.value2.type->llvm_type;
 	LLVMOpcode   llvm_op;
 	BL_ASSERT(llvm_src && llvm_dest_type);
 

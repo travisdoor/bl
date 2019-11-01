@@ -1060,7 +1060,7 @@ init_const_expr_value(MirConstExprValue * v,
                       MirValueAddressMode addr_mode,
                       bool                is_comptime)
 {
-	v->data        = &v->_tmp[0];
+	v->data        = (VMStackPtr)&v->_tmp[0];
 	v->type        = type;
 	v->addr_mode   = addr_mode;
 	v->is_comptime = is_comptime;
@@ -3231,7 +3231,7 @@ append_instr_set_initializer(Context *cnt, Ast *node, MirInstr *dest, MirInstr *
 	MirInstrBlock *block = get_current_block(cnt);
 	if (!is_block_terminated(block)) terminate_block(block, &tmp->base);
 
-	return tmp;
+	return &tmp->base;
 }
 
 MirInstr *
@@ -3412,9 +3412,10 @@ append_instr_cast(Context *cnt, Ast *node, MirInstr *type, MirInstr *next)
 	ref_instr(type);
 	ref_instr(next);
 	MirInstrCast *tmp = create_instr(cnt, MIR_INSTR_CAST, node);
-	tmp->type         = type;
-	tmp->expr         = next;
-	tmp->auto_cast    = type == NULL;
+	init_const_expr_value(&tmp->base.value2, NULL, MIR_VAM_RVALUE, false);
+	tmp->type      = type;
+	tmp->expr      = next;
+	tmp->auto_cast = type == NULL;
 
 	append_current_block(cnt, &tmp->base);
 	return &tmp->base;
@@ -3621,7 +3622,8 @@ create_instr_addrof(Context *cnt, Ast *node, MirInstr *src)
 {
 	ref_instr(src);
 	MirInstrAddrOf *tmp = create_instr(cnt, MIR_INSTR_ADDROF, node);
-	tmp->src            = src;
+	init_const_expr_value(&tmp->base.value2, NULL, MIR_VAM_UNKNOWN, false);
+	tmp->src = src;
 	return &tmp->base;
 }
 
@@ -4268,6 +4270,8 @@ evaluate(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_DECL_VAR:
 	case MIR_INSTR_LOAD:
 	case MIR_INSTR_STORE:
+	case MIR_INSTR_ADDROF:
+	case MIR_INSTR_CAST:
 	case MIR_INSTR_SET_INITIALIZER:
 		vm_eval_instr(&cnt->vm, instr);
 		break;
@@ -4634,7 +4638,7 @@ analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
 	BL_ASSERT(var && "Missing MirVar for variable declaration!");
 	BL_ASSERT(var->is_global && "Variable set by initializer must be in global scope!");
 
-	AnalyzeSlotConfig *config =
+	const AnalyzeSlotConfig *config =
 	    var->value.type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
 
 	if (analyze_slot(cnt, config, &si->src, var->value.type) != ANALYZE_PASSED) {
@@ -4993,11 +4997,11 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 {
 	MirInstr *src = addrof->src;
 	BL_ASSERT(src);
-	const MirValueAddressMode src_addr_mode = src->value.addr_mode;
+	const MirValueAddressMode src_addr_mode = src->value2.addr_mode;
 
 	const bool can_grab_address = src_addr_mode == MIR_VAM_LVALUE ||
 	                              src_addr_mode == MIR_VAM_LVALUE_CONST ||
-	                              src->value.type->kind == MIR_TYPE_FN;
+	                              src->value2.type->kind == MIR_TYPE_FN;
 
 	if (!can_grab_address) {
 		builder_msg(BUILDER_MSG_ERROR,
@@ -5010,19 +5014,17 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 
 	/* setup type */
 	MirType *type = NULL;
-	BL_ASSERT(src->value.type);
-	if (src->value.type->kind == MIR_TYPE_FN) {
-		type = create_type_ptr(cnt, src->value.type);
+	BL_ASSERT(src->value2.type);
+	if (src->value2.type->kind == MIR_TYPE_FN) {
+		type = create_type_ptr(cnt, src->value2.type);
 	} else {
-		type = src->value.type;
+		type = src->value2.type;
 	}
 
-	addrof->base.value.type      = type;
-	addrof->base.comptime        = addrof->src->comptime;
-	addrof->base.value.addr_mode = MIR_VAM_LVALUE_CONST;
-	BL_ASSERT(addrof->base.value.type && "invalid type");
-
-	// reduce_instr(cnt, addrof->src);
+	addrof->base.value2.type        = type;
+	addrof->base.value2.is_comptime = addrof->src->value2.is_comptime;
+	addrof->base.value2.addr_mode   = MIR_VAM_LVALUE_CONST;
+	BL_ASSERT(addrof->base.value2.type && "invalid type");
 
 	return ANALYZE_RESULT(PASSED, 0);
 }
@@ -5030,7 +5032,7 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 AnalyzeResult
 analyze_instr_cast(Context *cnt, MirInstrCast *cast, bool analyze_op_only)
 {
-	MirType *dest_type = cast->base.value.type;
+	MirType *dest_type = cast->base.value2.type;
 
 	if (!analyze_op_only) {
 		if (!dest_type && !cast->auto_cast) {
@@ -5045,17 +5047,17 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast, bool analyze_op_only)
 			return ANALYZE_RESULT(FAILED, 0);
 		}
 
-		BL_ASSERT(cast->expr->value.type && "invalid cast source type");
+		BL_ASSERT(cast->expr->value2.type && "invalid cast source type");
 
 		if (!dest_type && cast->auto_cast) {
-			dest_type = cast->expr->value.type;
+			dest_type = cast->expr->value2.type;
 		}
 	}
 
 	BL_ASSERT(dest_type && "invalid cast destination type");
-	BL_ASSERT(cast->expr->value.type && "invalid cast source type");
+	BL_ASSERT(cast->expr->value2.type && "invalid cast source type");
 
-	MirType *expr_type = cast->expr->value.type;
+	MirType *expr_type = cast->expr->value2.type;
 
 	/* Setup const int type. */
 	if (analyze_stage_set_volatile_expr(cnt, &cast->expr, dest_type) == ANALYZE_STAGE_BREAK) {
@@ -5071,8 +5073,8 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast, bool analyze_op_only)
 	}
 
 DONE:
-	cast->base.value.type = dest_type;
-	cast->base.comptime   = cast->expr->comptime;
+	cast->base.value2.type        = dest_type;
+	cast->base.value2.is_comptime = cast->expr->value2.is_comptime;
 
 	return ANALYZE_RESULT(PASSED, 0);
 }

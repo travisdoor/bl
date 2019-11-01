@@ -32,7 +32,7 @@
 #include "threading.h"
 
 #define MAX_ALIGNMENT 8
-#define VERBOSE_EXEC false 
+#define VERBOSE_EXEC true
 #define CHCK_STACK true
 #define PTR_SIZE sizeof(void *) /* HACK: can cause problems with different build targets. */
 
@@ -139,6 +139,9 @@ calculate_binop(VMStackPtr dest, VMStackPtr lhs, VMStackPtr rhs, BinopKind op, M
 
 static void
 calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, MirType *type);
+
+static void
+do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, MirCastOp op);
 
 static void
 reset_stack(VMStack *stack);
@@ -276,7 +279,13 @@ static void
 eval_instr_load(VM *vm, MirInstrLoad *load);
 
 static void
+eval_instr_addrof(VM *vm, MirInstrAddrOf *addrof);
+
+static void
 eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si);
+
+static void
+eval_instr_cast(VM *vm, MirInstrCast *cast);
 
 /***********/
 /* inlines */
@@ -719,6 +728,137 @@ calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, MirType *type)
 		BL_ABORT("invalid unop type");
 	}
 #undef UNOP_CASE
+}
+
+void
+do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, MirCastOp op)
+{
+	BL_ASSERT(dest && "Missing cast destination!");
+	BL_ASSERT(src && "Missing cast source!");
+	BL_ASSERT(dest_type && "Missing cast destination type!");
+	BL_ASSERT(src_type && "Missing cast source type!");
+
+	switch (op) {
+	case MIR_CAST_INTTOPTR:
+	case MIR_CAST_PTRTOINT:
+	case MIR_CAST_NONE:
+	case MIR_CAST_BITCAST:
+	case MIR_CAST_ZEXT:
+	case MIR_CAST_TRUNC:
+		memcpy(dest, src, PTR_SIZE);
+		break;
+
+	case MIR_CAST_SEXT: {
+		/* src is smaller than dest */
+		/******************************************************************************************/
+#define SECT_CASE(T)                                                                               \
+	case sizeof(T):                                                                            \
+		STACK_WRITE_AS(s64, dest, (s64)STACK_READ_AS(T, src));                             \
+		break;
+		/******************************************************************************************/
+
+		switch (src_type->store_size_bytes) {
+		case 1:
+			STACK_WRITE_AS(s64, dest, (s64)STACK_READ_AS(s8, src));
+			break;
+
+		case 2:
+			STACK_WRITE_AS(s64, dest, (s64)STACK_READ_AS(s16, src));
+			break;
+
+		case 4:
+			STACK_WRITE_AS(s64, dest, (s64)STACK_READ_AS(s32, src));
+			break;
+		default:
+			BL_ABORT("Invalid sext cast!");
+		}
+
+#undef SECT_CASE
+		break;
+	}
+
+	case MIR_CAST_FPEXT: {
+		/* src is smaller than dest */
+		STACK_WRITE_AS(f64, dest, (f64)STACK_READ_AS(f32, src));
+		break;
+	}
+
+	case MIR_CAST_FPTRUNC: {
+		/* src is bigger than dest */
+		STACK_WRITE_AS(f32, dest, (f32)STACK_READ_AS(f64, src));
+		break;
+	}
+
+	case MIR_CAST_FPTOSI: {
+		/* real to signed integer */
+		if (src_type->store_size_bytes == sizeof(f32))
+			STACK_WRITE_AS(s32, dest, (s32)STACK_READ_AS(f32, src));
+		else
+			STACK_WRITE_AS(s64, dest, (s64)STACK_READ_AS(f64, src));
+		break;
+	}
+
+	case MIR_CAST_FPTOUI: {
+		/* real to signed integer */
+		if (src_type->store_size_bytes == sizeof(f32))
+			STACK_WRITE_AS(u64, dest, (u64)STACK_READ_AS(f32, src));
+		else
+			STACK_WRITE_AS(u64, dest, (u64)STACK_READ_AS(f64, src));
+		break;
+	}
+
+	case MIR_CAST_SITOFP: {
+		if (dest_type->store_size_bytes == sizeof(f32)) {
+			switch (src_type->store_size_bytes) {
+			case 1:
+				STACK_WRITE_AS(f32, dest, (f32)STACK_READ_AS(s8, src));
+				break;
+
+			case 2:
+				STACK_WRITE_AS(f32, dest, (f32)STACK_READ_AS(s16, src));
+				break;
+
+			case 4:
+				STACK_WRITE_AS(f32, dest, (f32)STACK_READ_AS(s32, src));
+				break;
+
+			case 8:
+				STACK_WRITE_AS(f32, dest, (f32)STACK_READ_AS(s64, src));
+				break;
+			}
+		} else {
+			switch (src_type->store_size_bytes) {
+			case 1:
+				STACK_WRITE_AS(f64, dest, (f64)STACK_READ_AS(s8, src));
+				break;
+
+			case 2:
+				STACK_WRITE_AS(f64, dest, (f64)STACK_READ_AS(s16, src));
+				break;
+
+			case 4:
+				STACK_WRITE_AS(f64, dest, (f64)STACK_READ_AS(s32, src));
+				break;
+
+			case 8:
+				STACK_WRITE_AS(f64, dest, (f64)STACK_READ_AS(s64, src));
+				break;
+			}
+		}
+		break;
+	}
+
+	case MIR_CAST_UITOFP: {
+		if (dest_type->store_size_bytes == sizeof(f32))
+			STACK_WRITE_AS(f32, dest, (f32)STACK_READ_AS(u64, src));
+		else
+			STACK_WRITE_AS(f64, dest, (f64)STACK_READ_AS(u64, src));
+		break;
+	}
+
+	default:
+		BL_ABORT("invalid cast operation");
+	}
 }
 
 void
@@ -1590,7 +1730,7 @@ void
 interp_instr_addrof(VM *vm, MirInstrAddrOf *addrof)
 {
 	MirInstr *src  = addrof->src;
-	MirType * type = src->value.type;
+	MirType * type = src->value2.type;
 	BL_ASSERT(type);
 
 	if (src->kind == MIR_INSTR_ELEM_PTR || src->kind == MIR_INSTR_COMPOUND) {
@@ -1598,17 +1738,10 @@ interp_instr_addrof(VM *vm, MirInstrAddrOf *addrof)
 		return;
 	}
 
-	VMStackPtr ptr = fetch_value(vm, src);
+	VMStackPtr ptr = fetch_value2(vm, &src->value2);
+	ptr            = STACK_PTR_DEREF(ptr);
 
-	ptr = ((MirConstValueData *)ptr)->v_ptr.data.stack_ptr;
-
-	if (addrof->base.comptime) {
-		// memcpy(&addrof->base.value.data, ptr, sizeof(addrof->base.value.data));
-		mir_set_const_ptr(
-		    &addrof->base.value.data.v_ptr, *(VMStackPtr **)ptr, MIR_CP_VALUE);
-	} else {
-		push_stack(vm, (VMStackPtr)&ptr, type);
-	}
+	push_stack(vm, (VMStackPtr)&ptr, type);
 }
 
 void
@@ -1814,211 +1947,7 @@ interp_instr_switch(VM *vm, MirInstrSwitch *sw)
 void
 interp_instr_cast(VM *vm, MirInstrCast *cast)
 {
-	MirType *         src_type  = cast->expr->value.type;
-	MirType *         dest_type = cast->base.value.type;
-	MirConstValueData tmp       = {0};
-
-	switch (cast->op) {
-	case MIR_CAST_NONE:
-	case MIR_CAST_BITCAST:
-		if (cast->base.comptime)
-			memcpy(&cast->base.value.data,
-			       &cast->expr->value.data,
-			       sizeof(cast->expr->value.data));
-		break;
-
-	case MIR_CAST_SEXT: {
-		/* src is smaller than dest */
-		VMStackPtr from_ptr = fetch_value(vm, cast->expr);
-		read_value(&tmp, from_ptr, src_type);
-
-		/******************************************************************************************/
-#define SECT_CASE(v, T)                                                                            \
-	case sizeof(v.T):                                                                          \
-		tmp.v_s64 = (s64)tmp.T;                                                            \
-		break;
-		/******************************************************************************************/
-
-		// clang-format off
-		switch (src_type->store_size_bytes)
-		{
-			SECT_CASE(tmp, v_s8)
-				SECT_CASE(tmp, v_s16)
-				SECT_CASE(tmp, v_s32)
-		default:
-			BL_ABORT("Invalid sext cast!");
-		}
-		// clang-format on
-
-#undef SECT_CASE
-
-		if (cast->base.comptime)
-			memcpy(&cast->base.value.data, &tmp, sizeof(tmp));
-		else
-			push_stack(vm, (VMStackPtr)&tmp, dest_type);
-
-		break;
-	}
-
-	case MIR_CAST_FPEXT: {
-		/* src is smaller than dest */
-		VMStackPtr from_ptr = fetch_value(vm, cast->expr);
-		read_value(&tmp, from_ptr, src_type);
-
-		tmp.v_f64 = (f64)tmp.v_f32;
-
-		if (cast->base.comptime)
-			memcpy(&cast->base.value.data, &tmp, sizeof(tmp));
-		else
-			push_stack(vm, (VMStackPtr)&tmp, dest_type);
-		break;
-	}
-
-	case MIR_CAST_FPTRUNC: {
-		/* src is bigger than dest */
-		VMStackPtr from_ptr = fetch_value(vm, cast->expr);
-		read_value(&tmp, from_ptr, src_type);
-
-		tmp.v_f32 = (f32)tmp.v_f64;
-
-		if (cast->base.comptime)
-			memcpy(&cast->base.value.data, &tmp, sizeof(tmp));
-		else
-			push_stack(vm, (VMStackPtr)&tmp, dest_type);
-		break;
-	}
-
-	case MIR_CAST_FPTOSI: {
-		/* real to signed integer */
-		VMStackPtr from_ptr = fetch_value(vm, cast->expr);
-		read_value(&tmp, from_ptr, src_type);
-
-		if (src_type->store_size_bytes == sizeof(f32))
-			tmp.v_s32 = (s32)tmp.v_f32;
-		else
-			tmp.v_s64 = (s64)tmp.v_f64;
-
-		if (cast->base.comptime)
-			memcpy(&cast->base.value.data, &tmp, sizeof(tmp));
-		else
-			push_stack(vm, (VMStackPtr)&tmp, dest_type);
-		break;
-	}
-
-	case MIR_CAST_FPTOUI: {
-		/* real to signed integer */
-		VMStackPtr from_ptr = fetch_value(vm, cast->expr);
-		read_value(&tmp, from_ptr, src_type);
-
-		if (src_type->store_size_bytes == sizeof(f32))
-			tmp.v_u64 = (u64)tmp.v_f32;
-		else
-			tmp.v_u64 = (u64)tmp.v_f64;
-
-		if (cast->base.comptime)
-			memcpy(&cast->base.value.data, &tmp, sizeof(tmp));
-		else
-			push_stack(vm, (VMStackPtr)&tmp, dest_type);
-		break;
-	}
-
-	case MIR_CAST_SITOFP: {
-		VMStackPtr from_ptr = fetch_value(vm, cast->expr);
-		read_value(&tmp, from_ptr, src_type);
-
-		if (dest_type->store_size_bytes == sizeof(f32)) {
-			switch (src_type->store_size_bytes) {
-			case sizeof(tmp.v_s8):
-				tmp.v_f32 = (f32)tmp.v_s8;
-				break;
-			case sizeof(tmp.v_s16):
-				tmp.v_f32 = (f32)tmp.v_s16;
-				break;
-			case sizeof(tmp.v_s32):
-				tmp.v_f32 = (f32)tmp.v_s32;
-				break;
-			case sizeof(tmp.v_s64):
-				tmp.v_f32 = (f32)tmp.v_s64;
-				break;
-			}
-		} else {
-			switch (src_type->store_size_bytes) {
-			case sizeof(tmp.v_s8):
-				tmp.v_f64 = (f64)tmp.v_s8;
-				break;
-			case sizeof(tmp.v_s16):
-				tmp.v_f64 = (f64)tmp.v_s16;
-				break;
-			case sizeof(tmp.v_s32):
-				tmp.v_f64 = (f64)tmp.v_s32;
-				break;
-			case sizeof(tmp.v_s64):
-				tmp.v_f64 = (f64)tmp.v_s64;
-				break;
-			}
-		}
-
-		if (cast->base.comptime)
-			memcpy(&cast->base.value.data, &tmp, sizeof(tmp));
-		else
-			push_stack(vm, (VMStackPtr)&tmp, dest_type);
-		break;
-	}
-
-	case MIR_CAST_UITOFP: {
-		VMStackPtr from_ptr = fetch_value(vm, cast->expr);
-		read_value(&tmp, from_ptr, src_type);
-
-		if (dest_type->store_size_bytes == sizeof(f32))
-			tmp.v_f32 = (f32)tmp.v_u64;
-		else
-			tmp.v_f64 = (f64)tmp.v_u64;
-
-		if (cast->base.comptime)
-			memcpy(&cast->base.value.data, &tmp, sizeof(tmp));
-		else
-			push_stack(vm, (VMStackPtr)&tmp, dest_type);
-		break;
-	}
-
-	case MIR_CAST_INTTOPTR:
-	case MIR_CAST_PTRTOINT: {
-		/* noop for same sizes */
-		const usize src_size  = src_type->store_size_bytes;
-		const usize dest_size = dest_type->store_size_bytes;
-
-		if (src_size != dest_size) {
-			/* trunc or zero extend */
-			VMStackPtr from_ptr = fetch_value(vm, cast->expr);
-			read_value(&tmp, from_ptr, src_type);
-
-			if (cast->base.comptime)
-				memcpy(&cast->base.value.data, &tmp, sizeof(tmp));
-			else
-				push_stack(vm, (VMStackPtr)&tmp, dest_type);
-		}
-
-		break;
-	}
-
-	case MIR_CAST_ZEXT:
-	/* src is smaller than dest and destination is unsigned, src value will
-	 * be extended with zeros to dest type size */
-	case MIR_CAST_TRUNC: {
-		/* src is bigger than dest */
-		VMStackPtr from_ptr = fetch_value(vm, cast->expr);
-		read_value(&tmp, from_ptr, src_type);
-
-		if (cast->base.comptime)
-			memcpy(&cast->base.value.data, &tmp, sizeof(tmp));
-		else
-			push_stack(vm, (VMStackPtr)&tmp, dest_type);
-		break;
-	}
-
-	default:
-		BL_ABORT("invalid cast operation");
-	}
+	BL_UNIMPLEMENTED;
 }
 
 void
@@ -2518,9 +2447,34 @@ eval_instr(VM *vm, MirInstr *instr)
 		eval_instr_load(vm, (MirInstrLoad *)instr);
 		break;
 
+	case MIR_INSTR_ADDROF:
+		eval_instr_addrof(vm, (MirInstrAddrOf *)instr);
+		break;
+
+	case MIR_INSTR_CAST:
+		eval_instr_cast(vm, (MirInstrCast *)instr);
+		break;
+
 	default:
 		BL_ABORT("Missing evaluation for instruction '%s'.", mir_instr_name(instr));
 	}
+}
+
+void
+eval_instr_cast(VM *vm, MirInstrCast *cast)
+{
+	MirType *  dest_type = cast->base.value2.type;
+	MirType *  src_type  = cast->expr->value2.type;
+	VMStackPtr src       = cast->expr->value2.data;
+
+	do_cast(cast->base.value2.data, src, dest_type, src_type, cast->op);
+}
+
+void
+eval_instr_addrof(VM *vm, MirInstrAddrOf *addrof)
+{
+	VMStackPtr src = MIR_CEV_READ_AS(VMStackPtr, &addrof->src->value2);
+	MIR_CEV_WRITE_AS(VMStackPtr, &addrof->base.value2, src);
 }
 
 void

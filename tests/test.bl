@@ -3,8 +3,11 @@
 A :: 20;
 B :: 10 + 20 * A + C;
 C :: 123;
+D :: &C;
+E :: cast(u8) A;
 
 main :: fn () s32 {
-    i := 10;
-    return i + 20 + C;
+    //i := 10;
+    //j := D;
+    return ^D;
 }
