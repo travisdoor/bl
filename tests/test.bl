@@ -4,10 +4,13 @@ A :: 20;
 B :: 10 + 20 * A + C;
 C :: 123;
 D :: &C;
-E :: cast(u8) A;
+E :: A;
+F :: ^D;
+G :: cast(u64) ^D;
+H :: ^cast(*u64) D;
 
 main :: fn () s32 {
-    //i := 10;
-    //j := D;
-    return ^D;
+    _A :: A;
+    _B := A;
+    return _B;
 }

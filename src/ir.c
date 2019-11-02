@@ -760,11 +760,18 @@ void
 emit_instr_load(Context *cnt, MirInstrLoad *load)
 {
 	BL_ASSERT(load->base.value2.type && "invalid type of load instruction");
-	LLVMValueRef   llvm_src  = load->src->llvm_value;
-	const unsigned alignment = (const unsigned)load->base.value2.type->alignment;
+	LLVMValueRef llvm_src = load->src->llvm_value;
 	BL_ASSERT(llvm_src);
 
+#if 0
+	if (mir_is_instr_in_global_block(&load->base)) {
+		load->base.llvm_value = LLVMGetInitializer(llvm_src);
+		return;
+	} else {
+#endif
 	load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
+
+	const unsigned alignment = (const unsigned)load->base.value2.type->alignment;
 	LLVMSetAlignment(load->base.llvm_value, alignment);
 }
 
@@ -1493,7 +1500,7 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 				emit_instr_arg(cnt, var, (MirInstrArg *)decl->init);
 			} else {
 				/* use simple store */
-				LLVMValueRef llvm_init = fetch_value(cnt, decl->init);
+				LLVMValueRef llvm_init = decl->init->llvm_value;
 				BL_ASSERT(llvm_init);
 				LLVMBuildStore(cnt->llvm_builder, llvm_init, var->llvm_value);
 			}

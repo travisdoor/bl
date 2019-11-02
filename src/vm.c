@@ -264,6 +264,9 @@ static void
 eval_instr(VM *vm, MirInstr *instr);
 
 static void
+eval_instr_decl_var(VM *vm, MirInstrDeclVar *decl_var);
+
+static void
 eval_instr_decl_ref(VM *vm, MirInstrDeclRef *decl_ref);
 
 static void
@@ -2455,9 +2458,22 @@ eval_instr(VM *vm, MirInstr *instr)
 		eval_instr_cast(vm, (MirInstrCast *)instr);
 		break;
 
+	case MIR_INSTR_DECL_VAR:
+		eval_instr_decl_var(vm, (MirInstrDeclVar *)instr);
+		break;
+
 	default:
 		BL_ABORT("Missing evaluation for instruction '%s'.", mir_instr_name(instr));
 	}
+}
+
+void
+eval_instr_decl_var(VM *vm, MirInstrDeclVar *decl_var)
+{
+	BL_ASSERT(decl_var->init && "Missing variable initializer!");
+	MirVar *var     = decl_var->var;
+	var->value.data = decl_var->init->value2.data;
+	BL_ASSERT(var->value.data && "Invalid variable initializer!");
 }
 
 void

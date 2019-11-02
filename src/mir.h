@@ -802,12 +802,6 @@ mir_set_const_ptr(MirConstPtr *value, void *ptr, MirConstPtrKind kind)
 	value->kind     = kind;
 }
 
-ptrdiff_t
-mir_get_struct_elem_offest(struct Assembly *assembly, MirType *type, u32 i);
-
-ptrdiff_t
-mir_get_array_elem_offset(MirType *type, u32 i);
-
 static inline MirType *
 mir_get_fn_arg_type(MirType *type, u32 i)
 {
@@ -818,6 +812,24 @@ mir_get_fn_arg_type(MirType *type, u32 i)
 
 	return args->data[i]->type;
 }
+
+static inline bool
+mir_is_comptime(MirInstr *instr)
+{
+	return instr->value2.is_comptime;
+}
+
+static inline bool
+mir_is_instr_in_global_block(MirInstr *instr)
+{
+	return instr->owner_block->owner_fn == NULL;
+}
+
+ptrdiff_t
+mir_get_struct_elem_offest(struct Assembly *assembly, MirType *type, u32 i);
+
+ptrdiff_t
+mir_get_array_elem_offset(MirType *type, u32 i);
 
 void
 mir_arenas_init(MirArenas *arenas);
