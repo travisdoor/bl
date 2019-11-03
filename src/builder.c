@@ -232,11 +232,14 @@ builder_init(void)
 
 	/* initialize LLVM statics */
 	llvm_init();
+
+	vm_comptime_cache_init(&builder.comptime_cache, VM_COMPTIME_CACHE_SIZE);
 }
 
 void
 builder_terminate(void)
 {
+	vm_comptime_cache_terminate(&builder.comptime_cache);
 	conf_data_delete(builder.conf);
 	arena_terminate(&builder.str_cache);
 }

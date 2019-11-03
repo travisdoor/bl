@@ -69,11 +69,12 @@ typedef struct BuilderOpions {
 } BuilderOptions;
 
 typedef struct Builder {
-	BuilderOptions options;
-	Arena          str_cache;
-	s32            total_lines;
-	s32            errorc;
-	ConfData *     conf;
+	BuilderOptions  options;
+	Arena           str_cache;
+	VMComptimeCache comptime_cache;
+	s32             total_lines;
+	s32             errorc;
+	ConfData *      conf;
 } Builder;
 
 /* Builder global instance */

@@ -1048,6 +1048,7 @@ emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 void
 emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 {
+        BL_UNIMPLEMENTED;
 	if (cmp->base.comptime && !_tmp_var) {
 		cmp->base.llvm_value = emit_as_const(cnt, &cmp->base.value);
 		return;
@@ -1585,6 +1586,37 @@ emit_instr_const(Context *cnt, MirInstrConst *c)
 	case MIR_TYPE_INT: {
 		const u64 i = MIR_CEV_READ_AS(u64, &c->base.value2);
 		llvm_value  = LLVMConstInt(llvm_type, i, type->data.integer.is_signed);
+		break;
+	}
+
+	case MIR_TYPE_BOOL: {
+		const bool i = MIR_CEV_READ_AS(bool, &c->base.value2);
+		llvm_value   = LLVMConstInt(llvm_type, i, false);
+		break;
+	}
+
+	case MIR_TYPE_REAL: {
+		switch (type->store_size_bytes) {
+		case 4: {
+			const float i = MIR_CEV_READ_AS(float, &c->base.value2);
+			llvm_value    = LLVMConstReal(llvm_type, (double)i);
+			break;
+		}
+
+		case 8: {
+			const double i = MIR_CEV_READ_AS(double, &c->base.value2);
+			llvm_value     = LLVMConstReal(llvm_type, i);
+			break;
+		}
+
+		default:
+			BL_ABORT("Unknown real type!");
+		}
+		break;
+	}
+
+	case MIR_TYPE_ARRAY: {
+		BL_UNIMPLEMENTED;
 		break;
 	}
 

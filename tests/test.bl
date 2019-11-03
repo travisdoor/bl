@@ -8,9 +8,15 @@ E :: A;
 F :: ^D;
 G :: cast(u64) ^D;
 H :: ^cast(*u64) D;
+I :: 0.5f;
+J :: 0.5;
+K :: true;
+
+arr :: {:[8]s32: 1, 2, 3, 4, 5, 6, 7, 8};
 
 main :: fn () s32 {
     _A :: A;
     _B := A;
+    
     return _B;
 }

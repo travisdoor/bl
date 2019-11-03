@@ -36,10 +36,6 @@
 #define CHCK_STACK true
 #define PTR_SIZE sizeof(void *) /* HACK: can cause problems with different build targets. */
 
-#define STACK_PTR_DEREF(ptr) ((VMStackPtr) * ((uintptr_t *)(ptr)))
-#define STACK_READ_AS(T, src) (*((T *)(src)))
-#define STACK_WRITE_AS(T, dest, src) (*((T *)(dest)) = (src))
-
 // Debug helpers
 #if BL_DEBUG && VERBOSE_EXEC
 #define LOG_PUSH_RA                                                                                \
@@ -290,9 +286,31 @@ eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si);
 static void
 eval_instr_cast(VM *vm, MirInstrCast *cast);
 
+static void
+eval_instr_compound(VM *vm, MirInstrCompound *compound);
+
 /***********/
 /* inlines */
 /***********/
+static inline VMStackPtr
+comptime_alloc(VMComptimeCache *cache, MirType *type)
+{
+	const usize size = type->store_size_bytes;
+	if (cache->size + size > cache->allocated)
+		BL_ABORT(
+		    "Cannot allocate compile time expression value, comptime cache is full!!!");
+
+	VMStackPtr tmp = &cache->data[cache->size];
+	cache->size += size;
+	return tmp;
+}
+
+static inline bool
+needs_tmp_alloc(MirConstExprValue *v)
+{
+	return v->type->store_size_bytes > sizeof(v->_tmp);
+}
+
 static inline MirFn *
 get_callee(MirInstrCall *call)
 {
@@ -394,7 +412,7 @@ pop_ra(VM *vm)
 }
 
 static inline VMStackPtr
-push_stack_empty(VM *vm, MirType *type)
+stack_push_empty(VM *vm, MirType *type)
 {
 	BL_ASSERT(type);
 	const usize size = type->store_size_bytes;
@@ -406,10 +424,10 @@ push_stack_empty(VM *vm, MirType *type)
 }
 
 static inline VMStackPtr
-push_stack(VM *vm, void *value, MirType *type)
+stack_push(VM *vm, void *value, MirType *type)
 {
 	BL_ASSERT(value && "try to push NULL value");
-	VMStackPtr  tmp  = push_stack_empty(vm, type);
+	VMStackPtr  tmp  = stack_push_empty(vm, type);
 	const usize size = type->store_size_bytes;
 	memcpy(tmp, value, size);
 
@@ -418,7 +436,7 @@ push_stack(VM *vm, void *value, MirType *type)
 }
 
 static inline VMStackPtr
-pop_stack(VM *vm, MirType *type)
+stack_pop(VM *vm, MirType *type)
 {
 	BL_ASSERT(type);
 	const usize size = type->store_size_bytes;
@@ -433,7 +451,7 @@ pop_stack(VM *vm, MirType *type)
  * use relative pointer. When we set ignore to true original pointer is returned
  * as absolute pointer to the stack.  */
 static inline VMStackPtr
-read_stack_ptr(VM *vm, VMRelativeStackPtr rel_ptr, bool ignore)
+stack_read_ptr(VM *vm, VMRelativeStackPtr rel_ptr, bool ignore)
 {
 	if (ignore) return (VMStackPtr)rel_ptr;
 	BL_ASSERT(rel_ptr);
@@ -453,14 +471,14 @@ fetch_value(VM *vm, MirInstr *src)
 		return (VMStackPtr)&src->value.data;
 	}
 
-	return pop_stack(vm, src->value.type);
+	return stack_pop(vm, src->value.type);
 }
 
 static inline VMStackPtr
 fetch_value2(VM *vm, MirConstExprValue *v)
 {
 	if (v->is_comptime) return v->data;
-	return pop_stack(vm, v->type);
+	return stack_pop(vm, v->type);
 }
 
 static inline void
@@ -523,7 +541,7 @@ stack_alloc_var(VM *vm, MirVar *var)
 	BL_ASSERT(!var->value.is_comptime && "cannot allocate compile time constant");
 	/* allocate memory for variable on stack */
 
-	VMStackPtr tmp     = push_stack_empty(vm, var->value.type);
+	VMStackPtr tmp     = stack_push_empty(vm, var->value.type);
 	var->rel_stack_ptr = tmp - (VMStackPtr)vm->stack->ra;
 	return var->rel_stack_ptr;
 }
@@ -551,34 +569,40 @@ calculate_binop(VMStackPtr dest, VMStackPtr lhs, VMStackPtr rhs, BinopKind op, M
 	/******************************************************************************************/
 #define _BINOP_INT(T)                                                                              \
 	case BINOP_ADD:                                                                            \
-		STACK_WRITE_AS(T, dest, STACK_READ_AS(T, lhs) + STACK_READ_AS(T, rhs));            \
+		VM_STACK_WRITE_AS(T, dest, VM_STACK_READ_AS(T, lhs) + VM_STACK_READ_AS(T, rhs));   \
 		break;                                                                             \
 	case BINOP_SUB:                                                                            \
-		STACK_WRITE_AS(T, dest, STACK_READ_AS(T, lhs) - STACK_READ_AS(T, rhs));            \
+		VM_STACK_WRITE_AS(T, dest, VM_STACK_READ_AS(T, lhs) - VM_STACK_READ_AS(T, rhs));   \
 		break;                                                                             \
 	case BINOP_MUL:                                                                            \
-		STACK_WRITE_AS(T, dest, STACK_READ_AS(T, lhs) * STACK_READ_AS(T, rhs));            \
+		VM_STACK_WRITE_AS(T, dest, VM_STACK_READ_AS(T, lhs) * VM_STACK_READ_AS(T, rhs));   \
 		break;                                                                             \
 	case BINOP_DIV:                                                                            \
-		STACK_WRITE_AS(T, dest, STACK_READ_AS(T, lhs) / STACK_READ_AS(T, rhs));            \
+		VM_STACK_WRITE_AS(T, dest, VM_STACK_READ_AS(T, lhs) / VM_STACK_READ_AS(T, rhs));   \
 		break;                                                                             \
 	case BINOP_EQ:                                                                             \
-		STACK_WRITE_AS(bool, dest, STACK_READ_AS(T, lhs) == STACK_READ_AS(T, rhs));        \
+		VM_STACK_WRITE_AS(                                                                 \
+		    bool, dest, VM_STACK_READ_AS(T, lhs) == VM_STACK_READ_AS(T, rhs));             \
 		break;                                                                             \
 	case BINOP_NEQ:                                                                            \
-		STACK_WRITE_AS(bool, dest, STACK_READ_AS(T, lhs) != STACK_READ_AS(T, rhs));        \
+		VM_STACK_WRITE_AS(                                                                 \
+		    bool, dest, VM_STACK_READ_AS(T, lhs) != VM_STACK_READ_AS(T, rhs));             \
 		break;                                                                             \
 	case BINOP_LESS:                                                                           \
-		STACK_WRITE_AS(bool, dest, STACK_READ_AS(T, lhs) < STACK_READ_AS(T, rhs));         \
+		VM_STACK_WRITE_AS(                                                                 \
+		    bool, dest, VM_STACK_READ_AS(T, lhs) < VM_STACK_READ_AS(T, rhs));              \
 		break;                                                                             \
 	case BINOP_LESS_EQ:                                                                        \
-		STACK_WRITE_AS(bool, dest, STACK_READ_AS(T, lhs) <= STACK_READ_AS(T, rhs));        \
+		VM_STACK_WRITE_AS(                                                                 \
+		    bool, dest, VM_STACK_READ_AS(T, lhs) <= VM_STACK_READ_AS(T, rhs));             \
 		break;                                                                             \
 	case BINOP_GREATER:                                                                        \
-		STACK_WRITE_AS(bool, dest, STACK_READ_AS(T, lhs) > STACK_READ_AS(T, rhs));         \
+		VM_STACK_WRITE_AS(                                                                 \
+		    bool, dest, VM_STACK_READ_AS(T, lhs) > VM_STACK_READ_AS(T, rhs));              \
 		break;                                                                             \
 	case BINOP_GREATER_EQ:                                                                     \
-		STACK_WRITE_AS(bool, dest, STACK_READ_AS(T, lhs) >= STACK_READ_AS(T, rhs));        \
+		VM_STACK_WRITE_AS(                                                                 \
+		    bool, dest, VM_STACK_READ_AS(T, lhs) >= VM_STACK_READ_AS(T, rhs));             \
 		break;
 	/******************************************************************************************/
 
@@ -588,19 +612,24 @@ calculate_binop(VMStackPtr dest, VMStackPtr lhs, VMStackPtr rhs, BinopKind op, M
 		switch (op) {                                                                      \
 			_BINOP_INT(T);                                                             \
 		case BINOP_SHR:                                                                    \
-			STACK_WRITE_AS(T, dest, STACK_READ_AS(T, lhs) >> STACK_READ_AS(T, rhs));   \
+			VM_STACK_WRITE_AS(                                                         \
+			    T, dest, VM_STACK_READ_AS(T, lhs) >> VM_STACK_READ_AS(T, rhs));        \
 			break;                                                                     \
 		case BINOP_SHL:                                                                    \
-			STACK_WRITE_AS(T, dest, STACK_READ_AS(T, lhs) << STACK_READ_AS(T, rhs));   \
+			VM_STACK_WRITE_AS(                                                         \
+			    T, dest, VM_STACK_READ_AS(T, lhs) << VM_STACK_READ_AS(T, rhs));        \
 			break;                                                                     \
 		case BINOP_MOD:                                                                    \
-			STACK_WRITE_AS(T, dest, STACK_READ_AS(T, lhs) % STACK_READ_AS(T, rhs));    \
+			VM_STACK_WRITE_AS(                                                         \
+			    T, dest, VM_STACK_READ_AS(T, lhs) % VM_STACK_READ_AS(T, rhs));         \
 			break;                                                                     \
 		case BINOP_AND:                                                                    \
-			STACK_WRITE_AS(T, dest, STACK_READ_AS(T, lhs) & STACK_READ_AS(T, rhs));    \
+			VM_STACK_WRITE_AS(                                                         \
+			    T, dest, VM_STACK_READ_AS(T, lhs) & VM_STACK_READ_AS(T, rhs));         \
 			break;                                                                     \
 		case BINOP_OR:                                                                     \
-			STACK_WRITE_AS(T, dest, STACK_READ_AS(T, lhs) | STACK_READ_AS(T, rhs));    \
+			VM_STACK_WRITE_AS(                                                         \
+			    T, dest, VM_STACK_READ_AS(T, lhs) | VM_STACK_READ_AS(T, rhs));         \
 			break;                                                                     \
 		default:                                                                           \
 			BL_UNIMPLEMENTED;                                                          \
@@ -676,13 +705,13 @@ calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, MirType *type)
 	case sizeof(T): {                                                                          \
 		switch (op) {                                                                      \
 		case UNOP_NOT:                                                                     \
-			STACK_WRITE_AS(T, dest, !STACK_READ_AS(T, v));                             \
+			VM_STACK_WRITE_AS(T, dest, !VM_STACK_READ_AS(T, v));                       \
 			break;                                                                     \
 		case UNOP_NEG:                                                                     \
-			STACK_WRITE_AS(T, dest, STACK_READ_AS(T, v) * -1);                         \
+			VM_STACK_WRITE_AS(T, dest, VM_STACK_READ_AS(T, v) * -1);                   \
 			break;                                                                     \
 		case UNOP_POS:                                                                     \
-			STACK_WRITE_AS(T, dest, STACK_READ_AS(T, v));                              \
+			VM_STACK_WRITE_AS(T, dest, VM_STACK_READ_AS(T, v));                        \
 			break;                                                                     \
 		default:                                                                           \
 			BL_UNIMPLEMENTED;                                                          \
@@ -756,21 +785,21 @@ do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, 
 		/******************************************************************************************/
 #define SECT_CASE(T)                                                                               \
 	case sizeof(T):                                                                            \
-		STACK_WRITE_AS(s64, dest, (s64)STACK_READ_AS(T, src));                             \
+		VM_STACK_WRITE_AS(s64, dest, (s64)VM_STACK_READ_AS(T, src));                       \
 		break;
 		/******************************************************************************************/
 
 		switch (src_type->store_size_bytes) {
 		case 1:
-			STACK_WRITE_AS(s64, dest, (s64)STACK_READ_AS(s8, src));
+			VM_STACK_WRITE_AS(s64, dest, (s64)VM_STACK_READ_AS(s8, src));
 			break;
 
 		case 2:
-			STACK_WRITE_AS(s64, dest, (s64)STACK_READ_AS(s16, src));
+			VM_STACK_WRITE_AS(s64, dest, (s64)VM_STACK_READ_AS(s16, src));
 			break;
 
 		case 4:
-			STACK_WRITE_AS(s64, dest, (s64)STACK_READ_AS(s32, src));
+			VM_STACK_WRITE_AS(s64, dest, (s64)VM_STACK_READ_AS(s32, src));
 			break;
 		default:
 			BL_ABORT("Invalid sext cast!");
@@ -782,31 +811,31 @@ do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, 
 
 	case MIR_CAST_FPEXT: {
 		/* src is smaller than dest */
-		STACK_WRITE_AS(f64, dest, (f64)STACK_READ_AS(f32, src));
+		VM_STACK_WRITE_AS(f64, dest, (f64)VM_STACK_READ_AS(f32, src));
 		break;
 	}
 
 	case MIR_CAST_FPTRUNC: {
 		/* src is bigger than dest */
-		STACK_WRITE_AS(f32, dest, (f32)STACK_READ_AS(f64, src));
+		VM_STACK_WRITE_AS(f32, dest, (f32)VM_STACK_READ_AS(f64, src));
 		break;
 	}
 
 	case MIR_CAST_FPTOSI: {
 		/* real to signed integer */
 		if (src_type->store_size_bytes == sizeof(f32))
-			STACK_WRITE_AS(s32, dest, (s32)STACK_READ_AS(f32, src));
+			VM_STACK_WRITE_AS(s32, dest, (s32)VM_STACK_READ_AS(f32, src));
 		else
-			STACK_WRITE_AS(s64, dest, (s64)STACK_READ_AS(f64, src));
+			VM_STACK_WRITE_AS(s64, dest, (s64)VM_STACK_READ_AS(f64, src));
 		break;
 	}
 
 	case MIR_CAST_FPTOUI: {
 		/* real to signed integer */
 		if (src_type->store_size_bytes == sizeof(f32))
-			STACK_WRITE_AS(u64, dest, (u64)STACK_READ_AS(f32, src));
+			VM_STACK_WRITE_AS(u64, dest, (u64)VM_STACK_READ_AS(f32, src));
 		else
-			STACK_WRITE_AS(u64, dest, (u64)STACK_READ_AS(f64, src));
+			VM_STACK_WRITE_AS(u64, dest, (u64)VM_STACK_READ_AS(f64, src));
 		break;
 	}
 
@@ -814,37 +843,37 @@ do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, 
 		if (dest_type->store_size_bytes == sizeof(f32)) {
 			switch (src_type->store_size_bytes) {
 			case 1:
-				STACK_WRITE_AS(f32, dest, (f32)STACK_READ_AS(s8, src));
+				VM_STACK_WRITE_AS(f32, dest, (f32)VM_STACK_READ_AS(s8, src));
 				break;
 
 			case 2:
-				STACK_WRITE_AS(f32, dest, (f32)STACK_READ_AS(s16, src));
+				VM_STACK_WRITE_AS(f32, dest, (f32)VM_STACK_READ_AS(s16, src));
 				break;
 
 			case 4:
-				STACK_WRITE_AS(f32, dest, (f32)STACK_READ_AS(s32, src));
+				VM_STACK_WRITE_AS(f32, dest, (f32)VM_STACK_READ_AS(s32, src));
 				break;
 
 			case 8:
-				STACK_WRITE_AS(f32, dest, (f32)STACK_READ_AS(s64, src));
+				VM_STACK_WRITE_AS(f32, dest, (f32)VM_STACK_READ_AS(s64, src));
 				break;
 			}
 		} else {
 			switch (src_type->store_size_bytes) {
 			case 1:
-				STACK_WRITE_AS(f64, dest, (f64)STACK_READ_AS(s8, src));
+				VM_STACK_WRITE_AS(f64, dest, (f64)VM_STACK_READ_AS(s8, src));
 				break;
 
 			case 2:
-				STACK_WRITE_AS(f64, dest, (f64)STACK_READ_AS(s16, src));
+				VM_STACK_WRITE_AS(f64, dest, (f64)VM_STACK_READ_AS(s16, src));
 				break;
 
 			case 4:
-				STACK_WRITE_AS(f64, dest, (f64)STACK_READ_AS(s32, src));
+				VM_STACK_WRITE_AS(f64, dest, (f64)VM_STACK_READ_AS(s32, src));
 				break;
 
 			case 8:
-				STACK_WRITE_AS(f64, dest, (f64)STACK_READ_AS(s64, src));
+				VM_STACK_WRITE_AS(f64, dest, (f64)VM_STACK_READ_AS(s64, src));
 				break;
 			}
 		}
@@ -853,9 +882,9 @@ do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, 
 
 	case MIR_CAST_UITOFP: {
 		if (dest_type->store_size_bytes == sizeof(f32))
-			STACK_WRITE_AS(f32, dest, (f32)STACK_READ_AS(u64, src));
+			VM_STACK_WRITE_AS(f32, dest, (f32)VM_STACK_READ_AS(u64, src));
 		else
-			STACK_WRITE_AS(f64, dest, (f64)STACK_READ_AS(u64, src));
+			VM_STACK_WRITE_AS(f64, dest, (f64)VM_STACK_READ_AS(u64, src));
 		break;
 	}
 
@@ -974,7 +1003,7 @@ copy_comptime_to_stack(VM *vm, VMStackPtr dest_ptr, MirConstValue *src_value)
 			MirVar *var = const_ptr->data.var;
 			BL_ASSERT(var);
 
-			VMStackPtr var_ptr = read_stack_ptr(vm, var->rel_stack_ptr, var->is_global);
+			VMStackPtr var_ptr = stack_read_ptr(vm, var->rel_stack_ptr, var->is_global);
 			memcpy(dest_ptr, &var_ptr, src_type->store_size_bytes);
 			break;
 		}
@@ -1453,7 +1482,7 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 
 	/* PUSH result only if it is used */
 	if (call->base.ref_count > 1 && does_return) {
-		push_stack(vm, (VMStackPtr)&result, ret_type);
+		stack_push(vm, (VMStackPtr)&result, ret_type);
 	}
 }
 
@@ -1500,7 +1529,7 @@ _execute_fn_top_level(VM *                    vm,
 
 		/* Push all arguments in reverse order on the stack. */
 		for (usize i = argc; i-- > 0;) {
-			VMStackPtr dest_ptr = push_stack_empty(vm, args->data[i]->type);
+			VMStackPtr dest_ptr = stack_push_empty(vm, args->data[i]->type);
 			copy_comptime_to_stack(vm, dest_ptr, &arg_values->data[i]);
 		}
 	}
@@ -1530,7 +1559,7 @@ _execute_fn_top_level(VM *                    vm,
 	if (vm->stack->aborted) return false;
 
 	if (pop_return_value) {
-		VMStackPtr ret_ptr = pop_stack(vm, ret_type);
+		VMStackPtr ret_ptr = stack_pop(vm, ret_type);
 		if (out_ptr) (*out_ptr) = ret_ptr;
 	} else if (is_caller_comptime) {
 		if (out_ptr) (*out_ptr) = (VMStackPtr)&call->value2.data;
@@ -1631,7 +1660,7 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 {
 	MirVar *   tmp      = toany->tmp;
 	MirVar *   expr_tmp = toany->expr_tmp;
-	VMStackPtr tmp_ptr  = read_stack_ptr(vm, tmp->rel_stack_ptr, tmp->is_global);
+	VMStackPtr tmp_ptr  = stack_read_ptr(vm, tmp->rel_stack_ptr, tmp->is_global);
 	MirType *  tmp_type = tmp->value.type;
 
 	/* type_info */
@@ -1646,7 +1675,7 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 	MirType *  type_info_type = mir_get_struct_elem_type(tmp_type, 0);
 
 	VMStackPtr rtti_ptr =
-	    read_stack_ptr(vm, expr_type_rtti->rel_stack_ptr, expr_type_rtti->is_global);
+	    stack_read_ptr(vm, expr_type_rtti->rel_stack_ptr, expr_type_rtti->is_global);
 
 	memcpy(dest, &rtti_ptr, type_info_type->store_size_bytes);
 
@@ -1669,12 +1698,12 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 		BL_ASSERT(spec_type_rtti);
 
 		VMStackPtr rtti_spec_ptr =
-		    read_stack_ptr(vm, spec_type_rtti->rel_stack_ptr, spec_type_rtti->is_global);
+		    stack_read_ptr(vm, spec_type_rtti->rel_stack_ptr, spec_type_rtti->is_global);
 
 		memcpy(dest, &rtti_spec_ptr, PTR_SIZE);
 	} else if (expr_tmp) { // set data
 		VMStackPtr expr_tmp_ptr =
-		    read_stack_ptr(vm, expr_tmp->rel_stack_ptr, expr_tmp->is_global);
+		    stack_read_ptr(vm, expr_tmp->rel_stack_ptr, expr_tmp->is_global);
 
 		if (toany->expr->comptime) {
 			copy_comptime_to_stack(vm, expr_tmp_ptr, (MirConstValue *)data_ptr);
@@ -1687,7 +1716,7 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 		memcpy(dest, data_ptr, data_type->store_size_bytes);
 	}
 
-	push_stack(vm, &tmp_ptr, toany->base.value.type);
+	stack_push(vm, &tmp_ptr, toany->base.value.type);
 }
 
 void
@@ -1724,7 +1753,7 @@ interp_instr_phi(VM *vm, MirInstrPhi *phi)
 		if (phi->base.comptime) {
 			memcpy(&phi->base.value.data, value_ptr, sizeof(phi->base.value.data));
 		} else {
-			push_stack(vm, value_ptr, phi_type);
+			stack_push(vm, value_ptr, phi_type);
 		}
 	}
 }
@@ -1742,9 +1771,9 @@ interp_instr_addrof(VM *vm, MirInstrAddrOf *addrof)
 	}
 
 	VMStackPtr ptr = fetch_value2(vm, &src->value2);
-	ptr            = STACK_PTR_DEREF(ptr);
+	ptr            = VM_STACK_PTR_DEREF(ptr);
 
-	push_stack(vm, (VMStackPtr)&ptr, type);
+	stack_push(vm, (VMStackPtr)&ptr, type);
 }
 
 void
@@ -1763,9 +1792,9 @@ interp_instr_type_info(VM *vm, MirInstrTypeInfo *type_info)
 	MirType *type = type_info->base.value.type;
 	BL_ASSERT(type);
 
-	VMStackPtr ptr = read_stack_ptr(vm, type_info_var->rel_stack_ptr, type_info_var->is_global);
+	VMStackPtr ptr = stack_read_ptr(vm, type_info_var->rel_stack_ptr, type_info_var->is_global);
 
-	push_stack(vm, (VMStackPtr)&ptr, type);
+	stack_push(vm, (VMStackPtr)&ptr, type);
 }
 
 void
@@ -1853,7 +1882,7 @@ interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 	}
 
 	/* push result address on the stack */
-	push_stack(vm, &result, elem_ptr->base.value.type);
+	stack_push(vm, &result, elem_ptr->base.value.type);
 }
 
 void
@@ -1906,7 +1935,7 @@ interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 	}
 
 	/* push result address on the stack */
-	push_stack(vm, &result, member_ptr->base.value.type);
+	stack_push(vm, &result, member_ptr->base.value.type);
 }
 
 void
@@ -1968,7 +1997,7 @@ interp_instr_arg(VM *vm, MirInstrArg *arg)
 
 		if (curr_arg_value->comptime) {
 			MirType *  type = curr_arg_value->value.type;
-			VMStackPtr dest = push_stack_empty(vm, type);
+			VMStackPtr dest = stack_push_empty(vm, type);
 
 			copy_comptime_to_stack(vm, dest, &curr_arg_value->value);
 		} else {
@@ -1986,7 +2015,7 @@ interp_instr_arg(VM *vm, MirInstrArg *arg)
 				    stack_alloc_size(arg_value->value.type->store_size_bytes);
 			}
 
-			push_stack(vm, (VMStackPtr)arg_ptr, arg->base.value.type);
+			stack_push(vm, (VMStackPtr)arg_ptr, arg->base.value.type);
 		}
 
 		return;
@@ -2006,7 +2035,7 @@ interp_instr_arg(VM *vm, MirInstrArg *arg)
 		arg_ptr -= stack_alloc_size(args->data[i]->type->store_size_bytes);
 	}
 
-	push_stack(vm, (VMStackPtr)arg_ptr, arg->base.value.type);
+	stack_push(vm, (VMStackPtr)arg_ptr, arg->base.value.type);
 }
 
 void
@@ -2047,10 +2076,10 @@ interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref)
 		if (var->value.is_comptime) {
 			real_ptr = (VMStackPtr)&var->value.data;
 		} else {
-			real_ptr = read_stack_ptr(vm, var->rel_stack_ptr, use_static_segment);
+			real_ptr = stack_read_ptr(vm, var->rel_stack_ptr, use_static_segment);
 		}
 
-		push_stack(vm, &real_ptr, ref->base.value2.type);
+		stack_push(vm, &real_ptr, ref->base.value2.type);
 		break;
 	}
 
@@ -2078,10 +2107,10 @@ interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref)
 	if (var->value.is_comptime) {
 		real_ptr = (VMStackPtr)&var->value.data;
 	} else {
-		real_ptr = read_stack_ptr(vm, var->rel_stack_ptr, use_static_segment);
+		real_ptr = stack_read_ptr(vm, var->rel_stack_ptr, use_static_segment);
 	}
 
-	push_stack(vm, &real_ptr, ref->base.value2.type);
+	stack_push(vm, &real_ptr, ref->base.value2.type);
 }
 
 void
@@ -2096,7 +2125,7 @@ interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 	const bool will_push = tmp_ptr == NULL;
 	if (will_push) {
 		BL_ASSERT(cmp->tmp_var && "Missing temp variable for compound.");
-		tmp_ptr = read_stack_ptr(vm, cmp->tmp_var->rel_stack_ptr, cmp->tmp_var->is_global);
+		tmp_ptr = stack_read_ptr(vm, cmp->tmp_var->rel_stack_ptr, cmp->tmp_var->is_global);
 	}
 
 	BL_ASSERT(tmp_ptr);
@@ -2138,7 +2167,7 @@ interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 		}
 	}
 
-	if (will_push) push_stack(vm, tmp_ptr, cmp->base.value.type);
+	if (will_push) stack_push(vm, tmp_ptr, cmp->base.value.type);
 }
 
 void
@@ -2152,7 +2181,7 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 	BL_ASSERT(vargs_tmp->rel_stack_ptr && "Unalocated vargs slice!!!");
 	BL_ASSERT(values);
 
-	VMStackPtr arr_tmp_ptr = arr_tmp ? read_stack_ptr(vm, arr_tmp->rel_stack_ptr, false) : NULL;
+	VMStackPtr arr_tmp_ptr = arr_tmp ? stack_read_ptr(vm, arr_tmp->rel_stack_ptr, false) : NULL;
 
 	/* Fill vargs tmp array with values from stack or constants. */
 	{
@@ -2174,7 +2203,7 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 
 	/* Push vargs slice on the stack. */
 	{
-		VMStackPtr vargs_tmp_ptr = read_stack_ptr(vm, vargs_tmp->rel_stack_ptr, false);
+		VMStackPtr vargs_tmp_ptr = stack_read_ptr(vm, vargs_tmp->rel_stack_ptr, false);
 		// set len
 		{
 			MirConstValueData len_tmp = {0};
@@ -2205,7 +2234,7 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 			memcpy(ptr_ptr, &ptr_tmp, ptr_type->store_size_bytes);
 		}
 
-		push_stack(vm, vargs_tmp_ptr, vargs_tmp->value.type);
+		stack_push(vm, vargs_tmp_ptr, vargs_tmp->value.type);
 	}
 }
 
@@ -2231,7 +2260,7 @@ interp_instr_decl_var(VM *vm, MirInstrDeclVar *decl)
 
 	/* initialize variable if there is some init value */
 	if (decl->init) {
-		VMStackPtr var_ptr = read_stack_ptr(vm, var->rel_stack_ptr, use_static_segment);
+		VMStackPtr var_ptr = stack_read_ptr(vm, var->rel_stack_ptr, use_static_segment);
 		BL_ASSERT(var_ptr);
 
 		if (decl->init->kind == MIR_INSTR_COMPOUND) {
@@ -2255,14 +2284,14 @@ interp_instr_load(VM *vm, MirInstrLoad *load)
 	BL_ASSERT(mir_is_pointer_type(load->src->value2.type));
 
 	VMStackPtr src_ptr = fetch_value2(vm, &load->src->value2);
-	src_ptr            = STACK_PTR_DEREF(src_ptr);
+	src_ptr            = VM_STACK_PTR_DEREF(src_ptr);
 
 	if (!src_ptr) {
 		msg_error("Dereferencing null pointer!");
 		exec_abort(vm, 0);
 	}
 
-	push_stack(vm, src_ptr, dest_type);
+	stack_push(vm, src_ptr, dest_type);
 }
 
 void
@@ -2277,7 +2306,7 @@ interp_instr_store(VM *vm, MirInstrStore *store)
 	VMStackPtr dest_ptr = fetch_value2(vm, &store->dest->value2);
 	VMStackPtr src_ptr  = fetch_value2(vm, &store->src->value2);
 
-	dest_ptr = STACK_PTR_DEREF(dest_ptr);
+	dest_ptr = VM_STACK_PTR_DEREF(dest_ptr);
 
 	BL_ASSERT(dest_ptr && src_ptr);
 	memcpy(dest_ptr, src_ptr, src_type->store_size_bytes);
@@ -2354,7 +2383,7 @@ interp_instr_ret(VM *vm, MirInstrRet *ret)
 			TSA_FOREACH(arg_values, arg_value)
 			{
 				if (arg_value->comptime) continue;
-				pop_stack(vm, arg_value->value.type);
+				stack_pop(vm, arg_value->value.type);
 			}
 		}
 	} else {
@@ -2367,7 +2396,7 @@ interp_instr_ret(VM *vm, MirInstrRet *ret)
 			MirArg *arg;
 			TSA_FOREACH(args, arg)
 			{
-				pop_stack(vm, arg->type);
+				stack_pop(vm, arg->type);
 			}
 		}
 	}
@@ -2380,7 +2409,7 @@ interp_instr_ret(VM *vm, MirInstrRet *ret)
 		if (is_caller_comptime) {
 			caller->base.value2.data = ret->value->value2.data;
 		} else {
-			push_stack(vm, ret_data_ptr, ret_type);
+			stack_push(vm, ret_data_ptr, ret_type);
 		}
 	}
 
@@ -2404,7 +2433,7 @@ interp_instr_binop(VM *vm, MirInstrBinop *binop)
 	u64 result = 0;
 	calculate_binop((VMStackPtr)&result, lhs_ptr, rhs_ptr, binop->op, type);
 
-	push_stack(vm, &result, type);
+	stack_push(vm, &result, type);
 }
 
 void
@@ -2416,7 +2445,7 @@ interp_instr_unop(VM *vm, MirInstrUnop *unop)
 	u64 result = 0;
 	calculate_unop((VMStackPtr)&result, v_ptr, unop->op, type);
 
-	push_stack(vm, &result, type);
+	stack_push(vm, &result, type);
 }
 
 void
@@ -2462,8 +2491,58 @@ eval_instr(VM *vm, MirInstr *instr)
 		eval_instr_decl_var(vm, (MirInstrDeclVar *)instr);
 		break;
 
+	case MIR_INSTR_COMPOUND:
+		eval_instr_compound(vm, (MirInstrCompound *)instr);
+		break;
+
+	case MIR_INSTR_BLOCK:
+	case MIR_INSTR_CONST:
+	case MIR_INSTR_FN_PROTO:
+	case MIR_INSTR_CALL:
+	case MIR_INSTR_TYPE_ARRAY:
+	case MIR_INSTR_TYPE_PTR:
+	case MIR_INSTR_TYPE_FN:
+		break;
+
 	default:
 		BL_ABORT("Missing evaluation for instruction '%s'.", mir_instr_name(instr));
+	}
+}
+
+void
+eval_instr_compound(VM *vm, MirInstrCompound *compound)
+{
+	MirConstExprValue *value = &compound->base.value2;
+	if (needs_tmp_alloc(value)) {
+		/* Compound data does't fit into default static memory register, we need to allcate
+		 * temporary block on the stack. */
+		value->data = comptime_alloc(&builder.comptime_cache, value->type);
+	}
+
+	if (compound->is_zero_initialized) {
+		memset(value->data, 0, value->type->store_size_bytes);
+		return;
+	}
+
+	MirInstr *it;
+	TSA_FOREACH(compound->values, it)
+	{
+		VMStackPtr dest_ptr = value->data;
+		VMStackPtr src_ptr  = it->value2.data;
+		BL_ASSERT(src_ptr && "Invalid compound element value!");
+
+		switch (value->type->kind) {
+		case MIR_TYPE_ARRAY: {
+			ptrdiff_t offset = mir_get_array_elem_offset(value->type, i);
+			dest_ptr += offset;
+			memcpy(
+			    dest_ptr, src_ptr, value->type->data.array.elem_type->store_size_bytes);
+			break;
+		}
+
+		default:
+			BL_ABORT("Invalid type of compound element!");
+		}
 	}
 }
 
@@ -2497,7 +2576,7 @@ void
 eval_instr_load(VM *vm, MirInstrLoad *load)
 {
 	VMStackPtr src = MIR_CEV_READ_AS(VMStackPtr, &load->src->value2);
-	src            = STACK_PTR_DEREF(src);
+	src            = VM_STACK_PTR_DEREF(src);
 	BL_ASSERT(src);
 
 	load->base.value2.data = src;
@@ -2654,4 +2733,19 @@ vm_read_stack_value(MirConstValue *dest, VMStackPtr src)
 	assert(dest->type);
 	memset(&dest->data, 0, sizeof(dest->data));
 	read_value(&dest->data, src, dest->type);
+}
+
+void
+vm_comptime_cache_init(VMComptimeCache *cache, usize size)
+{
+	cache->data = bl_malloc(size);
+	if (!cache->data) BL_ABORT("Bad alloc!");
+	cache->allocated = size;
+	cache->size      = 0;
+}
+
+void
+vm_comptime_cache_terminate(VMComptimeCache *cache)
+{
+	bl_free(cache->data);
 }

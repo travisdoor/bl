@@ -29,6 +29,7 @@
 #include "mir_printer.h"
 #include "assembly.h"
 #include "ast.h"
+#include "mir.h"
 
 #if BL_DEBUG
 #define PRINT_ANALYZED_COMPTIMES true
@@ -84,27 +85,27 @@ print_flags(u32 flags, FILE *stream)
 	fprintf(stream, " ");
 }
 
+#define print_const_value(V, S) _print_const_value((V)->type, (V)->data, (S))
+
 static inline void
-print_const_value(MirConstExprValue *value, FILE *stream)
+_print_const_value(MirType *type, VMStackPtr value, FILE *stream)
 {
-	MirType *type = value->type;
 	if (!type) return;
 
 	switch (type->kind) {
 	case MIR_TYPE_INT: {
-		const usize size = type->store_size_bytes;
-		switch (size) {
-		case sizeof(s8):
-			fprintf(stream, "%d", MIR_CEV_READ_AS(s8, value));
+		switch (type->store_size_bytes) {
+		case 1:
+			fprintf(stream, "%d", VM_STACK_READ_AS(s8, value));
 			break;
-		case sizeof(s16):
-			fprintf(stream, "%d", MIR_CEV_READ_AS(s16, value));
+		case 2:
+			fprintf(stream, "%d", VM_STACK_READ_AS(s16, value));
 			break;
-		case sizeof(s32):
-			fprintf(stream, "%d", MIR_CEV_READ_AS(s32, value));
+		case 4:
+			fprintf(stream, "%d", VM_STACK_READ_AS(s32, value));
 			break;
-		case sizeof(s64):
-			fprintf(stream, "%lld", MIR_CEV_READ_AS(s64, value));
+		case 8:
+			fprintf(stream, "%lld", VM_STACK_READ_AS(s64, value));
 			break;
 		default:
 			fprintf(stream, "<INVALID>");
@@ -113,15 +114,27 @@ print_const_value(MirConstExprValue *value, FILE *stream)
 	}
 
 	case MIR_TYPE_REAL:
-		fprintf(stream, "<MISING_PRINT>");
+		switch (type->store_size_bytes) {
+		case 4:
+			fprintf(stream, "%f", VM_STACK_READ_AS(float, value));
+			break;
+		case 8:
+			fprintf(stream, "%f", VM_STACK_READ_AS(double, value));
+			break;
+		default:
+			fprintf(stream, "<INVALID>");
+		}
+		break;
 		break;
 
-	case MIR_TYPE_BOOL:
-		fprintf(stream, "<MISING_PRINT>");
+	case MIR_TYPE_BOOL: {
+		bool b = VM_STACK_READ_AS(bool, value);
+		fprintf(stream, "%s", b ? "true" : "false");
 		break;
+	}
 
 	case MIR_TYPE_TYPE: {
-		MirType *type = MIR_CEV_READ_AS(MirType *, value);
+		MirType *type = VM_STACK_READ_AS(MirType *, value);
 		print_type(type, false, stream, false);
 		break;
 	}
@@ -131,7 +144,7 @@ print_const_value(MirConstExprValue *value, FILE *stream)
 		break;
 
 	case MIR_TYPE_PTR: {
-		VMStackPtr ptr = MIR_CEV_READ_AS(VMStackPtr, value);
+		VMStackPtr ptr = VM_STACK_READ_AS(VMStackPtr, value);
 		fprintf(stream, "%p", ptr);
 		break;
 	}
@@ -149,7 +162,17 @@ print_const_value(MirConstExprValue *value, FILE *stream)
 	}
 
 	case MIR_TYPE_ARRAY: {
-		fprintf(stream, "<MISING_PRINT>");
+		fprintf(stream, "{");
+
+		MirType *elem_type = type->data.array.elem_type;
+
+		for (u32 i = 0; i < type->data.array.len; ++i) {
+			const ptrdiff_t offset = mir_get_array_elem_offset(type, i);
+			_print_const_value(elem_type, value + offset, stream);
+			if (i < type->data.array.len - 1) fprintf(stream, ",");
+		}
+
+		fprintf(stream, "}");
 		break;
 	}
 

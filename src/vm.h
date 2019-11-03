@@ -31,6 +31,11 @@
 
 #include "common.h"
 
+/* Stavk data manipulation helper macros. */
+#define VM_STACK_PTR_DEREF(ptr) ((VMStackPtr) * ((uintptr_t *)(ptr)))
+#define VM_STACK_READ_AS(T, src) (*((T *)(src)))
+#define VM_STACK_WRITE_AS(T, dest, src) (*((T *)(dest)) = (src))
+
 struct MirInstr;
 struct MirInstrBlock;
 struct MirInstrCall;
@@ -43,6 +48,12 @@ struct MirConstValue;
 
 typedef ptrdiff_t VMRelativeStackPtr;
 typedef u8 *      VMStackPtr;
+
+typedef struct VMComptimeCache {
+	VMStackPtr data;
+	usize size;
+	usize allocated;
+} VMComptimeCache;
 
 typedef struct VMFrame {
 	struct VMFrame * prev;
@@ -91,5 +102,11 @@ vm_create_implicit_global(VM *vm, struct MirVar *var);
 
 void
 vm_read_stack_value(struct MirConstValue *dest, VMStackPtr src);
+
+void
+vm_comptime_cache_init(VMComptimeCache *cache, usize size);
+
+void
+vm_comptime_cache_terminate(VMComptimeCache *cache);
 
 #endif

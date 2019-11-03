@@ -368,8 +368,8 @@ create_const_value(Context *cnt, MirType *type);
 static MirConstExprValue *
 init_or_create_const_integer(Context *cnt, MirConstExprValue *v, MirType *type, u64 i);
 
-static MirConstValue *
-init_or_create_const_bool(Context *cnt, MirConstValue *v, bool b);
+static MirConstExprValue *
+init_or_create_const_bool(Context *cnt, MirConstExprValue *v, bool b);
 
 static MirConstValue *
 init_or_create_const_null(Context *cnt, MirConstValue *v, MirType *type);
@@ -1060,15 +1060,30 @@ can_mutate_comptime_to_const(MirInstr *instr)
 	BL_ASSERT(instr->analyzed && "Non-analyzed instruction.");
 	BL_ASSERT(mir_is_comptime(instr));
 
+	switch (instr->kind) {
+	case MIR_INSTR_DECL_DIRECT_REF:
+	case MIR_INSTR_DECL_VAR:
+	case MIR_INSTR_SET_INITIALIZER:
+	case MIR_INSTR_BLOCK:
+	case MIR_INSTR_FN_PROTO:
+	case MIR_INSTR_CONST:
+	case MIR_INSTR_CALL:
+		return false;
+
+		/* TEST: */
+		/* TEST: */
+		/* TEST: */
+	case MIR_INSTR_COMPOUND:
+		return true;
+	default:
+		break;
+	}
+
 	switch (instr->value2.type->kind) {
 	case MIR_TYPE_TYPE:
-	case MIR_TYPE_VOID:
 	case MIR_TYPE_INT:
 	case MIR_TYPE_REAL:
-	case MIR_TYPE_FN:
 	case MIR_TYPE_BOOL:
-	case MIR_TYPE_ENUM:
-	case MIR_TYPE_NULL:
 		return true;
 		break;
 
@@ -2917,13 +2932,14 @@ init_or_create_const_null(Context *cnt, MirConstValue *v, MirType *type)
 	return v;
 }
 
-MirConstValue *
-init_or_create_const_bool(Context *cnt, MirConstValue *v, bool b)
+MirConstExprValue *
+init_or_create_const_bool(Context *cnt, MirConstExprValue *v, bool b)
 {
 	if (!v) v = arena_alloc(&cnt->assembly->arenas.mir.value);
 	v->type        = cnt->builtin_types.t_bool;
 	v->addr_mode   = MIR_VAM_RVALUE;
-	v->data.v_bool = b;
+	v->is_comptime = true;
+	MIR_CEV_WRITE_AS(bool, v, b);
 
 	return v;
 }
@@ -3182,10 +3198,11 @@ MirInstrBlock *
 append_block(Context *cnt, MirFn *fn, const char *name)
 {
 	BL_ASSERT(fn && name);
-	MirInstrBlock *tmp = create_instr(cnt, MIR_INSTR_BLOCK, NULL);
-	tmp->name          = name;
-	tmp->owner_fn      = fn;
-	tmp->emit_llvm     = true;
+	MirInstrBlock *tmp    = create_instr(cnt, MIR_INSTR_BLOCK, NULL);
+	tmp->base.value2.type = cnt->builtin_types.t_void;
+	tmp->name             = name;
+	tmp->owner_fn         = fn;
+	tmp->emit_llvm        = true;
 
 	if (!fn->first_block) {
 		fn->first_block = tmp;
@@ -3205,6 +3222,7 @@ MirInstrBlock *
 append_global_block(Context *cnt, const char *name)
 {
 	MirInstrBlock *tmp           = create_instr(cnt, MIR_INSTR_BLOCK, NULL);
+	tmp->base.value2.type        = cnt->builtin_types.t_void;
 	tmp->base.value2.is_comptime = true;
 	tmp->name                    = name;
 	tmp->emit_llvm               = true;
@@ -3348,11 +3366,12 @@ append_instr_type_ptr(Context *cnt, Ast *node, MirInstr *type)
 MirInstr *
 append_instr_type_array(Context *cnt, Ast *node, MirInstr *elem_type, MirInstr *len)
 {
-	MirInstrTypeArray *tmp = create_instr(cnt, MIR_INSTR_TYPE_ARRAY, node);
-	tmp->base.value.type   = cnt->builtin_types.t_type;
-	tmp->base.comptime     = true;
-	tmp->elem_type         = elem_type;
-	tmp->len               = len;
+	MirInstrTypeArray *tmp       = create_instr(cnt, MIR_INSTR_TYPE_ARRAY, node);
+	tmp->base.value2.type        = cnt->builtin_types.t_type;
+	tmp->base.value2.addr_mode   = MIR_VAM_LVALUE_CONST;
+	tmp->base.value2.is_comptime = true;
+	tmp->elem_type               = elem_type;
+	tmp->len                     = len;
 
 	ref_instr(elem_type);
 	ref_instr(len);
@@ -3906,12 +3925,12 @@ append_instr_const_int(Context *cnt, Ast *node, MirType *type, u64 val)
 MirInstr *
 append_instr_const_float(Context *cnt, Ast *node, float val)
 {
-	MirInstr *tmp = create_instr(cnt, MIR_INSTR_CONST, node);
-	tmp->comptime = true;
+	MirInstr *tmp           = create_instr(cnt, MIR_INSTR_CONST, node);
+	tmp->value2.is_comptime = true;
+	tmp->value2.type        = cnt->builtin_types.t_f32;
+	tmp->value2.addr_mode   = MIR_VAM_RVALUE;
 
-	tmp->value.type       = cnt->builtin_types.t_f32;
-	tmp->value.data.v_f32 = val;
-	tmp->value.addr_mode  = MIR_VAM_RVALUE;
+	MIR_CEV_WRITE_AS(float, &tmp->value2, val);
 
 	append_current_block(cnt, tmp);
 	return tmp;
@@ -3920,12 +3939,12 @@ append_instr_const_float(Context *cnt, Ast *node, float val)
 MirInstr *
 append_instr_const_double(Context *cnt, Ast *node, double val)
 {
-	MirInstr *tmp = create_instr(cnt, MIR_INSTR_CONST, node);
-	tmp->comptime = true;
+	MirInstr *tmp           = create_instr(cnt, MIR_INSTR_CONST, node);
+	tmp->value2.is_comptime = true;
+	tmp->value2.type        = cnt->builtin_types.t_f64;
+	tmp->value2.addr_mode   = MIR_VAM_RVALUE;
 
-	tmp->value.type       = cnt->builtin_types.t_f64;
-	tmp->value.data.v_f64 = val;
-	tmp->value.addr_mode  = MIR_VAM_RVALUE;
+	MIR_CEV_WRITE_AS(double, &tmp->value2, val);
 
 	append_current_block(cnt, tmp);
 	return tmp;
@@ -3935,8 +3954,7 @@ MirInstr *
 append_instr_const_bool(Context *cnt, Ast *node, bool val)
 {
 	MirInstr *tmp = create_instr(cnt, MIR_INSTR_CONST, node);
-	tmp->comptime = true;
-	init_or_create_const_bool(cnt, &tmp->value, val);
+	init_or_create_const_bool(cnt, &tmp->value2, val);
 
 	append_current_block(cnt, tmp);
 	return tmp;
@@ -3946,8 +3964,6 @@ MirInstr *
 append_instr_const_string(Context *cnt, Ast *node, const char *str)
 {
 	MirInstr *tmp = create_instr(cnt, MIR_INSTR_CONST, node);
-	tmp->comptime = true;
-
 	init_or_create_const_string(cnt, &tmp->value, str);
 
 	append_current_block(cnt, tmp);
@@ -3957,11 +3973,12 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 MirInstr *
 append_instr_const_char(Context *cnt, Ast *node, char c)
 {
-	MirInstr *tmp          = create_instr(cnt, MIR_INSTR_CONST, node);
-	tmp->comptime          = true;
-	tmp->value.type        = cnt->builtin_types.t_u8;
-	tmp->value.data.v_char = c;
-	tmp->value.addr_mode   = MIR_VAM_RVALUE;
+	MirInstr *tmp           = create_instr(cnt, MIR_INSTR_CONST, node);
+	tmp->value2.is_comptime = true;
+	tmp->value2.type        = cnt->builtin_types.t_u8;
+	tmp->value2.addr_mode   = MIR_VAM_RVALUE;
+
+	MIR_CEV_WRITE_AS(char, &tmp->value2, c);
 
 	append_current_block(cnt, tmp);
 	return tmp;
@@ -3970,12 +3987,12 @@ append_instr_const_char(Context *cnt, Ast *node, char c)
 MirInstr *
 append_instr_const_null(Context *cnt, Ast *node)
 {
-	MirInstr *tmp        = create_instr(cnt, MIR_INSTR_CONST, node);
-	tmp->comptime        = true;
-	tmp->value.type      = create_type_null(cnt, cnt->builtin_types.t_u8_ptr);
-	tmp->value.addr_mode = MIR_VAM_RVALUE;
+	MirInstr *tmp           = create_instr(cnt, MIR_INSTR_CONST, node);
+	tmp->value2.is_comptime = true;
+	tmp->value2.type        = create_type_null(cnt, cnt->builtin_types.t_u8_ptr);
+	tmp->value2.addr_mode   = MIR_VAM_RVALUE;
 
-	mir_set_const_ptr(&tmp->value.data.v_ptr, NULL, MIR_CP_VALUE);
+	MIR_CEV_WRITE_AS(void *, &tmp->value2, NULL);
 
 	append_current_block(cnt, tmp);
 	return tmp;
@@ -4086,6 +4103,20 @@ erase_instr_tree(MirInstr *instr, bool keep_root, bool force)
 		}
 
 		switch (top->kind) {
+		case MIR_INSTR_COMPOUND: {
+			MirInstrCompound *compound = (MirInstrCompound *)top;
+			if (compound->is_zero_initialized) break;
+
+			MirInstr *it;
+			TSA_FOREACH(compound->values, it)
+			{
+				unref_instr(it);
+
+				tsa_push_InstrPtr64(&queue, it);
+			}
+			break;
+		}
+
 		case MIR_INSTR_BINOP: {
 			MirInstrBinop *binop = (MirInstrBinop *)top;
 			unref_instr(binop->lhs);
@@ -4275,27 +4306,15 @@ evaluate(Context *cnt, MirInstr *instr)
 	BL_ASSERT(instr->analyzed && "Non-analyzed instruction cannot be evaluated!");
 	if (!instr->value2.is_comptime) return;
 
-	switch (instr->kind) {
-	case MIR_INSTR_DECL_REF:
-	case MIR_INSTR_DECL_DIRECT_REF:
-	case MIR_INSTR_DECL_VAR:
-	case MIR_INSTR_LOAD:
-	case MIR_INSTR_STORE:
-	case MIR_INSTR_ADDROF:
-	case MIR_INSTR_CAST:
-	case MIR_INSTR_SET_INITIALIZER:
-		vm_eval_instr(&cnt->vm, instr);
-		break;
+	vm_eval_instr(&cnt->vm, instr);
 
-	case MIR_INSTR_BINOP:
-	case MIR_INSTR_UNOP:
-		vm_eval_instr(&cnt->vm, instr);
+	/* Some comptime values can be mutated to instr_const to simplify LLVM IR generation
+	 * later.
+	 */
+	if (can_mutate_comptime_to_const(instr)) {
+		BL_LOG("mutate %s to constant!", mir_instr_name(instr));
 		erase_instr_tree(instr, true, true);
 		mutate_instr(instr, MIR_INSTR_CONST);
-		break;
-
-	default:
-		break;
 	}
 }
 
@@ -4417,7 +4436,7 @@ AnalyzeResult
 analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 {
 	/* Setup compound type. */
-	MirType *             type   = cmp->base.value.type;
+	MirType *             type   = cmp->base.value2.type;
 	TSmallArray_InstrPtr *values = cmp->values;
 	if (!type) {
 		/* generate load instruction if needed */
@@ -4426,7 +4445,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 			return ANALYZE_RESULT(FAILED, 0);
 
 		MirInstr *instr_type = cmp->type;
-		if (instr_type->value.type->kind != MIR_TYPE_TYPE) {
+		if (instr_type->value2.type->kind != MIR_TYPE_TYPE) {
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_TYPE,
 			            instr_type->node->location,
@@ -4434,7 +4453,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 			            "Expected type before compound expression.");
 			return ANALYZE_RESULT(FAILED, 0);
 		}
-		type = instr_type->value.data.v_ptr.data.type;
+		type = MIR_CEV_READ_AS(MirType *, &instr_type->value2);
 	}
 
 	BL_ASSERT(type);
@@ -4448,14 +4467,14 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
-	cmp->base.value.type = type;
-	cmp->base.comptime   = true; /* can be overriden later */
+	cmp->base.value2.type        = type;
+	cmp->base.value2.is_comptime = true; /* can be overriden later */
 
 	/* Check if array is supposed to be initilialized to {0} */
 	if (values->size == 1) {
 		MirInstr *value = values->data[0];
 		if (value->kind == MIR_INSTR_CONST && value->value.type->kind == MIR_TYPE_INT &&
-		    value->value.data.v_u64 == 0) {
+		    MIR_CEV_READ_AS(u64, &value->value2)) {
 			// reduce_instr(cnt, value);
 			cmp->is_zero_initialized = true;
 		}
@@ -4463,18 +4482,14 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 
 	switch (type->kind) {
 	case MIR_TYPE_ARRAY: {
-		if (cmp->is_zero_initialized) {
-			cmp->base.value.data.v_array.is_zero_initializer = true;
-			break;
-		}
+		if (cmp->is_zero_initialized) break;
 
 		if (values->size != (usize)type->data.array.len) {
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_INITIALIZER,
 			            cmp->base.node->location,
 			            BUILDER_CUR_WORD,
-			            "Array initializer must explicitly set all array elements of "
-			            "the array or "
+			            "Array initializer must explicitly set all array elements or "
 			            "initialize array to 0 by zero initializer {0}. Expected is "
 			            "%llu but given %llu.",
 			            (unsigned long long)type->data.array.len,
@@ -4493,15 +4508,10 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 			                 type->data.array.elem_type) != ANALYZE_PASSED)
 				return ANALYZE_RESULT(FAILED, 0);
 
-			cmp->base.comptime = (*value_ref)->comptime ? cmp->base.comptime : false;
+			cmp->base.value2.is_comptime =
+			    (*value_ref)->value2.is_comptime ? cmp->base.value2.is_comptime : false;
 		}
 
-		// NOTE: Instructions can be used as values!!!
-		if (cmp->base.comptime)
-			init_or_create_const_array(cnt,
-			                           &cmp->base.value,
-			                           type->data.array.elem_type,
-			                           (TSmallArray_ConstValuePtr *)values);
 		break;
 	}
 
@@ -4509,6 +4519,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 	case MIR_TYPE_STRING:
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT: {
+		BL_UNIMPLEMENTED;
 		if (cmp->is_zero_initialized) {
 			cmp->base.value.data.v_struct.is_zero_initializer = true;
 			break;
@@ -4550,6 +4561,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 	}
 
 	default: {
+		BL_UNIMPLEMENTED;
 		/* Non-agregate type. */
 		if (values->size > 1) {
 			MirInstr *value = values->data[1];
@@ -4574,7 +4586,8 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 	}
 	}
 
-	if (!cmp->base.comptime && cmp->is_naked) {
+	if (!cmp->base.value2.is_comptime && cmp->is_naked) {
+		BL_UNIMPLEMENTED;
 		/* For naked non-compile time compounds we need to generate implicit temp storage to
 		 * keep all data. */
 
@@ -4676,11 +4689,8 @@ analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
 	AnalyzeResult state = analyze_var(cnt, var);
 	if (state.state != ANALYZE_PASSED) return state;
 
-	/* Some comptime values can be mutated to instr_const to simplify LLVM IR generation later.
-	 */
-	if (mir_is_comptime(si->src) && can_mutate_comptime_to_const(si->src)) {
-		erase_instr_tree(si->src, true, true);
-		mutate_instr(si->src, MIR_INSTR_CONST);
+	if (si->src->kind == MIR_INSTR_COMPOUND) {
+		((MirInstrCompound *)si->src)->is_naked = false;
 	}
 
 	return ANALYZE_RESULT(PASSED, 0);
@@ -5870,7 +5880,7 @@ analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
 AnalyzeResult
 analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 {
-	BL_ASSERT(type_arr->base.value.type);
+	BL_ASSERT(type_arr->base.value2.type);
 	BL_ASSERT(type_arr->elem_type->analyzed);
 
 	if (analyze_slot(
@@ -5885,7 +5895,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 	}
 
 	/* len */
-	if (!type_arr->len->comptime) {
+	if (!mir_is_comptime(type_arr->len)) {
 		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_EXPECTED_CONST,
 		            type_arr->len->node->location,
@@ -5894,7 +5904,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
-	if (type_arr->elem_type->value.type->kind != MIR_TYPE_TYPE) {
+	if (type_arr->elem_type->value2.type->kind != MIR_TYPE_TYPE) {
 		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
 		            type_arr->elem_type->node->location,
@@ -5903,10 +5913,7 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
-	BL_ASSERT(type_arr->len->comptime && "this must be error");
-	// reduce_instr(cnt, type_arr->len);
-
-	const s64 len = type_arr->len->value.data.v_s64;
+	const s64 len = MIR_CEV_READ_AS(s64, &type_arr->len->value2);
 	if (len == 0) {
 		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_ARR_SIZE,
@@ -5917,19 +5924,12 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 	}
 
 	/* elem type */
-	BL_ASSERT(type_arr->elem_type->comptime);
-	// reduce_instr(cnt, type_arr->elem_type);
+	BL_ASSERT(mir_is_comptime(type_arr->elem_type));
 
-	MirType *elem_type = type_arr->elem_type->value.data.v_ptr.data.type;
+	MirType *elem_type = MIR_CEV_READ_AS(MirType *, &type_arr->elem_type->value2);
 	BL_ASSERT(elem_type);
 
-	elem_type = create_type_array(cnt, elem_type, len);
-
-	{ /* set const pointer value */
-		MirConstPtr *const_ptr = &type_arr->base.value.data.v_ptr;
-		mir_set_const_ptr(const_ptr, elem_type, MIR_CP_TYPE);
-	}
-
+	MIR_CEV_WRITE_AS(MirType *, &type_arr->base.value2, create_type_array(cnt, elem_type, len));
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -7068,7 +7068,8 @@ gen_RTTI_int(Context *cnt, MirType *type)
 	        init_or_create_const_integer(cnt, NULL, cnt->builtin_types.t_s32, (u64)bitcount));)
 
 	/* .is_signed */
-	tsa_push_ConstValuePtr(m, init_or_create_const_bool(cnt, NULL, is_signed));
+	BL_UNIMPLEMENTED_REGION(
+	    tsa_push_ConstValuePtr(m, init_or_create_const_bool(cnt, NULL, is_signed));)
 
 	/* set members */
 	rtti_value.v_struct.members = m;
@@ -7451,10 +7452,11 @@ gen_RTTI_struct(Context *cnt, MirType *type)
 	tsa_push_ConstValuePtr(m, gen_RTTI_slice_of_struct_members(cnt, type->data.strct.members));
 
 	/* .is_slice */
-	tsa_push_ConstValuePtr(
-	    m,
-	    init_or_create_const_bool(
-	        cnt, NULL, type->kind == MIR_TYPE_SLICE || type->kind == MIR_TYPE_VARGS));
+	BL_UNIMPLEMENTED_REGION(
+	    tsa_push_ConstValuePtr(
+	        m,
+	        init_or_create_const_bool(
+	            cnt, NULL, type->kind == MIR_TYPE_SLICE || type->kind == MIR_TYPE_VARGS));)
 
 	/* set members */
 	rtti_value.v_struct.members = m;
@@ -7482,8 +7484,10 @@ gen_RTTI_fn(Context *cnt, MirType *type)
 	                                                    cnt->builtin_types.t_TypeInfo_ptr,
 	                                                    gen_RTTI(cnt, type->data.fn.ret_type)));
 
-	/* .is_vargs  */
-	tsa_push_ConstValuePtr(m, init_or_create_const_bool(cnt, NULL, type->data.fn.is_vargs));
+	BL_UNIMPLEMENTED_REGION(
+	    /* .is_vargs  */
+	    tsa_push_ConstValuePtr(m,
+	                           init_or_create_const_bool(cnt, NULL, type->data.fn.is_vargs));)
 
 	/* set members */
 	rtti_value.v_struct.members = m;
