@@ -298,28 +298,6 @@ emit_global_var_proto(Context *cnt, MirVar *var)
 	return var->llvm_value;
 }
 
-static inline LLVMValueRef
-fetch_value(Context *cnt, MirInstr *instr)
-{
-	BL_ABORT("This should not be used!!!");
-	LLVMValueRef value = NULL;
-
-	if (instr->comptime && !instr->llvm_value) {
-		/* Declaration references must be generated even if they are compile time. */
-		if (instr->kind == MIR_INSTR_DECL_REF) {
-			emit_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
-		} else if (instr->kind == MIR_INSTR_CAST) {
-			emit_instr_cast(cnt, (MirInstrCast *)instr);
-		} else {
-			instr->llvm_value = emit_as_const(cnt, &instr->value);
-		}
-	}
-
-	value = instr->llvm_value;
-	BL_ASSERT(value);
-	return value;
-}
-
 static inline LLVMBasicBlockRef
 emit_basic_block(Context *cnt, MirInstrBlock *block)
 {
@@ -513,7 +491,7 @@ emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 		value = phi->incoming_values->data[i];
 		block = (MirInstrBlock *)phi->incoming_blocks->data[i];
 
-		tsa_push_LLVMValue(&llvm_iv, fetch_value(cnt, value));
+		tsa_push_LLVMValue(&llvm_iv, value->llvm_value);
 		tsa_push_LLVMValue(&llvm_ib, LLVMBasicBlockAsValue(emit_basic_block(cnt, block)));
 	}
 
@@ -696,8 +674,8 @@ emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg_instr)
 void
 emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
-	LLVMValueRef llvm_arr_ptr = fetch_value(cnt, elem_ptr->arr_ptr);
-	LLVMValueRef llvm_index   = fetch_value(cnt, elem_ptr->index);
+	LLVMValueRef llvm_arr_ptr = elem_ptr->arr_ptr->llvm_value;
+	LLVMValueRef llvm_index   = elem_ptr->index->llvm_value;
 	BL_ASSERT(llvm_arr_ptr && llvm_index);
 
 	if (elem_ptr->target_is_slice) {
@@ -726,7 +704,7 @@ emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 void
 emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 {
-	LLVMValueRef llvm_target_ptr = fetch_value(cnt, member_ptr->target_ptr);
+	LLVMValueRef llvm_target_ptr = member_ptr->target_ptr->llvm_value;
 	BL_ASSERT(llvm_target_ptr);
 
 	if (member_ptr->builtin_id == MIR_BUILTIN_ID_NONE) {
@@ -1012,7 +990,7 @@ emit_instr_store(Context *cnt, MirInstrStore *store)
 void
 emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
-	LLVMValueRef llvm_val = fetch_value(cnt, unop->expr);
+	LLVMValueRef llvm_val = unop->expr->llvm_value;
 	BL_ASSERT(llvm_val);
 
 	LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(llvm_val));
@@ -1262,17 +1240,17 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 
 	MirInstr *callee = call->callee;
 	BL_ASSERT(callee);
-	BL_ASSERT(callee->value.type);
+	BL_ASSERT(callee->value2.type);
 
-	MirType *callee_type = callee->value.type->kind == MIR_TYPE_FN
-	                           ? callee->value.type
-	                           : mir_deref_type(callee->value.type);
+	MirType *callee_type = callee->value2.type->kind == MIR_TYPE_FN
+	                           ? callee->value2.type
+	                           : mir_deref_type(callee->value2.type);
 	BL_ASSERT(callee_type);
 	BL_ASSERT(callee_type->kind == MIR_TYPE_FN);
 
-	MirFn *      called_fn = callee->value.data.v_ptr.data.fn;
+	MirFn *      callee_fn = MIR_CEV_READ_AS(MirFn *, &callee->value2);
 	LLVMValueRef llvm_called_fn =
-	    callee->llvm_value ? callee->llvm_value : emit_fn_proto(cnt, called_fn);
+	    callee->llvm_value ? callee->llvm_value : emit_fn_proto(cnt, callee_fn);
 
 	bool       has_byval_arg = false;
 	const bool has_args      = call->args;
@@ -1304,7 +1282,7 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 		TSA_FOREACH(call->args, arg_instr)
 		{
 			arg                   = callee_type->data.fn.args->data[i];
-			LLVMValueRef llvm_arg = fetch_value(cnt, arg_instr);
+			LLVMValueRef llvm_arg = arg_instr->llvm_value;
 
 			switch (arg->llvm_easgm) {
 			case LLVM_EASGM_NONE: { /* Default behavior. */
@@ -1510,7 +1488,7 @@ emit_instr_switch(Context *cnt, MirInstrSwitch *sw)
 	MirInstrBlock *         default_block = sw->default_block;
 	TSmallArray_SwitchCase *cases         = sw->cases;
 
-	LLVMValueRef      llvm_value         = fetch_value(cnt, value);
+	LLVMValueRef      llvm_value         = value->llvm_value;
 	LLVMBasicBlockRef llvm_default_block = emit_basic_block(cnt, default_block);
 
 	LLVMValueRef llvm_switch =
@@ -1518,7 +1496,7 @@ emit_instr_switch(Context *cnt, MirInstrSwitch *sw)
 
 	for (usize i = 0; i < cases->size; ++i) {
 		MirSwitchCase *   c             = &cases->data[i];
-		LLVMValueRef      llvm_on_value = fetch_value(cnt, c->on_value);
+		LLVMValueRef      llvm_on_value = c->on_value->llvm_value;
 		LLVMBasicBlockRef llvm_block    = emit_basic_block(cnt, c->block);
 
 		LLVMAddCase(llvm_switch, llvm_on_value, llvm_block);
@@ -1583,7 +1561,7 @@ emit_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 	MirInstrBlock *else_block = br->else_block;
 	BL_ASSERT(cond && then_block);
 
-	LLVMValueRef      llvm_cond       = fetch_value(cnt, cond);
+	LLVMValueRef      llvm_cond       = cond->llvm_value;
 	LLVMBasicBlockRef llvm_then_block = emit_basic_block(cnt, then_block);
 	LLVMBasicBlockRef llvm_else_block = emit_basic_block(cnt, else_block);
 
@@ -1610,7 +1588,7 @@ emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 
 		TSA_FOREACH(values, value)
 		{
-			llvm_value = fetch_value(cnt, value);
+			llvm_value = value->llvm_value;
 			BL_ASSERT(llvm_value);
 			llvm_indices[1] = LLVMConstInt(cnt->llvm_i64_type, i, true);
 			llvm_value_dest = LLVMBuildGEP(cnt->llvm_builder,

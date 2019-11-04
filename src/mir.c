@@ -3503,12 +3503,13 @@ append_instr_cond_br(Context *      cnt,
 	ref_instr(cond);
 	ref_instr(&then_block->base);
 	ref_instr(&else_block->base);
-	MirInstrCondBr *tmp  = create_instr(cnt, MIR_INSTR_COND_BR, node);
-	tmp->base.ref_count  = NO_REF_COUNTING;
-	tmp->base.value.type = cnt->builtin_types.t_void;
-	tmp->cond            = cond;
-	tmp->then_block      = then_block;
-	tmp->else_block      = else_block;
+
+	MirInstrCondBr *tmp   = create_instr(cnt, MIR_INSTR_COND_BR, node);
+	tmp->base.value2.type = cnt->builtin_types.t_void;
+	tmp->base.ref_count   = NO_REF_COUNTING;
+	tmp->cond             = cond;
+	tmp->then_block       = then_block;
+	tmp->else_block       = else_block;
 
 	append_current_block(cnt, &tmp->base);
 
@@ -3556,8 +3557,8 @@ append_instr_switch(Context *               cnt,
 	}
 
 	MirInstrSwitch *tmp           = create_instr(cnt, MIR_INSTR_SWITCH, node);
+	tmp->base.value2.type         = cnt->builtin_types.t_void;
 	tmp->base.ref_count           = NO_REF_COUNTING;
-	tmp->base.value.type          = cnt->builtin_types.t_void;
 	tmp->value                    = value;
 	tmp->default_block            = default_block;
 	tmp->cases                    = cases;
@@ -3727,10 +3728,10 @@ MirInstr *
 append_instr_call(Context *cnt, Ast *node, MirInstr *callee, TSmallArray_InstrPtr *args)
 {
 	BL_ASSERT(callee);
-	MirInstrCall *tmp         = create_instr(cnt, MIR_INSTR_CALL, node);
-	tmp->args                 = args;
-	tmp->callee               = callee;
-	tmp->base.value.addr_mode = MIR_VAM_RVALUE;
+	MirInstrCall *tmp          = create_instr(cnt, MIR_INSTR_CALL, node);
+	tmp->base.value2.addr_mode = MIR_VAM_RVALUE;
+	tmp->args                  = args;
+	tmp->callee                = callee;
 
 	ref_instr(&tmp->base);
 
@@ -4806,7 +4807,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 {
 	MirInstr *target_ptr = member_ptr->target_ptr;
 	BL_ASSERT(target_ptr);
-	MirType *target_type = target_ptr->value.type;
+	MirType *target_type = target_ptr->value2.type;
 
 	if (target_type->kind != MIR_TYPE_PTR) {
 		builder_msg(BUILDER_MSG_ERROR,
@@ -4817,7 +4818,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
-	MirValueAddressMode target_addr_mode = target_ptr->value.addr_mode;
+	MirValueAddressMode target_addr_mode = target_ptr->value2.addr_mode;
 	Ast *               ast_member_ident = member_ptr->member_ident;
 
 	target_type = mir_deref_type(target_type);
@@ -4831,10 +4832,10 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			/* mutate instruction into constant */
 			unref_instr(member_ptr->target_ptr);
 			erase_instr_tree(member_ptr->target_ptr, false, false);
-			MirInstr *len         = mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
-			len->comptime         = true;
-			len->value.type       = cnt->builtin_types.t_s64;
-			len->value.data.v_s64 = target_type->data.array.len;
+			MirInstr *len           = mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
+			len->value2.is_comptime = true;
+			len->value2.type        = cnt->builtin_types.t_s64;
+			MIR_CEV_WRITE_AS(s64, &len->value2, target_type->data.array.len);
 		} else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR ||
 		           is_builtin(ast_member_ident, MIR_BUILTIN_ID_ARR_PTR)) {
 			/* .ptr -> This will be replaced by:
@@ -4867,7 +4868,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			return ANALYZE_RESULT(FAILED, 0);
 		}
 
-		member_ptr->base.value.addr_mode = target_addr_mode;
+		member_ptr->base.value2.addr_mode = target_addr_mode;
 		return ANALYZE_RESULT(PASSED, 0);
 	}
 
@@ -5197,17 +5198,15 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 
 	switch (found->kind) {
 	case SCOPE_ENTRY_FN: {
-		BL_UNIMPLEMENTED;
 		MirFn *fn = found->data.fn;
 		BL_ASSERT(fn);
 		MirType *type = fn->type;
 		BL_ASSERT(type);
 
-		ref->base.value.type      = type;
-		ref->base.comptime        = true;
-		ref->base.value.addr_mode = MIR_VAM_RVALUE;
+		ref->base.value2.type      = type;
+		ref->base.value2.is_comptime        = true;
+		ref->base.value2.addr_mode = MIR_VAM_RVALUE;
 		ref_instr(fn->prototype);
-		mir_set_const_ptr(&ref->base.value.data.v_ptr, fn, MIR_CP_FN);
 		break;
 	}
 

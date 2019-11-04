@@ -1798,6 +1798,7 @@ interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 	BL_ASSERT(arr_ptr && index_ptr);
 
 	const s64 index = VM_STACK_READ_AS(s64, index_ptr);
+	arr_ptr         = VM_STACK_PTR_DEREF(arr_ptr);
 
 	if (elem_ptr->target_is_slice) {
 		BL_UNIMPLEMENTED;
@@ -1892,18 +1893,17 @@ interp_instr_br(VM *vm, MirInstrBr *br)
 void
 interp_instr_switch(VM *vm, MirInstrSwitch *sw)
 {
-	VMStackPtr value_ptr = fetch_value(vm, sw->value);
+	VMStackPtr value_ptr = fetch_value2(vm, &sw->value->value2);
 	BL_ASSERT(value_ptr);
 
-	MirConstValueData value = {0};
-	read_value(&value, value_ptr, sw->value->value.type);
-
+	const s64 value       = VM_STACK_READ_AS(s64, value_ptr);
 	vm->stack->prev_block = sw->base.owner_block;
 
 	TSmallArray_SwitchCase *cases = sw->cases;
 	for (usize i = 0; i < cases->size; ++i) {
 		MirSwitchCase *c = &cases->data[i];
-		if (value.v_s64 == c->on_value->value.data.v_s64) {
+		BL_UNIMPLEMENTED;
+		if (value == c->on_value->value.data.v_s64) {
 			set_pc(vm, c->block->entry_instr);
 			return;
 		}
@@ -1983,18 +1983,17 @@ void
 interp_instr_cond_br(VM *vm, MirInstrCondBr *br)
 {
 	BL_ASSERT(br->cond);
-	MirType *type = br->cond->value.type;
+	MirType *type = br->cond->value2.type;
 
 	/* pop condition from stack */
-	VMStackPtr cond = fetch_value(vm, br->cond);
-	BL_ASSERT(cond);
+	VMStackPtr cond_ptr = fetch_value2(vm, &br->cond->value2);
+	BL_ASSERT(cond_ptr);
 
-	MirConstValueData tmp = {0};
-	read_value(&tmp, cond, type);
+	const bool condition = VM_STACK_READ_AS(bool, cond_ptr);
 
 	/* Set previous block. */
 	vm->stack->prev_block = br->base.owner_block;
-	if (tmp.v_s64) {
+	if (condition) {
 		set_pc(vm, br->then_block->entry_instr);
 	} else {
 		set_pc(vm, br->else_block->entry_instr);
@@ -2256,41 +2255,37 @@ interp_instr_store(VM *vm, MirInstrStore *store)
 void
 interp_instr_call(VM *vm, MirInstrCall *call)
 {
-	BL_ASSERT(call->callee && call->base.value.type);
-	BL_ASSERT(call->callee->value.type);
+	BL_ASSERT(call->callee && call->base.value2.type);
+	BL_ASSERT(call->callee->value2.type);
 
-	VMStackPtr        callee_ptr = fetch_value(vm, call->callee);
-	MirConstValueData callee     = {0};
-
-	read_value(&callee, callee_ptr, call->callee->value.type);
+	VMStackPtr callee_ptr = fetch_value2(vm, &call->callee->value2);
 
 	/* Function called via pointer. */
-	if (call->callee->value.type->kind == MIR_TYPE_PTR) {
-		BL_ASSERT(mir_deref_type(call->callee->value.type)->kind == MIR_TYPE_FN);
-		callee.v_ptr.data.fn =
-		    callee.v_ptr.data.any ? callee.v_ptr.data.value->data.v_ptr.data.fn : NULL;
+	if (mir_is_pointer_type(call->callee->value2.type)) {
+		BL_ASSERT(mir_deref_type(call->callee->value2.type)->kind == MIR_TYPE_FN);
+		callee_ptr = VM_STACK_PTR_DEREF(callee_ptr);
 	}
 
-	MirFn *fn = callee.v_ptr.data.fn;
-	if (fn == NULL) {
+	MirFn *callee = VM_STACK_READ_AS(MirFn *, callee_ptr);
+	if (callee == NULL) {
 		msg_error("Function pointer not set!");
 		exec_abort(vm, 0);
 		return;
 	}
 
-	BL_ASSERT(fn->type);
+	BL_ASSERT(callee->type);
 
-	if (IS_FLAG(fn->flags, FLAG_EXTERN)) {
-		interp_extern_call(vm, fn, call);
+	if (IS_FLAG(callee->flags, FLAG_EXTERN)) {
+		interp_extern_call(vm, callee, call);
 	} else {
 		/* Push current frame stack top. (Later poped by ret instruction)*/
 		push_ra(vm, &call->base);
-		BL_ASSERT(fn->first_block->entry_instr);
+		BL_ASSERT(callee->first_block->entry_instr);
 
-		stack_alloc_local_vars(vm, fn);
+		stack_alloc_local_vars(vm, callee);
 
 		/* setup entry instruction */
-		set_pc(vm, fn->first_block->entry_instr);
+		set_pc(vm, callee->first_block->entry_instr);
 	}
 }
 
@@ -2585,6 +2580,10 @@ eval_instr_decl_ref(VM *vm, MirInstrDeclRef *decl_ref)
 	BL_ASSERT(entry);
 
 	switch (entry->kind) {
+	case SCOPE_ENTRY_FN:
+		MIR_CEV_WRITE_AS(MirFn *, &decl_ref->base.value2, entry->data.fn);
+		break;
+
 	case SCOPE_ENTRY_TYPE:
 		MIR_CEV_WRITE_AS(MirType *, &decl_ref->base.value2, entry->data.type);
 		break;
