@@ -15,19 +15,44 @@ K :: true;
 arr1 :: {:[8]s32: 1, 2, 3, 4, 5, 6, 7, 8};
 arr2 :: {:[8]s32: 0};
 
+Data1 :: struct {
+    a: s32;
+    b: s32;
+    c: bool;
+}
+
+gdata :: {:Data1: 10, 20, false};
+arr3 :: {:[2]Data1:
+         {:Data1: 10, 20, false}, 
+         {:Data1: 30, 40, true},
+};
+
 main :: fn () s32 {
     result := 0;
 
-    loop i := 0; i < arr1.len; i += 1 {
-        result += arr1[i];
-        foo();
+    {
+        loop i := 0; i < arr3.len; i += 1 {
+            result += arr3[i].a + arr3[i].b;
+            foo();
+        }
+
+        if result > 0 {
+            result += 10;
+        }
     }
 
-    if result > 0 {
-        result += 10;
+    data : Data1;
+    {
+        data.a = 10;
+        data.b = 10;
+    }
+
+    {
+        i :: gdata.a;
+        arr3 : [i]s32;
     }
     
-    return result;
+    return result + data.a + data.b + gdata.a + gdata.b;
 }
 
 foo :: fn () {

@@ -32,7 +32,7 @@
 #include "threading.h"
 
 #define MAX_ALIGNMENT 8
-#define VERBOSE_EXEC true
+#define VERBOSE_EXEC false
 #define CHCK_STACK true
 #define PTR_SIZE sizeof(void *) /* HACK: can cause problems with different build targets. */
 
@@ -258,6 +258,9 @@ interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref);
 
 static void
 eval_instr(VM *vm, MirInstr *instr);
+
+static void
+eval_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr);
 
 static void
 eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr);
@@ -1826,8 +1829,7 @@ void
 interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 {
 	BL_ASSERT(member_ptr->target_ptr);
-	MirType *         target_type = member_ptr->target_ptr->value.type;
-	MirConstValueData result      = {0};
+	MirType *target_type = member_ptr->target_ptr->value2.type;
 
 	/* lookup for base structure declaration type
 	 * IDEA: maybe we can store parent type to the member type? But what about
@@ -1838,9 +1840,11 @@ interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 	BL_ASSERT(mir_is_composit_type(target_type) && "expected structure");
 
 	/* fetch address of the struct begin */
-	VMStackPtr ptr = fetch_value(vm, member_ptr->target_ptr);
-	ptr            = ((MirConstValueData *)ptr)->v_ptr.data.stack_ptr;
+	VMStackPtr ptr = fetch_value2(vm, &member_ptr->target_ptr->value2);
+	ptr            = VM_STACK_PTR_DEREF(ptr);
 	BL_ASSERT(ptr);
+
+	VMStackPtr result = NULL;
 
 	if (member_ptr->builtin_id == MIR_BUILTIN_ID_NONE) {
 		BL_ASSERT(member_ptr->scope_entry &&
@@ -1853,26 +1857,27 @@ interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 		const ptrdiff_t ptr_offset =
 		    mir_get_struct_elem_offest(vm->assembly, target_type, (u32)index);
 
-		result.v_ptr.data.stack_ptr = ptr + ptr_offset; // pointer shift
+		result = ptr + ptr_offset; // pointer shift
 	} else {
 		/* builtin member */
 		if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR) {
 			/* slice .ptr */
 			const ptrdiff_t ptr_offset =
 			    mir_get_struct_elem_offest(vm->assembly, target_type, 1);
-			result.v_ptr.data.stack_ptr = ptr + ptr_offset; // pointer shift
+
+			result = ptr + ptr_offset; // pointer shift
 		} else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN) {
 			/* slice .len*/
 			const ptrdiff_t len_offset =
 			    mir_get_struct_elem_offest(vm->assembly, target_type, 0);
-			result.v_ptr.data.stack_ptr = ptr + len_offset; // pointer shift
+			result = ptr + len_offset; // pointer shift
 		} else {
 			BL_ABORT("invalid slice member!");
 		}
 	}
 
 	/* push result address on the stack */
-	stack_push(vm, &result, member_ptr->base.value.type);
+	stack_push(vm, (VMStackPtr)&result, member_ptr->base.value2.type);
 }
 
 void
@@ -2435,6 +2440,10 @@ eval_instr(VM *vm, MirInstr *instr)
 		eval_instr_elem_ptr(vm, (MirInstrElemPtr *)instr);
 		break;
 
+	case MIR_INSTR_MEMBER_PTR:
+		eval_instr_member_ptr(vm, (MirInstrMemberPtr *)instr);
+		break;
+
 	case MIR_INSTR_BLOCK:
 	case MIR_INSTR_CONST:
 	case MIR_INSTR_FN_PROTO:
@@ -2442,6 +2451,8 @@ eval_instr(VM *vm, MirInstr *instr)
 	case MIR_INSTR_TYPE_ARRAY:
 	case MIR_INSTR_TYPE_PTR:
 	case MIR_INSTR_TYPE_FN:
+	case MIR_INSTR_TYPE_STRUCT:
+	case MIR_INSTR_DECL_MEMBER:
 		break;
 
 	default:
@@ -2465,6 +2476,18 @@ eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 	}
 
 	MIR_CEV_WRITE_AS(VMStackPtr, &elem_ptr->base.value2, result_ptr);
+}
+
+void
+eval_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
+{
+	MirMember *member     = member_ptr->scope_entry->data.member;
+	VMStackPtr strct_ptr  = MIR_CEV_READ_AS(VMStackPtr, &member_ptr->target_ptr->value2);
+	VMStackPtr result_ptr = NULL;
+
+	result_ptr = strct_ptr + member->offset_bytes;
+
+	MIR_CEV_WRITE_AS(VMStackPtr, &member_ptr->base.value2, result_ptr);
 }
 
 void
@@ -2495,6 +2518,19 @@ eval_instr_compound(VM *vm, MirInstrCompound *compound)
 			dest_ptr += offset;
 			memcpy(
 			    dest_ptr, src_ptr, value->type->data.array.elem_type->store_size_bytes);
+			break;
+		}
+
+		case MIR_TYPE_STRUCT:
+		case MIR_TYPE_STRING:
+		case MIR_TYPE_SLICE:
+		case MIR_TYPE_VARGS: {
+			MirType * member_type = value->type->data.strct.members->data[i]->type;
+			ptrdiff_t offset =
+			    mir_get_struct_elem_offest(vm->assembly, value->type, (u32)i);
+			dest_ptr += offset;
+
+			memcpy(dest_ptr, src_ptr, member_type->store_size_bytes);
 			break;
 		}
 

@@ -104,8 +104,6 @@ typedef struct {
 		/* Hash table of arrays. Hash is ID of symbol and array contains queue
 		 * of waiting instructions (DeclRefs). */
 		THashTable waiting;
-		bool       verbose_pre;
-		bool       verbose_post;
 
 		/* Unique table of pointers to types later generated into RTTI, this table contains
 		 * only pointer to top level types used by typeinfo operator, not all sub-types. */
@@ -2123,12 +2121,10 @@ complete_type_struct(Context *              cnt,
 {
 	BL_ASSERT(fwd_decl && "Invalid fwd_decl pointer!");
 
-	BL_ASSERT(fwd_decl->value.type->kind == MIR_TYPE_TYPE &&
+	BL_ASSERT(fwd_decl->value2.type->kind == MIR_TYPE_TYPE &&
 	          "Forward struct declaration does not point to type definition!");
 
-	BL_ASSERT(fwd_decl->value.data.v_ptr.kind == MIR_CP_TYPE);
-
-	MirType *incomplete_type = fwd_decl->value.data.v_ptr.data.type;
+	MirType *incomplete_type = MIR_CEV_READ_AS(MirType *, &fwd_decl->value2);
 	BL_ASSERT(incomplete_type);
 
 	BL_ASSERT(incomplete_type->kind == MIR_TYPE_STRUCT &&
@@ -3291,14 +3287,14 @@ append_instr_type_struct(Context *             cnt,
                          TSmallArray_InstrPtr *members,
                          bool                  is_packed)
 {
-	MirInstrTypeStruct *tmp = create_instr(cnt, MIR_INSTR_TYPE_STRUCT, node);
-	tmp->base.value.type    = cnt->builtin_types.t_type;
-	tmp->base.comptime      = true;
-	tmp->members            = members;
-	tmp->scope              = scope;
-	tmp->is_packed          = is_packed;
-	tmp->id                 = id;
-	tmp->fwd_decl           = fwd_decl;
+	MirInstrTypeStruct *tmp      = create_instr(cnt, MIR_INSTR_TYPE_STRUCT, node);
+	tmp->base.value2.type        = cnt->builtin_types.t_type;
+	tmp->base.value2.is_comptime = true;
+	tmp->members                 = members;
+	tmp->scope                   = scope;
+	tmp->is_packed               = is_packed;
+	tmp->id                      = id;
+	tmp->fwd_decl                = fwd_decl;
 
 	if (members) {
 		MirInstr *it;
@@ -3836,11 +3832,11 @@ MirInstr *
 append_instr_decl_member_impl(Context *cnt, Ast *node, ID *id, MirInstr *type)
 {
 	ref_instr(type);
-	MirInstrDeclMember *tmp = create_instr(cnt, MIR_INSTR_DECL_MEMBER, node);
-	tmp->base.ref_count     = NO_REF_COUNTING;
-	tmp->base.comptime      = true;
-	tmp->base.value.type    = cnt->builtin_types.t_void;
-	tmp->type               = type;
+	MirInstrDeclMember *tmp      = create_instr(cnt, MIR_INSTR_DECL_MEMBER, node);
+	tmp->base.value2.is_comptime = true;
+	tmp->base.value2.type        = cnt->builtin_types.t_void;
+	tmp->base.ref_count          = NO_REF_COUNTING;
+	tmp->type                    = type;
 
 	tmp->member = create_member(cnt, node, id, NULL, -1, NULL);
 
@@ -4276,6 +4272,7 @@ erase_instr_tree(MirInstr *instr, bool keep_root, bool force)
 			continue;
 
 		case MIR_INSTR_DECL_REF:
+		case MIR_INSTR_DECL_MEMBER:
 		case MIR_INSTR_CONST:
 			break;
 
@@ -4507,11 +4504,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 	case MIR_TYPE_STRING:
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT: {
-		BL_UNIMPLEMENTED;
-		if (cmp->is_zero_initialized) {
-			cmp->base.value.data.v_struct.is_zero_initializer = true;
-			break;
-		}
+		if (cmp->is_zero_initialized) break;
 
 		const usize memc = type->data.strct.members->size;
 		if (values->size != memc) {
@@ -4538,13 +4531,10 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 			    ANALYZE_PASSED)
 				return ANALYZE_RESULT(FAILED, 0);
 
-			cmp->base.comptime = (*value_ref)->comptime ? cmp->base.comptime : false;
+			cmp->base.value2.is_comptime =
+			    (*value_ref)->value2.is_comptime ? cmp->base.value2.is_comptime : false;
 		}
 
-		// NOTE: Instructions can be used as values!!!
-		if (cmp->base.comptime)
-			init_or_create_const_struct(
-			    cnt, &cmp->base.value, type, (TSmallArray_ConstValuePtr *)values);
 		break;
 	}
 
@@ -4680,6 +4670,10 @@ analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
 	if (si->src->kind == MIR_INSTR_COMPOUND) {
 		((MirInstrCompound *)si->src)->is_naked = false;
 	}
+
+	/* Typedef resolvers cannot be generated into LLVM IR because TypeType has no LLVM
+	 * representation and should live only during compile time of MIR. */
+	si->base.owner_block->emit_llvm = var->value.type->kind != MIR_TYPE_TYPE;
 
 	return ANALYZE_RESULT(PASSED, 0);
 }
@@ -4893,8 +4887,6 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			BL_ASSERT(member_ptr->target_ptr);
 		}
 
-		// reduce_instr(cnt, member_ptr->target_ptr);
-
 		Scope *     scope = target_type->data.strct.scope;
 		ID *        rid   = &ast_member_ident->data.ident.id;
 		ScopeEntry *found = NULL;
@@ -4933,18 +4925,15 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			return ANALYZE_RESULT(FAILED, 0);
 		}
 
-		{
-			BL_ASSERT(found->kind == SCOPE_ENTRY_MEMBER);
-			MirMember *member = found->data.member;
+		BL_ASSERT(found->kind == SCOPE_ENTRY_MEMBER);
+		MirMember *member = found->data.member;
 
-			/* setup member_ptr type */
-			MirType *type = create_type_ptr(cnt, member->type);
-			BL_ASSERT(type);
-			member_ptr->base.value.type = type;
-		}
-
-		member_ptr->base.value.addr_mode = target_addr_mode;
-		member_ptr->scope_entry          = found;
+		/* setup member_ptr type */
+		MirType *member_ptr_type            = create_type_ptr(cnt, member->type);
+		member_ptr->base.value2.type        = member_ptr_type;
+		member_ptr->base.value2.addr_mode   = target_addr_mode;
+		member_ptr->base.value2.is_comptime = target_ptr->value2.is_comptime;
+		member_ptr->scope_entry             = found;
 
 		return ANALYZE_RESULT(PASSED, 0);
 	}
@@ -4952,12 +4941,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	/* Sub type member. */
 	if (target_type->kind == MIR_TYPE_TYPE) {
 		/* generate load instruction if needed */
-
-		/* HACK: probably not needed?
-		if (additional_load_needed) {
-		        member_ptr->target_ptr = insert_instr_load(cnt, member_ptr->target_ptr);
-		        BL_ASSERT(member_ptr->target_ptr);
-		        }*/
+		BL_UNIMPLEMENTED;
 
 		if (analyze_slot(cnt, &analyze_slot_conf_basic, &member_ptr->target_ptr, NULL) !=
 		    ANALYZE_PASSED) {
@@ -5203,9 +5187,9 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		MirType *type = fn->type;
 		BL_ASSERT(type);
 
-		ref->base.value2.type      = type;
-		ref->base.value2.is_comptime        = true;
-		ref->base.value2.addr_mode = MIR_VAM_RVALUE;
+		ref->base.value2.type        = type;
+		ref->base.value2.is_comptime = true;
+		ref->base.value2.addr_mode   = MIR_VAM_RVALUE;
 		ref_instr(fn->prototype);
 		break;
 	}
@@ -5724,10 +5708,11 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 
 			decl_member = (MirInstrDeclMember *)*member_instr;
 			BL_ASSERT(decl_member->base.kind == MIR_INSTR_DECL_MEMBER);
-			BL_ASSERT(decl_member->base.comptime);
+			BL_ASSERT(mir_is_comptime(&decl_member->base));
 
 			/* solve member type */
-			member_type = decl_member->type->value.data.v_ptr.data.type;
+			member_type = MIR_CEV_READ_AS(MirType *, &decl_member->type->value2);
+			BL_ASSERT(member_type);
 
 			if (member_type->kind == MIR_TYPE_FN) {
 				builder_msg(BUILDER_MSG_ERROR,
@@ -5738,8 +5723,6 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 				            "be referenced only by pointers.");
 				return ANALYZE_RESULT(FAILED, 0);
 			}
-
-			BL_ASSERT(member_type);
 
 			/* setup and provide member */
 			MirMember *member = decl_member->member;
@@ -5759,8 +5742,8 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 		}
 	}
 
-	MirConstPtr *const_ptr   = &type_struct->base.value.data.v_ptr;
-	MirType *    result_type = NULL;
+	MirType *result_type = NULL;
+
 	if (type_struct->fwd_decl) {
 		/* Type has fwd declaration. In this case we set all desired information about
 		 * struct type into previously created forward declaration. */
@@ -5783,7 +5766,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 	}
 
 	BL_ASSERT(result_type);
-	mir_set_const_ptr(const_ptr, result_type, MIR_CP_TYPE);
+	MIR_CEV_WRITE_AS(MirType *, &type_struct->base.value2, result_type);
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -6860,15 +6843,6 @@ analyze(Context *cnt)
 #endif
 	/******************************************************************************************/
 
-	if (cnt->analyze.verbose_pre) {
-		MirInstr *instr;
-		TArray *  globals = &cnt->assembly->MIR.global_instrs;
-		TARRAY_FOREACH(MirInstr *, globals, instr)
-		{
-			mir_print_instr(instr, stdout);
-		}
-	}
-
 	/* PERFORMANCE: use array??? */
 	/* PERFORMANCE: use array??? */
 	/* PERFORMANCE: use array??? */
@@ -6937,15 +6911,6 @@ analyze(Context *cnt)
 			skip                = true;
 			postpone_loop_count = 0;
 		}
-		}
-	}
-
-	if (cnt->analyze.verbose_post) {
-		MirInstr *instr;
-		TArray *  globals = &cnt->assembly->MIR.global_instrs;
-		TARRAY_FOREACH(MirInstr *, globals, instr)
-		{
-			mir_print_instr(instr, stdout);
 		}
 	}
 
@@ -9385,8 +9350,6 @@ mir_run(Assembly *assembly)
 	memset(&cnt, 0, sizeof(Context));
 	cnt.assembly                = assembly;
 	cnt.debug_mode              = builder.options.debug_build;
-	cnt.analyze.verbose_pre     = false;
-	cnt.analyze.verbose_post    = false;
 	cnt.analyze.llvm_di_builder = assembly->llvm.di_builder;
 	cnt.vm                      = &builder.vm;
 

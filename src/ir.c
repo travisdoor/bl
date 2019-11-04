@@ -1060,6 +1060,30 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 			break;
 		}
 
+		case MIR_TYPE_STRING:
+			BL_UNIMPLEMENTED;
+		case MIR_TYPE_SLICE:
+		case MIR_TYPE_VARGS:
+		case MIR_TYPE_STRUCT: {
+			TSmallArray_LLVMValue llvm_members;
+			tsa_init(&llvm_members);
+
+			MirInstr *it;
+			TSA_FOREACH(cmp->values, it)
+			{
+				LLVMValueRef llvm_member = it->llvm_value;
+				BL_ASSERT(llvm_member && "Invalid constant compound member value!");
+
+				tsa_push_LLVMValue(&llvm_members, llvm_member);
+			}
+
+			cmp->base.llvm_value = LLVMConstNamedStruct(
+			    type->llvm_type, llvm_members.data, cmp->values->size);
+
+			tsa_terminate(&llvm_members);
+			break;
+		}
+
 		default:
 			BL_ABORT("Invalid compound type!");
 		}
@@ -1675,6 +1699,9 @@ emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 void
 emit_instr_block(Context *cnt, MirInstrBlock *block)
 {
+	/* We don't want to genrate type resolvers for typedefs!!! */
+	if (!block->emit_llvm) return;
+
 	MirFn *    fn        = block->owner_fn;
 	const bool is_global = fn == NULL;
 

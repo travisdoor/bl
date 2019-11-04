@@ -795,6 +795,9 @@ mir_get_struct_elem_type(MirType *type, u32 i)
 	return members->data[i]->type;
 }
 
+/* CLEANUP: remove after value2 will be done! */
+/* CLEANUP: remove after value2 will be done! */
+/* CLEANUP: remove after value2 will be done! */
 static inline void
 mir_set_const_ptr(MirConstPtr *value, void *ptr, MirConstPtrKind kind)
 {
