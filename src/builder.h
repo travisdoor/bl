@@ -71,7 +71,7 @@ typedef struct BuilderOpions {
 typedef struct Builder {
 	BuilderOptions  options;
 	Arena           str_cache;
-	VMComptimeCache comptime_cache;
+	VM              vm;
 	s32             total_lines;
 	s32             errorc;
 	ConfData *      conf;

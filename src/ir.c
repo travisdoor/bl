@@ -1048,93 +1048,45 @@ emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 void
 emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 {
-        BL_UNIMPLEMENTED;
-	if (cmp->base.comptime && !_tmp_var) {
-		cmp->base.llvm_value = emit_as_const(cnt, &cmp->base.value);
-		return;
-	}
+	MirType *  type                = cmp->base.value2.type;
+	const bool is_zero_initialized = cmp->is_zero_initialized;
 
-	/*
-	 * Temporary variable for naked compounds is implicitly generated variable. When compound is
-	 * used for variable initialization, variable's allocated memory is used directly and MirVar
-	 * must be passed in parameters.
-	 */
-	MirVar *tmp_var = _tmp_var ? _tmp_var : cmp->tmp_var;
-
-	BL_ASSERT(tmp_var && "Missing temporary variable");
-
-	LLVMValueRef llvm_tmp = tmp_var->llvm_value;
-	BL_ASSERT(llvm_tmp);
-
-	MirType *type = tmp_var->value.type;
-	BL_ASSERT(type);
-
-	/*
-	 * Initializer variants:
-	 * 1) Zero initialization - Compound is initialized to 0 by memset intrinsic.
-	 * 2) Constant            - Compound is compile time known constant.
-	 * 3) Runtime             - One or more compound members are known in runtime only.
-	 */
-
-	LLVMValueRef llvm_size = LLVMConstInt(cnt->llvm_i64_type, type->store_size_bytes, false);
-	LLVMValueRef llvm_alignment =
-	    LLVMConstInt(cnt->llvm_i32_type, (unsigned)type->alignment, true);
-
-	if (cmp->is_zero_initialized) {
-		/* zero initialized */
-		build_call_memset_0(cnt, llvm_tmp, llvm_size, llvm_alignment);
-	} else if (cmp->base.comptime) {
-		/* compile time known */
-		LLVMTypeRef llvm_type = type->llvm_type;
-		BL_ASSERT(llvm_type);
-		LLVMValueRef llvm_const = LLVMAddGlobal(cnt->llvm_module, llvm_type, "");
-		LLVMSetGlobalConstant(llvm_const, true);
-		LLVMSetLinkage(llvm_const, LLVMPrivateLinkage);
-		LLVMSetAlignment(llvm_const, (unsigned)type->alignment);
-		LLVMSetInitializer(llvm_const, fetch_value(cnt, &cmp->base));
-
-		build_call_memcpy(cnt, llvm_tmp, llvm_const, llvm_size, llvm_alignment);
-	} else {
-		TSmallArray_InstrPtr *values = cmp->values;
-		MirInstr *            value;
-		LLVMValueRef          llvm_value;
-		LLVMValueRef          llvm_value_dest;
-		LLVMValueRef          llvm_indices[2];
-		llvm_indices[0] = cnt->llvm_const_i64;
-
-		TSA_FOREACH(values, value)
-		{
-			llvm_value = fetch_value(cnt, value);
-			BL_ASSERT(llvm_value);
-
-			switch (type->kind) {
-			case MIR_TYPE_ARRAY:
-				llvm_indices[1] = LLVMConstInt(cnt->llvm_i64_type, i, true);
-				llvm_value_dest = LLVMBuildGEP(cnt->llvm_builder,
-				                               llvm_tmp,
-				                               llvm_indices,
-				                               TARRAY_SIZE(llvm_indices),
-				                               "");
-				break;
-
-			case MIR_TYPE_STRING:
-			case MIR_TYPE_SLICE:
-			case MIR_TYPE_VARGS:
-			case MIR_TYPE_STRUCT:
-				llvm_value_dest = LLVMBuildStructGEP(
-				    cnt->llvm_builder, tmp_var->llvm_value, (unsigned int)i, "");
-				break;
-
-			default:
-				BL_ASSERT(i == 0);
-				llvm_value_dest = llvm_tmp;
-				break;
-			}
-
-			LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
+	if (mir_is_comptime(&cmp->base)) {
+		if (is_zero_initialized) {
+			cmp->base.llvm_value = LLVMConstNull(type->llvm_type);
+			return;
 		}
 
-		cmp->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, "");
+		switch (type->kind) {
+		case MIR_TYPE_ARRAY: {
+			const usize len            = type->data.array.len;
+			LLVMTypeRef llvm_elem_type = type->data.array.elem_type->llvm_type;
+			BL_ASSERT(len && llvm_elem_type);
+
+			TSmallArray_LLVMValue llvm_elems;
+			tsa_init(&llvm_elems);
+
+			MirInstr *it;
+			TSA_FOREACH(cmp->values, it)
+			{
+				LLVMValueRef llvm_elem = it->llvm_value;
+				BL_ASSERT(llvm_elem && "Invalid constant compound elem value!");
+
+				tsa_push_LLVMValue(&llvm_elems, llvm_elem);
+			}
+
+			cmp->base.llvm_value =
+			    LLVMConstArray(llvm_elem_type, llvm_elems.data, (unsigned int)len);
+
+			tsa_terminate(&llvm_elems);
+			break;
+		}
+
+		default:
+			BL_ABORT("Invalid compound type!");
+		}
+	} else {
+		BL_UNIMPLEMENTED;
 	}
 }
 
@@ -1615,11 +1567,6 @@ emit_instr_const(Context *cnt, MirInstrConst *c)
 		break;
 	}
 
-	case MIR_TYPE_ARRAY: {
-		BL_UNIMPLEMENTED;
-		break;
-	}
-
 	default:
 		BL_UNIMPLEMENTED;
 	}
@@ -1834,6 +1781,8 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 void
 emit_instr(Context *cnt, MirInstr *instr)
 {
+	if (instr->value2.type->kind == MIR_TYPE_TYPE) return;
+
 	switch (instr->kind) {
 	case MIR_INSTR_INVALID:
 		BL_ABORT("Invalid instruction")

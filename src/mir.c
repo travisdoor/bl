@@ -77,7 +77,7 @@ TSMALL_ARRAY_TYPE(InstrPtr64, MirInstr *, 64);
 TSMALL_ARRAY_TYPE(String, const char *, 64);
 
 typedef struct {
-	VM        vm;
+	VM *      vm;
 	Assembly *assembly;
 	TArray    test_cases;
 	TString   tmp_sh;
@@ -1061,20 +1061,11 @@ can_mutate_comptime_to_const(MirInstr *instr)
 	BL_ASSERT(mir_is_comptime(instr));
 
 	switch (instr->kind) {
-	case MIR_INSTR_DECL_DIRECT_REF:
-	case MIR_INSTR_DECL_VAR:
-	case MIR_INSTR_SET_INITIALIZER:
+	case MIR_INSTR_CONST:
 	case MIR_INSTR_BLOCK:
 	case MIR_INSTR_FN_PROTO:
-	case MIR_INSTR_CONST:
 	case MIR_INSTR_CALL:
 		return false;
-
-		/* TEST: */
-		/* TEST: */
-		/* TEST: */
-	case MIR_INSTR_COMPOUND:
-		return true;
 	default:
 		break;
 	}
@@ -3041,10 +3032,10 @@ append_current_block(Context *cnt, MirInstr *instr)
 MirInstr *
 insert_instr_cast(Context *cnt, MirInstr *src, MirType *to_type)
 {
-	MirInstrCast *tmp    = create_instr(cnt, MIR_INSTR_CAST, src->node);
-	tmp->base.value.type = to_type;
-	tmp->base.implicit   = true;
-	tmp->expr            = src;
+	MirInstrCast *tmp     = create_instr(cnt, MIR_INSTR_CAST, src->node);
+	tmp->base.value2.type = to_type;
+	tmp->base.implicit    = true;
+	tmp->expr             = src;
 	ref_instr(&tmp->base);
 
 	insert_instr_after(src, &tmp->base);
@@ -4306,13 +4297,9 @@ evaluate(Context *cnt, MirInstr *instr)
 	BL_ASSERT(instr->analyzed && "Non-analyzed instruction cannot be evaluated!");
 	if (!instr->value2.is_comptime) return;
 
-	vm_eval_instr(&cnt->vm, instr);
+	vm_eval_instr(cnt->vm, cnt->assembly, instr);
 
-	/* Some comptime values can be mutated to instr_const to simplify LLVM IR generation
-	 * later.
-	 */
 	if (can_mutate_comptime_to_const(instr)) {
-		BL_LOG("mutate %s to constant!", mir_instr_name(instr));
 		erase_instr_tree(instr, true, true);
 		mutate_instr(instr, MIR_INSTR_CONST);
 	}
@@ -4328,7 +4315,8 @@ analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type)
 	if (analyze_instr(cnt, resolver_call).state != ANALYZE_PASSED)
 		return ANALYZE_RESULT(POSTPONE, 0);
 
-	if (vm_execute_instr_top_level_call(&cnt->vm, (MirInstrCall *)resolver_call)) {
+	if (vm_execute_instr_top_level_call(
+	        cnt->vm, cnt->assembly, (MirInstrCall *)resolver_call)) {
 		*out_type = MIR_CEV_READ_AS(MirType *, &resolver_call->value2);
 		return ANALYZE_RESULT(PASSED, 0);
 	} else {
@@ -4473,9 +4461,8 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 	/* Check if array is supposed to be initilialized to {0} */
 	if (values->size == 1) {
 		MirInstr *value = values->data[0];
-		if (value->kind == MIR_INSTR_CONST && value->value.type->kind == MIR_TYPE_INT &&
-		    MIR_CEV_READ_AS(u64, &value->value2)) {
-			// reduce_instr(cnt, value);
+		if (value->kind == MIR_INSTR_CONST && value->value2.type->kind == MIR_TYPE_INT &&
+		    MIR_CEV_READ_AS(u64, &value->value2) == 0) {
 			cmp->is_zero_initialized = true;
 		}
 	}
@@ -4746,9 +4733,9 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 
 	MirInstr *arr_ptr = elem_ptr->arr_ptr;
 	BL_ASSERT(arr_ptr);
-	BL_ASSERT(arr_ptr->value.type);
+	BL_ASSERT(arr_ptr->value2.type);
 
-	if (!mir_is_pointer_type(arr_ptr->value.type)) {
+	if (!mir_is_pointer_type(arr_ptr->value2.type)) {
 		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
 		            elem_ptr->arr_ptr->node->location,
@@ -4757,14 +4744,14 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
-	MirType *arr_type = mir_deref_type(arr_ptr->value.type);
+	MirType *arr_type = mir_deref_type(arr_ptr->value2.type);
 	BL_ASSERT(arr_type);
 
 	if (arr_type->kind == MIR_TYPE_ARRAY) {
 		/* array */
-		if (elem_ptr->index->comptime) {
+		if (mir_is_comptime(elem_ptr->index)) {
 			const s64 len = arr_type->data.array.len;
-			const s64 i   = elem_ptr->index->value.data.v_u64;
+			const s64 i   = MIR_CEV_READ_AS(s64, &elem_ptr->index->value2);
 			if (i >= len || i < 0) {
 				builder_msg(BUILDER_MSG_ERROR,
 				            ERR_BOUND_CHECK_FAILED,
@@ -4781,7 +4768,7 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		/* setup ElemPtr instruction const_value type */
 		MirType *elem_type = arr_type->data.array.elem_type;
 		BL_ASSERT(elem_type);
-		elem_ptr->base.value.type = create_type_ptr(cnt, elem_type);
+		elem_ptr->base.value2.type = create_type_ptr(cnt, elem_type);
 	} else if (arr_type->kind == MIR_TYPE_SLICE || arr_type->kind == MIR_TYPE_STRING ||
 	           arr_type->kind == MIR_TYPE_VARGS) {
 		/* Support of direct slice access -> slice[N]
@@ -4808,7 +4795,9 @@ analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
-	// reduce_instr(cnt, elem_ptr->arr_ptr);
+	elem_ptr->base.value2.addr_mode = arr_ptr->value2.addr_mode;
+	elem_ptr->base.value2.is_comptime =
+	    mir_is_comptime(arr_ptr) && mir_is_comptime(elem_ptr->index);
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -5354,6 +5343,8 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
 	fn->type          = fn_proto->base.value2.type;
 	fn->type->user_id = fn->id;
+
+	BL_ASSERT(fn->type);
 
 	if (fn->ret_tmp) {
 		BL_ASSERT(fn->ret_tmp->kind == MIR_INSTR_DECL_VAR);
@@ -6297,7 +6288,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		 * has some side effect or not. So we produce allocation here. Variable
 		 * will be stored in static data segment. There is no need to use
 		 * relative pointers here. */
-		vm_create_global(&cnt->vm, decl);
+		vm_create_global(cnt->vm, cnt->assembly, decl);
 	}
 
 	return ANALYZE_RESULT(PASSED, 0);
@@ -7002,7 +6993,7 @@ gen_RTTI_var(Context *cnt, MirType *type, MirConstValueData *value)
 	MirVar *    var  = create_var_impl(cnt, name, type, false, true, false);
 	BL_UNIMPLEMENTED_REGION(var->value.data = *value;)
 
-	vm_create_implicit_global(&cnt->vm, var);
+	vm_create_implicit_global(cnt->vm, cnt->assembly, var);
 
 	/* Push into RTTI table */
 	tarray_push(&cnt->assembly->MIR.RTTI_var_queue, var);
@@ -9225,7 +9216,7 @@ execute_entry_fn(Context *cnt)
 
 	/* tmp return value storage */
 	VMStackPtr ret_ptr = NULL;
-	if (vm_execute_fn(&cnt->vm, cnt->entry_fn, &ret_ptr)) {
+	if (vm_execute_fn(cnt->vm, cnt->assembly, cnt->entry_fn, &ret_ptr)) {
 		if (ret_ptr) {
 			MirConstValue tmp = {.type = fn_type->data.fn.ret_type};
 			vm_read_stack_value(&tmp, ret_ptr);
@@ -9252,7 +9243,7 @@ execute_test_cases(Context *cnt)
 	TARRAY_FOREACH(MirFn *, &cnt->test_cases, test_fn)
 	{
 		BL_ASSERT(IS_FLAG(test_fn->flags, FLAG_TEST));
-		const bool passed = vm_execute_fn(&cnt->vm, test_fn, NULL);
+		const bool passed = vm_execute_fn(cnt->vm, cnt->assembly, test_fn, NULL);
 
 		line = test_fn->decl_node ? test_fn->decl_node->location->line : -1;
 		file = test_fn->decl_node ? test_fn->decl_node->location->unit->filepath : "?";
@@ -9398,13 +9389,13 @@ mir_run(Assembly *assembly)
 	cnt.analyze.verbose_pre     = false;
 	cnt.analyze.verbose_post    = false;
 	cnt.analyze.llvm_di_builder = assembly->llvm.di_builder;
+	cnt.vm                      = &builder.vm;
 
 	thtbl_init(&cnt.analyze.waiting, sizeof(TArray), ANALYZE_TABLE_SIZE);
 	thtbl_init(&cnt.analyze.RTTI_entry_types, 0, 1024);
 	tlist_init(&cnt.analyze.queue, sizeof(MirInstr *));
 	tstring_init(&cnt.tmp_sh);
 	tarray_init(&cnt.test_cases, sizeof(MirFn *));
-	vm_init(&cnt.vm, assembly, VM_STACK_SIZE);
 
 	tsa_init(&cnt.ast.defer_stack);
 
@@ -9439,6 +9430,4 @@ SKIP:
 	tstring_terminate(&cnt.tmp_sh);
 
 	tsa_terminate(&cnt.ast.defer_stack);
-
-	vm_terminate(&cnt.vm);
 }

@@ -260,6 +260,9 @@ static void
 eval_instr(VM *vm, MirInstr *instr);
 
 static void
+eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr);
+
+static void
 eval_instr_decl_var(VM *vm, MirInstrDeclVar *decl_var);
 
 static void
@@ -292,19 +295,6 @@ eval_instr_compound(VM *vm, MirInstrCompound *compound);
 /***********/
 /* inlines */
 /***********/
-static inline VMStackPtr
-comptime_alloc(VMComptimeCache *cache, MirType *type)
-{
-	const usize size = type->store_size_bytes;
-	if (cache->size + size > cache->allocated)
-		BL_ABORT(
-		    "Cannot allocate compile time expression value, comptime cache is full!!!");
-
-	VMStackPtr tmp = &cache->data[cache->size];
-	cache->size += size;
-	return tmp;
-}
-
 static inline bool
 needs_tmp_alloc(MirConstExprValue *v)
 {
@@ -1801,88 +1791,34 @@ void
 interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 {
 	/* pop index from stack */
-	BL_ASSERT(mir_is_pointer_type(elem_ptr->arr_ptr->value.type));
-	MirType *         arr_type   = mir_deref_type(elem_ptr->arr_ptr->value.type);
-	MirType *         index_type = elem_ptr->index->value.type;
-	VMStackPtr        index_ptr  = fetch_value(vm, elem_ptr->index);
-	MirConstValueData result     = {0};
-
-	VMStackPtr arr_ptr = fetch_value(vm, elem_ptr->arr_ptr);
-	arr_ptr            = ((MirConstValueData *)arr_ptr)->v_ptr.data.stack_ptr;
+	MirType *  arr_type   = mir_deref_type(elem_ptr->arr_ptr->value2.type);
+	VMStackPtr index_ptr  = fetch_value2(vm, &elem_ptr->index->value2);
+	VMStackPtr arr_ptr    = fetch_value2(vm, &elem_ptr->arr_ptr->value2);
+	VMStackPtr result_ptr = NULL;
 	BL_ASSERT(arr_ptr && index_ptr);
 
-	MirConstValueData index = {0};
-	read_value(&index, index_ptr, index_type);
+	const s64 index = VM_STACK_READ_AS(s64, index_ptr);
 
 	if (elem_ptr->target_is_slice) {
-		MirType *len_type = mir_get_struct_elem_type(arr_type, MIR_SLICE_LEN_INDEX);
-		MirType *ptr_type = mir_get_struct_elem_type(arr_type, MIR_SLICE_PTR_INDEX);
-
-		MirType *elem_type = mir_deref_type(ptr_type);
-		BL_ASSERT(elem_type);
-
-		MirConstValueData ptr_tmp = {0};
-		MirConstValueData len_tmp = {0};
-		const ptrdiff_t   len_member_offset =
-		    mir_get_struct_elem_offest(vm->assembly, arr_type, 0);
-		const ptrdiff_t ptr_member_offset =
-		    mir_get_struct_elem_offest(vm->assembly, arr_type, 1);
-
-		VMStackPtr ptr_ptr = arr_ptr + ptr_member_offset;
-		VMStackPtr len_ptr = arr_ptr + len_member_offset;
-
-		read_value(&ptr_tmp, ptr_ptr, ptr_type);
-		read_value(&len_tmp, len_ptr, len_type);
-
-		if (!ptr_tmp.v_ptr.data.stack_ptr) {
-			msg_error("Dereferencing null pointer! Slice has not been set?");
-			exec_abort(vm, 0);
-		}
-
-		BL_ASSERT(len_tmp.v_s64 > 0);
-
-		if (index.v_s64 >= len_tmp.v_s64) {
-			msg_error("Array index is out of the bounds! Array index is: %lli, but "
-			          "array size is: %lli",
-			          (long long)index.v_s64,
-			          (long long)len_tmp.v_s64);
-			exec_abort(vm, 0);
-		}
-
-		result.v_ptr.data.stack_ptr = (VMStackPtr)(
-		    (ptr_tmp.v_ptr.data.stack_ptr) + (index.v_u64 * elem_type->store_size_bytes));
+		BL_UNIMPLEMENTED;
 	} else {
-		MirType *elem_type = arr_type->data.array.elem_type;
-		BL_ASSERT(elem_type);
-
-		{
-			const s64 len = arr_type->data.array.len;
-			if (index.v_s64 >= len) {
-				msg_error("Array index is out of the bounds! Array index "
-				          "is: %lli, "
-				          "but array size "
-				          "is: %lli",
-				          (long long)index.v_s64,
-				          (long long)len);
-				exec_abort(vm, 0);
-			}
+		const s64 len = arr_type->data.array.len;
+		if (index >= len) {
+			msg_error("Array index is out of the bounds! Array index "
+			          "is: %lli, "
+			          "but array size "
+			          "is: %lli",
+			          (long long)index,
+			          (long long)len);
+			exec_abort(vm, 0);
 		}
 
-		if (elem_ptr->arr_ptr->comptime) BL_ABORT_ISSUE(57);
-
-		result.v_ptr.data.stack_ptr =
-		    (VMStackPtr)((arr_ptr) + (index.v_u64 * elem_type->store_size_bytes));
-
-#if BL_DEBUG
-		{
-			ptrdiff_t _diff = result.v_u64 - (uintptr_t)arr_ptr;
-			BL_ASSERT(_diff / elem_type->store_size_bytes == index.v_u64);
-		}
-#endif
+		ptrdiff_t offset = mir_get_array_elem_offset(arr_type, index);
+		result_ptr       = arr_ptr + offset;
 	}
 
 	/* push result address on the stack */
-	stack_push(vm, &result, elem_ptr->base.value.type);
+	stack_push(vm, (VMStackPtr)&result_ptr, elem_ptr->base.value2.type);
 }
 
 void
@@ -1979,7 +1915,12 @@ interp_instr_switch(VM *vm, MirInstrSwitch *sw)
 void
 interp_instr_cast(VM *vm, MirInstrCast *cast)
 {
-	BL_UNIMPLEMENTED;
+	MirType *  dest_type = cast->base.value2.type;
+	MirType *  src_type  = cast->expr->value2.type;
+	VMStackPtr src_ptr   = fetch_value2(vm, &cast->expr->value2);
+	VMStackPtr dest_ptr  = stack_push_empty(vm, dest_type);
+
+	do_cast(dest_ptr, src_ptr, dest_type, src_type, cast->op);
 }
 
 void
@@ -2495,6 +2436,10 @@ eval_instr(VM *vm, MirInstr *instr)
 		eval_instr_compound(vm, (MirInstrCompound *)instr);
 		break;
 
+	case MIR_INSTR_ELEM_PTR:
+		eval_instr_elem_ptr(vm, (MirInstrElemPtr *)instr);
+		break;
+
 	case MIR_INSTR_BLOCK:
 	case MIR_INSTR_CONST:
 	case MIR_INSTR_FN_PROTO:
@@ -2510,13 +2455,31 @@ eval_instr(VM *vm, MirInstr *instr)
 }
 
 void
+eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
+{
+	MirType *  arr_type   = mir_deref_type(elem_ptr->arr_ptr->value2.type);
+	VMStackPtr arr_ptr    = MIR_CEV_READ_AS(VMStackPtr, &elem_ptr->arr_ptr->value2);
+	VMStackPtr result_ptr = NULL;
+	const s64  index      = MIR_CEV_READ_AS(s64, &elem_ptr->index->value2);
+
+	if (elem_ptr->target_is_slice) {
+		BL_UNIMPLEMENTED;
+	} else {
+		ptrdiff_t offset = mir_get_array_elem_offset(arr_type, index);
+		result_ptr       = arr_ptr + offset;
+	}
+
+	MIR_CEV_WRITE_AS(VMStackPtr, &elem_ptr->base.value2, result_ptr);
+}
+
+void
 eval_instr_compound(VM *vm, MirInstrCompound *compound)
 {
 	MirConstExprValue *value = &compound->base.value2;
 	if (needs_tmp_alloc(value)) {
 		/* Compound data does't fit into default static memory register, we need to allcate
 		 * temporary block on the stack. */
-		value->data = comptime_alloc(&builder.comptime_cache, value->type);
+		value->data = stack_push_empty(vm, value->type);
 	}
 
 	if (compound->is_zero_initialized) {
@@ -2576,9 +2539,10 @@ void
 eval_instr_load(VM *vm, MirInstrLoad *load)
 {
 	VMStackPtr src = MIR_CEV_READ_AS(VMStackPtr, &load->src->value2);
-	src            = VM_STACK_PTR_DEREF(src);
+	// src            = VM_STACK_PTR_DEREF(src);
 	BL_ASSERT(src);
 
+	// MIR_CEV_WRITE_AS(VMStackPtr, &load->base.value2, src);
 	load->base.value2.data = src;
 }
 
@@ -2626,8 +2590,7 @@ eval_instr_decl_ref(VM *vm, MirInstrDeclRef *decl_ref)
 		break;
 
 	case SCOPE_ENTRY_VAR:
-		MIR_CEV_WRITE_AS(
-		    VMStackPtr *, &decl_ref->base.value2, &entry->data.var->value.data);
+		MIR_CEV_WRITE_AS(VMStackPtr, &decl_ref->base.value2, entry->data.var->value.data);
 		break;
 
 	default:
@@ -2644,7 +2607,7 @@ eval_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *decl_ref)
 
 /* public */
 void
-vm_init(VM *vm, Assembly *assembly, usize stack_size)
+vm_init(VM *vm, usize stack_size)
 {
 	if (stack_size == 0) BL_ABORT("invalid frame stack size");
 
@@ -2657,8 +2620,7 @@ vm_init(VM *vm, Assembly *assembly, usize stack_size)
 	stack->allocated_bytes = stack_size;
 	reset_stack(stack);
 
-	vm->stack    = stack;
-	vm->assembly = assembly;
+	vm->stack = stack;
 
 	tsa_init(&vm->dyncall_sig_tmp);
 }
@@ -2671,27 +2633,31 @@ vm_terminate(VM *vm)
 }
 
 void
-vm_execute_instr(VM *vm, MirInstr *instr)
+vm_execute_instr(VM *vm, Assembly *assembly, MirInstr *instr)
 {
+	vm->assembly = assembly;
 	interp_instr(vm, instr);
 }
 
 void
-vm_eval_instr(VM *vm, struct MirInstr *instr)
+vm_eval_instr(VM *vm, Assembly *assembly, struct MirInstr *instr)
 {
+	vm->assembly = assembly;
 	eval_instr(vm, instr);
 }
 
 bool
-vm_execute_fn(VM *vm, MirFn *fn, VMStackPtr *out_ptr)
+vm_execute_fn(VM *vm, Assembly *assembly, MirFn *fn, VMStackPtr *out_ptr)
 {
+	vm->assembly       = assembly;
 	vm->stack->aborted = false;
 	return execute_fn_impl_top_level(vm, fn, NULL, out_ptr);
 }
 
 bool
-vm_execute_instr_top_level_call(VM *vm, MirInstrCall *call)
+vm_execute_instr_top_level_call(VM *vm, Assembly *assembly, MirInstrCall *call)
 {
+	vm->assembly = assembly;
 	BL_ASSERT(call && call->base.analyzed);
 
 	assert(call->base.value2.is_comptime && "Top level call is expected to be comptime.");
@@ -2701,9 +2667,10 @@ vm_execute_instr_top_level_call(VM *vm, MirInstrCall *call)
 }
 
 VMStackPtr
-vm_create_global(VM *vm, struct MirInstrDeclVar *decl)
+vm_create_global(VM *vm, Assembly *assembly, struct MirInstrDeclVar *decl)
 {
-	MirVar *var = decl->var;
+	vm->assembly = assembly;
+	MirVar *var  = decl->var;
 	BL_ASSERT(var);
 	BL_ASSERT(var->is_global && "Allocated variable is supposed to be global variable.");
 
@@ -2715,8 +2682,9 @@ vm_create_global(VM *vm, struct MirInstrDeclVar *decl)
 }
 
 VMStackPtr
-vm_create_implicit_global(VM *vm, struct MirVar *var)
+vm_create_implicit_global(VM *vm, Assembly *assembly, struct MirVar *var)
 {
+	vm->assembly = assembly;
 	BL_ASSERT(var);
 	BL_ASSERT(var->is_global && "Allocated variable is supposed to be global variable.");
 
@@ -2733,19 +2701,4 @@ vm_read_stack_value(MirConstValue *dest, VMStackPtr src)
 	assert(dest->type);
 	memset(&dest->data, 0, sizeof(dest->data));
 	read_value(&dest->data, src, dest->type);
-}
-
-void
-vm_comptime_cache_init(VMComptimeCache *cache, usize size)
-{
-	cache->data = bl_malloc(size);
-	if (!cache->data) BL_ABORT("Bad alloc!");
-	cache->allocated = size;
-	cache->size      = 0;
-}
-
-void
-vm_comptime_cache_terminate(VMComptimeCache *cache)
-{
-	bl_free(cache->data);
 }

@@ -49,12 +49,6 @@ struct MirConstValue;
 typedef ptrdiff_t VMRelativeStackPtr;
 typedef u8 *      VMStackPtr;
 
-typedef struct VMComptimeCache {
-	VMStackPtr data;
-	usize size;
-	usize allocated;
-} VMComptimeCache;
-
 typedef struct VMFrame {
 	struct VMFrame * prev;
 	struct MirInstr *caller; /* Optional */
@@ -77,36 +71,30 @@ typedef struct VM {
 } VM;
 
 void
-vm_init(VM *vm, struct Assembly *assembly, usize stack_size);
+vm_init(VM *vm, usize stack_size);
 
 void
 vm_terminate(VM *vm);
 
 void
-vm_execute_instr(VM *vm, struct MirInstr *instr);
+vm_execute_instr(VM *vm, struct Assembly *assembly, struct MirInstr *instr);
 
 void
-vm_eval_instr(VM *vm, struct MirInstr *instr);
+vm_eval_instr(VM *vm, struct Assembly *assembly, struct MirInstr *instr);
 
 bool
-vm_execute_instr_top_level_call(VM *vm, struct MirInstrCall *call);
+vm_execute_instr_top_level_call(VM *vm, struct Assembly *assembly, struct MirInstrCall *call);
 
 bool
-vm_execute_fn(VM *vm, struct MirFn *fn, VMStackPtr *out_ptr);
+vm_execute_fn(VM *vm, struct Assembly *assembly, struct MirFn *fn, VMStackPtr *out_ptr);
 
 VMStackPtr
-vm_create_global(VM *vm, struct MirInstrDeclVar *decl);
+vm_create_global(VM *vm, struct Assembly *assembly, struct MirInstrDeclVar *decl);
 
 VMStackPtr
-vm_create_implicit_global(VM *vm, struct MirVar *var);
+vm_create_implicit_global(VM *vm, struct Assembly *assembly, struct MirVar *var);
 
 void
 vm_read_stack_value(struct MirConstValue *dest, VMStackPtr src);
-
-void
-vm_comptime_cache_init(VMComptimeCache *cache, usize size);
-
-void
-vm_comptime_cache_terminate(VMComptimeCache *cache);
 
 #endif
