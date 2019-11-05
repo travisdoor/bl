@@ -89,7 +89,7 @@ bool
 vm_execute_fn(VM *vm, struct Assembly *assembly, struct MirFn *fn, VMStackPtr *out_ptr);
 
 VMStackPtr
-vm_create_global(VM *vm, struct Assembly *assembly, struct MirInstrDeclVar *decl);
+vm_alloc_global(VM *vm, struct Assembly *assembly, struct MirVar *var);
 
 VMStackPtr
 vm_create_implicit_global(VM *vm, struct Assembly *assembly, struct MirVar *var);

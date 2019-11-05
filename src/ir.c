@@ -214,9 +214,6 @@ static void
 emit_instr_toany(Context *cnt, MirInstrToAny *toany);
 
 static LLVMValueRef
-emit_as_const(Context *cnt, MirConstValue *value);
-
-static LLVMValueRef
 emit_global_string_ptr(Context *cnt, const char *str, usize len);
 
 static void
@@ -796,183 +793,6 @@ emit_global_string_ptr(Context *cnt, const char *str, usize len)
 	return llvm_str;
 }
 
-LLVMValueRef
-emit_as_const(Context *cnt, MirConstValue *value)
-{
-	MirType *type = value->type;
-	BL_ASSERT(type);
-	LLVMTypeRef  llvm_type  = type->llvm_type;
-	LLVMValueRef llvm_value = NULL;
-	BL_ASSERT(llvm_type);
-
-	switch (type->kind) {
-	case MIR_TYPE_INT: {
-		llvm_value =
-		    LLVMConstInt(llvm_type, value->data.v_u64, type->data.integer.is_signed);
-		break;
-	}
-
-	case MIR_TYPE_REAL: {
-		const usize size = type->store_size_bytes;
-
-		if (size == sizeof(f32)) { // float
-			llvm_value = LLVMConstReal(llvm_type, (f64)value->data.v_f32);
-			break;
-		} else if (size == sizeof(f64)) { // double
-			llvm_value = LLVMConstReal(llvm_type, value->data.v_f64);
-			break;
-		}
-		BL_ABORT("invalid floating point type")
-	}
-
-	case MIR_TYPE_BOOL:
-		llvm_value = LLVMConstInt(llvm_type, (unsigned long long)value->data.v_s32, false);
-		break;
-
-	case MIR_TYPE_NULL:
-		BL_ASSERT(value->data.v_ptr.data.any == NULL);
-		llvm_value = LLVMConstNull(llvm_type);
-		break;
-
-	case MIR_TYPE_PTR: {
-		type = mir_deref_type(type);
-		BL_ASSERT(type);
-
-		if (type->kind == MIR_TYPE_FN) {
-			/* Constant pointer to the function. Value must contains pointer to MirFn
-			 * instance! */
-			MirFn *fn = value->data.v_ptr.data.any
-			                ? value->data.v_ptr.data.value->data.v_ptr.data.fn
-			                : NULL;
-			BL_ASSERT(fn && "Function pointer not set for compile time known constant "
-			                "pointer to function.");
-
-			llvm_value = emit_fn_proto(cnt, fn);
-			BL_ASSERT(llvm_value);
-			break;
-		} else {
-			switch (value->data.v_ptr.kind) {
-			case MIR_CP_VAR: {
-				/* value must contains pointer to constant variable */
-				MirVar *pointed = value->data.v_ptr.data.var;
-				BL_ASSERT(pointed && pointed->llvm_value &&
-				          "Invalid const pointer to variable.");
-
-				llvm_value = pointed->llvm_value;
-				break;
-			}
-
-			default: {
-				/* Only null constants are allowed here */
-				BL_ASSERT(
-				    value->data.v_ptr.data.any == NULL &&
-				    "Only pointers to fn and var can be generated as constants in "
-				    "LLVM IR.");
-				llvm_value = LLVMConstNull(llvm_type);
-			}
-			}
-
-			break;
-		}
-	}
-
-	case MIR_TYPE_ARRAY: {
-		if (value->data.v_array.is_zero_initializer) {
-			llvm_value = LLVMConstNull(llvm_type);
-			break;
-		}
-
-		const usize len            = (usize)type->data.array.len;
-		LLVMTypeRef llvm_elem_type = type->data.array.elem_type->llvm_type;
-		BL_ASSERT(len && llvm_elem_type);
-
-		TSmallArray_ConstValuePtr *elems = value->data.v_array.elems;
-		MirConstValue *            elem;
-
-		BL_ASSERT(elems);
-		BL_ASSERT(len == elems->size);
-
-		TSmallArray_LLVMValue llvm_elems;
-		tsa_init(&llvm_elems);
-
-		for (usize i = 0; i < len; ++i) {
-			elem = elems->data[i];
-			tsa_push_LLVMValue(&llvm_elems, emit_as_const(cnt, elem));
-		}
-
-		llvm_value = LLVMConstArray(llvm_elem_type, llvm_elems.data, (unsigned int)len);
-		tsa_terminate(&llvm_elems);
-		break;
-	}
-
-	case MIR_TYPE_STRING: {
-		if (value->data.v_struct.is_zero_initializer) {
-			llvm_value = LLVMConstNull(llvm_type);
-			break;
-		}
-
-		TSmallArray_ConstValuePtr *members = value->data.v_struct.members;
-		const usize                memc    = members->size;
-		BL_ASSERT(members);
-		BL_ASSERT(memc == 2 && "not slice string?");
-
-		MirConstValue *len_value = members->data[0];
-		MirConstValue *str_value = members->data[1];
-		BL_ASSERT(len_value && str_value);
-
-		const u64   len = len_value->data.v_u64;
-		const char *str = str_value->data.v_ptr.data.str;
-		BL_ASSERT(str);
-
-		LLVMValueRef const_vals[2];
-		const_vals[0] = LLVMConstInt(len_value->type->llvm_type, len, false);
-		const_vals[1] = emit_global_string_ptr(cnt, str, len);
-
-		llvm_value = LLVMConstNamedStruct(llvm_type, const_vals, 2);
-		break;
-	}
-
-	case MIR_TYPE_SLICE:
-	case MIR_TYPE_VARGS:
-	case MIR_TYPE_STRUCT: {
-		if (value->data.v_struct.is_zero_initializer) {
-			llvm_value = LLVMConstNull(llvm_type);
-			break;
-		}
-
-		TSmallArray_ConstValuePtr *members = value->data.v_struct.members;
-		BL_ASSERT(members && "Missing struct members.");
-		const usize memc = members->size;
-
-		MirConstValue *member;
-
-		TSmallArray_LLVMValue llvm_members;
-		tsa_init(&llvm_members);
-
-		TSA_FOREACH(members, member)
-		tsa_push_LLVMValue(&llvm_members, emit_as_const(cnt, member));
-
-		llvm_value = LLVMConstNamedStruct(llvm_type, llvm_members.data, (unsigned int)memc);
-		tsa_terminate(&llvm_members);
-		break;
-	}
-
-	case MIR_TYPE_ENUM: {
-		LLVMTypeRef llvm_base_type = value->type->llvm_type;
-
-		llvm_value = LLVMConstInt(
-		    llvm_base_type, value->data.v_u64, value->type->data.integer.is_signed);
-		break;
-	}
-
-	default:
-		BL_UNIMPLEMENTED;
-	}
-
-	BL_ASSERT(llvm_value);
-	return llvm_value;
-}
-
 void
 emit_instr_store(Context *cnt, MirInstrStore *store)
 {
@@ -1026,6 +846,8 @@ emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 void
 emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 {
+	MirVar *tmp_var = _tmp_var ? _tmp_var : cmp->tmp_var;
+
 	MirType *  type                = cmp->base.value2.type;
 	const bool is_zero_initialized = cmp->is_zero_initialized;
 
@@ -1060,8 +882,35 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 			break;
 		}
 
-		case MIR_TYPE_STRING:
-			BL_UNIMPLEMENTED;
+		case MIR_TYPE_STRING: {
+			const u32 len = MIR_CEV_READ_AS(const u32, &cmp->values->data[0]->value2);
+
+			const char *str =
+			    MIR_CEV_READ_AS(const char *, &cmp->values->data[1]->value2);
+
+			LLVMValueRef llvm_len = cmp->values->data[0]->llvm_value;
+			LLVMValueRef llvm_str_content =
+			    LLVMConstStringInContext(cnt->llvm_cnt, str, len, false);
+
+			LLVMValueRef llvm_str =
+			    LLVMAddGlobal(cnt->llvm_module, LLVMTypeOf(llvm_str_content), ".str");
+			LLVMSetInitializer(llvm_str, llvm_str_content);
+			LLVMSetLinkage(llvm_str, LLVMPrivateLinkage);
+			LLVMSetGlobalConstant(llvm_str, true);
+
+			TSmallArray_LLVMValue llvm_members;
+			tsa_init(&llvm_members);
+
+			tsa_push_LLVMValue(&llvm_members, llvm_len);
+			tsa_push_LLVMValue(&llvm_members, llvm_str);
+
+			cmp->base.llvm_value = LLVMConstNamedStruct(
+			    type->llvm_type, llvm_members.data, (u32)cmp->values->size);
+
+			tsa_terminate(&llvm_members);
+			break;
+		}
+
 		case MIR_TYPE_SLICE:
 		case MIR_TYPE_VARGS:
 		case MIR_TYPE_STRUCT: {
@@ -1078,7 +927,7 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 			}
 
 			cmp->base.llvm_value = LLVMConstNamedStruct(
-			    type->llvm_type, llvm_members.data, cmp->values->size);
+			    type->llvm_type, llvm_members.data, (u32)cmp->values->size);
 
 			tsa_terminate(&llvm_members);
 			break;
@@ -1086,6 +935,13 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 
 		default:
 			BL_ABORT("Invalid compound type!");
+		}
+
+		if (_tmp_var) {
+			LLVMValueRef llvm_dest = _tmp_var->llvm_value;
+			BL_ASSERT(llvm_dest);
+
+			LLVMBuildStore(cnt->llvm_builder, cmp->base.llvm_value, llvm_dest);
 		}
 	} else {
 		BL_UNIMPLEMENTED;
@@ -1537,6 +1393,7 @@ emit_instr_const(Context *cnt, MirInstrConst *c)
 	LLVMTypeRef  llvm_type  = type->llvm_type;
 
 	switch (type->kind) {
+	case MIR_TYPE_ENUM: 
 	case MIR_TYPE_INT: {
 		const u64 i = MIR_CEV_READ_AS(u64, &c->base.value2);
 		llvm_value  = LLVMConstInt(llvm_type, i, type->data.integer.is_signed);
@@ -1662,7 +1519,8 @@ emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 		MirVar *expr_tmp = toany->expr_tmp;
 		BL_ASSERT(expr_tmp->llvm_value && "Missing tmp variable");
 
-		llvm_data = emit_as_const(cnt, &toany->expr->value);
+		BL_UNIMPLEMENTED;
+		//llvm_data = emit_as_const(cnt, &toany->expr->value);
 		LLVMBuildStore(cnt->llvm_builder, llvm_data, expr_tmp->llvm_value);
 		llvm_data = expr_tmp->llvm_value;
 	} else if (toany->rtti_type_specification) {

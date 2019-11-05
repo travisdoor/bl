@@ -100,22 +100,42 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 	if (!type) return;
 
 	switch (type->kind) {
+	case MIR_TYPE_ENUM:
 	case MIR_TYPE_INT: {
-		switch (type->store_size_bytes) {
-		case 1:
-			fprintf(cnt->stream, "%d", VM_STACK_READ_AS(s8, value));
-			break;
-		case 2:
-			fprintf(cnt->stream, "%d", VM_STACK_READ_AS(s16, value));
-			break;
-		case 4:
-			fprintf(cnt->stream, "%d", VM_STACK_READ_AS(s32, value));
-			break;
-		case 8:
-			fprintf(cnt->stream, "%lld", VM_STACK_READ_AS(s64, value));
-			break;
-		default:
-			fprintf(cnt->stream, "<INVALID>");
+		if (type->data.integer.is_signed) {
+			switch (type->store_size_bytes) {
+			case 1:
+				fprintf(cnt->stream, "%d", VM_STACK_READ_AS(s8, value));
+				break;
+			case 2:
+				fprintf(cnt->stream, "%d", VM_STACK_READ_AS(s16, value));
+				break;
+			case 4:
+				fprintf(cnt->stream, "%d", VM_STACK_READ_AS(s32, value));
+				break;
+			case 8:
+				fprintf(cnt->stream, "%lld", VM_STACK_READ_AS(s64, value));
+				break;
+			default:
+				fprintf(cnt->stream, "<INVALID>");
+			}
+		} else {
+			switch (type->store_size_bytes) {
+			case 1:
+				fprintf(cnt->stream, "%u", VM_STACK_READ_AS(u8, value));
+				break;
+			case 2:
+				fprintf(cnt->stream, "%u", VM_STACK_READ_AS(u16, value));
+				break;
+			case 4:
+				fprintf(cnt->stream, "%u", VM_STACK_READ_AS(u32, value));
+				break;
+			case 8:
+				fprintf(cnt->stream, "%llu", VM_STACK_READ_AS(u64, value));
+				break;
+			default:
+				fprintf(cnt->stream, "<INVALID>");
+			}
 		}
 		break;
 	}
@@ -146,10 +166,6 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 		break;
 	}
 
-	case MIR_TYPE_ENUM:
-		fprintf(cnt->stream, "<MISING_PRINT>");
-		break;
-
 	case MIR_TYPE_PTR: {
 		VMStackPtr ptr = VM_STACK_READ_AS(VMStackPtr, value);
 		fprintf(cnt->stream, "%p", ptr);
@@ -161,6 +177,20 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 		break;
 
 	case MIR_TYPE_STRING:
+		fprintf(cnt->stream, "{");
+
+		MirType * elem_type = mir_get_struct_elem_type(type, 0);
+		ptrdiff_t offset    = mir_get_struct_elem_offest(cnt->assembly, type, 0);
+		_print_const_value(cnt, elem_type, value + offset);
+
+		fprintf(cnt->stream, ",\"");
+
+		offset             = mir_get_struct_elem_offest(cnt->assembly, type, 1);
+		VMStackPtr str_ptr = value + offset;
+		str_ptr            = VM_STACK_PTR_DEREF(str_ptr);
+		fprintf(cnt->stream, "%s\"}", (char *)str_ptr);
+		break;
+
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT: {
@@ -535,7 +565,7 @@ print_instr_compound(Context *cnt, MirInstrCompound *init)
 	if (init->type) {
 		print_comptime_value_or_id(cnt, init->type);
 	} else {
-		print_type(cnt, init->base.value.type, false, true);
+		print_type(cnt, init->base.value2.type, false, true);
 	}
 
 	fprintf(cnt->stream, " {");
@@ -740,7 +770,14 @@ print_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		print_type(cnt, var->value.type, false, true);
 		fprintf(cnt->stream, " %s ", var->is_mutable ? "=" : ":");
 
-		print_const_value(cnt, &var->value);
+		if (var->value.is_comptime) {
+			print_const_value(cnt, &var->value);
+		} else {
+			/* HACK: globals use static allocation segment on the stack so relative
+			 * pointer = absolute pointer. */
+			VMStackPtr data_ptr = (VMStackPtr)var->rel_stack_ptr;
+			_print_const_value(cnt, var->value.type, data_ptr);
+		}
 	} else {
 		/* local scope variable */
 		print_instr_head(cnt, &decl->base, "decl");
@@ -828,9 +865,8 @@ print_instr_call(Context *cnt, MirInstrCall *call)
 {
 	print_instr_head(cnt, &call->base, "call");
 
-	const char *callee_name = call->callee->value.data.v_ptr.data.fn
-	                              ? call->callee->value.data.v_ptr.data.fn->linkage_name
-	                              : NULL;
+	MirFn *     callee      = MIR_CEV_READ_AS(MirFn *, &call->callee->value2);
+	const char *callee_name = callee ? callee->linkage_name : NULL;
 	if (callee_name)
 		fprintf(cnt->stream, "@%s", callee_name);
 	else

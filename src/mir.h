@@ -412,9 +412,9 @@ struct MirConstValue {
 
 /* VARIANT */
 struct MirVariant {
-	ID *           id;
-	Scope *        decl_scope;
-	MirConstValue *value;
+	ID *               id;
+	Scope *            decl_scope;
+	MirConstExprValue *value;
 };
 
 /* VAR */

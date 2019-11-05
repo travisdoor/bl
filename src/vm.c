@@ -248,7 +248,7 @@ static void
 interp_instr_vargs(VM *vm, MirInstrVArgs *vargs);
 
 static void
-interp_instr_decl_var(VM *vm, MirInstrDeclVar *var);
+interp_instr_decl_var(VM *vm, MirInstrDeclVar *decl);
 
 static void
 interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref);
@@ -444,7 +444,7 @@ stack_pop(VM *vm, MirType *type)
  * use relative pointer. When we set ignore to true original pointer is returned
  * as absolute pointer to the stack.  */
 static inline VMStackPtr
-stack_read_ptr(VM *vm, VMRelativeStackPtr rel_ptr, bool ignore)
+stack_rel_to_abs_ptr(VM *vm, VMRelativeStackPtr rel_ptr, bool ignore)
 {
 	if (ignore) return (VMStackPtr)rel_ptr;
 	BL_ASSERT(rel_ptr);
@@ -996,7 +996,8 @@ copy_comptime_to_stack(VM *vm, VMStackPtr dest_ptr, MirConstValue *src_value)
 			MirVar *var = const_ptr->data.var;
 			BL_ASSERT(var);
 
-			VMStackPtr var_ptr = stack_read_ptr(vm, var->rel_stack_ptr, var->is_global);
+			VMStackPtr var_ptr =
+			    stack_rel_to_abs_ptr(vm, var->rel_stack_ptr, var->is_global);
 			memcpy(dest_ptr, &var_ptr, src_type->store_size_bytes);
 			break;
 		}
@@ -1381,8 +1382,8 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 		MirInstr *arg_value;
 		TSA_FOREACH(arg_values, arg_value)
 		{
-			arg_ptr = fetch_value(vm, arg_value);
-			dyncall_push_arg(vm, arg_ptr, arg_value->value.type);
+			arg_ptr = fetch_value2(vm, &arg_value->value2);
+			dyncall_push_arg(vm, arg_ptr, arg_value->value2.type);
 		}
 	}
 
@@ -1653,7 +1654,7 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 {
 	MirVar *   tmp      = toany->tmp;
 	MirVar *   expr_tmp = toany->expr_tmp;
-	VMStackPtr tmp_ptr  = stack_read_ptr(vm, tmp->rel_stack_ptr, tmp->is_global);
+	VMStackPtr tmp_ptr  = stack_rel_to_abs_ptr(vm, tmp->rel_stack_ptr, tmp->is_global);
 	MirType *  tmp_type = tmp->value.type;
 
 	/* type_info */
@@ -1668,7 +1669,7 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 	MirType *  type_info_type = mir_get_struct_elem_type(tmp_type, 0);
 
 	VMStackPtr rtti_ptr =
-	    stack_read_ptr(vm, expr_type_rtti->rel_stack_ptr, expr_type_rtti->is_global);
+	    stack_rel_to_abs_ptr(vm, expr_type_rtti->rel_stack_ptr, expr_type_rtti->is_global);
 
 	memcpy(dest, &rtti_ptr, type_info_type->store_size_bytes);
 
@@ -1690,13 +1691,13 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 		}
 		BL_ASSERT(spec_type_rtti);
 
-		VMStackPtr rtti_spec_ptr =
-		    stack_read_ptr(vm, spec_type_rtti->rel_stack_ptr, spec_type_rtti->is_global);
+		VMStackPtr rtti_spec_ptr = stack_rel_to_abs_ptr(
+		    vm, spec_type_rtti->rel_stack_ptr, spec_type_rtti->is_global);
 
 		memcpy(dest, &rtti_spec_ptr, PTR_SIZE);
 	} else if (expr_tmp) { // set data
 		VMStackPtr expr_tmp_ptr =
-		    stack_read_ptr(vm, expr_tmp->rel_stack_ptr, expr_tmp->is_global);
+		    stack_rel_to_abs_ptr(vm, expr_tmp->rel_stack_ptr, expr_tmp->is_global);
 
 		if (toany->expr->comptime) {
 			copy_comptime_to_stack(vm, expr_tmp_ptr, (MirConstValue *)data_ptr);
@@ -1785,7 +1786,8 @@ interp_instr_type_info(VM *vm, MirInstrTypeInfo *type_info)
 	MirType *type = type_info->base.value.type;
 	BL_ASSERT(type);
 
-	VMStackPtr ptr = stack_read_ptr(vm, type_info_var->rel_stack_ptr, type_info_var->is_global);
+	VMStackPtr ptr =
+	    stack_rel_to_abs_ptr(vm, type_info_var->rel_stack_ptr, type_info_var->is_global);
 
 	stack_push(vm, (VMStackPtr)&ptr, type);
 }
@@ -1907,8 +1909,7 @@ interp_instr_switch(VM *vm, MirInstrSwitch *sw)
 	TSmallArray_SwitchCase *cases = sw->cases;
 	for (usize i = 0; i < cases->size; ++i) {
 		MirSwitchCase *c = &cases->data[i];
-		BL_UNIMPLEMENTED;
-		if (value == c->on_value->value.data.v_s64) {
+		if (value == MIR_CEV_READ_AS(s64, &c->on_value->value2)) {
 			set_pc(vm, c->block->entry_instr);
 			return;
 		}
@@ -1941,11 +1942,9 @@ interp_instr_arg(VM *vm, MirInstrArg *arg)
 		BL_ASSERT(arg_values);
 		MirInstr *curr_arg_value = arg_values->data[arg->i];
 
-		if (curr_arg_value->comptime) {
-			MirType *  type = curr_arg_value->value.type;
-			VMStackPtr dest = stack_push_empty(vm, type);
-
-			copy_comptime_to_stack(vm, dest, &curr_arg_value->value);
+		if (mir_is_comptime(curr_arg_value)) {
+			MirType *type = curr_arg_value->value2.type;
+			stack_push(vm, curr_arg_value->value2.data, type);
 		} else {
 			/* Arguments are located in reverse order right before return address on the
 			 * stack
@@ -2021,7 +2020,7 @@ interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref)
 		if (var->value.is_comptime) {
 			real_ptr = (VMStackPtr)&var->value.data;
 		} else {
-			real_ptr = stack_read_ptr(vm, var->rel_stack_ptr, use_static_segment);
+			real_ptr = stack_rel_to_abs_ptr(vm, var->rel_stack_ptr, use_static_segment);
 		}
 
 		stack_push(vm, &real_ptr, ref->base.value2.type);
@@ -2052,7 +2051,7 @@ interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref)
 	if (var->value.is_comptime) {
 		real_ptr = (VMStackPtr)&var->value.data;
 	} else {
-		real_ptr = stack_read_ptr(vm, var->rel_stack_ptr, use_static_segment);
+		real_ptr = stack_rel_to_abs_ptr(vm, var->rel_stack_ptr, use_static_segment);
 	}
 
 	stack_push(vm, &real_ptr, ref->base.value2.type);
@@ -2061,28 +2060,25 @@ interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref)
 void
 interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 {
-	if (cmp->base.comptime) {
-		/* non-naked */
-		if (tmp_ptr) copy_comptime_to_stack(vm, tmp_ptr, &cmp->base.value);
-		return;
-	}
+	BL_ASSERT(!mir_is_comptime(&cmp->base));
 
 	const bool will_push = tmp_ptr == NULL;
 	if (will_push) {
 		BL_ASSERT(cmp->tmp_var && "Missing temp variable for compound.");
-		tmp_ptr = stack_read_ptr(vm, cmp->tmp_var->rel_stack_ptr, cmp->tmp_var->is_global);
+		tmp_ptr =
+		    stack_rel_to_abs_ptr(vm, cmp->tmp_var->rel_stack_ptr, cmp->tmp_var->is_global);
 	}
 
 	BL_ASSERT(tmp_ptr);
 
-	MirType *  type = cmp->base.value.type;
+	MirType *  type = cmp->base.value2.type;
 	MirType *  elem_type;
 	VMStackPtr elem_ptr = tmp_ptr;
 
 	MirInstr *value;
 	TSA_FOREACH(cmp->values, value)
 	{
-		elem_type = value->value.type;
+		elem_type = value->value2.type;
 		switch (type->kind) {
 
 		case MIR_TYPE_STRING:
@@ -2100,7 +2096,8 @@ interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 			BL_ASSERT(i == 0 && "Invalid elem count for non-agregate type!!!");
 		}
 
-		if (value->comptime) {
+		if (value->value2.is_comptime) {
+			BL_UNIMPLEMENTED;
 			copy_comptime_to_stack(vm, elem_ptr, &value->value);
 		} else {
 			if (value->kind == MIR_INSTR_COMPOUND) {
@@ -2126,7 +2123,8 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 	BL_ASSERT(vargs_tmp->rel_stack_ptr && "Unalocated vargs slice!!!");
 	BL_ASSERT(values);
 
-	VMStackPtr arr_tmp_ptr = arr_tmp ? stack_read_ptr(vm, arr_tmp->rel_stack_ptr, false) : NULL;
+	VMStackPtr arr_tmp_ptr =
+	    arr_tmp ? stack_rel_to_abs_ptr(vm, arr_tmp->rel_stack_ptr, false) : NULL;
 
 	/* Fill vargs tmp array with values from stack or constants. */
 	{
@@ -2148,7 +2146,8 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 
 	/* Push vargs slice on the stack. */
 	{
-		VMStackPtr vargs_tmp_ptr = stack_read_ptr(vm, vargs_tmp->rel_stack_ptr, false);
+		VMStackPtr vargs_tmp_ptr =
+		    stack_rel_to_abs_ptr(vm, vargs_tmp->rel_stack_ptr, false);
 		// set len
 		{
 			MirConstValueData len_tmp = {0};
@@ -2186,29 +2185,24 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 void
 interp_instr_decl_var(VM *vm, MirInstrDeclVar *decl)
 {
-	BL_ASSERT(decl->base.value2.type);
-
 	MirVar *var = decl->var;
 	BL_ASSERT(var);
+	BL_ASSERT(decl->base.value2.type);
 
-	/* compile time known variables cannot be modified and does not need stack
-	 * allocated memory, const_value is used instead
-	 *
-	 * already allocated variables will never be allocated again (in case
-	 * declaration is inside loop body!!!)
-	 */
-	if (var->value.is_comptime) return;
+	if (var->is_global || var->value.is_comptime) return;
 
-	const bool use_static_segment = var->is_global;
+	const bool use_static_segment = false;
 
 	BL_ASSERT(var->rel_stack_ptr);
 
 	/* initialize variable if there is some init value */
 	if (decl->init) {
-		VMStackPtr var_ptr = stack_read_ptr(vm, var->rel_stack_ptr, use_static_segment);
+		VMStackPtr var_ptr =
+		    stack_rel_to_abs_ptr(vm, var->rel_stack_ptr, use_static_segment);
 		BL_ASSERT(var_ptr);
 
-		if (decl->init->kind == MIR_INSTR_COMPOUND) {
+		if (!mir_is_comptime(decl->init) && decl->init->kind == MIR_INSTR_COMPOUND) {
+			BL_UNIMPLEMENTED;
 			/* used compound initialization!!! */
 			interp_instr_compound(vm, var_ptr, (MirInstrCompound *)decl->init);
 		} else {
@@ -2268,7 +2262,8 @@ interp_instr_call(VM *vm, MirInstrCall *call)
 	/* Function called via pointer. */
 	if (mir_is_pointer_type(call->callee->value2.type)) {
 		BL_ASSERT(mir_deref_type(call->callee->value2.type)->kind == MIR_TYPE_FN);
-		callee_ptr = VM_STACK_PTR_DEREF(callee_ptr);
+		// callee_ptr = VM_STACK_READ_AS(VMStackPtr, callee_ptr);
+		// callee_ptr = VM_STACK_PTR_DEREF(callee_ptr);
 	}
 
 	MirFn *callee = VM_STACK_READ_AS(MirFn *, callee_ptr);
@@ -2323,7 +2318,7 @@ interp_instr_ret(VM *vm, MirInstrRet *ret)
 			MirInstr *arg_value;
 			TSA_FOREACH(arg_values, arg_value)
 			{
-				if (arg_value->comptime) continue;
+				if (mir_is_comptime(arg_value)) continue;
 				stack_pop(vm, arg_value->value.type);
 			}
 		}
@@ -2452,7 +2447,10 @@ eval_instr(VM *vm, MirInstr *instr)
 	case MIR_INSTR_TYPE_PTR:
 	case MIR_INSTR_TYPE_FN:
 	case MIR_INSTR_TYPE_STRUCT:
+	case MIR_INSTR_TYPE_ENUM:
 	case MIR_INSTR_DECL_MEMBER:
+	case MIR_INSTR_DECL_ARG:
+	case MIR_INSTR_DECL_VARIANT:
 		break;
 
 	default:
@@ -2481,13 +2479,27 @@ eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 void
 eval_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 {
-	MirMember *member     = member_ptr->scope_entry->data.member;
-	VMStackPtr strct_ptr  = MIR_CEV_READ_AS(VMStackPtr, &member_ptr->target_ptr->value2);
-	VMStackPtr result_ptr = NULL;
+	switch (member_ptr->scope_entry->kind) {
+	case SCOPE_ENTRY_MEMBER: {
+		MirMember *member    = member_ptr->scope_entry->data.member;
+		VMStackPtr strct_ptr = MIR_CEV_READ_AS(VMStackPtr, &member_ptr->target_ptr->value2);
+		VMStackPtr result_ptr = NULL;
 
-	result_ptr = strct_ptr + member->offset_bytes;
+		result_ptr = strct_ptr + member->offset_bytes;
 
-	MIR_CEV_WRITE_AS(VMStackPtr, &member_ptr->base.value2, result_ptr);
+		MIR_CEV_WRITE_AS(VMStackPtr, &member_ptr->base.value2, result_ptr);
+		break;
+	}
+
+	case SCOPE_ENTRY_VARIANT: {
+		MirVariant *variant          = member_ptr->scope_entry->data.variant;
+		member_ptr->base.value2.data = variant->value->data;
+		break;
+	}
+
+	default:
+		BL_ABORT("Invalid scope entry for member_ptr instruction!");
+	}
 }
 
 void
@@ -2562,26 +2574,33 @@ eval_instr_cast(VM *vm, MirInstrCast *cast)
 void
 eval_instr_addrof(VM *vm, MirInstrAddrOf *addrof)
 {
-	VMStackPtr src = MIR_CEV_READ_AS(VMStackPtr, &addrof->src->value2);
-	MIR_CEV_WRITE_AS(VMStackPtr, &addrof->base.value2, src);
+	addrof->base.value2.data = addrof->src->value2.data;
 }
 
 void
 eval_instr_load(VM *vm, MirInstrLoad *load)
 {
 	VMStackPtr src = MIR_CEV_READ_AS(VMStackPtr, &load->src->value2);
-	// src            = VM_STACK_PTR_DEREF(src);
 	BL_ASSERT(src);
-
-	// MIR_CEV_WRITE_AS(VMStackPtr, &load->base.value2, src);
 	load->base.value2.data = src;
 }
 
 void
 eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si)
 {
-	MirVar *var     = ((MirInstrDeclVar *)si->dest)->var;
-	var->value.data = si->src->value2.data;
+	MirVar *var = ((MirInstrDeclVar *)si->dest)->var;
+	BL_ASSERT(var->is_global && "Only globals can be initialized by initializer!");
+	if (var->value.is_comptime) {
+		var->value.data = si->src->value2.data;
+	} else {
+		MirType *var_type = var->value.type;
+
+		/* Gloabals always use static segment allocation!!! */
+		VMStackPtr var_ptr = stack_rel_to_abs_ptr(vm, var->rel_stack_ptr, true);
+		BL_ASSERT(var_ptr);
+
+		memcpy(var_ptr, si->src->value2.data, var_type->store_size_bytes);
+	}
 }
 
 void
@@ -2702,18 +2721,15 @@ vm_execute_instr_top_level_call(VM *vm, Assembly *assembly, MirInstrCall *call)
 }
 
 VMStackPtr
-vm_create_global(VM *vm, Assembly *assembly, struct MirInstrDeclVar *decl)
+vm_alloc_global(VM *vm, struct Assembly *assembly, struct MirVar *var)
 {
 	vm->assembly = assembly;
-	MirVar *var  = decl->var;
 	BL_ASSERT(var);
 	BL_ASSERT(var->is_global && "Allocated variable is supposed to be global variable.");
 
-	VMRelativeStackPtr var_ptr = stack_alloc_var(vm, var);
-	interp_instr_decl_var(vm, decl);
-
+	var->rel_stack_ptr = stack_alloc_var(vm, var);
 	/* HACK: we can ignore relative pointers for globals. */
-	return (VMStackPtr)var_ptr;
+	return (VMStackPtr)var->rel_stack_ptr;
 }
 
 VMStackPtr

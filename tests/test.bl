@@ -10,7 +10,7 @@ G :: cast(u64) ^D;
 H :: ^cast(*u64) D;
 I :: 0.5f;
 J :: 0.5;
-K :: true;
+K : bool : true;
 
 arr1     :: {:[8]s32: 1, 2, 3, 4, 5, 6, 7, 8};
 arr2     :: {:[8]s32: 0};
@@ -28,33 +28,87 @@ arr3 :: {:[2]Data1:
          {:Data1: 30, 40, true},
 };
 
+str :: "Hello";
+str2 := "Hello";
+str3 := &str;
+
+format :: "value = %d\n";
+foo_ptr :: &foo;
+
+Days :: enum s8 {
+    SUN :: -1;
+    MON;
+    THU :: 10;
+    WEN;
+    THR;
+    FRI;
+    SAT;
+}
+
+my_func1 :: fn () {
+    str :: "hello from my_func1!!!\n";
+    printf(str.ptr, 0);
+}
+
+my_func2 :: fn () {
+    str :: "hello from my_func2!!!\n";
+    printf(str.ptr, 0);
+}
+
+Functions :: struct {
+    first: *fn();
+    second: *fn();
+}
+
+functions :: {:Functions: &my_func1, &my_func2};
+
 main :: fn () s32 {
-    result := 0;
+    printf(format.ptr, cast(s32) Days.SUN);
+    printf(format.ptr, cast(s32) Days.MON);
+    printf(format.ptr, cast(s32) Days.THU);
+    day := Days.SUN;
 
-    {
-        loop i := 0; i < arr3.len; i += 1 {
-            result += arr3[i].a + arr3[i].b;
-            foo();
+    switch day {
+        Days.SUN {
+            str :: "It's sunday!!!\n";
+            printf(str.ptr, 0);
         }
 
-        if result > 0 {
-            result += 10;
-        }
+        default;
+    }
+    
+    loop i := 0; i < arr3.len; i += 1 {
+        result := arr3[i].a + arr3[i].b;
+        printf(format.ptr, result);
     }
 
     data : Data1;
-    {
-        data.a = 10;
-        data.b = 10;
-    }
+    data.a = 10;
+    data.b = 10;
 
-    {
-        i :: gdata.a;
-        arr3 : [i]s32;
-    }
-    
-    return result + data.a + data.b + gdata.a + gdata.b;
+    i :: gdata.a;
+
+    str4 := "Hello";
+    str5 :: "Hello";
+    p :: str5.ptr;
+
+    foo_ptr_ptr :: &foo_ptr;
+    printf(format.ptr, (^foo_ptr_ptr)(10, 20));
+
+    functions.first();
+    functions.second();
+
+    return foo(10, 20);
 }
 
-foo :: fn () {
+foo :: fn (i: s32, j: s32) s32 {
+    return i * j;
+}
+
+
+printf :: fn (format: *u8, n: s32) s32 #extern;
+
+#test "test case!" {
+    functions.first();
+    functions.second();
 }
