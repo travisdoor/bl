@@ -368,7 +368,7 @@ struct MirConstPtr {
 };
 
 struct MirConstExprValue {
-	u8                  _tmp[16];
+	VMValue             _tmp;
 	VMStackPtr          data;
 	MirType *           type;
 	MirValueAddressMode addr_mode;

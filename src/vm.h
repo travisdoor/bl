@@ -36,16 +36,18 @@
 #define VM_STACK_READ_AS(T, src) (*((T *)(src)))
 #define VM_STACK_WRITE_AS(T, dest, src) (*((T *)(dest)) = (src))
 
+struct MirType;
 struct MirInstr;
 struct MirInstrBlock;
 struct MirInstrCall;
 struct MirInstrDeclVar;
 struct MirFn;
-struct Builder;
-struct Assembly;
 struct MirVar;
 struct MirConstValue;
+struct Builder;
+struct Assembly;
 
+typedef u8        VMValue[16];
 typedef ptrdiff_t VMRelativeStackPtr;
 typedef u8 *      VMStackPtr;
 
