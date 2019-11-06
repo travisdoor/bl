@@ -1637,9 +1637,12 @@ interp_instr(VM *vm, MirInstr *instr)
 	case MIR_INSTR_TYPE_INFO:
 		interp_instr_type_info(vm, (MirInstrTypeInfo *)instr);
 		break;
-	case MIR_INSTR_COMPOUND:
-		interp_instr_compound(vm, NULL, (MirInstrCompound *)instr);
+	case MIR_INSTR_COMPOUND: {
+		MirInstrCompound *cmp = (MirInstrCompound *)instr;
+		if (!cmp->is_naked) break;
+		interp_instr_compound(vm, NULL, cmp);
 		break;
+	}
 	case MIR_INSTR_TOANY:
 		interp_instr_toany(vm, (MirInstrToAny *)instr);
 		break;
@@ -1903,18 +1906,19 @@ interp_instr_br(VM *vm, MirInstrBr *br)
 void
 interp_instr_switch(VM *vm, MirInstrSwitch *sw)
 {
-	MirType *value_type = sw->value->value2.type;
-	VMStackPtr value_ptr = fetch_value2(vm, &sw->value->value2);
+	MirType *  value_type = sw->value->value2.type;
+	VMStackPtr value_ptr  = fetch_value2(vm, &sw->value->value2);
 	BL_ASSERT(value_ptr);
 
-	const s64 value       = vm_read_value_as(s64, value_type->store_size_bytes, value_ptr); 
+	const s64 value       = vm_read_value_as(s64, value_type->store_size_bytes, value_ptr);
 	vm->stack->prev_block = sw->base.owner_block;
 
 	TSmallArray_SwitchCase *cases = sw->cases;
 	for (usize i = 0; i < cases->size; ++i) {
 		MirSwitchCase *c = &cases->data[i];
 
-		const s64 on_value = vm_read_value_as(s64, value_type->store_size_bytes, c->on_value->value2.data);
+		const s64 on_value =
+		    vm_read_value_as(s64, value_type->store_size_bytes, c->on_value->value2.data);
 		if (value == on_value) {
 			set_pc(vm, c->block->entry_instr);
 			return;
@@ -2102,20 +2106,15 @@ interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 			BL_ASSERT(i == 0 && "Invalid elem count for non-agregate type!!!");
 		}
 
-		if (value->value2.is_comptime) {
-			BL_UNIMPLEMENTED;
-			copy_comptime_to_stack(vm, elem_ptr, &value->value);
+		if (value->kind == MIR_INSTR_COMPOUND) {
+			interp_instr_compound(vm, elem_ptr, (MirInstrCompound *)value);
 		} else {
-			if (value->kind == MIR_INSTR_COMPOUND) {
-				interp_instr_compound(vm, elem_ptr, (MirInstrCompound *)value);
-			} else {
-				VMStackPtr value_ptr = fetch_value(vm, value);
-				memcpy(elem_ptr, value_ptr, elem_type->store_size_bytes);
-			}
+			VMStackPtr value_ptr = fetch_value2(vm, &value->value2);
+			memcpy(elem_ptr, value_ptr, elem_type->store_size_bytes);
 		}
 	}
 
-	if (will_push) stack_push(vm, tmp_ptr, cmp->base.value.type);
+	if (will_push) stack_push(vm, tmp_ptr, cmp->base.value2.type);
 }
 
 void
@@ -2208,7 +2207,6 @@ interp_instr_decl_var(VM *vm, MirInstrDeclVar *decl)
 		BL_ASSERT(var_ptr);
 
 		if (!mir_is_comptime(decl->init) && decl->init->kind == MIR_INSTR_COMPOUND) {
-			BL_UNIMPLEMENTED;
 			/* used compound initialization!!! */
 			interp_instr_compound(vm, var_ptr, (MirInstrCompound *)decl->init);
 		} else {
@@ -2777,7 +2775,7 @@ void *
 _vm_read_value(usize size, VMStackPtr value)
 {
 	BL_ASSERT(value);
-	
+
 	static VMValue tmp;
 	memset(&tmp, 0, sizeof(tmp));
 

@@ -28,18 +28,28 @@
 
 #load "std/_builtin.bl"
 
+// INCOMPLETE: time_now_ms
+// INCOMPLETE: __os_abort
+
 OS_NAME :: "Windows";
 
 OS_STDIN  :: 0;
 OS_STDOUT :: 1;
 OS_STDERR :: 2;
 
-_write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
-
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return _write(fd, buf, count);
 };
 
+__os_abort :: fn () {
+    // INCOMPLETE
+}
+
 time_now_ms :: fn () f64 {
+    // INCOMPLETE
     panic("Unimplemented!");
 };
+
+#private
+
+_write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;

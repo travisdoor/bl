@@ -221,6 +221,9 @@ register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool is_builtin, 
 static MirType *
 lookup_builtin(Context *cnt, MirBuiltinIdKind kind);
 
+static MirFn *
+lookup_builtin_fn(Context *cnt, MirBuiltinIdKind kind);
+
 /* Initialize type ID. This function creates and set ID string and calculates integer hash from this
  * string. The type.id.str could be also used as name for unnamed types. */
 static void
@@ -871,7 +874,7 @@ static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 7,
                                                              analyze_stage_set_volatile_expr,
                                                              analyze_stage_set_null,
                                                              analyze_stage_set_auto,
-                                                             analyze_stage_toany, 
+                                                             analyze_stage_toany,
                                                              analyze_stage_load,
                                                              analyze_stage_implicit_cast,
                                                              analyze_stage_report_type_mismatch,
@@ -1929,6 +1932,29 @@ lookup_builtin(Context *cnt, MirBuiltinIdKind kind)
 	}
 
 	return var_type;
+}
+
+MirFn *
+lookup_builtin_fn(Context *cnt, MirBuiltinIdKind kind)
+{
+	ID *        id    = &builtin_ids[kind];
+	Scope *     scope = cnt->assembly->gscope;
+	ScopeEntry *found = scope_lookup(scope, id, true, false);
+
+	if (!found) BL_ABORT("Missing compiler internal symbol '%s'", id->str);
+	if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
+
+	if (!found->is_buildin) {
+		builder_msg(BUILDER_MSG_WARNING,
+		            0,
+		            found->node ? found->node->location : NULL,
+		            BUILDER_CUR_WORD,
+		            "Builtins used by compiler must have '#compiler' flag!");
+	}
+
+	BL_ASSERT(found->kind == SCOPE_ENTRY_FN);
+	ref_instr(found->data.fn->prototype);
+	return found->data.fn;
 }
 
 MirType *
@@ -3631,7 +3657,7 @@ MirInstr *
 append_instr_unrecheable(Context *cnt, Ast *node)
 {
 	MirInstrUnreachable *tmp = create_instr(cnt, MIR_INSTR_UNREACHABLE, node);
-	tmp->base.value.type     = cnt->builtin_types.t_void;
+	tmp->base.value2.type    = cnt->builtin_types.t_void;
 	tmp->base.ref_count      = NO_REF_COUNTING;
 	append_current_block(cnt, &tmp->base);
 	return &tmp->base;
@@ -4505,7 +4531,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 	}
 	}
 
-	if (!cmp->base.value2.is_comptime && cmp->is_naked) {
+	if (!mir_is_comptime(&cmp->base) && cmp->is_naked) {
 		BL_UNIMPLEMENTED;
 		/* For naked non-compile time compounds we need to generate implicit temp storage to
 		 * keep all data. */
@@ -5230,7 +5256,10 @@ analyze_instr_arg(Context *cnt, MirInstrArg *arg)
 AnalyzeResult
 analyze_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
-	/* nothing to do :( */
+	MirFn *abort_fn = lookup_builtin_fn(cnt, MIR_BUILTIN_ID_ABORT_FN);
+	if (!abort_fn) return ANALYZE_RESULT(POSTPONE, 0);
+	unr->abort_fn = abort_fn;
+
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -8553,8 +8582,9 @@ execute_entry_fn(Context *cnt)
 	VMStackPtr ret_ptr = NULL;
 	if (vm_execute_fn(cnt->vm, cnt->assembly, cnt->entry_fn, &ret_ptr)) {
 		if (ret_ptr) {
-			MirType *ret_type = fn_type->data.fn.ret_type;
-			const s64 result = vm_read_value_as(s64, ret_type->store_size_bytes, ret_ptr);
+			MirType * ret_type = fn_type->data.fn.ret_type;
+			const s64 result =
+			    vm_read_value_as(s64, ret_type->store_size_bytes, ret_ptr);
 			msg_log("Execution finished with state: %lld\n", (long long)result);
 		} else {
 			msg_log("Execution finished without errors");

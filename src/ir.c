@@ -34,9 +34,8 @@
 #include "mir.h"
 #include "unit.h"
 
-#define LLVM_INTRINSIC_TRAP_NAME "llvm.debugtrap"
-#define LLVM_INTRINSIC_MEMSET_NAME "llvm.memset"
-#define LLVM_INTRINSIC_MEMCPY_NAME "llvm.memcpy"
+// CLANUP: not the best solution!!!
+#define ABORT_FN_NAME "__abort"
 
 #if BL_DEBUG
 #define NAMED_VARS true
@@ -69,50 +68,8 @@ typedef struct {
 	LLVMTypeRef llvm_i64_type;
 	LLVMTypeRef llvm_i8_ptr_type;
 
-	/* Intrinsics */
-	LLVMValueRef llvm_intrinsic_trap;
-	LLVMValueRef llvm_intrinsic_memset;
-	LLVMValueRef llvm_intrinsic_memcpy;
-
 	bool debug_mode;
 } Context;
-
-static inline LLVMValueRef
-build_call_memset_0(Context *    cnt,
-                    LLVMValueRef llvm_dest_ptr,
-                    LLVMValueRef llvm_size,
-                    LLVMValueRef llvm_alignment)
-{
-	LLVMValueRef llvm_args[4] = {
-	    LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
-	    LLVMConstInt(cnt->llvm_i8_type, 0, false),
-	    llvm_size,
-	    LLVMConstInt(cnt->llvm_i1_type, 0, false)};
-
-	LLVMValueRef llvm_result = LLVMBuildCall(
-	    cnt->llvm_builder, cnt->llvm_intrinsic_memset, llvm_args, TARRAY_SIZE(llvm_args), "");
-
-	return llvm_result;
-}
-
-static inline LLVMValueRef
-build_call_memcpy(Context *    cnt,
-                  LLVMValueRef llvm_dest_ptr,
-                  LLVMValueRef llvm_src_ptr,
-                  LLVMValueRef llvm_size,
-                  LLVMValueRef llvm_alignment)
-{
-	LLVMValueRef llvm_args[4] = {
-	    LLVMBuildBitCast(cnt->llvm_builder, llvm_dest_ptr, cnt->llvm_i8_ptr_type, ""),
-	    LLVMBuildBitCast(cnt->llvm_builder, llvm_src_ptr, cnt->llvm_i8_ptr_type, ""),
-	    llvm_size,
-	    LLVMConstInt(cnt->llvm_i1_type, 0, false)};
-
-	LLVMValueRef llvm_result = LLVMBuildCall(
-	    cnt->llvm_builder, cnt->llvm_intrinsic_memcpy, llvm_args, TARRAY_SIZE(llvm_args), "");
-
-	return llvm_result;
-}
 
 static void
 emit_DI_instr_loc(Context *cnt, MirInstr *instr);
@@ -504,8 +461,10 @@ emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 void
 emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
-	unr->base.llvm_value =
-	    LLVMBuildCall(cnt->llvm_builder, cnt->llvm_intrinsic_trap, NULL, 0, "");
+	MirFn *abort_fn = unr->abort_fn;
+	BL_ASSERT(abort_fn);
+	if (!abort_fn->llvm_value) emit_fn_proto(cnt, abort_fn);
+	LLVMBuildCall(cnt->llvm_builder, abort_fn->llvm_value, NULL, 0, "");
 }
 
 void
@@ -937,14 +896,62 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 			BL_ABORT("Invalid compound type!");
 		}
 
-		if (_tmp_var) {
+		if (tmp_var) {
 			LLVMValueRef llvm_dest = _tmp_var->llvm_value;
 			BL_ASSERT(llvm_dest);
 
 			LLVMBuildStore(cnt->llvm_builder, cmp->base.llvm_value, llvm_dest);
 		}
 	} else {
-		BL_UNIMPLEMENTED;
+		BL_ASSERT(tmp_var && "Missing tmp variable for compound expression!");
+		BL_ASSERT(!cmp->is_zero_initialized &&
+		          "Zero initialized compound should be comptime!");
+
+		LLVMValueRef llvm_tmp = tmp_var->llvm_value;
+		MirType *    type     = tmp_var->value.type;
+		BL_ASSERT(llvm_tmp)
+		BL_ASSERT(type)
+
+		TSmallArray_InstrPtr *values = cmp->values;
+		MirInstr *            value;
+		LLVMValueRef          llvm_value;
+		LLVMValueRef          llvm_value_dest;
+		LLVMValueRef          llvm_indices[2];
+		llvm_indices[0] = cnt->llvm_const_i64;
+
+		TSA_FOREACH(values, value)
+		{
+			llvm_value = value->llvm_value;
+			BL_ASSERT(llvm_value)
+
+			switch (type->kind) {
+			case MIR_TYPE_ARRAY:
+				llvm_indices[1] = LLVMConstInt(cnt->llvm_i64_type, i, true);
+				llvm_value_dest = LLVMBuildGEP(cnt->llvm_builder,
+				                               llvm_tmp,
+				                               llvm_indices,
+				                               TARRAY_SIZE(llvm_indices),
+				                               "");
+				break;
+
+			case MIR_TYPE_STRING:
+			case MIR_TYPE_SLICE:
+			case MIR_TYPE_VARGS:
+			case MIR_TYPE_STRUCT:
+				llvm_value_dest = LLVMBuildStructGEP(
+				    cnt->llvm_builder, tmp_var->llvm_value, (unsigned int)i, "");
+				break;
+
+			default:
+				BL_ASSERT(i == 0)
+				llvm_value_dest = llvm_tmp;
+				break;
+			}
+
+			LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
+		}
+
+		cmp->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, "");
 	}
 }
 
@@ -1733,9 +1740,12 @@ emit_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_PHI:
 		emit_instr_phi(cnt, (MirInstrPhi *)instr);
 		break;
-	case MIR_INSTR_COMPOUND:
-		emit_instr_compound(cnt, NULL, (MirInstrCompound *)instr);
+	case MIR_INSTR_COMPOUND: {
+		MirInstrCompound *cmp = (MirInstrCompound *)instr;
+		if (!cmp->is_naked && !mir_is_comptime(instr)) break;
+		emit_instr_compound(cnt, NULL, cmp);
 		break;
+	}
 	case MIR_INSTR_TOANY:
 		emit_instr_toany(cnt, (MirInstrToAny *)instr);
 		break;
@@ -1749,32 +1759,6 @@ emit_instr(Context *cnt, MirInstr *instr)
 		emit_instr_set_initializer(cnt, (MirInstrSetInitializer *)instr);
 		break;
 	}
-}
-
-static void
-init_intrinsics(Context *cnt)
-{
-	u32         id;
-	LLVMTypeRef llvm_args[8];
-
-	/* @llvm.memset.p0i8.i32(i8* <dest>, i8 <val>, i64 <len>, i1 <isvolatile>) */
-	id                         = llvm_lookup_intrinsic_id(LLVM_INTRINSIC_MEMSET_NAME);
-	llvm_args[0]               = cnt->llvm_i8_ptr_type;
-	llvm_args[1]               = cnt->llvm_i64_type;
-	cnt->llvm_intrinsic_memset = llvm_get_intrinsic_decl(cnt->llvm_module, id, llvm_args, 2);
-	BL_ASSERT(cnt->llvm_intrinsic_memset);
-
-	/* @llvm.memcpy.p0i8.p0i8.i64(i8* <dest>, i8* <src>, i64 <len>, i1 <isvolatile>) */
-	id                         = llvm_lookup_intrinsic_id(LLVM_INTRINSIC_MEMCPY_NAME);
-	llvm_args[0]               = cnt->llvm_i8_ptr_type;
-	llvm_args[1]               = cnt->llvm_i8_ptr_type;
-	llvm_args[2]               = cnt->llvm_i64_type;
-	cnt->llvm_intrinsic_memcpy = llvm_get_intrinsic_decl(cnt->llvm_module, id, llvm_args, 3);
-	BL_ASSERT(cnt->llvm_intrinsic_memcpy);
-
-	id                       = llvm_lookup_intrinsic_id(LLVM_INTRINSIC_TRAP_NAME);
-	cnt->llvm_intrinsic_trap = llvm_get_intrinsic_decl(cnt->llvm_module, id, NULL, 0);
-	BL_ASSERT(cnt->llvm_intrinsic_trap);
 }
 
 /* public */
@@ -1799,7 +1783,6 @@ ir_run(Assembly *assembly)
 	cnt.debug_mode       = builder.options.debug_build;
 	thtbl_init(&cnt.gstring_cache, sizeof(LLVMValueRef), 1024);
 
-	init_intrinsics(&cnt);
 	emit_RTTI_types(&cnt);
 
 	MirInstr *ginstr;

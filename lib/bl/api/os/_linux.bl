@@ -28,17 +28,21 @@
 
 #load "std/_builtin.bl"
 
+// INCOMPLETE: time_now_ms
+
 OS_NAME :: "Linux";
 
 OS_STDIN  :: 0;
 OS_STDOUT :: 1;
 OS_STDERR :: 2;
 
-write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
-
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return write(fd, buf, count);
 };
+
+__os_abort :: fn () {
+    raise(SIGABRT);
+}
 
 time_now_ms :: fn () f64 {
     panic("Unimplemented!");
@@ -46,3 +50,12 @@ time_now_ms :: fn () f64 {
 
 #private
 
+SIGHUP  :: 1;
+SIGINT  :: 2;
+SIGQUIT :: 3; 
+SIGILL  :: 4; 
+SIGTRAP :: 5;
+SIGABRT :: 6;
+
+raise :: fn (sig: s32) s32 #extern;
+write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;

@@ -687,6 +687,8 @@ struct MirInstrDeclDirectRef {
 
 struct MirInstrUnreachable {
 	MirInstr base;
+
+	MirFn *abort_fn;
 };
 
 struct MirInstrCondBr {

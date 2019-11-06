@@ -74,8 +74,14 @@ panic :: fn (args: ...) {
     unreachable;
 };
 
+/* Assert execution when condition value is false. */
 assert :: fn (cond: bool) {
     if !cond {
         unreachable;
     }
 };
+
+/* Abort execution. */
+abort :: fn () {
+    unreachable;
+}

@@ -117,13 +117,23 @@ main :: fn () s32 {
     c_real    :: {:f32: 0.5f};
     c_boolean :: {:bool: true};
     c_ptr     :: {:*s32: &c_num};
-    c_day     :: {:Day: Days.MON};
+    c_day     :: {:Days: Days.MON};
     printf(format.ptr, c_num);
+
+    i2 := 10;
+    data2 := {:Data1: i2, 20, true};
+    printf(format.ptr, data2.a);
+    printf(format.ptr, data2.b);
+
+    data3 := {:Data1: 0};
+    printf(format.ptr, data3.a);
+    printf(format.ptr, data3.b);
 
     return foo(10, 20);
 }
 
 foo :: fn (i: s32, j: s32) s32 {
+    unreachable;
     return i * j;
 }
 

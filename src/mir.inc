@@ -127,6 +127,8 @@
 	MIR_BUILTIN_ID_TYPE_INFO_STRUCT_MEMBER,
 	MIR_BUILTIN_ID_TYPE_INFO_ENUM_VARIANT,
 	MIR_BUILTIN_ID_TYPE_INFO_FN_ARG,
+
+	MIR_BUILTIN_ID_ABORT_FN,
 #endif
 
 #ifdef GEN_BUILTIN_IDS
@@ -170,4 +172,5 @@
     {.str = "TypeInfoStructMember",  .hash = 0},
     {.str = "TypeInfoEnumVariant",   .hash = 0},
     {.str = "TypeInfoFnArg",         .hash = 0},
+    {.str = "__os_abort",            .hash = 0},
 #endif
