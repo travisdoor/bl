@@ -29,7 +29,6 @@
 #load "std/_builtin.bl"
 
 // INCOMPLETE: time_now_ms
-// INCOMPLETE: __os_abort
 
 OS_NAME :: "Windows";
 
@@ -42,7 +41,7 @@ __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
 };
 
 __os_abort :: fn () {
-    // INCOMPLETE
+    raise(SIGABRT);
 }
 
 time_now_ms :: fn () f64 {
@@ -52,4 +51,12 @@ time_now_ms :: fn () f64 {
 
 #private
 
+SIGHUP  :: 1;
+SIGINT  :: 2;
+SIGQUIT :: 3; 
+SIGILL  :: 4; 
+SIGTRAP :: 5;
+SIGABRT :: 6;
+
+raise :: fn (sig: s32) s32 #extern;
 _write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
