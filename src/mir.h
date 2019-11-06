@@ -795,16 +795,6 @@ mir_get_struct_elem_type(MirType *type, u32 i)
 	return members->data[i]->type;
 }
 
-/* CLEANUP: remove after value2 will be done! */
-/* CLEANUP: remove after value2 will be done! */
-/* CLEANUP: remove after value2 will be done! */
-static inline void
-mir_set_const_ptr(MirConstPtr *value, void *ptr, MirConstPtrKind kind)
-{
-	value->data.any = ptr;
-	value->kind     = kind;
-}
-
 static inline MirType *
 mir_get_fn_arg_type(MirType *type, u32 i)
 {

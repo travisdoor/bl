@@ -150,7 +150,7 @@ static void
 print_call_stack(VM *vm, usize max_nesting);
 
 static void
-dyncall_cb_read_arg(VM *vm, MirConstValue *dest, DCArgs *src);
+dyncall_cb_read_arg(VM *vm, MirConstExprValue *dest, DCArgs *src);
 
 static char
 dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata);
@@ -459,44 +459,6 @@ fetch_value2(VM *vm, MirConstExprValue *v)
 {
 	if (v->is_comptime) return v->data;
 	return stack_pop(vm, v->type);
-}
-
-/* CLEANUP: remove */
-/* CLEANUP: remove */
-/* CLEANUP: remove */
-static inline void
-read_value(MirConstValueData *dest, VMStackPtr src, MirType *type)
-{
-	BL_ASSERT(dest && src && type);
-	const usize size = type->store_size_bytes;
-
-	switch (type->kind) {
-	case MIR_TYPE_INT:
-	case MIR_TYPE_REAL:
-	case MIR_TYPE_ENUM:
-	case MIR_TYPE_BOOL:
-	case MIR_TYPE_NULL:
-		memcpy(dest, src, size);
-		break;
-
-	case MIR_TYPE_FN:
-		mir_set_const_ptr(&dest->v_ptr, *(MirFn **)src, MIR_CP_FN);
-		break;
-
-	case MIR_TYPE_TYPE:
-		mir_set_const_ptr(&dest->v_ptr, *(MirType **)src, MIR_CP_TYPE);
-		break;
-
-	case MIR_TYPE_PTR:
-		mir_set_const_ptr(&dest->v_ptr, *(void **)src, MIR_CP_UNKNOWN);
-		break;
-
-	default: {
-		char type_name[256];
-		mir_type_to_str(type_name, 256, type, true);
-		BL_ABORT("Cannot load pointer to value of type '%s'", type_name);
-	}
-	}
 }
 
 static inline MirInstr *
@@ -1008,27 +970,27 @@ copy_comptime_to_stack(VM *vm, VMStackPtr dest_ptr, MirConstValue *src_value)
 }
 
 void
-dyncall_cb_read_arg(VM *vm, MirConstValue *dest, DCArgs *src)
+dyncall_cb_read_arg(VM *vm, MirConstExprValue *dest, DCArgs *src)
 {
 	BL_ASSERT(dest->type && "Argument destination has no type specified.");
 
-	memset(&dest->data, 0, sizeof(dest->data));
+	memset(&dest->data, 0, sizeof(dest->_tmp));
 
 	switch (dest->type->kind) {
 	case MIR_TYPE_INT: {
-		const usize bitcount = dest->type->data.integer.bitcount;
+		const usize bitcount = (usize)dest->type->data.integer.bitcount;
 		switch (bitcount) {
 		case 8:
-			dest->data.v_u8 = dcbArgUChar(src);
+			MIR_CEV_WRITE_AS(u8, dest, dcbArgUChar(src));
 			break;
 		case 16:
-			dest->data.v_u16 = dcbArgUShort(src);
+			MIR_CEV_WRITE_AS(u16, dest, dcbArgUShort(src));
 			break;
 		case 32:
-			dest->data.v_u32 = dcbArgULong(src);
+			MIR_CEV_WRITE_AS(u32, dest, dcbArgULong(src));
 			break;
 		case 64:
-			dest->data.v_u64 = dcbArgULongLong(src);
+			MIR_CEV_WRITE_AS(u64, dest, dcbArgULongLong(src));
 			break;
 		default:
 			BL_ABORT("invalid bitcount");
@@ -1038,13 +1000,13 @@ dyncall_cb_read_arg(VM *vm, MirConstValue *dest, DCArgs *src)
 	}
 
 	case MIR_TYPE_REAL: {
-		const usize bitcount = dest->type->data.real.bitcount;
+		const u64 bitcount = (u64)dest->type->data.real.bitcount;
 		switch (bitcount) {
 		case 32:
-			dest->data.v_f32 = dcbArgFloat(src);
+			MIR_CEV_WRITE_AS(f32, dest, dcbArgFloat(src));
 			break;
 		case 64:
-			dest->data.v_f64 = dcbArgDouble(src);
+			MIR_CEV_WRITE_AS(f64, dest, dcbArgDouble(src));
 			break;
 		default:
 			BL_ABORT("invalid bitcount");
@@ -1054,11 +1016,12 @@ dyncall_cb_read_arg(VM *vm, MirConstValue *dest, DCArgs *src)
 	}
 
 	case MIR_TYPE_BOOL: {
-		dest->data.v_bool = dcbArgBool(src);
+		dest->data.v_bool = (bool)dcbArgBool(src);
 		break;
 	}
 
 	case MIR_TYPE_PTR: {
+		MIR_CEV_WRITE_AS(VMStackPtr, &dest->)
 		mir_set_const_ptr(&dest->data.v_ptr, dcbArgPointer(src), MIR_CP_STACK);
 		break;
 	}
@@ -1246,10 +1209,6 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 {
 	BL_ASSERT(type);
 
-	/* CLEANUP: include dvm into VM */
-	/* CLEANUP: include dvm into VM */
-	/* CLEANUP: include dvm into VM */
-	/* CLEANUP: include dvm into VM */
 	DCCallVM *dvm = vm->assembly->dl.vm;
 	BL_ASSERT(dvm);
 	MirConstValueData tmp = {0};
@@ -1260,25 +1219,23 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 
 	switch (type->kind) {
 	case MIR_TYPE_BOOL: {
-		read_value(&tmp, val_ptr, type);
-		dcArgBool(dvm, tmp.v_bool);
+		dcArgBool(dvm, vm_read_value_as(bool, sizeof(bool), val_ptr));
 		break;
 	}
 
 	case MIR_TYPE_INT: {
-		read_value(&tmp, val_ptr, type);
 		switch (type->store_size_bytes) {
 		case 1:
-			dcArgChar(dvm, (DCchar)tmp.v_s8);
+			dcArgChar(dvm, vm_read_value_as(DCchar, 1, val_ptr));
 			break;
 		case 2:
-			dcArgShort(dvm, (DCshort)tmp.v_s16);
+			dcArgShort(dvm, vm_read_value_as(DCshort, 2, val_ptr));
 			break;
 		case 4:
-			dcArgInt(dvm, (DCint)tmp.v_s32);
+			dcArgInt(dvm, vm_read_value_as(DCint, 4, val_ptr));
 			break;
 		case 8:
-			dcArgLongLong(dvm, tmp.v_s64);
+			dcArgLongLong(dvm, vm_read_value_as(s64, 8, val_ptr));
 			break;
 		default:
 			BL_ABORT("unsupported external call integer argument type");

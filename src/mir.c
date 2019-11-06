@@ -369,30 +369,6 @@ init_or_create_const_integer(Context *cnt, MirConstExprValue *v, MirType *type, 
 static MirConstExprValue *
 init_or_create_const_bool(Context *cnt, MirConstExprValue *v, bool b);
 
-static MirConstValue *
-init_or_create_const_null(Context *cnt, MirConstValue *v, MirType *type);
-
-static MirConstValue *
-init_or_create_const_var_ptr(Context *cnt, MirConstValue *v, MirType *type, MirVar *var);
-
-static MirConstValue *
-init_or_create_const_array(Context *                  cnt,
-                           MirConstValue *            v,
-                           MirType *                  elem_type,
-                           TSmallArray_ConstValuePtr *elems);
-
-static MirConstValue *
-init_or_create_const_struct(Context *                  cnt,
-                            MirConstValue *            v,
-                            MirType *                  type,
-                            TSmallArray_ConstValuePtr *members);
-
-/* CLEANUP: remove!!! */
-/* CLEANUP: remove!!! */
-/* CLEANUP: remove!!! */
-static MirConstValue *
-init_or_create_const_string(Context *cnt, MirConstValue *v, const char *str);
-
 static MirInstrBlock *
 append_block(Context *cnt, MirFn *fn, const char *name);
 
@@ -2907,71 +2883,6 @@ init_or_create_const_bool(Context *cnt, MirConstExprValue *v, bool b)
 	v->is_comptime = true;
 	MIR_CEV_WRITE_AS(bool, v, b);
 
-	return v;
-}
-
-MirConstValue *
-init_or_create_const_var_ptr(Context *cnt, MirConstValue *v, MirType *type, MirVar *var)
-{
-	if (!v) v = arena_alloc(&cnt->assembly->arenas.mir.value);
-	v->type      = type;
-	v->addr_mode = MIR_VAM_LVALUE_CONST;
-
-	mir_set_const_ptr(&v->data.v_ptr, var, MIR_CP_VAR);
-	return v;
-}
-
-MirConstValue *
-init_or_create_const_array(Context *                  cnt,
-                           MirConstValue *            v,
-                           MirType *                  elem_type,
-                           TSmallArray_ConstValuePtr *elems)
-{
-	if (!v) v = arena_alloc(&cnt->assembly->arenas.mir.value);
-	v->type               = create_type_array(cnt, elem_type, (s64)elems->size);
-	v->addr_mode          = MIR_VAM_LVALUE_CONST;
-	v->data.v_array.elems = elems;
-
-	return v;
-}
-
-MirConstValue *
-init_or_create_const_struct(Context *                  cnt,
-                            MirConstValue *            v,
-                            MirType *                  type,
-                            TSmallArray_ConstValuePtr *members)
-{
-	if (!v) v = arena_alloc(&cnt->assembly->arenas.mir.value);
-	v->type                  = type;
-	v->addr_mode             = MIR_VAM_LVALUE_CONST;
-	v->data.v_struct.members = members;
-
-	return v;
-}
-
-MirConstValue *
-init_or_create_const_string(Context *cnt, MirConstValue *v, const char *str)
-{
-	if (!v) v = arena_alloc(&cnt->assembly->arenas.mir.value);
-	v->type      = cnt->builtin_types.t_string;
-	v->addr_mode = MIR_VAM_RVALUE;
-
-	TSmallArray_ConstValuePtr *m = create_sarr(TSmallArray_ConstValuePtr, cnt->assembly);
-
-	/* .len */
-	BL_UNIMPLEMENTED_REGION(
-	    tsa_push_ConstValuePtr(
-	        m, init_or_create_const_integer(cnt, NULL, cnt->builtin_types.t_s64, strlen(str)));)
-
-	/* .ptr */
-	MirConstValue *ptr = create_const_value(
-	    cnt, mir_get_struct_elem_type(cnt->builtin_types.t_string, MIR_SLICE_PTR_INDEX));
-
-	MirConstPtr *const_ptr = &ptr->data.v_ptr;
-	mir_set_const_ptr(const_ptr, (void *)str, MIR_CP_STR);
-	tsa_push_ConstValuePtr(m, ptr);
-
-	v->data.v_struct.members = m;
 	return v;
 }
 
