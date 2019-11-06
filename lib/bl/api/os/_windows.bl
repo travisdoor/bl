@@ -46,7 +46,7 @@ __os_abort :: fn () {
 
 time_now_ms :: fn () f64 {
     // INCOMPLETE
-    panic("Unimplemented!");
+    unreachable;
 };
 
 #private
