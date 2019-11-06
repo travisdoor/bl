@@ -866,12 +866,12 @@ static const AnalyzeSlotConfig analyze_slot_conf_default = {.count  = 6,
                                                                 analyze_stage_report_type_mismatch,
                                                             }};
 
-static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 6,
+static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 7,
                                                          .stages = {
                                                              analyze_stage_set_volatile_expr,
                                                              analyze_stage_set_null,
                                                              analyze_stage_set_auto,
-                                                             // analyze_stage_toany, // REENABLE!!!
+                                                             analyze_stage_toany, 
                                                              analyze_stage_load,
                                                              analyze_stage_implicit_cast,
                                                              analyze_stage_report_type_mismatch,
@@ -3379,10 +3379,10 @@ append_instr_type_array(Context *cnt, Ast *node, MirInstr *elem_type, MirInstr *
 MirInstr *
 append_instr_type_slice(Context *cnt, Ast *node, MirInstr *elem_type)
 {
-	MirInstrTypeSlice *tmp = create_instr(cnt, MIR_INSTR_TYPE_SLICE, node);
-	tmp->base.value.type   = cnt->builtin_types.t_type;
-	tmp->base.comptime     = true;
-	tmp->elem_type         = elem_type;
+	MirInstrTypeSlice *tmp       = create_instr(cnt, MIR_INSTR_TYPE_SLICE, node);
+	tmp->base.value2.type        = cnt->builtin_types.t_type;
+	tmp->base.value2.is_comptime = true;
+	tmp->elem_type               = elem_type;
 
 	ref_instr(elem_type);
 	append_current_block(cnt, &tmp->base);
@@ -5833,7 +5833,7 @@ analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 		id = &type_slice->base.node->data.ident.id;
 	}
 
-	if (type_slice->elem_type->value.type->kind != MIR_TYPE_TYPE) {
+	if (type_slice->elem_type->value2.type->kind != MIR_TYPE_TYPE) {
 		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_INVALID_TYPE,
 		            type_slice->elem_type->node->location,
@@ -5842,17 +5842,15 @@ analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
-	BL_ASSERT(type_slice->elem_type->comptime && "This should be an error");
-	MirType *elem_type = type_slice->elem_type->value.data.v_ptr.data.type;
+	BL_ASSERT(mir_is_comptime(type_slice->elem_type) && "This should be an error");
+	MirType *elem_type = MIR_CEV_READ_AS(MirType *, &type_slice->elem_type->value2);
 	BL_ASSERT(elem_type);
 
 	elem_type = create_type_ptr(cnt, elem_type);
-	elem_type = create_type_struct_special(cnt, MIR_TYPE_SLICE, id, elem_type);
 
-	{ /* set const pointer value */
-		MirConstPtr *const_ptr = &type_slice->base.value.data.v_ptr;
-		mir_set_const_ptr(const_ptr, elem_type, MIR_CP_TYPE);
-	}
+	MIR_CEV_WRITE_AS(MirType *,
+	                 &type_slice->base.value2,
+	                 create_type_struct_special(cnt, MIR_TYPE_SLICE, id, elem_type));
 
 	return ANALYZE_RESULT(PASSED, 0);
 }
@@ -9209,9 +9207,9 @@ execute_entry_fn(Context *cnt)
 	VMStackPtr ret_ptr = NULL;
 	if (vm_execute_fn(cnt->vm, cnt->assembly, cnt->entry_fn, &ret_ptr)) {
 		if (ret_ptr) {
-			MirConstValue tmp = {.type = fn_type->data.fn.ret_type};
-			vm_read_stack_value(&tmp, ret_ptr);
-			msg_log("Execution finished with state: %lld\n", (long long)tmp.data.v_s64);
+			MirType *ret_type = fn_type->data.fn.ret_type;
+			const s64 result = vm_read_value_as(s64, ret_type->store_size_bytes, ret_ptr);
+			msg_log("Execution finished with state: %lld\n", (long long)result);
 		} else {
 			msg_log("Execution finished without errors");
 		}

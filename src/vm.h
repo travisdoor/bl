@@ -96,7 +96,15 @@ vm_alloc_global(VM *vm, struct Assembly *assembly, struct MirVar *var);
 VMStackPtr
 vm_create_implicit_global(VM *vm, struct Assembly *assembly, struct MirVar *var);
 
+/* CLEANUP: remove!!! */
+/* CLEANUP: remove!!! */
+/* CLEANUP: remove!!! */
 void
-vm_read_stack_value(struct MirConstValue *dest, VMStackPtr src);
+vm_read_value(struct MirConstValue *dest, VMStackPtr src);
+
+#define vm_read_value_as(T, S, V) (*((T *)_vm_read_value((S), (V))))
+
+void *
+_vm_read_value(usize size, VMStackPtr value);
 
 #endif

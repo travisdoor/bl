@@ -474,6 +474,9 @@ fetch_value2(VM *vm, MirConstExprValue *v)
 	return stack_pop(vm, v->type);
 }
 
+/* CLEANUP: remove */
+/* CLEANUP: remove */
+/* CLEANUP: remove */
 static inline void
 read_value(MirConstValueData *dest, VMStackPtr src, MirType *type)
 {
@@ -1900,16 +1903,19 @@ interp_instr_br(VM *vm, MirInstrBr *br)
 void
 interp_instr_switch(VM *vm, MirInstrSwitch *sw)
 {
+	MirType *value_type = sw->value->value2.type;
 	VMStackPtr value_ptr = fetch_value2(vm, &sw->value->value2);
 	BL_ASSERT(value_ptr);
 
-	const s64 value       = VM_STACK_READ_AS(s64, value_ptr);
+	const s64 value       = vm_read_value_as(s64, value_type->store_size_bytes, value_ptr); 
 	vm->stack->prev_block = sw->base.owner_block;
 
 	TSmallArray_SwitchCase *cases = sw->cases;
 	for (usize i = 0; i < cases->size; ++i) {
 		MirSwitchCase *c = &cases->data[i];
-		if (value == MIR_CEV_READ_AS(s64, &c->on_value->value2)) {
+
+		const s64 on_value = vm_read_value_as(s64, value_type->store_size_bytes, c->on_value->value2.data);
+		if (value == on_value) {
 			set_pc(vm, c->block->entry_instr);
 			return;
 		}
@@ -1993,7 +1999,7 @@ interp_instr_cond_br(VM *vm, MirInstrCondBr *br)
 	VMStackPtr cond_ptr = fetch_value2(vm, &br->cond->value2);
 	BL_ASSERT(cond_ptr);
 
-	const bool condition = VM_STACK_READ_AS(bool, cond_ptr);
+	const bool condition = vm_read_value_as(bool, type->store_size_bytes, cond_ptr);
 
 	/* Set previous block. */
 	vm->stack->prev_block = br->base.owner_block;
@@ -2262,11 +2268,9 @@ interp_instr_call(VM *vm, MirInstrCall *call)
 	/* Function called via pointer. */
 	if (mir_is_pointer_type(call->callee->value2.type)) {
 		BL_ASSERT(mir_deref_type(call->callee->value2.type)->kind == MIR_TYPE_FN);
-		// callee_ptr = VM_STACK_READ_AS(VMStackPtr, callee_ptr);
-		// callee_ptr = VM_STACK_PTR_DEREF(callee_ptr);
 	}
 
-	MirFn *callee = VM_STACK_READ_AS(MirFn *, callee_ptr);
+	MirFn *callee = vm_read_value_as(MirFn *, sizeof(MirFn *), callee_ptr);
 	if (callee == NULL) {
 		msg_error("Function pointer not set!");
 		exec_abort(vm, 0);
@@ -2448,6 +2452,8 @@ eval_instr(VM *vm, MirInstr *instr)
 	case MIR_INSTR_TYPE_FN:
 	case MIR_INSTR_TYPE_STRUCT:
 	case MIR_INSTR_TYPE_ENUM:
+	case MIR_INSTR_TYPE_SLICE:
+	case MIR_INSTR_TYPE_VARGS:
 	case MIR_INSTR_DECL_MEMBER:
 	case MIR_INSTR_DECL_ARG:
 	case MIR_INSTR_DECL_VARIANT:
@@ -2752,4 +2758,22 @@ vm_read_stack_value(MirConstValue *dest, VMStackPtr src)
 	assert(dest->type);
 	memset(&dest->data, 0, sizeof(dest->data));
 	read_value(&dest->data, src, dest->type);
+}
+
+/* CLEANUP: remove!!! */
+/* CLEANUP: remove!!! */
+/* CLEANUP: remove!!! */
+void *
+_vm_read_value(usize size, VMStackPtr value)
+{
+	BL_ASSERT(value);
+	
+	static VMValue tmp;
+	memset(&tmp, 0, sizeof(tmp));
+
+	if (size == 0) BL_ABORT("Reading value of zero size is invalid!!!");
+	if (size > sizeof(tmp)) BL_ABORT("Cannot read value bigger then %sB", sizeof(tmp));
+
+	memcpy(&tmp, value, size);
+	return &tmp;
 }

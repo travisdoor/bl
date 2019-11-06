@@ -33,22 +33,22 @@
  * Values set automatically during build by cmake.
  */
 #define BL_VERSION "@PROJECT_VERSION@"
-#define BL_VERSION_MAJOR @PROJECT_VERSION_MAJOR @
-#define BL_VERSION_MINOR @PROJECT_VERSION_MINOR @
-#define BL_VERSION_PATCH @PROJECT_VERSION_PATCH @
+#define BL_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define BL_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define BL_VERSION_PATCH @PROJECT_VERSION_PATCH@
 
 #define BL_CONF_FILE "@BL_CONF_FILE@"
 
 #ifdef _WIN32
 #define BL_PLATFORM_WIN
 #define BL_NO_COLOR
-#define CORE_SOURCE_FILE "os/windows.bl"
+#define OS_PRELOAD_FILE "os/_windows.bl"
 #elif __APPLE__
 #define BL_PLATFORM_MACOS
-#define CORE_SOURCE_FILE "os/macos.bl"
+#define OS_PRELOAD_FILE "os/_macos.bl"
 #elif __linux__
 #define BL_PLATFORM_LINUX
-#define CORE_SOURCE_FILE "os/linux.bl"
+#define OS_PRELOAD_FILE "os/_linux.bl"
 #elif __CYGWIN__
 #define BL_PLATFORM_WIN
 #else

@@ -277,7 +277,7 @@ builder_compile(Assembly *assembly)
 
 	/* include core source file */
 	if (!builder.options.no_api) {
-		unit = unit_new_file(CORE_SOURCE_FILE, NULL, NULL);
+		unit = unit_new_file(OS_PRELOAD_FILE, NULL, NULL);
 		if (!assembly_add_unit_unique(assembly, unit)) {
 			unit_delete(unit);
 		}

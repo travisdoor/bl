@@ -26,9 +26,9 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#load "std/core.bl"
+#load "std/_builtin.bl"
 
-OS_NAME :: "Linux";
+OS_NAME :: "MacOS";
 
 OS_STDIN  :: 0;
 OS_STDOUT :: 1;
@@ -41,8 +41,9 @@ __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
 };
 
 time_now_ms :: fn () f64 {
-    panic("Unimplemented!");
+    return cast(f64) mach_absolute_time() / 1000000.0;
 };
 
 #private
 
+mach_absolute_time :: fn () u64 #extern;

@@ -1393,7 +1393,7 @@ emit_instr_const(Context *cnt, MirInstrConst *c)
 	LLVMTypeRef  llvm_type  = type->llvm_type;
 
 	switch (type->kind) {
-	case MIR_TYPE_ENUM: 
+	case MIR_TYPE_ENUM:
 	case MIR_TYPE_INT: {
 		const u64 i = MIR_CEV_READ_AS(u64, &c->base.value2);
 		llvm_value  = LLVMConstInt(llvm_type, i, type->data.integer.is_signed);
@@ -1423,6 +1423,11 @@ emit_instr_const(Context *cnt, MirInstrConst *c)
 		default:
 			BL_ABORT("Unknown real type!");
 		}
+		break;
+	}
+
+	case MIR_TYPE_NULL: {
+		llvm_value = LLVMConstNull(llvm_type);
 		break;
 	}
 
@@ -1520,7 +1525,7 @@ emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 		BL_ASSERT(expr_tmp->llvm_value && "Missing tmp variable");
 
 		BL_UNIMPLEMENTED;
-		//llvm_data = emit_as_const(cnt, &toany->expr->value);
+		// llvm_data = emit_as_const(cnt, &toany->expr->value);
 		LLVMBuildStore(cnt->llvm_builder, llvm_data, expr_tmp->llvm_value);
 		llvm_data = expr_tmp->llvm_value;
 	} else if (toany->rtti_type_specification) {

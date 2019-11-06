@@ -9,8 +9,9 @@ F :: ^D;
 G :: cast(u64) ^D;
 H :: ^cast(*u64) D;
 I :: 0.5f;
-J :: 0.5;
+J :: 0.5 + 0.012;
 K : bool : true;
+L :: cast(s32) -12.5;
 
 arr1     :: {:[8]s32: 1, 2, 3, 4, 5, 6, 7, 8};
 arr2     :: {:[8]s32: 0};
@@ -66,11 +67,21 @@ main :: fn () s32 {
     printf(format.ptr, cast(s32) Days.SUN);
     printf(format.ptr, cast(s32) Days.MON);
     printf(format.ptr, cast(s32) Days.THU);
-    day := Days.SUN;
+    day := Days.MON;
 
     switch day {
         Days.SUN {
             str :: "It's sunday!!!\n";
+            printf(str.ptr, 0);
+        }
+
+        Days.MON {
+            str :: "It's monday!!!\n";
+            printf(str.ptr, 0);
+        }
+
+        Days.SAT {
+            str :: "It's saturday!!!\n";
             printf(str.ptr, 0);
         }
 
@@ -97,6 +108,12 @@ main :: fn () s32 {
 
     functions.first();
     functions.second();
+
+    /*
+    some_slice : []s32 = {:[]s32: 0, null};
+    some_slice.ptr = null;
+    some_slice.len = 10;
+    */
 
     return foo(10, 20);
 }
