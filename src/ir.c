@@ -429,7 +429,7 @@ void
 emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 {
 	LLVMValueRef llvm_phi =
-	    LLVMBuildPhi(cnt->llvm_builder, phi->base.value.type->llvm_type, "");
+	    LLVMBuildPhi(cnt->llvm_builder, phi->base.value2.type->llvm_type, "");
 
 	const usize count = phi->incoming_blocks->size;
 
@@ -479,7 +479,7 @@ emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 	LLVMValueRef llvm_var = rtti_var->llvm_value;
 	BL_ASSERT(llvm_var && "Missing LLVM value for RTTI variable.");
 
-	LLVMTypeRef llvm_dest_type = type_info->base.value.type->llvm_type;
+	LLVMTypeRef llvm_dest_type = type_info->base.value2.type->llvm_type;
 
 	llvm_var = LLVMBuildPointerCast(cnt->llvm_builder, llvm_var, llvm_dest_type, "");
 	type_info->base.llvm_value = llvm_var;
@@ -1465,7 +1465,7 @@ emit_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 void
 emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 {
-	MirType *             vargs_type = vargs->base.value.type;
+	MirType *             vargs_type = vargs->base.value2.type;
 	TSmallArray_InstrPtr *values     = vargs->values;
 	BL_ASSERT(values);
 	const usize vargsc = values->size;
@@ -1522,7 +1522,7 @@ emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 	BL_ASSERT(llvm_type_info && "Missing LLVM value for RTTI variable.");
 	BL_ASSERT(llvm_tmp);
 
-	MirType *   any_type                = mir_deref_type(toany->base.value.type);
+	MirType *   any_type                = mir_deref_type(toany->base.value2.type);
 	LLVMTypeRef llvm_any_type_info_type = mir_get_struct_elem_type(any_type, 0)->llvm_type;
 	LLVMTypeRef llvm_any_data_type      = mir_get_struct_elem_type(any_type, 1)->llvm_type;
 

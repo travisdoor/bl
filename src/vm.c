@@ -454,19 +454,6 @@ stack_rel_to_abs_ptr(VM *vm, VMRelativeStackPtr rel_ptr, bool ignore)
 	return base + rel_ptr;
 }
 
-/* Return pointer to value evaluated from src instruction. Source can be compile
- * time constant or allocated on the stack.*/
-static inline VMStackPtr
-fetch_value(VM *vm, MirInstr *src)
-{
-	if (src->comptime || src->kind == MIR_INSTR_DECL_REF ||
-	    src->kind == MIR_INSTR_DECL_DIRECT_REF) {
-		return (VMStackPtr)&src->value.data;
-	}
-
-	return stack_pop(vm, src->value.type);
-}
-
 static inline VMStackPtr
 fetch_value2(VM *vm, MirConstExprValue *v)
 {
@@ -1679,7 +1666,7 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 
 	memcpy(dest, &rtti_ptr, type_info_type->store_size_bytes);
 
-	VMStackPtr data_ptr = fetch_value(vm, toany->expr);
+	VMStackPtr data_ptr = fetch_value2(vm, &toany->expr->value2);
 
 	/* data */
 	dest               = tmp_ptr + mir_get_struct_elem_offest(vm->assembly, tmp_type, 1);
@@ -1705,7 +1692,7 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 		VMStackPtr expr_tmp_ptr =
 		    stack_rel_to_abs_ptr(vm, expr_tmp->rel_stack_ptr, expr_tmp->is_global);
 
-		if (toany->expr->comptime) {
+		if (toany->expr->value2.is_comptime) {
 			copy_comptime_to_stack(vm, expr_tmp_ptr, (MirConstValue *)data_ptr);
 		} else {
 			memcpy(expr_tmp_ptr, data_ptr, data_type->store_size_bytes);
@@ -1716,7 +1703,7 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 		memcpy(dest, data_ptr, data_type->store_size_bytes);
 	}
 
-	stack_push(vm, &tmp_ptr, toany->base.value.type);
+	stack_push(vm, &tmp_ptr, toany->base.value2.type);
 }
 
 void
@@ -1745,16 +1732,11 @@ interp_instr_phi(VM *vm, MirInstrPhi *phi)
 	 * stack or used as constant value of phi when phi is compile time known
 	 * constant. */
 	{
-		MirType *phi_type = phi->base.value.type;
+		MirType *phi_type = phi->base.value2.type;
 		BL_ASSERT(phi_type);
 
-		VMStackPtr value_ptr = fetch_value(vm, value);
-
-		if (phi->base.comptime) {
-			memcpy(&phi->base.value.data, value_ptr, sizeof(phi->base.value.data));
-		} else {
-			stack_push(vm, value_ptr, phi_type);
-		}
+		VMStackPtr value_ptr = fetch_value2(vm, &value->value2);
+		stack_push(vm, value_ptr, phi_type);
 	}
 }
 
@@ -1780,7 +1762,7 @@ void
 interp_instr_type_info(VM *vm, MirInstrTypeInfo *type_info)
 {
 	// HACK: cleanup stack
-	fetch_value(vm, type_info->expr);
+	fetch_value2(vm, &type_info->expr->value2);
 
 	MirVar *type_info_var = type_info->expr_type->vm_rtti_var_cache;
 	if (!type_info_var) {
@@ -1789,7 +1771,7 @@ interp_instr_type_info(VM *vm, MirInstrTypeInfo *type_info)
 	}
 	BL_ASSERT(type_info_var);
 
-	MirType *type = type_info->base.value.type;
+	MirType *type = type_info->base.value2.type;
 	BL_ASSERT(type);
 
 	VMStackPtr ptr =
@@ -1990,7 +1972,7 @@ interp_instr_arg(VM *vm, MirInstrArg *arg)
 		arg_ptr -= stack_alloc_size(args->data[i]->type->store_size_bytes);
 	}
 
-	stack_push(vm, (VMStackPtr)arg_ptr, arg->base.value.type);
+	stack_push(vm, (VMStackPtr)arg_ptr, arg->base.value2.type);
 }
 
 void
@@ -2137,15 +2119,11 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 		VMStackPtr value_ptr;
 		TSA_FOREACH(values, value)
 		{
-			const usize value_size = value->value.type->store_size_bytes;
+			const usize value_size = value->value2.type->store_size_bytes;
 			VMStackPtr  dest       = arr_tmp_ptr + i * value_size;
 
-			if (value->comptime) {
-				copy_comptime_to_stack(vm, dest, &value->value);
-			} else {
-				value_ptr = fetch_value(vm, value);
-				memcpy(dest, value_ptr, value_size);
-			}
+			value_ptr = fetch_value2(vm, &value->value2);
+			memcpy(dest, value_ptr, value_size);
 		}
 	}
 
@@ -2154,34 +2132,18 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 		VMStackPtr vargs_tmp_ptr =
 		    stack_rel_to_abs_ptr(vm, vargs_tmp->rel_stack_ptr, false);
 		// set len
-		{
-			MirConstValueData len_tmp = {0};
-			VMStackPtr        len_ptr =
-			    vargs_tmp_ptr + mir_get_struct_elem_offest(vm->assembly,
-			                                               vargs_tmp->value.type,
-			                                               MIR_SLICE_LEN_INDEX);
+		VMStackPtr len_ptr =
+		    vargs_tmp_ptr + mir_get_struct_elem_offest(
+		                        vm->assembly, vargs_tmp->value.type, MIR_SLICE_LEN_INDEX);
 
-			MirType *len_type =
-			    mir_get_struct_elem_type(vargs_tmp->value.type, MIR_SLICE_LEN_INDEX);
-
-			len_tmp.v_s64 = values->size;
-			memcpy(len_ptr, &len_tmp, len_type->store_size_bytes);
-		}
+		VM_STACK_WRITE_AS(s64, len_ptr, values->size);
 
 		// set ptr
-		{
-			MirConstValueData ptr_tmp = {0};
-			VMStackPtr        ptr_ptr =
-			    vargs_tmp_ptr + mir_get_struct_elem_offest(vm->assembly,
-			                                               vargs_tmp->value.type,
-			                                               MIR_SLICE_PTR_INDEX);
+		VMStackPtr ptr_ptr =
+		    vargs_tmp_ptr + mir_get_struct_elem_offest(
+		                        vm->assembly, vargs_tmp->value.type, MIR_SLICE_PTR_INDEX);
 
-			MirType *ptr_type =
-			    mir_get_struct_elem_type(vargs_tmp->value.type, MIR_SLICE_PTR_INDEX);
-
-			ptr_tmp.v_ptr.data.any = arr_tmp_ptr;
-			memcpy(ptr_ptr, &ptr_tmp, ptr_type->store_size_bytes);
-		}
+		VM_STACK_WRITE_AS(VMStackPtr, ptr_ptr, arr_tmp_ptr);
 
 		stack_push(vm, vargs_tmp_ptr, vargs_tmp->value.type);
 	}
