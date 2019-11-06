@@ -2552,6 +2552,16 @@ eval_instr_compound(VM *vm, MirInstrCompound *compound)
 			break;
 		}
 
+		case MIR_TYPE_INT:
+		case MIR_TYPE_REAL:
+		case MIR_TYPE_BOOL:
+		case MIR_TYPE_PTR:
+		case MIR_TYPE_ENUM: {
+			BL_ASSERT(i == 0 && "Non-agregate type initialized with multiple values!");
+			memcpy(dest_ptr, src_ptr, value->type->store_size_bytes);
+			break;
+		}
+
 		default:
 			BL_ABORT("Invalid type of compound element!");
 		}

@@ -113,7 +113,12 @@ main :: fn () s32 {
     some_slice.ptr = null;
     some_slice.len = 10;
 
-    num := {:s32: 10};
+    c_num     :: {:s32: 10};
+    c_real    :: {:f32: 0.5f};
+    c_boolean :: {:bool: true};
+    c_ptr     :: {:*s32: &c_num};
+    c_day     :: {:Day: Days.MON};
+    printf(format.ptr, c_num);
 
     return foo(10, 20);
 }

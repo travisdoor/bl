@@ -1,5 +1,6 @@
 #load "std/debug.bl"
 
+#private
 #test "compound arrays" {
     validate :: fn (v: [2]s32, i: s32, j: s32) {
         assert(v[0] == i);
@@ -77,6 +78,8 @@
 };
 
 #test "compound fundamentals" {
+    Days :: enum { MON; };
+    
     i := 10;
     assert({:s32: 10} == 10);
     assert({:s32: i} == i);
@@ -85,4 +88,16 @@
     b := true;
     assert({:bool: true} == true);
     assert({:bool: b} == b);
+
+    num     :: {:s32: 10};
+    real    :: {:f32: 0.5f};
+    boolean :: {:bool: true};
+    ptr     :: {:*s32: &num};
+    day     :: {:Days: Days.MON};
+
+    assert(num == 10);
+    assert(real == 0.5f);
+    assert(boolean == true);
+    assert(ptr == &num);
+    assert(day == Days.MON);
 };
