@@ -1965,12 +1965,12 @@ interp_instr_arg(VM *vm, MirInstrArg *arg)
 			for (u32 i = 0; i <= arg->i; ++i) {
 				arg_value = arg_values->data[i];
 				BL_ASSERT(arg_value);
-				if (arg_value->comptime) continue;
+				if (mir_is_comptime(arg_value)) continue;
 				arg_ptr -=
-				    stack_alloc_size(arg_value->value.type->store_size_bytes);
+				    stack_alloc_size(arg_value->value2.type->store_size_bytes);
 			}
 
-			stack_push(vm, (VMStackPtr)arg_ptr, arg->base.value.type);
+			stack_push(vm, (VMStackPtr)arg_ptr, arg->base.value2.type);
 		}
 
 		return;
@@ -2321,7 +2321,7 @@ interp_instr_ret(VM *vm, MirInstrRet *ret)
 			TSA_FOREACH(arg_values, arg_value)
 			{
 				if (mir_is_comptime(arg_value)) continue;
-				stack_pop(vm, arg_value->value.type);
+				stack_pop(vm, arg_value->value2.type);
 			}
 		}
 	} else {
