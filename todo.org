@@ -23,3 +23,7 @@
   - When block is comptime -> it could be executed
   - Assign initializer block to the global variable
   - Execute it in VM 
+    
+- compounds
+  naked comptime/runtime
+  non-naked comtime/runtime

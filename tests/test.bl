@@ -109,11 +109,11 @@ main :: fn () s32 {
     functions.first();
     functions.second();
 
-    /*
     some_slice : []s32 = {:[]s32: 0, null};
     some_slice.ptr = null;
     some_slice.len = 10;
-    */
+
+    num := {:s32: 10};
 
     return foo(10, 20);
 }
