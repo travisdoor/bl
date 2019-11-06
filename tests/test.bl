@@ -131,6 +131,8 @@ main :: fn () s32 {
     printf(format.ptr, data3.b);
 
     bar(data2);
+    bar({:Data1: 30, 40, false});
+    bar({:Data1: i2, 40, false});
 
     return foo(10, 20);
 }

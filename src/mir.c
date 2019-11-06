@@ -4532,7 +4532,6 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 	}
 
 	if (!mir_is_comptime(&cmp->base) && cmp->is_naked) {
-		BL_UNIMPLEMENTED;
 		/* For naked non-compile time compounds we need to generate implicit temp storage to
 		 * keep all data. */
 
