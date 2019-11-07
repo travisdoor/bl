@@ -73,7 +73,7 @@ print_instr_head(Context *cnt, MirInstr *instr, const char *name)
 #else
 	fprintf(cnt->stream, "    %%%-6llu", (unsigned long long)instr->id);
 #endif
-	print_type(cnt, instr->value2.type, true, true);
+	print_type(cnt, instr->value.type, true, true);
 	fprintf(cnt->stream, " %s ", name);
 }
 
@@ -356,7 +356,7 @@ print_comptime_value_or_id(Context *cnt, MirInstr *instr)
 		return;
 	}
 
-	if (!instr->value2.is_comptime || !instr->analyzed) {
+	if (!instr->value.is_comptime || !instr->analyzed) {
 		fprintf(cnt->stream, "%%%llu", (unsigned long long)instr->id);
 		return;
 	}
@@ -367,7 +367,7 @@ print_comptime_value_or_id(Context *cnt, MirInstr *instr)
 		return;
 	}
 
-	print_const_value(cnt, &instr->value2);
+	print_const_value(cnt, &instr->value);
 }
 
 void
@@ -565,7 +565,7 @@ print_instr_compound(Context *cnt, MirInstrCompound *init)
 	if (init->type) {
 		print_comptime_value_or_id(cnt, init->type);
 	} else {
-		print_type(cnt, init->base.value2.type, false, true);
+		print_type(cnt, init->base.value.type, false, true);
 	}
 
 	fprintf(cnt->stream, " {");
@@ -857,7 +857,7 @@ void
 print_instr_const(Context *cnt, MirInstrConst *cnst)
 {
 	print_instr_head(cnt, &cnst->base, "const");
-	print_const_value(cnt, &cnst->base.value2);
+	print_const_value(cnt, &cnst->base.value);
 }
 
 void
@@ -865,7 +865,7 @@ print_instr_call(Context *cnt, MirInstrCall *call)
 {
 	print_instr_head(cnt, &call->base, "call");
 
-	MirFn *     callee      = MIR_CEV_READ_AS(MirFn *, &call->callee->value2);
+	MirFn *     callee      = MIR_CEV_READ_AS(MirFn *, &call->callee->value);
 	const char *callee_name = callee ? callee->linkage_name : NULL;
 	if (callee_name)
 		fprintf(cnt->stream, "@%s", callee_name);
@@ -953,7 +953,7 @@ print_instr_block(Context *cnt, MirInstrBlock *block)
 void
 print_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
-	MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value2);
+	MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
 	BL_ASSERT(fn);
 
 	fprintf(cnt->stream, "\n");
@@ -987,8 +987,8 @@ void
 print_instr(Context *cnt, MirInstr *instr)
 {
 #if !PRINT_ANALYZED_COMPTIMES
-	if ((instr->owner_block || instr->kind == MIR_INSTR_BLOCK) && instr->value2.is_comptime &&
-	    instr->analyzed)
+	if ((instr->owner_block || instr->kind == MIR_INSTR_BLOCK) && instr->value.is_comptime &&
+            instr->analyzed)
 		return;
 #endif
 
@@ -1115,7 +1115,7 @@ print_instr(Context *cnt, MirInstr *instr)
 		break;
 	}
 
-	if (instr->value2.is_comptime) fprintf(cnt->stream, " /* comptime */");
+	if (instr->value.is_comptime) fprintf(cnt->stream, " /* comptime */");
 	if (instr->unrechable) fprintf(cnt->stream, " /* unrechable */");
 
 	fprintf(cnt->stream, "\n");

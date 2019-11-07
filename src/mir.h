@@ -55,8 +55,6 @@ typedef struct MirVariant        MirVariant;
 typedef struct MirArg            MirArg;
 typedef struct MirVar            MirVar;
 typedef struct MirFn             MirFn;
-typedef struct MirConstValue     MirConstValue;
-typedef struct MirConstPtr       MirConstPtr;
 typedef struct MirConstExprValue MirConstExprValue;
 
 typedef struct MirInstr               MirInstr;
@@ -101,8 +99,6 @@ typedef struct MirInstrToAny          MirInstrToAny;
 typedef struct MirInstrSwitch         MirInstrSwitch;
 typedef struct MirInstrSetInitializer MirInstrSetInitializer;
 
-typedef union MirConstValueData MirConstValueData;
-
 typedef struct MirArenas {
 	Arena instr;
 	Arena type;
@@ -111,7 +107,6 @@ typedef struct MirArenas {
 	Arena member;
 	Arena variant;
 	Arena arg;
-	Arena value;
 } MirArenas;
 
 typedef struct MirSwitchCase {
@@ -351,63 +346,13 @@ struct MirType {
 	} data;
 };
 
-struct MirConstPtr {
-	union {
-		MirType *          type;          /* type value */
-		MirConstValue *    value;         /* remove */
-		MirFn *            fn;            /* function */
-		MirVar *           var;           /* variable */
-		VMStackPtr         stack_ptr;     /* absolute pointer to the stack */
-		VMRelativeStackPtr rel_stack_ptr; /* relative pointer to the stack */
-		const char *       str;           /* constant string array */
-
-		void *any; /* universal pointer value */
-	} data;
-
-	MirConstPtrKind kind;
-};
-
+/* VALUE */
 struct MirConstExprValue {
 	VMValue             _tmp;
 	VMStackPtr          data;
 	MirType *           type;
 	MirValueAddressMode addr_mode;
 	bool                is_comptime;
-};
-
-/* VALUE */
-union MirConstValueData {
-	/* atomic types */
-	s64  v_s64;
-	s32  v_s32;
-	s16  v_s16;
-	s8   v_s8;
-	u64  v_u64;
-	u32  v_u32;
-	u16  v_u16;
-	u8   v_u8;
-	f32  v_f32;
-	f64  v_f64;
-	bool v_bool;
-	char v_char;
-
-	MirConstPtr v_ptr;
-
-	struct {
-		TSmallArray_ConstValuePtr *members; // array of MirConstValues *
-		bool                       is_zero_initializer;
-	} v_struct;
-
-	struct {
-		TSmallArray_ConstValuePtr *elems; // array of MirConstValues *
-		bool                       is_zero_initializer;
-	} v_array;
-};
-
-struct MirConstValue {
-	union MirConstValueData data; /* data must be first!!! */
-	MirType *               type;
-	MirValueAddressMode     addr_mode;
 };
 
 /* VARIANT */
@@ -435,7 +380,7 @@ struct MirVar {
 };
 
 struct MirInstr {
-	MirConstExprValue value2; /* CLEANUP: rename to value */
+	MirConstExprValue value;
 	MirInstrKind      kind;
 	u64               id;
 	Ast *             node;
@@ -498,7 +443,6 @@ struct MirInstrElemPtr {
 
 	MirInstr *arr_ptr;
 	MirInstr *index;
-	bool      target_is_slice;
 };
 
 struct MirInstrMemberPtr {
@@ -809,7 +753,7 @@ mir_get_fn_arg_type(MirType *type, u32 i)
 static inline bool
 mir_is_comptime(MirInstr *instr)
 {
-	return instr->value2.is_comptime;
+	return instr->value.is_comptime;
 }
 
 static inline bool

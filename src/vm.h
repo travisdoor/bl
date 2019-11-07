@@ -43,7 +43,6 @@ struct MirInstrCall;
 struct MirInstrDeclVar;
 struct MirFn;
 struct MirVar;
-struct MirConstValue;
 struct Builder;
 struct Assembly;
 

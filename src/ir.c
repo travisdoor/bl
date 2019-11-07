@@ -429,7 +429,7 @@ void
 emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 {
 	LLVMValueRef llvm_phi =
-	    LLVMBuildPhi(cnt->llvm_builder, phi->base.value2.type->llvm_type, "");
+	    LLVMBuildPhi(cnt->llvm_builder, phi->base.value.type->llvm_type, "");
 
 	const usize count = phi->incoming_blocks->size;
 
@@ -479,7 +479,7 @@ emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 	LLVMValueRef llvm_var = rtti_var->llvm_value;
 	BL_ASSERT(llvm_var && "Missing LLVM value for RTTI variable.");
 
-	LLVMTypeRef llvm_dest_type = type_info->base.value2.type->llvm_type;
+	LLVMTypeRef llvm_dest_type = type_info->base.value.type->llvm_type;
 
 	llvm_var = LLVMBuildPointerCast(cnt->llvm_builder, llvm_var, llvm_dest_type, "");
 	type_info->base.llvm_value = llvm_var;
@@ -489,7 +489,7 @@ void
 emit_instr_cast(Context *cnt, MirInstrCast *cast)
 {
 	LLVMValueRef llvm_src       = cast->expr->llvm_value;
-	LLVMTypeRef  llvm_dest_type = cast->base.value2.type->llvm_type;
+	LLVMTypeRef  llvm_dest_type = cast->base.value.type->llvm_type;
 	LLVMOpcode   llvm_op;
 	BL_ASSERT(llvm_src && llvm_dest_type);
 
@@ -630,11 +630,25 @@ emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg_instr)
 void
 emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
+	MirType *    arr_type     = mir_deref_type(elem_ptr->arr_ptr->value.type);
 	LLVMValueRef llvm_arr_ptr = elem_ptr->arr_ptr->llvm_value;
 	LLVMValueRef llvm_index   = elem_ptr->index->llvm_value;
 	BL_ASSERT(llvm_arr_ptr && llvm_index);
 
-	if (elem_ptr->target_is_slice) {
+	switch (arr_type->kind) {
+	case MIR_TYPE_ARRAY: {
+		LLVMValueRef llvm_indices[2];
+		llvm_indices[0] = cnt->llvm_const_i64;
+		llvm_indices[1] = llvm_index;
+
+		elem_ptr->base.llvm_value = LLVMBuildGEP(
+		    cnt->llvm_builder, llvm_arr_ptr, llvm_indices, TARRAY_SIZE(llvm_indices), "");
+		break;
+	}
+
+	case MIR_TYPE_SLICE:
+	case MIR_TYPE_STRING:
+	case MIR_TYPE_VARGS: {
 		/* special case for slices */
 		llvm_arr_ptr = LLVMBuildStructGEP(cnt->llvm_builder, llvm_arr_ptr, 1, "");
 		llvm_arr_ptr = LLVMBuildLoad(cnt->llvm_builder, llvm_arr_ptr, "");
@@ -646,15 +660,12 @@ emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		elem_ptr->base.llvm_value = LLVMBuildInBoundsGEP(
 		    cnt->llvm_builder, llvm_arr_ptr, llvm_indices, TARRAY_SIZE(llvm_indices), "");
 
-		return;
+		break;
 	}
 
-	LLVMValueRef llvm_indices[2];
-	llvm_indices[0] = cnt->llvm_const_i64;
-	llvm_indices[1] = llvm_index;
-
-	elem_ptr->base.llvm_value = LLVMBuildGEP(
-	    cnt->llvm_builder, llvm_arr_ptr, llvm_indices, TARRAY_SIZE(llvm_indices), "");
+	default:
+		BL_ABORT("Invalid elem ptr target type!");
+	}
 }
 
 void
@@ -693,7 +704,7 @@ emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 void
 emit_instr_load(Context *cnt, MirInstrLoad *load)
 {
-	BL_ASSERT(load->base.value2.type && "invalid type of load instruction");
+	BL_ASSERT(load->base.value.type && "invalid type of load instruction");
 	LLVMValueRef llvm_src = load->src->llvm_value;
 	BL_ASSERT(llvm_src);
 
@@ -705,7 +716,7 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 #endif
 	load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
 
-	const unsigned alignment = (const unsigned)load->base.value2.type->alignment;
+	const unsigned alignment = (const unsigned)load->base.value.type->alignment;
 	LLVMSetAlignment(load->base.llvm_value, alignment);
 }
 
@@ -757,7 +768,7 @@ emit_instr_store(Context *cnt, MirInstrStore *store)
 {
 	LLVMValueRef   val       = store->src->llvm_value;
 	LLVMValueRef   ptr       = store->dest->llvm_value;
-	const unsigned alignment = (unsigned)store->src->value2.type->alignment;
+	const unsigned alignment = (unsigned)store->src->value.type->alignment;
 	BL_ASSERT(val && ptr);
 
 	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &store->base);
@@ -807,7 +818,7 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 {
 	MirVar *tmp_var = _tmp_var ? _tmp_var : cmp->tmp_var;
 
-	MirType *  type                = cmp->base.value2.type;
+	MirType *  type                = cmp->base.value.type;
 	const bool is_zero_initialized = cmp->is_zero_initialized;
 
 	if (mir_is_comptime(&cmp->base)) {
@@ -842,10 +853,10 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 		}
 
 		case MIR_TYPE_STRING: {
-			const u32 len = MIR_CEV_READ_AS(const u32, &cmp->values->data[0]->value2);
+			const u32 len = MIR_CEV_READ_AS(const u32, &cmp->values->data[0]->value);
 
 			const char *str =
-			    MIR_CEV_READ_AS(const char *, &cmp->values->data[1]->value2);
+			    MIR_CEV_READ_AS(const char *, &cmp->values->data[1]->value);
 
 			LLVMValueRef llvm_len = cmp->values->data[0]->llvm_value;
 			LLVMValueRef llvm_str_content =
@@ -964,7 +975,7 @@ emit_instr_binop(Context *cnt, MirInstrBinop *binop)
 
 	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &binop->base);
 
-	MirType *  type           = binop->lhs->value2.type;
+	MirType *  type           = binop->lhs->value.type;
 	const bool real_type      = type->kind == MIR_TYPE_REAL;
 	const bool signed_integer = type->kind == MIR_TYPE_INT && type->data.integer.is_signed;
 
@@ -1127,15 +1138,15 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 
 	MirInstr *callee = call->callee;
 	BL_ASSERT(callee);
-	BL_ASSERT(callee->value2.type);
+	BL_ASSERT(callee->value.type);
 
-	MirType *callee_type = callee->value2.type->kind == MIR_TYPE_FN
-	                           ? callee->value2.type
-	                           : mir_deref_type(callee->value2.type);
+	MirType *callee_type = callee->value.type->kind == MIR_TYPE_FN
+	                           ? callee->value.type
+	                           : mir_deref_type(callee->value.type);
 	BL_ASSERT(callee_type);
 	BL_ASSERT(callee_type->kind == MIR_TYPE_FN);
 
-	MirFn *      callee_fn = MIR_CEV_READ_AS(MirFn *, &callee->value2);
+	MirFn *      callee_fn = MIR_CEV_READ_AS(MirFn *, &callee->value);
 	LLVMValueRef llvm_called_fn =
 	    callee->llvm_value ? callee->llvm_value : emit_fn_proto(cnt, callee_fn);
 
@@ -1181,7 +1192,8 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 			case LLVM_EASGM_16:
 			case LLVM_EASGM_32:
 			case LLVM_EASGM_64: { /* Struct fits into one register. */
-				/* PERFORMANCE: insert only when llvm_arg is not alloca??? */
+				/* PERFORMANCE: insert only when llvm_arg is not alloca???
+				 */
 				INSERT_TMP(llvm_tmp, arg->type->llvm_type);
 				LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_tmp);
 
@@ -1201,7 +1213,8 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 			case LLVM_EASGM_64_16:
 			case LLVM_EASGM_64_32:
 			case LLVM_EASGM_64_64: { /* Struct fits into two registers. */
-				/* PERFORMANCE: insert only when llvm_arg is not alloca??? */
+				/* PERFORMANCE: insert only when llvm_arg is not alloca???
+				 */
 				INSERT_TMP(llvm_tmp, arg->type->llvm_type);
 				LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_tmp);
 
@@ -1228,10 +1241,12 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 				break;
 			}
 
-			case LLVM_EASGM_BYVAL: { /* Struct is too big and must be passed by value.
+			case LLVM_EASGM_BYVAL: { /* Struct is too big and must be passed by
+				                  * value.
 				                  */
 				if (!has_byval_arg) has_byval_arg = true;
-				/* PERFORMANCE: insert only when llvm_arg is not alloca??? */
+				/* PERFORMANCE: insert only when llvm_arg is not alloca???
+				 */
 				INSERT_TMP(llvm_tmp, arg->type->llvm_type);
 				LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_tmp);
 
@@ -1255,7 +1270,8 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 		llvm_result = LLVMBuildLoad(cnt->llvm_builder, llvm_args.data[LLVM_SRET_INDEX], "");
 	}
 
-	/* PERFORMANCE: LLVM API requires to set call side attributes after call is created. */
+	/* PERFORMANCE: LLVM API requires to set call side attributes after call is created.
+	 */
 	if (has_byval_arg) {
 		BL_ASSERT(has_args);
 		TSmallArray_ArgPtr *args = callee_type->data.fn.args;
@@ -1311,7 +1327,8 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
 		/* generate DI for debug build */
 		if (decl->init) {
-			/* There is special handling for initialization via compound instruction */
+			/* There is special handling for initialization via compound
+			 * instruction */
 			if (decl->init->kind == MIR_INSTR_COMPOUND) {
 				emit_instr_compound(cnt, var, (MirInstrCompound *)decl->init);
 			} else if (decl->init->kind == MIR_INSTR_ARG) {
@@ -1395,20 +1412,20 @@ emit_instr_switch(Context *cnt, MirInstrSwitch *sw)
 void
 emit_instr_const(Context *cnt, MirInstrConst *c)
 {
-	MirType *    type       = c->base.value2.type;
+	MirType *    type       = c->base.value.type;
 	LLVMValueRef llvm_value = NULL;
 	LLVMTypeRef  llvm_type  = type->llvm_type;
 
 	switch (type->kind) {
 	case MIR_TYPE_ENUM:
 	case MIR_TYPE_INT: {
-		const u64 i = MIR_CEV_READ_AS(u64, &c->base.value2);
+		const u64 i = MIR_CEV_READ_AS(u64, &c->base.value);
 		llvm_value  = LLVMConstInt(llvm_type, i, type->data.integer.is_signed);
 		break;
 	}
 
 	case MIR_TYPE_BOOL: {
-		const bool i = MIR_CEV_READ_AS(bool, &c->base.value2);
+		const bool i = MIR_CEV_READ_AS(bool, &c->base.value);
 		llvm_value   = LLVMConstInt(llvm_type, i, false);
 		break;
 	}
@@ -1416,13 +1433,13 @@ emit_instr_const(Context *cnt, MirInstrConst *c)
 	case MIR_TYPE_REAL: {
 		switch (type->store_size_bytes) {
 		case 4: {
-			const float i = MIR_CEV_READ_AS(float, &c->base.value2);
+			const float i = MIR_CEV_READ_AS(float, &c->base.value);
 			llvm_value    = LLVMConstReal(llvm_type, (double)i);
 			break;
 		}
 
 		case 8: {
-			const double i = MIR_CEV_READ_AS(double, &c->base.value2);
+			const double i = MIR_CEV_READ_AS(double, &c->base.value);
 			llvm_value     = LLVMConstReal(llvm_type, i);
 			break;
 		}
@@ -1465,7 +1482,7 @@ emit_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 void
 emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 {
-	MirType *             vargs_type = vargs->base.value2.type;
+	MirType *             vargs_type = vargs->base.value.type;
 	TSmallArray_InstrPtr *values     = vargs->values;
 	BL_ASSERT(values);
 	const usize vargsc = values->size;
@@ -1522,7 +1539,7 @@ emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 	BL_ASSERT(llvm_type_info && "Missing LLVM value for RTTI variable.");
 	BL_ASSERT(llvm_tmp);
 
-	MirType *   any_type                = mir_deref_type(toany->base.value2.type);
+	MirType *   any_type                = mir_deref_type(toany->base.value.type);
 	LLVMTypeRef llvm_any_type_info_type = mir_get_struct_elem_type(any_type, 0)->llvm_type;
 	LLVMTypeRef llvm_any_data_type      = mir_get_struct_elem_type(any_type, 1)->llvm_type;
 
@@ -1575,8 +1592,8 @@ emit_instr_block(Context *cnt, MirInstrBlock *block)
 	MirFn *    fn        = block->owner_fn;
 	const bool is_global = fn == NULL;
 
-	/* Global-scope blocks does not have LLVM equivalent, we can generate just the content of
-	 * our block, but every instruction must be comptime constant. */
+	/* Global-scope blocks does not have LLVM equivalent, we can generate just the
+	 * content of our block, but every instruction must be comptime constant. */
 	if (!is_global) {
 		BL_ASSERT(fn->llvm_value);
 		LLVMBasicBlockRef llvm_block = emit_basic_block(cnt, block);
@@ -1589,7 +1606,7 @@ emit_instr_block(Context *cnt, MirInstrBlock *block)
 			emit_allocas(cnt, fn);
 		}
 	} else {
-		BL_ASSERT(block->base.value2.is_comptime);
+		BL_ASSERT(block->base.value.is_comptime);
 	}
 
 	MirInstr *instr = block->entry_instr;
@@ -1633,7 +1650,7 @@ emit_allocas(Context *cnt, MirFn *fn)
 void
 emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
-	MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value2);
+	MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
 	/* unused function */
 	if (!fn->emit_llvm) return;
 	emit_fn_proto(cnt, fn);
@@ -1656,7 +1673,7 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 void
 emit_instr(Context *cnt, MirInstr *instr)
 {
-	if (instr->value2.type->kind == MIR_TYPE_TYPE) return;
+	if (instr->value.type->kind == MIR_TYPE_TYPE) return;
 
 	switch (instr->kind) {
 	case MIR_INSTR_INVALID:

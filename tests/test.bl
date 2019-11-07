@@ -133,7 +133,8 @@ main :: fn () s32 {
     bar(data2);
     bar({:Data1: 30, 40, false});
     bar({:Data1: i2, 40, false});
-    vargs(10);
+
+    vargs(i2, 20, 30);
 
     return foo(10, 20);
 }
@@ -148,6 +149,10 @@ bar :: fn (v: Data1) {
 }
 
 vargs :: fn (v: ...s32) {
+    printf(format.ptr, auto v.len);
+    loop i := 0; i < v.len; i += 1 {
+        printf(format.ptr, v[i]);
+    }
 }
 
 printf :: fn (format: *u8, n: s32) s32 #extern;
