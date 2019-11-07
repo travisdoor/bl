@@ -126,6 +126,7 @@
 #endif
 
 TSMALL_ARRAY_TYPE(ConstValue, MirConstValue, 32);
+TSMALL_ARRAY_TYPE(ConstExprValue, MirConstExprValue, 32);
 
 /*************/
 /* fwd decls */
@@ -171,14 +172,14 @@ static bool
 execute_fn_top_level(VM *vm, MirInstr *call, VMStackPtr *out_ptr);
 
 static bool
-execute_fn_impl_top_level(VM *vm, MirFn *fn, TSmallArray_ConstValue *args, VMStackPtr *out_ptr);
+execute_fn_impl_top_level(VM *vm, MirFn *fn, TSmallArray_ConstExprValue *args, VMStackPtr *out_ptr);
 
 static bool
-_execute_fn_top_level(VM *                    vm,
-                      MirFn *                 fn,
-                      MirInstr *              call,       /* Optional */
-                      TSmallArray_ConstValue *arg_values, /* Optional */
-                      VMStackPtr *            out_ptr     /* Optional */
+_execute_fn_top_level(VM *                        vm,
+                      MirFn *                     fn,
+                      MirInstr *                  call,       /* Optional */
+                      TSmallArray_ConstExprValue *arg_values, /* Optional */
+                      VMStackPtr *                out_ptr     /* Optional */
 );
 
 static void
@@ -1016,13 +1017,12 @@ dyncall_cb_read_arg(VM *vm, MirConstExprValue *dest, DCArgs *src)
 	}
 
 	case MIR_TYPE_BOOL: {
-		dest->data.v_bool = (bool)dcbArgBool(src);
+		MIR_CEV_WRITE_AS(bool, dest, dcbArgBool(src));
 		break;
 	}
 
 	case MIR_TYPE_PTR: {
-		MIR_CEV_WRITE_AS(VMStackPtr, &dest->)
-		mir_set_const_ptr(&dest->data.v_ptr, dcbArgPointer(src), MIR_CP_STACK);
+		MIR_CEV_WRITE_AS(VMStackPtr, dest, dcbArgPointer(src));
 		break;
 	}
 
@@ -1057,12 +1057,12 @@ dyncall_cb_handler(DCCallback *cb, DCArgs *dc_args, DCValue *result, void *userd
 		BL_ABORT("External function used as callback is not supported yet!");
 	}
 
-	TSmallArray_ConstValue arg_tmp;
+	TSmallArray_ConstExprValue arg_tmp;
 	tsa_init(&arg_tmp);
 
 	if (has_args) {
 		TSmallArray_ArgPtr *args = fn->type->data.fn.args;
-		tsa_resize_ConstValue(&arg_tmp, args->size);
+		tsa_resize_ConstExprValue(&arg_tmp, args->size);
 
 		MirArg *it;
 		TSA_FOREACH(args, it)
@@ -1077,9 +1077,7 @@ dyncall_cb_handler(DCCallback *cb, DCArgs *dc_args, DCValue *result, void *userd
 		result->L = 0;
 	} else if (has_return) {
 		BL_ASSERT(ret_ptr && "Function is supposed to return some value.");
-		MirConstValueData tmp = {0};
-		read_value(&tmp, ret_ptr, ret_type);
-		result->L = tmp.v_s64;
+		result->L = vm_read_value_as(u64, ret_type->store_size_bytes, ret_ptr);
 	}
 
 	tsa_terminate(&arg_tmp);
@@ -1211,7 +1209,6 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 
 	DCCallVM *dvm = vm->assembly->dl.vm;
 	BL_ASSERT(dvm);
-	MirConstValueData tmp = {0};
 
 	if (type->kind == MIR_TYPE_ENUM) {
 		type = type->data.enm.base_type;
@@ -1235,7 +1232,7 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 			dcArgInt(dvm, vm_read_value_as(DCint, 4, val_ptr));
 			break;
 		case 8:
-			dcArgLongLong(dvm, vm_read_value_as(s64, 8, val_ptr));
+			dcArgLongLong(dvm, vm_read_value_as(DClonglong, 8, val_ptr));
 			break;
 		default:
 			BL_ABORT("unsupported external call integer argument type");
@@ -1244,13 +1241,12 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 	}
 
 	case MIR_TYPE_REAL: {
-		read_value(&tmp, val_ptr, type);
 		switch (type->store_size_bytes) {
 		case 4:
-			dcArgFloat(dvm, tmp.v_f32);
+			dcArgFloat(dvm, vm_read_value_as(DCfloat, 4, val_ptr));
 			break;
 		case 8:
-			dcArgDouble(dvm, tmp.v_f64);
+			dcArgDouble(dvm, vm_read_value_as(DCdouble, 8, val_ptr));
 			break;
 		default:
 			BL_ABORT("unsupported external call integer argument type");
@@ -1259,8 +1255,7 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 	}
 
 	case MIR_TYPE_NULL: {
-		read_value(&tmp, val_ptr, type);
-		dcArgPointer(dvm, (DCpointer)tmp.v_ptr.data.any);
+		dcArgPointer(dvm, vm_read_value_as(DCpointer, 8, val_ptr));
 		break;
 	}
 
@@ -1278,22 +1273,23 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 	}
 
 	case MIR_TYPE_PTR: {
-		read_value(&tmp, val_ptr, type);
+		VMStackPtr tmp = vm_read_value_as(VMStackPtr, 8, val_ptr);
 		if (mir_deref_type(type)->kind == MIR_TYPE_FN) {
-			MirConstValue *value = (MirConstValue *)val_ptr;
-			BL_ASSERT(value->type->kind == MIR_TYPE_PTR);
-			BL_ASSERT(value->data.v_ptr.data.any);
-			BL_ASSERT(value->data.v_ptr.kind == MIR_CP_VALUE);
+			BL_UNIMPLEMENTED_REGION(
+			    MirConstValue *value = (MirConstValue *)val_ptr;
+			    BL_ASSERT(value->type->kind == MIR_TYPE_PTR);
+			    BL_ASSERT(value->data.v_ptr.data.any);
+			    BL_ASSERT(value->data.v_ptr.kind == MIR_CP_VALUE);
 
-			value = value->data.v_ptr.data.value;
-			BL_ASSERT(value->type->kind == MIR_TYPE_FN);
-			BL_ASSERT(value->data.v_ptr.data.any);
-			BL_ASSERT(value->data.v_ptr.kind == MIR_CP_FN);
+			    value = value->data.v_ptr.data.value;
+			    BL_ASSERT(value->type->kind == MIR_TYPE_FN);
+			    BL_ASSERT(value->data.v_ptr.data.any);
+			    BL_ASSERT(value->data.v_ptr.kind == MIR_CP_FN);
 
-			MirFn *fn = value->data.v_ptr.data.fn;
-			dcArgPointer(dvm, (DCpointer)dyncall_fetch_callback(vm, fn));
+			    MirFn *fn = value->data.v_ptr.data.fn;
+			    dcArgPointer(dvm, (DCpointer)dyncall_fetch_callback(vm, fn)););
 		} else {
-			dcArgPointer(dvm, (DCpointer)tmp.v_ptr.data.any);
+			dcArgPointer(dvm, (DCpointer)tmp);
 		}
 		break;
 	}
@@ -1434,17 +1430,17 @@ execute_fn_top_level(VM *vm, MirInstr *call, VMStackPtr *out_ptr)
 }
 
 bool
-execute_fn_impl_top_level(VM *vm, MirFn *fn, TSmallArray_ConstValue *args, VMStackPtr *out_ptr)
+execute_fn_impl_top_level(VM *vm, MirFn *fn, TSmallArray_ConstExprValue *args, VMStackPtr *out_ptr)
 {
 	return _execute_fn_top_level(vm, fn, NULL, args, out_ptr);
 }
 
 bool
-_execute_fn_top_level(VM *                    vm,
-                      MirFn *                 fn,
-                      MirInstr *              call,
-                      TSmallArray_ConstValue *arg_values,
-                      VMStackPtr *            out_ptr)
+_execute_fn_top_level(VM *                        vm,
+                      MirFn *                     fn,
+                      MirInstr *                  call,
+                      TSmallArray_ConstExprValue *arg_values,
+                      VMStackPtr *                out_ptr)
 {
 	BL_ASSERT(fn);
 
@@ -1470,8 +1466,7 @@ _execute_fn_top_level(VM *                    vm,
 
 		/* Push all arguments in reverse order on the stack. */
 		for (usize i = argc; i-- > 0;) {
-			VMStackPtr dest_ptr = stack_push_empty(vm, args->data[i]->type);
-			copy_comptime_to_stack(vm, dest_ptr, &arg_values->data[i]);
+			stack_push(vm, arg_values->data[i].data, arg_values->data[i].type);
 		}
 	}
 
@@ -2677,14 +2672,6 @@ vm_create_implicit_global(VM *vm, Assembly *assembly, struct MirVar *var)
 	BL_UNIMPLEMENTED;
 	// copy_comptime_to_stack(vm, var_ptr, &var->value);
 	return var_ptr;
-}
-
-void
-vm_read_stack_value(MirConstValue *dest, VMStackPtr src)
-{
-	assert(dest->type);
-	memset(&dest->data, 0, sizeof(dest->data));
-	read_value(&dest->data, src, dest->type);
 }
 
 /* CLEANUP: remove!!! */
