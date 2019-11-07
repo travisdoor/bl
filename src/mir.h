@@ -142,16 +142,6 @@ typedef enum MirTypeKind {
 	MIR_TYPE_SLICE   = 14,
 } MirTypeKind;
 
-typedef enum MirConstPtrKind {
-	MIR_CP_UNKNOWN,
-	MIR_CP_TYPE,
-	MIR_CP_VALUE,
-	MIR_CP_FN,
-	MIR_CP_VAR,
-	MIR_CP_STR,
-	MIR_CP_STACK
-} MirConstPtrKind;
-
 typedef enum MirValueAddressMode {
 	MIR_VAM_UNKNOWN,
 

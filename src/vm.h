@@ -31,7 +31,7 @@
 
 #include "common.h"
 
-/* Stavk data manipulation helper macros. */
+/* Stack data manipulation helper macros. */
 #define VM_STACK_PTR_DEREF(ptr) ((VMStackPtr) * ((uintptr_t *)(ptr)))
 #define VM_STACK_READ_AS(T, src) (*((T *)(src)))
 #define VM_STACK_WRITE_AS(T, dest, src) (*((T *)(dest)) = (src))
@@ -94,12 +94,6 @@ vm_alloc_global(VM *vm, struct Assembly *assembly, struct MirVar *var);
 
 VMStackPtr
 vm_create_implicit_global(VM *vm, struct Assembly *assembly, struct MirVar *var);
-
-/* CLEANUP: remove!!! */
-/* CLEANUP: remove!!! */
-/* CLEANUP: remove!!! */
-void
-vm_read_value(struct MirConstValue *dest, VMStackPtr src);
 
 #define vm_read_value_as(T, S, V) (*((T *)_vm_read_value((S), (V))))
 

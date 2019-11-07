@@ -2649,9 +2649,6 @@ vm_create_implicit_global(VM *vm, Assembly *assembly, struct MirVar *var)
 	return var_ptr;
 }
 
-/* CLEANUP: remove!!! */
-/* CLEANUP: remove!!! */
-/* CLEANUP: remove!!! */
 void *
 _vm_read_value(usize size, VMStackPtr value)
 {
