@@ -3981,6 +3981,14 @@ erase_instr_tree(MirInstr *instr, bool keep_root, bool force)
 			break;
 		}
 
+		case MIR_INSTR_ALIGNOF: {
+			MirInstrAlignof *alof = (MirInstrAlignof *)top;
+			unref_instr(alof->expr);
+
+			tsa_push_InstrPtr64(&queue, alof->expr);
+			break;
+		}
+
 		case MIR_INSTR_SIZEOF: {
 			MirInstrSizeof *szof = (MirInstrSizeof *)top;
 			unref_instr(szof->expr);

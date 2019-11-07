@@ -136,6 +136,11 @@ main :: fn () s32 {
 
     vargs(i2, 20, 30);
 
+    sizeof(struct { a: s32; b : s32});
+    alignof(struct { a: s32; b : s32});
+
+    c := str4[0];
+
     return foo(10, 20);
 }
 
