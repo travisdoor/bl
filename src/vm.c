@@ -2603,19 +2603,28 @@ vm_alloc_global(VM *vm, Assembly *assembly, MirVar *var)
 	BL_ASSERT(var->is_global && "Allocated variable is supposed to be global variable.");
 
 	if (var->value.is_comptime) {
-		if (needs_tmp_alloc(&var->value)) {
-			var->value.data = stack_push_empty(vm, var->value.type);
-		} else {
-			var->value.data = &var->value._tmp[0];
-		}
-
-		return var->value.data;
+		return vm_alloc_const_expr_value(vm, assembly, &var->value);
 	}
 
 	var->rel_stack_ptr = stack_alloc_var(vm, var);
 
 	/* HACK: we can ignore relative pointers for globals. */
 	return (VMStackPtr)var->rel_stack_ptr;
+}
+
+VMStackPtr
+vm_alloc_const_expr_value(VM *vm, Assembly *assembly, MirConstExprValue *value)
+{
+	BL_ASSERT(value->is_comptime);
+	BL_ASSERT(value->type);
+
+	if (needs_tmp_alloc(value)) {
+		value->data = stack_push_empty(vm, value->type);
+	} else {
+		value->data = &value->_tmp[0];
+	}
+
+	return value->data;
 }
 
 void *
@@ -2634,7 +2643,8 @@ _vm_read_value(usize size, VMStackPtr value)
 }
 
 void
-_vm_write_value(usize size, VMStackPtr dest, VMStackPtr src) {
+_vm_write_value(usize size, VMStackPtr dest, VMStackPtr src)
+{
 	BL_ASSERT(dest && "Attempt to write to the null destination!");
 
 	if (size == 0) BL_ABORT("Writing value of zero size is invalid!!!");

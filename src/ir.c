@@ -48,8 +48,7 @@ TSMALL_ARRAY_TYPE(LLVMValue64, LLVMValueRef, 64);
 TSMALL_ARRAY_TYPE(LLVMType, LLVMTypeRef, 32);
 
 typedef struct {
-	Assembly * assembly;
-	THashTable gstring_cache;
+	Assembly *assembly;
 
 	LLVMContextRef    llvm_cnt;
 	LLVMModuleRef     llvm_module;
@@ -60,15 +59,8 @@ typedef struct {
 	/* Constants */
 	LLVMValueRef llvm_const_i64;
 
-	/* Types */
-	LLVMTypeRef llvm_void_type;
-	LLVMTypeRef llvm_i1_type;
-	LLVMTypeRef llvm_i8_type;
-	LLVMTypeRef llvm_i32_type;
-	LLVMTypeRef llvm_i64_type;
-	LLVMTypeRef llvm_i8_ptr_type;
-
-	bool debug_mode;
+	struct BuiltinTypes *builtin_types;
+	bool                 debug_mode;
 } Context;
 
 static void
@@ -169,9 +161,6 @@ emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
 
 static void
 emit_instr_toany(Context *cnt, MirInstrToAny *toany);
-
-static LLVMValueRef
-emit_global_string_ptr(Context *cnt, const char *str, usize len);
 
 static void
 emit_allocas(Context *cnt, MirFn *fn);
@@ -708,49 +697,6 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 	LLVMSetAlignment(load->base.llvm_value, alignment);
 }
 
-LLVMValueRef
-emit_global_string_ptr(Context *cnt, const char *str, usize len)
-{
-	BL_ASSERT(str);
-	u64       hash  = thash_from_str(str);
-	TIterator found = thtbl_find(&cnt->gstring_cache, hash);
-	TIterator end   = thtbl_end(&cnt->gstring_cache);
-
-	if (!TITERATOR_EQUAL(found, end)) {
-		return thtbl_iter_peek_value(LLVMValueRef, found);
-	}
-
-	/* Generate global string constant */
-	LLVMValueRef llvm_str = NULL;
-	{
-		LLVMTypeRef llvm_str_arr_type =
-		    LLVMArrayType(cnt->llvm_i8_type, (unsigned int)len + 1);
-		llvm_str = LLVMAddGlobal(cnt->llvm_module, llvm_str_arr_type, ".str");
-
-		TSmallArray_LLVMValue64 llvm_chars;
-		tsa_init(&llvm_chars);
-
-		for (usize i = 0; i < len + 1; ++i) {
-			tsa_push_LLVMValue64(&llvm_chars,
-			                     LLVMConstInt(cnt->llvm_i8_type, str[i], true));
-		}
-
-		LLVMValueRef llvm_str_arr =
-		    LLVMConstArray(cnt->llvm_i8_type, llvm_chars.data, (unsigned int)len + 1);
-		LLVMSetInitializer(llvm_str, llvm_str_arr);
-		LLVMSetLinkage(llvm_str, LLVMPrivateLinkage);
-		LLVMSetGlobalConstant(llvm_str, true);
-		LLVMSetAlignment(llvm_str, LLVMABIAlignmentOfType(cnt->llvm_td, llvm_str_arr_type));
-		LLVMSetUnnamedAddr(llvm_str, true);
-		llvm_str = LLVMConstBitCast(llvm_str, cnt->llvm_i8_ptr_type);
-
-		tsa_terminate(&llvm_chars);
-	}
-
-	thtbl_insert(&cnt->gstring_cache, hash, llvm_str);
-	return llvm_str;
-}
-
 void
 emit_instr_store(Context *cnt, MirInstrStore *store)
 {
@@ -925,7 +871,8 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 
 			switch (type->kind) {
 			case MIR_TYPE_ARRAY:
-				llvm_indices[1] = LLVMConstInt(cnt->llvm_i64_type, i, true);
+				llvm_indices[1] =
+				    LLVMConstInt(cnt->builtin_types->t_s64->llvm_type, i, true);
 				llvm_value_dest = LLVMBuildGEP(cnt->llvm_builder,
 				                               llvm_tmp,
 				                               llvm_indices,
@@ -1488,7 +1435,8 @@ emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 		{
 			llvm_value = value->llvm_value;
 			BL_ASSERT(llvm_value);
-			llvm_indices[1] = LLVMConstInt(cnt->llvm_i64_type, i, true);
+			llvm_indices[1] =
+			    LLVMConstInt(cnt->builtin_types->t_s64->llvm_type, i, true);
 			llvm_value_dest = LLVMBuildGEP(cnt->llvm_builder,
 			                               vargs->arr_tmp->llvm_value,
 			                               llvm_indices,
@@ -1499,7 +1447,8 @@ emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 	}
 
 	{
-		LLVMValueRef llvm_len = LLVMConstInt(cnt->llvm_i64_type, vargsc, false);
+		LLVMValueRef llvm_len =
+		    LLVMConstInt(cnt->builtin_types->t_s64->llvm_type, vargsc, false);
 		LLVMValueRef llvm_dest =
 		    LLVMBuildStructGEP(cnt->llvm_builder, vargs->vargs_tmp->llvm_value, 0, "");
 		LLVMBuildStore(cnt->llvm_builder, llvm_len, llvm_dest);
@@ -1772,21 +1721,15 @@ ir_run(Assembly *assembly)
 {
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));
-	cnt.assembly         = assembly;
-	cnt.llvm_cnt         = assembly->llvm.cnt;
-	cnt.llvm_module      = assembly->llvm.module;
-	cnt.llvm_td          = assembly->llvm.TD;
-	cnt.llvm_builder     = LLVMCreateBuilderInContext(assembly->llvm.cnt);
-	cnt.llvm_void_type   = LLVMVoidTypeInContext(cnt.llvm_cnt);
-	cnt.llvm_i1_type     = LLVMInt1TypeInContext(cnt.llvm_cnt);
-	cnt.llvm_i8_type     = LLVMInt8TypeInContext(cnt.llvm_cnt);
-	cnt.llvm_i32_type    = LLVMInt32TypeInContext(cnt.llvm_cnt);
-	cnt.llvm_i64_type    = LLVMInt64TypeInContext(cnt.llvm_cnt);
-	cnt.llvm_i8_ptr_type = LLVMPointerType(cnt.llvm_i8_type, 0);
-	cnt.llvm_const_i64   = LLVMConstInt(cnt.llvm_i64_type, 0, false);
-	cnt.llvm_di_builder  = assembly->llvm.di_builder;
-	cnt.debug_mode       = builder.options.debug_build;
-	thtbl_init(&cnt.gstring_cache, sizeof(LLVMValueRef), 1024);
+	cnt.assembly        = assembly;
+	cnt.builtin_types   = &assembly->builtin_types;
+	cnt.llvm_cnt        = assembly->llvm.cnt;
+	cnt.llvm_module     = assembly->llvm.module;
+	cnt.llvm_td         = assembly->llvm.TD;
+	cnt.llvm_builder    = LLVMCreateBuilderInContext(assembly->llvm.cnt);
+	cnt.llvm_const_i64  = LLVMConstInt(cnt.builtin_types->t_u64->llvm_type, 0, false);
+	cnt.llvm_di_builder = assembly->llvm.di_builder;
+	cnt.debug_mode      = builder.options.debug_build;
 
 	emit_RTTI_types(&cnt);
 
@@ -1809,5 +1752,4 @@ ir_run(Assembly *assembly)
 #endif
 
 	LLVMDisposeBuilder(cnt.llvm_builder);
-	thtbl_terminate(&cnt.gstring_cache);
 }
