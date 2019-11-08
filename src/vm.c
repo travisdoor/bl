@@ -194,9 +194,6 @@ static void
 interp_instr_phi(VM *vm, MirInstrPhi *phi);
 
 static void
-interp_instr_type_info(VM *vm, MirInstrTypeInfo *type_info);
-
-static void
 interp_instr_cast(VM *vm, MirInstrCast *cast);
 
 static void
@@ -255,6 +252,9 @@ interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref);
 
 static void
 eval_instr(VM *vm, MirInstr *instr);
+
+static void
+eval_instr_type_info(VM *vm, MirInstrTypeInfo *type_info);
 
 static void
 eval_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr);
@@ -1461,9 +1461,6 @@ interp_instr(VM *vm, MirInstr *instr)
 	case MIR_INSTR_VARGS:
 		interp_instr_vargs(vm, (MirInstrVArgs *)instr);
 		break;
-	case MIR_INSTR_TYPE_INFO:
-		interp_instr_type_info(vm, (MirInstrTypeInfo *)instr);
-		break;
 	case MIR_INSTR_COMPOUND: {
 		MirInstrCompound *cmp = (MirInstrCompound *)instr;
 		if (!cmp->is_naked) break;
@@ -1498,7 +1495,7 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 	}
 	BL_ASSERT(expr_type_rtti);
 
-	VMStackPtr dest           = tmp_ptr + mir_get_struct_elem_offest(vm->assembly, tmp_type, 0);
+	VMStackPtr dest           = tmp_ptr + vm_get_struct_elem_offest(vm->assembly, tmp_type, 0);
 	MirType *  type_info_type = mir_get_struct_elem_type(tmp_type, 0);
 
 	VMStackPtr rtti_ptr =
@@ -1509,7 +1506,7 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 	VMStackPtr data_ptr = fetch_value(vm, &toany->expr->value);
 
 	/* data */
-	dest               = tmp_ptr + mir_get_struct_elem_offest(vm->assembly, tmp_type, 1);
+	dest               = tmp_ptr + vm_get_struct_elem_offest(vm->assembly, tmp_type, 1);
 	MirType *data_type = mir_get_struct_elem_type(tmp_type, 1);
 
 	if (!toany->has_data) {
@@ -1595,28 +1592,6 @@ interp_instr_addrof(VM *vm, MirInstrAddrOf *addrof)
 }
 
 void
-interp_instr_type_info(VM *vm, MirInstrTypeInfo *type_info)
-{
-	// HACK: cleanup stack
-	fetch_value(vm, &type_info->expr->value);
-
-	MirVar *type_info_var = type_info->expr_type->vm_rtti_var_cache;
-	if (!type_info_var) {
-		type_info_var = assembly_get_rtti(vm->assembly, type_info->expr_type->id.hash);
-		type_info->expr_type->vm_rtti_var_cache = type_info_var;
-	}
-	BL_ASSERT(type_info_var);
-
-	MirType *type = type_info->base.value.type;
-	BL_ASSERT(type);
-
-	VMStackPtr ptr =
-	    stack_rel_to_abs_ptr(vm, type_info_var->rel_stack_ptr, type_info_var->is_global);
-
-	stack_push(vm, (VMStackPtr)&ptr, type);
-}
-
-void
 interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 {
 	/* pop index from stack */
@@ -1642,8 +1617,7 @@ interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 			exec_abort(vm, 0);
 		}
 
-		ptrdiff_t offset = mir_get_array_elem_offset(arr_type, index);
-		result_ptr       = arr_ptr + offset;
+		result_ptr = vm_get_array_elem_ptr(arr_type, arr_ptr, index);
 		break;
 	}
 
@@ -1656,14 +1630,8 @@ interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 		MirType *elem_type = mir_deref_type(ptr_type);
 		BL_ASSERT(elem_type);
 
-		const ptrdiff_t len_member_offset =
-		    mir_get_struct_elem_offest(vm->assembly, arr_type, 0);
-
-		const ptrdiff_t ptr_member_offset =
-		    mir_get_struct_elem_offest(vm->assembly, arr_type, 1);
-
-		VMStackPtr ptr_ptr = arr_ptr + ptr_member_offset;
-		VMStackPtr len_ptr = arr_ptr + len_member_offset;
+		VMStackPtr len_ptr = vm_get_struct_elem_ptr(vm->assembly, arr_type, arr_ptr, 0);
+		VMStackPtr ptr_ptr = vm_get_struct_elem_ptr(vm->assembly, arr_type, arr_ptr, 1);
 
 		VMStackPtr ptr_tmp = vm_read_value_as(VMStackPtr, sizeof(VMStackPtr), ptr_ptr);
 		const s64  len_tmp = vm_read_value_as(s64, len_type->store_size_bytes, len_ptr);
@@ -1722,23 +1690,15 @@ interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 		const s64 index = member->index;
 
 		/* let the llvm solve poiner offest */
-		const ptrdiff_t ptr_offset =
-		    mir_get_struct_elem_offest(vm->assembly, target_type, (u32)index);
-
-		result = ptr + ptr_offset; // pointer shift
+		result = vm_get_struct_elem_ptr(vm->assembly, target_type, ptr, (u32)index);
 	} else {
 		/* builtin member */
 		if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR) {
 			/* slice .ptr */
-			const ptrdiff_t ptr_offset =
-			    mir_get_struct_elem_offest(vm->assembly, target_type, 1);
-
-			result = ptr + ptr_offset; // pointer shift
+			result = vm_get_struct_elem_ptr(vm->assembly, target_type, ptr, 1);
 		} else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN) {
 			/* slice .len*/
-			const ptrdiff_t len_offset =
-			    mir_get_struct_elem_offest(vm->assembly, target_type, 0);
-			result = ptr + len_offset; // pointer shift
+			result = vm_get_struct_elem_ptr(vm->assembly, target_type, ptr, 0);
 		} else {
 			BL_ABORT("invalid slice member!");
 		}
@@ -1955,11 +1915,11 @@ interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 		case MIR_TYPE_SLICE:
 		case MIR_TYPE_VARGS:
 		case MIR_TYPE_STRUCT:
-			elem_ptr = tmp_ptr + mir_get_struct_elem_offest(vm->assembly, type, (u32)i);
+			elem_ptr = vm_get_struct_elem_ptr(vm->assembly, type, tmp_ptr, (u32)i);
 			break;
 
 		case MIR_TYPE_ARRAY:
-			elem_ptr = tmp_ptr + mir_get_array_elem_offset(type, (u32)i);
+			elem_ptr = vm_get_array_elem_ptr(type, tmp_ptr, (u32)i);
 			break;
 
 		default:
@@ -2011,14 +1971,14 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 		    stack_rel_to_abs_ptr(vm, vargs_tmp->rel_stack_ptr, false);
 		// set len
 		VMStackPtr len_ptr =
-		    vargs_tmp_ptr + mir_get_struct_elem_offest(
+		    vargs_tmp_ptr + vm_get_struct_elem_offest(
 		                        vm->assembly, vargs_tmp->value.type, MIR_SLICE_LEN_INDEX);
 
 		VM_STACK_WRITE_AS(s64, len_ptr, values->size);
 
 		// set ptr
 		VMStackPtr ptr_ptr =
-		    vargs_tmp_ptr + mir_get_struct_elem_offest(
+		    vargs_tmp_ptr + vm_get_struct_elem_offest(
 		                        vm->assembly, vargs_tmp->value.type, MIR_SLICE_PTR_INDEX);
 
 		VM_STACK_WRITE_AS(VMStackPtr, ptr_ptr, arr_tmp_ptr);
@@ -2281,6 +2241,10 @@ eval_instr(VM *vm, MirInstr *instr)
 		eval_instr_member_ptr(vm, (MirInstrMemberPtr *)instr);
 		break;
 
+	case MIR_INSTR_TYPE_INFO:
+		eval_instr_type_info(vm, (MirInstrTypeInfo *)instr);
+		break;
+
 	case MIR_INSTR_BLOCK:
 	case MIR_INSTR_CONST:
 	case MIR_INSTR_FN_PROTO:
@@ -2305,6 +2269,13 @@ eval_instr(VM *vm, MirInstr *instr)
 }
 
 void
+eval_instr_type_info(VM *vm, MirInstrTypeInfo *type_info)
+{
+	BL_ASSERT(type_info->rtti_var && "Missing RTTI variable!");
+	MIR_CEV_WRITE_AS(VMStackPtr, &type_info->base.value, type_info->rtti_var->value.data);
+}
+
+void
 eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 {
 	MirType *  arr_type   = mir_deref_type(elem_ptr->arr_ptr->value.type);
@@ -2314,8 +2285,7 @@ eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 
 	switch (arr_type->kind) {
 	case MIR_TYPE_ARRAY: {
-		ptrdiff_t offset = mir_get_array_elem_offset(arr_type, index);
-		result_ptr       = arr_ptr + offset;
+		result_ptr = vm_get_array_elem_ptr(arr_type, arr_ptr, index);
 		break;
 	}
 
@@ -2328,14 +2298,8 @@ eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 		MirType *elem_type = mir_deref_type(ptr_type);
 		BL_ASSERT(elem_type);
 
-		const ptrdiff_t len_member_offset =
-		    mir_get_struct_elem_offest(vm->assembly, arr_type, 0);
-
-		const ptrdiff_t ptr_member_offset =
-		    mir_get_struct_elem_offest(vm->assembly, arr_type, 1);
-
-		VMStackPtr ptr_ptr = arr_ptr + ptr_member_offset;
-		VMStackPtr len_ptr = arr_ptr + len_member_offset;
+		VMStackPtr len_ptr = vm_get_struct_elem_ptr(vm->assembly, arr_type, arr_ptr, 0);
+		VMStackPtr ptr_ptr = vm_get_struct_elem_ptr(vm->assembly, arr_type, arr_ptr, 1);
 
 		VMStackPtr ptr_tmp = vm_read_value_as(VMStackPtr, sizeof(VMStackPtr), ptr_ptr);
 		const s64  len_tmp = vm_read_value_as(s64, len_type->store_size_bytes, len_ptr);
@@ -2422,7 +2386,7 @@ eval_instr_compound(VM *vm, MirInstrCompound *compound)
 
 		switch (value->type->kind) {
 		case MIR_TYPE_ARRAY: {
-			ptrdiff_t offset = mir_get_array_elem_offset(value->type, i);
+			ptrdiff_t offset = vm_get_array_elem_offset(value->type, i);
 			dest_ptr += offset;
 			memcpy(
 			    dest_ptr, src_ptr, value->type->data.array.elem_type->store_size_bytes);
@@ -2435,7 +2399,7 @@ eval_instr_compound(VM *vm, MirInstrCompound *compound)
 		case MIR_TYPE_VARGS: {
 			MirType * member_type = value->type->data.strct.members->data[i]->type;
 			ptrdiff_t offset =
-			    mir_get_struct_elem_offest(vm->assembly, value->type, (u32)i);
+			    vm_get_struct_elem_offest(vm->assembly, value->type, (u32)i);
 			dest_ptr += offset;
 
 			memcpy(dest_ptr, src_ptr, member_type->store_size_bytes);
@@ -2496,7 +2460,10 @@ eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si)
 {
 	MirVar *var = ((MirInstrDeclVar *)si->dest)->var;
 	BL_ASSERT(var->is_global && "Only globals can be initialized by initializer!");
+
 	if (var->value.is_comptime) {
+		/* This is little optimization, we can simply reuse initializer pointer since we are
+		 * dealing with constant values and variable is immutable comptime. */
 		var->value.data = si->src->value.data;
 	} else {
 		MirType *var_type = var->value.type;
@@ -2505,6 +2472,8 @@ eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si)
 		VMStackPtr var_ptr = stack_rel_to_abs_ptr(vm, var->rel_stack_ptr, true);
 		BL_ASSERT(var_ptr);
 
+		/* Runtime variable needs it's own memory location so we must create copy of
+		 * initializer data.*/
 		memcpy(var_ptr, si->src->value.data, var_type->store_size_bytes);
 	}
 }
@@ -2627,28 +2596,26 @@ vm_execute_instr_top_level_call(VM *vm, Assembly *assembly, MirInstrCall *call)
 }
 
 VMStackPtr
-vm_alloc_global(VM *vm, struct Assembly *assembly, struct MirVar *var)
+vm_alloc_global(VM *vm, Assembly *assembly, MirVar *var)
 {
 	vm->assembly = assembly;
 	BL_ASSERT(var);
 	BL_ASSERT(var->is_global && "Allocated variable is supposed to be global variable.");
+
+	if (var->value.is_comptime) {
+		if (needs_tmp_alloc(&var->value)) {
+			var->value.data = stack_push_empty(vm, var->value.type);
+		} else {
+			var->value.data = &var->value._tmp[0];
+		}
+
+		return var->value.data;
+	}
 
 	var->rel_stack_ptr = stack_alloc_var(vm, var);
+
 	/* HACK: we can ignore relative pointers for globals. */
 	return (VMStackPtr)var->rel_stack_ptr;
-}
-
-VMStackPtr
-vm_create_implicit_global(VM *vm, Assembly *assembly, struct MirVar *var)
-{
-	vm->assembly = assembly;
-	BL_ASSERT(var);
-	BL_ASSERT(var->is_global && "Allocated variable is supposed to be global variable.");
-
-	/* HACK: we can ignore relative pointers for globals. */
-	VMStackPtr var_ptr = (VMStackPtr)stack_alloc_var(vm, var);
-	BL_UNIMPLEMENTED;
-	return var_ptr;
 }
 
 void *
@@ -2664,4 +2631,40 @@ _vm_read_value(usize size, VMStackPtr value)
 
 	memcpy(&tmp, value, size);
 	return &tmp;
+}
+
+void
+_vm_write_value(usize size, VMStackPtr dest, VMStackPtr src) {
+	BL_ASSERT(dest && "Attempt to write to the null destination!");
+
+	if (size == 0) BL_ABORT("Writing value of zero size is invalid!!!");
+	memcpy(dest, src, size);
+}
+
+ptrdiff_t
+vm_get_struct_elem_offest(Assembly *assembly, MirType *type, u32 i)
+{
+	BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
+	return (ptrdiff_t)LLVMOffsetOfElement(assembly->llvm.TD, type->llvm_type, i);
+}
+
+ptrdiff_t
+vm_get_array_elem_offset(MirType *type, u32 i)
+{
+	BL_ASSERT(type->kind == MIR_TYPE_ARRAY && "Expected array type");
+	MirType *elem_type = type->data.array.elem_type;
+	BL_ASSERT(elem_type);
+	return (ptrdiff_t)elem_type->store_size_bytes * i;
+}
+
+VMStackPtr
+vm_get_struct_elem_ptr(Assembly *assembly, MirType *type, VMStackPtr ptr, u32 i)
+{
+	return ptr + vm_get_struct_elem_offest(assembly, type, i);
+}
+
+VMStackPtr
+vm_get_array_elem_ptr(MirType *type, VMStackPtr ptr, u32 i)
+{
+	return ptr + vm_get_array_elem_offset(type, i);
 }

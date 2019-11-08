@@ -659,9 +659,8 @@ struct MirInstrVArgs {
 struct MirInstrTypeInfo {
 	MirInstr base;
 
-	/* pointer to the type of expression */
-	MirType * expr_type;
 	MirInstr *expr;
+	MirVar *  rtti_var;
 };
 
 struct MirInstrTypeKind {
@@ -751,12 +750,6 @@ mir_is_instr_in_global_block(MirInstr *instr)
 {
 	return instr->owner_block->owner_fn == NULL;
 }
-
-ptrdiff_t
-mir_get_struct_elem_offest(struct Assembly *assembly, MirType *type, u32 i);
-
-ptrdiff_t
-mir_get_array_elem_offset(MirType *type, u32 i);
 
 void
 mir_arenas_init(MirArenas *arenas);

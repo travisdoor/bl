@@ -102,10 +102,6 @@ typedef struct {
 		 * of waiting instructions (DeclRefs). */
 		THashTable waiting;
 
-		/* Unique table of pointers to types later generated into RTTI, this table contains
-		 * only pointer to top level types used by typeinfo operator, not all sub-types. */
-		THashTable RTTI_entry_types; // INCOMPLETE: remove
-
 		LLVMDIBuilderRef llvm_di_builder;
 	} analyze;
 
@@ -144,7 +140,7 @@ typedef struct {
 		MirType *t_TypeInfoStruct;
 		MirType *t_TypeInfoEnum;
 		MirType *t_TypeInfoNull;
-		MirType *t_TypeInfoNull;
+		MirType *t_TypeInfoBool;
 		MirType *t_TypeInfoString;
 		MirType *t_TypeInfoStructMember;
 		MirType *t_TypeInfoEnumVariant;
@@ -986,7 +982,10 @@ static void
 analyze_report_unresolved(Context *cnt);
 
 static MirVar *
-gen_RTTI(Context *cnt, MirType *type);
+rtti_gen(Context *cnt, MirType *type);
+
+static MirVar *
+rtti_gen_integer(Context *cnt, MirType *type);
 
 /* INLINES */
 static inline bool
@@ -1157,13 +1156,6 @@ static inline bool
 is_current_block_terminated(Context *cnt)
 {
 	return get_current_block(cnt)->terminal;
-}
-
-static inline void
-schedule_RTTI_generation(Context *cnt, MirType *type)
-{
-	if (!thtbl_has_key(&cnt->analyze.RTTI_entry_types, (u64)type))
-		thtbl_insert_empty(&cnt->analyze.RTTI_entry_types, (u64)type);
 }
 
 static inline MirInstr *
@@ -2349,13 +2341,13 @@ init_llvm_type_bool(Context *cnt, MirType *type)
 static inline usize
 struct_split_fit(Context *cnt, MirType *struct_type, u32 bound, u32 *start)
 {
-	s64 so     = mir_get_struct_elem_offest(cnt->assembly, struct_type, *start);
+	s64 so     = vm_get_struct_elem_offest(cnt->assembly, struct_type, *start);
 	u32 offset = 0;
 	u32 size   = 0;
 	u32 total  = 0;
 	for (; *start < struct_type->data.strct.members->size; ++(*start)) {
 		offset =
-		    (u32)mir_get_struct_elem_offest(cnt->assembly, struct_type, *start) - (u32)so;
+		    (u32)vm_get_struct_elem_offest(cnt->assembly, struct_type, *start) - (u32)so;
 		size = (u32)mir_get_struct_elem_type(struct_type, *start)->store_size_bytes;
 		if (offset + size > bound) return bound;
 		total = offset + size;
@@ -2604,7 +2596,7 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 
 	/* set offsets for members */
 	TSA_FOREACH(members, member)
-	member->offset_bytes = (s32)mir_get_struct_elem_offest(cnt->assembly, type, (u32)i);
+	member->offset_bytes = (s32)vm_get_struct_elem_offest(cnt->assembly, type, (u32)i);
 
 	/*** DI ***/
 	if (!cnt->debug_mode) return;
@@ -2669,7 +2661,7 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 		    elem_line,
 		    elem->type->size_bits,
 		    (unsigned)elem->type->alignment * 8,
-		    (unsigned)mir_get_struct_elem_offest(cnt->assembly, type, (u32)i) * 8,
+		    (unsigned)vm_get_struct_elem_offest(cnt->assembly, type, (u32)i) * 8,
 		    elem->type->llvm_meta);
 
 		tsa_push_LLVMMetadata(&llvm_elems, llvm_elem);
@@ -3386,7 +3378,9 @@ create_instr_type_info(Context *cnt, Ast *node, MirInstr *expr)
 MirInstr *
 append_instr_type_info(Context *cnt, Ast *node, MirInstr *expr)
 {
-	MirInstr *tmp = create_instr_type_info(cnt, node, expr);
+	MirInstr *tmp          = create_instr_type_info(cnt, node, expr);
+	tmp->value.is_comptime = true;
+	tmp->value.addr_mode   = MIR_VAM_RVALUE;
 	append_current_block(cnt, tmp);
 	return tmp;
 }
@@ -5008,9 +5002,10 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
 	BL_ASSERT(type_info->expr);
 
-	/* Resolve TypeInfo struct type */
-	MirType *ret_type = lookup_builtin_type(cnt, MIR_BUILTIN_ID_TYPE_INFO);
-	if (!ret_type) return ANALYZE_RESULT(POSTPONE, 0);
+	ID *missing_rtti_type_id = lookup_builtins_rtti(cnt);
+	if (missing_rtti_type_id) {
+		return ANALYZE_RESULT(WAITING, missing_rtti_type_id->hash);
+	}
 
 	if (analyze_slot(cnt, &analyze_slot_conf_basic, &type_info->expr, NULL) != ANALYZE_PASSED) {
 		return ANALYZE_RESULT(FAILED, 0);
@@ -5024,13 +5019,9 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 		BL_ASSERT(type);
 	}
 
-	type_info->expr_type = type;
+	type_info->rtti_var = rtti_gen(cnt, type);
 
-	schedule_RTTI_generation(cnt, type);
-
-	ret_type                   = create_type_ptr(cnt, ret_type);
-	type_info->base.value.type = ret_type;
-
+	type_info->base.value.type = cnt->builtin_types.t_TypeInfo_ptr;
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -6819,7 +6810,7 @@ analyze_report_unresolved(Context *cnt)
 }
 
 MirVar *
-gen_RTTI(Context *cnt, MirType *type)
+rtti_gen(Context *cnt, MirType *type)
 {
 	BL_ASSERT(type);
 	if (assembly_has_rtti(cnt->assembly, type->id.hash))
@@ -6828,12 +6819,15 @@ gen_RTTI(Context *cnt, MirType *type)
 	MirVar *rtti_var = NULL;
 
 	switch (type->kind) {
+	case MIR_TYPE_INT:
+		rtti_var = rtti_gen_integer(cnt, type);
+		break;
+
 	case MIR_TYPE_TYPE:
 	case MIR_TYPE_VOID:
 	case MIR_TYPE_BOOL:
 	case MIR_TYPE_NULL:
 	case MIR_TYPE_STRING:
-	case MIR_TYPE_INT:
 	case MIR_TYPE_REAL:
 	case MIR_TYPE_PTR:
 	case MIR_TYPE_ENUM:
@@ -6854,51 +6848,51 @@ gen_RTTI(Context *cnt, MirType *type)
 	return rtti_var;
 }
 
-/*
- * Generate global type table in data segment of an assembly.
- */
-void
-gen_RTTI_types(Context *cnt)
+static inline MirVar *
+rtti_create_and_alloc_var(Context *cnt, MirType *type)
 {
-	THashTable *table = &cnt->analyze.RTTI_entry_types;
-	if (table->size == 0) return;
+	MirVar *var = create_var_impl(cnt, IMPL_RTTI_ENTRY, type, false, true, true);
+	vm_alloc_global(cnt->vm, cnt->assembly, var);
+	return var;
+}
 
-	{ /* Preload RTTI provided types */
-		cnt->builtin_types.t_TypeInfo_ptr =
-		    create_type_ptr(cnt, lookup_builtin_type(cnt, MIR_BUILTIN_ID_TYPE_INFO));
+static inline void
+rtti_set_base(Context *cnt, MirVar *dest, u8 kind, usize size_bytes)
+{
+	BL_ASSERT(dest->value.is_comptime);
 
-		cnt->builtin_types.t_TypeInfo_slice = create_type_struct_special(
-		    cnt, MIR_TYPE_SLICE, NULL, cnt->builtin_types.t_TypeInfo_ptr);
+	MirType *  dest_kind_type = mir_get_struct_elem_type(cnt->builtin_types.t_TypeInfo, 0);
+	VMStackPtr dest_kind      = vm_get_struct_elem_ptr(
+            cnt->assembly, cnt->builtin_types.t_TypeInfo, dest->value.data, 0);
 
-		cnt->builtin_types.t_TypeInfoStructMembers_slice = create_type_struct_special(
-		    cnt,
-		    MIR_TYPE_SLICE,
-		    NULL,
-		    create_type_ptr(
-		        cnt, lookup_builtin_type(cnt, MIR_BUILTIN_ID_TYPE_INFO_STRUCT_MEMBER)));
+	MirType *dest_size_bytes_type = mir_get_struct_elem_type(cnt->builtin_types.t_TypeInfo, 1);
+	VMStackPtr dest_size_bytes    = vm_get_struct_elem_ptr(
+            cnt->assembly, cnt->builtin_types.t_TypeInfo, dest->value.data, 1);
 
-		cnt->builtin_types.t_TypeInfoEnumVariants_slice = create_type_struct_special(
-		    cnt,
-		    MIR_TYPE_SLICE,
-		    NULL,
-		    create_type_ptr(
-		        cnt, lookup_builtin_type(cnt, MIR_BUILTIN_ID_TYPE_INFO_ENUM_VARIANT)));
+	vm_write_value_type(dest_kind_type, dest_kind, kind);
+	vm_write_value_type(dest_size_bytes_type, dest_size_bytes, size_bytes);
+}
 
-		cnt->builtin_types.t_TypeInfoFnArgs_slice = create_type_struct_special(
-		    cnt,
-		    MIR_TYPE_SLICE,
-		    NULL,
-		    create_type_ptr(cnt,
-		                    lookup_builtin_type(cnt, MIR_BUILTIN_ID_TYPE_INFO_FN_ARG)));
-	}
+MirVar *
+rtti_gen_integer(Context *cnt, MirType *type)
+{
+	MirVar *rtti_var = rtti_create_and_alloc_var(cnt, cnt->builtin_types.t_TypeInfoInt);
+	rtti_set_base(cnt, rtti_var, 3, type->store_size_bytes);
 
-	TIterator it;
-	MirType * type;
-	THTBL_FOREACH(table, it)
-	{
-		type = (MirType *)thtbl_iter_peek_key(it);
-		gen_RTTI(cnt, type);
-	}
+	MirType *dest_bit_count_type =
+	    mir_get_struct_elem_type(cnt->builtin_types.t_TypeInfoInt, 1);
+	VMStackPtr dest_bit_count = vm_get_struct_elem_ptr(
+	    cnt->assembly, cnt->builtin_types.t_TypeInfoInt, rtti_var->value.data, 1);
+
+	MirType *dest_is_signed_type =
+	    mir_get_struct_elem_type(cnt->builtin_types.t_TypeInfoInt, 2);
+	VMStackPtr dest_is_signed = vm_get_struct_elem_ptr(
+	    cnt->assembly, cnt->builtin_types.t_TypeInfoInt, rtti_var->value.data, 2);
+
+	vm_write_value_type(dest_bit_count_type, dest_bit_count, type->data.integer.bitcount);
+	vm_write_value_type(dest_is_signed_type, dest_is_signed, type->data.integer.is_signed);
+
+	return rtti_var;
 }
 
 /* MIR builting */
@@ -8626,22 +8620,6 @@ init_builtins(Context *cnt)
 #undef PROVIDE
 }
 
-ptrdiff_t
-mir_get_struct_elem_offest(Assembly *assembly, MirType *type, u32 i)
-{
-	BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
-	return (ptrdiff_t)LLVMOffsetOfElement(assembly->llvm.TD, type->llvm_type, i);
-}
-
-ptrdiff_t
-mir_get_array_elem_offset(MirType *type, u32 i)
-{
-	BL_ASSERT(type->kind == MIR_TYPE_ARRAY && "Expected array type");
-	MirType *elem_type = type->data.array.elem_type;
-	BL_ASSERT(elem_type);
-	return (ptrdiff_t)elem_type->store_size_bytes * i;
-}
-
 void
 mir_arenas_init(MirArenas *arenas)
 {
@@ -8677,7 +8655,6 @@ mir_run(Assembly *assembly)
 	cnt.vm                      = &builder.vm;
 
 	thtbl_init(&cnt.analyze.waiting, sizeof(TArray), ANALYZE_TABLE_SIZE);
-	thtbl_init(&cnt.analyze.RTTI_entry_types, 0, 1024);
 	tlist_init(&cnt.analyze.queue, sizeof(MirInstr *));
 	tstring_init(&cnt.tmp_sh);
 	tarray_init(&cnt.test_cases, sizeof(MirFn *));
@@ -8702,15 +8679,12 @@ mir_run(Assembly *assembly)
 
 	if (builder.errorc) goto SKIP;
 
-	gen_RTTI_types(&cnt);
-
 	if (builder.options.run_tests) execute_test_cases(&cnt);
 	if (builder.options.run) execute_entry_fn(&cnt);
 
 SKIP:
 	tlist_terminate(&cnt.analyze.queue);
 	thtbl_terminate(&cnt.analyze.waiting);
-	thtbl_terminate(&cnt.analyze.RTTI_entry_types);
 	tarray_terminate(&cnt.test_cases);
 	tstring_terminate(&cnt.tmp_sh);
 

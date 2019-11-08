@@ -180,12 +180,12 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 		fprintf(cnt->stream, "{");
 
 		MirType * elem_type = mir_get_struct_elem_type(type, 0);
-		ptrdiff_t offset    = mir_get_struct_elem_offest(cnt->assembly, type, 0);
+		ptrdiff_t offset    = vm_get_struct_elem_offest(cnt->assembly, type, 0);
 		_print_const_value(cnt, elem_type, value + offset);
 
 		fprintf(cnt->stream, ",\"");
 
-		offset             = mir_get_struct_elem_offest(cnt->assembly, type, 1);
+		offset             = vm_get_struct_elem_offest(cnt->assembly, type, 1);
 		VMStackPtr str_ptr = value + offset;
 		str_ptr            = VM_STACK_PTR_DEREF(str_ptr);
 		fprintf(cnt->stream, "%s\"}", (char *)str_ptr);
@@ -201,7 +201,7 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 		{
 			MirType *       member_type = it->type;
 			const ptrdiff_t offset =
-			    mir_get_struct_elem_offest(cnt->assembly, type, (u32)i);
+			    vm_get_struct_elem_offest(cnt->assembly, type, (u32)i);
 			_print_const_value(cnt, member_type, value + offset);
 			if (i < (usize)type->data.strct.members->size - 1)
 				fprintf(cnt->stream, ",");
@@ -216,7 +216,7 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 
 		MirType *elem_type = type->data.array.elem_type;
 		for (u32 i = 0; i < (u32)type->data.array.len; ++i) {
-			const ptrdiff_t offset = mir_get_array_elem_offset(type, i);
+			const ptrdiff_t offset = vm_get_array_elem_offset(type, i);
 			_print_const_value(cnt, elem_type, value + offset);
 			if (i < type->data.array.len - 1) fprintf(cnt->stream, ",");
 		}

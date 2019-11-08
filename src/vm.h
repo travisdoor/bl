@@ -32,8 +32,13 @@
 #include "common.h"
 
 /* Stack data manipulation helper macros. */
+/* INCOMPLETE: use read as VMStackPtr* read for stack ptr dereference.  */
 #define VM_STACK_PTR_DEREF(ptr) ((VMStackPtr) * ((uintptr_t *)(ptr)))
+
+/* INCOMPLETE: unsafe, use vm_read_value_as */
 #define VM_STACK_READ_AS(T, src) (*((T *)(src)))
+
+/* INCOMPLETE: unsafe, use vm_write_value */
 #define VM_STACK_WRITE_AS(T, dest, src) (*((T *)(dest)) = (src))
 
 struct MirType;
@@ -89,15 +94,38 @@ vm_execute_instr_top_level_call(VM *vm, struct Assembly *assembly, struct MirIns
 bool
 vm_execute_fn(VM *vm, struct Assembly *assembly, struct MirFn *fn, VMStackPtr *out_ptr);
 
+/* Allocate space on the stack for passed variable in VM. This method works also for comptime
+ * variables, but it's used only for implicit compiler generated variables without SetInitializer
+ * instruction defined! When SetInitializer is used we can simply move memory pointer from
+ * initialization value to variable const expression value (to safe memory and time needed by
+ * copying).
+ */
 VMStackPtr
 vm_alloc_global(VM *vm, struct Assembly *assembly, struct MirVar *var);
 
-VMStackPtr
-vm_create_implicit_global(VM *vm, struct Assembly *assembly, struct MirVar *var);
-
-#define vm_read_value_as(T, S, V) (*((T *)_vm_read_value((S), (V))))
+#define vm_read_value_as(T, size, value) (*((T *)_vm_read_value((size), (value))))
 
 void *
 _vm_read_value(usize size, VMStackPtr value);
+
+/* Write value to the stack allocated memory, destination must have enough allocated space! */
+#define vm_write_value(size, dest, src) (_vm_write_value((size), (dest), (VMStackPtr) & (src)))
+#define vm_write_value_type(type, dest, src)                                                       \
+	(_vm_write_value((type)->store_size_bytes, (dest), (VMStackPtr) & (src)))
+
+void
+_vm_write_value(usize size, VMStackPtr dest, VMStackPtr src);
+
+ptrdiff_t
+vm_get_struct_elem_offest(struct Assembly *assembly, struct MirType *type, u32 i);
+
+ptrdiff_t
+vm_get_array_elem_offset(struct MirType *type, u32 i);
+
+VMStackPtr
+vm_get_struct_elem_ptr(struct Assembly *assembly, struct MirType *type, VMStackPtr ptr, u32 i);
+
+VMStackPtr
+vm_get_array_elem_ptr(struct MirType *type, VMStackPtr ptr, u32 i);
 
 #endif

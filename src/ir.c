@@ -470,19 +470,7 @@ emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 void
 emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
-	MirType *type = type_info->expr_type;
-	BL_ASSERT(type);
-
-	MirVar *rtti_var = assembly_get_rtti(cnt->assembly, type->id.hash);
-	BL_ASSERT(rtti_var);
-
-	LLVMValueRef llvm_var = rtti_var->llvm_value;
-	BL_ASSERT(llvm_var && "Missing LLVM value for RTTI variable.");
-
-	LLVMTypeRef llvm_dest_type = type_info->base.value.type->llvm_type;
-
-	llvm_var = LLVMBuildPointerCast(cnt->llvm_builder, llvm_var, llvm_dest_type, "");
-	type_info->base.llvm_value = llvm_var;
+	BL_UNIMPLEMENTED;
 }
 
 void

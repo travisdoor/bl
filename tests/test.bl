@@ -141,7 +141,23 @@ main :: fn () s32 {
 
     c := str4[0];
 
-    info :: typeinfo(s32);
+    { // s32
+        info :: cast(*TypeInfoInt) typeinfo(s32);
+
+        printf(format.ptr, cast(s32) info.kind);
+        printf(format.ptr, cast(s32) info.size_bytes);
+        printf(format.ptr, cast(s32) info.bit_count);
+        print_bool(info.is_signed);
+    }
+
+    { // u32
+        info :: cast(*TypeInfoInt) typeinfo(u32);
+
+        printf(format.ptr, cast(s32) info.kind);
+        printf(format.ptr, cast(s32) info.size_bytes);
+        printf(format.ptr, cast(s32) info.bit_count);
+        print_bool(info.is_signed);
+    }
 
     return foo(10, 20);
 }
@@ -163,6 +179,14 @@ vargs :: fn (v: ...s32) {
 }
 
 printf :: fn (format: *u8, n: s32) s32 #extern;
+
+print_bool :: fn (b: bool) {
+    if b {
+        printf(format.ptr, 1);
+    } else {
+        printf(format.ptr, 0);
+    }
+}
 
 #test "test case!" {
     functions.first();
