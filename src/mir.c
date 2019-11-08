@@ -111,7 +111,6 @@ typedef struct {
 
 	/* Builtins */
 	struct BuiltinTypes {
-		/* PROVIDED BEGIN */
 		MirType *t_type;
 		MirType *t_s8;
 		MirType *t_s16;
@@ -126,21 +125,37 @@ typedef struct {
 		MirType *t_f32;
 		MirType *t_f64;
 		MirType *t_string;
-		/* PROVIDED END */
-
-		/* OTHER BEGIN */
 		MirType *t_void;
 		MirType *t_u8_ptr;
 		MirType *t_string_ptr;
 		MirType *t_string_slice;
 		MirType *t_resolve_type_fn;
 		MirType *t_test_case_fn;
+
+		MirType *t_TypeKind;
+		MirType *t_TypeInfo;
+		MirType *t_TypeInfoType;
+		MirType *t_TypeInfoVoid;
+		MirType *t_TypeInfoInt;
+		MirType *t_TypeInfoReal;
+		MirType *t_TypeInfoFn;
+		MirType *t_TypeInfoPtr;
+		MirType *t_TypeInfoArray;
+		MirType *t_TypeInfoStruct;
+		MirType *t_TypeInfoEnum;
+		MirType *t_TypeInfoNull;
+		MirType *t_TypeInfoNull;
+		MirType *t_TypeInfoString;
+		MirType *t_TypeInfoStructMember;
+		MirType *t_TypeInfoEnumVariant;
+		MirType *t_TypeInfoFnArg;
+		bool     is_rtti_ready;
+
 		MirType *t_TypeInfo_ptr;
 		MirType *t_TypeInfo_slice;
 		MirType *t_TypeInfoStructMembers_slice;
 		MirType *t_TypeInfoEnumVariants_slice;
 		MirType *t_TypeInfoFnArgs_slice;
-		/* OTHER END */
 	} builtin_types;
 } Context;
 
@@ -216,10 +231,15 @@ register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool is_builtin, 
  * postpone analyze process. This is an error in any post-analyze processing (every type must be
  * complete when analyze pass id completed!). */
 static MirType *
-lookup_builtin(Context *cnt, MirBuiltinIdKind kind);
+lookup_builtin_type(Context *cnt, MirBuiltinIdKind kind);
 
 static MirFn *
 lookup_builtin_fn(Context *cnt, MirBuiltinIdKind kind);
+
+/* Try to complete cached RTTI related types, return NULL if all types are resolved or return ID for
+ * first missing type. */
+static ID *
+lookup_builtins_rtti(Context *cnt);
 
 /* Initialize type ID. This function creates and set ID string and calculates integer hash from this
  * string. The type.id.str could be also used as name for unnamed types. */
@@ -1453,7 +1473,7 @@ static inline bool
 is_to_any_needed(Context *cnt, MirInstr *src, MirType *dest_type)
 {
 	if (!dest_type || !src) return false;
-	MirType *any_type = lookup_builtin(cnt, MIR_BUILTIN_ID_ANY);
+	MirType *any_type = lookup_builtin_type(cnt, MIR_BUILTIN_ID_ANY);
 	BL_ASSERT(any_type);
 	if (dest_type != any_type) return false;
 
@@ -1852,7 +1872,7 @@ COLLIDE : {
 }
 
 MirType *
-lookup_builtin(Context *cnt, MirBuiltinIdKind kind)
+lookup_builtin_type(Context *cnt, MirBuiltinIdKind kind)
 {
 	ID *        id    = &builtin_ids[kind];
 	Scope *     scope = cnt->assembly->gscope;
@@ -1908,6 +1928,63 @@ lookup_builtin_fn(Context *cnt, MirBuiltinIdKind kind)
 	BL_ASSERT(found->kind == SCOPE_ENTRY_FN);
 	ref_instr(found->data.fn->prototype);
 	return found->data.fn;
+}
+
+ID *
+lookup_builtins_rtti(Context *cnt)
+{
+	/******************************************************************************************/
+#define LOOKUP_TYPE(N, K)                                                                          \
+	if (!cnt->builtin_types.t_Type##N) {                                                       \
+		cnt->builtin_types.t_Type##N = lookup_builtin_type(cnt, MIR_BUILTIN_ID_TYPE_##K);  \
+		if (!cnt->builtin_types.t_Type##N) {                                               \
+			return &builtin_ids[MIR_BUILTIN_ID_TYPE_##K];                              \
+		}                                                                                  \
+	}                                                                                          \
+	/******************************************************************************************/
+
+	if (cnt->builtin_types.is_rtti_ready) return NULL;
+
+	LOOKUP_TYPE(Kind, KIND);
+	LOOKUP_TYPE(Info, INFO);
+	LOOKUP_TYPE(InfoInt, INFO_INT);
+	LOOKUP_TYPE(InfoReal, INFO_REAL);
+	LOOKUP_TYPE(InfoPtr, INFO_PTR);
+	LOOKUP_TYPE(InfoEnum, INFO_ENUM);
+	LOOKUP_TYPE(InfoEnumVariant, INFO_ENUM_VARIANT);
+	LOOKUP_TYPE(InfoArray, INFO_ARRAY);
+	LOOKUP_TYPE(InfoStruct, INFO_STRUCT);
+	LOOKUP_TYPE(InfoStructMember, INFO_STRUCT_MEMBER);
+	LOOKUP_TYPE(InfoFn, INFO_FN);
+	LOOKUP_TYPE(InfoFnArg, INFO_FN_ARG);
+	LOOKUP_TYPE(InfoType, INFO_TYPE);
+	LOOKUP_TYPE(InfoVoid, INFO_VOID);
+	LOOKUP_TYPE(InfoBool, INFO_BOOL);
+	LOOKUP_TYPE(InfoNull, INFO_NULL);
+	LOOKUP_TYPE(InfoString, INFO_STRING);
+	LOOKUP_TYPE(InfoStructMember, INFO_STRUCT_MEMBER);
+	LOOKUP_TYPE(InfoEnumVariant, INFO_ENUM_VARIANT);
+	LOOKUP_TYPE(InfoFnArg, INFO_FN_ARG);
+
+	cnt->builtin_types.t_TypeInfo_ptr   = create_type_ptr(cnt, cnt->builtin_types.t_TypeInfo);
+	cnt->builtin_types.t_TypeInfo_slice = create_type_struct_special(
+	    cnt, MIR_TYPE_SLICE, NULL, cnt->builtin_types.t_TypeInfo_ptr);
+	cnt->builtin_types.t_TypeInfoStructMembers_slice = create_type_struct_special(
+	    cnt,
+	    MIR_TYPE_SLICE,
+	    NULL,
+	    create_type_ptr(cnt, cnt->builtin_types.t_TypeInfoStructMember));
+	cnt->builtin_types.t_TypeInfoEnumVariants_slice = create_type_struct_special(
+	    cnt,
+	    MIR_TYPE_SLICE,
+	    NULL,
+	    create_type_ptr(cnt, cnt->builtin_types.t_TypeInfoEnumVariant));
+	cnt->builtin_types.t_TypeInfoFnArgs_slice = create_type_struct_special(
+	    cnt, MIR_TYPE_SLICE, NULL, create_type_ptr(cnt, cnt->builtin_types.t_TypeInfoFnArg));
+
+	cnt->builtin_types.is_rtti_ready = true;
+	return NULL;
+#undef LOOKUP_TYPE
 }
 
 MirType *
@@ -2883,7 +2960,7 @@ MirInstr *
 insert_instr_toany(Context *cnt, MirInstr *expr)
 {
 	MirInstrToAny *tmp   = create_instr(cnt, MIR_INSTR_TOANY, expr->node);
-	tmp->base.value.type = create_type_ptr(cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_ANY));
+	tmp->base.value.type = create_type_ptr(cnt, lookup_builtin_type(cnt, MIR_BUILTIN_ID_ANY));
 	tmp->base.implicit   = true;
 	tmp->expr            = expr;
 	ref_instr(&tmp->base);
@@ -4932,7 +5009,7 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 	BL_ASSERT(type_info->expr);
 
 	/* Resolve TypeInfo struct type */
-	MirType *ret_type = lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO);
+	MirType *ret_type = lookup_builtin_type(cnt, MIR_BUILTIN_ID_TYPE_INFO);
 	if (!ret_type) return ANALYZE_RESULT(POSTPONE, 0);
 
 	if (analyze_slot(cnt, &analyze_slot_conf_basic, &type_info->expr, NULL) != ANALYZE_PASSED) {
@@ -5651,7 +5728,7 @@ analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
 		elem_type = MIR_CEV_READ_AS(MirType *, &type_vargs->elem_type->value);
 	} else {
 		/* use Any */
-		elem_type = lookup_builtin(cnt, MIR_BUILTIN_ID_ANY);
+		elem_type = lookup_builtin_type(cnt, MIR_BUILTIN_ID_ANY);
 		if (!elem_type)
 			return ANALYZE_RESULT(WAITING, builtin_ids[MIR_BUILTIN_ID_ANY].hash);
 	}
@@ -6788,7 +6865,7 @@ gen_RTTI_types(Context *cnt)
 
 	{ /* Preload RTTI provided types */
 		cnt->builtin_types.t_TypeInfo_ptr =
-		    create_type_ptr(cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO));
+		    create_type_ptr(cnt, lookup_builtin_type(cnt, MIR_BUILTIN_ID_TYPE_INFO));
 
 		cnt->builtin_types.t_TypeInfo_slice = create_type_struct_special(
 		    cnt, MIR_TYPE_SLICE, NULL, cnt->builtin_types.t_TypeInfo_ptr);
@@ -6797,21 +6874,22 @@ gen_RTTI_types(Context *cnt)
 		    cnt,
 		    MIR_TYPE_SLICE,
 		    NULL,
-		    create_type_ptr(cnt,
-		                    lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_STRUCT_MEMBER)));
+		    create_type_ptr(
+		        cnt, lookup_builtin_type(cnt, MIR_BUILTIN_ID_TYPE_INFO_STRUCT_MEMBER)));
 
 		cnt->builtin_types.t_TypeInfoEnumVariants_slice = create_type_struct_special(
 		    cnt,
 		    MIR_TYPE_SLICE,
 		    NULL,
-		    create_type_ptr(cnt,
-		                    lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_ENUM_VARIANT)));
+		    create_type_ptr(
+		        cnt, lookup_builtin_type(cnt, MIR_BUILTIN_ID_TYPE_INFO_ENUM_VARIANT)));
 
 		cnt->builtin_types.t_TypeInfoFnArgs_slice = create_type_struct_special(
 		    cnt,
 		    MIR_TYPE_SLICE,
 		    NULL,
-		    create_type_ptr(cnt, lookup_builtin(cnt, MIR_BUILTIN_ID_TYPE_INFO_FN_ARG)));
+		    create_type_ptr(cnt,
+		                    lookup_builtin_type(cnt, MIR_BUILTIN_ID_TYPE_INFO_FN_ARG)));
 	}
 
 	TIterator it;

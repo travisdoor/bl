@@ -141,6 +141,8 @@ main :: fn () s32 {
 
     c := str4[0];
 
+    info :: typeinfo(s32);
+
     return foo(10, 20);
 }
 
