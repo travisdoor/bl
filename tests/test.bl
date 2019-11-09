@@ -142,6 +142,8 @@ main :: fn () s32 {
     c := str4[0];
 
     { // s32
+        t :: "type info s32:\n";
+        printf(t.ptr, 0);
         info :: cast(*TypeInfoInt) typeinfo(s32);
 
         printf(format.ptr, cast(s32) info.kind);
@@ -151,6 +153,8 @@ main :: fn () s32 {
     }
 
     { // u32
+        t :: "type info u32:\n";
+        printf(t.ptr, 0);
         info :: cast(*TypeInfoInt) typeinfo(u32);
 
         printf(format.ptr, cast(s32) info.kind);

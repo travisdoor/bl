@@ -2780,7 +2780,7 @@ create_var(Context *cnt,
 	tmp->decl_node  = decl_node;
 	tmp->is_mutable = is_mutable;
 	tmp->is_global  = is_in_gscope;
-	tmp->llvm_name  = id->str;
+	tmp->linkage_name  = id->str;
 	tmp->flags      = flags;
 	tmp->emit_llvm  = true;
 
@@ -2803,7 +2803,7 @@ create_var_impl(Context *   cnt,
 
 	tmp->is_mutable  = is_mutable;
 	tmp->is_global   = is_in_gscope;
-	tmp->llvm_name   = name;
+	tmp->linkage_name   = name;
 	tmp->is_implicit = true;
 	tmp->emit_llvm   = true;
 

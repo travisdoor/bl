@@ -397,8 +397,8 @@ print_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
 	print_comptime_value_or_id(cnt, si->src);
 	fprintf(cnt->stream, " -> ");
 	MirInstrDeclVar *dest = (MirInstrDeclVar *)si->dest;
-	if (dest && dest->var->llvm_name) {
-		fprintf(cnt->stream, "%s", dest->var->llvm_name);
+	if (dest && dest->var->linkage_name) {
+		fprintf(cnt->stream, "%s", dest->var->linkage_name);
 	} else {
 		print_comptime_value_or_id(cnt, si->dest);
 	}
@@ -762,7 +762,7 @@ print_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	MirVar *var = decl->var;
 	BL_ASSERT(var);
 
-	const char *name = var->llvm_name ? var->llvm_name : "<unknown>";
+	const char *name = var->linkage_name ? var->linkage_name : "<unknown>";
 
 	if (var->is_global) {
 		/* global scope variable */

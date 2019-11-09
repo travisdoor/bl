@@ -366,7 +366,7 @@ struct MirVar {
 	u32                flags;
 	VMRelativeStackPtr rel_stack_ptr;
 	LLVMValueRef       llvm_value;
-	const char *       llvm_name;
+	const char *       linkage_name;
 };
 
 struct MirInstr {
