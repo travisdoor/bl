@@ -46,7 +46,6 @@ struct MirInstr;
 struct MirInstrBlock;
 struct MirInstrCall;
 struct MirInstrDeclVar;
-struct MirConstExprValue;
 struct MirFn;
 struct MirVar;
 struct Builder;
@@ -105,7 +104,7 @@ VMStackPtr
 vm_alloc_global(VM *vm, struct Assembly *assembly, struct MirVar *var);
 
 VMStackPtr
-vm_alloc_const_expr_value(VM *vm, struct Assembly *assembly, struct MirConstExprValue *value);
+vm_alloc_raw(VM *vm, struct Assembly *assembly, struct MirType *type);
 
 #define vm_read_value_as(T, size, value) (*((T *)_vm_read_value((size), (value))))
 

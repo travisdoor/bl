@@ -4991,7 +4991,8 @@ analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 		BL_ASSERT(type);
 	}
 
-	type_info->rtti_var = rtti_gen(cnt, type);
+	type_info->rtti_type = type;
+	rtti_gen(cnt, type);
 
 	type_info->base.value.type = cnt->builtin_types->t_TypeInfo_ptr;
 	return ANALYZE_RESULT(PASSED, 0);
@@ -6904,17 +6905,15 @@ rtti_gen_enum_variant(Context *cnt, VMStackPtr dest, const char *name, s64 value
 VMStackPtr
 rtti_gen_enum_variants_array(Context *cnt, TSmallArray_VariantPtr *variants)
 {
-	MirConstExprValue arr_tmp;
-	arr_tmp.is_comptime = true;
-	arr_tmp.type =
+	MirType *arr_tmp_type =
 	    create_type_array(cnt, cnt->builtin_types->t_TypeInfoEnumVariant, variants->size);
 
-	VMStackPtr dest_arr_tmp = vm_alloc_const_expr_value(cnt->vm, cnt->assembly, &arr_tmp);
+	VMStackPtr dest_arr_tmp = vm_alloc_raw(cnt->vm, cnt->assembly, arr_tmp_type);
 
 	MirVariant *it;
 	TSA_FOREACH(variants, it)
 	{
-		VMStackPtr dest_arr_tmp_elem = vm_get_array_elem_ptr(arr_tmp.type, dest_arr_tmp, i);
+		VMStackPtr dest_arr_tmp_elem = vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, i);
 		rtti_gen_enum_variant(
 		    cnt, dest_arr_tmp_elem, it->id->str, MIR_CEV_READ_AS(s64, it->value));
 	}

@@ -51,12 +51,6 @@ typedef struct Assembly {
 	struct {
 		TArray global_instrs; /* All global instructions. */
 
-		/* Temporary variables used by RTTI. This is queue of all MirVars related to RTTI
-		 * generation, this array is used for generation of RTTI by LLVM IR and MIR-VM.
-		 * Array must be in propper order due to references between types and related
-		 * sub-types.  */
-		TArray RTTI_var_queue;
-
 		/* Map type ids to RTTI variables. */
 		THashTable RTTI_table;
 	} MIR;

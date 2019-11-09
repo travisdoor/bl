@@ -660,7 +660,7 @@ struct MirInstrTypeInfo {
 	MirInstr base;
 
 	MirInstr *expr;
-	MirVar *  rtti_var;
+	MirType * rtti_type;
 };
 
 struct MirInstrTypeKind {

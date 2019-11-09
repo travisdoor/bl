@@ -2271,8 +2271,10 @@ eval_instr(VM *vm, MirInstr *instr)
 void
 eval_instr_type_info(VM *vm, MirInstrTypeInfo *type_info)
 {
-	BL_ASSERT(type_info->rtti_var && "Missing RTTI variable!");
-	MIR_CEV_WRITE_AS(VMStackPtr, &type_info->base.value, type_info->rtti_var->value.data);
+	BL_ASSERT(type_info->rtti_type && "Missing RTTI type!");
+	MirVar *rtti_var = assembly_get_rtti(vm->assembly, type_info->rtti_type->id.hash);
+
+	MIR_CEV_WRITE_AS(VMStackPtr, &type_info->base.value, rtti_var->value.data);
 }
 
 void
@@ -2603,7 +2605,13 @@ vm_alloc_global(VM *vm, Assembly *assembly, MirVar *var)
 	BL_ASSERT(var->is_global && "Allocated variable is supposed to be global variable.");
 
 	if (var->value.is_comptime) {
-		return vm_alloc_const_expr_value(vm, assembly, &var->value);
+		if (needs_tmp_alloc(&var->value)) {
+			var->value.data = stack_push_empty(vm, var->value.type);
+		} else {
+			var->value.data = &var->value._tmp[0];
+		}
+
+		return var->value.data;
 	}
 
 	var->rel_stack_ptr = stack_alloc_var(vm, var);
@@ -2618,13 +2626,13 @@ vm_alloc_const_expr_value(VM *vm, Assembly *assembly, MirConstExprValue *value)
 	BL_ASSERT(value->is_comptime);
 	BL_ASSERT(value->type);
 
-	if (needs_tmp_alloc(value)) {
-		value->data = stack_push_empty(vm, value->type);
-	} else {
-		value->data = &value->_tmp[0];
-	}
-
 	return value->data;
+}
+
+VMStackPtr
+vm_alloc_raw(VM *vm, struct Assembly *assembly, MirType *type)
+{
+	return stack_push_empty(vm, type);
 }
 
 void *

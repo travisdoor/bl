@@ -63,6 +63,9 @@ typedef struct {
 	bool                 debug_mode;
 } Context;
 
+static LLVMValueRef
+rtti_emit_type(Context *cnt, MirType *type);
+
 static void
 emit_DI_instr_loc(Context *cnt, MirInstr *instr);
 
@@ -71,9 +74,6 @@ emit_DI_fn(Context *cnt, MirFn *fn);
 
 static void
 emit_DI_var(Context *cnt, MirVar *var);
-
-static void
-emit_RTTI_types(Context *cnt);
 
 static void
 emit_instr(Context *cnt, MirInstr *instr);
@@ -351,32 +351,6 @@ emit_DI_var(Context *cnt, MirVar *var)
 }
 
 void
-emit_RTTI_types(Context *cnt)
-{
-	TArray *table = &cnt->assembly->MIR.RTTI_var_queue;
-
-	MirVar *     var;
-	LLVMValueRef llvm_var, llvm_value;
-	LLVMTypeRef  llvm_var_type;
-
-	for (usize i = 0; i < table->size; ++i) {
-		var = tarray_at(MirVar *, table, i);
-		BL_ASSERT(var);
-
-		llvm_var      = emit_global_var_proto(cnt, var);
-		llvm_var_type = var->value.type->llvm_type;
-		BL_UNIMPLEMENTED;
-		// llvm_value    = emit_as_const(cnt, &var->value);
-
-		LLVMSetInitializer(llvm_var, llvm_value);
-		LLVMSetLinkage(llvm_var, LLVMPrivateLinkage);
-		LLVMSetGlobalConstant(llvm_var, true);
-		LLVMSetAlignment(llvm_var, LLVMABIAlignmentOfType(cnt->llvm_td, llvm_var_type));
-		LLVMSetUnnamedAddr(llvm_var, true);
-	}
-}
-
-void
 emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
 	ScopeEntry *entry = ref->scope_entry;
@@ -454,6 +428,12 @@ emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 	BL_ASSERT(abort_fn);
 	if (!abort_fn->llvm_value) emit_fn_proto(cnt, abort_fn);
 	LLVMBuildCall(cnt->llvm_builder, abort_fn->llvm_value, NULL, 0, "");
+}
+
+LLVMValueRef
+rtti_emit_type(Context *cnt, MirType *type)
+{
+	return NULL;
 }
 
 void
@@ -1730,8 +1710,6 @@ ir_run(Assembly *assembly)
 	cnt.llvm_const_i64  = LLVMConstInt(cnt.builtin_types->t_u64->llvm_type, 0, false);
 	cnt.llvm_di_builder = assembly->llvm.di_builder;
 	cnt.debug_mode      = builder.options.debug_build;
-
-	emit_RTTI_types(&cnt);
 
 	MirInstr *ginstr;
 	TARRAY_FOREACH(MirInstr *, &assembly->MIR.global_instrs, ginstr)

@@ -33,7 +33,7 @@ str :: "Hello";
 str2 := "Hello";
 str3 := &str;
 
-format :: "value = %d\n";
+format :: " %d\n";
 foo_ptr :: &foo;
 
 Days :: enum s8 {
@@ -140,6 +140,7 @@ main :: fn () s32 {
     alignof(struct { a: s32; b : s32});
 
     c := str4[0];
+
     { // s32
         info :: cast(*TypeInfoInt) typeinfo(s32);
 
@@ -158,6 +159,7 @@ main :: fn () s32 {
         print_bool(info.is_signed);
     }
 
+    /*
     { // enum
         info :: cast(*TypeInfoEnum) typeinfo(Days);
 
@@ -167,8 +169,10 @@ main :: fn () s32 {
 
         loop i := 0; i < info.variants.len; i += 1 {
             printf(info.variants[i].name.ptr, 0);
+            printf(format.ptr, auto info.variants[i].value);
         }
     }
+*/
 
     return foo(10, 20);
 }
