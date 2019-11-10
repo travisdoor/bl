@@ -498,7 +498,6 @@ struct MirInstrRet {
 	MirInstr base;
 
 	MirInstr *value;
-	bool      infer_type;
 };
 
 struct MirInstrSetInitializer {

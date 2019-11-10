@@ -167,8 +167,18 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 	}
 
 	case MIR_TYPE_PTR: {
-		VMStackPtr ptr = VM_STACK_READ_AS(VMStackPtr, value);
-		fprintf(cnt->stream, "%p", ptr);
+		if (mir_deref_type(type)->kind == MIR_TYPE_FN) {
+			MirFn *fn = VM_STACK_READ_AS(MirFn *, value);
+
+			if (fn) {
+				fprintf(cnt->stream, "&%s", fn->linkage_name);
+			} else {
+				fprintf(cnt->stream, "null");
+			}
+		} else {
+			VMStackPtr ptr = VM_STACK_READ_AS(VMStackPtr, value);
+			fprintf(cnt->stream, "%p", ptr);
+		}
 		break;
 	}
 
@@ -889,7 +899,6 @@ print_instr_ret(Context *cnt, MirInstrRet *ret)
 {
 	print_instr_head(cnt, &ret->base, "ret");
 	if (ret->value) print_comptime_value_or_id(cnt, ret->value);
-	if (ret->infer_type) fprintf(cnt->stream, " /* infer */");
 }
 
 void
@@ -988,7 +997,7 @@ print_instr(Context *cnt, MirInstr *instr)
 {
 #if !PRINT_ANALYZED_COMPTIMES
 	if ((instr->owner_block || instr->kind == MIR_INSTR_BLOCK) && instr->value.is_comptime &&
-            instr->analyzed)
+	    instr->analyzed)
 		return;
 #endif
 

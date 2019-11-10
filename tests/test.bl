@@ -66,6 +66,9 @@ Functions :: struct {
 functions :: {:Functions: &my_func1, &my_func2};
 
 main :: fn () s32 {
+    MyType :: struct { i: s32 };
+    my_value : MyType;
+    
     printf(format.ptr, cast(s32) Days.SUN);
     printf(format.ptr, cast(s32) Days.MON);
     printf(format.ptr, cast(s32) Days.THU);

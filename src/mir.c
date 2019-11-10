@@ -550,7 +550,7 @@ static MirInstr *
 append_instr_const_null(Context *cnt, Ast *node);
 
 static MirInstr *
-append_instr_ret(Context *cnt, Ast *node, MirInstr *value, bool infer_type);
+append_instr_ret(Context *cnt, Ast *node, MirInstr *value);
 
 static MirInstr *
 append_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest);
@@ -1154,13 +1154,13 @@ terminate_block(MirInstrBlock *block, MirInstr *terminator)
 static inline bool
 is_block_terminated(MirInstrBlock *block)
 {
-	return block->terminal;
+	return (bool)block->terminal;
 }
 
 static inline bool
 is_current_block_terminated(Context *cnt)
 {
-	return get_current_block(cnt)->terminal;
+	return (bool)get_current_block(cnt)->terminal;
 }
 
 static inline MirInstr *
@@ -3925,7 +3925,7 @@ append_instr_const_null(Context *cnt, Ast *node)
 }
 
 MirInstr *
-append_instr_ret(Context *cnt, Ast *node, MirInstr *value, bool infer_type)
+append_instr_ret(Context *cnt, Ast *node, MirInstr *value)
 {
 	if (value) ref_instr(value);
 
@@ -3934,7 +3934,6 @@ append_instr_ret(Context *cnt, Ast *node, MirInstr *value, bool infer_type)
 	tmp->base.value.addr_mode = MIR_VAM_RVALUE;
 	tmp->base.ref_count       = NO_REF_COUNTING;
 	tmp->value                = value;
-	tmp->infer_type           = infer_type;
 
 	append_current_block(cnt, &tmp->base);
 
@@ -6025,12 +6024,8 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 	BL_ASSERT(fn_type->kind == MIR_TYPE_FN);
 
 	if (ret->value) {
-		const AnalyzeSlotConfig *conf =
-		    ret->infer_type ? &analyze_slot_conf_basic : &analyze_slot_conf_default;
-		if (analyze_slot(cnt,
-		                 conf,
-		                 &ret->value,
-		                 ret->infer_type ? NULL : fn_type->data.fn.ret_type) !=
+		if (analyze_slot(
+		        cnt, &analyze_slot_conf_default, &ret->value, fn_type->data.fn.ret_type) !=
 		    ANALYZE_PASSED) {
 			return ANALYZE_RESULT(FAILED, 0);
 		}
@@ -6039,28 +6034,6 @@ analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 	MirInstr *value = ret->value;
 	if (value) {
 		BL_ASSERT(value->analyzed);
-	}
-
-	if (ret->infer_type) {
-		/* return is supposed to override function return type */
-		if (ret->value) {
-			BL_ASSERT(ret->value->value.type);
-			if (fn_type->data.fn.ret_type != ret->value->value.type) {
-				MirFn *fn = get_current_fn(cnt);
-				BL_ASSERT(fn);
-				fn->type = create_type_fn(cnt,
-				                          NULL,
-				                          ret->value->value.type,
-				                          fn_type->data.fn.args,
-				                          fn_type->data.fn.is_vargs);
-				fn_type  = fn->type;
-				/* HACK: Function type need to be set also for function
-				 * prototype instruction, this is by the way only reason why
-				 * we need poinetr to prototype inside MirFn. Better
-				 * solution should be possible. */
-				fn->prototype->value.type = fn_type;
-			}
-		}
 	}
 
 	const bool expected_ret_value =
@@ -6377,7 +6350,7 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 	if (!is_block_terminated(block)) {
 		if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
 			set_current_block(cnt, block);
-			append_instr_ret(cnt, NULL, NULL, false);
+			append_instr_ret(cnt, NULL, NULL);
 		} else {
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_MISSING_RETURN,
@@ -7339,7 +7312,7 @@ ast_test_case(Context *cnt, Ast *test)
 	cnt->ast.exit_block = append_block(cnt, fn, "exit");
 
 	set_current_block(cnt, cnt->ast.exit_block);
-	append_instr_ret(cnt, NULL, NULL, false);
+	append_instr_ret(cnt, NULL, NULL);
 
 	set_current_block(cnt, entry_block);
 
@@ -7902,10 +7875,10 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn, Ast *decl_node, bool is_in_gscope, u3
 		set_current_block(cnt, cnt->ast.exit_block);
 		MirInstr *ret_init = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
 
-		append_instr_ret(cnt, NULL, ret_init, false);
+		append_instr_ret(cnt, NULL, ret_init);
 	} else {
 		set_current_block(cnt, cnt->ast.exit_block);
-		append_instr_ret(cnt, NULL, NULL, false);
+		append_instr_ret(cnt, NULL, NULL);
 	}
 
 	set_current_block(cnt, init_block);
@@ -8444,11 +8417,15 @@ MirInstr *
 ast_create_global_initializer(Context *cnt, Ast *node, MirInstr *decl_var)
 {
 	BL_ASSERT(decl_var);
-	MirInstrBlock *block = append_global_block(cnt, INIT_VALUE_FN_NAME);
+	MirInstrBlock *prev_block = get_current_block(cnt);
+	MirInstrBlock *block      = append_global_block(cnt, INIT_VALUE_FN_NAME);
 	set_current_block(cnt, block);
 	MirInstr *result = ast(cnt, node);
 
-	return append_instr_set_initializer(cnt, node, decl_var, result);
+	result = append_instr_set_initializer(cnt, node, decl_var, result);
+
+	set_current_block(cnt, prev_block);
+	return result;
 }
 
 MirInstr *
@@ -8460,33 +8437,21 @@ ast_create_impl_fn_call(Context *   cnt,
 {
 	if (!node) return NULL;
 
-	/* Sometimes we need to have implicit function return type based on
-	 * resulting type of the AST expression, in such case we must allow return
-	 * instruction to change function return
-	 * type and create dummy type for the function. */
-	MirType *final_fn_type  = fn_type;
-	bool     infer_ret_type = false;
-	if (!final_fn_type) {
-		final_fn_type  = create_type_fn(cnt, NULL, NULL, NULL, false);
-		infer_ret_type = true;
-	}
-
 	MirInstrBlock *prev_block = get_current_block(cnt);
 	MirInstr *     fn_proto   = append_instr_fn_proto(cnt, NULL, NULL, NULL, schedule_analyze);
-	fn_proto->value.type      = final_fn_type;
+	fn_proto->value.type      = fn_type;
 
 	MirFn *fn =
 	    create_fn(cnt, NULL, NULL, fn_name, 0, (MirInstrFnProto *)fn_proto, false, true);
 	MIR_CEV_WRITE_AS(MirFn *, &fn_proto->value, fn);
 
-	fn->type = final_fn_type;
+	fn->type = fn_type;
 
 	MirInstrBlock *entry = append_block(cnt, fn, "entry");
 	set_current_block(cnt, entry);
 
 	MirInstr *result = ast(cnt, node);
-	/* Guess return type here when it is based on expression result... */
-	append_instr_ret(cnt, NULL, result, infer_ret_type);
+	append_instr_ret(cnt, NULL, result);
 
 	set_current_block(cnt, prev_block);
 	return create_instr_call_comptime(cnt, node, fn_proto);
