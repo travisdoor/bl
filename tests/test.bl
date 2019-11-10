@@ -1,5 +1,6 @@
 /* playground */
 // INCOMPLETE: enable "hello".ptr
+// INCOMPLETE: local type declarations
 
 A :: 20;
 B :: 10 + 20 * A;
@@ -174,6 +175,70 @@ main :: fn () s32 {
         loop i := 0; i < info.variants.len; i += 1 {
             printf(info.variants[i].name.ptr, 0);
             printf(format.ptr, auto info.variants[i].value);
+        }
+    }
+
+    { // bool
+        info :: typeinfo(bool);
+        printf(format.ptr, cast(s32) info.kind);
+    }
+
+    { // real
+        info :: typeinfo(f32);
+        printf(format.ptr, cast(s32) info.kind);
+    }
+
+    { // ptr
+        info :: cast(*TypeInfoPtr) typeinfo(*u32);
+        printf(format.ptr, cast(s32) info.kind);
+        printf(format.ptr, cast(s32) info.pointee_type.kind);
+    }
+
+    { // null
+        info :: typeinfo(null);
+        printf(format.ptr, cast(s32) info.kind);
+    }
+
+    { // string
+        info :: typeinfo("hello");
+        printf(format.ptr, cast(s32) info.kind);
+    }
+
+    { // arr
+        info :: cast(*TypeInfoArray) typeinfo([10]s32);
+        printf(format.ptr, cast(s32) info.kind);
+        printf(info.name.ptr, 0);
+        printf(format.ptr, cast(s32) info.elem_type.kind);
+        printf(format.ptr, cast(s32) info.len);
+    }
+
+    { // struct
+        info :: cast(*TypeInfoStruct) typeinfo(Data1);
+        printf(format.ptr, cast(s32) info.kind);
+        printf(info.name.ptr, 0);
+
+        loop i := 0; i < info.members.len; i += 1 {
+            printf(info.members[i].name.ptr, 0);
+        }
+    }
+
+    { // fn
+        info :: cast(*TypeInfoFn) typeinfo(foo);
+        printf(format.ptr, cast(s32) info.kind);
+        printf(info.name.ptr, 0);
+
+        loop i := 0; i < info.args.len; i += 1 {
+            printf(info.args[i].name.ptr, 0);
+        }
+    }
+
+    { // fn
+        info :: cast(*TypeInfoFn) typeinfo(main);
+        printf(format.ptr, cast(s32) info.kind);
+        printf(info.name.ptr, 0);
+
+        loop i := 0; i < info.args.len; i += 1 {
+            printf(info.args[i].name.ptr, 0);
         }
     }
 

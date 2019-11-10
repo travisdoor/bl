@@ -11,7 +11,14 @@
   - [ ] Simple structure inherritance with #using, #base or some keyword?
   - [ ] Update documentation (we are using recursive git repository)
   - [X] Switch to tlib-c 
-  - [ ] Operator overloading
+  - [ ] Operator overload
+  - [ ] Better definition of operators based on type (we wan't compary types also s32 == f32 s32 != f32...)
+  - [ ] #typeof operator
+  - [ ] Static assert
+    #+BEGIN_SRC bl
+    #assert(typeof(i) == s32);
+    #+END_SRC
+
 
 * parser race conditions
   - arena_alloc 
@@ -27,3 +34,5 @@
 - compounds
   naked comptime/runtime
   non-naked comtime/runtime
+
+* Footnotes
