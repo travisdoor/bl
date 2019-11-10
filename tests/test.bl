@@ -171,12 +171,10 @@ main :: fn () s32 {
         printf(info.name.ptr, 0);
         printf(format.ptr, cast(s32) info.base_type.kind);
 
-        /*
         loop i := 0; i < info.variants.len; i += 1 {
             printf(info.variants[i].name.ptr, 0);
             printf(format.ptr, auto info.variants[i].value);
         }
-        */
     }
 
     return foo(10, 20);
