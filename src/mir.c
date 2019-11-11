@@ -85,9 +85,14 @@ typedef struct {
 		MirInstrBlock *        break_block;
 		MirInstrBlock *        exit_block;
 		MirInstrBlock *        continue_block;
-		ID *                   current_entity_id; /* Sometimes used for named structures */
-		MirInstr *             current_fwd_struct_decl;
-		bool                   enable_incomplete_decl_refs;
+
+		/* CLEANUP: get rid of this!!!  */
+		/* CLEANUP: get rid of this!!!  */
+		/* CLEANUP: get rid of this!!!  */
+		ID *current_entity_id;
+
+		MirInstr *current_fwd_struct_decl;
+		bool      enable_incomplete_decl_refs;
 	} ast;
 
 	/* Analyze MIR generated from AST */
@@ -8106,19 +8111,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		/* initialize value */
 		MirInstr *value = NULL;
 
-		if (!is_struct_decl && !is_in_gscope) {
-			value = ast(cnt, ast_value);
-		}
-
-		MirInstr *decl_var = append_instr_decl_var(cnt,
-		                                           ast_name,
-		                                           type,
-		                                           value,
-		                                           is_mutable,
-		                                           is_in_gscope,
-		                                           -1,
-		                                           entity->data.decl_entity.flags);
-
+		/* Struct use forward type declarations! */
 		if (is_struct_decl) {
 			// Set to const type fwd decl
 			MirType *fwd_decl_type =
@@ -8132,12 +8125,28 @@ ast_decl_entity(Context *cnt, Ast *entity)
 
 			// Enable incomplete types for decl_ref instructions.
 			cnt->ast.enable_incomplete_decl_refs = true;
+		}
 
-			ast_create_global_initializer(cnt, ast_value, decl_var);
+		/* When symbol is not declared in global scope, we can generate initialization tree
+		 * directly into current block, even for type declarations.  */
+		if (!is_in_gscope) {
+			value = ast(cnt, ast_value);
+		}
 
-			cnt->ast.enable_incomplete_decl_refs = false;
-			cnt->ast.current_fwd_struct_decl     = NULL;
-		} else if (is_in_gscope) {
+		MirInstr *decl_var = append_instr_decl_var(cnt,
+		                                           ast_name,
+		                                           type,
+		                                           value,
+		                                           is_mutable,
+		                                           is_in_gscope,
+		                                           -1,
+		                                           entity->data.decl_entity.flags);
+
+		/* For globals we must generate initialization after variable declaration,
+		 * SetInitializer instruction will be used to set actual value, also implicit
+		 * initialization block is created into MIR (such block does not have LLVM
+		 * representation -> globals must be evaluated in compile time). */
+		if (is_in_gscope) {
 			if (ast_value) {
 				/* Generate implicit global initializer block. */
 				ast_create_global_initializer(cnt, ast_value, decl_var);
@@ -8148,6 +8157,12 @@ ast_decl_entity(Context *cnt, Ast *entity)
 				            BUILDER_CUR_WORD,
 				            "All globals must be initialized.");
 			}
+		}
+
+		/* Struct decl cleanup. */
+		if (is_struct_decl) {
+			cnt->ast.enable_incomplete_decl_refs = false;
+			cnt->ast.current_fwd_struct_decl     = NULL;
 		}
 
 		cnt->ast.current_entity_id = NULL;

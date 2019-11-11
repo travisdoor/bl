@@ -66,9 +66,6 @@ Functions :: struct {
 functions :: {:Functions: &my_func1, &my_func2};
 
 main :: fn () s32 {
-    MyType :: struct { i: s32 };
-    my_value : MyType;
-    
     printf(format.ptr, cast(s32) Days.SUN);
     printf(format.ptr, cast(s32) Days.MON);
     printf(format.ptr, cast(s32) Days.THU);
@@ -216,7 +213,8 @@ main :: fn () s32 {
     }
 
     { // struct
-        info :: cast(*TypeInfoStruct) typeinfo(Data1);
+        MyType :: struct { first: s32; second: bool; };
+        info :: cast(*TypeInfoStruct) typeinfo(MyType);
         printf(format.ptr, cast(s32) info.kind);
         printf(info.name.ptr, 0);
 
