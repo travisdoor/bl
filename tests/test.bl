@@ -243,6 +243,12 @@ main :: fn () s32 {
         }
     }
 
+    v := 10;
+    v_ptr := &v;
+    ^v_ptr = 20;
+    
+    any(v);
+
     return foo(10, 20);
 }
 
@@ -260,6 +266,9 @@ vargs :: fn (v: ...s32) {
     loop i := 0; i < v.len; i += 1 {
         printf(format.ptr, v[i]);
     }
+}
+
+any :: fn (v: Any) {
 }
 
 printf :: fn (format: *u8, n: s32) s32 #extern;

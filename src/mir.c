@@ -188,10 +188,17 @@ lookup_builtin_type(Context *cnt, MirBuiltinIdKind kind);
 static MirFn *
 lookup_builtin_fn(Context *cnt, MirBuiltinIdKind kind);
 
+/* HACK: Better way to do this will be enable compiler to have default preload file; we need to
+ * make lexing, parsing, MIR generation and analyze of this file first and then process rest of the
+ * source base. Then it will be guaranteed that all desired builtins are ready to use. */
+
 /* Try to complete cached RTTI related types, return NULL if all types are resolved or return ID for
  * first missing type. */
 static ID *
 lookup_builtins_rtti(Context *cnt);
+
+static ID *
+lookup_builtins_any(Context *cnt);
 
 /* Initialize type ID. This function creates and set ID string and calculates integer hash from this
  * string. The type.id.str could be also used as name for unnamed types. */
@@ -1992,6 +1999,22 @@ lookup_builtins_rtti(Context *cnt)
 #undef LOOKUP_TYPE
 }
 
+ID *
+lookup_builtins_any(Context *cnt)
+{
+	if (cnt->builtin_types->is_any_ready) return NULL;
+
+	cnt->builtin_types->t_Any = lookup_builtin_type(cnt, MIR_BUILTIN_ID_ANY);
+	if (!cnt->builtin_types->t_Any) {
+		return &builtin_ids[MIR_BUILTIN_ID_ANY];
+	}
+
+	cnt->builtin_types->t_Any_ptr = create_type_ptr(cnt, cnt->builtin_types->t_Any);
+
+	cnt->builtin_types->is_any_ready = true;
+	return NULL;
+}
+
 MirType *
 create_type_type(Context *cnt)
 {
@@ -2965,8 +2988,11 @@ insert_instr_addrof(Context *cnt, MirInstr *src)
 MirInstr *
 insert_instr_toany(Context *cnt, MirInstr *expr)
 {
+	BL_ASSERT(cnt->builtin_types->is_any_ready &&
+	          "All 'Any' related types must be ready before this!");
+
 	MirInstrToAny *tmp   = create_instr(cnt, MIR_INSTR_TOANY, expr->node);
-	tmp->base.value.type = create_type_ptr(cnt, lookup_builtin_type(cnt, MIR_BUILTIN_ID_ANY));
+	tmp->base.value.type = cnt->builtin_types->t_Any_ptr;
 	tmp->base.implicit   = true;
 	tmp->expr            = expr;
 	ref_instr(&tmp->base);
@@ -3202,6 +3228,7 @@ append_instr_type_struct(Context *             cnt,
 	MirInstrTypeStruct *tmp     = create_instr(cnt, MIR_INSTR_TYPE_STRUCT, node);
 	tmp->base.value.type        = cnt->builtin_types->t_type;
 	tmp->base.value.is_comptime = true;
+	tmp->base.value.addr_mode   = MIR_VAM_RVALUE;
 	tmp->members                = members;
 	tmp->scope                  = scope;
 	tmp->is_packed              = is_packed;
@@ -3231,6 +3258,7 @@ append_instr_type_enum(Context *             cnt,
 	MirInstrTypeEnum *tmp       = create_instr(cnt, MIR_INSTR_TYPE_ENUM, node);
 	tmp->base.value.type        = cnt->builtin_types->t_type;
 	tmp->base.value.is_comptime = true;
+	tmp->base.value.addr_mode   = MIR_VAM_RVALUE;
 	tmp->variants               = variants;
 	tmp->scope                  = scope;
 	tmp->id                     = id;
@@ -3253,7 +3281,7 @@ append_instr_type_ptr(Context *cnt, Ast *node, MirInstr *type)
 {
 	MirInstrTypePtr *tmp        = create_instr(cnt, MIR_INSTR_TYPE_PTR, node);
 	tmp->base.value.type        = cnt->builtin_types->t_type;
-	tmp->base.value.addr_mode   = MIR_VAM_LVALUE_CONST;
+	tmp->base.value.addr_mode   = MIR_VAM_RVALUE;
 	tmp->base.value.is_comptime = true;
 	tmp->type                   = type;
 
@@ -4284,6 +4312,19 @@ analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type)
 AnalyzeResult
 analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 {
+	MirInstr *expr      = toany->expr;
+	MirType * any_type  = cnt->builtin_types->t_Any;
+	MirType * expr_type = expr->value.type;
+
+	BL_ASSERT(any_type && expr && expr_type);
+
+	const bool need_tmp = expr->value.addr_mode == MIR_VAM_RVALUE;
+	if (need_tmp) {
+		BL_LOG("need tmp!!!");
+	} else {
+		BL_LOG("no need tmp!!!");
+	}
+
 	BL_UNIMPLEMENTED;
 	return ANALYZE_RESULT(PASSED, 0);
 }
@@ -5099,7 +5140,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	case SCOPE_ENTRY_TYPE: {
 		ref->base.value.type        = cnt->builtin_types->t_type;
 		ref->base.value.is_comptime = true;
-		ref->base.value.addr_mode   = MIR_VAM_LVALUE_CONST;
+		ref->base.value.addr_mode   = MIR_VAM_RVALUE;
 
 		break;
 	}
@@ -5114,7 +5155,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		type                        = create_type_ptr(cnt, type);
 		ref->base.value.type        = type;
 		ref->base.value.is_comptime = true;
-		ref->base.value.addr_mode   = MIR_VAM_LVALUE_CONST;
+		ref->base.value.addr_mode   = MIR_VAM_RVALUE;
 
 		break;
 	}
@@ -5873,20 +5914,22 @@ analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
-	BL_ASSERT(type_ptr->type->value.is_comptime);
+	if (!mir_is_comptime(type_ptr->type)) {
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_INVALID_TYPE,
+		            type_ptr->type->node->location,
+		            BUILDER_CUR_WORD,
+		            "Expected compile time known type after '*' pointer type declaration.");
+		return ANALYZE_RESULT(FAILED, 0);
+	}
 
-	{ /* Target value must be a type. */
-		MirType *src_type = type_ptr->type->value.type;
-		BL_ASSERT(src_type);
-
-		if (src_type->kind != MIR_TYPE_TYPE) {
-			builder_msg(BUILDER_MSG_ERROR,
-			            ERR_INVALID_TYPE,
-			            type_ptr->type->node->location,
-			            BUILDER_CUR_WORD,
-			            "Expected type name.");
-			return ANALYZE_RESULT(FAILED, 0);
-		}
+	if (type_ptr->type->value.type->kind != MIR_TYPE_TYPE) {
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_INVALID_TYPE,
+		            type_ptr->type->node->location,
+		            BUILDER_CUR_WORD,
+		            "Expected type name.");
+		return ANALYZE_RESULT(FAILED, 0);
 	}
 
 	MirType *src_type_value = MIR_CEV_READ_AS(MirType *, &type_ptr->type->value);
@@ -6133,6 +6176,9 @@ AnalyzeResult
 analyze_instr_call(Context *cnt, MirInstrCall *call)
 {
 	BL_ASSERT(call->callee);
+
+	ID *missing_any = lookup_builtins_any(cnt);
+	if (missing_any) return ANALYZE_RESULT(WAITING, missing_any->hash);
 
 	/*
 	 * Direct call is call without any reference lookup, usually call to anonymous

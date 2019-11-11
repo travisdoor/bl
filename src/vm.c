@@ -1482,61 +1482,7 @@ interp_instr(VM *vm, MirInstr *instr)
 void
 interp_instr_toany(VM *vm, MirInstrToAny *toany)
 {
-	MirVar *   tmp      = toany->tmp;
-	MirVar *   expr_tmp = toany->expr_tmp;
-	VMStackPtr tmp_ptr  = stack_rel_to_abs_ptr(vm, tmp->rel_stack_ptr, tmp->is_global);
-	MirType *  tmp_type = tmp->value.type;
-
-	/* type_info */
-	MirVar *expr_type_rtti = toany->rtti_type->vm_rtti_var_cache;
-	if (!expr_type_rtti) {
-		expr_type_rtti = assembly_get_rtti(vm->assembly, toany->rtti_type->id.hash);
-		toany->rtti_type->vm_rtti_var_cache = expr_type_rtti;
-	}
-	BL_ASSERT(expr_type_rtti);
-
-	VMStackPtr dest           = tmp_ptr + vm_get_struct_elem_offest(vm->assembly, tmp_type, 0);
-	MirType *  type_info_type = mir_get_struct_elem_type(tmp_type, 0);
-
-	VMStackPtr rtti_ptr =
-	    stack_rel_to_abs_ptr(vm, expr_type_rtti->rel_stack_ptr, expr_type_rtti->is_global);
-
-	memcpy(dest, &rtti_ptr, type_info_type->store_size_bytes);
-
-	VMStackPtr data_ptr = fetch_value(vm, &toany->expr->value);
-
-	/* data */
-	dest               = tmp_ptr + vm_get_struct_elem_offest(vm->assembly, tmp_type, 1);
-	MirType *data_type = mir_get_struct_elem_type(tmp_type, 1);
-
-	if (!toany->has_data) {
-		memset(dest, 0, data_type->store_size_bytes);
-	} else if (toany->rtti_type_specification) {
-		/* Use type specificaiton as an data value. */
-		MirVar *spec_type_rtti = toany->rtti_type_specification->vm_rtti_var_cache;
-		if (!spec_type_rtti) {
-			spec_type_rtti = assembly_get_rtti(vm->assembly,
-			                                   toany->rtti_type_specification->id.hash);
-			toany->rtti_type_specification->vm_rtti_var_cache = spec_type_rtti;
-		}
-		BL_ASSERT(spec_type_rtti);
-
-		VMStackPtr rtti_spec_ptr = stack_rel_to_abs_ptr(
-		    vm, spec_type_rtti->rel_stack_ptr, spec_type_rtti->is_global);
-
-		memcpy(dest, &rtti_spec_ptr, PTR_SIZE);
-	} else if (expr_tmp) { // set data
-		VMStackPtr expr_tmp_ptr =
-		    stack_rel_to_abs_ptr(vm, expr_tmp->rel_stack_ptr, expr_tmp->is_global);
-
-		memcpy(expr_tmp_ptr, data_ptr, data_type->store_size_bytes);
-
-		memcpy(dest, &expr_tmp_ptr, data_type->store_size_bytes);
-	} else {
-		memcpy(dest, data_ptr, data_type->store_size_bytes);
-	}
-
-	stack_push(vm, &tmp_ptr, toany->base.value.type);
+	BL_UNIMPLEMENTED;
 }
 
 void

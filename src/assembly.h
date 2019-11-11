@@ -100,7 +100,8 @@ typedef struct Assembly {
 		MirType *t_string_slice;
 		MirType *t_resolve_type_fn;
 		MirType *t_test_case_fn;
-
+		MirType *t_Any;
+		MirType *t_Any_ptr;
 		MirType *t_TypeKind;
 		MirType *t_TypeInfo;
 		MirType *t_TypeInfoType;
@@ -118,13 +119,14 @@ typedef struct Assembly {
 		MirType *t_TypeInfoStructMember;
 		MirType *t_TypeInfoEnumVariant;
 		MirType *t_TypeInfoFnArg;
-		bool     is_rtti_ready;
-
 		MirType *t_TypeInfo_ptr;
 		MirType *t_TypeInfo_slice;
 		MirType *t_TypeInfoStructMembers_slice;
 		MirType *t_TypeInfoEnumVariants_slice;
 		MirType *t_TypeInfoFnArgs_slice;
+
+		bool     is_rtti_ready;
+		bool     is_any_ready;
 	} builtin_types;
 } Assembly;
 
