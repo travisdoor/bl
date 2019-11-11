@@ -451,6 +451,21 @@ stack_rel_to_abs_ptr(VM *vm, VMRelativeStackPtr rel_ptr, bool ignore)
 	return base + rel_ptr;
 }
 
+/* Try to fetch variable allocation pointer. */
+static inline VMStackPtr
+stack_read_var(VM *vm, MirVar *var)
+{
+	VMStackPtr ptr = NULL;
+	if (var->value.is_comptime) {
+		ptr = (VMStackPtr)&var->value.data;
+	} else {
+		ptr = stack_rel_to_abs_ptr(vm, var->rel_stack_ptr, var->is_global);
+	}
+
+	BL_ASSERT(ptr && "Attept to get allocation pointer of unallocated variable!");
+	return ptr;
+}
+
 static inline VMStackPtr
 fetch_value(VM *vm, MirConstExprValue *v)
 {
@@ -1467,7 +1482,7 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 	BL_ASSERT(type_info->value.is_comptime);
 
 	MirType *  dest_type = dest_var->value.type;
-	VMStackPtr dest = stack_rel_to_abs_ptr(vm, dest_var->rel_stack_ptr, dest_var->is_global);
+	VMStackPtr dest      = stack_read_var(vm, dest_var);
 
 	/* type info */
 	MirType *  dest_type_info_type = mir_get_struct_elem_type(dest_type, 0);
@@ -1483,6 +1498,9 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 	VMStackPtr data = fetch_value(vm, &toany->expr->value);
 
 	if (toany->expr_tmp) {
+		MirVar *   expr_var  = toany->expr_tmp;
+		VMStackPtr dest_expr = stack_read_var(vm, expr_var);
+
 		BL_UNIMPLEMENTED;
 	} else if (toany->rtti_data) {
 		BL_UNIMPLEMENTED;
@@ -1800,14 +1818,7 @@ interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref)
 		MirVar *var = entry->data.var;
 		BL_ASSERT(var);
 
-		const bool use_static_segment = var->is_global;
-		VMStackPtr real_ptr           = NULL;
-		if (var->value.is_comptime) {
-			real_ptr = (VMStackPtr)&var->value.data;
-		} else {
-			real_ptr = stack_rel_to_abs_ptr(vm, var->rel_stack_ptr, use_static_segment);
-		}
-
+		VMStackPtr real_ptr = stack_read_var(vm, var);
 		stack_push(vm, &real_ptr, ref->base.value.type);
 		break;
 	}
@@ -1830,15 +1841,7 @@ interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref)
 	MirVar *var = ((MirInstrDeclVar *)ref->ref)->var;
 	BL_ASSERT(var);
 
-	const bool use_static_segment = var->is_global;
-	VMStackPtr real_ptr           = NULL;
-
-	if (var->value.is_comptime) {
-		real_ptr = (VMStackPtr)&var->value.data;
-	} else {
-		real_ptr = stack_rel_to_abs_ptr(vm, var->rel_stack_ptr, use_static_segment);
-	}
-
+	VMStackPtr real_ptr = stack_read_var(vm, var);
 	stack_push(vm, &real_ptr, ref->base.value.type);
 }
 
@@ -1850,8 +1853,7 @@ interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 	const bool will_push = tmp_ptr == NULL;
 	if (will_push) {
 		BL_ASSERT(cmp->tmp_var && "Missing temp variable for compound.");
-		tmp_ptr =
-		    stack_rel_to_abs_ptr(vm, cmp->tmp_var->rel_stack_ptr, cmp->tmp_var->is_global);
+		tmp_ptr = stack_read_var(vm, cmp->tmp_var);
 	}
 
 	BL_ASSERT(tmp_ptr);
@@ -1903,8 +1905,7 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 	BL_ASSERT(vargs_tmp->rel_stack_ptr && "Unalocated vargs slice!!!");
 	BL_ASSERT(values);
 
-	VMStackPtr arr_tmp_ptr =
-	    arr_tmp ? stack_rel_to_abs_ptr(vm, arr_tmp->rel_stack_ptr, false) : NULL;
+	VMStackPtr arr_tmp_ptr = arr_tmp ? stack_read_var(vm, arr_tmp) : NULL;
 
 	/* Fill vargs tmp array with values from stack or constants. */
 	{
@@ -1922,8 +1923,7 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 
 	/* Push vargs slice on the stack. */
 	{
-		VMStackPtr vargs_tmp_ptr =
-		    stack_rel_to_abs_ptr(vm, vargs_tmp->rel_stack_ptr, false);
+		VMStackPtr vargs_tmp_ptr = stack_read_var(vm, vargs_tmp);
 		// set len
 		VMStackPtr len_ptr =
 		    vargs_tmp_ptr + vm_get_struct_elem_offest(
@@ -1951,15 +1951,9 @@ interp_instr_decl_var(VM *vm, MirInstrDeclVar *decl)
 
 	if (var->is_global || var->value.is_comptime) return;
 
-	const bool use_static_segment = false;
-
-	BL_ASSERT(var->rel_stack_ptr);
-
 	/* initialize variable if there is some init value */
 	if (decl->init) {
-		VMStackPtr var_ptr =
-		    stack_rel_to_abs_ptr(vm, var->rel_stack_ptr, use_static_segment);
-		BL_ASSERT(var_ptr);
+		VMStackPtr var_ptr = stack_read_var(vm, var);
 
 		if (!mir_is_comptime(decl->init) && decl->init->kind == MIR_INSTR_COMPOUND) {
 			/* used compound initialization!!! */
@@ -2426,8 +2420,7 @@ eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si)
 		MirType *var_type = var->value.type;
 
 		/* Gloabals always use static segment allocation!!! */
-		VMStackPtr var_ptr = stack_rel_to_abs_ptr(vm, var->rel_stack_ptr, true);
-		BL_ASSERT(var_ptr);
+		VMStackPtr var_ptr = stack_read_var(vm, var);
 
 		/* Runtime variable needs it's own memory location so we must create copy of
 		 * initializer data.*/

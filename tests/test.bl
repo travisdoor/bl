@@ -251,6 +251,7 @@ main :: fn () s32 {
     
     hello := "hello";
     any(^v_ptr);
+    //any(10);
 
     return foo(10, 20);
 }
