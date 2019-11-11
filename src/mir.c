@@ -4328,7 +4328,6 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 	const bool is_tmp_needed = expr->value.addr_mode == MIR_VAM_RVALUE && !is_type;
 
 	if (is_tmp_needed) {
-		BL_LOG("need tmp!!!");
 		/* Target expression is not allocated object on the stack, so we need to crate
 		 * temporary variable containing the value and fetch pointer to this variable. */
 		const char *tmp_var_name = gen_uq_name(IMPL_ANY_EXPR_TMP);
@@ -4348,7 +4347,6 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 
 	if (is_type) {
 		BL_ASSERT(!is_tmp_needed);
-		BL_LOG("Generate data RTTI for type.");
 
 		MirType *rtti_data = NULL;
 
@@ -4370,9 +4368,14 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 
 		BL_ASSERT(rtti_data && "Missing speficifation type for RTTI generation!");
 		toany->rtti_data = rtti_data;
+
+		rtti_gen(cnt, rtti_data);
 	}
 
-	BL_UNIMPLEMENTED;
+	/* This is temporary vaiable used for Any data. */
+	const char *tmp_var_name = gen_uq_name(IMPL_ANY_TMP);
+	toany->tmp = create_var_impl(cnt, tmp_var_name, any_type, false, false, false);
+
 	return ANALYZE_RESULT(PASSED, 0);
 }
 

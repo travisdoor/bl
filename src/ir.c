@@ -2075,7 +2075,32 @@ emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 void
 emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 {
-	BL_UNIMPLEMENTED;
+	LLVMValueRef llvm_dest      = toany->tmp->llvm_value;
+	LLVMValueRef llvm_type_info = rtti_emit(cnt, toany->rtti_type);
+
+	BL_ASSERT(llvm_dest && llvm_type_info);
+
+	/* Setup tmp variable */
+	/* pointer to type info */
+	LLVMValueRef llvm_dest_type_info = LLVMBuildStructGEP(cnt->llvm_builder, llvm_dest, 0, "");
+	LLVMBuildStore(cnt->llvm_builder, llvm_type_info, llvm_dest_type_info);
+
+	/* data */
+	LLVMTypeRef llvm_dest_data_type =
+	    mir_get_struct_elem_type(toany->tmp->value.type, 1)->llvm_type;
+	LLVMValueRef llvm_dest_data = LLVMBuildStructGEP(cnt->llvm_builder, llvm_dest, 1, "");
+
+	if (toany->expr_tmp) {
+		BL_UNIMPLEMENTED;
+	} else if (toany->rtti_data) {
+		BL_UNIMPLEMENTED;
+	} else {
+		LLVMValueRef llvm_data = LLVMBuildPointerCast(
+		    cnt->llvm_builder, toany->expr->llvm_value, llvm_dest_data_type, "");
+		LLVMBuildStore(cnt->llvm_builder, llvm_data, llvm_dest_data);
+	}
+
+	toany->base.llvm_value = llvm_dest;
 }
 
 void

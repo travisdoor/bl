@@ -724,42 +724,22 @@ do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, 
 
 	case MIR_CAST_SEXT: {
 		/* src is smaller than dest */
-		/******************************************************************************************/
-#define SECT_CASE(T)                                                                               \
-	case sizeof(T):                                                                            \
-		VM_STACK_WRITE_AS(s64, dest, (s64)VM_STACK_READ_AS(T, src));                       \
-		break;
-		/******************************************************************************************/
-
-		switch (src_type->store_size_bytes) {
-		case 1:
-			VM_STACK_WRITE_AS(s64, dest, (s64)VM_STACK_READ_AS(s8, src));
-			break;
-
-		case 2:
-			VM_STACK_WRITE_AS(s64, dest, (s64)VM_STACK_READ_AS(s16, src));
-			break;
-
-		case 4:
-			VM_STACK_WRITE_AS(s64, dest, (s64)VM_STACK_READ_AS(s32, src));
-			break;
-		default:
-			BL_ABORT("Invalid sext cast!");
-		}
-
-#undef SECT_CASE
+		vm_write_value_type(
+		    dest_type, dest, vm_read_value_as(s64, src_type->store_size_bytes, src));
 		break;
 	}
 
 	case MIR_CAST_FPEXT: {
 		/* src is smaller than dest */
-		VM_STACK_WRITE_AS(f64, dest, (f64)VM_STACK_READ_AS(f32, src));
+		const f64 tmp = (f64)vm_read_value_as(f32, src_type->store_size_bytes, src);
+		vm_write_value_type(dest_type, dest, tmp);
 		break;
 	}
 
 	case MIR_CAST_FPTRUNC: {
 		/* src is bigger than dest */
-		VM_STACK_WRITE_AS(f32, dest, (f32)VM_STACK_READ_AS(f64, src));
+		const f32 tmp = (f32)vm_read_value_as(f64, src_type->store_size_bytes, src);
+		vm_write_value_type(dest_type, dest, tmp);
 		break;
 	}
 
@@ -1482,7 +1462,36 @@ interp_instr(VM *vm, MirInstr *instr)
 void
 interp_instr_toany(VM *vm, MirInstrToAny *toany)
 {
-	BL_UNIMPLEMENTED;
+	MirVar *dest_var  = toany->tmp;
+	MirVar *type_info = assembly_get_rtti(vm->assembly, toany->rtti_type->id.hash);
+	BL_ASSERT(type_info->value.is_comptime);
+
+	MirType *  dest_type = dest_var->value.type;
+	VMStackPtr dest = stack_rel_to_abs_ptr(vm, dest_var->rel_stack_ptr, dest_var->is_global);
+
+	/* type info */
+	MirType *  dest_type_info_type = mir_get_struct_elem_type(dest_type, 0);
+	VMStackPtr dest_type_info =
+	    vm_get_struct_elem_ptr(vm->assembly, dest_var->value.type, dest, 0);
+
+	vm_write_value_type(dest_type_info_type, dest_type_info, type_info->value.data);
+
+	/* data */
+	MirType *  dest_data_type = mir_get_struct_elem_type(dest_type, 1);
+	VMStackPtr dest_data = vm_get_struct_elem_ptr(vm->assembly, dest_var->value.type, dest, 1);
+
+	VMStackPtr data = fetch_value(vm, &toany->expr->value);
+
+	if (toany->expr_tmp) {
+		BL_UNIMPLEMENTED;
+	} else if (toany->rtti_data) {
+		BL_UNIMPLEMENTED;
+	} else {
+		BL_ASSERT(mir_is_pointer_type(dest_data_type));
+		memcpy(dest_data, data, dest_data_type->store_size_bytes);
+	}
+
+	stack_push(vm, &dest, toany->base.value.type);
 }
 
 void

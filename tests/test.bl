@@ -246,9 +246,11 @@ main :: fn () s32 {
     v := 10;
     v_ptr := &v;
     ^v_ptr = 20;
+
+    printf(format.ptr, v);
     
     hello := "hello";
-    any(main);
+    any(^v_ptr);
 
     return foo(10, 20);
 }
@@ -270,6 +272,8 @@ vargs :: fn (v: ...s32) {
 }
 
 any :: fn (v: Any) {
+    printf(format.ptr, auto v.type_info.kind);
+    printf(format.ptr, ^ cast(*s32) v.data);
 }
 
 printf :: fn (format: *u8, n: s32) s32 #extern;
