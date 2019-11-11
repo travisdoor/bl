@@ -3925,6 +3925,7 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 	MirInstr *compound =
 	    append_instr_compound_impl(cnt, node, cnt->builtin_types->t_string, values);
 	compound->value.is_comptime = true;
+	compound->value.addr_mode   = MIR_VAM_RVALUE;
 
 	return compound;
 }
@@ -4318,11 +4319,57 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 
 	BL_ASSERT(any_type && expr && expr_type);
 
-	const bool need_tmp = expr->value.addr_mode == MIR_VAM_RVALUE;
-	if (need_tmp) {
+	MirType *rtti_type = expr_type;
+	if (is_load_needed(expr)) {
+		rtti_type = mir_deref_type(rtti_type);
+	}
+
+	const bool is_type = rtti_type->kind == MIR_TYPE_TYPE || rtti_type->kind == MIR_TYPE_FN;
+	const bool is_tmp_needed = expr->value.addr_mode == MIR_VAM_RVALUE && !is_type;
+
+	if (is_tmp_needed) {
 		BL_LOG("need tmp!!!");
-	} else {
-		BL_LOG("no need tmp!!!");
+		/* Target expression is not allocated object on the stack, so we need to crate
+		 * temporary variable containing the value and fetch pointer to this variable. */
+		const char *tmp_var_name = gen_uq_name(IMPL_ANY_EXPR_TMP);
+		toany->expr_tmp =
+		    create_var_impl(cnt, tmp_var_name, rtti_type, false, false, false);
+	}
+
+	{
+		char type_name[256];
+		mir_type_to_str(type_name, 256, rtti_type, true);
+		BL_LOG("generate RTTI for type: %s", type_name);
+	}
+
+	/* Generate RTTI for expression's type. */
+	toany->rtti_type = rtti_type;
+	rtti_gen(cnt, rtti_type);
+
+	if (is_type) {
+		BL_ASSERT(!is_tmp_needed);
+		BL_LOG("Generate data RTTI for type.");
+
+		MirType *rtti_data = NULL;
+
+		switch (rtti_type->kind) {
+		case MIR_TYPE_FN: {
+			MirFn *fn = MIR_CEV_READ_AS(MirFn *, &expr->value);
+			rtti_data = fn->type;
+			break;
+		}
+
+		case MIR_TYPE_TYPE: {
+			rtti_data = MIR_CEV_READ_AS(MirType *, &expr->value);
+			break;
+		}
+
+		default:
+			BL_ABORT("Invalid expression type!");
+		}
+
+		BL_ASSERT(rtti_data && "Missing speficifation type for RTTI generation!");
+		toany->rtti_data = rtti_data;
 	}
 
 	BL_UNIMPLEMENTED;
@@ -4969,7 +5016,7 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 
 	addrof->base.value.type        = type;
 	addrof->base.value.is_comptime = addrof->src->value.is_comptime;
-	addrof->base.value.addr_mode   = MIR_VAM_LVALUE_CONST;
+	addrof->base.value.addr_mode   = MIR_VAM_RVALUE;
 	BL_ASSERT(addrof->base.value.type && "invalid type");
 
 	return ANALYZE_RESULT(PASSED, 0);

@@ -2075,56 +2075,7 @@ emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 void
 emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 {
-	LLVMValueRef llvm_tmp = toany->tmp->llvm_value;
-	LLVMValueRef llvm_type_info =
-	    assembly_get_rtti(cnt->assembly, toany->rtti_type->id.hash)->llvm_value;
-	LLVMValueRef llvm_data = toany->expr->llvm_value;
-
-	BL_ASSERT(llvm_type_info && "Missing LLVM value for RTTI variable.");
-	BL_ASSERT(llvm_tmp);
-
-	MirType *   any_type                = mir_deref_type(toany->base.value.type);
-	LLVMTypeRef llvm_any_type_info_type = mir_get_struct_elem_type(any_type, 0)->llvm_type;
-	LLVMTypeRef llvm_any_data_type      = mir_get_struct_elem_type(any_type, 1)->llvm_type;
-
-	/* use tmp for expression */
-	if (toany->expr_tmp) {
-		MirVar *expr_tmp = toany->expr_tmp;
-		BL_ASSERT(expr_tmp->llvm_value && "Missing tmp variable");
-
-		BL_UNIMPLEMENTED;
-		// llvm_data = emit_as_const(cnt, &toany->expr->value);
-		LLVMBuildStore(cnt->llvm_builder, llvm_data, expr_tmp->llvm_value);
-		llvm_data = expr_tmp->llvm_value;
-	} else if (toany->rtti_type_specification) {
-		llvm_data =
-		    assembly_get_rtti(cnt->assembly, toany->rtti_type_specification->id.hash)
-		        ->llvm_value;
-	}
-
-	{ /* setup tmp variable */
-		LLVMValueRef llvm_dest;
-
-		/* pointer to type info */
-		llvm_dest = LLVMBuildStructGEP(cnt->llvm_builder, llvm_tmp, 0, "");
-
-		llvm_type_info = LLVMBuildPointerCast(
-		    cnt->llvm_builder, llvm_type_info, llvm_any_type_info_type, "");
-
-		LLVMBuildStore(cnt->llvm_builder, llvm_type_info, llvm_dest);
-
-		/* pointer to data */
-		llvm_dest = LLVMBuildStructGEP(cnt->llvm_builder, llvm_tmp, 1, "");
-
-		llvm_data =
-		    llvm_data
-		        ? LLVMBuildPointerCast(cnt->llvm_builder, llvm_data, llvm_any_data_type, "")
-		        : LLVMConstNull(llvm_any_data_type);
-
-		LLVMBuildStore(cnt->llvm_builder, llvm_data, llvm_dest);
-	}
-
-	toany->base.llvm_value = llvm_tmp;
+	BL_UNIMPLEMENTED;
 }
 
 void

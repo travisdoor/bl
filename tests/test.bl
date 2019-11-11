@@ -247,7 +247,8 @@ main :: fn () s32 {
     v_ptr := &v;
     ^v_ptr = 20;
     
-    any(v);
+    hello := "hello";
+    any(main);
 
     return foo(10, 20);
 }
