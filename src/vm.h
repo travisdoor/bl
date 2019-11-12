@@ -119,6 +119,12 @@ vm_read_var(VM *vm, struct MirVar *var);
 #define vm_write_value_type(type, dest, src)                                                       \
 	(_vm_write_value((type)->store_size_bytes, (dest), (VMStackPtr) & (src)))
 
+u64
+vm_read_int(struct MirType *type, VMStackPtr src);
+
+f64
+vm_read_real(struct MirType *type, VMStackPtr src);
+
 void
 vm_write_int(struct MirType *type, VMStackPtr dest, u64 i);
 

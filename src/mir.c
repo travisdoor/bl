@@ -4285,6 +4285,7 @@ evaluate(Context *cnt, MirInstr *instr)
 	BL_ASSERT(instr->analyzed && "Non-analyzed instruction cannot be evaluated!");
 	if (!instr->value.is_comptime) return;
 
+	// if (instr->kind == MIR_INSTR_CAST && ((MirInstrCast*)instr)->auto_cast)
 	vm_eval_instr(cnt->vm, cnt->assembly, instr);
 
 	if (can_mutate_comptime_to_const(instr)) {
@@ -4321,10 +4322,17 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 
 	BL_ASSERT(any_type && expr && expr_type);
 
-	MirType *rtti_type = expr_type;
-	if (is_load_needed(expr)) {
-		rtti_type = mir_deref_type(rtti_type);
+	ID *missing_rtti_type_id = lookup_builtins_rtti(cnt);
+	if (missing_rtti_type_id) {
+		return ANALYZE_RESULT(WAITING, missing_rtti_type_id->hash);
 	}
+
+	MirType *  rtti_type       = expr_type;
+	const bool is_deref_needed = is_load_needed(expr);
+	if (is_deref_needed) rtti_type = mir_deref_type(rtti_type);
+
+	const bool is_type = rtti_type->kind == MIR_TYPE_TYPE || rtti_type->kind == MIR_TYPE_FN;
+	const bool is_tmp_needed = expr->value.addr_mode == MIR_VAM_RVALUE && !is_type;
 
 	if (rtti_type->kind == MIR_TYPE_VOID) {
 		builder_msg(BUILDER_MSG_ERROR,
@@ -4334,9 +4342,6 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 		            "Expression yields 'void' value.");
 		return ANALYZE_RESULT(FAILED, 0);
 	}
-
-	const bool is_type = rtti_type->kind == MIR_TYPE_TYPE || rtti_type->kind == MIR_TYPE_FN;
-	const bool is_tmp_needed = expr->value.addr_mode == MIR_VAM_RVALUE && !is_type;
 
 	if (is_tmp_needed && expr_type->store_size_bytes > 0) {
 		/* Target expression is not allocated object on the stack, so we need to crate
@@ -4351,19 +4356,27 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 	rtti_gen(cnt, rtti_type);
 
 	if (is_type) {
+		BL_ASSERT(mir_is_comptime(expr));
 		BL_ASSERT(!is_tmp_needed);
+
+		VMStackPtr expr_data = NULL;
+		if (is_deref_needed) {
+			expr_data = *MIR_CEV_READ_AS(VMStackPtr *, &expr->value);
+		} else {
+			expr_data = MIR_CEV_READ_AS(VMStackPtr, &expr->value);
+		}
 
 		MirType *rtti_data = NULL;
 
 		switch (rtti_type->kind) {
 		case MIR_TYPE_FN: {
-			MirFn *fn = MIR_CEV_READ_AS(MirFn *, &expr->value);
+			MirFn *fn = (MirFn *)expr_data;
 			rtti_data = fn->type;
 			break;
 		}
 
 		case MIR_TYPE_TYPE: {
-			rtti_data = MIR_CEV_READ_AS(MirType *, &expr->value);
+			rtti_data = (MirType *)expr_data;
 			break;
 		}
 
@@ -4375,6 +4388,7 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 		toany->rtti_data = rtti_data;
 
 		rtti_gen(cnt, rtti_data);
+		erase_instr_tree(expr, false, true);
 	}
 
 	/* This is temporary vaiable used for Any data. */
@@ -4848,6 +4862,9 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 
 			MirInstr *index =
 			    create_instr_const_int(cnt, NULL, cnt->builtin_types->t_s64, 0);
+
+			insert_instr_before(&member_ptr->base, index);
+
 			MirInstr *elem_ptr = create_instr_elem_ptr(cnt, NULL, target_ptr, index);
 			ref_instr(elem_ptr);
 

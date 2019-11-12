@@ -142,7 +142,6 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
             cur = print_string(buf, cur, "-");
             real = -real;
         }
-
         return print_f64(buf, cur, real);
     } else if any.type_info.kind == TypeKind.String {
         str := ^ cast(*string) any.data;
@@ -381,7 +380,10 @@ print_string :: fn (buf: []u8, cur: s32, str: string) s32 {
 };
 
 print_char :: fn (buf: []u8, cur: s32, c: u8) s32 {
-    if cur >= buf.len { return 0; }
+    if cur >= buf.len {
+        return cur;
+    }
+
     buf[cur] = c;
     return cur + 1;
 };
@@ -439,6 +441,10 @@ print_u64 :: fn (buf: []u8, cur: s32, v: u64) s32 {
 print_f64 :: fn (buf: []u8, cur: s32, v: f64) s32 {
     precision :: 0.000001;
     m := cast(s32) log10(v);
+
+    a :: "%d\n";
+    printf(a.ptr, m);
+    return 0;
 
     if m < 0 { m = 0; }
 

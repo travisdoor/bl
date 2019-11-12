@@ -32,7 +32,7 @@
 #include "mir.h"
 
 #if BL_DEBUG
-#define PRINT_ANALYZED_COMPTIMES false
+#define PRINT_ANALYZED_COMPTIMES true
 #else
 #define PRINT_ANALYZED_COMPTIMES false
 #endif

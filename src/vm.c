@@ -131,7 +131,12 @@ TSMALL_ARRAY_TYPE(ConstExprValue, MirConstExprValue, 32);
 /* fwd decls */
 /*************/
 static void
-calculate_binop(VMStackPtr dest, VMStackPtr lhs, VMStackPtr rhs, BinopKind op, MirType *type);
+calculate_binop(MirType *  dest_type,
+                MirType *  src_type,
+                VMStackPtr dest,
+                VMStackPtr lhs,
+                VMStackPtr rhs,
+                BinopKind  op);
 
 static void
 calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, MirType *type);
@@ -506,137 +511,117 @@ stack_alloc_local_vars(VM *vm, MirFn *fn)
 /* impl */
 /********/
 void
-calculate_binop(VMStackPtr dest, VMStackPtr lhs, VMStackPtr rhs, BinopKind op, MirType *type)
+calculate_binop(MirType *  dest_type,
+                MirType *  src_type,
+                VMStackPtr dest,
+                VMStackPtr lhs,
+                VMStackPtr rhs,
+                BinopKind  op)
 {
-	/******************************************************************************************/
-#define _BINOP_INT(T)                                                                              \
-	case BINOP_ADD:                                                                            \
-		VM_STACK_WRITE_AS(T, dest, VM_STACK_READ_AS(T, lhs) + VM_STACK_READ_AS(T, rhs));   \
-		break;                                                                             \
-	case BINOP_SUB:                                                                            \
-		VM_STACK_WRITE_AS(T, dest, VM_STACK_READ_AS(T, lhs) - VM_STACK_READ_AS(T, rhs));   \
-		break;                                                                             \
-	case BINOP_MUL:                                                                            \
-		VM_STACK_WRITE_AS(T, dest, VM_STACK_READ_AS(T, lhs) * VM_STACK_READ_AS(T, rhs));   \
-		break;                                                                             \
-	case BINOP_DIV:                                                                            \
-		VM_STACK_WRITE_AS(T, dest, VM_STACK_READ_AS(T, lhs) / VM_STACK_READ_AS(T, rhs));   \
-		break;                                                                             \
-	case BINOP_EQ:                                                                             \
-		VM_STACK_WRITE_AS(                                                                 \
-		    bool, dest, VM_STACK_READ_AS(T, lhs) == VM_STACK_READ_AS(T, rhs));             \
-		break;                                                                             \
-	case BINOP_NEQ:                                                                            \
-		VM_STACK_WRITE_AS(                                                                 \
-		    bool, dest, VM_STACK_READ_AS(T, lhs) != VM_STACK_READ_AS(T, rhs));             \
-		break;                                                                             \
-	case BINOP_LESS:                                                                           \
-		VM_STACK_WRITE_AS(                                                                 \
-		    bool, dest, VM_STACK_READ_AS(T, lhs) < VM_STACK_READ_AS(T, rhs));              \
-		break;                                                                             \
-	case BINOP_LESS_EQ:                                                                        \
-		VM_STACK_WRITE_AS(                                                                 \
-		    bool, dest, VM_STACK_READ_AS(T, lhs) <= VM_STACK_READ_AS(T, rhs));             \
-		break;                                                                             \
-	case BINOP_GREATER:                                                                        \
-		VM_STACK_WRITE_AS(                                                                 \
-		    bool, dest, VM_STACK_READ_AS(T, lhs) > VM_STACK_READ_AS(T, rhs));              \
-		break;                                                                             \
-	case BINOP_GREATER_EQ:                                                                     \
-		VM_STACK_WRITE_AS(                                                                 \
-		    bool, dest, VM_STACK_READ_AS(T, lhs) >= VM_STACK_READ_AS(T, rhs));             \
-		break;
-	/******************************************************************************************/
+	const bool is_real = src_type->kind == MIR_TYPE_REAL;
 
-	/******************************************************************************************/
-#define BINOP_CASE_INT(T)                                                                          \
-	case sizeof(T): {                                                                          \
-		switch (op) {                                                                      \
-			_BINOP_INT(T);                                                             \
-		case BINOP_SHR:                                                                    \
-			VM_STACK_WRITE_AS(                                                         \
-			    T, dest, VM_STACK_READ_AS(T, lhs) >> VM_STACK_READ_AS(T, rhs));        \
-			break;                                                                     \
-		case BINOP_SHL:                                                                    \
-			VM_STACK_WRITE_AS(                                                         \
-			    T, dest, VM_STACK_READ_AS(T, lhs) << VM_STACK_READ_AS(T, rhs));        \
-			break;                                                                     \
-		case BINOP_MOD:                                                                    \
-			VM_STACK_WRITE_AS(                                                         \
-			    T, dest, VM_STACK_READ_AS(T, lhs) % VM_STACK_READ_AS(T, rhs));         \
-			break;                                                                     \
-		case BINOP_AND:                                                                    \
-			VM_STACK_WRITE_AS(                                                         \
-			    T, dest, VM_STACK_READ_AS(T, lhs) & VM_STACK_READ_AS(T, rhs));         \
-			break;                                                                     \
-		case BINOP_OR:                                                                     \
-			VM_STACK_WRITE_AS(                                                         \
-			    T, dest, VM_STACK_READ_AS(T, lhs) | VM_STACK_READ_AS(T, rhs));         \
-			break;                                                                     \
-		default:                                                                           \
-			BL_UNIMPLEMENTED;                                                          \
-		}                                                                                  \
-	} break;
-	/******************************************************************************************/
+	if (is_real) {
+		double l = vm_read_real(src_type, lhs);
+		double r = vm_read_real(src_type, rhs);
+		double a = 0;
 
-	/******************************************************************************************/
-#define BINOP_CASE_REAL(T)                                                                         \
-	case sizeof(T): {                                                                          \
-		switch (op) {                                                                      \
-			_BINOP_INT(T);                                                             \
-		default:                                                                           \
-			BL_UNIMPLEMENTED;                                                          \
-		}                                                                                  \
-	} break;
-	/******************************************************************************************/
-
-	const usize s = type->store_size_bytes;
-
-	switch (type->kind) {
-	case MIR_TYPE_ENUM:
-	case MIR_TYPE_PTR:
-	case MIR_TYPE_NULL:
-	case MIR_TYPE_BOOL:
-	case MIR_TYPE_INT: {
-		if (type->data.integer.is_signed) {
-			switch (s) {
-				BINOP_CASE_INT(s8);
-				BINOP_CASE_INT(s16);
-				BINOP_CASE_INT(s32);
-				BINOP_CASE_INT(s64);
-			default:
-				BL_ABORT("invalid integer data type");
-			}
-		} else {
-			switch (s) {
-				BINOP_CASE_INT(u8);
-				BINOP_CASE_INT(u16);
-				BINOP_CASE_INT(u32);
-				BINOP_CASE_INT(u64);
-			default:
-				BL_ABORT("invalid integer data type");
-			}
-		}
-		break;
-	}
-
-	case MIR_TYPE_REAL: {
-		switch (s) {
-			BINOP_CASE_REAL(f32);
-			BINOP_CASE_REAL(f64);
+		switch (op) {
+		case BINOP_ADD:
+			a = l + r;
+			break;
+		case BINOP_SUB:
+			a = l - r;
+			break;
+		case BINOP_MUL:
+			a = l * r;
+			break;
+		case BINOP_DIV:
+			if (r == 0) BL_ABORT("Divide by zero, this should be an error!");
+			a = l / r;
+			break;
+		case BINOP_EQ:
+			a = l == r;
+			break;
+		case BINOP_NEQ:
+			a = l != r;
+			break;
+		case BINOP_LESS:
+			a = l < r;
+			break;
+		case BINOP_GREATER:
+			a = l > r;
+			break;
+		case BINOP_LESS_EQ:
+			a = l <= r;
+			break;
+		case BINOP_GREATER_EQ:
+			a = l >= r;
+			break;
 		default:
-			BL_ABORT("invalid real data type");
+			BL_ABORT("Invalid binary operation!");
 		}
-		break;
-	}
 
-	default:
-		BL_ABORT("invalid binop type");
-	}
+		vm_write_real(dest_type, dest, a);
+	} else {
+		u64 l = vm_read_int(src_type, lhs);
+		u64 r = vm_read_int(src_type, rhs);
+		u64 a = 0;
 
-#undef BINOP_CASE_INT
-#undef BINOP_CASE_REAL
-#undef _BINOP_INT
+		switch (op) {
+		case BINOP_ADD:
+			a = l + r;
+			break;
+		case BINOP_SUB:
+			a = l - r;
+			break;
+		case BINOP_MUL:
+			a = l * r;
+			break;
+		case BINOP_DIV:
+			if (r == 0) BL_ABORT("Divide by zero, this should be an error!");
+			a = l / r;
+			break;
+		case BINOP_EQ:
+			a = l == r;
+			break;
+		case BINOP_NEQ:
+			a = l != r;
+			break;
+		case BINOP_LESS:
+			a = l < r;
+			break;
+		case BINOP_GREATER:
+			a = l > r;
+			break;
+		case BINOP_LESS_EQ:
+			a = l <= r;
+			break;
+		case BINOP_GREATER_EQ:
+			a = l >= r;
+			break;
+		case BINOP_AND:
+			a = l & r;
+			break;
+		case BINOP_OR:
+			a = l | r;
+			break;
+		case BINOP_SHL:
+			/* INCOMPLETE: shift overflow  */
+			a = l << r;
+			break;
+		case BINOP_SHR:
+			/* INCOMPLETE: shift overflow  */
+			a = l >> r;
+			break;
+		case BINOP_MOD:
+			a = l % r;
+			break;
+		default:
+			BL_ABORT("Invalid binary operation!");
+		}
+
+		vm_write_int(dest_type, dest, a);
+	}
 }
 
 void
@@ -719,7 +704,8 @@ do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, 
 	case MIR_CAST_BITCAST:
 	case MIR_CAST_ZEXT:
 	case MIR_CAST_TRUNC:
-		memcpy(dest, src, PTR_SIZE);
+		memset(dest, 0, dest_type->store_size_bytes);
+		memcpy(dest, src, src_type->store_size_bytes);
 		break;
 
 	case MIR_CAST_SEXT: {
@@ -1721,9 +1707,10 @@ interp_instr_cast(VM *vm, MirInstrCast *cast)
 	MirType *  dest_type = cast->base.value.type;
 	MirType *  src_type  = cast->expr->value.type;
 	VMStackPtr src_ptr   = fetch_value(vm, &cast->expr->value);
-	VMStackPtr dest_ptr  = stack_push_empty(vm, dest_type);
 
-	do_cast(dest_ptr, src_ptr, dest_type, src_type, cast->op);
+	u64 tmp = 0;
+	do_cast((VMStackPtr)&tmp, src_ptr, dest_type, src_type, cast->op);
+	stack_push(vm, &tmp, dest_type);
 }
 
 void
@@ -2104,17 +2091,17 @@ interp_instr_binop(VM *vm, MirInstrBinop *binop)
 {
 	/* binop expects lhs and rhs on stack in exact order and push result again
 	 * to the stack */
-	MirType *type = binop->base.value.type;
-	BL_ASSERT(type);
 
 	VMStackPtr lhs_ptr = fetch_value(vm, &binop->lhs->value);
 	VMStackPtr rhs_ptr = fetch_value(vm, &binop->rhs->value);
 	BL_ASSERT(rhs_ptr && lhs_ptr);
 
-	u64 result = 0;
-	calculate_binop((VMStackPtr)&result, lhs_ptr, rhs_ptr, binop->op, type);
+	MirType *dest_type = binop->base.value.type;
+	MirType *src_type  = binop->lhs->value.type;
 
-	stack_push(vm, &result, type);
+	u64 tmp;
+	calculate_binop(dest_type, src_type, (VMStackPtr)&tmp, lhs_ptr, rhs_ptr, binop->op);
+	stack_push(vm, &tmp, dest_type);
 }
 
 void
@@ -2438,13 +2425,14 @@ eval_instr_binop(VM *vm, MirInstrBinop *binop)
 {
 	BL_ASSERT(binop->lhs->value.is_comptime && binop->rhs->value.is_comptime);
 
-	MirType *type = binop->base.value.type;
+	VMStackPtr lhs_ptr  = binop->lhs->value.data;
+	VMStackPtr rhs_ptr  = binop->rhs->value.data;
+	VMStackPtr dest_ptr = binop->base.value.data;
 
-	VMStackPtr lhs_data  = binop->lhs->value.data;
-	VMStackPtr rhs_data  = binop->rhs->value.data;
-	VMStackPtr dest_data = binop->base.value.data;
+	MirType *dest_type = binop->base.value.type;
+	MirType *src_type  = binop->lhs->value.type;
 
-	calculate_binop(dest_data, lhs_data, rhs_data, binop->op, type);
+	calculate_binop(dest_type, src_type, dest_ptr, lhs_ptr, rhs_ptr, binop->op);
 }
 
 void
@@ -2605,6 +2593,24 @@ vm_read_var(VM *vm, MirVar *var)
 
 	BL_ASSERT(ptr && "Attept to get allocation pointer of unallocated variable!");
 	return ptr;
+}
+
+u64
+vm_read_int(struct MirType *type, VMStackPtr src)
+{
+	BL_ASSERT(src && "Attempt to read null source!");
+	u64 result = 0;
+	memcpy(&result, src, type->store_size_bytes);
+	return result;
+}
+
+f64
+vm_read_real(struct MirType *type, VMStackPtr src)
+{
+	BL_ASSERT(src && "Attempt to read null source!");
+	f64 result = 0;
+	memcpy(&result, src, type->store_size_bytes);
+	return result;
 }
 
 void
