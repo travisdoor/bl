@@ -2086,11 +2086,15 @@ emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 	LLVMBuildStore(cnt->llvm_builder, llvm_type_info, llvm_dest_type_info);
 
 	/* data */
+	const bool  has_data = toany->expr->value.type->kind != MIR_TYPE_VOID;
 	LLVMTypeRef llvm_dest_data_type =
 	    mir_get_struct_elem_type(toany->tmp->value.type, 1)->llvm_type;
 	LLVMValueRef llvm_dest_data = LLVMBuildStructGEP(cnt->llvm_builder, llvm_dest, 1, "");
 
-	if (toany->expr_tmp) {
+	if (!has_data) {
+		LLVMValueRef llvm_data = LLVMConstNull(llvm_dest_data_type);
+		LLVMBuildStore(cnt->llvm_builder, llvm_data, llvm_dest_data);
+	} else if (toany->expr_tmp) {
 		LLVMValueRef llvm_dest_tmp = toany->expr_tmp->llvm_value;
 		BL_ASSERT(llvm_dest_tmp && "Missing tmp variable!");
 

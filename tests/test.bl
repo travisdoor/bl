@@ -267,12 +267,15 @@ main :: fn () s32 {
     
     hello := "hello";
     // test conversion to Any
+    /*
     any(^v_ptr);
     any(10);
     any(v + 30);
     any(foo(10, 20));
     any(s32);
     any(main);
+    */
+    any(koko());
 
     return foo(10, 20);
 }
@@ -280,6 +283,8 @@ main :: fn () s32 {
 foo :: fn (i: s32, j: s32) s32 {
     return i * j;
 }
+
+koko :: fn () {}
 
 bar :: fn (v: Data1) {
     printf(format.ptr, v.a);

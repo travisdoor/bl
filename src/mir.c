@@ -4329,7 +4329,7 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 	const bool is_type = rtti_type->kind == MIR_TYPE_TYPE || rtti_type->kind == MIR_TYPE_FN;
 	const bool is_tmp_needed = expr->value.addr_mode == MIR_VAM_RVALUE && !is_type;
 
-	if (is_tmp_needed) {
+	if (is_tmp_needed && expr_type->store_size_bytes > 0) {
 		/* Target expression is not allocated object on the stack, so we need to crate
 		 * temporary variable containing the value and fetch pointer to this variable. */
 		const char *tmp_var_name = gen_uq_name(IMPL_ANY_EXPR_TMP);
