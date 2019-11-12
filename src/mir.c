@@ -3024,13 +3024,15 @@ get_cast_op(MirType *from, MirType *to)
 {
 	BL_ASSERT(from);
 	BL_ASSERT(to);
-	const usize fsize = from->size_bits;
-	const usize tsize = to->size_bits;
+	const usize fsize = from->store_size_bytes;
+	const usize tsize = to->store_size_bytes;
 
 	if (type_cmp(from, to)) return MIR_CAST_NONE;
 
 	switch (from->kind) {
 	case MIR_TYPE_ENUM:
+		/* from enum */
+		from = from->data.enm.base_type;
 	case MIR_TYPE_INT: {
 		/* from integer */
 		switch (to->kind) {
@@ -4333,12 +4335,6 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 		const char *tmp_var_name = gen_uq_name(IMPL_ANY_EXPR_TMP);
 		toany->expr_tmp =
 		    create_var_impl(cnt, tmp_var_name, rtti_type, false, false, false);
-	}
-
-	{
-		char type_name[256];
-		mir_type_to_str(type_name, 256, rtti_type, true);
-		BL_LOG("generate RTTI for type: %s", type_name);
 	}
 
 	/* Generate RTTI for expression's type. */
@@ -6984,27 +6980,26 @@ rtti_gen_base(Context *cnt, VMStackPtr dest, u8 kind, usize size_bytes)
 	MirType *  dest_size_bytes_type = mir_get_struct_elem_type(rtti_type, 1);
 	VMStackPtr dest_size_bytes      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
 
-	vm_write_value_type(dest_kind_type, dest_kind, kind);
-	vm_write_value_type(dest_size_bytes_type, dest_size_bytes, size_bytes);
+	vm_write_int(dest_kind_type, dest_kind, (u64)kind);
+	vm_write_int(dest_size_bytes_type, dest_size_bytes, (u64)size_bytes);
 }
 
 MirVar *
 rtti_gen_integer(Context *cnt, MirType *type)
 {
-	MirType *rtti_type = cnt->builtin_types->t_TypeInfoInt;
-	MirVar * rtti_var  = rtti_create_and_alloc_var(cnt, rtti_type);
-	rtti_gen_base(cnt, rtti_var->value.data, type->kind, type->store_size_bytes);
+	MirType *  rtti_type = cnt->builtin_types->t_TypeInfoInt;
+	MirVar *   rtti_var  = rtti_create_and_alloc_var(cnt, rtti_type);
+	VMStackPtr dest      = vm_read_var(cnt->vm, rtti_var);
+	rtti_gen_base(cnt, dest, type->kind, type->store_size_bytes);
 
 	MirType *  dest_bit_count_type = mir_get_struct_elem_type(rtti_type, 1);
-	VMStackPtr dest_bit_count =
-	    vm_get_struct_elem_ptr(cnt->assembly, rtti_type, rtti_var->value.data, 1);
+	VMStackPtr dest_bit_count      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
 
 	MirType *  dest_is_signed_type = mir_get_struct_elem_type(rtti_type, 2);
-	VMStackPtr dest_is_signed =
-	    vm_get_struct_elem_ptr(cnt->assembly, rtti_type, rtti_var->value.data, 2);
+	VMStackPtr dest_is_signed      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 2);
 
-	vm_write_value_type(dest_bit_count_type, dest_bit_count, type->data.integer.bitcount);
-	vm_write_value_type(dest_is_signed_type, dest_is_signed, type->data.integer.is_signed);
+	vm_write_int(dest_bit_count_type, dest_bit_count, (u64)type->data.integer.bitcount);
+	vm_write_int(dest_is_signed_type, dest_is_signed, (u64)type->data.integer.is_signed);
 
 	return rtti_var;
 }
@@ -7012,31 +7007,31 @@ rtti_gen_integer(Context *cnt, MirType *type)
 MirVar *
 rtti_gen_real(Context *cnt, MirType *type)
 {
-	MirType *rtti_type = cnt->builtin_types->t_TypeInfoReal;
-	MirVar * rtti_var  = rtti_create_and_alloc_var(cnt, rtti_type);
-	rtti_gen_base(cnt, rtti_var->value.data, type->kind, type->store_size_bytes);
+	MirType *  rtti_type = cnt->builtin_types->t_TypeInfoReal;
+	MirVar *   rtti_var  = rtti_create_and_alloc_var(cnt, rtti_type);
+	VMStackPtr dest      = vm_read_var(cnt->vm, rtti_var);
+	rtti_gen_base(cnt, dest, type->kind, type->store_size_bytes);
 
 	MirType *  dest_bit_count_type = mir_get_struct_elem_type(rtti_type, 1);
-	VMStackPtr dest_bit_count =
-	    vm_get_struct_elem_ptr(cnt->assembly, rtti_type, rtti_var->value.data, 1);
+	VMStackPtr dest_bit_count      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
 
-	vm_write_value_type(dest_bit_count_type, dest_bit_count, type->data.integer.bitcount);
-
+	vm_write_int(dest_bit_count_type, dest_bit_count, (u64)type->data.real.bitcount);
 	return rtti_var;
 }
 
 MirVar *
 rtti_gen_ptr(Context *cnt, MirType *type)
 {
-	MirVar *rtti_var = rtti_create_and_alloc_var(cnt, cnt->builtin_types->t_TypeInfoPtr);
-	rtti_gen_base(cnt, rtti_var->value.data, type->kind, type->store_size_bytes);
+	MirVar *   rtti_var = rtti_create_and_alloc_var(cnt, cnt->builtin_types->t_TypeInfoPtr);
+	VMStackPtr dest     = vm_read_var(cnt->vm, rtti_var);
+	rtti_gen_base(cnt, dest, type->kind, type->store_size_bytes);
 
 	MirType *dest_pointee_type = mir_get_struct_elem_type(cnt->builtin_types->t_TypeInfoPtr, 1);
-	VMStackPtr dest_pointee    = vm_get_struct_elem_ptr(
-            cnt->assembly, cnt->builtin_types->t_TypeInfoPtr, rtti_var->value.data, 1);
+	VMStackPtr dest_pointee =
+	    vm_get_struct_elem_ptr(cnt->assembly, cnt->builtin_types->t_TypeInfoPtr, dest, 1);
 
 	MirVar *pointee = rtti_gen(cnt, type->data.ptr.expr);
-	vm_write_value_type(dest_pointee_type, dest_pointee, pointee->value.data);
+	vm_write_ptr(dest_pointee_type, dest_pointee, vm_read_var(cnt->vm, pointee));
 
 	return rtti_var;
 }
@@ -7044,30 +7039,28 @@ rtti_gen_ptr(Context *cnt, MirType *type)
 MirVar *
 rtti_gen_array(Context *cnt, MirType *type)
 {
-	MirType *rtti_type = cnt->builtin_types->t_TypeInfoArray;
-	MirVar * rtti_var  = rtti_create_and_alloc_var(cnt, rtti_type);
-	rtti_gen_base(cnt, rtti_var->value.data, type->kind, type->store_size_bytes);
+	MirType *  rtti_type = cnt->builtin_types->t_TypeInfoArray;
+	MirVar *   rtti_var  = rtti_create_and_alloc_var(cnt, rtti_type);
+	VMStackPtr dest      = vm_read_var(cnt->vm, rtti_var);
+	rtti_gen_base(cnt, dest, type->kind, type->store_size_bytes);
 
 	/* name */
-	VMStackPtr dest_name =
-	    vm_get_struct_elem_ptr(cnt->assembly, rtti_type, rtti_var->value.data, 1);
+	VMStackPtr dest_name = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
 
 	rtti_gen_string_value(cnt, dest_name, type->user_id ? type->user_id->str : type->id.str);
 
 	/* elem_type */
 	MirType *  dest_elem_type = mir_get_struct_elem_type(rtti_type, 2);
-	VMStackPtr dest_elem =
-	    vm_get_struct_elem_ptr(cnt->assembly, rtti_type, rtti_var->value.data, 2);
+	VMStackPtr dest_elem      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 2);
 
 	MirVar *elem = rtti_gen(cnt, type->data.array.elem_type);
-	vm_write_value_type(dest_elem_type, dest_elem, elem->value.data);
+	vm_write_ptr(dest_elem_type, dest_elem, vm_read_var(cnt->vm, elem));
 
 	/* len */
 	MirType *  dest_len_type = mir_get_struct_elem_type(rtti_type, 3);
-	VMStackPtr dest_len =
-	    vm_get_struct_elem_ptr(cnt->assembly, rtti_type, rtti_var->value.data, 3);
+	VMStackPtr dest_len      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 3);
 
-	vm_write_value_type(dest_len_type, dest_len, type->data.array.len);
+	vm_write_int(dest_len_type, dest_len, (u64)type->data.array.len);
 
 	return rtti_var;
 }
@@ -7075,8 +7068,9 @@ rtti_gen_array(Context *cnt, MirType *type)
 MirVar *
 rtti_gen_empty(Context *cnt, MirType *type, MirType *rtti_type)
 {
-	MirVar *rtti_var = rtti_create_and_alloc_var(cnt, rtti_type);
-	rtti_gen_base(cnt, rtti_var->value.data, type->kind, type->store_size_bytes);
+	MirVar *   rtti_var = rtti_create_and_alloc_var(cnt, rtti_type);
+	VMStackPtr dest     = vm_read_var(cnt->vm, rtti_var);
+	rtti_gen_base(cnt, dest, type->kind, type->store_size_bytes);
 	return rtti_var;
 }
 
@@ -7091,8 +7085,8 @@ rtti_gen_string_value(Context *cnt, VMStackPtr dest, const char *str)
 	VMStackPtr dest_ptr      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
 
 	const usize len = strlen(str);
-	vm_write_value_type(dest_len_type, dest_len, len);
-	vm_write_value_type(dest_ptr_type, dest_ptr, str);
+	vm_write_int(dest_len_type, dest_len, (u64)len);
+	vm_write_ptr(dest_ptr_type, dest_ptr, (VMStackPtr)str);
 }
 
 void
@@ -7105,7 +7099,7 @@ rtti_gen_enum_variant(Context *cnt, VMStackPtr dest, MirVariant *variant)
 	VMStackPtr dest_value      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
 
 	rtti_gen_string_value(cnt, dest_name, variant->id->str);
-	vm_write_value_type(dest_value_type, dest_value, MIR_CEV_READ_AS(s64, variant->value));
+	vm_write_int(dest_value_type, dest_value, MIR_CEV_READ_AS(u64, variant->value));
 }
 
 VMStackPtr
@@ -7138,34 +7132,32 @@ rtti_gen_enum_variants_slice(Context *cnt, VMStackPtr dest, TSmallArray_VariantP
 
 	VMStackPtr variants_ptr = rtti_gen_enum_variants_array(cnt, variants);
 
-	vm_write_value_type(dest_len_type, dest_len, variants->size);
-	vm_write_value_type(dest_ptr_type, dest_ptr, variants_ptr);
+	vm_write_int(dest_len_type, dest_len, (u64)variants->size);
+	vm_write_ptr(dest_ptr_type, dest_ptr, variants_ptr);
 }
 
 MirVar *
 rtti_gen_enum(Context *cnt, MirType *type)
 {
-	MirType *rtti_type = cnt->builtin_types->t_TypeInfoEnum;
-	MirVar * rtti_var  = rtti_create_and_alloc_var(cnt, rtti_type);
-	rtti_gen_base(cnt, rtti_var->value.data, type->kind, type->store_size_bytes);
+	MirType *  rtti_type = cnt->builtin_types->t_TypeInfoEnum;
+	MirVar *   rtti_var  = rtti_create_and_alloc_var(cnt, rtti_type);
+	VMStackPtr dest      = vm_read_var(cnt->vm, rtti_var);
+	rtti_gen_base(cnt, dest, type->kind, type->store_size_bytes);
 
 	/* name */
-	VMStackPtr dest_name =
-	    vm_get_struct_elem_ptr(cnt->assembly, rtti_type, rtti_var->value.data, 1);
+	VMStackPtr dest_name = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
 
 	rtti_gen_string_value(cnt, dest_name, type->user_id ? type->user_id->str : type->id.str);
 
 	/* base_type */
 	MirType *  dest_base_type_type = mir_get_struct_elem_type(rtti_type, 2);
-	VMStackPtr dest_base_type =
-	    vm_get_struct_elem_ptr(cnt->assembly, rtti_type, rtti_var->value.data, 2);
+	VMStackPtr dest_base_type      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 2);
 
 	MirVar *base_type = rtti_gen(cnt, type->data.enm.base_type);
-	vm_write_value_type(dest_base_type_type, dest_base_type, base_type->value.data);
+	vm_write_ptr(dest_base_type_type, dest_base_type, vm_read_var(cnt->vm, base_type));
 
 	/* variants */
-	VMStackPtr dest_variants =
-	    vm_get_struct_elem_ptr(cnt->assembly, rtti_type, rtti_var->value.data, 3);
+	VMStackPtr dest_variants = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 3);
 	rtti_gen_enum_variants_slice(cnt, dest_variants, type->data.enm.variants);
 
 	return rtti_var;
@@ -7184,17 +7176,17 @@ rtti_gen_struct_member(Context *cnt, VMStackPtr dest, MirMember *member)
 	MirType *  dest_base_type_type = mir_get_struct_elem_type(rtti_type, 1);
 	VMStackPtr dest_base_type      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
 	MirVar *   base_type           = rtti_gen(cnt, member->type);
-	vm_write_value_type(dest_base_type_type, dest_base_type, base_type->value.data);
+	vm_write_ptr(dest_base_type_type, dest_base_type, vm_read_var(cnt->vm, base_type));
 
 	/* offset_bytes */
 	MirType *  dest_offset_type = mir_get_struct_elem_type(rtti_type, 2);
 	VMStackPtr dest_offset      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 2);
-	vm_write_value_type(dest_offset_type, dest_offset, member->offset_bytes);
+	vm_write_int(dest_offset_type, dest_offset, (u64)member->offset_bytes);
 
 	/* index */
 	MirType *  dest_index_type = mir_get_struct_elem_type(rtti_type, 3);
 	VMStackPtr dest_index      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 3);
-	vm_write_value_type(dest_index_type, dest_index, member->index);
+	vm_write_int(dest_index_type, dest_index, (u64)member->index);
 }
 
 VMStackPtr
@@ -7227,34 +7219,32 @@ rtti_gen_struct_members_slice(Context *cnt, VMStackPtr dest, TSmallArray_MemberP
 
 	VMStackPtr members_ptr = rtti_gen_struct_members_array(cnt, members);
 
-	vm_write_value_type(dest_len_type, dest_len, members->size);
-	vm_write_value_type(dest_ptr_type, dest_ptr, members_ptr);
+	vm_write_int(dest_len_type, dest_len, (u64)members->size);
+	vm_write_ptr(dest_ptr_type, dest_ptr, members_ptr);
 }
 
 MirVar *
 rtti_gen_struct(Context *cnt, MirType *type)
 {
-	MirType *rtti_type = cnt->builtin_types->t_TypeInfoStruct;
-	MirVar * rtti_var  = rtti_create_and_alloc_var(cnt, rtti_type);
-	rtti_gen_base(cnt, rtti_var->value.data, MIR_TYPE_STRUCT, type->store_size_bytes);
+	MirType *  rtti_type = cnt->builtin_types->t_TypeInfoStruct;
+	MirVar *   rtti_var  = rtti_create_and_alloc_var(cnt, rtti_type);
+	VMStackPtr dest      = vm_read_var(cnt->vm, rtti_var);
+	rtti_gen_base(cnt, dest, MIR_TYPE_STRUCT, type->store_size_bytes);
 
 	/* name */
-	VMStackPtr dest_name =
-	    vm_get_struct_elem_ptr(cnt->assembly, rtti_type, rtti_var->value.data, 1);
+	VMStackPtr dest_name = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
 
 	rtti_gen_string_value(cnt, dest_name, type->user_id ? type->user_id->str : type->id.str);
 
 	/* members */
-	VMStackPtr dest_members =
-	    vm_get_struct_elem_ptr(cnt->assembly, rtti_type, rtti_var->value.data, 2);
+	VMStackPtr dest_members = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 2);
 	rtti_gen_struct_members_slice(cnt, dest_members, type->data.strct.members);
 
 	/* is_slice */
 	MirType *  dest_is_slice_type = mir_get_struct_elem_type(rtti_type, 3);
-	VMStackPtr dest_is_slice =
-	    vm_get_struct_elem_ptr(cnt->assembly, rtti_type, rtti_var->value.data, 3);
+	VMStackPtr dest_is_slice      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 3);
 	const bool is_slice = type->kind == MIR_TYPE_SLICE || type->kind == MIR_TYPE_VARGS;
-	vm_write_value_type(dest_is_slice_type, dest_is_slice, is_slice);
+	vm_write_int(dest_is_slice_type, dest_is_slice, (u64)is_slice);
 
 	return rtti_var;
 }
@@ -7272,7 +7262,7 @@ rtti_gen_fn_arg(Context *cnt, VMStackPtr dest, MirArg *arg)
 	MirType *  dest_base_type_type = mir_get_struct_elem_type(rtti_type, 1);
 	VMStackPtr dest_base_type      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
 	MirVar *   base_type           = rtti_gen(cnt, arg->type);
-	vm_write_value_type(dest_base_type_type, dest_base_type, base_type->value.data);
+	vm_write_ptr(dest_base_type_type, dest_base_type, base_type->value.data);
 }
 
 VMStackPtr
@@ -7307,40 +7297,37 @@ rtti_gen_fn_args_slice(Context *cnt, VMStackPtr dest, TSmallArray_ArgPtr *args)
 	VMStackPtr  args_ptr = NULL;
 	if (argc) args_ptr = rtti_gen_fn_args_array(cnt, args);
 
-	vm_write_value_type(dest_len_type, dest_len, argc);
-	vm_write_value_type(dest_ptr_type, dest_ptr, args_ptr);
+	vm_write_int(dest_len_type, dest_len, (u64)argc);
+	vm_write_ptr(dest_ptr_type, dest_ptr, args_ptr);
 }
 
 MirVar *
 rtti_gen_fn(Context *cnt, MirType *type)
 {
-	MirType *rtti_type = cnt->builtin_types->t_TypeInfoFn;
-	MirVar * rtti_var  = rtti_create_and_alloc_var(cnt, rtti_type);
-	rtti_gen_base(cnt, rtti_var->value.data, type->kind, type->store_size_bytes);
+	MirType *  rtti_type = cnt->builtin_types->t_TypeInfoFn;
+	MirVar *   rtti_var  = rtti_create_and_alloc_var(cnt, rtti_type);
+	VMStackPtr dest      = vm_read_var(cnt->vm, rtti_var);
+	rtti_gen_base(cnt, dest, type->kind, type->store_size_bytes);
 
 	/* name */
-	VMStackPtr dest_name =
-	    vm_get_struct_elem_ptr(cnt->assembly, rtti_type, rtti_var->value.data, 1);
+	VMStackPtr dest_name = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
 
 	rtti_gen_string_value(cnt, dest_name, type->user_id ? type->user_id->str : type->id.str);
 
 	/* args */
-	VMStackPtr dest_args =
-	    vm_get_struct_elem_ptr(cnt->assembly, rtti_type, rtti_var->value.data, 2);
+	VMStackPtr dest_args = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 2);
 	rtti_gen_fn_args_slice(cnt, dest_args, type->data.fn.args);
 
 	/* ret_type */
 	MirType *  dest_ret_type_type = mir_get_struct_elem_type(rtti_type, 3);
-	VMStackPtr dest_ret_type =
-	    vm_get_struct_elem_ptr(cnt->assembly, rtti_type, rtti_var->value.data, 3);
-	MirVar *ret_type = rtti_gen(cnt, type->data.fn.ret_type);
-	vm_write_value_type(dest_ret_type_type, dest_ret_type, ret_type->value.data);
+	VMStackPtr dest_ret_type      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 3);
+	MirVar *   ret_type           = rtti_gen(cnt, type->data.fn.ret_type);
+	vm_write_ptr(dest_ret_type_type, dest_ret_type, ret_type->value.data);
 
 	/* is_vargs */
 	MirType *  dest_is_vargs_type = mir_get_struct_elem_type(rtti_type, 4);
-	VMStackPtr dest_is_vargs =
-	    vm_get_struct_elem_ptr(cnt->assembly, rtti_type, rtti_var->value.data, 4);
-	vm_write_value_type(dest_is_vargs_type, dest_is_vargs, type->data.fn.is_vargs);
+	VMStackPtr dest_is_vargs      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 4);
+	vm_write_int(dest_is_vargs_type, dest_is_vargs, (u64)type->data.fn.is_vargs);
 
 	return rtti_var;
 }

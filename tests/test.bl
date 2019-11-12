@@ -166,6 +166,8 @@ main :: fn () s32 {
     }
 
     { // enum
+        t :: "type info enum:\n";
+        printf(t.ptr, 0);
         info :: cast(*TypeInfoEnum) typeinfo(Days);
 
         printf(format.ptr, cast(s32) info.kind);
@@ -179,32 +181,44 @@ main :: fn () s32 {
     }
 
     { // bool
+        t :: "type info bool:\n";
+        printf(t.ptr, 0);
         info :: typeinfo(bool);
         printf(format.ptr, cast(s32) info.kind);
     }
 
     { // real
+        t :: "type info real:\n";
+        printf(t.ptr, 0);
         info :: typeinfo(f32);
         printf(format.ptr, cast(s32) info.kind);
     }
 
     { // ptr
+        t :: "type info ptr:\n";
+        printf(t.ptr, 0);
         info :: cast(*TypeInfoPtr) typeinfo(*u32);
         printf(format.ptr, cast(s32) info.kind);
         printf(format.ptr, cast(s32) info.pointee_type.kind);
     }
 
     { // null
+        t :: "type info null:\n";
+        printf(t.ptr, 0);
         info :: typeinfo(null);
         printf(format.ptr, cast(s32) info.kind);
     }
 
     { // string
+        t :: "type info string:\n";
+        printf(t.ptr, 0);
         info :: typeinfo("hello");
         printf(format.ptr, cast(s32) info.kind);
     }
 
     { // arr
+        t :: "type info arr:\n";
+        printf(t.ptr, 0);
         info :: cast(*TypeInfoArray) typeinfo([10]s32);
         printf(format.ptr, cast(s32) info.kind);
         printf(info.name.ptr, 0);
@@ -213,6 +227,8 @@ main :: fn () s32 {
     }
 
     { // struct
+        t :: "type info struct:\n";
+        printf(t.ptr, 0);
         MyType :: struct { first: s32; second: bool; };
         info :: cast(*TypeInfoStruct) typeinfo(MyType);
         printf(format.ptr, cast(s32) info.kind);
@@ -255,6 +271,8 @@ main :: fn () s32 {
     any(10);
     any(v + 30);
     any(foo(10, 20));
+    any(s32);
+    any(main);
 
     return foo(10, 20);
 }
@@ -278,8 +296,34 @@ vargs :: fn (v: ...s32) {
 any :: fn (v: Any) {
     tmp :: "Any info: \n";
     printf(tmp.ptr, 0);
-    printf(format.ptr, auto v.type_info.kind);
-    printf(format.ptr, ^ cast(*s32) v.data);
+
+    switch v.type_info.kind {
+        TypeKind.Int {
+            tmp2 :: "Int\n";
+            printf(tmp2.ptr, 0);
+            printf(format.ptr, auto v.type_info.kind);
+            printf(format.ptr, ^ cast(*s32) v.data);
+        };
+
+        TypeKind.Type {
+            tmp2 :: "Type\n";
+            printf(tmp2.ptr, 0);
+            printf(format.ptr, auto v.type_info.kind);
+            printf(format.ptr, auto (cast(*TypeInfo) v.data).kind);
+        };
+
+        TypeKind.Fn {
+            tmp2 :: "Function\n";
+            printf(tmp2.ptr, 0);
+            printf(format.ptr, auto v.type_info.kind);
+            printf(format.ptr, auto (cast(*TypeInfo) v.data).kind);
+        };
+
+        default {
+            tmp2 :: "unknown\n";
+            printf(tmp2.ptr, 0);
+        };
+    }
 }
 
 printf :: fn (format: *u8, n: s32) s32 #extern;

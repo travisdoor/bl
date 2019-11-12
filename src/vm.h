@@ -111,13 +111,25 @@ vm_alloc_raw(VM *vm, struct Assembly *assembly, struct MirType *type);
 void *
 _vm_read_value(usize size, VMStackPtr value);
 
+VMStackPtr
+vm_read_var(VM *vm, struct MirVar *var);
+
 /* Write value to the stack allocated memory, destination must have enough allocated space! */
 #define vm_write_value(size, dest, src) (_vm_write_value((size), (dest), (VMStackPtr) & (src)))
 #define vm_write_value_type(type, dest, src)                                                       \
 	(_vm_write_value((type)->store_size_bytes, (dest), (VMStackPtr) & (src)))
 
 void
-_vm_write_value(usize size, VMStackPtr dest, VMStackPtr src);
+vm_write_int(struct MirType *type, VMStackPtr dest, u64 i);
+
+void
+vm_write_real(struct MirType *type, VMStackPtr dest, f64 i);
+
+void
+vm_write_ptr(struct MirType *type, VMStackPtr dest, VMStackPtr ptr);
+
+void
+_vm_write_value(usize dest_size, VMStackPtr dest, VMStackPtr src);
 
 ptrdiff_t
 vm_get_struct_elem_offest(struct Assembly *assembly, struct MirType *type, u32 i);

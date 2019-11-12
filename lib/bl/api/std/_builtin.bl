@@ -31,7 +31,7 @@
  * TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 
  * safe casting.
  */
-TypeKind :: enum u8 #compiler {
+TypeKind :: enum #compiler {
     Type   :: 1;
     Void   :: 2;
     Int    :: 3;

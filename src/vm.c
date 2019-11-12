@@ -451,21 +451,6 @@ stack_rel_to_abs_ptr(VM *vm, VMRelativeStackPtr rel_ptr, bool ignore)
 	return base + rel_ptr;
 }
 
-/* Try to fetch variable allocation pointer. */
-static inline VMStackPtr
-stack_read_var(VM *vm, MirVar *var)
-{
-	VMStackPtr ptr = NULL;
-	if (var->value.is_comptime) {
-		ptr = (VMStackPtr)&var->value.data;
-	} else {
-		ptr = stack_rel_to_abs_ptr(vm, var->rel_stack_ptr, var->is_global);
-	}
-
-	BL_ASSERT(ptr && "Attept to get allocation pointer of unallocated variable!");
-	return ptr;
-}
-
 static inline VMStackPtr
 fetch_value(VM *vm, MirConstExprValue *v)
 {
@@ -1482,7 +1467,7 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 	BL_ASSERT(type_info->value.is_comptime);
 
 	MirType *  dest_type = dest_var->value.type;
-	VMStackPtr dest      = stack_read_var(vm, dest_var);
+	VMStackPtr dest      = vm_read_var(vm, dest_var);
 
 	/* type info */
 	MirType *  dest_type_info_type = mir_get_struct_elem_type(dest_type, 0);
@@ -1495,12 +1480,12 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 	MirType *  dest_data_type = mir_get_struct_elem_type(dest_type, 1);
 	VMStackPtr dest_data = vm_get_struct_elem_ptr(vm->assembly, dest_var->value.type, dest, 1);
 
-	MirType *data_type = toany->expr->value.type;
-	VMStackPtr data = fetch_value(vm, &toany->expr->value);
+	MirType *  data_type = toany->expr->value.type;
+	VMStackPtr data      = fetch_value(vm, &toany->expr->value);
 
 	if (toany->expr_tmp) {
 		MirVar *   expr_var  = toany->expr_tmp;
-		VMStackPtr dest_expr = stack_read_var(vm, expr_var);
+		VMStackPtr dest_expr = vm_read_var(vm, expr_var);
 
 		/* copy value to the tmp variable  */
 		memcpy(dest_expr, data, data_type->store_size_bytes);
@@ -1508,7 +1493,10 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 		/* setup destination pointer */
 		memcpy(dest_data, &dest_expr, dest_data_type->store_size_bytes);
 	} else if (toany->rtti_data) {
-		BL_UNIMPLEMENTED;
+		MirVar *rtti_data_var = assembly_get_rtti(vm->assembly, toany->rtti_data->id.hash);
+		VMStackPtr rtti_data  = vm_read_var(vm, rtti_data_var);
+		/* setup destination pointer */
+		memcpy(dest_data, &rtti_data, dest_data_type->store_size_bytes);
 	} else {
 		BL_ASSERT(mir_is_pointer_type(dest_data_type));
 		memcpy(dest_data, data, dest_data_type->store_size_bytes);
@@ -1823,7 +1811,7 @@ interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref)
 		MirVar *var = entry->data.var;
 		BL_ASSERT(var);
 
-		VMStackPtr real_ptr = stack_read_var(vm, var);
+		VMStackPtr real_ptr = vm_read_var(vm, var);
 		stack_push(vm, &real_ptr, ref->base.value.type);
 		break;
 	}
@@ -1846,7 +1834,7 @@ interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref)
 	MirVar *var = ((MirInstrDeclVar *)ref->ref)->var;
 	BL_ASSERT(var);
 
-	VMStackPtr real_ptr = stack_read_var(vm, var);
+	VMStackPtr real_ptr = vm_read_var(vm, var);
 	stack_push(vm, &real_ptr, ref->base.value.type);
 }
 
@@ -1858,7 +1846,7 @@ interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 	const bool will_push = tmp_ptr == NULL;
 	if (will_push) {
 		BL_ASSERT(cmp->tmp_var && "Missing temp variable for compound.");
-		tmp_ptr = stack_read_var(vm, cmp->tmp_var);
+		tmp_ptr = vm_read_var(vm, cmp->tmp_var);
 	}
 
 	BL_ASSERT(tmp_ptr);
@@ -1910,7 +1898,7 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 	BL_ASSERT(vargs_tmp->rel_stack_ptr && "Unalocated vargs slice!!!");
 	BL_ASSERT(values);
 
-	VMStackPtr arr_tmp_ptr = arr_tmp ? stack_read_var(vm, arr_tmp) : NULL;
+	VMStackPtr arr_tmp_ptr = arr_tmp ? vm_read_var(vm, arr_tmp) : NULL;
 
 	/* Fill vargs tmp array with values from stack or constants. */
 	{
@@ -1928,7 +1916,7 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 
 	/* Push vargs slice on the stack. */
 	{
-		VMStackPtr vargs_tmp_ptr = stack_read_var(vm, vargs_tmp);
+		VMStackPtr vargs_tmp_ptr = vm_read_var(vm, vargs_tmp);
 		// set len
 		VMStackPtr len_ptr =
 		    vargs_tmp_ptr + vm_get_struct_elem_offest(
@@ -1958,7 +1946,7 @@ interp_instr_decl_var(VM *vm, MirInstrDeclVar *decl)
 
 	/* initialize variable if there is some init value */
 	if (decl->init) {
-		VMStackPtr var_ptr = stack_read_var(vm, var);
+		VMStackPtr var_ptr = vm_read_var(vm, var);
 
 		if (!mir_is_comptime(decl->init) && decl->init->kind == MIR_INSTR_COMPOUND) {
 			/* used compound initialization!!! */
@@ -2425,7 +2413,7 @@ eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si)
 		MirType *var_type = var->value.type;
 
 		/* Gloabals always use static segment allocation!!! */
-		VMStackPtr var_ptr = stack_read_var(vm, var);
+		VMStackPtr var_ptr = vm_read_var(vm, var);
 
 		/* Runtime variable needs it's own memory location so we must create copy of
 		 * initializer data.*/
@@ -2603,13 +2591,47 @@ _vm_read_value(usize size, VMStackPtr value)
 	return &tmp;
 }
 
+/* Try to fetch variable allocation pointer. */
+VMStackPtr
+vm_read_var(VM *vm, MirVar *var)
+{
+	VMStackPtr ptr = NULL;
+	if (var->value.is_comptime) {
+		ptr = var->value.data;
+	} else {
+		ptr = stack_rel_to_abs_ptr(vm, var->rel_stack_ptr, var->is_global);
+	}
+
+	BL_ASSERT(ptr && "Attept to get allocation pointer of unallocated variable!");
+	return ptr;
+}
+
 void
-_vm_write_value(usize size, VMStackPtr dest, VMStackPtr src)
+vm_write_int(MirType *type, VMStackPtr dest, u64 i)
 {
 	BL_ASSERT(dest && "Attempt to write to the null destination!");
+	memcpy(dest, &i, type->store_size_bytes);
+}
 
-	if (size == 0) BL_ABORT("Writing value of zero size is invalid!!!");
-	memcpy(dest, src, size);
+void
+vm_write_real(MirType *type, VMStackPtr dest, f64 i)
+{
+	BL_ASSERT(dest && "Attempt to write to the null destination!");
+	memcpy(dest, &i, type->store_size_bytes);
+}
+
+void
+vm_write_ptr(struct MirType *type, VMStackPtr dest, VMStackPtr ptr)
+{
+	BL_ASSERT(dest && "Attempt to write to the null destination!");
+	memcpy(dest, &ptr, type->store_size_bytes);
+}
+
+void
+_vm_write_value(usize dest_size, VMStackPtr dest, VMStackPtr src)
+{
+	BL_ASSERT(dest && "Attempt to write to the null destination!");
+	memcpy(dest, src, dest_size);
 }
 
 ptrdiff_t
