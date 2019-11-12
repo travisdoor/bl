@@ -4326,6 +4326,15 @@ analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 		rtti_type = mir_deref_type(rtti_type);
 	}
 
+	if (rtti_type->kind == MIR_TYPE_VOID) {
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_INVALID_TYPE,
+		            expr->node->location,
+		            BUILDER_CUR_AFTER,
+		            "Expression yields 'void' value.");
+		return ANALYZE_RESULT(FAILED, 0);
+	}
+
 	const bool is_type = rtti_type->kind == MIR_TYPE_TYPE || rtti_type->kind == MIR_TYPE_FN;
 	const bool is_tmp_needed = expr->value.addr_mode == MIR_VAM_RVALUE && !is_type;
 
