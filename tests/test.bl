@@ -250,8 +250,11 @@ main :: fn () s32 {
     printf(format.ptr, v);
     
     hello := "hello";
+    // test conversion to Any
     any(^v_ptr);
-    //any(10);
+    any(10);
+    any(v + 30);
+    any(foo(10, 20));
 
     return foo(10, 20);
 }
@@ -273,6 +276,8 @@ vargs :: fn (v: ...s32) {
 }
 
 any :: fn (v: Any) {
+    tmp :: "Any info: \n";
+    printf(tmp.ptr, 0);
     printf(format.ptr, auto v.type_info.kind);
     printf(format.ptr, ^ cast(*s32) v.data);
 }

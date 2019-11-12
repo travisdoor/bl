@@ -1495,13 +1495,18 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 	MirType *  dest_data_type = mir_get_struct_elem_type(dest_type, 1);
 	VMStackPtr dest_data = vm_get_struct_elem_ptr(vm->assembly, dest_var->value.type, dest, 1);
 
+	MirType *data_type = toany->expr->value.type;
 	VMStackPtr data = fetch_value(vm, &toany->expr->value);
 
 	if (toany->expr_tmp) {
 		MirVar *   expr_var  = toany->expr_tmp;
 		VMStackPtr dest_expr = stack_read_var(vm, expr_var);
 
-		BL_UNIMPLEMENTED;
+		/* copy value to the tmp variable  */
+		memcpy(dest_expr, data, data_type->store_size_bytes);
+
+		/* setup destination pointer */
+		memcpy(dest_data, &dest_expr, dest_data_type->store_size_bytes);
 	} else if (toany->rtti_data) {
 		BL_UNIMPLEMENTED;
 	} else {

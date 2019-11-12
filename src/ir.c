@@ -2091,7 +2091,14 @@ emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 	LLVMValueRef llvm_dest_data = LLVMBuildStructGEP(cnt->llvm_builder, llvm_dest, 1, "");
 
 	if (toany->expr_tmp) {
-		BL_UNIMPLEMENTED;
+		LLVMValueRef llvm_dest_tmp = toany->expr_tmp->llvm_value;
+		BL_ASSERT(llvm_dest_tmp && "Missing tmp variable!");
+
+		LLVMBuildStore(cnt->llvm_builder, toany->expr->llvm_value, llvm_dest_tmp);
+
+		LLVMValueRef llvm_data =
+		    LLVMBuildPointerCast(cnt->llvm_builder, llvm_dest_tmp, llvm_dest_data_type, "");
+		LLVMBuildStore(cnt->llvm_builder, llvm_data, llvm_dest_data);
 	} else if (toany->rtti_data) {
 		BL_UNIMPLEMENTED;
 	} else {
