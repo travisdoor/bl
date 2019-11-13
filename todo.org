@@ -36,3 +36,6 @@
   non-naked comtime/runtime
 
 * Footnotes
+  
+- vm_load_int - make copy
+- vm_read - return pointer to VMValue

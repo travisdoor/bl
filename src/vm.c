@@ -422,9 +422,8 @@ static inline VMStackPtr
 stack_push(VM *vm, void *value, MirType *type)
 {
 	BL_ASSERT(value && "try to push NULL value");
-	VMStackPtr  tmp  = stack_push_empty(vm, type);
-	const usize size = type->store_size_bytes;
-	memcpy(tmp, value, size);
+	VMStackPtr tmp = stack_push_empty(vm, type);
+	memcpy(tmp, value, type->store_size_bytes);
 
 	/* pointer relative to frame top */
 	return tmp;
@@ -456,6 +455,7 @@ stack_rel_to_abs_ptr(VM *vm, VMRelativeStackPtr rel_ptr, bool ignore)
 	return base + rel_ptr;
 }
 
+/* Fetch value into Temp  */
 static inline VMStackPtr
 fetch_value(VM *vm, MirConstExprValue *v)
 {
@@ -518,110 +518,9 @@ calculate_binop(MirType *  dest_type,
                 VMStackPtr rhs,
                 BinopKind  op)
 {
-	const bool is_real = src_type->kind == MIR_TYPE_REAL;
+	/* Valid types: integers, floats, doubles, enums (as ints), bool, pointers. */
 
-	if (is_real) {
-		double l = vm_read_real(src_type, lhs);
-		double r = vm_read_real(src_type, rhs);
-		double a = 0;
-
-		switch (op) {
-		case BINOP_ADD:
-			a = l + r;
-			break;
-		case BINOP_SUB:
-			a = l - r;
-			break;
-		case BINOP_MUL:
-			a = l * r;
-			break;
-		case BINOP_DIV:
-			if (r == 0) BL_ABORT("Divide by zero, this should be an error!");
-			a = l / r;
-			break;
-		case BINOP_EQ:
-			a = l == r;
-			break;
-		case BINOP_NEQ:
-			a = l != r;
-			break;
-		case BINOP_LESS:
-			a = l < r;
-			break;
-		case BINOP_GREATER:
-			a = l > r;
-			break;
-		case BINOP_LESS_EQ:
-			a = l <= r;
-			break;
-		case BINOP_GREATER_EQ:
-			a = l >= r;
-			break;
-		default:
-			BL_ABORT("Invalid binary operation!");
-		}
-
-		vm_write_real(dest_type, dest, a);
-	} else {
-		u64 l = vm_read_int(src_type, lhs);
-		u64 r = vm_read_int(src_type, rhs);
-		u64 a = 0;
-
-		switch (op) {
-		case BINOP_ADD:
-			a = l + r;
-			break;
-		case BINOP_SUB:
-			a = l - r;
-			break;
-		case BINOP_MUL:
-			a = l * r;
-			break;
-		case BINOP_DIV:
-			if (r == 0) BL_ABORT("Divide by zero, this should be an error!");
-			a = l / r;
-			break;
-		case BINOP_EQ:
-			a = l == r;
-			break;
-		case BINOP_NEQ:
-			a = l != r;
-			break;
-		case BINOP_LESS:
-			a = l < r;
-			break;
-		case BINOP_GREATER:
-			a = l > r;
-			break;
-		case BINOP_LESS_EQ:
-			a = l <= r;
-			break;
-		case BINOP_GREATER_EQ:
-			a = l >= r;
-			break;
-		case BINOP_AND:
-			a = l & r;
-			break;
-		case BINOP_OR:
-			a = l | r;
-			break;
-		case BINOP_SHL:
-			/* INCOMPLETE: shift overflow  */
-			a = l << r;
-			break;
-		case BINOP_SHR:
-			/* INCOMPLETE: shift overflow  */
-			a = l >> r;
-			break;
-		case BINOP_MOD:
-			a = l % r;
-			break;
-		default:
-			BL_ABORT("Invalid binary operation!");
-		}
-
-		vm_write_int(dest_type, dest, a);
-	}
+	BL_UNIMPLEMENTED;
 }
 
 void
@@ -632,13 +531,13 @@ calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, MirType *type)
 	case sizeof(T): {                                                                          \
 		switch (op) {                                                                      \
 		case UNOP_NOT:                                                                     \
-			VM_STACK_WRITE_AS(T, dest, !VM_STACK_READ_AS(T, v));                       \
+			VM_WRITE_AS(T, dest, !VM_READ_AS(T, v));                                   \
 			break;                                                                     \
 		case UNOP_NEG:                                                                     \
-			VM_STACK_WRITE_AS(T, dest, VM_STACK_READ_AS(T, v) * -1);                   \
+			VM_WRITE_AS(T, dest, VM_READ_AS(T, v) * -1);                               \
 			break;                                                                     \
 		case UNOP_POS:                                                                     \
-			VM_STACK_WRITE_AS(T, dest, VM_STACK_READ_AS(T, v));                        \
+			VM_WRITE_AS(T, dest, VM_READ_AS(T, v));                                    \
 			break;                                                                     \
 		default:                                                                           \
 			BL_UNIMPLEMENTED;                                                          \
@@ -697,6 +596,9 @@ do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, 
 	BL_ASSERT(dest_type && "Missing cast destination type!");
 	BL_ASSERT(src_type && "Missing cast source type!");
 
+	const usize src_size  = src_type->store_size_bytes;
+	const usize dest_size = dest_type->store_size_bytes;
+
 	switch (op) {
 	case MIR_CAST_INTTOPTR:
 	case MIR_CAST_PTRTOINT:
@@ -704,95 +606,86 @@ do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, 
 	case MIR_CAST_BITCAST:
 	case MIR_CAST_ZEXT:
 	case MIR_CAST_TRUNC:
-		memset(dest, 0, dest_type->store_size_bytes);
-		memcpy(dest, src, src_type->store_size_bytes);
+		memset(dest, 0, dest_size);
+		memcpy(dest, src, src_size);
 		break;
 
 	case MIR_CAST_SEXT: {
 		/* src is smaller than dest */
-		vm_write_value_type(
-		    dest_type, dest, vm_read_value_as(s64, src_type->store_size_bytes, src));
+		const u64 v = vm_read_int(src_type, src);
+		vm_write_int(dest_type, dest, v);
 		break;
 	}
 
 	case MIR_CAST_FPEXT: {
 		/* src is smaller than dest */
-		const f64 tmp = (f64)vm_read_value_as(f32, src_type->store_size_bytes, src);
-		vm_write_value_type(dest_type, dest, tmp);
+		const f32 v = vm_read_float(src_type, src);
+		vm_write_double(dest_type, dest, (f64)v);
 		break;
 	}
 
 	case MIR_CAST_FPTRUNC: {
 		/* src is bigger than dest */
-		const f32 tmp = (f32)vm_read_value_as(f64, src_type->store_size_bytes, src);
-		vm_write_value_type(dest_type, dest, tmp);
+		const f64 v = vm_read_double(src_type, src);
+		vm_write_float(dest_type, dest, (f32)v);
 		break;
 	}
 
+	case MIR_CAST_FPTOUI:
 	case MIR_CAST_FPTOSI: {
 		/* real to signed integer */
-		if (src_type->store_size_bytes == sizeof(f32))
-			VM_STACK_WRITE_AS(s32, dest, (s32)VM_STACK_READ_AS(f32, src));
-		else
-			VM_STACK_WRITE_AS(s64, dest, (s64)VM_STACK_READ_AS(f64, src));
-		break;
-	}
+		switch (src_size) {
+		case 4: {
+			const f32 v = vm_read_float(src_type, src);
+			vm_write_int(dest_type, dest, (u64)v);
+			break;
+		}
 
-	case MIR_CAST_FPTOUI: {
-		/* real to signed integer */
-		if (src_type->store_size_bytes == sizeof(f32))
-			VM_STACK_WRITE_AS(u64, dest, (u64)VM_STACK_READ_AS(f32, src));
-		else
-			VM_STACK_WRITE_AS(u64, dest, (u64)VM_STACK_READ_AS(f64, src));
+		case 8: {
+			const f64 v = vm_read_double(src_type, src);
+			vm_write_int(dest_type, dest, (u64)v);
+			break;
+		}
+		default:
+			BL_ABORT("Invalid!");
+		}
 		break;
 	}
 
 	case MIR_CAST_SITOFP: {
-		if (dest_type->store_size_bytes == sizeof(f32)) {
-			switch (src_type->store_size_bytes) {
-			case 1:
-				VM_STACK_WRITE_AS(f32, dest, (f32)VM_STACK_READ_AS(s8, src));
-				break;
+		/* signed integer real */
+		const s64 v = (s64)vm_read_int(src_type, src);
+		switch (dest_size) {
+		case 4: {
+			vm_write_float(dest_type, dest, v);
+			break;
+		}
 
-			case 2:
-				VM_STACK_WRITE_AS(f32, dest, (f32)VM_STACK_READ_AS(s16, src));
-				break;
-
-			case 4:
-				VM_STACK_WRITE_AS(f32, dest, (f32)VM_STACK_READ_AS(s32, src));
-				break;
-
-			case 8:
-				VM_STACK_WRITE_AS(f32, dest, (f32)VM_STACK_READ_AS(s64, src));
-				break;
-			}
-		} else {
-			switch (src_type->store_size_bytes) {
-			case 1:
-				VM_STACK_WRITE_AS(f64, dest, (f64)VM_STACK_READ_AS(s8, src));
-				break;
-
-			case 2:
-				VM_STACK_WRITE_AS(f64, dest, (f64)VM_STACK_READ_AS(s16, src));
-				break;
-
-			case 4:
-				VM_STACK_WRITE_AS(f64, dest, (f64)VM_STACK_READ_AS(s32, src));
-				break;
-
-			case 8:
-				VM_STACK_WRITE_AS(f64, dest, (f64)VM_STACK_READ_AS(s64, src));
-				break;
-			}
+		case 8: {
+			vm_write_double(dest_type, dest, v);
+			break;
+		}
+		default:
+			BL_ABORT("Invalid!");
 		}
 		break;
 	}
 
 	case MIR_CAST_UITOFP: {
-		if (dest_type->store_size_bytes == sizeof(f32))
-			VM_STACK_WRITE_AS(f32, dest, (f32)VM_STACK_READ_AS(u64, src));
-		else
-			VM_STACK_WRITE_AS(f64, dest, (f64)VM_STACK_READ_AS(u64, src));
+		const u64 v = vm_read_int(src_type, src);
+		switch (dest_size) {
+		case 4: {
+			vm_write_float(dest_type, dest, v);
+			break;
+		}
+
+		case 8: {
+			vm_write_double(dest_type, dest, v);
+			break;
+		}
+		default:
+			BL_ABORT("Invalid!");
+		}
 		break;
 	}
 
@@ -946,7 +839,7 @@ dyncall_cb_handler(DCCallback *cb, DCArgs *dc_args, DCValue *result, void *userd
 		result->L = 0;
 	} else if (has_return) {
 		BL_ASSERT(ret_ptr && "Function is supposed to return some value.");
-		result->L = vm_read_value_as(u64, ret_type->store_size_bytes, ret_ptr);
+		result->L = vm_read_int(ret_type, ret_ptr);
 	}
 
 	tsa_terminate(&arg_tmp);
@@ -1085,23 +978,24 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 
 	switch (type->kind) {
 	case MIR_TYPE_BOOL: {
-		dcArgBool(dvm, vm_read_value_as(bool, sizeof(bool), val_ptr));
+		dcArgBool(dvm, vm_read_int(type, val_ptr));
 		break;
 	}
 
 	case MIR_TYPE_INT: {
+		const u64 v = vm_read_int(type, val_ptr);
 		switch (type->store_size_bytes) {
 		case 1:
-			dcArgChar(dvm, vm_read_value_as(DCchar, 1, val_ptr));
+			dcArgChar(dvm, v);
 			break;
 		case 2:
-			dcArgShort(dvm, vm_read_value_as(DCshort, 2, val_ptr));
+			dcArgShort(dvm, v);
 			break;
 		case 4:
-			dcArgInt(dvm, vm_read_value_as(DCint, 4, val_ptr));
+			dcArgInt(dvm, v);
 			break;
 		case 8:
-			dcArgLongLong(dvm, vm_read_value_as(DClonglong, 8, val_ptr));
+			dcArgLongLong(dvm, v);
 			break;
 		default:
 			BL_ABORT("unsupported external call integer argument type");
@@ -1112,10 +1006,10 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 	case MIR_TYPE_REAL: {
 		switch (type->store_size_bytes) {
 		case 4:
-			dcArgFloat(dvm, vm_read_value_as(DCfloat, 4, val_ptr));
+			dcArgFloat(dvm, vm_read_float(type, val_ptr));
 			break;
 		case 8:
-			dcArgDouble(dvm, vm_read_value_as(DCdouble, 8, val_ptr));
+			dcArgDouble(dvm, vm_read_double(type, val_ptr));
 			break;
 		default:
 			BL_ABORT("unsupported external call integer argument type");
@@ -1124,7 +1018,7 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 	}
 
 	case MIR_TYPE_NULL: {
-		dcArgPointer(dvm, vm_read_value_as(DCpointer, 8, val_ptr));
+		dcArgPointer(dvm, NULL);
 		break;
 	}
 
@@ -1142,7 +1036,7 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 	}
 
 	case MIR_TYPE_PTR: {
-		VMStackPtr tmp = vm_read_value_as(VMStackPtr, 8, val_ptr);
+		VMStackPtr tmp = vm_read_ptr(type, val_ptr);
 		if (mir_deref_type(type)->kind == MIR_TYPE_FN) {
 			BL_UNIMPLEMENTED_REGION(
 			    MirConstValue *value = (MirConstValue *)val_ptr;
@@ -1207,17 +1101,16 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 	case MIR_TYPE_INT:
 		switch (ret_type->store_size_bytes) {
 		case 1:
-			VM_STACK_WRITE_AS(s8, &result, dcCallChar(dvm, fn->dyncall.extern_entry));
+			VM_WRITE_AS(s8, &result, dcCallChar(dvm, fn->dyncall.extern_entry));
 			break;
 		case 2:
-			VM_STACK_WRITE_AS(s8, &result, dcCallShort(dvm, fn->dyncall.extern_entry));
+			VM_WRITE_AS(s8, &result, dcCallShort(dvm, fn->dyncall.extern_entry));
 			break;
 		case 4:
-			VM_STACK_WRITE_AS(s8, &result, dcCallInt(dvm, fn->dyncall.extern_entry));
+			VM_WRITE_AS(s8, &result, dcCallInt(dvm, fn->dyncall.extern_entry));
 			break;
 		case 8:
-			VM_STACK_WRITE_AS(
-			    s8, &result, dcCallLongLong(dvm, fn->dyncall.extern_entry));
+			VM_WRITE_AS(s8, &result, dcCallLongLong(dvm, fn->dyncall.extern_entry));
 			break;
 		default:
 			BL_ABORT("unsupported integer size for external call result");
@@ -1225,18 +1118,16 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 		break;
 
 	case MIR_TYPE_PTR:
-		VM_STACK_WRITE_AS(
-		    VMStackPtr, &result, dcCallPointer(dvm, fn->dyncall.extern_entry));
+		VM_WRITE_AS(VMStackPtr, &result, dcCallPointer(dvm, fn->dyncall.extern_entry));
 		break;
 
 	case MIR_TYPE_REAL: {
 		switch (ret_type->store_size_bytes) {
 		case 4:
-			VM_STACK_WRITE_AS(f32, &result, dcCallFloat(dvm, fn->dyncall.extern_entry));
+			VM_WRITE_AS(f32, &result, dcCallFloat(dvm, fn->dyncall.extern_entry));
 			break;
 		case 8:
-			VM_STACK_WRITE_AS(
-			    f64, &result, dcCallDouble(dvm, fn->dyncall.extern_entry));
+			VM_WRITE_AS(f64, &result, dcCallDouble(dvm, fn->dyncall.extern_entry));
 			break;
 		default:
 			BL_ABORT("Unsupported real number size for external call "
@@ -1460,7 +1351,7 @@ interp_instr_toany(VM *vm, MirInstrToAny *toany)
 	VMStackPtr dest_type_info =
 	    vm_get_struct_elem_ptr(vm->assembly, dest_var->value.type, dest, 0);
 
-	vm_write_value_type(dest_type_info_type, dest_type_info, type_info->value.data);
+	vm_write_ptr(dest_type_info_type, dest_type_info, vm_read_var(vm, type_info));
 
 	/* data */
 	MirType *  dest_data_type = mir_get_struct_elem_type(dest_type, 1);
@@ -1554,7 +1445,8 @@ interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 	VMStackPtr result_ptr = NULL;
 	BL_ASSERT(arr_ptr && index_ptr);
 
-	const s64 index = VM_STACK_READ_AS(s64, index_ptr);
+	BL_ASSERT(elem_ptr->index->value.type->store_size_bytes == sizeof(s64));
+	const s64 index = VM_READ_AS(s64, index_ptr);
 	arr_ptr         = VM_STACK_PTR_DEREF(arr_ptr);
 
 	switch (arr_type->kind) {
@@ -1586,8 +1478,8 @@ interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 		VMStackPtr len_ptr = vm_get_struct_elem_ptr(vm->assembly, arr_type, arr_ptr, 0);
 		VMStackPtr ptr_ptr = vm_get_struct_elem_ptr(vm->assembly, arr_type, arr_ptr, 1);
 
-		VMStackPtr ptr_tmp = vm_read_value_as(VMStackPtr, sizeof(VMStackPtr), ptr_ptr);
-		const s64  len_tmp = vm_read_value_as(s64, len_type->store_size_bytes, len_ptr);
+		VMStackPtr ptr_tmp = vm_read_ptr(ptr_type, ptr_ptr);
+		const s64  len_tmp = vm_read_int(len_type, len_ptr);
 
 		if (!ptr_tmp) {
 			msg_error("Dereferencing null pointer! Slice has not been set?");
@@ -1683,15 +1575,14 @@ interp_instr_switch(VM *vm, MirInstrSwitch *sw)
 	VMStackPtr value_ptr  = fetch_value(vm, &sw->value->value);
 	BL_ASSERT(value_ptr);
 
-	const s64 value       = vm_read_value_as(s64, value_type->store_size_bytes, value_ptr);
+	const s64 value       = vm_read_int(value_type, value_ptr);
 	vm->stack->prev_block = sw->base.owner_block;
 
 	TSmallArray_SwitchCase *cases = sw->cases;
 	for (usize i = 0; i < cases->size; ++i) {
 		MirSwitchCase *c = &cases->data[i];
 
-		const s64 on_value =
-		    vm_read_value_as(s64, value_type->store_size_bytes, c->on_value->value.data);
+		const s64 on_value = vm_read_int(value_type, c->on_value->value.data);
 		if (value == on_value) {
 			set_pc(vm, c->block->entry_instr);
 			return;
@@ -1708,7 +1599,7 @@ interp_instr_cast(VM *vm, MirInstrCast *cast)
 	MirType *  src_type  = cast->expr->value.type;
 	VMStackPtr src_ptr   = fetch_value(vm, &cast->expr->value);
 
-	u64 tmp = 0;
+	VMValue tmp = {0};
 	do_cast((VMStackPtr)&tmp, src_ptr, dest_type, src_type, cast->op);
 	stack_push(vm, &tmp, dest_type);
 }
@@ -1777,7 +1668,7 @@ interp_instr_cond_br(VM *vm, MirInstrCondBr *br)
 	VMStackPtr cond_ptr = fetch_value(vm, &br->cond->value);
 	BL_ASSERT(cond_ptr);
 
-	const bool condition = vm_read_value_as(bool, type->store_size_bytes, cond_ptr);
+	const bool condition = vm_read_int(type, cond_ptr);
 
 	/* Set previous block. */
 	vm->stack->prev_block = br->base.owner_block;
@@ -1910,14 +1801,16 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 		    vargs_tmp_ptr + vm_get_struct_elem_offest(
 		                        vm->assembly, vargs_tmp->value.type, MIR_SLICE_LEN_INDEX);
 
-		VM_STACK_WRITE_AS(s64, len_ptr, values->size);
+		BL_ASSERT(mir_get_struct_elem_type(vargs_tmp->value.type, MIR_SLICE_LEN_INDEX)
+		              ->store_size_bytes == sizeof(s64));
+		VM_WRITE_AS(s64, len_ptr, values->size);
 
 		// set ptr
 		VMStackPtr ptr_ptr =
 		    vargs_tmp_ptr + vm_get_struct_elem_offest(
 		                        vm->assembly, vargs_tmp->value.type, MIR_SLICE_PTR_INDEX);
 
-		VM_STACK_WRITE_AS(VMStackPtr, ptr_ptr, arr_tmp_ptr);
+		VM_WRITE_AS(VMStackPtr, ptr_ptr, arr_tmp_ptr);
 
 		stack_push(vm, vargs_tmp_ptr, vargs_tmp->value.type);
 	}
@@ -1991,14 +1884,15 @@ interp_instr_call(VM *vm, MirInstrCall *call)
 	BL_ASSERT(call->callee && call->base.value.type);
 	BL_ASSERT(call->callee->value.type);
 
-	VMStackPtr callee_ptr = fetch_value(vm, &call->callee->value);
+	VMStackPtr callee_ptr      = fetch_value(vm, &call->callee->value);
+	MirType *  callee_ptr_type = call->callee->value.type;
 
 	/* Function called via pointer. */
 	if (mir_is_pointer_type(call->callee->value.type)) {
 		BL_ASSERT(mir_deref_type(call->callee->value.type)->kind == MIR_TYPE_FN);
 	}
 
-	MirFn *callee = vm_read_value_as(MirFn *, sizeof(MirFn *), callee_ptr);
+	MirFn *callee = (MirFn *)vm_read_ptr(callee_ptr_type, callee_ptr);
 	if (callee == NULL) {
 		msg_error("Function pointer not set!");
 		exec_abort(vm, 0);
@@ -2099,8 +1993,9 @@ interp_instr_binop(VM *vm, MirInstrBinop *binop)
 	MirType *dest_type = binop->base.value.type;
 	MirType *src_type  = binop->lhs->value.type;
 
-	u64 tmp;
+	VMValue tmp = {0};
 	calculate_binop(dest_type, src_type, (VMStackPtr)&tmp, lhs_ptr, rhs_ptr, binop->op);
+
 	stack_push(vm, &tmp, dest_type);
 }
 
@@ -2110,10 +2005,10 @@ interp_instr_unop(VM *vm, MirInstrUnop *unop)
 	MirType *  type  = unop->base.value.type;
 	VMStackPtr v_ptr = fetch_value(vm, &unop->expr->value);
 
-	u64 result = 0;
-	calculate_unop((VMStackPtr)&result, v_ptr, unop->op, type);
+	VMValue tmp = {0};
+	calculate_unop((VMStackPtr)&tmp, v_ptr, unop->op, type);
 
-	stack_push(vm, &result, type);
+	stack_push(vm, &tmp, type);
 }
 
 void
@@ -2233,8 +2128,8 @@ eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 		VMStackPtr len_ptr = vm_get_struct_elem_ptr(vm->assembly, arr_type, arr_ptr, 0);
 		VMStackPtr ptr_ptr = vm_get_struct_elem_ptr(vm->assembly, arr_type, arr_ptr, 1);
 
-		VMStackPtr ptr_tmp = vm_read_value_as(VMStackPtr, sizeof(VMStackPtr), ptr_ptr);
-		const s64  len_tmp = vm_read_value_as(s64, len_type->store_size_bytes, len_ptr);
+		VMStackPtr ptr_tmp = vm_read_ptr(ptr_type, ptr_ptr);
+		const s64  len_tmp = vm_read_int(len_type, len_ptr);
 
 		if (!ptr_tmp) {
 			builder_msg(BUILDER_MSG_ERROR,
@@ -2538,7 +2433,7 @@ vm_alloc_global(VM *vm, Assembly *assembly, MirVar *var)
 		if (needs_tmp_alloc(&var->value)) {
 			var->value.data = stack_push_empty(vm, var->value.type);
 		} else {
-			var->value.data = &var->value._tmp[0];
+			var->value.data = (VMStackPtr)&var->value._tmp;
 		}
 
 		return var->value.data;
@@ -2605,11 +2500,38 @@ vm_read_int(struct MirType *type, VMStackPtr src)
 }
 
 f64
-vm_read_real(struct MirType *type, VMStackPtr src)
+vm_read_double(struct MirType *type, VMStackPtr src)
 {
+	const usize size = type->store_size_bytes;
 	BL_ASSERT(src && "Attempt to read null source!");
+	BL_ASSERT(size == sizeof(f64) && "Target type is not f64 type!");
+
 	f64 result = 0;
-	memcpy(&result, src, type->store_size_bytes);
+	memcpy(&result, src, size);
+	return result;
+}
+
+VMStackPtr
+vm_read_ptr(struct MirType *type, VMStackPtr src)
+{
+	const usize size = type->store_size_bytes;
+	BL_ASSERT(src && "Attempt to read null source!");
+	BL_ASSERT(size == sizeof(VMStackPtr) && "Target type is not pointer type!");
+
+	VMStackPtr result = 0;
+	memcpy(&result, src, size);
+	return result;
+}
+
+f32
+vm_read_float(struct MirType *type, VMStackPtr src)
+{
+	const usize size = type->store_size_bytes;
+	BL_ASSERT(src && "Attempt to read null source!");
+	BL_ASSERT(size == sizeof(f32) && "Target type is not f64 type!");
+
+	f32 result = 0;
+	memcpy(&result, src, size);
 	return result;
 }
 
@@ -2621,8 +2543,19 @@ vm_write_int(MirType *type, VMStackPtr dest, u64 i)
 }
 
 void
-vm_write_real(MirType *type, VMStackPtr dest, f64 i)
+vm_write_double(MirType *type, VMStackPtr dest, f64 i)
 {
+	const usize size = type->store_size_bytes;
+	BL_ASSERT(size == sizeof(f64) && "Target type is not f64 type!");
+	BL_ASSERT(dest && "Attempt to write to the null destination!");
+	memcpy(dest, &i, type->store_size_bytes);
+}
+
+void
+vm_write_float(MirType *type, VMStackPtr dest, f32 i)
+{
+	const usize size = type->store_size_bytes;
+	BL_ASSERT(size == sizeof(f32) && "Target type is not f64 type!");
 	BL_ASSERT(dest && "Attempt to write to the null destination!");
 	memcpy(dest, &i, type->store_size_bytes);
 }

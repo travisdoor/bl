@@ -12,6 +12,7 @@ Foo :: struct {
 printf :: fn (prt: *u8, r: s32) s32 #extern;
 
 main :: fn () s32 {
+    /*
     foo :: {:Foo: 10, false};
     arr :: {:[5]s32: 0, 1, 2, 3, 4};
 
@@ -22,9 +23,13 @@ main :: fn () s32 {
     print("T = %\n", Foo);
     print("arr = %\n", arr);
     print("Jsem % %\n", "Martin", "Dorazil");
-    print("Float = %\n", 0.5);
+    print("Float = %\n", 120.5f);
+    */
 
-    sizeof(Foo);
+    m := 2;
+    loop m >= 0 {
+        m -= 1;
+    }
 
     return 0;
 }

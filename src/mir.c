@@ -3113,7 +3113,7 @@ void *
 create_instr(Context *cnt, MirInstrKind kind, Ast *node)
 {
 	MirInstr *tmp   = arena_alloc(&cnt->assembly->arenas.mir.instr);
-	tmp->value.data = &tmp->value._tmp[0];
+	tmp->value.data = (VMStackPtr)&tmp->value._tmp;
 	tmp->kind       = kind;
 	tmp->node       = node;
 	tmp->id         = _id_counter++;
@@ -4406,7 +4406,6 @@ analyze_instr_phi(Context *cnt, MirInstrPhi *phi)
 
 	const usize count = phi->incoming_values->size;
 
-	bool       comptime = true;
 	MirInstr **value_ref;
 	MirInstr * block;
 	MirType *  type = NULL;
@@ -4423,14 +4422,12 @@ analyze_instr_phi(Context *cnt, MirInstrPhi *phi)
 			return ANALYZE_RESULT(FAILED, 0);
 
 		if (!type) type = (*value_ref)->value.type;
-
-		comptime &= (*value_ref)->value.is_comptime;
 	}
 
 	BL_ASSERT(type && "Cannot resolve type of phi instruction!");
 	phi->base.value.type        = type;
 	phi->base.value.addr_mode   = MIR_VAM_RVALUE;
-	phi->base.value.is_comptime = comptime;
+	phi->base.value.is_comptime = false;
 
 	return ANALYZE_RESULT(PASSED, 0);
 }
@@ -8966,8 +8963,7 @@ execute_entry_fn(Context *cnt)
 	if (vm_execute_fn(cnt->vm, cnt->assembly, cnt->entry_fn, &ret_ptr)) {
 		if (ret_ptr) {
 			MirType * ret_type = fn_type->data.fn.ret_type;
-			const s64 result =
-			    vm_read_value_as(s64, ret_type->store_size_bytes, ret_ptr);
+			const s64 result   = vm_read_int(ret_type, ret_ptr);
 			msg_log("Execution finished with state: %lld\n", (long long)result);
 		} else {
 			msg_log("Execution finished without errors");

@@ -36,10 +36,10 @@
 #define VM_STACK_PTR_DEREF(ptr) ((VMStackPtr) * ((uintptr_t *)(ptr)))
 
 /* INCOMPLETE: unsafe, use vm_read_value_as */
-#define VM_STACK_READ_AS(T, src) (*((T *)(src)))
+#define VM_READ_AS(T, src) (*((T *)(src)))
 
 /* INCOMPLETE: unsafe, use vm_write_value */
-#define VM_STACK_WRITE_AS(T, dest, src) (*((T *)(dest)) = (src))
+#define VM_WRITE_AS(T, dest, src) (*((T *)(dest)) = (src))
 
 struct MirType;
 struct MirInstr;
@@ -106,36 +106,32 @@ vm_alloc_global(VM *vm, struct Assembly *assembly, struct MirVar *var);
 VMStackPtr
 vm_alloc_raw(VM *vm, struct Assembly *assembly, struct MirType *type);
 
-#define vm_read_value_as(T, size, value) (*((T *)_vm_read_value((size), (value))))
-
-void *
-_vm_read_value(usize size, VMStackPtr value);
-
 VMStackPtr
 vm_read_var(VM *vm, struct MirVar *var);
-
-/* Write value to the stack allocated memory, destination must have enough allocated space! */
-#define vm_write_value(size, dest, src) (_vm_write_value((size), (dest), (VMStackPtr) & (src)))
-#define vm_write_value_type(type, dest, src)                                                       \
-	(_vm_write_value((type)->store_size_bytes, (dest), (VMStackPtr) & (src)))
 
 u64
 vm_read_int(struct MirType *type, VMStackPtr src);
 
 f64
-vm_read_real(struct MirType *type, VMStackPtr src);
+vm_read_double(struct MirType *type, VMStackPtr src);
+
+f32
+vm_read_float(struct MirType *type, VMStackPtr src);
+
+VMStackPtr
+vm_read_ptr(struct MirType *type, VMStackPtr src);
 
 void
 vm_write_int(struct MirType *type, VMStackPtr dest, u64 i);
 
 void
-vm_write_real(struct MirType *type, VMStackPtr dest, f64 i);
+vm_write_double(struct MirType *type, VMStackPtr dest, f64 i);
+
+void
+vm_write_float(struct MirType *type, VMStackPtr dest, f32 i);
 
 void
 vm_write_ptr(struct MirType *type, VMStackPtr dest, VMStackPtr ptr);
-
-void
-_vm_write_value(usize dest_size, VMStackPtr dest, VMStackPtr src);
 
 ptrdiff_t
 vm_get_struct_elem_offest(struct Assembly *assembly, struct MirType *type, u32 i);
