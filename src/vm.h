@@ -32,13 +32,8 @@
 #include "common.h"
 
 /* Stack data manipulation helper macros. */
-/* INCOMPLETE: use read as VMStackPtr* read for stack ptr dereference.  */
 #define VM_STACK_PTR_DEREF(ptr) ((VMStackPtr) * ((uintptr_t *)(ptr)))
-
-/* INCOMPLETE: unsafe, use vm_read_value_as */
 #define VM_READ_AS(T, src) (*((T *)(src)))
-
-/* INCOMPLETE: unsafe, use vm_write_value */
 #define VM_WRITE_AS(T, dest, src) (*((T *)(dest)) = (src))
 
 struct MirType;

@@ -28,6 +28,7 @@ main :: fn () s32 {
 
     m := 2;
     loop m >= 0 {
+        print("% ", m);
         m -= 1;
     }
 

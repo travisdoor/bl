@@ -518,9 +518,180 @@ calculate_binop(MirType *  dest_type,
                 VMStackPtr rhs,
                 BinopKind  op)
 {
+	/******************************************************************************************/
+#define ARITHMETIC(T)                                                                              \
+	case BINOP_ADD:                                                                            \
+		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) + VM_READ_AS(T, rhs));                     \
+		break;                                                                             \
+	case BINOP_SUB:                                                                            \
+		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) - VM_READ_AS(T, rhs));                     \
+		break;                                                                             \
+	case BINOP_MUL:                                                                            \
+		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) * VM_READ_AS(T, rhs));                     \
+		break;                                                                             \
+	case BINOP_DIV:                                                                            \
+		if (VM_READ_AS(T, rhs) == 0) BL_ABORT("Divide by zero, this should be an error!"); \
+		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) * VM_READ_AS(T, rhs));                     \
+		break;
+	/******************************************************************************************/
+
+	/******************************************************************************************/
+#define RELATIONAL(T)                                                                              \
+	case BINOP_EQ:                                                                             \
+		VM_WRITE_AS(bool, dest, VM_READ_AS(T, lhs) == VM_READ_AS(T, rhs));                 \
+		break;                                                                             \
+	case BINOP_NEQ:                                                                            \
+		VM_WRITE_AS(bool, dest, VM_READ_AS(T, lhs) != VM_READ_AS(T, rhs));                 \
+		break;                                                                             \
+	case BINOP_GREATER:                                                                        \
+		VM_WRITE_AS(bool, dest, VM_READ_AS(T, lhs) > VM_READ_AS(T, rhs));                  \
+		break;                                                                             \
+	case BINOP_LESS:                                                                           \
+		VM_WRITE_AS(bool, dest, VM_READ_AS(T, lhs) < VM_READ_AS(T, rhs));                  \
+		break;                                                                             \
+	case BINOP_LESS_EQ:                                                                        \
+		VM_WRITE_AS(bool, dest, VM_READ_AS(T, lhs) <= VM_READ_AS(T, rhs));                 \
+		break;                                                                             \
+	case BINOP_GREATER_EQ:                                                                     \
+		VM_WRITE_AS(bool, dest, VM_READ_AS(T, lhs) >= VM_READ_AS(T, rhs));                 \
+		break;
+	/******************************************************************************************/
+
+	/******************************************************************************************/
+#define LOGICAL(T)                                                                                 \
+	case BINOP_AND:                                                                            \
+		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) & VM_READ_AS(T, rhs));                     \
+		break;                                                                             \
+	case BINOP_OR:                                                                             \
+		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) | VM_READ_AS(T, rhs));                     \
+		break;
+	/******************************************************************************************/
+
+	/******************************************************************************************/
+#define OTHER(T)                                                                                   \
+	case BINOP_MOD:                                                                            \
+		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) % VM_READ_AS(T, rhs));                     \
+		break;                                                                             \
+	case BINOP_SHR:                                                                            \
+		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) >> VM_READ_AS(T, rhs));                    \
+		break;                                                                             \
+	case BINOP_SHL:                                                                            \
+		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) << VM_READ_AS(T, rhs));                    \
+		break;
+	/******************************************************************************************/
+
 	/* Valid types: integers, floats, doubles, enums (as ints), bool, pointers. */
 
-	BL_UNIMPLEMENTED;
+	const usize size    = src_type->store_size_bytes;
+	const bool  is_real = src_type->kind == MIR_TYPE_REAL;
+	const bool  is_signed =
+	    src_type->kind == (MIR_TYPE_INT && src_type->data.integer.is_signed) ||
+	    (src_type->kind == MIR_TYPE_ENUM && src_type->data.enm.base_type->data.integer.is_signed);
+
+	if (is_real) { /* f32 or f64 */
+		if (size == 4) {
+			switch (op) {
+				ARITHMETIC(f32)
+				RELATIONAL(f32)
+			default:
+				BL_ABORT("Invalid binary operation!");
+			}
+		} else if (size == 8) {
+			switch (op) {
+				ARITHMETIC(f64)
+				RELATIONAL(f64)
+			default:
+				BL_ABORT("Invalid binary operation!");
+			}
+		} else {
+			abort();
+		}
+	} else if (is_signed) { /* signed integers  */
+		if (size == 1) {
+			switch (op) {
+				ARITHMETIC(s8)
+				RELATIONAL(s8)
+				LOGICAL(s8)
+				OTHER(s8)
+			default:
+				BL_ABORT("Invalid binary operation!");
+			}
+		} else if (size == 2) {
+			switch (op) {
+				ARITHMETIC(s16)
+				RELATIONAL(s16)
+				LOGICAL(s16)
+				OTHER(s16)
+			default:
+				BL_ABORT("Invalid binary operation!");
+			}
+		} else if (size == 4) {
+			switch (op) {
+				ARITHMETIC(s32)
+				RELATIONAL(s32)
+				LOGICAL(s32)
+				OTHER(s32)
+			default:
+				BL_ABORT("Invalid binary operation!");
+			}
+		} else if (size == 8) {
+			switch (op) {
+				ARITHMETIC(s64)
+				RELATIONAL(s64)
+				LOGICAL(s64)
+				OTHER(s64)
+			default:
+				BL_ABORT("Invalid binary operation!");
+			}
+		} else {
+			abort();
+		}
+	} else { /* unsigned integers */
+		if (size == 1) {
+			switch (op) {
+				ARITHMETIC(u8)
+				RELATIONAL(u8)
+				LOGICAL(u8)
+				OTHER(u8)
+			default:
+				BL_ABORT("Invalid binary operation!");
+			}
+		} else if (size == 2) {
+			switch (op) {
+				ARITHMETIC(u16)
+				RELATIONAL(u16)
+				LOGICAL(u16)
+				OTHER(u16)
+			default:
+				BL_ABORT("Invalid binary operation!");
+			}
+		} else if (size == 4) {
+			switch (op) {
+				ARITHMETIC(u32)
+				RELATIONAL(u32)
+				LOGICAL(u32)
+				OTHER(u32)
+			default:
+				BL_ABORT("Invalid binary operation!");
+			}
+		} else if (size == 8) {
+			switch (op) {
+				ARITHMETIC(u64)
+				RELATIONAL(u64)
+				LOGICAL(u64)
+				OTHER(u64)
+			default:
+				BL_ABORT("Invalid binary operation!");
+			}
+		} else {
+			abort();
+		}
+	}
+
+#undef ARITHMETIC
+#undef RELATIONAL
+#undef LOGICAL
+#undef OTHER
 }
 
 void
