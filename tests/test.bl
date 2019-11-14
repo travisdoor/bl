@@ -24,6 +24,8 @@ main :: fn () s32 {
     print("Jsem % %\n", "Martin", "Dorazil");
     print("Float = %\n", 120.5f);
     print("Hello %\n", -190);
+    print("Double %\n", -120.44);
+    print("s64 %\n", cast(s64) -120.44);
 
     return 0;
 }

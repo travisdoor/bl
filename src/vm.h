@@ -33,8 +33,6 @@
 
 /* Stack data manipulation helper macros. */
 #define VM_STACK_PTR_DEREF(ptr) ((VMStackPtr) * ((uintptr_t *)(ptr)))
-#define VM_READ_AS(T, src) (*((T *)(src)))
-#define VM_WRITE_AS(T, dest, src) (*((T *)(dest)) = (src))
 
 struct MirType;
 struct MirInstr;
@@ -103,6 +101,9 @@ vm_alloc_raw(VM *vm, struct Assembly *assembly, struct MirType *type);
 
 VMStackPtr
 vm_read_var(VM *vm, struct MirVar *var);
+
+#define vm_read_as(T, src) (*((T *)(src)))
+#define vm_write_as(T, dest, src) (*((T *)(dest)) = (src))
 
 u64
 vm_read_int(struct MirType *type, VMStackPtr src);

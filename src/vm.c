@@ -521,62 +521,62 @@ calculate_binop(MirType *  dest_type,
 	/******************************************************************************************/
 #define ARITHMETIC(T)                                                                              \
 	case BINOP_ADD:                                                                            \
-		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) + VM_READ_AS(T, rhs));                     \
+		vm_write_as(T, dest, vm_read_as(T, lhs) + vm_read_as(T, rhs));                     \
 		break;                                                                             \
 	case BINOP_SUB:                                                                            \
-		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) - VM_READ_AS(T, rhs));                     \
+		vm_write_as(T, dest, vm_read_as(T, lhs) - vm_read_as(T, rhs));                     \
 		break;                                                                             \
 	case BINOP_MUL:                                                                            \
-		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) * VM_READ_AS(T, rhs));                     \
+		vm_write_as(T, dest, vm_read_as(T, lhs) * vm_read_as(T, rhs));                     \
 		break;                                                                             \
 	case BINOP_DIV:                                                                            \
-		if (VM_READ_AS(T, rhs) == 0) BL_ABORT("Divide by zero, this should be an error!"); \
-		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) / VM_READ_AS(T, rhs));                     \
+		if (vm_read_as(T, rhs) == 0) BL_ABORT("Divide by zero, this should be an error!"); \
+		vm_write_as(T, dest, vm_read_as(T, lhs) / vm_read_as(T, rhs));                     \
 		break;
 	/******************************************************************************************/
 
 	/******************************************************************************************/
 #define RELATIONAL(T)                                                                              \
 	case BINOP_EQ:                                                                             \
-		VM_WRITE_AS(bool, dest, VM_READ_AS(T, lhs) == VM_READ_AS(T, rhs));                 \
+		vm_write_as(bool, dest, vm_read_as(T, lhs) == vm_read_as(T, rhs));                 \
 		break;                                                                             \
 	case BINOP_NEQ:                                                                            \
-		VM_WRITE_AS(bool, dest, VM_READ_AS(T, lhs) != VM_READ_AS(T, rhs));                 \
+		vm_write_as(bool, dest, vm_read_as(T, lhs) != vm_read_as(T, rhs));                 \
 		break;                                                                             \
 	case BINOP_GREATER:                                                                        \
-		VM_WRITE_AS(bool, dest, VM_READ_AS(T, lhs) > VM_READ_AS(T, rhs));                  \
+		vm_write_as(bool, dest, vm_read_as(T, lhs) > vm_read_as(T, rhs));                  \
 		break;                                                                             \
 	case BINOP_LESS:                                                                           \
-		VM_WRITE_AS(bool, dest, VM_READ_AS(T, lhs) < VM_READ_AS(T, rhs));                  \
+		vm_write_as(bool, dest, vm_read_as(T, lhs) < vm_read_as(T, rhs));                  \
 		break;                                                                             \
 	case BINOP_LESS_EQ:                                                                        \
-		VM_WRITE_AS(bool, dest, VM_READ_AS(T, lhs) <= VM_READ_AS(T, rhs));                 \
+		vm_write_as(bool, dest, vm_read_as(T, lhs) <= vm_read_as(T, rhs));                 \
 		break;                                                                             \
 	case BINOP_GREATER_EQ:                                                                     \
-		VM_WRITE_AS(bool, dest, VM_READ_AS(T, lhs) >= VM_READ_AS(T, rhs));                 \
+		vm_write_as(bool, dest, vm_read_as(T, lhs) >= vm_read_as(T, rhs));                 \
 		break;
 	/******************************************************************************************/
 
 	/******************************************************************************************/
 #define LOGICAL(T)                                                                                 \
 	case BINOP_AND:                                                                            \
-		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) & VM_READ_AS(T, rhs));                     \
+		vm_write_as(T, dest, vm_read_as(T, lhs) & vm_read_as(T, rhs));                     \
 		break;                                                                             \
 	case BINOP_OR:                                                                             \
-		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) | VM_READ_AS(T, rhs));                     \
+		vm_write_as(T, dest, vm_read_as(T, lhs) | vm_read_as(T, rhs));                     \
 		break;
 	/******************************************************************************************/
 
 	/******************************************************************************************/
 #define OTHER(T)                                                                                   \
 	case BINOP_MOD:                                                                            \
-		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) % VM_READ_AS(T, rhs));                     \
+		vm_write_as(T, dest, vm_read_as(T, lhs) % vm_read_as(T, rhs));                     \
 		break;                                                                             \
 	case BINOP_SHR:                                                                            \
-		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) >> VM_READ_AS(T, rhs));                    \
+		vm_write_as(T, dest, vm_read_as(T, lhs) >> vm_read_as(T, rhs));                    \
 		break;                                                                             \
 	case BINOP_SHL:                                                                            \
-		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) << VM_READ_AS(T, rhs));                    \
+		vm_write_as(T, dest, vm_read_as(T, lhs) << vm_read_as(T, rhs));                    \
 		break;
 	/******************************************************************************************/
 
@@ -703,13 +703,13 @@ calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, MirType *type)
 	case sizeof(T): {                                                                          \
 		switch (op) {                                                                      \
 		case UNOP_NOT:                                                                     \
-			VM_WRITE_AS(T, dest, !VM_READ_AS(T, v));                                   \
+			vm_write_as(T, dest, !vm_read_as(T, v));                                   \
 			break;                                                                     \
 		case UNOP_NEG:                                                                     \
-			VM_WRITE_AS(T, dest, VM_READ_AS(T, v) * -1);                               \
+			vm_write_as(T, dest, vm_read_as(T, v) * -1);                               \
 			break;                                                                     \
 		case UNOP_POS:                                                                     \
-			VM_WRITE_AS(T, dest, VM_READ_AS(T, v));                                    \
+			vm_write_as(T, dest, vm_read_as(T, v));                                    \
 			break;                                                                     \
 		default:                                                                           \
 			BL_UNIMPLEMENTED;                                                          \
@@ -786,13 +786,13 @@ do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, 
 		/* src is smaller than dest */
 		switch (src_size) {
 		case 1:
-			VM_WRITE_AS(s64, dest, VM_READ_AS(s8, src));
+			vm_write_int(dest_type, dest, vm_read_as(s8,  src)); 
 			break;
 		case 2:
-			VM_WRITE_AS(s64, dest, VM_READ_AS(s16, src));
+			vm_write_int(dest_type, dest, vm_read_as(s16, src));
 			break;
 		case 4:
-			VM_WRITE_AS(s64, dest, VM_READ_AS(s32, src));
+			vm_write_int(dest_type, dest, vm_read_as(s32,  src));
 			break;
 		default:
 			abort();
@@ -802,45 +802,27 @@ do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, 
 
 	case MIR_CAST_FPEXT: {
 		/* src is smaller than dest */
-		VM_WRITE_AS(f64, dest, VM_READ_AS(f32, src));
+		vm_write_double(dest_type, dest, (f64)vm_read_float(src_type, src));
 		break;
 	}
 
 	case MIR_CAST_FPTRUNC: {
 		/* src is bigger than dest */
-		VM_WRITE_AS(f32, dest, VM_READ_AS(f64, src));
+		vm_write_float(dest_type, dest, (f32)vm_read_double(src_type, src));
 		break;
 	}
 
+	case MIR_CAST_FPTOUI:
 	case MIR_CAST_FPTOSI: {
 		/* real to signed integer same size */
-		switch (dest_size)
-		
 		switch (src_size) {
 		case 4: {
-			VM_WRITE_AS(s32, dest, VM_READ_AS(f32, src));
+			vm_write_int(dest_type, dest, vm_read_as(f32, src));
 			break;
 		}
 
 		case 8: {
-			VM_WRITE_AS(s64, dest, VM_READ_AS(f64, src));
-			break;
-		}
-		default:
-			BL_ABORT("Invalid!");
-		}
-		break;
-	}
-
-	case MIR_CAST_FPTOUI: {
-		switch (src_size) {
-		case 4: {
-			VM_WRITE_AS(u32, dest, VM_READ_AS(f32, src));
-			break;
-		}
-
-		case 8: {
-			VM_WRITE_AS(u64, dest, VM_READ_AS(f64, src));
+			vm_write_int(dest_type, dest, vm_read_as(f64, src));
 			break;
 		}
 		default:
@@ -850,33 +832,52 @@ do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, 
 	}
 
 	case MIR_CAST_SITOFP: {
+		/**********************************************************************************/
+#define FP_WRITE(V)                                                                                \
+	if (dest_size == 4)                                                                        \
+		vm_write_as(f32, dest, (V));                                                       \
+	else                                                                                       \
+		vm_write_as(f64, dest, (V));
+		/**********************************************************************************/
+
 		/* signed integer real */
 		switch (src_size) {
+		case 1: {
+			FP_WRITE(vm_read_as(s8, src));
+			break;
+		}
+
+		case 2: {
+			FP_WRITE(vm_read_as(s16, src));
+			break;
+		}
+
 		case 4: {
-			VM_WRITE_AS(f32, dest, VM_READ_AS(s32, src));
+			FP_WRITE(vm_read_as(s32, src));
 			break;
 		}
 
 		case 8: {
-			VM_WRITE_AS(f64, dest, VM_READ_AS(s64, src));
+			FP_WRITE(vm_read_as(s64, src));
 			break;
 		}
 		default:
 			BL_ABORT("Invalid!");
 		}
 		break;
+#undef FP_WRITE
 	}
 
 	case MIR_CAST_UITOFP: {
 		const u64 v = vm_read_int(src_type, src);
 		switch (dest_size) {
 		case 4: {
-			vm_write_float(dest_type, dest, v);
+			vm_write_as(f32, dest, v);
 			break;
 		}
 
 		case 8: {
-			vm_write_double(dest_type, dest, v);
+			vm_write_as(f64, dest, v);
 			break;
 		}
 		default:
@@ -1297,16 +1298,16 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 	case MIR_TYPE_INT:
 		switch (ret_type->store_size_bytes) {
 		case 1:
-			VM_WRITE_AS(s8, &result, dcCallChar(dvm, fn->dyncall.extern_entry));
+			vm_write_as(s8, &result, dcCallChar(dvm, fn->dyncall.extern_entry));
 			break;
 		case 2:
-			VM_WRITE_AS(s8, &result, dcCallShort(dvm, fn->dyncall.extern_entry));
+			vm_write_as(s8, &result, dcCallShort(dvm, fn->dyncall.extern_entry));
 			break;
 		case 4:
-			VM_WRITE_AS(s8, &result, dcCallInt(dvm, fn->dyncall.extern_entry));
+			vm_write_as(s8, &result, dcCallInt(dvm, fn->dyncall.extern_entry));
 			break;
 		case 8:
-			VM_WRITE_AS(s8, &result, dcCallLongLong(dvm, fn->dyncall.extern_entry));
+			vm_write_as(s8, &result, dcCallLongLong(dvm, fn->dyncall.extern_entry));
 			break;
 		default:
 			BL_ABORT("unsupported integer size for external call result");
@@ -1314,16 +1315,16 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 		break;
 
 	case MIR_TYPE_PTR:
-		VM_WRITE_AS(VMStackPtr, &result, dcCallPointer(dvm, fn->dyncall.extern_entry));
+		vm_write_as(VMStackPtr, &result, dcCallPointer(dvm, fn->dyncall.extern_entry));
 		break;
 
 	case MIR_TYPE_REAL: {
 		switch (ret_type->store_size_bytes) {
 		case 4:
-			VM_WRITE_AS(f32, &result, dcCallFloat(dvm, fn->dyncall.extern_entry));
+			vm_write_as(f32, &result, dcCallFloat(dvm, fn->dyncall.extern_entry));
 			break;
 		case 8:
-			VM_WRITE_AS(f64, &result, dcCallDouble(dvm, fn->dyncall.extern_entry));
+			vm_write_as(f64, &result, dcCallDouble(dvm, fn->dyncall.extern_entry));
 			break;
 		default:
 			BL_ABORT("Unsupported real number size for external call "
@@ -1642,7 +1643,7 @@ interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 	BL_ASSERT(arr_ptr && index_ptr);
 
 	BL_ASSERT(elem_ptr->index->value.type->store_size_bytes == sizeof(s64));
-	const s64 index = VM_READ_AS(s64, index_ptr);
+	const s64 index = vm_read_as(s64, index_ptr);
 	arr_ptr         = VM_STACK_PTR_DEREF(arr_ptr);
 
 	switch (arr_type->kind) {
@@ -1999,14 +2000,14 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 
 		BL_ASSERT(mir_get_struct_elem_type(vargs_tmp->value.type, MIR_SLICE_LEN_INDEX)
 		              ->store_size_bytes == sizeof(s64));
-		VM_WRITE_AS(s64, len_ptr, values->size);
+		vm_write_as(s64, len_ptr, values->size);
 
 		// set ptr
 		VMStackPtr ptr_ptr =
 		    vargs_tmp_ptr + vm_get_struct_elem_offest(
 		                        vm->assembly, vargs_tmp->value.type, MIR_SLICE_PTR_INDEX);
 
-		VM_WRITE_AS(VMStackPtr, ptr_ptr, arr_tmp_ptr);
+		vm_write_as(VMStackPtr, ptr_ptr, arr_tmp_ptr);
 
 		stack_push(vm, vargs_tmp_ptr, vargs_tmp->value.type);
 	}

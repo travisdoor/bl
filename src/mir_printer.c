@@ -105,16 +105,16 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 		if (type->data.integer.is_signed) {
 			switch (type->store_size_bytes) {
 			case 1:
-				fprintf(cnt->stream, "%d", VM_READ_AS(s8, value));
+				fprintf(cnt->stream, "%d", vm_read_as(s8, value));
 				break;
 			case 2:
-				fprintf(cnt->stream, "%d", VM_READ_AS(s16, value));
+				fprintf(cnt->stream, "%d", vm_read_as(s16, value));
 				break;
 			case 4:
-				fprintf(cnt->stream, "%d", VM_READ_AS(s32,  value));
+				fprintf(cnt->stream, "%d", vm_read_as(s32,  value));
 				break;
 			case 8:
-				fprintf(cnt->stream, "%lld", VM_READ_AS(s64, value));
+				fprintf(cnt->stream, "%lld", vm_read_as(s64, value));
 				break;
 			default:
 				fprintf(cnt->stream, "<INVALID>");
@@ -122,16 +122,16 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 		} else {
 			switch (type->store_size_bytes) {
 			case 1:
-				fprintf(cnt->stream, "%u", VM_READ_AS(u8,  value));
+				fprintf(cnt->stream, "%u", vm_read_as(u8,  value));
 				break;
 			case 2:
-				fprintf(cnt->stream, "%u", VM_READ_AS(u16, value));
+				fprintf(cnt->stream, "%u", vm_read_as(u16, value));
 				break;
 			case 4:
-				fprintf(cnt->stream, "%u", VM_READ_AS(u32, value));
+				fprintf(cnt->stream, "%u", vm_read_as(u32, value));
 				break;
 			case 8:
-				fprintf(cnt->stream, "%llu", VM_READ_AS(u64, value));
+				fprintf(cnt->stream, "%llu", vm_read_as(u64, value));
 				break;
 			default:
 				fprintf(cnt->stream, "<INVALID>");
@@ -143,10 +143,10 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 	case MIR_TYPE_REAL:
 		switch (type->store_size_bytes) {
 		case 4:
-			fprintf(cnt->stream, "%f", VM_READ_AS(f32, value));
+			fprintf(cnt->stream, "%f", vm_read_as(f32, value));
 			break;
 		case 8:
-			fprintf(cnt->stream, "%f", VM_READ_AS(f64, value));
+			fprintf(cnt->stream, "%f", vm_read_as(f64, value));
 			break;
 		default:
 			fprintf(cnt->stream, "<INVALID>");
@@ -155,20 +155,20 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 		break;
 
 	case MIR_TYPE_BOOL: {
-		bool b = VM_READ_AS(bool, value);
+		bool b = vm_read_as(bool, value);
 		fprintf(cnt->stream, "%s", b ? "true" : "false");
 		break;
 	}
 
 	case MIR_TYPE_TYPE: {
-		MirType *type = VM_READ_AS(MirType *, value);
+		MirType *type = vm_read_as(MirType *, value);
 		print_type(cnt, type, false, false);
 		break;
 	}
 
 	case MIR_TYPE_PTR: {
 		if (mir_deref_type(type)->kind == MIR_TYPE_FN) {
-			MirFn *fn = VM_READ_AS(MirFn *, value);
+			MirFn *fn = vm_read_as(MirFn *, value);
 
 			if (fn) {
 				fprintf(cnt->stream, "&%s", fn->linkage_name);
@@ -176,7 +176,7 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 				fprintf(cnt->stream, "null");
 			}
 		} else {
-			VMStackPtr ptr = VM_READ_AS(VMStackPtr, value);
+			VMStackPtr ptr = vm_read_as(VMStackPtr, value);
 			fprintf(cnt->stream, "%p", ptr);
 		}
 		break;
