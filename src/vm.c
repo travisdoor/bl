@@ -531,7 +531,7 @@ calculate_binop(MirType *  dest_type,
 		break;                                                                             \
 	case BINOP_DIV:                                                                            \
 		if (VM_READ_AS(T, rhs) == 0) BL_ABORT("Divide by zero, this should be an error!"); \
-		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) * VM_READ_AS(T, rhs));                     \
+		VM_WRITE_AS(T, dest, VM_READ_AS(T, lhs) / VM_READ_AS(T, rhs));                     \
 		break;
 	/******************************************************************************************/
 
@@ -585,8 +585,9 @@ calculate_binop(MirType *  dest_type,
 	const usize size    = src_type->store_size_bytes;
 	const bool  is_real = src_type->kind == MIR_TYPE_REAL;
 	const bool  is_signed =
-	    src_type->kind == (MIR_TYPE_INT && src_type->data.integer.is_signed) ||
-	    (src_type->kind == MIR_TYPE_ENUM && src_type->data.enm.base_type->data.integer.is_signed);
+	    (src_type->kind == MIR_TYPE_INT && src_type->data.integer.is_signed) ||
+	    (src_type->kind == MIR_TYPE_ENUM &&
+	     src_type->data.enm.base_type->data.integer.is_signed);
 
 	if (is_real) { /* f32 or f64 */
 		if (size == 4) {
@@ -783,38 +784,63 @@ do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, 
 
 	case MIR_CAST_SEXT: {
 		/* src is smaller than dest */
-		const u64 v = vm_read_int(src_type, src);
-		vm_write_int(dest_type, dest, v);
+		switch (src_size) {
+		case 1:
+			VM_WRITE_AS(s64, dest, VM_READ_AS(s8, src));
+			break;
+		case 2:
+			VM_WRITE_AS(s64, dest, VM_READ_AS(s16, src));
+			break;
+		case 4:
+			VM_WRITE_AS(s64, dest, VM_READ_AS(s32, src));
+			break;
+		default:
+			abort();
+		}
 		break;
 	}
 
 	case MIR_CAST_FPEXT: {
 		/* src is smaller than dest */
-		const f32 v = vm_read_float(src_type, src);
-		vm_write_double(dest_type, dest, (f64)v);
+		VM_WRITE_AS(f64, dest, VM_READ_AS(f32, src));
 		break;
 	}
 
 	case MIR_CAST_FPTRUNC: {
 		/* src is bigger than dest */
-		const f64 v = vm_read_double(src_type, src);
-		vm_write_float(dest_type, dest, (f32)v);
+		VM_WRITE_AS(f32, dest, VM_READ_AS(f64, src));
 		break;
 	}
 
-	case MIR_CAST_FPTOUI:
 	case MIR_CAST_FPTOSI: {
-		/* real to signed integer */
+		/* real to signed integer same size */
+		switch (dest_size)
+		
 		switch (src_size) {
 		case 4: {
-			const f32 v = vm_read_float(src_type, src);
-			vm_write_int(dest_type, dest, (u64)v);
+			VM_WRITE_AS(s32, dest, VM_READ_AS(f32, src));
 			break;
 		}
 
 		case 8: {
-			const f64 v = vm_read_double(src_type, src);
-			vm_write_int(dest_type, dest, (u64)v);
+			VM_WRITE_AS(s64, dest, VM_READ_AS(f64, src));
+			break;
+		}
+		default:
+			BL_ABORT("Invalid!");
+		}
+		break;
+	}
+
+	case MIR_CAST_FPTOUI: {
+		switch (src_size) {
+		case 4: {
+			VM_WRITE_AS(u32, dest, VM_READ_AS(f32, src));
+			break;
+		}
+
+		case 8: {
+			VM_WRITE_AS(u64, dest, VM_READ_AS(f64, src));
 			break;
 		}
 		default:
@@ -825,15 +851,14 @@ do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, 
 
 	case MIR_CAST_SITOFP: {
 		/* signed integer real */
-		const s64 v = (s64)vm_read_int(src_type, src);
-		switch (dest_size) {
+		switch (src_size) {
 		case 4: {
-			vm_write_float(dest_type, dest, v);
+			VM_WRITE_AS(f32, dest, VM_READ_AS(s32, src));
 			break;
 		}
 
 		case 8: {
-			vm_write_double(dest_type, dest, v);
+			VM_WRITE_AS(f64, dest, VM_READ_AS(s64, src));
 			break;
 		}
 		default:

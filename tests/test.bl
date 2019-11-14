@@ -9,10 +9,9 @@ Foo :: struct {
     b: bool;
 }
 
-printf :: fn (prt: *u8, r: s32) s32 #extern;
+printf :: fn (prt: *u8, r: u64) s32 #extern;
 
 main :: fn () s32 {
-    /*
     foo :: {:Foo: 10, false};
     arr :: {:[5]s32: 0, 1, 2, 3, 4};
 
@@ -24,13 +23,7 @@ main :: fn () s32 {
     print("arr = %\n", arr);
     print("Jsem % %\n", "Martin", "Dorazil");
     print("Float = %\n", 120.5f);
-    */
-
-    m := 2;
-    loop m >= 0 {
-        print("% ", m);
-        m -= 1;
-    }
+    print("Hello %\n", -190);
 
     return 0;
 }

@@ -6117,6 +6117,7 @@ analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 
 	unop->base.value.type        = type;
 	unop->base.value.is_comptime = unop->expr->value.is_comptime;
+	unop->base.value.addr_mode = unop->expr->value.addr_mode;
 	unop->volatile_type          = is_instr_type_volatile(unop->expr);
 
 	return ANALYZE_RESULT(PASSED, 0);

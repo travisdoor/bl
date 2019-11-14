@@ -424,6 +424,7 @@ print_u64 :: fn (buf: []u8, cur: s32, v: u64) s32 {
 
     loop div > 0 {
         d := v / div;
+
         v %= div;
         div /= base;
 
@@ -445,9 +446,6 @@ print_f64 :: fn (buf: []u8, cur: s32, v: f64) s32 {
 
     // convert the number
     loop v > precision || m >= 0 {
-            t3 :: "%d   ";
-            printf(t3.ptr, m);
-
         weight := pow(10., cast(f64) m);
 
         if weight > 0. {
