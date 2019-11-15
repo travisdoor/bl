@@ -4283,9 +4283,9 @@ evaluate(Context *cnt, MirInstr *instr)
 	if (!instr) return;
 
 	BL_ASSERT(instr->analyzed && "Non-analyzed instruction cannot be evaluated!");
+	/* We can evauate compile time know instructions only.  */
 	if (!instr->value.is_comptime) return;
-
-	// if (instr->kind == MIR_INSTR_CAST && ((MirInstrCast*)instr)->auto_cast)
+	
 	vm_eval_instr(cnt->vm, cnt->assembly, instr);
 
 	if (can_mutate_comptime_to_const(instr)) {
@@ -6117,7 +6117,7 @@ analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 
 	unop->base.value.type        = type;
 	unop->base.value.is_comptime = unop->expr->value.is_comptime;
-	unop->base.value.addr_mode = unop->expr->value.addr_mode;
+	unop->base.value.addr_mode   = unop->expr->value.addr_mode;
 	unop->volatile_type          = is_instr_type_volatile(unop->expr);
 
 	return ANALYZE_RESULT(PASSED, 0);
@@ -6562,13 +6562,13 @@ AnalyzeStageState
 analyze_stage_set_auto(Context *cnt, MirInstr **input, MirType *slot_type)
 {
 	BL_ASSERT(slot_type);
-	MirInstr *_input = *input;
 
-	if (_input->kind != MIR_INSTR_CAST) return ANALYZE_STAGE_CONTINUE;
-	if (!((MirInstrCast *)_input)->auto_cast) return ANALYZE_STAGE_CONTINUE;
+	if ((*input)->kind != MIR_INSTR_CAST) return ANALYZE_STAGE_CONTINUE;
+	MirInstrCast *cast = (MirInstrCast *)*input;
+	if (!cast->auto_cast) return ANALYZE_STAGE_CONTINUE;
 
-	_input->value.type = slot_type;
-	if (analyze_instr_cast(cnt, (MirInstrCast *)_input, true).state != ANALYZE_PASSED) {
+	cast->base.value.type = slot_type;
+	if (analyze_instr_cast(cnt, cast, true).state != ANALYZE_PASSED) {
 		return ANALYZE_STAGE_FAILED;
 	}
 
