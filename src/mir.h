@@ -42,7 +42,11 @@
 #define MIR_SLICE_PTR_INDEX 1
 
 /* Helper macro for reading Const Expression Values of fundamental types. */
+#if BL_DEBUG
+#define MIR_CEV_READ_AS(T, src) (*((T *)_mir_cev_read(src)))
+#else
 #define MIR_CEV_READ_AS(T, src) (*((T *)(src)->data))
+#endif
 #define MIR_CEV_WRITE_AS(T, dest, src) (*((T *)(dest)->data) = (src))
 
 struct Assembly;
@@ -761,5 +765,10 @@ mir_instr_name(MirInstr *instr);
 
 void
 mir_run(struct Assembly *assembly);
+
+#if BL_DEBUG
+VMStackPtr
+_mir_cev_read(MirConstExprValue *value);
+#endif
 
 #endif

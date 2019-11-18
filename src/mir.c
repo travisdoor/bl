@@ -541,7 +541,7 @@ static MirInstr *
 append_instr_const_int(Context *cnt, Ast *node, MirType *type, u64 val);
 
 static MirInstr *
-append_instr_const_ptr(Context *cnt, Ast *node, MirType *type, VMStackPtr ptr);
+create_instr_const_ptr(Context *cnt, Ast *node, MirType *type, VMStackPtr ptr);
 
 static MirInstr *
 append_instr_const_float(Context *cnt, Ast *node, float val);
@@ -3898,7 +3898,7 @@ append_instr_const_bool(Context *cnt, Ast *node, bool val)
 }
 
 MirInstr *
-append_instr_const_ptr(Context *cnt, Ast *node, MirType *type, VMStackPtr ptr)
+create_instr_const_ptr(Context *cnt, Ast *node, MirType *type, VMStackPtr ptr)
 {
 	BL_ASSERT(mir_is_pointer_type(type) && "Expected pointer type!");
 	MirInstr *tmp          = create_instr(cnt, MIR_INSTR_CONST, node);
@@ -3917,9 +3917,12 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 	/* Build up string as compound expression of lenght and pointer to data. */
 	TSmallArray_InstrPtr *values = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
 
-	MirInstr *len = append_instr_const_int(cnt, node, cnt->builtin_types->t_s64, strlen(str));
+	MirInstr *len = create_instr_const_int(cnt, node, cnt->builtin_types->t_s64, strlen(str));
 	MirInstr *ptr =
-	    append_instr_const_ptr(cnt, node, cnt->builtin_types->t_u8_ptr, (VMStackPtr)str);
+	    create_instr_const_ptr(cnt, node, cnt->builtin_types->t_u8_ptr, (VMStackPtr)str);
+
+	analyze_instr_rq(cnt, len);
+	analyze_instr_rq(cnt, ptr);
 
 	tsa_push_InstrPtr(values, len);
 	tsa_push_InstrPtr(values, ptr);
@@ -4285,7 +4288,7 @@ evaluate(Context *cnt, MirInstr *instr)
 	BL_ASSERT(instr->analyzed && "Non-analyzed instruction cannot be evaluated!");
 	/* We can evauate compile time know instructions only.  */
 	if (!instr->value.is_comptime) return;
-	
+
 	vm_eval_instr(cnt->vm, cnt->assembly, instr);
 
 	if (can_mutate_comptime_to_const(instr)) {
@@ -5929,6 +5932,7 @@ analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 	 */
 	MirType *base_type;
 	if (type_enum->base_type) {
+		evaluate(cnt, type_enum->base_type);
 		base_type = MIR_CEV_READ_AS(MirType *, &type_enum->base_type->value);
 
 		/* Enum type must be integer! */
@@ -5965,6 +5969,7 @@ analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 			return ANALYZE_RESULT(FAILED, 0);
 		}
 
+		evaluate(cnt, &variant_instr->base);
 		tsa_push_VariantPtr(variants, variant);
 	}
 
@@ -6514,6 +6519,7 @@ analyze_slot(Context *cnt, const AnalyzeSlotConfig *conf, MirInstr **input, MirT
 	}
 
 DONE:
+	evaluate(cnt, *input);
 	return ANALYZE_PASSED;
 
 FAILED:
@@ -6749,10 +6755,13 @@ analyze_instr(Context *cnt, MirInstr *instr)
 		break;
 	}
 
+	instr->analyzed = state.state == ANALYZE_PASSED;
+	/*
 	if (state.state == ANALYZE_PASSED) {
-		instr->analyzed = true;
-		evaluate(cnt, instr);
+	        instr->analyzed = true;
+	        evaluate(cnt, instr);
 	}
+	*/
 
 	return state;
 }
@@ -8932,6 +8941,17 @@ _type_to_str(char *buf, usize len, MirType *type, bool prefer_name)
 	}
 #undef append_buf
 }
+
+#if BL_DEBUG
+VMStackPtr
+_mir_cev_read(MirConstExprValue *value)
+{
+	BL_ASSERT(value && "Attempt to read null value!");
+	BL_ASSERT(value->is_comptime && "Attempt to read non-comptime value!");
+	BL_ASSERT(value->data && "Invalid const expression data!");
+	return value->data;
+}
+#endif
 
 void
 mir_type_to_str(char *buf, usize len, MirType *type, bool prefer_name)

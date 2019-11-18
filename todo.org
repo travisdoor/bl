@@ -39,3 +39,17 @@
   
 - vm_load_int - make copy
 - vm_read - return pointer to VMValue
+
+  
+
+#if BL_DEBUG
+#define MIR_CEV_READ_AS(T, src) (*((T *)_mir_cev_read(src)))
+#else
+#define MIR_CEV_READ_AS(T, src) (*((T *)(src)->data))
+#endif
+
+#if BL_DEBUG
+VMStackPtr
+_mir_cev_read(MirConstExprValue *value);
+#endif
+
