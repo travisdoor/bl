@@ -2,12 +2,7 @@
 // INCOMPLETE: enable "hello".ptr
 // INCOMPLETE: local type declarations
 
-#load "std/print.bl"
-
-Foo :: struct {
-    a: s32;
-    b: bool;
-}
+#load "std/basic.bl"
 
 Days :: enum {
     Sun;
@@ -15,7 +10,7 @@ Days :: enum {
 }
 
 main :: fn () s32 {
-    foo :: {:Foo: 10, false};
+    foo :: {:Foo: 10, false, null};
     arr :: {:[5]s32: 0, 1, 2, 3, 4};
 
     print("Hello sailor!!!\n");
@@ -30,15 +25,25 @@ main :: fn () s32 {
     print("Double %\n", -120.44);
     print("s64 %\n", cast(s64) -120.44);
 
-    day :: Days.Sun;
-    i : s32 : auto day;
+    day :: Days.Mon;
+    i : s32 = auto day;
 
-    /*
-    a : s64 = 10;
-    b : usize;
-
-    a = 10  * auto b;
-    */
+    print("i == %\n", i);
 
     return 0;
+}
+
+#private
+
+hello :: fn (v: *Foo, i: *Foo) {
+}
+
+Foo :: struct {
+    a: s32;
+    b: bool;
+    c: *Bar;
+}
+
+Bar :: struct {
+    i: s32
 }

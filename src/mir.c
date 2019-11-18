@@ -50,6 +50,8 @@
 #define NO_REF_COUNTING -1
 #define VERBOSE_ANALYZE false
 
+#define IC(I, T) ((MirInstr##T *)(I))
+
 #define ANALYZE_RESULT(_state, _waiting_for)                                                       \
 	(AnalyzeResult)                                                                            \
 	{                                                                                          \
@@ -1067,19 +1069,16 @@ is_incomplete_struct_type(MirType *type)
 static inline bool
 is_instr_type_volatile(MirInstr *instr)
 {
-	MirType *type = instr->value.type;
-
-	if (!type) return false;
-	if (type->kind != MIR_TYPE_INT) return false;
-
 	switch (instr->kind) {
 	case MIR_INSTR_CONST:
-		/* Integer constant literals has always volatile type. */
-		return true;
+		return IC(instr, Const)->volatile_type;
+
 	case MIR_INSTR_UNOP:
-		return ((MirInstrUnop *)instr)->volatile_type;
+		return IC(instr, Unop)->volatile_type;
+
 	case MIR_INSTR_BINOP:
-		return ((MirInstrBinop *)instr)->volatile_type;
+		return IC(instr, Binop)->volatile_type;
+
 	default:
 		return false;
 	}
@@ -2938,7 +2937,7 @@ maybe_mark_as_unrechable(MirInstrBlock *block, MirInstr *instr)
 	instr->unrechable = true;
 	MirFn *fn         = block->owner_fn;
 	if (!fn) return;
-	MirInstrFnProto *fn_proto = (MirInstrFnProto *)fn->prototype;
+	MirInstrFnProto *fn_proto = IC(fn->prototype, FnProto);
 	if (!fn_proto->first_unrechable_location && instr->node)
 		fn_proto->first_unrechable_location = instr->node->location;
 }
@@ -3726,7 +3725,7 @@ append_instr_decl_var(Context * cnt,
 	}
 
 	if (init && init->kind == MIR_INSTR_COMPOUND) {
-		((MirInstrCompound *)init)->is_naked = false;
+		IC(init, Compound)->is_naked = false;
 	}
 
 	return &tmp->base;
@@ -3760,7 +3759,7 @@ append_instr_decl_var_impl(Context *   cnt,
 	}
 
 	if (init && init->kind == MIR_INSTR_COMPOUND) {
-		((MirInstrCompound *)init)->is_naked = false;
+		IC(init, Compound)->is_naked = false;
 	}
 
 	return &tmp->base;
@@ -3829,13 +3828,15 @@ append_instr_decl_variant(Context *cnt, Ast *node, MirInstr *value)
 static MirInstr *
 create_instr_const_int(Context *cnt, Ast *node, MirType *type, u64 val)
 {
-	MirInstr *tmp          = create_instr(cnt, MIR_INSTR_CONST, node);
-	tmp->value.type        = type;
-	tmp->value.addr_mode   = MIR_VAM_RVALUE;
-	tmp->value.is_comptime = true;
-	MIR_CEV_WRITE_AS(u64, &tmp->value, val);
+	MirInstrConst *tmp          = create_instr(cnt, MIR_INSTR_CONST, node);
+	tmp->base.value.type        = type;
+	tmp->base.value.addr_mode   = MIR_VAM_RVALUE;
+	tmp->base.value.is_comptime = true;
+	tmp->volatile_type          = true;
 
-	return tmp;
+	MIR_CEV_WRITE_AS(u64, &tmp->base.value, val);
+
+	return &tmp->base;
 }
 
 static MirInstr *
@@ -4292,8 +4293,10 @@ evaluate(Context *cnt, MirInstr *instr)
 	vm_eval_instr(cnt->vm, cnt->assembly, instr);
 
 	if (can_mutate_comptime_to_const(instr)) {
+		const bool is_volatile = is_instr_type_volatile(instr);
 		erase_instr_tree(instr, true, true);
 		mutate_instr(instr, MIR_INSTR_CONST);
+		IC(instr, Const)->volatile_type = is_volatile;
 	}
 }
 
@@ -4601,7 +4604,6 @@ analyze_var(Context *cnt, MirVar *var)
 	switch (var->value.type->kind) {
 	case MIR_TYPE_TYPE:
 		/* Disable LLVM generation of typedefs. */
-		var->emit_llvm = false;
 		if (!var->is_mutable) break;
 		/* Typedef must be immutable! */
 		builder_msg(BUILDER_MSG_ERROR,
@@ -5242,6 +5244,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		/* Check if we try get reference to incomplete structure type. */
 		if (type->kind == MIR_TYPE_TYPE) {
 			MirType *t = MIR_CEV_READ_AS(MirType *, &var->value);
+			BL_ASSERT(t && "Invalid type reference!");
 			if (is_incomplete_struct_type(t) && !ref->accept_incomplete_type) {
 				return ANALYZE_RESULT(WAITING, t->user_id->hash);
 			}
@@ -5932,7 +5935,6 @@ analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 	 */
 	MirType *base_type;
 	if (type_enum->base_type) {
-		evaluate(cnt, type_enum->base_type);
 		base_type = MIR_CEV_READ_AS(MirType *, &type_enum->base_type->value);
 
 		/* Enum type must be integer! */
@@ -5969,7 +5971,6 @@ analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 			return ANALYZE_RESULT(FAILED, 0);
 		}
 
-		evaluate(cnt, &variant_instr->base);
 		tsa_push_VariantPtr(variants, variant);
 	}
 
@@ -6041,12 +6042,11 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 		if (is_load_needed(binop->rhs)) rhs_type = mir_deref_type(rhs_type);
 
 		const bool lhs_is_null = binop->lhs->value.type->kind == MIR_TYPE_NULL;
-		const bool lhs_is_const_int =
-		    binop->lhs->kind == MIR_INSTR_CONST && lhs_type->kind == MIR_TYPE_INT;
-		const bool can_propagate_LtoR =
-		    can_impl_cast(lhs_type, rhs_type) || lhs_is_const_int;
+		const bool can_propagate_RtoL =
+		    can_impl_cast(lhs_type, rhs_type) || is_instr_type_volatile(binop->lhs);
 
-		if (can_propagate_LtoR) {
+		if (can_propagate_RtoL) {
+			/* Propagate right hand side expression type to the left.  */
 			if (analyze_slot(cnt, &analyze_slot_conf_default, &binop->lhs, rhs_type) !=
 			    ANALYZE_PASSED)
 				return ANALYZE_RESULT(FAILED, 0);
@@ -6055,6 +6055,7 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 			    ANALYZE_PASSED)
 				return ANALYZE_RESULT(FAILED, 0);
 		} else {
+			/* Propagate left hand side expression type to the right.  */
 			if (analyze_slot(cnt, &analyze_slot_conf_basic, &binop->lhs, NULL) !=
 			    ANALYZE_PASSED)
 				return ANALYZE_RESULT(FAILED, 0);
@@ -6102,8 +6103,7 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 	 */
 	binop->base.value.is_comptime = lhs->value.is_comptime && rhs->value.is_comptime;
 	binop->base.value.addr_mode   = MIR_VAM_RVALUE;
-
-	binop->volatile_type = is_instr_type_volatile(lhs) && is_instr_type_volatile(rhs);
+	binop->volatile_type          = is_instr_type_volatile(lhs) && is_instr_type_volatile(rhs);
 
 	return ANALYZE_RESULT(PASSED, 0);
 #undef is_valid
@@ -6123,7 +6123,8 @@ analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 	unop->base.value.type        = type;
 	unop->base.value.is_comptime = unop->expr->value.is_comptime;
 	unop->base.value.addr_mode   = unop->expr->value.addr_mode;
-	unop->volatile_type          = is_instr_type_volatile(unop->expr);
+
+	unop->volatile_type = is_instr_type_volatile(unop->expr);
 
 	return ANALYZE_RESULT(PASSED, 0);
 }
@@ -6519,7 +6520,6 @@ analyze_slot(Context *cnt, const AnalyzeSlotConfig *conf, MirInstr **input, MirT
 	}
 
 DONE:
-	evaluate(cnt, *input);
 	return ANALYZE_PASSED;
 
 FAILED:
@@ -6577,6 +6577,8 @@ analyze_stage_set_auto(Context *cnt, MirInstr **input, MirType *slot_type)
 	if (analyze_instr_cast(cnt, cast, true).state != ANALYZE_PASSED) {
 		return ANALYZE_STAGE_FAILED;
 	}
+
+	evaluate(cnt, &cast->base);
 
 	return ANALYZE_STAGE_BREAK;
 }
@@ -6755,13 +6757,16 @@ analyze_instr(Context *cnt, MirInstr *instr)
 		break;
 	}
 
-	instr->analyzed = state.state == ANALYZE_PASSED;
-	/*
 	if (state.state == ANALYZE_PASSED) {
-	        instr->analyzed = true;
-	        evaluate(cnt, instr);
+		instr->analyzed = true;
+
+		/* An auto cast cannot be directly evaluated because it's destination type could
+		 * change based on usage. */
+		if (instr->kind == MIR_INSTR_CAST && ((MirInstrCast *)instr)->auto_cast)
+			return state;
+
+		evaluate(cnt, instr);
 	}
-	*/
 
 	return state;
 }

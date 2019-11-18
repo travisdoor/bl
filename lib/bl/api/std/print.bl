@@ -72,7 +72,7 @@ bprint :: fn (buf: []u8, format: string, args: ...) s32 {
     return w;
 };
 
-_print_log :: fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32) {
+_print_log_default :: fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32) {
     if kind == PrintLogKind.Message { print("[MESSAGE] "); }
     if kind == PrintLogKind.Warning { print("[WARNING] "); }
     if kind == PrintLogKind.Error   { print("[ ERROR ] "); }

@@ -477,6 +477,8 @@ struct MirInstrArg {
 
 struct MirInstrConst {
 	MirInstr base;
+	/* Constant marked as volatile can change it's type as needed by expression. */
+	bool volatile_type;
 };
 
 struct MirInstrLoad {
@@ -517,10 +519,7 @@ struct MirInstrBinop {
 	BinopKind op;
 	MirInstr *lhs;
 	MirInstr *rhs;
-
-	/* volatile type flag, if true, this instruction can change type during analyze pass, this
-	 * is used for const integer literals like (123 * 123) */
-	bool volatile_type;
+	bool      volatile_type;
 };
 
 struct MirInstrUnop {
@@ -528,10 +527,7 @@ struct MirInstrUnop {
 
 	UnopKind  op;
 	MirInstr *expr;
-
-	/* volatile type flag, if true, this instruction can change type during analyze pass, this
-	 * is used for const integer literals like (-123) */
-	bool volatile_type;
+	bool      volatile_type;
 };
 
 struct MirInstrFnProto {

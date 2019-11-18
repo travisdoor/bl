@@ -301,6 +301,7 @@ static inline LLVMBasicBlockRef
 emit_basic_block(Context *cnt, MirInstrBlock *block)
 {
 	if (!block) return NULL;
+
 	LLVMBasicBlockRef llvm_block = NULL;
 	if (!block->base.llvm_value) {
 		llvm_block = LLVMAppendBasicBlockInContext(
@@ -1688,7 +1689,8 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	BL_ASSERT(callee_type);
 	BL_ASSERT(callee_type->kind == MIR_TYPE_FN);
 
-	MirFn *      callee_fn = MIR_CEV_READ_AS(MirFn *, &callee->value);
+	MirFn *callee_fn =
+	    mir_is_comptime(callee) ? MIR_CEV_READ_AS(MirFn *, &callee->value) : NULL;
 	LLVMValueRef llvm_called_fn =
 	    callee->llvm_value ? callee->llvm_value : emit_fn_proto(cnt, callee_fn);
 
@@ -2121,6 +2123,8 @@ emit_instr_block(Context *cnt, MirInstrBlock *block)
 
 	MirFn *    fn        = block->owner_fn;
 	const bool is_global = fn == NULL;
+
+	if (!block->terminal) BL_ABORT("Block '%s', is not terminated", block->name);
 
 	/* Global-scope blocks does not have LLVM equivalent, we can generate just the
 	 * content of our block, but every instruction must be comptime constant. */

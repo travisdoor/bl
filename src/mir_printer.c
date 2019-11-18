@@ -32,7 +32,7 @@
 #include "mir.h"
 
 #if BL_DEBUG
-#define PRINT_ANALYZED_COMPTIMES true
+#define PRINT_ANALYZED_COMPTIMES false
 #else
 #define PRINT_ANALYZED_COMPTIMES false
 #endif
@@ -111,7 +111,7 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 				fprintf(cnt->stream, "%d", vm_read_as(s16, value));
 				break;
 			case 4:
-				fprintf(cnt->stream, "%d", vm_read_as(s32,  value));
+				fprintf(cnt->stream, "%d", vm_read_as(s32, value));
 				break;
 			case 8:
 				fprintf(cnt->stream, "%lld", vm_read_as(s64, value));
@@ -122,7 +122,7 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 		} else {
 			switch (type->store_size_bytes) {
 			case 1:
-				fprintf(cnt->stream, "%u", vm_read_as(u8,  value));
+				fprintf(cnt->stream, "%u", vm_read_as(u8, value));
 				break;
 			case 2:
 				fprintf(cnt->stream, "%u", vm_read_as(u16, value));
@@ -875,7 +875,8 @@ print_instr_call(Context *cnt, MirInstrCall *call)
 {
 	print_instr_head(cnt, &call->base, "call");
 
-	MirFn *     callee      = MIR_CEV_READ_AS(MirFn *, &call->callee->value);
+	MirFn *callee =
+	    mir_is_comptime(call->callee) ? MIR_CEV_READ_AS(MirFn *, &call->callee->value) : NULL;
 	const char *callee_name = callee ? callee->linkage_name : NULL;
 	if (callee_name)
 		fprintf(cnt->stream, "@%s", callee_name);

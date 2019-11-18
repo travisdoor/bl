@@ -786,13 +786,13 @@ do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, 
 		/* src is smaller than dest */
 		switch (src_size) {
 		case 1:
-			vm_write_int(dest_type, dest, vm_read_as(s8,  src)); 
+			vm_write_int(dest_type, dest, vm_read_as(s8, src));
 			break;
 		case 2:
 			vm_write_int(dest_type, dest, vm_read_as(s16, src));
 			break;
 		case 4:
-			vm_write_int(dest_type, dest, vm_read_as(s32,  src));
+			vm_write_int(dest_type, dest, vm_read_as(s32, src));
 			break;
 		default:
 			abort();
@@ -1235,19 +1235,10 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 	case MIR_TYPE_PTR: {
 		VMStackPtr tmp = vm_read_ptr(type, val_ptr);
 		if (mir_deref_type(type)->kind == MIR_TYPE_FN) {
-			BL_UNIMPLEMENTED_REGION(
-			    MirConstValue *value = (MirConstValue *)val_ptr;
-			    BL_ASSERT(value->type->kind == MIR_TYPE_PTR);
-			    BL_ASSERT(value->data.v_ptr.data.any);
-			    BL_ASSERT(value->data.v_ptr.kind == MIR_CP_VALUE);
-
-			    value = value->data.v_ptr.data.value;
-			    BL_ASSERT(value->type->kind == MIR_TYPE_FN);
-			    BL_ASSERT(value->data.v_ptr.data.any);
-			    BL_ASSERT(value->data.v_ptr.kind == MIR_CP_FN);
-
-			    MirFn *fn = value->data.v_ptr.data.fn;
-			    dcArgPointer(dvm, (DCpointer)dyncall_fetch_callback(vm, fn)););
+			/* Function pointer! */
+			MirFn *fn = (MirFn *)tmp;
+			BL_ASSERT(fn);
+			dcArgPointer(dvm, (DCpointer)dyncall_fetch_callback(vm, fn));
 		} else {
 			dcArgPointer(dvm, (DCpointer)tmp);
 		}
