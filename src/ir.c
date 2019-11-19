@@ -412,23 +412,30 @@ emit_const_string(Context *cnt, const char *str, usize len)
 {
 	LLVMValueRef llvm_str = NULL;
 
-	u64       hash  = thash_from_str(str);
-	TIterator found = thtbl_find(&cnt->gstring_cache, hash);
-	TIterator end   = thtbl_end(&cnt->gstring_cache);
+	if (str) {
+		u64       hash  = thash_from_str(str);
+		TIterator found = thtbl_find(&cnt->gstring_cache, hash);
+		TIterator end   = thtbl_end(&cnt->gstring_cache);
 
-	if (!TITERATOR_EQUAL(found, end)) {
-		llvm_str = thtbl_iter_peek_value(LLVMValueRef, found);
+		if (!TITERATOR_EQUAL(found, end)) {
+			llvm_str = thtbl_iter_peek_value(LLVMValueRef, found);
+		} else {
+			LLVMValueRef llvm_str_content =
+			    LLVMConstStringInContext(cnt->llvm_cnt, str, len, false);
+
+			llvm_str =
+			    LLVMAddGlobal(cnt->llvm_module, LLVMTypeOf(llvm_str_content), ".str");
+			LLVMSetInitializer(llvm_str, llvm_str_content);
+			LLVMSetLinkage(llvm_str, LLVMPrivateLinkage);
+			LLVMSetGlobalConstant(llvm_str, true);
+
+			/* Store for reuse into the cache! */
+			thtbl_insert(&cnt->gstring_cache, hash, llvm_str);
+		}
 	} else {
-		LLVMValueRef llvm_str_content =
-		    LLVMConstStringInContext(cnt->llvm_cnt, str, len, false);
-
-		llvm_str = LLVMAddGlobal(cnt->llvm_module, LLVMTypeOf(llvm_str_content), ".str");
-		LLVMSetInitializer(llvm_str, llvm_str_content);
-		LLVMSetLinkage(llvm_str, LLVMPrivateLinkage);
-		LLVMSetGlobalConstant(llvm_str, true);
-
-		/* Store for reuse into the cache! */
-		thtbl_insert(&cnt->gstring_cache, hash, llvm_str);
+		/* null string content  */
+		MirType *type = mir_get_struct_elem_type(cnt->builtin_types->t_string, 1);
+		llvm_str      = LLVMConstNull(type->llvm_type);
 	}
 
 	MirType *    type     = cnt->builtin_types->t_string;
@@ -1310,12 +1317,12 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 	LLVMValueRef llvm_src = load->src->llvm_value;
 	BL_ASSERT(llvm_src);
 
-#if 0
+	/*
 	if (mir_is_instr_in_global_block(&load->base)) {
-		load->base.llvm_value = LLVMGetInitializer(llvm_src);
-		return;
+	        load->base.llvm_value = LLVMGetInitializer(llvm_src);
+	        return;
 	} else {
-#endif
+	*/
 	load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
 
 	const unsigned alignment = (const unsigned)load->base.value.type->alignment;
@@ -1383,7 +1390,7 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 	if (mir_is_comptime(&cmp->base)) {
 		if (is_zero_initialized) {
 			cmp->base.llvm_value = LLVMConstNull(type->llvm_type);
-			return;
+			goto SKIP;
 		}
 
 		switch (type->kind) {
@@ -1412,9 +1419,6 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 		}
 
 		case MIR_TYPE_STRING: {
-			/* CLEANUP: use emit_const_string function here, but we need to erase len
-			 * constant to prevent multiple evaluation of same value!  */
-
 			const u32   len = MIR_CEV_READ_AS(const u32, &cmp->values->data[0]->value);
 			const char *str =
 			    MIR_CEV_READ_AS(const char *, &cmp->values->data[1]->value);
@@ -1449,6 +1453,7 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 			BL_ABORT("Invalid compound type!");
 		}
 
+	SKIP:
 		if (tmp_var) {
 			LLVMValueRef llvm_dest = _tmp_var->llvm_value;
 			BL_ASSERT(llvm_dest);
@@ -1961,7 +1966,14 @@ emit_instr_const(Context *cnt, MirInstrConst *c)
 	LLVMTypeRef  llvm_type  = type->llvm_type;
 
 	switch (type->kind) {
-	case MIR_TYPE_ENUM:
+	case MIR_TYPE_ENUM: {
+		type = type->data.enm.base_type;
+		BL_ASSERT(type->kind == MIR_TYPE_INT);
+		const u64 i = MIR_CEV_READ_AS(u64, &c->base.value);
+		llvm_value  = LLVMConstInt(llvm_type, i, type->data.integer.is_signed);
+		break;
+	}
+
 	case MIR_TYPE_INT: {
 		const u64 i = MIR_CEV_READ_AS(u64, &c->base.value);
 		llvm_value  = LLVMConstInt(llvm_type, i, type->data.integer.is_signed);
@@ -1996,6 +2008,19 @@ emit_instr_const(Context *cnt, MirInstrConst *c)
 
 	case MIR_TYPE_NULL: {
 		llvm_value = LLVMConstNull(llvm_type);
+		break;
+	}
+
+	case MIR_TYPE_STRING: {
+		VMStackPtr len_ptr =
+		    vm_get_struct_elem_ptr(cnt->assembly, type, c->base.value.data, 0);
+		VMStackPtr str_ptr =
+		    vm_get_struct_elem_ptr(cnt->assembly, type, c->base.value.data, 1);
+
+		const s64   len = vm_read_as(s64, len_ptr);
+		const char *str = vm_read_as(const char *, str_ptr);
+
+		llvm_value = emit_const_string(cnt, str, len);
 		break;
 	}
 
@@ -2121,8 +2146,9 @@ emit_instr_block(Context *cnt, MirInstrBlock *block)
 	/* We don't want to genrate type resolvers for typedefs!!! */
 	if (!block->emit_llvm) return;
 
-	MirFn *    fn        = block->owner_fn;
-	const bool is_global = fn == NULL;
+	MirFn *           fn              = block->owner_fn;
+	const bool        is_global       = fn == NULL;
+	LLVMBasicBlockRef llvm_prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
 
 	if (!block->terminal) BL_ABORT("Block '%s', is not terminated", block->name);
 
@@ -2149,6 +2175,8 @@ emit_instr_block(Context *cnt, MirInstrBlock *block)
 		emit_instr(cnt, instr);
 		instr = instr->next;
 	}
+
+	LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_prev_block);
 }
 
 void

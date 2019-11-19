@@ -2,6 +2,7 @@
 // INCOMPLETE: enable "hello".ptr
 // INCOMPLETE: local type declarations
 
+#load "std/utils.bl"
 #load "std/basic.bl"
 
 Days :: enum {
@@ -30,13 +31,30 @@ main :: fn () s32 {
 
     print("i == %\n", i);
 
+    print("%\n", DeviceExtensions);
+    print("%\n", DeviceExtensions2);
+
+    ds := {:string: 10, null};
+
+    slice := {:[]s32: 0};
+
+    set_len(auto &slice.len);
+    print_log("slice.len = %", slice.len);
+
     return 0;
 }
 
-#private
+set_len :: fn (i: *u32) {
+    ^i = 10;
+}
 
 hello :: fn (v: *Foo, i: *Foo) {
 }
+
+DeviceExtensions :: {:[2]string: MY_STRING, "world"};
+DeviceExtensions2 :: {:[2]string: "Hello", "World"};
+
+MY_STRING :: "hello";
 
 Foo :: struct {
     a: s32;

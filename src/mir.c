@@ -1029,6 +1029,7 @@ can_mutate_comptime_to_const(MirInstr *instr)
 	case MIR_TYPE_REAL:
 	case MIR_TYPE_BOOL:
 	case MIR_TYPE_ENUM:
+	case MIR_TYPE_STRING:
 		return true;
 		break;
 
