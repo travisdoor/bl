@@ -1,3 +1,0 @@
-ptr_from_ptr :: fn (ptr: *u8) *u8 {
-    return ^ cast(**u8) ptr; // incompatible types u8 and *u8 (added invalid load???)
-};

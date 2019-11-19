@@ -9,8 +9,16 @@ blc -no-bin ../demos/simple_sdl_game/src/skyshooter.bl
 
 
 echo 
+echo "************************"
+echo "*** Running examples ***"
+echo "************************"
+echo 
+blc -no-bin -force-test-to-llvm -run-tests -no-warning ../examples/*.bl
+
+
+echo 
 echo "**************************"
 echo "*** Running test cases ***"
 echo "**************************"
 echo 
-blc -no-bin -force-test-to-llvm -run-tests -no-warning src/main.bl ../examples/main.bl
+blc -no-bin -force-test-to-llvm -run-tests -no-warning src/*.bl

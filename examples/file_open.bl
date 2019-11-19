@@ -5,5 +5,6 @@
     defer file_close(file);
 
     content := file_read_all(file);
+    defer string_delete(content);
     print("%\n", content);
 };

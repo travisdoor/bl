@@ -1,8 +1,7 @@
 load_surface :: fn (filepath: string) *SDL_Surface {
     surface := IMG_Load(filepath.ptr);
     if surface == null {
-        print("Cannot load image.\n");
-        abort();
+        panic("Cannot load image.\n");
     }
 
     return surface;

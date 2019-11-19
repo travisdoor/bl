@@ -1,4 +1,4 @@
-#load "std/core.bl"
+#load "std/basic.bl"
 
 #test "fn pointers" {
     foo :: fn () {
@@ -17,5 +17,4 @@
 
     fn_ptr = &bar;
     fn_ptr();
-    return 0;
 };

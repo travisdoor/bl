@@ -1,5 +1,3 @@
-#load "std/core.bl"
-
 #test "special operators" {
     s := sizeof(s32);  // size in bytes
     a := alignof(s32); // alignment
