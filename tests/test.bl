@@ -4,6 +4,7 @@
 
 #load "std/utils.bl"
 #load "std/basic.bl"
+#load "std/file.bl"
 
 Days :: enum {
     Sun;
@@ -40,6 +41,12 @@ main :: fn () s32 {
 
     set_len(auto &slice.len);
     print_log("slice.len = %", slice.len);
+
+    file :: file_open(#file);
+    defer file_close(file);
+
+    content := file_read_all(file);
+    print("%\n", content);
 
     return 0;
 }

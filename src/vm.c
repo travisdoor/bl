@@ -152,7 +152,7 @@ static void
 print_call_stack(VM *vm, usize max_nesting);
 
 static void
-dyncall_cb_read_arg(VM *vm, MirConstExprValue *dest, DCArgs *src);
+dyncall_cb_read_arg(VM *vm, MirConstExprValue *dest_value, DCArgs *src);
 
 static char
 dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata);
@@ -930,43 +930,49 @@ reset_stack(VMStack *stack)
 }
 
 void
-dyncall_cb_read_arg(VM *vm, MirConstExprValue *dest, DCArgs *src)
+dyncall_cb_read_arg(VM *vm, MirConstExprValue *dest_value, DCArgs *src)
 {
-	BL_ASSERT(dest->type && "Argument destination has no type specified.");
+	VMStackPtr dest = dest_value->data;
+	MirType *  type = dest_value->type;
 
-	memset(&dest->data, 0, sizeof(dest->_tmp));
+	BL_ASSERT(dest && "Argument destination is invalid!");
+	BL_ASSERT(type && "Argument destination has no type specified!");
 
-	switch (dest->type->kind) {
+	memset(dest, 0, sizeof(*dest_value->_tmp));
+
+	switch (type->kind) {
 	case MIR_TYPE_INT: {
-		const usize bitcount = (usize)dest->type->data.integer.bitcount;
+		const usize bitcount = (usize)type->data.integer.bitcount;
+		u64         v        = 0;
 		switch (bitcount) {
 		case 8:
-			MIR_CEV_WRITE_AS(u8, dest, dcbArgUChar(src));
+			v = dcbArgUChar(src);
 			break;
 		case 16:
-			MIR_CEV_WRITE_AS(u16, dest, dcbArgUShort(src));
+			v = dcbArgUShort(src);
 			break;
 		case 32:
-			MIR_CEV_WRITE_AS(u32, dest, dcbArgULong(src));
+			v = dcbArgULong(src);
 			break;
 		case 64:
-			MIR_CEV_WRITE_AS(u64, dest, dcbArgULongLong(src));
+			v = dcbArgULongLong(src);
 			break;
 		default:
 			BL_ABORT("invalid bitcount");
 		}
 
+		vm_write_int(type, dest, v);
 		break;
 	}
 
 	case MIR_TYPE_REAL: {
-		const u64 bitcount = (u64)dest->type->data.real.bitcount;
+		const usize bitcount = type->data.real.bitcount;
 		switch (bitcount) {
 		case 32:
-			MIR_CEV_WRITE_AS(f32, dest, dcbArgFloat(src));
+			vm_write_float(type, dest, dcbArgFloat(src));
 			break;
 		case 64:
-			MIR_CEV_WRITE_AS(f64, dest, dcbArgDouble(src));
+			vm_write_double(type, dest, dcbArgDouble(src));
 			break;
 		default:
 			BL_ABORT("invalid bitcount");
@@ -976,12 +982,12 @@ dyncall_cb_read_arg(VM *vm, MirConstExprValue *dest, DCArgs *src)
 	}
 
 	case MIR_TYPE_BOOL: {
-		MIR_CEV_WRITE_AS(bool, dest, dcbArgBool(src));
+		vm_write_int(type, dest, dcbArgBool(src));
 		break;
 	}
 
 	case MIR_TYPE_PTR: {
-		MIR_CEV_WRITE_AS(VMStackPtr, dest, dcbArgPointer(src));
+		vm_write_ptr(type, dest, dcbArgPointer(src));
 		break;
 	}
 
@@ -1026,8 +1032,11 @@ dyncall_cb_handler(DCCallback *cb, DCArgs *dc_args, DCValue *result, void *userd
 		MirArg *it;
 		TSA_FOREACH(args, it)
 		{
-			arg_tmp.data[i].type = it->type;
-			dyncall_cb_read_arg(vm, &arg_tmp.data[i], dc_args);
+			MirConstExprValue *v = &arg_tmp.data[i];
+			v->type              = it->type;
+			v->data              = &v->_tmp[0];
+
+			dyncall_cb_read_arg(vm, v, dc_args);
 		}
 	}
 
@@ -1292,13 +1301,13 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 			vm_write_as(s8, &result, dcCallChar(dvm, fn->dyncall.extern_entry));
 			break;
 		case 2:
-			vm_write_as(s8, &result, dcCallShort(dvm, fn->dyncall.extern_entry));
+			vm_write_as(s16, &result, dcCallShort(dvm, fn->dyncall.extern_entry));
 			break;
 		case 4:
-			vm_write_as(s8, &result, dcCallInt(dvm, fn->dyncall.extern_entry));
+			vm_write_as(s32, &result, dcCallInt(dvm, fn->dyncall.extern_entry));
 			break;
 		case 8:
-			vm_write_as(s8, &result, dcCallLongLong(dvm, fn->dyncall.extern_entry));
+			vm_write_as(s64, &result, dcCallLongLong(dvm, fn->dyncall.extern_entry));
 			break;
 		default:
 			BL_ABORT("unsupported integer size for external call result");

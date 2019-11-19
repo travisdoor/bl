@@ -84,12 +84,12 @@ renderer_draw_frame :: fn (r: *Renderer) {
 
     submit_info := {:VkSubmitInfo: 0 };
     submit_info.sType = VkStructureType.SUBMIT_INFO;
-    submit_info.waitSemaphoreCount = wait_semaphores.len;
+    submit_info.waitSemaphoreCount = auto wait_semaphores.len;
     submit_info.pWaitSemaphores = wait_semaphores.ptr;
     submit_info.pWaitDstStageMask = wait_stages.ptr;
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &r.command_buffers[auto image_index];
-    submit_info.signalSemaphoreCount = signal_semaphores.len;
+    submit_info.signalSemaphoreCount = auto signal_semaphores.len;
     submit_info.pSignalSemaphores = signal_semaphores.ptr; 
 
     vkResetFences(r.device, 1, &r.in_flight_fences[r.current_frame]);
@@ -105,7 +105,7 @@ renderer_draw_frame :: fn (r: *Renderer) {
     present_info.pWaitSemaphores = signal_semaphores.ptr;
 
     swap_chains := {:[1]VkSwapchainKHR: r.swap_chain};
-    present_info.swapchainCount = swap_chains.len;
+    present_info.swapchainCount = auto swap_chains.len;
     present_info.pSwapchains = swap_chains.ptr;
     present_info.pImageIndices = &image_index;
 
@@ -168,7 +168,7 @@ create_instance :: fn (r: *Renderer) {
     create_info.ppEnabledExtensionNames = auto glfw_extensions;
 
     if ENABLE_VALIDATION_LAYERS {
-        create_info.enabledLayerCount = ValidationLayers.len;
+        create_info.enabledLayerCount = auto ValidationLayers.len;
         create_info.ppEnabledLayerNames = auto c_validation_layers;
     } else {
         create_info.enabledLayerCount = 0;
@@ -325,7 +325,7 @@ create_swap_chain :: fn (r: *Renderer) {
 
     if (indices.graphics_family.v != indices.present_family.v) {
         create_info.imageSharingMode = VkSharingMode.CONCURRENT;
-        create_info.queueFamilyIndexCount = queue_family_indices.len;
+        create_info.queueFamilyIndexCount = auto queue_family_indices.len;
         create_info.pQueueFamilyIndices = &queue_family_indices[0];
     } else {
         create_info.imageSharingMode = VkSharingMode.EXCLUSIVE;
@@ -569,7 +569,7 @@ create_graphics_pipeline :: fn (r: *Renderer) {
 
     dynamic_state := {:VkPipelineDynamicStateCreateInfo: 0 };
     dynamic_state.sType = VkStructureType.PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamic_state.dynamicStateCount = dynamic_states.len;
+    dynamic_state.dynamicStateCount = auto dynamic_states.len;
     dynamic_state.pDynamicStates = dynamic_states.ptr;
 
     pipeline_layout_info := {:VkPipelineLayoutCreateInfo: 0 };
@@ -585,7 +585,7 @@ create_graphics_pipeline :: fn (r: *Renderer) {
 
     pipeline_info := {:VkGraphicsPipelineCreateInfo: 0 };
     pipeline_info.sType = VkStructureType.GRAPHICS_PIPELINE_CREATE_INFO;
-    pipeline_info.stageCount = shader_stages.len;
+    pipeline_info.stageCount = auto shader_stages.len;
     pipeline_info.pStages = shader_stages.ptr;
     pipeline_info.pVertexInputState = &vertex_input_info;
     pipeline_info.pInputAssemblyState = &input_assembly;
@@ -621,7 +621,7 @@ create_frame_buffers :: fn (r: *Renderer) {
         framebuffer_info := {:VkFramebufferCreateInfo: 0 };
         framebuffer_info.sType = VkStructureType.FRAMEBUFFER_CREATE_INFO;
         framebuffer_info.renderPass = r.render_pass;
-        framebuffer_info.attachmentCount = attachments.len;
+        framebuffer_info.attachmentCount = auto attachments.len;
         framebuffer_info.pAttachments = attachments.ptr;
         framebuffer_info.width = r.swap_chain_extent.width;
         framebuffer_info.height = r.swap_chain_extent.height;
