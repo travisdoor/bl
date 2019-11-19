@@ -56,5 +56,5 @@ Str2 := "Hello";
 Str3 := &Str;
 
 #test "global constants" {
-    assert(_A == 20);
+    assert(A == 20);
 }
