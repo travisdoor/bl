@@ -232,11 +232,14 @@ builder_init(void)
 
 	/* initialize LLVM statics */
 	llvm_init();
+
+	vm_init(&builder.vm, VM_STACK_SIZE);
 }
 
 void
 builder_terminate(void)
 {
+	vm_terminate(&builder.vm);
 	conf_data_delete(builder.conf);
 	arena_terminate(&builder.str_cache);
 }
@@ -274,7 +277,7 @@ builder_compile(Assembly *assembly)
 
 	/* include core source file */
 	if (!builder.options.no_api) {
-		unit = unit_new_file(CORE_SOURCE_FILE, NULL, NULL);
+		unit = unit_new_file(OS_PRELOAD_FILE, NULL, NULL);
 		if (!assembly_add_unit_unique(assembly, unit)) {
 			unit_delete(unit);
 		}

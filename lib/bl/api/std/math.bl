@@ -29,10 +29,28 @@
 PI :: 3.141592653589793238;
 F32_EPSILON :: 0.00001f;
 
+S8_MIN  : s8 : -128;
+S8_MAX  : s8 : 127;
+S16_MIN : s16 : -32768;
+S16_MAX : s16 : 32767;
+S32_MIN : s32 : -2147483648;
+S32_MAX : s32 : 2147483647;
+S64_MIN : s64 : -9223372036854775808;
+S64_MAX : s64 : 9223372036854775807;
+
+U8_MIN  : u8 : 0;
+U8_MAX  : u8 : 255;
+U16_MIN : u16 : 0;
+U16_MAX : u16 : 65535;
+U32_MIN : u32 : 0;
+U32_MAX : u32 : 4294967295;
+U64_MIN : u64 : 0;
+U64_MAX : u64 : 18446744073709551615;
+
 /* Lib C functions */
 sin       :: fn (n: f64) f64 #extern;
 cos       :: fn (n: f64) f64 #extern;
-fabsf      :: fn (n: f32) f32 #extern;
+fabsf     :: fn (n: f32) f32 #extern;
 log10     :: fn (n: f64) f64 #extern;
 pow       :: fn (base: f64, exponent: f64) f64 #extern;
 sqrt      :: fn (x: f64) f64 #extern;
@@ -117,11 +135,11 @@ f32_compare :: fn (a: f32, b: f32) bool #inline {
 };
 
 degtorad :: fn (deg: f32) f32 #inline {
-    return deg / 180.f * auto PI;
+    return deg / 180.f * cast(f32) PI;
 };
 
 radtodeg :: fn (rad: f32) f32 #inline {
-    return (180.f * rad) / auto PI;
+    return (180.f * rad) / cast(f32) PI;
 };
 
 v3_length :: fn (v: v3) f32 #inline {
@@ -541,7 +559,7 @@ quat_to_euler :: fn (q: quat) v3 {
     // pitch (y-axis rotation)
     sinp := 2.0f * (q.w * q.y - q.z * q.x);
     if fabsf(sinp) >= 1.f {
-        e.y = copysignf(auto (PI * 0.5), sinp);
+        e.y = copysignf(cast(f32) (PI * 0.5), sinp);
     } else {
         e.y = asinf(sinp);
     }

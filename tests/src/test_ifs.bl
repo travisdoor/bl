@@ -1,16 +1,16 @@
 #load "std/debug.bl"
 
 #test "ifs" {
-  b := true;
-  if b {
-    if !b {
-      unreachable;
+    b := true;
+    if b {
+        if !b {
+        unreachable;
+        }
+    } else {
+        unreachable;
     }
-  } else {
-    unreachable;
-  }
 
-  if !b {
-    unreachable;
-  }
+    if !b {
+        unreachable;
+    }
 };

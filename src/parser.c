@@ -2276,7 +2276,7 @@ parse_ublock_content(Context *cnt, Ast *ublock)
 {
 	/******************************************************************************************/
 #define RQ_SEMICOLON_AFTER(_node)                                                                  \
-	((_node)->data.decl_entity.value->kind != AST_EXPR_LIT_FN &&                               \
+	((_node)->data.decl_entity.value && (_node)->data.decl_entity.value->kind != AST_EXPR_LIT_FN &&                               \
 	 (_node)->data.decl_entity.value->kind != AST_TEST_CASE &&                                 \
 	 (_node)->data.decl_entity.value->kind != AST_EXPR_TYPE)
 	/******************************************************************************************/

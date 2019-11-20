@@ -51,12 +51,6 @@ typedef struct Assembly {
 	struct {
 		TArray global_instrs; /* All global instructions. */
 
-		/* Temporary variables used by RTTI. This is queue of all MirVars related to RTTI
-		 * generation, this array is used for generation of RTTI by LLVM IR and MIR-VM.
-		 * Array must be in propper order due to references between types and related
-		 * sub-types.  */
-		TArray RTTI_var_queue;
-
 		/* Map type ids to RTTI variables. */
 		THashTable RTTI_table;
 	} MIR;
@@ -83,6 +77,57 @@ typedef struct Assembly {
 	THashTable link_cache; /* all linked externals libraries passed to linker */
 	char *     name;       /* assembly name */
 	Scope *    gscope;     /* global scope of the assembly */
+
+	/* Builtins */
+	struct BuiltinTypes {
+		MirType *t_type;
+		MirType *t_s8;
+		MirType *t_s16;
+		MirType *t_s32;
+		MirType *t_s64;
+		MirType *t_u8;
+		MirType *t_u16;
+		MirType *t_u32;
+		MirType *t_u64;
+		MirType *t_usize;
+		MirType *t_bool;
+		MirType *t_f32;
+		MirType *t_f64;
+		MirType *t_string;
+		MirType *t_void;
+		MirType *t_u8_ptr;
+		MirType *t_string_ptr;
+		MirType *t_string_slice;
+		MirType *t_resolve_type_fn;
+		MirType *t_test_case_fn;
+		MirType *t_Any;
+		MirType *t_Any_ptr;
+		MirType *t_TypeKind;
+		MirType *t_TypeInfo;
+		MirType *t_TypeInfoType;
+		MirType *t_TypeInfoVoid;
+		MirType *t_TypeInfoInt;
+		MirType *t_TypeInfoReal;
+		MirType *t_TypeInfoFn;
+		MirType *t_TypeInfoPtr;
+		MirType *t_TypeInfoArray;
+		MirType *t_TypeInfoStruct;
+		MirType *t_TypeInfoEnum;
+		MirType *t_TypeInfoNull;
+		MirType *t_TypeInfoBool;
+		MirType *t_TypeInfoString;
+		MirType *t_TypeInfoStructMember;
+		MirType *t_TypeInfoEnumVariant;
+		MirType *t_TypeInfoFnArg;
+		MirType *t_TypeInfo_ptr;
+		MirType *t_TypeInfo_slice;
+		MirType *t_TypeInfoStructMembers_slice;
+		MirType *t_TypeInfoEnumVariants_slice;
+		MirType *t_TypeInfoFnArgs_slice;
+
+		bool     is_rtti_ready;
+		bool     is_any_ready;
+	} builtin_types;
 } Assembly;
 
 typedef struct NativeLib {

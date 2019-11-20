@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   windows.bl 
+// File:   posix.bl 
 // Author: Martin Dorazil
 // Date:   2/11/19
 //
@@ -26,20 +26,35 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#load "std/core.bl"
+#load "std/_builtin.bl"
 
-OS_NAME :: "Windows";
+OS_NAME :: "MacOS";
 
 OS_STDIN  :: 0;
 OS_STDOUT :: 1;
 OS_STDERR :: 2;
 
-_write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
-
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
-    return _write(fd, buf, count);
+    return write(fd, buf, count);
 };
+
+__os_abort :: fn () #compiler {
+    raise(SIGABRT);
+}
 
 time_now_ms :: fn () f64 {
-    panic("Unimplemented!");
+    return cast(f64) mach_absolute_time() / 1000000.0;
 };
+
+#private
+
+SIGHUP  :: 1;
+SIGINT  :: 2;
+SIGQUIT :: 3; 
+SIGILL  :: 4; 
+SIGTRAP :: 5;
+SIGABRT :: 6;
+
+raise :: fn (sig: s32) s32 #extern;
+write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
+mach_absolute_time :: fn () u64 #extern;

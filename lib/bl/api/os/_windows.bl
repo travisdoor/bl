@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   posix.bl 
+// File:   windows.bl 
 // Author: Martin Dorazil
 // Date:   2/11/19
 //
@@ -26,23 +26,37 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#load "std/core.bl"
+#load "std/_builtin.bl"
 
-OS_NAME :: "Linux";
+// INCOMPLETE: time_now_ms
+
+OS_NAME :: "Windows";
 
 OS_STDIN  :: 0;
 OS_STDOUT :: 1;
 OS_STDERR :: 2;
 
-write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
-
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
-    return write(fd, buf, count);
+    return _write(fd, buf, count);
 };
 
+__os_abort :: fn () {
+    raise(SIGABRT);
+}
+
 time_now_ms :: fn () f64 {
-    panic("Unimplemented!");
+    // INCOMPLETE
+    unreachable;
 };
 
 #private
 
+SIGHUP  :: 1;
+SIGINT  :: 2;
+SIGQUIT :: 3; 
+SIGILL  :: 4; 
+SIGTRAP :: 5;
+SIGABRT :: 6;
+
+raise :: fn (sig: s32) s32 #extern;
+_write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;

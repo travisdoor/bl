@@ -1,9 +1,11 @@
 /* playground */
 
-FOO :: "hello";
-BAR :: 10;
+#load "std/basic.bl"
+#load "std/debug.bl"
 
 main :: fn () s32 {
-    print("%\n", BAR);
-    return 0;
+    i :: 10;
+    j :: null;
+    k :: ^j;
+    return k;
 }

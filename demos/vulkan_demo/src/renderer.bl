@@ -75,8 +75,7 @@ renderer_draw_frame :: fn (r: *Renderer) {
         recreate_swap_chain(r);
         return;
     } else if result != VkResult.SUCCESS && result != VkResult.SUBOPTIMAL_KHR {
-        eprint("Failed to acquire swap chain image!\n");
-        abort();
+        panic("Failed to acquire swap chain image!\n");
     }
 
     wait_semaphores := {:[1]VkSemaphore: r.image_available_semaphore[r.current_frame]};
@@ -85,29 +84,28 @@ renderer_draw_frame :: fn (r: *Renderer) {
 
     submit_info := {:VkSubmitInfo: 0 };
     submit_info.sType = VkStructureType.SUBMIT_INFO;
-    submit_info.waitSemaphoreCount = wait_semaphores.len;
+    submit_info.waitSemaphoreCount = auto wait_semaphores.len;
     submit_info.pWaitSemaphores = wait_semaphores.ptr;
     submit_info.pWaitDstStageMask = wait_stages.ptr;
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &r.command_buffers[auto image_index];
-    submit_info.signalSemaphoreCount = signal_semaphores.len;
+    submit_info.signalSemaphoreCount = auto signal_semaphores.len;
     submit_info.pSignalSemaphores = signal_semaphores.ptr; 
 
     vkResetFences(r.device, 1, &r.in_flight_fences[r.current_frame]);
 
     if vkQueueSubmit(r.graphics_queue, 1, &submit_info, r.in_flight_fences[r.current_frame]) != VkResult.SUCCESS {
-        eprint("Failed to submit draw command buffer!\n");
-        abort();
+        panic("Failed to submit draw command buffer!\n");
     }
 
     present_info := {:VkPresentInfoKHR: 0};
     present_info.sType = VkStructureType.PRESENT_INFO_KHR;
 
-    present_info.waitSemaphoreCount = signal_semaphores.len;
+    present_info.waitSemaphoreCount = auto signal_semaphores.len;
     present_info.pWaitSemaphores = signal_semaphores.ptr;
 
     swap_chains := {:[1]VkSwapchainKHR: r.swap_chain};
-    present_info.swapchainCount = swap_chains.len;
+    present_info.swapchainCount = auto swap_chains.len;
     present_info.pSwapchains = swap_chains.ptr;
     present_info.pImageIndices = &image_index;
 
@@ -116,8 +114,7 @@ renderer_draw_frame :: fn (r: *Renderer) {
         r.frame_buffer_resized = false;
         recreate_swap_chain(r);
     } else if (result != VkResult.SUCCESS) {
-        eprint("Failed to present swap chain image!\n");
-        abort();
+        panic("Failed to present swap chain image!\n");
     }
 
     r.current_frame = (r.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -148,8 +145,7 @@ create_instance :: fn (r: *Renderer) {
     defer mem_free(c_validation_layers);
 
     if ENABLE_VALIDATION_LAYERS && !check_validation_layer_support(r) {
-        eprint("Desired validation layers are not supported.\n");
-        abort();
+        panic("Desired validation layers are not supported.\n");
     }
 
     glfw_extension_count : u32 = 0;
@@ -172,22 +168,20 @@ create_instance :: fn (r: *Renderer) {
     create_info.ppEnabledExtensionNames = auto glfw_extensions;
 
     if ENABLE_VALIDATION_LAYERS {
-        create_info.enabledLayerCount = ValidationLayers.len;
+        create_info.enabledLayerCount = auto ValidationLayers.len;
         create_info.ppEnabledLayerNames = auto c_validation_layers;
     } else {
         create_info.enabledLayerCount = 0;
     }
 
     if vkCreateInstance(&create_info, null, &r.vki) != VkResult.SUCCESS {
-        eprint("Failed to create Vulkan instance!!!\n");
-        abort();
+        panic("Failed to create Vulkan instance!!!\n");
     }
 };
 
 create_surface :: fn (r: *Renderer) {
     if glfwCreateWindowSurface(r.vki, app.window, null, &r.surface) != VkResult.SUCCESS {
-        eprint("Failed to create window surface.\n");
-        abort();
+        panic("Failed to create window surface.\n");
     }
 };
 
@@ -216,8 +210,7 @@ pick_physical_device :: fn (r: *Renderer) {
     vkEnumeratePhysicalDevices(r.vki, auto &devices.len, null);
 
     if devices.len == 0 {
-        eprint("No GPU device found!\n");
-        abort();
+        panic("No GPU device found!\n");
     }
 
     devices.ptr = auto mem_alloc(sizeof(VkPhysicalDevice) * auto devices.len);
@@ -233,8 +226,7 @@ pick_physical_device :: fn (r: *Renderer) {
     }
 
     if r.physical_device == null {
-        eprint("No suitable GPU found!\n");
-        abort();
+        panic("No suitable GPU found!\n");
     }
 };
 
@@ -279,19 +271,18 @@ create_logical_device :: fn (r: *Renderer) {
     create_info.queueCreateInfoCount = queue_create_infos_count;
     create_info.pEnabledFeatures = &device_features;
 
-    create_info.enabledExtensionCount = DeviceExtensions.len;
+    create_info.enabledExtensionCount = auto DeviceExtensions.len;
     create_info.ppEnabledExtensionNames = auto c_device_extensions;
 
     if ENABLE_VALIDATION_LAYERS {
-        create_info.enabledLayerCount = ValidationLayers.len;
+        create_info.enabledLayerCount = auto ValidationLayers.len;
         create_info.ppEnabledLayerNames = auto c_validation_layers;
     } else {
         create_info.enabledLayerCount = 0;
     }        
 
     if vkCreateDevice(r.physical_device, &create_info, null, &r.device) != VkResult.SUCCESS {
-        eprint("Failed to create logical device!\n");
-        abort();
+        panic("Failed to create logical device!\n");
     }
 
     vkGetDeviceQueue(r.device, indices.graphics_family.v, 0, &r.graphics_queue);
@@ -334,7 +325,7 @@ create_swap_chain :: fn (r: *Renderer) {
 
     if (indices.graphics_family.v != indices.present_family.v) {
         create_info.imageSharingMode = VkSharingMode.CONCURRENT;
-        create_info.queueFamilyIndexCount = queue_family_indices.len;
+        create_info.queueFamilyIndexCount = auto queue_family_indices.len;
         create_info.pQueueFamilyIndices = &queue_family_indices[0];
     } else {
         create_info.imageSharingMode = VkSharingMode.EXCLUSIVE;
@@ -351,8 +342,7 @@ create_swap_chain :: fn (r: *Renderer) {
     print("Swapchain configuration: %\n", create_info);
     
     if (vkCreateSwapchainKHR(r.device, &create_info, null, &r.swap_chain) != VkResult.SUCCESS) {
-        eprint("Failed to create swap chain!\n");
-        abort();
+        panic("Failed to create swap chain!\n");
     }
 
     res := vkGetSwapchainImagesKHR(r.device, r.swap_chain, auto &r.swap_chain_images.len, null);
@@ -431,8 +421,7 @@ create_image_views :: fn (r: *Renderer) {
         create_info.subresourceRange.layerCount = 1;
 
         if vkCreateImageView(r.device, &create_info, null, &r.swap_chain_image_views[i]) != VkResult.SUCCESS {
-            eprint("Failed to create image views!\n");
-            abort();
+            panic("Failed to create image views!\n");
         }
     }
 };
@@ -465,8 +454,7 @@ create_render_pass :: fn (r: *Renderer) {
     render_pass_info.pSubpasses = &subpass;
 
     if vkCreateRenderPass(r.device, &render_pass_info, null, &r.render_pass) != VkResult.SUCCESS {
-        eprint("Failed to create render pass!\n");
-        abort();
+        panic("Failed to create render pass!\n");
     }
 };
 
@@ -581,7 +569,7 @@ create_graphics_pipeline :: fn (r: *Renderer) {
 
     dynamic_state := {:VkPipelineDynamicStateCreateInfo: 0 };
     dynamic_state.sType = VkStructureType.PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamic_state.dynamicStateCount = dynamic_states.len;
+    dynamic_state.dynamicStateCount = auto dynamic_states.len;
     dynamic_state.pDynamicStates = dynamic_states.ptr;
 
     pipeline_layout_info := {:VkPipelineLayoutCreateInfo: 0 };
@@ -592,13 +580,12 @@ create_graphics_pipeline :: fn (r: *Renderer) {
     pipeline_layout_info.pPushConstantRanges = null; // Optional
 
     if vkCreatePipelineLayout(r.device, &pipeline_layout_info, null, &r.pipeline_layout) != VkResult.SUCCESS {
-        eprint("Failed to create pipeline layout!\n");
-        abort();
+        panic("Failed to create pipeline layout!\n");
     }
 
     pipeline_info := {:VkGraphicsPipelineCreateInfo: 0 };
     pipeline_info.sType = VkStructureType.GRAPHICS_PIPELINE_CREATE_INFO;
-    pipeline_info.stageCount = shader_stages.len;
+    pipeline_info.stageCount = auto shader_stages.len;
     pipeline_info.pStages = shader_stages.ptr;
     pipeline_info.pVertexInputState = &vertex_input_info;
     pipeline_info.pInputAssemblyState = &input_assembly;
@@ -617,8 +604,7 @@ create_graphics_pipeline :: fn (r: *Renderer) {
     // This can be used for multiple pipeline creation, so probably we can use after renderable assets load
     // to generate all desired pipelines at once?
     if vkCreateGraphicsPipelines(r.device, null, 1, &pipeline_info, null, &r.graphics_pipeline) != VkResult.SUCCESS {
-        eprint("Failed to create graphics pipeline!\n");
-        abort();
+        panic("Failed to create graphics pipeline!\n");
     } 
 
     vkDestroyShaderModule(r.device, frag_shader, null);
@@ -635,15 +621,14 @@ create_frame_buffers :: fn (r: *Renderer) {
         framebuffer_info := {:VkFramebufferCreateInfo: 0 };
         framebuffer_info.sType = VkStructureType.FRAMEBUFFER_CREATE_INFO;
         framebuffer_info.renderPass = r.render_pass;
-        framebuffer_info.attachmentCount = attachments.len;
+        framebuffer_info.attachmentCount = auto attachments.len;
         framebuffer_info.pAttachments = attachments.ptr;
         framebuffer_info.width = r.swap_chain_extent.width;
         framebuffer_info.height = r.swap_chain_extent.height;
         framebuffer_info.layers = 1;
 
         if vkCreateFramebuffer(r.device, &framebuffer_info, null, &r.swap_chain_framebuffers[i]) != VkResult.SUCCESS {
-            eprint("Failed to create framebuffer!\n");
-            abort();
+            panic("Failed to create framebuffer!\n");
         }
     }
 };
@@ -657,8 +642,7 @@ create_command_pool :: fn (r: *Renderer) {
     pool_info.flags = 0; // Optional 
 
     if vkCreateCommandPool(r.device, &pool_info, null, &r.command_pool) != VkResult.SUCCESS {
-        eprint("Failed to create command pool!\n");
-        abort();
+        panic("Failed to create command pool!\n");
     }
 };
 
@@ -673,8 +657,7 @@ create_command_buffers :: fn (r: *Renderer) {
     alloc_info.commandBufferCount = auto r.command_buffers.len;
 
     if vkAllocateCommandBuffers(r.device, &alloc_info, r.command_buffers.ptr) != VkResult.SUCCESS {
-        eprint("Failed to allocate command buffers!\n");
-        abort();
+        panic("Failed to allocate command buffers!\n");
     }
 
     loop i := 0; i < r.command_buffers.len; i += 1 {
@@ -684,8 +667,7 @@ create_command_buffers :: fn (r: *Renderer) {
         begin_info.pInheritanceInfo = null; // Optional
 
         if vkBeginCommandBuffer(r.command_buffers[i], &begin_info) != VkResult.SUCCESS {
-            eprint("failed to begin recording command buffer!\n");
-            abort();
+            panic("failed to begin recording command buffer!\n");
         }
 
         renderPassInfo := {:VkRenderPassBeginInfo: 0};
@@ -696,7 +678,7 @@ create_command_buffers :: fn (r: *Renderer) {
         renderPassInfo.renderArea.extent = r.swap_chain_extent;
 
         clearColor := {:VkClearValue: 0.0f, 0.0f, 0.0f, 1.0f};
-        renderPassInfo.clearValueCount = clearColor.len;
+        renderPassInfo.clearValueCount = auto clearColor.len;
         renderPassInfo.pClearValues = auto clearColor.ptr;
 
         vkCmdBeginRenderPass(r.command_buffers[i], &renderPassInfo, VkSubpassContents.INLINE);
@@ -705,8 +687,7 @@ create_command_buffers :: fn (r: *Renderer) {
         vkCmdEndRenderPass(r.command_buffers[i]);
 
         if vkEndCommandBuffer(r.command_buffers[i]) != VkResult.SUCCESS {
-            eprint("Failed to record command buffer!\n");
-            abort();
+            panic("Failed to record command buffer!\n");
         }
     }
 };
@@ -719,8 +700,7 @@ create_shader_module :: fn (r: *Renderer, code: string) VkShaderModule {
 
     shader_module: VkShaderModule;
     if (vkCreateShaderModule(r.device, &create_info, null, &shader_module) != VkResult.SUCCESS) {
-        eprint("Failed to create shader module!\n");
-        abort();
+        panic("Failed to create shader module!\n");
     }
 
     return shader_module;
@@ -736,18 +716,15 @@ create_sync_objects :: fn (r: *Renderer) {
 
     loop i := 0; i < MAX_FRAMES_IN_FLIGHT; i += 1 {
         if vkCreateSemaphore(r.device, &semaphore_info, null, &r.image_available_semaphore[i]) != VkResult.SUCCESS { 
-            eprint("Failed to create semaphore\n");
-            abort();
+            panic("Failed to create semaphore\n");
         }
 
         if vkCreateSemaphore(r.device, &semaphore_info, null, &r.render_finished_semaphore[i]) != VkResult.SUCCESS { 
-            eprint("Failed to create semaphore\n");
-            abort();
+            panic("Failed to create semaphore\n");
         }
         
         if vkCreateFence(r.device, &fence_info, null, &r.in_flight_fences[i]) != VkResult.SUCCESS {
-            eprint("Failed to create fence\n");
-            abort();
+            panic("Failed to create fence\n");
         }
     }
 };
@@ -935,8 +912,7 @@ read_file :: fn (filepath: string) string {
     defer file_close(file);
 
     if file == null {
-        eprint("Cannot open file '%'.\n", filepath);
-        abort();
+        panic("Cannot open file '%'.\n", filepath);
     }
 
     return file_read_all(file);

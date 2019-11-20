@@ -11,30 +11,45 @@
   - [ ] Simple structure inherritance with #using, #base or some keyword?
   - [ ] Update documentation (we are using recursive git repository)
   - [X] Switch to tlib-c 
-  - [ ] Operator overloading
+  - [ ] Operator overload
+  - [ ] Better definition of operators based on type (we wan't compary types also s32 == f32 s32 != f32...)
+  - [ ] #typeof operator
+  - [ ] Static assert
+    #+BEGIN_SRC bl
+    #assert(typeof(i) == s32);
+    #+END_SRC
+
 
 * parser race conditions
   - arena_alloc 
   - create scope
 
-* structure with pointer to self
-  1) MIR generation pass
-     1) select only pointers inside structs
-     2) select only non-fundamental pointed types
-     3) create type resolver function for each
-     4) instead of const pointer append comptime call to type resolver inside original struct resolver
-  2) Analyze pass
-     1) Try to call type resolver
-     2) When cannot be called continue to next the instruction otherwise use returned type
-     3) Build struct type if possible
-     4) If not, create Incomplete struct type containing calls to incomplete members
-     5) Finnis analyze pass of the struct type resolver
-     6) Set named variable to the type and mark as analyzed only if it's not of Incomplete type
-     7) Push all waiting resolvers to analyze queue
+* Global var initializers
+  - Enable generation of naked global blocks
+  - Insert all desired initialization instructions into this block
+  - When block is comptime -> it could be executed
+  - Assign initializer block to the global variable
+  - Execute it in VM 
+    
+- compounds
+  naked comptime/runtime
+  non-naked comtime/runtime
+
+* Footnotes
+  
+- vm_load_int - make copy
+- vm_read - return pointer to VMValue
+
   
 
-  #+begin_src C
-  struct TypeStructIncomplete {
-      Array waiting_resolvers;
-  };
-  #+end_src
+#if BL_DEBUG
+#define MIR_CEV_READ_AS(T, src) (*((T *)_mir_cev_read(src)))
+#else
+#define MIR_CEV_READ_AS(T, src) (*((T *)(src)->data))
+#endif
+
+#if BL_DEBUG
+VMStackPtr
+_mir_cev_read(MirConstExprValue *value);
+#endif
+

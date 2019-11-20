@@ -1,5 +1,6 @@
 #load "std/debug.bl"
 
+#private
 #test "slices" {
     arr : [3]s32;
 
@@ -105,3 +106,20 @@
     assert(_1.ptr != null);
     assert(_1.len == 5);
 };
+
+Foo :: struct {
+    foo: *Foo;
+    func: *fn (i: *Foo);
+};
+
+#test "pointer to self" {
+    Bar :: struct {
+        bar: *Bar;
+        func: *fn (i: *Bar);
+    };
+    
+    foo: Foo;
+    foo.foo = &foo;
+
+    bar: Bar;
+}

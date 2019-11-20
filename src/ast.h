@@ -217,7 +217,7 @@ struct AstDecl {
 struct AstDeclEntity {
 	struct AstDecl base;
 	Ast *          value;
-	s32            flags;
+	u32            flags;
 	bool           in_gscope;
 	bool           mut;
 };

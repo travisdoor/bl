@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   posix.bl 
+// File:   core.bl
 // Author: Martin Dorazil
 // Date:   2/11/19
 //
@@ -26,24 +26,52 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#load "std/core.bl"
+#load "debug.bl"
+#load "memory.bl"
+#load "print.bl"
 
-OS_NAME :: "MacOS";
+_AllocFn :: * fn (size: usize) *u8;
+_FreeFn :: * fn (p: *u8);
+_PrintLogFn :: * fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32);
 
-OS_STDIN  :: 0;
-OS_STDOUT :: 1;
-OS_STDERR :: 2;
+// BL global context 
+_Context :: struct {
+    /* Default memory allocation function. */
+    alloc_fn: _AllocFn;
 
-write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
+    /* Defualt memory free function. */
+    free_fn: _FreeFn;
 
-__os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
-    return write(fd, buf, count);
+    /* Defualt debug log function. */
+    print_log_fn: _PrintLogFn;
 };
 
-time_now_ms :: fn () f64 {
-    return cast(f64) mach_absolute_time() / 1000000.0;
+_context := {:_Context: &malloc, &free, &_print_log_default};
+
+/* 
+ * Abort execution and eventually print panic message if there is one specified.
+ * Example:
+ * panic(); // abort without any messages
+ * panic("oops!"); // abort with message prited out.
+ * panic("Failed with error: %", errn); // first argument passed acts like formating string
+ */
+panic :: fn (args: ...) {
+    if args.len == 0 {
+        unreachable;
+    }
+
+    tmp := {:[]Any: args.len, args.ptr };
+    format := "no message";
+
+    arg := args[0];
+    if arg.type_info.kind == TypeKind.String {
+        format = ^cast(*string) arg.data;
+        tmp = {:[]Any:
+                args.len - 1,
+                auto ptr_shift_bytes(auto args.ptr, sizeof(arg))};
+    }
+
+    _context.print_log_fn(PrintLogKind.Panic, format, tmp, "", 0);
+
+    unreachable;
 };
-
-#private
-
-mach_absolute_time :: fn () u64 #extern;

@@ -27,46 +27,6 @@
 //************************************************************************************************
 
 #load "c.bl"
-#load "debug.bl"
-#load "memory.bl"
-#load "print.bl"
-
-_AllocFn :: * fn (size: usize) *u8;
-_FreeFn :: * fn (p: *u8);
-_PrintLogFn :: * fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32);
-
-// BL global context 
-_Context :: struct {
-    /* Default memory allocation function. */
-    alloc_fn: _AllocFn;
-
-    /* Defualt memory free function. */
-    free_fn: _FreeFn;
-
-    /* Defualt debug log function. */
-    print_log_fn: _PrintLogFn;
-};
-
-_context := {:_Context: &malloc, &free, &_print_log};
-
-S8_MIN  : s8 : -128;
-S8_MAX  : s8 : 127;
-S16_MIN : s16 : -32768;
-S16_MAX : s16 : 32767;
-S32_MIN : s32 : -2147483648;
-S32_MAX : s32 : 2147483647;
-S64_MIN : s64 : -9223372036854775808;
-S64_MAX : s64 : 9223372036854775807;
-
-U8_MIN  : u8 : 0;
-U8_MAX  : u8 : 255;
-U16_MIN : u16 : 0;
-U16_MAX : u16 : 65535;
-U32_MIN : u32 : 0;
-U32_MAX : u32 : 4294967295;
-U64_MIN : u64 : 0;
-U64_MAX : u64 : 18446744073709551615;
-
 /*
  * TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 
  * safe casting.
@@ -97,12 +57,6 @@ TypeInfo :: struct #compiler {
 };
 
 /*
- * Type information for 'type' type.
- */
-TypeInfoType :: struct #base TypeInfo  #compiler {
-};
-
-/*
  * Type information for 'void' type.
  */
 TypeInfoVoid :: struct #base TypeInfo #compiler {
@@ -127,6 +81,7 @@ TypeInfoReal :: struct #base TypeInfo  #compiler {
  * Type information for function types.
  */
 TypeInfoFn :: struct #base TypeInfo #compiler {
+    name: string;
     args: []TypeInfoFnArg; // Function arguments.
     ret_type: *TypeInfo; // Return type.
     is_vargs: bool; // True when function is vargs.
@@ -137,12 +92,6 @@ TypeInfoFn :: struct #base TypeInfo #compiler {
  */
 TypeInfoPtr :: struct #base TypeInfo #compiler {
     pointee_type: *TypeInfo // Type information for pointed type.
-};
-
-/*
- * Type information for bool type.
- */
-TypeInfoBool :: struct #base TypeInfo #compiler {
 };
 
 /*
@@ -179,6 +128,18 @@ TypeInfoNull :: struct #base TypeInfo #compiler {
 };
 
 TypeInfoString :: struct #base TypeInfo #compiler {
+};
+
+/*
+ * Type information for 'type' type.
+ */
+TypeInfoType :: struct #base TypeInfo  #compiler {
+};
+
+/*
+ * Type information for bool type.
+ */
+TypeInfoBool :: struct #base TypeInfo #compiler {
 };
 
 TypeInfoStructMember :: struct #compiler {

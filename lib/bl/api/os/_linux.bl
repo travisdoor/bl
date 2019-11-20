@@ -1,9 +1,9 @@
-//***********************************************************************************************t
+//************************************************************************************************
 // bl
 //
-// File:   debug.bl
+// File:   posix.bl 
 // Author: Martin Dorazil
-// Date:   3/15/18
+// Date:   2/11/19
 //
 // Copyright 2018 Martin Dorazil
 //
@@ -26,30 +26,36 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#load "std/basic.bl"
-#load "std/utils.bl"
+#load "std/_builtin.bl"
 
-/* Print debug log using _context.print_log_fn function. */
-print_log :: fn (format: string, args: ...) {
-    tmp := {:[]Any: args.len, args.ptr };
-    _context.print_log_fn(PrintLogKind.Message, format, tmp, #file, #line);
+// INCOMPLETE: time_now_ms
+
+OS_NAME :: "Linux";
+
+OS_STDIN  :: 0;
+OS_STDOUT :: 1;
+OS_STDERR :: 2;
+
+__os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
+    return write(fd, buf, count);
 };
 
-/* Print debug warning using _context.print_log_fn function. */
-print_warn :: fn (format: string, args: ...) {
-    tmp := {:[]Any: args.len, args.ptr };
-    _context.print_log_fn(PrintLogKind.Warning, format, tmp, #file, #line);
+__os_abort :: fn () {
+    raise(SIGABRT);
+}
+
+time_now_ms :: fn () f64 {
+    unreachable;
 };
 
-/* Print debug error using _context.print_log_fn function. */
-print_err :: fn (format: string, args: ...) {
-    tmp := {:[]Any: args.len, args.ptr };
-    _context.print_log_fn(PrintLogKind.Error, format, tmp, #file, #line);
-};
+#private
 
-/* Assert execution when condition value is false. */
-assert :: fn (cond: bool) {
-    if !cond {
-        unreachable;
-    }
-};
+SIGHUP  :: 1;
+SIGINT  :: 2;
+SIGQUIT :: 3; 
+SIGILL  :: 4; 
+SIGTRAP :: 5;
+SIGABRT :: 6;
+
+raise :: fn (sig: s32) s32 #extern;
+write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;

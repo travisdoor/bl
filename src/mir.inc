@@ -1,43 +1,44 @@
 #ifdef GEN_INSTR_SIZEOF
 #define SIZEOF_MIR_INSTR sizeof(union {\
-	MirInstrBlock         block;\
-	MirInstrDeclVar       var;\
-	MirInstrDeclMember    member;\
-	MirInstrDeclVariant   variant;\
-	MirInstrDeclArg       decl_arg;\
-	MirInstrConst         cnst;\
-	MirInstrLoad          load;\
-	MirInstrStore         store;\
-	MirInstrRet           ret;\
-	MirInstrBinop         binop;\
-	MirInstrFnProto       fn_proto;\
-	MirInstrDeclRef       decl_ref;\
-	MirInstrDeclDirectRef decl_direct_ref;\
-	MirInstrCall          call;\
-	MirInstrUnreachable   unreachable;\
-	MirInstrCondBr        cond_br;\
-	MirInstrBr            br;\
-	MirInstrUnop          unop;\
-	MirInstrArg           arg;\
-	MirInstrElemPtr       elem_ptr;\
-	MirInstrMemberPtr     member_ptr;\
-	MirInstrAddrOf        addrof;\
-	MirInstrTypeArray     type_array;\
-	MirInstrTypeSlice     type_slice;\
-	MirInstrTypeVArgs     type_vargs;\
-	MirInstrTypePtr       type_ptr;\
-	MirInstrTypeStruct    type_struct;\
-	MirInstrTypeFn        type_fn;\
-	MirInstrTypeEnum      type_enum;\
-	MirInstrCast          cast;\
-	MirInstrSizeof        szof;\
-	MirInstrAlignof       alof;\
-	MirInstrCompound      init;\
-	MirInstrVArgs         vargs;\
-	MirInstrTypeInfo      type_info;\
-	MirInstrPhi           phi;\
-	MirInstrToAny         toany;\
-	MirInstrSwitch        sw;\
+	MirInstrBlock          block;\
+	MirInstrDeclVar        var;\
+	MirInstrDeclMember     member;\
+	MirInstrDeclVariant    variant;\
+	MirInstrDeclArg        decl_arg;\
+	MirInstrConst          cnst;\
+	MirInstrLoad           load;\
+	MirInstrStore          store;\
+	MirInstrRet            ret;\
+	MirInstrBinop          binop;\
+	MirInstrFnProto        fn_proto;\
+	MirInstrDeclRef        decl_ref;\
+	MirInstrDeclDirectRef  decl_direct_ref;\
+	MirInstrCall           call;\
+	MirInstrUnreachable    unreachable;\
+	MirInstrCondBr         cond_br;\
+	MirInstrBr             br;\
+	MirInstrUnop           unop;\
+	MirInstrArg            arg;\
+	MirInstrElemPtr        elem_ptr;\
+	MirInstrMemberPtr      member_ptr;\
+	MirInstrAddrOf         addrof;\
+	MirInstrTypeArray      type_array;\
+	MirInstrTypeSlice      type_slice;\
+	MirInstrTypeVArgs      type_vargs;\
+	MirInstrTypePtr        type_ptr;\
+	MirInstrTypeStruct     type_struct;\
+	MirInstrTypeFn         type_fn;\
+	MirInstrTypeEnum       type_enum;\
+	MirInstrCast           cast;\
+	MirInstrSizeof         szof;\
+	MirInstrAlignof        alof;\
+	MirInstrCompound       init;\
+	MirInstrVArgs          vargs;\
+	MirInstrTypeInfo       type_info;\
+	MirInstrPhi            phi;\
+	MirInstrToAny          toany;\
+	MirInstrSwitch         sw;\
+	MirInstrSetInitializer si;\
 })
 #endif
 
@@ -80,6 +81,7 @@
 	MIR_INSTR_PHI,
 	MIR_INSTR_TOANY,
 	MIR_INSTR_SWITCH,
+	MIR_INSTR_SET_INITIALIZER,
 #endif
 
 #ifdef GEN_BUILTIN_NAMES
@@ -125,6 +127,8 @@
 	MIR_BUILTIN_ID_TYPE_INFO_STRUCT_MEMBER,
 	MIR_BUILTIN_ID_TYPE_INFO_ENUM_VARIANT,
 	MIR_BUILTIN_ID_TYPE_INFO_FN_ARG,
+
+	MIR_BUILTIN_ID_ABORT_FN,
 #endif
 
 #ifdef GEN_BUILTIN_IDS
@@ -168,4 +172,5 @@
     {.str = "TypeInfoStructMember",  .hash = 0},
     {.str = "TypeInfoEnumVariant",   .hash = 0},
     {.str = "TypeInfoFnArg",         .hash = 0},
+    {.str = "__os_abort",            .hash = 0},
 #endif
