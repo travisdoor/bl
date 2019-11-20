@@ -3,20 +3,9 @@
 #load "std/basic.bl"
 #load "std/debug.bl"
 
-Foo :: struct {
-    i: s32;
-    foo: *Foo;
-    func: *fn (foo: *Foo);
-}
-
 main :: fn () s32 {
-    Bar :: struct {
-        i: s32;
-        bar: *Bar;
-        func: *fn (bar: *Bar);
-    };
-
-    foo: Foo;
-    
-    return 0;
+    i :: 10;
+    j :: null;
+    k :: ^j;
+    return k;
 }

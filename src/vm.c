@@ -2218,7 +2218,6 @@ void
 eval_instr(VM *vm, MirInstr *instr)
 {
 	if (!instr) return;
-	if (vm->aborted) return;
 	BL_ASSERT(instr->value.is_comptime);
 
 	switch (instr->kind) {
@@ -2482,7 +2481,15 @@ void
 eval_instr_load(VM *vm, MirInstrLoad *load)
 {
 	VMStackPtr src = MIR_CEV_READ_AS(VMStackPtr, &load->src->value);
-	BL_ASSERT(src);
+	if (!src) {
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_NULL_POINTER,
+		            load->base.node ? load->base.node->location : NULL,
+		            BUILDER_CUR_WORD,
+		            "Dereferencing null pointer!");
+		eval_abort(vm);
+	}
+
 	load->base.value.data = src;
 }
 
@@ -2490,7 +2497,8 @@ void
 eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si)
 {
 	MirVar *var = ((MirInstrDeclVar *)si->dest)->var;
-	BL_ASSERT(var->is_global && "Only globals can be initialized by initializer!");
+	BL_ASSERT((var->is_global || var->is_struct_typedef) &&
+	          "Only globals can be initialized by initializer!");
 
 	if (var->value.is_comptime) {
 		/* This is little optimization, we can simply reuse initializer pointer since we are
@@ -2604,11 +2612,13 @@ vm_execute_instr(VM *vm, Assembly *assembly, MirInstr *instr)
 	interp_instr(vm, instr);
 }
 
-void
+bool
 vm_eval_instr(VM *vm, Assembly *assembly, struct MirInstr *instr)
 {
+	vm->aborted  = false;
 	vm->assembly = assembly;
 	eval_instr(vm, instr);
+	return !vm->aborted;
 }
 
 bool

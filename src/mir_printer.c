@@ -98,6 +98,10 @@ static inline void
 _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 {
 	if (!type) return;
+	if (!value) {
+                fprintf(cnt->stream, "<null>");
+                return;
+        }
 
 	switch (type->kind) {
 	case MIR_TYPE_ENUM:
@@ -997,8 +1001,8 @@ void
 print_instr(Context *cnt, MirInstr *instr)
 {
 #if !PRINT_ANALYZED_COMPTIMES
-	if ((instr->owner_block || instr->kind == MIR_INSTR_BLOCK) && instr->value.is_comptime &&
-	    instr->analyzed)
+	if ((instr->owner_block || instr->kind == MIR_INSTR_BLOCK) &&
+	    (instr->kind != MIR_INSTR_DECL_VAR) && instr->value.is_comptime && instr->analyzed)
 		return;
 #endif
 

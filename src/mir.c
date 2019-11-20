@@ -50,7 +50,11 @@
 #define NO_REF_COUNTING -1
 #define VERBOSE_ANALYZE false
 
-#define IC(I, T) ((MirInstr##T *)(I))
+#define ANALYZE_INSTR_RQ(i)                                                                        \
+	{                                                                                          \
+		const AnalyzeResult r = analyze_instr(cnt, (i));                                   \
+		if (r.state != ANALYZE_PASSED) return r;                                           \
+	}
 
 #define ANALYZE_RESULT(_state, _waiting_for)                                                       \
 	(AnalyzeResult)                                                                            \
@@ -753,7 +757,7 @@ static MirInstr *
 ast_expr_compound(Context *cnt, Ast *cmp);
 
 /* analyze */
-static void
+static bool
 evaluate(Context *cnt, MirInstr *instr);
 
 static AnalyzeResult
@@ -1072,13 +1076,13 @@ is_instr_type_volatile(MirInstr *instr)
 {
 	switch (instr->kind) {
 	case MIR_INSTR_CONST:
-		return IC(instr, Const)->volatile_type;
+		return ((MirInstrConst *)instr)->volatile_type;
 
 	case MIR_INSTR_UNOP:
-		return IC(instr, Unop)->volatile_type;
+		return ((MirInstrUnop *)instr)->volatile_type;
 
 	case MIR_INSTR_BINOP:
-		return IC(instr, Binop)->volatile_type;
+		return ((MirInstrBinop *)instr)->volatile_type;
 
 	default:
 		return false;
@@ -1280,14 +1284,6 @@ analyze_notify_provided(Context *cnt, u64 hash)
 	tarray_terminate(wq);
 }
 
-static inline void
-analyze_instr_rq(Context *cnt, MirInstr *instr)
-{
-	if (analyze_instr(cnt, instr).state != ANALYZE_PASSED)
-		BL_WARNING("invalid analyze of compiler-generated instruction: %s",
-		           mir_instr_name(instr));
-}
-
 static inline const char *
 gen_uq_name(const char *prefix)
 {
@@ -1397,7 +1393,7 @@ commit_var(Context *cnt, MirVar *var)
 	entry->kind     = SCOPE_ENTRY_VAR;
 	entry->data.var = var;
 
-	if (var->is_global) analyze_notify_provided(cnt, id->hash);
+	if (var->is_global || var->is_struct_typedef) analyze_notify_provided(cnt, id->hash);
 }
 
 /*
@@ -2939,7 +2935,7 @@ maybe_mark_as_unrechable(MirInstrBlock *block, MirInstr *instr)
 	instr->unrechable = true;
 	MirFn *fn         = block->owner_fn;
 	if (!fn) return;
-	MirInstrFnProto *fn_proto = IC(fn->prototype, FnProto);
+	MirInstrFnProto *fn_proto = (MirInstrFnProto *)fn->prototype;
 	if (!fn_proto->first_unrechable_location && instr->node)
 		fn_proto->first_unrechable_location = instr->node->location;
 }
@@ -2971,7 +2967,7 @@ insert_instr_cast(Context *cnt, MirInstr *src, MirType *to_type)
 	ref_instr(&tmp->base);
 
 	insert_instr_after(src, &tmp->base);
-	analyze_instr_rq(cnt, &tmp->base);
+	// analyze_instr_rq(cnt, &tmp->base);
 	return &tmp->base;
 }
 
@@ -2982,7 +2978,6 @@ insert_instr_addrof(Context *cnt, MirInstr *src)
 	tmp->implicit = true;
 
 	insert_instr_after(src, tmp);
-	analyze_instr_rq(cnt, tmp);
 	return tmp;
 }
 
@@ -2999,7 +2994,6 @@ insert_instr_toany(Context *cnt, MirInstr *expr)
 	ref_instr(&tmp->base);
 
 	insert_instr_after(expr, &tmp->base);
-	analyze_instr_rq(cnt, &tmp->base);
 	return &tmp->base;
 }
 
@@ -3015,7 +3009,6 @@ insert_instr_load(Context *cnt, MirInstr *src)
 
 	ref_instr(&tmp->base);
 	insert_instr_after(src, &tmp->base);
-	analyze_instr_rq(cnt, &tmp->base);
 
 	return &tmp->base;
 }
@@ -3108,7 +3101,7 @@ get_cast_op(MirType *from, MirType *to)
 	}
 }
 
-static u64 _id_counter = 0;
+static u64 _id_counter = 1;
 
 void *
 create_instr(Context *cnt, MirInstrKind kind, Ast *node)
@@ -3729,7 +3722,7 @@ append_instr_decl_var(Context * cnt,
 	}
 
 	if (init && init->kind == MIR_INSTR_COMPOUND) {
-		IC(init, Compound)->is_naked = false;
+		((MirInstrCompound *)init)->is_naked = false;
 	}
 
 	return &tmp->base;
@@ -3763,7 +3756,7 @@ append_instr_decl_var_impl(Context *   cnt,
 	}
 
 	if (init && init->kind == MIR_INSTR_COMPOUND) {
-		IC(init, Compound)->is_naked = false;
+		((MirInstrCompound *)init)->is_naked = false;
 	}
 
 	return &tmp->base;
@@ -3926,8 +3919,8 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 	MirInstr *ptr =
 	    create_instr_const_ptr(cnt, node, cnt->builtin_types->t_u8_ptr, (VMStackPtr)str);
 
-	analyze_instr_rq(cnt, len);
-	analyze_instr_rq(cnt, ptr);
+	analyze_instr(cnt, len);
+	analyze_instr(cnt, ptr);
 
 	tsa_push_InstrPtr(values, len);
 	tsa_push_InstrPtr(values, ptr);
@@ -4285,23 +4278,28 @@ erase_instr_tree(MirInstr *instr, bool keep_root, bool force)
 	tsa_terminate(&queue);
 }
 
-void
+bool
 evaluate(Context *cnt, MirInstr *instr)
 {
-	if (!instr) return;
+	if (!instr) return true;
 
 	BL_ASSERT(instr->analyzed && "Non-analyzed instruction cannot be evaluated!");
 	/* We can evauate compile time know instructions only.  */
-	if (!instr->value.is_comptime) return;
+	if (!instr->value.is_comptime) return true;
 
-	vm_eval_instr(cnt->vm, cnt->assembly, instr);
+	if (!vm_eval_instr(cnt->vm, cnt->assembly, instr)) {
+		/* Evaluation was aborted due to error. */
+		return false;
+	}
 
 	if (can_mutate_comptime_to_const(instr)) {
 		const bool is_volatile = is_instr_type_volatile(instr);
 		erase_instr_tree(instr, true, true);
 		mutate_instr(instr, MIR_INSTR_CONST);
-		IC(instr, Const)->volatile_type = is_volatile;
+		((MirInstrConst *)instr)->volatile_type = is_volatile;
 	}
+
+	return true;
 }
 
 AnalyzeResult
@@ -4658,7 +4656,8 @@ analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
 
 	MirVar *var = ((MirInstrDeclVar *)si->dest)->var;
 	BL_ASSERT(var && "Missing MirVar for variable declaration!");
-	BL_ASSERT(var->is_global && "Variable set by initializer must be in global scope!");
+	BL_ASSERT((var->is_global || var->is_struct_typedef) &&
+	          "Only globals can be initialized by initializer!");
 
 	const AnalyzeSlotConfig *config =
 	    var->value.type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
@@ -4876,13 +4875,13 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 
 			insert_instr_before(&member_ptr->base, elem_ptr);
 
-			analyze_instr_rq(cnt, index);
-			analyze_instr_rq(cnt, elem_ptr);
+			analyze_instr(cnt, index);
+			analyze_instr(cnt, elem_ptr);
 
 			MirInstrAddrOf *addrof_elem =
 			    (MirInstrAddrOf *)mutate_instr(&member_ptr->base, MIR_INSTR_ADDROF);
 			addrof_elem->src = elem_ptr;
-			analyze_instr_rq(cnt, &addrof_elem->base);
+			analyze_instr(cnt, &addrof_elem->base);
 		} else {
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_MEMBER_ACCESS,
@@ -4913,7 +4912,8 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 
 		if (additional_load_needed) {
 			member_ptr->target_ptr = insert_instr_load(cnt, member_ptr->target_ptr);
-			BL_ASSERT(member_ptr->target_ptr);
+
+			ANALYZE_INSTR_RQ(member_ptr->target_ptr);
 		}
 
 		Scope *     scope = target_type->data.strct.scope;
@@ -4936,12 +4936,17 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			 * cast to desired base type and use this as target, that also
 			 * should solve problems with deeper nesting (bitcast of pointer is
 			 * better then multiple GEPs?) */
-			if (is_load_needed(member_ptr->target_ptr))
+			if (is_load_needed(member_ptr->target_ptr)) {
 				member_ptr->target_ptr =
 				    insert_instr_addrof(cnt, member_ptr->target_ptr);
 
+				ANALYZE_INSTR_RQ(member_ptr->target_ptr);
+			}
+
 			member_ptr->target_ptr = insert_instr_cast(
 			    cnt, member_ptr->target_ptr, create_type_ptr(cnt, type));
+
+			ANALYZE_INSTR_RQ(member_ptr->target_ptr);
 		}
 
 		if (!found) {
@@ -6213,7 +6218,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		if (result.state != ANALYZE_PASSED) return result;
 	}
 
-	if (var->is_global && !decl->init) {
+	if (var->is_global && !var->is_struct_typedef) {
 		/* Globals are set by initializer so we can skip all check, rest of the work is up
 		 * to set initializer instruction! There is one exceptional case: we use init value
 		 * as temporary value for incomplete structure declarations (struct can use pointer
@@ -6222,7 +6227,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		return ANALYZE_RESULT(PASSED, 0);
 	}
 
-	// local variable of struct typedef 
+	// local variable of struct typedef
 	if (decl->init) {
 		if (var->value.type) {
 			if (analyze_slot(
@@ -6544,6 +6549,9 @@ analyze_stage_load(Context *cnt, MirInstr **input, MirType *slot_type)
 {
 	if (is_load_needed(*input)) {
 		*input = insert_instr_load(cnt, *input);
+
+		AnalyzeResult r = analyze_instr(cnt, *input);
+		if (r.state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
 	}
 
 	return ANALYZE_STAGE_CONTINUE;
@@ -6591,7 +6599,7 @@ analyze_stage_set_auto(Context *cnt, MirInstr **input, MirType *slot_type)
 		return ANALYZE_STAGE_FAILED;
 	}
 
-	evaluate(cnt, &cast->base);
+	if (!evaluate(cnt, &cast->base)) return ANALYZE_STAGE_FAILED;
 
 	return ANALYZE_STAGE_BREAK;
 }
@@ -6604,8 +6612,14 @@ analyze_stage_toany(Context *cnt, MirInstr **input, MirType *slot_type)
 	/* check any */
 	if (!is_to_any_needed(cnt, *input, slot_type)) return ANALYZE_STAGE_CONTINUE;
 
+	AnalyzeResult r;
 	*input = insert_instr_toany(cnt, *input);
+	r      = analyze_instr(cnt, *input);
+	if (r.state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
+
 	*input = insert_instr_load(cnt, *input);
+	r      = analyze_instr(cnt, *input);
+	if (r.state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
 
 	return ANALYZE_STAGE_BREAK;
 }
@@ -6628,6 +6642,9 @@ analyze_stage_implicit_cast(Context *cnt, MirInstr **input, MirType *slot_type)
 	if (!can_impl_cast((*input)->value.type, slot_type)) return ANALYZE_STAGE_CONTINUE;
 
 	*input = insert_instr_cast(cnt, *input, slot_type);
+
+	AnalyzeResult r = analyze_instr(cnt, *input);
+	if (r.state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
 	return ANALYZE_STAGE_BREAK;
 }
 
@@ -6772,13 +6789,15 @@ analyze_instr(Context *cnt, MirInstr *instr)
 
 	if (state.state == ANALYZE_PASSED) {
 		instr->analyzed = true;
-
 		/* An auto cast cannot be directly evaluated because it's destination type could
 		 * change based on usage. */
-		if (instr->kind == MIR_INSTR_CAST && ((MirInstrCast *)instr)->auto_cast)
+		if (instr->kind == MIR_INSTR_CAST && ((MirInstrCast *)instr)->auto_cast) {
 			return state;
+		}
 
-		evaluate(cnt, instr);
+		if (!evaluate(cnt, instr)) {
+			return ANALYZE_RESULT(FAILED, 0);
+		}
 	}
 
 	return state;
@@ -8245,6 +8264,8 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		/* initialize value */
 		MirInstr *value = NULL;
 
+		const bool use_initializer = is_struct_decl || is_in_gscope;
+
 		/* Struct use forward type declarations! */
 		if (is_struct_decl) {
 			// Set to const type fwd decl
@@ -8252,7 +8273,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 			    create_type_struct_incomplete(cnt, cnt->ast.current_entity_id);
 
 			value = create_instr_const_type(cnt, ast_value, fwd_decl_type);
-			analyze_instr_rq(cnt, value);
+			analyze_instr(cnt, value);
 
 			// Set current fwd decl
 			cnt->ast.current_fwd_struct_decl = value;
@@ -8263,7 +8284,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 
 		/* When symbol is not declared in global scope, we can generate initialization tree
 		 * directly into current block, even for type declarations.  */
-		if (!is_in_gscope) {
+		if (!use_initializer) {
 			value = ast(cnt, ast_value);
 		}
 
@@ -8280,7 +8301,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		 * SetInitializer instruction will be used to set actual value, also implicit
 		 * initialization block is created into MIR (such block does not have LLVM
 		 * representation -> globals must be evaluated in compile time). */
-		if (is_in_gscope) {
+		if (use_initializer) {
 			if (ast_value) {
 				/* Generate implicit global initializer block. */
 				ast_create_global_initializer(cnt, ast_value, decl_var);
@@ -8297,6 +8318,10 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		if (is_struct_decl) {
 			cnt->ast.enable_incomplete_decl_refs = false;
 			cnt->ast.current_fwd_struct_decl     = NULL;
+
+			MirVar *var = ((MirInstrDeclVar *)decl_var)->var;
+
+			var->is_struct_typedef = true;
 		}
 
 		cnt->ast.current_entity_id = NULL;

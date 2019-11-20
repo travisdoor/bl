@@ -366,6 +366,7 @@ struct MirVar {
 	bool               is_mutable;
 	bool               is_global;
 	bool               is_implicit;
+	bool               is_struct_typedef;
 	bool               emit_llvm;
 	u32                flags;
 	VMRelativeStackPtr rel_stack_ptr;

@@ -79,7 +79,7 @@ vm_terminate(VM *vm);
 void
 vm_execute_instr(VM *vm, struct Assembly *assembly, struct MirInstr *instr);
 
-void
+bool
 vm_eval_instr(VM *vm, struct Assembly *assembly, struct MirInstr *instr);
 
 bool
