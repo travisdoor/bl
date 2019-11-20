@@ -1165,7 +1165,13 @@ emit_instr_cast(Context *cnt, MirInstrCast *cast)
 void
 emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 {
-	addrof->base.llvm_value = addrof->src->llvm_value;
+	if (addrof->src->kind == MIR_INSTR_FN_PROTO) {
+		MirInstrFnProto *fn_proto = (MirInstrFnProto *)addrof->src;
+		MirFn *          fn       = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
+		addrof->base.llvm_value   = emit_fn_proto(cnt, fn);
+	} else {
+		addrof->base.llvm_value = addrof->src->llvm_value;
+	}
 	BL_ASSERT(addrof->base.llvm_value);
 }
 

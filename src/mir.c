@@ -1469,7 +1469,7 @@ is_load_needed(MirInstr *instr)
 	case MIR_INSTR_CAST:
 	case MIR_INSTR_DECL_MEMBER:
 	case MIR_INSTR_TYPE_INFO:
-        case MIR_INSTR_COMPOUND:
+	case MIR_INSTR_COMPOUND:
 		return false;
 
 	default:
@@ -5021,6 +5021,8 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 {
 	MirInstr *src = addrof->src;
 	BL_ASSERT(src);
+	if (!src->analyzed) return ANALYZE_RESULT(POSTPONE, 0);
+
 	const MirValueAddressMode src_addr_mode = src->value.addr_mode;
 
 	const bool can_grab_address = src_addr_mode == MIR_VAM_LVALUE ||
@@ -5346,7 +5348,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	MirFn *fn = MIR_CEV_READ_AS(MirFn *, value);
 	BL_ASSERT(fn);
 
-	fn->type          = fn_proto->base.value.type;
+	fn->type          = value->type;
 	fn->type->user_id = fn->id;
 
 	BL_ASSERT(fn->type);

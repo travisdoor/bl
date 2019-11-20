@@ -1,17 +1,11 @@
 /* playground */
 
-/*
 #load "std/basic.bl"
 #load "std/debug.bl"
-*/
-
-CustomEnumValuesDeps :: enum {
-    A :: 10;
-    B :: A + 1;
-    C :: A + B
-};
 
 main :: fn () s32 {
+    ptr2 := &fn () {};
+    ptr2();
     return 0;
 }
 
