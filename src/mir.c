@@ -6203,6 +6203,9 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	MirVar *var = decl->var;
 	BL_ASSERT(var);
 
+	/* Immutable declaration can be comptime, but only if it's initializer value is also
+	 * comptime! Value of this variable can be adjusted later during analyze pass when we know
+	 * actual initialization value. */
 	bool is_decl_comptime = !var->is_mutable;
 
 	if (decl->type && !var->value.type) {
@@ -6210,13 +6213,16 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		if (result.state != ANALYZE_PASSED) return result;
 	}
 
-	if (var->is_global) {
+	if (var->is_global && !decl->init) {
 		/* Globals are set by initializer so we can skip all check, rest of the work is up
-		 * to set initializer instruction! */
+		 * to set initializer instruction! There is one exceptional case: we use init value
+		 * as temporary value for incomplete structure declarations (struct can use pointer
+		 * to self type inside it's body). This value is later replaced by initializer
+		 * instruction.*/
 		return ANALYZE_RESULT(PASSED, 0);
 	}
 
-	// local variable
+	// local variable of struct typedef 
 	if (decl->init) {
 		if (var->value.type) {
 			if (analyze_slot(
@@ -6237,6 +6243,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 			var->value.type = type;
 		}
 
+		/* Immutable and comptime initializer value. */
 		is_decl_comptime &= decl->init->value.is_comptime;
 	}
 

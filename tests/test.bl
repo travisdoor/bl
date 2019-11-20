@@ -3,10 +3,20 @@
 #load "std/basic.bl"
 #load "std/debug.bl"
 
-main :: fn () s32 {
-    ptr2 := &fn () {};
-    ptr2();
-    return 0;
+Foo :: struct {
+    i: s32;
+    foo: *Foo;
+    func: *fn (foo: *Foo);
 }
 
+main :: fn () s32 {
+    Bar :: struct {
+        i: s32;
+        bar: *Bar;
+        func: *fn (bar: *Bar);
+    };
 
+    foo: Foo;
+    
+    return 0;
+}

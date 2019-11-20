@@ -67,6 +67,7 @@ typedef struct VM {
 	VMStack *        stack;
 	struct Assembly *assembly;
 	TSmallArray_Char dyncall_sig_tmp;
+	bool             aborted;
 } VM;
 
 void

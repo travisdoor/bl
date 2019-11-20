@@ -324,6 +324,12 @@ exec_abort(VM *vm, s32 report_stack_nesting)
 	vm->stack->aborted = true;
 }
 
+static inline void
+eval_abort(VM *vm)
+{
+	vm->aborted = true;
+}
+
 static inline usize
 stack_alloc_size(usize size)
 {
@@ -2212,6 +2218,7 @@ void
 eval_instr(VM *vm, MirInstr *instr)
 {
 	if (!instr) return;
+	if (vm->aborted) return;
 	BL_ASSERT(instr->value.is_comptime);
 
 	switch (instr->kind) {
@@ -2335,7 +2342,7 @@ eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 			            BUILDER_CUR_WORD,
 			            "Dereferencing null pointer! Slice has not been set?");
 
-			return;
+			eval_abort(vm);
 		}
 
 		if (index >= len_tmp) {
@@ -2348,7 +2355,7 @@ eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 			            (long long)index,
 			            (long long)len_tmp);
 
-			return;
+			eval_abort(vm);
 		}
 		break;
 	}

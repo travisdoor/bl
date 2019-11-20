@@ -106,3 +106,13 @@
     assert(_1.ptr != null);
     assert(_1.len == 5);
 };
+
+#test "pointer to self" {
+    Foo :: struct {
+        foo: *Foo;
+        func: fn (i: *Foo);
+    };
+    
+    foo: Foo;
+    foo.foo = &foo;
+}
