@@ -3363,10 +3363,11 @@ append_instr_compound(Context *cnt, Ast *node, MirInstr *type, TSmallArray_Instr
 	}
 	ref_instr(type);
 
-	MirInstrCompound *tmp = create_instr(cnt, MIR_INSTR_COMPOUND, node);
-	tmp->type             = type;
-	tmp->values           = values;
-	tmp->is_naked         = true;
+	MirInstrCompound *tmp     = create_instr(cnt, MIR_INSTR_COMPOUND, node);
+	tmp->base.value.addr_mode = MIR_VAM_RVALUE;
+	tmp->type                 = type;
+	tmp->values               = values;
+	tmp->is_naked             = true;
 
 	append_current_block(cnt, &tmp->base);
 	return &tmp->base;
@@ -3375,9 +3376,10 @@ append_instr_compound(Context *cnt, Ast *node, MirInstr *type, TSmallArray_Instr
 MirInstr *
 append_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values)
 {
-	MirInstr *tmp   = append_instr_compound(cnt, node, NULL, values);
-	tmp->value.type = type;
-	tmp->implicit   = true;
+	MirInstr *tmp        = append_instr_compound(cnt, node, NULL, values);
+	tmp->value.addr_mode = MIR_VAM_RVALUE;
+	tmp->value.type      = type;
+	tmp->implicit        = true;
 
 	return tmp;
 }

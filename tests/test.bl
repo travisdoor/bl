@@ -1,74 +1,14 @@
 /* playground */
-// INCOMPLETE: enable "hello".ptr
-// INCOMPLETE: local type declarations
 
-#load "std/utils.bl"
 #load "std/basic.bl"
-#load "std/file.bl"
-
-Days :: enum {
-    Sun;
-    Mon;
-}
+#load "std/debug.bl"
 
 main :: fn () s32 {
-    foo :: {:Foo: 10, false, null};
-    arr :: {:[5]s32: 0, 1, 2, 3, 4};
-
-    print("Hello sailor!!!\n");
-    print("i = % and j = %\n", 10, 20);
-    print("foo = %\n", foo);
-    print("T = %\n", s32);
-    print("T = %\n", Foo);
-    print("arr = %\n", arr);
-    print("Jsem % %\n", "Martin", "Dorazil");
-    print("Float = %\n", 120.5f);
-    print("Hello %\n", -190);
-    print("Double %\n", -120.44);
-    print("s64 %\n", cast(s64) -120.44);
-
-    day :: Days.Mon;
-    i : s32 = auto day;
-
-    print("i == %\n", i);
-
-    print("%\n", DeviceExtensions);
-    print("%\n", DeviceExtensions2);
-
-    ds := {:string: 10, null};
-
-    slice := {:[]s32: 0};
-
-    set_len(auto &slice.len);
-    print_log("slice.len = %", slice.len);
-
-    file :: file_open(#file);
-    defer file_close(file);
-
-    content := file_read_all(file);
-    print("%\n", content);
-
+    foo({:[2]s32: 1, 2});
     return 0;
 }
 
-set_len :: fn (i: *u32) {
-    ^i = 10;
+foo :: fn (v: Any) {
+    assert(v.data != null);
 }
 
-hello :: fn (v: *Foo, i: *Foo) {
-}
-
-DeviceExtensions :: {:[2]string: MY_STRING, "world"};
-DeviceExtensions2 :: {:[2]string: "Hello", "World"};
-
-MY_STRING :: "hello";
-
-Foo :: struct {
-    a: s32;
-    b: bool;
-    c: *Bar;
-}
-
-Bar :: struct {
-    i: s32
-}
