@@ -1449,11 +1449,16 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 			break;
 		}
 
-		default:
-			BL_ABORT("Invalid compound type!");
+		default: {
+			BL_ASSERT(cmp->values->size == 1 &&
+			          "Expected only one compound initializer value!");
+
+			cmp->base.llvm_value = cmp->values->data[0]->llvm_value;
+		}
 		}
 
 	SKIP:
+		BL_ASSERT(cmp->base.llvm_value);
 		if (tmp_var) {
 			LLVMValueRef llvm_dest = _tmp_var->llvm_value;
 			BL_ASSERT(llvm_dest);

@@ -1,14 +1,18 @@
 /* playground */
 
+/*
 #load "std/basic.bl"
 #load "std/debug.bl"
+*/
+
+CustomEnumValuesDeps :: enum {
+    A :: 10;
+    B :: A + 1;
+    C :: A + B
+};
 
 main :: fn () s32 {
-    foo({:[2]s32: 1, 2});
     return 0;
 }
 
-foo :: fn (v: Any) {
-    assert(v.data != null);
-}
 

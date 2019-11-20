@@ -1469,6 +1469,7 @@ is_load_needed(MirInstr *instr)
 	case MIR_INSTR_CAST:
 	case MIR_INSTR_DECL_MEMBER:
 	case MIR_INSTR_TYPE_INFO:
+        case MIR_INSTR_COMPOUND:
 		return false;
 
 	default:

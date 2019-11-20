@@ -92,7 +92,7 @@
     num     :: {:s32: 10};
     real    :: {:f32: 0.5f};
     boolean :: {:bool: true};
-    ptr     :: {:*s32: &num};
+    ptr     : *s32 : {:*s32: &num};
     day     :: {:Days: Days.MON};
 
     assert(num == 10);
