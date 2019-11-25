@@ -49,6 +49,22 @@ GLchar     :: u8;
 GL_TRUE  :: 1;
 GL_FALSE :: 0;
 
+GL_DONT_CARE : u32 : 0x1100;
+GL_FASTEST   : u32 : 0x1101;
+GL_NICEST    : u32 : 0x1102;
+
+GL_COMPRESSED_ALPHA               : s32 : 0x84E9;
+GL_COMPRESSED_LUMINANCE           : s32 : 0x84EA;
+GL_COMPRESSED_LUMINANCE_ALPHA     : s32 : 0x84EB;
+GL_COMPRESSED_INTENSITY           : s32 : 0x84EC;
+GL_COMPRESSED_RGB                 : s32 : 0x84ED;
+GL_COMPRESSED_RGBA                : s32 : 0x84EE;
+GL_TEXTURE_COMPRESSION_HINT       : s32 : 0x84EF;
+GL_TEXTURE_COMPRESSED_IMAGE_SIZE  : s32 : 0x86A0;
+GL_TEXTURE_COMPRESSED             : s32 : 0x86A1;
+GL_NUM_COMPRESSED_TEXTURE_FORMATS : s32 : 0x86A2;
+GL_COMPRESSED_TEXTURE_FORMATS     : s32 : 0x86A3;
+
 GL_NO_ERROR          : u32 : 0;
 GL_INVALID_ENUM      : u32 : 0x0500;
 GL_INVALID_VALUE     : u32 : 0x0501;
@@ -485,4 +501,5 @@ glTexSubImage2D           :: fn (target: GLenum,
                                	 format: GLenum,
                                	 t: GLenum,
                                	 data: *u8) #extern;
-
+glHint                    :: fn (target: GLenum, mode: GLenum) #extern;
+ 
