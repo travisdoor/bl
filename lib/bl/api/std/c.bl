@@ -39,4 +39,5 @@ fopen   :: fn (filename: *u8, mode: *u8) *u8 #extern;
 fclose  :: fn (handle: *u8) s32 #extern;
 fseek   :: fn (handle: *u8, offest: s32, origin: s32) s32 #extern;
 fread   :: fn (ptr: *u8, size: usize, count: usize, handle: *u8) usize #extern;
+fwrite  :: fn (ptr: *u8, size: usize, count: usize, handle: *u8) usize #extern;
 ftell   :: fn (handle: *u8) s32 #extern;

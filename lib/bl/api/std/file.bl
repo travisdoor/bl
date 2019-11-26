@@ -78,6 +78,10 @@ file_read_all :: fn (file: File) string {
     return tmp;
 };
 
+file_write_binary :: fn (file: File, data: *u8, size: usize) usize {
+    return fwrite(data, sizeof(u8), size, file);
+}
+
 #private
 
 SEEK_SET :: 0;
