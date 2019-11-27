@@ -78,6 +78,17 @@ file_read_all :: fn (file: File) string {
     return tmp;
 };
 
+file_get_size_bytes :: fn (file: File) usize {
+    fseek(file, 0, SEEK_END);
+    size :: cast(usize) ftell(file);
+    fseek(file, 0, SEEK_SET);
+    return size;
+}
+
+file_read_all_binary :: fn (file: File, dest: *u8, size: usize) usize {
+    return fread(dest, sizeof(u8), size, file);
+}
+
 file_write_binary :: fn (file: File, data: *u8, size: usize) usize {
     return fwrite(data, sizeof(u8), size, file);
 }
