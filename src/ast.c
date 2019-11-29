@@ -87,6 +87,8 @@ ast_get_name(const Ast *n)
 	switch (n->kind) {
 	case AST_BAD:
 		return "Bad";
+	case AST_META_DATA:
+		return "MetaData";
 	case AST_LOAD:
 		return "Load";
 	case AST_LINK:

@@ -4,8 +4,19 @@
 #load "std/debug.bl"
 
 main :: fn () s32 {
-    i :: 10;
-    j :: null;
-    k :: ^j;
-    return k;
+    return 0;
+}
+
+BuildType :: enum {
+    Debug;
+    Relese;
+}
+
+BuildSettings :: struct {
+    build_type: BuildType;
+    exec_name: string;
+    opt_level: s32;
+};
+
+build :: fn (build_settings: *BuildSettings) {
 }

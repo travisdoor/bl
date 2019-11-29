@@ -190,6 +190,7 @@ scan:
 			/* check multiline string */
 			while (true) {
 				if (*tmp_c == '\"') {
+					cnt->line++;
 					/* skip " */
 					cnt->c = tmp_c + 1;
 					goto scan;

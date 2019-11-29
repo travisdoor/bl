@@ -79,6 +79,7 @@ typedef enum {
 	HD_FILE      = 1 << 9,
 	HD_LINE      = 1 << 10,
 	HD_BASE      = 1 << 11,
+	HD_META      = 1 << 12,
 } HashDirective;
 
 typedef struct {
@@ -514,6 +515,37 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 
 		return parse_type(cnt);
 	}
+
+#if 0
+	if (strcmp(directive, "meta") == 0) {
+		set_satisfied(HD_META);
+		if (IS_NOT_FLAG(expected_mask, HD_META)) {
+			PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+			            tok_directive,
+			            BUILDER_CUR_WORD,
+			            "Unexpected directive.");
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
+		}
+
+		Token *tok_str = tokens_consume(cnt->tokens);
+		if (tok_str->sym != SYM_STRING) {
+			PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+			            tok_directive,
+			            BUILDER_CUR_WORD,
+			            "Expected string description after meta data.");
+
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
+		}
+
+		Ast *meta =
+		    ast_create_node(cnt->ast_arena, AST_META_DATA, tok_directive, scope_get(cnt));
+
+		meta->data.meta_data.str = tok_str->value.str;
+		return meta;
+	}
+#endif
 
 	if (strcmp(directive, "line") == 0) {
 		set_satisfied(HD_LINE);
@@ -2276,7 +2308,8 @@ parse_ublock_content(Context *cnt, Ast *ublock)
 {
 	/******************************************************************************************/
 #define RQ_SEMICOLON_AFTER(_node)                                                                  \
-	((_node)->data.decl_entity.value && (_node)->data.decl_entity.value->kind != AST_EXPR_LIT_FN &&                               \
+	((_node)->data.decl_entity.value &&                                                        \
+	 (_node)->data.decl_entity.value->kind != AST_EXPR_LIT_FN &&                               \
 	 (_node)->data.decl_entity.value->kind != AST_TEST_CASE &&                                 \
 	 (_node)->data.decl_entity.value->kind != AST_EXPR_TYPE)
 	/******************************************************************************************/
@@ -2301,9 +2334,13 @@ NEXT:
 	}
 
 	/* load, link, test, private - enabled in global scope */
-	const int enabled_hd = HD_LOAD | HD_LINK | HD_TEST | HD_PRIVATE;
+	const int enabled_hd = HD_LOAD | HD_LINK | HD_TEST | HD_PRIVATE | HD_META;
 	if ((tmp = parse_hash_directive(cnt, enabled_hd, NULL))) {
-		tarray_push(ublock->data.ublock.nodes, tmp);
+		if (tmp->kind == AST_META_DATA) {
+			ublock->meta_node = tmp;
+		} else {
+			tarray_push(ublock->data.ublock.nodes, tmp);
+		}
 		goto NEXT;
 	}
 

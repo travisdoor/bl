@@ -47,6 +47,7 @@ typedef enum {
 	AST_BLOCK,
 	AST_TEST_CASE,
 	AST_UNREACHABLE,
+	AST_META_DATA,
 	_AST_DECL_FIRST,
 	AST_DECL_ENTITY,
 	AST_DECL_MEMBER,
@@ -381,14 +382,20 @@ struct AstExprDeref {
 	Ast *next;
 };
 
+struct AstMetaData {
+	const char *str;
+};
+
 /* AST base type */
 struct Ast {
 	AstKind          kind;
 	struct Location *location;    /* Location in source file. */
 	struct Scope *   owner_scope; /* Scope in which is AST node. */
+	struct Ast *     meta_node;   /* Metadata assigned to node. */
 
 	union {
 		struct AstPrivate       priv;
+		struct AstMetaData      meta_data;
 		struct AstLoad          load;
 		struct AstLink          link;
 		struct AstIdent         ident;

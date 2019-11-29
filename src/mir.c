@@ -8745,6 +8745,7 @@ ast(Context *cnt, Ast *node)
 	case AST_LOAD:
 	case AST_LINK:
 	case AST_PRIVATE:
+	case AST_META_DATA:
 		break;
 	default:
 		BL_ABORT("invalid node %s", ast_get_name(node));
