@@ -4,44 +4,12 @@
 #load "std/debug.bl"
 
 main :: fn () s32 {
-    if true { return 10; }
-    if false { return 20; }
+    i := 10;
+    i_ptr := &i;
+    i_ptr_ptr := &i_ptr;
 
-    elem :: O2M_Elem.Color;
-    switch elem {
-        O2M_Elem.Color {
-            return 10;
-        };
-
-        O2M_Elem.Vertex {
-            return 10;
-        };
-
-        O2M_Elem.Normal {
-            return 10;
-        };
-
-        O2M_Elem.UV {
-            return 10;
-        };
-
-        O2M_Elem.Index {
-            return 10;
-        };
-
-        default {
-            return 20; 
-        }
-    }
+    j : *s32 = ^ (cast(**s32) i_ptr_ptr);
+    
+    return 10;
 }
 
-// Sub-element of mesh data.
-O2M_Elem :: enum u8 {
-    Color :: 0;
-    Vertex;
-    Normal;
-    UV;
-    Index;
-
-    _Count;
-}

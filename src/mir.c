@@ -1463,6 +1463,18 @@ is_load_needed(MirInstr *instr)
 	case MIR_INSTR_COMPOUND:
 		return false;
 
+	case MIR_INSTR_LOAD: {
+		/* HACK: this solves problem with user-level dereference of pointer to pointer
+		 * values. We get s32 vs *s32 type mismatch without this.
+		 *
+		 * Ex.: j : *s32 = ^ (cast(**s32) i_ptr_ptr);
+		 * 
+		 * But I'm not 100% sure that this didn't broke something else...
+		 */
+		MirInstrLoad *load = (MirInstrLoad *)instr;
+		return load->is_deref && is_load_needed(load->src);
+	}
+
 	default:
 		break;
 	}
@@ -7808,7 +7820,9 @@ ast_expr_deref(Context *cnt, Ast *deref)
 {
 	MirInstr *next = ast(cnt, deref->data.expr_deref.next);
 	BL_ASSERT(next);
-	return append_instr_load(cnt, deref, next);
+	MirInstrLoad *load = (MirInstrLoad *)append_instr_load(cnt, deref, next);
+	load->is_deref     = true;
+	return &load->base;
 }
 
 MirInstr *

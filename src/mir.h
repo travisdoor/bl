@@ -231,8 +231,8 @@ struct MirFn {
 	MirInstr *ret_tmp;
 
 	/* Return instruction of function. */
-	MirInstrRet *terminal_instr;
-	struct Location *first_unrechable_loc; 
+	MirInstrRet *    terminal_instr;
+	struct Location *first_unrechable_loc;
 
 	struct {
 		DCpointer        extern_entry;
@@ -486,6 +486,8 @@ struct MirInstrConst {
 struct MirInstrLoad {
 	MirInstr base;
 
+	/* This flag is set when laod is user-level dereference. */
+	bool      is_deref;
 	MirInstr *src;
 };
 
@@ -535,9 +537,9 @@ struct MirInstrUnop {
 struct MirInstrFnProto {
 	MirInstr base;
 
-	MirInstr *       type;
-	MirInstr *       user_type;
-	bool             pushed_for_analyze;
+	MirInstr *type;
+	MirInstr *user_type;
+	bool      pushed_for_analyze;
 };
 
 struct MirInstrTypeFn {
