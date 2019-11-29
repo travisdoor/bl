@@ -2182,7 +2182,6 @@ emit_instr_block(Context *cnt, MirInstrBlock *block)
 
 	MirInstr *instr = block->entry_instr;
 	while (instr) {
-		if (instr->unrechable) break;
 		emit_instr(cnt, instr);
 		instr = instr->next;
 	}
@@ -2237,7 +2236,7 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		MirInstr *block = (MirInstr *)fn->first_block;
 
 		while (block) {
-			emit_instr(cnt, block);
+			if (!block->is_unrechable) emit_instr(cnt, block);
 			block = block->next;
 		}
 	}

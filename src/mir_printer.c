@@ -1130,7 +1130,6 @@ print_instr(Context *cnt, MirInstr *instr)
 	}
 
 	if (instr->value.is_comptime) fprintf(cnt->stream, " /* comptime */");
-	if (instr->unrechable) fprintf(cnt->stream, " /* unrechable */");
 
 	fprintf(cnt->stream, "\n");
 }

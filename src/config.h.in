@@ -44,7 +44,7 @@
 #define BL_NO_COLOR
 #define OS_PRELOAD_FILE "os/_windows.bl"
 #elif __APPLE__
-#define BL_NO_COLOR
+//#define BL_NO_COLOR
 #define BL_PLATFORM_MACOS
 #define OS_PRELOAD_FILE "os/_macos.bl"
 #elif __linux__

@@ -353,9 +353,6 @@ append_global_block(Context *cnt, const char *name);
 
 /* instructions */
 static void
-maybe_mark_as_unrechable(MirInstrBlock *block, MirInstr *instr);
-
-static void
 append_current_block(Context *cnt, MirInstr *instr);
 
 static MirInstr *
@@ -1209,7 +1206,6 @@ insert_instr_after(MirInstr *after, MirInstr *instr)
 	BL_ASSERT(after && instr);
 
 	MirInstrBlock *block = after->owner_block;
-	instr->unrechable    = after->unrechable;
 
 	instr->next = after->next;
 	instr->prev = after;
@@ -1226,7 +1222,6 @@ insert_instr_before(MirInstr *before, MirInstr *instr)
 	BL_ASSERT(before && instr);
 
 	MirInstrBlock *block = before->owner_block;
-	instr->unrechable    = before->unrechable;
 
 	instr->next = before;
 	instr->prev = before->prev;
@@ -2929,25 +2924,19 @@ create_variant(Context *cnt, ID *id, Scope *scope, MirConstExprValue *value)
 
 /* instructions */
 void
-maybe_mark_as_unrechable(MirInstrBlock *block, MirInstr *instr)
-{
-	if (!is_block_terminated(block)) return;
-	instr->unrechable = true;
-	MirFn *fn         = block->owner_fn;
-	if (!fn) return;
-	MirInstrFnProto *fn_proto = (MirInstrFnProto *)fn->prototype;
-	if (!fn_proto->first_unrechable_location && instr->node)
-		fn_proto->first_unrechable_location = instr->node->location;
-}
-
-void
 append_current_block(Context *cnt, MirInstr *instr)
 {
 	BL_ASSERT(instr);
 	MirInstrBlock *block = get_current_block(cnt);
 	BL_ASSERT(block);
 
-	maybe_mark_as_unrechable(block, instr);
+	if (is_block_terminated(block)) {
+		/* Append this instruction into unrechable block if current block was termianted
+		 * already. Unrechable block will never be generated into LLVM and compiler can
+		 * complain later about this and give hit to the user. */
+		block = append_block(cnt, block->owner_fn, ".unrechable");
+		set_current_block(cnt, block);
+	}
 
 	instr->owner_block = block;
 	instr->prev        = block->last_instr;
@@ -5412,14 +5401,6 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
 	if (fn->id) commit_fn(cnt, fn);
 
-	if (fn_proto->first_unrechable_location) {
-		builder_msg(BUILDER_MSG_WARNING,
-		            0,
-		            fn_proto->first_unrechable_location,
-		            BUILDER_CUR_NONE,
-		            "Unrechable code detected.");
-	}
-
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -6489,6 +6470,19 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 	MirInstrFnProto *fn_proto = (MirInstrFnProto *)fn->prototype;
 	BL_ASSERT(fn_proto);
 
+	block->base.is_unrechable = block->base.ref_count == 0;
+	if (!fn->first_unrechable_loc && block->base.is_unrechable && block->entry_instr &&
+	    block->entry_instr->node) {
+		/* Report unrechable code if there is one only once inside funcition body. */
+		fn->first_unrechable_loc = block->entry_instr->node->location;
+
+		builder_msg(BUILDER_MSG_WARNING,
+		            0,
+		            fn->first_unrechable_loc,
+		            BUILDER_CUR_NONE,
+		            "Unrechable code detected.");
+	}
+
 	/* append implicit return for void functions or generate error when last
 	 * block is not terminated
 	 */
@@ -6496,25 +6490,15 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 		if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
 			set_current_block(cnt, block);
 			append_instr_ret(cnt, NULL, NULL);
+		} else if (block->base.is_unrechable) {
+			set_current_block(cnt, block);
+			append_instr_br(cnt, NULL, block);
 		} else {
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_MISSING_RETURN,
 			            fn->decl_node->location,
 			            BUILDER_CUR_WORD,
 			            "Not every path inside function return value.");
-		}
-	}
-
-	if (block->base.ref_count == 0 && !fn_proto->first_unrechable_location) {
-		MirInstr *first_instr = block->entry_instr;
-		if (first_instr && first_instr->node) {
-			fn_proto->first_unrechable_location = first_instr->node->location;
-
-			builder_msg(BUILDER_MSG_WARNING,
-			            0,
-			            fn_proto->first_unrechable_location,
-			            BUILDER_CUR_NONE,
-			            "Unrechable code detected.");
 		}
 	}
 
@@ -7631,7 +7615,11 @@ ast_stmt_switch(Context *cnt, Ast *stmt_switch)
 			    append_block(cnt, fn, is_default ? "switch_default" : "switch_case");
 			set_current_block(cnt, case_block);
 			ast(cnt, ast_case->data.stmt_case.block);
-			append_instr_br(cnt, ast_case, cont_block);
+
+			MirInstrBlock *curr_block = get_current_block(cnt);
+			if (!is_block_terminated(curr_block)) {
+				append_instr_br(cnt, ast_case, cont_block);
+			}
 		} else {
 			/* Handle empty cases. */
 			case_block = cont_block;
@@ -7681,6 +7669,7 @@ ast_stmt_return(Context *cnt, Ast *ret)
 				            ret->location,
 				            BUILDER_CUR_AFTER,
 				            "Expected return value.");
+				return;
 			}
 
 			MirInstr *ref = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
@@ -8070,8 +8059,10 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn, Ast *decl_node, bool is_in_gscope, u3
 	/* generate body instructions */
 	ast(cnt, ast_block);
 
+	/*
 	if (!is_block_terminated(get_current_block(cnt)))
-		append_instr_br(cnt, NULL, cnt->ast.exit_block);
+	        append_instr_br(cnt, NULL, cnt->ast.exit_block);
+	*/
 
 	cnt->ast.exit_block = prev_exit_block;
 	set_current_block(cnt, prev_block);

@@ -4,19 +4,44 @@
 #load "std/debug.bl"
 
 main :: fn () s32 {
-    return 0;
+    if true { return 10; }
+    if false { return 20; }
+
+    elem :: O2M_Elem.Color;
+    switch elem {
+        O2M_Elem.Color {
+            return 10;
+        };
+
+        O2M_Elem.Vertex {
+            return 10;
+        };
+
+        O2M_Elem.Normal {
+            return 10;
+        };
+
+        O2M_Elem.UV {
+            return 10;
+        };
+
+        O2M_Elem.Index {
+            return 10;
+        };
+
+        default {
+            return 20; 
+        }
+    }
 }
 
-BuildType :: enum {
-    Debug;
-    Relese;
-}
+// Sub-element of mesh data.
+O2M_Elem :: enum u8 {
+    Color :: 0;
+    Vertex;
+    Normal;
+    UV;
+    Index;
 
-BuildSettings :: struct {
-    build_type: BuildType;
-    exec_name: string;
-    opt_level: s32;
-};
-
-build :: fn (build_settings: *BuildSettings) {
+    _Count;
 }

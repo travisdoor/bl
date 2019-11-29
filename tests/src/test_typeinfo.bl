@@ -51,7 +51,7 @@
 };
 
 #test "typeinfo - fn" {
-    T :: fn (i: s32, j: bool) s32 {};
+    T :: fn (i: s32, j: bool) s32 { return 0; };
     info := cast(*TypeInfoFn) typeinfo(T);
 
     assert(info.base.kind == TypeKind.Fn);
