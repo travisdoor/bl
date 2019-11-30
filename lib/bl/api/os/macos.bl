@@ -46,7 +46,34 @@ __os_abort :: fn () #compiler {
     raise(SIGABRT);
 }
 
+__start :: fn (args: []*u8) {
+    tmp: [__MAX_ARGS_WITHOUT_ALLOC]string;
+    is_allocated :: args.len > tmp.len;
+
+    command_line_arguments.len = args.len;
+
+    if is_allocated {
+        command_line_arguments.ptr = auto mem_alloc(sizeof(string) * auto args.len);
+        if command_line_arguments.ptr == null { __os_abort(); }
+    } else {
+        command_line_arguments.ptr = tmp.ptr;
+    }
+
+    loop i := 0; i < args.len; i += 1 {
+        command_line_arguments[i] = {:string: auto strlen(args[i]), args[i]};
+    }
+
+    out :: cast(s32) main();
+
+    if is_allocated {
+        mem_free(auto command_line_arguments.ptr);
+    }
+    exit(out);
+}
+
 #private
+
+__MAX_ARGS_WITHOUT_ALLOC :: 8;
 
 SIGHUP  :: 1;
 SIGINT  :: 2;

@@ -49,6 +49,11 @@ time_now_ms :: fn () f64 {
     return 0.0;
 };
 
+__libc_start_main :: fn (_: *u8, argc: s32, argv: **u8, env: **u8) s32 {
+    print("hello!!!\n");
+    return 0;
+}
+
 #private
 
 SIGHUP  :: 1;
