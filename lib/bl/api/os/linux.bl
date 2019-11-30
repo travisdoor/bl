@@ -40,12 +40,13 @@ __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return write(fd, buf, count);
 };
 
-__os_abort :: fn () {
+__os_abort :: fn () #compiler {
     raise(SIGABRT);
 }
 
 time_now_ms :: fn () f64 {
     unreachable;
+    return 0.0;
 };
 
 #private
