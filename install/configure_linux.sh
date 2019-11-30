@@ -42,14 +42,14 @@ else
     echo "  FOUND - $LINKER_EXEC"
 fi
 
-echo "- Looking for C runtime objects"
-CRT1_O="/usr/lib/x86_64-linux-gnu/crt1.o"
-if [ -e "$CRT1_O" ]; then
-    echo "  FOUND - $CRT1_O"
-else
-    echo "  error: Cannot find '$CRT1_O'. You can try to set correct path manually in etc/bl.conf file."
-    $STATUS=1
-fi
+#echo "- Looking for C runtime objects"
+#CRT1_O="/usr/lib/x86_64-linux-gnu/crt1.o"
+#if [ -e "$CRT1_O" ]; then
+#    echo "  FOUND - $CRT1_O"
+#else
+#    echo "  error: Cannot find '$CRT1_O'. You can try to set correct path manually in etc/bl.conf file."
+#    $STATUS=1
+#fi
 
 #CRTI_O="/usr/lib/x86_64-linux-gnu/crti.o"
 #if [ -e "$CRTI_O" ]; then
