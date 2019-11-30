@@ -24,7 +24,7 @@ RT_ENTRY_POINT="__start"
 STATUS=0
 
 echo "- Looking for bl APIs"
-LIB_DIR="../lib/bl/api"
+LIB_DIR="../lib/bl"
 if [ -d "$LIB_DIR" ]; then
     LIB_DIR=$(realpath $LIB_DIR)
     echo "  FOUND - $LIB_DIR"
@@ -75,12 +75,13 @@ fi
 #    $STATUS=1
 #fi
 
-LINKER_OPT="-e %RT_ENTRY_POINT --hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -dynamic-linker $LDLIB -lc -lm"
+RT_O=$LIB_DIR/rt/blrt_x86_64_linux.o
+LINKER_OPT="-e %RT_ENTRY_POINT RT_O --hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -dynamic-linker $LDLIB -lc -lm"
 
 rm -f $CONFIG_FILE
 mkdir -p ../etc
 printf "/*\n * blc config file\n */\n\n" >> $CONFIG_FILE
-echo LIB_DIR \"$LIB_DIR\" >> $CONFIG_FILE
+echo LIB_DIR \"$LIB_DIR/api\" >> $CONFIG_FILE
 echo LINKER_EXEC \"$LINKER_EXEC\" >> $CONFIG_FILE
 echo LINKER_OPT \"$LINKER_OPT\" >> $CONFIG_FILE
 echo LINKER_LIB_PATH \"/usr/lib:/usr/local/lib:/lib64\" >> $CONFIG_FILE

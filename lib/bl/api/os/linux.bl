@@ -49,10 +49,9 @@ time_now_ms :: fn () f64 {
     return 0.0;
 };
 
-
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
 
-__os_start :: fn (argc: s64, argv: **u8) {
+__os_start :: fn (argc: s64, argv: **u8) s32 {
     args :: {:[]*u8: argc, argv};
     tmp: [__MAX_ARGS_WITHOUT_ALLOC]string;
     is_allocated :: args.len > tmp.len;
@@ -76,7 +75,7 @@ __os_start :: fn (argc: s64, argv: **u8) {
         mem_free(auto command_line_arguments.ptr);
     }
 
-    _exit(out);
+    return out;
 }
 
 #private
@@ -90,4 +89,3 @@ SIGABRT :: 6;
 
 raise :: fn (sig: s32) s32 #extern;
 write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
-_exit :: fn (v: s32) #extern;
