@@ -2386,4 +2386,6 @@ ir_run(Assembly *assembly)
 #endif
 
 	LLVMDisposeBuilder(cnt.llvm_builder);
+
+	thtbl_terminate(&cnt.gstring_cache);
 }
