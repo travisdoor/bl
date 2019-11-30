@@ -46,7 +46,10 @@ __os_abort :: fn () #compiler {
     raise(SIGABRT);
 }
 
-__start :: fn (args: []*u8) {
+__MAX_ARGS_WITHOUT_ALLOC :: 8;
+
+__os_start :: fn (argc: s64, argv: **u8, env: **u8) {
+    args :: {:[]*u8: argc, argv};
     tmp: [__MAX_ARGS_WITHOUT_ALLOC]string;
     is_allocated :: args.len > tmp.len;
 
@@ -68,12 +71,11 @@ __start :: fn (args: []*u8) {
     if is_allocated {
         mem_free(auto command_line_arguments.ptr);
     }
-    exit(out);
+
+    _exit(out);
 }
 
 #private
-
-__MAX_ARGS_WITHOUT_ALLOC :: 8;
 
 SIGHUP  :: 1;
 SIGINT  :: 2;
@@ -82,6 +84,7 @@ SIGILL  :: 4;
 SIGTRAP :: 5;
 SIGABRT :: 6;
 
-raise :: fn (sig: s32) s32 #extern;
-write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
+raise              :: fn (sig: s32) s32 #extern;
+write              :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
 mach_absolute_time :: fn () u64 #extern;
+_exit              :: fn (v: s32) #extern;

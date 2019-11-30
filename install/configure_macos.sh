@@ -21,7 +21,7 @@ cd $WDIR
 
 CONFIG_FILE="../etc/bl.conf"
 MACOS_VER="$(sw_vers -productVersion)"
-RT_ENTRY_POINT="___start"
+RT_ENTRY_POINT="___os_start"
 STATUS=0
 
 echo "- Looking for bl APIs"

@@ -41,4 +41,3 @@ fseek   :: fn (handle: *u8, offest: s32, origin: s32) s32 #extern;
 fread   :: fn (ptr: *u8, size: usize, count: usize, handle: *u8) usize #extern;
 fwrite  :: fn (ptr: *u8, size: usize, count: usize, handle: *u8) usize #extern;
 ftell   :: fn (handle: *u8) s32 #extern;
-exit    :: fn (v: s32) #extern;

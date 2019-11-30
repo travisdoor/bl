@@ -20,6 +20,7 @@ echo working directory: $WDIR
 cd $WDIR
 
 CONFIG_FILE="../etc/bl.conf"
+RT_ENTRY_POINT="__start"
 STATUS=0
 
 echo "- Looking for bl APIs"
@@ -66,15 +67,15 @@ fi
 #    $STATUS=1
 #fi
 
-LDLIB="/lib64/ld-linux-x86-64.so.2"
-if [ -e "$LDLIB" ]; then
-    echo "  FOUND - $LDLIB"
-else
-    echo "  error: Cannot find '$LDLIB'. You can try to set correct path manually in etc/bl.conf file."
-    $STATUS=1
-fi
+#LDLIB="/lib64/ld-linux-x86-64.so.2"
+#if [ -e "$LDLIB" ]; then
+#    echo "  FOUND - $LDLIB"
+#else
+#    echo "  error: Cannot find '$LDLIB'. You can try to set correct path manually in etc/bl.conf file."
+#    $STATUS=1
+#fi
 
-LINKER_OPT="$CRT1_O --hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -dynamic-linker $LDLIB -lc -lm"
+LINKER_OPT="-e %RT_ENTRY_POINT --hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -dynamic-linker $LDLIB -lc -lm"
 
 rm -f $CONFIG_FILE
 mkdir -p ../etc
