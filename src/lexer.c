@@ -294,10 +294,12 @@ c_to_number(char c, s32 base)
 		if (c >= 'A' && c <= 'F') {
 			return c - 'A' + 10;
 		}
+		break;
 	case 10:
 		if (c >= '2' && c <= '9') {
 			return c - '0';
 		}
+		break;
 	case 2:
 		if (c == '0' || c == '1') {
 			return c - '0';
