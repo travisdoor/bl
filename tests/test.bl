@@ -1,15 +1,14 @@
 /* playground */
 
-#load "std/basic.bl"
-#load "std/debug.bl"
+#load "std/print.bl"
 
 main :: fn () s32 {
-    i := 10;
-    i_ptr := &i;
-    i_ptr_ptr := &i_ptr;
-
-    j : *s32 = ^ (cast(**s32) i_ptr_ptr);
+    loop i := 0; i < command_line_arguments.len; i += 1 {
+        print("%: %\n", i, command_line_arguments[i]);
+    }
     
-    return 10;
+    return 0;
 }
+
+
 
