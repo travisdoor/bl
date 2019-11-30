@@ -3024,6 +3024,9 @@ get_cast_op(MirType *from, MirType *to)
 
 	if (type_cmp(from, to)) return MIR_CAST_NONE;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+
 	switch (from->kind) {
 	case MIR_TYPE_ENUM:
 		/* from enum */
@@ -3100,6 +3103,7 @@ get_cast_op(MirType *from, MirType *to)
 	default:
 		return MIR_CAST_INVALID;
 	}
+#pragma GCC diagnostic pop
 }
 
 static u64 _id_counter = 1;
