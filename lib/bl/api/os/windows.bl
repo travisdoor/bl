@@ -47,7 +47,14 @@ __os_abort :: fn () {
 time_now_ms :: fn () f64 {
     // INCOMPLETE
     unreachable;
+    return 0.0;
 };
+
+
+__MAX_ARGS_WITHOUT_ALLOC :: 8;
+
+__os_start :: fn () {
+}
 
 #private
 
