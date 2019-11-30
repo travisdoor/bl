@@ -20,7 +20,7 @@ echo working directory: $WDIR
 cd $WDIR
 
 CONFIG_FILE="../etc/bl.conf"
-RT_ENTRY_POINT="__start"
+RT_ENTRY_POINT="_start"
 STATUS=0
 
 echo "- Looking for bl APIs"
