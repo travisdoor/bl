@@ -81,7 +81,7 @@ __os_start :: fn () {
         mem_free(auto command_line_arguments.ptr);
     }
 
-    LocalFree(argv);
+    LocalFree(auto argv);
     _exit(0);
 }
 
