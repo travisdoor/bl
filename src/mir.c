@@ -1468,7 +1468,7 @@ is_load_needed(MirInstr *instr)
 		 * values. We get s32 vs *s32 type mismatch without this.
 		 *
 		 * Ex.: j : *s32 = ^ (cast(**s32) i_ptr_ptr);
-		 * 
+		 *
 		 * But I'm not 100% sure that this didn't broke something else...
 		 */
 		MirInstrLoad *load = (MirInstrLoad *)instr;
@@ -3024,6 +3024,9 @@ get_cast_op(MirType *from, MirType *to)
 
 	if (type_cmp(from, to)) return MIR_CAST_NONE;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+
 	switch (from->kind) {
 	case MIR_TYPE_ENUM:
 		/* from enum */
@@ -3100,6 +3103,7 @@ get_cast_op(MirType *from, MirType *to)
 	default:
 		return MIR_CAST_INVALID;
 	}
+#pragma GCC diagnostic pop
 }
 
 static u64 _id_counter = 1;
@@ -5517,7 +5521,7 @@ analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
 	}
 
 	s64 expected_case_count = expected_case_type->kind == MIR_TYPE_ENUM
-	                              ? expected_case_type->data.enm.variants->size
+	                              ? (s64)expected_case_type->data.enm.variants->size
 	                              : -1;
 
 	if ((expected_case_count > (s64)sw->cases->size) && !sw->has_user_defined_default) {

@@ -27,6 +27,8 @@
 //************************************************************************************************
 
 #load "c.bl"
+#load "memory.bl"
+
 /*
  * TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 
  * safe casting.
@@ -167,4 +169,4 @@ Any :: struct #compiler {
     data: *u8
 };
 
-
+command_line_arguments := {:[]string: 0};

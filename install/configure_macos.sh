@@ -20,6 +20,8 @@ echo working directory: $WDIR
 cd $WDIR
 
 CONFIG_FILE="../etc/bl.conf"
+MACOS_VER="$(sw_vers -productVersion)"
+RT_ENTRY_POINT="___os_start"
 STATUS=0
 
 echo "- Looking for bl APIs"
@@ -49,16 +51,16 @@ else
     echo "  FOUND - $LINKER_EXEC"
 fi
 
-echo "- Looking for C runtime objects"
-CRT_O="$CMD_TOOLS/SDKs/MacOSX.sdk/usr/lib/crt1.o"
-if [ -e "$CRT_O" ]; then
-    echo "  FOUND - $CRT_O"
-else
-    echo "  error: Cannot find '$CRT_O'. You can try to set correct path manually in etc/bl.conf file."
-    $STATUS=1
-fi
+#echo "- Looking for C runtime objects"
+#CRT_O="$CMD_TOOLS/SDKs/MacOSX.sdk/usr/lib/crt1.o"
+#if [ -e "$CRT_O" ]; then
+#    echo "  FOUND - $CRT_O"
+#else
+#    echo "  error: Cannot find '$CRT_O'. You can try to set correct path manually in etc/bl.conf file."
+#    $STATUS=1
+#fi
 
-LINKER_OPT="$CRT_O -lc"
+LINKER_OPT="-e $RT_ENTRY_POINT -macosx_version_min $MACOS_VER -lc"
 
 rm -f $CONFIG_FILE
 mkdir -p ../etc
