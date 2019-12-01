@@ -56,9 +56,11 @@ __MAX_ARGS_WITHOUT_ALLOC :: 8;
 __os_start :: fn () {
     cmd_line :: GetCommandLineW();
     argc := 0;
-    argv :: CommandLineToArgvW(cmd_line, &argc);
+    wargv :: CommandLineToArgvW(cmd_line, &argc);
 
-    args :: {:[]*u16: argc, argv};
+    
+
+    args :: {:[]*u8: argc, argv};
     tmp: [__MAX_ARGS_WITHOUT_ALLOC]string;
     is_allocated :: args.len > tmp.len;
 
@@ -72,7 +74,7 @@ __os_start :: fn () {
     }
 
     loop i := 0; i < args.len; i += 1 {
-        command_line_arguments[i] = {:string: auto wcslen(args[i]), auto args[i]};
+        command_line_arguments[i] = {:string: auto strlen(args[i]), args[i]};
     }
 
     out :: cast(s32) main();
@@ -81,7 +83,7 @@ __os_start :: fn () {
         mem_free(auto command_line_arguments.ptr);
     }
 
-    LocalFree(auto argv);
+    LocalFree(auto wargv);
     _exit(0);
 }
 
@@ -89,9 +91,14 @@ __os_start :: fn () {
 
 LPWSTR  :: *u16;
 LPCWSTR :: *u16;
-LPCSTR :: *u16;
+LPCSTR  :: *u16;
 LPSTR   :: *u8;
 HLOCAL  :: *u8;
+UINT    :: u32;
+DWORD   :: *u32;
+LPCCH   :: u8;
+LPCWCH  :: u16;
+LPBOOL  :: s32;
 
 SIGHUP  :: 1;
 SIGINT  :: 2;
@@ -100,12 +107,36 @@ SIGILL  :: 4;
 SIGTRAP :: 5;
 SIGABRT :: 6;
 
-raise              :: fn (sig: s32) s32 #extern;
+CP_UTF8 :: 65001;
+
 _write             :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
 _exit              :: fn (v: s32) #extern;
+wcslen             :: fn (str: *u16) usize #extern;
+raise              :: fn (sig: s32) s32 #extern;
 
 // windows crap
-GetCommandLineW    :: fn () LPWSTR #extern;
-CommandLineToArgvW :: fn (lpCmdLine: LPCWSTR, pNumArgs: *s32) *LPWSTR #extern;
-LocalFree          :: fn (hMem: HLOCAL) HLOCAL #extern;
-wcslen             :: fn (str: *u16) usize #extern;
+GetCommandLineW     :: fn () LPWSTR #extern;
+CommandLineToArgvW  :: fn (lpCmdLine: LPCWSTR, pNumArgs: *s32) *LPWSTR #extern;
+LocalFree           :: fn (hMem: HLOCAL) HLOCAL #extern;
+
+WideCharToMultiByte :: fn (
+    CodePage: UINT,
+    dwFlags: DWORD,
+    lpWideCharStr: LPCWCH,
+    cchWideChar: s32,
+    lpMultiByteStr: LPSTR,
+    cbMultiByte: s32,
+    lpDefaultChar: LPCCH,
+    lpUsedDefaultChar: LPBOOL
+) s32 #extern;
+
+
+get_command_line_args :: fn () []*u8 {
+    wargs: []*u16;
+    cmd_line :: GetCommandLineW();
+    wargs.ptr = CommandLineToArgvW(cmd_line, &wargs.len);
+
+    LocalFree(auto wargv);
+
+    return {:[]*u8: 0, null};
+}
