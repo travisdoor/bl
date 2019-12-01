@@ -58,7 +58,7 @@ __os_start :: fn () {
     argc := 0;
     argv :: CommandLineToArgvW(cmd_line, &argc);
 
-    args :: {:[]*u8: argc, auto argv};
+    args :: {:[]*u8: argc, argv};
     tmp: [__MAX_ARGS_WITHOUT_ALLOC]string;
     is_allocated :: args.len > tmp.len;
 
@@ -81,13 +81,15 @@ __os_start :: fn () {
         mem_free(auto command_line_arguments.ptr);
     }
 
+    LocalFree(argv);
     _exit(0);
 }
 
 #private
 
-LPWSTR :: *u16;
-LPCWSTR :: *u16;
+LPCSTR  :: *u8;
+LPSTR   :: *u8;
+HLOCAL  :: *u8;
 
 SIGHUP  :: 1;
 SIGINT  :: 2;
@@ -98,6 +100,9 @@ SIGABRT :: 6;
 
 raise              :: fn (sig: s32) s32 #extern;
 _write             :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
-GetCommandLineW    :: fn () LPWSTR #extern;
-CommandLineToArgvW :: fn (lpCmdLine: LPCWSTR, pNumArgs: *s32) *LPWSTR #extern;
 _exit              :: fn (v: s32) #extern;
+
+// windows crap
+GetCommandLineA    :: fn () LPSTR #extern;
+CommandLineToArgv  :: fn (lpCmdLine: LPCSTR, pNumArgs: *s32) *LPWSTR #extern;
+LocalFree          :: fn (hMem: HLOCAL) HLOCAL #extern;
