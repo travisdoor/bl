@@ -50,41 +50,16 @@ time_now_ms :: fn () f64 {
     return 0.0;
 };
 
-
-__MAX_ARGS_WITHOUT_ALLOC :: 8;
-
 __os_start :: fn () {
-    cmd_line :: GetCommandLineW();
-    argc := 0;
-    wargv :: CommandLineToArgvW(cmd_line, &argc);
-
-    
-
-    args :: {:[]*u8: argc, argv};
-    tmp: [__MAX_ARGS_WITHOUT_ALLOC]string;
-    is_allocated :: args.len > tmp.len;
+    args: []string;
+    get_command_line_args(&args);
+    defer mem_free(auto args.ptr);
 
     command_line_arguments.len = args.len;
-
-    if is_allocated {
-        command_line_arguments.ptr = auto mem_alloc(sizeof(string) * auto args.len);
-        if command_line_arguments.ptr == null { __os_abort(); }
-    } else {
-        command_line_arguments.ptr = tmp.ptr;
-    }
-
-    loop i := 0; i < args.len; i += 1 {
-        command_line_arguments[i] = {:string: auto strlen(args[i]), args[i]};
-    }
+    command_line_arguments.ptr = args.ptr;
 
     out :: cast(s32) main();
-
-    if is_allocated {
-        mem_free(auto command_line_arguments.ptr);
-    }
-
-    LocalFree(auto wargv);
-    _exit(0);
+    _exit(out);
 }
 
 #private
@@ -107,7 +82,7 @@ SIGILL  :: 4;
 SIGTRAP :: 5;
 SIGABRT :: 6;
 
-CP_UTF8 :: 65001;
+CP_UTF8 : u32 : 65001;
 
 _write             :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
 _exit              :: fn (v: s32) #extern;
@@ -122,21 +97,51 @@ LocalFree           :: fn (hMem: HLOCAL) HLOCAL #extern;
 WideCharToMultiByte :: fn (
     CodePage: UINT,
     dwFlags: DWORD,
-    lpWideCharStr: LPCWCH,
+    lpWideCharStr: *LPCWCH,
     cchWideChar: s32,
     lpMultiByteStr: LPSTR,
     cbMultiByte: s32,
-    lpDefaultChar: LPCCH,
-    lpUsedDefaultChar: LPBOOL
+    lpDefaultChar: *LPCCH,
+    lpUsedDefaultChar: *LPBOOL
 ) s32 #extern;
 
-
-get_command_line_args :: fn () []*u8 {
+// Get command-line arguments passed to this executable.
+// We need custom function here to convert UTF16 to UTF8,
+// Windows api does not provide UTF8 version of CommandLineToArgv
+// function.
+// Internal allocation to handle argument strings is done
+// in this method, so we must free memory used by return value
+// by mem_free(args.ptr) call.
+get_command_line_args :: fn (out_args: *[]string) #no_inline {
     wargs: []*u16;
     cmd_line :: GetCommandLineW();
-    wargs.ptr = CommandLineToArgvW(cmd_line, &wargs.len);
+    wargs.ptr = CommandLineToArgvW(cmd_line, auto &wargs.len);
+    defer LocalFree(auto wargs.ptr);
 
-    LocalFree(auto wargv);
+    // Determinate size needed for all argument strings listed in one array including
+    // zero terminator for each one.
+    tmp_size : usize = 0;
+    result_size: usize = sizeof(string) * auto wargs.len;
+    
+    loop i := 0; i < wargs.len; i += 1 {
+        tmp_size += auto WideCharToMultiByte(CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
+    }
 
-    return {:[]*u8: 0, null};
+    buffer :: mem_alloc(result_size + tmp_size); 
+    if buffer == null { __os_abort(); }
+
+    out_args.len = wargs.len;
+    out_args.ptr = auto buffer; 
+    tmp := {:[]u8: auto tmp_size, ptr_shift_bytes(buffer, result_size)};
+
+    tmp_i := 0;
+    loop i := 0; i < wargs.len; i += 1 {
+        len :: WideCharToMultiByte(CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
+        WideCharToMultiByte(CP_UTF8, null, wargs[i], auto wcslen(wargs[i]), &tmp[tmp_i], len, null, null); 
+        
+        (^out_args)[i].len = len - 1;
+        (^out_args)[i].ptr = &tmp[tmp_i];
+        tmp_i += len;
+        tmp[tmp_i] = '\0';
+    }
 }
