@@ -191,7 +191,7 @@ llvm_di_create_enum_type(LLVMDIBuilderRef builder_ref,
                          u64              size_in_bits,
                          u32              align_in_bits,
                          LLVMMetadataRef *elems,
-                         size_t           elemsc,
+                         usize            elemsc,
                          LLVMMetadataRef  type_ref);
 
 LLVMMetadataRef

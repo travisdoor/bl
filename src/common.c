@@ -45,7 +45,7 @@
 u64 main_thread_id = 0;
 
 bool
-get_current_exec_path(char *buf, size_t buf_size)
+get_current_exec_path(char *buf, usize buf_size)
 {
 #if defined(BL_PLATFORM_WIN)
 	return (bool)GetModuleFileNameA(NULL, buf, (DWORD)buf_size);
@@ -58,7 +58,7 @@ get_current_exec_path(char *buf, size_t buf_size)
 }
 
 bool
-get_current_exec_dir(char *buf, size_t buf_size)
+get_current_exec_dir(char *buf, usize buf_size)
 {
 	char tmp[PATH_MAX] = {0};
 	if (!get_current_exec_path(tmp, PATH_MAX)) return false;
@@ -115,13 +115,13 @@ date_time(char *buf, s32 len, const char *format)
 }
 
 bool
-is_aligned(const void *p, size_t alignment)
+is_aligned(const void *p, usize alignment)
 {
 	return (uintptr_t)p % alignment == 0;
 }
 
 void
-align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
+align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment)
 {
 	ptrdiff_t adj;
 	if (is_aligned(*p, alignment)) {
@@ -129,7 +129,7 @@ align_ptr_up(void **p, size_t alignment, ptrdiff_t *adjustment)
 		return;
 	}
 
-	const size_t mask = alignment - 1;
+	const usize mask = alignment - 1;
 	BL_ASSERT((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
 	const uintptr_t i_unaligned  = (uintptr_t)(*p);
 	const uintptr_t misalignment = i_unaligned & mask;
@@ -167,7 +167,7 @@ count_bits(u64 n)
 }
 
 bool
-get_dir_from_filepath(char *buf, const size_t l, const char *filepath)
+get_dir_from_filepath(char *buf, const usize l, const char *filepath)
 {
 	if (!filepath) return false;
 
@@ -178,7 +178,7 @@ get_dir_from_filepath(char *buf, const size_t l, const char *filepath)
 		return true;
 	}
 
-	size_t len = ptr - filepath;
+	usize len = ptr - filepath;
 	if (len + 1 > l) BL_ABORT("path too long!!!");
 	strncpy(buf, filepath, len);
 
@@ -186,7 +186,7 @@ get_dir_from_filepath(char *buf, const size_t l, const char *filepath)
 }
 
 bool
-get_filename_from_filepath(char *buf, const size_t l, const char *filepath)
+get_filename_from_filepath(char *buf, const usize l, const char *filepath)
 {
 	if (!filepath) return false;
 
@@ -196,7 +196,7 @@ get_filename_from_filepath(char *buf, const size_t l, const char *filepath)
 		return true;
 	}
 
-	size_t len = strlen(filepath) - (ptr - filepath);
+	usize len = strlen(filepath) - (ptr - filepath);
 	if (len + 1 > l) BL_ABORT("path too long!!!");
 	strncpy(buf, ptr + 1, len);
 
@@ -204,7 +204,7 @@ get_filename_from_filepath(char *buf, const size_t l, const char *filepath)
 }
 
 void
-platform_lib_name(const char *name, char *buffer, size_t max_len)
+platform_lib_name(const char *name, char *buffer, usize max_len)
 {
 	if (!name) return;
 
@@ -220,7 +220,7 @@ platform_lib_name(const char *name, char *buffer, size_t max_len)
 }
 
 TArray *
-create_arr(Assembly *assembly, size_t size)
+create_arr(Assembly *assembly, usize size)
 {
 	TArray **tmp = arena_alloc(&assembly->arenas.array);
 	*tmp         = tarray_new(size);
@@ -228,7 +228,7 @@ create_arr(Assembly *assembly, size_t size)
 }
 
 void *
-_create_sarr(Assembly *assembly, size_t arr_size)
+_create_sarr(Assembly *assembly, usize arr_size)
 {
 	BL_ASSERT(arr_size <= assembly->arenas.small_array.elem_size_in_bytes &&
 	          "SmallArray is too big to be allocated inside arena, make array smaller or arena "

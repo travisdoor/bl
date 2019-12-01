@@ -38,7 +38,7 @@ typedef struct ArenaChunk {
 static inline ArenaChunk *
 alloc_chunk(Arena *arena)
 {
-	const size_t chunk_size_in_bytes = arena->elem_size_in_bytes * arena->elems_per_chunk;
+	const usize chunk_size_in_bytes = arena->elem_size_in_bytes * arena->elems_per_chunk;
 	ArenaChunk * chunk               = bl_malloc(chunk_size_in_bytes);
 	if (!chunk) BL_ABORT("bad alloc");
 
@@ -74,7 +74,7 @@ free_chunk(Arena *arena, ArenaChunk *chunk)
 }
 
 void
-arena_init(Arena *arena, size_t elem_size_in_bytes, s32 elems_per_chunk, ArenaElemDtor elem_dtor)
+arena_init(Arena *arena, usize elem_size_in_bytes, s32 elems_per_chunk, ArenaElemDtor elem_dtor)
 {
 	arena->elem_size_in_bytes = elem_size_in_bytes + MAX_ALIGNMENT;
 	arena->elems_per_chunk    = elems_per_chunk;

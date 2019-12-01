@@ -63,7 +63,7 @@ tokens_peek_2nd(Tokens *tokens)
 Token *
 tokens_peek_last(Tokens *tokens)
 {
-	const size_t i = tokens->buf.size;
+	const usize i = tokens->buf.size;
 	if (i == 0) {
 		return NULL;
 	}
@@ -81,9 +81,9 @@ tokens_peek_prev(Tokens *tokens)
 }
 
 Token *
-tokens_peek_nth(Tokens *tokens, size_t n)
+tokens_peek_nth(Tokens *tokens, usize n)
 {
-	const size_t i = tokens->iter + n - 1;
+	const usize i = tokens->iter + n - 1;
 	if (i < tokens->buf.size) return &tarray_at(Token, &tokens->buf, i);
 
 	return NULL;
@@ -145,7 +145,7 @@ tokens_next_is_not(Tokens *tokens, Sym sym)
 }
 
 bool
-tokens_is_seq(Tokens *tokens, size_t cnt, ...)
+tokens_is_seq(Tokens *tokens, usize cnt, ...)
 {
 	bool  ret = true;
 	usize c   = tokens->buf.size;
@@ -155,7 +155,7 @@ tokens_is_seq(Tokens *tokens, size_t cnt, ...)
 	va_list valist;
 	va_start(valist, cnt);
 
-	for (size_t i = tokens->iter; i < cnt && i < c; ++i) {
+	for (usize i = tokens->iter; i < cnt && i < c; ++i) {
 		sym = va_arg(valist, Sym);
 		if ((&tarray_at(Token, &tokens->buf, i))->sym != sym) {
 			ret = false;
@@ -167,14 +167,14 @@ tokens_is_seq(Tokens *tokens, size_t cnt, ...)
 	return ret;
 }
 
-size_t
+usize
 tokens_get_marker(Tokens *tokens)
 {
 	return tokens->iter;
 }
 
 void
-tokens_back_to_marker(Tokens *tokens, size_t marker)
+tokens_back_to_marker(Tokens *tokens, usize marker)
 {
 	tokens->iter = marker;
 }
@@ -208,8 +208,8 @@ tokens_consume_till(Tokens *tokens, Sym sym)
 bool
 tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal)
 {
-	bool   found  = false;
-	size_t marker = tokens_get_marker(tokens);
+	bool  found  = false;
+	usize marker = tokens_get_marker(tokens);
 	while (tokens_current_is_not(tokens, terminal) && tokens_current_is_not(tokens, SYM_EOF)) {
 		if (tokens_current_is(tokens, lookup)) {
 			found = true;
@@ -227,7 +227,7 @@ tokens_lookahead(Tokens *tokens, TokenCmpFunc cmp)
 {
 	BL_ASSERT(cmp);
 	bool                 found  = false;
-	size_t               marker = tokens_get_marker(tokens);
+	usize                marker = tokens_get_marker(tokens);
 	Token *              curr   = NULL;
 	TokensLookaheadState state  = TOK_LOOK_TERMINAL;
 	while (true) {

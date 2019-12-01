@@ -26,31 +26,35 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#load "std/basic.bl"
 #load "std/utils.bl"
 
+/*
+ * Allocate memory using _context.alloc_fn (by default malloc).
+ */
 mem_alloc :: fn (size: usize) *u8 {
     return _context.alloc_fn(size); 
 };
 
+/*
+ * Allocate memory using _context.alloc_fn (by default malloc) and set
+ * it to 0.
+ */
 mem_calloc :: fn (num: usize, size: usize) *u8 {
     tmp := _context.alloc_fn(size * num);
-    return memset(tmp, 0, size * num);
+    return mem_set(tmp, 0, size * num);
 };
 
-mem_realloc :: fn (ptr: *u8, size: usize) *u8 {
-    if ptr == null { return _context.alloc_fn(size); }
-    tmp := _context.alloc_fn(size);
-
-    mem_copy(tmp, ptr, size);
-    _context.free_fn(ptr);
-
-    return tmp;
-};
-
+/*
+ * Free memory allocated by mem_alloc or mem_calloc.
+ */
 mem_free :: fn (ptr: *u8) {
     _context.free_fn(ptr);
 };
 
+/*
+ * Copy 'size' count of bytes from src to dest.
+ */
 mem_copy :: fn (dest: *u8, src: *u8, size: usize) {
     m := size / sizeof(u64);
     d := size - m * sizeof(u64);
@@ -71,3 +75,15 @@ mem_copy :: fn (dest: *u8, src: *u8, size: usize) {
         src = ptr_shift_bytes(src, 1);
     }
 };
+
+/*
+ * Set 'size' count of bytes in '_dest' memory to 'v'.
+ */
+mem_set :: fn (_dest: *u8, v: u8, size: usize) *u8 {
+    dest := {:[]u8: auto size, _dest};
+    loop i := 0; i < dest.len; i += 1 {
+        dest[i] = v;
+    }
+
+    return dest.ptr;
+}

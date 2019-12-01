@@ -30,7 +30,6 @@
 #include "blmemory.h"
 #include "builder.h"
 #include "llvm_di.h"
-#include "mir.h"
 #include "unit.h"
 #include <string.h>
 
@@ -47,6 +46,7 @@ union _SmallArrays {
 	TSmallArray_ConstValuePtr cv;
 	TSmallArray_AstPtr        ast;
 	TSmallArray_ArgPtr        arg;
+	TSmallArray_SwitchCase    switch_case;
 };
 
 static void
@@ -145,7 +145,7 @@ init_mir(Assembly *assembly)
 {
 	mir_arenas_init(&assembly->arenas.mir);
 	tarray_init(&assembly->MIR.global_instrs, sizeof(MirInstr *));
-	tarray_init(&assembly->MIR.RTTI_tmp_vars, sizeof(MirVar *));
+	thtbl_init(&assembly->MIR.RTTI_table, sizeof(MirVar *), 2048);
 }
 
 static void
@@ -161,7 +161,7 @@ static void
 terminate_dl(Assembly *assembly)
 {
 	NativeLib *lib;
-	for (size_t i = 0; i < assembly->dl.libs.size; ++i) {
+	for (usize i = 0; i < assembly->dl.libs.size; ++i) {
 		lib = &tarray_at(NativeLib, &assembly->dl.libs, i);
 		native_lib_terminate(lib);
 	}
@@ -193,8 +193,8 @@ terminate_DI(Assembly *assembly)
 static void
 terminate_mir(Assembly *assembly)
 {
+	thtbl_terminate(&assembly->MIR.RTTI_table);
 	tarray_terminate(&assembly->MIR.global_instrs);
-	tarray_terminate(&assembly->MIR.RTTI_tmp_vars);
 
 	mir_arenas_terminate(&assembly->arenas.mir);
 }
@@ -209,7 +209,6 @@ assembly_new(const char *name)
 	tarray_init(&assembly->units, sizeof(Unit *));
 	thtbl_init(&assembly->unit_cache, 0, EXPECTED_UNIT_COUNT);
 	thtbl_init(&assembly->link_cache, sizeof(Token *), EXPECTED_LINK_COUNT);
-	thtbl_init(&assembly->type_table, sizeof(MirType *), 8192);
 
 	scope_arenas_init(&assembly->arenas.scope);
 	ast_arena_init(&assembly->arenas.ast);
@@ -255,7 +254,6 @@ assembly_delete(Assembly *assembly)
 	tarray_terminate(&assembly->units);
 	thtbl_terminate(&assembly->unit_cache);
 	thtbl_terminate(&assembly->link_cache);
-	thtbl_terminate(&assembly->type_table);
 	terminate_dl(assembly);
 	terminate_mir(assembly);
 	terminate_llvm(assembly);
@@ -303,7 +301,7 @@ assembly_find_extern(Assembly *assembly, const char *symbol)
 	void *     handle = NULL;
 	NativeLib *lib;
 
-	for (size_t i = 0; i < assembly->dl.libs.size; ++i) {
+	for (usize i = 0; i < assembly->dl.libs.size; ++i) {
 		lib    = &tarray_at(NativeLib, &assembly->dl.libs, i);
 		handle = dlFindSymbol(lib->handle, symbol);
 		if (handle) break;

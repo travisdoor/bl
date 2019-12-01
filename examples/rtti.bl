@@ -1,5 +1,4 @@
-#load "std/core.bl"
-#load "std/debug.bl"
+#load "std/basic.bl"
 
 #test "RTTI" {
     // yields pointer to TypeInfo constant structure

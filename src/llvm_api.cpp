@@ -34,6 +34,7 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Type.h>
+#include <llvm/IR/Constants.h>
 
 #define CAST(T) reinterpret_cast<T>
 
@@ -103,4 +104,27 @@ llvm_get_intrinsic_decl(LLVMModuleRef mod_ref,
 	auto iid = llvm_map_to_intrinsic_id(id);
 	return CAST(LLVMValueRef)(
 	    llvm::Intrinsic::getDeclaration(CAST(Module *)(mod_ref), iid, types));
+}
+
+LLVMValueRef
+llvm_const_string_in_context(LLVMContextRef context_ref,
+                             LLVMTypeRef    t,
+                             const char *   str,
+                             bool           zero_terminate)
+{
+        size_t len = strlen(str);
+        SmallVector<Constant*, 32> chars;
+        for (size_t i = 0; i < len; ++i)  {
+                auto c = ConstantInt::get(CAST(Type *)(t), (uint64_t)str[i]);
+                chars.push_back(c);
+        }
+
+        if (zero_terminate) {
+                auto c = ConstantInt::get(CAST(Type *)(t), (uint64_t)'\0');
+                chars.push_back(c);
+                ++len;
+        }
+
+        ArrayRef<Constant*> V(chars);
+        return CAST(LLVMValueRef)(ConstantArray::get(ArrayType::get(CAST(Type *)(t), len), V));
 }

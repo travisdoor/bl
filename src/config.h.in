@@ -42,13 +42,14 @@
 #ifdef _WIN32
 #define BL_PLATFORM_WIN
 #define BL_NO_COLOR
-#define CORE_SOURCE_FILE "os/windows.bl"
+#define OS_PRELOAD_FILE "os/windows.bl"
 #elif __APPLE__
+//#define BL_NO_COLOR
 #define BL_PLATFORM_MACOS
-#define CORE_SOURCE_FILE "os/macos.bl"
+#define OS_PRELOAD_FILE "os/macos.bl"
 #elif __linux__
 #define BL_PLATFORM_LINUX
-#define CORE_SOURCE_FILE "os/linux.bl"
+#define OS_PRELOAD_FILE "os/linux.bl"
 #elif __CYGWIN__
 #define BL_PLATFORM_WIN
 #else
@@ -92,7 +93,8 @@
 #define ASSERT_ON_CMP_ERROR 0
 #endif
 
-#define VM_STACK_SIZE   2097152 // 2MB
+#define VM_STACK_SIZE 2097152          // 2MB
+#define VM_COMPTIME_CACHE_SIZE 1048576 // 1MB
 #define BL_CONFIGURE_SH "@BL_CONFIGURE_SH@"
 
 #define CONF_LINKER_EXEC_KEY "LINKER_EXEC"

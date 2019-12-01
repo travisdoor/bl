@@ -50,6 +50,12 @@ compile_assembly(Assembly *assembly);
 static bool llvm_initialized = false;
 
 static void
+str_cache_dtor(TString *str)
+{
+	tstring_terminate(str);
+}
+
+static void
 llvm_init(void)
 {
 	if (llvm_initialized) return;
@@ -119,6 +125,7 @@ compile_assembly(Assembly *assembly)
 	if (builder.options.emit_mir) mir_writer_run(assembly);
 	INTERRUPT_ON_ERROR;
 
+	if (builder.options.no_analyze) return COMPILE_OK;
 	if (builder.options.no_llvm) return COMPILE_OK;
 	ir_run(assembly);
 	INTERRUPT_ON_ERROR;
@@ -174,6 +181,8 @@ builder_parse_options(s32 argc, char *argv[])
 			builder.options.verbose = true;
 		} else if (arg_is("no-api")) {
 			builder.options.no_api = true;
+		} else if (arg_is("no-analyze")) {
+			builder.options.no_analyze = true;
 		} else if (arg_is("force-test-to-llvm")) {
 			builder.options.force_test_llvm = true;
 		} else if (arg_is("debug")) {
@@ -211,7 +220,7 @@ builder_init(void)
 	builder.errorc = 0;
 	builder.conf   = conf_data_new();
 
-	tarray_init(&builder.str_cache, sizeof(TString *));
+	arena_init(&builder.str_cache, sizeof(TString), 256, (ArenaElemDtor)str_cache_dtor);
 
 	/* TODO: this is invalid for Windows MSVC DLLs??? */
 
@@ -223,20 +232,16 @@ builder_init(void)
 
 	/* initialize LLVM statics */
 	llvm_init();
+
+	vm_init(&builder.vm, VM_STACK_SIZE);
 }
 
 void
 builder_terminate(void)
 {
+	vm_terminate(&builder.vm);
 	conf_data_delete(builder.conf);
-
-	TString *it;
-	TARRAY_FOREACH(TString *, &builder.str_cache, it)
-	{
-		tstring_delete(it);
-	}
-
-	tarray_terminate(&builder.str_cache);
+	arena_terminate(&builder.str_cache);
 }
 
 int
@@ -270,8 +275,9 @@ builder_compile(Assembly *assembly)
 
 	msg_log("Compile assembly: %s", assembly->name);
 
-	{
-		unit = unit_new_file(CORE_SOURCE_FILE, NULL, NULL);
+	/* include core source file */
+	if (!builder.options.no_api) {
+		unit = unit_new_file(OS_PRELOAD_FILE, NULL, NULL);
 		if (!assembly_add_unit_unique(assembly, unit)) {
 			unit_delete(unit);
 		}
@@ -476,8 +482,8 @@ builder_msg(BuilderMsgType type,
 TString *
 builder_create_cached_str(void)
 {
-	TString *str = tstring_new();
-	tarray_push(&builder.str_cache, str);
+	TString *str = arena_alloc(&builder.str_cache);
+	tstring_init(str);
 
 	return str;
 }

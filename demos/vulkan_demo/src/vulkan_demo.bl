@@ -4,6 +4,7 @@
 #load "std/math.bl"
 #load "std/file.bl"
 #load "experimental/glfw/glfw3.bl"
+#load "experimental/glfw/glfw3_vulkan.bl"
 #load "experimental/vulkan/vulkan_macos.bl"
 
 #load "renderer.bl"
@@ -13,8 +14,8 @@ WindowW :: 800;
 WindowH :: 600;
 
 App :: struct {
-    renderer: *Renderer,
-    window: *GLFWwindow,
+    renderer: *Renderer;
+    window: *GLFWwindow;
 };
 
 app := {:App: 0};
@@ -44,13 +45,11 @@ app_terminate :: fn () {
 
 glfw_init :: fn () {
     if glfwInit() == 0 {
-        eprint("Cannot initialize GLFW.\n");
-        abort();
+        panic("Cannot initialize GLFW.\n");
     }
 
     if glfwVulkanSupported() == 0 {
-        eprint("Vulkan is not supported by GLFW.\n");
-        abort();
+        panic("Vulkan is not supported by GLFW.\n");
     }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -58,8 +57,7 @@ glfw_init :: fn () {
 
     app.window = glfwCreateWindow(WindowW, WindowH, WindowTitle.ptr, null, null);
     if app.window == null {
-        eprint("Cannot create GLFW window.\n");
-        abort();
+        panic("Cannot create GLFW window.\n");
     }
 };
 

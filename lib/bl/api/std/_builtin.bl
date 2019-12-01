@@ -27,58 +27,25 @@
 //************************************************************************************************
 
 #load "c.bl"
-#load "debug.bl"
 #load "memory.bl"
-
-_AllocFn :: * fn (size: usize) *u8;
-_FreeFn :: * fn (p: *u8);
-
-// BL global context 
-_Context :: struct {
-    /* Default memory allocation function. */
-    alloc_fn: _AllocFn,
-
-    /* Defualt memory free function. */
-    free_fn: _FreeFn,
-};
-
-_context := {:_Context: &malloc, &free};
-
-S8_MIN  : s8 : -128;
-S8_MAX  : s8 : 127;
-S16_MIN : s16 : -32768;
-S16_MAX : s16 : 32767;
-S32_MIN : s32 : -2147483648;
-S32_MAX : s32 : 2147483647;
-S64_MIN : s64 : -9223372036854775808;
-S64_MAX : s64 : 9223372036854775807;
-
-U8_MIN  : u8 : 0;
-U8_MAX  : u8 : 255;
-U16_MIN : u16 : 0;
-U16_MAX : u16 : 65535;
-U32_MIN : u32 : 0;
-U32_MAX : u32 : 4294967295;
-U64_MIN : u64 : 0;
-U64_MAX : u64 : 18446744073709551615;
 
 /*
  * TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 
  * safe casting.
  */
 TypeKind :: enum #compiler {
-    Type   :: 1,
-    Void   :: 2,
-    Int    :: 3,
-    Real   :: 4,
-    Fn     :: 5,
-    Ptr    :: 6,
-    Bool   :: 7,
-    Array  :: 8,
-    Struct :: 9,
-    Enum   :: 10,
-    Null   :: 11,
-    String :: 12,
+    Type   :: 1;
+    Void   :: 2;
+    Int    :: 3;
+    Real   :: 4;
+    Fn     :: 5;
+    Ptr    :: 6;
+    Bool   :: 7;
+    Array  :: 8;
+    Struct :: 9;
+    Enum   :: 10;
+    Null   :: 11;
+    String :: 12;
 };
 
 /*
@@ -87,128 +54,110 @@ TypeKind :: enum #compiler {
  * descriptive informations about the type.
  */
 TypeInfo :: struct #compiler {
-    kind: TypeKind,
+    kind: TypeKind;
     size_bytes: usize
-};
-
-/*
- * Type information for 'type' type.
- */
-TypeInfoType :: struct #compiler {
-    base: TypeInfo,
 };
 
 /*
  * Type information for 'void' type.
  */
-TypeInfoVoid :: struct #compiler {
-    base: TypeInfo
+TypeInfoVoid :: struct #base TypeInfo #compiler {
 };
 
 /*
  * Type information for 's*' or 'u*' types.
  */
-TypeInfoInt :: struct #compiler {
-    base: TypeInfo,
-
-    bit_count: s32, // Bitcount.
-    is_signed: bool, // True when signed.
+TypeInfoInt :: struct #base TypeInfo #compiler {
+    bit_count: s32; // Bitcount.
+    is_signed: bool; // True when signed.
 };
 
 /*
  * Type information for 'f*' types.
  */
-TypeInfoReal :: struct #compiler {
-    base: TypeInfo,
-
+TypeInfoReal :: struct #base TypeInfo  #compiler {
     bit_count: s32 // Bitcount
 };
 
 /*
  * Type information for function types.
  */
-TypeInfoFn :: struct #compiler {
-    base: TypeInfo,
-
-    args: []*TypeInfoFnArg, // Function arguments.
-    ret_type: *TypeInfo, // Return type.
-    is_vargs: bool, // True when function is vargs.
+TypeInfoFn :: struct #base TypeInfo #compiler {
+    name: string;
+    args: []TypeInfoFnArg; // Function arguments.
+    ret_type: *TypeInfo; // Return type.
+    is_vargs: bool; // True when function is vargs.
 };
 
 /*
  * Type information for pointer types.
  */
-TypeInfoPtr :: struct #compiler {
-    base: TypeInfo,
-
+TypeInfoPtr :: struct #base TypeInfo #compiler {
     pointee_type: *TypeInfo // Type information for pointed type.
-};
-
-/*
- * Type information for bool type.
- */
-TypeInfoBool :: struct #compiler {
-    base: TypeInfo,
 };
 
 /*
  * Type information for array type.
  */
-TypeInfoArray :: struct #compiler {
-    base: TypeInfo,
-
-    name: string,
-    elem_type: *TypeInfo, // Element type information.
+TypeInfoArray :: struct #base TypeInfo #compiler {
+    name: string;
+    elem_type: *TypeInfo; // Element type information.
     len: s64 // Array lenght.
 };
 
 /*
  * Type information for structure type.
  */
-TypeInfoStruct :: struct #compiler {
-    base: TypeInfo,
-
-    name: string, // struct name if there is one
-    members: []TypeInfoStructMember, // Structure members type information.
+TypeInfoStruct :: struct #base TypeInfo #compiler {
+    name: string; // struct name if there is one
+    members: []TypeInfoStructMember; // Structure members type information.
     is_slice: bool
 };
 
 /*
  * Type information for enm type.
  */
-TypeInfoEnum :: struct #compiler {
-    base: TypeInfo,
-    
-    name: string, // enum name if there is one
-    base_type: *TypeInfo, // Enum base-type type information.
+TypeInfoEnum :: struct #base TypeInfo #compiler {
+    name: string; // enum name if there is one
+    base_type: *TypeInfo; // Enum base-type type information.
     variants: []TypeInfoEnumVariant
 };
 
 /*
  * Type information for null type.
  */
-TypeInfoNull :: struct #compiler {
-    base: TypeInfo,
+TypeInfoNull :: struct #base TypeInfo #compiler {
 };
 
-TypeInfoString :: struct #compiler {
-    base: TypeInfo,
+TypeInfoString :: struct #base TypeInfo #compiler {
+};
+
+/*
+ * Type information for 'type' type.
+ */
+TypeInfoType :: struct #base TypeInfo  #compiler {
+};
+
+/*
+ * Type information for bool type.
+ */
+TypeInfoBool :: struct #base TypeInfo #compiler {
 };
 
 TypeInfoStructMember :: struct #compiler {
-    name: string,
-    base_type: *TypeInfo,
-    offset_bytes: s32,
+    name: string;
+    base_type: *TypeInfo;
+    offset_bytes: s32;
     index: s32
 };
 
 TypeInfoEnumVariant :: struct #compiler {
-    name: string,
+    name: string;
     value: s64
 };
 
 TypeInfoFnArg :: struct #compiler {
-    name: string,
+    name: string;
     base_type: *TypeInfo
 };
 
@@ -216,8 +165,8 @@ TypeInfoFnArg :: struct #compiler {
  * Any type structure. Any value can be implicitly casted to this container on function call.
  */
 Any :: struct #compiler {
-    type_info: *TypeInfo,
+    type_info: *TypeInfo;
     data: *u8
 };
 
-
+command_line_arguments := {:[]string: 0};

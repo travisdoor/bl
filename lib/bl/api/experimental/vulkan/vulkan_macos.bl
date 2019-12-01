@@ -36,9 +36,9 @@ VK_MVK_MACOS_SURFACE_EXTENSION_NAME :: "VK_MVK_macos_surface";
 VkMacOSSurfaceCreateFlagsMVK :: VkFlags;
 
 VkMacOSSurfaceCreateInfoMVK :: struct {
-    sType: VkStructureType,
-    pNext: *u8,
-    flags: VkMacOSSurfaceCreateFlagsMVK, 
+    sType: VkStructureType;
+    pNext: *u8;
+    flags: VkMacOSSurfaceCreateFlagsMVK; 
     pView: *u8
 };
 

@@ -30,8 +30,15 @@
 
 PRINT_MAX_LENGTH :: 4096;
 
+PrintLogKind :: enum u8 {
+    Message;
+    Warning;
+    Error;
+    Panic;
+};
+
 print :: fn (format: string, args: ...) s32 {
-    buf := {:[PRINT_MAX_LENGTH]u8: 0};
+    buf: [PRINT_MAX_LENGTH]u8;
 
     // HACK: use implicit conversion later!!!
     // HACK: use implicit conversion later!!!
@@ -45,7 +52,7 @@ print :: fn (format: string, args: ...) s32 {
 };
 
 eprint :: fn (format: string, args: ...) s32 {
-    buf := {:[PRINT_MAX_LENGTH]u8: 0};
+    buf: [PRINT_MAX_LENGTH]u8;
 
     // HACK: use implicit conversion later!!!
     // HACK: use implicit conversion later!!!
@@ -60,7 +67,27 @@ eprint :: fn (format: string, args: ...) s32 {
 
 bprint :: fn (buf: []u8, format: string, args: ...) s32 {
     tmp := {:[]Any: args.len, args.ptr };
-    return print_impl(buf, format, tmp);
+    w := print_impl(buf, format, tmp);
+    w += print_char(buf, w, '\0');
+    return w;
+};
+
+_print_log_default :: fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32) {
+    if kind == PrintLogKind.Message { print("[MESSAGE] "); }
+    if kind == PrintLogKind.Warning { print("[WARNING] "); }
+    if kind == PrintLogKind.Error   { print("[ ERROR ] "); }
+    if kind == PrintLogKind.Panic   { print("[ PANIC ] "); }
+
+    buf := {:[PRINT_MAX_LENGTH]u8: 0};
+
+    // HACK: use implicit conversion later!!!
+    // HACK: use implicit conversion later!!!
+    // HACK: use implicit conversion later!!!
+    tmp := {:[]u8: buf.len, buf.ptr };
+
+    w := print_impl(tmp, format, args);
+    __os_write(OS_STDERR, buf.ptr, auto w);
+    print("\n");
 };
 
 #private
@@ -115,7 +142,6 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
             cur = print_string(buf, cur, "-");
             real = -real;
         }
-
         return print_f64(buf, cur, real);
     } else if any.type_info.kind == TypeKind.String {
         str := ^ cast(*string) any.data;
@@ -285,7 +311,6 @@ print_type :: fn (buf: []u8, cur: s32, info: *TypeInfo) s32 {
         return print_type(buf, cur, c.elem_type);
     } else if info.kind == TypeKind.Struct {
         c := cast(*TypeInfoStruct) info;
-        //cur = print_string(buf, cur, c.name);
         cur = print_string(buf, cur, "struct {");
 
         loop i := 0; i < c.members.len; i += 1 {
@@ -304,6 +329,8 @@ print_type :: fn (buf: []u8, cur: s32, info: *TypeInfo) s32 {
 
         loop i := 0; i < c.args.len; i += 1 {
             arg := c.args[i];
+            cur = print_string(buf, cur, arg.name);
+            cur = print_string(buf, cur, ": ");
             cur = print_type(buf, cur, arg.base_type);
 
             if i < c.args.len - 1 { cur = print_string(buf, cur, ", "); }
@@ -353,7 +380,9 @@ print_string :: fn (buf: []u8, cur: s32, str: string) s32 {
 };
 
 print_char :: fn (buf: []u8, cur: s32, c: u8) s32 {
-    if cur >= buf.len { return 0; }
+    if cur >= buf.len {
+        return cur;
+    }
     buf[cur] = c;
     return cur + 1;
 };
@@ -395,6 +424,7 @@ print_u64 :: fn (buf: []u8, cur: s32, v: u64) s32 {
 
     loop div > 0 {
         d := v / div;
+
         v %= div;
         div /= base;
 

@@ -1,16 +1,16 @@
 texture_pool : *TexturePool = null;
 
 TextureId :: enum {
-    Balloon,
-    Player,
+    Balloon;
+    Player;
 
-    Explosion,
+    Explosion;
 
-    LevelSky,
-    LevelHills1,
-    LevelClouds1,
-    LevelHills2,
-    LevelClouds2,
+    LevelSky;
+    LevelHills1;
+    LevelClouds1;
+    LevelHills2;
+    LevelClouds2;
     
     Count
 };

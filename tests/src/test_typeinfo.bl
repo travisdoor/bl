@@ -27,7 +27,7 @@
 };
 
 #test "typeinfo - enum" {
-    T :: enum s32 { A, B, C };
+    T :: enum s32 { A; B; C };
     info := cast(*TypeInfoEnum) typeinfo(T);
 
     assert(info.base.kind == TypeKind.Enum);
@@ -39,7 +39,7 @@
 };
 
 #test "typeinfo - struct" {
-    T :: struct { A: s32, B: bool, C: f32 };
+    T :: struct { A: s32; B: bool; C: f32 };
     info := cast(*TypeInfoStruct) typeinfo(T);
 
     assert(info.base.kind == TypeKind.Struct);
@@ -51,7 +51,7 @@
 };
 
 #test "typeinfo - fn" {
-    T :: fn (i: s32, j: bool) s32 {};
+    T :: fn (i: s32, j: bool) s32 { return 0; };
     info := cast(*TypeInfoFn) typeinfo(T);
 
     assert(info.base.kind == TypeKind.Fn);

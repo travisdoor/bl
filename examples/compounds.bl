@@ -1,4 +1,4 @@
-#load "std/core.bl"
+#load "std/basic.bl"
 
 #test "array compound" {
     // print out all array values
@@ -17,7 +17,7 @@
 
 #test "struct compound" {
     Foo :: struct {
-        i: s32,
+        i: s32;
         j: s32
     };
 

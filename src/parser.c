@@ -78,6 +78,8 @@ typedef enum {
 	HD_NO_INLINE = 1 << 8,
 	HD_FILE      = 1 << 9,
 	HD_LINE      = 1 << 10,
+	HD_BASE      = 1 << 11,
+	HD_META      = 1 << 12,
 } HashDirective;
 
 typedef struct {
@@ -107,9 +109,6 @@ parse_ublock_content(Context *cnt, Ast *ublock);
 
 static Ast *
 parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied);
-
-static void
-parse_flags_for_curr_decl(Context *cnt, u32 acceped_flags);
 
 static Ast *
 parse_unrecheable(Context *cnt);
@@ -177,6 +176,12 @@ parse_stmt_continue(Context *cnt);
 static Ast *
 parse_stmt_defer(Context *cnt);
 
+static Ast *
+parse_stmt_switch(Context *cnt);
+
+static Ast *
+parse_stmt_case(Context *cnt);
+
 /* EXPRESSIONS */
 static Ast *
 parse_expr(Context *cnt);
@@ -240,6 +245,9 @@ parse_semicolon(Context *cnt);
 
 static inline bool
 parse_semicolon_rq(Context *cnt);
+
+static inline bool
+hash_directive_to_flags(HashDirective hd, u32 *out_flags);
 
 static Ast *
 parse_expr_member(Context *cnt, Ast *prev);
@@ -336,50 +344,11 @@ parse_expr_ref(Context *cnt)
 	return ref;
 }
 
-void
-parse_flags_for_curr_decl(Context *cnt, u32 acceped_flags)
-{
-	u32 flags = 0;
-
-	HashDirective found = HD_NONE;
-
-	const bool is_curr_decl_valid = decl_get(cnt) && decl_get(cnt)->kind == AST_DECL_ENTITY;
-
-	/* flags are accepted only for named declarations */
-	u32 accepted = is_curr_decl_valid ? acceped_flags : HD_NONE;
-
-	while (true) {
-		parse_hash_directive(cnt, accepted, &found);
-
-		if (found == HD_NONE) break;
-
-		if (IS_FLAG(found, HD_EXTERN)) {
-			flags |= FLAG_EXTERN;
-		} else if (IS_FLAG(found, HD_COMPILER)) {
-			flags |= FLAG_COMPILER;
-		} else if (IS_FLAG(found, HD_INLINE)) {
-			flags |= FLAG_INLINE;
-			found |= HD_NO_INLINE;
-		} else if (IS_FLAG(found, HD_NO_INLINE)) {
-			flags |= FLAG_NO_INLINE;
-			found |= HD_INLINE;
-		} else {
-			BL_ABORT("Unexpected flag!!!");
-		}
-
-		/* Remove found flag from accepted mask (multiple flags of same type are not
-		 * allowed). */
-		accepted &= ~found;
-	}
-
-	if (is_curr_decl_valid) decl_get(cnt)->data.decl_entity.flags |= flags;
-}
-
 /*
  * Try to parse hash directive. List of enabled directives can be set by 'expected_mask',
  * 'satisfied' is optional output set to parsed directive id if there is one.
  *
- * <#><load|link|test|extern|compiler>
+ * <#><load|link|test|extern|compiler|inline|no_inline|base>
  */
 Ast *
 parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
@@ -504,7 +473,7 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 
 		scope->location = block->location;
 
-		parse_semicolon_rq(cnt);
+		// parse_semicolon_rq(cnt);
 
 		Ast *test =
 		    ast_create_node(cnt->ast_arena, AST_TEST_CASE, tok_directive, scope_get(cnt));
@@ -532,6 +501,51 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 		file->data.expr_file.filename = tok_directive->location.unit->filepath;
 		return file;
 	}
+
+	if (strcmp(directive, "base") == 0) {
+		set_satisfied(HD_BASE);
+		if (IS_NOT_FLAG(expected_mask, HD_BASE)) {
+			PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+			            tok_directive,
+			            BUILDER_CUR_WORD,
+			            "Unexpected directive.");
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
+		}
+
+		return parse_type(cnt);
+	}
+
+#if 0
+	if (strcmp(directive, "meta") == 0) {
+		set_satisfied(HD_META);
+		if (IS_NOT_FLAG(expected_mask, HD_META)) {
+			PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+			            tok_directive,
+			            BUILDER_CUR_WORD,
+			            "Unexpected directive.");
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
+		}
+
+		Token *tok_str = tokens_consume(cnt->tokens);
+		if (tok_str->sym != SYM_STRING) {
+			PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+			            tok_directive,
+			            BUILDER_CUR_WORD,
+			            "Expected string description after meta data.");
+
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
+		}
+
+		Ast *meta =
+		    ast_create_node(cnt->ast_arena, AST_META_DATA, tok_directive, scope_get(cnt));
+
+		meta->data.meta_data.str = tok_str->value.str;
+		return meta;
+	}
+#endif
 
 	if (strcmp(directive, "line") == 0) {
 		set_satisfied(HD_LINE);
@@ -1045,6 +1059,26 @@ parse_semicolon_rq(Context *cnt)
 	return true;
 }
 
+bool
+hash_directive_to_flags(HashDirective hd, u32 *out_flags)
+{
+#define FLAG_CASE(_c, _f)                                                                          \
+	case (_c):                                                                                 \
+		(*out_flags) |= (_f);                                                              \
+		return true;
+
+	switch (hd) {
+		FLAG_CASE(HD_EXTERN, FLAG_EXTERN);
+		FLAG_CASE(HD_COMPILER, FLAG_COMPILER);
+		FLAG_CASE(HD_INLINE, FLAG_INLINE);
+		FLAG_CASE(HD_NO_INLINE, FLAG_NO_INLINE);
+	default:
+		break;
+	}
+
+	return false;
+}
+
 Ast *
 parse_stmt_return(Context *cnt)
 {
@@ -1107,6 +1141,108 @@ parse_stmt_if(Context *cnt)
 	}
 
 	return stmt_if;
+}
+
+Ast *
+parse_stmt_switch(Context *cnt)
+{
+	Token *tok_switch = tokens_consume_if(cnt->tokens, SYM_SWITCH);
+	if (!tok_switch) return NULL;
+
+	Ast *expr = parse_expr(cnt);
+	BL_ASSERT(expr && "This should be an error!");
+
+	Token *tok = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
+	BL_ASSERT(tok && "This should be an error!");
+
+	TSmallArray_AstPtr *cases        = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+	Ast *               stmt_case    = NULL;
+	Ast *               default_case = NULL;
+NEXT:
+	stmt_case = parse_stmt_case(cnt);
+	if (stmt_case && stmt_case->kind != AST_BAD) {
+		if (stmt_case->data.stmt_case.is_default) {
+			if (default_case) {
+				builder_msg(
+				    BUILDER_MSG_ERROR,
+				    ERR_INVALID_SWITCH_CASE,
+				    stmt_case->location,
+				    BUILDER_CUR_WORD,
+				    "Switch statement cannot have more than one default cases.");
+
+				builder_msg(BUILDER_MSG_NOTE,
+				            0,
+				            default_case->location,
+				            BUILDER_CUR_WORD,
+				            "Previous found here.");
+			} else {
+				default_case = stmt_case;
+			}
+		}
+
+		tsa_push_AstPtr(cases, stmt_case);
+		if (tokens_current_is_not(cnt->tokens, SYM_RBLOCK)) goto NEXT;
+	}
+
+	tok = tokens_consume_if(cnt->tokens, SYM_RBLOCK);
+	BL_ASSERT(tok && "This should be an error!");
+
+	Ast *stmt_switch =
+	    ast_create_node(cnt->ast_arena, AST_STMT_SWITCH, tok_switch, scope_get(cnt));
+
+	stmt_switch->data.stmt_switch.expr  = expr;
+	stmt_switch->data.stmt_switch.cases = cases;
+	return stmt_switch;
+}
+
+Ast *
+parse_stmt_case(Context *cnt)
+{
+	TSmallArray_AstPtr *exprs = NULL;
+	Ast *               block = NULL;
+	Ast *               expr  = NULL;
+	bool                rq    = false;
+
+	if (tokens_current_is(cnt->tokens, SYM_RBLOCK)) return NULL;
+
+	Token *tok_case = tokens_consume_if(cnt->tokens, SYM_DEFAULT);
+	if (tok_case) goto SKIP_EXPRS;
+
+	tok_case = tokens_peek(cnt->tokens);
+	exprs    = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+NEXT:
+	expr = parse_expr(cnt);
+	if (expr) {
+		tsa_push_AstPtr(exprs, expr);
+
+		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
+			rq = true;
+			goto NEXT;
+		}
+	} else if (rq) {
+		Token *tok_err = tokens_peek(cnt->tokens);
+		PARSE_ERROR(ERR_EXPECTED_NAME,
+		            tok_err,
+		            BUILDER_CUR_WORD,
+		            "Expected expression after comma.");
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, scope_get(cnt));
+	}
+
+SKIP_EXPRS:
+	block = parse_block(cnt, true);
+	if (!block && !parse_semicolon_rq(cnt)) {
+		Token *tok_err = tokens_peek(cnt->tokens);
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, scope_get(cnt));
+	} else {
+		parse_semicolon(cnt);
+	}
+
+	Ast *stmt_case = ast_create_node(cnt->ast_arena, AST_STMT_CASE, tok_case, scope_get(cnt));
+	stmt_case->data.stmt_case.exprs      = exprs;
+	stmt_case->data.stmt_case.is_default = !exprs;
+	stmt_case->data.stmt_case.block      = block;
+
+	return stmt_case;
 }
 
 static TokensLookaheadState
@@ -1475,7 +1611,19 @@ parse_expr_lit_fn(Context *cnt)
 	fn->data.expr_fn.type = type;
 
 	/* parse flags */
-	parse_flags_for_curr_decl(cnt, HD_EXTERN | HD_NO_INLINE | HD_INLINE | HD_COMPILER);
+	Ast *curr_decl = decl_get(cnt);
+	if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
+		u32 accepted = HD_EXTERN | HD_NO_INLINE | HD_INLINE | HD_COMPILER;
+		u32 flags    = 0;
+		while (true) {
+			HashDirective found = HD_NONE;
+			parse_hash_directive(cnt, accepted, &found);
+			if (!hash_directive_to_flags(found, &flags)) break;
+			accepted &= ~found;
+		}
+
+		curr_decl->data.decl_entity.flags |= flags;
+	}
 
 	/* parse block (block is optional function body can be external) */
 	fn->data.expr_fn.block = parse_block(cnt, false);
@@ -1606,7 +1754,20 @@ parse_type_enum(Context *cnt)
 	enm->data.type_enm.variants = create_sarr(TSmallArray_AstPtr, cnt->assembly);
 	enm->data.type_enm.type     = parse_type(cnt);
 
-	parse_flags_for_curr_decl(cnt, HD_COMPILER);
+	/* parse flags */
+	Ast *curr_decl = decl_get(cnt);
+	if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
+		u32 accepted = HD_COMPILER;
+		u32 flags    = 0;
+		while (true) {
+			HashDirective found = HD_NONE;
+			parse_hash_directive(cnt, accepted, &found);
+			if (!hash_directive_to_flags(found, &flags)) break;
+			accepted &= ~found;
+		}
+
+		curr_decl->data.decl_entity.flags |= flags;
+	}
 
 	Token *tok = tokens_consume(cnt->tokens);
 	if (token_is_not(tok, SYM_LBLOCK)) {
@@ -1631,7 +1792,7 @@ NEXT:
 		prev_tmp = tmp;
 		tsa_push_AstPtr(enm->data.type_enm.variants, tmp);
 
-		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
+		if (tokens_consume_if(cnt->tokens, SYM_SEMICOLON)) {
 			rq = true;
 			goto NEXT;
 		}
@@ -1641,7 +1802,7 @@ NEXT:
 			PARSE_ERROR(ERR_EXPECTED_NAME,
 			            tok_err,
 			            BUILDER_CUR_WORD,
-			            "Expected variant after comma ','.");
+			            "Expected variant after semicolon.");
 			scope_pop(cnt);
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok, scope_get(cnt));
 		}
@@ -1653,7 +1814,7 @@ NEXT:
 		    ERR_MISSING_BRACKET,
 		    tok,
 		    BUILDER_CUR_WORD,
-		    "Expected end of variant list '}' or another variant separated by comma.");
+		    "Expected end of variant list '}' or another variant separated by semicolon.");
 		scope_pop(cnt);
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok, scope_get(cnt));
@@ -1814,7 +1975,27 @@ parse_type_struct(Context *cnt)
 	Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
 	if (!tok_struct) return NULL;
 
-	parse_flags_for_curr_decl(cnt, HD_COMPILER);
+	/* parse flags */
+	u32  accepted  = HD_COMPILER | HD_BASE;
+	u32  flags     = 0;
+	Ast *base_type = NULL;
+	while (true) {
+		Ast *         hd_extension;
+		HashDirective found = HD_NONE;
+		hd_extension        = parse_hash_directive(cnt, accepted, &found);
+		if (found == HD_BASE) {
+			BL_ASSERT(hd_extension);
+			base_type = hd_extension;
+		} else if (!hash_directive_to_flags(found, &flags)) {
+			break;
+		}
+		accepted &= ~found;
+	}
+
+	Ast *curr_decl = decl_get(cnt);
+	if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
+		curr_decl->data.decl_entity.flags |= flags;
+	}
 
 	Token *tok = tokens_consume(cnt->tokens);
 	if (tok->sym != SYM_LBLOCK) {
@@ -1829,9 +2010,10 @@ parse_type_struct(Context *cnt)
 
 	Ast *type_struct =
 	    ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct, scope_get(cnt));
-	type_struct->data.type_strct.scope   = scope;
-	type_struct->data.type_strct.raw     = false;
-	type_struct->data.type_strct.members = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+	type_struct->data.type_strct.scope     = scope;
+	type_struct->data.type_strct.raw       = false;
+	type_struct->data.type_strct.members   = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+	type_struct->data.type_strct.base_type = base_type;
 
 	/* parse members */
 	bool       rq = false;
@@ -1844,7 +2026,7 @@ NEXT:
 	if (tmp) {
 		tsa_push_AstPtr(type_struct->data.type_strct.members, tmp);
 
-		if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
+		if (tokens_consume_if(cnt->tokens, SYM_SEMICOLON)) {
 			rq = true;
 			goto NEXT;
 		}
@@ -1854,7 +2036,7 @@ NEXT:
 			PARSE_ERROR(ERR_EXPECTED_NAME,
 			            tok_err,
 			            BUILDER_CUR_WORD,
-			            "Expected member after comma ','.");
+			            "Expected member after semicolon.");
 
 			scope_pop(cnt);
 			return ast_create_node(cnt->ast_arena, AST_BAD, tok_struct, scope_get(cnt));
@@ -1867,7 +2049,7 @@ NEXT:
 		    ERR_MISSING_BRACKET,
 		    tok,
 		    BUILDER_CUR_WORD,
-		    "Expected end of member list '}' or another memeber separated by comma.");
+		    "Expected end of member list '}' or another memeber separated by semicolon.");
 		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
 		scope_pop(cnt);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_struct, scope_get(cnt));
@@ -2062,6 +2244,11 @@ NEXT:
 		goto NEXT;
 	}
 
+	if ((tmp = parse_stmt_switch(cnt))) {
+		tarray_push(block->data.block.nodes, tmp);
+		goto NEXT;
+	}
+
 	if ((tmp = parse_stmt_loop(cnt))) {
 		tarray_push(block->data.block.nodes, tmp);
 		goto NEXT;
@@ -2119,6 +2306,14 @@ NEXT:
 void
 parse_ublock_content(Context *cnt, Ast *ublock)
 {
+	/******************************************************************************************/
+#define RQ_SEMICOLON_AFTER(_node)                                                                  \
+	((_node)->data.decl_entity.value &&                                                        \
+	 (_node)->data.decl_entity.value->kind != AST_EXPR_LIT_FN &&                               \
+	 (_node)->data.decl_entity.value->kind != AST_TEST_CASE &&                                 \
+	 (_node)->data.decl_entity.value->kind != AST_EXPR_TYPE)
+	/******************************************************************************************/
+
 	BL_ASSERT(ublock->kind == AST_UBLOCK);
 	ublock->data.ublock.nodes = tarray_new(sizeof(Ast *));
 
@@ -2128,7 +2323,7 @@ NEXT:
 
 	if ((tmp = parse_decl(cnt))) {
 		if (tmp->kind != AST_BAD) {
-			parse_semicolon_rq(cnt);
+			if (RQ_SEMICOLON_AFTER(tmp)) parse_semicolon_rq(cnt);
 			/* setup global scope flag for declaration */
 			tmp->data.decl_entity.in_gscope = true;
 			if (cnt->inside_private_scope) tmp->data.decl_entity.flags |= FLAG_PRIVATE;
@@ -2139,9 +2334,13 @@ NEXT:
 	}
 
 	/* load, link, test, private - enabled in global scope */
-	const int enabled_hd = HD_LOAD | HD_LINK | HD_TEST | HD_PRIVATE;
+	const int enabled_hd = HD_LOAD | HD_LINK | HD_TEST | HD_PRIVATE | HD_META;
 	if ((tmp = parse_hash_directive(cnt, enabled_hd, NULL))) {
-		tarray_push(ublock->data.ublock.nodes, tmp);
+		if (tmp->kind == AST_META_DATA) {
+			ublock->meta_node = tmp;
+		} else {
+			tarray_push(ublock->data.ublock.nodes, tmp);
+		}
 		goto NEXT;
 	}
 
@@ -2153,6 +2352,8 @@ NEXT:
 		            "Unexpected symbol in module body '%s'.",
 		            sym_strings[tok->sym]);
 	}
+
+#undef RQ_SEMICOLON_AFTER
 }
 
 void

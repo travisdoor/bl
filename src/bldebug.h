@@ -153,6 +153,13 @@ print_trace(void);
 		print_trace();                                                                     \
 		abort();                                                                           \
 	}
+
+#define BL_UNIMPLEMENTED_REGION(R)                                                                 \
+	{                                                                                          \
+		_log(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented region '" #R "'");          \
+		print_trace();                                                                     \
+		abort();                                                                           \
+	}
 #ifdef __cplusplus
 }
 #endif

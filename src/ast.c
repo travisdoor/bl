@@ -87,6 +87,8 @@ ast_get_name(const Ast *n)
 	switch (n->kind) {
 	case AST_BAD:
 		return "Bad";
+	case AST_META_DATA:
+		return "MetaData";
 	case AST_LOAD:
 		return "Load";
 	case AST_LINK:
@@ -115,6 +117,10 @@ ast_get_name(const Ast *n)
 		return "StmtBreak";
 	case AST_STMT_CONTINUE:
 		return "StmtContinue";
+	case AST_STMT_SWITCH:
+		return "StmtSwitch";
+	case AST_STMT_CASE:
+		return "StmtCase";
 	case AST_DECL_ENTITY:
 		return "DeclEntity";
 	case AST_DECL_MEMBER:
@@ -159,6 +165,8 @@ ast_get_name(const Ast *n)
 		return "ExprSizeof";
 	case AST_EXPR_TYPE_INFO:
 		return "ExprTypeInfo";
+	case AST_EXPR_TYPE:
+		return "ExprType";
 	case AST_EXPR_ALIGNOF:
 		return "ExprAlignof";
 	case AST_EXPR_UNARY:

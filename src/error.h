@@ -107,6 +107,8 @@ typedef enum {
 	ERR_UNEXPECTED_EXPR         = 71,
 	ERR_EXPECTED_COMPTIME       = 72,
 	ERR_NUM_LIT_OVERFLOW        = 73,
+	ERR_INVALID_SWITCH_CASE     = 74,
+	ERR_DUPLICIT_SWITCH_CASE    = 75,
 } Error;
 
 #endif // BL_ERROR_H

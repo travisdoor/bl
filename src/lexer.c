@@ -78,7 +78,7 @@ scan_specch(char c);
 bool
 scan_comment(Context *cnt, const char *term)
 {
-	const size_t len = strlen(term);
+	const usize len = strlen(term);
 	while (true) {
 		if (*cnt->c == '\n') {
 			cnt->line++;
@@ -190,6 +190,7 @@ scan:
 			/* check multiline string */
 			while (true) {
 				if (*tmp_c == '\"') {
+					cnt->line++;
 					/* skip " */
 					cnt->c = tmp_c + 1;
 					goto scan;
@@ -284,6 +285,8 @@ scan_char(Context *cnt, Token *tok)
 int
 c_to_number(char c, s32 base)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 	switch (base) {
 	case 16:
 		if (c >= 'a' && c <= 'f') {
@@ -307,6 +310,7 @@ c_to_number(char c, s32 base)
 	}
 
 	return -1;
+#pragma GCC diagnostic pop
 }
 
 bool
@@ -450,7 +454,7 @@ scan:
 	/*
 	 * Scan symbols described directly as strings.
 	 */
-	size_t len = 0;
+	usize len = 0;
 	for (s32 i = SYM_IF; i < SYM_NONE; ++i) {
 		len = strlen(sym_strings[i]);
 		if (strncmp(cnt->c, sym_strings[i], len) == 0) {

@@ -32,8 +32,8 @@
 #include "token.h"
 
 typedef struct Tokens {
-	TArray  buf;
-	size_t  iter;
+	TArray buf;
+	usize  iter;
 } Tokens;
 
 typedef enum {
@@ -66,7 +66,7 @@ Token *
 tokens_peek_2nd(Tokens *tokens);
 
 Token *
-tokens_peek_nth(Tokens *tokens, size_t n);
+tokens_peek_nth(Tokens *tokens, usize n);
 
 Token *
 tokens_peek_prev(Tokens *tokens);
@@ -93,16 +93,16 @@ bool
 tokens_next_is_not(Tokens *tokens, Sym sym);
 
 bool
-tokens_is_seq(Tokens *tokens, size_t cnt, ...);
+tokens_is_seq(Tokens *tokens, usize cnt, ...);
 
 void
 tokens_reset_iter(Tokens *tokens);
 
-size_t
+usize
 tokens_get_marker(Tokens *tokens);
 
 void
-tokens_back_to_marker(Tokens *tokens, size_t marker);
+tokens_back_to_marker(Tokens *tokens, usize marker);
 
 void
 tokens_consume_till(Tokens *tokens, Sym sym);

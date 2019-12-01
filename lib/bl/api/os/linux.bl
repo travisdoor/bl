@@ -26,7 +26,9 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#load "std/core.bl"
+#load "std/_builtin.bl"
+
+// INCOMPLETE: time_now_ms
 
 OS_NAME :: "Linux";
 
@@ -34,8 +36,56 @@ OS_STDIN  :: 0;
 OS_STDOUT :: 1;
 OS_STDERR :: 2;
 
-write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
-
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return write(fd, buf, count);
 };
+
+__os_abort :: fn () #compiler {
+    raise(SIGABRT);
+}
+
+time_now_ms :: fn () f64 {
+    unreachable;
+    return 0.0;
+};
+
+__MAX_ARGS_WITHOUT_ALLOC :: 8;
+
+__os_start :: fn (argc: s64, argv: **u8, env: **u8) s32 {
+    args :: {:[]*u8: argc, argv};
+    tmp: [__MAX_ARGS_WITHOUT_ALLOC]string;
+    is_allocated :: args.len > tmp.len;
+
+    command_line_arguments.len = args.len;
+
+    if is_allocated {
+        command_line_arguments.ptr = auto mem_alloc(sizeof(string) * auto args.len);
+        if command_line_arguments.ptr == null { __os_abort(); }
+    } else {
+        command_line_arguments.ptr = tmp.ptr;
+    }
+
+    loop i := 0; i < args.len; i += 1 {
+        command_line_arguments[i] = {:string: auto strlen(args[i]), args[i]};
+    }
+
+    out :: cast(s32) main();
+
+    if is_allocated {
+        mem_free(auto command_line_arguments.ptr);
+    }
+
+    return out;
+}
+
+#private
+
+SIGHUP  :: 1;
+SIGINT  :: 2;
+SIGQUIT :: 3; 
+SIGILL  :: 4; 
+SIGTRAP :: 5;
+SIGABRT :: 6;
+
+raise :: fn (sig: s32) s32 #extern;
+write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;

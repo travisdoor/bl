@@ -27,7 +27,7 @@
 //************************************************************************************************
 
 is_flag_u32 :: fn (v: u32, flag: u32) bool #inline {
-    return (v & flag) > 0;
+    return (v & flag) == flag;
 };
 
 /*
@@ -40,3 +40,8 @@ cstr_to_str :: fn (cstr: *u8) string #inline {
 ptr_shift_bytes :: fn (ptr: *u8, bytes: usize) *u8 #inline {
     return cast(*u8) (cast(usize) ptr + bytes);
 };
+
+// a - b
+ptr_diff :: fn (a: *u8, b: *u8) s64 #inline {
+    return (cast(s64) a) - (cast(s64) b); 
+}

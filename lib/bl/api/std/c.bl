@@ -30,7 +30,6 @@ RAND_MAX :: 2147483647;
 
 putchar :: fn (c: s32) s32 #extern;
 memset  :: fn (str: *u8, c: s32, n: usize) *u8 #extern;
-abort   :: fn () #extern;
 malloc  :: fn (size: usize) *u8 #extern;
 free    :: fn (ptr: *u8) #extern;
 strlen  :: fn (str: *u8) usize #extern;
@@ -40,4 +39,5 @@ fopen   :: fn (filename: *u8, mode: *u8) *u8 #extern;
 fclose  :: fn (handle: *u8) s32 #extern;
 fseek   :: fn (handle: *u8, offest: s32, origin: s32) s32 #extern;
 fread   :: fn (ptr: *u8, size: usize, count: usize, handle: *u8) usize #extern;
+fwrite  :: fn (ptr: *u8, size: usize, count: usize, handle: *u8) usize #extern;
 ftell   :: fn (handle: *u8) s32 #extern;

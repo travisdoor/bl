@@ -2,8 +2,8 @@
 
 // Enum declaration (base type is by default s32)
 Color : type : enum {
-    Red,    // default value 0
-    Green,  // default value 1
+    Red;    // default value 0
+    Green;  // default value 1
     Blue    // default value 2
 };
 
@@ -22,12 +22,12 @@ Color : type : enum {
 
 // Enum declaration (base type is u8)
 Day :: enum u8 {
-    Sat :: 1, // first value explicitly set to 1
-    Sun,      // implicitly set to previous value + 1 -> 2
-    Mon,      // 3 
-    Tue,      // ...
-    Wed,
-    Thu,
+    Sat :: 1; // first value explicitly set to 1
+    Sun;      // implicitly set to previous value + 1 -> 2
+    Mon;      // 3 
+    Tue;      // ...
+    Wed;
+    Thu;
     Fri
 };
 

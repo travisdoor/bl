@@ -114,6 +114,12 @@ static void
 print_stmt_if(Ast *stmt_if, s32 pad, FILE *stream);
 
 static void
+print_stmt_switch(Ast *stmt_switch, s32 pad, FILE *stream);
+
+static void
+print_stmt_case(Ast *stmt_case, s32 pad, FILE *stream);
+
+static void
 print_stmt_loop(Ast *loop, s32 pad, FILE *stream);
 
 static void
@@ -293,6 +299,42 @@ print_stmt_if(Ast *stmt_if, s32 pad, FILE *stream)
 	print_node(stmt_if->data.stmt_if.test, pad + 1, stream);
 	print_node(stmt_if->data.stmt_if.true_stmt, pad + 1, stream);
 	print_node(stmt_if->data.stmt_if.false_stmt, pad + 1, stream);
+}
+
+void
+print_stmt_switch(Ast *stmt_switch, s32 pad, FILE *stream)
+{
+	print_head(stmt_switch, pad, stream);
+	print_node(stmt_switch->data.stmt_switch.expr, pad + 1, stream);
+
+	TSmallArray_AstPtr *cases = stmt_switch->data.stmt_switch.cases;
+	Ast *               stmt_case;
+
+	TSA_FOREACH(cases, stmt_case)
+	{
+		print_node(stmt_case, pad + 1, stream);
+	}
+}
+
+void
+print_stmt_case(Ast *stmt_case, s32 pad, FILE *stream)
+{
+	print_head(stmt_case, pad, stream);
+	if (stmt_case->data.stmt_case.is_default) fprintf(stream, "default");
+
+	if (stmt_case->data.stmt_case.exprs) {
+		TSmallArray_AstPtr *exprs = stmt_case->data.stmt_case.exprs;
+		Ast *               expr;
+
+		TSA_FOREACH(exprs, expr)
+		{
+			print_node(expr, pad + 1, stream);
+		}
+	}
+
+	if (stmt_case->data.stmt_case.block) {
+		print_node(stmt_case->data.stmt_case.block, pad + 1, stream);
+	}
 }
 
 void
@@ -646,6 +688,14 @@ print_node(Ast *node, s32 pad, FILE *stream)
 
 	case AST_STMT_IF:
 		print_stmt_if(node, pad, stream);
+		break;
+
+	case AST_STMT_SWITCH:
+		print_stmt_switch(node, pad, stream);
+		break;
+
+	case AST_STMT_CASE:
+		print_stmt_case(node, pad, stream);
 		break;
 
 	case AST_STMT_LOOP:

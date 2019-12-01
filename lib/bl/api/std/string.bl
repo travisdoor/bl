@@ -148,7 +148,7 @@ alloc_block :: fn (size: usize) *u8 {
 
     alloc_size := size + sizeof(BlockHead) + sizeof(u8);
     tmp := cast(*BlockHead) mem_alloc(alloc_size);
-    if tmp == null { abort(); }
+    if tmp == null { panic(); }
     tmp.allocated_size = size; 
 
     return cast(*u8) (cast(usize) tmp + sizeof(BlockHead));

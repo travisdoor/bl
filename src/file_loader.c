@@ -69,7 +69,7 @@ file_loader_run(Unit *unit)
 	}
 
 	fseek(f, 0, SEEK_END);
-	size_t fsize = (size_t)ftell(f);
+	usize fsize = (usize)ftell(f);
 	if (fsize == 0) {
 		fclose(f);
 		load_error(ERR_FILE_EMPTY,

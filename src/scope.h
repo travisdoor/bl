@@ -97,7 +97,7 @@ void
 scope_arenas_terminate(ScopeArenas *arenas);
 
 Scope *
-scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, size_t size, struct Location *loc);
+scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, usize size, struct Location *loc);
 
 ScopeEntry *
 scope_create_entry(ScopeArenas *  arenas,

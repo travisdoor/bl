@@ -1,19 +1,19 @@
 Animation :: struct {
-    texture: *SDL_Texture,
-    position: Vec2,
-    frames: iVec2,
-    frame_size: iVec2,
-    frame_count: s32,
-    current_frame: s32,
-    duration: f32,
-    frame_duration: f32,
-    time_from_last_frame: f32,
-    running: bool,
+    texture: *SDL_Texture;
+    position: v2;
+    frames: iv2;
+    frame_size: iv2;
+    frame_count: s32;
+    current_frame: s32;
+    duration: f32;
+    frame_duration: f32;
+    time_from_last_frame: f32;
+    running: bool;
 };
 
 anim_new :: fn (game: *Game,
                 texture_id: TextureId, 
-                frames: *iVec2) *Animation {
+                frames: *iv2) *Animation {
 
     self := cast(*Animation) malloc(sizeof(Animation));
 
@@ -30,7 +30,7 @@ anim_new :: fn (game: *Game,
     self.frame_count = frames.x * frames.y;
     self.current_frame = 0;
     self.running = false;
-    self.position = {:Vec2: 0};
+    self.position = {:v2: 0};
 
     self.duration = 800.f;
     self.frame_duration = self.duration / cast(f32) self.frame_count;
@@ -77,7 +77,7 @@ anim_play :: fn (self: *Animation) {
     self.running = true;
 };
 
-anim_play_on_position :: fn (self: *Animation, position: *Vec2) {
+anim_play_on_position :: fn (self: *Animation, position: *v2) {
     self.running = true;
     self.position = ^position;
 };

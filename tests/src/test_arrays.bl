@@ -1,4 +1,5 @@
 #load "std/debug.bl"
+#load "experimental/array.bl"
 
 #test "simple static array" {
   arr : [10]s32;
@@ -53,4 +54,63 @@
 
   assert(arr[0] == 0);
   assert(arr[9] == 9);
+};
+
+#test "dynamic array init" {
+    arr := array_new(s32);
+    assert(arr.len == 0);
+    assert(arr.ptr == null);
+    assert(arr.allocated == 0);
+    assert(arr.T == typeinfo(s32));
+
+    array_reserve(arr, 256);
+    assert(arr.len == 0);
+    assert(arr.ptr != null);
+    assert(arr.allocated == 256);
+    
+    array_delete(arr);
+};
+
+#test "dynamic array data" {
+    arr := array_new(s32);
+    
+    loop i := 0; i < 1024; i += 1 {
+        array_push(arr, i);
+    }
+
+    loop i := 0; i < 1024; i += 1 {
+        v := ^cast(*s32) array_at(arr, i);
+        assert(v == i);
+    }
+    
+    array_clear(arr);
+    assert(arr.len == 0);
+    assert(arr.ptr != null);
+
+    array_delete(arr);
+};
+
+#test "dynamic array data struct" {
+    Foo :: struct {
+        i: s32; j: s32; k: s32
+    };
+
+    arr := array_new(Foo);
+    
+    loop i := 0; i < 1024; i += 1 {
+        array_push(arr, {:Foo: i, i, i});
+    }
+
+    loop i := 0; i < 1024; i += 1 {
+        v := cast(*Foo) array_at(arr, i);
+        assert(v.i == i);
+        assert(v.j == i);
+        assert(v.k == i);
+    }
+    
+    array_clear(arr);
+    assert(arr.len == 0);
+    assert(arr.ptr != null);
+
+    array_delete(arr);
 };

@@ -12,11 +12,12 @@ Options\n\
   -syntax-only                        = Check syntax and exit.\n\
   -no-bin                             = Don't write binary to disk.\n\
   -no-warning                         = Ignore all warnings.\n\
-  -verbose                            = Verbose mode.\n\
   -no-api                             = Don't load internal api.\n\
+  -no-llvm                            = Disable LLVM backend.\n\
+  -no-analyze                         = Disable analyze pass, only parse and exit.\n\
+  -verbose                            = Verbose mode.\n\
   -force-test-to-llvm                 = Force llvm generation of unit tests.\n\
   -configure                          = Generate config file.\n\
   -opt-<none|less|default|aggressive> = Set optimization level. (use 'default' when not specified)\n\
   -debug                              = Debug mode build. (when opt level is not specified 'none' is used)\n\
-  -reg-split-<on|off>                 = Enable or disable spplitting structures passed into the function by value into registers\n\
-  -no-llvm                            = Disable LLVM backend."
+  -reg-split-<on|off>                 = Enable or disable splitting structures passed into the function by value into registers"

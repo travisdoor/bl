@@ -1,0 +1,125 @@
+//************************************************************************************************
+// bl
+//
+// File:   array.bl
+// Author: Martin Dorazil
+// Date:   2/10/19
+//
+// Copyright 2019 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//************************************************************************************************
+
+Array :: struct {
+    len: s64;
+    ptr: *u8;
+    allocated: usize;
+    T: *TypeInfo
+};
+
+array_new :: fn (T: Any) *Array {
+    if T.type_info.kind != TypeKind.Type {
+        panic("Array expects type passed as T not '%'", T.type_info.kind);
+    }
+
+    arr := cast(*Array) mem_alloc(sizeof(Array));
+    arr.T = cast(*TypeInfo) T.data;
+    arr.len = 0;
+    arr.allocated = 0;
+    arr.ptr = null;
+    return arr;
+};
+
+array_delete :: fn (arr: *Array) {
+    if arr.allocated > 0 {
+        mem_free(arr.ptr);
+    }
+
+    mem_free(auto arr);
+};
+
+array_reserve :: fn (arr: *Array, size: usize) {
+    if size == 0 { return; }
+    ensure_space(arr, size, true);
+};
+
+array_clear :: fn (arr: *Array) {
+    arr.len = 0;
+};
+
+array_push :: fn (arr: *Array, v: Any) {
+    // INCOMPLETE: We should be able to compare pointers to typeinfo directly but this comparation
+    // works only in compile time execution, not in native code (we probably generate duplicit type
+    // info entries for same type in LLVM).
+    if (v.type_info.kind != arr.T.kind) || (v.type_info.size_bytes != arr.T.size_bytes) {
+        panic("Invalid value type '%', expected is '%'.",
+              ^v.type_info,
+              ^arr.T);
+    }
+
+    if v.data == null {
+        panic("Invalid value (null).");
+    }
+
+    arr.len += 1;
+    ensure_space(arr, auto arr.len, false);
+    mem_copy(elem_ptr(arr, arr.len - 1), v.data, arr.T.size_bytes);
+
+};
+
+array_at :: fn (arr: *Array, i: s64) *u8 {
+    return elem_ptr(arr, i);
+};
+
+#private
+ALLOC_BLOCK_SIZE : usize : 32;
+
+elem_ptr :: fn (arr: *Array, i: s64) *u8 #inline {
+    if i >= arr.len {
+        panic("Element index out of range, index is % but array size is %.",
+              i,
+              arr.len);
+    }
+
+    return ptr_shift_bytes(arr.ptr, cast(usize) i * arr.T.size_bytes);
+};
+
+ensure_space :: fn (arr: *Array, space: usize, exact: bool) {
+    if space == 0 { return; }
+    if arr.allocated >= space { return; }
+
+    if arr.allocated == 0 {
+        if !exact {
+            space = ALLOC_BLOCK_SIZE;
+        }
+    } else {
+        space *= 2;
+    }
+
+    elem_size := arr.T.size_bytes;
+    tmp := arr.ptr;
+
+    arr.ptr = mem_alloc(space * elem_size); 
+    if tmp != null {
+        mem_copy(arr.ptr, tmp, arr.allocated * elem_size);
+        mem_free(tmp);
+    }
+    
+    arr.allocated = space;
+};
