@@ -54,11 +54,11 @@ time_now_ms :: fn () f64 {
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
 
 __os_start :: fn () {
-    cmd_line :: GetCommandLineA();
+    cmd_line :: GetCommandLineW();
     argc := 0;
-    argv :: CommandLineToArgv(cmd_line, &argc);
+    argv :: CommandLineToArgvW(cmd_line, &argc);
 
-    args :: {:[]*u8: argc, argv};
+    args :: {:[]*u16: argc, argv};
     tmp: [__MAX_ARGS_WITHOUT_ALLOC]string;
     is_allocated :: args.len > tmp.len;
 
@@ -72,7 +72,7 @@ __os_start :: fn () {
     }
 
     loop i := 0; i < args.len; i += 1 {
-        command_line_arguments[i] = {:string: auto strlen(args[i]), args[i]};
+        command_line_arguments[i] = {:string: auto wcslen(args[i]), args[i]};
     }
 
     out :: cast(s32) main();
@@ -87,7 +87,9 @@ __os_start :: fn () {
 
 #private
 
-LPCSTR  :: *u8;
+LPWSTR  :: *u16;
+LPCWSTR :: *u16;
+LPCSTR :: *u16;
 LPSTR   :: *u8;
 HLOCAL  :: *u8;
 
@@ -104,5 +106,6 @@ _exit              :: fn (v: s32) #extern;
 
 // windows crap
 GetCommandLineA    :: fn () LPSTR #extern;
-CommandLineToArgv  :: fn (lpCmdLine: LPCSTR, pNumArgs: *s32) *LPSTR #extern;
+CommandLineToArgv  :: fn (lpCmdLine: LPCSTR, pNumArgs: *s32) *LPWSTR #extern;
 LocalFree          :: fn (hMem: HLOCAL) HLOCAL #extern;
+wcslen             :: fn (str: *u16) usize #extern;
