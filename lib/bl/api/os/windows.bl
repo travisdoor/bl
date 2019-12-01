@@ -64,7 +64,6 @@ __os_start :: fn () s32 {
 
 #private
 
-LPSTR :: *u8;
 LPWSTR :: *u16;
 LPCWSTR :: *u16;
 
@@ -77,5 +76,5 @@ SIGABRT :: 6;
 
 raise :: fn (sig: s32) s32 #extern;
 _write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
-GetCommandLineA :: fn () LPSTR #extern;
+GetCommandLineW :: fn () LPWSTR #extern;
 CommandLineToArgvW :: fn (lpCmdLine: LPCWSTR, pNumArgs: *s32) *LPWSTR #extern;
