@@ -105,7 +105,7 @@ _write             :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
 _exit              :: fn (v: s32) #extern;
 
 // windows crap
-GetCommandLineA    :: fn () LPSTR #extern;
-CommandLineToArgv  :: fn (lpCmdLine: LPCSTR, pNumArgs: *s32) *LPWSTR #extern;
+GetCommandLineW    :: fn () LPSTR #extern;
+CommandLineToArgvW :: fn (lpCmdLine: LPCSTR, pNumArgs: *s32) *LPWSTR #extern;
 LocalFree          :: fn (hMem: HLOCAL) HLOCAL #extern;
 wcslen             :: fn (str: *u16) usize #extern;
