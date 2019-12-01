@@ -53,10 +53,20 @@ time_now_ms :: fn () f64 {
 
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
 
-__os_start :: fn () {
+__os_start :: fn () s32 {
+    cmd_line :: GetCommandLineA();
+    argc := 0;
+    argv :: CommandLineToArgvW(cmd_line, &argc);
+
+
+    return 0;
 }
 
 #private
+
+LPSTR :: *u8;
+LPWSTR :: *u16;
+LPCWSTR :: *u16;
 
 SIGHUP  :: 1;
 SIGINT  :: 2;
@@ -67,3 +77,5 @@ SIGABRT :: 6;
 
 raise :: fn (sig: s32) s32 #extern;
 _write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
+GetCommandLineA :: fn () LPSTR #extern;
+CommandLineToArgvW :: fn (lpCmdLine: LPCWSTR, pNumArgs: *s32) *LPWSTR #extern;
