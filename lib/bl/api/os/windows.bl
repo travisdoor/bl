@@ -54,12 +54,12 @@ time_now_ms :: fn () f64 {
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
 
 __os_start :: fn () s32 {
+    print("here!");
     cmd_line :: GetCommandLineW();
     argc := 0;
     argv :: CommandLineToArgvW(cmd_line, &argc);
 
-
-    return 0;
+    _exit(0);
 }
 
 #private
@@ -74,7 +74,8 @@ SIGILL  :: 4;
 SIGTRAP :: 5;
 SIGABRT :: 6;
 
-raise :: fn (sig: s32) s32 #extern;
-_write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
-GetCommandLineW :: fn () LPWSTR #extern;
+raise              :: fn (sig: s32) s32 #extern;
+_write             :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
+GetCommandLineW    :: fn () LPWSTR #extern;
 CommandLineToArgvW :: fn (lpCmdLine: LPCWSTR, pNumArgs: *s32) *LPWSTR #extern;
+_exit              :: fn (v: s32) #extern;
