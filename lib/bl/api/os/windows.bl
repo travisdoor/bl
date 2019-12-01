@@ -72,7 +72,7 @@ __os_start :: fn () {
     }
 
     loop i := 0; i < args.len; i += 1 {
-        command_line_arguments[i] = {:string: auto wcslen(args[i]), args[i]};
+        command_line_arguments[i] = {:string: auto wcslen(args[i]), auto args[i]};
     }
 
     out :: cast(s32) main();
