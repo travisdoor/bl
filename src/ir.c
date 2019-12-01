@@ -888,13 +888,13 @@ rtti_emit_fn_args_slice(Context *cnt, TSmallArray_ArgPtr *args)
 	const usize argc = args ? args->size : 0;
 
 	MirType *len_type = mir_get_struct_elem_type(type, 0);
+        MirType *ptr_type = mir_get_struct_elem_type(type, 1);
 	tsa_push_LLVMValue(
 	    &llvm_vals, LLVMConstInt(len_type->llvm_type, argc, len_type->data.integer.is_signed));
 
 	if (argc) {
-		tsa_push_LLVMValue(&llvm_vals, rtti_emit_fn_args_array(cnt, args));
+		tsa_push_LLVMValue(&llvm_vals, LLVMConstBitCast(rtti_emit_fn_args_array(cnt, args), ptr_type->llvm_type));
 	} else {
-		MirType *ptr_type = mir_get_struct_elem_type(type, 1);
 		tsa_push_LLVMValue(&llvm_vals, LLVMConstNull(ptr_type->llvm_type));
 	}
 
