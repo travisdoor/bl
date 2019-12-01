@@ -54,7 +54,7 @@ time_now_ms :: fn () f64 {
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
 
 __os_start :: fn () s32 {
-    cmd_line :: GetCommandLineA();
+    cmd_line :: GetCommandLineW();
     argc := 0;
     argv :: CommandLineToArgvW(cmd_line, &argc);
 
