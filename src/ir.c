@@ -1873,6 +1873,10 @@ void
 emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
 	MirVar *var = decl->var;
+	// PERFORMANCE: count variable usage in MIR and generate only used variables!!!
+        // PERFORMANCE: count variable usage in MIR and generate only used variables!!!
+        // PERFORMANCE: count variable usage in MIR and generate only used variables!!!
+	//if (var->ref_count == 0) return;
 	BL_ASSERT(var);
 
 	/* skip when we should not generate LLVM representation */

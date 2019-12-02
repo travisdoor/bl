@@ -88,9 +88,9 @@ echo LINKER_LIB_PATH \"/usr/lib:/usr/local/lib:/lib64\" >> $CONFIG_FILE
 
 if [ $STATUS -eq 0 ]; then
     CONFIG_FILE=$(realpath $CONFIG_FILE)
-    echo Configuration finnished without errors and written to $CONFIG_FILE file.
+    echo Configuration finished without errors and written to $CONFIG_FILE file.
 else
-    echo Configuration finnished with errors.
+    echo Configuration finished with errors.
 fi
 
 

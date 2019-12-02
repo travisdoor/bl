@@ -30,7 +30,7 @@
 
 File :: *u8; 
 
-FileOpenModes :: enum {
+FileOpenMode :: enum {
     Read;
     Write;
     Binary
@@ -41,7 +41,7 @@ file_create :: fn (filename: string) File {
     return fopen(filename.ptr, mode.ptr); 
 };
 
-file_open :: fn (filename: string, modes: ...FileOpenModes) File {
+file_open :: fn (filename: string, modes: ...FileOpenMode) File {
     mode := {:[4]u8: 0};
 
     if modes.len == 0 {
@@ -51,9 +51,9 @@ file_open :: fn (filename: string, modes: ...FileOpenModes) File {
         loop i := 0; i < modes.len; i += 1 {
             if i >= mode.len - 1 { break; }
             m := modes[i];
-            if m == FileOpenModes.Read { mode[i] = 'r'; }
-            if m == FileOpenModes.Write { mode[i] = 'w'; }
-            if m == FileOpenModes.Binary { mode[i] = 'b'; }
+            if m == FileOpenMode.Read { mode[i] = 'r'; }
+            if m == FileOpenMode.Write { mode[i] = 'w'; }
+            if m == FileOpenMode.Binary { mode[i] = 'b'; }
         }
     }
 
@@ -72,9 +72,10 @@ file_read_all :: fn (file: File) string {
     }
 
     fseek(file, 0, SEEK_SET);
-    tmp := string_new_reserved(size * sizeof(u8));
+    tmp := string_new_reserved((size + 1) * sizeof(u8));
     read := fread(tmp.ptr, sizeof(u8), size, file);
-    tmp.len = auto read;
+    tmp.len = auto read + 1;
+    tmp[tmp.len - 1] = '\0';
     return tmp;
 };
 

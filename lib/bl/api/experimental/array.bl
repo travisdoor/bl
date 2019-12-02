@@ -95,6 +95,7 @@ array_erase :: fn (arr: *Array, i: s64) {
     }
 
     mem_copy(elem_ptr(arr, i), elem_ptr(arr, arr.len - 1), arr.T.size_bytes);
+    arr.len -= 1;
 }
 
 #private

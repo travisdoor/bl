@@ -56,10 +56,10 @@ if not exist "..\etc" mkdir ..\etc
 cd /D %PDIR%
 
 if %_STATUS%==0 (
-    echo Configuration finnished without errors and written to %CONFIG_FILE% file.
+    echo Configuration finished without errors and written to %CONFIG_FILE% file.
     exit /B
 ) else (
-    echo Configuration finnished with errors.
+    echo Configuration finished with errors.
     exit /B 1
 )
 
