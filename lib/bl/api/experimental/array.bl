@@ -87,6 +87,16 @@ array_at :: fn (arr: *Array, i: s64) *u8 {
     return elem_ptr(arr, i);
 };
 
+array_erase :: fn (arr: *Array, i: s64) {
+    if i >= arr.len { panic("Index overflow!"); }
+    if i == arr.len - 1 { 
+        arr.len -= 1; 
+        return;
+    }
+
+    mem_copy(elem_ptr(arr, i), elem_ptr(arr, arr.len - 1), arr.T.size_bytes);
+}
+
 #private
 ALLOC_BLOCK_SIZE : usize : 32;
 
