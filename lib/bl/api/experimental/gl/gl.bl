@@ -490,6 +490,7 @@ glEnable                  :: fn (cap: GLenum) #extern;
 glDisable                 :: fn (cap: GLenum) #extern;
 glGetError                :: fn () GLenum #extern;
 glGetUniformLocation      :: fn (program: GLuint, name: *GLchar) GLint #extern;
+glGetAttribLocation       :: fn (program: GLuint, name: *GLchar) GLint #extern;
 glBlendFunc               :: fn (sfactor: GLenum, dfactor: GLenum) #extern;
 glTexParameteri           :: fn (target: GLenum, pname: GLenum, param: GLint) #extern;
 glTexSubImage2D           :: fn (target: GLenum,
