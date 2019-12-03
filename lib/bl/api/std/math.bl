@@ -50,7 +50,7 @@ U64_MAX : u64 : 18446744073709551615;
 /* Lib C functions */
 sin       :: fn (n: f64) f64 #extern;
 cos       :: fn (n: f64) f64 #extern;
-fabs      :: fn (n: f32) f32 #extern;
+abs      :: fn (n: f32) f32 #extern;
 log10     :: fn (n: f64) f64 #extern;
 pow       :: fn (base: f64, exponent: f64) f64 #extern;
 sqrt      :: fn (x: f64) f64 #extern;
@@ -130,8 +130,8 @@ u32_min :: fn (a: u32, b: u32) u32 #inline {
     return b;
 };
 
-f32_compare :: fn (a: f32, b: f32) bool #inline {
-    return fabs(a - b) < F32_EPSILON;
+f32_compare :: fn (a: f32, b: f32, epsilon: f32) bool #inline {
+    return abs(a - b) < epsilon;
 };
 
 degtorad :: fn (deg: f32) f32 #inline {
@@ -141,6 +141,23 @@ degtorad :: fn (deg: f32) f32 #inline {
 radtodeg :: fn (rad: f32) f32 #inline {
     return (180.f * rad) / cast(f32) PI;
 };
+
+v2_compare :: fn (a: v2, b: v2, epsilon: f32) bool #inline {
+    return f32_compare(a.x, b.x, epsilon) && f32_compare(a.y, b.y, epsilon);
+}
+
+v3_compare :: fn (a: v3, b: v3, epsilon: f32) bool {
+    return f32_compare(a.x, b.x, epsilon)
+        && f32_compare(a.y, b.y, epsilon)
+        && f32_compare(a.z, b.z, epsilon);
+}
+
+v4_compare :: fn (a: v4, b: v4, epsilon: f32) bool {
+    return f32_compare(a.x, b.x, epsilon)
+        && f32_compare(a.y, b.y, epsilon)
+        && f32_compare(a.z, b.z, epsilon)
+        && f32_compare(a.w, b.w, epsilon);
+}
 
 v3_length :: fn (v: v3) f32 #inline {
     return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
@@ -173,7 +190,7 @@ v3_normalize :: fn (a: v3) v3 #inline {
     out := {:v3: 0};
     l := v3_length(a);
 
-    if f32_compare(l, 0.f) { return out; }
+    if f32_compare(l, 0.f, F32_EPSILON) { return out; }
 
     out.x = a.x / l;
     out.y = a.y / l;
@@ -212,7 +229,7 @@ v4_normalize :: fn (v: v4) v4 #inline {
     out := {:v4: 0};
     l := v4_length(v);
 
-    if f32_compare(l, 0.f) { return out; }
+    if f32_compare(l, 0.f, F32_EPSILON) { return out; }
 
     out.x = v.x / l;
     out.y = v.y / l;
@@ -558,7 +575,7 @@ quat_to_euler :: fn (q: quat) v3 {
 
     // pitch (y-axis rotation)
     sinp := 2.0f * (q.w * q.y - q.z * q.x);
-    if fabs(sinp) >= 1.f {
+    if abs(sinp) >= 1.f {
         e.y = copysignf(cast(f32) (PI * 0.5), sinp);
     } else {
         e.y = asinf(sinp);

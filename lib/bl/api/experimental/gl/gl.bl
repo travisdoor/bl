@@ -73,6 +73,25 @@ GL_STACK_OVERFLOW    : u32 : 0x0503;
 GL_STACK_UNDERFLOW   : u32 : 0x0504;
 GL_OUT_OF_MEMORY     : u32 : 0x0505;
 
+GL_POINT             : u32 : 0x1B00;
+GL_LINE              : u32 : 0x1B01;
+GL_FILL              : u32 : 0x1B02;
+
+GL_NONE              : u32 : 0;
+GL_FRONT_LEFT        : u32 : 0x0400;
+GL_FRONT_RIGHT       : u32 : 0x0401;
+GL_BACK_LEFT         : u32 : 0x0402;
+GL_BACK_RIGHT        : u32 : 0x0403;
+GL_FRONT             : u32 : 0x0404;
+GL_BACK              : u32 : 0x0405;
+GL_LEFT              : u32 : 0x0406;
+GL_RIGHT             : u32 : 0x0407;
+GL_FRONT_AND_BACK    : u32 : 0x0408;
+GL_AUX0              : u32 : 0x0409;
+GL_AUX1              : u32 : 0x040A;
+GL_AUX2              : u32 : 0x040B;
+GL_AUX3              : u32 : 0x040C;
+
 GL_NEAREST : u32 : 0x2600;
 GL_LINEAR  : u32 : 0x2601;
 
@@ -503,4 +522,4 @@ glTexSubImage2D           :: fn (target: GLenum,
                                	 t: GLenum,
                                	 data: *u8) #extern;
 glHint                    :: fn (target: GLenum, mode: GLenum) #extern;
- 
+glPolygonMode             :: fn (face: GLenum, mode: GLenum) #extern;

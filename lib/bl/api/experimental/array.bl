@@ -64,10 +64,7 @@ array_clear :: fn (arr: *Array) {
 };
 
 array_push :: fn (arr: *Array, v: Any) {
-    // INCOMPLETE: We should be able to compare pointers to typeinfo directly but this comparation
-    // works only in compile time execution, not in native code (we probably generate duplicit type
-    // info entries for same type in LLVM).
-    if (v.type_info.kind != arr.T.kind) || (v.type_info.size_bytes != arr.T.size_bytes) {
+    if (v.type_info != arr.T) {
         panic("Invalid value type '%', expected is '%'.",
               ^v.type_info,
               ^arr.T);
