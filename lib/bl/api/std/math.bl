@@ -50,7 +50,6 @@ U64_MAX : u64 : 18446744073709551615;
 /* Lib C functions */
 sin       :: fn (n: f64) f64 #extern;
 cos       :: fn (n: f64) f64 #extern;
-abs      :: fn (n: f32) f32 #extern;
 log10     :: fn (n: f64) f64 #extern;
 pow       :: fn (base: f64, exponent: f64) f64 #extern;
 sqrt      :: fn (x: f64) f64 #extern;
@@ -116,6 +115,12 @@ quat :: v4;
 //************************************************************************************************
 // Functions
 //************************************************************************************************
+
+f32_abs :: fn (v: f32) f32 #inline {
+    if v < 0.f { return -v; }
+    return v;
+}
+
 lerp :: fn (a: f32, b: f32, fraction: f32) f32 #inline {
     return a + fraction * (b - a);
 };
@@ -131,7 +136,7 @@ u32_min :: fn (a: u32, b: u32) u32 #inline {
 };
 
 f32_compare :: fn (a: f32, b: f32, epsilon: f32) bool #inline {
-    return abs(a - b) < epsilon;
+    return f32_abs(a - b) < epsilon;
 };
 
 degtorad :: fn (deg: f32) f32 #inline {
@@ -575,7 +580,7 @@ quat_to_euler :: fn (q: quat) v3 {
 
     // pitch (y-axis rotation)
     sinp := 2.0f * (q.w * q.y - q.z * q.x);
-    if abs(sinp) >= 1.f {
+    if f32_abs(sinp) >= 1.f {
         e.y = copysignf(cast(f32) (PI * 0.5), sinp);
     } else {
         e.y = asinf(sinp);
