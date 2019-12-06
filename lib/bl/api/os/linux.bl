@@ -36,6 +36,16 @@ OS_STDIN  :: 0;
 OS_STDOUT :: 1;
 OS_STDERR :: 2;
 
+
+time_now_ms :: fn () f64 {
+    unreachable;
+    return 0.0;
+};
+
+sleep_ms :: fn (ms: f64) {
+    usleep(auto ms * 1000.0);
+};
+
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return write(fd, buf, count);
 };
@@ -43,11 +53,6 @@ __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
 __os_abort :: fn () #compiler {
     raise(SIGABRT);
 }
-
-time_now_ms :: fn () f64 {
-    unreachable;
-    return 0.0;
-};
 
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
 
@@ -89,3 +94,4 @@ SIGABRT :: 6;
 
 raise :: fn (sig: s32) s32 #extern;
 write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
+usleep :: fn (us: u32) s32 #extern;

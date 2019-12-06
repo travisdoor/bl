@@ -129,6 +129,8 @@ GL_TRIANGLES      : u32 : 0x0004;
 GL_TRIANGLE_STRIP : u32 : 0x0005;
 GL_TRIANGLE_FAN   : u32 : 0x0006;
 
+GL_DEPTH_BUFFER_BIT     : u32 : 0x00000100;
+GL_STENCIL_BUF          : u32 : 0x00000400;
 GL_COLOR_BUFFER_BIT     : u32 : 0x00004000;
 GL_VERTEX_SHADER        : u32 : 0x8B31;
 GL_FRAGMENT_SHADER      : u32 : 0x8B30;
@@ -183,6 +185,7 @@ GL_TEXTURE31                     : u32 : 0x84DF;
 GL_ACTIVE_TEXTURE                : u32 : 0x84E0;
 GL_CLIENT_ACTIVE_TEXTURE         : u32 : 0x84E1;
 GL_MAX_TEXTURE_UNITS             : u32 : 0x84E2;
+GL_MULTISAMPLE                   : u32 : 0x809D;
 
 GL_ARRAY_BUFFER                         : u32 : 0x8892;
 GL_ELEMENT_ARRAY_BUFFER                 : u32 : 0x8893;
@@ -523,3 +526,4 @@ glTexSubImage2D           :: fn (target: GLenum,
                                	 data: *u8) #extern;
 glHint                    :: fn (target: GLenum, mode: GLenum) #extern;
 glPolygonMode             :: fn (face: GLenum, mode: GLenum) #extern;
+glDeleteTextures          :: fn (n: GLsizei, textures: *GLuint) #extern;

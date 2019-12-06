@@ -38,6 +38,10 @@ time_now_ms :: fn () f64 {
     return cast(f64) mach_absolute_time() / 1000000.0;
 };
 
+sleep_ms :: fn (ms: f64) {
+    usleep(auto ms * 1000.0);
+};
+
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return write(fd, buf, count);
 };
@@ -87,4 +91,5 @@ SIGABRT :: 6;
 raise              :: fn (sig: s32) s32 #extern;
 write              :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
 mach_absolute_time :: fn () u64 #extern;
+usleep             :: fn (us: u32) s32 #extern;
 _exit              :: fn (v: s32) #extern;
