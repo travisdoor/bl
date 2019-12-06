@@ -26,7 +26,9 @@
 // SOFTWARE.
 //************************************************************************************************
 
-PI :: 3.141592653589793238;
+PI          :: 3.141592653589793;
+TWO_PI      :: 6.283185307179587;
+HALF_PI     :: 1.570796326794897;
 F32_EPSILON :: 0.00001f;
 
 S8_MIN  : s8 : -128;
@@ -81,6 +83,10 @@ v3 :: struct {
     y: f32;
     z: f32;
 };
+
+v3_right   :: {:v3: 1.f, 0.f, 0.f};
+v3_up      :: {:v3: 0.f, 1.f, 0.f};
+v3_forward :: {:v3: 0.f, 0.f, 1.f};
 
 v4 :: struct {
     x: f32;
@@ -412,48 +418,6 @@ mat4_mul_v4 :: fn (mat: *mat4, v: v4) v4 {
     return out;
 };
 
-// set out_mat to rotation matrix
-mat4_rotation_x :: fn (angle_rad: f32, out_mat: *mat4) #inline {
-    s := sinf(angle_rad);
-    c := cosf(angle_rad);
-
-    mat4_init(
-        1.f, 0.f, 0.f, 0.f,
-        0.f, c, -s, 0.f,
-        0.f, s, c, 0.f,
-        0.f, 0.f, 0.f, 1.f,
-        out_mat
-    );
-};
-
-// set out_mat to rotation matrix
-mat4_rotation_y :: fn (angle_rad: f32, out_mat: *mat4) #inline {
-    s := sinf(angle_rad);
-    c := cosf(angle_rad);
-
-    mat4_init(
-        c, 0.f, s, 0.f,
-        0.f, 1.f, 0.f, 0.f,
-        -s, 0.f, c, 0.f,
-        0.f, 0.f, 0.f, 1.f,
-        out_mat
-    );
-};
-
-// set out_mat to rotation matrix
-mat4_rotation_z :: fn (angle_rad: f32, out_mat: *mat4) #inline {
-    s := sinf(angle_rad);
-    c := cosf(angle_rad);
-
-    mat4_init(
-        c, -s, 0.f, 0.f,
-        s, c, 0.f, 0.f,
-        0.f, 0.f, 1.f, 0.f,
-        0.f, 0.f, 0.f, 1.f,
-        out_mat,
-    );
-};
-
 // set out_mat to translation matrix
 mat4_translation :: fn (translation: v3, out_mat: *mat4) #inline {
     mat4_init(
@@ -538,43 +502,52 @@ quat_normalize :: fn (q: quat) quat #inline {
     return v4_normalize(q);
 };
 
-/**
- * Matrix layout
- * | m[0][0]  m[1][0]  m[2][0]  m[3][0] |
- * | m[0][1]  m[1][1]  m[2][1]  m[3][1] |
- * | m[0][2]  m[1][2]  m[2][2]  m[3][2] |
- * | m[0][3]  m[1][3]  m[2][3]  m[3][3] |
- */
 quat_to_mat4 :: fn (q: quat, out_mat: *mat4) {
+    norm :: v4_length(q); 
+    s := 0.f;
+    if norm > 0.f { s = 2.f / norm; }
+
+    x :: q.x;
+    y :: q.y;
+    z :: q.z;
+    w :: q.w;
+
+    xx :: s * x * x;   xy :: s * x * y;   wx :: s * w * x;
+    yy :: s * y * y;   yz :: s * y * z;   wy :: s * w * y;
+    zz :: s * z * z;   xz :: s * x * z;   wz :: s * w * z;
+
+    (^out_mat)[0][0] = 1.0f - yy - zz;
+    (^out_mat)[1][1] = 1.0f - xx - zz;
+    (^out_mat)[2][2] = 1.0f - xx - yy;
+
+    (^out_mat)[0][1] = xy + wz;
+    (^out_mat)[1][2] = yz + wx;
+    (^out_mat)[2][0] = xz + wy;
+
+    (^out_mat)[1][0] = xy - wz;
+    (^out_mat)[2][1] = yz - wx;
+    (^out_mat)[0][2] = xz - wy;
+
+    (^out_mat)[0][3] = 0.0f;
+    (^out_mat)[1][3] = 0.0f;
+    (^out_mat)[2][3] = 0.0f;
+    (^out_mat)[3][0] = 0.0f;
+    (^out_mat)[3][1] = 0.0f;
+    (^out_mat)[3][2] = 0.0f;
+    (^out_mat)[3][3] = 1.0f;
+}
+
+quat_look :: fn (eye: v3, ori: quat, out_mat: *mat4) {
     mat4_identity(out_mat);
-    q = quat_normalize(q);
+    quat_to_mat4(ori, out_mat);
 
-    x :: q.x; 
-    y :: q.y; 
-    z :: q.z; 
-    w :: q.w; 
-    xx :: q.x*q.x;
-    yy :: q.y*q.y;
-    zz :: q.z*q.z;
-    ww :: q.w*q.w;
+    v := {:v4: eye.x, eye.y, eye.z, 1.f};
+    v = mat4_mul_v4(out_mat, v);
 
-    (^out_mat)[0][0] = ww + xx - yy - zz;
-    (^out_mat)[0][1] = (2.f*x*y) + (2.f*w*z);
-    (^out_mat)[0][2] = (2.f*x*z) - (2.f*w*y);
-    (^out_mat)[0][3] = 0.f;
-    (^out_mat)[1][0] = (2.f*x*y) - (2.f*w*z);
-    (^out_mat)[1][1] = ww - xx + yy - zz;
-    (^out_mat)[1][2] = (2.f*y*z) + (2.f*w*x);
-    (^out_mat)[1][3] = 0.f;
-    (^out_mat)[2][0] = (2.f*x*z) + (2.f*w*y);
-    (^out_mat)[2][1] = (2.f*y*z) - (2.f*w*x);
-    (^out_mat)[2][2] = ww - xx - yy + zz;
-    (^out_mat)[2][3] = 0.f;
-    (^out_mat)[3][0] = 0.f;
-    (^out_mat)[3][1] = 0.f;
-    (^out_mat)[3][2] = 0.f;
-    (^out_mat)[3][3] = 1.f;
-};
+    (^out_mat)[3][0] = -v.x;
+    (^out_mat)[3][1] = -v.y;
+    (^out_mat)[3][2] = -v.z;
+}
 
 quat_axis_angle :: fn (axis: v3, angle_rad: f32) quat {
     a :: angle_rad * 0.5f;
@@ -591,6 +564,14 @@ quat_axis_angle :: fn (axis: v3, angle_rad: f32) quat {
     };
 };
 
+quat_imag :: fn (q: quat) v3 #inline {
+    return {:v3: q.x, q.y, q.z };
+}
+
+quat_real :: fn (q: quat) f32 #inline {
+    return q.w;
+}
+
 quat_mul :: fn (q1: quat, q2: quat) quat {
     return {:quat:
             q1.w * q2.x + q1.x * q2.w + q1.y * q2.z - q1.z * q2.y,
@@ -600,48 +581,28 @@ quat_mul :: fn (q1: quat, q2: quat) quat {
     };
 }
 
-euler_to_quat :: fn (euler_rad: v3) quat {
-    cy := cosf(euler_rad.z * 0.5f);
-    sy := sinf(euler_rad.z * 0.5f);
-    cr := cosf(euler_rad.y * 0.5f);
-    sr := sinf(euler_rad.y * 0.5f);
-    cp := cosf(euler_rad.x * 0.5f);
-    sp := sinf(euler_rad.x * 0.5f);
+quat_rotate_v3 :: fn (q: quat, v: v3) v3 {
+    p :: quat_normalize(q);
+    u :: quat_imag(p);
+    s :: quat_real(p);
 
-    return {:quat:
-        cy * sr * cp - sy * cr * sp,
-        cy * cr * sp + sy * sr * cp,
-        sy * cr * cp - cy * sr * sp,
-        cy * cr * cp + sy * sr * sp
-    };
-};
+    v1 := v3_mul_s(u, 2.0f * v3_dot(u, v));
+    v2 := v3_mul_s(v, s * s - v3_dot(u, u));
+    v1 = v3_add(v1, v2);
+    v2 = v3_cross(u, v);
+    v2 = v3_mul_s(v2, 2.f * s);
+    return v3_add(v1, v2);
+}
 
-quat_to_euler :: fn (q: quat) v3 {
-    e: v3;
-    // roll (x-axis rotation)
-    sinr := 2.0f * (q.w * q.x + q.y * q.z);
-    cosr := 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
-    e.x = atan2f(sinr, cosr);
-
-    // pitch (y-axis rotation)
-    sinp := 2.0f * (q.w * q.y - q.z * q.x);
-    if f32_abs(sinp) >= 1.f {
-        e.y = copysignf(cast(f32) (PI * 0.5), sinp);
-    } else {
-        e.y = asinf(sinp);
-    }
-
-    // yaw (z-axis rotation)
-    siny := 2.0f * (q.w * q.z + q.x * q.y);
-    cosy := 1.0f - 2.0f * (q.y * q.y + q.z * q.z);
-    e.z = atan2f(siny, cosy);
-    return e;
-};
-
-euler_rad_to_deg :: fn (euler_rad: v3) v3 {
-    return {:v3:
-        radtodeg(euler_rad.x),
-        radtodeg(euler_rad.y),
-        radtodeg(euler_rad.z)
-   };
-};
+quat_forward :: fn (q: quat) v3 {
+    x2 :: 2.0f * q.x;
+    y2 :: 2.0f * q.y;
+    z2 :: 2.0f * q.z;
+    x2w :: x2 * q.w;
+    y2w :: y2 * q.w;
+    x2x :: x2 * q.x;
+    z2x :: z2 * q.x;
+    y2y :: y2 * q.y;
+    z2y :: z2 * q.y;
+    return {:v3: z2x + y2w, z2y - x2w, 1.0f - (x2x + y2y)};
+}
