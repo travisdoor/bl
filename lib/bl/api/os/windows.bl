@@ -53,7 +53,7 @@ time_now_ms :: fn () f64 {
 __os_start :: fn () {
     args: []string;
     get_command_line_args(&args);
-    defer mem_free(auto args.ptr);
+    defer _mem_free_default(auto args.ptr);
 
     command_line_arguments.len = args.len;
     command_line_arguments.ptr = args.ptr;
@@ -127,7 +127,7 @@ get_command_line_args :: fn (out_args: *[]string) #no_inline {
         tmp_size += auto WideCharToMultiByte(CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
     }
 
-    buffer :: mem_alloc(result_size + tmp_size); 
+    buffer :: _mem_alloc_default(result_size + tmp_size); 
     if buffer == null { __os_abort(); }
 
     out_args.len = wargs.len;

@@ -64,7 +64,7 @@ __os_start :: fn (argc: s64, argv: **u8, env: **u8) s32 {
     command_line_arguments.len = args.len;
 
     if is_allocated {
-        command_line_arguments.ptr = auto mem_alloc(sizeof(string) * auto args.len);
+        command_line_arguments.ptr = auto _mem_alloc_default(sizeof(string) * auto args.len);
         if command_line_arguments.ptr == null { __os_abort(); }
     } else {
         command_line_arguments.ptr = tmp.ptr;
@@ -77,7 +77,7 @@ __os_start :: fn (argc: s64, argv: **u8, env: **u8) s32 {
     out :: cast(s32) main();
 
     if is_allocated {
-        mem_free(auto command_line_arguments.ptr);
+        _mem_free_default(auto command_line_arguments.ptr);
     }
 
     return out;

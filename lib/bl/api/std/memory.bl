@@ -87,3 +87,11 @@ mem_set :: fn (_dest: *u8, v: u8, size: usize) *u8 {
 
     return dest.ptr;
 }
+
+_mem_alloc_default :: fn (size: usize) *u8 {
+    return malloc(size);
+}
+
+_mem_free_default :: fn (ptr: *u8) {
+    free(ptr);
+}

@@ -45,7 +45,7 @@ _Context :: struct {
     print_log_fn: _PrintLogFn;
 };
 
-_context := {:_Context: &malloc, &free, &_print_log_default};
+_context := {:_Context: &_mem_alloc_default, &_mem_free_default, &_print_log_default};
 
 /* 
  * Abort execution and eventually print panic message if there is one specified.

@@ -908,7 +908,7 @@ string_array_to_c_array :: fn (arr: []string) *u8 #inline {
 };
 
 read_file :: fn (filepath: string) string {
-    file := file_open(filepath, FileOpenModes.Read, FileOpenModes.Binary);
+    file := file_open(filepath, FileOpenMode.Read, FileOpenMode.Binary);
     defer file_close(file);
 
     if file == null {
