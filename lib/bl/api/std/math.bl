@@ -340,6 +340,22 @@ mat4_perspective :: fn (fov_rad: f32, aspect: f32, near: f32, far: f32, out_mat:
     (^out_mat)[3][2] = 2.0f * near * far * f2;
 };
 
+mat4_ortho :: fn (left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32, out_mat: *mat4) {
+  mat4_zero(out_mat);
+
+  rl :: 1.0f / (right - left);
+  tb :: 1.0f / (top   - bottom);
+  f  ::-1.0f / (far   - near);
+
+  (^out_mat)[0][0] = 2.0f * rl;
+  (^out_mat)[1][1] = 2.0f * tb;
+  (^out_mat)[2][2] = 2.0f * f;
+  (^out_mat)[3][0] =-(right + left)   * rl;
+  (^out_mat)[3][1] =-(top   + bottom) * tb;
+  (^out_mat)[3][2] = (far   + near)   * f;
+  (^out_mat)[3][3] = 1.0f;
+}
+
 mat4_look_at :: fn (eye: v3, target: v3, up: v3, out_mat: *mat4) #inline {
     z := v3_sub(target, eye);
     z = v3_normalize(z);
