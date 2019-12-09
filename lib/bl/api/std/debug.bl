@@ -29,7 +29,20 @@
 #load "std/basic.bl"
 #load "std/utils.bl"
 
-/* Print debug log using _context.print_log_fn function. */
+/*
+ * print_log
+ * 
+ * Description:
+ *   Print debug log using _context.print_log_fn function. 
+ * 
+ * Arguments: 
+ *   format: 
+ *     Formating string accepting '%' character as value placeholder.
+ *
+ *   args:   
+ *     Optional values passed in order which is supposed to be printed
+ *     out.
+ */
 print_log :: fn (format: string, args: ...) {
     tmp := {:[]Any: args.len, args.ptr };
     _context.print_log_fn(PrintLogKind.Message, format, tmp, #file, #line);

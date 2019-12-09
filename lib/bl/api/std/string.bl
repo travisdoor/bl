@@ -43,6 +43,17 @@ string_new_reserved :: fn (size: usize) string {
     return tmp;
 };
 
+string_new_cstr :: fn (cstr: *u8) string {
+    len :: strlen(cstr);
+    tmp: string;
+    tmp.ptr = alloc_block(len);
+    tmp.len = auto len;
+
+    mem_copy(tmp.ptr, cstr, len * sizeof(u8));
+
+    return tmp;
+}
+
 string_copy :: fn (v: string) string {
     tmp : string;
     tmp.ptr = alloc_block(auto v.len);

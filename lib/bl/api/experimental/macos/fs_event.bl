@@ -1,0 +1,113 @@
+CFAllocatorRef :: *u8;
+CFIndex :: s64;
+CFStringRef :: *u8;
+CFArrayRef :: *u8;
+CFArrayCallBacks :: u8;
+CFTimeInterval :: f64;
+CFTypeRef :: *u8;
+CFRunLoopRef :: *u8;
+CFRunLoopMode :: CFStringRef;
+Boolean :: u8;
+
+CFStringEncoding :: enum u32 {
+    MacRoman :: 0;
+    WindowsLatin1 :: 0x0500; /* ANSI codepage 1252 */
+    ISOLatin1 :: 0x0201; /* ISO 8859-1 */
+    NextStepLatin :: 0x0B01; /* NextStep encoding*/
+    ASCII :: 0x0600; /* 0..127 (in creating CFString, values greater than 0x7F are treated as corresponding Unicode value) */
+    Unicode :: 0x0100; /* kTextEncodingUnicodeDefault  + kTextEncodingDefaultFormat (aka kUnicode16BitFormat) */
+    UTF8 :: 0x08000100; /* kTextEncodingUnicodeDefault + kUnicodeUTF8Format */
+    NonLossyASCII :: 0x0BFF; /* 7bit Unicode variants used by Cocoa & Java */
+
+    UTF16 :: 0x0100; /* kTextEncodingUnicodeDefault + kUnicodeUTF16Format (alias of kCFStringEncodingUnicode) */
+    UTF16BE :: 0x10000100; /* kTextEncodingUnicodeDefault + kUnicodeUTF16BEFormat */
+    UTF16LE :: 0x14000100; /* kTextEncodingUnicodeDefault + kUnicodeUTF16LEFormat */
+
+    UTF32 :: 0x0c000100; /* kTextEncodingUnicodeDefault + kUnicodeUTF32Format */
+    UTF32BE :: 0x18000100; /* kTextEncodingUnicodeDefault + kUnicodeUTF32BEFormat */
+    UTF32LE :: 0x1c000100 /* kTextEncodingUnicodeDefault + kUnicodeUTF32LEFormat */
+};
+
+kFSEventStreamEventIdSinceNow : FSEventStreamEventId : 0xFFFFFFFFFFFFFFFF;
+
+kFSEventStreamCreateFlagNone            : FSEventStreamCreateFlags : 0x00000000;
+kFSEventStreamCreateFlagUseCFTypes      : FSEventStreamCreateFlags : 0x00000001;
+kFSEventStreamCreateFlagNoDefer         : FSEventStreamCreateFlags : 0x00000002;
+kFSEventStreamCreateFlagWatchRoot       : FSEventStreamCreateFlags : 0x00000004;
+kFSEventStreamCreateFlagIgnoreSelf      : FSEventStreamCreateFlags : 0x00000008;
+kFSEventStreamCreateFlagFileEvents      : FSEventStreamCreateFlags : 0x00000010;
+kFSEventStreamCreateFlagMarkSelf        : FSEventStreamCreateFlags : 0x00000020;
+kFSEventStreamCreateFlagUseExtendedData : FSEventStreamCreateFlags : 0x00000040;
+
+
+FSEventStreamRef :: *u8;
+FSEventStreamEventId :: u64;
+FSEventStreamCreateFlags :: u32;
+FSEventStreamEventFlags :: u32;
+ConstFSEventStreamRef :: *u8;
+
+CFAllocatorRetainCallBack :: * fn (info: *u8) *u8;
+CFAllocatorReleaseCallBack :: * fn (info: *u8);
+CFAllocatorCopyDescriptionCallBack :: * fn (info: *u8) CFStringRef;
+
+CFArrayCreate :: fn (
+    allocator: CFAllocatorRef,
+    values: **u8,
+    numValues: CFIndex,
+    callBacks: *CFArrayCallBacks
+) CFArrayRef #extern;
+
+CFRunLoopGetCurrent :: fn () CFRunLoopRef #extern;
+CFRunLoopCopyCurrentMode :: fn (rl: CFRunLoopRef) CFRunLoopMode #extern;
+CFRelease :: fn (cf: CFTypeRef) #extern;
+
+CFStringCreateWithCString :: fn (
+    alloc: CFAllocatorRef,
+    cStr: *u8,
+    encoding: CFStringEncoding
+) CFStringRef #extern;
+
+FSEventStreamContext :: struct {
+  version: CFIndex;
+  info: *u8;
+  retain: CFAllocatorRetainCallBack;
+  release: CFAllocatorReleaseCallBack;
+  copyDescription: CFAllocatorCopyDescriptionCallBack;
+};
+
+FSEventStreamCallback :: * fn (
+    streamRef: ConstFSEventStreamRef,
+    clientCallBackInfo: *u8,
+    numEvents: usize,
+    eventPaths: *u8,
+    eventFlags: *FSEventStreamEventFlags,
+    eventIds: *FSEventStreamEventId); 
+
+
+FSEventStreamCreate :: fn (
+    allocator: CFAllocatorRef,
+    callback: FSEventStreamCallback,
+    context: *FSEventStreamContext,
+    pathsToWatch: CFArrayRef,
+    sinceWhen: FSEventStreamEventId,
+    latency: CFTimeInterval,
+    flags: FSEventStreamCreateFlags   
+) FSEventStreamRef #extern; 
+
+FSEventStreamScheduleWithRunLoop :: fn (
+    streamRef: FSEventStreamRef,
+    runLoop: CFRunLoopRef,
+    runLoopMode: CFStringRef
+) #extern;
+
+FSEventStreamUnscheduleFromRunLoop :: fn (
+    streamRef: FSEventStreamRef,
+    runLoop: CFRunLoopRef,
+    runLoopMode: CFStringRef
+) #extern;
+
+FSEventStreamStart :: fn (streamRef: FSEventStreamRef) Boolean #extern;
+FSEventStreamFlushSync :: fn (streamRef: FSEventStreamRef) #extern;
+FSEventStreamStop :: fn (streamRef: FSEventStreamRef) #extern;
+FSEventStreamInvalidate :: fn (streamRef: FSEventStreamRef) #extern;
+FSEventStreamRelease :: fn (streamRef: FSEventStreamRef) #extern;
