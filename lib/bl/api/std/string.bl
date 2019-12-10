@@ -50,6 +50,7 @@ string_new_cstr :: fn (cstr: *u8) string {
     tmp.len = auto len;
 
     mem_copy(tmp.ptr, cstr, len * sizeof(u8));
+    set_terminator(tmp);
 
     return tmp;
 }
