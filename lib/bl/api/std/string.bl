@@ -104,13 +104,19 @@ string_append :: fn (v: *string, add: Any) {
     set_terminator(^v);
 };
 
-string_concatenate :: fn (args: ...) string {
+string_new_concatenate :: fn (args: ...) string {
     tmp := string_new();
     loop i := 0; i < args.len; i += 1 {
         string_append(&tmp, args[i]);
     }
 
     return tmp;
+};
+
+string_concatenate :: fn (v: *string, args: ...) {
+    loop i := 0; i < args.len; i += 1 {
+        string_append(v, args[i]);
+    }
 };
 
 string_compare :: fn (first: string, second: string) bool {
