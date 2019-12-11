@@ -87,6 +87,8 @@ v3 :: struct {
 v3_right   :: {:v3: 1.f, 0.f, 0.f};
 v3_up      :: {:v3: 0.f, 1.f, 0.f};
 v3_forward :: {:v3: 0.f, 0.f, 1.f};
+v3_one     :: {:v3: 1.f, 1.f, 1.f};
+v3_zero    :: {:v3: 0};
 
 v4 :: struct {
     x: f32;
