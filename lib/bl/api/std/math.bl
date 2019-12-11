@@ -565,6 +565,22 @@ quat_look :: fn (eye: v3, ori: quat, out_mat: *mat4) {
     (^out_mat)[3][2] = -v.z;
 }
 
+quat_look_for :: fn (dir: v3, fwd: v3, up: v3) quat {
+    dot :: v3_dot(dir, fwd);
+    if f32_abs(dot + 1.0f)  < 0.000001f {
+        return {:quat: up.x, up.y, up.z, auto PI};
+    }
+
+    if f32_abs(dot - 1.0f) < 0.000001f {
+        return quat_identity();
+    }
+
+    angle :: acosf(dot);
+    axis := v3_cross(fwd, dir);
+    axis = v3_normalize(axis);
+    return quat_axis_angle(axis, angle);
+}
+
 quat_axis_angle :: fn (axis: v3, angle_rad: f32) quat {
     a :: angle_rad * 0.5f;
     c :: cosf(a);
@@ -622,3 +638,4 @@ quat_forward :: fn (q: quat) v3 {
     z2y :: z2 * q.y;
     return {:v3: z2x + y2w, z2y - x2w, 1.0f - (x2x + y2y)};
 }
+

@@ -64,7 +64,7 @@ os_sleep_ms :: fn (ms: f64) {
 os_get_real_path :: fn (filename: string) string {
     tmp :: {:[OS_PATH_MAX]u8: 0};
     if realpath(filename.ptr, tmp.ptr) == null {
-        return string_new();
+        return string_copy(filename);
     }
 
     result :: string_new_cstr(tmp.ptr);
