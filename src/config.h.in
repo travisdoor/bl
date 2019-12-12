@@ -87,10 +87,19 @@
 #define ENVPATH_SEPARATOR ':'
 #endif
 
+/*
+ * LLVM_EXCLUDE_UNUSED_SYM - Exclude all unused functions and variables from LLVM IR when this is
+ * enabled.
+ *
+ * ASSERT_ON_CMP_ERROR - assert on compiler error.
+ */
+
 #if BL_DEBUG
-#define ASSERT_ON_CMP_ERROR 0
+#define ASSERT_ON_CMP_ERROR     0
+#define LLVM_EXCLUDE_UNUSED_SYM 0
 #else
-#define ASSERT_ON_CMP_ERROR 0
+#define ASSERT_ON_CMP_ERROR     0
+#define LLVM_EXCLUDE_UNUSED_SYM 1
 #endif
 
 #define VM_STACK_SIZE 2097152          // 2MB

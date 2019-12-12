@@ -50,6 +50,7 @@ typedef enum {
 	FLAG_PRIVATE   = 1 << 3, /* declared in private scope */
 	FLAG_INLINE    = 1 << 4, /* inline function */
 	FLAG_NO_INLINE = 1 << 5, /* no inline function */
+	FLAG_ENTRY     = 1 << 6, /* marking entry point function */
 } AstFlag;
 
 /* map symbols to binary operation kind */

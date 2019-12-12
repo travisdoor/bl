@@ -50,7 +50,7 @@ time_now_ms :: fn () f64 {
     return 0.0;
 };
 
-__os_start :: fn () {
+__os_start :: fn () #entry {
     args: []string;
     get_command_line_args(&args);
     defer _mem_free_default(auto args.ptr);

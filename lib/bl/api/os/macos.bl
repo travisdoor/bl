@@ -81,7 +81,7 @@ __os_abort :: fn () #compiler {
 
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
 
-__os_start :: fn (argc: s64, argv: **u8, env: **u8) {
+__os_start :: fn (argc: s64, argv: **u8, env: **u8) #entry {
     args :: {:[]*u8: argc, argv};
     tmp: [__MAX_ARGS_WITHOUT_ALLOC]string;
     is_allocated :: args.len > tmp.len;

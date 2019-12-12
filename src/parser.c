@@ -80,6 +80,7 @@ typedef enum {
 	HD_LINE      = 1 << 10,
 	HD_BASE      = 1 << 11,
 	HD_META      = 1 << 12,
+	HD_ENTRY     = 1 << 12,
 } HashDirective;
 
 typedef struct {
@@ -347,8 +348,6 @@ parse_expr_ref(Context *cnt)
 /*
  * Try to parse hash directive. List of enabled directives can be set by 'expected_mask',
  * 'satisfied' is optional output set to parsed directive id if there is one.
- *
- * <#><load|link|test|extern|compiler|inline|no_inline|base>
  */
 Ast *
 parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
@@ -563,6 +562,20 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 
 		line->data.expr_line.line = tok_directive->location.line;
 		return line;
+	}
+
+	if (strcmp(directive, "entry") == 0) {
+		set_satisfied(HD_ENTRY);
+		if (IS_NOT_FLAG(expected_mask, HD_ENTRY)) {
+			PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+			            tok_directive,
+			            BUILDER_CUR_WORD,
+			            "Unexpected directive.");
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
+		}
+
+		return NULL;
 	}
 
 	if (strcmp(directive, "extern") == 0) {
@@ -1069,6 +1082,7 @@ hash_directive_to_flags(HashDirective hd, u32 *out_flags)
 
 	switch (hd) {
 		FLAG_CASE(HD_EXTERN, FLAG_EXTERN);
+		FLAG_CASE(HD_ENTRY, FLAG_ENTRY);
 		FLAG_CASE(HD_COMPILER, FLAG_COMPILER);
 		FLAG_CASE(HD_INLINE, FLAG_INLINE);
 		FLAG_CASE(HD_NO_INLINE, FLAG_NO_INLINE);
@@ -1613,7 +1627,7 @@ parse_expr_lit_fn(Context *cnt)
 	/* parse flags */
 	Ast *curr_decl = decl_get(cnt);
 	if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
-		u32 accepted = HD_EXTERN | HD_NO_INLINE | HD_INLINE | HD_COMPILER;
+		u32 accepted = HD_EXTERN | HD_NO_INLINE | HD_INLINE | HD_COMPILER | HD_ENTRY;
 		u32 flags    = 0;
 		while (true) {
 			HashDirective found = HD_NONE;

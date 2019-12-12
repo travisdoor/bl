@@ -218,6 +218,7 @@ struct MirFn {
 	bool         fully_analyzed;
 	bool         emit_llvm;
 	bool         is_global;
+	s32          ref_count;
 
 	u32         flags;
 	const char *test_case_desc;

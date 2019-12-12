@@ -2871,6 +2871,7 @@ create_var_impl(Context *   cnt,
 
 	tmp->is_mutable   = is_mutable;
 	tmp->is_global    = is_in_gscope;
+	tmp->ref_count    = 1;
 	tmp->linkage_name = name;
 	tmp->is_implicit  = true;
 	tmp->emit_llvm    = true;
@@ -5223,7 +5224,7 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		ref->base.value.type        = type;
 		ref->base.value.is_comptime = true;
 		ref->base.value.addr_mode   = MIR_VAM_RVALUE;
-		ref_instr(fn->prototype);
+		++fn->ref_count;
 		break;
 	}
 
@@ -5321,6 +5322,7 @@ analyze_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
 	MirFn *abort_fn = lookup_builtin_fn(cnt, MIR_BUILTIN_ID_ABORT_FN);
 	if (!abort_fn) return ANALYZE_RESULT(POSTPONE, 0);
+	++abort_fn->ref_count;
 	unr->abort_fn = abort_fn;
 
 	return ANALYZE_RESULT(PASSED, 0);
@@ -5370,7 +5372,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
 	/* Setup function linkage name, this will be later used by LLVM backend. */
 	if (fn->id) {
-		if (IS_FLAG(fn->flags, FLAG_EXTERN)) {
+		if (IS_FLAG(fn->flags, FLAG_EXTERN) || IS_FLAG(fn->flags, FLAG_ENTRY)) {
 			fn->linkage_name = fn->id->str;
 		} else if (IS_FLAG(fn->flags, FLAG_PRIVATE)) {
 			fn->linkage_name = gen_uq_name(fn->id->str);
@@ -5382,6 +5384,12 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	} else {
 		/* Anonymous function use implicit unique name. */
 		fn->linkage_name = gen_uq_name(IMPL_FN_NAME);
+	}
+
+	/* Function marked as entry point must be always generated, we must increase reference
+	 * count!!! */
+	if (IS_FLAG(fn->flags, FLAG_ENTRY)) {
+		++fn->ref_count;
 	}
 
 	BL_ASSERT(fn->linkage_name && "Function without linkage name!");
@@ -8262,7 +8270,8 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		/* check main */
 		if (is_builtin(ast_name, MIR_BUILTIN_ID_MAIN)) {
 			BL_ASSERT(!cnt->entry_fn);
-			cnt->entry_fn            = MIR_CEV_READ_AS(MirFn *, &value->value);
+			MirFn *fn                = MIR_CEV_READ_AS(MirFn *, &value->value);
+			cnt->entry_fn            = fn;
 			cnt->entry_fn->emit_llvm = true;
 		}
 	} else {

@@ -226,6 +226,9 @@ emit_fn_proto(Context *cnt, MirFn *fn)
 {
 	BL_ASSERT(fn);
 	if (!fn->emit_llvm) return NULL;
+#if LLVM_EXCLUDE_UNUSED_SYM
+	BL_ASSERT(fn->ref_count);
+#endif
 
 	fn->llvm_value = LLVMGetNamedFunction(cnt->llvm_module, fn->linkage_name);
 	if (fn->llvm_value) return fn->llvm_value;
@@ -1873,6 +1876,9 @@ void
 emit_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
 {
 	MirVar *var = ((MirInstrDeclVar *)si->dest)->var;
+#if LLVM_EXCLUDE_UNUSED_SYM
+	if (var->ref_count == 0) return;
+#endif
 	BL_ASSERT(var->llvm_value);
 	BL_ASSERT(si->src->llvm_value);
 
@@ -1883,11 +1889,10 @@ void
 emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
 	MirVar *var = decl->var;
-	// PERFORMANCE: count variable usage in MIR and generate only used variables!!!
-	// PERFORMANCE: count variable usage in MIR and generate only used variables!!!
-	// PERFORMANCE: count variable usage in MIR and generate only used variables!!!
-	// if (var->ref_count == 0) return;
 	BL_ASSERT(var);
+#if LLVM_EXCLUDE_UNUSED_SYM
+	if (var->ref_count == 0) return;
+#endif
 
 	/* skip when we should not generate LLVM representation */
 	if (var->value.type->kind == MIR_TYPE_TYPE) return;
@@ -2246,6 +2251,9 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
 	/* unused function */
 	if (!fn->emit_llvm) return;
+#if LLVM_EXCLUDE_UNUSED_SYM
+	if (fn->ref_count == 0) return;
+#endif
 	emit_fn_proto(cnt, fn);
 
 	if (IS_NOT_FLAG(fn->flags, FLAG_EXTERN)) {
