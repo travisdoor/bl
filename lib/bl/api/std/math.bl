@@ -68,6 +68,7 @@ floorf    :: fn (x: f32) f32 #extern;
 tanf      :: fn (x: f32) f32 #extern;
 atan2f    :: fn (y: f32, x: f32) f32 #extern;
 copysignf :: fn (x: f32, y: f32) f32 #extern;
+round     :: fn (n: f64) f64 #extern;
 /* Lib C functions */
 
 //************************************************************************************************
@@ -96,6 +97,10 @@ v4 :: struct {
     z: f32;
     w: f32;
 };
+
+v4_one  :: {:v4: 1.f, 1.f, 1.f, 1.f};
+v4_zero :: {:v4: 0};
+
 
 iv2 :: struct {
     x: s32;
