@@ -79,6 +79,9 @@ v2 :: struct {
     y: f32
 };
 
+v2_one     :: {:v2: 1.f, 1.f};
+v2_zero    :: {:v2: 0};
+
 v3 :: struct {
     x: f32;
     y: f32;
@@ -124,6 +127,8 @@ mat4 :: [4][4]f32;
 
 // quaternion
 quat :: v4;
+
+quat_identity :: {:quat: 0.f, 0.f, 0.f, 1.f};
 
 //************************************************************************************************
 // Functions
@@ -512,15 +517,6 @@ mat4_get_quat :: fn (mat: *mat4) quat {
     return out;
 };
 
-quat_identity :: fn () quat #inline {
-    return {:quat: 
-        0.f,
-        0.f,
-        0.f,
-        1.f,
-    };
-};
-
 quat_normalize :: fn (q: quat) quat #inline {
     return v4_normalize(q);
 };
@@ -579,7 +575,7 @@ quat_look_for :: fn (dir: v3, fwd: v3, up: v3) quat {
     }
 
     if f32_abs(dot - 1.0f) < 0.000001f {
-        return quat_identity();
+        return quat_identity;
     }
 
     angle :: acosf(dot);
