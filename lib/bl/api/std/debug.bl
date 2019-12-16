@@ -48,19 +48,57 @@ print_log :: fn (format: string, args: ...) {
     _context.print_log_fn(PrintLogKind.Message, format, tmp, #file, #line);
 };
 
-/* Print debug warning using _context.print_log_fn function. */
+/*
+ * print_warn
+ * 
+ * Description:
+ *   Print debug warning using _context.print_log_fn function. 
+ * 
+ * Arguments: 
+ *   format: 
+ *     Formating string accepting '%' character as value placeholder.
+ *
+ *   args:   
+ *     Optional values passed in order which is supposed to be printed
+ *     out.
+ */
 print_warn :: fn (format: string, args: ...) {
     tmp := {:[]Any: args.len, args.ptr };
     _context.print_log_fn(PrintLogKind.Warning, format, tmp, #file, #line);
 };
 
-/* Print debug error using _context.print_log_fn function. */
+
+/*
+ * print_err
+ * 
+ * Description:
+ *   Print debug error using _context.print_log_fn function. 
+ * 
+ * Arguments: 
+ *   format: 
+ *     Formating string accepting '%' character as value placeholder.
+ *
+ *   args:   
+ *     Optional values passed in order which is supposed to be printed
+ *     out.
+ */
 print_err :: fn (format: string, args: ...) {
     tmp := {:[]Any: args.len, args.ptr };
     _context.print_log_fn(PrintLogKind.Error, format, tmp, #file, #line);
 };
 
-/* Assert execution when condition value is false. */
+/*
+ * assert
+ * 
+ * Description:
+ *   Abort execution when passed condition is resulting in false
+ *   value.
+ * 
+ * Arguments: 
+ *   cond: 
+ *     Condition to be validated. 
+ *
+ */
 assert :: fn (cond: bool) {
     if !cond {
         unreachable;
