@@ -18,6 +18,7 @@
 #load "test_type_infer.bl"
 #load "test_typeinfo.bl"
 #load "test_vargs.bl"
+#load "test_hash_table.bl"
 
 main :: fn () s32 {
     return 0;

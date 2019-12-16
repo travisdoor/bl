@@ -1,0 +1,326 @@
+//************************************************************************************************
+// bl
+//
+// File:   hash_table.bl
+// Author: Martin Dorazil
+// Date:   2/10/19
+//
+// Copyright 2019 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//************************************************************************************************
+
+#load "std/math.bl"
+#load "std/utils.bl"
+
+Iterator :: struct {
+	opaque: *u8;
+}
+
+iter_equal :: fn (first: Iterator, second: Iterator) bool #inline {
+    return cast(u64)first.opaque == cast(u64)second.opaque;
+}
+
+HashTable :: struct {
+    T: *TypeInfo;
+	len: usize;
+    end: Node;
+    begin: *Node;
+    buckets: []Bucket;
+}
+
+htbl_new :: fn (v: Any, expected_size: usize) *HashTable
+{
+    if v.type_info.kind != TypeKind.Type {
+        panic("Hash table expects type passed as T not '%'", v.type_info.kind);
+    }
+
+    T :: cast(*TypeInfo) v.data;
+
+	tbl := cast(*HashTable) mem_alloc(sizeof(HashTable));
+	if tbl == null { panic("Bad alloc!!"); }
+
+	htbl_init(tbl, T, expected_size);
+	return tbl;
+}
+
+htbl_delete :: fn (tbl: *HashTable) {
+	if tbl == null { return; }
+	htbl_terminate(tbl);
+}
+
+htbl_begin :: fn (tbl: *HashTable) Iterator #inline {
+	return {:Iterator: auto tbl.begin};
+}
+
+htbl_end :: fn (tbl: *HashTable) Iterator #inline {
+	return {:Iterator: auto &tbl.end};
+}
+
+htbl_clear :: fn (tbl: *HashTable) {
+	iter := htbl_begin(tbl);
+	iter_end := htbl_end(tbl);
+    node : *Node = null;
+
+    loop !iter_equal(iter, iter_end) {
+		node = auto iter.opaque;
+
+		htbl_iter_next(&iter);
+		mem_free(auto node);
+	}
+
+    mem_set(auto tbl.buckets.ptr, 0, (cast(usize) tbl.buckets.len) * sizeof(Bucket));
+
+	tbl.end   = {:Node: 0};
+	tbl.begin = &tbl.end;
+	tbl.len   = 0;
+}
+
+htbl_iter_next :: fn (iter: *Iterator) #inline {
+	iter.opaque = auto (cast(*Node)iter.opaque).next;
+}
+
+htbl_insert :: fn (tbl: *HashTable, key: u64, v: Any) *u8 {
+    if (v.type_info != tbl.T) {
+        panic("Invalid value type '%', expected is '%'.",
+              ^v.type_info,
+              ^tbl.T);
+    }
+
+    if v.data == null {
+        panic("Invalid value (null).");
+    }
+
+    return insert(tbl, key, v.data);
+}
+
+htbl_insert_empty :: fn (tbl: *HashTable, key: u64) *u8 {
+    return insert(tbl, key, null);
+}
+
+htbl_has_key :: fn (tbl: *HashTable, key: u64) bool {
+	iter :: htbl_find(tbl, key);
+	end  :: htbl_end(tbl);
+	return !iter_equal(iter, end);
+}
+
+htbl_find :: fn (tbl: *HashTable, key: u64) Iterator {
+	hash :: hash_index(tbl, key);
+	bucket := &tbl.buckets[auto hash];
+
+	node := bucket.first;
+	loop node != null {
+		if node.key == key { return {:Iterator: auto node}; }
+		if node == bucket.last { break; }
+		node = node.next;
+	}
+
+    return {:Iterator: auto &tbl.end};
+}
+
+htbl_iter_peek_key :: fn (iter: Iterator) u64 {
+	node :: cast(*Node) iter.opaque;
+	return node.key;
+}
+
+htbl_iter_peek_value :: fn (iter: Iterator) *u8 {
+	node :: cast(*Node) iter.opaque;
+	return get_data_ptr(node);
+}
+
+htbl_at :: fn (tbl: *HashTable, key: u64) *u8 {
+	iter     :: htbl_find(tbl, key);
+	iter_end :: htbl_end(tbl);
+	if !iter_equal(iter, iter_end) { return get_data_ptr(auto iter.opaque); }
+
+	panic("No such key % in hash table.", key);
+    return null;
+}
+
+htbl_erase :: fn (tbl: *HashTable, iter: Iterator) Iterator {
+	if iter.opaque == auto &tbl.end {
+		return {:Iterator: auto &tbl.end};
+	}
+
+	node :: cast(*Node) iter.opaque;
+	hash :: hash_index(tbl, node.key);
+	bucket :: &tbl.buckets[auto hash];
+	return erase_node(tbl, node, bucket);
+}
+
+htbl_erase_key :: fn (tbl: *HashTable, key: u64) Iterator {
+	hash :: hash_index(tbl, key);
+	bucket :: &tbl.buckets[auto hash];
+
+	node := bucket.first;
+	loop node != null {
+		if node.key == key {
+			return erase_node(tbl, node, bucket);
+		}
+
+		if node == bucket.last { break; }
+		node = node.next;
+	}
+
+	panic("No such key % in hash table.", key);
+    return {:Iterator: 0};
+}
+
+
+#private
+
+DEFAULT_EXPECTED_SIZE : usize : 64;
+MAX_LOAD_FACTOR       :: 1;
+
+Node :: struct {
+    next: *Node;
+    prev: *Node;
+    key:   u64;
+}
+
+Bucket :: struct {
+    first: *Node;
+    last:  *Node;
+}
+
+next_prime :: fn (num: s32) s32 {
+	num += 1;
+	loop i := 2; i < num; i += 1 {
+		if num % i == 0 {
+			num += 1;
+			i = 2;
+		} else {
+			continue;
+		}
+	}
+
+	return num;
+}
+
+get_node_size :: fn (tbl: *HashTable) usize #inline {
+    return sizeof(Node) + tbl.T.size_bytes;
+}
+
+hash_index :: fn (tbl: *HashTable, key: u64) u64 #inline {
+    return key % auto tbl.buckets.len;
+}
+
+get_data_ptr :: fn (node: *Node) *u8 #inline {
+    return ptr_shift_bytes(auto node, sizeof(Node));
+}
+
+htbl_init :: fn (tbl: *HashTable, T: *TypeInfo, expected_size: usize) {
+    tbl.T = T;
+	tbl.end = {:Node: 0};
+	tbl.begin = &tbl.end;
+
+	// init buckets
+	if expected_size == 0 { expected_size = DEFAULT_EXPECTED_SIZE; }
+
+	tbl.buckets.len = auto next_prime(cast(s32)ceil(cast(f64)expected_size / cast(f64)MAX_LOAD_FACTOR));
+	tbl.buckets.ptr = auto mem_calloc(auto tbl.buckets.len, sizeof(Bucket));
+	tbl.len         = 0;
+}
+
+htbl_terminate :: fn (tbl: *HashTable) {
+	htbl_clear(tbl);
+	mem_free(auto tbl.buckets.ptr);
+    tbl.buckets.len = 0;
+	tbl.len         = 0;
+	tbl.begin       = &tbl.end;
+}
+
+create_node :: fn (tbl: *HashTable) *Node {
+    node_size :: get_node_size(tbl);
+	new_node := cast(*Node) mem_alloc(node_size);
+    if new_node == null { panic("Bad alloc!"); }
+	mem_set(auto new_node, 0, node_size);
+
+	return new_node;
+}
+
+insert_node :: fn (prev: *Node, next: *Node, new: *Node) #inline {
+	if prev != null { prev.next = new; }
+	new.prev = prev;
+	if next != null { next.prev = new; }
+	new.next = next;
+}
+
+erase_node :: fn (tbl: *HashTable, node: *Node, bucket: *Bucket) Iterator {
+	if bucket.first == bucket.last {
+		bucket.first = null;
+        bucket.last = null;
+	} else if node == bucket.first {
+		bucket.first = node.next;
+	} else if node == bucket.last {
+		bucket.last = node.prev;
+    }
+
+	if node.prev != null {
+		node.prev.next = node.next;
+		node.next.prev = node.prev;
+	} else {
+		tbl.begin      = node.next;
+		node.next.prev = null;
+	}
+
+	iter_next := {:Iterator: auto node.next};
+	mem_free(auto node);
+	tbl.len -= 1;
+	return iter_next;
+}
+
+insert :: fn (tbl: *HashTable, key: u64, data: *u8) *u8 {
+	hash :: hash_index(tbl, key);
+
+	bucket   := &tbl.buckets[auto hash];
+	new_node := create_node(tbl);
+	new_node.key = key;
+
+	if bucket.first == null {
+		// new empty bucket
+		bucket.first = new_node;
+		bucket.last  = new_node;
+		insert_node(null, tbl.begin, new_node);
+		tbl.begin = new_node;
+	} else {
+		// find conflicts
+		node := bucket.first;
+		loop node != null {
+			if node.key == key { panic("Duplicate key: %", key); }
+			if node == bucket.last { break; }
+			node = node.next;
+		}
+
+		if tbl.begin == bucket.first { tbl.begin = new_node; }
+		insert_node(bucket.first.prev, bucket.first, new_node);
+		bucket.first = new_node;
+	}
+
+	// copy user data
+	if data != null {
+        mem_copy(get_data_ptr(new_node), data, tbl.T.size_bytes);
+    }
+
+	tbl.len += 1;
+	return get_data_ptr(new_node);
+}
+
+/*
+*/

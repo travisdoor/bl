@@ -69,6 +69,7 @@ tanf      :: fn (x: f32) f32 #extern;
 atan2f    :: fn (y: f32, x: f32) f32 #extern;
 copysignf :: fn (x: f32, y: f32) f32 #extern;
 round     :: fn (n: f64) f64 #extern;
+ceil      :: fn (x: f64) f64 #extern;
 /* Lib C functions */
 
 //************************************************************************************************
