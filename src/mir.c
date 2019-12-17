@@ -7048,6 +7048,11 @@ rtti_create_and_alloc_var(Context *cnt, MirType *type)
 	return var;
 }
 
+static inline MirVar *
+rtti_prepare_var(Context *cnt) {
+	return create_var_impl(cnt, IMPL_RTTI_ENTRY, NULL, false, true, true);
+}
+
 static inline void
 rtti_gen_base(Context *cnt, VMStackPtr dest, u8 kind, usize size_bytes)
 {

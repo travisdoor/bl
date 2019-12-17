@@ -1,12 +1,11 @@
 /* playground */
 
-#load "std/print.bl"
+MyStruct :: struct {
+    v: *MyStruct;
+}
 
 main :: fn () s32 {
-    loop i := 0; i < command_line_arguments.len; i += 1 {
-        print("%: %\n", i, command_line_arguments[i]);
-    }
-    
+    info :: typeinfo(MyStruct);
     return 0;
 }
 
