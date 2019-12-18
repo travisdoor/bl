@@ -43,9 +43,15 @@
 #define NAMED_VARS false
 #endif
 
+typedef struct {
+	LLVMValueRef llvm_var;
+	MirType *    type;
+} RTTIIncomplete;
+
 TSMALL_ARRAY_TYPE(LLVMValue, LLVMValueRef, 32);
 TSMALL_ARRAY_TYPE(LLVMValue64, LLVMValueRef, 64);
 TSMALL_ARRAY_TYPE(LLVMType, LLVMTypeRef, 32);
+TSMALL_ARRAY_TYPE(RTTIIncomplete, RTTIIncomplete, 64);
 
 typedef struct {
 	Assembly *assembly;
@@ -59,7 +65,8 @@ typedef struct {
 	/* Constants */
 	LLVMValueRef llvm_const_i64;
 
-	THashTable gstring_cache;
+	THashTable                 gstring_cache;
+	TSmallArray_RTTIIncomplete incomplete_rtti;
 
 	struct BuiltinTypes *builtin_types;
 	bool                 debug_mode;
@@ -67,6 +74,12 @@ typedef struct {
 
 static LLVMValueRef
 rtti_emit(Context *cnt, MirType *type);
+
+static void
+rtti_satisfy_incomplete(Context *cnt, RTTIIncomplete *incomplete);
+
+static LLVMValueRef
+_rtti_emit(Context *cnt, MirType *type);
 
 static LLVMValueRef
 rtti_emit_base(Context *cnt, MirType *type, u8 kind, usize size);
@@ -594,7 +607,7 @@ rtti_emit_enum(Context *cnt, MirType *type)
 	tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, name, strlen(name)));
 
 	/* base_type */
-	tsa_push_LLVMValue(&llvm_vals, rtti_emit(cnt, type->data.enm.base_type));
+	tsa_push_LLVMValue(&llvm_vals, _rtti_emit(cnt, type->data.enm.base_type));
 
 	/* variants */
 	tsa_push_LLVMValue(&llvm_vals, rtti_emit_enum_variants_slice(cnt, type->data.enm.variants));
@@ -728,7 +741,7 @@ rtti_emit_struct_member(Context *cnt, MirMember *member)
 	                   emit_const_string(cnt, member->id->str, strlen(member->id->str)));
 
 	/* base_type */
-	tsa_push_LLVMValue(&llvm_vals, rtti_emit(cnt, member->type));
+	tsa_push_LLVMValue(&llvm_vals, _rtti_emit(cnt, member->type));
 
 	/* offset_bytes */
 	MirType *offset_type = mir_get_struct_elem_type(rtti_type, 2);
@@ -821,7 +834,7 @@ rtti_emit_fn(Context *cnt, MirType *type)
 	tsa_push_LLVMValue(&llvm_vals, rtti_emit_fn_args_slice(cnt, type->data.fn.args));
 
 	/* ret_type */
-	tsa_push_LLVMValue(&llvm_vals, rtti_emit(cnt, type->data.fn.ret_type));
+	tsa_push_LLVMValue(&llvm_vals, _rtti_emit(cnt, type->data.fn.ret_type));
 
 	/* is_vargs */
 	MirType *is_vargs_type = mir_get_struct_elem_type(rtti_type, 4);
@@ -848,7 +861,7 @@ rtti_emit_fn_arg(Context *cnt, MirArg *arg)
 	tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, arg->id->str, strlen(arg->id->str)));
 
 	/* base_type */
-	tsa_push_LLVMValue(&llvm_vals, rtti_emit(cnt, arg->type));
+	tsa_push_LLVMValue(&llvm_vals, _rtti_emit(cnt, arg->type));
 
 	LLVMValueRef llvm_result =
 	    LLVMConstNamedStruct(rtti_type->llvm_type, llvm_vals.data, (u32)llvm_vals.size);
@@ -975,7 +988,7 @@ rtti_emit_ptr(Context *cnt, MirType *type)
 	                   rtti_emit_base(cnt, base_type, type->kind, type->store_size_bytes));
 
 	/* pointee */
-	tsa_push_LLVMValue(&llvm_vals, rtti_emit(cnt, type->data.ptr.expr));
+	tsa_push_LLVMValue(&llvm_vals, _rtti_emit(cnt, type->data.ptr.expr));
 
 	LLVMValueRef llvm_result =
 	    LLVMConstNamedStruct(rtti_type->llvm_type, llvm_vals.data, (u32)llvm_vals.size);
@@ -1000,7 +1013,7 @@ rtti_emit_array(Context *cnt, MirType *type)
 	tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, name, strlen(name)));
 
 	/* elem_type */
-	tsa_push_LLVMValue(&llvm_vals, rtti_emit(cnt, type->data.array.elem_type));
+	tsa_push_LLVMValue(&llvm_vals, _rtti_emit(cnt, type->data.array.elem_type));
 
 	/* len */
 	MirType *len_type = mir_get_struct_elem_type(rtti_type, 3);
@@ -1018,6 +1031,33 @@ rtti_emit_array(Context *cnt, MirType *type)
 
 LLVMValueRef
 rtti_emit(Context *cnt, MirType *type)
+{
+	LLVMValueRef llvm_value = _rtti_emit(cnt, type);
+
+	TSmallArray_RTTIIncomplete *pending = &cnt->incomplete_rtti;
+	while (pending->size) {
+		RTTIIncomplete incomplete = tsa_pop_RTTIIncomplete(pending);
+		rtti_satisfy_incomplete(cnt, &incomplete);
+	}
+
+	return llvm_value;
+}
+
+void
+rtti_satisfy_incomplete(Context *cnt, RTTIIncomplete *incomplete)
+{
+	MirType *    type          = incomplete->type;
+	LLVMValueRef llvm_rtti_var = incomplete->llvm_var;
+
+	BL_ASSERT(type->kind == MIR_TYPE_PTR);
+	LLVMValueRef llvm_value = rtti_emit_ptr(cnt, type);
+
+	BL_ASSERT(llvm_value);
+	LLVMSetInitializer(llvm_rtti_var, llvm_value);
+}
+
+LLVMValueRef
+_rtti_emit(Context *cnt, MirType *type)
 {
 	BL_ASSERT(type);
 	BL_ASSERT(assembly_has_rtti(cnt->assembly, type->id.hash));
@@ -1068,7 +1108,9 @@ rtti_emit(Context *cnt, MirType *type)
 		break;
 
 	case MIR_TYPE_PTR:
-		llvm_value = rtti_emit_ptr(cnt, type);
+		tsa_push_RTTIIncomplete(&cnt->incomplete_rtti,
+		                        (RTTIIncomplete){.llvm_var = llvm_rtti_var, .type = type});
+		goto SKIP;
 		break;
 
 	case MIR_TYPE_ARRAY:
@@ -1096,6 +1138,7 @@ rtti_emit(Context *cnt, MirType *type)
 
 	LLVMSetInitializer(llvm_rtti_var, llvm_value);
 
+SKIP:
 	llvm_rtti_var = LLVMBuildCast(cnt->llvm_builder,
 	                              LLVMBitCast,
 	                              llvm_rtti_var,
@@ -2395,6 +2438,7 @@ ir_run(Assembly *assembly)
 	cnt.llvm_di_builder = assembly->llvm.di_builder;
 	cnt.debug_mode      = builder.options.debug_build;
 	thtbl_init(&cnt.gstring_cache, sizeof(LLVMValueRef), 1024);
+	tsa_init(&cnt.incomplete_rtti);
 
 	MirInstr *ginstr;
 	TARRAY_FOREACH(MirInstr *, &assembly->MIR.global_instrs, ginstr)
@@ -2416,5 +2460,6 @@ ir_run(Assembly *assembly)
 
 	LLVMDisposeBuilder(cnt.llvm_builder);
 
+	tsa_terminate(&cnt.incomplete_rtti);
 	thtbl_terminate(&cnt.gstring_cache);
 }

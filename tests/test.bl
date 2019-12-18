@@ -1,12 +1,17 @@
 /* playground */
 
+#load "experimental/hash_table.bl"
 #load "std/print.bl"
 
 main :: fn () s32 {
-    loop i := 0; i < command_line_arguments.len; i += 1 {
-        print("%: %\n", i, command_line_arguments[i]);
+    info1 :: typeinfo(*HashTable);
+    info2 :: typeinfo(*u8);
+
+    if info1 == info2 {
+        print("FUCK!");
+    } else {
+        print("OK!");
     }
-    
     return 0;
 }
 
