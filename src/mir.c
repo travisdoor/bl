@@ -967,7 +967,10 @@ static MirVar *
 rtti_gen(Context *cnt, MirType *type);
 
 static MirVar *
-_rtti_gen(Context *cnt, MirType *type, MirVar *incomplete);
+_rtti_gen(Context *cnt, MirType *type);
+
+static void
+rtti_satisfy_incomplete(Context *cnt, RTTIIncomplete *incomplete);
 
 static MirVar *
 rtti_gen_integer(Context *cnt, MirType *type);
@@ -6984,22 +6987,33 @@ analyze_report_unresolved(Context *cnt)
 	}
 }
 
+/* Top-level rtti generation. */
 MirVar *
 rtti_gen(Context *cnt, MirType *type)
 {
-	MirVar *tmp = _rtti_gen(cnt, type, NULL);
+	MirVar *tmp = _rtti_gen(cnt, type);
 
 	TSmallArray_RTTIIncomplete *pending = &cnt->analyze.incomplete_rtti;
 	while (pending->size) {
-		const RTTIIncomplete incomplete = tsa_pop_RTTIIncomplete(pending);
-		_rtti_gen(cnt, incomplete.type, incomplete.var);
+		RTTIIncomplete incomplete = tsa_pop_RTTIIncomplete(pending);
+		rtti_satisfy_incomplete(cnt, &incomplete);
 	}
 
 	return tmp;
 }
 
+void
+rtti_satisfy_incomplete(Context *cnt, RTTIIncomplete *incomplete)
+{
+	MirType *type     = incomplete->type;
+	MirVar * rtti_var = incomplete->var;
+
+	BL_ASSERT(type->kind == MIR_TYPE_PTR);
+	rtti_gen_ptr(cnt, type, rtti_var);
+}
+
 MirVar *
-_rtti_gen(Context *cnt, MirType *type, MirVar *incomplete)
+_rtti_gen(Context *cnt, MirType *type)
 {
 	BL_ASSERT(type);
 	if (assembly_has_rtti(cnt->assembly, type->id.hash))
@@ -7043,13 +7057,9 @@ _rtti_gen(Context *cnt, MirType *type, MirVar *incomplete)
 	case MIR_TYPE_PTR:
 		/* We generate dummy pointer RTTI when incomplete is enabled and complete this in
 		 * second pass to prove endless looping. */
-		if (!incomplete) {
-			rtti_var = rtti_gen_ptr(cnt, cnt->builtin_types->t_u8_ptr, NULL);
-			tsa_push_RTTIIncomplete(&cnt->analyze.incomplete_rtti,
-			                        (RTTIIncomplete){.var = rtti_var, .type = type});
-		} else {
-			rtti_var = rtti_gen_ptr(cnt, type, incomplete);
-		}
+		rtti_var = rtti_gen_ptr(cnt, cnt->builtin_types->t_u8_ptr, NULL);
+		tsa_push_RTTIIncomplete(&cnt->analyze.incomplete_rtti,
+		                        (RTTIIncomplete){.var = rtti_var, .type = type});
 		break;
 
 	case MIR_TYPE_ARRAY:
@@ -7155,7 +7165,7 @@ rtti_gen_ptr(Context *cnt, MirType *type, MirVar *incomplete)
 	VMStackPtr dest_pointee =
 	    vm_get_struct_elem_ptr(cnt->assembly, cnt->builtin_types->t_TypeInfoPtr, dest, 1);
 
-	MirVar *pointee = _rtti_gen(cnt, type->data.ptr.expr, NULL);
+	MirVar *pointee = _rtti_gen(cnt, type->data.ptr.expr);
 	vm_write_ptr(dest_pointee_type, dest_pointee, vm_read_var(cnt->vm, pointee));
 
 	return rtti_var;
@@ -7178,7 +7188,7 @@ rtti_gen_array(Context *cnt, MirType *type)
 	MirType *  dest_elem_type = mir_get_struct_elem_type(rtti_type, 2);
 	VMStackPtr dest_elem      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 2);
 
-	MirVar *elem = _rtti_gen(cnt, type->data.array.elem_type, NULL);
+	MirVar *elem = _rtti_gen(cnt, type->data.array.elem_type);
 	vm_write_ptr(dest_elem_type, dest_elem, vm_read_var(cnt->vm, elem));
 
 	/* len */
@@ -7278,7 +7288,7 @@ rtti_gen_enum(Context *cnt, MirType *type)
 	MirType *  dest_base_type_type = mir_get_struct_elem_type(rtti_type, 2);
 	VMStackPtr dest_base_type      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 2);
 
-	MirVar *base_type = _rtti_gen(cnt, type->data.enm.base_type, NULL);
+	MirVar *base_type = _rtti_gen(cnt, type->data.enm.base_type);
 	vm_write_ptr(dest_base_type_type, dest_base_type, vm_read_var(cnt->vm, base_type));
 
 	/* variants */
@@ -7300,7 +7310,7 @@ rtti_gen_struct_member(Context *cnt, VMStackPtr dest, MirMember *member)
 	/* base_type */
 	MirType *  dest_base_type_type = mir_get_struct_elem_type(rtti_type, 1);
 	VMStackPtr dest_base_type      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
-	MirVar *   base_type           = _rtti_gen(cnt, member->type, NULL);
+	MirVar *   base_type           = _rtti_gen(cnt, member->type);
 	vm_write_ptr(dest_base_type_type, dest_base_type, vm_read_var(cnt->vm, base_type));
 
 	/* offset_bytes */
@@ -7386,7 +7396,7 @@ rtti_gen_fn_arg(Context *cnt, VMStackPtr dest, MirArg *arg)
 	/* base_type */
 	MirType *  dest_base_type_type = mir_get_struct_elem_type(rtti_type, 1);
 	VMStackPtr dest_base_type      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
-	MirVar *   base_type           = _rtti_gen(cnt, arg->type, NULL);
+	MirVar *   base_type           = _rtti_gen(cnt, arg->type);
 	vm_write_ptr(dest_base_type_type, dest_base_type, base_type->value.data);
 }
 
@@ -7446,7 +7456,7 @@ rtti_gen_fn(Context *cnt, MirType *type)
 	/* ret_type */
 	MirType *  dest_ret_type_type = mir_get_struct_elem_type(rtti_type, 3);
 	VMStackPtr dest_ret_type      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 3);
-	MirVar *   ret_type           = _rtti_gen(cnt, type->data.fn.ret_type, NULL);
+	MirVar *   ret_type           = _rtti_gen(cnt, type->data.fn.ret_type);
 	vm_write_ptr(dest_ret_type_type, dest_ret_type, ret_type->value.data);
 
 	/* is_vargs */

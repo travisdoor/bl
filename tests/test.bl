@@ -1,11 +1,17 @@
 /* playground */
 
-MyStruct :: struct {
-    v: *MyStruct;
-}
+#load "experimental/hash_table.bl"
+#load "std/print.bl"
 
 main :: fn () s32 {
-    info :: typeinfo(MyStruct);
+    info1 :: typeinfo(*HashTable);
+    info2 :: typeinfo(*u8);
+
+    if info1 == info2 {
+        print("FUCK!");
+    } else {
+        print("OK!");
+    }
     return 0;
 }
 
