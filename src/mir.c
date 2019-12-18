@@ -3054,6 +3054,8 @@ get_cast_op(MirType *from, MirType *to)
 	case MIR_TYPE_INT: {
 		/* from integer */
 		switch (to->kind) {
+		case MIR_TYPE_ENUM: 
+			to = to->data.enm.base_type;
 		case MIR_TYPE_INT: {
 			/* to integer */
 			const bool is_to_signed = to->data.integer.is_signed;

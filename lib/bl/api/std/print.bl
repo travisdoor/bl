@@ -73,10 +73,20 @@ bprint :: fn (buf: []u8, format: string, args: ...) s32 {
 };
 
 _print_log_default :: fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32) {
+    out := OS_STDOUT;
+
     if kind == PrintLogKind.Message { print("[MESSAGE] "); }
     if kind == PrintLogKind.Warning { print("[WARNING] "); }
-    if kind == PrintLogKind.Error   { print("[ ERROR ] "); }
-    if kind == PrintLogKind.Panic   { print("[ PANIC ] "); }
+
+    if kind == PrintLogKind.Error {
+        out = OS_STDERR;
+        eprint("[ ERROR ] ");
+    }
+
+    if kind == PrintLogKind.Panic {
+        out = OS_STDERR;
+        eprint("[ PANIC ] ");
+    }
 
     buf := {:[PRINT_MAX_LENGTH]u8: 0};
 
@@ -86,7 +96,7 @@ _print_log_default :: fn (kind: PrintLogKind, format: string, args: []Any, file:
     tmp := {:[]u8: buf.len, buf.ptr };
 
     w := print_impl(tmp, format, args);
-    __os_write(OS_STDERR, buf.ptr, auto w);
+    __os_write(out, buf.ptr, auto w);
     print("\n");
 };
 
