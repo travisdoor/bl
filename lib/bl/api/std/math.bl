@@ -172,6 +172,18 @@ v2_sub :: fn (a: v2, b: v2) v2 #inline {
     return a;
 };
 
+v2_sub_s :: fn (a: v2, v: f32) v2 #inline {
+    a.x -= v;
+    a.y -= v;
+    return a;
+};
+
+v2_add_s :: fn (a: v2, v: f32) v2 #inline {
+    a.x += v;
+    a.y += v;
+    return a;
+};
+
 v2_compare :: fn (a: v2, b: v2, epsilon: f32) bool #inline {
     return f32_compare(a.x, b.x, epsilon) && f32_compare(a.y, b.y, epsilon);
 }
