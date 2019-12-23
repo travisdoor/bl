@@ -141,6 +141,36 @@ string_compare_n :: fn (first: string, second: string, n: s32) bool
     return true;
 };
 
+string_to_f32 :: fn (str: string) f32 {
+    n := 0;
+    e := 1;
+    is_negative := false;
+    is_after_comma := false;
+
+    loop str.len > 0 {
+        c :: str[0];
+        if c == '-' {
+            is_negative = true;
+        } else if c == '.' {
+            if is_after_comma { break; }
+            is_after_comma = true;
+        } else if c >= '0' && c <= '9' {
+            n = n * 10 + (auto c - '0');
+            if is_after_comma {
+                e *= 10;
+            }
+        } else {
+            break;
+        }
+
+        consume_char(&str);
+    }
+
+    v := cast(f32) n / cast(f32) e; 
+    if is_negative { v = -v; } 
+    return v;
+}
+
 #private
 
 BlockHead :: struct {
@@ -190,3 +220,11 @@ set_terminator :: fn (v: string) {
     v[v.len - 1] = 0;
     v.len -= 1;
 };
+
+consume_char :: fn (s: *string) u8 #inline {
+    c :: (^s)[0];
+    if s.len > 1 { s.ptr = &(^s)[1]; }
+    s.len -= 1;
+
+    return c;
+}

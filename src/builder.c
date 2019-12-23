@@ -391,18 +391,7 @@ builder_msg(BuilderMsgType type,
 			break;
 		}
 
-		if (code == 0) {
-			snprintf(msg, MAX_MSG_LEN, "%s:%d:%d ", src->unit->filepath, line, col);
-		} else {
-			snprintf(msg,
-			         MAX_MSG_LEN,
-			         "[%s%04d] %s:%d:%d ",
-			         msg_mark,
-			         code,
-			         src->unit->filepath,
-			         line,
-			         col);
-		}
+		snprintf(msg, MAX_MSG_LEN, "%s:%d:%d ", src->unit->filepath, line, col);
 
 		va_list args;
 		va_start(args, format);

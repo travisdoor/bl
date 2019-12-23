@@ -527,3 +527,4 @@ glTexSubImage2D           :: fn (target: GLenum,
 glHint                    :: fn (target: GLenum, mode: GLenum) #extern;
 glPolygonMode             :: fn (face: GLenum, mode: GLenum) #extern;
 glDeleteTextures          :: fn (n: GLsizei, textures: *GLuint) #extern;
+glLineWidth               :: fn (width: GLfloat) #extern;
