@@ -178,11 +178,24 @@ v2_add :: fn (a: v2, b: v2) v2 #inline {
     return a;
 };
 
+v2_mul :: fn (a: v2, b: v2) v2 #inline {
+    a.x *= b.x;
+    a.y *= b.y;
+    return a;
+};
+
 v2_sub_s :: fn (a: v2, v: f32) v2 #inline {
     a.x -= v;
     a.y -= v;
     return a;
 };
+
+v2_mul_s :: fn (a: v2, v: f32) v2 #inline {
+    a.x *= v;
+    a.y *= v;
+    return a;
+};
+
 
 v2_add_s :: fn (a: v2, v: f32) v2 #inline {
     a.x += v;
