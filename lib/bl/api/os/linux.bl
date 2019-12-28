@@ -36,15 +36,42 @@ OS_STDIN  :: 0;
 OS_STDOUT :: 1;
 OS_STDERR :: 2;
 
+/*
+ * Maximum path size in bytes.
+ */
+OS_PATH_MAX :: 1024;
 
 time_now_ms :: fn () f64 {
     unreachable;
     return 0.0;
 };
 
-sleep_ms :: fn (ms: f64) {
+os_sleep_ms :: fn (ms: f64) {
     usleep(auto ms * 1000.0);
 };
+
+/*
+ * os_get_real_path 
+ *
+ * Description:
+ *   Find real path of passed file.
+ * 
+ * Arguments: 
+ *   filename: 
+ *     Desired existing file name or relative path. 
+ *
+ * Result: 
+ *   Absolute file path.
+ */
+os_get_real_path :: fn (filename: string) string {
+    tmp :: {:[OS_PATH_MAX]u8: 0};
+    if realpath(filename.ptr, tmp.ptr) == null {
+        return string_copy(filename);
+    }
+
+    result :: string_new_cstr(tmp.ptr);
+    return result;
+}
 
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return write(fd, buf, count);
@@ -95,3 +122,4 @@ SIGABRT :: 6;
 raise :: fn (sig: s32) s32 #extern;
 write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
 usleep :: fn (us: u32) s32 #extern;
+realpath :: fn (path: *u8, resolved_path: *u8) *u8 #extern;
