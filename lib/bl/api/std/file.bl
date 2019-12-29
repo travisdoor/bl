@@ -61,6 +61,7 @@ file_open :: fn (filename: string, modes: ...FileOpenMode) File {
 };
 
 file_close :: fn (file: File) {
+    if file == null { return; }
     fclose(file);
 };
 
