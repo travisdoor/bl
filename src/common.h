@@ -73,6 +73,14 @@ typedef struct ID {
 void
 id_init(ID *id, const char *str);
 
+/*
+ * Replace all backslashes in passed path with forward slash, this is used as workaround on Windows
+ * platform due to inconsistency 'Unix vs Windows' path separators. This function will modify passed
+ * buffer.
+ */
+void
+win_fix_path(char *buf, usize buf_size);
+
 bool
 file_exists(const char *filepath);
 

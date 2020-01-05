@@ -31,7 +31,7 @@
 
 #ifdef BL_PLATFORM_WIN
 static const char *link_flag      = "";
-static const char *link_path_flag = "/LIBPATH";
+static const char *link_path_flag = "/LIBPATH:";
 static const char *cmd            = "call \"%s\" %s && \"%s\" %s.obj /OUT:%s.exe %s";
 #else
 static const char *link_flag      = "-l";
@@ -68,6 +68,9 @@ add_libs(Context *cnt, TString *buf)
 		tstring_append(buf, " ");
 		tstring_append(buf, link_flag);
 		tstring_append(buf, lib->user_name);
+#ifdef BL_PLATFORM_WIN
+		tstring_append(buf, ".lib");
+#endif
 	}
 }
 
@@ -113,7 +116,7 @@ native_bin_run(Assembly *assembly)
 		            NULL,
 		            BUILDER_CUR_WORD,
 		            "Native link execution failed '%s'",
-		            buf);
+		            buf.data);
 	}
 
 	tstring_terminate(&buf);

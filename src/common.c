@@ -44,11 +44,29 @@
 
 u64 main_thread_id = 0;
 
+void
+win_fix_path(char *buf, usize buf_size)
+{
+	if (!buf) return;
+	for (int i = 0; i < buf_size; ++i) {
+		const char c = buf[i];
+		if (c == '0') break;
+		if (c != '\\') continue;
+
+		buf[i] = '/';
+	}
+}
+
 bool
 get_current_exec_path(char *buf, usize buf_size)
 {
 #if defined(BL_PLATFORM_WIN)
-	return (bool)GetModuleFileNameA(NULL, buf, (DWORD)buf_size);
+	if (GetModuleFileNameA(NULL, buf, (DWORD)buf_size)) {
+		win_fix_path(buf, buf_size);
+		return true;
+	}
+
+	return false;
 #elif defined(BL_PLATFORM_LINUX)
 	return readlink("/proc/self/exe", buf, buf_size) != -1;
 #elif defined(BL_PLATFORM_MACOS)
@@ -94,7 +112,11 @@ brealpath(const char *file, char *out, s32 out_len)
 	if (!file) return resolved;
 
 #if defined(BL_PLATFORM_WIN)
-	if (GetFullPathNameA(file, out_len, out, NULL) && file_exists(out)) return &out[0];
+	if (GetFullPathNameA(file, out_len, out, NULL) && file_exists(out)) {
+		win_fix_path(out, out_len);
+		return &out[0];
+	}
+
 	return NULL;
 #else
 	return realpath(file, out);
@@ -171,6 +193,9 @@ get_dir_from_filepath(char *buf, const usize l, const char *filepath)
 {
 	if (!filepath) return false;
 
+	//
+	// INCOMPLETE: Cause problems on Windows when we mix separators.
+	//
 	char *ptr = strrchr(filepath, PATH_SEPARATORC);
 	if (!ptr) return false;
 	if (filepath == ptr) {

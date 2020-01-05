@@ -36,6 +36,45 @@ OS_STDIN  :: 0;
 OS_STDOUT :: 1;
 OS_STDERR :: 2;
 
+/*
+ * Maximum path size in bytes.
+ */
+OS_PATH_MAX :: 1024;
+
+os_time_now_ms :: fn () f64 {
+    // INCOMPLETE
+    unreachable;
+    return 0.0;
+};
+
+
+os_sleep_ms :: fn (ms: f64) {
+    Sleep(auto ms);
+};
+
+/*
+ * os_get_real_path 
+ *
+ * Description:
+ *   Find real path of passed file.
+ * 
+ * Arguments: 
+ *   filename: 
+ *     Desired existing file name or relative path. 
+ *
+ * Result: 
+ *   Absolute file path.
+ */
+os_get_real_path :: fn (filename: string) string {
+    tmp :: {:[OS_PATH_MAX]u8: 0};
+    if GetFullPathNameA(auto filename.ptr, tmp.len, tmp.ptr, null) == 0 {
+		return string_copy(filename);
+	}
+
+    result :: string_new_cstr(tmp.ptr);
+    return result;
+}
+
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return _write(fd, buf, count);
 };
@@ -43,12 +82,6 @@ __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
 __os_abort :: fn () #compiler {
     raise(SIGABRT);
 }
-
-time_now_ms :: fn () f64 {
-    // INCOMPLETE
-    unreachable;
-    return 0.0;
-};
 
 __os_start :: fn () #entry {
     args: []string;
@@ -70,7 +103,7 @@ LPCSTR  :: *u16;
 LPSTR   :: *u8;
 HLOCAL  :: *u8;
 UINT    :: u32;
-DWORD   :: *u32;
+DWORD   :: u32;
 LPCCH   :: u8;
 LPCWCH  :: u16;
 LPBOOL  :: s32;
@@ -93,10 +126,15 @@ raise              :: fn (sig: s32) s32 #extern;
 GetCommandLineW     :: fn () LPWSTR #extern;
 CommandLineToArgvW  :: fn (lpCmdLine: LPCWSTR, pNumArgs: *s32) *LPWSTR #extern;
 LocalFree           :: fn (hMem: HLOCAL) HLOCAL #extern;
+Sleep               :: fn (dwMilliseconds: DWORD) #extern;
+GetFullPathNameA    :: fn (lpFileName: LPCSTR,
+                           nBufferLength: DWORD,
+                           lpBuffer: LPSTR,
+                           lpFilePart: *LPSTR) DWORD #extern;
 
 WideCharToMultiByte :: fn (
     CodePage: UINT,
-    dwFlags: DWORD,
+    dwFlags: *DWORD,
     lpWideCharStr: *LPCWCH,
     cchWideChar: s32,
     lpMultiByteStr: LPSTR,

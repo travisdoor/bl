@@ -33,15 +33,15 @@
  * Values set automatically during build by cmake.
  */
 #define BL_VERSION "@PROJECT_VERSION@"
-#define BL_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
-#define BL_VERSION_MINOR @PROJECT_VERSION_MINOR@
-#define BL_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#define BL_VERSION_MAJOR @PROJECT_VERSION_MAJOR @
+#define BL_VERSION_MINOR @PROJECT_VERSION_MINOR @
+#define BL_VERSION_PATCH @PROJECT_VERSION_PATCH @
 
 #define BL_CONF_FILE "@BL_CONF_FILE@"
 
 #ifdef _WIN32
 #define BL_PLATFORM_WIN
-#define BL_NO_COLOR
+//#define BL_NO_COLOR
 #define OS_PRELOAD_FILE "os/windows.bl"
 #elif __APPLE__
 //#define BL_NO_COLOR
@@ -76,16 +76,18 @@
 #endif
 
 #ifdef BL_PLATFORM_WIN
-#define PATH_SEPARATOR "\\"
-#define PATH_SEPARATORC '\\'
 #define ENVPATH_SEPARATOR ';'
 #define CONF_VC_VARS_ALL_KEY "VC_VARS_ALL"
 #define MSVC_CRT "msvcrt"
 #else
-#define PATH_SEPARATOR "/"
-#define PATH_SEPARATORC '/'
 #define ENVPATH_SEPARATOR ':'
 #endif
+
+/*
+ * NOTE: We are converting all backslashes on Windows to the forward slashes.
+ */
+#define PATH_SEPARATOR "/"
+#define PATH_SEPARATORC '/'
 
 /*
  * LLVM_EXCLUDE_UNUSED_SYM - Exclude all unused functions and variables from LLVM IR when this is
@@ -95,10 +97,10 @@
  */
 
 #if BL_DEBUG
-#define ASSERT_ON_CMP_ERROR     0
+#define ASSERT_ON_CMP_ERROR 0
 #define LLVM_EXCLUDE_UNUSED_SYM 0
 #else
-#define ASSERT_ON_CMP_ERROR     0
+#define ASSERT_ON_CMP_ERROR 0
 #define LLVM_EXCLUDE_UNUSED_SYM 1
 #endif
 

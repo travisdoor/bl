@@ -103,12 +103,20 @@ set_lib_paths(Context *cnt)
 			len = c - begin;
 			if (len - 1 > 0) {
 				strncpy(tmp, begin, len);
+				tmp[len] = '\0';
 				if (file_exists(tmp)) {
 					char *dup = malloc(sizeof(char) * len + 1);
+					if (!dup) BL_ABORT("Bad alloc!");
 					memcpy(dup, begin, len);
 					dup[len] = '\0';
 
+#ifdef BL_PLATFORM_WIN
+					win_fix_path(dup, len);
+#endif
+
 					tarray_push(cnt->lib_paths, dup);
+				} else {
+					msg_warning("Invalid LIB_PATH entry value '%s'.", tmp);
 				}
 
 				begin = c + 1;
