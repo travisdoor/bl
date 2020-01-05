@@ -528,3 +528,6 @@ glHint                    :: fn (target: GLenum, mode: GLenum) #extern;
 glPolygonMode             :: fn (face: GLenum, mode: GLenum) #extern;
 glDeleteTextures          :: fn (n: GLsizei, textures: *GLuint) #extern;
 glLineWidth               :: fn (width: GLfloat) #extern;
+glReadPixels              :: fn (x: GLint, y: GLint, width: GLsizei, height: GLsizei, format: GLenum, t: GLenum, data: *u8) #extern;
+glFlush                   :: fn () #extern;
+glFinish                  :: fn () #extern;
