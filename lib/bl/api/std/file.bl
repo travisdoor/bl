@@ -28,19 +28,72 @@
 
 #load "std/string.bl"
 
+/*
+ * File
+ *
+ * Description:
+ *   Opaque file handle. 
+ */
 File :: *u8; 
 
+/*
+ * FileOpenMode
+ *
+ * Description:
+ *   Used as additional information during file opening.
+ *
+ * Variants:
+ *   Read:
+ *     Open file for reading.
+ * 
+ *   Write: 
+ *     Open file for writing.
+ * 
+ *   Binary:
+ *     Open file as binary.
+ */
 FileOpenMode :: enum {
     Read;
     Write;
     Binary
 };
 
+/*
+ * file_create
+ * 
+ * Description:
+ *   Create and open new file or open existing one. Call of file_close is required after file is
+ *   is no longer needed.
+ * 
+ * Arguments: 
+ *   filename: 
+ *     File name on disk.
+ *
+ * Result:
+ *   File handle or null.
+ */
 file_create :: fn (filename: string) File {
     mode := "w+";
     return fopen(filename.ptr, mode.ptr); 
 };
 
+/*
+ * file_open
+ * 
+ * Description:
+ *   Open an existing file or create new one. Call of file_close is required after file is
+ *   is no longer needed.
+ * 
+ * Arguments: 
+ *   filename: 
+ *     File name on disk.
+ *
+ *   modes: 
+ *     File open modes can be passed here in any order. 
+ *
+ * Result:
+ *   File handle or null.
+ */
 file_open :: fn (filename: string, modes: ...FileOpenMode) File {
     mode := {:[4]u8: 0};
 
@@ -60,11 +113,35 @@ file_open :: fn (filename: string, modes: ...FileOpenMode) File {
     return fopen(filename.ptr, mode.ptr); 
 };
 
+/*
+ * file_close
+ * 
+ * Description:
+ *   Close openned file. 
+ * 
+ * Arguments: 
+ *   file: 
+ *     File to be closed.
+ */
 file_close :: fn (file: File) {
     if file == null { return; }
     fclose(file);
 };
 
+/*
+ * file_read_all
+ * 
+ * Description:
+ *   Load whole content of file into the string buffer. Call string_delete when 
+ *   string buffer is no longer needed.
+ * 
+ * Arguments: 
+ *   file: 
+ *     File to be read.
+ *
+ * Result:
+ *   String containing file content or empty string.
+ */
 file_read_all :: fn (file: File) string {
     fseek(file, 0, SEEK_END);
     size := cast(usize) ftell(file);
@@ -80,6 +157,19 @@ file_read_all :: fn (file: File) string {
     return tmp;
 };
 
+/*
+ * file_get_size_bytes
+ * 
+ * Description:
+ *   Determinates size of file content in bytes.
+ * 
+ * Arguments: 
+ *   file: 
+ *     File handle.
+ *
+ * Result:
+ *   Size of file content in bytes.
+ */
 file_get_size_bytes :: fn (file: File) usize {
     fseek(file, 0, SEEK_END);
     size :: cast(usize) ftell(file);
@@ -87,10 +177,48 @@ file_get_size_bytes :: fn (file: File) usize {
     return size;
 }
 
+/*
+ * file_real_all_binary
+ * 
+ * Description:
+ *   Read content of whole binary file into destination buffer.
+ * 
+ * Arguments: 
+ *   file: 
+ *     File to be read.
+ * 
+ *   dest;
+ *     Destination buffer.
+ *
+ *   size:
+ *     Count of bytes which will be copied from file into the buffer.
+ *
+ * Result:
+ *   Bytes written into buffer.
+ */
 file_read_all_binary :: fn (file: File, dest: *u8, size: usize) usize {
     return fread(dest, sizeof(u8), size, file);
 }
 
+/*
+ * file_write_binary
+ * 
+ * Description:
+ *   Write content of passed buffer into the binary file.
+ * 
+ * Arguments: 
+ *   file: 
+ *     File to be modified.
+ * 
+ *   data;
+ *     Source data buffer.
+ *
+ *   size:
+ *     Count of bytes to be written.
+ *
+ * Result:
+ *   Bytes written into buffer.
+ */
 file_write_binary :: fn (file: File, data: *u8, size: usize) usize {
     return fwrite(data, sizeof(u8), size, file);
 }

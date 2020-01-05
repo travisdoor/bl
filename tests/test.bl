@@ -1,17 +1,17 @@
 /* playground */
 
-#load "experimental/hash_table.bl"
 #load "std/print.bl"
 
 main :: fn () s32 {
-    info1 :: typeinfo(*HashTable);
-    info2 :: typeinfo(*u8);
+    i := 0;
 
-    if info1 == info2 {
-        print("FUCK!");
-    } else {
-        print("OK!");
+    switch i {
+        10 {}
+        10 {}
+
+        default {}
     }
+    
     return 0;
 }
 
