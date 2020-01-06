@@ -548,7 +548,3 @@ glInit :: fn () {
 
 glTerminate :: fn () {
 }
-
-
-#private
-lib_handle : OSLibrary = null;

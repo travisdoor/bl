@@ -136,6 +136,13 @@ os_dlclose :: fn (lib: OSLibrary) {
     dlclose(lib);
 }
 
+// CLEANUP: This must be in gl.bl file not here, but we keep it
+// until static 'if' will be supported by compiler.
+_os_gl_get_proc :: fn (proc_name: string) *u8 {
+    module :: os_dlopen("");
+    return os_dlsym(module, proc_name);
+}
+
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return write(fd, buf, count);
 };
