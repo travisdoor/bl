@@ -41,6 +41,14 @@ OS_STDERR :: 2;
  */
 OS_PATH_MAX :: 1024;
 
+/*
+ * OSLibrary
+ *
+ * Description:
+ *   Library handle.
+ */
+OSLibrary :: *u8;
+
 os_time_now_ms :: fn () f64 {
     // INCOMPLETE
     unreachable;
@@ -73,6 +81,62 @@ os_get_real_path :: fn (filename: string) string {
 
     result :: string_new_cstr(tmp.ptr);
     return result;
+}
+
+/*
+ * os_dlopen
+ *
+ * Description:
+ *   Dynamically link native library file. 
+ * 
+ * Arguments: 
+ *   lib_name: 
+ *     Name of the library. If lib_name is empty string, then function return 
+ *     handle for main program. 
+ *
+ * Result: 
+ *   Library handle or null.
+ */
+os_dlopen :: fn (lib_name: string) OSLibrary {
+    clib_name: *u8 = null;
+    if lib_name.len > 0 { clib_name = lib_name.ptr; }
+
+    return LoadLibraryA(clib_name); 
+}
+
+/*
+ * os_dlsym
+ *
+ * Description:
+ *   Dynamically load procedure. 
+ * 
+ * Arguments: 
+ *   lib: 
+ *     Library handle.
+ * 
+ *   sym_name: 
+ *     Symbol name.
+ *
+ * Result: 
+ *   Procedure handle or null.
+ */
+os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 {
+    return GetProcAddress(lib, sym_name.ptr);
+}
+
+/*
+ * os_close
+ *
+ * Description:
+ *   Close dynamically loded library. 
+ * 
+ * Arguments: 
+ *   lib: 
+ *     Library handle. 
+ *
+ */
+os_dlclose :: fn (lib: OSLibrary) {
+    FreeLibrary(lib);
 }
 
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
