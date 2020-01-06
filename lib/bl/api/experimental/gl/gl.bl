@@ -28,9 +28,6 @@
 
 #link "GL"
 
-// TODO: Use these types
-// TODO: Use these types
-// TODO: Use these types
 GLbitfield :: u32;
 GLboolean  :: u8; 
 GLbyte     :: s8;

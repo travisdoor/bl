@@ -107,6 +107,9 @@ DWORD   :: u32;
 LPCCH   :: u8;
 LPCWCH  :: u16;
 LPBOOL  :: s32;
+HMODULE :: *u8;
+BOOL    :: s32;
+FARPROC :: *u8; 
 
 SIGHUP  :: 1;
 SIGINT  :: 2;
@@ -131,6 +134,9 @@ GetFullPathNameA    :: fn (lpFileName: LPCSTR,
                            nBufferLength: DWORD,
                            lpBuffer: LPSTR,
                            lpFilePart: *LPSTR) DWORD #extern;
+LoadLibraryA        :: fn (lpLibFileName: LPCSTR) HMODULE #extern;
+FreeLibrary         :: fn (hLibModule: HMODULE) BOOL #extern;
+GetProcAddress      :: fn (hModule: HMODULE, lpProcName: LPCSTR) FARPROC #extern;
 
 WideCharToMultiByte :: fn (
     CodePage: UINT,
