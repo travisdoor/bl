@@ -520,6 +520,7 @@ _Gl :: struct {
     UniformMatrix4x3fv: *fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat);
     GetUniformLocation: *fn (program: GLuint, name: *GLchar) GLint;
     GetAttribLocation: *fn (program: GLuint, name: *GLchar) GLint;
+    Viewport: *fn (x: GLint, y: GLint, width: GLsizei, height: GLsizei);
 }
 
 gl := {:_Gl: 0};
