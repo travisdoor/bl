@@ -213,13 +213,15 @@ WideCharToMultiByte :: fn (
     lpUsedDefaultChar: *LPBOOL
 ) s32 #extern;
 
-// Get command-line arguments passed to this executable.
-// We need custom function here to convert UTF16 to UTF8,
-// Windows api does not provide UTF8 version of CommandLineToArgv
-// function.
-// Internal allocation to handle argument strings is done
-// in this method, so we must free memory used by return value
-// by mem_free(args.ptr) call.
+/*
+ * Get command-line arguments passed to this executable.
+ * We need custom function here to convert UTF16 to UTF8,
+ * Windows api does not provide UTF8 version of CommandLineToArgv
+ * function.
+ * Internal allocation to handle argument strings is done
+ * in this method, so we must free memory used by return value
+ * by mem_free(args.ptr) call.
+ */
 get_command_line_args :: fn (out_args: *[]string) #no_inline {
     wargs: []*u16;
     cmd_line :: GetCommandLineW();
