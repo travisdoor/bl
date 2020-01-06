@@ -28,6 +28,10 @@
 
 #link "GL"
 
+#load "std/debug.bl"
+#load "std/utils.bl"
+#load "std/memory.bl"
+
 GLbitfield :: u32;
 GLboolean  :: u8; 
 GLbyte     :: s8;
@@ -431,100 +435,121 @@ GL_TEXTURE_INTERNAL_FORMAT       : u32 : 0x1003;
 GL_TEXTURE_BORDER_COLOR          : u32 : 0x1004;
 GL_TEXTURE_BORDER                : u32 : 0x1005;
 
-glClearColor              :: fn (red: f32, green: f32, blue: f32, alpha: f32) #extern;
-glClear                   :: fn (mask: u32) #extern;
-glCreateShader            :: fn (kind: u32) u32 #extern;
-glShaderSource            :: fn (shader: u32, count: s32, str: **u8, lenght: s32) #extern;
-glCompileShader           :: fn (shader: u32) #extern;
-glCreateProgram           :: fn () u32 #extern;
-glAttachShader            :: fn (program: u32, shader: u32) #extern;
-glDetachShader            :: fn (program: u32, shader: u32) #extern;
-glGetShaderiv             :: fn (shader: u32, pname: u32, params: *s32) #extern; 
-glGetProgramiv            :: fn (program: u32, pname: u32, params: *s32) #extern; 
-glGetShaderInfoLog        :: fn (shader: u32, bufSize: s32, length: *s32, infoLog: *u8) #extern; 
-glGetProgramInfoLog       :: fn (program: u32, bufSize: s32, length: *s32, infoLog: *u8) #extern; 
-glDeleteProgram           :: fn (program: u32) #extern;
-glDeleteShader            :: fn (shader: u32) #extern;
-glLinkProgram             :: fn (program: u32) #extern;
-glUseProgram              :: fn (program: u32) #extern;
-glGenBuffers              :: fn (n: s32, buffers: *u32) #extern;
-glBindBuffer              :: fn (target: u32, buffer: u32) #extern;
-glBufferData              :: fn (target: u32, size: usize, data: *u8, usage: u32) #extern;
-glDrawElements            :: fn (mode: u32, count: s32, tp: u32, indices: *u8) #extern;
-glBindVertexArray         :: fn (array: u32) #extern;
-glDeleteVertexArrays      :: fn (n: s32, arrays: *u32) #extern;
-glGenVertexArrays         :: fn (n: s32, arrays: *u32) #extern;
-glVertexAttribPointer     :: fn (index: u32, size: s32, tp: u32, normalized: s32, stride: s32, pointer: *u8) #extern;
-glEnableVertexAttribArray :: fn (index: u32) #extern;
-glDisableVertexAttribArray :: fn (index: u32) #extern;
-glDeleteBuffers           :: fn (n: s32, buffers: *u32) #extern;
-glActiveTexture           :: fn (texture: GLenum) #extern;
-glGenTextures             :: fn (n: GLsizei, textures: *GLuint) #extern; 
-glBindTexture             :: fn (target: GLenum, texture: GLuint) #extern; 
-glUniform1f               :: fn (location: GLint, v0: GLfloat) #extern;
-glUniform2f               :: fn (location: GLint, v0: GLfloat, v1: GLfloat) #extern;
-glUniform3f               :: fn (location: GLint, v0: GLfloat, v1: GLfloat, v2: GLfloat) #extern;
-glUniform4f               :: fn (location: GLint, v0: GLfloat, v1: GLfloat, v2: GLfloat, v3: GLfloat) #extern;
-glUniform1i               :: fn (location: GLint, v0: GLint) #extern;
-glUniform2i               :: fn (location: GLint, v0: GLint, v1: GLint) #extern;
-glUniform3i               :: fn (location: GLint, v0: GLint, v1: GLint, v2: GLint) #extern;
-glUniform4i               :: fn (location: GLint, v0: GLint, v1: GLint, v2: GLint, v3: GLint) #extern;
-glUniform1ui              :: fn (location: GLint, v0: GLuint) #extern;
-glUniform2ui              :: fn (location: GLint, v0: GLuint, v1: GLuint) #extern;
-glUniform3ui              :: fn (location: GLint, v0: GLuint, v1: GLuint, v2: GLuint) #extern;
-glUniform4ui              :: fn (location: GLint, v0: GLuint, v1: GLuint, v2: GLuint, v3: GLuint) #extern;
-glUniform1fv              :: fn (location: GLint, count: GLsizei, value: *GLfloat) #extern;
-glUniform2fv              :: fn (location: GLint, count: GLsizei, value: *GLfloat) #extern;
-glUniform3fv              :: fn (location: GLint, count: GLsizei, value: *GLfloat) #extern;
-glUniform4fv              :: fn (location: GLint, count: GLsizei, value: *GLfloat) #extern;
-glUniform1iv              :: fn (location: GLint, count: GLsizei, value: *GLint) #extern;
-glUniform2iv              :: fn (location: GLint, count: GLsizei, value: *GLint) #extern;
-glUniform3iv              :: fn (location: GLint, count: GLsizei, value: *GLint) #extern;
-glUniform4iv              :: fn (location: GLint, count: GLsizei, value: *GLint) #extern;
-glUniform1uiv             :: fn (location: GLint, count: GLsizei, value: *GLuint) #extern;
-glUniform2uiv             :: fn (location: GLint, count: GLsizei, value: *GLuint) #extern;
-glUniform3uiv             :: fn (location: GLint, count: GLsizei, value: *GLuint) #extern;
-glUniform4uiv             :: fn (location: GLint, count: GLsizei, value: *GLuint) #extern;
-glUniformMatrix2fv        :: fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat) #extern;
-glUniformMatrix3fv        :: fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat) #extern;
-glUniformMatrix4fv        :: fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat) #extern;
-glUniformMatrix2x3fv      :: fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat) #extern;
-glUniformMatrix3x2fv      :: fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat) #extern;
-glUniformMatrix2x4fv      :: fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat) #extern;
-glUniformMatrix4x2fv      :: fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat) #extern;
-glUniformMatrix3x4fv      :: fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat) #extern;
-glUniformMatrix4x3fv      :: fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat) #extern;
-glTexImage2D              :: fn (target: GLenum, 
-                                 level: GLint,
-                     	         internalformat: GLint,
-                                 width: GLsizei,
-                               	 height: GLsizei,
-                               	 border: GLint,
-                               	 format: GLenum,
-                               	 t: GLenum,
-                               	 data: *u8) #extern;
-glPixelStorei             :: fn (pname: GLenum, param: GLint) #extern; 
-glDrawArrays              :: fn (mode: GLenum, first: GLint, count: GLsizei) #extern;
-glEnable                  :: fn (cap: GLenum) #extern;
-glDisable                 :: fn (cap: GLenum) #extern;
-glGetError                :: fn () GLenum #extern;
-glGetUniformLocation      :: fn (program: GLuint, name: *GLchar) GLint #extern;
-glGetAttribLocation       :: fn (program: GLuint, name: *GLchar) GLint #extern;
-glBlendFunc               :: fn (sfactor: GLenum, dfactor: GLenum) #extern;
-glTexParameteri           :: fn (target: GLenum, pname: GLenum, param: GLint) #extern;
-glTexSubImage2D           :: fn (target: GLenum,
-                                 level: GLint,
-                               	 xoffset: GLint,
-                                 yoffset: GLint,
-                               	 width: GLsizei,
-                               	 height: GLsizei,
-                               	 format: GLenum,
-                               	 t: GLenum,
-                               	 data: *u8) #extern;
-glHint                    :: fn (target: GLenum, mode: GLenum) #extern;
-glPolygonMode             :: fn (face: GLenum, mode: GLenum) #extern;
-glDeleteTextures          :: fn (n: GLsizei, textures: *GLuint) #extern;
-glLineWidth               :: fn (width: GLfloat) #extern;
-glReadPixels              :: fn (x: GLint, y: GLint, width: GLsizei, height: GLsizei, format: GLenum, t: GLenum, data: *u8) #extern;
-glFlush                   :: fn () #extern;
-glFinish                  :: fn () #extern;
+_GL :: struct {
+    ClearColor: *fn (red: f32, green: f32, blue: f32, alpha: f32);
+    Clear: *fn (mask: u32);
+    CreateShader: *fn (kind: u32) u32;
+    ShaderSource: *fn (shader: u32, count: s32, str: **u8, lenght: s32);
+    CompileShader: *fn (shader: u32);
+    CreateProgram: *fn () u32;
+    AttachShader: *fn (program: u32, shader: u32);
+    DetachShader: *fn (program: u32, shader: u32);
+    GetShaderiv: *fn (shader: u32, pname: u32, params: *s32); 
+    GetProgramiv: *fn (program: u32, pname: u32, params: *s32); 
+    GetShaderInfoLog: *fn (shader: u32, bufSize: s32, length: *s32, infoLog: *u8); 
+    GetProgramInfoLog: *fn (program: u32, bufSize: s32, length: *s32, infoLog: *u8); 
+    DeleteProgram: *fn (program: u32);
+    DeleteShader: *fn (shader: u32);
+    LinkProgram: *fn (program: u32);
+    UseProgram: *fn (program: u32);
+    GenBuffers: *fn (n: s32, buffers: *u32);
+    BindBuffer: *fn (target: u32, buffer: u32);
+    BufferData: *fn (target: u32, size: usize, data: *u8, usage: u32);
+    DrawElements: *fn (mode: u32, count: s32, tp: u32, indices: *u8);
+    BindVertexArray: *fn (array: u32);
+    DeleteVertexArrays: *fn (n: s32, arrays: *u32);
+    GenVertexArrays: *fn (n: s32, arrays: *u32);
+    VertexAttribPointer: *fn (index: u32, size: s32, tp: u32, normalized: s32, stride: s32, pointer: *u8);
+    EnableVertexAttribArray: *fn (index: u32);
+    DisableVertexAttribArray: *fn (index: u32);
+    DeleteBuffers: *fn (n: s32, buffers: *u32);
+    ActiveTexture: *fn (texture: GLenum);
+    GenTextures: *fn (n: GLsizei, textures: *GLuint); 
+    BindTexture: *fn (target: GLenum, texture: GLuint); 
+    Uniform1f: *fn (location: GLint, v0: GLfloat);
+    Uniform2f: *fn (location: GLint, v0: GLfloat, v1: GLfloat);
+    Uniform3f: *fn (location: GLint, v0: GLfloat, v1: GLfloat, v2: GLfloat);
+    Uniform4f: *fn (location: GLint, v0: GLfloat, v1: GLfloat, v2: GLfloat, v3: GLfloat);
+    Uniform1i: *fn (location: GLint, v0: GLint);
+    Uniform2i: *fn (location: GLint, v0: GLint, v1: GLint);
+    Uniform3i: *fn (location: GLint, v0: GLint, v1: GLint, v2: GLint);
+    Uniform4i: *fn (location: GLint, v0: GLint, v1: GLint, v2: GLint, v3: GLint);
+    Uniform1ui: *fn (location: GLint, v0: GLuint);
+    Uniform2ui: *fn (location: GLint, v0: GLuint, v1: GLuint);
+    Uniform3ui: *fn (location: GLint, v0: GLuint, v1: GLuint, v2: GLuint);
+    Uniform4ui: *fn (location: GLint, v0: GLuint, v1: GLuint, v2: GLuint, v3: GLuint);
+    Uniform1fv: *fn (location: GLint, count: GLsizei, value: *GLfloat);
+    Uniform2fv: *fn (location: GLint, count: GLsizei, value: *GLfloat);
+    Uniform3fv: *fn (location: GLint, count: GLsizei, value: *GLfloat);
+    Uniform4fv: *fn (location: GLint, count: GLsizei, value: *GLfloat);
+    Uniform1iv: *fn (location: GLint, count: GLsizei, value: *GLint);
+    Uniform2iv: *fn (location: GLint, count: GLsizei, value: *GLint);
+    Uniform3iv: *fn (location: GLint, count: GLsizei, value: *GLint);
+    Uniform4iv: *fn (location: GLint, count: GLsizei, value: *GLint);
+    Uniform1uiv: *fn (location: GLint, count: GLsizei, value: *GLuint);
+    Uniform2uiv: *fn (location: GLint, count: GLsizei, value: *GLuint);
+    Uniform3uiv: *fn (location: GLint, count: GLsizei, value: *GLuint);
+    Uniform4uiv: *fn (location: GLint, count: GLsizei, value: *GLuint);
+    UniformMatrix2fv: *fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat);
+    UniformMatrix3fv: *fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat);
+    UniformMatrix4fv: *fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat);
+    UniformMatrix2x3fv: *fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat);
+    UniformMatrix3x2fv: *fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat);
+    UniformMatrix2x4fv: *fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat);
+    UniformMatrix4x2fv: *fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat);
+    UniformMatrix3x4fv: *fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat);
+    UniformMatrix4x3fv: *fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat);
+    TexImage2D: *fn (target: GLenum, level: GLint, internalformat: GLint, width: GLsizei, height: GLsizei, border: GLint, format: GLenum, t: GLenum, data: *u8);
+    PixelStorei: *fn (pname: GLenum, param: GLint); 
+    DrawArrays: *fn (mode: GLenum, first: GLint, count: GLsizei);
+    Enable: *fn (cap: GLenum);
+    Disable: *fn (cap: GLenum);
+    GetError: *fn () GLenum;
+    GetUniformLocation: *fn (program: GLuint, name: *GLchar) GLint;
+    GetAttribLocation: *fn (program: GLuint, name: *GLchar) GLint;
+    BlendFunc: *fn (sfactor: GLenum, dfactor: GLenum);
+    TexParameteri: *fn (target: GLenum, pname: GLenum, param: GLint);
+    TexSubImage2D: *fn (target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, width: GLsizei, height: GLsizei, format: GLenum, t: GLenum, data: *u8);
+    Hint: *fn (target: GLenum, mode: GLenum);
+    PolygonMode: *fn (face: GLenum, mode: GLenum);
+    DeleteTextures: *fn (n: GLsizei, textures: *GLuint);
+    LineWidth: *fn (width: GLfloat);
+    ReadPixels: *fn (x: GLint, y: GLint, width: GLsizei, height: GLsizei, format: GLenum, t: GLenum, data: *u8);
+    Flush: *fn ();
+    Finish: *fn ();
+}
+
+gl := {:_GL: 0};
+
+glInit :: fn () {
+    lib_handle = os_dlopen("");
+    if lib_handle == null { panic("Canot load main environment."); }
+
+    tmp := string_new();
+    defer string_delete(tmp);
+    
+    info :: cast(*TypeInfoStruct) typeinfo(_GL);
+    loop i := 0; i < info.members.len; i += 1 {
+        member :: info.members[i];
+        dest_member_ptr := ptr_shift_bytes(cast(*u8) &gl, auto member.offset_bytes);
+
+        string_clear(&tmp);
+        string_concatenate(&tmp, "gl", member.name);
+
+        proc := os_dlsym(lib_handle, tmp);
+        if proc == null {
+            print_warn("GL procedure handle '%' not found.", tmp);
+            continue;
+        }
+
+        mem_copy(dest_member_ptr, auto &proc, sizeof(*u8));
+    }
+}
+
+glTerminate :: fn () {
+    os_dlclose(lib_handle);
+}
+
+
+#private
+lib_handle : OSLibrary = null;
