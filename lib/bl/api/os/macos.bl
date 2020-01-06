@@ -29,6 +29,7 @@
 #load "std/_builtin.bl"
 #load "std/string.bl"
 
+OS_KIND :: OSKind.MaxOS;
 OS_NAME :: "MacOS";
 
 OS_STDIN  :: 0;

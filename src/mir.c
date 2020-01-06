@@ -2299,7 +2299,7 @@ init_llvm_type_int(Context *cnt, MirType *type)
 	}
 
 	type->llvm_meta = llvm_di_create_basic_type(
-	    cnt->analyze.llvm_di_builder, name, type->size_bits, encoding);
+	    cnt->analyze.llvm_di_builder, name, (unsigned int)type->size_bits, encoding);
 }
 
 void
@@ -2426,6 +2426,7 @@ init_llvm_type_fn(Context *cnt, MirType *type)
 	const bool          has_ret   = ret_type;
 	bool                has_byval = false;
 
+	BL_ASSERT(ret_type);
 	if (has_ret && ret_type->kind == MIR_TYPE_TYPE) {
 		return;
 	}
@@ -2720,7 +2721,7 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 		    elem_line,
 		    elem->type->size_bits,
 		    (unsigned)elem->type->alignment * 8,
-		    (unsigned)vm_get_struct_elem_offest(cnt->assembly, type, (u32)i) * 8,
+		    (unsigned)(vm_get_struct_elem_offest(cnt->assembly, type, (u32)i) * 8),
 		    elem->type->llvm_meta);
 
 		tsa_push_LLVMMetadata(&llvm_elems, llvm_elem);
@@ -3044,8 +3045,10 @@ get_cast_op(MirType *from, MirType *to)
 
 	if (type_cmp(from, to)) return MIR_CAST_NONE;
 
+	#ifndef _MSC_VER
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+	#endif
 
 	switch (from->kind) {
 	case MIR_TYPE_ENUM:
@@ -3125,7 +3128,10 @@ get_cast_op(MirType *from, MirType *to)
 	default:
 		return MIR_CAST_INVALID;
 	}
+
+	#ifndef _MSC_VER
 #pragma GCC diagnostic pop
+	#endif
 }
 
 static u64 _id_counter = 1;
@@ -7250,7 +7256,7 @@ rtti_gen_enum_variants_array(Context *cnt, TSmallArray_VariantPtr *variants)
 	MirVariant *it;
 	TSA_FOREACH(variants, it)
 	{
-		VMStackPtr dest_arr_tmp_elem = vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, i);
+		VMStackPtr dest_arr_tmp_elem = vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32) i);
 		rtti_gen_enum_variant(cnt, dest_arr_tmp_elem, it);
 	}
 
@@ -7337,7 +7343,7 @@ rtti_gen_struct_members_array(Context *cnt, TSmallArray_MemberPtr *members)
 	MirMember *it;
 	TSA_FOREACH(members, it)
 	{
-		VMStackPtr dest_arr_tmp_elem = vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, i);
+		VMStackPtr dest_arr_tmp_elem = vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32) i);
 		rtti_gen_struct_member(cnt, dest_arr_tmp_elem, it);
 	}
 
@@ -7413,7 +7419,7 @@ rtti_gen_fn_args_array(Context *cnt, TSmallArray_ArgPtr *args)
 	MirArg *it;
 	TSA_FOREACH(args, it)
 	{
-		VMStackPtr dest_arr_tmp_elem = vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, i);
+		VMStackPtr dest_arr_tmp_elem = vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32) i);
 		rtti_gen_fn_arg(cnt, dest_arr_tmp_elem, it);
 	}
 

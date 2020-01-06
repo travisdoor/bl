@@ -1883,7 +1883,7 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &call->base);
 
 	LLVMValueRef llvm_call =
-	    LLVMBuildCall(cnt->llvm_builder, llvm_called_fn, llvm_args.data, llvm_args.size, "");
+	    LLVMBuildCall(cnt->llvm_builder, llvm_called_fn, llvm_args.data, (unsigned int)llvm_args.size, "");
 
 	if (callee_type->data.fn.has_sret) {
 		LLVMAddCallSiteAttribute(llvm_call,
@@ -2025,7 +2025,7 @@ emit_instr_switch(Context *cnt, MirInstrSwitch *sw)
 	LLVMBasicBlockRef llvm_default_block = emit_basic_block(cnt, default_block);
 
 	LLVMValueRef llvm_switch =
-	    LLVMBuildSwitch(cnt->llvm_builder, llvm_value, llvm_default_block, cases->size);
+	    LLVMBuildSwitch(cnt->llvm_builder, llvm_value, llvm_default_block, (unsigned int) cases->size);
 
 	for (usize i = 0; i < cases->size; ++i) {
 		MirSwitchCase *   c             = &cases->data[i];

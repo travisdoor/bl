@@ -30,6 +30,7 @@
 
 // INCOMPLETE: time_now_ms
 
+OS_KIND :: OSKind.Linux;
 OS_NAME :: "Linux";
 
 OS_STDIN  :: 0;

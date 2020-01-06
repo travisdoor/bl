@@ -1992,6 +1992,7 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 			VMStackPtr  dest       = arr_tmp_ptr + i * value_size;
 
 			value_ptr = fetch_value(vm, &value->value);
+			if (!dest) BL_ABORT("Bad memory.");
 			memcpy(dest, value_ptr, value_size);
 		}
 	}

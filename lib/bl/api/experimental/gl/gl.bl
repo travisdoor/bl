@@ -26,7 +26,7 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#link "GL"
+//#link "GL"
 
 #load "std/debug.bl"
 #load "std/utils.bl"
@@ -435,9 +435,31 @@ GL_TEXTURE_INTERNAL_FORMAT       : u32 : 0x1003;
 GL_TEXTURE_BORDER_COLOR          : u32 : 0x1004;
 GL_TEXTURE_BORDER                : u32 : 0x1005;
 
-_GL :: struct {
+// OpenGL extensions must be loaded in runtime on Windows so we can do the same even on Unix.
+_Gl :: struct {
     ClearColor: *fn (red: f32, green: f32, blue: f32, alpha: f32);
     Clear: *fn (mask: u32);
+    TexImage2D: *fn (target: GLenum, level: GLint, internalformat: GLint, width: GLsizei, height: GLsizei, border: GLint, format: GLenum, t: GLenum, data: *u8);
+    PixelStorei: *fn (pname: GLenum, param: GLint); 
+    DrawArrays: *fn (mode: GLenum, first: GLint, count: GLsizei);
+    Enable: *fn (cap: GLenum);
+    Disable: *fn (cap: GLenum);
+    GetError: *fn () GLenum;
+    BlendFunc: *fn (sfactor: GLenum, dfactor: GLenum);
+    TexParameteri: *fn (target: GLenum, pname: GLenum, param: GLint);
+    TexSubImage2D: *fn (target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, width: GLsizei, height: GLsizei, format: GLenum, t: GLenum, data: *u8);
+    Hint: *fn (target: GLenum, mode: GLenum);
+    PolygonMode: *fn (face: GLenum, mode: GLenum);
+    DeleteTextures: *fn (n: GLsizei, textures: *GLuint);
+    LineWidth: *fn (width: GLfloat);
+    ReadPixels: *fn (x: GLint, y: GLint, width: GLsizei, height: GLsizei, format: GLenum, t: GLenum, data: *u8);
+    Flush: *fn ();
+    Finish: *fn ();
+    GenTextures: *fn (n: GLsizei, textures: *GLuint); 
+    BindTexture: *fn (target: GLenum, texture: GLuint); 
+    DrawElements: *fn (mode: u32, count: s32, tp: u32, indices: *u8);
+
+    // Extensions
     CreateShader: *fn (kind: u32) u32;
     ShaderSource: *fn (shader: u32, count: s32, str: **u8, lenght: s32);
     CompileShader: *fn (shader: u32);
@@ -455,7 +477,6 @@ _GL :: struct {
     GenBuffers: *fn (n: s32, buffers: *u32);
     BindBuffer: *fn (target: u32, buffer: u32);
     BufferData: *fn (target: u32, size: usize, data: *u8, usage: u32);
-    DrawElements: *fn (mode: u32, count: s32, tp: u32, indices: *u8);
     BindVertexArray: *fn (array: u32);
     DeleteVertexArrays: *fn (n: s32, arrays: *u32);
     GenVertexArrays: *fn (n: s32, arrays: *u32);
@@ -464,8 +485,6 @@ _GL :: struct {
     DisableVertexAttribArray: *fn (index: u32);
     DeleteBuffers: *fn (n: s32, buffers: *u32);
     ActiveTexture: *fn (texture: GLenum);
-    GenTextures: *fn (n: GLsizei, textures: *GLuint); 
-    BindTexture: *fn (target: GLenum, texture: GLuint); 
     Uniform1f: *fn (location: GLint, v0: GLfloat);
     Uniform2f: *fn (location: GLint, v0: GLfloat, v1: GLfloat);
     Uniform3f: *fn (location: GLint, v0: GLfloat, v1: GLfloat, v2: GLfloat);
@@ -499,36 +518,17 @@ _GL :: struct {
     UniformMatrix4x2fv: *fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat);
     UniformMatrix3x4fv: *fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat);
     UniformMatrix4x3fv: *fn (location: GLint, count: GLsizei, transpose: GLboolean, value: *GLfloat);
-    TexImage2D: *fn (target: GLenum, level: GLint, internalformat: GLint, width: GLsizei, height: GLsizei, border: GLint, format: GLenum, t: GLenum, data: *u8);
-    PixelStorei: *fn (pname: GLenum, param: GLint); 
-    DrawArrays: *fn (mode: GLenum, first: GLint, count: GLsizei);
-    Enable: *fn (cap: GLenum);
-    Disable: *fn (cap: GLenum);
-    GetError: *fn () GLenum;
     GetUniformLocation: *fn (program: GLuint, name: *GLchar) GLint;
     GetAttribLocation: *fn (program: GLuint, name: *GLchar) GLint;
-    BlendFunc: *fn (sfactor: GLenum, dfactor: GLenum);
-    TexParameteri: *fn (target: GLenum, pname: GLenum, param: GLint);
-    TexSubImage2D: *fn (target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, width: GLsizei, height: GLsizei, format: GLenum, t: GLenum, data: *u8);
-    Hint: *fn (target: GLenum, mode: GLenum);
-    PolygonMode: *fn (face: GLenum, mode: GLenum);
-    DeleteTextures: *fn (n: GLsizei, textures: *GLuint);
-    LineWidth: *fn (width: GLfloat);
-    ReadPixels: *fn (x: GLint, y: GLint, width: GLsizei, height: GLsizei, format: GLenum, t: GLenum, data: *u8);
-    Flush: *fn ();
-    Finish: *fn ();
 }
 
-gl := {:_GL: 0};
+gl := {:_Gl: 0};
 
 glInit :: fn () {
-    lib_handle = os_dlopen("");
-    if lib_handle == null { panic("Canot load main environment."); }
-
     tmp := string_new();
     defer string_delete(tmp);
     
-    info :: cast(*TypeInfoStruct) typeinfo(_GL);
+    info :: cast(*TypeInfoStruct) typeinfo(_Gl);
     loop i := 0; i < info.members.len; i += 1 {
         member :: info.members[i];
         dest_member_ptr := ptr_shift_bytes(cast(*u8) &gl, auto member.offset_bytes);
@@ -536,9 +536,9 @@ glInit :: fn () {
         string_clear(&tmp);
         string_concatenate(&tmp, "gl", member.name);
 
-        proc := os_dlsym(lib_handle, tmp);
+        proc :: _os_gl_get_proc(tmp);
         if proc == null {
-            print_warn("GL procedure handle '%' not found.", tmp);
+            print_warn("GL extension '%' not found.", tmp);
             continue;
         }
 
@@ -547,7 +547,6 @@ glInit :: fn () {
 }
 
 glTerminate :: fn () {
-    os_dlclose(lib_handle);
 }
 
 

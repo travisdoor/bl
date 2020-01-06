@@ -30,6 +30,7 @@
 
 // INCOMPLETE: time_now_ms
 
+OS_KIND :: OSKind.Windows;
 OS_NAME :: "Windows";
 
 OS_STDIN  :: 0;
@@ -75,7 +76,7 @@ os_sleep_ms :: fn (ms: f64) {
  */
 os_get_real_path :: fn (filename: string) string {
     tmp :: {:[OS_PATH_MAX]u8: 0};
-    if GetFullPathNameA(auto filename.ptr, tmp.len, tmp.ptr, null) == 0 {
+    if GetFullPathNameA(auto filename.ptr, auto tmp.len, tmp.ptr, null) == 0 {
 		return string_copy(filename);
 	}
 
@@ -98,10 +99,11 @@ os_get_real_path :: fn (filename: string) string {
  *   Library handle or null.
  */
 os_dlopen :: fn (lib_name: string) OSLibrary {
-    clib_name: *u8 = null;
-    if lib_name.len > 0 { clib_name = lib_name.ptr; }
+    if lib_name.len > 0 {
+        return LoadLibraryA(auto lib_name.ptr); 
+    }
 
-    return LoadLibraryA(clib_name); 
+    return GetModuleHandleA(null); 
 }
 
 /*
@@ -121,7 +123,7 @@ os_dlopen :: fn (lib_name: string) OSLibrary {
  *   Procedure handle or null.
  */
 os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 {
-    return GetProcAddress(lib, sym_name.ptr);
+    return GetProcAddress(lib, auto sym_name.ptr);
 }
 
 /*
@@ -157,6 +159,20 @@ __os_start :: fn () #entry {
 
     out :: cast(s32) main();
     _exit(out);
+}
+
+// CLEANUP: This must be in gl.bl file not here, but we keep it
+// until static 'if' will be supported by compiler.
+_os_gl_get_proc :: fn (proc_name: string) *u8 {
+    wglGetProcAddress :: fn (procName: *u8) *u8 #extern;
+
+    if proc_name.len == 0 { return null; }
+    p := wglGetProcAddress(proc_name.ptr);
+    ip :: cast(s64) p;
+    if ip != 0 && ip != 0x1 && ip != 0x2 && ip != 0x3 { return p; }
+
+    module :: os_dlopen("opengl32");
+    return os_dlsym(module, proc_name);
 }
 
 #private
@@ -200,6 +216,7 @@ GetFullPathNameA    :: fn (lpFileName: LPCSTR,
                            lpFilePart: *LPSTR) DWORD #extern;
 LoadLibraryA        :: fn (lpLibFileName: LPCSTR) HMODULE #extern;
 FreeLibrary         :: fn (hLibModule: HMODULE) BOOL #extern;
+GetModuleHandleA    :: fn (lpModuleName: LPCSTR) HMODULE #extern;
 GetProcAddress      :: fn (hModule: HMODULE, lpProcName: LPCSTR) FARPROC #extern;
 
 WideCharToMultiByte :: fn (

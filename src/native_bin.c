@@ -51,8 +51,14 @@ add_lib_paths(Context *cnt, TString *buf)
 	TARRAY_FOREACH(const char *, &cnt->assembly->dl.lib_paths, dir)
 	{
 		tstring_append(buf, " ");
+#ifdef BL_PLATFORM_WIN
+		tstring_append(buf, "\"");
+#endif
 		tstring_append(buf, link_path_flag);
 		tstring_append(buf, dir);
+#ifdef BL_PLATFORM_WIN
+		tstring_append(buf, "\"");
+#endif
 	}
 }
 

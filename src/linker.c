@@ -92,7 +92,7 @@ set_lib_paths(Context *cnt)
 	const char *lib_path      = conf_data_get_str(builder.conf, CONF_LINKER_LIB_PATH_KEY);
 	if (!strlen(lib_path)) return;
 
-	s32         len;
+	s64         len;
 	const char *begin = lib_path;
 	const char *c     = lib_path;
 	bool        done  = false;

@@ -29,6 +29,12 @@
 #load "c.bl"
 #load "memory.bl"
 
+OSKind :: enum {
+    Windows;
+    Linux;
+    MacOS;
+}
+
 /*
  * TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 
  * safe casting.
