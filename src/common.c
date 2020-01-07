@@ -48,7 +48,7 @@ void
 win_fix_path(char *buf, usize buf_size)
 {
 	if (!buf) return;
-	for (int i = 0; i < buf_size; ++i) {
+	for (usize i = 0; i < buf_size; ++i) {
 		const char c = buf[i];
 		if (c == '0') break;
 		if (c != '\\') continue;
