@@ -37,6 +37,20 @@ OS_STDOUT :: 1;
 OS_STDERR :: 2;
 
 /*
+ * Platform depend C types compatible with C ABI.
+ */
+c_char      :: s8;
+c_uchar     :: u8;
+c_short     :: s16;
+c_ushort    :: u16;
+c_int       :: s32;
+c_uint      :: u32;
+c_long      :: s64;
+c_ulong     :: u64;
+c_longlong  :: s64;
+c_ulonglong :: u64;
+
+/*
  * Maximum path size in bytes.
  */
 OS_PATH_MAX :: 1024;

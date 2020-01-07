@@ -5572,7 +5572,7 @@ analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
 		{
 			bool hit = false;
 			for (usize i = 0; i < sw->cases->size; ++i) {
-				MirSwitchCase *c        = &sw->cases->data[i];
+				c        = &sw->cases->data[i];
 				const s64      on_value = MIR_CEV_READ_AS(s64, &c->on_value->value);
 				const s64      variant_value = MIR_CEV_READ_AS(s64, variant->value);
 				if (on_value == variant_value) {

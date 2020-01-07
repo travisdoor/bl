@@ -1255,7 +1255,7 @@ emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg_instr)
 	switch (arg->llvm_easgm) {
 	case LLVM_EASGM_NONE: { /* Default. Arg value unchanged. */
 		LLVMValueRef llvm_arg = LLVMGetParam(llvm_fn, arg->llvm_index);
-		llvm_arg              = LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_dest);
+		LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_dest);
 		break;
 	}
 
