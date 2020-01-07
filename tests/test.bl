@@ -1,18 +1,15 @@
 /* playground */
 
-#load "std/print.bl"
-
 main :: fn () s32 {
-    i := 0;
-
-    switch i {
-        10 {}
-        10 {}
-
-        default {}
-    }
-    
     return 0;
+}
+
+BuildInfo :: struct {
+    output_name: string;
+}
+
+build :: fn (info: *BuildInfo) {
+    output_name = "MyProgram";
 }
 
 
