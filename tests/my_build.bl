@@ -1,0 +1,17 @@
+/* build setup */
+
+build :: fn () #build_entry {
+    exe := add_executable("myprogram");
+    add_unit(exe, "test.bl");
+}
+
+
+/*
+
+Assembly opt:
+- Debug/Release
+- Opt level
+- link libraries
+
+ */
+

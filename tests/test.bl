@@ -1,11 +1,10 @@
 /* playground */
 
-main :: fn () s32 {
-    return 0;
-}
+#load "std/print.bl"
 
-build :: fn () #build_entry {
-    build_add_assembly("MyProgram");
+main :: fn () s32 {
+    print("Hello world!!!\n");
+    return 0;
 }
 
 

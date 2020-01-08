@@ -31,10 +31,30 @@
  * are needed here.
  */
 
+#include "builder.h"
 #include "common.h"
 
-void
-__build_add_assembly(const char *name)
+Assembly *
+__add_executable(const char *name)
 {
-	BL_LOG("Add assembly '%s'.", name); 
+	// BL_LOG("Add executable '%s'.", name);
+	if (!name) return NULL;
+
+	Assembly *new_assembly = assembly_new(name);
+	builder_add_assembly(new_assembly);
+
+	return new_assembly;
+}
+
+Unit *
+__add_unit(Assembly *assembly, const char *filepath)
+{
+	// BL_LOG("Add unit '%s' into assembly '%s'.", filepath, assembly->name);
+	if (!assembly) return NULL;
+	if (!filepath) return NULL;
+
+	Unit *new_unit = unit_new_file(filepath, NULL, NULL);
+	assembly_add_unit_unique(assembly, new_unit);
+
+	return new_unit;
 }

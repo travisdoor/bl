@@ -109,13 +109,13 @@ init_llvm(Assembly *assembly)
 	char *features  = /*LLVMGetHostCPUFeatures()*/ "";
 	char *error_msg = NULL;
 
-	msg_log("Target: %s", triple);
+	//msg_log("Target: %s", triple);
 
 	LLVMTargetRef llvm_target = NULL;
 	if (LLVMGetTargetFromTriple(triple, &llvm_target, &error_msg)) {
-		msg_error("cannot get target with error: %s", error_msg);
+		msg_error("Cannot get target with error: %s!", error_msg);
 		LLVMDisposeMessage(error_msg);
-		BL_ABORT("cannot get target");
+		BL_ABORT("Cannot get target");
 	}
 
 	LLVMContextRef llvm_context = LLVMContextCreate();

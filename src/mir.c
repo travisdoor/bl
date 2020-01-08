@@ -5444,6 +5444,8 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		BL_ASSERT(fn->linkage_name);
 		fn->dyncall.extern_entry = assembly_find_extern(cnt->assembly, fn->linkage_name);
 		fn->fully_analyzed       = true;
+	} else if (cnt->assembly->is_build_entry && IS_FLAG(fn->flags, FLAG_ENTRY)) {
+		// IGNORE BODY OF ENTRY FUNCTION WHEN WE BUILD 'BUILD ENTRY' ASSEMBLY.
 	} else {
 		/* Add entry block of the function into analyze queue. */
 		MirInstr *entry_block = (MirInstr *)fn->first_block;
@@ -9145,18 +9147,13 @@ execute_entry_fn(Context *cnt)
 void
 execute_build_entry_fn(Context *cnt, MirFn *fn)
 {
-	msg_log("\nExecuting 'build' in compile time...");
 	if (!fn) {
 		msg_error("Assembly '%s' has no build entry function!", cnt->assembly->name);
 		return;
 	}
 
 	/* tmp return value storage */
-	if (vm_execute_fn(cnt->vm, cnt->assembly, fn, NULL)) {
-		msg_log("Execution finished without errors");
-	} else {
-		msg_log("Execution finished with errors");
-	}
+	vm_execute_fn(cnt->vm, cnt->assembly, fn, NULL);
 }
 
 void

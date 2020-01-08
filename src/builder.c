@@ -65,14 +65,6 @@ llvm_init(void)
 	LLVMInitializeX86TargetMC();
 	LLVMInitializeX86AsmPrinter();
 
-	/*
-	LLVMInitializeAllTargetInfos();
-	LLVMInitializeAllTargets();
-	LLVMInitializeAllTargetMCs();
-	LLVMInitializeAllAsmParsers();
-	LLVMInitializeAllAsmPrinters();
-	LLVMLinkInMCJIT();
-	*/
 	llvm_initialized = true;
 }
 
@@ -160,7 +152,7 @@ builder_parse_options(s32 argc, char *argv[])
 	for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
 		if (arg_is("ast-dump")) {
 			builder.options.print_ast = true;
-		} else if (arg_is("build")) {
+		} else if (arg_is("b") || arg_is("build")) {
 			builder.options.use_pipeline = true;
 		} else if (arg_is("h") || arg_is("help")) {
 			builder.options.print_help = true;
@@ -235,13 +227,21 @@ builder_init(void)
 
 	/* initialize LLVM statics */
 	llvm_init();
-
 	vm_init(&builder.vm, VM_STACK_SIZE);
+
+	tarray_init(&builder.assembly_queue, sizeof(Assembly *));
 }
 
 void
 builder_terminate(void)
 {
+        Assembly *assembly;
+        TARRAY_FOREACH(Assembly *, &builder.assembly_queue, assembly)
+        {
+		assembly_delete(assembly);
+        }
+
+	tarray_terminate(&builder.assembly_queue);
 	vm_terminate(&builder.vm);
 	conf_data_delete(builder.conf);
 	arena_terminate(&builder.str_cache);
@@ -267,6 +267,25 @@ builder_load_conf_file(const char *filepath)
 	unit_delete(unit);
 
 	return COMPILE_OK;
+}
+
+void
+builder_add_assembly(Assembly *assembly)
+{
+        if (!assembly) return;
+        tarray_push(&builder.assembly_queue, assembly);
+}
+
+int
+builder_compile_all(void) {
+        Assembly *assembly;
+        TARRAY_FOREACH(Assembly *, &builder.assembly_queue, assembly)
+        {
+               s32 state = builder_compile(assembly);
+               if (state != COMPILE_OK) return state;
+        }
+
+        return COMPILE_OK;
 }
 
 int

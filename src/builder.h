@@ -76,6 +76,8 @@ typedef struct Builder {
 	s32            total_lines;
 	s32            errorc;
 	ConfData *     conf;
+
+	TArray assembly_queue;
 } Builder;
 
 /* Builder global instance */
@@ -109,7 +111,13 @@ builder_parse_options(s32 argc, char *argv[]);
 int
 builder_load_conf_file(const char *filepath);
 
-int
+void
+builder_add_assembly(Assembly *assembly);
+
+s32
+builder_compile_all(void);
+
+s32
 builder_compile(Assembly *assembly);
 
 void

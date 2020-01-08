@@ -187,8 +187,7 @@ main(s32 argc, char *argv[])
 
 	Assembly *assembly = assembly_new(assembly_name);
 	free(assembly_name);
-
-	if (builder.options.use_pipeline) assembly->is_build_entry = true;
+	assembly->is_build_entry = builder.options.use_pipeline;
 
 	while (*argv != NULL) {
 		Unit *unit = unit_new_file(*argv, NULL, NULL);
@@ -201,13 +200,13 @@ main(s32 argc, char *argv[])
 		argv++;
 	}
 
-	s32 state = builder_compile(assembly);
+	builder_add_assembly(assembly);
+	s32 state = builder_compile_all();
 
 	char date[26];
 	date_time(date, 26, "%d-%m-%Y %H:%M:%S");
 	msg_log("\nFinished at %s", date);
 
-	assembly_delete(assembly);
 	builder_terminate();
 	return state;
 }
