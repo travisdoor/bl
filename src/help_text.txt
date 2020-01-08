@@ -2,6 +2,7 @@
   blc [options] <source-files>\n\
 \n\
 Options\n\
+  -build                              = Use BL build pipeline.\n\
   -h, -help                           = Print usage information and exit.\n\
   -r, -run                            = Execute 'main' method in compile time.\n\
   -rt, -run-tests                     = Execute all unit tests in compile time.\n\

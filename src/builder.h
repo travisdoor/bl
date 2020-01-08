@@ -66,15 +66,16 @@ typedef struct BuilderOpions {
 	bool     force_test_llvm;
 	bool     debug_build;
 	bool     reg_split;
+	bool     use_pipeline;
 } BuilderOptions;
 
 typedef struct Builder {
-	BuilderOptions  options;
-	Arena           str_cache;
-	VM              vm;
-	s32             total_lines;
-	s32             errorc;
-	ConfData *      conf;
+	BuilderOptions options;
+	Arena          str_cache;
+	VM             vm;
+	s32            total_lines;
+	s32            errorc;
+	ConfData *     conf;
 } Builder;
 
 /* Builder global instance */

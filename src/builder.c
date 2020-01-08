@@ -127,6 +127,7 @@ compile_assembly(Assembly *assembly)
 
 	if (builder.options.no_analyze) return COMPILE_OK;
 	if (builder.options.no_llvm) return COMPILE_OK;
+	if (assembly->is_build_entry) return COMPILE_OK;
 	ir_run(assembly);
 	INTERRUPT_ON_ERROR;
 
@@ -159,6 +160,8 @@ builder_parse_options(s32 argc, char *argv[])
 	for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
 		if (arg_is("ast-dump")) {
 			builder.options.print_ast = true;
+		} else if (arg_is("build")) {
+			builder.options.use_pipeline = true;
 		} else if (arg_is("h") || arg_is("help")) {
 			builder.options.print_help = true;
 		} else if (arg_is("lex-dump")) {
@@ -278,6 +281,13 @@ builder_compile(Assembly *assembly)
 	/* include core source file */
 	if (!builder.options.no_api) {
 		unit = unit_new_file(OS_PRELOAD_FILE, NULL, NULL);
+		if (!assembly_add_unit_unique(assembly, unit)) {
+			unit_delete(unit);
+		}
+	}
+
+	if (assembly->is_build_entry) {
+		unit = unit_new_file(BUILD_API_FILE, NULL, NULL);
 		if (!assembly_add_unit_unique(assembly, unit)) {
 			unit_delete(unit);
 		}

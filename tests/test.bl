@@ -4,12 +4,8 @@ main :: fn () s32 {
     return 0;
 }
 
-BuildInfo :: struct {
-    output_name: string;
-}
-
-build :: fn (info: *BuildInfo) {
-    output_name = "MyProgram";
+build :: fn () #build_entry {
+    build_add_assembly("MyProgram");
 }
 
 

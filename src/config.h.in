@@ -83,6 +83,8 @@
 #define ENVPATH_SEPARATOR ':'
 #endif
 
+#define BUILD_API_FILE "build/build.bl"
+
 /*
  * NOTE: We are converting all backslashes on Windows to the forward slashes.
  */

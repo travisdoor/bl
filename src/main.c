@@ -92,7 +92,7 @@ generate_conf(void)
 int
 main(s32 argc, char *argv[])
 {
-    const char *help_text =
+	const char *help_text =
 #include "help_text.txt"
 	    ;
 
@@ -138,7 +138,7 @@ main(s32 argc, char *argv[])
 	argv += next_arg;
 
 	if (builder.options.print_help) {
-        fprintf(stdout,  "%s",help_text);
+		fprintf(stdout, "%s", help_text);
 		builder_terminate();
 
 		exit(EXIT_SUCCESS);
@@ -187,6 +187,8 @@ main(s32 argc, char *argv[])
 
 	Assembly *assembly = assembly_new(assembly_name);
 	free(assembly_name);
+
+	if (builder.options.use_pipeline) assembly->is_build_entry = true;
 
 	while (*argv != NULL) {
 		Unit *unit = unit_new_file(*argv, NULL, NULL);

@@ -90,6 +90,7 @@ set(SOURCE_FILES
         src/ir_opt.c
         src/mir_printer.c
         src/ast.c
+        src/build_api.c
 	src/threading.cpp
 	src/llvm_api.cpp
         src/llvm_di.cpp)

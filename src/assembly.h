@@ -72,11 +72,13 @@ typedef struct Assembly {
 		DCCallVM *vm;
 	} dl;
 
-	TArray     units;      /* array of all units in assembly */
-	THashTable unit_cache; /* cache for loading only unique units */
-	THashTable link_cache; /* all linked externals libraries passed to linker */
-	char *     name;       /* assembly name */
-	Scope *    gscope;     /* global scope of the assembly */
+	TArray     units;          /* array of all units in assembly */
+	THashTable unit_cache;     /* cache for loading only unique units */
+	THashTable link_cache;     /* all linked externals libraries passed to linker */
+	char *     name;           /* assembly name */
+	Scope *    gscope;         /* global scope of the assembly */
+	bool       is_build_entry; /* Set for builder assembly when custom build is used. */
+	MirFn *    build_entry;    /* Set for build assembly. */
 
 	/* Builtins */
 	struct BuiltinTypes {
@@ -125,8 +127,8 @@ typedef struct Assembly {
 		MirType *t_TypeInfoEnumVariants_slice;
 		MirType *t_TypeInfoFnArgs_slice;
 
-		bool     is_rtti_ready;
-		bool     is_any_ready;
+		bool is_rtti_ready;
+		bool is_any_ready;
 	} builtin_types;
 } Assembly;
 
