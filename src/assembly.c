@@ -66,6 +66,7 @@ init_dl(Assembly *assembly)
 {
 	tarray_init(&assembly->dl.libs, sizeof(NativeLib));
 	tarray_init(&assembly->dl.lib_paths, sizeof(char *));
+	tstring_init(&assembly->dl.custom_linker_opt);
 
 	DCCallVM *vm = dcNewCallVM(4096);
 	dcMode(vm, DC_CALL_C_DEFAULT);
@@ -172,6 +173,7 @@ terminate_dl(Assembly *assembly)
 	dcFree(assembly->dl.vm);
 	tarray_terminate(&assembly->dl.libs);
 	tarray_terminate(&assembly->dl.lib_paths);
+	tstring_terminate(&assembly->dl.custom_linker_opt);
 }
 
 static void

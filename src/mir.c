@@ -5428,16 +5428,33 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	}
 
 	if (IS_FLAG(fn->flags, FLAG_BUILD_ENTRY)) {
-		// INCOMPLETE: validate build entry function type here!!!
-		// INCOMPLETE: validate build entry function type here!!!
-		// INCOMPLETE: validate build entry function type here!!!
+		if (fn->type->data.fn.args) {
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_INVALID_ARG_COUNT,
+			            fn_proto->base.node->location,
+			            BUILDER_CUR_WORD,
+			            "Build entry function cannot take arguments.");
+			return ANALYZE_RESULT(FAILED, 0);
+		}
+
+		if (fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID) {
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_INVALID_TYPE,
+			            fn_proto->base.node->location,
+			            BUILDER_CUR_WORD,
+			            "Build entry function cannot return value.");
+			return ANALYZE_RESULT(FAILED, 0);
+		}
+
 		if (cnt->assembly->is_build_entry) {
-			BL_ASSERT(!cnt->assembly->build_entry);
 			cnt->assembly->build_entry = fn;
 		} else {
-			// INCOMPLETE: warn about unused build entry
-			// INCOMPLETE: warn about unused build entry
-			// INCOMPLETE: warn about unused build entry
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_DUPLICATE_ENTRY,
+			            fn_proto->base.node->location,
+			            BUILDER_CUR_WORD,
+			            "More than one build entry per assembly is not allowed.");
+			return ANALYZE_RESULT(FAILED, 0);
 		}
 	}
 

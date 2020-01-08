@@ -49,7 +49,14 @@ link_library :: fn (assembly: Assembly, name: string) {
     __link_library(assembly, auto name.ptr);
 }
 
+append_linker_opt :: fn (assembly: Assembly, opt: string) {
+    if assembly == null { panic("Invalid assembly!"); }
+    if opt.len == 0 { return; }
+    __append_linker_opt(assembly, auto opt.ptr);
+}
+
 #private
 __add_executable :: fn (name: *c_char) Assembly #extern;
 __add_unit :: fn (assembly: Assembly, filepath: *c_char) Unit #extern;
 __link_library :: fn (assembly: Assembly, name: *c_char) #extern;
+__append_linker_opt :: fn (assembly: Assembly, opt: *c_char) #extern;

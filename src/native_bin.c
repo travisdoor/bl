@@ -32,11 +32,11 @@
 #ifdef BL_PLATFORM_WIN
 static const char *link_flag      = "";
 static const char *link_path_flag = "/LIBPATH:";
-static const char *cmd            = "call \"%s\" %s && \"%s\" %s.obj /OUT:%s.exe %s";
+static const char *cmd            = "call \"%s\" %s && \"%s\" %s.obj /OUT:%s.exe %s %s";
 #else
 static const char *link_flag      = "-l";
 static const char *link_path_flag = "-L";
-static const char *cmd            = "%s %s.o -o %s %s";
+static const char *cmd            = "%s %s.o -o %s %s %s";
 #endif
 
 typedef struct {
@@ -92,7 +92,10 @@ native_bin_run(Assembly *assembly)
 	{ /* setup link command */
 		const char *vc_vars_all = conf_data_get_str(builder.conf, CONF_VC_VARS_ALL_KEY);
 		const char *vc_arch     = "x64"; // TODO: set by compiler target arch
-		const char *opt         = conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
+		const char *default_opt = conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
+		const char *custom_opt =
+		    assembly->dl.custom_linker_opt.len ? assembly->dl.custom_linker_opt.data : "";
+
 		tstring_setf(&buf,
 		             cmd,
 		             vc_vars_all,
@@ -100,13 +103,23 @@ native_bin_run(Assembly *assembly)
 		             linker_exec,
 		             assembly->name,
 		             assembly->name,
-		             opt);
+		             default_opt,
+		             custom_opt);
 	}
 #else
         const char *linker_exec = conf_data_get_str(builder.conf, CONF_LINKER_EXEC_KEY);
         { /* setup link command */
-                const char *opt = conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
-                tstring_setf(&buf, cmd, linker_exec, assembly->name, assembly->name, opt);
+                const char *default_opt = conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
+                const char *custom_opt =
+                    assembly->dl.custom_linker_opt.len ? assembly->dl.custom_linker_opt.data : "";
+
+                tstring_setf(&buf,
+                             cmd,
+                             linker_exec,
+                             assembly->name,
+                             assembly->name,
+                             default_opt,
+                             custom_opt);
         }
 #endif
 

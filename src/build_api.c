@@ -55,3 +55,9 @@ BL_EXPORT void __link_library(Assembly *assembly, const char *name)
 {
 	assembly_add_native_lib(assembly, name, NULL);
 }
+
+BL_EXPORT void __append_linker_opt(Assembly *assembly, const char *opt)
+{
+	tstring_append(&assembly->dl.custom_linker_opt, opt);
+	tstring_append(&assembly->dl.custom_linker_opt, " ");
+}

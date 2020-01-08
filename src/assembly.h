@@ -69,6 +69,7 @@ typedef struct Assembly {
 	struct {
 		TArray    lib_paths;
 		TArray    libs;
+		TString   custom_linker_opt;
 		DCCallVM *vm;
 	} dl;
 
