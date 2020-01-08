@@ -34,6 +34,10 @@
 #include "mir_printer.h"
 #include "unit.h"
 
+#ifdef _MSC_VER 
+#pragma warning(disable:6001)
+#endif
+
 #define ARENA_CHUNK_COUNT 512
 #define ANALYZE_TABLE_SIZE 8192
 #define TEST_CASE_FN_NAME ".test"

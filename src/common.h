@@ -38,6 +38,15 @@
 #include <stddef.h>
 #include <tlib/tlib.h>
 
+#ifdef _MSC_VER 
+#pragma warning(disable:4002)
+#pragma warning(disable:6011)
+#pragma warning(disable:4013)
+#pragma warning(disable:4244)
+#pragma warning(disable:6001)
+#pragma warning(disable:4267)
+#endif
+
 struct Assembly;
 
 #if defined(BL_COMPILER_CLANG) || defined(BL_COMPILER_GNUC)
