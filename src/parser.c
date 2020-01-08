@@ -429,7 +429,7 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 		    ast_create_node(cnt->ast_arena, AST_LINK, tok_directive, scope_get(cnt));
 		link->data.link.lib = tok_path->value.str;
 
-		assembly_add_link(cnt->assembly, tok_path);
+		assembly_add_native_lib(cnt->assembly, tok_path->value.str, tok_path);
 
 		return link;
 	}

@@ -126,25 +126,23 @@ set_lib_paths(Context *cnt)
 }
 
 static bool
-link_lib(Context *cnt, const char *name, Token *token)
+link_lib(Context *cnt, NativeLib *lib)
 {
-	if (!name) BL_ABORT("invalid lib name");
-	NativeLib lib   = {0};
-	lib.user_name   = strdup(name);
-	lib.linked_from = token;
+	if (!lib) BL_ABORT("invalid lib");
+	if (!lib->user_name) BL_ABORT("invalid lib name");
 
-	if (!search_library(cnt, name, &lib.filename, &lib.dir, &lib.filepath)) return false;
+	if (!search_library(cnt, lib->user_name, &lib->filename, &lib->dir, &lib->filepath))
+		return false;
 
-	lib.handle = dlLoadLibrary(lib.filepath);
-	if (!lib.handle) {
-		free(lib.filename);
-		free(lib.dir);
-		free(lib.filepath);
+	lib->handle = dlLoadLibrary(lib->filepath);
+	if (!lib->handle) {
+		free(lib->filename);
+		free(lib->dir);
+		free(lib->filepath);
 
 		return false;
 	}
 
-	tarray_push(&cnt->assembly->dl.libs, lib);
 	return true;
 }
 
@@ -182,27 +180,22 @@ linker_run(Assembly *assembly)
 
 	set_lib_paths(&cnt);
 
+	NativeLib *lib;
+	for (usize i = 0; i < assembly->dl.libs.size; ++i) {
+		lib = &tarray_at(NativeLib, &assembly->dl.libs, i);
+		if (!link_lib(&cnt, lib)) {
+			link_error(ERR_LIB_NOT_FOUND,
+			           lib->linked_from,
+			           BUILDER_CUR_WORD,
+			           "Unresolved external library '%s'",
+			           lib->user_name);
+		}
+	}
+
 	if (!link_working_environment(&cnt)) {
 		Token *dummy = NULL;
 		link_error(
 		    ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link working environment.");
 		return;
-	}
-
-	THashTable *cache = &assembly->link_cache;
-	Token *     token;
-	TIterator   it;
-	THTBL_FOREACH(cache, it)
-	{
-		token = thtbl_iter_peek_value(Token *, it);
-		BL_ASSERT(token);
-
-		if (!link_lib(&cnt, token->value.str, token)) {
-			link_error(ERR_LIB_NOT_FOUND,
-			           token,
-			           BUILDER_CUR_WORD,
-			           "Unresolved external library '%s'",
-			           token->value.str);
-		}
 	}
 }

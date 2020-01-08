@@ -109,7 +109,7 @@ init_llvm(Assembly *assembly)
 	char *features  = /*LLVMGetHostCPUFeatures()*/ "";
 	char *error_msg = NULL;
 
-	//msg_log("Target: %s", triple);
+	// msg_log("Target: %s", triple);
 
 	LLVMTargetRef llvm_target = NULL;
 	if (LLVMGetTargetFromTriple(triple, &llvm_target, &error_msg)) {
@@ -208,7 +208,6 @@ assembly_new(const char *name)
 	assembly->name = strdup(name);
 	tarray_init(&assembly->units, sizeof(Unit *));
 	thtbl_init(&assembly->unit_cache, 0, EXPECTED_UNIT_COUNT);
-	thtbl_init(&assembly->link_cache, sizeof(Token *), EXPECTED_LINK_COUNT);
 
 	scope_arenas_init(&assembly->arenas.scope);
 	ast_arena_init(&assembly->arenas.ast);
@@ -253,7 +252,6 @@ assembly_delete(Assembly *assembly)
 
 	tarray_terminate(&assembly->units);
 	thtbl_terminate(&assembly->unit_cache);
-	thtbl_terminate(&assembly->link_cache);
 	terminate_dl(assembly);
 	terminate_mir(assembly);
 	terminate_llvm(assembly);
@@ -283,16 +281,24 @@ assembly_add_unit_unique(Assembly *assembly, Unit *unit)
 }
 
 void
-assembly_add_link(Assembly *assembly, Token *token)
+assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token)
 {
-	if (!token) return;
+	const u64 hash = thash_from_str(lib_name);
 
-	BL_ASSERT(token->sym == SYM_STRING);
+	{ /* Search for duplicity. */
+		NativeLib *lib;
+		for (usize i = 0; i < assembly->dl.libs.size; ++i) {
+			lib = &tarray_at(NativeLib, &assembly->dl.libs, i);
+			if (lib->hash == hash) return;
+		}
+	}
 
-	u64 hash = thash_from_str(token->value.str);
-	if (thtbl_has_key(&assembly->link_cache, hash)) return;
+	NativeLib lib   = {0};
+	lib.hash        = hash;
+	lib.user_name   = strdup(lib_name);
+	lib.linked_from = link_token;
 
-	thtbl_insert(&assembly->link_cache, hash, token);
+	tarray_push(&assembly->dl.libs, lib);
 }
 
 DCpointer

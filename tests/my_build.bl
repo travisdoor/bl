@@ -3,6 +3,10 @@
 build :: fn () #build_entry {
     exe := add_executable("myprogram");
     add_unit(exe, "test.bl");
+    link_library(exe, "glfw");
+    link_library(exe, "glfw");
+    link_library(exe, "glfw");
+    link_library(exe, "glfw");
 }
 
 
@@ -12,6 +16,7 @@ Assembly opt:
 - Debug/Release
 - Opt level
 - link libraries
+- output dir
 
  */
 

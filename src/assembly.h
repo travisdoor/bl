@@ -74,7 +74,6 @@ typedef struct Assembly {
 
 	TArray     units;          /* array of all units in assembly */
 	THashTable unit_cache;     /* cache for loading only unique units */
-	THashTable link_cache;     /* all linked externals libraries passed to linker */
 	char *     name;           /* assembly name */
 	Scope *    gscope;         /* global scope of the assembly */
 	bool       is_build_entry; /* Set for builder assembly when custom build is used. */
@@ -133,6 +132,7 @@ typedef struct Assembly {
 } Assembly;
 
 typedef struct NativeLib {
+	u32           hash;
 	DLLib *       handle;
 	struct Token *linked_from;
 	const char *  user_name;
@@ -152,7 +152,7 @@ void
 assembly_add_unit(Assembly *assembly, Unit *unit);
 
 void
-assembly_add_link(Assembly *assembly, struct Token *token);
+assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
 
 bool
 assembly_add_unit_unique(Assembly *assembly, Unit *unit);
