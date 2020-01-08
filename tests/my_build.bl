@@ -15,7 +15,6 @@ build :: fn () #build_entry {
 Assembly opt:
 - Debug/Release
 - Opt level
-- link libraries
 - output dir
 
  */
