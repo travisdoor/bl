@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #load "std/_builtin.bl"
+#load "std/string.bl"
 
 // INCOMPLETE: time_now_ms
 
@@ -186,7 +187,7 @@ _os_gl_get_proc :: fn (proc_name: string) *u8 {
     if ip != 0 && ip != 0x1 && ip != 0x2 && ip != 0x3 { return p; }
 
     module :: os_dlopen("opengl32");
-    if monule == null { panic("OpenGL not linked?"); }
+    if module == null { panic("OpenGL not linked?"); }
     return os_dlsym(module, proc_name);
 }
 

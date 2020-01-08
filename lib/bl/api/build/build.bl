@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   build_api.c
+// File:   build.bl
 // Author: Martin Dorazil
 // Date:   8/1/20
 //
@@ -26,32 +26,30 @@
 // SOFTWARE.
 //************************************************************************************************
 
-/**
- * Those methods are used only during compilation pass to setup builder pipeline. No C interfaces
- * are needed here.
- */
+Assembly :: *u8;
+Unit :: *u8;
 
-#include "builder.h"
-#include "common.h"
+add_executable :: fn (name: string) Assembly {
+    if name.len == 0 { panic("Invalid executable name!"); }
 
-BL_EXPORT Assembly *__add_executable(const char *name)
-{
-	Assembly *new_assembly = assembly_new(name);
-	builder_add_assembly(new_assembly);
-
-	return new_assembly;
+    return __add_executable(auto name.ptr);
 }
 
+add_unit :: fn (assembly: Assembly, filepath: string) Unit {
+    if assembly == null { panic("Invalid assembly!"); }
+    if filepath.len == 0 { panic("Invalid unit path!"); }
 
-BL_EXPORT Unit *__add_unit(Assembly *assembly, const char *filepath)
-{
-	Unit *new_unit = unit_new_file(filepath, NULL, NULL);
-	assembly_add_unit_unique(assembly, new_unit);
-
-	return new_unit;
+    return __add_unit(assembly, auto filepath.ptr);
 }
 
-BL_EXPORT void __link_library(Assembly *assembly, const char *name)
-{
-	assembly_add_native_lib(assembly, name, NULL);
+link_library :: fn (assembly: Assembly, name: string) {
+    if assembly == null { panic("Invalid assembly!"); }
+    if name.len == 0 { panic("Invalid library name!"); }
+
+    __link_library(assembly, auto name.ptr);
 }
+
+#private
+__add_executable :: fn (name: *c_char) Assembly #extern;
+__add_unit :: fn (assembly: Assembly, filepath: *c_char) Unit #extern;
+__link_library :: fn (assembly: Assembly, name: *c_char) #extern;

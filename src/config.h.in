@@ -41,17 +41,20 @@
 
 #ifdef _WIN32
 #define BL_PLATFORM_WIN
+#define BL_EXPORT __declspec(dllexport)
 //#define BL_NO_COLOR
 #define OS_PRELOAD_FILE "os/windows.bl"
 #elif __APPLE__
 //#define BL_NO_COLOR
 #define BL_PLATFORM_MACOS
+#define BL_EXPORT
 #define OS_PRELOAD_FILE "os/macos.bl"
 #elif __linux__
 #define BL_PLATFORM_LINUX
 #define OS_PRELOAD_FILE "os/linux.bl"
+#define BL_EXPORT
 #elif __CYGWIN__
-#define BL_PLATFORM_WIN
+#error "Unknown platform"
 #else
 #error "Unknown platform"
 #endif

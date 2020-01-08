@@ -147,15 +147,9 @@ link_lib(Context *cnt, NativeLib *lib)
 }
 
 static bool
-link_working_environment(Context *cnt)
+link_working_environment(Context *cnt, const char *lib_name)
 {
-#ifdef BL_PLATFORM_WIN
-	const char *libc = MSVC_CRT;
-#else
-	const char *libc = NULL;
-#endif
-
-	DLLib *handle = dlLoadLibrary(libc);
+	DLLib *handle = dlLoadLibrary(lib_name);
 	if (!handle) return false;
 
 	NativeLib native_lib = {.handle      = handle,
@@ -192,7 +186,15 @@ linker_run(Assembly *assembly)
 		}
 	}
 
-	if (!link_working_environment(&cnt)) {
+#ifdef BL_PLATFORM_WIN
+	if (!link_working_environment(&cnt, MSVC_CRT)) {
+		Token *dummy = NULL;
+		link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " MSVC_CRT);
+		return;
+	}
+#endif
+
+	if (!link_working_environment(&cnt, NULL)) {
 		Token *dummy = NULL;
 		link_error(
 		    ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link working environment.");
