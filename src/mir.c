@@ -5427,6 +5427,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		++fn->ref_count;
 	}
 
+	/* Check build entry function. */
 	if (IS_FLAG(fn->flags, FLAG_BUILD_ENTRY)) {
 		if (fn->type->data.fn.args) {
 			builder_msg(BUILDER_MSG_ERROR,
