@@ -94,7 +94,7 @@ native_bin_run(Assembly *assembly)
 		const char *vc_arch     = "x64"; // TODO: set by compiler target arch
 		const char *default_opt = conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
 		const char *custom_opt  = assembly->options.custom_linker_opt.len
-		                             ? assembly->dl.custom_linker_opt.data
+		                             ? assembly->options.custom_linker_opt.data
 		                             : "";
 
 		tstring_setf(&buf,

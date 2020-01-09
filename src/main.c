@@ -147,7 +147,7 @@ main(s32 argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (*argv == NULL) {
+	if (*argv == NULL && !builder.options.use_pipeline) {
 		msg_warning("nothing to do, no input files, sorry :(");
 
 		builder_terminate();
@@ -159,29 +159,17 @@ main(s32 argc, char *argv[])
 	/* setup LIB_DIR */
 	ENV_LIB_DIR = strdup(conf_data_get_str(builder.conf, CONF_LIB_DIR_KEY));
 
-	/*
-	 * HACK: use name of first file as assembly name
-	 */
-	char *assembly_name = strrchr(*argv, PATH_SEPARATORC);
-	if (assembly_name == NULL) {
-		assembly_name = *argv;
-	} else {
-		++assembly_name;
-	}
+	Assembly *assembly = assembly_new("out");
+	if (builder.options.use_pipeline) {
+		assembly->options.build_mode = BUILD_MODE_BUILD;
 
-	assembly_name = strdup(assembly_name);
-#ifdef BL_COMPILER_MSVC
-	PathRemoveExtensionA(assembly_name);
-#else
-	char *ext = rindex(assembly_name, '.');
-	if (ext != NULL) {
-		(*ext) = '\0';
-	}
-#endif
+		Unit *unit = unit_new_file(BUILD_SCRIPT_FILE, NULL, NULL);
 
-	Assembly *assembly = assembly_new(assembly_name);
-	free(assembly_name);
-	if (builder.options.use_pipeline) assembly->options.build_mode = BUILD_MODE_BUILD;
+		bool added = assembly_add_unit_unique(assembly, unit);
+		if (added == false) {
+			unit_delete(unit);
+		}
+	}
 
 	while (*argv != NULL) {
 		Unit *unit = unit_new_file(*argv, NULL, NULL);

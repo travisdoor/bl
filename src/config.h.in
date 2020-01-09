@@ -118,6 +118,8 @@
 #define CONF_LINKER_LIB_PATH_KEY "LINKER_LIB_PATH"
 #define CONF_LIB_DIR_KEY "LIB_DIR"
 
+#define BUILD_SCRIPT_FILE "build.bl"
+
 extern char *ENV_LIB_DIR;
 extern char *ENV_EXEC_DIR;
 extern char *ENV_CONF_FILEPATH;

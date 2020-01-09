@@ -145,53 +145,53 @@ compile_assembly(Assembly *assembly)
 s32
 builder_parse_options(s32 argc, char *argv[])
 {
-#define arg_is(_arg) (strcmp(&argv[optind][1], _arg) == 0)
+#define IS_PARAM(_arg) (strcmp(&argv[optind][1], _arg) == 0)
 
 	builder.options.build_mode = BUILD_MODE_DEBUG;
 
-	s32 optind;
-	for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
-		if (arg_is("ast-dump")) {
+	s32 optind = 1;
+	for (; optind < argc && argv[optind][0] == '-'; optind++) {
+		if (IS_PARAM("ast-dump")) {
 			builder.options.print_ast = true;
-		} else if (arg_is("b") || arg_is("build")) {
-			builder.options.use_pipeline = true;
-		} else if (arg_is("h") || arg_is("help")) {
+		} else if (IS_PARAM("h") || IS_PARAM("help")) {
 			builder.options.print_help = true;
-		} else if (arg_is("lex-dump")) {
+		} else if (IS_PARAM("b") || IS_PARAM("build")) {
+			builder.options.use_pipeline = true;
+		} else if (IS_PARAM("lex-dump")) {
 			builder.options.print_tokens = true;
-		} else if (arg_is("syntax-only")) {
+		} else if (IS_PARAM("syntax-only")) {
 			builder.options.syntax_only = true;
-		} else if (arg_is("emit-llvm")) {
+		} else if (IS_PARAM("emit-llvm")) {
 			builder.options.emit_llvm = true;
-		} else if (arg_is("emit-mir")) {
+		} else if (IS_PARAM("emit-mir")) {
 			builder.options.emit_mir = true;
-		} else if (arg_is("r") || arg_is("run")) {
+		} else if (IS_PARAM("r") || IS_PARAM("run")) {
 			builder.options.run = true;
-		} else if (arg_is("rt") || arg_is("run-tests")) {
+		} else if (IS_PARAM("rt") || IS_PARAM("run-tests")) {
 			builder.options.run_tests = true;
-		} else if (arg_is("no-bin")) {
+		} else if (IS_PARAM("no-bin")) {
 			builder.options.no_bin = true;
-		} else if (arg_is("no-warning")) {
+		} else if (IS_PARAM("no-warning")) {
 			builder.options.no_warn = true;
-		} else if (arg_is("verbose")) {
+		} else if (IS_PARAM("verbose")) {
 			builder.options.verbose = true;
-		} else if (arg_is("no-api")) {
+		} else if (IS_PARAM("no-api")) {
 			builder.options.no_api = true;
-		} else if (arg_is("no-analyze")) {
+		} else if (IS_PARAM("no-analyze")) {
 			builder.options.no_analyze = true;
-		} else if (arg_is("force-test-to-llvm")) {
+		} else if (IS_PARAM("force-test-to-llvm")) {
 			builder.options.force_test_llvm = true;
-		} else if (arg_is("no-llvm")) {
+		} else if (IS_PARAM("no-llvm")) {
 			builder.options.no_llvm = true;
-		} else if (arg_is("configure")) {
+		} else if (IS_PARAM("configure")) {
 			builder.options.run_configure = true;
-		} else if (arg_is("reg-split-on")) {
+		} else if (IS_PARAM("reg-split-on")) {
 			builder.options.reg_split = true;
-		} else if (arg_is("reg-split-off")) {
+		} else if (IS_PARAM("reg-split-off")) {
 			builder.options.reg_split = false;
-		} else if (arg_is("release-fast")) {
+		} else if (IS_PARAM("release-fast")) {
 			builder.options.build_mode = BUILD_MODE_RELEASE_FAST;
-		} else if (arg_is("release-small")) {
+		} else if (IS_PARAM("release-small")) {
 			builder.options.build_mode = BUILD_MODE_RELEASE_SMALL;
 		} else {
 			msg_error("invalid params '%s'", &argv[optind][1]);
@@ -200,7 +200,7 @@ builder_parse_options(s32 argc, char *argv[])
 	}
 	argv += optind;
 	return optind;
-#undef arg_is
+#undef IS_PARAM
 }
 
 void
