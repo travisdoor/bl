@@ -115,12 +115,6 @@ main(s32 argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	/* We choose correct optimization level based on debug mode if user don't specify one
-	 * explicitly. */
-	if (builder.options.opt_level == OPT_NOT_SPECIFIED) {
-		builder.options.opt_level = builder.options.debug_build ? OPT_NONE : OPT_DEFAULT;
-	}
-
 	/* Run configure if needed. */
 	if (builder.options.run_configure) {
 		if (generate_conf() != 0) {
@@ -187,7 +181,7 @@ main(s32 argc, char *argv[])
 
 	Assembly *assembly = assembly_new(assembly_name);
 	free(assembly_name);
-	assembly->is_build_entry = builder.options.use_pipeline;
+	if (builder.options.use_pipeline) assembly->options.build_mode = BUILD_MODE_BUILD;
 
 	while (*argv != NULL) {
 		Unit *unit = unit_new_file(*argv, NULL, NULL);

@@ -37,36 +37,27 @@
 #define COMPILE_OK 0
 #define COMPILE_FAIL 1
 
-typedef enum OptLevel {
-	OPT_NOT_SPECIFIED = -1,
-	OPT_NONE          = 0,
-	OPT_LESS          = 1,
-	OPT_DEFAULT       = 2,
-	OPT_AGGRESSIVE    = 3,
-} OptLevel;
-
-typedef struct BuilderOpions {
-	OptLevel opt_level;
-	bool     print_help;
-	bool     print_tokens;
-	bool     print_ast;
-	bool     run;
-	bool     run_tests;
-	bool     run_configure;
-	bool     no_bin;
-	bool     no_warn;
-	bool     no_api;
-	bool     no_llvm;
-	bool     no_analyze;
-	bool     emit_llvm;
-	bool     emit_mir;
-	bool     load_from_file;
-	bool     syntax_only;
-	bool     verbose;
-	bool     force_test_llvm;
-	bool     debug_build;
-	bool     reg_split;
-	bool     use_pipeline;
+typedef struct BuilderOptions {
+	BuildMode build_mode;
+	bool      print_help;
+	bool      print_tokens;
+	bool      print_ast;
+	bool      run;
+	bool      run_tests;
+	bool      run_configure;
+	bool      no_bin;
+	bool      no_warn;
+	bool      no_api;
+	bool      no_llvm;
+	bool      no_analyze;
+	bool      emit_llvm;
+	bool      emit_mir;
+	bool      load_from_file;
+	bool      syntax_only;
+	bool      verbose;
+	bool      force_test_llvm;
+	bool      reg_split;
+	bool      use_pipeline;
 } BuilderOptions;
 
 typedef struct Builder {

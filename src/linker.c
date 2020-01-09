@@ -159,14 +159,14 @@ link_working_environment(Context *cnt, const char *lib_name)
 	                        .filepath    = NULL,
 	                        .is_internal = true};
 
-	tarray_push(&cnt->assembly->dl.libs, native_lib);
+	tarray_push(&cnt->assembly->options.libs, native_lib);
 	return true;
 }
 
 void
 linker_run(Assembly *assembly)
 {
-	Context cnt = {.assembly = assembly, .lib_paths = &assembly->dl.lib_paths};
+	Context cnt = {.assembly = assembly, .lib_paths = &assembly->options.lib_paths};
 
 	if (builder.options.verbose) {
 		msg_log("Running runtime linker...");
@@ -175,8 +175,8 @@ linker_run(Assembly *assembly)
 	set_lib_paths(&cnt);
 
 	NativeLib *lib;
-	for (usize i = 0; i < assembly->dl.libs.size; ++i) {
-		lib = &tarray_at(NativeLib, &assembly->dl.libs, i);
+	for (usize i = 0; i < assembly->options.libs.size; ++i) {
+		lib = &tarray_at(NativeLib, &assembly->options.libs, i);
 		if (!link_lib(&cnt, lib)) {
 			link_error(ERR_LIB_NOT_FOUND,
 			           lib->linked_from,

@@ -26,15 +26,85 @@
 // SOFTWARE.
 //************************************************************************************************
 
+// INCOMPLETE: set output directory
+
+/*
+ * Assembly
+ *
+ * Description:
+ *   Opaque assembly handle. 
+ */
 Assembly :: *u8;
+
+/*
+ * Unit
+ *
+ * Description:
+ *   Opaque file unit handle. 
+ */
 Unit :: *u8;
 
+/*
+ * BuildMode
+ *
+ * Description:
+ *   Specify assembly build mode.
+ *
+ * Variants:
+ *   Debug:
+ *     - Slow runtime.
+ *     - Generates debug symbols.
+ *     - Large output file. 
+ *     - Fast compilation.
+ * 
+ *   ReleaseFast:
+ *     - Fastest runtime.
+ *     - Larger output file. 
+ *     - Slow compilation.
+ * 
+ *   ReleaseSmall:
+ *     - Fast runtime.
+ *     - Smaller output file. 
+ *     - Slow compilation.
+ */
+BuildMode :: enum s32 {
+    Debug        :: 1;
+    ReleaseFast  :: 2;
+    ReleaseSmall :: 3;
+}
+
+/*
+ * add_executable
+ * 
+ * Description:
+ *   Add new executable assembly into the current compilation queue.
+ * 
+ * Arguments: 
+ *   name: 
+ *     Name of the assembly (used also as name of the output file).
+ *
+ * Result:
+ *   Assembly handle.
+ */
 add_executable :: fn (name: string) Assembly {
     if name.len == 0 { panic("Invalid executable name!"); }
 
     return __add_executable(auto name.ptr);
 }
 
+/*
+ * add_unit
+ * 
+ * Description:
+ *   Add new source file into the assembly.
+ * 
+ * Arguments: 
+ *   assembly: 
+ *     Assembly to append the new file. 
+ *
+ * Result:
+ *   Unit handle.
+ */
 add_unit :: fn (assembly: Assembly, filepath: string) Unit {
     if assembly == null { panic("Invalid assembly!"); }
     if filepath.len == 0 { panic("Invalid unit path!"); }
@@ -42,6 +112,25 @@ add_unit :: fn (assembly: Assembly, filepath: string) Unit {
     return __add_unit(assembly, auto filepath.ptr);
 }
 
+/*
+ * link_library
+ * 
+ * Description:
+ *   Add system library. Only name is required (without extension and prefix).
+ *   Compiler will lookup for this library in working directory, system PATH 
+ *   and LINKER_LIB_PATH variable specified in bl.conf file.
+ * 
+ * Arguments: 
+ *   assembly: 
+ *     Assembly to append the new file. 
+ *
+ *   name: 
+ *     Library name. 
+ *     On Linux name will be extended by 'lib' prefix and '.so' extension.
+ *     On MacOS name will be extended by 'lib' prefix and '.dylib' extension.
+ *     On Windows name will be extended only by '.dll' extension.
+ *
+ */
 link_library :: fn (assembly: Assembly, name: string) {
     if assembly == null { panic("Invalid assembly!"); }
     if name.len == 0 { panic("Invalid library name!"); }
@@ -49,14 +138,67 @@ link_library :: fn (assembly: Assembly, name: string) {
     __link_library(assembly, auto name.ptr);
 }
 
-append_linker_opt :: fn (assembly: Assembly, opt: string) {
+/*
+ * append_linker_options
+ * 
+ * Description:
+ *   Appends raw string data directly to linking command.
+ * 
+ * Arguments: 
+ *   assembly: 
+ *     Assembly to append the new file. 
+ *
+ *   option: 
+ *     Option string.
+ *
+ */
+append_linker_options :: fn (assembly: Assembly, option: string) {
     if assembly == null { panic("Invalid assembly!"); }
-    if opt.len == 0 { return; }
-    __append_linker_opt(assembly, auto opt.ptr);
+    if option.len == 0 { return; }
+    __append_linker_options(assembly, auto option.ptr);
+}
+
+/*
+ * get_build_mode
+ * 
+ * Description:
+ *   Get build mode of the assembly. 
+ * 
+ * Arguments: 
+ *   assembly: 
+ *     Assembly to append the new file. 
+ *
+ * Result: 
+ *   Build mode. 
+ *
+ */
+get_build_mode :: fn (assembly: Assembly) BuildMode {
+    if assembly == null { panic("Invalid assembly!"); }
+    return auto __get_build_mode(assembly);
+}
+
+/*
+ * set_build_mode
+ * 
+ * Description:
+ *   Set build mode of the assembly. 
+ * 
+ * Arguments: 
+ *   assembly: 
+ *     Assembly to append the new file. 
+ * 
+ *   mode: 
+ *     Build mode. 
+ */
+set_build_mode :: fn (assembly: Assembly, mode: BuildMode) {
+    if assembly == null { panic("Invalid assembly!"); }
+    __set_build_mode(assembly, auto mode);
 }
 
 #private
 __add_executable :: fn (name: *c_char) Assembly #extern;
 __add_unit :: fn (assembly: Assembly, filepath: *c_char) Unit #extern;
 __link_library :: fn (assembly: Assembly, name: *c_char) #extern;
-__append_linker_opt :: fn (assembly: Assembly, opt: *c_char) #extern;
+__append_linker_options :: fn (assembly: Assembly, option: *c_char) #extern;
+__set_build_mode :: fn (assembly: Assembly, mode: c_int) #extern;
+__get_build_mode :: fn (assembly: Assembly) c_int #extern;

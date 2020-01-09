@@ -34,7 +34,8 @@
 #include "builder.h"
 #include "common.h"
 
-BL_EXPORT Assembly *__add_executable(const char *name)
+BL_EXPORT Assembly *
+__add_executable(const char *name)
 {
 	Assembly *new_assembly = assembly_new(name);
 	builder_add_assembly(new_assembly);
@@ -42,8 +43,8 @@ BL_EXPORT Assembly *__add_executable(const char *name)
 	return new_assembly;
 }
 
-
-BL_EXPORT Unit *__add_unit(Assembly *assembly, const char *filepath)
+BL_EXPORT Unit *
+__add_unit(Assembly *assembly, const char *filepath)
 {
 	Unit *new_unit = unit_new_file(filepath, NULL, NULL);
 	assembly_add_unit_unique(assembly, new_unit);
@@ -51,13 +52,27 @@ BL_EXPORT Unit *__add_unit(Assembly *assembly, const char *filepath)
 	return new_unit;
 }
 
-BL_EXPORT void __link_library(Assembly *assembly, const char *name)
+BL_EXPORT void
+__link_library(Assembly *assembly, const char *name)
 {
 	assembly_add_native_lib(assembly, name, NULL);
 }
 
-BL_EXPORT void __append_linker_opt(Assembly *assembly, const char *opt)
+BL_EXPORT void
+__append_linker_options(Assembly *assembly, const char *opt)
 {
-	tstring_append(&assembly->dl.custom_linker_opt, opt);
-	tstring_append(&assembly->dl.custom_linker_opt, " ");
+	tstring_append(&assembly->options.custom_linker_opt, opt);
+	tstring_append(&assembly->options.custom_linker_opt, " ");
+}
+
+BL_EXPORT s32
+__get_build_mode(Assembly *assembly)
+{
+	return assembly->options.build_mode;
+}
+
+BL_EXPORT void
+__set_build_mode(Assembly *assembly, s32 mode)
+{
+	assembly->options.build_mode = mode;
 }

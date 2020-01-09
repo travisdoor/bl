@@ -2408,7 +2408,7 @@ parser_run(Assembly *assembly, Unit *unit)
 	root->data.ublock.unit = unit;
 	unit->ast              = root;
 
-	if (builder.options.debug_build) {
+	if (assembly->options.build_mode == BUILD_MODE_DEBUG) {
 		unit->llvm_file_meta =
 		    llvm_di_create_file(assembly->llvm.di_builder, unit->filename, unit->dirpath);
 	}

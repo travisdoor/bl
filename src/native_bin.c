@@ -48,7 +48,7 @@ add_lib_paths(Context *cnt, TString *buf)
 {
 
 	const char *dir;
-	TARRAY_FOREACH(const char *, &cnt->assembly->dl.lib_paths, dir)
+	TARRAY_FOREACH(const char *, &cnt->assembly->options.lib_paths, dir)
 	{
 		tstring_append(buf, " ");
 #ifdef BL_PLATFORM_WIN
@@ -66,8 +66,8 @@ static void
 add_libs(Context *cnt, TString *buf)
 {
 	NativeLib *lib;
-	for (usize i = 0; i < cnt->assembly->dl.libs.size; ++i) {
-		lib = &tarray_at(NativeLib, &cnt->assembly->dl.libs, i);
+	for (usize i = 0; i < cnt->assembly->options.libs.size; ++i) {
+		lib = &tarray_at(NativeLib, &cnt->assembly->options.libs, i);
 		if (lib->is_internal) continue;
 		if (!lib->user_name) continue;
 
@@ -93,8 +93,9 @@ native_bin_run(Assembly *assembly)
 		const char *vc_vars_all = conf_data_get_str(builder.conf, CONF_VC_VARS_ALL_KEY);
 		const char *vc_arch     = "x64"; // TODO: set by compiler target arch
 		const char *default_opt = conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
-		const char *custom_opt =
-		    assembly->dl.custom_linker_opt.len ? assembly->dl.custom_linker_opt.data : "";
+		const char *custom_opt  = assembly->options.custom_linker_opt.len
+		                             ? assembly->dl.custom_linker_opt.data
+		                             : "";
 
 		tstring_setf(&buf,
 		             cmd,
@@ -110,8 +111,9 @@ native_bin_run(Assembly *assembly)
         const char *linker_exec = conf_data_get_str(builder.conf, CONF_LINKER_EXEC_KEY);
         { /* setup link command */
                 const char *default_opt = conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
-                const char *custom_opt =
-                    assembly->dl.custom_linker_opt.len ? assembly->dl.custom_linker_opt.data : "";
+                const char *custom_opt  = assembly->options.custom_linker_opt.len
+                                             ? assembly->options.custom_linker_opt.data
+                                             : "";
 
                 tstring_setf(&buf,
                              cmd,

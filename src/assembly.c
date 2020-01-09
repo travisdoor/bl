@@ -64,10 +64,6 @@ small_array_dtor(TSmallArrayAny *arr)
 static void
 init_dl(Assembly *assembly)
 {
-	tarray_init(&assembly->dl.libs, sizeof(NativeLib));
-	tarray_init(&assembly->dl.lib_paths, sizeof(char *));
-	tstring_init(&assembly->dl.custom_linker_opt);
-
 	DCCallVM *vm = dcNewCallVM(4096);
 	dcMode(vm, DC_CALL_C_DEFAULT);
 	assembly->dl.vm = vm;
@@ -104,6 +100,8 @@ init_DI(Assembly *assembly)
 static void
 init_llvm(Assembly *assembly)
 {
+	if (assembly->llvm.module) BL_ABORT("Attempt to override assembly options.");
+
 	/* init LLVM */
 	char *triple    = LLVMGetDefaultTargetTriple();
 	char *cpu       = /*LLVMGetHostCPUName()*/ "";
@@ -122,13 +120,14 @@ init_llvm(Assembly *assembly)
 	LLVMContextRef llvm_context = LLVMContextCreate();
 	LLVMModuleRef llvm_module = LLVMModuleCreateWithNameInContext(assembly->name, llvm_context);
 
-	LLVMTargetMachineRef llvm_tm = LLVMCreateTargetMachine(llvm_target,
-	                                                       triple,
-	                                                       cpu,
-	                                                       features,
-	                                                       builder.options.opt_level,
-	                                                       LLVMRelocDefault,
-	                                                       LLVMCodeModelDefault);
+	LLVMTargetMachineRef llvm_tm =
+	    LLVMCreateTargetMachine(llvm_target,
+	                            triple,
+	                            cpu,
+	                            features,
+	                            get_opt_level_for_build_mode(assembly->options.build_mode),
+	                            LLVMRelocDefault,
+	                            LLVMCodeModelDefault);
 
 	LLVMTargetDataRef llvm_td = LLVMCreateTargetDataLayout(llvm_tm);
 	LLVMSetModuleDataLayout(llvm_module, llvm_td);
@@ -161,19 +160,7 @@ native_lib_terminate(NativeLib *lib)
 static void
 terminate_dl(Assembly *assembly)
 {
-	NativeLib *lib;
-	for (usize i = 0; i < assembly->dl.libs.size; ++i) {
-		lib = &tarray_at(NativeLib, &assembly->dl.libs, i);
-		native_lib_terminate(lib);
-	}
-
-	char *p;
-	TARRAY_FOREACH(char *, &assembly->dl.lib_paths, p) free(p);
-
 	dcFree(assembly->dl.vm);
-	tarray_terminate(&assembly->dl.libs);
-	tarray_terminate(&assembly->dl.lib_paths);
-	tstring_terminate(&assembly->dl.custom_linker_opt);
 }
 
 static void
@@ -210,6 +197,12 @@ assembly_new(const char *name)
 	assembly->name = strdup(name);
 	tarray_init(&assembly->units, sizeof(Unit *));
 	thtbl_init(&assembly->unit_cache, 0, EXPECTED_UNIT_COUNT);
+	tstring_init(&assembly->options.custom_linker_opt);
+	tarray_init(&assembly->options.libs, sizeof(NativeLib));
+	tarray_init(&assembly->options.lib_paths, sizeof(char *));
+
+	// set defaults
+	assembly->options.build_mode = builder.options.build_mode;
 
 	scope_arenas_init(&assembly->arenas.scope);
 	ast_arena_init(&assembly->arenas.ast);
@@ -228,9 +221,6 @@ assembly_new(const char *name)
 	init_dl(assembly);
 	init_mir(assembly);
 
-	init_llvm(assembly);
-	if (builder.options.debug_build) init_DI(assembly);
-
 	return assembly;
 }
 
@@ -247,6 +237,19 @@ assembly_delete(Assembly *assembly)
 
 	terminate_DI(assembly);
 
+	NativeLib *lib;
+	for (usize i = 0; i < assembly->options.libs.size; ++i) {
+		lib = &tarray_at(NativeLib, &assembly->options.libs, i);
+		native_lib_terminate(lib);
+	}
+
+	char *p;
+	TARRAY_FOREACH(char *, &assembly->options.lib_paths, p) free(p);
+
+	tarray_terminate(&assembly->options.libs);
+	tarray_terminate(&assembly->options.lib_paths);
+	tstring_terminate(&assembly->options.custom_linker_opt);
+
 	arena_terminate(&assembly->arenas.small_array);
 	arena_terminate(&assembly->arenas.array);
 	ast_arena_terminate(&assembly->arenas.ast);
@@ -259,6 +262,16 @@ assembly_delete(Assembly *assembly)
 	terminate_llvm(assembly);
 	bl_free(assembly);
 }
+
+void
+assembly_apply_options(Assembly *assembly)
+{
+	init_llvm(assembly);
+	if (assembly->options.build_mode == BUILD_MODE_DEBUG) init_DI(assembly);
+}
+
+AssemblyOptions
+assembly_get_default_options(void);
 
 void
 assembly_add_unit(Assembly *assembly, Unit *unit)
@@ -289,8 +302,8 @@ assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *
 
 	{ /* Search for duplicity. */
 		NativeLib *lib;
-		for (usize i = 0; i < assembly->dl.libs.size; ++i) {
-			lib = &tarray_at(NativeLib, &assembly->dl.libs, i);
+		for (usize i = 0; i < assembly->options.libs.size; ++i) {
+			lib = &tarray_at(NativeLib, &assembly->options.libs, i);
 			if (lib->hash == hash) return;
 		}
 	}
@@ -300,7 +313,7 @@ assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *
 	lib.user_name   = strdup(lib_name);
 	lib.linked_from = link_token;
 
-	tarray_push(&assembly->dl.libs, lib);
+	tarray_push(&assembly->options.libs, lib);
 }
 
 DCpointer
@@ -309,8 +322,8 @@ assembly_find_extern(Assembly *assembly, const char *symbol)
 	void *     handle = NULL;
 	NativeLib *lib;
 
-	for (usize i = 0; i < assembly->dl.libs.size; ++i) {
-		lib    = &tarray_at(NativeLib, &assembly->dl.libs, i);
+	for (usize i = 0; i < assembly->options.libs.size; ++i) {
+		lib    = &tarray_at(NativeLib, &assembly->options.libs, i);
 		handle = dlFindSymbol(lib->handle, symbol);
 		if (handle) break;
 	}

@@ -29,17 +29,18 @@
 #include "assembly.h"
 #include "bldebug.h"
 #include "error.h"
-#include "stages.h"
 #include "llvm_api.h"
+#include "stages.h"
 
 void
 ir_opt_run(Assembly *assembly)
 {
 	LLVMModuleRef        llvm_module = assembly->llvm.module;
 	LLVMTargetMachineRef llvm_tm     = assembly->llvm.TM;
+	const s32            opt_level = get_opt_level_for_build_mode(assembly->options.build_mode);
 
 	LLVMPassManagerBuilderRef llvm_pm_builder = LLVMPassManagerBuilderCreate();
-	LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, builder.options.opt_level);
+	LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, opt_level);
 
 	LLVMPassManagerRef llvm_pm = LLVMCreatePassManager();
 	LLVMAddAnalysisPasses(llvm_tm, llvm_pm);

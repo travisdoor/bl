@@ -2,23 +2,22 @@
   blc [options] <source-files>\n\
 \n\
 Options\n\
-  -b, -build                          = Use BL build pipeline.\n\
-  -h, -help                           = Print usage information and exit.\n\
-  -r, -run                            = Execute 'main' method in compile time.\n\
-  -rt, -run-tests                     = Execute all unit tests in compile time.\n\
-  -emit-llvm                          = Write LLVM-IR to file.\n\
-  -emit-mir                           = Write MIR to file.\n\
-  -ast-dump                           = Print AST.\n\
-  -lex-dump                           = Print output of lexer.\n\
-  -syntax-only                        = Check syntax and exit.\n\
-  -no-bin                             = Don't write binary to disk.\n\
-  -no-warning                         = Ignore all warnings.\n\
-  -no-api                             = Don't load internal api.\n\
-  -no-llvm                            = Disable LLVM backend.\n\
-  -no-analyze                         = Disable analyze pass, only parse and exit.\n\
-  -verbose                            = Verbose mode.\n\
-  -force-test-to-llvm                 = Force llvm generation of unit tests.\n\
-  -configure                          = Generate config file.\n\
-  -opt-<none|less|default|aggressive> = Set optimization level. (use 'default' when not specified)\n\
-  -debug                              = Debug mode build. (when opt level is not specified 'none' is used)\n\
-  -reg-split-<on|off>                 = Enable or disable splitting structures passed into the function by value into registers"
+  -b, -build            = Use BL build pipeline.\n\
+  -h, -help             = Print usage information and exit.\n\
+  -r, -run              = Execute 'main' method in compile time.\n\
+  -rt, -run-tests       = Execute all unit tests in compile time.\n\
+  -emit-llvm            = Write LLVM-IR to file.\n\
+  -emit-mir             = Write MIR to file.\n\
+  -ast-dump             = Print AST.\n\
+  -lex-dump             = Print output of lexer.\n\
+  -syntax-only          = Check syntax and exit.\n\
+  -no-bin               = Don't write binary to disk.\n\
+  -no-warning           = Ignore all warnings.\n\
+  -no-api               = Don't load internal api.\n\
+  -no-llvm              = Disable LLVM backend.\n\
+  -no-analyze           = Disable analyze pass, only parse and exit.\n\
+  -verbose              = Verbose mode.\n\
+  -force-test-to-llvm   = Force llvm generation of unit tests.\n\
+  -configure            = Generate config file.\n\
+  -release-<fast|small> = Enable release mode. (when not specified, compiler use debug mode by default)\n\
+  -reg-split-<on|off>   = Enable or disable splitting structures passed into the function by value into registers"

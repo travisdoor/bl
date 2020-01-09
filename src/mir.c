@@ -34,8 +34,8 @@
 #include "mir_printer.h"
 #include "unit.h"
 
-#ifdef _MSC_VER 
-#pragma warning(disable:6001)
+#ifdef _MSC_VER
+#pragma warning(disable : 6001)
 #endif
 
 #define ARENA_CHUNK_COUNT 512
@@ -5447,7 +5447,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 			return ANALYZE_RESULT(FAILED, 0);
 		}
 
-		if (cnt->assembly->is_build_entry) {
+		if (cnt->assembly->options.build_mode == BUILD_MODE_BUILD) {
 			cnt->assembly->build_entry = fn;
 		} else {
 			builder_msg(BUILDER_MSG_ERROR,
@@ -5466,7 +5466,8 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		BL_ASSERT(fn->linkage_name);
 		fn->dyncall.extern_entry = assembly_find_extern(cnt->assembly, fn->linkage_name);
 		fn->fully_analyzed       = true;
-	} else if (cnt->assembly->is_build_entry && IS_FLAG(fn->flags, FLAG_ENTRY)) {
+	} else if (cnt->assembly->options.build_mode == BUILD_MODE_BUILD &&
+	           IS_FLAG(fn->flags, FLAG_ENTRY)) {
 		// IGNORE BODY OF ENTRY FUNCTION WHEN WE BUILD 'BUILD ENTRY' ASSEMBLY.
 	} else {
 		/* Add entry block of the function into analyze queue. */
@@ -9316,7 +9317,7 @@ mir_run(Assembly *assembly)
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));
 	cnt.assembly                = assembly;
-	cnt.debug_mode              = builder.options.debug_build;
+	cnt.debug_mode              = assembly->options.build_mode == BUILD_MODE_DEBUG;
 	cnt.analyze.llvm_di_builder = assembly->llvm.di_builder;
 	cnt.builtin_types           = &assembly->builtin_types;
 	cnt.vm                      = &builder.vm;
@@ -9347,7 +9348,7 @@ mir_run(Assembly *assembly)
 
 	if (builder.errorc) goto SKIP;
 
-	if (assembly->is_build_entry) {
+	if (assembly->options.build_mode == BUILD_MODE_BUILD) {
 		execute_build_entry_fn(&cnt, assembly->build_entry);
 		goto SKIP;
 	}

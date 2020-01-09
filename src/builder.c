@@ -119,7 +119,7 @@ compile_assembly(Assembly *assembly)
 
 	if (builder.options.no_analyze) return COMPILE_OK;
 	if (builder.options.no_llvm) return COMPILE_OK;
-	if (assembly->is_build_entry) return COMPILE_OK;
+	if (assembly->options.build_mode == BUILD_MODE_BUILD) return COMPILE_OK;
 	ir_run(assembly);
 	INTERRUPT_ON_ERROR;
 
@@ -147,7 +147,8 @@ builder_parse_options(s32 argc, char *argv[])
 {
 #define arg_is(_arg) (strcmp(&argv[optind][1], _arg) == 0)
 
-	builder.options.opt_level = OPT_NOT_SPECIFIED;
+	builder.options.build_mode = BUILD_MODE_DEBUG;
+
 	s32 optind;
 	for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
 		if (arg_is("ast-dump")) {
@@ -180,8 +181,6 @@ builder_parse_options(s32 argc, char *argv[])
 			builder.options.no_analyze = true;
 		} else if (arg_is("force-test-to-llvm")) {
 			builder.options.force_test_llvm = true;
-		} else if (arg_is("debug")) {
-			builder.options.debug_build = true;
 		} else if (arg_is("no-llvm")) {
 			builder.options.no_llvm = true;
 		} else if (arg_is("configure")) {
@@ -190,14 +189,10 @@ builder_parse_options(s32 argc, char *argv[])
 			builder.options.reg_split = true;
 		} else if (arg_is("reg-split-off")) {
 			builder.options.reg_split = false;
-		} else if (arg_is("opt-none")) {
-			builder.options.opt_level = OPT_NONE;
-		} else if (arg_is("opt-less")) {
-			builder.options.opt_level = OPT_LESS;
-		} else if (arg_is("opt-default")) {
-			builder.options.opt_level = OPT_DEFAULT;
-		} else if (arg_is("opt-aggressive")) {
-			builder.options.opt_level = OPT_AGGRESSIVE;
+		} else if (arg_is("release-fast")) {
+			builder.options.build_mode = BUILD_MODE_RELEASE_FAST;
+		} else if (arg_is("release-small")) {
+			builder.options.build_mode = BUILD_MODE_RELEASE_SMALL;
 		} else {
 			msg_error("invalid params '%s'", &argv[optind][1]);
 			return -1;
@@ -235,11 +230,11 @@ builder_init(void)
 void
 builder_terminate(void)
 {
-        Assembly *assembly;
-        TARRAY_FOREACH(Assembly *, &builder.assembly_queue, assembly)
-        {
+	Assembly *assembly;
+	TARRAY_FOREACH(Assembly *, &builder.assembly_queue, assembly)
+	{
 		assembly_delete(assembly);
-        }
+	}
 
 	tarray_terminate(&builder.assembly_queue);
 	vm_terminate(&builder.vm);
@@ -272,20 +267,21 @@ builder_load_conf_file(const char *filepath)
 void
 builder_add_assembly(Assembly *assembly)
 {
-        if (!assembly) return;
-        tarray_push(&builder.assembly_queue, assembly);
+	if (!assembly) return;
+	tarray_push(&builder.assembly_queue, assembly);
 }
 
 int
-builder_compile_all(void) {
-        Assembly *assembly;
-        TARRAY_FOREACH(Assembly *, &builder.assembly_queue, assembly)
-        {
-               s32 state = builder_compile(assembly);
-               if (state != COMPILE_OK) return state;
-        }
+builder_compile_all(void)
+{
+	Assembly *assembly;
+	TARRAY_FOREACH(Assembly *, &builder.assembly_queue, assembly)
+	{
+		s32 state = builder_compile(assembly);
+		if (state != COMPILE_OK) return state;
+	}
 
-        return COMPILE_OK;
+	return COMPILE_OK;
 }
 
 int
@@ -293,9 +289,16 @@ builder_compile(Assembly *assembly)
 {
 	clock_t begin = clock();
 	Unit *  unit;
-	s32     state = COMPILE_OK;
+	s32     state       = COMPILE_OK;
+	builder.total_lines = 0;
 
-	msg_log("Compile assembly: %s", assembly->name);
+	msg_log("Compile assembly: %s [%s]",
+	        assembly->name,
+	        build_mode_to_str(assembly->options.build_mode));
+
+	// This will apply all modification to build mode, target platform, etc. made on assembly
+	// instance during initialization process. (Must be called only once);
+	assembly_apply_options(assembly);
 
 	/* include core source file */
 	if (!builder.options.no_api) {
@@ -305,7 +308,7 @@ builder_compile(Assembly *assembly)
 		}
 	}
 
-	if (assembly->is_build_entry) {
+	if (assembly->options.build_mode == BUILD_MODE_BUILD) {
 		unit = unit_new_file(BUILD_API_FILE, NULL, NULL);
 		if (!assembly_add_unit_unique(assembly, unit)) {
 			unit_delete(unit);
