@@ -48,8 +48,9 @@ typedef enum BuildMode {
 } BuildMode;
 
 typedef struct AssemblyOptions {
-	BuildMode build_mode; /* True in debug mode. */
+	BuildMode build_mode;
 	TString   custom_linker_opt;
+	TString   out_dir; /* Build output directory */
 	TArray    lib_paths;
 	TArray    libs;
 } AssemblyOptions;
@@ -83,9 +84,8 @@ typedef struct Assembly {
 	} llvm;
 
 	/* DynCall/Lib data used for external method execution in compile time */
-	struct {
-		DCCallVM *vm;
-	} dl;
+	DCCallVM *dc_vm;
+	VM        vm;
 
 	TArray     units;       /* array of all units in assembly */
 	THashTable unit_cache;  /* cache for loading only unique units */
@@ -179,6 +179,9 @@ assembly_find_extern(Assembly *assembly, const char *symbol);
 
 void
 assembly_apply_options(Assembly *assembly);
+
+void
+assembly_set_output_dir(Assembly *assembly, const char *dir);
 
 static inline bool
 assembly_has_rtti(Assembly *assembly, u64 type_id)

@@ -195,6 +195,25 @@ set_build_mode :: fn (assembly: Assembly, mode: BuildMode) {
     __set_build_mode(assembly, auto mode);
 }
 
+/*
+ * set_output_dir
+ * 
+ * Description:
+ *   Set build output directory. 
+ * 
+ * Arguments: 
+ *   assembly: 
+ *     Assembly handle. 
+ * 
+ *   dir: 
+ *     Directory path. 
+ */
+set_output_dir :: fn (assembly: Assembly, dir: string) {
+    if assembly == null { panic("Invalid assembly!"); }
+    if dir.len == 0 { return; }
+    __set_output_dir(assembly, auto dir.ptr);
+}
+
 #private
 __add_executable :: fn (name: *c_char) Assembly #extern;
 __add_unit :: fn (assembly: Assembly, filepath: *c_char) Unit #extern;
@@ -202,3 +221,4 @@ __link_library :: fn (assembly: Assembly, name: *c_char) #extern;
 __append_linker_options :: fn (assembly: Assembly, option: *c_char) #extern;
 __set_build_mode :: fn (assembly: Assembly, mode: c_int) #extern;
 __get_build_mode :: fn (assembly: Assembly) c_int #extern;
+__set_output_dir :: fn (assembly: Assembly, dir: *c_char) #extern;

@@ -76,3 +76,9 @@ __set_build_mode(Assembly *assembly, s32 mode)
 {
 	assembly->options.build_mode = mode;
 }
+
+BL_EXPORT void
+__set_output_dir(Assembly *assembly, const char *dir)
+{
+	assembly_set_output_dir(assembly, dir);
+}

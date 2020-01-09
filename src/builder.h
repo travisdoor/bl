@@ -63,7 +63,6 @@ typedef struct BuilderOptions {
 typedef struct Builder {
 	BuilderOptions options;
 	Arena          str_cache;
-	VM             vm;
 	s32            total_lines;
 	s32            errorc;
 	ConfData *     conf;

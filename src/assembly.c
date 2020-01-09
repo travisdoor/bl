@@ -66,7 +66,7 @@ init_dl(Assembly *assembly)
 {
 	DCCallVM *vm = dcNewCallVM(4096);
 	dcMode(vm, DC_CALL_C_DEFAULT);
-	assembly->dl.vm = vm;
+	assembly->dc_vm = vm;
 }
 
 static void
@@ -160,7 +160,7 @@ native_lib_terminate(NativeLib *lib)
 static void
 terminate_dl(Assembly *assembly)
 {
-	dcFree(assembly->dl.vm);
+	dcFree(assembly->dc_vm);
 }
 
 static void
@@ -188,6 +188,16 @@ terminate_mir(Assembly *assembly)
 	mir_arenas_terminate(&assembly->arenas.mir);
 }
 
+static void
+set_default_out_dir(Assembly *assembly)
+{
+	char path[PATH_MAX] = {0};
+	get_current_working_dir(&path, PATH_MAX);
+
+	tstring_clear(&assembly->options.out_dir);
+	tstring_append(&assembly->options.out_dir, path);
+}
+
 /* public */
 Assembly *
 assembly_new(const char *name)
@@ -195,14 +205,18 @@ assembly_new(const char *name)
 	Assembly *assembly = bl_calloc(1, sizeof(Assembly));
 	if (!assembly) BL_ABORT("bad alloc");
 	assembly->name = strdup(name);
+
 	tarray_init(&assembly->units, sizeof(Unit *));
 	thtbl_init(&assembly->unit_cache, 0, EXPECTED_UNIT_COUNT);
 	tstring_init(&assembly->options.custom_linker_opt);
+	tstring_init(&assembly->options.out_dir);
 	tarray_init(&assembly->options.libs, sizeof(NativeLib));
 	tarray_init(&assembly->options.lib_paths, sizeof(char *));
+	vm_init(&assembly->vm, VM_STACK_SIZE);
 
 	// set defaults
 	assembly->options.build_mode = builder.options.build_mode;
+	set_default_out_dir(assembly);
 
 	scope_arenas_init(&assembly->arenas.scope);
 	ast_arena_init(&assembly->arenas.ast);
@@ -249,6 +263,9 @@ assembly_delete(Assembly *assembly)
 	tarray_terminate(&assembly->options.libs);
 	tarray_terminate(&assembly->options.lib_paths);
 	tstring_terminate(&assembly->options.custom_linker_opt);
+	tstring_terminate(&assembly->options.out_dir);
+
+	vm_terminate(&assembly->vm);
 
 	arena_terminate(&assembly->arenas.small_array);
 	arena_terminate(&assembly->arenas.array);
@@ -268,6 +285,29 @@ assembly_apply_options(Assembly *assembly)
 {
 	init_llvm(assembly);
 	if (assembly->options.build_mode == BUILD_MODE_DEBUG) init_DI(assembly);
+}
+
+void
+assembly_set_output_dir(Assembly *assembly, const char *dir)
+{
+	if (!dir) msg_error("Cannot create output directory.");
+
+#ifdef BL_PLATFORM_WIN
+	win_fix_path(dir, strlen(dir));
+#endif
+
+	if (!dir_exists(dir)) {
+		if (!create_dir_tree(dir)) {
+			msg_error("Cannot create output directory '%s'.", dir);
+			return;
+		}
+	}
+
+	char path[PATH_MAX] = {0};
+	brealpath(dir, path, PATH_MAX);
+
+	tstring_clear(&assembly->options.out_dir);
+	tstring_append(&assembly->options.out_dir, path);
 }
 
 AssemblyOptions

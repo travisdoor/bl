@@ -38,13 +38,13 @@
 #include <stddef.h>
 #include <tlib/tlib.h>
 
-#ifdef _MSC_VER 
-#pragma warning(disable:4002)
-#pragma warning(disable:6011)
-#pragma warning(disable:4013)
-#pragma warning(disable:4244)
-#pragma warning(disable:6001)
-#pragma warning(disable:4267)
+#ifdef _MSC_VER
+#pragma warning(disable : 4002)
+#pragma warning(disable : 6011)
+#pragma warning(disable : 4013)
+#pragma warning(disable : 4244)
+#pragma warning(disable : 6001)
+#pragma warning(disable : 4267)
 #endif
 
 struct Assembly;
@@ -93,8 +93,14 @@ win_fix_path(char *buf, usize buf_size);
 bool
 file_exists(const char *filepath);
 
+bool
+dir_exists(const char *dirpath);
+
 const char *
 brealpath(const char *file, char *out, s32 out_len);
+
+const char *
+get_current_working_dir(const char *buf, usize buf_size);
 
 bool
 get_dir_from_filepath(char *buf, const usize l, const char *filepath);
@@ -107,6 +113,12 @@ get_current_exec_path(char *buf, usize buf_size);
 
 bool
 get_current_exec_dir(char *buf, usize buf_size);
+
+bool
+create_dir(const char *dirpath);
+
+bool
+create_dir_tree(const char *dirpath);
 
 void
 date_time(char *buf, s32 len, const char *format);

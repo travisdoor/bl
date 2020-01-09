@@ -1181,7 +1181,7 @@ dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type)
 {
 	BL_ASSERT(type);
 
-	DCCallVM *dvm = vm->assembly->dl.vm;
+	DCCallVM *dvm = vm->assembly->dc_vm;
 	BL_ASSERT(dvm);
 
 	if (type->kind == MIR_TYPE_ENUM) {
@@ -1271,7 +1271,7 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 	MirType *ret_type = fn->type->data.fn.ret_type;
 	BL_ASSERT(ret_type);
 
-	DCCallVM *dvm = vm->assembly->dl.vm;
+	DCCallVM *dvm = vm->assembly->dc_vm;
 	BL_ASSERT(vm);
 
 	/* call setup and clenup */

@@ -32,11 +32,11 @@
 #ifdef BL_PLATFORM_WIN
 static const char *link_flag      = "";
 static const char *link_path_flag = "/LIBPATH:";
-static const char *cmd            = "call \"%s\" %s && \"%s\" %s.obj /OUT:%s.exe %s %s";
+static const char *cmd            = "call \"%s\" %s && \"%s\" \"%s//%s.obj\" /OUT:\"%s//%s.exe\" %s %s";
 #else
 static const char *link_flag      = "-l";
 static const char *link_path_flag = "-L";
-static const char *cmd            = "%s %s.o -o %s %s %s";
+static const char *cmd            = "%s %s/%s.o -o %s/%s %s %s";
 #endif
 
 typedef struct {
@@ -96,13 +96,16 @@ native_bin_run(Assembly *assembly)
 		const char *custom_opt  = assembly->options.custom_linker_opt.len
 		                             ? assembly->options.custom_linker_opt.data
 		                             : "";
+		const char *out_dir = assembly->options.out_dir.data;
 
 		tstring_setf(&buf,
 		             cmd,
 		             vc_vars_all,
 		             vc_arch,
 		             linker_exec,
+		             out_dir,
 		             assembly->name,
+		             out_dir,
 		             assembly->name,
 		             default_opt,
 		             custom_opt);
@@ -115,10 +118,14 @@ native_bin_run(Assembly *assembly)
                                              ? assembly->options.custom_linker_opt.data
                                              : "";
 
+		const char *out_dir = assembly->options.out_dir.data;
+
                 tstring_setf(&buf,
                              cmd,
                              linker_exec,
+			     out_dir,
                              assembly->name,
+			     out_dir,
                              assembly->name,
                              default_opt,
                              custom_opt);

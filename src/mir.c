@@ -9320,7 +9320,7 @@ mir_run(Assembly *assembly)
 	cnt.debug_mode              = assembly->options.build_mode == BUILD_MODE_DEBUG;
 	cnt.analyze.llvm_di_builder = assembly->llvm.di_builder;
 	cnt.builtin_types           = &assembly->builtin_types;
-	cnt.vm                      = &builder.vm;
+	cnt.vm                      = &assembly->vm;
 
 	thtbl_init(&cnt.analyze.waiting, sizeof(TArray), ANALYZE_TABLE_SIZE);
 	tlist_init(&cnt.analyze.queue, sizeof(MirInstr *));

@@ -222,7 +222,6 @@ builder_init(void)
 
 	/* initialize LLVM statics */
 	llvm_init();
-	vm_init(&builder.vm, VM_STACK_SIZE);
 
 	tarray_init(&builder.assembly_queue, sizeof(Assembly *));
 }
@@ -237,7 +236,6 @@ builder_terminate(void)
 	}
 
 	tarray_terminate(&builder.assembly_queue);
-	vm_terminate(&builder.vm);
 	conf_data_delete(builder.conf);
 	arena_terminate(&builder.str_cache);
 }
