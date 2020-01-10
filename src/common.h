@@ -100,7 +100,7 @@ const char *
 brealpath(const char *file, char *out, s32 out_len);
 
 const char *
-get_current_working_dir(const char *buf, usize buf_size);
+get_current_working_dir(char *buf, usize buf_size);
 
 bool
 get_dir_from_filepath(char *buf, const usize l, const char *filepath);

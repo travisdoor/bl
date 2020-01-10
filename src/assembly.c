@@ -192,7 +192,7 @@ static void
 set_default_out_dir(Assembly *assembly)
 {
 	char path[PATH_MAX] = {0};
-	get_current_working_dir(&path, PATH_MAX);
+	get_current_working_dir(&path[0], PATH_MAX);
 
 	tstring_clear(&assembly->options.out_dir);
 	tstring_append(&assembly->options.out_dir, path);
