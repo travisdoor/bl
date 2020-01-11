@@ -41,21 +41,20 @@
 void
 obj_writer_run(Assembly *assembly)
 {
-	char *filename = bl_malloc(sizeof(char) * (strlen(assembly->name) + strlen(OBJ_EXT) + 1));
-	if (!filename) BL_ABORT("bad alloc");
-	strcpy(filename, assembly->name);
-	strcat(filename, OBJ_EXT);
+	TString filename;
+	tstring_init(&filename);
+	tstring_append(&filename, assembly->options.out_dir.data);
+	tstring_append(&filename, PATH_SEPARATOR);
+	tstring_append(&filename, assembly->name);
+	tstring_append(&filename, OBJ_EXT);
 
 	char *error_msg = NULL;
-	remove(filename);
 	if (LLVMTargetMachineEmitToFile(
-	        assembly->llvm.TM, assembly->llvm.module, filename, LLVMObjectFile, &error_msg)) {
-		msg_error("Cannot emit object file: %s with error: %s", filename, error_msg);
+	        assembly->llvm.TM, assembly->llvm.module, filename.data, LLVMObjectFile, &error_msg)) {
+		msg_error("Cannot emit object file: %s with error: %s", filename.data, error_msg);
 
 		LLVMDisposeMessage(error_msg);
-		bl_free(filename);
-		return;
 	}
 
-	bl_free(filename);
+	tstring_terminate(&filename);
 }

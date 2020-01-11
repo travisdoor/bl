@@ -31,6 +31,7 @@
 #include <time.h>
 
 #ifndef BL_COMPILER_MSVC
+#include <sys/stat.h>
 #include "unistd.h"
 #endif
 
@@ -50,7 +51,7 @@ win_fix_path(char *buf, usize buf_size)
 	if (!buf) return;
 	for (usize i = 0; i < buf_size; ++i) {
 		const char c = buf[i];
-		if (c == '0') break;
+		if (c == 0) break;
 		if (c != '\\') continue;
 
 		buf[i] = '/';
@@ -85,6 +86,12 @@ get_current_exec_dir(char *buf, usize buf_size)
 	return true;
 }
 
+const char *
+get_current_working_dir(char *buf, usize buf_size)
+{
+	return brealpath(".", buf, buf_size);
+}
+
 void
 id_init(ID *id, const char *str)
 {
@@ -100,6 +107,18 @@ file_exists(const char *filepath)
 	return (bool)PathFileExistsA(filepath);
 #else
 	return access(filepath, F_OK) != -1;
+#endif
+}
+
+bool
+dir_exists(const char *dirpath)
+{
+#if defined(BL_PLATFORM_WIN)
+	DWORD dwAttrib = GetFileAttributesA(dirpath);
+	return (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+#else
+	struct stat sb;
+	return stat(dirpath, &sb) == 0 && S_ISDIR(sb.st_mode);
 #endif
 }
 
@@ -123,11 +142,48 @@ brealpath(const char *file, char *out, s32 out_len)
 #endif
 }
 
+bool
+create_dir(const char *dirpath)
+{
+#if defined(BL_PLATFORM_WIN)
+	return CreateDirectoryA(dirpath, NULL) != 0;
+#else
+	return mkdir(dirpath, 0700) == 0;
+#endif
+}
+
+bool
+create_dir_tree(const char *dirpath)
+{
+	char tmp[PATH_MAX] = {0};
+	s32 prev_i = 0;
+
+	for (s32 i = 0; dirpath[i]; ++i) {
+		if (dirpath[i] == PATH_SEPARATORC) {
+			if (i - prev_i > 1) {
+				if (!dir_exists(tmp)) {
+					if (!create_dir(tmp)) return false;
+				}
+			}
+
+			prev_i = i;
+		}
+
+		tmp[i] = dirpath[i];
+	}
+
+	if (!dir_exists(tmp)) {
+		if (!create_dir(tmp)) return false;
+	}
+
+	return true;
+}
+
 void
 date_time(char *buf, s32 len, const char *format)
 {
 	BL_ASSERT(buf && len);
-	time_t     timer;
+	time_t timer;
 	struct tm *tm_info;
 
 	time(&timer);
@@ -153,11 +209,11 @@ align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment)
 
 	const usize mask = alignment - 1;
 	BL_ASSERT((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
-	const uintptr_t i_unaligned  = (uintptr_t)(*p);
+	const uintptr_t i_unaligned = (uintptr_t)(*p);
 	const uintptr_t misalignment = i_unaligned & mask;
 
 	adj = alignment - misalignment;
-	*p  = (void *)(i_unaligned + adj);
+	*p = (void *)(i_unaligned + adj);
 	if (adjustment) *adjustment = adj;
 }
 
@@ -165,8 +221,8 @@ void
 print_bits(s32 const size, void const *const ptr)
 {
 	unsigned char *b = (unsigned char *)ptr;
-	unsigned char  byte;
-	s32            i, j;
+	unsigned char byte;
+	s32 i, j;
 
 	for (i = size - 1; i >= 0; i--) {
 		for (j = 7; j >= 0; j--) {
@@ -193,9 +249,6 @@ get_dir_from_filepath(char *buf, const usize l, const char *filepath)
 {
 	if (!filepath) return false;
 
-	//
-	// INCOMPLETE: Cause problems on Windows when we mix separators.
-	//
 	char *ptr = strrchr(filepath, PATH_SEPARATORC);
 	if (!ptr) return false;
 	if (filepath == ptr) {
@@ -248,7 +301,7 @@ TArray *
 create_arr(Assembly *assembly, usize size)
 {
 	TArray **tmp = arena_alloc(&assembly->arenas.array);
-	*tmp         = tarray_new(size);
+	*tmp = tarray_new(size);
 	return *tmp;
 }
 
@@ -256,7 +309,8 @@ void *
 _create_sarr(Assembly *assembly, usize arr_size)
 {
 	BL_ASSERT(arr_size <= assembly->arenas.small_array.elem_size_in_bytes &&
-	          "SmallArray is too big to be allocated inside arena, make array smaller or arena "
+	          "SmallArray is too big to be allocated inside arena, make array smaller "
+	          "or arena "
 	          "bigger.");
 
 	TSmallArrayAny *tmp = arena_alloc(&assembly->arenas.small_array);

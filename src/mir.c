@@ -34,6 +34,10 @@
 #include "mir_printer.h"
 #include "unit.h"
 
+#ifdef _MSC_VER
+#pragma warning(disable : 6001)
+#endif
+
 #define ARENA_CHUNK_COUNT 512
 #define ANALYZE_TABLE_SIZE 8192
 #define TEST_CASE_FN_NAME ".test"
@@ -188,6 +192,10 @@ init_builtins(Context *cnt);
 /* Start top-level execution of entry function using MIR-VM. (Usualy 'main' funcition) */
 static void
 execute_entry_fn(Context *cnt);
+
+/* Start top-level execution of build entry function using MIR-VM. (Usualy 'build' funcition) */
+static void
+execute_build_entry_fn(Context *cnt, MirFn *fn);
 
 /* Execute all registered test cases in current assembly. */
 static void
@@ -3045,10 +3053,10 @@ get_cast_op(MirType *from, MirType *to)
 
 	if (type_cmp(from, to)) return MIR_CAST_NONE;
 
-	#ifndef _MSC_VER
+#ifndef _MSC_VER
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-	#endif
+#endif
 
 	switch (from->kind) {
 	case MIR_TYPE_ENUM:
@@ -3057,7 +3065,7 @@ get_cast_op(MirType *from, MirType *to)
 	case MIR_TYPE_INT: {
 		/* from integer */
 		switch (to->kind) {
-		case MIR_TYPE_ENUM: 
+		case MIR_TYPE_ENUM:
 			to = to->data.enm.base_type;
 		case MIR_TYPE_INT: {
 			/* to integer */
@@ -3129,9 +3137,9 @@ get_cast_op(MirType *from, MirType *to)
 		return MIR_CAST_INVALID;
 	}
 
-	#ifndef _MSC_VER
+#ifndef _MSC_VER
 #pragma GCC diagnostic pop
-	#endif
+#endif
 }
 
 static u64 _id_counter = 1;
@@ -5419,6 +5427,38 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		++fn->ref_count;
 	}
 
+	/* Check build entry function. */
+	if (IS_FLAG(fn->flags, FLAG_BUILD_ENTRY)) {
+		if (fn->type->data.fn.args) {
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_INVALID_ARG_COUNT,
+			            fn_proto->base.node->location,
+			            BUILDER_CUR_WORD,
+			            "Build entry function cannot take arguments.");
+			return ANALYZE_RESULT(FAILED, 0);
+		}
+
+		if (fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID) {
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_INVALID_TYPE,
+			            fn_proto->base.node->location,
+			            BUILDER_CUR_WORD,
+			            "Build entry function cannot return value.");
+			return ANALYZE_RESULT(FAILED, 0);
+		}
+
+		if (cnt->assembly->options.build_mode == BUILD_MODE_BUILD) {
+			cnt->assembly->build_entry = fn;
+		} else {
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_DUPLICATE_ENTRY,
+			            fn_proto->base.node->location,
+			            BUILDER_CUR_WORD,
+			            "More than one build entry per assembly is not allowed.");
+			return ANALYZE_RESULT(FAILED, 0);
+		}
+	}
+
 	BL_ASSERT(fn->linkage_name && "Function without linkage name!");
 
 	if (IS_FLAG(fn->flags, FLAG_EXTERN)) {
@@ -5426,6 +5466,9 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		BL_ASSERT(fn->linkage_name);
 		fn->dyncall.extern_entry = assembly_find_extern(cnt->assembly, fn->linkage_name);
 		fn->fully_analyzed       = true;
+	} else if (cnt->assembly->options.build_mode == BUILD_MODE_BUILD &&
+	           IS_FLAG(fn->flags, FLAG_ENTRY)) {
+		// IGNORE BODY OF ENTRY FUNCTION WHEN WE BUILD 'BUILD ENTRY' ASSEMBLY.
 	} else {
 		/* Add entry block of the function into analyze queue. */
 		MirInstr *entry_block = (MirInstr *)fn->first_block;
@@ -5572,9 +5615,9 @@ analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
 		{
 			bool hit = false;
 			for (usize i = 0; i < sw->cases->size; ++i) {
-				c        = &sw->cases->data[i];
-				const s64      on_value = MIR_CEV_READ_AS(s64, &c->on_value->value);
-				const s64      variant_value = MIR_CEV_READ_AS(s64, variant->value);
+				c                       = &sw->cases->data[i];
+				const s64 on_value      = MIR_CEV_READ_AS(s64, &c->on_value->value);
+				const s64 variant_value = MIR_CEV_READ_AS(s64, variant->value);
 				if (on_value == variant_value) {
 					hit = true;
 					break;
@@ -7256,7 +7299,8 @@ rtti_gen_enum_variants_array(Context *cnt, TSmallArray_VariantPtr *variants)
 	MirVariant *it;
 	TSA_FOREACH(variants, it)
 	{
-		VMStackPtr dest_arr_tmp_elem = vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32) i);
+		VMStackPtr dest_arr_tmp_elem =
+		    vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32)i);
 		rtti_gen_enum_variant(cnt, dest_arr_tmp_elem, it);
 	}
 
@@ -7343,7 +7387,8 @@ rtti_gen_struct_members_array(Context *cnt, TSmallArray_MemberPtr *members)
 	MirMember *it;
 	TSA_FOREACH(members, it)
 	{
-		VMStackPtr dest_arr_tmp_elem = vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32) i);
+		VMStackPtr dest_arr_tmp_elem =
+		    vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32)i);
 		rtti_gen_struct_member(cnt, dest_arr_tmp_elem, it);
 	}
 
@@ -7419,7 +7464,8 @@ rtti_gen_fn_args_array(Context *cnt, TSmallArray_ArgPtr *args)
 	MirArg *it;
 	TSA_FOREACH(args, it)
 	{
-		VMStackPtr dest_arr_tmp_elem = vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32) i);
+		VMStackPtr dest_arr_tmp_elem =
+		    vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32)i);
 		rtti_gen_fn_arg(cnt, dest_arr_tmp_elem, it);
 	}
 
@@ -9122,6 +9168,18 @@ execute_entry_fn(Context *cnt)
 }
 
 void
+execute_build_entry_fn(Context *cnt, MirFn *fn)
+{
+	if (!fn) {
+		msg_error("Assembly '%s' has no build entry function!", cnt->assembly->name);
+		return;
+	}
+
+	/* tmp return value storage */
+	vm_execute_fn(cnt->vm, cnt->assembly, fn, NULL);
+}
+
+void
 execute_test_cases(Context *cnt)
 {
 	msg_log("\nExecuting test cases...");
@@ -9259,10 +9317,10 @@ mir_run(Assembly *assembly)
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));
 	cnt.assembly                = assembly;
-	cnt.debug_mode              = builder.options.debug_build;
+	cnt.debug_mode              = assembly->options.build_mode == BUILD_MODE_DEBUG;
 	cnt.analyze.llvm_di_builder = assembly->llvm.di_builder;
 	cnt.builtin_types           = &assembly->builtin_types;
-	cnt.vm                      = &builder.vm;
+	cnt.vm                      = &assembly->vm;
 
 	thtbl_init(&cnt.analyze.waiting, sizeof(TArray), ANALYZE_TABLE_SIZE);
 	tlist_init(&cnt.analyze.queue, sizeof(MirInstr *));
@@ -9289,6 +9347,11 @@ mir_run(Assembly *assembly)
 	analyze_report_unresolved(&cnt);
 
 	if (builder.errorc) goto SKIP;
+
+	if (assembly->options.build_mode == BUILD_MODE_BUILD) {
+		execute_build_entry_fn(&cnt, assembly->build_entry);
+		goto SKIP;
+	}
 
 	if (builder.options.run_tests) execute_test_cases(&cnt);
 	if (builder.options.run) execute_entry_fn(&cnt);

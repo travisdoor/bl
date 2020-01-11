@@ -64,12 +64,9 @@ small_array_dtor(TSmallArrayAny *arr)
 static void
 init_dl(Assembly *assembly)
 {
-	tarray_init(&assembly->dl.libs, sizeof(NativeLib));
-	tarray_init(&assembly->dl.lib_paths, sizeof(char *));
-
 	DCCallVM *vm = dcNewCallVM(4096);
 	dcMode(vm, DC_CALL_C_DEFAULT);
-	assembly->dl.vm = vm;
+	assembly->dc_vm = vm;
 }
 
 static void
@@ -103,31 +100,34 @@ init_DI(Assembly *assembly)
 static void
 init_llvm(Assembly *assembly)
 {
+	if (assembly->llvm.module) BL_ABORT("Attempt to override assembly options.");
+
 	/* init LLVM */
 	char *triple    = LLVMGetDefaultTargetTriple();
 	char *cpu       = /*LLVMGetHostCPUName()*/ "";
 	char *features  = /*LLVMGetHostCPUFeatures()*/ "";
 	char *error_msg = NULL;
 
-	msg_log("Target: %s", triple);
+	// msg_log("Target: %s", triple);
 
 	LLVMTargetRef llvm_target = NULL;
 	if (LLVMGetTargetFromTriple(triple, &llvm_target, &error_msg)) {
-		msg_error("cannot get target with error: %s", error_msg);
+		msg_error("Cannot get target with error: %s!", error_msg);
 		LLVMDisposeMessage(error_msg);
-		BL_ABORT("cannot get target");
+		BL_ABORT("Cannot get target");
 	}
 
 	LLVMContextRef llvm_context = LLVMContextCreate();
 	LLVMModuleRef llvm_module = LLVMModuleCreateWithNameInContext(assembly->name, llvm_context);
 
-	LLVMTargetMachineRef llvm_tm = LLVMCreateTargetMachine(llvm_target,
-	                                                       triple,
-	                                                       cpu,
-	                                                       features,
-	                                                       builder.options.opt_level,
-	                                                       LLVMRelocDefault,
-	                                                       LLVMCodeModelDefault);
+	LLVMTargetMachineRef llvm_tm =
+	    LLVMCreateTargetMachine(llvm_target,
+	                            triple,
+	                            cpu,
+	                            features,
+	                            get_opt_level_for_build_mode(assembly->options.build_mode),
+	                            LLVMRelocDefault,
+	                            LLVMCodeModelDefault);
 
 	LLVMTargetDataRef llvm_td = LLVMCreateTargetDataLayout(llvm_tm);
 	LLVMSetModuleDataLayout(llvm_module, llvm_td);
@@ -160,18 +160,7 @@ native_lib_terminate(NativeLib *lib)
 static void
 terminate_dl(Assembly *assembly)
 {
-	NativeLib *lib;
-	for (usize i = 0; i < assembly->dl.libs.size; ++i) {
-		lib = &tarray_at(NativeLib, &assembly->dl.libs, i);
-		native_lib_terminate(lib);
-	}
-
-	char *p;
-	TARRAY_FOREACH(char *, &assembly->dl.lib_paths, p) free(p);
-
-	dcFree(assembly->dl.vm);
-	tarray_terminate(&assembly->dl.libs);
-	tarray_terminate(&assembly->dl.lib_paths);
+	dcFree(assembly->dc_vm);
 }
 
 static void
@@ -199,6 +188,16 @@ terminate_mir(Assembly *assembly)
 	mir_arenas_terminate(&assembly->arenas.mir);
 }
 
+static void
+set_default_out_dir(Assembly *assembly)
+{
+	char path[PATH_MAX] = {0};
+	get_current_working_dir(&path[0], PATH_MAX);
+
+	tstring_clear(&assembly->options.out_dir);
+	tstring_append(&assembly->options.out_dir, path);
+}
+
 /* public */
 Assembly *
 assembly_new(const char *name)
@@ -206,9 +205,18 @@ assembly_new(const char *name)
 	Assembly *assembly = bl_calloc(1, sizeof(Assembly));
 	if (!assembly) BL_ABORT("bad alloc");
 	assembly->name = strdup(name);
+
 	tarray_init(&assembly->units, sizeof(Unit *));
 	thtbl_init(&assembly->unit_cache, 0, EXPECTED_UNIT_COUNT);
-	thtbl_init(&assembly->link_cache, sizeof(Token *), EXPECTED_LINK_COUNT);
+	tstring_init(&assembly->options.custom_linker_opt);
+	tstring_init(&assembly->options.out_dir);
+	tarray_init(&assembly->options.libs, sizeof(NativeLib));
+	tarray_init(&assembly->options.lib_paths, sizeof(char *));
+	vm_init(&assembly->vm, VM_STACK_SIZE);
+
+	// set defaults
+	assembly->options.build_mode = builder.options.build_mode;
+	set_default_out_dir(assembly);
 
 	scope_arenas_init(&assembly->arenas.scope);
 	ast_arena_init(&assembly->arenas.ast);
@@ -227,9 +235,6 @@ assembly_new(const char *name)
 	init_dl(assembly);
 	init_mir(assembly);
 
-	init_llvm(assembly);
-	if (builder.options.debug_build) init_DI(assembly);
-
 	return assembly;
 }
 
@@ -246,6 +251,22 @@ assembly_delete(Assembly *assembly)
 
 	terminate_DI(assembly);
 
+	NativeLib *lib;
+	for (usize i = 0; i < assembly->options.libs.size; ++i) {
+		lib = &tarray_at(NativeLib, &assembly->options.libs, i);
+		native_lib_terminate(lib);
+	}
+
+	char *p;
+	TARRAY_FOREACH(char *, &assembly->options.lib_paths, p) free(p);
+
+	tarray_terminate(&assembly->options.libs);
+	tarray_terminate(&assembly->options.lib_paths);
+	tstring_terminate(&assembly->options.custom_linker_opt);
+	tstring_terminate(&assembly->options.out_dir);
+
+	vm_terminate(&assembly->vm);
+
 	arena_terminate(&assembly->arenas.small_array);
 	arena_terminate(&assembly->arenas.array);
 	ast_arena_terminate(&assembly->arenas.ast);
@@ -253,11 +274,40 @@ assembly_delete(Assembly *assembly)
 
 	tarray_terminate(&assembly->units);
 	thtbl_terminate(&assembly->unit_cache);
-	thtbl_terminate(&assembly->link_cache);
 	terminate_dl(assembly);
 	terminate_mir(assembly);
 	terminate_llvm(assembly);
 	bl_free(assembly);
+}
+
+void
+assembly_apply_options(Assembly *assembly)
+{
+	init_llvm(assembly);
+	if (assembly->options.build_mode == BUILD_MODE_DEBUG) init_DI(assembly);
+}
+
+void
+assembly_set_output_dir(Assembly *assembly, const char *dir)
+{
+	if (!dir) msg_error("Cannot create output directory.");
+
+#ifdef BL_PLATFORM_WIN
+	win_fix_path(dir, strlen(dir));
+#endif
+
+	if (!dir_exists(dir)) {
+		if (!create_dir_tree(dir)) {
+			msg_error("Cannot create output directory '%s'.", dir);
+			return;
+		}
+	}
+
+	char path[PATH_MAX] = {0};
+	brealpath(dir, path, PATH_MAX);
+
+	tstring_clear(&assembly->options.out_dir);
+	tstring_append(&assembly->options.out_dir, path);
 }
 
 void
@@ -283,16 +333,24 @@ assembly_add_unit_unique(Assembly *assembly, Unit *unit)
 }
 
 void
-assembly_add_link(Assembly *assembly, Token *token)
+assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token)
 {
-	if (!token) return;
+	const u64 hash = thash_from_str(lib_name);
 
-	BL_ASSERT(token->sym == SYM_STRING);
+	{ /* Search for duplicity. */
+		NativeLib *lib;
+		for (usize i = 0; i < assembly->options.libs.size; ++i) {
+			lib = &tarray_at(NativeLib, &assembly->options.libs, i);
+			if (lib->hash == hash) return;
+		}
+	}
 
-	u64 hash = thash_from_str(token->value.str);
-	if (thtbl_has_key(&assembly->link_cache, hash)) return;
+	NativeLib lib   = {0};
+	lib.hash        = hash;
+	lib.user_name   = strdup(lib_name);
+	lib.linked_from = link_token;
 
-	thtbl_insert(&assembly->link_cache, hash, token);
+	tarray_push(&assembly->options.libs, lib);
 }
 
 DCpointer
@@ -301,8 +359,8 @@ assembly_find_extern(Assembly *assembly, const char *symbol)
 	void *     handle = NULL;
 	NativeLib *lib;
 
-	for (usize i = 0; i < assembly->dl.libs.size; ++i) {
-		lib    = &tarray_at(NativeLib, &assembly->dl.libs, i);
+	for (usize i = 0; i < assembly->options.libs.size; ++i) {
+		lib    = &tarray_at(NativeLib, &assembly->options.libs, i);
 		handle = dlFindSymbol(lib->handle, symbol);
 		if (handle) break;
 	}

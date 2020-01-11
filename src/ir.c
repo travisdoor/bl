@@ -2436,7 +2436,7 @@ ir_run(Assembly *assembly)
 	cnt.llvm_builder    = LLVMCreateBuilderInContext(assembly->llvm.cnt);
 	cnt.llvm_const_i64  = LLVMConstInt(cnt.builtin_types->t_u64->llvm_type, 0, false);
 	cnt.llvm_di_builder = assembly->llvm.di_builder;
-	cnt.debug_mode      = builder.options.debug_build;
+	cnt.debug_mode      = assembly->options.build_mode == BUILD_MODE_DEBUG;
 	thtbl_init(&cnt.gstring_cache, sizeof(LLVMValueRef), 1024);
 	tsa_init(&cnt.incomplete_rtti);
 

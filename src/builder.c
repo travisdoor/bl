@@ -65,14 +65,6 @@ llvm_init(void)
 	LLVMInitializeX86TargetMC();
 	LLVMInitializeX86AsmPrinter();
 
-	/*
-	LLVMInitializeAllTargetInfos();
-	LLVMInitializeAllTargets();
-	LLVMInitializeAllTargetMCs();
-	LLVMInitializeAllAsmParsers();
-	LLVMInitializeAllAsmPrinters();
-	LLVMLinkInMCJIT();
-	*/
 	llvm_initialized = true;
 }
 
@@ -127,6 +119,7 @@ compile_assembly(Assembly *assembly)
 
 	if (builder.options.no_analyze) return COMPILE_OK;
 	if (builder.options.no_llvm) return COMPILE_OK;
+	if (assembly->options.build_mode == BUILD_MODE_BUILD) return COMPILE_OK;
 	ir_run(assembly);
 	INTERRUPT_ON_ERROR;
 
@@ -152,57 +145,54 @@ compile_assembly(Assembly *assembly)
 s32
 builder_parse_options(s32 argc, char *argv[])
 {
-#define arg_is(_arg) (strcmp(&argv[optind][1], _arg) == 0)
+#define IS_PARAM(_arg) (strcmp(&argv[optind][1], _arg) == 0)
 
-	builder.options.opt_level = OPT_NOT_SPECIFIED;
-	s32 optind;
-	for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
-		if (arg_is("ast-dump")) {
+	builder.options.build_mode = BUILD_MODE_DEBUG;
+
+	s32 optind = 1;
+	for (; optind < argc && argv[optind][0] == '-'; optind++) {
+		if (IS_PARAM("ast-dump")) {
 			builder.options.print_ast = true;
-		} else if (arg_is("h") || arg_is("help")) {
+		} else if (IS_PARAM("h") || IS_PARAM("help")) {
 			builder.options.print_help = true;
-		} else if (arg_is("lex-dump")) {
+		} else if (IS_PARAM("b") || IS_PARAM("build")) {
+			builder.options.use_pipeline = true;
+		} else if (IS_PARAM("lex-dump")) {
 			builder.options.print_tokens = true;
-		} else if (arg_is("syntax-only")) {
+		} else if (IS_PARAM("syntax-only")) {
 			builder.options.syntax_only = true;
-		} else if (arg_is("emit-llvm")) {
+		} else if (IS_PARAM("emit-llvm")) {
 			builder.options.emit_llvm = true;
-		} else if (arg_is("emit-mir")) {
+		} else if (IS_PARAM("emit-mir")) {
 			builder.options.emit_mir = true;
-		} else if (arg_is("r") || arg_is("run")) {
+		} else if (IS_PARAM("r") || IS_PARAM("run")) {
 			builder.options.run = true;
-		} else if (arg_is("rt") || arg_is("run-tests")) {
+		} else if (IS_PARAM("rt") || IS_PARAM("run-tests")) {
 			builder.options.run_tests = true;
-		} else if (arg_is("no-bin")) {
+		} else if (IS_PARAM("no-bin")) {
 			builder.options.no_bin = true;
-		} else if (arg_is("no-warning")) {
+		} else if (IS_PARAM("no-warning")) {
 			builder.options.no_warn = true;
-		} else if (arg_is("verbose")) {
+		} else if (IS_PARAM("verbose")) {
 			builder.options.verbose = true;
-		} else if (arg_is("no-api")) {
+		} else if (IS_PARAM("no-api")) {
 			builder.options.no_api = true;
-		} else if (arg_is("no-analyze")) {
+		} else if (IS_PARAM("no-analyze")) {
 			builder.options.no_analyze = true;
-		} else if (arg_is("force-test-to-llvm")) {
+		} else if (IS_PARAM("force-test-to-llvm")) {
 			builder.options.force_test_llvm = true;
-		} else if (arg_is("debug")) {
-			builder.options.debug_build = true;
-		} else if (arg_is("no-llvm")) {
+		} else if (IS_PARAM("no-llvm")) {
 			builder.options.no_llvm = true;
-		} else if (arg_is("configure")) {
+		} else if (IS_PARAM("configure")) {
 			builder.options.run_configure = true;
-		} else if (arg_is("reg-split-on")) {
+		} else if (IS_PARAM("reg-split-on")) {
 			builder.options.reg_split = true;
-		} else if (arg_is("reg-split-off")) {
+		} else if (IS_PARAM("reg-split-off")) {
 			builder.options.reg_split = false;
-		} else if (arg_is("opt-none")) {
-			builder.options.opt_level = OPT_NONE;
-		} else if (arg_is("opt-less")) {
-			builder.options.opt_level = OPT_LESS;
-		} else if (arg_is("opt-default")) {
-			builder.options.opt_level = OPT_DEFAULT;
-		} else if (arg_is("opt-aggressive")) {
-			builder.options.opt_level = OPT_AGGRESSIVE;
+		} else if (IS_PARAM("release-fast")) {
+			builder.options.build_mode = BUILD_MODE_RELEASE_FAST;
+		} else if (IS_PARAM("release-small")) {
+			builder.options.build_mode = BUILD_MODE_RELEASE_SMALL;
 		} else {
 			msg_error("invalid params '%s'", &argv[optind][1]);
 			return -1;
@@ -210,7 +200,7 @@ builder_parse_options(s32 argc, char *argv[])
 	}
 	argv += optind;
 	return optind;
-#undef arg_is
+#undef IS_PARAM
 }
 
 void
@@ -233,13 +223,19 @@ builder_init(void)
 	/* initialize LLVM statics */
 	llvm_init();
 
-	vm_init(&builder.vm, VM_STACK_SIZE);
+	tarray_init(&builder.assembly_queue, sizeof(Assembly *));
 }
 
 void
 builder_terminate(void)
 {
-	vm_terminate(&builder.vm);
+	Assembly *assembly;
+	TARRAY_FOREACH(Assembly *, &builder.assembly_queue, assembly)
+	{
+		assembly_delete(assembly);
+	}
+
+	tarray_terminate(&builder.assembly_queue);
 	conf_data_delete(builder.conf);
 	arena_terminate(&builder.str_cache);
 }
@@ -266,18 +262,52 @@ builder_load_conf_file(const char *filepath)
 	return COMPILE_OK;
 }
 
+void
+builder_add_assembly(Assembly *assembly)
+{
+	if (!assembly) return;
+	tarray_push(&builder.assembly_queue, assembly);
+}
+
+int
+builder_compile_all(void)
+{
+	Assembly *assembly;
+	TARRAY_FOREACH(Assembly *, &builder.assembly_queue, assembly)
+	{
+		s32 state = builder_compile(assembly);
+		if (state != COMPILE_OK) return state;
+	}
+
+	return COMPILE_OK;
+}
+
 int
 builder_compile(Assembly *assembly)
 {
 	clock_t begin = clock();
 	Unit *  unit;
-	s32     state = COMPILE_OK;
+	s32     state       = COMPILE_OK;
+	builder.total_lines = 0;
 
-	msg_log("Compile assembly: %s", assembly->name);
+	msg_log("Compile assembly: %s [%s]",
+	        assembly->name,
+	        build_mode_to_str(assembly->options.build_mode));
+
+	// This will apply all modification to build mode, target platform, etc. made on assembly
+	// instance during initialization process. (Must be called only once);
+	assembly_apply_options(assembly);
 
 	/* include core source file */
 	if (!builder.options.no_api) {
 		unit = unit_new_file(OS_PRELOAD_FILE, NULL, NULL);
+		if (!assembly_add_unit_unique(assembly, unit)) {
+			unit_delete(unit);
+		}
+	}
+
+	if (assembly->options.build_mode == BUILD_MODE_BUILD) {
+		unit = unit_new_file(BUILD_API_FILE, NULL, NULL);
 		if (!assembly_add_unit_unique(assembly, unit)) {
 			unit_delete(unit);
 		}

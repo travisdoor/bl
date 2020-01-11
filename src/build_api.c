@@ -1,11 +1,11 @@
 //************************************************************************************************
 // bl
 //
-// File:   ir_opt.c
+// File:   build_api.c
 // Author: Martin Dorazil
-// Date:   5.2.19
+// Date:   8/1/20
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2020 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,29 +26,59 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "assembly.h"
-#include "bldebug.h"
-#include "error.h"
-#include "llvm_api.h"
-#include "stages.h"
+/**
+ * Those methods are used only during compilation pass to setup builder pipeline. No C interfaces
+ * are needed here.
+ */
 
-void
-ir_opt_run(Assembly *assembly)
+#include "builder.h"
+#include "common.h"
+
+BL_EXPORT Assembly *
+__add_executable(const char *name)
 {
-	LLVMModuleRef        llvm_module = assembly->llvm.module;
-	LLVMTargetMachineRef llvm_tm     = assembly->llvm.TM;
-	const s32            opt_level = get_opt_level_for_build_mode(assembly->options.build_mode);
+	Assembly *new_assembly = assembly_new(name);
+	builder_add_assembly(new_assembly);
 
-	LLVMPassManagerBuilderRef llvm_pm_builder = LLVMPassManagerBuilderCreate();
-	LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, opt_level);
+	return new_assembly;
+}
 
-	LLVMPassManagerRef llvm_pm = LLVMCreatePassManager();
-	LLVMAddAnalysisPasses(llvm_tm, llvm_pm);
-	LLVMPassManagerBuilderPopulateModulePassManager(llvm_pm_builder, llvm_pm);
-	LLVMPassManagerBuilderPopulateLTOPassManager(llvm_pm_builder, llvm_pm, true, true);
+BL_EXPORT Unit *
+__add_unit(Assembly *assembly, const char *filepath)
+{
+	Unit *new_unit = unit_new_file(filepath, NULL, NULL);
+	assembly_add_unit_unique(assembly, new_unit);
 
-	LLVMRunPassManager(llvm_pm, llvm_module);
+	return new_unit;
+}
 
-	LLVMDisposePassManager(llvm_pm);
-	LLVMPassManagerBuilderDispose(llvm_pm_builder);
+BL_EXPORT void
+__link_library(Assembly *assembly, const char *name)
+{
+	assembly_add_native_lib(assembly, name, NULL);
+}
+
+BL_EXPORT void
+__append_linker_options(Assembly *assembly, const char *opt)
+{
+	tstring_append(&assembly->options.custom_linker_opt, opt);
+	tstring_append(&assembly->options.custom_linker_opt, " ");
+}
+
+BL_EXPORT s32
+__get_build_mode(Assembly *assembly)
+{
+	return assembly->options.build_mode;
+}
+
+BL_EXPORT void
+__set_build_mode(Assembly *assembly, s32 mode)
+{
+	assembly->options.build_mode = mode;
+}
+
+BL_EXPORT void
+__set_output_dir(Assembly *assembly, const char *dir)
+{
+	assembly_set_output_dir(assembly, dir);
 }

@@ -21,3 +21,19 @@ add :: fn (
 {
     return a + b;
 }
+
+// BUILD MANAGEMENT
+
+/*
+ * - Disable entry function
+ * - Compile and call build procedure in compile time
+ * - Keep builder settings and use it for creation of another assemblies
+ */
+
+BuildInfo :: struct {
+    output_name: string;
+}
+
+build :: fn (info: *BuildInfo) {
+    output_name = "MyProgram";
+}

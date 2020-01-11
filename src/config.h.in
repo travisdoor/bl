@@ -41,17 +41,20 @@
 
 #ifdef _WIN32
 #define BL_PLATFORM_WIN
+#define BL_EXPORT __declspec(dllexport)
 //#define BL_NO_COLOR
 #define OS_PRELOAD_FILE "os/windows.bl"
 #elif __APPLE__
 //#define BL_NO_COLOR
 #define BL_PLATFORM_MACOS
+#define BL_EXPORT
 #define OS_PRELOAD_FILE "os/macos.bl"
 #elif __linux__
 #define BL_PLATFORM_LINUX
 #define OS_PRELOAD_FILE "os/linux.bl"
+#define BL_EXPORT
 #elif __CYGWIN__
-#define BL_PLATFORM_WIN
+#error "Unknown platform"
 #else
 #error "Unknown platform"
 #endif
@@ -83,6 +86,8 @@
 #define ENVPATH_SEPARATOR ':'
 #endif
 
+#define BUILD_API_FILE "build/build.bl"
+
 /*
  * NOTE: We are converting all backslashes on Windows to the forward slashes.
  */
@@ -112,6 +117,8 @@
 #define CONF_LINKER_OPT_KEY "LINKER_OPT"
 #define CONF_LINKER_LIB_PATH_KEY "LINKER_LIB_PATH"
 #define CONF_LIB_DIR_KEY "LIB_DIR"
+
+#define BUILD_SCRIPT_FILE "build.bl"
 
 extern char *ENV_LIB_DIR;
 extern char *ENV_EXEC_DIR;
