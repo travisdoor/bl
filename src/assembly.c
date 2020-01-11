@@ -288,12 +288,19 @@ assembly_apply_options(Assembly *assembly)
 }
 
 void
-assembly_set_output_dir(Assembly *assembly, const char *dir)
+assembly_set_output_dir(Assembly *assembly, const char *_dir)
 {
-	if (!dir) msg_error("Cannot create output directory.");
+	if (!_dir) msg_error("Cannot create output directory.");
 
 #ifdef BL_PLATFORM_WIN
-	win_fix_path(dir, strlen(dir));
+	char *dir = strdup(_dir);
+	if (dir) {
+		win_fix_path(dir, strlen(dir));
+	} else {
+		BL_ABORT("Invalid directory copy.");
+	}
+#else
+	char *dir = _dir;
 #endif
 
 	if (!dir_exists(dir)) {
@@ -308,6 +315,10 @@ assembly_set_output_dir(Assembly *assembly, const char *dir)
 
 	tstring_clear(&assembly->options.out_dir);
 	tstring_append(&assembly->options.out_dir, path);
+
+#ifdef BL_PLATFORM_WIN
+	free(dir);
+#endif
 }
 
 void
