@@ -214,6 +214,8 @@ build_mode_to_str(BuildMode mode)
 	case BUILD_MODE_BUILD:
 		return "BUILD";
 	}
+
+	BL_ABORT("Invalid build mode");
 }
 
 static inline s32
@@ -230,6 +232,8 @@ get_opt_level_for_build_mode(BuildMode mode)
 	case BUILD_MODE_RELEASE_SMALL:
 		return 2;
 	}
+
+	BL_ABORT("Invalid build mode");
 }
 
 #endif

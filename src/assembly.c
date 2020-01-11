@@ -310,9 +310,6 @@ assembly_set_output_dir(Assembly *assembly, const char *dir)
 	tstring_append(&assembly->options.out_dir, path);
 }
 
-AssemblyOptions
-assembly_get_default_options(void);
-
 void
 assembly_add_unit(Assembly *assembly, Unit *unit)
 {
