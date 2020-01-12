@@ -162,6 +162,7 @@ struct AstDecl {
 struct AstDeclEntity {
 	struct AstDecl base;
 	Ast *          value;
+	Ast *          explicit_linkage_name; /* Optional. */
 	u32            flags;
 	bool           in_gscope;
 	bool           mut;

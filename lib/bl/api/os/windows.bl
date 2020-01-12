@@ -191,21 +191,30 @@ _os_gl_get_proc :: fn (proc_name: string) *u8 {
     return os_dlsym(module, proc_name);
 }
 
-#private
+// WIN32
+WIN32_LPWSTR       :: *c_ushort;
+WIN32_LPCWSTR      :: *c_ushort;
+WIN32_LPCSTR       :: *c_ushort;
+WIN32_LPSTR        :: *c_uchar;
+WIN32_HLOCAL       :: *c_uchar;
+WIN32_UINT         :: c_uint;
+WIN32_DWORD        :: c_uint;
+WIN32_LPCCH        :: c_uchar;
+WIN32_LPCWCH       :: c_ushort;
+WIN32_LPBOOL       :: c_int;
+WIN32_HMODULE      :: *c_uchar;
+WIN32_BOOL         :: c_int;
+WIN32_FARPROC      :: *c_uchar; 
+WIN32_LPVOID       :: *c_uchar; 
+WIN32_LPOVERLAPPED :: *c_uchar;
+WIN32_LPDWORD      :: *WIN32_DWORD;
+WIN32_HANDLE       :: *c_uchar;
 
-LPWSTR  :: *u16;
-LPCWSTR :: *u16;
-LPCSTR  :: *u16;
-LPSTR   :: *u8;
-HLOCAL  :: *u8;
-UINT    :: u32;
-DWORD   :: u32;
-LPCCH   :: u8;
-LPCWCH  :: u16;
-LPBOOL  :: s32;
-HMODULE :: *u8;
-BOOL    :: s32;
-FARPROC :: *u8; 
+WIN32_INVALID_HANDLE :: cast(*u8) -1;
+
+win32_CloseHandle :: fn (hObject: WIN32_HANDLE) WIN32_BOOL #extern "CloseHandle";
+
+#private
 
 SIGHUP  :: 1;
 SIGINT  :: 2;
@@ -222,28 +231,28 @@ wcslen             :: fn (str: *u16) usize #extern;
 raise              :: fn (sig: s32) s32 #extern;
 
 // windows crap
-GetCommandLineW     :: fn () LPWSTR #extern;
-CommandLineToArgvW  :: fn (lpCmdLine: LPCWSTR, pNumArgs: *s32) *LPWSTR #extern;
-LocalFree           :: fn (hMem: HLOCAL) HLOCAL #extern;
-Sleep               :: fn (dwMilliseconds: DWORD) #extern;
-GetFullPathNameA    :: fn (lpFileName: LPCSTR,
-                           nBufferLength: DWORD,
-                           lpBuffer: LPSTR,
-                           lpFilePart: *LPSTR) DWORD #extern;
-LoadLibraryA        :: fn (lpLibFileName: LPCSTR) HMODULE #extern;
-FreeLibrary         :: fn (hLibModule: HMODULE) BOOL #extern;
-GetModuleHandleA    :: fn (lpModuleName: LPCSTR) HMODULE #extern;
-GetProcAddress      :: fn (hModule: HMODULE, lpProcName: LPCSTR) FARPROC #extern;
+GetCommandLineW     :: fn () WIN32_LPWSTR #extern;
+CommandLineToArgvW  :: fn (lpCmdLine: WIN32_LPCWSTR, pNumArgs: *s32) *WIN32_LPWSTR #extern;
+LocalFree           :: fn (hMem: WIN32_HLOCAL) WIN32_HLOCAL #extern;
+Sleep               :: fn (dwMilliseconds: WIN32_DWORD) #extern;
+GetFullPathNameA    :: fn (lpFileName: WIN32_LPCSTR,
+                           nBufferLength: WIN32_DWORD,
+                           lpBuffer: WIN32_LPSTR,
+                           lpFilePart: *WIN32_LPSTR) WIN32_DWORD #extern;
+LoadLibraryA        :: fn (lpLibFileName: WIN32_LPCSTR) WIN32_HMODULE #extern;
+FreeLibrary         :: fn (hLibModule: WIN32_HMODULE) WIN32_BOOL #extern;
+GetModuleHandleA    :: fn (lpModuleName: WIN32_LPCSTR) WIN32_HMODULE #extern;
+GetProcAddress      :: fn (hModule: WIN32_HMODULE, lpProcName: WIN32_LPCSTR) WIN32_FARPROC #extern;
 
 WideCharToMultiByte :: fn (
-    CodePage: UINT,
-    dwFlags: *DWORD,
-    lpWideCharStr: *LPCWCH,
+    CodePage: WIN32_UINT,
+    dwFlags: *WIN32_DWORD,
+    lpWideCharStr: *WIN32_LPCWCH,
     cchWideChar: s32,
-    lpMultiByteStr: LPSTR,
+    lpMultiByteStr: WIN32_LPSTR,
     cbMultiByte: s32,
-    lpDefaultChar: *LPCCH,
-    lpUsedDefaultChar: *LPBOOL
+    lpDefaultChar: *WIN32_LPCCH,
+    lpUsedDefaultChar: *WIN32_LPBOOL
 ) s32 #extern;
 
 /*

@@ -604,7 +604,14 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
 		}
 
-		return NULL;
+		/* Extern flag extension could be linkage name as string */
+		Token *tok_ext = tokens_consume_if(cnt->tokens, SYM_STRING);
+		if (!tok_ext) return NULL;
+
+		/* Parse extension token. */
+		Ast *ext = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ext, scope_get(cnt));
+		id_init(&ext->data.ident.id, tok_ext->value.str);
+		return ext;
 	}
 
 	if (strcmp(directive, "compiler") == 0) {
@@ -1647,9 +1654,19 @@ parse_expr_lit_fn(Context *cnt)
 		    HD_EXTERN | HD_NO_INLINE | HD_INLINE | HD_COMPILER | HD_ENTRY | HD_BUILD_ENTRY;
 		u32 flags = 0;
 		while (true) {
-			HashDirective found = HD_NONE;
-			parse_hash_directive(cnt, accepted, &found);
+			HashDirective found        = HD_NONE;
+			Ast *         hd_extension = parse_hash_directive(cnt, accepted, &found);
 			if (!hash_directive_to_flags(found, &flags)) break;
+
+			if (found == HD_EXTERN && hd_extension) {
+				/* Use extern flag extension on function declaration. */
+
+				BL_ASSERT(hd_extension->kind == AST_IDENT &&
+				          "Expected ident as #extern extension.");
+				BL_ASSERT(curr_decl->data.decl_entity.linkage_name == NULL);
+				curr_decl->data.decl_entity.explicit_linkage_name = hd_extension;
+			}
+
 			accepted &= ~found;
 		}
 

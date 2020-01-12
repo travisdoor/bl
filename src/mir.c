@@ -757,7 +757,12 @@ static MirInstr *
 ast_expr_lit_bool(Context *cnt, Ast *expr);
 
 static MirInstr *
-ast_expr_lit_fn(Context *cnt, Ast *lit_fn, Ast *decl_node, bool is_in_gscope, u32 flags);
+ast_expr_lit_fn(Context *cnt,
+                Ast *    lit_fn,
+                Ast *    decl_node,
+                Ast *    explicit_linkage_name,
+                bool     is_in_gscope,
+                u32      flags);
 
 static MirInstr *
 ast_expr_lit_string(Context *cnt, Ast *lit_string);
@@ -5406,7 +5411,7 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	}
 
 	/* Setup function linkage name, this will be later used by LLVM backend. */
-	if (fn->id) {
+	if (fn->id && !fn->linkage_name) {
 		if (IS_FLAG(fn->flags, FLAG_EXTERN) || IS_FLAG(fn->flags, FLAG_ENTRY)) {
 			fn->linkage_name = fn->id->str;
 		} else if (IS_FLAG(fn->flags, FLAG_PRIVATE)) {
@@ -5416,9 +5421,11 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		} else {
 			fn->linkage_name = gen_uq_name(fn->id->str);
 		}
-	} else {
+	} else if (!fn->linkage_name) {
 		/* Anonymous function use implicit unique name. */
 		fn->linkage_name = gen_uq_name(IMPL_FN_NAME);
+	} else {
+		BL_ASSERT(fn->linkage_name && "Linkage name must be set explicitly!");
 	}
 
 	/* Function marked as entry point must be always generated, we must increase reference
@@ -8095,7 +8102,12 @@ ast_expr_member(Context *cnt, Ast *member)
 }
 
 MirInstr *
-ast_expr_lit_fn(Context *cnt, Ast *lit_fn, Ast *decl_node, bool is_in_gscope, u32 flags)
+ast_expr_lit_fn(Context *cnt,
+                Ast *    lit_fn,
+                Ast *    decl_node,
+                Ast *    explicit_linkage_name,
+                bool     is_in_gscope,
+                u32      flags)
 {
 	/* creates function prototype */
 	Ast *ast_block   = lit_fn->data.expr_fn.block;
@@ -8111,10 +8123,13 @@ ast_expr_lit_fn(Context *cnt, Ast *lit_fn, Ast *decl_node, bool is_in_gscope, u3
 	MirInstrBlock *prev_block      = get_current_block(cnt);
 	MirInstrBlock *prev_exit_block = cnt->ast.exit_block;
 
+	const char *linkage_name =
+	    explicit_linkage_name ? explicit_linkage_name->data.ident.id.str : NULL;
+
 	MirFn *fn = create_fn(cnt,
 	                      decl_node ? decl_node : lit_fn,
 	                      decl_node ? &decl_node->data.ident.id : NULL,
-	                      NULL,
+	                      linkage_name,
 	                      (u32)flags,
 	                      fn_proto,
 	                      true,
@@ -8370,9 +8385,12 @@ ast_decl_entity(Context *cnt, Ast *entity)
 
 	if (is_fn_decl) {
 		/* recognised named function declaraton */
-		const s32 flags = entity->data.decl_entity.flags;
-		MirInstr *value = ast_expr_lit_fn(cnt, ast_value, ast_name, is_in_gscope, flags);
-		enable_groups   = true;
+		const s32 flags                = entity->data.decl_entity.flags;
+		Ast *ast_explicit_linkage_name = entity->data.decl_entity.explicit_linkage_name;
+
+		MirInstr *value = ast_expr_lit_fn(
+		    cnt, ast_value, ast_name, ast_explicit_linkage_name, is_in_gscope, flags);
+		enable_groups = true;
 
 		if (ast_type) {
 			((MirInstrFnProto *)value)->user_type = CREATE_TYPE_RESOLVER_CALL(ast_type);
@@ -8845,7 +8863,7 @@ ast(Context *cnt, Ast *node)
 	case AST_EXPR_LIT_BOOL:
 		return ast_expr_lit_bool(cnt, node);
 	case AST_EXPR_LIT_FN:
-		return ast_expr_lit_fn(cnt, node, NULL, false, 0);
+		return ast_expr_lit_fn(cnt, node, NULL, NULL, false, 0);
 	case AST_EXPR_LIT_STRING:
 		return ast_expr_lit_string(cnt, node);
 	case AST_EXPR_LIT_CHAR:
