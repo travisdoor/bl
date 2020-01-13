@@ -119,6 +119,7 @@ htbl_new :: fn (v: Any, expected_size: usize) *HashTable
 htbl_delete :: fn (tbl: *HashTable) {
 	if tbl == null { return; }
 	htbl_terminate(tbl);
+    mem_free(auto tbl);
 }
 
 /*
@@ -471,7 +472,7 @@ hash_index :: fn (tbl: *HashTable, key: u64) u64 #inline {
 }
 
 get_data_ptr :: fn (node: *Node) *u8 #inline {
-    return ptr_shift_bytes(auto node, sizeof(Node));
+    return ptr_shift_bytes(auto node, auto sizeof(Node));
 }
 
 htbl_init :: fn (tbl: *HashTable, T: *TypeInfo, expected_size: usize) {

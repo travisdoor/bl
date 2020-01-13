@@ -350,7 +350,7 @@ get_command_line_args :: fn (out_args: *[]string) #no_inline {
 
     out_args.len = wargs.len;
     out_args.ptr = auto buffer; 
-    tmp := {:[]u8: auto tmp_size, ptr_shift_bytes(buffer, result_size)};
+    tmp := {:[]u8: auto tmp_size, ptr_shift_bytes(buffer, auto result_size)};
 
     tmp_i := 0;
     loop i := 0; i < wargs.len; i += 1 {

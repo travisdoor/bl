@@ -37,8 +37,8 @@ cstr_to_str :: fn (cstr: *u8) string #inline {
     return {:string: auto c_strlen(auto cstr), cstr};
 };
 
-ptr_shift_bytes :: fn (ptr: *u8, bytes: usize) *u8 #inline {
-    return cast(*u8) (cast(usize) ptr + bytes);
+ptr_shift_bytes :: fn (ptr: *u8, bytes: s64) *u8 #inline {
+    return cast(*u8) (cast(s64) ptr + bytes);
 };
 
 // a - b

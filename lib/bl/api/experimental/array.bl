@@ -105,7 +105,7 @@ elem_ptr :: fn (arr: *Array, i: s64) *u8 #inline {
               arr.len);
     }
 
-    return ptr_shift_bytes(arr.ptr, cast(usize) i * arr.T.size_bytes);
+    return ptr_shift_bytes(arr.ptr, i * cast(s64) arr.T.size_bytes);
 };
 
 ensure_space :: fn (arr: *Array, space: usize, exact: bool) {

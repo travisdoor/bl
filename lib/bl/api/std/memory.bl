@@ -114,8 +114,8 @@ mem_copy :: fn (dest: *u8, src: *u8, size: usize) {
         tmp := cast(*u64) dest;
         ^tmp = ^cast(*u64) src;
 
-        dest = ptr_shift_bytes(dest, sizeof(u64));
-        src = ptr_shift_bytes(src, sizeof(u64));
+        dest = ptr_shift_bytes(dest, auto sizeof(u64));
+        src = ptr_shift_bytes(src, auto sizeof(u64));
     }
     
     loop i : usize = 0; i < d; i += 1 {

@@ -67,7 +67,7 @@ panic :: fn (args: ...) {
         format = ^cast(*string) arg.data;
         tmp = {:[]Any:
                 args.len - 1,
-                auto ptr_shift_bytes(auto args.ptr, sizeof(arg))};
+                auto ptr_shift_bytes(auto args.ptr, auto sizeof(arg))};
     }
 
     _context.print_log_fn(PrintLogKind.Panic, format, tmp, "", 0);
