@@ -129,7 +129,7 @@ string_compare :: fn (first: string, second: string) bool {
     return true;
 };
 
-string_compare_n :: fn (first: string, second: string, n: s32) bool
+string_comparen :: fn (first: string, second: string, n: s32) bool
 {
     if first.len < n { return false; }
     if second.len < n { return false; }
@@ -142,12 +142,22 @@ string_compare_n :: fn (first: string, second: string, n: s32) bool
 };
 
 string_to_f32 :: fn (str: string) f32 {
+    return string_to_f32n(str, str.len);
+}
+
+string_to_s64 :: fn (str: string) s64 {
+    return string_to_s64n(str, str.len);
+}
+
+string_to_f32n :: fn (str: string, len: s64) f32 {
     n := 0;
     e := 1;
     is_negative := false;
     is_after_comma := false;
 
-    loop str.len > 0 {
+    if len > str.len { len = str.len; }
+
+    loop len > 0 {
         c :: str[0];
         if c == '-' {
             is_negative = true;
@@ -169,6 +179,29 @@ string_to_f32 :: fn (str: string) f32 {
     v := cast(f32) n / cast(f32) e; 
     if is_negative { v = -v; } 
     return v;
+}
+
+string_to_s64n :: fn (str: string, len: s64) s64 {
+    n : s64 = 0;
+    is_negative := false;
+
+    if len > str.len { len = str.len; }
+
+    loop len > 0 {
+        c :: str[0];
+        if c == '-' {
+            is_negative = true;
+        } else if c >= '0' && c <= '9' {
+            n = n * 10 + (auto c - '0');
+        } else {
+            break;
+        }
+
+        consume_char(&str);
+    }
+
+    if is_negative { n = -n; } 
+    return n;
 }
 
 #private
