@@ -49,6 +49,8 @@ c_long      :: s64;
 c_ulong     :: u64;
 c_longlong  :: s64;
 c_ulonglong :: u64;
+c_void_ptr  :: *u8;
+c_size_t    :: u64;
 
 /*
  * Maximum path size in bytes.
@@ -326,7 +328,7 @@ __os_start :: fn (argc: s64, argv: **u8, env: **u8) #entry {
     }
 
     loop i := 0; i < args.len; i += 1 {
-        command_line_arguments[i] = {:string: auto strlen(args[i]), args[i]};
+        command_line_arguments[i] = {:string: auto c_strlen(auto args[i]), args[i]};
     }
 
     out :: cast(s32) main();

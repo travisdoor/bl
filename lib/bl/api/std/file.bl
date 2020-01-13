@@ -74,7 +74,7 @@ FileOpenMode :: enum {
  */
 file_create :: fn (filename: string) File {
     mode := "w+";
-    return fopen(filename.ptr, mode.ptr); 
+    return c_fopen(auto filename.ptr, auto mode.ptr); 
 };
 
 /*
@@ -110,7 +110,7 @@ file_open :: fn (filename: string, modes: ...FileOpenMode) File {
         }
     }
 
-    return fopen(filename.ptr, mode.ptr); 
+    return c_fopen(auto filename.ptr, auto mode.ptr); 
 };
 
 /*
@@ -125,7 +125,7 @@ file_open :: fn (filename: string, modes: ...FileOpenMode) File {
  */
 file_close :: fn (file: File) {
     if file == null { return; }
-    fclose(file);
+    c_fclose(file);
 };
 
 /*
@@ -143,15 +143,15 @@ file_close :: fn (file: File) {
  *   String containing file content or empty string.
  */
 file_read_all :: fn (file: File) string {
-    fseek(file, 0, SEEK_END);
-    size := cast(usize) ftell(file);
+    c_fseek(file, 0, SEEK_END);
+    size := cast(usize) c_ftell(file);
     if size == 0 {
         return string_new();
     }
 
-    fseek(file, 0, SEEK_SET);
+    c_fseek(file, 0, SEEK_SET);
     tmp := string_new_reserved((size + 1) * sizeof(u8));
-    read := fread(tmp.ptr, sizeof(u8), size, file);
+    read := c_fread(tmp.ptr, sizeof(u8), size, file);
     tmp.len = auto read + 1;
     tmp[tmp.len - 1] = '\0';
     return tmp;
@@ -171,9 +171,9 @@ file_read_all :: fn (file: File) string {
  *   Size of file content in bytes.
  */
 file_get_size_bytes :: fn (file: File) usize {
-    fseek(file, 0, SEEK_END);
-    size :: cast(usize) ftell(file);
-    fseek(file, 0, SEEK_SET);
+    c_fseek(file, 0, SEEK_END);
+    size :: cast(usize) c_ftell(file);
+    c_fseek(file, 0, SEEK_SET);
     return size;
 }
 
@@ -197,7 +197,7 @@ file_get_size_bytes :: fn (file: File) usize {
  *   Bytes written into buffer.
  */
 file_read_all_binary :: fn (file: File, dest: *u8, size: usize) usize {
-    return fread(dest, sizeof(u8), size, file);
+    return c_fread(dest, sizeof(u8), size, file);
 }
 
 /*
@@ -220,7 +220,7 @@ file_read_all_binary :: fn (file: File, dest: *u8, size: usize) usize {
  *   Bytes written into buffer.
  */
 file_write_binary :: fn (file: File, data: *u8, size: usize) usize {
-    return fwrite(data, sizeof(u8), size, file);
+    return c_fwrite(data, sizeof(u8), size, file);
 }
 
 #private

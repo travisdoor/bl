@@ -51,6 +51,8 @@ c_long      :: s32;
 c_ulong     :: u32;
 c_longlong  :: s64;
 c_ulonglong :: u64;
+c_void_ptr  :: *u8;
+c_size_t    :: u64;
 
 /*
  * Maximum path size in bytes.
