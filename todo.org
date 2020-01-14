@@ -1,15 +1,14 @@
-* Ideas 
+* Ideas  [8/19]
   - [X] make builder global
   - [X] enable implicit casting only to bigger integer type and check signed unsigned also 
   - [ ] reimplement LLVM-C binding
   - [X] add MirArg
-  - [ ] document instruction Arg
   - [ ] pass all structures passed by value as pointers into the functions and make copy inside. 
-  - [ ] support of #extend hash directive for struct inherritance? 
+  - [X] support of #extend hash directive for struct inherritance? 
   - [X] replace , by ; in structs and enums  
   - [ ] #flags enum?
-  - [ ] Simple structure inherritance with #using, #base or some keyword?
-  - [ ] Update documentation (we are using recursive git repository)
+  - [X] Simple structure inherritance with #using, #base or some keyword?
+  - [X] Update documentation (we are using recursive git repository)
   - [X] Switch to tlib-c 
   - [ ] Operator overload
   - [ ] Better definition of operators based on type (we wan't compary types also s32 == f32 s32 != f32...)
@@ -18,38 +17,34 @@
     #+BEGIN_SRC bl
     #assert(typeof(i) == s32);
     #+END_SRC
-
-
-* parser race conditions
-  - arena_alloc 
-  - create scope
-
-* Global var initializers
-  - Enable generation of naked global blocks
-  - Insert all desired initialization instructions into this block
-  - When block is comptime -> it could be executed
-  - Assign initializer block to the global variable
-  - Execute it in VM 
+  - [ ] Static if
+    #+BEGIN_SRC bl
+    #if true {
+    }
+    #+END_SRC
+  - [ ] Introduce namespces
+    #+BEGIN_SRC bl
+    #namespace Memory
+    alloc :: fn () {}
     
-- compounds
-  naked comptime/runtime
-  non-naked comtime/runtime
+    // out of namespace
+    Memory.alloc();
+ 
+    // with using
+    #using Memory
+    alloc();
+    #+END_SRC
+  - [ ] Explicit compile time execution
+    #+BEGIN_SRC bl
+    i :: #run get_random_number();
+    #+END_SRC
+  - [ ] Builder symbol define tool procedure
+    #+BEGIN_SRC bl
+    add_global_immutable_bool("IS_DEBUG", true);
+    add_global_immutable_s64("MY_NUMBER", 666);
+    #+END_SRC
 
-* Footnotes
-  
-- vm_load_int - make copy
-- vm_read - return pointer to VMValue
 
-  
 
-#if BL_DEBUG
-#define MIR_CEV_READ_AS(T, src) (*((T *)_mir_cev_read(src)))
-#else
-#define MIR_CEV_READ_AS(T, src) (*((T *)(src)->data))
-#endif
 
-#if BL_DEBUG
-VMStackPtr
-_mir_cev_read(MirConstExprValue *value);
-#endif
 
