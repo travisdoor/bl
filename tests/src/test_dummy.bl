@@ -19,6 +19,7 @@
 #load "test_typeinfo.bl"
 #load "test_vargs.bl"
 #load "test_hash_table.bl"
+#load "test_arena.bl"
 
 main :: fn () s32 {
     return 0;

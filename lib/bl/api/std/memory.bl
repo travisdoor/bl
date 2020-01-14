@@ -35,7 +35,7 @@
  * Description:
  *   Allocates count of bytes on heap using default allocator.
  *   Use mem_free to free allocated memory when it's no longer
- *   needed.
+ *   needed. Cause panic when allocation is not possible.
  * 
  * Arguments: 
  *   size: 
@@ -45,7 +45,9 @@
  *   Pointer to begin of the new allocated block of memory.
  */
 mem_alloc :: fn (size: usize) *u8 {
-    return _context.alloc_fn(size); 
+    mem :: _context.alloc_fn(size); 
+    if mem == null { panic("Bad alloc"); }
+    return mem;
 };
 
 /*

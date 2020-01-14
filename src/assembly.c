@@ -300,7 +300,7 @@ assembly_set_output_dir(Assembly *assembly, const char *_dir)
 		BL_ABORT("Invalid directory copy.");
 	}
 #else
-	char *dir = _dir;
+	const char *dir = _dir;
 #endif
 
 	if (!dir_exists(dir)) {

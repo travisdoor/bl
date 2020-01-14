@@ -26,6 +26,11 @@
 // SOFTWARE.
 //************************************************************************************************
 
+/*
+ * Description:
+ *   Array is implmentation of danamic storage keeping data in single continuous memory block.
+ */
+
 Array :: struct {
     len: s64;
     ptr: *u8;

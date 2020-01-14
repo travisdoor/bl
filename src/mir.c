@@ -1315,10 +1315,7 @@ static inline const char *
 gen_uq_name(const char *prefix)
 {
 	static s32 ui = 0;
-	/* RACECOND */
-	/* RACECOND */
-	/* RACECOND */
-	TString *s = builder_create_cached_str();
+	TString *  s  = builder_create_cached_str();
 
 	tstring_append(s, prefix);
 	char ui_str[22];
@@ -5470,7 +5467,6 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
 	if (IS_FLAG(fn->flags, FLAG_EXTERN)) {
 		/* lookup external function exec handle */
-		BL_ASSERT(fn->linkage_name);
 		fn->dyncall.extern_entry = assembly_find_extern(cnt->assembly, fn->linkage_name);
 		fn->fully_analyzed       = true;
 	} else if (cnt->assembly->options.build_mode == BUILD_MODE_BUILD &&
@@ -6301,6 +6297,10 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	}
 
 	if (var->is_global && !var->is_struct_typedef) {
+		/* Unexported globals as unique linkage name to solve potential conflicts with
+		 * extern symbols. */
+		var->linkage_name = gen_uq_name(var->linkage_name);
+
 		/* Globals are set by initializer so we can skip all check, rest of the work is up
 		 * to set initializer instruction! There is one exceptional case: we use init value
 		 * as temporary value for incomplete structure declarations (struct can use pointer

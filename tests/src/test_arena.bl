@@ -1,0 +1,17 @@
+#load "std/debug.bl"
+#load "experimental/arena.bl"
+
+#test "arena push" {
+    dtor :: fn (elem: *u8) {
+        assert(elem != null);
+    };
+    
+    arr := arena_new(s32, 16, &dtor);
+    defer arena_delete(arr);
+
+    loop i := 0; i < 1000; i += 1 {
+        arena_push(arr, i);
+    }
+
+    assert(arr.len == 1000);
+}
