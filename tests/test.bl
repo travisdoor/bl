@@ -4,6 +4,7 @@
 
 main :: fn () s32 {
     print("Hello world!!!\n");
+    print("IS_DEBUG = %\n", IS_DEBUG);
     return 0;
 }
 

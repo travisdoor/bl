@@ -227,6 +227,10 @@ lookup_builtins_rtti(Context *cnt);
 static ID *
 lookup_builtins_any(Context *cnt);
 
+/* Provide global immutable bool constant into the assembly. */
+static void
+add_global_immutable_bool(Context *cnt, ID *id, bool v);
+
 /* Initialize type ID. This function creates and set ID string and calculates integer hash from this
  * string. The type.id.str could be also used as name for unnamed types. */
 static void
@@ -528,11 +532,12 @@ append_instr_call(Context *cnt, Ast *node, MirInstr *callee, TSmallArray_InstrPt
 
 static MirInstr *
 append_instr_decl_var(Context * cnt,
-                      Ast *     node,
+                      Ast *     node, /* Optional */
+                      ID *      id,
+                      Scope *   scope,
                       MirInstr *type,
                       MirInstr *init,
                       bool      is_mutable,
-                      bool      is_in_gscope,
                       s32       order, /* -1 of none */
                       u32       flags);
 
@@ -2046,6 +2051,28 @@ lookup_builtins_any(Context *cnt)
 
 	cnt->builtin_types->is_any_ready = true;
 	return NULL;
+}
+
+void
+add_global_immutable_bool(Context *cnt, ID *id, bool v)
+{
+	Scope *scope = cnt->assembly->gscope;
+
+	/*
+	 * 1) Create global variable.
+	 * 2) Create initializer block.
+	 * 3) Register new variable into scope.
+	 */
+	MirInstr *decl_var = append_instr_decl_var(cnt, NULL, id, scope, NULL, NULL, false, -1, 0);
+
+	MirInstrBlock *prev_block = get_current_block(cnt);
+	MirInstrBlock *block      = append_global_block(cnt, INIT_VALUE_FN_NAME);
+	set_current_block(cnt, block);
+	MirInstr *init = append_instr_const_bool(cnt, NULL, v);
+	append_instr_set_initializer(cnt, NULL, decl_var, init);
+	set_current_block(cnt, prev_block);
+
+	register_symbol(cnt, NULL, id, scope, true, false);
 }
 
 MirType *
@@ -3733,29 +3760,27 @@ append_instr_call(Context *cnt, Ast *node, MirInstr *callee, TSmallArray_InstrPt
 MirInstr *
 append_instr_decl_var(Context * cnt,
                       Ast *     node,
+                      ID *      id,
+                      Scope *   scope,
                       MirInstr *type,
                       MirInstr *init,
                       bool      is_mutable,
-                      bool      is_in_gscope,
                       s32       order,
                       u32       flags)
 {
 	ref_instr(type);
 	ref_instr(init);
+	BL_ASSERT(id && "Missing id.");
+	BL_ASSERT(scope && "Missing scope.");
 	MirInstrDeclVar *tmp = create_instr(cnt, MIR_INSTR_DECL_VAR, node);
 	tmp->base.value.type = cnt->builtin_types->t_void;
 	tmp->base.ref_count  = NO_REF_COUNTING;
 	tmp->type            = type;
 	tmp->init            = init;
 
-	tmp->var = create_var(cnt,
-	                      node,
-	                      node->owner_scope,
-	                      &node->data.ident.id,
-	                      NULL,
-	                      is_mutable,
-	                      is_in_gscope,
-	                      flags);
+	const bool is_in_gscope = scope->kind == SCOPE_GLOBAL || scope->kind == SCOPE_PRIVATE;
+
+	tmp->var = create_var(cnt, node, scope, id, NULL, is_mutable, is_in_gscope, flags);
 
 	if (is_in_gscope) {
 		push_into_gscope(cnt, &tmp->base);
@@ -8194,10 +8219,19 @@ ast_expr_lit_fn(Context *cnt,
 			BL_ASSERT(ast_arg->kind == AST_DECL_ARG);
 			ast_arg_name = ast_arg->data.decl.name;
 			BL_ASSERT(ast_arg_name);
+			BL_ASSERT(ast_arg_name->kind == AST_IDENT && "Expected identificator.");
 
 			/* create tmp declaration for arg variable */
 			MirInstr *arg = append_instr_arg(cnt, NULL, (u32)i);
-			append_instr_decl_var(cnt, ast_arg_name, NULL, arg, true, false, (s32)i, 0);
+			append_instr_decl_var(cnt,
+			                      ast_arg_name,
+			                      &ast_arg_name->data.ident.id,
+			                      ast_arg_name->owner_scope,
+			                      NULL,
+			                      arg,
+			                      true,
+			                      (s32)i,
+			                      0);
 
 			register_symbol(cnt,
 			                ast_arg_name,
@@ -8437,10 +8471,11 @@ ast_decl_entity(Context *cnt, Ast *entity)
 
 		MirInstr *decl_var = append_instr_decl_var(cnt,
 		                                           ast_name,
+		                                           &ast_name->data.ident.id,
+		                                           ast_name->owner_scope,
 		                                           type,
 		                                           value,
 		                                           is_mutable,
-		                                           is_in_gscope,
 		                                           -1,
 		                                           entity->data.decl_entity.flags);
 
@@ -9301,6 +9336,10 @@ init_builtins(Context *cnt)
 	PROVIDE(f32);
 	PROVIDE(f64);
 	PROVIDE(string);
+
+	/* Add IS_DEBUG immutable into the global scope to provide information about enabled debug
+	 * mode. */
+	add_global_immutable_bool(cnt, &builtin_ids[MIR_BUILTIN_ID_IS_DEBUG], cnt->debug_mode);
 
 #undef PROVIDE
 }
