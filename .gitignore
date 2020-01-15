@@ -69,3 +69,4 @@ install/uninstall.sh
 /etc/
 *.txt.user
 /build/
+*.md

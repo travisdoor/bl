@@ -360,6 +360,6 @@ get_command_line_args :: fn (out_args: *[]string) #no_inline {
         (^out_args)[i].len = len - 1;
         (^out_args)[i].ptr = &tmp[tmp_i];
         tmp_i += len;
-        tmp[tmp_i] = '\0';
+        tmp[tmp_i-1] = '\0';
     }
 }

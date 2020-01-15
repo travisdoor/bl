@@ -30,25 +30,44 @@
 
 /*!
 # Assembly
+## Declaration
+```c
+Assembly :: *u8;
+```
 
 ## Description
-  Opaque assembly handle. 
+  Opaque assembly handle. Assembly is representation of whole program workspace, it can be compiled
+into executable or binary. Assembly is consist of Units, every unit represents one source file.
  */
 Assembly :: *u8;
 
 /*!
 # Unit
+## Declaration
+```c
+Unit :: *u8;
+```
 
 ## Description
-  Opaque file unit handle. 
+  Opaque file unit handle. Unit is representation of single source file which can be loaded into 
+the Assambly.
  */
 Unit :: *u8;
 
 /*!
 # BuildMode
+## Declaration
+```c
+BuildMode :: enum s32 {
+    Debug        :: 1;
+    ReleaseFast  :: 2;
+    ReleaseSmall :: 3;
+}
+```
  
 ## Description
-   Specify assembly build mode.
+   Specify assembly build mode. Every Assembly can be compiled with various configuration options.
+The `BuildMode` can specify which set of options compiler should use.
  
 ## Variants
    * `Debug`
@@ -73,9 +92,16 @@ BuildMode :: enum s32 {
 
 /*!
 # add_executable
+## Declaration
+```c
+add_executable :: fn (name: string) Assembly
+```
 
 ## Description
-  Add new executable assembly into the current compilation queue.
+  Add new executable assembly into the current compilation queue. Assembly with
+specified name is compiled into binary or it can be just executed in compile-time
+without any output created. Assemblies are compiled after `build_entry` function
+execution in order they are added.
 
 ## Arguments
   * `name`
@@ -92,9 +118,14 @@ add_executable :: fn (name: string) Assembly {
 
 /*!
 # add_unit
+## Declaration
+```c
+add_unit :: fn (assembly: Assembly, filepath: string) Unit
+```
 
 ## Description
-  Add new source file into the assembly.
+  Add new source file into the assembly. This basically load new source file into
+the `Assembly`.
 
 ## Arguments
   * `assembly`
@@ -112,11 +143,18 @@ add_unit :: fn (assembly: Assembly, filepath: string) Unit {
 
 /*!
 # link_library
+## Declaration
+```c
+link_library :: fn (assembly: Assembly, name: string)
+```
 
 ## Description
   Add system library. Only name is required (without extension and prefix).
-  Compiler will lookup for this library in working directory, system `PATH`
-  and `LINKER_LIB_PATH` variable specified in bl.conf file.
+Compiler will lookup for this library in working directory, system `PATH`
+and `LINKER_LIB_PATH` variable specified in bl.conf file. Linked library
+can be used also during compile-time execution, in such case all needed
+symbols are loaded in compile-time. This does not work for `.lib` files
+on Windows.
 
 ## Arguments
   * `assembly`
@@ -136,9 +174,13 @@ link_library :: fn (assembly: Assembly, name: string) {
 
 /*!
 # append_linker_options
+## Declaration
+```c
+append_linker_options :: fn (assembly: Assembly, option: string)
+```
  
 ## Description
-  Appends raw string data directly to linking command.
+  Appends raw string data directly to linking command. 
 
 ## Arguments
   * `assembly`
@@ -154,6 +196,10 @@ append_linker_options :: fn (assembly: Assembly, option: string) {
 
 /*!
 # get_build_mode
+## Declaration
+```c
+get_build_mode :: fn (assembly: Assembly) BuildMode
+```
 
 ## Description
   Get build mode of the assembly. 
@@ -172,6 +218,10 @@ get_build_mode :: fn (assembly: Assembly) BuildMode {
 
 /*!
 # set_build_mode
+## Declaration
+```c
+set_build_mode :: fn (assembly: Assembly, mode: BuildMode)
+```
 
 ## Description
   Set build mode of the assembly. 
@@ -189,6 +239,10 @@ set_build_mode :: fn (assembly: Assembly, mode: BuildMode) {
 
 /*!
 # set_output_dir
+## Declaration
+```c
+set_output_dir :: fn (assembly: Assembly, dir: string)
+```
 
 ## Description:
   Set build output directory. 
@@ -205,6 +259,20 @@ set_output_dir :: fn (assembly: Assembly, dir: string) {
     __set_output_dir(assembly, auto dir.ptr);
 }
 
+/*!
+# enable_testing
+## Declaration
+```c
+enable_testing :: fn (assembly: Assembly)
+```
+
+## Description:
+  Enable compile-time execution of all tests declared in assembly.
+
+## Arguments: 
+  * `assembly`
+    Assembly handle. 
+*/
 enable_testing :: fn (assembly: Assembly) {
     __toggle_testing(assembly, 1);
 }
