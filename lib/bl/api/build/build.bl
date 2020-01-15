@@ -29,7 +29,7 @@
 // INCOMPLETE: set output directory
 
 /*!
-# `Assembly`
+# Assembly
 
 ## Description
   Opaque assembly handle. 
@@ -37,7 +37,7 @@
 Assembly :: *u8;
 
 /*!
-# `Unit`
+# Unit
 
 ## Description
   Opaque file unit handle. 
@@ -45,7 +45,7 @@ Assembly :: *u8;
 Unit :: *u8;
 
 /*!
-# `BuildMode`
+# BuildMode
  
 ## Description
    Specify assembly build mode.
@@ -72,7 +72,7 @@ BuildMode :: enum s32 {
 }
 
 /*!
-# `add_executable`
+# add_executable
 
 ## Description
   Add new executable assembly into the current compilation queue.
@@ -91,7 +91,7 @@ add_executable :: fn (name: string) Assembly {
 }
 
 /*!
-# `add_unit`
+# add_unit
 
 ## Description
   Add new source file into the assembly.
@@ -111,7 +111,7 @@ add_unit :: fn (assembly: Assembly, filepath: string) Unit {
 }
 
 /*!
-# `link_library`
+# link_library
 
 ## Description
   Add system library. Only name is required (without extension and prefix).
@@ -135,7 +135,7 @@ link_library :: fn (assembly: Assembly, name: string) {
 }
 
 /*!
-# `append_linker_options`
+# append_linker_options
  
 ## Description
   Appends raw string data directly to linking command.
@@ -153,7 +153,7 @@ append_linker_options :: fn (assembly: Assembly, option: string) {
 }
 
 /*!
-# `get_build_mode`
+# get_build_mode
 
 ## Description
   Get build mode of the assembly. 
@@ -171,7 +171,7 @@ get_build_mode :: fn (assembly: Assembly) BuildMode {
 }
 
 /*!
-# `set_build_mode`
+# set_build_mode
 
 ## Description
   Set build mode of the assembly. 
@@ -188,7 +188,7 @@ set_build_mode :: fn (assembly: Assembly, mode: BuildMode) {
 }
 
 /*!
-# `set_output_dir`
+# set_output_dir
 
 ## Description:
   Set build output directory. 
