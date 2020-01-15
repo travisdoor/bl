@@ -53,6 +53,7 @@ typedef struct AssemblyOptions {
 	TString   out_dir; /* Build output directory */
 	TArray    lib_paths;
 	TArray    libs;
+	bool      run_tests;
 } AssemblyOptions;
 
 typedef struct Assembly {

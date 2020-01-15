@@ -1663,7 +1663,7 @@ parse_expr_lit_fn(Context *cnt)
 
 				BL_ASSERT(hd_extension->kind == AST_IDENT &&
 				          "Expected ident as #extern extension.");
-				BL_ASSERT(curr_decl->data.decl_entity.linkage_name == NULL);
+				BL_ASSERT(curr_decl->data.decl_entity.explicit_linkage_name == NULL);
 				curr_decl->data.decl_entity.explicit_linkage_name = hd_extension;
 			}
 

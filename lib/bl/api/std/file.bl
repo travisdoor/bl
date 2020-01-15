@@ -223,6 +223,10 @@ file_write_binary :: fn (file: File, data: *u8, size: usize) usize {
     return c_fwrite(data, sizeof(u8), size, file);
 }
 
+file_write_string :: fn (file: File, data: string) usize {
+    return c_fwrite(data.ptr, sizeof(u8), auto data.len, file);
+}
+
 #private
 
 SEEK_SET :: 0;
