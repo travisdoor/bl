@@ -216,6 +216,7 @@ assembly_new(const char *name)
 
 	// set defaults
 	assembly->options.build_mode = builder.options.build_mode;
+	assembly->options.run_tests = builder.options.run_tests;
 	set_default_out_dir(assembly);
 
 	scope_arenas_init(&assembly->arenas.scope);

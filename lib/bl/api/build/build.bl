@@ -214,6 +214,10 @@ set_output_dir :: fn (assembly: Assembly, dir: string) {
     __set_output_dir(assembly, auto dir.ptr);
 }
 
+enable_testing :: fn (assembly: Assembly) {
+    __toggle_testing(assembly, 1);
+}
+
 #private
 __add_executable :: fn (name: *c_char) Assembly #extern;
 __add_unit :: fn (assembly: Assembly, filepath: *c_char) Unit #extern;
@@ -222,3 +226,4 @@ __append_linker_options :: fn (assembly: Assembly, option: *c_char) #extern;
 __set_build_mode :: fn (assembly: Assembly, mode: c_int) #extern;
 __get_build_mode :: fn (assembly: Assembly) c_int #extern;
 __set_output_dir :: fn (assembly: Assembly, dir: *c_char) #extern;
+__toggle_testing :: fn (assembly: Assembly, v: c_int) #extern;

@@ -81,7 +81,7 @@ arena_push :: fn (arr: *Arena, v: Any) {
 
     arr.len += 1;
     if arr.current == null { add_chunk(arr); }
-    if arr.current.count + 1 >= arr.chunk_elem_count { add_chunk(arr); }
+    if arr.current.count + 1 > arr.chunk_elem_count { add_chunk(arr); }
 
     arena := arr.current;
     assert(arena != null);
@@ -131,8 +131,10 @@ free_chunks :: fn (arr: *Arena) {
             }
         }
         
-        current = current.next;
+        next :: current.next; 
         mem_free(auto current);
+
+        current = next;
     }
 }
 

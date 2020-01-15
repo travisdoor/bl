@@ -7612,6 +7612,7 @@ ast_test_case(Context *cnt, Ast *test)
 
 	BL_ASSERT(test->data.test_case.desc);
 	fn->test_case_desc = test->data.test_case.desc;
+        fn->body_scope = ast_block->owner_scope;
 	MIR_CEV_WRITE_AS(MirFn *, &fn_proto->base.value, fn);
 
 	tarray_push(&cnt->test_cases, fn);
@@ -9410,7 +9411,7 @@ mir_run(Assembly *assembly)
 		goto SKIP;
 	}
 
-	if (builder.options.run_tests) execute_test_cases(&cnt);
+	if (assembly->options.run_tests) execute_test_cases(&cnt);
 	if (builder.options.run) execute_entry_fn(&cnt);
 
 SKIP:

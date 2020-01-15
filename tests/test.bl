@@ -2,9 +2,18 @@
 
 #load "std/print.bl"
 
-main :: fn () s32 {
+Foo :: struct {
+    foo: *fn ();
+}
+
+foo :: fn () {
     print("Hello world!!!\n");
-    print("IS_DEBUG = %\n", IS_DEBUG);
+}
+
+main :: fn () s32 {
+    f: Foo;
+    f.foo = &foo;
+    f.foo();
     return 0;
 }
 
