@@ -26,11 +26,50 @@
 // SOFTWARE.
 //************************************************************************************************
 
+/*!
+# Math constants
+## Declaration
+```c
+PI          :: 3.141592653589793;
+TWO_PI      :: 6.283185307179587;
+HALF_PI     :: 1.570796326794897;
+F32_EPSILON :: 0.00001f;
+```
+
+## Description
+  Useful constants.
+*/
 PI          :: 3.141592653589793;
 TWO_PI      :: 6.283185307179587;
 HALF_PI     :: 1.570796326794897;
 F32_EPSILON :: 0.00001f;
 
+/*!
+# Limits
+## Declaration
+```c
+S8_MIN  : s8 : -128;
+S8_MAX  : s8 : 127;
+S16_MIN : s16 : -32768;
+S16_MAX : s16 : 32767;
+S32_MIN : s32 : -2147483648;
+S32_MAX : s32 : 2147483647;
+S64_MIN : s64 : -9223372036854775808;
+S64_MAX : s64 : 9223372036854775807;
+
+U8_MIN  : u8 : 0;
+U8_MAX  : u8 : 255;
+U16_MIN : u16 : 0;
+U16_MAX : u16 : 65535;
+U32_MIN : u32 : 0;
+U32_MAX : u32 : 4294967295;
+U64_MIN : u64 : 0;
+U64_MAX : u64 : 18446744073709551615;
+```
+
+## Description
+  Maximum and minimum value constants for various data types.
+*/
 S8_MIN  : s8 : -128;
 S8_MAX  : s8 : 127;
 S16_MIN : s16 : -32768;

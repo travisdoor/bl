@@ -1,4 +1,4 @@
-* Ideas  [8/19]
+* Ideas  [8/20]
   - [X] make builder global
   - [X] enable implicit casting only to bigger integer type and check signed unsigned also 
   - [ ] reimplement LLVM-C binding
@@ -22,7 +22,7 @@
     #if true {
     }
     #+END_SRC
-  - [ ] Introduce namespces
+  - [ ] Introduce namespaces
     #+BEGIN_SRC bl
     #namespace Memory
     alloc :: fn () {}
@@ -43,8 +43,21 @@
     add_global_immutable_bool("IS_DEBUG", true);
     add_global_immutable_s64("MY_NUMBER", 666);
     #+END_SRC
+  - [ ] using operator
+    - Enums
+    - Structs
+    #+BEGIN_SRC bl
+    Foo :: struct {
+        i: s32;
+	j: s32;
+    }
+    
+    foo: Foo;
+    #using foo;
 
-
-
-
+    i = 10;
+    j = 20;
+    #+END_SRC
+    
+    Import into current scope used scope. Instruction UseScope import after it's analyzed!
 

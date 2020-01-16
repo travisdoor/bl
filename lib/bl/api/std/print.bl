@@ -28,8 +28,38 @@
 
 #load "std/math.bl"
 
+/*!
+# PRINT_MAX_LENGTH  
+## Declaration
+```c
+PRINT_MAX_LENGTH :: 4096;
+```
+## Description
+  Size of buffer used by `print` function, this is maximum text legth
+which can be printed at once.
+*/
 PRINT_MAX_LENGTH :: 4096;
 
+/*!
+# PrintLogKind
+## Declaration
+```c
+PrintLogKind :: enum u8 {
+    Message;
+    Warning;
+    Error;
+    Panic;
+};
+```
+## Description
+  Kinds of log messages.
+
+## Variants
+  * `Message` Ordinary debug log message.
+  * `Warning` Warning log message.
+  * `Error` Error log message.
+  * `Panic` Panic log message.
+*/
 PrintLogKind :: enum u8 {
     Message;
     Warning;
@@ -37,6 +67,27 @@ PrintLogKind :: enum u8 {
     Panic;
 };
 
+/*!
+# print
+## Declaration
+```c
+print :: fn (format: string, args: ...) s32
+```
+## Description
+  Write string to the standart output (stdout). Format string can include
+format specifiers `%` which are replaced by corresponding argument value
+passed in `args`. Value-string conversion is done automatically, we can
+pass values of any type as an arguments, even structures or arrays.
+
+  The `print` function accepts C-like escape sequences as `\n`, `\t`, `\r`, etc.
+
+## Arguments
+  * `format` Formatting string. 
+  * `args` Additional values. 
+
+## Result
+  Count of bytes printed out.
+*/
 print :: fn (format: string, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8;
 
@@ -51,6 +102,27 @@ print :: fn (format: string, args: ...) s32 {
     return w;
 };
 
+/*!
+# eprint
+## Declaration
+```c
+eprint :: fn (format: string, args: ...) s32
+```
+## Description
+  Write string to the error output (stderr). Format string can include
+format specifiers `%` which are replaced by corresponding argument value
+passed in `args`. Value-string conversion is done automatically, we can
+pass values of any type as an arguments, even structures or arrays.
+
+  The `eprint` function accepts C-like escape sequences as `\n`, `\t`, `\r`, etc.
+
+## Arguments
+  * `format` Formatting string. 
+  * `args` Additional values. 
+
+## Result
+  Count of bytes printed out.
+*/
 eprint :: fn (format: string, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8;
 
@@ -65,6 +137,31 @@ eprint :: fn (format: string, args: ...) s32 {
     return w;
 };
 
+/*!
+# bprint
+## Declaration
+```c
+bprint :: fn (buf: []u8, format: string, args: ...) s32
+```
+## Description
+  Write string to the input buffer. Format string can include
+format specifiers `%` which are replaced by corresponding argument value
+passed in `args`. Value-string conversion is done automatically, we can
+pass values of any type as an arguments, even structures or arrays.
+
+  The `bprint` function accepts C-like escape sequences as `\n`, `\t`, `\r`, etc.
+
+  When passed buffer has not enough space to handle whole resulting 
+string, function will print just part fitting into the buffer.  
+
+## Arguments
+  * `buf` Destination buffer.
+  * `format` Formatting string. 
+  * `args` Additional values. 
+
+## Result
+  Count of bytes printed out.
+*/
 bprint :: fn (buf: []u8, format: string, args: ...) s32 {
     tmp := {:[]Any: args.len, args.ptr };
     w := print_impl(buf, format, tmp);

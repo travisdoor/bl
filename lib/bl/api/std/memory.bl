@@ -29,84 +29,97 @@
 #load "std/basic.bl"
 #load "std/utils.bl"
 
-/*
- * mem_alloc
- * 
- * Description:
- *   Allocates count of bytes on heap using default allocator.
- *   Use mem_free to free allocated memory when it's no longer
- *   needed. Cause panic when allocation is not possible.
- * 
- * Arguments: 
- *   size: 
- *     Bytes to be allocated. 
- *
- * Result: 
- *   Pointer to begin of the new allocated block of memory.
- */
+/*!
+# mem_alloc
+## Declaration
+```c
+mem_alloc :: fn (size: usize) *u8
+```
+
+## Description
+  Allocates count of bytes on heap using default allocator.
+Use `mem_free` to free allocated memory when it's no longer
+needed. Cause panic when allocation is not possible. This
+function use allocator set in `_context.alloc_fn`
+
+## Arguments
+  * `size`
+    Bytes to be allocated. 
+
+## Result
+  Pointer to begin of the new allocated block of memory.
+*/
 mem_alloc :: fn (size: usize) *u8 {
     mem :: _context.alloc_fn(size); 
     if mem == null { panic("Bad alloc"); }
     return mem;
 };
 
-/*
- * mem_calloc
- * 
- * Description:
- *   Allocates count of bytes on heap using default allocator and
- *   return pointer to begin of this allocated block. Resulting
- *   block is set to 0 value.
- *   Use mem_free to free allocated memory when it's no longer
- *   needed.
- * 
- * Arguments: 
- *   num: 
- *     Count of items to be allocated. 
- * 
- *   size: 
- *     Item size in bytes. 
- *
- * Result: 
- *   Pointer to begin of the new allocated block of memory.
- */
+/*!
+# mem_calloc
+## Declaration
+```c
+mem_calloc :: fn (num: usize, size: usize) *u8
+```
+
+## Description
+  Allocates count of bytes on heap using default allocator and
+  return pointer to begin of this allocated block. Resulting
+  block is set to 0 value.
+  Use `mem_free` to free allocated memory when it's no longer
+  needed.
+
+## Arguments
+  * `num`
+    Count of items to be allocated. 
+  * `size`
+    Item size in bytes. 
+
+## Result
+  Pointer to begin of the new allocated block of memory.
+*/
 mem_calloc :: fn (num: usize, size: usize) *u8 {
     tmp := _context.alloc_fn(size * num);
     return mem_set(tmp, 0, size * num);
 };
 
-/*
- * mem_free
- * 
- * Description:
- *   Free memory alocated on heap. This function use default
- *   deallocator '_context.free_fn'.
- * 
- * Arguments: 
- *   ptr: 
- *     Memory to be deallocated. 
- * 
- */
+/*!
+# mem_free
+## Declaration
+```c
+mem_free :: fn (ptr: *u8)
+```
+
+## Description
+  Free memory alocated on heap. This function use default
+  deallocator `_context.free_fn`.
+
+## Arguments
+  * `ptr`
+    Memory to be deallocated. 
+*/
 mem_free :: fn (ptr: *u8) {
     _context.free_fn(ptr);
 };
 
-/*
- * mem_copy
- * 
- * Description:
- *   Copy memory of defined size from source to destination.
- * 
- * Arguments: 
- *   dest: 
- *     Pointer to destination memory. 
- * 
- *   src: 
- *     Pointer to source memory. 
- *
- *   size: 
- *     Count of bytes to be copied. 
- * 
+/*!
+# mem_copy
+## Declaration
+```c
+mem_copy :: fn (dest: *u8, src: *u8, size: usize)
+```
+
+## Description
+  Copy memory of defined size from source to destination. Destination
+and source size must be at least `size` bytes.
+
+## Arguments
+  * `dest`
+    Pointer to destination memory. 
+  * `src`
+    Pointer to source memory. 
+  * `size`
+    Count of bytes to be copied. 
  */
 mem_copy :: fn (dest: *u8, src: *u8, size: usize) {
     m := size / sizeof(u64);
@@ -129,25 +142,28 @@ mem_copy :: fn (dest: *u8, src: *u8, size: usize) {
     }
 };
 
-/*
- * mem_set
- * 
- * Description:
- *   Set memory to desired value.
- * 
- * Arguments: 
- *   _dest: 
- *     Pointer to target memory block. 
- * 
- *   v: 
- *     Desired value. 
- *
- *   size: 
- *     Count of bytes to be set. 
- * 
- * Result:
- *   Pointer to destination memory. 
- */
+/*!
+# mem_set
+## Declaration
+```c
+mem_set :: fn (_dest: *u8, v: u8, size: usize) *u8
+```
+
+## Description
+  Set memory to desired value. Destination size must be at 
+least `size` bytes.
+
+## Arguments
+  * `_dest`
+    Pointer to target memory block. 
+  * `v`
+    Desired value. 
+  * `size`
+    Count of bytes to be set. 
+
+## Result
+  Pointer to destination memory. 
+*/
 mem_set :: fn (_dest: *u8, v: u8, size: usize) *u8 {
     dest := {:[]u8: auto size, _dest};
     loop i := 0; i < dest.len; i += 1 {

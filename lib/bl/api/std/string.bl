@@ -28,8 +28,18 @@
 
 #load "std/print.bl"
 
-STRING_BLOCK_SIZE :: 64 - sizeof(BlockHead);
+/*!
+# string_new 
+## Declaration
+```c
+string_new :: fn () string
+```
+## Description
+  Create new dynamic string instance. 
 
+## Result
+  New string.
+*/
 string_new :: fn () string {
     return string_new_reserved(0);
 };
@@ -207,6 +217,7 @@ string_to_s64n :: fn (str: string, len: s64) s64 {
 }
 
 #private
+STRING_BLOCK_SIZE :: 64 - sizeof(BlockHead);
 
 BlockHead :: struct {
     allocated_size: usize
