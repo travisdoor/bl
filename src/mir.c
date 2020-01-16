@@ -1312,8 +1312,8 @@ analyze_notify_provided(Context *cnt, u64 hash)
 	}
 
 	/* Also clear element content! */
-	thtbl_erase(&cnt->analyze.waiting, iter);
 	tarray_terminate(wq);
+	thtbl_erase(&cnt->analyze.waiting, iter);
 }
 
 static inline const char *
