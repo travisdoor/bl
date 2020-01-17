@@ -1,0 +1,17 @@
+// Dynamic array
+
+
+main :: fn () s32 {
+    arr: []s32; // has len, ptr
+    i := 10;
+    array_push(&arr, i);
+
+    return 0;
+}
+
+array_push :: fn (arr: *[]?T, v: *T) {
+}
+
+///
+array_push :: fn (arr: *[]s32, v: s32) {
+}
