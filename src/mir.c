@@ -179,9 +179,11 @@ static ID builtin_ids[_MIR_BUILTIN_ID_COUNT] = {
 
 /* Arena destructor for functions. */
 static void
-fn_dtor(MirFn **fn)
+fn_dtor(MirFn **_fn)
 {
-	dcbFreeCallback((*fn)->dyncall.extern_callback_handle);
+	MirFn *fn = *_fn;
+	if (fn->dyncall.extern_callback_handle) 
+		dcbFreeCallback(fn->dyncall.extern_callback_handle);
 }
 
 /* FW decls */
@@ -7612,7 +7614,7 @@ ast_test_case(Context *cnt, Ast *test)
 
 	BL_ASSERT(test->data.test_case.desc);
 	fn->test_case_desc = test->data.test_case.desc;
-        fn->body_scope = ast_block->owner_scope;
+	fn->body_scope     = ast_block->owner_scope;
 	MIR_CEV_WRITE_AS(MirFn *, &fn_proto->base.value, fn);
 
 	tarray_push(&cnt->test_cases, fn);

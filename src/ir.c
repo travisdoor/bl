@@ -552,6 +552,7 @@ emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 	MirFn *abort_fn = unr->abort_fn;
 	BL_ASSERT(abort_fn);
 	if (!abort_fn->llvm_value) emit_fn_proto(cnt, abort_fn);
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unr->base);
 	LLVMBuildCall(cnt->llvm_builder, abort_fn->llvm_value, NULL, 0, "");
 }
 
@@ -1880,10 +1881,12 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 		}
 	}
 
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &call->base);
+	if (cnt->debug_mode) {
+		emit_DI_instr_loc(cnt, &call->base);
+	}
 
-	LLVMValueRef llvm_call =
-	    LLVMBuildCall(cnt->llvm_builder, llvm_called_fn, llvm_args.data, (unsigned int)llvm_args.size, "");
+	LLVMValueRef llvm_call = LLVMBuildCall(
+	    cnt->llvm_builder, llvm_called_fn, llvm_args.data, (unsigned int)llvm_args.size, "");
 
 	if (callee_type->data.fn.has_sret) {
 		LLVMAddCallSiteAttribute(llvm_call,
@@ -2024,8 +2027,8 @@ emit_instr_switch(Context *cnt, MirInstrSwitch *sw)
 	LLVMValueRef      llvm_value         = value->llvm_value;
 	LLVMBasicBlockRef llvm_default_block = emit_basic_block(cnt, default_block);
 
-	LLVMValueRef llvm_switch =
-	    LLVMBuildSwitch(cnt->llvm_builder, llvm_value, llvm_default_block, (unsigned int) cases->size);
+	LLVMValueRef llvm_switch = LLVMBuildSwitch(
+	    cnt->llvm_builder, llvm_value, llvm_default_block, (unsigned int)cases->size);
 
 	for (usize i = 0; i < cases->size; ++i) {
 		MirSwitchCase *   c             = &cases->data[i];
@@ -2453,7 +2456,7 @@ ir_run(Assembly *assembly)
 #if BL_DEBUG
 	char *error = NULL;
 	if (LLVMVerifyModule(cnt.llvm_module, LLVMReturnStatusAction, &error)) {
-		msg_error("LLVM module not verified with error: %s", error);
+		BL_ABORT("LLVM module not verified with error: %s", error);
 	}
 	LLVMDisposeMessage(error);
 #endif
