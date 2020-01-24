@@ -2295,11 +2295,13 @@ void
 emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
 	MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
+
 	/* unused function */
 	if (!fn->emit_llvm) return;
 #if LLVM_EXCLUDE_UNUSED_SYM
 	if (fn->ref_count == 0) return;
 #endif
+
 	emit_fn_proto(cnt, fn);
 
 	if (IS_NOT_FLAG(fn->flags, FLAG_EXTERN)) {

@@ -182,8 +182,7 @@ static void
 fn_dtor(MirFn **_fn)
 {
 	MirFn *fn = *_fn;
-	if (fn->dyncall.extern_callback_handle) 
-		dcbFreeCallback(fn->dyncall.extern_callback_handle);
+	if (fn->dyncall.extern_callback_handle) dcbFreeCallback(fn->dyncall.extern_callback_handle);
 }
 
 /* FW decls */
@@ -5117,6 +5116,12 @@ analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 	MirType *type = NULL;
 	BL_ASSERT(src->value.type);
 	if (src->value.type->kind == MIR_TYPE_FN) {
+		MirFn *fn = MIR_CEV_READ_AS(MirFn *, &src->value);
+		BL_ASSERT(fn && "Missing function to take the address of!");
+
+		/* NOTE: Here we increase function ref count. */
+		++fn->ref_count;
+
 		type = create_type_ptr(cnt, src->value.type);
 	} else {
 		type = src->value.type;
@@ -5288,6 +5293,15 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		ref->base.value.type        = type;
 		ref->base.value.is_comptime = true;
 		ref->base.value.addr_mode   = MIR_VAM_RVALUE;
+
+		/* CLEANUP: We should be able to delete this line but, it's not working in all test
+		 * cases.
+		 *
+		 * We increase ref_count when function is called and also if we take address of it,
+		 * but it's probably not handle all possible cases. So I leave this problem open,
+		 * basically it's not an issue to have invalid function reference count, main goal
+		 * is not to have zero ref count for function which are used.
+		 */
 		++fn->ref_count;
 		break;
 	}
@@ -5455,7 +5469,8 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	/* Function marked as entry point must be always generated, we must increase reference
 	 * count!!! */
 	if (IS_FLAG(fn->flags, FLAG_ENTRY)) {
-		++fn->ref_count;
+		fn->ref_count = NO_REF_COUNTING;
+		//++fn->ref_count;
 	}
 
 	/* Check build entry function. */
@@ -6432,15 +6447,13 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 		} else if (call->callee->kind == MIR_INSTR_FN_PROTO) {
 			/* Direct call of anonymous function. */
 
-			/*
-			 * CLENUP: Function reference counting is not clear, we can decide
-			 * to count references direcly inside MirFn or in function prototype
-			 * instruction.
+			/* NOTE: We increase ref count of called function here, but this will not
+			 * work for functions called by pointer in obtained in runtime
 			 */
-			// ++fn->ref_count;
+			++fn->ref_count;
 			fn->emit_llvm = true;
 		}
-	}
+	} // else indirect call (via pointer)
 
 	MirType *result_type = type->data.fn.ret_type;
 	BL_ASSERT(result_type && "invalid type of call result");
@@ -7585,7 +7598,15 @@ ast_ublock(Context *cnt, Ast *ublock)
 void
 ast_block(Context *cnt, Ast *block)
 {
-	if (cnt->debug_mode) init_llvm_DI_scope(cnt, block->owner_scope);
+	if (cnt->debug_mode) {
+		MirFn *current_fn = get_current_fn(cnt);
+		BL_ASSERT(current_fn);
+
+		const bool emit_di =
+		    IS_FLAG(current_fn->flags, FLAG_TEST) ? builder.options.force_test_llvm : true;
+
+		if (emit_di) init_llvm_DI_scope(cnt, block->owner_scope);
+	}
 
 	Ast *tmp;
 	TARRAY_FOREACH(Ast *, block->data.block.nodes, tmp) ast(cnt, tmp);
@@ -7611,6 +7632,12 @@ ast_test_case(Context *cnt, Ast *test)
 	    test->owner_scope->kind == SCOPE_GLOBAL || test->owner_scope->kind == SCOPE_PRIVATE;
 	MirFn *fn =
 	    create_fn(cnt, test, NULL, linkage_name, FLAG_TEST, fn_proto, emit_llvm, is_in_gscope);
+
+	/* Set ref count to no ref counting for test cases. */
+	fn->ref_count = NO_REF_COUNTING;
+
+	/* Set body scope for DI. */
+	fn->body_scope = ast_block->owner_scope;
 
 	BL_ASSERT(test->data.test_case.desc);
 	fn->test_case_desc = test->data.test_case.desc;
