@@ -250,6 +250,7 @@ struct MirMember {
 	Scope *  decl_scope;
 	s32      offset_bytes;
 	s64      index;
+	s32      tags;
 	bool     is_base; /* inherrited struct base */
 };
 
@@ -418,6 +419,8 @@ struct MirInstrDeclMember {
 
 	MirMember *member;
 	MirInstr * type;
+
+	TSmallArray_InstrPtr *tags; /* Optional. */
 };
 
 struct MirInstrDeclVariant {

@@ -553,10 +553,14 @@ append_instr_decl_var_impl(Context *   cnt,
                            u32         flags);
 
 static MirInstr *
-append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type);
+append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type, TSmallArray_InstrPtr *tags);
 
 static MirInstr *
-append_instr_decl_member_impl(Context *cnt, Ast *node, ID *id, MirInstr *type);
+append_instr_decl_member_impl(Context *             cnt,
+                              Ast *                 node,
+                              ID *                  id,
+                              MirInstr *            type,
+                              TSmallArray_InstrPtr *tags);
 
 static MirInstr *
 append_instr_decl_arg(Context *cnt, Ast *node, MirInstr *type);
@@ -3832,14 +3836,18 @@ append_instr_decl_var_impl(Context *   cnt,
 }
 
 MirInstr *
-append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type)
+append_instr_decl_member(Context *cnt, Ast *node, MirInstr *type, TSmallArray_InstrPtr *tags)
 {
 	ID *id = node ? &node->data.ident.id : NULL;
-	return append_instr_decl_member_impl(cnt, node, id, type);
+	return append_instr_decl_member_impl(cnt, node, id, type, tags);
 }
 
 MirInstr *
-append_instr_decl_member_impl(Context *cnt, Ast *node, ID *id, MirInstr *type)
+append_instr_decl_member_impl(Context *             cnt,
+                              Ast *                 node,
+                              ID *                  id,
+                              MirInstr *            type,
+                              TSmallArray_InstrPtr *tags)
 {
 	ref_instr(type);
 	MirInstrDeclMember *tmp     = create_instr(cnt, MIR_INSTR_DECL_MEMBER, node);
@@ -3847,6 +3855,7 @@ append_instr_decl_member_impl(Context *cnt, Ast *node, ID *id, MirInstr *type)
 	tmp->base.value.type        = cnt->builtin_types->t_void;
 	tmp->base.ref_count         = NO_REF_COUNTING;
 	tmp->type                   = type;
+	tmp->tags                   = tags;
 
 	tmp->member = create_member(cnt, node, id, NULL, -1, NULL);
 
@@ -5771,6 +5780,40 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 AnalyzeResult
 analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
 {
+	MirMember *member = decl->member;
+	TSmallArray_InstrPtr *tags      = decl->tags;
+	s32                   tag_group = 0;
+
+	/* Analyze struct member tags. */
+	if (tags) {
+		for (usize i = 0; i < tags->size; ++i) {
+			MirInstr **tag = &tags->data[i];
+
+			if (analyze_slot(
+			        cnt, &analyze_slot_conf_default, tag, cnt->builtin_types->t_s32) !=
+			    ANALYZE_PASSED) {
+				return ANALYZE_RESULT(FAILED, 0);
+			}
+
+			if (!mir_is_comptime(*tag)) {
+				builder_msg(BUILDER_MSG_ERROR,
+				            ERR_EXPECTED_CONST,
+				            (*tag)->node->location,
+				            BUILDER_CUR_WORD,
+				            "Struct member tag must be compile-time constant.");
+				return ANALYZE_RESULT(FAILED, 0);
+			}
+
+			/* NOTE:
+			 * Tag values are used in the same way as flags, here we produce mergin of
+			 * all into one integer value.
+			 */
+			tag_group |= MIR_CEV_READ_AS(s32, &(*tag)->value);
+		}
+	}
+
+	member->tags = tag_group;
+
 	if (analyze_slot(cnt, &analyze_slot_conf_basic, &decl->type, NULL) != ANALYZE_PASSED) {
 		return ANALYZE_RESULT(FAILED, 0);
 	}
@@ -7421,6 +7464,11 @@ rtti_gen_struct_member(Context *cnt, VMStackPtr dest, MirMember *member)
 	MirType *  dest_index_type = mir_get_struct_elem_type(rtti_type, 3);
 	VMStackPtr dest_index      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 3);
 	vm_write_int(dest_index_type, dest_index, (u64)member->index);
+
+	/* tag */
+	MirType *  dest_tags_type = mir_get_struct_elem_type(rtti_type, 4);
+	VMStackPtr dest_tags      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 4);
+	vm_write_int(dest_tags_type, dest_tags, (u64)member->tags);
 }
 
 VMStackPtr
@@ -8566,8 +8614,37 @@ ast_decl_arg(Context *cnt, Ast *arg)
 MirInstr *
 ast_decl_member(Context *cnt, Ast *arg)
 {
+	/* INCOMPLETE:
+	 * It's not clear how we handle creation of MirMember if we have anonymous struct member
+	 * (without name). In such case we still need to create Member object because it's needed
+	 * for type info related to owner structure. This is also related to TAGS associated with
+	 * member, result value has to be stored in the MirMember.
+	 *
+	 * TODO:
+	 * Take a look at anonymous structures and related RTTI + tag information.
+	 */
+
 	Ast *ast_type = arg->data.decl.type;
 	Ast *ast_name = arg->data.decl.name;
+	Ast *ast_tags = arg->data.decl_member.tags;
+
+	TSmallArray_InstrPtr *tags = NULL;
+
+	/* has member user defined tags? */
+	if (ast_tags) {
+		TSmallArray_AstPtr *ast_values = ast_tags->data.tags.values;
+		BL_ASSERT(ast_values && "Invalid tag values array.");
+		BL_ASSERT(ast_values->size && "Tag array must contains one value at least.");
+
+		tags = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
+
+		Ast *ast_value;
+		TSA_FOREACH(ast_values, ast_value)
+		{
+			MirInstr *value = ast(cnt, ast_value);
+			tsa_push_InstrPtr(tags, value);
+		}
+	}
 
 	BL_ASSERT(ast_type);
 	MirInstr *result = ast(cnt, ast_type);
@@ -8575,7 +8652,7 @@ ast_decl_member(Context *cnt, Ast *arg)
 	/* named member? */
 	if (ast_name) {
 		BL_ASSERT(ast_name->kind == AST_IDENT);
-		result = append_instr_decl_member(cnt, ast_name, result);
+		result = append_instr_decl_member(cnt, ast_name, result, tags);
 
 		register_symbol(
 		    cnt, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false, false);
@@ -8776,7 +8853,7 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 		 */
 		MirInstr *base_type = ast(cnt, ast_base_type);
 		ID *      id        = &builtin_ids[MIR_BUILTIN_ID_STRUCT_BASE];
-		base_type = append_instr_decl_member_impl(cnt, ast_base_type, id, base_type);
+		base_type = append_instr_decl_member_impl(cnt, ast_base_type, id, base_type, NULL);
 
 		MirMember *base_member = ((MirInstrDeclMember *)base_type)->member;
 		base_member->is_base   = true;

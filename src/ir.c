@@ -758,6 +758,13 @@ rtti_emit_struct_member(Context *cnt, MirMember *member)
 	                                (u32)member->index,
 	                                index_type->data.integer.is_signed));
 
+	/* tags */
+	MirType *tags_type = mir_get_struct_elem_type(rtti_type, 4);
+	tsa_push_LLVMValue(&llvm_vals,
+	                   LLVMConstInt(offset_type->llvm_type,
+	                                (u32)member->tags,
+	                                tags_type->data.integer.is_signed));
+
 	LLVMValueRef llvm_result =
 	    LLVMConstNamedStruct(rtti_type->llvm_type, llvm_vals.data, (u32)llvm_vals.size);
 

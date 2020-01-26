@@ -170,6 +170,7 @@ struct AstDeclEntity {
 
 struct AstDeclMember {
 	struct AstDecl base;
+	Ast *          tags; /* Optional. */
 };
 
 struct AstDeclArg {
@@ -329,6 +330,10 @@ struct AstExprDeref {
 
 struct AstMetaData {
 	const char *str;
+};
+
+struct AstTags {
+	TSmallArray_AstPtr *values;
 };
 
 /* AST base type */

@@ -2,12 +2,22 @@
 
 #load "std/print.bl"
 
-main :: fn () s32 {
-    return 0;
+SERIALIZABLE :: 0x1;
+EDITABLE     :: 0x2;
+
+Foo :: struct {
+    a: s32 #tags SERIALIZABLE, EDITABLE;
+    b: s32 #tags SERIALIZABLE;
+    c: s32;
 }
 
-#test "this is test case" {
-    Days :: enum { MON; };
-    day  :: {:Days: Days.MON};
-    assert(day == Days.MON);
+main :: fn () s32 {
+    info :: cast(*TypeInfoStruct) typeinfo(Foo);
+
+    loop i := 0; i < info.members.len; i += 1 {
+        member :: info.members[i];
+        print("Member '%' has tags '%'.\n", member.name, member.tags);
+    }
+    
+    return 0;
 }

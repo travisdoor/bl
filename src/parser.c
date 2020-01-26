@@ -82,6 +82,7 @@ typedef enum {
 	HD_META        = 1 << 12,
 	HD_ENTRY       = 1 << 12,
 	HD_BUILD_ENTRY = 1 << 13,
+	HD_TAGS        = 1 << 14,
 } HashDirective;
 
 typedef struct {
@@ -514,6 +515,63 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 		}
 
 		return parse_type(cnt);
+	}
+
+	if (strcmp(directive, "tags") == 0) {
+		set_satisfied(HD_TAGS);
+		if (IS_NOT_FLAG(expected_mask, HD_TAGS)) {
+			PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+			            tok_directive,
+			            BUILDER_CUR_WORD,
+			            "Unexpected directive.");
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
+		}
+
+		/*
+		 * Tags can contain one or mover references separated by comma
+		 */
+		Ast *tag;
+		bool rq = false;
+
+		TSmallArray_AstPtr *values = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+
+	VALUE:
+		tag = parse_expr_ref(cnt);
+		if (tag) {
+			tsa_push_AstPtr(values, tag);
+
+			if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
+				rq = true;
+				goto VALUE;
+			}
+		} else if (rq) {
+			Token *tok_err = tokens_peek(cnt->tokens);
+			PARSE_ERROR(ERR_EXPECTED_NAME,
+			            tok_err,
+			            BUILDER_CUR_WORD,
+			            "Expected another tag after comma ','.");
+
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
+		}
+
+		if (!values->size) {
+			Token *tok_err = tokens_peek(cnt->tokens);
+			PARSE_ERROR(ERR_EXPECTED_NAME,
+			            tok_err,
+			            BUILDER_CUR_WORD,
+			            "Expected tag value after #tags.");
+
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
+		}
+
+		Ast *tags =
+		    ast_create_node(cnt->ast_arena, AST_TAGS, tok_directive, scope_get(cnt));
+
+		tags->data.tags.values = values;
+		return tags;
 	}
 
 #if 0
@@ -996,9 +1054,14 @@ parse_decl_member(Context *cnt, bool type_only)
 	}
 
 	if (!type && !name) return NULL;
+
+	HashDirective found_hd = HD_NONE;
+	Ast *         tags     = parse_hash_directive(cnt, HD_TAGS, &found_hd);
+
 	Ast *mem = ast_create_node(cnt->ast_arena, AST_DECL_MEMBER, tok_begin, scope_get(cnt));
-	mem->data.decl.type = type;
-	mem->data.decl.name = name;
+	mem->data.decl.type        = type;
+	mem->data.decl.name        = name;
+	mem->data.decl_member.tags = tags;
 
 	return mem;
 }
@@ -1663,7 +1726,8 @@ parse_expr_lit_fn(Context *cnt)
 
 				BL_ASSERT(hd_extension->kind == AST_IDENT &&
 				          "Expected ident as #extern extension.");
-				BL_ASSERT(curr_decl->data.decl_entity.explicit_linkage_name == NULL);
+				BL_ASSERT(curr_decl->data.decl_entity.explicit_linkage_name ==
+				          NULL);
 				curr_decl->data.decl_entity.explicit_linkage_name = hd_extension;
 			}
 

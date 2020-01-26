@@ -154,7 +154,8 @@ TypeInfoStructMember :: struct #compiler {
     name: string;
     base_type: *TypeInfo;
     offset_bytes: s32;
-    index: s32
+    index: s32;
+    tags: s32;
 };
 
 TypeInfoEnumVariant :: struct #compiler {

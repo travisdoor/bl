@@ -111,6 +111,11 @@ or cannot be open.
 
 ## Result
   File handle or null.
+
+## Note
+  Signature of this procedure will be changed in the future to indicate possible errors
+back to caller (most likely it will take out_file as an parameter and return non-zero number
+on fail).
 */
 file_open :: fn (filename: string, modes: ...FileOpenMode) File {
     mode := {:[4]u8: 0};
