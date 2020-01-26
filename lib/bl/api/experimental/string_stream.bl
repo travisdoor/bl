@@ -1,11 +1,11 @@
 //************************************************************************************************
-// bl
+// Adaonia 
 //
-// File:   utils.bl
+// File:   string_stream.bl
 // Author: Martin Dorazil
-// Date:   4/9/19
+// Date:   1/25/20
 //
-// Copyright 2019 Martin Dorazil
+// Copyright 2020 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,27 +26,47 @@
 // SOFTWARE.
 //************************************************************************************************
 
-is_flag_u32 :: fn (v: u32, flag: u32) bool #inline {
-    return (v & flag) == flag;
-};
+END_OF_STREAM :: '\0';
 
-is_flag_s32 :: fn (v: s32, flag: s32) bool #inline {
-    return (v & flag) == flag;
-};
+StringStream :: struct {
+    _data: string;
+    i: s64;
+}
 
-/*
- * Converts C string to BL string.
- */
-cstr_to_str :: fn (cstr: *u8) string #inline {
-    return {:string: auto c_strlen(auto cstr), cstr};
-};
+ss_init_from_file :: fn (ss: *StringStream, file: File) {
+    if file == null { panic(); }
 
-ptr_shift_bytes :: fn (ptr: *u8, bytes: s64) *u8 #inline {
-    return cast(*u8) (cast(s64) ptr + bytes);
-};
+    ss._data = file_read_all(file);
+    ss.i = 0;
+}
 
-// a - b
-ptr_diff :: fn (a: *u8, b: *u8) s64 #inline {
-    return (cast(s64) a) - (cast(s64) b); 
+ss_init :: fn (ss: *StringStream) {
+    ss._data = string_new();
+    ss.i = 0;
+}
+
+ss_terminate :: fn (ss: *StringStream) {
+    string_delete(ss._data);
+}
+
+ss_write_to_file :: fn (ss: *StringStream, file: File) usize {
+    return file_write_string(file, ss._data);
+}
+
+ss_peek :: fn (ss: *StringStream) u8 {
+    if ss.i >= ss._data.len { return END_OF_STREAM; }
+    return ss._data[ss.i];
+}
+
+ss_get :: fn (ss: *StringStream) u8 {
+    if ss.i >= ss._data.len { return END_OF_STREAM; }
+    tmp :: ss._data[ss.i];
+    ss.i += 1;
+
+    return tmp;
+}
+
+ss_push :: fn (ss: *StringStream, v: Any) {
+    string_append(&ss._data, v);
 }
 
