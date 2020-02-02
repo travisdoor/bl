@@ -52,6 +52,10 @@ GL_DONT_CARE : u32 : 0x1100;
 GL_FASTEST   : u32 : 0x1101;
 GL_NICEST    : u32 : 0x1102;
 
+GL_LESS                           : u32 : 0x0201;
+GL_EQUAL                          : u32 : 0x0202;
+GL_GREATER                        : u32 : 0x0204;
+GL_ALWAYS                         : u32 : 0x0207;
 GL_COMPRESSED_ALPHA               : s32 : 0x84E9;
 GL_COMPRESSED_LUMINANCE           : s32 : 0x84EA;
 GL_COMPRESSED_LUMINANCE_ALPHA     : s32 : 0x84EB;
@@ -519,6 +523,9 @@ _Gl :: struct {
     GetUniformLocation: *fn (program: GLuint, name: *GLchar) GLint;
     GetAttribLocation: *fn (program: GLuint, name: *GLchar) GLint;
     Viewport: *fn (x: GLint, y: GLint, width: GLsizei, height: GLsizei);
+    DepthMask: *fn (mask: GLint);
+    DepthFunc: *fn (mask: GLenum);
+    CullFace: *fn (mode: GLenum);
 }
 
 gl := {:_Gl: 0};

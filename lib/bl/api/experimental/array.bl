@@ -90,7 +90,7 @@ array_push :: fn (arr: *Array, v: Any) {
 
 };
 
-array_at :: fn (arr: *Array, i: s64) *u8 {
+array_at :: fn (arr: *Array, i: s64) *u8 #inline {
     return elem_ptr(arr, i);
 };
 
@@ -107,6 +107,7 @@ array_erase :: fn (arr: *Array, i: s64) {
 
 #private
 ALLOC_BLOCK_SIZE : usize : 32;
+    
 
 elem_ptr :: fn (arr: *Array, i: s64) *u8 #inline {
     if i >= arr.len {
