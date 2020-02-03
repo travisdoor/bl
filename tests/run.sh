@@ -1,2 +1,24 @@
 #!/bin/bash
-blc -no-bin -force-test-to-llvm -run-tests -no-warning src/main.bl ../examples/main.bl
+echo 
+echo "***********************"
+echo "*** Compiling demos ***"
+echo "***********************"
+echo 
+blc -no-bin ../demos/vulkan_demo/src/vulkan_demo.bl 
+blc -no-bin ../demos/simple_sdl_game/src/skyshooter.bl 
+
+
+echo 
+echo "************************"
+echo "*** Running examples ***"
+echo "************************"
+echo 
+blc -no-bin -force-test-to-llvm -run-tests -no-warning ../examples/dummy.bl
+
+
+echo 
+echo "**************************"
+echo "*** Running test cases ***"
+echo "**************************"
+echo 
+blc -no-bin -force-test-to-llvm -run-tests -no-warning src/test_dummy.bl

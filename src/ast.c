@@ -27,7 +27,7 @@
 //************************************************************************************************
 
 #include "ast.h"
-#include "arena.h"
+#include "token.h"
 
 #define ARENA_CHUNK_COUNT 256
 
@@ -36,59 +36,59 @@ node_dtor(Ast *node)
 {
 	switch (node->kind) {
 	case AST_UBLOCK:
-		bo_unref(node->data.ublock.nodes);
+		tarray_delete(node->data.ublock.nodes);
 		break;
 	case AST_BLOCK:
-		bo_unref(node->data.block.nodes);
-		break;
-	case AST_EXPR_CALL:
-		bo_unref(node->data.expr_call.args);
-		break;
-	case AST_EXPR_COMPOUND:
-		bo_unref(node->data.expr_compound.values);
-		break;
-	case AST_TYPE_FN:
-		bo_unref(node->data.type_fn.args);
-		break;
-	case AST_TYPE_STRUCT:
-		bo_unref(node->data.type_strct.members);
-		break;
-	case AST_TYPE_ENUM:
-		bo_unref(node->data.type_enm.variants);
+		tarray_delete(node->data.block.nodes);
 		break;
 	default:
 		break;
 	}
 }
 
-Ast *
-ast_create_node(Arena *arena, AstKind c, Token *tok)
+static void
+small_array_dtor(TSmallArrayAny *arr)
 {
-	Ast *node  = arena_alloc(arena);
-	node->kind = c;
-	node->src  = tok ? &tok->src : NULL;
+	tsa_terminate(arr);
+}
+
+Ast *
+ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope)
+{
+	Ast *node         = arena_alloc(arena);
+	node->kind        = c;
+	node->owner_scope = parent_scope;
+	node->location    = tok ? &tok->location : NULL;
 
 #if BL_DEBUG
-	static uint64_t serial = 0;
-	node->_serial          = serial++;
+	static u64 serial = 0;
+	node->_serial     = serial++;
 #endif
 	return node;
 }
 
 /* public */
 void
-ast_arena_init(struct Arena *arena)
+ast_arena_init(Arena *arena)
 {
 	arena_init(arena, sizeof(Ast), ARENA_CHUNK_COUNT, (ArenaElemDtor)node_dtor);
+}
+
+void
+ast_arena_terminate(Arena *arena)
+{
+	arena_terminate(arena);
 }
 
 const char *
 ast_get_name(const Ast *n)
 {
-	assert(n);
+	BL_ASSERT(n);
 	switch (n->kind) {
 	case AST_BAD:
 		return "Bad";
+	case AST_META_DATA:
+		return "MetaData";
 	case AST_LOAD:
 		return "Load";
 	case AST_LINK:
@@ -117,6 +117,10 @@ ast_get_name(const Ast *n)
 		return "StmtBreak";
 	case AST_STMT_CONTINUE:
 		return "StmtContinue";
+	case AST_STMT_SWITCH:
+		return "StmtSwitch";
+	case AST_STMT_CASE:
+		return "StmtCase";
 	case AST_DECL_ENTITY:
 		return "DeclEntity";
 	case AST_DECL_MEMBER:
@@ -141,8 +145,10 @@ ast_get_name(const Ast *n)
 		return "TypePtr";
 	case AST_TYPE_VARGS:
 		return "TypeVargs";
-	case AST_EXPR_TYPE:
-		return "ExprType";
+	case AST_EXPR_FILE:
+		return "ExprFile";
+	case AST_EXPR_LINE:
+		return "ExprLine";
 	case AST_EXPR_REF:
 		return "ExprRef";
 	case AST_EXPR_CAST:
@@ -159,8 +165,8 @@ ast_get_name(const Ast *n)
 		return "ExprSizeof";
 	case AST_EXPR_TYPE_INFO:
 		return "ExprTypeInfo";
-	case AST_EXPR_TYPE_KIND:
-		return "ExprTypeKind";
+	case AST_EXPR_TYPE:
+		return "ExprType";
 	case AST_EXPR_ALIGNOF:
 		return "ExprAlignof";
 	case AST_EXPR_UNARY:
@@ -189,7 +195,7 @@ ast_get_name(const Ast *n)
 		return "ExprLitBool";
 
 	default:
-		bl_abort("invalid ast node");
+		BL_ABORT("invalid ast node");
 	}
 }
 
@@ -197,6 +203,8 @@ const char *
 ast_binop_to_str(BinopKind op)
 {
 	switch (op) {
+	case BINOP_INVALID:
+		return "<invalid>";
 	case BINOP_ASSIGN:
 		return "=";
 	case BINOP_ADD_ASSIGN:
@@ -235,9 +243,17 @@ ast_binop_to_str(BinopKind op)
 		return "&&";
 	case BINOP_LOGIC_OR:
 		return "||";
-	default:
-		return "invalid";
+	case BINOP_AND:
+		return "&";
+	case BINOP_OR:
+		return "|";
+	case BINOP_SHR:
+		return ">>";
+	case BINOP_SHL:
+		return "<<";
 	}
+
+	return "invalid";
 }
 
 const char *

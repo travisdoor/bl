@@ -30,69 +30,113 @@
 #include "error.h"
 #include "stages.h"
 
-#define link_error(builder, code, tok, pos, format, ...)                                           \
+#define link_error(code, tok, pos, format, ...)                                                    \
 	{                                                                                          \
 		if (tok)                                                                           \
-			builder_msg(builder,                                                       \
-			            BUILDER_MSG_ERROR,                                             \
+			builder_msg(BUILDER_MSG_ERROR,                                             \
 			            (code),                                                        \
-			            &(tok)->src,                                                   \
+			            &(tok)->location,                                              \
 			            (pos),                                                         \
 			            (format),                                                      \
 			            ##__VA_ARGS__);                                                \
 		else                                                                               \
-			builder_error(builder, (format), ##__VA_ARGS__);                           \
+			builder_error((format), ##__VA_ARGS__);                                    \
 	}
 
 typedef struct {
 	Assembly *assembly;
-	Builder * builder;
-	bool      verbose;
+	TArray *  lib_paths;
 } Context;
 
-/* TODO: Support cross-platform build targets? */
-void
-platform_lib_name(const char *name, char *buffer, size_t max_len)
+static bool
+search_library(Context *   cnt,
+               const char *lib_name,
+               char **     out_lib_name,
+               char **     out_lib_dir,
+               char **     out_lib_filepath)
 {
-	if (!name) return;
+	char lib_filepath[PATH_MAX] = {0};
+	char lib_name_full[256]     = {0};
 
-#ifdef BL_PLATFORM_MACOS
-	snprintf(buffer, max_len, "lib%s.dylib", name);
-#elif defined(BL_PLATFORM_LINUX)
-	snprintf(buffer, max_len, "lib%s.so", name);
-#elif defined(BL_PLATFORM_WIN)
-	snprintf(buffer, max_len, "%s.dll", name);
-#else
-	bl_abort("Unknown dynamic library format.");
-#endif
+	platform_lib_name(lib_name, lib_name_full, TARRAY_SIZE(lib_name_full));
+
+	if (builder.options.verbose) msg_log("- Looking for: '%s'", lib_name_full);
+
+	const char *dir;
+	TARRAY_FOREACH(const char *, cnt->lib_paths, dir)
+	{
+		if (strlen(dir) + strlen(PATH_SEPARATOR) + strlen(lib_name_full) >= PATH_MAX)
+			BL_ABORT("Path too long");
+
+		strcpy(lib_filepath, dir);
+		strcat(lib_filepath, PATH_SEPARATOR);
+		strcat(lib_filepath, lib_name_full);
+
+		if (file_exists(lib_filepath)) {
+			if (builder.options.verbose) msg_log("  Found: '%s'", lib_filepath);
+			if (out_lib_name) (*out_lib_name) = strdup(lib_name_full);
+			if (out_lib_dir) (*out_lib_dir) = strdup(dir);
+			if (out_lib_filepath) (*out_lib_filepath) = strdup(lib_filepath);
+			return true;
+		}
+	}
+
+	if (builder.options.verbose) msg_log("  Not found: '%s'", lib_filepath);
+	return false;
+}
+
+static void
+set_lib_paths(Context *cnt)
+{
+	char        tmp[PATH_MAX] = {0};
+	const char *lib_path      = conf_data_get_str(builder.conf, CONF_LINKER_LIB_PATH_KEY);
+	if (!strlen(lib_path)) return;
+
+	s32         len;
+	const char *begin = lib_path;
+	const char *c     = lib_path;
+	bool        done  = false;
+
+	while (!done) {
+		done = *(c++) == '\0';
+		if (done || *c == ENVPATH_SEPARATOR) {
+			len = c - begin;
+			if (len - 1 > 0) {
+				strncpy(tmp, begin, len);
+				if (file_exists(tmp)) {
+					char *dup = malloc(sizeof(char) * len + 1);
+					memcpy(dup, begin, len);
+					dup[len] = '\0';
+
+					tarray_push(cnt->lib_paths, dup);
+				}
+
+				begin = c + 1;
+			}
+		}
+	}
 }
 
 static bool
-link_lib(Context *cnt, const char *lib_name, Token *token, bool is_internal)
+link_lib(Context *cnt, const char *name, Token *token)
 {
-	char tmp[PATH_MAX] = {0};
-	platform_lib_name(lib_name, tmp, PATH_MAX);
+	if (!name) BL_ABORT("invalid lib name");
+	NativeLib lib   = {0};
+	lib.user_name   = strdup(name);
+	lib.linked_from = token;
 
-	DLLib *handle = dlLoadLibrary(lib_name ? tmp : NULL);
-	if (!handle) return false;
+	if (!search_library(cnt, name, &lib.filename, &lib.dir, &lib.filepath)) return false;
 
-	NativeLib native_lib = {.handle      = handle,
-	                        .linked_from = token,
-	                        .user_name   = lib_name,
-	                        .filename    = NULL,
-	                        .filepath    = NULL,
-	                        .dirpath     = NULL,
-	                        .is_internal = is_internal};
+	lib.handle = dlLoadLibrary(lib.filepath);
+	if (!lib.handle) {
+		free(lib.filename);
+		free(lib.dir);
+		free(lib.filepath);
 
-	native_lib.filename = strdup(tmp);
-	dlGetLibraryPath(handle, tmp, PATH_MAX);
-	native_lib.filepath = strdup(tmp);
-
-	if (cnt->verbose) {
-		msg_log("Runtime linked file: %s.", native_lib.filepath);
+		return false;
 	}
 
-	bo_array_push_back(cnt->assembly->dl.libs, native_lib);
+	tarray_push(&cnt->assembly->dl.libs, lib);
 	return true;
 }
 
@@ -104,41 +148,49 @@ link_working_environment(Context *cnt)
 #else
 	const char *libc = NULL;
 #endif
-	return link_lib(cnt, libc, NULL, true);
+
+	DLLib *handle = dlLoadLibrary(libc);
+	if (!handle) return false;
+
+	NativeLib native_lib = {.handle      = handle,
+	                        .linked_from = NULL,
+	                        .user_name   = NULL,
+	                        .filename    = NULL,
+	                        .filepath    = NULL,
+	                        .is_internal = true};
+
+	tarray_push(&cnt->assembly->dl.libs, native_lib);
+	return true;
 }
 
 void
-linker_run(Builder *builder, Assembly *assembly)
+linker_run(Assembly *assembly)
 {
-	Context cnt = {.assembly = assembly,
-	               .builder  = builder,
-	               .verbose  = is_flag(builder->flags, BUILDER_VERBOSE)};
+	Context cnt = {.assembly = assembly, .lib_paths = &assembly->dl.lib_paths};
 
-	if (cnt.verbose) {
+	if (builder.options.verbose) {
 		msg_log("Running runtime linker...");
 	}
 
+	set_lib_paths(&cnt);
+
 	if (!link_working_environment(&cnt)) {
 		Token *dummy = NULL;
-		link_error(builder,
-		           ERR_LIB_NOT_FOUND,
-		           dummy,
-		           BUILDER_CUR_WORD,
-		           "Cannot link working environment.");
+		link_error(
+		    ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link working environment.");
 		return;
 	}
 
-	BHashTable *  cache = assembly->link_cache;
-	Token *       token;
-	bo_iterator_t it;
-	bhtbl_foreach(cache, it)
+	THashTable *cache = &assembly->link_cache;
+	Token *     token;
+	TIterator   it;
+	THTBL_FOREACH(cache, it)
 	{
-		token = bo_htbl_iter_peek_value(cache, &it, Token *);
-		assert(token);
+		token = thtbl_iter_peek_value(Token *, it);
+		BL_ASSERT(token);
 
-		if (!link_lib(&cnt, token->value.str, token, false)) {
-			link_error(builder,
-			           ERR_LIB_NOT_FOUND,
+		if (!link_lib(&cnt, token->value.str, token)) {
+			link_error(ERR_LIB_NOT_FOUND,
 			           token,
 			           BUILDER_CUR_WORD,
 			           "Unresolved external library '%s'",

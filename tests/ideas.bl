@@ -1,0 +1,23 @@
+/*
+    - metarmation about symbol (attached metadata to AST node)
+    - can be printed out by compiler on error 
+    - generate documentation: File, line, symbol name + symbol description
+ */
+
+// file-scope meta
+#meta
+"Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
+"Curabitur nec neque eget diam rutrum rutrum. Quisque ac "
+"mauris id turpis pellentesque tincidunt at a justo. "
+"Aenean sollicitudin justo at convallis vulputate. Nunc "
+"iaculis, neque vehicula convallis placerat, dui est consequat"
+"felis, sit amet auctor lectus orci nec mauris."
+
+add :: fn (
+    a: s32 #meta "First number",
+    b: s32 #meta "Second number"
+) s32
+#meta "This function makes addition of two numbers."
+{
+    return a + b;
+}

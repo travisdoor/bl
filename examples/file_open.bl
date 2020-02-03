@@ -1,0 +1,10 @@
+#load "std/file.bl"
+
+#test "file open" {
+    file := file_open(#file);
+    defer file_close(file);
+
+    content := file_read_all(file);
+    defer string_delete(content);
+    print("%\n", content);
+};

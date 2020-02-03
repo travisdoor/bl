@@ -31,10 +31,9 @@
 
 #include "mir.h"
 
-void
-mir_print_instr(MirInstr *instr, FILE *stream);
+struct Assembly;
 
 void
-mir_print_module(MirModule *module, FILE *stream);
+mir_print_assembly(struct Assembly *assembly, FILE *stream);
 
 #endif

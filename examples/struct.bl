@@ -2,7 +2,7 @@
 
 #test "simple structure" {
     Foo :: struct {
-        i: s32,
+        i: s32;
         j: s32 
     };
 
@@ -16,7 +16,7 @@
 
 #test "anonymous structure" {
     foo : struct {
-        i: s32,
+        i: s32;
         j: s32 
     };
 
@@ -29,7 +29,7 @@
 
 #test "auto dereference for structure poiners" {
     Foo :: struct {
-        i: s32,
+        i: s32;
         j: s32 
     };
 
@@ -44,7 +44,7 @@
 
 #test "structure initializer" {
     Foo :: struct {
-        i: s32,
+        i: s32;
         j: s32
     };
 

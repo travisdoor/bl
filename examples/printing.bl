@@ -1,0 +1,16 @@
+#load "std/debug.bl"
+#load "std/print.bl"
+
+#test "printing" {
+    i := 10;
+    t := true;
+    f := false;
+    ptr := &i;
+
+    print("Hello biscuit!!!\n");
+    print("i = %\nt = %\nf = %\nptr = %\n", i, t, f, ptr);
+
+    // print array
+    arr := {:[4]s32: 1, 2, 3, 4 };
+    print("array = %\n", arr);
+};

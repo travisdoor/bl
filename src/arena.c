@@ -32,15 +32,15 @@
 
 typedef struct ArenaChunk {
 	struct ArenaChunk *next;
-	int32_t            count;
+	s32                count;
 } ArenaChunk;
 
 static inline ArenaChunk *
 alloc_chunk(Arena *arena)
 {
-	const size_t chunk_size_in_bytes = arena->elem_size_in_bytes * arena->elems_per_chunk;
+	const usize chunk_size_in_bytes = arena->elem_size_in_bytes * arena->elems_per_chunk;
 	ArenaChunk * chunk               = bl_malloc(chunk_size_in_bytes);
-	if (!chunk) bl_abort("bad alloc");
+	if (!chunk) BL_ABORT("bad alloc");
 
 	memset(chunk, 0, chunk_size_in_bytes);
 	chunk->count = 1;
@@ -48,14 +48,14 @@ alloc_chunk(Arena *arena)
 }
 
 static inline void *
-get_from_chunk(Arena *arena, ArenaChunk *chunk, int32_t i)
+get_from_chunk(Arena *arena, ArenaChunk *chunk, s32 i)
 {
 	void *elem = (void *)((char *)chunk + (i * arena->elem_size_in_bytes));
 	/* New node pointer in chunk must be aligned. (ALLOCATED SIZE FOR EVERY NODE MUST BE
 	 * sizeof(node_t) + MAX_ALIGNMENT) */
 	ptrdiff_t adj;
 	align_ptr_up(&elem, MAX_ALIGNMENT, &adj);
-	assert(adj < MAX_ALIGNMENT);
+	BL_ASSERT(adj < MAX_ALIGNMENT);
 	return elem;
 }
 
@@ -65,7 +65,7 @@ free_chunk(Arena *arena, ArenaChunk *chunk)
 	if (!chunk) return NULL;
 
 	ArenaChunk *next = chunk->next;
-	for (int32_t i = 0; i < chunk->count - 1; ++i) {
+	for (s32 i = 0; i < chunk->count - 1; ++i) {
 		if (arena->elem_dtor) arena->elem_dtor(get_from_chunk(arena, chunk, i + 1));
 	}
 
@@ -74,10 +74,7 @@ free_chunk(Arena *arena, ArenaChunk *chunk)
 }
 
 void
-arena_init(Arena *       arena,
-           size_t        elem_size_in_bytes,
-           int32_t       elems_per_chunk,
-           ArenaElemDtor elem_dtor)
+arena_init(Arena *arena, usize elem_size_in_bytes, s32 elems_per_chunk, ArenaElemDtor elem_dtor)
 {
 	arena->elem_size_in_bytes = elem_size_in_bytes + MAX_ALIGNMENT;
 	arena->elems_per_chunk    = elems_per_chunk;
@@ -113,7 +110,7 @@ arena_alloc(Arena *arena)
 	void *elem = get_from_chunk(arena, arena->current_chunk, arena->current_chunk->count);
 	arena->current_chunk->count++;
 
-	assert(is_aligned(elem, MAX_ALIGNMENT) && "unaligned allocation of arena element");
+	BL_ASSERT(is_aligned(elem, MAX_ALIGNMENT) && "unaligned allocation of arena element");
 
 	return elem;
 }

@@ -1,0 +1,135 @@
+LEVEL_LAYER_SKY     :: 0;
+LEVEL_LAYER_HILLS1  :: 1;
+LEVEL_LAYER_CLOUDS1 :: 2;
+LEVEL_LAYER_HILLS2  :: 3;
+LEVEL_LAYER_CLOUDS2 :: 4;
+PLAYER_ID           :: 0;
+
+Level :: struct {
+    layers: [5]*LevelLayer;
+    entities: [16]*Entity
+};
+
+LevelLayer :: struct {
+    texture: *SDL_Texture;
+    x_position: f32;
+    x_speed: f32
+};
+
+level_new :: fn (game: *Game) *Level {
+    self := cast(*Level) malloc(sizeof(Level));
+
+    self.layers[LEVEL_LAYER_SKY] = level_layer_new(game, TextureId.LevelSky, 0.f);
+    self.layers[LEVEL_LAYER_HILLS1] = level_layer_new(game, TextureId.LevelHills1, -0.05f);
+    self.layers[LEVEL_LAYER_CLOUDS1] = level_layer_new(game, TextureId.LevelClouds1, -0.07f);
+    self.layers[LEVEL_LAYER_HILLS2] = level_layer_new(game, TextureId.LevelHills2, -0.09f);
+    self.layers[LEVEL_LAYER_CLOUDS2] = level_layer_new(game, TextureId.LevelClouds2, -0.1f);
+
+    // init player
+    self.entities[PLAYER_ID] = player_new(game, PLAYER_ID);
+
+    loop i := 1; i < self.entities.len; i += 1 {
+        x := rand_range(0.f, cast(f32) ScreenWidth);
+        y := rand_range(0.f, cast(f32) ScreenHeight);
+        speed  := rand_range(0.05f, 0.2f);
+
+        self.entities[i] = enemy_new(game, i, x, y, speed);
+    }
+
+    return self;
+};
+
+level_delete :: fn (self: *Level) {
+    loop i := 0; i < self.layers.len; i += 1 {
+        level_layer_delete(self.layers[i]);
+    }
+
+    loop i := 0; i < self.entities.len; i += 1 {
+        entity_delete(self.entities[i]);
+    }
+
+    free(cast(*u8) self);
+};
+
+level_render :: fn (self: *Level, game: *Game) {
+    level_layer_render(self.layers[LEVEL_LAYER_SKY], game);
+    level_layer_render(self.layers[LEVEL_LAYER_HILLS1], game);
+    level_layer_render(self.layers[LEVEL_LAYER_CLOUDS1], game);
+    level_layer_render(self.layers[LEVEL_LAYER_HILLS2], game);
+
+    loop i := 0; i < self.entities.len; i += 1 {
+        entity_render(self.entities[i], game);
+    }
+
+    level_layer_render(self.layers[LEVEL_LAYER_CLOUDS2], game);
+};
+
+level_update :: fn (self: *Level, dt: f32) {
+    level_handle_colisions(self);
+    
+    loop i := 0; i < self.entities.len; i += 1 {
+        entity_update(self.entities[i], dt);
+    }
+
+    loop i := 0; i < self.layers.len; i += 1 {
+        level_layer_update(self.layers[i], dt);
+    }
+};
+
+level_handle_colisions :: fn (self: *Level) {
+    loop i := 0; i < self.entities.len; i += 1 {
+        first := self.entities[i];
+        if !first.is_alive { continue; }
+
+        loop j := 0; j < self.entities.len; j += 1 {
+            if i == j { continue; }
+
+            second := self.entities[j];
+            if !second.is_alive { continue; }
+            
+            if entity_does_colide(first, second) {
+                entity_on_colide(first);
+                entity_on_colide(second);
+            }
+        }
+    }
+};
+
+level_handle_input :: fn (self: *Level) {
+    player := cast(*Player) self.entities[PLAYER_ID];
+    player_handle_input(player);
+};
+
+level_layer_new :: fn (game: *Game, texture_id: TextureId, x_speed: f32) *LevelLayer {
+    self := cast(*LevelLayer) malloc(sizeof(LevelLayer)); 
+    self.texture = texture_pool_get(texture_id);
+
+    self.x_position = 0.f;
+    self.x_speed = x_speed;
+    return self;
+};
+
+level_layer_delete :: fn (self: *LevelLayer) {
+    free(cast(*u8) self);
+};
+
+level_layer_render :: fn (self: *LevelLayer, game: *Game) {
+    ipos := cast(s32) self.x_position;
+
+    dst_rect := {:SDL_Rect:
+        ipos,
+        0,
+        ScreenWidth,
+        ScreenHeight
+    };
+
+    SDL_RenderCopy(game.renderer, self.texture, null, &dst_rect);
+
+    dst_rect.x += ScreenWidth;
+    SDL_RenderCopy(game.renderer, self.texture, null, &dst_rect);
+};
+
+level_layer_update :: fn (self: *LevelLayer, dt: f32) {
+    self.x_position += self.x_speed * dt;
+    if self.x_position < -(cast(f32) ScreenWidth) { self.x_position = 0.f; }
+};

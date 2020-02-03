@@ -33,21 +33,114 @@
 #include <limits.h>
 #include <string.h>
 
+static bool
+search_source_file(const char *filepath, char **out_filepath, char **out_dirpath, const char *wdir)
+{
+	if (filepath == NULL) goto NOT_FOUND;
+
+	char        tmp[PATH_MAX] = {0};
+	const char *rpath         = tmp;
+
+	/* Lookup in working directory. */
+	if (wdir) {
+		strncpy(tmp, wdir, TARRAY_SIZE(tmp));
+		strncat(tmp, PATH_SEPARATOR, TARRAY_SIZE(tmp));
+		strncat(tmp, filepath, TARRAY_SIZE(tmp));
+
+		if (file_exists(tmp)) {
+			goto FOUND;
+		}
+	}
+
+	rpath = brealpath(filepath, tmp, PATH_MAX);
+
+	if (rpath != NULL) {
+		goto FOUND;
+	}
+
+	/* file has not been found in current working direcotry -> search in LIB_DIR */
+	if (ENV_LIB_DIR) {
+		char tmp_lib_dir[PATH_MAX];
+
+		strncpy(tmp_lib_dir, ENV_LIB_DIR, TARRAY_SIZE(tmp_lib_dir));
+		strncat(tmp_lib_dir, PATH_SEPARATOR, TARRAY_SIZE(tmp_lib_dir));
+		strncat(tmp_lib_dir, filepath, TARRAY_SIZE(tmp_lib_dir));
+
+		rpath = brealpath(tmp_lib_dir, tmp, PATH_MAX);
+
+		if (rpath != NULL) {
+			goto FOUND;
+		}
+	}
+
+	/* file has not been found in current working direcotry -> search in PATH */
+	{
+		char  tmp_env[PATH_MAX] = {0};
+		char *env               = strdup(getenv(ENV_PATH));
+		char *s                 = env;
+		char *p                 = NULL;
+
+		do {
+			p = strchr(s, ENVPATH_SEPARATOR);
+			if (p != NULL) {
+				p[0] = 0;
+			}
+
+			strncpy(tmp_env, s, TARRAY_SIZE(tmp_env));
+			strncat(tmp_env, PATH_SEPARATOR, TARRAY_SIZE(tmp_env));
+			strncat(tmp_env, filepath, TARRAY_SIZE(tmp_env));
+
+			rpath = brealpath(&tmp_env[0], tmp, PATH_MAX);
+
+			s = p + 1;
+		} while (p != NULL && rpath == NULL);
+
+		free(env);
+		if (rpath) {
+			goto FOUND;
+		}
+	}
+
+NOT_FOUND:
+	return false;
+
+FOUND:
+	/* Absolute file path. */
+	*out_filepath = strdup(rpath);
+
+	/* Absolute directory path. */
+	memset(tmp, 0, TARRAY_SIZE(tmp));
+	if (get_dir_from_filepath(tmp, PATH_MAX, *out_filepath)) {
+		*out_dirpath = strdup(tmp);
+	}
+
+	return true;
+}
+
 /* public */
 Unit *
 unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
 {
 	Unit *unit = bl_calloc(1, sizeof(Unit));
-	if (!unit) bl_abort("bad alloc");
+	if (!unit) BL_ABORT("bad alloc");
 
-	search_file(
+	search_source_file(
 	    filepath, &unit->filepath, &unit->dirpath, parent_unit ? parent_unit->dirpath : NULL);
+
 	unit->name = strdup(filepath);
+
+	char tmp[PATH_MAX] = {0};
+	if (get_filename_from_filepath(tmp, TARRAY_SIZE(tmp), filepath)) {
+		unit->filename = strdup(tmp);
+	} else {
+		BL_ABORT("invalid file");
+	}
 
 	unit->loaded_from = loaded_from;
 	unit->ast         = NULL;
 
 	tokens_init(&unit->tokens);
+
 	return unit;
 }
 
@@ -58,14 +151,15 @@ unit_delete(Unit *unit)
 	free(unit->dirpath);
 	free(unit->src);
 	free(unit->name);
+	free(unit->filename);
 	tokens_terminate(&unit->tokens);
 	bl_free(unit);
 }
 
 const char *
-unit_get_src_ln(Unit *unit, int32_t line, long *len)
+unit_get_src_ln(Unit *unit, s32 line, long *len)
 {
-	int32_t     l    = 1;
+	s32         l    = 1;
 	const char *iter = unit->src;
 	while (iter && l != line) {
 		++l;

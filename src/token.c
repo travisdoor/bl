@@ -30,7 +30,7 @@
 
 char *sym_strings[] = {
 #define sm(tok, str) str,
-    _SYMBOLS_LIST
+#include "token.inc"
 #undef sm
 };
 
@@ -77,6 +77,11 @@ token_prec(Token *token)
 	case SYM_PLUS:
 	case SYM_MINUS:
 		return (TokenPrecedence){.priority = 20, .associativity = TOKEN_ASSOC_LEFT};
+
+		/* >> << */
+	case SYM_SHR:
+	case SYM_SHL:
+		return (TokenPrecedence){.priority = 18, .associativity = TOKEN_ASSOC_LEFT};
 
 		/* < > <= >= */
 	case SYM_LESS:

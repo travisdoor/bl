@@ -32,29 +32,29 @@
 void
 token_printer_run(Unit *unit)
 {
-	BArray *tokens_arr = unit->tokens.buf;
+	TArray *tokens_arr = &unit->tokens.buf;
 
 	fprintf(stdout, "Tokens: \n");
 
-	const size_t c = bo_array_size(tokens_arr);
-	Token *      tok;
-	int32_t      line = -1;
-	for (size_t i = 0; i < c; ++i) {
-		tok = &bo_array_at(tokens_arr, i, Token);
+	const usize c = tokens_arr->size;
+	Token *     tok;
+	s32         line = -1;
+	for (usize i = 0; i < c; ++i) {
+		tok = &tarray_at(Token, tokens_arr, i);
 
 		if (line == -1) {
-			line = tok->src.line;
+			line = tok->location.line;
 			fprintf(stdout, "%d: ", line);
-		} else if (tok->src.line != line) {
-			line = tok->src.line;
+		} else if (tok->location.line != line) {
+			line = tok->location.line;
 			fprintf(stdout, "\n%d: ", line);
 		}
 
 		fprintf(stdout,
 		        "[" YELLOW("'%s'") " %i:%i], ",
 		        sym_strings[tok->sym],
-		        tok->src.line,
-		        tok->src.col);
+		        tok->location.line,
+		        tok->location.col);
 	}
 
 	fprintf(stdout, "\n");

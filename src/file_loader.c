@@ -32,26 +32,24 @@
 #include <stdio.h>
 #include <string.h>
 
-#define load_error(builder, code, tok, pos, format, ...)                                           \
+#define load_error(code, tok, pos, format, ...)                                                    \
 	{                                                                                          \
 		if (tok)                                                                           \
-			builder_msg(builder,                                                       \
-			            BUILDER_MSG_ERROR,                                             \
+			builder_msg(BUILDER_MSG_ERROR,                                             \
 			            (code),                                                        \
-			            &(tok)->src,                                                   \
+			            &(tok)->location,                                              \
 			            (pos),                                                         \
 			            (format),                                                      \
 			            ##__VA_ARGS__);                                                \
 		else                                                                               \
-			builder_error(builder, (format), ##__VA_ARGS__);                           \
+			builder_error((format), ##__VA_ARGS__);                                    \
 	}
 
 void
-file_loader_run(Builder *builder, Unit *unit)
+file_loader_run(Unit *unit)
 {
 	if (!unit->filepath) {
-		load_error(builder,
-		           ERR_FILE_NOT_FOUND,
+		load_error(ERR_FILE_NOT_FOUND,
 		           unit->loaded_from,
 		           BUILDER_CUR_WORD,
 		           "file not found %s",
@@ -59,11 +57,10 @@ file_loader_run(Builder *builder, Unit *unit)
 		return;
 	}
 
-	FILE *f = fopen(unit->filepath, "r");
+	FILE *f = fopen(unit->filepath, "rb");
 
 	if (f == NULL) {
-		load_error(builder,
-		           ERR_FILE_READ,
+		load_error(ERR_FILE_READ,
 		           unit->loaded_from,
 		           BUILDER_CUR_WORD,
 		           "cannot read file %s",
@@ -72,11 +69,10 @@ file_loader_run(Builder *builder, Unit *unit)
 	}
 
 	fseek(f, 0, SEEK_END);
-	size_t fsize = (size_t)ftell(f);
+	usize fsize = (usize)ftell(f);
 	if (fsize == 0) {
 		fclose(f);
-		load_error(builder,
-		           ERR_FILE_EMPTY,
+		load_error(ERR_FILE_EMPTY,
 		           unit->loaded_from,
 		           BUILDER_CUR_WORD,
 		           "invalid or empty source file %s",
@@ -87,8 +83,8 @@ file_loader_run(Builder *builder, Unit *unit)
 	fseek(f, 0, SEEK_SET);
 
 	char *src = calloc(fsize + 1, sizeof(char));
-	if (src == NULL) bl_abort("bad alloc");
-	if (!fread(src, sizeof(char), fsize, f)) bl_abort("cannot read file %s", unit->name);
+	if (src == NULL) BL_ABORT("bad alloc");
+	if (!fread(src, sizeof(char), fsize, f)) BL_ABORT("cannot read file %s", unit->name);
 
 	src[fsize] = '\0';
 	fclose(f);

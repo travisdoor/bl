@@ -1,0 +1,18 @@
+#load "std/print.bl"
+
+#test "printing" {
+    i : u64 = 18446744073709551615;
+    j := -204;
+    f := 1235.215f;
+    d := -0.00215;
+    ptr := &i;
+
+    print("i = %\n", i);
+    print("j = %\n", j);
+    print("f = %\n", f);
+    print("d = %\n", d);
+    print("b = %\n", true);
+    print("b = %\n", false);
+    print("ptr = %\n", ptr);
+    print("s32 = %\n", s32);
+};

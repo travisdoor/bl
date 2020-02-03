@@ -1,0 +1,174 @@
+//************************************************************************************************
+// bl
+//
+// File:   string.bl
+// Author: Martin Dorazil
+// Date:   13/8/19
+//
+// Copyright 2018 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//************************************************************************************************
+
+#load "std/print.bl"
+
+STRING_BLOCK_SIZE :: 64 - sizeof(BlockHead);
+
+string_new :: fn () string {
+    return string_new_reserved(0);
+};
+
+string_new_reserved :: fn (size: usize) string {
+    tmp : string;
+    tmp.ptr = alloc_block(size);
+    tmp.len = 0;
+
+    set_terminator(tmp);
+    return tmp;
+};
+
+string_copy :: fn (v: string) string {
+    tmp : string;
+    tmp.ptr = alloc_block(auto v.len);
+    tmp.len = v.len;
+
+    mem_copy(tmp.ptr, v.ptr, auto v.len);
+
+    set_terminator(tmp);
+    return tmp;
+};
+
+string_delete :: fn (v: string) {
+    if v.ptr == null { return; }
+    free_block(v.ptr);
+};
+
+string_clear :: fn (v: *string) {
+    v.len = 0;
+    set_terminator(^v);
+};
+
+string_append :: fn (v: *string, add: Any) {
+    new_len : s64 = 0;
+    add_len : s64 = 0;
+    add_ptr : *u8   = null;
+
+    if add.type_info.kind == TypeKind.String {
+        str := ^ cast(*string) add.data;
+        new_len = v.len + str.len;
+        add_ptr = str.ptr;
+        add_len = str.len;
+    } else {
+        // other values than string
+        buf := {:[PRINT_MAX_LENGTH]u8: 0};
+        tmp := {:[]u8: buf.len, buf.ptr };
+
+        bprint(tmp, "%", add);
+        add_len = auto strlen(buf.ptr);
+        add_ptr = buf.ptr;
+        new_len = v.len + add_len;
+    }
+
+    v.ptr = make_more_room_if_needed(v.ptr, auto new_len);
+    mem_copy(cast(*u8) (cast(u64) v.ptr + auto v.len) , add_ptr, auto add_len);
+    v.len = new_len;
+
+    set_terminator(^v);
+};
+
+string_concatenate :: fn (args: ...) string {
+    tmp := string_new();
+    loop i := 0; i < args.len; i += 1 {
+        string_append(&tmp, args[i]);
+    }
+
+    return tmp;
+};
+
+string_compare :: fn (first: string, second: string) bool {
+    if first.len != second.len { return false; } 
+
+    loop i := 0; i < first.len; i += 1 {
+        if first[i] != second[i] { return false; }
+    }
+
+    return true;
+};
+
+string_compare_n :: fn (first: string, second: string, n: s32) bool
+{
+    if first.len < n { return false; }
+    if second.len < n { return false; }
+
+    loop i := 0; i < n; i += 1 {
+        if first[i] != second[i] { return false; }
+    }
+
+    return true;
+};
+
+#private
+
+BlockHead :: struct {
+    allocated_size: usize
+};
+
+make_more_room_if_needed :: fn (ptr: *u8, size: usize) *u8 {
+    allocated := get_allocated_size(ptr);
+    if size > allocated {
+        new_ptr := alloc_block(size);
+        mem_copy(new_ptr, ptr, allocated);
+        mem_free(get_allocation_ptr(ptr));
+
+        ptr = new_ptr;
+    }
+
+    return ptr;
+};
+
+alloc_block :: fn (size: usize) *u8 {
+    d := size / STRING_BLOCK_SIZE + 1;
+    size = d * STRING_BLOCK_SIZE;
+
+    alloc_size := size + sizeof(BlockHead) + sizeof(u8);
+    tmp := cast(*BlockHead) mem_alloc(alloc_size);
+    if tmp == null { panic(); }
+    tmp.allocated_size = size; 
+
+    return cast(*u8) (cast(usize) tmp + sizeof(BlockHead));
+};
+
+free_block :: fn (ptr: *u8) {
+    mem_free(get_allocation_ptr(ptr));
+};
+
+get_allocation_ptr :: fn (ptr: *u8) *u8 {
+    return cast(*u8) ((cast(usize) ptr) - sizeof(BlockHead));
+};
+
+get_allocated_size :: fn (ptr: *u8) usize {
+    head := cast(*BlockHead) get_allocation_ptr(ptr);
+    return head.allocated_size;
+};
+
+set_terminator :: fn (v: string) {
+    v.len += 1;
+    v[v.len - 1] = 0;
+    v.len -= 1;
+};

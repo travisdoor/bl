@@ -1,0 +1,60 @@
+#load "std/print.bl"
+
+#test "typeinfo - fundamental" {
+    info := cast(*TypeInfoInt) typeinfo(s32);
+    assert(info.base.kind == TypeKind.Int);
+    assert(info.base.size_bytes == sizeof(s32));
+    assert(info.bit_count == auto sizeof(s32) * 8);
+    assert(info.is_signed);
+};
+
+#test "typeinfo - ptr" {
+    T :: *s32;
+    info := cast(*TypeInfoPtr) typeinfo(T);
+
+    assert(info.base.kind == TypeKind.Ptr);
+    assert(info.pointee_type != null);
+};
+
+#test "typeinfo - array" {
+    T :: [10]s32;
+    info := cast(*TypeInfoArray) typeinfo(T);
+
+    assert(info.base.kind == TypeKind.Array);
+    assert(info.base.size_bytes == sizeof(T));
+    assert(info.elem_type != null);
+    assert(info.len == 10);
+};
+
+#test "typeinfo - enum" {
+    T :: enum s32 { A; B; C };
+    info := cast(*TypeInfoEnum) typeinfo(T);
+
+    assert(info.base.kind == TypeKind.Enum);
+    assert(info.base_type != null);
+    assert(info.variants.len == 3);
+    assert(info.variants[0].value == 0);
+    assert(info.variants[1].value == 1);
+    assert(info.variants[2].value == 2);
+};
+
+#test "typeinfo - struct" {
+    T :: struct { A: s32; B: bool; C: f32 };
+    info := cast(*TypeInfoStruct) typeinfo(T);
+
+    assert(info.base.kind == TypeKind.Struct);
+    assert(info.base.size_bytes == sizeof(T));
+    assert(info.members.len == 3);
+    assert(info.members[0].index == 0);
+    assert(info.members[1].index == 1);
+    assert(info.members[2].index == 2);
+};
+
+#test "typeinfo - fn" {
+    T :: fn (i: s32, j: bool) s32 { return 0; };
+    info := cast(*TypeInfoFn) typeinfo(T);
+
+    assert(info.base.kind == TypeKind.Fn);
+    assert(info.args.len == 2);
+    assert(info.ret_type != null);
+};

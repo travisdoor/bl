@@ -29,32 +29,105 @@
 #ifndef BL_ASSEMBLY_BL
 #define BL_ASSEMBLY_BL
 
+#include "arena.h"
+#include "mir.h"
 #include "scope.h"
 #include "unit.h"
-#include <bobject/containers/array.h>
-#include <bobject/containers/htbl.h>
-#include <bobject/containers/list.h>
 #include <dyncall.h>
 #include <dynload.h>
-#include <llvm-c/Core.h>
-#include <llvm-c/ExecutionEngine.h>
 
 struct MirModule;
+struct Builder;
 
 typedef struct Assembly {
-	BArray *          units;      /* array of all units in assembly */
-	BHashTable *      unit_cache; /* cache for loading only unique units */
-	BHashTable *      link_cache; /* all linked externals libraries passed to linker */
-	BHashTable *      type_table; /* type table key: type ID, value: *MirType */
-	char *            name;       /* assembly name */
-	Scope *           gscope;     /* global scope of the assembly */
-	struct MirModule *mir_module;
+	struct {
+		ScopeArenas scope;
+		MirArenas   mir;
+		Arena       ast;
+		Arena       array;       /* used for all TArrays */
+		Arena       small_array; /* used for all SmallArrays */
+	} arenas;
+
+	struct {
+		TArray global_instrs; /* All global instructions. */
+
+		/* Map type ids to RTTI variables. */
+		THashTable RTTI_table;
+	} MIR;
+
+	struct {
+		LLVMModuleRef        module;     /* LLVM Module. */
+		LLVMContextRef       cnt;        /* LLVM Context. */
+		LLVMTargetDataRef    TD;         /* LLVM Target data. */
+		LLVMTargetMachineRef TM;         /* LLVM Machine. */
+		char *               triple;     /* LLVM triple. */
+		LLVMMetadataRef      di_meta;    /* LLVM Compile unit DI meta (optional) */
+		LLVMDIBuilderRef     di_builder; /* LLVM debug information builder */
+	} llvm;
 
 	/* DynCall/Lib data used for external method execution in compile time */
 	struct {
-		BArray *  libs;
+		TArray    lib_paths;
+		TArray    libs;
 		DCCallVM *vm;
 	} dl;
+
+	TArray     units;      /* array of all units in assembly */
+	THashTable unit_cache; /* cache for loading only unique units */
+	THashTable link_cache; /* all linked externals libraries passed to linker */
+	char *     name;       /* assembly name */
+	Scope *    gscope;     /* global scope of the assembly */
+
+	/* Builtins */
+	struct BuiltinTypes {
+		MirType *t_type;
+		MirType *t_s8;
+		MirType *t_s16;
+		MirType *t_s32;
+		MirType *t_s64;
+		MirType *t_u8;
+		MirType *t_u16;
+		MirType *t_u32;
+		MirType *t_u64;
+		MirType *t_usize;
+		MirType *t_bool;
+		MirType *t_f32;
+		MirType *t_f64;
+		MirType *t_string;
+		MirType *t_void;
+		MirType *t_u8_ptr;
+		MirType *t_string_ptr;
+		MirType *t_string_slice;
+		MirType *t_resolve_type_fn;
+		MirType *t_test_case_fn;
+		MirType *t_Any;
+		MirType *t_Any_ptr;
+		MirType *t_TypeKind;
+		MirType *t_TypeInfo;
+		MirType *t_TypeInfoType;
+		MirType *t_TypeInfoVoid;
+		MirType *t_TypeInfoInt;
+		MirType *t_TypeInfoReal;
+		MirType *t_TypeInfoFn;
+		MirType *t_TypeInfoPtr;
+		MirType *t_TypeInfoArray;
+		MirType *t_TypeInfoStruct;
+		MirType *t_TypeInfoEnum;
+		MirType *t_TypeInfoNull;
+		MirType *t_TypeInfoBool;
+		MirType *t_TypeInfoString;
+		MirType *t_TypeInfoStructMember;
+		MirType *t_TypeInfoEnumVariant;
+		MirType *t_TypeInfoFnArg;
+		MirType *t_TypeInfo_ptr;
+		MirType *t_TypeInfo_slice;
+		MirType *t_TypeInfoStructMembers_slice;
+		MirType *t_TypeInfoEnumVariants_slice;
+		MirType *t_TypeInfoFnArgs_slice;
+
+		bool     is_rtti_ready;
+		bool     is_any_ready;
+	} builtin_types;
 } Assembly;
 
 typedef struct NativeLib {
@@ -63,7 +136,7 @@ typedef struct NativeLib {
 	const char *  user_name;
 	char *        filename;
 	char *        filepath;
-	char *        dirpath;
+	char *        dir;
 	bool          is_internal;
 } NativeLib;
 
@@ -84,5 +157,23 @@ assembly_add_unit_unique(Assembly *assembly, Unit *unit);
 
 DCpointer
 assembly_find_extern(Assembly *assembly, const char *symbol);
+
+static inline bool
+assembly_has_rtti(Assembly *assembly, u64 type_id)
+{
+	return thtbl_has_key(&assembly->MIR.RTTI_table, type_id);
+}
+
+static inline MirVar *
+assembly_get_rtti(Assembly *assembly, u64 type_id)
+{
+	return thtbl_at(MirVar *, &assembly->MIR.RTTI_table, type_id);
+}
+
+static inline void
+assembly_add_rtti(Assembly *assembly, u64 type_id, MirVar *rtti_var)
+{
+	thtbl_insert(&assembly->MIR.RTTI_table, type_id, rtti_var);
+}
 
 #endif

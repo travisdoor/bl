@@ -1,0 +1,30 @@
+#load "std/print.bl"
+
+#test "defer example" {
+    defer print("1\n");
+
+    {
+        defer print("2 ");
+        defer print("3 ");
+        defer print("4 ");
+    } // defer 4, 3, 2
+    
+    defer_with_return();
+    
+    defer print("5 ");
+}; // defer 5, 1
+
+#private 
+
+defer_with_return :: fn () s32 {
+    defer print("6 ");
+    defer print("7 ");
+
+    if true {
+        defer print("8 ");
+        return 1;
+    } // defer 8, 7, 6
+
+    defer print("9 "); // never reached
+    return 0;
+};

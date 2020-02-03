@@ -1,0 +1,74 @@
+#load "std/print.bl"
+#load "std/memory.bl"
+#load "std/utils.bl"
+#load "std/math.bl"
+#load "std/file.bl"
+#load "experimental/glfw/glfw3.bl"
+#load "experimental/glfw/glfw3_vulkan.bl"
+#load "experimental/vulkan/vulkan_macos.bl"
+
+#load "renderer.bl"
+
+WindowTitle := "Vulkan Test";
+WindowW :: 800;
+WindowH :: 600;
+
+App :: struct {
+    renderer: *Renderer;
+    window: *GLFWwindow;
+};
+
+app := {:App: 0};
+
+main :: fn () s32 {
+    app_init();
+    defer app_terminate();
+
+    game_loop();
+
+    return 0;
+};
+
+#private
+
+app_init :: fn () {
+    defer print("Initialization done.\n");
+    glfw_init();
+    app.renderer = renderer_new();
+};
+
+app_terminate :: fn () {
+    defer print("Terminated.\n");
+    renderer_delete(app.renderer);
+    glfw_terminate();
+};
+
+glfw_init :: fn () {
+    if glfwInit() == 0 {
+        panic("Cannot initialize GLFW.\n");
+    }
+
+    if glfwVulkanSupported() == 0 {
+        panic("Vulkan is not supported by GLFW.\n");
+    }
+
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    //glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+    app.window = glfwCreateWindow(WindowW, WindowH, WindowTitle.ptr, null, null);
+    if app.window == null {
+        panic("Cannot create GLFW window.\n");
+    }
+};
+
+glfw_terminate :: fn () {
+    glfwDestroyWindow(app.window);
+    glfwTerminate();
+};
+
+game_loop :: fn () {
+    loop glfwWindowShouldClose(app.window) == 0 {
+        glfwPollEvents();
+        renderer_draw_frame(app.renderer);
+    }
+};

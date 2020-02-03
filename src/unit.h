@@ -31,21 +31,23 @@
 
 #include "ast.h"
 #include "config.h"
+#include "scope.h"
 #include "tokens.h"
-#include <llvm-c/Core.h>
 
 struct Token;
 
 /* class Unit object members */
 typedef struct Unit {
-	Tokens        tokens;        /* Unit tokens as lexer output. */
-	Ast *         ast;           /* Abstract Syntax Tree */
-	struct Scope *private_scope; /* Unit private scope (#private). */
-	char *        filepath;      /* Loaded source file path. */
-	char *        dirpath;       /* Parent directory. */
-	char *        name;          /* Unit name */
-	char *        src;           /* Unit raw source data. */
-	struct Token *loaded_from;   /* Optionally set when unit is loaded from another unit. */
+	Tokens          tokens;        /* Unit tokens as lexer output. */
+	Ast *           ast;           /* Abstract Syntax Tree */
+	struct Scope *  private_scope; /* Unit private scope (#private). */
+	char *          filename;      /* Loaded source file name. */
+	char *          filepath;      /* Loaded source file name with path. */
+	char *          dirpath;       /* Parent directory. */
+	char *          name;          /* Unit name */
+	char *          src;           /* Unit raw source data. */
+	struct Token *  loaded_from;   /* Optionally set when unit is loaded from another unit. */
+	LLVMMetadataRef llvm_file_meta;
 } Unit;
 
 Unit *
@@ -55,6 +57,6 @@ void
 unit_delete(Unit *unit);
 
 const char *
-unit_get_src_ln(Unit *unit, int32_t line, long *len);
+unit_get_src_ln(Unit *unit, s32 line, long *len);
 
 #endif

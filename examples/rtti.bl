@@ -1,5 +1,4 @@
-#load "std/core.bl"
-#load "std/debug.bl"
+#load "std/basic.bl"
 
 #test "RTTI" {
     // yields pointer to TypeInfo constant structure
@@ -9,7 +8,7 @@
         // safe cast to *TypeInfoInt
         info_int := cast(*TypeInfoInt) info;
 
-        print("bitcount = %\n", info_int.bitcount);
+        print("bit_count = %\n", info_int.bit_count);
 
         if info_int.is_signed {
             print("signed\n");

@@ -30,24 +30,21 @@
 #include "bldebug.h"
 #include "error.h"
 #include "stages.h"
-#include <llvm-c/BitWriter.h>
 #include <string.h>
 
 void
-bc_writer_run(Builder *builder, Assembly *assembly)
+bc_writer_run(Assembly *assembly)
 {
-	assert(assembly->mir_module->llvm_module);
-
 	char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
-	if (!export_file) bl_abort("bad alloc");
+	if (!export_file) BL_ABORT("bad alloc");
 	strcpy(export_file, assembly->name);
 	strcat(export_file, ".ll");
 
-	char *str = LLVMPrintModuleToString(assembly->mir_module->llvm_module);
+	char *str = LLVMPrintModuleToString(assembly->llvm.module);
 
 	FILE *f = fopen(export_file, "w");
 	if (f == NULL) {
-		builder_error(builder, "cannot open file %s", export_file);
+		builder_error("Cannot open file %s", export_file);
 		free(export_file);
 		return;
 	}

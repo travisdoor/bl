@@ -27,12 +27,13 @@
 //************************************************************************************************
 
 #include "bldebug.h"
+#include "common.h"
 #include <stdarg.h>
 
 #define MAX_LOG_MSG_SIZE 2048
 
 void
-_log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...)
+_log(bl_log_msg_type_e t, const char *file, s32 line, const char *msg, ...)
 {
 	char    buffer[MAX_LOG_MSG_SIZE];
 	va_list args;
@@ -47,14 +48,36 @@ _log(bl_log_msg_type_e t, const char *file, int32_t line, const char *msg, ...)
 		fprintf(stderr, RED("abort [%s:%d]: %s") "\n", file, line, buffer);
 		break;
 	case LOG_WARNING:
-		fprintf(stderr, YELLOW("bl_warning [%s:%d]: %s") "\n", file, line, buffer);
+		fprintf(stderr, YELLOW("BL_WARNING [%s:%d]: %s") "\n", file, line, buffer);
 		break;
 	case LOG_MSG:
-		fprintf(stdout, "bl_log [%s:%d]: %s\n", file, line, buffer);
+		fprintf(stdout, "BL_LOG [%s:%d]: %s\n", file, line, buffer);
 		break;
 	default:
 		break;
 	}
 
 	va_end(args);
+}
+
+void
+print_trace(void)
+{
+#if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
+#include <execinfo.h>
+	void * tmp[32];
+	usize  size;
+	char **strings;
+	usize  i;
+
+	size    = backtrace(tmp, TARRAY_SIZE(tmp));
+	strings = backtrace_symbols(tmp, size);
+
+	printf("Obtained %zd stack frames.\n", size);
+
+	for (i = 1; i < size; i++)
+		printf("%s\n", strings[i]);
+
+	free(strings);
+#endif
 }

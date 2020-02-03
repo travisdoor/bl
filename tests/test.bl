@@ -1,15 +1,14 @@
 /* playground */
 
-#load "std/core.bl"
+#load "std/print.bl"
 
 main :: fn () s32 {
+    loop i := 0; i < command_line_arguments.len; i += 1 {
+        print("%: %\n", i, command_line_arguments[i]);
+    }
+    
     return 0;
-};
+}
 
-#private
 
-foo :: fn () {
-    homo :: 11;
-};
 
-bar :: 10;
