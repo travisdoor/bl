@@ -27,14 +27,136 @@
 //************************************************************************************************
 
 #load "std/_builtin.bl"
+#load "std/string.bl"
 
 // INCOMPLETE: time_now_ms
 
+OS_KIND :: OSKind.Windows;
 OS_NAME :: "Windows";
 
 OS_STDIN  :: 0;
 OS_STDOUT :: 1;
 OS_STDERR :: 2;
+
+/*
+ * Platform depend C types compatible with C ABI.
+ */
+c_char      :: s8;
+c_uchar     :: u8;
+c_short     :: s16;
+c_ushort    :: u16;
+c_int       :: s32;
+c_uint      :: u32;
+c_long      :: s32;
+c_ulong     :: u32;
+c_longlong  :: s64;
+c_ulonglong :: u64;
+c_void_ptr  :: *u8;
+c_size_t    :: u64;
+
+/*
+ * Maximum path size in bytes.
+ */
+OS_PATH_MAX :: 1024;
+
+/*
+ * OSLibrary
+ *
+ * Description:
+ *   Library handle.
+ */
+OSLibrary :: *u8;
+
+os_time_now_ms :: fn () f64 {
+    // INCOMPLETE
+    unreachable;
+    return 0.0;
+};
+
+
+os_sleep_ms :: fn (ms: f64) {
+    Sleep(auto ms);
+};
+
+/*
+ * os_get_real_path 
+ *
+ * Description:
+ *   Find real path of passed file.
+ * 
+ * Arguments: 
+ *   filename: 
+ *     Desired existing file name or relative path. 
+ *
+ * Result: 
+ *   Absolute file path.
+ */
+os_get_real_path :: fn (filename: string) string {
+    tmp :: {:[OS_PATH_MAX]u8: 0};
+    if GetFullPathNameA(auto filename.ptr, auto tmp.len, tmp.ptr, null) == 0 {
+		return string_copy(filename);
+	}
+
+    result :: string_new_cstr(tmp.ptr);
+    return result;
+}
+
+/*
+ * os_dlopen
+ *
+ * Description:
+ *   Dynamically link native library file. 
+ * 
+ * Arguments: 
+ *   lib_name: 
+ *     Name of the library. If lib_name is empty string, then function return 
+ *     handle for main program. 
+ *
+ * Result: 
+ *   Library handle or null.
+ */
+os_dlopen :: fn (lib_name: string) OSLibrary {
+    if lib_name.len > 0 {
+        return LoadLibraryA(auto lib_name.ptr); 
+    }
+
+    return GetModuleHandleA(null); 
+}
+
+/*
+ * os_dlsym
+ *
+ * Description:
+ *   Dynamically load procedure. 
+ * 
+ * Arguments: 
+ *   lib: 
+ *     Library handle.
+ * 
+ *   sym_name: 
+ *     Symbol name.
+ *
+ * Result: 
+ *   Procedure handle or null.
+ */
+os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 {
+    return GetProcAddress(lib, auto sym_name.ptr);
+}
+
+/*
+ * os_close
+ *
+ * Description:
+ *   Close dynamically loded library. 
+ * 
+ * Arguments: 
+ *   lib: 
+ *     Library handle. 
+ *
+ */
+os_dlclose :: fn (lib: OSLibrary) {
+    FreeLibrary(lib);
+}
 
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return _write(fd, buf, count);
@@ -44,16 +166,10 @@ __os_abort :: fn () #compiler {
     raise(SIGABRT);
 }
 
-time_now_ms :: fn () f64 {
-    // INCOMPLETE
-    unreachable;
-    return 0.0;
-};
-
-__os_start :: fn () {
+__os_start :: fn () #entry {
     args: []string;
     get_command_line_args(&args);
-    defer mem_free(auto args.ptr);
+    defer _mem_free_default(auto args.ptr);
 
     command_line_arguments.len = args.len;
     command_line_arguments.ptr = args.ptr;
@@ -62,18 +178,120 @@ __os_start :: fn () {
     _exit(out);
 }
 
-#private
+// CLEANUP: This must be in gl.bl file not here, but we keep it
+// until static 'if' will be supported by compiler.
+_os_gl_get_proc :: fn (proc_name: string) *u8 {
+    wglGetProcAddress :: fn (procName: *u8) *u8 #extern;
 
-LPWSTR  :: *u16;
-LPCWSTR :: *u16;
-LPCSTR  :: *u16;
-LPSTR   :: *u8;
-HLOCAL  :: *u8;
-UINT    :: u32;
-DWORD   :: *u32;
-LPCCH   :: u8;
-LPCWCH  :: u16;
-LPBOOL  :: s32;
+    if proc_name.len == 0 { return null; }
+    p := wglGetProcAddress(proc_name.ptr);
+    ip :: cast(s64) p;
+    if ip != 0 && ip != 0x1 && ip != 0x2 && ip != 0x3 { return p; }
+
+    module :: os_dlopen("opengl32");
+    if module == null { panic("OpenGL not linked?"); }
+    return os_dlsym(module, proc_name);
+}
+
+// WIN32
+WIN32_WCHAR        :: *c_ushort;
+WIN32_LPWSTR       :: *c_ushort;
+WIN32_LPCWSTR      :: *c_ushort;
+WIN32_LPCSTR       :: *c_ushort;
+WIN32_LPSTR        :: *c_uchar;
+WIN32_HLOCAL       :: *c_uchar;
+WIN32_UINT         :: c_uint;
+WIN32_DWORD        :: c_uint;
+WIN32_LPCCH        :: c_uchar;
+WIN32_LPCWCH       :: c_ushort;
+WIN32_LPBOOL       :: c_int;
+WIN32_HMODULE      :: *c_uchar;
+WIN32_BOOL         :: c_int;
+WIN32_FARPROC      :: *c_uchar; 
+WIN32_LPVOID       :: *c_uchar; 
+WIN32_LPOVERLAPPED :: *WIN32_OVERLAPPED;
+WIN32_LPDWORD      :: *WIN32_DWORD;
+WIN32_HANDLE       :: *c_uchar;
+WIN32_ULONG_PTR    :: *c_ulong;
+WIN32_LPSECURITY_ATTRIBUTES :: *c_uchar;
+WIN32_PVOID        :: *c_uchar; 
+WIN32_LPOVERLAPPED_COMPLETION_ROUTINE :: * fn(dwErrorCode: WIN32_DWORD, dwNumberOfBytesTransfered: WIN32_DWORD, lpOverlapped: WIN32_LPOVERLAPPED);
+
+WIN32_FILE_NOTIFY_INFORMATION :: struct {
+    NextEntryOffset: WIN32_DWORD;
+    Action: WIN32_DWORD;
+    FileNameLength: WIN32_DWORD;
+    FileName: [1]WIN32_WCHAR;
+}
+
+WIN32_OVERLAPPED :: struct {
+    Internal: WIN32_ULONG_PTR;
+    InternalHigh: WIN32_ULONG_PTR;
+    Pointer: WIN32_PVOID;
+    hEvent: WIN32_HANDLE;
+}
+
+WIN32_INVALID_HANDLE :: cast(*u8) -1;
+WIN32_WAIT_TIMEOUT :: 258;
+
+win32_CloseHandle :: fn (hObject: WIN32_HANDLE) WIN32_BOOL #extern "CloseHandle";
+
+win32_CreateFile :: fn (
+    lpFileName: WIN32_LPCSTR,
+    dwDesiredAccess: WIN32_DWORD,
+    dwShareMode: WIN32_DWORD,
+    lpSecurityAttributes: WIN32_LPSECURITY_ATTRIBUTES,
+    dwCreationDisposition: WIN32_DWORD,
+    dwFlagsAndAttributes: WIN32_DWORD,
+    hTemplateFile: WIN32_HANDLE
+) *u8 #extern "CreateFileA"; 
+
+win32_ReadDirectoryChanges :: fn (
+    hDirectory: WIN32_HANDLE,
+    lpBuffer: WIN32_LPVOID,
+    nBufferLength: WIN32_DWORD,
+    bWatchSubtree: WIN32_BOOL,
+    dwNotifyFilter: WIN32_DWORD,
+    lpBytesReturned: WIN32_LPDWORD,
+    lpOverlapped: WIN32_LPOVERLAPPED,
+    lpCompletionRoutine: WIN32_LPOVERLAPPED_COMPLETION_ROUTINE 
+) s32 #extern "ReadDirectoryChangesW";
+
+win32_WideCharToMultiByte :: fn (
+    CodePage: WIN32_UINT,
+    dwFlags: *WIN32_DWORD,
+    lpWideCharStr: *WIN32_LPCWCH,
+    cchWideChar: s32,
+    lpMultiByteStr: WIN32_LPSTR,
+    cbMultiByte: s32,
+    lpDefaultChar: *WIN32_LPCCH,
+    lpUsedDefaultChar: *WIN32_LPBOOL
+) s32 #extern "WideCharToMultiByte";
+
+win32_CreateEvent :: fn (
+  lpEventAttributes: WIN32_LPSECURITY_ATTRIBUTES,
+  bManualReset: WIN32_BOOL,
+  bInitialState: WIN32_BOOL,
+  lpName: WIN32_LPCSTR 
+) WIN32_HANDLE #extern "CreateEventW";
+
+win32_FindFirstChangeNotification :: fn (
+  lpPathName: WIN32_LPCSTR,
+  bWatchSubtree: WIN32_BOOL,
+  dwNotifyFilter: WIN32_DWORD
+) WIN32_HANDLE #extern "FindFirstChangeNotificationA";
+
+win32_FindNextChangeNotification :: fn (hChangeHandle: WIN32_HANDLE) WIN32_BOOL #extern "FindNextChangeNotification";
+win32_FindCloseChangeNotification :: fn (hChangeHandle: WIN32_HANDLE) WIN32_BOOL #extern "FindCloseChangeNotification";
+win32_WaitForSingleObject :: fn (hHandle: WIN32_HANDLE, dwMilliseconds: WIN32_DWORD) WIN32_DWORD #extern "WaitForSingleObject";
+win32_WaitForMultipleObjects :: fn (
+    nCount: WIN32_DWORD,
+    lpHandles: *WIN32_HANDLE,
+    bWaitAll: WIN32_BOOL,
+    dwMilliseconds: WIN32_DWORD        
+) WIN32_DWORD #extern "WaitForMultipleObjects";
+
+#private
 
 SIGHUP  :: 1;
 SIGINT  :: 2;
@@ -90,28 +308,28 @@ wcslen             :: fn (str: *u16) usize #extern;
 raise              :: fn (sig: s32) s32 #extern;
 
 // windows crap
-GetCommandLineW     :: fn () LPWSTR #extern;
-CommandLineToArgvW  :: fn (lpCmdLine: LPCWSTR, pNumArgs: *s32) *LPWSTR #extern;
-LocalFree           :: fn (hMem: HLOCAL) HLOCAL #extern;
+GetCommandLineW     :: fn () WIN32_LPWSTR #extern;
+CommandLineToArgvW  :: fn (lpCmdLine: WIN32_LPCWSTR, pNumArgs: *s32) *WIN32_LPWSTR #extern;
+LocalFree           :: fn (hMem: WIN32_HLOCAL) WIN32_HLOCAL #extern;
+Sleep               :: fn (dwMilliseconds: WIN32_DWORD) #extern;
+GetFullPathNameA    :: fn (lpFileName: WIN32_LPCSTR,
+                           nBufferLength: WIN32_DWORD,
+                           lpBuffer: WIN32_LPSTR,
+                           lpFilePart: *WIN32_LPSTR) WIN32_DWORD #extern;
+LoadLibraryA        :: fn (lpLibFileName: WIN32_LPCSTR) WIN32_HMODULE #extern;
+FreeLibrary         :: fn (hLibModule: WIN32_HMODULE) WIN32_BOOL #extern;
+GetModuleHandleA    :: fn (lpModuleName: WIN32_LPCSTR) WIN32_HMODULE #extern;
+GetProcAddress      :: fn (hModule: WIN32_HMODULE, lpProcName: WIN32_LPCSTR) WIN32_FARPROC #extern;
 
-WideCharToMultiByte :: fn (
-    CodePage: UINT,
-    dwFlags: DWORD,
-    lpWideCharStr: *LPCWCH,
-    cchWideChar: s32,
-    lpMultiByteStr: LPSTR,
-    cbMultiByte: s32,
-    lpDefaultChar: *LPCCH,
-    lpUsedDefaultChar: *LPBOOL
-) s32 #extern;
-
-// Get command-line arguments passed to this executable.
-// We need custom function here to convert UTF16 to UTF8,
-// Windows api does not provide UTF8 version of CommandLineToArgv
-// function.
-// Internal allocation to handle argument strings is done
-// in this method, so we must free memory used by return value
-// by mem_free(args.ptr) call.
+/*
+ * Get command-line arguments passed to this executable.
+ * We need custom function here to convert UTF16 to UTF8,
+ * Windows api does not provide UTF8 version of CommandLineToArgv
+ * function.
+ * Internal allocation to handle argument strings is done
+ * in this method, so we must free memory used by return value
+ * by mem_free(args.ptr) call.
+ */
 get_command_line_args :: fn (out_args: *[]string) #no_inline {
     wargs: []*u16;
     cmd_line :: GetCommandLineW();
@@ -124,24 +342,24 @@ get_command_line_args :: fn (out_args: *[]string) #no_inline {
     result_size: usize = sizeof(string) * auto wargs.len;
     
     loop i := 0; i < wargs.len; i += 1 {
-        tmp_size += auto WideCharToMultiByte(CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
+        tmp_size += auto win32_WideCharToMultiByte(CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
     }
 
-    buffer :: mem_alloc(result_size + tmp_size); 
+    buffer :: _mem_alloc_default(result_size + tmp_size); 
     if buffer == null { __os_abort(); }
 
     out_args.len = wargs.len;
     out_args.ptr = auto buffer; 
-    tmp := {:[]u8: auto tmp_size, ptr_shift_bytes(buffer, result_size)};
+    tmp := {:[]u8: auto tmp_size, ptr_shift_bytes(buffer, auto result_size)};
 
     tmp_i := 0;
     loop i := 0; i < wargs.len; i += 1 {
-        len :: WideCharToMultiByte(CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
-        WideCharToMultiByte(CP_UTF8, null, wargs[i], auto wcslen(wargs[i]), &tmp[tmp_i], len, null, null); 
+        len :: win32_WideCharToMultiByte(CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
+        win32_WideCharToMultiByte(CP_UTF8, null, wargs[i], auto wcslen(wargs[i]), &tmp[tmp_i], len, null, null); 
         
         (^out_args)[i].len = len - 1;
         (^out_args)[i].ptr = &tmp[tmp_i];
         tmp_i += len;
-        tmp[tmp_i] = '\0';
+        tmp[tmp_i-1] = '\0';
     }
 }

@@ -2,13 +2,22 @@
 
 #load "std/print.bl"
 
+SERIALIZABLE :: 0x1;
+EDITABLE     :: 0x2;
+
+Foo :: struct {
+    a: s32 #tags SERIALIZABLE, EDITABLE;
+    b: s32 #tags SERIALIZABLE;
+    c: s32;
+}
+
 main :: fn () s32 {
-    loop i := 0; i < command_line_arguments.len; i += 1 {
-        print("%: %\n", i, command_line_arguments[i]);
+    info :: cast(*TypeInfoStruct) typeinfo(Foo);
+
+    loop i := 0; i < info.members.len; i += 1 {
+        member :: info.members[i];
+        print("Member '%' has tags '%'.\n", member.name, member.tags);
     }
     
     return 0;
 }
-
-
-

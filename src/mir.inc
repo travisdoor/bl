@@ -129,6 +129,7 @@
 	MIR_BUILTIN_ID_TYPE_INFO_FN_ARG,
 
 	MIR_BUILTIN_ID_ABORT_FN,
+	MIR_BUILTIN_ID_IS_DEBUG,
 #endif
 
 #ifdef GEN_BUILTIN_IDS
@@ -173,4 +174,5 @@
     {.str = "TypeInfoEnumVariant",   .hash = 0},
     {.str = "TypeInfoFnArg",         .hash = 0},
     {.str = "__os_abort",            .hash = 0},
+    {.str = "IS_DEBUG",              .hash = 0},
 #endif

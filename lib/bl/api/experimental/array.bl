@@ -26,6 +26,11 @@
 // SOFTWARE.
 //************************************************************************************************
 
+/*
+ * Description:
+ *   Array is implmentation of danamic storage keeping data in single continuous memory block.
+ */
+
 Array :: struct {
     len: s64;
     ptr: *u8;
@@ -33,24 +38,29 @@ Array :: struct {
     T: *TypeInfo
 };
 
-array_new :: fn (T: Any) *Array {
+array_init :: fn (arr: *Array, T: Any) {
     if T.type_info.kind != TypeKind.Type {
         panic("Array expects type passed as T not '%'", T.type_info.kind);
     }
 
-    arr := cast(*Array) mem_alloc(sizeof(Array));
+    mem_set(auto arr, 0, sizeof(Array));
     arr.T = cast(*TypeInfo) T.data;
-    arr.len = 0;
-    arr.allocated = 0;
-    arr.ptr = null;
+}
+
+array_terminate :: fn (arr: *Array) {
+    if arr.allocated > 0 {
+        mem_free(arr.ptr);
+    }
+}
+
+array_new :: fn (T: Any) *Array {
+    arr := cast(*Array) mem_alloc(sizeof(Array));
+    array_init(arr, T);
     return arr;
 };
 
 array_delete :: fn (arr: *Array) {
-    if arr.allocated > 0 {
-        mem_free(arr.ptr);
-    }
-
+    array_terminate(arr);
     mem_free(auto arr);
 };
 
@@ -64,10 +74,7 @@ array_clear :: fn (arr: *Array) {
 };
 
 array_push :: fn (arr: *Array, v: Any) {
-    // INCOMPLETE: We should be able to compare pointers to typeinfo directly but this comparation
-    // works only in compile time execution, not in native code (we probably generate duplicit type
-    // info entries for same type in LLVM).
-    if (v.type_info.kind != arr.T.kind) || (v.type_info.size_bytes != arr.T.size_bytes) {
+    if (v.type_info != arr.T) {
         panic("Invalid value type '%', expected is '%'.",
               ^v.type_info,
               ^arr.T);
@@ -83,12 +90,24 @@ array_push :: fn (arr: *Array, v: Any) {
 
 };
 
-array_at :: fn (arr: *Array, i: s64) *u8 {
+array_at :: fn (arr: *Array, i: s64) *u8 #inline {
     return elem_ptr(arr, i);
 };
 
+array_erase :: fn (arr: *Array, i: s64) {
+    if i >= arr.len { panic("Index overflow!"); }
+    if i == arr.len - 1 { 
+        arr.len -= 1; 
+        return;
+    }
+
+    mem_copy(elem_ptr(arr, i), elem_ptr(arr, arr.len - 1), arr.T.size_bytes);
+    arr.len -= 1;
+}
+
 #private
 ALLOC_BLOCK_SIZE : usize : 32;
+    
 
 elem_ptr :: fn (arr: *Array, i: s64) *u8 #inline {
     if i >= arr.len {
@@ -97,7 +116,7 @@ elem_ptr :: fn (arr: *Array, i: s64) *u8 #inline {
               arr.len);
     }
 
-    return ptr_shift_bytes(arr.ptr, cast(usize) i * arr.T.size_bytes);
+    return ptr_shift_bytes(arr.ptr, i * cast(s64) arr.T.size_bytes);
 };
 
 ensure_space :: fn (arr: *Array, space: usize, exact: bool) {

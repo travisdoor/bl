@@ -57,7 +57,7 @@ entity_delete :: fn (self: *Entity) {
         self.f_dtor(cast(*u8) self);
     }
     
-    free(cast(*u8) self);
+    mem_free(cast(*u8) self);
 };
 
 entity_kill :: fn (self: *Entity) {

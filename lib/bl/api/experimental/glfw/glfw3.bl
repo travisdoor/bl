@@ -1,7 +1,5 @@
 // generated from /usr/local/Cellar/glfw/3.3/include/GLFW/glfw3.h
 
-#link "glfw"
-
 GLFW_VERSION_MAJOR          :: 3;
 GLFW_VERSION_MINOR          :: 3;
 GLFW_VERSION_REVISION       :: 0;

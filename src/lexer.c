@@ -285,8 +285,10 @@ scan_char(Context *cnt, Token *tok)
 int
 c_to_number(char c, s32 base)
 {
+#ifndef _MSC_VER
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
 	switch (base) {
 	case 16:
 		if (c >= 'a' && c <= 'f') {
@@ -310,7 +312,9 @@ c_to_number(char c, s32 base)
 	}
 
 	return -1;
+#ifndef _MSC_VER
 #pragma GCC diagnostic pop
+#endif
 }
 
 bool

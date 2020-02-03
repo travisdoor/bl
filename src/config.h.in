@@ -33,25 +33,28 @@
  * Values set automatically during build by cmake.
  */
 #define BL_VERSION "@PROJECT_VERSION@"
-#define BL_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
-#define BL_VERSION_MINOR @PROJECT_VERSION_MINOR@
-#define BL_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#define BL_VERSION_MAJOR @PROJECT_VERSION_MAJOR @
+#define BL_VERSION_MINOR @PROJECT_VERSION_MINOR @
+#define BL_VERSION_PATCH @PROJECT_VERSION_PATCH @
 
 #define BL_CONF_FILE "@BL_CONF_FILE@"
 
 #ifdef _WIN32
 #define BL_PLATFORM_WIN
-#define BL_NO_COLOR
+#define BL_EXPORT __declspec(dllexport)
+//#define BL_NO_COLOR
 #define OS_PRELOAD_FILE "os/windows.bl"
 #elif __APPLE__
 //#define BL_NO_COLOR
 #define BL_PLATFORM_MACOS
+#define BL_EXPORT
 #define OS_PRELOAD_FILE "os/macos.bl"
 #elif __linux__
 #define BL_PLATFORM_LINUX
 #define OS_PRELOAD_FILE "os/linux.bl"
+#define BL_EXPORT
 #elif __CYGWIN__
-#define BL_PLATFORM_WIN
+#error "Unknown platform"
 #else
 #error "Unknown platform"
 #endif
@@ -76,21 +79,34 @@
 #endif
 
 #ifdef BL_PLATFORM_WIN
-#define PATH_SEPARATOR "\\"
-#define PATH_SEPARATORC '\\'
 #define ENVPATH_SEPARATOR ';'
 #define CONF_VC_VARS_ALL_KEY "VC_VARS_ALL"
 #define MSVC_CRT "msvcrt"
 #else
-#define PATH_SEPARATOR "/"
-#define PATH_SEPARATORC '/'
 #define ENVPATH_SEPARATOR ':'
 #endif
 
+#define BUILD_API_FILE "build/build.bl"
+
+/*
+ * NOTE: We are converting all backslashes on Windows to the forward slashes.
+ */
+#define PATH_SEPARATOR "/"
+#define PATH_SEPARATORC '/'
+
+/*
+ * LLVM_EXCLUDE_UNUSED_SYM - Exclude all unused functions and variables from LLVM IR when this is
+ * enabled.
+ *
+ * ASSERT_ON_CMP_ERROR - assert on compiler error.
+ */
+
 #if BL_DEBUG
 #define ASSERT_ON_CMP_ERROR 0
+#define LLVM_EXCLUDE_UNUSED_SYM 1
 #else
 #define ASSERT_ON_CMP_ERROR 0
+#define LLVM_EXCLUDE_UNUSED_SYM 1
 #endif
 
 #define VM_STACK_SIZE 2097152          // 2MB
@@ -101,6 +117,8 @@
 #define CONF_LINKER_OPT_KEY "LINKER_OPT"
 #define CONF_LINKER_LIB_PATH_KEY "LINKER_LIB_PATH"
 #define CONF_LIB_DIR_KEY "LIB_DIR"
+
+#define BUILD_SCRIPT_FILE "build.bl"
 
 extern char *ENV_LIB_DIR;
 extern char *ENV_EXEC_DIR;

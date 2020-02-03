@@ -99,9 +99,9 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 {
 	if (!type) return;
 	if (!value) {
-                fprintf(cnt->stream, "<null>");
-                return;
-        }
+		fprintf(cnt->stream, "<null>");
+		return;
+	}
 
 	switch (type->kind) {
 	case MIR_TYPE_ENUM:
@@ -979,6 +979,11 @@ print_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		fprintf(cnt->stream, "@%s ", fn->linkage_name);
 	else
 		fprintf(cnt->stream, "@%llu ", (unsigned long long)fn_proto->base.id);
+	
+	if (fn->ref_count >= 0)
+		fprintf(cnt->stream, "(%d) ", fn->ref_count);
+	else
+		fprintf(cnt->stream, "(-) ");
 
 	fprintf(cnt->stream, ": ");
 	print_type(cnt, fn->type, false, false);

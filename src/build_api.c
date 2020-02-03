@@ -1,11 +1,11 @@
 //************************************************************************************************
 // bl
 //
-// File:   obj_writer.c
+// File:   build_api.c
 // Author: Martin Dorazil
-// Date:   28/02/2018
+// Date:   8/1/20
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2020 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,35 +26,65 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "llvm_api.h"
+/**
+ * Those methods are used only during compilation pass to setup builder pipeline. No C interfaces
+ * are needed here.
+ */
+
+#include "builder.h"
 #include "common.h"
-#include "error.h"
-#include "stages.h"
 
-#ifdef BL_PLATFORM_WIN
-#define OBJ_EXT ".obj"
-#else
-#define OBJ_EXT ".o"
-#endif
-
-/* Emit assembly object file. */
-void
-obj_writer_run(Assembly *assembly)
+BL_EXPORT Assembly *
+__add_executable(const char *name)
 {
-	TString filename;
-	tstring_init(&filename);
-	tstring_append(&filename, assembly->options.out_dir.data);
-	tstring_append(&filename, PATH_SEPARATOR);
-	tstring_append(&filename, assembly->name);
-	tstring_append(&filename, OBJ_EXT);
+	Assembly *new_assembly = assembly_new(name);
+	builder_add_assembly(new_assembly);
 
-	char *error_msg = NULL;
-	if (LLVMTargetMachineEmitToFile(
-	        assembly->llvm.TM, assembly->llvm.module, filename.data, LLVMObjectFile, &error_msg)) {
-		msg_error("Cannot emit object file: %s with error: %s", filename.data, error_msg);
+	return new_assembly;
+}
 
-		LLVMDisposeMessage(error_msg);
-	}
+BL_EXPORT Unit *
+__add_unit(Assembly *assembly, const char *filepath)
+{
+	Unit *new_unit = unit_new_file(filepath, NULL, NULL);
+	assembly_add_unit_unique(assembly, new_unit);
 
-	tstring_terminate(&filename);
+	return new_unit;
+}
+
+BL_EXPORT void
+__link_library(Assembly *assembly, const char *name)
+{
+	assembly_add_native_lib(assembly, name, NULL);
+}
+
+BL_EXPORT void
+__append_linker_options(Assembly *assembly, const char *opt)
+{
+	tstring_append(&assembly->options.custom_linker_opt, opt);
+	tstring_append(&assembly->options.custom_linker_opt, " ");
+}
+
+BL_EXPORT s32
+__get_build_mode(Assembly *assembly)
+{
+	return assembly->options.build_mode;
+}
+
+BL_EXPORT void
+__set_build_mode(Assembly *assembly, s32 mode)
+{
+	assembly->options.build_mode = mode;
+}
+
+BL_EXPORT void
+__set_output_dir(Assembly *assembly, const char *dir)
+{
+	assembly_set_output_dir(assembly, dir);
+}
+
+BL_EXPORT void
+__toggle_testing(Assembly *assembly, int v)
+{
+	assembly->options.run_tests = (bool) v;
 }

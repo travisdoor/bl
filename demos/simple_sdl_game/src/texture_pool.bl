@@ -20,7 +20,7 @@ TexturePool :: struct {
 };
 
 texture_pool_init :: fn (renderer: *SDL_Renderer) {
-    texture_pool = cast(*TexturePool) malloc(sizeof(TexturePool));
+    texture_pool = cast(*TexturePool) mem_alloc(sizeof(TexturePool));
 
     texture_pool.textures[auto TextureId.Balloon] = texture_pool_load(renderer, "data/balloon.png");
     texture_pool.textures[auto TextureId.Player] = texture_pool_load(renderer, "data/player.png");

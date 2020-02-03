@@ -9,6 +9,7 @@
 	AST_TEST_CASE,
 	AST_UNREACHABLE,
 	AST_META_DATA,
+	AST_TAGS,
 	_AST_DECL_FIRST,
 	AST_DECL_ENTITY,
 	AST_DECL_MEMBER,
@@ -70,6 +71,7 @@
 	struct AstIdent         ident;
 	struct AstUBlock        ublock;
 	struct AstBlock         block;
+	struct AstTags          tags;
 	struct AstStmtReturn    stmt_return;
 	struct AstStmtIf        stmt_if;
 	struct AstStmtLoop      stmt_loop;

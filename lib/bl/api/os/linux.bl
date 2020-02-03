@@ -30,11 +30,65 @@
 
 // INCOMPLETE: time_now_ms
 
+OS_KIND :: OSKind.Linux;
 OS_NAME :: "Linux";
 
 OS_STDIN  :: 0;
 OS_STDOUT :: 1;
 OS_STDERR :: 2;
+
+/*
+ * Maximum path size in bytes.
+ */
+OS_PATH_MAX :: 1024;
+
+/*
+ * Platform depend C types compatible with C ABI.
+ */
+c_char      :: s8;
+c_uchar     :: u8;
+c_short     :: s16;
+c_ushort    :: u16;
+c_int       :: s32;
+c_uint      :: u32;
+c_long      :: s64;
+c_ulong     :: u64;
+c_longlong  :: s64;
+c_ulonglong :: u64;
+c_void_ptr  :: *u8;
+c_size_t    :: u64;
+
+time_now_ms :: fn () f64 {
+    unreachable;
+    return 0.0;
+};
+
+os_sleep_ms :: fn (ms: f64) {
+    usleep(auto ms * 1000.0);
+};
+
+/*
+ * os_get_real_path 
+ *
+ * Description:
+ *   Find real path of passed file.
+ * 
+ * Arguments: 
+ *   filename: 
+ *     Desired existing file name or relative path. 
+ *
+ * Result: 
+ *   Absolute file path.
+ */
+os_get_real_path :: fn (filename: string) string {
+    tmp :: {:[OS_PATH_MAX]u8: 0};
+    if realpath(filename.ptr, tmp.ptr) == null {
+        return string_copy(filename);
+    }
+
+    result :: string_new_cstr(tmp.ptr);
+    return result;
+}
 
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return write(fd, buf, count);
@@ -44,14 +98,9 @@ __os_abort :: fn () #compiler {
     raise(SIGABRT);
 }
 
-time_now_ms :: fn () f64 {
-    unreachable;
-    return 0.0;
-};
-
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
 
-__os_start :: fn (argc: s64, argv: **u8, env: **u8) s32 {
+__os_start :: fn (argc: s64, argv: **u8, env: **u8) s32 #entry {
     args :: {:[]*u8: argc, argv};
     tmp: [__MAX_ARGS_WITHOUT_ALLOC]string;
     is_allocated :: args.len > tmp.len;
@@ -59,7 +108,7 @@ __os_start :: fn (argc: s64, argv: **u8, env: **u8) s32 {
     command_line_arguments.len = args.len;
 
     if is_allocated {
-        command_line_arguments.ptr = auto mem_alloc(sizeof(string) * auto args.len);
+        command_line_arguments.ptr = auto _mem_alloc_default(sizeof(string) * auto args.len);
         if command_line_arguments.ptr == null { __os_abort(); }
     } else {
         command_line_arguments.ptr = tmp.ptr;
@@ -72,7 +121,7 @@ __os_start :: fn (argc: s64, argv: **u8, env: **u8) s32 {
     out :: cast(s32) main();
 
     if is_allocated {
-        mem_free(auto command_line_arguments.ptr);
+        _mem_free_default(auto command_line_arguments.ptr);
     }
 
     return out;
@@ -89,3 +138,5 @@ SIGABRT :: 6;
 
 raise :: fn (sig: s32) s32 #extern;
 write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
+usleep :: fn (us: u32) s32 #extern;
+realpath :: fn (path: *u8, resolved_path: *u8) *u8 #extern;

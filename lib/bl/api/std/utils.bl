@@ -30,18 +30,23 @@ is_flag_u32 :: fn (v: u32, flag: u32) bool #inline {
     return (v & flag) == flag;
 };
 
+is_flag_s32 :: fn (v: s32, flag: s32) bool #inline {
+    return (v & flag) == flag;
+};
+
 /*
  * Converts C string to BL string.
  */
 cstr_to_str :: fn (cstr: *u8) string #inline {
-    return {:string: auto strlen(cstr), cstr};
+    return {:string: auto c_strlen(auto cstr), cstr};
 };
 
-ptr_shift_bytes :: fn (ptr: *u8, bytes: usize) *u8 #inline {
-    return cast(*u8) (cast(usize) ptr + bytes);
+ptr_shift_bytes :: fn (ptr: *u8, bytes: s64) *u8 #inline {
+    return cast(*u8) (cast(s64) ptr + bytes);
 };
 
 // a - b
 ptr_diff :: fn (a: *u8, b: *u8) s64 #inline {
     return (cast(s64) a) - (cast(s64) b); 
 }
+

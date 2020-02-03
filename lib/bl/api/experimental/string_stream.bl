@@ -1,11 +1,11 @@
 //************************************************************************************************
-// bl
+// Adaonia 
 //
-// File:   ir_opt.c
+// File:   string_stream.bl
 // Author: Martin Dorazil
-// Date:   5.2.19
+// Date:   1/25/20
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2020 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,29 +26,47 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "assembly.h"
-#include "bldebug.h"
-#include "error.h"
-#include "llvm_api.h"
-#include "stages.h"
+END_OF_STREAM :: '\0';
 
-void
-ir_opt_run(Assembly *assembly)
-{
-	LLVMModuleRef        llvm_module = assembly->llvm.module;
-	LLVMTargetMachineRef llvm_tm     = assembly->llvm.TM;
-	const s32            opt_level = get_opt_level_for_build_mode(assembly->options.build_mode);
-
-	LLVMPassManagerBuilderRef llvm_pm_builder = LLVMPassManagerBuilderCreate();
-	LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, opt_level);
-
-	LLVMPassManagerRef llvm_pm = LLVMCreatePassManager();
-	LLVMAddAnalysisPasses(llvm_tm, llvm_pm);
-	LLVMPassManagerBuilderPopulateModulePassManager(llvm_pm_builder, llvm_pm);
-	LLVMPassManagerBuilderPopulateLTOPassManager(llvm_pm_builder, llvm_pm, true, true);
-
-	LLVMRunPassManager(llvm_pm, llvm_module);
-
-	LLVMDisposePassManager(llvm_pm);
-	LLVMPassManagerBuilderDispose(llvm_pm_builder);
+StringStream :: struct {
+    _data: string;
+    i: s64;
 }
+
+ss_init_from_file :: fn (ss: *StringStream, file: File) {
+    if file == null { panic(); }
+
+    ss._data = file_read_all(file);
+    ss.i = 0;
+}
+
+ss_init :: fn (ss: *StringStream) {
+    ss._data = string_new();
+    ss.i = 0;
+}
+
+ss_terminate :: fn (ss: *StringStream) {
+    string_delete(ss._data);
+}
+
+ss_write_to_file :: fn (ss: *StringStream, file: File) usize {
+    return file_write_string(file, ss._data);
+}
+
+ss_peek :: fn (ss: *StringStream) u8 {
+    if ss.i >= ss._data.len { return END_OF_STREAM; }
+    return ss._data[ss.i];
+}
+
+ss_get :: fn (ss: *StringStream) u8 {
+    if ss.i >= ss._data.len { return END_OF_STREAM; }
+    tmp :: ss._data[ss.i];
+    ss.i += 1;
+
+    return tmp;
+}
+
+ss_push :: fn (ss: *StringStream, v: Any) {
+    string_append(&ss._data, v);
+}
+

@@ -29,11 +29,89 @@
 #load "debug.bl"
 #load "print.bl"
 
+/*!
+# _AllocFn
+## Declaration
+```c
+_AllocFn :: * fn (size: usize) *u8
+```
+
+## Description
+  Type of memory allocator function.
+
+## Arguments
+  * `size`
+    Size of the memory block in bytes. 
+*/
 _AllocFn :: * fn (size: usize) *u8;
-_FreeFn :: * fn (p: *u8);
+
+/*!
+# _FreeFn
+## Declaration
+```c
+_FreeFn :: * fn (p: *u8)
+```
+
+## Description
+  Type of memory free function.
+
+## Arguments
+  * `ptr`
+    Pointer to allocated memory block. 
+
+## Result
+  New allocated memory block.
+*/
+_FreeFn :: * fn (ptr: *u8);
+
+/*!
+# _PrintLogFn
+## Declaration
+```c
+_PrintLogFn :: * fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32)
+```
+
+## Description
+  Type of print log function.
+
+## Arguments
+  * `kind`
+    Kind of report message. 
+  * `format`
+    Format string. 
+  * `args`
+    Slice of arguments. 
+  * `file`
+    Call side filename. 
+  * `line`
+    Call side line in source file. 
+*/
 _PrintLogFn :: * fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32);
 
-// BL global context 
+/*!
+# _Context
+## Declaration
+```c
+_Context :: struct {
+    alloc_fn: _AllocFn;
+    free_fn: _FreeFn;
+    print_log_fn: _PrintLogFn;
+}
+```
+
+## Description
+  Default implicit context type. Implicit context is compiler internal global variable 
+containing basic context for whole assembly. This variable is mutable and can 
+be modified by user code. 
+
+## Members
+  * `alloc_fn`
+    Pointer to memory allocator function. 
+  * `free_fn`
+    Pointer to memory free function. 
+  * `print_log_fn`
+    Pointer to print log function. 
+*/
 _Context :: struct {
     /* Default memory allocation function. */
     alloc_fn: _AllocFn;
@@ -45,15 +123,44 @@ _Context :: struct {
     print_log_fn: _PrintLogFn;
 };
 
-_context := {:_Context: &malloc, &free, &_print_log_default};
+/*!
+# _context 
+## Declaration
+```c
+_context := {:_Context: &_mem_alloc_default, &_mem_free_default, &_print_log_default}
+```
 
-/* 
- * Abort execution and eventually print panic message if there is one specified.
- * Example:
- * panic(); // abort without any messages
- * panic("oops!"); // abort with message prited out.
- * panic("Failed with error: %", errn); // first argument passed acts like formating string
- */
+## Description
+  Default implicit context. Implicit context is compiler internal global variable 
+containing basic context for whole assembly. This variable is mutable and can 
+be modified by user code. For example we can replace default memory allocator
+with custom one, this will affect all allocations made later.
+*/
+_context := {:_Context: &_mem_alloc_default, &_mem_free_default, &_print_log_default};
+
+/*!
+# panic
+## Declaration
+```c
+panic :: fn (args: ...)
+```
+
+## Description
+  Abort execution and eventually print panic message if there is one specified. First
+passed argument in 'args' will act like format string and can be eventually followed
+by any additional values required.
+
+## Arguments
+  * `args`
+    Variable argument count of Any type. 
+
+## Example
+```c
+panic(); // abort without any messages
+panic("oops!"); // abort with message prited out.
+panic("Failed with error: %", errn); // first argument passed acts like formating string
+```
+*/
 panic :: fn (args: ...) {
     if args.len == 0 {
         unreachable;
@@ -67,7 +174,7 @@ panic :: fn (args: ...) {
         format = ^cast(*string) arg.data;
         tmp = {:[]Any:
                 args.len - 1,
-                auto ptr_shift_bytes(auto args.ptr, sizeof(arg))};
+                auto ptr_shift_bytes(auto args.ptr, auto sizeof(arg))};
     }
 
     _context.print_log_fn(PrintLogKind.Panic, format, tmp, "", 0);

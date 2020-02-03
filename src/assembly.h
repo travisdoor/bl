@@ -39,7 +39,26 @@
 struct MirModule;
 struct Builder;
 
+typedef enum BuildMode {
+	BUILD_MODE_DEBUG         = 1, /* Standard debug mode. Opt: NONE */
+	BUILD_MODE_RELEASE_FAST  = 2, /* Standard release mode. Opt: Aggresive */
+	BUILD_MODE_RELEASE_SMALL = 3, /* Standard release mode. Opt: Default */
+
+	BUILD_MODE_BUILD = 4, /* Build pipeline entry mode. */
+} BuildMode;
+
+typedef struct AssemblyOptions {
+	BuildMode build_mode;
+	TString   custom_linker_opt;
+	TString   out_dir; /* Build output directory */
+	TArray    lib_paths;
+	TArray    libs;
+	bool      run_tests;
+} AssemblyOptions;
+
 typedef struct Assembly {
+	AssemblyOptions options;
+
 	struct {
 		ScopeArenas scope;
 		MirArenas   mir;
@@ -66,17 +85,14 @@ typedef struct Assembly {
 	} llvm;
 
 	/* DynCall/Lib data used for external method execution in compile time */
-	struct {
-		TArray    lib_paths;
-		TArray    libs;
-		DCCallVM *vm;
-	} dl;
+	DCCallVM *dc_vm;
+	VM        vm;
 
-	TArray     units;      /* array of all units in assembly */
-	THashTable unit_cache; /* cache for loading only unique units */
-	THashTable link_cache; /* all linked externals libraries passed to linker */
-	char *     name;       /* assembly name */
-	Scope *    gscope;     /* global scope of the assembly */
+	TArray     units;       /* array of all units in assembly */
+	THashTable unit_cache;  /* cache for loading only unique units */
+	char *     name;        /* assembly name */
+	Scope *    gscope;      /* global scope of the assembly */
+	MirFn *    build_entry; /* Set for build assembly. */
 
 	/* Builtins */
 	struct BuiltinTypes {
@@ -125,12 +141,13 @@ typedef struct Assembly {
 		MirType *t_TypeInfoEnumVariants_slice;
 		MirType *t_TypeInfoFnArgs_slice;
 
-		bool     is_rtti_ready;
-		bool     is_any_ready;
+		bool is_rtti_ready;
+		bool is_any_ready;
 	} builtin_types;
 } Assembly;
 
 typedef struct NativeLib {
+	u32           hash;
 	DLLib *       handle;
 	struct Token *linked_from;
 	const char *  user_name;
@@ -146,17 +163,26 @@ assembly_new(const char *name);
 void
 assembly_delete(Assembly *assembly);
 
+AssemblyOptions
+assembly_get_default_options(void);
+
 void
 assembly_add_unit(Assembly *assembly, Unit *unit);
 
 void
-assembly_add_link(Assembly *assembly, struct Token *token);
+assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
 
 bool
 assembly_add_unit_unique(Assembly *assembly, Unit *unit);
 
 DCpointer
 assembly_find_extern(Assembly *assembly, const char *symbol);
+
+void
+assembly_apply_options(Assembly *assembly);
+
+void
+assembly_set_output_dir(Assembly *assembly, const char *dir);
 
 static inline bool
 assembly_has_rtti(Assembly *assembly, u64 type_id)
@@ -174,6 +200,41 @@ static inline void
 assembly_add_rtti(Assembly *assembly, u64 type_id, MirVar *rtti_var)
 {
 	thtbl_insert(&assembly->MIR.RTTI_table, type_id, rtti_var);
+}
+
+static inline const char *
+build_mode_to_str(BuildMode mode)
+{
+	switch (mode) {
+	case BUILD_MODE_DEBUG:
+		return "DEBUG";
+	case BUILD_MODE_RELEASE_FAST:
+		return "RELEASE-FAST";
+	case BUILD_MODE_RELEASE_SMALL:
+		return "RELEASE-SMALL";
+	case BUILD_MODE_BUILD:
+		return "BUILD";
+	}
+
+	BL_ABORT("Invalid build mode");
+}
+
+static inline s32
+get_opt_level_for_build_mode(BuildMode mode)
+{
+	switch (mode) {
+	case BUILD_MODE_DEBUG:
+		return 0;
+
+	case BUILD_MODE_BUILD:
+	case BUILD_MODE_RELEASE_FAST:
+		return 3;
+
+	case BUILD_MODE_RELEASE_SMALL:
+		return 2;
+	}
+
+	BL_ABORT("Invalid build mode");
 }
 
 #endif

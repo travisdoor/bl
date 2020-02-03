@@ -55,7 +55,6 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
-*build/
 .ycm_extra_conf.py
 *bin/
 .idea/
@@ -69,3 +68,5 @@ src/config.h
 install/uninstall.sh
 /etc/
 *.txt.user
+/build/
+*.md

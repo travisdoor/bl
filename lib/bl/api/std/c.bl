@@ -26,18 +26,20 @@
 // SOFTWARE.
 //************************************************************************************************
 
+// LIB C binding
+
 RAND_MAX :: 2147483647;
 
-putchar :: fn (c: s32) s32 #extern;
-memset  :: fn (str: *u8, c: s32, n: usize) *u8 #extern;
-malloc  :: fn (size: usize) *u8 #extern;
-free    :: fn (ptr: *u8) #extern;
-strlen  :: fn (str: *u8) usize #extern;
-strcmp  :: fn (first: *u8, second: *u8) s32 #extern;
-system  :: fn (cmd: *u8) s32 #extern;
-fopen   :: fn (filename: *u8, mode: *u8) *u8 #extern;
-fclose  :: fn (handle: *u8) s32 #extern;
-fseek   :: fn (handle: *u8, offest: s32, origin: s32) s32 #extern;
-fread   :: fn (ptr: *u8, size: usize, count: usize, handle: *u8) usize #extern;
-fwrite  :: fn (ptr: *u8, size: usize, count: usize, handle: *u8) usize #extern;
-ftell   :: fn (handle: *u8) s32 #extern;
+c_memset :: fn (str: c_void_ptr, c: c_int, n: c_size_t) c_void_ptr #extern "memset";
+c_malloc :: fn (size: c_size_t) c_void_ptr #extern "malloc";
+c_free   :: fn (ptr: c_void_ptr) #extern "free";
+c_strlen :: fn (str: *c_char) c_size_t #extern "strlen";
+c_strcmp :: fn (first: *c_char, second: *c_char) c_int #extern "strcmp";
+c_system :: fn (cmd: *u8) s32 #extern "system";
+c_fopen  :: fn (filename: *c_char, mode: *c_char) c_void_ptr #extern "fopen";
+c_fclose :: fn (handle: c_void_ptr) c_int #extern "fclose";
+c_fseek  :: fn (handle: c_void_ptr, offest: c_int, origin: c_int) c_int #extern "fseek";
+c_fread  :: fn (ptr: c_void_ptr, size: c_size_t, count: c_size_t, handle: c_void_ptr) c_size_t #extern "fread";
+c_fwrite :: fn (ptr: c_void_ptr, size: c_size_t, count: c_size_t, handle: c_void_ptr) c_size_t #extern "fwrite";
+c_ftell  :: fn (handle: c_void_ptr) c_int #extern "ftell";
+c_time   :: fn (t: c_void_ptr) c_ulong #extern "time";

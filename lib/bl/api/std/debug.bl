@@ -29,25 +29,89 @@
 #load "std/basic.bl"
 #load "std/utils.bl"
 
-/* Print debug log using _context.print_log_fn function. */
+/*!
+# print_log
+## Declaration
+```c
+print_log :: fn (format: string, args: ...)
+```
+
+## Description
+  Print debug log using `_context.print_log_fn` function. 
+
+## Arguments
+  * `format`
+    Formating string accepting `%` character as value placeholder.
+  * `args`
+    Optional values passed in order which is supposed to be printed
+    out.
+*/
 print_log :: fn (format: string, args: ...) {
     tmp := {:[]Any: args.len, args.ptr };
     _context.print_log_fn(PrintLogKind.Message, format, tmp, #file, #line);
 };
 
-/* Print debug warning using _context.print_log_fn function. */
+/*!
+# print_warn
+## Declaration
+```c
+print_warn :: fn (format: string, args: ...)
+```
+
+## Description
+  Print debug warning using `_context.print_log_fn` function. 
+
+## Arguments: 
+  * `format`
+    Formating string accepting '%' character as value placeholder.
+  * `args`
+    Optional values passed in order which is supposed to be printed
+    out.
+ */
 print_warn :: fn (format: string, args: ...) {
     tmp := {:[]Any: args.len, args.ptr };
     _context.print_log_fn(PrintLogKind.Warning, format, tmp, #file, #line);
 };
 
-/* Print debug error using _context.print_log_fn function. */
+
+/*!
+# print_err
+## Declaration
+```c
+print_err :: fn (format: string, args: ...)
+```
+
+## Description
+  Print debug error using _context.print_log_fn function. 
+
+## Arguments
+  * `format`
+    Formating string accepting `%` character as value placeholder.
+  * `args`
+    Optional values passed in order which is supposed to be printed
+    out.
+*/
 print_err :: fn (format: string, args: ...) {
     tmp := {:[]Any: args.len, args.ptr };
     _context.print_log_fn(PrintLogKind.Error, format, tmp, #file, #line);
 };
 
-/* Assert execution when condition value is false. */
+/*!
+# assert
+## Declaration
+```c
+assert :: fn (cond: bool)
+```
+
+## Description
+  Abort execution when passed condition is resulting in `false`
+  value.
+
+## Arguments
+  * `cond`
+    Condition to be validated. 
+
+*/
 assert :: fn (cond: bool) {
     if !cond {
         unreachable;

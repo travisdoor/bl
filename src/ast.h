@@ -44,12 +44,14 @@ typedef enum {
 } AstKind;
 
 typedef enum {
-	FLAG_EXTERN    = 1 << 0, /* methods marked as extern */
-	FLAG_TEST      = 1 << 1, /* test case */
-	FLAG_COMPILER  = 1 << 2, /* compiler internal */
-	FLAG_PRIVATE   = 1 << 3, /* declared in private scope */
-	FLAG_INLINE    = 1 << 4, /* inline function */
-	FLAG_NO_INLINE = 1 << 5, /* no inline function */
+	FLAG_EXTERN      = 1 << 0, /* methods marked as extern */
+	FLAG_TEST        = 1 << 1, /* test case */
+	FLAG_COMPILER    = 1 << 2, /* compiler internal */
+	FLAG_PRIVATE     = 1 << 3, /* declared in private scope */
+	FLAG_INLINE      = 1 << 4, /* inline function */
+	FLAG_NO_INLINE   = 1 << 5, /* no inline function */
+	FLAG_ENTRY       = 1 << 6, /* marking entry point function */
+	FLAG_BUILD_ENTRY = 1 << 7, /* marking build entry point function */
 } AstFlag;
 
 /* map symbols to binary operation kind */
@@ -160,6 +162,7 @@ struct AstDecl {
 struct AstDeclEntity {
 	struct AstDecl base;
 	Ast *          value;
+	Ast *          explicit_linkage_name; /* Optional. */
 	u32            flags;
 	bool           in_gscope;
 	bool           mut;
@@ -167,6 +170,7 @@ struct AstDeclEntity {
 
 struct AstDeclMember {
 	struct AstDecl base;
+	Ast *          tags; /* Optional. */
 };
 
 struct AstDeclArg {
@@ -326,6 +330,10 @@ struct AstExprDeref {
 
 struct AstMetaData {
 	const char *str;
+};
+
+struct AstTags {
+	TSmallArray_AstPtr *values;
 };
 
 /* AST base type */

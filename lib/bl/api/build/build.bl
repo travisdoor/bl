@@ -1,0 +1,330 @@
+//************************************************************************************************
+// bl
+//
+// File:   build.bl
+// Author: Martin Dorazil
+// Date:   8/1/20
+//
+// Copyright 2020 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//************************************************************************************************
+
+// INCOMPLETE: set output directory
+
+/*!
+# Assembly
+## Declaration
+```c
+Assembly :: *u8;
+```
+
+## Description
+  Opaque assembly handle. Assembly is representation of whole program workspace, it can be compiled
+into executable or binary. Assembly is consist of Units, every unit represents one source file.
+ */
+Assembly :: *u8;
+
+/*!
+# Unit
+## Declaration
+```c
+Unit :: *u8;
+```
+
+## Description
+  Opaque file unit handle. Unit is representation of single source file which can be loaded into 
+the Assambly.
+ */
+Unit :: *u8;
+
+/*!
+# BuildMode
+## Declaration
+```c
+BuildMode :: enum s32 {
+    Debug        :: 1;
+    ReleaseFast  :: 2;
+    ReleaseSmall :: 3;
+}
+```
+ 
+## Description
+   Specify assembly build mode. Every Assembly can be compiled with various configuration options.
+The `BuildMode` can specify which set of options compiler should use.
+ 
+## Variants
+   * `Debug`
+     * Slow runtime.
+     * Generates debug symbols.
+     * Large output file. 
+     * Fast compilation.
+   * `ReleaseFast`
+     - Fastest runtime.
+     - Larger output file. 
+     - Slow compilation.
+   * `ReleaseSmall`
+     - Fast runtime.
+     - Smaller output file. 
+     - Slow compilation.
+ */
+BuildMode :: enum s32 {
+    Debug        :: 1;
+    ReleaseFast  :: 2;
+    ReleaseSmall :: 3;
+}
+
+/*!
+# add_executable
+## Declaration
+```c
+add_executable :: fn (name: string) Assembly
+```
+
+## Description
+  Add new executable assembly into the current compilation queue. Assembly with
+specified name is compiled into binary or it can be just executed in compile-time
+without any output created. Assemblies are compiled after `build_entry` function
+execution in order they are added.
+
+## Arguments
+  * `name`
+    Name of the assembly (used also as name of the output file).
+
+## Result
+  Assembly handle.
+
+## Example
+```c
+build :: fn () #build_entry {
+    exe :: add_executable("MyProgram");
+    add_unit(exe, "src/main.bl");
+
+    mode :: get_build_mode(exe);
+    switch mode {
+        BuildMode.Debug {
+            set_output_dir(exe, "build/debug");
+        }
+
+        BuildMode.ReleaseSmall,
+        BuildMode.ReleaseFast {
+            set_output_dir(exe, "build/release");
+        }
+    }
+}
+```
+ */
+add_executable :: fn (name: string) Assembly {
+    if name.len == 0 { panic("Invalid executable name!"); }
+
+    return __add_executable(auto name.ptr);
+}
+
+/*!
+# add_unit
+## Declaration
+```c
+add_unit :: fn (assembly: Assembly, filepath: string) Unit
+```
+
+## Description
+  Add new source file into the assembly. This basically load new source file into
+the `Assembly`.
+
+## Arguments
+  * `assembly`
+    Assembly to append the new file. 
+
+## Result:
+  Unit handle.
+ */
+add_unit :: fn (assembly: Assembly, filepath: string) Unit {
+    if assembly == null { panic("Invalid assembly!"); }
+    if filepath.len == 0 { panic("Invalid unit path!"); }
+
+    return __add_unit(assembly, auto filepath.ptr);
+}
+
+/*!
+# link_library
+## Declaration
+```c
+link_library :: fn (assembly: Assembly, name: string)
+```
+
+## Description
+  Add system library. Only name is required (without extension and prefix).
+Compiler will lookup for this library in working directory, system `PATH`
+and `LINKER_LIB_PATH` variable specified in bl.conf file. Linked library
+can be used also during compile-time execution, in such case all needed
+symbols are loaded in compile-time. This does not work for `.lib` files
+on Windows.
+
+## Arguments
+  * `assembly`
+    Target assembly. 
+  * `name`
+    Library name. 
+    * On Linux name will be extended by 'lib' prefix and '.so' extension.
+    * On MacOS name will be extended by 'lib' prefix and '.dylib' extension.
+    * On Windows name will be extended only by '.dll' extension.
+
+## Example
+```c
+build :: fn () #build_entry {
+    exe :: add_executable("MyGame");
+    add_unit(exe, "src/main.bl");
+
+    switch OS_KIND {
+        OSKind.Windows { target_windows(exe); }
+        default        { panic("Unknown build target!"); }
+    }
+}
+
+target_windows :: fn (exe: Assembly) {
+    link_library(exe, "freetype");
+    link_library(exe, "zlib");
+    link_library(exe, "png");
+}
+```
+ */
+link_library :: fn (assembly: Assembly, name: string) {
+    if assembly == null { panic("Invalid assembly!"); }
+    if name.len == 0 { panic("Invalid library name!"); }
+
+    __link_library(assembly, auto name.ptr);
+}
+
+/*!
+# append_linker_options
+## Declaration
+```c
+append_linker_options :: fn (assembly: Assembly, option: string)
+```
+ 
+## Description
+  Appends raw string data directly to linker command. Passed option
+is added without any processing and copatibility validation. 
+
+## Arguments
+  * `assembly`
+    Assembly handle. 
+  * `option`
+    Option string.
+ */
+append_linker_options :: fn (assembly: Assembly, option: string) {
+    if assembly == null { panic("Invalid assembly!"); }
+    if option.len == 0 { return; }
+    __append_linker_options(assembly, auto option.ptr);
+}
+
+/*!
+# get_build_mode
+## Declaration
+```c
+get_build_mode :: fn (assembly: Assembly) BuildMode
+```
+
+## Description
+  Get build mode of the assembly. 
+
+## Arguments
+  * `assembly`
+    Assembly handle. 
+
+## Result
+  Build mode. 
+*/
+get_build_mode :: fn (assembly: Assembly) BuildMode {
+    if assembly == null { panic("Invalid assembly!"); }
+    return auto __get_build_mode(assembly);
+}
+
+/*!
+# set_build_mode
+## Declaration
+```c
+set_build_mode :: fn (assembly: Assembly, mode: BuildMode)
+```
+
+## Description
+  Set build mode of the assembly. 
+
+## Arguments
+  * `assembly`
+    Assembly to append the new file. 
+  * `mode`
+    Build mode. 
+ */
+set_build_mode :: fn (assembly: Assembly, mode: BuildMode) {
+    if assembly == null { panic("Invalid assembly!"); }
+    __set_build_mode(assembly, auto mode);
+}
+
+/*!
+# set_output_dir
+## Declaration
+```c
+set_output_dir :: fn (assembly: Assembly, dir: string)
+```
+
+## Description:
+  Set build output directory. This is directory where all output files will be
+written. For example diferent output directory can be set for any build mode.
+
+## Arguments: 
+  * `assembly`
+    Assembly handle. 
+  * `dir`
+    Directory path. This can contain non-existing directories separated by `/`,
+compiler will create all missing directories in passed path.
+ */
+set_output_dir :: fn (assembly: Assembly, dir: string) {
+    if assembly == null { panic("Invalid assembly!"); }
+    if dir.len == 0 { return; }
+    __set_output_dir(assembly, auto dir.ptr);
+}
+
+/*!
+# enable_testing
+## Declaration
+```c
+enable_testing :: fn (assembly: Assembly)
+```
+
+## Description:
+  Enable compile-time execution of all tests declared in assembly.
+
+## Arguments: 
+  * `assembly`
+    Assembly handle. 
+*/
+enable_testing :: fn (assembly: Assembly) {
+    __toggle_testing(assembly, 1);
+}
+
+#private
+__add_executable :: fn (name: *c_char) Assembly #extern;
+__add_unit :: fn (assembly: Assembly, filepath: *c_char) Unit #extern;
+__link_library :: fn (assembly: Assembly, name: *c_char) #extern;
+__append_linker_options :: fn (assembly: Assembly, option: *c_char) #extern;
+__set_build_mode :: fn (assembly: Assembly, mode: c_int) #extern;
+__get_build_mode :: fn (assembly: Assembly) c_int #extern;
+__set_output_dir :: fn (assembly: Assembly, dir: *c_char) #extern;
+__toggle_testing :: fn (assembly: Assembly, v: c_int) #extern;

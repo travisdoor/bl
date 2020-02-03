@@ -28,8 +28,18 @@
 
 #load "std/print.bl"
 
-STRING_BLOCK_SIZE :: 64 - sizeof(BlockHead);
+/*!
+# string_new 
+## Declaration
+```c
+string_new :: fn () string
+```
+## Description
+  Create new dynamic string instance. 
 
+## Result
+  New string.
+*/
 string_new :: fn () string {
     return string_new_reserved(0);
 };
@@ -42,6 +52,18 @@ string_new_reserved :: fn (size: usize) string {
     set_terminator(tmp);
     return tmp;
 };
+
+string_new_cstr :: fn (cstr: *u8) string {
+    len :: c_strlen(auto cstr);
+    tmp: string;
+    tmp.ptr = alloc_block(len);
+    tmp.len = auto len;
+
+    mem_copy(tmp.ptr, cstr, len * sizeof(u8));
+    set_terminator(tmp);
+
+    return tmp;
+}
 
 string_copy :: fn (v: string) string {
     tmp : string;
@@ -80,7 +102,7 @@ string_append :: fn (v: *string, add: Any) {
         tmp := {:[]u8: buf.len, buf.ptr };
 
         bprint(tmp, "%", add);
-        add_len = auto strlen(buf.ptr);
+        add_len = auto c_strlen(auto buf.ptr);
         add_ptr = buf.ptr;
         new_len = v.len + add_len;
     }
@@ -92,13 +114,19 @@ string_append :: fn (v: *string, add: Any) {
     set_terminator(^v);
 };
 
-string_concatenate :: fn (args: ...) string {
+string_new_concatenate :: fn (args: ...) string {
     tmp := string_new();
     loop i := 0; i < args.len; i += 1 {
         string_append(&tmp, args[i]);
     }
 
     return tmp;
+};
+
+string_concatenate :: fn (v: *string, args: ...) {
+    loop i := 0; i < args.len; i += 1 {
+        string_append(v, args[i]);
+    }
 };
 
 string_compare :: fn (first: string, second: string) bool {
@@ -111,7 +139,7 @@ string_compare :: fn (first: string, second: string) bool {
     return true;
 };
 
-string_compare_n :: fn (first: string, second: string, n: s32) bool
+string_comparen :: fn (first: string, second: string, n: s32) bool
 {
     if first.len < n { return false; }
     if second.len < n { return false; }
@@ -123,7 +151,73 @@ string_compare_n :: fn (first: string, second: string, n: s32) bool
     return true;
 };
 
+string_to_f32 :: fn (str: string) f32 {
+    return string_to_f32n(str, str.len);
+}
+
+string_to_s64 :: fn (str: string) s64 {
+    return string_to_s64n(str, str.len);
+}
+
+string_to_f32n :: fn (str: string, len: s64) f32 {
+    n := 0;
+    e := 1;
+    is_negative := false;
+    is_after_comma := false;
+
+    if len > str.len { len = str.len; }
+
+    loop len > 0 {
+        c :: str[0];
+        if c == '-' {
+            is_negative = true;
+        } else if c == '.' {
+            if is_after_comma { break; }
+            is_after_comma = true;
+        } else if c >= '0' && c <= '9' {
+            n = n * 10 + (auto c - '0');
+            if is_after_comma {
+                e *= 10;
+            }
+        } else {
+            break;
+        }
+
+        consume_char(&str);
+	len -= 1;
+    }
+
+    v := cast(f32) n / cast(f32) e; 
+    if is_negative { v = -v; } 
+    return v;
+}
+
+string_to_s64n :: fn (str: string, len: s64) s64 {
+    n : s64 = 0;
+    is_negative := false;
+
+    if len > str.len { len = str.len; }
+
+    loop len > 0 {
+        c :: str[0];
+        if c == '-' {
+            is_negative = true;
+        } else if c >= '0' && c <= '9' {
+            n = n * 10 + (auto c - '0');
+        } else {
+            break;
+        }
+
+        consume_char(&str);
+	len -= 1;
+    }
+
+    if is_negative { n = -n; } 
+    return n;
+}
+
 #private
+STRING_BLOCK_SIZE :: 64 - sizeof(BlockHead);
 
 BlockHead :: struct {
     allocated_size: usize
@@ -172,3 +266,11 @@ set_terminator :: fn (v: string) {
     v[v.len - 1] = 0;
     v.len -= 1;
 };
+
+consume_char :: fn (s: *string) u8 #inline {
+    c :: (^s)[0];
+    if s.len > 1 { s.ptr = &(^s)[1]; }
+    s.len -= 1;
+
+    return c;
+}

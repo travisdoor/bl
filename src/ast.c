@@ -89,6 +89,8 @@ ast_get_name(const Ast *n)
 		return "Bad";
 	case AST_META_DATA:
 		return "MetaData";
+	case AST_TAGS:
+		return "Tags";
 	case AST_LOAD:
 		return "Load";
 	case AST_LINK:

@@ -92,7 +92,7 @@ set_lib_paths(Context *cnt)
 	const char *lib_path      = conf_data_get_str(builder.conf, CONF_LINKER_LIB_PATH_KEY);
 	if (!strlen(lib_path)) return;
 
-	s32         len;
+	s64         len;
 	const char *begin = lib_path;
 	const char *c     = lib_path;
 	bool        done  = false;
@@ -103,12 +103,20 @@ set_lib_paths(Context *cnt)
 			len = c - begin;
 			if (len - 1 > 0) {
 				strncpy(tmp, begin, len);
+				tmp[len] = '\0';
 				if (file_exists(tmp)) {
 					char *dup = malloc(sizeof(char) * len + 1);
+					if (!dup) BL_ABORT("Bad alloc!");
 					memcpy(dup, begin, len);
 					dup[len] = '\0';
 
+#ifdef BL_PLATFORM_WIN
+					win_fix_path(dup, len);
+#endif
+
 					tarray_push(cnt->lib_paths, dup);
+				} else {
+					msg_warning("Invalid LIB_PATH entry value '%s'.", tmp);
 				}
 
 				begin = c + 1;
@@ -118,38 +126,30 @@ set_lib_paths(Context *cnt)
 }
 
 static bool
-link_lib(Context *cnt, const char *name, Token *token)
+link_lib(Context *cnt, NativeLib *lib)
 {
-	if (!name) BL_ABORT("invalid lib name");
-	NativeLib lib   = {0};
-	lib.user_name   = strdup(name);
-	lib.linked_from = token;
+	if (!lib) BL_ABORT("invalid lib");
+	if (!lib->user_name) BL_ABORT("invalid lib name");
 
-	if (!search_library(cnt, name, &lib.filename, &lib.dir, &lib.filepath)) return false;
+	if (!search_library(cnt, lib->user_name, &lib->filename, &lib->dir, &lib->filepath))
+		return false;
 
-	lib.handle = dlLoadLibrary(lib.filepath);
-	if (!lib.handle) {
-		free(lib.filename);
-		free(lib.dir);
-		free(lib.filepath);
+	lib->handle = dlLoadLibrary(lib->filepath);
+	if (!lib->handle) {
+		free(lib->filename);
+		free(lib->dir);
+		free(lib->filepath);
 
 		return false;
 	}
 
-	tarray_push(&cnt->assembly->dl.libs, lib);
 	return true;
 }
 
 static bool
-link_working_environment(Context *cnt)
+link_working_environment(Context *cnt, const char *lib_name)
 {
-#ifdef BL_PLATFORM_WIN
-	const char *libc = MSVC_CRT;
-#else
-	const char *libc = NULL;
-#endif
-
-	DLLib *handle = dlLoadLibrary(libc);
+	DLLib *handle = dlLoadLibrary(lib_name);
 	if (!handle) return false;
 
 	NativeLib native_lib = {.handle      = handle,
@@ -159,14 +159,14 @@ link_working_environment(Context *cnt)
 	                        .filepath    = NULL,
 	                        .is_internal = true};
 
-	tarray_push(&cnt->assembly->dl.libs, native_lib);
+	tarray_push(&cnt->assembly->options.libs, native_lib);
 	return true;
 }
 
 void
 linker_run(Assembly *assembly)
 {
-	Context cnt = {.assembly = assembly, .lib_paths = &assembly->dl.lib_paths};
+	Context cnt = {.assembly = assembly, .lib_paths = &assembly->options.lib_paths};
 
 	if (builder.options.verbose) {
 		msg_log("Running runtime linker...");
@@ -174,27 +174,30 @@ linker_run(Assembly *assembly)
 
 	set_lib_paths(&cnt);
 
-	if (!link_working_environment(&cnt)) {
+	NativeLib *lib;
+	for (usize i = 0; i < assembly->options.libs.size; ++i) {
+		lib = &tarray_at(NativeLib, &assembly->options.libs, i);
+		if (!link_lib(&cnt, lib)) {
+			link_error(ERR_LIB_NOT_FOUND,
+			           lib->linked_from,
+			           BUILDER_CUR_WORD,
+			           "Unresolved external library '%s'",
+			           lib->user_name);
+		}
+	}
+
+#ifdef BL_PLATFORM_WIN
+	if (!link_working_environment(&cnt, MSVC_CRT)) {
+		Token *dummy = NULL;
+		link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " MSVC_CRT);
+		return;
+	}
+#endif
+
+	if (!link_working_environment(&cnt, NULL)) {
 		Token *dummy = NULL;
 		link_error(
 		    ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link working environment.");
 		return;
-	}
-
-	THashTable *cache = &assembly->link_cache;
-	Token *     token;
-	TIterator   it;
-	THTBL_FOREACH(cache, it)
-	{
-		token = thtbl_iter_peek_value(Token *, it);
-		BL_ASSERT(token);
-
-		if (!link_lib(&cnt, token->value.str, token)) {
-			link_error(ERR_LIB_NOT_FOUND,
-			           token,
-			           BUILDER_CUR_WORD,
-			           "Unresolved external library '%s'",
-			           token->value.str);
-		}
 	}
 }

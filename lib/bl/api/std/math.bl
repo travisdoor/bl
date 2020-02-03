@@ -26,9 +26,50 @@
 // SOFTWARE.
 //************************************************************************************************
 
-PI :: 3.141592653589793238;
+/*!
+# Math constants
+## Declaration
+```c
+PI          :: 3.141592653589793;
+TWO_PI      :: 6.283185307179587;
+HALF_PI     :: 1.570796326794897;
+F32_EPSILON :: 0.00001f;
+```
+
+## Description
+  Useful constants.
+*/
+PI          :: 3.141592653589793;
+TWO_PI      :: 6.283185307179587;
+HALF_PI     :: 1.570796326794897;
 F32_EPSILON :: 0.00001f;
 
+/*!
+# Limits
+## Declaration
+```c
+S8_MIN  : s8 : -128;
+S8_MAX  : s8 : 127;
+S16_MIN : s16 : -32768;
+S16_MAX : s16 : 32767;
+S32_MIN : s32 : -2147483648;
+S32_MAX : s32 : 2147483647;
+S64_MIN : s64 : -9223372036854775808;
+S64_MAX : s64 : 9223372036854775807;
+
+U8_MIN  : u8 : 0;
+U8_MAX  : u8 : 255;
+U16_MIN : u16 : 0;
+U16_MAX : u16 : 65535;
+U32_MIN : u32 : 0;
+U32_MAX : u32 : 4294967295;
+U64_MIN : u64 : 0;
+U64_MAX : u64 : 18446744073709551615;
+```
+
+## Description
+  Maximum and minimum value constants for various data types.
+*/
 S8_MIN  : s8 : -128;
 S8_MAX  : s8 : 127;
 S16_MIN : s16 : -32768;
@@ -50,7 +91,6 @@ U64_MAX : u64 : 18446744073709551615;
 /* Lib C functions */
 sin       :: fn (n: f64) f64 #extern;
 cos       :: fn (n: f64) f64 #extern;
-fabs      :: fn (n: f32) f32 #extern;
 log10     :: fn (n: f64) f64 #extern;
 pow       :: fn (base: f64, exponent: f64) f64 #extern;
 sqrt      :: fn (x: f64) f64 #extern;
@@ -67,6 +107,8 @@ floorf    :: fn (x: f32) f32 #extern;
 tanf      :: fn (x: f32) f32 #extern;
 atan2f    :: fn (y: f32, x: f32) f32 #extern;
 copysignf :: fn (x: f32, y: f32) f32 #extern;
+round     :: fn (n: f64) f64 #extern;
+ceil      :: fn (x: f64) f64 #extern;
 /* Lib C functions */
 
 //************************************************************************************************
@@ -77,11 +119,20 @@ v2 :: struct {
     y: f32
 };
 
+v2_one     :: {:v2: 1.f, 1.f};
+v2_zero    :: {:v2: 0};
+
 v3 :: struct {
     x: f32;
     y: f32;
     z: f32;
 };
+
+v3_right   :: {:v3: 1.f, 0.f, 0.f};
+v3_up      :: {:v3: 0.f, 1.f, 0.f};
+v3_forward :: {:v3: 0.f, 0.f, 1.f};
+v3_one     :: {:v3: 1.f, 1.f, 1.f};
+v3_zero    :: {:v3: 0};
 
 v4 :: struct {
     x: f32;
@@ -89,6 +140,15 @@ v4 :: struct {
     z: f32;
     w: f32;
 };
+
+v4_one  :: {:v4: 1.f, 1.f, 1.f, 1.f};
+v4_zero :: {:v4: 0};
+
+color_white  :: {:v4: 1.f, 1.f, 1.f, 1.f};
+color_black  :: {:v4: 0.f, 0.f, 0.f, 1.f};
+color_red    :: {:v4: 1.f, 0.f, 0.f, 1.f};
+color_green  :: {:v4: 0.f, 1.f, 0.f, 1.f};
+color_blue   :: {:v4: 0.f, 0.f, 1.f, 1.f};
 
 iv2 :: struct {
     x: s32;
@@ -113,9 +173,17 @@ mat4 :: [4][4]f32;
 // quaternion
 quat :: v4;
 
+quat_identity :: {:quat: 0.f, 0.f, 0.f, 1.f};
+
 //************************************************************************************************
 // Functions
 //************************************************************************************************
+
+f32_abs :: fn (v: f32) f32 #inline {
+    if v < 0.f { return -v; }
+    return v;
+}
+
 lerp :: fn (a: f32, b: f32, fraction: f32) f32 #inline {
     return a + fraction * (b - a);
 };
@@ -130,8 +198,8 @@ u32_min :: fn (a: u32, b: u32) u32 #inline {
     return b;
 };
 
-f32_compare :: fn (a: f32, b: f32) bool #inline {
-    return fabs(a - b) < F32_EPSILON;
+f32_compare :: fn (a: f32, b: f32, epsilon: f32) bool #inline {
+    return f32_abs(a - b) < epsilon;
 };
 
 degtorad :: fn (deg: f32) f32 #inline {
@@ -141,6 +209,64 @@ degtorad :: fn (deg: f32) f32 #inline {
 radtodeg :: fn (rad: f32) f32 #inline {
     return (180.f * rad) / cast(f32) PI;
 };
+
+v2_sub :: fn (a: v2, b: v2) v2 #inline {
+    a.x -= b.x;
+    a.y -= b.y;
+    return a;
+};
+
+v2_add :: fn (a: v2, b: v2) v2 #inline {
+    a.x += b.x;
+    a.y += b.y;
+    return a;
+};
+
+v2_mul :: fn (a: v2, b: v2) v2 #inline {
+    a.x *= b.x;
+    a.y *= b.y;
+    return a;
+};
+
+v2_sub_s :: fn (a: v2, v: f32) v2 #inline {
+    a.x -= v;
+    a.y -= v;
+    return a;
+};
+
+v2_mul_s :: fn (a: v2, v: f32) v2 #inline {
+    a.x *= v;
+    a.y *= v;
+    return a;
+};
+
+
+v2_add_s :: fn (a: v2, v: f32) v2 #inline {
+    a.x += v;
+    a.y += v;
+    return a;
+};
+
+v2_length :: fn (v: v2) f32 #inline {
+    return sqrtf(v.x * v.x + v.y * v.y);
+};
+
+v2_compare :: fn (a: v2, b: v2, epsilon: f32) bool #inline {
+    return f32_compare(a.x, b.x, epsilon) && f32_compare(a.y, b.y, epsilon);
+}
+
+v3_compare :: fn (a: v3, b: v3, epsilon: f32) bool {
+    return f32_compare(a.x, b.x, epsilon)
+        && f32_compare(a.y, b.y, epsilon)
+        && f32_compare(a.z, b.z, epsilon);
+}
+
+v4_compare :: fn (a: v4, b: v4, epsilon: f32) bool {
+    return f32_compare(a.x, b.x, epsilon)
+        && f32_compare(a.y, b.y, epsilon)
+        && f32_compare(a.z, b.z, epsilon)
+        && f32_compare(a.w, b.w, epsilon);
+}
 
 v3_length :: fn (v: v3) f32 #inline {
     return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
@@ -173,7 +299,7 @@ v3_normalize :: fn (a: v3) v3 #inline {
     out := {:v3: 0};
     l := v3_length(a);
 
-    if f32_compare(l, 0.f) { return out; }
+    if f32_compare(l, 0.f, F32_EPSILON) { return out; }
 
     out.x = a.x / l;
     out.y = a.y / l;
@@ -204,6 +330,23 @@ v3_add :: fn (a: v3, b: v3) v3 #inline
     return a;
 };
 
+v4_mul :: fn (a: v4, b: v4) v4 #inline {
+    a.x *= b.x;
+    a.y *= b.y;
+    a.z *= b.z;
+    a.w *= b.w;
+    return a;
+};
+
+v4_add :: fn (a: v4, b: v4) v4 #inline 
+{
+    a.x += b.x;
+    a.y += b.y;
+    a.z += b.z;
+    a.w += b.w;
+    return a;
+};
+
 v4_length :: fn (v: v4) f32 #inline {
     return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w);
 };
@@ -212,7 +355,7 @@ v4_normalize :: fn (v: v4) v4 #inline {
     out := {:v4: 0};
     l := v4_length(v);
 
-    if f32_compare(l, 0.f) { return out; }
+    if f32_compare(l, 0.f, F32_EPSILON) { return out; }
 
     out.x = v.x / l;
     out.y = v.y / l;
@@ -225,6 +368,15 @@ v4_normalize :: fn (v: v4) v4 #inline {
 v4_negate :: fn (v: v4) v4 #inline {
     return {:v4: -v.x, -v.y, -v.z, -v.w};
 };
+
+v4_mul_s :: fn (v: v4, s: f32) v4 #inline {
+    return {:v4: v.x * s, v.y * s, v.z * s, v.w * s};
+}
+
+v4_div_s :: fn (v: v4, s: f32) v4 #inline {
+    if s == 0.f { return {:v4: 0 }; }
+    return {:v4: v.x / s, v.y / s, v.z / s, v.w / s};
+}
 
 mat4_init :: fn (m00: f32, m10: f32, m20: f32, m30: f32,
                  m01: f32, m11: f32, m21: f32, m31: f32,
@@ -264,17 +416,37 @@ mat4_identity :: fn (out_mat: *mat4) #inline {
     );
 };
 
-mat4_perspective :: fn (fov_rad: f32, aspect: f32, near: f32, far: f32, out_mat: *mat4) #inline {
-    f := 1.f / tanf(fov_rad / 2.f);
+mat4_zero :: fn (out_mat: *mat4) #inline {
+    c_memset(auto out_mat, 0, sizeof(mat4));
+}
 
-    mat4_init(
-        f / aspect, 0.f, 0.f, 0.f,
-        0.f, f, 0.f, 0.f,
-        0.f, 0.f, (far + near) / (near - far), (2.f * far * near) / (near - far),
-        0.f, 0.f, -1.f, 0.f,
-        out_mat
-    );
+mat4_perspective :: fn (fov_rad: f32, aspect: f32, near: f32, far: f32, out_mat: *mat4) #inline {
+    mat4_zero(out_mat);
+    f1 :: 1.0f / tanf(fov_rad * 0.5f);
+    f2 :: 1.0f / (near - far);
+
+    (^out_mat)[0][0] = f1 / aspect;
+    (^out_mat)[1][1] = f1;
+    (^out_mat)[2][2] = (near + far) * f2;
+    (^out_mat)[2][3] =-1.0f;
+    (^out_mat)[3][2] = 2.0f * near * far * f2;
 };
+
+mat4_ortho :: fn (left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32, out_mat: *mat4) {
+  mat4_zero(out_mat);
+
+  rl :: 1.0f / (right - left);
+  tb :: 1.0f / (top   - bottom);
+  f  ::-1.0f / (far   - near);
+
+  (^out_mat)[0][0] = 2.0f * rl;
+  (^out_mat)[1][1] = 2.0f * tb;
+  (^out_mat)[2][2] = 2.0f * f;
+  (^out_mat)[3][0] =-(right + left)   * rl;
+  (^out_mat)[3][1] =-(top   + bottom) * tb;
+  (^out_mat)[3][2] = (far   + near)   * f;
+  (^out_mat)[3][3] = 1.0f;
+}
 
 mat4_look_at :: fn (eye: v3, target: v3, up: v3, out_mat: *mat4) #inline {
     z := v3_sub(target, eye);
@@ -295,59 +467,65 @@ mat4_look_at :: fn (eye: v3, target: v3, up: v3, out_mat: *mat4) #inline {
 };
 
 mat4_mul :: fn (a: *mat4, b: *mat4, out_mat: *mat4) {
-    loop i := 0; i < 4; i += 1 {
-        loop j := 0; j < 4; j += 1 {
-            sum := 0.f;
-            loop k := 0; k < 4; k += 1 {
-                sum += (^a)[k][j] * (^b)[i][k];
-            }
-            (^out_mat)[i][j] = sum;
-        }
-    }
+    a00 :: (^a)[0][0]; a01 :: (^a)[0][1]; a02 :: (^a)[0][2]; a03 :: (^a)[0][3];
+    a10 :: (^a)[1][0]; a11 :: (^a)[1][1]; a12 :: (^a)[1][2]; a13 :: (^a)[1][3];
+    a20 :: (^a)[2][0]; a21 :: (^a)[2][1]; a22 :: (^a)[2][2]; a23 :: (^a)[2][3];
+    a30 :: (^a)[3][0]; a31 :: (^a)[3][1]; a32 :: (^a)[3][2]; a33 :: (^a)[3][3];
+
+    b00 :: (^b)[0][0]; b01 :: (^b)[0][1]; b02 :: (^b)[0][2]; b03 :: (^b)[0][3];
+    b10 :: (^b)[1][0]; b11 :: (^b)[1][1]; b12 :: (^b)[1][2]; b13 :: (^b)[1][3];
+    b20 :: (^b)[2][0]; b21 :: (^b)[2][1]; b22 :: (^b)[2][2]; b23 :: (^b)[2][3];
+    b30 :: (^b)[3][0]; b31 :: (^b)[3][1]; b32 :: (^b)[3][2]; b33 :: (^b)[3][3];
+
+    (^out_mat)[0][0] = a00 * b00 + a10 * b01 + a20 * b02 + a30 * b03;
+    (^out_mat)[0][1] = a01 * b00 + a11 * b01 + a21 * b02 + a31 * b03;
+    (^out_mat)[0][2] = a02 * b00 + a12 * b01 + a22 * b02 + a32 * b03;
+    (^out_mat)[0][3] = a03 * b00 + a13 * b01 + a23 * b02 + a33 * b03;
+    (^out_mat)[1][0] = a00 * b10 + a10 * b11 + a20 * b12 + a30 * b13;
+    (^out_mat)[1][1] = a01 * b10 + a11 * b11 + a21 * b12 + a31 * b13;
+    (^out_mat)[1][2] = a02 * b10 + a12 * b11 + a22 * b12 + a32 * b13;
+    (^out_mat)[1][3] = a03 * b10 + a13 * b11 + a23 * b12 + a33 * b13;
+    (^out_mat)[2][0] = a00 * b20 + a10 * b21 + a20 * b22 + a30 * b23;
+    (^out_mat)[2][1] = a01 * b20 + a11 * b21 + a21 * b22 + a31 * b23;
+    (^out_mat)[2][2] = a02 * b20 + a12 * b21 + a22 * b22 + a32 * b23;
+    (^out_mat)[2][3] = a03 * b20 + a13 * b21 + a23 * b22 + a33 * b23;
+    (^out_mat)[3][0] = a00 * b30 + a10 * b31 + a20 * b32 + a30 * b33;
+    (^out_mat)[3][1] = a01 * b30 + a11 * b31 + a21 * b32 + a31 * b33;
+    (^out_mat)[3][2] = a02 * b30 + a12 * b31 + a22 * b32 + a32 * b33;
+    (^out_mat)[3][3] = a03 * b30 + a13 * b31 + a23 * b32 + a33 * b33;
 };
 
-mat4_inverse :: fn (src_mat: *mat4, out_mat: *mat4) {
-    t: [6]f32;
-    det: f32;
-    a := (^src_mat)[0][0]; b := (^src_mat)[0][1]; c := (^src_mat)[0][2]; d := (^src_mat)[0][3];
-    e := (^src_mat)[1][0]; f := (^src_mat)[1][1]; g := (^src_mat)[1][2]; h := (^src_mat)[1][3];
-    i := (^src_mat)[2][0]; j := (^src_mat)[2][1]; k := (^src_mat)[2][2]; l := (^src_mat)[2][3];
-    m := (^src_mat)[3][0]; n := (^src_mat)[3][1]; o := (^src_mat)[3][2]; p := (^src_mat)[3][3];
+mat4_determinant :: fn (mat: *mat4) f32 #inline {
+    return + (^mat)[0][0]*(((^mat)[1][1]*(((^mat)[2][2]*(^mat)[3][3])-((^mat)[3][2]*(^mat)[2][3]))) - ((^mat)[2][1]*(((^mat)[1][2]*(^mat)[3][3])-((^mat)[3][2]*(^mat)[1][3]))) + ((^mat)[3][1]*(((^mat)[1][2]*(^mat)[2][3])-((^mat)[2][2]*(^mat)[1][3]))))
+		   - (^mat)[1][0]*(((^mat)[0][1]*(((^mat)[2][2]*(^mat)[3][3])-((^mat)[3][2]*(^mat)[2][3]))) - ((^mat)[2][1]*(((^mat)[0][2]*(^mat)[3][3])-((^mat)[3][2]*(^mat)[0][3]))) + ((^mat)[3][1]*(((^mat)[0][2]*(^mat)[2][3])-((^mat)[2][2]*(^mat)[0][3]))))
+		   + (^mat)[2][0]*(((^mat)[0][1]*(((^mat)[1][2]*(^mat)[3][3])-((^mat)[3][2]*(^mat)[1][3]))) - ((^mat)[1][1]*(((^mat)[0][2]*(^mat)[3][3])-((^mat)[3][2]*(^mat)[0][3]))) + ((^mat)[3][1]*(((^mat)[0][2]*(^mat)[1][3])-((^mat)[1][2]*(^mat)[0][3]))))
+		   - (^mat)[3][0]*(((^mat)[0][1]*(((^mat)[1][2]*(^mat)[2][3])-((^mat)[2][2]*(^mat)[1][3]))) - ((^mat)[1][1]*(((^mat)[0][2]*(^mat)[2][3])-((^mat)[2][2]*(^mat)[0][3]))) + ((^mat)[2][1]*(((^mat)[0][2]*(^mat)[1][3])-((^mat)[1][2]*(^mat)[0][3]))));    
+}
 
-    t[0] = k * p - o * l; t[1] = j * p - n * l; t[2] = j * o - n * k;
-    t[3] = i * p - m * l; t[4] = i * o - m * k; t[5] = i * n - m * j;
+mat4_inverse :: fn (src_mat: *mat4, out_mat: *mat4) #inline {
+	det_inv :: 1.0f / mat4_determinant(src_mat);
 
-    (^out_mat)[0][0] =  f * t[0] - g * t[1] + h * t[2];
-    (^out_mat)[1][0] =-(e * t[0] - g * t[3] + h * t[4]);
-    (^out_mat)[2][0] =  e * t[1] - f * t[3] + h * t[5];
-    (^out_mat)[3][0] =-(e * t[2] - f * t[4] + g * t[5]);
+	(^out_mat)[0][0] = (((^src_mat)[1][1]*(((^src_mat)[2][2]*(^src_mat)[3][3])-((^src_mat)[3][2]*(^src_mat)[2][3]))) - ((^src_mat)[2][1]*(((^src_mat)[1][2]*(^src_mat)[3][3])-((^src_mat)[3][2]*(^src_mat)[1][3]))) + ((^src_mat)[3][1]*(((^src_mat)[1][2]*(^src_mat)[2][3])-((^src_mat)[2][2]*(^src_mat)[1][3]))))*det_inv;
+	(^out_mat)[0][1] = -1.0f*(((^src_mat)[0][1]*(((^src_mat)[2][2]*(^src_mat)[3][3])-((^src_mat)[3][2]*(^src_mat)[2][3]))) - ((^src_mat)[2][1]*(((^src_mat)[0][2]*(^src_mat)[3][3])-((^src_mat)[3][2]*(^src_mat)[0][3]))) + ((^src_mat)[3][1]*(((^src_mat)[0][2]*(^src_mat)[2][3])-((^src_mat)[2][2]*(^src_mat)[0][3]))))*det_inv;
+	(^out_mat)[0][2] = (((^src_mat)[0][1]*(((^src_mat)[1][2]*(^src_mat)[3][3])-((^src_mat)[3][2]*(^src_mat)[1][3]))) - ((^src_mat)[1][1]*(((^src_mat)[0][2]*(^src_mat)[3][3])-((^src_mat)[3][2]*(^src_mat)[0][3]))) + ((^src_mat)[3][1]*(((^src_mat)[0][2]*(^src_mat)[1][3])-((^src_mat)[1][2]*(^src_mat)[0][3]))))*det_inv;
+	(^out_mat)[0][3] = -1.0f*(((^src_mat)[0][1]*(((^src_mat)[1][2]*(^src_mat)[2][3])-((^src_mat)[2][2]*(^src_mat)[1][3]))) - ((^src_mat)[1][1]*(((^src_mat)[0][2]*(^src_mat)[2][3])-((^src_mat)[2][2]*(^src_mat)[0][3]))) + ((^src_mat)[2][1]*(((^src_mat)[0][2]*(^src_mat)[1][3])-((^src_mat)[1][2]*(^src_mat)[0][3]))))*det_inv;
 
-    (^out_mat)[0][1] =-(b * t[0] - c * t[1] + d * t[2]);
-    (^out_mat)[1][1] =  a * t[0] - c * t[3] + d * t[4];
-    (^out_mat)[2][1] =-(a * t[1] - b * t[3] + d * t[5]);
-    (^out_mat)[3][1] =  a * t[2] - b * t[4] + c * t[5];
+	(^out_mat)[1][0] = -1.0f*(((^src_mat)[1][0]*(((^src_mat)[2][2]*(^src_mat)[3][3])-((^src_mat)[3][2]*(^src_mat)[2][3]))) - ((^src_mat)[2][0]*(((^src_mat)[1][2]*(^src_mat)[3][3])-((^src_mat)[3][2]*(^src_mat)[1][3]))) + ((^src_mat)[3][0]*(((^src_mat)[1][2]*(^src_mat)[2][3])-((^src_mat)[2][2]*(^src_mat)[1][3]))))*det_inv;
+	(^out_mat)[1][1] = (((^src_mat)[0][0]*(((^src_mat)[2][2]*(^src_mat)[3][3])-((^src_mat)[3][2]*(^src_mat)[2][3]))) - ((^src_mat)[2][0]*(((^src_mat)[0][2]*(^src_mat)[3][3])-((^src_mat)[3][2]*(^src_mat)[0][3]))) + ((^src_mat)[3][0]*(((^src_mat)[0][2]*(^src_mat)[2][3])-((^src_mat)[2][2]*(^src_mat)[0][3]))))*det_inv;
+	(^out_mat)[1][2] = -1.0f*(((^src_mat)[0][0]*(((^src_mat)[1][2]*(^src_mat)[3][3])-((^src_mat)[3][2]*(^src_mat)[1][3]))) - ((^src_mat)[1][0]*(((^src_mat)[0][2]*(^src_mat)[3][3])-((^src_mat)[3][2]*(^src_mat)[0][3]))) + ((^src_mat)[3][0]*(((^src_mat)[0][2]*(^src_mat)[1][3])-((^src_mat)[1][2]*(^src_mat)[0][3]))))*det_inv;
+	(^out_mat)[1][3] = (((^src_mat)[0][0]*(((^src_mat)[1][2]*(^src_mat)[2][3])-((^src_mat)[2][2]*(^src_mat)[1][3]))) - ((^src_mat)[1][0]*(((^src_mat)[0][2]*(^src_mat)[2][3])-((^src_mat)[2][2]*(^src_mat)[0][3]))) + ((^src_mat)[2][0]*(((^src_mat)[0][2]*(^src_mat)[1][3])-((^src_mat)[1][2]*(^src_mat)[0][3]))))*det_inv;
 
-    t[0] = g * p - o * h; t[1] = f * p - n * h; t[2] = f * o - n * g;
-    t[3] = e * p - m * h; t[4] = e * o - m * g; t[5] = e * n - m * f;
+	(^out_mat)[2][0] = (((^src_mat)[1][0]*(((^src_mat)[2][1]*(^src_mat)[3][3])-((^src_mat)[3][1]*(^src_mat)[2][3]))) - ((^src_mat)[2][0]*(((^src_mat)[1][1]*(^src_mat)[3][3])-((^src_mat)[3][1]*(^src_mat)[1][3]))) + ((^src_mat)[3][0]*(((^src_mat)[1][1]*(^src_mat)[2][3])-((^src_mat)[2][1]*(^src_mat)[1][3]))))*det_inv;
+	(^out_mat)[2][1] = -1.0f*(((^src_mat)[0][0]*(((^src_mat)[2][1]*(^src_mat)[3][3])-((^src_mat)[3][1]*(^src_mat)[2][3]))) - ((^src_mat)[2][0]*(((^src_mat)[0][1]*(^src_mat)[3][3])-((^src_mat)[3][1]*(^src_mat)[0][3]))) + ((^src_mat)[3][0]*(((^src_mat)[0][1]*(^src_mat)[2][3])-((^src_mat)[2][1]*(^src_mat)[0][3]))))*det_inv;
+	(^out_mat)[2][2] = (((^src_mat)[0][0]*(((^src_mat)[1][1]*(^src_mat)[3][3])-((^src_mat)[3][1]*(^src_mat)[1][3]))) - ((^src_mat)[1][0]*(((^src_mat)[0][1]*(^src_mat)[3][3])-((^src_mat)[3][1]*(^src_mat)[0][3]))) + ((^src_mat)[3][0]*(((^src_mat)[0][1]*(^src_mat)[1][3])-((^src_mat)[1][1]*(^src_mat)[0][3]))))*det_inv;
+	(^out_mat)[2][3] = -1.0f*(((^src_mat)[0][0]*(((^src_mat)[1][1]*(^src_mat)[2][3])-((^src_mat)[2][1]*(^src_mat)[1][3]))) - ((^src_mat)[1][0]*(((^src_mat)[0][1]*(^src_mat)[2][3])-((^src_mat)[2][1]*(^src_mat)[0][3]))) + ((^src_mat)[2][0]*(((^src_mat)[0][1]*(^src_mat)[1][3])-((^src_mat)[1][1]*(^src_mat)[0][3]))))*det_inv;
 
-    (^out_mat)[0][2] =  b * t[0] - c * t[1] + d * t[2];
-    (^out_mat)[1][2] =-(a * t[0] - c * t[3] + d * t[4]);
-    (^out_mat)[2][2] =  a * t[1] - b * t[3] + d * t[5];
-    (^out_mat)[3][2] =-(a * t[2] - b * t[4] + c * t[5]);
-
-    t[0] = g * l - k * h; t[1] = f * l - j * h; t[2] = f * k - j * g;
-    t[3] = e * l - i * h; t[4] = e * k - i * g; t[5] = e * j - i * f;
-
-    (^out_mat)[0][3] =-(b * t[0] - c * t[1] + d * t[2]);
-    (^out_mat)[1][3] =  a * t[0] - c * t[3] + d * t[4];
-    (^out_mat)[2][3] =-(a * t[1] - b * t[3] + d * t[5]);
-    (^out_mat)[3][3] =  a * t[2] - b * t[4] + c * t[5];
-
-    det = 1.0f / (a * (^out_mat)[0][0] + b * (^out_mat)[1][0]
-                + c * (^out_mat)[2][0] + d * (^out_mat)[3][0]);
-
-    mat4_scale_s(det, out_mat);
-};
+	(^out_mat)[3][0] = -1.0f*(((^src_mat)[1][0]*(((^src_mat)[2][1]*(^src_mat)[3][2])-((^src_mat)[3][1]*(^src_mat)[2][2]))) - ((^src_mat)[2][0]*(((^src_mat)[1][1]*(^src_mat)[3][2])-((^src_mat)[3][1]*(^src_mat)[1][2]))) + ((^src_mat)[3][0]*(((^src_mat)[1][1]*(^src_mat)[2][2])-((^src_mat)[2][1]*(^src_mat)[1][2]))))*det_inv;
+	(^out_mat)[3][1] = (((^src_mat)[0][0]*(((^src_mat)[2][1]*(^src_mat)[3][2])-((^src_mat)[3][1]*(^src_mat)[2][2]))) - ((^src_mat)[2][0]*(((^src_mat)[0][1]*(^src_mat)[3][2])-((^src_mat)[3][1]*(^src_mat)[0][2]))) + ((^src_mat)[3][0]*(((^src_mat)[0][1]*(^src_mat)[2][2])-((^src_mat)[2][1]*(^src_mat)[0][2]))))*det_inv;
+	(^out_mat)[3][2] = -1.0f*(((^src_mat)[0][0]*(((^src_mat)[1][1]*(^src_mat)[3][2])-((^src_mat)[3][1]*(^src_mat)[1][2]))) - ((^src_mat)[1][0]*(((^src_mat)[0][1]*(^src_mat)[3][2])-((^src_mat)[3][1]*(^src_mat)[0][2]))) + ((^src_mat)[3][0]*(((^src_mat)[0][1]*(^src_mat)[1][2])-((^src_mat)[1][1]*(^src_mat)[0][2]))))*det_inv;
+	(^out_mat)[3][3] = (((^src_mat)[0][0]*(((^src_mat)[1][1]*(^src_mat)[2][2])-((^src_mat)[2][1]*(^src_mat)[1][2]))) - ((^src_mat)[1][0]*(((^src_mat)[0][1]*(^src_mat)[2][2])-((^src_mat)[2][1]*(^src_mat)[0][2]))) + ((^src_mat)[2][0]*(((^src_mat)[0][1]*(^src_mat)[1][2])-((^src_mat)[1][1]*(^src_mat)[0][2]))))*det_inv;
+	
+}
 
 mat4_scale_s :: fn (s: f32, out_mat: *mat4) {
     (^out_mat)[0][0] *= s; (^out_mat)[0][1] *= s; (^out_mat)[0][2] *= s; (^out_mat)[0][3] *= s;
@@ -363,48 +541,6 @@ mat4_mul_v4 :: fn (mat: *mat4, v: v4) v4 {
     out.z = (^mat)[0][2] * v.x + (^mat)[1][2] * v.y + (^mat)[2][2] * v.z + (^mat)[3][2] * v.w;
     out.w = (^mat)[0][3] * v.x + (^mat)[1][3] * v.y + (^mat)[2][3] * v.z + (^mat)[3][3] * v.w;
     return out;
-};
-
-// set out_mat to rotation matrix
-mat4_rotation_x :: fn (angle_rad: f32, out_mat: *mat4) #inline {
-    s := sinf(angle_rad);
-    c := cosf(angle_rad);
-
-    mat4_init(
-        1.f, 0.f, 0.f, 0.f,
-        0.f, c, -s, 0.f,
-        0.f, s, c, 0.f,
-        0.f, 0.f, 0.f, 1.f,
-        out_mat
-    );
-};
-
-// set out_mat to rotation matrix
-mat4_rotation_y :: fn (angle_rad: f32, out_mat: *mat4) #inline {
-    s := sinf(angle_rad);
-    c := cosf(angle_rad);
-
-    mat4_init(
-        c, 0.f, s, 0.f,
-        0.f, 1.f, 0.f, 0.f,
-        -s, 0.f, c, 0.f,
-        0.f, 0.f, 0.f, 1.f,
-        out_mat
-    );
-};
-
-// set out_mat to rotation matrix
-mat4_rotation_z :: fn (angle_rad: f32, out_mat: *mat4) #inline {
-    s := sinf(angle_rad);
-    c := cosf(angle_rad);
-
-    mat4_init(
-        c, -s, 0.f, 0.f,
-        s, c, 0.f, 0.f,
-        0.f, 0.f, 1.f, 0.f,
-        0.f, 0.f, 0.f, 1.f,
-        out_mat,
-    );
 };
 
 // set out_mat to translation matrix
@@ -478,50 +614,77 @@ mat4_get_quat :: fn (mat: *mat4) quat {
     return out;
 };
 
-quat_identity :: fn () quat #inline {
-    return {:quat: 
-        0.f,
-        0.f,
-        0.f,
-        1.f,
-    };
-};
-
 quat_normalize :: fn (q: quat) quat #inline {
     return v4_normalize(q);
 };
 
 quat_to_mat4 :: fn (q: quat, out_mat: *mat4) {
+    norm :: v4_length(q); 
+    s := 0.f;
+    if norm > 0.f { s = 2.f / norm; }
+
+    x :: q.x;
+    y :: q.y;
+    z :: q.z;
+    w :: q.w;
+
+    xx :: s * x * x;   xy :: s * x * y;   wx :: s * w * x;
+    yy :: s * y * y;   yz :: s * y * z;   wy :: s * w * y;
+    zz :: s * z * z;   xz :: s * x * z;   wz :: s * w * z;
+
+    (^out_mat)[0][0] = 1.0f - yy - zz;
+    (^out_mat)[1][1] = 1.0f - xx - zz;
+    (^out_mat)[2][2] = 1.0f - xx - yy;
+
+    (^out_mat)[0][1] = xy + wz;
+    (^out_mat)[1][2] = yz + wx;
+    (^out_mat)[2][0] = xz + wy;
+
+    (^out_mat)[1][0] = xy - wz;
+    (^out_mat)[2][1] = yz - wx;
+    (^out_mat)[0][2] = xz - wy;
+
+    (^out_mat)[0][3] = 0.0f;
+    (^out_mat)[1][3] = 0.0f;
+    (^out_mat)[2][3] = 0.0f;
+    (^out_mat)[3][0] = 0.0f;
+    (^out_mat)[3][1] = 0.0f;
+    (^out_mat)[3][2] = 0.0f;
+    (^out_mat)[3][3] = 1.0f;
+}
+
+quat_look :: fn (eye: v3, ori: quat, out_mat: *mat4) {
     mat4_identity(out_mat);
-    q = quat_normalize(q);
-    sqw := q.w*q.w;
-    sqx := q.x*q.x;
-    sqy := q.y*q.y;
-    sqz := q.z*q.z;
+    quat_to_mat4(ori, out_mat);
 
-    (^out_mat)[0][0] =  sqx - sqy - sqz + sqw;
-    (^out_mat)[1][1] = -sqx + sqy - sqz + sqw;
-    (^out_mat)[2][2] = -sqx - sqy + sqz + sqw;
+    v := {:v4: eye.x, eye.y, eye.z, 1.f};
+    v = mat4_mul_v4(out_mat, v);
 
-    tmp1 := q.x*q.y;
-    tmp2 := q.z*q.w;
-    (^out_mat)[1][0] = 2.f * (tmp1 + tmp2);
-    (^out_mat)[0][1] = 2.f * (tmp1 - tmp2);
+    (^out_mat)[3][0] = -v.x;
+    (^out_mat)[3][1] = -v.y;
+    (^out_mat)[3][2] = -v.z;
+}
 
-    tmp1 = q.x*q.z;
-    tmp2 = q.y*q.w;
-    (^out_mat)[2][0] = 2.f * (tmp1 - tmp2);
-    (^out_mat)[0][2] = 2.f * (tmp1 + tmp2);
-    tmp1 = q.y*q.z;
-    tmp2 = q.x*q.w;
-    (^out_mat)[2][1] = 2.f * (tmp1 + tmp2);
-    (^out_mat)[1][2] = 2.f * (tmp1 - tmp2);
-};
+quat_look_for :: fn (dir: v3, fwd: v3, up: v3) quat {
+    dot :: v3_dot(dir, fwd);
+    if f32_abs(dot + 1.0f)  < 0.000001f {
+        return {:quat: up.x, up.y, up.z, auto PI};
+    }
+
+    if f32_abs(dot - 1.0f) < 0.000001f {
+        return quat_identity;
+    }
+
+    angle :: acosf(dot);
+    axis := v3_cross(fwd, dir);
+    axis = v3_normalize(axis);
+    return quat_axis_angle(axis, angle);
+}
 
 quat_axis_angle :: fn (axis: v3, angle_rad: f32) quat {
-    a := angle_rad * 0.5f;
-    c := cosf(a);
-    s := sinf(a);
+    a :: angle_rad * 0.5f;
+    c :: cosf(a);
+    s :: sinf(a);
 
     axis = v3_normalize(axis);
 
@@ -533,48 +696,46 @@ quat_axis_angle :: fn (axis: v3, angle_rad: f32) quat {
     };
 };
 
-euler_to_quat :: fn (euler_rad: v3) quat {
-    cy := cosf(euler_rad.z * 0.5f);
-    sy := sinf(euler_rad.z * 0.5f);
-    cr := cosf(euler_rad.y * 0.5f);
-    sr := sinf(euler_rad.y * 0.5f);
-    cp := cosf(euler_rad.x * 0.5f);
-    sp := sinf(euler_rad.x * 0.5f);
+quat_imag :: fn (q: quat) v3 #inline {
+    return {:v3: q.x, q.y, q.z };
+}
 
+quat_real :: fn (q: quat) f32 #inline {
+    return q.w;
+}
+
+quat_mul :: fn (q1: quat, q2: quat) quat {
     return {:quat:
-        cy * sr * cp - sy * cr * sp,
-        cy * cr * sp + sy * sr * cp,
-        sy * cr * cp - cy * sr * sp,
-        cy * cr * cp + sy * sr * sp
+            q1.w * q2.x + q1.x * q2.w + q1.y * q2.z - q1.z * q2.y,
+            q1.w * q2.y - q1.x * q2.z + q1.y * q2.w + q1.z * q2.x,
+            q1.w * q2.z + q1.x * q2.y - q1.y * q2.x + q1.z * q2.w,
+            q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z,
     };
-};
+}
 
-quat_to_euler :: fn (q: quat) v3 {
-    e: v3;
-    // roll (x-axis rotation)
-    sinr := 2.0f * (q.w * q.x + q.y * q.z);
-    cosr := 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
-    e.x = atan2f(sinr, cosr);
+quat_rotate_v3 :: fn (q: quat, v: v3) v3 {
+    p :: quat_normalize(q);
+    u :: quat_imag(p);
+    s :: quat_real(p);
 
-    // pitch (y-axis rotation)
-    sinp := 2.0f * (q.w * q.y - q.z * q.x);
-    if fabs(sinp) >= 1.f {
-        e.y = copysignf(cast(f32) (PI * 0.5), sinp);
-    } else {
-        e.y = asinf(sinp);
-    }
+    v1 := v3_mul_s(u, 2.0f * v3_dot(u, v));
+    v2 := v3_mul_s(v, s * s - v3_dot(u, u));
+    v1 = v3_add(v1, v2);
+    v2 = v3_cross(u, v);
+    v2 = v3_mul_s(v2, 2.f * s);
+    return v3_add(v1, v2);
+}
 
-    // yaw (z-axis rotation)
-    siny := 2.0f * (q.w * q.z + q.x * q.y);
-    cosy := 1.0f - 2.0f * (q.y * q.y + q.z * q.z);
-    e.z = atan2f(siny, cosy);
-    return e;
-};
+quat_forward :: fn (q: quat) v3 {
+    x2 :: 2.0f * q.x;
+    y2 :: 2.0f * q.y;
+    z2 :: 2.0f * q.z;
+    x2w :: x2 * q.w;
+    y2w :: y2 * q.w;
+    x2x :: x2 * q.x;
+    z2x :: z2 * q.x;
+    y2y :: y2 * q.y;
+    z2y :: z2 * q.y;
+    return {:v3: z2x + y2w, z2y - x2w, 1.0f - (x2x + y2y)};
+}
 
-euler_rad_to_deg :: fn (euler_rad: v3) v3 {
-    return {:v3:
-        radtodeg(euler_rad.x),
-        radtodeg(euler_rad.y),
-        radtodeg(euler_rad.z)
-   };
-};

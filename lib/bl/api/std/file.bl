@@ -28,20 +28,96 @@
 
 #load "std/string.bl"
 
+/*!
+# File
+## Declaration
+```c
+File :: *u8; 
+```
+
+## Description
+  Opaque file handle. 
+ */
 File :: *u8; 
 
-FileOpenModes :: enum {
+/*!
+# FileOpenMode
+## Declaration
+```c
+FileOpenMode :: enum {
+    Read;
+    Write;
+    Binary
+};
+```
+
+## Description
+  Used as additional information during file opening.
+
+## Variants
+  * `Read`
+    Open file for reading.
+  * `Write`
+    Open file for writing.
+  * `Binary`
+    Open file as binary file.
+*/
+FileOpenMode :: enum {
     Read;
     Write;
     Binary
 };
 
+/*!
+# file_create
+## Declaration
+```c
+file_create :: fn (filename: string) File 
+```
+
+## Description
+  Create and open new file or open existing one. Call of file_close is required after opened file is
+  is no longer needed. This function can return `null` when file cannot be created or opened.
+
+## Arguments
+  * `filename`
+    File name on disk.
+
+## Result
+  File handle or null.
+*/
 file_create :: fn (filename: string) File {
     mode := "w+";
-    return fopen(filename.ptr, mode.ptr); 
+    return c_fopen(auto filename.ptr, auto mode.ptr); 
 };
 
-file_open :: fn (filename: string, modes: ...FileOpenModes) File {
+/*!
+# file_open
+## Declaration
+```c
+file_open :: fn (filename: string, modes: ...FileOpenMode) File
+```
+
+## Description
+  Open an existing file or create new one. Call of file_close is required after file is
+is no longer needed. This function can return `null` file handle when file is not found
+or cannot be open.
+
+## Arguments
+  * `filename`
+    File name on disk.
+  * `modes`
+    File open modes can be passed here in any order. 
+
+## Result
+  File handle or null.
+
+## Note
+  Signature of this procedure will be changed in the future to indicate possible errors
+back to caller (most likely it will take out_file as an parameter and return non-zero number
+on fail).
+*/
+file_open :: fn (filename: string, modes: ...FileOpenMode) File {
     mode := {:[4]u8: 0};
 
     if modes.len == 0 {
@@ -51,46 +127,168 @@ file_open :: fn (filename: string, modes: ...FileOpenModes) File {
         loop i := 0; i < modes.len; i += 1 {
             if i >= mode.len - 1 { break; }
             m := modes[i];
-            if m == FileOpenModes.Read { mode[i] = 'r'; }
-            if m == FileOpenModes.Write { mode[i] = 'w'; }
-            if m == FileOpenModes.Binary { mode[i] = 'b'; }
+            if m == FileOpenMode.Read { mode[i] = 'r'; }
+            if m == FileOpenMode.Write { mode[i] = 'w'; }
+            if m == FileOpenMode.Binary { mode[i] = 'b'; }
         }
     }
 
-    return fopen(filename.ptr, mode.ptr); 
+    return c_fopen(auto filename.ptr, auto mode.ptr); 
 };
 
+/*!
+# file_close
+## Declaration
+```c
+file_close :: fn (file: File)
+```
+
+## Description
+  Close openned file. 
+
+## Arguments
+  * `file`
+    File to be closed.
+*/
 file_close :: fn (file: File) {
-    fclose(file);
+    if file == null { return; }
+    c_fclose(file);
 };
 
+/*!
+# file_read_all
+## Declaration
+```c
+file_read_all :: fn (file: File) string
+```
+
+## Description
+  Load whole content of the file into the string buffer. Call string_delete when 
+string buffer is no longer needed. When file is empty, function will return an
+empty string.
+
+## Arguments
+  * `file`
+    File to be read.
+
+## Result
+  String containing file content or empty string.
+*/
 file_read_all :: fn (file: File) string {
-    fseek(file, 0, SEEK_END);
-    size := cast(usize) ftell(file);
+    c_fseek(file, 0, SEEK_END);
+    size := cast(usize) c_ftell(file);
     if size == 0 {
         return string_new();
     }
 
-    fseek(file, 0, SEEK_SET);
-    tmp := string_new_reserved(size * sizeof(u8));
-    read := fread(tmp.ptr, sizeof(u8), size, file);
-    tmp.len = auto read;
+    c_fseek(file, 0, SEEK_SET);
+    tmp := string_new_reserved((size + 1) * sizeof(u8));
+    read := c_fread(tmp.ptr, sizeof(u8), size, file);
+    tmp.len = auto read + 1;
+    tmp[tmp.len - 1] = '\0';
     return tmp;
 };
 
+/*!
+# file_get_size_bytes
+## Declaration
+```c
+file_get_size_bytes :: fn (file: File) usize
+```
+
+## Description
+  Determinates size of file content in bytes.
+
+## Arguments
+  * `file`
+    File handle.
+
+## Result
+  Size of file content in bytes.
+*/
 file_get_size_bytes :: fn (file: File) usize {
-    fseek(file, 0, SEEK_END);
-    size :: cast(usize) ftell(file);
-    fseek(file, 0, SEEK_SET);
+    c_fseek(file, 0, SEEK_END);
+    size :: cast(usize) c_ftell(file);
+    c_fseek(file, 0, SEEK_SET);
     return size;
 }
 
+/*!
+# file_real_all_binary
+## Declaration
+```c
+file_read_all_binary :: fn (file: File, dest: *u8, size: usize) usize
+```
+
+## Description
+  Read content of whole binary file into destination buffer and return count of written
+bytes. Destination buffer must be valid memory block of sufficient size.
+
+## Arguments
+  * `file`
+    File to be read.
+  * `dest`
+    Destination buffer.
+  * `size`
+    Count of bytes which will be copied from file into the buffer.
+
+## Result
+  Bytes written into buffer.
+*/
 file_read_all_binary :: fn (file: File, dest: *u8, size: usize) usize {
-    return fread(dest, sizeof(u8), size, file);
+    return c_fread(dest, sizeof(u8), size, file);
 }
 
+/*!
+# file_write_binary
+## Declaration
+```c
+file_write_binary :: fn (file: File, data: *u8, size: usize) usize
+```
+
+## Description
+  Write content of passed buffer into the binary file. File must be valid file handle
+openned for writing. Function returns zero written bytes if writing is not 
+possible.
+
+## Arguments
+  * `file`
+    File to be modified.
+  * `data`
+    Source data buffer.
+  * `size`
+    Count of bytes to be written.
+
+## Result:
+  Bytes written into file.
+*/
 file_write_binary :: fn (file: File, data: *u8, size: usize) usize {
-    return fwrite(data, sizeof(u8), size, file);
+    return c_fwrite(data, sizeof(u8), size, file);
+}
+
+/*!
+# file_write_string
+## Declaration
+```
+file_write_string :: fn (file: File, data: string) usize
+```
+
+## Description
+  Write content of passed string into the file. File must be valid file handle 
+openned for writing. Function returns zero written bytes if writing is not 
+possible.
+
+## Arguments
+  * `file`
+    File to be modified.
+  * `data`
+    String content.
+
+## Result:
+  Bytes written into file.
+*/
+file_write_string :: fn (file: File, data: string) usize {
+    return c_fwrite(data.ptr, sizeof(u8), auto data.len, file);
 }
 
 #private
