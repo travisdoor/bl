@@ -39,4 +39,10 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 
    Instructions are [here](http://biscuitlang.org)
 
+## Recent blogposts
+
+   * [Compiler internals](http://biscuitlang.org/blogpost-18-oct-2019.html)
+   * [Plans for the next version](http://biscuitlang.org/blogpost-9-oct-2019.html)
+
+
 
