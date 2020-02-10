@@ -53,7 +53,7 @@ GL_FASTEST                        : u32 : 0x1101;
 GL_NICEST                         : u32 : 0x1102;
 GL_TEXTURE_BINDING_3D             : u32 : 0x806A;
 GL_TEXTURE_3D                     : u32 : 0x806F;
-GL_PROXY_TEXTURE_3D               : u32 : 0x8070;
+GL_TEXTURE_2D_ARRAY               : u32 : 0x8C1A;
 GL_MAX_3D_TEXTURE_SIZE            : u32 : 0x8073;
 GL_LESS                           : u32 : 0x0201;
 GL_EQUAL                          : u32 : 0x0202;
@@ -108,6 +108,7 @@ GL_TEXTURE_MAG_FILTER : u32 : 0x2800;
 GL_TEXTURE_MIN_FILTER : u32 : 0x2801;
 GL_TEXTURE_WRAP_S     : u32 : 0x2802;
 GL_TEXTURE_WRAP_T     : u32 : 0x2803;
+GL_TEXTURE_WRAP_R     : u32 : 0x8072;
 
 GL_ZERO                : u32 : 0;
 GL_ONE                 : u32 : 1;
@@ -531,6 +532,7 @@ _Gl :: struct {
     CullFace: *fn (mode: GLenum);
     TexImage3D: *fn (target: GLenum, level: GLint, internalformat: GLint, width: GLsizei, height: GLsizei, depth: GLsizei, border: GLint, format: GLenum, t: GLenum, pixels: *GLvoid);
     TexSubImage3D: *fn (target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, zoffset: GLint, width: GLsizei, height: GLsizei, depth: GLsizei, format: GLenum, t: GLenum, pixels: *GLvoid);
+    TexStorage3D: *fn (target: GLenum, levels: GLsizei, internalformat: GLenum, width: GLsizei, height: GLsizei, depth: GLsizei);
 }
 
 gl := {:_Gl: 0};
