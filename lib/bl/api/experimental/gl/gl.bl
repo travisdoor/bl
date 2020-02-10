@@ -103,12 +103,18 @@ GL_LINEAR  : u32 : 0x2601;
 
 GL_CLAMP_TO_EDGE     : u32 : 0x812F;
 GL_CLAMP_TO_BORDER   : u32 : 0x812D;
+GL_REPEAT            : u32 : 0x2901;
 
 GL_TEXTURE_MAG_FILTER : u32 : 0x2800;
 GL_TEXTURE_MIN_FILTER : u32 : 0x2801;
 GL_TEXTURE_WRAP_S     : u32 : 0x2802;
 GL_TEXTURE_WRAP_T     : u32 : 0x2803;
 GL_TEXTURE_WRAP_R     : u32 : 0x8072;
+GL_TEXTURE_MIN_LOD    : u32 : 0x813A;
+GL_TEXTURE_MAX_LOD    : u32 : 0x813B;
+GL_TEXTURE_BASE_LEVEL : u32 : 0x813C;
+GL_TEXTURE_MAX_LEVEL  : u32 : 0x813D;
+GL_UNPACK_IMAGE_HEIGHT : u32 : 0x806E;
 
 GL_ZERO                : u32 : 0;
 GL_ONE                 : u32 : 1;
@@ -154,6 +160,8 @@ GL_BLUE            : u32 : 0x1905;
 GL_ALPHA           : u32 : 0x1906;
 GL_RGB             : u32 : 0x1907;
 GL_RGBA            : u32 : 0x1908;
+GL_RGB8            : u32 : 0x8051;
+GL_RGBA8           : u32 : 0x8058;
 GL_LUMINANCE       : u32 : 0x1909;
 GL_LUMINANCE_ALPHA : u32 : 0x190A;
 
@@ -533,6 +541,7 @@ _Gl :: struct {
     TexImage3D: *fn (target: GLenum, level: GLint, internalformat: GLint, width: GLsizei, height: GLsizei, depth: GLsizei, border: GLint, format: GLenum, t: GLenum, pixels: *GLvoid);
     TexSubImage3D: *fn (target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, zoffset: GLint, width: GLsizei, height: GLsizei, depth: GLsizei, format: GLenum, t: GLenum, pixels: *GLvoid);
     TexStorage3D: *fn (target: GLenum, levels: GLsizei, internalformat: GLenum, width: GLsizei, height: GLsizei, depth: GLsizei);
+    GenerateMipmap: *fn (target: GLenum);
 }
 
 gl := {:_Gl: 0};
