@@ -162,6 +162,7 @@ GL_RGB             : u32 : 0x1907;
 GL_RGBA            : u32 : 0x1908;
 GL_RGB8            : u32 : 0x8051;
 GL_RGBA8           : u32 : 0x8058;
+GL_RGBA4           : u32 : 0x8056;
 GL_LUMINANCE       : u32 : 0x1909;
 GL_LUMINANCE_ALPHA : u32 : 0x190A;
 
