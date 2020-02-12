@@ -163,6 +163,10 @@ GL_RGBA            : u32 : 0x1908;
 GL_RGB8            : u32 : 0x8051;
 GL_RGBA8           : u32 : 0x8058;
 GL_RGBA4           : u32 : 0x8056;
+GL_R8              : u32 : 0x8229;
+GL_RED_INTEGER     : u32 : 0x8D94;
+GL_RGB_INTEGER     : u32 : 0x8D98;
+GL_RGBA_INTEGER    : u32 : 0x8D99;
 GL_LUMINANCE       : u32 : 0x1909;
 GL_LUMINANCE_ALPHA : u32 : 0x190A;
 
@@ -449,6 +453,7 @@ GL_TEXTURE_HEIGHT                : u32 : 0x1001;
 GL_TEXTURE_INTERNAL_FORMAT       : u32 : 0x1003;
 GL_TEXTURE_BORDER_COLOR          : u32 : 0x1004;
 GL_TEXTURE_BORDER                : u32 : 0x1005;
+GL_TEXTURE_BUFFER                : u32 : 0x8C2A;
 
 // OpenGL extensions must be loaded in runtime on Windows so we can do the same even on Unix.
 _Gl :: struct {
@@ -543,6 +548,7 @@ _Gl :: struct {
     TexSubImage3D: *fn (target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, zoffset: GLint, width: GLsizei, height: GLsizei, depth: GLsizei, format: GLenum, t: GLenum, pixels: *GLvoid);
     TexStorage3D: *fn (target: GLenum, levels: GLsizei, internalformat: GLenum, width: GLsizei, height: GLsizei, depth: GLsizei);
     GenerateMipmap: *fn (target: GLenum);
+    TexBuffer: *fn (target: GLenum, internalformat: GLenum, buffer: GLuint);
 }
 
 gl := {:_Gl: 0};
