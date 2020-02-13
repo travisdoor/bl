@@ -330,6 +330,8 @@ sym_to_unop_kind(Sym sm)
 		return UNOP_POS;
 	case SYM_NOT:
 		return UNOP_NOT;
+	case SYM_BIT_NOT:
+		return UNOP_BIT_NOT;
 	default:
 		BL_ABORT("unknown unop operation!!!");
 	}

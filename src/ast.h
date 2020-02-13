@@ -87,6 +87,7 @@ typedef enum {
 	UNOP_NEG,
 	UNOP_POS,
 	UNOP_NOT,
+	UNOP_BIT_NOT,
 } UnopKind;
 
 struct AstLoad {

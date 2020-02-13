@@ -5780,7 +5780,7 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 AnalyzeResult
 analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
 {
-	MirMember *member = decl->member;
+	MirMember *           member    = decl->member;
 	TSmallArray_InstrPtr *tags      = decl->tags;
 	s32                   tag_group = 0;
 
@@ -6263,7 +6263,7 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 		error_types(lhs->value.type,
 		            rhs->value.type,
 		            binop->base.node,
-		            "invalid operation for %s type");
+		            "Invalid operation for %s type.");
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
@@ -6293,6 +6293,45 @@ analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 	BL_ASSERT(unop->expr && unop->expr->analyzed);
 	MirType *type = unop->expr->value.type;
 	BL_ASSERT(type);
+
+	switch (unop->op) {
+	case UNOP_NOT: {
+		if (type->kind != MIR_TYPE_BOOL) {
+			char tmp[256];
+			mir_type_to_str(tmp, 256, type, true);
+
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_INVALID_TYPE,
+			            unop->base.node->location,
+			            BUILDER_CUR_AFTER,
+			            "Invalid operation for type '%s'. This operation "
+			            "is valid for bool types only",
+			            tmp);
+			return ANALYZE_RESULT(FAILED, 0);
+		}
+		break;
+	}
+
+	case UNOP_BIT_NOT: {
+		if (type->kind != MIR_TYPE_INT) {
+			char tmp[256];
+			mir_type_to_str(tmp, 256, type, true);
+
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_INVALID_TYPE,
+			            unop->base.node->location,
+			            BUILDER_CUR_AFTER,
+			            "Invalid operation for type '%s'. This operation "
+			            "is valid for integer types only",
+			            tmp);
+			return ANALYZE_RESULT(FAILED, 0);
+		}
+		break;
+	}
+
+	default:
+		break;
+	}
 
 	unop->base.value.type        = type;
 	unop->base.value.is_comptime = unop->expr->value.is_comptime;

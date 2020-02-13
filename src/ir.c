@@ -1431,6 +1431,7 @@ emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unop->base);
 
 	switch (unop->op) {
+	case UNOP_BIT_NOT:
 	case UNOP_NOT: {
 		BL_ASSERT(!float_kind && "Invalid negation of floating point type.");
 		unop->base.llvm_value = LLVMBuildNot(cnt->llvm_builder, llvm_val, "");

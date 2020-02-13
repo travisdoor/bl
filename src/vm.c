@@ -711,6 +711,28 @@ calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, MirType *type)
 		case UNOP_NOT:                                                                     \
 			vm_write_as(T, dest, !vm_read_as(T, v));                                   \
 			break;                                                                     \
+		case UNOP_BIT_NOT:                                                                 \
+			vm_write_as(T, dest, ~vm_read_as(T, v));                                   \
+			break;                                                                     \
+		case UNOP_NEG:                                                                     \
+			vm_write_as(T, dest, vm_read_as(T, v) * -1);                               \
+			break;                                                                     \
+		case UNOP_POS:                                                                     \
+			vm_write_as(T, dest, vm_read_as(T, v));                                    \
+			break;                                                                     \
+		default:                                                                           \
+			BL_UNIMPLEMENTED;                                                          \
+		}                                                                                  \
+	} break;
+	/******************************************************************************************/
+
+	/******************************************************************************************/
+#define UNOP_CASE_REAL(T)                                                                          \
+	case sizeof(T): {                                                                          \
+		switch (op) {                                                                      \
+		case UNOP_NOT:                                                                     \
+			vm_write_as(T, dest, !vm_read_as(T, v));                                   \
+			break;                                                                     \
 		case UNOP_NEG:                                                                     \
 			vm_write_as(T, dest, vm_read_as(T, v) * -1);                               \
 			break;                                                                     \
@@ -752,8 +774,8 @@ calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, MirType *type)
 
 	case MIR_TYPE_REAL: {
 		switch (s) {
-			UNOP_CASE(f32);
-			UNOP_CASE(f64);
+			UNOP_CASE_REAL(f32);
+			UNOP_CASE_REAL(f64);
 		default:
 			BL_ABORT("invalid real data type");
 		}

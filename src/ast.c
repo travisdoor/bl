@@ -268,6 +268,8 @@ ast_unop_to_str(UnopKind op)
 		return "+";
 	case UNOP_NOT:
 		return "!";
+	case UNOP_BIT_NOT:
+		return "~";
 	default:
 		return "invalid";
 	}
