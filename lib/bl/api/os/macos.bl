@@ -168,6 +168,17 @@ _os_closedir :: fn (dir: *u8) s32 #inline {
     return _posix_closedir(dir);
 }
 
+_os_scandir :: fn (dir: *u8, out_name: *string) bool {
+    d :: _posix_readdir(dir);
+    if d == null { return false; }
+
+    tmp :: {:string: auto d.d_namlen, auto d.d_name.ptr};
+
+    string_clear(out_name);
+    string_append(out_name, tmp);
+    return true;
+}
+
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 #inline {
     return _posix_write(fd, buf, count);
 };
@@ -219,6 +230,17 @@ RTLD_NOW    :: 0x2;
 RTLD_LOCAL  :: 0x4;
 RTLD_GLOBAL :: 0x8;
 
+DARWIN_MAXPATHLEN :: 1024;
+
+dirent :: struct {
+	d_ino: c_ulonglong; 
+	d_seekoff: c_ulonglong;
+	d_reclen: c_ushort;
+	d_namlen: c_ushort;
+	d_type: c_uchar; 
+	d_name: [DARWIN_MAXPATHLEN]c_char;
+}
+
 _posix_raise        :: fn (sig: s32) s32 #extern "raise";
 _posix_write        :: fn (fd: s32, buf: *u8, count: usize) s32 #extern "write";
 _posix_usleep       :: fn (us: u32) s32 #extern "usleep";
@@ -229,4 +251,6 @@ _posix_dlclose      :: fn (handle: *u8) s32 #extern "dlclose";
 _posix_dlsym        :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
 _posix_opendir      :: fn (name: *u8) *u8 #extern "opendir";
 _posix_closedir     :: fn (dirp: *u8) s32 #extern "closedir";
+_posix_readdir      :: fn (dirp: *u8) *dirent #extern "readdir";
+
 _mach_absolute_time :: fn () u64 #extern "mach_absolute_time";

@@ -57,7 +57,7 @@ dir_open :: fn (name: string) Directory
 ## Result
   File directory handle or null.
 */
-dir_open :: fn (name: string) Directory {
+dir_open :: fn (name: string) Directory #inline {
     return _os_opendir(name);
 }
 
@@ -75,6 +75,12 @@ dir_close :: fn (dir: Directory)
   * `dir`
     Directory handle.
 */
-dir_close :: fn (dir: Directory) {
+dir_close :: fn (dir: Directory) #inline {
     _os_closedir(dir);
+}
+
+dir_scan :: fn (dir: Directory, out_name: *string) bool #inline {
+    if dir == null { return false; }
+    if out_name == null { panic("Invalid out_name parameter!"); }
+    return _os_scandir(dir, out_name);
 }
