@@ -66,12 +66,12 @@ OS_PATH_MAX :: 1024;
  */
 OSLibrary :: *u8;
 
-os_time_now_ms :: fn () f64 {
-    return cast(f64) mach_absolute_time() / 1000000.0;
+os_time_now_ms :: fn () f64 #inline {
+    return cast(f64) _mach_absolute_time() / 1000000.0;
 };
 
-os_sleep_ms :: fn (ms: f64) {
-    usleep(auto ms * 1000.0);
+os_sleep_ms :: fn (ms: f64) #inline {
+    _posix_usleep(auto ms * 1000.0);
 };
 
 /*
@@ -89,7 +89,7 @@ os_sleep_ms :: fn (ms: f64) {
  */
 os_get_real_path :: fn (filename: string) string {
     tmp :: {:[OS_PATH_MAX]u8: 0};
-    if realpath(filename.ptr, tmp.ptr) == null {
+    if _posix_realpath(filename.ptr, tmp.ptr) == null {
         return string_copy(filename);
     }
 
@@ -111,11 +111,11 @@ os_get_real_path :: fn (filename: string) string {
  * Result: 
  *   Library handle or null.
  */
-os_dlopen :: fn (lib_name: string) OSLibrary {
+os_dlopen :: fn (lib_name: string) OSLibrary #inline {
     clib_name: *u8 = null;
     if lib_name.len > 0 { clib_name = lib_name.ptr; }
 
-    return dlopen(clib_name, RTLD_LAZY); 
+    return _posix_dlopen(clib_name, RTLD_LAZY); 
 }
 
 /*
@@ -134,8 +134,8 @@ os_dlopen :: fn (lib_name: string) OSLibrary {
  * Result: 
  *   Procedure handle or null.
  */
-os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 {
-    return dlsym(lib, sym_name.ptr);
+os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 #inline {
+    return _posix_dlsym(lib, sym_name.ptr);
 }
 
 /*
@@ -149,23 +149,31 @@ os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 {
  *     Library handle. 
  *
  */
-os_dlclose :: fn (lib: OSLibrary) {
-    dlclose(lib);
+os_dlclose :: fn (lib: OSLibrary) #inline {
+    _posix_dlclose(lib);
 }
 
 // CLEANUP: This must be in gl.bl file not here, but we keep it
 // until static 'if' will be supported by compiler.
-_os_gl_get_proc :: fn (proc_name: string) *u8 {
+_os_gl_get_proc :: fn (proc_name: string) *u8 #inline {
     module :: os_dlopen("");
     return os_dlsym(module, proc_name);
 }
 
-__os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
-    return write(fd, buf, count);
+_os_opendir :: fn (name: string) *u8 #inline {
+    return _posix_opendir(name.ptr);
+}
+
+_os_closedir :: fn (dir: *u8) s32 #inline {
+    return _posix_closedir(dir);
+}
+
+__os_write :: fn (fd: s32, buf: *u8, count: usize) s32 #inline {
+    return _posix_write(fd, buf, count);
 };
 
 __os_abort :: fn () #compiler {
-    raise(SIGABRT);
+    _posix_raise(SIGABRT);
 }
 
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
@@ -194,7 +202,7 @@ __os_start :: fn (argc: s64, argv: **u8, env: **u8) #entry {
         _mem_free_default(auto command_line_arguments.ptr);
     }
 
-    _exit(out);
+    _posix_exit(out);
 }
 
 #private
@@ -211,12 +219,14 @@ RTLD_NOW    :: 0x2;
 RTLD_LOCAL  :: 0x4;
 RTLD_GLOBAL :: 0x8;
 
-raise              :: fn (sig: s32) s32 #extern;
-write              :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
-mach_absolute_time :: fn () u64 #extern;
-usleep             :: fn (us: u32) s32 #extern;
-realpath           :: fn (path: *u8, resolved_path: *u8) *u8 #extern;
-_exit              :: fn (v: s32) #extern;
-dlopen             :: fn (path: *u8, mode: s32) *u8 #extern;
-dlclose            :: fn (handle: *u8) s32 #extern;
-dlsym              :: fn (handle: *u8, symbol: *u8) *u8 #extern;
+_posix_raise        :: fn (sig: s32) s32 #extern "raise";
+_posix_write        :: fn (fd: s32, buf: *u8, count: usize) s32 #extern "write";
+_posix_usleep       :: fn (us: u32) s32 #extern "usleep";
+_posix_realpath     :: fn (path: *u8, resolved_path: *u8) *u8 #extern "realpath";
+_posix_exit         :: fn (v: s32) #extern "_exit";
+_posix_dlopen       :: fn (path: *u8, mode: s32) *u8 #extern "dlopen";
+_posix_dlclose      :: fn (handle: *u8) s32 #extern "dlclose";
+_posix_dlsym        :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
+_posix_opendir      :: fn (name: *u8) *u8 #extern "opendir";
+_posix_closedir     :: fn (dirp: *u8) s32 #extern "closedir";
+_mach_absolute_time :: fn () u64 #extern "mach_absolute_time";
