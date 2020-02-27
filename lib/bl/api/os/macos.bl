@@ -241,16 +241,17 @@ dirent :: struct {
 	d_name: [DARWIN_MAXPATHLEN]c_char;
 }
 
-_posix_raise        :: fn (sig: s32) s32 #extern "raise";
-_posix_write        :: fn (fd: s32, buf: *u8, count: usize) s32 #extern "write";
-_posix_usleep       :: fn (us: u32) s32 #extern "usleep";
-_posix_realpath     :: fn (path: *u8, resolved_path: *u8) *u8 #extern "realpath";
-_posix_exit         :: fn (v: s32) #extern "_exit";
-_posix_dlopen       :: fn (path: *u8, mode: s32) *u8 #extern "dlopen";
-_posix_dlclose      :: fn (handle: *u8) s32 #extern "dlclose";
-_posix_dlsym        :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
-_posix_opendir      :: fn (name: *u8) *u8 #extern "opendir";
-_posix_closedir     :: fn (dirp: *u8) s32 #extern "closedir";
-_posix_readdir      :: fn (dirp: *u8) *dirent #extern "readdir";
+_posix_raise     :: fn (sig: s32) s32 #extern "raise";
+_posix_write     :: fn (fd: s32, buf: *u8, count: usize) s32 #extern "write";
+_posix_usleep    :: fn (us: u32) s32 #extern "usleep";
+_posix_realpath  :: fn (path: *u8, resolved_path: *u8) *u8 #extern "realpath";
+_posix_exit      :: fn (v: s32) #extern "_exit";
+_posix_dlopen    :: fn (path: *u8, mode: s32) *u8 #extern "dlopen";
+_posix_dlclose   :: fn (handle: *u8) s32 #extern "dlclose";
+_posix_dlsym     :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
+_posix_opendir   :: fn (name: *u8) *u8 #extern "opendir";
+_posix_closedir  :: fn (dirp: *u8) s32 #extern "closedir";
+_posix_readdir   :: fn (dirp: *u8) *dirent #extern "readdir$INODE64";
+_posix_rewinddir :: fn (dirp: *u8) #extern "rewinddir$INODE64";
 
 _mach_absolute_time :: fn () u64 #extern "mach_absolute_time";
