@@ -150,6 +150,7 @@ color_black  :: {:v4: 0.f, 0.f, 0.f, 1.f};
 color_red    :: {:v4: 1.f, 0.f, 0.f, 1.f};
 color_green  :: {:v4: 0.f, 1.f, 0.f, 1.f};
 color_blue   :: {:v4: 0.f, 0.f, 1.f, 1.f};
+color_yellow :: {:v4: 1.f, 1.f, 0.f, 1.f};
 
 iv2 :: struct {
     x: s32;
