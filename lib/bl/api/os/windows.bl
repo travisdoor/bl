@@ -159,6 +159,21 @@ os_dlclose :: fn (lib: OSLibrary) {
     win32_FreeLibrary(lib);
 }
 
+_os_opendir :: fn (name: string) *u8 #inline {
+    unreachable;
+    return null;
+}
+
+_os_closedir :: fn (dir: *u8) s32 #inline {
+    unreachable;
+    return 0;
+}
+
+_os_scandir :: fn (dir: *u8, out_name: *string) bool {
+    unreachable;
+    return false;
+}
+
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return _write(fd, buf, count);
 };
