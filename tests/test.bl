@@ -2,11 +2,17 @@
 
 #load "std/print.bl"
 
-main :: fn () s32 {
-    i := 0.5;
-    j := !i;
 
-    print("%\n", i); 
-    print("%", j); 
+UI_ThemePanel :: struct {
+    color: v4;
+}
+
+_theme_panel_default :: {:UI_ThemePanel: UI_BG1_COLOR};
+
+UI_BG1_COLOR         :: {:v4: 0.15f, 0.15f, 0.15f, ALPHA};
+ALPHA :: 1.f;
+
+main :: fn () s32 {
+    foo := &_theme_panel_default;
     return 0;
 }

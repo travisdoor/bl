@@ -1393,12 +1393,13 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 	LLVMValueRef llvm_src = load->src->llvm_value;
 	BL_ASSERT(llvm_src);
 
-	/*
-	if (mir_is_instr_in_global_block(&load->base)) {
-	        load->base.llvm_value = LLVMGetInitializer(llvm_src);
+	if (mir_is_instr_in_global_block(&load->base) && mir_is_comptime(&load->base)) {
+	        //load->base.llvm_value = LLVMGetInitializer(llvm_src);
+		BL_ABORT("Incomplete!");
+	        load->base.llvm_value = llvm_src;
 	        return;
-	} else {
-	*/
+	}
+
 	load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
 
 	const unsigned alignment = (const unsigned)load->base.value.type->alignment;
