@@ -495,11 +495,6 @@ emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		MirVar *var = entry->data.var;
 		if (var->is_global) {
 			ref->base.llvm_value = emit_global_var_proto(cnt, var);
-
-			if (mir_is_instr_in_global_block(&ref->base) && var->value.is_comptime &&
-			    !is_initialized(var->llvm_value)) {
-				return STATE_POSTPONE;
-			}
 		} else {
 			ref->base.llvm_value = var->llvm_value;
 		}
@@ -1419,9 +1414,11 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 	BL_ASSERT(llvm_src);
 
 	if (mir_is_instr_in_global_block(&load->base) && mir_is_comptime(&load->base)) {
+		/* When we try to create comptime constant composition and load value, initializer
+		 * is needed. But loaded value could be in incomplete state during instruction emit,
+		 * we need to postpone this instruction in such case and try to resume later. */
 		if (!is_initialized(llvm_src)) {
-			BL_ABORT("Attempt to load uninitialized global (instruction [%llu])!",
-			         load->base.id);
+			return STATE_POSTPONE;
 		}
 
 		load->base.llvm_value = LLVMGetInitializer(llvm_src);
@@ -2507,6 +2504,7 @@ ir_run(Assembly *assembly)
 	cnt.debug_mode      = assembly->options.build_mode == BUILD_MODE_DEBUG;
 	thtbl_init(&cnt.gstring_cache, sizeof(LLVMValueRef), 1024);
 	tsa_init(&cnt.incomplete_rtti);
+	tlist_init(&cnt.incomplete_constant_queue, sizeof(MirInstr *));
 
 	MirInstr *ginstr;
 	TARRAY_FOREACH(MirInstr *, &assembly->MIR.global_instrs, ginstr)
@@ -2528,6 +2526,7 @@ ir_run(Assembly *assembly)
 
 	LLVMDisposeBuilder(cnt.llvm_builder);
 
+	tlist_terminate(&cnt.incomplete_constant_queue);
 	tsa_terminate(&cnt.incomplete_rtti);
 	thtbl_terminate(&cnt.gstring_cache);
 }

@@ -4,11 +4,11 @@
 
 
 UI_ThemePanel :: struct {
-    color: *v4;
+    color: v4;
 }
 
 THEME2       :: THEME;
-THEME        :: {:UI_ThemePanel: &UI_BG1_COLOR};
+THEME        :: {:UI_ThemePanel: UI_BG1_COLOR};
 UI_BG1_COLOR :: {:v4: 0.15f, 0.15f, 0.15f, 1.f};
 
 main :: fn () s32 {

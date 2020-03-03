@@ -1282,10 +1282,12 @@ push_into_gscope(Context *cnt, MirInstr *instr)
 	tarray_push(&cnt->assembly->MIR.global_instrs, instr);
 };
 
+static int push_count = 0;
 static inline void
 analyze_push_back(Context *cnt, MirInstr *instr)
 {
 	BL_ASSERT(instr);
+	++push_count;
 	tlist_push_back(&cnt->analyze.queue, instr);
 }
 
@@ -9559,6 +9561,7 @@ mir_run(Assembly *assembly)
 	if (assembly->options.run_tests) execute_test_cases(&cnt);
 	if (builder.options.run) execute_entry_fn(&cnt);
 
+	BL_LOG("Analyze queue push count: %i", push_count);
 SKIP:
 	tlist_terminate(&cnt.analyze.queue);
 	thtbl_terminate(&cnt.analyze.waiting);
