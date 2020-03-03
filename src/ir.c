@@ -2481,7 +2481,7 @@ emit_instr(Context *cnt, MirInstr *instr)
 	}
 
 	if (state != STATE_PASSED) {
-		BL_LOG("LLVM IR instruction [%llu] emit postpone!", instr->id);
+		BL_ABORT("LLVM IR instruction [%llu] emit postpone!", instr->id);
 	}
 
 	return state;
