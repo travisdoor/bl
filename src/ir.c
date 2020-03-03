@@ -1394,9 +1394,12 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 	BL_ASSERT(llvm_src);
 
 	if (mir_is_instr_in_global_block(&load->base) && mir_is_comptime(&load->base)) {
-	        //load->base.llvm_value = LLVMGetInitializer(llvm_src);
-		BL_ABORT("Incomplete!");
-	        load->base.llvm_value = llvm_src;
+		LLVMValueRef initializer = LLVMGetInitializer(llvm_src);
+                if (!initializer) {
+			BL_ABORT("Attempt to load uninitialized global (instruction [%llu])!", load->base.id);
+		}
+
+	        load->base.llvm_value = initializer;
 	        return;
 	}
 
