@@ -6693,9 +6693,9 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 	MirInstrFnProto *fn_proto = (MirInstrFnProto *)fn->prototype;
 	BL_ASSERT(fn_proto);
 
-	block->base.is_unrechable = block->base.ref_count == 0;
-	if (!fn->first_unrechable_loc && block->base.is_unrechable && block->entry_instr &&
-	    block->entry_instr->node) {
+	block->base.is_unreachable = block->base.ref_count == 0;
+	if (!fn->first_unrechable_loc && block->base.is_unreachable && block->entry_instr &&
+            block->entry_instr->node) {
 		/* Report unrechable code if there is one only once inside funcition body. */
 		fn->first_unrechable_loc = block->entry_instr->node->location;
 
@@ -6713,7 +6713,7 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 		if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
 			set_current_block(cnt, block);
 			append_instr_ret(cnt, NULL, NULL);
-		} else if (block->base.is_unrechable) {
+		} else if (block->base.is_unreachable) {
 			set_current_block(cnt, block);
 			append_instr_br(cnt, NULL, block);
 		} else {

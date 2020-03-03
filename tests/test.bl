@@ -4,15 +4,54 @@
 
 
 UI_ThemePanel :: struct {
-    color: v4;
+    color: *v4;
 }
 
-_theme_panel_default :: {:UI_ThemePanel: UI_BG1_COLOR};
-
-UI_BG1_COLOR         :: {:v4: 0.15f, 0.15f, 0.15f, ALPHA};
-ALPHA :: 1.f;
+THEME2       :: THEME;
+THEME        :: {:UI_ThemePanel: &UI_BG1_COLOR};
+UI_BG1_COLOR :: {:v4: 0.15f, 0.15f, 0.15f, 1.f};
 
 main :: fn () s32 {
-    foo := &_theme_panel_default;
+    foo := &THEME;
+    print("%\n", ^foo.color);
     return 0;
 }
+
+/*
+1) Pregenerate IR constants in MIR pass
+---------------------------------------
+Generate LLVM constant and reduce MIR instruction tree when:
+- value type is fundamental type
+  foo :: 10;  // Const int
+  bar :: foo; // Copy of foo
+- value type is composit type 
+  v :: {:v2: 10, 20}; // Const as composition of const 10 and 20
+  v2 :: v;            // Copy of v
+
+  !!!!!! CANNOT !!!!!!
+  Foo :: struct { a: s32; b: *s32; } 
+  i :: 10;               // Const int
+  foo :: {:Foo: 20, &i}; // Cannot generate
+  bar :: foo;            // Error here (foo can be uninitialized)
+  !!!!!! CANNOT !!!!!!
+
+2) Postpone constant generation until all composition constant will be resolved.
+--------------------------------------------------------------------------------
+- We must have possiblitiy to pause and resume IR generation
+- Problem with current block
+- More complicated
+- Could be slow due to multiple instruction visit and queue allocations.
+- Constant generation will not be linear.
+
+3) Generate directly initialization when we find unresolved constant.
+---------------------------------------------------------------------
+- Stack nesting
+- Checking already resolved initializer blocks
+- Could be slow due to stack nesting
+
+4) Define contant generation priority
+-------------------------------------
+- Clean
+- Slow due constant sorting.
+- We must check dependencies.
+*/
