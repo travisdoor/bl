@@ -69,7 +69,7 @@ typedef struct {
 
 	THashTable                 gstring_cache;
 	TSmallArray_RTTIIncomplete incomplete_rtti;
-	TList                      incomplete_constant_queue;
+	TList                      incomplete_queue;
 
 	struct BuiltinTypes *builtin_types;
 	bool                 debug_mode;
@@ -236,6 +236,30 @@ emit_instr_toany(Context *cnt, MirInstrToAny *toany);
 
 static void
 emit_allocas(Context *cnt, MirFn *fn);
+
+static void
+emit_incomplete(Context *cnt);
+
+static inline MirInstr *
+push_back_incomplete(Context *cnt, MirInstr *instr)
+{
+	BL_ASSERT(instr && "Attempt to push null instruction into incomplete queue!");
+	tlist_push_back(&cnt->incomplete_queue, instr);
+	return instr;
+}
+
+static inline MirInstr *
+pop_front_incomplete(Context *cnt)
+{
+	MirInstr *instr = NULL;
+	TList *   queue = &cnt->incomplete_queue;
+	if (!tlist_empty(queue)) {
+		instr = tlist_front(MirInstr *, queue);
+		tlist_pop_front(queue);
+	}
+
+	return instr;
+}
 
 static inline LLVMValueRef
 emit_fn_proto(Context *cnt, MirFn *fn)
@@ -2303,12 +2327,44 @@ emit_instr_block(Context *cnt, MirInstrBlock *block)
 
 	MirInstr *instr = block->entry_instr;
 	while (instr) {
-		emit_instr(cnt, instr);
+		const State s = emit_instr(cnt, instr);
+		if (s == STATE_POSTPONE) {
+			push_back_incomplete(cnt, instr);
+			goto SKIP;
+		}
+
 		instr = instr->next;
 	}
 
+SKIP:
 	LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_prev_block);
 	return STATE_PASSED;
+}
+
+void
+emit_incomplete(Context *cnt)
+{
+	MirInstr *        instr   = pop_front_incomplete(cnt);
+	LLVMBasicBlockRef prev_bb = LLVMGetInsertBlock(cnt->llvm_builder);
+
+	while (instr) {
+		LLVMBasicBlockRef bb = LLVMValueAsBasicBlock(instr->owner_block->base.llvm_value);
+		LLVMPositionBuilderAtEnd(cnt->llvm_builder, bb);
+
+		const State s = emit_instr(cnt, instr);
+		if (s == STATE_POSTPONE) {
+			push_back_incomplete(cnt, instr);
+		}
+
+		if (s != STATE_POSTPONE && instr->next) {
+			instr = instr->next;
+		} else {
+			instr = NULL;
+			instr = pop_front_incomplete(cnt);
+		}
+	}
+
+	LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_bb);
 }
 
 void
@@ -2364,7 +2420,11 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		MirInstr *block = (MirInstr *)fn->first_block;
 
 		while (block) {
-			if (!block->is_unreachable) emit_instr(cnt, block);
+			if (!block->is_unreachable) {
+				const State s = emit_instr(cnt, block);
+				if (s != STATE_PASSED)
+					BL_ABORT("Postpone for whole block is not supported!");
+			}
 			block = block->next;
 		}
 	}
@@ -2480,10 +2540,6 @@ emit_instr(Context *cnt, MirInstr *instr)
 		break;
 	}
 
-	if (state != STATE_PASSED) {
-		BL_ABORT("LLVM IR instruction [%llu] emit postpone!", instr->id);
-	}
-
 	return state;
 }
 
@@ -2504,13 +2560,15 @@ ir_run(Assembly *assembly)
 	cnt.debug_mode      = assembly->options.build_mode == BUILD_MODE_DEBUG;
 	thtbl_init(&cnt.gstring_cache, sizeof(LLVMValueRef), 1024);
 	tsa_init(&cnt.incomplete_rtti);
-	tlist_init(&cnt.incomplete_constant_queue, sizeof(MirInstr *));
+	tlist_init(&cnt.incomplete_queue, sizeof(MirInstr *));
 
 	MirInstr *ginstr;
 	TARRAY_FOREACH(MirInstr *, &assembly->MIR.global_instrs, ginstr)
 	{
 		emit_instr(&cnt, ginstr);
 	}
+
+	emit_incomplete(&cnt);
 
 	if (cnt.debug_mode) {
 		llvm_di_builder_finalize(cnt.llvm_di_builder);
@@ -2526,7 +2584,7 @@ ir_run(Assembly *assembly)
 
 	LLVMDisposeBuilder(cnt.llvm_builder);
 
-	tlist_terminate(&cnt.incomplete_constant_queue);
+	tlist_terminate(&cnt.incomplete_queue);
 	tsa_terminate(&cnt.incomplete_rtti);
 	thtbl_terminate(&cnt.gstring_cache);
 }
