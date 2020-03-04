@@ -1282,10 +1282,12 @@ push_into_gscope(Context *cnt, MirInstr *instr)
 	tarray_push(&cnt->assembly->MIR.global_instrs, instr);
 };
 
+static int push_count = 0;
 static inline void
 analyze_push_back(Context *cnt, MirInstr *instr)
 {
 	BL_ASSERT(instr);
+	++push_count;
 	tlist_push_back(&cnt->analyze.queue, instr);
 }
 
@@ -6693,9 +6695,9 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 	MirInstrFnProto *fn_proto = (MirInstrFnProto *)fn->prototype;
 	BL_ASSERT(fn_proto);
 
-	block->base.is_unrechable = block->base.ref_count == 0;
-	if (!fn->first_unrechable_loc && block->base.is_unrechable && block->entry_instr &&
-	    block->entry_instr->node) {
+	block->base.is_unreachable = block->base.ref_count == 0;
+	if (!fn->first_unrechable_loc && block->base.is_unreachable && block->entry_instr &&
+            block->entry_instr->node) {
 		/* Report unrechable code if there is one only once inside funcition body. */
 		fn->first_unrechable_loc = block->entry_instr->node->location;
 
@@ -6713,7 +6715,7 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 		if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
 			set_current_block(cnt, block);
 			append_instr_ret(cnt, NULL, NULL);
-		} else if (block->base.is_unrechable) {
+		} else if (block->base.is_unreachable) {
 			set_current_block(cnt, block);
 			append_instr_br(cnt, NULL, block);
 		} else {
@@ -9559,6 +9561,7 @@ mir_run(Assembly *assembly)
 	if (assembly->options.run_tests) execute_test_cases(&cnt);
 	if (builder.options.run) execute_entry_fn(&cnt);
 
+	BL_LOG("Analyze queue push count: %i", push_count);
 SKIP:
 	tlist_terminate(&cnt.analyze.queue);
 	thtbl_terminate(&cnt.analyze.waiting);

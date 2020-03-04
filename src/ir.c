@@ -48,6 +48,8 @@ typedef struct {
 	MirType *    type;
 } RTTIIncomplete;
 
+typedef enum { STATE_PASSED, STATE_POSTPONE } State;
+
 TSMALL_ARRAY_TYPE(LLVMValue, LLVMValueRef, 32);
 TSMALL_ARRAY_TYPE(LLVMValue64, LLVMValueRef, 64);
 TSMALL_ARRAY_TYPE(LLVMType, LLVMTypeRef, 32);
@@ -67,6 +69,7 @@ typedef struct {
 
 	THashTable                 gstring_cache;
 	TSmallArray_RTTIIncomplete incomplete_rtti;
+	TList                      incomplete_queue;
 
 	struct BuiltinTypes *builtin_types;
 	bool                 debug_mode;
@@ -141,7 +144,7 @@ emit_DI_fn(Context *cnt, MirFn *fn);
 static void
 emit_DI_var(Context *cnt, MirVar *var);
 
-static void
+static State
 emit_instr(Context *cnt, MirInstr *instr);
 
 /*
@@ -150,89 +153,113 @@ emit_instr(Context *cnt, MirInstr *instr);
 static LLVMValueRef
 emit_const_string(Context *cnt, const char *str, usize len);
 
-static void
+static State
 emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp);
 
-static void
+static State
 emit_instr_binop(Context *cnt, MirInstrBinop *binop);
 
-static void
+static State
 emit_instr_phi(Context *cnt, MirInstrPhi *phi);
 
-static void
+static State
 emit_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
 
-static void
+static State
 emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
 
-static void
+static State
 emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 
-static void
+static State
 emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref);
 
-static void
+static State
 emit_instr_cast(Context *cnt, MirInstrCast *cast);
 
-static void
+static State
 emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
 
-static void
+static State
 emit_instr_unop(Context *cnt, MirInstrUnop *unop);
 
-static void
+static State
 emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
 
-static void
+static State
 emit_instr_store(Context *cnt, MirInstrStore *store);
 
-static void
+static State
 emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
 
-static void
+static State
 emit_instr_block(Context *cnt, MirInstrBlock *block);
 
-static void
+static State
 emit_instr_br(Context *cnt, MirInstrBr *br);
 
-static void
+static State
 emit_instr_switch(Context *cnt, MirInstrSwitch *sw);
 
-static void
+static State
 emit_instr_const(Context *cnt, MirInstrConst *c);
 
-static void
+static State
 emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg);
 
-static void
+static State
 emit_instr_cond_br(Context *cnt, MirInstrCondBr *br);
 
-static void
+static State
 emit_instr_ret(Context *cnt, MirInstrRet *ret);
 
-static void
+static State
 emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl);
 
-static void
+static State
 emit_instr_load(Context *cnt, MirInstrLoad *load);
 
-static void
+static State
 emit_instr_call(Context *cnt, MirInstrCall *call);
 
-static void
+static State
 emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
 
-static void
+static State
 emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
 
-static void
+static State
 emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
 
-static void
+static State
 emit_instr_toany(Context *cnt, MirInstrToAny *toany);
 
 static void
 emit_allocas(Context *cnt, MirFn *fn);
+
+static void
+emit_incomplete(Context *cnt);
+
+static inline MirInstr *
+push_back_incomplete(Context *cnt, MirInstr *instr)
+{
+	BL_ASSERT(instr && "Attempt to push null instruction into incomplete queue!");
+	tlist_push_back(&cnt->incomplete_queue, instr);
+	return instr;
+}
+
+static inline MirInstr *
+pop_front_incomplete(Context *cnt)
+{
+	MirInstr *instr = NULL;
+	TList *   queue = &cnt->incomplete_queue;
+	if (!tlist_empty(queue)) {
+		instr = tlist_front(MirInstr *, queue);
+		tlist_pop_front(queue);
+	}
+
+	return instr;
+}
 
 static inline LLVMValueRef
 emit_fn_proto(Context *cnt, MirFn *fn)
@@ -293,6 +320,12 @@ emit_fn_proto(Context *cnt, MirFn *fn)
 	}
 
 	return fn->llvm_value;
+}
+
+static inline bool
+is_initialized(LLVMValueRef constant)
+{
+	return constant && LLVMGetInitializer(constant);
 }
 
 static inline LLVMValueRef
@@ -475,7 +508,7 @@ emit_const_string(Context *cnt, const char *str, usize len)
 	return llvm_result;
 }
 
-void
+State
 emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
 	ScopeEntry *entry = ref->scope_entry;
@@ -484,10 +517,11 @@ emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	switch (entry->kind) {
 	case SCOPE_ENTRY_VAR: {
 		MirVar *var = entry->data.var;
-		if (var->is_global)
+		if (var->is_global) {
 			ref->base.llvm_value = emit_global_var_proto(cnt, var);
-		else
+		} else {
 			ref->base.llvm_value = var->llvm_value;
+		}
 		break;
 	}
 	case SCOPE_ENTRY_FN: {
@@ -499,9 +533,10 @@ emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	}
 
 	BL_ASSERT(ref->base.llvm_value);
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref)
 {
 	BL_ASSERT(ref->ref && ref->ref->kind == MIR_INSTR_DECL_VAR);
@@ -511,9 +546,10 @@ emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref)
 
 	ref->base.llvm_value = var->llvm_value;
 	BL_ASSERT(ref->base.llvm_value);
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 {
 	LLVMValueRef llvm_phi =
@@ -544,9 +580,10 @@ emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 	tsa_terminate(&llvm_ib);
 
 	phi->base.llvm_value = llvm_phi;
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
 	MirFn *abort_fn = unr->abort_fn;
@@ -554,6 +591,7 @@ emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 	if (!abort_fn->llvm_value) emit_fn_proto(cnt, abort_fn);
 	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unr->base);
 	LLVMBuildCall(cnt->llvm_builder, abort_fn->llvm_value, NULL, 0, "");
+	return STATE_PASSED;
 }
 
 LLVMValueRef
@@ -1157,14 +1195,15 @@ SKIP:
 	return llvm_rtti_var;
 }
 
-void
+State
 emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
 	BL_ASSERT(type_info->rtti_type);
 	type_info->base.llvm_value = rtti_emit(cnt, type_info->rtti_type);
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_cast(Context *cnt, MirInstrCast *cast)
 {
 	LLVMValueRef llvm_src       = cast->expr->llvm_value;
@@ -1175,7 +1214,7 @@ emit_instr_cast(Context *cnt, MirInstrCast *cast)
 	switch (cast->op) {
 	case MIR_CAST_NONE:
 		cast->base.llvm_value = llvm_src;
-		return;
+		return STATE_PASSED;
 	case MIR_CAST_BITCAST:
 		llvm_op = LLVMBitCast;
 		break;
@@ -1230,9 +1269,10 @@ emit_instr_cast(Context *cnt, MirInstrCast *cast)
 
 	cast->base.llvm_value =
 	    LLVMBuildCast(cnt->llvm_builder, llvm_op, llvm_src, llvm_dest_type, "");
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 {
 	if (addrof->src->kind == MIR_INSTR_FN_PROTO) {
@@ -1243,9 +1283,10 @@ emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 		addrof->base.llvm_value = addrof->src->llvm_value;
 	}
 	BL_ASSERT(addrof->base.llvm_value);
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg_instr)
 {
 	BL_ASSERT(dest);
@@ -1310,9 +1351,10 @@ emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg_instr)
 	}
 
 	arg_instr->base.llvm_value = NULL;
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
 	MirType *    arr_type     = mir_deref_type(elem_ptr->arr_ptr->value.type);
@@ -1351,9 +1393,10 @@ emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 	default:
 		BL_ABORT("Invalid elem ptr target type!");
 	}
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 {
 	LLVMValueRef llvm_target_ptr = member_ptr->target_ptr->llvm_value;
@@ -1384,28 +1427,36 @@ emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			    LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 1, "");
 		}
 	}
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_load(Context *cnt, MirInstrLoad *load)
 {
 	BL_ASSERT(load->base.value.type && "invalid type of load instruction");
 	LLVMValueRef llvm_src = load->src->llvm_value;
 	BL_ASSERT(llvm_src);
 
-	/*
-	if (mir_is_instr_in_global_block(&load->base)) {
-	        load->base.llvm_value = LLVMGetInitializer(llvm_src);
-	        return;
-	} else {
-	*/
+	if (mir_is_instr_in_global_block(&load->base) && mir_is_comptime(&load->base)) {
+		/* When we try to create comptime constant composition and load value, initializer
+		 * is needed. But loaded value could be in incomplete state during instruction emit,
+		 * we need to postpone this instruction in such case and try to resume later. */
+		if (!is_initialized(llvm_src)) {
+			return STATE_POSTPONE;
+		}
+
+		load->base.llvm_value = LLVMGetInitializer(llvm_src);
+		return STATE_PASSED;
+	}
+
 	load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
 
 	const unsigned alignment = (const unsigned)load->base.value.type->alignment;
 	LLVMSetAlignment(load->base.llvm_value, alignment);
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_store(Context *cnt, MirInstrStore *store)
 {
 	LLVMValueRef   val       = store->src->llvm_value;
@@ -1417,9 +1468,10 @@ emit_instr_store(Context *cnt, MirInstrStore *store)
 
 	store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
 	LLVMSetAlignment(store->base.llvm_value, alignment);
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
 	LLVMValueRef llvm_val = unop->expr->llvm_value;
@@ -1454,9 +1506,10 @@ emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 	default:
 		BL_UNIMPLEMENTED;
 	}
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 {
 	MirVar *tmp_var = _tmp_var ? _tmp_var : cmp->tmp_var;
@@ -1594,9 +1647,10 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 
 		cmp->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, "");
 	}
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
 	LLVMValueRef lhs = binop->lhs->llvm_value;
@@ -1740,9 +1794,10 @@ emit_instr_binop(Context *cnt, MirInstrBinop *binop)
 	default:
 		BL_ABORT("Invalid binary operation.")
 	}
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_call(Context *cnt, MirInstrCall *call)
 {
 	/******************************************************************************************/
@@ -1923,33 +1978,35 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	tsa_terminate(&llvm_callee_arg_types);
 	tsa_terminate(&llvm_args);
 	call->base.llvm_value = llvm_result ? llvm_result : llvm_call;
+	return STATE_PASSED;
 #undef INSERT_TMP
 }
 
-void
+State
 emit_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
 {
 	MirVar *var = ((MirInstrDeclVar *)si->dest)->var;
 #if LLVM_EXCLUDE_UNUSED_SYM
-	if (var->ref_count == 0) return;
+	if (var->ref_count == 0) return STATE_PASSED;
 #endif
 	BL_ASSERT(var->llvm_value);
 	BL_ASSERT(si->src->llvm_value);
 
 	LLVMSetInitializer(var->llvm_value, si->src->llvm_value);
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
 	MirVar *var = decl->var;
 	BL_ASSERT(var);
 #if LLVM_EXCLUDE_UNUSED_SYM
-	if (var->ref_count == 0) return;
+	if (var->ref_count == 0) return STATE_PASSED;
 #endif
 
 	/* skip when we should not generate LLVM representation */
-	if (var->value.type->kind == MIR_TYPE_TYPE) return;
+	if (var->value.type->kind == MIR_TYPE_TYPE) return STATE_PASSED;
 
 	if (var->is_global) {
 		emit_global_var_proto(cnt, var);
@@ -1981,9 +2038,10 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 			}
 		}
 	}
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_ret(Context *cnt, MirInstrRet *ret)
 {
 	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &ret->base);
@@ -1999,20 +2057,21 @@ emit_instr_ret(Context *cnt, MirInstrRet *ret)
 		LLVMBuildStore(cnt->llvm_builder, llvm_ret_value, llvm_sret);
 
 		ret->base.llvm_value = LLVMBuildRetVoid(cnt->llvm_builder);
-		return;
+		return STATE_PASSED;
 	}
 
 	if (ret->value) {
 		LLVMValueRef llvm_ret_value = ret->value->llvm_value;
 		BL_ASSERT(llvm_ret_value);
 		ret->base.llvm_value = LLVMBuildRet(cnt->llvm_builder, llvm_ret_value);
-		return;
+		return STATE_PASSED;
 	}
 
 	ret->base.llvm_value = LLVMBuildRetVoid(cnt->llvm_builder);
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_br(Context *cnt, MirInstrBr *br)
 {
 	MirInstrBlock *then_block = br->then_block;
@@ -2023,9 +2082,10 @@ emit_instr_br(Context *cnt, MirInstrBr *br)
 	br->base.llvm_value = LLVMBuildBr(cnt->llvm_builder, llvm_then_block);
 
 	LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_then_block);
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_switch(Context *cnt, MirInstrSwitch *sw)
 {
 	MirInstr *              value         = sw->value;
@@ -2047,9 +2107,10 @@ emit_instr_switch(Context *cnt, MirInstrSwitch *sw)
 	}
 
 	sw->base.llvm_value = llvm_switch;
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_const(Context *cnt, MirInstrConst *c)
 {
 	MirType *    type       = c->base.value.type;
@@ -2121,9 +2182,10 @@ emit_instr_const(Context *cnt, MirInstrConst *c)
 
 	BL_ASSERT(llvm_value && "Incomplete const value generation!");
 	c->base.llvm_value = llvm_value;
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 {
 	MirInstr *     cond       = br->cond;
@@ -2137,9 +2199,10 @@ emit_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 
 	br->base.llvm_value =
 	    LLVMBuildCondBr(cnt->llvm_builder, llvm_cond, llvm_then_block, llvm_else_block);
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 {
 	MirType *             vargs_type = vargs->base.value.type;
@@ -2188,9 +2251,10 @@ emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 	}
 
 	vargs->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, vargs->vargs_tmp->llvm_value, "");
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 {
 	LLVMValueRef llvm_dest      = toany->tmp->llvm_value;
@@ -2229,13 +2293,14 @@ emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 	}
 
 	toany->base.llvm_value = llvm_dest;
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr_block(Context *cnt, MirInstrBlock *block)
 {
 	/* We don't want to genrate type resolvers for typedefs!!! */
-	if (!block->emit_llvm) return;
+	if (!block->emit_llvm) return STATE_PASSED;
 
 	MirFn *           fn              = block->owner_fn;
 	const bool        is_global       = fn == NULL;
@@ -2262,11 +2327,44 @@ emit_instr_block(Context *cnt, MirInstrBlock *block)
 
 	MirInstr *instr = block->entry_instr;
 	while (instr) {
-		emit_instr(cnt, instr);
+		const State s = emit_instr(cnt, instr);
+		if (s == STATE_POSTPONE) {
+			push_back_incomplete(cnt, instr);
+			goto SKIP;
+		}
+
 		instr = instr->next;
 	}
 
+SKIP:
 	LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_prev_block);
+	return STATE_PASSED;
+}
+
+void
+emit_incomplete(Context *cnt)
+{
+	MirInstr *        instr   = pop_front_incomplete(cnt);
+	LLVMBasicBlockRef prev_bb = LLVMGetInsertBlock(cnt->llvm_builder);
+
+	while (instr) {
+		LLVMBasicBlockRef bb = LLVMValueAsBasicBlock(instr->owner_block->base.llvm_value);
+		LLVMPositionBuilderAtEnd(cnt->llvm_builder, bb);
+
+		const State s = emit_instr(cnt, instr);
+		if (s == STATE_POSTPONE) {
+			push_back_incomplete(cnt, instr);
+		}
+
+		if (s != STATE_POSTPONE && instr->next) {
+			instr = instr->next;
+		} else {
+			instr = NULL;
+			instr = pop_front_incomplete(cnt);
+		}
+	}
+
+	LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_bb);
 }
 
 void
@@ -2299,19 +2397,20 @@ emit_allocas(Context *cnt, MirFn *fn)
 	}
 }
 
-void
+State
 emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
 	MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
 
 	/* unused function */
-	if (!fn->emit_llvm) return;
+	if (!fn->emit_llvm) return STATE_PASSED;
 #if LLVM_EXCLUDE_UNUSED_SYM
-	if (fn->ref_count == 0) return;
+	if (fn->ref_count == 0) return STATE_PASSED;
 #endif
 
 	emit_fn_proto(cnt, fn);
 
+	/* External functions does not have any body block. */
 	if (IS_NOT_FLAG(fn->flags, FLAG_EXTERN)) {
 		if (cnt->debug_mode) {
 			emit_DI_instr_loc(cnt, NULL);
@@ -2321,16 +2420,23 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		MirInstr *block = (MirInstr *)fn->first_block;
 
 		while (block) {
-			if (!block->is_unrechable) emit_instr(cnt, block);
+			if (!block->is_unreachable) {
+				const State s = emit_instr(cnt, block);
+				if (s != STATE_PASSED)
+					BL_ABORT("Postpone for whole block is not supported!");
+			}
 			block = block->next;
 		}
 	}
+
+	return STATE_PASSED;
 }
 
-void
+State
 emit_instr(Context *cnt, MirInstr *instr)
 {
-	if (instr->value.type->kind == MIR_TYPE_TYPE) return;
+	State state = STATE_PASSED;
+	if (instr->value.type->kind == MIR_TYPE_TYPE) return state;
 
 	switch (instr->kind) {
 	case MIR_INSTR_INVALID:
@@ -2352,87 +2458,89 @@ emit_instr(Context *cnt, MirInstr *instr)
 		break;
 
 	case MIR_INSTR_BINOP:
-		emit_instr_binop(cnt, (MirInstrBinop *)instr);
+		state = emit_instr_binop(cnt, (MirInstrBinop *)instr);
 		break;
 	case MIR_INSTR_FN_PROTO:
-		emit_instr_fn_proto(cnt, (MirInstrFnProto *)instr);
+		state = emit_instr_fn_proto(cnt, (MirInstrFnProto *)instr);
 		break;
 	case MIR_INSTR_BLOCK:
-		emit_instr_block(cnt, (MirInstrBlock *)instr);
+		state = emit_instr_block(cnt, (MirInstrBlock *)instr);
 		break;
 	case MIR_INSTR_BR:
-		emit_instr_br(cnt, (MirInstrBr *)instr);
+		state = emit_instr_br(cnt, (MirInstrBr *)instr);
 		break;
 	case MIR_INSTR_SWITCH:
-		emit_instr_switch(cnt, (MirInstrSwitch *)instr);
+		state = emit_instr_switch(cnt, (MirInstrSwitch *)instr);
 		break;
 	case MIR_INSTR_COND_BR:
-		emit_instr_cond_br(cnt, (MirInstrCondBr *)instr);
+		state = emit_instr_cond_br(cnt, (MirInstrCondBr *)instr);
 		break;
 	case MIR_INSTR_RET:
-		emit_instr_ret(cnt, (MirInstrRet *)instr);
+		state = emit_instr_ret(cnt, (MirInstrRet *)instr);
 		break;
 	case MIR_INSTR_DECL_VAR:
-		emit_instr_decl_var(cnt, (MirInstrDeclVar *)instr);
+		state = emit_instr_decl_var(cnt, (MirInstrDeclVar *)instr);
 		break;
 	case MIR_INSTR_DECL_REF:
-		emit_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
+		state = emit_instr_decl_ref(cnt, (MirInstrDeclRef *)instr);
 		break;
 	case MIR_INSTR_LOAD:
-		emit_instr_load(cnt, (MirInstrLoad *)instr);
+		state = emit_instr_load(cnt, (MirInstrLoad *)instr);
 		break;
 	case MIR_INSTR_STORE:
-		emit_instr_store(cnt, (MirInstrStore *)instr);
+		state = emit_instr_store(cnt, (MirInstrStore *)instr);
 		break;
 	case MIR_INSTR_CALL:
-		emit_instr_call(cnt, (MirInstrCall *)instr);
+		state = emit_instr_call(cnt, (MirInstrCall *)instr);
 		break;
 	case MIR_INSTR_UNOP:
-		emit_instr_unop(cnt, (MirInstrUnop *)instr);
+		state = emit_instr_unop(cnt, (MirInstrUnop *)instr);
 		break;
 	case MIR_INSTR_UNREACHABLE:
-		emit_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
+		state = emit_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
 		break;
 	case MIR_INSTR_MEMBER_PTR:
-		emit_instr_member_ptr(cnt, (MirInstrMemberPtr *)instr);
+		state = emit_instr_member_ptr(cnt, (MirInstrMemberPtr *)instr);
 		break;
 	case MIR_INSTR_ELEM_PTR:
-		emit_instr_elem_ptr(cnt, (MirInstrElemPtr *)instr);
+		state = emit_instr_elem_ptr(cnt, (MirInstrElemPtr *)instr);
 		break;
 	case MIR_INSTR_ADDROF:
-		emit_instr_addrof(cnt, (MirInstrAddrOf *)instr);
+		state = emit_instr_addrof(cnt, (MirInstrAddrOf *)instr);
 		break;
 	case MIR_INSTR_CAST:
-		emit_instr_cast(cnt, (MirInstrCast *)instr);
+		state = emit_instr_cast(cnt, (MirInstrCast *)instr);
 		break;
 	case MIR_INSTR_VARGS:
-		emit_instr_vargs(cnt, (MirInstrVArgs *)instr);
+		state = emit_instr_vargs(cnt, (MirInstrVArgs *)instr);
 		break;
 	case MIR_INSTR_TYPE_INFO:
-		emit_instr_type_info(cnt, (MirInstrTypeInfo *)instr);
+		state = emit_instr_type_info(cnt, (MirInstrTypeInfo *)instr);
 		break;
 	case MIR_INSTR_PHI:
-		emit_instr_phi(cnt, (MirInstrPhi *)instr);
+		state = emit_instr_phi(cnt, (MirInstrPhi *)instr);
 		break;
 	case MIR_INSTR_COMPOUND: {
 		MirInstrCompound *cmp = (MirInstrCompound *)instr;
 		if (!cmp->is_naked && !mir_is_comptime(instr)) break;
-		emit_instr_compound(cnt, NULL, cmp);
+		state = emit_instr_compound(cnt, NULL, cmp);
 		break;
 	}
 	case MIR_INSTR_TOANY:
-		emit_instr_toany(cnt, (MirInstrToAny *)instr);
+		state = emit_instr_toany(cnt, (MirInstrToAny *)instr);
 		break;
 	case MIR_INSTR_DECL_DIRECT_REF:
-		emit_instr_decl_direct_ref(cnt, (MirInstrDeclDirectRef *)instr);
+		state = emit_instr_decl_direct_ref(cnt, (MirInstrDeclDirectRef *)instr);
 		break;
 	case MIR_INSTR_CONST:
-		emit_instr_const(cnt, (MirInstrConst *)instr);
+		state = emit_instr_const(cnt, (MirInstrConst *)instr);
 		break;
 	case MIR_INSTR_SET_INITIALIZER:
-		emit_instr_set_initializer(cnt, (MirInstrSetInitializer *)instr);
+		state = emit_instr_set_initializer(cnt, (MirInstrSetInitializer *)instr);
 		break;
 	}
+
+	return state;
 }
 
 /* public */
@@ -2452,12 +2560,15 @@ ir_run(Assembly *assembly)
 	cnt.debug_mode      = assembly->options.build_mode == BUILD_MODE_DEBUG;
 	thtbl_init(&cnt.gstring_cache, sizeof(LLVMValueRef), 1024);
 	tsa_init(&cnt.incomplete_rtti);
+	tlist_init(&cnt.incomplete_queue, sizeof(MirInstr *));
 
 	MirInstr *ginstr;
 	TARRAY_FOREACH(MirInstr *, &assembly->MIR.global_instrs, ginstr)
 	{
 		emit_instr(&cnt, ginstr);
 	}
+
+	emit_incomplete(&cnt);
 
 	if (cnt.debug_mode) {
 		llvm_di_builder_finalize(cnt.llvm_di_builder);
@@ -2473,6 +2584,7 @@ ir_run(Assembly *assembly)
 
 	LLVMDisposeBuilder(cnt.llvm_builder);
 
+	tlist_terminate(&cnt.incomplete_queue);
 	tsa_terminate(&cnt.incomplete_rtti);
 	thtbl_terminate(&cnt.gstring_cache);
 }
