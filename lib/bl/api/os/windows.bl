@@ -160,7 +160,7 @@ os_dlclose :: fn (lib: OSLibrary) {
     win32_FreeLibrary(lib);
 }
 
-_OSFileKind :: enum {
+OSFileKind :: enum {
     File;
     Directory;
 }
@@ -168,7 +168,6 @@ _OSFileKind :: enum {
 _OSFileInfo :: struct {
     kind: _OSFileKind;
     name: string;
-    size_bytes: usize;
 }
 
 _OSFileList :: []_OSFileInfo;
@@ -203,19 +202,16 @@ _os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
     loop {
         kind: _OSFileKind;
         name: string;
-        size: usize;
 
         if is_flag_u32(ffd.dwFileAttributes, auto WIN32_FILE_ATTRIBUTE_DIRECTORY) {
             kind = _OSFileKind.Directory;
-            size = 0;
             name = string_new_cstr(ffd.cFileName.ptr);
         } else {
             kind = _OSFileKind.File;
-            size = (ffd.nFileSizeHigh << sizeof(ffd.nFileSizeLow)) | ffd.nFileSizeLow;
             name = string_new_cstr(ffd.cFileName.ptr);
         }
 
-        (^out_buf)[i] = {:_OSFileInfo: kind, name, size};
+        (^out_buf)[i] = {:_OSFileInfo: kind, name};
 
         i += 1;
         if win32_FindNextFile(hFind, &ffd) == 0 { break; }

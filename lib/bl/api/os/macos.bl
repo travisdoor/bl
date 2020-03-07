@@ -160,24 +160,56 @@ _os_gl_get_proc :: fn (proc_name: string) *u8 #inline {
     return os_dlsym(module, proc_name);
 }
 
-_os_opendir :: fn (name: string) *u8 #inline {
-    return _posix_opendir(name.ptr);
+_OSFileKind :: enum {
+    File;
+    Directory;
 }
 
-_os_closedir :: fn (dir: *u8) s32 #inline {
-    return _posix_closedir(dir);
+_OSFileInfo :: struct {
+    kind: _OSFileKind;
+    name: string;
 }
 
-_os_scandir :: fn (dir: *u8, out_name: *string) bool {
-    d :: _posix_readdir(dir);
-    if d == null { return false; }
+_OSFileList :: []_OSFileInfo;
 
-    tmp :: {:string: auto d.d_namlen, auto d.d_name.ptr};
+_os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
+    if dirpath.len > DARWIN_MAXPATHLEN { panic("Path too long!"); }
+    dir := _posix_opendir(dirpath.ptr);
+    if dir == null { return false; }
+    defer _posix_closedir(dir);
 
-    string_clear(out_name);
-    string_append(out_name, tmp);
+    fc := 0;
+    loop _posix_readdir(dir) != null { fc += 1; }
+    _posix_rewinddir(dir);
+
+    (^out_buf).len = fc;
+    if fc == 0 { return true; }
+
+    (^out_buf).ptr = auto mem_alloc(sizeof(_OSFileInfo) * auto fc);
+
+    i := 0;
+    loop {
+        info :: _posix_readdir(dir);
+        if info == null { break; }
+
+        kind: _OSFileKind;
+        name: string;
+
+        if info.d_type == auto DT_DIR {
+            kind = _OSFileKind.Directory;
+            name = string_new_cstr(auto info.d_name.ptr);
+        } else {
+            kind = _OSFileKind.File;
+            name = string_new_cstr(auto info.d_name.ptr);
+        }
+
+        (^out_buf)[i] = {:_OSFileInfo: kind, name};
+        i += 1;
+    }
+
     return true;
 }
+
 
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 #inline {
     return _posix_write(fd, buf, count);
@@ -229,6 +261,16 @@ RTLD_LAZY   :: 0x1;
 RTLD_NOW    :: 0x2;
 RTLD_LOCAL  :: 0x4;
 RTLD_GLOBAL :: 0x8;
+
+DT_UNKNOWN ::  0;
+DT_FIFO    ::  1;
+DT_CHR     ::  2;
+DT_DIR     ::  4;
+DT_BLK     ::  6;
+DT_REG     ::  8;
+DT_LNK     :: 10;
+DT_SOCK    :: 12;
+DT_WHT     :: 14;
 
 DARWIN_MAXPATHLEN :: 1024;
 
