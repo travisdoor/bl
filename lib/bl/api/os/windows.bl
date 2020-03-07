@@ -28,6 +28,7 @@
 
 #load "std/_builtin.bl"
 #load "std/string.bl"
+#load "std/utils.bl"
 #load "windows_api.bl"
 
 // INCOMPLETE: time_now_ms
@@ -58,7 +59,7 @@ c_size_t    :: u64;
 /*
  * Maximum path size in bytes.
  */
-OS_PATH_MAX :: 1024;
+OS_PATH_MAX :: WIN32_MAX_PATH;
 
 /*
  * OSLibrary
@@ -159,19 +160,68 @@ os_dlclose :: fn (lib: OSLibrary) {
     win32_FreeLibrary(lib);
 }
 
-_os_opendir :: fn (name: string) *u8 #inline {
-    unreachable;
-    return null;
+_OSFileKind :: enum {
+    File;
+    Directory;
 }
 
-_os_closedir :: fn (dir: *u8) s32 #inline {
-    unreachable;
-    return 0;
+_OSFileInfo :: struct {
+    kind: _OSFileKind;
+    name: string;
+    size_bytes: usize;
 }
 
-_os_scandir :: fn (dir: *u8, out_name: *string) bool {
-    unreachable;
-    return false;
+_OSFileList :: []_OSFileInfo;
+
+_os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
+    if dirpath.len > (WIN32_MAX_PATH-3) { panic("Path too long!"); }
+    tmp := string_copy(dirpath);
+    defer string_delete(tmp);
+    string_append(&tmp, "\\*");
+
+    ffd: WIN32_FIND_DATA;
+    hFind := win32_FindFirstFile(auto tmp.ptr, &ffd);
+    if WIN32_INVALID_HANDLE_VALUE == hFind { return false; }
+
+    fc := 0;
+    loop {
+        fc += 1;
+        if win32_FindNextFile(hFind, &ffd) == 0 { break; }
+    }
+
+    win32_FindClose(hFind);
+    (^out_buf).len = fc;
+    if fc == 0 { return true; }
+
+    (^out_buf).ptr = auto mem_alloc(sizeof(_OSFileInfo) * auto fc);
+
+    hFind = win32_FindFirstFile(auto tmp.ptr, &ffd);
+    if WIN32_INVALID_HANDLE_VALUE == hFind { return false; }
+    defer win32_FindClose(hFind);
+
+    i := 0;
+    loop {
+        kind: _OSFileKind;
+        name: string;
+        size: usize;
+
+        if is_flag_u32(ffd.dwFileAttributes, auto WIN32_FILE_ATTRIBUTE_DIRECTORY) {
+            kind = _OSFileKind.Directory;
+            size = 0;
+            name = string_new_cstr(ffd.cFileName.ptr);
+        } else {
+            kind = _OSFileKind.File;
+            size = (ffd.nFileSizeHigh << sizeof(ffd.nFileSizeLow)) | ffd.nFileSizeLow;
+            name = string_new_cstr(ffd.cFileName.ptr);
+        }
+
+        (^out_buf)[i] = {:_OSFileInfo: kind, name, size};
+
+        i += 1;
+        if win32_FindNextFile(hFind, &ffd) == 0 { break; }
+    }
+
+    return true;
 }
 
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {

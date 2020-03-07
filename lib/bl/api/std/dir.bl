@@ -28,59 +28,18 @@
 
 #load "std/string.bl"
 
-/*!
-# Directory
-## Declaration
-```c
-Directory :: *u8; 
-```
+FileKind :: _OSFileKind;
+FileInfo :: _OSFileInfo;
+FileList :: _OSFileList;
 
-## Description
-  Opaque directory handle. 
- */
-Directory :: *u8;
-
-/*!
-# dir_open
-## Declaration
-```c
-dir_open :: fn (name: string) Directory
-```
-
-## Description
-  Open an existing directory with specified name.
-
-## Arguments
-  * `name`
-    Directory name.
-
-## Result
-  File directory handle or null.
-*/
-dir_open :: fn (name: string) Directory #inline {
-    return _os_opendir(name);
+dir_scan :: fn (dirpath: string, out_buffer: *FileList) bool #inline {
+    return _os_scandir(dirpath, out_buffer);
 }
 
-/*!
-# dir_close
-## Declaration
-```c
-dir_close :: fn (dir: Directory)
-```
+dir_file_list_delete :: fn (list: FileList) {
+    loop i := 0; i < list.len; i += 1 {
+        string_delete(list[i].name);
+    }
 
-## Description
-  Close directory opened by 'dir_open'.
-
-## Arguments
-  * `dir`
-    Directory handle.
-*/
-dir_close :: fn (dir: Directory) #inline {
-    _os_closedir(dir);
-}
-
-dir_scan :: fn (dir: Directory, out_name: *string) bool #inline {
-    if dir == null { return false; }
-    if out_name == null { panic("Invalid out_name parameter!"); }
-    return _os_scandir(dir, out_name);
+    mem_free(auto list.ptr);
 }
