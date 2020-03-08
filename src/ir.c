@@ -394,6 +394,7 @@ emit_DI_fn(Context *cnt, MirFn *fn)
 	                                 ? fn->decl_node->owner_scope->llvm_di_meta
 	                                 : llvm_file;
 
+	BL_ASSERT(llvm_scope && "Invalid scope for DWARF!");
 	LLVMMetadataRef tmp = llvm_di_create_fn(cnt->llvm_di_builder,
 	                                        llvm_scope,
 	                                        fn->id ? fn->id->str : fn->linkage_name,
@@ -403,6 +404,7 @@ emit_DI_fn(Context *cnt, MirFn *fn)
 	                                        fn->type->llvm_meta,
 	                                        (unsigned)location->line);
 
+	BL_ASSERT(fn->body_scope->llvm_di_meta && "Missing function fwd DI declaration!");
 	fn->body_scope->llvm_di_meta =
 	    llvm_di_replace_temporary(cnt->llvm_di_builder, fn->body_scope->llvm_di_meta, tmp);
 

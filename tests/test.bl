@@ -9,11 +9,10 @@ main :: fn () s32 {
     
     i := 0;
 
-    my_func := &fn (foo: *Foo) {
-        i := 2;
-        if i == 1 {
-        }
-    };
+    {
+        my_func := &fn (foo: *Foo) {
+        };
+    }
     
     return 0;
 }
