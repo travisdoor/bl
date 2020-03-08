@@ -160,7 +160,7 @@ os_dlclose :: fn (lib: OSLibrary) {
     win32_FreeLibrary(lib);
 }
 
-OSFileKind :: enum {
+_OSFileKind :: enum {
     File;
     Directory;
 }

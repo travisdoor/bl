@@ -291,6 +291,32 @@ file_write_string :: fn (file: File, data: string) usize {
     return c_fwrite(data.ptr, sizeof(u8), auto data.len, file);
 }
 
+/*!
+# file_remove_ext 
+## Declaration
+```
+file_remove_ext :: fn (filename: *string)
+```
+
+## Description
+  Removes file name extension.
+
+## Arguments
+  * `filename`
+    File name to be modified.
+*/
+file_remove_ext :: fn (filename: string) string {
+    tmp := {:[]u8: filename.len, filename.ptr};
+    loop i := 0; i < tmp.len; i += 1 {
+        if tmp[i] == '.' {
+            filename.len = i;
+            break;
+        }
+    }
+
+    return filename;
+}
+
 #private
 
 SEEK_SET :: 0;

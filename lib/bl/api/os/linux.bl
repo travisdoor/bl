@@ -43,6 +43,14 @@ OS_STDERR :: 2;
 OS_PATH_MAX :: 1024;
 
 /*
+ * OSLibrary
+ *
+ * Description:
+ *   Library handle.
+ */
+OSLibrary :: *u8;
+
+/*
  * Platform depend C types compatible with C ABI.
  */
 c_char      :: s8;
@@ -64,7 +72,7 @@ time_now_ms :: fn () f64 {
 };
 
 os_sleep_ms :: fn (ms: f64) {
-    usleep(auto ms * 1000.0);
+    _posix_usleep(auto ms * 1000.0);
 };
 
 /*
@@ -82,7 +90,7 @@ os_sleep_ms :: fn (ms: f64) {
  */
 os_get_real_path :: fn (filename: string) string {
     tmp :: {:[OS_PATH_MAX]u8: 0};
-    if realpath(filename.ptr, tmp.ptr) == null {
+    if _posix_realpath(filename.ptr, tmp.ptr) == null {
         return string_copy(filename);
     }
 
@@ -90,12 +98,129 @@ os_get_real_path :: fn (filename: string) string {
     return result;
 }
 
+/*
+ * os_dlopen
+ *
+ * Description:
+ *   Dynamically link native library file. 
+ * 
+ * Arguments: 
+ *   lib_name: 
+ *     Name of the library. If lib_name is empty string, then function return 
+ *     handle for main program. 
+ *
+ * Result: 
+ *   Library handle or null.
+ */
+os_dlopen :: fn (lib_name: string) OSLibrary #inline {
+    clib_name: *u8 = null;
+    if lib_name.len > 0 { clib_name = lib_name.ptr; }
+
+    return _posix_dlopen(clib_name, RTLD_LAZY); 
+}
+
+/*
+ * os_dlsym
+ *
+ * Description:
+ *   Dynamically load procedure. 
+ * 
+ * Arguments: 
+ *   lib: 
+ *     Library handle.
+ * 
+ *   sym_name: 
+ *     Symbol name.
+ *
+ * Result: 
+ *   Procedure handle or null.
+ */
+os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 #inline {
+    return _posix_dlsym(lib, sym_name.ptr);
+}
+
+/*
+ * os_close
+ *
+ * Description:
+ *   Close dynamically loded library. 
+ * 
+ * Arguments: 
+ *   lib: 
+ *     Library handle. 
+ *
+ */
+os_dlclose :: fn (lib: OSLibrary) #inline {
+    _posix_dlclose(lib);
+}
+
+// CLEANUP: This must be in gl.bl file not here, but we keep it
+// until static 'if' will be supported by compiler.
+_os_gl_get_proc :: fn (proc_name: string) *u8 #inline {
+    module :: os_dlopen("");
+    return os_dlsym(module, proc_name);
+}
+
+_OSFileKind :: enum {
+    File;
+    Directory;
+}
+
+_OSFileInfo :: struct {
+    kind: _OSFileKind;
+    name: string;
+}
+
+_OSFileList :: []_OSFileInfo;
+
+_os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
+    // INCOMPLETE: dirent struct may have invalid layout!
+    unreachable;
+
+    if dirpath.len > DARWIN_MAXPATHLEN { panic("Path too long!"); }
+    dir := _posix_opendir(dirpath.ptr);
+    if dir == null { return false; }
+    defer _posix_closedir(dir);
+
+    fc := 0;
+    loop _posix_readdir(dir) != null { fc += 1; }
+    _posix_rewinddir(dir);
+
+    (^out_buf).len = fc;
+    if fc == 0 { return true; }
+
+    (^out_buf).ptr = auto mem_alloc(sizeof(_OSFileInfo) * auto fc);
+
+    i := 0;
+    loop {
+        info :: _posix_readdir(dir);
+        if info == null { break; }
+
+        kind: _OSFileKind;
+        name: string;
+
+        if info.d_type == auto DT_DIR {
+            kind = _OSFileKind.Directory;
+            name = string_new_cstr(auto info.d_name.ptr);
+        } else {
+            kind = _OSFileKind.File;
+            name = string_new_cstr(auto info.d_name.ptr);
+        }
+
+        (^out_buf)[i] = {:_OSFileInfo: kind, name};
+        i += 1;
+    }
+
+    return true;
+}
+
+
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
-    return write(fd, buf, count);
+    return _posix_write(fd, buf, count);
 };
 
 __os_abort :: fn () #compiler {
-    raise(SIGABRT);
+    _posix_raise(SIGABRT);
 }
 
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
@@ -136,7 +261,36 @@ SIGILL  :: 4;
 SIGTRAP :: 5;
 SIGABRT :: 6;
 
-raise :: fn (sig: s32) s32 #extern;
-write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
-usleep :: fn (us: u32) s32 #extern;
-realpath :: fn (path: *u8, resolved_path: *u8) *u8 #extern;
+RTLD_LAZY   :: 0x1;
+RTLD_NOW    :: 0x2;
+RTLD_LOCAL  :: 0x4;
+RTLD_GLOBAL :: 0x8;
+
+DT_UNKNOWN ::  0;
+DT_FIFO    ::  1;
+DT_CHR     ::  2;
+DT_DIR     ::  4;
+DT_BLK     ::  6;
+DT_REG     ::  8;
+DT_LNK     :: 10;
+DT_SOCK    :: 12;
+DT_WHT     :: 14;
+
+dirent :: struct {
+	d_ino: c_long; 
+	d_reclen: c_ushort;
+	d_type: c_uchar; 
+	d_name: [OS_PATH_MAX]c_char;
+}
+
+_posix_raise     :: fn (sig: s32) s32 #extern "raise";
+_posix_write     :: fn (fd: s32, buf: *u8, count: usize) s32 #extern "write";
+_posix_usleep    :: fn (us: u32) s32 #extern "usleep";
+_posix_realpath  :: fn (path: *u8, resolved_path: *u8) *u8 #extern "realpath";
+_posix_exit      :: fn (v: s32) #extern "_exit";
+_posix_dlopen    :: fn (path: *u8, mode: s32) *u8 #extern "dlopen";
+_posix_dlclose   :: fn (handle: *u8) s32 #extern "dlclose";
+_posix_dlsym     :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
+_posix_opendir   :: fn (name: *u8) *u8 #extern "opendir";
+_posix_closedir  :: fn (dirp: *u8) s32 #extern "closedir";
+_posix_readdir   :: fn (dirp: *u8) *dirent #extern "readdir";
