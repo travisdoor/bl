@@ -2,17 +2,18 @@
 
 #load "std/print.bl"
 
-
-UI_ThemePanel :: struct {
-    color: v4;
-}
-
-THEME2       :: THEME;
-THEME        :: {:UI_ThemePanel: UI_BG1_COLOR};
-UI_BG1_COLOR :: {:v4: 0.15f, 0.15f, 0.15f, 1.f};
-
 main :: fn () s32 {
-    foo :: &THEME2;
-    print("%\n", ^foo);
+    Foo :: struct {
+        num: s32;
+    };
+    
+    i := 0;
+
+    my_func := &fn (foo: *Foo) {
+        i := 2;
+        if i == 1 {
+        }
+    };
+    
     return 0;
 }

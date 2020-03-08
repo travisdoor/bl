@@ -1382,7 +1382,7 @@ commit_fn(Context *cnt, MirFn *fn)
 	ID *id = fn->id;
 	BL_ASSERT(id);
 
-	ScopeEntry *entry = scope_lookup(fn->decl_node->owner_scope, id, true, false);
+	ScopeEntry *entry = scope_lookup(fn->decl_node->owner_scope, id, true, false, NULL);
 	BL_ASSERT(entry && "cannot commit unregistred function");
 
 	entry->kind    = SCOPE_ENTRY_FN;
@@ -1397,7 +1397,7 @@ commit_variant(Context *cnt, MirVariant *v)
 	ID *id = v->id;
 	BL_ASSERT(id);
 
-	ScopeEntry *entry = scope_lookup(v->decl_scope, id, false, true);
+	ScopeEntry *entry = scope_lookup(v->decl_scope, id, false, true, NULL);
 	BL_ASSERT(entry && "cannot commit unregistred variant");
 
 	entry->kind         = SCOPE_ENTRY_VARIANT;
@@ -1410,7 +1410,7 @@ commit_member(Context *cnt, MirMember *member)
 	ID *id = member->id;
 	BL_ASSERT(id);
 
-	ScopeEntry *entry = scope_lookup(member->decl_scope, id, false, true);
+	ScopeEntry *entry = scope_lookup(member->decl_scope, id, false, true, NULL);
 	BL_ASSERT(entry && "cannot commit unregistred member");
 
 	entry->kind        = SCOPE_ENTRY_MEMBER;
@@ -1423,7 +1423,7 @@ commit_var(Context *cnt, MirVar *var)
 	ID *id = var->id;
 	BL_ASSERT(id);
 
-	ScopeEntry *entry = scope_lookup(var->decl_scope, id, true, false);
+	ScopeEntry *entry = scope_lookup(var->decl_scope, id, true, false, NULL);
 	BL_ASSERT(entry && "cannot commit unregistred var");
 
 	entry->kind     = SCOPE_ENTRY_VAR;
@@ -1880,7 +1880,7 @@ register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool is_builtin, 
 	BL_ASSERT(scope && "Missing entry scope.");
 
 	const bool  is_private = scope->kind == SCOPE_PRIVATE;
-	ScopeEntry *collision  = scope_lookup(scope, id, is_private, false);
+	ScopeEntry *collision  = scope_lookup(scope, id, is_private, false, NULL);
 
 	if (collision) {
 		if (!is_private) goto COLLIDE;
@@ -1930,7 +1930,7 @@ lookup_builtin_type(Context *cnt, MirBuiltinIdKind kind)
 {
 	ID *        id    = &builtin_ids[kind];
 	Scope *     scope = cnt->assembly->gscope;
-	ScopeEntry *found = scope_lookup(scope, id, true, false);
+	ScopeEntry *found = scope_lookup(scope, id, true, false, NULL);
 
 	if (!found) BL_ABORT("Missing compiler internal symbol '%s'", id->str);
 	if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
@@ -1966,7 +1966,7 @@ lookup_builtin_fn(Context *cnt, MirBuiltinIdKind kind)
 {
 	ID *        id    = &builtin_ids[kind];
 	Scope *     scope = cnt->assembly->gscope;
-	ScopeEntry *found = scope_lookup(scope, id, true, false);
+	ScopeEntry *found = scope_lookup(scope, id, true, false, NULL);
 
 	if (!found) BL_ABORT("Missing compiler internal symbol '%s'", id->str);
 	if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
@@ -2858,6 +2858,7 @@ init_llvm_DI_scope(Context *cnt, Scope *scope)
 		break;
 	}
 
+	case SCOPE_FN_LOCAL:
 	case SCOPE_FN: {
 		scope->llvm_di_meta = llvm_di_create_fn_fwd_decl(
 		    cnt->analyze.llvm_di_builder, NULL, "", "", NULL, 0, NULL, 0);
@@ -5002,7 +5003,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		MirType *   type  = target_type;
 
 		while (true) {
-			found = scope_lookup(scope, rid, false, true);
+			found = scope_lookup(scope, rid, false, true, NULL);
 			if (found) break;
 
 			scope = get_base_type_scope(type);
@@ -5071,7 +5072,7 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		/* lookup for member inside struct */
 		Scope *     scope = sub_type->data.enm.scope;
 		ID *        rid   = &ast_member_ident->data.ident.id;
-		ScopeEntry *found = scope_lookup(scope, rid, false, true);
+		ScopeEntry *found = scope_lookup(scope, rid, false, true, NULL);
 		if (!found) {
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_UNKNOWN_SYMBOL,
@@ -5277,18 +5278,23 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
 	BL_ASSERT(ref->rid && ref->scope);
 
-	ScopeEntry *found         = NULL;
-	Scope *     private_scope = ref->parent_unit->private_scope;
+	ScopeEntry *found                        = NULL;
+	Scope *     private_scope                = ref->parent_unit->private_scope;
+	bool        is_ref_out_of_fn_local_scope = false;
 
 	if (!private_scope) { /* reference in unit without private scope  */
-		found = scope_lookup(ref->scope, ref->rid, true, false);
+		found =
+		    scope_lookup(ref->scope, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
 	} else { /* reference in unit with private scope */
 		/* search in current tree and ignore global scope */
-		found = scope_lookup(ref->scope, ref->rid, true, true);
+		found =
+		    scope_lookup(ref->scope, ref->rid, true, true, &is_ref_out_of_fn_local_scope);
 
 		/* lookup in private scope and global scope also (private scope has global
 		 * scope as parent every time) */
-		if (!found) found = scope_lookup(private_scope, ref->rid, true, false);
+		if (!found)
+			found = scope_lookup(
+			    private_scope, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
 	}
 
 	if (!found) return ANALYZE_RESULT(WAITING, ref->rid->hash);
@@ -5354,6 +5360,26 @@ analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 			if (is_incomplete_struct_type(t) && !ref->accept_incomplete_type) {
 				return ANALYZE_RESULT(WAITING, t->user_id->hash);
 			}
+		} else if (!var->is_global && is_ref_out_of_fn_local_scope) {
+			/*
+			 * Here we must handle situation when we try to reference variables declared
+			 * in parent functions of local functions. (We try to implicitly capture
+			 * those variables and this leads to invalid LLVM IR.)
+			 */
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_INVALID_REFERENCE,
+			            ref->base.node->location,
+			            BUILDER_CUR_WORD,
+			            "Attempt to reference variable from parent "
+			            "function. This is not allowed.");
+
+			builder_msg(BUILDER_MSG_NOTE,
+			            0,
+			            var->decl_node->location,
+			            BUILDER_CUR_NONE,
+			            "Variable declared here.");
+
+			return ANALYZE_RESULT(FAILED, 0);
 		}
 		++var->ref_count;
 
@@ -5477,8 +5503,8 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		BL_ASSERT(fn->linkage_name && "Linkage name must be set explicitly!");
 	}
 
-	/* Function marked as entry point must be always generated, we must increase reference
-	 * count!!! */
+	/* Function marked as entry point must be always generated, we must increase
+	 * reference count!!! */
 	if (IS_FLAG(fn->flags, FLAG_ENTRY)) {
 		fn->ref_count = NO_REF_COUNTING;
 		//++fn->ref_count;
@@ -5607,12 +5633,12 @@ analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
 	BL_ASSERT(expected_case_type);
 
 	if (expected_case_type->kind != MIR_TYPE_INT && expected_case_type->kind != MIR_TYPE_ENUM) {
-		builder_msg(
-		    BUILDER_MSG_ERROR,
-		    ERR_INVALID_TYPE,
-		    sw->value->node->location,
-		    BUILDER_CUR_WORD,
-		    "Invalid type of switch expression. Only integer types and enums can be used.");
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_INVALID_TYPE,
+		            sw->value->node->location,
+		            BUILDER_CUR_WORD,
+		            "Invalid type of switch expression. Only integer types and "
+		            "enums can be used.");
 
 		return ANALYZE_RESULT(FAILED, 0);
 	}
@@ -5749,12 +5775,12 @@ analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 
 			is_vargs = arg->type->kind == MIR_TYPE_VARGS;
 			if (is_vargs && i != type_fn->args->size - 1) {
-				builder_msg(
-				    BUILDER_MSG_ERROR,
-				    ERR_INVALID_TYPE,
-				    arg->decl_node->location,
-				    BUILDER_CUR_WORD,
-				    "VArgs function argument must be last in argument list.");
+				builder_msg(BUILDER_MSG_ERROR,
+				            ERR_INVALID_TYPE,
+				            arg->decl_node->location,
+				            BUILDER_CUR_WORD,
+				            "VArgs function argument must be last in "
+				            "argument list.");
 			}
 
 			tsa_push_ArgPtr(args, arg);
@@ -5807,8 +5833,8 @@ analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
 			}
 
 			/* NOTE:
-			 * Tag values are used in the same way as flags, here we produce mergin of
-			 * all into one integer value.
+			 * Tag values are used in the same way as flags, here we produce
+			 * mergin of all into one integer value.
 			 */
 			tag_group |= MIR_CEV_READ_AS(s32, &(*tag)->value);
 		}
@@ -5940,8 +5966,8 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 	MirType *result_type = NULL;
 
 	if (type_struct->fwd_decl) {
-		/* Type has fwd declaration. In this case we set all desired information about
-		 * struct type into previously created forward declaration. */
+		/* Type has fwd declaration. In this case we set all desired information
+		 * about struct type into previously created forward declaration. */
 		result_type = complete_type_struct(cnt,
 		                                   type_struct->fwd_decl,
 		                                   type_struct->scope,
@@ -6413,8 +6439,8 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	BL_ASSERT(var);
 
 	/* Immutable declaration can be comptime, but only if it's initializer value is also
-	 * comptime! Value of this variable can be adjusted later during analyze pass when we know
-	 * actual initialization value. */
+	 * comptime! Value of this variable can be adjusted later during analyze pass when
+	 * we know actual initialization value. */
 	bool is_decl_comptime = !var->is_mutable;
 
 	if (decl->type && !var->value.type) {
@@ -6423,15 +6449,15 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	}
 
 	if (var->is_global && !var->is_struct_typedef) {
-		/* Unexported globals as unique linkage name to solve potential conflicts with
-		 * extern symbols. */
+		/* Unexported globals as unique linkage name to solve potential conflicts
+		 * with extern symbols. */
 		var->linkage_name = gen_uq_name(var->linkage_name);
 
-		/* Globals are set by initializer so we can skip all check, rest of the work is up
-		 * to set initializer instruction! There is one exceptional case: we use init value
-		 * as temporary value for incomplete structure declarations (struct can use pointer
-		 * to self type inside it's body). This value is later replaced by initializer
-		 * instruction.*/
+		/* Globals are set by initializer so we can skip all check, rest of the work
+		 * is up to set initializer instruction! There is one exceptional case: we
+		 * use init value as temporary value for incomplete structure declarations
+		 * (struct can use pointer to self type inside it's body). This value is
+		 * later replaced by initializer instruction.*/
 		return ANALYZE_RESULT(PASSED, 0);
 	}
 
@@ -6531,8 +6557,9 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 		} else if (call->callee->kind == MIR_INSTR_FN_PROTO) {
 			/* Direct call of anonymous function. */
 
-			/* NOTE: We increase ref count of called function here, but this will not
-			 * work for functions called by pointer in obtained in runtime
+			/* NOTE: We increase ref count of called function here, but this
+			 * will not work for functions called by pointer in obtained in
+			 * runtime
 			 */
 			++fn->ref_count;
 			fn->emit_llvm = true;
@@ -6697,8 +6724,9 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 
 	block->base.is_unreachable = block->base.ref_count == 0;
 	if (!fn->first_unrechable_loc && block->base.is_unreachable && block->entry_instr &&
-            block->entry_instr->node) {
-		/* Report unrechable code if there is one only once inside funcition body. */
+	    block->entry_instr->node) {
+		/* Report unrechable code if there is one only once inside funcition body.
+		 */
 		fn->first_unrechable_loc = block->entry_instr->node->location;
 
 		builder_msg(BUILDER_MSG_WARNING,
@@ -6998,8 +7026,8 @@ analyze_instr(Context *cnt, MirInstr *instr)
 
 	if (state.state == ANALYZE_PASSED) {
 		instr->analyzed = true;
-		/* An auto cast cannot be directly evaluated because it's destination type could
-		 * change based on usage. */
+		/* An auto cast cannot be directly evaluated because it's destination type
+		 * could change based on usage. */
 		if (instr->kind == MIR_INSTR_CAST && ((MirInstrCast *)instr)->auto_cast) {
 			return state;
 		}
@@ -7237,8 +7265,8 @@ _rtti_gen(Context *cnt, MirType *type)
 		break;
 
 	case MIR_TYPE_PTR:
-		/* We generate dummy pointer RTTI when incomplete is enabled and complete this in
-		 * second pass to prove endless looping. */
+		/* We generate dummy pointer RTTI when incomplete is enabled and complete
+		 * this in second pass to prove endless looping. */
 		rtti_var = rtti_gen_ptr(cnt, cnt->builtin_types->t_u8_ptr, NULL);
 		tsa_push_RTTIIncomplete(&cnt->analyze.incomplete_rtti,
 		                        (RTTIIncomplete){.var = rtti_var, .type = type});
@@ -8105,12 +8133,12 @@ ast_expr_lit_int(Context *cnt, Ast *expr)
 	u64 val = expr->data.expr_integer.val;
 
 	if (expr->data.expr_integer.overflow) {
-		builder_msg(
-		    BUILDER_MSG_ERROR,
-		    ERR_NUM_LIT_OVERFLOW,
-		    expr->location,
-		    BUILDER_CUR_WORD,
-		    "Integer literal is too big and cannot be represented as any integer type.");
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_NUM_LIT_OVERFLOW,
+		            expr->location,
+		            BUILDER_CUR_WORD,
+		            "Integer literal is too big and cannot be represented as any "
+		            "integer type.");
 	}
 
 	MirType * type         = NULL;
@@ -8582,8 +8610,9 @@ ast_decl_entity(Context *cnt, Ast *entity)
 			cnt->ast.enable_incomplete_decl_refs = true;
 		}
 
-		/* When symbol is not declared in global scope, we can generate initialization tree
-		 * directly into current block, even for type declarations.  */
+		/* When symbol is not declared in global scope, we can generate
+		 * initialization tree directly into current block, even for type
+		 * declarations.  */
 		if (!use_initializer) {
 			value = ast(cnt, ast_value);
 		}
@@ -8599,9 +8628,10 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		                                           entity->data.decl_entity.flags);
 
 		/* For globals we must generate initialization after variable declaration,
-		 * SetInitializer instruction will be used to set actual value, also implicit
-		 * initialization block is created into MIR (such block does not have LLVM
-		 * representation -> globals must be evaluated in compile time). */
+		 * SetInitializer instruction will be used to set actual value, also
+		 * implicit initialization block is created into MIR (such block does not
+		 * have LLVM representation -> globals must be evaluated in compile time).
+		 */
 		if (use_initializer) {
 			if (ast_value) {
 				/* Generate implicit global initializer block. */
@@ -8656,10 +8686,10 @@ MirInstr *
 ast_decl_member(Context *cnt, Ast *arg)
 {
 	/* INCOMPLETE:
-	 * It's not clear how we handle creation of MirMember if we have anonymous struct member
-	 * (without name). In such case we still need to create Member object because it's needed
-	 * for type info related to owner structure. This is also related to TAGS associated with
-	 * member, result value has to be stored in the MirMember.
+	 * It's not clear how we handle creation of MirMember if we have anonymous struct
+	 * member (without name). In such case we still need to create Member object because
+	 * it's needed for type info related to owner structure. This is also related to
+	 * TAGS associated with member, result value has to be stored in the MirMember.
 	 *
 	 * TODO:
 	 * Take a look at anonymous structures and related RTTI + tag information.
@@ -8890,7 +8920,8 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 	BL_ASSERT(scope);
 
 	if (ast_base_type) {
-		/* Structure has base type, in such case we generate implicit first member 'base'.
+		/* Structure has base type, in such case we generate implicit first member
+		 * 'base'.
 		 */
 		MirInstr *base_type = ast(cnt, ast_base_type);
 		ID *      id        = &builtin_ids[MIR_BUILTIN_ID_STRUCT_BASE];
@@ -9485,8 +9516,8 @@ init_builtins(Context *cnt)
 	PROVIDE(f64);
 	PROVIDE(string);
 
-	/* Add IS_DEBUG immutable into the global scope to provide information about enabled debug
-	 * mode. */
+	/* Add IS_DEBUG immutable into the global scope to provide information about enabled
+	 * debug mode. */
 	add_global_immutable_bool(cnt, &builtin_ids[MIR_BUILTIN_ID_IS_DEBUG], cnt->debug_mode);
 
 #undef PROVIDE
