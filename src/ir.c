@@ -2348,8 +2348,12 @@ emit_incomplete(Context *cnt)
 	LLVMBasicBlockRef prev_bb = LLVMGetInsertBlock(cnt->llvm_builder);
 
 	while (instr) {
-		LLVMBasicBlockRef bb = LLVMValueAsBasicBlock(instr->owner_block->base.llvm_value);
-		LLVMPositionBuilderAtEnd(cnt->llvm_builder, bb);
+		MirInstrBlock *bb = instr->owner_block;
+
+		if (!mir_is_global_block(bb)) {
+			LLVMBasicBlockRef llvm_bb = LLVMValueAsBasicBlock(bb->base.llvm_value);
+			LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_bb);
+		}
 
 		const State s = emit_instr(cnt, instr);
 		if (s == STATE_POSTPONE) {

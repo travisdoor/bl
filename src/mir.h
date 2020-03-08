@@ -749,9 +749,15 @@ mir_is_comptime(MirInstr *instr)
 }
 
 static inline bool
+mir_is_global_block(MirInstrBlock *instr)
+{
+	return instr->owner_fn == NULL;
+}
+
+static inline bool
 mir_is_instr_in_global_block(MirInstr *instr)
 {
-	return instr->owner_block->owner_fn == NULL;
+	return mir_is_global_block(instr->owner_block);
 }
 
 void
