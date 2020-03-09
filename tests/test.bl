@@ -2,13 +2,13 @@
 
 #load "std/print.bl"
 
-main :: fn () s32 {
-    {
-        f :: &fn () {
-        };
+Bar :: struct #base Foo {}
 
-        f();
-    }
-    
+main :: fn () s32 {
     return 0;
+}
+
+#private
+Foo :: struct {
+    _: s32;
 }

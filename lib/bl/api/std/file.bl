@@ -304,6 +304,9 @@ file_remove_ext :: fn (filename: *string)
 ## Arguments
   * `filename`
     File name to be modified.
+
+## Result:
+  File name without extension.
 */
 file_remove_ext :: fn (filename: string) string {
     tmp := {:[]u8: filename.len, filename.ptr};
@@ -315,6 +318,39 @@ file_remove_ext :: fn (filename: string) string {
     }
 
     return filename;
+}
+
+/*!
+# file_get_ext
+## Declaration
+```
+file_get_ext :: fn (filename: string) string
+```
+
+## Description
+  Return file name extension (string token after last dot separator).
+
+## Arguments
+  * `filename`
+    File name to extract extension from.
+
+## Result:
+  File extension string.
+*/
+file_get_ext :: fn (filename: string) string {
+    tmp := {:[]u8: filename.len, filename.ptr};
+    ext := {:string: 0};
+
+    e := -1;
+    loop i := 0; i < tmp.len; i += 1 {
+        if e == 0 { ext.ptr = &tmp[i]; }
+        if e > -1  { e += 1; }
+            
+        if tmp[i] == '.' { e = 0; }
+    }
+
+    if e > 0 { ext.len = e; }
+    return ext;
 }
 
 #private
