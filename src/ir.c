@@ -390,11 +390,17 @@ emit_DI_fn(Context *cnt, MirFn *fn)
 
 	Location *      location   = fn->decl_node->location;
 	LLVMMetadataRef llvm_file  = location->unit->llvm_file_meta;
-	LLVMMetadataRef llvm_scope = fn->decl_node->owner_scope->llvm_di_meta
-	                                 ? fn->decl_node->owner_scope->llvm_di_meta
-	                                 : llvm_file;
 
-	BL_ASSERT(llvm_scope && "Invalid scope for DWARF!");
+	/*
+	LLVMMetadataRef llvm_scope = fn->decl_node->owner_scope->llvm_di_meta
+                                          ? fn->decl_node->owner_scope->llvm_di_meta
+                                          : llvm_file;
+                                          */
+
+	// This fix bug #97 but it could lead to invalid function DI scope nesting???
+        LLVMMetadataRef llvm_scope = llvm_file;
+
+        BL_ASSERT(llvm_scope && "Invalid scope for DWARF!");
 	LLVMMetadataRef tmp = llvm_di_create_fn(cnt->llvm_di_builder,
 	                                        llvm_scope,
 	                                        fn->id ? fn->id->str : fn->linkage_name,

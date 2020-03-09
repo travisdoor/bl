@@ -3,15 +3,11 @@
 #load "std/print.bl"
 
 main :: fn () s32 {
-    Foo :: struct {
-        num: s32;
-    };
-    
-    i := 0;
-
     {
-        my_func := &fn (foo: *Foo) {
+        f :: &fn () {
         };
+
+        f();
     }
     
     return 0;
