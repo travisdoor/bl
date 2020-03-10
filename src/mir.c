@@ -1502,6 +1502,7 @@ is_load_needed(MirInstr *instr)
 	case MIR_INSTR_DECL_MEMBER:
 	case MIR_INSTR_TYPE_INFO:
 	case MIR_INSTR_COMPOUND:
+	case MIR_INSTR_SIZEOF:
 		return false;
 
 	case MIR_INSTR_LOAD: {
@@ -3478,6 +3479,7 @@ append_instr_sizeof(Context *cnt, Ast *node, MirInstr *expr)
 	MirInstrSizeof *tmp         = create_instr(cnt, MIR_INSTR_SIZEOF, node);
 	tmp->base.value.type        = cnt->builtin_types->t_usize;
 	tmp->base.value.is_comptime = true;
+	tmp->base.value.addr_mode   = MIR_VAM_RVALUE;
 	tmp->expr                   = expr;
 
 	append_current_block(cnt, &tmp->base);
@@ -3924,6 +3926,7 @@ create_instr_const_type(Context *cnt, Ast *node, MirType *type)
 	tmp->value.type        = cnt->builtin_types->t_type;
 	tmp->value.addr_mode   = MIR_VAM_RVALUE;
 	tmp->value.is_comptime = true;
+
 	MIR_CEV_WRITE_AS(MirType *, &tmp->value, type);
 	return tmp;
 }
