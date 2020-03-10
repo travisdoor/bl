@@ -2,13 +2,12 @@
 
 #load "std/print.bl"
 
-Bar :: struct #base Foo {}
+
 
 main :: fn () s32 {
+    arr: [10]s32;
+    slice: []s32 = arr;
     return 0;
 }
 
-#private
-Foo :: struct {
-    _: s32;
-}
+

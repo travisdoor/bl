@@ -109,14 +109,7 @@ main :: fn () s32 {
 */
 print :: fn (format: string, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8;
-
-    // HACK: use implicit conversion later!!!
-    // HACK: use implicit conversion later!!!
-    // HACK: use implicit conversion later!!!
-    tmp := {:[]u8: buf.len, buf.ptr };
-    tmp2 := {:[]Any: args.len, args.ptr };
-
-    w := _print_impl(tmp, format, tmp2);
+    w := _print_impl({:[]u8: buf.len, buf.ptr}, format, {:[]Any: args.len, args.ptr});
     __os_write(OS_STDOUT, buf.ptr, auto w);
     return w;
 };
@@ -144,14 +137,7 @@ pass values of any type as an arguments, even structures or arrays.
 */
 eprint :: fn (format: string, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8;
-
-    // HACK: use implicit conversion later!!!
-    // HACK: use implicit conversion later!!!
-    // HACK: use implicit conversion later!!!
-    tmp := {:[]u8: buf.len, buf.ptr };
-    tmp2 := {:[]Any: args.len, args.ptr };
-
-    w := _print_impl(tmp, format, tmp2);
+    w := _print_impl({:[]u8: buf.len, buf.ptr}, format, {:[]Any: args.len, args.ptr});
     __os_write(OS_STDERR, buf.ptr, auto w);
     return w;
 };
@@ -205,13 +191,7 @@ _print_log_default :: fn (kind: PrintLogKind, format: string, args: []Any, file:
     }
 
     buf := {:[PRINT_MAX_LENGTH]u8: 0};
-
-    // HACK: use implicit conversion later!!!
-    // HACK: use implicit conversion later!!!
-    // HACK: use implicit conversion later!!!
-    tmp := {:[]u8: buf.len, buf.ptr };
-
-    w := _print_impl(tmp, format, args);
+    w := _print_impl({:[]u8: buf.len, buf.ptr}, format, args);
     __os_write(out, buf.ptr, auto w);
     print("\n");
 };
