@@ -28,6 +28,8 @@
 
 #load "std/print.bl"
 
+string_null :: {:string: 0};
+
 /*!
 # string_new 
 ## Declaration
@@ -448,6 +450,10 @@ string_to_s64n :: fn (str: string, len: s64) s64 {
     if is_negative { n = -n; } 
     return n;
 }
+
+string_is_null  :: fn (s: string) bool #inline { return s.ptr == null; }
+string_is_empty :: fn (s: string) bool #inline { return s.len == 0; }
+string_is_null_or_empty :: fn (s: string) bool #inline { return s.ptr == null || s.len == 0; }
 
 #private
 STRING_BLOCK_SIZE :: 64 - sizeof(BlockHead);

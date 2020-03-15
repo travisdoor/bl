@@ -5,8 +5,9 @@
 
 
 main :: fn () s32 {
-    arr: [10]s32;
-    slice: []s32 = arr;
+    foo := "hello";
+    c :: foo[0];
+
     return 0;
 }
 

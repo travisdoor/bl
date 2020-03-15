@@ -290,6 +290,13 @@ v3_dot :: fn (a: v3, b: v3) f32 #inline {
     return a.x * b.x + a.y * b.y + a.z * b.z;
 };
 
+v3_sub_s :: fn (a: v3, b: f32) v3 #inline {
+    a.x -= b;
+    a.y -= b;
+    a.z -= b;
+    return a;
+};
+
 v3_sub :: fn (a: v3, b: v3) v3 #inline {
     a.x -= b.x;
     a.y -= b.y;
@@ -321,6 +328,13 @@ v3_mul :: fn (a: v3, b: v3) v3 #inline {
     a.x *= b.x;
     a.y *= b.y;
     a.z *= b.z;
+    return a;
+};
+
+v3_add_s :: fn (a: v3, b: f32) v3 #inline {
+    a.x += b;
+    a.y += b;
+    a.z += b;
     return a;
 };
 
