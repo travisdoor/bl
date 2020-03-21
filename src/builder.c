@@ -149,6 +149,12 @@ builder_parse_options(s32 argc, char *argv[])
 
 	builder.options.build_mode = BUILD_MODE_DEBUG;
 
+#if defined(BL_PLATFORM_WIN)
+	builder.options.build_di_kind = BUILD_DI_CODEVIEW;
+#else
+	builder.options.build_di_kind = BUILD_DI_DWARF;
+#endif
+
 	s32 optind = 1;
 	for (; optind < argc && argv[optind][0] == '-'; optind++) {
 		if (IS_PARAM("ast-dump")) {
@@ -193,6 +199,10 @@ builder_parse_options(s32 argc, char *argv[])
 			builder.options.build_mode = BUILD_MODE_RELEASE_FAST;
 		} else if (IS_PARAM("release-small")) {
 			builder.options.build_mode = BUILD_MODE_RELEASE_SMALL;
+		} else if (IS_PARAM("di-dwarf")) {
+			builder.options.build_di_kind = BUILD_DI_DWARF;
+		} else if (IS_PARAM("di-codeview")) {
+			builder.options.build_di_kind = BUILD_DI_CODEVIEW;
 		} else {
 			msg_error("invalid params '%s'", &argv[optind][1]);
 			return -1;
@@ -217,7 +227,7 @@ builder_init(void)
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
 	builder.options.reg_split = true;
 #else
-	builder.options.reg_split = false;
+	builder.options.reg_split     = false;
 #endif
 
 	/* initialize LLVM statics */

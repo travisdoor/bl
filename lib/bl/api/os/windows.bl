@@ -220,6 +220,10 @@ _os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
     return true;
 }
 
+_os_debug_break :: fn () #inline {
+    win32_DebugBreak();
+}
+
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return _write(fd, buf, count);
 };

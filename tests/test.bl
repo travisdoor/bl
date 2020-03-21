@@ -2,13 +2,14 @@
 
 #load "std/print.bl"
 
-
-
 main :: fn () s32 {
-    foo := "hello";
-    c :: foo[0];
+    foo();
 
     return 0;
+}
+
+foo :: fn () {
+    debug_break();
 }
 
 

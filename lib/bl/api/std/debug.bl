@@ -117,3 +117,7 @@ assert :: fn (cond: bool) {
         unreachable;
     }
 };
+
+debug_break :: fn () #inline {
+    _os_debug_break();
+}

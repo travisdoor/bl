@@ -82,6 +82,11 @@ init_DI(Assembly *assembly)
 	                         "Debug Info Version",
 	                         llvm_get_dwarf_version());
 
+	if (assembly->options.build_di_kind == BUILD_DI_DWARF) {
+	} else if (assembly->options.build_di_kind == BUILD_DI_CODEVIEW) {
+		llvm_add_module_flag_int(llvm_module, LLVMModuleFlagBehaviorWarning, "CodeView", 1);
+	}
+
 	/* create DI builder */
 	assembly->llvm.di_builder = llvm_di_new_di_builder(llvm_module);
 
@@ -108,7 +113,7 @@ init_llvm(Assembly *assembly)
 	char *features  = /*LLVMGetHostCPUFeatures()*/ "";
 	char *error_msg = NULL;
 
-	// msg_log("Target: %s", triple);
+	msg_log("Target: %s", triple);
 
 	LLVMTargetRef llvm_target = NULL;
 	if (LLVMGetTargetFromTriple(triple, &llvm_target, &error_msg)) {
@@ -215,8 +220,9 @@ assembly_new(const char *name)
 	vm_init(&assembly->vm, VM_STACK_SIZE);
 
 	// set defaults
-	assembly->options.build_mode = builder.options.build_mode;
-	assembly->options.run_tests = builder.options.run_tests;
+	assembly->options.build_mode    = builder.options.build_mode;
+	assembly->options.build_di_kind = builder.options.build_di_kind;
+	assembly->options.run_tests     = builder.options.run_tests;
 	set_default_out_dir(assembly);
 
 	scope_arenas_init(&assembly->arenas.scope);

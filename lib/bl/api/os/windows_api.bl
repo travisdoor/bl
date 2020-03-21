@@ -186,3 +186,5 @@ win32_LoadLibraryA        :: fn (lpLibFileName: WIN32_LPCSTR) WIN32_HMODULE #ext
 win32_FreeLibrary         :: fn (hLibModule: WIN32_HMODULE) WIN32_BOOL #extern "FreeLibrary";
 win32_GetModuleHandleA    :: fn (lpModuleName: WIN32_LPCSTR) WIN32_HMODULE #extern "GetModuleHandleA";
 win32_GetProcAddress      :: fn (hModule: WIN32_HMODULE, lpProcName: WIN32_LPCSTR) WIN32_FARPROC #extern "GetProcAddress";
+
+win32_DebugBreak          :: fn () #extern "DebugBreak";
