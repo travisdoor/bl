@@ -368,6 +368,7 @@ TypeInfoStructMember :: struct #compiler {
     offset_bytes: s32;
     index: s32;
     tags: s32;
+    is_base: bool;
 }
 ```
 
@@ -393,6 +394,8 @@ User tags can be defined by `#tags` hash directive written after member type in 
 
         TAG1 :: 0x1;
         TAG2 :: 0x2;
+
+  * `is_base` True when member is inherrited base of the parent structure type.
 */
 TypeInfoStructMember :: struct #compiler {
     name: string;
@@ -400,6 +403,7 @@ TypeInfoStructMember :: struct #compiler {
     offset_bytes: s32;
     index: s32;
     tags: s32;
+    is_base: bool;
 };
 
 /*!

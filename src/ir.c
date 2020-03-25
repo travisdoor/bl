@@ -388,19 +388,19 @@ emit_DI_fn(Context *cnt, MirFn *fn)
 {
 	if (!fn->decl_node) return;
 
-	Location *      location   = fn->decl_node->location;
-	LLVMMetadataRef llvm_file  = location->unit->llvm_file_meta;
+	Location *      location  = fn->decl_node->location;
+	LLVMMetadataRef llvm_file = location->unit->llvm_file_meta;
 
 	/*
 	LLVMMetadataRef llvm_scope = fn->decl_node->owner_scope->llvm_di_meta
-                                          ? fn->decl_node->owner_scope->llvm_di_meta
-                                          : llvm_file;
-                                          */
+	                                  ? fn->decl_node->owner_scope->llvm_di_meta
+	                                  : llvm_file;
+	                                  */
 
 	// This fix bug #97 but it could lead to invalid function DI scope nesting???
-        LLVMMetadataRef llvm_scope = llvm_file;
+	LLVMMetadataRef llvm_scope = llvm_file;
 
-        BL_ASSERT(llvm_scope && "Invalid scope for DWARF!");
+	BL_ASSERT(llvm_scope && "Invalid scope for DWARF!");
 	LLVMMetadataRef tmp = llvm_di_create_fn(cnt->llvm_di_builder,
 	                                        llvm_scope,
 	                                        fn->id ? fn->id->str : fn->linkage_name,
@@ -810,6 +810,13 @@ rtti_emit_struct_member(Context *cnt, MirMember *member)
 	                   LLVMConstInt(offset_type->llvm_type,
 	                                (u32)member->tags,
 	                                tags_type->data.integer.is_signed));
+
+	/* is_base */
+	MirType *is_base_type = mir_get_struct_elem_type(rtti_type, 5);
+	tsa_push_LLVMValue(&llvm_vals,
+	                   LLVMConstInt(offset_type->llvm_type,
+	                                (u32)member->is_base,
+	                                is_base_type->data.integer.is_signed));
 
 	LLVMValueRef llvm_result =
 	    LLVMConstNamedStruct(rtti_type->llvm_type, llvm_vals.data, (u32)llvm_vals.size);

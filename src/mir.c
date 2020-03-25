@@ -7541,6 +7541,11 @@ rtti_gen_struct_member(Context *cnt, VMStackPtr dest, MirMember *member)
 	MirType *  dest_tags_type = mir_get_struct_elem_type(rtti_type, 4);
 	VMStackPtr dest_tags      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 4);
 	vm_write_int(dest_tags_type, dest_tags, (u64)member->tags);
+
+	/* is_base */
+	MirType *  dest_is_base_type = mir_get_struct_elem_type(rtti_type, 5);
+	VMStackPtr dest_is_base      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 5);
+	vm_write_int(dest_is_base_type, dest_is_base, (u64)member->is_base);
 }
 
 VMStackPtr
