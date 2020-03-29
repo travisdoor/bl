@@ -353,6 +353,7 @@ emit_basic_block(Context *cnt, MirInstrBlock *block)
 
 	LLVMBasicBlockRef llvm_block = NULL;
 	if (!block->base.llvm_value) {
+		if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 		llvm_block = LLVMAppendBasicBlockInContext(
 		    cnt->llvm_cnt, block->owner_fn->llvm_value, block->name);
 		block->base.llvm_value = LLVMBasicBlockAsValue(llvm_block);
@@ -374,6 +375,7 @@ emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 	if (instr->node) {
 		LLVMMetadataRef llvm_scope = instr->node->owner_scope->llvm_di_meta;
 		Location *      location   = instr->node->location;
+
 		llvm_di_set_current_location(cnt->llvm_builder,
 		                             (unsigned)location->line,
 		                             (unsigned)location->col,
@@ -559,6 +561,7 @@ emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref)
 State
 emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 {
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 	LLVMValueRef llvm_phi =
 	    LLVMBuildPhi(cnt->llvm_builder, phi->base.value.type->llvm_type, "");
 
@@ -1463,6 +1466,7 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 		return STATE_PASSED;
 	}
 
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 	load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
 
 	const unsigned alignment = (const unsigned)load->base.value.type->alignment;
@@ -1482,6 +1486,7 @@ emit_instr_store(Context *cnt, MirInstrStore *store)
 
 	store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
 	LLVMSetAlignment(store->base.llvm_value, alignment);
+
 	return STATE_PASSED;
 }
 
@@ -1491,10 +1496,9 @@ emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 	LLVMValueRef llvm_val = unop->expr->llvm_value;
 	BL_ASSERT(llvm_val);
 
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 	LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(llvm_val));
 	const bool   float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
-
-	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unop->base);
 
 	switch (unop->op) {
 	case UNOP_BIT_NOT:
@@ -1671,8 +1675,9 @@ emit_instr_binop(Context *cnt, MirInstrBinop *binop)
 	LLVMValueRef rhs = binop->rhs->llvm_value;
 	BL_ASSERT(lhs && rhs);
 
-	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, &binop->base);
+	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &binop->base);
 	MirType *  type           = binop->lhs->value.type;
 	const bool real_type      = type->kind == MIR_TYPE_REAL;
 	const bool signed_integer = type->kind == MIR_TYPE_INT && type->data.integer.is_signed;
@@ -2090,6 +2095,8 @@ emit_instr_br(Context *cnt, MirInstrBr *br)
 
 	LLVMBasicBlockRef llvm_then_block = emit_basic_block(cnt, then_block);
 	BL_ASSERT(llvm_then_block);
+
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 	br->base.llvm_value = LLVMBuildBr(cnt->llvm_builder, llvm_then_block);
 
 	LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_then_block);
@@ -2208,6 +2215,7 @@ emit_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 	LLVMBasicBlockRef llvm_then_block = emit_basic_block(cnt, then_block);
 	LLVMBasicBlockRef llvm_else_block = emit_basic_block(cnt, else_block);
 
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 	br->base.llvm_value =
 	    LLVMBuildCondBr(cnt->llvm_builder, llvm_cond, llvm_then_block, llvm_else_block);
 	return STATE_PASSED;
@@ -2442,8 +2450,6 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 			}
 			block = block->next;
 		}
-
-		if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 	}
 
 	return STATE_PASSED;

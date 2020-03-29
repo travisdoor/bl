@@ -3,13 +3,16 @@
 #load "std/print.bl"
 
 main :: fn () s32 {
-    foo();
+    i :: 10;
+    if i == 0 {
+        j := 20;
+        j = 0;
+        j = 10;
+    }
 
+    o := 1;
+    o = 2;
     return 0;
-}
-
-foo :: fn () {
-    debug_break();
 }
 
 
