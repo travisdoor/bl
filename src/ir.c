@@ -359,7 +359,6 @@ emit_basic_block(Context *cnt, MirInstrBlock *block)
 	} else {
 		llvm_block = LLVMValueAsBasicBlock(block->base.llvm_value);
 	}
-
 	return llvm_block;
 }
 
@@ -814,7 +813,7 @@ rtti_emit_struct_member(Context *cnt, MirMember *member)
 	/* is_base */
 	MirType *is_base_type = mir_get_struct_elem_type(rtti_type, 5);
 	tsa_push_LLVMValue(&llvm_vals,
-	                   LLVMConstInt(offset_type->llvm_type,
+	                   LLVMConstInt(is_base_type->llvm_type,
 	                                (u32)member->is_base,
 	                                is_base_type->data.integer.is_signed));
 
@@ -1495,7 +1494,7 @@ emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 	LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(llvm_val));
 	const bool   float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
 
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unop->base);
+	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unop->base);
 
 	switch (unop->op) {
 	case UNOP_BIT_NOT:
@@ -1672,7 +1671,7 @@ emit_instr_binop(Context *cnt, MirInstrBinop *binop)
 	LLVMValueRef rhs = binop->rhs->llvm_value;
 	BL_ASSERT(lhs && rhs);
 
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &binop->base);
+	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, &binop->base);
 
 	MirType *  type           = binop->lhs->value.type;
 	const bool real_type      = type->kind == MIR_TYPE_REAL;
@@ -1959,10 +1958,7 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 		}
 	}
 
-	if (cnt->debug_mode) {
-		emit_DI_instr_loc(cnt, &call->base);
-	}
-
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &call->base);
 	LLVMValueRef llvm_call = LLVMBuildCall(
 	    cnt->llvm_builder, llvm_called_fn, llvm_args.data, (unsigned int)llvm_args.size, "");
 
@@ -2033,8 +2029,8 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		BL_ASSERT(var->llvm_value);
 
 		if (cnt->debug_mode) {
-			emit_DI_var(cnt, var);
 			emit_DI_instr_loc(cnt, &decl->base);
+			emit_DI_var(cnt, var);
 		}
 
 		/* generate DI for debug build */
@@ -2446,6 +2442,8 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 			}
 			block = block->next;
 		}
+
+		if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 	}
 
 	return STATE_PASSED;
