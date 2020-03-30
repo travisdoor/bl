@@ -3,14 +3,8 @@
 #load "std/print.bl"
 
 main :: fn () s32 {
-    i :: 10;
-    if i == 0 {
-        j := 20;
-        j = 0;
-        j = 10;
-    } else {
-        o := 1;
-        o = 2;
+    loop i := 0; i < 4; i += 1{
+        print("Hello!\n");
     }
 
     return 0;

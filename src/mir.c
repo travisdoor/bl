@@ -8340,7 +8340,7 @@ ast_expr_lit_fn(Context *cnt,
 	MirInstrBlock *init_block = append_block(cnt, fn, "entry");
 
 	/* Every user generated function must contain exit block; this block is invoked last
-	 * in every function a eventually can return .ret value stored in temporary storage.
+	 * in every function eventually can return .ret value stored in temporary storage.
 	 * When ast parser hit user defined 'return' statement it sets up .ret temporary if
 	 * there is one and produce break into exit block. This approach is needed due to
 	 * defer statement, because we need to call defer blocks after return value

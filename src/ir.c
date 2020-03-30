@@ -371,17 +371,17 @@ emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 		return;
 	}
 
-	if (instr->node) {
-		LLVMMetadataRef llvm_scope = instr->node->owner_scope->llvm_di_meta;
-		Location *      location   = instr->node->location;
+	if (!instr->node) return;
 
-		llvm_di_set_current_location(cnt->llvm_builder,
-		                             (unsigned)location->line,
-		                             //(unsigned)location->col,
-					     0,
-		                             llvm_scope,
-		                             false);
-	}
+	BL_ASSERT(instr->node->owner_scope && "Invalid LLVM DI owner scope!");
+
+	LLVMMetadataRef llvm_scope = instr->node->owner_scope->llvm_di_meta;
+	Location *      location   = instr->node->location;
+
+	if (!location) return;
+
+	llvm_di_set_current_location(
+	    cnt->llvm_builder, (unsigned)location->line, 0, llvm_scope, false);
 }
 
 void
@@ -432,7 +432,8 @@ emit_DI_var(Context *cnt, MirVar *var)
 	if (var->is_global) {
 		llvm_di_set_current_location(cnt->llvm_builder,
 		                             (unsigned)location->line,
-		                             (unsigned)location->col,
+		                             //(unsigned)location->col,
+		                             0,
 		                             llvm_scope,
 		                             false);
 
@@ -459,7 +460,8 @@ emit_DI_var(Context *cnt, MirVar *var)
 		                       var->llvm_value,
 		                       llvm_meta,
 		                       (unsigned)location->line,
-		                       (unsigned)location->col,
+		                       //(unsigned)location->col,
+		                       0,
 		                       llvm_scope,
 		                       LLVMGetInsertBlock(cnt->llvm_builder));
 	}

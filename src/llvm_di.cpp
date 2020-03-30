@@ -186,7 +186,7 @@ llvm_di_create_fn(LLVMDIBuilderRef builder_ref,
                                           line,
                                           CAST(DISubroutineType *)(type_ref),
                                           scope_line,
-                                          DINode::FlagStaticMember,
+                                          DINode::FlagPrototyped,
                                           DISubprogram::toSPFlags(false, true, false));
 
 	return CAST(LLVMMetadataRef)(fn);
