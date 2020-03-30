@@ -373,12 +373,10 @@ emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 
 	if (!instr->node) return;
 
-	BL_ASSERT(instr->node->owner_scope && "Invalid LLVM DI owner scope!");
-
 	LLVMMetadataRef llvm_scope = instr->node->owner_scope->llvm_di_meta;
 	Location *      location   = instr->node->location;
 
-	if (!location) return;
+	BL_ASSERT(location && "Missing node location!");
 
 	llvm_di_set_current_location(
 	    cnt->llvm_builder, (unsigned)location->line, 0, llvm_scope, false);
@@ -563,6 +561,7 @@ emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref)
 State
 emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 {
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &phi->base);
 	LLVMValueRef llvm_phi =
 	    LLVMBuildPhi(cnt->llvm_builder, phi->base.value.type->llvm_type, "");
 
@@ -600,6 +599,7 @@ emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 	MirFn *abort_fn = unr->abort_fn;
 	BL_ASSERT(abort_fn);
 	if (!abort_fn->llvm_value) emit_fn_proto(cnt, abort_fn);
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unr->base);
 	LLVMBuildCall(cnt->llvm_builder, abort_fn->llvm_value, NULL, 0, "");
 	return STATE_PASSED;
 }
@@ -1466,6 +1466,7 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 		return STATE_PASSED;
 	}
 
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &load->base);
 	load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
 
 	const unsigned alignment = (const unsigned)load->base.value.type->alignment;
@@ -1481,6 +1482,7 @@ emit_instr_store(Context *cnt, MirInstrStore *store)
 	const unsigned alignment = (unsigned)store->src->value.type->alignment;
 	BL_ASSERT(val && ptr);
 
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &store->base);
 	store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
 	LLVMSetAlignment(store->base.llvm_value, alignment);
 
@@ -1670,6 +1672,8 @@ emit_instr_binop(Context *cnt, MirInstrBinop *binop)
 	LLVMValueRef lhs = binop->lhs->llvm_value;
 	LLVMValueRef rhs = binop->rhs->llvm_value;
 	BL_ASSERT(lhs && rhs);
+
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &binop->base);
 
 	MirType *  type           = binop->lhs->value.type;
 	const bool real_type      = type->kind == MIR_TYPE_REAL;
@@ -1956,6 +1960,7 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 		}
 	}
 
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &call->base);
 	LLVMValueRef llvm_call = LLVMBuildCall(
 	    cnt->llvm_builder, llvm_called_fn, llvm_args.data, (unsigned int)llvm_args.size, "");
 
@@ -2020,6 +2025,7 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		emit_global_var_proto(cnt, var);
 
 		if (cnt->debug_mode) {
+			emit_DI_instr_loc(cnt, &decl->base);
 			emit_DI_var(cnt, var);
 		}
 	} else {
@@ -2450,7 +2456,6 @@ emit_instr(Context *cnt, MirInstr *instr)
 {
 	State state = STATE_PASSED;
 	if (instr->value.type->kind == MIR_TYPE_TYPE) return state;
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, instr);
 
 	switch (instr->kind) {
 	case MIR_INSTR_INVALID:

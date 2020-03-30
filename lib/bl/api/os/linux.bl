@@ -215,6 +215,10 @@ _os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
 }
 
 
+_os_debug_break :: fn () #inline {
+    _posix_raise(SIGTRAP);
+}
+
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
     return _posix_write(fd, buf, count);
 };
