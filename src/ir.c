@@ -353,7 +353,6 @@ emit_basic_block(Context *cnt, MirInstrBlock *block)
 
 	LLVMBasicBlockRef llvm_block = NULL;
 	if (!block->base.llvm_value) {
-		if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 		llvm_block = LLVMAppendBasicBlockInContext(
 		    cnt->llvm_cnt, block->owner_fn->llvm_value, block->name);
 		block->base.llvm_value = LLVMBasicBlockAsValue(llvm_block);
@@ -378,7 +377,8 @@ emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 
 		llvm_di_set_current_location(cnt->llvm_builder,
 		                             (unsigned)location->line,
-		                             (unsigned)location->col,
+		                             //(unsigned)location->col,
+					     0,
 		                             llvm_scope,
 		                             false);
 	}
@@ -2072,6 +2072,8 @@ emit_instr_ret(Context *cnt, MirInstrRet *ret)
 	}
 
 	ret->base.llvm_value = LLVMBuildRetVoid(cnt->llvm_builder);
+
+	llvm_di_finalize_subprogram(cnt->llvm_di_builder, fn->body_scope->llvm_di_meta);
 	return STATE_PASSED;
 }
 

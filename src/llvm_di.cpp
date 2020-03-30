@@ -387,6 +387,12 @@ llvm_di_set_subprogram(LLVMValueRef fn_ref, LLVMMetadataRef subprogram_ref)
 	func->setSubprogram(CAST(DISubprogram *)(subprogram_ref));
 }
 
+void
+llvm_di_finalize_subprogram(LLVMDIBuilderRef builder_ref, LLVMMetadataRef subprogram_ref)
+{
+	CAST(DIBuilder *)(builder_ref)->finalizeSubprogram(CAST(DISubprogram*)(subprogram_ref));
+}
+
 LLVMMetadataRef
 llvm_di_create_auto_variable(LLVMDIBuilderRef builder_ref,
                              LLVMMetadataRef  scope_ref,

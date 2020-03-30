@@ -2855,7 +2855,9 @@ init_llvm_DI_scope(Context *cnt, Scope *scope)
 		                                                   llvm_parent_scope,
 		                                                   llvm_unit,
 		                                                   (unsigned)scope->location->line,
-		                                                   (unsigned)scope->location->col);
+		                                                   //(unsigned)scope->location->col
+								   0
+								   );
 		break;
 	}
 
