@@ -28,6 +28,8 @@
 
 #load "std/print.bl"
 
+string_null :: {:string: 0};
+
 /*!
 # string_new 
 ## Declaration
@@ -35,7 +37,7 @@
 string_new :: fn () string
 ```
 ## Description
-  Create new dynamic string instance. 
+  Create new dynamic string instance. This instance must be freed by `string_delete` call.
 
 ## Result
   New string.
@@ -44,6 +46,23 @@ string_new :: fn () string {
     return string_new_reserved(0);
 };
 
+/*!
+# string_new_reserved
+## Declaration
+```c
+string_new_reserved :: fn (size: usize) string
+```
+## Description
+  Create new dynamic string instance with preallocated storage. 
+This instance must be freed by `string_delete` call.
+
+## Arguments
+  * `size`
+    Size in bytes.
+
+## Result
+  New string.
+*/
 string_new_reserved :: fn (size: usize) string {
     tmp : string;
     tmp.ptr = alloc_block(size);
@@ -53,6 +72,23 @@ string_new_reserved :: fn (size: usize) string {
     return tmp;
 };
 
+/*!
+# string_new_cstr
+## Declaration
+```c
+string_new_cstr :: fn (cstr: *u8) string
+```
+## Description
+  Create new dynamic string from C zero terminated string. 
+This instance must be freed by `string_delete` call.
+
+## Arguments
+  * `cstr`
+    C zero terminated string.
+
+## Result
+  New string.
+*/
 string_new_cstr :: fn (cstr: *u8) string {
     len :: c_strlen(auto cstr);
     tmp: string;
@@ -65,6 +101,23 @@ string_new_cstr :: fn (cstr: *u8) string {
     return tmp;
 }
 
+/*!
+# string_copy
+## Declaration
+```c
+string_copy :: fn (v: string) string
+```
+## Description
+  Create new dynamic string as copy of other string. 
+This instance must be freed by `string_delete` call.
+
+## Arguments
+  * `v`
+    String to be duplicated.
+
+## Result
+  New string.
+*/
 string_copy :: fn (v: string) string {
     tmp : string;
     tmp.ptr = alloc_block(auto v.len);
@@ -76,16 +129,58 @@ string_copy :: fn (v: string) string {
     return tmp;
 };
 
+/*!
+# string_delete
+## Declaration
+```c
+string_delete :: fn (v: string)
+```
+## Description
+  Delete dynamic string.
+
+## Arguments
+  * `v`
+    String to be deleted.
+*/
 string_delete :: fn (v: string) {
     if v.ptr == null { return; }
     free_block(v.ptr);
 };
 
+/*!
+# string_clear
+## Declaration
+```c
+string_clear :: fn (v: *string)
+```
+## Description
+  Clear dynamic string but keep allocated storage.
+
+## Arguments
+  * `v`
+    String to be cleared.
+*/
 string_clear :: fn (v: *string) {
     v.len = 0;
     set_terminator(^v);
 };
 
+/*!
+# string_append
+## Declaration
+```c
+string_append :: fn (v: *string, add: Any)
+```
+## Description
+  Append dynamic string with any value. Allocation is done in case there
+is not enough space reminding in string.
+
+## Arguments
+  * `v`
+    String to be cleared.
+  * `add`
+    Value to be appended.
+*/
 string_append :: fn (v: *string, add: Any) {
     new_len : s64 = 0;
     add_len : s64 = 0;
@@ -114,6 +209,23 @@ string_append :: fn (v: *string, add: Any) {
     set_terminator(^v);
 };
 
+/*!
+# string_new_concatenate
+## Declaration
+```c
+string_new_concatenate :: fn (args: ...) string
+```
+## Description
+  Create new dynamic string with variable content.
+This instance must be freed by `string_delete` call.
+
+## Arguments
+  * `args`
+    String content.
+
+## Result
+  New string.
+*/
 string_new_concatenate :: fn (args: ...) string {
     tmp := string_new();
     loop i := 0; i < args.len; i += 1 {
@@ -123,12 +235,46 @@ string_new_concatenate :: fn (args: ...) string {
     return tmp;
 };
 
+/*!
+# string_concatenate
+## Declaration
+```c
+string_concatenate :: fn (v: *string, args: ...)
+```
+## Description
+  Append string with multiple values passed as `args`.
+
+## Arguments
+  * `v`
+    String to be appended.
+  * `args`
+    String content.
+*/
 string_concatenate :: fn (v: *string, args: ...) {
     loop i := 0; i < args.len; i += 1 {
         string_append(v, args[i]);
     }
 };
 
+/*!
+# string_compare
+## Declaration
+```c
+string_compare :: fn (first: string, second: string) bool
+```
+## Description
+  Compare two strings and return `true` if they are same otherwise
+return `false`.
+ 
+## Arguments
+  * `first`
+    First string to be compared.
+  * `second`
+    Second string to be compared.
+
+## Result
+  Return `true` if the `first` is same as the `second`.
+*/
 string_compare :: fn (first: string, second: string) bool {
     if first.len != second.len { return false; } 
 
@@ -139,6 +285,27 @@ string_compare :: fn (first: string, second: string) bool {
     return true;
 };
 
+/*!
+# string_comparen
+## Declaration
+```c
+string_comparen :: fn (first: string, second: string, n: s32) bool
+```
+## Description
+  Compare two strings in specified range and return `true` 
+if they are same otherwise return `false`.
+ 
+## Arguments
+  * `first`
+    First string to be compared.
+  * `second`
+    Second string to be compared.
+  * `n`
+    Count of characters to be compared.
+
+## Result
+  Return `true` if `n` characters in `first` string are same as the same range in `second` string.
+*/
 string_comparen :: fn (first: string, second: string, n: s32) bool
 {
     if first.len < n { return false; }
@@ -151,14 +318,64 @@ string_comparen :: fn (first: string, second: string, n: s32) bool
     return true;
 };
 
+/*!
+# string_to_f32
+## Declaration
+```c
+string_to_f32 :: fn (str: string) f32
+```
+## Description
+  Convert string to `f32`.
+ 
+## Arguments
+  * `str`
+    Float as string.
+
+## Result
+  Converted float value.
+*/
 string_to_f32 :: fn (str: string) f32 {
     return string_to_f32n(str, str.len);
 }
 
+/*!
+# string_to_s64
+## Declaration
+```c
+string_to_f64 :: fn (str: string) f64
+```
+## Description
+  Convert string to `s64`.
+ 
+## Arguments
+  * `str`
+    Integer as string.
+
+## Result
+  Converted integer value.
+*/
 string_to_s64 :: fn (str: string) s64 {
     return string_to_s64n(str, str.len);
 }
 
+/*!
+# string_to_f32n
+## Declaration
+```c
+string_to_f32n :: fn (str: string, len: s64) f32
+```
+## Description
+  Convert first `n` characters from string to `f32`.
+ 
+## Arguments
+  * `str`
+    Float as string.
+  * `len`
+    Count of characters to be compared.
+
+## Result
+  Converted float value.
+*/
 string_to_f32n :: fn (str: string, len: s64) f32 {
     n := 0;
     e := 1;
@@ -192,6 +409,24 @@ string_to_f32n :: fn (str: string, len: s64) f32 {
     return v;
 }
 
+/*!
+# string_to_s64n
+## Declaration
+```c
+string_to_s64n :: fn (str: string, len: s64) s64
+```
+## Description
+  Convert first `n` characters from string to `s64`.
+ 
+## Arguments
+  * `str`
+    Integer as string.
+  * `len`
+    Count of characters to be compared.
+
+## Result
+  Converted integer value.
+*/
 string_to_s64n :: fn (str: string, len: s64) s64 {
     n : s64 = 0;
     is_negative := false;
@@ -215,6 +450,10 @@ string_to_s64n :: fn (str: string, len: s64) s64 {
     if is_negative { n = -n; } 
     return n;
 }
+
+string_is_null  :: fn (s: string) bool #inline { return s.ptr == null; }
+string_is_empty :: fn (s: string) bool #inline { return s.len == 0; }
+string_is_null_or_empty :: fn (s: string) bool #inline { return s.ptr == null || s.len == 0; }
 
 #private
 STRING_BLOCK_SIZE :: 64 - sizeof(BlockHead);

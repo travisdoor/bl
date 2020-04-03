@@ -109,14 +109,7 @@ main :: fn () s32 {
 */
 print :: fn (format: string, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8;
-
-    // HACK: use implicit conversion later!!!
-    // HACK: use implicit conversion later!!!
-    // HACK: use implicit conversion later!!!
-    tmp := {:[]u8: buf.len, buf.ptr };
-    tmp2 := {:[]Any: args.len, args.ptr };
-
-    w := print_impl(tmp, format, tmp2);
+    w := _print_impl({:[]u8: buf.len, buf.ptr}, format, {:[]Any: args.len, args.ptr});
     __os_write(OS_STDOUT, buf.ptr, auto w);
     return w;
 };
@@ -144,14 +137,7 @@ pass values of any type as an arguments, even structures or arrays.
 */
 eprint :: fn (format: string, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8;
-
-    // HACK: use implicit conversion later!!!
-    // HACK: use implicit conversion later!!!
-    // HACK: use implicit conversion later!!!
-    tmp := {:[]u8: buf.len, buf.ptr };
-    tmp2 := {:[]Any: args.len, args.ptr };
-
-    w := print_impl(tmp, format, tmp2);
+    w := _print_impl({:[]u8: buf.len, buf.ptr}, format, {:[]Any: args.len, args.ptr});
     __os_write(OS_STDERR, buf.ptr, auto w);
     return w;
 };
@@ -183,7 +169,7 @@ string, function will print just part fitting into the buffer.
 */
 bprint :: fn (buf: []u8, format: string, args: ...) s32 {
     tmp := {:[]Any: args.len, args.ptr };
-    w := print_impl(buf, format, tmp);
+    w := _print_impl(buf, format, tmp);
     w += print_char(buf, w, '\0');
     return w;
 };
@@ -205,20 +191,12 @@ _print_log_default :: fn (kind: PrintLogKind, format: string, args: []Any, file:
     }
 
     buf := {:[PRINT_MAX_LENGTH]u8: 0};
-
-    // HACK: use implicit conversion later!!!
-    // HACK: use implicit conversion later!!!
-    // HACK: use implicit conversion later!!!
-    tmp := {:[]u8: buf.len, buf.ptr };
-
-    w := print_impl(tmp, format, args);
+    w := _print_impl({:[]u8: buf.len, buf.ptr}, format, args);
     __os_write(out, buf.ptr, auto w);
     print("\n");
 };
 
-#private
-
-print_impl :: fn (buf: []u8, format: string, args: []Any) s32 {
+_print_impl :: fn (buf: []u8, format: string, args: []Any) s32 {
     cur := 0;
     argi := 0;
 
@@ -240,6 +218,8 @@ print_impl :: fn (buf: []u8, format: string, args: []Any) s32 {
 
     return cur;
 };
+
+#private
 
 print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
     if any.type_info.kind == TypeKind.Int {

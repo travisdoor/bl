@@ -229,6 +229,9 @@ void
 llvm_di_set_subprogram(LLVMValueRef fn_ref, LLVMMetadataRef subprogram_ref);
 
 void
+llvm_di_finalize_subprogram(LLVMDIBuilderRef builder_ref, LLVMMetadataRef subprogram_ref);
+
+void
 llvm_di_insert_declare(LLVMDIBuilderRef  builder_ref,
                        LLVMValueRef      storage_ref,
                        LLVMMetadataRef   var_info_ref,

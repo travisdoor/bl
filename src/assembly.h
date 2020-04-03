@@ -1,5 +1,5 @@
 //************************************************************************************************
-// Biscuit Engine
+// blc
 //
 // File:   assembly.h
 // Author: Martin Dorazil
@@ -47,13 +47,19 @@ typedef enum BuildMode {
 	BUILD_MODE_BUILD = 4, /* Build pipeline entry mode. */
 } BuildMode;
 
+typedef enum BuildDIKind {
+	BUILD_DI_DWARF    = 1, /* Emit DWARF debug information in LLVM IR. */
+	BUILD_DI_CODEVIEW = 2, /* Emit MS CodeView debug info (PDB file). */
+} BuildDIKind;
+
 typedef struct AssemblyOptions {
-	BuildMode build_mode;
-	TString   custom_linker_opt;
-	TString   out_dir; /* Build output directory */
-	TArray    lib_paths;
-	TArray    libs;
-	bool      run_tests;
+	BuildMode   build_mode;
+	BuildDIKind build_di_kind;
+	TString     custom_linker_opt;
+	TString     out_dir; /* Build output directory */
+	TArray      lib_paths;
+	TArray      libs;
+	bool        run_tests;
 } AssemblyOptions;
 
 typedef struct Assembly {

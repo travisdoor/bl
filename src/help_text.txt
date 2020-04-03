@@ -20,4 +20,5 @@ Options\n\
   -force-test-to-llvm   = Force llvm generation of unit tests.\n\
   -configure            = Generate config file.\n\
   -release-<fast|small> = Enable release mode. (when not specified, compiler use debug mode by default)\n\
-  -reg-split-<on|off>   = Enable or disable splitting structures passed into the function by value into registers"
+  -reg-split-<on|off>   = Enable or disable splitting structures passed into the function by value into registers.\n\
+  -di-<dwarf|codeview>  = Set debug info format."

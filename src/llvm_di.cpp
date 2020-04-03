@@ -186,7 +186,7 @@ llvm_di_create_fn(LLVMDIBuilderRef builder_ref,
                                           line,
                                           CAST(DISubroutineType *)(type_ref),
                                           scope_line,
-                                          DINode::FlagStaticMember,
+                                          DINode::FlagPrototyped,
                                           DISubprogram::toSPFlags(false, true, false));
 
 	return CAST(LLVMMetadataRef)(fn);
@@ -385,6 +385,12 @@ llvm_di_set_subprogram(LLVMValueRef fn_ref, LLVMMetadataRef subprogram_ref)
 {
 	auto func = CAST(Function *)(fn_ref);
 	func->setSubprogram(CAST(DISubprogram *)(subprogram_ref));
+}
+
+void
+llvm_di_finalize_subprogram(LLVMDIBuilderRef builder_ref, LLVMMetadataRef subprogram_ref)
+{
+	CAST(DIBuilder *)(builder_ref)->finalizeSubprogram(CAST(DISubprogram*)(subprogram_ref));
 }
 
 LLVMMetadataRef

@@ -38,26 +38,27 @@
 #define COMPILE_FAIL 1
 
 typedef struct BuilderOptions {
-	BuildMode build_mode;
-	bool      print_help;
-	bool      print_tokens;
-	bool      print_ast;
-	bool      run;
-	bool      run_tests;
-	bool      run_configure;
-	bool      no_bin;
-	bool      no_warn;
-	bool      no_api;
-	bool      no_llvm;
-	bool      no_analyze;
-	bool      emit_llvm;
-	bool      emit_mir;
-	bool      load_from_file;
-	bool      syntax_only;
-	bool      verbose;
-	bool      force_test_llvm;
-	bool      reg_split;
-	bool      use_pipeline;
+	BuildMode   build_mode;
+	BuildDIKind build_di_kind;
+	bool        print_help;
+	bool        print_tokens;
+	bool        print_ast;
+	bool        run;
+	bool        run_tests;
+	bool        run_configure;
+	bool        no_bin;
+	bool        no_warn;
+	bool        no_api;
+	bool        no_llvm;
+	bool        no_analyze;
+	bool        emit_llvm;
+	bool        emit_mir;
+	bool        load_from_file;
+	bool        syntax_only;
+	bool        verbose;
+	bool        force_test_llvm;
+	bool        reg_split;
+	bool        use_pipeline;
 } BuilderOptions;
 
 typedef struct Builder {

@@ -457,6 +457,9 @@ print_expr_unary(Ast *unary, s32 pad, FILE *stream)
 	case UNOP_NOT:
 		op = "!";
 		break;
+	case UNOP_BIT_NOT:
+		op = "~";
+		break;
 	}
 
 	fprintf(stream, "'%s' ", op);

@@ -92,7 +92,10 @@ native_bin_run(Assembly *assembly)
 	{ /* setup link command */
 		const char *vc_vars_all = conf_data_get_str(builder.conf, CONF_VC_VARS_ALL_KEY);
 		const char *vc_arch     = "x64"; // TODO: set by compiler target arch
-		const char *default_opt = conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
+		const char *default_opt = assembly->options.build_mode == BUILD_MODE_DEBUG
+		    ? conf_data_get_str(builder.conf, CONF_LINKER_OPT_DEBUG_KEY)
+		    : conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
+
 		const char *custom_opt  = assembly->options.custom_linker_opt.len
 		                             ? assembly->options.custom_linker_opt.data
 		                             : "";

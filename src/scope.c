@@ -95,7 +95,7 @@ scope_insert(Scope *scope, ScopeEntry *entry)
 }
 
 ScopeEntry *
-scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_gscope)
+scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_gscope, bool *out_of_fn_local_scope)
 {
 	BL_ASSERT(scope && id);
 
@@ -104,11 +104,27 @@ scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_gscope)
 		if (thtbl_has_key(&scope->entries, id->hash))
 			return thtbl_at(ScopeEntry *, &scope->entries, id->hash);
 
-		if (in_tree)
+		if (in_tree) {
+			if (out_of_fn_local_scope && scope->kind == SCOPE_FN_LOCAL) {
+				*out_of_fn_local_scope = true;
+			}
+
 			scope = scope->parent;
-		else
+		} else {
 			break;
+		}
 	}
 
 	return NULL;
+}
+
+bool
+scope_is_subtree_of_kind(Scope *scope, ScopeKind kind)
+{
+	while (scope) {
+		if (scope->kind == kind) return true;
+		scope = scope->parent;
+	}
+
+	return false;
 }

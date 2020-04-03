@@ -33,6 +33,24 @@ StringStream :: struct {
     i: s64;
 }
 
+ss_new :: fn () *StringStream {
+    ss :: cast(*StringStream) mem_alloc(sizeof(StringStream));
+    ss_init(ss);
+    return ss;
+}
+
+ss_new_from_file :: fn (file: File) *StringStream {
+    ss :: cast(*StringStream) mem_alloc(sizeof(StringStream));
+    ss_init_from_file(ss, file);
+    return ss;
+}
+
+ss_delete :: fn (ss: *StringStream) {
+    if ss == null { return; }
+    ss_terminate(ss);
+    mem_free(auto ss);
+}
+
 ss_init_from_file :: fn (ss: *StringStream, file: File) {
     if file == null { panic(); }
 
@@ -41,7 +59,7 @@ ss_init_from_file :: fn (ss: *StringStream, file: File) {
 }
 
 ss_init :: fn (ss: *StringStream) {
-    ss._data = string_new();
+    ss._data = string_null;
     ss.i = 0;
 }
 
@@ -67,6 +85,10 @@ ss_get :: fn (ss: *StringStream) u8 {
 }
 
 ss_push :: fn (ss: *StringStream, v: Any) {
+    if string_is_null(ss._data) { ss._data = string_new(); }
     string_append(&ss._data, v);
 }
 
+ss_rewind :: fn (ss: *StringStream) {
+    ss.i = 0;
+}
