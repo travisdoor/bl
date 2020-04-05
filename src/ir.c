@@ -2081,7 +2081,9 @@ emit_instr_ret(Context *cnt, MirInstrRet *ret)
 
 	ret->base.llvm_value = LLVMBuildRetVoid(cnt->llvm_builder);
 
-	llvm_di_finalize_subprogram(cnt->llvm_di_builder, fn->body_scope->llvm_di_meta);
+	if (cnt->debug_mode)
+		llvm_di_finalize_subprogram(cnt->llvm_di_builder, fn->body_scope->llvm_di_meta);
+
 	return STATE_PASSED;
 }
 
