@@ -88,13 +88,12 @@ os_sleep_ms :: fn (ms: f64) #inline {
  *   Absolute file path.
  */
 os_get_real_path :: fn (filename: string) string {
-    tmp :: {:[OS_PATH_MAX]u8: 0};
-    if _posix_realpath(filename.ptr, tmp.ptr) == null {
-        return string_copy(filename);
-    }
+    tmp := {:[OS_PATH_MAX]u8: 0};
+    if _posix_realpath(filename.ptr, &tmp[0]) != null {
+        return string_new_cstr(tmp.ptr);
+    } 
 
-    result :: string_new_cstr(tmp.ptr);
-    return result;
+    return string_copy(filename);
 }
 
 /*
@@ -289,7 +288,7 @@ dirent :: struct {
 _posix_raise     :: fn (sig: s32) s32 #extern "raise";
 _posix_write     :: fn (fd: s32, buf: *u8, count: usize) s32 #extern "write";
 _posix_usleep    :: fn (us: u32) s32 #extern "usleep";
-_posix_realpath  :: fn (path: *u8, resolved_path: *u8) *u8 #extern "realpath";
+_posix_realpath  :: fn (path: *u8, resolved_path: *u8) *u8 #extern "realpath$DARWIN_EXTSN";
 _posix_exit      :: fn (v: s32) #extern "_exit";
 _posix_dlopen    :: fn (path: *u8, mode: s32) *u8 #extern "dlopen";
 _posix_dlclose   :: fn (handle: *u8) s32 #extern "dlclose";
