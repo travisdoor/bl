@@ -219,7 +219,22 @@ _print_impl :: fn (buf: []u8, format: string, args: []Any) s32 {
     return cur;
 };
 
+FmtReal :: struct {
+    trailing: u8;
+    
+    v: Any;
+}
+
+fmt_real :: fn (v: Any, trailing: u8) FmtReal #inline {
+    if v.type_info.kind != TypeKind.Real {
+        panic("Invalid format input, got % but expected is Real number!", v.type_info.kind);
+    }
+
+    return {:FmtReal: trailing, v};
+}
+
 #private
+DEFAULT_FLOAT_PRECISION :: 0.000001;
 
 print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
     if any.type_info.kind == TypeKind.Int {
@@ -248,7 +263,7 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
             cur = print_string(buf, cur, "-");
             real = -real;
         }
-        return print_f64(buf, cur, real);
+        return print_f64(buf, cur, real, -1);
     } else if any.type_info.kind == TypeKind.String {
         str := ^ cast(*string) any.data;
 
@@ -278,6 +293,19 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
         
         return print_string(buf, cur, "]");
     } else if any.type_info.kind == TypeKind.Struct {
+        if any.type_info == typeinfo(FmtReal) {
+            // Real formated
+            fmt :: cast(*FmtReal) any.data;
+            info := cast(*TypeInfoReal) fmt.v.type_info;
+
+            real := f64_from_u8_ptr(fmt.v.data, info.bit_count);
+            if real < 0. {
+                cur = print_string(buf, cur, "-");
+                real = -real;
+            }
+            return print_f64(buf, cur, real, auto fmt.trailing);
+        }
+        
         info := cast(*TypeInfoStruct) any.type_info;
 
         tmp : Any;
@@ -544,14 +572,17 @@ print_u64 :: fn (buf: []u8, cur: s32, v: u64) s32 {
     return cur;
 };
 
-print_f64 :: fn (buf: []u8, cur: s32, v: f64) s32 {
-    precision :: 0.000001;
-    m := cast(s32) log10(v);
+print_f64 :: fn (buf: []u8, cur: s32, v: f64, trailing: s32) s32 {
+    precision := DEFAULT_FLOAT_PRECISION;
+    if trailing > -1 { precision = 1. / pow(10., auto trailing); }
 
+    m := cast(s32) log10(v);
     if m < 0 { m = 0; }
 
     // convert the number
-    loop v > precision || m >= 0 {
+    loop {
+        if trailing > -1 && (m * -1) >= trailing + 1 { break; }
+        if trailing < 0 && v < precision && m < 0 { break; }
         weight := pow(10., cast(f64) m);
 
         if weight > 0. {
@@ -559,10 +590,10 @@ print_f64 :: fn (buf: []u8, cur: s32, v: f64) s32 {
             v -= ((cast(f64) d) * weight);
 
             cur = print_char(buf, cur, d + '0');
-        }
+        } 
 
-        if m == 0 && v > 0. {
-            cur = print_char(buf, cur, '.');
+        if m == 0 {
+            if v > 0. || trailing > -1 { cur = print_char(buf, cur, '.'); }
         }
         m -= 1;
     }
