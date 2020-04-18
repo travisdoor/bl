@@ -51,7 +51,7 @@ token_printer_run(Unit *unit)
 		}
 
 		fprintf(stdout,
-		        "[" YELLOW("'%s'") " %i:%i], ",
+		        "['%s' %i:%i], ",
 		        sym_strings[tok->sym],
 		        tok->location.line,
 		        tok->location.col);

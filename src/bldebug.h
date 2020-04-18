@@ -39,7 +39,7 @@
 extern "C" {
 #endif
 
-#ifdef BL_PLATFORM_WIN
+#ifndef BL_PLATFORM_WIN
 #define YELLOW(str)  "\x1b[33m" str "\x1b[0m"
 #define RED(str) "\x1b[31m" str "\x1b[0m"
 #define GREEN(str) "\x1b[32m" str "\x1b[0m"

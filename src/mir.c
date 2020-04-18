@@ -7081,9 +7081,9 @@ analyze(Context *cnt)
 {
 	/******************************************************************************************/
 #if BL_DEBUG && VERBOSE_ANALYZE
-#define LOG_ANALYZE_PASSED printf("Analyze: [ " GREEN("PASSED") " ] %16s\n", mir_instr_name(ip));
+#define LOG_ANALYZE_PASSED printf("Analyze: [ " PASSED " ] %16s\n", mir_instr_name(ip));
 
-#define LOG_ANALYZE_FAILED printf("Analyze: [ " RED("FAILED") " ] %16s\n", mir_instr_name(ip));
+#define LOG_ANALYZE_FAILED printf("Analyze: [ " FAILED " ] %16s\n", mir_instr_name(ip));
 
 #define LOG_ANALYZE_POSTPONE                                                                       \
 	printf("Analyze: [" MAGENTA("POSTPONE") "] %16s\n", mir_instr_name(ip));
@@ -9441,7 +9441,7 @@ execute_test_cases(Context *cnt)
 		file = test_fn->decl_node ? test_fn->decl_node->location->unit->filepath : "?";
 
 		msg_log("[ %s ] (%llu/%llu) %s:%d '%s'",
-		        passed ? GREEN("PASSED") : RED("FAILED"),
+		        passed ? "PASSED" : "FAILED",
 		        (unsigned long long)i + 1,
 		        (unsigned long long)c,
 		        file,
@@ -9458,12 +9458,12 @@ execute_test_cases(Context *cnt)
 		        "--------"
 		        "------");
 		if (perc == 100) {
-			msg_log("Testing done, %d of %zu failed. Completed: " GREEN("%d%%"),
+			msg_log("Testing done, %d of %zu failed. Completed: %d%%",
 			        failed,
 			        c,
 			        perc);
 		} else {
-			msg_log("Testing done, %d of %zu failed. Completed: " RED("%d%%"),
+			msg_log("Testing done, %d of %zu failed. Completed: %d%%",
 			        failed,
 			        c,
 			        perc);

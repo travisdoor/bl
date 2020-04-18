@@ -71,7 +71,7 @@ mir_writer_run(Assembly *assembly)
 	mir_print_assembly(assembly, f);
 
 	fclose(f);
-	msg_log("Mir code written into " GREEN("%s"), export_file);
+	msg_log("Mir code written into %s", export_file);
 
 	bl_free(export_file);
 }

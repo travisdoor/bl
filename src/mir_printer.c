@@ -1016,7 +1016,7 @@ print_instr(Context *cnt, MirInstr *instr)
 		print_instr_block(cnt, (MirInstrBlock *)instr);
 		break;
 	case MIR_INSTR_INVALID:
-		fprintf(cnt->stream, RED("INVALID"));
+		fprintf(cnt->stream, "INVALID");
 		break;
 	case MIR_INSTR_UNREACHABLE:
 		print_instr_unreachable(cnt, (MirInstrUnreachable *)instr);
