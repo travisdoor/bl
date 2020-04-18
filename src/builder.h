@@ -59,6 +59,7 @@ typedef struct BuilderOptions {
 	bool        force_test_llvm;
 	bool        reg_split;
 	bool        use_pipeline;
+	bool        color_output;
 } BuilderOptions;
 
 typedef struct Builder {
@@ -111,11 +112,8 @@ builder_compile_all(void);
 s32
 builder_compile(Assembly *assembly);
 
-void
-builder_error(const char *format, ...);
-
-void
-builder_warning(const char *format, ...);
+#define builder_warning(format, ...) builder_msg(BUILDER_MSG_WARNING, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
+#define builder_error(format, ...) builder_msg(BUILDER_MSG_ERROR, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
 
 void
 builder_msg(BuilderMsgType   type,

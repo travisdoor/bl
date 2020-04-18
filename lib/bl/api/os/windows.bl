@@ -160,6 +160,10 @@ os_dlclose :: fn (lib: OSLibrary) {
     win32_FreeLibrary(lib);
 }
 
+os_execute :: fn (command: string) s32 {
+    return system(auto command.ptr);
+}
+
 _OSFileKind :: enum {
     File;
     Directory;
@@ -274,6 +278,7 @@ CP_UTF8 : u32 : 65001;
 
 _write             :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
 _exit              :: fn (v: s32) #extern;
+system             :: fn (command: *c_char) c_int #extern;
 wcslen             :: fn (str: *u16) usize #extern;
 raise              :: fn (sig: s32) s32 #extern;
 

@@ -161,6 +161,14 @@ add_unit :: fn (assembly: Assembly, filepath: string) Unit {
     return __add_unit(assembly, auto filepath.ptr);
 }
 
+/* MISSING DOCS */
+add_lib_path :: fn (assembly: Assembly, path: string) {
+    if assembly == null { panic("Invalid assembly!"); }
+    if path.len == 0 { panic("Invalid library path!"); }
+
+    __add_lib_path(assembly, auto path.ptr);
+}
+
 /*!
 # link_library
 ## Declaration
@@ -322,6 +330,7 @@ enable_testing :: fn (assembly: Assembly) {
 #private
 __add_executable :: fn (name: *c_char) Assembly #extern;
 __add_unit :: fn (assembly: Assembly, filepath: *c_char) Unit #extern;
+__add_lib_path :: fn (assembly: Assembly, path: *c_char) #extern;
 __link_library :: fn (assembly: Assembly, name: *c_char) #extern;
 __append_linker_options :: fn (assembly: Assembly, option: *c_char) #extern;
 __set_build_mode :: fn (assembly: Assembly, mode: c_int) #extern;

@@ -295,6 +295,17 @@ assembly_apply_options(Assembly *assembly)
 }
 
 void
+assembly_add_lib_path(Assembly *assembly, const char *path)
+{
+	if (!path) return;
+
+	char *tmp = strdup(path);
+	if (!tmp) return;
+
+	tarray_push(&assembly->options.lib_paths, tmp);
+}
+
+void
 assembly_set_output_dir(Assembly *assembly, const char *_dir)
 {
 	if (!_dir) msg_error("Cannot create output directory.");

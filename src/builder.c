@@ -36,6 +36,10 @@
 #include "token.h"
 #include "unit.h"
 
+#ifdef BL_PLATFORM_WIN
+#include <windows.h>
+#endif
+
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
 
@@ -148,6 +152,7 @@ builder_parse_options(s32 argc, char *argv[])
 #define IS_PARAM(_arg) (strcmp(&argv[optind][1], _arg) == 0)
 
 	builder.options.build_mode = BUILD_MODE_DEBUG;
+	builder.options.color_output = true;
 
 #if defined(BL_PLATFORM_WIN)
 	builder.options.build_di_kind = BUILD_DI_CODEVIEW;
@@ -181,6 +186,8 @@ builder_parse_options(s32 argc, char *argv[])
 			builder.options.no_warn = true;
 		} else if (IS_PARAM("verbose")) {
 			builder.options.verbose = true;
+		} else if (IS_PARAM("no-color")) {
+			builder.options.color_output = false;
 		} else if (IS_PARAM("no-api")) {
 			builder.options.no_api = true;
 		} else if (IS_PARAM("no-analyze")) {
@@ -345,34 +352,6 @@ builder_compile(Assembly *assembly)
 }
 
 void
-builder_error(const char *format, ...)
-{
-	if (builder.errorc > MAX_ERROR_REPORTED) return;
-	char error[MAX_MSG_LEN] = {0};
-
-	va_list args;
-	va_start(args, format);
-	vsnprintf(error, MAX_MSG_LEN, format, args);
-	va_end(args);
-
-	msg_error("%s", &error[0]);
-	builder.errorc++;
-}
-
-void
-builder_warning(const char *format, ...)
-{
-	char warning[MAX_MSG_LEN] = {0};
-
-	va_list args;
-	va_start(args, format);
-	vsnprintf(warning, MAX_MSG_LEN, format, args);
-	va_end(args);
-
-	msg_warning("%s", &warning[0]);
-}
-
-void
 builder_msg(BuilderMsgType type,
             s32            code,
             Location *     src,
@@ -383,6 +362,7 @@ builder_msg(BuilderMsgType type,
 	if (type == BUILDER_MSG_ERROR && builder.errorc > MAX_ERROR_REPORTED) return;
 	if (builder.options.no_warn && type == BUILDER_MSG_WARNING) return;
 
+
 	TString tmp;
 	tstring_init(&tmp);
 	char msg[MAX_MSG_LEN] = {0};
@@ -391,24 +371,20 @@ builder_msg(BuilderMsgType type,
 		s32   line     = src->line;
 		s32   col      = src->col;
 		s32   len      = src->len;
-		char *color    = NULL;
 		char *msg_mark = NULL;
+
 
 		switch (type) {
 		case BUILDER_MSG_ERROR:
-			color    = RED_BEGIN;
-			msg_mark = "E";
+		        msg_mark = "E";
 			break;
 		case BUILDER_MSG_LOG:
-			color    = GREEN_BEGIN;
 			msg_mark = "";
 			break;
 		case BUILDER_MSG_NOTE:
-			color    = BLUE_BEGIN;
 			msg_mark = "N";
 			break;
 		case BUILDER_MSG_WARNING:
-			color    = YELLOW_BEGIN;
 			msg_mark = "W";
 			break;
 		}
@@ -437,6 +413,7 @@ builder_msg(BuilderMsgType type,
 		va_start(args, format);
 		vsnprintf(msg + strlen(msg), MAX_MSG_LEN - strlen(msg), format, args);
 		va_end(args);
+
 		tstring_append(&tmp, &msg[0]);
 
 		s32         pad      = sprintf(msg, "%d", src->line) + 2;
@@ -451,12 +428,10 @@ builder_msg(BuilderMsgType type,
 
 		line_str = unit_get_src_ln(src->unit, src->line, &line_len);
 		if (line_str && line_len) {
-			tstring_append(&tmp, color);
 			sprintf(msg, "\n>%*d", pad - 1, src->line);
 			tstring_append(&tmp, &msg[0]);
 			tstring_append(&tmp, " | ");
 			tstring_append_n(&tmp, line_str, line_len);
-			tstring_append(&tmp, COLOR_END);
 		}
 
 		if (pos != BUILDER_CUR_NONE) {
@@ -464,14 +439,12 @@ builder_msg(BuilderMsgType type,
 			tstring_append(&tmp, &msg[0]);
 			tstring_append(&tmp, " | ");
 
-			tstring_append(&tmp, color);
 			for (s32 i = 0; i < col + len - 1; ++i) {
 				if (i < col - 1)
 					tstring_append(&tmp, " ");
 				else
 					tstring_append(&tmp, "^");
 			}
-			tstring_append(&tmp, COLOR_END);
 		}
 
 		sprintf(msg, "\n%*d", pad, src->line + 1);
@@ -490,17 +463,63 @@ builder_msg(BuilderMsgType type,
 		tstring_append(&tmp, &msg[0]);
 	}
 
-	if (type == BUILDER_MSG_ERROR) {
-		builder.errorc++;
-		msg_error("%s", tmp.data);
-	} else if (type == BUILDER_MSG_WARNING) {
-		msg_warning("%s", tmp.data);
-	} else if (type == BUILDER_MSG_LOG) {
-		msg_log("%s", tmp.data);
-	} else {
+	if (!builder.options.color_output) {
 		msg_note("%s", tmp.data);
+		goto NO_COLORIZE;
 	}
 
+#ifdef BL_PLATFORM_WIN
+	HANDLE h_stdout = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	CONSOLE_SCREEN_BUFFER_INFO console_info;
+	WORD                       saved_attributes;
+
+	/* Save current attributes */
+	GetConsoleScreenBufferInfo(h_stdout, &console_info);
+	saved_attributes = console_info.wAttributes;
+#endif
+
+	switch (type) {
+	case BUILDER_MSG_ERROR: {
+		builder.errorc++;
+
+#ifdef BL_PLATFORM_WIN
+		SetConsoleTextAttribute(h_stdout, FOREGROUND_RED);
+		msg_error("%s", tmp.data);
+		SetConsoleTextAttribute(h_stdout, saved_attributes);
+#else
+		msg_error(RED("%s"), tmp.data);
+#endif
+		break;
+	}
+	case BUILDER_MSG_WARNING: {
+#ifdef BL_PLATFORM_WIN
+		SetConsoleTextAttribute(h_stdout, 14 & 0x0F);
+		msg_warning("%s", tmp.data);
+		SetConsoleTextAttribute(h_stdout, saved_attributes);
+#else
+		msg_warning(YELLOW("%s"), tmp.data);
+#endif
+		break;
+	}
+	case BUILDER_MSG_NOTE: {
+#ifdef BL_PLATFORM_WIN
+		SetConsoleTextAttribute(h_stdout, FOREGROUND_BLUE);
+		msg_warning("%s", tmp.data);
+		SetConsoleTextAttribute(h_stdout, saved_attributes);
+#else
+		msg_warning(BLUE("%s"), tmp.data);
+#endif
+		break;
+	}
+
+	default: {
+		msg_note("%s", tmp.data);
+	}
+	}
+
+ NO_COLORIZE:
+	if (type == BUILDER_MSG_ERROR) builder.errorc++;
 	tstring_terminate(&tmp);
 
 #if ASSERT_ON_CMP_ERROR

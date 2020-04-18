@@ -176,6 +176,9 @@ void
 assembly_add_unit(Assembly *assembly, Unit *unit);
 
 void
+assembly_add_lib_path(Assembly *assembly, const char *path);
+
+void
 assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
 
 bool

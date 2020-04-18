@@ -100,7 +100,7 @@ main(s32 argc, char *argv[])
 	setup_env();
 	main_thread_id = thread_get_id();
 
-	puts("Compiler version: " BL_VERSION);
+	printf("Compiler version: %s, LLVM: %d\n", BL_VERSION, LLVM_VERSION_MAJOR);
 #ifdef BL_DEBUG
 	puts("Running in DEBUG mode");
 	printf("Main thread ID: 0x%llx\n", main_thread_id);

@@ -39,32 +39,14 @@
 extern "C" {
 #endif
 
-#ifdef BL_NO_COLOR
-#define COLOR_END ""
-#define MAGENTA_BEGIN ""
-#define CYAN_BEGIN ""
-#define RED_BEGIN ""
-#define RED_BG_BEGIN ""
-#define YELLOW_BEGIN ""
-#define GREEN_BEGIN ""
-#define BLUE_BEGIN ""
-#else
-#define COLOR_END "\x1b[0m"
-#define MAGENTA_BEGIN "\x1b[35m"
-#define CYAN_BEGIN "\x1b[36m"
-#define RED_BEGIN "\x1b[31m"
-#define RED_BG_BEGIN "\x1b[41m"
-#define YELLOW_BEGIN "\x1b[33m"
-#define BLUE_BEGIN "\x1b[34m"
-#define GREEN_BEGIN "\x1b[32m"
+#ifdef BL_PLATFORM_WIN
+#define YELLOW(str)  "\x1b[33m" str "\x1b[0m"
+#define RED(str) "\x1b[31m" str "\x1b[0m"
+#define GREEN(str) "\x1b[32m" str "\x1b[0m"
+#define MAGENTA(str) "\x1b[35m" str "\x1b[0m"
+#define CYAN(str) "\x1b[36m" str "\x1b[0m"
+#define BLUE(str) "\x1b[34m" str "\x1b[0m"
 #endif
-
-#define YELLOW(str) YELLOW_BEGIN str COLOR_END
-#define RED(str) RED_BEGIN str COLOR_END
-#define GREEN(str) GREEN_BEGIN str COLOR_END
-#define MAGENTA(str) MAGENTA_BEGIN str COLOR_END
-#define CYAN(str) CYAN_BEGIN str COLOR_END
-#define BLUE(str) BLUE_BEGIN str COLOR_END
 
 #if defined(BL_COMPILER_GNUC) || defined(BL_COMPILER_CLANG)
 #ifndef __FILENAME__

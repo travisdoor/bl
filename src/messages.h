@@ -38,17 +38,17 @@
 
 #define msg_error(format, ...)                                                                     \
 	{                                                                                          \
-		fprintf(stderr, RED("error: ") format "\n", ##__VA_ARGS__);                        \
+		fprintf(stderr, "error: " format "\n", ##__VA_ARGS__);                        \
 	}
 
 #define msg_warning(format, ...)                                                                   \
 	{                                                                                          \
-		fprintf(stdout, YELLOW("warning: ") format "\n", ##__VA_ARGS__);                   \
+		fprintf(stdout, "warning: " format "\n", ##__VA_ARGS__);                   \
 	}
 
 #define msg_note(format, ...)                                                                      \
 	{                                                                                          \
-		fprintf(stderr, BLUE("note: ") format "\n", ##__VA_ARGS__);                        \
+		fprintf(stderr, "note: " format "\n", ##__VA_ARGS__);                        \
 	}
 
 #endif // BL_MESSAGES_H

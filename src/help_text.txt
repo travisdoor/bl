@@ -17,6 +17,7 @@ Options\n\
   -no-llvm              = Disable LLVM backend.\n\
   -no-analyze           = Disable analyze pass, only parse and exit.\n\
   -verbose              = Verbose mode.\n\
+  -no-color             = Disable colored output.\n\
   -force-test-to-llvm   = Force llvm generation of unit tests.\n\
   -configure            = Generate config file.\n\
   -release-<fast|small> = Enable release mode. (when not specified, compiler use debug mode by default)\n\

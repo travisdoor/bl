@@ -42,13 +42,13 @@ _log(bl_log_msg_type_e t, const char *file, s32 line, const char *msg, ...)
 
 	switch (t) {
 	case LOG_ASSERT:
-		fprintf(stderr, RED("assert [%s:%d]: %s") "\n", file, line, buffer);
+		fprintf(stderr, "assert [%s:%d]: %s" "\n", file, line, buffer);
 		break;
 	case LOG_ABORT:
-		fprintf(stderr, RED("abort [%s:%d]: %s") "\n", file, line, buffer);
+		fprintf(stderr, "abort [%s:%d]: %s" "\n", file, line, buffer);
 		break;
 	case LOG_WARNING:
-		fprintf(stderr, YELLOW("BL_WARNING [%s:%d]: %s") "\n", file, line, buffer);
+		fprintf(stderr, "BL_WARNING [%s:%d]: %s" "\n", file, line, buffer);
 		break;
 	case LOG_MSG:
 		fprintf(stdout, "BL_LOG [%s:%d]: %s\n", file, line, buffer);

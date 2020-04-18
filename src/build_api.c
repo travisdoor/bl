@@ -53,6 +53,12 @@ __add_unit(Assembly *assembly, const char *filepath)
 }
 
 BL_EXPORT void
+__add_linker_lib_path(Assembly *assembly, const char *path)
+{
+	assembly_add_lib_path(assembly, path);
+}
+
+BL_EXPORT void
 __link_library(Assembly *assembly, const char *name)
 {
 	assembly_add_native_lib(assembly, name, NULL);

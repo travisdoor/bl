@@ -46,7 +46,11 @@ using namespace llvm;
 LLVMAttributeKind
 llvm_get_attribute_kind(const char *name)
 {
+#if LLVM_VERSION_MAJOR >= 11
+	return Attribute::getAttrKindFromName({name, strlen(name)});
+#else
 	return getAttrKindFromName({name, strlen(name)});
+#endif
 }
 
 LLVMAttributeRef
@@ -68,7 +72,7 @@ llvm_create_attribute_int(LLVMContextRef context_ref, LLVMAttributeKind kind, s3
 LLVMAttributeRef
 llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef v)
 {
-#if LLVM_VERSION_MAJOR == 10
+#if LLVM_VERSION_MAJOR >= 10
 	return CAST(LLVMAttributeRef)(Attribute::get(*CAST(LLVMContext *)(context_ref),
 	                                             (Attribute::AttrKind)kind,
 	                                             CAST(Type *)(v))
