@@ -52,7 +52,7 @@
 #define RED 1
 #define BLUE 2 
 #define YELLOW 3
-#define NO_COLOR 
+#define NO_COLOR -1
 #endif
 
 
@@ -107,7 +107,7 @@ color_print(FILE *stream, s32 color, const char *text)
 		c = "\x1b[0m";
 	}
 
-	fprintf(stream, "%s%s\x1b[0m\n"), c, text);
+	fprintf(stream, "%s%s\x1b[0m\n", c, text);
 #endif
 }
 
