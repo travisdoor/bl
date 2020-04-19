@@ -350,7 +350,7 @@ stack_alloc(VM *vm, usize size)
 	size = stack_alloc_size(size);
 	vm->stack->used_bytes += size;
 	if (vm->stack->used_bytes > vm->stack->allocated_bytes) {
-		msg_error("Stack overflow!!!");
+		builder_error("Stack overflow!!!");
 		exec_abort(vm, 10);
 	}
 
@@ -929,6 +929,7 @@ print_call_stack(VM *vm, usize max_nesting)
 	if (!instr) return;
 	/* print last instruction */
 	builder_msg(BUILDER_MSG_LOG, 0, instr->node->location, BUILDER_CUR_WORD, "");
+	builder_note("called from:");
 
 	while (fr) {
 		instr = (MirInstr *)fr->caller;
@@ -936,7 +937,7 @@ print_call_stack(VM *vm, usize max_nesting)
 		if (!instr) break;
 
 		if (max_nesting && n == max_nesting) {
-			msg_note("continue...");
+			builder_note("continue...");
 			break;
 		}
 
@@ -1298,7 +1299,7 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 
 	/* call setup and clenup */
 	if (!fn->dyncall.extern_entry) {
-		msg_error("External function '%s' not found!", fn->linkage_name);
+		builder_error("External function '%s' not found!", fn->linkage_name);
 		exec_abort(vm, 0);
 		return;
 	}
@@ -1678,7 +1679,7 @@ interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 	case MIR_TYPE_ARRAY: {
 		const s64 len = arr_type->data.array.len;
 		if (index >= len) {
-			msg_error("Array index is out of the bounds! Array index "
+			builder_error("Array index is out of the bounds! Array index "
 			          "is: %lli, "
 			          "but array size "
 			          "is: %lli",
@@ -1707,12 +1708,12 @@ interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 		const s64  len_tmp = vm_read_int(len_type, len_ptr);
 
 		if (!ptr_tmp) {
-			msg_error("Dereferencing null pointer! Slice has not been set?");
+			builder_error("Dereferencing null pointer! Slice has not been set?");
 			exec_abort(vm, 0);
 		}
 
 		if (index >= len_tmp) {
-			msg_error("Array index is out of the bounds! Array index is: %lli, but "
+			builder_error("Array index is out of the bounds! Array index is: %lli, but "
 			          "array size is: %lli",
 			          (long long)index,
 			          (long long)len_tmp);
@@ -1781,7 +1782,7 @@ interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 void
 interp_instr_unreachable(VM *vm, MirInstrUnreachable *unr)
 {
-	msg_error("execution reached unreachable code");
+	builder_error("execution reached unreachable code");
 	exec_abort(vm, 0);
 }
 
@@ -2079,7 +2080,7 @@ interp_instr_load(VM *vm, MirInstrLoad *load)
 	src_ptr            = VM_STACK_PTR_DEREF(src_ptr);
 
 	if (!src_ptr) {
-		msg_error("Dereferencing null pointer!");
+		builder_error("Dereferencing null pointer!");
 		exec_abort(vm, 0);
 	}
 
@@ -2120,7 +2121,7 @@ interp_instr_call(VM *vm, MirInstrCall *call)
 
 	MirFn *callee = (MirFn *)vm_read_ptr(callee_ptr_type, callee_ptr);
 	if (callee == NULL) {
-		msg_error("Function pointer not set!");
+		builder_error("Function pointer not set!");
 		exec_abort(vm, 0);
 		return;
 	}

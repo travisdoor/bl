@@ -33,7 +33,6 @@
 #include "blmemory.h"
 #include "config.h"
 #include "error.h"
-#include "messages.h"
 #include <limits.h>
 #include <stddef.h>
 #include <tlib/tlib.h>

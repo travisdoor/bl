@@ -60,7 +60,7 @@ search_library(Context *   cnt,
 
 	platform_lib_name(lib_name, lib_name_full, TARRAY_SIZE(lib_name_full));
 
-	if (builder.options.verbose) msg_log("- Looking for: '%s'", lib_name_full);
+	if (builder.options.verbose) builder_log("- Looking for: '%s'", lib_name_full);
 
 	const char *dir;
 	TARRAY_FOREACH(const char *, cnt->lib_paths, dir)
@@ -73,7 +73,7 @@ search_library(Context *   cnt,
 		strcat(lib_filepath, lib_name_full);
 
 		if (file_exists(lib_filepath)) {
-			if (builder.options.verbose) msg_log("  Found: '%s'", lib_filepath);
+			if (builder.options.verbose) builder_log("  Found: '%s'", lib_filepath);
 			if (out_lib_name) (*out_lib_name) = strdup(lib_name_full);
 			if (out_lib_dir) (*out_lib_dir) = strdup(dir);
 			if (out_lib_filepath) (*out_lib_filepath) = strdup(lib_filepath);
@@ -81,7 +81,7 @@ search_library(Context *   cnt,
 		}
 	}
 
-	if (builder.options.verbose) msg_log("  Not found: '%s'", lib_filepath);
+	if (builder.options.verbose) builder_log("  Not found: '%s'", lib_filepath);
 	return false;
 }
 
@@ -116,7 +116,7 @@ set_lib_paths(Context *cnt)
 
 					tarray_push(cnt->lib_paths, dup);
 				} else {
-					msg_warning("Invalid LIB_PATH entry value '%s'.", tmp);
+					builder_warning("Invalid LIB_PATH entry value '%s'.", tmp);
 				}
 
 				begin = c + 1;
@@ -142,7 +142,7 @@ link_lib(Context *cnt, NativeLib *lib)
 
 		return false;
 	}
-
+	
 	return true;
 }
 
@@ -169,7 +169,7 @@ linker_run(Assembly *assembly)
 	Context cnt = {.assembly = assembly, .lib_paths = &assembly->options.lib_paths};
 
 	if (builder.options.verbose) {
-		msg_log("Running runtime linker...");
+		builder_log("Running runtime linker...");
 	}
 
 	set_lib_paths(&cnt);

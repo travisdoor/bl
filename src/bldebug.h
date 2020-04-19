@@ -39,15 +39,6 @@
 extern "C" {
 #endif
 
-#ifndef BL_PLATFORM_WIN
-#define YELLOW(str)  "\x1b[33m" str "\x1b[0m"
-#define RED(str) "\x1b[31m" str "\x1b[0m"
-#define GREEN(str) "\x1b[32m" str "\x1b[0m"
-#define MAGENTA(str) "\x1b[35m" str "\x1b[0m"
-#define CYAN(str) "\x1b[36m" str "\x1b[0m"
-#define BLUE(str) "\x1b[34m" str "\x1b[0m"
-#endif
-
 #if defined(BL_COMPILER_GNUC) || defined(BL_COMPILER_CLANG)
 #ifndef __FILENAME__
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)

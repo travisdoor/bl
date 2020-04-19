@@ -52,7 +52,7 @@ bc_writer_run(Assembly *assembly)
 	fclose(f);
 	LLVMDisposeMessage(str);
 
-	msg_log("Byte code written into %s", export_file);
+	builder_log("Byte code written into %s", export_file);
 
 	free(export_file);
 }

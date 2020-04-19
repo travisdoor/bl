@@ -30,7 +30,6 @@
 #include "bldebug.h"
 #include "builder.h"
 #include "error.h"
-#include "messages.h"
 #include "threading.h"
 #include "unit.h"
 #include <locale.h>
@@ -118,7 +117,7 @@ main(s32 argc, char *argv[])
 	/* Run configure if needed. */
 	if (builder.options.run_configure) {
 		if (generate_conf() != 0) {
-			msg_error("Cannot generate '%s' file. If you are compiler developer please "
+			builder_error("Cannot generate '%s' file. If you are compiler developer please "
 			          "run configuration script in 'install' directory.",
 			          ENV_CONF_FILEPATH);
 			builder_terminate();
@@ -139,7 +138,7 @@ main(s32 argc, char *argv[])
 	}
 
 	if (!file_exists(ENV_CONF_FILEPATH)) {
-		msg_error("Configuration file '%s' not found, run 'blc -configure' to "
+		builder_error("Configuration file '%s' not found, run 'blc -configure' to "
 		          "generate one.",
 		          ENV_CONF_FILEPATH);
 
@@ -148,7 +147,7 @@ main(s32 argc, char *argv[])
 	}
 
 	if (*argv == NULL && !builder.options.use_pipeline) {
-		msg_warning("nothing to do, no input files, sorry :(");
+		builder_warning("nothing to do, no input files, sorry :(");
 
 		builder_terminate();
 		exit(EXIT_SUCCESS);
@@ -187,7 +186,7 @@ main(s32 argc, char *argv[])
 
 	char date[26];
 	date_time(date, 26, "%d-%m-%Y %H:%M:%S");
-	msg_log("\nFinished at %s", date);
+	printf("\nFinished at %s", date);
 
 	builder_terminate();
 	return state;

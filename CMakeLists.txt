@@ -44,7 +44,6 @@ set(HEADER_FILES
         src/bldebug.h
         src/error.h 
         src/config.h
-	src/messages.h
         src/builder.h
         src/blmemory.h
         src/assembly.h

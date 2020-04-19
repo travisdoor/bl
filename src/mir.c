@@ -9379,9 +9379,9 @@ mir_type_to_str(char *buf, usize len, MirType *type, bool prefer_name)
 void
 execute_entry_fn(Context *cnt)
 {
-	msg_log("\nExecuting 'main' in compile time...");
+	builder_log("\nExecuting 'main' in compile time...");
 	if (!cnt->entry_fn) {
-		msg_error("Assembly '%s' has no entry function!", cnt->assembly->name);
+		builder_error("Assembly '%s' has no entry function!", cnt->assembly->name);
 		return;
 	}
 
@@ -9390,7 +9390,7 @@ execute_entry_fn(Context *cnt)
 
 	/* INCOMPLETE: support passing of arguments. */
 	if (fn_type->data.fn.args) {
-		msg_error("Main function expects arguments, this is not supported yet!");
+		builder_error("Main function expects arguments, this is not supported yet!");
 		return;
 	}
 
@@ -9400,12 +9400,12 @@ execute_entry_fn(Context *cnt)
 		if (ret_ptr) {
 			MirType * ret_type = fn_type->data.fn.ret_type;
 			const s64 result   = vm_read_int(ret_type, ret_ptr);
-			msg_log("Execution finished with state: %lld\n", (long long)result);
+			builder_log("Execution finished with state: %lld\n", (long long)result);
 		} else {
-			msg_log("Execution finished without errors");
+			builder_log("Execution finished without errors");
 		}
 	} else {
-		msg_log("Execution finished with errors");
+		builder_log("Execution finished with errors");
 	}
 }
 
@@ -9413,7 +9413,7 @@ void
 execute_build_entry_fn(Context *cnt, MirFn *fn)
 {
 	if (!fn) {
-		msg_error("Assembly '%s' has no build entry function!", cnt->assembly->name);
+		builder_error("Assembly '%s' has no build entry function!", cnt->assembly->name);
 		return;
 	}
 
@@ -9424,7 +9424,7 @@ execute_build_entry_fn(Context *cnt, MirFn *fn)
 void
 execute_test_cases(Context *cnt)
 {
-	msg_log("\nExecuting test cases...");
+	builder_log("\nExecuting test cases...");
 
 	const usize c      = cnt->test_cases.size;
 	s32         failed = 0;
@@ -9440,7 +9440,7 @@ execute_test_cases(Context *cnt)
 		line = test_fn->decl_node ? test_fn->decl_node->location->line : -1;
 		file = test_fn->decl_node ? test_fn->decl_node->location->unit->filepath : "?";
 
-		msg_log("[ %s ] (%llu/%llu) %s:%d '%s'",
+		builder_log("[ %s ] (%llu/%llu) %s:%d '%s'",
 		        passed ? "PASSED" : "FAILED",
 		        (unsigned long long)i + 1,
 		        (unsigned long long)c,
@@ -9454,21 +9454,21 @@ execute_test_cases(Context *cnt)
 	{
 		s32 perc = c > 0 ? (s32)((f32)(c - failed) / (c * 0.01f)) : 100;
 
-		msg_log("------------------------------------------------------------------"
+		builder_log("------------------------------------------------------------------"
 		        "--------"
 		        "------");
 		if (perc == 100) {
-			msg_log("Testing done, %d of %zu failed. Completed: %d%%",
+			builder_log("Testing done, %d of %zu failed. Completed: %d%%",
 			        failed,
 			        c,
 			        perc);
 		} else {
-			msg_log("Testing done, %d of %zu failed. Completed: %d%%",
+			builder_log("Testing done, %d of %zu failed. Completed: %d%%",
 			        failed,
 			        c,
 			        perc);
 		}
-		msg_log("------------------------------------------------------------------"
+		builder_log("------------------------------------------------------------------"
 		        "--------"
 		        "------");
 	}

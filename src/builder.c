@@ -43,6 +43,19 @@
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
 
+#ifdef BL_PLATFORM_WIN
+#define RED FOREGROUND_RED
+#define BLUE FOREGROUND_BLUE
+#define YELLOW (14 % 0x0F)
+#define NO_COLOR 0
+#else
+#define YELLOW  "\x1b[33m"
+#define RED "\x1b[31m"
+#define BLUE "\x1b[34m"
+#define NO_COLOR "\x1b[0m"
+#endif
+
+
 Builder builder;
 
 static int
@@ -57,6 +70,29 @@ static void
 str_cache_dtor(TString *str)
 {
 	tstring_terminate(str);
+}
+
+static void
+color_print(FILE *stream, s32 color, const char *text)
+{
+	if (builder.options.no_color) color = NO_COLOR;
+
+#ifdef BL_PLATFORM_WIN
+	if (color != NO_COLOR) {
+		HANDLE handle = stream == stderr ? GetStdHandle(STD_ERROR_HANDLE) : GetStdHandle(STD_OUTPUT_HANDLE);
+		CONSOLE_SCREEN_BUFFER_INFO console_info;
+		GetConsoleScreenBufferInfo(handle, &console_info);
+		WORD saved_attributes = console_info.wAttributes;
+
+		SetConsoleTextAttribute(handle, color);
+		fprintf(stream, "%s\n", text);
+		SetConsoleTextAttribute(handle, saved_attributes);
+	} else {
+		fprintf(stream, "%s\n", text);
+	}
+#else
+	fprintf(stream, "%s%s%s\n"), color, text, NO_COLOR);
+#endif
 }
 
 static void
@@ -80,11 +116,11 @@ compile_unit(Unit *unit, Assembly *assembly)
 {
 	if (builder.options.verbose) {
 		if (unit->loaded_from) {
-			msg_log("Compile: %s (loaded from '%s')",
+			builder_log("Compile: %s (loaded from '%s')",
 			        unit->name,
 			        unit->loaded_from->location.unit->name);
 		} else {
-			msg_log("Compile: %s", unit->name);
+			builder_log("Compile: %s", unit->name);
 		}
 	}
 
@@ -152,7 +188,6 @@ builder_parse_options(s32 argc, char *argv[])
 #define IS_PARAM(_arg) (strcmp(&argv[optind][1], _arg) == 0)
 
 	builder.options.build_mode = BUILD_MODE_DEBUG;
-	builder.options.color_output = true;
 
 #if defined(BL_PLATFORM_WIN)
 	builder.options.build_di_kind = BUILD_DI_CODEVIEW;
@@ -187,7 +222,7 @@ builder_parse_options(s32 argc, char *argv[])
 		} else if (IS_PARAM("verbose")) {
 			builder.options.verbose = true;
 		} else if (IS_PARAM("no-color")) {
-			builder.options.color_output = false;
+			builder.options.no_color = true;
 		} else if (IS_PARAM("no-api")) {
 			builder.options.no_api = true;
 		} else if (IS_PARAM("no-analyze")) {
@@ -211,7 +246,7 @@ builder_parse_options(s32 argc, char *argv[])
 		} else if (IS_PARAM("di-codeview")) {
 			builder.options.build_di_kind = BUILD_DI_CODEVIEW;
 		} else {
-			msg_error("invalid params '%s'", &argv[optind][1]);
+			builder_error("invalid params '%s'", &argv[optind][1]);
 			return -1;
 		}
 	}
@@ -307,7 +342,7 @@ builder_compile(Assembly *assembly)
 	s32     state       = COMPILE_OK;
 	builder.total_lines = 0;
 
-	msg_log("Compile assembly: %s [%s]",
+	builder_log("Compile assembly: %s [%s]",
 	        assembly->name,
 	        build_mode_to_str(assembly->options.build_mode));
 
@@ -343,9 +378,9 @@ builder_compile(Assembly *assembly)
 	clock_t end        = clock();
 	f64     time_spent = (f64)(end - begin) / CLOCKS_PER_SEC;
 
-	msg_log("Compiled %i lines in %f seconds.", builder.total_lines, time_spent);
+	builder_log("Compiled %i lines in %f seconds.", builder.total_lines, time_spent);
 	if (state != COMPILE_OK) {
-		msg_log("There were errors, sorry...");
+		builder_log("There were errors, sorry...");
 	}
 
 	return state;
@@ -364,30 +399,33 @@ builder_msg(BuilderMsgType type,
 
 
 	TString tmp;
+	char *msg_mark = NULL;
+
 	tstring_init(&tmp);
 	char msg[MAX_MSG_LEN] = {0};
+
+	switch (type) {
+	case BUILDER_MSG_ERROR:
+		tstring_append(&tmp, "error: ");
+		msg_mark = "E";
+		break;
+	case BUILDER_MSG_LOG:
+		msg_mark = "";
+		break;
+	case BUILDER_MSG_NOTE:
+		tstring_append(&tmp, "note: ");
+		msg_mark = "N";
+		break;
+	case BUILDER_MSG_WARNING:
+		tstring_append(&tmp, "warning: ");
+		msg_mark = "W";
+		break;
+	}
 
 	if (src) {
 		s32   line     = src->line;
 		s32   col      = src->col;
 		s32   len      = src->len;
-		char *msg_mark = NULL;
-
-
-		switch (type) {
-		case BUILDER_MSG_ERROR:
-		        msg_mark = "E";
-			break;
-		case BUILDER_MSG_LOG:
-			msg_mark = "";
-			break;
-		case BUILDER_MSG_NOTE:
-			msg_mark = "N";
-			break;
-		case BUILDER_MSG_WARNING:
-			msg_mark = "W";
-			break;
-		}
 
 		switch (pos) {
 		case BUILDER_CUR_AFTER:
@@ -463,63 +501,26 @@ builder_msg(BuilderMsgType type,
 		tstring_append(&tmp, &msg[0]);
 	}
 
-	if (!builder.options.color_output) {
-		msg_note("%s", tmp.data);
-		goto NO_COLORIZE;
-	}
-
-#ifdef BL_PLATFORM_WIN
-	HANDLE h_stdout = GetStdHandle(STD_OUTPUT_HANDLE);
-
-	CONSOLE_SCREEN_BUFFER_INFO console_info;
-	WORD                       saved_attributes;
-
-	/* Save current attributes */
-	GetConsoleScreenBufferInfo(h_stdout, &console_info);
-	saved_attributes = console_info.wAttributes;
-#endif
-
 	switch (type) {
 	case BUILDER_MSG_ERROR: {
 		builder.errorc++;
-
-#ifdef BL_PLATFORM_WIN
-		SetConsoleTextAttribute(h_stdout, FOREGROUND_RED);
-		msg_error("%s", tmp.data);
-		SetConsoleTextAttribute(h_stdout, saved_attributes);
-#else
-		msg_error(RED("%s"), tmp.data);
-#endif
+		color_print(stderr, RED, tmp.data);
 		break;
 	}
 	case BUILDER_MSG_WARNING: {
-#ifdef BL_PLATFORM_WIN
-		SetConsoleTextAttribute(h_stdout, 14 & 0x0F);
-		msg_warning("%s", tmp.data);
-		SetConsoleTextAttribute(h_stdout, saved_attributes);
-#else
-		msg_warning(YELLOW("%s"), tmp.data);
-#endif
+		color_print(stdout, YELLOW, tmp.data);
 		break;
 	}
 	case BUILDER_MSG_NOTE: {
-#ifdef BL_PLATFORM_WIN
-		SetConsoleTextAttribute(h_stdout, FOREGROUND_BLUE);
-		msg_warning("%s", tmp.data);
-		SetConsoleTextAttribute(h_stdout, saved_attributes);
-#else
-		msg_warning(BLUE("%s"), tmp.data);
-#endif
+		color_print(stdout, BLUE, tmp.data);
 		break;
 	}
 
 	default: {
-		msg_note("%s", tmp.data);
+		color_print(stdout, NO_COLOR, tmp.data);
 	}
 	}
 
- NO_COLORIZE:
-	if (type == BUILDER_MSG_ERROR) builder.errorc++;
 	tstring_terminate(&tmp);
 
 #if ASSERT_ON_CMP_ERROR

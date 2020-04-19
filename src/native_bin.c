@@ -138,8 +138,8 @@ native_bin_run(Assembly *assembly)
 	add_lib_paths(&cnt, &buf);
 	add_libs(&cnt, &buf);
 
-	msg_log("Running native linker...");
-	if (builder.options.verbose) msg_log("%s", buf.data);
+	builder_log("Running native linker...");
+	if (builder.options.verbose) builder_log("%s", buf.data);
 	/* TODO: handle error */
 	if (system(buf.data) != 0) {
 		builder_msg(BUILDER_MSG_ERROR,
