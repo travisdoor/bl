@@ -49,10 +49,10 @@
 #define YELLOW (14 % 0x0F)
 #define NO_COLOR 0
 #else
-#define YELLOW  "\x1b[33m"
-#define RED "\x1b[31m"
-#define BLUE "\x1b[34m"
-#define NO_COLOR "\x1b[0m"
+#define RED 1
+#define BLUE 2 
+#define YELLOW 3
+#define NO_COLOR 
 #endif
 
 
@@ -91,7 +91,23 @@ color_print(FILE *stream, s32 color, const char *text)
 		fprintf(stream, "%s\n", text);
 	}
 #else
-	fprintf(stream, "%s%s%s\n"), color, text, NO_COLOR);
+	char *c;
+	switch (color) {
+	case YELLOW:
+		c = "\x1b[33m";
+		break;
+	case RED:
+		c = "\x1b[31m";
+		break;
+	case BLUE:
+		c = "\x1b[34m";
+		break;
+
+	default:
+		c = "\x1b[0m";
+	}
+
+	fprintf(stream, "%s%s\x1b[0m\n"), c, text);
 #endif
 }
 
