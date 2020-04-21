@@ -152,6 +152,10 @@ os_dlclose :: fn (lib: OSLibrary) #inline {
     _posix_dlclose(lib);
 }
 
+os_execute :: fn (command: string) s32 {
+    return _posix_system(auto command.ptr);
+}
+
 // CLEANUP: This must be in gl.bl file not here, but we keep it
 // until static 'if' will be supported by compiler.
 _os_gl_get_proc :: fn (proc_name: string) *u8 #inline {
@@ -297,5 +301,6 @@ _posix_opendir   :: fn (name: *u8) *u8 #extern "opendir";
 _posix_closedir  :: fn (dirp: *u8) s32 #extern "closedir";
 _posix_readdir   :: fn (dirp: *u8) *dirent #extern "readdir$INODE64";
 _posix_rewinddir :: fn (dirp: *u8) #extern "rewinddir$INODE64";
+_posix_system    :: fn (command: *c_char) c_int #extern "system";
 
 _mach_absolute_time :: fn () u64 #extern "mach_absolute_time";

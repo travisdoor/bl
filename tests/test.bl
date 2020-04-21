@@ -1,10 +1,11 @@
 /* playground */
 
-#load "std/print.bl"
-
 main :: fn () s32 {
-    loop i := 0; i < 4; i += 1{
-        print("Hello!\n");
+
+    #if true {
+        print("True!!!");
+    } else {
+        print("Not true");
     }
 
     return 0;

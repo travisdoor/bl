@@ -1,39 +1,17 @@
-/*
-    - metarmation about symbol (attached metadata to AST node)
-    - can be printed out by compiler on error 
-    - generate documentation: File, line, symbol name + symbol description
+/* 
+
+STATIC IF
+
+- code analyze is done only in case the if expression is true
+- lazy #load
+
  */
 
-// file-scope meta
-#meta
-"Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
-"Curabitur nec neque eget diam rutrum rutrum. Quisque ac "
-"mauris id turpis pellentesque tincidunt at a justo. "
-"Aenean sollicitudin justo at convallis vulputate. Nunc "
-"iaculis, neque vehicula convallis placerat, dui est consequat"
-"felis, sit amet auctor lectus orci nec mauris."
-
-add :: fn (
-    a: s32 #meta "First number",
-    b: s32 #meta "Second number"
-) s32
-#meta "This function makes addition of two numbers."
-{
-    return a + b;
-}
-
-// BUILD MANAGEMENT
-
-/*
- * - Disable entry function
- * - Compile and call build procedure in compile time
- * - Keep builder settings and use it for creation of another assemblies
- */
-
-BuildInfo :: struct {
-    output_name: string;
-}
-
-build :: fn (info: *BuildInfo) {
-    output_name = "MyProgram";
+main :: fn () s32 {
+    A :: true;
+    #if A {
+        print("This is true\n");
+    } else {
+        print("This is false\n");
+    }
 }
