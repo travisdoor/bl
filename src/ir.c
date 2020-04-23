@@ -1280,12 +1280,26 @@ emit_instr_cast(Context *cnt, MirInstrCast *cast)
 		llvm_op = LLVMIntToPtr;
 		break;
 
+	case MIR_CAST_PTRTOBOOL: {
+		/*
+		  Cast from pointer to bool has no internal LLVM representation so we have to
+		  emulate it here by simple comparation pointer value to it's null equivalent.
+		 */
+		LLVMTypeRef *llvm_src_type = cast->expr->value.type->llvm_type;
+		LLVMValueRef llvm_null     = LLVMConstNull(llvm_src_type);
+
+		cast->base.llvm_value =
+		    LLVMBuildICmp(cnt->llvm_builder, LLVMIntNE, llvm_src, llvm_null, "");
+		return STATE_PASSED;
+	}
+
 	default:
 		BL_ABORT("invalid cast type")
 	}
 
 	cast->base.llvm_value =
 	    LLVMBuildCast(cnt->llvm_builder, llvm_op, llvm_src, llvm_dest_type, "");
+
 	return STATE_PASSED;
 }
 

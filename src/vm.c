@@ -810,6 +810,11 @@ do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, 
 		memcpy(dest, src, src_size);
 		break;
 
+	case MIR_CAST_PTRTOBOOL: {
+		vm_write_int(dest_type, dest, vm_read_as(u64, src) > 0);
+		break;
+	}
+
 	case MIR_CAST_SEXT: {
 		/* src is smaller than dest */
 		switch (src_size) {

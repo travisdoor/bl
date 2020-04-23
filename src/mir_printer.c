@@ -564,6 +564,9 @@ print_instr_cast(Context *cnt, MirInstrCast *cast)
 	case MIR_CAST_INTTOPTR:
 		print_instr_head(cnt, &cast->base, "inttoptr");
 		break;
+	case MIR_CAST_PTRTOBOOL:
+		print_instr_head(cnt, &cast->base, "ptrtobool");
+		break;
 	case MIR_CAST_INVALID:
 		print_instr_head(cnt, &cast->base, "<invalid cast>");
 		break;
