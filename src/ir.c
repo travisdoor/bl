@@ -1286,6 +1286,7 @@ emit_instr_cast(Context *cnt, MirInstrCast *cast)
 
 	cast->base.llvm_value =
 	    LLVMBuildCast(cnt->llvm_builder, llvm_op, llvm_src, llvm_dest_type, "");
+
 	return STATE_PASSED;
 }
 

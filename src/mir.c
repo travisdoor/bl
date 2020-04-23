@@ -1148,6 +1148,11 @@ type_cmp(MirType *first, MirType *second)
 static inline bool
 can_impl_cast(MirType *from, MirType *to)
 {
+	/*
+	 * Here we allow implicit casting for ptr -> bool combination.
+	 */
+	if (from->kind == MIR_TYPE_PTR && to->kind == MIR_TYPE_BOOL) return true;
+
 	if (from->kind != to->kind) return false;
 
 	/* Check base types for structs. */
@@ -2856,8 +2861,7 @@ init_llvm_DI_scope(Context *cnt, Scope *scope)
 		                                                   llvm_unit,
 		                                                   (unsigned)scope->location->line,
 		                                                   //(unsigned)scope->location->col
-								   0
-								   );
+		                                                   0);
 		break;
 	}
 
@@ -3143,6 +3147,11 @@ get_cast_op(MirType *from, MirType *to)
 		case MIR_TYPE_INT: {
 			/* to int */
 			return MIR_CAST_PTRTOINT;
+		}
+
+		case MIR_TYPE_BOOL: {
+			/* to bool */
+			return MIR_CAST_PTRTOBOOL;
 		}
 
 		default:
@@ -6319,44 +6328,42 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 AnalyzeResult
 analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
-	if (analyze_slot(cnt, &analyze_slot_conf_basic, &unop->expr, NULL) != ANALYZE_PASSED) {
+	MirType *          expected_type = NULL;
+	AnalyzeSlotConfig *conf          = &analyze_slot_conf_basic;
+
+	if (unop->op == UNOP_NOT) {
+		expected_type = cnt->builtin_types->t_bool;
+		conf          = &analyze_slot_conf_default;
+	}
+
+	if (analyze_slot(cnt, conf, &unop->expr, expected_type) != ANALYZE_PASSED) {
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
 	BL_ASSERT(unop->expr && unop->expr->analyzed);
-	MirType *type = unop->expr->value.type;
-	BL_ASSERT(type);
+
+	MirType *expr_type = unop->expr->value.type;
+	BL_ASSERT(expr_type);
 
 	switch (unop->op) {
 	case UNOP_NOT: {
-		if (type->kind != MIR_TYPE_BOOL) {
-			char tmp[256];
-			mir_type_to_str(tmp, 256, type, true);
-
-			builder_msg(BUILDER_MSG_ERROR,
-			            ERR_INVALID_TYPE,
-			            unop->base.node->location,
-			            BUILDER_CUR_AFTER,
-			            "Invalid operation for type '%s'. This operation "
-			            "is valid for bool types only",
-			            tmp);
-			return ANALYZE_RESULT(FAILED, 0);
-		}
+		// BL_ASSERT(expr_type->kind == MIR_TYPE_BOOL);
 		break;
 	}
 
 	case UNOP_BIT_NOT: {
-		if (type->kind != MIR_TYPE_INT) {
+		if (expr_type->kind != MIR_TYPE_INT) {
 			char tmp[256];
-			mir_type_to_str(tmp, 256, type, true);
+			mir_type_to_str(tmp, 256, expr_type, true);
 
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_TYPE,
 			            unop->base.node->location,
 			            BUILDER_CUR_AFTER,
 			            "Invalid operation for type '%s'. This operation "
-			            "is valid for integer types only",
+			            "is valid for integer types only.",
 			            tmp);
+
 			return ANALYZE_RESULT(FAILED, 0);
 		}
 		break;
@@ -6366,7 +6373,7 @@ analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 		break;
 	}
 
-	unop->base.value.type        = type;
+	unop->base.value.type        = expr_type;
 	unop->base.value.is_comptime = unop->expr->value.is_comptime;
 	unop->base.value.addr_mode   = unop->expr->value.addr_mode;
 
@@ -9441,12 +9448,12 @@ execute_test_cases(Context *cnt)
 		file = test_fn->decl_node ? test_fn->decl_node->location->unit->filepath : "?";
 
 		builder_log("[ %s ] (%llu/%llu) %s:%d '%s'",
-		        passed ? "PASSED" : "FAILED",
-		        (unsigned long long)i + 1,
-		        (unsigned long long)c,
-		        file,
-		        line,
-		        test_fn->test_case_desc);
+		            passed ? "PASSED" : "FAILED",
+		            (unsigned long long)i + 1,
+		            (unsigned long long)c,
+		            file,
+		            line,
+		            test_fn->test_case_desc);
 
 		if (!passed) ++failed;
 	}
@@ -9455,22 +9462,18 @@ execute_test_cases(Context *cnt)
 		s32 perc = c > 0 ? (s32)((f32)(c - failed) / (c * 0.01f)) : 100;
 
 		builder_log("------------------------------------------------------------------"
-		        "--------"
-		        "------");
+		            "--------"
+		            "------");
 		if (perc == 100) {
-			builder_log("Testing done, %d of %zu failed. Completed: %d%%",
-			        failed,
-			        c,
-			        perc);
+			builder_log(
+			    "Testing done, %d of %zu failed. Completed: %d%%", failed, c, perc);
 		} else {
-			builder_log("Testing done, %d of %zu failed. Completed: %d%%",
-			        failed,
-			        c,
-			        perc);
+			builder_log(
+			    "Testing done, %d of %zu failed. Completed: %d%%", failed, c, perc);
 		}
 		builder_log("------------------------------------------------------------------"
-		        "--------"
-		        "------");
+		            "--------"
+		            "------");
 	}
 }
 

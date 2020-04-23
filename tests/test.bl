@@ -1,11 +1,13 @@
 /* playground */
 
 main :: fn () s32 {
+    i := 10;
+    ptr := &i;
 
-    #if true {
-        print("True!!!");
+    if !ptr { 
+        print("ptr is valid!!!\n");
     } else {
-        print("Not true");
+        print("ptr is not valid!!!\n");
     }
 
     return 0;

@@ -15,3 +15,51 @@ main :: fn () s32 {
         print("This is false\n");
     }
 }
+
+/*
+
+PTR TO BOOL 
+
+Implicit casting for pointers to bool to avoid anoying comparations.
+
+*/
+
+
+main :: fn () s32 {
+    i :: 10;
+    ptr :: &i;
+
+
+    if ptr { // replacement for ptr == null
+        // Do something
+    }
+    
+    return 0;
+}
+
+
+/*
+
+USING 
+
+Using on local scope variables and arguments will import used scope into current one.
+This seems to be valid for structures only.
+
+*/
+
+Foo :: struct {
+    first: s32;
+    second: s32;
+}
+
+procedure :: fn () {
+    using foo: Foo = {:Foo: 0};
+
+    first = 10;
+    second = 20;
+}
+
+procedure :: fn (using foo: *Foo) {
+    first = 10;
+    second = 20;
+}
