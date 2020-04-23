@@ -1149,7 +1149,16 @@ static inline bool
 can_impl_cast(MirType *from, MirType *to)
 {
 	/*
-	 * Here we allow implicit casting for ptr -> bool combination.
+	  Here we allow implicit cast from any pointer type to bool, this breaks quite strict
+	  implicit casting rules in this language, but this kind of cast can be handy because we
+	  check pointer values for null very often. Until this was enabled, programmer was forced to
+	  explicitly type down comparation to null.
+
+	  We should consider later if this implicit casting shoult not be enabled only in
+	  expressions used in if statement because globally enabled implicit cast from pointer to
+	  bool could be misleading sometimes. Consider calling of a function, taking as parameter
+	  bool, in such case we can pass pointer to such function instead of bool without any
+	  explicit information about casting.
 	 */
 	if (from->kind == MIR_TYPE_PTR && to->kind == MIR_TYPE_BOOL) return true;
 
@@ -6332,6 +6341,10 @@ analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 	AnalyzeSlotConfig *conf          = &analyze_slot_conf_basic;
 
 	if (unop->op == UNOP_NOT) {
+		/*
+		  For unary not we expect value to be bool and we should eventually create implicit
+		  cast to this.
+		 */
 		expected_type = cnt->builtin_types->t_bool;
 		conf          = &analyze_slot_conf_default;
 	}
@@ -6347,7 +6360,7 @@ analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 
 	switch (unop->op) {
 	case UNOP_NOT: {
-		// BL_ASSERT(expr_type->kind == MIR_TYPE_BOOL);
+		if (expr_type->kind != MIR_TYPE_BOOL) return ANALYZE_RESULT(FAILED, 0);
 		break;
 	}
 
@@ -6362,6 +6375,25 @@ analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 			            BUILDER_CUR_AFTER,
 			            "Invalid operation for type '%s'. This operation "
 			            "is valid for integer types only.",
+			            tmp);
+
+			return ANALYZE_RESULT(FAILED, 0);
+		}
+		break;
+	}
+
+	case UNOP_POS:
+	case UNOP_NEG: {
+		if (expr_type->kind != MIR_TYPE_INT && expr_type->kind != MIR_TYPE_REAL) {
+			char tmp[256];
+			mir_type_to_str(tmp, 256, expr_type, true);
+
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_INVALID_TYPE,
+			            unop->base.node->location,
+			            BUILDER_CUR_AFTER,
+			            "Invalid operation for type '%s'. This operation "
+			            "is valid for integer or real types only.",
 			            tmp);
 
 			return ANALYZE_RESULT(FAILED, 0);

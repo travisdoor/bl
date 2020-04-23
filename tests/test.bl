@@ -1,16 +1,16 @@
 /* playground */
 
 main :: fn () s32 {
-    i := 10;
-    ptr := &i;
+    ptr: *s32 = null;
 
-    if !ptr { 
-        print("ptr is valid!!!\n");
+    foo : bool : ptr;
+
+    if ptr {
+        print("Pointer is valid!\n");
     } else {
-        print("ptr is not valid!!!\n");
+        print("Pointer is null!\n");
     }
-
+    
     return 0;
 }
-
 
