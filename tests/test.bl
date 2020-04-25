@@ -1,15 +1,13 @@
 /* playground */
 
 main :: fn () s32 {
-    ptr: *s32 = null;
-
-    foo : bool : ptr;
-
-    if ptr {
-        print("Pointer is valid!\n");
-    } else {
-        print("Pointer is null!\n");
-    }
+    mask :: {:[4]v2:
+             v2_zero, // bad casting assertion in LLVM IR
+             //{:v2: 1.f, 0.f},
+             {:v2: 1.f, 0.f},
+             {:v2: 1.f, 1.f},
+             {:v2: 0.f, 1.f}
+            };
     
     return 0;
 }

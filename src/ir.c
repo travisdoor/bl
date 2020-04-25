@@ -1468,7 +1468,10 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 	LLVMValueRef llvm_src = load->src->llvm_value;
 	BL_ASSERT(llvm_src);
 
-	if (mir_is_instr_in_global_block(&load->base) && mir_is_comptime(&load->base)) {
+	/* Check if we deal with global constant, in such case no load is needed, LLVM global
+	 * constants are referenced by value, so we need to fetch initializer instead of load. */
+	// if (mir_is_instr_in_global_block(&load->base) && mir_is_comptime(&load->base)) {
+	if (mir_is_comptime(&load->base) && LLVMIsAGlobalObject(llvm_src)) {
 		/* When we try to create comptime constant composition and load value, initializer
 		 * is needed. But loaded value could be in incomplete state during instruction emit,
 		 * we need to postpone this instruction in such case and try to resume later. */
