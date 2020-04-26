@@ -253,6 +253,10 @@ v2_length :: fn (v: v2) f32 #inline {
     return sqrtf(v.x * v.x + v.y * v.y);
 };
 
+v2_dot :: fn (a: v2, b: v2) f32 #inline {
+    return a.x * b.x + a.y * b.y;
+};
+
 v2_compare :: fn (a: v2, b: v2, epsilon: f32) bool #inline {
     return f32_compare(a.x, b.x, epsilon) && f32_compare(a.y, b.y, epsilon);
 }

@@ -298,6 +298,7 @@ struct MirTypeStruct {
 
 	/* Set true only for incomplete forward declarations of the struct. */
 	bool is_incomplete;
+
 	/* This is optional base type, only structures with #base hash directive has this
 	 * information.*/
 	MirType *base_type;
