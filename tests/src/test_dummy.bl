@@ -21,6 +21,7 @@
 #load "test_hash_table.bl"
 #load "test_arena.bl"
 #load "test_constant_composition.bl"
+#load "test_union.bl"
 
 main :: fn () s32 {
     return 0;
