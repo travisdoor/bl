@@ -771,6 +771,14 @@ rtti_emit_struct(Context *cnt, MirType *type)
 	                                (u64)is_slice,
 	                                is_slice_type->data.integer.is_signed));
 
+	/* is_union */
+	const bool is_union      = type->data.strct.is_union;
+	MirType *  is_union_type = mir_get_struct_elem_type(rtti_type, 4);
+	tsa_push_LLVMValue(&llvm_vals,
+	                   LLVMConstInt(is_union_type->llvm_type,
+	                                (u64)is_union,
+	                                is_union_type->data.integer.is_signed));
+
 	LLVMValueRef llvm_result =
 	    LLVMConstNamedStruct(rtti_type->llvm_type, llvm_vals.data, (u32)llvm_vals.size);
 
@@ -1438,25 +1446,32 @@ emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 		MirMember *member = member_ptr->scope_entry->data.member;
 		BL_ASSERT(member);
 
-		const unsigned int index =
-		    (const unsigned int)member_ptr->scope_entry->data.member->index;
-
-		member_ptr->base.llvm_value =
-		    LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, index, "");
-		BL_ASSERT(member_ptr->base.llvm_value);
-	} else {
-		/* builtin member */
-
-		/* Valid only for slice types, we generate direct replacement for arrays. */
-		if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN) {
-			/* .len */
+		if (member->is_parent_union) {
+			/* Union's member produce bitcast only. */
+			LLVMTypeRef llvm_member_type = member_ptr->base.value.type->llvm_type;
+			member_ptr->base.llvm_value = LLVMBuildBitCast(
+			    cnt->llvm_builder, llvm_target_ptr, llvm_member_type, "");
+		} else {
+			const unsigned int index = (const unsigned int)member->index;
 			member_ptr->base.llvm_value =
-			    LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 0, "");
-		} else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR) {
-			/* .ptr*/
-			member_ptr->base.llvm_value =
-			    LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 1, "");
+			    LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, index, "");
 		}
+
+		BL_ASSERT(member_ptr->base.llvm_value);
+		return STATE_PASSED;
+	}
+
+	/* builtin member */
+
+	/* Valid only for slice types, we generate direct replacement for arrays. */
+	if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN) {
+		/* .len */
+		member_ptr->base.llvm_value =
+		    LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 0, "");
+	} else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR) {
+		/* .ptr*/
+		member_ptr->base.llvm_value =
+		    LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 1, "");
 	}
 	return STATE_PASSED;
 }

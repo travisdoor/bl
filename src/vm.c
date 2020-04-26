@@ -1685,11 +1685,11 @@ interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 		const s64 len = arr_type->data.array.len;
 		if (index >= len) {
 			builder_error("Array index is out of the bounds! Array index "
-			          "is: %lli, "
-			          "but array size "
-			          "is: %lli",
-			          (long long)index,
-			          (long long)len);
+			              "is: %lli, "
+			              "but array size "
+			              "is: %lli",
+			              (long long)index,
+			              (long long)len);
 			exec_abort(vm, 0);
 		}
 
@@ -1719,9 +1719,9 @@ interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 
 		if (index >= len_tmp) {
 			builder_error("Array index is out of the bounds! Array index is: %lli, but "
-			          "array size is: %lli",
-			          (long long)index,
-			          (long long)len_tmp);
+			              "array size is: %lli",
+			              (long long)index,
+			              (long long)len_tmp);
 			exec_abort(vm, 0);
 		}
 
@@ -1765,7 +1765,7 @@ interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 		BL_ASSERT(member);
 		const s64 index = member->index;
 
-		/* let the llvm solve poiner offest */
+		/* let the llvm solve poiner offset */
 		result = vm_get_struct_elem_ptr(vm->assembly, target_type, ptr, (u32)index);
 	} else {
 		/* builtin member */
@@ -2030,7 +2030,7 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 		VMStackPtr vargs_tmp_ptr = vm_read_var(vm, vargs_tmp);
 		// set len
 		VMStackPtr len_ptr =
-		    vargs_tmp_ptr + vm_get_struct_elem_offest(
+		    vargs_tmp_ptr + vm_get_struct_elem_offset(
 		                        vm->assembly, vargs_tmp->value.type, MIR_SLICE_LEN_INDEX);
 
 		BL_ASSERT(mir_get_struct_elem_type(vargs_tmp->value.type, MIR_SLICE_LEN_INDEX)
@@ -2039,7 +2039,7 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 
 		// set ptr
 		VMStackPtr ptr_ptr =
-		    vargs_tmp_ptr + vm_get_struct_elem_offest(
+		    vargs_tmp_ptr + vm_get_struct_elem_offset(
 		                        vm->assembly, vargs_tmp->value.type, MIR_SLICE_PTR_INDEX);
 
 		vm_write_as(VMStackPtr, ptr_ptr, arr_tmp_ptr);
@@ -2458,7 +2458,7 @@ eval_instr_compound(VM *vm, MirInstrCompound *compound)
 		case MIR_TYPE_VARGS: {
 			MirType * member_type = value->type->data.strct.members->data[i]->type;
 			ptrdiff_t offset =
-			    vm_get_struct_elem_offest(vm->assembly, value->type, (u32)i);
+			    vm_get_struct_elem_offset(vm->assembly, value->type, (u32)i);
 			dest_ptr += offset;
 
 			memcpy(dest_ptr, src_ptr, member_type->store_size_bytes);
@@ -2823,9 +2823,11 @@ _vm_write_value(usize dest_size, VMStackPtr dest, VMStackPtr src)
 }
 
 ptrdiff_t
-vm_get_struct_elem_offest(Assembly *assembly, MirType *type, u32 i)
+vm_get_struct_elem_offset(Assembly *assembly, MirType *type, u32 i)
 {
 	BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
+	if (type->data.strct.is_union) { return 0; }
+
 	return (ptrdiff_t)LLVMOffsetOfElement(assembly->llvm.TD, type->llvm_type, i);
 }
 
@@ -2841,7 +2843,10 @@ vm_get_array_elem_offset(MirType *type, u32 i)
 VMStackPtr
 vm_get_struct_elem_ptr(Assembly *assembly, MirType *type, VMStackPtr ptr, u32 i)
 {
-	return ptr + vm_get_struct_elem_offest(assembly, type, i);
+	BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
+	if (type->data.strct.is_union) { return ptr; }
+
+	return ptr + vm_get_struct_elem_offset(assembly, type, i);
 }
 
 VMStackPtr

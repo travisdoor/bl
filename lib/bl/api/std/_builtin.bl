@@ -255,12 +255,14 @@ TypeInfoStruct :: struct #base TypeInfo #compiler {
 ## Members
   * `name` Structure type name.
   * `members` Slice of structure member infos.
-  * `is_slice` True whan structure is slice.
+  * `is_slice` True when structure is slice.
+  * `is_union` True when structure is union type.
 */
 TypeInfoStruct :: struct #base TypeInfo #compiler {
     name: string; 
     members: []TypeInfoStructMember; 
-    is_slice: bool
+    is_slice: bool;
+    is_union: bool;
 };
 
 /*!

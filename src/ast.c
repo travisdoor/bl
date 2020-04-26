@@ -139,8 +139,8 @@ ast_get_name(const Ast *n)
 		return "TypeSlice";
 	case AST_TYPE_FN:
 		return "TypeFn";
-	case AST_TYPE_STRUCT:
-		return "TypeStruct";
+	case AST_TYPE_STRUCT: 
+		return n->data.type_strct.is_union ? "TypeUnion" : "TypeStruct";
 	case AST_TYPE_ENUM:
 		return "TypeEnum";
 	case AST_TYPE_PTR:

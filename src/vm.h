@@ -131,7 +131,7 @@ void
 vm_write_ptr(struct MirType *type, VMStackPtr dest, VMStackPtr ptr);
 
 ptrdiff_t
-vm_get_struct_elem_offest(struct Assembly *assembly, struct MirType *type, u32 i);
+vm_get_struct_elem_offset(struct Assembly *assembly, struct MirType *type, u32 i);
 
 ptrdiff_t
 vm_get_array_elem_offset(struct MirType *type, u32 i);

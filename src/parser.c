@@ -460,9 +460,13 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
 		}
 
-		Scope *parent_scope = scope_get(cnt);
-		ScopeKind scope_kind = (parent_scope->kind == SCOPE_GLOBAL || parent_scope->kind == SCOPE_PRIVATE) ? SCOPE_FN : SCOPE_FN_LOCAL;
-		Scope *scope = scope_create(cnt->scope_arenas, scope_kind, scope_get(cnt), 256, NULL);
+		Scope *   parent_scope = scope_get(cnt);
+		ScopeKind scope_kind =
+		    (parent_scope->kind == SCOPE_GLOBAL || parent_scope->kind == SCOPE_PRIVATE)
+		        ? SCOPE_FN
+		        : SCOPE_FN_LOCAL;
+		Scope *scope =
+		    scope_create(cnt->scope_arenas, scope_kind, scope_get(cnt), 256, NULL);
 		scope_push(cnt, scope);
 
 		Ast *block = parse_block(cnt, false);
@@ -1703,8 +1707,11 @@ parse_expr_lit_fn(Context *cnt)
 
 	Ast *fn = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FN, tok_fn, scope_get(cnt));
 
-	Scope *parent_scope = scope_get(cnt);
-	ScopeKind scope_kind = (parent_scope->kind == SCOPE_GLOBAL || parent_scope->kind == SCOPE_PRIVATE) ? SCOPE_FN : SCOPE_FN_LOCAL;
+	Scope *   parent_scope = scope_get(cnt);
+	ScopeKind scope_kind =
+	    (parent_scope->kind == SCOPE_GLOBAL || parent_scope->kind == SCOPE_PRIVATE)
+	        ? SCOPE_FN
+	        : SCOPE_FN_LOCAL;
 	Scope *scope =
 	    scope_create(cnt->scope_arenas, scope_kind, scope_get(cnt), 256, &tok_fn->location);
 
@@ -2090,10 +2097,13 @@ Ast *
 parse_type_struct(Context *cnt)
 {
 	Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
+	if (!tok_struct) tok_struct = tokens_consume_if(cnt->tokens, SYM_UNION);
 	if (!tok_struct) return NULL;
 
+	const bool is_union = tok_struct->sym == SYM_UNION;
+
 	/* parse flags */
-	u32  accepted  = HD_COMPILER | HD_BASE;
+	u32  accepted  = is_union ? 0 : HD_COMPILER | HD_BASE;
 	u32  flags     = 0;
 	Ast *base_type = NULL;
 	while (true) {
@@ -2131,6 +2141,7 @@ parse_type_struct(Context *cnt)
 	type_struct->data.type_strct.raw       = false;
 	type_struct->data.type_strct.members   = create_sarr(TSmallArray_AstPtr, cnt->assembly);
 	type_struct->data.type_strct.base_type = base_type;
+	type_struct->data.type_strct.is_union  = is_union;
 
 	/* parse members */
 	bool       rq = false;

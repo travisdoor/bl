@@ -1,14 +1,24 @@
 /* playground */
 
+Foo :: union {
+    byte: u8;
+    int: s32;
+    float: f32;
+    str: string;
+}
+
 main :: fn () s32 {
-    mask :: {:[4]v2:
-             v2_zero, // bad casting assertion in LLVM IR
-             //{:v2: 1.f, 0.f},
-             {:v2: 1.f, 0.f},
-             {:v2: 1.f, 1.f},
-             {:v2: 0.f, 1.f}
-            };
-    
+    foo: Foo;
+    foo.str = "hello";
+
+    print("sizeof(foo) = %B\n", sizeof(foo));
+    print("foo.int = %\n", foo.int);
+    print("foo.string = %\n", foo.str);
+
+    info :: cast(*TypeInfoStruct) typeinfo(foo);
+    print("type foo is union? %\n", info.is_union);
+
+   
     return 0;
 }
 
