@@ -1,13 +1,17 @@
 /* playground */
 
+Foo :: union {
+    int: s32;
+    float: f32;
+    b: bool;
+}
+
+
 main :: fn () s32 {
-    mask :: {:[4]v2:
-             v2_zero, // bad casting assertion in LLVM IR
-             //{:v2: 1.f, 0.f},
-             {:v2: 1.f, 0.f},
-             {:v2: 1.f, 1.f},
-             {:v2: 0.f, 1.f}
-            };
+    foo1 := {:Foo: 0};
+    foo2 := {:Foo: 0};
+    
+    print("foo1 = %\nfoo2 = %\n", foo1, foo2);
     
     return 0;
 }

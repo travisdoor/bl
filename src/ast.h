@@ -200,8 +200,9 @@ struct AstTypeFn {
 struct AstTypeStruct {
 	struct Scope *      scope;
 	TSmallArray_AstPtr *members;
-	bool                raw;
 	Ast *               base_type;
+	bool                raw;
+	bool                is_union;
 };
 
 struct AstTypeEnum {

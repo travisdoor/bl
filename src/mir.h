@@ -38,6 +38,7 @@
 #include <dyncall_callback.h>
 #include <dynload.h>
 
+/* Slice member indices */
 #define MIR_SLICE_LEN_INDEX 0
 #define MIR_SLICE_PTR_INDEX 1
 
@@ -253,6 +254,7 @@ struct MirMember {
 	s64      index;
 	s32      tags;
 	bool     is_base; /* inherrited struct base */
+	bool     is_parent_union;
 };
 
 /* FUNCTION ARGUMENT */
@@ -295,6 +297,10 @@ struct MirTypeStruct {
 	Scope *                scope; /* struct body scope */
 	TSmallArray_MemberPtr *members;
 	bool                   is_packed;
+
+	/* C-style union is represented as regular structure with special memory layout. Every
+	 * member is stored at same memory offset. */
+	bool is_union;
 
 	/* Set true only for incomplete forward declarations of the struct. */
 	bool is_incomplete;
@@ -564,6 +570,7 @@ struct MirInstrTypeStruct {
 	Scope *               scope;
 	TSmallArray_InstrPtr *members;
 	bool                  is_packed;
+	bool                  is_union;
 };
 
 struct MirInstrTypeEnum {

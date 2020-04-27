@@ -6,6 +6,7 @@ syntax keyword blCast cast
 syntax keyword blAuto auto
 
 syntax keyword blStruct struct
+syntax keyword blUnion union  
 syntax keyword blEnum enum
 syntax keyword blFn fn 
 
@@ -61,6 +62,7 @@ highlight link blTypeInfo Operator
 highlight link blString String
 
 highlight link blStruct Structure
+highlight link blUnion Structure
 highlight link blEnum Structure
 
 highlight link blFunction Function

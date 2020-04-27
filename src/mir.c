@@ -275,7 +275,8 @@ create_type_struct(Context *              cnt,
                    Scope *                scope,
                    TSmallArray_MemberPtr *members,   /* MirMember */
                    MirType *              base_type, /* optional */
-                   bool                   is_packed);
+                   bool                   is_packed,
+                   bool                   is_union);
 
 /* Make incomplete type struct declaration complete. This function sets all desired information
  * about struct to the forward declaration type. */
@@ -285,11 +286,12 @@ complete_type_struct(Context *              cnt,
                      Scope *                scope,
                      TSmallArray_MemberPtr *members,
                      MirType *              base_type, /* optional */
-                     bool                   is_packed);
+                     bool                   is_packed,
+                     bool                   is_union);
 
 /* Create incomplete struct type placeholer to be filled later. */
 static MirType *
-create_type_struct_incomplete(Context *cnt, ID *user_id);
+create_type_struct_incomplete(Context *cnt, ID *user_id, bool is_union);
 
 static MirType *
 create_type_enum(Context *               cnt,
@@ -485,7 +487,8 @@ append_instr_type_struct(Context *             cnt,
                          MirInstr *            fwd_decl, /*Optional */
                          Scope *               scope,
                          TSmallArray_InstrPtr *members,
-                         bool                  is_packed);
+                         bool                  is_packed,
+                         bool                  is_union);
 
 static MirInstr *
 append_instr_type_enum(Context *             cnt,
@@ -1822,7 +1825,11 @@ init_type_id(Context *cnt, MirType *type)
 	}
 
 	case MIR_TYPE_STRUCT: {
-		tstring_append(tmp, "s.");
+		if (type->data.strct.is_union)
+			tstring_append(tmp, "u.");
+		else
+			tstring_append(tmp, "s.");
+
 		if (type->data.strct.is_incomplete) {
 			BL_ASSERT(type->user_id &&
 			          "Missing user id for incomplete structure type!");
@@ -2221,13 +2228,15 @@ create_type_struct(Context *              cnt,
                    Scope *                scope,
                    TSmallArray_MemberPtr *members,   /* MirMember */
                    MirType *              base_type, /* optional */
-                   bool                   is_packed)
+                   bool                   is_packed,
+                   bool                   is_union)
 {
 	MirType *tmp = create_type(cnt, kind, id);
 
 	tmp->data.strct.members   = members;
 	tmp->data.strct.scope     = scope;
 	tmp->data.strct.is_packed = is_packed;
+	tmp->data.strct.is_union  = is_union;
 	tmp->data.strct.base_type = base_type;
 
 	init_type_id(cnt, tmp);
@@ -2242,7 +2251,8 @@ complete_type_struct(Context *              cnt,
                      Scope *                scope,
                      TSmallArray_MemberPtr *members,
                      MirType *              base_type,
-                     bool                   is_packed)
+                     bool                   is_packed,
+                     bool                   is_union)
 {
 	BL_ASSERT(fwd_decl && "Invalid fwd_decl pointer!");
 
@@ -2260,19 +2270,21 @@ complete_type_struct(Context *              cnt,
 
 	incomplete_type->data.strct.members       = members;
 	incomplete_type->data.strct.scope         = scope;
-	incomplete_type->data.strct.is_packed     = is_packed;
 	incomplete_type->data.strct.is_incomplete = false;
 	incomplete_type->data.strct.base_type     = base_type;
+	incomplete_type->data.strct.is_packed     = is_packed;
+	incomplete_type->data.strct.is_union      = is_union;
 
 	init_llvm_type_struct(cnt, incomplete_type);
 	return incomplete_type;
 }
 
 MirType *
-create_type_struct_incomplete(Context *cnt, ID *user_id)
+create_type_struct_incomplete(Context *cnt, ID *user_id, bool is_union)
 {
 	MirType *tmp                  = create_type(cnt, MIR_TYPE_STRUCT, user_id);
 	tmp->data.strct.is_incomplete = true;
+	tmp->data.strct.is_union      = is_union;
 
 	init_type_id(cnt, tmp);
 	init_llvm_type_struct(cnt, tmp);
@@ -2308,7 +2320,7 @@ create_type_struct_special(Context *cnt, MirTypeKind kind, ID *id, MirType *elem
 	tsa_push_MemberPtr(members, tmp);
 	provide_builtin_member(cnt, body_scope, tmp);
 
-	return create_type_struct(cnt, kind, id, body_scope, members, NULL, false);
+	return create_type_struct(cnt, kind, id, body_scope, members, NULL, false, false);
 }
 
 MirType *
@@ -2459,13 +2471,13 @@ init_llvm_type_bool(Context *cnt, MirType *type)
 static inline usize
 struct_split_fit(Context *cnt, MirType *struct_type, u32 bound, u32 *start)
 {
-	s64 so     = vm_get_struct_elem_offest(cnt->assembly, struct_type, *start);
+	s64 so     = vm_get_struct_elem_offset(cnt->assembly, struct_type, *start);
 	u32 offset = 0;
 	u32 size   = 0;
 	u32 total  = 0;
 	for (; *start < struct_type->data.strct.members->size; ++(*start)) {
 		offset =
-		    (u32)vm_get_struct_elem_offest(cnt->assembly, struct_type, *start) - (u32)so;
+		    (u32)vm_get_struct_elem_offset(cnt->assembly, struct_type, *start) - (u32)so;
 		size = (u32)mir_get_struct_elem_type(struct_type, *start)->store_size_bytes;
 		if (offset + size > bound) return bound;
 		total = offset + size;
@@ -2680,17 +2692,37 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 	BL_ASSERT(members);
 
 	const bool  is_packed = type->data.strct.is_packed;
+	const bool  is_union  = type->data.strct.is_union;
 	const usize memc      = members->size;
 	BL_ASSERT(memc > 0);
+
 	TSmallArray_LLVMType llvm_members;
 	tsa_init(&llvm_members);
+
+	/* When structure is union we have to find biggest member and use only found one since LLVM
+	 * has no explicit union representation. We select biggest one. We have to consider better
+	 * selection later due to correct union alignment. */
+	MirMember *union_member = NULL;
 
 	MirMember *member;
 	TSA_FOREACH(members, member)
 	{
 		BL_ASSERT(member->type->llvm_type);
-		tsa_push_LLVMType(&llvm_members, member->type->llvm_type);
+
+		if (is_union) {
+			if (!union_member) {
+				union_member = member;
+				continue;
+			}
+
+			if (member->type->store_size_bytes > union_member->type->store_size_bytes)
+				union_member = member;
+		} else {
+			tsa_push_LLVMType(&llvm_members, member->type->llvm_type);
+		}
 	}
+
+	if (union_member) tsa_push_LLVMType(&llvm_members, union_member->type->llvm_type);
 
 	/* named structure type */
 	if (type->user_id) {
@@ -2701,10 +2733,13 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 			    LLVMStructCreateNamed(cnt->assembly->llvm.cnt, type->user_id->str);
 		}
 
-		LLVMStructSetBody(type->llvm_type, llvm_members.data, (unsigned)memc, is_packed);
+		LLVMStructSetBody(
+		    type->llvm_type, llvm_members.data, (unsigned)llvm_members.size, is_packed);
 	} else {
-		type->llvm_type = LLVMStructTypeInContext(
-		    cnt->assembly->llvm.cnt, llvm_members.data, (unsigned)memc, is_packed);
+		type->llvm_type = LLVMStructTypeInContext(cnt->assembly->llvm.cnt,
+		                                          llvm_members.data,
+		                                          (unsigned)llvm_members.size,
+		                                          is_packed);
 	}
 
 	type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
@@ -2715,7 +2750,10 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 
 	/* set offsets for members */
 	TSA_FOREACH(members, member)
-	member->offset_bytes = (s32)vm_get_struct_elem_offest(cnt->assembly, type, (u32)i);
+	{
+		/* Note: Union members has 0 offset. */
+		member->offset_bytes = (s32)vm_get_struct_elem_offset(cnt->assembly, type, (u32)i);
+	}
 
 	/*** DI ***/
 	if (!cnt->debug_mode) return;
@@ -2780,7 +2818,7 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 		    elem_line,
 		    elem->type->size_bits,
 		    (unsigned)elem->type->alignment * 8,
-		    (unsigned)(vm_get_struct_elem_offest(cnt->assembly, type, (u32)i) * 8),
+		    (unsigned)(vm_get_struct_elem_offset(cnt->assembly, type, (u32)i) * 8),
 		    elem->type->llvm_meta);
 
 		tsa_push_LLVMMetadata(&llvm_elems, llvm_elem);
@@ -3318,7 +3356,8 @@ append_instr_type_struct(Context *             cnt,
                          MirInstr *            fwd_decl,
                          Scope *               scope,
                          TSmallArray_InstrPtr *members,
-                         bool                  is_packed)
+                         bool                  is_packed,
+                         bool                  is_union)
 {
 	MirInstrTypeStruct *tmp     = create_instr(cnt, MIR_INSTR_TYPE_STRUCT, node);
 	tmp->base.value.type        = cnt->builtin_types->t_type;
@@ -3327,6 +3366,7 @@ append_instr_type_struct(Context *             cnt,
 	tmp->members                = members;
 	tmp->scope                  = scope;
 	tmp->is_packed              = is_packed;
+	tmp->is_union               = is_union;
 	tmp->id                     = id;
 	tmp->fwd_decl               = fwd_decl;
 
@@ -4631,34 +4671,48 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT: {
 		if (cmp->is_zero_initialized) break;
+		const bool  is_union = type->data.strct.is_union;
+		const usize memc     = type->data.strct.members->size;
 
-		const usize memc = type->data.strct.members->size;
-		if (values->size != memc) {
+		if (is_union) {
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_INITIALIZER,
 			            cmp->base.node->location,
 			            BUILDER_CUR_WORD,
-			            "Structure initializer must explicitly set all members of the "
-			            "structure or initialize structure to 0 by zero initializer "
-			            "{0}. Expected is %llu but given %llu.",
-			            (unsigned long long)memc,
-			            (unsigned long long)values->size);
+			            "Union can be zero initialized only, this is related to Issue: "
+			            "https://github.com/travisdoor/bl/issues/105");
 			return ANALYZE_RESULT(FAILED, 0);
-		}
-
-		/* Else iterate over values */
-		MirInstr **value_ref;
-		MirType *  member_type;
-		for (u32 i = 0; i < values->size; ++i) {
-			value_ref   = &values->data[i];
-			member_type = mir_get_struct_elem_type(type, i);
-
-			if (analyze_slot(cnt, &analyze_slot_conf_default, value_ref, member_type) !=
-			    ANALYZE_PASSED)
+		} else {
+			if (values->size != memc) {
+				builder_msg(
+				    BUILDER_MSG_ERROR,
+				    ERR_INVALID_INITIALIZER,
+				    cmp->base.node->location,
+				    BUILDER_CUR_WORD,
+				    "Structure initializer must explicitly set all members of the "
+				    "structure or initialize structure to 0 by zero initializer "
+				    "{0}. Expected is %llu but given %llu.",
+				    (unsigned long long)memc,
+				    (unsigned long long)values->size);
 				return ANALYZE_RESULT(FAILED, 0);
+			}
 
-			cmp->base.value.is_comptime =
-			    (*value_ref)->value.is_comptime ? cmp->base.value.is_comptime : false;
+			/* Else iterate over values */
+			MirInstr **value_ref;
+			MirType *  member_type;
+			for (u32 i = 0; i < values->size; ++i) {
+				value_ref   = &values->data[i];
+				member_type = mir_get_struct_elem_type(type, i);
+
+				if (analyze_slot(
+				        cnt, &analyze_slot_conf_default, value_ref, member_type) !=
+				    ANALYZE_PASSED)
+					return ANALYZE_RESULT(FAILED, 0);
+
+				cmp->base.value.is_comptime = (*value_ref)->value.is_comptime
+				                                  ? cmp->base.value.is_comptime
+				                                  : false;
+			}
 		}
 
 		break;
@@ -4819,7 +4873,8 @@ analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 	TSmallArray_InstrPtr *values = vargs->values;
 	BL_ASSERT(type && values);
 
-	type = create_type_struct_special(cnt, MIR_TYPE_VARGS, NULL, create_type_ptr(cnt, type));
+	type = create_type_struct_special(
+	    cnt, MIR_TYPE_VARGS, NULL, create_type_ptr(cnt, type), false);
 
 	const usize valc = values->size;
 
@@ -5932,6 +5987,7 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 {
 	TSmallArray_MemberPtr *members   = NULL;
 	MirType *              base_type = NULL;
+	const bool             is_union  = type_struct->is_union;
 
 	if (type_struct->members) {
 		MirInstr **         member_instr;
@@ -5971,9 +6027,10 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 			/* setup and provide member */
 			MirMember *member = decl_member->member;
 			BL_ASSERT(member);
-			member->type       = member_type;
-			member->decl_scope = scope;
-			member->index      = (s64)i;
+			member->type            = member_type;
+			member->decl_scope      = scope;
+			member->index           = (s64)i;
+			member->is_parent_union = is_union;
 
 			if (member->is_base) {
 				BL_ASSERT(!base_type &&
@@ -5996,7 +6053,8 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 		                                   type_struct->scope,
 		                                   members,
 		                                   base_type,
-		                                   type_struct->is_packed);
+		                                   type_struct->is_packed,
+		                                   type_struct->is_union);
 
 		analyze_notify_provided(cnt, result_type->user_id->hash);
 	} else {
@@ -6006,7 +6064,8 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 		                                 type_struct->scope,
 		                                 members,
 		                                 base_type,
-		                                 type_struct->is_packed);
+		                                 type_struct->is_packed,
+		                                 is_union);
 	}
 
 	BL_ASSERT(result_type);
@@ -7647,6 +7706,11 @@ rtti_gen_struct(Context *cnt, MirType *type)
 	const bool is_slice = type->kind == MIR_TYPE_SLICE || type->kind == MIR_TYPE_VARGS;
 	vm_write_int(dest_is_slice_type, dest_is_slice, (u64)is_slice);
 
+	/* is_union */
+	MirType *  dest_is_union_type = mir_get_struct_elem_type(rtti_type, 4);
+	VMStackPtr dest_is_union      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 4);
+	vm_write_int(dest_is_union_type, dest_is_union, (u64)type->data.strct.is_union);
+
 	return rtti_var;
 }
 
@@ -8647,7 +8711,7 @@ ast_decl_entity(Context *cnt, Ast *entity)
 		if (is_struct_decl) {
 			// Set to const type fwd decl
 			MirType *fwd_decl_type =
-			    create_type_struct_incomplete(cnt, cnt->ast.current_entity_id);
+			    create_type_struct_incomplete(cnt, cnt->ast.current_entity_id, false);
 
 			value = create_instr_const_type(cnt, ast_value, fwd_decl_type);
 			analyze_instr(cnt, value);
@@ -8947,6 +9011,8 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 
 	TSmallArray_AstPtr *ast_members = type_struct->data.type_strct.members;
 	const bool          is_raw      = type_struct->data.type_strct.raw;
+	const bool          is_union    = type_struct->data.type_strct.is_union;
+
 	if (is_raw) {
 		BL_ABORT_ISSUE(31);
 	}
@@ -8994,7 +9060,8 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 
 	if (cnt->debug_mode) init_llvm_DI_scope(cnt, scope);
 
-	return append_instr_type_struct(cnt, type_struct, id, fwd_decl, scope, members, false);
+	return append_instr_type_struct(
+	    cnt, type_struct, id, fwd_decl, scope, members, false, is_union);
 }
 
 MirInstr *
@@ -9201,8 +9268,10 @@ mir_instr_name(MirInstr *instr)
 		return "InstrUnreachable";
 	case MIR_INSTR_TYPE_FN:
 		return "InstrTypeFn";
-	case MIR_INSTR_TYPE_STRUCT:
-		return "InstrTypeStruct";
+	case MIR_INSTR_TYPE_STRUCT: {
+		const MirInstrTypeStruct *is = (MirInstrTypeStruct *)instr;
+		return is->is_union ? "InstrTypeUnion" : "InstrTypeStruct";
+	}
 	case MIR_INSTR_TYPE_ARRAY:
 		return "InstrTypeArray";
 	case MIR_INSTR_TYPE_SLICE:
@@ -9310,7 +9379,12 @@ _type_to_str(char *buf, usize len, MirType *type, bool prefer_name)
 		TSmallArray_MemberPtr *members = type->data.strct.members;
 		MirMember *            tmp;
 
-		append_buf(buf, len, "struct{");
+		if (type->data.strct.is_union) {
+			append_buf(buf, len, "union{");
+		} else {
+			append_buf(buf, len, "struct{");
+		}
+
 		if (members) {
 			TSA_FOREACH(members, tmp)
 			{
