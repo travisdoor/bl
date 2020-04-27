@@ -1,24 +1,18 @@
 /* playground */
 
 Foo :: union {
-    byte: u8;
     int: s32;
     float: f32;
-    str: string;
+    b: bool;
 }
 
+
 main :: fn () s32 {
-    foo: Foo;
-    foo.str = "hello";
-
-    print("sizeof(foo) = %B\n", sizeof(foo));
-    print("foo.int = %\n", foo.int);
-    print("foo.string = %\n", foo.str);
-
-    info :: cast(*TypeInfoStruct) typeinfo(foo);
-    print("type foo is union? %\n", info.is_union);
-
-   
+    foo1 := {:Foo: 0};
+    foo2 := {:Foo: 0};
+    
+    print("foo1 = %\nfoo2 = %\n", foo1, foo2);
+    
     return 0;
 }
 

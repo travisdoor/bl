@@ -4671,34 +4671,48 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT: {
 		if (cmp->is_zero_initialized) break;
+		const bool  is_union = type->data.strct.is_union;
+		const usize memc     = type->data.strct.members->size;
 
-		const usize memc = type->data.strct.members->size;
-		if (values->size != memc) {
+		if (is_union) {
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_INITIALIZER,
 			            cmp->base.node->location,
 			            BUILDER_CUR_WORD,
-			            "Structure initializer must explicitly set all members of the "
-			            "structure or initialize structure to 0 by zero initializer "
-			            "{0}. Expected is %llu but given %llu.",
-			            (unsigned long long)memc,
-			            (unsigned long long)values->size);
+			            "Union can be zero initialized only, this is related to Issue: "
+			            "https://github.com/travisdoor/bl/issues/105");
 			return ANALYZE_RESULT(FAILED, 0);
-		}
-
-		/* Else iterate over values */
-		MirInstr **value_ref;
-		MirType *  member_type;
-		for (u32 i = 0; i < values->size; ++i) {
-			value_ref   = &values->data[i];
-			member_type = mir_get_struct_elem_type(type, i);
-
-			if (analyze_slot(cnt, &analyze_slot_conf_default, value_ref, member_type) !=
-			    ANALYZE_PASSED)
+		} else {
+			if (values->size != memc) {
+				builder_msg(
+				    BUILDER_MSG_ERROR,
+				    ERR_INVALID_INITIALIZER,
+				    cmp->base.node->location,
+				    BUILDER_CUR_WORD,
+				    "Structure initializer must explicitly set all members of the "
+				    "structure or initialize structure to 0 by zero initializer "
+				    "{0}. Expected is %llu but given %llu.",
+				    (unsigned long long)memc,
+				    (unsigned long long)values->size);
 				return ANALYZE_RESULT(FAILED, 0);
+			}
 
-			cmp->base.value.is_comptime =
-			    (*value_ref)->value.is_comptime ? cmp->base.value.is_comptime : false;
+			/* Else iterate over values */
+			MirInstr **value_ref;
+			MirType *  member_type;
+			for (u32 i = 0; i < values->size; ++i) {
+				value_ref   = &values->data[i];
+				member_type = mir_get_struct_elem_type(type, i);
+
+				if (analyze_slot(
+				        cnt, &analyze_slot_conf_default, value_ref, member_type) !=
+				    ANALYZE_PASSED)
+					return ANALYZE_RESULT(FAILED, 0);
+
+				cmp->base.value.is_comptime = (*value_ref)->value.is_comptime
+				                                  ? cmp->base.value.is_comptime
+				                                  : false;
+			}
 		}
 
 		break;
