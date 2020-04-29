@@ -420,6 +420,12 @@ static MirInstr *
 append_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values);
 
 static MirInstr *
+create_instr_compound(Context *cnt, Ast *node, MirInstr *type, TSmallArray_InstrPtr *values);
+
+static MirInstr *
+create_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values);
+
+static MirInstr *
 append_instr_cast(Context *cnt, Ast *node, MirInstr *type, MirInstr *next);
 
 static MirInstr *
@@ -822,6 +828,9 @@ static AnalyzeStageState
 analyze_stage_toany(Context *cnt, MirInstr **input, MirType *slot_type);
 
 static AnalyzeStageState
+analyze_stage_arrtoslice(Context *cnt, MirInstr **input, MirType *slot_type);
+
+static AnalyzeStageState
 analyze_stage_set_volatile_expr(Context *cnt, MirInstr **input, MirType *slot_type);
 
 /* Do implicit cast if possible. */
@@ -836,22 +845,24 @@ static const AnalyzeSlotConfig analyze_slot_conf_dummy = {.count = 0};
 static const AnalyzeSlotConfig analyze_slot_conf_basic = {.count  = 1,
                                                           .stages = {analyze_stage_load}};
 
-static const AnalyzeSlotConfig analyze_slot_conf_default = {.count  = 6,
+static const AnalyzeSlotConfig analyze_slot_conf_default = {.count  = 7,
                                                             .stages = {
                                                                 analyze_stage_set_volatile_expr,
                                                                 analyze_stage_set_null,
                                                                 analyze_stage_set_auto,
+                                                                analyze_stage_arrtoslice,
                                                                 analyze_stage_load,
                                                                 analyze_stage_implicit_cast,
                                                                 analyze_stage_report_type_mismatch,
                                                             }};
 
-static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 7,
+static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 8,
                                                          .stages = {
                                                              analyze_stage_set_volatile_expr,
                                                              analyze_stage_set_null,
                                                              analyze_stage_set_auto,
                                                              analyze_stage_toany,
+                                                             analyze_stage_arrtoslice,
                                                              analyze_stage_load,
                                                              analyze_stage_implicit_cast,
                                                              analyze_stage_report_type_mismatch,
@@ -3490,6 +3501,14 @@ append_instr_phi(Context *cnt, Ast *node)
 MirInstr *
 append_instr_compound(Context *cnt, Ast *node, MirInstr *type, TSmallArray_InstrPtr *values)
 {
+	MirInstr *tmp = create_instr_compound(cnt, node, type, values);
+	append_current_block(cnt, tmp);
+	return tmp;
+}
+
+MirInstr *
+create_instr_compound(Context *cnt, Ast *node, MirInstr *type, TSmallArray_InstrPtr *values)
+{
 	if (values) {
 		MirInstr *value;
 		TSA_FOREACH(values, value) ref_instr(value);
@@ -3502,7 +3521,6 @@ append_instr_compound(Context *cnt, Ast *node, MirInstr *type, TSmallArray_Instr
 	tmp->values               = values;
 	tmp->is_naked             = true;
 
-	append_current_block(cnt, &tmp->base);
 	return &tmp->base;
 }
 
@@ -3510,6 +3528,17 @@ MirInstr *
 append_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values)
 {
 	MirInstr *tmp        = append_instr_compound(cnt, node, NULL, values);
+	tmp->value.addr_mode = MIR_VAM_RVALUE;
+	tmp->value.type      = type;
+	tmp->implicit        = true;
+
+	return tmp;
+}
+
+MirInstr *
+create_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values)
+{
+	MirInstr *tmp        = create_instr_compound(cnt, node, NULL, values);
 	tmp->value.addr_mode = MIR_VAM_RVALUE;
 	tmp->value.type      = type;
 	tmp->implicit        = true;
@@ -6952,14 +6981,73 @@ analyze_stage_toany(Context *cnt, MirInstr **input, MirType *slot_type)
 	/* check any */
 	if (!is_to_any_needed(cnt, *input, slot_type)) return ANALYZE_STAGE_CONTINUE;
 
-	AnalyzeResult r;
+	AnalyzeResult result;
 	*input = insert_instr_toany(cnt, *input);
-	r      = analyze_instr(cnt, *input);
-	if (r.state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
+	result = analyze_instr(cnt, *input);
+	if (result.state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
 
 	*input = insert_instr_load(cnt, *input);
-	r      = analyze_instr(cnt, *input);
-	if (r.state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
+	result = analyze_instr(cnt, *input);
+	if (result.state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
+
+	return ANALYZE_STAGE_BREAK;
+}
+
+AnalyzeStageState
+analyze_stage_arrtoslice(Context *cnt, MirInstr **input, MirType *slot_type)
+{
+	// Produce implicit cast from array type to slice. This will create implicit compound
+	// initializer representing array legth and pointer to array data.
+	BL_ASSERT(slot_type);
+
+	MirType *from_type = (*input)->value.type;
+	BL_ASSERT(from_type);
+
+	if (!mir_is_pointer_type(from_type)) return ANALYZE_STAGE_CONTINUE;
+
+	from_type = mir_deref_type(from_type);
+	if (from_type->kind != MIR_TYPE_ARRAY || slot_type->kind != MIR_TYPE_SLICE)
+		return ANALYZE_STAGE_CONTINUE;
+
+	{ // Compare elem type of array and slot slice
+		MirType *elem_from_type = from_type->data.array.elem_type;
+		MirType *elem_to_type   = mir_get_struct_elem_type(slot_type, MIR_SLICE_PTR_INDEX);
+		BL_ASSERT(mir_is_pointer_type(elem_to_type) && "Expected pointer type!");
+		elem_to_type = mir_deref_type(elem_to_type);
+		BL_ASSERT(elem_to_type && "Invalid type after pointer type dereference!");
+
+		if (!type_cmp(elem_from_type, elem_to_type)) return ANALYZE_STAGE_CONTINUE;
+	}
+
+	{ // Build slice initializer.
+		const s64             len       = from_type->data.array.len;
+		MirInstr *            instr_arr = *input;
+		TSmallArray_InstrPtr *values    = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
+
+		MirInstr *instr_len =
+		    create_instr_const_int(cnt, NULL, cnt->builtin_types->t_s64, len);
+		insert_instr_after(*input, instr_len);
+		*input = instr_len;
+		analyze_instr(cnt, instr_len);
+
+		MirInstr *instr_ptr =
+		    create_instr_member_ptr(cnt, NULL, instr_arr, NULL, NULL, MIR_BUILTIN_ID_ARR_PTR);
+		insert_instr_after(*input, instr_ptr);
+		*input = instr_ptr;
+		analyze_instr(cnt, instr_ptr);
+
+		tsa_push_InstrPtr(values, instr_len);
+		tsa_push_InstrPtr(values, instr_ptr);
+
+		MirInstr *compound = create_instr_compound_impl(cnt, NULL, slot_type, values);
+		compound->value.addr_mode = MIR_VAM_RVALUE;
+		ref_instr(compound);
+
+		insert_instr_after(*input, compound);
+		*input = compound;
+
+		analyze_instr(cnt, compound);
+	}
 
 	return ANALYZE_STAGE_BREAK;
 }
