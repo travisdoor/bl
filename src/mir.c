@@ -4903,7 +4903,7 @@ analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 	BL_ASSERT(type && values);
 
 	type = create_type_struct_special(
-	    cnt, MIR_TYPE_VARGS, NULL, create_type_ptr(cnt, type), false);
+	    cnt, MIR_TYPE_VARGS, NULL, create_type_ptr(cnt, type));
 
 	const usize valc = values->size;
 
@@ -6425,17 +6425,8 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 AnalyzeResult
 analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
-	MirType *          expected_type = NULL;
-	AnalyzeSlotConfig *conf          = &analyze_slot_conf_basic;
-
-	if (unop->op == UNOP_NOT) {
-		/*
-		  For unary not we expect value to be bool and we should eventually create implicit
-		  cast to this.
-		 */
-		expected_type = cnt->builtin_types->t_bool;
-		conf          = &analyze_slot_conf_default;
-	}
+	MirType *          expected_type = unop->op == UNOP_NOT ? cnt->builtin_types->t_bool : NULL;
+	const AnalyzeSlotConfig *conf          = unop->op == UNOP_NOT ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
 
 	if (analyze_slot(cnt, conf, &unop->expr, expected_type) != ANALYZE_PASSED) {
 		return ANALYZE_RESULT(FAILED, 0);
