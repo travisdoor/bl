@@ -1401,7 +1401,7 @@ emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 	LLVMValueRef llvm_index   = elem_ptr->index->llvm_value;
 	BL_ASSERT(llvm_arr_ptr && llvm_index);
 
-	const bool is_constant = LLVMIsConstant(llvm_arr_ptr) && LLVMIsConstant(llvm_index);
+	const bool is_global = mir_is_global(&elem_ptr->base);
 
 	switch (arr_type->kind) {
 	case MIR_TYPE_ARRAY: {
@@ -1409,7 +1409,8 @@ emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		llvm_indices[0] = cnt->llvm_const_i64;
 		llvm_indices[1] = llvm_index;
 
-		if (is_constant) {
+		if (is_global) {
+			BL_ASSERT(LLVMIsConstant(llvm_arr_ptr) && "Expected constant!");
 			elem_ptr->base.llvm_value =
 			    LLVMConstGEP(llvm_arr_ptr, llvm_indices, TARRAY_SIZE(llvm_indices));
 		} else {
@@ -1495,8 +1496,9 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 
 	/* Check if we deal with global constant, in such case no load is needed, LLVM global
 	 * constants are referenced by value, so we need to fetch initializer instead of load. */
-	// if (mir_is_instr_in_global_block(&load->base) && mir_is_comptime(&load->base)) {
-	if (mir_is_comptime(&load->base) && LLVMIsAGlobalObject(llvm_src)) {
+	// if (mir_is_global(&load->base) && mir_is_comptime(&load->base)) {
+	// if (mir_is_comptime(&load->base) && LLVMIsAGlobalObject(llvm_src)) {
+	if (mir_is_global(load->src)) {
 		/* When we try to create comptime constant composition and load value, initializer
 		 * is needed. But loaded value could be in incomplete state during instruction emit,
 		 * we need to postpone this instruction in such case and try to resume later. */
@@ -1577,6 +1579,8 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 	MirVar * tmp_var = _tmp_var ? _tmp_var : cmp->tmp_var;
 	MirType *type    = cmp->base.value.type;
 
+	const bool is_global = mir_is_global(&cmp->base);
+
 #if BL_DEBUG
 	if (_tmp_var && cmp->is_naked) {
 		BL_WARNING("Compound initialized has set value destination but is marked as "
@@ -1589,7 +1593,7 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 	if (cmp->is_zero_initialized) {
 		cmp->base.llvm_value = LLVMConstNull(type->llvm_type);
 		if (tmp_var) {
-			LLVMValueRef llvm_dest = _tmp_var->llvm_value;
+			LLVMValueRef llvm_dest = tmp_var->llvm_value;
 			BL_ASSERT(llvm_dest);
 
 			LLVMBuildStore(cnt->llvm_builder, cmp->base.llvm_value, llvm_dest);
@@ -1599,47 +1603,10 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 		return STATE_PASSED;
 	}
 
-	bool is_constant = false;
-	switch (type->kind) {
-	case MIR_TYPE_ARRAY: {
-		MirInstr *it;
-		TSA_FOREACH(cmp->values, it)
-		{
-			BL_ASSERT(it->llvm_value && "Invalid compound value!");
-			is_constant = LLVMIsConstant(it->llvm_value);
-			if (!is_constant) break;
-		}
-
-		break;
-	}
-
-	case MIR_TYPE_STRING:
-	case MIR_TYPE_SLICE:
-	case MIR_TYPE_VARGS:
-	case MIR_TYPE_STRUCT: {
-		MirInstr *it;
-		TSA_FOREACH(cmp->values, it)
-		{
-			BL_ASSERT(it->llvm_value && "Invalid compound value!");
-			is_constant = LLVMIsConstant(it->llvm_value);
-			if (!is_constant) break;
-		}
-		break;
-	}
-
-	default: {
-		/* Other non-zero initialized types should contain only one value!!! */
-		BL_ASSERT(cmp->values->size == 1 &&
-		          "Expected only one compound initializer value!");
-
-		is_constant = LLVMIsConstant(cmp->values->data[0]->llvm_value);
-	}
-	}
-
 	/**********************/
 	/* Generate constants */
 	/**********************/
-	if (is_constant) {
+	if (is_global) {
 		switch (type->kind) {
 		case MIR_TYPE_ARRAY: {
 			const usize len            = type->data.array.len;
@@ -1653,6 +1620,7 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 			TSA_FOREACH(cmp->values, it)
 			{
 				LLVMValueRef llvm_elem = it->llvm_value;
+				BL_ASSERT(LLVMIsConstant(llvm_elem) && "Expected constant!");
 				tsa_push_LLVMValue(&llvm_elems, llvm_elem);
 			}
 
@@ -1682,6 +1650,7 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 			TSA_FOREACH(cmp->values, it)
 			{
 				LLVMValueRef llvm_member = it->llvm_value;
+				BL_ASSERT(LLVMIsConstant(llvm_member) && "Expected constant!");
 				tsa_push_LLVMValue(&llvm_members, llvm_member);
 			}
 
@@ -1696,7 +1665,9 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 			BL_ASSERT(cmp->values->size == 1 &&
 			          "Expected only one compound initializer value!");
 
-			cmp->base.llvm_value = cmp->values->data[0]->llvm_value;
+			LLVMValueRef llvm_value = cmp->values->data[0]->llvm_value;
+			BL_ASSERT(LLVMIsConstant(llvm_value) && "Expected constant!");
+			cmp->base.llvm_value = llvm_value;
 		}
 		}
 

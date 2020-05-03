@@ -751,6 +751,7 @@ mir_get_fn_arg_type(MirType *type, u32 i)
 	return args->data[i]->type;
 }
 
+/* Determinates if the instruction has compile time known value. */
 static inline bool
 mir_is_comptime(MirInstr *instr)
 {
@@ -763,8 +764,9 @@ mir_is_global_block(MirInstrBlock *instr)
 	return instr->owner_fn == NULL;
 }
 
+/* Determinates if the instruction is in the global block. */
 static inline bool
-mir_is_instr_in_global_block(MirInstr *instr)
+mir_is_global(MirInstr *instr)
 {
 	return mir_is_global_block(instr->owner_block);
 }

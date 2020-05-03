@@ -4769,7 +4769,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 	}
 	}
 
-	if (!mir_is_comptime(&cmp->base) && cmp->is_naked) {
+	if (!mir_is_global(cmp) && cmp->is_naked) {
 		/* For naked non-compile time compounds we need to generate implicit temp storage to
 		 * keep all data. */
 
@@ -7033,7 +7033,7 @@ ANALYZE_STAGE_FN(arrtoslice)
 		tsa_push_InstrPtr(values, instr_ptr);
 
 		MirInstr *compound = create_instr_compound_impl(cnt, NULL, slot_type, values);
-		((MirInstrCompound*)compound)->is_naked = !is_initializer;
+		((MirInstrCompound *)compound)->is_naked = !is_initializer;
 		ref_instr(compound);
 
 		insert_instr_after(*input, compound);

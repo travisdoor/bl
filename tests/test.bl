@@ -6,15 +6,16 @@ main :: fn () s32 {
     foo(arr);
     */
 
+    color: v4;
+    color = {:v4: 0.05f, 0.05f, 0.05f, 1.f};
+    print("color = %\n", color);
+
     arr2 :: {:[10]s32: 1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
-    //ptr :: arr2.ptr;
-    val : []s32 : arr2;
+    tmp : []s32 : arr2;
+    print("tmp = %\n", tmp);
+
     foo(arr2);
-    //print("%\n", ptr);
-    //arr :: {:[]s32: 10, arr2.ptr};
-    //foo({:[]s32: 10, auto &arr2});
-    //arr :: {:[]s32: 10, arr2.ptr};
-    
+
     return 0;
 }
 
