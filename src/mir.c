@@ -4096,12 +4096,14 @@ append_instr_const_string(Context *cnt, Ast *node, const char *str)
 	tsa_push_InstrPtr(values, len);
 	tsa_push_InstrPtr(values, ptr);
 
-	MirInstr *compound =
-	    append_instr_compound_impl(cnt, node, cnt->builtin_types->t_string, values);
-	compound->value.is_comptime = true;
-	compound->value.addr_mode   = MIR_VAM_RVALUE;
+	MirInstrCompound *compound = (MirInstrCompound *)append_instr_compound_impl(
+	    cnt, node, cnt->builtin_types->t_string, values);
 
-	return compound;
+	compound->is_naked               = false;
+	compound->base.value.is_comptime = true;
+	compound->base.value.addr_mode   = MIR_VAM_RVALUE;
+
+	return &compound->base;
 }
 
 MirInstr *
@@ -4769,7 +4771,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 	}
 	}
 
-	if (!mir_is_global(cmp) && cmp->is_naked) {
+	if (!mir_is_global(&cmp->base) && cmp->is_naked) {
 		/* For naked non-compile time compounds we need to generate implicit temp storage to
 		 * keep all data. */
 
@@ -6580,6 +6582,10 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	}
 
 	if (decl->init) {
+		if (decl->init->kind == MIR_INSTR_COMPOUND) {
+			((MirInstrCompound *)decl->init)->is_naked = false;
+		}
+
 		/* Resolve variable intializer. Here we use analyze_slot_initializer call to fulfill
 		 * possible array to slice cast. */
 		if (var->value.type) {
@@ -6604,9 +6610,6 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
 		/* Immutable and comptime initializer value. */
 		is_decl_comptime &= decl->init->value.is_comptime;
-		if (decl->init->kind == MIR_INSTR_COMPOUND) {
-			((MirInstrCompound *)decl->init)->is_naked = false;
-		}
 	}
 
 	decl->base.value.is_comptime = var->value.is_comptime = is_decl_comptime;
@@ -8178,6 +8181,11 @@ ast_stmt_return(Context *cnt, Ast *ret)
 			}
 
 			MirInstr *ref = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
+
+			if (value->kind == MIR_INSTR_COMPOUND) {
+				((MirInstrCompound *)value)->is_naked = false;
+			}
+
 			append_instr_store(cnt, ret, value, ref);
 		} else if (value) {
 			builder_msg(BUILDER_MSG_ERROR,
@@ -8614,6 +8622,13 @@ ast_expr_binop(Context *cnt, Ast *binop)
 	case BINOP_ASSIGN: {
 		MirInstr *rhs = ast(cnt, ast_rhs);
 		MirInstr *lhs = ast(cnt, ast_lhs);
+
+		/* In case right hand side expression is compound initializer, we don't need temp
+		 * storage for it, we can just copy compound content directly into variable, so we
+		 * set it here as non-naked. */
+		if (rhs->kind == MIR_INSTR_COMPOUND) {
+			((MirInstrCompound *)rhs)->is_naked = false;
+		}
 
 		return append_instr_store(cnt, binop, rhs, lhs);
 	}

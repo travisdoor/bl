@@ -1,0 +1,15 @@
+0.6.0 - BETA
+---------------------------------------------------------------------------------------
+Add implicit cast from array to slice. (Fixed compile time vs constant IR code emit).
+Fix invalid conversion of the sizeof result to Any.
+Fix local functions in nested scope.
+Fix nested function implicitly capturing members of upper scope.
+Fix segfault on global initializer nesting.
+Fix LLVM cast assertions on string array to slice conversion.
+Fix invalid sizeof operator result on array elem values and struct memers.
+Fix lambda functions inside nested scope.
+Add implicit conversion from pointers to bool.
+Add union data type.
+Add support of Windows terminal color output.
+Add testing formaters for printing float values.
+Add support of MSVC CoveView and PDB debug database generation via LLVM API.

@@ -154,7 +154,7 @@ static LLVMValueRef
 emit_const_string(Context *cnt, const char *str, usize len);
 
 static State
-emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp);
+emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp);
 
 static State
 emit_instr_binop(Context *cnt, MirInstrBinop *binop);
@@ -1521,10 +1521,18 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 State
 emit_instr_store(Context *cnt, MirInstrStore *store)
 {
-	LLVMValueRef   val       = store->src->llvm_value;
-	LLVMValueRef   ptr       = store->dest->llvm_value;
+	LLVMValueRef ptr = store->dest->llvm_value;
+	BL_ASSERT(ptr && "Missing LLVM store destination value!");
+
+	if (store->src->kind == MIR_INSTR_COMPOUND) {
+		emit_instr_compound(cnt, ptr, (MirInstrCompound *)store->src);
+		return STATE_PASSED;
+	}
+
+	LLVMValueRef val = store->src->llvm_value;
+	BL_ASSERT(val && "Missing LLVM store source value!");
+
 	const unsigned alignment = (unsigned)store->src->value.type->alignment;
-	BL_ASSERT(val && ptr);
 
 	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &store->base);
 	store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
@@ -1570,34 +1578,43 @@ emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 }
 
 State
-emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
+emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp)
 {
-	/* To create valid compound composit value we have to check if all presented members are
-	 * constant or not, first idea was check only 'is_comptime' variable but this solution is
-	 * not robust enouhg. LLVM's representation can is not same as MIR IR representation, so I
-	 * decided to use LLVM API function to check directly LLVMValues here.*/
-	MirVar * tmp_var = _tmp_var ? _tmp_var : cmp->tmp_var;
-	MirType *type    = cmp->base.value.type;
+	LLVMValueRef llvm_tmp = NULL;
 
-	const bool is_global = mir_is_global(&cmp->base);
-
+	if (_llvm_tmp) {
+		llvm_tmp = _llvm_tmp;
 #if BL_DEBUG
-	if (_tmp_var && cmp->is_naked) {
-		BL_WARNING("Compound initialized has set value destination but is marked as "
-		           "naked, this will cause generation of unused temp!");
-	}
+		if (cmp->is_naked) {
+			Location *loc = cmp->base.node ? cmp->base.node->location : NULL;
+			BL_WARNING(
+			    "Compound initialized has set value destination but is marked as "
+			    "naked, this will cause generation of unused temp! (%s:%d)",
+			    loc ? loc->unit->filename : "<UNKNOWN_FILE>",
+			    loc ? loc->line : -1);
+		}
 #endif
+	} else if (cmp->tmp_var) {
+		llvm_tmp = cmp->tmp_var->llvm_value;
+#if BL_DEBUG
+		if (!cmp->is_naked) {
+			Location *loc = cmp->base.node ? cmp->base.node->location : NULL;
+			BL_WARNING("Compound initializer with temp variable should be marked as "
+			           "naked! (%s:%d)",
+			           loc ? loc->unit->filename : "<UNKNOWN_FILE>",
+			           loc ? loc->line : -1);
+		}
+#endif
+	}
+
+	MirType *  type      = cmp->base.value.type;
+	const bool is_global = mir_is_global(&cmp->base);
 
 	/* Fist of all we are going to check zero initialized compounds since there is no additional
 	 * work needed. */
 	if (cmp->is_zero_initialized) {
 		cmp->base.llvm_value = LLVMConstNull(type->llvm_type);
-		if (tmp_var) {
-			LLVMValueRef llvm_dest = tmp_var->llvm_value;
-			BL_ASSERT(llvm_dest);
-
-			LLVMBuildStore(cnt->llvm_builder, cmp->base.llvm_value, llvm_dest);
-		}
+		if (llvm_tmp) LLVMBuildStore(cnt->llvm_builder, cmp->base.llvm_value, llvm_tmp);
 
 		// DONE!!!
 		return STATE_PASSED;
@@ -1672,11 +1689,8 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 		}
 
 		BL_ASSERT(cmp->base.llvm_value);
-		if (tmp_var) {
-			LLVMValueRef llvm_dest = _tmp_var->llvm_value;
-			BL_ASSERT(llvm_dest);
-
-			LLVMBuildStore(cnt->llvm_builder, cmp->base.llvm_value, llvm_dest);
+		if (llvm_tmp) {
+			LLVMBuildStore(cnt->llvm_builder, cmp->base.llvm_value, llvm_tmp);
 		}
 
 		// DONE!!!
@@ -1686,13 +1700,7 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 	/**************************/
 	/* Generate non-constants */
 	/**************************/
-	BL_ASSERT(tmp_var && "Missing tmp variable for compound expression!");
-	BL_ASSERT(!cmp->is_zero_initialized && "Zero initialized compound should be comptime!");
-
-	LLVMValueRef llvm_tmp = tmp_var->llvm_value;
-	MirType *    tmp_type = tmp_var->value.type;
-	BL_ASSERT(llvm_tmp)
-	BL_ASSERT(tmp_type)
+	BL_ASSERT(llvm_tmp && "Missing temp storage for compound value!");
 
 	TSmallArray_InstrPtr *values = cmp->values;
 	MirInstr *            value;
@@ -1706,7 +1714,7 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 		llvm_value = value->llvm_value;
 		BL_ASSERT(llvm_value)
 
-		switch (tmp_type->kind) {
+		switch (type->kind) {
 		case MIR_TYPE_ARRAY:
 			llvm_indices[1] =
 			    LLVMConstInt(cnt->builtin_types->t_s64->llvm_type, i, true);
@@ -1721,8 +1729,8 @@ emit_instr_compound(Context *cnt, MirVar *_tmp_var, MirInstrCompound *cmp)
 		case MIR_TYPE_SLICE:
 		case MIR_TYPE_VARGS:
 		case MIR_TYPE_STRUCT:
-			llvm_value_dest = LLVMBuildStructGEP(
-			    cnt->llvm_builder, tmp_var->llvm_value, (unsigned int)i, "");
+			llvm_value_dest =
+			    LLVMBuildStructGEP(cnt->llvm_builder, llvm_tmp, (unsigned int)i, "");
 			break;
 
 		default:
@@ -2113,7 +2121,8 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 			/* There is special handling for initialization via compound
 			 * instruction */
 			if (decl->init->kind == MIR_INSTR_COMPOUND) {
-				emit_instr_compound(cnt, var, (MirInstrCompound *)decl->init);
+				emit_instr_compound(
+				    cnt, var->llvm_value, (MirInstrCompound *)decl->init);
 			} else if (decl->init->kind == MIR_INSTR_ARG) {
 				emit_instr_arg(cnt, var, (MirInstrArg *)decl->init);
 			} else {

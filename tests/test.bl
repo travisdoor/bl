@@ -6,6 +6,7 @@ main :: fn () s32 {
     foo(arr);
     */
 
+    /*
     color: v4;
     color = {:v4: 0.05f, 0.05f, 0.05f, 1.f};
     print("color = %\n", color);
@@ -15,6 +16,9 @@ main :: fn () s32 {
     print("tmp = %\n", tmp);
 
     foo(arr2);
+    */
+
+    print("hello");
 
     return 0;
 }
