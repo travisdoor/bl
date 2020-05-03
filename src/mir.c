@@ -162,7 +162,17 @@ typedef enum {
 	ANALYZE_STAGE_FAILED,
 } AnalyzeStageState;
 
-typedef AnalyzeStageState (*AnalyzeStageFn)(Context *, MirInstr **, MirType *);
+/* Argument list used in slot analyze functions */
+// clang-format off
+#define ANALYZE_STAGE_ARGS                                                                         \
+	Context   *cnt,           /* Stage context. */                                             \
+	MirInstr **input,         /* Slot input, this represents slot itself and can be changed. */\
+	MirType   *slot_type,     /* Optional expected result type. */                             \
+	bool       is_initializer /* True when slot is variable initializer. */
+// clang-format on
+
+#define ANALYZE_STAGE_FN(N) AnalyzeStageState analyze_stage_##N(ANALYZE_STAGE_ARGS)
+typedef AnalyzeStageState (*AnalyzeStageFn)(ANALYZE_STAGE_ARGS);
 
 typedef struct {
 	s32            count;
@@ -808,37 +818,27 @@ analyze_var(Context *cnt, MirVar *var);
 static AnalyzeResult
 analyze_instr(Context *cnt, MirInstr *instr);
 
+#define analyze_slot(cnt, conf, input, slot_type)                                                  \
+	_analyze_slot((cnt), (conf), (input), (slot_type), false)
+
+#define analyze_slot_initializer(cnt, conf, input, slot_type)                                      \
+	_analyze_slot((cnt), (conf), (input), (slot_type), true)
+
 static AnalyzeState
-analyze_slot(Context *cnt, const AnalyzeSlotConfig *conf, MirInstr **input, MirType *slot_type);
+_analyze_slot(Context *                cnt,
+              const AnalyzeSlotConfig *conf,
+              MirInstr **              input,
+              MirType *                slot_type,
+              bool                     is_initilizer);
 
-/* Insert load instruction if needed. */
-static AnalyzeStageState
-analyze_stage_load(Context *cnt, MirInstr **input, MirType *slot_type);
-
-/* Set null type constant if needed. */
-static AnalyzeStageState
-analyze_stage_set_null(Context *cnt, MirInstr **input, MirType *slot_type);
-
-/* Set auto cast desired type if needed. */
-static AnalyzeStageState
-analyze_stage_set_auto(Context *cnt, MirInstr **input, MirType *slot_type);
-
-/* Implicit conversion of input value to any. */
-static AnalyzeStageState
-analyze_stage_toany(Context *cnt, MirInstr **input, MirType *slot_type);
-
-static AnalyzeStageState
-analyze_stage_arrtoslice(Context *cnt, MirInstr **input, MirType *slot_type);
-
-static AnalyzeStageState
-analyze_stage_set_volatile_expr(Context *cnt, MirInstr **input, MirType *slot_type);
-
-/* Do implicit cast if possible. */
-static AnalyzeStageState
-analyze_stage_implicit_cast(Context *cnt, MirInstr **input, MirType *slot_type);
-
-static AnalyzeStageState
-analyze_stage_report_type_mismatch(Context *cnt, MirInstr **input, MirType *slot_type);
+static ANALYZE_STAGE_FN(load);
+static ANALYZE_STAGE_FN(toany);
+static ANALYZE_STAGE_FN(arrtoslice);
+static ANALYZE_STAGE_FN(implicit_cast);
+static ANALYZE_STAGE_FN(report_type_mismatch);
+static ANALYZE_STAGE_FN(set_volatile_expr);
+static ANALYZE_STAGE_FN(set_null);
+static ANALYZE_STAGE_FN(set_auto);
 
 static const AnalyzeSlotConfig analyze_slot_conf_dummy = {.count = 0};
 
@@ -3527,10 +3527,9 @@ create_instr_compound(Context *cnt, Ast *node, MirInstr *type, TSmallArray_Instr
 MirInstr *
 append_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values)
 {
-	MirInstr *tmp        = append_instr_compound(cnt, node, NULL, values);
-	tmp->value.addr_mode = MIR_VAM_RVALUE;
-	tmp->value.type      = type;
-	tmp->implicit        = true;
+	MirInstr *tmp   = append_instr_compound(cnt, node, NULL, values);
+	tmp->value.type = type;
+	tmp->implicit   = true;
 
 	return tmp;
 }
@@ -3538,10 +3537,9 @@ append_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_I
 MirInstr *
 create_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values)
 {
-	MirInstr *tmp        = create_instr_compound(cnt, node, NULL, values);
-	tmp->value.addr_mode = MIR_VAM_RVALUE;
-	tmp->value.type      = type;
-	tmp->implicit        = true;
+	MirInstr *tmp   = create_instr_compound(cnt, node, NULL, values);
+	tmp->value.type = type;
+	tmp->implicit   = true;
 
 	return tmp;
 }
@@ -4873,10 +4871,6 @@ analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
 	AnalyzeResult state = analyze_var(cnt, var);
 	if (state.state != ANALYZE_PASSED) return state;
 
-	if (si->src->kind == MIR_INSTR_COMPOUND) {
-		((MirInstrCompound *)si->src)->is_naked = false;
-	}
-
 	/* Typedef resolvers cannot be generated into LLVM IR because TypeType has no LLVM
 	 * representation and should live only during compile time of MIR. */
 	si->base.owner_block->emit_llvm = var->value.type->kind != MIR_TYPE_TYPE;
@@ -4902,8 +4896,7 @@ analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 	TSmallArray_InstrPtr *values = vargs->values;
 	BL_ASSERT(type && values);
 
-	type = create_type_struct_special(
-	    cnt, MIR_TYPE_VARGS, NULL, create_type_ptr(cnt, type));
+	type = create_type_struct_special(cnt, MIR_TYPE_VARGS, NULL, create_type_ptr(cnt, type));
 
 	const usize valc = values->size;
 
@@ -5285,7 +5278,8 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast, bool analyze_op_only)
 	MirType *expr_type = cast->expr->value.type;
 
 	/* Setup const int type. */
-	if (analyze_stage_set_volatile_expr(cnt, &cast->expr, dest_type) == ANALYZE_STAGE_BREAK) {
+	if (analyze_stage_set_volatile_expr(cnt, &cast->expr, dest_type, false) ==
+	    ANALYZE_STAGE_BREAK) {
 		cast->op = MIR_CAST_NONE;
 		goto DONE;
 	}
@@ -6382,7 +6376,7 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 
 			if (lhs_is_null) {
 				if (analyze_stage_set_null(
-				        cnt, &binop->lhs, binop->rhs->value.type) !=
+				        cnt, &binop->lhs, binop->rhs->value.type, false) !=
 				    ANALYZE_STAGE_BREAK)
 					return ANALYZE_RESULT(FAILED, 0);
 			}
@@ -6425,8 +6419,9 @@ analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 AnalyzeResult
 analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
-	MirType *          expected_type = unop->op == UNOP_NOT ? cnt->builtin_types->t_bool : NULL;
-	const AnalyzeSlotConfig *conf          = unop->op == UNOP_NOT ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
+	MirType *expected_type = unop->op == UNOP_NOT ? cnt->builtin_types->t_bool : NULL;
+	const AnalyzeSlotConfig *conf =
+	    unop->op == UNOP_NOT ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
 
 	if (analyze_slot(cnt, conf, &unop->expr, expected_type) != ANALYZE_PASSED) {
 		return ANALYZE_RESULT(FAILED, 0);
@@ -6584,16 +6579,18 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		return ANALYZE_RESULT(PASSED, 0);
 	}
 
-	// local variable of struct typedef
 	if (decl->init) {
+		/* Resolve variable intializer. Here we use analyze_slot_initializer call to fulfill
+		 * possible array to slice cast. */
 		if (var->value.type) {
-			if (analyze_slot(
+			if (analyze_slot_initializer(
 			        cnt, &analyze_slot_conf_default, &decl->init, var->value.type) !=
 			    ANALYZE_PASSED) {
 				return ANALYZE_RESULT(FAILED, 0);
 			}
 		} else {
-			if (analyze_slot(cnt, &analyze_slot_conf_basic, &decl->init, NULL) !=
+			if (analyze_slot_initializer(
+			        cnt, &analyze_slot_conf_basic, &decl->init, NULL) !=
 			    ANALYZE_PASSED) {
 				return ANALYZE_RESULT(FAILED, 0);
 			}
@@ -6607,6 +6604,9 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
 		/* Immutable and comptime initializer value. */
 		is_decl_comptime &= decl->init->value.is_comptime;
+		if (decl->init->kind == MIR_INSTR_COMPOUND) {
+			((MirInstrCompound *)decl->init)->is_naked = false;
+		}
 	}
 
 	decl->base.value.is_comptime = var->value.is_comptime = is_decl_comptime;
@@ -6882,11 +6882,15 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 }
 
 AnalyzeState
-analyze_slot(Context *cnt, const AnalyzeSlotConfig *conf, MirInstr **input, MirType *slot_type)
+_analyze_slot(Context *                cnt,
+              const AnalyzeSlotConfig *conf,
+              MirInstr **              input,
+              MirType *                slot_type,
+              bool                     is_initializer)
 {
 	AnalyzeStageState state;
 	for (s32 i = 0; i < conf->count; ++i) {
-		state = conf->stages[i](cnt, input, slot_type);
+		state = conf->stages[i](cnt, input, slot_type, is_initializer);
 		switch (state) {
 		case ANALYZE_STAGE_BREAK:
 			goto DONE;
@@ -6904,8 +6908,7 @@ FAILED:
 	return ANALYZE_FAILED;
 }
 
-AnalyzeStageState
-analyze_stage_load(Context *cnt, MirInstr **input, MirType *slot_type)
+ANALYZE_STAGE_FN(load)
 {
 	if (is_load_needed(*input)) {
 		*input = insert_instr_load(cnt, *input);
@@ -6917,8 +6920,7 @@ analyze_stage_load(Context *cnt, MirInstr **input, MirType *slot_type)
 	return ANALYZE_STAGE_CONTINUE;
 }
 
-AnalyzeStageState
-analyze_stage_set_null(Context *cnt, MirInstr **input, MirType *slot_type)
+ANALYZE_STAGE_FN(set_null)
 {
 	BL_ASSERT(slot_type);
 	MirInstr *_input = *input;
@@ -6945,8 +6947,7 @@ analyze_stage_set_null(Context *cnt, MirInstr **input, MirType *slot_type)
 	return ANALYZE_STAGE_FAILED;
 }
 
-AnalyzeStageState
-analyze_stage_set_auto(Context *cnt, MirInstr **input, MirType *slot_type)
+ANALYZE_STAGE_FN(set_auto)
 {
 	BL_ASSERT(slot_type);
 
@@ -6964,8 +6965,7 @@ analyze_stage_set_auto(Context *cnt, MirInstr **input, MirType *slot_type)
 	return ANALYZE_STAGE_BREAK;
 }
 
-AnalyzeStageState
-analyze_stage_toany(Context *cnt, MirInstr **input, MirType *slot_type)
+ANALYZE_STAGE_FN(toany)
 {
 	BL_ASSERT(slot_type);
 
@@ -6984,8 +6984,7 @@ analyze_stage_toany(Context *cnt, MirInstr **input, MirType *slot_type)
 	return ANALYZE_STAGE_BREAK;
 }
 
-AnalyzeStageState
-analyze_stage_arrtoslice(Context *cnt, MirInstr **input, MirType *slot_type)
+ANALYZE_STAGE_FN(arrtoslice)
 {
 	// Produce implicit cast from array type to slice. This will create implicit compound
 	// initializer representing array legth and pointer to array data.
@@ -7015,23 +7014,26 @@ analyze_stage_arrtoslice(Context *cnt, MirInstr **input, MirType *slot_type)
 		MirInstr *            instr_arr = *input;
 		TSmallArray_InstrPtr *values    = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
 
+		// Build array pointer
+		MirInstr *instr_ptr = create_instr_member_ptr(
+		    cnt, NULL, instr_arr, NULL, NULL, MIR_BUILTIN_ID_ARR_PTR);
+		insert_instr_after(*input, instr_ptr);
+		*input = instr_ptr;
+		analyze_instr(cnt, instr_ptr);
+
+		// Build array len constant
 		MirInstr *instr_len =
 		    create_instr_const_int(cnt, NULL, cnt->builtin_types->t_s64, len);
 		insert_instr_after(*input, instr_len);
 		*input = instr_len;
 		analyze_instr(cnt, instr_len);
 
-		MirInstr *instr_ptr =
-		    create_instr_member_ptr(cnt, NULL, instr_arr, NULL, NULL, MIR_BUILTIN_ID_ARR_PTR);
-		insert_instr_after(*input, instr_ptr);
-		*input = instr_ptr;
-		analyze_instr(cnt, instr_ptr);
-
+		// push values
 		tsa_push_InstrPtr(values, instr_len);
 		tsa_push_InstrPtr(values, instr_ptr);
 
 		MirInstr *compound = create_instr_compound_impl(cnt, NULL, slot_type, values);
-		compound->value.addr_mode = MIR_VAM_RVALUE;
+		((MirInstrCompound*)compound)->is_naked = !is_initializer;
 		ref_instr(compound);
 
 		insert_instr_after(*input, compound);
@@ -7043,8 +7045,7 @@ analyze_stage_arrtoslice(Context *cnt, MirInstr **input, MirType *slot_type)
 	return ANALYZE_STAGE_BREAK;
 }
 
-AnalyzeStageState
-analyze_stage_set_volatile_expr(Context *cnt, MirInstr **input, MirType *slot_type)
+ANALYZE_STAGE_FN(set_volatile_expr)
 {
 	BL_ASSERT(slot_type);
 	if (slot_type->kind != MIR_TYPE_INT) return ANALYZE_STAGE_CONTINUE;
@@ -7054,8 +7055,7 @@ analyze_stage_set_volatile_expr(Context *cnt, MirInstr **input, MirType *slot_ty
 	return ANALYZE_STAGE_BREAK;
 }
 
-AnalyzeStageState
-analyze_stage_implicit_cast(Context *cnt, MirInstr **input, MirType *slot_type)
+ANALYZE_STAGE_FN(implicit_cast)
 {
 	if (type_cmp((*input)->value.type, slot_type)) return ANALYZE_STAGE_BREAK;
 	if (!can_impl_cast((*input)->value.type, slot_type)) return ANALYZE_STAGE_CONTINUE;
@@ -7067,8 +7067,7 @@ analyze_stage_implicit_cast(Context *cnt, MirInstr **input, MirType *slot_type)
 	return ANALYZE_STAGE_BREAK;
 }
 
-AnalyzeStageState
-analyze_stage_report_type_mismatch(Context *cnt, MirInstr **input, MirType *slot_type)
+ANALYZE_STAGE_FN(report_type_mismatch)
 {
 	error_types((*input)->value.type, slot_type, (*input)->node, NULL);
 	return ANALYZE_STAGE_CONTINUE;

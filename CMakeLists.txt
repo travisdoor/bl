@@ -104,6 +104,7 @@ llvm_map_components_to_libnames(LLVM_LIBS core support X86 passes)
 if (MSVC)
     target_link_libraries(blc PUBLIC
         shlwapi
+	DbgHelp
     )
 
     # C 

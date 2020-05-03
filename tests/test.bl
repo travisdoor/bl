@@ -1,11 +1,19 @@
 /* playground */
 
 main :: fn () s32 {
+    /*
     arr := {:[10]s32: 1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
     foo(arr);
+    */
 
     arr2 :: {:[10]s32: 1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
+    //ptr :: arr2.ptr;
+    val : []s32 : arr2;
     foo(arr2);
+    //print("%\n", ptr);
+    //arr :: {:[]s32: 10, arr2.ptr};
+    //foo({:[]s32: 10, auto &arr2});
+    //arr :: {:[]s32: 10, arr2.ptr};
     
     return 0;
 }
