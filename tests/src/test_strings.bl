@@ -16,3 +16,41 @@
     assert(string_compare("foo12true", s1));
 
 };
+
+#test "string split" {
+    {
+        split :: string_split_by_last("1234/1234", '/');
+        assert(split[0].len == 4);
+        assert(split[1].len == 4);
+    }
+
+    {
+        split :: string_split_by_last("12345678", '/');
+        assert(split[0].len == 8);
+        assert(split[1].len == 0);
+    }
+
+    {
+        split :: string_split_by_last("/12345678", '/');
+        assert(split[0].len == 0);
+        assert(split[1].len == 8);
+    }
+
+    {
+        split :: string_split_by_last("12345678/", '/');
+        assert(split[0].len == 8);
+        assert(split[1].len == 0);
+    }
+
+    {
+        split :: string_split_by_last("", '/');
+        assert(split[0].len == 0);
+        assert(split[1].len == 0);
+    }
+
+    {
+        split :: string_split_by_last("/", '/');
+        assert(split[0].len == 0);
+        assert(split[1].len == 0);
+    }
+}

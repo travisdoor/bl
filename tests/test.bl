@@ -18,6 +18,42 @@ main :: fn () s32 {
     foo(arr2);
     */
 
+    {
+        path :: "this/is/my/epic/path.exe";
+        split :: string_split_by_last(path, '/');
+        print("lhs.len = %, rhs.len = %; %\n", split[0].len, split[1].len, split);
+    }
+
+    {
+        path :: "thispath.exe";
+        split :: string_split_by_last(path, '/');
+        print("lhs.len = %, rhs.len = %; %\n", split[0].len, split[1].len, split);
+    }
+
+    {
+        path :: "/thispath.exe";
+        split :: string_split_by_last(path, '/');
+        print("lhs.len = %, rhs.len = %; %\n", split[0].len, split[1].len, split);
+    }
+
+    {
+        path :: "thispath.exe/";
+        split :: string_split_by_last(path, '/');
+        print("lhs.len = %, rhs.len = %; %\n", split[0].len, split[1].len, split);
+    }
+
+    {
+        path :: "";
+        split :: string_split_by_last(path, '/');
+        print("lhs.len = %, rhs.len = %; %\n", split[0].len, split[1].len, split);
+    }
+
+    {
+        path :: "/";
+        split :: string_split_by_last(path, '/');
+        print("lhs.len = %, rhs.len = %; %\n", split[0].len, split[1].len, split);
+    }
+
     print("hello");
 
     return 0;
