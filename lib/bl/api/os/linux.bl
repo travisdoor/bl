@@ -41,6 +41,8 @@ OS_STDERR :: 2;
  * Maximum path size in bytes.
  */
 OS_PATH_MAX :: 1024;
+OS_PATH_DELIMITER_C :: '/';
+OS_PATH_DELIMITER_STR :: "/";
 
 /*
  * OSLibrary
@@ -96,6 +98,11 @@ os_get_real_path :: fn (filename: string) string {
 
     result :: string_new_cstr(tmp.ptr);
     return result;
+}
+
+os_get_exec_path :: fn () string {
+    unreachable;
+    return string_new(); 
 }
 
 /*

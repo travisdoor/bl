@@ -57,6 +57,8 @@ c_size_t    :: u64;
  * Maximum path size in bytes.
  */
 OS_PATH_MAX :: DARWIN_MAXPATHLEN;
+OS_PATH_DELIMITER_C :: '/';
+OS_PATH_DELIMITER_STR :: "/";
 
 /*
  * OSLibrary
