@@ -96,6 +96,14 @@ os_get_real_path :: fn (filename: string) string {
     return string_copy(filename);
 }
 
+os_get_exec_path :: fn () string {
+    buf : [DARWIN_MAXPATHLEN]u8;
+    buf_len := cast(u32) buf.len;
+    if macOS_NSGetExecutablePath(auto buf.ptr, &buf_len) == -1 { return string_new(); }
+
+    return string_new_cstr(buf.ptr);
+}
+
 /*
  * os_dlopen
  *
