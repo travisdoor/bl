@@ -22,6 +22,7 @@
 #load "test_arena.bl"
 #load "test_constant_composition.bl"
 #load "test_union.bl"
+#load "test_arrtoslice.bl"
 
 main :: fn () s32 {
     return 0;

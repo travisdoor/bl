@@ -163,3 +163,5 @@ macOS_FSEventStreamFlushSync :: fn (streamRef: macOS_FSEventStreamRef) #extern "
 macOS_FSEventStreamStop :: fn (streamRef: macOS_FSEventStreamRef) #extern "FSEventStreamStop";
 macOS_FSEventStreamInvalidate :: fn (streamRef: macOS_FSEventStreamRef) #extern "FSEventStreamInvalidate";
 macOS_FSEventStreamRelease :: fn (streamRef: macOS_FSEventStreamRef) #extern "FSEventStreamRelease";
+
+macOS_NSGetExecutablePath :: fn (buf: *c_char, bufsize: *c_uint) c_int #extern "_NSGetExecutablePath";

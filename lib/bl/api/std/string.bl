@@ -451,6 +451,62 @@ string_to_s64n :: fn (str: string, len: s64) s64 {
     return n;
 }
 
+/*!
+# string_split_by_last 
+## Declaration
+```c
+string_split_by_last :: fn (str: string, c: u8) [2]string
+```
+## Description
+  Split input string `str` into two tokens based on the last occurrence of `c` delimiter.
+Delimiter is not included in resulting tokens. Result tokens only points into original
+memory of the `str`, they are not supposed to be freed.
+  When delimiter is not found, left hand side (LSH) will contain origina string and right
+hand side (RHS) will be empty.
+ 
+## Arguments
+  * `str`
+    String to be splitted.
+  * `c`
+    Delimiter.
+
+## Result
+  Left hand side and right hand side of the original string splitted by delimiter.
+
+## Example
+```c
+main :: fn () s32 {
+    // split into 'this/is/my/epic' and 'path'
+    split :: string_split_by_last("this/is/my/epic/path", '/');
+    print("lhs.len = %, rhs.len = %; %\n", split[0].len, split[1].len, split);
+    return 0;
+}
+```
+*/
+string_split_by_last :: fn (str: string, c: u8) [2]string {
+    tmp: [2]string;
+    lhs := &tmp[0];
+    rhs := &tmp[1];
+
+    (^lhs) = str; 
+    rhs.len = 0;
+
+    i := str.len - 1;
+    loop ; i >= 0 && str[i] != c; i -= 1 {}
+
+    if i < 0 { // not found
+        return tmp;
+    }
+
+    lhs.len = i;
+    lhs.ptr = str.ptr;
+
+    rhs.len = str.len - i - 1;
+    rhs.ptr = ptr_shift_bytes(lhs.ptr, auto sizeof(u8) * auto i + 1);
+
+    return tmp;
+}
+
 string_is_null  :: fn (s: string) bool #inline { return s.ptr == null; }
 string_is_empty :: fn (s: string) bool #inline { return s.len == 0; }
 string_is_null_or_empty :: fn (s: string) bool #inline { return s.ptr == null || s.len == 0; }
