@@ -18,39 +18,29 @@
 };
 
 #test "string split" {
-    {
-        split :: string_split_by_last("1234/1234", '/');
-        assert(split[0].len == 4);
-        assert(split[1].len == 4);
+    lhs: string;
+    rhs: string;
+
+    if string_split_by_last("1234/1234", '/', &lhs, &rhs) {
+        assert(lhs.len == 4);
+        assert(rhs.len == 4);
     }
 
-    {
-        split :: string_split_by_last("12345678", '/');
-        assert(split[0].len == 8);
-        assert(split[1].len == 0);
+    if string_split_by_last("/12341234", '/', &lhs, &rhs) {
+        assert(lhs.len == 0);
+        assert(rhs.len == 8);
     }
 
-    {
-        split :: string_split_by_last("/12345678", '/');
-        assert(split[0].len == 0);
-        assert(split[1].len == 8);
+    if string_split_by_last("12341234/", '/', &lhs, &rhs) {
+        assert(lhs.len == 8);
+        assert(rhs.len == 0);
     }
 
-    {
-        split :: string_split_by_last("12345678/", '/');
-        assert(split[0].len == 8);
-        assert(split[1].len == 0);
+    if string_split_by_last("/", '/', &lhs, &rhs) {
+        assert(lhs.len == 0);
+        assert(rhs.len == 0);
     }
 
-    {
-        split :: string_split_by_last("", '/');
-        assert(split[0].len == 0);
-        assert(split[1].len == 0);
-    }
-
-    {
-        split :: string_split_by_last("/", '/');
-        assert(split[0].len == 0);
-        assert(split[1].len == 0);
-    }
+    assert(!string_split_by_last("12341234", '/', &lhs, &rhs));
+    assert(!string_split_by_last("", '/', &lhs, &rhs));
 }

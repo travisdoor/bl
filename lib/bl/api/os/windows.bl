@@ -60,8 +60,6 @@ c_size_t    :: u64;
  * Maximum path size in bytes.
  */
 OS_PATH_MAX :: WIN32_MAX_PATH;
-OS_PATH_DELIMITER_C :: '\\';
-OS_PATH_DELIMITER_STR :: "\\";
 
 /*
  * OSLibrary
@@ -97,18 +95,21 @@ os_sleep_ms :: fn (ms: f64) {
  */
 os_get_real_path :: fn (filename: string) string {
     tmp :: {:[OS_PATH_MAX]u8: 0};
-    if win32_GetFullPathNameA(auto filename.ptr, auto tmp.len, tmp.ptr, null) == 0 {
-        return string_copy(filename);
+    if win32_GetFullPathNameA(auto filename.ptr, auto tmp.len, tmp.ptr, null) > 0 {
+        result :: string_new_cstr(tmp.ptr);
+        string_replace_all(result, '\\', '/');
+        return result;
     }
 
-    result :: string_new_cstr(tmp.ptr);
-    return result;
+    return string_copy(filename);
 }
 
 os_get_exec_path :: fn () string {
     buf : [OS_PATH_MAX]u8;
     if win32_GetModuleFileNameA(null, buf.ptr, auto buf.len) > 0 {
-	return string_new_cstr(buf.ptr);
+        result :: string_new_cstr(buf.ptr);
+        string_replace_all(result, '\\', '/');
+        return result;
     }
 
     return string_new(); 

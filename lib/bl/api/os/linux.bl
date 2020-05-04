@@ -41,8 +41,6 @@ OS_STDERR :: 2;
  * Maximum path size in bytes.
  */
 OS_PATH_MAX :: 1024;
-OS_PATH_DELIMITER_C :: '/';
-OS_PATH_DELIMITER_STR :: "/";
 
 /*
  * OSLibrary
