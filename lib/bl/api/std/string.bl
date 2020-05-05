@@ -513,6 +513,49 @@ string_split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *stri
     return true;
 }
 
+string_split_by_first :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string) bool {
+    i := 0;
+    loop ; i < str.len && str[i] != delimiter; i += 1 {}
+
+    if i >= str.len { // not found
+        return false;
+    }
+
+    if lhs {
+        lhs.len = i;
+        lhs.ptr = str.ptr;
+    }
+
+    if rhs {
+        rhs.len = str.len - i - 1;
+        rhs.ptr = ptr_shift_bytes(str.ptr, auto sizeof(u8) * auto i + 1);
+    }
+
+    return true;
+}
+
+/*!
+# string_replace_all  
+## Declaration
+```c
+string_replace_all :: fn (str: string, c: u8, with: u8) s32
+```
+## Description
+  Replace all found occurrences of character `c` in the input string with `with`
+character and return count of replacements made. This function cannot be used with
+constant string literals as input.
+ 
+## Arguments
+  * `str`
+    Input string.
+  * `c`
+    Character to be replaced.
+  * `with`
+    Replacement.
+
+## Result
+  Count of replacements made.
+*/
 string_replace_all :: fn (str: string, c: u8, with: u8) s32 {
     replaced := 0;
     loop i := 0; i < str.len; i += 1 {

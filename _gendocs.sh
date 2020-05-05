@@ -21,3 +21,24 @@ bdg *.bl
 mkdir -p ${WDIR}/docs/API/std
 mv *.md ${WDIR}/docs/API/std
 cd ${WDIR}
+
+# Examples
+cd examples/new
+echo
+echo Process $(pwd)
+
+mkdir -p _tmp
+for f in *.bl
+do
+	echo "Processing $f file..."
+	OUT_FILE="_tmp/$f.md"
+	#echo "# $f" >> $OUT_FILE
+	echo '```c' >> $OUT_FILE
+  	cat $f >> $OUT_FILE
+	echo '```' >> $OUT_FILE
+done
+
+mkdir -p ${WDIR}/docs/Examples
+mv _tmp/*.md ${WDIR}/docs/Examples
+rm -r -f _tmp
+cd ${WDIR}

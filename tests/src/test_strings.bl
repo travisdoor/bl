@@ -17,7 +17,7 @@
 
 };
 
-#test "string split" {
+#test "string split by last" {
     lhs: string;
     rhs: string;
 
@@ -43,4 +43,32 @@
 
     assert(!string_split_by_last("12341234", '/', &lhs, &rhs));
     assert(!string_split_by_last("", '/', &lhs, &rhs));
+}
+
+#test "string split by first" {
+    lhs: string;
+    rhs: string;
+
+    if string_split_by_first("1234/1234", '/', &lhs, &rhs) {
+        assert(lhs.len == 4);
+        assert(rhs.len == 4);
+    }
+
+    if string_split_by_first("/12341234", '/', &lhs, &rhs) {
+        assert(lhs.len == 0);
+        assert(rhs.len == 8);
+    }
+
+    if string_split_by_first("12341234/", '/', &lhs, &rhs) {
+        assert(lhs.len == 8);
+        assert(rhs.len == 0);
+    }
+
+    if string_split_by_first("/", '/', &lhs, &rhs) {
+        assert(lhs.len == 0);
+        assert(rhs.len == 0);
+    }
+
+    assert(!string_split_by_first("12341234", '/', &lhs, &rhs));
+    assert(!string_split_by_first("", '/', &lhs, &rhs));
 }
