@@ -62,7 +62,7 @@ mir_writer_run(Assembly *assembly)
 
 	FILE *f = fopen(export_file, "w");
 	if (f == NULL) {
-		msg_error("cannot open file %s", export_file);
+		builder_error("cannot open file %s", export_file);
 		free(export_file);
 		return;
 	}
@@ -71,7 +71,7 @@ mir_writer_run(Assembly *assembly)
 	mir_print_assembly(assembly, f);
 
 	fclose(f);
-	msg_log("Mir code written into " GREEN("%s"), export_file);
+	builder_log("Mir code written into %s", export_file);
 
 	bl_free(export_file);
 }

@@ -1,0 +1,191 @@
+//************************************************************************************************
+// bl
+//
+// File:   windows_api.bl 
+// Author: Martin Dorazil
+// Date:   26/2/20
+//
+// Copyright 2018 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//************************************************************************************************
+WIN32_MAX_PATH :: 260;
+WIN32_INVALID_HANDLE_VALUE :: cast(WIN32_HANDLE) (cast(WIN32_LONG_PTR)-1);
+
+WIN32_WCHAR        :: *c_ushort;
+WIN32_LPWSTR       :: *c_ushort;
+WIN32_LPCWSTR      :: *c_ushort;
+WIN32_LPCSTR       :: *c_ushort;
+WIN32_LPSTR        :: *c_uchar;
+WIN32_HLOCAL       :: *c_uchar;
+WIN32_UINT         :: c_uint;
+WIN32_DWORD        :: c_uint;
+WIN32_LPCCH        :: c_uchar;
+WIN32_LPCWCH       :: c_ushort;
+WIN32_LPBOOL       :: c_int;
+WIN32_HMODULE      :: *c_uchar;
+WIN32_BOOL         :: c_int;
+WIN32_FARPROC      :: *c_uchar; 
+WIN32_LPVOID       :: *c_uchar; 
+WIN32_LPOVERLAPPED :: *WIN32_OVERLAPPED;
+WIN32_LPDWORD      :: *WIN32_DWORD;
+WIN32_HANDLE       :: *c_uchar;
+WIN32_ULONG_PTR    :: *c_ulong;
+WIN32_LPSECURITY_ATTRIBUTES :: *c_uchar;
+WIN32_PVOID        :: *c_uchar; 
+WIN32_CHAR         :: c_uchar; 
+WIN32_LONG_PTR     :: c_long;
+
+WIN32_LPOVERLAPPED_COMPLETION_ROUTINE :: * fn(dwErrorCode: WIN32_DWORD, dwNumberOfBytesTransfered: WIN32_DWORD, lpOverlapped: WIN32_LPOVERLAPPED);
+
+WIN32_FILE_ATTRIBUTE_READONLY :: 0x00000001;
+WIN32_FILE_ATTRIBUTE_HIDDEN :: 0x00000002;
+WIN32_FILE_ATTRIBUTE_SYSTEM :: 0x00000004;
+WIN32_FILE_ATTRIBUTE_DIRECTORY :: 0x00000010;
+WIN32_FILE_ATTRIBUTE_ARCHIVE :: 0x00000020;
+WIN32_FILE_ATTRIBUTE_DEVICE :: 0x00000040;
+WIN32_FILE_ATTRIBUTE_NORMAL :: 0x00000080;
+WIN32_FILE_ATTRIBUTE_TEMPORARY :: 0x00000100;
+WIN32_FILE_ATTRIBUTE_SPARSE_FILE :: 0x00000200;
+WIN32_FILE_ATTRIBUTE_REPARSE_POINT :: 0x00000400;
+WIN32_FILE_ATTRIBUTE_COMPRESSED :: 0x00000800;
+WIN32_FILE_ATTRIBUTE_OFFLINE :: 0x00001000;
+WIN32_FILE_ATTRIBUTE_NOT_CONTENT_INDEXED :: 0x00002000;
+WIN32_FILE_ATTRIBUTE_ENCRYPTED :: 0x00004000;
+WIN32_FILE_ATTRIBUTE_VIRTUAL :: 0x00010000;
+
+
+WIN32_FILE_NOTIFY_INFORMATION :: struct {
+    NextEntryOffset: WIN32_DWORD;
+    Action: WIN32_DWORD;
+    FileNameLength: WIN32_DWORD;
+    FileName: [1]WIN32_WCHAR;
+}
+
+WIN32_OVERLAPPED :: struct {
+    Internal: WIN32_ULONG_PTR;
+    InternalHigh: WIN32_ULONG_PTR;
+    Pointer: WIN32_PVOID;
+    hEvent: WIN32_HANDLE;
+}
+
+WIN32_FILETIME :: struct {
+    dwLowDateTime: WIN32_DWORD;
+    dwHighDateTime: WIN32_DWORD;
+}
+
+WIN32_PFILETIME :: WIN32_FILETIME;
+WIN32_LPFILETIME :: *WIN32_FILETIME;
+
+WIN32_FIND_DATA :: struct {
+    dwFileAttributes: WIN32_DWORD;
+    ftCreationTime: WIN32_FILETIME;
+    ftLastAccessTime: WIN32_FILETIME;
+    ftLastWriteTime: WIN32_FILETIME;
+    nFileSizeHigh: WIN32_DWORD;
+    nFileSizeLow: WIN32_DWORD;
+    dwReserved0: WIN32_DWORD;
+    dwReserved1: WIN32_DWORD;
+    cFileName: [WIN32_MAX_PATH]WIN32_CHAR;
+    cAlternateFileName: [14]WIN32_CHAR;
+}
+
+WIN32_FIND_DATAA :: WIN32_FIND_DATA;
+WIN32_PWIN32_FIND_DATAA :: *WIN32_FIND_DATA;
+WIN32_LPWIN32_FIND_DATAA :: *WIN32_FIND_DATA;
+
+WIN32_INVALID_HANDLE :: cast(*u8) -1;
+WIN32_WAIT_TIMEOUT :: 258;
+
+win32_CloseHandle :: fn (hObject: WIN32_HANDLE) WIN32_BOOL #extern "CloseHandle";
+
+win32_FindFirstFile :: fn  (lpFileName: WIN32_LPCSTR, lpFindFileData: WIN32_LPWIN32_FIND_DATAA) WIN32_HANDLE #extern "FindFirstFileA";
+win32_FindClose :: fn (hFindFile: WIN32_HANDLE) WIN32_BOOL #extern "FindClose";
+win32_FindNextFile :: fn (hFindFile: WIN32_HANDLE, lpFindFileData: WIN32_LPWIN32_FIND_DATAA) WIN32_BOOL #extern "FindNextFileA";
+
+win32_CreateFile :: fn (
+    lpFileName: WIN32_LPCSTR,
+    dwDesiredAccess: WIN32_DWORD,
+    dwShareMode: WIN32_DWORD,
+    lpSecurityAttributes: WIN32_LPSECURITY_ATTRIBUTES,
+    dwCreationDisposition: WIN32_DWORD,
+    dwFlagsAndAttributes: WIN32_DWORD,
+    hTemplateFile: WIN32_HANDLE
+) *u8 #extern "CreateFileA"; 
+
+win32_ReadDirectoryChanges :: fn (
+    hDirectory: WIN32_HANDLE,
+    lpBuffer: WIN32_LPVOID,
+    nBufferLength: WIN32_DWORD,
+    bWatchSubtree: WIN32_BOOL,
+    dwNotifyFilter: WIN32_DWORD,
+    lpBytesReturned: WIN32_LPDWORD,
+    lpOverlapped: WIN32_LPOVERLAPPED,
+    lpCompletionRoutine: WIN32_LPOVERLAPPED_COMPLETION_ROUTINE 
+) s32 #extern "ReadDirectoryChangesW";
+
+win32_WideCharToMultiByte :: fn (
+    CodePage: WIN32_UINT,
+    dwFlags: *WIN32_DWORD,
+    lpWideCharStr: *WIN32_LPCWCH,
+    cchWideChar: s32,
+    lpMultiByteStr: WIN32_LPSTR,
+    cbMultiByte: s32,
+    lpDefaultChar: *WIN32_LPCCH,
+    lpUsedDefaultChar: *WIN32_LPBOOL
+) s32 #extern "WideCharToMultiByte";
+
+win32_CreateEvent :: fn (
+  lpEventAttributes: WIN32_LPSECURITY_ATTRIBUTES,
+  bManualReset: WIN32_BOOL,
+  bInitialState: WIN32_BOOL,
+  lpName: WIN32_LPCSTR 
+) WIN32_HANDLE #extern "CreateEventW";
+
+win32_FindFirstChangeNotification :: fn (
+  lpPathName: WIN32_LPCSTR,
+  bWatchSubtree: WIN32_BOOL,
+  dwNotifyFilter: WIN32_DWORD
+) WIN32_HANDLE #extern "FindFirstChangeNotificationA";
+
+win32_FindNextChangeNotification :: fn (hChangeHandle: WIN32_HANDLE) WIN32_BOOL #extern "FindNextChangeNotification";
+win32_FindCloseChangeNotification :: fn (hChangeHandle: WIN32_HANDLE) WIN32_BOOL #extern "FindCloseChangeNotification";
+win32_WaitForSingleObject :: fn (hHandle: WIN32_HANDLE, dwMilliseconds: WIN32_DWORD) WIN32_DWORD #extern "WaitForSingleObject";
+win32_WaitForMultipleObjects :: fn (
+    nCount: WIN32_DWORD,
+    lpHandles: *WIN32_HANDLE,
+    bWaitAll: WIN32_BOOL,
+    dwMilliseconds: WIN32_DWORD        
+) WIN32_DWORD #extern "WaitForMultipleObjects";
+
+win32_GetCommandLineW     :: fn () WIN32_LPWSTR #extern "GetCommandLineW";
+win32_CommandLineToArgvW  :: fn (lpCmdLine: WIN32_LPCWSTR, pNumArgs: *s32) *WIN32_LPWSTR #extern "CommandLineToArgvW";
+win32_LocalFree           :: fn (hMem: WIN32_HLOCAL) WIN32_HLOCAL #extern "LocalFree";
+win32_Sleep               :: fn (dwMilliseconds: WIN32_DWORD) #extern "Sleep";
+win32_GetFullPathNameA    :: fn (lpFileName: WIN32_LPCSTR,
+                                 nBufferLength: WIN32_DWORD,
+                                 lpBuffer: WIN32_LPSTR,
+                                 lpFilePart: *WIN32_LPSTR) WIN32_DWORD #extern "GetFullPathNameA";
+win32_LoadLibraryA        :: fn (lpLibFileName: WIN32_LPCSTR) WIN32_HMODULE #extern "LoadLibraryA";
+win32_FreeLibrary         :: fn (hLibModule: WIN32_HMODULE) WIN32_BOOL #extern "FreeLibrary";
+win32_GetModuleHandleA    :: fn (lpModuleName: WIN32_LPCSTR) WIN32_HMODULE #extern "GetModuleHandleA";
+win32_GetProcAddress      :: fn (hModule: WIN32_HMODULE, lpProcName: WIN32_LPCSTR) WIN32_FARPROC #extern "GetProcAddress";
+
+win32_DebugBreak          :: fn () #extern "DebugBreak";
+win32_GetModuleFileNameA  :: fn (hModule: WIN32_HMODULE, lpFilename: WIN32_LPSTR, nSize: WIN32_DWORD) WIN32_DWORD #extern "GetModuleFileNameA";

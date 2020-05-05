@@ -1,0 +1,65 @@
+// Variables
+
+/*
+   Variable represents named piece of data used by program.
+   Every variable has name, type and some value. Every variable
+   can be mutable or immutable, the value of mutable variable can
+   be changed any time during program executions, immutable variable
+   can be set only once.
+
+   Variables can be declared in local scope of any funcion or in
+   global scope of whole program. Variables in local scope are visible
+   only in that scope, on the other hand global variables are visible
+   everywhere.
+
+   There is one limitation for global variables, they must be initialized
+   to some value everytime and that value must be known in compile time.
+   You cannot use for example output of some function to initialize global
+   variable, because compiler have no idea what the return value of this
+   function will be.
+*/
+
+main :: fn () s32 {
+    // Local variables are declared in local scope of main function or
+    // any other function.
+    number : s32 = 10; // This is number of s32 type set to 10.
+
+    number = 20; // Number is mutable, and since now it's value is 20.
+
+    // Use of the print function to print out variable value.
+    // '%' is used as placeholder in the string saying where the print 
+    // function should place our value.
+    print("number is %\n", number);
+
+
+    // Variable without initialization will contain undefined value and
+    // it should be set to some value before use.
+    other_number: u8;
+    other_number = 16;
+
+    print("other_number is %\n", other_number);
+
+
+    // Type of the variable can be inferred from type of initialization 
+    // value.
+    boolean := true; // Inferred bool type.
+
+    // We can print bools in the same way as numbers.
+    print("boolean is %\n", boolean);
+
+
+
+    // Declare local immutable number
+    immut_number : s32 : 10;
+
+    // This is illegal, variable is immutable.
+    // immut_number = 10;
+    print("immut_number is %\n", immut_number);
+
+    // Or just do this...
+    immut_other_number :: 20;
+
+    print("immut_other_number is %\n", immut_other_number);
+
+    return 0;
+}

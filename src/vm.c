@@ -350,7 +350,7 @@ stack_alloc(VM *vm, usize size)
 	size = stack_alloc_size(size);
 	vm->stack->used_bytes += size;
 	if (vm->stack->used_bytes > vm->stack->allocated_bytes) {
-		msg_error("Stack overflow!!!");
+		builder_error("Stack overflow!!!");
 		exec_abort(vm, 10);
 	}
 
@@ -711,6 +711,28 @@ calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, MirType *type)
 		case UNOP_NOT:                                                                     \
 			vm_write_as(T, dest, !vm_read_as(T, v));                                   \
 			break;                                                                     \
+		case UNOP_BIT_NOT:                                                                 \
+			vm_write_as(T, dest, ~vm_read_as(T, v));                                   \
+			break;                                                                     \
+		case UNOP_NEG:                                                                     \
+			vm_write_as(T, dest, vm_read_as(T, v) * -1);                               \
+			break;                                                                     \
+		case UNOP_POS:                                                                     \
+			vm_write_as(T, dest, vm_read_as(T, v));                                    \
+			break;                                                                     \
+		default:                                                                           \
+			BL_UNIMPLEMENTED;                                                          \
+		}                                                                                  \
+	} break;
+	/******************************************************************************************/
+
+	/******************************************************************************************/
+#define UNOP_CASE_REAL(T)                                                                          \
+	case sizeof(T): {                                                                          \
+		switch (op) {                                                                      \
+		case UNOP_NOT:                                                                     \
+			vm_write_as(T, dest, !vm_read_as(T, v));                                   \
+			break;                                                                     \
 		case UNOP_NEG:                                                                     \
 			vm_write_as(T, dest, vm_read_as(T, v) * -1);                               \
 			break;                                                                     \
@@ -752,8 +774,8 @@ calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, MirType *type)
 
 	case MIR_TYPE_REAL: {
 		switch (s) {
-			UNOP_CASE(f32);
-			UNOP_CASE(f64);
+			UNOP_CASE_REAL(f32);
+			UNOP_CASE_REAL(f64);
 		default:
 			BL_ABORT("invalid real data type");
 		}
@@ -787,6 +809,11 @@ do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, 
 		memset(dest, 0, dest_size);
 		memcpy(dest, src, src_size);
 		break;
+
+	case MIR_CAST_PTRTOBOOL: {
+		vm_write_int(dest_type, dest, vm_read_as(u64, src) > 0);
+		break;
+	}
 
 	case MIR_CAST_SEXT: {
 		/* src is smaller than dest */
@@ -907,6 +934,7 @@ print_call_stack(VM *vm, usize max_nesting)
 	if (!instr) return;
 	/* print last instruction */
 	builder_msg(BUILDER_MSG_LOG, 0, instr->node->location, BUILDER_CUR_WORD, "");
+	builder_note("called from:");
 
 	while (fr) {
 		instr = (MirInstr *)fr->caller;
@@ -914,7 +942,7 @@ print_call_stack(VM *vm, usize max_nesting)
 		if (!instr) break;
 
 		if (max_nesting && n == max_nesting) {
-			msg_note("continue...");
+			builder_note("continue...");
 			break;
 		}
 
@@ -1276,7 +1304,7 @@ interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
 
 	/* call setup and clenup */
 	if (!fn->dyncall.extern_entry) {
-		msg_error("External function '%s' not found!", fn->linkage_name);
+		builder_error("External function '%s' not found!", fn->linkage_name);
 		exec_abort(vm, 0);
 		return;
 	}
@@ -1656,12 +1684,12 @@ interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 	case MIR_TYPE_ARRAY: {
 		const s64 len = arr_type->data.array.len;
 		if (index >= len) {
-			msg_error("Array index is out of the bounds! Array index "
-			          "is: %lli, "
-			          "but array size "
-			          "is: %lli",
-			          (long long)index,
-			          (long long)len);
+			builder_error("Array index is out of the bounds! Array index "
+			              "is: %lli, "
+			              "but array size "
+			              "is: %lli",
+			              (long long)index,
+			              (long long)len);
 			exec_abort(vm, 0);
 		}
 
@@ -1685,15 +1713,15 @@ interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 		const s64  len_tmp = vm_read_int(len_type, len_ptr);
 
 		if (!ptr_tmp) {
-			msg_error("Dereferencing null pointer! Slice has not been set?");
+			builder_error("Dereferencing null pointer! Slice has not been set?");
 			exec_abort(vm, 0);
 		}
 
 		if (index >= len_tmp) {
-			msg_error("Array index is out of the bounds! Array index is: %lli, but "
-			          "array size is: %lli",
-			          (long long)index,
-			          (long long)len_tmp);
+			builder_error("Array index is out of the bounds! Array index is: %lli, but "
+			              "array size is: %lli",
+			              (long long)index,
+			              (long long)len_tmp);
 			exec_abort(vm, 0);
 		}
 
@@ -1737,7 +1765,7 @@ interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 		BL_ASSERT(member);
 		const s64 index = member->index;
 
-		/* let the llvm solve poiner offest */
+		/* let the llvm solve poiner offset */
 		result = vm_get_struct_elem_ptr(vm->assembly, target_type, ptr, (u32)index);
 	} else {
 		/* builtin member */
@@ -1759,7 +1787,7 @@ interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 void
 interp_instr_unreachable(VM *vm, MirInstrUnreachable *unr)
 {
-	msg_error("execution reached unreachable code");
+	builder_error("execution reached unreachable code");
 	exec_abort(vm, 0);
 }
 
@@ -2002,7 +2030,7 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 		VMStackPtr vargs_tmp_ptr = vm_read_var(vm, vargs_tmp);
 		// set len
 		VMStackPtr len_ptr =
-		    vargs_tmp_ptr + vm_get_struct_elem_offest(
+		    vargs_tmp_ptr + vm_get_struct_elem_offset(
 		                        vm->assembly, vargs_tmp->value.type, MIR_SLICE_LEN_INDEX);
 
 		BL_ASSERT(mir_get_struct_elem_type(vargs_tmp->value.type, MIR_SLICE_LEN_INDEX)
@@ -2011,7 +2039,7 @@ interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 
 		// set ptr
 		VMStackPtr ptr_ptr =
-		    vargs_tmp_ptr + vm_get_struct_elem_offest(
+		    vargs_tmp_ptr + vm_get_struct_elem_offset(
 		                        vm->assembly, vargs_tmp->value.type, MIR_SLICE_PTR_INDEX);
 
 		vm_write_as(VMStackPtr, ptr_ptr, arr_tmp_ptr);
@@ -2057,7 +2085,7 @@ interp_instr_load(VM *vm, MirInstrLoad *load)
 	src_ptr            = VM_STACK_PTR_DEREF(src_ptr);
 
 	if (!src_ptr) {
-		msg_error("Dereferencing null pointer!");
+		builder_error("Dereferencing null pointer!");
 		exec_abort(vm, 0);
 	}
 
@@ -2098,7 +2126,7 @@ interp_instr_call(VM *vm, MirInstrCall *call)
 
 	MirFn *callee = (MirFn *)vm_read_ptr(callee_ptr_type, callee_ptr);
 	if (callee == NULL) {
-		msg_error("Function pointer not set!");
+		builder_error("Function pointer not set!");
 		exec_abort(vm, 0);
 		return;
 	}
@@ -2430,7 +2458,7 @@ eval_instr_compound(VM *vm, MirInstrCompound *compound)
 		case MIR_TYPE_VARGS: {
 			MirType * member_type = value->type->data.strct.members->data[i]->type;
 			ptrdiff_t offset =
-			    vm_get_struct_elem_offest(vm->assembly, value->type, (u32)i);
+			    vm_get_struct_elem_offset(vm->assembly, value->type, (u32)i);
 			dest_ptr += offset;
 
 			memcpy(dest_ptr, src_ptr, member_type->store_size_bytes);
@@ -2795,9 +2823,11 @@ _vm_write_value(usize dest_size, VMStackPtr dest, VMStackPtr src)
 }
 
 ptrdiff_t
-vm_get_struct_elem_offest(Assembly *assembly, MirType *type, u32 i)
+vm_get_struct_elem_offset(Assembly *assembly, MirType *type, u32 i)
 {
 	BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
+	if (type->data.strct.is_union) { return 0; }
+
 	return (ptrdiff_t)LLVMOffsetOfElement(assembly->llvm.TD, type->llvm_type, i);
 }
 
@@ -2813,7 +2843,10 @@ vm_get_array_elem_offset(MirType *type, u32 i)
 VMStackPtr
 vm_get_struct_elem_ptr(Assembly *assembly, MirType *type, VMStackPtr ptr, u32 i)
 {
-	return ptr + vm_get_struct_elem_offest(assembly, type, i);
+	BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
+	if (type->data.strct.is_union) { return ptr; }
+
+	return ptr + vm_get_struct_elem_offset(assembly, type, i);
 }
 
 VMStackPtr

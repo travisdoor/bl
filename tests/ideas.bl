@@ -1,39 +1,65 @@
-/*
-    - metarmation about symbol (attached metadata to AST node)
-    - can be printed out by compiler on error 
-    - generate documentation: File, line, symbol name + symbol description
+/* 
+
+STATIC IF
+
+- code analyze is done only in case the if expression is true
+- lazy #load
+
  */
 
-// file-scope meta
-#meta
-"Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
-"Curabitur nec neque eget diam rutrum rutrum. Quisque ac "
-"mauris id turpis pellentesque tincidunt at a justo. "
-"Aenean sollicitudin justo at convallis vulputate. Nunc "
-"iaculis, neque vehicula convallis placerat, dui est consequat"
-"felis, sit amet auctor lectus orci nec mauris."
-
-add :: fn (
-    a: s32 #meta "First number",
-    b: s32 #meta "Second number"
-) s32
-#meta "This function makes addition of two numbers."
-{
-    return a + b;
+main :: fn () s32 {
+    A :: true;
+    #if A {
+        print("This is true\n");
+    } else {
+        print("This is false\n");
+    }
 }
-
-// BUILD MANAGEMENT
 
 /*
- * - Disable entry function
- * - Compile and call build procedure in compile time
- * - Keep builder settings and use it for creation of another assemblies
- */
 
-BuildInfo :: struct {
-    output_name: string;
+PTR TO BOOL 
+
+Implicit casting for pointers to bool to avoid anoying comparations.
+
+*/
+
+
+main :: fn () s32 {
+    i :: 10;
+    ptr :: &i;
+
+
+    if ptr { // replacement for ptr == null
+        // Do something
+    }
+    
+    return 0;
 }
 
-build :: fn (info: *BuildInfo) {
-    output_name = "MyProgram";
+
+/*
+
+USING 
+
+Using on local scope variables and arguments will import used scope into current one.
+This seems to be valid for structures only.
+
+*/
+
+Foo :: struct {
+    first: s32;
+    second: s32;
+}
+
+procedure :: fn () {
+    using foo: Foo = {:Foo: 0};
+
+    first = 10;
+    second = 20;
+}
+
+procedure :: fn (using foo: *Foo) {
+    first = 10;
+    second = 20;
 }

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(bl VERSION 0.5.2)
+project(bl VERSION 0.6.0)
 
 # Must use GNUInstallDirs to install libraries into correct
 # locations on all platforms.
@@ -44,7 +44,6 @@ set(HEADER_FILES
         src/bldebug.h
         src/error.h 
         src/config.h
-	src/messages.h
         src/builder.h
         src/blmemory.h
         src/assembly.h
@@ -105,6 +104,7 @@ llvm_map_components_to_libnames(LLVM_LIBS core support X86 passes)
 if (MSVC)
     target_link_libraries(blc PUBLIC
         shlwapi
+	DbgHelp
     )
 
     # C 

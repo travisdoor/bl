@@ -75,6 +75,7 @@ typedef enum ScopeKind {
 	SCOPE_GLOBAL,
 	SCOPE_PRIVATE,
 	SCOPE_FN,
+	SCOPE_FN_LOCAL,
 	SCOPE_LEXICAL,
 	SCOPE_TYPE_STRUCT,
 	SCOPE_TYPE_ENUM,
@@ -110,6 +111,9 @@ void
 scope_insert(Scope *scope, ScopeEntry *entry);
 
 ScopeEntry *
-scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_gscope);
+scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_gscope, bool *out_of_fn_local_scope);
+
+bool
+scope_is_subtree_of_kind(Scope *scope, ScopeKind kind);
 
 #endif

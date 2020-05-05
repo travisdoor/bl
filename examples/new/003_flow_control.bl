@@ -1,0 +1,59 @@
+// Program flow control
+
+/*
+   You can find several ways to control program execution flow in BL, 
+   the simplest one is 'if' statement. We use if to check the value of
+   'should_print' boolean variable and if the value is true we
+   continue with execution to the following block. The else statement
+   is optional and will be executed in case 'should_print' was false.
+
+   Sometimes we want to execute part of program multiple times. In
+   such case use of the 'loop' statement is the best choise.
+*/
+
+main :: fn () s32 {
+    // Declare bool variable and set it to true.
+    should_print := true;
+
+    // Use of the if statement to create two execution branches.
+    if should_print {
+        // This will be called when 'should_print' is true.
+        print("This will be printed!\n");
+    } else {
+        // Optional else block.
+    }
+
+
+    // We need some counter to count loop iterations.
+    i := 0;
+    loop { // Execute block in loop.
+        // Compare value of i to 10 and break the loop when this
+        // condition is true. We stay in this loop forever without
+        // break call.
+        if i == 10 { break; }
+
+        print("Hello!\n"); 
+        
+        // Increase value of i by one.
+        i += 1;
+    }
+
+
+
+    // Check break condition directly by loop statement. 
+    j := 0;
+    loop j < 10 { // Continue looping when j is less than 10.
+        print("j = %\n", j);  // Use % delimiter to print value of j.
+        j += 1;
+    }
+
+
+
+    // And finally...
+    loop k := 0; k < 10; k += 1 { 
+        print("k = %\n", k);  
+    }
+
+
+    return 0;
+}

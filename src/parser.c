@@ -95,8 +95,8 @@ typedef struct {
 	Tokens *               tokens;
 
 	/* tmps */
-	bool inside_loop;
-	bool inside_private_scope;
+	bool   inside_loop;
+	Scope *current_private_scope;
 } Context;
 
 /* helpers */
@@ -330,6 +330,8 @@ sym_to_unop_kind(Sym sm)
 		return UNOP_POS;
 	case SYM_NOT:
 		return UNOP_NOT;
+	case SYM_BIT_NOT:
+		return UNOP_BIT_NOT;
 	default:
 		BL_ABORT("unknown unop operation!!!");
 	}
@@ -458,7 +460,13 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
 		}
 
-		Scope *scope = scope_create(cnt->scope_arenas, SCOPE_FN, scope_get(cnt), 256, NULL);
+		Scope *   parent_scope = scope_get(cnt);
+		ScopeKind scope_kind =
+		    (parent_scope->kind == SCOPE_GLOBAL || parent_scope->kind == SCOPE_PRIVATE)
+		        ? SCOPE_FN
+		        : SCOPE_FN_LOCAL;
+		Scope *scope =
+		    scope_create(cnt->scope_arenas, scope_kind, scope_get(cnt), 256, NULL);
 		scope_push(cnt, scope);
 
 		Ast *block = parse_block(cnt, false);
@@ -726,7 +734,7 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
 		}
 
-		if (cnt->inside_private_scope) {
+		if (cnt->current_private_scope) {
 			PARSE_ERROR(
 			    ERR_UNEXPECTED_DIRECTIVE,
 			    tok_directive,
@@ -735,8 +743,6 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 			return ast_create_node(
 			    cnt->ast_arena, AST_BAD, tok_directive, scope_get(cnt));
 		}
-
-		cnt->inside_private_scope = true;
 
 		/*
 		 * Here we create private scope for the current unit. (only when source file
@@ -755,7 +761,8 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 		                            EXPECTED_PRIVATE_SCOPE_COUNT,
 		                            &tok_directive->location);
 
-		scope->llvm_di_meta = scope->parent->llvm_di_meta;
+		cnt->current_private_scope = scope;
+		scope->llvm_di_meta        = scope->parent->llvm_di_meta;
 
 		/* Make all other declarations in file nested in private scope */
 		cnt->unit->private_scope = scope;
@@ -1700,8 +1707,13 @@ parse_expr_lit_fn(Context *cnt)
 
 	Ast *fn = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FN, tok_fn, scope_get(cnt));
 
+	Scope *   parent_scope = scope_get(cnt);
+	ScopeKind scope_kind =
+	    (parent_scope->kind == SCOPE_GLOBAL || parent_scope->kind == SCOPE_PRIVATE)
+	        ? SCOPE_FN
+	        : SCOPE_FN_LOCAL;
 	Scope *scope =
-	    scope_create(cnt->scope_arenas, SCOPE_FN, scope_get(cnt), 256, &tok_fn->location);
+	    scope_create(cnt->scope_arenas, scope_kind, scope_get(cnt), 256, &tok_fn->location);
 
 	scope_push(cnt, scope);
 
@@ -2085,10 +2097,13 @@ Ast *
 parse_type_struct(Context *cnt)
 {
 	Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
+	if (!tok_struct) tok_struct = tokens_consume_if(cnt->tokens, SYM_UNION);
 	if (!tok_struct) return NULL;
 
+	const bool is_union = tok_struct->sym == SYM_UNION;
+
 	/* parse flags */
-	u32  accepted  = HD_COMPILER | HD_BASE;
+	u32  accepted  = is_union ? 0 : HD_COMPILER | HD_BASE;
 	u32  flags     = 0;
 	Ast *base_type = NULL;
 	while (true) {
@@ -2126,6 +2141,7 @@ parse_type_struct(Context *cnt)
 	type_struct->data.type_strct.raw       = false;
 	type_struct->data.type_strct.members   = create_sarr(TSmallArray_AstPtr, cnt->assembly);
 	type_struct->data.type_strct.base_type = base_type;
+	type_struct->data.type_strct.is_union  = is_union;
 
 	/* parse members */
 	bool       rq = false;
@@ -2438,7 +2454,7 @@ NEXT:
 			if (RQ_SEMICOLON_AFTER(tmp)) parse_semicolon_rq(cnt);
 			/* setup global scope flag for declaration */
 			tmp->data.decl_entity.in_gscope = true;
-			if (cnt->inside_private_scope) tmp->data.decl_entity.flags |= FLAG_PRIVATE;
+			if (cnt->current_private_scope) tmp->data.decl_entity.flags |= FLAG_PRIVATE;
 		}
 
 		tarray_push(ublock->data.ublock.nodes, tmp);

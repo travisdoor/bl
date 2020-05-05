@@ -1,0 +1,167 @@
+//************************************************************************************************
+// bl
+//
+// File:   macos_api.bl 
+// Author: Martin Dorazil
+// Date:   26/2/20
+//
+// Copyright 2020 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//************************************************************************************************
+
+macOS_CFAllocatorRef :: *u8;
+macOS_CFIndex :: s64;
+macOS_CFStringRef :: *u8;
+macOS_CFArrayRef :: *u8;
+macOS_CFArrayCallBacks :: u8;
+macOS_CFTimeInterval :: f64;
+macOS_CFTypeRef :: *u8;
+macOS_CFRunLoopRef :: *u8;
+macOS_CFRunLoopMode :: macOS_CFStringRef;
+macOS_Boolean :: u8;
+
+macOS_CFStringEncoding :: enum u32 {
+    MacRoman :: 0;
+    WindowsLatin1 :: 0x0500;
+    ISOLatin1 :: 0x0201;
+    NextStepLatin :: 0x0B01;
+    ASCII :: 0x0600; 
+    Unicode :: 0x0100;
+    UTF8 :: 0x08000100;
+    NonLossyASCII :: 0x0BFF;
+
+    UTF16 :: 0x0100; 
+    UTF16BE :: 0x10000100;
+    UTF16LE :: 0x14000100;
+
+    UTF32 :: 0x0c000100;
+    UTF32BE :: 0x18000100;
+    UTF32LE :: 0x1c000100;
+};
+
+macOS_kFSEventStreamEventFlagNone               : u32 : 0x00000000;
+macOS_kFSEventStreamEventFlagMustScanSubDirs    : u32 : 0x00000001;
+macOS_kFSEventStreamEventFlagUserDropped        : u32 : 0x00000002;
+macOS_kFSEventStreamEventFlagKernelDropped      : u32 : 0x00000004;
+macOS_kFSEventStreamEventFlagEventIdsWrapped    : u32 : 0x00000008;
+macOS_kFSEventStreamEventFlagHistoryDone        : u32 : 0x00000010;
+macOS_kFSEventStreamEventFlagRootChanged        : u32 : 0x00000020;
+macOS_kFSEventStreamEventFlagMount              : u32 : 0x00000040;
+macOS_kFSEventStreamEventFlagUnmount            : u32 : 0x00000080;
+macOS_kFSEventStreamEventFlagItemCreated        : u32 : 0x00000100;
+macOS_kFSEventStreamEventFlagItemRemoved        : u32 : 0x00000200;
+macOS_kFSEventStreamEventFlagItemInodeMetaMod   : u32 : 0x00000400;
+macOS_kFSEventStreamEventFlagItemRenamed        : u32 : 0x00000800;
+macOS_kFSEventStreamEventFlagItemModified       : u32 : 0x00001000;
+macOS_kFSEventStreamEventFlagItemFinderInfoMod  : u32 : 0x00002000;
+macOS_kFSEventStreamEventFlagItemChangeOwner    : u32 : 0x00004000;
+macOS_kFSEventStreamEventFlagItemXattrMod       : u32 : 0x00008000;
+macOS_kFSEventStreamEventFlagItemIsFile         : u32 : 0x00010000;
+macOS_kFSEventStreamEventFlagItemIsDir          : u32 : 0x00020000;
+macOS_kFSEventStreamEventFlagItemIsSymlink      : u32 : 0x00040000;
+macOS_kFSEventStreamEventFlagOwnEvent           : u32 : 0x00080000;
+macOS_kFSEventStreamEventFlagItemIsHardlink     : u32 : 0x00100000;
+macOS_kFSEventStreamEventFlagItemIsLastHardlink : u32 : 0x00200000;
+macOS_kFSEventStreamEventFlagItemCloned         : u32 : 0x00400000;
+
+macOS_kFSEventStreamEventIdSinceNow : macOS_FSEventStreamEventId : 0xFFFFFFFFFFFFFFFF;
+
+macOS_kFSEventStreamCreateFlagNone            : macOS_FSEventStreamCreateFlags : 0x00000000;
+macOS_kFSEventStreamCreateFlagUseCFTypes      : macOS_FSEventStreamCreateFlags : 0x00000001;
+macOS_kFSEventStreamCreateFlagNoDefer         : macOS_FSEventStreamCreateFlags : 0x00000002;
+macOS_kFSEventStreamCreateFlagWatchRoot       : macOS_FSEventStreamCreateFlags : 0x00000004;
+macOS_kFSEventStreamCreateFlagIgnoreSelf      : macOS_FSEventStreamCreateFlags : 0x00000008;
+macOS_kFSEventStreamCreateFlagFileEvents      : macOS_FSEventStreamCreateFlags : 0x00000010;
+macOS_kFSEventStreamCreateFlagMarkSelf        : macOS_FSEventStreamCreateFlags : 0x00000020;
+macOS_kFSEventStreamCreateFlagUseExtendedData : macOS_FSEventStreamCreateFlags : 0x00000040;
+
+macOS_FSEventStreamRef :: *u8;
+macOS_FSEventStreamEventId :: u64;
+macOS_FSEventStreamCreateFlags :: u32;
+macOS_FSEventStreamEventFlags :: u32;
+macOS_ConstFSEventStreamRef :: *u8;
+
+macOS_CFAllocatorRetainCallBack :: * fn (info: *u8) *u8;
+macOS_CFAllocatorReleaseCallBack :: * fn (info: *u8);
+macOS_CFAllocatorCopyDescriptionCallBack :: * fn (info: *u8) macOS_CFStringRef;
+
+macOS_CFArrayCreate :: fn (
+    allocator: macOS_CFAllocatorRef,
+    values: **u8,
+    numValues: macOS_CFIndex,
+    callBacks: *macOS_CFArrayCallBacks
+) macOS_CFArrayRef #extern "CFArrayCreate";
+
+macOS_CFRunLoopGetCurrent :: fn () macOS_CFRunLoopRef #extern "CFRunLoopGetCurrent";
+macOS_CFRunLoopCopyCurrentMode :: fn (rl: macOS_CFRunLoopRef) macOS_CFRunLoopMode #extern "CFRunLoopCopyCurrentMode";
+macOS_CFRelease :: fn (cf: macOS_CFTypeRef) #extern "CFRelease";
+
+macOS_CFStringCreateWithCString :: fn (
+    alloc: macOS_CFAllocatorRef,
+    cStr: *u8,
+    encoding: macOS_CFStringEncoding
+) macOS_CFStringRef #extern "CFStringCreateWithCString";
+
+macOS_FSEventStreamContext :: struct {
+  version: macOS_CFIndex;
+  info: *u8;
+  retain: macOS_CFAllocatorRetainCallBack;
+  release: macOS_CFAllocatorReleaseCallBack;
+  copyDescription: macOS_CFAllocatorCopyDescriptionCallBack;
+};
+
+macOS_FSEventStreamCallback :: * fn (
+    streamRef: macOS_ConstFSEventStreamRef,
+    clientCallBackInfo: *u8,
+    numEvents: usize,
+    eventPaths: *u8,
+    eventFlags: *macOS_FSEventStreamEventFlags,
+    eventIds: *macOS_FSEventStreamEventId
+); 
+
+macOS_FSEventStreamCreate :: fn (
+    allocator: macOS_CFAllocatorRef,
+    callback: macOS_FSEventStreamCallback,
+    context: *macOS_FSEventStreamContext,
+    pathsToWatch: macOS_CFArrayRef,
+    sinceWhen: macOS_FSEventStreamEventId,
+    latency: macOS_CFTimeInterval,
+    flags: macOS_FSEventStreamCreateFlags   
+) macOS_FSEventStreamRef #extern "FSEventStreamCreate"; 
+
+macOS_FSEventStreamScheduleWithRunLoop :: fn (
+    streamRef: macOS_FSEventStreamRef,
+    runLoop: macOS_CFRunLoopRef,
+    runLoopMode: macOS_CFStringRef
+) #extern "FSEventStreamScheduleWithRunLoop";
+
+macOS_FSEventStreamUnscheduleFromRunLoop :: fn (
+    streamRef: macOS_FSEventStreamRef,
+    runLoop: macOS_CFRunLoopRef,
+    runLoopMode: macOS_CFStringRef
+) #extern "FSEventStreamUnscheduleFromRunLoop";
+
+macOS_FSEventStreamStart :: fn (streamRef: macOS_FSEventStreamRef) macOS_Boolean #extern "FSEventStreamStart";
+macOS_FSEventStreamFlushSync :: fn (streamRef: macOS_FSEventStreamRef) #extern "FSEventStreamFlushSync";
+macOS_FSEventStreamStop :: fn (streamRef: macOS_FSEventStreamRef) #extern "FSEventStreamStop";
+macOS_FSEventStreamInvalidate :: fn (streamRef: macOS_FSEventStreamRef) #extern "FSEventStreamInvalidate";
+macOS_FSEventStreamRelease :: fn (streamRef: macOS_FSEventStreamRef) #extern "FSEventStreamRelease";
+
+macOS_NSGetExecutablePath :: fn (buf: *c_char, bufsize: *c_uint) c_int #extern "_NSGetExecutablePath";

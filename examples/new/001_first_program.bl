@@ -1,0 +1,35 @@
+// First simple program
+
+/*
+    This is tutorial for new language users describing creation of the
+    simplest possible program using Biscuit language. Basic idea here
+    is just print out some text into the terminal window.
+
+    Like in other languages we must define main function fisrt as an
+    entry point to the program. This function will be called first.
+    The main function is supposed to return some state number of s32
+    type, zero here means successful execution. You can return any other
+    state number to let call side know when something went wrong.
+
+    We can use print function to write text into the standart text output.
+
+    To compile our sample program just type 'blc my-program.bl' into the 
+    terminal. Result binary will be called 'out.exe' on Windows. In case you 
+    just want to execute the program without need of executable file you can 
+    add '-r -no-bin' flags before the file name: 
+    'blc -r -no-bin my-program.bl'. You should see 'Hello world!' now in 
+    compilator output.
+
+    Any time you use the '-r' or '-run' flag compilator will execute 
+    your main function in compile time. Flag '-no-bin' says "do not create any
+    binary output", no executable file will be created.
+*/
+
+// Main function as the program entry point.
+main :: fn () s32 {
+    // Call the print function.
+    print("Hello world!\n");
+
+    // Return OK state number.
+    return 0;
+}

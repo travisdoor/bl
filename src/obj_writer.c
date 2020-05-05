@@ -51,7 +51,7 @@ obj_writer_run(Assembly *assembly)
 	char *error_msg = NULL;
 	if (LLVMTargetMachineEmitToFile(
 	        assembly->llvm.TM, assembly->llvm.module, filename.data, LLVMObjectFile, &error_msg)) {
-		msg_error("Cannot emit object file: %s with error: %s", filename.data, error_msg);
+		builder_error("Cannot emit object file: %s with error: %s", filename.data, error_msg);
 
 		LLVMDisposeMessage(error_msg);
 	}

@@ -41,6 +41,7 @@ token_is_unary(Token *token)
 	case SYM_MINUS:
 	case SYM_PLUS:
 	case SYM_NOT:
+	case SYM_BIT_NOT:
 		return true;
 	default:
 		return false;

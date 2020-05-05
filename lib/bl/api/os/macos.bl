@@ -28,6 +28,7 @@
 
 #load "std/_builtin.bl"
 #load "std/string.bl"
+#load "macos_api.bl"
 
 OS_KIND :: OSKind.MacOS;
 OS_NAME :: "MacOS";
@@ -55,7 +56,7 @@ c_size_t    :: u64;
 /*
  * Maximum path size in bytes.
  */
-OS_PATH_MAX :: 1024;
+OS_PATH_MAX :: DARWIN_MAXPATHLEN;
 
 /*
  * OSLibrary
@@ -65,12 +66,12 @@ OS_PATH_MAX :: 1024;
  */
 OSLibrary :: *u8;
 
-os_time_now_ms :: fn () f64 {
-    return cast(f64) mach_absolute_time() / 1000000.0;
+os_time_now_ms :: fn () f64 #inline {
+    return cast(f64) _mach_absolute_time() / 1000000.0;
 };
 
-os_sleep_ms :: fn (ms: f64) {
-    usleep(auto ms * 1000.0);
+os_sleep_ms :: fn (ms: f64) #inline {
+    _posix_usleep(auto ms * 1000.0);
 };
 
 /*
@@ -87,13 +88,20 @@ os_sleep_ms :: fn (ms: f64) {
  *   Absolute file path.
  */
 os_get_real_path :: fn (filename: string) string {
-    tmp :: {:[OS_PATH_MAX]u8: 0};
-    if realpath(filename.ptr, tmp.ptr) == null {
-        return string_copy(filename);
-    }
+    tmp := {:[OS_PATH_MAX]u8: 0};
+    if _posix_realpath(filename.ptr, &tmp[0]) != null {
+        return string_new_cstr(tmp.ptr);
+    } 
 
-    result :: string_new_cstr(tmp.ptr);
-    return result;
+    return string_copy(filename);
+}
+
+os_get_exec_path :: fn () string {
+    buf : [DARWIN_MAXPATHLEN]u8;
+    buf_len := cast(u32) buf.len;
+    if macOS_NSGetExecutablePath(auto buf.ptr, &buf_len) == -1 { return string_new(); }
+
+    return string_new_cstr(buf.ptr);
 }
 
 /*
@@ -110,11 +118,11 @@ os_get_real_path :: fn (filename: string) string {
  * Result: 
  *   Library handle or null.
  */
-os_dlopen :: fn (lib_name: string) OSLibrary {
+os_dlopen :: fn (lib_name: string) OSLibrary #inline {
     clib_name: *u8 = null;
     if lib_name.len > 0 { clib_name = lib_name.ptr; }
 
-    return dlopen(clib_name, RTLD_LAZY); 
+    return _posix_dlopen(clib_name, RTLD_LAZY); 
 }
 
 /*
@@ -133,8 +141,8 @@ os_dlopen :: fn (lib_name: string) OSLibrary {
  * Result: 
  *   Procedure handle or null.
  */
-os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 {
-    return dlsym(lib, sym_name.ptr);
+os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 #inline {
+    return _posix_dlsym(lib, sym_name.ptr);
 }
 
 /*
@@ -148,167 +156,81 @@ os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 {
  *     Library handle. 
  *
  */
-os_dlclose :: fn (lib: OSLibrary) {
-    dlclose(lib);
+os_dlclose :: fn (lib: OSLibrary) #inline {
+    _posix_dlclose(lib);
 }
 
-//************************************************************************************************
-//************************************************************************************************
-// Mac OS api (move to separate file)
-//************************************************************************************************
-//************************************************************************************************
-macOS_CFAllocatorRef :: *u8;
-macOS_CFIndex :: s64;
-macOS_CFStringRef :: *u8;
-macOS_CFArrayRef :: *u8;
-macOS_CFArrayCallBacks :: u8;
-macOS_CFTimeInterval :: f64;
-macOS_CFTypeRef :: *u8;
-macOS_CFRunLoopRef :: *u8;
-macOS_CFRunLoopMode :: macOS_CFStringRef;
-macOS_Boolean :: u8;
-
-macOS_CFStringEncoding :: enum u32 {
-    MacRoman :: 0;
-    WindowsLatin1 :: 0x0500;
-    ISOLatin1 :: 0x0201;
-    NextStepLatin :: 0x0B01;
-    ASCII :: 0x0600; 
-    Unicode :: 0x0100;
-    UTF8 :: 0x08000100;
-    NonLossyASCII :: 0x0BFF;
-
-    UTF16 :: 0x0100; 
-    UTF16BE :: 0x10000100;
-    UTF16LE :: 0x14000100;
-
-    UTF32 :: 0x0c000100;
-    UTF32BE :: 0x18000100;
-    UTF32LE :: 0x1c000100;
-};
-
-macOS_kFSEventStreamEventFlagNone               : u32 : 0x00000000;
-macOS_kFSEventStreamEventFlagMustScanSubDirs    : u32 : 0x00000001;
-macOS_kFSEventStreamEventFlagUserDropped        : u32 : 0x00000002;
-macOS_kFSEventStreamEventFlagKernelDropped      : u32 : 0x00000004;
-macOS_kFSEventStreamEventFlagEventIdsWrapped    : u32 : 0x00000008;
-macOS_kFSEventStreamEventFlagHistoryDone        : u32 : 0x00000010;
-macOS_kFSEventStreamEventFlagRootChanged        : u32 : 0x00000020;
-macOS_kFSEventStreamEventFlagMount              : u32 : 0x00000040;
-macOS_kFSEventStreamEventFlagUnmount            : u32 : 0x00000080;
-macOS_kFSEventStreamEventFlagItemCreated        : u32 : 0x00000100;
-macOS_kFSEventStreamEventFlagItemRemoved        : u32 : 0x00000200;
-macOS_kFSEventStreamEventFlagItemInodeMetaMod   : u32 : 0x00000400;
-macOS_kFSEventStreamEventFlagItemRenamed        : u32 : 0x00000800;
-macOS_kFSEventStreamEventFlagItemModified       : u32 : 0x00001000;
-macOS_kFSEventStreamEventFlagItemFinderInfoMod  : u32 : 0x00002000;
-macOS_kFSEventStreamEventFlagItemChangeOwner    : u32 : 0x00004000;
-macOS_kFSEventStreamEventFlagItemXattrMod       : u32 : 0x00008000;
-macOS_kFSEventStreamEventFlagItemIsFile         : u32 : 0x00010000;
-macOS_kFSEventStreamEventFlagItemIsDir          : u32 : 0x00020000;
-macOS_kFSEventStreamEventFlagItemIsSymlink      : u32 : 0x00040000;
-macOS_kFSEventStreamEventFlagOwnEvent           : u32 : 0x00080000;
-macOS_kFSEventStreamEventFlagItemIsHardlink     : u32 : 0x00100000;
-macOS_kFSEventStreamEventFlagItemIsLastHardlink : u32 : 0x00200000;
-macOS_kFSEventStreamEventFlagItemCloned         : u32 : 0x00400000;
-
-macOS_kFSEventStreamEventIdSinceNow : macOS_FSEventStreamEventId : 0xFFFFFFFFFFFFFFFF;
-
-macOS_kFSEventStreamCreateFlagNone            : macOS_FSEventStreamCreateFlags : 0x00000000;
-macOS_kFSEventStreamCreateFlagUseCFTypes      : macOS_FSEventStreamCreateFlags : 0x00000001;
-macOS_kFSEventStreamCreateFlagNoDefer         : macOS_FSEventStreamCreateFlags : 0x00000002;
-macOS_kFSEventStreamCreateFlagWatchRoot       : macOS_FSEventStreamCreateFlags : 0x00000004;
-macOS_kFSEventStreamCreateFlagIgnoreSelf      : macOS_FSEventStreamCreateFlags : 0x00000008;
-macOS_kFSEventStreamCreateFlagFileEvents      : macOS_FSEventStreamCreateFlags : 0x00000010;
-macOS_kFSEventStreamCreateFlagMarkSelf        : macOS_FSEventStreamCreateFlags : 0x00000020;
-macOS_kFSEventStreamCreateFlagUseExtendedData : macOS_FSEventStreamCreateFlags : 0x00000040;
-
-macOS_FSEventStreamRef :: *u8;
-macOS_FSEventStreamEventId :: u64;
-macOS_FSEventStreamCreateFlags :: u32;
-macOS_FSEventStreamEventFlags :: u32;
-macOS_ConstFSEventStreamRef :: *u8;
-
-macOS_CFAllocatorRetainCallBack :: * fn (info: *u8) *u8;
-macOS_CFAllocatorReleaseCallBack :: * fn (info: *u8);
-macOS_CFAllocatorCopyDescriptionCallBack :: * fn (info: *u8) macOS_CFStringRef;
-
-macOS_CFArrayCreate :: fn (
-    allocator: macOS_CFAllocatorRef,
-    values: **u8,
-    numValues: macOS_CFIndex,
-    callBacks: *macOS_CFArrayCallBacks
-) macOS_CFArrayRef #extern "CFArrayCreate";
-
-macOS_CFRunLoopGetCurrent :: fn () macOS_CFRunLoopRef #extern "CFRunLoopGetCurrent";
-macOS_CFRunLoopCopyCurrentMode :: fn (rl: macOS_CFRunLoopRef) macOS_CFRunLoopMode #extern "CFRunLoopCopyCurrentMode";
-macOS_CFRelease :: fn (cf: macOS_CFTypeRef) #extern "CFRelease";
-
-macOS_CFStringCreateWithCString :: fn (
-    alloc: macOS_CFAllocatorRef,
-    cStr: *u8,
-    encoding: macOS_CFStringEncoding
-) macOS_CFStringRef #extern "CFStringCreateWithCString";
-
-macOS_FSEventStreamContext :: struct {
-  version: macOS_CFIndex;
-  info: *u8;
-  retain: macOS_CFAllocatorRetainCallBack;
-  release: macOS_CFAllocatorReleaseCallBack;
-  copyDescription: macOS_CFAllocatorCopyDescriptionCallBack;
-};
-
-macOS_FSEventStreamCallback :: * fn (
-    streamRef: macOS_ConstFSEventStreamRef,
-    clientCallBackInfo: *u8,
-    numEvents: usize,
-    eventPaths: *u8,
-    eventFlags: *macOS_FSEventStreamEventFlags,
-    eventIds: *macOS_FSEventStreamEventId
-); 
-
-macOS_FSEventStreamCreate :: fn (
-    allocator: macOS_CFAllocatorRef,
-    callback: macOS_FSEventStreamCallback,
-    context: *macOS_FSEventStreamContext,
-    pathsToWatch: macOS_CFArrayRef,
-    sinceWhen: macOS_FSEventStreamEventId,
-    latency: macOS_CFTimeInterval,
-    flags: macOS_FSEventStreamCreateFlags   
-) macOS_FSEventStreamRef #extern "FSEventStreamCreate"; 
-
-macOS_FSEventStreamScheduleWithRunLoop :: fn (
-    streamRef: macOS_FSEventStreamRef,
-    runLoop: macOS_CFRunLoopRef,
-    runLoopMode: macOS_CFStringRef
-) #extern "FSEventStreamScheduleWithRunLoop";
-
-macOS_FSEventStreamUnscheduleFromRunLoop :: fn (
-    streamRef: macOS_FSEventStreamRef,
-    runLoop: macOS_CFRunLoopRef,
-    runLoopMode: macOS_CFStringRef
-) #extern "FSEventStreamUnscheduleFromRunLoop";
-
-macOS_FSEventStreamStart :: fn (streamRef: macOS_FSEventStreamRef) macOS_Boolean #extern "FSEventStreamStart";
-macOS_FSEventStreamFlushSync :: fn (streamRef: macOS_FSEventStreamRef) #extern "FSEventStreamFlushSync";
-macOS_FSEventStreamStop :: fn (streamRef: macOS_FSEventStreamRef) #extern "FSEventStreamStop";
-macOS_FSEventStreamInvalidate :: fn (streamRef: macOS_FSEventStreamRef) #extern "FSEventStreamInvalidate";
-macOS_FSEventStreamRelease :: fn (streamRef: macOS_FSEventStreamRef) #extern "FSEventStreamRelease";
-
+os_execute :: fn (command: string) s32 {
+    return _posix_system(auto command.ptr);
+}
 
 // CLEANUP: This must be in gl.bl file not here, but we keep it
 // until static 'if' will be supported by compiler.
-_os_gl_get_proc :: fn (proc_name: string) *u8 {
+_os_gl_get_proc :: fn (proc_name: string) *u8 #inline {
     module :: os_dlopen("");
     return os_dlsym(module, proc_name);
 }
 
-__os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
-    return write(fd, buf, count);
+_OSFileKind :: enum {
+    File;
+    Directory;
+}
+
+_OSFileInfo :: struct {
+    kind: _OSFileKind;
+    name: string;
+}
+
+_OSFileList :: []_OSFileInfo;
+
+_os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
+    if dirpath.len > DARWIN_MAXPATHLEN { panic("Path too long!"); }
+    dir := _posix_opendir(dirpath.ptr);
+    if dir == null { return false; }
+    defer _posix_closedir(dir);
+
+    fc := 0;
+    loop _posix_readdir(dir) != null { fc += 1; }
+    _posix_rewinddir(dir);
+
+    (^out_buf).len = fc;
+    if fc == 0 { return true; }
+
+    (^out_buf).ptr = auto mem_alloc(sizeof(_OSFileInfo) * auto fc);
+
+    i := 0;
+    loop {
+        info :: _posix_readdir(dir);
+        if info == null { break; }
+
+        kind: _OSFileKind;
+        name: string;
+
+        if info.d_type == auto DT_DIR {
+            kind = _OSFileKind.Directory;
+            name = string_new_cstr(auto info.d_name.ptr);
+        } else {
+            kind = _OSFileKind.File;
+            name = string_new_cstr(auto info.d_name.ptr);
+        }
+
+        (^out_buf)[i] = {:_OSFileInfo: kind, name};
+        i += 1;
+    }
+
+    return true;
+}
+
+_os_debug_break :: fn () #inline {
+    _posix_raise(SIGTRAP);
+}
+
+__os_write :: fn (fd: s32, buf: *u8, count: usize) s32 #inline {
+    return _posix_write(fd, buf, count);
 };
 
 __os_abort :: fn () #compiler {
-    raise(SIGABRT);
+    _posix_raise(SIGABRT);
 }
 
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
@@ -337,7 +259,7 @@ __os_start :: fn (argc: s64, argv: **u8, env: **u8) #entry {
         _mem_free_default(auto command_line_arguments.ptr);
     }
 
-    _exit(out);
+    _posix_exit(out);
 }
 
 #private
@@ -354,12 +276,39 @@ RTLD_NOW    :: 0x2;
 RTLD_LOCAL  :: 0x4;
 RTLD_GLOBAL :: 0x8;
 
-raise              :: fn (sig: s32) s32 #extern;
-write              :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
-mach_absolute_time :: fn () u64 #extern;
-usleep             :: fn (us: u32) s32 #extern;
-realpath           :: fn (path: *u8, resolved_path: *u8) *u8 #extern;
-_exit              :: fn (v: s32) #extern;
-dlopen             :: fn (path: *u8, mode: s32) *u8 #extern;
-dlclose            :: fn (handle: *u8) s32 #extern;
-dlsym              :: fn (handle: *u8, symbol: *u8) *u8 #extern;
+DT_UNKNOWN ::  0;
+DT_FIFO    ::  1;
+DT_CHR     ::  2;
+DT_DIR     ::  4;
+DT_BLK     ::  6;
+DT_REG     ::  8;
+DT_LNK     :: 10;
+DT_SOCK    :: 12;
+DT_WHT     :: 14;
+
+DARWIN_MAXPATHLEN :: 1024;
+
+dirent :: struct {
+	d_ino: c_ulonglong; 
+	d_seekoff: c_ulonglong;
+	d_reclen: c_ushort;
+	d_namlen: c_ushort;
+	d_type: c_uchar; 
+	d_name: [DARWIN_MAXPATHLEN]c_char;
+}
+
+_posix_raise     :: fn (sig: s32) s32 #extern "raise";
+_posix_write     :: fn (fd: s32, buf: *u8, count: usize) s32 #extern "write";
+_posix_usleep    :: fn (us: u32) s32 #extern "usleep";
+_posix_realpath  :: fn (path: *u8, resolved_path: *u8) *u8 #extern "realpath$DARWIN_EXTSN";
+_posix_exit      :: fn (v: s32) #extern "_exit";
+_posix_dlopen    :: fn (path: *u8, mode: s32) *u8 #extern "dlopen";
+_posix_dlclose   :: fn (handle: *u8) s32 #extern "dlclose";
+_posix_dlsym     :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
+_posix_opendir   :: fn (name: *u8) *u8 #extern "opendir";
+_posix_closedir  :: fn (dirp: *u8) s32 #extern "closedir";
+_posix_readdir   :: fn (dirp: *u8) *dirent #extern "readdir$INODE64";
+_posix_rewinddir :: fn (dirp: *u8) #extern "rewinddir$INODE64";
+_posix_system    :: fn (command: *c_char) c_int #extern "system";
+
+_mach_absolute_time :: fn () u64 #extern "mach_absolute_time";

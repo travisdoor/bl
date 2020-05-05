@@ -194,12 +194,12 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 		fprintf(cnt->stream, "{");
 
 		MirType * elem_type = mir_get_struct_elem_type(type, 0);
-		ptrdiff_t offset    = vm_get_struct_elem_offest(cnt->assembly, type, 0);
+		ptrdiff_t offset    = vm_get_struct_elem_offset(cnt->assembly, type, 0);
 		_print_const_value(cnt, elem_type, value + offset);
 
 		fprintf(cnt->stream, ",\"");
 
-		offset             = vm_get_struct_elem_offest(cnt->assembly, type, 1);
+		offset             = vm_get_struct_elem_offset(cnt->assembly, type, 1);
 		VMStackPtr str_ptr = value + offset;
 		str_ptr            = VM_STACK_PTR_DEREF(str_ptr);
 		fprintf(cnt->stream, "%s\"}", (char *)str_ptr);
@@ -215,7 +215,7 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 		{
 			MirType *       member_type = it->type;
 			const ptrdiff_t offset =
-			    vm_get_struct_elem_offest(cnt->assembly, type, (u32)i);
+			    vm_get_struct_elem_offset(cnt->assembly, type, (u32)i);
 			_print_const_value(cnt, member_type, value + offset);
 			if (i < (usize)type->data.strct.members->size - 1)
 				fprintf(cnt->stream, ",");
@@ -563,6 +563,9 @@ print_instr_cast(Context *cnt, MirInstrCast *cast)
 		break;
 	case MIR_CAST_INTTOPTR:
 		print_instr_head(cnt, &cast->base, "inttoptr");
+		break;
+	case MIR_CAST_PTRTOBOOL:
+		print_instr_head(cnt, &cast->base, "ptrtobool");
 		break;
 	case MIR_CAST_INVALID:
 		print_instr_head(cnt, &cast->base, "<invalid cast>");
@@ -979,7 +982,7 @@ print_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 		fprintf(cnt->stream, "@%s ", fn->linkage_name);
 	else
 		fprintf(cnt->stream, "@%llu ", (unsigned long long)fn_proto->base.id);
-	
+
 	if (fn->ref_count >= 0)
 		fprintf(cnt->stream, "(%d) ", fn->ref_count);
 	else
@@ -1016,7 +1019,7 @@ print_instr(Context *cnt, MirInstr *instr)
 		print_instr_block(cnt, (MirInstrBlock *)instr);
 		break;
 	case MIR_INSTR_INVALID:
-		fprintf(cnt->stream, RED("INVALID"));
+		fprintf(cnt->stream, "INVALID");
 		break;
 	case MIR_INSTR_UNREACHABLE:
 		print_instr_unreachable(cnt, (MirInstrUnreachable *)instr);

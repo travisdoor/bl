@@ -1,19 +1,15 @@
 #!/bin/bash
 echo 
-echo "***********************"
-echo "*** Compiling demos ***"
-echo "***********************"
-echo 
-blc -no-bin ../demos/vulkan_demo/src/vulkan_demo.bl 
-blc -no-bin ../demos/simple_sdl_game/src/skyshooter.bl 
-
-
-echo 
 echo "************************"
 echo "*** Running examples ***"
 echo "************************"
 echo 
 blc -no-bin -force-test-to-llvm -run-tests -no-warning ../examples/dummy.bl
+
+for f in ../examples/new/*.bl
+do
+	blc -no-bin -no-warning -r $f
+done
 
 
 echo 

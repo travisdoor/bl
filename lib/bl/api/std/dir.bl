@@ -1,11 +1,11 @@
 //************************************************************************************************
 // bl
 //
-// File:   messages.h
+// File:   dir.bl 
 // Author: Martin Dorazil
-// Date:   13/04/2018
+// Date:   26/2/20
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2020 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,29 +26,20 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_MESSAGES_H
-#define BL_MESSAGES_H
+#load "std/string.bl"
 
-#include "config.h"
+FileKind :: _OSFileKind;
+FileInfo :: _OSFileInfo;
+FileList :: _OSFileList;
 
-#define msg_log(format, ...)                                                                       \
-	{                                                                                          \
-		fprintf(stdout, format "\n", ##__VA_ARGS__);                                       \
-	}
+dir_scan :: fn (dirpath: string, out_buffer: *FileList) bool #inline {
+    return _os_scandir(dirpath, out_buffer);
+}
 
-#define msg_error(format, ...)                                                                     \
-	{                                                                                          \
-		fprintf(stderr, RED("error: ") format "\n", ##__VA_ARGS__);                        \
-	}
+dir_file_list_delete :: fn (list: FileList) {
+    loop i := 0; i < list.len; i += 1 {
+        string_delete(list[i].name);
+    }
 
-#define msg_warning(format, ...)                                                                   \
-	{                                                                                          \
-		fprintf(stdout, YELLOW("warning: ") format "\n", ##__VA_ARGS__);                   \
-	}
-
-#define msg_note(format, ...)                                                                      \
-	{                                                                                          \
-		fprintf(stderr, BLUE("note: ") format "\n", ##__VA_ARGS__);                        \
-	}
-
-#endif // BL_MESSAGES_H
+    mem_free(auto list.ptr);
+}

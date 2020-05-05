@@ -39,11 +39,11 @@ print_address(Ast *node, FILE *stream)
 {
 #if BL_DEBUG
 	if (node)
-		fprintf(stream, YELLOW(" %llu "), node->_serial);
+		fprintf(stream, " %llu ", node->_serial);
 	else
-		fprintf(stream, RED(" (null) "));
+		fprintf(stream, " (null) ");
 #else
-	fprintf(stream, YELLOW(" %p "), node);
+	fprintf(stream, " %p ", node);
 #endif
 }
 
@@ -54,7 +54,7 @@ _print_head(Ast *node, s32 pad, FILE *stream)
 {
 	if (node->location)
 		fprintf(stream,
-		        "\n%*s" GREEN("%s ") CYAN("<%d:%d>"),
+		        "\n%*s%s <%d:%d>",
 		        pad * 2,
 		        "",
 		        ast_get_name(node),
@@ -62,7 +62,7 @@ _print_head(Ast *node, s32 pad, FILE *stream)
 		        node->location->col);
 	else
 		fprintf(stream,
-		        "\n%*s" GREEN("%s ") CYAN("<IMPLICIT>"),
+		        "\n%*s%s <IMPLICIT>",
 		        pad * 2,
 		        "",
 		        ast_get_name(node));
@@ -456,6 +456,9 @@ print_expr_unary(Ast *unary, s32 pad, FILE *stream)
 		break;
 	case UNOP_NOT:
 		op = "!";
+		break;
+	case UNOP_BIT_NOT:
+		op = "~";
 		break;
 	}
 

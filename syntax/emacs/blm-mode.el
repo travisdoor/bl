@@ -54,6 +54,8 @@
     "vargs"
     "phi"
     "switch"
+    "setinit"
+    "toany"
     "alignof")) 
 
 (defconst blm-types
@@ -86,6 +88,7 @@
     ;; Types 
     ("fn\(.*\) \\w+" . font-lock-type-face)
     ("struct{.*}" . font-lock-type-face)
+    ("union{.*}" . font-lock-type-face)
     ("slice{.*}" . font-lock-type-face)
     ("enum{.*}" . font-lock-type-face)
     ("*.\\w+" . font-lock-type-face)

@@ -28,6 +28,8 @@
 
 #load "std/_builtin.bl"
 #load "std/string.bl"
+#load "std/utils.bl"
+#load "windows_api.bl"
 
 // INCOMPLETE: time_now_ms
 
@@ -57,7 +59,7 @@ c_size_t    :: u64;
 /*
  * Maximum path size in bytes.
  */
-OS_PATH_MAX :: 1024;
+OS_PATH_MAX :: WIN32_MAX_PATH;
 
 /*
  * OSLibrary
@@ -75,7 +77,7 @@ os_time_now_ms :: fn () f64 {
 
 
 os_sleep_ms :: fn (ms: f64) {
-    Sleep(auto ms);
+    win32_Sleep(auto ms);
 };
 
 /*
@@ -93,12 +95,24 @@ os_sleep_ms :: fn (ms: f64) {
  */
 os_get_real_path :: fn (filename: string) string {
     tmp :: {:[OS_PATH_MAX]u8: 0};
-    if GetFullPathNameA(auto filename.ptr, auto tmp.len, tmp.ptr, null) == 0 {
-		return string_copy(filename);
-	}
+    if win32_GetFullPathNameA(auto filename.ptr, auto tmp.len, tmp.ptr, null) > 0 {
+        result :: string_new_cstr(tmp.ptr);
+        string_replace_all(result, '\\', '/');
+        return result;
+    }
 
-    result :: string_new_cstr(tmp.ptr);
-    return result;
+    return string_copy(filename);
+}
+
+os_get_exec_path :: fn () string {
+    buf : [OS_PATH_MAX]u8;
+    if win32_GetModuleFileNameA(null, buf.ptr, auto buf.len) > 0 {
+        result :: string_new_cstr(buf.ptr);
+        string_replace_all(result, '\\', '/');
+        return result;
+    }
+
+    return string_new(); 
 }
 
 /*
@@ -117,10 +131,10 @@ os_get_real_path :: fn (filename: string) string {
  */
 os_dlopen :: fn (lib_name: string) OSLibrary {
     if lib_name.len > 0 {
-        return LoadLibraryA(auto lib_name.ptr); 
+        return win32_LoadLibraryA(auto lib_name.ptr); 
     }
 
-    return GetModuleHandleA(null); 
+    return win32_GetModuleHandleA(null); 
 }
 
 /*
@@ -140,7 +154,7 @@ os_dlopen :: fn (lib_name: string) OSLibrary {
  *   Procedure handle or null.
  */
 os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 {
-    return GetProcAddress(lib, auto sym_name.ptr);
+    return win32_GetProcAddress(lib, auto sym_name.ptr);
 }
 
 /*
@@ -155,7 +169,75 @@ os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 {
  *
  */
 os_dlclose :: fn (lib: OSLibrary) {
-    FreeLibrary(lib);
+    win32_FreeLibrary(lib);
+}
+
+os_execute :: fn (command: string) s32 {
+    return system(auto command.ptr);
+}
+
+_OSFileKind :: enum {
+    File;
+    Directory;
+}
+
+_OSFileInfo :: struct {
+    kind: _OSFileKind;
+    name: string;
+}
+
+_OSFileList :: []_OSFileInfo;
+
+_os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
+    if dirpath.len > (WIN32_MAX_PATH-3) { panic("Path too long!"); }
+    tmp := string_copy(dirpath);
+    defer string_delete(tmp);
+    string_append(&tmp, "\\*");
+
+    ffd: WIN32_FIND_DATA;
+    hFind := win32_FindFirstFile(auto tmp.ptr, &ffd);
+    if WIN32_INVALID_HANDLE_VALUE == hFind { return false; }
+
+    fc := 0;
+    loop {
+        fc += 1;
+        if win32_FindNextFile(hFind, &ffd) == 0 { break; }
+    }
+
+    win32_FindClose(hFind);
+    (^out_buf).len = fc;
+    if fc == 0 { return true; }
+
+    (^out_buf).ptr = auto mem_alloc(sizeof(_OSFileInfo) * auto fc);
+
+    hFind = win32_FindFirstFile(auto tmp.ptr, &ffd);
+    if WIN32_INVALID_HANDLE_VALUE == hFind { return false; }
+    defer win32_FindClose(hFind);
+
+    i := 0;
+    loop {
+        kind: _OSFileKind;
+        name: string;
+
+        if is_flag_u32(ffd.dwFileAttributes, auto WIN32_FILE_ATTRIBUTE_DIRECTORY) {
+            kind = _OSFileKind.Directory;
+            name = string_new_cstr(ffd.cFileName.ptr);
+        } else {
+            kind = _OSFileKind.File;
+            name = string_new_cstr(ffd.cFileName.ptr);
+        }
+
+        (^out_buf)[i] = {:_OSFileInfo: kind, name};
+
+        i += 1;
+        if win32_FindNextFile(hFind, &ffd) == 0 { break; }
+    }
+
+    return true;
+}
+
+_os_debug_break :: fn () #inline {
+    win32_DebugBreak();
 }
 
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
@@ -163,6 +245,7 @@ __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
 };
 
 __os_abort :: fn () #compiler {
+    if IS_DEBUG { _os_debug_break(); }
     raise(SIGABRT);
 }
 
@@ -193,103 +276,6 @@ _os_gl_get_proc :: fn (proc_name: string) *u8 {
     return os_dlsym(module, proc_name);
 }
 
-// WIN32
-WIN32_WCHAR        :: *c_ushort;
-WIN32_LPWSTR       :: *c_ushort;
-WIN32_LPCWSTR      :: *c_ushort;
-WIN32_LPCSTR       :: *c_ushort;
-WIN32_LPSTR        :: *c_uchar;
-WIN32_HLOCAL       :: *c_uchar;
-WIN32_UINT         :: c_uint;
-WIN32_DWORD        :: c_uint;
-WIN32_LPCCH        :: c_uchar;
-WIN32_LPCWCH       :: c_ushort;
-WIN32_LPBOOL       :: c_int;
-WIN32_HMODULE      :: *c_uchar;
-WIN32_BOOL         :: c_int;
-WIN32_FARPROC      :: *c_uchar; 
-WIN32_LPVOID       :: *c_uchar; 
-WIN32_LPOVERLAPPED :: *WIN32_OVERLAPPED;
-WIN32_LPDWORD      :: *WIN32_DWORD;
-WIN32_HANDLE       :: *c_uchar;
-WIN32_ULONG_PTR    :: *c_ulong;
-WIN32_LPSECURITY_ATTRIBUTES :: *c_uchar;
-WIN32_PVOID        :: *c_uchar; 
-WIN32_LPOVERLAPPED_COMPLETION_ROUTINE :: * fn(dwErrorCode: WIN32_DWORD, dwNumberOfBytesTransfered: WIN32_DWORD, lpOverlapped: WIN32_LPOVERLAPPED);
-
-WIN32_FILE_NOTIFY_INFORMATION :: struct {
-    NextEntryOffset: WIN32_DWORD;
-    Action: WIN32_DWORD;
-    FileNameLength: WIN32_DWORD;
-    FileName: [1]WIN32_WCHAR;
-}
-
-WIN32_OVERLAPPED :: struct {
-    Internal: WIN32_ULONG_PTR;
-    InternalHigh: WIN32_ULONG_PTR;
-    Pointer: WIN32_PVOID;
-    hEvent: WIN32_HANDLE;
-}
-
-WIN32_INVALID_HANDLE :: cast(*u8) -1;
-WIN32_WAIT_TIMEOUT :: 258;
-
-win32_CloseHandle :: fn (hObject: WIN32_HANDLE) WIN32_BOOL #extern "CloseHandle";
-
-win32_CreateFile :: fn (
-    lpFileName: WIN32_LPCSTR,
-    dwDesiredAccess: WIN32_DWORD,
-    dwShareMode: WIN32_DWORD,
-    lpSecurityAttributes: WIN32_LPSECURITY_ATTRIBUTES,
-    dwCreationDisposition: WIN32_DWORD,
-    dwFlagsAndAttributes: WIN32_DWORD,
-    hTemplateFile: WIN32_HANDLE
-) *u8 #extern "CreateFileA"; 
-
-win32_ReadDirectoryChanges :: fn (
-    hDirectory: WIN32_HANDLE,
-    lpBuffer: WIN32_LPVOID,
-    nBufferLength: WIN32_DWORD,
-    bWatchSubtree: WIN32_BOOL,
-    dwNotifyFilter: WIN32_DWORD,
-    lpBytesReturned: WIN32_LPDWORD,
-    lpOverlapped: WIN32_LPOVERLAPPED,
-    lpCompletionRoutine: WIN32_LPOVERLAPPED_COMPLETION_ROUTINE 
-) s32 #extern "ReadDirectoryChangesW";
-
-win32_WideCharToMultiByte :: fn (
-    CodePage: WIN32_UINT,
-    dwFlags: *WIN32_DWORD,
-    lpWideCharStr: *WIN32_LPCWCH,
-    cchWideChar: s32,
-    lpMultiByteStr: WIN32_LPSTR,
-    cbMultiByte: s32,
-    lpDefaultChar: *WIN32_LPCCH,
-    lpUsedDefaultChar: *WIN32_LPBOOL
-) s32 #extern "WideCharToMultiByte";
-
-win32_CreateEvent :: fn (
-  lpEventAttributes: WIN32_LPSECURITY_ATTRIBUTES,
-  bManualReset: WIN32_BOOL,
-  bInitialState: WIN32_BOOL,
-  lpName: WIN32_LPCSTR 
-) WIN32_HANDLE #extern "CreateEventW";
-
-win32_FindFirstChangeNotification :: fn (
-  lpPathName: WIN32_LPCSTR,
-  bWatchSubtree: WIN32_BOOL,
-  dwNotifyFilter: WIN32_DWORD
-) WIN32_HANDLE #extern "FindFirstChangeNotificationA";
-
-win32_FindNextChangeNotification :: fn (hChangeHandle: WIN32_HANDLE) WIN32_BOOL #extern "FindNextChangeNotification";
-win32_FindCloseChangeNotification :: fn (hChangeHandle: WIN32_HANDLE) WIN32_BOOL #extern "FindCloseChangeNotification";
-win32_WaitForSingleObject :: fn (hHandle: WIN32_HANDLE, dwMilliseconds: WIN32_DWORD) WIN32_DWORD #extern "WaitForSingleObject";
-win32_WaitForMultipleObjects :: fn (
-    nCount: WIN32_DWORD,
-    lpHandles: *WIN32_HANDLE,
-    bWaitAll: WIN32_BOOL,
-    dwMilliseconds: WIN32_DWORD        
-) WIN32_DWORD #extern "WaitForMultipleObjects";
 
 #private
 
@@ -304,22 +290,9 @@ CP_UTF8 : u32 : 65001;
 
 _write             :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
 _exit              :: fn (v: s32) #extern;
+system             :: fn (command: *c_char) c_int #extern;
 wcslen             :: fn (str: *u16) usize #extern;
 raise              :: fn (sig: s32) s32 #extern;
-
-// windows crap
-GetCommandLineW     :: fn () WIN32_LPWSTR #extern;
-CommandLineToArgvW  :: fn (lpCmdLine: WIN32_LPCWSTR, pNumArgs: *s32) *WIN32_LPWSTR #extern;
-LocalFree           :: fn (hMem: WIN32_HLOCAL) WIN32_HLOCAL #extern;
-Sleep               :: fn (dwMilliseconds: WIN32_DWORD) #extern;
-GetFullPathNameA    :: fn (lpFileName: WIN32_LPCSTR,
-                           nBufferLength: WIN32_DWORD,
-                           lpBuffer: WIN32_LPSTR,
-                           lpFilePart: *WIN32_LPSTR) WIN32_DWORD #extern;
-LoadLibraryA        :: fn (lpLibFileName: WIN32_LPCSTR) WIN32_HMODULE #extern;
-FreeLibrary         :: fn (hLibModule: WIN32_HMODULE) WIN32_BOOL #extern;
-GetModuleHandleA    :: fn (lpModuleName: WIN32_LPCSTR) WIN32_HMODULE #extern;
-GetProcAddress      :: fn (hModule: WIN32_HMODULE, lpProcName: WIN32_LPCSTR) WIN32_FARPROC #extern;
 
 /*
  * Get command-line arguments passed to this executable.
@@ -332,9 +305,9 @@ GetProcAddress      :: fn (hModule: WIN32_HMODULE, lpProcName: WIN32_LPCSTR) WIN
  */
 get_command_line_args :: fn (out_args: *[]string) #no_inline {
     wargs: []*u16;
-    cmd_line :: GetCommandLineW();
-    wargs.ptr = CommandLineToArgvW(cmd_line, auto &wargs.len);
-    defer LocalFree(auto wargs.ptr);
+    cmd_line :: win32_GetCommandLineW();
+    wargs.ptr = win32_CommandLineToArgvW(cmd_line, auto &wargs.len);
+    defer win32_LocalFree(auto wargs.ptr);
 
     // Determinate size needed for all argument strings listed in one array including
     // zero terminator for each one.
