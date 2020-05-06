@@ -6049,6 +6049,15 @@ analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 				return ANALYZE_RESULT(FAILED, 0);
 			}
 
+			if (member_type->kind == MIR_TYPE_TYPE) {
+				builder_msg(BUILDER_MSG_ERROR,
+				            ERR_INVALID_TYPE,
+				            decl_member->type->node->location,
+				            BUILDER_CUR_WORD,
+				            "Generic 'type' cannot be used as struct member type.");
+				return ANALYZE_RESULT(FAILED, 0);
+			}
+
 			/* setup and provide member */
 			MirMember *member = decl_member->member;
 			BL_ASSERT(member);
@@ -6125,6 +6134,15 @@ analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 	BL_ASSERT(mir_is_comptime(type_slice->elem_type) && "This should be an error");
 	MirType *elem_type = MIR_CEV_READ_AS(MirType *, &type_slice->elem_type->value);
 	BL_ASSERT(elem_type);
+
+	if (elem_type->kind == MIR_TYPE_TYPE) {
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_INVALID_TYPE,
+		            type_slice->elem_type->node->location,
+		            BUILDER_CUR_WORD,
+		            "Generic 'type' cannot be used as struct member type.");
+		return ANALYZE_RESULT(FAILED, 0);
+	}
 
 	elem_type = create_type_ptr(cnt, elem_type);
 
@@ -6225,6 +6243,15 @@ analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr)
 
 	MirType *elem_type = MIR_CEV_READ_AS(MirType *, &type_arr->elem_type->value);
 	BL_ASSERT(elem_type);
+
+	if (elem_type->kind == MIR_TYPE_TYPE) {
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_INVALID_TYPE,
+		            type_arr->elem_type->node->location,
+		            BUILDER_CUR_WORD,
+		            "Generic 'type' cannot be used as array element type.");
+		return ANALYZE_RESULT(FAILED, 0);
+	}
 
 	MIR_CEV_WRITE_AS(MirType *, &type_arr->base.value, create_type_array(cnt, elem_type, len));
 	return ANALYZE_RESULT(PASSED, 0);
