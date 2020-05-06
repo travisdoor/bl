@@ -36,6 +36,7 @@ do
 	echo '```c' >> $OUT_FILE
   	cat $f >> $OUT_FILE
 	echo '```' >> $OUT_FILE
+	cat $WDIR/_disqus.html >> $OUT_FILE
 done
 
 mkdir -p ${WDIR}/docs/Examples

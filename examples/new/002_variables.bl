@@ -19,6 +19,13 @@
    function will be.
 */
 
+// Global variable is visible in whole source. This variable is initialized
+// by constant literal '10' which is known in compile time.
+MyGlobal : s32 = 10;
+
+// Global immutable variable
+CannotChangeThis : f32 : 10.f;
+
 main :: fn () s32 {
     // Local variables are declared in local scope of main function or
     // any other function.

@@ -63,3 +63,36 @@ procedure :: fn (using foo: *Foo) {
     first = 10;
     second = 20;
 }
+
+
+
+
+
+
+/*
+   DYNAMIC ARRAY
+ */
+
+_Array :: struct #compiler {
+    len: s64;
+    ptr: *u8;
+    _T: *TypeInfo;
+    _allocated: s64;
+}
+
+arr: [..]s32;
+
+arr.len;
+arr.ptr;
+
+arr[0] = 10;
+num = arr[10];
+
+array_push :: fn (arr: *_Array, value: Any) {
+}
+
+array_prealloc :: fn (arr: *_Array, size: usize) {
+}
+
+
+

@@ -1,0 +1,88 @@
+// Arrays and slices
+
+/*
+   Array type is special composit type containing multiple values of the 
+   same base type. We must explicitly specify how many elements could 
+   an array contain. 
+
+   my_array: [5]s32;
+
+   You can use [N-1] operator to modify or read each array element but keep
+   in mind that we have only limited count of them specified in type
+   array type definition.
+
+   my_array[0] = 10;
+   my_array[1] = 20;
+
+   Our example array of size 5 have memory reserved for 5 elements. Indices
+   of those elements are counted from 0, so maximum posible index is 4. 
+   Compiler will internally allocate continuous memory block on stack with
+   propper size. So index 0 points to the very beginning of this memory
+   block, index 1 points to memory block of next element. 
+
+   You can get address of allocated memory block via '.ptr' array member
+   field and length of an array via '.len' field.
+
+   N = 5  
+   my_array.len -> yields 5 of s64 type
+   my_array.ptr -> yields address of element on 0 index of type *s32
+
+    1st 2nd 3rd 4th 5th
+   ---------------------
+   | 0 | 1 | 2 | 3 | 4 |
+   ---------------------
+     ^ .ptr          
+*/
+
+main :: fn () s32 {
+    // This is array variable as consist of 10 numbers of s32 type.
+    // In this case we do not initialize the array we only reserve
+    // memory enough to handle all values.
+    my_array: [10]s32;
+
+    // Use [n] to get or set array element value. Here we set the first
+    // (with index 0) to value 10.
+    my_array[0] = 10;
+
+    // Set the second element to 20.
+    my_array[1] = 20;
+
+    // You can use loop to iterate over all array elements one by one.
+    loop i := 0; i < my_array.len; i += 1 {
+        // Visit array element on index 'i' and set it's value to 'i'.
+        my_array[i] = i;
+    }
+
+    // Arrays can be printed directly by print function like this:
+    print("my_array is %\n", my_array);
+
+
+
+    // Arrays could be initialized in same way like other variables even in 
+    // declaration by compound initializer. We can let compiler inver variable 
+    // type here like we did with other variables in previous example.
+    another_array := {:[4]s32: 1, 2, 3, 4};
+
+    print("another_array is %\n", another_array);
+
+
+
+    // Use sizeof operator to determinate size of any type or variable used.
+    // In this case sizeof(another_array) returns size of allocated memory
+    // block to handle all integers.
+
+    // Get size from value.
+    s1 :: sizeof(another_array);
+    print("sizeof(another_array) is %B\n", s1);
+
+    // Get size from type.
+    s2 :: sizeof([4]s32);
+    print("sizeof([4]s32) is %B\n", s2);
+
+    // sizeof is very useful operator especially in cases we want to know
+    // how much space we need to allocate for value of desired type, but 
+    // there are more use cases of this.
+
+
+    return 0;
+}
