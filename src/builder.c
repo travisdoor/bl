@@ -43,18 +43,6 @@
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
 
-#ifdef BL_PLATFORM_WIN
-#define RED FOREGROUND_RED
-#define BLUE FOREGROUND_BLUE
-#define YELLOW (14 % 0x0F)
-#define NO_COLOR 0
-#else
-#define RED 1
-#define BLUE 2 
-#define YELLOW 3
-#define NO_COLOR -1
-#endif
-
 
 Builder builder;
 
@@ -70,45 +58,6 @@ static void
 str_cache_dtor(TString *str)
 {
 	tstring_terminate(str);
-}
-
-static void
-color_print(FILE *stream, s32 color, const char *text)
-{
-	if (builder.options.no_color) color = NO_COLOR;
-
-#ifdef BL_PLATFORM_WIN
-	if (color != NO_COLOR) {
-		HANDLE handle = stream == stderr ? GetStdHandle(STD_ERROR_HANDLE) : GetStdHandle(STD_OUTPUT_HANDLE);
-		CONSOLE_SCREEN_BUFFER_INFO console_info;
-		GetConsoleScreenBufferInfo(handle, &console_info);
-		WORD saved_attributes = console_info.wAttributes;
-
-		SetConsoleTextAttribute(handle, color);
-		fprintf(stream, "%s\n", text);
-		SetConsoleTextAttribute(handle, saved_attributes);
-	} else {
-		fprintf(stream, "%s\n", text);
-	}
-#else
-	char *c;
-	switch (color) {
-	case YELLOW:
-		c = "\x1b[33m";
-		break;
-	case RED:
-		c = "\x1b[31m";
-		break;
-	case BLUE:
-		c = "\x1b[34m";
-		break;
-
-	default:
-		c = "\x1b[0m";
-	}
-
-	fprintf(stream, "%s%s\x1b[0m\n", c, text);
-#endif
 }
 
 static void
@@ -520,20 +469,20 @@ builder_msg(BuilderMsgType type,
 	switch (type) {
 	case BUILDER_MSG_ERROR: {
 		builder.errorc++;
-		color_print(stderr, RED, tmp.data);
+		color_print(stderr, BL_RED, tmp.data);
 		break;
 	}
 	case BUILDER_MSG_WARNING: {
-		color_print(stdout, YELLOW, tmp.data);
+		color_print(stdout, BL_YELLOW, tmp.data);
 		break;
 	}
 	case BUILDER_MSG_NOTE: {
-		color_print(stdout, BLUE, tmp.data);
+		color_print(stdout, BL_BLUE, tmp.data);
 		break;
 	}
 
 	default: {
-		color_print(stdout, NO_COLOR, tmp.data);
+		color_print(stdout, BL_NO_COLOR, tmp.data);
 	}
 	}
 

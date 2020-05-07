@@ -54,6 +54,7 @@ struct Assembly;
 #define BL_DEPRECATED
 #endif
 
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #define IS_FLAG(_v, _flag) ((bool)((_v & _flag) == _flag))
 #define IS_NOT_FLAG(_v, _flag) ((bool)((_v & _flag) != _flag))
 
@@ -61,6 +62,12 @@ struct Assembly;
 	for (usize _keep = 1, i = 0, _size = ARRAY_SIZE((arr)); _keep && i != _size;               \
 	     _keep = !_keep, i++)                                                                  \
 		for (it = (arr)[i]; _keep; _keep = !_keep)
+
+#define BL_RED 1
+#define BL_BLUE 2
+#define BL_YELLOW 3
+#define BL_GREEN 4
+#define BL_NO_COLOR -1
 
 extern u64 main_thread_id;
 
@@ -153,6 +160,9 @@ _create_sarr(struct Assembly *cnt, usize arr_size);
 
 u32
 next_pow_2(u32 n);
+
+void
+color_print(FILE *stream, s32 color, const char *text);
 
 #define create_sarr(T, Asm) ((T *)_create_sarr((Asm), sizeof(T)))
 

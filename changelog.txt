@@ -1,3 +1,7 @@
+0.7.0 - BETA
+---------------------------------------------------------------------------------------
+Add default variable initialization.
+
 0.6.0 - BETA
 ---------------------------------------------------------------------------------------
 Add implicit cast from array to slice. (Fixed compile time vs constant IR code emit).
