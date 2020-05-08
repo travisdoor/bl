@@ -3,8 +3,7 @@
 #load "std/debug.bl"
 
 main :: fn () s32 {
-    i: s32;
-
+    i: s32 #noinit;
     print("%\n", i);
 
     arr: [20]s32;
@@ -16,18 +15,6 @@ main :: fn () s32 {
     loop i: s32; i < 10; i += 1 {
         print("%\n", i);
     }
-
-    assert(UG1 == 0);
-    //assert(UG2.i == 0);
-    //assert(UG2.j == 0);
-    //assert(UG3.len == 0);
-    //assert(UG3.ptr == null);
-    assert(UG4[0] == 0);
-    assert(UG4[1] == 0);
-
-    enm: Enm;
-    assert(enm == Enm.A);
-    print("%\n", enm);
 
     return 0;
 }
@@ -42,15 +29,3 @@ Bar :: struct {
     i: s32;
     j: s32;
 }
-
-Enm :: enum {
-    A :: 999;
-    B;
-    C;
-}
-
-UG1: s32;
-//UG2: Bar;
-//UG3: []s32;
-UG4: [2]s32;
-UG5: [2]s32 = {:[2]s32: 0};

@@ -57,6 +57,8 @@ c_size_t    :: u64;
  * Maximum path size in bytes.
  */
 OS_PATH_MAX :: DARWIN_MAXPATHLEN;
+OS_PATH_DELIMITER_C :: '/';
+OS_PATH_DELIMITER_STR :: "/";
 
 /*
  * OSLibrary
@@ -97,7 +99,7 @@ os_get_real_path :: fn (filename: string) string {
 }
 
 os_get_exec_path :: fn () string {
-    buf : [DARWIN_MAXPATHLEN]u8;
+    buf : [DARWIN_MAXPATHLEN]u8 #noinit;
     buf_len := cast(u32) buf.len;
     if macOS_NSGetExecutablePath(auto buf.ptr, &buf_len) == -1 { return string_new(); }
 
@@ -237,7 +239,7 @@ __MAX_ARGS_WITHOUT_ALLOC :: 8;
 
 __os_start :: fn (argc: s64, argv: **u8, env: **u8) #entry {
     args :: {:[]*u8: argc, argv};
-    tmp: [__MAX_ARGS_WITHOUT_ALLOC]string;
+    tmp: [__MAX_ARGS_WITHOUT_ALLOC]string #noinit;
     is_allocated :: args.len > tmp.len;
 
     command_line_arguments.len = args.len;

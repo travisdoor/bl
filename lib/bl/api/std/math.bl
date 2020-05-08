@@ -532,7 +532,7 @@ mat4_mul :: fn (a: *mat4, b: *mat4, out_mat: *mat4) {
 };
 
 mat4_inverse :: fn (src_mat: *mat4, out_mat: *mat4) #inline {
-    t: [6]f32;
+    t: [6]f32 #noinit;
     det: f32;
     a :: (^src_mat)[0][0]; b :: (^src_mat)[0][1]; c :: (^src_mat)[0][2]; d :: (^src_mat)[0][3];
     e :: (^src_mat)[1][0]; f :: (^src_mat)[1][1]; g :: (^src_mat)[1][2]; h :: (^src_mat)[1][3];

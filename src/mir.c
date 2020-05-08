@@ -3959,8 +3959,7 @@ append_instr_decl_var(Context * cnt,
 	tmp->type            = type;
 	tmp->init            = init;
 
-	const bool is_in_gscope = scope->kind == SCOPE_GLOBAL || scope->kind == SCOPE_PRIVATE;
-
+	const bool is_in_gscope = scope_is_global(scope);
 	tmp->var = create_var(cnt, node, scope, id, NULL, is_mutable, is_in_gscope, flags);
 
 	if (is_in_gscope) {
@@ -6775,7 +6774,7 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
 		/* Immutable and comptime initializer value. */
 		is_decl_comptime &= decl->init->value.is_comptime;
-	} else {
+	} else if (IS_NOT_FLAG(var->flags, FLAG_NO_INIT)) {
 		/* Create default initilializer for locals without explicit initialization. */
 		MirType * type         = var->value.type;
 		MirInstr *default_init = create_default_value_for_type(cnt, type, false);
