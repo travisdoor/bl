@@ -1,0 +1,79 @@
+#load "std/debug.bl"
+
+#test "fundamental type default init" {
+    _1: s8;
+    _2: s16;
+    _3: s32;
+    _4: s64;
+    _5: u8;
+    _6: u16;
+    _7: u32;
+    _8: u64;
+    _9: bool;
+    _10: usize;
+    _11: f32;
+    _12: f64;
+    _13: string;
+
+    assert(_1 == 0);
+    assert(_2 == 0);
+    assert(_3 == 0);
+    assert(_4 == 0);
+    assert(_5 == 0);
+    assert(_6 == 0);
+    assert(_7 == 0);
+    assert(_8 == 0);
+    assert(_9 == false);
+    assert(_10 == 0);
+    assert(_11 == 0.f);
+    assert(_12 == 0.);
+    assert(_13.len == 0);
+    assert(_13.ptr == null);
+}
+
+#test "struct type default init" {
+    Foo :: struct {
+        i: s32;
+        j: s32;
+    };
+
+    foo: Foo;
+    assert(foo.i == 0);
+    assert(foo.j == 0);
+}
+
+#test "array type default init" {
+    arr: [100]s32;
+
+    loop i := 0; i < arr.len; i += 1 {
+        assert(arr[i] == 0);
+    }
+}
+
+#test "slice type default init" {
+    arr: []s32;
+    assert(arr.len == 0);
+    assert(arr.ptr == null);
+}
+
+#test "union type default init" {
+    Foo :: union {
+        i: s32;
+        j: s32;
+    };
+
+    foo: Foo;
+    assert(foo.i == 0);
+    assert(foo.j == 0);
+}
+
+#test "enum type default init" {
+    Bar :: enum {
+        A :: 1;
+        B;
+        C;
+    };
+
+    bar: Bar;
+    assert(bar == Bar.A);
+}

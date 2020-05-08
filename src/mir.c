@@ -70,6 +70,8 @@
 	ast_create_impl_fn_call(                                                                   \
 	    cnt, (_ast), RESOLVE_TYPE_FN_NAME, cnt->builtin_types->t_resolve_type_fn, false)
 
+#define TEXT_LINE "--------------------------------------------------------------------------------"
+
 #define GEN_INSTR_SIZEOF
 #include "mir.inc"
 #undef GEN_INSTR_SIZEOF
@@ -421,6 +423,9 @@ static MirInstr *
 append_instr_set_initializer(Context *cnt, Ast *node, MirInstr *dest, MirInstr *src);
 
 static MirInstr *
+append_instr_set_initializer_impl(Context *cnt, MirInstr *dest, MirInstr *src);
+
+static MirInstr *
 append_instr_phi(Context *cnt, Ast *node);
 
 static MirInstr *
@@ -434,6 +439,9 @@ create_instr_compound(Context *cnt, Ast *node, MirInstr *type, TSmallArray_Instr
 
 static MirInstr *
 create_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values);
+
+static MirInstr *
+create_default_value_for_type(Context *cnt, MirType *type, bool is_global);
 
 static MirInstr *
 append_instr_cast(Context *cnt, Ast *node, MirInstr *type, MirInstr *next);
@@ -597,12 +605,21 @@ static MirInstr *
 create_instr_const_ptr(Context *cnt, Ast *node, MirType *type, VMStackPtr ptr);
 
 static MirInstr *
+create_instr_const_float(Context *cnt, Ast *node, float val);
+
+static MirInstr *
+create_instr_const_double(Context *cnt, Ast *node, double val);
+
+static MirInstr *
+create_instr_const_bool(Context *cnt, Ast *node, bool val);
+
+static inline MirInstr *
 append_instr_const_float(Context *cnt, Ast *node, float val);
 
-static MirInstr *
+static inline MirInstr *
 append_instr_const_double(Context *cnt, Ast *node, double val);
 
-static MirInstr *
+static inline MirInstr *
 append_instr_const_bool(Context *cnt, Ast *node, bool val);
 
 static MirInstr *
@@ -1484,18 +1501,22 @@ provide_builtin_member(Context *cnt, Scope *scope, MirMember *member)
 	entry->data.member = member;
 }
 
-static inline void
+static inline MirInstr *
 unref_instr(MirInstr *instr)
 {
-	if (!instr || instr->ref_count == NO_REF_COUNTING) return;
+	if (!instr) return NULL;
+	if (instr->ref_count == NO_REF_COUNTING) return instr;
 	--instr->ref_count;
+	return instr;
 }
 
-static inline void
+static inline MirInstr *
 ref_instr(MirInstr *instr)
 {
-	if (!instr || instr->ref_count == NO_REF_COUNTING) return;
+	if (!instr) return NULL;
+	if (instr->ref_count == NO_REF_COUNTING) return instr;
 	++instr->ref_count;
+	return instr;
 }
 
 static inline void
@@ -3092,22 +3113,21 @@ append_current_block(Context *cnt, MirInstr *instr)
 MirInstr *
 insert_instr_cast(Context *cnt, MirInstr *src, MirType *to_type)
 {
-	MirInstrCast *tmp    = create_instr(cnt, MIR_INSTR_CAST, src->node);
-	tmp->base.value.type = to_type;
-	tmp->base.implicit   = true;
-	tmp->expr            = src;
+	MirInstrCast *tmp     = create_instr(cnt, MIR_INSTR_CAST, src->node);
+	tmp->base.value.type  = to_type;
+	tmp->base.is_implicit = true;
+	tmp->expr             = src;
 	ref_instr(&tmp->base);
 
 	insert_instr_after(src, &tmp->base);
-	// analyze_instr_rq(cnt, &tmp->base);
 	return &tmp->base;
 }
 
 MirInstr *
 insert_instr_addrof(Context *cnt, MirInstr *src)
 {
-	MirInstr *tmp = create_instr_addrof(cnt, src->node, src);
-	tmp->implicit = true;
+	MirInstr *tmp    = create_instr_addrof(cnt, src->node, src);
+	tmp->is_implicit = true;
 
 	insert_instr_after(src, tmp);
 	return tmp;
@@ -3119,10 +3139,10 @@ insert_instr_toany(Context *cnt, MirInstr *expr)
 	BL_ASSERT(cnt->builtin_types->is_any_ready &&
 	          "All 'Any' related types must be ready before this!");
 
-	MirInstrToAny *tmp   = create_instr(cnt, MIR_INSTR_TOANY, expr->node);
-	tmp->base.value.type = cnt->builtin_types->t_Any_ptr;
-	tmp->base.implicit   = true;
-	tmp->expr            = expr;
+	MirInstrToAny *tmp    = create_instr(cnt, MIR_INSTR_TOANY, expr->node);
+	tmp->base.value.type  = cnt->builtin_types->t_Any_ptr;
+	tmp->base.is_implicit = true;
+	tmp->expr             = expr;
 	ref_instr(&tmp->base);
 
 	insert_instr_after(expr, &tmp->base);
@@ -3135,9 +3155,9 @@ insert_instr_load(Context *cnt, MirInstr *src)
 	BL_ASSERT(src);
 	BL_ASSERT(src->value.type);
 	BL_ASSERT(src->value.type->kind == MIR_TYPE_PTR);
-	MirInstrLoad *tmp  = create_instr(cnt, MIR_INSTR_LOAD, src->node);
-	tmp->base.implicit = true;
-	tmp->src           = src;
+	MirInstrLoad *tmp     = create_instr(cnt, MIR_INSTR_LOAD, src->node);
+	tmp->base.is_implicit = true;
+	tmp->src              = src;
 
 	ref_instr(&tmp->base);
 	insert_instr_after(src, &tmp->base);
@@ -3339,6 +3359,14 @@ append_instr_set_initializer(Context *cnt, Ast *node, MirInstr *dest, MirInstr *
 }
 
 MirInstr *
+append_instr_set_initializer_impl(Context *cnt, MirInstr *dest, MirInstr *src)
+{
+	MirInstr *tmp    = append_instr_set_initializer(cnt, NULL, dest, src);
+	tmp->is_implicit = true;
+	return tmp;
+}
+
+MirInstr *
 append_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, TSmallArray_InstrPtr *args)
 {
 	MirInstrTypeFn *tmp         = create_instr(cnt, MIR_INSTR_TYPE_FN, node);
@@ -3527,9 +3555,9 @@ create_instr_compound(Context *cnt, Ast *node, MirInstr *type, TSmallArray_Instr
 MirInstr *
 append_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values)
 {
-	MirInstr *tmp   = append_instr_compound(cnt, node, NULL, values);
-	tmp->value.type = type;
-	tmp->implicit   = true;
+	MirInstr *tmp    = append_instr_compound(cnt, node, NULL, values);
+	tmp->value.type  = type;
+	tmp->is_implicit = true;
 
 	return tmp;
 }
@@ -3537,11 +3565,67 @@ append_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_I
 MirInstr *
 create_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values)
 {
-	MirInstr *tmp   = create_instr_compound(cnt, node, NULL, values);
-	tmp->value.type = type;
-	tmp->implicit   = true;
+	MirInstr *tmp    = create_instr_compound(cnt, node, NULL, values);
+	tmp->value.type  = type;
+	tmp->is_implicit = true;
 
 	return tmp;
+}
+
+MirInstr *
+create_default_value_for_type(Context *cnt, MirType *type, bool is_global)
+{
+	/* Default initializer is only zero initialized compound expression known in compile time,
+	 * this is universal for every type. */
+	BL_ASSERT(type && "Missing type for default zero initializer!");
+
+	MirInstr *default_value = NULL;
+
+	switch (type->kind) {
+	case MIR_TYPE_ENUM: {
+		/* Use first enum variant as default. */
+		MirType *   base_type = type->data.enm.base_type;
+		MirVariant *variant   = type->data.enm.variants->data[0];
+		const u64   v         = MIR_CEV_READ_AS(u64, variant->value);
+		default_value         = create_instr_const_int(cnt, NULL, base_type, v);
+		break;
+	}
+
+	case MIR_TYPE_INT: {
+		default_value = create_instr_const_int(cnt, NULL, type, 0);
+		break;
+	}
+
+	case MIR_TYPE_REAL: {
+		if (type->data.real.bitcount == 32) {
+			default_value = create_instr_const_float(cnt, NULL, 0);
+		} else {
+			default_value = create_instr_const_double(cnt, NULL, 0);
+		}
+		break;
+	}
+
+	case MIR_TYPE_BOOL: {
+		default_value = create_instr_const_bool(cnt, NULL, false);
+		break;
+	}
+
+	default: {
+		/* Use zero initialized compound. */
+		MirInstrCompound *compound =
+		    (MirInstrCompound *)create_instr_compound_impl(cnt, NULL, type, NULL);
+		/* Global initializers should be naked for some reason and I don't remember why,
+		 * somebody should double check this in future. */
+		compound->is_naked               = is_global;
+		compound->is_zero_initialized    = true;
+		compound->base.value.is_comptime = true;
+		default_value                    = &compound->base;
+		break;
+	}
+	}
+
+	BL_ASSERT(default_value && "Invalid default value!");
+	return ref_instr(default_value);
 }
 
 MirInstr *
@@ -3875,8 +3959,7 @@ append_instr_decl_var(Context * cnt,
 	tmp->type            = type;
 	tmp->init            = init;
 
-	const bool is_in_gscope = scope->kind == SCOPE_GLOBAL || scope->kind == SCOPE_PRIVATE;
-
+	const bool is_in_gscope = scope_is_global(scope);
 	tmp->var = create_var(cnt, node, scope, id, NULL, is_mutable, is_in_gscope, flags);
 
 	if (is_in_gscope) {
@@ -4028,7 +4111,7 @@ append_instr_const_int(Context *cnt, Ast *node, MirType *type, u64 val)
 }
 
 MirInstr *
-append_instr_const_float(Context *cnt, Ast *node, float val)
+create_instr_const_float(Context *cnt, Ast *node, float val)
 {
 	MirInstr *tmp          = create_instr(cnt, MIR_INSTR_CONST, node);
 	tmp->value.is_comptime = true;
@@ -4036,12 +4119,19 @@ append_instr_const_float(Context *cnt, Ast *node, float val)
 	tmp->value.addr_mode   = MIR_VAM_RVALUE;
 	MIR_CEV_WRITE_AS(float, &tmp->value, val);
 
+	return tmp;
+}
+
+MirInstr *
+append_instr_const_float(Context *cnt, Ast *node, float val)
+{
+	MirInstr *tmp = create_instr_const_float(cnt, node, val);
 	append_current_block(cnt, tmp);
 	return tmp;
 }
 
 MirInstr *
-append_instr_const_double(Context *cnt, Ast *node, double val)
+create_instr_const_double(Context *cnt, Ast *node, double val)
 {
 	MirInstr *tmp          = create_instr(cnt, MIR_INSTR_CONST, node);
 	tmp->value.is_comptime = true;
@@ -4049,12 +4139,19 @@ append_instr_const_double(Context *cnt, Ast *node, double val)
 	tmp->value.addr_mode   = MIR_VAM_RVALUE;
 	MIR_CEV_WRITE_AS(double, &tmp->value, val);
 
+	return tmp;
+}
+
+MirInstr *
+append_instr_const_double(Context *cnt, Ast *node, double val)
+{
+	MirInstr *tmp = create_instr_const_double(cnt, node, val);
 	append_current_block(cnt, tmp);
 	return tmp;
 }
 
 MirInstr *
-append_instr_const_bool(Context *cnt, Ast *node, bool val)
+create_instr_const_bool(Context *cnt, Ast *node, bool val)
 {
 	MirInstr *tmp          = create_instr(cnt, MIR_INSTR_CONST, node);
 	tmp->value.type        = cnt->builtin_types->t_bool;
@@ -4062,6 +4159,13 @@ append_instr_const_bool(Context *cnt, Ast *node, bool val)
 	tmp->value.is_comptime = true;
 	MIR_CEV_WRITE_AS(bool, &tmp->value, val);
 
+	return tmp;
+}
+
+MirInstr *
+append_instr_const_bool(Context *cnt, Ast *node, bool val)
+{
+	MirInstr *tmp = create_instr_const_bool(cnt, node, val);
 	append_current_block(cnt, tmp);
 	return tmp;
 }
@@ -4616,9 +4720,18 @@ analyze_instr_phi(Context *cnt, MirInstrPhi *phi)
 AnalyzeResult
 analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 {
-	/* Setup compound type. */
 	MirType *             type   = cmp->base.value.type;
 	TSmallArray_InstrPtr *values = cmp->values;
+
+	if (cmp->base.is_implicit) {
+		BL_ASSERT(type && "Missig type for implicit compound!");
+		BL_ASSERT((cmp->is_zero_initialized || values->size) &&
+		          "Missig type for implicit compound!");
+
+		goto SKIP_IMPLICIT;
+	}
+
+	/* Setup compound type. */
 	if (!type) {
 		/* generate load instruction if needed */
 		BL_ASSERT(cmp->type->analyzed);
@@ -4771,6 +4884,7 @@ analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 	}
 	}
 
+SKIP_IMPLICIT:
 	if (!mir_is_global(&cmp->base) && cmp->is_naked) {
 		/* For naked non-compile time compounds we need to generate implicit temp storage to
 		 * keep all data. */
@@ -4837,8 +4951,6 @@ AnalyzeResult
 analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
 {
 	BL_ASSERT(si->dest && si->dest->kind == MIR_INSTR_DECL_VAR);
-	BL_ASSERT(si->src);
-
 	if (!si->dest->analyzed) return ANALYZE_RESULT(POSTPONE, 0); // PERFORMANCE: use wait???
 
 	MirVar *var = ((MirInstrDeclVar *)si->dest)->var;
@@ -4846,12 +4958,37 @@ analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
 	BL_ASSERT((var->is_global || var->is_struct_typedef) &&
 	          "Only globals can be initialized by initializer!");
 
-	const AnalyzeSlotConfig *config =
-	    var->value.type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
+	/* When there is no source initialization value to set global we can omit type infering and
+	 * initialization value slot analyze pass. */
+	const bool is_default = !si->src;
+	if (!is_default) {
+		const AnalyzeSlotConfig *config =
+		    var->value.type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
 
-	if (analyze_slot(cnt, config, &si->src, var->value.type) != ANALYZE_PASSED) {
-		return ANALYZE_RESULT(FAILED, 0);
+		if (analyze_slot(cnt, config, &si->src, var->value.type) != ANALYZE_PASSED) {
+			return ANALYZE_RESULT(FAILED, 0);
+		}
+
+		/* Infer variable type if needed. */
+		if (!var->value.type) var->value.type = si->src->value.type;
+	} else {
+		/* Generate default value based on type! */
+		MirType *type = var->value.type;
+		BL_ASSERT(type &&
+		          "Missing variable initializer type for default global initializer!");
+
+		MirInstr *default_init = create_default_value_for_type(cnt, type, true);
+
+		insert_instr_before(&si->base, default_init);
+		ANALYZE_INSTR_RQ(default_init);
+		si->src = default_init;
 	}
+
+	BL_ASSERT(var->value.type &&
+	          "Missing variable initializer type for default global initializer!");
+	BL_ASSERT(var->value.type->kind != MIR_TYPE_VOID && "Global value cannot be void!");
+
+	BL_ASSERT(si->src && "Invalid global initializer source value.");
 
 	/* Global initializer must be compile time known. */
 	if (!si->src->value.is_comptime) {
@@ -4862,9 +4999,6 @@ analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
 		            "Global variables must be initialized with compile time known value.");
 		return ANALYZE_RESULT(FAILED, 0);
 	}
-
-	/* Infer variable type if needed. */
-	if (!var->value.type) var->value.type = si->src->value.type;
 
 	/* Initializer value is quaranteed to be comptime so we just check variable mutablility.
 	 * (mutable valirables cannot be comptime) */
@@ -5261,7 +5395,7 @@ analyze_instr_cast(Context *cnt, MirInstrCast *cast, bool analyze_op_only)
 		}
 
 		const AnalyzeSlotConfig *config =
-		    cast->base.implicit ? &analyze_slot_conf_dummy : &analyze_slot_conf_basic;
+		    cast->base.is_implicit ? &analyze_slot_conf_dummy : &analyze_slot_conf_basic;
 
 		if (analyze_slot(cnt, config, &cast->expr, dest_type) != ANALYZE_PASSED) {
 			return ANALYZE_RESULT(FAILED, 0);
@@ -6267,7 +6401,7 @@ analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 	BL_ASSERT(variant_instrs->size);
 
 	/*
-	 * Validate and settup enum base type.
+	 * Validate and setup enum base type.
 	 */
 	MirType *base_type;
 	if (type_enum->base_type) {
@@ -6590,17 +6724,18 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	 * we know actual initialization value. */
 	bool is_decl_comptime = !var->is_mutable;
 
+	/* Resolve declaration type if not set implicitly to the target variable by compiler. */
 	if (decl->type && !var->value.type) {
 		AnalyzeResult result = analyze_resolve_type(cnt, decl->type, &var->value.type);
 		if (result.state != ANALYZE_PASSED) return result;
 	}
 
 	if (var->is_global && !var->is_struct_typedef) {
-		/* Unexported globals as unique linkage name to solve potential conflicts
+		/* Unexported globals have unique linkage name to solve potential conflicts
 		 * with extern symbols. */
 		var->linkage_name = gen_uq_name(var->linkage_name);
 
-		/* Globals are set by initializer so we can skip all check, rest of the work
+		/* Globals are set by initializer so we can skip all checks, rest of the work
 		 * is up to set initializer instruction! There is one exceptional case: we
 		 * use init value as temporary value for incomplete structure declarations
 		 * (struct can use pointer to self type inside it's body). This value is
@@ -6608,7 +6743,9 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		return ANALYZE_RESULT(PASSED, 0);
 	}
 
-	if (decl->init) {
+	/* Continue only with local variables and struct typedefs. */
+	bool has_initializer = decl->init;
+	if (has_initializer) {
 		if (decl->init->kind == MIR_INSTR_COMPOUND) {
 			((MirInstrCompound *)decl->init)->is_naked = false;
 		}
@@ -6637,6 +6774,14 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
 		/* Immutable and comptime initializer value. */
 		is_decl_comptime &= decl->init->value.is_comptime;
+	} else if (IS_NOT_FLAG(var->flags, FLAG_NO_INIT)) {
+		/* Create default initilializer for locals without explicit initialization. */
+		MirType * type         = var->value.type;
+		MirInstr *default_init = create_default_value_for_type(cnt, type, false);
+
+		insert_instr_before(&decl->base, default_init);
+		ANALYZE_INSTR_RQ(default_init);
+		decl->init = default_init;
 	}
 
 	decl->base.value.is_comptime = var->value.is_comptime = is_decl_comptime;
@@ -7288,7 +7433,6 @@ analyze(Context *cnt)
 	/******************************************************************************************/
 #if BL_DEBUG && VERBOSE_ANALYZE
 #define LOG_ANALYZE_PASSED printf("Analyze: [ " PASSED " ] %16s\n", mir_instr_name(ip));
-
 #define LOG_ANALYZE_FAILED printf("Analyze: [ " FAILED " ] %16s\n", mir_instr_name(ip));
 
 #define LOG_ANALYZE_POSTPONE                                                                       \
@@ -8870,11 +9014,9 @@ ast_decl_entity(Context *cnt, Ast *entity)
 				/* Generate implicit global initializer block. */
 				ast_create_global_initializer(cnt, ast_value, decl_var);
 			} else {
-				builder_msg(BUILDER_MSG_ERROR,
-				            ERR_UNINITIALIZED,
-				            ast_name->location,
-				            BUILDER_CUR_WORD,
-				            "All globals must be initialized.");
+				/* Global has no eplicit initialization in code so we must create
+				 * default global initializer. */
+				ast_create_global_initializer(cnt, NULL, decl_var);
 			}
 		}
 
@@ -9185,15 +9327,18 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 }
 
 MirInstr *
-ast_create_global_initializer(Context *cnt, Ast *node, MirInstr *decl_var)
+ast_create_global_initializer(Context *cnt, Ast *ast_value, MirInstr *decl_var)
 {
 	BL_ASSERT(decl_var);
 	MirInstrBlock *prev_block = get_current_block(cnt);
 	MirInstrBlock *block      = append_global_block(cnt, INIT_VALUE_FN_NAME);
 	set_current_block(cnt, block);
-	MirInstr *result = ast(cnt, node);
+	MirInstr *result = ast(cnt, ast_value);
 
-	result = append_instr_set_initializer(cnt, node, decl_var, result);
+	if (ast_value)
+		result = append_instr_set_initializer(cnt, ast_value, decl_var, result);
+	else
+		result = append_instr_set_initializer_impl(cnt, decl_var, result);
 
 	set_current_block(cnt, prev_block);
 	return result;
@@ -9662,24 +9807,42 @@ execute_test_cases(Context *cnt)
 	const usize c      = cnt->test_cases.size;
 	s32         failed = 0;
 	MirFn *     test_fn;
-	s32         line;
 	const char *file;
+	Unit *      last_unit     = NULL;
+	bool        first_in_file = true;
+	s8          buffer[80];
 
 	TARRAY_FOREACH(MirFn *, &cnt->test_cases, test_fn)
 	{
 		BL_ASSERT(IS_FLAG(test_fn->flags, FLAG_TEST));
 		const bool passed = vm_execute_fn(cnt->vm, cnt->assembly, test_fn, NULL);
 
-		line = test_fn->decl_node ? test_fn->decl_node->location->line : -1;
-		file = test_fn->decl_node ? test_fn->decl_node->location->unit->filepath : "?";
+		if (test_fn->decl_node) {
+			Location *loc = test_fn->decl_node->location;
+			file          = loc->unit->filepath;
 
-		builder_log("[ %s ] (%llu/%llu) %s:%d '%s'",
-		            passed ? "PASSED" : "FAILED",
-		            (unsigned long long)i + 1,
-		            (unsigned long long)c,
-		            file,
-		            line,
-		            test_fn->test_case_desc);
+			if (last_unit != loc->unit) {
+				first_in_file = true;
+				last_unit     = loc->unit;
+			}
+		} else {
+			file = "?";
+		}
+
+		if (first_in_file) {
+			const s32 len = snprintf(buffer, ARRAY_SIZE(buffer), "\nFile: %s", file);
+			color_print(stdout, BL_YELLOW, buffer);
+			first_in_file = false;
+		}
+
+		const s32 len =
+		    snprintf(buffer, ARRAY_SIZE(buffer) - 10, "    %s", test_fn->test_case_desc);
+		printf("%s%*c", buffer, 70 - len, ' ');
+
+		if (passed)
+			color_print(stdout, BL_GREEN, "[ PASSED ]");
+		else
+			color_print(stdout, BL_RED, "[ FAILED ]");
 
 		if (!passed) ++failed;
 	}
@@ -9687,19 +9850,15 @@ execute_test_cases(Context *cnt)
 	{
 		s32 perc = c > 0 ? (s32)((f32)(c - failed) / (c * 0.01f)) : 100;
 
-		builder_log("------------------------------------------------------------------"
-		            "--------"
-		            "------");
-		if (perc == 100) {
-			builder_log(
-			    "Testing done, %d of %zu failed. Completed: %d%%", failed, c, perc);
-		} else {
-			builder_log(
-			    "Testing done, %d of %zu failed. Completed: %d%%", failed, c, perc);
-		}
-		builder_log("------------------------------------------------------------------"
-		            "--------"
-		            "------");
+		color_print(stdout, BL_YELLOW, TEXT_LINE);
+		snprintf(buffer,
+		         ARRAY_SIZE(buffer),
+		         "Testing done, %d of %zu failed. Completed: %d%%",
+		         failed,
+		         c,
+		         perc);
+		color_print(stdout, BL_YELLOW, buffer);
+		color_print(stdout, BL_YELLOW, TEXT_LINE);
 	}
 }
 

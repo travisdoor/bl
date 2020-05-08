@@ -52,6 +52,7 @@ typedef enum {
 	FLAG_NO_INLINE   = 1 << 5, /* no inline function */
 	FLAG_ENTRY       = 1 << 6, /* marking entry point function */
 	FLAG_BUILD_ENTRY = 1 << 7, /* marking build entry point function */
+	FLAG_NO_INIT     = 1 << 8, /* no default initialization */
 } AstFlag;
 
 /* map symbols to binary operation kind */

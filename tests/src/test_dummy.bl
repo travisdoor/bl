@@ -23,6 +23,7 @@
 #load "test_constant_composition.bl"
 #load "test_union.bl"
 #load "test_arrtoslice.bl"
+#load "test_local_variables.bl"
 
 main :: fn () s32 {
     return 0;

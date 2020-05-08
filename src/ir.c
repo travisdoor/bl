@@ -65,7 +65,8 @@ typedef struct {
 	LLVMDIBuilderRef  llvm_di_builder;
 
 	/* Constants */
-	LLVMValueRef llvm_const_i64;
+	LLVMValueRef llvm_const_i64_zero;
+	LLVMValueRef llvm_const_i8_zero;
 
 	THashTable                 gstring_cache;
 	TSmallArray_RTTIIncomplete incomplete_rtti;
@@ -73,6 +74,9 @@ typedef struct {
 
 	struct BuiltinTypes *builtin_types;
 	bool                 debug_mode;
+
+	// intrinsics
+	LLVMValueRef intrinsic_memset;
 } Context;
 
 static LLVMValueRef
@@ -1406,7 +1410,7 @@ emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 	switch (arr_type->kind) {
 	case MIR_TYPE_ARRAY: {
 		LLVMValueRef llvm_indices[2];
-		llvm_indices[0] = cnt->llvm_const_i64;
+		llvm_indices[0] = cnt->llvm_const_i64_zero;
 		llvm_indices[1] = llvm_index;
 
 		if (is_global) {
@@ -1613,8 +1617,38 @@ emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp)
 	/* Fist of all we are going to check zero initialized compounds since there is no additional
 	 * work needed. */
 	if (cmp->is_zero_initialized) {
-		cmp->base.llvm_value = LLVMConstNull(type->llvm_type);
-		if (llvm_tmp) LLVMBuildStore(cnt->llvm_builder, cmp->base.llvm_value, llvm_tmp);
+		if (llvm_tmp) {
+			if (type->store_size_bytes <=
+			    cnt->builtin_types->t_u8_ptr->store_size_bytes) {
+
+				cmp->base.llvm_value = LLVMConstNull(type->llvm_type);
+				LLVMBuildStore(cnt->llvm_builder, cmp->base.llvm_value, llvm_tmp);
+			} else {
+				// Use memset intrinsic for zero initialization of variable
+				LLVMValueRef args[4];
+
+				args[0] = LLVMBuildBitCast(cnt->llvm_builder,
+				                           llvm_tmp,
+				                           cnt->builtin_types->t_u8_ptr->llvm_type,
+				                           "");
+
+				args[1] = cnt->llvm_const_i8_zero;
+				args[2] = LLVMConstInt(cnt->builtin_types->t_u64->llvm_type,
+				                       type->store_size_bytes,
+				                       false);
+
+				args[3] =
+				    LLVMConstInt(cnt->builtin_types->t_bool->llvm_type, 0, false);
+
+				LLVMBuildCall(cnt->llvm_builder,
+				              cnt->intrinsic_memset,
+				              args,
+				              ARRAY_SIZE(args),
+				              "");
+			}
+		} else {
+			cmp->base.llvm_value = LLVMConstNull(type->llvm_type);
+		}
 
 		// DONE!!!
 		return STATE_PASSED;
@@ -1707,7 +1741,7 @@ emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp)
 	LLVMValueRef          llvm_value;
 	LLVMValueRef          llvm_value_dest;
 	LLVMValueRef          llvm_indices[2];
-	llvm_indices[0] = cnt->llvm_const_i64;
+	llvm_indices[0] = cnt->llvm_const_i64_zero;
 
 	TSA_FOREACH(values, value)
 	{
@@ -2315,7 +2349,7 @@ emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 		LLVMValueRef llvm_value;
 		LLVMValueRef llvm_value_dest;
 		LLVMValueRef llvm_indices[2];
-		llvm_indices[0] = cnt->llvm_const_i64;
+		llvm_indices[0] = cnt->llvm_const_i64_zero;
 
 		TSA_FOREACH(values, value)
 		{
@@ -2645,24 +2679,43 @@ emit_instr(Context *cnt, MirInstr *instr)
 	return state;
 }
 
+static void
+init_intrinsics(Context *cnt)
+{
+	// lookup intrinsics
+	{
+		LLVMTypeRef pt[2];
+		pt[0] = cnt->builtin_types->t_u8_ptr->llvm_type;
+		pt[1] = cnt->builtin_types->t_u64->llvm_type;
+
+		cnt->intrinsic_memset = llvm_get_intrinsic_decl(
+		    cnt->llvm_module, llvm_lookup_intrinsic_id("llvm.memset"), pt, ARRAY_SIZE(pt));
+
+		BL_ASSERT(cnt->intrinsic_memset && "Invalid memset intrinsic!");
+	}
+}
+
 /* public */
 void
 ir_run(Assembly *assembly)
 {
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));
-	cnt.assembly        = assembly;
-	cnt.builtin_types   = &assembly->builtin_types;
-	cnt.llvm_cnt        = assembly->llvm.cnt;
-	cnt.llvm_module     = assembly->llvm.module;
-	cnt.llvm_td         = assembly->llvm.TD;
-	cnt.llvm_builder    = LLVMCreateBuilderInContext(assembly->llvm.cnt);
-	cnt.llvm_const_i64  = LLVMConstInt(cnt.builtin_types->t_u64->llvm_type, 0, false);
-	cnt.llvm_di_builder = assembly->llvm.di_builder;
-	cnt.debug_mode      = assembly->options.build_mode == BUILD_MODE_DEBUG;
+	cnt.assembly            = assembly;
+	cnt.builtin_types       = &assembly->builtin_types;
+	cnt.llvm_cnt            = assembly->llvm.cnt;
+	cnt.llvm_module         = assembly->llvm.module;
+	cnt.llvm_td             = assembly->llvm.TD;
+	cnt.llvm_builder        = LLVMCreateBuilderInContext(assembly->llvm.cnt);
+	cnt.llvm_const_i64_zero = LLVMConstInt(cnt.builtin_types->t_u64->llvm_type, 0, false);
+	cnt.llvm_const_i8_zero  = LLVMConstInt(cnt.builtin_types->t_u8->llvm_type, 0, false);
+	cnt.llvm_di_builder     = assembly->llvm.di_builder;
+	cnt.debug_mode          = assembly->options.build_mode == BUILD_MODE_DEBUG;
 	thtbl_init(&cnt.gstring_cache, sizeof(LLVMValueRef), 1024);
 	tsa_init(&cnt.incomplete_rtti);
 	tlist_init(&cnt.incomplete_queue, sizeof(MirInstr *));
+
+	init_intrinsics(&cnt);
 
 	MirInstr *ginstr;
 	TARRAY_FOREACH(MirInstr *, &assembly->MIR.global_instrs, ginstr)

@@ -1,3 +1,9 @@
+0.7.0 - BETA
+---------------------------------------------------------------------------------------
+Add default variable initialization.
+Add noinit hash directive for variables.
+Speed up compilation with use of llvm.memset intrinsic for default values.
+
 0.6.0 - BETA
 ---------------------------------------------------------------------------------------
 Add implicit cast from array to slice. (Fixed compile time vs constant IR code emit).

@@ -595,7 +595,7 @@ print_instr_compound(Context *cnt, MirInstrCompound *init)
 			if (i < values->size - 1) fprintf(cnt->stream, ", ");
 		}
 	} else {
-		fprintf(cnt->stream, "<invalid values>");
+		fprintf(cnt->stream, "<zero initializer>");
 	}
 	fprintf(cnt->stream, "}");
 

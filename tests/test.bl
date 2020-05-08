@@ -1,67 +1,31 @@
 /* playground */
 
+#load "std/debug.bl"
+
 main :: fn () s32 {
-    /*
-    arr := {:[10]s32: 1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
-    foo(arr);
-    */
+    i: s32 #noinit;
+    print("%\n", i);
 
-    /*
-    color: v4;
-    color = {:v4: 0.05f, 0.05f, 0.05f, 1.f};
-    print("color = %\n", color);
+    arr: [20]s32;
+    print("%\n", arr);
 
-    arr2 :: {:[10]s32: 1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
-    tmp : []s32 : arr2;
-    print("tmp = %\n", tmp);
+    foo: Foo;
+    print("%\n", foo);
 
-    foo(arr2);
-    */
-
-    {
-        path :: "this/is/my/epic/path.exe";
-        split :: string_split_by_last(path, '/');
-        print("lhs.len = %, rhs.len = %; %\n", split[0].len, split[1].len, split);
+    loop i: s32; i < 10; i += 1 {
+        print("%\n", i);
     }
-
-    {
-        path :: "thispath.exe";
-        split :: string_split_by_last(path, '/');
-        print("lhs.len = %, rhs.len = %; %\n", split[0].len, split[1].len, split);
-    }
-
-    {
-        path :: "/thispath.exe";
-        split :: string_split_by_last(path, '/');
-        print("lhs.len = %, rhs.len = %; %\n", split[0].len, split[1].len, split);
-    }
-
-    {
-        path :: "thispath.exe/";
-        split :: string_split_by_last(path, '/');
-        print("lhs.len = %, rhs.len = %; %\n", split[0].len, split[1].len, split);
-    }
-
-    {
-        path :: "";
-        split :: string_split_by_last(path, '/');
-        print("lhs.len = %, rhs.len = %; %\n", split[0].len, split[1].len, split);
-    }
-
-    {
-        path :: "/";
-        split :: string_split_by_last(path, '/');
-        print("lhs.len = %, rhs.len = %; %\n", split[0].len, split[1].len, split);
-    }
-
-    print("hello");
 
     return 0;
 }
 
-foo :: fn (data: []s32) { 
-    loop i := 0; i < data.len; i += 1 {
-        print("value = %\n", data[i]);
-    }
+Foo :: struct {
+    bar: Bar;
+    b: bool;
+    arr: [4]s32;
 }
 
+Bar :: struct {
+    i: s32;
+    j: s32;
+}

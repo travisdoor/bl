@@ -32,11 +32,11 @@
 #include <setjmp.h>
 #include <string.h>
 
-#define is_intend_c(c)                                                                             \
+#define IS_IDENT(c)                                                                                \
 	(((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || ((c) >= '0' && (c) <= '9') || \
 	 (c) == '_')
 
-#define scan_error(code, format, ...)                                                              \
+#define SCAN_ERROR(code, format, ...)                                                              \
 	{                                                                                          \
 		builder_error((format), ##__VA_ARGS__);                                            \
 		longjmp((cnt)->jmp_error, code);                                                   \
@@ -87,7 +87,7 @@ scan_comment(Context *cnt, const char *term)
 			/*
 			 * Unterminated comment
 			 */
-			scan_error(ERR_UNTERMINATED_COMMENT,
+			SCAN_ERROR(ERR_UNTERMINATED_COMMENT,
 			           "%s %d:%d unterminated comment block.",
 			           cnt->unit->name,
 			           cnt->line,
@@ -115,7 +115,7 @@ scan_ident(Context *cnt, Token *tok)
 
 	s32 len = 0;
 	while (true) {
-		if (!is_intend_c(*cnt->c)) {
+		if (!IS_IDENT(*cnt->c)) {
 			break;
 		}
 
@@ -203,7 +203,7 @@ scan:
 			}
 		}
 		case '\0': {
-			scan_error(ERR_UNTERMINATED_STRING,
+			SCAN_ERROR(ERR_UNTERMINATED_STRING,
 			           "%s %d:%d unterminated string.",
 			           cnt->unit->name,
 			           cnt->line,
@@ -244,14 +244,14 @@ scan_char(Context *cnt, Token *tok)
 
 	switch (*cnt->c) {
 	case '\'': {
-		scan_error(ERR_EMPTY,
+		SCAN_ERROR(ERR_EMPTY,
 		           "%s %d:%d expected character in ''.",
 		           cnt->unit->name,
 		           cnt->line,
 		           cnt->col);
 	}
 	case '\0': {
-		scan_error(ERR_UNTERMINATED_STRING,
+		SCAN_ERROR(ERR_UNTERMINATED_STRING,
 		           "%s %d:%d unterminated character.",
 		           cnt->unit->name,
 		           cnt->line,
@@ -271,7 +271,7 @@ scan_char(Context *cnt, Token *tok)
 
 	/* eat ' */
 	if (*cnt->c != '\'') {
-		scan_error(ERR_UNTERMINATED_STRING,
+		SCAN_ERROR(ERR_UNTERMINATED_STRING,
 		           "%s %d:%d unterminated character expected '.",
 		           cnt->unit->name,
 		           cnt->line,
@@ -344,7 +344,7 @@ scan_number(Context *cnt, Token *tok)
 		if (*(cnt->c) == '.') {
 
 			if (base != 10) {
-				scan_error(ERR_INVALID_TOKEN,
+				SCAN_ERROR(ERR_INVALID_TOKEN,
 				           "%s %d:%d invalid suffix.",
 				           cnt->unit->name,
 				           cnt->line,
@@ -469,7 +469,7 @@ scan:
 			/*
 			 * Two joined symbols will be parsed as identifier.
 			 */
-			if (i >= SYM_IF && i <= SYM_CONTINUE && is_intend_c(*cnt->c)) {
+			if (i >= SYM_IF && i <= SYM_CONTINUE && IS_IDENT(*cnt->c)) {
 				/* roll back */
 				cnt->c -= len;
 				break;
@@ -485,7 +485,7 @@ scan:
 				scan_comment(cnt, sym_strings[SYM_RBCOMMENT]);
 				goto scan;
 			case SYM_RBCOMMENT: {
-				scan_error(ERR_INVALID_TOKEN,
+				SCAN_ERROR(ERR_INVALID_TOKEN,
 				           "%s %d:%d unexpected token.",
 				           cnt->unit->name,
 				           cnt->line,
@@ -507,7 +507,7 @@ scan:
 	if (scan_char(cnt, &tok)) goto push_token;
 
 	/* When symbol is unknown report error */
-	scan_error(ERR_INVALID_TOKEN,
+	SCAN_ERROR(ERR_INVALID_TOKEN,
 	           "%s %d:%d Unexpected token '%c' (%d)",
 	           cnt->unit->name,
 	           cnt->line,
