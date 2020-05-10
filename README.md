@@ -4,7 +4,7 @@ The Biscuit Language (BL) is simple imperative programming language using LLVM b
 Language syntax and all it's features are still in development and not ready for "real" use yet. Biscuit 
 is designed to be simple, fast and explicit.
 
-Project homepage: [biscuitlang.org](https://biscuitlang.org)
+Project homepage: [biscuitlang.org](http://biscuitlang.org)  
 Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 
 # Features & descriptions
