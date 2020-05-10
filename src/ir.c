@@ -77,6 +77,7 @@ typedef struct {
 
 	// intrinsics
 	LLVMValueRef intrinsic_memset;
+	LLVMValueRef intrinsic_memcpy;
 } Context;
 
 static LLVMValueRef
@@ -1542,6 +1543,11 @@ emit_instr_store(Context *cnt, MirInstrStore *store)
 	store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
 	LLVMSetAlignment(store->base.llvm_value, alignment);
 
+	// PERFORMANCE: We can use memcpy intrinsic for larger values, but in such case we don't
+	// need generate load for source value. This change require additional work in compiler
+	// pipeline to be done, so we keep current naive solution and change it in case of any
+	// issues occur in future.
+
 	return STATE_PASSED;
 }
 
@@ -2683,7 +2689,7 @@ static void
 init_intrinsics(Context *cnt)
 {
 	// lookup intrinsics
-	{
+	{ // memset
 		LLVMTypeRef pt[2];
 		pt[0] = cnt->builtin_types->t_u8_ptr->llvm_type;
 		pt[1] = cnt->builtin_types->t_u64->llvm_type;
@@ -2692,6 +2698,18 @@ init_intrinsics(Context *cnt)
 		    cnt->llvm_module, llvm_lookup_intrinsic_id("llvm.memset"), pt, ARRAY_SIZE(pt));
 
 		BL_ASSERT(cnt->intrinsic_memset && "Invalid memset intrinsic!");
+	}
+
+	{ // memcpy
+		LLVMTypeRef pt[3];
+		pt[0] = cnt->builtin_types->t_u8_ptr->llvm_type;
+		pt[1] = cnt->builtin_types->t_u8_ptr->llvm_type;
+		pt[2] = cnt->builtin_types->t_u64->llvm_type;
+
+		cnt->intrinsic_memcpy = llvm_get_intrinsic_decl(
+		    cnt->llvm_module, llvm_lookup_intrinsic_id("llvm.memcpy"), pt, ARRAY_SIZE(pt));
+
+		BL_ASSERT(cnt->intrinsic_memcpy && "Invalid memcpy intrinsic!");
 	}
 }
 
