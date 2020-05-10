@@ -190,8 +190,8 @@ _print_log_default :: fn (kind: PrintLogKind, format: string, args: []Any, file:
         eprint("[ PANIC ] ");
     }
 
-    buf := {:[PRINT_MAX_LENGTH]u8: 0};
-    w := _print_impl({:[]u8: buf.len, buf.ptr}, format, args);
+    buf: [PRINT_MAX_LENGTH]u8 #noinit;
+    w := _print_impl(buf, format, args);
     __os_write(out, buf.ptr, auto w);
     print("\n");
 };
@@ -528,7 +528,7 @@ print_u64_hex :: fn (buf: []u8, cur: s32, v: u64) s32 {
         return print_string(buf, cur, "0");
     }
 
-    digits := {:[16]u8: '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+    digits :: {:[16]u8: '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
     mask : u64 = 0xf000000000000000;
     hit_non_zero := false;
 

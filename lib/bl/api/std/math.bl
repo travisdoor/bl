@@ -262,7 +262,7 @@ v2_dot :: fn (a: v2, b: v2) f32 #inline {
 };
 
 v2_normalize :: fn (a: v2) v2 #inline {
-    out := {:v2: 0};
+    out: v2;
     l := v2_length(a);
 
     if f32_compare(l, 0.f, F32_EPSILON) { return out; }
@@ -299,7 +299,7 @@ v3_negate :: fn (v: v3) v3 #inline {
 };
 
 v3_cross :: fn (a: v3, b: v3) v3 #inline {
-    out: v3;
+    out: v3 #noinit;
     out.x = a.y * b.z - a.z * b.y;
     out.y = a.z * b.x - a.x * b.z;
     out.z = a.x * b.y - a.y * b.x;
@@ -325,11 +325,11 @@ v3_sub :: fn (a: v3, b: v3) v3 #inline {
 };
 
 v3_normalize :: fn (a: v3) v3 #inline {
-    out := {:v3: 0};
     l := v3_length(a);
 
-    if f32_compare(l, 0.f, F32_EPSILON) { return out; }
+    if f32_compare(l, 0.f, F32_EPSILON) { return v3_zero; }
 
+    out: v3 #noinit;
     out.x = a.x / l;
     out.y = a.y / l;
     out.z = a.z / l;
@@ -388,11 +388,11 @@ v4_length :: fn (v: v4) f32 #inline {
 };
 
 v4_normalize :: fn (v: v4) v4 #inline {
-    out := {:v4: 0};
     l := v4_length(v);
 
-    if f32_compare(l, 0.f, F32_EPSILON) { return out; }
+    if f32_compare(l, 0.f, F32_EPSILON) { return v4_zero; }
 
+    out: v4 #noinit;
     out.x = v.x / l;
     out.y = v.y / l;
     out.z = v.z / l;
@@ -410,7 +410,7 @@ v4_mul_s :: fn (v: v4, s: f32) v4 #inline {
 }
 
 v4_div_s :: fn (v: v4, s: f32) v4 #inline {
-    if s == 0.f { return {:v4: 0 }; }
+    if s == 0.f { return v4_zero; }
     return {:v4: v.x / s, v.y / s, v.z / s, v.w / s};
 }
 
@@ -533,7 +533,8 @@ mat4_mul :: fn (a: *mat4, b: *mat4, out_mat: *mat4) {
 
 mat4_inverse :: fn (src_mat: *mat4, out_mat: *mat4) #inline {
     t: [6]f32 #noinit;
-    det: f32;
+    det: f32 #noinit;
+
     a :: (^src_mat)[0][0]; b :: (^src_mat)[0][1]; c :: (^src_mat)[0][2]; d :: (^src_mat)[0][3];
     e :: (^src_mat)[1][0]; f :: (^src_mat)[1][1]; g :: (^src_mat)[1][2]; h :: (^src_mat)[1][3];
     i :: (^src_mat)[2][0]; j :: (^src_mat)[2][1]; k :: (^src_mat)[2][2]; l :: (^src_mat)[2][3];
@@ -582,7 +583,7 @@ mat4_scale_s :: fn (s: f32, out_mat: *mat4) #inline {
 };
 
 mat4_mul_v4 :: fn (mat: *mat4, v: v4) v4 #inline {
-    out: v4;
+    out: v4 #noinit;
     out.x = (^mat)[0][0] * v.x + (^mat)[1][0] * v.y + (^mat)[2][0] * v.z + (^mat)[3][0] * v.w;
     out.y = (^mat)[0][1] * v.x + (^mat)[1][1] * v.y + (^mat)[2][1] * v.z + (^mat)[3][1] * v.w;
     out.z = (^mat)[0][2] * v.x + (^mat)[1][2] * v.y + (^mat)[2][2] * v.z + (^mat)[3][2] * v.w;
@@ -612,7 +613,7 @@ mat4_scale :: fn (s: v3, out_mat: *mat4) #inline {
 };
 
 mat4_get_scale :: fn (mat: *mat4) v3 {
-    ret: v3;
+    ret: v3 #noinit;
     tmp_vec := {:v3: (^mat)[0][0], (^mat)[1][0], (^mat)[2][0]};
     ret.x = v3_length(tmp_vec);
 
@@ -629,9 +630,9 @@ mat4_get_translation :: fn (mat: *mat4) v3 #inline {
 };
 
 mat4_get_quat :: fn (mat: *mat4) quat {
-    r: f32;
-    rinv: f32;
-    out: quat;
+    r: f32 #noinit;
+    rinv: f32 #noinit;
+    out: quat #noinit;
 
     trace := (^mat)[0][0] + (^mat)[1][1] + (^mat)[2][2];
     if trace >= 0.0f {

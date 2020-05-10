@@ -64,7 +64,7 @@ This instance must be freed by `string_delete` call.
   New string.
 */
 string_new_reserved :: fn (size: usize) string {
-    tmp : string;
+    tmp : string #noinit;
     tmp.ptr = alloc_block(size);
     tmp.len = 0;
 
@@ -91,7 +91,7 @@ This instance must be freed by `string_delete` call.
 */
 string_new_cstr :: fn (cstr: *u8) string {
     len :: c_strlen(auto cstr);
-    tmp: string;
+    tmp: string #noinit;
     tmp.ptr = alloc_block(len);
     tmp.len = auto len;
 
@@ -119,7 +119,7 @@ This instance must be freed by `string_delete` call.
   New string.
 */
 string_copy :: fn (v: string) string {
-    tmp : string;
+    tmp : string #noinit;
     tmp.ptr = alloc_block(auto v.len);
     tmp.len = v.len;
 
@@ -143,7 +143,7 @@ string_delete :: fn (v: string)
     String to be deleted.
 */
 string_delete :: fn (v: string) {
-    if v.ptr == null { return; }
+    if !v.ptr { return; }
     free_block(v.ptr);
 };
 
@@ -182,9 +182,9 @@ is not enough space reminding in string.
     Value to be appended.
 */
 string_append :: fn (v: *string, add: Any) {
-    new_len : s64 = 0;
-    add_len : s64 = 0;
-    add_ptr : *u8   = null;
+    new_len: s64;
+    add_len: s64;
+    add_ptr: *u8;
 
     if add.type_info.kind == TypeKind.String {
         str := ^ cast(*string) add.data;
@@ -428,7 +428,7 @@ string_to_s64n :: fn (str: string, len: s64) s64
   Converted integer value.
 */
 string_to_s64n :: fn (str: string, len: s64) s64 {
-    n : s64 = 0;
+    n: s64;
     is_negative := false;
 
     if len > str.len { len = str.len; }

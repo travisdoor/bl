@@ -266,6 +266,16 @@ static Ast *
 parse_expr_compound(Context *cnt);
 
 // impl
+
+static inline bool
+rq_semicolon_after_decl_entity(Ast *node)
+{
+	BL_ASSERT(node);
+
+	return node->kind != AST_EXPR_LIT_FN && node->kind != AST_TEST_CASE &&
+	       node->kind != AST_EXPR_TYPE;
+}
+
 BinopKind
 sym_to_binop_kind(Sym sm)
 {
@@ -2242,6 +2252,9 @@ parse_decl(Context *cnt)
 	Token *tok_assign    = tokens_consume_if(cnt->tokens, SYM_ASSIGN);
 	if (!tok_assign) tok_assign = tokens_consume_if(cnt->tokens, SYM_COLON);
 
+	/* Parse hash directives. */
+	s32 hd_accepted = HD_NONE;
+
 	if (tok_assign) {
 		decl->data.decl_entity.mut = token_is(tok_assign, SYM_ASSIGN);
 
@@ -2260,15 +2273,18 @@ parse_decl(Context *cnt)
 			}
 		}
 	} else {
-		/* Parse hash directives. */
-		s32 accepted = HD_NO_INIT;
+		hd_accepted |= HD_NO_INIT;
+	}
 
+	Ast *init_value = decl->data.decl_entity.value;
+
+	if (!init_value || rq_semicolon_after_decl_entity(init_value)) {
 		u32 flags = 0;
 		while (true) {
 			HashDirective found = HD_NONE;
-			parse_hash_directive(cnt, accepted, &found);
+			parse_hash_directive(cnt, hd_accepted, &found);
 			if (!hash_directive_to_flags(found, &flags)) break;
-			accepted &= ~found;
+			hd_accepted &= ~found;
 		}
 
 		if (IS_FLAG(flags, FLAG_NO_INIT) && scope_is_global(SCOPE_GET(cnt))) {
@@ -2277,8 +2293,7 @@ parse_decl(Context *cnt)
 			    tok_ident,
 			    BUILDER_CUR_AFTER,
 			    "Invalid 'noinit' directive for global variable '%s'. All globals must "
-			    "be "
-			    "initialized either by explicit value or implicit default value.",
+			    "be initialized either by explicit value or implicit default value.",
 			    tok_ident->value.str);
 		}
 
@@ -2487,14 +2502,6 @@ NEXT:
 void
 parse_ublock_content(Context *cnt, Ast *ublock)
 {
-	/******************************************************************************************/
-#define RQ_SEMICOLON_AFTER(_node)                                                                  \
-	((_node)->data.decl_entity.value &&                                                        \
-	 (_node)->data.decl_entity.value->kind != AST_EXPR_LIT_FN &&                               \
-	 (_node)->data.decl_entity.value->kind != AST_TEST_CASE &&                                 \
-	 (_node)->data.decl_entity.value->kind != AST_EXPR_TYPE)
-	/******************************************************************************************/
-
 	BL_ASSERT(ublock->kind == AST_UBLOCK);
 	ublock->data.ublock.nodes = tarray_new(sizeof(Ast *));
 
@@ -2504,7 +2511,8 @@ NEXT:
 
 	if ((tmp = parse_decl(cnt))) {
 		if (tmp->kind != AST_BAD) {
-			if (RQ_SEMICOLON_AFTER(tmp)) parse_semicolon_rq(cnt);
+			Ast *decl = tmp->data.decl_entity.value;
+			if (decl && rq_semicolon_after_decl_entity(decl)) parse_semicolon_rq(cnt);
 			/* setup global scope flag for declaration */
 			tmp->data.decl_entity.in_gscope = true;
 			if (cnt->current_private_scope) tmp->data.decl_entity.flags |= FLAG_PRIVATE;
@@ -2533,8 +2541,6 @@ NEXT:
 		            "Unexpected symbol in module body '%s'.",
 		            sym_strings[tok->sym]);
 	}
-
-#undef RQ_SEMICOLON_AFTER
 }
 
 void

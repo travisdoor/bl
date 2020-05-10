@@ -51,7 +51,7 @@ function use allocator set in `_context.alloc_fn`
 */
 mem_alloc :: fn (size: usize) *u8 {
     mem :: _context.alloc_fn(size); 
-    if mem == null { panic("Bad alloc"); }
+    if !mem { panic("Bad alloc"); }
     return mem;
 };
 

@@ -19,6 +19,11 @@ main :: fn () s32 {
     return 0;
 }
 
+
+Enm :: enum { A; B; C; }
+
+#private
+
 Foo :: struct {
     bar: Bar;
     b: bool;
