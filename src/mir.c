@@ -740,6 +740,9 @@ static MirInstr *
 ast_type_slice(Context *cnt, Ast *type_slice);
 
 static MirInstr *
+ast_type_dynarr(Context *cnt, Ast *type_dynarr);
+
+static MirInstr *
 ast_type_ptr(Context *cnt, Ast *type_ptr);
 
 static MirInstr *
@@ -7309,6 +7312,10 @@ analyze_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_TYPE_SLICE:
 		state = analyze_instr_type_slice(cnt, (MirInstrTypeSlice *)instr);
 		break;
+	case MIR_INSTR_TYPE_DYNARR:
+		//state = analyze_instr_type_slice(cnt, (MirInstrTypeSlice *)instr);
+		BL_UNIMPLEMENTED;
+		break;
 	case MIR_INSTR_TYPE_VARGS:
 		state = analyze_instr_type_vargs(cnt, (MirInstrTypeVArgs *)instr);
 		break;
@@ -9186,11 +9193,22 @@ ast_type_arr(Context *cnt, Ast *type_arr)
 MirInstr *
 ast_type_slice(Context *cnt, Ast *type_slice)
 {
-	Ast *ast_elem_type = type_slice->data.type_arr.elem_type;
+	Ast *ast_elem_type = type_slice->data.type_slice.elem_type;
 	BL_ASSERT(ast_elem_type);
 
 	MirInstr *elem_type = ast(cnt, ast_elem_type);
 	return append_instr_type_slice(cnt, type_slice, elem_type);
+}
+
+MirInstr *
+ast_type_dynarr(Context *cnt, Ast *type_dynarr)
+{
+	Ast *ast_elem_type = type_dynarr->data.type_dynarr.elem_type;
+	BL_ASSERT(ast_elem_type);
+	BL_UNIMPLEMENTED;
+
+	//MirInstr *elem_type = ast(cnt, ast_elem_type);
+	//return append_instr_type_slice(cnt, type_slice, elem_type);
 }
 
 MirInstr *
@@ -9429,6 +9447,8 @@ ast(Context *cnt, Ast *node)
 		return ast_type_arr(cnt, node);
 	case AST_TYPE_SLICE:
 		return ast_type_slice(cnt, node);
+	case AST_TYPE_DYNARR:
+		return ast_type_dynarr(cnt, node);
 	case AST_TYPE_PTR:
 		return ast_type_ptr(cnt, node);
 	case AST_TYPE_VARGS:
@@ -9541,6 +9561,8 @@ mir_instr_name(MirInstr *instr)
 		return "InstrTypeArray";
 	case MIR_INSTR_TYPE_SLICE:
 		return "InstrTypeSlice";
+	case MIR_INSTR_TYPE_DYNARR:
+		return "InstrTypeDynArr";
 	case MIR_INSTR_TYPE_VARGS:
 		return "InstrTypeVArgs";
 	case MIR_INSTR_COND_BR:

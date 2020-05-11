@@ -24,6 +24,7 @@
 	MirInstrAddrOf         addrof;\
 	MirInstrTypeArray      type_array;\
 	MirInstrTypeSlice      type_slice;\
+	MirInstrTypeDynArr     type_dynarr;\
 	MirInstrTypeVArgs      type_vargs;\
 	MirInstrTypePtr        type_ptr;\
 	MirInstrTypeStruct     type_struct;\
@@ -59,6 +60,7 @@
 	MIR_INSTR_TYPE_PTR,
 	MIR_INSTR_TYPE_ARRAY,
 	MIR_INSTR_TYPE_SLICE,
+	MIR_INSTR_TYPE_DYNARR,
 	MIR_INSTR_TYPE_VARGS,
 	MIR_INSTR_TYPE_ENUM,
 	MIR_INSTR_CALL,

@@ -317,6 +317,9 @@ static void
 print_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice);
 
 static void
+print_instr_type_dynarr(Context *cnt, MirInstrTypeDynArr *type_dynarr);
+
+static void
 print_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs);
 
 static void
@@ -511,6 +514,13 @@ print_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 {
 	print_instr_head(cnt, &type_slice->base, "const");
 	fprintf(cnt->stream, "[]%%%llu", (unsigned long long)type_slice->elem_type->id);
+}
+
+void
+print_instr_type_dynarr(Context *cnt, MirInstrTypeDynArr*type_dynarr)
+{
+	print_instr_head(cnt, &type_dynarr->base, "const");
+	fprintf(cnt->stream, "[..]%%%llu", (unsigned long long)type_dynarr->elem_type->id);
 }
 
 void
@@ -1071,6 +1081,9 @@ print_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_TYPE_SLICE:
 		print_instr_type_slice(cnt, (MirInstrTypeSlice *)instr);
+		break;
+	case MIR_INSTR_TYPE_DYNARR:
+		print_instr_type_dynarr(cnt, (MirInstrTypeDynArr *)instr);
 		break;
 	case MIR_INSTR_TYPE_VARGS:
 		print_instr_type_vargs(cnt, (MirInstrTypeVArgs *)instr);

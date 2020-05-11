@@ -87,6 +87,7 @@ typedef struct MirInstrTypeFn         MirInstrTypeFn;
 typedef struct MirInstrTypeStruct     MirInstrTypeStruct;
 typedef struct MirInstrTypeArray      MirInstrTypeArray;
 typedef struct MirInstrTypeSlice      MirInstrTypeSlice;
+typedef struct MirInstrTypeDynArr     MirInstrTypeDynArr;
 typedef struct MirInstrTypeVArgs      MirInstrTypeVArgs;
 typedef struct MirInstrTypePtr        MirInstrTypePtr;
 typedef struct MirInstrTypeEnum       MirInstrTypeEnum;
@@ -596,6 +597,12 @@ struct MirInstrTypeArray {
 };
 
 struct MirInstrTypeSlice {
+	MirInstr base;
+
+	MirInstr *elem_type;
+};
+
+struct MirInstrTypeDynArr {
 	MirInstr base;
 
 	MirInstr *elem_type;

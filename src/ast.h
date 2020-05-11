@@ -193,6 +193,10 @@ struct AstTypeSlice {
 	Ast *elem_type;
 };
 
+struct AstTypeDynArr {
+	Ast *elem_type;
+};
+
 struct AstTypeFn {
 	Ast *               ret_type;
 	TSmallArray_AstPtr *args;

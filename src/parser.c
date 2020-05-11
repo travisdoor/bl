@@ -148,6 +148,9 @@ static Ast *
 parse_type_slice(Context *cnt);
 
 static Ast *
+parse_type_dynarr(Context *cnt);
+
+static Ast *
 parse_type_fn(Context *cnt, bool rq_named_args);
 
 static Ast *
@@ -2002,24 +2005,31 @@ parse_type_ref(Context *cnt)
 Ast *
 parse_type_arr(Context *cnt)
 {
-	/* slice or array??? */
-	if (tokens_peek(cnt->tokens)->sym == SYM_LBRACKET &&
-	    tokens_peek_2nd(cnt->tokens)->sym == SYM_RBRACKET)
-		return NULL;
-
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBRACKET);
 	if (!tok_begin) return NULL;
 
 	Ast *arr = ast_create_node(cnt->ast_arena, AST_TYPE_ARR, tok_begin, SCOPE_GET(cnt));
 	arr->data.type_arr.len = parse_expr(cnt);
-	BL_ASSERT(arr->data.type_arr.len);
+	if (!arr->data.type_arr.len) {
+		Token *tok_err = tokens_peek(cnt->tokens);
+		PARSE_ERROR(ERR_EXPECTED_EXPR,
+		            tok_err,
+		            BUILDER_CUR_WORD,
+		            "Expected array size expression.");
+		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
+	}
 
 	Token *tok_end = tokens_consume_if(cnt->tokens, SYM_RBRACKET);
 	if (!tok_end) {
+		Token *tok_err = tokens_peek(cnt->tokens);
 		PARSE_ERROR(ERR_MISSING_BRACKET,
-		            tok_end,
+		            tok_err,
 		            BUILDER_CUR_WORD,
 		            "Expected closing ']' after array size expression.");
+		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
 	}
 
 	arr->data.type_arr.elem_type = parse_type(cnt);
@@ -2036,7 +2046,6 @@ parse_type_arr(Context *cnt)
 Ast *
 parse_type_slice(Context *cnt)
 {
-	/* slice or array??? []<type> */
 	if (tokens_peek(cnt->tokens)->sym != SYM_LBRACKET) return NULL;
 	if (tokens_peek_2nd(cnt->tokens)->sym != SYM_RBRACKET) return NULL;
 
@@ -2058,6 +2067,40 @@ parse_type_slice(Context *cnt)
 }
 
 Ast *
+parse_type_dynarr(Context *cnt) {
+	if (tokens_peek(cnt->tokens)->sym != SYM_LBRACKET) return NULL;
+	if (tokens_peek_2nd(cnt->tokens)->sym != SYM_DYNARR) return NULL;
+
+	/* eat [.. */
+	Token *tok_begin = tokens_consume(cnt->tokens);
+	tokens_consume(cnt->tokens);
+
+	Token *tok_end = tokens_consume_if(cnt->tokens, SYM_RBRACKET);
+	if (!tok_end) {
+		Token *tok_err = tokens_peek(cnt->tokens);
+		PARSE_ERROR(ERR_MISSING_BRACKET,
+		            tok_err,
+		            BUILDER_CUR_WORD,
+		            "Expected closing ']' after dynamic array signature.");
+		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
+	}
+
+	Ast *slice = ast_create_node(cnt->ast_arena, AST_TYPE_DYNARR, tok_begin, SCOPE_GET(cnt));
+	slice->data.type_dynarr.elem_type = parse_type(cnt);
+
+	if (!slice->data.type_dynarr.elem_type) {
+		PARSE_ERROR(
+		    ERR_INVALID_TYPE, tok_end, BUILDER_CUR_AFTER, "Expected dynami array element type.");
+
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
+	}
+
+	return slice;
+}
+
+Ast *
 parse_type(Context *cnt)
 {
 	Ast *type = NULL;
@@ -2067,8 +2110,13 @@ parse_type(Context *cnt)
 	if (!type) type = parse_type_struct(cnt);
 	if (!type) type = parse_type_enum(cnt);
 	if (!type) type = parse_type_vargs(cnt);
-	if (!type) type = parse_type_arr(cnt);
+
+	// Keep order!!!
 	if (!type) type = parse_type_slice(cnt);
+	if (!type) type = parse_type_dynarr(cnt);
+	if (!type) type = parse_type_arr(cnt);
+	// Keep order!!!
+	
 	if (!type) type = parse_type_ref(cnt);
 
 	return type;
@@ -2379,8 +2427,13 @@ parse_expr_type(Context *cnt)
 	Ast *  type = NULL;
 
 	type = parse_type_struct(cnt);
-	if (!type) type = parse_type_arr(cnt);
+	
+	// keep order
 	if (!type) type = parse_type_slice(cnt);
+	if (!type) type = parse_type_dynarr(cnt);
+	if (!type) type = parse_type_arr(cnt);
+	// keep order
+
 	if (!type) type = parse_type_enum(cnt);
 	if (!type) type = parse_type_ptr(cnt);
 

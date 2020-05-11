@@ -2594,6 +2594,7 @@ emit_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_TYPE_PTR:
 	case MIR_INSTR_TYPE_ARRAY:
 	case MIR_INSTR_TYPE_SLICE:
+	case MIR_INSTR_TYPE_DYNARR:
 	case MIR_INSTR_TYPE_VARGS:
 	case MIR_INSTR_TYPE_ENUM:
 	case MIR_INSTR_ARG:
