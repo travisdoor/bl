@@ -263,6 +263,10 @@ TypeInfoStruct :: struct #base TypeInfo #compiler {
     members: []TypeInfoStructMember; 
     is_slice: bool;
     is_union: bool;
+
+    // CLEANUP: slice cannot be union, better way will be create separate type
+    // kind for struct, slice and union, dynamic array could act like regular
+    // array in type info.
 };
 
 /*!

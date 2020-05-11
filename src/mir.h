@@ -42,6 +42,11 @@
 #define MIR_SLICE_LEN_INDEX 0
 #define MIR_SLICE_PTR_INDEX 1
 
+/* Dynamic array member indices */
+#define MIR_DYNARR_LEN_INDEX MIR_SLICE_LEN_INDEX
+#define MIR_DYNARR_PTR_INDEX MIR_SLICE_PTR_INDEX
+#define MIR_DYNARR_ALLOCATED_INDEX 2
+
 /* Helper macro for reading Const Expression Values of fundamental types. */
 #if BL_DEBUG
 #define MIR_CEV_READ_AS(T, src) (*((T *)_mir_cev_read(src)))
@@ -146,6 +151,7 @@ typedef enum MirTypeKind {
 	MIR_TYPE_STRING  = 12,
 	MIR_TYPE_VARGS   = 13,
 	MIR_TYPE_SLICE   = 14,
+	MIR_TYPE_DYNARR  = 15,
 } MirTypeKind;
 
 typedef enum MirValueAddressMode {
@@ -733,8 +739,20 @@ mir_deref_type(MirType *ptr)
 static inline bool
 mir_is_composit_type(MirType *type)
 {
-	return type->kind == MIR_TYPE_STRUCT || type->kind == MIR_TYPE_STRING ||
-	       type->kind == MIR_TYPE_SLICE || type->kind == MIR_TYPE_VARGS;
+	switch (type->kind) {
+	case MIR_TYPE_STRUCT:
+	case MIR_TYPE_STRING:
+	case MIR_TYPE_SLICE:
+	case MIR_TYPE_VARGS:
+	case MIR_TYPE_DYNARR:
+		return true;
+		break;
+
+	default:
+		break;
+	}
+
+	return false;
 }
 
 static inline MirType *

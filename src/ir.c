@@ -1193,6 +1193,7 @@ _rtti_emit(Context *cnt, MirType *type)
 		llvm_value = rtti_emit_array(cnt, type);
 		break;
 
+	case MIR_TYPE_DYNARR:
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT:
@@ -1428,6 +1429,7 @@ emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		break;
 	}
 
+	case MIR_TYPE_DYNARR:
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_STRING:
 	case MIR_TYPE_VARGS: {
@@ -1697,6 +1699,7 @@ emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp)
 			break;
 		}
 
+		case MIR_TYPE_DYNARR:
 		case MIR_TYPE_SLICE:
 		case MIR_TYPE_VARGS:
 		case MIR_TYPE_STRUCT: {
@@ -1765,6 +1768,7 @@ emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp)
 			                               "");
 			break;
 
+		case MIR_TYPE_DYNARR:
 		case MIR_TYPE_STRING:
 		case MIR_TYPE_SLICE:
 		case MIR_TYPE_VARGS:

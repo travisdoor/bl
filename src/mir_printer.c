@@ -205,6 +205,7 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 		fprintf(cnt->stream, "%s\"}", (char *)str_ptr);
 		break;
 
+	case MIR_TYPE_DYNARR:
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT: {
