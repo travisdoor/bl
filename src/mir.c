@@ -9830,7 +9830,7 @@ execute_test_cases(Context *cnt)
 		}
 
 		if (first_in_file) {
-			const s32 len = snprintf(buffer, ARRAY_SIZE(buffer), "\nFile: %s", file);
+			snprintf(buffer, ARRAY_SIZE(buffer), "\nFile: %s", file);
 			color_print(stdout, BL_YELLOW, buffer);
 			first_in_file = false;
 		}

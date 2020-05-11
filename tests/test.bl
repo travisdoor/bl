@@ -1,36 +1,33 @@
 /* playground */
 
-#load "std/debug.bl"
-
 main :: fn () s32 {
-    i: s32 #noinit;
-    print("%\n", i);
-
-    arr: [20]s32;
-    print("%\n", arr);
-
-    foo: Foo;
-    print("%\n", foo);
-
-    loop i: s32; i < 10; i += 1 {
-        print("%\n", i);
-    }
+    //arr: [..]s32;
 
     return 0;
 }
 
+/*
+    [..]s32 ->
 
-Enm :: enum { A; B; C; }
+    struct {
+        len: s64;
+        ptr: *s32;
+        allocated: usize;
+        T: *TypeInfo;
+    }
 
-#private
+ */
 
-Foo :: struct {
-    bar: Bar;
-    b: bool;
-    arr: [4]s32;
+_Array :: struct #compiler {
+    len: s64;
+    ptr: *u8;
+    allocated: usize;
+    T: *TypeInfo;
 }
 
-Bar :: struct {
-    i: s32;
-    j: s32;
+_array_init :: fn (arr: *_Array, T: Any) {
 }
+
+_array_push :: fn (arr: *_Array, v: Any) {
+}
+
