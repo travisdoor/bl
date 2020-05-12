@@ -6984,6 +6984,24 @@ analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
+static inline MirType *
+_check_buitin_array_type(MirInstr *arr)
+{
+	MirType *arr_type = arr->value.type;
+	if (is_load_needed(arr)) arr_type = mir_deref_type(arr_type);
+	if (arr_type->kind != MIR_TYPE_DYNARR) {
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_INVALID_TYPE,
+		            arr->node->location,
+		            BUILDER_CUR_WORD,
+		            "Expected dynamic array!");
+		return NULL;
+	}
+
+	MirType *expected_type = mir_get_struct_elem_type(arr_type, MIR_DYNARR_PTR_INDEX);
+	return mir_deref_type(expected_type);
+}
+
 AnalyzeResult
 analyze_builtin_call(Context *cnt, MirInstrCall *call)
 {
@@ -6994,42 +7012,14 @@ analyze_builtin_call(Context *cnt, MirInstrCall *call)
 	const MirBuiltinIdKind id = callee_type->data.fn.builtin_id;
 	switch (id) {
 	case MIR_BUILTIN_ID_ARRAY_PUSH_FN: {
-		if (!args) break;
-		if (args->size != 2) break;
-
-		MirInstr *arg_arr = args->data[0];
-		MirInstr *arg_v   = args->data[1];
-
-		if (arg_v->value.type->kind == MIR_TYPE_NULL) break;
-		if (!mir_is_pointer_type(arg_arr->value.type)) break;
-
-		MirType *expected_type = mir_deref_type(arg_arr->value.type);
-		if (expected_type->kind != MIR_TYPE_DYNARR) break;
-
-		expected_type = mir_get_struct_elem_type(expected_type, MIR_DYNARR_PTR_INDEX);
-		expected_type = mir_deref_type(expected_type);
-
-		MirType *got_type = arg_v->value.type;
-		if (is_load_needed(arg_v)) got_type = mir_deref_type(got_type);
-
-		if (!type_cmp(expected_type, got_type)) {
-			char type_name[256];
-			mir_type_to_str(type_name, 256, expected_type, true);
-
-			builder_msg(BUILDER_MSG_ERROR,
-			            ERR_INVALID_TYPE,
-			            arg_v->node->location,
-			            BUILDER_CUR_WORD,
-			            "Invalid argument type, array expect value of '%s' type.",
-			            type_name);
-			return ANALYZE_RESULT(FAILED, 0);
-		}
-
+		MirType *expected_type = _check_buitin_array_type(args->data[0]);
+		if (!expected_type) return ANALYZE_RESULT(FAILED, 0);
 		break;
 	}
 
+	case MIR_BUILTIN_ID_ARRAY_RESERVE_FN:
 	case MIR_BUILTIN_ID_ARRAY_TERMINATE_FN: {
-		break;
+		if (!_check_buitin_array_type(args->data[0])) break;
 	}
 
 	default:
@@ -7109,13 +7099,6 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 	BL_ASSERT(result_type && "invalid type of call result");
 	call->base.value.type = result_type;
 
-	if (type->data.fn.builtin_id != MIR_BUILTIN_ID_NONE) {
-		AnalyzeResult result = analyze_builtin_call(cnt, call);
-		if (result.state != ANALYZE_PASSED) {
-			return result;
-		}
-	}
-
 	/* validate arguments */
 	const bool is_vargs = type->data.fn.is_vargs;
 
@@ -7194,6 +7177,11 @@ analyze_instr_call(Context *cnt, MirInstrCall *call)
 			            call_argc);
 			return ANALYZE_RESULT(FAILED, 0);
 		}
+	}
+
+	if (type->data.fn.builtin_id != MIR_BUILTIN_ID_NONE) {
+		AnalyzeResult result = analyze_builtin_call(cnt, call);
+		if (result.state != ANALYZE_PASSED) return result;
 	}
 
 	/* validate argument types */

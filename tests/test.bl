@@ -3,10 +3,11 @@
 main :: fn () s32 {
     { 
         arr: [..]s32;
-        defer array_terminate(&arr);
+        defer array_terminate(arr);
         
+        array_push(arr, 10);
         loop i := 0; i < 10; i += 1 {
-            array_push(&arr, i);
+            array_push(arr, i);
         }
 
         print("array is %\n", arr);
@@ -18,10 +19,10 @@ main :: fn () s32 {
 
     { 
         arr: [..]s32;
-        defer array_terminate(&arr);
+        defer array_terminate(arr);
         
         loop i := 0; i < 10; i += 1 {
-            array_push(&arr, 10);
+            array_push(arr, 10);
         }
 
         print("array is %\n", arr);
@@ -33,10 +34,10 @@ main :: fn () s32 {
 
     {
         arr: [..]Foo;
-        defer array_terminate(&arr);
+        defer array_terminate(arr);
         
         loop i := 0; i < 10; i += 1 {
-            array_push(&arr, {:Foo: i, i*i});
+            array_push(arr, {:Foo: i, i*i});
         }
 
         print("array is %\n", arr);

@@ -136,6 +136,7 @@
 	MIR_BUILTIN_ID_ABORT_FN,
 	MIR_BUILTIN_ID_ARRAY_PUSH_FN,
 	MIR_BUILTIN_ID_ARRAY_TERMINATE_FN,
+	MIR_BUILTIN_ID_ARRAY_RESERVE_FN,
 
 	MIR_BUILTIN_ID_IS_DEBUG,
 #endif
@@ -187,5 +188,6 @@
     {.str = "__os_abort",            .hash = 0},
     {.str = "array_push",            .hash = 0},
     {.str = "array_terminate",       .hash = 0},
+    {.str = "array_reserve",         .hash = 0},
     {.str = "IS_DEBUG",              .hash = 0},
 #endif

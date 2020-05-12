@@ -1,9 +1,9 @@
 #test "basic inserting s32" {
     arr: [..]s32;
-    defer array_terminate(&arr);
+    defer array_terminate(arr);
             
     loop i := 0; i < 1000; i += 1 {
-        array_push(&arr, i);
+        array_push(arr, i);
     }
 
     loop i := 0; i < arr.len; i += 1 {
@@ -13,10 +13,10 @@
 
 #test "basic inserting bool" {
     arr: [..]bool;
-    defer array_terminate(&arr);
+    defer array_terminate(arr);
             
     loop i := 0; i < 1000; i += 1 {
-        array_push(&arr, true);
+        array_push(arr, true);
     }
 
     loop i := 0; i < arr.len; i += 1 {
@@ -26,10 +26,10 @@
 
 #test "basic inserting string" {
     arr: [..]string;
-    defer array_terminate(&arr);
+    defer array_terminate(arr);
             
     loop i := 0; i < 1000; i += 1 {
-        array_push(&arr, "Hello!!!");
+        array_push(arr, "Hello!!!");
     }
 
     loop i := 0; i < arr.len; i += 1 {

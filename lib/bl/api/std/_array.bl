@@ -33,12 +33,12 @@ _Array :: struct #compiler {
 }
 
 array_terminate :: fn (_arr: Any) #inline #compiler {
-    arr :: ^ cast(**_Array) _arr.data;
+    arr :: cast(*_Array) _arr.data;
     mem_free(arr.ptr);
 }
 
 array_push :: fn (_arr: Any, v: Any) #compiler {
-    arr := ^ cast(**_Array) _arr.data;
+    arr := cast(*_Array) _arr.data;
     if v.data == null { panic("Invalid value (null)."); }
 
     elem_size :: v.type_info.size_bytes;
