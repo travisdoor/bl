@@ -1,4 +1,3 @@
-#load "test_arrays.bl"
 #load "test_casting.bl"
 #load "test_compounds.bl"
 #load "test_enums.bl"
@@ -24,6 +23,7 @@
 #load "test_union.bl"
 #load "test_arrtoslice.bl"
 #load "test_local_variables.bl"
+#load "test_dynamic_arrays.bl"
 
 main :: fn () s32 {
     return 0;

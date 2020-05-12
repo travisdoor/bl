@@ -1,0 +1,38 @@
+#test "basic inserting s32" {
+    arr: [..]s32;
+    defer array_terminate(&arr);
+            
+    loop i := 0; i < 1000; i += 1 {
+        array_push(&arr, i);
+    }
+
+    loop i := 0; i < arr.len; i += 1 {
+        assert(arr[i] == i);
+    }
+}
+
+#test "basic inserting bool" {
+    arr: [..]bool;
+    defer array_terminate(&arr);
+            
+    loop i := 0; i < 1000; i += 1 {
+        array_push(&arr, true);
+    }
+
+    loop i := 0; i < arr.len; i += 1 {
+        assert(arr[i] == true);
+    }
+}
+
+#test "basic inserting string" {
+    arr: [..]string;
+    defer array_terminate(&arr);
+            
+    loop i := 0; i < 1000; i += 1 {
+        array_push(&arr, "Hello!!!");
+    }
+
+    loop i := 0; i < arr.len; i += 1 {
+        assert(arr[i].len == 8);
+    }
+}

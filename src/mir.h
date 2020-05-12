@@ -229,8 +229,9 @@ struct MirFn {
 	bool         is_global;
 	s32          ref_count;
 
-	u32         flags;
-	const char *test_case_desc;
+	u32              flags;
+	MirBuiltinIdKind builtin_id;
+	const char *     test_case_desc;
 
 	/* pointer to the first block inside function body */
 	MirInstrBlock *first_block;
@@ -294,6 +295,7 @@ struct MirTypeFn {
 	bool                is_vargs;
 	bool                has_byval;
 	bool                has_sret;
+	MirBuiltinIdKind    builtin_id;
 };
 
 struct MirTypePtr {
@@ -566,6 +568,7 @@ struct MirInstrTypeFn {
 
 	MirInstr *            ret_type;
 	TSmallArray_InstrPtr *args;
+	MirBuiltinIdKind      builtin_id;
 };
 
 struct MirInstrTypeStruct {

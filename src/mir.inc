@@ -108,7 +108,7 @@
 	MIR_BUILTIN_ID_ARR_LEN,
 	MIR_BUILTIN_ID_ARR_PTR,
 	MIR_BUILTIN_ID_ARR_ALLOCATED,
-	MIR_BUILTIN_ID_ARR_T,
+	MIR_BUILTIN_ID_ARR_ELEM_SIZE,
 	MIR_BUILTIN_ID_STRUCT_BASE,
 
 	MIR_BUILTIN_ID_ANY,
@@ -134,6 +134,9 @@
 	MIR_BUILTIN_ID_TYPE_INFO_FN_ARG,
 
 	MIR_BUILTIN_ID_ABORT_FN,
+	MIR_BUILTIN_ID_ARRAY_PUSH_FN,
+	MIR_BUILTIN_ID_ARRAY_TERMINATE_FN,
+
 	MIR_BUILTIN_ID_IS_DEBUG,
 #endif
 
@@ -158,7 +161,7 @@
     {.str = "len",                   .hash = 0},
     {.str = "ptr",                   .hash = 0},
     {.str = "allocated",             .hash = 0},
-    {.str = "T",                     .hash = 0},
+    {.str = "elem_size",             .hash = 0},
     {.str = "base",                  .hash = 0},
     {.str = "Any",                   .hash = 0},
     {.str = "_Array",                .hash = 0},
@@ -182,5 +185,7 @@
     {.str = "TypeInfoEnumVariant",   .hash = 0},
     {.str = "TypeInfoFnArg",         .hash = 0},
     {.str = "__os_abort",            .hash = 0},
+    {.str = "array_push",            .hash = 0},
+    {.str = "array_terminate",       .hash = 0},
     {.str = "IS_DEBUG",              .hash = 0},
 #endif
