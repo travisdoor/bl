@@ -7004,6 +7004,24 @@ _check_buitin_array_type(MirInstr *arr)
 	return mir_deref_type(expected_type);
 }
 
+static inline MirType *
+_check_buitin_slice_type(MirInstr *slice)
+{
+	MirType *slice_type = slice->value.type;
+	if (is_load_needed(slice)) slice_type = mir_deref_type(slice_type);
+	if (slice_type->kind != MIR_TYPE_SLICE) {
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_INVALID_TYPE,
+		            slice->node->location,
+		            BUILDER_CUR_WORD,
+		            "Expected slice!");
+		return NULL;
+	}
+
+	MirType *expected_type = mir_get_struct_elem_type(slice_type, MIR_SLICE_PTR_INDEX);
+	return mir_deref_type(expected_type);
+}
+
 AnalyzeResult
 analyze_builtin_call(Context *cnt, MirInstrCall *call)
 {
@@ -7013,9 +7031,30 @@ analyze_builtin_call(Context *cnt, MirInstrCall *call)
 
 	const MirBuiltinIdKind id = callee_type->data.fn.builtin_id;
 	switch (id) {
+		// Array
 	case MIR_BUILTIN_ID_ARRAY_PUSH_FN: {
 		MirType *expected_type = _check_buitin_array_type(args->data[0]);
 		if (!expected_type) return ANALYZE_RESULT(FAILED, 0);
+
+		MirInstr *v      = args->data[1];
+		MirType * v_type = v->value.type;
+		if (is_load_needed(v)) v_type = mir_deref_type(v_type);
+
+		if (!type_cmp(expected_type, v_type)) {
+			char expected_name[256];
+			mir_type_to_str(expected_name, 256, expected_type, true);
+
+			char got_name[256];
+			mir_type_to_str(got_name, 256, v_type, true);
+
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_INVALID_TYPE,
+			            v->node->location,
+			            BUILDER_CUR_WORD,
+			            "Expected '%s' type, but got '%s'!",
+			            expected_name,
+			            got_name);
+		}
 		break;
 	}
 
@@ -7024,7 +7063,14 @@ analyze_builtin_call(Context *cnt, MirInstrCall *call)
 	case MIR_BUILTIN_ID_ARRAY_CLEAR_FN:
 	case MIR_BUILTIN_ID_ARRAY_ERASE_FN:
 	case MIR_BUILTIN_ID_ARRAY_TERMINATE_FN: {
-		if (!_check_buitin_array_type(args->data[0])) break;
+		if (!_check_buitin_array_type(args->data[0])) return ANALYZE_RESULT(PASSED, 0);
+		break;
+	}
+		// Slice
+	case MIR_BUILTIN_ID_SLICE_INIT_FN:
+	case MIR_BUILTIN_ID_SLICE_TERMINATE_FN: {
+		if (!_check_buitin_slice_type(args->data[0])) return ANALYZE_RESULT(PASSED, 0);
+		break;
 	}
 
 	default:
@@ -8207,6 +8253,12 @@ rtti_gen_struct(Context *cnt, MirType *type)
 	MirType *  dest_is_union_type = mir_get_struct_elem_type(rtti_type, 4);
 	VMStackPtr dest_is_union      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 4);
 	vm_write_int(dest_is_union_type, dest_is_union, (u64)type->data.strct.is_union);
+
+	/* is_dynamic_array */
+	MirType *  dest_is_da_type = mir_get_struct_elem_type(rtti_type, 5);
+	VMStackPtr dest_is_da      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 5);
+	const bool is_da           = type->kind == MIR_TYPE_DYNARR;
+	vm_write_int(dest_is_da_type, dest_is_da, (u64)is_da);
 
 	return rtti_var;
 }

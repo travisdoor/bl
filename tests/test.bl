@@ -2,69 +2,30 @@
 #load "std/array.bl"
 
 main :: fn () s32 {
-    arr: [..]s32;
-    defer array_terminate(arr);
-    
-    loop i := 0; i < 10; i += 1 {
-        array_push(arr, 10);
-    }
-
-    print("array is %\n", arr);
-    
-    loop i := 0; i < arr.len; i += 1 {
-        print("index % = %\n", i, arr[i]);
-    }
-
-
     {
-        n: *s32;
-        make(n, 1);
-
-        print("ptr = %\n", n);
-        release(n);
-    }
-
-    {
-        n: *u8;
-        make(n, 10);
-        print("ptr = %\n", n);
-        release(n);
-    }
-
-    {
-        n: []s32;
-        make(n, 10);
-        print("n = %\n", n);
-
-        loop i := 0; i < n.len; i += 1 {
-            n[i] = i;
+        arr: [..]s32;
+        defer array_terminate(arr);
+        
+        loop i := 0; i < 10; i += 1 {
+            array_push(arr, i);
         }
 
-        print("n = %\n", n);
-        release(n);
+        print("array is %\n", arr);
     }
 
     {
-        f: Foo;
-        make(f.n, 10);
-        print("f.n = %\n", f.n);
+        sl: []s32;
+        slice_init(sl, 10);
+        defer slice_terminate(sl);
 
-        loop i := 0; i < f.n.len; i += 1 {
-            f.n[i] = i;
+        loop i := 0; i < 10; i += 1 {
+            sl[i] = i;
         }
 
-        print("f.n = %\n", f.n);
-        release(f.n);
+        print("slice is %\n", sl);
     }
-
 
 
     return 0;
 }
-
-Foo :: struct {
-    n: []s32;
-}
-
-// new utils
 

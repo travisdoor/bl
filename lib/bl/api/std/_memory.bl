@@ -174,18 +174,15 @@ memset :: fn (_dest: *u8, v: u8, size: usize) *u8 {
 }
 
 /*!
-# make
+# slice_init
 ## Declaration
 ```c
-make :: fn (_v: Any, n: s64) *u8 
+slice_init :: fn (_v: Any, n: s64)
 ```
 
 ## Description
-  Allocate heap memory for value. This function is more generic version of the
-`alloc` function. Data type, pointer variable or slice variable can be passed
-as `_v` value. The `n` argument specify how many elements to allocate. Memory
-allocated by `make` must be freed by `release` function. Allocated memory block
-is always set to default 0 value.
+  Allocate heap memory for `n` elements in `_v` slice. Allocated block is set to
+zero default value. Allocated memory must be released by `slice_terminate` call.
 
   This way of memory allocation cause some overhead compared to plain `alloc` due to 
 conversion to `Any` and more 'generic' behaviour, also setting to 0 have some 
@@ -193,150 +190,64 @@ runtime cost. Consider use of `alloc` instead in performance-critical cases.
 
 ## Arguments
   * `_v`
-    Value to allocate or data type. 
+    Slice to be initialized. 
   * `n`
     Number of elements. 
-
-## Result
-  Pointer to allocated memory. 
 
 ## Example
 ```c
 main :: fn () s32 {
-    { // Allocate memory for one number.
-        ptr: *s32;
-        make(ptr, 1);
-        
-        (^ptr) = 10;
+    // Allocate slice of 10 numbers
+    sl: []s32;
+    slice_init(sl, 10);
 
-        // free allocated memory
-        release(ptr);
+    loop i := 0; i < sl.len; i += 1 {
+        sl[i] = i;
     }
 
-    { // Another way to allocate number
-        // We pass type of element to be allocated as value to make.
-        // In this case it's s32.
-        ptr: *s32 = auto make(s32, 1);
-        (^ptr) = 10;
-        release(ptr);
-    }
-
-    { // Allocate c-like array 
-        // We allocate memory for 10 numbers.
-        ptr: *s32 = auto make(s32, 10);
-        (^ptr) = 10;
-        release(ptr);
-    }
-
-    { // Allocate slice of 10 numbers
-        sl: []s32;
-        make(sl, 10);
-
-        loop i := 0; i < sl.len; i += 1 {
-            sl[i] = i;
-        }
-
-        release(sl);
-    }
+    // release memory allocated by init
+    slice_terminate(sl);
 
     return 0;
 }
 ```
 */
-make :: fn (_v: Any, n: s64) *u8 #compiler {
-    T :: _v.type_info;
-    mem: *u8; 
-
+slice_init :: fn (_v: Any, n: s64) #compiler {
     if n < 0 { panic("Attempt to allocate 0 values by make!"); }
 
-    switch T.kind {
-        TypeKind.Ptr {
-            elem_size :: (cast(*TypeInfoPtr) T).pointee_type.size_bytes;
-            bytes :: elem_size * auto n;
-            mem = alloc(bytes);
-            memset(mem, 0, bytes);
+    T :: cast(*TypeInfoStruct) _v.type_info;
+    T_ptr :: cast(*TypeInfoPtr) (cast(*TypeInfoStruct) T).members[1].base_type;
 
-            dest := cast(**u8) _v.data;
-            (^dest) = mem;
-        }
+    elem_size :: T_ptr.pointee_type.size_bytes;
+    dest := cast(*[]u8) _v.data;
+    bytes :: elem_size * auto n;
+    dest.ptr = alloc(bytes);
+    dest.len = n;
 
-        TypeKind.Struct {
-            T_struct :: cast(*TypeInfoStruct) T;
-            if T_struct.is_slice {
-                T_ptr :: cast(*TypeInfoPtr) (cast(*TypeInfoStruct) T).members[1].base_type;
-
-                elem_size :: T_ptr.pointee_type.size_bytes;
-                dest := cast(*[]u8) _v.data;
-                bytes :: elem_size * auto n;
-                dest.ptr = alloc(bytes);
-                dest.len = n;
-
-                memset(dest.ptr, 0, bytes); 
-                mem = dest.ptr;
-            } else {
-                panic("Cannot make allocation for destination type '%'!", T.kind);
-            }
-        }
-
-        TypeKind.Type {
-                T_alloc :: cast(*TypeInfo) _v.data;
-                elem_size :: T_alloc.size_bytes;
-                bytes :: elem_size * auto n;
-                mem = alloc(bytes);
-                memset(mem, 0, bytes); 
-        }
-
-        default {
-            panic("Cannot make allocation for destination type '%'!", T.kind);
-        }
-    }
-
-    return mem;
+    memset(dest.ptr, 0, bytes); 
 }
 
 /*!
-# make
+# slice_terminate
 ## Declaration
 ```c
-release :: fn (_v: Any)
+slice_terminate :: fn (_v: Any)
 ```
 
 ## Description
-  Release memory allocated by `make` call. For more information check out
-`make` documentation page.
+  Release slice memory allocated by `slice_init` call. For more information check out
+`slice_init` documentation page.
 
 ## Arguments
   * `_v`
-    Allocated value. 
+    Allocated slice. 
 */
-release :: fn (_v: Any) #compiler {
-    T :: _v.type_info;
-
-    switch T.kind {
-        TypeKind.Ptr {
-            tmp := cast(**u8) _v.data;
-            free(^tmp);
-            (^tmp) = null;
-        }
-
-        TypeKind.Struct {
-            T_struct :: cast(*TypeInfoStruct) T;
-            if T_struct.is_slice {
-                tmp := cast(*[]u8) _v.data;
-                free (tmp.ptr);
-                tmp.ptr = null;
-                tmp.len = 0;
-            } else {
-                panic("Cannot release allocation of type '%'!", T.kind);
-            }
-        }
-
-        default {
-            panic("Cannot release allocation of type '%'!", T.kind);
-        }
-    }
+slice_terminate :: fn (_v: Any) #compiler {
+    tmp := cast(*[]u8) _v.data;
+    free (tmp.ptr);
+    tmp.ptr = null;
+    tmp.len = 0;
 }
-
 
 _mem_alloc_default :: fn (size: usize) *u8 {
     return c_malloc(size);

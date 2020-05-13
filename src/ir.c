@@ -783,6 +783,13 @@ rtti_emit_struct(Context *cnt, MirType *type)
 	                   LLVMConstInt(is_union_type->llvm_type,
 	                                (u64)is_union,
 	                                is_union_type->data.integer.is_signed));
+	/* is_dynamic_array*/
+	const bool is_da      = type->kind == MIR_TYPE_DYNARR;
+	MirType *  is_da_type = mir_get_struct_elem_type(rtti_type, 5);
+	tsa_push_LLVMValue(&llvm_vals,
+	                   LLVMConstInt(is_union_type->llvm_type,
+	                                (u64)is_da,
+	                                is_union_type->data.integer.is_signed));
 
 	LLVMValueRef llvm_result =
 	    LLVMConstNamedStruct(rtti_type->llvm_type, llvm_vals.data, (u32)llvm_vals.size);

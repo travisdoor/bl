@@ -140,6 +140,8 @@
 	MIR_BUILTIN_ID_ARRAY_ERASE_FN,
 	MIR_BUILTIN_ID_ARRAY_CLEAR_FN,
 	MIR_BUILTIN_ID_ARRAY_INIT_FN,
+	MIR_BUILTIN_ID_SLICE_INIT_FN,
+	MIR_BUILTIN_ID_SLICE_TERMINATE_FN,
 
 	MIR_BUILTIN_ID_IS_DEBUG,
 #endif
@@ -195,5 +197,7 @@
     {.str = "array_erase",           .hash = 0},
     {.str = "array_clear",           .hash = 0},
     {.str = "array_init",            .hash = 0},
+    {.str = "slice_init",            .hash = 0},
+    {.str = "slice_terminate",       .hash = 0},
     {.str = "IS_DEBUG",              .hash = 0},
 #endif
