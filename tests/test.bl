@@ -2,29 +2,14 @@
 #load "std/array.bl"
 
 main :: fn () s32 {
-    {
-        arr: [..]s32;
-        defer array_terminate(arr);
-        
-        loop i := 0; i < 10; i += 1 {
-            array_push(arr, i);
-        }
-
-        print("array is %\n", arr);
+    arr: [..]s32;
+    defer array_terminate(arr);
+    
+    loop i := 0; i < 10; i += 1 {
+        array_push(arr, true);
     }
 
-    {
-        sl: []s32;
-        slice_init(sl, 10);
-        defer slice_terminate(sl);
-
-        loop i := 0; i < 10; i += 1 {
-            sl[i] = i;
-        }
-
-        print("slice is %\n", sl);
-    }
-
+    print("array is %\n", arr);
 
     return 0;
 }

@@ -32,6 +32,18 @@ _Array :: struct #compiler {
     allocated: usize;
 }
 
+/*!
+# array_init
+## Declaration
+```c
+array_init :: fn (_arr: Any)
+```
+## Description
+  Sets dynamic array to default state.
+
+## Arguments
+  * `_arr` Array to be initialized. 
+*/
 array_init :: fn (_arr: Any) #inline #compiler {
     arr := cast(*_Array) _arr.data;
     arr.ptr = null;
@@ -39,6 +51,20 @@ array_init :: fn (_arr: Any) #inline #compiler {
     arr.allocated = 0;
 }
 
+/*!
+# array_terminate
+## Declaration
+```c
+array_terminate :: fn (_arr: Any)
+```
+## Description
+  Release memory allocated by dynamic array. This function is supposed to
+be called when dynamic array is no longer needed. Passed dynamic array is set to 
+default state also.
+
+## Arguments
+  * `_arr` Array to be terminated.
+*/
 array_terminate :: fn (_arr: Any) #inline #compiler {
     arr := cast(*_Array) _arr.data;
     free(arr.ptr);
@@ -47,6 +73,21 @@ array_terminate :: fn (_arr: Any) #inline #compiler {
     arr.allocated = 0;
 }
 
+/*!
+# array_push
+## Declaration
+```c
+array_push :: fn (_arr: Any, v: Any)
+```
+## Description
+  Append new value at the dynamic array end. New heap allocation is done
+here only in cases when there is not enough memory allocated to
+store all values.
+
+## Arguments
+  * `_arr` Array to be appedned. 
+  * `v` Value to be appended. 
+*/
 array_push :: fn (_arr: Any, v: Any) #compiler {
     arr := cast(*_Array) _arr.data;
     if v.data == null { panic("Invalid value (null)."); }
@@ -60,13 +101,41 @@ array_push :: fn (_arr: Any, v: Any) #compiler {
     memcpy(dest, v.data, elem_size);
 };
 
-array_reserve :: fn (_arr: Any, size: usize) #compiler {
+/*!
+# array_reserve
+## Declaration
+```c
+array_reserve :: fn (_arr: Any, n: s64)
+```
+## Description
+  Reserve heap memory for `n` elements.
+
+## Arguments
+  * `_arr` Array. 
+  * `n` Count of elemets for which should reserve space. 
+*/
+array_reserve :: fn (_arr: Any, n: s64) #compiler {
     arr := cast(*_Array) _arr.data;
-    if size == 0 { return; }
+    if n == 0 { return; }
     elem_size :: get_elem_size(_arr.type_info);
-    ensure_space(arr, elem_size, size, true);
+    ensure_space(arr, elem_size, auto n, true);
 };
 
+/*!
+# array_erase
+## Declaration
+```c
+array_erase :: fn (_arr: Any, i: s64)
+```
+## Description
+  Erase element on index `i`. Call to this function can cause reordering
+of an dynamic array. Allocated memory is kept even if we erase entire dynamic array. Function
+invoke panic in case of index overflow.
+
+## Arguments
+  * `_arr` Array. 
+  * `i` Index of erased element. 
+*/
 array_erase :: fn (_arr: Any, i: s64) #compiler {
     arr := cast(*_Array) _arr.data;
     if i >= arr.len { panic("Index overflow!"); }
@@ -86,6 +155,18 @@ array_erase :: fn (_arr: Any, i: s64) #compiler {
     arr.len -= 1;
 };
 
+/*!
+# array_clear
+## Declaration
+```c
+array_clear :: fn (_arr: Any)
+```
+## Description
+  Erase all elements in dynamic array but keep allocated memory.
+
+## Arguments
+  * `_arr` Array to be cleared. 
+*/
 array_clear :: fn (_arr: Any) #inline #compiler {
     arr := cast(*_Array) _arr.data;
     arr.len = 0;

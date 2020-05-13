@@ -1,0 +1,51 @@
+// Dynamic arrays
+
+/*
+    Until now we've used only arrays with fixed size known in compile time,
+    but sometimes we need array size to be changed in runtime. In such case 
+    we can use builtin dynamic array type.
+
+    Dynamic arrays can be extended in runtime, memory allocated to store all
+    values is dynamically reserved on heap as needed.
+*/
+
+// First of all we must load API functions for dynamic array. The #load hash
+// directive can be used to "include" other source files.
+#load "std/array.bl"
+
+main :: fn () s32 {
+    // Now we create new dynamic array to store numbers. No heap alloacation 
+    // is done here, we only specify element type of the array. As it's with 
+    // regular static arrays or slices, we can access the element count via 
+    // .len and allocated memory block via .ptr member. Compared to static
+    // arrays, there is additional member .allocated telling us how many
+    // elements could array handle till next allocation is needed.
+    nums: [..]s32;
+
+    // Fill the dynamic array with some values.
+    loop i := 0; i < 100; i += 1 {
+        // To append new value at the end of the array we can use 'array_push'
+        // function.
+        array_push(nums, i);
+
+        // We can push only numbers of s32 type into the array (based on
+        // declaration type), you can try to push something else and see what
+        // happens.
+    }
+
+    // Dynamic arrays can be printed as usual...
+    print("nums = %\n", nums);
+
+    // We can use [N] operator to access single array elements like this:
+    print("nums[10] = %\n", nums[10]);
+    print("nums[20] = %\n", nums[20]);
+
+    // Since dynamic array will allocate memory on heap, we must free this
+    // memory by 'array_terminate' call when array is no longer needed.
+    array_terminate(nums);
+
+    // There is lot of other ways to modify dynamic array content, check out
+    // API documentation.
+
+    return 0;
+}
