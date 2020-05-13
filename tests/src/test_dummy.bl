@@ -24,6 +24,7 @@
 #load "test_arrtoslice.bl"
 #load "test_local_variables.bl"
 #load "test_dynamic_arrays.bl"
+#load "test_make_release.bl"
 
 main :: fn () s32 {
     return 0;

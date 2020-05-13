@@ -30,7 +30,6 @@
 
 RAND_MAX :: 2147483647;
 
-c_memset :: fn (str: c_void_ptr, c: c_int, n: c_size_t) c_void_ptr #extern "memset";
 c_malloc :: fn (size: c_size_t) c_void_ptr #extern "malloc";
 c_free   :: fn (ptr: c_void_ptr) #extern "free";
 c_strlen :: fn (str: *c_char) c_size_t #extern "strlen";

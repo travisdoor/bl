@@ -17,7 +17,7 @@ LevelLayer :: struct {
 };
 
 level_new :: fn (game: *Game) *Level {
-    self := cast(*Level) mem_alloc(sizeof(Level));
+    self := cast(*Level) alloc(sizeof(Level));
 
     self.layers[LEVEL_LAYER_SKY] = level_layer_new(game, TextureId.LevelSky, 0.f);
     self.layers[LEVEL_LAYER_HILLS1] = level_layer_new(game, TextureId.LevelHills1, -0.05f);
@@ -48,7 +48,7 @@ level_delete :: fn (self: *Level) {
         entity_delete(self.entities[i]);
     }
 
-    mem_free(cast(*u8) self);
+    free(cast(*u8) self);
 };
 
 level_render :: fn (self: *Level, game: *Game) {
@@ -101,7 +101,7 @@ level_handle_input :: fn (self: *Level) {
 };
 
 level_layer_new :: fn (game: *Game, texture_id: TextureId, x_speed: f32) *LevelLayer {
-    self := cast(*LevelLayer) mem_alloc(sizeof(LevelLayer)); 
+    self := cast(*LevelLayer) alloc(sizeof(LevelLayer)); 
     self.texture = texture_pool_get(texture_id);
 
     self.x_position = 0.f;
@@ -110,7 +110,7 @@ level_layer_new :: fn (game: *Game, texture_id: TextureId, x_speed: f32) *LevelL
 };
 
 level_layer_delete :: fn (self: *LevelLayer) {
-    mem_free(cast(*u8) self);
+    free(cast(*u8) self);
 };
 
 level_layer_render :: fn (self: *LevelLayer, game: *Game) {

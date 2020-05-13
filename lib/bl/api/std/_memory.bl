@@ -30,15 +30,15 @@
 #load "std/utils.bl"
 
 /*!
-# mem_alloc
+# alloc
 ## Declaration
 ```c
-mem_alloc :: fn (size: usize) *u8
+alloc :: fn (size: usize) *u8
 ```
 
 ## Description
   Allocates count of bytes on heap using default allocator.
-Use `mem_free` to free allocated memory when it's no longer
+Use `free` to free allocated memory when it's no longer
 needed. Cause panic when allocation is not possible. This
 function use allocator set in `_context.alloc_fn`
 
@@ -49,24 +49,24 @@ function use allocator set in `_context.alloc_fn`
 ## Result
   Pointer to begin of the new allocated block of memory.
 */
-mem_alloc :: fn (size: usize) *u8 {
+alloc :: fn (size: usize) *u8 {
     mem :: _context.alloc_fn(size); 
     if !mem { panic("Bad alloc"); }
     return mem;
 };
 
 /*!
-# mem_calloc
+# calloc
 ## Declaration
 ```c
-mem_calloc :: fn (num: usize, size: usize) *u8
+calloc :: fn (num: usize, size: usize) *u8
 ```
 
 ## Description
   Allocates count of bytes on heap using default allocator and
   return pointer to begin of this allocated block. Resulting
   block is set to 0 value.
-  Use `mem_free` to free allocated memory when it's no longer
+  Use `free` to free allocated memory when it's no longer
   needed.
 
 ## Arguments
@@ -78,16 +78,16 @@ mem_calloc :: fn (num: usize, size: usize) *u8
 ## Result
   Pointer to begin of the new allocated block of memory.
 */
-mem_calloc :: fn (num: usize, size: usize) *u8 {
+calloc :: fn (num: usize, size: usize) *u8 {
     tmp := _context.alloc_fn(size * num);
-    return mem_set(tmp, 0, size * num);
+    return memset(tmp, 0, size * num);
 };
 
 /*!
-# mem_free
+# free
 ## Declaration
 ```c
-mem_free :: fn (ptr: *u8)
+free :: fn (ptr: *u8)
 ```
 
 ## Description
@@ -98,15 +98,15 @@ mem_free :: fn (ptr: *u8)
   * `ptr`
     Memory to be deallocated. 
 */
-mem_free :: fn (ptr: *u8) {
+free :: fn (ptr: *u8) {
     _context.free_fn(ptr);
 };
 
 /*!
-# mem_copy
+# memcpy
 ## Declaration
 ```c
-mem_copy :: fn (dest: *u8, src: *u8, size: usize)
+memcpy :: fn (dest: *u8, src: *u8, size: usize)
 ```
 
 ## Description
@@ -121,7 +121,7 @@ and source size must be at least `size` bytes.
   * `size`
     Count of bytes to be copied. 
  */
-mem_copy :: fn (dest: *u8, src: *u8, size: usize) {
+memcpy :: fn (dest: *u8, src: *u8, size: usize) {
     m := size / sizeof(u64);
     d := size - m * sizeof(u64);
 
@@ -143,10 +143,10 @@ mem_copy :: fn (dest: *u8, src: *u8, size: usize) {
 };
 
 /*!
-# mem_set
+# memset
 ## Declaration
 ```c
-mem_set :: fn (_dest: *u8, v: u8, size: usize) *u8
+memset :: fn (_dest: *u8, v: u8, size: usize) *u8
 ```
 
 ## Description
@@ -164,7 +164,7 @@ least `size` bytes.
 ## Result
   Pointer to destination memory. 
 */
-mem_set :: fn (_dest: *u8, v: u8, size: usize) *u8 {
+memset :: fn (_dest: *u8, v: u8, size: usize) *u8 {
     dest := {:[]u8: auto size, _dest};
     loop i := 0; i < dest.len; i += 1 {
         dest[i] = v;
@@ -172,6 +172,171 @@ mem_set :: fn (_dest: *u8, v: u8, size: usize) *u8 {
 
     return dest.ptr;
 }
+
+/*!
+# make
+## Declaration
+```c
+make :: fn (_v: Any, n: s64) *u8 
+```
+
+## Description
+  Allocate heap memory for value. This function is more generic version of the
+`alloc` function. Data type, pointer variable or slice variable can be passed
+as `_v` value. The `n` argument specify how many elements to allocate. Memory
+allocated by `make` must be freed by `release` function. Allocated memory block
+is always set to default 0 value.
+
+  This way of memory allocation cause some overhead compared to plain `alloc` due to 
+conversion to `Any` and more 'generic' behaviour, also setting to 0 have some 
+runtime cost. Consider use of `alloc` instead in performance-critical cases.
+
+## Arguments
+  * `_v`
+    Value to allocate or data type. 
+  * `n`
+    Number of elements. 
+
+## Result
+  Pointer to allocated memory. 
+
+## Example
+```c
+main :: fn () s32 {
+    { // Allocate memory for one number.
+        ptr: *s32;
+        make(ptr, 1);
+        
+        (^ptr) = 10;
+
+        // free allocated memory
+        release(ptr);
+    }
+
+    { // Another way to allocate number
+        // We pass type of element to be allocated as value to make.
+        // In this case it's s32.
+        ptr: *s32 = auto make(s32, 1);
+        (^ptr) = 10;
+        release(ptr);
+    }
+
+    { // Allocate c-like array 
+        // We allocate memory for 10 numbers.
+        ptr: *s32 = auto make(s32, 10);
+        (^ptr) = 10;
+        release(ptr);
+    }
+
+    { // Allocate slice of 10 numbers
+        sl: []s32;
+        make(sl, 10);
+
+        loop i := 0; i < sl.len; i += 1 {
+            sl[i] = i;
+        }
+
+        release(sl);
+    }
+
+    return 0;
+}
+```
+*/
+make :: fn (_v: Any, n: s64) *u8 #compiler {
+    T :: _v.type_info;
+    mem: *u8; 
+
+    if n < 0 { panic("Attempt to allocate 0 values by make!"); }
+
+    switch T.kind {
+        TypeKind.Ptr {
+            elem_size :: (cast(*TypeInfoPtr) T).pointee_type.size_bytes;
+            bytes :: elem_size * auto n;
+            mem = alloc(bytes);
+            memset(mem, 0, bytes);
+
+            dest := cast(**u8) _v.data;
+            (^dest) = mem;
+        }
+
+        TypeKind.Struct {
+            T_struct :: cast(*TypeInfoStruct) T;
+            if T_struct.is_slice {
+                T_ptr :: cast(*TypeInfoPtr) (cast(*TypeInfoStruct) T).members[1].base_type;
+
+                elem_size :: T_ptr.pointee_type.size_bytes;
+                dest := cast(*[]u8) _v.data;
+                bytes :: elem_size * auto n;
+                dest.ptr = alloc(bytes);
+                dest.len = n;
+
+                memset(dest.ptr, 0, bytes); 
+                mem = dest.ptr;
+            } else {
+                panic("Cannot make allocation for destination type '%'!", T.kind);
+            }
+        }
+
+        TypeKind.Type {
+                T_alloc :: cast(*TypeInfo) _v.data;
+                elem_size :: T_alloc.size_bytes;
+                bytes :: elem_size * auto n;
+                mem = alloc(bytes);
+                memset(mem, 0, bytes); 
+        }
+
+        default {
+            panic("Cannot make allocation for destination type '%'!", T.kind);
+        }
+    }
+
+    return mem;
+}
+
+/*!
+# make
+## Declaration
+```c
+release :: fn (_v: Any)
+```
+
+## Description
+  Release memory allocated by `make` call. For more information check out
+`make` documentation page.
+
+## Arguments
+  * `_v`
+    Allocated value. 
+*/
+release :: fn (_v: Any) #compiler {
+    T :: _v.type_info;
+
+    switch T.kind {
+        TypeKind.Ptr {
+            tmp := cast(**u8) _v.data;
+            free(^tmp);
+            (^tmp) = null;
+        }
+
+        TypeKind.Struct {
+            T_struct :: cast(*TypeInfoStruct) T;
+            if T_struct.is_slice {
+                tmp := cast(*[]u8) _v.data;
+                free (tmp.ptr);
+                tmp.ptr = null;
+                tmp.len = 0;
+            } else {
+                panic("Cannot release allocation of type '%'!", T.kind);
+            }
+        }
+
+        default {
+            panic("Cannot release allocation of type '%'!", T.kind);
+        }
+    }
+}
+
 
 _mem_alloc_default :: fn (size: usize) *u8 {
     return c_malloc(size);

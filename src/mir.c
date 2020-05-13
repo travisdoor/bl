@@ -5860,10 +5860,12 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	if (fn->id && !fn->linkage_name) {
 		if (IS_FLAG(fn->flags, FLAG_EXTERN) || IS_FLAG(fn->flags, FLAG_ENTRY)) {
 			fn->linkage_name = fn->id->str;
+#if 0
 		} else if (IS_FLAG(fn->flags, FLAG_PRIVATE)) {
 			fn->linkage_name = gen_uq_name(fn->id->str);
 		} else if (fn->is_global) {
 			fn->linkage_name = fn->id->str;
+#endif
 		} else {
 			fn->linkage_name = gen_uq_name(fn->id->str);
 		}
@@ -7017,7 +7019,10 @@ analyze_builtin_call(Context *cnt, MirInstrCall *call)
 		break;
 	}
 
+	case MIR_BUILTIN_ID_ARRAY_INIT_FN:
 	case MIR_BUILTIN_ID_ARRAY_RESERVE_FN:
+	case MIR_BUILTIN_ID_ARRAY_CLEAR_FN:
+	case MIR_BUILTIN_ID_ARRAY_ERASE_FN:
 	case MIR_BUILTIN_ID_ARRAY_TERMINATE_FN: {
 		if (!_check_buitin_array_type(args->data[0])) break;
 	}

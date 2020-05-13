@@ -32,9 +32,19 @@ _Array :: struct #compiler {
     allocated: usize;
 }
 
+array_init :: fn (_arr: Any) #inline #compiler {
+    arr := cast(*_Array) _arr.data;
+    arr.ptr = null;
+    arr.len = 0;
+    arr.allocated = 0;
+}
+
 array_terminate :: fn (_arr: Any) #inline #compiler {
-    arr :: cast(*_Array) _arr.data;
-    mem_free(arr.ptr);
+    arr := cast(*_Array) _arr.data;
+    free(arr.ptr);
+    arr.ptr = null;
+    arr.len = 0;
+    arr.allocated = 0;
 }
 
 array_push :: fn (_arr: Any, v: Any) #compiler {
@@ -46,19 +56,51 @@ array_push :: fn (_arr: Any, v: Any) #compiler {
     arr.len += 1;
     ensure_space(arr, elem_size, auto arr.len, false);
 
-    dest :: elem_ptr(arr, elem_size, arr.len - 1);
-    mem_copy(dest, v.data, elem_size);
+    dest :: get_elem_ptr(arr, elem_size, arr.len - 1);
+    memcpy(dest, v.data, elem_size);
 };
 
 array_reserve :: fn (_arr: Any, size: usize) #compiler {
+    arr := cast(*_Array) _arr.data;
     if size == 0 { return; }
-    //ensure_space(arr, size, true);
+    elem_size :: get_elem_size(_arr.type_info);
+    ensure_space(arr, elem_size, size, true);
+};
+
+array_erase :: fn (_arr: Any, i: s64) #compiler {
+    arr := cast(*_Array) _arr.data;
+    if i >= arr.len { panic("Index overflow!"); }
+    if i == arr.len - 1 { 
+        arr.len -= 1; 
+        return;
+    }
+
+    elem_size :: get_elem_size(_arr.type_info);
+
+    memcpy(
+            get_elem_ptr(arr, elem_size, i), 
+            get_elem_ptr(arr, elem_size, arr.len - 1), 
+            elem_size
+    );
+
+    arr.len -= 1;
+};
+
+array_clear :: fn (_arr: Any) #inline #compiler {
+    arr := cast(*_Array) _arr.data;
+    arr.len = 0;
 };
 
 #private
 ALLOC_BLOCK_SIZE : usize : 32;
 
-elem_ptr :: fn (arr: *_Array, elem_size: usize, i: s64) *u8 #inline {
+get_elem_size :: fn (T: *TypeInfo) usize #inline {
+    a :: cast(*TypeInfoStruct) T;
+    elem_type :: a.members[1].base_type;
+    return (cast(*TypeInfoPtr) elem_type).pointee_type.size_bytes;
+}
+
+get_elem_ptr :: fn (arr: *_Array, elem_size: usize, i: s64) *u8 #inline {
     if i >= arr.len {
         panic("Element index out of range, index is % but array size is %.", i, arr.len);
     }
@@ -78,10 +120,10 @@ ensure_space :: fn (arr: *_Array, elem_size: usize, space: usize, exact: bool) {
 
     tmp := arr.ptr;
 
-    arr.ptr = mem_alloc(space * elem_size); 
+    arr.ptr = alloc(space * elem_size); 
     if tmp != null {
-        mem_copy(arr.ptr, tmp, arr.allocated * elem_size);
-        mem_free(tmp);
+        memcpy(arr.ptr, tmp, arr.allocated * elem_size);
+        free(tmp);
     }
     
     arr.allocated = space;

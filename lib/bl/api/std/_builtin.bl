@@ -28,7 +28,6 @@
 
 #load "_c.bl"
 #load "_memory.bl"
-#load "_array.bl"
 
 /*!
 # OSKind

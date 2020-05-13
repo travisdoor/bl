@@ -15,7 +15,7 @@ anim_new :: fn (game: *Game,
                 texture_id: TextureId, 
                 frames: *iv2) *Animation {
 
-    self := cast(*Animation) mem_alloc(sizeof(Animation));
+    self := cast(*Animation) alloc(sizeof(Animation));
 
     self.texture = texture_pool_get(texture_id);
 
@@ -40,7 +40,7 @@ anim_new :: fn (game: *Game,
 };
 
 anim_delete :: fn (self: *Animation) {
-    mem_free(cast(*u8) self);
+    free(cast(*u8) self);
 };
 
 anim_update :: fn (self: *Animation, dt: f32) {

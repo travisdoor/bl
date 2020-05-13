@@ -1,57 +1,70 @@
 /* playground */
+#load "std/array.bl"
 
 main :: fn () s32 {
-    { 
-        arr: [..]s32;
-        defer array_terminate(arr);
-        
+    arr: [..]s32;
+    defer array_terminate(arr);
+    
+    loop i := 0; i < 10; i += 1 {
         array_push(arr, 10);
-        loop i := 0; i < 10; i += 1 {
-            array_push(arr, i);
-        }
-
-        print("array is %\n", arr);
-        
-        loop i := 0; i < arr.len; i += 1 {
-            print("index % = %\n", i, arr[i]);
-        }
     }
 
-    { 
-        arr: [..]s32;
-        defer array_terminate(arr);
-        
-        loop i := 0; i < 10; i += 1 {
-            array_push(arr, 10);
-        }
+    print("array is %\n", arr);
+    
+    loop i := 0; i < arr.len; i += 1 {
+        print("index % = %\n", i, arr[i]);
+    }
 
-        print("array is %\n", arr);
-        
-        loop i := 0; i < arr.len; i += 1 {
-            print("index % = %\n", i, arr[i]);
-        }
+
+    {
+        n: *s32;
+        make(n, 1);
+
+        print("ptr = %\n", n);
+        release(n);
     }
 
     {
-        arr: [..]Foo;
-        defer array_terminate(arr);
-        
-        loop i := 0; i < 10; i += 1 {
-            array_push(arr, {:Foo: i, i*i});
+        n: *u8;
+        make(n, 10);
+        print("ptr = %\n", n);
+        release(n);
+    }
+
+    {
+        n: []s32;
+        make(n, 10);
+        print("n = %\n", n);
+
+        loop i := 0; i < n.len; i += 1 {
+            n[i] = i;
         }
 
-        print("array is %\n", arr);
-        
-        loop i := 0; i < arr.len; i += 1 {
-            print("index % = %\n", i, arr[i]);
-        }
+        print("n = %\n", n);
+        release(n);
     }
+
+    {
+        f: Foo;
+        make(f.n, 10);
+        print("f.n = %\n", f.n);
+
+        loop i := 0; i < f.n.len; i += 1 {
+            f.n[i] = i;
+        }
+
+        print("f.n = %\n", f.n);
+        release(f.n);
+    }
+
+
 
     return 0;
 }
 
 Foo :: struct {
-    i: s32;
-    j: s32;
+    n: []s32;
 }
+
+// new utils
 

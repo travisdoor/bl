@@ -99,11 +99,11 @@ htbl_new :: fn (v: Any, expected_size: usize) *HashTable
 
     T :: cast(*TypeInfo) v.data;
 
-	tbl := cast(*HashTable) mem_alloc(sizeof(HashTable));
-	if tbl == null { panic("Bad alloc!!"); }
+    tbl := cast(*HashTable) alloc(sizeof(HashTable));
+    if tbl == null { panic("Bad alloc!!"); }
 
-	htbl_init(tbl, T, expected_size);
-	return tbl;
+    htbl_init(tbl, T, expected_size);
+    return tbl;
 }
 
 /*
@@ -117,9 +117,9 @@ htbl_new :: fn (v: Any, expected_size: usize) *HashTable
  *     Pointer to hash table to be deleted. 
  */
 htbl_delete :: fn (tbl: *HashTable) {
-	if tbl == null { return; }
-	htbl_terminate(tbl);
-    mem_free(auto tbl);
+    if tbl == null { return; }
+    htbl_terminate(tbl);
+    free(auto tbl);
 }
 
 /*
@@ -177,10 +177,10 @@ htbl_clear :: fn (tbl: *HashTable) {
 		node = auto iter.opaque;
 
 		htbl_iter_next(&iter);
-		mem_free(auto node);
+		free(auto node);
 	}
 
-    mem_set(auto tbl.buckets.ptr, 0, (cast(usize) tbl.buckets.len) * sizeof(Bucket));
+    memset(auto tbl.buckets.ptr, 0, (cast(usize) tbl.buckets.len) * sizeof(Bucket));
 
 	tbl.end   = {:Node: 0};
 	tbl.begin = &tbl.end;
@@ -484,13 +484,13 @@ htbl_init :: fn (tbl: *HashTable, T: *TypeInfo, expected_size: usize) {
 	if expected_size == 0 { expected_size = DEFAULT_EXPECTED_SIZE; }
 
 	tbl.buckets.len = auto next_prime(cast(s32)ceil(cast(f64)expected_size / cast(f64)MAX_LOAD_FACTOR));
-	tbl.buckets.ptr = auto mem_calloc(auto tbl.buckets.len, sizeof(Bucket));
+	tbl.buckets.ptr = auto calloc(auto tbl.buckets.len, sizeof(Bucket));
 	tbl.len         = 0;
 }
 
 htbl_terminate :: fn (tbl: *HashTable) {
 	htbl_clear(tbl);
-	mem_free(auto tbl.buckets.ptr);
+	free(auto tbl.buckets.ptr);
     tbl.buckets.len = 0;
 	tbl.len         = 0;
 	tbl.begin       = &tbl.end;
@@ -498,9 +498,9 @@ htbl_terminate :: fn (tbl: *HashTable) {
 
 create_node :: fn (tbl: *HashTable) *Node {
     node_size :: get_node_size(tbl);
-	new_node := cast(*Node) mem_alloc(node_size);
+	new_node := cast(*Node) alloc(node_size);
     if new_node == null { panic("Bad alloc!"); }
-	mem_set(auto new_node, 0, node_size);
+	memset(auto new_node, 0, node_size);
 
 	return new_node;
 }
@@ -531,7 +531,7 @@ erase_node :: fn (tbl: *HashTable, node: *Node, bucket: *Bucket) Iterator {
 	}
 
 	iter_next := {:Iterator: auto node.next};
-	mem_free(auto node);
+	free(auto node);
 	tbl.len -= 1;
 	return iter_next;
 }
@@ -565,7 +565,7 @@ insert :: fn (tbl: *HashTable, key: u64, data: *u8) *u8 {
 
 	// copy user data
 	if data != null {
-        mem_copy(get_data_ptr(new_node), data, tbl.T.size_bytes);
+        memcpy(get_data_ptr(new_node), data, tbl.T.size_bytes);
     }
 
 	tbl.len += 1;

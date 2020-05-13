@@ -1,3 +1,5 @@
+#load "std/array.bl"
+
 #test "basic inserting s32" {
     arr: [..]s32;
     defer array_terminate(arr);
@@ -35,4 +37,46 @@
     loop i := 0; i < arr.len; i += 1 {
         assert(arr[i].len == 8);
     }
+}
+
+#test "reserve" {
+    arr: [..]s32;
+    defer array_terminate(arr);
+            
+    array_reserve(arr, 1000);
+    assert(arr.len == 0);
+    assert(arr.ptr != null);
+    assert(arr.allocated == 1000);
+}
+
+#test "clear" {
+    arr: [..]s32;
+    defer array_terminate(arr);
+            
+    loop i := 0; i < 1000; i += 1 {
+        array_push(arr, i);
+    }
+
+    assert(arr.len == 1000);
+
+    array_clear(arr);
+
+    assert(arr.len == 0);
+}
+
+#test "erase" {
+    arr: [..]s32;
+    defer array_terminate(arr);
+            
+    loop i := 0; i < 1000; i += 1 {
+        array_push(arr, i);
+    }
+
+    assert(arr.len == 1000);
+
+    loop arr.len > 0 {
+        array_erase(arr, 0);
+    }
+
+    assert(arr.len == 0);
 }
