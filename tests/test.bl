@@ -1,36 +1,31 @@
 /* playground */
-
-#load "std/debug.bl"
+#load "std/array.bl"
 
 main :: fn () s32 {
-    i: s32 #noinit;
-    print("%\n", i);
+    {
+        arr: [..]s32;
+        defer array_terminate(arr);
+        
+        loop i := 0; i < 10; i += 1 {
+            array_push(arr, i);
+        }
 
-    arr: [20]s32;
-    print("%\n", arr);
-
-    foo: Foo;
-    print("%\n", foo);
-
-    loop i: s32; i < 10; i += 1 {
-        print("%\n", i);
+        print("array is %\n", arr);
     }
+
+    {
+        sl: []s32;
+        slice_init(sl, 10);
+        defer slice_terminate(sl);
+
+        loop i := 0; i < 10; i += 1 {
+            sl[i] = i;
+        }
+
+        print("slice is %\n", sl);
+    }
+
 
     return 0;
 }
 
-
-Enm :: enum { A; B; C; }
-
-#private
-
-Foo :: struct {
-    bar: Bar;
-    b: bool;
-    arr: [4]s32;
-}
-
-Bar :: struct {
-    i: s32;
-    j: s32;
-}

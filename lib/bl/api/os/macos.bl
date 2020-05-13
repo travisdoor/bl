@@ -198,7 +198,7 @@ _os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
     (^out_buf).len = fc;
     if fc == 0 { return true; }
 
-    (^out_buf).ptr = auto mem_alloc(sizeof(_OSFileInfo) * auto fc);
+    (^out_buf).ptr = auto alloc(sizeof(_OSFileInfo) * auto fc);
 
     i := 0;
     loop {

@@ -28,7 +28,6 @@
 
 #load "std/debug.bl"
 #load "std/utils.bl"
-#load "std/memory.bl"
 
 GLbitfield :: u32;
 GLboolean  :: u8; 
@@ -571,7 +570,7 @@ glInit :: fn () {
             continue;
         }
 
-        mem_copy(dest_member_ptr, auto &proc, sizeof(*u8));
+        memcpy(dest_member_ptr, auto &proc, sizeof(*u8));
     }
 }
 

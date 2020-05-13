@@ -41,5 +41,5 @@ dir_file_list_delete :: fn (list: FileList) {
         string_delete(list[i].name);
     }
 
-    mem_free(auto list.ptr);
+    free(auto list.ptr);
 }

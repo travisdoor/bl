@@ -1697,6 +1697,7 @@ interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 		break;
 	}
 
+	case MIR_TYPE_DYNARR:
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_STRING:
 	case MIR_TYPE_VARGS: {
@@ -1972,6 +1973,7 @@ interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 		switch (type->kind) {
 
 		case MIR_TYPE_STRING:
+		case MIR_TYPE_DYNARR:
 		case MIR_TYPE_SLICE:
 		case MIR_TYPE_VARGS:
 		case MIR_TYPE_STRUCT:
@@ -2312,6 +2314,7 @@ eval_instr(VM *vm, MirInstr *instr)
 	case MIR_INSTR_TYPE_STRUCT:
 	case MIR_INSTR_TYPE_ENUM:
 	case MIR_INSTR_TYPE_SLICE:
+	case MIR_INSTR_TYPE_DYNARR:
 	case MIR_INSTR_TYPE_VARGS:
 	case MIR_INSTR_DECL_MEMBER:
 	case MIR_INSTR_DECL_ARG:
@@ -2348,6 +2351,7 @@ eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 		break;
 	}
 
+	case MIR_TYPE_DYNARR:
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_STRING:
 	case MIR_TYPE_VARGS: {
@@ -2452,6 +2456,7 @@ eval_instr_compound(VM *vm, MirInstrCompound *compound)
 			break;
 		}
 
+		case MIR_TYPE_DYNARR:
 		case MIR_TYPE_STRUCT:
 		case MIR_TYPE_STRING:
 		case MIR_TYPE_SLICE:

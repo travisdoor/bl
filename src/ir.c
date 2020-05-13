@@ -783,6 +783,13 @@ rtti_emit_struct(Context *cnt, MirType *type)
 	                   LLVMConstInt(is_union_type->llvm_type,
 	                                (u64)is_union,
 	                                is_union_type->data.integer.is_signed));
+	/* is_dynamic_array*/
+	const bool is_da      = type->kind == MIR_TYPE_DYNARR;
+	MirType *  is_da_type = mir_get_struct_elem_type(rtti_type, 5);
+	tsa_push_LLVMValue(&llvm_vals,
+	                   LLVMConstInt(is_union_type->llvm_type,
+	                                (u64)is_da,
+	                                is_union_type->data.integer.is_signed));
 
 	LLVMValueRef llvm_result =
 	    LLVMConstNamedStruct(rtti_type->llvm_type, llvm_vals.data, (u32)llvm_vals.size);
@@ -1193,6 +1200,7 @@ _rtti_emit(Context *cnt, MirType *type)
 		llvm_value = rtti_emit_array(cnt, type);
 		break;
 
+	case MIR_TYPE_DYNARR:
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT:
@@ -1428,6 +1436,7 @@ emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 		break;
 	}
 
+	case MIR_TYPE_DYNARR:
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_STRING:
 	case MIR_TYPE_VARGS: {
@@ -1697,6 +1706,7 @@ emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp)
 			break;
 		}
 
+		case MIR_TYPE_DYNARR:
 		case MIR_TYPE_SLICE:
 		case MIR_TYPE_VARGS:
 		case MIR_TYPE_STRUCT: {
@@ -1765,6 +1775,7 @@ emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp)
 			                               "");
 			break;
 
+		case MIR_TYPE_DYNARR:
 		case MIR_TYPE_STRING:
 		case MIR_TYPE_SLICE:
 		case MIR_TYPE_VARGS:
@@ -2594,6 +2605,7 @@ emit_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_TYPE_PTR:
 	case MIR_INSTR_TYPE_ARRAY:
 	case MIR_INSTR_TYPE_SLICE:
+	case MIR_INSTR_TYPE_DYNARR:
 	case MIR_INSTR_TYPE_VARGS:
 	case MIR_INSTR_TYPE_ENUM:
 	case MIR_INSTR_ARG:

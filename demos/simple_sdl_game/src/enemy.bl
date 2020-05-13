@@ -4,7 +4,7 @@ Enemy :: struct {
 };
 
 enemy_new :: fn (game: *Game, id: s32, x: f32, y: f32, speed: f32) *Entity {
-    self := cast(*Enemy) mem_alloc(sizeof(Enemy));
+    self := cast(*Enemy) alloc(sizeof(Enemy));
 
     initial_position := {:v2: x, y};
     size := {:v2: 60.f, 85.f};

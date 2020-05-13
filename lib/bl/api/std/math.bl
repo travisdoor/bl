@@ -453,7 +453,7 @@ mat4_identity :: fn (out_mat: *mat4) #inline {
 };
 
 mat4_zero :: fn (out_mat: *mat4) #inline {
-    c_memset(auto out_mat, 0, sizeof(mat4));
+    memset(auto out_mat, 0, sizeof(mat4));
 }
 
 mat4_perspective :: fn (fov_rad: f32, aspect: f32, near: f32, far: f32, out_mat: *mat4) #inline {

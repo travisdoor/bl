@@ -310,7 +310,7 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
 
         tmp : Any;
 
-        if !info.is_slice {
+        if (!info.is_slice) && (!info.is_dynamic_array) {
             cur = print_string(buf, cur, info.name);
             cur = print_string(buf, cur, " {");
 

@@ -42,6 +42,11 @@
 #define MIR_SLICE_LEN_INDEX 0
 #define MIR_SLICE_PTR_INDEX 1
 
+/* Dynamic array member indices */
+#define MIR_DYNARR_LEN_INDEX MIR_SLICE_LEN_INDEX
+#define MIR_DYNARR_PTR_INDEX MIR_SLICE_PTR_INDEX
+#define MIR_DYNARR_ALLOCATED_INDEX 2
+
 /* Helper macro for reading Const Expression Values of fundamental types. */
 #if BL_DEBUG
 #define MIR_CEV_READ_AS(T, src) (*((T *)_mir_cev_read(src)))
@@ -87,6 +92,7 @@ typedef struct MirInstrTypeFn         MirInstrTypeFn;
 typedef struct MirInstrTypeStruct     MirInstrTypeStruct;
 typedef struct MirInstrTypeArray      MirInstrTypeArray;
 typedef struct MirInstrTypeSlice      MirInstrTypeSlice;
+typedef struct MirInstrTypeDynArr     MirInstrTypeDynArr;
 typedef struct MirInstrTypeVArgs      MirInstrTypeVArgs;
 typedef struct MirInstrTypePtr        MirInstrTypePtr;
 typedef struct MirInstrTypeEnum       MirInstrTypeEnum;
@@ -145,6 +151,7 @@ typedef enum MirTypeKind {
 	MIR_TYPE_STRING  = 12,
 	MIR_TYPE_VARGS   = 13,
 	MIR_TYPE_SLICE   = 14,
+	MIR_TYPE_DYNARR  = 15,
 } MirTypeKind;
 
 typedef enum MirValueAddressMode {
@@ -222,8 +229,9 @@ struct MirFn {
 	bool         is_global;
 	s32          ref_count;
 
-	u32         flags;
-	const char *test_case_desc;
+	u32              flags;
+	MirBuiltinIdKind builtin_id;
+	const char *     test_case_desc;
 
 	/* pointer to the first block inside function body */
 	MirInstrBlock *first_block;
@@ -287,6 +295,7 @@ struct MirTypeFn {
 	bool                is_vargs;
 	bool                has_byval;
 	bool                has_sret;
+	MirBuiltinIdKind    builtin_id;
 };
 
 struct MirTypePtr {
@@ -559,6 +568,7 @@ struct MirInstrTypeFn {
 
 	MirInstr *            ret_type;
 	TSmallArray_InstrPtr *args;
+	MirBuiltinIdKind      builtin_id;
 };
 
 struct MirInstrTypeStruct {
@@ -596,6 +606,12 @@ struct MirInstrTypeArray {
 };
 
 struct MirInstrTypeSlice {
+	MirInstr base;
+
+	MirInstr *elem_type;
+};
+
+struct MirInstrTypeDynArr {
 	MirInstr base;
 
 	MirInstr *elem_type;
@@ -726,8 +742,20 @@ mir_deref_type(MirType *ptr)
 static inline bool
 mir_is_composit_type(MirType *type)
 {
-	return type->kind == MIR_TYPE_STRUCT || type->kind == MIR_TYPE_STRING ||
-	       type->kind == MIR_TYPE_SLICE || type->kind == MIR_TYPE_VARGS;
+	switch (type->kind) {
+	case MIR_TYPE_STRUCT:
+	case MIR_TYPE_STRING:
+	case MIR_TYPE_SLICE:
+	case MIR_TYPE_VARGS:
+	case MIR_TYPE_DYNARR:
+		return true;
+		break;
+
+	default:
+		break;
+	}
+
+	return false;
 }
 
 static inline MirType *

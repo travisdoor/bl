@@ -1,0 +1,76 @@
+// Slices
+
+/*
+    Slice type is similar to array, but it's size isn't explicitly baked
+    into the type declaration. Slice value contains information about element
+    count and pointer to propper allocated memory block.
+
+    Any array can be implicitly converted to slice.
+*/
+
+main :: fn () s32 {
+    // Declare slice variable, no allocation is done here, my_slice.len is zero
+    // and my_slice.ptr is null.
+    my_slice: []s32;
+
+    // Use of the 'slice_init' function to allocate memory block for 10 numbers.
+    slice_init(my_slice, 10);
+
+    // Release memory allocated by 'slice_init' when it's no longer needed. Defer
+    // statement will execute 'slice_terminate' function at the end of current 
+    // scope.
+    defer slice_terminate(my_slice);
+
+
+    // Len is now set to 10.
+    print("my_slice.len = %\n", my_slice.len);
+
+    // Ptr is pointer to the allocated memory.
+    print("my_slice.ptr = %\n", my_slice.ptr);
+
+    // The 'slice_init' will set allocated elements to 0.
+    print("my_slice: %\n", my_slice);
+
+
+
+    // Fill the slice with numbers
+    loop i := 0; i < my_slice.len; i += 1 {
+        // Use [N] to access elements.
+        my_slice[i] = i;
+    }
+
+    print("my_slice: %\n", my_slice);
+
+
+    
+
+    // Array can be implicitly converted to slice, in such case no 'slice_init'
+    // or 'slice_terminate' is needed. Actual data will stay in original array
+    // location, slice in such case acts only like an 'interface' to the original
+    // array.
+
+    array := {:[4]s32: 0, 1, 2, 3};
+    slice_from_array : []s32 = array;
+
+    print("slice_from_array = %\n", slice_from_array);
+
+    // This implicit conversion can be useful in function calls. We can now call
+    // function 'gimme_slice' with any slice containing numbers of s32 type. If 
+    // you try this with regular arrays you will be able to pass only arrays of 
+    // the exact same size defined in array type of the function argument. 
+    // Passing of array will cause copying of whole array on callee side, passing 
+    // slice is much more effective, since it's only len and ptr to data.
+    gimme_slice(my_slice);
+    gimme_slice(slice_from_array);
+
+    // Due to implicit conversion from array to slice we can call 'gimme_slice'
+    // function directly with an array argument, it will be passed into the 
+    // function as a slice.
+    gimme_slice(array);
+
+    return 0;
+}
+
+gimme_slice :: fn (slice: []s32) {
+    print("Slice has % elements.\n", slice.len);
+}

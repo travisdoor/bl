@@ -1,0 +1,12 @@
+#test "slice init" {
+    ptr: []s32;
+    slice_init(ptr, 10);
+
+    assert(ptr.ptr != null);
+    assert(ptr.len == 10);
+
+    slice_terminate(ptr);
+    assert(ptr.ptr == null);
+    assert(ptr.len == 0);
+}
+

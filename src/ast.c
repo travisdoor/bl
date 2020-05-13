@@ -137,6 +137,8 @@ ast_get_name(const Ast *n)
 		return "TypeArr";
 	case AST_TYPE_SLICE:
 		return "TypeSlice";
+	case AST_TYPE_DYNARR:
+		return "TypeDynamicArray";
 	case AST_TYPE_FN:
 		return "TypeFn";
 	case AST_TYPE_STRUCT: 
