@@ -1,16 +1,7 @@
 /* playground */
-#load "std/array.bl"
-
 main :: fn () s32 {
-    arr: [..]s32;
-    defer array_terminate(arr);
-    
-    loop i := 0; i < 10; i += 1 {
-        array_push(arr, true);
-    }
-
-    print("array is %\n", arr);
-
+    print("Hello Developer!\n");
     return 0;
 }
+
 

@@ -1,3 +1,10 @@
+/*
+    1) Static if
+    2) Polymorphic procedures
+    3) Multiple return arguments
+    4) Scope import by #using
+ */
+
 /* 
 
 STATIC IF
@@ -15,28 +22,6 @@ main :: fn () s32 {
         print("This is false\n");
     }
 }
-
-/*
-
-PTR TO BOOL 
-
-Implicit casting for pointers to bool to avoid anoying comparations.
-
-*/
-
-
-main :: fn () s32 {
-    i :: 10;
-    ptr :: &i;
-
-
-    if ptr { // replacement for ptr == null
-        // Do something
-    }
-    
-    return 0;
-}
-
 
 /*
 
@@ -65,34 +50,6 @@ procedure :: fn (using foo: *Foo) {
 }
 
 
-
-
-
-
-/*
-   DYNAMIC ARRAY
- */
-
-_Array :: struct #compiler {
-    len: s64;
-    ptr: *u8;
-    _T: *TypeInfo;
-    _allocated: s64;
-}
-
-arr: [..]s32;
-
-arr.len;
-arr.ptr;
-
-arr[0] = 10;
-num = arr[10];
-
-array_push :: fn (arr: *_Array, value: Any) {
-}
-
-array_prealloc :: fn (arr: *_Array, size: usize) {
-}
 
 
 

@@ -43,7 +43,6 @@
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
 
-
 Builder builder;
 
 static int
@@ -82,8 +81,8 @@ compile_unit(Unit *unit, Assembly *assembly)
 	if (builder.options.verbose) {
 		if (unit->loaded_from) {
 			builder_log("Compile: %s (loaded from '%s')",
-			        unit->name,
-			        unit->loaded_from->location.unit->name);
+			            unit->name,
+			            unit->loaded_from->location.unit->name);
 		} else {
 			builder_log("Compile: %s", unit->name);
 		}
@@ -210,12 +209,20 @@ builder_parse_options(s32 argc, char *argv[])
 			builder.options.build_di_kind = BUILD_DI_DWARF;
 		} else if (IS_PARAM("di-codeview")) {
 			builder.options.build_di_kind = BUILD_DI_CODEVIEW;
+		} else if (IS_PARAM("no-vcvars")) {
+			builder.options.no_vcvars = true;
 		} else {
 			builder_error("invalid params '%s'", &argv[optind][1]);
 			return -1;
 		}
 	}
 	argv += optind;
+
+#if !defined(BL_PLATFORM_WIN)
+	if (builder.options.no_vcvars) {
+		builder_warning("Ignore parameter '-no-vcvars', this is valid on Windows only!");
+	}
+#endif
 	return optind;
 #undef IS_PARAM
 }
@@ -308,8 +315,8 @@ builder_compile(Assembly *assembly)
 	builder.total_lines = 0;
 
 	builder_log("Compile assembly: %s [%s]",
-	        assembly->name,
-	        build_mode_to_str(assembly->options.build_mode));
+	            assembly->name,
+	            build_mode_to_str(assembly->options.build_mode));
 
 	// This will apply all modification to build mode, target platform, etc. made on assembly
 	// instance during initialization process. (Must be called only once);
@@ -362,9 +369,8 @@ builder_msg(BuilderMsgType type,
 	if (type == BUILDER_MSG_ERROR && builder.errorc > MAX_ERROR_REPORTED) return;
 	if (builder.options.no_warn && type == BUILDER_MSG_WARNING) return;
 
-
 	TString tmp;
-	char *msg_mark = NULL;
+	char *  msg_mark = NULL;
 
 	tstring_init(&tmp);
 	char msg[MAX_MSG_LEN] = {0};
@@ -388,9 +394,9 @@ builder_msg(BuilderMsgType type,
 	}
 
 	if (src) {
-		s32   line     = src->line;
-		s32   col      = src->col;
-		s32   len      = src->len;
+		s32 line = src->line;
+		s32 col  = src->col;
+		s32 len  = src->len;
 
 		switch (pos) {
 		case BUILDER_CUR_AFTER:
