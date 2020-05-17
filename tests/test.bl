@@ -1,6 +1,10 @@
 /* playground */
 main :: fn () s32 {
-    print("Hello Developer!\n");
+    arr: [..]s32;
+
+    // implicit cast from dynamic array to slice
+    slice: []s32 = arr;
+
     return 0;
 }
 

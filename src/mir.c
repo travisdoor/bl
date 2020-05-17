@@ -7448,8 +7448,10 @@ ANALYZE_STAGE_FN(toany)
 
 ANALYZE_STAGE_FN(arrtoslice)
 {
-	// Produce implicit cast from array type to slice. This will create implicit
-	// compound initializer representing array legth and pointer to array data.
+	/*
+	 * Produce implicit cast from array type to slice. This will create implicit compound
+	 * initializer representing array legth and pointer to array data. 
+	 */
 	BL_ASSERT(slot_type);
 
 	MirType *from_type = (*input)->value.type;
