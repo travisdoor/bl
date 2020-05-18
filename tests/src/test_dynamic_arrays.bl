@@ -80,3 +80,37 @@
 
     assert(arr.len == 0);
 }
+
+#test "cast to slice" {
+    foo :: fn (sl: []s32) {
+        loop i := 0; i < sl.len; i += 1 {
+            assert(sl[i] == i);
+        }
+    };
+
+    arr: [..]s32;
+    defer array_terminate(arr);
+
+    loop i := 0; i < 1000; i += 1 {
+        array_push(arr, i);
+    }
+
+    {
+        sl: []s32 = arr;
+
+        loop i := 0; i < sl.len; i += 1 {
+            assert(sl[i] == i);
+        }
+    }
+
+    {
+        sl : []s32 : arr;
+
+        loop i := 0; i < sl.len; i += 1 {
+            assert(sl[i] == i);
+        }
+    }
+
+    foo(arr);
+    
+}

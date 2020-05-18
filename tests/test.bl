@@ -1,11 +1,26 @@
 /* playground */
+
+#load "std/array.bl"
+
 main :: fn () s32 {
     arr: [..]s32;
+
+    loop i := 0; i < 100; i += 1 {
+        array_push(arr, i);
+    }
 
     // implicit cast from dynamic array to slice
     slice: []s32 = arr;
 
+
+    foo(slice);
+    foo(arr);
+
     return 0;
+}
+
+foo :: fn (sl: []s32) {
+    print("sl = %\n", sl);
 }
 
 
