@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #load "std/_builtin.bl"
+#load "std/string.bl"
 
 // INCOMPLETE: time_now_ms
 
@@ -159,6 +160,10 @@ os_dlclose :: fn (lib: OSLibrary) #inline {
     _posix_dlclose(lib);
 }
 
+os_execute :: fn (command: string) s32 {
+    return _posix_system(auto command.ptr);
+}
+
 // CLEANUP: This must be in gl.bl file not here, but we keep it
 // until static 'if' will be supported by compiler.
 _os_gl_get_proc :: fn (proc_name: string) *u8 #inline {
@@ -182,7 +187,7 @@ _os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
     // INCOMPLETE: dirent struct may have invalid layout!
     unreachable;
 
-    if dirpath.len > DARWIN_MAXPATHLEN { panic("Path too long!"); }
+    if dirpath.len > OS_PATH_MAX { panic("Path too long!"); }
     dir := _posix_opendir(dirpath.ptr);
     if dir == null { return false; }
     defer _posix_closedir(dir);
@@ -249,7 +254,7 @@ __os_start :: fn (argc: s64, argv: **u8, env: **u8) s32 #entry {
     }
 
     loop i := 0; i < args.len; i += 1 {
-        command_line_arguments[i] = {:string: auto strlen(args[i]), args[i]};
+        command_line_arguments[i] = {:string: auto c_strlen(auto args[i]), args[i]};
     }
 
     out :: cast(s32) main();
@@ -303,3 +308,5 @@ _posix_dlsym     :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
 _posix_opendir   :: fn (name: *u8) *u8 #extern "opendir";
 _posix_closedir  :: fn (dirp: *u8) s32 #extern "closedir";
 _posix_readdir   :: fn (dirp: *u8) *dirent #extern "readdir";
+_posix_rewinddir :: fn (dirp: *u8) #extern "rewinddir";
+_posix_system    :: fn (command: *c_char) c_int #extern "system";
