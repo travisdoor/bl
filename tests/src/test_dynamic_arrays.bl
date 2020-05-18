@@ -88,6 +88,11 @@
         }
     };
 
+    bar :: fn () []*s32 {
+        arr: [..]*s32;
+        return arr;
+    };
+
     arr: [..]s32;
     defer array_terminate(arr);
 
@@ -112,5 +117,4 @@
     }
 
     foo(arr);
-    
 }
