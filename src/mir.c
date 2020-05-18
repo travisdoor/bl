@@ -7453,6 +7453,9 @@ ANALYZE_STAGE_FN(toany)
 
 ANALYZE_STAGE_FN(dynarrtoslice)
 {
+	/* Cast from dynamic array to slice can be done by bitcast from pointer to dynamic array to
+	 * slice pointer, both structures have same data layout of first two members.
+	 */
 	BL_ASSERT(slot_type);
 
 	MirType *from_type = (*input)->value.type;
@@ -7479,11 +7482,17 @@ ANALYZE_STAGE_FN(dynarrtoslice)
 		if (!type_cmp(elem_from_type, elem_to_type)) return ANALYZE_STAGE_CONTINUE;
 	}
 
-	char type_name[256];
-	mir_type_to_str(type_name, 256, slot_type, true);
-	BL_LOG("Insert cast to slice '%s'", type_name);
+	{ // Build bitcast
+		*input = insert_instr_cast(cnt, *input, create_type_ptr(cnt, slot_type));
+		if (analyze_instr(cnt, *input).state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
+	}
 
-	return ANALYZE_STAGE_CONTINUE;
+	{ // Build load
+		*input = insert_instr_load(cnt, *input);
+		if (analyze_instr(cnt, *input).state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
+	}
+
+	return ANALYZE_STAGE_BREAK;
 }
 
 ANALYZE_STAGE_FN(arrtoslice)
