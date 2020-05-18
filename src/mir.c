@@ -871,6 +871,7 @@ _analyze_slot(Context *                cnt,
 static ANALYZE_STAGE_FN(load);
 static ANALYZE_STAGE_FN(toany);
 static ANALYZE_STAGE_FN(arrtoslice);
+static ANALYZE_STAGE_FN(dynarrtoslice);
 static ANALYZE_STAGE_FN(implicit_cast);
 static ANALYZE_STAGE_FN(report_type_mismatch);
 static ANALYZE_STAGE_FN(set_volatile_expr);
@@ -882,24 +883,26 @@ static const AnalyzeSlotConfig analyze_slot_conf_dummy = {.count = 0};
 static const AnalyzeSlotConfig analyze_slot_conf_basic = {.count  = 1,
                                                           .stages = {analyze_stage_load}};
 
-static const AnalyzeSlotConfig analyze_slot_conf_default = {.count  = 7,
+static const AnalyzeSlotConfig analyze_slot_conf_default = {.count  = 8,
                                                             .stages = {
                                                                 analyze_stage_set_volatile_expr,
                                                                 analyze_stage_set_null,
                                                                 analyze_stage_set_auto,
                                                                 analyze_stage_arrtoslice,
+                                                                analyze_stage_dynarrtoslice,
                                                                 analyze_stage_load,
                                                                 analyze_stage_implicit_cast,
                                                                 analyze_stage_report_type_mismatch,
                                                             }};
 
-static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 8,
+static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 9,
                                                          .stages = {
                                                              analyze_stage_set_volatile_expr,
                                                              analyze_stage_set_null,
                                                              analyze_stage_set_auto,
                                                              analyze_stage_toany,
                                                              analyze_stage_arrtoslice,
+                                                             analyze_stage_dynarrtoslice,
                                                              analyze_stage_load,
                                                              analyze_stage_implicit_cast,
                                                              analyze_stage_report_type_mismatch,
@@ -3221,6 +3224,7 @@ insert_instr_cast(Context *cnt, MirInstr *src, MirType *to_type)
 	tmp->base.value.type  = to_type;
 	tmp->base.is_implicit = true;
 	tmp->expr             = src;
+	tmp->op               = MIR_CAST_INVALID;
 	ref_instr(&tmp->base);
 
 	insert_instr_after(src, &tmp->base);
@@ -3752,6 +3756,7 @@ append_instr_cast(Context *cnt, Ast *node, MirInstr *type, MirInstr *next)
 	ref_instr(next);
 	MirInstrCast *tmp         = create_instr(cnt, MIR_INSTR_CAST, node);
 	tmp->base.value.addr_mode = MIR_VAM_RVALUE;
+	tmp->op                   = MIR_CAST_INVALID;
 	tmp->type                 = type;
 	tmp->expr                 = next;
 	tmp->auto_cast            = type == NULL;
@@ -7446,11 +7451,46 @@ ANALYZE_STAGE_FN(toany)
 	return ANALYZE_STAGE_BREAK;
 }
 
+ANALYZE_STAGE_FN(dynarrtoslice)
+{
+	BL_ASSERT(slot_type);
+
+	MirType *from_type = (*input)->value.type;
+	BL_ASSERT(from_type);
+
+	if (!mir_is_pointer_type(from_type)) return ANALYZE_STAGE_CONTINUE;
+
+	from_type = mir_deref_type(from_type);
+	if (from_type->kind != MIR_TYPE_DYNARR || slot_type->kind != MIR_TYPE_SLICE)
+		return ANALYZE_STAGE_CONTINUE;
+
+	{ // Compare elem type of array and slot slice
+		MirType *elem_from_type = mir_get_struct_elem_type(from_type, MIR_SLICE_PTR_INDEX);
+		MirType *elem_to_type   = mir_get_struct_elem_type(slot_type, MIR_SLICE_PTR_INDEX);
+
+		BL_ASSERT(mir_is_pointer_type(elem_from_type) && "Expected pointer type!");
+		BL_ASSERT(mir_is_pointer_type(elem_to_type) && "Expected pointer type!");
+		elem_from_type = mir_deref_type(elem_from_type);
+		elem_to_type   = mir_deref_type(elem_to_type);
+
+		BL_ASSERT(elem_from_type && "Invalid type after pointer type dereference!");
+		BL_ASSERT(elem_to_type && "Invalid type after pointer type dereference!");
+
+		if (!type_cmp(elem_from_type, elem_to_type)) return ANALYZE_STAGE_CONTINUE;
+	}
+
+	char type_name[256];
+	mir_type_to_str(type_name, 256, slot_type, true);
+	BL_LOG("Insert cast to slice '%s'", type_name);
+
+	return ANALYZE_STAGE_CONTINUE;
+}
+
 ANALYZE_STAGE_FN(arrtoslice)
 {
 	/*
 	 * Produce implicit cast from array type to slice. This will create implicit compound
-	 * initializer representing array legth and pointer to array data. 
+	 * initializer representing array legth and pointer to array data.
 	 */
 	BL_ASSERT(slot_type);
 
