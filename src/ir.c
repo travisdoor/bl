@@ -1983,7 +1983,7 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 	    callee->llvm_value ? callee->llvm_value : emit_fn_proto(cnt, callee_fn);
 
 	bool       has_byval_arg = false;
-	const bool has_args      = call->args > 0;
+	const bool has_args      = call->args->size > 0;
 
 	/* Tmp for arg values passed into the Call Instruction. */
 	TSmallArray_LLVMValue llvm_args;
