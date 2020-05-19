@@ -253,7 +253,7 @@ get_dir_from_filepath(char *buf, const usize l, const char *filepath)
 	char *ptr = strrchr(filepath, PATH_SEPARATORC);
 	if (!ptr) return false;
 	if (filepath == ptr) {
-		strncpy(buf, filepath, strlen(filepath));
+		strncpy(buf, filepath, l);
 		return true;
 	}
 
@@ -271,7 +271,7 @@ get_filename_from_filepath(char *buf, const usize l, const char *filepath)
 
 	char *ptr = strrchr(filepath, PATH_SEPARATORC);
 	if (!ptr || filepath == ptr) {
-		strncpy(buf, filepath, strlen(filepath));
+		strncpy(buf, filepath, l);
 		return true;
 	}
 

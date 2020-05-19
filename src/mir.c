@@ -5302,12 +5302,10 @@ analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 			/* mutate instruction into constant */
 			unref_instr(member_ptr->target_ptr);
 			erase_instr_tree(member_ptr->target_ptr, false, false);
-			MirInstrConst *len =
-			    (MirInstrConst *)mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
-			len->volatile_type          = false;
-			len->base.value.is_comptime = true;
-			len->base.value.type        = cnt->builtin_types->t_s64;
-			MIR_CEV_WRITE_AS(s64, &len->base.value, target_type->data.array.len);
+			MirInstr *len          = mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
+			len->value.is_comptime = true;
+			len->value.type        = cnt->builtin_types->t_s64;
+			MIR_CEV_WRITE_AS(s64, &len->value, target_type->data.array.len);
 		} else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR ||
 		           is_builtin(ast_member_ident, MIR_BUILTIN_ID_ARR_PTR)) {
 			/* .ptr -> This will be replaced by:
