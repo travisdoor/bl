@@ -370,28 +370,9 @@ builder_msg(BuilderMsgType type,
 	if (builder.options.no_warn && type == BUILDER_MSG_WARNING) return;
 
 	TString tmp;
-	char *  msg_mark = NULL;
 
 	tstring_init(&tmp);
 	char msg[MAX_MSG_LEN] = {0};
-
-	switch (type) {
-	case BUILDER_MSG_ERROR:
-		tstring_append(&tmp, "error: ");
-		msg_mark = "E";
-		break;
-	case BUILDER_MSG_LOG:
-		msg_mark = "";
-		break;
-	case BUILDER_MSG_NOTE:
-		tstring_append(&tmp, "note: ");
-		msg_mark = "N";
-		break;
-	case BUILDER_MSG_WARNING:
-		tstring_append(&tmp, "warning: ");
-		msg_mark = "W";
-		break;
-	}
 
 	if (src) {
 		s32 line = src->line;

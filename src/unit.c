@@ -44,8 +44,8 @@ search_source_file(const char *filepath, char **out_filepath, char **out_dirpath
 	/* Lookup in working directory. */
 	if (wdir) {
 		strncpy(tmp, wdir, TARRAY_SIZE(tmp));
-		strncat(tmp, PATH_SEPARATOR, TARRAY_SIZE(tmp));
-		strncat(tmp, filepath, TARRAY_SIZE(tmp));
+		strncat(tmp, PATH_SEPARATOR, TARRAY_SIZE(tmp) - 1);
+		strncat(tmp, filepath, TARRAY_SIZE(tmp) - 1);
 
 		if (file_exists(tmp)) {
 			goto FOUND;
@@ -63,8 +63,8 @@ search_source_file(const char *filepath, char **out_filepath, char **out_dirpath
 		char tmp_lib_dir[PATH_MAX];
 
 		strncpy(tmp_lib_dir, ENV_LIB_DIR, TARRAY_SIZE(tmp_lib_dir));
-		strncat(tmp_lib_dir, PATH_SEPARATOR, TARRAY_SIZE(tmp_lib_dir));
-		strncat(tmp_lib_dir, filepath, TARRAY_SIZE(tmp_lib_dir));
+		strncat(tmp_lib_dir, PATH_SEPARATOR, TARRAY_SIZE(tmp_lib_dir) - 1);
+		strncat(tmp_lib_dir, filepath, TARRAY_SIZE(tmp_lib_dir) - 1);
 
 		rpath = brealpath(tmp_lib_dir, tmp, PATH_MAX);
 
@@ -87,8 +87,8 @@ search_source_file(const char *filepath, char **out_filepath, char **out_dirpath
 			}
 
 			strncpy(tmp_env, s, TARRAY_SIZE(tmp_env));
-			strncat(tmp_env, PATH_SEPARATOR, TARRAY_SIZE(tmp_env));
-			strncat(tmp_env, filepath, TARRAY_SIZE(tmp_env));
+			strncat(tmp_env, PATH_SEPARATOR, TARRAY_SIZE(tmp_env) - 1);
+			strncat(tmp_env, filepath, TARRAY_SIZE(tmp_env) - 1);
 
 			rpath = brealpath(&tmp_env[0], tmp, PATH_MAX);
 

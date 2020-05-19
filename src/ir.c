@@ -381,6 +381,7 @@ emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 	LLVMMetadataRef llvm_scope = instr->node->owner_scope->llvm_di_meta;
 	Location *      location   = instr->node->location;
 
+	//BL_ASSERT(llvm_scope && "Missing DI scope!");
 	BL_ASSERT(location && "Missing node location!");
 
 	llvm_di_set_current_location(
@@ -2117,7 +2118,6 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 			LLVMAddCallSiteAttribute(llvm_call, arg->llvm_index + 1, llvm_atrbt);
 		}
 	}
-
 	tsa_terminate(&llvm_callee_arg_types);
 	tsa_terminate(&llvm_args);
 	call->base.llvm_value = llvm_result ? llvm_result : llvm_call;
