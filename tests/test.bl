@@ -3,10 +3,32 @@
 #load "std/array.bl"
 
 main :: fn () s32 {
-    arr: [10]s32;
-    i :: arr.len + 1;
-    
+    print("Start thread!!!\n");
+    t1 :: os_thread_create(&first);
+    t2 :: os_thread_create(&second);
+
+    os_thread_join(t1);
+    os_thread_join(t2);
+
+    print("Threads joined!!!\n");
     return 0;
 }
 
+first :: fn (args: *u8) *u8 {
+    loop i := 0; i < 10; i += 1 {
+        print("Hello from first thread!!!\n");
+        os_sleep_ms(500.0);
+    }
+
+    return null;
+}
+
+second :: fn (args: *u8) *u8 {
+    loop i := 0; i < 10; i += 1 {
+        print("Hello from second thread!!!\n");
+        os_sleep_ms(1000.0);
+    }
+
+    return null;
+}
 

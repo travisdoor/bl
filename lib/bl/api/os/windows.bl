@@ -31,8 +31,6 @@
 #load "std/utils.bl"
 #load "windows_api.bl"
 
-// INCOMPLETE: time_now_ms
-
 OS_KIND :: OSKind.Windows;
 OS_NAME :: "Windows";
 
@@ -68,13 +66,6 @@ OS_PATH_MAX :: WIN32_MAX_PATH;
  *   Library handle.
  */
 OSLibrary :: *u8;
-
-os_time_now_ms :: fn () f64 {
-    // INCOMPLETE
-    unreachable;
-    return 0.0;
-};
-
 
 os_sleep_ms :: fn (ms: f64) {
     win32_Sleep(auto ms);

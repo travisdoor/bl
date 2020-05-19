@@ -9049,6 +9049,7 @@ ast_expr_lit_fn(Context *        cnt,
 		            decl_node ? decl_node->location : lit_fn->location,
 		            BUILDER_CUR_WORD,
 		            "Missing function body.");
+                return &fn_proto->base;
 	}
 
 	/* Set body scope for DI. */

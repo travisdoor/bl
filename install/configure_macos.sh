@@ -60,7 +60,7 @@ fi
 #    $STATUS=1
 #fi
 
-LINKER_OPT="-e $RT_ENTRY_POINT -macosx_version_min $MACOS_VER -lc"
+LINKER_OPT="-e $RT_ENTRY_POINT -macosx_version_min $MACOS_VER -lc -lpthread"
 
 rm -f $CONFIG_FILE
 mkdir -p ../etc

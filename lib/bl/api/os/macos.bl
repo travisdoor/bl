@@ -68,9 +68,51 @@ OS_PATH_DELIMITER_STR :: "/";
  */
 OSLibrary :: *u8;
 
-os_time_now_ms :: fn () f64 #inline {
-    return cast(f64) _mach_absolute_time() / 1000000.0;
-};
+OSThread :: _PosixThread;
+OSMutex :: _PosixMutex;
+OSThreadEntryFn :: _PosixThreadFn;
+
+os_thread_create :: fn (entry: OSThreadEntryFn) OSThread {
+    t: OSThread #noinit;
+    status :: _posix_thread_create(&t, null, entry, null);
+    if status != 0 {
+        panic("Cannot create thread!");
+    }
+
+    return t;
+}
+
+os_thread_join :: fn (thread: OSThread) {
+    status :: _posix_thread_join(thread, null);
+    if status != 0 {
+        panic("Cannot join thread!");
+    }
+}
+
+os_mutex_lock :: fn (mutex: OSMutex) #inline {
+    _posix_thread_mutex_lock(mutex);
+    // INCOMPLETE: handle errors
+    // INCOMPLETE: handle errors
+    // INCOMPLETE: handle errors
+}
+
+os_mutex_trylock :: fn (mutex: OSMutex) bool #inline {
+    if _posix_thread_mutex_trylock(mutex) != 0 {
+        return false;
+    }
+
+    // INCOMPLETE: handle errors
+    // INCOMPLETE: handle errors
+    // INCOMPLETE: handle errors
+    return true;
+}
+
+os_mutex_unlock :: fn (mutex: OSMutex) #inline {
+    _posix_thread_mutex_unlock(mutex);
+    // INCOMPLETE: handle errors
+    // INCOMPLETE: handle errors
+    // INCOMPLETE: handle errors
+}
 
 os_sleep_ms :: fn (ms: f64) #inline {
     _posix_usleep(auto ms * 1000.0);
@@ -90,7 +132,7 @@ os_sleep_ms :: fn (ms: f64) #inline {
  *   Absolute file path.
  */
 os_get_real_path :: fn (filename: string) string {
-    tmp := {:[OS_PATH_MAX]u8: 0};
+    tmp: [OS_PATH_MAX]u8 #noinit;
     if _posix_realpath(filename.ptr, &tmp[0]) != null {
         return string_new_cstr(tmp.ptr);
     } 
@@ -312,5 +354,16 @@ _posix_closedir  :: fn (dirp: *u8) s32 #extern "closedir";
 _posix_readdir   :: fn (dirp: *u8) *dirent #extern "readdir$INODE64";
 _posix_rewinddir :: fn (dirp: *u8) #extern "rewinddir$INODE64";
 _posix_system    :: fn (command: *c_char) c_int #extern "system";
+
+// Threading
+_PosixThread :: c_void_ptr;
+_PosixMutex :: c_void_ptr;
+_PosixThreadFn :: *fn (args: c_void_ptr) c_void_ptr;
+
+_posix_thread_create :: fn (thread: *_PosixThread, attr: c_void_ptr, start_routine: _PosixThreadFn, args: c_void_ptr) c_int #extern "pthread_create";
+_posix_thread_join :: fn (thread: _PosixThread, retval: *c_void_ptr) c_int #extern "pthread_join";
+_posix_thread_mutex_lock :: fn (mutex: _PosixMutex) c_int #extern "pthread_mutex_lock";
+_posix_thread_mutex_trylock :: fn (mutex: _PosixMutex) c_int #extern "pthread_mutex_trylock";
+_posix_thread_mutex_unlock :: fn (mutex: _PosixMutex) c_int #extern "pthread_mutex_unlock"; 
 
 _mach_absolute_time :: fn () u64 #extern "mach_absolute_time";
