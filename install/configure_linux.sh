@@ -76,7 +76,7 @@ else
 fi
 
 RT_O=$LIB_DIR/rt/blrt_x86_64_linux.o
-LINKER_OPT="-e $RT_ENTRY_POINT $RT_O --hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -dynamic-linker $LDLIB -lc -lm -ldl"
+LINKER_OPT="-e $RT_ENTRY_POINT $RT_O --hash-style=gnu --no-add-needed --build-id --eh-frame-hdr -dynamic-linker $LDLIB -lc -lm -ldl -lpthread"
 
 rm -f $CONFIG_FILE
 mkdir -p ../etc
