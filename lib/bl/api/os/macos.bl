@@ -391,6 +391,7 @@ _posix_system    :: fn (command: *c_char) c_int #extern "system";
 _PosixThread :: c_void_ptr;
 _PosixThreadFn :: *fn (args: c_void_ptr) c_void_ptr;
 
+// This is platform depend!!!
 __POSIX_THREAD_MUTEX_SIZE__ :: 56;
 _PosixMutex :: struct { 
     __sig: c_long;
