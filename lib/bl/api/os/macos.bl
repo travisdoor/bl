@@ -70,7 +70,7 @@ OSLibrary :: *u8;
 
 OSThread :: _PosixThread;
 OSMutex :: _PosixMutex;
-OSThreadEntryFn :: *fn (args: []Any);
+OSThreadEntryFn :: *fn (args: []Any) *u8;
 
 os_thread_create :: fn (entry: OSThreadEntryFn, args: ...) OSThread {
     t: OSThread #noinit;
@@ -87,11 +87,14 @@ os_thread_create :: fn (entry: OSThreadEntryFn, args: ...) OSThread {
     return t;
 }
 
-os_thread_join :: fn (thread: OSThread) {
-    status :: _posix_thread_join(thread, null);
+os_thread_join :: fn (thread: OSThread) *u8{
+    ret: *u8;
+    status :: _posix_thread_join(thread, &ret);
     if status != 0 {
         panic("Cannot join thread!");
     }
+
+    return ret;
 }
 
 os_mutex_init :: fn (mutex: *OSMutex) #inline {
@@ -365,12 +368,12 @@ _ThreadArgs :: struct {
     args: []Any; 
 }
 
-_thread_entry :: fn (_args: *u8) *u8 {
+_thread_entry :: fn (_args: *u8) {
     tmp :: cast(*_ThreadArgs) _args;
-    tmp.entry(tmp.args);
+    defer free(auto tmp);
+    ret :: tmp.entry(tmp.args);
 
-    free(auto tmp);
-    return null;
+    _posix_thread_exit(ret);
 }
 
 _posix_raise     :: fn (sig: s32) s32 #extern "raise";
@@ -389,7 +392,7 @@ _posix_system    :: fn (command: *c_char) c_int #extern "system";
 
 // Threading
 _PosixThread :: c_void_ptr;
-_PosixThreadFn :: *fn (args: c_void_ptr) c_void_ptr;
+_PosixThreadFn :: *fn (args: c_void_ptr);
 
 // This is platform depend!!!
 __POSIX_THREAD_MUTEX_SIZE__ :: 56;
@@ -400,6 +403,7 @@ _PosixMutex :: struct {
 
 _posix_thread_create :: fn (thread: *_PosixThread, attr: c_void_ptr, start_routine: _PosixThreadFn, args: c_void_ptr) c_int #extern "pthread_create";
 _posix_thread_join :: fn (thread: _PosixThread, retval: *c_void_ptr) c_int #extern "pthread_join";
+_posix_thread_exit :: fn (retval: c_void_ptr) #extern "pthread_exit";
 _posix_thread_mutex_lock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_lock";
 _posix_thread_mutex_trylock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_trylock";
 _posix_thread_mutex_unlock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_unlock"; 
