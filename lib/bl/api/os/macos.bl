@@ -355,25 +355,12 @@ DT_WHT     :: 14;
 DARWIN_MAXPATHLEN :: 1024;
 
 dirent :: struct {
-	d_ino: c_ulonglong; 
-	d_seekoff: c_ulonglong;
-	d_reclen: c_ushort;
-	d_namlen: c_ushort;
-	d_type: c_uchar; 
-	d_name: [DARWIN_MAXPATHLEN]c_char;
-}
-
-_ThreadArgs :: struct {
-    entry: OSThreadEntryFn;
-    args: []Any; 
-}
-
-_thread_entry :: fn (_args: *u8) {
-    tmp :: cast(*_ThreadArgs) _args;
-    defer free(auto tmp);
-    ret :: tmp.entry(tmp.args);
-
-    _posix_thread_exit(ret);
+    d_ino: c_ulonglong; 
+    d_seekoff: c_ulonglong;
+    d_reclen: c_ushort;
+    d_namlen: c_ushort;
+    d_type: c_uchar; 
+    d_name: [DARWIN_MAXPATHLEN]c_char;
 }
 
 _posix_raise     :: fn (sig: s32) s32 #extern "raise";
@@ -393,6 +380,19 @@ _posix_system    :: fn (command: *c_char) c_int #extern "system";
 // Threading
 _PosixThread :: c_void_ptr;
 _PosixThreadFn :: *fn (args: c_void_ptr);
+
+_ThreadArgs :: struct {
+    entry: OSThreadEntryFn;
+    args: []Any; 
+}
+
+_thread_entry :: fn (_args: *u8) {
+    tmp :: cast(*_ThreadArgs) _args;
+    defer free(auto tmp);
+    ret :: tmp.entry(tmp.args);
+
+    _posix_thread_exit(ret);
+}
 
 // This is platform depend!!!
 __POSIX_THREAD_MUTEX_SIZE__ :: 56;
