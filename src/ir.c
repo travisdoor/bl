@@ -270,7 +270,8 @@ static inline LLVMValueRef
 emit_fn_proto(Context *cnt, MirFn *fn)
 {
 	BL_ASSERT(fn);
-	if (!fn->emit_llvm) return NULL;
+	BL_ASSERT(fn->emit_llvm && "Attempt to generate IR prototype of unused function.");
+	// if (!fn->emit_llvm) return NULL;
 #if LLVM_EXCLUDE_UNUSED_SYM
 	BL_ASSERT(fn->ref_count);
 #endif
@@ -382,7 +383,7 @@ emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 	LLVMMetadataRef llvm_scope = instr->node->owner_scope->llvm_di_meta;
 	Location *      location   = instr->node->location;
 
-	//BL_ASSERT(llvm_scope && "Missing DI scope!");
+	// BL_ASSERT(llvm_scope && "Missing DI scope!");
 	BL_ASSERT(location && "Missing node location!");
 
 	llvm_di_set_current_location(
@@ -2559,7 +2560,9 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
 
 	/* unused function */
-	if (!fn->emit_llvm) return STATE_PASSED;
+	if (!fn->emit_llvm) {
+		return STATE_PASSED;
+	}
 #if LLVM_EXCLUDE_UNUSED_SYM
 	if (fn->ref_count == 0) return STATE_PASSED;
 #endif

@@ -353,11 +353,11 @@ DT_SOCK    :: 12;
 DT_WHT     :: 14;
 
 dirent :: struct {
-	d_ino: c_ulong; 
-	d_off: c_long; 
-	d_reclen: c_ushort;
-	d_type: c_uchar; 
-	d_name: [256]c_char;
+    d_ino: c_ulong; 
+    d_off: c_long; 
+    d_reclen: c_ushort;
+    d_type: c_uchar; 
+    d_name: [256]c_char;
 }
 
 _posix_raise     :: fn (sig: s32) s32 #extern "raise";

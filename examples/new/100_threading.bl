@@ -1,0 +1,49 @@
+mutex: OSMutex;
+
+main :: fn () s32 {
+    print("Start thread!!!\n");
+    defer print("Threads joined!!!\n");
+
+    os_mutex_init(&mutex);
+    defer os_mutex_terminate(&mutex);
+
+    t1 :: os_thread_create(&first, 10, true, "Hello");
+    t2 :: os_thread_create(&second, 20, 0.5f);
+
+    os_thread_join(t1);
+    os_thread_join(t2);
+
+    return 0;
+}
+
+first :: fn (args: []Any) {
+    loop i := 0; i < 10; i += 1 {
+        os_mutex_lock(&mutex);
+        
+        print("First thread args: [");
+        loop j := 0; j < args.len; j += 1 {
+            print(" % ", args[j]);
+        }
+
+        print("]\n");
+
+        os_mutex_unlock(&mutex);
+        os_sleep_ms(500.0);
+    }
+}
+
+second :: fn (args: []Any) {
+    loop i := 0; i < 10; i += 1 {
+        os_mutex_lock(&mutex);
+        
+        print("Second thread args: [");
+        loop j := 0; j < args.len; j += 1 {
+            print(" % ", args[j]);
+        }
+
+        print("]\n");
+
+        os_mutex_unlock(&mutex);
+        os_sleep_ms(1000.0);
+    }
+}

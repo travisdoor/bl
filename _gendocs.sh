@@ -22,6 +22,15 @@ mkdir -p ${WDIR}/docs/API/std
 mv *.md ${WDIR}/docs/API/std
 cd ${WDIR}
 
+# OS
+cd lib/bl/api/os
+echo
+echo Process $(pwd)
+bdg docs.txt
+mkdir -p ${WDIR}/docs/API/os
+mv *.md ${WDIR}/docs/API/os
+cd ${WDIR}
+
 # Examples
 cd examples/new
 echo

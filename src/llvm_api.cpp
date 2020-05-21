@@ -72,7 +72,7 @@ llvm_create_attribute_int(LLVMContextRef context_ref, LLVMAttributeKind kind, s3
 LLVMAttributeRef
 llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef v)
 {
-#if LLVM_VERSION_MAJOR >= 10
+#if LLVM_VERSION_MAJOR >= 9
 	return CAST(LLVMAttributeRef)(Attribute::get(*CAST(LLVMContext *)(context_ref),
 	                                             (Attribute::AttrKind)kind,
 	                                             CAST(Type *)(v))
