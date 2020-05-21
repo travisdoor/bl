@@ -65,9 +65,10 @@ c_ulonglong :: u64;
 c_void_ptr  :: *u8;
 c_size_t    :: u64;
 
+// Threading
 OSThread :: _PosixThread;
 OSMutex :: _PosixMutex;
-OSThreadEntryFn :: *fn (args: []Any) *u8;
+OSThreadEntryFn :: *fn (args: []Any);
 
 os_thread_create :: fn (entry: OSThreadEntryFn, args: ...) OSThread {
     t: OSThread #noinit;
@@ -84,14 +85,11 @@ os_thread_create :: fn (entry: OSThreadEntryFn, args: ...) OSThread {
     return t;
 }
 
-os_thread_join :: fn (thread: OSThread) *u8{
-    ret: *u8;
-    status :: _posix_thread_join(thread, &ret);
+os_thread_join :: fn (thread: OSThread) {
+    status :: _posix_thread_join(thread, null);
     if status != 0 {
         panic("Cannot join thread!");
     }
-
-    return ret;
 }
 
 os_mutex_init :: fn (mutex: *OSMutex) #inline {
@@ -389,9 +387,9 @@ _ThreadArgs :: struct {
 _thread_entry :: fn (_args: *u8) {
     tmp :: cast(*_ThreadArgs) _args;
     defer free(auto tmp);
-    ret :: tmp.entry(tmp.args);
+    tmp.entry(tmp.args);
 
-    _posix_thread_exit(ret);
+    _posix_thread_exit(null);
 }
 
 // This is platform depend!!!

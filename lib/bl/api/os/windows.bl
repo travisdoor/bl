@@ -67,6 +67,49 @@ OS_PATH_MAX :: WIN32_MAX_PATH;
  */
 OSLibrary :: *u8;
 
+// Threading
+OSThread :: WIN32_HANDLE;
+OSMutex :: WIN32_HANDLE;
+OSThreadEntryFn :: *fn (args: []Any);
+
+os_thread_create :: fn (entry: OSThreadEntryFn, args: ...) OSThread {
+    tmp: *_ThreadArgs = auto alloc(sizeof(_ThreadArgs));
+    tmp.entry = entry;
+    tmp.args = {:[]Any: args.len, args.ptr};
+
+    thread :: win32_CreateThread(null, null, &_thread_entry, auto tmp, 0, null);
+
+    return thread;
+}
+
+os_thread_join :: fn (thread: OSThread) {
+    win32_WaitForSingleObject(thread, WIN32_INFINITE);
+    win32_CloseHandle(thread);
+}
+
+os_mutex_init :: fn (mutex: *OSMutex) #inline {
+    (^mutex) = win32_CreateMutexA(null, 0, null);
+}
+
+os_mutex_terminate :: fn (mutex: *OSMutex) #inline {
+    win32_CloseHandle(^mutex);
+}
+
+os_mutex_lock :: fn (mutex: *OSMutex) #inline {
+    win32_WaitForSingleObject(^mutex, WIN32_INFINITE);
+}
+
+os_mutex_trylock :: fn (mutex: *OSMutex) bool #inline {
+    unreachable;
+    return false;
+}
+
+os_mutex_unlock :: fn (mutex: *OSMutex) #inline {
+    if win32_ReleaseMutex(^mutex) == 0 {
+        panic("Cannot unlock mutex!");
+    }
+}
+
 os_sleep_ms :: fn (ms: f64) {
     win32_Sleep(auto ms);
 };
@@ -326,4 +369,17 @@ get_command_line_args :: fn (out_args: *[]string) #no_inline {
         tmp_i += len;
         tmp[tmp_i-1] = '\0';
     }
+}
+
+// Threading
+_ThreadArgs :: struct {
+    entry: OSThreadEntryFn;
+    args: []Any; 
+}
+
+_thread_entry :: fn (_args: *u8) u32 {
+    tmp :: cast(*_ThreadArgs) _args;
+    defer free(auto tmp);
+    tmp.entry(tmp.args);
+    return 0;
 }

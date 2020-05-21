@@ -14,16 +14,13 @@ main :: fn () s32 {
     t1 :: os_thread_create(&first, 10, true, "Hello");
     t2 :: os_thread_create(&second, 20, 0.5f);
 
-    r1 :: cast(s32) os_thread_join(t1);
-    r2 :: cast(s32) os_thread_join(t2);
-
-    print("r1 = %\n", r1);
-    print("r2 = %\n", r2);
+    os_thread_join(t1);
+    os_thread_join(t2);
 
     return 0;
 }
 
-first :: fn (args: []Any) *u8 {
+first :: fn (args: []Any) {
     loop i := 0; i < 10; i += 1 {
         os_mutex_lock(&mutex);
         
@@ -37,11 +34,9 @@ first :: fn (args: []Any) *u8 {
         os_mutex_unlock(&mutex);
         os_sleep_ms(500.0);
     }
-
-    return auto 20;
 }
 
-second :: fn (args: []Any) *u8 {
+second :: fn (args: []Any) {
     loop i := 0; i < 10; i += 1 {
         os_mutex_lock(&mutex);
         
@@ -55,7 +50,5 @@ second :: fn (args: []Any) *u8 {
         os_mutex_unlock(&mutex);
         os_sleep_ms(1000.0);
     }
-
-    return auto 10;
 }
 
