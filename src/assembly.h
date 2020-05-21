@@ -156,7 +156,7 @@ typedef struct NativeLib {
 	u32           hash;
 	DLLib *       handle;
 	struct Token *linked_from;
-	const char *  user_name;
+	char *  user_name;
 	char *        filename;
 	char *        filepath;
 	char *        dir;

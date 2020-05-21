@@ -304,6 +304,7 @@ emit_fn_proto(Context *cnt, MirFn *fn)
 			LLVMAttributeRef llvm_attr = llvm_create_attribute_type(
 			    cnt->llvm_cnt, LLVM_ATTR_BYVAL, arg->type->llvm_type);
 
+			// NOTE: Index + 1, 0 is reserved for return value.
 			LLVMAddAttributeAtIndex(fn->llvm_value, arg->llvm_index + 1, llvm_attr);
 		}
 	}
@@ -2112,9 +2113,12 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 		TSA_FOREACH(args, arg)
 		{
 			if (arg->llvm_easgm != LLVM_EASGM_BYVAL) continue;
+			BL_ASSERT(arg->type->llvm_type && "Missing LLVM type!");
 
 			LLVMAttributeRef llvm_atrbt = llvm_create_attribute_type(
 			    cnt->llvm_cnt, LLVM_ATTR_BYVAL, arg->type->llvm_type);
+
+			BL_ASSERT(llvm_atrbt && "Invalid call side attribute!");
 			LLVMAddCallSiteAttribute(llvm_call, arg->llvm_index + 1, llvm_atrbt);
 		}
 	}

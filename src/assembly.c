@@ -160,6 +160,7 @@ native_lib_terminate(NativeLib *lib)
 	free(lib->filename);
 	free(lib->filepath);
 	free(lib->dir);
+	free(lib->user_name);
 }
 
 static void
