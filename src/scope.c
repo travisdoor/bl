@@ -128,3 +128,27 @@ scope_is_subtree_of_kind(Scope *scope, ScopeKind kind)
 
 	return false;
 }
+
+const char *
+scope_kind_name(Scope *scope)
+{
+	if (!scope) return "<INVALID>";
+	switch (scope->kind) {
+	case SCOPE_GLOBAL:
+		return "Global";
+	case SCOPE_PRIVATE:
+		return "Private";
+	case SCOPE_FN:
+		return "Function";
+	case SCOPE_FN_LOCAL:
+		return "LocalFunction";
+	case SCOPE_LEXICAL:
+		return "Lexical";
+	case SCOPE_TYPE_STRUCT:
+		return "Struct";
+	case SCOPE_TYPE_ENUM:
+		return "Enum";
+	}
+
+	return "<INVALID>";
+}

@@ -116,6 +116,9 @@ scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_gscope, bool *out_o
 bool
 scope_is_subtree_of_kind(Scope *scope, ScopeKind kind);
 
+const char *
+scope_kind_name(Scope *scope);
+
 static inline bool
 scope_is_global(Scope *scope)
 {

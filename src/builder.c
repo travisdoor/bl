@@ -223,6 +223,7 @@ builder_parse_options(s32 argc, char *argv[])
 		builder_warning("Ignore parameter '-no-vcvars', this is valid on Windows only!");
 	}
 #endif
+
 	return optind;
 #undef IS_PARAM
 }

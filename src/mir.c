@@ -10360,7 +10360,8 @@ mir_run(Assembly *assembly)
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));
 	cnt.assembly                = assembly;
-	cnt.debug_mode              = assembly->options.build_mode == BUILD_MODE_DEBUG;
+	//cnt.debug_mode              = assembly->options.build_mode == BUILD_MODE_DEBUG;
+	cnt.debug_mode              = false;
 	cnt.analyze.llvm_di_builder = assembly->llvm.di_builder;
 	cnt.builtin_types           = &assembly->builtin_types;
 	cnt.vm                      = &assembly->vm;
