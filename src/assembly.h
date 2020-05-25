@@ -86,8 +86,6 @@ typedef struct Assembly {
 		LLVMTargetDataRef    TD;         /* LLVM Target data. */
 		LLVMTargetMachineRef TM;         /* LLVM Machine. */
 		char *               triple;     /* LLVM triple. */
-		LLVMMetadataRef      di_meta;    /* LLVM Compile unit DI meta (optional) */
-		LLVMDIBuilderRef     di_builder; /* LLVM debug information builder */
 	} llvm;
 
 	/* DynCall/Lib data used for external method execution in compile time */

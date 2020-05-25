@@ -70,39 +70,6 @@ init_dl(Assembly *assembly)
 }
 
 static void
-init_DI(Assembly *assembly)
-{
-	const char *  producer    = "blc version " BL_VERSION;
-	Scope *       gscope      = assembly->gscope;
-	LLVMModuleRef llvm_module = assembly->llvm.module;
-
-	/* setup module flags for debug */
-	llvm_add_module_flag_int(llvm_module,
-	                         LLVMModuleFlagBehaviorWarning,
-	                         "Debug Info Version",
-	                         llvm_get_dwarf_version());
-
-	if (assembly->options.build_di_kind == BUILD_DI_DWARF) {
-	} else if (assembly->options.build_di_kind == BUILD_DI_CODEVIEW) {
-		llvm_add_module_flag_int(llvm_module, LLVMModuleFlagBehaviorWarning, "CodeView", 1);
-	}
-
-	/* create DI builder */
-	assembly->llvm.di_builder = llvm_di_new_di_builder(llvm_module);
-
-	/* create dummy file used as DI global scope */
-	// gscope->llvm_di_meta = llvm_di_create_file(assembly->llvm.di_builder, assembly->name,
-	// ".");
-	gscope->llvm_di_meta = NULL;
-	LLVMMetadataRef llvm_dummy_file_meta =
-	    llvm_di_create_file(assembly->llvm.di_builder, assembly->name, ".");
-
-	/* create main compile unit */
-	assembly->llvm.di_meta =
-	    llvm_di_create_compile_unit(assembly->llvm.di_builder, llvm_dummy_file_meta, producer);
-}
-
-static void
 init_llvm(Assembly *assembly)
 {
 	if (assembly->llvm.module) BL_ABORT("Attempt to override assembly options.");
@@ -180,12 +147,6 @@ terminate_llvm(Assembly *assembly)
 }
 
 static void
-terminate_DI(Assembly *assembly)
-{
-	llvm_di_delete_di_builder(assembly->llvm.di_builder);
-}
-
-static void
 terminate_mir(Assembly *assembly)
 {
 	thtbl_terminate(&assembly->MIR.RTTI_table);
@@ -257,8 +218,6 @@ assembly_delete(Assembly *assembly)
 		unit_delete(unit);
 	}
 
-	terminate_DI(assembly);
-
 	NativeLib *lib;
 	for (usize i = 0; i < assembly->options.libs.size; ++i) {
 		lib = &tarray_at(NativeLib, &assembly->options.libs, i);
@@ -292,7 +251,6 @@ void
 assembly_apply_options(Assembly *assembly)
 {
 	init_llvm(assembly);
-	if (assembly->options.build_mode == BUILD_MODE_DEBUG) init_DI(assembly);
 }
 
 void

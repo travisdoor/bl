@@ -85,7 +85,7 @@ typedef struct Scope {
 	ScopeKind        kind;
 	struct Scope *   parent;
 	THashTable       entries;
-	LLVMMetadataRef  llvm_di_meta; /* Optional ID data*/
+	LLVMMetadataRef  llvm_meta; 
 	struct Location *location;     /* Optional scope start location in the source file (ex.:
 	                                  function body  starting with '{'). Note: global scope has no
 	                                  location data. */

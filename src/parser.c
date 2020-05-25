@@ -803,7 +803,7 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 		                            &tok_directive->location);
 
 		cnt->current_private_scope = scope;
-		scope->llvm_di_meta        = scope->parent->llvm_di_meta;
+		scope->llvm_meta           = scope->parent->llvm_meta;
 
 		/* Make all other declarations in file nested in private scope */
 		cnt->unit->private_scope = scope;
@@ -2067,7 +2067,8 @@ parse_type_slice(Context *cnt)
 }
 
 Ast *
-parse_type_dynarr(Context *cnt) {
+parse_type_dynarr(Context *cnt)
+{
 	if (tokens_peek(cnt->tokens)->sym != SYM_LBRACKET) return NULL;
 	if (tokens_peek_2nd(cnt->tokens)->sym != SYM_DYNARR) return NULL;
 
@@ -2091,8 +2092,10 @@ parse_type_dynarr(Context *cnt) {
 	slice->data.type_dynarr.elem_type = parse_type(cnt);
 
 	if (!slice->data.type_dynarr.elem_type) {
-		PARSE_ERROR(
-		    ERR_INVALID_TYPE, tok_end, BUILDER_CUR_AFTER, "Expected dynami array element type.");
+		PARSE_ERROR(ERR_INVALID_TYPE,
+		            tok_end,
+		            BUILDER_CUR_AFTER,
+		            "Expected dynami array element type.");
 
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
 	}
@@ -2116,7 +2119,7 @@ parse_type(Context *cnt)
 	if (!type) type = parse_type_dynarr(cnt);
 	if (!type) type = parse_type_arr(cnt);
 	// Keep order!!!
-	
+
 	if (!type) type = parse_type_ref(cnt);
 
 	return type;
@@ -2427,7 +2430,7 @@ parse_expr_type(Context *cnt)
 	Ast *  type = NULL;
 
 	type = parse_type_struct(cnt);
-	
+
 	// keep order
 	if (!type) type = parse_type_slice(cnt);
 	if (!type) type = parse_type_dynarr(cnt);

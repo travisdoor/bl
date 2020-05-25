@@ -490,4 +490,4 @@ command_line_arguments := {:[]string: 0}
 ## Description
   Contains all arguments passed from command line. First argument is executable name.
 */
-command_line_arguments := {:[]string: 0};
+command_line_arguments: []string;
