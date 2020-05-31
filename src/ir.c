@@ -2537,10 +2537,10 @@ emit_instr_ret(Context *cnt, MirInstrRet *ret)
 
 	ret->base.llvm_value = LLVMBuildRetVoid(cnt->llvm_builder);
 
-#if 0
-	if (cnt->debug_mode)
+	if (cnt->debug_mode) {
+		BL_ASSERT(fn->body_scope->llvm_meta);
 		llvm_di_finalize_subprogram(cnt->llvm_di_builder, fn->body_scope->llvm_meta);
-#endif
+	}
 
 	return STATE_PASSED;
 }
@@ -3118,11 +3118,9 @@ ir_run(Assembly *assembly)
 
 	emit_incomplete(&cnt);
 
-#if 0
 	if (cnt.debug_mode) {
 		llvm_di_builder_finalize(cnt.llvm_di_builder);
 	}
-#endif
 
 #if BL_DEBUG
 	char *error = NULL;
