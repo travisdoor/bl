@@ -625,7 +625,6 @@ init_DI_unit(Context *cnt, Unit *unit)
 void
 emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 {
-#if 0
 	if (!instr) {
 		llvm_di_reset_current_location(cnt->llvm_builder);
 		return;
@@ -633,7 +632,7 @@ emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 
 	if (!instr->node) return;
 
-	LLVMMetadataRef llvm_scope = instr->node->owner_scope->llvm_meta;
+	LLVMMetadataRef llvm_scope = init_DI_scope(cnt, instr->node->owner_scope);
 	Location *      location   = instr->node->location;
 
 	// BL_ASSERT(llvm_scope && "Missing DI scope!");
@@ -641,17 +640,15 @@ emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 
 	llvm_di_set_current_location(
 	    cnt->llvm_builder, (unsigned)location->line, 0, llvm_scope, false);
-#endif
 }
 
 void
 emit_DI_fn(Context *cnt, MirFn *fn)
 {
-#if 0
 	if (!fn->decl_node) return;
 
 	Location *      location  = fn->decl_node->location;
-	LLVMMetadataRef llvm_file = location->unit->llvm_file_meta;
+	LLVMMetadataRef llvm_file = init_DI_unit(cnt, location->unit);
 
 	/*
 	LLVMMetadataRef llvm_scope = fn->decl_node->owner_scope->llvm_meta
@@ -661,23 +658,24 @@ emit_DI_fn(Context *cnt, MirFn *fn)
 
 	// This fix bug #97 but it could lead to invalid function DI scope nesting???
 	LLVMMetadataRef llvm_scope = llvm_file;
-
 	BL_ASSERT(llvm_scope && "Invalid scope for DWARF!");
-	LLVMMetadataRef tmp = llvm_di_create_fn(cnt->llvm_di_builder,
-	                                        llvm_scope,
-	                                        fn->id ? fn->id->str : fn->linkage_name,
-	                                        fn->linkage_name,
-	                                        llvm_file,
-	                                        (unsigned)location->line,
-	                                        fn->type->llvm_meta,
-	                                        (unsigned)location->line);
 
+	fn->body_scope->llvm_meta = llvm_di_create_fn(cnt->llvm_di_builder,
+	                                              llvm_scope,
+	                                              fn->id ? fn->id->str : fn->linkage_name,
+	                                              fn->linkage_name,
+	                                              llvm_file,
+	                                              (unsigned)location->line,
+	                                              fn->type->llvm_meta,
+	                                              (unsigned)location->line);
+
+	/* TODO: remove this after DI was complete
 	BL_ASSERT(fn->body_scope->llvm_meta && "Missing function fwd DI declaration!");
 	fn->body_scope->llvm_meta =
 	    llvm_di_replace_temporary(cnt->llvm_di_builder, fn->body_scope->llvm_meta, tmp);
+	*/
 
 	llvm_di_set_subprogram(fn->llvm_value, fn->body_scope->llvm_meta);
-#endif
 }
 
 void
@@ -697,7 +695,6 @@ emit_DI_var(Context *cnt, MirVar *var)
 		                                              init_DI_type(cnt, var->value.type));
 
 		LLVMGlobalSetMetadata(var->llvm_value, 0, llvm_meta);
-
 	} else {
 #if 0
 		LLVMMetadataRef llvm_meta =
@@ -881,7 +878,7 @@ emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref)
 State
 emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 {
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &phi->base);
+	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, &phi->base);
 	LLVMValueRef llvm_phi =
 	    LLVMBuildPhi(cnt->llvm_builder, get_type(cnt, phi->base.value.type), "");
 
@@ -919,7 +916,7 @@ emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 	MirFn *abort_fn = unr->abort_fn;
 	BL_ASSERT(abort_fn);
 	if (!abort_fn->llvm_value) emit_fn_proto(cnt, abort_fn);
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unr->base);
+	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unr->base);
 	LLVMBuildCall(cnt->llvm_builder, abort_fn->llvm_value, NULL, 0, "");
 	return STATE_PASSED;
 }
@@ -1845,7 +1842,7 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 		return STATE_PASSED;
 	}
 
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &load->base);
+	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, &load->base);
 	load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
 
 	const unsigned alignment = (const unsigned)load->base.value.type->alignment;
@@ -1869,7 +1866,7 @@ emit_instr_store(Context *cnt, MirInstrStore *store)
 
 	const unsigned alignment = (unsigned)store->src->value.type->alignment;
 
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &store->base);
+	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, &store->base);
 	store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
 	LLVMSetAlignment(store->base.llvm_value, alignment);
 
@@ -2126,7 +2123,7 @@ emit_instr_binop(Context *cnt, MirInstrBinop *binop)
 	LLVMValueRef rhs = binop->rhs->llvm_value;
 	BL_ASSERT(lhs && rhs);
 
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &binop->base);
+	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, &binop->base);
 
 	MirType *  type           = binop->lhs->value.type;
 	const bool real_type      = type->kind == MIR_TYPE_REAL;
@@ -2479,14 +2476,14 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		emit_global_var_proto(cnt, var);
 
 		if (cnt->debug_mode) {
-			emit_DI_instr_loc(cnt, &decl->base);
+			//emit_DI_instr_loc(cnt, &decl->base);
 			emit_DI_var(cnt, var);
 		}
 	} else {
 		BL_ASSERT(var->llvm_value);
 
 		if (cnt->debug_mode) {
-			emit_DI_instr_loc(cnt, &decl->base);
+			//emit_DI_instr_loc(cnt, &decl->base);
 			emit_DI_var(cnt, var);
 		}
 
@@ -2893,7 +2890,7 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	/* External functions does not have any body block. */
 	if (IS_NOT_FLAG(fn->flags, FLAG_EXTERN)) {
 		if (cnt->debug_mode) {
-			emit_DI_instr_loc(cnt, NULL);
+			//emit_DI_instr_loc(cnt, NULL);
 			emit_DI_fn(cnt, fn);
 		}
 
@@ -3088,13 +3085,13 @@ ir_run(Assembly *assembly)
 {
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));
-	cnt.assembly        = assembly;
-	cnt.builtin_types   = &assembly->builtin_types;
-	cnt.debug_mode      = assembly->options.build_mode == BUILD_MODE_DEBUG;
-	cnt.llvm_cnt        = assembly->llvm.cnt;
-	cnt.llvm_module     = assembly->llvm.module;
-	cnt.llvm_td         = assembly->llvm.TD;
-	cnt.llvm_builder    = LLVMCreateBuilderInContext(assembly->llvm.cnt);
+	cnt.assembly      = assembly;
+	cnt.builtin_types = &assembly->builtin_types;
+	cnt.debug_mode    = assembly->options.build_mode == BUILD_MODE_DEBUG;
+	cnt.llvm_cnt      = assembly->llvm.cnt;
+	cnt.llvm_module   = assembly->llvm.module;
+	cnt.llvm_td       = assembly->llvm.TD;
+	cnt.llvm_builder  = LLVMCreateBuilderInContext(assembly->llvm.cnt);
 
 	thtbl_init(&cnt.gstring_cache, sizeof(LLVMValueRef), 1024);
 	tsa_init(&cnt.incomplete_rtti);
