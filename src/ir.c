@@ -594,6 +594,7 @@ init_DI_scope(Context *cnt, Scope *scope)
 
 	case SCOPE_FN_LOCAL:
 	case SCOPE_FN: {
+		BL_LOG("Emit fwd DI for function!");
 		scope->llvm_meta = llvm_di_create_fn_fwd_decl(
 		    cnt->llvm_di_builder, NULL, "", "", NULL, 0, NULL, 0);
 		break;
@@ -625,7 +626,6 @@ init_DI_unit(Context *cnt, Unit *unit)
 void
 emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 {
-#if 0
 	if (!instr) {
 		llvm_di_reset_current_location(cnt->llvm_builder);
 		return;
@@ -641,45 +641,45 @@ emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 
 	llvm_di_set_current_location(
 	    cnt->llvm_builder, (unsigned)location->line, 0, llvm_scope, false);
-#endif
 }
 
 void
 emit_DI_fn(Context *cnt, MirFn *fn)
 {
-#if 0
 	if (!fn->decl_node) return;
+	BL_LOG("Emit DI for function '%s'!", fn->id ? fn->id->str : fn->linkage_name);
 
-	Location *      location  = fn->decl_node->location;
-	LLVMMetadataRef llvm_file = init_DI_unit(cnt, location->unit);
+	Location *      location   = fn->decl_node->location;
+	LLVMMetadataRef llvm_file  = init_DI_unit(cnt, location->unit);
+	LLVMMetadataRef llvm_scope = NULL;
 
-	/*
-	LLVMMetadataRef llvm_scope = fn->decl_node->owner_scope->llvm_meta
-	                                  ? fn->decl_node->owner_scope->llvm_meta
-	                                  : llvm_file;
-	                                  */
+	if (fn->is_global) {
+		llvm_scope = llvm_file;
+	} else {
+		Scope *scope = fn->decl_node->owner_scope;
+		BL_ASSERT(scope && "Function has no owner scope data!");
+		llvm_scope = init_DI_scope(cnt, scope);
+	}
 
-	// This fix bug #97 but it could lead to invalid function DI scope nesting???
-	LLVMMetadataRef llvm_scope = llvm_file;
 	BL_ASSERT(llvm_scope && "Invalid scope for DWARF!");
 
-	fn->body_scope->llvm_meta = llvm_di_create_fn(cnt->llvm_di_builder,
-	                                              llvm_scope,
-	                                              fn->id ? fn->id->str : fn->linkage_name,
-	                                              fn->linkage_name,
-	                                              llvm_file,
-	                                              (unsigned)location->line,
-	                                              fn->type->llvm_meta,
-	                                              (unsigned)location->line);
+	LLVMMetadataRef tmp = llvm_di_create_fn(cnt->llvm_di_builder,
+	                                        llvm_scope,
+	                                        fn->id ? fn->id->str : fn->linkage_name,
+	                                        fn->linkage_name,
+	                                        llvm_file,
+	                                        (unsigned)location->line,
+	                                        fn->type->llvm_meta,
+	                                        (unsigned)location->line);
 
-	/* TODO: remove this after DI was complete
-	BL_ASSERT(fn->body_scope->llvm_meta && "Missing function fwd DI declaration!");
-	fn->body_scope->llvm_meta =
-	    llvm_di_replace_temporary(cnt->llvm_di_builder, fn->body_scope->llvm_meta, tmp);
-	*/
+	if (fn->body_scope->llvm_meta) {
+		fn->body_scope->llvm_meta =
+		    llvm_di_replace_temporary(cnt->llvm_di_builder, fn->body_scope->llvm_meta, tmp);
+	} else {
+		fn->body_scope->llvm_meta = tmp;
+	}
 
 	llvm_di_set_subprogram(fn->llvm_value, fn->body_scope->llvm_meta);
-#endif
 }
 
 void
@@ -3127,7 +3127,7 @@ ir_run(Assembly *assembly)
 #if BL_DEBUG
 	char *error = NULL;
 	if (LLVMVerifyModule(cnt.llvm_module, LLVMReturnStatusAction, &error)) {
-		BL_ABORT("LLVM module not verified with error: %s", error);
+		builder_error("LLVM module not verified with error: %s", error);
 	}
 	LLVMDisposeMessage(error);
 #endif
