@@ -625,6 +625,7 @@ init_DI_unit(Context *cnt, Unit *unit)
 void
 emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 {
+#if 0
 	if (!instr) {
 		llvm_di_reset_current_location(cnt->llvm_builder);
 		return;
@@ -640,11 +641,13 @@ emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 
 	llvm_di_set_current_location(
 	    cnt->llvm_builder, (unsigned)location->line, 0, llvm_scope, false);
+#endif
 }
 
 void
 emit_DI_fn(Context *cnt, MirFn *fn)
 {
+#if 0
 	if (!fn->decl_node) return;
 
 	Location *      location  = fn->decl_node->location;
@@ -676,6 +679,7 @@ emit_DI_fn(Context *cnt, MirFn *fn)
 	*/
 
 	llvm_di_set_subprogram(fn->llvm_value, fn->body_scope->llvm_meta);
+#endif
 }
 
 void
@@ -878,7 +882,7 @@ emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref)
 State
 emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 {
-	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, &phi->base);
+	// if (cnt->debug_mode) emit_DI_instr_loc(cnt, &phi->base);
 	LLVMValueRef llvm_phi =
 	    LLVMBuildPhi(cnt->llvm_builder, get_type(cnt, phi->base.value.type), "");
 
@@ -916,7 +920,7 @@ emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 	MirFn *abort_fn = unr->abort_fn;
 	BL_ASSERT(abort_fn);
 	if (!abort_fn->llvm_value) emit_fn_proto(cnt, abort_fn);
-	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unr->base);
+	// if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unr->base);
 	LLVMBuildCall(cnt->llvm_builder, abort_fn->llvm_value, NULL, 0, "");
 	return STATE_PASSED;
 }
@@ -1842,7 +1846,7 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 		return STATE_PASSED;
 	}
 
-	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, &load->base);
+	// if (cnt->debug_mode) emit_DI_instr_loc(cnt, &load->base);
 	load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
 
 	const unsigned alignment = (const unsigned)load->base.value.type->alignment;
@@ -1866,7 +1870,7 @@ emit_instr_store(Context *cnt, MirInstrStore *store)
 
 	const unsigned alignment = (unsigned)store->src->value.type->alignment;
 
-	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, &store->base);
+	// if (cnt->debug_mode) emit_DI_instr_loc(cnt, &store->base);
 	store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
 	LLVMSetAlignment(store->base.llvm_value, alignment);
 
@@ -2123,7 +2127,7 @@ emit_instr_binop(Context *cnt, MirInstrBinop *binop)
 	LLVMValueRef rhs = binop->rhs->llvm_value;
 	BL_ASSERT(lhs && rhs);
 
-	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, &binop->base);
+	// if (cnt->debug_mode) emit_DI_instr_loc(cnt, &binop->base);
 
 	MirType *  type           = binop->lhs->value.type;
 	const bool real_type      = type->kind == MIR_TYPE_REAL;
@@ -2476,14 +2480,14 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		emit_global_var_proto(cnt, var);
 
 		if (cnt->debug_mode) {
-			//emit_DI_instr_loc(cnt, &decl->base);
+			// emit_DI_instr_loc(cnt, &decl->base);
 			emit_DI_var(cnt, var);
 		}
 	} else {
 		BL_ASSERT(var->llvm_value);
 
 		if (cnt->debug_mode) {
-			//emit_DI_instr_loc(cnt, &decl->base);
+			// emit_DI_instr_loc(cnt, &decl->base);
 			emit_DI_var(cnt, var);
 		}
 
@@ -2890,7 +2894,7 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	/* External functions does not have any body block. */
 	if (IS_NOT_FLAG(fn->flags, FLAG_EXTERN)) {
 		if (cnt->debug_mode) {
-			//emit_DI_instr_loc(cnt, NULL);
+			// emit_DI_instr_loc(cnt, NULL);
 			emit_DI_fn(cnt, fn);
 		}
 
