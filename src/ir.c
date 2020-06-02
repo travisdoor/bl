@@ -406,7 +406,8 @@ init_DI_type(Context *cnt, MirType *type)
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_DYNARR:
 	case MIR_TYPE_STRUCT: {
-		init_DI_scope(cnt, type->data.strct.scope);
+		type->data.strct.scope->llvm_meta = llvm_di_create_replecable_composite_type(
+		    cnt->llvm_di_builder, DW_TAG_structure_type, "", NULL, NULL, 0);
 
 		const bool      is_implicit = !type->data.strct.scope->location;
 		LLVMMetadataRef llvm_file;
@@ -592,20 +593,6 @@ init_DI_scope(Context *cnt, Scope *scope)
 		break;
 	}
 
-	case SCOPE_FN_LOCAL:
-	case SCOPE_FN: {
-		BL_LOG("Emit fwd DI for function!");
-		scope->llvm_meta = llvm_di_create_fn_fwd_decl(
-		    cnt->llvm_di_builder, NULL, "", "", NULL, 0, NULL, 0);
-		break;
-	}
-
-	case SCOPE_TYPE_STRUCT: {
-		scope->llvm_meta = llvm_di_create_replecable_composite_type(
-		    cnt->llvm_di_builder, DW_TAG_structure_type, "", NULL, NULL, 0);
-		break;
-	}
-
 	default:
 		BL_ABORT("Unsuported scope '%s' for DI generation", scope_kind_name(scope));
 	}
@@ -647,7 +634,7 @@ void
 emit_DI_fn(Context *cnt, MirFn *fn)
 {
 	if (!fn->decl_node) return;
-	BL_LOG("Emit DI for function '%s'!", fn->id ? fn->id->str : fn->linkage_name);
+	BL_ASSERT(!fn->body_scope->llvm_meta && "Attempt to regenerate function DI!");
 
 	Location *      location   = fn->decl_node->location;
 	LLVMMetadataRef llvm_file  = init_DI_unit(cnt, location->unit);
@@ -663,22 +650,16 @@ emit_DI_fn(Context *cnt, MirFn *fn)
 
 	BL_ASSERT(llvm_scope && "Invalid scope for DWARF!");
 
-	LLVMMetadataRef tmp = llvm_di_create_fn(cnt->llvm_di_builder,
-	                                        llvm_scope,
-	                                        fn->id ? fn->id->str : fn->linkage_name,
-	                                        fn->linkage_name,
-	                                        llvm_file,
-	                                        (unsigned)location->line,
-	                                        fn->type->llvm_meta,
-	                                        (unsigned)location->line);
+	fn->body_scope->llvm_meta = llvm_di_create_fn(cnt->llvm_di_builder,
+	                                              llvm_scope,
+	                                              fn->id ? fn->id->str : fn->linkage_name,
+	                                              fn->linkage_name,
+	                                              llvm_file,
+	                                              (unsigned)location->line,
+	                                              fn->type->llvm_meta,
+	                                              (unsigned)location->line);
 
-	if (fn->body_scope->llvm_meta) {
-		fn->body_scope->llvm_meta =
-		    llvm_di_replace_temporary(cnt->llvm_di_builder, fn->body_scope->llvm_meta, tmp);
-	} else {
-		fn->body_scope->llvm_meta = tmp;
-	}
-
+	emit_DI_instr_loc(cnt, NULL);
 	llvm_di_set_subprogram(fn->llvm_value, fn->body_scope->llvm_meta);
 }
 
@@ -920,7 +901,7 @@ emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 	MirFn *abort_fn = unr->abort_fn;
 	BL_ASSERT(abort_fn);
 	if (!abort_fn->llvm_value) emit_fn_proto(cnt, abort_fn);
-	// if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unr->base);
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unr->base);
 	LLVMBuildCall(cnt->llvm_builder, abort_fn->llvm_value, NULL, 0, "");
 	return STATE_PASSED;
 }
@@ -3119,6 +3100,7 @@ ir_run(Assembly *assembly)
 	emit_incomplete(&cnt);
 
 	if (cnt.debug_mode) {
+		BL_LOG("DI finalize!");
 		llvm_di_builder_finalize(cnt.llvm_di_builder);
 	}
 
