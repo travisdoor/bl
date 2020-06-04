@@ -75,6 +75,7 @@ typedef struct {
 
 	struct BuiltinTypes *builtin_types;
 	bool                 debug_mode;
+	TArray               di_incomplete_types;
 
 	// intrinsics
 	LLVMValueRef intrinsic_memset;
@@ -143,6 +144,9 @@ rtti_emit_fn_args_slice(Context *cnt, TSmallArray_ArgPtr *args);
 
 static LLVMMetadataRef
 init_DI_type(Context *cnt, MirType *type);
+
+static LLVMMetadataRef
+complete_DI_type(Context *cnt, MirType *type);
 
 static LLVMMetadataRef
 init_DI_scope(Context *cnt, Scope *scope);
@@ -406,9 +410,92 @@ init_DI_type(Context *cnt, MirType *type)
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_DYNARR:
 	case MIR_TYPE_STRUCT: {
-		type->data.strct.scope->llvm_meta = llvm_di_create_replecable_composite_type(
-		    cnt->llvm_di_builder, DW_TAG_structure_type, "", NULL, NULL, 0);
+		/* Struct type will be generated as forward declaration and postponed to be filled
+		 * later. This approach solves problems with circular references. */
+		type->llvm_meta = type->data.strct.scope->llvm_meta =
+		    llvm_di_create_replecable_composite_type(
+		        cnt->llvm_di_builder, DW_TAG_structure_type, "", NULL, NULL, 0);
 
+		tarray_push(&cnt->di_incomplete_types, type);
+		break;
+	}
+
+	case MIR_TYPE_ENUM: {
+		MirType *   base_type = type->data.enm.base_type;
+		const char *name      = type->user_id ? type->user_id->str : "enum";
+
+		TSmallArray_LLVMMetadata llvm_elems;
+		tsa_init(&llvm_elems);
+
+		MirVariant *variant;
+		TSA_FOREACH(type->data.enm.variants, variant)
+		{
+			LLVMMetadataRef llvm_variant =
+			    llvm_di_create_enum_variant(cnt->llvm_di_builder,
+			                                variant->id->str,
+			                                MIR_CEV_READ_AS(u64, variant->value),
+			                                !base_type->data.integer.is_signed);
+
+			tsa_push_LLVMMetadata(&llvm_elems, llvm_variant);
+		}
+
+		type->llvm_meta = llvm_di_create_enum_type(
+		    cnt->llvm_di_builder,
+		    type->data.enm.scope->parent->llvm_meta,
+		    name,
+		    init_DI_unit(cnt, type->data.enm.scope->location->unit),
+		    (unsigned)type->data.enm.scope->location->line,
+		    type->size_bits,
+		    (unsigned)type->alignment * 8,
+		    llvm_elems.data,
+		    llvm_elems.size,
+		    init_DI_type(cnt, base_type));
+
+		tsa_terminate(&llvm_elems);
+		break;
+	}
+
+	case MIR_TYPE_FN: {
+		TSmallArray_LLVMMetadata params;
+		tsa_init(&params);
+
+		/* return type is first */
+		tsa_push_LLVMMetadata(&params, init_DI_type(cnt, type->data.fn.ret_type));
+
+		if (type->data.fn.args) {
+			MirArg *it;
+			TSA_FOREACH(type->data.fn.args, it)
+			{
+				tsa_push_LLVMMetadata(&params, init_DI_type(cnt, it->type));
+			}
+		}
+
+		type->llvm_meta = llvm_di_create_function_type(
+		    cnt->llvm_di_builder, params.data, (unsigned)params.size);
+
+		tsa_terminate(&params);
+		break;
+	}
+
+	default: {
+		BL_ABORT("Missing generation DI for type %d", type->kind);
+	}
+	}
+
+	return type->llvm_meta;
+}
+
+LLVMMetadataRef
+complete_DI_type(Context *cnt, MirType *type)
+{
+	BL_ASSERT(type->llvm_meta && "Incomplete DI type must have forward declaration.");
+
+	switch (type->kind) {
+	case MIR_TYPE_STRING:
+	case MIR_TYPE_VARGS:
+	case MIR_TYPE_SLICE:
+	case MIR_TYPE_DYNARR:
+	case MIR_TYPE_STRUCT: {
 		const bool      is_implicit = !type->data.strct.scope->location;
 		LLVMMetadataRef llvm_file;
 		unsigned        struct_line;
@@ -504,65 +591,8 @@ init_DI_type(Context *cnt, MirType *type)
 		break;
 	}
 
-	case MIR_TYPE_ENUM: {
-		MirType *   base_type = type->data.enm.base_type;
-		const char *name      = type->user_id ? type->user_id->str : "enum";
-
-		TSmallArray_LLVMMetadata llvm_elems;
-		tsa_init(&llvm_elems);
-
-		MirVariant *variant;
-		TSA_FOREACH(type->data.enm.variants, variant)
-		{
-			LLVMMetadataRef llvm_variant =
-			    llvm_di_create_enum_variant(cnt->llvm_di_builder,
-			                                variant->id->str,
-			                                MIR_CEV_READ_AS(u64, variant->value),
-			                                !base_type->data.integer.is_signed);
-
-			tsa_push_LLVMMetadata(&llvm_elems, llvm_variant);
-		}
-
-		type->llvm_meta = llvm_di_create_enum_type(
-		    cnt->llvm_di_builder,
-		    type->data.enm.scope->parent->llvm_meta,
-		    name,
-		    init_DI_unit(cnt, type->data.enm.scope->location->unit),
-		    (unsigned)type->data.enm.scope->location->line,
-		    type->size_bits,
-		    (unsigned)type->alignment * 8,
-		    llvm_elems.data,
-		    llvm_elems.size,
-		    init_DI_type(cnt, base_type));
-
-		tsa_terminate(&llvm_elems);
-		break;
-	}
-
-	case MIR_TYPE_FN: {
-		TSmallArray_LLVMMetadata params;
-		tsa_init(&params);
-
-		/* return type is first */
-		tsa_push_LLVMMetadata(&params, init_DI_type(cnt, type->data.fn.ret_type));
-
-		if (type->data.fn.args) {
-			MirArg *it;
-			TSA_FOREACH(type->data.fn.args, it)
-			{
-				tsa_push_LLVMMetadata(&params, init_DI_type(cnt, it->type));
-			}
-		}
-
-		type->llvm_meta = llvm_di_create_function_type(
-		    cnt->llvm_di_builder, params.data, (unsigned)params.size);
-
-		tsa_terminate(&params);
-		break;
-	}
-
 	default: {
-		BL_ABORT("Missing generation DI for type %d", type->kind);
+		BL_ABORT("Missing DI completition for type %d", type->kind);
 	}
 	}
 
@@ -3081,6 +3111,8 @@ ir_run(Assembly *assembly)
 	thtbl_init(&cnt.gstring_cache, sizeof(LLVMValueRef), 1024);
 	tsa_init(&cnt.incomplete_rtti);
 	tlist_init(&cnt.incomplete_queue, sizeof(MirInstr *));
+	tarray_init(&cnt.di_incomplete_types, sizeof(MirType *));
+	tarray_reserve(&cnt.di_incomplete_types, 1024);
 
 	if (cnt.debug_mode) {
 		init_DI(&cnt);
@@ -3115,6 +3147,7 @@ ir_run(Assembly *assembly)
 	LLVMDisposeBuilder(cnt.llvm_builder);
 	llvm_di_delete_di_builder(cnt.llvm_di_builder);
 
+	tarray_terminate(&cnt.di_incomplete_types);
 	tlist_terminate(&cnt.incomplete_queue);
 	tsa_terminate(&cnt.incomplete_rtti);
 	thtbl_terminate(&cnt.gstring_cache);
