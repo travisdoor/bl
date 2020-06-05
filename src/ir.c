@@ -262,16 +262,16 @@ emit_incomplete(Context *cnt);
 static LLVMValueRef
 emit_fn_proto(Context *cnt, MirFn *fn);
 
-static inline MirInstr *
-push_back_incomplete(Context *cnt, MirInstr *instr)
+static INLINE MirInstr *
+              push_back_incomplete(Context *cnt, MirInstr *instr)
 {
 	BL_ASSERT(instr && "Attempt to push null instruction into incomplete queue!");
 	tlist_push_back(&cnt->incomplete_queue, instr);
 	return instr;
 }
 
-static inline MirInstr *
-pop_front_incomplete(Context *cnt)
+static INLINE MirInstr *
+              pop_front_incomplete(Context *cnt)
 {
 	MirInstr *instr = NULL;
 	TList *   queue = &cnt->incomplete_queue;
@@ -283,7 +283,7 @@ pop_front_incomplete(Context *cnt)
 	return instr;
 }
 
-static inline LLVMTypeRef
+static INLINE LLVMTypeRef
 get_type(Context *cnt, MirType *t)
 {
 	BL_ASSERT(t->llvm_type && "Invalid type reference for LLVM!");
@@ -294,13 +294,13 @@ get_type(Context *cnt, MirType *t)
 	return t->llvm_type;
 }
 
-static inline bool
+static INLINE bool
 is_initialized(LLVMValueRef constant)
 {
 	return constant && LLVMGetInitializer(constant);
 }
 
-static inline LLVMValueRef
+static INLINE LLVMValueRef
 emit_global_var_proto(Context *cnt, MirVar *var)
 {
 	BL_ASSERT(var);
@@ -318,7 +318,7 @@ emit_global_var_proto(Context *cnt, MirVar *var)
 	return var->llvm_value;
 }
 
-static inline LLVMBasicBlockRef
+static INLINE LLVMBasicBlockRef
 emit_basic_block(Context *cnt, MirInstrBlock *block)
 {
 	if (!block) return NULL;
@@ -3094,6 +3094,17 @@ init_DI(Context *cnt)
 	llvm_di_create_compile_unit(cnt->llvm_di_builder, gscope->llvm_meta, producer);
 }
 
+static void
+complete_DI_types(Context *cnt)
+{
+	MirType *t;
+
+	TARRAY_FOREACH(MirType *, &cnt->di_incomplete_types, t)
+	{
+		complete_DI_type(cnt, t);
+	}
+}
+
 /* public */
 void
 ir_run(Assembly *assembly)
@@ -3133,6 +3144,7 @@ ir_run(Assembly *assembly)
 
 	if (cnt.debug_mode) {
 		BL_LOG("DI finalize!");
+		complete_DI_types(&cnt);
 		llvm_di_builder_finalize(cnt.llvm_di_builder);
 	}
 

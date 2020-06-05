@@ -69,7 +69,7 @@ scan_char(Context *cnt, Token *tok);
 static bool
 scan_number(Context *cnt, Token *tok);
 
-static inline int
+static INLINE int
 c_to_number(char c, s32 base);
 
 static char

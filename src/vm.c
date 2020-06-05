@@ -300,13 +300,13 @@ eval_instr_compound(VM *vm, MirInstrCompound *compound);
 /***********/
 /* inlines */
 /***********/
-static inline bool
+static INLINE bool
 needs_tmp_alloc(MirConstExprValue *v)
 {
 	return v->type->store_size_bytes > sizeof(v->_tmp);
 }
 
-static inline MirFn *
+static INLINE MirFn *
 get_callee(MirInstrCall *call)
 {
 	MirConstExprValue *val = &call->callee->value;
@@ -317,20 +317,20 @@ get_callee(MirInstrCall *call)
 	return fn;
 }
 
-static inline void
+static INLINE void
 exec_abort(VM *vm, s32 report_stack_nesting)
 {
 	print_call_stack(vm, report_stack_nesting);
 	vm->stack->aborted = true;
 }
 
-static inline void
+static INLINE void
 eval_abort(VM *vm)
 {
 	vm->aborted = true;
 }
 
-static inline usize
+static INLINE usize
 stack_alloc_size(usize size)
 {
 	BL_ASSERT(size != 0);
@@ -339,7 +339,7 @@ stack_alloc_size(usize size)
 }
 
 /* allocate memory on frame stack, size is in bits!!! */
-static inline VMStackPtr
+static INLINE VMStackPtr
 stack_alloc(VM *vm, usize size)
 {
 	BL_ASSERT(size && "trying to allocate 0 bits on stack");
@@ -367,7 +367,7 @@ stack_alloc(VM *vm, usize size)
 }
 
 /* shift stack top by the size in bytes */
-static inline VMStackPtr
+static INLINE VMStackPtr
 stack_free(VM *vm, usize size)
 {
 #if BL_DEBUG && CHCK_STACK
@@ -385,7 +385,7 @@ stack_free(VM *vm, usize size)
 	return new_top;
 }
 
-static inline void
+static INLINE void
 push_ra(VM *vm, MirInstr *caller)
 {
 	VMFrame *prev = vm->stack->ra;
@@ -396,7 +396,7 @@ push_ra(VM *vm, MirInstr *caller)
 	LOG_PUSH_RA;
 }
 
-static inline MirInstr *
+static INLINE MirInstr *
 pop_ra(VM *vm)
 {
 	if (!vm->stack->ra) return NULL;
@@ -412,7 +412,7 @@ pop_ra(VM *vm)
 	return caller;
 }
 
-static inline VMStackPtr
+static INLINE VMStackPtr
 stack_push_empty(VM *vm, MirType *type)
 {
 	BL_ASSERT(type);
@@ -424,7 +424,7 @@ stack_push_empty(VM *vm, MirType *type)
 	return tmp;
 }
 
-static inline VMStackPtr
+static INLINE VMStackPtr
 stack_push(VM *vm, void *value, MirType *type)
 {
 	BL_ASSERT(value && "try to push NULL value");
@@ -435,7 +435,7 @@ stack_push(VM *vm, void *value, MirType *type)
 	return tmp;
 }
 
-static inline VMStackPtr
+static INLINE VMStackPtr
 stack_pop(VM *vm, MirType *type)
 {
 	BL_ASSERT(type);
@@ -450,7 +450,7 @@ stack_pop(VM *vm, MirType *type)
 /* Global variables are allocated in static data segment, so there is no need to
  * use relative pointer. When we set ignore to true original pointer is returned
  * as absolute pointer to the stack.  */
-static inline VMStackPtr
+static INLINE VMStackPtr
 stack_rel_to_abs_ptr(VM *vm, VMRelativeStackPtr rel_ptr, bool ignore)
 {
 	if (ignore) return (VMStackPtr)rel_ptr;
@@ -462,32 +462,32 @@ stack_rel_to_abs_ptr(VM *vm, VMRelativeStackPtr rel_ptr, bool ignore)
 }
 
 /* Fetch value into Temp  */
-static inline VMStackPtr
+static INLINE VMStackPtr
 fetch_value(VM *vm, MirConstExprValue *v)
 {
 	if (v->is_comptime) return v->data;
 	return stack_pop(vm, v->type);
 }
 
-static inline MirInstr *
+static INLINE MirInstr *
 get_pc(VM *vm)
 {
 	return vm->stack->pc;
 }
 
-static inline VMFrame *
+static INLINE VMFrame *
 get_ra(VM *vm)
 {
 	return vm->stack->ra;
 }
 
-static inline void
+static INLINE void
 set_pc(VM *vm, MirInstr *instr)
 {
 	vm->stack->pc = instr;
 }
 
-static inline VMRelativeStackPtr
+static INLINE VMRelativeStackPtr
 stack_alloc_var(VM *vm, MirVar *var)
 {
 	BL_ASSERT(var);
@@ -499,7 +499,7 @@ stack_alloc_var(VM *vm, MirVar *var)
 	return var->rel_stack_ptr;
 }
 
-static inline void
+static INLINE void
 stack_alloc_local_vars(VM *vm, MirFn *fn)
 {
 	BL_ASSERT(fn);

@@ -45,7 +45,7 @@ typedef struct {
 static void
 print_comptime_value_or_id(Context *cnt, MirInstr *instr);
 
-static inline void
+static INLINE void
 print_type(Context *cnt, MirType *type, bool aligned, bool prefer_name)
 {
 	char tmp[256];
@@ -56,7 +56,7 @@ print_type(Context *cnt, MirType *type, bool aligned, bool prefer_name)
 		fprintf(cnt->stream, "%s", tmp);
 }
 
-static inline void
+static INLINE void
 print_instr_head(Context *cnt, MirInstr *instr, const char *name)
 {
 	if (!instr) return;
@@ -77,7 +77,7 @@ print_instr_head(Context *cnt, MirInstr *instr, const char *name)
 	fprintf(cnt->stream, " %s ", name);
 }
 
-static inline void
+static INLINE void
 print_flags(Context *cnt, u32 flags)
 {
 	if (flags == 0) return;
@@ -94,7 +94,7 @@ print_flags(Context *cnt, u32 flags)
 
 #define print_const_value(C, V) _print_const_value((C), (V)->type, (V)->data)
 
-static inline void
+static INLINE void
 _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 {
 	if (!type) return;

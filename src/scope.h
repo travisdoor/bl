@@ -124,7 +124,7 @@ scope_is_subtree_of_kind(Scope *scope, ScopeKind kind);
 const char *
 scope_kind_name(Scope *scope);
 
-static inline bool
+static INLINE bool
 scope_is_global(Scope *scope)
 {
 	return scope->kind == SCOPE_GLOBAL || scope->kind == SCOPE_PRIVATE;

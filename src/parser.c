@@ -27,7 +27,6 @@
 //************************************************************************************************
 
 #include "common.h"
-#include "llvm_di.h"
 #include "stages.h"
 #include <setjmp.h>
 
@@ -247,13 +246,13 @@ parse_expr_type_info(Context *cnt);
 static Ast *
 parse_expr_alignof(Context *cnt);
 
-static inline bool
+static INLINE bool
 parse_semicolon(Context *cnt);
 
-static inline bool
+static INLINE bool
 parse_semicolon_rq(Context *cnt);
 
-static inline bool
+static INLINE bool
 hash_directive_to_flags(HashDirective hd, u32 *out_flags);
 
 static Ast *
@@ -270,7 +269,7 @@ parse_expr_compound(Context *cnt);
 
 // impl
 
-static inline bool
+static INLINE bool
 rq_semicolon_after_decl_entity(Ast *node)
 {
 	BL_ASSERT(node);

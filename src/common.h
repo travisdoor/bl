@@ -50,8 +50,10 @@ struct Assembly;
 
 #if defined(BL_COMPILER_CLANG) || defined(BL_COMPILER_GNUC)
 #define BL_DEPRECATED __attribute__((deprecated))
+#define INLINE __attribute__((always_inline))
 #else
 #define BL_DEPRECATED
+#define INLINE __forceinline
 #endif
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
