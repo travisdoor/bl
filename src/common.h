@@ -44,6 +44,12 @@
 #pragma warning(disable : 4244)
 #pragma warning(disable : 6001)
 #pragma warning(disable : 4267)
+
+#define _LLVM_SHUT_UP_BEGIN __pragma(warning(push, 0))
+#define _LLVM_SHUT_UP_END __pragma(warning(pop))
+#else
+#define _LLVM_SHUT_UP_BEGIN
+#define _LLVM_SHUT_UP_END
 #endif
 
 struct Assembly;

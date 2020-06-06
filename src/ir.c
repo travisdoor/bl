@@ -142,18 +142,6 @@ rtti_emit_fn_args_array(Context *cnt, TSmallArray_ArgPtr *args);
 static LLVMValueRef
 rtti_emit_fn_args_slice(Context *cnt, TSmallArray_ArgPtr *args);
 
-static LLVMMetadataRef
-DI_type_init(Context *cnt, MirType *type);
-
-static LLVMMetadataRef
-complete_DI_type(Context *cnt, MirType *type);
-
-static LLVMMetadataRef
-DI_scope_init(Context *cnt, Scope *scope);
-
-static LLVMMetadataRef
-DI_unit_init(Context *cnt, Unit *unit);
-
 static void
 emit_DI_instr_loc(Context *cnt, MirInstr *instr);
 
@@ -165,6 +153,18 @@ emit_DI_var(Context *cnt, MirVar *var);
 
 static State
 emit_instr(Context *cnt, MirInstr *instr);
+
+static LLVMMetadataRef
+DI_type_init(Context *cnt, MirType *type);
+
+static LLVMMetadataRef
+DI_complete_type(Context *cnt, MirType *type);
+
+static LLVMMetadataRef
+DI_scope_init(Context *cnt, Scope *scope);
+
+static LLVMMetadataRef
+DI_unit_init(Context *cnt, Unit *unit);
 
 /*
  * Tmp is optional but needed for naked compound expressions.
@@ -486,7 +486,7 @@ DI_type_init(Context *cnt, MirType *type)
 }
 
 LLVMMetadataRef
-complete_DI_type(Context *cnt, MirType *type)
+DI_complete_type(Context *cnt, MirType *type)
 {
 	BL_ASSERT(type->llvm_meta && "Incomplete DI type must have forward declaration.");
 
@@ -3103,13 +3103,13 @@ DI_terminate(Context *cnt)
 }
 
 static void
-complete_DI_types(Context *cnt)
+DI_complete_types(Context *cnt)
 {
 	MirType *t;
 
 	TARRAY_FOREACH(MirType *, &cnt->di_incomplete_types, t)
 	{
-		complete_DI_type(cnt, t);
+		DI_complete_type(cnt, t);
 	}
 }
 
@@ -3150,7 +3150,7 @@ ir_run(Assembly *assembly)
 
 	if (cnt.debug_mode) {
 		BL_LOG("DI finalize!");
-		complete_DI_types(&cnt);
+		DI_complete_types(&cnt);
 		llvm_di_builder_finalize(cnt.llvm_di_builder);
 	}
 

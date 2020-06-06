@@ -72,6 +72,12 @@ llvm_init(void)
 	llvm_initialized = true;
 }
 
+static void 
+llvm_terminate(void)
+{
+	LLVMShutdown();
+}
+
 #define INTERRUPT_ON_ERROR                                                                         \
 	if (builder.errorc) return COMPILE_FAIL;
 
@@ -263,6 +269,8 @@ builder_terminate(void)
 	tarray_terminate(&builder.assembly_queue);
 	conf_data_delete(builder.conf);
 	arena_terminate(&builder.str_cache);
+
+	llvm_terminate();
 }
 
 int

@@ -31,6 +31,10 @@
 
 #include <memory.h>
 
+#if defined(_MSC_VER) && defined(BL_DEBUG)
+#define _CRTDBG_MAP_ALLOC
+#endif
+
 #define bl_malloc(size) malloc((size))
 
 #define bl_free(ptr) free((ptr))
