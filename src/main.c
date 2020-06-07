@@ -101,7 +101,6 @@ main(s32 argc, char *argv[])
 	s32 state = EXIT_SUCCESS;
 #if defined(_MSC_VER) && defined(BL_DEBUG)
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-	_CrtSetBreakAlloc(1483);
 #endif
 	const char *help_text =
 #include "help_text.txt"
@@ -196,8 +195,5 @@ main(s32 argc, char *argv[])
 RELEASE:
 	builder_terminate();
 	free_env();
-#if defined(_MSC_VER) && defined(BL_DEBUG)
-	_CrtDumpMemoryLeaks();
-#endif
 	return state;
 }

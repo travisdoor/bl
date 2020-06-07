@@ -165,8 +165,8 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 	}
 
 	case MIR_TYPE_TYPE: {
-		MirType *type = vm_read_as(MirType *, value);
-		print_type(cnt, type, false, false);
+		MirType *type2 = vm_read_as(MirType *, value);
+		print_type(cnt, type2, false, false);
 		break;
 	}
 
@@ -215,9 +215,9 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 		TSA_FOREACH(type->data.strct.members, it)
 		{
 			MirType *       member_type = it->type;
-			const ptrdiff_t offset =
+			const ptrdiff_t offset2 =
 			    vm_get_struct_elem_offset(cnt->assembly, type, (u32)i);
-			_print_const_value(cnt, member_type, value + offset);
+			_print_const_value(cnt, member_type, value + offset2);
 			if (i < (usize)type->data.strct.members->size - 1)
 				fprintf(cnt->stream, ",");
 		}
@@ -229,10 +229,10 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 	case MIR_TYPE_ARRAY: {
 		fprintf(cnt->stream, "[");
 
-		MirType *elem_type = type->data.array.elem_type;
+		MirType *elem_type2 = type->data.array.elem_type;
 		for (u32 i = 0; i < (u32)type->data.array.len; ++i) {
-			const ptrdiff_t offset = vm_get_array_elem_offset(type, i);
-			_print_const_value(cnt, elem_type, value + offset);
+			const ptrdiff_t offset2 = vm_get_array_elem_offset(type, i);
+			_print_const_value(cnt, elem_type2, value + offset2);
 			if (i < type->data.array.len - 1) fprintf(cnt->stream, ",");
 		}
 

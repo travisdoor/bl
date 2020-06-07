@@ -307,7 +307,7 @@ needs_tmp_alloc(MirConstExprValue *v)
 }
 
 static INLINE MirFn *
-get_callee(MirInstrCall *call)
+              get_callee(MirInstrCall *call)
 {
 	MirConstExprValue *val = &call->callee->value;
 	BL_ASSERT(val->type && val->type->kind == MIR_TYPE_FN);
@@ -397,7 +397,7 @@ push_ra(VM *vm, MirInstr *caller)
 }
 
 static INLINE MirInstr *
-pop_ra(VM *vm)
+              pop_ra(VM *vm)
 {
 	if (!vm->stack->ra) return NULL;
 	MirInstr *caller = vm->stack->ra->caller;
@@ -470,13 +470,13 @@ fetch_value(VM *vm, MirConstExprValue *v)
 }
 
 static INLINE MirInstr *
-get_pc(VM *vm)
+              get_pc(VM *vm)
 {
 	return vm->stack->pc;
 }
 
 static INLINE VMFrame *
-get_ra(VM *vm)
+              get_ra(VM *vm)
 {
 	return vm->stack->ra;
 }
@@ -517,7 +517,7 @@ stack_alloc_local_vars(VM *vm, MirFn *fn)
 /* impl */
 /********/
 void
-calculate_binop(MirType *  dest_type,
+calculate_binop(MirType    UNUSED(*dest_type),
                 MirType *  src_type,
                 VMStackPtr dest,
                 VMStackPtr lhs,
@@ -964,7 +964,7 @@ reset_stack(VMStack *stack)
 }
 
 void
-dyncall_cb_read_arg(VM *vm, MirConstExprValue *dest_value, DCArgs *src)
+dyncall_cb_read_arg(VM UNUSED(*vm), MirConstExprValue *dest_value, DCArgs *src)
 {
 	VMStackPtr dest = dest_value->data;
 	MirType *  type = dest_value->type;
@@ -1031,7 +1031,7 @@ dyncall_cb_read_arg(VM *vm, MirConstExprValue *dest_value, DCArgs *src)
 }
 
 char
-dyncall_cb_handler(DCCallback *cb, DCArgs *dc_args, DCValue *result, void *userdata)
+dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result, void *userdata)
 {
 	/* TODO: External callback can be invoked from different thread. This can cause problems for
 	 * now since interpreter is strictly single-threaded, but we must handle such situation in
@@ -1786,7 +1786,7 @@ interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 }
 
 void
-interp_instr_unreachable(VM *vm, MirInstrUnreachable *unr)
+interp_instr_unreachable(VM *vm, MirInstrUnreachable UNUSED(*unr))
 {
 	builder_error("execution reached unreachable code");
 	exec_abort(vm, 0);
@@ -2400,7 +2400,7 @@ eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 }
 
 void
-eval_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
+eval_instr_member_ptr(VM UNUSED(*vm), MirInstrMemberPtr *member_ptr)
 {
 	switch (member_ptr->scope_entry->kind) {
 	case SCOPE_ENTRY_MEMBER: {
@@ -2487,7 +2487,7 @@ eval_instr_compound(VM *vm, MirInstrCompound *compound)
 }
 
 void
-eval_instr_decl_var(VM *vm, MirInstrDeclVar *decl_var)
+eval_instr_decl_var(VM UNUSED(*vm), MirInstrDeclVar *decl_var)
 {
 	BL_ASSERT(decl_var->init && "Missing variable initializer!");
 	MirVar *var     = decl_var->var;
@@ -2496,7 +2496,7 @@ eval_instr_decl_var(VM *vm, MirInstrDeclVar *decl_var)
 }
 
 void
-eval_instr_cast(VM *vm, MirInstrCast *cast)
+eval_instr_cast(VM UNUSED(*vm), MirInstrCast *cast)
 {
 	MirType *  dest_type = cast->base.value.type;
 	MirType *  src_type  = cast->expr->value.type;
@@ -2506,7 +2506,7 @@ eval_instr_cast(VM *vm, MirInstrCast *cast)
 }
 
 void
-eval_instr_addrof(VM *vm, MirInstrAddrOf *addrof)
+eval_instr_addrof(VM UNUSED(*vm), MirInstrAddrOf *addrof)
 {
 	addrof->base.value.data = addrof->src->value.data;
 }
@@ -2551,7 +2551,7 @@ eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si)
 }
 
 void
-eval_instr_unop(VM *vm, MirInstrUnop *unop)
+eval_instr_unop(VM UNUSED(*vm), MirInstrUnop *unop)
 {
 	MirType *type = unop->base.value.type;
 
@@ -2562,7 +2562,7 @@ eval_instr_unop(VM *vm, MirInstrUnop *unop)
 }
 
 void
-eval_instr_binop(VM *vm, MirInstrBinop *binop)
+eval_instr_binop(VM UNUSED(*vm), MirInstrBinop *binop)
 {
 	BL_ASSERT(binop->lhs->value.is_comptime && binop->rhs->value.is_comptime);
 
@@ -2577,7 +2577,7 @@ eval_instr_binop(VM *vm, MirInstrBinop *binop)
 }
 
 void
-eval_instr_decl_ref(VM *vm, MirInstrDeclRef *decl_ref)
+eval_instr_decl_ref(VM UNUSED(*vm), MirInstrDeclRef *decl_ref)
 {
 	ScopeEntry *entry = decl_ref->scope_entry;
 	BL_ASSERT(entry);
@@ -2606,7 +2606,7 @@ eval_instr_decl_ref(VM *vm, MirInstrDeclRef *decl_ref)
 }
 
 void
-eval_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *decl_ref)
+eval_instr_decl_direct_ref(VM UNUSED(*vm), MirInstrDeclDirectRef *decl_ref)
 {
 	MirVar *var = ((MirInstrDeclVar *)decl_ref->ref)->var;
 	MIR_CEV_WRITE_AS(VMStackPtr *, &decl_ref->base.value, &var->value.data);
@@ -2699,7 +2699,7 @@ vm_alloc_global(VM *vm, Assembly *assembly, MirVar *var)
 }
 
 VMStackPtr
-vm_alloc_const_expr_value(VM *vm, Assembly *assembly, MirConstExprValue *value)
+vm_alloc_const_expr_value(VM UNUSED(*vm), Assembly UNUSED(*assembly), MirConstExprValue *value)
 {
 	BL_ASSERT(value->is_comptime);
 	BL_ASSERT(value->type);
@@ -2708,7 +2708,7 @@ vm_alloc_const_expr_value(VM *vm, Assembly *assembly, MirConstExprValue *value)
 }
 
 VMStackPtr
-vm_alloc_raw(VM *vm, struct Assembly *assembly, MirType *type)
+vm_alloc_raw(VM *vm, struct Assembly UNUSED(*assembly), MirType *type)
 {
 	return stack_push_empty(vm, type);
 }
@@ -2831,7 +2831,9 @@ ptrdiff_t
 vm_get_struct_elem_offset(Assembly *assembly, MirType *type, u32 i)
 {
 	BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
-	if (type->data.strct.is_union) { return 0; }
+	if (type->data.strct.is_union) {
+		return 0;
+	}
 
 	return (ptrdiff_t)LLVMOffsetOfElement(assembly->llvm.TD, type->llvm_type, i);
 }
@@ -2849,7 +2851,9 @@ VMStackPtr
 vm_get_struct_elem_ptr(Assembly *assembly, MirType *type, VMStackPtr ptr, u32 i)
 {
 	BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
-	if (type->data.strct.is_union) { return ptr; }
+	if (type->data.strct.is_union) {
+		return ptr;
+	}
 
 	return ptr + vm_get_struct_elem_offset(assembly, type, i);
 }

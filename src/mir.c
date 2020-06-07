@@ -93,7 +93,7 @@ TSMALL_ARRAY_TYPE(LLVMType, LLVMTypeRef, 8);
 TSMALL_ARRAY_TYPE(LLVMMetadata, LLVMMetadataRef, 16);
 TSMALL_ARRAY_TYPE(DeferStack, Ast *, 64);
 TSMALL_ARRAY_TYPE(InstrPtr64, MirInstr *, 64);
-TSMALL_ARRAY_TYPE(String, const char *, 64);
+TSMALL_ARRAY_TYPE(String, char *, 64);
 TSMALL_ARRAY_TYPE(RTTIIncomplete, RTTIIncomplete, 64);
 
 typedef struct {
@@ -173,10 +173,10 @@ typedef enum {
 /* Argument list used in slot analyze functions */
 // clang-format off
 #define ANALYZE_STAGE_ARGS                                                                         \
-	Context   *cnt,           /* Stage context. */                                             \
-	MirInstr **input,         /* Slot input, this represents slot itself and can be changed. */\
-	MirType   *slot_type,     /* Optional expected result type. */                             \
-	bool       is_initializer /* True when slot is variable initializer. */
+	Context   UNUSED(*cnt),           /* Stage context. */                                             \
+	MirInstr  UNUSED(**input),         /* Slot input, this represents slot itself and can be changed. */\
+	MirType   UNUSED(*slot_type),     /* Optional expected result type. */                             \
+	bool      UNUSED(is_initializer) /* True when slot is variable initializer. */
 // clang-format on
 
 #define ANALYZE_STAGE_FN(N) AnalyzeStageState analyze_stage_##N(ANALYZE_STAGE_ARGS)
@@ -1294,13 +1294,13 @@ terminate_block(MirInstrBlock *block, MirInstr *terminator)
 static INLINE bool
 is_block_terminated(MirInstrBlock *block)
 {
-	return (bool)block->terminal;
+	return block->terminal;
 }
 
 static INLINE bool
 is_current_block_terminated(Context *cnt)
 {
-	return (bool)get_current_block(cnt)->terminal;
+	return get_current_block(cnt)->terminal;
 }
 
 static INLINE MirInstr *
@@ -1495,7 +1495,7 @@ commit_fn(Context *cnt, MirFn *fn)
 }
 
 static INLINE void
-commit_variant(Context *cnt, MirVariant *v)
+commit_variant(Context UNUSED(*cnt), MirVariant *v)
 {
 	ID *id = v->id;
 	BL_ASSERT(id);
@@ -1509,7 +1509,7 @@ commit_variant(Context *cnt, MirVariant *v)
 }
 
 static INLINE void
-commit_member(Context *cnt, MirMember *member)
+commit_member(Context UNUSED(*cnt), MirMember *member)
 {
 	ID *id = member->id;
 	BL_ASSERT(id);
@@ -1677,7 +1677,7 @@ sh_type_ptr(Context *cnt, MirType *src_type)
 }
 
 static INLINE const char *
-sh_type_fn(Context *cnt, MirType *ret_type, TSmallArray_ArgPtr *args, bool is_vargs)
+sh_type_fn(Context *cnt, MirType *ret_type, TSmallArray_ArgPtr *args, bool UNUSED(is_vargs))
 {
 	// BL_ASSERT(src_type->id.str);
 	TString *tmp = &cnt->tmp_sh;
@@ -2001,7 +2001,12 @@ create_type(Context *cnt, MirTypeKind kind, ID *user_id)
 }
 
 ScopeEntry *
-register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool is_builtin, bool enable_groups)
+register_symbol(Context *cnt,
+                Ast *    node,
+                ID *     id,
+                Scope *  scope,
+                bool     is_builtin,
+                bool     UNUSED(enable_groups))
 {
 	BL_ASSERT(id && "Missing symbol ID.");
 	BL_ASSERT(scope && "Missing entry scope.");
@@ -2541,7 +2546,7 @@ init_llvm_type_void(Context *cnt, MirType *type)
 }
 
 void
-init_llvm_type_null(Context *cnt, MirType *type)
+init_llvm_type_null(Context UNUSED(*cnt), MirType *type)
 {
 	MirType *tmp = type->data.null.base_type;
 	BL_ASSERT(tmp);
@@ -3830,7 +3835,7 @@ append_instr_decl_var(Context * cnt,
                       MirInstr *type,
                       MirInstr *init,
                       bool      is_mutable,
-                      s32       order,
+                      s32       UNUSED(order),
                       u32       flags)
 {
 	ref_instr(type);
@@ -3867,8 +3872,8 @@ append_instr_decl_var_impl(Context *   cnt,
                            MirInstr *  init,
                            bool        is_mutable,
                            bool        is_in_gscope,
-                           s32         order,
-                           u32         flags)
+                           s32         UNUSED(order),
+                           u32         UNUSED(flags))
 {
 	ref_instr(type);
 	ref_instr(init);
@@ -5570,7 +5575,7 @@ analyze_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref)
 }
 
 AnalyzeResult
-analyze_instr_arg(Context *cnt, MirInstrArg *arg)
+analyze_instr_arg(Context UNUSED(*cnt), MirInstrArg *arg)
 {
 	MirFn *fn = arg->base.owner_block->owner_fn;
 	BL_ASSERT(fn);
@@ -5756,7 +5761,7 @@ analyze_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 }
 
 AnalyzeResult
-analyze_instr_br(Context *cnt, MirInstrBr *br)
+analyze_instr_br(Context UNUSED(*cnt), MirInstrBr *br)
 {
 	BL_ASSERT(br->then_block);
 	return ANALYZE_RESULT(PASSED, 0);
@@ -5853,8 +5858,8 @@ analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
 		TSA_FOREACH(expected_case_type->data.enm.variants, variant)
 		{
 			bool hit = false;
-			for (usize i = 0; i < sw->cases->size; ++i) {
-				c                       = &sw->cases->data[i];
+			for (usize i2 = 0; i2 < sw->cases->size; ++i2) {
+				c                       = &sw->cases->data[i2];
 				const s64 on_value      = MIR_CEV_READ_AS(s64, &c->on_value->value);
 				const s64 variant_value = MIR_CEV_READ_AS(s64, variant->value);
 				if (on_value == variant_value) {
@@ -5878,7 +5883,7 @@ analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
 }
 
 AnalyzeResult
-analyze_instr_load(Context *cnt, MirInstrLoad *load)
+analyze_instr_load(Context UNUSED(*cnt), MirInstrLoad *load)
 {
 	MirInstr *src = load->src;
 	BL_ASSERT(src);
@@ -6622,7 +6627,7 @@ analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
 }
 
 AnalyzeResult
-analyze_instr_const(Context *cnt, MirInstrConst *cnst)
+analyze_instr_const(Context UNUSED(*cnt), MirInstrConst *cnst)
 {
 	BL_ASSERT(cnst->base.value.type);
 	return ANALYZE_RESULT(PASSED, 0);
@@ -6807,7 +6812,7 @@ static INLINE MirType *
 }
 
 AnalyzeResult
-analyze_builtin_call(Context *cnt, MirInstrCall *call)
+analyze_builtin_call(Context UNUSED(*cnt), MirInstrCall *call)
 {
 	MirType *callee_type = call->callee->value.type;
 
@@ -8213,8 +8218,10 @@ ast_block(Context *cnt, Ast *block)
 		MirFn *current_fn = get_current_fn(cnt);
 		BL_ASSERT(current_fn);
 
+		/*
 		const bool emit_di =
 		    IS_FLAG(current_fn->flags, FLAG_TEST) ? builder.options.force_test_llvm : true;
+		    */
 	}
 
 	Ast *tmp;
@@ -8447,8 +8454,8 @@ ast_stmt_switch(Context *cnt, Ast *stmt_switch)
 
 		TSmallArray_AstPtr *ast_exprs = ast_case->data.stmt_case.exprs;
 
-		for (usize i = ast_exprs->size; i-- > 0;) {
-			Ast *ast_expr = ast_exprs->data[i];
+		for (usize i2 = ast_exprs->size; i2-- > 0;) {
+			Ast *ast_expr = ast_exprs->data[i2];
 
 			set_current_block(cnt, src_block);
 			MirSwitchCase c = {.on_value = ast(cnt, ast_expr), .block = case_block};
@@ -9463,8 +9470,8 @@ ast_type_struct(Context *cnt, Ast *type_struct)
 		 * 'base'.
 		 */
 		MirInstr *base_type = ast(cnt, ast_base_type);
-		ID *      id        = &builtin_ids[MIR_BUILTIN_ID_STRUCT_BASE];
-		base_type = append_instr_decl_member_impl(cnt, ast_base_type, id, base_type, NULL);
+		ID *      id2       = &builtin_ids[MIR_BUILTIN_ID_STRUCT_BASE];
+		base_type = append_instr_decl_member_impl(cnt, ast_base_type, id2, base_type, NULL);
 
 		MirMember *base_member = ((MirInstrDeclMember *)base_type)->member;
 		base_member->is_base   = true;
@@ -9789,7 +9796,7 @@ _type_to_str(char *buf, usize len, MirType *type, bool prefer_name)
 		break;
 
 	case MIR_TYPE_SLICE: {
-		const bool has_members = (bool)type->data.strct.members;
+		const bool has_members = type->data.strct.members;
 		append_buf(buf, len, "[]");
 
 		if (has_members) {
@@ -9801,7 +9808,7 @@ _type_to_str(char *buf, usize len, MirType *type, bool prefer_name)
 	}
 
 	case MIR_TYPE_DYNARR: {
-		const bool has_members = (bool)type->data.strct.members;
+		const bool has_members = type->data.strct.members;
 		append_buf(buf, len, "[..]");
 
 		if (has_members) {
@@ -9813,7 +9820,7 @@ _type_to_str(char *buf, usize len, MirType *type, bool prefer_name)
 	}
 
 	case MIR_TYPE_VARGS: {
-		const bool has_members = (bool)type->data.strct.members;
+		const bool has_members = type->data.strct.members;
 		append_buf(buf, len, "...");
 
 		if (has_members) {
@@ -10107,7 +10114,8 @@ init_builtins(Context *cnt)
 void
 mir_arenas_init(MirArenas *arenas)
 {
-	arena_init(&arenas->instr, SIZEOF_MIR_INSTR, ARENA_CHUNK_COUNT, NULL);
+	const size_t instr_size = SIZEOF_MIR_INSTR;
+	arena_init(&arenas->instr, instr_size, ARENA_CHUNK_COUNT, NULL);
 	arena_init(&arenas->type, sizeof(MirType), ARENA_CHUNK_COUNT, NULL);
 	arena_init(&arenas->var, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
 	arena_init(&arenas->fn, sizeof(MirFn), ARENA_CHUNK_COUNT, (ArenaElemDtor)&fn_dtor);

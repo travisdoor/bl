@@ -114,7 +114,7 @@ llvm_get_intrinsic_decl(LLVMModuleRef mod_ref,
 }
 
 LLVMValueRef
-llvm_const_string_in_context(LLVMContextRef context_ref,
+llvm_const_string_in_context(LLVMContextRef UNUSED(context_ref),
                              LLVMTypeRef    t,
                              const char *   str,
                              bool           zero_terminate)

@@ -60,6 +60,9 @@ _log(bl_log_msg_type_e t, const char *file, s32 line, const char *msg, ...);
 void
 print_trace(void);
 
+void *
+_assert_invalid_expr(const char *expr, const char *file, s32 line);
+
 #ifdef BL_DEBUG
 #define BL_LOG(format, ...)                                                                        \
 	{                                                                                          \
@@ -77,6 +80,9 @@ print_trace(void);
 		assert(e);                                                                         \
 	}
 
+#define BL_REQUIRE(expr)                                                                           \
+	(expr ? (expr) : _assert_invalid_expr(#expr, __FILENAME__, __LINE__), (expr))
+
 #else /* !BL_DEBUG */
 
 #define BL_LOG(format, ...)                                                                        \
@@ -90,6 +96,8 @@ print_trace(void);
 #define BL_ASSERT(e)                                                                               \
 	while (0) {                                                                                \
 	}
+
+#define BL_REQUIRE(expr) (expr)
 
 #endif /* BL_DEBUG */
 

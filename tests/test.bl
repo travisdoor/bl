@@ -1,13 +1,21 @@
 /* playground */
 
-Foo :: struct {
-    foo: *Foo;
-}
-
 main :: fn () s32 {
-    print("Start thread!!!\n");
+    i := 10;
+    print("i = %\n", i);
 
-    foo: Foo;
+    if i == 10 {
+        print("i = %\n", i);
+        print("i = %\n", i);
+    } else {
+        print("i = %\n", i);
+        print("i = %\n", i);
+    }
+
+    fn () {
+        i := 10;
+        print("Anonymous!!!\n");
+    }();
     
     return 0;
 }

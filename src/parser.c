@@ -1188,7 +1188,7 @@ parse_decl_variant(Context *cnt, Ast *prev)
 bool
 parse_semicolon(Context *cnt)
 {
-	return (bool)tokens_consume_if(cnt->tokens, SYM_SEMICOLON);
+	return tokens_consume_if(cnt->tokens, SYM_SEMICOLON);
 }
 
 bool

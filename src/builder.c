@@ -369,7 +369,7 @@ builder_compile(Assembly *assembly)
 
 void
 builder_msg(BuilderMsgType type,
-            s32            code,
+            s32            UNUSED(code),
             Location *     src,
             BuilderCurPos  pos,
             const char *   format,
