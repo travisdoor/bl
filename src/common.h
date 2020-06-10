@@ -47,7 +47,7 @@ struct Assembly;
 #define INLINE __attribute__((always_inline))
 #define _LLVM_SHUT_UP_BEGIN
 #define _LLVM_SHUT_UP_END
-#define UNUSED(x) (__attribute__((unused)) x
+#define UNUSED(x) __attribute__((unused)) x
 
 //************************************************************************************************
 // MSVC
