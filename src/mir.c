@@ -8802,8 +8802,7 @@ ast_expr_lit_fn(Context *        cnt,
 	    (MirInstrFnProto *)append_instr_fn_proto(cnt, lit_fn, NULL, NULL, true);
 
 	/* Generate type resolver for function type. */
-	fn_proto->type = CREATE_TYPE_RESOLVER_CALL(ast_fn_type);
-	BL_ASSERT(fn_proto->type);
+	fn_proto->type = BL_REQUIRE(CREATE_TYPE_RESOLVER_CALL(ast_fn_type));
 
 	MirInstrBlock *prev_block      = get_current_block(cnt);
 	MirInstrBlock *prev_exit_block = cnt->ast.exit_block;
@@ -8853,6 +8852,10 @@ ast_expr_lit_fn(Context *        cnt,
 	 * always breaks into the exit block. */
 	cnt->ast.exit_block = append_block(cnt, fn, "exit");
 
+	/* Terminal instrtuction node is optional, for example functions returning 'void' does
+	 * not have user defined return, so there is no such information. */
+	Ast *const terminal_node = fn->terminal_instr ? fn->terminal_instr->base.node : NULL;
+
 	if (ast_fn_type->data.type_fn.ret_type) {
 		set_current_block(cnt, init_block);
 		fn->ret_tmp = append_instr_decl_var_impl(
@@ -8861,10 +8864,10 @@ ast_expr_lit_fn(Context *        cnt,
 		set_current_block(cnt, cnt->ast.exit_block);
 		MirInstr *ret_init = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
 
-		append_instr_ret(cnt, NULL, ret_init);
+		append_instr_ret(cnt, terminal_node, ret_init);
 	} else {
 		set_current_block(cnt, cnt->ast.exit_block);
-		append_instr_ret(cnt, NULL, NULL);
+		append_instr_ret(cnt, terminal_node, NULL);
 	}
 
 	set_current_block(cnt, init_block);

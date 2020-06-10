@@ -518,7 +518,7 @@ print_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 }
 
 void
-print_instr_type_dynarr(Context *cnt, MirInstrTypeDynArr*type_dynarr)
+print_instr_type_dynarr(Context *cnt, MirInstrTypeDynArr *type_dynarr)
 {
 	print_instr_head(cnt, &type_dynarr->base, "const");
 	fprintf(cnt->stream, "[..]%%%llu", (unsigned long long)type_dynarr->elem_type->id);
@@ -1152,6 +1152,11 @@ print_instr(Context *cnt, MirInstr *instr)
 	}
 
 	if (instr->value.is_comptime) fprintf(cnt->stream, " /* comptime */");
+
+	if (cnt->assembly->options.build_mode == BUILD_MODE_DEBUG) {
+		if (instr->node && instr->node->location)
+			fprintf(cnt->stream, " // DBG%llu", instr->node->location->id);
+	}
 
 	fprintf(cnt->stream, "\n");
 }

@@ -514,9 +514,13 @@ scan:
 	           cnt->col,
 	           *cnt->c,
 	           *cnt->c);
-push_token:
+push_token : {
+	static u64 location_id = 0;
+
 	tok.location.unit = cnt->unit;
+	tok.location.id = ++location_id;
 	tokens_push(cnt->tokens, &tok);
+}
 	goto scan;
 }
 

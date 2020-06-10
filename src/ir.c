@@ -893,7 +893,7 @@ emit_instr_decl_direct_ref(Context UNUSED(*cnt), MirInstrDeclDirectRef *ref)
 State
 emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 {
-	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, &phi->base);
+	// if (cnt->debug_mode) emit_DI_instr_loc(cnt, &phi->base);
 	LLVMValueRef llvm_phi =
 	    LLVMBuildPhi(cnt->llvm_builder, get_type(cnt, phi->base.value.type), "");
 
@@ -2527,6 +2527,7 @@ emit_instr_ret(Context *cnt, MirInstrRet *ret)
 	MirFn *  fn      = BL_REQUIRE(ret->base.owner_block->owner_fn);
 	MirType *fn_type = BL_REQUIRE(fn->type);
 
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &ret->base);
 	if (fn_type->data.fn.has_sret) {
 		LLVMValueRef llvm_ret_value = ret->value->llvm_value;
 		LLVMValueRef llvm_sret      = LLVMGetParam(fn->llvm_value, LLVM_SRET_INDEX);
@@ -2548,7 +2549,7 @@ emit_instr_ret(Context *cnt, MirInstrRet *ret)
 FINALIZE:
 	if (cnt->debug_mode) {
 		BL_ASSERT(fn->body_scope->llvm_meta);
-		//emit_DI_instr_loc(cnt, &ret->base);
+		// emit_DI_instr_loc(cnt, &ret->base);
 		llvm_di_finalize_subprogram(cnt->llvm_di_builder, fn->body_scope->llvm_meta);
 		emit_DI_instr_loc(cnt, NULL);
 	}
@@ -2568,6 +2569,7 @@ emit_instr_br(Context *cnt, MirInstrBr *br)
 	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &br->base);
 	br->base.llvm_value = LLVMBuildBr(cnt->llvm_builder, llvm_then_block);
 
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 	LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_then_block);
 	return STATE_PASSED;
 }
