@@ -8480,8 +8480,7 @@ ast_stmt_return(Context *cnt, Ast *ret)
 	MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
 
 	if (!is_current_block_terminated(cnt)) {
-		MirFn *fn = get_current_fn(cnt);
-		BL_ASSERT(fn);
+		MirFn *fn = BL_REQUIRE(get_current_fn(cnt));
 
 		if (fn->ret_tmp) {
 			if (!value) {
@@ -8511,8 +8510,7 @@ ast_stmt_return(Context *cnt, Ast *ret)
 		ast_defer_block(cnt, ret->data.stmt_return.owner_block, true);
 	}
 
-	BL_ASSERT(cnt->ast.exit_block);
-	append_instr_br(cnt, ret, cnt->ast.exit_block);
+	append_instr_br(cnt, ret, BL_REQUIRE(cnt->ast.exit_block));
 }
 
 void
@@ -8852,10 +8850,6 @@ ast_expr_lit_fn(Context *        cnt,
 	 * always breaks into the exit block. */
 	cnt->ast.exit_block = append_block(cnt, fn, "exit");
 
-	/* Terminal instrtuction node is optional, for example functions returning 'void' does
-	 * not have user defined return, so there is no such information. */
-	Ast *const terminal_node = fn->terminal_instr ? fn->terminal_instr->base.node : NULL;
-
 	if (ast_fn_type->data.type_fn.ret_type) {
 		set_current_block(cnt, init_block);
 		fn->ret_tmp = append_instr_decl_var_impl(
@@ -8864,10 +8858,10 @@ ast_expr_lit_fn(Context *        cnt,
 		set_current_block(cnt, cnt->ast.exit_block);
 		MirInstr *ret_init = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
 
-		append_instr_ret(cnt, terminal_node, ret_init);
+		append_instr_ret(cnt, NULL, ret_init);
 	} else {
 		set_current_block(cnt, cnt->ast.exit_block);
-		append_instr_ret(cnt, terminal_node, NULL);
+		append_instr_ret(cnt, NULL, NULL);
 	}
 
 	set_current_block(cnt, init_block);

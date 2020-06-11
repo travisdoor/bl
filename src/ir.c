@@ -1856,7 +1856,7 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 		return STATE_PASSED;
 	}
 
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &load->base);
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 	load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
 
 	const unsigned alignment = (const unsigned)load->base.value.type->alignment;
@@ -1880,7 +1880,7 @@ emit_instr_store(Context *cnt, MirInstrStore *store)
 
 	const unsigned alignment = (unsigned)store->src->value.type->alignment;
 
-	// if (cnt->debug_mode) emit_DI_instr_loc(cnt, &store->base);
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &store->base);
 	store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
 	LLVMSetAlignment(store->base.llvm_value, alignment);
 
@@ -2527,7 +2527,7 @@ emit_instr_ret(Context *cnt, MirInstrRet *ret)
 	MirFn *  fn      = BL_REQUIRE(ret->base.owner_block->owner_fn);
 	MirType *fn_type = BL_REQUIRE(fn->type);
 
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &ret->base);
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 	if (fn_type->data.fn.has_sret) {
 		LLVMValueRef llvm_ret_value = ret->value->llvm_value;
 		LLVMValueRef llvm_sret      = LLVMGetParam(fn->llvm_value, LLVM_SRET_INDEX);
@@ -2549,10 +2549,14 @@ emit_instr_ret(Context *cnt, MirInstrRet *ret)
 FINALIZE:
 	if (cnt->debug_mode) {
 		BL_ASSERT(fn->body_scope->llvm_meta);
-		// emit_DI_instr_loc(cnt, &ret->base);
 		llvm_di_finalize_subprogram(cnt->llvm_di_builder, fn->body_scope->llvm_meta);
-		emit_DI_instr_loc(cnt, NULL);
 	}
+
+#if BL_DEBUG
+	if (!LLVMVerifyFunction(fn->llvm_value, LLVMReturnStatusAction)) {
+		builder_warning("LLVM function '%s' not verified", fn->linkage_name);
+	}
+#endif
 
 	return STATE_PASSED;
 }
@@ -2686,6 +2690,7 @@ emit_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 	LLVMBasicBlockRef llvm_then_block = emit_basic_block(cnt, then_block);
 	LLVMBasicBlockRef llvm_else_block = emit_basic_block(cnt, else_block);
 
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &br->base);
 	br->base.llvm_value =
 	    LLVMBuildCondBr(cnt->llvm_builder, llvm_cond, llvm_then_block, llvm_else_block);
 	return STATE_PASSED;
