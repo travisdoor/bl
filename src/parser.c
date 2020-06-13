@@ -382,8 +382,7 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 	Token *tok_directive = tokens_consume(cnt->tokens);
 	if (tok_directive->sym != SYM_IDENT) goto INVALID;
 
-	const char *directive = tok_directive->value.str;
-	BL_ASSERT(directive);
+	const char *directive = BL_REQUIRE(tok_directive->value.str);
 
 	if (strcmp(directive, "load") == 0) {
 		/* load <string> */
@@ -1758,9 +1757,7 @@ parse_expr_lit_fn(Context *cnt)
 
 	SCOPE_PUSH(cnt, scope);
 
-	Ast *type = parse_type_fn(cnt, true);
-	BL_ASSERT(type);
-
+	Ast *type = BL_REQUIRE(parse_type_fn(cnt, true));
 	fn->data.expr_fn.type = type;
 
 	/* parse flags */
@@ -2549,6 +2546,9 @@ NEXT:
 		if (create_scope) SCOPE_POP(cnt);
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
 	}
+
+        // store location of block end
+        block->location_end = &tok->location;
 
 	if (create_scope) SCOPE_POP(cnt);
 	return block;

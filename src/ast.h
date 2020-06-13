@@ -346,9 +346,10 @@ struct AstTags {
 /* AST base type */
 struct Ast {
 	AstKind          kind;
-	struct Location *location;    /* Location in source file. */
-	struct Scope *   owner_scope; /* Scope in which is AST node. */
-	struct Ast *     meta_node;   /* Metadata assigned to node. */
+	struct Location *location;     /* Location in source file. */
+	struct Location *location_end; /* Optional ending location. */
+	struct Scope *   owner_scope;  /* Scope in which is AST node. */
+	struct Ast *     meta_node;    /* Metadata assigned to node. */
 
 	union {
 #define GEN_AST_DATA

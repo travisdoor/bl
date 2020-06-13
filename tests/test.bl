@@ -17,5 +17,5 @@ main :: fn () s32 {
         print("Anonymous!!!\n");
     }();
     
-    return 0;
-}
+    return 0; // 'store + br' location of return
+} // 'ret' instruction function end location§
