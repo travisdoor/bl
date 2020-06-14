@@ -1,21 +1,15 @@
 /* playground */
 
 main :: fn () s32 {
-    i := 10;
-    print("i = %\n", i);
+    f: Foo;
+    return f.i;
+} 
 
-    if i == 10 {
-        print("i = %\n", i);
-        print("i = %\n", i);
-    } else {
-        print("i = %\n", i);
-        print("i = %\n", i);
-    }
-
-    fn () {
-        i := 10;
-        print("Anonymous!!!\n");
-    }();
-    
-    return 0; // 'store + br' location of return
-} // 'ret' instruction function end location§
+Foo :: union {
+    foo: [..]s32;
+    s: string;
+    arr: [10]s32;
+    i: s32;
+    f: *Foo;
+    m: *fn();
+}

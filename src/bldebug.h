@@ -80,9 +80,6 @@ _assert_invalid_expr(const char *expr, const char *file, s32 line);
 		assert(e);                                                                         \
 	}
 
-#define BL_REQUIRE(expr)                                                                           \
-	(expr ? (expr) : _assert_invalid_expr(#expr, __FILENAME__, __LINE__), (expr))
-
 #else /* !BL_DEBUG */
 
 #define BL_LOG(format, ...)                                                                        \
@@ -96,8 +93,6 @@ _assert_invalid_expr(const char *expr, const char *file, s32 line);
 #define BL_ASSERT(e)                                                                               \
 	while (0) {                                                                                \
 	}
-
-#define BL_REQUIRE(expr) (expr)
 
 #endif /* BL_DEBUG */
 

@@ -7116,10 +7116,10 @@ analyze_instr_block(Context *cnt, MirInstrBlock *block)
 	if (!is_block_terminated(block)) {
 		if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
 			set_current_block(cnt, block);
-			append_instr_ret(cnt, NULL, NULL);
+			append_instr_ret(cnt, block->base.node, NULL);
 		} else if (block->base.is_unreachable) {
 			set_current_block(cnt, block);
-			append_instr_br(cnt, NULL, block);
+			append_instr_br(cnt, block->base.node, block);
 		} else {
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_MISSING_RETURN,
@@ -8217,11 +8217,6 @@ ast_block(Context *cnt, Ast *block)
 	if (cnt->debug_mode) {
 		MirFn *current_fn = get_current_fn(cnt);
 		BL_ASSERT(current_fn);
-
-		/*
-		const bool emit_di =
-		    IS_FLAG(current_fn->flags, FLAG_TEST) ? builder.options.force_test_llvm : true;
-		    */
 	}
 
 	Ast *tmp;
@@ -8234,7 +8229,7 @@ void
 ast_test_case(Context *cnt, Ast *test)
 {
 	/* build test function */
-	Ast *ast_block = test->data.test_case.block;
+	Ast * const ast_block = test->data.test_case.block;
 	BL_ASSERT(ast_block);
 
 	MirInstrFnProto *fn_proto =
@@ -8244,8 +8239,7 @@ ast_test_case(Context *cnt, Ast *test)
 
 	const bool  emit_llvm    = builder.options.force_test_llvm;
 	const char *linkage_name = gen_uq_name(TEST_CASE_FN_NAME);
-	const bool  is_in_gscope =
-	    test->owner_scope->kind == SCOPE_GLOBAL || test->owner_scope->kind == SCOPE_PRIVATE;
+	const bool  is_in_gscope = scope_is_global(test->owner_scope);
 
 	MirFn *fn = create_fn(cnt,
 	                      test,
@@ -8273,9 +8267,10 @@ ast_test_case(Context *cnt, Ast *test)
 	MirInstrBlock *entry_block = append_block(cnt, fn, "entry");
 
 	cnt->ast.exit_block = append_block(cnt, fn, "exit");
+	ref_instr(&cnt->ast.exit_block->base);
 
 	set_current_block(cnt, cnt->ast.exit_block);
-	append_instr_ret(cnt, NULL, NULL);
+	append_instr_ret(cnt, ast_block, NULL);
 
 	set_current_block(cnt, entry_block);
 
@@ -8367,7 +8362,7 @@ ast_stmt_loop(Context *cnt, Ast *loop)
 	}
 
 	/* decide block */
-	append_instr_br(cnt, NULL, decide_block);
+	append_instr_br(cnt, loop, decide_block);
 	set_current_block(cnt, decide_block);
 
 	MirInstr *cond = ast_cond ? ast(cnt, ast_cond) : append_instr_const_bool(cnt, NULL, true);
@@ -8380,14 +8375,14 @@ ast_stmt_loop(Context *cnt, Ast *loop)
 
 	tmp_block = get_current_block(cnt);
 	if (!is_block_terminated(tmp_block)) {
-		append_instr_br(cnt, NULL, ast_increment ? increment_block : decide_block);
+		append_instr_br(cnt, loop, ast_increment ? increment_block : decide_block);
 	}
 
 	/* increment if there is one */
 	if (ast_increment) {
 		set_current_block(cnt, increment_block);
 		ast(cnt, ast_increment);
-		append_instr_br(cnt, NULL, decide_block);
+		append_instr_br(cnt, loop, decide_block);
 	}
 
 	cnt->ast.break_block    = prev_break_block;
@@ -8480,7 +8475,8 @@ ast_stmt_return(Context *cnt, Ast *ret)
 	MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
 
 	if (!is_current_block_terminated(cnt)) {
-		MirFn *fn = BL_REQUIRE(get_current_fn(cnt));
+		MirFn *fn = get_current_fn(cnt);
+		BL_ASSERT(fn);
 
 		if (fn->ret_tmp) {
 			if (!value) {
@@ -8510,7 +8506,8 @@ ast_stmt_return(Context *cnt, Ast *ret)
 		ast_defer_block(cnt, ret->data.stmt_return.owner_block, true);
 	}
 
-	append_instr_br(cnt, ret, BL_REQUIRE(cnt->ast.exit_block));
+	BL_ASSERT(cnt->ast.exit_block);
+	append_instr_br(cnt, ret, cnt->ast.exit_block);
 }
 
 void
@@ -8800,7 +8797,8 @@ ast_expr_lit_fn(Context *        cnt,
 	    (MirInstrFnProto *)append_instr_fn_proto(cnt, lit_fn, NULL, NULL, true);
 
 	/* Generate type resolver for function type. */
-	fn_proto->type = BL_REQUIRE(CREATE_TYPE_RESOLVER_CALL(ast_fn_type));
+	fn_proto->type = CREATE_TYPE_RESOLVER_CALL(ast_fn_type);
+	BL_ASSERT(fn_proto->type);
 
 	MirInstrBlock *prev_block      = get_current_block(cnt);
 	MirInstrBlock *prev_exit_block = cnt->ast.exit_block;
@@ -8849,6 +8847,7 @@ ast_expr_lit_fn(Context *        cnt,
 	 * evaluation and before terminal instruction of the function. Last defer block
 	 * always breaks into the exit block. */
 	cnt->ast.exit_block = append_block(cnt, fn, "exit");
+	ref_instr(&cnt->ast.exit_block->base);
 
 	if (ast_fn_type->data.type_fn.ret_type) {
 		set_current_block(cnt, init_block);
@@ -8858,10 +8857,10 @@ ast_expr_lit_fn(Context *        cnt,
 		set_current_block(cnt, cnt->ast.exit_block);
 		MirInstr *ret_init = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
 
-		append_instr_ret(cnt, NULL, ret_init);
+		append_instr_ret(cnt, ast_block, ret_init);
 	} else {
 		set_current_block(cnt, cnt->ast.exit_block);
-		append_instr_ret(cnt, NULL, NULL);
+		append_instr_ret(cnt, ast_block, NULL);
 	}
 
 	set_current_block(cnt, init_block);

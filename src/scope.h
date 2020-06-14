@@ -85,10 +85,10 @@ typedef struct Scope {
 	ScopeKind        kind;
 	struct Scope *   parent;
 	THashTable       entries;
-	LLVMMetadataRef  llvm_meta; 
-	struct Location *location;     /* Optional scope start location in the source file (ex.:
-	                                  function body  starting with '{'). Note: global scope has no
-	                                  location data. */
+	LLVMMetadataRef  llvm_meta;
+	struct Location *location; /* Optional scope start location in the source file (ex.:
+	                              function body  starting with '{'). Note: global scope has no
+	                              location data. */
 } Scope;
 
 void
@@ -119,13 +119,13 @@ ScopeEntry *
 scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_gscope, bool *out_of_fn_local_scope);
 
 bool
-scope_is_subtree_of_kind(Scope *scope, ScopeKind kind);
+scope_is_subtree_of_kind(const Scope *scope, ScopeKind kind);
 
 const char *
-scope_kind_name(Scope *scope);
+scope_kind_name(const Scope *scope);
 
 static INLINE bool
-scope_is_global(Scope *scope)
+scope_is_global(const Scope *scope)
 {
 	return scope->kind == SCOPE_GLOBAL || scope->kind == SCOPE_PRIVATE;
 }

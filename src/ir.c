@@ -143,9 +143,6 @@ static LLVMValueRef
 rtti_emit_fn_args_slice(Context *cnt, TSmallArray_ArgPtr *args);
 
 static void
-emit_DI_instr_loc(Context *cnt, MirInstr *instr);
-
-static void
 emit_DI_fn(Context *cnt, MirFn *fn);
 
 static void
@@ -261,6 +258,31 @@ emit_incomplete(Context *cnt);
 
 static LLVMValueRef
 emit_fn_proto(Context *cnt, MirFn *fn);
+
+static INLINE void
+emit_DI_loc(Context *cnt, Scope *scope, Location *loc)
+{
+	BL_ASSERT(scope && "Missing scope for DI!");
+	BL_ASSERT(loc && "Missing location for DI!");
+	LLVMMetadataRef llvm_scope =
+	    scope_is_global(scope) ? DI_unit_init(cnt, loc->unit) : DI_scope_init(cnt, scope);
+
+	BL_ASSERT(llvm_scope && "Missing DI scope!");
+
+	llvm_di_set_current_location(cnt->llvm_builder, (unsigned)loc->line, 0, llvm_scope, false);
+}
+
+static INLINE void
+emit_DI_instr_loc(Context *cnt, MirInstr *instr)
+{
+	if (!instr) {
+		llvm_di_reset_current_location(cnt->llvm_builder);
+		return;
+	}
+
+	if (!instr->node) return;
+	emit_DI_loc(cnt, instr->node->owner_scope, instr->node->location);
+}
 
 static INLINE MirInstr *
               push_back_incomplete(Context *cnt, MirInstr *instr)
@@ -482,6 +504,7 @@ DI_type_init(Context *cnt, MirType *type)
 	}
 	}
 
+	BL_ASSERT(type->llvm_meta);
 	return type->llvm_meta;
 }
 
@@ -641,26 +664,6 @@ DI_unit_init(Context *cnt, Unit *unit)
 }
 
 void
-emit_DI_instr_loc(Context *cnt, MirInstr *instr)
-{
-	if (!instr) {
-		llvm_di_reset_current_location(cnt->llvm_builder);
-		return;
-	}
-
-	if (!instr->node) return;
-
-	LLVMMetadataRef llvm_scope = DI_scope_init(cnt, instr->node->owner_scope);
-	Location *      location   = instr->node->location;
-
-	// BL_ASSERT(llvm_scope && "Missing DI scope!");
-	BL_ASSERT(location && "Missing node location!");
-
-	llvm_di_set_current_location(
-	    cnt->llvm_builder, (unsigned)location->line, 0, llvm_scope, false);
-}
-
-void
 emit_DI_fn(Context *cnt, MirFn *fn)
 {
 	if (!fn->decl_node) return;
@@ -698,7 +701,9 @@ emit_DI_var(Context *cnt, MirVar *var)
 {
 	if (!var->decl_node) return;
 	Location *location = var->decl_node->location;
+	BL_ASSERT(location);
 
+	// Global variable
 	if (var->is_global) {
 		LLVMMetadataRef llvm_scope = DI_unit_init(cnt, location->unit);
 		LLVMMetadataRef llvm_meta =
@@ -710,9 +715,14 @@ emit_DI_var(Context *cnt, MirVar *var)
 		                                              DI_type_init(cnt, var->value.type));
 
 		LLVMGlobalSetMetadata(var->llvm_value, 0, llvm_meta);
-	} else {
-		LLVMMetadataRef llvm_file  = DI_unit_init(cnt, location->unit);
+	} else { // Local variable
+		BL_ASSERT(location->unit->llvm_file_meta);
 		LLVMMetadataRef llvm_scope = DI_scope_init(cnt, var->decl_scope);
+		LLVMMetadataRef llvm_file  = DI_unit_init(cnt, location->unit);
+
+		BL_ASSERT(llvm_file && "Invalid DI file for variable DI!");
+		BL_ASSERT(llvm_scope && "Invalid DI scope for variable DI!");
+		BL_ASSERT(var->llvm_value);
 
 		LLVMMetadataRef llvm_meta =
 		    llvm_di_create_auto_variable(cnt->llvm_di_builder,
@@ -720,7 +730,7 @@ emit_DI_var(Context *cnt, MirVar *var)
 		                                 var->id->str,
 		                                 llvm_file,
 		                                 (unsigned)location->line,
-		                                 var->value.type->llvm_meta);
+		                                 DI_type_init(cnt, var->value.type));
 
 		llvm_di_insert_declare(cnt->llvm_di_builder,
 		                       var->llvm_value,
@@ -928,7 +938,8 @@ emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 State
 emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
-	MirFn *abort_fn = BL_REQUIRE(unr->abort_fn);
+	MirFn *abort_fn = unr->abort_fn;
+	BL_ASSERT(abort_fn);
 	if (!abort_fn->llvm_value) emit_fn_proto(cnt, abort_fn);
 	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unr->base);
 	LLVMBuildCall(cnt->llvm_builder, abort_fn->llvm_value, NULL, 0, "");
@@ -2490,16 +2501,10 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		emit_global_var_proto(cnt, var);
 
 		if (cnt->debug_mode) {
-			// emit_DI_instr_loc(cnt, &decl->base);
 			emit_DI_var(cnt, var);
 		}
 	} else {
 		BL_ASSERT(var->llvm_value);
-
-		if (cnt->debug_mode) {
-			emit_DI_instr_loc(cnt, &decl->base);
-			emit_DI_var(cnt, var);
-		}
 
 		/* generate DI for debug build */
 		if (decl->init) {
@@ -2517,6 +2522,10 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 				LLVMBuildStore(cnt->llvm_builder, llvm_init, var->llvm_value);
 			}
 		}
+
+		if (cnt->debug_mode) {
+			emit_DI_var(cnt, var);
+		}
 	}
 	return STATE_PASSED;
 }
@@ -2524,10 +2533,17 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 State
 emit_instr_ret(Context *cnt, MirInstrRet *ret)
 {
-	MirFn *  fn      = BL_REQUIRE(ret->base.owner_block->owner_fn);
-	MirType *fn_type = BL_REQUIRE(fn->type);
+	MirFn *fn = ret->base.owner_block->owner_fn;
+	BL_ASSERT(fn);
 
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
+	MirType *fn_type = fn->type;
+	BL_ASSERT(fn_type);
+
+	if (cnt->debug_mode && ret->base.node) {
+		Ast const *node = ret->base.node;
+		emit_DI_loc(cnt, node->owner_scope, node->location_end);
+	}
+
 	if (fn_type->data.fn.has_sret) {
 		LLVMValueRef llvm_ret_value = ret->value->llvm_value;
 		LLVMValueRef llvm_sret      = LLVMGetParam(fn->llvm_value, LLVM_SRET_INDEX);
@@ -2552,7 +2568,7 @@ FINALIZE:
 		llvm_di_finalize_subprogram(cnt->llvm_di_builder, fn->body_scope->llvm_meta);
 	}
 
-#if BL_DEBUG
+#if 0 && BL_DEBUG
 	if (!LLVMVerifyFunction(fn->llvm_value, LLVMReturnStatusAction)) {
 		builder_warning("LLVM function '%s' not verified", fn->linkage_name);
 	}
@@ -3040,6 +3056,8 @@ emit_instr(Context *cnt, MirInstr *instr)
 		state = emit_instr_set_initializer(cnt, (MirInstrSetInitializer *)instr);
 		break;
 	}
+
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 
 	return state;
 }

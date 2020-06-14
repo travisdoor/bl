@@ -382,7 +382,8 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 	Token *tok_directive = tokens_consume(cnt->tokens);
 	if (tok_directive->sym != SYM_IDENT) goto INVALID;
 
-	const char *directive = BL_REQUIRE(tok_directive->value.str);
+	const char *directive = tok_directive->value.str;
+	BL_ASSERT(directive);
 
 	if (strcmp(directive, "load") == 0) {
 		/* load <string> */
@@ -473,15 +474,17 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 			    cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
 		}
 
-		Scope *   parent_scope = SCOPE_GET(cnt);
-		ScopeKind scope_kind =
-		    (parent_scope->kind == SCOPE_GLOBAL || parent_scope->kind == SCOPE_PRIVATE)
-		        ? SCOPE_FN
-		        : SCOPE_FN_LOCAL;
-		Scope *scope =
-		    scope_create(cnt->scope_arenas, scope_kind, SCOPE_GET(cnt), 256, NULL);
-		SCOPE_PUSH(cnt, scope);
+		Scope *parent_scope = SCOPE_GET(cnt);
 
+		Scope *scope = scope_create(
+		    cnt->scope_arenas,
+		    scope_is_global(parent_scope) ? SCOPE_FN : SCOPE_FN_LOCAL /* kind */,
+		    SCOPE_GET(cnt),
+		    256,
+		    NULL);
+
+		/* Parse test case content. */
+		SCOPE_PUSH(cnt, scope);
 		Ast *block = parse_block(cnt, false);
 		if (!block) {
 			PARSE_ERROR(ERR_INVALID_DIRECTIVE,
@@ -492,6 +495,7 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 			return ast_create_node(
 			    cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
 		}
+		SCOPE_POP(cnt);
 
 		scope->location = block->location;
 
@@ -499,10 +503,10 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 
 		Ast *test =
 		    ast_create_node(cnt->ast_arena, AST_TEST_CASE, tok_directive, SCOPE_GET(cnt));
+
 		test->data.test_case.desc  = tok_desc->value.str;
 		test->data.test_case.block = block;
 
-		SCOPE_POP(cnt);
 		return test;
 	}
 
@@ -1757,7 +1761,8 @@ parse_expr_lit_fn(Context *cnt)
 
 	SCOPE_PUSH(cnt, scope);
 
-	Ast *type = BL_REQUIRE(parse_type_fn(cnt, true));
+	Ast *type = parse_type_fn(cnt, true);
+	BL_ASSERT(type);
 	fn->data.expr_fn.type = type;
 
 	/* parse flags */
@@ -2547,8 +2552,8 @@ NEXT:
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
 	}
 
-        // store location of block end
-        block->location_end = &tok->location;
+	// store location of block end
+	block->location_end = &tok->location;
 
 	if (create_scope) SCOPE_POP(cnt);
 	return block;

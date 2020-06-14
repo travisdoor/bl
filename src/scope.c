@@ -119,7 +119,7 @@ scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_gscope, bool *out_o
 }
 
 bool
-scope_is_subtree_of_kind(Scope *scope, ScopeKind kind)
+scope_is_subtree_of_kind(const Scope *scope, ScopeKind kind)
 {
 	while (scope) {
 		if (scope->kind == kind) return true;
@@ -130,7 +130,7 @@ scope_is_subtree_of_kind(Scope *scope, ScopeKind kind)
 }
 
 const char *
-scope_kind_name(Scope *scope)
+scope_kind_name(const Scope *scope)
 {
 	if (!scope) return "<INVALID>";
 	switch (scope->kind) {
