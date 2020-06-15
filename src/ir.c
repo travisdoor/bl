@@ -436,6 +436,7 @@ DI_type_init(Context *cnt, MirType *type)
 		 * later. This approach solves problems with circular references. */
 		const DW_TAG dw_tag =
 		    type->data.strct.is_union ? DW_TAG_union_type : DW_TAG_structure_type;
+
 		type->llvm_meta = type->data.strct.scope->llvm_meta =
 		    llvm_di_create_replecable_composite_type(
 		        cnt->llvm_di_builder, dw_tag, "", NULL, NULL, 0);
@@ -631,7 +632,7 @@ DI_complete_type(Context *cnt, MirType *type)
 			                                         llvm_elems.size);
 		}
 
-		type->llvm_meta = llvm_di_replace_temporary(
+		type->llvm_meta = type->data.strct.scope->llvm_meta = llvm_di_replace_temporary(
 		    cnt->llvm_di_builder, type->data.strct.scope->llvm_meta, llvm_struct);
 
 		tsa_terminate(&llvm_elems);
@@ -2525,6 +2526,7 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		emit_global_var_proto(cnt, var);
 
 		if (cnt->debug_mode) {
+			emit_DI_instr_loc(cnt, &decl->base);
 			emit_DI_var(cnt, var);
 		}
 	} else {
@@ -2548,6 +2550,7 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		}
 
 		if (cnt->debug_mode) {
+			emit_DI_instr_loc(cnt, &decl->base);
 			emit_DI_var(cnt, var);
 		}
 	}
@@ -3155,10 +3158,12 @@ DI_terminate(Context *cnt)
 static void
 DI_complete_types(Context *cnt)
 {
+	TArray * stack = &cnt->di_incomplete_types;
 	MirType *t;
 
-	TARRAY_FOREACH(MirType *, &cnt->di_incomplete_types, t)
-	{
+	// Use for instead foreach, DI_complete_type can push another incomplete sub types.
+	for (usize i = 0; i < stack->size; ++i) {
+		t = tarray_at(MirType *, stack, i);
 		DI_complete_type(cnt, t);
 	}
 }
@@ -3199,8 +3204,9 @@ ir_run(Assembly *assembly)
 	emit_incomplete(&cnt);
 
 	if (cnt.debug_mode) {
-		BL_LOG("DI finalize!");
 		DI_complete_types(&cnt);
+
+		BL_LOG("DI finalize!");
 		llvm_di_builder_finalize(cnt.llvm_di_builder);
 	}
 
