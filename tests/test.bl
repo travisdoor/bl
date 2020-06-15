@@ -5,11 +5,9 @@ main :: fn () s32 {
     return f.i;
 } 
 
-Foo :: union {
-    foo: [..]s32;
-    s: string;
-    arr: [10]s32;
+Foo :: struct {
     i: s32;
-    f: *Foo;
-    m: *fn();
+    nested: struct {
+	j: s32;
+    };
 }

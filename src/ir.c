@@ -434,9 +434,11 @@ DI_type_init(Context *cnt, MirType *type)
 	case MIR_TYPE_STRUCT: {
 		/* Struct type will be generated as forward declaration and postponed to be filled
 		 * later. This approach solves problems with circular references. */
+		const DW_TAG dw_tag =
+		    type->data.strct.is_union ? DW_TAG_union_type : DW_TAG_structure_type;
 		type->llvm_meta = type->data.strct.scope->llvm_meta =
 		    llvm_di_create_replecable_composite_type(
-		        cnt->llvm_di_builder, DW_TAG_structure_type, "", NULL, NULL, 0);
+		        cnt->llvm_di_builder, dw_tag, "", NULL, NULL, 0);
 
 		tarray_push(&cnt->di_incomplete_types, type);
 		break;
@@ -519,6 +521,9 @@ DI_complete_type(Context *cnt, MirType *type)
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_DYNARR:
 	case MIR_TYPE_STRUCT: {
+		BL_ASSERT(type->data.strct.scope->llvm_meta &&
+		          "Missing composit type fwd Di decl!!!");
+		const bool      is_union    = type->data.strct.is_union;
 		const bool      is_implicit = !type->data.strct.scope->location;
 		LLVMMetadataRef llvm_file;
 		unsigned        struct_line;
@@ -532,15 +537,22 @@ DI_complete_type(Context *cnt, MirType *type)
 			struct_line        = (unsigned)location->line;
 		}
 
-		LLVMMetadataRef llvm_scope  = type->data.strct.scope->llvm_meta;
-		const char *    struct_name = "<implicit_struct>";
+		const LLVMMetadataRef llvm_scope = type->data.strct.scope->llvm_meta;
+
+		BL_ASSERT(llvm_file);
+		BL_ASSERT(llvm_scope);
+		const char *struct_name = "<implicit_struct>";
 		if (type->user_id) {
 			struct_name = type->user_id->str;
 		} else {
 			/* NOTE: string has buildin ID */
 			switch (type->kind) {
 			case MIR_TYPE_STRUCT: {
-				struct_name = "struct";
+				if (is_union) {
+					struct_name = "union";
+				} else {
+					struct_name = "struct";
+				}
 				break;
 			}
 
@@ -596,16 +608,28 @@ DI_complete_type(Context *cnt, MirType *type)
 			llvm_parent_scope = DI_scope_init(cnt, parent_scope);
 		}
 
-		LLVMMetadataRef llvm_struct =
-		    llvm_di_create_struct_type(cnt->llvm_di_builder,
-		                               llvm_parent_scope,
-		                               struct_name,
-		                               llvm_file,
-		                               struct_line,
-		                               type->size_bits,
-		                               (unsigned)type->alignment * 8,
-		                               llvm_elems.data,
-		                               llvm_elems.size);
+		LLVMMetadataRef llvm_struct;
+		if (is_union) {
+			llvm_struct = llvm_di_create_union_type(cnt->llvm_di_builder,
+			                                        llvm_parent_scope,
+			                                        struct_name,
+			                                        llvm_file,
+			                                        struct_line,
+			                                        type->size_bits,
+			                                        (unsigned)type->alignment * 8,
+			                                        llvm_elems.data,
+			                                        llvm_elems.size);
+		} else {
+			llvm_struct = llvm_di_create_struct_type(cnt->llvm_di_builder,
+			                                         llvm_parent_scope,
+			                                         struct_name,
+			                                         llvm_file,
+			                                         struct_line,
+			                                         type->size_bits,
+			                                         (unsigned)type->alignment * 8,
+			                                         llvm_elems.data,
+			                                         llvm_elems.size);
+		}
 
 		type->llvm_meta = llvm_di_replace_temporary(
 		    cnt->llvm_di_builder, type->data.strct.scope->llvm_meta, llvm_struct);
