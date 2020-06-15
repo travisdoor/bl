@@ -2,6 +2,8 @@
 
 main :: fn () s32 {
     f: Foo;
+    j := 20;
+    i := 10 + j;
     print("H");
     return f.i;
 } 

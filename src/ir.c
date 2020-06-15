@@ -928,7 +928,7 @@ emit_instr_decl_direct_ref(Context UNUSED(*cnt), MirInstrDeclDirectRef *ref)
 State
 emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 {
-	// if (cnt->debug_mode) emit_DI_instr_loc(cnt, &phi->base);
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &phi->base);
 	LLVMValueRef llvm_phi =
 	    LLVMBuildPhi(cnt->llvm_builder, get_type(cnt, phi->base.value.type), "");
 
@@ -1937,6 +1937,8 @@ emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 	LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(llvm_val));
 	const bool   float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
 
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unop->base);
+
 	switch (unop->op) {
 	case UNOP_BIT_NOT:
 	case UNOP_NOT: {
@@ -2173,7 +2175,7 @@ emit_instr_binop(Context *cnt, MirInstrBinop *binop)
 	LLVMValueRef rhs = binop->rhs->llvm_value;
 	BL_ASSERT(lhs && rhs);
 
-	// if (cnt->debug_mode) emit_DI_instr_loc(cnt, &binop->base);
+	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &binop->base);
 
 	MirType *  type           = binop->lhs->value.type;
 	const bool real_type      = type->kind == MIR_TYPE_REAL;
@@ -2616,7 +2618,7 @@ emit_instr_br(Context *cnt, MirInstrBr *br)
 	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &br->base);
 	br->base.llvm_value = LLVMBuildBr(cnt->llvm_builder, llvm_then_block);
 
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
+	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 	LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_then_block);
 	return STATE_PASSED;
 }
@@ -2956,7 +2958,6 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	/* External functions does not have any body block. */
 	if (IS_NOT_FLAG(fn->flags, FLAG_EXTERN)) {
 		if (cnt->debug_mode) {
-			// emit_DI_instr_loc(cnt, NULL);
 			emit_DI_fn(cnt, fn);
 		}
 
