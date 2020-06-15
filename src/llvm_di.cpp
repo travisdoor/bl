@@ -359,6 +359,31 @@ llvm_di_create_struct_type(LLVMDIBuilderRef builder_ref,
 }
 
 LLVMMetadataRef
+llvm_di_create_union_type(LLVMDIBuilderRef builder_ref,
+                           LLVMMetadataRef  scope_ref,
+                           const char *     name,
+                           LLVMMetadataRef  file_ref,
+                           unsigned         line,
+                           u64              size_in_bits,
+                           u32              align_in_bits,
+                           LLVMMetadataRef *elems,
+                           u64              elemsc)
+{
+	auto builder = CAST(DIBuilder *)(builder_ref);
+	auto type    = builder->createUnionType(
+            CAST(DIScope *)(scope_ref),
+            {name, strlen(name)},
+            CAST(DIFile *)(file_ref),
+            line,
+            size_in_bits,
+            align_in_bits,
+            DINode::DIFlags::FlagZero,
+            builder->getOrCreateArray({CAST(Metadata **)(elems), elemsc}));
+
+	return CAST(LLVMMetadataRef)(type);
+}
+
+LLVMMetadataRef
 llvm_di_create_member_type(LLVMDIBuilderRef builder_ref,
                            LLVMMetadataRef  scope_ref,
                            const char *     name,
