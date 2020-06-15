@@ -86,8 +86,6 @@ typedef struct Assembly {
 		LLVMTargetDataRef    TD;         /* LLVM Target data. */
 		LLVMTargetMachineRef TM;         /* LLVM Machine. */
 		char *               triple;     /* LLVM triple. */
-		LLVMMetadataRef      di_meta;    /* LLVM Compile unit DI meta (optional) */
-		LLVMDIBuilderRef     di_builder; /* LLVM debug information builder */
 	} llvm;
 
 	/* DynCall/Lib data used for external method execution in compile time */
@@ -193,25 +191,25 @@ assembly_apply_options(Assembly *assembly);
 void
 assembly_set_output_dir(Assembly *assembly, const char *dir);
 
-static inline bool
+static INLINE bool
 assembly_has_rtti(Assembly *assembly, u64 type_id)
 {
 	return thtbl_has_key(&assembly->MIR.RTTI_table, type_id);
 }
 
-static inline MirVar *
+static INLINE MirVar *
 assembly_get_rtti(Assembly *assembly, u64 type_id)
 {
 	return thtbl_at(MirVar *, &assembly->MIR.RTTI_table, type_id);
 }
 
-static inline void
+static INLINE void
 assembly_add_rtti(Assembly *assembly, u64 type_id, MirVar *rtti_var)
 {
 	thtbl_insert(&assembly->MIR.RTTI_table, type_id, rtti_var);
 }
 
-static inline const char *
+static INLINE const char *
 build_mode_to_str(BuildMode mode)
 {
 	switch (mode) {
@@ -228,7 +226,7 @@ build_mode_to_str(BuildMode mode)
 	BL_ABORT("Invalid build mode");
 }
 
-static inline s32
+static INLINE s32
 get_opt_level_for_build_mode(BuildMode mode)
 {
 	switch (mode) {

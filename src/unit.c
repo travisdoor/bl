@@ -168,10 +168,10 @@ unit_get_src_ln(Unit *unit, s32 line, long *len)
 	}
 
 	if (len) {
-		long l = 0;
-		if (iter) l = (long)(strchr(iter, '\n') - iter);
-		if (l < 0) l = (long)strlen(iter);
-		(*len) = l;
+		long l2 = 0;
+		if (iter) l2 = (long)(strchr(iter, '\n') - iter);
+		if (l < 0) l2 = (long)strlen(iter);
+		(*len) = l2;
 	}
 
 	return iter;

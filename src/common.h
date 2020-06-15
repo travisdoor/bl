@@ -37,21 +37,43 @@
 #include <stddef.h>
 #include <tlib/tlib.h>
 
-#ifdef _MSC_VER
+struct Assembly;
+
+//************************************************************************************************
+// Clang and gcc
+//************************************************************************************************
+#if defined(BL_COMPILER_CLANG) || defined(BL_COMPILER_GNUC)
+#define BL_DEPRECATED __attribute__((deprecated))
+#define INLINE __attribute__((always_inline))
+#define _LLVM_SHUT_UP_BEGIN
+#define _LLVM_SHUT_UP_END
+#define UNUSED(x) __attribute__((unused)) x
+
+//************************************************************************************************
+// MSVC
+//************************************************************************************************
+#elif defined(BL_COMPILER_MSVC)
 #pragma warning(disable : 4002)
 #pragma warning(disable : 6011)
 #pragma warning(disable : 4013)
 #pragma warning(disable : 4244)
 #pragma warning(disable : 6001)
 #pragma warning(disable : 4267)
-#endif
+#pragma warning(disable : 4200)
+#pragma warning(disable : 4204)
+#pragma warning(disable : 4706)
 
-struct Assembly;
-
-#if defined(BL_COMPILER_CLANG) || defined(BL_COMPILER_GNUC)
-#define BL_DEPRECATED __attribute__((deprecated))
-#else
 #define BL_DEPRECATED
+#define INLINE __forceinline
+#define _LLVM_SHUT_UP_BEGIN __pragma(warning(push, 0))
+#define _LLVM_SHUT_UP_END __pragma(warning(pop))
+#define UNUSED(x) __pragma(warning(suppress : 4100)) x
+
+//************************************************************************************************
+// Other
+//************************************************************************************************
+#else
+#error "Unsuported compiler!"
 #endif
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))

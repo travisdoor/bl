@@ -1,5 +1,5 @@
 #ifdef GEN_INSTR_SIZEOF
-#define SIZEOF_MIR_INSTR sizeof(union {\
+union __INSTR_T {\
 	MirInstrBlock          block;\
 	MirInstrDeclVar        var;\
 	MirInstrDeclMember     member;\
@@ -40,7 +40,9 @@
 	MirInstrToAny          toany;\
 	MirInstrSwitch         sw;\
 	MirInstrSetInitializer si;\
-})
+};
+
+#define SIZEOF_MIR_INSTR sizeof(union __INSTR_T)
 #endif
 
 #ifdef GEN_INSTR_KINDS

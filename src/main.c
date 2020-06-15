@@ -36,6 +36,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#if defined(_MSC_VER) && defined(BL_DEBUG)
+#include <crtdbg.h>
+#endif
+
 char *ENV_EXEC_DIR      = NULL;
 char *ENV_LIB_DIR       = NULL;
 char *ENV_CONF_FILEPATH = NULL;
@@ -64,7 +68,6 @@ setup_env(void)
 
 	if (strlen(tmp) == 0) BL_ABORT("Invalid conf file path.");
 	ENV_CONF_FILEPATH = strdup(tmp);
-	atexit(free_env);
 }
 
 static int
@@ -88,9 +91,17 @@ generate_conf(void)
 	return system(tmp);
 }
 
+#define EXIT(_state)                                                                               \
+	state = _state;                                                                            \
+	goto RELEASE;
+
 int
 main(s32 argc, char *argv[])
 {
+	s32 state = EXIT_SUCCESS;
+#if defined(_MSC_VER) && defined(BL_DEBUG)
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif
 	const char *help_text =
 #include "help_text.txt"
 	    ;
@@ -109,48 +120,41 @@ main(s32 argc, char *argv[])
 	s32 next_arg = builder_parse_options(argc, argv);
 	if (next_arg == -1) {
 		fprintf(stdout, "%s", help_text);
-		builder_terminate();
-
-		exit(EXIT_FAILURE);
+		EXIT(EXIT_FAILURE);
 	}
 
 	/* Run configure if needed. */
 	if (builder.options.run_configure) {
 		if (generate_conf() != 0) {
-			builder_error("Cannot generate '%s' file. If you are compiler developer please "
-			          "run configuration script in 'install' directory.",
-			          ENV_CONF_FILEPATH);
-			builder_terminate();
-			exit(EXIT_FAILURE);
+			builder_error(
+			    "Cannot generate '%s' file. If you are compiler developer please "
+			    "run configuration script in 'install' directory.",
+			    ENV_CONF_FILEPATH);
+			EXIT(EXIT_FAILURE);
 		}
 
-		builder_terminate();
-		exit(EXIT_SUCCESS);
+		EXIT(EXIT_SUCCESS);
 	}
 
 	argv += next_arg;
 
 	if (builder.options.print_help) {
 		fprintf(stdout, "%s", help_text);
-		builder_terminate();
-
-		exit(EXIT_SUCCESS);
+		EXIT(EXIT_SUCCESS);
 	}
 
 	if (!file_exists(ENV_CONF_FILEPATH)) {
 		builder_error("Configuration file '%s' not found, run 'blc -configure' to "
-		          "generate one.",
-		          ENV_CONF_FILEPATH);
+		              "generate one.",
+		              ENV_CONF_FILEPATH);
 
-		builder_terminate();
-		exit(EXIT_FAILURE);
+		EXIT(EXIT_FAILURE);
 	}
 
 	if (*argv == NULL && !builder.options.use_pipeline) {
 		builder_warning("nothing to do, no input files, sorry :(");
 
-		builder_terminate();
-		exit(EXIT_SUCCESS);
+		EXIT(EXIT_SUCCESS);
 	}
 
 	builder_load_conf_file(ENV_CONF_FILEPATH);
@@ -182,12 +186,14 @@ main(s32 argc, char *argv[])
 	}
 
 	builder_add_assembly(assembly);
-	s32 state = builder_compile_all();
+	state = builder_compile_all();
 
 	char date[26];
 	date_time(date, 26, "%d-%m-%Y %H:%M:%S");
 	printf("\nFinished at %s", date);
 
+RELEASE:
 	builder_terminate();
+	free_env();
 	return state;
 }

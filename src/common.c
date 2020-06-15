@@ -73,8 +73,9 @@ get_current_exec_path(char *buf, usize buf_size)
 	return readlink("/proc/self/exe", buf, buf_size) != -1;
 #elif defined(BL_PLATFORM_MACOS)
 	return _NSGetExecutablePath(buf, (u32 *)&buf_size) != -1;
-#endif
+#else
 	return false;
+#endif
 }
 
 bool

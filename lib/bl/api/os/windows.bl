@@ -286,12 +286,12 @@ __os_abort :: fn () #compiler {
 __os_start :: fn () #entry {
     args: []string;
     get_command_line_args(&args);
-    defer _mem_free_default(auto args.ptr);
 
     command_line_arguments.len = args.len;
     command_line_arguments.ptr = args.ptr;
 
     out :: cast(s32) main();
+    _mem_free_default(auto args.ptr);
     _exit(out);
 }
 

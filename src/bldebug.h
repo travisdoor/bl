@@ -60,6 +60,9 @@ _log(bl_log_msg_type_e t, const char *file, s32 line, const char *msg, ...);
 void
 print_trace(void);
 
+void *
+_assert_invalid_expr(const char *expr, const char *file, s32 line);
+
 #ifdef BL_DEBUG
 #define BL_LOG(format, ...)                                                                        \
 	{                                                                                          \

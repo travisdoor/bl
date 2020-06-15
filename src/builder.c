@@ -72,6 +72,12 @@ llvm_init(void)
 	llvm_initialized = true;
 }
 
+static void 
+llvm_terminate(void)
+{
+	LLVMShutdown();
+}
+
 #define INTERRUPT_ON_ERROR                                                                         \
 	if (builder.errorc) return COMPILE_FAIL;
 
@@ -223,6 +229,7 @@ builder_parse_options(s32 argc, char *argv[])
 		builder_warning("Ignore parameter '-no-vcvars', this is valid on Windows only!");
 	}
 #endif
+
 	return optind;
 #undef IS_PARAM
 }
@@ -262,6 +269,8 @@ builder_terminate(void)
 	tarray_terminate(&builder.assembly_queue);
 	conf_data_delete(builder.conf);
 	arena_terminate(&builder.str_cache);
+
+	llvm_terminate();
 }
 
 int
@@ -360,7 +369,7 @@ builder_compile(Assembly *assembly)
 
 void
 builder_msg(BuilderMsgType type,
-            s32            code,
+            s32            UNUSED(code),
             Location *     src,
             BuilderCurPos  pos,
             const char *   format,

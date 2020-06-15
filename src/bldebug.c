@@ -31,8 +31,10 @@
 #include <stdarg.h>
 
 #if defined(BL_PLATFORM_WIN)
+// clang-format off
 #include <windows.h>
 #include <DbgHelp.h>
+// clang-format on
 #endif
 
 #define MAX_LOG_MSG_SIZE 2048
@@ -176,4 +178,12 @@ print_trace(void)
 
 	SymCleanup(process);
 #endif
+}
+
+void *
+_assert_invalid_expr(const char *expr, const char *file, s32 line)
+{
+	_log(LOG_ASSERT, file, line, "Required pointer '%s' is NULL.", expr);
+	print_trace();
+	abort();
 }

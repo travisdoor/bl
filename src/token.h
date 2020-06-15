@@ -48,6 +48,7 @@ extern char *sym_strings[];
 
 struct Unit;
 typedef struct Location {
+	u64          id;
 	s32          line;
 	s32          col;
 	s32          len;
@@ -74,13 +75,13 @@ typedef struct {
 	TokenAssociativity associativity;
 } TokenPrecedence;
 
-static inline bool
+static INLINE bool
 sym_is_binop(Sym sym)
 {
 	return sym >= SYM_EQ && sym <= SYM_ASTERISK;
 }
 
-static inline bool
+static INLINE bool
 token_is_binop(Token *token)
 {
 	return sym_is_binop(token->sym);
@@ -92,14 +93,14 @@ token_is_unary(Token *token);
 TokenPrecedence
 token_prec(Token *token);
 
-static inline bool
+static INLINE bool
 token_is(Token *token, Sym sym)
 {
 	if (!token) return false;
 	return token->sym == sym;
 }
 
-static inline bool
+static INLINE bool
 token_is_not(Token *token, Sym sym)
 {
 	return !token_is(token, sym);

@@ -725,21 +725,21 @@ struct MirInstrSwitch {
 };
 
 /* public */
-static inline bool
+static INLINE bool
 mir_is_pointer_type(MirType *type)
 {
 	BL_ASSERT(type);
 	return type->kind == MIR_TYPE_PTR;
 }
 
-static inline MirType *
+static INLINE MirType *
 mir_deref_type(MirType *ptr)
 {
 	if (!mir_is_pointer_type(ptr)) return NULL;
 	return ptr->data.ptr.expr;
 }
 
-static inline bool
+static INLINE bool
 mir_is_composit_type(MirType *type)
 {
 	switch (type->kind) {
@@ -758,7 +758,7 @@ mir_is_composit_type(MirType *type)
 	return false;
 }
 
-static inline MirType *
+static INLINE MirType *
 mir_get_struct_elem_type(MirType *type, u32 i)
 {
 	BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
@@ -768,7 +768,7 @@ mir_get_struct_elem_type(MirType *type, u32 i)
 	return members->data[i]->type;
 }
 
-static inline MirType *
+static INLINE MirType *
 mir_get_fn_arg_type(MirType *type, u32 i)
 {
 	BL_ASSERT(type->kind == MIR_TYPE_FN && "Expected function type");
@@ -780,20 +780,20 @@ mir_get_fn_arg_type(MirType *type, u32 i)
 }
 
 /* Determinates if the instruction has compile time known value. */
-static inline bool
+static INLINE bool
 mir_is_comptime(MirInstr *instr)
 {
 	return instr->value.is_comptime;
 }
 
-static inline bool
+static INLINE bool
 mir_is_global_block(MirInstrBlock *instr)
 {
 	return instr->owner_fn == NULL;
 }
 
 /* Determinates if the instruction is in the global block. */
-static inline bool
+static INLINE bool
 mir_is_global(MirInstr *instr)
 {
 	return mir_is_global_block(instr->owner_block);

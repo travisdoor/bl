@@ -35,7 +35,7 @@ typedef struct ArenaChunk {
 	s32                count;
 } ArenaChunk;
 
-static inline ArenaChunk *
+static INLINE ArenaChunk *
 alloc_chunk(Arena *arena)
 {
 	const usize chunk_size_in_bytes = arena->elem_size_in_bytes * arena->elems_per_chunk;
@@ -47,7 +47,7 @@ alloc_chunk(Arena *arena)
 	return chunk;
 }
 
-static inline void *
+static INLINE void *
 get_from_chunk(Arena *arena, ArenaChunk *chunk, s32 i)
 {
 	void *elem = (void *)((char *)chunk + (i * arena->elem_size_in_bytes));
@@ -59,7 +59,7 @@ get_from_chunk(Arena *arena, ArenaChunk *chunk, s32 i)
 	return elem;
 }
 
-static inline ArenaChunk *
+static INLINE ArenaChunk *
 free_chunk(Arena *arena, ArenaChunk *chunk)
 {
 	if (!chunk) return NULL;

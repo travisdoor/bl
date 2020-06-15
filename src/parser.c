@@ -27,7 +27,6 @@
 //************************************************************************************************
 
 #include "common.h"
-#include "llvm_di.h"
 #include "stages.h"
 #include <setjmp.h>
 
@@ -247,13 +246,13 @@ parse_expr_type_info(Context *cnt);
 static Ast *
 parse_expr_alignof(Context *cnt);
 
-static inline bool
+static INLINE bool
 parse_semicolon(Context *cnt);
 
-static inline bool
+static INLINE bool
 parse_semicolon_rq(Context *cnt);
 
-static inline bool
+static INLINE bool
 hash_directive_to_flags(HashDirective hd, u32 *out_flags);
 
 static Ast *
@@ -270,7 +269,7 @@ parse_expr_compound(Context *cnt);
 
 // impl
 
-static inline bool
+static INLINE bool
 rq_semicolon_after_decl_entity(Ast *node)
 {
 	BL_ASSERT(node);
@@ -475,15 +474,17 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 			    cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
 		}
 
-		Scope *   parent_scope = SCOPE_GET(cnt);
-		ScopeKind scope_kind =
-		    (parent_scope->kind == SCOPE_GLOBAL || parent_scope->kind == SCOPE_PRIVATE)
-		        ? SCOPE_FN
-		        : SCOPE_FN_LOCAL;
-		Scope *scope =
-		    scope_create(cnt->scope_arenas, scope_kind, SCOPE_GET(cnt), 256, NULL);
-		SCOPE_PUSH(cnt, scope);
+		Scope *parent_scope = SCOPE_GET(cnt);
 
+		Scope *scope = scope_create(
+		    cnt->scope_arenas,
+		    scope_is_global(parent_scope) ? SCOPE_FN : SCOPE_FN_LOCAL /* kind */,
+		    SCOPE_GET(cnt),
+		    256,
+		    NULL);
+
+		/* Parse test case content. */
+		SCOPE_PUSH(cnt, scope);
 		Ast *block = parse_block(cnt, false);
 		if (!block) {
 			PARSE_ERROR(ERR_INVALID_DIRECTIVE,
@@ -494,6 +495,7 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 			return ast_create_node(
 			    cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
 		}
+		SCOPE_POP(cnt);
 
 		scope->location = block->location;
 
@@ -501,10 +503,10 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 
 		Ast *test =
 		    ast_create_node(cnt->ast_arena, AST_TEST_CASE, tok_directive, SCOPE_GET(cnt));
+
 		test->data.test_case.desc  = tok_desc->value.str;
 		test->data.test_case.block = block;
 
-		SCOPE_POP(cnt);
 		return test;
 	}
 
@@ -803,7 +805,7 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 		                            &tok_directive->location);
 
 		cnt->current_private_scope = scope;
-		scope->llvm_di_meta        = scope->parent->llvm_di_meta;
+		scope->llvm_meta           = scope->parent->llvm_meta;
 
 		/* Make all other declarations in file nested in private scope */
 		cnt->unit->private_scope = scope;
@@ -1189,7 +1191,7 @@ parse_decl_variant(Context *cnt, Ast *prev)
 bool
 parse_semicolon(Context *cnt)
 {
-	return (bool)tokens_consume_if(cnt->tokens, SYM_SEMICOLON);
+	return tokens_consume_if(cnt->tokens, SYM_SEMICOLON);
 }
 
 bool
@@ -1761,7 +1763,6 @@ parse_expr_lit_fn(Context *cnt)
 
 	Ast *type = parse_type_fn(cnt, true);
 	BL_ASSERT(type);
-
 	fn->data.expr_fn.type = type;
 
 	/* parse flags */
@@ -2067,7 +2068,8 @@ parse_type_slice(Context *cnt)
 }
 
 Ast *
-parse_type_dynarr(Context *cnt) {
+parse_type_dynarr(Context *cnt)
+{
 	if (tokens_peek(cnt->tokens)->sym != SYM_LBRACKET) return NULL;
 	if (tokens_peek_2nd(cnt->tokens)->sym != SYM_DYNARR) return NULL;
 
@@ -2091,8 +2093,10 @@ parse_type_dynarr(Context *cnt) {
 	slice->data.type_dynarr.elem_type = parse_type(cnt);
 
 	if (!slice->data.type_dynarr.elem_type) {
-		PARSE_ERROR(
-		    ERR_INVALID_TYPE, tok_end, BUILDER_CUR_AFTER, "Expected dynami array element type.");
+		PARSE_ERROR(ERR_INVALID_TYPE,
+		            tok_end,
+		            BUILDER_CUR_AFTER,
+		            "Expected dynami array element type.");
 
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
 	}
@@ -2116,7 +2120,7 @@ parse_type(Context *cnt)
 	if (!type) type = parse_type_dynarr(cnt);
 	if (!type) type = parse_type_arr(cnt);
 	// Keep order!!!
-	
+
 	if (!type) type = parse_type_ref(cnt);
 
 	return type;
@@ -2427,7 +2431,7 @@ parse_expr_type(Context *cnt)
 	Ast *  type = NULL;
 
 	type = parse_type_struct(cnt);
-	
+
 	// keep order
 	if (!type) type = parse_type_slice(cnt);
 	if (!type) type = parse_type_dynarr(cnt);
@@ -2548,6 +2552,9 @@ NEXT:
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
 	}
 
+	// store location of block end
+	block->location_end = &tok->location;
+
 	if (create_scope) SCOPE_POP(cnt);
 	return block;
 }
@@ -2617,10 +2624,12 @@ parser_run(Assembly *assembly, Unit *unit)
 	root->data.ublock.unit = unit;
 	unit->ast              = root;
 
+#if 0
 	if (assembly->options.build_mode == BUILD_MODE_DEBUG) {
 		unit->llvm_file_meta =
 		    llvm_di_create_file(assembly->llvm.di_builder, unit->filename, unit->dirpath);
 	}
+#endif
 
 	parse_ublock_content(&cnt, unit->ast);
 	tsa_terminate(&cnt._decl_stack);
