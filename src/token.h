@@ -48,7 +48,6 @@ extern char *sym_strings[];
 
 struct Unit;
 typedef struct Location {
-	u64          id;
 	s32          line;
 	s32          col;
 	s32          len;

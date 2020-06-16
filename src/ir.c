@@ -275,12 +275,10 @@ emit_DI_loc(Context *cnt, Scope *scope, Location *loc)
 static INLINE void
 emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 {
-	if (!instr) {
-		llvm_di_reset_current_location(cnt->llvm_builder);
+	if (!instr || !instr->node) {
 		return;
 	}
 
-	if (!instr->node) return;
 	emit_DI_loc(cnt, instr->node->owner_scope, instr->node->location);
 }
 
@@ -717,7 +715,7 @@ emit_DI_fn(Context *cnt, MirFn *fn)
 	                                              fn->type->llvm_meta,
 	                                              (unsigned)location->line);
 
-	emit_DI_instr_loc(cnt, NULL);
+	llvm_di_reset_current_location(cnt->llvm_builder);
 	llvm_di_set_subprogram(fn->llvm_value, fn->body_scope->llvm_meta);
 }
 
@@ -1892,7 +1890,7 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 		return STATE_PASSED;
 	}
 
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
+	if (cnt->debug_mode) llvm_di_reset_current_location(cnt->llvm_builder);
 	load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
 
 	const unsigned alignment = (const unsigned)load->base.value.type->alignment;
@@ -2615,10 +2613,12 @@ emit_instr_br(Context *cnt, MirInstrBr *br)
 	LLVMBasicBlockRef llvm_then_block = emit_basic_block(cnt, then_block);
 	BL_ASSERT(llvm_then_block);
 
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &br->base);
+	if (cnt->debug_mode && br->base.node) {
+		emit_DI_instr_loc(cnt, &br->base);
+	}
+
 	br->base.llvm_value = LLVMBuildBr(cnt->llvm_builder, llvm_then_block);
 
-	//if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 	LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_then_block);
 	return STATE_PASSED;
 }
@@ -2735,7 +2735,10 @@ emit_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 	LLVMBasicBlockRef llvm_then_block = emit_basic_block(cnt, then_block);
 	LLVMBasicBlockRef llvm_else_block = emit_basic_block(cnt, else_block);
 
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &br->base);
+	if (cnt->debug_mode && br->base.node) {
+		emit_DI_instr_loc(cnt, &br->base);
+	}
+
 	br->base.llvm_value =
 	    LLVMBuildCondBr(cnt->llvm_builder, llvm_cond, llvm_then_block, llvm_else_block);
 	return STATE_PASSED;
@@ -3085,7 +3088,7 @@ emit_instr(Context *cnt, MirInstr *instr)
 		break;
 	}
 
-	if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
+	// if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
 
 	return state;
 }
