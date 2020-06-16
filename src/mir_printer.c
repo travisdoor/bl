@@ -1151,11 +1151,31 @@ print_instr(Context *cnt, MirInstr *instr)
 		break;
 	}
 
-	if (instr->value.is_comptime) fprintf(cnt->stream, " /* comptime */");
+	bool has_comment = false;
+	if (instr->value.is_comptime) {
+		has_comment = true;
+		fprintf(cnt->stream, " // comptime");
+	}
 
 	if (cnt->assembly->options.build_mode == BUILD_MODE_DEBUG) {
-		if (instr->node && instr->node->location)
-			fprintf(cnt->stream, " // DBG%llu", instr->node->location->id);
+		if (instr->node && instr->node->location) {
+			const Location *loc1 = instr->node->location;
+			const Location *loc2 = instr->node->location_end;
+			if (loc2) {
+				fprintf(cnt->stream,
+				        " %s[%s:%d-%d]",
+				        has_comment ? "" : "// ",
+				        loc1->unit->filename,
+				        loc1->line,
+				        loc2->line);
+			} else {
+				fprintf(cnt->stream,
+				        " %s[%s:%d]",
+				        has_comment ? "" : "// ",
+				        loc1->unit->filename,
+				        loc1->line);
+			}
+		}
 	}
 
 	fprintf(cnt->stream, "\n");

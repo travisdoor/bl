@@ -8229,7 +8229,7 @@ void
 ast_test_case(Context *cnt, Ast *test)
 {
 	/* build test function */
-	Ast * const ast_block = test->data.test_case.block;
+	Ast *const ast_block = test->data.test_case.block;
 	BL_ASSERT(ast_block);
 
 	MirInstrFnProto *fn_proto =
@@ -8319,7 +8319,9 @@ ast_stmt_if(Context *cnt, Ast *stmt_if)
 		ast(cnt, ast_else);
 
 		tmp_block = get_current_block(cnt);
-		if (!is_block_terminated(tmp_block)) append_instr_br(cnt, NULL, cont_block);
+		if (!is_block_terminated(tmp_block)) {
+			append_instr_br(cnt, NULL, cont_block);
+		}
 	}
 
 	if (!is_block_terminated(else_block)) {
