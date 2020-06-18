@@ -1,3 +1,4 @@
+#load "std/test.bl"
 #load "test_casting.bl"
 #load "test_compounds.bl"
 #load "test_enums.bl"

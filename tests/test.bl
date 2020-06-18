@@ -1,18 +1,17 @@
 /* playground */
 
 main :: fn () s32 {
-    if false {
-        foo(5);
-    } else if true {
-        foo(6);
-    } else {
-        foo(7);
-    }
+    Foo :: struct {
+        i: s32;
+        j: bool;
+        arr: [3]s32;
+    };
 
-    foo(8);
+    foo :: {:Foo: 666, true, {:[3]s32: 1, 2, 3}};
+    str :: string_new_concatenate(foo);     
+    defer string_delete(str);
+
+    print("%\n", str);
     return 0;
 } 
 
-foo :: fn (i: s32) {
-    print("%\n", i);
-}

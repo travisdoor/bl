@@ -114,6 +114,7 @@ assert :: fn (cond: bool)
 */
 assert :: fn (cond: bool) {
     if !cond {
+        if IS_DEBUG { _os_debug_break(); }
         unreachable;
     }
 };
