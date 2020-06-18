@@ -24,3 +24,46 @@
 
     assert(string_compare(str, "10.12"));
 }
+
+#test "print content simple" {
+    str :: string_new_concatenate("text", 10, true);     
+    defer string_delete(str);
+
+    assert(string_compare(str, "text10true"));
+}
+
+#test "print array" {
+    arr :: {:[3]s32: 1, 2, 3};
+    str :: string_new_concatenate(arr);     
+    defer string_delete(str);
+
+    assert(string_compare(str, "[1, 2, 3]"));
+}
+
+#test "print struct" {
+    Foo :: struct {
+        i: s32;
+        j: bool;
+    };
+
+    foo :: {:Foo: 666, true};
+    str :: string_new_concatenate(foo);     
+    defer string_delete(str);
+
+    assert(string_compare(str, "Foo {i = 666, j = true}"));
+}
+
+#test "complex type" {
+    Foo :: struct {
+        i: s32;
+        j: bool;
+        arr: [3]s32;
+    };
+
+    foo :: {:Foo: 666, true, {:[3]s32: 1, 2, 3}};
+    str :: string_new_concatenate(foo);     
+    defer string_delete(str);
+
+    print("%\n", str);
+    assert(string_compare(str, "Foo {i = 666, j = true, arr = [1, 2, 3]}"));
+}
