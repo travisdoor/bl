@@ -1,4 +1,5 @@
 #load "std/print.bl"
+#load "std/string.bl"
 
 #test "printing" {
     i : u64 = 18446744073709551615;
@@ -15,4 +16,11 @@
     print("b = %\n", false);
     print("ptr = %\n", ptr);
     print("s32 = %\n", s32);
-};
+}
+
+#test "formatting" {
+    str :: string_new_concatenate(fmt_real(10.12f, 2));     
+    defer string_delete(str);
+
+    assert(string_compare(str, "10.12"));
+}
