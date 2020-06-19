@@ -66,14 +66,14 @@ _log(bl_log_msg_type_e t, const char *file, s32 line, const char *msg, ...)
 		break;
 	case LOG_WARNING:
 		fprintf(stderr,
-		        "BL_WARNING [%s:%d]: %s"
+		        "warning [%s:%d]: %s"
 		        "\n",
 		        file,
 		        line,
 		        buffer);
 		break;
 	case LOG_MSG:
-		fprintf(stdout, "BL_LOG [%s:%d]: %s\n", file, line, buffer);
+		fprintf(stdout, "log [%s:%d]: %s\n", file, line, buffer);
 		break;
 	default:
 		break;

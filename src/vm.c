@@ -32,24 +32,27 @@
 #include "threading.h"
 
 #define MAX_ALIGNMENT 8
-#define VERBOSE_EXEC false
+#define VERBOSE_EXEC true
 #define CHCK_STACK (defined(BL_DEBUG) || BL_ENABLE_ASSERT)
 #define PTR_SIZE sizeof(void *) /* HACK: can cause problems with different build targets. */
 
 // Debug helpers
 #if BL_DEBUG && VERBOSE_EXEC
+/**************************************************************************************************/
 #define LOG_PUSH_RA                                                                                \
 	{                                                                                          \
 		if (vm->stack->pc) {                                                               \
 			fprintf(stdout,                                                            \
-			        "%6llu %20s  PUSH RA\n",                                           \
+			        "%6zu %20s  PUSH RA\n",                                            \
 			        vm->stack->pc->id,                                                 \
 			        mir_instr_name(vm->stack->pc));                                    \
 		} else {                                                                           \
 			fprintf(stdout, "     - %20s  PUSH RA\n", "Terminal");                     \
 		}                                                                                  \
 	}
+/**************************************************************************************************/
 
+/**************************************************************************************************/
 #define LOG_POP_RA                                                                                 \
 	{                                                                                          \
 		fprintf(stdout,                                                                    \
@@ -57,48 +60,53 @@
 		        vm->stack->pc->id,                                                         \
 		        mir_instr_name(vm->stack->pc));                                            \
 	}
+/**************************************************************************************************/
 
+/**************************************************************************************************/
 #define LOG_PUSH_STACK                                                                             \
 	{                                                                                          \
 		char type_name[256];                                                               \
 		mir_type_to_str(type_name, 256, type, true);                                       \
 		if (vm->stack->pc) {                                                               \
 			fprintf(stdout,                                                            \
-			        "%6llu %20s  PUSH    (%luB, %p) %s\n",                             \
+			        "%6llu %20s  PUSH    (%lluB, %p) %s\n",                            \
 			        (unsigned long long)vm->stack->pc->id,                             \
 			        mir_instr_name(vm->stack->pc),                                     \
-			        size,                                                              \
+			        (unsigned long long)size,                                          \
 			        tmp,                                                               \
 			        type_name);                                                        \
 		} else {                                                                           \
 			fprintf(stdout,                                                            \
-			        "     -                       PUSH    (%luB, %p) %s\n",            \
-			        size,                                                              \
+			        "     -                       PUSH    (%lluB, %p) %s\n",           \
+			        (unsigned long long)size,                                          \
 			        tmp,                                                               \
 			        type_name);                                                        \
 		}                                                                                  \
 	}
+/**************************************************************************************************/
 
+/**************************************************************************************************/
 #define LOG_POP_STACK                                                                              \
 	{                                                                                          \
 		char type_name[256];                                                               \
 		mir_type_to_str(type_name, 256, type, true);                                       \
 		if (vm->stack->pc) {                                                               \
 			fprintf(stdout,                                                            \
-			        "%6llu %20s  POP     (%luB, %p) %s\n",                             \
+			        "%6llu %20s  POP     (%lluB, %p) %s\n",                            \
 			        vm->stack->pc->id,                                                 \
 			        mir_instr_name(vm->stack->pc),                                     \
-			        size,                                                              \
+			        (unsigned long long)size,                                          \
 			        vm->stack->top_ptr - size,                                         \
 			        type_name);                                                        \
 		} else {                                                                           \
 			fprintf(stdout,                                                            \
-			        "     -                       POP     (%luB, %p) %s\n",            \
-			        size,                                                              \
+			        "     -                       POP     (%lluB, %p) %s\n",           \
+			        (unsigned long long)size,                                          \
 			        vm->stack->top_ptr - size,                                         \
 			        type_name);                                                        \
 		}                                                                                  \
 	}
+/**************************************************************************************************/
 
 #else
 #define LOG_PUSH_RA
@@ -2104,6 +2112,8 @@ interp_instr_store(VM *vm, MirInstrStore *store)
 	BL_ASSERT(src_type);
 
 	VMStackPtr dest_ptr = fetch_value(vm, &store->dest->value);
+
+        // TODO: handle compounds here, when they are not naked!!!
 	VMStackPtr src_ptr  = fetch_value(vm, &store->src->value);
 
 	dest_ptr = VM_STACK_PTR_DEREF(dest_ptr);
