@@ -33,7 +33,7 @@
 
 #define MAX_ALIGNMENT 8
 #define VERBOSE_EXEC false
-#define CHCK_STACK true
+#define CHCK_STACK (defined(BL_DEBUG) || BL_ENABLE_ASSERT)
 #define PTR_SIZE sizeof(void *) /* HACK: can cause problems with different build targets. */
 
 // Debug helpers
@@ -107,7 +107,7 @@
 #define LOG_POP_STACK
 #endif
 
-#if BL_DEBUG && CHCK_STACK
+#if CHCK_STACK
 #define CHCK_SIZE() sizeof(void *)
 #define CHCK_WRITE(_ptr, _data_size) memcpy((_ptr) + (_data_size), &(_ptr), CHCK_SIZE())
 #define CHCK_VALIDATE(_ptr, _data_size)                                                            \
@@ -344,7 +344,7 @@ stack_alloc(VM *vm, usize size)
 {
 	BL_ASSERT(size && "trying to allocate 0 bits on stack");
 
-#if BL_DEBUG && CHCK_STACK
+#if CHCK_STACK
 	const usize orig_size = size;
 #endif
 	size = stack_alloc_size(size);
@@ -370,7 +370,7 @@ stack_alloc(VM *vm, usize size)
 static INLINE VMStackPtr
 stack_free(VM *vm, usize size)
 {
-#if BL_DEBUG && CHCK_STACK
+#if CHCK_STACK
 	const usize orig_size = size;
 #endif
 

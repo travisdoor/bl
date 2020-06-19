@@ -1,17 +1,8 @@
 /* playground */
+#load "std/string.bl"
 
 main :: fn () s32 {
-    Foo :: struct {
-        i: s32;
-        j: bool;
-        arr: [3]s32;
-    };
-
-    foo :: {:Foo: 666, true, {:[3]s32: 1, 2, 3}};
-    str :: string_new_concatenate(foo);     
-    defer string_delete(str);
-
-    print("%\n", str);
+    f :: fmt_real(10.3f, 2);
     return 0;
 } 
 

@@ -63,6 +63,21 @@ print_trace(void);
 void *
 _assert_invalid_expr(const char *expr, const char *file, s32 line);
 
+#if BL_ENABLE_ASSERT || defined(BL_DEBUG)
+#define BL_ASSERT(e)                                                                               \
+	if (!(e)) {                                                                                \
+		_log(LOG_ASSERT, __FILENAME__, __LINE__, #e);                                      \
+		print_trace();                                                                     \
+		__debugbreak();                                                                    \
+		abort();                                                                           \
+	}
+#else
+#define BL_ASSERT(e)                                                                               \
+	while (0) {                                                                                \
+	}
+
+#endif
+
 #ifdef BL_DEBUG
 #define BL_LOG(format, ...)                                                                        \
 	{                                                                                          \
@@ -72,12 +87,6 @@ _assert_invalid_expr(const char *expr, const char *file, s32 line);
 #define BL_WARNING(format, ...)                                                                    \
 	{                                                                                          \
 		_log(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                  \
-	}
-
-#define BL_ASSERT(e)                                                                               \
-	if (!(e)) {                                                                                \
-		print_trace();                                                                     \
-		assert(e);                                                                         \
 	}
 
 #else /* !BL_DEBUG */
@@ -90,16 +99,13 @@ _assert_invalid_expr(const char *expr, const char *file, s32 line);
 	while (0) {                                                                                \
 	}
 
-#define BL_ASSERT(e)                                                                               \
-	while (0) {                                                                                \
-	}
-
 #endif /* BL_DEBUG */
 
 #define BL_ABORT(format, ...)                                                                      \
 	{                                                                                          \
 		_log(LOG_ABORT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                    \
 		print_trace();                                                                     \
+		__debugbreak();                                                                    \
 		abort();                                                                           \
 	}
 
@@ -113,7 +119,7 @@ _assert_invalid_expr(const char *expr, const char *file, s32 line);
 		abort();                                                                           \
 	}
 
-#define BL_ASSERT_MAGIC(O, M, MSG) assert((O)->_magic == &(M) && MSG)
+#define BL_ASSERT_MAGIC(O, M, MSG) BL_ASSERT((O)->_magic == &(M) && MSG)
 
 #define BL_WARNING_ISSUE(N)                                                                        \
 	{                                                                                          \
