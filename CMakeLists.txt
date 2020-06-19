@@ -22,6 +22,13 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE ${DEFAULT_BUILD_TYPE})
 endif()
 
+option(ENABLE_ASSERT "Turn on assert checks" OFF)
+if(ENABLE_ASSERT)
+	add_definitions(-DBL_ENABLE_ASSERT=1)
+else()
+	add_definitions(-DBL_ENABLE_ASSERT=0)
+endif()
+
 # setup output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)

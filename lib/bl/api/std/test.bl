@@ -29,9 +29,9 @@
 #load "std/debug.bl"
 #load "std/string.bl"
 
-test_str_eq :: fn (s1: string, s2: string) {
-    if string_compare(s1, s2) { return; }
+test_str_eq :: fn (expected: string, got: string) {
+    if string_compare(expected, got) { return; }
 
-    eprint("\nExpected '%' got '%'.\n", s1, s2);
+    eprint("\nExpected '%' got '%'.\n", expected, got);
     assert(false);
 }
