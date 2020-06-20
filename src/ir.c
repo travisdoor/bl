@@ -2595,12 +2595,6 @@ FINALIZE:
 		llvm_di_finalize_subprogram(cnt->llvm_di_builder, fn->body_scope->llvm_meta);
 	}
 
-#if 0 && BL_DEBUG
-	if (!LLVMVerifyFunction(fn->llvm_value, LLVMReturnStatusAction)) {
-		builder_warning("LLVM function '%s' not verified", fn->linkage_name);
-	}
-#endif
-
 	return STATE_PASSED;
 }
 

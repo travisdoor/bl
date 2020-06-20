@@ -49,28 +49,13 @@ _log(bl_log_msg_type_e t, const char *file, s32 line, const char *msg, ...)
 
 	switch (t) {
 	case LOG_ASSERT:
-		fprintf(stderr,
-		        "assert [%s:%d]: %s"
-		        "\n",
-		        file,
-		        line,
-		        buffer);
+		color_print(stderr, BL_RED, "assert [%s:%d]: %s", file, line, buffer);
 		break;
 	case LOG_ABORT:
-		fprintf(stderr,
-		        "abort [%s:%d]: %s"
-		        "\n",
-		        file,
-		        line,
-		        buffer);
+		color_print(stderr, BL_RED, "abort [%s:%d]: %s", file, line, buffer);
 		break;
 	case LOG_WARNING:
-		fprintf(stderr,
-		        "warning [%s:%d]: %s"
-		        "\n",
-		        file,
-		        line,
-		        buffer);
+		color_print(stderr, BL_YELLOW, "warning [%s:%d]: %s", file, line, buffer);
 		break;
 	case LOG_MSG:
 		fprintf(stdout, "log [%s:%d]: %s\n", file, line, buffer);

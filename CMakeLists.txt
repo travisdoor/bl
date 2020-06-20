@@ -22,11 +22,17 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE ${DEFAULT_BUILD_TYPE})
 endif()
 
-option(ENABLE_ASSERT "Turn on assert checks" OFF)
+option(ASSERT_ENABLE "Turn on assert checks" OFF)
 if(ENABLE_ASSERT)
-	add_definitions(-DBL_ENABLE_ASSERT=1)
+	add_definitions(-DBL_ASSERT_ENABLE=1)
 else()
-	add_definitions(-DBL_ENABLE_ASSERT=0)
+	add_definitions(-DBL_ASSERT_ENABLE=0)
+endif()
+
+option(TRACY_ENABLE "Turn on Tracy profiler" OFF)
+if(TRACY_ENABLE)
+	add_definitions(-DTRACY_ENABLE)
+	add_definitions(-DTRACY_NO_EXIT)
 endif()
 
 # setup output directories
@@ -100,7 +106,9 @@ set(SOURCE_FILES
         src/build_api.c
 	src/threading.cpp
 	src/llvm_api.cpp
-        src/llvm_di.cpp)
+        src/llvm_di.cpp
+	deps/tracy/TracyClient.cpp
+	)
 
 add_definitions(${LLVM_DEFINITIONS})
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})

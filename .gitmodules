@@ -1,3 +1,6 @@
 [submodule "deps/tlib-c"]
 	path = deps/tlib-c
 	url = https://github.com/travisdoor/tlib-c.git 
+[submodule "deps/tracy"]
+	path = deps/tracy
+	url = https://github.com/wolfpld/tracy.git

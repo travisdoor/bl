@@ -333,12 +333,14 @@ next_pow_2(u32 n)
 }
 
 void
-color_print(FILE *stream, s32 color, const char *text)
+color_print(FILE *stream, s32 color, const char *format, ...)
 {
 	// HACK: Is this reference really needed????
 	// HACK: Is this reference really needed????
 	// HACK: Is this reference really needed????
 	if (builder.options.no_color) color = BL_NO_COLOR;
+	va_list args;
+	va_start(args, format);
 
 #ifdef BL_PLATFORM_WIN
 	s32 c;
@@ -368,11 +370,12 @@ color_print(FILE *stream, s32 color, const char *text)
 		WORD saved_attributes = console_info.wAttributes;
 
 		SetConsoleTextAttribute(handle, c);
-		fprintf(stream, "%s\n", text);
+		vfprintf(stream, format, args);
 		SetConsoleTextAttribute(handle, saved_attributes);
 	} else {
-		fprintf(stream, "%s\n", text);
+		vfprintf(stream, format, args);
 	}
+	fprintf(stream, "\n");
 #else
 	char *c;
 	switch (color) {
@@ -393,7 +396,10 @@ color_print(FILE *stream, s32 color, const char *text)
 		c = "\x1b[0m";
 	}
 
-	fprintf(stream, "%s%s\x1b[0m\n", c, text);
+	fprintf(stream, "%s", c);
+	vfprintf(stream, format, args);
+	fprintf(stream, "\x1b[0m\n");
 #endif
+	va_end(args);
 }
 

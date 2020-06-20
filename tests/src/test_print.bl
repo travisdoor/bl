@@ -1,5 +1,5 @@
 #load "std/print.bl"
-#load "std/string.bl"
+#load "std/test.bl"
 
 #test "printing" {
     i : u64 = 18446744073709551615;
@@ -22,14 +22,14 @@
     str :: string_new_concatenate(fmt_real(10.12f, 2));     
     defer string_delete(str);
 
-    assert(string_compare(str, "10.12"));
+    test_str_eq(str, "10.12");
 }
 
 #test "print content simple" {
     str :: string_new_concatenate("text", 10, true);     
     defer string_delete(str);
 
-    assert(string_compare(str, "text10true"));
+    test_str_eq(str, "text10true");
 }
 
 #test "print array" {
@@ -37,7 +37,7 @@
     str :: string_new_concatenate(arr);     
     defer string_delete(str);
 
-    assert(string_compare(str, "[1, 2, 3]"));
+    test_str_eq(str, "[1, 2, 3]");
 }
 
 #test "print struct" {
@@ -50,7 +50,7 @@
     str :: string_new_concatenate(foo);     
     defer string_delete(str);
 
-    assert(string_compare(str, "Foo {i = 666, j = true}"));
+    test_str_eq(str, "Foo {i = 666, j = true}");
 }
 
 #test "complex type" {
@@ -65,5 +65,5 @@
     defer string_delete(str);
 
     print("%\n", str);
-    assert(string_compare(str, "Foo {i = 666, j = true, arr = [1, 2, 3]}"));
+    test_str_eq(str, "Foo {i = 666, j = true, arr = [1, 2, 3]}");
 }
