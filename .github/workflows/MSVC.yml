@@ -22,7 +22,9 @@ jobs:
         cd build
         cmake ../llvm -G "Visual Studio 16 2019" -Thost=x64
     - name: Compile LLVM
-      run: cmake --build . --config Release --target Install
+      run: |
+        cd llvm-project/build
+        cmake --build . --config Release --target Install
     - name: Compile BL
       run: |
         mkdir build
