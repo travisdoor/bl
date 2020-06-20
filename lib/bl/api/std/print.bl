@@ -108,8 +108,8 @@ main :: fn () s32 {
 ```
 */
 print :: fn (format: string, args: ...) s32 {
-    buf: [PRINT_MAX_LENGTH]u8;
-    w := _print_impl({:[]u8: buf.len, buf.ptr}, format, {:[]Any: args.len, args.ptr});
+    buf: [PRINT_MAX_LENGTH]u8 #noinit;
+    w := _print_impl(buf, format, {:[]Any: args.len, args.ptr});
     __os_write(OS_STDOUT, buf.ptr, auto w);
     return w;
 };
@@ -136,8 +136,8 @@ pass values of any type as an arguments, even structures or arrays.
   Count of bytes printed out.
 */
 eprint :: fn (format: string, args: ...) s32 {
-    buf: [PRINT_MAX_LENGTH]u8;
-    w := _print_impl({:[]u8: buf.len, buf.ptr}, format, {:[]Any: args.len, args.ptr});
+    buf: [PRINT_MAX_LENGTH]u8 #noinit;
+    w := _print_impl(buf, format, {:[]Any: args.len, args.ptr});
     __os_write(OS_STDERR, buf.ptr, auto w);
     return w;
 };
@@ -190,8 +190,8 @@ _print_log_default :: fn (kind: PrintLogKind, format: string, args: []Any, file:
         eprint("[ PANIC ] ");
     }
 
-    buf := {:[PRINT_MAX_LENGTH]u8: 0};
-    w := _print_impl({:[]u8: buf.len, buf.ptr}, format, args);
+    buf: [PRINT_MAX_LENGTH]u8 #noinit;
+    w := _print_impl(buf, format, args);
     __os_write(out, buf.ptr, auto w);
     print("\n");
 };
@@ -310,7 +310,7 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
 
         tmp : Any;
 
-        if !info.is_slice {
+        if (!info.is_slice) && (!info.is_dynamic_array) {
             cur = print_string(buf, cur, info.name);
             cur = print_string(buf, cur, " {");
 
@@ -528,7 +528,7 @@ print_u64_hex :: fn (buf: []u8, cur: s32, v: u64) s32 {
         return print_string(buf, cur, "0");
     }
 
-    digits := {:[16]u8: '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+    digits :: {:[16]u8: '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
     mask : u64 = 0xf000000000000000;
     hit_non_zero := false;
 

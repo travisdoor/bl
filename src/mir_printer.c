@@ -45,7 +45,7 @@ typedef struct {
 static void
 print_comptime_value_or_id(Context *cnt, MirInstr *instr);
 
-static inline void
+static INLINE void
 print_type(Context *cnt, MirType *type, bool aligned, bool prefer_name)
 {
 	char tmp[256];
@@ -56,7 +56,7 @@ print_type(Context *cnt, MirType *type, bool aligned, bool prefer_name)
 		fprintf(cnt->stream, "%s", tmp);
 }
 
-static inline void
+static INLINE void
 print_instr_head(Context *cnt, MirInstr *instr, const char *name)
 {
 	if (!instr) return;
@@ -77,7 +77,7 @@ print_instr_head(Context *cnt, MirInstr *instr, const char *name)
 	fprintf(cnt->stream, " %s ", name);
 }
 
-static inline void
+static INLINE void
 print_flags(Context *cnt, u32 flags)
 {
 	if (flags == 0) return;
@@ -94,7 +94,7 @@ print_flags(Context *cnt, u32 flags)
 
 #define print_const_value(C, V) _print_const_value((C), (V)->type, (V)->data)
 
-static inline void
+static INLINE void
 _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 {
 	if (!type) return;
@@ -165,8 +165,8 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 	}
 
 	case MIR_TYPE_TYPE: {
-		MirType *type = vm_read_as(MirType *, value);
-		print_type(cnt, type, false, false);
+		MirType *type2 = vm_read_as(MirType *, value);
+		print_type(cnt, type2, false, false);
 		break;
 	}
 
@@ -205,6 +205,7 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 		fprintf(cnt->stream, "%s\"}", (char *)str_ptr);
 		break;
 
+	case MIR_TYPE_DYNARR:
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_STRUCT: {
@@ -214,9 +215,9 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 		TSA_FOREACH(type->data.strct.members, it)
 		{
 			MirType *       member_type = it->type;
-			const ptrdiff_t offset =
+			const ptrdiff_t offset2 =
 			    vm_get_struct_elem_offset(cnt->assembly, type, (u32)i);
-			_print_const_value(cnt, member_type, value + offset);
+			_print_const_value(cnt, member_type, value + offset2);
 			if (i < (usize)type->data.strct.members->size - 1)
 				fprintf(cnt->stream, ",");
 		}
@@ -228,10 +229,10 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 	case MIR_TYPE_ARRAY: {
 		fprintf(cnt->stream, "[");
 
-		MirType *elem_type = type->data.array.elem_type;
+		MirType *elem_type2 = type->data.array.elem_type;
 		for (u32 i = 0; i < (u32)type->data.array.len; ++i) {
-			const ptrdiff_t offset = vm_get_array_elem_offset(type, i);
-			_print_const_value(cnt, elem_type, value + offset);
+			const ptrdiff_t offset2 = vm_get_array_elem_offset(type, i);
+			_print_const_value(cnt, elem_type2, value + offset2);
 			if (i < type->data.array.len - 1) fprintf(cnt->stream, ",");
 		}
 
@@ -315,6 +316,9 @@ print_instr_type_array(Context *cnt, MirInstrTypeArray *type_array);
 
 static void
 print_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice);
+
+static void
+print_instr_type_dynarr(Context *cnt, MirInstrTypeDynArr *type_dynarr);
 
 static void
 print_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs);
@@ -514,6 +518,13 @@ print_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 }
 
 void
+print_instr_type_dynarr(Context *cnt, MirInstrTypeDynArr *type_dynarr)
+{
+	print_instr_head(cnt, &type_dynarr->base, "const");
+	fprintf(cnt->stream, "[..]%%%llu", (unsigned long long)type_dynarr->elem_type->id);
+}
+
+void
 print_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
 {
 	print_instr_head(cnt, &type_vargs->base, "const");
@@ -595,7 +606,7 @@ print_instr_compound(Context *cnt, MirInstrCompound *init)
 			if (i < values->size - 1) fprintf(cnt->stream, ", ");
 		}
 	} else {
-		fprintf(cnt->stream, "<invalid values>");
+		fprintf(cnt->stream, "<zero initializer>");
 	}
 	fprintf(cnt->stream, "}");
 
@@ -1072,6 +1083,9 @@ print_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_TYPE_SLICE:
 		print_instr_type_slice(cnt, (MirInstrTypeSlice *)instr);
 		break;
+	case MIR_INSTR_TYPE_DYNARR:
+		print_instr_type_dynarr(cnt, (MirInstrTypeDynArr *)instr);
+		break;
 	case MIR_INSTR_TYPE_VARGS:
 		print_instr_type_vargs(cnt, (MirInstrTypeVArgs *)instr);
 		break;
@@ -1137,7 +1151,32 @@ print_instr(Context *cnt, MirInstr *instr)
 		break;
 	}
 
-	if (instr->value.is_comptime) fprintf(cnt->stream, " /* comptime */");
+	bool has_comment = false;
+	if (instr->value.is_comptime) {
+		has_comment = true;
+		fprintf(cnt->stream, " // comptime");
+	}
+
+	if (cnt->assembly->options.build_mode == BUILD_MODE_DEBUG) {
+		if (instr->node && instr->node->location) {
+			const Location *loc1 = instr->node->location;
+			const Location *loc2 = instr->node->location_end;
+			if (loc2) {
+				fprintf(cnt->stream,
+				        " %s[%s:%d-%d]",
+				        has_comment ? "" : "// ",
+				        loc1->unit->filename,
+				        loc1->line,
+				        loc2->line);
+			} else {
+				fprintf(cnt->stream,
+				        " %s[%s:%d]",
+				        has_comment ? "" : "// ",
+				        loc1->unit->filename,
+				        loc1->line);
+			}
+		}
+	}
 
 	fprintf(cnt->stream, "\n");
 }

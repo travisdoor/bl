@@ -1,3 +1,10 @@
+/*
+    1) Static if
+    2) Polymorphic procedures
+    3) Multiple return arguments
+    4) Scope import by #using
+ */
+
 /* 
 
 STATIC IF
@@ -15,28 +22,6 @@ main :: fn () s32 {
         print("This is false\n");
     }
 }
-
-/*
-
-PTR TO BOOL 
-
-Implicit casting for pointers to bool to avoid anoying comparations.
-
-*/
-
-
-main :: fn () s32 {
-    i :: 10;
-    ptr :: &i;
-
-
-    if ptr { // replacement for ptr == null
-        // Do something
-    }
-    
-    return 0;
-}
-
 
 /*
 
@@ -62,4 +47,25 @@ procedure :: fn () {
 procedure :: fn (using foo: *Foo) {
     first = 10;
     second = 20;
+}
+
+
+
+
+/*
+
+   Multiple return values.
+
+*/
+
+foo :: fn () bool, s32 {
+    return true, 10;
+}
+
+i: s32 = 10;
+i, j: s32 = 20, 10;
+i, j := foo(); // bool, s32
+
+foo :: fn () struct { bool, s32 } {
+    return {:: true, 10};
 }

@@ -43,19 +43,6 @@
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
 
-#ifdef BL_PLATFORM_WIN
-#define RED FOREGROUND_RED
-#define BLUE FOREGROUND_BLUE
-#define YELLOW (14 % 0x0F)
-#define NO_COLOR 0
-#else
-#define RED 1
-#define BLUE 2 
-#define YELLOW 3
-#define NO_COLOR -1
-#endif
-
-
 Builder builder;
 
 static int
@@ -73,45 +60,6 @@ str_cache_dtor(TString *str)
 }
 
 static void
-color_print(FILE *stream, s32 color, const char *text)
-{
-	if (builder.options.no_color) color = NO_COLOR;
-
-#ifdef BL_PLATFORM_WIN
-	if (color != NO_COLOR) {
-		HANDLE handle = stream == stderr ? GetStdHandle(STD_ERROR_HANDLE) : GetStdHandle(STD_OUTPUT_HANDLE);
-		CONSOLE_SCREEN_BUFFER_INFO console_info;
-		GetConsoleScreenBufferInfo(handle, &console_info);
-		WORD saved_attributes = console_info.wAttributes;
-
-		SetConsoleTextAttribute(handle, color);
-		fprintf(stream, "%s\n", text);
-		SetConsoleTextAttribute(handle, saved_attributes);
-	} else {
-		fprintf(stream, "%s\n", text);
-	}
-#else
-	char *c;
-	switch (color) {
-	case YELLOW:
-		c = "\x1b[33m";
-		break;
-	case RED:
-		c = "\x1b[31m";
-		break;
-	case BLUE:
-		c = "\x1b[34m";
-		break;
-
-	default:
-		c = "\x1b[0m";
-	}
-
-	fprintf(stream, "%s%s\x1b[0m\n", c, text);
-#endif
-}
-
-static void
 llvm_init(void)
 {
 	if (llvm_initialized) return;
@@ -124,6 +72,12 @@ llvm_init(void)
 	llvm_initialized = true;
 }
 
+static void 
+llvm_terminate(void)
+{
+	LLVMShutdown();
+}
+
 #define INTERRUPT_ON_ERROR                                                                         \
 	if (builder.errorc) return COMPILE_FAIL;
 
@@ -133,8 +87,8 @@ compile_unit(Unit *unit, Assembly *assembly)
 	if (builder.options.verbose) {
 		if (unit->loaded_from) {
 			builder_log("Compile: %s (loaded from '%s')",
-			        unit->name,
-			        unit->loaded_from->location.unit->name);
+			            unit->name,
+			            unit->loaded_from->location.unit->name);
 		} else {
 			builder_log("Compile: %s", unit->name);
 		}
@@ -261,12 +215,21 @@ builder_parse_options(s32 argc, char *argv[])
 			builder.options.build_di_kind = BUILD_DI_DWARF;
 		} else if (IS_PARAM("di-codeview")) {
 			builder.options.build_di_kind = BUILD_DI_CODEVIEW;
+		} else if (IS_PARAM("no-vcvars")) {
+			builder.options.no_vcvars = true;
 		} else {
 			builder_error("invalid params '%s'", &argv[optind][1]);
 			return -1;
 		}
 	}
 	argv += optind;
+
+#if !defined(BL_PLATFORM_WIN)
+	if (builder.options.no_vcvars) {
+		builder_warning("Ignore parameter '-no-vcvars', this is valid on Windows only!");
+	}
+#endif
+
 	return optind;
 #undef IS_PARAM
 }
@@ -306,6 +269,8 @@ builder_terminate(void)
 	tarray_terminate(&builder.assembly_queue);
 	conf_data_delete(builder.conf);
 	arena_terminate(&builder.str_cache);
+
+	llvm_terminate();
 }
 
 int
@@ -359,8 +324,8 @@ builder_compile(Assembly *assembly)
 	builder.total_lines = 0;
 
 	builder_log("Compile assembly: %s [%s]",
-	        assembly->name,
-	        build_mode_to_str(assembly->options.build_mode));
+	            assembly->name,
+	            build_mode_to_str(assembly->options.build_mode));
 
 	// This will apply all modification to build mode, target platform, etc. made on assembly
 	// instance during initialization process. (Must be called only once);
@@ -404,7 +369,7 @@ builder_compile(Assembly *assembly)
 
 void
 builder_msg(BuilderMsgType type,
-            s32            code,
+            s32            UNUSED(code),
             Location *     src,
             BuilderCurPos  pos,
             const char *   format,
@@ -413,35 +378,15 @@ builder_msg(BuilderMsgType type,
 	if (type == BUILDER_MSG_ERROR && builder.errorc > MAX_ERROR_REPORTED) return;
 	if (builder.options.no_warn && type == BUILDER_MSG_WARNING) return;
 
-
 	TString tmp;
-	char *msg_mark = NULL;
 
 	tstring_init(&tmp);
 	char msg[MAX_MSG_LEN] = {0};
 
-	switch (type) {
-	case BUILDER_MSG_ERROR:
-		tstring_append(&tmp, "error: ");
-		msg_mark = "E";
-		break;
-	case BUILDER_MSG_LOG:
-		msg_mark = "";
-		break;
-	case BUILDER_MSG_NOTE:
-		tstring_append(&tmp, "note: ");
-		msg_mark = "N";
-		break;
-	case BUILDER_MSG_WARNING:
-		tstring_append(&tmp, "warning: ");
-		msg_mark = "W";
-		break;
-	}
-
 	if (src) {
-		s32   line     = src->line;
-		s32   col      = src->col;
-		s32   len      = src->len;
+		s32 line = src->line;
+		s32 col  = src->col;
+		s32 len  = src->len;
 
 		switch (pos) {
 		case BUILDER_CUR_AFTER:
@@ -520,20 +465,20 @@ builder_msg(BuilderMsgType type,
 	switch (type) {
 	case BUILDER_MSG_ERROR: {
 		builder.errorc++;
-		color_print(stderr, RED, tmp.data);
+		color_print(stderr, BL_RED, tmp.data);
 		break;
 	}
 	case BUILDER_MSG_WARNING: {
-		color_print(stdout, YELLOW, tmp.data);
+		color_print(stdout, BL_YELLOW, tmp.data);
 		break;
 	}
 	case BUILDER_MSG_NOTE: {
-		color_print(stdout, BLUE, tmp.data);
+		color_print(stdout, BL_BLUE, tmp.data);
 		break;
 	}
 
 	default: {
-		color_print(stdout, NO_COLOR, tmp.data);
+		color_print(stdout, BL_NO_COLOR, tmp.data);
 	}
 	}
 

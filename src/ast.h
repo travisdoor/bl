@@ -52,6 +52,7 @@ typedef enum {
 	FLAG_NO_INLINE   = 1 << 5, /* no inline function */
 	FLAG_ENTRY       = 1 << 6, /* marking entry point function */
 	FLAG_BUILD_ENTRY = 1 << 7, /* marking build entry point function */
+	FLAG_NO_INIT     = 1 << 8, /* no default initialization */
 } AstFlag;
 
 /* map symbols to binary operation kind */
@@ -189,6 +190,10 @@ struct AstTypeArr {
 };
 
 struct AstTypeSlice {
+	Ast *elem_type;
+};
+
+struct AstTypeDynArr {
 	Ast *elem_type;
 };
 
@@ -341,9 +346,10 @@ struct AstTags {
 /* AST base type */
 struct Ast {
 	AstKind          kind;
-	struct Location *location;    /* Location in source file. */
-	struct Scope *   owner_scope; /* Scope in which is AST node. */
-	struct Ast *     meta_node;   /* Metadata assigned to node. */
+	struct Location *location;     /* Location in source file. */
+	struct Location *location_end; /* Optional ending location. */
+	struct Scope *   owner_scope;  /* Scope in which is AST node. */
+	struct Ast *     meta_node;    /* Metadata assigned to node. */
 
 	union {
 #define GEN_AST_DATA
@@ -365,33 +371,33 @@ ast_arena_terminate(Arena *arena);
 void
 ast_small_array_arena_init(struct Arena *arena);
 
-static inline bool
+static INLINE bool
 ast_binop_is_assign(BinopKind op)
 {
 	return op >= BINOP_ASSIGN && op <= BINOP_MOD_ASSIGN;
 }
 
-static inline bool
+static INLINE bool
 ast_binop_is_logic(BinopKind op)
 {
 	return op >= BINOP_EQ && op <= BINOP_LOGIC_OR;
 }
 
-static inline bool
+static INLINE bool
 ast_is_expr(Ast *node)
 {
 	BL_ASSERT(node);
 	return node->kind > _AST_EXPR_FIRST && node->kind < _AST_EXPR_LAST;
 }
 
-static inline bool
+static INLINE bool
 ast_is_decl(Ast *node)
 {
 	BL_ASSERT(node);
 	return node->kind > _AST_DECL_FIRST && node->kind < _AST_DECL_LAST;
 }
 
-static inline bool
+static INLINE bool
 ast_is_type(Ast *node)
 {
 	BL_ASSERT(node);

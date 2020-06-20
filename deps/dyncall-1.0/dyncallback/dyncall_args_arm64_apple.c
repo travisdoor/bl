@@ -47,7 +47,7 @@ struct DCArgs
   int reserved;
 };
 
-static inline uint8_t* align(uint8_t* p, size_t v)
+static INLINE uint8_t* align(uint8_t* p, size_t v)
 {
   return (uint8_t*) ( ( ( (ptrdiff_t) p ) + v - 1) & (ptrdiff_t) -v );
 }

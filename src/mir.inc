@@ -1,5 +1,5 @@
 #ifdef GEN_INSTR_SIZEOF
-#define SIZEOF_MIR_INSTR sizeof(union {\
+union __INSTR_T {\
 	MirInstrBlock          block;\
 	MirInstrDeclVar        var;\
 	MirInstrDeclMember     member;\
@@ -24,6 +24,7 @@
 	MirInstrAddrOf         addrof;\
 	MirInstrTypeArray      type_array;\
 	MirInstrTypeSlice      type_slice;\
+	MirInstrTypeDynArr     type_dynarr;\
 	MirInstrTypeVArgs      type_vargs;\
 	MirInstrTypePtr        type_ptr;\
 	MirInstrTypeStruct     type_struct;\
@@ -39,7 +40,9 @@
 	MirInstrToAny          toany;\
 	MirInstrSwitch         sw;\
 	MirInstrSetInitializer si;\
-})
+};
+
+#define SIZEOF_MIR_INSTR sizeof(union __INSTR_T)
 #endif
 
 #ifdef GEN_INSTR_KINDS
@@ -59,6 +62,7 @@
 	MIR_INSTR_TYPE_PTR,
 	MIR_INSTR_TYPE_ARRAY,
 	MIR_INSTR_TYPE_SLICE,
+	MIR_INSTR_TYPE_DYNARR,
 	MIR_INSTR_TYPE_VARGS,
 	MIR_INSTR_TYPE_ENUM,
 	MIR_INSTR_CALL,
@@ -105,9 +109,12 @@
 	MIR_BUILTIN_ID_MAIN,
 	MIR_BUILTIN_ID_ARR_LEN,
 	MIR_BUILTIN_ID_ARR_PTR,
+	MIR_BUILTIN_ID_ARR_ALLOCATED,
+	MIR_BUILTIN_ID_ARR_ELEM_SIZE,
 	MIR_BUILTIN_ID_STRUCT_BASE,
 
 	MIR_BUILTIN_ID_ANY,
+	MIR_BUILTIN_ID_ARRAY,
 	MIR_BUILTIN_ID_TYPE_KIND,
 	MIR_BUILTIN_ID_TYPE_INFO,
 	MIR_BUILTIN_ID_TYPE_INFO_TYPE,
@@ -129,6 +136,15 @@
 	MIR_BUILTIN_ID_TYPE_INFO_FN_ARG,
 
 	MIR_BUILTIN_ID_ABORT_FN,
+	MIR_BUILTIN_ID_ARRAY_PUSH_FN,
+	MIR_BUILTIN_ID_ARRAY_TERMINATE_FN,
+	MIR_BUILTIN_ID_ARRAY_RESERVE_FN,
+	MIR_BUILTIN_ID_ARRAY_ERASE_FN,
+	MIR_BUILTIN_ID_ARRAY_CLEAR_FN,
+	MIR_BUILTIN_ID_ARRAY_INIT_FN,
+	MIR_BUILTIN_ID_SLICE_INIT_FN,
+	MIR_BUILTIN_ID_SLICE_TERMINATE_FN,
+
 	MIR_BUILTIN_ID_IS_DEBUG,
 #endif
 
@@ -152,8 +168,11 @@
     {.str = "main",                  .hash = 0},
     {.str = "len",                   .hash = 0},
     {.str = "ptr",                   .hash = 0},
+    {.str = "allocated",             .hash = 0},
+    {.str = "elem_size",             .hash = 0},
     {.str = "base",                  .hash = 0},
     {.str = "Any",                   .hash = 0},
+    {.str = "_Array",                .hash = 0},
     {.str = "TypeKind",              .hash = 0},
     {.str = "TypeInfo",              .hash = 0},
     {.str = "TypeInfoType",          .hash = 0},
@@ -174,5 +193,13 @@
     {.str = "TypeInfoEnumVariant",   .hash = 0},
     {.str = "TypeInfoFnArg",         .hash = 0},
     {.str = "__os_abort",            .hash = 0},
+    {.str = "array_push",            .hash = 0},
+    {.str = "array_terminate",       .hash = 0},
+    {.str = "array_reserve",         .hash = 0},
+    {.str = "array_erase",           .hash = 0},
+    {.str = "array_clear",           .hash = 0},
+    {.str = "array_init",            .hash = 0},
+    {.str = "slice_init",            .hash = 0},
+    {.str = "slice_terminate",       .hash = 0},
     {.str = "IS_DEBUG",              .hash = 0},
 #endif

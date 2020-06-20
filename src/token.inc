@@ -42,6 +42,7 @@ sm(COMMA,          ",")
 sm(SEMICOLON,      ";")
 sm(COLON,          ":")
 sm(VARGS,          "...")
+sm(DYNARR,         "..")
 sm(EQ,             "==") /* logical begin */
 sm(NEQ,            "!=")
 sm(GREATER_EQ,     ">=")

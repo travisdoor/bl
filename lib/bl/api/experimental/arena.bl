@@ -52,7 +52,7 @@ arena_new :: fn (T: Any, chunk_elem_count: usize, elem_dtor: ArenaElemDtor) *Are
         panic("Arena invalid arena size.", T.type_info.kind);
     }
 
-    arr := cast(*Arena) mem_alloc(sizeof(Arena));
+    arr := cast(*Arena) alloc(sizeof(Arena));
     arr.len = 0;
     arr.chunk_elem_count = chunk_elem_count;
     arr.top = null;
@@ -65,7 +65,7 @@ arena_new :: fn (T: Any, chunk_elem_count: usize, elem_dtor: ArenaElemDtor) *Are
 
 arena_delete :: fn (arr: *Arena) {
     free_chunks(arr);
-    mem_free(auto arr);
+    free(auto arr);
 }
 
 arena_push :: fn (arr: *Arena, v: Any) {
@@ -87,7 +87,7 @@ arena_push :: fn (arr: *Arena, v: Any) {
     assert(arena != null);
 
     dest_ptr := get_elem_ptr(arr, arena, arena.count);
-    mem_copy(dest_ptr, v.data, arr.T.size_bytes); 
+    memcpy(dest_ptr, v.data, arr.T.size_bytes); 
     arena.count += 1;
 }
 
@@ -106,7 +106,7 @@ Chunk :: struct {
 
 add_chunk :: fn (arr: *Arena) {
     size :: sizeof(Chunk) + arr.chunk_elem_count * arr.T.size_bytes;
-    new_chunk := cast(*Chunk) mem_alloc(size);
+    new_chunk := cast(*Chunk) alloc(size);
     new_chunk.next = null;
     new_chunk.count = 0;
 
@@ -132,7 +132,7 @@ free_chunks :: fn (arr: *Arena) {
         }
         
         next :: current.next; 
-        mem_free(auto current);
+        free(auto current);
 
         current = next;
     }

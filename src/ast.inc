@@ -28,6 +28,7 @@
 	AST_TYPE_REF,
 	AST_TYPE_ARR,
 	AST_TYPE_SLICE,
+	AST_TYPE_DYNARR,
 	AST_TYPE_FN,
 	AST_TYPE_STRUCT,
 	AST_TYPE_ENUM,
@@ -87,6 +88,7 @@
 	struct AstTypeRef       type_ref;
 	struct AstTypeArr       type_arr;
 	struct AstTypeSlice     type_slice;
+	struct AstTypeDynArr    type_dynarr;
 	struct AstTypeFn        type_fn;
 	struct AstTypeStruct    type_strct;
 	struct AstTypeEnum      type_enm;

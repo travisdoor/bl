@@ -34,13 +34,13 @@ StringStream :: struct {
 }
 
 ss_new :: fn () *StringStream {
-    ss :: cast(*StringStream) mem_alloc(sizeof(StringStream));
+    ss :: cast(*StringStream) alloc(sizeof(StringStream));
     ss_init(ss);
     return ss;
 }
 
 ss_new_from_file :: fn (file: File) *StringStream {
-    ss :: cast(*StringStream) mem_alloc(sizeof(StringStream));
+    ss :: cast(*StringStream) alloc(sizeof(StringStream));
     ss_init_from_file(ss, file);
     return ss;
 }
@@ -48,7 +48,7 @@ ss_new_from_file :: fn (file: File) *StringStream {
 ss_delete :: fn (ss: *StringStream) {
     if ss == null { return; }
     ss_terminate(ss);
-    mem_free(auto ss);
+    free(auto ss);
 }
 
 ss_init_from_file :: fn (ss: *StringStream, file: File) {

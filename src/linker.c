@@ -142,7 +142,7 @@ link_lib(Context *cnt, NativeLib *lib)
 
 		return false;
 	}
-	
+
 	return true;
 }
 
@@ -152,12 +152,13 @@ link_working_environment(Context *cnt, const char *lib_name)
 	DLLib *handle = dlLoadLibrary(lib_name);
 	if (!handle) return false;
 
-	NativeLib native_lib = {.handle      = handle,
-	                        .linked_from = NULL,
-	                        .user_name   = NULL,
-	                        .filename    = NULL,
-	                        .filepath    = NULL,
-	                        .is_internal = true};
+	NativeLib native_lib;
+	native_lib.handle      = handle;
+	native_lib.linked_from = NULL;
+	native_lib.user_name   = NULL;
+	native_lib.filename    = NULL;
+	native_lib.filepath    = NULL;
+	native_lib.is_internal = true;
 
 	tarray_push(&cnt->assembly->options.libs, native_lib);
 	return true;
@@ -166,7 +167,9 @@ link_working_environment(Context *cnt, const char *lib_name)
 void
 linker_run(Assembly *assembly)
 {
-	Context cnt = {.assembly = assembly, .lib_paths = &assembly->options.lib_paths};
+	Context cnt;
+	cnt.assembly  = assembly;
+	cnt.lib_paths = &assembly->options.lib_paths;
 
 	if (builder.options.verbose) {
 		builder_log("Running runtime linker...");

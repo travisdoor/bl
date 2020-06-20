@@ -33,23 +33,26 @@
 
 #define MAX_ALIGNMENT 8
 #define VERBOSE_EXEC false
-#define CHCK_STACK true
+#define CHCK_STACK (BL_DEBUG || BL_ASSERT_ENABLE)
 #define PTR_SIZE sizeof(void *) /* HACK: can cause problems with different build targets. */
 
 // Debug helpers
 #if BL_DEBUG && VERBOSE_EXEC
+/**************************************************************************************************/
 #define LOG_PUSH_RA                                                                                \
 	{                                                                                          \
 		if (vm->stack->pc) {                                                               \
 			fprintf(stdout,                                                            \
-			        "%6llu %20s  PUSH RA\n",                                           \
+			        "%6zu %20s  PUSH RA\n",                                            \
 			        vm->stack->pc->id,                                                 \
 			        mir_instr_name(vm->stack->pc));                                    \
 		} else {                                                                           \
 			fprintf(stdout, "     - %20s  PUSH RA\n", "Terminal");                     \
 		}                                                                                  \
 	}
+/**************************************************************************************************/
 
+/**************************************************************************************************/
 #define LOG_POP_RA                                                                                 \
 	{                                                                                          \
 		fprintf(stdout,                                                                    \
@@ -57,48 +60,53 @@
 		        vm->stack->pc->id,                                                         \
 		        mir_instr_name(vm->stack->pc));                                            \
 	}
+/**************************************************************************************************/
 
+/**************************************************************************************************/
 #define LOG_PUSH_STACK                                                                             \
 	{                                                                                          \
 		char type_name[256];                                                               \
 		mir_type_to_str(type_name, 256, type, true);                                       \
 		if (vm->stack->pc) {                                                               \
 			fprintf(stdout,                                                            \
-			        "%6llu %20s  PUSH    (%luB, %p) %s\n",                             \
+			        "%6llu %20s  PUSH    (%lluB, %p) %s\n",                            \
 			        (unsigned long long)vm->stack->pc->id,                             \
 			        mir_instr_name(vm->stack->pc),                                     \
-			        size,                                                              \
+			        (unsigned long long)size,                                          \
 			        tmp,                                                               \
 			        type_name);                                                        \
 		} else {                                                                           \
 			fprintf(stdout,                                                            \
-			        "     -                       PUSH    (%luB, %p) %s\n",            \
-			        size,                                                              \
+			        "     -                       PUSH    (%lluB, %p) %s\n",           \
+			        (unsigned long long)size,                                          \
 			        tmp,                                                               \
 			        type_name);                                                        \
 		}                                                                                  \
 	}
+/**************************************************************************************************/
 
+/**************************************************************************************************/
 #define LOG_POP_STACK                                                                              \
 	{                                                                                          \
 		char type_name[256];                                                               \
 		mir_type_to_str(type_name, 256, type, true);                                       \
 		if (vm->stack->pc) {                                                               \
 			fprintf(stdout,                                                            \
-			        "%6llu %20s  POP     (%luB, %p) %s\n",                             \
+			        "%6llu %20s  POP     (%lluB, %p) %s\n",                            \
 			        vm->stack->pc->id,                                                 \
 			        mir_instr_name(vm->stack->pc),                                     \
-			        size,                                                              \
+			        (unsigned long long)size,                                          \
 			        vm->stack->top_ptr - size,                                         \
 			        type_name);                                                        \
 		} else {                                                                           \
 			fprintf(stdout,                                                            \
-			        "     -                       POP     (%luB, %p) %s\n",            \
-			        size,                                                              \
+			        "     -                       POP     (%lluB, %p) %s\n",           \
+			        (unsigned long long)size,                                          \
 			        vm->stack->top_ptr - size,                                         \
 			        type_name);                                                        \
 		}                                                                                  \
 	}
+/**************************************************************************************************/
 
 #else
 #define LOG_PUSH_RA
@@ -107,7 +115,7 @@
 #define LOG_POP_STACK
 #endif
 
-#if BL_DEBUG && CHCK_STACK
+#if CHCK_STACK
 #define CHCK_SIZE() sizeof(void *)
 #define CHCK_WRITE(_ptr, _data_size) memcpy((_ptr) + (_data_size), &(_ptr), CHCK_SIZE())
 #define CHCK_VALIDATE(_ptr, _data_size)                                                            \
@@ -300,14 +308,14 @@ eval_instr_compound(VM *vm, MirInstrCompound *compound);
 /***********/
 /* inlines */
 /***********/
-static inline bool
+static INLINE bool
 needs_tmp_alloc(MirConstExprValue *v)
 {
 	return v->type->store_size_bytes > sizeof(v->_tmp);
 }
 
-static inline MirFn *
-get_callee(MirInstrCall *call)
+static INLINE MirFn *
+              get_callee(MirInstrCall *call)
 {
 	MirConstExprValue *val = &call->callee->value;
 	BL_ASSERT(val->type && val->type->kind == MIR_TYPE_FN);
@@ -317,20 +325,20 @@ get_callee(MirInstrCall *call)
 	return fn;
 }
 
-static inline void
+static INLINE void
 exec_abort(VM *vm, s32 report_stack_nesting)
 {
 	print_call_stack(vm, report_stack_nesting);
 	vm->stack->aborted = true;
 }
 
-static inline void
+static INLINE void
 eval_abort(VM *vm)
 {
 	vm->aborted = true;
 }
 
-static inline usize
+static INLINE usize
 stack_alloc_size(usize size)
 {
 	BL_ASSERT(size != 0);
@@ -339,12 +347,12 @@ stack_alloc_size(usize size)
 }
 
 /* allocate memory on frame stack, size is in bits!!! */
-static inline VMStackPtr
+static INLINE VMStackPtr
 stack_alloc(VM *vm, usize size)
 {
 	BL_ASSERT(size && "trying to allocate 0 bits on stack");
 
-#if BL_DEBUG && CHCK_STACK
+#if CHCK_STACK
 	const usize orig_size = size;
 #endif
 	size = stack_alloc_size(size);
@@ -367,10 +375,10 @@ stack_alloc(VM *vm, usize size)
 }
 
 /* shift stack top by the size in bytes */
-static inline VMStackPtr
+static INLINE VMStackPtr
 stack_free(VM *vm, usize size)
 {
-#if BL_DEBUG && CHCK_STACK
+#if CHCK_STACK
 	const usize orig_size = size;
 #endif
 
@@ -385,7 +393,7 @@ stack_free(VM *vm, usize size)
 	return new_top;
 }
 
-static inline void
+static INLINE void
 push_ra(VM *vm, MirInstr *caller)
 {
 	VMFrame *prev = vm->stack->ra;
@@ -396,8 +404,8 @@ push_ra(VM *vm, MirInstr *caller)
 	LOG_PUSH_RA;
 }
 
-static inline MirInstr *
-pop_ra(VM *vm)
+static INLINE MirInstr *
+              pop_ra(VM *vm)
 {
 	if (!vm->stack->ra) return NULL;
 	MirInstr *caller = vm->stack->ra->caller;
@@ -412,7 +420,7 @@ pop_ra(VM *vm)
 	return caller;
 }
 
-static inline VMStackPtr
+static INLINE VMStackPtr
 stack_push_empty(VM *vm, MirType *type)
 {
 	BL_ASSERT(type);
@@ -424,7 +432,7 @@ stack_push_empty(VM *vm, MirType *type)
 	return tmp;
 }
 
-static inline VMStackPtr
+static INLINE VMStackPtr
 stack_push(VM *vm, void *value, MirType *type)
 {
 	BL_ASSERT(value && "try to push NULL value");
@@ -435,7 +443,7 @@ stack_push(VM *vm, void *value, MirType *type)
 	return tmp;
 }
 
-static inline VMStackPtr
+static INLINE VMStackPtr
 stack_pop(VM *vm, MirType *type)
 {
 	BL_ASSERT(type);
@@ -450,7 +458,7 @@ stack_pop(VM *vm, MirType *type)
 /* Global variables are allocated in static data segment, so there is no need to
  * use relative pointer. When we set ignore to true original pointer is returned
  * as absolute pointer to the stack.  */
-static inline VMStackPtr
+static INLINE VMStackPtr
 stack_rel_to_abs_ptr(VM *vm, VMRelativeStackPtr rel_ptr, bool ignore)
 {
 	if (ignore) return (VMStackPtr)rel_ptr;
@@ -462,32 +470,32 @@ stack_rel_to_abs_ptr(VM *vm, VMRelativeStackPtr rel_ptr, bool ignore)
 }
 
 /* Fetch value into Temp  */
-static inline VMStackPtr
+static INLINE VMStackPtr
 fetch_value(VM *vm, MirConstExprValue *v)
 {
 	if (v->is_comptime) return v->data;
 	return stack_pop(vm, v->type);
 }
 
-static inline MirInstr *
-get_pc(VM *vm)
+static INLINE MirInstr *
+              get_pc(VM *vm)
 {
 	return vm->stack->pc;
 }
 
-static inline VMFrame *
-get_ra(VM *vm)
+static INLINE VMFrame *
+              get_ra(VM *vm)
 {
 	return vm->stack->ra;
 }
 
-static inline void
+static INLINE void
 set_pc(VM *vm, MirInstr *instr)
 {
 	vm->stack->pc = instr;
 }
 
-static inline VMRelativeStackPtr
+static INLINE VMRelativeStackPtr
 stack_alloc_var(VM *vm, MirVar *var)
 {
 	BL_ASSERT(var);
@@ -499,7 +507,7 @@ stack_alloc_var(VM *vm, MirVar *var)
 	return var->rel_stack_ptr;
 }
 
-static inline void
+static INLINE void
 stack_alloc_local_vars(VM *vm, MirFn *fn)
 {
 	BL_ASSERT(fn);
@@ -517,7 +525,7 @@ stack_alloc_local_vars(VM *vm, MirFn *fn)
 /* impl */
 /********/
 void
-calculate_binop(MirType *  dest_type,
+calculate_binop(MirType    UNUSED(*dest_type),
                 MirType *  src_type,
                 VMStackPtr dest,
                 VMStackPtr lhs,
@@ -964,7 +972,7 @@ reset_stack(VMStack *stack)
 }
 
 void
-dyncall_cb_read_arg(VM *vm, MirConstExprValue *dest_value, DCArgs *src)
+dyncall_cb_read_arg(VM UNUSED(*vm), MirConstExprValue *dest_value, DCArgs *src)
 {
 	VMStackPtr dest = dest_value->data;
 	MirType *  type = dest_value->type;
@@ -1031,7 +1039,7 @@ dyncall_cb_read_arg(VM *vm, MirConstExprValue *dest_value, DCArgs *src)
 }
 
 char
-dyncall_cb_handler(DCCallback *cb, DCArgs *dc_args, DCValue *result, void *userdata)
+dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result, void *userdata)
 {
 	/* TODO: External callback can be invoked from different thread. This can cause problems for
 	 * now since interpreter is strictly single-threaded, but we must handle such situation in
@@ -1697,6 +1705,7 @@ interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 		break;
 	}
 
+	case MIR_TYPE_DYNARR:
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_STRING:
 	case MIR_TYPE_VARGS: {
@@ -1785,7 +1794,7 @@ interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 }
 
 void
-interp_instr_unreachable(VM *vm, MirInstrUnreachable *unr)
+interp_instr_unreachable(VM *vm, MirInstrUnreachable UNUSED(*unr))
 {
 	builder_error("execution reached unreachable code");
 	exec_abort(vm, 0);
@@ -1972,6 +1981,7 @@ interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 		switch (type->kind) {
 
 		case MIR_TYPE_STRING:
+		case MIR_TYPE_DYNARR:
 		case MIR_TYPE_SLICE:
 		case MIR_TYPE_VARGS:
 		case MIR_TYPE_STRUCT:
@@ -2098,11 +2108,18 @@ interp_instr_store(VM *vm, MirInstrStore *store)
 	/* loads destination (in case it is not direct reference to declaration) and
 	 * source from stack
 	 */
-	MirType *src_type = store->src->value.type;
-	BL_ASSERT(src_type);
 
 	VMStackPtr dest_ptr = fetch_value(vm, &store->dest->value);
-	VMStackPtr src_ptr  = fetch_value(vm, &store->src->value);
+
+	if (store->src->kind == MIR_INSTR_COMPOUND) {
+		dest_ptr = VM_STACK_PTR_DEREF(dest_ptr);
+		interp_instr_compound(vm, dest_ptr, (MirInstrCompound *)store->src);
+		return;
+	}
+
+	MirType *src_type = store->src->value.type;
+	BL_ASSERT(src_type);
+	VMStackPtr const src_ptr = fetch_value(vm, &store->src->value);
 
 	dest_ptr = VM_STACK_PTR_DEREF(dest_ptr);
 
@@ -2312,6 +2329,7 @@ eval_instr(VM *vm, MirInstr *instr)
 	case MIR_INSTR_TYPE_STRUCT:
 	case MIR_INSTR_TYPE_ENUM:
 	case MIR_INSTR_TYPE_SLICE:
+	case MIR_INSTR_TYPE_DYNARR:
 	case MIR_INSTR_TYPE_VARGS:
 	case MIR_INSTR_DECL_MEMBER:
 	case MIR_INSTR_DECL_ARG:
@@ -2348,6 +2366,7 @@ eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 		break;
 	}
 
+	case MIR_TYPE_DYNARR:
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_STRING:
 	case MIR_TYPE_VARGS: {
@@ -2396,7 +2415,7 @@ eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 }
 
 void
-eval_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
+eval_instr_member_ptr(VM UNUSED(*vm), MirInstrMemberPtr *member_ptr)
 {
 	switch (member_ptr->scope_entry->kind) {
 	case SCOPE_ENTRY_MEMBER: {
@@ -2452,6 +2471,7 @@ eval_instr_compound(VM *vm, MirInstrCompound *compound)
 			break;
 		}
 
+		case MIR_TYPE_DYNARR:
 		case MIR_TYPE_STRUCT:
 		case MIR_TYPE_STRING:
 		case MIR_TYPE_SLICE:
@@ -2482,7 +2502,7 @@ eval_instr_compound(VM *vm, MirInstrCompound *compound)
 }
 
 void
-eval_instr_decl_var(VM *vm, MirInstrDeclVar *decl_var)
+eval_instr_decl_var(VM UNUSED(*vm), MirInstrDeclVar *decl_var)
 {
 	BL_ASSERT(decl_var->init && "Missing variable initializer!");
 	MirVar *var     = decl_var->var;
@@ -2491,7 +2511,7 @@ eval_instr_decl_var(VM *vm, MirInstrDeclVar *decl_var)
 }
 
 void
-eval_instr_cast(VM *vm, MirInstrCast *cast)
+eval_instr_cast(VM UNUSED(*vm), MirInstrCast *cast)
 {
 	MirType *  dest_type = cast->base.value.type;
 	MirType *  src_type  = cast->expr->value.type;
@@ -2501,7 +2521,7 @@ eval_instr_cast(VM *vm, MirInstrCast *cast)
 }
 
 void
-eval_instr_addrof(VM *vm, MirInstrAddrOf *addrof)
+eval_instr_addrof(VM UNUSED(*vm), MirInstrAddrOf *addrof)
 {
 	addrof->base.value.data = addrof->src->value.data;
 }
@@ -2546,7 +2566,7 @@ eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si)
 }
 
 void
-eval_instr_unop(VM *vm, MirInstrUnop *unop)
+eval_instr_unop(VM UNUSED(*vm), MirInstrUnop *unop)
 {
 	MirType *type = unop->base.value.type;
 
@@ -2557,7 +2577,7 @@ eval_instr_unop(VM *vm, MirInstrUnop *unop)
 }
 
 void
-eval_instr_binop(VM *vm, MirInstrBinop *binop)
+eval_instr_binop(VM UNUSED(*vm), MirInstrBinop *binop)
 {
 	BL_ASSERT(binop->lhs->value.is_comptime && binop->rhs->value.is_comptime);
 
@@ -2572,7 +2592,7 @@ eval_instr_binop(VM *vm, MirInstrBinop *binop)
 }
 
 void
-eval_instr_decl_ref(VM *vm, MirInstrDeclRef *decl_ref)
+eval_instr_decl_ref(VM UNUSED(*vm), MirInstrDeclRef *decl_ref)
 {
 	ScopeEntry *entry = decl_ref->scope_entry;
 	BL_ASSERT(entry);
@@ -2601,7 +2621,7 @@ eval_instr_decl_ref(VM *vm, MirInstrDeclRef *decl_ref)
 }
 
 void
-eval_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *decl_ref)
+eval_instr_decl_direct_ref(VM UNUSED(*vm), MirInstrDeclDirectRef *decl_ref)
 {
 	MirVar *var = ((MirInstrDeclVar *)decl_ref->ref)->var;
 	MIR_CEV_WRITE_AS(VMStackPtr *, &decl_ref->base.value, &var->value.data);
@@ -2694,7 +2714,7 @@ vm_alloc_global(VM *vm, Assembly *assembly, MirVar *var)
 }
 
 VMStackPtr
-vm_alloc_const_expr_value(VM *vm, Assembly *assembly, MirConstExprValue *value)
+vm_alloc_const_expr_value(VM UNUSED(*vm), Assembly UNUSED(*assembly), MirConstExprValue *value)
 {
 	BL_ASSERT(value->is_comptime);
 	BL_ASSERT(value->type);
@@ -2703,7 +2723,7 @@ vm_alloc_const_expr_value(VM *vm, Assembly *assembly, MirConstExprValue *value)
 }
 
 VMStackPtr
-vm_alloc_raw(VM *vm, struct Assembly *assembly, MirType *type)
+vm_alloc_raw(VM *vm, struct Assembly UNUSED(*assembly), MirType *type)
 {
 	return stack_push_empty(vm, type);
 }
@@ -2826,7 +2846,9 @@ ptrdiff_t
 vm_get_struct_elem_offset(Assembly *assembly, MirType *type, u32 i)
 {
 	BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
-	if (type->data.strct.is_union) { return 0; }
+	if (type->data.strct.is_union) {
+		return 0;
+	}
 
 	return (ptrdiff_t)LLVMOffsetOfElement(assembly->llvm.TD, type->llvm_type, i);
 }
@@ -2844,7 +2866,9 @@ VMStackPtr
 vm_get_struct_elem_ptr(Assembly *assembly, MirType *type, VMStackPtr ptr, u32 i)
 {
 	BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
-	if (type->data.strct.is_union) { return ptr; }
+	if (type->data.strct.is_union) {
+		return ptr;
+	}
 
 	return ptr + vm_get_struct_elem_offset(assembly, type, i);
 }

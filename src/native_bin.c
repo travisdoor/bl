@@ -32,7 +32,8 @@
 #ifdef BL_PLATFORM_WIN
 static const char *link_flag      = "";
 static const char *link_path_flag = "/LIBPATH:";
-static const char *cmd            = "call \"%s\" %s && \"%s\" \"%s//%s.obj\" /OUT:\"%s//%s.exe\" %s %s";
+static const char *cmd = "call \"%s\" %s && \"%s\" \"%s//%s.obj\" /OUT:\"%s//%s.exe\" %s %s";
+static const char *cmd_no_vcvars = "call \"%s\" \"%s//%s.obj\" /OUT:\"%s//%s.exe\" %s %s";
 #else
 static const char *link_flag      = "-l";
 static const char *link_path_flag = "-L";
@@ -92,26 +93,40 @@ native_bin_run(Assembly *assembly)
 	{ /* setup link command */
 		const char *vc_vars_all = conf_data_get_str(builder.conf, CONF_VC_VARS_ALL_KEY);
 		const char *vc_arch     = "x64"; // TODO: set by compiler target arch
-		const char *default_opt = assembly->options.build_mode == BUILD_MODE_DEBUG
-		    ? conf_data_get_str(builder.conf, CONF_LINKER_OPT_DEBUG_KEY)
-		    : conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
 
-		const char *custom_opt  = assembly->options.custom_linker_opt.len
+		const char *default_opt =
+		    assembly->options.build_mode == BUILD_MODE_DEBUG
+		        ? conf_data_get_str(builder.conf, CONF_LINKER_OPT_DEBUG_KEY)
+		        : conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
+
+		const char *custom_opt = assembly->options.custom_linker_opt.len
 		                             ? assembly->options.custom_linker_opt.data
 		                             : "";
 		const char *out_dir = assembly->options.out_dir.data;
 
-		tstring_setf(&buf,
-		             cmd,
-		             vc_vars_all,
-		             vc_arch,
-		             linker_exec,
-		             out_dir,
-		             assembly->name,
-		             out_dir,
-		             assembly->name,
-		             default_opt,
-		             custom_opt);
+		if (builder.options.no_vcvars) {
+			tstring_setf(&buf,
+			             cmd_no_vcvars,
+			             linker_exec,
+			             out_dir,
+			             assembly->name,
+			             out_dir,
+			             assembly->name,
+			             default_opt,
+			             custom_opt);
+		} else {
+			tstring_setf(&buf,
+			             cmd,
+			             vc_vars_all,
+			             vc_arch,
+			             linker_exec,
+			             out_dir,
+			             assembly->name,
+			             out_dir,
+			             assembly->name,
+			             default_opt,
+			             custom_opt);
+		}
 	}
 #else
         const char *linker_exec = conf_data_get_str(builder.conf, CONF_LINKER_EXEC_KEY);
@@ -121,14 +136,14 @@ native_bin_run(Assembly *assembly)
                                              ? assembly->options.custom_linker_opt.data
                                              : "";
 
-		const char *out_dir = assembly->options.out_dir.data;
+                const char *out_dir = assembly->options.out_dir.data;
 
                 tstring_setf(&buf,
                              cmd,
                              linker_exec,
-			     out_dir,
+                             out_dir,
                              assembly->name,
-			     out_dir,
+                             out_dir,
                              assembly->name,
                              default_opt,
                              custom_opt);

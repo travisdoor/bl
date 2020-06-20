@@ -118,7 +118,7 @@ back to caller (most likely it will take out_file as an parameter and return non
 on fail).
 */
 file_open :: fn (filename: string, modes: ...FileOpenMode) File {
-    mode := {:[4]u8: 0};
+    mode: [4]u8;
 
     if modes.len == 0 {
         mode[0] = 'r';
@@ -339,7 +339,7 @@ file_get_ext :: fn (filename: string) string
 */
 file_get_ext :: fn (filename: string) string {
     tmp := {:[]u8: filename.len, filename.ptr};
-    ext := {:string: 0};
+    ext: string;
 
     e := -1;
     loop i := 0; i < tmp.len; i += 1 {

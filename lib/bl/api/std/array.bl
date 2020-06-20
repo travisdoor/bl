@@ -1,0 +1,211 @@
+//************************************************************************************************
+// bl
+//
+// File:   _array.bl
+// Author: Martin Dorazil
+// Date:   12/5/20
+//
+// Copyright 2020 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//************************************************************************************************
+
+_Array :: struct #compiler {
+    len: s64;
+    ptr: *u8;
+    allocated: usize;
+}
+
+/*!
+# array_init
+## Declaration
+```c
+array_init :: fn (_arr: Any)
+```
+## Description
+  Sets dynamic array to default state.
+
+## Arguments
+  * `_arr` Array to be initialized. 
+*/
+array_init :: fn (_arr: Any) #inline #compiler {
+    arr := cast(*_Array) _arr.data;
+    arr.ptr = null;
+    arr.len = 0;
+    arr.allocated = 0;
+}
+
+/*!
+# array_terminate
+## Declaration
+```c
+array_terminate :: fn (_arr: Any)
+```
+## Description
+  Release memory allocated by dynamic array. This function is supposed to
+be called when dynamic array is no longer needed. Passed dynamic array is set to 
+default state also.
+
+## Arguments
+  * `_arr` Array to be terminated.
+*/
+array_terminate :: fn (_arr: Any) #inline #compiler {
+    arr := cast(*_Array) _arr.data;
+    free(arr.ptr);
+    arr.ptr = null;
+    arr.len = 0;
+    arr.allocated = 0;
+}
+
+/*!
+# array_push
+## Declaration
+```c
+array_push :: fn (_arr: Any, v: Any)
+```
+## Description
+  Append new value at the dynamic array end. New heap allocation is done
+here only in cases when there is not enough memory allocated to
+store all values.
+
+## Arguments
+  * `_arr` Array to be appedned. 
+  * `v` Value to be appended. 
+*/
+array_push :: fn (_arr: Any, v: Any) #compiler {
+    arr := cast(*_Array) _arr.data;
+    if v.data == null { panic("Invalid value (null)."); }
+
+    elem_size :: v.type_info.size_bytes;
+
+    arr.len += 1;
+    ensure_space(arr, elem_size, auto arr.len, false);
+
+    dest :: get_elem_ptr(arr, elem_size, arr.len - 1);
+    memcpy(dest, v.data, elem_size);
+};
+
+/*!
+# array_reserve
+## Declaration
+```c
+array_reserve :: fn (_arr: Any, n: s64)
+```
+## Description
+  Reserve heap memory for `n` elements.
+
+## Arguments
+  * `_arr` Array. 
+  * `n` Count of elemets for which should reserve space. 
+*/
+array_reserve :: fn (_arr: Any, n: s64) #compiler {
+    arr := cast(*_Array) _arr.data;
+    if n == 0 { return; }
+    elem_size :: get_elem_size(_arr.type_info);
+    ensure_space(arr, elem_size, auto n, true);
+};
+
+/*!
+# array_erase
+## Declaration
+```c
+array_erase :: fn (_arr: Any, i: s64)
+```
+## Description
+  Erase element on index `i`. Call to this function can cause reordering
+of an dynamic array. Allocated memory is kept even if we erase entire dynamic array. Function
+invoke panic in case of index overflow.
+
+## Arguments
+  * `_arr` Array. 
+  * `i` Index of erased element. 
+*/
+array_erase :: fn (_arr: Any, i: s64) #compiler {
+    arr := cast(*_Array) _arr.data;
+    if i >= arr.len { panic("Index overflow!"); }
+    if i == arr.len - 1 { 
+        arr.len -= 1; 
+        return;
+    }
+
+    elem_size :: get_elem_size(_arr.type_info);
+
+    memcpy(
+            get_elem_ptr(arr, elem_size, i), 
+            get_elem_ptr(arr, elem_size, arr.len - 1), 
+            elem_size
+    );
+
+    arr.len -= 1;
+};
+
+/*!
+# array_clear
+## Declaration
+```c
+array_clear :: fn (_arr: Any)
+```
+## Description
+  Erase all elements in dynamic array but keep allocated memory.
+
+## Arguments
+  * `_arr` Array to be cleared. 
+*/
+array_clear :: fn (_arr: Any) #inline #compiler {
+    arr := cast(*_Array) _arr.data;
+    arr.len = 0;
+};
+
+#private
+ALLOC_BLOCK_SIZE : usize : 32;
+
+get_elem_size :: fn (T: *TypeInfo) usize #inline {
+    a :: cast(*TypeInfoStruct) T;
+    elem_type :: a.members[1].base_type;
+    return (cast(*TypeInfoPtr) elem_type).pointee_type.size_bytes;
+}
+
+get_elem_ptr :: fn (arr: *_Array, elem_size: usize, i: s64) *u8 #inline {
+    if i >= arr.len {
+        panic("Element index out of range, index is % but array size is %.", i, arr.len);
+    }
+
+    return ptr_shift_bytes(arr.ptr, i * cast(s64) elem_size);
+};
+
+ensure_space :: fn (arr: *_Array, elem_size: usize, space: usize, exact: bool) {
+    if space == 0 { return; }
+    if arr.allocated >= space { return; }
+
+    if arr.allocated == 0 {
+        if !exact { space = ALLOC_BLOCK_SIZE; }
+    } else {
+        space *= 2;
+    }
+
+    tmp := arr.ptr;
+
+    arr.ptr = alloc(space * elem_size); 
+    if tmp != null {
+        memcpy(arr.ptr, tmp, arr.allocated * elem_size);
+        free(tmp);
+    }
+    
+    arr.allocated = space;
+};

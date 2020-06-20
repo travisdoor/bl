@@ -1,0 +1,141 @@
+/*!
+# os_thread_create
+## Declaration
+```c
+os_thread_create :: fn (entry: OSThreadEntryFn, args: ...) OSThread
+```
+## Description
+  Create new thread and execute entry function with passed set of arguments.
+
+!!! WARNING 
+    Thread must be released by `os_thread_join` call. 
+
+## Arguments
+  * `entry`
+    Pointer to function started in new thread. 
+
+## Result
+  New thread.
+
+## Example
+```c
+// Worker function called from new thread.
+worker :: fn (args: []Any) {
+    print("Thread started!\n");
+    os_sleep_ms(1000.0);
+}
+
+main :: fn () s32 {
+    // Create and execute thread without parameters.
+    t :: os_thread_create(&worker);
+    
+    // Wait for thread. 
+    os_thread_join(t);
+    print("Thread joined.\n");
+    
+    return 0;
+}
+```
+*/
+
+
+/*!
+# os_thread_join
+## Declaration
+```c
+os_thread_join :: fn (thread: OSThread)
+```
+## Description
+  Wait for thread to finish and release it's resources.
+
+## Arguments
+  * `thread`
+    Thread to be joined. 
+*/
+
+
+
+/*!
+# os_mutex_init 
+## Declaration
+```c
+os_mutex_init :: fn (mutex: *OSMutex)
+```
+## Description
+  Initialize mutex.
+
+!!! WARNING 
+    Mutex must be released by `os_mutex_terminate` call. 
+
+## Arguments
+  * `mutex`
+    Mutex to be initialized. 
+*/
+
+
+
+/*!
+# os_mutex_terminate 
+## Declaration
+```c
+os_mutex_terminate :: fn (mutex: *OSMutex)
+```
+## Description
+  Terminate mutex.
+
+## Arguments
+  * `mutex`
+    Mutex to be terminated. 
+*/
+
+
+
+/*!
+# os_mutex_lock 
+## Declaration
+```c
+os_mutex_lock :: fn (mutex: *OSMutex)
+```
+## Description
+  Lock mutex.
+
+## Arguments
+  * `mutex`
+    Mutex to be locked. 
+*/
+
+
+
+/*!
+# os_mutex_trylock 
+## Declaration
+```c
+os_mutex_trylock :: fn (mutex: *OSMutex) bool
+```
+## Description
+  Try to unlock mutex.
+
+## Arguments
+  * `mutex`
+    Mutex instance. 
+
+## Result
+  True when mutex was locked.
+*/
+
+
+
+/*!
+# os_mutex_unlock 
+## Declaration
+```c
+os_mutex_unlock :: fn (mutex: *OSMutex)
+```
+## Description
+  Unlock locked mutex.
+
+## Arguments
+  * `mutex`
+    Mutex instance. 
+*/
+

@@ -1,4 +1,5 @@
 #load "std/print.bl"
+#load "std/test.bl"
 
 #test "printing" {
     i : u64 = 18446744073709551615;
@@ -15,4 +16,54 @@
     print("b = %\n", false);
     print("ptr = %\n", ptr);
     print("s32 = %\n", s32);
-};
+}
+
+#test "formatting" {
+    str :: string_new_concatenate(fmt_real(10.12f, 2));     
+    defer string_delete(str);
+
+    test_str_eq(str, "10.12");
+}
+
+#test "print content simple" {
+    str :: string_new_concatenate("text", 10, true);     
+    defer string_delete(str);
+
+    test_str_eq(str, "text10true");
+}
+
+#test "print array" {
+    arr :: {:[3]s32: 1, 2, 3};
+    str :: string_new_concatenate(arr);     
+    defer string_delete(str);
+
+    test_str_eq(str, "[1, 2, 3]");
+}
+
+#test "print struct" {
+    Foo :: struct {
+        i: s32;
+        j: bool;
+    };
+
+    foo :: {:Foo: 666, true};
+    str :: string_new_concatenate(foo);     
+    defer string_delete(str);
+
+    test_str_eq(str, "Foo {i = 666, j = true}");
+}
+
+#test "complex type" {
+    Foo :: struct {
+        i: s32;
+        j: bool;
+        arr: [3]s32;
+    };
+
+    foo :: {:Foo: 666, true, {:[3]s32: 1, 2, 3}};
+    str :: string_new_concatenate(foo);     
+    defer string_delete(str);
+
+    print("%\n", str);
+    test_str_eq(str, "Foo {i = 666, j = true, arr = [1, 2, 3]}");
+}

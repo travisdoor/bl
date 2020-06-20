@@ -28,6 +28,8 @@
 
 #include "llvm_api.h"
 #include <cmath>
+
+_LLVM_SHUT_UP_BEGIN
 #include <llvm/ADT/StringSwitch.h>
 #include <llvm/Config/llvm-config.h>
 #include <llvm/IR/Attributes.h>
@@ -35,6 +37,7 @@
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Constants.h>
+_LLVM_SHUT_UP_END
 
 #define CAST(T) reinterpret_cast<T>
 
@@ -72,7 +75,7 @@ llvm_create_attribute_int(LLVMContextRef context_ref, LLVMAttributeKind kind, s3
 LLVMAttributeRef
 llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef v)
 {
-#if LLVM_VERSION_MAJOR >= 10
+#if LLVM_VERSION_MAJOR >= 9
 	return CAST(LLVMAttributeRef)(Attribute::get(*CAST(LLVMContext *)(context_ref),
 	                                             (Attribute::AttrKind)kind,
 	                                             CAST(Type *)(v))
@@ -111,7 +114,7 @@ llvm_get_intrinsic_decl(LLVMModuleRef mod_ref,
 }
 
 LLVMValueRef
-llvm_const_string_in_context(LLVMContextRef context_ref,
+llvm_const_string_in_context(LLVMContextRef UNUSED(context_ref),
                              LLVMTypeRef    t,
                              const char *   str,
                              bool           zero_terminate)

@@ -31,8 +31,6 @@
 #load "std/utils.bl"
 #load "windows_api.bl"
 
-// INCOMPLETE: time_now_ms
-
 OS_KIND :: OSKind.Windows;
 OS_NAME :: "Windows";
 
@@ -69,12 +67,48 @@ OS_PATH_MAX :: WIN32_MAX_PATH;
  */
 OSLibrary :: *u8;
 
-os_time_now_ms :: fn () f64 {
-    // INCOMPLETE
-    unreachable;
-    return 0.0;
-};
+// Threading
+OSThread :: WIN32_HANDLE;
+OSMutex :: WIN32_HANDLE;
+OSThreadEntryFn :: *fn (args: []Any);
 
+os_thread_create :: fn (entry: OSThreadEntryFn, args: ...) OSThread {
+    tmp: *_ThreadArgs = auto alloc(sizeof(_ThreadArgs));
+    tmp.entry = entry;
+    tmp.args = {:[]Any: args.len, args.ptr};
+
+    thread :: win32_CreateThread(null, null, &_thread_entry, auto tmp, 0, null);
+
+    return thread;
+}
+
+os_thread_join :: fn (thread: OSThread) {
+    win32_WaitForSingleObject(thread, WIN32_INFINITE);
+    win32_CloseHandle(thread);
+}
+
+os_mutex_init :: fn (mutex: *OSMutex) #inline {
+    (^mutex) = win32_CreateMutexA(null, 0, null);
+}
+
+os_mutex_terminate :: fn (mutex: *OSMutex) #inline {
+    win32_CloseHandle(^mutex);
+}
+
+os_mutex_lock :: fn (mutex: *OSMutex) #inline {
+    win32_WaitForSingleObject(^mutex, WIN32_INFINITE);
+}
+
+os_mutex_trylock :: fn (mutex: *OSMutex) bool #inline {
+    unreachable;
+    return false;
+}
+
+os_mutex_unlock :: fn (mutex: *OSMutex) #inline {
+    if win32_ReleaseMutex(^mutex) == 0 {
+        panic("Cannot unlock mutex!");
+    }
+}
 
 os_sleep_ms :: fn (ms: f64) {
     win32_Sleep(auto ms);
@@ -94,9 +128,9 @@ os_sleep_ms :: fn (ms: f64) {
  *   Absolute file path.
  */
 os_get_real_path :: fn (filename: string) string {
-    tmp :: {:[OS_PATH_MAX]u8: 0};
-    if win32_GetFullPathNameA(auto filename.ptr, auto tmp.len, tmp.ptr, null) > 0 {
-        result :: string_new_cstr(tmp.ptr);
+    buf : [OS_PATH_MAX]u8 #noinit;
+    if win32_GetFullPathNameA(auto filename.ptr, auto buf.len, buf.ptr, null) > 0 {
+        result :: string_new_cstr(buf.ptr);
         string_replace_all(result, '\\', '/');
         return result;
     }
@@ -105,7 +139,7 @@ os_get_real_path :: fn (filename: string) string {
 }
 
 os_get_exec_path :: fn () string {
-    buf : [OS_PATH_MAX]u8;
+    buf : [OS_PATH_MAX]u8 #noinit;
     if win32_GetModuleFileNameA(null, buf.ptr, auto buf.len) > 0 {
         result :: string_new_cstr(buf.ptr);
         string_replace_all(result, '\\', '/');
@@ -208,7 +242,7 @@ _os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
     (^out_buf).len = fc;
     if fc == 0 { return true; }
 
-    (^out_buf).ptr = auto mem_alloc(sizeof(_OSFileInfo) * auto fc);
+    (^out_buf).ptr = auto alloc(sizeof(_OSFileInfo) * auto fc);
 
     hFind = win32_FindFirstFile(auto tmp.ptr, &ffd);
     if WIN32_INVALID_HANDLE_VALUE == hFind { return false; }
@@ -252,12 +286,12 @@ __os_abort :: fn () #compiler {
 __os_start :: fn () #entry {
     args: []string;
     get_command_line_args(&args);
-    defer _mem_free_default(auto args.ptr);
 
     command_line_arguments.len = args.len;
     command_line_arguments.ptr = args.ptr;
 
     out :: cast(s32) main();
+    _mem_free_default(auto args.ptr);
     _exit(out);
 }
 
@@ -301,7 +335,7 @@ raise              :: fn (sig: s32) s32 #extern;
  * function.
  * Internal allocation to handle argument strings is done
  * in this method, so we must free memory used by return value
- * by mem_free(args.ptr) call.
+ * by free(args.ptr) call.
  */
 get_command_line_args :: fn (out_args: *[]string) #no_inline {
     wargs: []*u16;
@@ -335,4 +369,17 @@ get_command_line_args :: fn (out_args: *[]string) #no_inline {
         tmp_i += len;
         tmp[tmp_i-1] = '\0';
     }
+}
+
+// Threading
+_ThreadArgs :: struct {
+    entry: OSThreadEntryFn;
+    args: []Any; 
+}
+
+_thread_entry :: fn (_args: *u8) u32 {
+    tmp :: cast(*_ThreadArgs) _args;
+    defer free(auto tmp);
+    tmp.entry(tmp.args);
+    return 0;
 }

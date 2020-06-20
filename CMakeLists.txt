@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(bl VERSION 0.6.0)
+project(bl VERSION 0.7.0)
 
 # Must use GNUInstallDirs to install libraries into correct
 # locations on all platforms.
@@ -16,11 +16,23 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(DEFAULT_BUILD_TYPE "Release")
 set(CMAKE_C_FLAGS_DEBUG "-DBL_DEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-DBL_DEBUG")
-set(USE_SANITIZERS 1)
 
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
     set(CMAKE_BUILD_TYPE ${DEFAULT_BUILD_TYPE})
+endif()
+
+option(ASSERT_ENABLE "Turn on assert checks" OFF)
+if(ENABLE_ASSERT)
+	add_definitions(-DBL_ASSERT_ENABLE=1)
+else()
+	add_definitions(-DBL_ASSERT_ENABLE=0)
+endif()
+
+option(TRACY_ENABLE "Turn on Tracy profiler" OFF)
+if(TRACY_ENABLE)
+	add_definitions(-DTRACY_ENABLE)
+	#add_definitions(-DTRACY_NO_EXIT)
 endif()
 
 # setup output directories
@@ -94,7 +106,9 @@ set(SOURCE_FILES
         src/build_api.c
 	src/threading.cpp
 	src/llvm_api.cpp
-        src/llvm_di.cpp)
+        src/llvm_di.cpp
+	deps/tracy/TracyClient.cpp
+	)
 
 add_definitions(${LLVM_DEFINITIONS})
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
@@ -108,26 +122,20 @@ if (MSVC)
     )
 
     # C 
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /wd4996 /MD")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /wd4996 /MD /Oi")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd /W4 /WX /GS")
 
     # CXX 
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /wd4996 /MD")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /wd4996 /MD /Oi")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd /W4 /WX /GS")
 else()
     # C 
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -O0")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -Werror -O0")
 
     # CXX 
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG -fno-strict-aliasing -fno-exceptions -fno-rtti")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-strict-aliasing -fno-exceptions -fno-rtti -g -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -O0")
-
-    if (${USE_SANITIZERS})
-	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fsanitize=address -fno-omit-frame-pointer")
-	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_C_FLAGS_RELEASE} -fsanitize=address -fno-omit-frame-pointer")
-	set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address")
-    endif()
 endif()
 
 target_link_libraries(blc PUBLIC

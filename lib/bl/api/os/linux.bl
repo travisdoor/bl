@@ -27,8 +27,7 @@
 //************************************************************************************************
 
 #load "std/_builtin.bl"
-
-// INCOMPLETE: time_now_ms
+#load "std/string.bl"
 
 OS_KIND :: OSKind.Linux;
 OS_NAME :: "Linux";
@@ -66,10 +65,71 @@ c_ulonglong :: u64;
 c_void_ptr  :: *u8;
 c_size_t    :: u64;
 
-time_now_ms :: fn () f64 {
-    unreachable;
-    return 0.0;
-};
+// Threading
+OSThread :: _PosixThread;
+OSMutex :: _PosixMutex;
+OSThreadEntryFn :: *fn (args: []Any);
+
+os_thread_create :: fn (entry: OSThreadEntryFn, args: ...) OSThread {
+    t: OSThread #noinit;
+
+    tmp: *_ThreadArgs = auto alloc(sizeof(_ThreadArgs));
+    tmp.entry = entry;
+    tmp.args = {:[]Any: args.len, args.ptr};
+
+    status :: _posix_thread_create(&t, null, &_thread_entry, auto tmp);
+    if status != 0 {
+        panic("Cannot create thread!");
+    }
+
+    return t;
+}
+
+os_thread_join :: fn (thread: OSThread) {
+    status :: _posix_thread_join(thread, null);
+    if status != 0 {
+        panic("Cannot join thread!");
+    }
+}
+
+os_mutex_init :: fn (mutex: *OSMutex) #inline {
+    _posix_thread_mutex_init(mutex, null);
+    // INCOMPLETE: handle errors
+    // INCOMPLETE: handle errors
+    // INCOMPLETE: handle errors
+}
+
+os_mutex_terminate :: fn (mutex: *OSMutex) #inline {
+    _posix_thread_mutex_destroy(mutex);
+    // INCOMPLETE: handle errors
+    // INCOMPLETE: handle errors
+    // INCOMPLETE: handle errors
+}
+
+os_mutex_lock :: fn (mutex: *OSMutex) #inline {
+    _posix_thread_mutex_lock(mutex);
+    // INCOMPLETE: handle errors
+    // INCOMPLETE: handle errors
+    // INCOMPLETE: handle errors
+}
+
+os_mutex_trylock :: fn (mutex: *OSMutex) bool #inline {
+    if _posix_thread_mutex_trylock(mutex) != 0 {
+        return false;
+    }
+
+    // INCOMPLETE: handle errors
+    // INCOMPLETE: handle errors
+    // INCOMPLETE: handle errors
+    return true;
+}
+
+os_mutex_unlock :: fn (mutex: *OSMutex) #inline {
+    _posix_thread_mutex_unlock(mutex);
+    // INCOMPLETE: handle errors
+    // INCOMPLETE: handle errors
+    // INCOMPLETE: handle errors
+}
 
 os_sleep_ms :: fn (ms: f64) {
     _posix_usleep(auto ms * 1000.0);
@@ -89,18 +149,24 @@ os_sleep_ms :: fn (ms: f64) {
  *   Absolute file path.
  */
 os_get_real_path :: fn (filename: string) string {
-    tmp :: {:[OS_PATH_MAX]u8: 0};
+    tmp: [OS_PATH_MAX]u8 #noinit;
     if _posix_realpath(filename.ptr, tmp.ptr) == null {
         return string_copy(filename);
     }
 
-    result :: string_new_cstr(tmp.ptr);
-    return result;
+    return string_new_cstr(tmp.ptr);
 }
 
 os_get_exec_path :: fn () string {
-    unreachable;
-    return string_new(); 
+    buf : [OS_PATH_MAX]u8 #noinit;
+    buf_len := cast(c_size_t) buf.len;
+    link :: "/proc/self/exe";
+
+    if _posix_readlink(auto link.ptr, auto buf.ptr, buf_len) == -1 {
+        return string_new(); 
+    }
+
+    return string_new_cstr(buf.ptr);
 }
 
 /*
@@ -159,6 +225,10 @@ os_dlclose :: fn (lib: OSLibrary) #inline {
     _posix_dlclose(lib);
 }
 
+os_execute :: fn (command: string) s32 {
+    return _posix_system(auto command.ptr);
+}
+
 // CLEANUP: This must be in gl.bl file not here, but we keep it
 // until static 'if' will be supported by compiler.
 _os_gl_get_proc :: fn (proc_name: string) *u8 #inline {
@@ -179,12 +249,9 @@ _OSFileInfo :: struct {
 _OSFileList :: []_OSFileInfo;
 
 _os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
-    // INCOMPLETE: dirent struct may have invalid layout!
-    unreachable;
-
-    if dirpath.len > DARWIN_MAXPATHLEN { panic("Path too long!"); }
+    if dirpath.len > OS_PATH_MAX { panic("Path too long!"); }
     dir := _posix_opendir(dirpath.ptr);
-    if dir == null { return false; }
+    if !dir { return false; }
     defer _posix_closedir(dir);
 
     fc := 0;
@@ -194,7 +261,7 @@ _os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
     (^out_buf).len = fc;
     if fc == 0 { return true; }
 
-    (^out_buf).ptr = auto mem_alloc(sizeof(_OSFileInfo) * auto fc);
+    (^out_buf).ptr = auto alloc(sizeof(_OSFileInfo) * auto fc);
 
     i := 0;
     loop {
@@ -236,20 +303,20 @@ __MAX_ARGS_WITHOUT_ALLOC :: 8;
 
 __os_start :: fn (argc: s64, argv: **u8, env: **u8) s32 #entry {
     args :: {:[]*u8: argc, argv};
-    tmp: [__MAX_ARGS_WITHOUT_ALLOC]string;
+    tmp: [__MAX_ARGS_WITHOUT_ALLOC]string #noinit;
     is_allocated :: args.len > tmp.len;
 
     command_line_arguments.len = args.len;
 
     if is_allocated {
         command_line_arguments.ptr = auto _mem_alloc_default(sizeof(string) * auto args.len);
-        if command_line_arguments.ptr == null { __os_abort(); }
+        if !command_line_arguments.ptr { __os_abort(); }
     } else {
         command_line_arguments.ptr = tmp.ptr;
     }
 
     loop i := 0; i < args.len; i += 1 {
-        command_line_arguments[i] = {:string: auto strlen(args[i]), args[i]};
+        command_line_arguments[i] = {:string: auto c_strlen(auto args[i]), args[i]};
     }
 
     out :: cast(s32) main();
@@ -286,10 +353,11 @@ DT_SOCK    :: 12;
 DT_WHT     :: 14;
 
 dirent :: struct {
-	d_ino: c_long; 
-	d_reclen: c_ushort;
-	d_type: c_uchar; 
-	d_name: [OS_PATH_MAX]c_char;
+    d_ino: c_ulong; 
+    d_off: c_long; 
+    d_reclen: c_ushort;
+    d_type: c_uchar; 
+    d_name: [256]c_char;
 }
 
 _posix_raise     :: fn (sig: s32) s32 #extern "raise";
@@ -303,3 +371,38 @@ _posix_dlsym     :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
 _posix_opendir   :: fn (name: *u8) *u8 #extern "opendir";
 _posix_closedir  :: fn (dirp: *u8) s32 #extern "closedir";
 _posix_readdir   :: fn (dirp: *u8) *dirent #extern "readdir";
+_posix_rewinddir :: fn (dirp: *u8) #extern "rewinddir";
+_posix_system    :: fn (command: *c_char) c_int #extern "system";
+_posix_readlink  :: fn (pathname: *c_char, buf: *c_char, bufsiz: c_size_t) c_int #extern "readlink";
+
+// Threading
+_PosixThread :: c_void_ptr;
+_PosixThreadFn :: *fn (args: c_void_ptr);
+
+_ThreadArgs :: struct {
+    entry: OSThreadEntryFn;
+    args: []Any; 
+}
+
+_thread_entry :: fn (_args: *u8) {
+    tmp :: cast(*_ThreadArgs) _args;
+    defer free(auto tmp);
+    tmp.entry(tmp.args);
+
+    _posix_thread_exit(null);
+}
+
+// This is platform depend!!!
+__SIZEOF_PTHREAD_MUTEX_T :: 40;
+_PosixMutex :: struct { 
+    __size: [__SIZEOF_PTHREAD_MUTEX_T]c_char;
+}
+
+_posix_thread_create :: fn (thread: *_PosixThread, attr: c_void_ptr, start_routine: _PosixThreadFn, args: c_void_ptr) c_int #extern "pthread_create";
+_posix_thread_join :: fn (thread: _PosixThread, retval: *c_void_ptr) c_int #extern "pthread_join";
+_posix_thread_exit :: fn (retval: c_void_ptr) #extern "pthread_exit";
+_posix_thread_mutex_lock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_lock";
+_posix_thread_mutex_trylock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_trylock";
+_posix_thread_mutex_unlock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_unlock"; 
+_posix_thread_mutex_init :: fn (mutex: *_PosixMutex, attr: c_void_ptr) c_int #extern "pthread_mutex_init";
+_posix_thread_mutex_destroy :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_destroy";

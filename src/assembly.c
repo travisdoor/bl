@@ -29,7 +29,6 @@
 #include "assembly.h"
 #include "blmemory.h"
 #include "builder.h"
-#include "llvm_di.h"
 #include "unit.h"
 #include <string.h>
 
@@ -62,7 +61,7 @@ small_array_dtor(TSmallArrayAny *arr)
 }
 
 static void
-init_dl(Assembly *assembly)
+dl_init(Assembly *assembly)
 {
 	DCCallVM *vm = dcNewCallVM(4096);
 	dcMode(vm, DC_CALL_C_DEFAULT);
@@ -70,40 +69,7 @@ init_dl(Assembly *assembly)
 }
 
 static void
-init_DI(Assembly *assembly)
-{
-	const char *  producer    = "blc version " BL_VERSION;
-	Scope *       gscope      = assembly->gscope;
-	LLVMModuleRef llvm_module = assembly->llvm.module;
-
-	/* setup module flags for debug */
-	llvm_add_module_flag_int(llvm_module,
-	                         LLVMModuleFlagBehaviorWarning,
-	                         "Debug Info Version",
-	                         llvm_get_dwarf_version());
-
-	if (assembly->options.build_di_kind == BUILD_DI_DWARF) {
-	} else if (assembly->options.build_di_kind == BUILD_DI_CODEVIEW) {
-		llvm_add_module_flag_int(llvm_module, LLVMModuleFlagBehaviorWarning, "CodeView", 1);
-	}
-
-	/* create DI builder */
-	assembly->llvm.di_builder = llvm_di_new_di_builder(llvm_module);
-
-	/* create dummy file used as DI global scope */
-	// gscope->llvm_di_meta = llvm_di_create_file(assembly->llvm.di_builder, assembly->name,
-	// ".");
-	gscope->llvm_di_meta = NULL;
-	LLVMMetadataRef llvm_dummy_file_meta =
-	    llvm_di_create_file(assembly->llvm.di_builder, assembly->name, ".");
-
-	/* create main compile unit */
-	assembly->llvm.di_meta =
-	    llvm_di_create_compile_unit(assembly->llvm.di_builder, llvm_dummy_file_meta, producer);
-}
-
-static void
-init_llvm(Assembly *assembly)
+llvm_init(Assembly *assembly)
 {
 	if (assembly->llvm.module) BL_ABORT("Attempt to override assembly options.");
 
@@ -146,7 +112,7 @@ init_llvm(Assembly *assembly)
 }
 
 static void
-init_mir(Assembly *assembly)
+mir_init(Assembly *assembly)
 {
 	mir_arenas_init(&assembly->arenas.mir);
 	tarray_init(&assembly->MIR.global_instrs, sizeof(MirInstr *));
@@ -157,19 +123,21 @@ static void
 native_lib_terminate(NativeLib *lib)
 {
 	if (lib->handle) dlFreeLibrary(lib->handle);
+	if (lib->is_internal) return;
 	free(lib->filename);
 	free(lib->filepath);
 	free(lib->dir);
+	free(lib->user_name);
 }
 
 static void
-terminate_dl(Assembly *assembly)
+dl_terminate(Assembly *assembly)
 {
 	dcFree(assembly->dc_vm);
 }
 
 static void
-terminate_llvm(Assembly *assembly)
+llvm_terminate(Assembly *assembly)
 {
 	LLVMDisposeModule(assembly->llvm.module);
 	LLVMDisposeTargetMachine(assembly->llvm.TM);
@@ -179,13 +147,7 @@ terminate_llvm(Assembly *assembly)
 }
 
 static void
-terminate_DI(Assembly *assembly)
-{
-	llvm_di_delete_di_builder(assembly->llvm.di_builder);
-}
-
-static void
-terminate_mir(Assembly *assembly)
+mir_terminate(Assembly *assembly)
 {
 	thtbl_terminate(&assembly->MIR.RTTI_table);
 	tarray_terminate(&assembly->MIR.global_instrs);
@@ -239,8 +201,8 @@ assembly_new(const char *name)
 	assembly->gscope =
 	    scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT, NULL);
 
-	init_dl(assembly);
-	init_mir(assembly);
+	dl_init(assembly);
+	mir_init(assembly);
 
 	return assembly;
 }
@@ -255,8 +217,6 @@ assembly_delete(Assembly *assembly)
 	{
 		unit_delete(unit);
 	}
-
-	terminate_DI(assembly);
 
 	NativeLib *lib;
 	for (usize i = 0; i < assembly->options.libs.size; ++i) {
@@ -281,17 +241,16 @@ assembly_delete(Assembly *assembly)
 
 	tarray_terminate(&assembly->units);
 	thtbl_terminate(&assembly->unit_cache);
-	terminate_dl(assembly);
-	terminate_mir(assembly);
-	terminate_llvm(assembly);
+	dl_terminate(assembly);
+	mir_terminate(assembly);
+	llvm_terminate(assembly);
 	bl_free(assembly);
 }
 
 void
 assembly_apply_options(Assembly *assembly)
 {
-	init_llvm(assembly);
-	if (assembly->options.build_mode == BUILD_MODE_DEBUG) init_DI(assembly);
+	llvm_init(assembly);
 }
 
 void

@@ -22,6 +22,15 @@ mkdir -p ${WDIR}/docs/API/std
 mv *.md ${WDIR}/docs/API/std
 cd ${WDIR}
 
+# OS
+cd lib/bl/api/os
+echo
+echo Process $(pwd)
+bdg docs.txt
+mkdir -p ${WDIR}/docs/API/os
+mv *.md ${WDIR}/docs/API/os
+cd ${WDIR}
+
 # Examples
 cd examples/new
 echo
@@ -36,6 +45,7 @@ do
 	echo '```c' >> $OUT_FILE
   	cat $f >> $OUT_FILE
 	echo '```' >> $OUT_FILE
+	cat $WDIR/_disqus.html >> $OUT_FILE
 done
 
 mkdir -p ${WDIR}/docs/Examples

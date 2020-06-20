@@ -28,11 +28,12 @@
 
 #include "common.h"
 #include "assembly.h"
+#include "builder.h"
 #include <time.h>
 
 #ifndef BL_COMPILER_MSVC
-#include <sys/stat.h>
 #include "unistd.h"
+#include <sys/stat.h>
 #endif
 
 #ifdef BL_PLATFORM_MACOS
@@ -72,8 +73,9 @@ get_current_exec_path(char *buf, usize buf_size)
 	return readlink("/proc/self/exe", buf, buf_size) != -1;
 #elif defined(BL_PLATFORM_MACOS)
 	return _NSGetExecutablePath(buf, (u32 *)&buf_size) != -1;
-#endif
+#else
 	return false;
+#endif
 }
 
 bool
@@ -156,7 +158,7 @@ bool
 create_dir_tree(const char *dirpath)
 {
 	char tmp[PATH_MAX] = {0};
-	s32 prev_i = 0;
+	s32  prev_i        = 0;
 
 	for (s32 i = 0; dirpath[i]; ++i) {
 		if (dirpath[i] == PATH_SEPARATORC) {
@@ -183,7 +185,7 @@ void
 date_time(char *buf, s32 len, const char *format)
 {
 	BL_ASSERT(buf && len);
-	time_t timer;
+	time_t     timer;
 	struct tm *tm_info;
 
 	time(&timer);
@@ -209,11 +211,11 @@ align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment)
 
 	const usize mask = alignment - 1;
 	BL_ASSERT((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
-	const uintptr_t i_unaligned = (uintptr_t)(*p);
+	const uintptr_t i_unaligned  = (uintptr_t)(*p);
 	const uintptr_t misalignment = i_unaligned & mask;
 
 	adj = alignment - misalignment;
-	*p = (void *)(i_unaligned + adj);
+	*p  = (void *)(i_unaligned + adj);
 	if (adjustment) *adjustment = adj;
 }
 
@@ -221,8 +223,8 @@ void
 print_bits(s32 const size, void const *const ptr)
 {
 	unsigned char *b = (unsigned char *)ptr;
-	unsigned char byte;
-	s32 i, j;
+	unsigned char  byte;
+	s32            i, j;
 
 	for (i = size - 1; i >= 0; i--) {
 		for (j = 7; j >= 0; j--) {
@@ -252,7 +254,7 @@ get_dir_from_filepath(char *buf, const usize l, const char *filepath)
 	char *ptr = strrchr(filepath, PATH_SEPARATORC);
 	if (!ptr) return false;
 	if (filepath == ptr) {
-		strncpy(buf, filepath, strlen(filepath));
+		strncpy(buf, filepath, l);
 		return true;
 	}
 
@@ -270,7 +272,7 @@ get_filename_from_filepath(char *buf, const usize l, const char *filepath)
 
 	char *ptr = strrchr(filepath, PATH_SEPARATORC);
 	if (!ptr || filepath == ptr) {
-		strncpy(buf, filepath, strlen(filepath));
+		strncpy(buf, filepath, l);
 		return true;
 	}
 
@@ -301,7 +303,7 @@ TArray *
 create_arr(Assembly *assembly, usize size)
 {
 	TArray **tmp = arena_alloc(&assembly->arenas.array);
-	*tmp = tarray_new(size);
+	*tmp         = tarray_new(size);
 	return *tmp;
 }
 
@@ -329,3 +331,75 @@ next_pow_2(u32 n)
 
 	return p;
 }
+
+void
+color_print(FILE *stream, s32 color, const char *format, ...)
+{
+	// HACK: Is this reference really needed????
+	// HACK: Is this reference really needed????
+	// HACK: Is this reference really needed????
+	if (builder.options.no_color) color = BL_NO_COLOR;
+	va_list args;
+	va_start(args, format);
+
+#ifdef BL_PLATFORM_WIN
+	s32 c;
+	switch (color) {
+	case BL_YELLOW:
+		c = (14 % 0x0F);
+		break;
+	case BL_RED:
+		c = FOREGROUND_RED;
+		break;
+	case BL_BLUE:
+		c = FOREGROUND_BLUE;
+		break;
+	case BL_GREEN:
+		c = FOREGROUND_GREEN;
+		break;
+
+	default:
+		c = 0;
+	}
+
+	if (color != BL_NO_COLOR) {
+		HANDLE handle = stream == stderr ? GetStdHandle(STD_ERROR_HANDLE)
+		                                 : GetStdHandle(STD_OUTPUT_HANDLE);
+		CONSOLE_SCREEN_BUFFER_INFO console_info;
+		GetConsoleScreenBufferInfo(handle, &console_info);
+		WORD saved_attributes = console_info.wAttributes;
+
+		SetConsoleTextAttribute(handle, c);
+		vfprintf(stream, format, args);
+		SetConsoleTextAttribute(handle, saved_attributes);
+	} else {
+		vfprintf(stream, format, args);
+	}
+	fprintf(stream, "\n");
+#else
+	char *c;
+	switch (color) {
+	case BL_YELLOW:
+		c = "\x1b[33m";
+		break;
+	case BL_RED:
+		c = "\x1b[31m";
+		break;
+	case BL_BLUE:
+		c = "\x1b[34m";
+		break;
+	case BL_GREEN:
+		c = "\x1b[32m";
+		break;
+
+	default:
+		c = "\x1b[0m";
+	}
+
+	fprintf(stream, "%s", c);
+	vfprintf(stream, format, args);
+	fprintf(stream, "\x1b[0m\n");
+#endif
+	va_end(args);
+}
+

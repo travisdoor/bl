@@ -34,7 +34,7 @@
 #define MAX_STR_BUF 256
 #define int_to_void_ptr(i) (void *)((intptr_t)(i))
 
-static inline void
+static INLINE void
 print_address(Ast *node, FILE *stream)
 {
 #if BL_DEBUG
@@ -49,7 +49,7 @@ print_address(Ast *node, FILE *stream)
 
 #define print_head(_node, _pad, _stream) _print_head((Ast *)(_node), (_pad), (_stream))
 
-static inline void
+static INLINE void
 _print_head(Ast *node, s32 pad, FILE *stream)
 {
 	if (node->location)
@@ -70,7 +70,7 @@ _print_head(Ast *node, s32 pad, FILE *stream)
 	print_address(node, stream);
 }
 
-static inline void
+static INLINE void
 print_flags(s32 flags, FILE *stream)
 {
 	if (!flags) return;

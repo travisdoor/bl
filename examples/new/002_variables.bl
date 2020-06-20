@@ -13,11 +13,20 @@
    everywhere.
 
    There is one limitation for global variables, they must be initialized
-   to some value everytime and that value must be known in compile time.
-   You cannot use for example output of some function to initialize global
-   variable, because compiler have no idea what the return value of this
-   function will be.
+   to some value known in compile time.
+
 */
+
+// Global variable is visible in whole source. This variable is initialized
+// by constant literal '10' which is known in compile time.
+MyGlobal : s32 = 10;
+
+// Global immutable variable
+CannotChangeThis : f32 : 10.f;
+
+// Global without initialization will be automatically set to it's default
+// value, in this case it's zero.
+DefaultValueGlobal: s32; 
 
 main :: fn () s32 {
     // Local variables are declared in local scope of main function or
@@ -32,8 +41,9 @@ main :: fn () s32 {
     print("number is %\n", number);
 
 
-    // Variable without initialization will contain undefined value and
-    // it should be set to some value before use.
+    // Variable without initialization will be automatically set to default
+    // value. In this case 'other_number' will be zero. This initialization
+    // can be disabled by #noinit flag 'other_number: u8 #noinit;'.
     other_number: u8;
     other_number = 16;
 

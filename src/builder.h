@@ -60,6 +60,7 @@ typedef struct BuilderOptions {
 	bool        reg_split;
 	bool        use_pipeline;
 	bool        no_color;
+	bool        no_vcvars;
 } BuilderOptions;
 
 typedef struct Builder {

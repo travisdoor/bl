@@ -1,11 +1,104 @@
 #load "std/print.bl"
 
-#test "typeinfo - fundamental" {
+#test "typeinfo - s8" {
+    info := cast(*TypeInfoInt) typeinfo(s8);
+    assert(info.base.kind == TypeKind.Int);
+    assert(info.base.size_bytes == sizeof(s8));
+    assert(info.bit_count == auto sizeof(s8) * 8);
+    assert(info.is_signed);
+}
+
+#test "typeinfo - s16" {
+    info := cast(*TypeInfoInt) typeinfo(s16);
+    assert(info.base.kind == TypeKind.Int);
+    assert(info.base.size_bytes == sizeof(s16));
+    assert(info.bit_count == auto sizeof(s16) * 8);
+    assert(info.is_signed);
+}
+
+#test "typeinfo - s32" {
     info := cast(*TypeInfoInt) typeinfo(s32);
     assert(info.base.kind == TypeKind.Int);
     assert(info.base.size_bytes == sizeof(s32));
     assert(info.bit_count == auto sizeof(s32) * 8);
     assert(info.is_signed);
+}
+
+#test "typeinfo - s64" {
+    info := cast(*TypeInfoInt) typeinfo(s64);
+    assert(info.base.kind == TypeKind.Int);
+    assert(info.base.size_bytes == sizeof(s64));
+    assert(info.bit_count == auto sizeof(s64) * 8);
+    assert(info.is_signed);
+}
+
+#test "typeinfo - u8" {
+    info := cast(*TypeInfoInt) typeinfo(u8);
+    assert(info.base.kind == TypeKind.Int);
+    assert(info.base.size_bytes == sizeof(u8));
+    assert(info.bit_count == auto sizeof(u8) * 8);
+    assert(!info.is_signed);
+}
+
+#test "typeinfo - u16" {
+    info := cast(*TypeInfoInt) typeinfo(u16);
+    assert(info.base.kind == TypeKind.Int);
+    assert(info.base.size_bytes == sizeof(u16));
+    assert(info.bit_count == auto sizeof(u16) * 8);
+    assert(!info.is_signed);
+}
+
+#test "typeinfo - u32" {
+    info := cast(*TypeInfoInt) typeinfo(u32);
+    assert(info.base.kind == TypeKind.Int);
+    assert(info.base.size_bytes == sizeof(u32));
+    assert(info.bit_count == auto sizeof(u32) * 8);
+    assert(!info.is_signed);
+}
+
+#test "typeinfo - u64" {
+    info := cast(*TypeInfoInt) typeinfo(u64);
+    assert(info.base.kind == TypeKind.Int);
+    assert(info.base.size_bytes == sizeof(u64));
+    assert(info.bit_count == auto sizeof(u64) * 8);
+    assert(!info.is_signed);
+}
+
+#test "typeinfo - f32" {
+    info := cast(*TypeInfoReal) typeinfo(f32);
+    assert(info.base.kind == TypeKind.Real);
+    assert(info.base.size_bytes == sizeof(f32));
+    assert(info.bit_count == auto sizeof(f32) * 8);
+};
+
+#test "typeinfo - f64" {
+    info := cast(*TypeInfoReal) typeinfo(f64);
+    assert(info.base.kind == TypeKind.Real);
+    assert(info.base.size_bytes == sizeof(f64));
+    assert(info.bit_count == auto sizeof(f64) * 8);
+};
+
+#test "typeinfo - fn" {
+    T :: fn (i: s32, j: bool) s32 { return 0; };
+    info := cast(*TypeInfoFn) typeinfo(T);
+
+    assert(info.base.kind == TypeKind.Fn);
+    assert(info.args.len == 2);
+    assert(!info.is_vargs);
+    test_str_eq(info.name, "T");
+    assert(info.ret_type == typeinfo(s32));
+
+    { // arg1
+        ai :: &info.args[0];
+        test_str_eq(ai.name, "i");
+        assert(ai.base_type == typeinfo(s32));
+    }
+
+    { // arg2
+        ai :: &info.args[1];
+        test_str_eq(ai.name, "j");
+        assert(ai.base_type == typeinfo(bool));
+    }
 };
 
 #test "typeinfo - ptr" {
@@ -13,7 +106,7 @@
     info := cast(*TypeInfoPtr) typeinfo(T);
 
     assert(info.base.kind == TypeKind.Ptr);
-    assert(info.pointee_type != null);
+    assert(info.pointee_type == typeinfo(s32));
 };
 
 #test "typeinfo - array" {
@@ -21,8 +114,9 @@
     info := cast(*TypeInfoArray) typeinfo(T);
 
     assert(info.base.kind == TypeKind.Array);
+    test_str_eq(info.name, "T");
     assert(info.base.size_bytes == sizeof(T));
-    assert(info.elem_type != null);
+    assert(info.elem_type == typeinfo(s32));
     assert(info.len == 10);
 };
 
@@ -50,11 +144,3 @@
     assert(info.members[2].index == 2);
 };
 
-#test "typeinfo - fn" {
-    T :: fn (i: s32, j: bool) s32 { return 0; };
-    info := cast(*TypeInfoFn) typeinfo(T);
-
-    assert(info.base.kind == TypeKind.Fn);
-    assert(info.args.len == 2);
-    assert(info.ret_type != null);
-};

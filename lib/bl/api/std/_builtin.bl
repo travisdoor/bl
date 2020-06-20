@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   core.bl
+// File:   _builtin.bl
 // Author: Martin Dorazil
 // Date:   2/11/19
 //
@@ -26,8 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#load "c.bl"
-#load "memory.bl"
+#load "_c.bl"
+#load "_memory.bl"
 
 /*!
 # OSKind
@@ -256,13 +256,19 @@ TypeInfoStruct :: struct #base TypeInfo #compiler {
   * `name` Structure type name.
   * `members` Slice of structure member infos.
   * `is_slice` True when structure is slice.
-  * `is_union` True when structure is union type.
+  * `is_union` True when structure is union.
+  * `is_dynamic_array` True when structure is dynamic array.
 */
 TypeInfoStruct :: struct #base TypeInfo #compiler {
     name: string; 
     members: []TypeInfoStructMember; 
     is_slice: bool;
     is_union: bool;
+    is_dynamic_array: bool;
+
+    // CLEANUP: slice cannot be union, better way will be create separate type
+    // kind for struct, slice and union, dynamic array could act like regular
+    // array in type info.
 };
 
 /*!
@@ -484,4 +490,4 @@ command_line_arguments := {:[]string: 0}
 ## Description
   Contains all arguments passed from command line. First argument is executable name.
 */
-command_line_arguments := {:[]string: 0};
+command_line_arguments: []string;

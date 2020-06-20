@@ -46,8 +46,6 @@ token_is_unary(Token *token)
 	default:
 		return false;
 	}
-
-	return false;
 }
 
 TokenPrecedence

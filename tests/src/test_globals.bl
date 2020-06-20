@@ -1,16 +1,94 @@
 #load "std/debug.bl"
 
 #private
-GlobalInt1     := 10;
-GlobalInt2     := 10 + 10; // 20
-GlobalConstInt :: 10;
-GlobalType     :: s32;
+Foo :: struct {
+    i: s32;
+    j: s32;
+}
 
-#test "globals" {
-  assert(GlobalInt1 == 10);
-  assert(GlobalInt2 == 20);
-  assert(GlobalConstInt == 10);
+Bar :: enum {
+    A :: 1;
+    B;
+    C;
+}
 
-  foo : GlobalType = 10;
-  assert(foo == 10);
+Un :: union {
+    i: s32;
+    j: s32;
+}
+
+G1 := 10;
+G2 := 10 + 10; // 20
+G3 :: 10;
+G4 :: s32;
+G5 :: Bar.A;
+
+#test "globals eplicit initialize" {
+    assert(G1 == 10);
+    assert(G2 == 20);
+    assert(G3 == 10);
+
+    foo : G4 = 10;
+    assert(foo == 10);
+
+    assert(G5 == Bar.A);
 };
+
+// Let's try some uninitialized globals
+UG1: s8;
+UG2: s16;
+UG3: s32;
+UG4: s64;
+UG5: u8;
+UG6: u16;
+UG7: u32;
+UG8: u64;
+UG9: usize;
+UG10: bool;
+UG11: string;
+UG12: Foo;
+UG13: []s32;
+UG14: [2]s32;
+UG15: string;
+UG16: Bar;
+UG17: Un;
+
+#test "fundamental type default init" {
+    assert(UG1 == 0);
+    assert(UG2 == 0);
+    assert(UG3 == 0);
+    assert(UG4 == 0);
+    assert(UG5 == 0);
+    assert(UG6 == 0);
+    assert(UG7 == 0);
+    assert(UG8 == 0);
+    assert(UG9 == 0);
+    assert(UG10 == false);
+    assert(UG11.len == 0);
+    assert(UG11.ptr == null);
+    assert(UG15.len == 0);
+    assert(UG15.ptr == null);
+}
+
+#test "struct type default init" {
+    assert(UG12.i == 0);
+    assert(UG12.j == 0);
+}
+
+#test "array type default init" {
+    assert(UG14[0] == 0);
+    assert(UG14[1] == 0);
+}
+
+#test "slice type default init" {
+    assert(UG13.len == 0);
+    assert(UG13.ptr == null);
+}
+
+#test "union type default init" {
+    assert(UG17.i == 0);
+}
+
+#test "enum type default init" {
+    assert(UG16 == Bar.A);
+}
