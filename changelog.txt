@@ -7,6 +7,7 @@ Add builtin dynamic array.
 Add slice_init and slice_terminate builtins.
 Add -no-vcvars to disable VS environemnt injection.
 Add implicit cast from dynamic array to slice.
+DI generation reimplemented.
 
 0.6.0 - BETA
 ---------------------------------------------------------------------------------------
