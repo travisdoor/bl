@@ -1,0 +1,32 @@
+name: MSVC
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ develop ]
+
+jobs:
+  build:
+
+    runs-on: windows-2019
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: microsoft/setup-msbuild@v1.0.0
+    - name: Clone LLVM
+      run: |
+        git clone --branch release/10.x --config core.autocrlf=false https://github.com/llvm/llvm-project.git     
+        cd llvm-project
+        mkdir build
+        cd build
+        cmake ../llvm -G "Visual Studio 16 2019" -Thost=x64
+    - name: Compile LLVM
+      run: cmake --build . --config Release --target Install
+    - name: Compile BL
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G "Visual Studio 16 2019" -Thost=x64
+        cmake --build . --config Release
+

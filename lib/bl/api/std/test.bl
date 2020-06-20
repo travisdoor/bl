@@ -29,7 +29,7 @@
 #load "std/debug.bl"
 #load "std/string.bl"
 
-test_str_eq :: fn (expected: string, got: string) {
+test_str_eq :: fn (got: string, expected: string) {
     if string_compare(expected, got) { return; }
 
     eprint("\nExpected '%' got '%'.\n", expected, got);

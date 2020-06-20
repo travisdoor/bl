@@ -32,8 +32,8 @@
 #include "threading.h"
 
 #define MAX_ALIGNMENT 8
-#define VERBOSE_EXEC true
-#define CHCK_STACK (defined(BL_DEBUG) || BL_ENABLE_ASSERT)
+#define VERBOSE_EXEC false
+#define CHCK_STACK (BL_DEBUG || BL_ASSERT_ENABLE)
 #define PTR_SIZE sizeof(void *) /* HACK: can cause problems with different build targets. */
 
 // Debug helpers
@@ -2108,13 +2108,18 @@ interp_instr_store(VM *vm, MirInstrStore *store)
 	/* loads destination (in case it is not direct reference to declaration) and
 	 * source from stack
 	 */
-	MirType *src_type = store->src->value.type;
-	BL_ASSERT(src_type);
 
 	VMStackPtr dest_ptr = fetch_value(vm, &store->dest->value);
 
-        // TODO: handle compounds here, when they are not naked!!!
-	VMStackPtr src_ptr  = fetch_value(vm, &store->src->value);
+	if (store->src->kind == MIR_INSTR_COMPOUND) {
+		dest_ptr = VM_STACK_PTR_DEREF(dest_ptr);
+		interp_instr_compound(vm, dest_ptr, (MirInstrCompound *)store->src);
+		return;
+	}
+
+	MirType *src_type = store->src->value.type;
+	BL_ASSERT(src_type);
+	VMStackPtr const src_ptr = fetch_value(vm, &store->src->value);
 
 	dest_ptr = VM_STACK_PTR_DEREF(dest_ptr);
 

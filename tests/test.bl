@@ -2,7 +2,8 @@
 #load "std/string.bl"
 
 main :: fn () s32 {
-    f :: fmt_real(10.3f, 2);
+    f := fmt_real(10.3f, 2);
+    print("%\n", f);
     return 0;
 } 
 

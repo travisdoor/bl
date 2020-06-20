@@ -63,7 +63,7 @@ print_trace(void);
 void *
 _assert_invalid_expr(const char *expr, const char *file, s32 line);
 
-#if BL_ENABLE_ASSERT || defined(BL_DEBUG)
+#if BL_ASSERT_ENABLE || BL_DEBUG
 #define BL_ASSERT(e)                                                                               \
 	if (!(e)) {                                                                                \
 		_log(LOG_ASSERT, __FILENAME__, __LINE__, #e);                                      \

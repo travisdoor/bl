@@ -184,7 +184,7 @@ u32
 next_pow_2(u32 n);
 
 void
-color_print(FILE *stream, s32 color, const char *text);
+color_print(FILE *stream, s32 color, const char *format, ...);
 
 #define create_sarr(T, Asm) ((T *)_create_sarr((Asm), sizeof(T)))
 
