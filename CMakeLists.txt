@@ -32,7 +32,7 @@ endif()
 option(TRACY_ENABLE "Turn on Tracy profiler" OFF)
 if(TRACY_ENABLE)
 	add_definitions(-DTRACY_ENABLE)
-	add_definitions(-DTRACY_NO_EXIT)
+	#add_definitions(-DTRACY_NO_EXIT)
 endif()
 
 # setup output directories
