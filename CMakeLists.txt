@@ -85,7 +85,11 @@ if (MSVC)
 	endif ()
 endif ()
 
-find_package(LLVM 10 REQUIRED)
+if (UNIX AND NOT APPLE)
+	find_package(LLVM 9 REQUIRED)
+else ()
+	find_package(LLVM 10 REQUIRED)
+endif ()
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
