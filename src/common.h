@@ -66,7 +66,11 @@ struct Assembly;
 #pragma warning(disable : 4706)
 
 #define BL_DEPRECATED
+#if BL_DEBUG
+#define INLINE inline
+#else
 #define INLINE __forceinline
+#endif
 #define _LLVM_SHUT_UP_BEGIN __pragma(warning(push, 0))
 #define _LLVM_SHUT_UP_END __pragma(warning(pop))
 #define UNUSED(x) __pragma(warning(suppress : 4100)) x
