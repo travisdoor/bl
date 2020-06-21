@@ -21,8 +21,6 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 * Debuggable in gdb, lldb and Visual Studio.
 
 
-
-
 # Example
 
 ```c
@@ -46,44 +44,34 @@ fib :: fn (n: s32) s32 {
 
 * git
 * CMake
-* LLVM 8 greater
+* LLVM 10
 * GCC/CLANG/Visual Studio compiler
 
     
 ## Windows
-You will need Visual Studio 2019 installed on your machine. Everything needs to be compiled with the same Visual Studio version.
+You will need Visual Studio 2019 installed on your machine. 
 
-* Run cmd as an administrator.
-* Compile and install LLVM tool set. full guide
-```bash
-git clone --config core.autocrlf=false https://github.com/llvm/llvm-project.git    
-cd llvm-project
-mkdir build
-cd build
-cmake ../llvm -G "Visual Studio 16 2019" -Thost=x64
-cmake --build . --config Release --target Install
-```
-
+* Run shell as an administrator.
 * Download and compile bl.
 
 ```bash
-git clone --recurse-submodules https://github.com/travisdoor/bl.git
+git clone https://github.com/travisdoor/bl.git
 cd bl
 mkdir build
 cd build
-cmake .. -G "Visual Studio 16 2019" -Thost=x64
+cmake .. -G "Visual Studio 16 2019" -Thost=x64 -DCMAKE_BUILD_TYPE=Release
 ```
 
 * Now you should be able to compile the bl target from the Visual Studio or from the terminal with following command.
 
 ```bash
-cmake --build . --config Release
+cmake --build .
 ```
 
 * Use this for installation into Program Files
 
 ```bash
-cmake --build . --config Release --target Install
+cmake --build . --target Install
 ```
 
 * Run bl.conf file generation

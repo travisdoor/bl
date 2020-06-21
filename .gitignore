@@ -53,7 +53,7 @@ deps/llvm*
 *.md
 *.blm
 bl.conf
-config.h
+src/config.h
 *.ll
 *.sln
 .suo
