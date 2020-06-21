@@ -74,7 +74,7 @@ if (MSVC)
 				message(STATUS "Downloading LLVM binaries for Release build.")
 				file(DOWNLOAD biscuitlang.org/releases/llvm-10.0.1-Win64-release.zip LLVM_BIN_RELEASE_ZIP
 			     	     SHOW_PROGRESS
-			     	     EXPECTED_HASH MD5=f49a06847a8ea3a5570633c65c847461)
+			     	     EXPECTED_HASH MD5=47584871b32c38c242f83f2f31d0244b)
 		     	endif ()
 
 			execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf LLVM_BIN_RELEASE_ZIP 
