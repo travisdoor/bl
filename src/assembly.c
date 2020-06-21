@@ -169,8 +169,8 @@ set_default_out_dir(Assembly *assembly)
 Assembly *
 assembly_new(const char *name)
 {
-	Assembly *assembly = bl_calloc(1, sizeof(Assembly));
-	if (!assembly) BL_ABORT("bad alloc");
+	Assembly *assembly = bl_malloc(sizeof(Assembly));
+	memset(assembly, 0, sizeof(Assembly));
 	assembly->name = strdup(name);
 
 	tarray_init(&assembly->units, sizeof(Unit *));

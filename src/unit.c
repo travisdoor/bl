@@ -121,8 +121,8 @@ FOUND:
 Unit *
 unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
 {
-	Unit *unit = bl_calloc(1, sizeof(Unit));
-	if (!unit) BL_ABORT("bad alloc");
+	Unit *unit = bl_malloc(sizeof(Unit));
+	memset(unit, 0, sizeof(Unit));
 
 	search_source_file(
 	    filepath, &unit->filepath, &unit->dirpath, parent_unit ? parent_unit->dirpath : NULL);

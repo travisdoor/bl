@@ -37,6 +37,10 @@
 #include <stddef.h>
 #include <tlib/tlib.h>
 
+#if TRACY_ENABLE
+#include "TracyC.h"
+#endif
+
 struct Assembly;
 
 //************************************************************************************************
