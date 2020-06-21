@@ -44,7 +44,6 @@ Following guide uses master branch as default which contains latest unstable cha
 please specify one of the release branches during clone or checkout.
 
 ## Requirements
-
 * git
 * CMake
 * LLVM 10
@@ -99,7 +98,7 @@ brew install llvm
 * Download and compile bl.
 
 ```bash
-git clone --recurse-submodules https://github.com/travisdoor/bl.git
+git clone https://github.com/travisdoor/bl.git
 cd bl
 mkdir build
 cd build
@@ -130,7 +129,7 @@ sudo apt install llvm-dev
 * Download and compile bl.
 
 ```bash
-git clone --recurse-submodules https://github.com/travisdoor/bl.git
+git clone https://github.com/travisdoor/bl.git
 cd bl
 mkdir build
 cd build
