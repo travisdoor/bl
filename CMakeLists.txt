@@ -55,12 +55,12 @@ if (MSVC)
 		if(NOT EXISTS ${LLVM_BIN_DEBUG})
 			if(NOT EXISTS ${LLVM_BIN_DEBUG_ZIP})
 				message(STATUS "Downloading LLVM binaries for Debug build.")
-				file(DOWNLOAD biscuitlang.org/releases/llvm-10.0.1-Win64-debug.zip LLVM_BIN_DEBUG_ZIP
+				file(DOWNLOAD biscuitlang.org/releases/llvm-10.0.1-Win64-debug.zip ${LLVM_BIN_DEBUG_ZIP}
 			     	     SHOW_PROGRESS
 			     	     EXPECTED_HASH MD5=f49a06847a8ea3a5570633c65c847461)
-		     	endif ()
+            endif ()
 
-			execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf LLVM_BIN_DEBUG_ZIP 
+			execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${LLVM_BIN_DEBUG_ZIP}
 			                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 		endif()
 
@@ -72,18 +72,57 @@ if (MSVC)
 		if(NOT EXISTS ${LLVM_BIN_RELEASE})
 			if(NOT EXISTS ${LLVM_BIN_RELEASE_ZIP})
 				message(STATUS "Downloading LLVM binaries for Release build.")
-				file(DOWNLOAD biscuitlang.org/releases/llvm-10.0.1-Win64-release.zip LLVM_BIN_RELEASE_ZIP
+				file(DOWNLOAD biscuitlang.org/releases/llvm-10.0.1-Win64-release.zip ${LLVM_BIN_RELEASE_ZIP}
 			     	     SHOW_PROGRESS
-			     	     EXPECTED_HASH MD5=47584871b32c38c242f83f2f31d0244b)
-		     	endif ()
+			     	     EXPECTED_HASH MD5=2a48e4aff79027c4249b21d48abf427d)
+            endif ()
 
-			execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf LLVM_BIN_RELEASE_ZIP 
+			execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${LLVM_BIN_RELEASE_ZIP}
 			                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 		endif()
 
 		set(LLVM_DIR "${LLVM_BIN_RELEASE}/lib/cmake/llvm")
 	endif ()
 endif ()
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	# DOWNLOAD LLVM
+	if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+		set(LLVM_BIN_DEBUG ${CMAKE_CURRENT_BINARY_DIR}/llvm-debug)
+        set(LLVM_BIN_DEBUG_ZIP ${CMAKE_CURRENT_BINARY_DIR}/llvm-10.0.1-macOS-debug.zip)
+
+		if(NOT EXISTS ${LLVM_BIN_DEBUG})
+			if(NOT EXISTS ${LLVM_BIN_DEBUG_ZIP})
+				message(STATUS "Downloading LLVM binaries for Debug build.")
+                file(DOWNLOAD biscuitlang.org/releases/llvm-10.0.1-macOS-debug.zip ${LLVM_BIN_DEBUG_ZIP}
+			     	     SHOW_PROGRESS
+			     	     EXPECTED_HASH MD5=8caba9fe8dca97b70ab1ee9efe1e4590)
+            endif ()
+
+			execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${LLVM_BIN_DEBUG_ZIP}
+			                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+		endif()
+
+		set(LLVM_DIR "${LLVM_BIN_DEBUG}/lib/cmake/llvm")
+	else ()
+		set(LLVM_BIN_RELEASE ${CMAKE_CURRENT_BINARY_DIR}/llvm-release)
+        set(LLVM_BIN_RELEASE_ZIP ${CMAKE_CURRENT_BINARY_DIR}/llvm-10.0.1-macOS-release.zip)
+
+		if(NOT EXISTS ${LLVM_BIN_RELEASE})
+			if(NOT EXISTS ${LLVM_BIN_RELEASE_ZIP})
+				message(STATUS "Downloading LLVM binaries for Release build.")
+                file(DOWNLOAD biscuitlang.org/releases/llvm-10.0.1-macOS-release.zip ${LLVM_BIN_RELEASE_ZIP}
+			     	     SHOW_PROGRESS
+			     	     EXPECTED_HASH MD5=9c3fcd18a87e59727c4c75296ac19360)
+            endif ()
+
+			execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${LLVM_BIN_RELEASE_ZIP}
+			                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+		endif()
+
+		set(LLVM_DIR "${LLVM_BIN_RELEASE}/lib/cmake/llvm")
+	endif ()
+endif()
 
 find_package(LLVM 10 REQUIRED)
 
