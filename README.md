@@ -40,6 +40,9 @@ fib :: fn (n: s32) s32 {
 ```
 
 # Compilation 
+Following guide uses master branch as default which contains latest unstable changes, if you want to use stable version, 
+please specify one of the release branches during clone or checkout.
+
 ## Requirements
 
 * git
@@ -65,13 +68,13 @@ cmake .. -G "Visual Studio 16 2019" -Thost=x64 -DCMAKE_BUILD_TYPE=Release
 * Now you should be able to compile the bl target from the Visual Studio or from the terminal with following command.
 
 ```bash
-cmake --build .
+cmake --build . --config Release
 ```
 
 * Use this for installation into Program Files
 
 ```bash
-cmake --build . --target Install
+cmake --build . --config Release --target Install
 ```
 
 * Run bl.conf file generation
