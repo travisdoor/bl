@@ -45,7 +45,8 @@ struct Assembly;
 //************************************************************************************************
 #if defined(BL_COMPILER_CLANG) || defined(BL_COMPILER_GNUC)
 #define BL_DEPRECATED __attribute__((deprecated))
-#define INLINE __attribute__((always_inline))
+//#define INLINE __attribute__((always_inline))
+#define INLINE inline
 #define _LLVM_SHUT_UP_BEGIN
 #define _LLVM_SHUT_UP_END
 #define UNUSED(x) __attribute__((unused)) x
