@@ -29,6 +29,7 @@
 #ifndef BL_COMMON_H
 #define BL_COMMON_H
 
+#include "TracyC.h"
 #include "bldebug.h"
 #include "blmemory.h"
 #include "config.h"
@@ -36,10 +37,6 @@
 #include <limits.h>
 #include <stddef.h>
 #include <tlib/tlib.h>
-
-#if TRACY_ENABLE
-#include "TracyC.h"
-#endif
 
 struct Assembly;
 

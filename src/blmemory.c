@@ -27,19 +27,16 @@
 //************************************************************************************************
 
 #include "blmemory.h"
-#include <memory.h>
-#include <stdlib.h>
-#include <stdio.h>
-
-#if TRACY_ENABLE
 #include "TracyC.h"
-#endif
+#include <memory.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 void *
 bl_malloc(const size_t size)
 {
 	void *mem = malloc(size);
-	if (!mem)  {
+	if (!mem) {
 		fprintf(stderr, "Bad alloc!");
 		abort();
 	}
