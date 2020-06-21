@@ -39,7 +39,7 @@ fib :: fn (n: s32) s32 {
 }
 ```
 
-# Compilation 
+## Installation from source code
 Following guide uses master branch as default which contains latest unstable changes, if you want to use stable version, 
 please specify one of the release branches during clone or checkout.
 
@@ -89,10 +89,10 @@ blc.exe -configure
 xcode-select --install
 ```
 
-* Install LLVM dev packages with your favourite package manager. Brew:
+* Install LLVM 10 dev packages with your favourite package manager. Brew:
 
 ```bash
-brew install llvm
+brew install llvm@10
 ```
 
 * Download and compile bl.
@@ -120,7 +120,7 @@ make
 
 
 ## Linux
-* Install LLVM dev packages with your favourite package manager.
+* Install LLVM 10 dev packages with your favourite package manager.
 
 ```bash
 sudo apt install llvm-dev 
@@ -148,4 +148,3 @@ make
 ```bash
 [sudo] blc -configure
 ```
-
