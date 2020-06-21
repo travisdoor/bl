@@ -36,10 +36,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#if defined(_MSC_VER) && defined(BL_DEBUG)
-#include <crtdbg.h>
-#endif
-
 char *ENV_EXEC_DIR      = NULL;
 char *ENV_LIB_DIR       = NULL;
 char *ENV_CONF_FILEPATH = NULL;
@@ -99,9 +95,6 @@ int
 main(s32 argc, char *argv[])
 {
 	s32 state = EXIT_SUCCESS;
-#if defined(_MSC_VER) && defined(BL_DEBUG)
-	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-#endif
 	const char *help_text =
 #include "help_text.txt"
 	    ;

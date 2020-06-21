@@ -1,11 +1,11 @@
 //************************************************************************************************
 // bl
 //
-// File:   blmemory.h
+// File:   blmemory.c
 // Author: Martin Dorazil
-// Date:   3/1/18
+// Date:   21/6/20
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2020 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,13 +26,31 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_BLMEMORY_H
-#define BL_BLMEMORY_H
+#include "blmemory.h"
+#include <memory.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#if TRACY_ENABLE
+#include "TracyC.h"
+#endif
 
 void *
-bl_malloc(const size_t size);
+bl_malloc(const size_t size)
+{
+	void *mem = malloc(size);
+	if (!mem)  {
+		fprintf(stderr, "Bad alloc!");
+		abort();
+	}
+
+	TracyCAlloc(mem, size);
+	return mem;
+}
 
 void
-bl_free(void *ptr);
-
-#endif // BL_BLMEMORY_H
+bl_free(void *ptr)
+{
+	TracyCFree(ptr);
+	free(ptr);
+}

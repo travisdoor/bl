@@ -115,6 +115,7 @@ set(HEADER_FILES
 
 set(SOURCE_FILES
         src/main.c
+        src/blmemory.c
         src/conf_parser.c
         src/conf_data.c
         src/arena.c
@@ -192,6 +193,7 @@ target_include_directories(blc PRIVATE
     deps/dyncall-1.0/dynload
     deps/dyncall-1.0/dyncallback
     deps/tlib-c/include
+    deps/tracy
     ${LLVM_INCLUDE_DIRS}
 )
 

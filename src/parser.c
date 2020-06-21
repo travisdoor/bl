@@ -2632,6 +2632,7 @@ parser_run(Assembly *assembly, Unit *unit)
 #endif
 
 	parse_ublock_content(&cnt, unit->ast);
+
 	tsa_terminate(&cnt._decl_stack);
 	tsa_terminate(&cnt._scope_stack);
 }
