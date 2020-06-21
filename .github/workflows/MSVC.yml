@@ -14,10 +14,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: microsoft/setup-msbuild@v1.0.0
-    - name: Compile BL
-      run: |
-        mkdir build
-        cd build
-        cmake .. -G "Visual Studio 16 2019" -Thost=x64
-        cmake --build . --config Release
+    - name: Setup
+      run: cmake . -G "Visual Studio 16 2019" -Thost=x64 -DCMAKE_BUILD_TYPE=Debug 
+    - name: Compile
+      run: cmake --build .
 

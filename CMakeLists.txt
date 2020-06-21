@@ -46,7 +46,46 @@ add_subdirectory(deps/dyncall-1.0)
 add_subdirectory(deps/tlib-c)
 
 # deps
-find_package(LLVM CONFIG)
+if (MSVC)
+	# DOWNLOAD LLVM
+	if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+		set(LLVM_BIN_DEBUG ${CMAKE_CURRENT_BINARY_DIR}/llvm-debug)
+		set(LLVM_BIN_DEBUG_ZIP ${CMAKE_CURRENT_BINARY_DIR}/llvm-10.0.1-Win64-debug.zip)
+
+		if(NOT EXISTS ${LLVM_BIN_DEBUG})
+			if(NOT EXISTS ${LLVM_BIN_DEBUG_ZIP})
+				message(STATUS "Downloading LLVM binaries for Debug build.")
+				file(DOWNLOAD biscuitlang.org/releases/llvm-10.0.1-Win64-debug.zip LLVM_BIN_DEBUG_ZIP
+			     	     SHOW_PROGRESS
+			     	     EXPECTED_HASH MD5=f49a06847a8ea3a5570633c65c847461)
+		     	endif ()
+
+			execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf LLVM_BIN_DEBUG_ZIP 
+			                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+		endif()
+
+		set(LLVM_DIR "${LLVM_BIN_DEBUG}/lib/cmake/llvm")
+	else ()
+		set(LLVM_BIN_RELEASE ${CMAKE_CURRENT_BINARY_DIR}/llvm-release)
+		set(LLVM_BIN_RELEASE_ZIP ${CMAKE_CURRENT_BINARY_DIR}/llvm-10.0.1-Win64-release.zip)
+
+		if(NOT EXISTS ${LLVM_BIN_RELEASE})
+			if(NOT EXISTS ${LLVM_BIN_RELEASE_ZIP})
+				message(STATUS "Downloading LLVM binaries for Release build.")
+				file(DOWNLOAD biscuitlang.org/releases/llvm-10.0.1-Win64-release.zip LLVM_BIN_RELEASE_ZIP
+			     	     SHOW_PROGRESS
+			     	     EXPECTED_HASH MD5=f49a06847a8ea3a5570633c65c847461)
+		     	endif ()
+
+			execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf LLVM_BIN_RELEASE_ZIP 
+			                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+		endif()
+
+		set(LLVM_DIR "${LLVM_BIN_RELEASE}/lib/cmake/llvm")
+	endif ()
+endif ()
+
+find_package(LLVM 10 REQUIRED)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
