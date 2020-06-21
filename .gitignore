@@ -47,26 +47,13 @@
 # Documentation
 doc/html
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
-.ycm_extra_conf.py
-*bin/
-.idea/
-/tests/src/test_runner
-*.ll
-*.blm
-tests/test
-tests/pdisk-generator
-/docs/doxygen/html/
-src/config.h
-install/uninstall.sh
-/etc/
-*.txt.user
-/build/
+# Other
+build
+deps/llvm*
 *.md
+*.blm
+bl.conf
+config.h
+*.ll
+*.sln
+.suo
