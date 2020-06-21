@@ -96,7 +96,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 				message(STATUS "Downloading LLVM binaries for Debug build.")
                 file(DOWNLOAD biscuitlang.org/releases/llvm-10.0.1-macOS-debug.zip ${LLVM_BIN_DEBUG_ZIP}
 			     	     SHOW_PROGRESS
-			     	     EXPECTED_HASH MD5=8caba9fe8dca97b70ab1ee9efe1e4590)
+			     	     EXPECTED_HASH MD5=2a48e4aff79027c4249b21d48abf427d)
             endif ()
 
 			execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${LLVM_BIN_DEBUG_ZIP}
