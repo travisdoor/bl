@@ -29,6 +29,8 @@
 #ifndef BL_BLMEMORY_H
 #define BL_BLMEMORY_H
 
+#include <memory.h>
+
 void *
 bl_malloc(const size_t size);
 

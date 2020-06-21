@@ -35,6 +35,12 @@
 #include <stdlib.h>
 #include <tlib/tlib.h>
 
+#if defined(BL_COMPILER_MSVC)
+#define BL_DEBUG_BREAK __debugbreak()
+#else 
+#define BL_DEBUG_BREAK
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -68,7 +74,7 @@ _assert_invalid_expr(const char *expr, const char *file, s32 line);
 	if (!(e)) {                                                                                \
 		_log(LOG_ASSERT, __FILENAME__, __LINE__, #e);                                      \
 		print_trace();                                                                     \
-		__debugbreak();                                                                    \
+		BL_DEBUG_BREAK;                                                                    \
 		abort();                                                                           \
 	}
 #else
@@ -105,7 +111,7 @@ _assert_invalid_expr(const char *expr, const char *file, s32 line);
 	{                                                                                          \
 		_log(LOG_ABORT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                    \
 		print_trace();                                                                     \
-		__debugbreak();                                                                    \
+		BL_DEBUG_BREAK;                                                                    \
 		abort();                                                                           \
 	}
 

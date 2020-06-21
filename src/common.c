@@ -30,6 +30,7 @@
 #include "assembly.h"
 #include "builder.h"
 #include <time.h>
+#include <stdarg.h>
 
 #ifndef BL_COMPILER_MSVC
 #include "unistd.h"

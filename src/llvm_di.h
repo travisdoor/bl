@@ -51,7 +51,7 @@ typedef enum {
 } DW_ATE_Encoding;
 
 typedef enum {
-#define HANDLE_DW_TAG(ID, NAME, VERSION, VENDOR) DW_TAG_##NAME = ID,
+#define HANDLE_DW_TAG(ID, NAME, VERSION, VENDOR, KIND) DW_TAG_##NAME = ID,
 #include "llvm/BinaryFormat/Dwarf.def"
 	DW_TAG_lo_user   = 0x4080,
 	DW_TAG_hi_user   = 0xffff,
