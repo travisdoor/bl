@@ -1,4 +1,7 @@
 # About
+![Windows](https://github.com/travisdoor/bl/workflows/Windows/badge.svg?branch=master)
+![Linux](https://github.com/travisdoor/bl/workflows/Linux/badge.svg?branch=master)
+![macOS](https://github.com/travisdoor/bl/workflows/macOS/badge.svg?branch=master)
 
 The Biscuit Language (BL) is simple imperative programming language using LLVM backend implemented in C. 
 Language syntax and all it's features are still in development and not ready for "real" use yet. Biscuit 
