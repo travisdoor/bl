@@ -37,7 +37,7 @@
 
 #if defined(BL_COMPILER_MSVC)
 #define BL_DEBUG_BREAK __debugbreak()
-#else 
+#else
 #define BL_DEBUG_BREAK
 #endif
 
@@ -139,6 +139,7 @@ _assert_invalid_expr(const char *expr, const char *file, s32 line);
 	{                                                                                          \
 		_log(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented");                          \
 		print_trace();                                                                     \
+		BL_DEBUG_BREAK;                                                                    \
 		abort();                                                                           \
 	}
 
@@ -146,6 +147,7 @@ _assert_invalid_expr(const char *expr, const char *file, s32 line);
 	{                                                                                          \
 		_log(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented region '" #R "'");          \
 		print_trace();                                                                     \
+		BL_DEBUG_BREAK;                                                                    \
 		abort();                                                                           \
 	}
 #ifdef __cplusplus
