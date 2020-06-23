@@ -2,8 +2,13 @@
 #load "std/string.bl"
 
 main :: fn () s32 {
-    f := fmt_real(10.3f, 2);
-    print("%\n", f);
+    _0 :: fn (args: ...s32) {
+        print("%\n", args.len);
+        print("%, %\n", args[0], args[1]);
+    };
+
+    _0(10, 20);
+
     return 0;
 } 
 

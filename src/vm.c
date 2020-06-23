@@ -2111,7 +2111,9 @@ interp_instr_store(VM *vm, MirInstrStore *store)
 
 	VMStackPtr dest_ptr = fetch_value(vm, &store->dest->value);
 
-	if (store->src->kind == MIR_INSTR_COMPOUND) {
+	if (store->src->kind == MIR_INSTR_COMPOUND && !mir_is_comptime(store->src)) {
+		/* Compound initializers referenced by store instruction can be directly used as
+		 * destination initializer. */
 		dest_ptr = VM_STACK_PTR_DEREF(dest_ptr);
 		interp_instr_compound(vm, dest_ptr, (MirInstrCompound *)store->src);
 		return;
@@ -2198,9 +2200,9 @@ interp_instr_ret(VM *vm, MirInstrRet *ret)
 			}
 		}
 	} else {
-		/* When caller was not specified we expect all arguments to be pushed on the stack
-		 * so we must clear them all. Remember they were pushed in reverse order, so now we
-		 * have to pop them in order they are defined. */
+		/* When caller was not specified we expect all arguments to be pushed on the
+		 * stack so we must clear them all. Remember they were pushed in reverse
+		 * order, so now we have to pop them in order they are defined. */
 
 		TSmallArray_ArgPtr *args = fn->type->data.fn.args;
 		if (args) {
@@ -2214,8 +2216,8 @@ interp_instr_ret(VM *vm, MirInstrRet *ret)
 
 	/* push return value on the stack if there is one */
 	if (ret_data_ptr) {
-		/* Determinate if caller instruction is comptime, if caller does not exist we are
-		 * going to push result on the stack. */
+		/* Determinate if caller instruction is comptime, if caller does not exist
+		 * we are going to push result on the stack. */
 		const bool is_caller_comptime = caller ? caller->base.value.is_comptime : false;
 		if (is_caller_comptime) {
 			caller->base.value.data = ret->value->value.data;
@@ -2445,8 +2447,8 @@ eval_instr_compound(VM *vm, MirInstrCompound *compound)
 {
 	MirConstExprValue *value = &compound->base.value;
 	if (needs_tmp_alloc(value)) {
-		/* Compound data does't fit into default static memory register, we need to allcate
-		 * temporary block on the stack. */
+		/* Compound data does't fit into default static memory register, we need to
+		 * allcate temporary block on the stack. */
 		value->data = stack_push_empty(vm, value->type);
 	}
 
@@ -2550,8 +2552,9 @@ eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si)
 	          "Only globals can be initialized by initializer!");
 
 	if (var->value.is_comptime) {
-		/* This is little optimization, we can simply reuse initializer pointer since we are
-		 * dealing with constant values and variable is immutable comptime. */
+		/* This is little optimization, we can simply reuse initializer pointer
+		 * since we are dealing with constant values and variable is immutable
+		 * comptime. */
 		var->value.data = si->src->value.data;
 	} else {
 		MirType *var_type = var->value.type;
