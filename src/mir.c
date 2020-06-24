@@ -10049,15 +10049,16 @@ execute_test_cases(Context *cnt)
 	{
 		s32 perc = c > 0 ? (s32)((f32)(c - failed) / (c * 0.01f)) : 100;
 
-		color_print(stdout, BL_YELLOW, TEXT_LINE);
+		const s32 color = failed ? BL_RED : BL_GREEN;
+
+		color_print(stdout, color, TEXT_LINE);
 		snprintf(buffer,
 		         ARRAY_SIZE(buffer),
-		         "Testing done, %d of %zu failed. Completed: %d%%",
+		         "Testing done, %d failed. Completed: %d%%",
 		         failed,
-		         c,
 		         perc);
-		color_print(stdout, BL_YELLOW, buffer);
-		color_print(stdout, BL_YELLOW, TEXT_LINE);
+		color_print(stdout, color, buffer);
+		color_print(stdout, color, TEXT_LINE);
 	}
 }
 
