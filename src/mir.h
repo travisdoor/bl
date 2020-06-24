@@ -603,6 +603,7 @@ struct MirInstrTypeArray {
 
 	MirInstr *elem_type;
 	MirInstr *len;
+	ID *      id;
 };
 
 struct MirInstrTypeSlice {
@@ -733,7 +734,7 @@ mir_is_pointer_type(MirType *type)
 }
 
 static INLINE MirType *
-mir_deref_type(MirType *ptr)
+              mir_deref_type(MirType *ptr)
 {
 	if (!mir_is_pointer_type(ptr)) return NULL;
 	return ptr->data.ptr.expr;
@@ -759,7 +760,7 @@ mir_is_composit_type(MirType *type)
 }
 
 static INLINE MirType *
-mir_get_struct_elem_type(MirType *type, u32 i)
+              mir_get_struct_elem_type(MirType *type, u32 i)
 {
 	BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
 	TSmallArray_MemberPtr *members = type->data.strct.members;
@@ -769,7 +770,7 @@ mir_get_struct_elem_type(MirType *type, u32 i)
 }
 
 static INLINE MirType *
-mir_get_fn_arg_type(MirType *type, u32 i)
+              mir_get_fn_arg_type(MirType *type, u32 i)
 {
 	BL_ASSERT(type->kind == MIR_TYPE_FN && "Expected function type");
 	TSmallArray_ArgPtr *args = type->data.fn.args;
