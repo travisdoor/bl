@@ -110,13 +110,13 @@ scope_create_entry(ScopeArenas *  arenas,
 void
 scope_insert(Scope *scope, ScopeEntry *entry);
 
-#define SCOPE_IN_TREE_ON true
-#define SCOPE_IN_TREE_OFF false
-#define SCOPE_IGNORE_SCOPE_ON true
-#define SCOPE_IGNORE_SCOPE_OFF false
+typedef enum {
+	SCOPE_LOOKUP_IN_TREE       = 1 << 1,
+	SCOPE_LOOKUP_IGNORE_GSCOPE = 1 << 2,
+} ScopeLookupOpt;
 
 ScopeEntry *
-scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_gscope, bool *out_of_fn_local_scope);
+scope_lookup(Scope *scope, ID *id, ScopeLookupOpt opt, bool *out_of_fn_local_scope);
 
 bool
 scope_is_subtree_of_kind(const Scope *scope, ScopeKind kind);

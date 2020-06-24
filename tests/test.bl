@@ -2,12 +2,8 @@
 #load "std/string.bl"
 
 main :: fn () s32 {
-    _0 :: fn (args: ...s32) {
-        print("%\n", args.len);
-        print("%, %\n", args[0], args[1]);
-    };
-
-    _0(10, 20);
+    T :: [10]s32;
+    i :: typeinfo(T);
 
     return 0;
 } 
