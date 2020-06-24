@@ -2026,7 +2026,7 @@ register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, RegSymOpt opt)
 	return entry;
 
 COLLIDE : {
-	char *err_msg = collision->is_buildin || is_builtin
+	char *err_msg = (collision->is_buildin || IS_FLAG(opt, REG_SYM_BUILTIN))
 	                    ? "Symbol name colision with compiler builtin '%s'."
 	                    : "Duplicate symbol";
 
