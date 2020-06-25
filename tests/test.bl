@@ -1,9 +1,32 @@
 /* playground */
 #load "std/string.bl"
 
+func :: fn () {
+    Foo :: struct {
+        i: s32;
+        j: bool;
+    };
+
+    foo :: {:Foo: 10, false};
+    str :: string_new_concatenate(foo);     
+    defer string_delete(str);
+
+    print("%\n", str);
+}
+
 main :: fn () s32 {
-    T :: [10]s32;
-    i :: typeinfo(T);
+    Foo :: struct {
+        i: s32;
+        j: bool;
+        arr: [3]s32;
+    };
+
+    foo :: {:Foo: 666, true, {:[3]s32: 1, 2, 3}};
+    str :: string_new_concatenate(foo);     
+    defer string_delete(str);
+
+    func();
+    print("%\n", str);
 
     return 0;
 } 
