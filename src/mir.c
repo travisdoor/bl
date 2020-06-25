@@ -1646,165 +1646,6 @@ is_to_any_needed(Context *cnt, MirInstr *src, MirType *dest_type)
 	return true;
 }
 
-/* string hash functions for types */
-static INLINE const char *
-sh_type_null(Context *cnt, MirType *base_type)
-{
-	BL_ASSERT(base_type->id.str);
-	TString *tmp = &cnt->tmp_sh;
-	tstring_clear(tmp);
-	tstring_append(tmp, "n.");
-	tstring_append(tmp, base_type->id.str);
-	return tmp->data;
-}
-
-static INLINE const char *
-sh_type_ptr(Context *cnt, MirType *src_type)
-{
-	BL_ASSERT(src_type->id.str);
-	TString *tmp = &cnt->tmp_sh;
-	tstring_clear(tmp);
-	tstring_append(tmp, "p.");
-	tstring_append(tmp, src_type->id.str);
-	return tmp->data;
-}
-
-static INLINE const char *
-sh_type_fn(Context *cnt, MirType *ret_type, TSmallArray_ArgPtr *args, bool UNUSED(is_vargs))
-{
-	// BL_ASSERT(src_type->id.str);
-	TString *tmp = &cnt->tmp_sh;
-	tstring_clear(tmp);
-	tstring_append(tmp, "f.(");
-
-	/* append all arg types isd */
-	if (args) {
-		MirArg *arg;
-		TSA_FOREACH(args, arg)
-		{
-			BL_ASSERT(arg->type->id.str);
-			tstring_append(tmp, arg->type->id.str);
-
-			if (i != args->size - 1) tstring_append(tmp, ",");
-		}
-	}
-
-	tstring_append(tmp, ")");
-
-	if (ret_type) {
-		BL_ASSERT(ret_type->id.str);
-		tstring_append(tmp, ret_type->id.str);
-	} else {
-		/* implicit return void */
-		tstring_append(tmp, cnt->builtin_types->t_void->id.str);
-	}
-
-	return tmp->data;
-}
-
-static INLINE const char *
-sh_type_arr(Context *cnt, MirType *elem_type, s64 len)
-{
-	BL_ASSERT(elem_type->id.str);
-	TString *tmp = &cnt->tmp_sh;
-	tstring_clear(tmp);
-
-	char ui_str[21];
-	sprintf(ui_str, "%llu", (unsigned long long)len);
-
-	tstring_append(tmp, ui_str);
-	tstring_append(tmp, ".");
-	tstring_append(tmp, elem_type->id.str);
-	return tmp->data;
-}
-
-static INLINE const char *
-sh_type_struct(Context *              cnt,
-               MirTypeKind            kind,
-               ID *                   id,
-               TSmallArray_MemberPtr *members,
-               bool                   is_packed)
-{
-	BL_ASSERT(!is_packed);
-	TString *tmp = &cnt->tmp_sh;
-	tstring_clear(tmp);
-
-	switch (kind) {
-	case MIR_TYPE_STRUCT:
-		tstring_append(tmp, "s.");
-		break;
-	case MIR_TYPE_SLICE:
-		tstring_append(tmp, "sl.");
-		break;
-	case MIR_TYPE_STRING:
-		tstring_append(tmp, "ss.");
-		break;
-	case MIR_TYPE_VARGS:
-		tstring_append(tmp, "sv.");
-		break;
-	case MIR_TYPE_DYNARR:
-		tstring_append(tmp, "da.");
-		break;
-	default:
-		BL_ABORT("Expected struct base type.");
-	}
-
-	if (id) {
-		tstring_append(tmp, id->str);
-	}
-
-	tstring_append(tmp, "{");
-	if (members) {
-		MirMember *member;
-		TSA_FOREACH(members, member)
-		{
-			BL_ASSERT(member->type->id.str);
-			tstring_append(tmp, member->type->id.str);
-
-			if (i != members->size - 1) tstring_append(tmp, ",");
-		}
-	}
-
-	tstring_append(tmp, "}");
-	return tmp->data;
-}
-
-static INLINE const char *
-sh_type_enum(Context *cnt, ID *id, MirType *base_type, TSmallArray_VariantPtr *variants)
-{
-	BL_ASSERT(base_type->id.str);
-	TString *tmp = &cnt->tmp_sh;
-	tstring_clear(tmp);
-
-	tstring_append(tmp, "e.");
-
-	if (id) tstring_append(tmp, id->str);
-
-	tstring_append(tmp, "(");
-	tstring_append(tmp, base_type->id.str);
-	tstring_append(tmp, ")");
-
-	tstring_append(tmp, "{");
-	if (variants) {
-		MirVariant *variant;
-		TSA_FOREACH(variants, variant)
-		{
-			BL_ASSERT(variant->value);
-
-			char value_str[35];
-			snprintf(value_str,
-			         TARRAY_SIZE(value_str),
-			         "%lld",
-			         MIR_CEV_READ_AS(long long, variant->value));
-			tstring_append(tmp, value_str);
-
-			if (i != variants->size - 1) tstring_append(tmp, ",");
-		}
-	}
-	tstring_append(tmp, "}");
-	return tmp->data;
-}
-
 void
 init_type_id(Context *cnt, MirType *type)
 {
@@ -1923,18 +1764,14 @@ init_type_id(Context *cnt, MirType *type)
 	}
 
 	case MIR_TYPE_STRUCT: {
+		BL_ASSERT(!type->data.strct.is_incomplete &&
+		          "Attempt to generate id of incomplete type!");
 		if (type->data.strct.is_union)
 			tstring_append(tmp, "u.");
 		else
 			tstring_append(tmp, "s.");
 
-		if (type->data.strct.is_incomplete) {
-			BL_ASSERT(type->user_id &&
-			          "Missing user id for incomplete structure type!");
-			tstring_append(tmp, type->user_id->str);
-		} else {
-			GEN_ID_STRUCT;
-		}
+		GEN_ID_STRUCT;
 
 		break;
 	}
@@ -2379,6 +2216,7 @@ complete_type_struct(Context *              cnt,
 	incomplete_type->data.strct.is_packed     = is_packed;
 	incomplete_type->data.strct.is_union      = is_union;
 
+	init_type_id(cnt, incomplete_type);
 	init_llvm_type_struct(cnt, incomplete_type);
 	return incomplete_type;
 }
@@ -2390,7 +2228,6 @@ create_type_struct_incomplete(Context *cnt, ID *user_id, bool is_union)
 	tmp->data.strct.is_incomplete = true;
 	tmp->data.strct.is_union      = is_union;
 
-	init_type_id(cnt, tmp);
 	init_llvm_type_struct(cnt, tmp);
 	return tmp;
 }
