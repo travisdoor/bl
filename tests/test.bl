@@ -28,6 +28,9 @@ main :: fn () s32 {
     func();
     print("%\n", str);
 
+    Foo2 :: Foo;
+    assert(typeinfo(Foo) == typeinfo(Foo2));
+
     return 0;
 } 
 
