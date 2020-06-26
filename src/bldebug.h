@@ -152,11 +152,11 @@ _assert_invalid_expr(const char *expr, const char *file, s32 line);
 	}
 
 #if TRACY_ENABLE
-#define BL_TRACY_MESSAGE(format, ...)                                                              \
+#define BL_TRACY_MESSAGE(tag, format, ...)                                                         \
 	{                                                                                          \
 		char buf[256];                                                                     \
-		snprintf(buf, ARRAY_SIZE(buf), format, ##__VA_ARGS__);                            \
-		TracyCMessage(buf, strlen(buf));                                                   \
+		snprintf(buf, ARRAY_SIZE(buf), "#%s " format, tag, ##__VA_ARGS__);                 \
+		TracyCMessageC(buf, strlen(buf), thash_from_str(tag));                             \
 	}
 #else
 #define BL_TRACY_MESSAGE(format, ...)                                                              \

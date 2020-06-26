@@ -1823,7 +1823,7 @@ type_init_id(Context *cnt, MirType *type)
 #if TRACY_ENABLE
 	static int tc = 0;
 	TracyCPlot("Type count", ++tc);
-	BL_TRACY_MESSAGE("TYPE: %s", type->id.str);
+	BL_TRACY_MESSAGE("TYPE", "%s", type->id.str);
 #endif
 
 #undef GEN_ID_STRUCT
