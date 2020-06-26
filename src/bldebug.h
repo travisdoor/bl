@@ -150,6 +150,19 @@ _assert_invalid_expr(const char *expr, const char *file, s32 line);
 		BL_DEBUG_BREAK;                                                                    \
 		abort();                                                                           \
 	}
+
+#if TRACY_ENABLE
+#define BL_TRACY_MESSAGE(format, ...)                                                              \
+	{                                                                                          \
+		char buf[256];                                                                     \
+		snprintf(buf, ARRAY_SIZE(buf), format, ##__VA_ARGS__);                            \
+		TracyCMessage(buf, strlen(buf));                                                   \
+	}
+#else
+#define BL_TRACY_MESSAGE(format, ...)                                                              \
+	while (0) {                                                                                \
+	}
+#endif
 #ifdef __cplusplus
 }
 #endif

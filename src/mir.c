@@ -258,7 +258,7 @@ add_global_immutable_bool(Context *cnt, ID *id, bool v);
 /* Initialize type ID. This function creates and set ID string and calculates integer hash from this
  * string. The type.id.str could be also used as name for unnamed types. */
 static void
-init_type_id(Context *cnt, MirType *type);
+type_init_id(Context *cnt, MirType *type);
 
 /* Create new type. The 'user_id' is optional. */
 static MirType *
@@ -334,34 +334,34 @@ MirType *
 create_type_struct_dyarr(Context *cnt, ID *id, MirType *elem_ptr_type);
 
 static void
-init_llvm_type_int(Context *cnt, MirType *type);
+type_init_llvm_int(Context *cnt, MirType *type);
 
 static void
-init_llvm_type_real(Context *cnt, MirType *type);
+type_init_llvm_real(Context *cnt, MirType *type);
 
 static void
-init_llvm_type_ptr(Context *cnt, MirType *type);
+type_init_llvm_ptr(Context *cnt, MirType *type);
 
 static void
-init_llvm_type_null(Context *cnt, MirType *type);
+type_init_llvm_null(Context *cnt, MirType *type);
 
 static void
-init_llvm_type_void(Context *cnt, MirType *type);
+type_init_llvm_void(Context *cnt, MirType *type);
 
 static void
-init_llvm_type_bool(Context *cnt, MirType *type);
+type_init_llvm_bool(Context *cnt, MirType *type);
 
 static void
-init_llvm_type_fn(Context *cnt, MirType *type);
+type_init_llvm_fn(Context *cnt, MirType *type);
 
 static void
-init_llvm_type_array(Context *cnt, MirType *type);
+type_init_llvm_array(Context *cnt, MirType *type);
 
 static void
-init_llvm_type_struct(Context *cnt, MirType *type);
+type_init_llvm_struct(Context *cnt, MirType *type);
 
 static void
-init_llvm_type_enum(Context *cnt, MirType *type);
+type_init_llvm_enum(Context *cnt, MirType *type);
 
 typedef enum {
 	CREATE_VAR_MUTABLE  = 1 << 1,
@@ -1647,7 +1647,7 @@ is_to_any_needed(Context *cnt, MirInstr *src, MirType *dest_type)
 }
 
 void
-init_type_id(Context *cnt, MirType *type)
+type_init_id(Context *cnt, MirType *type)
 {
 	/******************************************************************************************/
 #define GEN_ID_STRUCT                                                                              \
@@ -1764,15 +1764,18 @@ init_type_id(Context *cnt, MirType *type)
 	}
 
 	case MIR_TYPE_STRUCT: {
-		BL_ASSERT(!type->data.strct.is_incomplete &&
-		          "Attempt to generate id of incomplete type!");
 		if (type->data.strct.is_union)
 			tstring_append(tmp, "u.");
 		else
 			tstring_append(tmp, "s.");
 
-		GEN_ID_STRUCT;
-
+		if (type->data.strct.is_incomplete) {
+			BL_ASSERT(type->user_id &&
+			          "Missing user id for incomplete structure type!");
+			tstring_append(tmp, type->user_id->str);
+		} else {
+			GEN_ID_STRUCT;
+		}
 		break;
 	}
 
@@ -1816,6 +1819,12 @@ init_type_id(Context *cnt, MirType *type)
 
 	type->id.str  = copy->data;
 	type->id.hash = thash_from_str(copy->data);
+
+#if TRACY_ENABLE
+	static int tc = 0;
+	TracyCPlot("Type count", ++tc);
+	BL_TRACY_MESSAGE("TYPE: %s", type->id.str);
+#endif
 
 #undef GEN_ID_STRUCT
 }
@@ -2054,7 +2063,7 @@ create_type_type(Context *cnt)
 	tmp->size_bits        = sizeof(MirType *) * 8;
 	tmp->store_size_bytes = sizeof(MirType *);
 
-	init_type_id(cnt, tmp);
+	type_init_id(cnt, tmp);
 
 	return tmp;
 }
@@ -2066,8 +2075,8 @@ create_type_null(Context *cnt, MirType *base_type)
 	MirType *tmp = create_type(cnt, MIR_TYPE_NULL, &builtin_ids[MIR_BUILTIN_ID_NULL]);
 	tmp->data.null.base_type = base_type;
 
-	init_type_id(cnt, tmp);
-	init_llvm_type_null(cnt, tmp);
+	type_init_id(cnt, tmp);
+	type_init_llvm_null(cnt, tmp);
 
 	return tmp;
 }
@@ -2077,8 +2086,8 @@ create_type_void(Context *cnt)
 {
 	MirType *tmp = create_type(cnt, MIR_TYPE_VOID, &builtin_ids[MIR_BUILTIN_ID_TYPE_VOID]);
 
-	init_type_id(cnt, tmp);
-	init_llvm_type_void(cnt, tmp);
+	type_init_id(cnt, tmp);
+	type_init_llvm_void(cnt, tmp);
 
 	return tmp;
 }
@@ -2088,8 +2097,8 @@ create_type_bool(Context *cnt)
 {
 	MirType *tmp = create_type(cnt, MIR_TYPE_BOOL, &builtin_ids[MIR_BUILTIN_ID_TYPE_BOOL]);
 
-	init_type_id(cnt, tmp);
-	init_llvm_type_bool(cnt, tmp);
+	type_init_id(cnt, tmp);
+	type_init_llvm_bool(cnt, tmp);
 
 	return tmp;
 }
@@ -2103,8 +2112,8 @@ create_type_int(Context *cnt, ID *id, s32 bitcount, bool is_signed)
 	tmp->data.integer.bitcount  = bitcount;
 	tmp->data.integer.is_signed = is_signed;
 
-	init_type_id(cnt, tmp);
-	init_llvm_type_int(cnt, tmp);
+	type_init_id(cnt, tmp);
+	type_init_llvm_int(cnt, tmp);
 
 	return tmp;
 }
@@ -2116,8 +2125,8 @@ create_type_real(Context *cnt, ID *id, s32 bitcount)
 	MirType *tmp            = create_type(cnt, MIR_TYPE_REAL, id);
 	tmp->data.real.bitcount = bitcount;
 
-	init_type_id(cnt, tmp);
-	init_llvm_type_real(cnt, tmp);
+	type_init_id(cnt, tmp);
+	type_init_llvm_real(cnt, tmp);
 
 	return tmp;
 }
@@ -2129,8 +2138,8 @@ create_type_ptr(Context *cnt, MirType *src_type)
 	MirType *tmp       = create_type(cnt, MIR_TYPE_PTR, NULL);
 	tmp->data.ptr.expr = src_type;
 
-	init_type_id(cnt, tmp);
-	init_llvm_type_ptr(cnt, tmp);
+	type_init_id(cnt, tmp);
+	type_init_llvm_ptr(cnt, tmp);
 
 	return tmp;
 }
@@ -2144,8 +2153,8 @@ create_type_fn(Context *cnt, ID *id, MirType *ret_type, TSmallArray_ArgPtr *args
 	tmp->data.fn.ret_type   = ret_type ? ret_type : cnt->builtin_types->t_void;
 	tmp->data.fn.builtin_id = MIR_BUILTIN_ID_NONE;
 
-	init_type_id(cnt, tmp);
-	init_llvm_type_fn(cnt, tmp);
+	type_init_id(cnt, tmp);
+	type_init_llvm_fn(cnt, tmp);
 
 	return tmp;
 }
@@ -2157,8 +2166,8 @@ create_type_array(Context *cnt, ID *id, MirType *elem_type, s64 len)
 	tmp->data.array.elem_type = elem_type;
 	tmp->data.array.len       = len;
 
-	init_type_id(cnt, tmp);
-	init_llvm_type_array(cnt, tmp);
+	type_init_id(cnt, tmp);
+	type_init_llvm_array(cnt, tmp);
 
 	return tmp;
 }
@@ -2180,8 +2189,8 @@ create_type_struct(Context *              cnt,
 	tmp->data.strct.is_union  = IS_FLAG(opt, CREATE_TYPE_STRUCT_UNION);
 	tmp->data.strct.base_type = base_type;
 
-	init_type_id(cnt, tmp);
-	init_llvm_type_struct(cnt, tmp);
+	type_init_id(cnt, tmp);
+	type_init_llvm_struct(cnt, tmp);
 
 	return tmp;
 }
@@ -2216,20 +2225,20 @@ complete_type_struct(Context *              cnt,
 	incomplete_type->data.strct.is_packed     = is_packed;
 	incomplete_type->data.strct.is_union      = is_union;
 
-	init_type_id(cnt, incomplete_type);
-	init_llvm_type_struct(cnt, incomplete_type);
+	type_init_llvm_struct(cnt, incomplete_type);
 	return incomplete_type;
 }
 
 MirType *
 create_type_struct_incomplete(Context *cnt, ID *user_id, bool is_union)
 {
-	MirType *tmp                  = create_type(cnt, MIR_TYPE_STRUCT, user_id);
-	tmp->data.strct.is_incomplete = true;
-	tmp->data.strct.is_union      = is_union;
+	MirType *type                  = create_type(cnt, MIR_TYPE_STRUCT, user_id);
+	type->data.strct.is_incomplete = true;
+	type->data.strct.is_union      = is_union;
 
-	init_llvm_type_struct(cnt, tmp);
-	return tmp;
+	type_init_id(cnt, type);
+	type_init_llvm_struct(cnt, type);
+	return type;
 }
 
 MirType *
@@ -2333,14 +2342,14 @@ create_type_enum(Context *               cnt,
 	tmp->data.enm.base_type = base_type;
 	tmp->data.enm.variants  = variants;
 
-	init_type_id(cnt, tmp);
-	init_llvm_type_enum(cnt, tmp);
+	type_init_id(cnt, tmp);
+	type_init_llvm_enum(cnt, tmp);
 
 	return tmp;
 }
 
 void
-init_llvm_type_int(Context *cnt, MirType *type)
+type_init_llvm_int(Context *cnt, MirType *type)
 {
 	type->llvm_type        = LLVMIntTypeInContext(cnt->assembly->llvm.cnt,
                                                (unsigned int)type->data.integer.bitcount);
@@ -2350,7 +2359,7 @@ init_llvm_type_int(Context *cnt, MirType *type)
 }
 
 void
-init_llvm_type_real(Context *cnt, MirType *type)
+type_init_llvm_real(Context *cnt, MirType *type)
 {
 	if (type->data.real.bitcount == 32)
 		type->llvm_type = LLVMFloatTypeInContext(cnt->assembly->llvm.cnt);
@@ -2365,7 +2374,7 @@ init_llvm_type_real(Context *cnt, MirType *type)
 }
 
 void
-init_llvm_type_ptr(Context *cnt, MirType *type)
+type_init_llvm_ptr(Context *cnt, MirType *type)
 {
 	MirType *tmp = mir_deref_type(type);
 	/* Pointer to Type has no LLVM representation and cannot not be generated into IR.*/
@@ -2380,7 +2389,7 @@ init_llvm_type_ptr(Context *cnt, MirType *type)
 }
 
 void
-init_llvm_type_void(Context *cnt, MirType *type)
+type_init_llvm_void(Context *cnt, MirType *type)
 {
 	type->alignment        = 0;
 	type->size_bits        = 0;
@@ -2389,7 +2398,7 @@ init_llvm_type_void(Context *cnt, MirType *type)
 }
 
 void
-init_llvm_type_null(Context UNUSED(*cnt), MirType *type)
+type_init_llvm_null(Context UNUSED(*cnt), MirType *type)
 {
 	MirType *tmp = type->data.null.base_type;
 	BL_ASSERT(tmp);
@@ -2401,7 +2410,7 @@ init_llvm_type_null(Context UNUSED(*cnt), MirType *type)
 }
 
 void
-init_llvm_type_bool(Context *cnt, MirType *type)
+type_init_llvm_bool(Context *cnt, MirType *type)
 {
 	type->llvm_type        = LLVMIntTypeInContext(cnt->assembly->llvm.cnt, 1);
 	type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
@@ -2428,7 +2437,7 @@ struct_split_fit(Context *cnt, MirType *struct_type, u32 bound, u32 *start)
 }
 
 void
-init_llvm_type_fn(Context *cnt, MirType *type)
+type_init_llvm_fn(Context *cnt, MirType *type)
 {
 	MirType *ret_type = type->data.fn.ret_type;
 
@@ -2579,7 +2588,7 @@ init_llvm_type_fn(Context *cnt, MirType *type)
 }
 
 void
-init_llvm_type_array(Context *cnt, MirType *type)
+type_init_llvm_array(Context *cnt, MirType *type)
 {
 	LLVMTypeRef llvm_elem_type = type->data.array.elem_type->llvm_type;
 	BL_ASSERT(llvm_elem_type);
@@ -2592,7 +2601,7 @@ init_llvm_type_array(Context *cnt, MirType *type)
 }
 
 void
-init_llvm_type_struct(Context *cnt, MirType *type)
+type_init_llvm_struct(Context *cnt, MirType *type)
 {
 	if (type->data.strct.is_incomplete) {
 		BL_ASSERT(type->user_id && "Missing user id for incomplete struct type.");
@@ -2670,7 +2679,7 @@ init_llvm_type_struct(Context *cnt, MirType *type)
 }
 
 void
-init_llvm_type_enum(Context *cnt, MirType *type)
+type_init_llvm_enum(Context *cnt, MirType *type)
 {
 	MirType *base_type = type->data.enm.base_type;
 	BL_ASSERT(base_type->kind == MIR_TYPE_INT);
