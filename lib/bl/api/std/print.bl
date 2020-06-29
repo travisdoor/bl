@@ -521,6 +521,7 @@ print_char :: fn (buf: []u8, cur: s32, c: u8) s32 {
     return cur + 1;
 };
 
+// @INCOMPLETE reimplement number parsing to pass all tests.
 print_u64_hex :: fn (buf: []u8, cur: s32, v: u64) s32 {
     cur = print_string(buf, cur, "0x");
 
@@ -586,7 +587,7 @@ print_f64 :: fn (buf: []u8, cur: s32, v: f64, trailing: s32) s32 {
         weight := pow(10., cast(f64) m);
 
         if weight > 0. {
-            d := cast(u8) floor(v / weight);
+            d :: cast(u8) floor(v / weight);
             v -= ((cast(f64) d) * weight);
 
             cur = print_char(buf, cur, d + '0');

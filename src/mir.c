@@ -1764,18 +1764,23 @@ type_init_id(Context *cnt, MirType *type)
 	}
 
 	case MIR_TYPE_STRUCT: {
-		if (type->data.strct.is_union)
-			tstring_append(tmp, "u.");
-		else
-			tstring_append(tmp, "s.");
+		static u64 serial = 0;
 
-		if (type->data.strct.is_incomplete) {
-			BL_ASSERT(type->user_id &&
-			          "Missing user id for incomplete structure type!");
-			tstring_append(tmp, type->user_id->str);
-		} else {
-			GEN_ID_STRUCT;
+		const bool is_union = type->data.strct.is_union;
+
+		if (type->user_id) {
+			char prefix[37];
+			snprintf(
+			    prefix, TARRAY_SIZE(prefix), "%s%llu.", is_union ? "u" : "s", ++serial);
+
+			tstring_append(tmp, prefix);
+			if (type->user_id) tstring_append(tmp, type->user_id->str);
+			break;
 		}
+
+		tstring_append(tmp, is_union ? "u." : "s.");
+
+		GEN_ID_STRUCT;
 		break;
 	}
 
@@ -1800,6 +1805,7 @@ type_init_id(Context *cnt, MirType *type)
 				         TARRAY_SIZE(value_str),
 				         "%lld",
 				         MIR_CEV_READ_AS(long long, variant->value));
+
 				tstring_append(tmp, value_str);
 
 				if (i != type->data.enm.variants->size - 1)

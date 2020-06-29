@@ -127,6 +127,7 @@
     assert(info.base.kind == TypeKind.Enum);
     assert(info.base_type != null);
     assert(info.variants.len == 3);
+    test_str_eq(info.name, "T");
     assert(info.variants[0].value == 0);
     assert(info.variants[1].value == 1);
     assert(info.variants[2].value == 2);
@@ -138,9 +139,38 @@
 
     assert(info.base.kind == TypeKind.Struct);
     assert(info.base.size_bytes == sizeof(T));
+    test_str_eq(info.name, "T");
     assert(info.members.len == 3);
     assert(info.members[0].index == 0);
     assert(info.members[1].index == 1);
     assert(info.members[2].index == 2);
 };
+
+#test "typeinfo - comparison" {
+    {
+        T1 :: struct {
+            i: s32;
+            j: bool;
+        };
+
+        T2 :: T1;
+
+        assert(typeinfo(T1) == typeinfo(T2));
+    }
+
+    {
+        T1 :: struct {
+            i: s32;
+            j: bool;
+        };
+
+        T2 :: struct {
+            i: s32;
+            j: bool;
+        };
+
+        assert(typeinfo(T1) != typeinfo(T2));
+    }
+}
+
 
