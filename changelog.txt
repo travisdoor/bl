@@ -8,6 +8,9 @@ Add slice_init and slice_terminate builtins.
 Add -no-vcvars to disable VS environemnt injection.
 Add implicit cast from dynamic array to slice.
 DI generation reimplemented.
+Fix invalid type ID generation for incomplete structure types.
+Fix naming of array types in type info.
+Add support of Tracy profiler.
 
 0.6.0 - BETA
 ---------------------------------------------------------------------------------------
