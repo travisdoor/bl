@@ -233,6 +233,19 @@ fmt_real :: fn (v: Any, trailing: u8) FmtReal #inline {
     return {:FmtReal: trailing, v};
 }
 
+FmtInt :: struct {
+    leading_zeros: u8;
+    v: Any;
+}
+
+fmt_int :: fn (v: Any, leading_zeros: u8) FmtInt #inline {
+    if v.type_info.kind != TypeKind.Int {
+        panic("Invalid format input, got % but expected is Integer number!", v.type_info.kind);
+    }
+
+    return {:FmtInt: leading_zeros, v};
+}
+
 #private
 DEFAULT_FLOAT_PRECISION :: 0.000001;
 
