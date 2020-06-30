@@ -27,6 +27,36 @@
 }
 */
 
+#test "fmt s32" {
+    {
+        str :: string_new_concatenate(fmt_int(10, 0));     
+        defer string_delete(str);
+
+        test_str_eq(str, "10");
+    }
+
+    {
+        str :: string_new_concatenate(fmt_int(10, 2));     
+        defer string_delete(str);
+
+        test_str_eq(str, "0010");
+    }
+
+    {
+        str :: string_new_concatenate(fmt_int(-10, 2));     
+        defer string_delete(str);
+
+        test_str_eq(str, "-0010");
+    }
+
+    {
+        str :: string_new_concatenate(fmt_int(123456789, 0));     
+        defer string_delete(str);
+
+        test_str_eq(str, "123456789");
+    }
+}
+
 #test "print content simple" {
     str :: string_new_concatenate("text", 10, true);     
     defer string_delete(str);

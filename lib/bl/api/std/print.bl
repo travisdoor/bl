@@ -306,6 +306,7 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
         
         return print_string(buf, cur, "]");
     } else if any.type_info.kind == TypeKind.Struct {
+        // Print formated values first.
         if any.type_info == typeinfo(FmtReal) {
             // Real formated
             fmt :: cast(*FmtReal) any.data;
@@ -317,6 +318,18 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
                 real = -real;
             }
             return print_f64(buf, cur, real, auto fmt.trailing);
+        } else if any.type_info == typeinfo(FmtInt) {
+            // Int formated
+            fmt :: cast(*FmtInt) any.data;
+            info := cast(*TypeInfoInt) fmt.v.type_info;
+
+            int := s64_from_u8_ptr(fmt.v.data, info.bit_count);
+            if int < 0 { // negative number
+                cur = print_string(buf, cur, "-");
+                int = -int;
+            }
+
+            return print_u64(buf, cur, auto int);
         }
         
         info := cast(*TypeInfoStruct) any.type_info;
@@ -560,6 +573,10 @@ print_u64_hex :: fn (buf: []u8, cur: s32, v: u64) s32 {
 
     return cur;
 };
+
+_print_u64 :: fn (buf: []u8, cur: s32, v: u64, zeros: u8) s32 {
+    return 0;
+}
 
 print_u64 :: fn (buf: []u8, cur: s32, v: u64) s32 {
     if v == 0 {
