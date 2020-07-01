@@ -11,6 +11,7 @@ DI generation reimplemented.
 Fix invalid type ID generation for incomplete structure types.
 Fix naming of array types in type info.
 Add support of Tracy profiler.
+Fix number serialization in print.
 
 0.6.0 - BETA
 ---------------------------------------------------------------------------------------

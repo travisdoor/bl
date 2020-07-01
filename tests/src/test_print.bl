@@ -50,6 +50,13 @@
         defer string_delete(str);
         test_str_eq(str, "-32768");
     }
+
+    {
+        v :: -0;
+        str :: string_new_concatenate(v);     
+        defer string_delete(str);
+        test_str_eq(str, "0");
+    }
 }
 
 #test "print bool" {
