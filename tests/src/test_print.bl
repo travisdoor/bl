@@ -1,59 +1,174 @@
 #load "std/print.bl"
 #load "std/test.bl"
 
-#test "printing" {
-    i : u64 = 18446744073709551615;
-    j := -204;
-    f := 1235.215f;
-    d := -0.00215;
-    ptr := &i;
-
-    print("i = %\n", i);
-    print("j = %\n", j);
-    print("f = %\n", f);
-    print("d = %\n", d);
-    print("b = %\n", true);
-    print("b = %\n", false);
-    print("ptr = %\n", ptr);
-    print("s32 = %\n", s32);
-}
-
-/* @INCOMPLETE
-#test "fmt f32" {
-    str :: string_new_concatenate(fmt_real(10.12f, 2));     
-    defer string_delete(str);
-
-    test_str_eq(str, "10.12");
-}
-*/
-
-#test "fmt s32" {
+#test "print int" {
     {
-        str :: string_new_concatenate(fmt_int(10, 0));     
+        v : u64 : U64_MAX;
+        str :: string_new_concatenate(v);     
+        defer string_delete(str);
+        test_str_eq(str, "18446744073709551615");
+    }
+
+    {
+        v : s64 : S64_MAX;
+        str :: string_new_concatenate(v);     
+        defer string_delete(str);
+        test_str_eq(str, "9223372036854775807");
+    }
+
+    {
+        v : s64 : S64_MIN;
+        str :: string_new_concatenate(v);     
+        defer string_delete(str);
+        test_str_eq(str, "-9223372036854775808");
+    }
+
+    {
+        v : s32 : S32_MAX;
+        str :: string_new_concatenate(v);     
+        defer string_delete(str);
+        test_str_eq(str, "2147483647");
+    }
+
+    {
+        v : s32 : S32_MIN;
+        str :: string_new_concatenate(v);     
+        defer string_delete(str);
+        test_str_eq(str, "-2147483648");
+    }
+
+    {
+        v : s16 : S16_MAX;
+        str :: string_new_concatenate(v);     
+        defer string_delete(str);
+        test_str_eq(str, "32767");
+    }
+
+    {
+        v : s16 : S16_MIN;
+        str :: string_new_concatenate(v);     
+        defer string_delete(str);
+        test_str_eq(str, "-32768");
+    }
+}
+
+#test "print bool" {
+    {
+        str :: string_new_concatenate(false);     
+        defer string_delete(str);
+        test_str_eq(str, "false");
+    }
+
+    {
+        str :: string_new_concatenate(true);     
+        defer string_delete(str);
+        test_str_eq(str, "true");
+    }
+}
+
+#test "fmt f32" {
+    {
+        str :: string_new_concatenate(fmt_real(0.f, 0));     
+        defer string_delete(str);
+
+        test_str_eq(str, "0");
+    }
+
+    {
+        str :: string_new_concatenate(fmt_real(10.12f, 2));     
+        defer string_delete(str);
+
+        test_str_eq(str, "10.12");
+    }
+
+    {
+        str :: string_new_concatenate(fmt_real(10.121234f, 0));     
         defer string_delete(str);
 
         test_str_eq(str, "10");
     }
 
     {
-        str :: string_new_concatenate(fmt_int(10, 2));     
+        str :: string_new_concatenate(fmt_real(-10.121234f, -1));     
         defer string_delete(str);
 
-        test_str_eq(str, "0010");
+        test_str_eq(str, "-10.121234");
     }
 
     {
-        str :: string_new_concatenate(fmt_int(-10, 2));     
+        str :: string_new_concatenate(fmt_real(121234.f, 5));     
         defer string_delete(str);
 
-        test_str_eq(str, "-0010");
+        test_str_eq(str, "121234.00000");
     }
 
     {
-        str :: string_new_concatenate(fmt_int(123456789, 0));     
+        str :: string_new_concatenate(fmt_real(0.121234f, -1));     
+        defer string_delete(str);
+
+        test_str_eq(str, "0.121234");
+    }
+}
+
+#test "fmt s32 base=10" {
+    {
+        str :: string_new_concatenate(fmt_int(0, FmtIntBase.Dec));     
+        defer string_delete(str);
+
+        test_str_eq(str, "0");
+    }
+
+    {
+        str :: string_new_concatenate(fmt_int(10, FmtIntBase.Dec));     
+        defer string_delete(str);
+
+        test_str_eq(str, "10");
+    }
+
+    {
+        str :: string_new_concatenate(fmt_int(-10, FmtIntBase.Dec));     
+        defer string_delete(str);
+
+        test_str_eq(str, "-10");
+    }
+
+    {
+        str :: string_new_concatenate(fmt_int(123456789, FmtIntBase.Dec));     
         defer string_delete(str);
 
         test_str_eq(str, "123456789");
+    }
+}
+
+#test "fmt s32 base=2" {
+    {
+        str :: string_new_concatenate(fmt_int(0, FmtIntBase.Bin));     
+        defer string_delete(str);
+
+        test_str_eq(str, "0b0");
+    }
+
+    {
+        str :: string_new_concatenate(fmt_int(0b1011, FmtIntBase.Bin));     
+        defer string_delete(str);
+
+        test_str_eq(str, "0b1011");
+    }
+}
+
+#test "fmt s32 base=16" {
+    {
+        str :: string_new_concatenate(fmt_int(0, FmtIntBase.Hex));     
+        defer string_delete(str);
+
+        test_str_eq(str, "0x0");
+    }
+
+    {
+        str :: string_new_concatenate(fmt_int(0xfa12, FmtIntBase.Hex));     
+        defer string_delete(str);
+
+        test_str_eq(str, "0xfa12");
     }
 }
 

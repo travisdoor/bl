@@ -233,21 +233,28 @@ fmt_real :: fn (v: Any, trailing: u8) FmtReal #inline {
     return {:FmtReal: trailing, v};
 }
 
+FmtIntBase :: enum u8 {
+    Bin;
+    Dec;
+    Oct;
+    Hex;
+}
+
 FmtInt :: struct {
-    leading_zeros: u8;
+    base: FmtIntBase;
     v: Any;
 }
 
-fmt_int :: fn (v: Any, leading_zeros: u8) FmtInt #inline {
+fmt_int :: fn (v: Any, base: FmtIntBase) FmtInt #inline {
     if v.type_info.kind != TypeKind.Int {
         panic("Invalid format input, got % but expected is Integer number!", v.type_info.kind);
     }
 
-    return {:FmtInt: leading_zeros, v};
+    return {:FmtInt: base, v};
 }
 
 #private
-DEFAULT_FLOAT_PRECISION :: 0.000001;
+DEFAULT_REAL_TRAILING :: 6;
 
 print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
     if any.type_info.kind == TypeKind.Int {
@@ -261,10 +268,10 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
                 int = -int;
             }
 
-            return print_u64(buf, cur, auto int);
+            return print_u64(buf, cur, auto int, FmtIntBase.Dec, 1);
         } else {
             int := u64_from_u8_ptr(any.data, info.bit_count);
-            return print_u64(buf, cur, int);
+            return print_u64(buf, cur, int, FmtIntBase.Dec, 1);
         } 
 
     } else if any.type_info.kind == TypeKind.Real {
@@ -329,7 +336,7 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
                 int = -int;
             }
 
-            return print_u64(buf, cur, auto int);
+            return print_u64(buf, cur, auto int, fmt.base, 1);
         }
         
         info := cast(*TypeInfoStruct) any.type_info;
@@ -396,7 +403,7 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
             return print_string(buf, cur, "null");
         }
 
-        return print_u64_hex(buf, cur, ptr);
+        return print_u64(buf, cur, ptr, FmtIntBase.Hex, 1);
 
     } else if any.type_info.kind == TypeKind.Bool {
         // Bool
@@ -423,7 +430,7 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
             value = -value;
         }
 
-        return print_u64(buf, cur, auto value);
+        return print_u64(buf, cur, auto value, FmtIntBase.Dec, 1);
     } else if any.type_info.kind == TypeKind.Type {
         // Type
         return print_type(buf, cur, cast(*TypeInfo) any.data);
@@ -451,11 +458,11 @@ print_type :: fn (buf: []u8, cur: s32, info: *TypeInfo) s32 {
             cur = print_string(buf, cur, "u");
         }
 
-        return print_u64(buf, cur, auto c.bit_count);
+        return print_u64(buf, cur, auto c.bit_count, FmtIntBase.Dec, 1);
     } else if info.kind == TypeKind.Real {
         c := cast(*TypeInfoReal) info;
         cur = print_string(buf, cur, "f");
-        return print_u64(buf, cur, auto c.bit_count);
+        return print_u64(buf, cur, auto c.bit_count, FmtIntBase.Dec, 1);
     } else if info.kind == TypeKind.Bool{
         return print_string(buf, cur, "bool");
     } else if info.kind == TypeKind.Ptr {
@@ -465,7 +472,7 @@ print_type :: fn (buf: []u8, cur: s32, info: *TypeInfo) s32 {
     } else if info.kind == TypeKind.Array {
         c := cast(*TypeInfoArray) info;
         cur = print_string(buf, cur, "[");
-        cur = print_u64(buf, cur, auto c.len);
+        cur = print_u64(buf, cur, auto c.len, FmtIntBase.Dec, 1);
         cur = print_string(buf, cur, "]");
 
         return print_type(buf, cur, c.elem_type);
@@ -509,7 +516,7 @@ print_type :: fn (buf: []u8, cur: s32, info: *TypeInfo) s32 {
             variant := c.variants[i];
             cur = print_string(buf, cur, variant.name);
             cur = print_string(buf, cur, " :: ");
-            cur = print_u64(buf, cur, auto variant.value);
+            cur = print_u64(buf, cur, auto variant.value, FmtIntBase.Dec, 1);
 
             if i < c.variants.len - 1 { cur = print_string(buf, cur, ", "); }
         }
@@ -539,7 +546,7 @@ print_string :: fn (buf: []u8, cur: s32, str: string) s32 {
     return cur + i;
 };
 
-print_char :: fn (buf: []u8, cur: s32, c: u8) s32 {
+print_char :: fn (buf: []u8, cur: s32, c: u8) s32 #inline {
     if cur >= buf.len {
         return cur;
     }
@@ -547,87 +554,43 @@ print_char :: fn (buf: []u8, cur: s32, c: u8) s32 {
     return cur + 1;
 };
 
-// @INCOMPLETE reimplement number parsing to pass all tests.
-print_u64_hex :: fn (buf: []u8, cur: s32, v: u64) s32 {
-    cur = print_string(buf, cur, "0x");
+print_u64 :: fn (buf: []u8, cur: s32, v: u64, base: FmtIntBase, digits: s32) s32 {
+    tbl :: "0123456789abcdef";
+    b: u64 #noinit;
 
-    if v == 0 {
-        return print_string(buf, cur, "0");
+    switch base {
+        FmtIntBase.Dec { b = 10; }
+        FmtIntBase.Bin { b = 2;  cur = print_string(buf, cur, "0b"); }
+        FmtIntBase.Oct { b = 8;  cur = print_char(buf, cur, '0');    }
+        FmtIntBase.Hex { b = 16; cur = print_string(buf, cur, "0x"); }
     }
 
-    digits :: {:[16]u8: '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
-    mask : u64 = 0xf000000000000000;
-    hit_non_zero := false;
-
-    loop i := 0; i < 16; i += 1 {
-        d := v & mask;
-        v = v << 4;
-        d = d >> 60;
-
-        if d != 0 { hit_non_zero = true; }
-
-        if hit_non_zero {
-            cur = print_char(buf, cur, digits[auto d]);
-        }
+    prev_cur :: cur;
+    loop v > 0 {
+        d :: v % b;
+        cur = print_char(buf, cur, tbl[auto d]);
+        v = v / b;
     }
 
+    loop (cur - prev_cur) < digits {
+        cur = print_char(buf, cur, '0');
+    }
+    
+    reverse(buf, prev_cur, cur - 1);
     return cur;
-};
-
-_print_u64 :: fn (buf: []u8, cur: s32, v: u64, zeros: u8) s32 {
-    return 0;
 }
 
-print_u64 :: fn (buf: []u8, cur: s32, v: u64) s32 {
-    if v == 0 {
-        return print_string(buf, cur, "0");
-    }
-
-    base : u64 : 10;
-    div : u64 = 10000000000000000000;
-    hit_non_zero := false;
-
-    loop div > 0 {
-        d := v / div;
-
-        v %= div;
-        div /= base;
-
-        if d != 0 { hit_non_zero = true; }
-
-        if hit_non_zero {
-            cur = print_char(buf, cur, auto d + '0');
-        }
-    }
-
-    return cur;
-};
-
 print_f64 :: fn (buf: []u8, cur: s32, v: f64, trailing: s32) s32 {
-    precision := DEFAULT_FLOAT_PRECISION;
-    if trailing > -1 { precision = 1. / pow(10., auto trailing); }
+    if trailing < 0 { trailing = DEFAULT_REAL_TRAILING; }
+    ipart :: cast(u64) v;
+    fpart := v - cast(f64) ipart;
+    cur = print_u64(buf, cur, ipart, FmtIntBase.Dec, 1);
 
-    m := cast(s32) log10(v);
-    if m < 0 { m = 0; }
-
-    // convert the number
-    loop {
-        if trailing > -1 && (m * -1) >= trailing + 1 { break; }
-        if trailing < 0 && v < precision && m < 0 { break; }
-        weight := pow(10., cast(f64) m);
-
-        if weight > 0. {
-            d :: cast(u8) floor(v / weight);
-            v -= ((cast(f64) d) * weight);
-
-            cur = print_char(buf, cur, d + '0');
-        } 
-
-        if m == 0 {
-            if v > 0. || trailing > -1 { cur = print_char(buf, cur, '.'); }
-        }
-        m -= 1;
-    }
+    if trailing != 0 { 
+        cur = print_char(buf, cur, '.');
+        fpart = fpart * pow(10., auto trailing); 
+        cur = print_u64(buf, cur, cast(u64) ceil(fpart), FmtIntBase.Dec, trailing); 
+    } 
 
     return cur;
 };
@@ -660,3 +623,13 @@ f64_from_u8_ptr :: fn (ptr: *u8, bit_count: s32) f64 {
 ptr_from_ptr :: fn (ptr: *u8) *u8 {
     return cast(*u8) ^ cast(*usize) ptr;
 };
+
+reverse :: fn (buf: []u8, start: s64, end: s64) #inline {
+    loop start < end {
+        temp :: buf[start]; 
+        buf[start] = buf[end]; 
+        buf[end] = temp; 
+        start += 1; 
+        end   -= 1; 
+    }
+}
