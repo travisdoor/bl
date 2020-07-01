@@ -218,9 +218,13 @@ struct MirFn {
 	Ast *     decl_node;
 
 	/* function body scope if there is one (optional) */
-	Scope *     body_scope;
-	MirType *   type;
-	TArray *    variables;
+	Scope *  body_scope;
+	MirType *type;
+	TArray * variables;
+
+	/* Linkage name of the function, this name is used during linking to identify function,
+	 * actual implementation can be external, internal or intrinsic embedded in compiler
+	 * depending on function flags. */
 	const char *linkage_name;
 
 	LLVMValueRef llvm_value;
