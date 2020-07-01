@@ -69,3 +69,19 @@ i, j := foo(); // bool, s32
 foo :: fn () struct { bool, s32 } {
     return {:: true, 10};
 }
+
+
+
+/* Explicit overloading */
+
+_add_f32 :: fn (a: f32, b: f32) {}
+_add_f64 :: fn (a: f64, b: f64) {}
+
+add :: group {
+    _add_f32;
+    _add_f64;
+};
+
+
+
+
