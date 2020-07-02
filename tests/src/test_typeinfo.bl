@@ -1,5 +1,3 @@
-#load "std/print.bl"
-
 #test "typeinfo - s8" {
     info := cast(*TypeInfoInt) typeinfo(s8);
     assert(info.base.kind == TypeKind.Int);

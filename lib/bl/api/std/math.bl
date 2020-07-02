@@ -89,7 +89,9 @@ U64_MIN : u64 : 0;
 U64_MAX : u64 : 18446744073709551615;
 
 /* Lib C functions */
-sin       :: fn (n: f64) f64 #extern;
+sin       :: fn (n: f64) f64 #intrinsic "sin.f64";
+sinf      :: fn (n: f32) f32 #intrinsic "sin.f32";
+
 cos       :: fn (n: f64) f64 #extern;
 log10     :: fn (n: f64) f64 #extern;
 pow       :: fn (base: f64, exponent: f64) f64 #extern;
@@ -97,7 +99,6 @@ sqrt      :: fn (x: f64) f64 #extern;
 floor     :: fn (x: f64) f64 #extern;
 rand      :: fn () s32 #extern;
 srand     :: fn (seed: u32) #extern;
-sinf      :: fn (n: f32) f32 #extern;
 asinf     :: fn (arg: f32) f32 #extern;
 cosf      :: fn (n: f32) f32 #extern;
 acosf     :: fn (n: f32) f32 #extern;
@@ -186,6 +187,11 @@ f32_abs :: fn (v: f32) f32 #inline {
     return v;
 }
 
+f64_abs :: fn (v: f64) f64 #inline {
+    if v < 0. { return -v; }
+    return v;
+}
+
 lerp :: fn (a: f32, b: f32, fraction: f32) f32 #inline {
     return a + fraction * (b - a);
 };
@@ -202,6 +208,10 @@ u32_min :: fn (a: u32, b: u32) u32 #inline {
 
 f32_compare :: fn (a: f32, b: f32, epsilon: f32) bool #inline {
     return f32_abs(a - b) < epsilon;
+};
+
+f64_compare :: fn (a: f64, b: f64, epsilon: f64) bool #inline {
+    return f64_abs(a - b) < epsilon;
 };
 
 degtorad :: fn (deg: f32) f32 #inline {

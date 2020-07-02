@@ -110,8 +110,13 @@ os_mutex_unlock :: fn (mutex: *OSMutex) #inline {
     }
 }
 
-os_sleep_ms :: fn (ms: f64) {
+os_sleep_ms :: fn (ms: f64) #inline {
     win32_Sleep(auto ms);
+};
+
+// @INCOMPLETE: implement this for linux and macos!!!
+os_tick_ms :: fn () f64 #inline {
+    return auto win32_GetTickCount();
 };
 
 /*

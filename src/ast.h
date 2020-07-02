@@ -53,6 +53,7 @@ typedef enum {
 	FLAG_ENTRY       = 1 << 6, /* marking entry point function */
 	FLAG_BUILD_ENTRY = 1 << 7, /* marking build entry point function */
 	FLAG_NO_INIT     = 1 << 8, /* no default initialization */
+	FLAG_INTRINSIC   = 1 << 9, /* intrinsics declaration */
 } AstFlag;
 
 /* map symbols to binary operation kind */

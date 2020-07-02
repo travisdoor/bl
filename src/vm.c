@@ -1052,12 +1052,13 @@ dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result, voi
 	VM *              vm  = cnt->vm;
 	BL_ASSERT(fn && vm);
 
-	MirType *  ret_type     = fn->type->data.fn.ret_type;
-	const bool is_fn_extern = IS_FLAG(cnt->fn->flags, FLAG_EXTERN);
-	const bool has_args     = fn->type->data.fn.args;
-	const bool has_return   = ret_type->kind != MIR_TYPE_VOID;
+	MirType *  ret_type = fn->type->data.fn.ret_type;
+	const bool is_extern =
+	    IS_FLAG(cnt->fn->flags, FLAG_EXTERN) || IS_FLAG(cnt->fn->flags, FLAG_INTRINSIC);
+	const bool has_args   = fn->type->data.fn.args;
+	const bool has_return = ret_type->kind != MIR_TYPE_VOID;
 
-	if (is_fn_extern) {
+	if (is_extern) {
 		/* TODO: external callback */
 		/* TODO: external callback */
 		/* TODO: external callback */
@@ -2152,7 +2153,7 @@ interp_instr_call(VM *vm, MirInstrCall *call)
 
 	BL_ASSERT(callee->type);
 
-	if (IS_FLAG(callee->flags, FLAG_EXTERN)) {
+	if (IS_FLAG(callee->flags, FLAG_EXTERN) || IS_FLAG(callee->flags, FLAG_INTRINSIC)) {
 		interp_extern_call(vm, callee, call);
 	} else {
 		/* Push current frame stack top. (Later poped by ret instruction)*/

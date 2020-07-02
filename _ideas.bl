@@ -1,23 +1,5 @@
-// Dynamic array
-
-
-main :: fn () s32 {
-    arr: []s32; // has len, ptr
-    i := 10;
-    array_push(&arr, i);
-
-    return 0;
-}
-
-array_push :: fn (arr: *[]?T, v: *T) {
-}
-
-///
-array_push :: fn (arr: *[]s32, v: s32) {
-}
-
-
-
 // Intrinsics
 sin :: fn (v: f32) f32 #intrinsic "sin";
 memcpy :: fn (dest: *u8, src: *u8, len: s64) void #intrinsic "memcpy";
+
+
