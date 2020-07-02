@@ -35,7 +35,7 @@
 #include "common.h"
 
 BL_EXPORT Assembly *
-__add_executable(const char *name)
+          __add_executable(const char *name)
 {
 	Assembly *new_assembly = assembly_new(name);
 	builder_add_assembly(new_assembly);
@@ -44,7 +44,7 @@ __add_executable(const char *name)
 }
 
 BL_EXPORT Unit *
-__add_unit(Assembly *assembly, const char *filepath)
+          __add_unit(Assembly *assembly, const char *filepath)
 {
 	Unit *new_unit = unit_new_file(filepath, NULL, NULL);
 	assembly_add_unit_unique(assembly, new_unit);
@@ -92,5 +92,5 @@ __set_output_dir(Assembly *assembly, const char *dir)
 BL_EXPORT void
 __toggle_testing(Assembly *assembly, int v)
 {
-	assembly->options.run_tests = (bool) v;
+	assembly->options.run_tests = (bool)v;
 }

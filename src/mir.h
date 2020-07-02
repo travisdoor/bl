@@ -223,7 +223,7 @@ struct MirFn {
 	TArray * variables;
 
 	/* Linkage name of the function, this name is used during linking to identify function,
-	 * actual implementation can be external, internal or intrinsic embedded in compiler
+	 * actual implementation can be external, internal or intrinsic embedded in compiler,
 	 * depending on function flags. */
 	const char *linkage_name;
 
@@ -249,6 +249,7 @@ struct MirFn {
 	MirInstrRet *    terminal_instr;
 	struct Location *first_unrechable_loc;
 
+	/* dyncall external context */
 	struct {
 		DCpointer        extern_entry;
 		DCCallback *     extern_callback_handle;

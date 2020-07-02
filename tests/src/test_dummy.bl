@@ -26,6 +26,7 @@
 #load "test_local_variables.bl"
 #load "test_dynamic_arrays.bl"
 #load "test_slice_init.bl"
+#load "test_intrinsics.bl"
 
 main :: fn () s32 {
     return 0;

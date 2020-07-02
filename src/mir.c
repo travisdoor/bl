@@ -208,6 +208,9 @@ fn_dtor(MirFn **_fn)
 static void
 init_builtins(Context *cnt);
 
+static const char *
+get_intrinsic(const char *name);
+
 /* Start top-level execution of entry function using MIR-VM. (Usualy 'main' funcition) */
 static void
 execute_entry_fn(Context *cnt);
@@ -5493,16 +5496,12 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	}
 
 	/* Setup function linkage name, this will be later used by LLVM backend. */
-	if (fn->id && !fn->linkage_name) {
-		if (IS_FLAG(fn->flags, FLAG_EXTERN) || IS_FLAG(fn->flags, FLAG_ENTRY)) {
+	if (fn->id && !fn->linkage_name) { // Has ID and has no linkage name specified.
+		if (IS_FLAG(fn->flags, FLAG_EXTERN) || IS_FLAG(fn->flags, FLAG_ENTRY) ||
+		    IS_FLAG(fn->flags, FLAG_INTRINSIC)) {
 			fn->linkage_name = fn->id->str;
-#if 0
-		} else if (IS_FLAG(fn->flags, FLAG_PRIVATE)) {
-			fn->linkage_name = gen_uq_name(fn->id->str);
-		} else if (fn->is_global) {
-			fn->linkage_name = fn->id->str;
-#endif
 		} else {
+			// Here we generate unique linkage name
 			fn->linkage_name = gen_uq_name(fn->id->str);
 		}
 	} else if (!fn->linkage_name) {
@@ -5556,6 +5555,23 @@ analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	if (IS_FLAG(fn->flags, FLAG_EXTERN)) {
 		/* lookup external function exec handle */
 		fn->dyncall.extern_entry = assembly_find_extern(cnt->assembly, fn->linkage_name);
+		fn->fully_analyzed       = true;
+	} else if (IS_FLAG(fn->flags, FLAG_INTRINSIC)) {
+		/* For intrinsics we use shorter names defined in user code, so we need username ->
+		 * internal name mapping in this case. */
+		const char *intrinsic_name = get_intrinsic(fn->linkage_name);
+		if (!intrinsic_name) {
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_UNKNOWN_SYMBOL,
+			            fn_proto->base.node->location,
+			            BUILDER_CUR_WORD,
+			            "Unknown compiler intrinsic '%s'.",
+			            fn->linkage_name);
+
+			return ANALYZE_RESULT(FAILED, 0);
+		}
+
+		fn->dyncall.extern_entry = assembly_find_extern(cnt->assembly, intrinsic_name);
 		fn->fully_analyzed       = true;
 	} else if (cnt->assembly->options.build_mode == BUILD_MODE_BUILD &&
 	           IS_FLAG(fn->flags, FLAG_ENTRY)) {
@@ -8675,9 +8691,9 @@ ast_expr_lit_fn(Context *        cnt,
 
 	MIR_CEV_WRITE_AS(MirFn *, &fn_proto->base.value, fn);
 
-	/* function body */
-	/* external functions has no body */
-	if (IS_FLAG(flags, FLAG_EXTERN)) {
+	/* FUNCTION BODY */
+	/* External or intrinsic function declaration has no body so we can skip body generation. */
+	if (IS_FLAG(flags, FLAG_EXTERN) || IS_FLAG(flags, FLAG_INTRINSIC)) {
 		return &fn_proto->base;
 	}
 
@@ -9970,6 +9986,19 @@ init_builtins(Context *cnt)
 	add_global_immutable_bool(cnt, &builtin_ids[MIR_BUILTIN_ID_IS_DEBUG], cnt->debug_mode);
 
 #undef PROVIDE
+}
+
+const char *
+get_intrinsic(const char *name)
+{
+	if (!name) return NULL;
+	if (strcmp(name, "sin.f32") == 0) {
+		return "__intrinsic_sin_f32";
+	} else if (strcmp(name, "sin.f64") == 0) {
+		return "__intrinsic_sin_f64";
+	}
+
+	return NULL;
 }
 
 void

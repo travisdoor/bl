@@ -83,6 +83,7 @@ typedef enum {
 	HD_BUILD_ENTRY = 1 << 13,
 	HD_TAGS        = 1 << 14,
 	HD_NO_INIT     = 1 << 16,
+	HD_INTRINSIC   = 1 << 17,
 } HashDirective;
 
 typedef struct {
@@ -719,6 +720,27 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 		return ext;
 	}
 
+	if (strcmp(directive, "intrinsic") == 0) {
+		set_satisfied(HD_INTRINSIC);
+		if (IS_NOT_FLAG(expected_mask, HD_INTRINSIC)) {
+			PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+			            tok_directive,
+			            BUILDER_CUR_WORD,
+			            "Unexpected directive.");
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
+		}
+
+		/* Intrinsic flag extension could be linkage name as string */
+		Token *tok_ext = tokens_consume_if(cnt->tokens, SYM_STRING);
+		if (!tok_ext) return NULL;
+
+		/* Parse extension token. */
+		Ast *ext = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ext, SCOPE_GET(cnt));
+		id_init(&ext->data.ident.id, tok_ext->value.str);
+		return ext;
+	}
+
 	if (strcmp(directive, "compiler") == 0) {
 		set_satisfied(HD_COMPILER);
 		if (IS_NOT_FLAG(expected_mask, HD_COMPILER)) {
@@ -1217,6 +1239,7 @@ hash_directive_to_flags(HashDirective hd, u32 *out_flags)
 
 	switch (hd) {
 		FLAG_CASE(HD_EXTERN, FLAG_EXTERN);
+		FLAG_CASE(HD_INTRINSIC, FLAG_INTRINSIC);
 		FLAG_CASE(HD_ENTRY, FLAG_ENTRY);
 		FLAG_CASE(HD_BUILD_ENTRY, FLAG_BUILD_ENTRY);
 		FLAG_CASE(HD_COMPILER, FLAG_COMPILER);
@@ -1768,15 +1791,15 @@ parse_expr_lit_fn(Context *cnt)
 	/* parse flags */
 	Ast *curr_decl = DECL_GET(cnt);
 	if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
-		u32 accepted =
-		    HD_EXTERN | HD_NO_INLINE | HD_INLINE | HD_COMPILER | HD_ENTRY | HD_BUILD_ENTRY;
+		u32 accepted = HD_EXTERN | HD_NO_INLINE | HD_INLINE | HD_COMPILER | HD_ENTRY |
+		               HD_BUILD_ENTRY | HD_INTRINSIC;
 		u32 flags = 0;
 		while (true) {
 			HashDirective found        = HD_NONE;
 			Ast *         hd_extension = parse_hash_directive(cnt, accepted, &found);
 			if (!hash_directive_to_flags(found, &flags)) break;
 
-			if (found == HD_EXTERN && hd_extension) {
+			if ((found == HD_EXTERN || found == HD_INTRINSIC) && hd_extension) {
 				/* Use extern flag extension on function declaration. */
 
 				BL_ASSERT(hd_extension->kind == AST_IDENT &&
@@ -2313,7 +2336,7 @@ parse_decl(Context *cnt)
 		/* parse declaration expression */
 		decl->data.decl_entity.value = parse_expr(cnt);
 
-		if (!(decl->data.decl_entity.flags & (FLAG_EXTERN))) {
+		if (IS_NOT_FLAG(decl->data.decl_entity.flags, FLAG_EXTERN)) {
 			if (!decl->data.decl_entity.value) {
 				PARSE_ERROR(ERR_EXPECTED_INITIALIZATION,
 				            tok_assign,

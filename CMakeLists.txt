@@ -148,6 +148,7 @@ set(SOURCE_FILES
         src/mir_printer.c
         src/ast.c
         src/build_api.c
+        src/intrinsic.c
 	src/threading.cpp
 	src/llvm_api.cpp
         src/llvm_di.cpp
@@ -180,6 +181,8 @@ else()
     # CXX 
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG -fno-strict-aliasing -fno-exceptions -fno-rtti")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-strict-aliasing -fno-exceptions -fno-rtti -g -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -O0")
+
+    set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:library")
 endif()
 
 target_link_libraries(blc PUBLIC

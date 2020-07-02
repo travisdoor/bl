@@ -1,11 +1,11 @@
 //************************************************************************************************
 // bl
 //
-// File:   test.bl 
+// File:   intrinsic.c
 // Author: Martin Dorazil
-// Date:   2/11/19
+// Date:   8/1/20
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2020 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,26 +26,17 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#load "std/debug.bl"
-#load "std/string.bl"
+#include "common.h"
+#include <math.h>
 
-test_str_eq :: fn (got: string, expected: string) {
-    if string_compare(expected, got) { return; }
-
-    eprint("\nExpected '%' got '%'.\n", expected, got);
-    assert(false);
+BL_EXPORT f32
+__intrinsic_sin_f32(f32 v)
+{
+	return sinf(v);
 }
 
-test_f32_eq :: fn (got: f32, expected: f32, epsilon: f32) {
-    if f32_compare(got, expected, epsilon) { return; }
-
-    eprint("\nExpected '%' got '%'.\n", expected, got);
-    assert(false);
-}
-
-test_f64_eq :: fn (got: f64, expected: f64, epsilon: f64) {
-    if f64_compare(got, expected, epsilon) { return; }
-
-    eprint("\nExpected '%' got '%'.\n", expected, got);
-    assert(false);
+BL_EXPORT f64
+__intrinsic_sin_f64(f64 v)
+{
+	return sin(v);
 }

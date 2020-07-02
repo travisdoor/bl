@@ -354,6 +354,19 @@ emit_basic_block(Context *cnt, MirInstrBlock *block)
 	return llvm_block;
 }
 
+const char *
+get_intrinsic(const char *name)
+{
+	if (!name) return NULL;
+	if (strcmp(name, "sin.f32") == 0) {
+		return "llvm.sin.f32";
+	} else if (strcmp(name, "sin.f64") == 0) {
+		return "llvm.sin.f64";
+	}
+
+	return NULL;
+}
+
 /* impl */
 LLVMMetadataRef
 DI_type_init(Context *cnt, MirType *type)
@@ -776,11 +789,20 @@ emit_fn_proto(Context *cnt, MirFn *fn)
 	BL_ASSERT(fn->ref_count);
 #endif
 
-	fn->llvm_value = LLVMGetNamedFunction(cnt->llvm_module, fn->linkage_name);
+	const char *linkage_name = NULL;
+	if (IS_NOT_FLAG(fn->flags, FLAG_INTRINSIC)) {
+		linkage_name = fn->linkage_name;
+	} else {
+		linkage_name = get_intrinsic(fn->linkage_name);
+		BL_ASSERT(linkage_name && "Unknown LLVM intrinsic!");
+	}
+
+	BL_ASSERT(linkage_name && "Invalid function name!");
+
+	fn->llvm_value = LLVMGetNamedFunction(cnt->llvm_module, linkage_name);
 	if (fn->llvm_value) return fn->llvm_value;
 
-	fn->llvm_value =
-	    LLVMAddFunction(cnt->llvm_module, fn->linkage_name, get_type(cnt, fn->type));
+	fn->llvm_value = LLVMAddFunction(cnt->llvm_module, linkage_name, get_type(cnt, fn->type));
 
 	/* Setup attributes for sret */
 	if (fn->type->data.fn.has_sret) {
@@ -2953,7 +2975,7 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	emit_fn_proto(cnt, fn);
 
 	/* External functions does not have any body block. */
-	if (IS_NOT_FLAG(fn->flags, FLAG_EXTERN)) {
+	if (IS_NOT_FLAG(fn->flags, FLAG_EXTERN) && IS_NOT_FLAG(fn->flags, FLAG_INTRINSIC)) {
 		if (cnt->debug_mode) {
 			emit_DI_fn(cnt, fn);
 		}

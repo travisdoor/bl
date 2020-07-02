@@ -218,3 +218,5 @@ win32_CreateMutexA :: fn (
 ) WIN32_HANDLE #extern "CreateMutexA";
 
 win32_ReleaseMutex :: fn (hMutex: WIN32_HANDLE) WIN32_BOOL #extern "ReleaseMutex";
+
+win32_GetTickCount :: fn () WIN32_DWORD #extern "GetTickCount";
