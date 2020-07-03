@@ -362,6 +362,18 @@ get_intrinsic(const char *name)
 		return "llvm.sin.f32";
 	} else if (strcmp(name, "sin.f64") == 0) {
 		return "llvm.sin.f64";
+	} else if (strcmp(name, "cos.f32") == 0) {
+		return "llvm.cos.f32";
+	} else if (strcmp(name, "cos.f64") == 0) {
+		return "llvm.cos.f64";
+	} else if (strcmp(name, "round.f32") == 0) {
+		return "llvm.round.f32";
+	} else if (strcmp(name, "round.f64") == 0) {
+		return "llvm.round.f64";
+	} else if (strcmp(name, "floor.f32") == 0) {
+		return "llvm.floor.f32";
+	} else if (strcmp(name, "floor.f64") == 0) {
+		return "llvm.floor.f64";
 	}
 
 	return NULL;

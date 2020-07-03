@@ -9920,12 +9920,8 @@ execute_test_cases(Context *cnt)
 		const s32 color = failed ? BL_RED : BL_GREEN;
 
 		color_print(stdout, color, TEXT_LINE);
-		snprintf(buffer,
-		         ARRAY_SIZE(buffer),
-		         "Testing done, %d failed. Completed: %d%%",
-		         failed,
-		         perc);
-		color_print(stdout, color, buffer);
+		color_print(
+		    stdout, color, "Testing done, %d failed. Completed: %d%%", failed, perc);
 		color_print(stdout, color, TEXT_LINE);
 	}
 }
@@ -9996,6 +9992,18 @@ get_intrinsic(const char *name)
 		return "__intrinsic_sin_f32";
 	} else if (strcmp(name, "sin.f64") == 0) {
 		return "__intrinsic_sin_f64";
+	} else if (strcmp(name, "cos.f32") == 0) {
+		return "__intrinsic_cos_f32";
+	} else if (strcmp(name, "cos.f64") == 0) {
+		return "__intrinsic_cos_f64";
+	} else if (strcmp(name, "round.f32") == 0) {
+		return "__intrinsic_round_f32";
+	} else if (strcmp(name, "round.f64") == 0) {
+		return "__intrinsic_round_f64";
+	} else if (strcmp(name, "floor.f32") == 0) {
+		return "__intrinsic_floor_f32";
+	} else if (strcmp(name, "floor.f64") == 0) {
+		return "__intrinsic_floor_f64";
 	}
 
 	return NULL;

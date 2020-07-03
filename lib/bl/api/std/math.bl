@@ -88,28 +88,29 @@ U32_MAX : u32 : 4294967295;
 U64_MIN : u64 : 0;
 U64_MAX : u64 : 18446744073709551615;
 
-/* Lib C functions */
 sin       :: fn (n: f64) f64 #intrinsic "sin.f64";
 sinf      :: fn (n: f32) f32 #intrinsic "sin.f32";
+cos       :: fn (n: f64) f64 #intrinsic "cos.f64";
+cosf      :: fn (n: f32) f32 #intrinsic "cos.f32";
+floor     :: fn (n: f64) f64 #intrinsic "floor.f64";
+floorf    :: fn (n: f32) f32 #intrinsic "floor.f32";
+round     :: fn (n: f64) f64 #intrinsic "round.f64";
+roundf    :: fn (n: f32) f32 #intrinsic "round.f32";
 
-cos       :: fn (n: f64) f64 #extern;
+
+/* Lib C functions */
 log10     :: fn (n: f64) f64 #extern;
 pow       :: fn (base: f64, exponent: f64) f64 #extern;
 sqrt      :: fn (x: f64) f64 #extern;
-floor     :: fn (x: f64) f64 #extern;
 rand      :: fn () s32 #extern;
 srand     :: fn (seed: u32) #extern;
 asinf     :: fn (arg: f32) f32 #extern;
-cosf      :: fn (n: f32) f32 #extern;
 acosf     :: fn (n: f32) f32 #extern;
 powf      :: fn (base: f32, exponent: f32) f32 #extern;
 sqrtf     :: fn (x: f32) f32 #extern;
-floorf    :: fn (x: f32) f32 #extern;
 tanf      :: fn (x: f32) f32 #extern;
 atan2f    :: fn (y: f32, x: f32) f32 #extern;
 copysignf :: fn (x: f32, y: f32) f32 #extern;
-round     :: fn (n: f64) f64 #extern;
-roundf    :: fn (n: f32) f32 #extern;
 ceil      :: fn (x: f64) f64 #extern;
 /* Lib C functions */
 

@@ -40,3 +40,39 @@ __intrinsic_sin_f64(f64 v)
 {
 	return sin(v);
 }
+
+BL_EXPORT f32
+__intrinsic_cos_f32(f32 v)
+{
+	return cosf(v);
+}
+
+BL_EXPORT f64
+__intrinsic_cos_f64(f64 v)
+{
+	return cos(v);
+}
+
+BL_EXPORT f32
+__intrinsic_round_f32(f32 v)
+{
+	return roundf(v);
+}
+
+BL_EXPORT f64
+__intrinsic_round_f64(f64 v)
+{
+	return round(v);
+}
+
+BL_EXPORT f32
+__intrinsic_floor_f32(f32 v)
+{
+	return floorf(v);
+}
+
+BL_EXPORT f64
+__intrinsic_floor_f64(f64 v)
+{
+	return floor(v);
+}

@@ -13,3 +13,29 @@
         test_f64_eq(sin(v), c_sin(v), 0.000001);
     }
 }
+
+#test "cos" {
+    // compare results with libc
+    c_cosf :: fn (v: f32) f32 #extern "cosf";
+    c_cos  :: fn (v: f64) f64 #extern "cos";
+
+    loop i := 0; i < 3141; i += 1 {
+        v :: (cast(f32) i) * 0.001f;
+        test_f32_eq(cosf(v), c_cosf(v), 0.000001f);
+    }
+
+    loop i := 0; i < 3141; i += 1 {
+        v :: (cast(f64) i) * 0.001;
+        test_f64_eq(cos(v), c_cos(v), 0.000001);
+    }
+}
+
+#test "floor" {
+    test_f32_eq(floorf(10.12f), 10.f, 0.000001f);
+    test_f32_eq(floorf(0.2f), 0.f, 0.000001f);
+    test_f32_eq(floorf(999.92f), 999.f, 0.000001f);
+
+    test_f64_eq(floor(10.12), 10., 0.000001);
+    test_f64_eq(floor(0.2), 0., 0.000001);
+    test_f64_eq(floor(999.92), 999., 0.000001);
+}
