@@ -76,3 +76,15 @@ __intrinsic_floor_f64(f64 v)
 {
 	return floor(v);
 }
+
+BL_EXPORT f32
+__intrinsic_pow_f32(f32 v1, f32 v2)
+{
+	return powf(v1, v2);
+}
+
+BL_EXPORT f64
+__intrinsic_pow_f64(f64 v1, f64 v2)
+{
+	return pow(v1, v2);
+}
