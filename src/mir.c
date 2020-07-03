@@ -10004,6 +10004,10 @@ get_intrinsic(const char *name)
 		return "__intrinsic_floor_f32";
 	} else if (strcmp(name, "floor.f64") == 0) {
 		return "__intrinsic_floor_f64";
+	} else if (strcmp(name, "pow.f32") == 0) {
+		return "__intrinsic_pow_f32";
+	} else if (strcmp(name, "pow.f64") == 0) {
+		return "__intrinsic_pow_f64";
 	}
 
 	return NULL;

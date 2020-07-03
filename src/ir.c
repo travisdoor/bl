@@ -374,6 +374,10 @@ get_intrinsic(const char *name)
 		return "llvm.floor.f32";
 	} else if (strcmp(name, "floor.f64") == 0) {
 		return "llvm.floor.f64";
+	} else if (strcmp(name, "pow.f32") == 0) {
+		return "llvm.pow.f32";
+	} else if (strcmp(name, "pow.f64") == 0) {
+		return "llvm.pow.f64";
 	}
 
 	return NULL;

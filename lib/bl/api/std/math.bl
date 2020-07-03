@@ -96,17 +96,16 @@ floor     :: fn (n: f64) f64 #intrinsic "floor.f64";
 floorf    :: fn (n: f32) f32 #intrinsic "floor.f32";
 round     :: fn (n: f64) f64 #intrinsic "round.f64";
 roundf    :: fn (n: f32) f32 #intrinsic "round.f32";
-
+pow       :: fn (base: f64, exponent: f64) f64 #intrinsic "pow.f64";
+powf      :: fn (base: f32, exponent: f32) f32 #intrinsic "pow.f32";
 
 /* Lib C functions */
 log10     :: fn (n: f64) f64 #extern;
-pow       :: fn (base: f64, exponent: f64) f64 #extern;
 sqrt      :: fn (x: f64) f64 #extern;
 rand      :: fn () s32 #extern;
 srand     :: fn (seed: u32) #extern;
 asinf     :: fn (arg: f32) f32 #extern;
 acosf     :: fn (n: f32) f32 #extern;
-powf      :: fn (base: f32, exponent: f32) f32 #extern;
 sqrtf     :: fn (x: f32) f32 #extern;
 tanf      :: fn (x: f32) f32 #extern;
 atan2f    :: fn (y: f32, x: f32) f32 #extern;
