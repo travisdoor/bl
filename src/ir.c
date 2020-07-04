@@ -378,6 +378,26 @@ get_intrinsic(const char *name)
 		return "llvm.pow.f32";
 	} else if (strcmp(name, "pow.f64") == 0) {
 		return "llvm.pow.f64";
+	} else if (strcmp(name, "log.f32") == 0) {
+		return "llvm.log.f32";
+	} else if (strcmp(name, "log.f64") == 0) {
+		return "llvm.log.f64";
+	} else if (strcmp(name, "log2.f32") == 0) {
+		return "llvm.log2.f32";
+	} else if (strcmp(name, "log2.f64") == 0) {
+		return "llvm.log2.f64";
+	} else if (strcmp(name, "log10.f32") == 0) {
+		return "llvm.log10.f32";
+	} else if (strcmp(name, "log10.f64") == 0) {
+		return "llvm.log10.f64";
+	} else if (strcmp(name, "sqrt.f32") == 0) {
+		return "llvm.sqrt.f32";
+	} else if (strcmp(name, "sqrt.f64") == 0) {
+		return "llvm.sqrt.f64";
+	} else if (strcmp(name, "ceil.f32") == 0) {
+		return "llvm.ceil.f32";
+	} else if (strcmp(name, "ceil.f64") == 0) {
+		return "llvm.ceil.f64";
 	}
 
 	return NULL;

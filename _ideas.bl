@@ -2,4 +2,21 @@
 sin :: fn (v: f32) f32 #intrinsic "sin";
 memcpy :: fn (dest: *u8, src: *u8, len: s64) void #intrinsic "memcpy";
 
+// Tests in compiletime
+
+#test "This is my test!" {
+    assert(false);
+}
+
+test_all :: fn () {
+    print("Executing test cases\n");
+    result :: #run_tests;
+    print("Testing finished with state: %\n", result);
+    return result;
+}
+
+main :: fn () s32 {
+    return test_all();
+}
+
 

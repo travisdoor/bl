@@ -88,3 +88,64 @@ __intrinsic_pow_f64(f64 v1, f64 v2)
 {
 	return pow(v1, v2);
 }
+
+BL_EXPORT f32
+__intrinsic_log_f32(f32 v)
+{
+	return logf(v);
+}
+
+BL_EXPORT f64
+__intrinsic_log_f64(f64 v)
+{
+	return log(v);
+}
+
+BL_EXPORT f32
+__intrinsic_log2_f32(f32 v)
+{
+	return log2f(v);
+}
+
+BL_EXPORT f64
+__intrinsic_log2_f64(f64 v)
+{
+	return log2(v);
+}
+
+BL_EXPORT f32
+__intrinsic_log10_f32(f32 v)
+{
+	return log10f(v);
+}
+
+BL_EXPORT f64
+__intrinsic_log10_f64(f64 v)
+{
+	return log10(v);
+}
+
+BL_EXPORT f32
+__intrinsic_sqrt_f32(f32 v)
+{
+	return sqrtf(v);
+}
+
+BL_EXPORT f64
+__intrinsic_sqrt_f64(f64 v)
+{
+	return sqrt(v);
+}
+
+
+BL_EXPORT f32
+__intrinsic_ceil_f32(f32 v)
+{
+	return ceilf(v);
+}
+
+BL_EXPORT f64
+__intrinsic_ceil_f64(f64 v)
+{
+	return ceil(v);
+}

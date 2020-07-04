@@ -10008,6 +10008,26 @@ get_intrinsic(const char *name)
 		return "__intrinsic_pow_f32";
 	} else if (strcmp(name, "pow.f64") == 0) {
 		return "__intrinsic_pow_f64";
+	} else if (strcmp(name, "log.f32") == 0) {
+		return "__intrinsic_log_f32";
+	} else if (strcmp(name, "log.f64") == 0) {
+		return "__intrinsic_log_f64";
+	} else if (strcmp(name, "log2.f32") == 0) {
+		return "__intrinsic_log2_f32";
+	} else if (strcmp(name, "log2.f64") == 0) {
+		return "__intrinsic_log2_f64";
+	} else if (strcmp(name, "log10.f32") == 0) {
+		return "__intrinsic_log10_f32";
+	} else if (strcmp(name, "log10.f64") == 0) {
+		return "__intrinsic_log10_f64";
+	} else if (strcmp(name, "sqrt.f32") == 0) {
+		return "__intrinsic_sqrt_f32";
+	} else if (strcmp(name, "sqrt.f64") == 0) {
+		return "__intrinsic_sqrt_f64";
+	} else if (strcmp(name, "ceil.f32") == 0) {
+		return "__intrinsic_ceil_f32";
+	} else if (strcmp(name, "ceil.f64") == 0) {
+		return "__intrinsic_ceil_f64";
 	}
 
 	return NULL;
