@@ -80,7 +80,7 @@ static INLINE void print_flags(Context *cnt, u32 flags)
 
 	if (IS_FLAG(flags, FLAG_EXTERN)) fprintf(cnt->stream, "#extern");
 	if (IS_FLAG(flags, FLAG_COMPILER)) fprintf(cnt->stream, " #compiler");
-	if (IS_FLAG(flags, FLAG_TEST)) fprintf(cnt->stream, " #test");
+	if (IS_FLAG(flags, FLAG_TEST_FN)) fprintf(cnt->stream, " #test");
 	if (IS_FLAG(flags, FLAG_INLINE)) fprintf(cnt->stream, " #inline");
 	if (IS_FLAG(flags, FLAG_NO_INLINE)) fprintf(cnt->stream, " #noinline");
 	if (IS_FLAG(flags, FLAG_PRIVATE)) fprintf(cnt->stream, " #private");
@@ -848,7 +848,7 @@ void print_instr_ret(Context *cnt, MirInstrRet *ret)
 void print_instr_store(Context *cnt, MirInstrStore *store)
 {
 	print_instr_head(cnt, &store->base, "store");
-	BL_ASSERT(store->src && store->src);
+	BL_ASSERT(store->src);
 	print_comptime_value_or_id(cnt, store->src);
 	fprintf(cnt->stream, " -> %%%llu", (unsigned long long)store->dest->id);
 	// print_comptime_value_or_id(cnt,store->dest);

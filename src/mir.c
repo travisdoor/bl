@@ -39,7 +39,6 @@
 
 #define ARENA_CHUNK_COUNT 512
 #define ANALYZE_TABLE_SIZE 8192
-#define TEST_CASE_FN_NAME ".test"
 #define RESOLVE_TYPE_FN_NAME ".type"
 #define INIT_VALUE_FN_NAME ".init"
 #define IMPL_FN_NAME ".impl"
@@ -100,7 +99,6 @@ TSMALL_ARRAY_TYPE(RTTIIncomplete, RTTIIncomplete, 64);
 typedef struct {
 	VM *      vm;
 	Assembly *assembly;
-	TArray    test_cases; //@TODO: remove
 	TString   tmp_sh;
 	MirFn *   entry_fn;
 	bool      debug_mode;
@@ -222,6 +220,9 @@ static void testing_add_test_case(Context *cnt, MirFn *fn);
 
 static MirVar *testing_gen_meta(Context *cnt);
 
+/* Execute all registered test cases in current assembly. */
+static void testing_run(Context *cnt);
+
 static const char *get_intrinsic(const char *name);
 
 /* Start top-level execution of entry function using MIR-VM. (Usualy 'main' funcition) */
@@ -229,9 +230,6 @@ static void execute_entry_fn(Context *cnt);
 
 /* Start top-level execution of build entry function using MIR-VM. (Usualy 'build' funcition) */
 static void execute_build_entry_fn(Context *cnt, MirFn *fn);
-
-/* Execute all registered test cases in current assembly. */
-static void execute_test_cases(Context *cnt);
 
 typedef enum {
 	REG_SYM_BUILTIN       = 1 << 1,
@@ -616,8 +614,6 @@ static MirInstr *ast_create_impl_fn_call(Context *   cnt,
 static MirInstr *ast(Context *cnt, Ast *node);
 
 static void ast_ublock(Context *cnt, Ast *ublock);
-
-static void ast_test_case(Context *cnt, Ast *test);
 
 static void ast_unrecheable(Context *cnt, Ast *unr);
 
@@ -5256,12 +5252,6 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 			/* INCOMPLETE: not the best place to do this check, move into ast
 			 * generation later
 			 */
-			/* INCOMPLETE: not the best place to do this check, move into ast
-			 * generation later
-			 */
-			/* INCOMPLETE: not the best place to do this check, move into ast
-			 * generation later
-			 */
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_EXPECTED_BODY,
 			            fn_proto->base.node->location,
@@ -6524,9 +6514,6 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 		if (vargsc > 0) {
 			/* One or more vargs passed. */
 			// INCOMPLETE: check it this is ok!!!
-			// INCOMPLETE: check it this is ok!!!
-			// INCOMPLETE: check it this is ok!!!
-			// INCOMPLETE: check it this is ok!!!
 			for (usize i = 0; i < vargsc; ++i) {
 				tsa_push_InstrPtr(values, call->args->data[callee_argc + i]);
 			}
@@ -7269,6 +7256,62 @@ INLINE void testing_add_test_case(Context *cnt, MirFn *fn)
 	vm_write_string(cnt->vm, name_type, name_ptr, fn->id->str, strlen(fn->id->str));
 }
 
+void testing_run(Context *cnt)
+{
+	printf("\nTesting start in compile time\n");
+	printf(TEXT_LINE "\n");
+
+	const usize tc = cnt->testing.cases->size;
+	MirFn *     test_fn;
+
+	typedef struct {
+		const char *name;
+		f64         runtime_ms;
+	} CaseMeta;
+
+	TArray failed;
+	tarray_init(&failed, sizeof(CaseMeta));
+
+	TARRAY_FOREACH(MirFn *, cnt->testing.cases, test_fn)
+	{
+		BL_ASSERT(IS_FLAG(test_fn->flags, FLAG_TEST_FN));
+
+		const f64  start      = get_tick_ms();
+		const bool passed     = vm_execute_fn(cnt->vm, cnt->assembly, test_fn, NULL);
+		const f64  runtime_ms = get_tick_ms() - start;
+
+		const char *name = test_fn->id->str;
+		if (passed) {
+			printf("[ PASS |      ] %s (%f ms)\n", name, runtime_ms);
+		} else {
+			printf("[      | FAIL ] %s (%f ms)\n", name, runtime_ms);
+
+			CaseMeta tmp = {.name = name, .runtime_ms = runtime_ms};
+			tarray_push(&failed, tmp);
+
+			builder.errorc = 0;
+			++builder.test_failc;
+		}
+	}
+
+	const u64 fc   = failed.size;
+	s32       perc = 100;
+	if (fc > 0) perc = (s32)((f32)(tc - fc) / ((f32)tc * 0.01f));
+
+	printf("\nResults:\n");
+	printf(TEXT_LINE "\n");
+
+	for (usize i = 0; i < failed.size; ++i) {
+		CaseMeta *f = &tarray_at(CaseMeta, &failed, i);
+		printf("[      | FAIL ] %s (%f ms)\n", f->name, f->runtime_ms);
+	}
+
+	printf(TEXT_LINE "\n");
+	printf("Executed: %llu, passed %d%%.\n", tc, perc);
+	printf(TEXT_LINE "\n");
+	tarray_terminate(&failed);
+}
+
 /* Top-level rtti generation. */
 INLINE MirVar *rtti_gen(Context *cnt, MirType *type)
 {
@@ -7785,58 +7828,6 @@ void ast_block(Context *cnt, Ast *block)
 	TARRAY_FOREACH(Ast *, block->data.block.nodes, tmp) ast(cnt, tmp);
 
 	if (!block->data.block.has_return) ast_defer_block(cnt, block, false);
-}
-
-void ast_test_case(Context *cnt, Ast *test)
-{
-	/* build test function */
-	Ast *const ast_block = test->data.test_case.block;
-	BL_ASSERT(ast_block);
-
-	MirInstrFnProto *fn_proto = (MirInstrFnProto *)append_instr_fn_proto(
-	    cnt, test, NULL /* type */, NULL /* user_type */, true);
-
-	fn_proto->base.value.type = cnt->builtin_types->t_test_case_fn;
-
-	const bool  emit_llvm    = builder.options.force_test_llvm;
-	const char *linkage_name = gen_uq_name(TEST_CASE_FN_NAME);
-	const bool  is_global    = scope_is_global(test->owner_scope);
-
-	MirFn *fn =
-	    create_fn(cnt,
-	              test,
-	              NULL /* id */,
-	              linkage_name,
-	              FLAG_TEST,
-	              fn_proto,
-	              (emit_llvm ? CREATE_FN_EMIT_LLVM : 0) | (is_global ? CREATE_FN_GLOBAL : 0),
-	              MIR_BUILTIN_ID_NONE);
-
-	/* Set ref count to no ref counting for test cases. */
-	fn->ref_count = NO_REF_COUNTING;
-
-	/* Set body scope for DI. */
-	fn->body_scope = ast_block->owner_scope;
-
-	BL_ASSERT(test->data.test_case.desc);
-	fn->test_case_desc = test->data.test_case.desc;
-	fn->body_scope     = ast_block->owner_scope;
-	MIR_CEV_WRITE_AS(MirFn *, &fn_proto->base.value, fn);
-
-	tarray_push(&cnt->test_cases, fn);
-
-	MirInstrBlock *entry_block = append_block(cnt, fn, "entry");
-
-	cnt->ast.exit_block = append_block(cnt, fn, "exit");
-	ref_instr(&cnt->ast.exit_block->base);
-
-	set_current_block(cnt, cnt->ast.exit_block);
-	append_instr_ret(cnt, ast_block, NULL);
-
-	set_current_block(cnt, entry_block);
-
-	/* generate body instructions */
-	ast(cnt, ast_block);
 }
 
 void ast_unrecheable(Context *cnt, Ast *unr)
@@ -9067,9 +9058,6 @@ MirInstr *ast(Context *cnt, Ast *node)
 	case AST_BLOCK:
 		ast_block(cnt, node);
 		break;
-	case AST_TEST_CASE:
-		ast_test_case(cnt, node);
-		break;
 	case AST_UNREACHABLE:
 		ast_unrecheable(cnt, node);
 		break;
@@ -9499,65 +9487,6 @@ void execute_build_entry_fn(Context *cnt, MirFn *fn)
 	vm_execute_fn(cnt->vm, cnt->assembly, fn, NULL);
 }
 
-void execute_test_cases(Context *cnt)
-{
-	builder_log("\nExecuting test cases...");
-
-	const usize c      = cnt->test_cases.size;
-	s32         failed = 0;
-	MirFn *     test_fn;
-	const char *file;
-	Unit *      last_unit     = NULL;
-	bool        first_in_file = true;
-	s8          buffer[80];
-
-	TARRAY_FOREACH(MirFn *, &cnt->test_cases, test_fn)
-	{
-		BL_ASSERT(IS_FLAG(test_fn->flags, FLAG_TEST));
-		const bool passed = vm_execute_fn(cnt->vm, cnt->assembly, test_fn, NULL);
-
-		if (test_fn->decl_node) {
-			Location *loc = test_fn->decl_node->location;
-			file          = loc->unit->filepath;
-
-			if (last_unit != loc->unit) {
-				first_in_file = true;
-				last_unit     = loc->unit;
-			}
-		} else {
-			file = "?";
-		}
-
-		if (first_in_file) {
-			snprintf(buffer, ARRAY_SIZE(buffer), "\nFile: %s", file);
-			color_print(stdout, BL_YELLOW, buffer);
-			first_in_file = false;
-		}
-
-		const s32 len =
-		    snprintf(buffer, ARRAY_SIZE(buffer) - 10, "    %s", test_fn->test_case_desc);
-		printf("%s%*c", buffer, 70 - len, ' ');
-
-		if (passed)
-			color_print(stdout, BL_GREEN, "[ PASSED ]");
-		else
-			color_print(stdout, BL_RED, "[ FAILED ]");
-
-		if (!passed) ++failed;
-	}
-
-	{
-		s32 perc = c > 0 ? (s32)((f32)(c - failed) / (c * 0.01f)) : 100;
-
-		const s32 color = failed ? BL_RED : BL_GREEN;
-
-		color_print(stdout, color, TEXT_LINE);
-		color_print(
-		    stdout, color, "Testing done, %d failed. Completed: %d%%", failed, perc);
-		color_print(stdout, color, TEXT_LINE);
-	}
-}
-
 void builtin_inits(Context *cnt)
 {
 #define PROVIDE(N) provide_builtin_type(cnt, bt->t_##N) // initialize all hashes once
@@ -9678,7 +9607,6 @@ void mir_run(Assembly *assembly)
 	thtbl_init(&cnt.analyze.waiting, sizeof(TArray), ANALYZE_TABLE_SIZE);
 	tlist_init(&cnt.analyze.queue, sizeof(MirInstr *));
 	tstring_init(&cnt.tmp_sh);
-	tarray_init(&cnt.test_cases, sizeof(MirFn *));
 
 	tsa_init(&cnt.ast.defer_stack);
 	tsa_init(&cnt.analyze.incomplete_rtti);
@@ -9706,14 +9634,13 @@ void mir_run(Assembly *assembly)
 		goto SKIP;
 	}
 
-	if (assembly->options.run_tests) execute_test_cases(&cnt); // @CLEANUP
+	if (assembly->options.run_tests) testing_run(&cnt); // @CLEANUP
 	if (builder.options.run) execute_entry_fn(&cnt);
 
 	BL_LOG("Analyze queue push count: %i", push_count);
 SKIP:
 	tlist_terminate(&cnt.analyze.queue);
 	thtbl_terminate(&cnt.analyze.waiting);
-	tarray_terminate(&cnt.test_cases);
 	tstring_terminate(&cnt.tmp_sh);
 
 	tsa_terminate(&cnt.analyze.incomplete_rtti);

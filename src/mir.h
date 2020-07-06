@@ -240,7 +240,6 @@ struct MirFn {
 
 	u32              flags;
 	MirBuiltinIdKind builtin_id;
-	const char *     test_case_desc;
 
 	/* pointer to the first block inside function body */
 	MirInstrBlock *first_block;

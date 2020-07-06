@@ -69,7 +69,7 @@ typedef enum {
 	HD_NONE        = 1 << 0,
 	HD_LOAD        = 1 << 1,
 	HD_LINK        = 1 << 2,
-	HD_TEST        = 1 << 3,
+	//1 << 3, free
 	HD_EXTERN      = 1 << 4,
 	HD_COMPILER    = 1 << 5,
 	HD_PRIVATE     = 1 << 6,
@@ -222,7 +222,7 @@ static INLINE bool rq_semicolon_after_decl_entity(Ast *node)
 {
 	BL_ASSERT(node);
 
-	return node->kind != AST_EXPR_LIT_FN && node->kind != AST_TEST_CASE &&
+	return node->kind != AST_EXPR_LIT_FN && 
 	       node->kind != AST_EXPR_TYPE;
 }
 
@@ -392,67 +392,6 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
 		assembly_add_native_lib(cnt->assembly, tok_path->value.str, tok_path);
 
 		return link;
-	}
-
-	// @TODO: remove
-	if (strcmp(directive, "test") == 0) {
-		/* test <string> {} */
-		set_satisfied(HD_TEST);
-
-		if (IS_NOT_FLAG(expected_mask, HD_TEST)) {
-			PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-			            tok_directive,
-			            BUILDER_CUR_WORD,
-			            "Unexpected directive. Test can be used only as an "
-			            "introduction of test case.");
-			return ast_create_node(
-			    cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
-		}
-
-		Token *tok_desc = tokens_consume(cnt->tokens);
-		if (tok_desc->sym != SYM_STRING) {
-			PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-			            tok_directive,
-			            BUILDER_CUR_WORD,
-			            "Expected test name as \"My test\" after test directive.");
-			return ast_create_node(
-			    cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
-		}
-
-		Scope *parent_scope = SCOPE_GET(cnt);
-
-		Scope *scope = scope_create(
-		    cnt->scope_arenas,
-		    scope_is_global(parent_scope) ? SCOPE_FN : SCOPE_FN_LOCAL /* kind */,
-		    SCOPE_GET(cnt),
-		    256,
-		    NULL);
-
-		/* Parse test case content. */
-		SCOPE_PUSH(cnt, scope);
-		Ast *block = parse_block(cnt, false);
-		if (!block) {
-			PARSE_ERROR(ERR_INVALID_DIRECTIVE,
-			            tok_directive,
-			            BUILDER_CUR_AFTER,
-			            "Expected body of the test case '{...}'.");
-			SCOPE_POP(cnt);
-			return ast_create_node(
-			    cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
-		}
-		SCOPE_POP(cnt);
-
-		scope->location = block->location;
-
-		// parse_semicolon_rq(cnt);
-
-		Ast *test =
-		    ast_create_node(cnt->ast_arena, AST_TEST_CASE, tok_directive, SCOPE_GET(cnt));
-
-		test->data.test_case.desc  = tok_desc->value.str;
-		test->data.test_case.block = block;
-
-		return test;
 	}
 
 	if (strcmp(directive, "test2") == 0) {
@@ -2542,7 +2481,7 @@ NEXT:
 	}
 
 	/* load, link, test, private - enabled in global scope */
-	const int enabled_hd = HD_LOAD | HD_LINK | HD_TEST | HD_PRIVATE | HD_META;
+	const int enabled_hd = HD_LOAD | HD_LINK | HD_PRIVATE | HD_META;
 	if ((tmp = parse_hash_directive(cnt, enabled_hd, NULL))) {
 		if (tmp->kind == AST_META_DATA) {
 			ublock->meta_node = tmp;

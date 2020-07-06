@@ -350,7 +350,9 @@ int builder_compile(Assembly *assembly)
 		builder_log("There were errors, sorry...");
 	}
 
-	return state;
+	/* We return count of failed compile time test cases as state even if there was no
+	 * compilation errors. Compilation errors has priority here. */
+	return builder.errorc ? builder.errorc : builder.test_failc;
 }
 
 void builder_msg(BuilderMsgType type,

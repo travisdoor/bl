@@ -68,7 +68,7 @@ static INLINE void print_flags(s32 flags, FILE *stream)
 {
 	if (!flags) return;
 	if (IS_FLAG(flags, FLAG_EXTERN)) fprintf(stream, " #extern");
-	if (IS_FLAG(flags, FLAG_TEST)) fprintf(stream, " #test");
+	if (IS_FLAG(flags, FLAG_TEST_FN)) fprintf(stream, " #test");
 	if (IS_FLAG(flags, FLAG_COMPILER)) fprintf(stream, " #compiler");
 	if (IS_FLAG(flags, FLAG_PRIVATE)) fprintf(stream, " #private");
 }
@@ -76,8 +76,6 @@ static INLINE void print_flags(s32 flags, FILE *stream)
 static void print_node(Ast *node, s32 pad, FILE *stream);
 
 static void print_ublock(Ast *ublock, s32 pad, FILE *stream);
-
-static void print_test_case(Ast *test, s32 pad, FILE *stream);
 
 static void print_load(Ast *load, s32 pad, FILE *stream);
 
@@ -180,13 +178,6 @@ void print_block(Ast *block, s32 pad, FILE *stream)
 	print_head(block, pad, stream);
 	Ast *tmp = NULL;
 	TARRAY_FOREACH(Ast *, block->data.block.nodes, tmp) print_node(tmp, pad + 1, stream);
-}
-
-void print_test_case(Ast *test, s32 pad, FILE *stream)
-{
-	print_head(test, pad, stream);
-	fprintf(stream, "%s", test->data.test_case.desc);
-	print_node(test->data.test_case.block, pad + 1, stream);
 }
 
 void print_load(Ast *load, s32 pad, FILE *stream)
@@ -557,10 +548,6 @@ void print_node(Ast *node, s32 pad, FILE *stream)
 
 	case AST_BLOCK:
 		print_block(node, pad, stream);
-		break;
-
-	case AST_TEST_CASE:
-		print_test_case(node, pad, stream);
 		break;
 
 	case AST_UNREACHABLE:
