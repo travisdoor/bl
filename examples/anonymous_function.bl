@@ -1,5 +1,0 @@
-#test "anonymous function" {
-    i := fn (i: s32) s32 {
-        return i;
-    } (666);
-};

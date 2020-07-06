@@ -1,6 +1,0 @@
-#test "array reference" {
-    arr     : [10]s32; // uninitialized s32 array
-    arr_ref : []s32;   // reference to array of any size with s32 elements
-
-    // TODO
-};

@@ -106,9 +106,9 @@ test_run :: fn () s32 {
     perc := 100;
     if fc > 0 { 
         perc = cast(s32) (cast(f32) (_queue.len - fc) / ((cast(f32) _queue.len) * 0.01f));
+        print("%\n", TEXT_LINE);
     }
 
-    print("%\n", TEXT_LINE);
     // @HACK: Cannot print percent, escape sequence cannot be easily detected here.
     print("Executed: %, passed %%.\n", _queue.len, perc, "%");
     print("%\n", TEXT_LINE);
@@ -149,7 +149,6 @@ worker :: fn (args: []Any) {
         _current.case.func();
         _current.runtime_ms = os_tick_ms() - _start_time;
         _current.passed = true;
-
         print("[ PASS |      ] % (% ms)\n", _current.case.name, _current.runtime_ms);
     }
 }

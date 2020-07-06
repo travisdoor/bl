@@ -1,0 +1,37 @@
+#load "std/string.bl"
+#load "std/test.bl"
+
+/////////////////////////////////////////////////////
+#load "intrinsics.test.bl"
+#load "dynamic_arrays.test.bl"
+#load "print.test.bl"
+#load "arrtoslice.test.bl"
+#load "casting.test.bl"
+#load "compounds.test.bl"
+#load "constant_composition.test.bl"
+#load "enums.test.bl"
+#load "fib.test.bl"
+#load "fn.test.bl"
+#load "fundamental_types.test.bl"
+#load "globals.test.bl"
+#load "hash_table.test.bl"
+#load "ifs.test.bl"
+#load "local_variables.test.bl"
+#load "loops.test.bl"
+#load "operators.test.bl"
+#load "pointers.test.bl"
+#load "simple_assignments.test.bl"
+#load "sizeof.test.bl"
+#load "slice_init.test.bl"
+#load "strings.test.bl"
+#load "structs.test.bl"
+#load "type_infer.test.bl"
+#load "union.test.bl"
+#load "typeinfo.test.bl"
+#load "vargs.test.bl"
+/////////////////////////////////////////////////////
+
+main :: fn () s32 {
+    return test_run(); 
+} 
+
