@@ -1,3 +1,3 @@
 TODO:
 	- check various combination of hash directives and validate correct error checking
-	- implement intrinsics for VM and LLVM
+	- main cannot be test case!!!

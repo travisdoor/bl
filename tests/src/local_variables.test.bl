@@ -1,6 +1,5 @@
-#load "std/debug.bl"
-
-#test "fundamental type default init" {
+#private
+fundamental_type_default_init :: fn () #test2 {
     _1: s8;
     _2: s16;
     _3: s32;
@@ -31,7 +30,7 @@
     assert(_13.ptr == null);
 }
 
-#test "struct type default init" {
+struct_type_default_init :: fn () #test2 {
     Foo :: struct {
         i: s32;
         j: s32;
@@ -42,7 +41,7 @@
     assert(foo.j == 0);
 }
 
-#test "array type default init" {
+array_type_default_init :: fn () #test2 {
     arr: [100]s32;
 
     loop i := 0; i < arr.len; i += 1 {
@@ -50,13 +49,13 @@
     }
 }
 
-#test "slice type default init" {
+slice_type_default_init :: fn () #test2 {
     arr: []s32;
     assert(arr.len == 0);
     assert(arr.ptr == null);
 }
 
-#test "union type default init" {
+union_type_default_init :: fn () #test2 {
     Foo :: union {
         i: s32;
         j: s32;
@@ -67,7 +66,7 @@
     assert(foo.j == 0);
 }
 
-#test "enum type default init" {
+enum_type_default_init :: fn () #test2 {
     Bar :: enum {
         A :: 1;
         B;

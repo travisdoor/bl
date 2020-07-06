@@ -44,8 +44,7 @@ typedef struct {
 	Assembly *assembly;
 } Context;
 
-static void
-add_lib_paths(Context *cnt, TString *buf)
+static void add_lib_paths(Context *cnt, TString *buf)
 {
 
 	const char *dir;
@@ -63,8 +62,7 @@ add_lib_paths(Context *cnt, TString *buf)
 	}
 }
 
-static void
-add_libs(Context *cnt, TString *buf)
+static void add_libs(Context *cnt, TString *buf)
 {
 	NativeLib *lib;
 	for (usize i = 0; i < cnt->assembly->options.libs.size; ++i) {
@@ -81,8 +79,7 @@ add_libs(Context *cnt, TString *buf)
 	}
 }
 
-void
-native_bin_run(Assembly *assembly)
+void native_bin_run(Assembly *assembly)
 {
 	TString buf;
 	tstring_init(&buf);

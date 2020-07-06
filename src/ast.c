@@ -31,8 +31,7 @@
 
 #define ARENA_CHUNK_COUNT 256
 
-static void
-node_dtor(Ast *node)
+static void node_dtor(Ast *node)
 {
 	switch (node->kind) {
 	case AST_UBLOCK:
@@ -46,14 +45,12 @@ node_dtor(Ast *node)
 	}
 }
 
-static void
-small_array_dtor(TSmallArrayAny *arr)
+static void small_array_dtor(TSmallArrayAny *arr)
 {
 	tsa_terminate(arr);
 }
 
-Ast *
-ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope)
+Ast *ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope)
 {
 	Ast *node         = arena_alloc(arena);
 	node->kind        = c;
@@ -68,20 +65,17 @@ ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct Scope *parent
 }
 
 /* public */
-void
-ast_arena_init(Arena *arena)
+void ast_arena_init(Arena *arena)
 {
 	arena_init(arena, sizeof(Ast), ARENA_CHUNK_COUNT, (ArenaElemDtor)node_dtor);
 }
 
-void
-ast_arena_terminate(Arena *arena)
+void ast_arena_terminate(Arena *arena)
 {
 	arena_terminate(arena);
 }
 
-const char *
-ast_get_name(const Ast *n)
+const char *ast_get_name(const Ast *n)
 {
 	BL_ASSERT(n);
 	switch (n->kind) {
@@ -141,7 +135,7 @@ ast_get_name(const Ast *n)
 		return "TypeDynamicArray";
 	case AST_TYPE_FN:
 		return "TypeFn";
-	case AST_TYPE_STRUCT: 
+	case AST_TYPE_STRUCT:
 		return n->data.type_strct.is_union ? "TypeUnion" : "TypeStruct";
 	case AST_TYPE_ENUM:
 		return "TypeEnum";
@@ -149,10 +143,6 @@ ast_get_name(const Ast *n)
 		return "TypePtr";
 	case AST_TYPE_VARGS:
 		return "TypeVargs";
-	case AST_EXPR_FILE:
-		return "ExprFile";
-	case AST_EXPR_LINE:
-		return "ExprLine";
 	case AST_EXPR_REF:
 		return "ExprRef";
 	case AST_EXPR_CAST:
@@ -169,6 +159,8 @@ ast_get_name(const Ast *n)
 		return "ExprSizeof";
 	case AST_EXPR_TYPE_INFO:
 		return "ExprTypeInfo";
+	case AST_EXPR_TEST_CASES:
+		return "ExprTestCases";
 	case AST_EXPR_TYPE:
 		return "ExprType";
 	case AST_EXPR_ALIGNOF:
@@ -203,8 +195,7 @@ ast_get_name(const Ast *n)
 	}
 }
 
-const char *
-ast_binop_to_str(BinopKind op)
+const char *ast_binop_to_str(BinopKind op)
 {
 	switch (op) {
 	case BINOP_INVALID:
@@ -260,8 +251,7 @@ ast_binop_to_str(BinopKind op)
 	return "invalid";
 }
 
-const char *
-ast_unop_to_str(UnopKind op)
+const char *ast_unop_to_str(UnopKind op)
 {
 	switch (op) {
 	case UNOP_NEG:

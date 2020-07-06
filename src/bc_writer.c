@@ -32,8 +32,7 @@
 #include "stages.h"
 #include <string.h>
 
-void
-bc_writer_run(Assembly *assembly)
+void bc_writer_run(Assembly *assembly)
 {
 	char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
 	if (!export_file) BL_ABORT("bad alloc");

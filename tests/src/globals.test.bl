@@ -1,5 +1,3 @@
-#load "std/debug.bl"
-
 #private
 Foo :: struct {
     i: s32;
@@ -23,7 +21,7 @@ G3 :: 10;
 G4 :: s32;
 G5 :: Bar.A;
 
-#test "globals eplicit initialize" {
+globals_eplicit_initialize :: fn () #test2 {
     assert(G1 == 10);
     assert(G2 == 20);
     assert(G3 == 10);
@@ -53,7 +51,7 @@ UG15: string;
 UG16: Bar;
 UG17: Un;
 
-#test "fundamental type default init" {
+fundamental_type_default_init :: fn () #test2 {
     assert(UG1 == 0);
     assert(UG2 == 0);
     assert(UG3 == 0);
@@ -70,25 +68,25 @@ UG17: Un;
     assert(UG15.ptr == null);
 }
 
-#test "struct type default init" {
+struct_type_default_init :: fn () #test2 {
     assert(UG12.i == 0);
     assert(UG12.j == 0);
 }
 
-#test "array type default init" {
+array_type_default_init :: fn () #test2 {
     assert(UG14[0] == 0);
     assert(UG14[1] == 0);
 }
 
-#test "slice type default init" {
+slice_type_default_init :: fn () #test2 {
     assert(UG13.len == 0);
     assert(UG13.ptr == null);
 }
 
-#test "union type default init" {
+union_type_default_init :: fn () #test2 {
     assert(UG17.i == 0);
 }
 
-#test "enum type default init" {
+enum_type_default_init :: fn () #test2 {
     assert(UG16 == Bar.A);
 }

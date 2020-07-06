@@ -32,8 +32,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void *
-bl_malloc(const size_t size)
+void *bl_malloc(const size_t size)
 {
 	void *mem = malloc(size);
 	if (!mem) {
@@ -45,8 +44,7 @@ bl_malloc(const size_t size)
 	return mem;
 }
 
-void
-bl_free(void *ptr)
+void bl_free(void *ptr)
 {
 	TracyCFree(ptr);
 	free(ptr);

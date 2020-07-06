@@ -27,6 +27,7 @@ syntax keyword blDefer defer
 syntax keyword blAuto auto
 syntax keyword blSizeof sizeof 
 syntax keyword blTypeInfo typeinfo
+syntax keyword blTestCases testcases 
 
 syntax region blString start=/\v"/ skip=/\v\\./ end=/\v"/
 
@@ -58,6 +59,7 @@ highlight link blDefer Operator
 highlight link blAuto Operator 
 highlight link blSizeof Operator
 highlight link blTypeInfo Operator
+highlight link blTestCases Operator
 
 highlight link blString String
 

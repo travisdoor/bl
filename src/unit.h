@@ -50,13 +50,10 @@ typedef struct Unit {
 	LLVMMetadataRef llvm_file_meta;
 } Unit;
 
-Unit *
-unit_new_file(const char *filepath, struct Token *loaded_from, Unit *parent_unit);
+Unit *unit_new_file(const char *filepath, struct Token *loaded_from, Unit *parent_unit);
 
-void
-unit_delete(Unit *unit);
+void unit_delete(Unit *unit);
 
-const char *
-unit_get_src_ln(Unit *unit, s32 line, long *len);
+const char *unit_get_src_ln(Unit *unit, s32 line, long *len);
 
 #endif

@@ -1,6 +1,7 @@
 #load "std/array.bl"
 
-#test "basic inserting s32" {
+#private
+test_basic_inserting_s32 :: fn () #test2{
     arr: [..]s32;
     defer array_terminate(arr);
             
@@ -13,7 +14,7 @@
     }
 }
 
-#test "basic inserting bool" {
+test_basic_inserting_bool :: fn () #test2 {
     arr: [..]bool;
     defer array_terminate(arr);
             
@@ -26,7 +27,7 @@
     }
 }
 
-#test "basic inserting string" {
+test_basic_inserting_string :: fn () #test2 {
     arr: [..]string;
     defer array_terminate(arr);
             
@@ -39,7 +40,7 @@
     }
 }
 
-#test "reserve" {
+test_reserve :: fn () #test2 {
     arr: [..]s32;
     defer array_terminate(arr);
             
@@ -49,7 +50,7 @@
     assert(arr.allocated == 1000);
 }
 
-#test "clear" {
+test_clear :: fn () #test2 {
     arr: [..]s32;
     defer array_terminate(arr);
             
@@ -64,7 +65,7 @@
     assert(arr.len == 0);
 }
 
-#test "erase" {
+test_erase :: fn () #test2 {
     arr: [..]s32;
     defer array_terminate(arr);
             
@@ -81,7 +82,7 @@
     assert(arr.len == 0);
 }
 
-#test "cast to slice" {
+test_cast_to_slice :: fn () #test2 {
     foo :: fn (sl: []s32) {
         loop i := 0; i < sl.len; i += 1 {
             assert(sl[i] == i);

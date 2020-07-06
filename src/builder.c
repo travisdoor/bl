@@ -45,22 +45,18 @@
 
 Builder builder;
 
-static int
-compile_unit(Unit *unit, Assembly *assembly);
+static int compile_unit(Unit *unit, Assembly *assembly);
 
-static int
-compile_assembly(Assembly *assembly);
+static int compile_assembly(Assembly *assembly);
 
 static bool llvm_initialized = false;
 
-static void
-str_cache_dtor(TString *str)
+static void str_cache_dtor(TString *str)
 {
 	tstring_terminate(str);
 }
 
-static void
-llvm_init(void)
+static void llvm_init(void)
 {
 	if (llvm_initialized) return;
 
@@ -72,8 +68,7 @@ llvm_init(void)
 	llvm_initialized = true;
 }
 
-static void 
-llvm_terminate(void)
+static void llvm_terminate(void)
 {
 	LLVMShutdown();
 }
@@ -81,8 +76,7 @@ llvm_terminate(void)
 #define INTERRUPT_ON_ERROR                                                                         \
 	if (builder.errorc) return COMPILE_FAIL;
 
-int
-compile_unit(Unit *unit, Assembly *assembly)
+int compile_unit(Unit *unit, Assembly *assembly)
 {
 	if (builder.options.verbose) {
 		if (unit->loaded_from) {
@@ -110,8 +104,7 @@ compile_unit(Unit *unit, Assembly *assembly)
 	return COMPILE_OK;
 }
 
-int
-compile_assembly(Assembly *assembly)
+int compile_assembly(Assembly *assembly)
 {
 	if (builder.options.print_ast) {
 		ast_printer_run(assembly, stdout);
@@ -152,8 +145,7 @@ compile_assembly(Assembly *assembly)
 }
 
 /* public */
-s32
-builder_parse_options(s32 argc, char *argv[])
+s32 builder_parse_options(s32 argc, char *argv[])
 {
 #define IS_PARAM(_arg) (strcmp(&argv[optind][1], _arg) == 0)
 
@@ -234,8 +226,7 @@ builder_parse_options(s32 argc, char *argv[])
 #undef IS_PARAM
 }
 
-void
-builder_init(void)
+void builder_init(void)
 {
 	memset(&builder, 0, sizeof(Builder));
 	builder.errorc = 0;
@@ -257,8 +248,7 @@ builder_init(void)
 	tarray_init(&builder.assembly_queue, sizeof(Assembly *));
 }
 
-void
-builder_terminate(void)
+void builder_terminate(void)
 {
 	Assembly *assembly;
 	TARRAY_FOREACH(Assembly *, &builder.assembly_queue, assembly)
@@ -273,8 +263,7 @@ builder_terminate(void)
 	llvm_terminate();
 }
 
-int
-builder_load_conf_file(const char *filepath)
+int builder_load_conf_file(const char *filepath)
 {
 	Unit *unit = unit_new_file(filepath, NULL, NULL);
 
@@ -295,15 +284,13 @@ builder_load_conf_file(const char *filepath)
 	return COMPILE_OK;
 }
 
-void
-builder_add_assembly(Assembly *assembly)
+void builder_add_assembly(Assembly *assembly)
 {
 	if (!assembly) return;
 	tarray_push(&builder.assembly_queue, assembly);
 }
 
-int
-builder_compile_all(void)
+int builder_compile_all(void)
 {
 	Assembly *assembly;
 	TARRAY_FOREACH(Assembly *, &builder.assembly_queue, assembly)
@@ -315,8 +302,7 @@ builder_compile_all(void)
 	return COMPILE_OK;
 }
 
-int
-builder_compile(Assembly *assembly)
+int builder_compile(Assembly *assembly)
 {
 	clock_t begin = clock();
 	Unit *  unit;
@@ -367,13 +353,12 @@ builder_compile(Assembly *assembly)
 	return state;
 }
 
-void
-builder_msg(BuilderMsgType type,
-            s32            UNUSED(code),
-            Location *     src,
-            BuilderCurPos  pos,
-            const char *   format,
-            ...)
+void builder_msg(BuilderMsgType type,
+                 s32            UNUSED(code),
+                 Location *     src,
+                 BuilderCurPos  pos,
+                 const char *   format,
+                 ...)
 {
 	if (type == BUILDER_MSG_ERROR && builder.errorc > MAX_ERROR_REPORTED) return;
 	if (builder.options.no_warn && type == BUILDER_MSG_WARNING) return;
@@ -489,8 +474,7 @@ builder_msg(BuilderMsgType type,
 #endif
 }
 
-TString *
-builder_create_cached_str(void)
+TString *builder_create_cached_str(void)
 {
 	TString *str = arena_alloc(&builder.str_cache);
 	tstring_init(str);

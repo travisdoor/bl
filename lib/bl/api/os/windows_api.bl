@@ -51,7 +51,8 @@ WIN32_ULONG_PTR    :: *c_ulong;
 WIN32_SIZE_T    :: *c_ulong;
 WIN32_PVOID        :: *c_uchar; 
 WIN32_CHAR         :: c_uchar; 
-WIN32_LONG_PTR     :: c_long;
+WIN32_LONG_PTR     :: *c_long;
+WIN32_LARGE_INTEGER :: c_longlong;
 
 WIN32_LPOVERLAPPED_COMPLETION_ROUTINE :: * fn(dwErrorCode: WIN32_DWORD, dwNumberOfBytesTransfered: WIN32_DWORD, lpOverlapped: WIN32_LPOVERLAPPED);
 
@@ -211,6 +212,9 @@ win32_CreateThread :: fn (
     lpThreadId: WIN32_LPDWORD 
 ) WIN32_HANDLE #extern "CreateThread";
 
+win32_GetCurrentThread :: fn () WIN32_HANDLE #extern "GetCurrentThread";
+win32_TerminateThread :: fn (handle: WIN32_HANDLE, exit_code: WIN32_DWORD) WIN32_BOOL #extern "TerminateThread";
+
 win32_CreateMutexA :: fn (
     lpMutexAttributes: WIN32_LPSECURITY_ATTRIBUTES,
     bInitialOwner: WIN32_BOOL,
@@ -220,3 +224,5 @@ win32_CreateMutexA :: fn (
 win32_ReleaseMutex :: fn (hMutex: WIN32_HANDLE) WIN32_BOOL #extern "ReleaseMutex";
 
 win32_GetTickCount :: fn () WIN32_DWORD #extern "GetTickCount";
+win32_QueryPerformanceCounter :: fn (lpPerformanceCount: *WIN32_LARGE_INTEGER) WIN32_BOOL #extern "QueryPerformanceCounter";
+win32_QueryPerformanceFrequency :: fn (lpPerformanceCount: *WIN32_LARGE_INTEGER) WIN32_BOOL #extern "QueryPerformanceFrequency";

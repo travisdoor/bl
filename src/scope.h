@@ -91,41 +91,33 @@ typedef struct Scope {
 	                              location data. */
 } Scope;
 
-void
-scope_arenas_init(ScopeArenas *arenas);
+void scope_arenas_init(ScopeArenas *arenas);
 
-void
-scope_arenas_terminate(ScopeArenas *arenas);
+void scope_arenas_terminate(ScopeArenas *arenas);
 
 Scope *
 scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, usize size, struct Location *loc);
 
-ScopeEntry *
-scope_create_entry(ScopeArenas *  arenas,
-                   ScopeEntryKind kind,
-                   ID *           id,
-                   struct Ast *   node,
-                   bool           is_buildin);
+ScopeEntry *scope_create_entry(ScopeArenas *  arenas,
+                               ScopeEntryKind kind,
+                               ID *           id,
+                               struct Ast *   node,
+                               bool           is_buildin);
 
-void
-scope_insert(Scope *scope, ScopeEntry *entry);
+void scope_insert(Scope *scope, ScopeEntry *entry);
 
 typedef enum {
 	SCOPE_LOOKUP_IN_TREE       = 1 << 1,
 	SCOPE_LOOKUP_IGNORE_GSCOPE = 1 << 2,
 } ScopeLookupOpt;
 
-ScopeEntry *
-scope_lookup(Scope *scope, ID *id, ScopeLookupOpt opt, bool *out_of_fn_local_scope);
+ScopeEntry *scope_lookup(Scope *scope, ID *id, ScopeLookupOpt opt, bool *out_of_fn_local_scope);
 
-bool
-scope_is_subtree_of_kind(const Scope *scope, ScopeKind kind);
+bool scope_is_subtree_of_kind(const Scope *scope, ScopeKind kind);
 
-const char *
-scope_kind_name(const Scope *scope);
+const char *scope_kind_name(const Scope *scope);
 
-static INLINE bool
-scope_is_global(const Scope *scope)
+static INLINE bool scope_is_global(const Scope *scope)
 {
 	return scope->kind == SCOPE_GLOBAL || scope->kind == SCOPE_PRIVATE;
 }

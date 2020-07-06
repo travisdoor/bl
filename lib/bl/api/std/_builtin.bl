@@ -480,6 +480,12 @@ Any :: struct #compiler {
     data: *u8
 };
 
+// @DOC
+TestCase :: struct #compiler {
+    func: *fn();
+    name: string;
+}
+
 /*!
 # command_line_arguments
 ## Declaration
@@ -491,3 +497,5 @@ command_line_arguments := {:[]string: 0}
   Contains all arguments passed from command line. First argument is executable name.
 */
 command_line_arguments: []string;
+
+

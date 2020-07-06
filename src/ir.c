@@ -82,185 +82,132 @@ typedef struct {
 	LLVMValueRef intrinsic_memcpy;
 } Context;
 
-static LLVMValueRef
-rtti_emit(Context *cnt, MirType *type);
+static MirVar *testing_fetch_meta(Context *cnt);
 
-static void
-rtti_satisfy_incomplete(Context *cnt, RTTIIncomplete *incomplete);
+static LLVMValueRef testing_emit_meta_case(Context *cnt, MirFn *fn);
 
-static LLVMValueRef
-_rtti_emit(Context *cnt, MirType *type);
+static LLVMValueRef rtti_emit(Context *cnt, MirType *type);
 
-static LLVMValueRef
-rtti_emit_base(Context *cnt, MirType *type, u8 kind, usize size);
+static void rtti_satisfy_incomplete(Context *cnt, RTTIIncomplete *incomplete);
 
-static LLVMValueRef
-rtti_emit_integer(Context *cnt, MirType *type);
+static LLVMValueRef _rtti_emit(Context *cnt, MirType *type);
 
-static LLVMValueRef
-rtti_emit_real(Context *cnt, MirType *type);
+static LLVMValueRef rtti_emit_base(Context *cnt, MirType *type, u8 kind, usize size);
 
-static LLVMValueRef
-rtti_emit_array(Context *cnt, MirType *type);
+static LLVMValueRef rtti_emit_integer(Context *cnt, MirType *type);
 
-static LLVMValueRef
-rtti_emit_empty(Context *cnt, MirType *type, MirType *rtti_type);
+static LLVMValueRef rtti_emit_real(Context *cnt, MirType *type);
 
-static LLVMValueRef
-rtti_emit_enum(Context *cnt, MirType *type);
+static LLVMValueRef rtti_emit_array(Context *cnt, MirType *type);
 
-static LLVMValueRef
-rtti_emit_enum_variant(Context *cnt, MirVariant *variant);
+static LLVMValueRef rtti_emit_empty(Context *cnt, MirType *type, MirType *rtti_type);
 
-static LLVMValueRef
-rtti_emit_enum_variants_array(Context *cnt, TSmallArray_VariantPtr *variants);
+static LLVMValueRef rtti_emit_enum(Context *cnt, MirType *type);
 
-static LLVMValueRef
-rtti_emit_enum_variants_slice(Context *cnt, TSmallArray_VariantPtr *variants);
+static LLVMValueRef rtti_emit_enum_variant(Context *cnt, MirVariant *variant);
 
-static LLVMValueRef
-rtti_emit_struct(Context *cnt, MirType *type);
+static LLVMValueRef rtti_emit_enum_variants_array(Context *cnt, TSmallArray_VariantPtr *variants);
 
-static LLVMValueRef
-rtti_emit_struct_member(Context *cnt, MirMember *member);
+static LLVMValueRef rtti_emit_enum_variants_slice(Context *cnt, TSmallArray_VariantPtr *variants);
 
-static LLVMValueRef
-rtti_emit_struct_members_array(Context *cnt, TSmallArray_MemberPtr *members);
+static LLVMValueRef rtti_emit_struct(Context *cnt, MirType *type);
 
-static LLVMValueRef
-rtti_emit_struct_members_slice(Context *cnt, TSmallArray_MemberPtr *members);
+static LLVMValueRef rtti_emit_struct_member(Context *cnt, MirMember *member);
 
-static LLVMValueRef
-rtti_emit_fn(Context *cnt, MirType *type);
+static LLVMValueRef rtti_emit_struct_members_array(Context *cnt, TSmallArray_MemberPtr *members);
 
-static LLVMValueRef
-rtti_emit_fn_arg(Context *cnt, MirArg *arg);
+static LLVMValueRef rtti_emit_struct_members_slice(Context *cnt, TSmallArray_MemberPtr *members);
 
-static LLVMValueRef
-rtti_emit_fn_args_array(Context *cnt, TSmallArray_ArgPtr *args);
+static LLVMValueRef rtti_emit_fn(Context *cnt, MirType *type);
 
-static LLVMValueRef
-rtti_emit_fn_args_slice(Context *cnt, TSmallArray_ArgPtr *args);
+static LLVMValueRef rtti_emit_fn_arg(Context *cnt, MirArg *arg);
 
-static void
-emit_DI_fn(Context *cnt, MirFn *fn);
+static LLVMValueRef rtti_emit_fn_args_array(Context *cnt, TSmallArray_ArgPtr *args);
 
-static void
-emit_DI_var(Context *cnt, MirVar *var);
+static LLVMValueRef rtti_emit_fn_args_slice(Context *cnt, TSmallArray_ArgPtr *args);
 
-static State
-emit_instr(Context *cnt, MirInstr *instr);
+static void emit_DI_fn(Context *cnt, MirFn *fn);
 
-static LLVMMetadataRef
-DI_type_init(Context *cnt, MirType *type);
+static void emit_DI_var(Context *cnt, MirVar *var);
 
-static LLVMMetadataRef
-DI_complete_type(Context *cnt, MirType *type);
+static State emit_instr(Context *cnt, MirInstr *instr);
 
-static LLVMMetadataRef
-DI_scope_init(Context *cnt, Scope *scope);
+static LLVMMetadataRef DI_type_init(Context *cnt, MirType *type);
 
-static LLVMMetadataRef
-DI_unit_init(Context *cnt, Unit *unit);
+static LLVMMetadataRef DI_complete_type(Context *cnt, MirType *type);
+
+static LLVMMetadataRef DI_scope_init(Context *cnt, Scope *scope);
+
+static LLVMMetadataRef DI_unit_init(Context *cnt, Unit *unit);
 
 /*
  * Tmp is optional but needed for naked compound expressions.
  */
-static LLVMValueRef
-emit_const_string(Context *cnt, const char *str, usize len);
+static LLVMValueRef emit_const_string(Context *cnt, const char *str, usize len);
 
-static State
-emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp);
+static State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp);
 
-static State
-emit_instr_binop(Context *cnt, MirInstrBinop *binop);
+static State emit_instr_binop(Context *cnt, MirInstrBinop *binop);
 
-static State
-emit_instr_phi(Context *cnt, MirInstrPhi *phi);
+static State emit_instr_phi(Context *cnt, MirInstrPhi *phi);
 
-static State
-emit_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
+static State emit_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
 
-static State
-emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
+static State emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
 
-static State
-emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
+static State emit_instr_test_cases(Context *cnt, MirInstrTestCases *tc);
 
-static State
-emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref);
+static State emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 
-static State
-emit_instr_cast(Context *cnt, MirInstrCast *cast);
+static State emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref);
 
-static State
-emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
+static State emit_instr_cast(Context *cnt, MirInstrCast *cast);
 
-static State
-emit_instr_unop(Context *cnt, MirInstrUnop *unop);
+static State emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
 
-static State
-emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
+static State emit_instr_unop(Context *cnt, MirInstrUnop *unop);
 
-static State
-emit_instr_store(Context *cnt, MirInstrStore *store);
+static State emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
 
-static State
-emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
+static State emit_instr_store(Context *cnt, MirInstrStore *store);
 
-static State
-emit_instr_block(Context *cnt, MirInstrBlock *block);
+static State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
 
-static State
-emit_instr_br(Context *cnt, MirInstrBr *br);
+static State emit_instr_block(Context *cnt, MirInstrBlock *block);
 
-static State
-emit_instr_switch(Context *cnt, MirInstrSwitch *sw);
+static State emit_instr_br(Context *cnt, MirInstrBr *br);
 
-static State
-emit_instr_const(Context *cnt, MirInstrConst *c);
+static State emit_instr_switch(Context *cnt, MirInstrSwitch *sw);
 
-static State
-emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg);
+static State emit_instr_const(Context *cnt, MirInstrConst *c);
 
-static State
-emit_instr_cond_br(Context *cnt, MirInstrCondBr *br);
+static State emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg);
 
-static State
-emit_instr_ret(Context *cnt, MirInstrRet *ret);
+static State emit_instr_cond_br(Context *cnt, MirInstrCondBr *br);
 
-static State
-emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl);
+static State emit_instr_ret(Context *cnt, MirInstrRet *ret);
 
-static State
-emit_instr_load(Context *cnt, MirInstrLoad *load);
+static State emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl);
 
-static State
-emit_instr_call(Context *cnt, MirInstrCall *call);
+static State emit_instr_load(Context *cnt, MirInstrLoad *load);
 
-static State
-emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
+static State emit_instr_call(Context *cnt, MirInstrCall *call);
 
-static State
-emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
+static State emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
 
-static State
-emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
+static State emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
 
-static State
-emit_instr_toany(Context *cnt, MirInstrToAny *toany);
+static State emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
 
-static void
-emit_allocas(Context *cnt, MirFn *fn);
+static State emit_instr_toany(Context *cnt, MirInstrToAny *toany);
 
-static void
-emit_incomplete(Context *cnt);
+static void emit_allocas(Context *cnt, MirFn *fn);
 
-static LLVMValueRef
-emit_fn_proto(Context *cnt, MirFn *fn);
+static void emit_incomplete(Context *cnt);
 
-static INLINE void
-emit_DI_loc(Context *cnt, Scope *scope, Location *loc)
+static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn);
+
+static INLINE void emit_DI_loc(Context *cnt, Scope *scope, Location *loc)
 {
 	BL_ASSERT(scope && "Missing scope for DI!");
 	BL_ASSERT(loc && "Missing location for DI!");
@@ -272,8 +219,7 @@ emit_DI_loc(Context *cnt, Scope *scope, Location *loc)
 	llvm_di_set_current_location(cnt->llvm_builder, (unsigned)loc->line, 0, llvm_scope, false);
 }
 
-static INLINE void
-emit_DI_instr_loc(Context *cnt, MirInstr *instr)
+static INLINE void emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 {
 	if (!instr || !instr->node) {
 		return;
@@ -282,16 +228,14 @@ emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 	emit_DI_loc(cnt, instr->node->owner_scope, instr->node->location);
 }
 
-static INLINE MirInstr *
-              push_back_incomplete(Context *cnt, MirInstr *instr)
+static INLINE MirInstr *push_back_incomplete(Context *cnt, MirInstr *instr)
 {
 	BL_ASSERT(instr && "Attempt to push null instruction into incomplete queue!");
 	tlist_push_back(&cnt->incomplete_queue, instr);
 	return instr;
 }
 
-static INLINE MirInstr *
-              pop_front_incomplete(Context *cnt)
+static INLINE MirInstr *pop_front_incomplete(Context *cnt)
 {
 	MirInstr *instr = NULL;
 	TList *   queue = &cnt->incomplete_queue;
@@ -303,8 +247,7 @@ static INLINE MirInstr *
 	return instr;
 }
 
-static INLINE LLVMTypeRef
-get_type(Context *cnt, MirType *t)
+static INLINE LLVMTypeRef get_type(Context *cnt, MirType *t)
 {
 	BL_ASSERT(t->llvm_type && "Invalid type reference for LLVM!");
 	if (cnt->debug_mode && !t->llvm_meta) {
@@ -314,14 +257,12 @@ get_type(Context *cnt, MirType *t)
 	return t->llvm_type;
 }
 
-static INLINE bool
-is_initialized(LLVMValueRef constant)
+static INLINE bool is_initialized(LLVMValueRef constant)
 {
 	return constant && LLVMGetInitializer(constant);
 }
 
-static INLINE LLVMValueRef
-emit_global_var_proto(Context *cnt, MirVar *var)
+static INLINE LLVMValueRef emit_global_var_proto(Context *cnt, MirVar *var)
 {
 	BL_ASSERT(var);
 	if (var->llvm_value) return var->llvm_value;
@@ -338,8 +279,7 @@ emit_global_var_proto(Context *cnt, MirVar *var)
 	return var->llvm_value;
 }
 
-static INLINE LLVMBasicBlockRef
-emit_basic_block(Context *cnt, MirInstrBlock *block)
+static INLINE LLVMBasicBlockRef emit_basic_block(Context *cnt, MirInstrBlock *block)
 {
 	if (!block) return NULL;
 
@@ -354,58 +294,35 @@ emit_basic_block(Context *cnt, MirInstrBlock *block)
 	return llvm_block;
 }
 
-const char *
-get_intrinsic(const char *name)
+const char *get_intrinsic(const char *name)
 {
 	if (!name) return NULL;
-	if (strcmp(name, "sin.f32") == 0) {
-		return "llvm.sin.f32";
-	} else if (strcmp(name, "sin.f64") == 0) {
-		return "llvm.sin.f64";
-	} else if (strcmp(name, "cos.f32") == 0) {
-		return "llvm.cos.f32";
-	} else if (strcmp(name, "cos.f64") == 0) {
-		return "llvm.cos.f64";
-	} else if (strcmp(name, "round.f32") == 0) {
-		return "llvm.round.f32";
-	} else if (strcmp(name, "round.f64") == 0) {
-		return "llvm.round.f64";
-	} else if (strcmp(name, "floor.f32") == 0) {
-		return "llvm.floor.f32";
-	} else if (strcmp(name, "floor.f64") == 0) {
-		return "llvm.floor.f64";
-	} else if (strcmp(name, "pow.f32") == 0) {
-		return "llvm.pow.f32";
-	} else if (strcmp(name, "pow.f64") == 0) {
-		return "llvm.pow.f64";
-	} else if (strcmp(name, "log.f32") == 0) {
-		return "llvm.log.f32";
-	} else if (strcmp(name, "log.f64") == 0) {
-		return "llvm.log.f64";
-	} else if (strcmp(name, "log2.f32") == 0) {
-		return "llvm.log2.f32";
-	} else if (strcmp(name, "log2.f64") == 0) {
-		return "llvm.log2.f64";
-	} else if (strcmp(name, "log10.f32") == 0) {
-		return "llvm.log10.f32";
-	} else if (strcmp(name, "log10.f64") == 0) {
-		return "llvm.log10.f64";
-	} else if (strcmp(name, "sqrt.f32") == 0) {
-		return "llvm.sqrt.f32";
-	} else if (strcmp(name, "sqrt.f64") == 0) {
-		return "llvm.sqrt.f64";
-	} else if (strcmp(name, "ceil.f32") == 0) {
-		return "llvm.ceil.f32";
-	} else if (strcmp(name, "ceil.f64") == 0) {
-		return "llvm.ceil.f64";
-	}
+	if (strcmp(name, "sin.f32") == 0) return "llvm.sin.f32";
+	if (strcmp(name, "sin.f64") == 0) return "llvm.sin.f64";
+	if (strcmp(name, "cos.f32") == 0) return "llvm.cos.f32";
+	if (strcmp(name, "cos.f64") == 0) return "llvm.cos.f64";
+	if (strcmp(name, "pow.f32") == 0) return "llvm.pow.f32";
+	if (strcmp(name, "pow.f64") == 0) return "llvm.pow.f64";
+	if (strcmp(name, "log.f32") == 0) return "llvm.log.f32";
+	if (strcmp(name, "log.f64") == 0) return "llvm.log.f64";
+	if (strcmp(name, "log2.f32") == 0) return "llvm.log2.f32";
+	if (strcmp(name, "log2.f64") == 0) return "llvm.log2.f64";
+	if (strcmp(name, "sqrt.f32") == 0) return "llvm.sqrt.f32";
+	if (strcmp(name, "sqrt.f64") == 0) return "llvm.sqrt.f64";
+	if (strcmp(name, "ceil.f32") == 0) return "llvm.ceil.f32";
+	if (strcmp(name, "ceil.f64") == 0) return "llvm.ceil.f64";
+	if (strcmp(name, "round.f32") == 0) return "llvm.round.f32";
+	if (strcmp(name, "round.f64") == 0) return "llvm.round.f64";
+	if (strcmp(name, "floor.f32") == 0) return "llvm.floor.f32";
+	if (strcmp(name, "floor.f64") == 0) return "llvm.floor.f64";
+	if (strcmp(name, "log10.f32") == 0) return "llvm.log10.f32";
+	if (strcmp(name, "log10.f64") == 0) return "llvm.log10.f64";
 
 	return NULL;
 }
 
 /* impl */
-LLVMMetadataRef
-DI_type_init(Context *cnt, MirType *type)
+LLVMMetadataRef DI_type_init(Context *cnt, MirType *type)
 {
 	if (type->llvm_meta) return type->llvm_meta;
 	const char *name = type->user_id ? type->user_id->str : type->id.str;
@@ -558,8 +475,7 @@ DI_type_init(Context *cnt, MirType *type)
 	return type->llvm_meta;
 }
 
-LLVMMetadataRef
-DI_complete_type(Context *cnt, MirType *type)
+LLVMMetadataRef DI_complete_type(Context *cnt, MirType *type)
 {
 	BL_ASSERT(type->llvm_meta && "Incomplete DI type must have forward declaration.");
 
@@ -694,8 +610,7 @@ DI_complete_type(Context *cnt, MirType *type)
 	return type->llvm_meta;
 }
 
-LLVMMetadataRef
-DI_scope_init(Context *cnt, Scope *scope)
+LLVMMetadataRef DI_scope_init(Context *cnt, Scope *scope)
 {
 	BL_ASSERT(scope && "Invalid scope!");
 	if (scope->llvm_meta) return scope->llvm_meta;
@@ -725,8 +640,7 @@ DI_scope_init(Context *cnt, Scope *scope)
 	return scope->llvm_meta;
 }
 
-LLVMMetadataRef
-DI_unit_init(Context *cnt, Unit *unit)
+LLVMMetadataRef DI_unit_init(Context *cnt, Unit *unit)
 {
 	if (unit->llvm_file_meta) return unit->llvm_file_meta;
 
@@ -735,8 +649,7 @@ DI_unit_init(Context *cnt, Unit *unit)
 	return unit->llvm_file_meta;
 }
 
-void
-emit_DI_fn(Context *cnt, MirFn *fn)
+void emit_DI_fn(Context *cnt, MirFn *fn)
 {
 	if (!fn->decl_node) return;
 	BL_ASSERT(!fn->body_scope->llvm_meta && "Attempt to regenerate function DI!");
@@ -768,8 +681,7 @@ emit_DI_fn(Context *cnt, MirFn *fn)
 	llvm_di_set_subprogram(fn->llvm_value, fn->body_scope->llvm_meta);
 }
 
-void
-emit_DI_var(Context *cnt, MirVar *var)
+void emit_DI_var(Context *cnt, MirVar *var)
 {
 	if (!var->decl_node) return;
 	Location *location = var->decl_node->location;
@@ -815,8 +727,7 @@ emit_DI_var(Context *cnt, MirVar *var)
 	}
 }
 
-static LLVMValueRef
-emit_fn_proto(Context *cnt, MirFn *fn)
+static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn)
 {
 	BL_ASSERT(fn);
 	BL_ASSERT(fn->emit_llvm && "Attempt to generate IR prototype of unused function.");
@@ -888,8 +799,7 @@ emit_fn_proto(Context *cnt, MirFn *fn)
 	return fn->llvm_value;
 }
 
-LLVMValueRef
-emit_const_string(Context *cnt, const char *str, usize len)
+LLVMValueRef emit_const_string(Context *cnt, const char *str, usize len)
 {
 	MirType *    type     = cnt->builtin_types->t_string;
 	LLVMValueRef llvm_str = NULL;
@@ -940,8 +850,7 @@ emit_const_string(Context *cnt, const char *str, usize len)
 	return llvm_result;
 }
 
-State
-emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
+State emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
 	ScopeEntry *entry = ref->scope_entry;
 	BL_ASSERT(entry);
@@ -968,8 +877,7 @@ emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_decl_direct_ref(Context UNUSED(*cnt), MirInstrDeclDirectRef *ref)
+State emit_instr_decl_direct_ref(Context UNUSED(*cnt), MirInstrDeclDirectRef *ref)
 {
 	BL_ASSERT(ref->ref && ref->ref->kind == MIR_INSTR_DECL_VAR);
 
@@ -981,8 +889,7 @@ emit_instr_decl_direct_ref(Context UNUSED(*cnt), MirInstrDeclDirectRef *ref)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_phi(Context *cnt, MirInstrPhi *phi)
+State emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 {
 	if (cnt->debug_mode) emit_DI_instr_loc(cnt, &phi->base);
 	LLVMValueRef llvm_phi =
@@ -1016,8 +923,7 @@ emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
+State emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
 	MirFn *abort_fn = unr->abort_fn;
 	BL_ASSERT(abort_fn);
@@ -1027,8 +933,7 @@ emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 	return STATE_PASSED;
 }
 
-LLVMValueRef
-rtti_emit_base(Context *cnt, MirType *type, u8 kind, usize size)
+LLVMValueRef rtti_emit_base(Context *cnt, MirType *type, u8 kind, usize size)
 {
 	TSmallArray_LLVMValue llvm_vals;
 	tsa_init(&llvm_vals);
@@ -1045,8 +950,7 @@ rtti_emit_base(Context *cnt, MirType *type, u8 kind, usize size)
 	return llvm_result;
 }
 
-LLVMValueRef
-rtti_emit_empty(Context *cnt, MirType *type, MirType *rtti_type)
+LLVMValueRef rtti_emit_empty(Context *cnt, MirType *type, MirType *rtti_type)
 {
 	TSmallArray_LLVMValue llvm_vals;
 	tsa_init(&llvm_vals);
@@ -1062,8 +966,7 @@ rtti_emit_empty(Context *cnt, MirType *type, MirType *rtti_type)
 	return llvm_result;
 }
 
-LLVMValueRef
-rtti_emit_enum(Context *cnt, MirType *type)
+LLVMValueRef rtti_emit_enum(Context *cnt, MirType *type)
 {
 	MirType *             rtti_type = cnt->builtin_types->t_TypeInfoEnum;
 	TSmallArray_LLVMValue llvm_vals;
@@ -1091,8 +994,7 @@ rtti_emit_enum(Context *cnt, MirType *type)
 	return llvm_result;
 }
 
-LLVMValueRef
-rtti_emit_enum_variant(Context *cnt, MirVariant *variant)
+LLVMValueRef rtti_emit_enum_variant(Context *cnt, MirVariant *variant)
 {
 	MirType *             rtti_type = cnt->builtin_types->t_TypeInfoEnumVariant;
 	TSmallArray_LLVMValue llvm_vals;
@@ -1116,8 +1018,7 @@ rtti_emit_enum_variant(Context *cnt, MirVariant *variant)
 	return llvm_result;
 }
 
-LLVMValueRef
-rtti_emit_enum_variants_array(Context *cnt, TSmallArray_VariantPtr *variants)
+LLVMValueRef rtti_emit_enum_variants_array(Context *cnt, TSmallArray_VariantPtr *variants)
 {
 	MirType *             elem_type = cnt->builtin_types->t_TypeInfoEnumVariant;
 	TSmallArray_LLVMValue llvm_vals;
@@ -1142,8 +1043,7 @@ rtti_emit_enum_variants_array(Context *cnt, TSmallArray_VariantPtr *variants)
 	return llvm_rtti_var;
 }
 
-LLVMValueRef
-rtti_emit_enum_variants_slice(Context *cnt, TSmallArray_VariantPtr *variants)
+LLVMValueRef rtti_emit_enum_variants_slice(Context *cnt, TSmallArray_VariantPtr *variants)
 {
 	MirType *             type = cnt->builtin_types->t_TypeInfoEnumVariants_slice;
 	TSmallArray_LLVMValue llvm_vals;
@@ -1167,8 +1067,7 @@ rtti_emit_enum_variants_slice(Context *cnt, TSmallArray_VariantPtr *variants)
 	return llvm_result;
 }
 
-LLVMValueRef
-rtti_emit_struct(Context *cnt, MirType *type)
+LLVMValueRef rtti_emit_struct(Context *cnt, MirType *type)
 {
 	MirType *             rtti_type = cnt->builtin_types->t_TypeInfoStruct;
 	TSmallArray_LLVMValue llvm_vals;
@@ -1217,8 +1116,7 @@ rtti_emit_struct(Context *cnt, MirType *type)
 	return llvm_result;
 }
 
-LLVMValueRef
-rtti_emit_struct_member(Context *cnt, MirMember *member)
+LLVMValueRef rtti_emit_struct_member(Context *cnt, MirMember *member)
 {
 	MirType *             rtti_type = cnt->builtin_types->t_TypeInfoStructMember;
 	TSmallArray_LLVMValue llvm_vals;
@@ -1266,8 +1164,7 @@ rtti_emit_struct_member(Context *cnt, MirMember *member)
 	return llvm_result;
 }
 
-LLVMValueRef
-rtti_emit_struct_members_array(Context *cnt, TSmallArray_MemberPtr *members)
+LLVMValueRef rtti_emit_struct_members_array(Context *cnt, TSmallArray_MemberPtr *members)
 {
 	MirType *             elem_type = cnt->builtin_types->t_TypeInfoStructMember;
 	TSmallArray_LLVMValue llvm_vals;
@@ -1292,8 +1189,7 @@ rtti_emit_struct_members_array(Context *cnt, TSmallArray_MemberPtr *members)
 	return llvm_rtti_var;
 }
 
-LLVMValueRef
-rtti_emit_struct_members_slice(Context *cnt, TSmallArray_MemberPtr *members)
+LLVMValueRef rtti_emit_struct_members_slice(Context *cnt, TSmallArray_MemberPtr *members)
 {
 	MirType *             type = cnt->builtin_types->t_TypeInfoStructMembers_slice;
 	TSmallArray_LLVMValue llvm_vals;
@@ -1316,8 +1212,7 @@ rtti_emit_struct_members_slice(Context *cnt, TSmallArray_MemberPtr *members)
 	return llvm_result;
 }
 
-LLVMValueRef
-rtti_emit_fn(Context *cnt, MirType *type)
+LLVMValueRef rtti_emit_fn(Context *cnt, MirType *type)
 {
 	MirType *             rtti_type = cnt->builtin_types->t_TypeInfoFn;
 	TSmallArray_LLVMValue llvm_vals;
@@ -1352,8 +1247,7 @@ rtti_emit_fn(Context *cnt, MirType *type)
 	return llvm_result;
 }
 
-LLVMValueRef
-rtti_emit_fn_arg(Context *cnt, MirArg *arg)
+LLVMValueRef rtti_emit_fn_arg(Context *cnt, MirArg *arg)
 {
 	MirType *             rtti_type = cnt->builtin_types->t_TypeInfoFnArg;
 	TSmallArray_LLVMValue llvm_vals;
@@ -1372,8 +1266,7 @@ rtti_emit_fn_arg(Context *cnt, MirArg *arg)
 	return llvm_result;
 }
 
-LLVMValueRef
-rtti_emit_fn_args_array(Context *cnt, TSmallArray_ArgPtr *args)
+LLVMValueRef rtti_emit_fn_args_array(Context *cnt, TSmallArray_ArgPtr *args)
 {
 	MirType *             elem_type = cnt->builtin_types->t_TypeInfoFnArg;
 	TSmallArray_LLVMValue llvm_vals;
@@ -1398,8 +1291,7 @@ rtti_emit_fn_args_array(Context *cnt, TSmallArray_ArgPtr *args)
 	return llvm_rtti_var;
 }
 
-LLVMValueRef
-rtti_emit_fn_args_slice(Context *cnt, TSmallArray_ArgPtr *args)
+LLVMValueRef rtti_emit_fn_args_slice(Context *cnt, TSmallArray_ArgPtr *args)
 {
 	MirType *             type = cnt->builtin_types->t_TypeInfoFnArgs_slice;
 	TSmallArray_LLVMValue llvm_vals;
@@ -1428,8 +1320,7 @@ rtti_emit_fn_args_slice(Context *cnt, TSmallArray_ArgPtr *args)
 	return llvm_result;
 }
 
-LLVMValueRef
-rtti_emit_integer(Context *cnt, MirType *type)
+LLVMValueRef rtti_emit_integer(Context *cnt, MirType *type)
 {
 	MirType *             rtti_type = cnt->builtin_types->t_TypeInfoInt;
 	TSmallArray_LLVMValue llvm_vals;
@@ -1456,8 +1347,7 @@ rtti_emit_integer(Context *cnt, MirType *type)
 	return llvm_result;
 }
 
-LLVMValueRef
-rtti_emit_real(Context *cnt, MirType *type)
+LLVMValueRef rtti_emit_real(Context *cnt, MirType *type)
 {
 	MirType *             rtti_type = cnt->builtin_types->t_TypeInfoReal;
 	TSmallArray_LLVMValue llvm_vals;
@@ -1479,8 +1369,7 @@ rtti_emit_real(Context *cnt, MirType *type)
 	return llvm_result;
 }
 
-LLVMValueRef
-rtti_emit_ptr(Context *cnt, MirType *type)
+LLVMValueRef rtti_emit_ptr(Context *cnt, MirType *type)
 {
 	MirType *             rtti_type = cnt->builtin_types->t_TypeInfoPtr;
 	TSmallArray_LLVMValue llvm_vals;
@@ -1500,8 +1389,7 @@ rtti_emit_ptr(Context *cnt, MirType *type)
 	return llvm_result;
 }
 
-LLVMValueRef
-rtti_emit_array(Context *cnt, MirType *type)
+LLVMValueRef rtti_emit_array(Context *cnt, MirType *type)
 {
 	MirType *             rtti_type = cnt->builtin_types->t_TypeInfoArray;
 	TSmallArray_LLVMValue llvm_vals;
@@ -1532,8 +1420,7 @@ rtti_emit_array(Context *cnt, MirType *type)
 	return llvm_result;
 }
 
-LLVMValueRef
-rtti_emit(Context *cnt, MirType *type)
+LLVMValueRef rtti_emit(Context *cnt, MirType *type)
 {
 	LLVMValueRef llvm_value = _rtti_emit(cnt, type);
 
@@ -1546,8 +1433,7 @@ rtti_emit(Context *cnt, MirType *type)
 	return llvm_value;
 }
 
-void
-rtti_satisfy_incomplete(Context *cnt, RTTIIncomplete *incomplete)
+void rtti_satisfy_incomplete(Context *cnt, RTTIIncomplete *incomplete)
 {
 	MirType *    type          = incomplete->type;
 	LLVMValueRef llvm_rtti_var = incomplete->llvm_var;
@@ -1559,8 +1445,7 @@ rtti_satisfy_incomplete(Context *cnt, RTTIIncomplete *incomplete)
 	LLVMSetInitializer(llvm_rtti_var, llvm_value);
 }
 
-LLVMValueRef
-_rtti_emit(Context *cnt, MirType *type)
+LLVMValueRef _rtti_emit(Context *cnt, MirType *type)
 {
 	BL_ASSERT(type);
 	BL_ASSERT(assembly_has_rtti(cnt->assembly, type->id.hash));
@@ -1653,16 +1538,104 @@ SKIP:
 	return llvm_rtti_var;
 }
 
-State
-emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
+State emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
 	BL_ASSERT(type_info->rtti_type);
 	type_info->base.llvm_value = rtti_emit(cnt, type_info->rtti_type);
 	return STATE_PASSED;
 }
 
-State
-emit_instr_cast(Context *cnt, MirInstrCast *cast)
+LLVMValueRef testing_emit_meta_case(Context *cnt, MirFn *fn)
+{
+	MirType *             type = cnt->builtin_types->t_TestCase;
+	TSmallArray_LLVMValue llvm_vals;
+	tsa_init(&llvm_vals);
+
+	tsa_push_LLVMValue(&llvm_vals, emit_fn_proto(cnt, fn));
+	tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, fn->id->str, strlen(fn->id->str)));
+
+	LLVMValueRef llvm_result =
+	    LLVMConstNamedStruct(get_type(cnt, type), llvm_vals.data, (u32)llvm_vals.size);
+
+	tsa_terminate(&llvm_vals);
+	return llvm_result;
+}
+
+MirVar *testing_fetch_meta(Context *cnt)
+{
+	MirVar *var = cnt->assembly->testing.meta_var;
+	if (!var) return NULL;
+
+	BL_ASSERT(var->value.type && var->value.type->kind == MIR_TYPE_ARRAY);
+
+	const s64 len = var->value.type->data.array.len;
+	BL_ASSERT((u64)len == cnt->assembly->testing.cases.size);
+
+	if (var->llvm_value) {
+		return var;
+	}
+
+	/* Emit global for storing test case informations only once and only if needed. */
+	LLVMTypeRef  llvm_var_type = get_type(cnt, var->value.type);
+	LLVMValueRef llvm_var = LLVMAddGlobal(cnt->llvm_module, llvm_var_type, var->linkage_name);
+	LLVMSetLinkage(llvm_var, LLVMPrivateLinkage);
+	LLVMSetGlobalConstant(llvm_var, true);
+
+	var->llvm_value = llvm_var;
+
+	// Setup values
+	TSmallArray_LLVMValue llvm_vals;
+	tsa_init(&llvm_vals);
+
+	MirFn *it;
+	TARRAY_FOREACH(MirFn *, &cnt->assembly->testing.cases, it)
+	{
+		tsa_push_LLVMValue(&llvm_vals, testing_emit_meta_case(cnt, it));
+	}
+
+	LLVMValueRef llvm_init =
+	    LLVMConstArray(get_type(cnt, cnt->builtin_types->t_TestCase), llvm_vals.data, len);
+
+	LLVMSetInitializer(llvm_var, llvm_init);
+	tsa_terminate(&llvm_vals);
+
+	return var;
+}
+
+State emit_instr_test_cases(Context *cnt, MirInstrTestCases *tc)
+{
+	/* Test case metadata variable is optional an can be null in case there are no test cases.
+	 * In such case we generate empty slice with zero lenght.
+	 */
+	MirVar * var  = testing_fetch_meta(cnt);
+	MirType *type = cnt->builtin_types->t_TestCases_slice;
+
+	TSmallArray_LLVMValue llvm_vals;
+	tsa_init(&llvm_vals);
+
+	MirType *len_type = mir_get_struct_elem_type(type, 0);
+	MirType *ptr_type = mir_get_struct_elem_type(type, 1);
+
+	LLVMValueRef llvm_len =
+	    var ? LLVMConstInt(get_type(cnt, len_type),
+	                       var->value.type->data.array.len,
+	                       len_type->data.integer.is_signed)
+	        : LLVMConstInt(get_type(cnt, len_type), 0, len_type->data.integer.is_signed);
+
+	LLVMValueRef llvm_ptr = var ? LLVMConstBitCast(var->llvm_value, get_type(cnt, ptr_type))
+	                            : LLVMConstPointerNull(get_type(cnt, ptr_type));
+
+	tsa_push_LLVMValue(&llvm_vals, llvm_len);
+	tsa_push_LLVMValue(&llvm_vals, llvm_ptr);
+
+	tc->base.llvm_value =
+	    LLVMConstNamedStruct(get_type(cnt, type), llvm_vals.data, (u32)llvm_vals.size);
+
+	tsa_terminate(&llvm_vals);
+	return STATE_PASSED;
+}
+
+State emit_instr_cast(Context *cnt, MirInstrCast *cast)
 {
 	LLVMValueRef llvm_src       = cast->expr->llvm_value;
 	LLVMTypeRef  llvm_dest_type = get_type(cnt, cast->base.value.type);
@@ -1745,8 +1718,7 @@ emit_instr_cast(Context *cnt, MirInstrCast *cast)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
+State emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 {
 	if (addrof->src->kind == MIR_INSTR_FN_PROTO) {
 		MirInstrFnProto *fn_proto = (MirInstrFnProto *)addrof->src;
@@ -1759,8 +1731,7 @@ emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg_instr)
+State emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg_instr)
 {
 	BL_ASSERT(dest);
 
@@ -1827,8 +1798,7 @@ emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg_instr)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
+State emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
 	MirType *    arr_type     = mir_deref_type(elem_ptr->arr_ptr->value.type);
 	LLVMValueRef llvm_arr_ptr = elem_ptr->arr_ptr->llvm_value;
@@ -1881,8 +1851,7 @@ emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
+State emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 {
 	LLVMValueRef llvm_target_ptr = member_ptr->target_ptr->llvm_value;
 	BL_ASSERT(llvm_target_ptr);
@@ -1922,8 +1891,7 @@ emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_load(Context *cnt, MirInstrLoad *load)
+State emit_instr_load(Context *cnt, MirInstrLoad *load)
 {
 	BL_ASSERT(load->base.value.type && "invalid type of load instruction");
 	LLVMValueRef llvm_src = load->src->llvm_value;
@@ -1956,8 +1924,7 @@ emit_instr_load(Context *cnt, MirInstrLoad *load)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_store(Context *cnt, MirInstrStore *store)
+State emit_instr_store(Context *cnt, MirInstrStore *store)
 {
 	LLVMValueRef ptr = store->dest->llvm_value;
 	BL_ASSERT(ptr && "Missing LLVM store destination value!");
@@ -1984,8 +1951,7 @@ emit_instr_store(Context *cnt, MirInstrStore *store)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_unop(Context *cnt, MirInstrUnop *unop)
+State emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
 	LLVMValueRef llvm_val = unop->expr->llvm_value;
 	BL_ASSERT(llvm_val);
@@ -2022,8 +1988,7 @@ emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp)
+State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp)
 {
 	LLVMValueRef llvm_tmp = NULL;
 
@@ -2224,8 +2189,7 @@ emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_binop(Context *cnt, MirInstrBinop *binop)
+State emit_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
 	LLVMValueRef lhs = binop->lhs->llvm_value;
 	LLVMValueRef rhs = binop->rhs->llvm_value;
@@ -2371,8 +2335,7 @@ emit_instr_binop(Context *cnt, MirInstrBinop *binop)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_call(Context *cnt, MirInstrCall *call)
+State emit_instr_call(Context *cnt, MirInstrCall *call)
 {
 	/******************************************************************************************/
 #define INSERT_TMP(_name, _type)                                                                   \
@@ -2554,8 +2517,7 @@ emit_instr_call(Context *cnt, MirInstrCall *call)
 #undef INSERT_TMP
 }
 
-State
-emit_instr_set_initializer(Context UNUSED(*cnt), MirInstrSetInitializer *si)
+State emit_instr_set_initializer(Context UNUSED(*cnt), MirInstrSetInitializer *si)
 {
 	MirVar *var = ((MirInstrDeclVar *)si->dest)->var;
 #if LLVM_EXCLUDE_UNUSED_SYM
@@ -2568,8 +2530,7 @@ emit_instr_set_initializer(Context UNUSED(*cnt), MirInstrSetInitializer *si)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
+State emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
 	MirVar *var = decl->var;
 	BL_ASSERT(var);
@@ -2615,8 +2576,7 @@ emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_ret(Context *cnt, MirInstrRet *ret)
+State emit_instr_ret(Context *cnt, MirInstrRet *ret)
 {
 	MirFn *fn = ret->base.owner_block->owner_fn;
 	BL_ASSERT(fn);
@@ -2656,8 +2616,7 @@ FINALIZE:
 	return STATE_PASSED;
 }
 
-State
-emit_instr_br(Context *cnt, MirInstrBr *br)
+State emit_instr_br(Context *cnt, MirInstrBr *br)
 {
 	MirInstrBlock *then_block = br->then_block;
 	BL_ASSERT(then_block);
@@ -2675,8 +2634,7 @@ emit_instr_br(Context *cnt, MirInstrBr *br)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_switch(Context *cnt, MirInstrSwitch *sw)
+State emit_instr_switch(Context *cnt, MirInstrSwitch *sw)
 {
 	MirInstr *              value         = sw->value;
 	MirInstrBlock *         default_block = sw->default_block;
@@ -2700,8 +2658,7 @@ emit_instr_switch(Context *cnt, MirInstrSwitch *sw)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_const(Context *cnt, MirInstrConst *c)
+State emit_instr_const(Context *cnt, MirInstrConst *c)
 {
 	MirType *    type       = c->base.value.type;
 	LLVMValueRef llvm_value = NULL;
@@ -2775,8 +2732,7 @@ emit_instr_const(Context *cnt, MirInstrConst *c)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_cond_br(Context *cnt, MirInstrCondBr *br)
+State emit_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 {
 	MirInstr *     cond       = br->cond;
 	MirInstrBlock *then_block = br->then_block;
@@ -2796,8 +2752,7 @@ emit_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
+State emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 {
 	MirType *             vargs_type = vargs->base.value.type;
 	TSmallArray_InstrPtr *values     = vargs->values;
@@ -2848,8 +2803,7 @@ emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_toany(Context *cnt, MirInstrToAny *toany)
+State emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 {
 	LLVMValueRef llvm_dest      = toany->tmp->llvm_value;
 	LLVMValueRef llvm_type_info = rtti_emit(cnt, toany->rtti_type);
@@ -2890,8 +2844,7 @@ emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 	return STATE_PASSED;
 }
 
-State
-emit_instr_block(Context *cnt, MirInstrBlock *block)
+State emit_instr_block(Context *cnt, MirInstrBlock *block)
 {
 	/* We don't want to genrate type resolvers for typedefs!!! */
 	if (!block->emit_llvm) return STATE_PASSED;
@@ -2935,8 +2888,7 @@ SKIP:
 	return STATE_PASSED;
 }
 
-void
-emit_incomplete(Context *cnt)
+void emit_incomplete(Context *cnt)
 {
 	MirInstr *        instr   = pop_front_incomplete(cnt);
 	LLVMBasicBlockRef prev_bb = LLVMGetInsertBlock(cnt->llvm_builder);
@@ -2965,8 +2917,7 @@ emit_incomplete(Context *cnt)
 	LLVMPositionBuilderAtEnd(cnt->llvm_builder, prev_bb);
 }
 
-void
-emit_allocas(Context *cnt, MirFn *fn)
+void emit_allocas(Context *cnt, MirFn *fn)
 {
 	BL_ASSERT(fn);
 
@@ -2995,8 +2946,7 @@ emit_allocas(Context *cnt, MirFn *fn)
 	}
 }
 
-State
-emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
+State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
 	MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
 
@@ -3031,8 +2981,7 @@ emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	return STATE_PASSED;
 }
 
-State
-emit_instr(Context *cnt, MirInstr *instr)
+State emit_instr(Context *cnt, MirInstr *instr)
 {
 	State state = STATE_PASSED;
 	if (instr->value.type->kind == MIR_TYPE_TYPE) return state;
@@ -3138,6 +3087,12 @@ emit_instr(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_SET_INITIALIZER:
 		state = emit_instr_set_initializer(cnt, (MirInstrSetInitializer *)instr);
 		break;
+	case MIR_INSTR_TEST_CASES:
+		state = emit_instr_test_cases(cnt, (MirInstrTestCases *)instr);
+		break;
+
+	default:
+		BL_ABORT("Missing emit instruction!");
 	}
 
 	// if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
@@ -3145,8 +3100,7 @@ emit_instr(Context *cnt, MirInstr *instr)
 	return state;
 }
 
-static void
-intrinsics_init(Context *cnt)
+static void intrinsics_init(Context *cnt)
 {
 	// lookup intrinsics
 	{ // memset
@@ -3173,8 +3127,7 @@ intrinsics_init(Context *cnt)
 	}
 }
 
-static void
-DI_init(Context *cnt)
+static void DI_init(Context *cnt)
 {
 	tarray_init(&cnt->di_incomplete_types, sizeof(MirType *));
 	tarray_reserve(&cnt->di_incomplete_types, 1024);
@@ -3204,15 +3157,13 @@ DI_init(Context *cnt)
 	llvm_di_create_compile_unit(cnt->llvm_di_builder, gscope->llvm_meta, producer);
 }
 
-static void
-DI_terminate(Context *cnt)
+static void DI_terminate(Context *cnt)
 {
 	tarray_terminate(&cnt->di_incomplete_types);
 	llvm_di_delete_di_builder(cnt->llvm_di_builder);
 }
 
-static void
-DI_complete_types(Context *cnt)
+static void DI_complete_types(Context *cnt)
 {
 	TArray * stack = &cnt->di_incomplete_types;
 	MirType *t;
@@ -3225,8 +3176,7 @@ DI_complete_types(Context *cnt)
 }
 
 /* public */
-void
-ir_run(Assembly *assembly)
+void ir_run(Assembly *assembly)
 {
 	Context cnt;
 	memset(&cnt, 0, sizeof(Context));

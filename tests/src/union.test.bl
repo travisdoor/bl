@@ -1,11 +1,3 @@
-#test "union collider" {
-    c: Collider;
-    c.kind = ColliderKind.Circle;
-    c.data.circle = {:ColliderCircle: {:v2: 10.f, 20.f}, 15.f};
-
-    assert(sizeof(c.data) == sizeof(ColliderRect));
-}
-
 #private
 ColliderKind :: enum {
     Rect;
@@ -28,5 +20,13 @@ ColliderRect :: struct {
 ColliderCircle :: struct {
     c: v2;
     r: f32;
+}
+
+union_collider :: fn () #test2 {
+    c: Collider;
+    c.kind = ColliderKind.Circle;
+    c.data.circle = {:ColliderCircle: {:v2: 10.f, 20.f}, 15.f};
+
+    assert(sizeof(c.data) == sizeof(ColliderRect));
 }
 

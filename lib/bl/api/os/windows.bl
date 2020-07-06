@@ -87,6 +87,16 @@ os_thread_join :: fn (thread: OSThread) {
     win32_CloseHandle(thread);
 }
 
+// @MULTIPLATFORM: implement this for linux and macos!!!
+os_thread_current :: fn () OSThread #inline {
+    return win32_GetCurrentThread();
+}
+
+// @MULTIPLATFORM: implement this for linux and macos!!!
+os_thread_kill :: fn (thread: OSThread, exit_code: s32) bool #inline {
+    return win32_TerminateThread(thread, auto exit_code) > 1;
+}
+
 os_mutex_init :: fn (mutex: *OSMutex) #inline {
     (^mutex) = win32_CreateMutexA(null, 0, null);
 }
@@ -110,13 +120,19 @@ os_mutex_unlock :: fn (mutex: *OSMutex) #inline {
     }
 }
 
+// @MULTIPLATFORM: implement this for linux and macos!!!
 os_sleep_ms :: fn (ms: f64) #inline {
     win32_Sleep(auto ms);
 };
 
-// @INCOMPLETE: implement this for linux and macos!!!
+// @MULTIPLATFORM: implement this for linux and macos!!!
 os_tick_ms :: fn () f64 #inline {
-    return auto win32_GetTickCount();
+    f: WIN32_LARGE_INTEGER #noinit;
+    t: WIN32_LARGE_INTEGER #noinit;
+
+    if win32_QueryPerformanceFrequency(&f) == 0 { return 0.; }
+    if win32_QueryPerformanceCounter(&t) == 0 { return 0.; }
+    return (cast(f64) t / cast(f64) f) * 1000.;
 };
 
 /*
@@ -285,6 +301,14 @@ __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
 
 __os_abort :: fn () #compiler {
     if IS_DEBUG { _os_debug_break(); }
+    if _context.abort_fn {
+        _context.abort_fn();
+    } else {
+        _os_abort_default();
+    }
+}
+
+_os_abort_default :: fn () {
     raise(SIGABRT);
 }
 
@@ -300,7 +324,7 @@ __os_start :: fn () #entry {
     _exit(out);
 }
 
-// CLEANUP: This must be in gl.bl file not here, but we keep it
+// @CLEANUP: This must be in gl.bl file not here, but we keep it
 // until static 'if' will be supported by compiler.
 _os_gl_get_proc :: fn (proc_name: string) *u8 {
     wglGetProcAddress :: fn (procName: *u8) *u8 #extern;

@@ -1,7 +1,5 @@
-#load "std/debug.bl"
-
 #private
-#test "simple assignement" {
+simple_assignement :: fn () #test2 {
     {
         number := 0;
         assert(number == 0);
@@ -55,6 +53,6 @@ Str :: "Hello";
 Str2 := "Hello";
 Str3 := &Str;
 
-#test "global constants" {
+global_constants :: fn () #test2 {
     assert(A == 20);
 }

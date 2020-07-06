@@ -1,7 +1,5 @@
-#load "std/debug.bl"
-
 #private
-#test "slices" {
+slices :: fn () #test2 {
     arr : [3]s32;
 
     arr[0] = 10;
@@ -19,7 +17,7 @@
     assert(slice[2] == 30);
 };
 
-#test "structures" {
+structures :: fn () #test2 {
     Foo :: struct {
         _1: u8;
         _2: s32;
@@ -41,7 +39,7 @@
     assert((foo._4)[0] == 10);
 };
 
-#test "implicit struct" {
+implicit_struct :: fn () #test2 {
     foo : struct {
         _1: u8;
         _2: s32;
@@ -62,7 +60,7 @@
     assert((foo._4)[0] == 10);
 };
 
-#test "nested struct" {
+nested_struct :: fn () #test2 {
     Foo :: struct {
         i: s32;
         j: s32
@@ -80,7 +78,7 @@
     assert((bar.foo).j == 20);
 };
 
-#test "structure initialization" {
+structure_initialization :: fn () #test2 {
     Foo :: struct {
         i: s32;
         j: s32
@@ -101,7 +99,7 @@
     }
 };
 
-#test "strings" {
+strings :: fn () #test2 {
     _1 := "hello";
     assert(_1.ptr != null);
     assert(_1.len == 5);
@@ -112,7 +110,7 @@ Foo :: struct {
     func: *fn (i: *Foo);
 };
 
-#test "pointer to self" {
+pointer_to_self :: fn () #test2 {
     Bar :: struct {
         bar: *Bar;
         func: *fn (i: *Bar);

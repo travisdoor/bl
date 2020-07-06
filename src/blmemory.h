@@ -31,10 +31,8 @@
 
 #include <memory.h>
 
-void *
-bl_malloc(const size_t size);
+void *bl_malloc(const size_t size);
 
-void
-bl_free(void *ptr);
+void bl_free(void *ptr);
 
 #endif // BL_BLMEMORY_H

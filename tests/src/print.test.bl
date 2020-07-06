@@ -1,200 +1,216 @@
 #load "std/print.bl"
 #load "std/test.bl"
 
-#test "print int" {
+/*
+test_print :: fn () {
+    test_add(&test_print_int, "test_print_int");
+    test_add(&test_print_bool, "test_print_bool");
+    test_add(&test_fmt_f32, "test_fmt_f32");
+    test_add(&test_fmt_s32_base10, "test_fmt_s32_base10");
+    test_add(&test_fmt_s32_base2, "test_fmt_s32_base2");
+    test_add(&test_fmt_s32_base16, "test_fmt_s32_base16");
+    test_add(&test_print_content_simple, "test_print_content_simple");
+    test_add(&test_print_array, "test_print_array");
+    test_add(&test_print_struct, "test_print_struct");
+    test_add(&test_complex_type, "test_complex_type");
+}
+*/
+
+#private
+test_print_int :: fn () #test2 {
     {
         v : u64 : U64_MAX;
         str :: string_new_concatenate(v);     
         defer string_delete(str);
-        test_str_eq(str, "18446744073709551615");
+        test_str_eq(str, "18446744073709551615", #file, #line);
     }
 
     {
         v : s64 : S64_MAX;
         str :: string_new_concatenate(v);     
         defer string_delete(str);
-        test_str_eq(str, "9223372036854775807");
+        test_str_eq(str, "9223372036854775807", #file, #line);
     }
 
     {
         v : s64 : S64_MIN;
         str :: string_new_concatenate(v);     
         defer string_delete(str);
-        test_str_eq(str, "-9223372036854775808");
+        test_str_eq(str, "-9223372036854775808", #file, #line);
     }
 
     {
         v : s32 : S32_MAX;
         str :: string_new_concatenate(v);     
         defer string_delete(str);
-        test_str_eq(str, "2147483647");
+        test_str_eq(str, "2147483647", #file, #line);
     }
 
     {
         v : s32 : S32_MIN;
         str :: string_new_concatenate(v);     
         defer string_delete(str);
-        test_str_eq(str, "-2147483648");
+        test_str_eq(str, "-2147483648", #file, #line);
     }
 
     {
         v : s16 : S16_MAX;
         str :: string_new_concatenate(v);     
         defer string_delete(str);
-        test_str_eq(str, "32767");
+        test_str_eq(str, "32767", #file, #line);
     }
 
     {
         v : s16 : S16_MIN;
         str :: string_new_concatenate(v);     
         defer string_delete(str);
-        test_str_eq(str, "-32768");
+        test_str_eq(str, "-32768", #file, #line);
     }
 
     {
         v :: -0;
         str :: string_new_concatenate(v);     
         defer string_delete(str);
-        test_str_eq(str, "0");
+        test_str_eq(str, "0", #file, #line);
     }
 }
 
-#test "print bool" {
+test_print_bool :: fn () #test2 {
     {
         str :: string_new_concatenate(false);     
         defer string_delete(str);
-        test_str_eq(str, "false");
+        test_str_eq(str, "false", #file, #line);
     }
 
     {
         str :: string_new_concatenate(true);     
         defer string_delete(str);
-        test_str_eq(str, "true");
+        test_str_eq(str, "true", #file, #line);
     }
 }
 
-#test "fmt f32" {
+test_fmt_f32 :: fn () #test2 {
     {
         str :: string_new_concatenate(fmt_real(0.f, 0));     
         defer string_delete(str);
 
-        test_str_eq(str, "0");
+        test_str_eq(str, "0", #file, #line);
     }
 
     {
         str :: string_new_concatenate(fmt_real(10.12f, 2));     
         defer string_delete(str);
 
-        test_str_eq(str, "10.12");
+        test_str_eq(str, "10.12", #file, #line);
     }
 
     {
         str :: string_new_concatenate(fmt_real(10.121234f, 0));     
         defer string_delete(str);
 
-        test_str_eq(str, "10");
+        test_str_eq(str, "10", #file, #line);
     }
 
     {
         str :: string_new_concatenate(fmt_real(-10.121234f, -1));     
         defer string_delete(str);
 
-        test_str_eq(str, "-10.121234");
+        test_str_eq(str, "-10.121234", #file, #line);
     }
 
     {
         str :: string_new_concatenate(fmt_real(121234.f, 5));     
         defer string_delete(str);
 
-        test_str_eq(str, "121234.00000");
+        test_str_eq(str, "121234.00000", #file, #line);
     }
 
     {
         str :: string_new_concatenate(fmt_real(0.121234f, -1));     
         defer string_delete(str);
 
-        test_str_eq(str, "0.121234");
+        test_str_eq(str, "0.121234", #file, #line);
     }
 }
 
-#test "fmt s32 base=10" {
+test_fmt_s32_base10 :: fn () #test2 {
     {
         str :: string_new_concatenate(fmt_int(0, FmtIntBase.Dec));     
         defer string_delete(str);
 
-        test_str_eq(str, "0");
+        test_str_eq(str, "0", #file, #line);
     }
 
     {
         str :: string_new_concatenate(fmt_int(10, FmtIntBase.Dec));     
         defer string_delete(str);
 
-        test_str_eq(str, "10");
+        test_str_eq(str, "10", #file, #line);
     }
 
     {
         str :: string_new_concatenate(fmt_int(-10, FmtIntBase.Dec));     
         defer string_delete(str);
 
-        test_str_eq(str, "-10");
+        test_str_eq(str, "-10", #file, #line);
     }
 
     {
         str :: string_new_concatenate(fmt_int(123456789, FmtIntBase.Dec));     
         defer string_delete(str);
 
-        test_str_eq(str, "123456789");
+        test_str_eq(str, "123456789", #file, #line);
     }
 }
 
-#test "fmt s32 base=2" {
+test_fmt_s32_base2 :: fn () #test2 {
     {
         str :: string_new_concatenate(fmt_int(0, FmtIntBase.Bin));     
         defer string_delete(str);
 
-        test_str_eq(str, "0b0");
+        test_str_eq(str, "0b0", #file, #line);
     }
 
     {
         str :: string_new_concatenate(fmt_int(0b1011, FmtIntBase.Bin));     
         defer string_delete(str);
 
-        test_str_eq(str, "0b1011");
+        test_str_eq(str, "0b1011", #file, #line);
     }
 }
 
-#test "fmt s32 base=16" {
+test_fmt_s32_base16 :: fn () #test2 {
     {
         str :: string_new_concatenate(fmt_int(0, FmtIntBase.Hex));     
         defer string_delete(str);
 
-        test_str_eq(str, "0x0");
+        test_str_eq(str, "0x0", #file, #line);
     }
 
     {
         str :: string_new_concatenate(fmt_int(0xfa12, FmtIntBase.Hex));     
         defer string_delete(str);
 
-        test_str_eq(str, "0xfa12");
+        test_str_eq(str, "0xfa12", #file, #line);
     }
 }
 
-#test "print content simple" {
+test_print_content_simple :: fn () #test2 {
     str :: string_new_concatenate("text", 10, true);     
     defer string_delete(str);
 
-    test_str_eq(str, "text10true");
+    test_str_eq(str, "text10true", #file, #line);
 }
 
-#test "print array" {
+test_print_array :: fn () #test2 {
     arr :: {:[3]s32: 1, 2, 3};
     str :: string_new_concatenate(arr);     
     defer string_delete(str);
 
-    test_str_eq(str, "[1, 2, 3]");
+    test_str_eq(str, "[1, 2, 3]", #file, #line);
 }
 
-#test "print struct" {
+test_print_struct :: fn () #test2 {
     Foo :: struct {
         i: s32;
         j: bool;
@@ -204,10 +220,10 @@
     str :: string_new_concatenate(foo);     
     defer string_delete(str);
 
-    test_str_eq(str, "Foo {i = 666, j = true}");
+    test_str_eq(str, "Foo {i = 666, j = true}", #file, #line);
 }
 
-#test "complex type" {
+test_complex_type :: fn () #test2 {
     Foo :: struct {
         i: s32;
         j: bool;
@@ -218,6 +234,5 @@
     str :: string_new_concatenate(foo);     
     defer string_delete(str);
 
-    print("%\n", str);
-    test_str_eq(str, "Foo {i = 666, j = true, arr = [1, 2, 3]}");
+    test_str_eq(str, "Foo {i = 666, j = true, arr = [1, 2, 3]}", #file, #line);
 }

@@ -33,8 +33,7 @@ typedef struct {
 	Tokens *tokens;
 } Context;
 
-static bool
-parse_key_value_rq(Context *cnt)
+static bool parse_key_value_rq(Context *cnt)
 {
 	Token *tok_ident = tokens_consume(cnt->tokens);
 	if (token_is_not(tok_ident, SYM_IDENT)) {
@@ -85,16 +84,14 @@ parse_key_value_rq(Context *cnt)
 	return true;
 }
 
-static void
-parse_top_level(Context *cnt)
+static void parse_top_level(Context *cnt)
 {
 	while (token_is_not(tokens_peek(cnt->tokens), SYM_EOF)) {
 		if (!parse_key_value_rq(cnt)) break;
 	}
 }
 
-void
-conf_parser_run(Unit *unit)
+void conf_parser_run(Unit *unit)
 {
 	Context cnt = {.tokens = &unit->tokens};
 

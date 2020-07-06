@@ -1,7 +1,7 @@
-#load "std/debug.bl"
 #load "std/string.bl"
 
-#test "strings" {
+#private
+test_strings_init :: fn () #test2 {
     s1 := string_new();
     assert(s1.ptr != null);
     assert(s1.len == 0);
@@ -17,7 +17,7 @@
 
 };
 
-#test "string split by last" {
+test_string_split_by_last :: fn () #test2 {
     lhs: string;
     rhs: string;
 
@@ -45,7 +45,7 @@
     assert(!string_split_by_last("", '/', &lhs, &rhs));
 }
 
-#test "string split by first" {
+test_string_split_by_first :: fn () #test2 {
     lhs: string;
     rhs: string;
 

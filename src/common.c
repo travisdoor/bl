@@ -29,8 +29,8 @@
 #include "common.h"
 #include "assembly.h"
 #include "builder.h"
-#include <time.h>
 #include <stdarg.h>
+#include <time.h>
 
 #ifndef BL_COMPILER_MSVC
 #include "unistd.h"
@@ -47,8 +47,7 @@
 
 u64 main_thread_id = 0;
 
-void
-win_fix_path(char *buf, usize buf_size)
+void win_fix_path(char *buf, usize buf_size)
 {
 	if (!buf) return;
 	for (usize i = 0; i < buf_size; ++i) {
@@ -60,8 +59,7 @@ win_fix_path(char *buf, usize buf_size)
 	}
 }
 
-bool
-get_current_exec_path(char *buf, usize buf_size)
+bool get_current_exec_path(char *buf, usize buf_size)
 {
 #if defined(BL_PLATFORM_WIN)
 	if (GetModuleFileNameA(NULL, buf, (DWORD)buf_size)) {
@@ -79,8 +77,7 @@ get_current_exec_path(char *buf, usize buf_size)
 #endif
 }
 
-bool
-get_current_exec_dir(char *buf, usize buf_size)
+bool get_current_exec_dir(char *buf, usize buf_size)
 {
 	char tmp[PATH_MAX] = {0};
 	if (!get_current_exec_path(tmp, PATH_MAX)) return false;
@@ -89,22 +86,19 @@ get_current_exec_dir(char *buf, usize buf_size)
 	return true;
 }
 
-const char *
-get_current_working_dir(char *buf, usize buf_size)
+const char *get_current_working_dir(char *buf, usize buf_size)
 {
 	return brealpath(".", buf, buf_size);
 }
 
-void
-id_init(ID *id, const char *str)
+void id_init(ID *id, const char *str)
 {
 	BL_ASSERT(id);
 	id->hash = thash_from_str(str);
 	id->str  = str;
 }
 
-bool
-file_exists(const char *filepath)
+bool file_exists(const char *filepath)
 {
 #if defined(BL_PLATFORM_WIN)
 	return (bool)PathFileExistsA(filepath);
@@ -113,8 +107,7 @@ file_exists(const char *filepath)
 #endif
 }
 
-bool
-dir_exists(const char *dirpath)
+bool dir_exists(const char *dirpath)
 {
 #if defined(BL_PLATFORM_WIN)
 	DWORD dwAttrib = GetFileAttributesA(dirpath);
@@ -125,8 +118,7 @@ dir_exists(const char *dirpath)
 #endif
 }
 
-const char *
-brealpath(const char *file, char *out, s32 out_len)
+const char *brealpath(const char *file, char *out, s32 out_len)
 {
 	const char *resolved = NULL;
 	BL_ASSERT(out);
@@ -145,8 +137,7 @@ brealpath(const char *file, char *out, s32 out_len)
 #endif
 }
 
-bool
-create_dir(const char *dirpath)
+bool create_dir(const char *dirpath)
 {
 #if defined(BL_PLATFORM_WIN)
 	return CreateDirectoryA(dirpath, NULL) != 0;
@@ -155,8 +146,7 @@ create_dir(const char *dirpath)
 #endif
 }
 
-bool
-create_dir_tree(const char *dirpath)
+bool create_dir_tree(const char *dirpath)
 {
 	char tmp[PATH_MAX] = {0};
 	s32  prev_i        = 0;
@@ -182,8 +172,7 @@ create_dir_tree(const char *dirpath)
 	return true;
 }
 
-void
-date_time(char *buf, s32 len, const char *format)
+void date_time(char *buf, s32 len, const char *format)
 {
 	BL_ASSERT(buf && len);
 	time_t     timer;
@@ -195,14 +184,12 @@ date_time(char *buf, s32 len, const char *format)
 	strftime(buf, len, format, tm_info);
 }
 
-bool
-is_aligned(const void *p, usize alignment)
+bool is_aligned(const void *p, usize alignment)
 {
 	return (uintptr_t)p % alignment == 0;
 }
 
-void
-align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment)
+void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment)
 {
 	ptrdiff_t adj;
 	if (is_aligned(*p, alignment)) {
@@ -220,8 +207,7 @@ align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment)
 	if (adjustment) *adjustment = adj;
 }
 
-void
-print_bits(s32 const size, void const *const ptr)
+void print_bits(s32 const size, void const *const ptr)
 {
 	unsigned char *b = (unsigned char *)ptr;
 	unsigned char  byte;
@@ -236,8 +222,7 @@ print_bits(s32 const size, void const *const ptr)
 	puts("");
 }
 
-int
-count_bits(u64 n)
+int count_bits(u64 n)
 {
 	int count = 0;
 	while (n) {
@@ -247,8 +232,7 @@ count_bits(u64 n)
 	return count;
 }
 
-bool
-get_dir_from_filepath(char *buf, const usize l, const char *filepath)
+bool get_dir_from_filepath(char *buf, const usize l, const char *filepath)
 {
 	if (!filepath) return false;
 
@@ -266,8 +250,7 @@ get_dir_from_filepath(char *buf, const usize l, const char *filepath)
 	return true;
 }
 
-bool
-get_filename_from_filepath(char *buf, const usize l, const char *filepath)
+bool get_filename_from_filepath(char *buf, const usize l, const char *filepath)
 {
 	if (!filepath) return false;
 
@@ -284,8 +267,7 @@ get_filename_from_filepath(char *buf, const usize l, const char *filepath)
 	return true;
 }
 
-void
-platform_lib_name(const char *name, char *buffer, usize max_len)
+void platform_lib_name(const char *name, char *buffer, usize max_len)
 {
 	if (!name) return;
 
@@ -300,16 +282,14 @@ platform_lib_name(const char *name, char *buffer, usize max_len)
 #endif
 }
 
-TArray *
-create_arr(Assembly *assembly, usize size)
+TArray *create_arr(Assembly *assembly, usize size)
 {
 	TArray **tmp = arena_alloc(&assembly->arenas.array);
 	*tmp         = tarray_new(size);
 	return *tmp;
 }
 
-void *
-_create_sarr(Assembly *assembly, usize arr_size)
+void *_create_sarr(Assembly *assembly, usize arr_size)
 {
 	BL_ASSERT(arr_size <= assembly->arenas.small_array.elem_size_in_bytes &&
 	          "SmallArray is too big to be allocated inside arena, make array smaller "
@@ -321,8 +301,7 @@ _create_sarr(Assembly *assembly, usize arr_size)
 	return tmp;
 }
 
-u32
-next_pow_2(u32 n)
+u32 next_pow_2(u32 n)
 {
 	u32 p = 1;
 	if (n && !(n & (n - 1))) return n;
@@ -333,8 +312,7 @@ next_pow_2(u32 n)
 	return p;
 }
 
-void
-color_print(FILE *stream, s32 color, const char *format, ...)
+void color_print(FILE *stream, s32 color, const char *format, ...)
 {
 	// HACK: Is this reference really needed????
 	// HACK: Is this reference really needed????
@@ -403,4 +381,3 @@ color_print(FILE *stream, s32 color, const char *format, ...)
 #endif
 	va_end(args);
 }
-

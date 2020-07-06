@@ -48,12 +48,11 @@ typedef struct {
 	TArray *  lib_paths;
 } Context;
 
-static bool
-search_library(Context *   cnt,
-               const char *lib_name,
-               char **     out_lib_name,
-               char **     out_lib_dir,
-               char **     out_lib_filepath)
+static bool search_library(Context *   cnt,
+                           const char *lib_name,
+                           char **     out_lib_name,
+                           char **     out_lib_dir,
+                           char **     out_lib_filepath)
 {
 	char lib_filepath[PATH_MAX] = {0};
 	char lib_name_full[256]     = {0};
@@ -85,8 +84,7 @@ search_library(Context *   cnt,
 	return false;
 }
 
-static void
-set_lib_paths(Context *cnt)
+static void set_lib_paths(Context *cnt)
 {
 	char        tmp[PATH_MAX] = {0};
 	const char *lib_path      = conf_data_get_str(builder.conf, CONF_LINKER_LIB_PATH_KEY);
@@ -125,8 +123,7 @@ set_lib_paths(Context *cnt)
 	}
 }
 
-static bool
-link_lib(Context *cnt, NativeLib *lib)
+static bool link_lib(Context *cnt, NativeLib *lib)
 {
 	if (!lib) BL_ABORT("invalid lib");
 	if (!lib->user_name) BL_ABORT("invalid lib name");
@@ -146,8 +143,7 @@ link_lib(Context *cnt, NativeLib *lib)
 	return true;
 }
 
-static bool
-link_working_environment(Context *cnt, const char *lib_name)
+static bool link_working_environment(Context *cnt, const char *lib_name)
 {
 	DLLib *handle = dlLoadLibrary(lib_name);
 	if (!handle) return false;
@@ -164,8 +160,7 @@ link_working_environment(Context *cnt, const char *lib_name)
 	return true;
 }
 
-void
-linker_run(Assembly *assembly)
+void linker_run(Assembly *assembly)
 {
 	Context cnt;
 	cnt.assembly  = assembly;

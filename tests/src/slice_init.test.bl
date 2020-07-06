@@ -1,4 +1,5 @@
-#test "slice init" {
+#private
+test_slice_init :: fn () #test2 {
     ptr: []s32;
     slice_init(ptr, 10);
 

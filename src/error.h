@@ -110,6 +110,7 @@ typedef enum {
 	ERR_INVALID_SWITCH_CASE     = 74,
 	ERR_DUPLICIT_SWITCH_CASE    = 75,
 	ERR_INVALID_REFERENCE       = 76,
+	ERR_UNEXPECTED_RETURN       = 77,
 } Error;
 
 #endif // BL_ERROR_H

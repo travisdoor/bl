@@ -1,7 +1,5 @@
-#load "std/debug.bl"
-
 #private
-#test "compound arrays" {
+compound_arrays :: fn () #test2 {
     validate :: fn (v: [2]s32, i: s32, j: s32) {
         assert(v[0] == i);
         assert(v[1] == j);
@@ -37,7 +35,7 @@
     }
 };
 
-#test "compound structs" {
+compound_structs :: fn () #test2 {
     Foo :: struct {
         i: s32;
         j: s32
@@ -77,7 +75,7 @@
     }
 };
 
-#test "compound fundamentals" {
+compound_fundamentals :: fn () #test2 {
     Days :: enum { MON; };
     
     i := 10;

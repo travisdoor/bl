@@ -40,6 +40,7 @@ union __INSTR_T {\
 	MirInstrToAny          toany;\
 	MirInstrSwitch         sw;\
 	MirInstrSetInitializer si;\
+	MirInstrTestCases      tcs; \
 };
 
 #define SIZEOF_MIR_INSTR sizeof(union __INSTR_T)
@@ -86,6 +87,7 @@ union __INSTR_T {\
 	MIR_INSTR_TOANY,
 	MIR_INSTR_SWITCH,
 	MIR_INSTR_SET_INITIALIZER,
+	MIR_INSTR_TEST_CASES,
 #endif
 
 #ifdef GEN_BUILTIN_NAMES
@@ -146,6 +148,8 @@ union __INSTR_T {\
 	MIR_BUILTIN_ID_SLICE_TERMINATE_FN,
 
 	MIR_BUILTIN_ID_IS_DEBUG,
+
+	MIR_BUILTIN_ID_TYPE_TEST_CASES,
 #endif
 
 #ifdef GEN_BUILTIN_IDS
@@ -202,4 +206,5 @@ union __INSTR_T {\
     {.str = "slice_init",            .hash = 0},
     {.str = "slice_terminate",       .hash = 0},
     {.str = "IS_DEBUG",              .hash = 0},
+    {.str = "TestCase",              .hash = 0},
 #endif

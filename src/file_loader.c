@@ -45,8 +45,7 @@
 			builder_error((format), ##__VA_ARGS__);                                    \
 	}
 
-void
-file_loader_run(Unit *unit)
+void file_loader_run(Unit *unit)
 {
 	if (!unit->filepath) {
 		load_error(ERR_FILE_NOT_FOUND,

@@ -35,11 +35,10 @@ typedef struct ArenaChunk {
 	s32                count;
 } ArenaChunk;
 
-static INLINE ArenaChunk *
-alloc_chunk(Arena *arena)
+static INLINE ArenaChunk *alloc_chunk(Arena *arena)
 {
 	const usize chunk_size_in_bytes = arena->elem_size_in_bytes * arena->elems_per_chunk;
-	ArenaChunk * chunk               = bl_malloc(chunk_size_in_bytes);
+	ArenaChunk *chunk               = bl_malloc(chunk_size_in_bytes);
 	if (!chunk) BL_ABORT("bad alloc");
 
 	memset(chunk, 0, chunk_size_in_bytes);
@@ -47,8 +46,7 @@ alloc_chunk(Arena *arena)
 	return chunk;
 }
 
-static INLINE void *
-get_from_chunk(Arena *arena, ArenaChunk *chunk, s32 i)
+static INLINE void *get_from_chunk(Arena *arena, ArenaChunk *chunk, s32 i)
 {
 	void *elem = (void *)((char *)chunk + (i * arena->elem_size_in_bytes));
 	/* New node pointer in chunk must be aligned. (ALLOCATED SIZE FOR EVERY NODE MUST BE
@@ -59,8 +57,7 @@ get_from_chunk(Arena *arena, ArenaChunk *chunk, s32 i)
 	return elem;
 }
 
-static INLINE ArenaChunk *
-free_chunk(Arena *arena, ArenaChunk *chunk)
+static INLINE ArenaChunk *free_chunk(Arena *arena, ArenaChunk *chunk)
 {
 	if (!chunk) return NULL;
 
@@ -73,8 +70,10 @@ free_chunk(Arena *arena, ArenaChunk *chunk)
 	return next;
 }
 
-void
-arena_init(Arena *arena, usize elem_size_in_bytes, s32 elems_per_chunk, ArenaElemDtor elem_dtor)
+void arena_init(Arena *       arena,
+                usize         elem_size_in_bytes,
+                s32           elems_per_chunk,
+                ArenaElemDtor elem_dtor)
 {
 	arena->elem_size_in_bytes = elem_size_in_bytes + MAX_ALIGNMENT;
 	arena->elems_per_chunk    = elems_per_chunk;
@@ -83,8 +82,7 @@ arena_init(Arena *arena, usize elem_size_in_bytes, s32 elems_per_chunk, ArenaEle
 	arena->elem_dtor          = elem_dtor;
 }
 
-void
-arena_terminate(Arena *arena)
+void arena_terminate(Arena *arena)
 {
 	ArenaChunk *chunk = arena->first_chunk;
 	while (chunk) {
@@ -92,8 +90,7 @@ arena_terminate(Arena *arena)
 	}
 }
 
-void *
-arena_alloc(Arena *arena)
+void *arena_alloc(Arena *arena)
 {
 	if (!arena->current_chunk) {
 		arena->current_chunk = alloc_chunk(arena);

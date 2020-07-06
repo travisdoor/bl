@@ -1,0 +1,27 @@
+#private
+assign_operators :: fn () #test2 {
+    i := 5;
+    assert(i == 5);
+  
+    i += 1;
+    assert(i == 6);
+  
+    i -= 1;
+    assert(i == 5);
+  
+    i *= 2;
+    assert(i == 10);
+  
+    i /= 2;
+    assert(i == 5);
+};
+
+compare_operators :: fn () #test2 {
+    i := 10;
+    assert(i == 10);
+    assert(i != 9);
+    assert(i > 0);
+    assert(i < 11);
+    assert(i >= 10);
+    assert(i <= 10);
+};

@@ -30,38 +30,32 @@
 #include "common.h"
 #include <stdarg.h>
 
-void
-tokens_init(Tokens *tokens)
+void tokens_init(Tokens *tokens)
 {
 	tarray_init(&tokens->buf, sizeof(Token));
 }
 
-void
-tokens_terminate(Tokens *tokens)
+void tokens_terminate(Tokens *tokens)
 {
 	tarray_terminate(&tokens->buf);
 }
 
-void
-tokens_push(Tokens *tokens, Token *t)
+void tokens_push(Tokens *tokens, Token *t)
 {
 	tarray_push(&tokens->buf, *t);
 }
 
-Token *
-tokens_peek(Tokens *tokens)
+Token *tokens_peek(Tokens *tokens)
 {
 	return tokens_peek_nth(tokens, 1);
 }
 
-Token *
-tokens_peek_2nd(Tokens *tokens)
+Token *tokens_peek_2nd(Tokens *tokens)
 {
 	return tokens_peek_nth(tokens, 2);
 }
 
-Token *
-tokens_peek_last(Tokens *tokens)
+Token *tokens_peek_last(Tokens *tokens)
 {
 	const usize i = tokens->buf.size;
 	if (i == 0) {
@@ -71,8 +65,7 @@ tokens_peek_last(Tokens *tokens)
 	return &tarray_at(Token, &tokens->buf, i);
 }
 
-Token *
-tokens_peek_prev(Tokens *tokens)
+Token *tokens_peek_prev(Tokens *tokens)
 {
 	if (tokens->iter > 0) {
 		return &tarray_at(Token, &tokens->buf, tokens->iter - 1);
@@ -80,8 +73,7 @@ tokens_peek_prev(Tokens *tokens)
 	return NULL;
 }
 
-Token *
-tokens_peek_nth(Tokens *tokens, usize n)
+Token *tokens_peek_nth(Tokens *tokens, usize n)
 {
 	const usize i = tokens->iter + n - 1;
 	if (i < tokens->buf.size) return &tarray_at(Token, &tokens->buf, i);
@@ -89,16 +81,14 @@ tokens_peek_nth(Tokens *tokens, usize n)
 	return NULL;
 }
 
-Token *
-tokens_consume(Tokens *tokens)
+Token *tokens_consume(Tokens *tokens)
 {
 	if (tokens->iter < tokens->buf.size) return &tarray_at(Token, &tokens->buf, tokens->iter++);
 
 	return NULL;
 }
 
-Token *
-tokens_consume_if(Tokens *tokens, Sym sym)
+Token *tokens_consume_if(Tokens *tokens, Sym sym)
 {
 	Token *tok;
 	if (tokens->iter < tokens->buf.size) {
@@ -112,40 +102,34 @@ tokens_consume_if(Tokens *tokens, Sym sym)
 	return NULL;
 }
 
-bool
-tokens_current_is(Tokens *tokens, Sym sym)
+bool tokens_current_is(Tokens *tokens, Sym sym)
 {
 	return (&tarray_at(Token, &tokens->buf, tokens->iter))->sym == sym;
 }
 
-bool
-tokens_previous_is(Tokens *tokens, Sym sym)
+bool tokens_previous_is(Tokens *tokens, Sym sym)
 {
 	if (tokens->iter > 0)
 		return (&tarray_at(Token, &tokens->buf, tokens->iter - 1))->sym == sym;
 	return false;
 }
 
-bool
-tokens_next_is(Tokens *tokens, Sym sym)
+bool tokens_next_is(Tokens *tokens, Sym sym)
 {
 	return (&tarray_at(Token, &tokens->buf, tokens->iter + 1))->sym == sym;
 }
 
-bool
-tokens_current_is_not(Tokens *tokens, Sym sym)
+bool tokens_current_is_not(Tokens *tokens, Sym sym)
 {
 	return (&tarray_at(Token, &tokens->buf, tokens->iter))->sym != sym;
 }
 
-bool
-tokens_next_is_not(Tokens *tokens, Sym sym)
+bool tokens_next_is_not(Tokens *tokens, Sym sym)
 {
 	return (&tarray_at(Token, &tokens->buf, tokens->iter + 1))->sym != sym;
 }
 
-bool
-tokens_is_seq(Tokens *tokens, usize cnt, ...)
+bool tokens_is_seq(Tokens *tokens, usize cnt, ...)
 {
 	bool  ret = true;
 	usize c   = tokens->buf.size;
@@ -167,46 +151,39 @@ tokens_is_seq(Tokens *tokens, usize cnt, ...)
 	return ret;
 }
 
-usize
-tokens_get_marker(Tokens *tokens)
+usize tokens_get_marker(Tokens *tokens)
 {
 	return tokens->iter;
 }
 
-void
-tokens_back_to_marker(Tokens *tokens, usize marker)
+void tokens_back_to_marker(Tokens *tokens, usize marker)
 {
 	tokens->iter = marker;
 }
 
-void
-tokens_reset_iter(Tokens *tokens)
+void tokens_reset_iter(Tokens *tokens)
 {
 	tokens->iter = 0;
 }
 
-TArray *
-tokens_get_all(Tokens *tokens)
+TArray *tokens_get_all(Tokens *tokens)
 {
 	return &tokens->buf;
 }
 
-int
-tokens_count(Tokens *tokens)
+int tokens_count(Tokens *tokens)
 {
 	return (int)tokens->buf.size;
 }
 
-void
-tokens_consume_till(Tokens *tokens, Sym sym)
+void tokens_consume_till(Tokens *tokens, Sym sym)
 {
 	while (tokens_current_is_not(tokens, sym) && tokens_current_is_not(tokens, SYM_EOF)) {
 		tokens_consume(tokens);
 	}
 }
 
-bool
-tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal)
+bool tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal)
 {
 	bool  found  = false;
 	usize marker = tokens_get_marker(tokens);
@@ -222,8 +199,7 @@ tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal)
 	return found;
 }
 
-bool
-tokens_lookahead(Tokens *tokens, TokenCmpFunc cmp)
+bool tokens_lookahead(Tokens *tokens, TokenCmpFunc cmp)
 {
 	BL_ASSERT(cmp);
 	bool                 found  = false;

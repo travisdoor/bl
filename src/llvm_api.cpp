@@ -33,10 +33,10 @@ _LLVM_SHUT_UP_BEGIN
 #include <llvm/ADT/StringSwitch.h>
 #include <llvm/Config/llvm-config.h>
 #include <llvm/IR/Attributes.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Type.h>
-#include <llvm/IR/Constants.h>
 _LLVM_SHUT_UP_END
 
 #define CAST(T) reinterpret_cast<T>
@@ -46,8 +46,7 @@ using namespace llvm;
 #define GET_ATTR_KIND_FROM_NAME
 #include "llvm/IR/Attributes.inc"
 
-LLVMAttributeKind
-llvm_get_attribute_kind(const char *name)
+LLVMAttributeKind llvm_get_attribute_kind(const char *name)
 {
 #if LLVM_VERSION_MAJOR >= 11
 	return Attribute::getAttrKindFromName({name, strlen(name)});
@@ -56,8 +55,7 @@ llvm_get_attribute_kind(const char *name)
 #endif
 }
 
-LLVMAttributeRef
-llvm_create_attribute(LLVMContextRef context_ref, LLVMAttributeKind kind)
+LLVMAttributeRef llvm_create_attribute(LLVMContextRef context_ref, LLVMAttributeKind kind)
 {
 	return CAST(LLVMAttributeRef)(
 	    Attribute::get(*CAST(LLVMContext *)(context_ref), (Attribute::AttrKind)kind)
@@ -87,24 +85,21 @@ llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, L
 #endif
 }
 
-u32
-llvm_lookup_intrinsic_id(const char *name)
+u32 llvm_lookup_intrinsic_id(const char *name)
 {
 	return Function::lookupIntrinsicID({name, strlen(name)});
 }
 
-static Intrinsic::ID
-llvm_map_to_intrinsic_id(unsigned ID)
+static Intrinsic::ID llvm_map_to_intrinsic_id(unsigned ID)
 {
 	assert(ID < llvm::Intrinsic::num_intrinsics && "Intrinsic ID out of range");
 	return llvm::Intrinsic::ID(ID);
 }
 
-LLVMValueRef
-llvm_get_intrinsic_decl(LLVMModuleRef mod_ref,
-                        u32           id,
-                        LLVMTypeRef * param_types_ref,
-                        usize         param_types_count)
+LLVMValueRef llvm_get_intrinsic_decl(LLVMModuleRef mod_ref,
+                                     u32           id,
+                                     LLVMTypeRef * param_types_ref,
+                                     usize         param_types_count)
 {
 	ArrayRef<Type *> types(CAST(Type **)(param_types_ref), param_types_count);
 
@@ -113,25 +108,24 @@ llvm_get_intrinsic_decl(LLVMModuleRef mod_ref,
 	    llvm::Intrinsic::getDeclaration(CAST(Module *)(mod_ref), iid, types));
 }
 
-LLVMValueRef
-llvm_const_string_in_context(LLVMContextRef UNUSED(context_ref),
-                             LLVMTypeRef    t,
-                             const char *   str,
-                             bool           zero_terminate)
+LLVMValueRef llvm_const_string_in_context(LLVMContextRef UNUSED(context_ref),
+                                          LLVMTypeRef    t,
+                                          const char *   str,
+                                          bool           zero_terminate)
 {
-        size_t len = strlen(str);
-        SmallVector<Constant*, 32> chars;
-        for (size_t i = 0; i < len; ++i)  {
-                auto c = ConstantInt::get(CAST(Type *)(t), (uint64_t)str[i]);
-                chars.push_back(c);
-        }
+	size_t                      len = strlen(str);
+	SmallVector<Constant *, 32> chars;
+	for (size_t i = 0; i < len; ++i) {
+		auto c = ConstantInt::get(CAST(Type *)(t), (uint64_t)str[i]);
+		chars.push_back(c);
+	}
 
-        if (zero_terminate) {
-                auto c = ConstantInt::get(CAST(Type *)(t), (uint64_t)'\0');
-                chars.push_back(c);
-                ++len;
-        }
+	if (zero_terminate) {
+		auto c = ConstantInt::get(CAST(Type *)(t), (uint64_t)'\0');
+		chars.push_back(c);
+		++len;
+	}
 
-        ArrayRef<Constant*> V(chars);
-        return CAST(LLVMValueRef)(ConstantArray::get(ArrayType::get(CAST(Type *)(t), len), V));
+	ArrayRef<Constant *> V(chars);
+	return CAST(LLVMValueRef)(ConstantArray::get(ArrayType::get(CAST(Type *)(t), len), V));
 }
