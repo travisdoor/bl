@@ -32,7 +32,7 @@ mv *.md ${WDIR}/docs/API/os
 cd ${WDIR}
 
 # Examples
-cd examples/new
+cd examples
 echo
 echo Process $(pwd)
 

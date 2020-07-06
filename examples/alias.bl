@@ -1,4 +1,0 @@
-#test "alias" {
-    T :: s32;
-    i : T;
-};

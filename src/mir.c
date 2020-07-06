@@ -7306,7 +7306,7 @@ void testing_run(Context *cnt)
 		printf("[      | FAIL ] %s (%f ms)\n", f->name, f->runtime_ms);
 	}
 
-	printf(TEXT_LINE "\n");
+	if (failed.size) printf(TEXT_LINE "\n");
 	printf("Executed: %llu, passed %d%%.\n", tc, perc);
 	printf(TEXT_LINE "\n");
 	tarray_terminate(&failed);

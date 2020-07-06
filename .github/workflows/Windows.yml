@@ -22,4 +22,4 @@ jobs:
         cd install
         .\configure_win64.bat
     - name: Run tests
-      run: bin\blc.exe -no-bin -force-test-to-llvm -rt -no-warning tests\src\test_dummy.bl 
+      run: bin\blc.exe -rt -no-warning tests\src\main.test.bl && ./out.exe
