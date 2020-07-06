@@ -1,5 +1,3 @@
-#load "std/debug.bl"
-
 #private
 SimpleEnum :: enum {
     A; B; C
@@ -21,25 +19,25 @@ CustomEnumValuesDeps :: enum {
     C :: A + B
 };
 
-#test "simple enum" {
+simple_enum :: fn () #test2 {
     assert(cast(s32) SimpleEnum.A == 0);
     assert(cast(s32) SimpleEnum.B == 1);
     assert(cast(s32) SimpleEnum.C == 2);
 };
 
-#test "custom enum type" {
+custom_enum_type :: fn () #test2 {
     assert(cast(s32) CustomEnumType.A == 0);
     assert(cast(s32) CustomEnumType.B == 1);
     assert(cast(s32) CustomEnumType.C == 2);
 };
 
-#test "custom enum values" {
+custom_enum_values :: fn () #test2 {
     assert(cast(s32) CustomEnumValues.A == 10);
     assert(cast(s32) CustomEnumValues.B == 20);
     assert(cast(s32) CustomEnumValues.C == 21);
 };
 
-#test "passed enum" {
+passed_enum :: fn () #test2 {
     foo :: fn (value: SimpleEnum) {
         assert(value == SimpleEnum.B);
     };
@@ -47,7 +45,7 @@ CustomEnumValuesDeps :: enum {
     foo(SimpleEnum.B);
 };
 
-#test "enum struct" {
+enum_struct :: fn () #test2 {
     Foo :: struct {
         value: SimpleEnum
     };
@@ -56,7 +54,7 @@ CustomEnumValuesDeps :: enum {
     assert(foo.value == SimpleEnum.A);
 };
 
-#test "enums with variant references" {
+enums_with_variant_references :: fn () #test2 {
     assert(cast(s32) CustomEnumValuesDeps.A == 10);
     assert(cast(s32) CustomEnumValuesDeps.B == 11);
     assert(cast(s32) CustomEnumValuesDeps.C == 21);

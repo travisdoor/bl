@@ -28,36 +28,31 @@
 
 #include "conf_data.h"
 
-ConfData *
-conf_data_new(void)
+ConfData *conf_data_new(void)
 {
 	return thtbl_new(sizeof(ConfDataValue), 32);
 }
 
-void
-conf_data_delete(ConfData *data)
+void conf_data_delete(ConfData *data)
 {
 	thtbl_delete(data);
 }
 
-bool
-conf_data_has_key(ConfData *data, const char *key)
+bool conf_data_has_key(ConfData *data, const char *key)
 {
 	const u64 hash = thash_from_str(key);
 	return thtbl_has_key(data, hash);
 }
 
-void
-conf_data_add(ConfData *data, const char *key, ConfDataValue *value)
+void conf_data_add(ConfData *data, const char *key, ConfDataValue *value)
 {
 	const u64 hash = thash_from_str(key);
 	thtbl_insert(data, hash, *value);
 }
 
-ConfDataValue *
-conf_data_get(ConfData *data, const char *key)
+ConfDataValue *conf_data_get(ConfData *data, const char *key)
 {
-	const u64     hash = thash_from_str(key);
+	const u64 hash = thash_from_str(key);
 	TIterator it   = thtbl_find(data, hash);
 	TIterator end  = thtbl_end(data);
 
@@ -68,8 +63,7 @@ conf_data_get(ConfData *data, const char *key)
 	return &thtbl_iter_peek_value(ConfDataValue, it);
 }
 
-const char *
-conf_data_get_str(ConfData *data, const char *key)
+const char *conf_data_get_str(ConfData *data, const char *key)
 {
 	ConfDataValue *value = conf_data_get(data, key);
 	if (value->kind != CDV_STRING)
@@ -77,8 +71,7 @@ conf_data_get_str(ConfData *data, const char *key)
 	return value->data.v_str;
 }
 
-int
-conf_data_get_int(ConfData *data, const char *key)
+int conf_data_get_int(ConfData *data, const char *key)
 {
 	ConfDataValue *value = conf_data_get(data, key);
 	if (value->kind != CDV_INT) BL_ABORT("Invalid type of conf value '%s', expected is int.");

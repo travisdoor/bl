@@ -28,24 +28,125 @@
 
 #load "std/debug.bl"
 #load "std/string.bl"
+#load "std/array.bl"
 
-test_str_eq :: fn (got: string, expected: string) {
+// @DOC
+test_str_eq :: fn (got: string, expected: string, file: string, line: s32) {
     if string_compare(expected, got) { return; }
 
-    eprint("\nExpected '%' got '%'.\n", expected, got);
+    eprint("ASSERT %:% Expected '%' got '%'.\n", file, line, expected, got);
     assert(false);
 }
 
-test_f32_eq :: fn (got: f32, expected: f32, epsilon: f32) {
+// @DOC
+test_str_neq :: fn (got: string, expected: string, file: string, line: s32) {
+    if !string_compare(expected, got) { return; }
+
+    eprint("ASSERT %:% Expected not to be '%'.\n", file, line, expected);
+    assert(false);
+}
+
+// @DOC
+test_f32_eq :: fn (got: f32, expected: f32, epsilon: f32, file: string, line: s32) {
     if f32_compare(got, expected, epsilon) { return; }
 
-    eprint("\nExpected '%' got '%'.\n", expected, got);
+    eprint("ASSERT %:% Expected '%' got '%'.\n", file, line, expected, got);
     assert(false);
 }
 
-test_f64_eq :: fn (got: f64, expected: f64, epsilon: f64) {
+// @DOC
+test_f64_eq :: fn (got: f64, expected: f64, epsilon: f64, file: string, line: s32) {
     if f64_compare(got, expected, epsilon) { return; }
 
-    eprint("\nExpected '%' got '%'.\n", expected, got);
+    eprint("ASSERT %:% Expected '%' got '%'.\n", file, line, expected, got);
     assert(false);
+}
+
+// @DOC
+test_run :: fn () s32 {
+    cases :: testcases();
+    if cases.len == 0 { return 0; }
+
+    print("\n");
+    prev_abort_handler :: _context.abort_fn;
+    defer _context.abort_fn = prev_abort_handler;
+
+    _context.abort_fn = &abort_handler;
+    _ci = 0;
+
+    // setup cases
+    array_init(_queue);
+    array_reserve(_queue, cases.len);
+    defer array_terminate(_queue);
+
+    print("\nTesting start");
+    print("\n--------------------------------------------------------------------------------\n");
+
+    loop i := 0; i < cases.len; i += 1 {
+        array_push(_queue, {:TestRun: &cases[i], false, 0.});
+    }
+
+    loop _ci < _queue.len {
+        t :: os_thread_create(&worker);
+        os_thread_join(t);
+    }
+
+    print("\nResults:");
+    print("\n--------------------------------------------------------------------------------\n");
+
+    fc: s64;
+    loop i := 0; i < _queue.len; i += 1 {
+        t :: &_queue[i];
+        if t.passed { continue; }
+        
+        fc += 1;
+        print("[      | FAIL ] % (% ms)\n", t.case.name, t.runtime_ms);
+    }
+
+    perc := 100;
+    if fc > 0 { 
+        perc = cast(s32) (cast(f32) (_queue.len - fc) / ((cast(f32) _queue.len) * 0.01f));
+    }
+
+    // @HACK: Cannot print percent, escape sequence cannot be easily detected here.
+    print("Executed: %, passed %%.\n", _queue.len, perc, "%");
+    return auto fc;
+}
+
+#private
+TestRun :: struct {
+    case: *TestCase;
+    passed: bool;
+    runtime_ms: f64;
+}
+
+_queue: [..]TestRun;
+_current: *TestRun;
+_ci: s64;
+_start_time: f64;
+
+abort_handler :: fn () {
+    _current.runtime_ms = os_tick_ms() - _start_time;
+    _current.passed = false;
+    print("[      | FAIL ] % (% ms)\n", _current.case.name, _current.runtime_ms);
+    thread :: os_thread_current();
+    os_thread_kill(thread, 1);
+
+    unreachable;
+}
+
+worker :: fn (args: []Any) {
+    loop _ci < _queue.len {
+        _current = &_queue[_ci];
+        _ci += 1; 
+
+        //print("    RUN  %\n", _current.case.name);
+
+        _start_time = os_tick_ms();
+        _current.case.func();
+        _current.runtime_ms = os_tick_ms() - _start_time;
+        _current.passed = true;
+
+        print("[ PASS |      ] % (% ms)\n", _current.case.name, _current.runtime_ms);
+    }
 }

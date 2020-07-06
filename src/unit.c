@@ -118,8 +118,7 @@ FOUND:
 }
 
 /* public */
-Unit *
-unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
+Unit *unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
 {
 	Unit *unit = bl_malloc(sizeof(Unit));
 	memset(unit, 0, sizeof(Unit));
@@ -144,8 +143,7 @@ unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
 	return unit;
 }
 
-void
-unit_delete(Unit *unit)
+void unit_delete(Unit *unit)
 {
 	free(unit->filepath);
 	free(unit->dirpath);
@@ -156,8 +154,7 @@ unit_delete(Unit *unit)
 	bl_free(unit);
 }
 
-const char *
-unit_get_src_ln(Unit *unit, s32 line, long *len)
+const char *unit_get_src_ln(Unit *unit, s32 line, long *len)
 {
 	s32         l    = 1;
 	const char *iter = unit->src;

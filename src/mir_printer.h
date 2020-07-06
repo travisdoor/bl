@@ -33,7 +33,6 @@
 
 struct Assembly;
 
-void
-mir_print_assembly(struct Assembly *assembly, FILE *stream);
+void mir_print_assembly(struct Assembly *assembly, FILE *stream);
 
 #endif

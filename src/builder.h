@@ -92,41 +92,36 @@ typedef enum {
 
 struct Location;
 
-void
-builder_init(void);
+void builder_init(void);
 
-void
-builder_terminate(void);
+void builder_terminate(void);
 
-s32
-builder_parse_options(s32 argc, char *argv[]);
+s32 builder_parse_options(s32 argc, char *argv[]);
 
-int
-builder_load_conf_file(const char *filepath);
+int builder_load_conf_file(const char *filepath);
 
-void
-builder_add_assembly(Assembly *assembly);
+void builder_add_assembly(Assembly *assembly);
 
-s32
-builder_compile_all(void);
+s32 builder_compile_all(void);
 
-s32
-builder_compile(Assembly *assembly);
+s32 builder_compile(Assembly *assembly);
 
-#define builder_log(format, ...) builder_msg(BUILDER_MSG_LOG, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
-#define builder_note(format, ...) builder_msg(BUILDER_MSG_NOTE, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
-#define builder_warning(format, ...) builder_msg(BUILDER_MSG_WARNING, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
-#define builder_error(format, ...) builder_msg(BUILDER_MSG_ERROR, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
+#define builder_log(format, ...)                                                                   \
+	builder_msg(BUILDER_MSG_LOG, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
+#define builder_note(format, ...)                                                                  \
+	builder_msg(BUILDER_MSG_NOTE, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
+#define builder_warning(format, ...)                                                               \
+	builder_msg(BUILDER_MSG_WARNING, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
+#define builder_error(format, ...)                                                                 \
+	builder_msg(BUILDER_MSG_ERROR, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
 
-void
-builder_msg(BuilderMsgType   type,
-            s32              code,
-            struct Location *src,
-            BuilderCurPos    pos,
-            const char *     format,
-            ...);
+void builder_msg(BuilderMsgType   type,
+                 s32              code,
+                 struct Location *src,
+                 BuilderCurPos    pos,
+                 const char *     format,
+                 ...);
 
-TString *
-builder_create_cached_str(void);
+TString *builder_create_cached_str(void);
 
 #endif

@@ -32,8 +32,7 @@
 #include "llvm_api.h"
 #include "stages.h"
 
-void
-ir_opt_run(Assembly *assembly)
+void ir_opt_run(Assembly *assembly)
 {
 	LLVMModuleRef        llvm_module = assembly->llvm.module;
 	LLVMTargetMachineRef llvm_tm     = assembly->llvm.TM;

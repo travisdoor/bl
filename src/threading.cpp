@@ -27,8 +27,8 @@
 //************************************************************************************************
 
 #include "threading.h"
-#include <thread>
 #include <mutex>
+#include <thread>
 
 #define CAST(T) reinterpret_cast<T>
 
@@ -36,50 +36,42 @@
 
 using namespace std;
 
-u64
-thread_get_id(void)
+u64 thread_get_id(void)
 {
 	return hash<thread::id>{}(this_thread::get_id());
 }
 
-Thread
-thread_new(ThreadFn fn)
+Thread thread_new(ThreadFn fn)
 {
 	return CAST(Thread)(new thread(fn));
 }
 
-void
-thread_delete(Thread t)
+void thread_delete(Thread t)
 {
 	delete CAST(thread *)(t);
 }
 
-void
-thread_join(Thread t)
+void thread_join(Thread t)
 {
 	CAST(thread *)(t)->join();
 }
 
-Mutex
-thread_mutex_new(void)
+Mutex thread_mutex_new(void)
 {
 	return CAST(Mutex)(new mutex());
 }
 
-void
-thread_mutex_delete(Mutex m)
+void thread_mutex_delete(Mutex m)
 {
 	delete CAST(mutex *)(m);
 }
 
-void
-thread_mutex_lock(Mutex m)
+void thread_mutex_lock(Mutex m)
 {
 	CAST(mutex *)(m)->lock();
 }
 
-void
-thread_mutex_unlock(Mutex m)
+void thread_mutex_unlock(Mutex m)
 {
 	CAST(mutex *)(m)->unlock();
 }

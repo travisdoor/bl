@@ -1,0 +1,8 @@
+#private
+
+type_infer :: fn () #test2 {
+    number := 0;
+    boolean := true;
+    float := 0.1f;
+    double := 0.1;
+};

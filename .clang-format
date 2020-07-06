@@ -17,4 +17,4 @@ AllowShortIfStatementsOnASingleLine: true
 BinPackParameters: false
 BinPackArguments: false
 AllowAllParametersOfDeclarationOnNextLine: false
-AlwaysBreakAfterReturnType: All
+AlwaysBreakAfterReturnType: None

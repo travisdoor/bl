@@ -60,14 +60,11 @@ extern "C" {
 
 typedef enum { LOG_ASSERT, LOG_ABORT, LOG_WARNING, LOG_MSG } bl_log_msg_type_e;
 
-void
-_log(bl_log_msg_type_e t, const char *file, s32 line, const char *msg, ...);
+void _log(bl_log_msg_type_e t, const char *file, s32 line, const char *msg, ...);
 
-void
-print_trace(void);
+void print_trace(void);
 
-void *
-_assert_invalid_expr(const char *expr, const char *file, s32 line);
+void *_assert_invalid_expr(const char *expr, const char *file, s32 line);
 
 #if BL_ASSERT_ENABLE || BL_DEBUG
 #define BL_ASSERT(e)                                                                               \

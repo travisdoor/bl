@@ -1,7 +1,5 @@
-#load "std/debug.bl"
-
 #private
-#test "function calls" {
+function_calls :: fn () #test2 {
     _1 :: fn () {
     };
 
@@ -13,7 +11,7 @@
     assert(_2(10) == 10);
 };
 
-#test "implicit functions direct call" {
+implicit_functions_direct_call :: fn () #test2 {
     i := fn (i: s32, j: s32) s32 {
         return i * j; 
     } (2, 3);
@@ -24,7 +22,7 @@
     } ();
 };
 
-#test "function pointers" {
+function_pointers :: fn () #test2 {
     foo :: fn (v: s32) s32 {
         return v;
     };
@@ -43,7 +41,7 @@
     ptr2();
 };
 
-#test "nested function pointers" {
+nested_function_pointers :: fn () #test2 {
     Foo :: struct {
         v_fn: *fn()
     };

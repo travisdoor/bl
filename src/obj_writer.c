@@ -26,9 +26,9 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "llvm_api.h"
 #include "common.h"
 #include "error.h"
+#include "llvm_api.h"
 #include "stages.h"
 
 #ifdef BL_PLATFORM_WIN
@@ -38,8 +38,7 @@
 #endif
 
 /* Emit assembly object file. */
-void
-obj_writer_run(Assembly *assembly)
+void obj_writer_run(Assembly *assembly)
 {
 	TString filename;
 	tstring_init(&filename);
@@ -49,9 +48,13 @@ obj_writer_run(Assembly *assembly)
 	tstring_append(&filename, OBJ_EXT);
 
 	char *error_msg = NULL;
-	if (LLVMTargetMachineEmitToFile(
-	        assembly->llvm.TM, assembly->llvm.module, filename.data, LLVMObjectFile, &error_msg)) {
-		builder_error("Cannot emit object file: %s with error: %s", filename.data, error_msg);
+	if (LLVMTargetMachineEmitToFile(assembly->llvm.TM,
+	                                assembly->llvm.module,
+	                                filename.data,
+	                                LLVMObjectFile,
+	                                &error_msg)) {
+		builder_error(
+		    "Cannot emit object file: %s with error: %s", filename.data, error_msg);
 
 		LLVMDisposeMessage(error_msg);
 	}

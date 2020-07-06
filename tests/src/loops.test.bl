@@ -1,0 +1,45 @@
+#private
+simple_loops :: fn () #test2 {
+    count :: 10;
+    i := 0;
+
+    loop i < count {
+        i += 1;
+    }
+
+    assert(i == count);
+
+    i = 0;
+    loop j := 0; j < count; j += 1 {
+        i += 1;
+    }
+
+    assert(i == count);
+};
+
+nested_loops :: fn () #test2 {
+    count :: 10;
+    i := 0;
+
+    loop x := 0; x < count; x += 1 {
+        loop y := 0; y < count; y += 1 {
+            i += 1;
+        }
+    }
+
+    assert(i == count * count); 
+};
+
+break_continue_loop :: fn () #test2 {
+    i := 0;
+    loop {
+        if i == 10 {
+            break;
+        } else {
+            i += 1;
+            continue;
+        }
+    }
+
+    assert(i == 10);
+};

@@ -34,8 +34,7 @@ char *sym_strings[] = {
 #undef sm
 };
 
-bool
-token_is_unary(Token *token)
+bool token_is_unary(Token *token)
 {
 	switch (token->sym) {
 	case SYM_MINUS:
@@ -48,8 +47,7 @@ token_is_unary(Token *token)
 	}
 }
 
-TokenPrecedence
-token_prec(Token *token)
+TokenPrecedence token_prec(Token *token)
 {
 	switch (token->sym) {
 		/* . [ ( */
@@ -63,6 +61,7 @@ token_prec(Token *token)
 	case SYM_SIZEOF:
 	case SYM_ALIGNOF:
 	case SYM_TYPEINFO:
+	case SYM_TESTCASES:
 		return (TokenPrecedence){.priority = 50, .associativity = TOKEN_ASSOC_RIGHT};
 
 		/* * ^ / % */

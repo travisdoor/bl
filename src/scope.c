@@ -34,22 +34,19 @@
 
 #define ARENA_CHUNK_COUNT 256
 
-static void
-scope_dtor(Scope *scope)
+static void scope_dtor(Scope *scope)
 {
 	BL_ASSERT(scope);
 	thtbl_terminate(&scope->entries);
 }
 
-void
-scope_arenas_init(ScopeArenas *arenas)
+void scope_arenas_init(ScopeArenas *arenas)
 {
 	arena_init(&arenas->scopes, sizeof(Scope), ARENA_CHUNK_COUNT, (ArenaElemDtor)scope_dtor);
 	arena_init(&arenas->entries, sizeof(ScopeEntry), ARENA_CHUNK_COUNT, NULL);
 }
 
-void
-scope_arenas_terminate(ScopeArenas *arenas)
+void scope_arenas_terminate(ScopeArenas *arenas)
 {
 	arena_terminate(&arenas->scopes);
 	arena_terminate(&arenas->entries);
@@ -68,12 +65,11 @@ scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, usize size, str
 	return scope;
 }
 
-ScopeEntry *
-scope_create_entry(ScopeArenas *  arenas,
-                   ScopeEntryKind kind,
-                   ID *           id,
-                   struct Ast *   node,
-                   bool           is_buildin)
+ScopeEntry *scope_create_entry(ScopeArenas *  arenas,
+                               ScopeEntryKind kind,
+                               ID *           id,
+                               struct Ast *   node,
+                               bool           is_buildin)
 {
 	ScopeEntry *entry = arena_alloc(&arenas->entries);
 	entry->id         = id;
@@ -83,8 +79,7 @@ scope_create_entry(ScopeArenas *  arenas,
 	return entry;
 }
 
-void
-scope_insert(Scope *scope, ScopeEntry *entry)
+void scope_insert(Scope *scope, ScopeEntry *entry)
 {
 	BL_ASSERT(scope);
 	BL_ASSERT(entry && entry->id);
@@ -94,8 +89,7 @@ scope_insert(Scope *scope, ScopeEntry *entry)
 	thtbl_insert(&scope->entries, entry->id->hash, entry);
 }
 
-ScopeEntry *
-scope_lookup(Scope *scope, ID *id, ScopeLookupOpt opt, bool *out_of_fn_local_scope)
+ScopeEntry *scope_lookup(Scope *scope, ID *id, ScopeLookupOpt opt, bool *out_of_fn_local_scope)
 {
 	BL_ASSERT(scope && id);
 
@@ -118,8 +112,7 @@ scope_lookup(Scope *scope, ID *id, ScopeLookupOpt opt, bool *out_of_fn_local_sco
 	return NULL;
 }
 
-bool
-scope_is_subtree_of_kind(const Scope *scope, ScopeKind kind)
+bool scope_is_subtree_of_kind(const Scope *scope, ScopeKind kind)
 {
 	while (scope) {
 		if (scope->kind == kind) return true;
@@ -129,8 +122,7 @@ scope_is_subtree_of_kind(const Scope *scope, ScopeKind kind)
 	return false;
 }
 
-const char *
-scope_kind_name(const Scope *scope)
+const char *scope_kind_name(const Scope *scope)
 {
 	if (!scope) return "<INVALID>";
 	switch (scope->kind) {

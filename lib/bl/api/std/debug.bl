@@ -113,10 +113,10 @@ assert :: fn (cond: bool)
 
 */
 assert :: fn (cond: bool) {
-    if !cond {
-        if IS_DEBUG { _os_debug_break(); }
-        unreachable;
-    }
+    if cond { return; }
+
+    if IS_DEBUG { _os_debug_break(); } // @PERFORMANCE: cound be static if later
+    unreachable;
 };
 
 debug_break :: fn () #inline {

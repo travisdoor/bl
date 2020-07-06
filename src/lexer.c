@@ -51,32 +51,23 @@ typedef struct context {
 	s32     col;
 } Context;
 
-static void
-scan(Context *cnt);
+static void scan(Context *cnt);
 
-static bool
-scan_comment(Context *cnt, const char *term);
+static bool scan_comment(Context *cnt, const char *term);
 
-static bool
-scan_ident(Context *cnt, Token *tok);
+static bool scan_ident(Context *cnt, Token *tok);
 
-static bool
-scan_string(Context *cnt, Token *tok);
+static bool scan_string(Context *cnt, Token *tok);
 
-static bool
-scan_char(Context *cnt, Token *tok);
+static bool scan_char(Context *cnt, Token *tok);
 
-static bool
-scan_number(Context *cnt, Token *tok);
+static bool scan_number(Context *cnt, Token *tok);
 
-static INLINE int
-c_to_number(char c, s32 base);
+static INLINE int c_to_number(char c, s32 base);
 
-static char
-scan_specch(char c);
+static char scan_specch(char c);
 
-bool
-scan_comment(Context *cnt, const char *term)
+bool scan_comment(Context *cnt, const char *term)
 {
 	const usize len = strlen(term);
 	while (true) {
@@ -104,8 +95,7 @@ scan_comment(Context *cnt, const char *term)
 	return true;
 }
 
-bool
-scan_ident(Context *cnt, Token *tok)
+bool scan_ident(Context *cnt, Token *tok)
 {
 	tok->location.line = cnt->line;
 	tok->location.col  = cnt->col;
@@ -137,8 +127,7 @@ scan_ident(Context *cnt, Token *tok)
 	return true;
 }
 
-char
-scan_specch(char c)
+char scan_specch(char c)
 {
 	switch (c) {
 	case 'n':
@@ -160,8 +149,7 @@ scan_specch(char c)
 	}
 }
 
-bool
-scan_string(Context *cnt, Token *tok)
+bool scan_string(Context *cnt, Token *tok)
 {
 	if (*cnt->c != '\"') {
 		return false;
@@ -174,12 +162,10 @@ scan_string(Context *cnt, Token *tok)
 	/* eat " */
 	cnt->c++;
 
-	/* RACECOND */
-	/* RACECOND */
-	/* RACECOND */
 	TString *cstr = builder_create_cached_str();
-	char     c;
-	s32      len = 0;
+
+	char c;
+	s32  len = 0;
 
 scan:
 	while (true) {
@@ -201,6 +187,7 @@ scan:
 
 				tmp_c++;
 			}
+			// FALLTROUGH
 		}
 		case '\0': {
 			SCAN_ERROR(ERR_UNTERMINATED_STRING,
@@ -211,6 +198,10 @@ scan:
 		}
 		case '\\':
 			/* special character */
+
+			// @INCOMPLETE: this can fail!!!
+			// @INCOMPLETE: this can fail!!!
+			// @INCOMPLETE: this can fail!!!
 			c = scan_specch(*(cnt->c + 1));
 			cnt->c += 2;
 			len += 2;
@@ -230,8 +221,7 @@ exit:
 	return true;
 }
 
-bool
-scan_char(Context *cnt, Token *tok)
+bool scan_char(Context *cnt, Token *tok)
 {
 	if (*cnt->c != '\'') return false;
 	tok->location.line = cnt->line;
@@ -282,8 +272,7 @@ scan_char(Context *cnt, Token *tok)
 	return true;
 }
 
-int
-c_to_number(char c, s32 base)
+int c_to_number(char c, s32 base)
 {
 #ifndef _MSC_VER
 #pragma GCC diagnostic push
@@ -317,8 +306,7 @@ c_to_number(char c, s32 base)
 #endif
 }
 
-bool
-scan_number(Context *cnt, Token *tok)
+bool scan_number(Context *cnt, Token *tok)
 {
 	tok->location.line = cnt->line;
 	tok->location.col  = cnt->col;
@@ -418,8 +406,7 @@ scan_double : {
 }
 }
 
-void
-scan(Context *cnt)
+void scan(Context *cnt)
 {
 	Token tok;
 scan:
@@ -521,8 +508,7 @@ push_token : {
 	goto scan;
 }
 
-void
-lexer_run(Unit *unit)
+void lexer_run(Unit *unit)
 {
 	Context cnt = {
 	    .tokens = &unit->tokens,

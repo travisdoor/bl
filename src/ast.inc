@@ -36,8 +36,6 @@
 	AST_TYPE_VARGS,
 	_AST_TYPE_LAST,
 	_AST_EXPR_FIRST,
-	AST_EXPR_FILE,
-	AST_EXPR_LINE,
 	AST_EXPR_TYPE,
 	AST_EXPR_REF,
 	AST_EXPR_CAST,
@@ -49,6 +47,7 @@
 	AST_EXPR_ALIGNOF,
 	AST_EXPR_TYPEOF,
 	AST_EXPR_TYPE_INFO,
+	AST_EXPR_TEST_CASES,
 	AST_EXPR_UNARY,
 	AST_EXPR_NULL,
 	AST_EXPR_ADDROF,
@@ -94,8 +93,6 @@
 	struct AstTypeEnum      type_enm;
 	struct AstTypePtr       type_ptr;
 	struct AstTypeVargs     type_vargs;
-	struct AstExprFile      expr_file;
-	struct AstExprLine      expr_line;
 	struct AstExprType      expr_type;
 	struct AstExprLitFn     expr_fn;
 	struct AstExprLitInt    expr_integer;

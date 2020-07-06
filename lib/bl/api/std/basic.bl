@@ -88,6 +88,8 @@ _PrintLogFn :: * fn (kind: PrintLogKind, format: string, args: []Any, file: stri
 */
 _PrintLogFn :: * fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32);
 
+_AbortFn :: * fn ();
+
 /*!
 # _Context
 ## Declaration
@@ -121,6 +123,8 @@ _Context :: struct {
 
     /* Defualt debug log function. */
     print_log_fn: _PrintLogFn;
+
+    abort_fn: _AbortFn;
 };
 
 /*!
@@ -136,7 +140,12 @@ containing basic context for whole assembly. This variable is mutable and can
 be modified by user code. For example we can replace default memory allocator
 with custom one, this will affect all allocations made later.
 */
-_context := {:_Context: &_mem_alloc_default, &_mem_free_default, &_print_log_default};
+_context := {:_Context: 
+                &_mem_alloc_default, 
+                &_mem_free_default, 
+                &_print_log_default, 
+                &_os_abort_default,
+            };
 
 /*!
 # panic

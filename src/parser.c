@@ -84,6 +84,7 @@ typedef enum {
 	HD_TAGS        = 1 << 14,
 	HD_NO_INIT     = 1 << 16,
 	HD_INTRINSIC   = 1 << 17,
+	HD_TEST_FN     = 1 << 18,
 } HashDirective;
 
 typedef struct {
@@ -102,176 +103,122 @@ typedef struct {
 
 /* helpers */
 /* fw decls */
-static BinopKind
-sym_to_binop_kind(Sym sm);
+static BinopKind sym_to_binop_kind(Sym sm);
 
-static UnopKind
-sym_to_unop_kind(Sym sm);
+static UnopKind sym_to_unop_kind(Sym sm);
 
-static void
-parse_ublock_content(Context *cnt, Ast *ublock);
+static void parse_ublock_content(Context *cnt, Ast *ublock);
 
-static Ast *
-parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied);
+static Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied);
 
-static Ast *
-parse_unrecheable(Context *cnt);
+static Ast *parse_unrecheable(Context *cnt);
 
-static Ast *
-parse_ident(Context *cnt);
+static Ast *parse_ident(Context *cnt);
 
-static Ast *
-parse_block(Context *cnt, bool create_scope);
+static Ast *parse_block(Context *cnt, bool create_scope);
 
-static Ast *
-parse_decl(Context *cnt);
+static Ast *parse_decl(Context *cnt);
 
-static Ast *
-parse_decl_member(Context *cnt, bool type_only);
+static Ast *parse_decl_member(Context *cnt, bool type_only);
 
-static Ast *
-parse_decl_arg(Context *cnt, bool rq_named);
+static Ast *parse_decl_arg(Context *cnt, bool rq_named);
 
-static Ast *
-parse_decl_variant(Context *cnt, Ast *prev);
+static Ast *parse_decl_variant(Context *cnt, Ast *prev);
 
-static Ast *
-parse_type(Context *cnt);
+static Ast *parse_type(Context *cnt);
 
-static Ast *
-parse_type_ref(Context *cnt);
+static Ast *parse_type_ref(Context *cnt);
 
-static Ast *
-parse_type_arr(Context *cnt);
+static Ast *parse_type_arr(Context *cnt);
 
-static Ast *
-parse_type_slice(Context *cnt);
+static Ast *parse_type_slice(Context *cnt);
 
-static Ast *
-parse_type_dynarr(Context *cnt);
+static Ast *parse_type_dynarr(Context *cnt);
 
-static Ast *
-parse_type_fn(Context *cnt, bool rq_named_args);
+static Ast *parse_type_fn(Context *cnt, bool rq_named_args);
 
-static Ast *
-parse_type_struct(Context *cnt);
+static Ast *parse_type_struct(Context *cnt);
 
-static Ast *
-parse_type_enum(Context *cnt);
+static Ast *parse_type_enum(Context *cnt);
 
-static Ast *
-parse_type_ptr(Context *cnt);
+static Ast *parse_type_ptr(Context *cnt);
 
-static Ast *
-parse_type_vargs(Context *cnt);
+static Ast *parse_type_vargs(Context *cnt);
 
-static Ast *
-parse_stmt_return(Context *cnt);
+static Ast *parse_stmt_return(Context *cnt);
 
-static Ast *
-parse_stmt_if(Context *cnt);
+static Ast *parse_stmt_if(Context *cnt);
 
-static Ast *
-parse_stmt_loop(Context *cnt);
+static Ast *parse_stmt_loop(Context *cnt);
 
-static Ast *
-parse_stmt_break(Context *cnt);
+static Ast *parse_stmt_break(Context *cnt);
 
-static Ast *
-parse_stmt_continue(Context *cnt);
+static Ast *parse_stmt_continue(Context *cnt);
 
-static Ast *
-parse_stmt_defer(Context *cnt);
+static Ast *parse_stmt_defer(Context *cnt);
 
-static Ast *
-parse_stmt_switch(Context *cnt);
+static Ast *parse_stmt_switch(Context *cnt);
 
-static Ast *
-parse_stmt_case(Context *cnt);
+static Ast *parse_stmt_case(Context *cnt);
 
 /* EXPRESSIONS */
-static Ast *
-parse_expr(Context *cnt);
+static Ast *parse_expr(Context *cnt);
 
-static Ast *
-_parse_expr(Context *cnt, s32 p);
+static Ast *_parse_expr(Context *cnt, s32 p);
 
-static Ast *
-parse_expr_atom(Context *cnt);
+static Ast *parse_expr_atom(Context *cnt);
 
-static Ast *
-parse_expr_primary(Context *cnt);
+static Ast *parse_expr_primary(Context *cnt);
 
-static Ast *
-parse_expr_unary(Context *cnt);
+static Ast *parse_expr_unary(Context *cnt);
 
-static Ast *
-parse_expr_binary(Context *cnt, Ast *lhs, Ast *rhs, Token *op);
+static Ast *parse_expr_binary(Context *cnt, Ast *lhs, Ast *rhs, Token *op);
 
-static Ast *
-parse_expr_addrof(Context *cnt);
+static Ast *parse_expr_addrof(Context *cnt);
 
-static Ast *
-parse_expr_deref(Context *cnt);
+static Ast *parse_expr_deref(Context *cnt);
 
-static Ast *
-parse_expr_type(Context *cnt);
+static Ast *parse_expr_type(Context *cnt);
 
-static Ast *
-parse_expr_ref(Context *cnt);
+static Ast *parse_expr_ref(Context *cnt);
 
-static Ast *
-parse_expr_nested(Context *cnt);
+static Ast *parse_expr_nested(Context *cnt);
 
-static Ast *
-parse_expr_null(Context *cnt);
+static Ast *parse_expr_null(Context *cnt);
 
-static Ast *
-parse_expr_cast(Context *cnt);
+static Ast *parse_expr_cast(Context *cnt);
 
-static Ast *
-parse_expr_cast_auto(Context *cnt);
+static Ast *parse_expr_cast_auto(Context *cnt);
 
-static Ast *
-parse_expr_lit(Context *cnt);
+static Ast *parse_expr_lit(Context *cnt);
 
-static Ast *
-parse_expr_lit_fn(Context *cnt);
+static Ast *parse_expr_lit_fn(Context *cnt);
 
-static Ast *
-parse_expr_sizeof(Context *cnt);
+static Ast *parse_expr_sizeof(Context *cnt);
 
-static Ast *
-parse_expr_type_info(Context *cnt);
+static Ast *parse_expr_type_info(Context *cnt);
 
-static Ast *
-parse_expr_alignof(Context *cnt);
+static Ast *parse_expr_test_cases(Context *cnt);
 
-static INLINE bool
-parse_semicolon(Context *cnt);
+static Ast *parse_expr_alignof(Context *cnt);
 
-static INLINE bool
-parse_semicolon_rq(Context *cnt);
+static INLINE bool parse_semicolon(Context *cnt);
 
-static INLINE bool
-hash_directive_to_flags(HashDirective hd, u32 *out_flags);
+static INLINE bool parse_semicolon_rq(Context *cnt);
 
-static Ast *
-parse_expr_member(Context *cnt, Ast *prev);
+static INLINE bool hash_directive_to_flags(HashDirective hd, u32 *out_flags);
 
-static Ast *
-parse_expr_call(Context *cnt, Ast *prev);
+static Ast *parse_expr_member(Context *cnt, Ast *prev);
 
-static Ast *
-parse_expr_elem(Context *cnt, Ast *prev);
+static Ast *parse_expr_call(Context *cnt, Ast *prev);
 
-static Ast *
-parse_expr_compound(Context *cnt);
+static Ast *parse_expr_elem(Context *cnt, Ast *prev);
+
+static Ast *parse_expr_compound(Context *cnt);
 
 // impl
 
-static INLINE bool
-rq_semicolon_after_decl_entity(Ast *node)
+static INLINE bool rq_semicolon_after_decl_entity(Ast *node)
 {
 	BL_ASSERT(node);
 
@@ -279,8 +226,7 @@ rq_semicolon_after_decl_entity(Ast *node)
 	       node->kind != AST_EXPR_TYPE;
 }
 
-BinopKind
-sym_to_binop_kind(Sym sm)
+BinopKind sym_to_binop_kind(Sym sm)
 {
 	switch (sm) {
 	case SYM_ASSIGN:
@@ -334,8 +280,7 @@ sym_to_binop_kind(Sym sm)
 	}
 }
 
-UnopKind
-sym_to_unop_kind(Sym sm)
+UnopKind sym_to_unop_kind(Sym sm)
 {
 	switch (sm) {
 	case SYM_MINUS:
@@ -351,8 +296,7 @@ sym_to_unop_kind(Sym sm)
 	}
 }
 
-Ast *
-parse_expr_ref(Context *cnt)
+Ast *parse_expr_ref(Context *cnt)
 {
 	Token *tok   = tokens_peek(cnt->tokens);
 	Ast *  ident = parse_ident(cnt);
@@ -367,8 +311,7 @@ parse_expr_ref(Context *cnt)
  * Try to parse hash directive. List of enabled directives can be set by 'expected_mask',
  * 'satisfied' is optional output set to parsed directive id if there is one.
  */
-Ast *
-parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
+Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 {
 #define set_satisfied(_hd)                                                                         \
 	{                                                                                          \
@@ -451,6 +394,7 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 		return link;
 	}
 
+	// @TODO: remove
 	if (strcmp(directive, "test") == 0) {
 		/* test <string> {} */
 		set_satisfied(HD_TEST);
@@ -511,6 +455,20 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 		return test;
 	}
 
+	if (strcmp(directive, "test2") == 0) {
+		set_satisfied(HD_TEST_FN);
+		if (IS_NOT_FLAG(expected_mask, HD_TEST_FN)) {
+			PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+			            tok_directive,
+			            BUILDER_CUR_WORD,
+			            "Unexpected directive.");
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
+		}
+
+		return NULL;
+	}
+
 	if (strcmp(directive, "file") == 0) {
 		set_satisfied(HD_FILE);
 		if (IS_NOT_FLAG(expected_mask, HD_FILE)) {
@@ -523,10 +481,9 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 			    cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
 		}
 
-		Ast *file =
-		    ast_create_node(cnt->ast_arena, AST_EXPR_FILE, tok_directive, SCOPE_GET(cnt));
-
-		file->data.expr_file.filename = tok_directive->location.unit->filepath;
+		Ast *file = ast_create_node(
+		    cnt->ast_arena, AST_EXPR_LIT_STRING, tok_directive, SCOPE_GET(cnt));
+		file->data.expr_string.val = tok_directive->location.unit->filepath;
 		return file;
 	}
 
@@ -603,7 +560,7 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 		return tags;
 	}
 
-#if 0
+#if 0 // @INCOMPLETE
 	if (strcmp(directive, "meta") == 0) {
 		set_satisfied(HD_META);
 		if (IS_NOT_FLAG(expected_mask, HD_META)) {
@@ -646,10 +603,9 @@ parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 			    cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
 		}
 
-		Ast *line =
-		    ast_create_node(cnt->ast_arena, AST_EXPR_LINE, tok_directive, SCOPE_GET(cnt));
-
-		line->data.expr_line.line = tok_directive->location.line;
+		Ast *line = ast_create_node(
+		    cnt->ast_arena, AST_EXPR_LIT_INT, tok_directive, SCOPE_GET(cnt));
+		line->data.expr_integer.val = tok_directive->location.line;
 		return line;
 	}
 
@@ -848,8 +804,7 @@ INVALID:
  *
  * {:<type>: <value>, ... }
  */
-Ast *
-parse_expr_compound(Context *cnt)
+Ast *parse_expr_compound(Context *cnt)
 {
 	if (!tokens_is_seq(cnt->tokens, 2, SYM_LBLOCK, SYM_COLON)) return NULL;
 	/* eat { */
@@ -917,8 +872,7 @@ value:
 	return compound;
 }
 
-Ast *
-parse_expr_sizeof(Context *cnt)
+Ast *parse_expr_sizeof(Context *cnt)
 {
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_SIZEOF);
 	if (!tok_begin) return NULL;
@@ -955,8 +909,7 @@ parse_expr_sizeof(Context *cnt)
 	return szof;
 }
 
-Ast *
-parse_expr_type_info(Context *cnt)
+Ast *parse_expr_type_info(Context *cnt)
 {
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_TYPEINFO);
 	if (!tok_begin) return NULL;
@@ -993,8 +946,37 @@ parse_expr_type_info(Context *cnt)
 	return info;
 }
 
-Ast *
-parse_expr_alignof(Context *cnt)
+Ast *parse_expr_test_cases(Context *cnt)
+{
+	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_TESTCASES);
+	if (!tok_begin) return NULL;
+
+	Token *tok = tokens_consume(cnt->tokens);
+	if (!token_is(tok, SYM_LPAREN)) {
+		PARSE_ERROR(ERR_MISSING_BRACKET,
+		            tok_begin,
+		            BUILDER_CUR_WORD,
+		            "Expected '(' after testcases operator.");
+		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
+	}
+
+	Ast *tc = ast_create_node(cnt->ast_arena, AST_EXPR_TEST_CASES, tok_begin, SCOPE_GET(cnt));
+
+	tok = tokens_consume(cnt->tokens);
+	if (!token_is(tok, SYM_RPAREN)) {
+		PARSE_ERROR(ERR_MISSING_BRACKET,
+		            tok,
+		            BUILDER_CUR_WORD,
+		            "Expected ')' after testcases operator.");
+		tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok, SCOPE_GET(cnt));
+	}
+
+	return tc;
+}
+
+Ast *parse_expr_alignof(Context *cnt)
 {
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_ALIGNOF);
 	if (!tok_begin) return NULL;
@@ -1031,8 +1013,7 @@ parse_expr_alignof(Context *cnt)
 	return alof;
 }
 
-Ast *
-parse_expr_cast_auto(Context *cnt)
+Ast *parse_expr_cast_auto(Context *cnt)
 {
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_CAST_AUTO);
 	if (!tok_begin) return NULL;
@@ -1054,8 +1035,7 @@ parse_expr_cast_auto(Context *cnt)
 	return cast;
 }
 
-Ast *
-parse_expr_cast(Context *cnt)
+Ast *parse_expr_cast(Context *cnt)
 {
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_CAST);
 	if (!tok_begin) return NULL;
@@ -1104,8 +1084,7 @@ parse_expr_cast(Context *cnt)
 	return cast;
 }
 
-Ast *
-parse_decl_member(Context *cnt, bool type_only)
+Ast *parse_decl_member(Context *cnt, bool type_only)
 {
 	Token *tok_begin = tokens_peek(cnt->tokens);
 	Ast *  name      = NULL;
@@ -1138,8 +1117,7 @@ parse_decl_member(Context *cnt, bool type_only)
 	return mem;
 }
 
-Ast *
-parse_decl_arg(Context *cnt, bool rq_named)
+Ast *parse_decl_arg(Context *cnt, bool rq_named)
 {
 	Token *tok_begin = tokens_peek(cnt->tokens);
 	Ast *  name      = NULL;
@@ -1170,8 +1148,7 @@ parse_decl_arg(Context *cnt, bool rq_named)
 	return arg;
 }
 
-Ast *
-parse_decl_variant(Context *cnt, Ast *prev)
+Ast *parse_decl_variant(Context *cnt, Ast *prev)
 {
 	Token *tok_begin = tokens_peek(cnt->tokens);
 	Ast *  name      = parse_ident(cnt);
@@ -1210,14 +1187,12 @@ parse_decl_variant(Context *cnt, Ast *prev)
 	return var;
 }
 
-bool
-parse_semicolon(Context *cnt)
+bool parse_semicolon(Context *cnt)
 {
 	return tokens_consume_if(cnt->tokens, SYM_SEMICOLON);
 }
 
-bool
-parse_semicolon_rq(Context *cnt)
+bool parse_semicolon_rq(Context *cnt)
 {
 	Token *tok = tokens_consume_if(cnt->tokens, SYM_SEMICOLON);
 	if (!tok) {
@@ -1229,8 +1204,7 @@ parse_semicolon_rq(Context *cnt)
 	return true;
 }
 
-bool
-hash_directive_to_flags(HashDirective hd, u32 *out_flags)
+bool hash_directive_to_flags(HashDirective hd, u32 *out_flags)
 {
 #define FLAG_CASE(_c, _f)                                                                          \
 	case (_c):                                                                                 \
@@ -1246,6 +1220,7 @@ hash_directive_to_flags(HashDirective hd, u32 *out_flags)
 		FLAG_CASE(HD_INLINE, FLAG_INLINE);
 		FLAG_CASE(HD_NO_INLINE, FLAG_NO_INLINE);
 		FLAG_CASE(HD_NO_INIT, FLAG_NO_INIT);
+		FLAG_CASE(HD_TEST_FN, FLAG_TEST_FN);
 	default:
 		break;
 	}
@@ -1253,8 +1228,7 @@ hash_directive_to_flags(HashDirective hd, u32 *out_flags)
 	return false;
 }
 
-Ast *
-parse_stmt_return(Context *cnt)
+Ast *parse_stmt_return(Context *cnt)
 {
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_RETURN);
 	if (!tok_begin) return NULL;
@@ -1265,8 +1239,7 @@ parse_stmt_return(Context *cnt)
 	return ret;
 }
 
-Ast *
-parse_stmt_if(Context *cnt)
+Ast *parse_stmt_if(Context *cnt)
 {
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_IF);
 	if (!tok_begin) return NULL;
@@ -1317,8 +1290,7 @@ parse_stmt_if(Context *cnt)
 	return stmt_if;
 }
 
-Ast *
-parse_stmt_switch(Context *cnt)
+Ast *parse_stmt_switch(Context *cnt)
 {
 	Token *tok_switch = tokens_consume_if(cnt->tokens, SYM_SWITCH);
 	if (!tok_switch) return NULL;
@@ -1369,8 +1341,7 @@ NEXT:
 	return stmt_switch;
 }
 
-Ast *
-parse_stmt_case(Context *cnt)
+Ast *parse_stmt_case(Context *cnt)
 {
 	TSmallArray_AstPtr *exprs = NULL;
 	Ast *               block = NULL;
@@ -1419,8 +1390,7 @@ SKIP_EXPRS:
 	return stmt_case;
 }
 
-static TokensLookaheadState
-cmp_stmt_loop(Token *curr)
+static TokensLookaheadState cmp_stmt_loop(Token *curr)
 {
 	if (token_is(curr, SYM_SEMICOLON))
 		return TOK_LOOK_HIT;
@@ -1432,8 +1402,7 @@ cmp_stmt_loop(Token *curr)
 	return TOK_LOOK_CONTINUE;
 }
 
-Ast *
-parse_stmt_loop(Context *cnt)
+Ast *parse_stmt_loop(Context *cnt)
 {
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LOOP);
 	if (!tok_begin) return NULL;
@@ -1485,8 +1454,7 @@ parse_stmt_loop(Context *cnt)
 	return loop;
 }
 
-Ast *
-parse_stmt_break(Context *cnt)
+Ast *parse_stmt_break(Context *cnt)
 {
 	Token *tok = tokens_consume_if(cnt->tokens, SYM_BREAK);
 	if (!tok) return NULL;
@@ -1500,8 +1468,7 @@ parse_stmt_break(Context *cnt)
 	return ast_create_node(cnt->ast_arena, AST_STMT_BREAK, tok, SCOPE_GET(cnt));
 }
 
-Ast *
-parse_stmt_continue(Context *cnt)
+Ast *parse_stmt_continue(Context *cnt)
 {
 	Token *tok = tokens_consume_if(cnt->tokens, SYM_CONTINUE);
 	if (!tok) return NULL;
@@ -1516,8 +1483,7 @@ parse_stmt_continue(Context *cnt)
 	return ast_create_node(cnt->ast_arena, AST_STMT_CONTINUE, tok, SCOPE_GET(cnt));
 }
 
-Ast *
-parse_stmt_defer(Context *cnt)
+Ast *parse_stmt_defer(Context *cnt)
 {
 	Token *tok = tokens_consume_if(cnt->tokens, SYM_DEFER);
 	if (!tok) return NULL;
@@ -1541,14 +1507,12 @@ parse_stmt_defer(Context *cnt)
 	return defer;
 }
 
-Ast *
-parse_expr(Context *cnt)
+Ast *parse_expr(Context *cnt)
 {
 	return _parse_expr(cnt, 0);
 }
 
-Ast *
-_parse_expr(Context *cnt, s32 p)
+Ast *_parse_expr(Context *cnt, s32 p)
 {
 	Ast *lhs = parse_expr_atom(cnt);
 	Ast *tmp = NULL;
@@ -1591,8 +1555,7 @@ _parse_expr(Context *cnt, s32 p)
  * <type>
  * <literal>
  */
-Ast *
-parse_expr_primary(Context *cnt)
+Ast *parse_expr_primary(Context *cnt)
 {
 	Ast *expr = NULL;
 	if ((expr = parse_expr_nested(cnt))) return expr;
@@ -1608,8 +1571,7 @@ parse_expr_primary(Context *cnt)
 }
 
 /* <unary operator> <expression> */
-Ast *
-parse_expr_unary(Context *cnt)
+Ast *parse_expr_unary(Context *cnt)
 {
 	Token *op = tokens_peek(cnt->tokens);
 	if (!token_is_unary(op)) return NULL;
@@ -1634,8 +1596,7 @@ parse_expr_unary(Context *cnt)
 	return unary;
 }
 
-Ast *
-parse_expr_atom(Context *cnt)
+Ast *parse_expr_atom(Context *cnt)
 {
 	Ast *expr = NULL;
 
@@ -1648,13 +1609,13 @@ parse_expr_atom(Context *cnt)
 	if ((expr = parse_expr_sizeof(cnt))) return expr;
 	if ((expr = parse_expr_alignof(cnt))) return expr;
 	if ((expr = parse_expr_type_info(cnt))) return expr;
+	if ((expr = parse_expr_test_cases(cnt))) return expr;
 
 	return NULL;
 }
 
 /* <expression> <binary operator> <expression>*/
-Ast *
-parse_expr_binary(Context *cnt, Ast *lhs, Ast *rhs, Token *op)
+Ast *parse_expr_binary(Context *cnt, Ast *lhs, Ast *rhs, Token *op)
 {
 	if (!token_is_binop(op)) return NULL;
 
@@ -1666,8 +1627,7 @@ parse_expr_binary(Context *cnt, Ast *lhs, Ast *rhs, Token *op)
 	return binop;
 }
 
-Ast *
-parse_expr_addrof(Context *cnt)
+Ast *parse_expr_addrof(Context *cnt)
 {
 	Token *tok = tokens_consume_if(cnt->tokens, SYM_AND);
 	if (!tok) return NULL;
@@ -1689,8 +1649,7 @@ parse_expr_addrof(Context *cnt)
 	return addrof;
 }
 
-Ast *
-parse_expr_deref(Context *cnt)
+Ast *parse_expr_deref(Context *cnt)
 {
 	Token *tok = tokens_consume_if(cnt->tokens, SYM_CARET);
 	if (!tok) return NULL;
@@ -1712,8 +1671,7 @@ parse_expr_deref(Context *cnt)
 	return deref;
 }
 
-Ast *
-parse_expr_lit(Context *cnt)
+Ast *parse_expr_lit(Context *cnt)
 {
 	Token *tok = tokens_peek(cnt->tokens);
 	Ast *  lit = NULL;
@@ -1766,8 +1724,7 @@ parse_expr_lit(Context *cnt)
 	return lit;
 }
 
-Ast *
-parse_expr_lit_fn(Context *cnt)
+Ast *parse_expr_lit_fn(Context *cnt)
 {
 	Token *tok_fn = tokens_peek(cnt->tokens);
 	if (token_is_not(tok_fn, SYM_FN)) return NULL;
@@ -1792,7 +1749,7 @@ parse_expr_lit_fn(Context *cnt)
 	Ast *curr_decl = DECL_GET(cnt);
 	if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
 		u32 accepted = HD_EXTERN | HD_NO_INLINE | HD_INLINE | HD_COMPILER | HD_ENTRY |
-		               HD_BUILD_ENTRY | HD_INTRINSIC;
+		               HD_BUILD_ENTRY | HD_INTRINSIC | HD_TEST_FN;
 		u32 flags = 0;
 		while (true) {
 			HashDirective found        = HD_NONE;
@@ -1823,8 +1780,7 @@ parse_expr_lit_fn(Context *cnt)
 }
 
 /* ( expression ) */
-Ast *
-parse_expr_nested(Context *cnt)
+Ast *parse_expr_nested(Context *cnt)
 {
 	Ast *  expr      = NULL;
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LPAREN);
@@ -1851,8 +1807,7 @@ parse_expr_nested(Context *cnt)
 }
 
 /* <expression>.<identifier> */
-Ast *
-parse_expr_member(Context *cnt, Ast *prev)
+Ast *parse_expr_member(Context *cnt, Ast *prev)
 {
 	if (!prev) return NULL;
 	Token *tok = tokens_consume_if(cnt->tokens, SYM_DOT);
@@ -1873,8 +1828,7 @@ parse_expr_member(Context *cnt, Ast *prev)
 }
 
 /* <expression>[<index>] */
-Ast *
-parse_expr_elem(Context *cnt, Ast *prev)
+Ast *parse_expr_elem(Context *cnt, Ast *prev)
 {
 	if (!prev) return NULL;
 	Token *tok_elem = tokens_consume_if(cnt->tokens, SYM_LBRACKET);
@@ -1899,8 +1853,7 @@ parse_expr_elem(Context *cnt, Ast *prev)
 	return elem;
 }
 
-Ast *
-parse_ident(Context *cnt)
+Ast *parse_ident(Context *cnt)
 {
 	Token *tok_ident = tokens_consume_if(cnt->tokens, SYM_IDENT);
 	if (!tok_ident) return NULL;
@@ -1911,8 +1864,7 @@ parse_ident(Context *cnt)
 	return ident;
 }
 
-Ast *
-parse_type_ptr(Context *cnt)
+Ast *parse_type_ptr(Context *cnt)
 {
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_ASTERISK);
 	if (!tok_begin) return NULL;
@@ -1923,8 +1875,7 @@ parse_type_ptr(Context *cnt)
 	return ptr;
 }
 
-Ast *
-parse_type_vargs(Context *cnt)
+Ast *parse_type_vargs(Context *cnt)
 {
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_VARGS);
 	if (!tok_begin) return NULL;
@@ -1934,8 +1885,7 @@ parse_type_vargs(Context *cnt)
 	return ptr;
 }
 
-Ast *
-parse_type_enum(Context *cnt)
+Ast *parse_type_enum(Context *cnt)
 {
 	Token *tok_enum = tokens_consume_if(cnt->tokens, SYM_ENUM);
 	if (!tok_enum) return NULL;
@@ -2014,8 +1964,7 @@ NEXT:
 	return enm;
 }
 
-Ast *
-parse_type_ref(Context *cnt)
+Ast *parse_type_ref(Context *cnt)
 {
 	Token *tok   = tokens_peek(cnt->tokens);
 	Ast *  ident = parse_ident(cnt);
@@ -2026,8 +1975,7 @@ parse_type_ref(Context *cnt)
 	return type_ref;
 }
 
-Ast *
-parse_type_arr(Context *cnt)
+Ast *parse_type_arr(Context *cnt)
 {
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBRACKET);
 	if (!tok_begin) return NULL;
@@ -2067,8 +2015,7 @@ parse_type_arr(Context *cnt)
 	return arr;
 }
 
-Ast *
-parse_type_slice(Context *cnt)
+Ast *parse_type_slice(Context *cnt)
 {
 	if (tokens_peek(cnt->tokens)->sym != SYM_LBRACKET) return NULL;
 	if (tokens_peek_2nd(cnt->tokens)->sym != SYM_RBRACKET) return NULL;
@@ -2090,8 +2037,7 @@ parse_type_slice(Context *cnt)
 	return slice;
 }
 
-Ast *
-parse_type_dynarr(Context *cnt)
+Ast *parse_type_dynarr(Context *cnt)
 {
 	if (tokens_peek(cnt->tokens)->sym != SYM_LBRACKET) return NULL;
 	if (tokens_peek_2nd(cnt->tokens)->sym != SYM_DYNARR) return NULL;
@@ -2127,8 +2073,7 @@ parse_type_dynarr(Context *cnt)
 	return slice;
 }
 
-Ast *
-parse_type(Context *cnt)
+Ast *parse_type(Context *cnt)
 {
 	Ast *type = NULL;
 
@@ -2149,8 +2094,7 @@ parse_type(Context *cnt)
 	return type;
 }
 
-Ast *
-parse_type_fn(Context *cnt, bool rq_named_args)
+Ast *parse_type_fn(Context *cnt, bool rq_named_args)
 {
 	Token *tok_fn = tokens_consume_if(cnt->tokens, SYM_FN);
 	if (!tok_fn) return NULL;
@@ -2207,8 +2151,7 @@ NEXT:
 	return fn;
 }
 
-Ast *
-parse_type_struct(Context *cnt)
+Ast *parse_type_struct(Context *cnt)
 {
 	Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
 	if (!tok_struct) tok_struct = tokens_consume_if(cnt->tokens, SYM_UNION);
@@ -2301,8 +2244,7 @@ NEXT:
 	return type_struct;
 }
 
-Ast *
-parse_decl(Context *cnt)
+Ast *parse_decl(Context *cnt)
 {
 	/* is value declaration? */
 	Token *tok_ident = tokens_peek(cnt->tokens);
@@ -2379,8 +2321,7 @@ parse_decl(Context *cnt)
 	return decl;
 }
 
-Ast *
-parse_expr_call(Context *cnt, Ast *prev)
+Ast *parse_expr_call(Context *cnt, Ast *prev)
 {
 	if (!prev) return NULL;
 
@@ -2430,16 +2371,14 @@ arg:
 	return call;
 }
 
-Ast *
-parse_expr_null(Context *cnt)
+Ast *parse_expr_null(Context *cnt)
 {
 	Token *tok_null = tokens_consume_if(cnt->tokens, SYM_NULL);
 	if (!tok_null) return NULL;
 	return ast_create_node(cnt->ast_arena, AST_EXPR_NULL, tok_null, SCOPE_GET(cnt));
 }
 
-Ast *
-parse_unrecheable(Context *cnt)
+Ast *parse_unrecheable(Context *cnt)
 {
 	Token *tok = tokens_consume_if(cnt->tokens, SYM_UNREACHABLE);
 	if (!tok) return NULL;
@@ -2447,8 +2386,7 @@ parse_unrecheable(Context *cnt)
 	return ast_create_node(cnt->ast_arena, AST_UNREACHABLE, tok, SCOPE_GET(cnt));
 }
 
-Ast *
-parse_expr_type(Context *cnt)
+Ast *parse_expr_type(Context *cnt)
 {
 	Token *tok  = tokens_peek(cnt->tokens);
 	Ast *  type = NULL;
@@ -2473,8 +2411,7 @@ parse_expr_type(Context *cnt)
 	return NULL;
 }
 
-Ast *
-parse_block(Context *cnt, bool create_scope)
+Ast *parse_block(Context *cnt, bool create_scope)
 {
 	Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
 	if (!tok_begin) return NULL;
@@ -2582,8 +2519,7 @@ NEXT:
 	return block;
 }
 
-void
-parse_ublock_content(Context *cnt, Ast *ublock)
+void parse_ublock_content(Context *cnt, Ast *ublock)
 {
 	BL_ASSERT(ublock->kind == AST_UBLOCK);
 	ublock->data.ublock.nodes = tarray_new(sizeof(Ast *));
@@ -2626,8 +2562,7 @@ NEXT:
 	}
 }
 
-void
-parser_run(Assembly *assembly, Unit *unit)
+void parser_run(Assembly *assembly, Unit *unit)
 {
 	BL_ASSERT(assembly->gscope && "Missing global scope for assembly.");
 

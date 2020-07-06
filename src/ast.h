@@ -44,16 +44,18 @@ typedef enum {
 } AstKind;
 
 typedef enum {
-	FLAG_EXTERN      = 1 << 0, /* methods marked as extern */
-	FLAG_TEST        = 1 << 1, /* test case */
-	FLAG_COMPILER    = 1 << 2, /* compiler internal */
-	FLAG_PRIVATE     = 1 << 3, /* declared in private scope */
-	FLAG_INLINE      = 1 << 4, /* inline function */
-	FLAG_NO_INLINE   = 1 << 5, /* no inline function */
-	FLAG_ENTRY       = 1 << 6, /* marking entry point function */
-	FLAG_BUILD_ENTRY = 1 << 7, /* marking build entry point function */
-	FLAG_NO_INIT     = 1 << 8, /* no default initialization */
-	FLAG_INTRINSIC   = 1 << 9, /* intrinsics declaration */
+	FLAG_EXTERN = 1 << 0, /* methods marked as extern */
+	FLAG_TEST   = 1 << 1,
+	/* test case */             // @INCOMPLETE: remove
+	FLAG_COMPILER    = 1 << 2,  /* compiler internal */
+	FLAG_PRIVATE     = 1 << 3,  /* declared in private scope */
+	FLAG_INLINE      = 1 << 4,  /* inline function */
+	FLAG_NO_INLINE   = 1 << 5,  /* no inline function */
+	FLAG_ENTRY       = 1 << 6,  /* marking entry point function */
+	FLAG_BUILD_ENTRY = 1 << 7,  /* marking build entry point function */
+	FLAG_NO_INIT     = 1 << 8,  /* no default initialization */
+	FLAG_INTRINSIC   = 1 << 9,  /* intrinsics declaration */
+	FLAG_TEST_FN     = 1 << 10, /* intrinsics declaration */
 } AstFlag;
 
 /* map symbols to binary operation kind */
@@ -229,14 +231,6 @@ struct AstTypeRef {
 	Ast *ident;
 };
 
-struct AstExprFile {
-	const char *filename;
-};
-
-struct AstExprLine {
-	s32 line;
-};
-
 struct AstExprType {
 	Ast *type;
 };
@@ -363,58 +357,46 @@ struct Ast {
 #endif
 };
 
-void
-ast_arena_init(Arena *arena);
+void ast_arena_init(Arena *arena);
 
-void
-ast_arena_terminate(Arena *arena);
+void ast_arena_terminate(Arena *arena);
 
-void
-ast_small_array_arena_init(struct Arena *arena);
+void ast_small_array_arena_init(struct Arena *arena);
 
-static INLINE bool
-ast_binop_is_assign(BinopKind op)
+static INLINE bool ast_binop_is_assign(BinopKind op)
 {
 	return op >= BINOP_ASSIGN && op <= BINOP_MOD_ASSIGN;
 }
 
-static INLINE bool
-ast_binop_is_logic(BinopKind op)
+static INLINE bool ast_binop_is_logic(BinopKind op)
 {
 	return op >= BINOP_EQ && op <= BINOP_LOGIC_OR;
 }
 
-static INLINE bool
-ast_is_expr(Ast *node)
+static INLINE bool ast_is_expr(Ast *node)
 {
 	BL_ASSERT(node);
 	return node->kind > _AST_EXPR_FIRST && node->kind < _AST_EXPR_LAST;
 }
 
-static INLINE bool
-ast_is_decl(Ast *node)
+static INLINE bool ast_is_decl(Ast *node)
 {
 	BL_ASSERT(node);
 	return node->kind > _AST_DECL_FIRST && node->kind < _AST_DECL_LAST;
 }
 
-static INLINE bool
-ast_is_type(Ast *node)
+static INLINE bool ast_is_type(Ast *node)
 {
 	BL_ASSERT(node);
 	return node->kind > _AST_TYPE_FIRST && node->kind < _AST_TYPE_LAST;
 }
 
-Ast *
-ast_create_node(struct Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope);
+Ast *ast_create_node(struct Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope);
 
-const char *
-ast_binop_to_str(BinopKind op);
+const char *ast_binop_to_str(BinopKind op);
 
-const char *
-ast_unop_to_str(UnopKind op);
+const char *ast_unop_to_str(UnopKind op);
 
-const char *
-ast_get_name(const Ast *n);
+const char *ast_get_name(const Ast *n);
 
 #endif

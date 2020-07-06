@@ -81,11 +81,11 @@ typedef struct Assembly {
 	} MIR;
 
 	struct {
-		LLVMModuleRef        module;     /* LLVM Module. */
-		LLVMContextRef       cnt;        /* LLVM Context. */
-		LLVMTargetDataRef    TD;         /* LLVM Target data. */
-		LLVMTargetMachineRef TM;         /* LLVM Machine. */
-		char *               triple;     /* LLVM triple. */
+		LLVMModuleRef        module; /* LLVM Module. */
+		LLVMContextRef       cnt;    /* LLVM Context. */
+		LLVMTargetDataRef    TD;     /* LLVM Target data. */
+		LLVMTargetMachineRef TM;     /* LLVM Machine. */
+		char *               triple; /* LLVM triple. */
 	} llvm;
 
 	/* DynCall/Lib data used for external method execution in compile time */
@@ -98,55 +98,19 @@ typedef struct Assembly {
 	Scope *    gscope;      /* global scope of the assembly */
 	MirFn *    build_entry; /* Set for build assembly. */
 
+	struct {
+		TArray  cases;    /* Optionally contains list of test case functions. */
+		MirVar *meta_var; /* Optional variable containing runtime test case information. */
+	} testing;
+
 	/* Builtins */
 	struct BuiltinTypes {
-		MirType *t_type;
-		MirType *t_s8;
-		MirType *t_s16;
-		MirType *t_s32;
-		MirType *t_s64;
-		MirType *t_u8;
-		MirType *t_u16;
-		MirType *t_u32;
-		MirType *t_u64;
-		MirType *t_usize;
-		MirType *t_bool;
-		MirType *t_f32;
-		MirType *t_f64;
-		MirType *t_string;
-		MirType *t_void;
-		MirType *t_u8_ptr;
-		MirType *t_string_ptr;
-		MirType *t_string_slice;
-		MirType *t_resolve_type_fn;
-		MirType *t_test_case_fn;
-		MirType *t_Any;
-		MirType *t_Any_ptr;
-		MirType *t_TypeKind;
-		MirType *t_TypeInfo;
-		MirType *t_TypeInfoType;
-		MirType *t_TypeInfoVoid;
-		MirType *t_TypeInfoInt;
-		MirType *t_TypeInfoReal;
-		MirType *t_TypeInfoFn;
-		MirType *t_TypeInfoPtr;
-		MirType *t_TypeInfoArray;
-		MirType *t_TypeInfoStruct;
-		MirType *t_TypeInfoEnum;
-		MirType *t_TypeInfoNull;
-		MirType *t_TypeInfoBool;
-		MirType *t_TypeInfoString;
-		MirType *t_TypeInfoStructMember;
-		MirType *t_TypeInfoEnumVariant;
-		MirType *t_TypeInfoFnArg;
-		MirType *t_TypeInfo_ptr;
-		MirType *t_TypeInfo_slice;
-		MirType *t_TypeInfoStructMembers_slice;
-		MirType *t_TypeInfoEnumVariants_slice;
-		MirType *t_TypeInfoFnArgs_slice;
-
+#define GEN_BUILTIN_TYPES
+#include "assembly.inc"
+#undef GEN_BUILTIN_TYPES
 		bool is_rtti_ready;
 		bool is_any_ready;
+		bool is_test_cases_ready;
 	} builtin_types;
 } Assembly;
 
@@ -154,63 +118,49 @@ typedef struct NativeLib {
 	u32           hash;
 	DLLib *       handle;
 	struct Token *linked_from;
-	char *  user_name;
+	char *        user_name;
 	char *        filename;
 	char *        filepath;
 	char *        dir;
 	bool          is_internal;
 } NativeLib;
 
-Assembly *
-assembly_new(const char *name);
+Assembly *assembly_new(const char *name);
 
-void
-assembly_delete(Assembly *assembly);
+void assembly_delete(Assembly *assembly);
 
-AssemblyOptions
-assembly_get_default_options(void);
+AssemblyOptions assembly_get_default_options(void);
 
-void
-assembly_add_unit(Assembly *assembly, Unit *unit);
+void assembly_add_unit(Assembly *assembly, Unit *unit);
 
-void
-assembly_add_lib_path(Assembly *assembly, const char *path);
+void assembly_add_lib_path(Assembly *assembly, const char *path);
 
-void
-assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
+void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
 
-bool
-assembly_add_unit_unique(Assembly *assembly, Unit *unit);
+bool assembly_add_unit_unique(Assembly *assembly, Unit *unit);
 
-DCpointer
-assembly_find_extern(Assembly *assembly, const char *symbol);
+DCpointer assembly_find_extern(Assembly *assembly, const char *symbol);
 
-void
-assembly_apply_options(Assembly *assembly);
+void assembly_apply_options(Assembly *assembly);
 
-void
-assembly_set_output_dir(Assembly *assembly, const char *dir);
+void assembly_set_output_dir(Assembly *assembly, const char *dir);
 
-static INLINE bool
-assembly_has_rtti(Assembly *assembly, u64 type_id)
+static INLINE bool assembly_has_rtti(Assembly *assembly, u64 type_id)
 {
 	return thtbl_has_key(&assembly->MIR.RTTI_table, type_id);
 }
 
-static INLINE MirVar *
-assembly_get_rtti(Assembly *assembly, u64 type_id)
+static INLINE MirVar *assembly_get_rtti(Assembly *assembly, u64 type_id)
 {
 	return thtbl_at(MirVar *, &assembly->MIR.RTTI_table, type_id);
 }
 
-static INLINE void
-assembly_add_rtti(Assembly *assembly, u64 type_id, MirVar *rtti_var)
+static INLINE void assembly_add_rtti(Assembly *assembly, u64 type_id, MirVar *rtti_var)
 {
 	thtbl_insert(&assembly->MIR.RTTI_table, type_id, rtti_var);
 }
 
-static INLINE const char *
-build_mode_to_str(BuildMode mode)
+static INLINE const char *build_mode_to_str(BuildMode mode)
 {
 	switch (mode) {
 	case BUILD_MODE_DEBUG:
@@ -226,8 +176,7 @@ build_mode_to_str(BuildMode mode)
 	BL_ABORT("Invalid build mode");
 }
 
-static INLINE s32
-get_opt_level_for_build_mode(BuildMode mode)
+static INLINE s32 get_opt_level_for_build_mode(BuildMode mode)
 {
 	switch (mode) {
 	case BUILD_MODE_DEBUG:

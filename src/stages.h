@@ -37,47 +37,34 @@
 /*
  * per unit
  */
-void
-file_loader_run(Unit *unit);
+void file_loader_run(Unit *unit);
 
-void
-lexer_run(Unit *unit);
+void lexer_run(Unit *unit);
 
-void
-token_printer_run(Unit *unit);
+void token_printer_run(Unit *unit);
 
-void
-parser_run(Assembly *assembly, Unit *unit);
+void parser_run(Assembly *assembly, Unit *unit);
 
 /* conf */
-void
-conf_parser_run(Unit *unit);
+void conf_parser_run(Unit *unit);
 
 /*
  * per assembly
  */
-void
-ast_printer_run(Assembly *assembly, FILE *stream);
+void ast_printer_run(Assembly *assembly, FILE *stream);
 
-void
-ir_run(Assembly *assembly);
+void ir_run(Assembly *assembly);
 
-void
-ir_opt_run(Assembly *assembly);
+void ir_opt_run(Assembly *assembly);
 
-void
-obj_writer_run(Assembly *assembly);
+void obj_writer_run(Assembly *assembly);
 
-void
-linker_run(Assembly *assembly);
+void linker_run(Assembly *assembly);
 
-void
-bc_writer_run(Assembly *assembly);
+void bc_writer_run(Assembly *assembly);
 
-void
-native_bin_run(Assembly *assembly);
+void native_bin_run(Assembly *assembly);
 
-void
-mir_writer_run(Assembly *assembly);
+void mir_writer_run(Assembly *assembly);
 
 #endif

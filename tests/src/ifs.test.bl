@@ -1,10 +1,9 @@
-#load "std/debug.bl"
-
-#test "ifs" {
+#private
+ifs :: fn () #test2 {
     b := true;
     if b {
         if !b {
-        unreachable;
+          unreachable;
         }
     } else {
         unreachable;

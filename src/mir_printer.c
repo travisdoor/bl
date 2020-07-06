@@ -42,11 +42,9 @@ typedef struct {
 	FILE *    stream;
 } Context;
 
-static void
-print_comptime_value_or_id(Context *cnt, MirInstr *instr);
+static void print_comptime_value_or_id(Context *cnt, MirInstr *instr);
 
-static INLINE void
-print_type(Context *cnt, MirType *type, bool aligned, bool prefer_name)
+static INLINE void print_type(Context *cnt, MirType *type, bool aligned, bool prefer_name)
 {
 	char tmp[256];
 	mir_type_to_str(tmp, TARRAY_SIZE(tmp), type, prefer_name);
@@ -56,8 +54,7 @@ print_type(Context *cnt, MirType *type, bool aligned, bool prefer_name)
 		fprintf(cnt->stream, "%s", tmp);
 }
 
-static INLINE void
-print_instr_head(Context *cnt, MirInstr *instr, const char *name)
+static INLINE void print_instr_head(Context *cnt, MirInstr *instr, const char *name)
 {
 	if (!instr) return;
 
@@ -77,8 +74,7 @@ print_instr_head(Context *cnt, MirInstr *instr, const char *name)
 	fprintf(cnt->stream, " %s ", name);
 }
 
-static INLINE void
-print_flags(Context *cnt, u32 flags)
+static INLINE void print_flags(Context *cnt, u32 flags)
 {
 	if (flags == 0) return;
 
@@ -94,8 +90,7 @@ print_flags(Context *cnt, u32 flags)
 
 #define print_const_value(C, V) _print_const_value((C), (V)->type, (V)->data)
 
-static INLINE void
-_print_const_value(Context *cnt, MirType *type, VMStackPtr value)
+static INLINE void _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 {
 	if (!type) return;
 	if (!value) {
@@ -245,129 +240,90 @@ _print_const_value(Context *cnt, MirType *type, VMStackPtr value)
 	}
 }
 
-static void
-print_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
+static void print_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
 
-static void
-print_instr_toany(Context *cnt, MirInstrToAny *toany);
+static void print_instr_toany(Context *cnt, MirInstrToAny *toany);
 
-static void
-print_instr_phi(Context *cnt, MirInstrPhi *phi);
+static void print_instr_phi(Context *cnt, MirInstrPhi *phi);
 
-static void
-print_instr_cast(Context *cnt, MirInstrCast *cast);
+static void print_instr_cast(Context *cnt, MirInstrCast *cast);
 
-static void
-print_instr_sizeof(Context *cnt, MirInstrSizeof *szof);
+static void print_instr_sizeof(Context *cnt, MirInstrSizeof *szof);
 
-static void
-print_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
+static void print_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
 
-static void
-print_instr_alignof(Context *cnt, MirInstrAlignof *szof);
+static void print_instr_test_cases(Context *cnt, MirInstrTestCases *tc);
 
-static void
-print_instr_load(Context *cnt, MirInstrLoad *load);
+static void print_instr_alignof(Context *cnt, MirInstrAlignof *szof);
 
-static void
-print_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
+static void print_instr_load(Context *cnt, MirInstrLoad *load);
 
-static void
-print_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
+static void print_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
 
-static void
-print_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
+static void print_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
 
-static void
-print_instr_cond_br(Context *cnt, MirInstrCondBr *cond_br);
+static void print_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
 
-static void
-print_instr_compound(Context *cnt, MirInstrCompound *init);
+static void print_instr_cond_br(Context *cnt, MirInstrCondBr *cond_br);
 
-static void
-print_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
+static void print_instr_compound(Context *cnt, MirInstrCompound *init);
 
-static void
-print_instr_br(Context *cnt, MirInstrBr *br);
+static void print_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
 
-static void
-print_instr_switch(Context *cnt, MirInstrSwitch *sw);
+static void print_instr_br(Context *cnt, MirInstrBr *br);
 
-static void
-print_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
+static void print_instr_switch(Context *cnt, MirInstrSwitch *sw);
 
-static void
-print_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
+static void print_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
 
-static void
-print_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn);
+static void print_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
 
-static void
-print_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct);
+static void print_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn);
 
-static void
-print_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum);
+static void print_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct);
 
-static void
-print_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr);
+static void print_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum);
 
-static void
-print_instr_type_array(Context *cnt, MirInstrTypeArray *type_array);
+static void print_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr);
 
-static void
-print_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice);
+static void print_instr_type_array(Context *cnt, MirInstrTypeArray *type_array);
 
-static void
-print_instr_type_dynarr(Context *cnt, MirInstrTypeDynArr *type_dynarr);
+static void print_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice);
 
-static void
-print_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs);
+static void print_instr_type_dynarr(Context *cnt, MirInstrTypeDynArr *type_dynarr);
 
-static void
-print_instr_block(Context *cnt, MirInstrBlock *block);
+static void print_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs);
 
-static void
-print_instr_decl_var(Context *cnt, MirInstrDeclVar *decl);
+static void print_instr_block(Context *cnt, MirInstrBlock *block);
 
-static void
-print_instr_decl_member(Context *cnt, MirInstrDeclMember *decl);
+static void print_instr_decl_var(Context *cnt, MirInstrDeclVar *decl);
 
-static void
-print_instr_decl_variant(Context *cnt, MirInstrDeclVariant *var);
+static void print_instr_decl_member(Context *cnt, MirInstrDeclMember *decl);
 
-static void
-print_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl);
+static void print_instr_decl_variant(Context *cnt, MirInstrDeclVariant *var);
 
-static void
-print_instr_const(Context *cnt, MirInstrConst *ci);
+static void print_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl);
 
-static void
-print_instr_ret(Context *cnt, MirInstrRet *ret);
+static void print_instr_const(Context *cnt, MirInstrConst *ci);
 
-static void
-print_instr_store(Context *cnt, MirInstrStore *store);
+static void print_instr_ret(Context *cnt, MirInstrRet *ret);
 
-static void
-print_instr_binop(Context *cnt, MirInstrBinop *binop);
+static void print_instr_store(Context *cnt, MirInstrStore *store);
 
-static void
-print_instr_call(Context *cnt, MirInstrCall *call);
+static void print_instr_binop(Context *cnt, MirInstrBinop *binop);
 
-static void
-print_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
+static void print_instr_call(Context *cnt, MirInstrCall *call);
 
-static void
-print_instr_unop(Context *cnt, MirInstrUnop *unop);
+static void print_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 
-static void
-print_instr_arg(Context *cnt, MirInstrArg *arg);
+static void print_instr_unop(Context *cnt, MirInstrUnop *unop);
 
-static void
-print_instr(Context *cnt, MirInstr *instr);
+static void print_instr_arg(Context *cnt, MirInstrArg *arg);
+
+static void print_instr(Context *cnt, MirInstr *instr);
 
 /* impl */
-void
-print_comptime_value_or_id(Context *cnt, MirInstr *instr)
+void print_comptime_value_or_id(Context *cnt, MirInstr *instr)
 {
 	if (!instr) {
 		fprintf(cnt->stream, "<invalid>");
@@ -388,8 +344,7 @@ print_comptime_value_or_id(Context *cnt, MirInstr *instr)
 	print_const_value(cnt, &instr->value);
 }
 
-void
-print_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
+void print_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 {
 	print_instr_head(cnt, &type_fn->base, "const fn");
 	fprintf(cnt->stream, "(");
@@ -408,8 +363,7 @@ print_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 		fprintf(cnt->stream, " %%%llu", (unsigned long long)type_fn->ret_type->id);
 }
 
-void
-print_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
+void print_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
 {
 	print_instr_head(cnt, &si->base, "setinit");
 	print_comptime_value_or_id(cnt, si->src);
@@ -422,8 +376,7 @@ print_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
 	}
 }
 
-void
-print_instr_phi(Context *cnt, MirInstrPhi *phi)
+void print_instr_phi(Context *cnt, MirInstrPhi *phi)
 {
 	print_instr_head(cnt, &phi->base, "phi");
 
@@ -452,15 +405,13 @@ print_instr_phi(Context *cnt, MirInstrPhi *phi)
 	}
 }
 
-void
-print_instr_toany(Context *cnt, MirInstrToAny *toany)
+void print_instr_toany(Context *cnt, MirInstrToAny *toany)
 {
 	print_instr_head(cnt, &toany->base, "toany");
 	print_comptime_value_or_id(cnt, toany->expr);
 }
 
-void
-print_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
+void print_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 {
 	print_instr_head(cnt, &type_struct->base, "const struct");
 	fprintf(cnt->stream, "{");
@@ -476,8 +427,7 @@ print_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct)
 	fprintf(cnt->stream, "}");
 }
 
-void
-print_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
+void print_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 {
 	print_instr_head(cnt, &type_enum->base, "const enum");
 	fprintf(cnt->stream, "{");
@@ -493,15 +443,13 @@ print_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 	fprintf(cnt->stream, "}");
 }
 
-void
-print_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
+void print_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 {
 	print_instr_head(cnt, &type_ptr->base, "const");
 	fprintf(cnt->stream, "*%%%llu", (unsigned long long)type_ptr->type->id);
 }
 
-void
-print_instr_type_array(Context *cnt, MirInstrTypeArray *type_array)
+void print_instr_type_array(Context *cnt, MirInstrTypeArray *type_array)
 {
 	print_instr_head(cnt, &type_array->base, "const");
 	fprintf(cnt->stream,
@@ -510,30 +458,26 @@ print_instr_type_array(Context *cnt, MirInstrTypeArray *type_array)
 	        (unsigned long long)type_array->elem_type->id);
 }
 
-void
-print_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
+void print_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice)
 {
 	print_instr_head(cnt, &type_slice->base, "const");
 	fprintf(cnt->stream, "[]%%%llu", (unsigned long long)type_slice->elem_type->id);
 }
 
-void
-print_instr_type_dynarr(Context *cnt, MirInstrTypeDynArr *type_dynarr)
+void print_instr_type_dynarr(Context *cnt, MirInstrTypeDynArr *type_dynarr)
 {
 	print_instr_head(cnt, &type_dynarr->base, "const");
 	fprintf(cnt->stream, "[..]%%%llu", (unsigned long long)type_dynarr->elem_type->id);
 }
 
-void
-print_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
+void print_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs)
 {
 	print_instr_head(cnt, &type_vargs->base, "const");
 	if (!type_vargs->elem_type) return;
 	fprintf(cnt->stream, "...%%%llu", (unsigned long long)type_vargs->elem_type->id);
 }
 
-void
-print_instr_cast(Context *cnt, MirInstrCast *cast)
+void print_instr_cast(Context *cnt, MirInstrCast *cast)
 {
 	switch (cast->op) {
 	case MIR_CAST_NONE:
@@ -586,8 +530,7 @@ print_instr_cast(Context *cnt, MirInstrCast *cast)
 	fprintf(cnt->stream, "%%%llu", (unsigned long long)cast->expr->id);
 }
 
-void
-print_instr_compound(Context *cnt, MirInstrCompound *init)
+void print_instr_compound(Context *cnt, MirInstrCompound *init)
 {
 	print_instr_head(cnt, &init->base, "compound");
 	if (init->type) {
@@ -613,8 +556,7 @@ print_instr_compound(Context *cnt, MirInstrCompound *init)
 	if (init->is_naked) fprintf(cnt->stream, " /* naked */");
 }
 
-void
-print_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
+void print_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 {
 	print_instr_head(cnt, &vargs->base, "vargs");
 	print_type(cnt, vargs->type, false, true);
@@ -634,31 +576,32 @@ print_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
 	fprintf(cnt->stream, "}");
 }
 
-void
-print_instr_sizeof(Context *cnt, MirInstrSizeof *szof)
+void print_instr_sizeof(Context *cnt, MirInstrSizeof *szof)
 {
 	print_instr_head(cnt, &szof->base, "sizeof");
 	fprintf(cnt->stream, " ");
 	print_comptime_value_or_id(cnt, szof->expr);
 }
 
-void
-print_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
+void print_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
 	print_instr_head(cnt, &type_info->base, "typeinfo");
 	print_comptime_value_or_id(cnt, type_info->expr);
 }
 
-void
-print_instr_alignof(Context *cnt, MirInstrAlignof *szof)
+void print_instr_test_cases(Context *cnt, MirInstrTestCases *tc)
+{
+	print_instr_head(cnt, &tc->base, "testcases");
+}
+
+void print_instr_alignof(Context *cnt, MirInstrAlignof *szof)
 {
 	print_instr_head(cnt, &szof->base, "alignof");
 	fprintf(cnt->stream, " ");
 	print_comptime_value_or_id(cnt, szof->expr);
 }
 
-void
-print_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
+void print_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 {
 	print_instr_head(cnt, &elem_ptr->base, "elemptr");
 	fprintf(cnt->stream, "%%%llu[", (unsigned long long)elem_ptr->arr_ptr->id);
@@ -666,8 +609,7 @@ print_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 	fprintf(cnt->stream, "]");
 }
 
-void
-print_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
+void print_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 {
 	print_instr_head(cnt, &member_ptr->base, "memberptr");
 	if (!member_ptr->target_ptr) {
@@ -698,8 +640,7 @@ print_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 	}
 }
 
-void
-print_instr_unop(Context *cnt, MirInstrUnop *unop)
+void print_instr_unop(Context *cnt, MirInstrUnop *unop)
 {
 	print_instr_head(cnt, &unop->base, "unop");
 
@@ -708,8 +649,7 @@ print_instr_unop(Context *cnt, MirInstrUnop *unop)
 	print_comptime_value_or_id(cnt, unop->expr);
 }
 
-void
-print_instr_cond_br(Context *cnt, MirInstrCondBr *cond_br)
+void print_instr_cond_br(Context *cnt, MirInstrCondBr *cond_br)
 {
 	print_instr_head(cnt, &cond_br->base, "br");
 	print_comptime_value_or_id(cnt, cond_br->cond);
@@ -721,21 +661,18 @@ print_instr_cond_br(Context *cnt, MirInstrCondBr *cond_br)
 	        (unsigned long long)cond_br->else_block->base.id);
 }
 
-void
-print_instr_arg(Context *cnt, MirInstrArg *arg)
+void print_instr_arg(Context *cnt, MirInstrArg *arg)
 {
 	print_instr_head(cnt, &arg->base, "arg");
 	fprintf(cnt->stream, "$%u", arg->i);
 }
 
-void
-print_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
+void print_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
 	print_instr_head(cnt, &unr->base, "unreachable");
 }
 
-void
-print_instr_br(Context *cnt, MirInstrBr *br)
+void print_instr_br(Context *cnt, MirInstrBr *br)
 {
 	print_instr_head(cnt, &br->base, "br");
 	fprintf(cnt->stream,
@@ -744,8 +681,7 @@ print_instr_br(Context *cnt, MirInstrBr *br)
 	        (unsigned long long)br->then_block->base.id);
 }
 
-void
-print_instr_switch(Context *cnt, MirInstrSwitch *sw)
+void print_instr_switch(Context *cnt, MirInstrSwitch *sw)
 {
 	print_instr_head(cnt, &sw->base, "switch");
 	print_comptime_value_or_id(cnt, sw->value);
@@ -770,22 +706,19 @@ print_instr_switch(Context *cnt, MirInstrSwitch *sw)
 	        (unsigned long long)sw->default_block->base.id);
 }
 
-void
-print_instr_load(Context *cnt, MirInstrLoad *load)
+void print_instr_load(Context *cnt, MirInstrLoad *load)
 {
 	print_instr_head(cnt, &load->base, "load");
 	print_comptime_value_or_id(cnt, load->src);
 }
 
-void
-print_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
+void print_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 {
 	print_instr_head(cnt, &addrof->base, "addrof");
 	fprintf(cnt->stream, "%%%llu", (unsigned long long)addrof->src->id);
 }
 
-void
-print_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
+void print_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
 	MirVar *var = decl->var;
 	BL_ASSERT(var);
@@ -821,8 +754,7 @@ print_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 	print_flags(cnt, var->flags);
 }
 
-void
-print_instr_decl_variant(Context *cnt, MirInstrDeclVariant *var)
+void print_instr_decl_variant(Context *cnt, MirInstrDeclVariant *var)
 {
 	print_instr_head(cnt, &var->base, "declvariant");
 	BL_ASSERT(var->variant);
@@ -838,8 +770,7 @@ print_instr_decl_variant(Context *cnt, MirInstrDeclVariant *var)
 	}
 }
 
-void
-print_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
+void print_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
 {
 	print_instr_head(cnt, &decl->base, "declarg");
 
@@ -850,8 +781,7 @@ print_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
 	print_comptime_value_or_id(cnt, decl->type);
 }
 
-void
-print_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
+void print_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
 {
 	print_instr_head(cnt, &decl->base, "declmember");
 
@@ -862,8 +792,7 @@ print_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
 	print_comptime_value_or_id(cnt, decl->type);
 }
 
-void
-print_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
+void print_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
 	print_instr_head(cnt, &ref->base, "declref");
 
@@ -872,8 +801,7 @@ print_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 	if (ref->accept_incomplete_type) fprintf(cnt->stream, " /* accept incomplete */");
 }
 
-void
-print_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref)
+void print_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref)
 {
 	print_instr_head(cnt, &ref->base, "declref");
 
@@ -881,15 +809,13 @@ print_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref)
 	fprintf(cnt->stream, " /* direct */");
 }
 
-void
-print_instr_const(Context *cnt, MirInstrConst *cnst)
+void print_instr_const(Context *cnt, MirInstrConst *cnst)
 {
 	print_instr_head(cnt, &cnst->base, "const");
 	print_const_value(cnt, &cnst->base.value);
 }
 
-void
-print_instr_call(Context *cnt, MirInstrCall *call)
+void print_instr_call(Context *cnt, MirInstrCall *call)
 {
 	print_instr_head(cnt, &call->base, "call");
 
@@ -913,15 +839,13 @@ print_instr_call(Context *cnt, MirInstrCall *call)
 	fprintf(cnt->stream, ")");
 }
 
-void
-print_instr_ret(Context *cnt, MirInstrRet *ret)
+void print_instr_ret(Context *cnt, MirInstrRet *ret)
 {
 	print_instr_head(cnt, &ret->base, "ret");
 	if (ret->value) print_comptime_value_or_id(cnt, ret->value);
 }
 
-void
-print_instr_store(Context *cnt, MirInstrStore *store)
+void print_instr_store(Context *cnt, MirInstrStore *store)
 {
 	print_instr_head(cnt, &store->base, "store");
 	BL_ASSERT(store->src && store->src);
@@ -930,8 +854,7 @@ print_instr_store(Context *cnt, MirInstrStore *store)
 	// print_comptime_value_or_id(cnt,store->dest);
 }
 
-void
-print_instr_binop(Context *cnt, MirInstrBinop *binop)
+void print_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
 	print_instr_head(cnt, &binop->base, "binop");
 	BL_ASSERT(binop->lhs && binop->rhs);
@@ -941,8 +864,7 @@ print_instr_binop(Context *cnt, MirInstrBinop *binop)
 	print_comptime_value_or_id(cnt, binop->rhs);
 }
 
-void
-print_instr_block(Context *cnt, MirInstrBlock *block)
+void print_instr_block(Context *cnt, MirInstrBlock *block)
 {
 	const bool is_global = !block->owner_fn;
 	if (block->base.prev || is_global) fprintf(cnt->stream, "\n");
@@ -978,8 +900,7 @@ print_instr_block(Context *cnt, MirInstrBlock *block)
 	}
 }
 
-void
-print_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
+void print_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
 	MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
 	BL_ASSERT(fn);
@@ -1016,8 +937,7 @@ print_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 }
 
 /* public */
-void
-print_instr(Context *cnt, MirInstr *instr)
+void print_instr(Context *cnt, MirInstr *instr)
 {
 #if !PRINT_ANALYZED_COMPTIMES
 	if ((instr->owner_block || instr->kind == MIR_INSTR_BLOCK) &&
@@ -1181,8 +1101,7 @@ print_instr(Context *cnt, MirInstr *instr)
 	fprintf(cnt->stream, "\n");
 }
 
-void
-mir_print_assembly(Assembly *assembly, FILE *stream)
+void mir_print_assembly(Assembly *assembly, FILE *stream)
 {
 	Context cnt = {.assembly = assembly, .stream = stream};
 

@@ -42,6 +42,10 @@
 #define MIR_SLICE_LEN_INDEX 0
 #define MIR_SLICE_PTR_INDEX 1
 
+/* String member indices */
+#define MIR_STRING_LEN_INDEX MIR_SLICE_LEN_INDEX
+#define MIR_STRING_PTR_INDEX MIR_SLICE_PTR_INDEX
+
 /* Dynamic array member indices */
 #define MIR_DYNARR_LEN_INDEX MIR_SLICE_LEN_INDEX
 #define MIR_DYNARR_PTR_INDEX MIR_SLICE_PTR_INDEX
@@ -109,6 +113,7 @@ typedef struct MirInstrPhi            MirInstrPhi;
 typedef struct MirInstrToAny          MirInstrToAny;
 typedef struct MirInstrSwitch         MirInstrSwitch;
 typedef struct MirInstrSetInitializer MirInstrSetInitializer;
+typedef struct MirInstrTestCases      MirInstrTestCases;
 
 typedef struct MirArenas {
 	Arena instr;
@@ -247,7 +252,7 @@ struct MirFn {
 
 	/* Return instruction of function. */
 	MirInstrRet *    terminal_instr;
-	struct Location *first_unrechable_loc;
+	struct Location *first_unreachable_loc;
 
 	/* dyncall external context */
 	struct {
@@ -700,6 +705,10 @@ struct MirInstrTypeInfo {
 	MirType * rtti_type;
 };
 
+struct MirInstrTestCases {
+	MirInstr base;
+};
+
 struct MirInstrTypeKind {
 	MirInstr base;
 };
@@ -731,22 +740,19 @@ struct MirInstrSwitch {
 };
 
 /* public */
-static INLINE bool
-mir_is_pointer_type(MirType *type)
+static bool mir_is_pointer_type(const MirType *type)
 {
 	BL_ASSERT(type);
 	return type->kind == MIR_TYPE_PTR;
 }
 
-static INLINE MirType *
-              mir_deref_type(MirType *ptr)
+static MirType *mir_deref_type(const MirType *ptr)
 {
 	if (!mir_is_pointer_type(ptr)) return NULL;
 	return ptr->data.ptr.expr;
 }
 
-static INLINE bool
-mir_is_composit_type(MirType *type)
+static bool mir_is_composit_type(const MirType *type)
 {
 	switch (type->kind) {
 	case MIR_TYPE_STRUCT:
@@ -755,7 +761,6 @@ mir_is_composit_type(MirType *type)
 	case MIR_TYPE_VARGS:
 	case MIR_TYPE_DYNARR:
 		return true;
-		break;
 
 	default:
 		break;
@@ -764,8 +769,7 @@ mir_is_composit_type(MirType *type)
 	return false;
 }
 
-static INLINE MirType *
-              mir_get_struct_elem_type(MirType *type, u32 i)
+static MirType *mir_get_struct_elem_type(const MirType *type, u32 i)
 {
 	BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
 	TSmallArray_MemberPtr *members = type->data.strct.members;
@@ -774,8 +778,7 @@ static INLINE MirType *
 	return members->data[i]->type;
 }
 
-static INLINE MirType *
-              mir_get_fn_arg_type(MirType *type, u32 i)
+static MirType *mir_get_fn_arg_type(const MirType *type, u32 i)
 {
 	BL_ASSERT(type->kind == MIR_TYPE_FN && "Expected function type");
 	TSmallArray_ArgPtr *args = type->data.fn.args;
@@ -786,43 +789,34 @@ static INLINE MirType *
 }
 
 /* Determinates if the instruction has compile time known value. */
-static INLINE bool
-mir_is_comptime(MirInstr *instr)
+static bool mir_is_comptime(const MirInstr *instr)
 {
 	return instr->value.is_comptime;
 }
 
-static INLINE bool
-mir_is_global_block(MirInstrBlock *instr)
+static bool mir_is_global_block(const MirInstrBlock *instr)
 {
 	return instr->owner_fn == NULL;
 }
 
 /* Determinates if the instruction is in the global block. */
-static INLINE bool
-mir_is_global(MirInstr *instr)
+static bool mir_is_global(const MirInstr *instr)
 {
 	return mir_is_global_block(instr->owner_block);
 }
 
-void
-mir_arenas_init(MirArenas *arenas);
+void mir_arenas_init(MirArenas *arenas);
 
-void
-mir_arenas_terminate(MirArenas *arenas);
+void mir_arenas_terminate(MirArenas *arenas);
 
-void
-mir_type_to_str(char *buf, usize len, MirType *type, bool prefer_name);
+void mir_type_to_str(char *buf, usize len, const MirType *type, bool prefer_name);
 
-const char *
-mir_instr_name(MirInstr *instr);
+const char *mir_instr_name(const MirInstr *instr);
 
-void
-mir_run(struct Assembly *assembly);
+void mir_run(struct Assembly *assembly);
 
 #if BL_DEBUG
-VMStackPtr
-_mir_cev_read(MirConstExprValue *value);
+VMStackPtr _mir_cev_read(MirConstExprValue *value);
 #endif
 
 #endif

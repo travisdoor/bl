@@ -1,6 +1,5 @@
-#load "std/debug.bl"
-
-#test "pointers" {
+#private
+pointers :: fn () #test2 {
   i       := 666;
   ptr     := &i;
   ptr_ptr := &ptr;
@@ -13,7 +12,7 @@
 };
 
 
-#test "null pointers" {
+null_pointers :: fn () #test2 {
   test_ptr :: fn (ptr: *s32) *s32 {
     return null;
   };
@@ -24,7 +23,7 @@
   assert(test_ptr(null) == null);
 };
 
-#test "passed pointer" {
+passed_pointer :: fn () #test2 {
   value :: 10;
   i := 0;
   

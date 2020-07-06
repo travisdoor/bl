@@ -29,8 +29,7 @@
 #include "common.h"
 #include "stages.h"
 
-void
-token_printer_run(Unit *unit)
+void token_printer_run(Unit *unit)
 {
 	TArray *tokens_arr = &unit->tokens.buf;
 

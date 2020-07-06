@@ -39,8 +39,7 @@
 
 #define MAX_LOG_MSG_SIZE 2048
 
-void
-_log(bl_log_msg_type_e t, const char *file, s32 line, const char *msg, ...)
+void _log(bl_log_msg_type_e t, const char *file, s32 line, const char *msg, ...)
 {
 	char    buffer[MAX_LOG_MSG_SIZE];
 	va_list args;
@@ -67,8 +66,7 @@ _log(bl_log_msg_type_e t, const char *file, s32 line, const char *msg, ...)
 	va_end(args);
 }
 
-void
-print_trace(void)
+void print_trace(void)
 {
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
 #include <execinfo.h>
@@ -165,8 +163,7 @@ print_trace(void)
 #endif
 }
 
-void *
-_assert_invalid_expr(const char *expr, const char *file, s32 line)
+void *_assert_invalid_expr(const char *expr, const char *file, s32 line)
 {
 	_log(LOG_ASSERT, file, line, "Required pointer '%s' is NULL.", expr);
 	print_trace();

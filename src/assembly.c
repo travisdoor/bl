@@ -48,28 +48,24 @@ union _SmallArrays {
 	TSmallArray_SwitchCase    switch_case;
 };
 
-static void
-tarray_dtor(TArray **arr)
+static void tarray_dtor(TArray **arr)
 {
 	tarray_delete(*arr);
 }
 
-static void
-small_array_dtor(TSmallArrayAny *arr)
+static void small_array_dtor(TSmallArrayAny *arr)
 {
 	tsa_terminate(arr);
 }
 
-static void
-dl_init(Assembly *assembly)
+static void dl_init(Assembly *assembly)
 {
 	DCCallVM *vm = dcNewCallVM(4096);
 	dcMode(vm, DC_CALL_C_DEFAULT);
 	assembly->dc_vm = vm;
 }
 
-static void
-llvm_init(Assembly *assembly)
+static void llvm_init(Assembly *assembly)
 {
 	if (assembly->llvm.module) BL_ABORT("Attempt to override assembly options.");
 
@@ -111,16 +107,14 @@ llvm_init(Assembly *assembly)
 	assembly->llvm.triple = triple;
 }
 
-static void
-mir_init(Assembly *assembly)
+static void mir_init(Assembly *assembly)
 {
 	mir_arenas_init(&assembly->arenas.mir);
 	tarray_init(&assembly->MIR.global_instrs, sizeof(MirInstr *));
 	thtbl_init(&assembly->MIR.RTTI_table, sizeof(MirVar *), 2048);
 }
 
-static void
-native_lib_terminate(NativeLib *lib)
+static void native_lib_terminate(NativeLib *lib)
 {
 	if (lib->handle) dlFreeLibrary(lib->handle);
 	if (lib->is_internal) return;
@@ -130,14 +124,12 @@ native_lib_terminate(NativeLib *lib)
 	free(lib->user_name);
 }
 
-static void
-dl_terminate(Assembly *assembly)
+static void dl_terminate(Assembly *assembly)
 {
 	dcFree(assembly->dc_vm);
 }
 
-static void
-llvm_terminate(Assembly *assembly)
+static void llvm_terminate(Assembly *assembly)
 {
 	LLVMDisposeModule(assembly->llvm.module);
 	LLVMDisposeTargetMachine(assembly->llvm.TM);
@@ -146,8 +138,7 @@ llvm_terminate(Assembly *assembly)
 	LLVMContextDispose(assembly->llvm.cnt);
 }
 
-static void
-mir_terminate(Assembly *assembly)
+static void mir_terminate(Assembly *assembly)
 {
 	thtbl_terminate(&assembly->MIR.RTTI_table);
 	tarray_terminate(&assembly->MIR.global_instrs);
@@ -155,8 +146,7 @@ mir_terminate(Assembly *assembly)
 	mir_arenas_terminate(&assembly->arenas.mir);
 }
 
-static void
-set_default_out_dir(Assembly *assembly)
+static void set_default_out_dir(Assembly *assembly)
 {
 	char path[PATH_MAX] = {0};
 	get_current_working_dir(&path[0], PATH_MAX);
@@ -166,8 +156,7 @@ set_default_out_dir(Assembly *assembly)
 }
 
 /* public */
-Assembly *
-assembly_new(const char *name)
+Assembly *assembly_new(const char *name)
 {
 	Assembly *assembly = bl_malloc(sizeof(Assembly));
 	memset(assembly, 0, sizeof(Assembly));
@@ -179,6 +168,7 @@ assembly_new(const char *name)
 	tstring_init(&assembly->options.out_dir);
 	tarray_init(&assembly->options.libs, sizeof(NativeLib));
 	tarray_init(&assembly->options.lib_paths, sizeof(char *));
+	tarray_init(&assembly->testing.cases, sizeof(struct MirFn *));
 	vm_init(&assembly->vm, VM_STACK_SIZE);
 
 	// set defaults
@@ -207,8 +197,7 @@ assembly_new(const char *name)
 	return assembly;
 }
 
-void
-assembly_delete(Assembly *assembly)
+void assembly_delete(Assembly *assembly)
 {
 	free(assembly->name);
 
@@ -234,6 +223,7 @@ assembly_delete(Assembly *assembly)
 
 	vm_terminate(&assembly->vm);
 
+	tarray_terminate(&assembly->testing.cases);
 	arena_terminate(&assembly->arenas.small_array);
 	arena_terminate(&assembly->arenas.array);
 	ast_arena_terminate(&assembly->arenas.ast);
@@ -247,14 +237,12 @@ assembly_delete(Assembly *assembly)
 	bl_free(assembly);
 }
 
-void
-assembly_apply_options(Assembly *assembly)
+void assembly_apply_options(Assembly *assembly)
 {
 	llvm_init(assembly);
 }
 
-void
-assembly_add_lib_path(Assembly *assembly, const char *path)
+void assembly_add_lib_path(Assembly *assembly, const char *path)
 {
 	if (!path) return;
 
@@ -264,8 +252,7 @@ assembly_add_lib_path(Assembly *assembly, const char *path)
 	tarray_push(&assembly->options.lib_paths, tmp);
 }
 
-void
-assembly_set_output_dir(Assembly *assembly, const char *_dir)
+void assembly_set_output_dir(Assembly *assembly, const char *_dir)
 {
 	if (!_dir) builder_error("Cannot create output directory.");
 
@@ -298,14 +285,12 @@ assembly_set_output_dir(Assembly *assembly, const char *_dir)
 #endif
 }
 
-void
-assembly_add_unit(Assembly *assembly, Unit *unit)
+void assembly_add_unit(Assembly *assembly, Unit *unit)
 {
 	tarray_push(&assembly->units, unit);
 }
 
-bool
-assembly_add_unit_unique(Assembly *assembly, Unit *unit)
+bool assembly_add_unit_unique(Assembly *assembly, Unit *unit)
 {
 	u64 hash = 0;
 	if (unit->filepath)
@@ -320,8 +305,7 @@ assembly_add_unit_unique(Assembly *assembly, Unit *unit)
 	return true;
 }
 
-void
-assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token)
+void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token)
 {
 	const u64 hash = thash_from_str(lib_name);
 
@@ -341,8 +325,7 @@ assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *
 	tarray_push(&assembly->options.libs, lib);
 }
 
-DCpointer
-assembly_find_extern(Assembly *assembly, const char *symbol)
+DCpointer assembly_find_extern(Assembly *assembly, const char *symbol)
 {
 	void *     handle = NULL;
 	NativeLib *lib;

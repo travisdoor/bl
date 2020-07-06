@@ -40,16 +40,14 @@ char *ENV_EXEC_DIR      = NULL;
 char *ENV_LIB_DIR       = NULL;
 char *ENV_CONF_FILEPATH = NULL;
 
-static void
-free_env(void)
+static void free_env(void)
 {
 	free(ENV_EXEC_DIR);
 	free(ENV_LIB_DIR);
 	free(ENV_CONF_FILEPATH);
 }
 
-static void
-setup_env(void)
+static void setup_env(void)
 {
 	char tmp[PATH_MAX] = {0};
 
@@ -66,8 +64,7 @@ setup_env(void)
 	ENV_CONF_FILEPATH = strdup(tmp);
 }
 
-static int
-generate_conf(void)
+static int generate_conf(void)
 {
 	char tmp[PATH_MAX] = {0};
 
@@ -91,10 +88,9 @@ generate_conf(void)
 	state = _state;                                                                            \
 	goto RELEASE;
 
-int
-main(s32 argc, char *argv[])
+int main(s32 argc, char *argv[])
 {
-	s32 state = EXIT_SUCCESS;
+	s32         state = EXIT_SUCCESS;
 	const char *help_text =
 #include "help_text.txt"
 	    ;
