@@ -33,14 +33,6 @@
 /////////////////////////////////////////////////////
 
 main :: fn () s32 {
-    //return test_run(); 
-
-    cases :: testcases();
-    loop i := 0; i < cases.len; i += 1 {
-        print("[%] name = %\n", i, cases[i].name);
-        cases[i].func();
-    }
-
-    return 0;
+    return test_run(); 
 } 
 

@@ -6,7 +6,6 @@
 	AST_IDENT,
 	AST_UBLOCK,
 	AST_BLOCK,
-	AST_TEST_CASE,
 	AST_UNREACHABLE,
 	AST_META_DATA,
 	AST_TAGS,
@@ -78,7 +77,6 @@
 	struct AstStmtDefer     stmt_defer;
 	struct AstStmtSwitch    stmt_switch;
 	struct AstStmtCase      stmt_case;
-	struct AstTestCase      test_case;
 	struct AstDecl          decl;
 	struct AstDeclEntity    decl_entity;
 	struct AstDeclArg       decl_arg;

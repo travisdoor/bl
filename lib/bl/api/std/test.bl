@@ -79,8 +79,8 @@ test_run :: fn () s32 {
     array_reserve(_queue, cases.len);
     defer array_terminate(_queue);
 
-    print("\nTesting start");
-    print("\n--------------------------------------------------------------------------------\n");
+    print("\nTesting start\n");
+    print("%\n", TEXT_LINE);
 
     loop i := 0; i < cases.len; i += 1 {
         array_push(_queue, {:TestRun: &cases[i], false, 0.});
@@ -91,8 +91,8 @@ test_run :: fn () s32 {
         os_thread_join(t);
     }
 
-    print("\nResults:");
-    print("\n--------------------------------------------------------------------------------\n");
+    print("\nResults:\n");
+    print("%\n", TEXT_LINE);
 
     fc: s64;
     loop i := 0; i < _queue.len; i += 1 {
@@ -108,8 +108,10 @@ test_run :: fn () s32 {
         perc = cast(s32) (cast(f32) (_queue.len - fc) / ((cast(f32) _queue.len) * 0.01f));
     }
 
+    print("%\n", TEXT_LINE);
     // @HACK: Cannot print percent, escape sequence cannot be easily detected here.
     print("Executed: %, passed %%.\n", _queue.len, perc, "%");
+    print("%\n", TEXT_LINE);
     return auto fc;
 }
 
@@ -120,6 +122,7 @@ TestRun :: struct {
     runtime_ms: f64;
 }
 
+TEXT_LINE :: "--------------------------------------------------------------------------------";
 _queue: [..]TestRun;
 _current: *TestRun;
 _ci: s64;

@@ -282,6 +282,25 @@ void platform_lib_name(const char *name, char *buffer, usize max_len)
 #endif
 }
 
+f64 get_tick_ms(void)
+{
+#ifdef BL_PLATFORM_MACOS
+	BL_UNIMPLEMENTED;
+#elif defined(BL_PLATFORM_LINUX)
+	BL_UNIMPLEMENTED;
+#elif defined(BL_PLATFORM_WIN)
+	LARGE_INTEGER f;
+	LARGE_INTEGER t;
+
+	if (!QueryPerformanceFrequency(&f)) return 0.;
+	if (!QueryPerformanceCounter(&t)) return 0.;
+
+	return ((f64)t.QuadPart / (f64)f.QuadPart) * 1000.;
+#else
+	BL_ABORT("Unknown dynamic library format.");
+#endif
+}
+
 TArray *create_arr(Assembly *assembly, usize size)
 {
 	TArray **tmp = arena_alloc(&assembly->arenas.array);

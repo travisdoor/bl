@@ -97,8 +97,6 @@ const char *ast_get_name(const Ast *n)
 		return "UBlock";
 	case AST_BLOCK:
 		return "Block";
-	case AST_TEST_CASE:
-		return "TestCase";
 	case AST_UNREACHABLE:
 		return "Unreachable";
 	case AST_STMT_RETURN:
