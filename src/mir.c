@@ -551,7 +551,7 @@ static MirInstr *append_instr_decl_member_impl(Context *             cnt,
                                                MirInstr *            type,
                                                TSmallArray_InstrPtr *tags);
 
-static MirInstr *append_instr_decl_arg(Context *cnt, Ast *node, MirInstr *type);
+static MirInstr *append_instr_decl_arg(Context *cnt, Ast *node, MirInstr *type, MirInstr *value);
 
 static MirInstr *append_instr_decl_variant(Context *cnt, Ast *node, MirInstr *value);
 
@@ -3491,7 +3491,7 @@ MirInstr *append_instr_decl_member_impl(Context *             cnt,
 	return &tmp->base;
 }
 
-MirInstr *append_instr_decl_arg(Context *cnt, Ast *node, MirInstr *type)
+MirInstr *append_instr_decl_arg(Context *cnt, Ast *node, MirInstr *type, MirInstr *value)
 {
 	ref_instr(type);
 	MirInstrDeclArg *tmp        = create_instr(cnt, MIR_INSTR_DECL_ARG, node);
@@ -3500,6 +3500,7 @@ MirInstr *append_instr_decl_arg(Context *cnt, Ast *node, MirInstr *type)
 
 	tmp->base.ref_count = NO_REF_COUNTING;
 	tmp->type           = type;
+	tmp->value          = value;
 
 	ID *id   = node ? &node->data.ident.id : NULL;
 	tmp->arg = create_arg(cnt, node, id, NULL, NULL);
@@ -5094,6 +5095,20 @@ AnalyzeResult analyze_instr_arg(Context UNUSED(*cnt), MirInstrArg *arg)
 	MirType *type = mir_get_fn_arg_type(fn->type, arg->i);
 	BL_ASSERT(type);
 	arg->base.value.type = type;
+
+	if (analyze_slot(cnt, &analyze_slot_conf_default, &arg->value, type) !=
+	    ANALYZE_PASSED) {
+		return ANALYZE_RESULT(FAILED, 0);
+	}
+
+	if (!mir_is_comptime(arg->value)) {
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_EXPECTED_CONST,
+		            arg->value->node->location,
+		            BUILDER_CUR_WORD,
+		            "Default argument value must be compile time known.");
+		return ANALYZE_RESULT(FAILED, 0);
+	}
 
 	return ANALYZE_RESULT(PASSED, 0);
 }
@@ -8722,13 +8737,16 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
 
 MirInstr *ast_decl_arg(Context *cnt, Ast *arg)
 {
-	Ast *ast_name = arg->data.decl.name;
-	Ast *ast_type = arg->data.decl.type;
+	Ast *ast_value = arg->data.decl_arg.value;
+	Ast *ast_name  = arg->data.decl.name;
+	Ast *ast_type  = arg->data.decl.type;
+
+	MirInstr *value = ast(cnt, ast_value);
 
 	BL_ASSERT(ast_type);
 	MirInstr *type = ast(cnt, ast_type);
 
-	return append_instr_decl_arg(cnt, ast_name, type);
+	return append_instr_decl_arg(cnt, ast_name, type, value);
 }
 
 MirInstr *ast_decl_member(Context *cnt, Ast *arg)

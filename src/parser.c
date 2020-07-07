@@ -66,10 +66,10 @@ TSMALL_ARRAY_TYPE(ScopePtr64, Scope *, 64);
 #define DECL_GET(_cnt) ((_cnt)->_decl_stack.size ? tsa_last_AstPtr64(&(_cnt)->_decl_stack) : NULL)
 
 typedef enum {
-	HD_NONE        = 1 << 0,
-	HD_LOAD        = 1 << 1,
-	HD_LINK        = 1 << 2,
-	//1 << 3, free
+	HD_NONE = 1 << 0,
+	HD_LOAD = 1 << 1,
+	HD_LINK = 1 << 2,
+	// 1 << 3, free
 	HD_EXTERN      = 1 << 4,
 	HD_COMPILER    = 1 << 5,
 	HD_PRIVATE     = 1 << 6,
@@ -222,8 +222,7 @@ static INLINE bool rq_semicolon_after_decl_entity(Ast *node)
 {
 	BL_ASSERT(node);
 
-	return node->kind != AST_EXPR_LIT_FN && 
-	       node->kind != AST_EXPR_TYPE;
+	return node->kind != AST_EXPR_LIT_FN && node->kind != AST_EXPR_TYPE;
 }
 
 BinopKind sym_to_binop_kind(Sym sm)
@@ -1061,6 +1060,7 @@ Ast *parse_decl_arg(Context *cnt, bool rq_named)
 	Token *tok_begin = tokens_peek(cnt->tokens);
 	Ast *  name      = NULL;
 	Ast *  type      = NULL;
+	Ast *  value     = NULL;
 
 	if (tokens_current_is(cnt->tokens, SYM_RPAREN)) return NULL;
 
@@ -1080,10 +1080,20 @@ Ast *parse_decl_arg(Context *cnt, bool rq_named)
 
 	type = parse_type(cnt);
 
+	/* Parse optional default value expression. */
+	if (tokens_current_is(cnt->tokens, SYM_ASSIGN)) {
+		/*Token* tok_assign = */ tokens_consume(cnt->tokens); // eat =
+		value = parse_expr(cnt);
+
+		// @INCOMPLETE
+		BL_ASSERT(value && "Expected argument default value, this should be an error!");
+	}
+
 	if (!type && !name) return NULL;
 	Ast *arg = ast_create_node(cnt->ast_arena, AST_DECL_ARG, tok_begin, SCOPE_GET(cnt));
-	arg->data.decl.type = type;
-	arg->data.decl.name = name;
+	arg->data.decl_arg.value = value;
+	arg->data.decl.type      = type;
+	arg->data.decl.name      = name;
 	return arg;
 }
 
