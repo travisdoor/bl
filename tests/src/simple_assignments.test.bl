@@ -1,5 +1,5 @@
 #private
-simple_assignement :: fn () #test2 {
+simple_assignement :: fn () #test {
     {
         number := 0;
         assert(number == 0);
@@ -53,6 +53,6 @@ Str :: "Hello";
 Str2 := "Hello";
 Str3 := &Str;
 
-global_constants :: fn () #test2 {
+global_constants :: fn () #test {
     assert(A == 20);
 }

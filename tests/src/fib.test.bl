@@ -7,7 +7,7 @@ fib :: fn (n: s32) s32 {
     }
 };
 
-fibonacci :: fn () #test2 {
+fibonacci :: fn () #test {
     fib(2);
     fib(5);
     fib(10);

@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #load "std/math.bl"
+#load "std/string.bl"
 
 /*!
 # PRINT_MAX_LENGTH  
@@ -172,6 +173,32 @@ bprint :: fn (buf: []u8, format: string, args: ...) s32 {
     w := _print_impl(buf, format, tmp);
     w += print_char(buf, w, '\0');
     return w;
+};
+
+/*!
+# sprint
+## Declaration
+```c
+sprint :: fn (args: ...) string
+```
+## Description
+  Create new dynamic string with variable content.
+This instance must be freed by `string_delete` call.
+
+## Arguments
+  * `args`
+    String content.
+
+## Result
+  New string.
+*/
+sprint :: fn (args: ...) string {
+    tmp := string_new();
+    loop i := 0; i < args.len; i += 1 {
+        string_append(&tmp, args[i]);
+    }
+
+    return tmp;
 };
 
 _print_log_default :: fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32) {

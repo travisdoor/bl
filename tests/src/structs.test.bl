@@ -1,5 +1,5 @@
 #private
-slices :: fn () #test2 {
+slices :: fn () #test {
     arr : [3]s32;
 
     arr[0] = 10;
@@ -17,7 +17,7 @@ slices :: fn () #test2 {
     assert(slice[2] == 30);
 };
 
-structures :: fn () #test2 {
+structures :: fn () #test {
     Foo :: struct {
         _1: u8;
         _2: s32;
@@ -39,7 +39,7 @@ structures :: fn () #test2 {
     assert((foo._4)[0] == 10);
 };
 
-implicit_struct :: fn () #test2 {
+implicit_struct :: fn () #test {
     foo : struct {
         _1: u8;
         _2: s32;
@@ -60,7 +60,7 @@ implicit_struct :: fn () #test2 {
     assert((foo._4)[0] == 10);
 };
 
-nested_struct :: fn () #test2 {
+nested_struct :: fn () #test {
     Foo :: struct {
         i: s32;
         j: s32
@@ -78,7 +78,7 @@ nested_struct :: fn () #test2 {
     assert((bar.foo).j == 20);
 };
 
-structure_initialization :: fn () #test2 {
+structure_initialization :: fn () #test {
     Foo :: struct {
         i: s32;
         j: s32
@@ -99,7 +99,7 @@ structure_initialization :: fn () #test2 {
     }
 };
 
-strings :: fn () #test2 {
+strings :: fn () #test {
     _1 := "hello";
     assert(_1.ptr != null);
     assert(_1.len == 5);
@@ -110,7 +110,7 @@ Foo :: struct {
     func: *fn (i: *Foo);
 };
 
-pointer_to_self :: fn () #test2 {
+pointer_to_self :: fn () #test {
     Bar :: struct {
         bar: *Bar;
         func: *fn (i: *Bar);

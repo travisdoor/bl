@@ -21,7 +21,7 @@ G3 :: 10;
 G4 :: s32;
 G5 :: Bar.A;
 
-globals_eplicit_initialize :: fn () #test2 {
+globals_eplicit_initialize :: fn () #test {
     assert(G1 == 10);
     assert(G2 == 20);
     assert(G3 == 10);
@@ -51,7 +51,7 @@ UG15: string;
 UG16: Bar;
 UG17: Un;
 
-fundamental_type_default_init :: fn () #test2 {
+fundamental_type_default_init :: fn () #test {
     assert(UG1 == 0);
     assert(UG2 == 0);
     assert(UG3 == 0);
@@ -68,25 +68,25 @@ fundamental_type_default_init :: fn () #test2 {
     assert(UG15.ptr == null);
 }
 
-struct_type_default_init :: fn () #test2 {
+struct_type_default_init :: fn () #test {
     assert(UG12.i == 0);
     assert(UG12.j == 0);
 }
 
-array_type_default_init :: fn () #test2 {
+array_type_default_init :: fn () #test {
     assert(UG14[0] == 0);
     assert(UG14[1] == 0);
 }
 
-slice_type_default_init :: fn () #test2 {
+slice_type_default_init :: fn () #test {
     assert(UG13.len == 0);
     assert(UG13.ptr == null);
 }
 
-union_type_default_init :: fn () #test2 {
+union_type_default_init :: fn () #test {
     assert(UG17.i == 0);
 }
 
-enum_type_default_init :: fn () #test2 {
+enum_type_default_init :: fn () #test {
     assert(UG16 == Bar.A);
 }

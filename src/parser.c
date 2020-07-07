@@ -394,7 +394,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
 		return link;
 	}
 
-	if (strcmp(directive, "test2") == 0) {
+	if (strcmp(directive, "test") == 0) {
 		set_satisfied(HD_TEST_FN);
 		if (IS_NOT_FLAG(expected_mask, HD_TEST_FN)) {
 			PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,

@@ -22,7 +22,7 @@ ColliderCircle :: struct {
     r: f32;
 }
 
-union_collider :: fn () #test2 {
+union_collider :: fn () #test {
     c: Collider;
     c.kind = ColliderKind.Circle;
     c.data.circle = {:ColliderCircle: {:v2: 10.f, 20.f}, 15.f};

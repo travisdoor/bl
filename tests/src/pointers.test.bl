@@ -1,5 +1,5 @@
 #private
-pointers :: fn () #test2 {
+pointers :: fn () #test {
   i       := 666;
   ptr     := &i;
   ptr_ptr := &ptr;
@@ -12,7 +12,7 @@ pointers :: fn () #test2 {
 };
 
 
-null_pointers :: fn () #test2 {
+null_pointers :: fn () #test {
   test_ptr :: fn (ptr: *s32) *s32 {
     return null;
   };
@@ -23,7 +23,7 @@ null_pointers :: fn () #test2 {
   assert(test_ptr(null) == null);
 };
 
-passed_pointer :: fn () #test2 {
+passed_pointer :: fn () #test {
   value :: 10;
   i := 0;
   

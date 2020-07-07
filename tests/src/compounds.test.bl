@@ -1,5 +1,5 @@
 #private
-compound_arrays :: fn () #test2 {
+compound_arrays :: fn () #test {
     validate :: fn (v: [2]s32, i: s32, j: s32) {
         assert(v[0] == i);
         assert(v[1] == j);
@@ -35,7 +35,7 @@ compound_arrays :: fn () #test2 {
     }
 };
 
-compound_structs :: fn () #test2 {
+compound_structs :: fn () #test {
     Foo :: struct {
         i: s32;
         j: s32
@@ -75,7 +75,7 @@ compound_structs :: fn () #test2 {
     }
 };
 
-compound_fundamentals :: fn () #test2 {
+compound_fundamentals :: fn () #test {
     Days :: enum { MON; };
     
     i := 10;

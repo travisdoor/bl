@@ -1,5 +1,5 @@
 #private
-ifs :: fn () #test2 {
+ifs :: fn () #test {
     b := true;
     if b {
         if !b {

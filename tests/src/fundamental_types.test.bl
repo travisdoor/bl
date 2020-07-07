@@ -1,5 +1,5 @@
 #private 
-fundametal_types :: fn () #test2 {
+fundametal_types :: fn () #test {
     _u8:    u8; 
     _u16:   u16; 
     _u32:   u32; 

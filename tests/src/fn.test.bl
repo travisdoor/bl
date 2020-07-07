@@ -1,5 +1,5 @@
 #private
-function_calls :: fn () #test2 {
+function_calls :: fn () #test {
     _1 :: fn () {
     };
 
@@ -11,7 +11,7 @@ function_calls :: fn () #test2 {
     assert(_2(10) == 10);
 };
 
-implicit_functions_direct_call :: fn () #test2 {
+implicit_functions_direct_call :: fn () #test {
     i := fn (i: s32, j: s32) s32 {
         return i * j; 
     } (2, 3);
@@ -22,7 +22,7 @@ implicit_functions_direct_call :: fn () #test2 {
     } ();
 };
 
-function_pointers :: fn () #test2 {
+function_pointers :: fn () #test {
     foo :: fn (v: s32) s32 {
         return v;
     };
@@ -41,7 +41,7 @@ function_pointers :: fn () #test2 {
     ptr2();
 };
 
-nested_function_pointers :: fn () #test2 {
+nested_function_pointers :: fn () #test {
     Foo :: struct {
         v_fn: *fn()
     };
