@@ -1,5 +1,5 @@
 #private
-vargs_functions :: fn () #test2 {
+vargs_functions :: fn () #test {
     _0 :: fn (args: ...s32) {
         assert(args.len == 0);
     };

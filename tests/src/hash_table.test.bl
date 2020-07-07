@@ -1,7 +1,7 @@
 #load "experimental/hash_table.bl"
 
 #private 
-init :: fn () #test2 {
+init :: fn () #test {
     tbl := htbl_new(s32, 64);
     defer htbl_delete(tbl);
 
@@ -9,7 +9,7 @@ init :: fn () #test2 {
     assert(tbl.len == 0);
 }
 
-insert_and_find :: fn () #test2 {
+insert_and_find :: fn () #test {
     tbl := htbl_new(s32, 64);
     defer htbl_delete(tbl);
 
@@ -29,7 +29,7 @@ insert_and_find :: fn () #test2 {
     }
 }
 
-iterate :: fn () #test2 {
+iterate :: fn () #test {
     tbl := htbl_new(s32, 64);
     defer htbl_delete(tbl);
 
@@ -47,7 +47,7 @@ iterate :: fn () #test2 {
     }
 }
 
-erase :: fn () #test2 {
+erase :: fn () #test {
     tbl := htbl_new(s32, 64);
     defer htbl_delete(tbl);
 

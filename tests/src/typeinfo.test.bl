@@ -1,5 +1,5 @@
 #private
-test_typeinfo_s8 :: fn () #test2 {
+test_typeinfo_s8 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(s8);
     assert(info.base.kind == TypeKind.Int);
     assert(info.base.size_bytes == sizeof(s8));
@@ -7,7 +7,7 @@ test_typeinfo_s8 :: fn () #test2 {
     assert(info.is_signed);
 }
 
-test_typeinfo_s16 :: fn () #test2 {
+test_typeinfo_s16 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(s16);
     assert(info.base.kind == TypeKind.Int);
     assert(info.base.size_bytes == sizeof(s16));
@@ -15,7 +15,7 @@ test_typeinfo_s16 :: fn () #test2 {
     assert(info.is_signed);
 }
 
-test_typeinfo_s32 :: fn () #test2 {
+test_typeinfo_s32 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(s32);
     assert(info.base.kind == TypeKind.Int);
     assert(info.base.size_bytes == sizeof(s32));
@@ -23,7 +23,7 @@ test_typeinfo_s32 :: fn () #test2 {
     assert(info.is_signed);
 }
 
-test_typeinfo_s64 :: fn () #test2 {
+test_typeinfo_s64 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(s64);
     assert(info.base.kind == TypeKind.Int);
     assert(info.base.size_bytes == sizeof(s64));
@@ -31,7 +31,7 @@ test_typeinfo_s64 :: fn () #test2 {
     assert(info.is_signed);
 }
 
-test_typeinfo_u8 :: fn () #test2 {
+test_typeinfo_u8 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(u8);
     assert(info.base.kind == TypeKind.Int);
     assert(info.base.size_bytes == sizeof(u8));
@@ -39,7 +39,7 @@ test_typeinfo_u8 :: fn () #test2 {
     assert(!info.is_signed);
 }
 
-test_typeinfo_u16 :: fn () #test2 {
+test_typeinfo_u16 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(u16);
     assert(info.base.kind == TypeKind.Int);
     assert(info.base.size_bytes == sizeof(u16));
@@ -47,7 +47,7 @@ test_typeinfo_u16 :: fn () #test2 {
     assert(!info.is_signed);
 }
 
-test_typeinfo_u32 :: fn () #test2 {
+test_typeinfo_u32 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(u32);
     assert(info.base.kind == TypeKind.Int);
     assert(info.base.size_bytes == sizeof(u32));
@@ -55,7 +55,7 @@ test_typeinfo_u32 :: fn () #test2 {
     assert(!info.is_signed);
 }
 
-test_typeinfo_u64 :: fn () #test2 {
+test_typeinfo_u64 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(u64);
     assert(info.base.kind == TypeKind.Int);
     assert(info.base.size_bytes == sizeof(u64));
@@ -63,21 +63,21 @@ test_typeinfo_u64 :: fn () #test2 {
     assert(!info.is_signed);
 }
 
-test_typeinfo_f32 :: fn () #test2 {
+test_typeinfo_f32 :: fn () #test {
     info := cast(*TypeInfoReal) typeinfo(f32);
     assert(info.base.kind == TypeKind.Real);
     assert(info.base.size_bytes == sizeof(f32));
     assert(info.bit_count == auto sizeof(f32) * 8);
 };
 
-test_typeinfo_f64 :: fn () #test2 {
+test_typeinfo_f64 :: fn () #test {
     info := cast(*TypeInfoReal) typeinfo(f64);
     assert(info.base.kind == TypeKind.Real);
     assert(info.base.size_bytes == sizeof(f64));
     assert(info.bit_count == auto sizeof(f64) * 8);
 };
 
-test_typeinfo_fn :: fn () #test2 {
+test_typeinfo_fn :: fn () #test {
     T :: fn (i: s32, j: bool) s32 { return 0; };
     info := cast(*TypeInfoFn) typeinfo(T);
 
@@ -100,7 +100,7 @@ test_typeinfo_fn :: fn () #test2 {
     }
 };
 
-test_typeinfo_ptr :: fn () #test2 {
+test_typeinfo_ptr :: fn () #test {
     T :: *s32;
     info := cast(*TypeInfoPtr) typeinfo(T);
 
@@ -108,7 +108,7 @@ test_typeinfo_ptr :: fn () #test2 {
     assert(info.pointee_type == typeinfo(s32));
 };
 
-test_typeinfo_array :: fn () #test2 {
+test_typeinfo_array :: fn () #test {
     T :: [10]s32;
     info := cast(*TypeInfoArray) typeinfo(T);
 
@@ -119,7 +119,7 @@ test_typeinfo_array :: fn () #test2 {
     assert(info.len == 10);
 };
 
-test_typeinfo_enum :: fn () #test2 {
+test_typeinfo_enum :: fn () #test {
     T :: enum s32 { A; B; C };
     info := cast(*TypeInfoEnum) typeinfo(T);
 
@@ -132,7 +132,7 @@ test_typeinfo_enum :: fn () #test2 {
     assert(info.variants[2].value == 2);
 };
 
-test_typeinfo_struct :: fn () #test2 {
+test_typeinfo_struct :: fn () #test {
     T :: struct { A: s32; B: bool; C: f32 };
     info := cast(*TypeInfoStruct) typeinfo(T);
 
@@ -145,7 +145,7 @@ test_typeinfo_struct :: fn () #test2 {
     assert(info.members[2].index == 2);
 };
 
-test_typeinfo_comparison :: fn () #test2 {
+test_typeinfo_comparison :: fn () #test {
     {
         T1 :: struct {
             i: s32;

@@ -1,6 +1,6 @@
 #private
 
-type_infer :: fn () #test2 {
+type_infer :: fn () #test {
     number := 0;
     boolean := true;
     float := 0.1f;

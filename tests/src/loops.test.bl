@@ -1,5 +1,5 @@
 #private
-simple_loops :: fn () #test2 {
+simple_loops :: fn () #test {
     count :: 10;
     i := 0;
 
@@ -17,7 +17,7 @@ simple_loops :: fn () #test2 {
     assert(i == count);
 };
 
-nested_loops :: fn () #test2 {
+nested_loops :: fn () #test {
     count :: 10;
     i := 0;
 
@@ -30,7 +30,7 @@ nested_loops :: fn () #test2 {
     assert(i == count * count); 
 };
 
-break_continue_loop :: fn () #test2 {
+break_continue_loop :: fn () #test {
     i := 0;
     loop {
         if i == 10 {

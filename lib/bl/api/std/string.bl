@@ -210,32 +210,6 @@ string_append :: fn (v: *string, add: Any) {
 };
 
 /*!
-# string_new_concatenate
-## Declaration
-```c
-string_new_concatenate :: fn (args: ...) string
-```
-## Description
-  Create new dynamic string with variable content.
-This instance must be freed by `string_delete` call.
-
-## Arguments
-  * `args`
-    String content.
-
-## Result
-  New string.
-*/
-string_new_concatenate :: fn (args: ...) string {
-    tmp := string_new();
-    loop i := 0; i < args.len; i += 1 {
-        string_append(&tmp, args[i]);
-    }
-
-    return tmp;
-};
-
-/*!
 # string_concatenate
 ## Declaration
 ```c

@@ -56,7 +56,6 @@ typedef struct BuilderOptions {
 	bool        load_from_file;
 	bool        syntax_only;
 	bool        verbose;
-	bool        force_test_llvm;
 	bool        reg_split;
 	bool        use_pipeline;
 	bool        no_color;

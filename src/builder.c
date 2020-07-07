@@ -189,8 +189,6 @@ s32 builder_parse_options(s32 argc, char *argv[])
 			builder.options.no_api = true;
 		} else if (IS_PARAM("no-analyze")) {
 			builder.options.no_analyze = true;
-		} else if (IS_PARAM("force-test-to-llvm")) {
-			builder.options.force_test_llvm = true;
 		} else if (IS_PARAM("no-llvm")) {
 			builder.options.no_llvm = true;
 		} else if (IS_PARAM("configure")) {
