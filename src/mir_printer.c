@@ -779,6 +779,11 @@ void print_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
 
 	fprintf(cnt->stream, "%s : ", arg->id ? arg->id->str : "-");
 	print_comptime_value_or_id(cnt, decl->type);
+
+	if (arg->value) {
+		fprintf(cnt->stream, " = ");
+		print_comptime_value_or_id(cnt, arg->value);
+	}
 }
 
 void print_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)

@@ -82,129 +82,70 @@ typedef struct {
 	LLVMValueRef intrinsic_memcpy;
 } Context;
 
-static MirVar *testing_fetch_meta(Context *cnt);
-
+static MirVar *     testing_fetch_meta(Context *cnt);
 static LLVMValueRef testing_emit_meta_case(Context *cnt, MirFn *fn);
-
 static LLVMValueRef rtti_emit(Context *cnt, MirType *type);
-
-static void rtti_satisfy_incomplete(Context *cnt, RTTIIncomplete *incomplete);
-
+static void         rtti_satisfy_incomplete(Context *cnt, RTTIIncomplete *incomplete);
 static LLVMValueRef _rtti_emit(Context *cnt, MirType *type);
-
 static LLVMValueRef rtti_emit_base(Context *cnt, MirType *type, u8 kind, usize size);
-
 static LLVMValueRef rtti_emit_integer(Context *cnt, MirType *type);
-
 static LLVMValueRef rtti_emit_real(Context *cnt, MirType *type);
-
 static LLVMValueRef rtti_emit_array(Context *cnt, MirType *type);
-
 static LLVMValueRef rtti_emit_empty(Context *cnt, MirType *type, MirType *rtti_type);
-
 static LLVMValueRef rtti_emit_enum(Context *cnt, MirType *type);
-
 static LLVMValueRef rtti_emit_enum_variant(Context *cnt, MirVariant *variant);
-
 static LLVMValueRef rtti_emit_enum_variants_array(Context *cnt, TSmallArray_VariantPtr *variants);
-
 static LLVMValueRef rtti_emit_enum_variants_slice(Context *cnt, TSmallArray_VariantPtr *variants);
-
 static LLVMValueRef rtti_emit_struct(Context *cnt, MirType *type);
-
 static LLVMValueRef rtti_emit_struct_member(Context *cnt, MirMember *member);
-
 static LLVMValueRef rtti_emit_struct_members_array(Context *cnt, TSmallArray_MemberPtr *members);
-
 static LLVMValueRef rtti_emit_struct_members_slice(Context *cnt, TSmallArray_MemberPtr *members);
-
 static LLVMValueRef rtti_emit_fn(Context *cnt, MirType *type);
-
 static LLVMValueRef rtti_emit_fn_arg(Context *cnt, MirArg *arg);
-
 static LLVMValueRef rtti_emit_fn_args_array(Context *cnt, TSmallArray_ArgPtr *args);
-
 static LLVMValueRef rtti_emit_fn_args_slice(Context *cnt, TSmallArray_ArgPtr *args);
-
-static void emit_DI_fn(Context *cnt, MirFn *fn);
-
-static void emit_DI_var(Context *cnt, MirVar *var);
-
-static State emit_instr(Context *cnt, MirInstr *instr);
-
+static void         emit_DI_fn(Context *cnt, MirFn *fn);
+static void         emit_DI_var(Context *cnt, MirVar *var);
+static State        emit_instr(Context *cnt, MirInstr *instr);
 static LLVMMetadataRef DI_type_init(Context *cnt, MirType *type);
-
 static LLVMMetadataRef DI_complete_type(Context *cnt, MirType *type);
-
 static LLVMMetadataRef DI_scope_init(Context *cnt, Scope *scope);
-
 static LLVMMetadataRef DI_unit_init(Context *cnt, Unit *unit);
 
 /*
  * Tmp is optional but needed for naked compound expressions.
  */
 static LLVMValueRef emit_const_string(Context *cnt, const char *str, usize len);
-
 static State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp);
-
 static State emit_instr_binop(Context *cnt, MirInstrBinop *binop);
-
 static State emit_instr_phi(Context *cnt, MirInstrPhi *phi);
-
 static State emit_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
-
 static State emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
-
 static State emit_instr_test_cases(Context *cnt, MirInstrTestCases *tc);
-
 static State emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
-
 static State emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref);
-
 static State emit_instr_cast(Context *cnt, MirInstrCast *cast);
-
 static State emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
-
 static State emit_instr_unop(Context *cnt, MirInstrUnop *unop);
-
 static State emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
-
 static State emit_instr_store(Context *cnt, MirInstrStore *store);
-
 static State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
-
 static State emit_instr_block(Context *cnt, MirInstrBlock *block);
-
 static State emit_instr_br(Context *cnt, MirInstrBr *br);
-
 static State emit_instr_switch(Context *cnt, MirInstrSwitch *sw);
-
 static State emit_instr_const(Context *cnt, MirInstrConst *c);
-
 static State emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg);
-
 static State emit_instr_cond_br(Context *cnt, MirInstrCondBr *br);
-
 static State emit_instr_ret(Context *cnt, MirInstrRet *ret);
-
 static State emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl);
-
 static State emit_instr_load(Context *cnt, MirInstrLoad *load);
-
 static State emit_instr_call(Context *cnt, MirInstrCall *call);
-
 static State emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
-
 static State emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
-
 static State emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
-
 static State emit_instr_toany(Context *cnt, MirInstrToAny *toany);
-
-static void emit_allocas(Context *cnt, MirFn *fn);
-
-static void emit_incomplete(Context *cnt);
-
+static void  emit_allocas(Context *cnt, MirFn *fn);
+static void  emit_incomplete(Context *cnt);
 static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn);
 
 static INLINE void emit_DI_loc(Context *cnt, Scope *scope, Location *loc)
