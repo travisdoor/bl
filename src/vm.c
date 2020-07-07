@@ -146,7 +146,6 @@ static void calculate_binop(MirType *  dest_type,
                             BinopKind  op);
 
 static void calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, MirType *type);
-
 static void
 do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, MirCastOp op);
 
@@ -154,21 +153,13 @@ static void reset_stack(VMStack *stack);
 
 /* zero max nesting = unlimited nesting */
 static void print_call_stack(VM *vm, usize max_nesting);
-
 static void dyncall_cb_read_arg(VM *vm, MirConstExprValue *dest_value, DCArgs *src);
-
 static char dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata);
-
 static void _dyncall_generate_signature(VM *vm, MirType *type);
-
 static const char *dyncall_generate_signature(VM *vm, MirType *type);
-
 static DCCallback *dyncall_fetch_callback(VM *vm, MirFn *fn);
-
-static void dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type);
-
-static bool execute_fn_top_level(VM *vm, MirInstr *call, VMStackPtr *out_ptr);
-
+static void        dyncall_push_arg(VM *vm, VMStackPtr val_ptr, MirType *type);
+static bool        execute_fn_top_level(VM *vm, MirInstr *call, VMStackPtr *out_ptr);
 static bool
 execute_fn_impl_top_level(VM *vm, MirFn *fn, TSmallArray_ConstExprValue *args, VMStackPtr *out_ptr);
 
@@ -180,81 +171,43 @@ static bool _execute_fn_top_level(VM *                        vm,
 );
 
 static void interp_instr(VM *vm, MirInstr *instr);
-
 static void interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call);
-
 static void interp_instr_toany(VM *vm, MirInstrToAny *toany);
-
 static void interp_instr_unreachable(VM *vm, MirInstrUnreachable *unr);
-
 static void interp_instr_phi(VM *vm, MirInstrPhi *phi);
-
 static void interp_instr_cast(VM *vm, MirInstrCast *cast);
-
 static void interp_instr_addrof(VM *vm, MirInstrAddrOf *addrof);
-
 static void interp_instr_br(VM *vm, MirInstrBr *br);
-
 static void interp_instr_switch(VM *vm, MirInstrSwitch *sw);
-
 static void interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr);
-
 static void interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr);
-
 static void interp_instr_arg(VM *vm, MirInstrArg *arg);
-
 static void interp_instr_cond_br(VM *vm, MirInstrCondBr *br);
-
 static void interp_instr_load(VM *vm, MirInstrLoad *load);
-
 static void interp_instr_store(VM *vm, MirInstrStore *store);
-
 static void interp_instr_binop(VM *vm, MirInstrBinop *binop);
-
 static void interp_instr_unop(VM *vm, MirInstrUnop *unop);
-
 static void interp_instr_call(VM *vm, MirInstrCall *call);
-
 static void interp_instr_ret(VM *vm, MirInstrRet *ret);
-
 static void interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *init);
-
 static void interp_instr_vargs(VM *vm, MirInstrVArgs *vargs);
-
 static void interp_instr_decl_var(VM *vm, MirInstrDeclVar *decl);
-
 static void interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref);
-
 static void interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref);
-
 static void eval_instr(VM *vm, MirInstr *instr);
-
 static void eval_instr_type_info(VM *vm, MirInstrTypeInfo *type_info);
-
 static void eval_instr_test_cases(VM *vm, MirInstrTestCases *tc);
-
 static void eval_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr);
-
 static void eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr);
-
 static void eval_instr_decl_var(VM *vm, MirInstrDeclVar *decl_var);
-
 static void eval_instr_decl_ref(VM *vm, MirInstrDeclRef *decl_ref);
-
 static void eval_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *decl_ref);
-
 static void eval_instr_binop(VM *vm, MirInstrBinop *binop);
-
 static void eval_instr_unop(VM *vm, MirInstrUnop *unop);
-
 static void eval_instr_load(VM *vm, MirInstrLoad *load);
-
 static void eval_instr_addrof(VM *vm, MirInstrAddrOf *addrof);
-
 static void eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si);
-
 static void eval_instr_cast(VM *vm, MirInstrCast *cast);
-
 static void eval_instr_compound(VM *vm, MirInstrCompound *compound);
 
 /***********/

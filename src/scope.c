@@ -89,16 +89,17 @@ void scope_insert(Scope *scope, ScopeEntry *entry)
 	thtbl_insert(&scope->entries, entry->id->hash, entry);
 }
 
-ScopeEntry *scope_lookup(Scope *scope, ID *id, ScopeLookupOpt opt, bool *out_of_fn_local_scope)
+ScopeEntry *
+scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_global, bool *out_of_fn_local_scope)
 {
 	BL_ASSERT(scope && id);
 
 	while (scope) {
-		if (IS_FLAG(opt, SCOPE_LOOKUP_IGNORE_GSCOPE) && scope->kind == SCOPE_GLOBAL) break;
+		if (ignore_global && scope->kind == SCOPE_GLOBAL) break;
 		if (thtbl_has_key(&scope->entries, id->hash))
 			return thtbl_at(ScopeEntry *, &scope->entries, id->hash);
 
-		if (IS_FLAG(opt, SCOPE_LOOKUP_IN_TREE)) {
+		if (in_tree) {
 			if (out_of_fn_local_scope && scope->kind == SCOPE_FN_LOCAL) {
 				*out_of_fn_local_scope = true;
 			}

@@ -285,8 +285,8 @@ struct MirArg {
 	 * compiler configuration (vix. System V ABI) */
 	u32 llvm_index;
 
-        /* Optional default value. */
-        MirInstr *value;
+	/* Optional default value. */
+	MirInstr *value;
 
 	LLVMExternArgStructGenerationMode llvm_easgm;
 };
@@ -307,6 +307,7 @@ struct MirTypeFn {
 	bool                is_vargs;
 	bool                has_byval;
 	bool                has_sret;
+	bool                has_default_args;
 	MirBuiltinIdKind    builtin_id;
 };
 
@@ -462,9 +463,10 @@ struct MirInstrDeclVariant {
 struct MirInstrDeclArg {
 	MirInstr base;
 
-	MirArg *  arg;
+	MirArg *arg;
+
+	/* @CLEANUP: are in MirArg and can be replaced? */
 	MirInstr *type;
-	MirInstr *value; /* Optional initialization value. */
 	bool      llvm_byval;
 };
 
