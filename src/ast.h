@@ -179,6 +179,7 @@ struct AstDeclMember {
 
 struct AstDeclArg {
 	struct AstDecl base;
+	Ast *          value;
 };
 
 struct AstDeclVariant {

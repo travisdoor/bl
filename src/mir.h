@@ -285,6 +285,9 @@ struct MirArg {
 	 * compiler configuration (vix. System V ABI) */
 	u32 llvm_index;
 
+        /* Optional default value. */
+        MirInstr *value;
+
 	LLVMExternArgStructGenerationMode llvm_easgm;
 };
 
@@ -461,6 +464,7 @@ struct MirInstrDeclArg {
 
 	MirArg *  arg;
 	MirInstr *type;
+	MirInstr *value; /* Optional initialization value. */
 	bool      llvm_byval;
 };
 
