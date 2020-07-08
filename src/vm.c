@@ -2495,7 +2495,7 @@ void eval_instr_decl_ref(VM UNUSED(*vm), MirInstrDeclRef *decl_ref)
 void eval_instr_decl_direct_ref(VM UNUSED(*vm), MirInstrDeclDirectRef *decl_ref)
 {
 	MirVar *var = ((MirInstrDeclVar *)decl_ref->ref)->var;
-	MIR_CEV_WRITE_AS(VMStackPtr *, &decl_ref->base.value, &var->value.data);
+	MIR_CEV_WRITE_AS(VMStackPtr, &decl_ref->base.value, var->value.data);
 }
 
 /* public */

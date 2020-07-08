@@ -9,6 +9,7 @@
 	AST_UNREACHABLE,
 	AST_META_DATA,
 	AST_TAGS,
+	AST_CALL_LOC,
 	_AST_DECL_FIRST,
 	AST_DECL_ENTITY,
 	AST_DECL_MEMBER,
@@ -71,6 +72,7 @@
 	struct AstUBlock        ublock;
 	struct AstBlock         block;
 	struct AstTags          tags;
+	struct AstCallLoc       call_loc;
 	struct AstStmtReturn    stmt_return;
 	struct AstStmtIf        stmt_if;
 	struct AstStmtLoop      stmt_loop;

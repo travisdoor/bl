@@ -150,6 +150,8 @@ union __INSTR_T {\
 	MIR_BUILTIN_ID_IS_DEBUG,
 
 	MIR_BUILTIN_ID_TYPE_TEST_CASES,
+
+	MIR_BUILTIN_ID_TYPE_CALL_LOCATION,
 #endif
 
 #ifdef GEN_BUILTIN_IDS
@@ -207,4 +209,5 @@ union __INSTR_T {\
     {.str = "slice_terminate",       .hash = 0},
     {.str = "IS_DEBUG",              .hash = 0},
     {.str = "TestCase",              .hash = 0},
+    {.str = "CallLocation",          .hash = 0},
 #endif

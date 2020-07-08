@@ -33,7 +33,6 @@
 // @DOC
 test_str_eq :: fn (got: string, expected: string, file: string, line: s32) {
     if string_compare(expected, got) { return; }
-
     eprint("ASSERT %:% Expected '%' got '%'.\n", file, line, expected, got);
     assert(false);
 }
@@ -41,7 +40,6 @@ test_str_eq :: fn (got: string, expected: string, file: string, line: s32) {
 // @DOC
 test_str_neq :: fn (got: string, expected: string, file: string, line: s32) {
     if !string_compare(expected, got) { return; }
-
     eprint("ASSERT %:% Expected not to be '%'.\n", file, line, expected);
     assert(false);
 }
@@ -49,7 +47,6 @@ test_str_neq :: fn (got: string, expected: string, file: string, line: s32) {
 // @DOC
 test_f32_eq :: fn (got: f32, expected: f32, epsilon: f32, file: string, line: s32) {
     if f32_compare(got, expected, epsilon) { return; }
-
     eprint("ASSERT %:% Expected '%' got '%'.\n", file, line, expected, got);
     assert(false);
 }
@@ -57,7 +54,13 @@ test_f32_eq :: fn (got: f32, expected: f32, epsilon: f32, file: string, line: s3
 // @DOC
 test_f64_eq :: fn (got: f64, expected: f64, epsilon: f64, file: string, line: s32) {
     if f64_compare(got, expected, epsilon) { return; }
+    eprint("ASSERT %:% Expected '%' got '%'.\n", file, line, expected, got);
+    assert(false);
+}
 
+// @DOC
+test_s32_eq :: fn (got: s32, expected: s32, file: string, line: s32) {
+    if got == expected { return; }
     eprint("ASSERT %:% Expected '%' got '%'.\n", file, line, expected, got);
     assert(false);
 }

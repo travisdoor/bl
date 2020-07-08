@@ -241,85 +241,45 @@ static INLINE void _print_const_value(Context *cnt, MirType *type, VMStackPtr va
 }
 
 static void print_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
-
 static void print_instr_toany(Context *cnt, MirInstrToAny *toany);
-
 static void print_instr_phi(Context *cnt, MirInstrPhi *phi);
-
 static void print_instr_cast(Context *cnt, MirInstrCast *cast);
-
 static void print_instr_sizeof(Context *cnt, MirInstrSizeof *szof);
-
 static void print_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
-
 static void print_instr_test_cases(Context *cnt, MirInstrTestCases *tc);
-
 static void print_instr_alignof(Context *cnt, MirInstrAlignof *szof);
-
 static void print_instr_load(Context *cnt, MirInstrLoad *load);
-
 static void print_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
-
 static void print_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
-
 static void print_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
-
 static void print_instr_cond_br(Context *cnt, MirInstrCondBr *cond_br);
-
 static void print_instr_compound(Context *cnt, MirInstrCompound *init);
-
 static void print_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
-
 static void print_instr_br(Context *cnt, MirInstrBr *br);
-
 static void print_instr_switch(Context *cnt, MirInstrSwitch *sw);
-
 static void print_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
-
 static void print_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
-
 static void print_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn);
-
 static void print_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct);
-
 static void print_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum);
-
 static void print_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr);
-
 static void print_instr_type_array(Context *cnt, MirInstrTypeArray *type_array);
-
 static void print_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice);
-
 static void print_instr_type_dynarr(Context *cnt, MirInstrTypeDynArr *type_dynarr);
-
 static void print_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_vargs);
-
 static void print_instr_block(Context *cnt, MirInstrBlock *block);
-
 static void print_instr_decl_var(Context *cnt, MirInstrDeclVar *decl);
-
 static void print_instr_decl_member(Context *cnt, MirInstrDeclMember *decl);
-
 static void print_instr_decl_variant(Context *cnt, MirInstrDeclVariant *var);
-
 static void print_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl);
-
 static void print_instr_const(Context *cnt, MirInstrConst *ci);
-
 static void print_instr_ret(Context *cnt, MirInstrRet *ret);
-
 static void print_instr_store(Context *cnt, MirInstrStore *store);
-
 static void print_instr_binop(Context *cnt, MirInstrBinop *binop);
-
 static void print_instr_call(Context *cnt, MirInstrCall *call);
-
 static void print_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
-
 static void print_instr_unop(Context *cnt, MirInstrUnop *unop);
-
 static void print_instr_arg(Context *cnt, MirInstrArg *arg);
-
 static void print_instr(Context *cnt, MirInstr *instr);
 
 /* impl */

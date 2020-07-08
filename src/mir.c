@@ -4849,7 +4849,7 @@ AnalyzeResult analyze_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef 
 {
 	BL_ASSERT(ref->ref && "Missing declaration reference for direct ref.");
 	BL_ASSERT(ref->ref->kind == MIR_INSTR_DECL_VAR && "Expected variable declaration.");
-	BL_ASSERT(ref->ref->analyzed && "Reference not analyzed.");
+	if (!ref->ref->analyzed) return ANALYZE_RESULT(POSTPONE, 0);
 
 	MirVar *var = ((MirInstrDeclVar *)ref->ref)->var;
 	BL_ASSERT(var);
@@ -4861,7 +4861,6 @@ AnalyzeResult analyze_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef 
 	ref->base.value.type        = type;
 	ref->base.value.is_comptime = var->value.is_comptime;
 	ref->base.value.addr_mode   = var->is_mutable ? MIR_VAM_LVALUE : MIR_VAM_LVALUE_CONST;
-
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -5252,13 +5251,13 @@ AnalyzeResult analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 		for (usize i = 0; i < argc; ++i) {
 			BL_ASSERT(type_fn->args->data[i]->kind == MIR_INSTR_DECL_ARG);
 			MirInstrDeclArg *decl_arg = (MirInstrDeclArg *)type_fn->args->data[i];
-			MirArg *arg = decl_arg->arg;
+			MirArg *         arg      = decl_arg->arg;
 			if (arg->value && !arg->value->analyzed) {
 				return ANALYZE_RESULT(POSTPONE, 0);
 			}
 		}
 
-		args             = create_sarr(TSmallArray_ArgPtr, cnt->assembly);
+		args = create_sarr(TSmallArray_ArgPtr, cnt->assembly);
 		for (usize i = 0; i < argc; ++i) {
 			BL_ASSERT(type_fn->args->data[i]->kind == MIR_INSTR_DECL_ARG);
 			MirInstrDeclArg **arg_ref = (MirInstrDeclArg **)&type_fn->args->data[i];
@@ -6342,7 +6341,57 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 		tsa_resize_InstrPtr(call->args, callee_argc);
 		/* Replace last with vargs. */
 		tsa_push_InstrPtr(call->args, vargs);
-	} else if (!has_default_args) {
+	} else if (has_default_args) {
+		/* Call have more arguments than a function. */
+		if (callee_argc < call_argc) {
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_INVALID_ARG_COUNT,
+			            call->base.node->location,
+			            BUILDER_CUR_WORD,
+			            "Expected most %u %s, but called with %u.",
+			            callee_argc,
+			            callee_argc == 1 ? "argument" : "arguments",
+			            call_argc);
+			return ANALYZE_RESULT(FAILED, 0);
+		}
+
+		/* Check if all arguments are explicitly provided. */
+		if (callee_argc > call_argc) {
+			for (int i = call_argc; i < callee_argc; ++i) {
+				MirArg *arg = type->data.fn.args->data[i];
+				// Missing argument has no default value!
+				if (!arg->value) {
+					// @INCOMPLETE: Consider better error message...
+					builder_msg(BUILDER_MSG_ERROR,
+					            ERR_INVALID_ARG_COUNT,
+					            call->base.node->location,
+					            BUILDER_CUR_WORD,
+					            "Expected %u %s, but called with %u.",
+					            callee_argc,
+					            callee_argc == 1 ? "argument" : "arguments",
+					            call_argc);
+					return ANALYZE_RESULT(FAILED, 0);
+				}
+
+				/* Create direct reference to default value and insert it into call
+				 * argument list. Here we modify call->args array!!!*/
+				MirInstr *insert_location =
+				    call->args->size > 0 ? call->args->data[call->args->size - 1]
+				                         : &call->base;
+
+				MirInstr *call_default_arg =
+				    create_instr_decl_direct_ref(cnt, arg->value);
+
+				tsa_push_InstrPtr(call->args, call_default_arg);
+				insert_instr_before(insert_location, call_default_arg);
+				const AnalyzeResult result = analyze_instr(cnt, call_default_arg);
+				/* Default value reference MUST be analyzed before any call to owner
+				 * function! */
+				if (result.state != ANALYZE_PASSED)
+					return ANALYZE_RESULT(FAILED, 0);
+			}
+		}
+	} else {
 		if ((callee_argc != call_argc)) {
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_ARG_COUNT,
@@ -6363,30 +6412,18 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 
 	/* validate argument types */
 	MirInstr *call_arg_prev = NULL;
-	if (callee_argc) {
-		for (u32 i = 0; i < callee_argc; ++i) {
-			MirInstr **call_arg   = i < call->args->size ? &call->args->data[i] : NULL;
-			MirArg *   callee_arg = type->data.fn.args->data[i];
-			BL_ASSERT(callee_arg);
+	if (!callee_argc) return ANALYZE_RESULT(PASSED, 0);
 
-			if (!call_arg) { // use default value
-				BL_ASSERT(callee_arg->value);
-				tsa_push_InstrPtr(
-				    call->args,
-				    create_instr_decl_direct_ref(cnt, callee_arg->value));
-				call_arg = &call->args->data[i];
-				insert_instr_before(call_arg_prev ? call_arg_prev : &call->base,
-				                    *call_arg);
-				ANALYZE_INSTR_RQ(*call_arg);
-			}
+	for (u32 i = 0; i < callee_argc; ++i) {
+		MirInstr **call_arg   = &call->args->data[i];
+		MirArg *   callee_arg = type->data.fn.args->data[i];
+		BL_ASSERT(callee_arg);
 
-			if (analyze_slot(
-			        cnt, &analyze_slot_conf_full, call_arg, callee_arg->type) !=
-			    ANALYZE_PASSED) {
-				return ANALYZE_RESULT(FAILED, 0);
-			}
-			call_arg_prev = *call_arg;
+		if (analyze_slot(cnt, &analyze_slot_conf_full, call_arg, callee_arg->type) !=
+		    ANALYZE_PASSED) {
+			return ANALYZE_RESULT(FAILED, 0);
 		}
+		call_arg_prev = *call_arg;
 	}
 
 	return ANALYZE_RESULT(PASSED, 0);
@@ -8537,9 +8574,8 @@ MirInstr *ast_decl_arg(Context *cnt, Ast *arg)
 		 * value can be more complex compound with references, we need to use same solution
 		 * like we already use for globals. This approach is also more effective than
 		 * reinserting of whole MIR generated by expression on call side. */
-
 		value = append_instr_decl_var_impl(
-		    cnt, gen_uq_name(IMPL_ARG_DEFAULT), NULL, NULL, false, true, 0, 0);
+		    cnt, IMPL_ARG_DEFAULT, NULL, NULL, false, true, 0, 0);
 		ast_create_global_initializer(cnt, ast_value, value);
 	}
 	return append_instr_decl_arg(cnt, ast_name, type, value);

@@ -29,6 +29,7 @@
 #load "union.test.bl"
 #load "typeinfo.test.bl"
 #load "vargs.test.bl"
+#load "fn_default_args.test.bl"
 /////////////////////////////////////////////////////
 
 main :: fn () s32 {
