@@ -74,93 +74,50 @@ static INLINE void print_flags(s32 flags, FILE *stream)
 }
 
 static void print_node(Ast *node, s32 pad, FILE *stream);
-
 static void print_ublock(Ast *ublock, s32 pad, FILE *stream);
-
 static void print_load(Ast *load, s32 pad, FILE *stream);
-
 static void print_link(Ast *link, s32 pad, FILE *stream);
-
 static void print_private(Ast *private, s32 pad, FILE *stream);
-
+static void print_call_loc(Ast *call_loc, s32 pad, FILE *stream);
 static void print_block(Ast *block, s32 pad, FILE *stream);
-
 static void print_unrecheable(Ast *unr, s32 pad, FILE *stream);
-
 static void print_type_struct(Ast *strct, s32 pad, FILE *stream);
-
 static void print_type_enum(Ast *enm, s32 pad, FILE *stream);
-
 static void print_stmt_if(Ast *stmt_if, s32 pad, FILE *stream);
-
 static void print_stmt_switch(Ast *stmt_switch, s32 pad, FILE *stream);
-
 static void print_stmt_case(Ast *stmt_case, s32 pad, FILE *stream);
-
 static void print_stmt_loop(Ast *loop, s32 pad, FILE *stream);
-
 static void print_stmt_break(Ast *br, s32 pad, FILE *stream);
-
 static void print_stmt_continue(Ast *cnt, s32 pad, FILE *stream);
-
 static void print_stmt_return(Ast *ret, s32 pad, FILE *stream);
-
 static void print_stmt_defer(Ast *defer, s32 pad, FILE *stream);
-
 static void print_decl_entity(Ast *entity, s32 pad, FILE *stream);
-
 static void print_decl_arg(Ast *arg, s32 pad, FILE *stream);
-
 static void print_decl_member(Ast *member, s32 pad, FILE *stream);
-
 static void print_decl_variant(Ast *variant, s32 pad, FILE *stream);
-
 static void print_bad(Ast *bad, s32 pad, FILE *stream);
-
 static void print_expr_line(Ast *line, s32 pad, FILE *stream);
-
 static void print_expr_file(Ast *file, s32 pad, FILE *stream);
-
 static void print_expr_unary(Ast *unary, s32 pad, FILE *stream);
-
 static void print_expr_cast(Ast *cast, s32 pad, FILE *stream);
-
 static void print_expr_member(Ast *member, s32 pad, FILE *stream);
-
 static void print_expr_addrof(Ast *addrof, s32 pad, FILE *stream);
-
 static void print_expr_sizeof(Ast *szof, s32 pad, FILE *stream);
-
 static void print_expr_type_info(Ast *type_info, s32 pad, FILE *stream);
-
 static void print_expr_test_cases(Ast *type_info, s32 pad, FILE *stream);
-
 static void print_expr_deref(Ast *deref, s32 pad, FILE *stream);
-
 static void print_expr_binop(Ast *binop, s32 pad, FILE *stream);
-
 static void print_expr_type(Ast *expr_type, s32 pad, FILE *stream);
-
 static void print_expr_compound(Ast *expr_compound, s32 pad, FILE *stream);
-
 static void print_expr_ref(Ast *ref, s32 pad, FILE *stream);
-
 static void print_expr_lit_int(Ast *lit, s32 pad, FILE *stream);
-
 static void print_expr_lit_float(Ast *lit, s32 pad, FILE *stream);
-
 static void print_expr_lit_double(Ast *lit, s32 pad, FILE *stream);
-
 static void print_expr_lit_char(Ast *lit, s32 pad, FILE *stream);
-
 static void print_expr_lit_bool(Ast *lit, s32 pad, FILE *stream);
-
 static void print_expr_lit_string(Ast *lit, s32 pad, FILE *stream);
-
 static void print_expr_lit_fn(Ast *fn, s32 pad, FILE *stream);
-
 static void print_expr_call(Ast *call, s32 pad, FILE *stream);
-
 static void print_expr_elem(Ast *elem, s32 pad, FILE *stream);
 
 /* impl */
@@ -195,6 +152,11 @@ void print_link(Ast *link, s32 pad, FILE *stream)
 void print_private(Ast *private, s32 pad, FILE *stream)
 {
 	print_head(private, pad, stream);
+}
+
+void print_call_loc(Ast *call_loc, s32 pad, FILE *stream)
+{
+	print_head(call_loc, pad, stream);
 }
 
 void print_unrecheable(Ast *unr, s32 pad, FILE *stream)
@@ -537,6 +499,10 @@ void print_node(Ast *node, s32 pad, FILE *stream)
 
 	case AST_PRIVATE:
 		print_private(node, pad, stream);
+		break;
+
+	case AST_CALL_LOC:
+		print_call_loc(node, pad, stream);
 		break;
 
 	case AST_IDENT:

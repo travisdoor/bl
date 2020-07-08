@@ -66,10 +66,10 @@ TSMALL_ARRAY_TYPE(ScopePtr64, Scope *, 64);
 #define DECL_GET(_cnt) ((_cnt)->_decl_stack.size ? tsa_last_AstPtr64(&(_cnt)->_decl_stack) : NULL)
 
 typedef enum {
-	HD_NONE = 1 << 0,
-	HD_LOAD = 1 << 1,
-	HD_LINK = 1 << 2,
-	// 1 << 3, free
+	HD_NONE        = 1 << 0,
+	HD_LOAD        = 1 << 1,
+	HD_LINK        = 1 << 2,
+	HD_CALL_LOC    = 1 << 3,
 	HD_EXTERN      = 1 << 4,
 	HD_COMPILER    = 1 << 5,
 	HD_PRIVATE     = 1 << 6,
@@ -78,7 +78,6 @@ typedef enum {
 	HD_FILE        = 1 << 9,
 	HD_LINE        = 1 << 10,
 	HD_BASE        = 1 << 11,
-	HD_META        = 1 << 12,
 	HD_ENTRY       = 1 << 12,
 	HD_BUILD_ENTRY = 1 << 13,
 	HD_TAGS        = 1 << 14,
@@ -498,37 +497,6 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
 		return tags;
 	}
 
-#if 0 // @INCOMPLETE
-	if (strcmp(directive, "meta") == 0) {
-		set_satisfied(HD_META);
-		if (IS_NOT_FLAG(expected_mask, HD_META)) {
-			PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-			            tok_directive,
-			            BUILDER_CUR_WORD,
-			            "Unexpected directive.");
-			return ast_create_node(
-			    cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
-		}
-
-		Token *tok_str = tokens_consume(cnt->tokens);
-		if (tok_str->sym != SYM_STRING) {
-			PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-			            tok_directive,
-			            BUILDER_CUR_WORD,
-			            "Expected string description after meta data.");
-
-			return ast_create_node(
-			    cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
-		}
-
-		Ast *meta =
-		    ast_create_node(cnt->ast_arena, AST_META_DATA, tok_directive, SCOPE_GET(cnt));
-
-		meta->data.meta_data.str = tok_str->value.str;
-		return meta;
-	}
-#endif
-
 	if (strcmp(directive, "line") == 0) {
 		set_satisfied(HD_LINE);
 		if (IS_NOT_FLAG(expected_mask, HD_LINE)) {
@@ -590,6 +558,23 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
 		}
 
 		return NULL;
+	}
+
+	if (strcmp(directive, "call_location") == 0) {
+		set_satisfied(HD_CALL_LOC);
+		if (IS_NOT_FLAG(expected_mask, HD_CALL_LOC)) {
+			PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+			            tok_directive,
+			            BUILDER_CUR_WORD,
+			            "Unexpected directive. Call location can be used only as "
+			            "function argument default value.");
+			return ast_create_node(
+			    cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
+		}
+
+		Ast *loc =
+		    ast_create_node(cnt->ast_arena, AST_CALL_LOC, tok_directive, SCOPE_GET(cnt));
+		return loc;
 	}
 
 	if (strcmp(directive, "extern") == 0) {
@@ -2491,7 +2476,7 @@ NEXT:
 	}
 
 	/* load, link, test, private - enabled in global scope */
-	const int enabled_hd = HD_LOAD | HD_LINK | HD_PRIVATE | HD_META;
+	const int enabled_hd = HD_LOAD | HD_LINK | HD_PRIVATE;
 	if ((tmp = parse_hash_directive(cnt, enabled_hd, NULL))) {
 		if (tmp->kind == AST_META_DATA) {
 			ublock->meta_node = tmp;

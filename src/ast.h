@@ -338,6 +338,10 @@ struct AstTags {
 	TSmallArray_AstPtr *values;
 };
 
+struct AstCallLoc {
+	void *_;
+};
+
 /* AST base type */
 struct Ast {
 	AstKind          kind;

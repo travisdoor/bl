@@ -456,7 +456,7 @@ scan:
 			/*
 			 * Two joined symbols will be parsed as identifier.
 			 */
-			if (i >= SYM_IF && i <= SYM_CONTINUE && IS_IDENT(*cnt->c)) {
+			if (i >= SYM_IF && i <= SYM_UNREACHABLE && IS_IDENT(*cnt->c)) {
 				/* roll back */
 				cnt->c -= len;
 				break;

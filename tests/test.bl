@@ -1,21 +1,13 @@
 /* playground */
 main :: fn () s32 {
-    foo("hello", "world");
     return 0; 
 } 
 
-Foo :: struct {
-    i: *s32;
-    j: bool;
+CallLocation :: struct #compiler {
+    file: string;
+    line: s32;
 }
 
-HOMO :: 320;
-GLOBAL :: {:Foo: &HOMO, true};
-
-bar :: fn (a: s32, foo: Foo = GLOBAL) {
+foo :: fn (msg: string, loc: CallLocation = #call_location) {
+    print("%:%: %\n", loc.file, loc.line, msg);
 }
-
-foo :: fn (a: string, b: string, c: s32 = 10) {
-    print("% % %\n", a, b, c);
-}
-

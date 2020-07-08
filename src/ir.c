@@ -821,11 +821,13 @@ State emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 State emit_instr_decl_direct_ref(Context UNUSED(*cnt), MirInstrDeclDirectRef *ref)
 {
 	BL_ASSERT(ref->ref && ref->ref->kind == MIR_INSTR_DECL_VAR);
-
 	MirVar *var = ((MirInstrDeclVar *)ref->ref)->var;
 	BL_ASSERT(var);
-
-	ref->base.llvm_value = var->llvm_value;
+	if (var->is_global) {
+		ref->base.llvm_value = emit_global_var_proto(cnt, var);
+	} else {
+		ref->base.llvm_value = var->llvm_value;
+	}
 	BL_ASSERT(ref->base.llvm_value);
 	return STATE_PASSED;
 }
