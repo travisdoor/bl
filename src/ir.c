@@ -144,6 +144,7 @@ static State emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
 static State emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
 static State emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
 static State emit_instr_toany(Context *cnt, MirInstrToAny *toany);
+static State emit_intr_call_loc(Context *cnt, MirInstrCallLoc *loc);
 static void  emit_allocas(Context *cnt, MirFn *fn);
 static void  emit_incomplete(Context *cnt);
 static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn);
@@ -2787,6 +2788,27 @@ State emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 	return STATE_PASSED;
 }
 
+State emit_instr_call_loc(Context *cnt, MirInstrCallLoc *loc)
+{
+	MirType *             type = loc->meta_var->value.type;
+	TSmallArray_LLVMValue llvm_vals;
+	tsa_init(&llvm_vals);
+
+	const char *filename = loc->call_location->unit->filename;
+	tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, filename, strlen(filename)));
+
+	MirType *line_type = mir_get_struct_elem_type(type, 1);
+	tsa_push_LLVMValue(
+	    &llvm_vals,
+	    LLVMConstInt(get_type(cnt, line_type), (u32)loc->call_location->line, true));
+
+	loc->meta_var->llvm_value =
+	    LLVMConstNamedStruct(get_type(cnt, type), llvm_vals.data, (u32)llvm_vals.size);
+
+	tsa_terminate(&llvm_vals);
+	return STATE_PASSED;
+}
+
 State emit_instr_block(Context *cnt, MirInstrBlock *block)
 {
 	/* We don't want to genrate type resolvers for typedefs!!! */
@@ -3032,6 +3054,9 @@ State emit_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_TEST_CASES:
 		state = emit_instr_test_cases(cnt, (MirInstrTestCases *)instr);
+		break;
+	case MIR_INSTR_CALL_LOC:
+		state = emit_instr_call_loc(cnt, (MirInstrCallLoc *)instr);
 		break;
 
 	default:

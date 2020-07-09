@@ -196,6 +196,7 @@ static void interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref);
 static void interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref);
 static void eval_instr(VM *vm, MirInstr *instr);
 static void eval_instr_type_info(VM *vm, MirInstrTypeInfo *type_info);
+static void eval_instr_call_loc(VM *vm, MirInstrCallLoc *loc);
 static void eval_instr_test_cases(VM *vm, MirInstrTestCases *tc);
 static void eval_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr);
 static void eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr);
@@ -2176,6 +2177,10 @@ void eval_instr(VM *vm, MirInstr *instr)
 		eval_instr_test_cases(vm, (MirInstrTestCases *)instr);
 		break;
 
+	case MIR_INSTR_CALL_LOC:
+		eval_instr_call_loc(vm, (MirInstrCallLoc *)instr);
+		break;
+
 	case MIR_INSTR_BLOCK:
 	case MIR_INSTR_CONST:
 	case MIR_INSTR_FN_PROTO:
@@ -2193,7 +2198,6 @@ void eval_instr(VM *vm, MirInstr *instr)
 	case MIR_INSTR_DECL_VARIANT:
 	case MIR_INSTR_SIZEOF:
 	case MIR_INSTR_ALIGNOF:
-	case MIR_INSTR_CALL_LOC:
 		break;
 
 	default:
@@ -2207,6 +2211,12 @@ void eval_instr_type_info(VM *vm, MirInstrTypeInfo *type_info)
 	MirVar *rtti_var = assembly_get_rtti(vm->assembly, type_info->rtti_type->id.hash);
 
 	MIR_CEV_WRITE_AS(VMStackPtr, &type_info->base.value, rtti_var->value.data);
+}
+
+void eval_instr_call_loc(VM UNUSED(*vm), MirInstrCallLoc *loc)
+{
+	if (!loc->meta_var) return;
+	MIR_CEV_WRITE_AS(VMStackPtr, &loc->base.value, loc->meta_var->value.data);
 }
 
 void eval_instr_test_cases(VM *vm, MirInstrTestCases *tc)

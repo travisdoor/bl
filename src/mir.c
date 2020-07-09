@@ -50,6 +50,7 @@
 #define IMPL_RTTI_ENTRY ".rtti"
 #define IMPL_TESTCASES_TMP ".testcases"
 #define IMPL_ARG_DEFAULT ".arg.default"
+#define IMPL_CALL_LOC ".call.loc"
 #define IMPL_RET_TMP ".ret"
 #define NO_REF_COUNTING -1
 #define VERBOSE_ANALYZE false
@@ -1168,6 +1169,7 @@ static INLINE bool is_load_needed(MirInstr *instr)
 	case MIR_INSTR_CAST:
 	case MIR_INSTR_DECL_MEMBER:
 	case MIR_INSTR_TYPE_INFO:
+	case MIR_INSTR_CALL_LOC:
 	case MIR_INSTR_COMPOUND:
 	case MIR_INSTR_SIZEOF:
 		return false;
@@ -1552,7 +1554,7 @@ ID *lookup_builtins_any(Context *cnt)
 	if (!cnt->builtin_types->t_Any) {
 		return &builtin_ids[MIR_BUILTIN_ID_ANY];
 	}
-	cnt->builtin_types->t_Any_ptr = create_type_ptr(cnt, cnt->builtin_types->t_Any);
+	cnt->builtin_types->t_Any_ptr    = create_type_ptr(cnt, cnt->builtin_types->t_Any);
 	cnt->builtin_types->is_any_ready = true;
 	return NULL;
 }
@@ -5204,7 +5206,6 @@ AnalyzeResult analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
 			}
 		}
 	}
-
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -5901,11 +5902,23 @@ AnalyzeResult analyze_instr_call_loc(Context *cnt, MirInstrCallLoc *loc)
 	ID *missing = lookup_builtins_call_loc(cnt);
 	if (missing) return ANALYZE_RESULT(WAITING, missing->hash);
 	loc->base.value.type = cnt->builtin_types->t_CallLocation_ptr;
+	if (!loc->call_location) return ANALYZE_RESULT(PASSED, 0);
 
-	if (loc->call_location) {
-		BL_ABORT("Setup location!!!");
-	}
+	MirType *type = cnt->builtin_types->t_CallLocation;
+	MirVar * var  = create_var_impl(cnt, IMPL_CALL_LOC, type, false, true, true);
+	vm_alloc_global(cnt->vm, cnt->assembly, var);
 
+	VMStackPtr dest      = vm_read_var(cnt->vm, var);
+	MirType *  dest_file_type = mir_get_struct_elem_type(type, 0);
+	VMStackPtr dest_file      = vm_get_struct_elem_ptr(cnt->assembly, type, dest, 0);
+	MirType *  dest_line_type = mir_get_struct_elem_type(type, 1);
+	VMStackPtr dest_line      = vm_get_struct_elem_ptr(cnt->assembly, type, dest, 1);
+
+	const char *filename = loc->call_location->unit->filename;
+	vm_write_string(cnt->vm, dest_file_type, dest_file, filename, strlen(filename));
+	vm_write_int(dest_line_type, dest_line, (u64)loc->call_location->line);
+
+	loc->meta_var = var;
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
