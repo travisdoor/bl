@@ -5,13 +5,16 @@ Add noinit hash directive for variables.
 Speed up compilation with use of llvm.memset intrinsic for default values.
 Add builtin dynamic array.
 Add slice_init and slice_terminate builtins.
-Add -no-vcvars to disable VS environemnt injection.
+Add -no-vcvars to disable VS environment injection.
 Add implicit cast from dynamic array to slice.
 DI generation reimplemented.
 Fix invalid type ID generation for incomplete structure types.
 Fix naming of array types in type info.
 Add support of Tracy profiler.
 Fix number serialization in print.
+Rewritten unit testing.
+Add function call default argument values.
+Add #call_location hash directive.
 
 0.6.0 - BETA
 ---------------------------------------------------------------------------------------
@@ -21,10 +24,10 @@ Fix local functions in nested scope.
 Fix nested function implicitly capturing members of upper scope.
 Fix segfault on global initializer nesting.
 Fix LLVM cast assertions on string array to slice conversion.
-Fix invalid sizeof operator result on array elem values and struct memers.
+Fix invalid sizeof operator result on array elem values and struct members.
 Fix lambda functions inside nested scope.
 Add implicit conversion from pointers to bool.
 Add union data type.
 Add support of Windows terminal color output.
-Add testing formaters for printing float values.
+Add testing formatters for printing float values.
 Add support of MSVC CoveView and PDB debug database generation via LLVM API.

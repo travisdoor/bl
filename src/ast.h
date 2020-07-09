@@ -362,10 +362,12 @@ struct Ast {
 };
 
 void ast_arena_init(Arena *arena);
-
 void ast_arena_terminate(Arena *arena);
-
 void ast_small_array_arena_init(struct Arena *arena);
+Ast *ast_create_node(struct Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope);
+const char *ast_binop_to_str(BinopKind op);
+const char *ast_unop_to_str(UnopKind op);
+const char *ast_get_name(const Ast *n);
 
 static INLINE bool ast_binop_is_assign(BinopKind op)
 {
@@ -394,13 +396,5 @@ static INLINE bool ast_is_type(Ast *node)
 	BL_ASSERT(node);
 	return node->kind > _AST_TYPE_FIRST && node->kind < _AST_TYPE_LAST;
 }
-
-Ast *ast_create_node(struct Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope);
-
-const char *ast_binop_to_str(BinopKind op);
-
-const char *ast_unop_to_str(UnopKind op);
-
-const char *ast_get_name(const Ast *n);
 
 #endif

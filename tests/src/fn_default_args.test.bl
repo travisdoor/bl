@@ -71,3 +71,23 @@ default_args_global :: fn () #test {
     foo(10, 20, 30);
     foo(10, 20, 30, 40);
 }
+
+default_args_ptr_call :: fn () #test {
+    foo :: fn (i: s32 = 10, j: s32 = 20, k: s32 = 30, l: s32 = 40) {
+        test_s32_eq(i, 10, #file, #line);
+        test_s32_eq(j, 20, #file, #line);
+        test_s32_eq(k, 30, #file, #line);
+        test_s32_eq(l, 40, #file, #line);
+    };
+
+    p :: &foo;
+    p();
+    p(10);
+    p(10, 20);
+    p(10, 20, 30);
+    p(10, 20, 30, 40);
+}
+
+default_args_fn_explicit_type :: fn () #test {
+    assert(false);
+}

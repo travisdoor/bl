@@ -41,6 +41,7 @@ union __INSTR_T {\
 	MirInstrSwitch         sw;\
 	MirInstrSetInitializer si;\
 	MirInstrTestCases      tcs; \
+	MirInstrCallLoc        cl; \
 };
 
 #define SIZEOF_MIR_INSTR sizeof(union __INSTR_T)
@@ -88,6 +89,7 @@ union __INSTR_T {\
 	MIR_INSTR_SWITCH,
 	MIR_INSTR_SET_INITIALIZER,
 	MIR_INSTR_TEST_CASES,
+	MIR_INSTR_CALL_LOC,
 #endif
 
 #ifdef GEN_BUILTIN_NAMES

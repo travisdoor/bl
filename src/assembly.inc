@@ -46,4 +46,5 @@
 	MirType *t_TestCase;
 	MirType *t_TestCases_slice;
 	MirType *t_CallLocation;
+	MirType *t_CallLocation_ptr;
 #endif
