@@ -62,6 +62,7 @@
 struct Assembly;
 struct Builder;
 struct Unit;
+struct Location;
 
 typedef struct MirType           MirType;
 typedef struct MirMember         MirMember;
@@ -114,6 +115,7 @@ typedef struct MirInstrToAny          MirInstrToAny;
 typedef struct MirInstrSwitch         MirInstrSwitch;
 typedef struct MirInstrSetInitializer MirInstrSetInitializer;
 typedef struct MirInstrTestCases      MirInstrTestCases;
+typedef struct MirInstrCallLoc        MirInstrCallLoc;
 
 typedef struct MirArenas {
 	Arena instr;
@@ -712,6 +714,13 @@ struct MirInstrTypeInfo {
 
 struct MirInstrTestCases {
 	MirInstr base;
+};
+
+struct MirInstrCallLoc {
+	MirInstr base;
+
+	struct Location *call_location; /* Optional call location */
+	MirVar *  meta_var;      /* Optional meta var. */
 };
 
 struct MirInstrTypeKind {

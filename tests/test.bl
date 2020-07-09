@@ -1,5 +1,6 @@
 /* playground */
 main :: fn () s32 {
+    foo("Hello!");
     return 0; 
 } 
 
@@ -8,6 +9,6 @@ CallLocation :: struct #compiler {
     line: s32;
 }
 
-foo :: fn (msg: string, loc: CallLocation = #call_location) {
+foo :: fn (msg: string, loc: *CallLocation = #call_location) {
     print("%:%: %\n", loc.file, loc.line, msg);
 }
