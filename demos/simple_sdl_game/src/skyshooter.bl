@@ -42,7 +42,7 @@ game_init :: fn (game: *Game) {
     print("Initialize SDL.\n");
 
     if SDL_Init(SDL_INIT_VIDEO) != 0 {
-        panic("Unable to init SDL\n");
+        panic("Unable to init SDL");
     } else {
         print("SDL initialized.\n");
     }
@@ -61,7 +61,7 @@ game_init :: fn (game: *Game) {
     );
 
     if game.window == null {
-        panic("Cannot create window.\n");
+        panic("Cannot create window.");
     }
 
     game.renderer = SDL_CreateRenderer(game.window, -1,
@@ -69,7 +69,7 @@ game_init :: fn (game: *Game) {
                                        //| SDL_RENDERER_PRESENTVSYNC);
 
     if game.renderer == null {
-        panic("Cannot create renderer.\n");
+        panic("Cannot create renderer.");
     }
     
     SDL_SetRenderDrawColor(game.renderer, 0, 0, 0, 255);

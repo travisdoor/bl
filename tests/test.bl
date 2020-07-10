@@ -4,6 +4,6 @@ main :: fn () s32 {
     return 0; 
 } 
 
-foo :: fn (msg: string, loc: *CallLocation = #call_location) {
+foo :: fn (msg: string, loc: *CodeLocation = #call_location) {
     print("%:%: %\n", loc.file, loc.line, msg);
 }

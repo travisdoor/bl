@@ -211,5 +211,5 @@ union __INSTR_T {\
     {.str = "slice_terminate",       .hash = 0},
     {.str = "IS_DEBUG",              .hash = 0},
     {.str = "TestCase",              .hash = 0},
-    {.str = "CallLocation",          .hash = 0},
+    {.str = "CodeLocation",          .hash = 0},
 #endif

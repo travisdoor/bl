@@ -45,6 +45,6 @@
 	MirType *t_TypeInfoFnArgs_slice;
 	MirType *t_TestCase;
 	MirType *t_TestCases_slice;
-	MirType *t_CallLocation;
-	MirType *t_CallLocation_ptr;
+	MirType *t_CodeLocation;
+	MirType *t_CodeLocation_ptr;
 #endif
