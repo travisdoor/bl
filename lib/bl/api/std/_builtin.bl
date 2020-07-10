@@ -486,6 +486,12 @@ TestCase :: struct #compiler {
     name: string;
 }
 
+// @DOC
+CallLocation :: struct #compiler {
+    file: string;
+    line: s32;
+}
+
 /*!
 # command_line_arguments
 ## Declaration

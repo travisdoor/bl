@@ -2790,10 +2790,16 @@ State emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 
 State emit_instr_call_loc(Context *cnt, MirInstrCallLoc *loc)
 {
-	MirType *             type = loc->meta_var->value.type;
+	MirVar *meta_var = loc->meta_var;
+	BL_ASSERT(meta_var);
+	MirType *    type = meta_var->value.type;
+	LLVMValueRef llvm_var =
+	    LLVMAddGlobal(cnt->llvm_module, get_type(cnt, type), meta_var->linkage_name);
+	LLVMSetLinkage(llvm_var, LLVMPrivateLinkage);
+	LLVMSetGlobalConstant(llvm_var, true);
+
 	TSmallArray_LLVMValue llvm_vals;
 	tsa_init(&llvm_vals);
-
 	const char *filename = loc->call_location->unit->filename;
 	tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, filename, strlen(filename)));
 
@@ -2802,10 +2808,13 @@ State emit_instr_call_loc(Context *cnt, MirInstrCallLoc *loc)
 	    &llvm_vals,
 	    LLVMConstInt(get_type(cnt, line_type), (u32)loc->call_location->line, true));
 
-	loc->meta_var->llvm_value =
+	LLVMValueRef llvm_value =
 	    LLVMConstNamedStruct(get_type(cnt, type), llvm_vals.data, (u32)llvm_vals.size);
-
 	tsa_terminate(&llvm_vals);
+
+	LLVMSetInitializer(llvm_var, llvm_value);
+	loc->meta_var->llvm_value = llvm_var;
+	loc->base.llvm_value      = llvm_var;
 	return STATE_PASSED;
 }
 

@@ -4,11 +4,6 @@ main :: fn () s32 {
     return 0; 
 } 
 
-CallLocation :: struct #compiler {
-    file: string;
-    line: s32;
-}
-
 foo :: fn (msg: string, loc: *CallLocation = #call_location) {
     print("%:%: %\n", loc.file, loc.line, msg);
 }

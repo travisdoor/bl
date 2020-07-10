@@ -22,56 +22,56 @@ test_print_int :: fn () #test {
         v : u64 : U64_MAX;
         str :: sprint(v);     
         defer string_delete(str);
-        test_str_eq(str, "18446744073709551615", #file, #line);
+        test_str_eq(str, "18446744073709551615");
     }
 
     {
         v : s64 : S64_MAX;
         str :: sprint(v);     
         defer string_delete(str);
-        test_str_eq(str, "9223372036854775807", #file, #line);
+        test_str_eq(str, "9223372036854775807");
     }
 
     {
         v : s64 : S64_MIN;
         str :: sprint(v);     
         defer string_delete(str);
-        test_str_eq(str, "-9223372036854775808", #file, #line);
+        test_str_eq(str, "-9223372036854775808");
     }
 
     {
         v : s32 : S32_MAX;
         str :: sprint(v);     
         defer string_delete(str);
-        test_str_eq(str, "2147483647", #file, #line);
+        test_str_eq(str, "2147483647");
     }
 
     {
         v : s32 : S32_MIN;
         str :: sprint(v);     
         defer string_delete(str);
-        test_str_eq(str, "-2147483648", #file, #line);
+        test_str_eq(str, "-2147483648");
     }
 
     {
         v : s16 : S16_MAX;
         str :: sprint(v);     
         defer string_delete(str);
-        test_str_eq(str, "32767", #file, #line);
+        test_str_eq(str, "32767");
     }
 
     {
         v : s16 : S16_MIN;
         str :: sprint(v);     
         defer string_delete(str);
-        test_str_eq(str, "-32768", #file, #line);
+        test_str_eq(str, "-32768");
     }
 
     {
         v :: -0;
         str :: sprint(v);     
         defer string_delete(str);
-        test_str_eq(str, "0", #file, #line);
+        test_str_eq(str, "0");
     }
 }
 
@@ -79,13 +79,13 @@ test_print_bool :: fn () #test {
     {
         str :: sprint(false);     
         defer string_delete(str);
-        test_str_eq(str, "false", #file, #line);
+        test_str_eq(str, "false");
     }
 
     {
         str :: sprint(true);     
         defer string_delete(str);
-        test_str_eq(str, "true", #file, #line);
+        test_str_eq(str, "true");
     }
 }
 
@@ -94,42 +94,42 @@ test_fmt_f32 :: fn () #test {
         str :: sprint(fmt_real(0.f, 0));     
         defer string_delete(str);
 
-        test_str_eq(str, "0", #file, #line);
+        test_str_eq(str, "0");
     }
 
     {
         str :: sprint(fmt_real(10.12f, 2));     
         defer string_delete(str);
 
-        test_str_eq(str, "10.12", #file, #line);
+        test_str_eq(str, "10.12");
     }
 
     {
         str :: sprint(fmt_real(10.121234f, 0));     
         defer string_delete(str);
 
-        test_str_eq(str, "10", #file, #line);
+        test_str_eq(str, "10");
     }
 
     {
         str :: sprint(fmt_real(-10.121234f, -1));     
         defer string_delete(str);
 
-        test_str_eq(str, "-10.121234", #file, #line);
+        test_str_eq(str, "-10.121234");
     }
 
     {
         str :: sprint(fmt_real(121234.f, 5));     
         defer string_delete(str);
 
-        test_str_eq(str, "121234.00000", #file, #line);
+        test_str_eq(str, "121234.00000");
     }
 
     {
         str :: sprint(fmt_real(0.121234f, -1));     
         defer string_delete(str);
 
-        test_str_eq(str, "0.121234", #file, #line);
+        test_str_eq(str, "0.121234");
     }
 }
 
@@ -138,28 +138,28 @@ test_fmt_s32_base10 :: fn () #test {
         str :: sprint(fmt_int(0, FmtIntBase.Dec));     
         defer string_delete(str);
 
-        test_str_eq(str, "0", #file, #line);
+        test_str_eq(str, "0");
     }
 
     {
         str :: sprint(fmt_int(10, FmtIntBase.Dec));     
         defer string_delete(str);
 
-        test_str_eq(str, "10", #file, #line);
+        test_str_eq(str, "10");
     }
 
     {
         str :: sprint(fmt_int(-10, FmtIntBase.Dec));     
         defer string_delete(str);
 
-        test_str_eq(str, "-10", #file, #line);
+        test_str_eq(str, "-10");
     }
 
     {
         str :: sprint(fmt_int(123456789, FmtIntBase.Dec));     
         defer string_delete(str);
 
-        test_str_eq(str, "123456789", #file, #line);
+        test_str_eq(str, "123456789");
     }
 }
 
@@ -168,14 +168,14 @@ test_fmt_s32_base2 :: fn () #test {
         str :: sprint(fmt_int(0, FmtIntBase.Bin));     
         defer string_delete(str);
 
-        test_str_eq(str, "0b0", #file, #line);
+        test_str_eq(str, "0b0");
     }
 
     {
         str :: sprint(fmt_int(0b1011, FmtIntBase.Bin));     
         defer string_delete(str);
 
-        test_str_eq(str, "0b1011", #file, #line);
+        test_str_eq(str, "0b1011");
     }
 }
 
@@ -184,14 +184,14 @@ test_fmt_s32_base16 :: fn () #test {
         str :: sprint(fmt_int(0, FmtIntBase.Hex));     
         defer string_delete(str);
 
-        test_str_eq(str, "0x0", #file, #line);
+        test_str_eq(str, "0x0");
     }
 
     {
         str :: sprint(fmt_int(0xfa12, FmtIntBase.Hex));     
         defer string_delete(str);
 
-        test_str_eq(str, "0xfa12", #file, #line);
+        test_str_eq(str, "0xfa12");
     }
 }
 
@@ -199,7 +199,7 @@ test_print_content_simple :: fn () #test {
     str :: sprint("text", 10, true);     
     defer string_delete(str);
 
-    test_str_eq(str, "text10true", #file, #line);
+    test_str_eq(str, "text10true");
 }
 
 test_print_array :: fn () #test {
@@ -207,7 +207,7 @@ test_print_array :: fn () #test {
     str :: sprint(arr);     
     defer string_delete(str);
 
-    test_str_eq(str, "[1, 2, 3]", #file, #line);
+    test_str_eq(str, "[1, 2, 3]");
 }
 
 test_print_struct :: fn () #test {
@@ -220,7 +220,7 @@ test_print_struct :: fn () #test {
     str :: sprint(foo);     
     defer string_delete(str);
 
-    test_str_eq(str, "Foo {i = 666, j = true}", #file, #line);
+    test_str_eq(str, "Foo {i = 666, j = true}");
 }
 
 test_complex_type :: fn () #test {
@@ -234,5 +234,5 @@ test_complex_type :: fn () #test {
     str :: sprint(foo);     
     defer string_delete(str);
 
-    test_str_eq(str, "Foo {i = 666, j = true, arr = [1, 2, 3]}", #file, #line);
+    test_str_eq(str, "Foo {i = 666, j = true, arr = [1, 2, 3]}");
 }
