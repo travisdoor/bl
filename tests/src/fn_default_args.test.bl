@@ -1,8 +1,8 @@
 #private
 default_args_some_default :: fn () #test {
     foo :: fn (i: s32, j: s32 = 20) {
-        test_s32_eq(i, 10, #file, #line);
-        test_s32_eq(j, 20, #file, #line);
+        test_s32_eq(i, 10);
+        test_s32_eq(j, 20);
     };
 
     foo(10);
@@ -11,10 +11,10 @@ default_args_some_default :: fn () #test {
 
 default_args_some_default2 :: fn () #test {
     foo :: fn (i: s32, j: s32, k: s32 = 30, l: s32 = 40) {
-        test_s32_eq(i, 10, #file, #line);
-        test_s32_eq(j, 20, #file, #line);
-        test_s32_eq(k, 30, #file, #line);
-        test_s32_eq(l, 40, #file, #line);
+        test_s32_eq(i, 10);
+        test_s32_eq(j, 20);
+        test_s32_eq(k, 30);
+        test_s32_eq(l, 40);
     };
 
     foo(10, 20);
@@ -24,10 +24,10 @@ default_args_some_default2 :: fn () #test {
 
 default_args_all_default :: fn () #test {
     foo :: fn (i: s32 = 10, j: s32 = 20, k: s32 = 30, l: s32 = 40) {
-        test_s32_eq(i, 10, #file, #line);
-        test_s32_eq(j, 20, #file, #line);
-        test_s32_eq(k, 30, #file, #line);
-        test_s32_eq(l, 40, #file, #line);
+        test_s32_eq(i, 10);
+        test_s32_eq(j, 20);
+        test_s32_eq(k, 30);
+        test_s32_eq(l, 40);
     };
 
     foo();
@@ -43,9 +43,9 @@ default_args_complex :: fn () #test {
         j: s32;
     };
     foo :: fn (i: s32, j: Foo = {:Foo: 20, 30}) {
-        test_s32_eq(i, 10, #file, #line);
-        test_s32_eq(j.i, 20, #file, #line);
-        test_s32_eq(j.j, 30, #file, #line);
+        test_s32_eq(i, 10);
+        test_s32_eq(j.i, 20);
+        test_s32_eq(j.j, 30);
     };
 
     foo(10);
@@ -59,10 +59,10 @@ GLOBAL_40 :: 40;
 
 default_args_global :: fn () #test {
     foo :: fn (i: s32 = GLOBAL_10, j: s32 = GLOBAL_20, k: s32 = GLOBAL_30, l: s32 = GLOBAL_40) {
-        test_s32_eq(i, GLOBAL_10, #file, #line);
-        test_s32_eq(j, GLOBAL_20, #file, #line);
-        test_s32_eq(k, GLOBAL_30, #file, #line);
-        test_s32_eq(l, GLOBAL_40, #file, #line);
+        test_s32_eq(i, GLOBAL_10);
+        test_s32_eq(j, GLOBAL_20);
+        test_s32_eq(k, GLOBAL_30);
+        test_s32_eq(l, GLOBAL_40);
     };
 
     foo();
@@ -74,10 +74,10 @@ default_args_global :: fn () #test {
 
 default_args_ptr_call :: fn () #test {
     foo :: fn (i: s32 = 10, j: s32 = 20, k: s32 = 30, l: s32 = 40) {
-        test_s32_eq(i, 10, #file, #line);
-        test_s32_eq(j, 20, #file, #line);
-        test_s32_eq(k, 30, #file, #line);
-        test_s32_eq(l, 40, #file, #line);
+        test_s32_eq(i, 10);
+        test_s32_eq(j, 20);
+        test_s32_eq(k, 30);
+        test_s32_eq(l, 40);
     };
 
     p :: &foo;
@@ -89,5 +89,30 @@ default_args_ptr_call :: fn () #test {
 }
 
 default_args_fn_explicit_type :: fn () #test {
-    assert(false);
+    foo : fn (s32, s32, s32, s32) : fn (i: s32 = 10, j: s32 = 20, k: s32 = 30, l: s32 = 40) {
+        test_s32_eq(i, 10);
+        test_s32_eq(j, 20);
+        test_s32_eq(k, 30);
+        test_s32_eq(l, 40);
+    };
+
+    foo();
+    foo(10);
+    foo(10, 20);
+    foo(10, 20, 30);
+    foo(10, 20, 30, 40);
+}
+
+default_args_call_side_location :: fn () #test {
+    foo :: fn (expected_file: string, expected_line: s32, loc: *CallLocation = #call_location) {
+        test_str_eq(loc.file, expected_file);
+        test_s32_eq(loc.line, expected_line);
+    };
+
+    filename: string;
+    if string_split_by_last(#file, '/', null, &filename) {
+        foo(filename, #line);
+    } else {
+        assert(false);
+    }
 }

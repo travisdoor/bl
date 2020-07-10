@@ -112,9 +112,9 @@ assert :: fn (cond: bool)
     Condition to be validated. 
 
 */
-assert :: fn (cond: bool) {
+assert :: fn (cond: bool, loc: *CallLocation = #call_location) {
     if cond { return; }
-
+    eprint(">>> Assertion failed on %:%.\n", loc.file, loc.line);
     if IS_DEBUG { _os_debug_break(); } // @PERFORMANCE: cound be static if later
     unreachable;
 };

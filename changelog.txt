@@ -1,20 +1,20 @@
 0.7.0 - BETA
 ---------------------------------------------------------------------------------------
+DI generation reimplemented.
+Unit testing reimplemented to support native code testing.
+Speed up compilation with use of llvm.memset intrinsic for default values.
 Add default variable initialization.
 Add noinit hash directive for variables.
-Speed up compilation with use of llvm.memset intrinsic for default values.
 Add builtin dynamic array.
 Add slice_init and slice_terminate builtins.
 Add -no-vcvars to disable VS environment injection.
 Add implicit cast from dynamic array to slice.
-DI generation reimplemented.
-Fix invalid type ID generation for incomplete structure types.
-Fix naming of array types in type info.
 Add support of Tracy profiler.
-Fix number serialization in print.
-Rewritten unit testing.
 Add function call default argument values.
 Add #call_location hash directive.
+Fix invalid type ID generation for incomplete structure types.
+Fix naming of array types in type info.
+Fix number serialization in print.
 
 0.6.0 - BETA
 ---------------------------------------------------------------------------------------
