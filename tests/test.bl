@@ -1,9 +1,17 @@
 /* playground */
 main :: fn () s32 {
-    foo("Hello!");
+    foo("% % %", "Hello", "World", "!!!");
+    foo("% % %", 10, true, "foo");
     return 0; 
 } 
 
-foo :: fn (msg: string, loc: *CodeLocation = #call_location) {
-    print("%:%: %\n", loc.file, loc.line, msg);
+foo :: fn (
+        format: string, 
+        a1: Any = {:Any: 0}, 
+        a2: Any = {:Any: 0}, 
+        a3: Any = {:Any: 0}, 
+        loc: *CodeLocation =  #call_location) 
+{
+    args :: {:[3]Any: a1, a2, a3};
+    _print_log_default(PrintLogKind.Message, format, args, loc.file, loc.line);
 }
