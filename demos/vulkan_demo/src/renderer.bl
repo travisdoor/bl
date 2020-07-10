@@ -75,7 +75,7 @@ renderer_draw_frame :: fn (r: *Renderer) {
         recreate_swap_chain(r);
         return;
     } else if result != VkResult.SUCCESS && result != VkResult.SUBOPTIMAL_KHR {
-        panic("Failed to acquire swap chain image!\n");
+        panic("Failed to acquire swap chain image!");
     }
 
     wait_semaphores := {:[1]VkSemaphore: r.image_available_semaphore[r.current_frame]};
@@ -95,7 +95,7 @@ renderer_draw_frame :: fn (r: *Renderer) {
     vkResetFences(r.device, 1, &r.in_flight_fences[r.current_frame]);
 
     if vkQueueSubmit(r.graphics_queue, 1, &submit_info, r.in_flight_fences[r.current_frame]) != VkResult.SUCCESS {
-        panic("Failed to submit draw command buffer!\n");
+        panic("Failed to submit draw command buffer!");
     }
 
     present_info := {:VkPresentInfoKHR: 0};
@@ -114,7 +114,7 @@ renderer_draw_frame :: fn (r: *Renderer) {
         r.frame_buffer_resized = false;
         recreate_swap_chain(r);
     } else if (result != VkResult.SUCCESS) {
-        panic("Failed to present swap chain image!\n");
+        panic("Failed to present swap chain image!");
     }
 
     r.current_frame = (r.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -145,7 +145,7 @@ create_instance :: fn (r: *Renderer) {
     defer free(c_validation_layers);
 
     if ENABLE_VALIDATION_LAYERS && !check_validation_layer_support(r) {
-        panic("Desired validation layers are not supported.\n");
+        panic("Desired validation layers are not supported.");
     }
 
     glfw_extension_count : u32 = 0;
@@ -175,13 +175,13 @@ create_instance :: fn (r: *Renderer) {
     }
 
     if vkCreateInstance(&create_info, null, &r.vki) != VkResult.SUCCESS {
-        panic("Failed to create Vulkan instance!!!\n");
+        panic("Failed to create Vulkan instance!!!");
     }
 };
 
 create_surface :: fn (r: *Renderer) {
     if glfwCreateWindowSurface(r.vki, app.window, null, &r.surface) != VkResult.SUCCESS {
-        panic("Failed to create window surface.\n");
+        panic("Failed to create window surface.");
     }
 };
 
@@ -210,7 +210,7 @@ pick_physical_device :: fn (r: *Renderer) {
     vkEnumeratePhysicalDevices(r.vki, auto &devices.len, null);
 
     if devices.len == 0 {
-        panic("No GPU device found!\n");
+        panic("No GPU device found!");
     }
 
     devices.ptr = auto alloc(sizeof(VkPhysicalDevice) * auto devices.len);
@@ -226,7 +226,7 @@ pick_physical_device :: fn (r: *Renderer) {
     }
 
     if r.physical_device == null {
-        panic("No suitable GPU found!\n");
+        panic("No suitable GPU found!");
     }
 };
 
@@ -282,7 +282,7 @@ create_logical_device :: fn (r: *Renderer) {
     }        
 
     if vkCreateDevice(r.physical_device, &create_info, null, &r.device) != VkResult.SUCCESS {
-        panic("Failed to create logical device!\n");
+        panic("Failed to create logical device!");
     }
 
     vkGetDeviceQueue(r.device, indices.graphics_family.v, 0, &r.graphics_queue);
@@ -342,7 +342,7 @@ create_swap_chain :: fn (r: *Renderer) {
     print("Swapchain configuration: %\n", create_info);
     
     if (vkCreateSwapchainKHR(r.device, &create_info, null, &r.swap_chain) != VkResult.SUCCESS) {
-        panic("Failed to create swap chain!\n");
+        panic("Failed to create swap chain!");
     }
 
     res := vkGetSwapchainImagesKHR(r.device, r.swap_chain, auto &r.swap_chain_images.len, null);
@@ -421,7 +421,7 @@ create_image_views :: fn (r: *Renderer) {
         create_info.subresourceRange.layerCount = 1;
 
         if vkCreateImageView(r.device, &create_info, null, &r.swap_chain_image_views[i]) != VkResult.SUCCESS {
-            panic("Failed to create image views!\n");
+            panic("Failed to create image views!");
         }
     }
 };
@@ -454,7 +454,7 @@ create_render_pass :: fn (r: *Renderer) {
     render_pass_info.pSubpasses = &subpass;
 
     if vkCreateRenderPass(r.device, &render_pass_info, null, &r.render_pass) != VkResult.SUCCESS {
-        panic("Failed to create render pass!\n");
+        panic("Failed to create render pass!");
     }
 };
 
@@ -580,7 +580,7 @@ create_graphics_pipeline :: fn (r: *Renderer) {
     pipeline_layout_info.pPushConstantRanges = null; // Optional
 
     if vkCreatePipelineLayout(r.device, &pipeline_layout_info, null, &r.pipeline_layout) != VkResult.SUCCESS {
-        panic("Failed to create pipeline layout!\n");
+        panic("Failed to create pipeline layout!");
     }
 
     pipeline_info := {:VkGraphicsPipelineCreateInfo: 0 };
@@ -604,7 +604,7 @@ create_graphics_pipeline :: fn (r: *Renderer) {
     // This can be used for multiple pipeline creation, so probably we can use after renderable assets load
     // to generate all desired pipelines at once?
     if vkCreateGraphicsPipelines(r.device, null, 1, &pipeline_info, null, &r.graphics_pipeline) != VkResult.SUCCESS {
-        panic("Failed to create graphics pipeline!\n");
+        panic("Failed to create graphics pipeline!");
     } 
 
     vkDestroyShaderModule(r.device, frag_shader, null);
@@ -628,7 +628,7 @@ create_frame_buffers :: fn (r: *Renderer) {
         framebuffer_info.layers = 1;
 
         if vkCreateFramebuffer(r.device, &framebuffer_info, null, &r.swap_chain_framebuffers[i]) != VkResult.SUCCESS {
-            panic("Failed to create framebuffer!\n");
+            panic("Failed to create framebuffer!");
         }
     }
 };
@@ -642,7 +642,7 @@ create_command_pool :: fn (r: *Renderer) {
     pool_info.flags = 0; // Optional 
 
     if vkCreateCommandPool(r.device, &pool_info, null, &r.command_pool) != VkResult.SUCCESS {
-        panic("Failed to create command pool!\n");
+        panic("Failed to create command pool!");
     }
 };
 
@@ -657,7 +657,7 @@ create_command_buffers :: fn (r: *Renderer) {
     alloc_info.commandBufferCount = auto r.command_buffers.len;
 
     if vkAllocateCommandBuffers(r.device, &alloc_info, r.command_buffers.ptr) != VkResult.SUCCESS {
-        panic("Failed to allocate command buffers!\n");
+        panic("Failed to allocate command buffers!");
     }
 
     loop i := 0; i < r.command_buffers.len; i += 1 {
@@ -667,7 +667,7 @@ create_command_buffers :: fn (r: *Renderer) {
         begin_info.pInheritanceInfo = null; // Optional
 
         if vkBeginCommandBuffer(r.command_buffers[i], &begin_info) != VkResult.SUCCESS {
-            panic("failed to begin recording command buffer!\n");
+            panic("failed to begin recording command buffer!");
         }
 
         renderPassInfo := {:VkRenderPassBeginInfo: 0};
@@ -687,7 +687,7 @@ create_command_buffers :: fn (r: *Renderer) {
         vkCmdEndRenderPass(r.command_buffers[i]);
 
         if vkEndCommandBuffer(r.command_buffers[i]) != VkResult.SUCCESS {
-            panic("Failed to record command buffer!\n");
+            panic("Failed to record command buffer!");
         }
     }
 };
@@ -700,7 +700,7 @@ create_shader_module :: fn (r: *Renderer, code: string) VkShaderModule {
 
     shader_module: VkShaderModule;
     if (vkCreateShaderModule(r.device, &create_info, null, &shader_module) != VkResult.SUCCESS) {
-        panic("Failed to create shader module!\n");
+        panic("Failed to create shader module!");
     }
 
     return shader_module;
@@ -716,15 +716,15 @@ create_sync_objects :: fn (r: *Renderer) {
 
     loop i := 0; i < MAX_FRAMES_IN_FLIGHT; i += 1 {
         if vkCreateSemaphore(r.device, &semaphore_info, null, &r.image_available_semaphore[i]) != VkResult.SUCCESS { 
-            panic("Failed to create semaphore\n");
+            panic("Failed to create semaphore");
         }
 
         if vkCreateSemaphore(r.device, &semaphore_info, null, &r.render_finished_semaphore[i]) != VkResult.SUCCESS { 
-            panic("Failed to create semaphore\n");
+            panic("Failed to create semaphore");
         }
         
         if vkCreateFence(r.device, &fence_info, null, &r.in_flight_fences[i]) != VkResult.SUCCESS {
-            panic("Failed to create fence\n");
+            panic("Failed to create fence");
         }
     }
 };
@@ -912,7 +912,8 @@ read_file :: fn (filepath: string) string {
     defer file_close(file);
 
     if file == null {
-        panic("Cannot open file '%'.\n", filepath);
+        eprint("Cannot open file '%'.\n", filepath);
+        panic();
     }
 
     return file_read_all(file);

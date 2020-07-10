@@ -250,7 +250,7 @@ static MirFn *  lookup_builtin_fn(Context *cnt, MirBuiltinIdKind kind);
 static ID *lookup_builtins_rtti(Context *cnt);
 static ID *lookup_builtins_any(Context *cnt);
 static ID *lookup_builtins_test_cases(Context *cnt);
-static ID *lookup_builtins_call_loc(Context *cnt);
+static ID *lookup_builtins_code_loc(Context *cnt);
 
 /* Provide global bool constant into the assembly. */
 static MirInstr *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v);
@@ -1571,16 +1571,16 @@ ID *lookup_builtins_test_cases(Context *cnt)
 	return NULL;
 }
 
-ID *lookup_builtins_call_loc(Context *cnt)
+ID *lookup_builtins_code_loc(Context *cnt)
 {
-	if (cnt->builtin_types->t_CallLocation) return NULL;
-	cnt->builtin_types->t_CallLocation =
+	if (cnt->builtin_types->t_CodeLocation) return NULL;
+	cnt->builtin_types->t_CodeLocation =
 	    lookup_builtin_type(cnt, MIR_BUILTIN_ID_TYPE_CALL_LOCATION);
-	if (!cnt->builtin_types->t_CallLocation) {
+	if (!cnt->builtin_types->t_CodeLocation) {
 		return &builtin_ids[MIR_BUILTIN_ID_TYPE_CALL_LOCATION];
 	}
-	cnt->builtin_types->t_CallLocation_ptr =
-	    create_type_ptr(cnt, cnt->builtin_types->t_CallLocation);
+	cnt->builtin_types->t_CodeLocation_ptr =
+	    create_type_ptr(cnt, cnt->builtin_types->t_CodeLocation);
 	return NULL;
 }
 
@@ -5899,16 +5899,16 @@ AnalyzeResult analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 
 AnalyzeResult analyze_instr_call_loc(Context *cnt, MirInstrCallLoc *loc)
 {
-	ID *missing = lookup_builtins_call_loc(cnt);
+	ID *missing = lookup_builtins_code_loc(cnt);
 	if (missing) return ANALYZE_RESULT(WAITING, missing->hash);
-	loc->base.value.type = cnt->builtin_types->t_CallLocation_ptr;
+	loc->base.value.type = cnt->builtin_types->t_CodeLocation_ptr;
 	if (!loc->call_location) return ANALYZE_RESULT(PASSED, 0);
 
-	MirType *type = cnt->builtin_types->t_CallLocation;
+	MirType *type = cnt->builtin_types->t_CodeLocation;
 	MirVar * var  = create_var_impl(cnt, IMPL_CALL_LOC, type, false, true, true);
 	vm_alloc_global(cnt->vm, cnt->assembly, var);
 
-	VMStackPtr dest      = vm_read_var(cnt->vm, var);
+	VMStackPtr dest           = vm_read_var(cnt->vm, var);
 	MirType *  dest_file_type = mir_get_struct_elem_type(type, 0);
 	VMStackPtr dest_file      = vm_get_struct_elem_ptr(cnt->assembly, type, dest, 0);
 	MirType *  dest_line_type = mir_get_struct_elem_type(type, 1);

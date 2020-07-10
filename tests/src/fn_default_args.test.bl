@@ -104,7 +104,7 @@ default_args_fn_explicit_type :: fn () #test {
 }
 
 default_args_call_side_location :: fn () #test {
-    foo :: fn (expected_file: string, expected_line: s32, loc: *CallLocation = #call_location) {
+    foo :: fn (expected_file: string, expected_line: s32, loc: *CodeLocation = #call_location) {
         test_str_eq(loc.file, expected_file);
         test_s32_eq(loc.line, expected_line);
     };
@@ -115,4 +115,41 @@ default_args_call_side_location :: fn () #test {
     } else {
         assert(false);
     }
+}
+
+default_args_callback1 :: fn () #test {
+    foo :: fn (i: s32) {
+        test_s32_eq(i, 10);
+    };
+
+    // @NOTE: I'm not 100% sure if this should be possible...
+    bar :: fn (callback: *fn(s32 = 10)) {
+        callback();
+    };
+
+    bar(&foo);
+}
+
+default_args_callback2 :: fn () #test {
+    foo :: fn (i: s32 = 20) {
+        test_s32_eq(i, 666);
+    };
+
+    bar :: fn (callback: *fn(s32 = 10)) {
+        callback(666);
+    };
+
+    bar(&foo);
+}
+
+default_args_callback3 :: fn () #test {
+    foo :: fn (i: s32 = 20) {
+        test_s32_eq(i, 10);
+    };
+
+    bar :: fn (callback: *fn(s32 = 10)) {
+        callback();
+    };
+
+    bar(&foo);
 }
