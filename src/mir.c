@@ -6375,7 +6375,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 
 		/* Check if all arguments are explicitly provided. */
 		if (callee_argc > call_argc) {
-			for (int i = call_argc; i < callee_argc; ++i) {
+			for (usize i = call_argc; i < callee_argc; ++i) {
 				MirArg *arg = type->data.fn.args->data[i];
 				// Missing argument has no default value!
 				if (!arg->value) {
@@ -7186,7 +7186,7 @@ void testing_run(Context *cnt)
 	}
 
 	if (failed.size) printf(TEXT_LINE "\n");
-	printf("Executed: %llu, passed %d%%.\n", tc, perc);
+	printf("Executed: %llu, passed %d%%.\n", (unsigned long long)tc, perc);
 	printf(TEXT_LINE "\n");
 	tarray_terminate(&failed);
 }

@@ -70,7 +70,7 @@ OSLibrary :: *u8;
 
 OSThread :: _PosixThread;
 OSMutex :: _PosixMutex;
-OSThreadEntryFn :: *fn (args: []Any) *u8;
+OSThreadEntryFn :: *fn (args: []Any);
 
 os_thread_create :: fn (entry: OSThreadEntryFn, args: ...) OSThread {
     t: OSThread #noinit;
@@ -87,35 +87,35 @@ os_thread_create :: fn (entry: OSThreadEntryFn, args: ...) OSThread {
     return t;
 }
 
-os_thread_join :: fn (thread: OSThread) *u8{
-    ret: *u8;
-    status :: _posix_thread_join(thread, &ret);
+os_thread_join :: fn (thread: OSThread) {
+    status :: _posix_thread_join(thread, null);
     if status != 0 {
         panic("Cannot join thread!");
     }
+}
 
-    return ret;
+os_thread_current :: fn () OSThread #inline {
+    return _posix_thread_self();
+}
+
+os_thread_kill :: fn (thread: OSThread, exit_code: s32 = 0) bool #inline {
+    return _posix_thread_kill(thread, auto exit_code) == 0;
+    // @INCOMPLETE: handle errors
 }
 
 os_mutex_init :: fn (mutex: *OSMutex) #inline {
     _posix_thread_mutex_init(mutex, null);
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
+    // @INCOMPLETE: handle errors
 }
 
 os_mutex_terminate :: fn (mutex: *OSMutex) #inline {
     _posix_thread_mutex_destroy(mutex);
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
+    // @INCOMPLETE: handle errors
 }
 
 os_mutex_lock :: fn (mutex: *OSMutex) #inline {
     _posix_thread_mutex_lock(mutex);
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
+    // @INCOMPLETE: handle errors
 }
 
 os_mutex_trylock :: fn (mutex: *OSMutex) bool #inline {
@@ -139,6 +139,11 @@ os_mutex_unlock :: fn (mutex: *OSMutex) #inline {
 os_sleep_ms :: fn (ms: f64) #inline {
     _posix_usleep(auto ms * 1000.0);
 };
+
+os_tick_ms :: fn () f64 #inline {
+    t :: cast(f64) macOS_mach_absolute_time();
+    return t * 0.00001;
+}
 
 /*
  * os_get_real_path 
@@ -296,6 +301,15 @@ __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 #inline {
 };
 
 __os_abort :: fn () #compiler {
+    if IS_DEBUG { _os_debug_break(); }
+    if _context.abort_fn {
+        _context.abort_fn();
+    } else {
+        _os_abort_default();
+    }
+}
+
+_os_abort_default :: fn () {
     _posix_raise(SIGABRT);
 }
 
@@ -389,9 +403,8 @@ _ThreadArgs :: struct {
 _thread_entry :: fn (_args: *u8) {
     tmp :: cast(*_ThreadArgs) _args;
     defer free(auto tmp);
-    ret :: tmp.entry(tmp.args);
-
-    _posix_thread_exit(ret);
+    tmp.entry(tmp.args);
+    _posix_thread_exit(null);
 }
 
 // This is platform depend!!!
@@ -404,10 +417,11 @@ _PosixMutex :: struct {
 _posix_thread_create :: fn (thread: *_PosixThread, attr: c_void_ptr, start_routine: _PosixThreadFn, args: c_void_ptr) c_int #extern "pthread_create";
 _posix_thread_join :: fn (thread: _PosixThread, retval: *c_void_ptr) c_int #extern "pthread_join";
 _posix_thread_exit :: fn (retval: c_void_ptr) #extern "pthread_exit";
+_posix_thread_self :: fn () _PosixThread #extern "pthread_self";
+_posix_thread_kill :: fn (thread: _PosixThread, sig: s32) s32 #extern "pthread_kill";
 _posix_thread_mutex_lock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_lock";
 _posix_thread_mutex_trylock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_trylock";
 _posix_thread_mutex_unlock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_unlock"; 
 _posix_thread_mutex_init :: fn (mutex: *_PosixMutex, attr: c_void_ptr) c_int #extern "pthread_mutex_init";
 _posix_thread_mutex_destroy :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_destroy";
 
-_mach_absolute_time :: fn () u64 #extern "mach_absolute_time";

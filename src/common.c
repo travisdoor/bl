@@ -39,6 +39,7 @@
 
 #ifdef BL_PLATFORM_MACOS
 #include <mach-o/dyld.h>
+#include <mach/mach_time.h>
 #endif
 
 #ifdef BL_PLATFORM_WIN
@@ -285,7 +286,8 @@ void platform_lib_name(const char *name, char *buffer, usize max_len)
 f64 get_tick_ms(void)
 {
 #ifdef BL_PLATFORM_MACOS
-	BL_UNIMPLEMENTED;
+	const f64 t = (f64)mach_absolute_time();
+	return t * 0.00001;
 #elif defined(BL_PLATFORM_LINUX)
 	BL_UNIMPLEMENTED;
 #elif defined(BL_PLATFORM_WIN)

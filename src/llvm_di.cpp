@@ -448,7 +448,7 @@ LLVMMetadataRef llvm_di_create_global_variable_expression(LLVMDIBuilderRef build
 	                                                   line,
 	                                                   CAST(DIType *)(type_ref),
 	                                                   true,
-	                                                   NULL);
+	                                                   false);
 
 	return CAST(LLVMMetadataRef)(var);
 }

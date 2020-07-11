@@ -92,6 +92,15 @@ os_thread_join :: fn (thread: OSThread) {
     }
 }
 
+os_thread_current :: fn () OSThread #inline {
+    return _posix_thread_self();
+}
+
+os_thread_kill :: fn (thread: OSThread, exit_code: s32 = 0) bool #inline {
+    return _posix_thread_kill(thread, auto exit_code) == 0;
+    // @INCOMPLETE: handle errors
+}
+
 os_mutex_init :: fn (mutex: *OSMutex) #inline {
     _posix_thread_mutex_init(mutex, null);
     // INCOMPLETE: handle errors
@@ -388,19 +397,21 @@ _thread_entry :: fn (_args: *u8) {
     tmp :: cast(*_ThreadArgs) _args;
     defer free(auto tmp);
     tmp.entry(tmp.args);
-
     _posix_thread_exit(null);
 }
 
 // This is platform depend!!!
-__SIZEOF_PTHREAD_MUTEX_T :: 40;
+__POSIX_THREAD_MUTEX_SIZE__ :: 56;
 _PosixMutex :: struct { 
-    __size: [__SIZEOF_PTHREAD_MUTEX_T]c_char;
+    __sig: c_long;
+    __opaque: [__POSIX_THREAD_MUTEX_SIZE__]c_char;
 }
 
 _posix_thread_create :: fn (thread: *_PosixThread, attr: c_void_ptr, start_routine: _PosixThreadFn, args: c_void_ptr) c_int #extern "pthread_create";
 _posix_thread_join :: fn (thread: _PosixThread, retval: *c_void_ptr) c_int #extern "pthread_join";
 _posix_thread_exit :: fn (retval: c_void_ptr) #extern "pthread_exit";
+_posix_thread_self :: fn () _PosixThread #extern "pthread_self";
+_posix_thread_kill :: fn (thread: _PosixThread, sig: s32) s32 #extern "pthread_kill";
 _posix_thread_mutex_lock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_lock";
 _posix_thread_mutex_trylock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_trylock";
 _posix_thread_mutex_unlock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_unlock"; 
