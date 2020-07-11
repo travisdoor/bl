@@ -27,3 +27,16 @@ vargs_functions :: fn () #test {
     _10(10);
     _12(10, 10, 20);
 };
+
+vargs_forward :: fn () #test {
+    bar :: fn (args: ...s32) {
+        test_s32_eq(auto args.len, 3);
+    };
+
+    foo :: fn (args: ...s32) {
+        test_s32_eq(auto args.len, 3);
+        bar(args);
+    };
+
+    foo(10, 20, 30);
+}
