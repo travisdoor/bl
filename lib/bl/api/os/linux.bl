@@ -143,6 +143,11 @@ os_sleep_ms :: fn (ms: f64) {
     _posix_usleep(auto ms * 1000.0);
 };
 
+os_tick_ms :: fn () f64 #inline {
+    // @INCOMPLETE
+    return 0.;
+}
+
 /*
  * os_get_real_path 
  *

@@ -6447,9 +6447,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 	}
 
 	/* validate argument types */
-	MirInstr *call_arg_prev = NULL;
 	if (!callee_argc) return ANALYZE_RESULT(PASSED, 0);
-
 	for (u32 i = 0; i < callee_argc; ++i) {
 		MirInstr **call_arg   = &call->args->data[i];
 		MirArg *   callee_arg = type->data.fn.args->data[i];
@@ -6459,7 +6457,6 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 		    ANALYZE_PASSED) {
 			return ANALYZE_RESULT(FAILED, 0);
 		}
-		call_arg_prev = *call_arg;
 	}
 
 	return ANALYZE_RESULT(PASSED, 0);

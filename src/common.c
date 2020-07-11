@@ -289,7 +289,8 @@ f64 get_tick_ms(void)
 	const f64 t = (f64)mach_absolute_time();
 	return t * 0.00001;
 #elif defined(BL_PLATFORM_LINUX)
-	BL_UNIMPLEMENTED;
+        // @INCOMPLETE
+        return 0.;
 #elif defined(BL_PLATFORM_WIN)
 	LARGE_INTEGER f;
 	LARGE_INTEGER t;
