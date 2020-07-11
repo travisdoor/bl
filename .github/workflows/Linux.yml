@@ -26,7 +26,6 @@ jobs:
         cd install
         ./configure_linux.sh
     - name: Run tests
-      run: |
-        cd bin
-        ./blc -no-bin -force-test-to-llvm -rt -no-warning ../tests/src/test_dummy.bl 
+    - name: Run tests
+      run: bin/blc -rt -no-warning tests/src/main.test.bl && ./out
 
