@@ -441,6 +441,7 @@ LLVMMetadataRef llvm_di_create_global_variable_expression(LLVMDIBuilderRef build
 {
 	auto builder = CAST(DIBuilder *)(builder_ref);
 
+#if LLVM_VERSION_MAJOR >= 10
 	auto var = builder->createGlobalVariableExpression(CAST(DIScope *)(scope_ref),
 	                                                   {name, strlen(name)},
 	                                                   {name, strlen(name)},
@@ -449,6 +450,16 @@ LLVMMetadataRef llvm_di_create_global_variable_expression(LLVMDIBuilderRef build
 	                                                   CAST(DIType *)(type_ref),
 	                                                   true,
 	                                                   false);
+#else
+	auto var = builder->createGlobalVariableExpression(CAST(DIScope *)(scope_ref),
+	                                                   {name, strlen(name)},
+	                                                   {name, strlen(name)},
+	                                                   CAST(DIFile *)(file_ref),
+	                                                   line,
+	                                                   CAST(DIType *)(type_ref),
+	                                                   true,
+	                                                   nullptr);
+#endif
 
 	return CAST(LLVMMetadataRef)(var);
 }
