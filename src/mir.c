@@ -6300,14 +6300,22 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 	call->base.value.type = result_type;
 
 	/* validate arguments */
-	const bool is_vargs         = type->data.fn.is_vargs;
-	const bool has_default_args = type->data.fn.has_default_args;
+	usize       callee_argc      = type->data.fn.args ? type->data.fn.args->size : 0;
+	const usize call_argc        = call->args ? call->args->size : 0;
+	const bool  is_vargs         = type->data.fn.is_vargs;
+	const bool  has_default_args = type->data.fn.has_default_args;
 
-	usize       callee_argc = type->data.fn.args ? type->data.fn.args->size : 0;
-	const usize call_argc   = call->args ? call->args->size : 0;
+	bool is_last_call_arg_vargs = false;
+	if (call_argc) {
+		MirInstr *last_arg = call->args->data[call_argc - 1];
+		if (is_load_needed(last_arg)) {
+			is_last_call_arg_vargs =
+			    mir_deref_type(last_arg->value.type)->kind == MIR_TYPE_VARGS;
+		}
+	}
 
 	BL_ASSERT(!(is_vargs && has_default_args));
-	if (is_vargs) {
+	if (is_vargs && !is_last_call_arg_vargs) {
 		/* This is gonna be tricky... */
 		--callee_argc;
 		if ((call_argc < callee_argc)) {
@@ -6321,7 +6329,6 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 			            call_argc);
 			return ANALYZE_RESULT(FAILED, 0);
 		}
-
 		MirType *vargs_type = mir_get_fn_arg_type(type, (u32)callee_argc);
 		BL_ASSERT(vargs_type->kind == MIR_TYPE_VARGS && "VArgs is expected to be last!!!");
 		vargs_type = mir_get_struct_elem_type(vargs_type, 1);
@@ -6333,7 +6340,6 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 		TSmallArray_InstrPtr *values = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
 		MirInstr *            vargs  = create_instr_vargs_impl(cnt, vargs_type, values);
 		ref_instr(vargs);
-
 		if (vargsc > 0) {
 			/* One or more vargs passed. */
 			// INCOMPLETE: check it this is ok!!!

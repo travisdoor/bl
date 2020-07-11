@@ -315,6 +315,11 @@ int builder_compile(Assembly *assembly)
 	// instance during initialization process. (Must be called only once);
 	assembly_apply_options(assembly);
 
+	unit = unit_new_file(BUILTIN_FILE, NULL, NULL);
+	if (!assembly_add_unit_unique(assembly, unit)) {
+		unit_delete(unit);
+	}
+
 	/* include core source file */
 	if (!builder.options.no_api) {
 		unit = unit_new_file(OS_PRELOAD_FILE, NULL, NULL);
