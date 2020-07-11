@@ -26,6 +26,5 @@ jobs:
         cd install
         ./configure_linux.sh
     - name: Run tests
-    - name: Run tests
       run: bin/blc -rt -no-warning tests/src/main.test.bl && ./out
 
