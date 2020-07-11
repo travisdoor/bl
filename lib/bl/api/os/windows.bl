@@ -87,13 +87,13 @@ os_thread_join :: fn (thread: OSThread) {
     win32_CloseHandle(thread);
 }
 
-// @MULTIPLATFORM: implement this for linux and macos!!!
+// @MULTIPLATFORM: implement this for linux!!!
 os_thread_current :: fn () OSThread #inline {
     return win32_GetCurrentThread();
 }
 
-// @MULTIPLATFORM: implement this for linux and macos!!!
-os_thread_kill :: fn (thread: OSThread, exit_code: s32) bool #inline {
+// @MULTIPLATFORM: implement this for linux!!!
+os_thread_kill :: fn (thread: OSThread, exit_code: s32 = 0) bool #inline {
     return win32_TerminateThread(thread, auto exit_code) > 1;
 }
 
@@ -120,12 +120,10 @@ os_mutex_unlock :: fn (mutex: *OSMutex) #inline {
     }
 }
 
-// @MULTIPLATFORM: implement this for linux and macos!!!
 os_sleep_ms :: fn (ms: f64) #inline {
     win32_Sleep(auto ms);
 };
 
-// @MULTIPLATFORM: implement this for linux and macos!!!
 os_tick_ms :: fn () f64 #inline {
     f: WIN32_LARGE_INTEGER #noinit;
     t: WIN32_LARGE_INTEGER #noinit;

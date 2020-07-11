@@ -246,7 +246,6 @@ static void print_instr_phi(Context *cnt, MirInstrPhi *phi);
 static void print_instr_cast(Context *cnt, MirInstrCast *cast);
 static void print_instr_sizeof(Context *cnt, MirInstrSizeof *szof);
 static void print_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
-static void print_instr_test_cases(Context *cnt, MirInstrTestCases *tc);
 static void print_instr_alignof(Context *cnt, MirInstrAlignof *szof);
 static void print_instr_load(Context *cnt, MirInstrLoad *load);
 static void print_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
@@ -280,6 +279,8 @@ static void print_instr_call(Context *cnt, MirInstrCall *call);
 static void print_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
 static void print_instr_unop(Context *cnt, MirInstrUnop *unop);
 static void print_instr_arg(Context *cnt, MirInstrArg *arg);
+static void print_instr_test_cases(Context *cnt, MirInstrTestCases *tc);
+static void print_instr_call_loc(Context *cnt, MirInstrCallLoc *loc);
 static void print_instr(Context *cnt, MirInstr *instr);
 
 /* impl */
@@ -549,11 +550,6 @@ void print_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 	print_comptime_value_or_id(cnt, type_info->expr);
 }
 
-void print_instr_test_cases(Context *cnt, MirInstrTestCases *tc)
-{
-	print_instr_head(cnt, &tc->base, "testcases");
-}
-
 void print_instr_alignof(Context *cnt, MirInstrAlignof *szof)
 {
 	print_instr_head(cnt, &szof->base, "alignof");
@@ -630,6 +626,16 @@ void print_instr_arg(Context *cnt, MirInstrArg *arg)
 void print_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
 	print_instr_head(cnt, &unr->base, "unreachable");
+}
+
+void print_instr_test_cases(Context *cnt, MirInstrTestCases *tc)
+{
+	print_instr_head(cnt, &tc->base, "testcases");
+}
+
+void print_instr_call_loc(Context *cnt, MirInstrCallLoc *loc)
+{
+	print_instr_head(cnt, &loc->base, "call_location");
 }
 
 void print_instr_br(Context *cnt, MirInstrBr *br)
@@ -1033,6 +1039,12 @@ void print_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_SET_INITIALIZER:
 		print_instr_set_initializer(cnt, (MirInstrSetInitializer *)instr);
+		break;
+	case MIR_INSTR_TEST_CASES:
+		print_instr_test_cases(cnt, (MirInstrTestCases *)instr);
+		break;
+	case MIR_INSTR_CALL_LOC:
+		print_instr_call_loc(cnt, (MirInstrCallLoc *)instr);
 		break;
 	}
 
