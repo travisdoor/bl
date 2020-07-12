@@ -110,7 +110,7 @@ main :: fn () s32 {
 */
 print :: fn (format: string, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8 #noinit;
-    w := _print_impl(buf, format, {:[]Any: args.len, args.ptr});
+    w := _print_impl(buf, format, args);
     __os_write(OS_STDOUT, buf.ptr, auto w);
     return w;
 };
@@ -138,7 +138,7 @@ pass values of any type as an arguments, even structures or arrays.
 */
 eprint :: fn (format: string, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8 #noinit;
-    w := _print_impl(buf, format, {:[]Any: args.len, args.ptr});
+    w := _print_impl(buf, format, args);
     __os_write(OS_STDERR, buf.ptr, auto w);
     return w;
 };
@@ -170,8 +170,7 @@ string, function will print just part fitting into the buffer.
 character written at the end of the result string.
 */
 bprint :: fn (buf: []u8, format: string, args: ...) s32 {
-    tmp := {:[]Any: args.len, args.ptr };
-    w := _print_impl(buf, format, tmp);
+    w := _print_impl(buf, format, args);
     print_char(buf, w, '\0');
     return w;
 };

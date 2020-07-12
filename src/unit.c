@@ -122,24 +122,19 @@ Unit *unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
 {
 	Unit *unit = bl_malloc(sizeof(Unit));
 	memset(unit, 0, sizeof(Unit));
-
 	search_source_file(
 	    filepath, &unit->filepath, &unit->dirpath, parent_unit ? parent_unit->dirpath : NULL);
-
 	unit->name = strdup(filepath);
-
 	char tmp[PATH_MAX] = {0};
 	if (get_filename_from_filepath(tmp, TARRAY_SIZE(tmp), filepath)) {
 		unit->filename = strdup(tmp);
 	} else {
 		BL_ABORT("invalid file");
 	}
-
 	unit->loaded_from = loaded_from;
 	unit->ast         = NULL;
-
+	unit->hash        = thash_from_str(unit->filepath ? unit->filepath : unit->name);
 	tokens_init(&unit->tokens);
-
 	return unit;
 }
 

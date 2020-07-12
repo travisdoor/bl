@@ -1,11 +1,11 @@
 //************************************************************************************************
 // bl
 //
-// File:   unit.h
+// File:   puml_export.h
 // Author: Martin Dorazil
-// Date:   3/1/18
+// Date:   7/12/20
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2020 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,33 +26,11 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_UNIT_H
-#define BL_UNIT_H
+#ifndef BL_PUML_EXPORT_H
+#define BL_PUML_EXPORT_H
 
-#include "ast.h"
-#include "config.h"
-#include "scope.h"
-#include "tokens.h"
-
-struct Token;
-
-/* class Unit object members */
-typedef struct Unit {
-	u64             hash; 
-	Tokens          tokens;        /* Unit tokens as lexer output. */
-	Ast *           ast;           /* Abstract Syntax Tree */
-	struct Scope *  private_scope; /* Unit private scope (#private). */
-	char *          filename;      /* Loaded source file name. */
-	char *          filepath;      /* Loaded source file name with path. */
-	char *          dirpath;       /* Parent directory. */
-	char *          name;          /* Unit name */
-	char *          src;           /* Unit raw source data. */
-	struct Token *  loaded_from;   /* Optionally set when unit is loaded from another unit. */
-	LLVMMetadataRef llvm_file_meta;
-} Unit;
-
-Unit *unit_new_file(const char *filepath, struct Token *loaded_from, Unit *parent_unit);
-void unit_delete(Unit *unit);
-const char *unit_get_src_ln(Unit *unit, s32 line, long *len);
+struct BuilderMessage;
+struct Assembly;
+void puml_message_handler(const struct Assembly *assembly, const struct BuilderMessage *msg);
 
 #endif

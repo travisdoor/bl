@@ -115,7 +115,9 @@ set(HEADER_FILES
 	src/vm.h
 	src/threading.h
 	src/llvm_api.h
-        src/ast.h)
+        src/ast.h
+	src/experimental/puml_export.h
+	)
 
 set(SOURCE_FILES
         src/main.c
@@ -149,6 +151,7 @@ set(SOURCE_FILES
         src/ast.c
         src/build_api.c
         src/intrinsic.c
+	src/experimental/puml_export.cpp
 	src/threading.cpp
 	src/llvm_api.cpp
         src/llvm_di.cpp

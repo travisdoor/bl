@@ -293,7 +293,7 @@ _os_debug_break :: fn () #inline {
 }
 
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
-    return _write(fd, buf, count);
+    return write(fd, buf, count);
 };
 
 __os_abort :: fn () #compiler {
@@ -318,7 +318,7 @@ __os_start :: fn () #entry {
 
     out :: cast(s32) main();
     _mem_free_default(auto args.ptr);
-    _exit(out);
+    exit(out);
 }
 
 // @CLEANUP: This must be in gl.bl file not here, but we keep it
@@ -348,11 +348,11 @@ SIGABRT :: 6;
 
 CP_UTF8 : u32 : 65001;
 
-_write             :: fn (fd: s32, buf: *u8, count: usize) s32 #extern;
-_exit              :: fn (v: s32) #extern;
-system             :: fn (command: *c_char) c_int #extern;
-wcslen             :: fn (str: *u16) usize #extern;
-raise              :: fn (sig: s32) s32 #extern;
+write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern "_write";
+exit   :: fn (v: s32) #extern "_exit";
+system :: fn (command: *c_char) c_int #extern;
+wcslen :: fn (str: *u16) usize #extern;
+raise  :: fn (sig: s32) s32 #extern;
 
 /*
  * Get command-line arguments passed to this executable.

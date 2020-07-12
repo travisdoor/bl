@@ -47,8 +47,8 @@ struct Assembly;
 #define BL_DEPRECATED __attribute__((deprecated))
 //#define INLINE __attribute__((always_inline))
 #define INLINE inline
-#define _LLVM_SHUT_UP_BEGIN
-#define _LLVM_SHUT_UP_END
+#define _SHUT_UP_BEGIN
+#define _SHUT_UP_END
 #define UNUSED(x) __attribute__((unused)) x
 
 //************************************************************************************************
@@ -71,8 +71,8 @@ struct Assembly;
 #else
 #define INLINE __forceinline
 #endif
-#define _LLVM_SHUT_UP_BEGIN __pragma(warning(push, 0))
-#define _LLVM_SHUT_UP_END __pragma(warning(pop))
+#define _SHUT_UP_BEGIN __pragma(warning(push, 0))
+#define _SHUT_UP_END __pragma(warning(pop))
 #define UNUSED(x) __pragma(warning(suppress : 4100)) x
 
 //************************************************************************************************
@@ -121,39 +121,22 @@ void id_init(ID *id, const char *str);
  * buffer.
  */
 void win_fix_path(char *buf, usize buf_size);
-
 bool file_exists(const char *filepath);
-
 bool dir_exists(const char *dirpath);
-
 const char *brealpath(const char *file, char *out, s32 out_len);
-
 const char *get_current_working_dir(char *buf, usize buf_size);
-
 bool get_dir_from_filepath(char *buf, const usize l, const char *filepath);
-
 bool get_filename_from_filepath(char *buf, const usize l, const char *filepath);
-
 bool get_current_exec_path(char *buf, usize buf_size);
-
 bool get_current_exec_dir(char *buf, usize buf_size);
-
 bool create_dir(const char *dirpath);
-
 bool create_dir_tree(const char *dirpath);
-
 void date_time(char *buf, s32 len, const char *format);
-
 bool is_aligned(const void *p, usize alignment);
-
 void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment);
-
 void print_bits(s32 const size, void const *const ptr);
-
 int count_bits(u64 n);
-
 void platform_lib_name(const char *name, char *buffer, usize max_len);
-
 f64 get_tick_ms(void);
 
 /*
@@ -167,11 +150,8 @@ TArray *create_arr(struct Assembly *assembly, usize size);
  * Note: no free is needed.
  */
 void *_create_sarr(struct Assembly *cnt, usize arr_size);
-
 u32 next_pow_2(u32 n);
-
 void color_print(FILE *stream, s32 color, const char *format, ...);
-
 #define create_sarr(T, Asm) ((T *)_create_sarr((Asm), sizeof(T)))
 
 #endif

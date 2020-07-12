@@ -28,7 +28,7 @@
 
 #include "llvm_di.h"
 
-_LLVM_SHUT_UP_BEGIN
+_SHUT_UP_BEGIN
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/DebugInfoMetadata.h>
@@ -38,7 +38,7 @@ _LLVM_SHUT_UP_BEGIN
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Target/TargetMachine.h>
-_LLVM_SHUT_UP_END
+_SHUT_UP_END
 
 #define CAST(T) reinterpret_cast<T>
 
