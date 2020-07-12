@@ -32,7 +32,7 @@
 #include "tlib/common.h"
 
 typedef struct TString {
-	char *  data;
+	char *data;
 	usize len;
 	usize allocated;
 
@@ -80,6 +80,9 @@ tstring_append_n(TString *str, const char *v, usize N);
  */
 TAPI void
 tstring_setf(TString *str, const char *format, ...);
+
+TAPI s32
+tstring_replace_all(TString *str, char old, char replace);
 
 /* Clear the string, allocated block (does not free). */
 TAPI void

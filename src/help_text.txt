@@ -22,4 +22,5 @@ Options\n\
   -release-<fast|small> = Enable release mode. (when not specified, compiler use debug mode by default)\n\
   -reg-split-<on|off>   = Enable or disable splitting structures passed into the function by value into registers.\n\
   -no-vcvars            = Disable injection of Visual Studio environment on Windows.\n\
-  -di-<dwarf|codeview>  = Set debug info format."
+  -di-<dwarf|codeview>  = Set debug info format.\n\
+  -silence              = Disable all logs."

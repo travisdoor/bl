@@ -152,3 +152,14 @@ tstring_setf(TString *str, const char *format, ...)
 	}
 	va_end(argp);
 }
+
+s32
+tstring_replace_all(TString *str, char old, char replace) {
+	s32 replaced = 0;
+	for (usize i = 0; i < str->len; ++i) {
+		if (str->data[i] != old) continue;
+		str->data[i] = replace;
+		++replaced;
+	}
+	return replaced;
+}

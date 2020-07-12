@@ -30,7 +30,7 @@
 #define BL_LLVM_API_H
 
 #include "common.h"
-_LLVM_SHUT_UP_BEGIN
+_SHUT_UP_BEGIN
 #include <llvm-c/Analysis.h>
 #include <llvm-c/BitWriter.h>
 #include <llvm-c/Core.h>
@@ -40,7 +40,7 @@ _LLVM_SHUT_UP_BEGIN
 #include <llvm-c/Transforms/PassManagerBuilder.h>
 #include <llvm-c/Transforms/Vectorize.h>
 #include <llvm-c/Types.h>
-_LLVM_SHUT_UP_END
+_SHUT_UP_END
 
 #define LLVM_SRET_INDEX 0
 #define LLVM_ATTR_NOINLINE llvm_get_attribute_kind("noinline")

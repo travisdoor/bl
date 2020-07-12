@@ -32,6 +32,7 @@
 #include "assembly.h"
 #include "builder.h"
 #include "common.h"
+#include "experimental/puml_export.h"
 #include "stages.h"
 #include "token.h"
 #include "unit.h"
@@ -45,10 +46,8 @@
 
 Builder builder;
 
-static int compile_unit(Unit *unit, Assembly *assembly);
-
-static int compile_assembly(Assembly *assembly);
-
+static int  compile_unit(Unit *unit, Assembly *assembly);
+static int  compile_assembly(Assembly *assembly);
 static bool llvm_initialized = false;
 
 static void str_cache_dtor(TString *str)
@@ -74,7 +73,9 @@ static void llvm_terminate(void)
 }
 
 #define INTERRUPT_ON_ERROR                                                                         \
-	if (builder.errorc) return COMPILE_FAIL;
+	if (builder.errorc) goto INTERRUPT;
+#define FINISH_IF(expr)                                                                            \
+	if ((expr)) goto FINISH;
 
 int compile_unit(Unit *unit, Assembly *assembly)
 {
@@ -90,22 +91,24 @@ int compile_unit(Unit *unit, Assembly *assembly)
 
 	file_loader_run(unit);
 	INTERRUPT_ON_ERROR;
-
 	lexer_run(unit);
 	INTERRUPT_ON_ERROR;
-
 	if (builder.options.print_tokens) {
 		token_printer_run(unit);
 		INTERRUPT_ON_ERROR;
 	}
-
 	parser_run(assembly, unit);
-
 	return COMPILE_OK;
+INTERRUPT:
+	return COMPILE_FAIL;
 }
 
 int compile_assembly(Assembly *assembly)
 {
+	{ // MSG
+		BuilderMessage msg = {.kind = BUILDER_MSG_ASSEMBLY_BEGIN};
+		builder_invoke_message(assembly, &msg);
+	}
 	if (builder.options.print_ast) {
 		ast_printer_run(assembly, stdout);
 	}
@@ -114,15 +117,15 @@ int compile_assembly(Assembly *assembly)
 	linker_run(assembly);
 	INTERRUPT_ON_ERROR;
 
-	if (builder.options.syntax_only) return COMPILE_OK;
+	FINISH_IF(builder.options.syntax_only);
 
 	mir_run(assembly);
 	if (builder.options.emit_mir) mir_writer_run(assembly);
 	INTERRUPT_ON_ERROR;
 
-	if (builder.options.no_analyze) return COMPILE_OK;
-	if (builder.options.no_llvm) return COMPILE_OK;
-	if (assembly->options.build_mode == BUILD_MODE_BUILD) return COMPILE_OK;
+	FINISH_IF(builder.options.no_analyze);
+	FINISH_IF(builder.options.no_llvm);
+	FINISH_IF(assembly->options.build_mode == BUILD_MODE_BUILD);
 	ir_run(assembly);
 	INTERRUPT_ON_ERROR;
 
@@ -141,7 +144,16 @@ int compile_assembly(Assembly *assembly)
 		INTERRUPT_ON_ERROR;
 	}
 
+FINISH : {
+	BuilderMessage msg = {.kind = BUILDER_MSG_ASSEMBLY_END};
+	builder_invoke_message(assembly, &msg);
+}
 	return COMPILE_OK;
+INTERRUPT : { // MSG
+	BuilderMessage msg = {.kind = BUILDER_MSG_ASSEMBLY_FAILED};
+	builder_invoke_message(assembly, &msg);
+}
+	return COMPILE_FAIL;
 }
 
 /* public */
@@ -229,11 +241,9 @@ void builder_init(void)
 	memset(&builder, 0, sizeof(Builder));
 	builder.errorc = 0;
 	builder.conf   = conf_data_new();
-
 	arena_init(&builder.str_cache, sizeof(TString), 256, (ArenaElemDtor)str_cache_dtor);
 
 	/* TODO: this is invalid for Windows MSVC DLLs??? */
-
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
 	builder.options.reg_split = true;
 #else
@@ -242,12 +252,14 @@ void builder_init(void)
 
 	/* initialize LLVM statics */
 	llvm_init();
-
 	tarray_init(&builder.assembly_queue, sizeof(Assembly *));
+	tsa_init(&builder.message_handlers);
+	//tsa_push_MessageHandler(&builder.message_handlers, puml_message_handler);
 }
 
 void builder_terminate(void)
 {
+	tsa_terminate(&builder.message_handlers);
 	Assembly *assembly;
 	TARRAY_FOREACH(Assembly *, &builder.assembly_queue, assembly)
 	{
@@ -280,6 +292,8 @@ int builder_load_conf_file(const char *filepath)
 	unit_delete(unit);
 
 	return COMPILE_OK;
+INTERRUPT:
+	return COMPILE_FAIL;
 }
 
 void builder_add_assembly(Assembly *assembly)
@@ -485,4 +499,15 @@ TString *builder_create_cached_str(void)
 	tstring_init(str);
 
 	return str;
+}
+
+void builder_invoke_message(const Assembly *assembly, const BuilderMessage *msg)
+{
+	if (!msg) return;
+	if (builder.message_handlers.size == 0) return;
+	BuilderMessageHandler it;
+	TSA_FOREACH(&builder.message_handlers, it)
+	{
+		it(assembly, msg);
+	}
 }

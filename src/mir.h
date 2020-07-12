@@ -132,6 +132,7 @@ typedef struct MirSwitchCase {
 	MirInstrBlock *block;
 } MirSwitchCase;
 
+
 TSMALL_ARRAY_TYPE(SwitchCase, MirSwitchCase, 64);
 
 typedef enum MirBuiltinIdKind {
@@ -720,7 +721,7 @@ struct MirInstrCallLoc {
 	MirInstr base;
 
 	struct Location *call_location; /* Optional call location */
-	MirVar *  meta_var;      /* Optional meta var. */
+	MirVar *         meta_var;      /* Optional meta var. */
 };
 
 struct MirInstrTypeKind {

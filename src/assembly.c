@@ -200,7 +200,6 @@ Assembly *assembly_new(const char *name)
 void assembly_delete(Assembly *assembly)
 {
 	free(assembly->name);
-
 	Unit *unit;
 	TARRAY_FOREACH(Unit *, &assembly->units, unit)
 	{
@@ -220,15 +219,12 @@ void assembly_delete(Assembly *assembly)
 	tarray_terminate(&assembly->options.lib_paths);
 	tstring_terminate(&assembly->options.custom_linker_opt);
 	tstring_terminate(&assembly->options.out_dir);
-
 	vm_terminate(&assembly->vm);
-
 	tarray_terminate(&assembly->testing.cases);
 	arena_terminate(&assembly->arenas.small_array);
 	arena_terminate(&assembly->arenas.array);
 	ast_arena_terminate(&assembly->arenas.ast);
 	scope_arenas_terminate(&assembly->arenas.scope);
-
 	tarray_terminate(&assembly->units);
 	thtbl_terminate(&assembly->unit_cache);
 	dl_terminate(assembly);
@@ -276,7 +272,6 @@ void assembly_set_output_dir(Assembly *assembly, const char *_dir)
 
 	char path[PATH_MAX] = {0};
 	brealpath(dir, path, PATH_MAX);
-
 	tstring_clear(&assembly->options.out_dir);
 	tstring_append(&assembly->options.out_dir, path);
 
@@ -292,14 +287,8 @@ void assembly_add_unit(Assembly *assembly, Unit *unit)
 
 bool assembly_add_unit_unique(Assembly *assembly, Unit *unit)
 {
-	u64 hash = 0;
-	if (unit->filepath)
-		hash = thash_from_str(unit->filepath);
-	else
-		hash = thash_from_str(unit->name);
-
+	const u64 hash = unit->hash;
 	if (thtbl_has_key(&assembly->unit_cache, hash)) return false;
-
 	thtbl_insert_empty(&assembly->unit_cache, hash);
 	assembly_add_unit(assembly, unit);
 	return true;

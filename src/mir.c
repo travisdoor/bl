@@ -215,10 +215,10 @@ static void fn_dtor(MirFn **_fn)
 }
 
 /* FW decls */
+static void msg_handle(Context *cnt, MirInstr *instr);
 /* Initialize all builtin types. */
-static void builtin_inits(Context *cnt);
-static void testing_add_test_case(Context *cnt, MirFn *fn);
-
+static void    builtin_inits(Context *cnt);
+static void    testing_add_test_case(Context *cnt, MirFn *fn);
 static MirVar *testing_gen_meta(Context *cnt);
 
 /* Execute all registered test cases in current assembly. */
@@ -837,7 +837,6 @@ static INLINE bool can_impl_cast(MirType *from, MirType *to)
 
 	/* Implicit cast of vargs to slice. */
 	if (from->kind == MIR_TYPE_VARGS && to->kind == MIR_TYPE_SLICE) {
-		BL_LOG("Try cast vargs to slice!");
 		from = mir_get_struct_elem_type(from, MIR_SLICE_PTR_INDEX);
 		to   = mir_get_struct_elem_type(to, MIR_SLICE_PTR_INDEX);
 		return type_cmp(from, to);
@@ -6951,6 +6950,8 @@ AnalyzeResult analyze_instr(Context *cnt, MirInstr *instr)
 		if (!evaluate(cnt, instr)) {
 			return ANALYZE_RESULT(FAILED, 0);
 		}
+
+		msg_handle(cnt, instr);
 	}
 
 	return state;
@@ -9487,6 +9488,29 @@ const char *get_intrinsic(const char *name)
 	if (strcmp(name, "log10.f32") == 0) return "__intrinsic_log10_f32";
 	if (strcmp(name, "log10.f64") == 0) return "__intrinsic_log10_f64";
 	return NULL;
+}
+
+void msg_handle(Context *cnt, MirInstr *instr)
+{
+	if (!instr) return;
+
+	BuilderMessage msg;
+	switch (instr->kind) {
+	case MIR_INSTR_DECL_VAR:
+		msg.kind     = BUILDER_MSG_VAR;
+		msg.data.var = ((MirInstrDeclVar *)instr)->var;
+		if (!msg.data.var) return;
+		break;
+	case MIR_INSTR_FN_PROTO:
+		msg.kind    = BUILDER_MSG_FN;
+		msg.data.fn = MIR_CEV_READ_AS(MirFn *, &instr->value);
+		if (!msg.data.fn) return;
+		break;
+	default:
+		return;
+	}
+
+	builder_invoke_message(cnt->assembly, &msg);
 }
 
 void mir_arenas_init(MirArenas *arenas)
