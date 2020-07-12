@@ -5,10 +5,7 @@ main :: fn () s32 {
 } 
 
 foo :: fn (args: ...s32) {
+    slice: []s32 = args;
     assert(args.len == 3);
-    bar(args);
-}
-
-bar :: fn (args: ...s32) {
-    assert(args.len == 3);
+    assert(slice.len == 3);
 }

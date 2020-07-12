@@ -835,6 +835,14 @@ static INLINE bool can_impl_cast(MirType *from, MirType *to)
 	 */
 	if (from->kind == MIR_TYPE_PTR && to->kind == MIR_TYPE_BOOL) return true;
 
+	/* Implicit cast of vargs to slice. */
+	if (from->kind == MIR_TYPE_VARGS && to->kind == MIR_TYPE_SLICE) {
+		BL_LOG("Try cast vargs to slice!");
+		from = mir_get_struct_elem_type(from, MIR_SLICE_PTR_INDEX);
+		to   = mir_get_struct_elem_type(to, MIR_SLICE_PTR_INDEX);
+		return type_cmp(from, to);
+	}
+
 	if (from->kind != to->kind) return false;
 
 	/* Check base types for structs. */
@@ -2507,6 +2515,10 @@ MirCastOp get_cast_op(MirType *from, MirType *to)
 		default:
 			return MIR_CAST_INVALID;
 		}
+	}
+
+	case MIR_TYPE_VARGS: {
+		return to->kind == MIR_TYPE_SLICE ? MIR_CAST_NONE : MIR_CAST_INVALID;
 	}
 
 	default:

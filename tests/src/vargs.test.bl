@@ -40,3 +40,14 @@ vargs_forward :: fn () #test {
 
     foo(10, 20, 30);
 }
+
+vargs_cast_to_slice :: fn () #test {
+    foo :: fn (args: ...s32) {
+        slice: []s32 = args;
+        test_s32_eq(auto args.len, 3);
+        test_s32_eq(auto args.len, auto slice.len);
+        assert(args.ptr == slice.ptr);
+    };
+
+    foo(10, 20, 30);
+}
