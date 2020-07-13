@@ -76,7 +76,7 @@ os_thread_create :: fn (entry: OSThreadEntryFn, args: ...) OSThread {
     tmp.entry = entry;
     tmp.args = {:[]Any: args.len, args.ptr};
 
-    thread :: win32_CreateThread(null, null, &_thread_entry, auto tmp, 0, null);
+    thread :: win32_CreateThread(null, null, &thread_entry, auto tmp, 0, null);
 
     return thread;
 }
@@ -403,7 +403,7 @@ _ThreadArgs :: struct {
     args: []Any; 
 }
 
-_thread_entry :: fn (_args: *u8) u32 {
+thread_entry :: fn (_args: *u8) u32 {
     tmp :: cast(*_ThreadArgs) _args;
     defer free(auto tmp);
     tmp.entry(tmp.args);

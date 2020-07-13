@@ -77,7 +77,7 @@ static PumlUnit &fetch_unit(PumlAssembly &pa, const Unit *unit)
 	return pa.units.insert({unit, tmp}).first->second;
 }
 
-static void add_fn(PumlUnit &pu, const std::string &name)
+static void add_entry(PumlUnit &pu, const std::string &name)
 {
 	pu.entries.emplace_back(name);
 }
@@ -125,9 +125,9 @@ extern "C" void puml_message_handler(const Assembly *assembly, const BuilderMess
 		const bool is_private = fn->decl_node->owner_scope->kind == SCOPE_PRIVATE;
 		auto &     pa         = fetch_assembly(assembly);
 		auto &     pu         = fetch_unit(pa, fn->decl_node->location->unit);
-		add_fn(pu,
-		       is_private ? ("-" + std::string(fn->id->str) + "()")
-		                  : ("+" + std::string(fn->id->str) + "()"));
+		add_entry(pu,
+		          is_private ? ("-" + std::string(fn->id->str) + "()")
+		                     : ("+" + std::string(fn->id->str) + "()"));
 		break;
 	}
 	default:
