@@ -30,6 +30,7 @@
 #load "typeinfo.test.bl"
 #load "vargs.test.bl"
 #load "fn_default_args.test.bl"
+#load "file.test.bl"
 /////////////////////////////////////////////////////
 
 main :: fn () s32 {

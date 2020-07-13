@@ -1,11 +1,39 @@
 /* playground */
+#load "std/file.bl"
+
 main :: fn () s32 {
-    foo(10, 20, 30);
+    print("Hello!\n");
+    f1 :: open(#file);
+    defer close(f1.v);
+    print("File open error: %\n", f1.e);
+    
+    f2 :: open("some_file");
+    defer close(f2.v);
+    print("File open error: %\n", f2.e);
+
     return 0; 
 } 
 
-foo :: fn (args: ...s32) {
-    slice: []s32 = args;
-    assert(args.len == 3);
-    assert(slice.len == 3);
+FileError :: enum {
+    OK;
+    NotFound;
+}
+
+FileOptional :: struct { e: FileError; v: File};
+error :: fn (e: FileError) FileOptional #inline {
+    return {:FileOptional: e, null};
+}
+
+ok :: fn (v: File) FileOptional #inline {
+    return {:FileOptional: FileError.OK, v};
+}
+
+open :: fn (filepath: string) FileOptional {
+    file :: file_open(filepath); 
+    if file { return ok(file); }
+    return error(FileError.NotFound);
+}
+
+close :: fn (file: File) {
+    file_close(file);
 }

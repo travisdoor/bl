@@ -250,9 +250,11 @@ slice_terminate :: fn (_v: Any) #compiler {
 }
 
 _mem_alloc_default :: fn (size: usize) *u8 {
+    c_malloc :: fn (size: c_size_t) c_void_ptr #extern "malloc";
     return c_malloc(size);
 }
 
 _mem_free_default :: fn (ptr: *u8) {
+    c_free :: fn (ptr: c_void_ptr) #extern "free";
     c_free(ptr);
 }

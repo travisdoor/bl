@@ -66,6 +66,20 @@ test_s32_eq :: fn (got: s32, expected: s32, loc: *CodeLocation = #call_location)
 }
 
 // @DOC
+test_null :: fn (ptr: *u8, loc: *CodeLocation = #call_location) {
+    if ptr == null { return; }
+    eprint("Pointer is expected to be null.");
+    assert(false, loc);
+}
+
+// @DOC
+test_not_null :: fn (ptr: *u8, loc: *CodeLocation = #call_location) {
+    if ptr != null { return; }
+    eprint("Pointer is expected not to be null.");
+    assert(false, loc);
+}
+
+// @DOC
 test_run :: fn () s32 {
     cases :: testcases();
     if cases.len == 0 { return 0; }

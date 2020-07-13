@@ -546,6 +546,10 @@ string_is_null  :: fn (s: string) bool #inline { return s.ptr == null; }
 string_is_empty :: fn (s: string) bool #inline { return s.len == 0; }
 string_is_null_or_empty :: fn (s: string) bool #inline { return s.ptr == null || s.len == 0; }
 
+// Some legacy C string libc apis.
+c_strlen :: fn (str: *c_char) c_size_t #extern "strlen";
+c_strcmp :: fn (first: *c_char, second: *c_char) c_int #extern "strcmp";
+
 #private
 STRING_BLOCK_SIZE :: 64 - sizeof(BlockHead);
 
