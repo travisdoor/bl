@@ -1,7 +1,7 @@
 /* playground */
 
 main :: fn () s32 {
-    file_open(#file);
+    print_log("Hello!!!");
     return 0; 
 } 
 

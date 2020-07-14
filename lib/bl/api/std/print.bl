@@ -149,6 +149,39 @@ bprint :: fn (buf: []u8, format: string, args: ...) s32 {
 };
 
 /*!
+# boprint
+## Declaration
+```c
+boprint :: fn (buf: []u8, offset: s32, format: string, args: ...) s32
+```
+## Description
+  Write string to the input buffer starting write on offset. Format string can include
+format specifiers `%` which are replaced by corresponding argument value
+passed in `args`. Value-string conversion is done automatically, we can
+pass values of any type as an arguments, even structures or arrays.
+
+  The `bprint` function accepts C-like escape sequences as `\n`, `\t`, `\r`, etc.
+
+  When passed buffer has not enough space to handle whole resulting 
+string, function will print just part fitting into the buffer.  
+
+## Arguments
+  * `buf` Destination buffer.
+  * `offset` Buffer offset.
+  * `format` Formatting string. 
+  * `args` Additional values. 
+
+## Result
+  Count of characters written into buffer, this count does not include terminal
+character written at the end of the result string.
+*/
+boprint :: fn (buf: []u8, offset: s32, format: string, args: ...) s32 {
+    w := _print_impl(buf, format, args, offset);
+    print_char(buf, w, '\0');
+    return w;
+};
+
+/*!
 # sprint
 ## Declaration
 ```c

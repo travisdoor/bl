@@ -43,9 +43,8 @@ print_log :: fn (format: string, args: ...)
     Optional values passed in order which is supposed to be printed
     out.
 */
-print_log :: fn (format: string, args: ...) {
-    tmp := {:[]Any: args.len, args.ptr };
-    _context.print_log_fn(PrintLogKind.Message, format, tmp, #file, #line);
+print_log :: fn (format: string, args: ...) #inline {
+    _context.print_log_fn(PrintLogKind.Message, "", 0, format, args);
 };
 
 /*!
@@ -65,9 +64,8 @@ print_warn :: fn (format: string, args: ...)
     Optional values passed in order which is supposed to be printed
     out.
  */
-print_warn :: fn (format: string, args: ...) {
-    tmp := {:[]Any: args.len, args.ptr };
-    _context.print_log_fn(PrintLogKind.Warning, format, tmp, #file, #line);
+print_warn :: fn (format: string, args: ...) #inline {
+    _context.print_log_fn(PrintLogKind.Warning, "", 0, format, args);
 };
 
 
@@ -88,9 +86,8 @@ print_err :: fn (format: string, args: ...)
     Optional values passed in order which is supposed to be printed
     out.
 */
-print_err :: fn (format: string, args: ...) {
-    tmp := {:[]Any: args.len, args.ptr };
-    _context.print_log_fn(PrintLogKind.Error, format, tmp, #file, #line);
+print_err :: fn (format: string, args: ...) #inline {
+    _context.print_log_fn(PrintLogKind.Error, "", 0, format, args);
 };
 
 /*!
@@ -111,7 +108,7 @@ assert :: fn (cond: bool)
 */
 assert :: fn (cond: bool, loc: *CodeLocation = #call_location) {
     if cond { return; }
-    eprint(">>> Assertion failed on %:%.\n", loc.file, loc.line);
+    _context.print_log_fn(PrintLogKind.Assert, loc.file, loc.line, "Assertion failed!");
     if IS_DEBUG { _os_debug_break(); } // @PERFORMANCE: cound be static if later
     unreachable;
 };
@@ -146,16 +143,16 @@ panic("Failed with error: %", errn); // first argument passed acts like formatin
 */
 panic :: fn (args: ...) {
     if args.len == 0 { unreachable; }
-    tmp := {:[]Any: args.len, args.ptr };
+    tmp := {:...: args.len, args.ptr };
     format := "";
     arg := args[0];
     if arg.type_info.kind == TypeKind.String {
         format = ^cast(*string) arg.data;
-        tmp = {:[]Any:
+        tmp = {:...:
                 args.len - 1,
                 auto ptr_shift_bytes(auto args.ptr, auto sizeof(arg))};
     }
-    _context.print_log_fn(PrintLogKind.Panic, format, tmp, "", 0);
+    _context.print_log_fn(PrintLogKind.Panic, "", 0, format, tmp);
     unreachable;
 };
 
@@ -183,25 +180,25 @@ PrintLogKind :: enum u8 {
     Message;
     Warning;
     Error;
+    Assert;
     Panic;
 };
 
-_print_log_default :: fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32) {
+_print_log_default :: fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...) {
     out := OS_STDOUT;
     buf: [PRINT_MAX_LENGTH]u8 #noinit;
     tag: string;
     w: s32;
-
     switch kind {
-        PrintLogKind.Message { tag = "[MESSAGE] %:% > "; }
-        PrintLogKind.Warning { tag = "[WARNING] %:% > "; }
-        PrintLogKind.Error   { out = OS_STDERR; tag = "[ ERROR ] %:% > "; }
-        PrintLogKind.Panic   { out = OS_STDERR;  tag = "[ PANIC ] %:% > "; }
+        PrintLogKind.Message { tag = "log: "; }
+        PrintLogKind.Warning { tag = "warn: "; }
+        PrintLogKind.Error   { tag = "error: "; out = OS_STDERR; }
+        PrintLogKind.Assert  { tag = "assert (%:%): "; out = OS_STDERR; }
+        PrintLogKind.Panic   { tag = "panic: "; out = OS_STDERR; }
     }
-
     w = bprint(buf, tag, file, line);
-    w = _print_impl(buf, format, args, w);
-    w = print_char(buf, w, '\n');
+    w = boprint(buf, w, format, args);
+    w = boprint(buf, w, "\n");
     __os_write(out, buf.ptr, auto w);
 };
 

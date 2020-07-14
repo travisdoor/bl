@@ -550,7 +550,7 @@ _PrintLogFn :: * fn (kind: PrintLogKind, format: string, args: []Any, file: stri
   * `line`
     Call side line in source file. 
 */
-_PrintLogFn :: * fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32);
+_PrintLogFn :: * fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...);
 
 _AbortFn :: * fn ();
 
