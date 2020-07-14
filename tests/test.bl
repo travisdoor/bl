@@ -1,33 +1,14 @@
 /* playground */
 
 main :: fn () s32 {
-    print_log("Hello!!!");
     return 0; 
 } 
 
-#private
-FileError :: enum {
-    OK;
-    NotFound;
+default_args_ptr :: fn () #test {
+    foo :: fn (ptr: *s32 = null) {
+        test_is_null(auto ptr);
+    };
+
+    foo();
 }
 
-FileOptional :: struct { e: FileError; v: File};
-error :: fn (e: FileError) FileOptional #inline {
-    return {:FileOptional: e, null};
-}
-
-ok :: fn (v: File) FileOptional #inline {
-    assert(v);
-    return {:FileOptional: FileError.OK, v};
-}
-
-File :: *u8;
-
-// read
-// write
-// create
-// append
-
-file_open :: fn (filepath: string) FileOptional {
-    return ok(null);
-}

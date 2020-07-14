@@ -1060,7 +1060,7 @@ static INLINE void error_types(MirType *from, MirType *to, Ast *loc, const char 
 
 	builder_msg(BUILDER_MSG_ERROR,
 	            ERR_INVALID_TYPE,
-	            loc->location,
+	            loc ? loc->location : NULL,
 	            BUILDER_CUR_WORD,
 	            msg,
 	            tmp_from,
@@ -4938,6 +4938,11 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	MirFn *fn = MIR_CEV_READ_AS(MirFn *, value);
 	BL_ASSERT(fn);
 
+	if (IS_FLAG(fn->flags, FLAG_TEST_FN)) {
+		/* We must wait for builtin types for test cases. */
+		ID *missing = lookup_builtins_test_cases(cnt);
+		if (missing) return ANALYZE_RESULT(WAITING, missing->hash);
+	}
 	fn->type          = value->type;
 	fn->type->user_id = fn->id;
 

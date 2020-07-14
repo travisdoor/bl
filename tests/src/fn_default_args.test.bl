@@ -153,3 +153,11 @@ default_args_callback3 :: fn () #test {
 
     bar(&foo);
 }
+
+default_args_ptr :: fn () #test {
+    foo :: fn (ptr: *s32 = null) {
+        test_is_null(auto ptr);
+    };
+
+    foo();
+}
