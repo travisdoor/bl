@@ -26,9 +26,6 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#load "std/basic.bl"
-#load "std/utils.bl"
-
 /*!
 # print_log
 ## Declaration
@@ -119,6 +116,92 @@ assert :: fn (cond: bool, loc: *CodeLocation = #call_location) {
     unreachable;
 };
 
+// @DOC
 debug_break :: fn () #inline {
     _os_debug_break();
 }
+
+/*!
+# panic
+## Declaration
+```c
+panic :: fn (args: ...)
+```
+
+## Description
+  Abort execution and eventually print panic message if there is one specified. First
+passed argument in 'args' will act like format string and can be eventually followed
+by any additional values required.
+
+## Arguments
+  * `args`
+    Variable argument count of Any type. 
+
+## Example
+```c
+panic(); // abort without any messages
+panic("oops!"); // abort with message prited out.
+panic("Failed with error: %", errn); // first argument passed acts like formating string
+```
+*/
+panic :: fn (args: ...) {
+    if args.len == 0 { unreachable; }
+    tmp := {:[]Any: args.len, args.ptr };
+    format := "";
+    arg := args[0];
+    if arg.type_info.kind == TypeKind.String {
+        format = ^cast(*string) arg.data;
+        tmp = {:[]Any:
+                args.len - 1,
+                auto ptr_shift_bytes(auto args.ptr, auto sizeof(arg))};
+    }
+    _context.print_log_fn(PrintLogKind.Panic, format, tmp, "", 0);
+    unreachable;
+};
+
+/*!
+# PrintLogKind
+## Declaration
+```c
+PrintLogKind :: enum u8 {
+    Message;
+    Warning;
+    Error;
+    Panic;
+};
+```
+## Description
+  Kinds of log messages.
+
+## Variants
+  * `Message` Ordinary debug log message.
+  * `Warning` Warning log message.
+  * `Error` Error log message.
+  * `Panic` Panic log message.
+*/
+PrintLogKind :: enum u8 {
+    Message;
+    Warning;
+    Error;
+    Panic;
+};
+
+_print_log_default :: fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32) {
+    out := OS_STDOUT;
+    buf: [PRINT_MAX_LENGTH]u8 #noinit;
+    tag: string;
+    w: s32;
+
+    switch kind {
+        PrintLogKind.Message { tag = "[MESSAGE] %:% > "; }
+        PrintLogKind.Warning { tag = "[WARNING] %:% > "; }
+        PrintLogKind.Error   { out = OS_STDERR; tag = "[ ERROR ] %:% > "; }
+        PrintLogKind.Panic   { out = OS_STDERR;  tag = "[ PANIC ] %:% > "; }
+    }
+
+    w = bprint(buf, tag, file, line);
+    w = _print_impl(buf, format, args, w);
+    w = print_char(buf, w, '\n');
+    __os_write(out, buf.ptr, auto w);
+};
+

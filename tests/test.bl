@@ -1,19 +1,11 @@
 /* playground */
-#load "std/file.bl"
 
 main :: fn () s32 {
-    print("Hello!\n");
-    f1 :: open(#file);
-    defer close(f1.v);
-    print("File open error: %\n", f1.e);
-    
-    f2 :: open("some_file");
-    defer close(f2.v);
-    print("File open error: %\n", f2.e);
-
+    file_open(#file);
     return 0; 
 } 
 
+#private
 FileError :: enum {
     OK;
     NotFound;
@@ -25,15 +17,17 @@ error :: fn (e: FileError) FileOptional #inline {
 }
 
 ok :: fn (v: File) FileOptional #inline {
+    assert(v);
     return {:FileOptional: FileError.OK, v};
 }
 
-open :: fn (filepath: string) FileOptional {
-    file :: file_open(filepath); 
-    if file { return ok(file); }
-    return error(FileError.NotFound);
-}
+File :: *u8;
 
-close :: fn (file: File) {
-    file_close(file);
+// read
+// write
+// create
+// append
+
+file_open :: fn (filepath: string) FileOptional {
+    return ok(null);
 }
