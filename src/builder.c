@@ -254,7 +254,7 @@ void builder_init(void)
 	llvm_init();
 	tarray_init(&builder.assembly_queue, sizeof(Assembly *));
 	tsa_init(&builder.message_handlers);
-	tsa_push_MessageHandler(&builder.message_handlers, puml_message_handler);
+	//tsa_push_MessageHandler(&builder.message_handlers, puml_message_handler);
 }
 
 void builder_terminate(void)
