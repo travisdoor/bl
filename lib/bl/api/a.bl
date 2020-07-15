@@ -26,7 +26,9 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#load "_memory.bl"
+#load "std/memory.bl"
+#load "std/debug.bl"
+#load "std/utils.bl"
 
 /*!
 # OSKind
@@ -490,6 +492,124 @@ CodeLocation :: struct #compiler {
     file: string;
     line: s32;
 }
+
+/*!
+# _AllocFn
+## Declaration
+```c
+_AllocFn :: * fn (size: usize) *u8
+```
+
+## Description
+  Type of memory allocator function.
+
+## Arguments
+  * `size`
+    Size of the memory block in bytes. 
+*/
+_AllocFn :: * fn (size: usize) *u8;
+
+/*!
+# _FreeFn
+## Declaration
+```c
+_FreeFn :: * fn (p: *u8)
+```
+
+## Description
+  Type of memory free function.
+
+## Arguments
+  * `ptr`
+    Pointer to allocated memory block. 
+
+## Result
+  New allocated memory block.
+*/
+_FreeFn :: * fn (ptr: *u8);
+
+/*!
+# _PrintLogFn
+## Declaration
+```c
+_PrintLogFn :: * fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32)
+```
+
+## Description
+  Type of print log function.
+
+## Arguments
+  * `kind`
+    Kind of report message. 
+  * `format`
+    Format string. 
+  * `args`
+    Slice of arguments. 
+  * `file`
+    Call side filename. 
+  * `line`
+    Call side line in source file. 
+*/
+_PrintLogFn :: * fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...);
+
+_AbortFn :: * fn ();
+
+/*!
+# _Context
+## Declaration
+```c
+_Context :: struct {
+    alloc_fn: _AllocFn;
+    free_fn: _FreeFn;
+    print_log_fn: _PrintLogFn;
+}
+```
+
+## Description
+  Default implicit context type. Implicit context is compiler internal global variable 
+containing basic context for whole assembly. This variable is mutable and can 
+be modified by user code. 
+
+## Members
+  * `alloc_fn`
+    Pointer to memory allocator function. 
+  * `free_fn`
+    Pointer to memory free function. 
+  * `print_log_fn`
+    Pointer to print log function. 
+*/
+_Context :: struct {
+    /* Default memory allocation function. */
+    alloc_fn: _AllocFn;
+
+    /* Defualt memory free function. */
+    free_fn: _FreeFn;
+
+    /* Defualt debug log function. */
+    print_log_fn: _PrintLogFn;
+
+    abort_fn: _AbortFn;
+};
+
+/*!
+# _context 
+## Declaration
+```c
+_context := {:_Context: &_mem_alloc_default, &_mem_free_default, &_print_log_default}
+```
+
+## Description
+  Default implicit context. Implicit context is compiler internal global variable 
+containing basic context for whole assembly. This variable is mutable and can 
+be modified by user code. For example we can replace default memory allocator
+with custom one, this will affect all allocations made later.
+*/
+_context := {:_Context: 
+                &_mem_alloc_default, 
+                &_mem_free_default, 
+                &_print_log_default, 
+                &_os_abort_default,
+            };
 
 /*!
 # command_line_arguments

@@ -1,39 +1,14 @@
 /* playground */
-#load "std/file.bl"
 
 main :: fn () s32 {
-    print("Hello!\n");
-    f1 :: open(#file);
-    defer close(f1.v);
-    print("File open error: %\n", f1.e);
-    
-    f2 :: open("some_file");
-    defer close(f2.v);
-    print("File open error: %\n", f2.e);
-
     return 0; 
 } 
 
-FileError :: enum {
-    OK;
-    NotFound;
+default_args_ptr :: fn () #test {
+    foo :: fn (ptr: *s32 = null) {
+        test_is_null(auto ptr);
+    };
+
+    foo();
 }
 
-FileOptional :: struct { e: FileError; v: File};
-error :: fn (e: FileError) FileOptional #inline {
-    return {:FileOptional: e, null};
-}
-
-ok :: fn (v: File) FileOptional #inline {
-    return {:FileOptional: FileError.OK, v};
-}
-
-open :: fn (filepath: string) FileOptional {
-    file :: file_open(filepath); 
-    if file { return ok(file); }
-    return error(FileError.NotFound);
-}
-
-close :: fn (file: File) {
-    file_close(file);
-}

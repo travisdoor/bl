@@ -30,6 +30,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <iostream>
 #include <unordered_map>
 #include <vector>
 _SHUT_UP_BEGIN
@@ -85,7 +86,8 @@ static void add_entry(PumlUnit &pu, const std::string &name)
 static void export_assembly(PumlAssembly &pa)
 {
 	std::ofstream file;
-	file.open(std::string(pa.name) + ".puml");
+	const auto    filepath = std::string(pa.name) + ".puml";
+	file.open(filepath);
 	file << "@startuml\n";
 	for (auto &it : pa.units) {
 		auto &pu = it.second;
@@ -105,6 +107,7 @@ static void export_assembly(PumlAssembly &pa)
 	}
 	file << "@enduml\n";
 	file.close();
+	std::cout << "UML written into " << filepath << "\n";
 }
 
 // public
@@ -114,6 +117,20 @@ extern "C" void puml_message_handler(const Assembly *assembly, const BuilderMess
 	case BUILDER_MSG_ASSEMBLY_END: {
 		auto &pa = fetch_assembly(assembly);
 		export_assembly(pa);
+		break;
+	}
+	case BUILDER_MSG_VAR: {
+		MirVar *var = msg->data.var;
+		if (!var) break;
+		if (!var->is_global) break;
+		if (!var->id) break;
+		if (!var->decl_node) break;
+		const bool is_private = var->decl_node->owner_scope->kind == SCOPE_PRIVATE;
+		auto &     pa         = fetch_assembly(assembly);
+		auto &     pu         = fetch_unit(pa, var->decl_node->location->unit);
+		add_entry(pu,
+		          is_private ? "-" + std::string(var->id->str)
+		                     : "+" + std::string(var->id->str));
 		break;
 	}
 	case BUILDER_MSG_FN: {
@@ -126,8 +143,8 @@ extern "C" void puml_message_handler(const Assembly *assembly, const BuilderMess
 		auto &     pa         = fetch_assembly(assembly);
 		auto &     pu         = fetch_unit(pa, fn->decl_node->location->unit);
 		add_entry(pu,
-		          is_private ? ("-" + std::string(fn->id->str) + "()")
-		                     : ("+" + std::string(fn->id->str) + "()"));
+		          is_private ? "-" + std::string(fn->id->str) + "()"
+		                     : "+" + std::string(fn->id->str) + "()");
 		break;
 	}
 	default:
