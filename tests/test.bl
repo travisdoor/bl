@@ -1,14 +1,12 @@
 /* playground */
 
 main :: fn () s32 {
-    return 0; 
-} 
-
-default_args_ptr :: fn () #test {
-    foo :: fn (ptr: *s32 = null) {
-        test_is_null(auto ptr);
-    };
-
-    foo();
+    buf: []s32;
+    w := 0;
+    foo(buf, w);
+    return 0;
 }
 
+foo :: fn (buf: []s32, w: s32, args: ...) s32 {
+    return w;
+}
