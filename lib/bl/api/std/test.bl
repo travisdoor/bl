@@ -31,84 +31,84 @@
 #load "std/array.bl"
 
 // @DOC
-test_str_eq :: fn (got: string, expected: string, loc: *CodeLocation = #call_location) {
+test_str_eq :: fn (got: string, expected: string, loc := #call_location) {
     if string_compare(expected, got) { return; }
     print_err("Expected '%' got '%'.", expected, got);
     assert(false, loc);
 }
 
 // @DOC
-test_str_neq :: fn (got: string, not_expected: string, loc: *CodeLocation = #call_location) {
+test_str_neq :: fn (got: string, not_expected: string, loc := #call_location) {
     if !string_compare(not_expected, got) { return; }
     print_err("Expected not to be '%'.", not_expected);
     assert(false, loc);
 }
 
 // @DOC
-test_f32_eq :: fn (got: f32, expected: f32, epsilon: f32 = FEPSILON, loc: *CodeLocation = #call_location) {
+test_f32_eq :: fn (got: f32, expected: f32, epsilon: f32 = FEPSILON, loc := #call_location) {
     if f32_compare(got, expected, epsilon) { return; }
     print_err("Expected '%' got '%'.", expected, got);
     assert(false, loc);
 }
 
 // @DOC
-test_f64_eq :: fn (got: f64, expected: f64, epsilon: f64 = EPSILON, loc: *CodeLocation = #call_location) {
+test_f64_eq :: fn (got: f64, expected: f64, epsilon: f64 = EPSILON, loc := #call_location) {
     if f64_compare(got, expected, epsilon) { return; }
     print_err("Expected '%' got '%'.", expected, got);
     assert(false, loc);
 }
 
 // @DOC
-test_s32_eq :: fn (got: s32, expected: s32, loc: *CodeLocation = #call_location) {
+test_s32_eq :: fn (got: s32, expected: s32, loc := #call_location) {
     if got == expected { return; }
     print_err("Expected '%' got '%'.", expected, got);
     assert(false, loc);
 }
 
 // @DOC
-test_f32_neq :: fn (got: f32, not_expected: f32, epsilon: f32 = FEPSILON, loc: *CodeLocation = #call_location) {
+test_f32_neq :: fn (got: f32, not_expected: f32, epsilon: f32 = FEPSILON, loc := #call_location) {
     if !f32_compare(got, not_expected, epsilon) { return; }
     print_err("Expected not to be '%'.", not_expected);
     assert(false, loc);
 }
 
 // @DOC
-test_f64_neq :: fn (got: f64, not_expected: f64, epsilon: f64 = EPSILON, loc: *CodeLocation = #call_location) {
+test_f64_neq :: fn (got: f64, not_expected: f64, epsilon: f64 = EPSILON, loc := #call_location) {
     if !f64_compare(got, not_expected, epsilon) { return; }
     print_err("Expected not to be '%'.", not_expected);
     assert(false, loc);
 }
 
 // @DOC
-test_s32_neq :: fn (got: s32, not_expected: s32, loc: *CodeLocation = #call_location) {
+test_s32_neq :: fn (got: s32, not_expected: s32, loc := #call_location) {
     if got != not_expected { return; }
     print_err("Expected not to be '%'.", not_expected);
     assert(false, loc);
 }
 
 // @DOC
-test_null :: fn (ptr: *u8, loc: *CodeLocation = #call_location) {
+test_null :: fn (ptr: *u8, loc := #call_location) {
     if ptr == null { return; }
     print_err("Pointer is expected to be null.");
     assert(false, loc);
 }
 
 // @DOC
-test_not_null :: fn (ptr: *u8, loc: *CodeLocation = #call_location) {
+test_not_null :: fn (ptr: *u8, loc := #call_location) {
     if ptr != null { return; }
     print_err("Pointer is expected not to be null.");
     assert(false, loc);
 }
 
 // @DOC
-test_ptr_neq :: fn (got: *u8, not_expected: *u8, loc: *CodeLocation = #call_location) {
+test_ptr_neq :: fn (got: *u8, not_expected: *u8, loc := #call_location) {
     if got != not_expected { return; }
     print_err("Expected not to be '%'.", not_expected);
     assert(false, loc);
 }
 
 // @DOC
-test_ptr_eq :: fn (got: *u8, expected: *u8, loc: *CodeLocation = #call_location) {
+test_ptr_eq :: fn (got: *u8, expected: *u8, loc := #call_location) {
     if got == expected { return; }
     print_err("Expected '%' got '%'.", expected, got);
     assert(false, loc);

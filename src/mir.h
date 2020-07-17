@@ -132,7 +132,6 @@ typedef struct MirSwitchCase {
 	MirInstrBlock *block;
 } MirSwitchCase;
 
-
 TSMALL_ARRAY_TYPE(SwitchCase, MirSwitchCase, 64);
 
 typedef enum MirBuiltinIdKind {
@@ -404,6 +403,7 @@ struct MirVar {
 	bool               is_implicit;
 	bool               is_struct_typedef;
 	bool               emit_llvm;
+	bool               analyzed;
 	u32                flags;
 	VMRelativeStackPtr rel_stack_ptr;
 	LLVMValueRef       llvm_value;

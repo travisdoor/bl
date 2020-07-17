@@ -990,26 +990,33 @@ Ast *parse_decl_arg(Context *cnt, bool rq_named)
 	Ast *  name      = NULL;
 	Ast *  type      = NULL;
 	Ast *  value     = NULL;
-
 	if (tokens_current_is(cnt->tokens, SYM_RPAREN)) return NULL;
-
 	if (tokens_is_seq(cnt->tokens, 2, SYM_IDENT, SYM_COLON)) {
+		// <name> :
 		name = parse_ident(cnt);
-		tokens_consume(cnt->tokens);
+		tokens_consume(cnt->tokens); // eat :
 	} else if (rq_named) {
 		Token *tok_err = tokens_peek(cnt->tokens);
 		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_EXPECTED_NAME,
 		            &tok_err->location,
 		            BUILDER_CUR_AFTER,
-		            "Expected argument name.");
+		            "Expected argument name followed by colon.");
 
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
 	}
-
 	type = parse_type(cnt);
-
 	/* Parse optional default value expression. */
+	if (tokens_current_is(cnt->tokens, SYM_COLON)) {
+		Token *tok_err = tokens_consume(cnt->tokens);
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_INVALID_MUTABILITY,
+		            &tok_err->location,
+		            BUILDER_CUR_WORD,
+		            "Function argument cannot be constant (this maybe shoule be possible "
+		            "in future).");
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
+	}
 	if (tokens_consume_if(cnt->tokens, SYM_ASSIGN)) {
 		value = parse_hash_directive(cnt, HD_CALL_LOC, NULL);
 		if (!value) value = parse_expr(cnt);
@@ -1020,10 +1027,17 @@ Ast *parse_decl_arg(Context *cnt, bool rq_named)
 			            &tok_err->location,
 			            BUILDER_CUR_AFTER,
 			            "Expected .");
+			return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
 		}
+	} else if (!type) {
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_EXPECTED_TYPE,
+		            name->location,
+		            BUILDER_CUR_AFTER,
+		            "Expected argument type.");
+		return ast_create_node(
+		    cnt->ast_arena, AST_BAD, tokens_peek(cnt->tokens), SCOPE_GET(cnt));
 	}
-
-	if (!type && !name) return NULL;
 	Ast *arg = ast_create_node(cnt->ast_arena, AST_DECL_ARG, tok_begin, SCOPE_GET(cnt));
 	arg->data.decl_arg.value = value;
 	arg->data.decl.type      = type;
@@ -2022,11 +2036,11 @@ NEXT:
 
 	tok = tokens_consume(cnt->tokens);
 	if (tok->sym != SYM_RPAREN) {
-		PARSE_ERROR(
-		    ERR_MISSING_BRACKET,
-		    tok,
-		    BUILDER_CUR_WORD,
-		    "Expected end of argument type list ')' or another type separated by comma.");
+		PARSE_ERROR(ERR_MISSING_BRACKET,
+		            tok,
+		            BUILDER_CUR_WORD,
+		            "Expected end of argument type list ')' or another argument separated "
+		            "by comma.");
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn, SCOPE_GET(cnt));
 	}
 

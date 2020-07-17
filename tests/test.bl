@@ -1,12 +1,13 @@
 /* playground */
 
 main :: fn () s32 {
-    buf: []s32;
-    w := 0;
-    foo(buf, w);
+    Foo :: struct {
+        i: s32;
+        j: s32;
+    };
+    foo :: fn (foo := {:Foo: 10, 20}) {
+    };
+    foo();
     return 0;
 }
 
-foo :: fn (buf: []s32, w: s32, args: ...) s32 {
-    return w;
-}
