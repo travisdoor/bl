@@ -143,7 +143,7 @@ string, function will print just part fitting into the buffer.
 character written at the end of the result string.
 */
 bprint :: fn (buf: []u8, format: string, args: ...) s32 {
-    w := _print_impl(buf, format, args);
+    w :: _print_impl(buf, format, args);
     print_char(buf, w, '\0');
     return w;
 };
@@ -176,7 +176,7 @@ string, function will print just part fitting into the buffer.
 character written at the end of the result string.
 */
 boprint :: fn (buf: []u8, offset: s32, format: string, args: ...) s32 {
-    w := _print_impl(buf, format, args, offset);
+    w :: _print_impl(buf, format, args, offset);
     print_char(buf, w, '\0');
     return w;
 };
@@ -245,7 +245,7 @@ fmt_int :: fn (v: Any, base: FmtIntBase) FmtInt #inline {
 DEFAULT_REAL_TRAILING :: 6;
 _print_impl :: fn (buf: []u8, format: string, args: []Any, cur: s32 = 0) s32 {
     argi := 0;
-
+    assert(cur < buf.len);
     loop i := 0; i < format.len; i += 1 {
         c := format[i];
 
@@ -533,9 +533,7 @@ print_string :: fn (buf: []u8, cur: s32, str: string) s32 {
 };
 
 print_char :: fn (buf: []u8, cur: s32, c: u8) s32 #inline {
-    if cur >= buf.len {
-        return cur;
-    }
+    if cur >= buf.len { return cur; }
     buf[cur] = c;
     return cur + 1;
 };

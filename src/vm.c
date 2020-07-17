@@ -1701,11 +1701,11 @@ void interp_instr_switch(VM *vm, MirInstrSwitch *sw)
 
 void interp_instr_cast(VM *vm, MirInstrCast *cast)
 {
+	if (cast->op == MIR_CAST_NONE) return;
 	MirType *  dest_type = cast->base.value.type;
 	MirType *  src_type  = cast->expr->value.type;
 	VMStackPtr src_ptr   = fetch_value(vm, &cast->expr->value);
-
-	VMValue tmp = {0};
+	VMValue    tmp       = {0};
 	do_cast((VMStackPtr)&tmp, src_ptr, dest_type, src_type, cast->op);
 	stack_push(vm, &tmp, dest_type);
 }
@@ -1886,6 +1886,7 @@ void interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 		VMStackPtr value_ptr;
 		TSA_FOREACH(values, value)
 		{
+			BL_ASSERT(arr_tmp_ptr);
 			const usize value_size = value->value.type->store_size_bytes;
 			VMStackPtr  dest       = arr_tmp_ptr + i * value_size;
 
@@ -1911,9 +1912,7 @@ void interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 		VMStackPtr ptr_ptr =
 		    vargs_tmp_ptr + vm_get_struct_elem_offset(
 		                        vm->assembly, vargs_tmp->value.type, MIR_SLICE_PTR_INDEX);
-
 		vm_write_as(VMStackPtr, ptr_ptr, arr_tmp_ptr);
-
 		stack_push(vm, vargs_tmp_ptr, vargs_tmp->value.type);
 	}
 }
@@ -1967,7 +1966,6 @@ void interp_instr_store(VM *vm, MirInstrStore *store)
 	 */
 
 	VMStackPtr dest_ptr = fetch_value(vm, &store->dest->value);
-
 	if (store->src->kind == MIR_INSTR_COMPOUND && !mir_is_comptime(store->src)) {
 		/* Compound initializers referenced by store instruction can be directly used as
 		 * destination initializer. */
@@ -1975,13 +1973,10 @@ void interp_instr_store(VM *vm, MirInstrStore *store)
 		interp_instr_compound(vm, dest_ptr, (MirInstrCompound *)store->src);
 		return;
 	}
-
 	MirType *src_type = store->src->value.type;
 	BL_ASSERT(src_type);
+	dest_ptr                 = VM_STACK_PTR_DEREF(dest_ptr);
 	VMStackPtr const src_ptr = fetch_value(vm, &store->src->value);
-
-	dest_ptr = VM_STACK_PTR_DEREF(dest_ptr);
-
 	BL_ASSERT(dest_ptr && src_ptr);
 	memcpy(dest_ptr, src_ptr, src_type->store_size_bytes);
 }

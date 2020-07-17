@@ -101,6 +101,20 @@ test_not_null :: fn (ptr: *u8, loc: *CodeLocation = #call_location) {
 }
 
 // @DOC
+test_ptr_neq :: fn (got: *u8, not_expected: *u8, loc: *CodeLocation = #call_location) {
+    if got != not_expected { return; }
+    print_err("Expected not to be '%'.", not_expected);
+    assert(false, loc);
+}
+
+// @DOC
+test_ptr_eq :: fn (got: *u8, expected: *u8, loc: *CodeLocation = #call_location) {
+    if got == expected { return; }
+    print_err("Expected '%' got '%'.", expected, got);
+    assert(false, loc);
+}
+
+// @DOC
 test_run :: fn () s32 {
     cases :: testcases();
     if cases.len == 0 { return 0; }

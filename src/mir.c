@@ -653,8 +653,7 @@ static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 9,
  * out_type when analyze passed without problems. When analyze does not pass postpone is returned
  * and out_type stay unchanged.*/
 static AnalyzeResult
-analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
-
+                     analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
 static AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp);
 static AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
 static AnalyzeResult analyze_instr_phi(Context *cnt, MirInstrPhi *phi);
@@ -5420,14 +5419,19 @@ AnalyzeResult analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *vari
 
 AnalyzeResult analyze_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
 {
-	if (analyze_slot(cnt, &analyze_slot_conf_basic, &decl->type, NULL) != ANALYZE_PASSED) {
-		return ANALYZE_RESULT(FAILED, 0);
+	MirType *type = NULL;
+	if (decl->type && decl->type->kind == MIR_INSTR_CALL) {
+		AnalyzeResult result = analyze_resolve_type(cnt, decl->type, &type);
+		if (result.state != ANALYZE_PASSED) return result;
+	} else {
+		if (analyze_slot(cnt, &analyze_slot_conf_basic, &decl->type, NULL) !=
+		    ANALYZE_PASSED) {
+			return ANALYZE_RESULT(FAILED, 0);
+		}
+		type = MIR_CEV_READ_AS(MirType *, &decl->type->value);
 	}
-
-	MirType *type   = MIR_CEV_READ_AS(MirType *, &decl->type->value);
+	BL_ASSERT(type && "Invalid argument type!");
 	decl->arg->type = type;
-	BL_ASSERT(decl->arg->type && "Invalid argument type!");
-
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -6358,7 +6362,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 		ref_instr(vargs);
 		if (vargsc > 0) {
 			/* One or more vargs passed. */
-			// INCOMPLETE: check it this is ok!!!
+			// @INCOMPLETE: check it this is ok!!!
 			for (usize i = 0; i < vargsc; ++i) {
 				tsa_push_InstrPtr(values, call->args->data[callee_argc + i]);
 			}
@@ -6368,7 +6372,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 		} else if (callee_argc > 0) {
 			/* No arguments passed into vargs but there are more regular
 			 * arguments before vargs. */
-			MirInstr *insert_loc = call->args->data[0];
+			MirInstr *insert_loc = call->args->data[call_argc-1];
 			insert_instr_before(insert_loc, vargs);
 		} else {
 			insert_instr_before(&call->base, vargs);
@@ -6377,7 +6381,8 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 		if (analyze_instr_vargs(cnt, (MirInstrVArgs *)vargs).state != ANALYZE_PASSED)
 			return ANALYZE_RESULT(FAILED, 0);
 		vargs->analyzed = true;
-		/* Erase vargs from arguments. */
+		/* Erase vargs from arguments. @NOTE: function does nothing when array size is equal
+		 * to callee_argc.*/
 		tsa_resize_InstrPtr(call->args, callee_argc);
 		/* Replace last with vargs. */
 		tsa_push_InstrPtr(call->args, vargs);
@@ -8623,10 +8628,12 @@ MirInstr *ast_decl_arg(Context *cnt, Ast *arg)
 	Ast *     ast_value = arg->data.decl_arg.value;
 	Ast *     ast_name  = arg->data.decl.name;
 	Ast *     ast_type  = arg->data.decl.type;
-	MirInstr *type      = ast(cnt, ast_type);
 	MirInstr *value     = NULL;
+	/* Type is resolved in type resolver in case we have default value defined. */
+	MirInstr *type = NULL;
 
 	if (ast_value) {
+		type = CREATE_TYPE_RESOLVER_CALL(ast_type);
 		/* Main idea here is create implicit global constant to hold default value, since
 		 * value can be more complex compound with references, we need to use same solution
 		 * like we already use for globals. This approach is also more effective than
@@ -8638,9 +8645,11 @@ MirInstr *ast_decl_arg(Context *cnt, Ast *arg)
 			value = ast(cnt, ast_value);
 		} else {
 			value = append_instr_decl_var_impl(
-			    cnt, IMPL_ARG_DEFAULT, NULL, NULL, false, true, 0, 0);
+			    cnt, IMPL_ARG_DEFAULT, type, NULL /* init */, false, true, 0, 0);
 			ast_create_global_initializer(cnt, ast_value, value);
 		}
+	} else {
+		type = CREATE_TYPE_RESOLVER_CALL(ast_type);
 	}
 	return append_instr_decl_arg(cnt, ast_name, type, value);
 }

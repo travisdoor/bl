@@ -164,6 +164,7 @@ PrintLogKind :: enum u8 {
     Message;
     Warning;
     Error;
+    Assert;
     Panic;
 };
 ```
@@ -174,6 +175,7 @@ PrintLogKind :: enum u8 {
   * `Message` Ordinary debug log message.
   * `Warning` Warning log message.
   * `Error` Error log message.
+  * `Assert` Assert log message.
   * `Panic` Panic log message.
 */
 PrintLogKind :: enum u8 {
@@ -193,7 +195,7 @@ _print_log_default :: fn (kind: PrintLogKind, file: string, line: s32, format: s
         PrintLogKind.Message { tag = "log: "; }
         PrintLogKind.Warning { tag = "warn: "; }
         PrintLogKind.Error   { tag = "error: "; out = OS_STDERR; }
-        PrintLogKind.Assert  { tag = "assert (%:%): "; out = OS_STDERR; }
+        PrintLogKind.Assert  { tag = "assert [%:%]: "; out = OS_STDERR; }
         PrintLogKind.Panic   { tag = "panic: "; out = OS_STDERR; }
     }
     w = bprint(buf, tag, file, line);
