@@ -1,13 +1,35 @@
 /* playground */
 
 main :: fn () s32 {
-    Foo :: struct {
-        i: s32;
-        j: s32;
-    };
-    foo :: fn (foo := {:Foo: 10, 20}) {
-    };
-    foo();
+    add(10, 30);
+    add(1.4f, 0.4f);
     return 0;
 }
 
+s32_add :: fn (i: s32, j: s32) s32 {
+    return i + j;
+}
+
+f32_add :: fn (i: f32, j: f32) f32 {
+    return i + j;
+}
+
+add :: fn {
+    s32_add;
+    f32_add;
+}
+
+/*
+
+    - group must match in argument count
+    - group must have/haven't return value
+    
+    match
+    - based on rating value
+    - same arg type +2
+    - can implicit cast arg +1
+
+    AST  - AST_EXPR_LIT_FN_GROUP
+    Type - TypeFnGroup
+
+   */

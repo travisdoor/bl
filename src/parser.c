@@ -149,6 +149,7 @@ static Ast *       parse_expr_cast(Context *cnt);
 static Ast *       parse_expr_cast_auto(Context *cnt);
 static Ast *       parse_expr_lit(Context *cnt);
 static Ast *       parse_expr_lit_fn(Context *cnt);
+static Ast *       parse_expr_lit_fn_group(Context *cnt);
 static Ast *       parse_expr_sizeof(Context *cnt);
 static Ast *       parse_expr_type_info(Context *cnt);
 static Ast *       parse_expr_test_cases(Context *cnt);
@@ -166,8 +167,14 @@ static Ast *       parse_expr_compound(Context *cnt);
 static INLINE bool rq_semicolon_after_decl_entity(Ast *node)
 {
 	BL_ASSERT(node);
-
-	return node->kind != AST_EXPR_LIT_FN && node->kind != AST_EXPR_TYPE;
+	switch (node->kind) {
+	case AST_EXPR_LIT_FN:
+	case AST_EXPR_LIT_FN_GROUP:
+	case AST_EXPR_TYPE:
+		return false;
+	default:
+		return true;
+	}
 }
 
 BinopKind sym_to_binop_kind(Sym sm)
@@ -1459,6 +1466,7 @@ Ast *parse_expr_primary(Context *cnt)
 	if ((expr = parse_expr_ref(cnt))) return expr;
 	if ((expr = parse_expr_lit(cnt))) return expr;
 	if ((expr = parse_expr_lit_fn(cnt))) return expr;
+	if ((expr = parse_expr_lit_fn_group(cnt))) return expr;
 	if ((expr = parse_expr_type(cnt))) return expr;
 	if ((expr = parse_expr_null(cnt))) return expr;
 	if ((expr = parse_expr_compound(cnt))) return expr;
@@ -1623,10 +1631,9 @@ Ast *parse_expr_lit(Context *cnt)
 
 Ast *parse_expr_lit_fn(Context *cnt)
 {
+	if (!tokens_is_seq(cnt->tokens, 2, SYM_FN, SYM_LPAREN)) return NULL;
 	Token *tok_fn = tokens_peek(cnt->tokens);
-	if (token_is_not(tok_fn, SYM_FN)) return NULL;
-
-	Ast *fn = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FN, tok_fn, SCOPE_GET(cnt));
+	Ast *  fn     = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FN, tok_fn, SCOPE_GET(cnt));
 
 	Scope *   parent_scope = SCOPE_GET(cnt);
 	ScopeKind scope_kind =
@@ -1674,6 +1681,35 @@ Ast *parse_expr_lit_fn(Context *cnt)
 
 	SCOPE_POP(cnt);
 	return fn;
+}
+
+Ast *parse_expr_lit_fn_group(Context *cnt)
+{
+	if (!tokens_is_seq(cnt->tokens, 2, SYM_FN, SYM_LBLOCK)) return NULL;
+	Token *tok_group = tokens_consume(cnt->tokens); // eat fn
+	Token *tok_begin = tokens_consume(cnt->tokens); // eat {
+	Ast *  group =
+	    ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FN_GROUP, tok_group, SCOPE_GET(cnt));
+
+	TSmallArray_AstPtr *variants       = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+	group->data.expr_fn_group.variants = variants;
+	Ast *tmp;
+NEXT:
+	if (parse_semicolon(cnt)) goto NEXT;
+	if ((tmp = parse_ident(cnt))) {
+		tsa_push_AstPtr(variants, tmp);
+		goto NEXT;
+	}
+
+	Token *tok = tokens_consume_if(cnt->tokens, SYM_RBLOCK);
+	if (!tok) {
+		tok = tokens_peek_prev(cnt->tokens);
+		PARSE_ERROR(
+		    ERR_EXPECTED_BODY_END, tok, BUILDER_CUR_AFTER, "Expected end of block '}'.");
+		PARSE_NOTE(tok_begin, BUILDER_CUR_WORD, "Block starting here.");
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
+	}
+	return group;
 }
 
 /* ( expression ) */

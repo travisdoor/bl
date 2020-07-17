@@ -117,6 +117,21 @@ default_args_call_side_location :: fn () #test {
     }
 }
 
+default_args_array :: fn () #test {
+    foo :: fn (arr: [2]s32 = {:[2]s32: 1, 2}) {
+        test_s32_eq(arr[0], 1);
+        test_s32_eq(arr[1], 2);
+    };
+    foo();
+}
+
+default_args_slice :: fn () #test {
+    foo :: fn (slice: []s32 = {:[]s32: 0}) {
+        test_s32_eq(auto slice.len, 0);
+    };
+    foo();
+}
+
 default_args_callback1 :: fn () #test {
     foo :: fn (i: s32) {
         test_s32_eq(i, 10);

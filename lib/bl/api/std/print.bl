@@ -207,12 +207,14 @@ sprint :: fn (args: ...) string {
     return tmp;
 };
 
+// @DOC
 FmtReal :: struct {
     trailing: u8;
     
     v: Any;
 }
 
+// @DOC
 fmt_real :: fn (v: Any, trailing: u8) FmtReal #inline {
     if v.type_info.kind != TypeKind.Real {
         panic("Invalid format input, got % but expected is Real number!", v.type_info.kind);
@@ -221,6 +223,7 @@ fmt_real :: fn (v: Any, trailing: u8) FmtReal #inline {
     return {:FmtReal: trailing, v};
 }
 
+// @DOC
 FmtIntBase :: enum u8 {
     Bin;
     Dec;
@@ -228,11 +231,13 @@ FmtIntBase :: enum u8 {
     Hex;
 }
 
+// @DOC
 FmtInt :: struct {
     base: FmtIntBase;
     v: Any;
 }
 
+// @DOC
 fmt_int :: fn (v: Any, base: FmtIntBase) FmtInt #inline {
     if v.type_info.kind != TypeKind.Int {
         panic("Invalid format input, got % but expected is Integer number!", v.type_info.kind);
