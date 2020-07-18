@@ -149,6 +149,7 @@ static Ast *       parse_expr_cast(Context *cnt);
 static Ast *       parse_expr_cast_auto(Context *cnt);
 static Ast *       parse_expr_lit(Context *cnt);
 static Ast *       parse_expr_lit_fn(Context *cnt);
+static Ast *       parse_expr_lit_fn_group(Context *cnt);
 static Ast *       parse_expr_sizeof(Context *cnt);
 static Ast *       parse_expr_type_info(Context *cnt);
 static Ast *       parse_expr_test_cases(Context *cnt);
@@ -166,8 +167,14 @@ static Ast *       parse_expr_compound(Context *cnt);
 static INLINE bool rq_semicolon_after_decl_entity(Ast *node)
 {
 	BL_ASSERT(node);
-
-	return node->kind != AST_EXPR_LIT_FN && node->kind != AST_EXPR_TYPE;
+	switch (node->kind) {
+	case AST_EXPR_LIT_FN:
+	case AST_EXPR_LIT_FN_GROUP:
+	case AST_EXPR_TYPE:
+		return false;
+	default:
+		return true;
+	}
 }
 
 BinopKind sym_to_binop_kind(Sym sm)
@@ -990,26 +997,33 @@ Ast *parse_decl_arg(Context *cnt, bool rq_named)
 	Ast *  name      = NULL;
 	Ast *  type      = NULL;
 	Ast *  value     = NULL;
-
 	if (tokens_current_is(cnt->tokens, SYM_RPAREN)) return NULL;
-
 	if (tokens_is_seq(cnt->tokens, 2, SYM_IDENT, SYM_COLON)) {
+		// <name> :
 		name = parse_ident(cnt);
-		tokens_consume(cnt->tokens);
+		tokens_consume(cnt->tokens); // eat :
 	} else if (rq_named) {
 		Token *tok_err = tokens_peek(cnt->tokens);
 		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_EXPECTED_NAME,
 		            &tok_err->location,
 		            BUILDER_CUR_AFTER,
-		            "Expected argument name.");
+		            "Expected argument name followed by colon.");
 
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
 	}
-
 	type = parse_type(cnt);
-
 	/* Parse optional default value expression. */
+	if (tokens_current_is(cnt->tokens, SYM_COLON)) {
+		Token *tok_err = tokens_consume(cnt->tokens);
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_INVALID_MUTABILITY,
+		            &tok_err->location,
+		            BUILDER_CUR_WORD,
+		            "Function argument cannot be constant (this maybe shoule be possible "
+		            "in future).");
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
+	}
 	if (tokens_consume_if(cnt->tokens, SYM_ASSIGN)) {
 		value = parse_hash_directive(cnt, HD_CALL_LOC, NULL);
 		if (!value) value = parse_expr(cnt);
@@ -1020,10 +1034,17 @@ Ast *parse_decl_arg(Context *cnt, bool rq_named)
 			            &tok_err->location,
 			            BUILDER_CUR_AFTER,
 			            "Expected .");
+			return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
 		}
+	} else if (!type) {
+		builder_msg(BUILDER_MSG_ERROR,
+		            ERR_EXPECTED_TYPE,
+		            name->location,
+		            BUILDER_CUR_AFTER,
+		            "Expected argument type.");
+		return ast_create_node(
+		    cnt->ast_arena, AST_BAD, tokens_peek(cnt->tokens), SCOPE_GET(cnt));
 	}
-
-	if (!type && !name) return NULL;
 	Ast *arg = ast_create_node(cnt->ast_arena, AST_DECL_ARG, tok_begin, SCOPE_GET(cnt));
 	arg->data.decl_arg.value = value;
 	arg->data.decl.type      = type;
@@ -1445,6 +1466,7 @@ Ast *parse_expr_primary(Context *cnt)
 	if ((expr = parse_expr_ref(cnt))) return expr;
 	if ((expr = parse_expr_lit(cnt))) return expr;
 	if ((expr = parse_expr_lit_fn(cnt))) return expr;
+	if ((expr = parse_expr_lit_fn_group(cnt))) return expr;
 	if ((expr = parse_expr_type(cnt))) return expr;
 	if ((expr = parse_expr_null(cnt))) return expr;
 	if ((expr = parse_expr_compound(cnt))) return expr;
@@ -1609,10 +1631,9 @@ Ast *parse_expr_lit(Context *cnt)
 
 Ast *parse_expr_lit_fn(Context *cnt)
 {
+	if (!tokens_is_seq(cnt->tokens, 2, SYM_FN, SYM_LPAREN)) return NULL;
 	Token *tok_fn = tokens_peek(cnt->tokens);
-	if (token_is_not(tok_fn, SYM_FN)) return NULL;
-
-	Ast *fn = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FN, tok_fn, SCOPE_GET(cnt));
+	Ast *  fn     = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FN, tok_fn, SCOPE_GET(cnt));
 
 	Scope *   parent_scope = SCOPE_GET(cnt);
 	ScopeKind scope_kind =
@@ -1660,6 +1681,35 @@ Ast *parse_expr_lit_fn(Context *cnt)
 
 	SCOPE_POP(cnt);
 	return fn;
+}
+
+Ast *parse_expr_lit_fn_group(Context *cnt)
+{
+	if (!tokens_is_seq(cnt->tokens, 2, SYM_FN, SYM_LBLOCK)) return NULL;
+	Token *tok_group = tokens_consume(cnt->tokens); // eat fn
+	Token *tok_begin = tokens_consume(cnt->tokens); // eat {
+	Ast *  group =
+	    ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FN_GROUP, tok_group, SCOPE_GET(cnt));
+
+	TSmallArray_AstPtr *variants       = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+	group->data.expr_fn_group.variants = variants;
+	Ast *tmp;
+NEXT:
+	if (parse_semicolon(cnt)) goto NEXT;
+	if ((tmp = parse_ident(cnt))) {
+		tsa_push_AstPtr(variants, tmp);
+		goto NEXT;
+	}
+
+	Token *tok = tokens_consume_if(cnt->tokens, SYM_RBLOCK);
+	if (!tok) {
+		tok = tokens_peek_prev(cnt->tokens);
+		PARSE_ERROR(
+		    ERR_EXPECTED_BODY_END, tok, BUILDER_CUR_AFTER, "Expected end of block '}'.");
+		PARSE_NOTE(tok_begin, BUILDER_CUR_WORD, "Block starting here.");
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
+	}
+	return group;
 }
 
 /* ( expression ) */
@@ -2022,11 +2072,11 @@ NEXT:
 
 	tok = tokens_consume(cnt->tokens);
 	if (tok->sym != SYM_RPAREN) {
-		PARSE_ERROR(
-		    ERR_MISSING_BRACKET,
-		    tok,
-		    BUILDER_CUR_WORD,
-		    "Expected end of argument type list ')' or another type separated by comma.");
+		PARSE_ERROR(ERR_MISSING_BRACKET,
+		            tok,
+		            BUILDER_CUR_WORD,
+		            "Expected end of argument type list ')' or another argument separated "
+		            "by comma.");
 		return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn, SCOPE_GET(cnt));
 	}
 

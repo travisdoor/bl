@@ -85,7 +85,7 @@
 #endif
 
 #define BUILD_API_FILE "build/build.bl"
-#define BUILTIN_FILE "std/_builtin.bl"
+#define BUILTIN_FILE "a.bl"
 
 /*
  * NOTE: We are converting all backslashes on Windows to the forward slashes.

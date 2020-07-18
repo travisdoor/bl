@@ -1,0 +1,115 @@
+#private
+debug_print_log :: fn () #test {
+    _context.print_log_fn = &test_logger;
+    {
+        _expected_kind = PrintLogKind.Message;
+        _expected_file = "";
+        _expected_line = 0;
+        _expected_format = "";
+        _expected_argc = 0; 
+        print_log("");
+    }
+
+    {
+        _expected_kind = PrintLogKind.Message;
+        _expected_file = "";
+        _expected_line = 0;
+        _expected_format = "hello";
+        _expected_argc = 0; 
+        print_log("hello");
+    }
+
+    {
+        _expected_kind = PrintLogKind.Message;
+        _expected_file = "";
+        _expected_line = 0;
+        _expected_format = "hello";
+        _expected_argc = 2; 
+        print_log("hello", 10, true);
+    }
+
+    _context.print_log_fn = &_print_log_default;
+}
+
+debug_print_warn :: fn () #test {
+    _context.print_log_fn = &test_logger;
+    {
+        _expected_kind = PrintLogKind.Warning;
+        _expected_file = "";
+        _expected_line = 0;
+        _expected_format = "";
+        _expected_argc = 0; 
+        print_warn("");
+    }
+
+    {
+        _expected_kind = PrintLogKind.Warning;
+        _expected_file = "";
+        _expected_line = 0;
+        _expected_format = "hello";
+        _expected_argc = 0; 
+        print_warn("hello");
+    }
+
+    {
+        _expected_kind = PrintLogKind.Warning;
+        _expected_file = "";
+        _expected_line = 0;
+        _expected_format = "hello";
+        _expected_argc = 2; 
+        print_warn("hello", 10, true);
+    }
+
+    _context.print_log_fn = &_print_log_default;
+}
+
+debug_print_err :: fn () #test {
+    _context.print_log_fn = &test_logger;
+    {
+        _expected_kind = PrintLogKind.Error;
+        _expected_file = "";
+        _expected_line = 0;
+        _expected_format = "";
+        _expected_argc = 0; 
+        print_err("");
+    }
+
+    {
+        _expected_kind = PrintLogKind.Error;
+        _expected_file = "";
+        _expected_line = 0;
+        _expected_format = "hello";
+        _expected_argc = 0; 
+        print_err("hello");
+    }
+
+    {
+        _expected_kind = PrintLogKind.Error;
+        _expected_file = "";
+        _expected_line = 0;
+        _expected_format = "hello";
+        _expected_argc = 2; 
+        print_err("hello", 10, true);
+    }
+
+    _context.print_log_fn = &_print_log_default;
+}
+
+_expected_kind: PrintLogKind;
+_expected_file: string;
+_expected_line: s32;
+_expected_format: string;
+_expected_argc: s32; 
+
+test_logger :: fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...) {
+    assert(kind == _expected_kind);
+    test_str_eq(file, _expected_file);
+    test_s32_eq(line, _expected_line);
+    test_str_eq(format, _expected_format);
+    test_s32_eq(auto args.len, auto _expected_argc);
+
+    loop i := 0; i < args.len; i += 1 {
+        test_not_null(auto args[i].type_info);
+        test_not_null(auto args[i].data);
+    }
+}

@@ -38,6 +38,7 @@ struct Token;
 
 /* class Unit object members */
 typedef struct Unit {
+	u64             hash; 
 	Tokens          tokens;        /* Unit tokens as lexer output. */
 	Ast *           ast;           /* Abstract Syntax Tree */
 	struct Scope *  private_scope; /* Unit private scope (#private). */
@@ -51,9 +52,7 @@ typedef struct Unit {
 } Unit;
 
 Unit *unit_new_file(const char *filepath, struct Token *loaded_from, Unit *parent_unit);
-
 void unit_delete(Unit *unit);
-
 const char *unit_get_src_ln(Unit *unit, s32 line, long *len);
 
 #endif

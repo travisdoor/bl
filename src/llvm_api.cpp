@@ -29,7 +29,7 @@
 #include "llvm_api.h"
 #include <cmath>
 
-_LLVM_SHUT_UP_BEGIN
+_SHUT_UP_BEGIN
 #include <llvm/ADT/StringSwitch.h>
 #include <llvm/Config/llvm-config.h>
 #include <llvm/IR/Attributes.h>
@@ -37,7 +37,7 @@ _LLVM_SHUT_UP_BEGIN
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Type.h>
-_LLVM_SHUT_UP_END
+_SHUT_UP_END
 
 #define CAST(T) reinterpret_cast<T>
 

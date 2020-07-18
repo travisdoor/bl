@@ -77,7 +77,7 @@ typedef struct Assembly {
 		TArray global_instrs; /* All global instructions. */
 
 		/* Map type ids to RTTI variables. */
-		THashTable RTTI_table;
+		THashTable                 RTTI_table;
 	} MIR;
 
 	struct {
@@ -125,25 +125,16 @@ typedef struct NativeLib {
 	bool          is_internal;
 } NativeLib;
 
-Assembly *assembly_new(const char *name);
-
-void assembly_delete(Assembly *assembly);
-
+Assembly *      assembly_new(const char *name);
+void            assembly_delete(Assembly *assembly);
 AssemblyOptions assembly_get_default_options(void);
-
-void assembly_add_unit(Assembly *assembly, Unit *unit);
-
-void assembly_add_lib_path(Assembly *assembly, const char *path);
-
+void            assembly_add_unit(Assembly *assembly, Unit *unit);
+void            assembly_add_lib_path(Assembly *assembly, const char *path);
 void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
-
 bool assembly_add_unit_unique(Assembly *assembly, Unit *unit);
-
 DCpointer assembly_find_extern(Assembly *assembly, const char *symbol);
-
-void assembly_apply_options(Assembly *assembly);
-
-void assembly_set_output_dir(Assembly *assembly, const char *dir);
+void      assembly_apply_options(Assembly *assembly);
+void      assembly_set_output_dir(Assembly *assembly, const char *dir);
 
 static INLINE bool assembly_has_rtti(Assembly *assembly, u64 type_id)
 {

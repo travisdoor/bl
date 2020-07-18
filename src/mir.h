@@ -403,6 +403,7 @@ struct MirVar {
 	bool               is_implicit;
 	bool               is_struct_typedef;
 	bool               emit_llvm;
+	bool               analyzed;
 	u32                flags;
 	VMRelativeStackPtr rel_stack_ptr;
 	LLVMValueRef       llvm_value;
@@ -720,7 +721,7 @@ struct MirInstrCallLoc {
 	MirInstr base;
 
 	struct Location *call_location; /* Optional call location */
-	MirVar *  meta_var;      /* Optional meta var. */
+	MirVar *         meta_var;      /* Optional meta var. */
 };
 
 struct MirInstrTypeKind {

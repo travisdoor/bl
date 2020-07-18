@@ -215,10 +215,10 @@ static void fn_dtor(MirFn **_fn)
 }
 
 /* FW decls */
+static void msg_handle(Context *cnt, MirInstr *instr);
 /* Initialize all builtin types. */
-static void builtin_inits(Context *cnt);
-static void testing_add_test_case(Context *cnt, MirFn *fn);
-
+static void    builtin_inits(Context *cnt);
+static void    testing_add_test_case(Context *cnt, MirFn *fn);
 static MirVar *testing_gen_meta(Context *cnt);
 
 /* Execute all registered test cases in current assembly. */
@@ -653,8 +653,7 @@ static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 9,
  * out_type when analyze passed without problems. When analyze does not pass postpone is returned
  * and out_type stay unchanged.*/
 static AnalyzeResult
-analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
-
+                     analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
 static AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp);
 static AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
 static AnalyzeResult analyze_instr_phi(Context *cnt, MirInstrPhi *phi);
@@ -834,6 +833,13 @@ static INLINE bool can_impl_cast(MirType *from, MirType *to)
 	  explicit information about casting.
 	 */
 	if (from->kind == MIR_TYPE_PTR && to->kind == MIR_TYPE_BOOL) return true;
+
+	/* Implicit cast of vargs to slice. */
+	if (from->kind == MIR_TYPE_VARGS && to->kind == MIR_TYPE_SLICE) {
+		from = mir_get_struct_elem_type(from, MIR_SLICE_PTR_INDEX);
+		to   = mir_get_struct_elem_type(to, MIR_SLICE_PTR_INDEX);
+		return type_cmp(from, to);
+	}
 
 	if (from->kind != to->kind) return false;
 
@@ -1053,7 +1059,7 @@ static INLINE void error_types(MirType *from, MirType *to, Ast *loc, const char 
 
 	builder_msg(BUILDER_MSG_ERROR,
 	            ERR_INVALID_TYPE,
-	            loc->location,
+	            loc ? loc->location : NULL,
 	            BUILDER_CUR_WORD,
 	            msg,
 	            tmp_from,
@@ -2509,6 +2515,10 @@ MirCastOp get_cast_op(MirType *from, MirType *to)
 		}
 	}
 
+	case MIR_TYPE_VARGS: {
+		return to->kind == MIR_TYPE_SLICE ? MIR_CAST_NONE : MIR_CAST_INVALID;
+	}
+
 	default:
 		return MIR_CAST_INVALID;
 	}
@@ -3770,7 +3780,7 @@ bool evaluate(Context *cnt, MirInstr *instr)
 	if (!instr) return true;
 
 	BL_ASSERT(instr->analyzed && "Non-analyzed instruction cannot be evaluated!");
-	/* We can evauate compile time know instructions only.  */
+	/* We can evaluate compile time know instructions only.  */
 	if (!instr->value.is_comptime) return true;
 
 	if (!vm_eval_instr(cnt->vm, cnt->assembly, instr)) {
@@ -4105,10 +4115,10 @@ SKIP_IMPLICIT:
 
 AnalyzeResult analyze_var(Context *cnt, MirVar *var)
 {
+	BL_TRACY_MESSAGE("ANALYZE_VAR", "%s", var->linkage_name);
 	if (!var->value.type) {
 		BL_ABORT("unknown declaration type");
 	}
-
 	switch (var->value.type->kind) {
 	case MIR_TYPE_TYPE:
 		/* Disable LLVM generation of typedefs. */
@@ -4120,7 +4130,6 @@ AnalyzeResult analyze_var(Context *cnt, MirVar *var)
 		            BUILDER_CUR_WORD,
 		            "Type declaration must be immutable.");
 		return ANALYZE_RESULT(FAILED, 0);
-
 	case MIR_TYPE_FN:
 		/* Allocated type is function. */
 		builder_msg(BUILDER_MSG_ERROR,
@@ -4130,7 +4139,6 @@ AnalyzeResult analyze_var(Context *cnt, MirVar *var)
 		            "Invalid type of the variable, functions can be referenced "
 		            "only by pointers.");
 		return ANALYZE_RESULT(FAILED, 0);
-
 	case MIR_TYPE_VOID:
 		/* Allocated type is void type. */
 		builder_msg(BUILDER_MSG_ERROR,
@@ -4139,16 +4147,15 @@ AnalyzeResult analyze_var(Context *cnt, MirVar *var)
 		            BUILDER_CUR_WORD,
 		            "Cannot allocate unsized type.");
 		return ANALYZE_RESULT(FAILED, 0);
-
 	default:
 		break;
 	}
 
 	if (!var->is_implicit) commit_var(cnt, var);
-
 	/* Type declaration should not be generated in LLVM. */
 	var->emit_llvm = var->value.type->kind != MIR_TYPE_TYPE;
-
+	/* Just take note whether variable was fully analyzed.  */
+	var->analyzed = true;
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -4162,7 +4169,7 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
 	BL_ASSERT((var->is_global || var->is_struct_typedef) &&
 	          "Only globals can be initialized by initializer!");
 
-	/* When there is no source initialization value to set global we can omit type infering and
+	/* When there is no source initialization value to set global we can omit type inferring and
 	 * initialization value slot analyze pass. */
 	const bool is_default = !si->src;
 	if (!is_default) {
@@ -4191,7 +4198,6 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
 	BL_ASSERT(var->value.type &&
 	          "Missing variable initializer type for default global initializer!");
 	BL_ASSERT(var->value.type->kind != MIR_TYPE_VOID && "Global value cannot be void!");
-
 	BL_ASSERT(si->src && "Invalid global initializer source value.");
 
 	/* Global initializer must be compile time known. */
@@ -4204,8 +4210,8 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
-	/* Initializer value is quaranteed to be comptime so we just check variable mutablility.
-	 * (mutable valirables cannot be comptime) */
+	/* Initializer value is guaranteed to be comptime so we just check variable muttablility.
+	 * (mutable variables cannot be comptime) */
 	var->value.is_comptime = !var->is_mutable;
 
 	AnalyzeResult state = analyze_var(cnt, var);
@@ -4216,7 +4222,7 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
 	si->base.owner_block->emit_llvm = var->value.type->kind != MIR_TYPE_TYPE;
 
 	if (!var->value.is_comptime) {
-		/* Global varibales which are not compile time constants are allocated
+		/* Global variables which are not compile time constants are allocated
 		 * on the stack, one option is to do allocation every time when we
 		 * invoke comptime function execution, but we don't know which globals
 		 * will be used by function and we also don't known whatever function
@@ -4927,6 +4933,11 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	MirFn *fn = MIR_CEV_READ_AS(MirFn *, value);
 	BL_ASSERT(fn);
 
+	if (IS_FLAG(fn->flags, FLAG_TEST_FN)) {
+		/* We must wait for builtin types for test cases. */
+		ID *missing = lookup_builtins_test_cases(cnt);
+		if (missing) return ANALYZE_RESULT(WAITING, missing->hash);
+	}
 	fn->type          = value->type;
 	fn->type->user_id = fn->id;
 
@@ -5404,14 +5415,42 @@ AnalyzeResult analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *vari
 
 AnalyzeResult analyze_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
 {
-	if (analyze_slot(cnt, &analyze_slot_conf_basic, &decl->type, NULL) != ANALYZE_PASSED) {
-		return ANALYZE_RESULT(FAILED, 0);
+	MirArg *arg = decl->arg;
+	BL_ASSERT(arg);
+	if (decl->type) {
+		/* Variable type is explicitly defined. */
+		if (decl->type->kind == MIR_INSTR_CALL) {
+			AnalyzeResult result = analyze_resolve_type(cnt, decl->type, &arg->type);
+			if (result.state != ANALYZE_PASSED) return result;
+		} else {
+			if (analyze_slot(cnt, &analyze_slot_conf_basic, &decl->type, NULL) !=
+			    ANALYZE_PASSED) {
+				return ANALYZE_RESULT(FAILED, 0);
+			}
+			arg->type = MIR_CEV_READ_AS(MirType *, &decl->type->value);
+		}
+		/* @NOTE: Argument default value is generated as an implicit global constant
+		 * variable with proper expected type defined, so there is no need to do any type
+		 * validation with user type, variable analyze pass will do it for us.*/
+	} else {
+		/* There is no explicitly defined argument type, but we have default argument value
+		 * to infer type from. */
+		BL_ASSERT(arg->value);
+		if (!arg->value->analyzed) {
+			// @PERFORMANCE: WAITING is preferred here, but we don't have ID to wait
+			// for.
+			return ANALYZE_RESULT(POSTPONE, 0);
+		}
+		if (arg->value->kind == MIR_INSTR_DECL_VAR) {
+			MirVar *var = ((MirInstrDeclVar *)arg->value)->var;
+			BL_ASSERT(var);
+			if (!var->analyzed) return ANALYZE_RESULT(POSTPONE, 0);
+			arg->type = var->value.type;
+		} else {
+			arg->type = arg->value->value.type;
+		}
 	}
-
-	MirType *type   = MIR_CEV_READ_AS(MirType *, &decl->type->value);
-	decl->arg->type = type;
-	BL_ASSERT(decl->arg->type && "Invalid argument type!");
-
+	BL_ASSERT(arg->type && "Invalid argument type!");
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -6119,23 +6158,18 @@ AnalyzeResult analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		 */
 		MirType * type         = var->value.type;
 		MirInstr *default_init = create_default_value_for_type(cnt, type, false);
-
 		insert_instr_before(&decl->base, default_init);
 		ANALYZE_INSTR_RQ(default_init);
 		decl->init = default_init;
 	}
-
 	decl->base.value.is_comptime = var->value.is_comptime = is_decl_comptime;
-
-	AnalyzeResult state = analyze_var(cnt, decl->var);
+	AnalyzeResult state                                   = analyze_var(cnt, decl->var);
 	if (state.state != ANALYZE_PASSED) return state;
-
 	if (decl->base.value.is_comptime && decl->init) {
 		/* initialize when known in compiletime */
 		var->value.data = decl->init->value.data;
 		BL_ASSERT(var->value.data && "Incomplete comptime var initialization.");
 	}
-
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -6342,7 +6376,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 		ref_instr(vargs);
 		if (vargsc > 0) {
 			/* One or more vargs passed. */
-			// INCOMPLETE: check it this is ok!!!
+			// @INCOMPLETE: check it this is ok!!!
 			for (usize i = 0; i < vargsc; ++i) {
 				tsa_push_InstrPtr(values, call->args->data[callee_argc + i]);
 			}
@@ -6352,7 +6386,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 		} else if (callee_argc > 0) {
 			/* No arguments passed into vargs but there are more regular
 			 * arguments before vargs. */
-			MirInstr *insert_loc = call->args->data[0];
+			MirInstr *insert_loc = call->args->data[call_argc - 1];
 			insert_instr_before(insert_loc, vargs);
 		} else {
 			insert_instr_before(&call->base, vargs);
@@ -6361,7 +6395,8 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 		if (analyze_instr_vargs(cnt, (MirInstrVArgs *)vargs).state != ANALYZE_PASSED)
 			return ANALYZE_RESULT(FAILED, 0);
 		vargs->analyzed = true;
-		/* Erase vargs from arguments. */
+		/* Erase vargs from arguments. @NOTE: function does nothing when array size is equal
+		 * to callee_argc.*/
 		tsa_resize_InstrPtr(call->args, callee_argc);
 		/* Replace last with vargs. */
 		tsa_push_InstrPtr(call->args, vargs);
@@ -6939,6 +6974,8 @@ AnalyzeResult analyze_instr(Context *cnt, MirInstr *instr)
 		if (!evaluate(cnt, instr)) {
 			return ANALYZE_RESULT(FAILED, 0);
 		}
+
+		msg_handle(cnt, instr);
 	}
 
 	return state;
@@ -8511,12 +8548,9 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
 		}
 	} else {
 		/* other declaration types */
-		MirInstr *type = ast_type ? CREATE_TYPE_RESOLVER_CALL(ast_type) : NULL;
-
+		MirInstr *type             = ast_type ? CREATE_TYPE_RESOLVER_CALL(ast_type) : NULL;
 		cnt->ast.current_entity_id = &ast_name->data.ident.id;
-
 		const bool use_initializer = is_struct_decl || is_global;
-
 		/* Struct use forward type declarations! */
 		if (is_struct_decl) {
 			// Set to const type fwd decl
@@ -8605,10 +8639,12 @@ MirInstr *ast_decl_arg(Context *cnt, Ast *arg)
 	Ast *     ast_value = arg->data.decl_arg.value;
 	Ast *     ast_name  = arg->data.decl.name;
 	Ast *     ast_type  = arg->data.decl.type;
-	MirInstr *type      = ast(cnt, ast_type);
 	MirInstr *value     = NULL;
+	/* Type is resolved in type resolver in case we have default value defined. */
+	MirInstr *type = NULL;
 
 	if (ast_value) {
+		type = CREATE_TYPE_RESOLVER_CALL(ast_type);
 		/* Main idea here is create implicit global constant to hold default value, since
 		 * value can be more complex compound with references, we need to use same solution
 		 * like we already use for globals. This approach is also more effective than
@@ -8620,9 +8656,13 @@ MirInstr *ast_decl_arg(Context *cnt, Ast *arg)
 			value = ast(cnt, ast_value);
 		} else {
 			value = append_instr_decl_var_impl(
-			    cnt, IMPL_ARG_DEFAULT, NULL, NULL, false, true, 0, 0);
+			    cnt, IMPL_ARG_DEFAULT, type, NULL /* init */, false, true, 0, 0);
 			ast_create_global_initializer(cnt, ast_value, value);
 		}
+	} else {
+		BL_ASSERT(ast_type && "Function argument must have explicit type when no default "
+		                      "value is specified!");
+		type = CREATE_TYPE_RESOLVER_CALL(ast_type);
 	}
 	return append_instr_decl_arg(cnt, ast_name, type, value);
 }
@@ -9475,6 +9515,29 @@ const char *get_intrinsic(const char *name)
 	if (strcmp(name, "log10.f32") == 0) return "__intrinsic_log10_f32";
 	if (strcmp(name, "log10.f64") == 0) return "__intrinsic_log10_f64";
 	return NULL;
+}
+
+void msg_handle(Context *cnt, MirInstr *instr)
+{
+	if (!instr) return;
+
+	BuilderMessage msg;
+	switch (instr->kind) {
+	case MIR_INSTR_DECL_VAR:
+		msg.kind     = BUILDER_MSG_VAR;
+		msg.data.var = ((MirInstrDeclVar *)instr)->var;
+		if (!msg.data.var) return;
+		break;
+	case MIR_INSTR_FN_PROTO:
+		msg.kind    = BUILDER_MSG_FN;
+		msg.data.fn = MIR_CEV_READ_AS(MirFn *, &instr->value);
+		if (!msg.data.fn) return;
+		break;
+	default:
+		return;
+	}
+
+	builder_invoke_message(cnt->assembly, &msg);
 }
 
 void mir_arenas_init(MirArenas *arenas)

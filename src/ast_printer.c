@@ -117,6 +117,7 @@ static void print_expr_lit_char(Ast *lit, s32 pad, FILE *stream);
 static void print_expr_lit_bool(Ast *lit, s32 pad, FILE *stream);
 static void print_expr_lit_string(Ast *lit, s32 pad, FILE *stream);
 static void print_expr_lit_fn(Ast *fn, s32 pad, FILE *stream);
+static void print_expr_lit_fn_group(Ast *group, s32 pad, FILE *stream);
 static void print_expr_call(Ast *call, s32 pad, FILE *stream);
 static void print_expr_elem(Ast *elem, s32 pad, FILE *stream);
 
@@ -455,6 +456,11 @@ void print_expr_lit_fn(Ast *fn, s32 pad, FILE *stream)
 	print_node(fn->data.expr_fn.block, pad + 1, stream);
 }
 
+void print_expr_lit_fn_group(Ast *group, s32 pad, FILE *stream)
+{
+	print_head(group, pad, stream);
+}
+
 void print_expr_call(Ast *call, s32 pad, FILE *stream)
 {
 	print_head(call, pad, stream);
@@ -637,6 +643,10 @@ void print_node(Ast *node, s32 pad, FILE *stream)
 
 	case AST_EXPR_LIT_FN:
 		print_expr_lit_fn(node, pad, stream);
+		break;
+
+	case AST_EXPR_LIT_FN_GROUP:
+		print_expr_lit_fn_group(node, pad, stream);
 		break;
 
 	case AST_EXPR_LIT_INT:

@@ -1,11 +1,11 @@
 //************************************************************************************************
 // bl
 //
-// File:   c.bl
+// File:   puml_export.h
 // Author: Martin Dorazil
-// Date:   13/2/19
+// Date:   7/12/20
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2020 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,19 +26,11 @@
 // SOFTWARE.
 //************************************************************************************************
 
-// LIB C binding
+#ifndef BL_PUML_EXPORT_H
+#define BL_PUML_EXPORT_H
 
-RAND_MAX :: 2147483647;
+struct BuilderMessage;
+struct Assembly;
+void puml_message_handler(const struct Assembly *assembly, const struct BuilderMessage *msg);
 
-c_malloc :: fn (size: c_size_t) c_void_ptr #extern "malloc";
-c_free   :: fn (ptr: c_void_ptr) #extern "free";
-c_strlen :: fn (str: *c_char) c_size_t #extern "strlen";
-c_strcmp :: fn (first: *c_char, second: *c_char) c_int #extern "strcmp";
-c_system :: fn (cmd: *u8) s32 #extern "system";
-c_fopen  :: fn (filename: *c_char, mode: *c_char) c_void_ptr #extern "fopen";
-c_fclose :: fn (handle: c_void_ptr) c_int #extern "fclose";
-c_fseek  :: fn (handle: c_void_ptr, offest: c_int, origin: c_int) c_int #extern "fseek";
-c_fread  :: fn (ptr: c_void_ptr, size: c_size_t, count: c_size_t, handle: c_void_ptr) c_size_t #extern "fread";
-c_fwrite :: fn (ptr: c_void_ptr, size: c_size_t, count: c_size_t, handle: c_void_ptr) c_size_t #extern "fwrite";
-c_ftell  :: fn (handle: c_void_ptr) c_int #extern "ftell";
-c_time   :: fn (t: c_void_ptr) c_ulong #extern "time";
+#endif

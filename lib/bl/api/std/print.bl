@@ -42,33 +42,6 @@ which can be printed at once.
 PRINT_MAX_LENGTH :: 4096;
 
 /*!
-# PrintLogKind
-## Declaration
-```c
-PrintLogKind :: enum u8 {
-    Message;
-    Warning;
-    Error;
-    Panic;
-};
-```
-## Description
-  Kinds of log messages.
-
-## Variants
-  * `Message` Ordinary debug log message.
-  * `Warning` Warning log message.
-  * `Error` Error log message.
-  * `Panic` Panic log message.
-*/
-PrintLogKind :: enum u8 {
-    Message;
-    Warning;
-    Error;
-    Panic;
-};
-
-/*!
 # print
 ## Declaration
 ```c
@@ -110,7 +83,7 @@ main :: fn () s32 {
 */
 print :: fn (format: string, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8 #noinit;
-    w := _print_impl(buf, format, {:[]Any: args.len, args.ptr});
+    w := _print_impl(buf, format, args);
     __os_write(OS_STDOUT, buf.ptr, auto w);
     return w;
 };
@@ -138,7 +111,7 @@ pass values of any type as an arguments, even structures or arrays.
 */
 eprint :: fn (format: string, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8 #noinit;
-    w := _print_impl(buf, format, {:[]Any: args.len, args.ptr});
+    w := _print_impl(buf, format, args);
     __os_write(OS_STDERR, buf.ptr, auto w);
     return w;
 };
@@ -170,8 +143,40 @@ string, function will print just part fitting into the buffer.
 character written at the end of the result string.
 */
 bprint :: fn (buf: []u8, format: string, args: ...) s32 {
-    tmp := {:[]Any: args.len, args.ptr };
-    w := _print_impl(buf, format, tmp);
+    w :: _print_impl(buf, format, args);
+    print_char(buf, w, '\0');
+    return w;
+};
+
+/*!
+# boprint
+## Declaration
+```c
+boprint :: fn (buf: []u8, offset: s32, format: string, args: ...) s32
+```
+## Description
+  Write string to the input buffer starting write on offset. Format string can include
+format specifiers `%` which are replaced by corresponding argument value
+passed in `args`. Value-string conversion is done automatically, we can
+pass values of any type as an arguments, even structures or arrays.
+
+  The `bprint` function accepts C-like escape sequences as `\n`, `\t`, `\r`, etc.
+
+  When passed buffer has not enough space to handle whole resulting 
+string, function will print just part fitting into the buffer.  
+
+## Arguments
+  * `buf` Destination buffer.
+  * `offset` Buffer offset.
+  * `format` Formatting string. 
+  * `args` Additional values. 
+
+## Result
+  Count of characters written into buffer, this count does not include terminal
+character written at the end of the result string.
+*/
+boprint :: fn (buf: []u8, offset: s32, format: string, args: ...) s32 {
+    w :: _print_impl(buf, format, args, offset);
     print_char(buf, w, '\0');
     return w;
 };
@@ -202,34 +207,50 @@ sprint :: fn (args: ...) string {
     return tmp;
 };
 
-_print_log_default :: fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32) {
-    out := OS_STDOUT;
-    buf: [PRINT_MAX_LENGTH]u8 #noinit;
-    tag: string;
-    w: s32;
+// @DOC
+FmtReal :: struct {
+    trailing: u8;
+    
+    v: Any;
+}
 
-    if kind == PrintLogKind.Message { tag = "[MESSAGE] %:% > "; }
-    if kind == PrintLogKind.Warning { tag = "[WARNING] %:% > "; }
-
-    if kind == PrintLogKind.Error {
-        out = OS_STDERR;
-        tag = "[ ERROR ] %:% > ";
+// @DOC
+fmt_real :: fn (v: Any, trailing: u8) FmtReal #inline {
+    if v.type_info.kind != TypeKind.Real {
+        panic("Invalid format input, got % but expected is Real number!", v.type_info.kind);
     }
 
-    if kind == PrintLogKind.Panic {
-        out = OS_STDERR;
-        tag = "[ PANIC ] %:% > ";
+    return {:FmtReal: trailing, v};
+}
+
+// @DOC
+FmtIntBase :: enum u8 {
+    Bin;
+    Dec;
+    Oct;
+    Hex;
+}
+
+// @DOC
+FmtInt :: struct {
+    base: FmtIntBase;
+    v: Any;
+}
+
+// @DOC
+fmt_int :: fn (v: Any, base: FmtIntBase) FmtInt #inline {
+    if v.type_info.kind != TypeKind.Int {
+        panic("Invalid format input, got % but expected is Integer number!", v.type_info.kind);
     }
 
-    w = bprint(buf, tag, file, line);
-    w = _print_impl(buf, format, args, w);
-    w = print_char(buf, w, '\n');
-    __os_write(out, buf.ptr, auto w);
-};
+    return {:FmtInt: base, v};
+}
 
-_print_impl :: fn (buf: []u8, format: string, args: []Any, cur: s32 = 0) s32 {
+#private
+DEFAULT_REAL_TRAILING :: 6;
+_print_impl :: fn (buf: []u8, format: string, args: []Any, cur := 0) s32 {
     argi := 0;
-
+    assert(cur < buf.len);
     loop i := 0; i < format.len; i += 1 {
         c := format[i];
 
@@ -248,43 +269,6 @@ _print_impl :: fn (buf: []u8, format: string, args: []Any, cur: s32 = 0) s32 {
 
     return cur;
 };
-
-FmtReal :: struct {
-    trailing: u8;
-    
-    v: Any;
-}
-
-fmt_real :: fn (v: Any, trailing: u8) FmtReal #inline {
-    if v.type_info.kind != TypeKind.Real {
-        panic("Invalid format input, got % but expected is Real number!", v.type_info.kind);
-    }
-
-    return {:FmtReal: trailing, v};
-}
-
-FmtIntBase :: enum u8 {
-    Bin;
-    Dec;
-    Oct;
-    Hex;
-}
-
-FmtInt :: struct {
-    base: FmtIntBase;
-    v: Any;
-}
-
-fmt_int :: fn (v: Any, base: FmtIntBase) FmtInt #inline {
-    if v.type_info.kind != TypeKind.Int {
-        panic("Invalid format input, got % but expected is Integer number!", v.type_info.kind);
-    }
-
-    return {:FmtInt: base, v};
-}
-
-#private
-DEFAULT_REAL_TRAILING :: 6;
 
 print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
     if any.type_info.kind == TypeKind.Int {
@@ -554,9 +538,7 @@ print_string :: fn (buf: []u8, cur: s32, str: string) s32 {
 };
 
 print_char :: fn (buf: []u8, cur: s32, c: u8) s32 #inline {
-    if cur >= buf.len {
-        return cur;
-    }
+    if cur >= buf.len { return cur; }
     buf[cur] = c;
     return cur + 1;
 };

@@ -1,0 +1,14 @@
+#load "std/file.bl"
+
+#private
+test_file_open :: fn () #test {
+    file :: file_open(#file, FileOpenMode.Read);
+    defer file_close(file);
+    test_not_null(auto file);
+}
+
+test_file_open_non_exist :: fn () #test {
+    file :: file_open("some_non_existing_file", FileOpenMode.Read);
+    defer file_close(file);
+    test_null(auto file);
+}
