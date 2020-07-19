@@ -70,6 +70,7 @@ typedef struct MirVariant        MirVariant;
 typedef struct MirArg            MirArg;
 typedef struct MirVar            MirVar;
 typedef struct MirFn             MirFn;
+typedef struct MirFnGroup        MirFnGroup;
 typedef struct MirConstExprValue MirConstExprValue;
 
 typedef struct MirInstr               MirInstr;
@@ -86,6 +87,7 @@ typedef struct MirInstrRet            MirInstrRet;
 typedef struct MirInstrBinop          MirInstrBinop;
 typedef struct MirInstrUnop           MirInstrUnop;
 typedef struct MirInstrFnProto        MirInstrFnProto;
+typedef struct MirInstrFnGroup        MirInstrFnGroup;
 typedef struct MirInstrCall           MirInstrCall;
 typedef struct MirInstrAddrOf         MirInstrAddrOf;
 typedef struct MirInstrCondBr         MirInstrCondBr;
@@ -126,6 +128,7 @@ typedef struct MirArenas {
 	Arena member;
 	Arena variant;
 	Arena arg;
+	Arena fn_group;
 } MirArenas;
 
 typedef struct MirSwitchCase {
@@ -263,6 +266,12 @@ struct MirFn {
 		DCCallback *     extern_callback_handle;
 		DyncallCBContext context;
 	} dyncall;
+};
+
+struct MirFnGroup {
+	ID *               id;
+	Ast *              decl_node;
+	TSmallArray_FnPtr *variants;
 };
 
 /* MEMBER */
@@ -588,6 +597,12 @@ struct MirInstrFnProto {
 	bool      pushed_for_analyze;
 };
 
+struct MirInstrFnGroup {
+	MirInstr base;
+
+	TSmallArray_InstrPtr *variants;
+};
+
 struct MirInstrTypeFn {
 	MirInstr base;
 
@@ -599,6 +614,7 @@ struct MirInstrTypeFn {
 struct MirInstrTypeFnGroup {
 	MirInstr base;
 
+	ID *                  id;
 	TSmallArray_InstrPtr *variants;
 };
 
@@ -833,15 +849,11 @@ static bool mir_is_global(const MirInstr *instr)
 	return mir_is_global_block(instr->owner_block);
 }
 
-void mir_arenas_init(MirArenas *arenas);
-
-void mir_arenas_terminate(MirArenas *arenas);
-
-void mir_type_to_str(char *buf, usize len, const MirType *type, bool prefer_name);
-
+void        mir_arenas_init(MirArenas *arenas);
+void        mir_arenas_terminate(MirArenas *arenas);
+void        mir_type_to_str(char *buf, usize len, const MirType *type, bool prefer_name);
 const char *mir_instr_name(const MirInstr *instr);
-
-void mir_run(struct Assembly *assembly);
+void        mir_run(struct Assembly *assembly);
 
 #if BL_DEBUG
 VMStackPtr _mir_cev_read(MirConstExprValue *value);

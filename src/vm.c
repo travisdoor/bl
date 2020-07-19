@@ -2183,6 +2183,7 @@ void eval_instr(VM *vm, MirInstr *instr)
 	case MIR_INSTR_TYPE_ARRAY:
 	case MIR_INSTR_TYPE_PTR:
 	case MIR_INSTR_TYPE_FN:
+	case MIR_INSTR_TYPE_FN_GROUP:
 	case MIR_INSTR_TYPE_STRUCT:
 	case MIR_INSTR_TYPE_ENUM:
 	case MIR_INSTR_TYPE_SLICE:

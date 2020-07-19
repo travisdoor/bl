@@ -11,6 +11,7 @@ union __INSTR_T {\
 	MirInstrRet            ret;\
 	MirInstrBinop          binop;\
 	MirInstrFnProto        fn_proto;\
+	MirInstrFnGroup        fn_group;\
 	MirInstrDeclRef        decl_ref;\
 	MirInstrDeclDirectRef  decl_direct_ref;\
 	MirInstrCall           call;\
@@ -60,6 +61,7 @@ union __INSTR_T {\
 	MIR_INSTR_BINOP,
 	MIR_INSTR_RET,
 	MIR_INSTR_FN_PROTO,
+	MIR_INSTR_FN_GROUP,
 	MIR_INSTR_TYPE_FN,
 	MIR_INSTR_TYPE_STRUCT,
 	MIR_INSTR_TYPE_PTR,

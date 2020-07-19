@@ -15,13 +15,8 @@ f32_add :: fn (i: f32, j: f32) f32 {
 }
 
 add : fn { fn (s32, s32) s32; fn (f32, f32) f32 } : fn {
-    /*
     s32_add;
     f32_add;
-    fn (i: u8, j: u8) u8 {
-        return i + j;
-    };
-    */
 }
 
 /*
@@ -37,4 +32,6 @@ add : fn { fn (s32, s32) s32; fn (f32, f32) f32 } : fn {
     AST  - AST_EXPR_LIT_FN_GROUP
     Type - TypeFnGroup
 
+
+    MirFn *group_select_overload(const MirFnGroup *group, const MirType *expected_return_type, Array *arg_types)
    */

@@ -1690,7 +1690,6 @@ NEXT:
 		parse_semicolon_rq(cnt);
 		goto NEXT;
 	}
-
 	Token *tok = tokens_consume_if(cnt->tokens, SYM_RBLOCK);
 	if (!tok) {
 		tok = tokens_peek_prev(cnt->tokens);
@@ -2092,6 +2091,8 @@ NEXT:
 	if (parse_semicolon(cnt)) goto NEXT;
 	if ((tmp = parse_type(cnt))) {
 		if (tmp->kind != AST_TYPE_FN) {
+			/* This check is important, when we decide to remove this, validation should
+			 * be handled in MIR. */
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_TYPE,
 			            tmp->location,
