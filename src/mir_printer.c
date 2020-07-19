@@ -259,6 +259,7 @@ static void print_instr_switch(Context *cnt, MirInstrSwitch *sw);
 static void print_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
 static void print_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
 static void print_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn);
+static void print_instr_type_fn_group(Context *cnt, MirInstrTypeFnGroup *group);
 static void print_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct);
 static void print_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum);
 static void print_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr);
@@ -322,6 +323,12 @@ void print_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 
 	if (type_fn->ret_type)
 		fprintf(cnt->stream, " %%%llu", (unsigned long long)type_fn->ret_type->id);
+}
+
+void print_instr_type_fn_group(Context *cnt, MirInstrTypeFnGroup *group)
+{
+	print_instr_head(cnt, &group->base, "const group");
+	// @TODO
 }
 
 void print_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
@@ -964,6 +971,9 @@ void print_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_TYPE_FN:
 		print_instr_type_fn(cnt, (MirInstrTypeFn *)instr);
+		break;
+	case MIR_INSTR_TYPE_FN_GROUP:
+		print_instr_type_fn_group(cnt, (MirInstrTypeFnGroup *)instr);
 		break;
 	case MIR_INSTR_TYPE_STRUCT:
 		print_instr_type_struct(cnt, (MirInstrTypeStruct *)instr);

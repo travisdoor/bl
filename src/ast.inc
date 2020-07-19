@@ -34,6 +34,7 @@
 	AST_TYPE_ENUM,
 	AST_TYPE_PTR,
 	AST_TYPE_VARGS,
+	AST_TYPE_FN_GROUP,
 	_AST_TYPE_LAST,
 	_AST_EXPR_FIRST,
 	AST_EXPR_TYPE,
@@ -94,6 +95,7 @@
 	struct AstTypeEnum       type_enm;
 	struct AstTypePtr        type_ptr;
 	struct AstTypeVargs      type_vargs;
+	struct AstTypeFnGroup    type_fn_group;
 	struct AstExprType       expr_type;
 	struct AstExprLitFn      expr_fn;
 	struct AstExprLitInt     expr_integer;

@@ -431,6 +431,8 @@ static MirInstr *append_instr_switch(Context *               cnt,
 static MirInstr *append_instr_load(Context *cnt, Ast *node, MirInstr *src);
 static MirInstr *
 append_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, TSmallArray_InstrPtr *args);
+static MirInstr *
+append_instr_type_fn_group(Context *cnt, Ast *node, TSmallArray_InstrPtr *variants);
 
 static MirInstr *append_instr_type_struct(Context *             cnt,
                                           Ast *                 node,
@@ -554,6 +556,7 @@ static MirInstr *ast_decl_variant(Context *cnt, Ast *variant);
 static MirInstr *ast_type_ref(Context *cnt, Ast *type_ref);
 static MirInstr *ast_type_struct(Context *cnt, Ast *type_struct);
 static MirInstr *ast_type_fn(Context *cnt, Ast *type_fn);
+static MirInstr *ast_type_fn_group(Context *cnt, Ast *group);
 static MirInstr *ast_type_arr(Context *cnt, Ast *type_arr);
 static MirInstr *ast_type_slice(Context *cnt, Ast *type_slice);
 static MirInstr *ast_type_dynarr(Context *cnt, Ast *type_dynarr);
@@ -2780,6 +2783,26 @@ append_instr_type_fn(Context *cnt, Ast *node, MirInstr *ret_type, TSmallArray_In
 	if (args) {
 		MirInstr *it;
 		TSA_FOREACH(args, it)
+		{
+			ref_instr(it);
+		}
+	}
+
+	append_current_block(cnt, &tmp->base);
+	return &tmp->base;
+}
+
+MirInstr *append_instr_type_fn_group(Context *cnt, Ast *node, TSmallArray_InstrPtr *variants)
+{
+	MirInstrTypeFnGroup *tmp    = create_instr(cnt, MIR_INSTR_TYPE_FN_GROUP, node);
+	tmp->base.value.type        = cnt->builtin_types->t_type;
+	tmp->base.value.addr_mode   = MIR_VAM_RVALUE;
+	tmp->base.value.is_comptime = true;
+	tmp->variants               = variants;
+
+	if (variants) {
+		MirInstr *it;
+		TSA_FOREACH(variants, it)
 		{
 			ref_instr(it);
 		}
@@ -8753,14 +8776,12 @@ MirInstr *ast_type_fn(Context *cnt, Ast *type_fn)
 {
 	Ast *               ast_ret_type  = type_fn->data.type_fn.ret_type;
 	TSmallArray_AstPtr *ast_arg_types = type_fn->data.type_fn.args;
-
 	/* return type */
 	MirInstr *ret_type = NULL;
 	if (ast_ret_type) {
 		ret_type = ast(cnt, ast_ret_type);
 		ref_instr(ret_type);
 	}
-
 	TSmallArray_InstrPtr *args = NULL;
 	if (ast_arg_types && ast_arg_types->size) {
 		const usize c = ast_arg_types->size;
@@ -8776,8 +8797,23 @@ MirInstr *ast_type_fn(Context *cnt, Ast *type_fn)
 			args->data[i] = arg;
 		}
 	}
-
 	return append_instr_type_fn(cnt, type_fn, ret_type, args);
+}
+
+MirInstr *ast_type_fn_group(Context *cnt, Ast *group)
+{
+	TSmallArray_AstPtr *ast_variants = group->data.type_fn_group.variants;
+	BL_ASSERT(ast_variants);
+	const usize           c        = ast_variants->size;
+	TSmallArray_InstrPtr *variants = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
+	tsa_resize_InstrPtr(variants, c);
+
+	Ast *it;
+	TSA_FOREACH(ast_variants, it)
+	{
+		variants->data[i] = ast(cnt, it);
+	}
+	return append_instr_type_fn_group(cnt, group, variants);
 }
 
 MirInstr *ast_type_arr(Context *cnt, Ast *type_arr)
@@ -9038,6 +9074,8 @@ MirInstr *ast(Context *cnt, Ast *node)
 		return ast_type_struct(cnt, node);
 	case AST_TYPE_FN:
 		return ast_type_fn(cnt, node);
+	case AST_TYPE_FN_GROUP:
+		return ast_type_fn_group(cnt, node);
 	case AST_TYPE_ARR:
 		return ast_type_arr(cnt, node);
 	case AST_TYPE_SLICE:
@@ -9076,6 +9114,9 @@ MirInstr *ast(Context *cnt, Ast *node)
 		                       false,
 		                       0,
 		                       MIR_BUILTIN_ID_NONE);
+	case AST_EXPR_LIT_FN_GROUP:
+                // @TODO
+                return NULL;
 	case AST_EXPR_LIT_STRING:
 		return ast_expr_lit_string(cnt, node);
 	case AST_EXPR_LIT_CHAR:
@@ -9155,6 +9196,8 @@ const char *mir_instr_name(const MirInstr *instr)
 		return "InstrUnreachable";
 	case MIR_INSTR_TYPE_FN:
 		return "InstrTypeFn";
+	case MIR_INSTR_TYPE_FN_GROUP:
+		return "InstrTypeFnGroup";
 	case MIR_INSTR_TYPE_STRUCT: {
 		const MirInstrTypeStruct *is = (MirInstrTypeStruct *)instr;
 		return is->is_union ? "InstrTypeUnion" : "InstrTypeStruct";
@@ -9282,13 +9325,11 @@ static void _type_to_str(char *buf, usize len, const MirType *type, bool prefer_
 	case MIR_TYPE_STRUCT: {
 		TSmallArray_MemberPtr *members = type->data.strct.members;
 		MirMember *            tmp;
-
 		if (type->data.strct.is_union) {
 			append_buf(buf, len, "union{");
 		} else {
 			append_buf(buf, len, "struct{");
 		}
-
 		if (members) {
 			TSA_FOREACH(members, tmp)
 			{
@@ -9297,21 +9338,18 @@ static void _type_to_str(char *buf, usize len, const MirType *type, bool prefer_
 			}
 		}
 		append_buf(buf, len, "}");
-
 		break;
 	}
 
 	case MIR_TYPE_ENUM: {
 		TSmallArray_VariantPtr *variants = type->data.enm.variants;
 		append_buf(buf, len, "enum{");
-
 		if (variants) {
 			MirVariant *variant;
 			TSA_FOREACH(variants, variant)
 			{
 				append_buf(buf, len, variant->id->str);
 				append_buf(buf, len, " :: ");
-
 				if (variant->value) {
 					char value_str[35];
 					snprintf(value_str,
@@ -9322,7 +9360,6 @@ static void _type_to_str(char *buf, usize len, const MirType *type, bool prefer_
 				} else {
 					append_buf(buf, len, "<invalid>");
 				}
-
 				if (i < variants->size - 1) append_buf(buf, len, ", ");
 			}
 		}
@@ -9332,7 +9369,6 @@ static void _type_to_str(char *buf, usize len, const MirType *type, bool prefer_
 
 	case MIR_TYPE_FN: {
 		append_buf(buf, len, "fn(");
-
 		MirArg *            it;
 		TSmallArray_ArgPtr *args = type->data.fn.args;
 		if (args) {
@@ -9342,9 +9378,23 @@ static void _type_to_str(char *buf, usize len, const MirType *type, bool prefer_
 				if (i < args->size - 1) append_buf(buf, len, ", ");
 			}
 		}
-
 		append_buf(buf, len, ") ");
+		_type_to_str(buf, len, type->data.fn.ret_type, true);
+		break;
+	}
 
+	case MIR_TYPE_FN_GROUP: {
+		append_buf(buf, len, "fn{");
+		MirType *            it;
+		TSmallArray_TypePtr *variants = type->data.fn_group.variants;
+		if (variants) {
+			TSA_FOREACH(variants, it)
+			{
+				_type_to_str(buf, len, it, true);
+				if (i < variants->size - 1) append_buf(buf, len, "; ");
+			}
+		}
+		append_buf(buf, len, "} ");
 		_type_to_str(buf, len, type->data.fn.ret_type, true);
 		break;
 	}
