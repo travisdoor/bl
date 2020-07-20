@@ -852,9 +852,18 @@ void print_instr_binop(Context *cnt, MirInstrBinop *binop)
 	print_comptime_value_or_id(cnt, binop->rhs);
 }
 
-void print_instr_fn_group(Context UNUSED(*cnt), MirInstrFnGroup UNUSED(*group))
+void print_instr_fn_group(Context *cnt, MirInstrFnGroup *group)
 {
-	BL_UNIMPLEMENTED;
+	print_instr_head(cnt, &group->base, "const fn");
+	fprintf(cnt->stream, "{");
+	TSmallArray_InstrPtr *variants = group->variants;
+	MirInstr *            variant;
+	TSA_FOREACH(variants, variant)
+	{
+		fprintf(cnt->stream, "%%%llu", (unsigned long long)variant->id);
+		if (i + 1 < variants->size) fprintf(cnt->stream, ", ");
+	}
+	fprintf(cnt->stream, "}");
 }
 
 void print_instr_block(Context *cnt, MirInstrBlock *block)

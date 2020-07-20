@@ -1685,7 +1685,7 @@ Ast *parse_expr_lit_fn_group(Context *cnt)
 	group->data.expr_fn_group.variants = variants;
 	Ast *tmp;
 NEXT:
-	if ((tmp = parse_ident(cnt))) {
+	if ((tmp = parse_expr_ref(cnt))) {
 		tsa_push_AstPtr(variants, tmp);
 		parse_semicolon_rq(cnt);
 		goto NEXT;

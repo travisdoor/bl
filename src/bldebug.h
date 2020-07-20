@@ -102,6 +102,10 @@ void *_assert_invalid_expr(const char *expr, const char *file, s32 line);
 	while (0) {                                                                                \
 	}
 
+#define BL_MAGIC_ASSERT(O)
+#define BL_MAGIC_ADD
+#define BL_MAGIC_SETUP(O)
+
 #endif /* BL_DEBUG */
 
 #define BL_ABORT(format, ...)                                                                      \
@@ -122,7 +126,9 @@ void *_assert_invalid_expr(const char *expr, const char *file, s32 line);
 		abort();                                                                           \
 	}
 
-#define BL_ASSERT_MAGIC(O, M, MSG) BL_ASSERT((O)->_magic == &(M) && MSG)
+#define BL_MAGIC_ASSERT(O) BL_ASSERT((O)->_magic == (void *)&(O)->_magic && "Invalid magic!")
+#define BL_MAGIC_ADD void *_magic
+#define BL_MAGIC_SET(O) (O)->_magic = (void *)&(O)->_magic
 
 #define BL_WARNING_ISSUE(N)                                                                        \
 	{                                                                                          \

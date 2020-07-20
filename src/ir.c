@@ -2483,8 +2483,7 @@ State emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 #endif
 
 	/* skip when we should not generate LLVM representation */
-	if (var->value.type->kind == MIR_TYPE_TYPE) return STATE_PASSED;
-
+	if (!mir_type_has_llvm_representation(var->value.type)) return STATE_PASSED;
 	if (var->is_global) {
 		emit_global_var_proto(cnt, var);
 
@@ -2664,6 +2663,13 @@ State emit_instr_const(Context *cnt, MirInstrConst *c)
 		const char *str = vm_read_as(const char *, str_ptr);
 
 		llvm_value = emit_const_string(cnt, str, len);
+		break;
+	}
+
+	case MIR_TYPE_FN: {
+		MirFn *fn = MIR_CEV_READ_AS(MirFn *, &c->base.value);
+		BL_ASSERT(fn);
+		llvm_value = emit_fn_proto(cnt, fn);
 		break;
 	}
 

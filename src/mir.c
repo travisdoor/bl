@@ -344,9 +344,9 @@ static MirFn *create_fn(Context *        cnt,
                         bool             is_global,
                         MirBuiltinIdKind builtin_id);
 
+static MirFnGroup *create_fn_group(Context *cnt, Ast *decl_node, TSmallArray_FnPtr *variants);
 static MirMember *
 create_member(Context *cnt, Ast *node, ID *id, Scope *scope, s64 index, MirType *type);
-
 static MirArg *
 create_arg(Context *cnt, Ast *node, ID *id, Scope *scope, MirType *type, MirInstr *value);
 
@@ -464,7 +464,7 @@ static MirInstr *append_instr_fn_proto(Context * cnt,
                                        MirInstr *type,
                                        MirInstr *user_type,
                                        bool      schedule_analyze);
-
+static MirInstr *append_instr_fn_group(Context *cnt, Ast *node, TSmallArray_InstrPtr *variants);
 static MirInstr *append_instr_decl_ref(Context *   cnt,
                                        Ast *       node,
                                        Unit *      parent_unit,
@@ -588,7 +588,7 @@ static MirInstr *ast_expr_lit_fn(Context *        cnt,
                                  bool             is_global,
                                  u32              flags,
                                  MirBuiltinIdKind builtin_id);
-static MirInstr *ast_expr_lit_fn_group(Context *cnt, Ast *expr);
+static MirInstr *ast_expr_lit_fn_group(Context *cnt, Ast *group);
 static MirInstr *ast_expr_lit_string(Context *cnt, Ast *lit_string);
 static MirInstr *ast_expr_lit_char(Context *cnt, Ast *lit_char);
 static MirInstr *ast_expr_binop(Context *cnt, Ast *binop);
@@ -678,6 +678,7 @@ static AnalyzeResult analyze_instr_switch(Context *cnt, MirInstrSwitch *sw);
 static AnalyzeResult analyze_instr_load(Context *cnt, MirInstrLoad *load);
 static AnalyzeResult analyze_instr_store(Context *cnt, MirInstrStore *store);
 static AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
+static AnalyzeResult analyze_instr_fn_group(Context *cnt, MirInstrFnGroup *group);
 static AnalyzeResult analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn);
 static AnalyzeResult analyze_instr_type_fn_group(Context *cnt, MirInstrTypeFnGroup *group);
 static AnalyzeResult analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct);
@@ -1425,6 +1426,7 @@ void type_init_id(Context *cnt, MirType *type)
 MirType *create_type(Context *cnt, MirTypeKind kind, ID *user_id)
 {
 	MirType *type = arena_alloc(&cnt->assembly->arenas.mir.type);
+	BL_MAGIC_SET(type);
 	type->kind    = kind;
 	type->user_id = user_id;
 	return type;
@@ -1498,6 +1500,7 @@ MirType *lookup_builtin_type(Context *cnt, MirBuiltinIdKind kind)
 	BL_ASSERT(var && var->value.is_comptime && var->value.type->kind == MIR_TYPE_TYPE);
 	MirType *var_type = MIR_CEV_READ_AS(MirType *, &var->value);
 	BL_ASSERT(var_type);
+	BL_MAGIC_ASSERT(var_type);
 
 	/* Wait when internal is not complete!  */
 	if (is_incomplete_struct_type(var_type)) {
@@ -1651,9 +1654,7 @@ MirType *create_type_type(Context *cnt)
 	tmp->alignment        = __alignof(MirType *);
 	tmp->size_bits        = sizeof(MirType *) * 8;
 	tmp->store_size_bytes = sizeof(MirType *);
-
 	type_init_id(cnt, tmp);
-
 	return tmp;
 }
 
@@ -1662,20 +1663,16 @@ MirType *create_type_null(Context *cnt, MirType *base_type)
 	BL_ASSERT(base_type);
 	MirType *tmp = create_type(cnt, MIR_TYPE_NULL, &builtin_ids[MIR_BUILTIN_ID_NULL]);
 	tmp->data.null.base_type = base_type;
-
 	type_init_id(cnt, tmp);
 	type_init_llvm_null(cnt, tmp);
-
 	return tmp;
 }
 
 MirType *create_type_void(Context *cnt)
 {
 	MirType *tmp = create_type(cnt, MIR_TYPE_VOID, &builtin_ids[MIR_BUILTIN_ID_TYPE_VOID]);
-
 	type_init_id(cnt, tmp);
 	type_init_llvm_void(cnt, tmp);
-
 	return tmp;
 }
 
@@ -1750,8 +1747,10 @@ MirType *create_type_fn_group(Context *cnt, ID *id, TSmallArray_TypePtr *variant
 	BL_ASSERT(variants);
 	MirType *tmp                = create_type(cnt, MIR_TYPE_FN_GROUP, id);
 	tmp->data.fn_group.variants = variants;
+	tmp->alignment              = __alignof(MirFnGroup *);
+	tmp->size_bits              = sizeof(MirFnGroup *) * 8;
+	tmp->store_size_bytes       = sizeof(MirFnGroup *);
 	type_init_id(cnt, tmp);
-	// type_init_llvm_fn(cnt, tmp);
 	return tmp;
 }
 
@@ -1801,6 +1800,7 @@ MirType *complete_type_struct(Context *              cnt,
 
 	MirType *incomplete_type = MIR_CEV_READ_AS(MirType *, &fwd_decl->value);
 	BL_ASSERT(incomplete_type);
+	BL_MAGIC_ASSERT(incomplete_type);
 
 	BL_ASSERT(incomplete_type->kind == MIR_TYPE_STRUCT &&
 	          "Incomplete type is not struct type!");
@@ -1962,8 +1962,7 @@ void type_init_llvm_ptr(Context *cnt, MirType *type)
 {
 	MirType *tmp = mir_deref_type(type);
 	/* Pointer to Type has no LLVM representation and cannot not be generated into IR.*/
-	if (tmp->kind == MIR_TYPE_TYPE) return;
-
+	if (!mir_type_has_llvm_representation(tmp)) return;
 	BL_ASSERT(tmp);
 	BL_ASSERT(tmp->llvm_type);
 	type->llvm_type        = LLVMPointerType(tmp->llvm_type, 0);
@@ -2336,7 +2335,8 @@ MirFn *create_fn(Context *        cnt,
                  bool             is_global,
                  MirBuiltinIdKind builtin_id)
 {
-	MirFn *tmp        = arena_alloc(&cnt->assembly->arenas.mir.fn);
+	MirFn *tmp = arena_alloc(&cnt->assembly->arenas.mir.fn);
+	BL_MAGIC_SET(tmp);
 	tmp->variables    = create_arr(cnt->assembly, sizeof(MirVar *));
 	tmp->linkage_name = linkage_name;
 	tmp->id           = id;
@@ -2349,9 +2349,21 @@ MirFn *create_fn(Context *        cnt,
 	return tmp;
 }
 
+MirFnGroup *create_fn_group(Context *cnt, Ast *decl_node, TSmallArray_FnPtr *variants)
+{
+	BL_ASSERT(decl_node);
+	BL_ASSERT(variants);
+	MirFnGroup *tmp = arena_alloc(&cnt->assembly->arenas.mir.fn_group);
+	BL_MAGIC_SET(tmp);
+	tmp->decl_node = decl_node;
+	tmp->variants  = variants;
+	return tmp;
+}
+
 MirMember *create_member(Context *cnt, Ast *node, ID *id, Scope *scope, s64 index, MirType *type)
 {
-	MirMember *tmp  = arena_alloc(&cnt->assembly->arenas.mir.member);
+	MirMember *tmp = arena_alloc(&cnt->assembly->arenas.mir.member);
+	BL_MAGIC_SET(tmp);
 	tmp->decl_node  = node;
 	tmp->id         = id;
 	tmp->index      = index;
@@ -3260,6 +3272,18 @@ MirInstr *append_instr_fn_proto(Context * cnt,
 	return &tmp->base;
 }
 
+MirInstr *append_instr_fn_group(Context *cnt, Ast *node, TSmallArray_InstrPtr *variants)
+{
+	BL_ASSERT(variants);
+	MirInstrFnGroup *tmp        = create_instr(cnt, MIR_INSTR_FN_GROUP, node);
+	tmp->base.value.addr_mode   = MIR_VAM_LVALUE_CONST;
+	tmp->base.value.is_comptime = true;
+	tmp->base.ref_count         = NO_REF_COUNTING;
+	tmp->variants               = variants;
+	append_current_block(cnt, &tmp->base);
+	return &tmp->base;
+}
+
 MirInstr *append_instr_decl_ref(Context *   cnt,
                                 Ast *       node,
                                 Unit *      parent_unit,
@@ -3875,6 +3899,7 @@ AnalyzeResult analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirTyp
 	if (vm_execute_instr_top_level_call(
 	        cnt->vm, cnt->assembly, (MirInstrCall *)resolver_call)) {
 		*out_type = MIR_CEV_READ_AS(MirType *, &resolver_call->value);
+		BL_MAGIC_ASSERT(*out_type);
 		return ANALYZE_RESULT(PASSED, 0);
 	} else {
 		return ANALYZE_RESULT(FAILED, 0);
@@ -4798,11 +4823,9 @@ AnalyzeResult analyze_instr_alignof(Context *cnt, MirInstrAlignof *alof)
 AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
 	BL_ASSERT(ref->rid && ref->scope);
-
 	ScopeEntry *found                        = NULL;
 	Scope *     private_scope                = ref->parent_unit->private_scope;
 	bool        is_ref_out_of_fn_local_scope = false;
-
 	if (!private_scope) { /* reference in unit without private scope  */
 		found =
 		    scope_lookup(ref->scope, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
@@ -4820,7 +4843,6 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 
 	if (!found) return ANALYZE_RESULT(WAITING, ref->rid->hash);
 	if (found->kind == SCOPE_ENTRY_INCOMPLETE) return ANALYZE_RESULT(WAITING, ref->rid->hash);
-
 	switch (found->kind) {
 	case SCOPE_ENTRY_FN: {
 		MirFn *fn = found->data.fn;
@@ -4849,32 +4871,27 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		ref->base.value.type        = cnt->builtin_types->t_type;
 		ref->base.value.is_comptime = true;
 		ref->base.value.addr_mode   = MIR_VAM_RVALUE;
-
 		break;
 	}
 
 	case SCOPE_ENTRY_VARIANT: {
 		MirVariant *variant = found->data.variant;
 		BL_ASSERT(variant);
-
 		MirType *type = variant->value->type;
 		BL_ASSERT(type);
-
 		type                        = create_type_ptr(cnt, type);
 		ref->base.value.type        = type;
 		ref->base.value.is_comptime = true;
 		ref->base.value.addr_mode   = MIR_VAM_RVALUE;
-
 		break;
 	}
 
 	case SCOPE_ENTRY_VAR: {
 		MirVar *var = found->data.var;
 		BL_ASSERT(var);
-
 		MirType *type = var->value.type;
 		BL_ASSERT(type);
-
+		++var->ref_count;
 		/* Check if we try get reference to incomplete structure type. */
 		if (type->kind == MIR_TYPE_TYPE) {
 			MirType *t = MIR_CEV_READ_AS(MirType *, &var->value);
@@ -4904,9 +4921,7 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 
 			return ANALYZE_RESULT(FAILED, 0);
 		}
-		++var->ref_count;
-		type                        = create_type_ptr(cnt, type);
-		ref->base.value.type        = type;
+		ref->base.value.type        = create_type_ptr(cnt, type);
 		ref->base.value.is_comptime = var->value.is_comptime;
 		ref->base.value.addr_mode = var->is_mutable ? MIR_VAM_LVALUE : MIR_VAM_LVALUE_CONST;
 		break;
@@ -5154,6 +5169,46 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
 	if (fn->id) commit_fn(cnt, fn);
 
+	return ANALYZE_RESULT(PASSED, 0);
+}
+
+AnalyzeResult analyze_instr_fn_group(Context *cnt, MirInstrFnGroup *group)
+{
+	TSmallArray_InstrPtr *variants      = group->variants;
+	TSmallArray_TypePtr * variant_types = create_sarr(TSmallArray_TypePtr, cnt->assembly);
+	TSmallArray_FnPtr *   variant_fns   = create_sarr(TSmallArray_FnPtr, cnt->assembly);
+	BL_ASSERT(variants);
+	const usize vc = variants->size;
+	BL_ASSERT(vc);
+	tsa_resize_TypePtr(variant_types, vc);
+	tsa_resize_FnPtr(variant_fns, vc);
+	for (usize i = 0; i < vc; ++i) {
+		MirInstr **variant_ref = &variants->data[i];
+		if (analyze_slot(cnt, &analyze_slot_conf_basic, variant_ref, NULL) !=
+		    ANALYZE_PASSED) {
+			return ANALYZE_RESULT(FAILED, 0);
+		}
+		MirInstr *variant = *variant_ref;
+		if (variant->value.type->kind != MIR_TYPE_FN) {
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_EXPECTED_FUNC,
+			            variant->node->location,
+			            BUILDER_CUR_WORD,
+			            "Expected a function name.");
+			return ANALYZE_RESULT(FAILED, 0);
+		}
+
+		BL_ASSERT(mir_is_comptime(variant));
+		MirFn *fn = MIR_CEV_READ_AS(MirFn *, &variant->value);
+		BL_ASSERT(fn && "Missing function reference!");
+		BL_ASSERT(fn->type && "Missing function type!");
+		variant_fns->data[i]   = fn;
+		variant_types->data[i] = fn->type;
+		// @INCOMPLETE: solve function ambiguity
+	}
+	group->base.value.type = create_type_fn_group(cnt, NULL, variant_types);
+	MIR_CEV_WRITE_AS(
+	    MirFnGroup *, &group->base.value, create_fn_group(cnt, group->base.node, variant_fns));
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -6408,12 +6463,12 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 		type = mir_deref_type(type);
 	}
 
-	if (type->kind != MIR_TYPE_FN) {
+	if (type->kind != MIR_TYPE_FN_GROUP && type->kind != MIR_TYPE_FN) {
 		builder_msg(BUILDER_MSG_ERROR,
 		            ERR_EXPECTED_FUNC,
 		            call->callee->node->location,
 		            BUILDER_CUR_WORD,
-		            "Expected a function name.");
+		            "Expected a function of function group name.");
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
@@ -6432,6 +6487,17 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 			++fn->ref_count;
 			fn->emit_llvm = true;
 		}
+	}
+
+	if (type->kind == MIR_TYPE_FN_GROUP) {
+		MirFnGroup *group = MIR_CEV_READ_AS(MirFnGroup *, &call->callee->value);
+		BL_ASSERT(group && "Missing function group reference call!");
+		BL_MAGIC_ASSERT(group);
+		MirFn *selected_overload_fn = group->variants->data[0];
+		erase_instr_tree(call->callee, false, true);
+		mutate_instr(call->callee, MIR_INSTR_CONST);
+		type = call->callee->value.type = selected_overload_fn->type;
+		MIR_CEV_WRITE_AS(MirFn *, &call->callee->value, selected_overload_fn);
 	}
 
 	MirType *result_type = type->data.fn.ret_type;
@@ -6946,6 +7012,9 @@ AnalyzeResult analyze_instr(Context *cnt, MirInstr *instr)
 		break;
 	case MIR_INSTR_FN_PROTO:
 		state = analyze_instr_fn_proto(cnt, (MirInstrFnProto *)instr);
+		break;
+	case MIR_INSTR_FN_GROUP:
+		state = analyze_instr_fn_group(cnt, (MirInstrFnGroup *)instr);
 		break;
 	case MIR_INSTR_DECL_VAR:
 		state = analyze_instr_decl_var(cnt, (MirInstrDeclVar *)instr);
@@ -8355,6 +8424,7 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
 	const char *linkage_name =
 	    explicit_linkage_name ? explicit_linkage_name->data.ident.id.str : NULL;
 
+	BL_ASSERT(decl_node ? decl_node->kind == AST_IDENT : true);
 	MirFn *fn = create_fn(cnt,
 	                      decl_node ? decl_node : lit_fn,
 	                      decl_node ? &decl_node->data.ident.id : NULL,
@@ -8466,9 +8536,19 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
 	return &fn_proto->base;
 }
 
-MirInstr *ast_expr_lit_fn_group(Context UNUSED(*cnt), Ast UNUSED(*expr))
+MirInstr *ast_expr_lit_fn_group(Context *cnt, Ast *group)
 {
-	return NULL;
+	TSmallArray_AstPtr *ast_variants = group->data.expr_fn_group.variants;
+	BL_ASSERT(ast_variants);
+	BL_ASSERT(ast_variants->size);
+	TSmallArray_InstrPtr *variants = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
+	tsa_resize_InstrPtr(variants, ast_variants->size);
+	Ast *it;
+	TSA_FOREACH(group->data.expr_fn_group.variants, it)
+	{
+		variants->data[i] = ast(cnt, it);
+	}
+	return append_instr_fn_group(cnt, group, variants);
 }
 
 MirInstr *ast_expr_lit_string(Context *cnt, Ast *lit_string)

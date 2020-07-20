@@ -266,12 +266,13 @@ struct MirFn {
 		DCCallback *     extern_callback_handle;
 		DyncallCBContext context;
 	} dyncall;
+        BL_MAGIC_ADD;
 };
 
 struct MirFnGroup {
-	ID *               id;
 	Ast *              decl_node;
 	TSmallArray_FnPtr *variants;
+	BL_MAGIC_ADD;
 };
 
 /* MEMBER */
@@ -285,6 +286,7 @@ struct MirMember {
 	s32      tags;
 	bool     is_base; /* inherrited struct base */
 	bool     is_parent_union;
+        BL_MAGIC_ADD;
 };
 
 /* FUNCTION ARGUMENT */
@@ -389,6 +391,7 @@ struct MirType {
 		struct MirTypeEnum    enm;
 		struct MirTypeNull    null;
 	} data;
+        BL_MAGIC_ADD;
 };
 
 /* VALUE */
@@ -847,6 +850,12 @@ static bool mir_is_global_block(const MirInstrBlock *instr)
 static bool mir_is_global(const MirInstr *instr)
 {
 	return mir_is_global_block(instr->owner_block);
+}
+
+static bool mir_type_has_llvm_representation(const MirType *type)
+{
+	BL_ASSERT(type);
+	return type->kind != MIR_TYPE_TYPE && type->kind != MIR_TYPE_FN_GROUP;
 }
 
 void        mir_arenas_init(MirArenas *arenas);

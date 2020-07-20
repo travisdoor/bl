@@ -1,8 +1,8 @@
 /* playground */
 
 main :: fn () s32 {
-    //add(10, 30);
-    //add(1.4f, 0.4f);
+    print("add(10, 20) = %\n", add(10, 20));
+    add(10, 20);
     return 0;
 }
 
@@ -14,7 +14,7 @@ f32_add :: fn (i: f32, j: f32) f32 {
     return i + j;
 }
 
-add : fn { fn (s32, s32) s32; fn (f32, f32) f32 } : fn {
+add :: fn {
     s32_add;
     f32_add;
 }

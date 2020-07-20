@@ -2179,6 +2179,7 @@ void eval_instr(VM *vm, MirInstr *instr)
 	case MIR_INSTR_BLOCK:
 	case MIR_INSTR_CONST:
 	case MIR_INSTR_FN_PROTO:
+	case MIR_INSTR_FN_GROUP:
 	case MIR_INSTR_CALL:
 	case MIR_INSTR_TYPE_ARRAY:
 	case MIR_INSTR_TYPE_PTR:
