@@ -177,6 +177,8 @@ const char *ast_get_name(const Ast *n)
 		return "ExprCompound";
 	case AST_EXPR_LIT_FN:
 		return "ExprLitFn";
+	case AST_EXPR_LIT_FN_GROUP:
+		return "ExprLitFnGroup";
 	case AST_EXPR_LIT_INT:
 		return "ExprLitInt";
 	case AST_EXPR_LIT_FLOAT:

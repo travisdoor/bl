@@ -245,6 +245,10 @@ struct AstExprLitFn {
 	Ast *block;
 };
 
+struct AstExprLitFnGroup {
+	TSmallArray_AstPtr *variants;
+};
+
 struct AstExprLitInt {
 	u64  val;
 	bool overflow;

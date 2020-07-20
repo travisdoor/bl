@@ -3780,7 +3780,7 @@ bool evaluate(Context *cnt, MirInstr *instr)
 	if (!instr) return true;
 
 	BL_ASSERT(instr->analyzed && "Non-analyzed instruction cannot be evaluated!");
-	/* We can evauate compile time know instructions only.  */
+	/* We can evaluate compile time know instructions only.  */
 	if (!instr->value.is_comptime) return true;
 
 	if (!vm_eval_instr(cnt->vm, cnt->assembly, instr)) {
@@ -4115,10 +4115,10 @@ SKIP_IMPLICIT:
 
 AnalyzeResult analyze_var(Context *cnt, MirVar *var)
 {
+	BL_TRACY_MESSAGE("ANALYZE_VAR", "%s", var->linkage_name);
 	if (!var->value.type) {
 		BL_ABORT("unknown declaration type");
 	}
-
 	switch (var->value.type->kind) {
 	case MIR_TYPE_TYPE:
 		/* Disable LLVM generation of typedefs. */
@@ -4130,7 +4130,6 @@ AnalyzeResult analyze_var(Context *cnt, MirVar *var)
 		            BUILDER_CUR_WORD,
 		            "Type declaration must be immutable.");
 		return ANALYZE_RESULT(FAILED, 0);
-
 	case MIR_TYPE_FN:
 		/* Allocated type is function. */
 		builder_msg(BUILDER_MSG_ERROR,
@@ -4140,7 +4139,6 @@ AnalyzeResult analyze_var(Context *cnt, MirVar *var)
 		            "Invalid type of the variable, functions can be referenced "
 		            "only by pointers.");
 		return ANALYZE_RESULT(FAILED, 0);
-
 	case MIR_TYPE_VOID:
 		/* Allocated type is void type. */
 		builder_msg(BUILDER_MSG_ERROR,
@@ -4149,16 +4147,15 @@ AnalyzeResult analyze_var(Context *cnt, MirVar *var)
 		            BUILDER_CUR_WORD,
 		            "Cannot allocate unsized type.");
 		return ANALYZE_RESULT(FAILED, 0);
-
 	default:
 		break;
 	}
 
 	if (!var->is_implicit) commit_var(cnt, var);
-
 	/* Type declaration should not be generated in LLVM. */
 	var->emit_llvm = var->value.type->kind != MIR_TYPE_TYPE;
-
+	/* Just take note whether variable was fully analyzed.  */
+	var->analyzed = true;
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -4172,7 +4169,7 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
 	BL_ASSERT((var->is_global || var->is_struct_typedef) &&
 	          "Only globals can be initialized by initializer!");
 
-	/* When there is no source initialization value to set global we can omit type infering and
+	/* When there is no source initialization value to set global we can omit type inferring and
 	 * initialization value slot analyze pass. */
 	const bool is_default = !si->src;
 	if (!is_default) {
@@ -4201,7 +4198,6 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
 	BL_ASSERT(var->value.type &&
 	          "Missing variable initializer type for default global initializer!");
 	BL_ASSERT(var->value.type->kind != MIR_TYPE_VOID && "Global value cannot be void!");
-
 	BL_ASSERT(si->src && "Invalid global initializer source value.");
 
 	/* Global initializer must be compile time known. */
@@ -4214,8 +4210,8 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
 		return ANALYZE_RESULT(FAILED, 0);
 	}
 
-	/* Initializer value is quaranteed to be comptime so we just check variable mutablility.
-	 * (mutable valirables cannot be comptime) */
+	/* Initializer value is guaranteed to be comptime so we just check variable muttablility.
+	 * (mutable variables cannot be comptime) */
 	var->value.is_comptime = !var->is_mutable;
 
 	AnalyzeResult state = analyze_var(cnt, var);
@@ -4226,7 +4222,7 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
 	si->base.owner_block->emit_llvm = var->value.type->kind != MIR_TYPE_TYPE;
 
 	if (!var->value.is_comptime) {
-		/* Global varibales which are not compile time constants are allocated
+		/* Global variables which are not compile time constants are allocated
 		 * on the stack, one option is to do allocation every time when we
 		 * invoke comptime function execution, but we don't know which globals
 		 * will be used by function and we also don't known whatever function
@@ -5419,19 +5415,42 @@ AnalyzeResult analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *vari
 
 AnalyzeResult analyze_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
 {
-	MirType *type = NULL;
-	if (decl->type && decl->type->kind == MIR_INSTR_CALL) {
-		AnalyzeResult result = analyze_resolve_type(cnt, decl->type, &type);
-		if (result.state != ANALYZE_PASSED) return result;
-	} else {
-		if (analyze_slot(cnt, &analyze_slot_conf_basic, &decl->type, NULL) !=
-		    ANALYZE_PASSED) {
-			return ANALYZE_RESULT(FAILED, 0);
+	MirArg *arg = decl->arg;
+	BL_ASSERT(arg);
+	if (decl->type) {
+		/* Variable type is explicitly defined. */
+		if (decl->type->kind == MIR_INSTR_CALL) {
+			AnalyzeResult result = analyze_resolve_type(cnt, decl->type, &arg->type);
+			if (result.state != ANALYZE_PASSED) return result;
+		} else {
+			if (analyze_slot(cnt, &analyze_slot_conf_basic, &decl->type, NULL) !=
+			    ANALYZE_PASSED) {
+				return ANALYZE_RESULT(FAILED, 0);
+			}
+			arg->type = MIR_CEV_READ_AS(MirType *, &decl->type->value);
 		}
-		type = MIR_CEV_READ_AS(MirType *, &decl->type->value);
+		/* @NOTE: Argument default value is generated as an implicit global constant
+		 * variable with proper expected type defined, so there is no need to do any type
+		 * validation with user type, variable analyze pass will do it for us.*/
+	} else {
+		/* There is no explicitly defined argument type, but we have default argument value
+		 * to infer type from. */
+		BL_ASSERT(arg->value);
+		if (!arg->value->analyzed) {
+			// @PERFORMANCE: WAITING is preferred here, but we don't have ID to wait
+			// for.
+			return ANALYZE_RESULT(POSTPONE, 0);
+		}
+		if (arg->value->kind == MIR_INSTR_DECL_VAR) {
+			MirVar *var = ((MirInstrDeclVar *)arg->value)->var;
+			BL_ASSERT(var);
+			if (!var->analyzed) return ANALYZE_RESULT(POSTPONE, 0);
+			arg->type = var->value.type;
+		} else {
+			arg->type = arg->value->value.type;
+		}
 	}
-	BL_ASSERT(type && "Invalid argument type!");
-	decl->arg->type = type;
+	BL_ASSERT(arg->type && "Invalid argument type!");
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -6139,23 +6158,18 @@ AnalyzeResult analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 		 */
 		MirType * type         = var->value.type;
 		MirInstr *default_init = create_default_value_for_type(cnt, type, false);
-
 		insert_instr_before(&decl->base, default_init);
 		ANALYZE_INSTR_RQ(default_init);
 		decl->init = default_init;
 	}
-
 	decl->base.value.is_comptime = var->value.is_comptime = is_decl_comptime;
-
-	AnalyzeResult state = analyze_var(cnt, decl->var);
+	AnalyzeResult state                                   = analyze_var(cnt, decl->var);
 	if (state.state != ANALYZE_PASSED) return state;
-
 	if (decl->base.value.is_comptime && decl->init) {
 		/* initialize when known in compiletime */
 		var->value.data = decl->init->value.data;
 		BL_ASSERT(var->value.data && "Incomplete comptime var initialization.");
 	}
-
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -6372,7 +6386,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 		} else if (callee_argc > 0) {
 			/* No arguments passed into vargs but there are more regular
 			 * arguments before vargs. */
-			MirInstr *insert_loc = call->args->data[call_argc-1];
+			MirInstr *insert_loc = call->args->data[call_argc - 1];
 			insert_instr_before(insert_loc, vargs);
 		} else {
 			insert_instr_before(&call->base, vargs);
@@ -8534,12 +8548,9 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
 		}
 	} else {
 		/* other declaration types */
-		MirInstr *type = ast_type ? CREATE_TYPE_RESOLVER_CALL(ast_type) : NULL;
-
+		MirInstr *type             = ast_type ? CREATE_TYPE_RESOLVER_CALL(ast_type) : NULL;
 		cnt->ast.current_entity_id = &ast_name->data.ident.id;
-
 		const bool use_initializer = is_struct_decl || is_global;
-
 		/* Struct use forward type declarations! */
 		if (is_struct_decl) {
 			// Set to const type fwd decl
@@ -8649,6 +8660,8 @@ MirInstr *ast_decl_arg(Context *cnt, Ast *arg)
 			ast_create_global_initializer(cnt, ast_value, value);
 		}
 	} else {
+		BL_ASSERT(ast_type && "Function argument must have explicit type when no default "
+		                      "value is specified!");
 		type = CREATE_TYPE_RESOLVER_CALL(ast_type);
 	}
 	return append_instr_decl_arg(cnt, ast_name, type, value);

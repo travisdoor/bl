@@ -117,16 +117,29 @@ default_args_call_side_location :: fn () #test {
     }
 }
 
+default_args_array :: fn () #test {
+    foo :: fn (arr: [2]s32 = {:[2]s32: 1, 2}) {
+        test_s32_eq(arr[0], 1);
+        test_s32_eq(arr[1], 2);
+    };
+    foo();
+}
+
+default_args_slice :: fn () #test {
+    foo :: fn (slice: []s32 = {:[]s32: 0}) {
+        test_s32_eq(auto slice.len, 0);
+    };
+    foo();
+}
+
 default_args_callback1 :: fn () #test {
     foo :: fn (i: s32) {
         test_s32_eq(i, 10);
     };
-
     // @NOTE: I'm not 100% sure if this should be possible...
     bar :: fn (callback: *fn(s32 = 10)) {
         callback();
     };
-
     bar(&foo);
 }
 
@@ -134,11 +147,9 @@ default_args_callback2 :: fn () #test {
     foo :: fn (i: s32 = 20) {
         test_s32_eq(i, 666);
     };
-
     bar :: fn (callback: *fn(s32 = 10)) {
         callback(666);
     };
-
     bar(&foo);
 }
 
@@ -146,11 +157,9 @@ default_args_callback3 :: fn () #test {
     foo :: fn (i: s32 = 20) {
         test_s32_eq(i, 10);
     };
-
     bar :: fn (callback: *fn(s32 = 10)) {
         callback();
     };
-
     bar(&foo);
 }
 
@@ -158,6 +167,32 @@ default_args_ptr :: fn () #test {
     foo :: fn (ptr: *s32 = null) {
         test_null(auto ptr);
     };
-
     foo();
+}
+
+default_args_infer_type1 :: fn () #test {
+    foo :: fn (i := 10) {
+        test_s32_eq(i, 10);
+    };
+    foo();
+}
+
+default_args_infer_type2 :: fn () #test {
+    Foo :: struct {
+        i: s32;
+        j: s32;
+    };
+    foo :: fn (foo := {:Foo: 10, 20}) {
+        test_s32_eq(foo.i, 10);
+        test_s32_eq(foo.j, 20);
+    };
+    foo();
+}
+
+default_args_infer_type3 :: fn () #test {
+    foo :: fn (line: s32, str := "hello", loc := #call_location) {
+        test_str_eq(str, "hello");
+        test_s32_eq(line, loc.line);
+    };
+    foo(#line);
 }
