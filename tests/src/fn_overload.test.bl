@@ -1,0 +1,49 @@
+#private
+
+invoked: *TypeInfo;
+
+group :: fn {
+    A;
+    B;
+    C;
+    D;
+    E;
+}
+
+A :: fn (i: s32, j: s32) {
+    test_ptr_eq(auto invoked, auto typeinfo(A));
+}
+
+B :: fn (i: f32, j: f32) {
+    test_ptr_eq(auto invoked, auto typeinfo(B));
+}
+
+C :: fn (i: s32) {
+    test_ptr_eq(auto invoked, auto typeinfo(C));
+}
+
+D :: fn (i: []s32) {
+    test_ptr_eq(auto invoked, auto typeinfo(D));
+}
+
+E :: fn () {
+    test_ptr_eq(auto invoked, auto typeinfo(E));
+}
+
+fn_overload_invoke :: fn () #test {
+    invoked = typeinfo(A);
+    group(10, 20);
+
+    invoked = typeinfo(B);
+    group(1.f, 0.f);
+
+    invoked = typeinfo(C);
+    group(1);
+
+    // @INCOMPLETE: this should be possible
+    //invoked = typeinfo(D);
+    //group({:[2]s32: 1, 2});
+
+    invoked = typeinfo(E);
+    group();
+}

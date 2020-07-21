@@ -6547,15 +6547,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 		/* This is gonna be tricky... */
 		--callee_argc;
 		if ((call_argc < callee_argc)) {
-			builder_msg(BUILDER_MSG_ERROR,
-			            ERR_INVALID_ARG_COUNT,
-			            call->base.node->location,
-			            BUILDER_CUR_WORD,
-			            "Expected at least %u %s, but called with %u.",
-			            callee_argc,
-			            callee_argc == 1 ? "argument" : "arguments",
-			            call_argc);
-			return ANALYZE_RESULT(FAILED, 0);
+			goto INVALID_ARGC;
 		}
 		MirType *vargs_type = mir_get_fn_arg_type(type, (u32)callee_argc);
 		BL_ASSERT(vargs_type->kind == MIR_TYPE_VARGS && "VArgs is expected to be last!!!");
@@ -6597,15 +6589,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 	} else if (has_default_args) {
 		/* Call have more arguments than a function. */
 		if (callee_argc < call_argc) {
-			builder_msg(BUILDER_MSG_ERROR,
-			            ERR_INVALID_ARG_COUNT,
-			            call->base.node->location,
-			            BUILDER_CUR_WORD,
-			            "Expected most %u %s, but called with %u.",
-			            callee_argc,
-			            callee_argc == 1 ? "argument" : "arguments",
-			            call_argc);
-			return ANALYZE_RESULT(FAILED, 0);
+			goto INVALID_ARGC;
 		}
 
 		/* Check if all arguments are explicitly provided. */
@@ -6615,15 +6599,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 				// Missing argument has no default value!
 				if (!arg->value) {
 					// @INCOMPLETE: Consider better error message...
-					builder_msg(BUILDER_MSG_ERROR,
-					            ERR_INVALID_ARG_COUNT,
-					            call->base.node->location,
-					            BUILDER_CUR_WORD,
-					            "Expected %u %s, but called with %u.",
-					            callee_argc,
-					            callee_argc == 1 ? "argument" : "arguments",
-					            call_argc);
-					return ANALYZE_RESULT(FAILED, 0);
+					goto INVALID_ARGC;
 				}
 
 				/* Create direct reference to default value and insert it into call
@@ -6658,15 +6634,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 		}
 	} else {
 		if ((callee_argc != call_argc)) {
-			builder_msg(BUILDER_MSG_ERROR,
-			            ERR_INVALID_ARG_COUNT,
-			            call->base.node->location,
-			            BUILDER_CUR_WORD,
-			            "Expected %u %s, but called with %u.",
-			            callee_argc,
-			            callee_argc == 1 ? "argument" : "arguments",
-			            call_argc);
-			return ANALYZE_RESULT(FAILED, 0);
+			goto INVALID_ARGC;
 		}
 	}
 
@@ -6684,19 +6652,30 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 
 		if (analyze_slot(cnt, &analyze_slot_conf_full, call_arg, callee_arg->type) !=
 		    ANALYZE_PASSED) {
-
-			if (is_group) {
-				builder_msg(BUILDER_MSG_NOTE,
-				            0,
-				            call->callee->node->location,
-				            BUILDER_CUR_WORD,
-				            "Selected overload implementation is:");
-			}
-			return ANALYZE_RESULT(FAILED, 0);
+			goto REPORT_OVERLOAD_LOCATION;
 		}
 	}
 
 	return ANALYZE_RESULT(PASSED, 0);
+	/* ERROR */
+INVALID_ARGC:
+	builder_msg(BUILDER_MSG_ERROR,
+	            ERR_INVALID_ARG_COUNT,
+	            call->base.node->location,
+	            BUILDER_CUR_WORD,
+	            "Expected %u %s, but called with %u.",
+	            callee_argc,
+	            callee_argc == 1 ? "argument" : "arguments",
+	            call_argc);
+REPORT_OVERLOAD_LOCATION:
+	if (is_group) {
+		builder_msg(BUILDER_MSG_NOTE,
+		            0,
+		            call->callee->node->location,
+		            BUILDER_CUR_WORD,
+		            "Overloaded function implementation:");
+	}
+	return ANALYZE_RESULT(FAILED, 0);
 }
 
 AnalyzeResult analyze_instr_store(Context *cnt, MirInstrStore *store)
