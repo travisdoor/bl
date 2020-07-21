@@ -1,0 +1,789 @@
+//************************************************************************************************
+// bl
+//
+// File:   glm.bl 
+// Author: Martin Dorazil
+// Date:   11/3/19
+//
+// Copyright 2018 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//************************************************************************************************
+
+#load "std/math.bl"
+
+//************************************************************************************************
+// Types
+//************************************************************************************************
+v2 :: struct {
+    x: f32;
+    y: f32
+};
+
+v2_one     :: {:v2: 1.f, 1.f};
+v2_zero    :: {:v2: 0};
+
+v3 :: struct {
+    x: f32;
+    y: f32;
+    z: f32;
+};
+
+v3_right   :: {:v3: 1.f, 0.f, 0.f};
+v3_up      :: {:v3: 0.f, 1.f, 0.f};
+v3_forward :: {:v3: 0.f, 0.f, 1.f};
+v3_one     :: {:v3: 1.f, 1.f, 1.f};
+v3_zero    :: {:v3: 0};
+
+v4 :: struct {
+    x: f32;
+    y: f32;
+    z: f32;
+    w: f32;
+};
+
+v4_one  :: {:v4: 1.f, 1.f, 1.f, 1.f};
+v4_zero :: {:v4: 0};
+
+color_white  :: {:v4: 1.f, 1.f, 1.f, 1.f};
+color_black  :: {:v4: 0.f, 0.f, 0.f, 1.f};
+color_red    :: {:v4: 1.f, 0.f, 0.f, 1.f};
+color_green  :: {:v4: 0.f, 1.f, 0.f, 1.f};
+color_blue   :: {:v4: 0.f, 0.f, 1.f, 1.f};
+color_yellow :: {:v4: 1.f, 1.f, 0.f, 1.f};
+
+iv2 :: struct {
+    x: s32;
+    y: s32
+};
+
+iv3 :: struct {
+    x: s32;
+    y: s32;
+    z: s32;
+};
+
+/**
+ * Matrix layout
+ * | m[0][0]  m[1][0]  m[2][0]  m[3][0] |
+ * | m[0][1]  m[1][1]  m[2][1]  m[3][1] |
+ * | m[0][2]  m[1][2]  m[2][2]  m[3][2] |
+ * | m[0][3]  m[1][3]  m[2][3]  m[3][3] |
+ */
+mat4 :: [4][4]f32;
+
+// quaternion
+quat :: v4;
+
+quat_identity :: {:quat: 0.f, 0.f, 0.f, 1.f};
+
+//************************************************************************************************
+// Functions
+//************************************************************************************************
+
+v_sub :: fn { v2_sub; v2_sub_s; v3_sub; v3_sub_s; v4_sub; v4_sub_s; }
+v_add :: fn { v2_add; v2_add_s; v3_add; v3_add_s; v4_add; v4_add_s; }
+v_mul :: fn { v2_mul; v2_mul_s; v3_mul; v3_mul_s; v4_mul; v4_mul_s; }
+v_div :: fn { v2_div; v2_div_s; v3_div; v3_div_s; v4_div; v4_div_s; }
+v_length :: fn { v2_length; v3_length; v4_length; }
+v_sqr_lenght :: fn { v2_sqr_lenght; v3_sqr_lenght; v4_sqr_lenght; }
+v_dot :: fn { v2_dot; v3_dot; v4_dot; }
+v_normalize :: fn { v2_normalize; v3_normalize; v4_normalize; }
+v_compare :: fn { v2_compare; v3_compare; v4_compare; }
+v_negate :: fn { v2_negate; v3_negate; v4_negate; }
+v_cross :: fn { v3_cross; }
+
+mat4_init :: fn (m00: f32, m10: f32, m20: f32, m30: f32,
+                 m01: f32, m11: f32, m21: f32, m31: f32,
+                 m02: f32, m12: f32, m22: f32, m32: f32,
+                 m03: f32, m13: f32, m23: f32, m33: f32,
+                 out_mat: *mat4
+                ) #inline
+{
+    (^out_mat)[0][0] = m00;
+    (^out_mat)[0][1] = m01;
+    (^out_mat)[0][2] = m02;
+    (^out_mat)[0][3] = m03;
+
+    (^out_mat)[1][0] = m10;
+    (^out_mat)[1][1] = m11;
+    (^out_mat)[1][2] = m12;
+    (^out_mat)[1][3] = m13;
+
+    (^out_mat)[2][0] = m20;
+    (^out_mat)[2][1] = m21;
+    (^out_mat)[2][2] = m22;
+    (^out_mat)[2][3] = m23;
+
+    (^out_mat)[3][0] = m30;
+    (^out_mat)[3][1] = m31;
+    (^out_mat)[3][2] = m32;
+    (^out_mat)[3][3] = m33;
+};
+
+mat4_identity :: fn (out_mat: *mat4) #inline {
+    mat4_init(
+        1.f, 0.f, 0.f, 0.f,
+        0.f, 1.f, 0.f, 0.f,
+        0.f, 0.f, 1.f, 0.f,
+        0.f, 0.f, 0.f, 1.f,
+        out_mat
+    );
+};
+
+mat4_zero :: fn (out_mat: *mat4) #inline {
+    memset(auto out_mat, 0, sizeof(mat4));
+}
+
+mat4_perspective :: fn (fov_rad: f32, aspect: f32, near: f32, far: f32, out_mat: *mat4) #inline {
+    mat4_zero(out_mat);
+    f1 :: 1.0f / tan(fov_rad * 0.5f);
+    f2 :: 1.0f / (near - far);
+
+    (^out_mat)[0][0] = f1 / aspect;
+    (^out_mat)[1][1] = f1;
+    (^out_mat)[2][2] = (near + far) * f2;
+    (^out_mat)[2][3] =-1.0f;
+    (^out_mat)[3][2] = 2.0f * near * far * f2;
+};
+
+mat4_ortho :: fn (left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32, out_mat: *mat4) {
+  mat4_zero(out_mat);
+
+  rl :: 1.0f / (right - left);
+  tb :: 1.0f / (top   - bottom);
+  f  ::-1.0f / (far   - near);
+
+  (^out_mat)[0][0] = 2.0f * rl;
+  (^out_mat)[1][1] = 2.0f * tb;
+  (^out_mat)[2][2] = 2.0f * f;
+  (^out_mat)[3][0] =-(right + left)   * rl;
+  (^out_mat)[3][1] =-(top   + bottom) * tb;
+  (^out_mat)[3][2] = (far   + near)   * f;
+  (^out_mat)[3][3] = 1.0f;
+}
+
+mat4_look_at :: fn (eye: v3, target: v3, up: v3, out_mat: *mat4) #inline {
+    z := v_sub(target, eye);
+    z = v_normalize(z);
+
+    z = v_mul(z, -1.f);
+    x := v_cross(up, z);
+    x = v_normalize(x);
+    y := v_cross(z, x);
+
+    mat4_init(
+        x.x, x.y, x.z, v_dot(eye, x),
+        y.x, y.y, y.z, -v_dot(eye, y),
+        z.x, z.y, z.z, -v_dot(eye, z),
+        0.f, 0.f, 0.f, 1.f,
+        out_mat
+    );
+};
+
+mat4_mul :: fn (a: *mat4, b: *mat4, out_mat: *mat4) {
+    a00 :: (^a)[0][0]; a01 :: (^a)[0][1]; a02 :: (^a)[0][2]; a03 :: (^a)[0][3];
+    a10 :: (^a)[1][0]; a11 :: (^a)[1][1]; a12 :: (^a)[1][2]; a13 :: (^a)[1][3];
+    a20 :: (^a)[2][0]; a21 :: (^a)[2][1]; a22 :: (^a)[2][2]; a23 :: (^a)[2][3];
+    a30 :: (^a)[3][0]; a31 :: (^a)[3][1]; a32 :: (^a)[3][2]; a33 :: (^a)[3][3];
+
+    b00 :: (^b)[0][0]; b01 :: (^b)[0][1]; b02 :: (^b)[0][2]; b03 :: (^b)[0][3];
+    b10 :: (^b)[1][0]; b11 :: (^b)[1][1]; b12 :: (^b)[1][2]; b13 :: (^b)[1][3];
+    b20 :: (^b)[2][0]; b21 :: (^b)[2][1]; b22 :: (^b)[2][2]; b23 :: (^b)[2][3];
+    b30 :: (^b)[3][0]; b31 :: (^b)[3][1]; b32 :: (^b)[3][2]; b33 :: (^b)[3][3];
+
+    (^out_mat)[0][0] = a00 * b00 + a10 * b01 + a20 * b02 + a30 * b03;
+    (^out_mat)[0][1] = a01 * b00 + a11 * b01 + a21 * b02 + a31 * b03;
+    (^out_mat)[0][2] = a02 * b00 + a12 * b01 + a22 * b02 + a32 * b03;
+    (^out_mat)[0][3] = a03 * b00 + a13 * b01 + a23 * b02 + a33 * b03;
+    (^out_mat)[1][0] = a00 * b10 + a10 * b11 + a20 * b12 + a30 * b13;
+    (^out_mat)[1][1] = a01 * b10 + a11 * b11 + a21 * b12 + a31 * b13;
+    (^out_mat)[1][2] = a02 * b10 + a12 * b11 + a22 * b12 + a32 * b13;
+    (^out_mat)[1][3] = a03 * b10 + a13 * b11 + a23 * b12 + a33 * b13;
+    (^out_mat)[2][0] = a00 * b20 + a10 * b21 + a20 * b22 + a30 * b23;
+    (^out_mat)[2][1] = a01 * b20 + a11 * b21 + a21 * b22 + a31 * b23;
+    (^out_mat)[2][2] = a02 * b20 + a12 * b21 + a22 * b22 + a32 * b23;
+    (^out_mat)[2][3] = a03 * b20 + a13 * b21 + a23 * b22 + a33 * b23;
+    (^out_mat)[3][0] = a00 * b30 + a10 * b31 + a20 * b32 + a30 * b33;
+    (^out_mat)[3][1] = a01 * b30 + a11 * b31 + a21 * b32 + a31 * b33;
+    (^out_mat)[3][2] = a02 * b30 + a12 * b31 + a22 * b32 + a32 * b33;
+    (^out_mat)[3][3] = a03 * b30 + a13 * b31 + a23 * b32 + a33 * b33;
+};
+
+mat4_inverse :: fn (src_mat: *mat4, out_mat: *mat4) #inline {
+    t: [6]f32 #noinit;
+    det: f32 #noinit;
+
+    a :: (^src_mat)[0][0]; b :: (^src_mat)[0][1]; c :: (^src_mat)[0][2]; d :: (^src_mat)[0][3];
+    e :: (^src_mat)[1][0]; f :: (^src_mat)[1][1]; g :: (^src_mat)[1][2]; h :: (^src_mat)[1][3];
+    i :: (^src_mat)[2][0]; j :: (^src_mat)[2][1]; k :: (^src_mat)[2][2]; l :: (^src_mat)[2][3];
+    m :: (^src_mat)[3][0]; n :: (^src_mat)[3][1]; o :: (^src_mat)[3][2]; p :: (^src_mat)[3][3];
+
+    t[0] = k * p - o * l; t[1] = j * p - n * l; t[2] = j * o - n * k;
+    t[3] = i * p - m * l; t[4] = i * o - m * k; t[5] = i * n - m * j;
+
+    (^out_mat)[0][0] =  f * t[0] - g * t[1] + h * t[2];
+    (^out_mat)[1][0] =-(e * t[0] - g * t[3] + h * t[4]);
+    (^out_mat)[2][0] =  e * t[1] - f * t[3] + h * t[5];
+    (^out_mat)[3][0] =-(e * t[2] - f * t[4] + g * t[5]);
+
+    (^out_mat)[0][1] =-(b * t[0] - c * t[1] + d * t[2]);
+    (^out_mat)[1][1] =  a * t[0] - c * t[3] + d * t[4];
+    (^out_mat)[2][1] =-(a * t[1] - b * t[3] + d * t[5]);
+    (^out_mat)[3][1] =  a * t[2] - b * t[4] + c * t[5];
+
+    t[0] = g * p - o * h; t[1] = f * p - n * h; t[2] = f * o - n * g;
+    t[3] = e * p - m * h; t[4] = e * o - m * g; t[5] = e * n - m * f;
+
+    (^out_mat)[0][2] =  b * t[0] - c * t[1] + d * t[2];
+    (^out_mat)[1][2] =-(a * t[0] - c * t[3] + d * t[4]);
+    (^out_mat)[2][2] =  a * t[1] - b * t[3] + d * t[5];
+    (^out_mat)[3][2] =-(a * t[2] - b * t[4] + c * t[5]);
+
+    t[0] = g * l - k * h; t[1] = f * l - j * h; t[2] = f * k - j * g;
+    t[3] = e * l - i * h; t[4] = e * k - i * g; t[5] = e * j - i * f;
+
+    (^out_mat)[0][3] =-(b * t[0] - c * t[1] + d * t[2]);
+    (^out_mat)[1][3] =  a * t[0] - c * t[3] + d * t[4];
+    (^out_mat)[2][3] =-(a * t[1] - b * t[3] + d * t[5]);
+    (^out_mat)[3][3] =  a * t[2] - b * t[4] + c * t[5];
+
+    det = 1.0f / (a * (^out_mat)[0][0] + b * (^out_mat)[1][0]
+                + c * (^out_mat)[2][0] + d * (^out_mat)[3][0]);
+
+    mat4_scale_s(det, out_mat);
+}
+
+mat4_scale_s :: fn (s: f32, out_mat: *mat4) #inline {
+    (^out_mat)[0][0] *= s; (^out_mat)[0][1] *= s; (^out_mat)[0][2] *= s; (^out_mat)[0][3] *= s;
+    (^out_mat)[1][0] *= s; (^out_mat)[1][1] *= s; (^out_mat)[1][2] *= s; (^out_mat)[1][3] *= s;
+    (^out_mat)[2][0] *= s; (^out_mat)[2][1] *= s; (^out_mat)[2][2] *= s; (^out_mat)[2][3] *= s;
+    (^out_mat)[3][0] *= s; (^out_mat)[3][1] *= s; (^out_mat)[3][2] *= s; (^out_mat)[3][3] *= s;
+};
+
+mat4_mul_v4 :: fn (mat: *mat4, v: v4) v4 #inline {
+    out: v4 #noinit;
+    out.x = (^mat)[0][0] * v.x + (^mat)[1][0] * v.y + (^mat)[2][0] * v.z + (^mat)[3][0] * v.w;
+    out.y = (^mat)[0][1] * v.x + (^mat)[1][1] * v.y + (^mat)[2][1] * v.z + (^mat)[3][1] * v.w;
+    out.z = (^mat)[0][2] * v.x + (^mat)[1][2] * v.y + (^mat)[2][2] * v.z + (^mat)[3][2] * v.w;
+    out.w = (^mat)[0][3] * v.x + (^mat)[1][3] * v.y + (^mat)[2][3] * v.z + (^mat)[3][3] * v.w;
+    return out;
+};
+
+// set out_mat to translation matrix
+mat4_translation :: fn (translation: v3, out_mat: *mat4) #inline {
+    mat4_init(
+        1.f, 0.f, 0.f, translation.x,
+        0.f, 1.f, 0.f, translation.y,
+        0.f, 0.f, 1.f, translation.z,
+        0.f, 0.f, 0.f, 1.f,
+        out_mat
+    );
+};
+
+mat4_scale :: fn (s: v3, out_mat: *mat4) #inline {
+    mat4_init(
+        s.x, 0.f, 0.f, 0.f,
+        0.f, s.y, 0.f, 0.f,
+        0.f, 0.f, s.z, 0.f,
+        0.f, 0.f, 0.f, 1.f,
+        out_mat
+    );
+};
+
+mat4_get_scale :: fn (mat: *mat4) v3 {
+    ret: v3 #noinit;
+    tmp_vec := {:v3: (^mat)[0][0], (^mat)[1][0], (^mat)[2][0]};
+    ret.x = v_length(tmp_vec);
+
+    tmp_vec = {:v3: (^mat)[0][1], (^mat)[1][1], (^mat)[2][1]};
+    ret.y = v_length(tmp_vec);
+
+    tmp_vec = {:v3: (^mat)[0][2], (^mat)[1][2], (^mat)[2][2]};
+    ret.z = v_length(tmp_vec);
+    return ret;
+};
+
+mat4_get_translation :: fn (mat: *mat4) v3 #inline {
+    return {:v3: (^mat)[3][0], (^mat)[3][1], (^mat)[3][2]};
+};
+
+mat4_get_quat :: fn (mat: *mat4) quat {
+    r: f32 #noinit;
+    rinv: f32 #noinit;
+    out: quat #noinit;
+
+    trace := (^mat)[0][0] + (^mat)[1][1] + (^mat)[2][2];
+    if trace >= 0.0f {
+        r       = sqrt(1.0f + trace);
+        rinv    = 0.5f / r;
+
+        out.x = rinv * ((^mat)[1][2] - (^mat)[2][1]);
+        out.y = rinv * ((^mat)[2][0] - (^mat)[0][2]);
+        out.z = rinv * ((^mat)[0][1] - (^mat)[1][0]);
+        out.w = r    * 0.5f;
+    } else if ((^mat)[0][0] >= (^mat)[1][1] && (^mat)[0][0] >= (^mat)[2][2]) {
+        r       = sqrt(1.0f - (^mat)[1][1] - (^mat)[2][2] + (^mat)[0][0]);
+        rinv    = 0.5f / r;
+
+        out.x = r    * 0.5f;
+        out.y = rinv * ((^mat)[0][1] + (^mat)[1][0]);
+        out.z = rinv * ((^mat)[0][2] + (^mat)[2][0]);
+        out.w = rinv * ((^mat)[1][2] - (^mat)[2][1]);
+    } else if ((^mat)[1][1] >= (^mat)[2][2]) {
+        r       = sqrt(1.0f - (^mat)[0][0] - (^mat)[2][2] + (^mat)[1][1]);
+        rinv    = 0.5f / r;
+
+        out.x = rinv * ((^mat)[0][1] + (^mat)[1][0]);
+        out.y = r    * 0.5f;
+        out.z = rinv * ((^mat)[1][2] + (^mat)[2][1]);
+        out.w = rinv * ((^mat)[2][0] - (^mat)[0][2]);
+    } else {
+        r       = sqrt(1.0f - (^mat)[0][0] - (^mat)[1][1] + (^mat)[2][2]);
+        rinv    = 0.5f / r;
+
+        out.x = rinv * ((^mat)[0][2] + (^mat)[2][0]);
+        out.y = rinv * ((^mat)[1][2] + (^mat)[2][1]);
+        out.z = r    * 0.5f;
+        out.w = rinv * ((^mat)[0][1] - (^mat)[1][0]);
+    }
+
+    return out;
+};
+
+quat_normalize :: fn (q: quat) quat #inline {
+    return v_normalize(q);
+};
+
+quat_to_mat4 :: fn (q: quat, out_mat: *mat4) {
+    norm :: v_length(q); 
+    s := 0.f;
+    if norm > 0.f { s = 2.f / norm; }
+
+    x :: q.x;
+    y :: q.y;
+    z :: q.z;
+    w :: q.w;
+
+    xx :: s * x * x;   xy :: s * x * y;   wx :: s * w * x;
+    yy :: s * y * y;   yz :: s * y * z;   wy :: s * w * y;
+    zz :: s * z * z;   xz :: s * x * z;   wz :: s * w * z;
+
+    (^out_mat)[0][0] = 1.0f - yy - zz;
+    (^out_mat)[1][1] = 1.0f - xx - zz;
+    (^out_mat)[2][2] = 1.0f - xx - yy;
+
+    (^out_mat)[0][1] = xy + wz;
+    (^out_mat)[1][2] = yz + wx;
+    (^out_mat)[2][0] = xz + wy;
+
+    (^out_mat)[1][0] = xy - wz;
+    (^out_mat)[2][1] = yz - wx;
+    (^out_mat)[0][2] = xz - wy;
+
+    (^out_mat)[0][3] = 0.0f;
+    (^out_mat)[1][3] = 0.0f;
+    (^out_mat)[2][3] = 0.0f;
+    (^out_mat)[3][0] = 0.0f;
+    (^out_mat)[3][1] = 0.0f;
+    (^out_mat)[3][2] = 0.0f;
+    (^out_mat)[3][3] = 1.0f;
+}
+
+quat_look :: fn (eye: v3, ori: quat, out_mat: *mat4) {
+    quat_to_mat4(ori, out_mat);
+
+    v := {:v4: eye.x, eye.y, eye.z, 1.f};
+    v = mat4_mul_v4(out_mat, v);
+
+    (^out_mat)[3][0] = -v.x;
+    (^out_mat)[3][1] = -v.y;
+    (^out_mat)[3][2] = -v.z;
+}
+
+quat_look_for :: fn (dir: v3, fwd: v3, up: v3) quat {
+    dot :: v_dot(dir, fwd);
+    if abs(dot + 1.0f)  < 0.000001f {
+        return {:quat: up.x, up.y, up.z, auto PI};
+    }
+
+    if abs(dot - 1.0f) < 0.000001f {
+        return quat_identity;
+    }
+
+    angle :: acos(dot);
+    axis := v_cross(fwd, dir);
+    axis = v_normalize(axis);
+    return quat_axis_angle(axis, angle);
+}
+
+quat_axis_angle :: fn (axis: v3, angle_rad: f32) quat {
+    a :: angle_rad * 0.5f;
+    c :: cos(a);
+    s :: sin(a);
+
+    axis = v_normalize(axis);
+
+    return {:quat:
+        s * axis.x,
+        s * axis.y,
+        s * axis.z,
+        c
+    };
+};
+
+quat_imag :: fn (q: quat) v3 #inline {
+    return {:v3: q.x, q.y, q.z };
+}
+
+quat_real :: fn (q: quat) f32 #inline {
+    return q.w;
+}
+
+quat_mul :: fn (q1: quat, q2: quat) quat {
+    return {:quat:
+            q1.w * q2.x + q1.x * q2.w + q1.y * q2.z - q1.z * q2.y,
+            q1.w * q2.y - q1.x * q2.z + q1.y * q2.w + q1.z * q2.x,
+            q1.w * q2.z + q1.x * q2.y - q1.y * q2.x + q1.z * q2.w,
+            q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z,
+    };
+}
+
+quat_rotate_v3 :: fn (q: quat, v: v3) v3 {
+    p :: quat_normalize(q);
+    u :: quat_imag(p);
+    s :: quat_real(p);
+
+    v1 := v_mul(u, 2.0f * v3_dot(u, v));
+    v2 := v_mul(v, s * s - v3_dot(u, u));
+    v1 = v_add(v1, v2);
+    v2 = v_cross(u, v);
+    v2 = v_mul(v2, 2.f * s);
+    return v_add(v1, v2);
+}
+
+quat_forward :: fn (q: quat) v3 {
+    x2 :: 2.0f * q.x;
+    y2 :: 2.0f * q.y;
+    z2 :: 2.0f * q.z;
+    x2w :: x2 * q.w;
+    y2w :: y2 * q.w;
+    x2x :: x2 * q.x;
+    z2x :: z2 * q.x;
+    y2y :: y2 * q.y;
+    z2y :: z2 * q.y;
+    return {:v3: z2x + y2w, z2y - x2w, 1.0f - (x2x + y2y)};
+}
+
+#private
+//************************************************************************************************
+// sub
+//************************************************************************************************
+v2_sub :: fn (a: v2, b: v2) v2 #inline {
+    a.x -= b.x;
+    a.y -= b.y;
+    return a;
+};
+
+v2_sub_s :: fn (a: v2, v: f32) v2 #inline {
+    a.x -= v;
+    a.y -= v;
+    return a;
+};
+
+v3_sub :: fn (a: v3, b: v3) v3 #inline {
+    a.x -= b.x;
+    a.y -= b.y;
+    a.z -= b.z;
+    return a;
+};
+
+v3_sub_s :: fn (a: v3, b: f32) v3 #inline {
+    a.x -= b;
+    a.y -= b;
+    a.z -= b;
+    return a;
+};
+
+v4_sub :: fn (a: v4, b: v4) v4 #inline {
+    a.x -= b.x;
+    a.y -= b.y;
+    a.z -= b.z;
+    a.w -= b.w;
+    return a;
+};
+
+v4_sub_s :: fn (a: v4, b: f32) v4 #inline {
+    a.x -= b;
+    a.y -= b;
+    a.z -= b;
+    a.w -= b;
+    return a;
+};
+
+//************************************************************************************************
+// add
+//************************************************************************************************
+v2_add :: fn (a: v2, b: v2) v2 #inline {
+    a.x += b.x;
+    a.y += b.y;
+    return a;
+};
+
+v2_add_s :: fn (a: v2, v: f32) v2 #inline {
+    a.x += v;
+    a.y += v;
+    return a;
+};
+
+v3_add :: fn (a: v3, b: v3) v3 #inline 
+{
+    a.x += b.x;
+    a.y += b.y;
+    a.z += b.z;
+    return a;
+};
+
+v3_add_s :: fn (a: v3, b: f32) v3 #inline {
+    a.x += b;
+    a.y += b;
+    a.z += b;
+    return a;
+};
+
+v4_add :: fn (a: v4, b: v4) v4 #inline 
+{
+    a.x += b.x;
+    a.y += b.y;
+    a.z += b.z;
+    a.w += b.w;
+    return a;
+};
+
+v4_add_s :: fn (a: v4, b: f32) v4 #inline {
+    a.x += b;
+    a.y += b;
+    a.z += b;
+    a.w += b;
+    return a;
+};
+
+//************************************************************************************************
+// mul
+//************************************************************************************************
+v2_mul :: fn (a: v2, b: v2) v2 #inline {
+    a.x *= b.x;
+    a.y *= b.y;
+    return a;
+};
+
+v2_mul_s :: fn (a: v2, v: f32) v2 #inline {
+    a.x *= v;
+    a.y *= v;
+    return a;
+};
+
+v3_mul :: fn (a: v3, b: v3) v3 #inline {
+    a.x *= b.x;
+    a.y *= b.y;
+    a.z *= b.z;
+    return a;
+};
+
+v3_mul_s :: fn (a: v3, s: f32) v3 #inline {
+    a.x *= s;
+    a.y *= s;
+    a.z *= s;
+    return a;
+};
+
+v4_mul :: fn (a: v4, b: v4) v4 #inline {
+    a.x *= b.x;
+    a.y *= b.y;
+    a.z *= b.z;
+    a.w *= b.w;
+    return a;
+};
+
+v4_mul_s :: fn (v: v4, s: f32) v4 #inline {
+    return {:v4: v.x * s, v.y * s, v.z * s, v.w * s};
+}
+
+//************************************************************************************************
+// length
+//************************************************************************************************
+v2_length :: fn (v: v2) f32 #inline {
+    return sqrt(v.x * v.x + v.y * v.y);
+};
+
+v3_length :: fn (v: v3) f32 #inline {
+    return sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+};
+v4_length :: fn (v: v4) f32 #inline {
+    return sqrt(v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w);
+};
+
+//************************************************************************************************
+// sqr_length
+//************************************************************************************************
+v2_sqr_lenght :: fn (v: v2) f32 #inline {
+    return v.x * v.x + v.y * v.y;
+}
+
+v3_sqr_lenght :: fn (v: v3) f32 #inline {
+    return v.x * v.x + v.y * v.y + v.z * v.z;
+}
+
+v4_sqr_lenght :: fn (v: v4) f32 #inline {
+    return v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w;
+}
+
+//************************************************************************************************
+// dot
+//************************************************************************************************
+v2_dot :: fn (a: v2, b: v2) f32 #inline {
+    return a.x * b.x + a.y * b.y;
+};
+
+v3_dot :: fn (a: v3, b: v3) f32 #inline {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+};
+
+v4_dot :: fn (a: v4, b: v4) f32 #inline {
+    return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+};
+
+//************************************************************************************************
+// normalize
+//************************************************************************************************
+v2_normalize :: fn (a: v2) v2 #inline {
+    out: v2;
+    l :: v2_length(a);
+    if compare(l, 0.f, F32_EPSILON) { return out; }
+    out.x = a.x / l;
+    out.y = a.y / l;
+    return out;
+};
+
+v3_normalize :: fn (a: v3) v3 #inline {
+    l :: v3_length(a);
+    if compare(l, 0.f, F32_EPSILON) { return v3_zero; }
+    out: v3 #noinit;
+    out.x = a.x / l;
+    out.y = a.y / l;
+    out.z = a.z / l;
+    return out;
+};
+
+v4_normalize :: fn (v: v4) v4 #inline {
+    l :: v4_length(v);
+    if compare(l, 0.f, F32_EPSILON) { return v4_zero; }
+    out: v4 #noinit;
+    out.x = v.x / l;
+    out.y = v.y / l;
+    out.z = v.z / l;
+    out.w = v.w / l;
+    return out;
+};
+
+//************************************************************************************************
+// compare 
+//************************************************************************************************
+v2_compare :: fn (a: v2, b: v2, epsilon: f32) bool #inline {
+    return compare(a.x, b.x, epsilon) && compare(a.y, b.y, epsilon);
+}
+
+v3_compare :: fn (a: v3, b: v3, epsilon: f32) bool {
+    return compare(a.x, b.x, epsilon)
+        && compare(a.y, b.y, epsilon)
+        && compare(a.z, b.z, epsilon);
+}
+
+v4_compare :: fn (a: v4, b: v4, epsilon: f32) bool {
+    return compare(a.x, b.x, epsilon)
+        && compare(a.y, b.y, epsilon)
+        && compare(a.z, b.z, epsilon)
+        && compare(a.w, b.w, epsilon);
+}
+
+//************************************************************************************************
+// negate
+//************************************************************************************************
+v2_negate :: fn (v: v2) v2 #inline {
+    return {:v2: -v.x, -v.y};
+};
+
+v3_negate :: fn (v: v3) v3 #inline {
+    return {:v3: -v.x, -v.y, -v.z};
+};
+
+v4_negate :: fn (v: v4) v4 #inline {
+    return {:v4: -v.x, -v.y, -v.z, -v.w};
+};
+
+//************************************************************************************************
+// cross
+//************************************************************************************************
+v3_cross :: fn (a: v3, b: v3) v3 #inline {
+    out: v3 #noinit;
+    out.x = a.y * b.z - a.z * b.y;
+    out.y = a.z * b.x - a.x * b.z;
+    out.z = a.x * b.y - a.y * b.x;
+    return out;
+};
+
+//************************************************************************************************
+// cross
+//************************************************************************************************
+v2_div :: fn (a: v2, b: v2) v2 #inline {
+    if b.x == 0.f { return v2_zero; }
+    if b.y == 0.f { return v2_zero; }
+    return {:v2: a.x / b.x, a.y / b.y};
+}
+
+v2_div_s :: fn (v: v2, s: f32) v2 #inline {
+    if s == 0.f { return v2_zero; }
+    return {:v2: v.x / s, v.y / s};
+}
+
+v3_div :: fn (a: v3, b: v3) v3 #inline {
+    if b.x == 0.f { return v3_zero; }
+    if b.y == 0.f { return v3_zero; }
+    if b.z == 0.f { return v3_zero; }
+    return {:v3: a.x / b.x, a.y / b.y, a.z / b.z};
+}
+
+v3_div_s :: fn (v: v3, s: f32) v3 #inline {
+    if s == 0.f { return v3_zero; }
+    return {:v3: v.x / s, v.y / s, v.z / s};
+}
+
+v4_div :: fn (a: v4, b: v4) v4 #inline {
+    if b.x == 0.f { return v4_zero; }
+    if b.y == 0.f { return v4_zero; }
+    if b.z == 0.f { return v4_zero; }
+    if b.w == 0.f { return v4_zero; }
+    return {:v4: a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w};
+}
+
+v4_div_s :: fn (v: v4, s: f32) v4 #inline {
+    if s == 0.f { return v4_zero; }
+    return {:v4: v.x / s, v.y / s, v.z / s, v.w / s};
+}
+

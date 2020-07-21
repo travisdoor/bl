@@ -1,8 +1,13 @@
 /* playground */
 
 main :: fn () s32 {
-    print("add(10, 20) = %\n", add(10, 20));
-    add(10, 20);
+    print("add(10, 20)     = %\n", add(10, 20));
+    print("add(0.1f, 0.5f) = %\n", add(0.1f, 0.5f));
+
+    i: s32;
+    j: s64;
+    j = i;
+
     return 0;
 }
 

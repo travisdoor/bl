@@ -84,18 +84,18 @@ typeinfo_fn :: fn () #test {
     assert(info.base.kind == TypeKind.Fn);
     assert(info.args.len == 2);
     assert(!info.is_vargs);
-    test_str_eq(info.name, "T");
+    test_eq(info.name, "T");
     assert(info.ret_type == typeinfo(s32));
 
     { // arg1
         ai :: &info.args[0];
-        test_str_eq(ai.name, "i");
+        test_eq(ai.name, "i");
         assert(ai.base_type == typeinfo(s32));
     }
 
     { // arg2
         ai :: &info.args[1];
-        test_str_eq(ai.name, "j");
+        test_eq(ai.name, "j");
         assert(ai.base_type == typeinfo(bool));
     }
 };
@@ -113,7 +113,7 @@ typeinfo_array :: fn () #test {
     info := cast(*TypeInfoArray) typeinfo(T);
 
     assert(info.base.kind == TypeKind.Array);
-    test_str_eq(info.name, "T");
+    test_eq(info.name, "T");
     assert(info.base.size_bytes == sizeof(T));
     assert(info.elem_type == typeinfo(s32));
     assert(info.len == 10);
@@ -126,7 +126,7 @@ typeinfo_enum :: fn () #test {
     assert(info.base.kind == TypeKind.Enum);
     assert(info.base_type != null);
     assert(info.variants.len == 3);
-    test_str_eq(info.name, "T");
+    test_eq(info.name, "T");
     assert(info.variants[0].value == 0);
     assert(info.variants[1].value == 1);
     assert(info.variants[2].value == 2);
@@ -138,7 +138,7 @@ typeinfo_struct :: fn () #test {
 
     assert(info.base.kind == TypeKind.Struct);
     assert(info.base.size_bytes == sizeof(T));
-    test_str_eq(info.name, "T");
+    test_eq(info.name, "T");
     assert(info.members.len == 3);
     assert(info.members[0].index == 0);
     assert(info.members[1].index == 1);

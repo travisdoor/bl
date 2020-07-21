@@ -1,8 +1,8 @@
 #private
 default_args_some_default :: fn () #test {
     foo :: fn (i: s32, j: s32 = 20) {
-        test_s32_eq(i, 10);
-        test_s32_eq(j, 20);
+        test_eq(i, 10);
+        test_eq(j, 20);
     };
 
     foo(10);
@@ -11,10 +11,10 @@ default_args_some_default :: fn () #test {
 
 default_args_some_default2 :: fn () #test {
     foo :: fn (i: s32, j: s32, k: s32 = 30, l: s32 = 40) {
-        test_s32_eq(i, 10);
-        test_s32_eq(j, 20);
-        test_s32_eq(k, 30);
-        test_s32_eq(l, 40);
+        test_eq(i, 10);
+        test_eq(j, 20);
+        test_eq(k, 30);
+        test_eq(l, 40);
     };
 
     foo(10, 20);
@@ -24,10 +24,10 @@ default_args_some_default2 :: fn () #test {
 
 default_args_all_default :: fn () #test {
     foo :: fn (i: s32 = 10, j: s32 = 20, k: s32 = 30, l: s32 = 40) {
-        test_s32_eq(i, 10);
-        test_s32_eq(j, 20);
-        test_s32_eq(k, 30);
-        test_s32_eq(l, 40);
+        test_eq(i, 10);
+        test_eq(j, 20);
+        test_eq(k, 30);
+        test_eq(l, 40);
     };
 
     foo();
@@ -43,9 +43,9 @@ default_args_complex :: fn () #test {
         j: s32;
     };
     foo :: fn (i: s32, j: Foo = {:Foo: 20, 30}) {
-        test_s32_eq(i, 10);
-        test_s32_eq(j.i, 20);
-        test_s32_eq(j.j, 30);
+        test_eq(i, 10);
+        test_eq(j.i, 20);
+        test_eq(j.j, 30);
     };
 
     foo(10);
@@ -59,10 +59,10 @@ GLOBAL_40 :: 40;
 
 default_args_global :: fn () #test {
     foo :: fn (i: s32 = GLOBAL_10, j: s32 = GLOBAL_20, k: s32 = GLOBAL_30, l: s32 = GLOBAL_40) {
-        test_s32_eq(i, GLOBAL_10);
-        test_s32_eq(j, GLOBAL_20);
-        test_s32_eq(k, GLOBAL_30);
-        test_s32_eq(l, GLOBAL_40);
+        test_eq(i, GLOBAL_10);
+        test_eq(j, GLOBAL_20);
+        test_eq(k, GLOBAL_30);
+        test_eq(l, GLOBAL_40);
     };
 
     foo();
@@ -74,10 +74,10 @@ default_args_global :: fn () #test {
 
 default_args_ptr_call :: fn () #test {
     foo :: fn (i: s32 = 10, j: s32 = 20, k: s32 = 30, l: s32 = 40) {
-        test_s32_eq(i, 10);
-        test_s32_eq(j, 20);
-        test_s32_eq(k, 30);
-        test_s32_eq(l, 40);
+        test_eq(i, 10);
+        test_eq(j, 20);
+        test_eq(k, 30);
+        test_eq(l, 40);
     };
 
     p :: &foo;
@@ -90,10 +90,10 @@ default_args_ptr_call :: fn () #test {
 
 default_args_fn_explicit_type :: fn () #test {
     foo : fn (s32, s32, s32, s32) : fn (i: s32 = 10, j: s32 = 20, k: s32 = 30, l: s32 = 40) {
-        test_s32_eq(i, 10);
-        test_s32_eq(j, 20);
-        test_s32_eq(k, 30);
-        test_s32_eq(l, 40);
+        test_eq(i, 10);
+        test_eq(j, 20);
+        test_eq(k, 30);
+        test_eq(l, 40);
     };
 
     foo();
@@ -105,8 +105,8 @@ default_args_fn_explicit_type :: fn () #test {
 
 default_args_call_side_location :: fn () #test {
     foo :: fn (expected_file: string, expected_line: s32, loc: *CodeLocation = #call_location) {
-        test_str_eq(loc.file, expected_file);
-        test_s32_eq(loc.line, expected_line);
+        test_eq(loc.file, expected_file);
+        test_eq(loc.line, expected_line);
     };
 
     filename: string;
@@ -119,22 +119,22 @@ default_args_call_side_location :: fn () #test {
 
 default_args_array :: fn () #test {
     foo :: fn (arr: [2]s32 = {:[2]s32: 1, 2}) {
-        test_s32_eq(arr[0], 1);
-        test_s32_eq(arr[1], 2);
+        test_eq(arr[0], 1);
+        test_eq(arr[1], 2);
     };
     foo();
 }
 
 default_args_slice :: fn () #test {
     foo :: fn (slice: []s32 = {:[]s32: 0}) {
-        test_s32_eq(auto slice.len, 0);
+        test_eq(slice.len, 0);
     };
     foo();
 }
 
 default_args_callback1 :: fn () #test {
     foo :: fn (i: s32) {
-        test_s32_eq(i, 10);
+        test_eq(i, 10);
     };
     // @NOTE: I'm not 100% sure if this should be possible...
     bar :: fn (callback: *fn(s32 = 10)) {
@@ -145,7 +145,7 @@ default_args_callback1 :: fn () #test {
 
 default_args_callback2 :: fn () #test {
     foo :: fn (i: s32 = 20) {
-        test_s32_eq(i, 666);
+        test_eq(i, 666);
     };
     bar :: fn (callback: *fn(s32 = 10)) {
         callback(666);
@@ -155,7 +155,7 @@ default_args_callback2 :: fn () #test {
 
 default_args_callback3 :: fn () #test {
     foo :: fn (i: s32 = 20) {
-        test_s32_eq(i, 10);
+        test_eq(i, 10);
     };
     bar :: fn (callback: *fn(s32 = 10)) {
         callback();
@@ -172,7 +172,7 @@ default_args_ptr :: fn () #test {
 
 default_args_infer_type1 :: fn () #test {
     foo :: fn (i := 10) {
-        test_s32_eq(i, 10);
+        test_eq(i, 10);
     };
     foo();
 }
@@ -183,16 +183,16 @@ default_args_infer_type2 :: fn () #test {
         j: s32;
     };
     foo :: fn (foo := {:Foo: 10, 20}) {
-        test_s32_eq(foo.i, 10);
-        test_s32_eq(foo.j, 20);
+        test_eq(foo.i, 10);
+        test_eq(foo.j, 20);
     };
     foo();
 }
 
 default_args_infer_type3 :: fn () #test {
     foo :: fn (line: s32, str := "hello", loc := #call_location) {
-        test_str_eq(str, "hello");
-        test_s32_eq(line, loc.line);
+        test_eq(str, "hello");
+        test_eq(line, loc.line);
     };
     foo(#line);
 }

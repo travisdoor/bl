@@ -126,7 +126,11 @@ void *_assert_invalid_expr(const char *expr, const char *file, s32 line);
 		abort();                                                                           \
 	}
 
-#define BL_MAGIC_ASSERT(O) BL_ASSERT((O)->_magic == (void *)&(O)->_magic && "Invalid magic!")
+#define BL_MAGIC_ASSERT(O)                                                                         \
+	{                                                                                          \
+		BL_ASSERT(O && "Invalid reference!");                                              \
+		BL_ASSERT((O)->_magic == (void *)&(O)->_magic && "Invalid magic!");                \
+	}
 #define BL_MAGIC_ADD void *_magic
 #define BL_MAGIC_SET(O) (O)->_magic = (void *)&(O)->_magic
 

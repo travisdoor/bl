@@ -1,3 +1,5 @@
+#load "std/glm.bl"
+
 #private
 ColliderKind :: enum {
     Rect;

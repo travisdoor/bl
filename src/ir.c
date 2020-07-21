@@ -1667,7 +1667,8 @@ State emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 	if (addrof->src->kind == MIR_INSTR_FN_PROTO) {
 		MirInstrFnProto *fn_proto = (MirInstrFnProto *)addrof->src;
 		MirFn *          fn       = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
-		addrof->base.llvm_value   = emit_fn_proto(cnt, fn);
+		BL_MAGIC_ASSERT(fn);
+		addrof->base.llvm_value = emit_fn_proto(cnt, fn);
 	} else {
 		addrof->base.llvm_value = addrof->src->llvm_value;
 	}
@@ -2668,7 +2669,7 @@ State emit_instr_const(Context *cnt, MirInstrConst *c)
 
 	case MIR_TYPE_FN: {
 		MirFn *fn = MIR_CEV_READ_AS(MirFn *, &c->base.value);
-		BL_ASSERT(fn);
+		BL_MAGIC_ASSERT(fn);
 		llvm_value = emit_fn_proto(cnt, fn);
 		break;
 	}
@@ -2929,6 +2930,7 @@ void emit_allocas(Context *cnt, MirFn *fn)
 State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
 	MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
+	BL_MAGIC_ASSERT(fn);
 
 	/* unused function */
 	if (!fn->emit_llvm) {

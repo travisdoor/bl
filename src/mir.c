@@ -225,6 +225,8 @@ static MirVar *testing_gen_meta(Context *cnt);
 /* Execute all registered test cases in current assembly. */
 static void        testing_run(Context *cnt);
 static const char *get_intrinsic(const char *name);
+static MirFn *     group_select_overload(const MirFnGroup *         group,
+                                         const TSmallArray_TypePtr *expected_args);
 
 /* Start top-level execution of entry function using MIR-VM. (Usualy 'main' funcition) */
 static void execute_entry_fn(Context *cnt);
@@ -767,7 +769,7 @@ static INLINE bool can_mutate_comptime_to_const(MirInstr *instr)
 }
 
 /* Get struct base type if there is one. */
-static INLINE MirType *get_base_type(MirType *struct_type)
+static INLINE MirType *get_base_type(const MirType *struct_type)
 {
 	if (struct_type->kind != MIR_TYPE_STRUCT) return NULL;
 	MirType *base_type = struct_type->data.strct.base_type;
@@ -818,13 +820,13 @@ static INLINE bool is_pointer_to_type_type(MirType *type)
 	return type->kind == MIR_TYPE_TYPE;
 }
 
-static INLINE bool type_cmp(MirType *first, MirType *second)
+static INLINE bool type_cmp(const MirType *first, const MirType *second)
 {
 	BL_ASSERT(first && second);
 	return first->id.hash == second->id.hash;
 }
 
-static INLINE bool can_impl_cast(MirType *from, MirType *to)
+static INLINE bool can_impl_cast(const MirType *from, const MirType *to)
 {
 	/*
 	  Here we allow implicit cast from any pointer type to bool, this breaks quite strict
@@ -880,7 +882,7 @@ static INLINE bool can_impl_cast(MirType *from, MirType *to)
 static INLINE MirFn *get_callee(MirInstrCall *call)
 {
 	MirFn *fn = MIR_CEV_READ_AS(MirFn *, &call->callee->value);
-	BL_ASSERT(fn);
+	BL_MAGIC_ASSERT(fn);
 	return fn;
 }
 
@@ -1499,7 +1501,6 @@ MirType *lookup_builtin_type(Context *cnt, MirBuiltinIdKind kind)
 	MirVar *var = found->data.var;
 	BL_ASSERT(var && var->value.is_comptime && var->value.type->kind == MIR_TYPE_TYPE);
 	MirType *var_type = MIR_CEV_READ_AS(MirType *, &var->value);
-	BL_ASSERT(var_type);
 	BL_MAGIC_ASSERT(var_type);
 
 	/* Wait when internal is not complete!  */
@@ -1799,7 +1800,6 @@ MirType *complete_type_struct(Context *              cnt,
 	          "Forward struct declaration does not point to type definition!");
 
 	MirType *incomplete_type = MIR_CEV_READ_AS(MirType *, &fwd_decl->value);
-	BL_ASSERT(incomplete_type);
 	BL_MAGIC_ASSERT(incomplete_type);
 
 	BL_ASSERT(incomplete_type->kind == MIR_TYPE_STRUCT &&
@@ -2583,7 +2583,6 @@ void *create_instr(Context *cnt, MirInstrKind kind, Ast *node)
 	tmp->kind       = kind;
 	tmp->node       = node;
 	tmp->id         = _id_counter++;
-
 	return tmp;
 }
 
@@ -4053,6 +4052,7 @@ AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 			return ANALYZE_RESULT(FAILED, 0);
 		}
 		type = MIR_CEV_READ_AS(MirType *, &instr_type->value);
+		BL_MAGIC_ASSERT(type);
 	}
 
 	BL_ASSERT(type);
@@ -4614,7 +4614,7 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
 		}
 
 		MirType *sub_type = MIR_CEV_READ_AS(MirType *, &member_ptr->target_ptr->value);
-		BL_ASSERT(sub_type);
+		BL_MAGIC_ASSERT(sub_type);
 
 		if (sub_type->kind != MIR_TYPE_ENUM) {
 			goto INVALID;
@@ -4679,7 +4679,7 @@ AnalyzeResult analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 	BL_ASSERT(src->value.type);
 	if (src->value.type->kind == MIR_TYPE_FN) {
 		MirFn *fn = MIR_CEV_READ_AS(MirFn *, &src->value);
-		BL_ASSERT(fn && "Missing function to take the address of!");
+		BL_MAGIC_ASSERT(fn);
 
 		/* NOTE: Here we increase function ref count. */
 		++fn->ref_count;
@@ -4760,7 +4760,7 @@ AnalyzeResult analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof)
 
 	if (type->kind == MIR_TYPE_TYPE) {
 		type = MIR_CEV_READ_AS(MirType *, &szof->expr->value);
-		BL_ASSERT(type);
+		BL_MAGIC_ASSERT(type);
 	}
 
 	/* sizeof operator needs only type of input expression so we can erase whole call
@@ -4790,7 +4790,7 @@ AnalyzeResult analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 
 	if (type->kind == MIR_TYPE_TYPE) {
 		type = MIR_CEV_READ_AS(MirType *, &type_info->expr->value);
-		BL_ASSERT(type);
+		BL_MAGIC_ASSERT(type);
 	}
 
 	type_info->rtti_type = type;
@@ -4813,7 +4813,7 @@ AnalyzeResult analyze_instr_alignof(Context *cnt, MirInstrAlignof *alof)
 
 	if (type->kind == MIR_TYPE_TYPE) {
 		type = MIR_CEV_READ_AS(MirType *, &alof->expr->value);
-		BL_ASSERT(type);
+		BL_MAGIC_ASSERT(type);
 	}
 
 	MIR_CEV_WRITE_AS(s32, &alof->base.value, type->alignment);
@@ -4895,7 +4895,7 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		/* Check if we try get reference to incomplete structure type. */
 		if (type->kind == MIR_TYPE_TYPE) {
 			MirType *t = MIR_CEV_READ_AS(MirType *, &var->value);
-			BL_ASSERT(t && "Invalid type reference!");
+			BL_MAGIC_ASSERT(t);
 			if (is_incomplete_struct_type(t) && !ref->accept_incomplete_type) {
 				return ANALYZE_RESULT(WAITING, t->user_id->hash);
 			}
@@ -5018,7 +5018,7 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	BL_ASSERT(value->data);
 
 	MirFn *fn = MIR_CEV_READ_AS(MirFn *, value);
-	BL_ASSERT(fn);
+	BL_MAGIC_ASSERT(fn);
 
 	if (IS_FLAG(fn->flags, FLAG_TEST_FN)) {
 		/* We must wait for builtin types for test cases. */
@@ -5200,7 +5200,7 @@ AnalyzeResult analyze_instr_fn_group(Context *cnt, MirInstrFnGroup *group)
 
 		BL_ASSERT(mir_is_comptime(variant));
 		MirFn *fn = MIR_CEV_READ_AS(MirFn *, &variant->value);
-		BL_ASSERT(fn && "Missing function reference!");
+		BL_MAGIC_ASSERT(fn);
 		BL_ASSERT(fn->type && "Missing function type!");
 		variant_fns->data[i]   = fn;
 		variant_types->data[i] = fn->type;
@@ -5447,7 +5447,7 @@ AnalyzeResult analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 
 		BL_ASSERT(type_fn->ret_type->value.is_comptime);
 		ret_type = MIR_CEV_READ_AS(MirType *, &type_fn->ret_type->value);
-		BL_ASSERT(ret_type);
+		BL_MAGIC_ASSERT(ret_type);
 	}
 
 	MIR_CEV_WRITE_AS(MirType *,
@@ -5488,7 +5488,7 @@ AnalyzeResult analyze_instr_type_fn_group(Context *cnt, MirInstrTypeFnGroup *gro
 			return ANALYZE_RESULT(FAILED, 0);
 		}
 		MirType *variant_type = MIR_CEV_READ_AS(MirType *, &variant->value);
-		BL_ASSERT(variant_type);
+		BL_MAGIC_ASSERT(variant_type);
 		if (variant_type->kind != MIR_TYPE_FN) {
 			builder_msg(BUILDER_MSG_ERROR,
 			            ERR_INVALID_TYPE,
@@ -5601,6 +5601,7 @@ AnalyzeResult analyze_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
 				return ANALYZE_RESULT(FAILED, 0);
 			}
 			arg->type = MIR_CEV_READ_AS(MirType *, &decl->type->value);
+			BL_MAGIC_ASSERT(arg->type);
 		}
 		/* @NOTE: Argument default value is generated as an implicit global constant
 		 * variable with proper expected type defined, so there is no need to do any type
@@ -5652,7 +5653,7 @@ AnalyzeResult analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_s
 
 			/* solve member type */
 			member_type = MIR_CEV_READ_AS(MirType *, &decl_member->type->value);
-			BL_ASSERT(member_type);
+			BL_MAGIC_ASSERT(member_type);
 			if (member_type->kind == MIR_TYPE_FN) {
 				builder_msg(BUILDER_MSG_ERROR,
 				            ERR_INVALID_TYPE,
@@ -5745,7 +5746,7 @@ AnalyzeResult analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_sli
 
 	BL_ASSERT(mir_is_comptime(type_slice->elem_type) && "This should be an error");
 	MirType *elem_type = MIR_CEV_READ_AS(MirType *, &type_slice->elem_type->value);
-	BL_ASSERT(elem_type);
+	BL_MAGIC_ASSERT(elem_type);
 
 	if (elem_type->kind == MIR_TYPE_TYPE) {
 		builder_msg(BUILDER_MSG_ERROR,
@@ -5796,7 +5797,7 @@ AnalyzeResult analyze_instr_type_dynarr(Context *cnt, MirInstrTypeDynArr *type_d
 
 	BL_ASSERT(mir_is_comptime(type_dynarr->elem_type) && "This should be an error");
 	MirType *elem_type = MIR_CEV_READ_AS(MirType *, &type_dynarr->elem_type->value);
-	BL_ASSERT(elem_type);
+	BL_MAGIC_ASSERT(elem_type);
 
 	if (elem_type->kind == MIR_TYPE_TYPE) {
 		builder_msg(BUILDER_MSG_ERROR,
@@ -5835,6 +5836,7 @@ AnalyzeResult analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_var
 
 		BL_ASSERT(mir_is_comptime(type_vargs->elem_type) && "This should be an error");
 		elem_type = MIR_CEV_READ_AS(MirType *, &type_vargs->elem_type->value);
+		BL_MAGIC_ASSERT(elem_type);
 	} else {
 		/* use Any */
 		elem_type = lookup_builtin_type(cnt, MIR_BUILTIN_ID_ANY);
@@ -5902,7 +5904,7 @@ AnalyzeResult analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr
 	BL_ASSERT(mir_is_comptime(type_arr->elem_type));
 
 	MirType *elem_type = MIR_CEV_READ_AS(MirType *, &type_arr->elem_type->value);
-	BL_ASSERT(elem_type);
+	BL_MAGIC_ASSERT(elem_type);
 
 	if (elem_type->kind == MIR_TYPE_TYPE) {
 		builder_msg(BUILDER_MSG_ERROR,
@@ -5931,6 +5933,7 @@ AnalyzeResult analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
 	MirType *base_type;
 	if (type_enum->base_type) {
 		base_type = MIR_CEV_READ_AS(MirType *, &type_enum->base_type->value);
+		BL_MAGIC_ASSERT(base_type);
 
 		/* Enum type must be integer! */
 		if (base_type->kind != MIR_TYPE_INT) {
@@ -5996,7 +5999,7 @@ AnalyzeResult analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 	}
 
 	MirType *src_type_value = MIR_CEV_READ_AS(MirType *, &type_ptr->type->value);
-	BL_ASSERT(src_type_value);
+	BL_MAGIC_ASSERT(src_type_value);
 
 	if (src_type_value->kind == MIR_TYPE_TYPE) {
 		builder_msg(BUILDER_MSG_ERROR,
@@ -6474,7 +6477,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 
 	if (is_direct_call) {
 		MirFn *fn = MIR_CEV_READ_AS(MirFn *, &call->callee->value);
-		BL_ASSERT(fn && "Missing function reference for direct call!");
+		BL_MAGIC_ASSERT(fn);
 		if (call->base.value.is_comptime) {
 			if (!fn->fully_analyzed) return ANALYZE_RESULT(POSTPONE, 0);
 		} else if (call->callee->kind == MIR_INSTR_FN_PROTO) {
@@ -6489,13 +6492,33 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 		}
 	}
 
-	if (type->kind == MIR_TYPE_FN_GROUP) {
+	const bool is_group = type->kind == MIR_TYPE_FN_GROUP;
+	if (is_group) {
+		/* Function group will be replaced with constant function reference. Best callee
+		 * candidate selection is based on call arguments not on return type! The best
+		 * function is selected but it could be still invalid so we have to validate it as
+		 * usual. */
 		MirFnGroup *group = MIR_CEV_READ_AS(MirFnGroup *, &call->callee->value);
-		BL_ASSERT(group && "Missing function group reference call!");
 		BL_MAGIC_ASSERT(group);
-		MirFn *selected_overload_fn = group->variants->data[0];
+		MirFn *selected_overload_fn = NULL;
+		{ // lookup best call candidate in group
+			TSmallArray_TypePtr arg_types;
+			tsa_init(&arg_types);
+			tsa_resize_TypePtr(&arg_types, call->args->size);
+			MirInstr *it;
+			TSA_FOREACH(call->args, it)
+			{
+				MirType *t        = it->value.type;
+				arg_types.data[i] = is_load_needed(it) ? mir_deref_type(t) : t;
+			}
+			selected_overload_fn = group_select_overload(group, &arg_types);
+			tsa_terminate(&arg_types);
+		}
+		BL_MAGIC_ASSERT(selected_overload_fn);
 		erase_instr_tree(call->callee, false, true);
 		mutate_instr(call->callee, MIR_INSTR_CONST);
+		call->callee->value.data = (VMStackPtr)&call->callee->value._tmp;
+		call->callee->node       = selected_overload_fn->decl_node;
 		type = call->callee->value.type = selected_overload_fn->type;
 		MIR_CEV_WRITE_AS(MirFn *, &call->callee->value, selected_overload_fn);
 	}
@@ -6661,6 +6684,14 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 
 		if (analyze_slot(cnt, &analyze_slot_conf_full, call_arg, callee_arg->type) !=
 		    ANALYZE_PASSED) {
+
+			if (is_group) {
+				builder_msg(BUILDER_MSG_NOTE,
+				            0,
+				            call->callee->node->location,
+				            BUILDER_CUR_WORD,
+				            "Selected overload implementation is:");
+			}
 			return ANALYZE_RESULT(FAILED, 0);
 		}
 	}
@@ -6989,7 +7020,7 @@ ANALYZE_STAGE_FN(implicit_cast)
 ANALYZE_STAGE_FN(report_type_mismatch)
 {
 	error_types((*input)->value.type, slot_type, (*input)->node, NULL);
-	return ANALYZE_STAGE_CONTINUE;
+	return ANALYZE_STAGE_FAILED;
 }
 
 AnalyzeResult analyze_instr(Context *cnt, MirInstr *instr)
@@ -8825,7 +8856,8 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
 		} else {
 			BL_ASSERT(!cnt->entry_fn);
 			BL_ASSERT(value);
-			MirFn *fn                = MIR_CEV_READ_AS(MirFn *, &value->value);
+			MirFn *fn = MIR_CEV_READ_AS(MirFn *, &value->value);
+			BL_MAGIC_ASSERT(fn);
 			cnt->entry_fn            = fn;
 			cnt->entry_fn->emit_llvm = true;
 		}
@@ -9747,6 +9779,44 @@ const char *get_intrinsic(const char *name)
 	return NULL;
 }
 
+MirFn *group_select_overload(const MirFnGroup *group, const TSmallArray_TypePtr *expected_args)
+{
+	BL_MAGIC_ASSERT(group);
+	BL_ASSERT(expected_args);
+	const TSmallArray_FnPtr *variants = group->variants;
+	BL_ASSERT(variants && variants->size);
+	MirFn *selected          = variants->data[0];
+	s32    selected_priority = 0;
+	MirFn *it_fn;
+	TSA_FOREACH(variants, it_fn)
+	{
+		s32 p = 0;
+
+		const usize argc  = it_fn->type->data.fn.args ? it_fn->type->data.fn.args->size : 0;
+		const usize eargc = expected_args->size;
+		if (argc == eargc) p += 2;
+		const TSmallArray_ArgPtr *args = it_fn->type->data.fn.args;
+		if (args) {
+			for (int j = 0; j < args->size && j < expected_args->size; ++j) {
+				const MirType *t  = args->data[j]->type;
+				const MirType *et = expected_args->data[j];
+				if (type_cmp(et, t)) {
+					p += 2;
+					continue;
+				}
+				if (can_impl_cast(et, t)) p += 1;
+			}
+		}
+		// BL_LOG("%s [%d]", it_fn->linkage_name, p);
+		if (p > selected_priority) {
+			selected          = it_fn;
+			selected_priority = p;
+		}
+	}
+	BL_MAGIC_ASSERT(selected);
+	return selected;
+}
+
 void msg_handle(Context *cnt, MirInstr *instr)
 {
 	if (!instr) return;
@@ -9761,7 +9831,7 @@ void msg_handle(Context *cnt, MirInstr *instr)
 	case MIR_INSTR_FN_PROTO:
 		msg.kind    = BUILDER_MSG_FN;
 		msg.data.fn = MIR_CEV_READ_AS(MirFn *, &instr->value);
-		if (!msg.data.fn) return;
+		BL_MAGIC_ASSERT(msg.data.fn);
 		break;
 	default:
 		return;
