@@ -266,7 +266,7 @@ struct MirFn {
 		DCCallback *     extern_callback_handle;
 		DyncallCBContext context;
 	} dyncall;
-        BL_MAGIC_ADD;
+	BL_MAGIC_ADD;
 };
 
 struct MirFnGroup {
@@ -286,7 +286,7 @@ struct MirMember {
 	s32      tags;
 	bool     is_base; /* inherrited struct base */
 	bool     is_parent_union;
-        BL_MAGIC_ADD;
+	BL_MAGIC_ADD;
 };
 
 /* FUNCTION ARGUMENT */
@@ -319,6 +319,7 @@ struct MirTypeReal {
 struct MirTypeFn {
 	MirType *           ret_type;
 	TSmallArray_ArgPtr *args;
+	u64                 argument_hash; 
 	bool                is_vargs;
 	bool                has_byval;
 	bool                has_sret;
@@ -391,7 +392,7 @@ struct MirType {
 		struct MirTypeEnum    enm;
 		struct MirTypeNull    null;
 	} data;
-        BL_MAGIC_ADD;
+	BL_MAGIC_ADD;
 };
 
 /* VALUE */

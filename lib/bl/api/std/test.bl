@@ -47,6 +47,20 @@ test_neq :: fn {
 }
 
 // @DOC
+test_true :: fn (v: bool, loc := #call_location) {
+    if v { return; }
+    print_err("Value expected to be true.");
+    assert(false, loc);
+}
+
+// @DOC
+test_false :: fn (v: bool, loc := #call_location) {
+    if !v { return; }
+    print_err("Value expected to be false.");
+    assert(false, loc);
+}
+
+// @DOC
 test_null :: fn (ptr: *u8, loc := #call_location) {
     if ptr == null { return; }
     print_err("Pointer is expected to be null.");

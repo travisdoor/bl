@@ -225,7 +225,8 @@ static MirVar *testing_gen_meta(Context *cnt);
 /* Execute all registered test cases in current assembly. */
 static void        testing_run(Context *cnt);
 static const char *get_intrinsic(const char *name);
-static MirFn *     group_select_overload(const MirFnGroup *         group,
+static MirFn *     group_select_overload(Context *                  cnt,
+                                         const MirFnGroup *         group,
                                          const TSmallArray_TypePtr *expected_args);
 
 /* Start top-level execution of entry function using MIR-VM. (Usualy 'main' funcition) */
@@ -1295,6 +1296,7 @@ void type_init_id(Context *cnt, MirType *type)
 		}
 
 		tstring_append(tmp, ")");
+		type->data.fn.argument_hash = thash_from_str(tmp->data);
 
 		if (type->data.fn.ret_type) {
 			BL_ASSERT(type->data.fn.ret_type->id.str);
@@ -4661,9 +4663,9 @@ AnalyzeResult analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 
 	const MirValueAddressMode src_addr_mode = src->value.addr_mode;
 
-	const bool can_grab_address = src_addr_mode == MIR_VAM_LVALUE ||
-	                              src_addr_mode == MIR_VAM_LVALUE_CONST ||
-	                              src->value.type->kind == MIR_TYPE_FN;
+	const bool can_grab_address =
+	    (src_addr_mode == MIR_VAM_LVALUE || src_addr_mode == MIR_VAM_LVALUE_CONST ||
+	     src->value.type->kind == MIR_TYPE_FN);
 
 	if (!can_grab_address) {
 		builder_msg(BUILDER_MSG_ERROR,
@@ -4923,7 +4925,12 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 		}
 		ref->base.value.type        = create_type_ptr(cnt, type);
 		ref->base.value.is_comptime = var->value.is_comptime;
-		ref->base.value.addr_mode = var->is_mutable ? MIR_VAM_LVALUE : MIR_VAM_LVALUE_CONST;
+		if (type->kind == MIR_TYPE_FN_GROUP) {
+			ref->base.value.addr_mode = MIR_VAM_RVALUE;
+		} else {
+			ref->base.value.addr_mode =
+			    var->is_mutable ? MIR_VAM_LVALUE : MIR_VAM_LVALUE_CONST;
+		}
 		break;
 	}
 
@@ -5172,21 +5179,36 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
+int _group_compare(const void *_first, const void *_second)
+{
+	MirFn *first  = *(MirFn **)_first;
+	MirFn *second = *(MirFn **)_second;
+	BL_MAGIC_ASSERT(first);
+	BL_MAGIC_ASSERT(second);
+	BL_ASSERT(first->type && second->type);
+	return first->type->data.fn.argument_hash - second->type->data.fn.argument_hash;
+}
+
 AnalyzeResult analyze_instr_fn_group(Context *cnt, MirInstrFnGroup *group)
 {
+	AnalyzeResult         result        = ANALYZE_RESULT(PASSED, 0);
 	TSmallArray_InstrPtr *variants      = group->variants;
 	TSmallArray_TypePtr * variant_types = create_sarr(TSmallArray_TypePtr, cnt->assembly);
 	TSmallArray_FnPtr *   variant_fns   = create_sarr(TSmallArray_FnPtr, cnt->assembly);
+	TSmallArray_FnPtr     validation_queue;
 	BL_ASSERT(variants);
 	const usize vc = variants->size;
 	BL_ASSERT(vc);
+	tsa_init(&validation_queue);
 	tsa_resize_TypePtr(variant_types, vc);
 	tsa_resize_FnPtr(variant_fns, vc);
+	tsa_resize_FnPtr(&validation_queue, vc);
 	for (usize i = 0; i < vc; ++i) {
 		MirInstr **variant_ref = &variants->data[i];
 		if (analyze_slot(cnt, &analyze_slot_conf_basic, variant_ref, NULL) !=
 		    ANALYZE_PASSED) {
-			return ANALYZE_RESULT(FAILED, 0);
+			result = ANALYZE_RESULT(FAILED, 0);
+			goto FINALLY;
 		}
 		MirInstr *variant = *variant_ref;
 		if (variant->value.type->kind != MIR_TYPE_FN) {
@@ -5195,21 +5217,45 @@ AnalyzeResult analyze_instr_fn_group(Context *cnt, MirInstrFnGroup *group)
 			            variant->node->location,
 			            BUILDER_CUR_WORD,
 			            "Expected a function name.");
-			return ANALYZE_RESULT(FAILED, 0);
+			result = ANALYZE_RESULT(FAILED, 0);
+			goto FINALLY;
 		}
 
 		BL_ASSERT(mir_is_comptime(variant));
 		MirFn *fn = MIR_CEV_READ_AS(MirFn *, &variant->value);
 		BL_MAGIC_ASSERT(fn);
 		BL_ASSERT(fn->type && "Missing function type!");
-		variant_fns->data[i]   = fn;
-		variant_types->data[i] = fn->type;
-		// @INCOMPLETE: solve function ambiguity
+		variant_fns->data[i]     = fn;
+		variant_types->data[i]   = fn->type;
+		validation_queue.data[i] = fn;
+	}
+	/* Validate group. */
+	qsort(&validation_queue.data[0], validation_queue.size, sizeof(MirFn *), &_group_compare);
+	MirFn *prev_fn = NULL;
+	for (usize i = validation_queue.size; i-- > 0;) {
+		MirFn *   it = validation_queue.data[i];
+		const u64 h1 = it->type->data.fn.argument_hash;
+		const u64 h2 = prev_fn ? prev_fn->type->data.fn.argument_hash : 0;
+		if (h1 == h2) {
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_AMBIGUOUS_OVERLOAD,
+			            it->decl_node->location,
+			            BUILDER_CUR_WORD,
+			            "Function overload is ambiguous in group.");
+			builder_msg(BUILDER_MSG_NOTE,
+			            0,
+			            group->base.node->location,
+			            BUILDER_CUR_WORD,
+			            "Group defined here:");
+		}
+		prev_fn = it;
 	}
 	group->base.value.type = create_type_fn_group(cnt, NULL, variant_types);
 	MIR_CEV_WRITE_AS(
 	    MirFnGroup *, &group->base.value, create_fn_group(cnt, group->base.node, variant_fns));
-	return ANALYZE_RESULT(PASSED, 0);
+FINALLY:
+	tsa_terminate(&validation_queue);
+	return result;
 }
 
 AnalyzeResult analyze_instr_cond_br(Context *cnt, MirInstrCondBr *br)
@@ -6511,7 +6557,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 				MirType *t        = it->value.type;
 				arg_types.data[i] = is_load_needed(it) ? mir_deref_type(t) : t;
 			}
-			selected_overload_fn = group_select_overload(group, &arg_types);
+			selected_overload_fn = group_select_overload(cnt, group, &arg_types);
 			tsa_terminate(&arg_types);
 		}
 		BL_MAGIC_ASSERT(selected_overload_fn);
@@ -9758,7 +9804,9 @@ const char *get_intrinsic(const char *name)
 	return NULL;
 }
 
-MirFn *group_select_overload(const MirFnGroup *group, const TSmallArray_TypePtr *expected_args)
+MirFn *group_select_overload(Context *                  cnt,
+                             const MirFnGroup *         group,
+                             const TSmallArray_TypePtr *expected_args)
 {
 	BL_MAGIC_ASSERT(group);
 	BL_ASSERT(expected_args);
@@ -9783,7 +9831,14 @@ MirFn *group_select_overload(const MirFnGroup *group, const TSmallArray_TypePtr 
 					p += 2;
 					continue;
 				}
-				if (can_impl_cast(et, t)) p += 1;
+				if (can_impl_cast(et, t)) {
+					p += 1;
+					continue;
+				}
+				if (type_cmp(t, cnt->builtin_types->t_Any)) {
+					p += 1;
+					continue;
+				}
 			}
 		}
 		// BL_LOG("%s [%d]", it_fn->linkage_name, p);

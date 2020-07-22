@@ -160,10 +160,10 @@ os_tick_ms :: fn () f64 #inline {
 os_get_real_path :: fn (filename: string) string {
     tmp: [OS_PATH_MAX]u8 #noinit;
     if _posix_realpath(filename.ptr, &tmp[0]) != null {
-        return string_new_cstr(tmp.ptr);
+        return string_new(tmp.ptr);
     } 
 
-    return string_copy(filename);
+    return string_new(filename);
 }
 
 os_get_exec_path :: fn () string {
@@ -171,7 +171,7 @@ os_get_exec_path :: fn () string {
     buf_len := cast(u32) buf.len;
     if macOS_NSGetExecutablePath(auto buf.ptr, &buf_len) == -1 { return string_new(); }
 
-    return string_new_cstr(buf.ptr);
+    return string_new(buf.ptr);
 }
 
 /*
@@ -278,10 +278,10 @@ _os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
 
         if info.d_type == auto DT_DIR {
             kind = _OSFileKind.Directory;
-            name = string_new_cstr(auto info.d_name.ptr);
+            name = string_new(cast(*u8) info.d_name.ptr);
         } else {
             kind = _OSFileKind.File;
-            name = string_new_cstr(auto info.d_name.ptr);
+            name = string_new(cast(*u8) info.d_name.ptr);
         }
 
         (^out_buf)[i] = {:_OSFileInfo: kind, name};

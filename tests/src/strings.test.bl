@@ -1,5 +1,8 @@
 #load "std/string.bl"
 
+// @INCOMPLETE: use test api + add more tests!!!
+// @INCOMPLETE: use test api + add more tests!!!
+// @INCOMPLETE: use test api + add more tests!!!
 #private
 test_strings_init :: fn () #test {
     s1 := string_new();
@@ -14,7 +17,6 @@ test_strings_init :: fn () #test {
 
     string_append(&s1, true);
     assert(string_compare("foo12true", s1));
-
 };
 
 test_string_split_by_last :: fn () #test {
@@ -71,4 +73,40 @@ test_string_split_by_first :: fn () #test {
 
     assert(!string_split_by_first("12341234", '/', &lhs, &rhs));
     assert(!string_split_by_first("", '/', &lhs, &rhs));
+}
+
+test_string_compare1 :: fn () #test {
+    test_true(string_compare("hello", "hello")); 
+    test_true(string_compare("", "")); 
+    test_false(string_compare("aaaa", "bb")); 
+    test_false(string_compare("aa", "bbbb")); 
+    test_false(string_compare("", "bbbb")); 
+    test_false(string_compare("aa", "")); 
+}
+
+test_string_compare2 :: fn () #test {
+    test_true(string_compare("", "", 0)); 
+    test_true(string_compare("", "", 10)); 
+    test_true(string_compare("hello", "hello", 0)); 
+    test_true(string_compare("hello", "hello", -1)); 
+    test_true(string_compare("hello", "hello", 3)); 
+    test_true(string_compare("bbaa", "bb", 2)); 
+    test_true(string_compare("b", "b", 100)); 
+    test_true(string_compare("b", "b", 0)); 
+    test_true(string_compare("bbbb", "b", 0)); 
+    test_true(string_compare("b", "bbbb", 0)); 
+    test_true(string_compare("bbbb", "b", 1)); 
+    test_true(string_compare("b", "bbbb", 1)); 
+    test_true(string_compare("", "b", 0)); 
+    test_true(string_compare("b", "", 0)); 
+    test_false(string_compare("", "b", 1)); 
+    test_false(string_compare("b", "", 1)); 
+}
+
+test_string_to_s64 :: fn () #test {
+    test_eq(string_to_s64(""), 0);
+    test_eq(string_to_s64("1"), 1);
+    test_eq(string_to_s64("654132"), 654132);
+    test_eq(string_to_s64("-1"), -1);
+    test_eq(string_to_s64("-654132"), -654132);
 }

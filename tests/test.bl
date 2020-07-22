@@ -1,42 +1,13 @@
 /* playground */
 
 main :: fn () s32 {
-    print("add(10, 20)     = %\n", add(10, 20));
-    print("add(0.1f, 0.5f) = %\n", add(0.1f, 0.5f));
-
-    i: s32;
-    j: s64;
-    j = i;
-
+    Foo.A();
     return 0;
 }
 
-s32_add :: fn (i: s32, j: s32) s32 {
-    return i + j;
+#namespace Foo
+A :: fn () {
 }
 
-f32_add :: fn (i: f32, j: f32) f32 {
-    return i + j;
+B :: fn (i: s32) {
 }
-
-add :: fn {
-    s32_add;
-    f32_add;
-}
-
-/*
-
-    - group must match in argument count
-    - group must have/haven't return value
-    
-    match
-    - based on rating value
-    - same arg type +2
-    - can implicit cast arg +1
-
-    AST  - AST_EXPR_LIT_FN_GROUP
-    Type - TypeFnGroup
-
-
-    MirFn *group_select_overload(const MirFnGroup *group, const MirType *expected_return_type, Array *arg_types)
-   */

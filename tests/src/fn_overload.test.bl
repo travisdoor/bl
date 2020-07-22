@@ -22,7 +22,7 @@ C :: fn (i: s32) {
     test_ptr_eq(auto invoked, auto typeinfo(C));
 }
 
-D :: fn (i: []s32) {
+D :: fn (i: Any) {
     test_ptr_eq(auto invoked, auto typeinfo(D));
 }
 
@@ -40,9 +40,8 @@ fn_overload_invoke :: fn () #test {
     invoked = typeinfo(C);
     group(1);
 
-    // @INCOMPLETE: this should be possible
-    //invoked = typeinfo(D);
-    //group({:[2]s32: 1, 2});
+    invoked = typeinfo(D);
+    group("hello");
 
     invoked = typeinfo(E);
     group();
