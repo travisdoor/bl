@@ -28,7 +28,7 @@
 
 #load "std/print.bl"
 
-string_null :: {:string: 0};
+string_empty :: {:string: 0};
 
 /*!
 # string_new
@@ -451,16 +451,22 @@ c_strcmp :: fn (first: *c_char, second: *c_char) c_int #extern "strcmp";
 STRING_BLOCK_SIZE :: 64 - sizeof(BlockHead);
 
 BlockHead :: struct {
-    allocated_size: usize
+    allocated_size: usize;
+    allocator: _AllocFn;
 };
 
 new :: fn () string {
-    return new_reserved(0);
+    tmp : string #noinit;
+    tmp.ptr = alloc_block(0, null);
+    tmp.len = 0;
+
+    set_terminator(tmp);
+    return tmp;
 };
 
 new_reserved :: fn (size: usize) string {
     tmp : string #noinit;
-    tmp.ptr = alloc_block(size);
+    tmp.ptr = alloc_block(size, null);
     tmp.len = 0;
 
     set_terminator(tmp);
@@ -469,7 +475,7 @@ new_reserved :: fn (size: usize) string {
 
 new_copy :: fn (v: string) string {
     tmp : string #noinit;
-    tmp.ptr = alloc_block(auto v.len);
+    tmp.ptr = alloc_block(auto v.len, null);
     tmp.len = v.len;
 
     memcpy(tmp.ptr, v.ptr, auto v.len);
@@ -481,7 +487,7 @@ new_copy :: fn (v: string) string {
 new_cstr :: fn (cstr: *u8) string {
     len :: c_strlen(auto cstr);
     tmp: string #noinit;
-    tmp.ptr = alloc_block(len);
+    tmp.ptr = alloc_block(len, null);
     tmp.len = auto len;
 
     memcpy(tmp.ptr, cstr, len * sizeof(u8));
@@ -491,9 +497,11 @@ new_cstr :: fn (cstr: *u8) string {
 }
 
 make_more_room_if_needed :: fn (ptr: *u8, size: usize) *u8 {
-    allocated := get_allocated_size(ptr);
+    head :: get_allocated_size(ptr);
+    allocated :: head.allocated_size;
+    allocator :: head.allocator;
     if size > allocated {
-        new_ptr := alloc_block(size);
+        new_ptr := alloc_block(size, allocator);
         memcpy(new_ptr, ptr, allocated);
         free(get_allocation_ptr(ptr));
 
@@ -503,29 +511,32 @@ make_more_room_if_needed :: fn (ptr: *u8, size: usize) *u8 {
     return ptr;
 };
 
-alloc_block :: fn (size: usize) *u8 {
+alloc_block :: fn (size: usize, allocator: _AllocFn) *u8 {
+    if !allocator { allocator = _context.alloc_fn; }
     d := size / STRING_BLOCK_SIZE + 1;
     size = d * STRING_BLOCK_SIZE;
 
     alloc_size := size + sizeof(BlockHead) + sizeof(u8);
-    tmp := cast(*BlockHead) alloc(alloc_size);
+    tmp := cast(*BlockHead) allocator(AllocOp.Allocate, alloc_size);
     if tmp == null { panic(); }
     tmp.allocated_size = size; 
+    tmp.allocator = allocator;
 
     return cast(*u8) (cast(usize) tmp + sizeof(BlockHead));
 };
 
 free_block :: fn (ptr: *u8) {
-    free(get_allocation_ptr(ptr));
+    head :: get_allocated_size(ptr);
+    allocator :: head.allocator;
+    allocator(AllocOp.Free, 0, get_allocation_ptr(ptr));
 };
 
 get_allocation_ptr :: fn (ptr: *u8) *u8 {
     return cast(*u8) ((cast(usize) ptr) - sizeof(BlockHead));
 };
 
-get_allocated_size :: fn (ptr: *u8) usize {
-    head := cast(*BlockHead) get_allocation_ptr(ptr);
-    return head.allocated_size;
+get_allocated_size :: fn (ptr: *u8) *BlockHead #inline {
+    return cast(*BlockHead) get_allocation_ptr(ptr);
 };
 
 set_terminator :: fn (v: string) {

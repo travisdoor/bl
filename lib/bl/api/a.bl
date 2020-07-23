@@ -89,18 +89,19 @@ safe casting.
   * `String` String type. 
 */
 TypeKind :: enum #compiler {
-    Type   :: 1;
-    Void   :: 2;
-    Int    :: 3;
-    Real   :: 4;
-    Fn     :: 5;
-    Ptr    :: 6;
-    Bool   :: 7;
-    Array  :: 8;
-    Struct :: 9;
-    Enum   :: 10;
-    Null   :: 11;
-    String :: 12;
+    Type    :: 1;
+    Void    :: 2;
+    Int     :: 3;
+    Real    :: 4;
+    Fn      :: 5;
+    Ptr     :: 6;
+    Bool    :: 7;
+    Array   :: 8;
+    Struct  :: 9;
+    Enum    :: 10;
+    Null    :: 11;
+    String  :: 12;
+    FnGroup :: 16;
 };
 
 /*!
@@ -183,17 +184,19 @@ TypeInfoFn :: struct #base TypeInfo #compiler {
   Detailed information about function types.
 
 ## Members
-  * `name` Function name.
   * `args` Slice of argument type infos.
   * `ret_type` Return type info.
   * `is_vargs` True when function has variable argument list.
 */
 TypeInfoFn :: struct #base TypeInfo #compiler {
-    name: string;
     args: []TypeInfoFnArg; 
     ret_type: *TypeInfo;
     is_vargs: bool; 
 };
+
+TypeInfoFnGroup :: struct #base TypeInfo #compiler {
+    variants: []*TypeInfoFn; 
+}
 
 /*!
 # TypeInfoPtr
@@ -494,41 +497,6 @@ CodeLocation :: struct #compiler {
 }
 
 /*!
-# _AllocFn
-## Declaration
-```c
-_AllocFn :: * fn (size: usize) *u8
-```
-
-## Description
-  Type of memory allocator function.
-
-## Arguments
-  * `size`
-    Size of the memory block in bytes. 
-*/
-_AllocFn :: * fn (size: usize) *u8;
-
-/*!
-# _FreeFn
-## Declaration
-```c
-_FreeFn :: * fn (p: *u8)
-```
-
-## Description
-  Type of memory free function.
-
-## Arguments
-  * `ptr`
-    Pointer to allocated memory block. 
-
-## Result
-  New allocated memory block.
-*/
-_FreeFn :: * fn (ptr: *u8);
-
-/*!
 # _PrintLogFn
 ## Declaration
 ```c
@@ -560,7 +528,6 @@ _AbortFn :: * fn ();
 ```c
 _Context :: struct {
     alloc_fn: _AllocFn;
-    free_fn: _FreeFn;
     print_log_fn: _PrintLogFn;
 }
 ```
@@ -582,9 +549,6 @@ _Context :: struct {
     /* Default memory allocation function. */
     alloc_fn: _AllocFn;
 
-    /* Defualt memory free function. */
-    free_fn: _FreeFn;
-
     /* Defualt debug log function. */
     print_log_fn: _PrintLogFn;
 
@@ -595,7 +559,7 @@ _Context :: struct {
 # _context 
 ## Declaration
 ```c
-_context := {:_Context: &_mem_alloc_default, &_mem_free_default, &_print_log_default}
+_context := {:_Context: &_mem_default_allocator, &_print_log_default}
 ```
 
 ## Description
@@ -605,8 +569,7 @@ be modified by user code. For example we can replace default memory allocator
 with custom one, this will affect all allocations made later.
 */
 _context := {:_Context: 
-                &_mem_alloc_default, 
-                &_mem_free_default, 
+                &_mem_allocator_default, 
                 &_print_log_default, 
                 &_os_abort_default,
             };

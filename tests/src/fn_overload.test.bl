@@ -2,47 +2,112 @@
 
 invoked: *TypeInfo;
 
-group :: fn {
-    A;
-    B;
-    C;
-    D;
-    E;
+group1 :: fn {
+    A1;
+    B1;
+    C1;
+    D1;
+    E1;
 }
 
-A :: fn (i: s32, j: s32) {
-    test_ptr_eq(auto invoked, auto typeinfo(A));
+A1 :: fn (i: s32, j: s32) {
+    test_ptr_eq(auto invoked, auto typeinfo(A1));
 }
 
-B :: fn (i: f32, j: f32) {
-    test_ptr_eq(auto invoked, auto typeinfo(B));
+B1 :: fn (i: f32, j: f32) {
+    test_ptr_eq(auto invoked, auto typeinfo(B1));
 }
 
-C :: fn (i: s32) {
-    test_ptr_eq(auto invoked, auto typeinfo(C));
+C1 :: fn (i: s32) {
+    test_ptr_eq(auto invoked, auto typeinfo(C1));
 }
 
-D :: fn (i: Any) {
-    test_ptr_eq(auto invoked, auto typeinfo(D));
+D1 :: fn (i: Any) {
+    test_ptr_eq(auto invoked, auto typeinfo(D1));
 }
 
-E :: fn () {
-    test_ptr_eq(auto invoked, auto typeinfo(E));
+E1 :: fn () {
+    test_ptr_eq(auto invoked, auto typeinfo(E1));
 }
 
-fn_overload_invoke :: fn () #test {
-    invoked = typeinfo(A);
-    group(10, 20);
+fn_overload_invoke1 :: fn () #test {
+    invoked = typeinfo(A1);
+    group1(10, 20);
 
-    invoked = typeinfo(B);
-    group(1.f, 0.f);
+    invoked = typeinfo(B1);
+    group1(1.f, 0.f);
 
-    invoked = typeinfo(C);
-    group(1);
+    invoked = typeinfo(C1);
+    group1(1);
 
-    invoked = typeinfo(D);
-    group("hello");
+    invoked = typeinfo(D1);
+    group1("hello");
 
-    invoked = typeinfo(E);
-    group();
+    invoked = typeinfo(E1);
+    group1();
+}
+
+group2 :: fn {
+    A2;
+    B2;
+    C2;
+}
+
+A2 :: fn (b := true) {
+    test_ptr_eq(auto invoked, auto typeinfo(A2));
+}
+
+B2 :: fn (i: s32, b := true) {
+    test_ptr_eq(auto invoked, auto typeinfo(B2));
+}
+
+C2 :: fn (i: string, b := true) {
+    test_ptr_eq(auto invoked, auto typeinfo(C2));
+}
+
+fn_overload_invoke2 :: fn () #test {
+    invoked = typeinfo(A2);
+    group2();
+
+    invoked = typeinfo(B2);
+    group2(10);
+
+    invoked = typeinfo(C2);
+    group2("hello");
+}
+
+
+group3 :: fn {
+    A3;
+    B3;
+    C3;
+}
+
+A3 :: fn (i: s32, b := true) {
+    test_ptr_eq(auto invoked, auto typeinfo(A3));
+}
+
+B3 :: fn (i: s32, s: bool, b := true) {
+    test_ptr_eq(auto invoked, auto typeinfo(B3));
+}
+
+C3 :: fn (i: string, b := true) {
+    test_ptr_eq(auto invoked, auto typeinfo(C3));
+}
+
+fn_overload_invoke3 :: fn () #test {
+    invoked = typeinfo(A3);
+    group3(10);
+
+    invoked = typeinfo(A3);
+    group3(10, true);
+
+    invoked = typeinfo(B3);
+    group3(10, true, false);
+
+    invoked = typeinfo(C3);
+    group3("hello", true);
+
+    invoked = typeinfo(C3);
+    group3("hello");
 }

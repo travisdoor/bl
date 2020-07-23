@@ -77,14 +77,58 @@ typeinfo_f64 :: fn () #test {
     assert(info.bit_count == auto sizeof(f64) * 8);
 };
 
-typeinfo_fn :: fn () #test {
+typeinfo_fn1 :: fn () #test {
     T :: fn (i: s32, j: bool) s32 { return 0; };
     info := cast(*TypeInfoFn) typeinfo(T);
 
     assert(info.base.kind == TypeKind.Fn);
     assert(info.args.len == 2);
     assert(!info.is_vargs);
-    test_eq(info.name, "T");
+    assert(info.ret_type == typeinfo(s32));
+
+    { // arg1
+        ai :: &info.args[0];
+        test_eq(ai.name, "i");
+        assert(ai.base_type == typeinfo(s32));
+    }
+
+    { // arg2
+        ai :: &info.args[1];
+        test_eq(ai.name, "j");
+        assert(ai.base_type == typeinfo(bool));
+    }
+};
+
+typeinfo_fn2 :: fn () #test {
+    T : fn (s32, bool) s32 : fn (i: s32, j: bool) s32 { return 0; };
+    info := cast(*TypeInfoFn) typeinfo(T);
+
+    assert(info.base.kind == TypeKind.Fn);
+    assert(info.args.len == 2);
+    assert(!info.is_vargs);
+    assert(info.ret_type == typeinfo(s32));
+
+    { // arg1
+        ai :: &info.args[0];
+        test_eq(ai.name, "i");
+        assert(ai.base_type == typeinfo(s32));
+    }
+
+    { // arg2
+        ai :: &info.args[1];
+        test_eq(ai.name, "j");
+        assert(ai.base_type == typeinfo(bool));
+    }
+};
+
+typeinfo_fn3 :: fn () #test {
+    ptr := &fn (i: s32, j: bool) s32 { return 0; };
+    info_ptr := cast(*TypeInfoPtr) typeinfo(ptr);
+    assert(info_ptr.base.kind == TypeKind.Ptr);
+    info := cast(*TypeInfoFn) info_ptr.pointee_type;
+    assert(info.base.kind == TypeKind.Fn);
+    test_eq(info.args.len, 2);
+    test_false(info.is_vargs);
     assert(info.ret_type == typeinfo(s32));
 
     { // arg1
@@ -126,26 +170,48 @@ typeinfo_enum :: fn () #test {
     assert(info.base.kind == TypeKind.Enum);
     assert(info.base_type != null);
     assert(info.variants.len == 3);
-    test_eq(info.name, "T");
     assert(info.variants[0].value == 0);
     assert(info.variants[1].value == 1);
     assert(info.variants[2].value == 2);
 };
 
-typeinfo_struct :: fn () #test {
-    T :: struct { A: s32; B: bool; C: f32 };
-    info := cast(*TypeInfoStruct) typeinfo(T);
+typeinfo_struct1 :: fn () #test {
+    T1 :: struct { A: s32; B: bool; C: f32 };
+    info := cast(*TypeInfoStruct) typeinfo(T1);
 
     assert(info.base.kind == TypeKind.Struct);
-    assert(info.base.size_bytes == sizeof(T));
-    test_eq(info.name, "T");
+    assert(info.base.size_bytes == sizeof(T1));
     assert(info.members.len == 3);
     assert(info.members[0].index == 0);
     assert(info.members[1].index == 1);
     assert(info.members[2].index == 2);
 };
 
-typeinfo_comparison :: fn () #test {
+typeinfo_struct2 :: fn () #test {
+    T2 :: struct { A: s32; B: bool; C: f32 };
+    Alias :: T2;
+    info := cast(*TypeInfoStruct) typeinfo(Alias);
+
+    test_true(info.base.kind == TypeKind.Struct);
+    test_eq(info.base.size_bytes, sizeof(T2));
+    test_eq(info.members.len, 3);
+    test_eq(info.members[0].index, 0);
+    test_eq(info.members[1].index, 1);
+    test_eq(info.members[2].index, 2);
+};
+
+typeinfo_group :: fn () #test {
+    F1 :: fn (i: s32) {};
+    F2 :: fn (j: string) {};
+    T :: fn { F1; F2; };
+    info := cast(*TypeInfoFnGroup)typeinfo(T);
+    test_true(info.base.kind == TypeKind.FnGroup);
+    test_eq(info.variants.len, 2);
+    test_true(info.variants[0] == typeinfo(F1));
+    test_true(info.variants[1] == typeinfo(F2));
+}
+
+typeinfo_comparison1 :: fn () #test {
     {
         T1 :: struct {
             i: s32;
@@ -154,7 +220,7 @@ typeinfo_comparison :: fn () #test {
 
         T2 :: T1;
 
-        assert(typeinfo(T1) == typeinfo(T2));
+        test_true(typeinfo(T1) == typeinfo(T2));
     }
 
     {
@@ -168,8 +234,18 @@ typeinfo_comparison :: fn () #test {
             j: bool;
         };
 
-        assert(typeinfo(T1) != typeinfo(T2));
+        test_true(typeinfo(T1) != typeinfo(T2));
     }
+
+    test_true(typeinfo(struct { i: s32 }) == typeinfo(struct { i: s32 }));
 }
 
+typeinfo_comparison2 :: fn () #test {
+    T1 :: fn () {
+    };
 
+    T2 :: fn () {
+    };
+
+    test_true(typeinfo(T1) == typeinfo(T2));
+}

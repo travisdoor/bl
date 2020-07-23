@@ -1,10 +1,7 @@
 #load "std/string.bl"
 
-// @INCOMPLETE: use test api + add more tests!!!
-// @INCOMPLETE: use test api + add more tests!!!
-// @INCOMPLETE: use test api + add more tests!!!
 #private
-test_strings_init :: fn () #test {
+test_strings_init1 :: fn () #test {
     s1 := string_new();
     assert(s1.ptr != null);
     assert(s1.len == 0);
@@ -18,6 +15,37 @@ test_strings_init :: fn () #test {
     string_append(&s1, true);
     assert(string_compare("foo12true", s1));
 };
+
+test_strings_init2 :: fn () #test {
+    s :: string_new();
+    defer string_delete(s);
+    test_eq(s.len, 0);
+    test_true(s.ptr);
+}
+
+test_strings_init3 :: fn () #test {
+    s :: string_new(100);
+    defer string_delete(s);
+    test_eq(s.len, 0);
+    test_true(s.ptr);
+}
+
+test_strings_init4 :: fn () #test {
+    s :: string_new("hello");
+    defer string_delete(s);
+    test_eq(s.len, 5);
+    test_true(s.ptr);
+    test_eq(s, "hello");
+}
+
+test_strings_init5 :: fn () #test {
+    cstr := {:[6]u8: 'h', 'e', 'l', 'l', 'o', '\0'};
+    s :: string_new(cstr.ptr);
+    defer string_delete(s);
+    test_eq(s.len, 5);
+    test_true(s.ptr);
+    test_eq(s, "hello");
+}
 
 test_string_split_by_last :: fn () #test {
     lhs: string;
@@ -109,4 +137,12 @@ test_string_to_s64 :: fn () #test {
     test_eq(string_to_s64("654132"), 654132);
     test_eq(string_to_s64("-1"), -1);
     test_eq(string_to_s64("-654132"), -654132);
+}
+
+test_string_to_f32 :: fn () #test {
+    test_eq(string_to_f32(""), 0.f);
+    test_eq(string_to_f32("1.1"), 1.1f);
+    test_eq(string_to_f32("654132.02"), 654132.02f);
+    test_eq(string_to_f32("-1.0"), -1.f);
+    test_eq(string_to_f32("-654.132"), -654.132f);
 }

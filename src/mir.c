@@ -735,8 +735,11 @@ rtti_gen_struct_members_slice(Context *cnt, VMStackPtr dest, TSmallArray_MemberP
 static MirVar *   rtti_gen_struct(Context *cnt, MirType *type);
 static void       rtti_gen_fn_arg(Context *cnt, VMStackPtr dest, MirArg *arg);
 static VMStackPtr rtti_gen_fn_args_array(Context *cnt, TSmallArray_ArgPtr *args);
+static VMStackPtr rtti_gen_fns_array(Context *cnt, TSmallArray_TypePtr *fns);
 static void       rtti_gen_fn_args_slice(Context *cnt, VMStackPtr dest, TSmallArray_ArgPtr *args);
 static MirVar *   rtti_gen_fn(Context *cnt, MirType *type);
+static void       rtti_gen_fn_slice(Context *cnt, VMStackPtr dest, TSmallArray_TypePtr *fns);
+static MirVar *   rtti_gen_fn_group(Context *cnt, MirType *type);
 
 /* INLINES */
 static INLINE bool can_mutate_comptime_to_const(MirInstr *instr)
@@ -842,14 +845,12 @@ static INLINE bool can_impl_cast(const MirType *from, const MirType *to)
 	  explicit information about casting.
 	 */
 	if (from->kind == MIR_TYPE_PTR && to->kind == MIR_TYPE_BOOL) return true;
-
 	/* Implicit cast of vargs to slice. */
 	if (from->kind == MIR_TYPE_VARGS && to->kind == MIR_TYPE_SLICE) {
 		from = mir_get_struct_elem_type(from, MIR_SLICE_PTR_INDEX);
 		to   = mir_get_struct_elem_type(to, MIR_SLICE_PTR_INDEX);
 		return type_cmp(from, to);
 	}
-
 	if (from->kind != to->kind) return false;
 
 	/* Check base types for structs. */
@@ -868,15 +869,11 @@ static INLINE bool can_impl_cast(const MirType *from, const MirType *to)
 
 		return false;
 	}
-
 	if (from->kind != MIR_TYPE_INT) return false;
 	if (from->data.integer.is_signed != to->data.integer.is_signed) return false;
-
 	const s32 fb = from->data.integer.bitcount;
 	const s32 tb = to->data.integer.bitcount;
-
 	if (fb > tb) return false;
-
 	return true;
 }
 
@@ -1568,8 +1565,11 @@ ID *lookup_builtins_rtti(Context *cnt)
 	LOOKUP_TYPE(InfoStructMember, INFO_STRUCT_MEMBER);
 	LOOKUP_TYPE(InfoEnumVariant, INFO_ENUM_VARIANT);
 	LOOKUP_TYPE(InfoFnArg, INFO_FN_ARG);
+	LOOKUP_TYPE(InfoFnGroup, INFO_FN_GROUP);
 
 	cnt->builtin_types->t_TypeInfo_ptr = create_type_ptr(cnt, cnt->builtin_types->t_TypeInfo);
+	cnt->builtin_types->t_TypeInfoFn_ptr =
+	    create_type_ptr(cnt, cnt->builtin_types->t_TypeInfoFn);
 	cnt->builtin_types->t_TypeInfo_slice =
 	    CREATE_TYPE_STRUCT_SLICE(cnt, NULL /* id */, cnt->builtin_types->t_TypeInfo_ptr);
 	cnt->builtin_types->t_TypeInfoStructMembers_slice = CREATE_TYPE_STRUCT_SLICE(
@@ -1578,6 +1578,8 @@ ID *lookup_builtins_rtti(Context *cnt)
 	    cnt, NULL /* id */, create_type_ptr(cnt, cnt->builtin_types->t_TypeInfoEnumVariant));
 	cnt->builtin_types->t_TypeInfoFnArgs_slice = CREATE_TYPE_STRUCT_SLICE(
 	    cnt, NULL /* id */, create_type_ptr(cnt, cnt->builtin_types->t_TypeInfoFnArg));
+	cnt->builtin_types->t_TypeInfoFn_ptr_slice = CREATE_TYPE_STRUCT_SLICE(
+	    cnt, NULL /* id */, create_type_ptr(cnt, cnt->builtin_types->t_TypeInfoFn_ptr));
 	cnt->builtin_types->is_rtti_ready = true;
 	return NULL;
 #undef LOOKUP_TYPE
@@ -5546,7 +5548,7 @@ AnalyzeResult analyze_instr_type_fn_group(Context *cnt, MirInstrTypeFnGroup *gro
 		variant_types->data[i] = variant_type;
 	}
 	MIR_CEV_WRITE_AS(
-	    MirType *, &group->base.value, create_type_fn_group(cnt, group->id, variant_types));
+	    MirType *, &group->base.value, create_type_fn_group(cnt, NULL, variant_types));
 	return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -7551,6 +7553,10 @@ MirVar *_rtti_gen(Context *cnt, MirType *type)
 		rtti_var = rtti_gen_fn(cnt, type);
 		break;
 
+	case MIR_TYPE_FN_GROUP:
+		rtti_var = rtti_gen_fn_group(cnt, type);
+		break;
+
 	default: {
 		char type_name[256];
 		mir_type_to_str(type_name, 256, type, true);
@@ -7894,6 +7900,22 @@ VMStackPtr rtti_gen_fn_args_array(Context *cnt, TSmallArray_ArgPtr *args)
 	return dest_arr_tmp;
 }
 
+VMStackPtr rtti_gen_fns_array(Context *cnt, TSmallArray_TypePtr *fns)
+{
+	MirType *  rtti_type    = cnt->builtin_types->t_TypeInfoFn_ptr;
+	MirType *  arr_tmp_type = create_type_array(cnt, NULL /* ID */, rtti_type, (s64)fns->size);
+	VMStackPtr dest_arr_tmp = vm_alloc_raw(cnt->vm, cnt->assembly, arr_tmp_type);
+	MirType *  it;
+	TSA_FOREACH(fns, it)
+	{
+		VMStackPtr dest_arr_tmp_elem =
+		    vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32)i);
+		MirVar *fn = _rtti_gen(cnt, it);
+		vm_write_ptr(rtti_type, dest_arr_tmp_elem, vm_read_var(cnt->vm, fn));
+	}
+	return dest_arr_tmp;
+}
+
 void rtti_gen_fn_args_slice(Context *cnt, VMStackPtr dest, TSmallArray_ArgPtr *args)
 {
 	MirType *  rtti_type     = cnt->builtin_types->t_TypeInfoFnArgs_slice;
@@ -7911,6 +7933,23 @@ void rtti_gen_fn_args_slice(Context *cnt, VMStackPtr dest, TSmallArray_ArgPtr *a
 	vm_write_ptr(dest_ptr_type, dest_ptr, args_ptr);
 }
 
+void rtti_gen_fn_slice(Context *cnt, VMStackPtr dest, TSmallArray_TypePtr *fns)
+{
+	MirType *  rtti_type     = cnt->builtin_types->t_TypeInfoFn_ptr_slice;
+	MirType *  dest_len_type = mir_get_struct_elem_type(rtti_type, 0);
+	VMStackPtr dest_len      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 0);
+
+	MirType *  dest_ptr_type = mir_get_struct_elem_type(rtti_type, 1);
+	VMStackPtr dest_ptr      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
+
+	const usize fnc     = fns ? fns->size : 0;
+	VMStackPtr  fns_ptr = NULL;
+	if (fnc) fns_ptr = rtti_gen_fns_array(cnt, fns);
+
+	vm_write_int(dest_len_type, dest_len, (u64)fnc);
+	vm_write_ptr(dest_ptr_type, dest_ptr, fns_ptr);
+}
+
 MirVar *rtti_gen_fn(Context *cnt, MirType *type)
 {
 	MirType *  rtti_type = cnt->builtin_types->t_TypeInfoFn;
@@ -7918,26 +7957,42 @@ MirVar *rtti_gen_fn(Context *cnt, MirType *type)
 	VMStackPtr dest      = vm_read_var(cnt->vm, rtti_var);
 	rtti_gen_base(cnt, dest, type->kind, type->store_size_bytes);
 
+#if 0
 	/* name */
 	MirType *   dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
 	VMStackPtr  dest_name      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
 	const char *name           = type->user_id ? type->user_id->str : type->id.str;
 	vm_write_string(cnt->vm, dest_name_type, dest_name, name, strlen(name));
+#endif
 
 	/* args */
-	VMStackPtr dest_args = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 2);
+	VMStackPtr dest_args = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
 	rtti_gen_fn_args_slice(cnt, dest_args, type->data.fn.args);
 
 	/* ret_type */
-	MirType *  dest_ret_type_type = mir_get_struct_elem_type(rtti_type, 3);
-	VMStackPtr dest_ret_type      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 3);
+	MirType *  dest_ret_type_type = mir_get_struct_elem_type(rtti_type, 2);
+	VMStackPtr dest_ret_type      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 2);
 	MirVar *   ret_type           = _rtti_gen(cnt, type->data.fn.ret_type);
 	vm_write_ptr(dest_ret_type_type, dest_ret_type, ret_type->value.data);
 
 	/* is_vargs */
-	MirType *  dest_is_vargs_type = mir_get_struct_elem_type(rtti_type, 4);
-	VMStackPtr dest_is_vargs      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 4);
+	MirType *  dest_is_vargs_type = mir_get_struct_elem_type(rtti_type, 3);
+	VMStackPtr dest_is_vargs      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 3);
 	vm_write_int(dest_is_vargs_type, dest_is_vargs, (u64)type->data.fn.is_vargs);
+
+	return rtti_var;
+}
+
+MirVar *rtti_gen_fn_group(Context *cnt, MirType *type)
+{
+	MirType *  rtti_type = cnt->builtin_types->t_TypeInfoFnGroup;
+	MirVar *   rtti_var  = rtti_create_and_alloc_var(cnt, rtti_type);
+	VMStackPtr dest      = vm_read_var(cnt->vm, rtti_var);
+	rtti_gen_base(cnt, dest, type->kind, type->store_size_bytes);
+
+	/* variants */
+	VMStackPtr dest_args = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
+	rtti_gen_fn_slice(cnt, dest_args, type->data.fn_group.variants);
 
 	return rtti_var;
 }
@@ -8808,6 +8863,7 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
 		MirInstr *type             = ast_type ? CREATE_TYPE_RESOLVER_CALL(ast_type) : NULL;
 		cnt->ast.current_entity_id = &ast_name->data.ident.id;
 		const bool use_initializer = is_struct_decl || is_global;
+
 		/* Struct use forward type declarations! */
 		if (is_struct_decl) {
 			// Set to const type fwd decl
@@ -8856,17 +8912,13 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
 				ast_create_global_initializer(cnt, NULL, decl_var);
 			}
 		}
-
 		/* Struct decl cleanup. */
 		if (is_struct_decl) {
 			cnt->ast.enable_incomplete_decl_refs = false;
 			cnt->ast.current_fwd_struct_decl     = NULL;
-
-			MirVar *var = ((MirInstrDeclVar *)decl_var)->var;
-
-			var->is_struct_typedef = true;
+			MirVar *var                          = ((MirInstrDeclVar *)decl_var)->var;
+			var->is_struct_typedef               = true;
 		}
-
 		cnt->ast.current_entity_id = NULL;
 	}
 
@@ -9821,22 +9873,22 @@ MirFn *group_select_overload(Context *                  cnt,
 
 		const usize argc  = it_fn->type->data.fn.args ? it_fn->type->data.fn.args->size : 0;
 		const usize eargc = expected_args->size;
-		if (argc == eargc) p += 2;
+		if (argc == eargc) p += 1;
 		const TSmallArray_ArgPtr *args = it_fn->type->data.fn.args;
 		if (args) {
 			for (int j = 0; j < args->size && j < expected_args->size; ++j) {
 				const MirType *t  = args->data[j]->type;
 				const MirType *et = expected_args->data[j];
 				if (type_cmp(et, t)) {
-					p += 2;
+					p += 3;
 					continue;
 				}
 				if (can_impl_cast(et, t)) {
-					p += 1;
+					p += 2;
 					continue;
 				}
 				if (type_cmp(t, cnt->builtin_types->t_Any)) {
-					p += 1;
+					p += 2;
 					continue;
 				}
 			}

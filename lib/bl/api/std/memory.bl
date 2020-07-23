@@ -46,8 +46,8 @@ function use allocator set in `_context.alloc_fn`
 ## Result
   Pointer to begin of the new allocated block of memory.
 */
-alloc :: fn (size: usize) *u8 {
-    mem :: _context.alloc_fn(size); 
+alloc :: fn (size: usize, loc := #call_location) *u8 {
+    mem :: _context.alloc_fn(AllocOp.Allocate, size, null, loc.file, loc.line); 
     if !mem { panic("Bad alloc"); }
     return mem;
 };
@@ -75,9 +75,9 @@ calloc :: fn (num: usize, size: usize) *u8
 ## Result
   Pointer to begin of the new allocated block of memory.
 */
-calloc :: fn (num: usize, size: usize) *u8 {
-    tmp := _context.alloc_fn(size * num);
-    return memset(tmp, 0, size * num);
+calloc :: fn (num: usize, size: usize, loc := #call_location) *u8 {
+    mem :: _context.alloc_fn(AllocOp.Allocate, size * num, null, loc.file, loc.line); 
+    return memset(mem, 0, size * num);
 };
 
 /*!
@@ -95,8 +95,8 @@ free :: fn (ptr: *u8)
   * `ptr`
     Memory to be deallocated. 
 */
-free :: fn (ptr: *u8) {
-    _context.free_fn(ptr);
+free :: fn (ptr: *u8, loc := #call_location) {
+    _context.alloc_fn(AllocOp.Free, 0, ptr, loc.file, loc.line); 
 };
 
 /*!
@@ -246,12 +246,26 @@ slice_terminate :: fn (_v: Any) #compiler {
     tmp.len = 0;
 }
 
-_mem_alloc_default :: fn (size: usize) *u8 {
-    c_malloc :: fn (size: c_size_t) c_void_ptr #extern "malloc";
-    return c_malloc(size);
+_AllocFn :: *fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := string_empty, line := 0) *u8;
+
+AllocOp :: enum {
+    Allocate;
+    Free;
+    Release;
 }
 
-_mem_free_default :: fn (ptr: *u8) {
+_mem_allocator_default :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := string_empty, line := 0) *u8 {
+    c_malloc :: fn (size: c_size_t) c_void_ptr #extern "malloc";
     c_free :: fn (ptr: c_void_ptr) #extern "free";
-    c_free(ptr);
+    switch operation {
+        AllocOp.Allocate {
+            return c_malloc(size);
+        }
+        AllocOp.Free {
+            c_free(ptr);
+        }
+        AllocOp.Release;
+        default { panic(); }
+    }
+    return null;
 }

@@ -1,13 +1,35 @@
 /* playground */
+#load "std/test.bl"
 
 main :: fn () s32 {
-    Foo.A();
+    F1 :: fn (i: s32) {};
+    F2 :: fn (j: string) {};
+    T :: fn { F1; F2; };
+    info := cast(*TypeInfoFnGroup)typeinfo(T);
+    test_true(info.base.kind == TypeKind.FnGroup);
+    test_eq(info.variants.len, 2);
+    test_true(info.variants[0] == typeinfo(F1));
+    test_true(info.variants[1] == typeinfo(F2));
+
     return 0;
 }
 
-#namespace Foo
-A :: fn () {
-}
 
-B :: fn (i: s32) {
+/*
+buffer: [4098]u8;
+bi: usize;
+my_allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := string_empty, line := 0) *u8 {
+    switch operation {
+        AllocOp.Allocate {
+            if bi >= auto buffer.len { panic(); }
+            mem :: ptr_shift_bytes(buffer.ptr, auto bi);
+            bi += size;
+            return mem;
+        }
+        AllocOp.Free {
+        }
+        default { panic(); }
+    }
+    return null; 
 }
+*/

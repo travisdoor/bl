@@ -319,7 +319,7 @@ struct MirTypeReal {
 struct MirTypeFn {
 	MirType *           ret_type;
 	TSmallArray_ArgPtr *args;
-	u64                 argument_hash; 
+	u64                 argument_hash;
 	bool                is_vargs;
 	bool                has_byval;
 	bool                has_sret;

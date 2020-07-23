@@ -34,6 +34,7 @@
 test_eq :: fn {
     str_eq;
     s64_eq;
+    u64_eq;
     f32_eq;
     f64_eq;
 }
@@ -42,6 +43,7 @@ test_eq :: fn {
 test_neq :: fn {
     str_neq;
     s64_neq;
+    u64_neq;
     f32_neq;
     f64_neq;
 }
@@ -203,6 +205,12 @@ s64_eq :: fn (got: s64, expected: s64, loc := #call_location) {
     assert(false, loc);
 }
 
+u64_eq :: fn (got: u64, expected: u64, loc := #call_location) {
+    if got == expected { return; }
+    print_err("Expected '%' got '%'.", expected, got);
+    assert(false, loc);
+}
+
 str_neq :: fn (got: string, not_expected: string, loc := #call_location) {
     if !string_compare(not_expected, got) { return; }
     print_err("Expected not to be '%'.", not_expected);
@@ -227,3 +235,8 @@ s64_neq :: fn (got: s64, not_expected: s64, loc := #call_location) {
     assert(false, loc);
 }
 
+u64_neq :: fn (got: u64, not_expected: u64, loc := #call_location) {
+    if got != not_expected { return; }
+    print_err("Expected not to be '%'.", not_expected);
+    assert(false, loc);
+}

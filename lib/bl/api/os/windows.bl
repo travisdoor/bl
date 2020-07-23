@@ -317,7 +317,7 @@ __os_start :: fn () #entry {
     command_line_arguments.ptr = args.ptr;
 
     out :: cast(s32) main();
-    _mem_free_default(auto args.ptr);
+    _mem_allocator_default(AllocOp.Free, 0, auto args.ptr); 
     exit(out);
 }
 
@@ -378,7 +378,7 @@ get_command_line_args :: fn (out_args: *[]string) #no_inline {
         tmp_size += auto win32_WideCharToMultiByte(CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
     }
 
-    buffer :: _mem_alloc_default(result_size + tmp_size); 
+    buffer :: _mem_allocator_default(AllocOp.Allocate, result_size + tmp_size); 
     if buffer == null { __os_abort(); }
 
     out_args.len = wargs.len;

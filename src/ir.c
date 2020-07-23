@@ -1167,9 +1167,11 @@ LLVMValueRef rtti_emit_fn(Context *cnt, MirType *type)
 	tsa_push_LLVMValue(&llvm_vals,
 	                   rtti_emit_base(cnt, base_type, type->kind, type->store_size_bytes));
 
+#if 0
 	/* name */
 	const char *name = type->user_id ? type->user_id->str : type->id.str;
 	tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, name, strlen(name)));
+#endif
 
 	/* args */
 	tsa_push_LLVMValue(&llvm_vals, rtti_emit_fn_args_slice(cnt, type->data.fn.args));
@@ -1178,7 +1180,7 @@ LLVMValueRef rtti_emit_fn(Context *cnt, MirType *type)
 	tsa_push_LLVMValue(&llvm_vals, _rtti_emit(cnt, type->data.fn.ret_type));
 
 	/* is_vargs */
-	MirType *is_vargs_type = mir_get_struct_elem_type(rtti_type, 4);
+	MirType *is_vargs_type = mir_get_struct_elem_type(rtti_type, 3);
 	tsa_push_LLVMValue(&llvm_vals,
 	                   LLVMConstInt(get_type(cnt, is_vargs_type),
 	                                (u64)type->data.fn.is_vargs,
@@ -2966,8 +2968,7 @@ State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 State emit_instr(Context *cnt, MirInstr *instr)
 {
 	State state = STATE_PASSED;
-	if (instr->value.type->kind == MIR_TYPE_TYPE) return state;
-
+	if (!mir_type_has_llvm_representation((instr->value.type))) return state;
 	switch (instr->kind) {
 	case MIR_INSTR_INVALID:
 		BL_ABORT("Invalid instruction")
