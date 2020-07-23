@@ -32,6 +32,8 @@ string_null :: {:string: 0};
 
 /*!
 # string_new
+  Overloaded function for string initialization.
+
 ## Declaration
 ```c
 fn () string
@@ -195,7 +197,7 @@ string_concatenate :: fn (v: *string, args: ...) {
 # string_compare
 ## Declaration
 ```c
-string_compare :: fn (first: string, second: string, n := 0) bool
+string_compare :: fn (first: string, second: string, n := -1) bool
 ```
 ## Description
   Compare two strings in specified range and return `true` 

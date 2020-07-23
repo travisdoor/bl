@@ -13,10 +13,18 @@ Add support of Tracy profiler.
 Add function call default argument values.
 Add #call_location hash directive.
 Add default argument type inferring.
+Add explicit function overload.
 Fix invalid type ID generation for incomplete structure types.
 Fix naming of array types in type info.
 Fix number serialization in print.
 Fix invalid insertion of empty vargs.
+
+@INCOMPLETE
+- Documentation: 
+  	- test case
+	- #call_location
+	- test api
+	- default arguments
 
 0.6.0 - BETA
 ---------------------------------------------------------------------------------------
