@@ -4779,28 +4779,24 @@ AnalyzeResult analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof)
 AnalyzeResult analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
 	BL_ASSERT(type_info->expr);
-
 	ID *missing_rtti_type_id = lookup_builtins_rtti(cnt);
 	if (missing_rtti_type_id) {
 		return ANALYZE_RESULT(WAITING, missing_rtti_type_id->hash);
 	}
-
 	if (analyze_slot(cnt, &analyze_slot_conf_basic, &type_info->expr, NULL) != ANALYZE_PASSED) {
 		return ANALYZE_RESULT(FAILED, 0);
 	}
-
 	MirType *type = type_info->expr->value.type;
-	BL_ASSERT(type);
-
+	BL_MAGIC_ASSERT(type);
 	if (type->kind == MIR_TYPE_TYPE) {
 		type = MIR_CEV_READ_AS(MirType *, &type_info->expr->value);
 		BL_MAGIC_ASSERT(type);
 	}
-
 	type_info->rtti_type = type;
 	rtti_gen(cnt, type);
-
 	type_info->base.value.type = cnt->builtin_types->t_TypeInfo_ptr;
+	
+	erase_instr_tree(type_info->expr, false, true);
 	return ANALYZE_RESULT(PASSED, 0);
 }
 

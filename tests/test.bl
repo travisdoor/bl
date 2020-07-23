@@ -1,4 +1,11 @@
 /* playground */
+
+/*
+    - typeinfo cannot be constant comptime known -> dereferncing null pointer
+    - volatile type would be better then volatile instruction
+    - referencing fn group cannot be generated in llvm
+ */
+
 #load "std/test.bl"
 
 main :: fn () s32 {

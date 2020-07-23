@@ -46,20 +46,20 @@ ss_new_from_file :: fn (file: File) *StringStream {
 }
 
 ss_delete :: fn (ss: *StringStream) {
-    if ss == null { return; }
+    if !ss { return; }
     ss_terminate(ss);
     free(auto ss);
 }
 
 ss_init_from_file :: fn (ss: *StringStream, file: File) {
-    if file == null { panic(); }
+    if !file { panic(); }
 
     ss._data = file_read_all(file);
     ss.i = 0;
 }
 
 ss_init :: fn (ss: *StringStream) {
-    ss._data = string_null;
+    ss._data = string_empty;
     ss.i = 0;
 }
 
