@@ -87,7 +87,7 @@ void *_assert_invalid_expr(const char *expr, const char *file, s32 line);
 	}
 #define BL_MAGIC_ASSERT(O)
 #define BL_MAGIC_ADD
-#define BL_MAGIC_SETUP(O)
+#define BL_MAGIC_SET(O)
 #endif
 
 #ifdef BL_DEBUG
