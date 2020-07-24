@@ -7,5 +7,29 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-    - run: |
-        git branch 
+    - name: Setup
+      run: cmake . -G "Visual Studio 16 2019" -Thost=x64 -DCMAKE_BUILD_TYPE=Release
+    - name: Compile
+      run: cmake --build . --config Release
+    - name: Configure
+      run: |
+        cd install
+        .\configure_win64.bat
+    - name: Run tests
+      run: bin\blc.exe -rt -no-warning tests\src\main.test.bl && ./out.exe
+    - name: Deploy binary
+      shell: powershell
+      run: |
+        mkdir blc-win64
+        cp lib blc-win64/lib
+        cp bin blc-win64/bin
+        cp syntax blc-win64/syntax
+        cp examples blc-win64/examples
+        cp install/configure_win64.bat blc-win64/bin/blc_configure.bat
+        cp changelog.txt blc-win64/changelog.txt
+        cp LEGAL blc-win64/LEGAL
+        cp LICENCE blc-win64/LICENCE
+        cp README.md blc-win64/README.md
+     - uses: montudor/action-zip@v0.1.0
+        with:
+          args: zip -qq -r ./blc-win64.zip ./blc-win64
