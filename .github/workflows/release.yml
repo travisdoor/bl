@@ -1,19 +1,11 @@
 name: Release
 on:
   workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Release branch name.'
-        required: true
-        default: 'release/<version>'
 
 jobs:
   windows:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
-      with:
-        ref: ${github.event.inputs.branch}
-
     - run: |
-        echo "Run in branch ${{ github.event.inputs.branch }}!"
+        git branch 
