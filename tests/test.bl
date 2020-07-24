@@ -9,15 +9,8 @@
 #load "std/test.bl"
 
 main :: fn () s32 {
-    F1 :: fn (i: s32) {};
-    F2 :: fn (j: string) {};
-    T :: fn { F1; F2; };
-    info := cast(*TypeInfoFnGroup)typeinfo(T);
-    test_true(info.base.kind == TypeKind.FnGroup);
-    test_eq(info.variants.len, 2);
-    test_true(info.variants[0] == typeinfo(F1));
-    test_true(info.variants[1] == typeinfo(F2));
-
+    //test_eq(string_to_s64("-1"), -1);
+    i: s64 = -1;
     return 0;
 }
 

@@ -7023,7 +7023,12 @@ ANALYZE_STAGE_FN(set_volatile_expr)
 	BL_ASSERT(slot_type);
 	if (slot_type->kind != MIR_TYPE_INT) return ANALYZE_STAGE_CONTINUE;
 	if (!is_instr_type_volatile(*input)) return ANALYZE_STAGE_CONTINUE;
-
+	const MirCastOp op = get_cast_op((*input)->value.type, slot_type);
+	BL_ASSERT(op != MIR_CAST_INVALID);
+	MirConstExprValue *value = &(*input)->value;
+	VMValue tmp   = {0};
+        vm_do_cast((VMStackPtr)&tmp[0], value->data, slot_type, value->type, op);
+	memcpy(&value->_tmp[0], &tmp[0], sizeof(VMValue));
 	(*input)->value.type = slot_type;
 	return ANALYZE_STAGE_BREAK;
 }

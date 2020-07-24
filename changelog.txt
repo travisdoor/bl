@@ -1,6 +1,7 @@
 0.7.0 - BETA
 ---------------------------------------------------------------------------------------
 DI generation reimplemented.
+Memory allocations provided via allocator API.
 Unit testing reimplemented to support native code testing.
 Speed up compilation with use of llvm.memset intrinsic for default values.
 Add default variable initialization.
@@ -18,6 +19,7 @@ Fix invalid type ID generation for incomplete structure types.
 Fix naming of array types in type info.
 Fix number serialization in print.
 Fix invalid insertion of empty vargs.
+Fix invalid casting of volatile-typed expressions.
 
 @INCOMPLETE
 - Documentation: 
