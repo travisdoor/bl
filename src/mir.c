@@ -9877,7 +9877,7 @@ MirFn *group_select_overload(Context *                  cnt,
 		if (argc == eargc) p += 1;
 		const TSmallArray_ArgPtr *args = it_fn->type->data.fn.args;
 		if (args) {
-			for (int j = 0; j < args->size && j < expected_args->size; ++j) {
+			for (usize j = 0; j < args->size && j < expected_args->size; ++j) {
 				const MirType *t  = args->data[j]->type;
 				const MirType *et = expected_args->data[j];
 				if (type_cmp(et, t)) {
