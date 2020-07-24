@@ -43,6 +43,9 @@
 	MirType *t_TypeInfoStructMembers_slice;
 	MirType *t_TypeInfoEnumVariants_slice;
 	MirType *t_TypeInfoFnArgs_slice;
+	MirType *t_TypeInfoFnGroup;
+	MirType *t_TypeInfoFn_ptr;
+	MirType *t_TypeInfoFn_ptr_slice;
 	MirType *t_TestCase;
 	MirType *t_TestCases_slice;
 	MirType *t_CodeLocation;

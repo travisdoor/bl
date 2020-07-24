@@ -107,6 +107,7 @@ TSMALL_ARRAY_TYPE(ArgPtr, struct MirArg *, 16);
 TSMALL_ARRAY_TYPE(InstrPtr, struct MirInstr *, 16);
 TSMALL_ARRAY_TYPE(ConstValuePtr, struct MirConstValue *, 16);
 TSMALL_ARRAY_TYPE(Char, char, 128);
+TSMALL_ARRAY_TYPE(FnPtr, struct MirFn *, 8);
 
 typedef struct ID {
 	const char *str;
@@ -120,24 +121,24 @@ void id_init(ID *id, const char *str);
  * platform due to inconsistency 'Unix vs Windows' path separators. This function will modify passed
  * buffer.
  */
-void win_fix_path(char *buf, usize buf_size);
-bool file_exists(const char *filepath);
-bool dir_exists(const char *dirpath);
+void        win_fix_path(char *buf, usize buf_size);
+bool        file_exists(const char *filepath);
+bool        dir_exists(const char *dirpath);
 const char *brealpath(const char *file, char *out, s32 out_len);
 const char *get_current_working_dir(char *buf, usize buf_size);
-bool get_dir_from_filepath(char *buf, const usize l, const char *filepath);
-bool get_filename_from_filepath(char *buf, const usize l, const char *filepath);
-bool get_current_exec_path(char *buf, usize buf_size);
-bool get_current_exec_dir(char *buf, usize buf_size);
-bool create_dir(const char *dirpath);
-bool create_dir_tree(const char *dirpath);
-void date_time(char *buf, s32 len, const char *format);
-bool is_aligned(const void *p, usize alignment);
-void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment);
-void print_bits(s32 const size, void const *const ptr);
-int count_bits(u64 n);
-void platform_lib_name(const char *name, char *buffer, usize max_len);
-f64 get_tick_ms(void);
+bool        get_dir_from_filepath(char *buf, const usize l, const char *filepath);
+bool        get_filename_from_filepath(char *buf, const usize l, const char *filepath);
+bool        get_current_exec_path(char *buf, usize buf_size);
+bool        get_current_exec_dir(char *buf, usize buf_size);
+bool        create_dir(const char *dirpath);
+bool        create_dir_tree(const char *dirpath);
+void        date_time(char *buf, s32 len, const char *format);
+bool        is_aligned(const void *p, usize alignment);
+void        align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment);
+void        print_bits(s32 const size, void const *const ptr);
+int         count_bits(u64 n);
+void        platform_lib_name(const char *name, char *buffer, usize max_len);
+f64         get_tick_ms(void);
 
 /*
  * Creates BArray inside Assembly arena.
@@ -150,8 +151,8 @@ TArray *create_arr(struct Assembly *assembly, usize size);
  * Note: no free is needed.
  */
 void *_create_sarr(struct Assembly *cnt, usize arr_size);
-u32 next_pow_2(u32 n);
-void color_print(FILE *stream, s32 color, const char *format, ...);
+u32   next_pow_2(u32 n);
+void  color_print(FILE *stream, s32 color, const char *format, ...);
 #define create_sarr(T, Asm) ((T *)_create_sarr((Asm), sizeof(T)))
 
 #endif

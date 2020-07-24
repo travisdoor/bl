@@ -11,6 +11,7 @@ union __INSTR_T {\
 	MirInstrRet            ret;\
 	MirInstrBinop          binop;\
 	MirInstrFnProto        fn_proto;\
+	MirInstrFnGroup        fn_group;\
 	MirInstrDeclRef        decl_ref;\
 	MirInstrDeclDirectRef  decl_direct_ref;\
 	MirInstrCall           call;\
@@ -30,6 +31,7 @@ union __INSTR_T {\
 	MirInstrTypeStruct     type_struct;\
 	MirInstrTypeFn         type_fn;\
 	MirInstrTypeEnum       type_enum;\
+	MirInstrTypeFnGroup    type_fn_group;\
 	MirInstrCast           cast;\
 	MirInstrSizeof         szof;\
 	MirInstrAlignof        alof;\
@@ -59,6 +61,7 @@ union __INSTR_T {\
 	MIR_INSTR_BINOP,
 	MIR_INSTR_RET,
 	MIR_INSTR_FN_PROTO,
+	MIR_INSTR_FN_GROUP,
 	MIR_INSTR_TYPE_FN,
 	MIR_INSTR_TYPE_STRUCT,
 	MIR_INSTR_TYPE_PTR,
@@ -67,6 +70,7 @@ union __INSTR_T {\
 	MIR_INSTR_TYPE_DYNARR,
 	MIR_INSTR_TYPE_VARGS,
 	MIR_INSTR_TYPE_ENUM,
+	MIR_INSTR_TYPE_FN_GROUP,
 	MIR_INSTR_CALL,
 	MIR_INSTR_DECL_REF,
 	MIR_INSTR_DECL_DIRECT_REF,
@@ -108,7 +112,6 @@ union __INSTR_T {\
 	MIR_BUILTIN_ID_TYPE_F64,
 	MIR_BUILTIN_ID_TYPE_VOID,
 	MIR_BUILTIN_ID_TYPE_STRING,
-
 	MIR_BUILTIN_ID_NULL,
 	MIR_BUILTIN_ID_MAIN,
 	MIR_BUILTIN_ID_ARR_LEN,
@@ -116,7 +119,6 @@ union __INSTR_T {\
 	MIR_BUILTIN_ID_ARR_ALLOCATED,
 	MIR_BUILTIN_ID_ARR_ELEM_SIZE,
 	MIR_BUILTIN_ID_STRUCT_BASE,
-
 	MIR_BUILTIN_ID_ANY,
 	MIR_BUILTIN_ID_ARRAY,
 	MIR_BUILTIN_ID_TYPE_KIND,
@@ -138,7 +140,7 @@ union __INSTR_T {\
 	MIR_BUILTIN_ID_TYPE_INFO_STRUCT_MEMBER,
 	MIR_BUILTIN_ID_TYPE_INFO_ENUM_VARIANT,
 	MIR_BUILTIN_ID_TYPE_INFO_FN_ARG,
-
+	MIR_BUILTIN_ID_TYPE_INFO_FN_GROUP,
 	MIR_BUILTIN_ID_ABORT_FN,
 	MIR_BUILTIN_ID_ARRAY_PUSH_FN,
 	MIR_BUILTIN_ID_ARRAY_TERMINATE_FN,
@@ -148,11 +150,8 @@ union __INSTR_T {\
 	MIR_BUILTIN_ID_ARRAY_INIT_FN,
 	MIR_BUILTIN_ID_SLICE_INIT_FN,
 	MIR_BUILTIN_ID_SLICE_TERMINATE_FN,
-
 	MIR_BUILTIN_ID_IS_DEBUG,
-
 	MIR_BUILTIN_ID_TYPE_TEST_CASES,
-
 	MIR_BUILTIN_ID_TYPE_CALL_LOCATION,
 #endif
 
@@ -200,6 +199,7 @@ union __INSTR_T {\
     {.str = "TypeInfoStructMember",  .hash = 0},
     {.str = "TypeInfoEnumVariant",   .hash = 0},
     {.str = "TypeInfoFnArg",         .hash = 0},
+    {.str = "TypeInfoFnGroup",       .hash = 0},
     {.str = "__os_abort",            .hash = 0},
     {.str = "array_push",            .hash = 0},
     {.str = "array_terminate",       .hash = 0},

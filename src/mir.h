@@ -70,6 +70,7 @@ typedef struct MirVariant        MirVariant;
 typedef struct MirArg            MirArg;
 typedef struct MirVar            MirVar;
 typedef struct MirFn             MirFn;
+typedef struct MirFnGroup        MirFnGroup;
 typedef struct MirConstExprValue MirConstExprValue;
 
 typedef struct MirInstr               MirInstr;
@@ -86,6 +87,7 @@ typedef struct MirInstrRet            MirInstrRet;
 typedef struct MirInstrBinop          MirInstrBinop;
 typedef struct MirInstrUnop           MirInstrUnop;
 typedef struct MirInstrFnProto        MirInstrFnProto;
+typedef struct MirInstrFnGroup        MirInstrFnGroup;
 typedef struct MirInstrCall           MirInstrCall;
 typedef struct MirInstrAddrOf         MirInstrAddrOf;
 typedef struct MirInstrCondBr         MirInstrCondBr;
@@ -94,6 +96,7 @@ typedef struct MirInstrArg            MirInstrArg;
 typedef struct MirInstrElemPtr        MirInstrElemPtr;
 typedef struct MirInstrMemberPtr      MirInstrMemberPtr;
 typedef struct MirInstrTypeFn         MirInstrTypeFn;
+typedef struct MirInstrTypeFnGroup    MirInstrTypeFnGroup;
 typedef struct MirInstrTypeStruct     MirInstrTypeStruct;
 typedef struct MirInstrTypeArray      MirInstrTypeArray;
 typedef struct MirInstrTypeSlice      MirInstrTypeSlice;
@@ -125,6 +128,7 @@ typedef struct MirArenas {
 	Arena member;
 	Arena variant;
 	Arena arg;
+	Arena fn_group;
 } MirArenas;
 
 typedef struct MirSwitchCase {
@@ -143,22 +147,23 @@ typedef enum MirBuiltinIdKind {
 } MirBuiltinIdKind;
 
 typedef enum MirTypeKind {
-	MIR_TYPE_INVALID = 0,
-	MIR_TYPE_TYPE    = 1,
-	MIR_TYPE_VOID    = 2,
-	MIR_TYPE_INT     = 3,
-	MIR_TYPE_REAL    = 4,
-	MIR_TYPE_FN      = 5,
-	MIR_TYPE_PTR     = 6,
-	MIR_TYPE_BOOL    = 7,
-	MIR_TYPE_ARRAY   = 8,
-	MIR_TYPE_STRUCT  = 9,
-	MIR_TYPE_ENUM    = 10,
-	MIR_TYPE_NULL    = 11,
-	MIR_TYPE_STRING  = 12,
-	MIR_TYPE_VARGS   = 13,
-	MIR_TYPE_SLICE   = 14,
-	MIR_TYPE_DYNARR  = 15,
+	MIR_TYPE_INVALID  = 0,
+	MIR_TYPE_TYPE     = 1,
+	MIR_TYPE_VOID     = 2,
+	MIR_TYPE_INT      = 3,
+	MIR_TYPE_REAL     = 4,
+	MIR_TYPE_FN       = 5,
+	MIR_TYPE_PTR      = 6,
+	MIR_TYPE_BOOL     = 7,
+	MIR_TYPE_ARRAY    = 8,
+	MIR_TYPE_STRUCT   = 9,
+	MIR_TYPE_ENUM     = 10,
+	MIR_TYPE_NULL     = 11,
+	MIR_TYPE_STRING   = 12,
+	MIR_TYPE_VARGS    = 13,
+	MIR_TYPE_SLICE    = 14,
+	MIR_TYPE_DYNARR   = 15,
+	MIR_TYPE_FN_GROUP = 16
 } MirTypeKind;
 
 typedef enum MirValueAddressMode {
@@ -261,6 +266,13 @@ struct MirFn {
 		DCCallback *     extern_callback_handle;
 		DyncallCBContext context;
 	} dyncall;
+	BL_MAGIC_ADD;
+};
+
+struct MirFnGroup {
+	Ast *              decl_node;
+	TSmallArray_FnPtr *variants;
+	BL_MAGIC_ADD;
 };
 
 /* MEMBER */
@@ -274,6 +286,7 @@ struct MirMember {
 	s32      tags;
 	bool     is_base; /* inherrited struct base */
 	bool     is_parent_union;
+	BL_MAGIC_ADD;
 };
 
 /* FUNCTION ARGUMENT */
@@ -306,11 +319,16 @@ struct MirTypeReal {
 struct MirTypeFn {
 	MirType *           ret_type;
 	TSmallArray_ArgPtr *args;
+	u64                 argument_hash;
 	bool                is_vargs;
 	bool                has_byval;
 	bool                has_sret;
 	bool                has_default_args;
 	MirBuiltinIdKind    builtin_id;
+};
+
+struct MirTypeFnGroup {
+	TSmallArray_TypePtr *variants;
 };
 
 struct MirTypePtr {
@@ -364,15 +382,17 @@ struct MirType {
 	MirVar *vm_rtti_var_cache;
 
 	union {
-		struct MirTypeInt    integer;
-		struct MirTypeFn     fn;
-		struct MirTypePtr    ptr;
-		struct MirTypeReal   real;
-		struct MirTypeArray  array;
-		struct MirTypeStruct strct;
-		struct MirTypeEnum   enm;
-		struct MirTypeNull   null;
+		struct MirTypeInt     integer;
+		struct MirTypeFn      fn;
+		struct MirTypeFnGroup fn_group;
+		struct MirTypePtr     ptr;
+		struct MirTypeReal    real;
+		struct MirTypeArray   array;
+		struct MirTypeStruct  strct;
+		struct MirTypeEnum    enm;
+		struct MirTypeNull    null;
 	} data;
+	BL_MAGIC_ADD;
 };
 
 /* VALUE */
@@ -581,12 +601,25 @@ struct MirInstrFnProto {
 	bool      pushed_for_analyze;
 };
 
+struct MirInstrFnGroup {
+	MirInstr base;
+
+	TSmallArray_InstrPtr *variants;
+};
+
 struct MirInstrTypeFn {
 	MirInstr base;
 
 	MirInstr *            ret_type;
 	TSmallArray_InstrPtr *args;
 	MirBuiltinIdKind      builtin_id;
+};
+
+struct MirInstrTypeFnGroup {
+	MirInstr base;
+
+	ID *                  id;
+	TSmallArray_InstrPtr *variants;
 };
 
 struct MirInstrTypeStruct {
@@ -820,15 +853,17 @@ static bool mir_is_global(const MirInstr *instr)
 	return mir_is_global_block(instr->owner_block);
 }
 
-void mir_arenas_init(MirArenas *arenas);
+static bool mir_type_has_llvm_representation(const MirType *type)
+{
+	BL_ASSERT(type);
+	return type->kind != MIR_TYPE_TYPE && type->kind != MIR_TYPE_FN_GROUP;
+}
 
-void mir_arenas_terminate(MirArenas *arenas);
-
-void mir_type_to_str(char *buf, usize len, const MirType *type, bool prefer_name);
-
+void        mir_arenas_init(MirArenas *arenas);
+void        mir_arenas_terminate(MirArenas *arenas);
+void        mir_type_to_str(char *buf, usize len, const MirType *type, bool prefer_name);
 const char *mir_instr_name(const MirInstr *instr);
-
-void mir_run(struct Assembly *assembly);
+void        mir_run(struct Assembly *assembly);
 
 #if BL_DEBUG
 VMStackPtr _mir_cev_read(MirConstExprValue *value);

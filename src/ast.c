@@ -143,6 +143,8 @@ const char *ast_get_name(const Ast *n)
 		return "TypePtr";
 	case AST_TYPE_VARGS:
 		return "TypeVargs";
+	case AST_TYPE_FN_GROUP:
+		return "TypeFnGroup";
 	case AST_EXPR_REF:
 		return "ExprRef";
 	case AST_EXPR_CAST:

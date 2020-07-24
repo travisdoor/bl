@@ -30,11 +30,11 @@ vargs_functions :: fn () #test {
 
 vargs_forward :: fn () #test {
     bar :: fn (args: ...s32) {
-        test_s32_eq(auto args.len, 3);
+        test_eq(args.len, 3);
     };
 
     foo :: fn (args: ...s32) {
-        test_s32_eq(auto args.len, 3);
+        test_eq(args.len, 3);
         bar(args);
     };
 
@@ -44,8 +44,8 @@ vargs_forward :: fn () #test {
 vargs_cast_to_slice :: fn () #test {
     foo :: fn (args: ...s32) {
         slice: []s32 = args;
-        test_s32_eq(auto args.len, 3);
-        test_s32_eq(auto args.len, auto slice.len);
+        test_eq(args.len, 3);
+        test_eq(args.len, slice.len);
         assert(args.ptr == slice.ptr);
     };
 
@@ -54,10 +54,10 @@ vargs_cast_to_slice :: fn () #test {
 
 vargs_multipe_args_before :: fn () #test {
     foo :: fn (i: s32, s: string, args: ...s32) {
-        test_s32_eq(i, auto args.len);
-        test_str_eq(s, "hello");
+        test_eq(i, args.len);
+        test_eq(s, "hello");
         loop j := 0; j < args.len; j += 1 {
-            test_s32_eq(args[j], j);
+            test_eq(args[j], j);
         }
     };
 

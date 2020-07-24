@@ -164,10 +164,10 @@ os_tick_ms :: fn () f64 #inline {
 os_get_real_path :: fn (filename: string) string {
     tmp: [OS_PATH_MAX]u8 #noinit;
     if _posix_realpath(filename.ptr, tmp.ptr) == null {
-        return string_copy(filename);
+        return string_new(filename);
     }
 
-    return string_new_cstr(tmp.ptr);
+    return string_new(tmp.ptr);
 }
 
 os_get_exec_path :: fn () string {
@@ -179,7 +179,7 @@ os_get_exec_path :: fn () string {
         return string_new(); 
     }
 
-    return string_new_cstr(buf.ptr);
+    return string_new(buf.ptr);
 }
 
 /*
@@ -286,10 +286,10 @@ _os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
 
         if info.d_type == auto DT_DIR {
             kind = _OSFileKind.Directory;
-            name = string_new_cstr(auto info.d_name.ptr);
+            name = string_new(cast(*u8) info.d_name.ptr);
         } else {
             kind = _OSFileKind.File;
-            name = string_new_cstr(auto info.d_name.ptr);
+            name = string_new(cast(*u8) info.d_name.ptr);
         }
 
         (^out_buf)[i] = {:_OSFileInfo: kind, name};
@@ -331,7 +331,7 @@ __os_start :: fn (argc: s64, argv: **u8, env: **u8) s32 #entry {
     command_line_arguments.len = args.len;
 
     if is_allocated {
-        command_line_arguments.ptr = auto _mem_alloc_default(sizeof(string) * auto args.len);
+        command_line_arguments.ptr = auto _mem_allocator_default(AllocOp.Allocate, sizeof(string) * auto args.len);
         if !command_line_arguments.ptr { __os_abort(); }
     } else {
         command_line_arguments.ptr = tmp.ptr;
@@ -344,7 +344,7 @@ __os_start :: fn (argc: s64, argv: **u8, env: **u8) s32 #entry {
     out :: cast(s32) main();
 
     if is_allocated {
-        _mem_free_default(auto command_line_arguments.ptr);
+        _mem_allocator_default(AllocOp.Free, 0, auto command_line_arguments.ptr);
     }
 
     return out;

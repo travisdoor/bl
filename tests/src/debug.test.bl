@@ -103,10 +103,10 @@ _expected_argc: s32;
 
 test_logger :: fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...) {
     assert(kind == _expected_kind);
-    test_str_eq(file, _expected_file);
-    test_s32_eq(line, _expected_line);
-    test_str_eq(format, _expected_format);
-    test_s32_eq(auto args.len, auto _expected_argc);
+    test_eq(file, _expected_file);
+    test_eq(line, _expected_line);
+    test_eq(format, _expected_format);
+    test_eq(args.len, _expected_argc);
 
     loop i := 0; i < args.len; i += 1 {
         test_not_null(auto args[i].type_info);

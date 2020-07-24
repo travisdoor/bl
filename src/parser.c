@@ -119,6 +119,7 @@ static Ast *     parse_type_arr(Context *cnt);
 static Ast *     parse_type_slice(Context *cnt);
 static Ast *     parse_type_dynarr(Context *cnt);
 static Ast *     parse_type_fn(Context *cnt, bool rq_named_args);
+static Ast *     parse_type_fn_group(Context *cnt);
 static Ast *     parse_type_struct(Context *cnt);
 static Ast *     parse_type_enum(Context *cnt);
 static Ast *     parse_type_ptr(Context *cnt);
@@ -973,7 +974,7 @@ Ast *parse_decl_member(Context *cnt, bool type_only)
 			            ERR_EXPECTED_TYPE,
 			            name->location,
 			            BUILDER_CUR_AFTER,
-			            "expected colon after struct member name");
+			            "Expected colon after struct member name.");
 		}
 		type = parse_type(cnt);
 	}
@@ -1448,17 +1449,6 @@ Ast *_parse_expr(Context *cnt, s32 p)
 	return lhs;
 }
 
-/*
- * Primary expression parser
- *
- * ( expression )
- * <null>
- * <#run>
- * <identifier>
- * <fn () {}>
- * <type>
- * <literal>
- */
 Ast *parse_expr_primary(Context *cnt)
 {
 	Ast *expr = NULL;
@@ -1695,12 +1685,11 @@ Ast *parse_expr_lit_fn_group(Context *cnt)
 	group->data.expr_fn_group.variants = variants;
 	Ast *tmp;
 NEXT:
-	if (parse_semicolon(cnt)) goto NEXT;
-	if ((tmp = parse_ident(cnt))) {
+	if ((tmp = parse_expr_ref(cnt))) {
 		tsa_push_AstPtr(variants, tmp);
+		parse_semicolon_rq(cnt);
 		goto NEXT;
 	}
-
 	Token *tok = tokens_consume_if(cnt->tokens, SYM_RBLOCK);
 	if (!tok) {
 		tok = tokens_peek_prev(cnt->tokens);
@@ -2011,7 +2000,11 @@ Ast *parse_type(Context *cnt)
 	Ast *type = NULL;
 
 	type = parse_type_ptr(cnt);
+	// keep order
+	if (!type) type = parse_type_fn_group(cnt);
 	if (!type) type = parse_type_fn(cnt, false);
+	// keep order
+
 	if (!type) type = parse_type_struct(cnt);
 	if (!type) type = parse_type_enum(cnt);
 	if (!type) type = parse_type_vargs(cnt);
@@ -2082,6 +2075,43 @@ NEXT:
 
 	fn->data.type_fn.ret_type = parse_type(cnt);
 	return fn;
+}
+
+Ast *parse_type_fn_group(Context *cnt)
+{
+	if (!tokens_is_seq(cnt->tokens, 2, SYM_FN, SYM_LBLOCK)) return NULL;
+	Token *tok_group = tokens_consume(cnt->tokens); // eat fn
+	Token *tok_begin = tokens_consume(cnt->tokens); // eat {
+	Ast *group = ast_create_node(cnt->ast_arena, AST_TYPE_FN_GROUP, tok_group, SCOPE_GET(cnt));
+
+	TSmallArray_AstPtr *variants       = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+	group->data.type_fn_group.variants = variants;
+	Ast *tmp;
+NEXT:
+	if (parse_semicolon(cnt)) goto NEXT;
+	if ((tmp = parse_type(cnt))) {
+		if (tmp->kind != AST_TYPE_FN) {
+			/* This check is important, when we decide to remove this, validation should
+			 * be handled in MIR. */
+			builder_msg(BUILDER_MSG_ERROR,
+			            ERR_INVALID_TYPE,
+			            tmp->location,
+			            BUILDER_CUR_WORD,
+			            "Expected function type.");
+		}
+		tsa_push_AstPtr(variants, tmp);
+		goto NEXT;
+	}
+
+	Token *tok = tokens_consume_if(cnt->tokens, SYM_RBLOCK);
+	if (!tok) {
+		tok = tokens_peek_prev(cnt->tokens);
+		PARSE_ERROR(
+		    ERR_EXPECTED_BODY_END, tok, BUILDER_CUR_AFTER, "Expected end of block '}'.");
+		PARSE_NOTE(tok_begin, BUILDER_CUR_WORD, "Block starting here.");
+		return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
+	}
+	return group;
 }
 
 Ast *parse_type_struct(Context *cnt)

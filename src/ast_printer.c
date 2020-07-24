@@ -83,6 +83,7 @@ static void print_block(Ast *block, s32 pad, FILE *stream);
 static void print_unrecheable(Ast *unr, s32 pad, FILE *stream);
 static void print_type_struct(Ast *strct, s32 pad, FILE *stream);
 static void print_type_enum(Ast *enm, s32 pad, FILE *stream);
+static void print_type_fn_group(Ast *group, s32 pad, FILE *stream);
 static void print_stmt_if(Ast *stmt_if, s32 pad, FILE *stream);
 static void print_stmt_switch(Ast *stmt_switch, s32 pad, FILE *stream);
 static void print_stmt_case(Ast *stmt_case, s32 pad, FILE *stream);
@@ -171,6 +172,17 @@ void print_type_struct(Ast *strct, s32 pad, FILE *stream)
 
 	Ast *node;
 	TSA_FOREACH(strct->data.type_strct.members, node)
+	{
+		print_node(node, pad + 1, stream);
+	}
+}
+
+void print_type_fn_group(Ast *group, s32 pad, FILE *stream)
+{
+	print_head(group, pad, stream);
+
+	Ast *node;
+	TSA_FOREACH(group->data.type_fn_group.variants, node)
 	{
 		print_node(node, pad + 1, stream);
 	}
@@ -459,6 +471,11 @@ void print_expr_lit_fn(Ast *fn, s32 pad, FILE *stream)
 void print_expr_lit_fn_group(Ast *group, s32 pad, FILE *stream)
 {
 	print_head(group, pad, stream);
+	Ast *tmp = NULL;
+	TSA_FOREACH(group->data.expr_fn_group.variants, tmp)
+	{
+		print_node(tmp, pad + 1, stream);
+	}
 }
 
 void print_expr_call(Ast *call, s32 pad, FILE *stream)
@@ -532,6 +549,10 @@ void print_node(Ast *node, s32 pad, FILE *stream)
 
 	case AST_TYPE_ENUM:
 		print_type_enum(node, pad, stream);
+		break;
+
+	case AST_TYPE_FN_GROUP:
+		print_type_fn_group(node, pad, stream);
 		break;
 
 	case AST_DECL_ENTITY:

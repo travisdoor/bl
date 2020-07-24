@@ -205,6 +205,10 @@ struct AstTypeFn {
 	TSmallArray_AstPtr *args;
 };
 
+struct AstTypeFnGroup {
+	TSmallArray_AstPtr *variants;
+};
+
 struct AstTypeStruct {
 	struct Scope *      scope;
 	TSmallArray_AstPtr *members;

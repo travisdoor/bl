@@ -32,6 +32,7 @@
 #load "fn_default_args.test.bl"
 #load "file.test.bl"
 #load "debug.test.bl"
+#load "fn_overload.test.bl"
 /////////////////////////////////////////////////////
 
 main :: fn () s32 {

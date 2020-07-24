@@ -46,6 +46,7 @@ union _SmallArrays {
 	TSmallArray_AstPtr        ast;
 	TSmallArray_ArgPtr        arg;
 	TSmallArray_SwitchCase    switch_case;
+	TSmallArray_FnPtr         fn;
 };
 
 static void tarray_dtor(TArray **arr)

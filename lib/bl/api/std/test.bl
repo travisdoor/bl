@@ -31,58 +31,34 @@
 #load "std/array.bl"
 
 // @DOC
-test_str_eq :: fn (got: string, expected: string, loc := #call_location) {
-    if string_compare(expected, got) { return; }
-    print_err("Expected '%' got '%'.", expected, got);
+test_eq :: fn {
+    str_eq;
+    s64_eq;
+    u64_eq;
+    f32_eq;
+    f64_eq;
+}
+
+// @DOC
+test_neq :: fn {
+    str_neq;
+    s64_neq;
+    u64_neq;
+    f32_neq;
+    f64_neq;
+}
+
+// @DOC
+test_true :: fn (v: bool, loc := #call_location) {
+    if v { return; }
+    print_err("Value expected to be true.");
     assert(false, loc);
 }
 
 // @DOC
-test_str_neq :: fn (got: string, not_expected: string, loc := #call_location) {
-    if !string_compare(not_expected, got) { return; }
-    print_err("Expected not to be '%'.", not_expected);
-    assert(false, loc);
-}
-
-// @DOC
-test_f32_eq :: fn (got: f32, expected: f32, epsilon: f32 = FEPSILON, loc := #call_location) {
-    if f32_compare(got, expected, epsilon) { return; }
-    print_err("Expected '%' got '%'.", expected, got);
-    assert(false, loc);
-}
-
-// @DOC
-test_f64_eq :: fn (got: f64, expected: f64, epsilon: f64 = EPSILON, loc := #call_location) {
-    if f64_compare(got, expected, epsilon) { return; }
-    print_err("Expected '%' got '%'.", expected, got);
-    assert(false, loc);
-}
-
-// @DOC
-test_s32_eq :: fn (got: s32, expected: s32, loc := #call_location) {
-    if got == expected { return; }
-    print_err("Expected '%' got '%'.", expected, got);
-    assert(false, loc);
-}
-
-// @DOC
-test_f32_neq :: fn (got: f32, not_expected: f32, epsilon: f32 = FEPSILON, loc := #call_location) {
-    if !f32_compare(got, not_expected, epsilon) { return; }
-    print_err("Expected not to be '%'.", not_expected);
-    assert(false, loc);
-}
-
-// @DOC
-test_f64_neq :: fn (got: f64, not_expected: f64, epsilon: f64 = EPSILON, loc := #call_location) {
-    if !f64_compare(got, not_expected, epsilon) { return; }
-    print_err("Expected not to be '%'.", not_expected);
-    assert(false, loc);
-}
-
-// @DOC
-test_s32_neq :: fn (got: s32, not_expected: s32, loc := #call_location) {
-    if got != not_expected { return; }
-    print_err("Expected not to be '%'.", not_expected);
+test_false :: fn (v: bool, loc := #call_location) {
+    if !v { return; }
+    print_err("Value expected to be false.");
     assert(false, loc);
 }
 
@@ -168,8 +144,6 @@ test_run :: fn () s32 {
 }
 
 #private
-FEPSILON :: 0.000001f;
-EPSILON :: 0.000001;
 TestRun :: struct {
     case: *TestCase;
     passed: bool;
@@ -205,4 +179,64 @@ worker :: fn (args: []Any) {
         _current.passed = true;
         print("[ PASS |      ] % (% ms)\n", _current.case.name, _current.runtime_ms);
     }
+}
+
+str_eq :: fn (got: string, expected: string, loc := #call_location) {
+    if string_compare(expected, got) { return; }
+    print_err("Expected '%' got '%'.", expected, got);
+    assert(false, loc);
+}
+
+f32_eq :: fn (got: f32, expected: f32, epsilon: f32 = F32_EPSILON, loc := #call_location) {
+    if compare(got, expected, epsilon) { return; }
+    print_err("Expected '%' got '%'.", expected, got);
+    assert(false, loc);
+}
+
+f64_eq :: fn (got: f64, expected: f64, epsilon: f64 = F64_EPSILON, loc := #call_location) {
+    if compare(got, expected, epsilon) { return; }
+    print_err("Expected '%' got '%'.", expected, got);
+    assert(false, loc);
+}
+
+s64_eq :: fn (got: s64, expected: s64, loc := #call_location) {
+    if got == expected { return; }
+    print_err("Expected '%' got '%'.", expected, got);
+    assert(false, loc);
+}
+
+u64_eq :: fn (got: u64, expected: u64, loc := #call_location) {
+    if got == expected { return; }
+    print_err("Expected '%' got '%'.", expected, got);
+    assert(false, loc);
+}
+
+str_neq :: fn (got: string, not_expected: string, loc := #call_location) {
+    if !string_compare(not_expected, got) { return; }
+    print_err("Expected not to be '%'.", not_expected);
+    assert(false, loc);
+}
+
+f32_neq :: fn (got: f32, not_expected: f32, epsilon: f32 = F32_EPSILON, loc := #call_location) {
+    if !compare(got, not_expected, epsilon) { return; }
+    print_err("Expected not to be '%'.", not_expected);
+    assert(false, loc);
+}
+
+f64_neq :: fn (got: f64, not_expected: f64, epsilon: f64 = F64_EPSILON, loc := #call_location) {
+    if !compare(got, not_expected, epsilon) { return; }
+    print_err("Expected not to be '%'.", not_expected);
+    assert(false, loc);
+}
+
+s64_neq :: fn (got: s64, not_expected: s64, loc := #call_location) {
+    if got != not_expected { return; }
+    print_err("Expected not to be '%'.", not_expected);
+    assert(false, loc);
+}
+
+u64_neq :: fn (got: u64, not_expected: u64, loc := #call_location) {
+    if got != not_expected { return; }
+    print_err("Expected not to be '%'.", not_expected);
+    assert(false, loc);
 }

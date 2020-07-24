@@ -1,35 +1,35 @@
 /* playground */
 
+/*
+    - typeinfo cannot be constant comptime known -> dereferncing null pointer
+    - volatile type would be better then volatile instruction
+    - referencing fn group cannot be generated in llvm
+ */
+
+#load "std/test.bl"
+
 main :: fn () s32 {
-    add(10, 30);
-    add(1.4f, 0.4f);
+    //test_eq(string_to_s64("-1"), -1);
+    i: s64 = -1;
     return 0;
 }
 
-s32_add :: fn (i: s32, j: s32) s32 {
-    return i + j;
-}
-
-f32_add :: fn (i: f32, j: f32) f32 {
-    return i + j;
-}
-
-add :: fn {
-    s32_add;
-    f32_add;
-}
 
 /*
-
-    - group must match in argument count
-    - group must have/haven't return value
-    
-    match
-    - based on rating value
-    - same arg type +2
-    - can implicit cast arg +1
-
-    AST  - AST_EXPR_LIT_FN_GROUP
-    Type - TypeFnGroup
-
-   */
+buffer: [4098]u8;
+bi: usize;
+my_allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := string_empty, line := 0) *u8 {
+    switch operation {
+        AllocOp.Allocate {
+            if bi >= auto buffer.len { panic(); }
+            mem :: ptr_shift_bytes(buffer.ptr, auto bi);
+            bi += size;
+            return mem;
+        }
+        AllocOp.Free {
+        }
+        default { panic(); }
+    }
+    return null; 
+}
+*/

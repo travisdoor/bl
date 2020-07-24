@@ -146,9 +146,6 @@ static void calculate_binop(MirType *  dest_type,
                             BinopKind  op);
 
 static void calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, MirType *type);
-static void
-do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, MirCastOp op);
-
 static void reset_stack(VMStack *stack);
 
 /* zero max nesting = unlimited nesting */
@@ -679,141 +676,6 @@ void calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, MirType *type)
 		BL_ABORT("invalid unop type");
 	}
 #undef UNOP_CASE
-}
-
-void do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *src_type, MirCastOp op)
-{
-	BL_ASSERT(dest && "Missing cast destination!");
-	BL_ASSERT(src && "Missing cast source!");
-	BL_ASSERT(dest_type && "Missing cast destination type!");
-	BL_ASSERT(src_type && "Missing cast source type!");
-
-	const usize src_size  = src_type->store_size_bytes;
-	const usize dest_size = dest_type->store_size_bytes;
-
-	switch (op) {
-	case MIR_CAST_INTTOPTR:
-	case MIR_CAST_PTRTOINT:
-	case MIR_CAST_NONE:
-	case MIR_CAST_BITCAST:
-	case MIR_CAST_ZEXT:
-	case MIR_CAST_TRUNC:
-		memset(dest, 0, dest_size);
-		memcpy(dest, src, src_size);
-		break;
-
-	case MIR_CAST_PTRTOBOOL: {
-		vm_write_int(dest_type, dest, vm_read_as(u64, src) > 0);
-		break;
-	}
-
-	case MIR_CAST_SEXT: {
-		/* src is smaller than dest */
-		switch (src_size) {
-		case 1:
-			vm_write_int(dest_type, dest, vm_read_as(s8, src));
-			break;
-		case 2:
-			vm_write_int(dest_type, dest, vm_read_as(s16, src));
-			break;
-		case 4:
-			vm_write_int(dest_type, dest, vm_read_as(s32, src));
-			break;
-		default:
-			abort();
-		}
-		break;
-	}
-
-	case MIR_CAST_FPEXT: {
-		/* src is smaller than dest */
-		vm_write_double(dest_type, dest, (f64)vm_read_float(src_type, src));
-		break;
-	}
-
-	case MIR_CAST_FPTRUNC: {
-		/* src is bigger than dest */
-		vm_write_float(dest_type, dest, (f32)vm_read_double(src_type, src));
-		break;
-	}
-
-	case MIR_CAST_FPTOUI:
-	case MIR_CAST_FPTOSI: {
-		/* real to signed integer same size */
-		switch (src_size) {
-		case 4: {
-			vm_write_int(dest_type, dest, vm_read_as(f32, src));
-			break;
-		}
-
-		case 8: {
-			vm_write_int(dest_type, dest, vm_read_as(f64, src));
-			break;
-		}
-		default:
-			BL_ABORT("Invalid!");
-		}
-		break;
-	}
-
-	case MIR_CAST_SITOFP: {
-		/**********************************************************************************/
-#define FP_WRITE(V)                                                                                \
-	if (dest_size == 4)                                                                        \
-		vm_write_as(f32, dest, (V));                                                       \
-	else                                                                                       \
-		vm_write_as(f64, dest, (V));
-		/**********************************************************************************/
-
-		/* signed integer real */
-		switch (src_size) {
-		case 1: {
-			FP_WRITE(vm_read_as(s8, src));
-			break;
-		}
-
-		case 2: {
-			FP_WRITE(vm_read_as(s16, src));
-			break;
-		}
-
-		case 4: {
-			FP_WRITE(vm_read_as(s32, src));
-			break;
-		}
-
-		case 8: {
-			FP_WRITE(vm_read_as(s64, src));
-			break;
-		}
-		default:
-			BL_ABORT("Invalid!");
-		}
-		break;
-#undef FP_WRITE
-	}
-
-	case MIR_CAST_UITOFP: {
-		const u64 v = vm_read_int(src_type, src);
-		switch (dest_size) {
-		case 4: {
-			vm_write_as(f32, dest, v);
-			break;
-		}
-
-		case 8: {
-			vm_write_as(f64, dest, v);
-			break;
-		}
-		default:
-			BL_ABORT("Invalid!");
-		}
-		break;
-	}
-
-	default:
-		BL_ABORT("invalid cast operation");
-	}
 }
 
 void print_call_stack(VM *vm, usize max_nesting)
@@ -1706,7 +1568,7 @@ void interp_instr_cast(VM *vm, MirInstrCast *cast)
 	MirType *  src_type  = cast->expr->value.type;
 	VMStackPtr src_ptr   = fetch_value(vm, &cast->expr->value);
 	VMValue    tmp       = {0};
-	do_cast((VMStackPtr)&tmp, src_ptr, dest_type, src_type, cast->op);
+	vm_do_cast((VMStackPtr)&tmp, src_ptr, dest_type, src_type, cast->op);
 	stack_push(vm, &tmp, dest_type);
 }
 
@@ -2179,10 +2041,12 @@ void eval_instr(VM *vm, MirInstr *instr)
 	case MIR_INSTR_BLOCK:
 	case MIR_INSTR_CONST:
 	case MIR_INSTR_FN_PROTO:
+	case MIR_INSTR_FN_GROUP:
 	case MIR_INSTR_CALL:
 	case MIR_INSTR_TYPE_ARRAY:
 	case MIR_INSTR_TYPE_PTR:
 	case MIR_INSTR_TYPE_FN:
+	case MIR_INSTR_TYPE_FN_GROUP:
 	case MIR_INSTR_TYPE_STRUCT:
 	case MIR_INSTR_TYPE_ENUM:
 	case MIR_INSTR_TYPE_SLICE:
@@ -2399,8 +2263,7 @@ void eval_instr_cast(VM UNUSED(*vm), MirInstrCast *cast)
 	MirType *  dest_type = cast->base.value.type;
 	MirType *  src_type  = cast->expr->value.type;
 	VMStackPtr src       = cast->expr->value.data;
-
-	do_cast(cast->base.value.data, src, dest_type, src_type, cast->op);
+	vm_do_cast(cast->base.value.data, src, dest_type, src_type, cast->op);
 }
 
 void eval_instr_addrof(VM UNUSED(*vm), MirInstrAddrOf *addrof)
@@ -2748,3 +2611,144 @@ VMStackPtr vm_get_array_elem_ptr(const MirType *type, VMStackPtr ptr, u32 i)
 {
 	return ptr + vm_get_array_elem_offset(type, i);
 }
+
+void vm_do_cast(VMStackPtr dest,
+                VMStackPtr src,
+                MirType *  dest_type,
+                MirType *  src_type,
+                MirCastOp  op)
+{
+	BL_ASSERT(dest && "Missing cast destination!");
+	BL_ASSERT(src && "Missing cast source!");
+	BL_ASSERT(src != dest && "Cast operation src and dest points to same memory.")
+	BL_ASSERT(dest_type && "Missing cast destination type!");
+	BL_ASSERT(src_type && "Missing cast source type!");
+
+	const usize src_size  = src_type->store_size_bytes;
+	const usize dest_size = dest_type->store_size_bytes;
+
+	switch (op) {
+	case MIR_CAST_INTTOPTR:
+	case MIR_CAST_PTRTOINT:
+	case MIR_CAST_NONE:
+	case MIR_CAST_BITCAST:
+	case MIR_CAST_ZEXT:
+	case MIR_CAST_TRUNC:
+		memset(dest, 0, dest_size);
+		memcpy(dest, src, src_size);
+		break;
+
+	case MIR_CAST_PTRTOBOOL: {
+		vm_write_int(dest_type, dest, vm_read_as(u64, src) > 0);
+		break;
+	}
+
+	case MIR_CAST_SEXT: {
+		/* src is smaller than dest */
+		switch (src_size) {
+		case 1:
+			vm_write_int(dest_type, dest, vm_read_as(s8, src));
+			break;
+		case 2:
+			vm_write_int(dest_type, dest, vm_read_as(s16, src));
+			break;
+		case 4:
+			vm_write_int(dest_type, dest, vm_read_as(s32, src));
+			break;
+		default:
+			abort();
+		}
+		break;
+	}
+
+	case MIR_CAST_FPEXT: {
+		/* src is smaller than dest */
+		vm_write_double(dest_type, dest, (f64)vm_read_float(src_type, src));
+		break;
+	}
+
+	case MIR_CAST_FPTRUNC: {
+		/* src is bigger than dest */
+		vm_write_float(dest_type, dest, (f32)vm_read_double(src_type, src));
+		break;
+	}
+
+	case MIR_CAST_FPTOUI:
+	case MIR_CAST_FPTOSI: {
+		/* real to signed integer same size */
+		switch (src_size) {
+		case 4: {
+			vm_write_int(dest_type, dest, vm_read_as(f32, src));
+			break;
+		}
+
+		case 8: {
+			vm_write_int(dest_type, dest, vm_read_as(f64, src));
+			break;
+		}
+		default:
+			BL_ABORT("Invalid!");
+		}
+		break;
+	}
+
+	case MIR_CAST_SITOFP: {
+		/**********************************************************************************/
+#define FP_WRITE(V)                                                                                \
+	if (dest_size == 4)                                                                        \
+		vm_write_as(f32, dest, (V));                                                       \
+	else                                                                                       \
+		vm_write_as(f64, dest, (V));
+		/**********************************************************************************/
+
+		/* signed integer real */
+		switch (src_size) {
+		case 1: {
+			FP_WRITE(vm_read_as(s8, src));
+			break;
+		}
+
+		case 2: {
+			FP_WRITE(vm_read_as(s16, src));
+			break;
+		}
+
+		case 4: {
+			FP_WRITE(vm_read_as(s32, src));
+			break;
+		}
+
+		case 8: {
+			FP_WRITE(vm_read_as(s64, src));
+			break;
+		}
+		default:
+			BL_ABORT("Invalid!");
+		}
+		break;
+#undef FP_WRITE
+	}
+
+	case MIR_CAST_UITOFP: {
+		const u64 v = vm_read_int(src_type, src);
+		switch (dest_size) {
+		case 4: {
+			vm_write_as(f32, dest, v);
+			break;
+		}
+
+		case 8: {
+			vm_write_as(f64, dest, v);
+			break;
+		}
+		default:
+			BL_ABORT("Invalid!");
+		}
+		break;
+	}
+
+	default:
+		BL_ABORT("invalid cast operation");
+	}
+}
+

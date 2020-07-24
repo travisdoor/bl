@@ -1,7 +1,7 @@
 #load "std/string.bl"
 
 #private
-test_strings_init :: fn () #test {
+test_strings_init1 :: fn () #test {
     s1 := string_new();
     assert(s1.ptr != null);
     assert(s1.len == 0);
@@ -14,8 +14,38 @@ test_strings_init :: fn () #test {
 
     string_append(&s1, true);
     assert(string_compare("foo12true", s1));
-
 };
+
+test_strings_init2 :: fn () #test {
+    s :: string_new();
+    defer string_delete(s);
+    test_eq(s.len, 0);
+    test_true(s.ptr);
+}
+
+test_strings_init3 :: fn () #test {
+    s :: string_new(100);
+    defer string_delete(s);
+    test_eq(s.len, 0);
+    test_true(s.ptr);
+}
+
+test_strings_init4 :: fn () #test {
+    s :: string_new("hello");
+    defer string_delete(s);
+    test_eq(s.len, 5);
+    test_true(s.ptr);
+    test_eq(s, "hello");
+}
+
+test_strings_init5 :: fn () #test {
+    cstr := {:[6]u8: 'h', 'e', 'l', 'l', 'o', '\0'};
+    s :: string_new(cstr.ptr);
+    defer string_delete(s);
+    test_eq(s.len, 5);
+    test_true(s.ptr);
+    test_eq(s, "hello");
+}
 
 test_string_split_by_last :: fn () #test {
     lhs: string;
@@ -71,4 +101,48 @@ test_string_split_by_first :: fn () #test {
 
     assert(!string_split_by_first("12341234", '/', &lhs, &rhs));
     assert(!string_split_by_first("", '/', &lhs, &rhs));
+}
+
+test_string_compare1 :: fn () #test {
+    test_true(string_compare("hello", "hello")); 
+    test_true(string_compare("", "")); 
+    test_false(string_compare("aaaa", "bb")); 
+    test_false(string_compare("aa", "bbbb")); 
+    test_false(string_compare("", "bbbb")); 
+    test_false(string_compare("aa", "")); 
+}
+
+test_string_compare2 :: fn () #test {
+    test_true(string_compare("", "", 0)); 
+    test_true(string_compare("", "", 10)); 
+    test_true(string_compare("hello", "hello", 0)); 
+    test_true(string_compare("hello", "hello", -1)); 
+    test_true(string_compare("hello", "hello", 3)); 
+    test_true(string_compare("bbaa", "bb", 2)); 
+    test_true(string_compare("b", "b", 100)); 
+    test_true(string_compare("b", "b", 0)); 
+    test_true(string_compare("bbbb", "b", 0)); 
+    test_true(string_compare("b", "bbbb", 0)); 
+    test_true(string_compare("bbbb", "b", 1)); 
+    test_true(string_compare("b", "bbbb", 1)); 
+    test_true(string_compare("", "b", 0)); 
+    test_true(string_compare("b", "", 0)); 
+    test_false(string_compare("", "b", 1)); 
+    test_false(string_compare("b", "", 1)); 
+}
+
+test_string_to_s64 :: fn () #test {
+    test_eq(string_to_s64(""), 0);
+    test_eq(string_to_s64("1"), 1);
+    test_eq(string_to_s64("654132"), 654132);
+    test_eq(string_to_s64("-1"), -1);
+    test_eq(string_to_s64("-654132"), -654132);
+}
+
+test_string_to_f32 :: fn () #test {
+    test_eq(string_to_f32(""), 0.f);
+    test_eq(string_to_f32("1.1"), 1.1f);
+    test_eq(string_to_f32("654132.02"), 654132.02f);
+    test_eq(string_to_f32("-1.0"), -1.f);
+    test_eq(string_to_f32("-654.132"), -654.132f);
 }
