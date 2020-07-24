@@ -43,7 +43,6 @@ struct MirFn;
 struct MirVar;
 struct Builder;
 struct Assembly;
-enum MirCastOp;
 
 typedef u8        VMValue[16];
 typedef ptrdiff_t VMRelativeStackPtr;
@@ -77,7 +76,7 @@ void vm_execute_instr(VM *vm, struct Assembly *assembly, struct MirInstr *instr)
 bool vm_eval_instr(VM *vm, struct Assembly *assembly, struct MirInstr *instr);
 bool vm_execute_instr_top_level_call(VM *vm, struct Assembly *assembly, struct MirInstrCall *call);
 bool vm_execute_fn(VM *vm, struct Assembly *assembly, struct MirFn *fn, VMStackPtr *out_ptr);
-void vm_do_cast(VMStackPtr dest, VMStackPtr src, struct MirType *dest_type, struct MirType *src_type, enum MirCastOp op);
+void vm_do_cast(VMStackPtr dest, VMStackPtr src, struct MirType *dest_type, struct MirType *src_type, s32 op);
 
 /* Allocate space on the stack for passed variable in VM. This method works also for comptime
  * variables, but it's used only for implicit compiler generated variables without SetInitializer

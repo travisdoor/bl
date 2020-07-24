@@ -2616,7 +2616,7 @@ void vm_do_cast(VMStackPtr dest,
                 VMStackPtr src,
                 MirType *  dest_type,
                 MirType *  src_type,
-                MirCastOp  op)
+                s32  op)
 {
 	BL_ASSERT(dest && "Missing cast destination!");
 	BL_ASSERT(src && "Missing cast source!");
