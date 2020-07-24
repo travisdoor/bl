@@ -20,17 +20,19 @@ jobs:
     - name: Prepare package
       shell: powershell
       run: |
-        mkdir blc-win64
-        cp lib blc-win64/lib
-        cp bin blc-win64/bin
-        cp syntax blc-win64/syntax
-        cp examples blc-win64/examples
-        cp install/configure_win64.bat blc-win64/bin/blc_configure.bat
-        cp changelog.txt blc-win64/changelog.txt
-        cp LEGAL blc-win64/LEGAL
-        cp LICENCE blc-win64/LICENCE
-        cp README.md blc-win64/README.md
-    - uses: montudor/action-zip@v0.1.0
+        mkdir dist 
+        cp -r lib dist
+        cp -r bin dist
+        cp -r syntax dist
+        cp -r examples dist
+        cp install/configure_win64.bat dist/bin/blc_configure.bat
+        cp changelog.txt dist
+        cp LEGAL dist
+        cp LICENCE dist 
+        cp README.md dist 
+    - name: Upload artifacts
+        uses: actions/upload-artifact@v1
         with:
-          args: zip -qq -r ./blc-win64.zip ./blc-win64
+          name: windows_artifacts
+          path: dist
 
