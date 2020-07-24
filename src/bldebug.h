@@ -74,11 +74,20 @@ void *_assert_invalid_expr(const char *expr, const char *file, s32 line);
 		BL_DEBUG_BREAK;                                                                    \
 		abort();                                                                           \
 	}
+#define BL_MAGIC_ASSERT(O)                                                                         \
+	{                                                                                          \
+		BL_ASSERT(O && "Invalid reference!");                                              \
+		BL_ASSERT((O)->_magic == (void *)&(O)->_magic && "Invalid magic!");                \
+	}
+#define BL_MAGIC_ADD void *_magic
+#define BL_MAGIC_SET(O) (O)->_magic = (void *)&(O)->_magic
 #else
 #define BL_ASSERT(e)                                                                               \
 	while (0) {                                                                                \
 	}
-
+#define BL_MAGIC_ASSERT(O)
+#define BL_MAGIC_ADD
+#define BL_MAGIC_SETUP(O)
 #endif
 
 #ifdef BL_DEBUG
@@ -102,10 +111,6 @@ void *_assert_invalid_expr(const char *expr, const char *file, s32 line);
 	while (0) {                                                                                \
 	}
 
-#define BL_MAGIC_ASSERT(O)
-#define BL_MAGIC_ADD
-#define BL_MAGIC_SETUP(O)
-
 #endif /* BL_DEBUG */
 
 #define BL_ABORT(format, ...)                                                                      \
@@ -125,14 +130,6 @@ void *_assert_invalid_expr(const char *expr, const char *file, s32 line);
 		print_trace();                                                                     \
 		abort();                                                                           \
 	}
-
-#define BL_MAGIC_ASSERT(O)                                                                         \
-	{                                                                                          \
-		BL_ASSERT(O && "Invalid reference!");                                              \
-		BL_ASSERT((O)->_magic == (void *)&(O)->_magic && "Invalid magic!");                \
-	}
-#define BL_MAGIC_ADD void *_magic
-#define BL_MAGIC_SET(O) (O)->_magic = (void *)&(O)->_magic
 
 #define BL_WARNING_ISSUE(N)                                                                        \
 	{                                                                                          \
