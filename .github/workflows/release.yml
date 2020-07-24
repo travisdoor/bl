@@ -28,7 +28,7 @@ jobs:
         cp install/configure_win64.bat dist/bin/blc_configure.bat
         cp changelog.txt dist
         cp LEGAL dist
-        cp LICENCE dist 
+        cp LICENSE dist 
         cp README.md dist 
     - uses: actions/upload-artifact@v1
       with:
