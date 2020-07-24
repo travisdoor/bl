@@ -31,6 +31,6 @@ jobs:
         cp LICENCE blc-win64/LICENCE
         cp README.md blc-win64/README.md
     - uses: montudor/action-zip@v0.1.0
-      with:
-        args: zip -qq -r ./blc-win64.zip ./blc-win64
+        with:
+          args: zip -qq -r ./blc-win64.zip ./blc-win64
 
