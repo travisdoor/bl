@@ -13,7 +13,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        ref: github.event.inputs.branch
+        ref: {github.event.inputs.branch}
 
     - run: |
         echo "Run in branch ${{ github.event.inputs.branch }}!"
