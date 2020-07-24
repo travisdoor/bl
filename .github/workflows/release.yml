@@ -30,8 +30,7 @@ jobs:
         cp LEGAL dist
         cp LICENCE dist 
         cp README.md dist 
-    - name: Upload artifacts
-        uses: actions/upload-artifact@v1
-        with:
-          name: windows_artifacts
-          path: dist
+    - uses: actions/upload-artifact@v1
+      with:
+        name: windows_artifacts
+        path: dist
