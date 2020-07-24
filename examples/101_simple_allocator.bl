@@ -1,27 +1,9 @@
-/* playground */
-
 // Simple static allocator and executable context
 
 /*
-   Sometimes we need to change behaviour of default used allocator (ex.: we want 
-   to log all allocations or allocate memory in pools etc.).
-
+   We can provide custom allocator instead of defult one in every BL program.
 */
 
-main :: fn () s32 {
-    orig_allocator :: _context.alloc_fn;
-    _context.alloc_fn = &my_allocator;
-    defer _context.alloc_fn = orig_allocator;
-
-    str :: string_new("abc");
-    defer string_delete(str);
-    loop i := 0; i < 100; i += 1 {
-        string_append(&str, i);
-    }
-    return 0;
-}
-
-#private 
 _buffer: [4098]u8;
 _bi: usize;
 my_allocator :: fn (
@@ -46,4 +28,17 @@ my_allocator :: fn (
         default { panic(); }
     }
     return null; 
+}
+
+main :: fn () s32 {
+    orig_allocator :: _context.alloc_fn;
+    _context.alloc_fn = &my_allocator;
+    defer _context.alloc_fn = orig_allocator;
+
+    str :: string_new("abc");
+    defer string_delete(str);
+    loop i := 0; i < 100; i += 1 {
+        string_append(&str, i);
+    }
+    return 0;
 }

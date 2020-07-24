@@ -94,19 +94,19 @@ print_err :: fn (format: string, args: ...) #inline {
 # assert
 ## Declaration
 ```c
-assert :: fn (cond: bool)
+assert :: fn (cond: bool, loc := #call_location)
 ```
 
 ## Description
-  Abort execution when passed condition is resulting in `false`
-  value.
+  Interrupt execution when `cond` is false. Assert use `_context.print_log_fn`
+to print out error message containing assert location in source code.
 
 ## Arguments
   * `cond`
     Condition to be validated. 
 
 */
-assert :: fn (cond: bool, loc: *CodeLocation = #call_location) {
+assert :: fn (cond: bool, loc := #call_location) {
     if cond { return; }
     _context.print_log_fn(PrintLogKind.Assert, loc.file, loc.line, "Assertion failed!");
     if IS_DEBUG { _os_debug_break(); } // @PERFORMANCE: cound be static if later

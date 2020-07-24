@@ -22,6 +22,15 @@ mkdir -p ${WDIR}/docs/API/std
 mv *.md ${WDIR}/docs/API/std
 cd ${WDIR}
 
+# Builtin
+cd lib/bl/api
+echo
+echo Process $(pwd)
+bdg *.bl
+mkdir -p ${WDIR}/docs/API/builtin
+mv *.md ${WDIR}/docs/API/builtin
+cd ${WDIR}
+
 # OS
 cd lib/bl/api/os
 echo

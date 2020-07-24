@@ -67,6 +67,7 @@ TypeKind :: enum #compiler {
     Enum   :: 10;
     Null   :: 11;
     String :: 12;
+    FnGroup :: 16;
 }
 ```
 
@@ -87,6 +88,7 @@ safe casting.
   * `Enum` Enumerator type. 
   * `Null` Null-value type. 
   * `String` String type. 
+  * `FnGroup` Function group type. 
 */
 TypeKind :: enum #compiler {
     Type    :: 1;
@@ -173,7 +175,6 @@ TypeInfoReal :: struct #base TypeInfo  #compiler {
 ## Declaration
 ```c
 TypeInfoFn :: struct #base TypeInfo #compiler {
-    name: string;
     args: []TypeInfoFnArg; 
     ret_type: *TypeInfo;
     is_vargs: bool;
@@ -194,6 +195,22 @@ TypeInfoFn :: struct #base TypeInfo #compiler {
     is_vargs: bool; 
 };
 
+
+/*!
+# TypeInfoFnGroup
+## Declaration
+```c
+TypeInfoFnGroup :: struct #base TypeInfo #compiler {
+    variants: []*TypeInfoFn; 
+}
+```
+
+## Description
+  Detailed information about function group and contained possible overloads.
+
+## Members
+  * `variants` Group content. 
+*/
 TypeInfoFnGroup :: struct #base TypeInfo #compiler {
     variants: []*TypeInfoFn; 
 }
@@ -250,6 +267,8 @@ TypeInfoStruct :: struct #base TypeInfo #compiler {
     name: string;
     members: []TypeInfoStructMember; 
     is_slice: bool
+    is_union: bool;
+    is_dynamic_array: bool;
 }
 ```
 
@@ -270,7 +289,7 @@ TypeInfoStruct :: struct #base TypeInfo #compiler {
     is_union: bool;
     is_dynamic_array: bool;
 
-    // CLEANUP: slice cannot be union, better way will be create separate type
+    // @CLEANUP: slice cannot be union, better way will be create separate type
     // kind for struct, slice and union, dynamic array could act like regular
     // array in type info.
 };
@@ -484,13 +503,57 @@ Any :: struct #compiler {
     data: *u8
 };
 
-// @DOC
+/*!
+# TestCase
+## Declaration
+```c
+TestCase :: struct #compiler {
+    func: *fn();
+    name: string;
+}
+```
+
+## Description
+  Type of test case record found during compilation.
+
+## Members
+  * `func` Pointer to test case function.
+  * `name` Name of the test case. 
+*/
 TestCase :: struct #compiler {
     func: *fn();
     name: string;
 }
 
-// @DOC
+/*!
+# CodeLocation
+## Declaration
+```c
+CodeLocation :: struct #compiler {
+    file: string;
+    line: s32;
+}
+```
+
+## Description
+  Type of source code location used by `#call_location` directive.
+
+## Members
+  * `file` Name of the source file.
+  * `line` Line in source file. 
+
+## Example
+```c
+foo :: fn (loc: *CodeLocation = #call_location) {
+    print("%\n", ^loc);
+}
+
+main :: fn () s32 {
+    foo();
+    return 0;
+}
+```
+*/
 CodeLocation :: struct #compiler {
     file: string;
     line: s32;
@@ -508,15 +571,15 @@ _PrintLogFn :: * fn (kind: PrintLogKind, format: string, args: []Any, file: stri
 
 ## Arguments
   * `kind`
-    Kind of report message. 
-  * `format`
-    Format string. 
-  * `args`
-    Slice of arguments. 
   * `file`
     Call side filename. 
   * `line`
     Call side line in source file. 
+    Kind of report message. 
+  * `format`
+    Format string. 
+  * `args`
+    Additional arguments. 
 */
 _PrintLogFn :: * fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...);
 
@@ -529,7 +592,8 @@ _AbortFn :: * fn ();
 _Context :: struct {
     alloc_fn: _AllocFn;
     print_log_fn: _PrintLogFn;
-}
+    abort_fn: _AbortFn;
+};
 ```
 
 ## Description
@@ -540,18 +604,14 @@ be modified by user code.
 ## Members
   * `alloc_fn`
     Pointer to memory allocator function. 
-  * `free_fn`
-    Pointer to memory free function. 
   * `print_log_fn`
-    Pointer to print log function. 
+    Pointer to log print function. 
+  * `abort_fn`
+    Pointer to abort handler function. 
 */
 _Context :: struct {
-    /* Default memory allocation function. */
     alloc_fn: _AllocFn;
-
-    /* Defualt debug log function. */
     print_log_fn: _PrintLogFn;
-
     abort_fn: _AbortFn;
 };
 
@@ -559,7 +619,11 @@ _Context :: struct {
 # _context 
 ## Declaration
 ```c
-_context := {:_Context: &_mem_default_allocator, &_print_log_default}
+_context := {:_Context: 
+                &_mem_allocator_default, 
+                &_print_log_default, 
+                &_os_abort_default,
+            };
 ```
 
 ## Description
@@ -578,7 +642,7 @@ _context := {:_Context:
 # command_line_arguments
 ## Declaration
 ```c
-command_line_arguments := {:[]string: 0}
+command_line_arguments: []string;
 ```
 
 ## Description

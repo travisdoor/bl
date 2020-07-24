@@ -32,7 +32,10 @@ string_empty :: {:string: 0};
 
 /*!
 # string_new
-  Overloaded function for string initialization.
+  Initialize new dynamic string. Created string is guaranteed to be zero terminated.
+
+!!! WARNING
+    Every new string must be deleted by `string_delete` call.
 
 ## Declaration
 ```c
@@ -43,6 +46,18 @@ fn () string
 ## Result
   New empty string.
 
+## Example
+```c
+main :: fn () s32 {
+    str :: string_new();
+    defer string_delete(str);
+    string_append(&str, "Hello");
+
+    print("str = %\n", str);
+    return 0;
+}
+```
+
 ---
 
 ## Declaration
@@ -50,13 +65,31 @@ fn () string
 fn (size: usize) string
 ```
 ## Description
-  Create new string with preallocated space.
+  Create new string with preallocated space. This type of string
+initialization can reduce count of allocations made later by extending
+string content. String with length up to `size` require only one memory
+allocation.
+
+!!! Hint
+    This initialization should be preferred if string length can be predicted.
+
 ## Arguments
   * `size`
     Preallocation size in characters.
 ## Result
   New string.
 
+## Example
+```c
+main :: fn () s32 {
+    str :: string_new(256);
+    defer string_delete(str);
+    string_append(&str, "Hello");
+
+    print("str = %\n", str);
+    return 0;
+}
+```
 ---
 
 ## Declaration
@@ -64,7 +97,7 @@ fn (size: usize) string
 fn (v: string) string
 ```
 ## Description
-  Create copy of the string.
+  Create copy of `v` string.
 ## Arguments
   * `v`
     String to be copied.
@@ -78,7 +111,7 @@ fn (v: string) string
 fn (cstr: *u8) string
 ```
 ## Description
-  Create copy of the C zero terminated string.
+  Create copy of C zero terminated string.
 ## Arguments
   * `v`
     Pointer to C string.
@@ -517,7 +550,7 @@ alloc_block :: fn (size: usize, allocator: _AllocFn) *u8 {
     size = d * STRING_BLOCK_SIZE;
 
     alloc_size := size + sizeof(BlockHead) + sizeof(u8);
-    tmp := cast(*BlockHead) allocator(AllocOp.Allocate, alloc_size);
+    tmp := cast(*BlockHead) allocator(AllocOp.Allocate, alloc_size, null, #file, #line);
     if tmp == null { panic(); }
     tmp.allocated_size = size; 
     tmp.allocator = allocator;
@@ -528,7 +561,7 @@ alloc_block :: fn (size: usize, allocator: _AllocFn) *u8 {
 free_block :: fn (ptr: *u8) {
     head :: get_allocated_size(ptr);
     allocator :: head.allocator;
-    allocator(AllocOp.Free, 0, get_allocation_ptr(ptr));
+    allocator(AllocOp.Free, 0, get_allocation_ptr(ptr), #file, #line);
 };
 
 get_allocation_ptr :: fn (ptr: *u8) *u8 {
