@@ -21,13 +21,6 @@ Fix number serialization in print.
 Fix invalid insertion of empty vargs.
 Fix invalid casting of volatile-typed expressions.
 
-@INCOMPLETE
-- Documentation: 
-  	- test case
-	- #call_location
-	- test api
-	- default arguments
-
 0.6.0 - BETA
 ---------------------------------------------------------------------------------------
 Add implicit cast from array to slice. (Fixed compile time vs constant IR code emit).

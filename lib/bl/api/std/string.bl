@@ -242,7 +242,8 @@ if they are same otherwise return `false`.
   * `second`
     Second string to be compared.
   * `n`
-    Count of characters to be compared.
+    Optional count of characters to be compared. This value is ignored
+    when less than 0 (default is -1).
 
 ## Result
   Return `true` if `n` characters in `first` string are same as the same range in `second` string.

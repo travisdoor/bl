@@ -132,19 +132,6 @@ os_tick_ms :: fn () f64 #inline {
     return (cast(f64) t / cast(f64) f) * 1000.;
 };
 
-/*
- * os_get_real_path 
- *
- * Description:
- *   Find real path of passed file.
- * 
- * Arguments: 
- *   filename: 
- *     Desired existing file name or relative path. 
- *
- * Result: 
- *   Absolute file path.
- */
 os_get_real_path :: fn (filename: string) string {
     buf : [OS_PATH_MAX]u8 #noinit;
     if win32_GetFullPathNameA(auto filename.ptr, auto buf.len, buf.ptr, null) > 0 {
@@ -167,20 +154,6 @@ os_get_exec_path :: fn () string {
     return string_new(); 
 }
 
-/*
- * os_dlopen
- *
- * Description:
- *   Dynamically link native library file. 
- * 
- * Arguments: 
- *   lib_name: 
- *     Name of the library. If lib_name is empty string, then function return 
- *     handle for main program. 
- *
- * Result: 
- *   Library handle or null.
- */
 os_dlopen :: fn (lib_name: string) OSLibrary {
     if lib_name.len > 0 {
         return win32_LoadLibraryA(auto lib_name.ptr); 
@@ -189,37 +162,10 @@ os_dlopen :: fn (lib_name: string) OSLibrary {
     return win32_GetModuleHandleA(null); 
 }
 
-/*
- * os_dlsym
- *
- * Description:
- *   Dynamically load procedure. 
- * 
- * Arguments: 
- *   lib: 
- *     Library handle.
- * 
- *   sym_name: 
- *     Symbol name.
- *
- * Result: 
- *   Procedure handle or null.
- */
 os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 {
     return win32_GetProcAddress(lib, auto sym_name.ptr);
 }
 
-/*
- * os_close
- *
- * Description:
- *   Close dynamically loded library. 
- * 
- * Arguments: 
- *   lib: 
- *     Library handle. 
- *
- */
 os_dlclose :: fn (lib: OSLibrary) {
     win32_FreeLibrary(lib);
 }

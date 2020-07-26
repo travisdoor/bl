@@ -1,3 +1,4 @@
+//---------------------------------------------------------------------------
 /*!
 # os_thread_create
 ## Declaration
@@ -38,6 +39,7 @@ main :: fn () s32 {
 ```
 */
 
+//---------------------------------------------------------------------------
 
 /*!
 # os_thread_join
@@ -53,7 +55,43 @@ os_thread_join :: fn (thread: OSThread)
     Thread to be joined. 
 */
 
+//---------------------------------------------------------------------------
 
+/*!
+# os_thread_current
+## Declaration
+```c
+os_thread_current :: fn () OSThread #inline
+```
+## Description
+  Return handle to current thread.
+
+## Result
+  Thread handle.
+*/
+
+//---------------------------------------------------------------------------
+
+/*!
+# os_thread_kill
+## Declaration
+```c
+os_thread_kill :: fn (thread: OSThread, exit_code: s32 = 0) bool #inline
+```
+## Description
+  Interrupt thread with exit code.
+
+## Arguments
+  * `thread`
+    Thread to be interrupted. 
+  * `exit_code`
+    Optional exit code.
+
+## Result
+  Return true on success.
+*/
+
+//---------------------------------------------------------------------------
 
 /*!
 # os_mutex_init 
@@ -72,7 +110,7 @@ os_mutex_init :: fn (mutex: *OSMutex)
     Mutex to be initialized. 
 */
 
-
+//---------------------------------------------------------------------------
 
 /*!
 # os_mutex_terminate 
@@ -88,7 +126,7 @@ os_mutex_terminate :: fn (mutex: *OSMutex)
     Mutex to be terminated. 
 */
 
-
+//---------------------------------------------------------------------------
 
 /*!
 # os_mutex_lock 
@@ -104,7 +142,7 @@ os_mutex_lock :: fn (mutex: *OSMutex)
     Mutex to be locked. 
 */
 
-
+//---------------------------------------------------------------------------
 
 /*!
 # os_mutex_trylock 
@@ -123,7 +161,7 @@ os_mutex_trylock :: fn (mutex: *OSMutex) bool
   True when mutex was locked.
 */
 
-
+//---------------------------------------------------------------------------
 
 /*!
 # os_mutex_unlock 
@@ -139,3 +177,144 @@ os_mutex_unlock :: fn (mutex: *OSMutex)
     Mutex instance. 
 */
 
+//---------------------------------------------------------------------------
+
+/*!
+# os_sleep_ms
+## Declaration
+```c
+os_sleep_ms :: fn (ms: f64) #inline
+```
+## Description
+  Sleep for milliseconds.
+
+## Arguments
+  * `ms`
+    Time in ms. 
+*/
+
+//---------------------------------------------------------------------------
+
+/*!
+# os_tick_ms
+## Declaration
+```c
+os_tick_ms :: fn () f64 #inline
+```
+## Description
+  Return system tick in ms.
+
+## Result
+  System tick.
+*/
+
+//---------------------------------------------------------------------------
+
+
+/*!
+# os_get_real_path
+## Declaration
+```c
+os_get_real_path :: fn (filename: string) string
+```
+## Description
+  Find real path of passed file or directory name.
+
+## Arguments
+  * `filename`
+    Name of the file or directory. 
+
+## Result
+  Real path.
+*/
+
+//---------------------------------------------------------------------------
+
+/*!
+# os_get_exec_path
+## Declaration
+```c
+os_get_exec_path :: fn () string
+```
+## Description
+  Return absolute path of current executed program.
+
+## Result
+  Executable path.
+*/
+
+//---------------------------------------------------------------------------
+
+/*!
+# os_dlopen
+## Declaration
+```c
+os_dlopen :: fn (lib_name: string) OSLibrary
+```
+## Description
+  Dynamically link native binary from file.
+
+## Arguments
+  * `lib_name`
+    Name of the library. If lib_name is empty string, then function return 
+    handle for main program. 
+
+## Result
+  Binary handle.
+*/
+
+//---------------------------------------------------------------------------
+
+/*!
+# os_dlsym
+## Declaration
+```c
+os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8
+```
+## Description
+  Get handle of entity from dynamically loaded binary file.
+
+## Arguments
+  * `lib`
+    Binary handle.
+  * `sym_name`
+    Name of desired symbol
+
+## Result
+  Entity handle or `null`.
+*/
+
+//---------------------------------------------------------------------------
+
+/*!
+# os_dlclose
+## Declaration
+```c
+os_dlclose :: fn (lib: OSLibrary)
+```
+## Description
+  Close dynamically loaded binary.
+
+## Arguments
+  * `lib`
+    Binary handle.
+*/
+
+//---------------------------------------------------------------------------
+
+/*!
+# os_execute
+## Declaration
+```c
+os_execute :: fn (command: string) s32
+```
+## Description
+  Execute command in native shell and return exit code.
+
+## Arguments
+  * `command`
+    Command to be executed.
+
+## Result
+  Execution exit code.
+*/
