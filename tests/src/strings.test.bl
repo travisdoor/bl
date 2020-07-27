@@ -146,3 +146,154 @@ test_string_to_f32 :: fn () #test {
     test_eq(string_to_f32("-1.0"), -1.f);
     test_eq(string_to_f32("-654.132"), -654.132f);
 }
+
+test_string_to_lower :: fn () #test {
+    tmp := string_new();
+    defer string_delete(tmp);
+
+    string_clear(&tmp);
+    string_append(&tmp, "");
+    string_to_lower(tmp);
+    test_eq(tmp, "");
+
+    string_clear(&tmp);
+    string_append(&tmp, "AaAaa AAa ");
+    string_to_lower(tmp);
+    test_eq(tmp, "aaaaa aaa ");
+
+    string_clear(&tmp);
+    string_append(&tmp, "0123456789~!@#$%^&*()_+");
+    string_to_lower(tmp);
+    test_eq(tmp, "0123456789~!@#$%^&*()_+");
+}
+
+test_string_to_upper :: fn () #test {
+    tmp := string_new();
+    defer string_delete(tmp);
+
+    string_clear(&tmp);
+    string_append(&tmp, "");
+    string_to_upper(tmp);
+    test_eq(tmp, "");
+
+    string_clear(&tmp);
+    string_append(&tmp, "AaAaa AAa ");
+    string_to_upper(tmp);
+    test_eq(tmp, "AAAAA AAA ");
+
+    string_clear(&tmp);
+    string_append(&tmp, "0123456789~!@#$%^&*()_+");
+    string_to_upper(tmp);
+    test_eq(tmp, "0123456789~!@#$%^&*()_+");
+}
+
+test_string_replace1 :: fn () #test {
+    tmp := string_new();
+    defer string_delete(tmp);
+
+    string_clear(&tmp);
+    string_append(&tmp, "");
+    test_eq(string_replace_all(&tmp, ' ', ','), 0);
+    test_eq(tmp, "");
+
+    string_clear(&tmp);
+    string_append(&tmp, "1 23 456 7 89 ");
+    test_eq(string_replace_all(&tmp, ' ', ','), 5);
+    test_eq(tmp, "1,23,456,7,89,");
+
+    string_clear(&tmp);
+    string_append(&tmp, "     ");
+    test_eq(string_replace_all(&tmp, ' ', ','), 5);
+    test_eq(tmp, ",,,,,");
+}
+
+test_string_replace2 :: fn () #test {
+    tmp := string_new();
+    defer string_delete(tmp);
+
+    string_clear(&tmp);
+    string_append(&tmp, "");
+    test_eq(string_replace_all(&tmp, ' '), 0);
+    test_eq(tmp.len, 0);
+    test_eq(tmp, "");
+
+    string_clear(&tmp);
+    string_append(&tmp, "     ");
+    test_eq(string_replace_all(&tmp, ' '), 5);
+    test_eq(tmp.len, 0);
+    test_eq(tmp, "");
+
+    string_clear(&tmp);
+    string_append(&tmp, " 12  345 6 789     ");
+    test_eq(string_replace_all(&tmp, ' '), 10);
+    test_eq(tmp.len, 9);
+    test_eq(tmp, "123456789");
+
+    string_clear(&tmp);
+    string_append(&tmp, " 12  345 6 78     9");
+    test_eq(string_replace_all(&tmp, ' '), 10);
+    test_eq(tmp.len, 9);
+    test_eq(tmp, "123456789");
+
+    string_clear(&tmp);
+    string_append(&tmp, "d, d");
+    test_eq(string_replace_all(&tmp, ' '), 1);
+    test_eq(tmp.len, 3);
+    test_eq(tmp, "d,d");
+}
+
+test_string_count :: fn () #test {
+    test_eq(string_count("", ','), 0);
+    test_eq(string_count("dfa, asfdas, fq,, fas ,", ','), 5);
+    test_eq(string_count("dfa, asfdas, fq,, fas ,", ':'), 0);
+}
+
+test_string_split_by1 :: fn () #test {
+    s1 :: string_split_by("this,is,cool,string", ',');
+    defer slice_terminate(s1);
+    test_eq(s1.len, 4);
+    test_eq(s1[0], "this");
+    test_eq(s1[1], "is");
+    test_eq(s1[2], "cool");
+    test_eq(s1[3], "string");
+}
+
+test_string_split_by2 :: fn () #test {
+    s1 :: string_split_by(",", ',');
+    defer slice_terminate(s1);
+    test_eq(s1.len, 2);
+    test_eq(s1[0], "");
+    test_eq(s1[1], "");
+}
+
+test_string_split_by3 :: fn () #test {
+    s1 :: string_split_by(",,,", ',');
+    defer slice_terminate(s1);
+    test_eq(s1.len, 4);
+    test_eq(s1[0], "");
+    test_eq(s1[1], "");
+    test_eq(s1[2], "");
+    test_eq(s1[3], "");
+}
+
+test_string_split_by4 :: fn () #test {
+    s1 :: string_split_by("abc", ':');
+    defer slice_terminate(s1);
+    test_eq(s1.len, 1);
+    test_eq(s1[0], "abc");
+}
+
+test_string_split_by5 :: fn () #test {
+    s1 :: string_split_by("", ':');
+    defer slice_terminate(s1);
+    test_eq(s1.len, 1);
+    test_eq(s1[0], "");
+}
+
+test_string_split_by6 :: fn () #test {
+    s1 :: string_split_by("d,d", ',');
+    defer slice_terminate(s1);
+    test_eq(s1.len, 2);
+    test_eq(s1[0], "d");
+    test_eq(s1[1], "d");
+}

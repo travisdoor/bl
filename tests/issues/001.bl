@@ -1,0 +1,26 @@
+main :: fn () s32 {
+    str :: "foo";
+    shrink_by(&str);
+    return 0;
+}
+
+shrink_by :: fn (str: *string, c := '\0') {
+    tmp := ^str;
+    n := 0;
+    is := -1;
+    loop i := 0; i < tmp.len; i += 1 {
+        if tmp[i] == c {
+            if is < 0 { is = i; }
+            n += 1;
+        } else if is > -1 {
+            buf :: tmp[is];
+            tmp[is] = tmp[i];
+            tmp[i] = buf;
+            is = -1;
+            i = is + 1;
+            n = 0;
+        }
+    }
+    tmp.len -= n;
+    str = tmp; // crash due invalid type detection
+}

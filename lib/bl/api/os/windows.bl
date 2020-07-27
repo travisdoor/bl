@@ -136,7 +136,7 @@ os_get_real_path :: fn (filename: string) string {
     buf : [OS_PATH_MAX]u8 #noinit;
     if win32_GetFullPathNameA(auto filename.ptr, auto buf.len, buf.ptr, null) > 0 {
         result :: string_new(buf.ptr);
-        string_replace_all(result, '\\', '/');
+        string_replace_all(&result, '\\', '/');
         return result;
     }
 
@@ -147,7 +147,7 @@ os_get_exec_path :: fn () string {
     buf : [OS_PATH_MAX]u8 #noinit;
     if win32_GetModuleFileNameA(null, buf.ptr, auto buf.len) > 0 {
         result :: string_new(buf.ptr);
-        string_replace_all(result, '\\', '/');
+        string_replace_all(&result, '\\', '/');
         return result;
     }
 

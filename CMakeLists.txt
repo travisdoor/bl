@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(bl VERSION 0.7.0)
+project(bl VERSION 0.7.1)
 
 # Must use GNUInstallDirs to install libraries into correct
 # locations on all platforms.

@@ -397,11 +397,13 @@ main :: fn () s32 {
 }
 ```
 */
-string_split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string) bool {
+string_split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string, di: *s32 = null) bool {
     i := str.len - 1;
     loop ; i >= 0 && str[i] != delimiter; i -= 1 {}
 
     if i < 0 { // not found
+        if lhs { ^lhs = str; }
+        if di { (^di) = auto i; }
         return false;
     }
 
@@ -415,14 +417,18 @@ string_split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *stri
         rhs.ptr = ptr_shift_bytes(str.ptr, auto sizeof(u8) * auto i + 1);
     }
 
+    if di { (^di) = auto i; }
     return true;
 }
 
-string_split_by_first :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string) bool {
+// @DOC
+string_split_by_first :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string, di: *s32 = null) bool {
     i := 0;
     loop ; i < str.len && str[i] != delimiter; i += 1 {}
 
     if i >= str.len { // not found
+        if lhs { ^lhs = str; }
+        if di { (^di) = auto i; }
         return false;
     }
 
@@ -436,14 +442,58 @@ string_split_by_first :: fn (str: string, delimiter: u8, lhs: *string, rhs: *str
         rhs.ptr = ptr_shift_bytes(str.ptr, auto sizeof(u8) * auto i + 1);
     }
 
+    if di { (^di) = auto i; }
     return true;
+}
+
+// @DOC
+string_split_by :: fn (str: string, delimiter: u8) []string {
+    count :: string_count(str, delimiter) + 1;
+    ret: []string;
+    slice_init(ret, count);
+    ri: s32;
+    lhs: string;
+    rhs: string;
+    loop string_split_by_first(str, delimiter, &lhs, &rhs) {
+        ret[ri] = lhs;
+        ri += 1;
+        str = rhs;
+    }
+    if ri == 0 { ret[ri] = lhs; }
+    else       { ret[ri] = rhs; }
+    return ret;
+}
+
+// @DOC
+string_count :: fn (str: string, c: u8) s32 {
+    count := 0;
+    loop i := 0; i < str.len; i += 1 {
+        if str[i] == c { count += 1; }
+    }
+    return count;
+}
+
+// @DOC
+string_to_lower :: fn (str: string) {
+    c_tolower :: fn (c: s32) s32 #extern "tolower";
+    loop i := 0; i < str.len; i += 1 {
+        str[i] = auto c_tolower(auto str[i]); 
+    }
+}
+
+// @DOC
+string_to_upper :: fn (str: string) {
+    c_toupper :: fn (c: s32) s32 #extern "toupper";
+    loop i := 0; i < str.len; i += 1 {
+        str[i] = auto c_toupper(auto str[i]); 
+    }
 }
 
 /*!
 # string_replace_all  
 ## Declaration
 ```c
-string_replace_all :: fn (str: string, c: u8, with: u8) s32
+string_replace_all :: fn (str: string, c: u8, with := '\0') s32
 ```
 ## Description
   Replace all found occurrences of character `c` in the input string with `with`
@@ -456,20 +506,23 @@ constant string literals as input.
   * `c`
     Character to be replaced.
   * `with`
-    Replacement.
+    Replacement. If replacement is 0 character, all `c` occourences will be erased
+    from the string.
 
 ## Result
   Count of replacements made.
 */
-string_replace_all :: fn (str: string, c: u8, with: u8) s32 {
+string_replace_all :: fn (str: *string, c: u8, with := '\0') s32 {
     replaced := 0;
-    loop i := 0; i < str.len; i += 1 {
-        if str[i] == c { 
+    loop i := 0; i < (^str).len; i += 1 {
+        if (^str)[i] == c { 
             replaced += 1;
-            str[i] = with; 
+            (^str)[i] = with; 
         }
     }
-
+    if with == '\0' {
+        shrink_by(str);
+    }
     return replaced;
 }
 
@@ -585,4 +638,25 @@ consume_char :: fn (s: *string) u8 #inline {
     s.len -= 1;
 
     return c;
+}
+
+shrink_by :: fn (str: *string, c := '\0') {
+    tmp := ^str;
+    n := 0;
+    is := -1;
+    loop i := 0; i < tmp.len; i += 1 {
+        if tmp[i] == c {
+            if is < 0 { is = i; }
+            n += 1;
+        } else if is > -1 {
+            buf :: tmp[is];
+            tmp[is] = tmp[i];
+            tmp[i] = buf;
+            is = -1;
+            i = is + 1;
+            n = 0;
+        }
+    }
+    tmp.len -= n;
+    ^str = tmp;
 }
