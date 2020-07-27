@@ -108,6 +108,7 @@ copysign  :: fn { f32_copysign; f64_copysign; }
 /* Lib C functions */
 rand  :: fn () s32 #extern;
 srand :: fn (seed: u32) #extern;
+qsort :: fn (base: *c_void_ptr, nitems: c_size_t, size: c_size_t, compar: *fn (c_void_ptr, c_void_ptr) c_int) #extern;
 /* Lib C functions */
 
 abs :: fn { f32_abs; f64_abs; }

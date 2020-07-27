@@ -526,6 +526,16 @@ string_replace_all :: fn (str: *string, c: u8, with := '\0') s32 {
     return replaced;
 }
 
+// @DOC
+string_hash :: fn (str: string) u32 {
+	hash : u32 = 5381;
+    loop i := 0; i < str.len; i += 1 {
+        c :: cast(u32) str[i];
+		hash = ((hash << 5) + hash) + c;
+    }
+    return hash;
+}
+
 string_is_null  :: fn (s: string) bool #inline { return s.ptr == null; }
 string_is_empty :: fn (s: string) bool #inline { return s.len == 0; }
 string_is_null_or_empty :: fn (s: string) bool #inline { return s.ptr == null || s.len == 0; }
