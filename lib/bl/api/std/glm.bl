@@ -108,6 +108,9 @@ v_normalize :: fn { v2_normalize; v3_normalize; v4_normalize; }
 v_compare :: fn { v2_compare; v3_compare; v4_compare; }
 v_negate :: fn { v2_negate; v3_negate; v4_negate; }
 v_cross :: fn { v3_cross; }
+v_round :: fn { v2_round; v3_round; v4_round; }
+v_floor :: fn { v2_floor; v3_floor; v4_floor; }
+v_ceil :: fn { v2_ceil; v3_ceil; v4_ceil; }
 
 mat4_init :: fn (m00: f32, m10: f32, m20: f32, m30: f32,
                  m01: f32, m11: f32, m21: f32, m31: f32,
@@ -787,3 +790,38 @@ v4_div_s :: fn (v: v4, s: f32) v4 #inline {
     return {:v4: v.x / s, v.y / s, v.z / s, v.w / s};
 }
 
+v2_round :: fn (v: v2) v2 #inline {
+    return {:v2: round(v.x), round(v.y)};
+}
+
+v3_round :: fn (v: v3) v3 #inline {
+    return {:v3: round(v.x), round(v.y), round(v.z)};
+}
+
+v4_round :: fn (v: v4) v4 #inline {
+    return {:v4: round(v.x), round(v.y), round(v.z), round(v.w)};
+}
+
+v2_floor :: fn (v: v2) v2 #inline {
+    return {:v2: floor(v.x), floor(v.y)};
+}
+
+v3_floor :: fn (v: v3) v3 #inline {
+    return {:v3: floor(v.x), floor(v.y), floor(v.z)};
+}
+
+v4_floor :: fn (v: v4) v4 #inline {
+    return {:v4: floor(v.x), floor(v.y), floor(v.z), floor(v.w)};
+}
+
+v2_ceil :: fn (v: v2) v2 #inline {
+    return {:v2: ceil(v.x), ceil(v.y)};
+}
+
+v3_ceil :: fn (v: v3) v3 #inline {
+    return {:v3: ceil(v.x), ceil(v.y), ceil(v.z)};
+}
+
+v4_ceil :: fn (v: v4) v4 #inline {
+    return {:v4: ceil(v.x), ceil(v.y), ceil(v.z), ceil(v.w)};
+}

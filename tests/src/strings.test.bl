@@ -297,3 +297,98 @@ test_string_split_by6 :: fn () #test {
     test_eq(s1[0], "d");
     test_eq(s1[1], "d");
 }
+
+test_string_erase1 :: fn () #test {
+    s1 :: string_new("");
+    defer string_delete(s1);
+    test_false(string_erase(&s1, 0));
+    test_false(string_erase(&s1, 1));
+    test_false(string_erase(&s1, -1));
+}
+
+test_string_erase2 :: fn () #test {
+    s1 :: string_new("aaa");
+    defer string_delete(s1);
+    test_true(string_erase(&s1, 2));
+    test_true(string_erase(&s1, 1));
+    test_true(string_erase(&s1, 0));
+    test_eq(s1.len, 0);
+}
+
+test_string_erase3 :: fn () #test {
+    s1 :: string_new("abcdef");
+    defer string_delete(s1);
+    test_true(string_erase(&s1, 5));
+    test_true(string_erase(&s1, 4));
+    test_true(string_erase(&s1, 3));
+    test_eq(s1.len, 3);
+    test_eq(s1, "abc");
+}
+
+test_string_erase4 :: fn () #test {
+    s1 :: string_new("abcdef");
+    defer string_delete(s1);
+    test_true(string_erase(&s1, 0));
+    test_true(string_erase(&s1, 0));
+    test_true(string_erase(&s1, 0));
+    test_eq(s1.len, 3);
+    test_eq(s1, "def");
+}
+
+test_string_erase5 :: fn () #test {
+    s1 :: string_new("abcdef");
+    defer string_delete(s1);
+    test_true(string_erase(&s1, 3));
+    test_true(string_erase(&s1, 3));
+    test_true(string_erase(&s1, 3));
+    test_eq(s1.len, 3);
+    test_eq(s1, "abc");
+}
+
+test_string_insert1 :: fn () #test {
+    s1 :: string_new("");
+    defer string_delete(s1);
+    test_true(string_insert(&s1, 0, "hello"));
+    test_eq(s1.len, 5);
+    test_eq(s1, "hello");
+}
+
+test_string_insert2 :: fn () #test {
+    s1 :: string_new("");
+    defer string_delete(s1);
+    test_false(string_insert(&s1, 1, "hello"));
+    test_eq(s1.len, 0);
+    test_eq(s1, "");
+}
+
+test_string_insert3 :: fn () #test {
+    s1 :: string_new("foo");
+    defer string_delete(s1);
+    test_true(string_insert(&s1, 3, "bar"));
+    test_eq(s1.len, 6);
+    test_eq(s1, "foobar");
+}
+
+test_string_insert4 :: fn () #test {
+    s1 :: string_new("foo");
+    defer string_delete(s1);
+    test_true(string_insert(&s1, 0, "bar"));
+    test_eq(s1.len, 6);
+    test_eq(s1, "barfoo");
+}
+
+test_string_insert5 :: fn () #test {
+    s1 :: string_new("foo");
+    defer string_delete(s1);
+    test_true(string_insert(&s1, 0, "barbar"));
+    test_eq(s1.len, 9);
+    test_eq(s1, "barbarfoo");
+}
+
+test_string_insert6 :: fn () #test {
+    s1 :: string_new("AGH");
+    defer string_delete(s1);
+    test_true(string_insert(&s1, 1, "BCDEF"));
+    test_eq(s1.len, 8);
+    test_eq(s1, "ABCDEFGH");
+}
