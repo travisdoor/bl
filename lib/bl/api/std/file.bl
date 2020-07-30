@@ -182,10 +182,10 @@ file_read_all :: fn (file: File) string {
     }
 
     c_fseek(file, 0, SEEK_SET);
-    tmp := string_new((size + 1) * sizeof(u8));
+    tmp := string_new(size * sizeof(u8));
     read := c_fread(tmp.ptr, sizeof(u8), size, file);
-    tmp.len = auto read + 1;
-    tmp[tmp.len - 1] = '\0';
+    tmp.len = auto read;
+    //tmp[tmp.len - 1] = '\0';
     return tmp;
 };
 
