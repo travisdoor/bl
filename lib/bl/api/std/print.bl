@@ -250,7 +250,7 @@ fmt_int :: fn (v: Any, base: FmtIntBase) FmtInt #inline {
 DEFAULT_REAL_TRAILING :: 6;
 _print_impl :: fn (buf: []u8, format: string, args: []Any, cur := 0) s32 {
     argi := 0;
-    assert(cur < buf.len);
+    if cur >= buf.len { return cur; }
     loop i := 0; i < format.len; i += 1 {
         c := format[i];
 

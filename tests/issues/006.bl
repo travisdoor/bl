@@ -1,0 +1,6 @@
+Foofn :: *fn(c: *Foo);
+Foo :: struct {
+    h: Foofn;
+}
+
+main :: fn () s32 { return 0; }
