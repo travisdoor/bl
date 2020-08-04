@@ -1,0 +1,15 @@
+A :: 0;
+B :: 1;
+C :: 1;
+
+main :: fn () s32 {
+    i := 0;
+    // This should warn about ambiguous switch case B vs C.
+    switch i {
+        A {};
+        B {};
+        C {};
+        default;
+    }
+    return 0;
+}
