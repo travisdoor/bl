@@ -1,0 +1,9 @@
+foo :: fn () bool {
+    return true;
+}
+
+main :: fn () s32 {
+    if foo() && (foo() || foo()) {
+    }
+    return 0;
+}
