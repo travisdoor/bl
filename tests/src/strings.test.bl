@@ -392,3 +392,15 @@ test_string_insert6 :: fn () #test {
     test_eq(s1.len, 8);
     test_eq(s1, "ABCDEFGH");
 }
+
+test_string_count1 :: fn () #test {
+    s1 :: string_new("");
+    defer string_delete(s1);
+    test_eq(string_count(s1, ' '), 0);
+}
+
+test_string_count2 :: fn () #test {
+    s1 :: string_new("abba ab abba abbaa  abbba");
+    defer string_delete(s1);
+    test_eq(string_count(s1, ' '), 5);
+}
