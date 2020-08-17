@@ -36,6 +36,10 @@ dir_scan :: fn (dirpath: string, out_buffer: *FileList) bool #inline {
     return _os_scandir(dirpath, out_buffer);
 }
 
+dir_is_directory :: fn (dirpath: string) bool #inline {
+    return _os_is_dir(dirpath);
+}
+
 dir_file_list_delete :: fn (list: FileList) {
     loop i := 0; i < list.len; i += 1 {
         string_delete(list[i].name);
