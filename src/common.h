@@ -87,9 +87,9 @@ struct Assembly;
 #define IS_NOT_FLAG(_v, _flag) ((bool)((_v & _flag) != _flag))
 
 #define ARRAY_FOREACH(arr, it)                                                                     \
-	for (usize _keep = 1, i = 0, _size = ARRAY_SIZE((arr)); _keep && i != _size;               \
-	     _keep = !_keep, i++)                                                                  \
-		for (it = (arr)[i]; _keep; _keep = !_keep)
+    for (usize _keep = 1, i = 0, _size = ARRAY_SIZE((arr)); _keep && i != _size;                   \
+         _keep = !_keep, i++)                                                                      \
+        for (it = (arr)[i]; _keep; _keep = !_keep)
 
 #define BL_RED 1
 #define BL_BLUE 2
@@ -110,8 +110,8 @@ TSMALL_ARRAY_TYPE(Char, char, 128);
 TSMALL_ARRAY_TYPE(FnPtr, struct MirFn *, 8);
 
 typedef struct ID {
-	const char *str;
-	u64         hash;
+    const char *str;
+    u64         hash;
 } ID;
 
 void id_init(ID *id, const char *str);

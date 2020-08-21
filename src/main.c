@@ -42,147 +42,146 @@ char *ENV_CONF_FILEPATH = NULL;
 
 static void free_env(void)
 {
-	free(ENV_EXEC_DIR);
-	free(ENV_LIB_DIR);
-	free(ENV_CONF_FILEPATH);
+    free(ENV_EXEC_DIR);
+    free(ENV_LIB_DIR);
+    free(ENV_CONF_FILEPATH);
 }
 
 static void setup_env(void)
 {
-	char tmp[PATH_MAX] = {0};
+    char tmp[PATH_MAX] = {0};
 
-	if (!get_current_exec_dir(tmp, PATH_MAX)) {
-		BL_ABORT("Cannot locate compiler executable path.");
-	}
+    if (!get_current_exec_dir(tmp, PATH_MAX)) {
+        BL_ABORT("Cannot locate compiler executable path.");
+    }
 
-	ENV_EXEC_DIR = strdup(tmp);
+    ENV_EXEC_DIR = strdup(tmp);
 
-	strcat(tmp, PATH_SEPARATOR ".." PATH_SEPARATOR);
-	strcat(tmp, BL_CONF_FILE);
+    strcat(tmp, PATH_SEPARATOR ".." PATH_SEPARATOR);
+    strcat(tmp, BL_CONF_FILE);
 
-	if (strlen(tmp) == 0) BL_ABORT("Invalid conf file path.");
-	ENV_CONF_FILEPATH = strdup(tmp);
+    if (strlen(tmp) == 0) BL_ABORT("Invalid conf file path.");
+    ENV_CONF_FILEPATH = strdup(tmp);
 }
 
 static int generate_conf(void)
 {
-	char tmp[PATH_MAX] = {0};
+    char tmp[PATH_MAX] = {0};
 
 #if defined(BL_PLATFORM_LINUX) || defined(BL_PLATFORM_MACOS)
-	strcat(tmp, "sh ");
-	strcat(tmp, ENV_EXEC_DIR);
-	strcat(tmp, PATH_SEPARATOR);
-	strcat(tmp, BL_CONFIGURE_SH);
+    strcat(tmp, "sh ");
+    strcat(tmp, ENV_EXEC_DIR);
+    strcat(tmp, PATH_SEPARATOR);
+    strcat(tmp, BL_CONFIGURE_SH);
 #else
-	strcat(tmp, "\"");
-	strcat(tmp, ENV_EXEC_DIR);
-	strcat(tmp, PATH_SEPARATOR);
-	strcat(tmp, BL_CONFIGURE_SH);
-	strcat(tmp, "\"");
+    strcat(tmp, "\"");
+    strcat(tmp, ENV_EXEC_DIR);
+    strcat(tmp, PATH_SEPARATOR);
+    strcat(tmp, BL_CONFIGURE_SH);
+    strcat(tmp, "\"");
 #endif
 
-	return system(tmp);
+    return system(tmp);
 }
 
 #define EXIT(_state)                                                                               \
-	state = _state;                                                                            \
-	goto RELEASE;
+    state = _state;                                                                                \
+    goto RELEASE;
 
 int main(s32 argc, char *argv[])
 {
-	s32         state = EXIT_SUCCESS;
-	const char *help_text =
+    s32         state = EXIT_SUCCESS;
+    const char *help_text =
 #include "help_text.txt"
-	    ;
+        ;
 
-	setlocale(LC_ALL, "C");
-	setup_env();
-	main_thread_id = thread_get_id();
+    setlocale(LC_ALL, "C");
+    setup_env();
+    main_thread_id = thread_get_id();
 
-	printf("Compiler version: %s, LLVM: %d\n", BL_VERSION, LLVM_VERSION_MAJOR);
+    printf("Compiler version: %s, LLVM: %d\n", BL_VERSION, LLVM_VERSION_MAJOR);
 #ifdef BL_DEBUG
-	puts("Running in DEBUG mode");
-	printf("Main thread ID: 0x%llx\n", main_thread_id);
+    puts("Running in DEBUG mode");
+    printf("Main thread ID: 0x%llx\n", main_thread_id);
 #endif
 
-	builder_init();
-	s32 next_arg = builder_parse_options(argc, argv);
-	if (next_arg == -1) {
-		fprintf(stdout, "%s", help_text);
-		EXIT(EXIT_FAILURE);
-	}
+    builder_init();
+    s32 next_arg = builder_parse_options(argc, argv);
+    if (next_arg == -1) {
+        fprintf(stdout, "%s", help_text);
+        EXIT(EXIT_FAILURE);
+    }
 
-	/* Run configure if needed. */
-	if (builder.options.run_configure) {
-		if (generate_conf() != 0) {
-			builder_error(
-			    "Cannot generate '%s' file. If you are compiler developer please "
-			    "run configuration script in 'install' directory.",
-			    ENV_CONF_FILEPATH);
-			EXIT(EXIT_FAILURE);
-		}
+    /* Run configure if needed. */
+    if (builder.options.run_configure) {
+        if (generate_conf() != 0) {
+            builder_error("Cannot generate '%s' file. If you are compiler developer please "
+                          "run configuration script in 'install' directory.",
+                          ENV_CONF_FILEPATH);
+            EXIT(EXIT_FAILURE);
+        }
 
-		EXIT(EXIT_SUCCESS);
-	}
+        EXIT(EXIT_SUCCESS);
+    }
 
-	argv += next_arg;
+    argv += next_arg;
 
-	if (builder.options.print_help) {
-		fprintf(stdout, "%s", help_text);
-		EXIT(EXIT_SUCCESS);
-	}
+    if (builder.options.print_help) {
+        fprintf(stdout, "%s", help_text);
+        EXIT(EXIT_SUCCESS);
+    }
 
-	if (!file_exists(ENV_CONF_FILEPATH)) {
-		builder_error("Configuration file '%s' not found, run 'blc -configure' to "
-		              "generate one.",
-		              ENV_CONF_FILEPATH);
+    if (!file_exists(ENV_CONF_FILEPATH)) {
+        builder_error("Configuration file '%s' not found, run 'blc -configure' to "
+                      "generate one.",
+                      ENV_CONF_FILEPATH);
 
-		EXIT(EXIT_FAILURE);
-	}
+        EXIT(EXIT_FAILURE);
+    }
 
-	if (*argv == NULL && !builder.options.use_pipeline) {
-		builder_warning("nothing to do, no input files, sorry :(");
+    if (*argv == NULL && !builder.options.use_pipeline) {
+        builder_warning("nothing to do, no input files, sorry :(");
 
-		EXIT(EXIT_SUCCESS);
-	}
+        EXIT(EXIT_SUCCESS);
+    }
 
-	builder_load_conf_file(ENV_CONF_FILEPATH);
+    builder_load_conf_file(ENV_CONF_FILEPATH);
 
-	/* setup LIB_DIR */
-	ENV_LIB_DIR = strdup(conf_data_get_str(builder.conf, CONF_LIB_DIR_KEY));
+    /* setup LIB_DIR */
+    ENV_LIB_DIR = strdup(conf_data_get_str(builder.conf, CONF_LIB_DIR_KEY));
 
-	Assembly *assembly = assembly_new("out");
-	if (builder.options.use_pipeline) {
-		assembly->options.build_mode = BUILD_MODE_BUILD;
+    Assembly *assembly = assembly_new("out");
+    if (builder.options.use_pipeline) {
+        assembly->options.build_mode = BUILD_MODE_BUILD;
 
-		Unit *unit = unit_new_file(BUILD_SCRIPT_FILE, NULL, NULL);
+        Unit *unit = unit_new_file(BUILD_SCRIPT_FILE, NULL, NULL);
 
-		bool added = assembly_add_unit_unique(assembly, unit);
-		if (added == false) {
-			unit_delete(unit);
-		}
-	}
+        bool added = assembly_add_unit_unique(assembly, unit);
+        if (added == false) {
+            unit_delete(unit);
+        }
+    }
 
-	while (*argv != NULL) {
-		Unit *unit = unit_new_file(*argv, NULL, NULL);
+    while (*argv != NULL) {
+        Unit *unit = unit_new_file(*argv, NULL, NULL);
 
-		bool added = assembly_add_unit_unique(assembly, unit);
-		if (added == false) {
-			unit_delete(unit);
-		}
+        bool added = assembly_add_unit_unique(assembly, unit);
+        if (added == false) {
+            unit_delete(unit);
+        }
 
-		argv++;
-	}
+        argv++;
+    }
 
-	builder_add_assembly(assembly);
-	state = builder_compile_all();
+    builder_add_assembly(assembly);
+    state = builder_compile_all();
 
-	char date[26];
-	date_time(date, 26, "%d-%m-%Y %H:%M:%S");
-	printf("\nFinished at %s", date);
+    char date[26];
+    date_time(date, 26, "%d-%m-%Y %H:%M:%S");
+    printf("\nFinished at %s", date);
 
 RELEASE:
-	builder_terminate();
-	free_env();
-	return state;
+    builder_terminate();
+    free_env();
+    return state;
 }

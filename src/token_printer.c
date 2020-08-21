@@ -31,30 +31,27 @@
 
 void token_printer_run(Unit *unit)
 {
-	TArray *tokens_arr = &unit->tokens.buf;
+    TArray *tokens_arr = &unit->tokens.buf;
 
-	fprintf(stdout, "Tokens: \n");
+    fprintf(stdout, "Tokens: \n");
 
-	const usize c = tokens_arr->size;
-	Token *     tok;
-	s32         line = -1;
-	for (usize i = 0; i < c; ++i) {
-		tok = &tarray_at(Token, tokens_arr, i);
+    const usize c = tokens_arr->size;
+    Token *     tok;
+    s32         line = -1;
+    for (usize i = 0; i < c; ++i) {
+        tok = &tarray_at(Token, tokens_arr, i);
 
-		if (line == -1) {
-			line = tok->location.line;
-			fprintf(stdout, "%d: ", line);
-		} else if (tok->location.line != line) {
-			line = tok->location.line;
-			fprintf(stdout, "\n%d: ", line);
-		}
+        if (line == -1) {
+            line = tok->location.line;
+            fprintf(stdout, "%d: ", line);
+        } else if (tok->location.line != line) {
+            line = tok->location.line;
+            fprintf(stdout, "\n%d: ", line);
+        }
 
-		fprintf(stdout,
-		        "['%s' %i:%i], ",
-		        sym_strings[tok->sym],
-		        tok->location.line,
-		        tok->location.col);
-	}
+        fprintf(
+            stdout, "['%s' %i:%i], ", sym_strings[tok->sym], tok->location.line, tok->location.col);
+    }
 
-	fprintf(stdout, "\n");
+    fprintf(stdout, "\n");
 }

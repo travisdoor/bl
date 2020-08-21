@@ -41,126 +41,123 @@ static const char *cmd            = "%s %s/%s.o -o %s/%s %s %s";
 #endif
 
 typedef struct {
-	Assembly *assembly;
+    Assembly *assembly;
 } Context;
 
 static void add_lib_paths(Context *cnt, TString *buf)
 {
 
-	const char *dir;
-	TARRAY_FOREACH(const char *, &cnt->assembly->options.lib_paths, dir)
-	{
-		tstring_append(buf, " ");
+    const char *dir;
+    TARRAY_FOREACH(const char *, &cnt->assembly->options.lib_paths, dir)
+    {
+        tstring_append(buf, " ");
 #ifdef BL_PLATFORM_WIN
-		tstring_append(buf, "\"");
+        tstring_append(buf, "\"");
 #endif
-		tstring_append(buf, link_path_flag);
-		tstring_append(buf, dir);
+        tstring_append(buf, link_path_flag);
+        tstring_append(buf, dir);
 #ifdef BL_PLATFORM_WIN
-		tstring_append(buf, "\"");
+        tstring_append(buf, "\"");
 #endif
-	}
+    }
 }
 
 static void add_libs(Context *cnt, TString *buf)
 {
-	NativeLib *lib;
-	for (usize i = 0; i < cnt->assembly->options.libs.size; ++i) {
-		lib = &tarray_at(NativeLib, &cnt->assembly->options.libs, i);
-		if (lib->is_internal) continue;
-		if (!lib->user_name) continue;
+    NativeLib *lib;
+    for (usize i = 0; i < cnt->assembly->options.libs.size; ++i) {
+        lib = &tarray_at(NativeLib, &cnt->assembly->options.libs, i);
+        if (lib->is_internal) continue;
+        if (!lib->user_name) continue;
 
-		tstring_append(buf, " ");
-		tstring_append(buf, link_flag);
-		tstring_append(buf, lib->user_name);
+        tstring_append(buf, " ");
+        tstring_append(buf, link_flag);
+        tstring_append(buf, lib->user_name);
 #ifdef BL_PLATFORM_WIN
-		tstring_append(buf, ".lib");
+        tstring_append(buf, ".lib");
 #endif
-	}
+    }
 }
 
 void native_bin_run(Assembly *assembly)
 {
-	TString buf;
-	tstring_init(&buf);
-	Context cnt = {.assembly = assembly};
+    TString buf;
+    tstring_init(&buf);
+    Context cnt = {.assembly = assembly};
 
 #ifdef BL_PLATFORM_WIN
-	const char *linker_exec = conf_data_get_str(builder.conf, CONF_LINKER_EXEC_KEY);
-	{ /* setup link command */
-		const char *vc_vars_all = conf_data_get_str(builder.conf, CONF_VC_VARS_ALL_KEY);
-		const char *vc_arch     = "x64"; // TODO: set by compiler target arch
+    const char *linker_exec = conf_data_get_str(builder.conf, CONF_LINKER_EXEC_KEY);
+    { /* setup link command */
+        const char *vc_vars_all = conf_data_get_str(builder.conf, CONF_VC_VARS_ALL_KEY);
+        const char *vc_arch     = "x64"; // TODO: set by compiler target arch
 
-		const char *default_opt =
-		    assembly->options.build_mode == BUILD_MODE_DEBUG
-		        ? conf_data_get_str(builder.conf, CONF_LINKER_OPT_DEBUG_KEY)
-		        : conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
+        const char *default_opt = assembly->options.build_mode == BUILD_MODE_DEBUG
+                                      ? conf_data_get_str(builder.conf, CONF_LINKER_OPT_DEBUG_KEY)
+                                      : conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
 
-		const char *custom_opt = assembly->options.custom_linker_opt.len
-		                             ? assembly->options.custom_linker_opt.data
-		                             : "";
-		const char *out_dir = assembly->options.out_dir.data;
+        const char *custom_opt =
+            assembly->options.custom_linker_opt.len ? assembly->options.custom_linker_opt.data : "";
+        const char *out_dir = assembly->options.out_dir.data;
 
-		if (builder.options.no_vcvars) {
-			tstring_setf(&buf,
-			             cmd_no_vcvars,
-			             linker_exec,
-			             out_dir,
-			             assembly->name,
-			             out_dir,
-			             assembly->name,
-			             default_opt,
-			             custom_opt);
-		} else {
-			tstring_setf(&buf,
-			             cmd,
-			             vc_vars_all,
-			             vc_arch,
-			             linker_exec,
-			             out_dir,
-			             assembly->name,
-			             out_dir,
-			             assembly->name,
-			             default_opt,
-			             custom_opt);
-		}
-	}
-#else
-        const char *linker_exec = conf_data_get_str(builder.conf, CONF_LINKER_EXEC_KEY);
-        { /* setup link command */
-                const char *default_opt = conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
-                const char *custom_opt  = assembly->options.custom_linker_opt.len
-                                             ? assembly->options.custom_linker_opt.data
-                                             : "";
-
-                const char *out_dir = assembly->options.out_dir.data;
-
-                tstring_setf(&buf,
-                             cmd,
-                             linker_exec,
-                             out_dir,
-                             assembly->name,
-                             out_dir,
-                             assembly->name,
-                             default_opt,
-                             custom_opt);
+        if (builder.options.no_vcvars) {
+            tstring_setf(&buf,
+                         cmd_no_vcvars,
+                         linker_exec,
+                         out_dir,
+                         assembly->name,
+                         out_dir,
+                         assembly->name,
+                         default_opt,
+                         custom_opt);
+        } else {
+            tstring_setf(&buf,
+                         cmd,
+                         vc_vars_all,
+                         vc_arch,
+                         linker_exec,
+                         out_dir,
+                         assembly->name,
+                         out_dir,
+                         assembly->name,
+                         default_opt,
+                         custom_opt);
         }
+    }
+#else
+    const char *linker_exec = conf_data_get_str(builder.conf, CONF_LINKER_EXEC_KEY);
+    { /* setup link command */
+        const char *default_opt = conf_data_get_str(builder.conf, CONF_LINKER_OPT_KEY);
+        const char *custom_opt =
+            assembly->options.custom_linker_opt.len ? assembly->options.custom_linker_opt.data : "";
+
+        const char *out_dir = assembly->options.out_dir.data;
+
+        tstring_setf(&buf,
+                     cmd,
+                     linker_exec,
+                     out_dir,
+                     assembly->name,
+                     out_dir,
+                     assembly->name,
+                     default_opt,
+                     custom_opt);
+    }
 #endif
 
-	add_lib_paths(&cnt, &buf);
-	add_libs(&cnt, &buf);
+    add_lib_paths(&cnt, &buf);
+    add_libs(&cnt, &buf);
 
-	builder_log("Running native linker...");
-	if (builder.options.verbose) builder_log("%s", buf.data);
-	/* TODO: handle error */
-	if (system(buf.data) != 0) {
-		builder_msg(BUILDER_MSG_ERROR,
-		            ERR_LIB_NOT_FOUND,
-		            NULL,
-		            BUILDER_CUR_WORD,
-		            "Native link execution failed '%s'",
-		            buf.data);
-	}
+    builder_log("Running native linker...");
+    if (builder.options.verbose) builder_log("%s", buf.data);
+    /* TODO: handle error */
+    if (system(buf.data) != 0) {
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_LIB_NOT_FOUND,
+                    NULL,
+                    BUILDER_CUR_WORD,
+                    "Native link execution failed '%s'",
+                    buf.data);
+    }
 
-	tstring_terminate(&buf);
+    tstring_terminate(&buf);
 }

@@ -40,24 +40,20 @@
 /* Emit assembly object file. */
 void obj_writer_run(Assembly *assembly)
 {
-	TString filename;
-	tstring_init(&filename);
-	tstring_append(&filename, assembly->options.out_dir.data);
-	tstring_append(&filename, PATH_SEPARATOR);
-	tstring_append(&filename, assembly->name);
-	tstring_append(&filename, OBJ_EXT);
+    TString filename;
+    tstring_init(&filename);
+    tstring_append(&filename, assembly->options.out_dir.data);
+    tstring_append(&filename, PATH_SEPARATOR);
+    tstring_append(&filename, assembly->name);
+    tstring_append(&filename, OBJ_EXT);
 
-	char *error_msg = NULL;
-	if (LLVMTargetMachineEmitToFile(assembly->llvm.TM,
-	                                assembly->llvm.module,
-	                                filename.data,
-	                                LLVMObjectFile,
-	                                &error_msg)) {
-		builder_error(
-		    "Cannot emit object file: %s with error: %s", filename.data, error_msg);
+    char *error_msg = NULL;
+    if (LLVMTargetMachineEmitToFile(
+            assembly->llvm.TM, assembly->llvm.module, filename.data, LLVMObjectFile, &error_msg)) {
+        builder_error("Cannot emit object file: %s with error: %s", filename.data, error_msg);
 
-		LLVMDisposeMessage(error_msg);
-	}
+        LLVMDisposeMessage(error_msg);
+    }
 
-	tstring_terminate(&filename);
+    tstring_terminate(&filename);
 }

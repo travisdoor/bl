@@ -32,14 +32,14 @@
 #include "token.h"
 
 typedef struct Tokens {
-	TArray buf;
-	usize  iter;
+    TArray buf;
+    usize  iter;
 } Tokens;
 
 typedef enum {
-	TOK_LOOK_HIT,
-	TOK_LOOK_CONTINUE,
-	TOK_LOOK_TERMINAL,
+    TOK_LOOK_HIT,
+    TOK_LOOK_CONTINUE,
+    TOK_LOOK_TERMINAL,
 } TokensLookaheadState;
 
 typedef TokensLookaheadState (*TokenCmpFunc)(Token *curr);

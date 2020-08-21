@@ -34,18 +34,18 @@
 
 void *bl_malloc(const size_t size)
 {
-	void *mem = malloc(size);
-	if (!mem) {
-		fprintf(stderr, "Bad alloc!");
-		abort();
-	}
+    void *mem = malloc(size);
+    if (!mem) {
+        fprintf(stderr, "Bad alloc!");
+        abort();
+    }
 
-	TracyCAlloc(mem, size);
-	return mem;
+    TracyCAlloc(mem, size);
+    return mem;
 }
 
 void bl_free(void *ptr)
 {
-	TracyCFree(ptr);
-	free(ptr);
+    TracyCFree(ptr);
+    free(ptr);
 }

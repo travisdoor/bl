@@ -38,76 +38,76 @@
 #define COMPILE_FAIL 1
 
 typedef struct BuilderOptions {
-	BuildMode   build_mode;
-	BuildDIKind build_di_kind;
-	bool        print_help;
-	bool        print_tokens;
-	bool        print_ast;
-	bool        run;
-	bool        run_tests;
-	bool        run_configure;
-	bool        no_bin;
-	bool        no_warn;
-	bool        no_api;
-	bool        no_llvm;
-	bool        no_analyze;
-	bool        emit_llvm;
-	bool        emit_mir;
-	bool        load_from_file;
-	bool        syntax_only;
-	bool        verbose;
-	bool        reg_split;
-	bool        use_pipeline;
-	bool        no_color;
-	bool        no_vcvars;
+    BuildMode   build_mode;
+    BuildDIKind build_di_kind;
+    bool        print_help;
+    bool        print_tokens;
+    bool        print_ast;
+    bool        run;
+    bool        run_tests;
+    bool        run_configure;
+    bool        no_bin;
+    bool        no_warn;
+    bool        no_api;
+    bool        no_llvm;
+    bool        no_analyze;
+    bool        emit_llvm;
+    bool        emit_mir;
+    bool        load_from_file;
+    bool        syntax_only;
+    bool        verbose;
+    bool        reg_split;
+    bool        use_pipeline;
+    bool        no_color;
+    bool        no_vcvars;
 } BuilderOptions;
 
 typedef enum {
-	BUILDER_MSG_ASSEMBLY_BEGIN,
-	BUILDER_MSG_ASSEMBLY_END,
-	BUILDER_MSG_ASSEMBLY_FAILED,
-	BUILDER_MSG_VAR,
-	BUILDER_MSG_FN,
+    BUILDER_MSG_ASSEMBLY_BEGIN,
+    BUILDER_MSG_ASSEMBLY_END,
+    BUILDER_MSG_ASSEMBLY_FAILED,
+    BUILDER_MSG_VAR,
+    BUILDER_MSG_FN,
 } BuilderMessageKind;
 
 typedef struct BuilderMessage {
-	BuilderMessageKind kind;
-	union {
-		MirVar *var;
-		MirFn * fn;
-	} data;
+    BuilderMessageKind kind;
+    union {
+        MirVar *var;
+        MirFn * fn;
+    } data;
 } BuilderMessage;
 
 typedef void (*BuilderMessageHandler)(const Assembly *, const BuilderMessage *);
 TSMALL_ARRAY_TYPE(MessageHandler, BuilderMessageHandler, 8);
 
 typedef struct Builder {
-	BuilderOptions             options;
-	TSmallArray_MessageHandler message_handlers;
-	Arena                      str_cache;
-	s32                        total_lines;
-	s32                        errorc;
-	s32                        test_failc;
-	ConfData *                 conf;
+    BuilderOptions             options;
+    TSmallArray_MessageHandler message_handlers;
+    Arena                      str_cache;
+    s32                        total_lines;
+    s32                        errorc;
+    s32                        test_failc;
+    ConfData *                 conf;
 
-	TArray assembly_queue;
+    TArray assembly_queue;
 } Builder;
 
 /* Builder global instance */
 extern Builder builder;
 
 typedef enum {
-	BUILDER_MSG_ERROR,
-	BUILDER_MSG_WARNING,
-	BUILDER_MSG_NOTE,
-	BUILDER_MSG_LOG,
+    BUILDER_MSG_ERROR,
+    BUILDER_MSG_WARNING,
+    BUILDER_MSG_NOTE,
+    BUILDER_MSG_LOG,
 } BuilderMsgType;
 
 typedef enum {
-	BUILDER_CUR_AFTER,
-	BUILDER_CUR_WORD,
-	BUILDER_CUR_BEFORE,
-	BUILDER_CUR_NONE
+    BUILDER_CUR_AFTER,
+    BUILDER_CUR_WORD,
+    BUILDER_CUR_BEFORE,
+    BUILDER_CUR_NONE
 } BuilderCurPos;
 
 struct Location;
@@ -121,13 +121,13 @@ s32  builder_compile_all(void);
 s32  builder_compile(Assembly *assembly);
 void builder_invoke_message(const Assembly *assembly, const BuilderMessage *msg);
 #define builder_log(format, ...)                                                                   \
-	builder_msg(BUILDER_MSG_LOG, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
+    builder_msg(BUILDER_MSG_LOG, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
 #define builder_note(format, ...)                                                                  \
-	builder_msg(BUILDER_MSG_NOTE, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
+    builder_msg(BUILDER_MSG_NOTE, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
 #define builder_warning(format, ...)                                                               \
-	builder_msg(BUILDER_MSG_WARNING, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
+    builder_msg(BUILDER_MSG_WARNING, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
 #define builder_error(format, ...)                                                                 \
-	builder_msg(BUILDER_MSG_ERROR, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
+    builder_msg(BUILDER_MSG_ERROR, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
 
 void builder_msg(BuilderMsgType   type,
                  s32              code,
