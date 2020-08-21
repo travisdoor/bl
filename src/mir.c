@@ -185,11 +185,11 @@ typedef enum {
 
 /* Argument list used in slot analyze functions */
 // clang-format off
-#define ANALYZE_STAGE_ARGS                                                                         \
-	Context   UNUSED(*cnt),           /* Stage context. */                                             \
-	MirInstr  UNUSED(**input),         /* Slot input, this represents slot itself and can be changed. */\
-	MirType   UNUSED(*slot_type),     /* Optional expected result type. */                             \
-	bool      UNUSED(is_initializer) /* True when slot is variable initializer. */
+#define ANALYZE_STAGE_ARGS                                                                            \
+    	Context   UNUSED(*cnt),          /* Stage context. */                                             \
+	    MirInstr  UNUSED(**input),       /* Slot input, this represents slot itself and can be changed. */\
+	    MirType   UNUSED(*slot_type),    /* Optional expected result type. */                             \
+	    bool      UNUSED(is_initializer) /* True when slot is variable initializer. */
 // clang-format on
 
 #define ANALYZE_STAGE_FN(N) AnalyzeStageState analyze_stage_##N(ANALYZE_STAGE_ARGS)
