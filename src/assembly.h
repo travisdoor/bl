@@ -40,89 +40,89 @@ struct MirModule;
 struct Builder;
 
 typedef enum BuildMode {
-	BUILD_MODE_DEBUG         = 1, /* Standard debug mode. Opt: NONE */
-	BUILD_MODE_RELEASE_FAST  = 2, /* Standard release mode. Opt: Aggresive */
-	BUILD_MODE_RELEASE_SMALL = 3, /* Standard release mode. Opt: Default */
+    BUILD_MODE_DEBUG         = 1, /* Standard debug mode. Opt: NONE */
+    BUILD_MODE_RELEASE_FAST  = 2, /* Standard release mode. Opt: Aggresive */
+    BUILD_MODE_RELEASE_SMALL = 3, /* Standard release mode. Opt: Default */
 
-	BUILD_MODE_BUILD = 4, /* Build pipeline entry mode. */
+    BUILD_MODE_BUILD = 4, /* Build pipeline entry mode. */
 } BuildMode;
 
 typedef enum BuildDIKind {
-	BUILD_DI_DWARF    = 1, /* Emit DWARF debug information in LLVM IR. */
-	BUILD_DI_CODEVIEW = 2, /* Emit MS CodeView debug info (PDB file). */
+    BUILD_DI_DWARF    = 1, /* Emit DWARF debug information in LLVM IR. */
+    BUILD_DI_CODEVIEW = 2, /* Emit MS CodeView debug info (PDB file). */
 } BuildDIKind;
 
 typedef struct AssemblyOptions {
-	BuildMode   build_mode;
-	BuildDIKind build_di_kind;
-	TString     custom_linker_opt;
-	TString     out_dir; /* Build output directory */
-	TArray      lib_paths;
-	TArray      libs;
-	bool        run_tests;
+    BuildMode   build_mode;
+    BuildDIKind build_di_kind;
+    TString     custom_linker_opt;
+    TString     out_dir; /* Build output directory */
+    TArray      lib_paths;
+    TArray      libs;
+    bool        run_tests;
 } AssemblyOptions;
 
 typedef struct Assembly {
-	AssemblyOptions options;
+    AssemblyOptions options;
 
-	struct {
-		ScopeArenas scope;
-		MirArenas   mir;
-		Arena       ast;
-		Arena       array;       /* used for all TArrays */
-		Arena       small_array; /* used for all SmallArrays */
-	} arenas;
+    struct {
+        ScopeArenas scope;
+        MirArenas   mir;
+        Arena       ast;
+        Arena       array;       /* used for all TArrays */
+        Arena       small_array; /* used for all SmallArrays */
+    } arenas;
 
-	struct {
-		TArray global_instrs; /* All global instructions. */
+    struct {
+        TArray global_instrs; /* All global instructions. */
 
-		/* Map type ids to RTTI variables. */
-		THashTable                 RTTI_table;
-	} MIR;
+        /* Map type ids to RTTI variables. */
+        THashTable RTTI_table;
+    } MIR;
 
-	struct {
-		LLVMModuleRef        module; /* LLVM Module. */
-		LLVMContextRef       cnt;    /* LLVM Context. */
-		LLVMTargetDataRef    TD;     /* LLVM Target data. */
-		LLVMTargetMachineRef TM;     /* LLVM Machine. */
-		char *               triple; /* LLVM triple. */
-	} llvm;
+    struct {
+        LLVMModuleRef        module; /* LLVM Module. */
+        LLVMContextRef       cnt;    /* LLVM Context. */
+        LLVMTargetDataRef    TD;     /* LLVM Target data. */
+        LLVMTargetMachineRef TM;     /* LLVM Machine. */
+        char *               triple; /* LLVM triple. */
+    } llvm;
 
-	/* DynCall/Lib data used for external method execution in compile time */
-	DCCallVM *dc_vm;
-	VM        vm;
+    /* DynCall/Lib data used for external method execution in compile time */
+    DCCallVM *dc_vm;
+    VM        vm;
 
-	TArray     units;       /* array of all units in assembly */
-	THashTable unit_cache;  /* cache for loading only unique units */
-	char *     name;        /* assembly name */
-	Scope *    gscope;      /* global scope of the assembly */
-	MirFn *    build_entry; /* Set for build assembly. */
+    TArray     units;       /* array of all units in assembly */
+    THashTable unit_cache;  /* cache for loading only unique units */
+    char *     name;        /* assembly name */
+    Scope *    gscope;      /* global scope of the assembly */
+    MirFn *    build_entry; /* Set for build assembly. */
 
-	struct {
-		TArray  cases;    /* Optionally contains list of test case functions. */
-		MirVar *meta_var; /* Optional variable containing runtime test case information. */
-	} testing;
+    struct {
+        TArray  cases;    /* Optionally contains list of test case functions. */
+        MirVar *meta_var; /* Optional variable containing runtime test case information. */
+    } testing;
 
-	/* Builtins */
-	struct BuiltinTypes {
+    /* Builtins */
+    struct BuiltinTypes {
 #define GEN_BUILTIN_TYPES
 #include "assembly.inc"
 #undef GEN_BUILTIN_TYPES
-		bool is_rtti_ready;
-		bool is_any_ready;
-		bool is_test_cases_ready;
-	} builtin_types;
+        bool is_rtti_ready;
+        bool is_any_ready;
+        bool is_test_cases_ready;
+    } builtin_types;
 } Assembly;
 
 typedef struct NativeLib {
-	u32           hash;
-	DLLib *       handle;
-	struct Token *linked_from;
-	char *        user_name;
-	char *        filename;
-	char *        filepath;
-	char *        dir;
-	bool          is_internal;
+    u32           hash;
+    DLLib *       handle;
+    struct Token *linked_from;
+    char *        user_name;
+    char *        filename;
+    char *        filepath;
+    char *        dir;
+    bool          is_internal;
 } NativeLib;
 
 Assembly *      assembly_new(const char *name);
@@ -138,50 +138,50 @@ void      assembly_set_output_dir(Assembly *assembly, const char *dir);
 
 static INLINE bool assembly_has_rtti(Assembly *assembly, u64 type_id)
 {
-	return thtbl_has_key(&assembly->MIR.RTTI_table, type_id);
+    return thtbl_has_key(&assembly->MIR.RTTI_table, type_id);
 }
 
 static INLINE MirVar *assembly_get_rtti(Assembly *assembly, u64 type_id)
 {
-	return thtbl_at(MirVar *, &assembly->MIR.RTTI_table, type_id);
+    return thtbl_at(MirVar *, &assembly->MIR.RTTI_table, type_id);
 }
 
 static INLINE void assembly_add_rtti(Assembly *assembly, u64 type_id, MirVar *rtti_var)
 {
-	thtbl_insert(&assembly->MIR.RTTI_table, type_id, rtti_var);
+    thtbl_insert(&assembly->MIR.RTTI_table, type_id, rtti_var);
 }
 
 static INLINE const char *build_mode_to_str(BuildMode mode)
 {
-	switch (mode) {
-	case BUILD_MODE_DEBUG:
-		return "DEBUG";
-	case BUILD_MODE_RELEASE_FAST:
-		return "RELEASE-FAST";
-	case BUILD_MODE_RELEASE_SMALL:
-		return "RELEASE-SMALL";
-	case BUILD_MODE_BUILD:
-		return "BUILD";
-	}
+    switch (mode) {
+    case BUILD_MODE_DEBUG:
+        return "DEBUG";
+    case BUILD_MODE_RELEASE_FAST:
+        return "RELEASE-FAST";
+    case BUILD_MODE_RELEASE_SMALL:
+        return "RELEASE-SMALL";
+    case BUILD_MODE_BUILD:
+        return "BUILD";
+    }
 
-	BL_ABORT("Invalid build mode");
+    BL_ABORT("Invalid build mode");
 }
 
 static INLINE s32 get_opt_level_for_build_mode(BuildMode mode)
 {
-	switch (mode) {
-	case BUILD_MODE_DEBUG:
-		return 0;
+    switch (mode) {
+    case BUILD_MODE_DEBUG:
+        return 0;
 
-	case BUILD_MODE_BUILD:
-	case BUILD_MODE_RELEASE_FAST:
-		return 3;
+    case BUILD_MODE_BUILD:
+    case BUILD_MODE_RELEASE_FAST:
+        return 3;
 
-	case BUILD_MODE_RELEASE_SMALL:
-		return 2;
-	}
+    case BUILD_MODE_RELEASE_SMALL:
+        return 2;
+    }
 
-	BL_ABORT("Invalid build mode");
+    BL_ABORT("Invalid build mode");
 }
 
 #endif

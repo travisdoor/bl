@@ -39,49 +39,49 @@ typedef enum {
 } Sym;
 
 typedef enum {
-	TOKEN_ASSOC_NONE,
-	TOKEN_ASSOC_RIGHT,
-	TOKEN_ASSOC_LEFT,
+    TOKEN_ASSOC_NONE,
+    TOKEN_ASSOC_RIGHT,
+    TOKEN_ASSOC_LEFT,
 } TokenAssociativity;
 
 extern char *sym_strings[];
 
 struct Unit;
 typedef struct Location {
-	s32          line;
-	s32          col;
-	s32          len;
-	struct Unit *unit;
+    s32          line;
+    s32          col;
+    s32          len;
+    struct Unit *unit;
 } Location;
 
 typedef union {
-	const char *str;
-	char        c;
-	f64         d;
-	u64         u;
+    const char *str;
+    char        c;
+    f64         d;
+    u64         u;
 } TokenValue;
 
 typedef struct Token {
-	Sym        sym;
-	Location   location;
-	TokenValue value;
-	bool       overflow;
+    Sym        sym;
+    Location   location;
+    TokenValue value;
+    bool       overflow;
 } Token;
 
 /* sizeof this structure is 8 bytes so it can be passed by value */
 typedef struct {
-	s32                priority;
-	TokenAssociativity associativity;
+    s32                priority;
+    TokenAssociativity associativity;
 } TokenPrecedence;
 
 static INLINE bool sym_is_binop(Sym sym)
 {
-	return sym >= SYM_EQ && sym <= SYM_ASTERISK;
+    return sym >= SYM_EQ && sym <= SYM_ASTERISK;
 }
 
 static INLINE bool token_is_binop(Token *token)
 {
-	return sym_is_binop(token->sym);
+    return sym_is_binop(token->sym);
 }
 
 bool token_is_unary(Token *token);
@@ -90,13 +90,13 @@ TokenPrecedence token_prec(Token *token);
 
 static INLINE bool token_is(Token *token, Sym sym)
 {
-	if (!token) return false;
-	return token->sym == sym;
+    if (!token) return false;
+    return token->sym == sym;
 }
 
 static INLINE bool token_is_not(Token *token, Sym sym)
 {
-	return !token_is(token, sym);
+    return !token_is(token, sym);
 }
 
 #endif // BL_TOKEN_H

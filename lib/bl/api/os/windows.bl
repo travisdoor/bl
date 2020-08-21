@@ -76,7 +76,7 @@ os_thread_create :: fn (entry: OSThreadEntryFn, args: ...) OSThread {
     tmp.entry = entry;
     tmp.args = {:[]Any: args.len, args.ptr};
 
-    thread :: win32_CreateThread(null, null, &thread_entry, auto tmp, 0, null);
+    thread :: win32_CreateThread(null, 0, &thread_entry, auto tmp, 0, null);
 
     return thread;
 }

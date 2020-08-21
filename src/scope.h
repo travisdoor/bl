@@ -40,55 +40,55 @@ struct MirFn;
 struct MirVar;
 
 typedef struct ScopeArenas {
-	Arena scopes;
-	Arena entries;
+    Arena scopes;
+    Arena entries;
 } ScopeArenas;
 
 typedef enum ScopeEntryKind {
-	SCOPE_ENTRY_INCOMPLETE,
-	SCOPE_ENTRY_TYPE,
-	SCOPE_ENTRY_VAR,
-	SCOPE_ENTRY_FN,
-	SCOPE_ENTRY_MEMBER,
-	SCOPE_ENTRY_VARIANT,
+    SCOPE_ENTRY_INCOMPLETE,
+    SCOPE_ENTRY_TYPE,
+    SCOPE_ENTRY_VAR,
+    SCOPE_ENTRY_FN,
+    SCOPE_ENTRY_MEMBER,
+    SCOPE_ENTRY_VARIANT,
 } ScopeEntryKind;
 
 typedef union ScopeEntryData {
-	struct MirType *   type;
-	struct MirFn *     fn;
-	struct MirVar *    var;
-	struct MirMember * member;
-	struct MirVariant *variant;
+    struct MirType *   type;
+    struct MirFn *     fn;
+    struct MirVar *    var;
+    struct MirMember * member;
+    struct MirVariant *variant;
 } ScopeEntryData;
 
 typedef struct ScopeEntry {
-	ID *           id;
-	ScopeEntryKind kind;
-	struct Scope * parent_scope;
-	struct Ast *   node;
-	bool           is_buildin;
+    ID *           id;
+    ScopeEntryKind kind;
+    struct Scope * parent_scope;
+    struct Ast *   node;
+    bool           is_buildin;
 
-	ScopeEntryData data;
+    ScopeEntryData data;
 } ScopeEntry;
 
 typedef enum ScopeKind {
-	SCOPE_GLOBAL,
-	SCOPE_PRIVATE,
-	SCOPE_FN,
-	SCOPE_FN_LOCAL,
-	SCOPE_LEXICAL,
-	SCOPE_TYPE_STRUCT,
-	SCOPE_TYPE_ENUM,
+    SCOPE_GLOBAL,
+    SCOPE_PRIVATE,
+    SCOPE_FN,
+    SCOPE_FN_LOCAL,
+    SCOPE_LEXICAL,
+    SCOPE_TYPE_STRUCT,
+    SCOPE_TYPE_ENUM,
 } ScopeKind;
 
 typedef struct Scope {
-	ScopeKind        kind;
-	struct Scope *   parent;
-	THashTable       entries;
-	LLVMMetadataRef  llvm_meta;
-	struct Location *location; /* Optional scope start location in the source file (ex.:
-	                              function body  starting with '{'). Note: global scope has no
-	                              location data. */
+    ScopeKind        kind;
+    struct Scope *   parent;
+    THashTable       entries;
+    LLVMMetadataRef  llvm_meta;
+    struct Location *location; /* Optional scope start location in the source file (ex.:
+                                  function body  starting with '{'). Note: global scope has no
+                                  location data. */
 } Scope;
 
 void scope_arenas_init(ScopeArenas *arenas);
@@ -113,7 +113,7 @@ const char *scope_kind_name(const Scope *scope);
 
 static INLINE bool scope_is_global(const Scope *scope)
 {
-	return scope->kind == SCOPE_GLOBAL || scope->kind == SCOPE_PRIVATE;
+    return scope->kind == SCOPE_GLOBAL || scope->kind == SCOPE_PRIVATE;
 }
 
 #endif

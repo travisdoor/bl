@@ -44,328 +44,328 @@ typedef enum {
 } AstKind;
 
 typedef enum {
-	FLAG_EXTERN = 1 << 0, /* methods marked as extern */
-	// 1 << 1, free
-	FLAG_COMPILER    = 1 << 2,  /* compiler internal */
-	FLAG_PRIVATE     = 1 << 3,  /* declared in private scope */
-	FLAG_INLINE      = 1 << 4,  /* inline function */
-	FLAG_NO_INLINE   = 1 << 5,  /* no inline function */
-	FLAG_ENTRY       = 1 << 6,  /* marking entry point function */
-	FLAG_BUILD_ENTRY = 1 << 7,  /* marking build entry point function */
-	FLAG_NO_INIT     = 1 << 8,  /* no default initialization */
-	FLAG_INTRINSIC   = 1 << 9,  /* intrinsics declaration */
-	FLAG_TEST_FN     = 1 << 10, /* intrinsics declaration */
+    FLAG_EXTERN = 1 << 0, /* methods marked as extern */
+    // 1 << 1, free
+    FLAG_COMPILER    = 1 << 2,  /* compiler internal */
+    FLAG_PRIVATE     = 1 << 3,  /* declared in private scope */
+    FLAG_INLINE      = 1 << 4,  /* inline function */
+    FLAG_NO_INLINE   = 1 << 5,  /* no inline function */
+    FLAG_ENTRY       = 1 << 6,  /* marking entry point function */
+    FLAG_BUILD_ENTRY = 1 << 7,  /* marking build entry point function */
+    FLAG_NO_INIT     = 1 << 8,  /* no default initialization */
+    FLAG_INTRINSIC   = 1 << 9,  /* intrinsics declaration */
+    FLAG_TEST_FN     = 1 << 10, /* intrinsics declaration */
 } AstFlag;
 
 /* map symbols to binary operation kind */
 typedef enum {
-	BINOP_INVALID = 0,
-	BINOP_ASSIGN,
-	BINOP_ADD_ASSIGN,
-	BINOP_SUB_ASSIGN,
-	BINOP_MUL_ASSIGN,
-	BINOP_DIV_ASSIGN,
-	BINOP_MOD_ASSIGN,
-	BINOP_ADD,
-	BINOP_SUB,
-	BINOP_MUL,
-	BINOP_DIV,
-	BINOP_MOD,
-	BINOP_EQ,
-	BINOP_NEQ,
-	BINOP_GREATER,
-	BINOP_LESS,
-	BINOP_GREATER_EQ,
-	BINOP_LESS_EQ,
-	BINOP_LOGIC_AND,
-	BINOP_LOGIC_OR,
-	BINOP_AND,
-	BINOP_OR,
-	BINOP_SHR,
-	BINOP_SHL,
+    BINOP_INVALID = 0,
+    BINOP_ASSIGN,
+    BINOP_ADD_ASSIGN,
+    BINOP_SUB_ASSIGN,
+    BINOP_MUL_ASSIGN,
+    BINOP_DIV_ASSIGN,
+    BINOP_MOD_ASSIGN,
+    BINOP_ADD,
+    BINOP_SUB,
+    BINOP_MUL,
+    BINOP_DIV,
+    BINOP_MOD,
+    BINOP_EQ,
+    BINOP_NEQ,
+    BINOP_GREATER,
+    BINOP_LESS,
+    BINOP_GREATER_EQ,
+    BINOP_LESS_EQ,
+    BINOP_LOGIC_AND,
+    BINOP_LOGIC_OR,
+    BINOP_AND,
+    BINOP_OR,
+    BINOP_SHR,
+    BINOP_SHL,
 } BinopKind;
 
 typedef enum {
-	UNOP_INVALID = 0,
-	UNOP_NEG,
-	UNOP_POS,
-	UNOP_NOT,
-	UNOP_BIT_NOT,
+    UNOP_INVALID = 0,
+    UNOP_NEG,
+    UNOP_POS,
+    UNOP_NOT,
+    UNOP_BIT_NOT,
 } UnopKind;
 
 struct AstLoad {
-	const char *filepath;
+    const char *filepath;
 };
 
 struct AstPrivate {
-	void *_;
+    void *_;
 };
 
 struct AstLink {
-	const char *lib;
+    const char *lib;
 };
 
 struct AstIdent {
-	ID id;
+    ID id;
 };
 
 struct AstUBlock {
-	TArray *     nodes;
-	struct Unit *unit;
+    TArray *     nodes;
+    struct Unit *unit;
 };
 
 struct AstBlock {
-	TArray *nodes;
-	bool    has_return;
+    TArray *nodes;
+    bool    has_return;
 };
 
 struct AstTestCase {
-	const char *desc;
-	Ast *       block;
+    const char *desc;
+    Ast *       block;
 };
 
 struct AstStmtReturn {
-	Ast *expr;
-	Ast *fn_decl;
-	Ast *owner_block;
+    Ast *expr;
+    Ast *fn_decl;
+    Ast *owner_block;
 };
 
 struct AstStmtDefer {
-	Ast *expr;
+    Ast *expr;
 };
 
 struct AstStmtIf {
-	Ast *test;
-	Ast *true_stmt;
-	Ast *false_stmt;
+    Ast *test;
+    Ast *true_stmt;
+    Ast *false_stmt;
 };
 
 struct AstStmtSwitch {
-	Ast *               expr;
-	TSmallArray_AstPtr *cases;
+    Ast *               expr;
+    TSmallArray_AstPtr *cases;
 };
 
 struct AstStmtCase {
-	TSmallArray_AstPtr *exprs;
-	Ast *               block;
-	bool                is_default;
+    TSmallArray_AstPtr *exprs;
+    Ast *               block;
+    bool                is_default;
 };
 
 struct AstStmtLoop {
-	Ast *init;
-	Ast *condition;
-	Ast *increment;
-	Ast *block;
+    Ast *init;
+    Ast *condition;
+    Ast *increment;
+    Ast *block;
 };
 
 struct AstDecl {
-	Ast *name;
-	Ast *type;
+    Ast *name;
+    Ast *type;
 };
 
 struct AstDeclEntity {
-	struct AstDecl base;
-	Ast *          value;
-	Ast *          explicit_linkage_name; /* Optional. */
-	u32            flags;
-	bool           in_gscope;
-	bool           mut;
+    struct AstDecl base;
+    Ast *          value;
+    Ast *          explicit_linkage_name; /* Optional. */
+    u32            flags;
+    bool           in_gscope;
+    bool           mut;
 };
 
 struct AstDeclMember {
-	struct AstDecl base;
-	Ast *          tags; /* Optional. */
+    struct AstDecl base;
+    Ast *          tags; /* Optional. */
 };
 
 struct AstDeclArg {
-	struct AstDecl base;
-	Ast *          value;
+    struct AstDecl base;
+    Ast *          value;
 };
 
 struct AstDeclVariant {
-	struct AstDecl base;
-	Ast *          value;
+    struct AstDecl base;
+    Ast *          value;
 };
 
 struct AstTypeArr {
-	Ast *elem_type;
-	Ast *len;
+    Ast *elem_type;
+    Ast *len;
 };
 
 struct AstTypeSlice {
-	Ast *elem_type;
+    Ast *elem_type;
 };
 
 struct AstTypeDynArr {
-	Ast *elem_type;
+    Ast *elem_type;
 };
 
 struct AstTypeFn {
-	Ast *               ret_type;
-	TSmallArray_AstPtr *args;
+    Ast *               ret_type;
+    TSmallArray_AstPtr *args;
 };
 
 struct AstTypeFnGroup {
-	TSmallArray_AstPtr *variants;
+    TSmallArray_AstPtr *variants;
 };
 
 struct AstTypeStruct {
-	struct Scope *      scope;
-	TSmallArray_AstPtr *members;
-	Ast *               base_type;
-	bool                raw;
-	bool                is_union;
+    struct Scope *      scope;
+    TSmallArray_AstPtr *members;
+    Ast *               base_type;
+    bool                raw;
+    bool                is_union;
 };
 
 struct AstTypeEnum {
-	struct Scope *      scope;
-	Ast *               type;
-	TSmallArray_AstPtr *variants;
+    struct Scope *      scope;
+    Ast *               type;
+    TSmallArray_AstPtr *variants;
 };
 
 struct AstTypePtr {
-	Ast *type;
+    Ast *type;
 };
 
 struct AstTypeVargs {
-	Ast *type;
+    Ast *type;
 };
 
 struct AstTypeRef {
-	Ast *ident;
+    Ast *ident;
 };
 
 struct AstExprType {
-	Ast *type;
+    Ast *type;
 };
 
 struct AstExprCompound {
-	Ast *               type;
-	TSmallArray_AstPtr *values;
+    Ast *               type;
+    TSmallArray_AstPtr *values;
 };
 
 struct AstExprLitFn {
-	Ast *type;
-	Ast *block;
+    Ast *type;
+    Ast *block;
 };
 
 struct AstExprLitFnGroup {
-	TSmallArray_AstPtr *variants;
+    TSmallArray_AstPtr *variants;
 };
 
 struct AstExprLitInt {
-	u64  val;
-	bool overflow;
+    u64  val;
+    bool overflow;
 };
 
 struct AstExprLitFloat {
-	f32  val;
-	bool overflow;
+    f32  val;
+    bool overflow;
 };
 
 struct AstExprLitDouble {
-	f64  val;
-	bool overflow;
+    f64  val;
+    bool overflow;
 };
 
 struct AstExprLitChar {
-	u8 val;
+    u8 val;
 };
 
 struct AstExprLitString {
-	const char *val;
+    const char *val;
 };
 
 struct AstExprLitBool {
-	bool val;
+    bool val;
 };
 
 struct AstExprRef {
-	Ast *ident;
+    Ast *ident;
 };
 
 struct AstExprCast {
-	Ast *type;
-	Ast *next;
-	bool auto_cast;
+    Ast *type;
+    Ast *next;
+    bool auto_cast;
 };
 
 struct AstExprBinop {
-	Ast *     lhs;
-	Ast *     rhs;
-	BinopKind kind;
+    Ast *     lhs;
+    Ast *     rhs;
+    BinopKind kind;
 };
 
 struct AstExprCall {
-	Ast *               ref;
-	TSmallArray_AstPtr *args;
-	bool                run;
+    Ast *               ref;
+    TSmallArray_AstPtr *args;
+    bool                run;
 };
 
 struct AstExprMember {
-	Ast *ident;
-	Ast *next;
-	s32  i;
+    Ast *ident;
+    Ast *next;
+    s32  i;
 };
 
 struct AstExprElem {
-	Ast *next;
-	Ast *index;
+    Ast *next;
+    Ast *index;
 };
 
 struct AstExprSizeof {
-	Ast *node;
+    Ast *node;
 };
 
 struct AstExprTypeInfo {
-	Ast *node;
+    Ast *node;
 };
 
 struct AstExprAlignof {
-	Ast *node;
+    Ast *node;
 };
 
 struct AstExprUnary {
-	UnopKind kind;
-	Ast *    next;
+    UnopKind kind;
+    Ast *    next;
 };
 
 struct AstExprAddrOf {
-	Ast *next;
+    Ast *next;
 };
 
 struct AstExprDeref {
-	Ast *next;
+    Ast *next;
 };
 
 struct AstMetaData {
-	const char *str;
+    const char *str;
 };
 
 struct AstTags {
-	TSmallArray_AstPtr *values;
+    TSmallArray_AstPtr *values;
 };
 
 struct AstCallLoc {
-	void *_;
+    void *_;
 };
 
 /* AST base type */
 struct Ast {
-	AstKind          kind;
-	struct Location *location;     /* Location in source file. */
-	struct Location *location_end; /* Optional ending location. */
-	struct Scope *   owner_scope;  /* Scope in which is AST node. */
-	struct Ast *     meta_node;    /* Metadata assigned to node. */
+    AstKind          kind;
+    struct Location *location;     /* Location in source file. */
+    struct Location *location_end; /* Optional ending location. */
+    struct Scope *   owner_scope;  /* Scope in which is AST node. */
+    struct Ast *     meta_node;    /* Metadata assigned to node. */
 
-	union {
+    union {
 #define GEN_AST_DATA
 #include "ast.inc"
 #undef GEN_AST_DATA
-	} data;
+    } data;
 
 #if BL_DEBUG
-	u64 _serial;
+    u64 _serial;
 #endif
 };
 
@@ -379,30 +379,30 @@ const char *ast_get_name(const Ast *n);
 
 static INLINE bool ast_binop_is_assign(BinopKind op)
 {
-	return op >= BINOP_ASSIGN && op <= BINOP_MOD_ASSIGN;
+    return op >= BINOP_ASSIGN && op <= BINOP_MOD_ASSIGN;
 }
 
 static INLINE bool ast_binop_is_logic(BinopKind op)
 {
-	return op >= BINOP_EQ && op <= BINOP_LOGIC_OR;
+    return op >= BINOP_EQ && op <= BINOP_LOGIC_OR;
 }
 
 static INLINE bool ast_is_expr(Ast *node)
 {
-	BL_ASSERT(node);
-	return node->kind > _AST_EXPR_FIRST && node->kind < _AST_EXPR_LAST;
+    BL_ASSERT(node);
+    return node->kind > _AST_EXPR_FIRST && node->kind < _AST_EXPR_LAST;
 }
 
 static INLINE bool ast_is_decl(Ast *node)
 {
-	BL_ASSERT(node);
-	return node->kind > _AST_DECL_FIRST && node->kind < _AST_DECL_LAST;
+    BL_ASSERT(node);
+    return node->kind > _AST_DECL_FIRST && node->kind < _AST_DECL_LAST;
 }
 
 static INLINE bool ast_is_type(Ast *node)
 {
-	BL_ASSERT(node);
-	return node->kind > _AST_TYPE_FIRST && node->kind < _AST_TYPE_LAST;
+    BL_ASSERT(node);
+    return node->kind > _AST_TYPE_FIRST && node->kind < _AST_TYPE_LAST;
 }
 
 #endif

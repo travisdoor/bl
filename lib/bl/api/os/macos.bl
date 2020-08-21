@@ -144,19 +144,16 @@ os_tick_ms :: fn () f64 #inline {
     return t * 0.00001;
 }
 
-/*
- * os_get_real_path 
- *
- * Description:
- *   Find real path of passed file.
- * 
- * Arguments: 
- *   filename: 
- *     Desired existing file name or relative path. 
- *
- * Result: 
- *   Absolute file path.
- */
+os_normalize_path :: fn (filepath: *string) bool {
+    tmp: [OS_PATH_MAX]u8 #noinit;
+    if _posix_realpath(filepath.ptr, &tmp[0]) != null {
+        string_clear(filepath);
+        string_append(filepath, cstr_to_str(tmp.ptr));
+        return true;
+    } 
+    return false;
+}
+
 os_get_real_path :: fn (filename: string) string {
     tmp: [OS_PATH_MAX]u8 #noinit;
     if _posix_realpath(filename.ptr, &tmp[0]) != null {
@@ -252,6 +249,16 @@ _OSFileInfo :: struct {
 }
 
 _OSFileList :: []_OSFileInfo;
+
+_os_is_dir :: fn (dirpath: string) bool {
+    if dirpath.len > DARWIN_MAXPATHLEN { panic("Path too long!"); }
+    dir := _posix_opendir(dirpath.ptr);
+    if dir == null { return false; }
+    defer _posix_closedir(dir);
+    info :: _posix_readdir(dir);
+    if info == null { return false; }
+    return info.d_type == auto DT_DIR;
+}
 
 _os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
     if dirpath.len > DARWIN_MAXPATHLEN { panic("Path too long!"); }

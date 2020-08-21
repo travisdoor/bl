@@ -36,11 +36,11 @@ typedef void (*ArenaElemDtor)(void *);
 struct ArenaChunk;
 
 typedef struct Arena {
-	struct ArenaChunk *first_chunk;
-	struct ArenaChunk *current_chunk;
-	usize              elem_size_in_bytes;
-	s32                elems_per_chunk;
-	ArenaElemDtor      elem_dtor;
+    struct ArenaChunk *first_chunk;
+    struct ArenaChunk *current_chunk;
+    usize              elem_size_in_bytes;
+    s32                elems_per_chunk;
+    ArenaElemDtor      elem_dtor;
 } Arena;
 
 void arena_init(Arena *       arena,

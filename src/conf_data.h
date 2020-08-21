@@ -32,18 +32,18 @@
 #include "common.h"
 
 typedef enum ConfDataValueKind {
-	CDV_UNKNOWN,
-	CDV_STRING,
-	CDV_INT,
+    CDV_UNKNOWN,
+    CDV_STRING,
+    CDV_INT,
 } ConfDataValueKind;
 
 typedef struct ConfDataValue {
-	union {
-		const char *v_str;
-		int         v_int;
-	} data;
+    union {
+        const char *v_str;
+        int         v_int;
+    } data;
 
-	ConfDataValueKind kind;
+    ConfDataValueKind kind;
 } ConfDataValue;
 
 typedef THashTable ConfData;

@@ -48,11 +48,13 @@ WIN32_LPOVERLAPPED :: *WIN32_OVERLAPPED;
 WIN32_LPDWORD      :: *WIN32_DWORD;
 WIN32_HANDLE       :: *c_uchar;
 WIN32_ULONG_PTR    :: *c_ulong;
-WIN32_SIZE_T    :: *c_ulong;
+WIN32_SIZE_T       :: c_ulong;
 WIN32_PVOID        :: *c_uchar; 
 WIN32_CHAR         :: c_uchar; 
 WIN32_LONG_PTR     :: *c_long;
 WIN32_LARGE_INTEGER :: c_longlong;
+WIN32_HGLOBAL      :: c_void_ptr;
+WIN32_HWND         :: c_void_ptr;
 
 WIN32_LPOVERLAPPED_COMPLETION_ROUTINE :: * fn(dwErrorCode: WIN32_DWORD, dwNumberOfBytesTransfered: WIN32_DWORD, lpOverlapped: WIN32_LPOVERLAPPED);
 
@@ -72,6 +74,13 @@ WIN32_FILE_ATTRIBUTE_NOT_CONTENT_INDEXED :: 0x00002000;
 WIN32_FILE_ATTRIBUTE_ENCRYPTED :: 0x00004000;
 WIN32_FILE_ATTRIBUTE_VIRTUAL :: 0x00010000;
 
+WIN32_GHND : u32 : 0x0042;
+WIN32_GMEM_FIXED : u32 : 0x0000;
+WIN32_GMEM_MOVEABLE : u32 : 0x0002;
+WIN32_GMEM_ZEROINIT : u32 : 0x0040;
+WIN32_GPTR : u32 : 0x0040;
+
+WIN32_CF_TEXT : u32 : 1;
 
 WIN32_FILE_NOTIFY_INFORMATION :: struct {
     NextEntryOffset: WIN32_DWORD;
@@ -226,3 +235,12 @@ win32_ReleaseMutex :: fn (hMutex: WIN32_HANDLE) WIN32_BOOL #extern "ReleaseMutex
 win32_GetTickCount :: fn () WIN32_DWORD #extern "GetTickCount";
 win32_QueryPerformanceCounter :: fn (lpPerformanceCount: *WIN32_LARGE_INTEGER) WIN32_BOOL #extern "QueryPerformanceCounter";
 win32_QueryPerformanceFrequency :: fn (lpPerformanceCount: *WIN32_LARGE_INTEGER) WIN32_BOOL #extern "QueryPerformanceFrequency";
+win32_GlobalAlloc :: fn (uFlags: WIN32_UINT, dwBytes: WIN32_SIZE_T) WIN32_HGLOBAL #extern "GlobalAlloc";
+win32_GlobalFree :: fn (hMem: WIN32_HGLOBAL) WIN32_HGLOBAL #extern "GlobalFree";
+win32_GlobalLock :: fn (hMem: WIN32_HGLOBAL) WIN32_LPVOID #extern "GlobalLock";
+win32_GlobalUnlock :: fn (hMem: WIN32_HGLOBAL) WIN32_BOOL #extern "GlobalUnlock";
+win32_OpenClipboard :: fn (hWndNewOwner: WIN32_HWND) WIN32_BOOL #extern "OpenClipboard";
+win32_EmptyClipboard :: fn () WIN32_BOOL #extern "EmptyClipboard";
+win32_SetClipboardData :: fn (uFormat: WIN32_UINT, hMem: WIN32_HANDLE) WIN32_HANDLE #extern "SetClipboardData";
+win32_GetClipboardData :: fn (uFormat: WIN32_UINT) WIN32_HANDLE  #extern "GetClipboardData";
+win32_CloseClipboard :: fn () WIN32_BOOL #extern "CloseClipboard";

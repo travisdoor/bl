@@ -38,21 +38,21 @@ struct Token;
 
 /* class Unit object members */
 typedef struct Unit {
-	u64             hash; 
-	Tokens          tokens;        /* Unit tokens as lexer output. */
-	Ast *           ast;           /* Abstract Syntax Tree */
-	struct Scope *  private_scope; /* Unit private scope (#private). */
-	char *          filename;      /* Loaded source file name. */
-	char *          filepath;      /* Loaded source file name with path. */
-	char *          dirpath;       /* Parent directory. */
-	char *          name;          /* Unit name */
-	char *          src;           /* Unit raw source data. */
-	struct Token *  loaded_from;   /* Optionally set when unit is loaded from another unit. */
-	LLVMMetadataRef llvm_file_meta;
+    u64             hash;
+    Tokens          tokens;        /* Unit tokens as lexer output. */
+    Ast *           ast;           /* Abstract Syntax Tree */
+    struct Scope *  private_scope; /* Unit private scope (#private). */
+    char *          filename;      /* Loaded source file name. */
+    char *          filepath;      /* Loaded source file name with path. */
+    char *          dirpath;       /* Parent directory. */
+    char *          name;          /* Unit name */
+    char *          src;           /* Unit raw source data. */
+    struct Token *  loaded_from;   /* Optionally set when unit is loaded from another unit. */
+    LLVMMetadataRef llvm_file_meta;
 } Unit;
 
-Unit *unit_new_file(const char *filepath, struct Token *loaded_from, Unit *parent_unit);
-void unit_delete(Unit *unit);
+Unit *      unit_new_file(const char *filepath, struct Token *loaded_from, Unit *parent_unit);
+void        unit_delete(Unit *unit);
 const char *unit_get_src_ln(Unit *unit, s32 line, long *len);
 
 #endif

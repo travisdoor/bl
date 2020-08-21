@@ -68,108 +68,108 @@ void *_assert_invalid_expr(const char *expr, const char *file, s32 line);
 
 #if BL_ASSERT_ENABLE || BL_DEBUG
 #define BL_ASSERT(e)                                                                               \
-	if (!(e)) {                                                                                \
-		_log(LOG_ASSERT, __FILENAME__, __LINE__, #e);                                      \
-		print_trace();                                                                     \
-		BL_DEBUG_BREAK;                                                                    \
-		abort();                                                                           \
-	}
+    if (!(e)) {                                                                                    \
+        _log(LOG_ASSERT, __FILENAME__, __LINE__, #e);                                              \
+        print_trace();                                                                             \
+        BL_DEBUG_BREAK;                                                                            \
+        abort();                                                                                   \
+    }
 #define BL_MAGIC_ASSERT(O)                                                                         \
-	{                                                                                          \
-		BL_ASSERT(O && "Invalid reference!");                                              \
-		BL_ASSERT((O)->_magic == (void *)&(O)->_magic && "Invalid magic!");                \
-	}
+    {                                                                                              \
+        BL_ASSERT(O && "Invalid reference!");                                                      \
+        BL_ASSERT((O)->_magic == (void *)&(O)->_magic && "Invalid magic!");                        \
+    }
 #define BL_MAGIC_ADD void *_magic;
 #define BL_MAGIC_SET(O) (O)->_magic = (void *)&(O)->_magic
 #else
 #define BL_ASSERT(e)                                                                               \
-	while (0) {                                                                                \
-	}
+    while (0) {                                                                                    \
+    }
 #define BL_MAGIC_ASSERT(O)                                                                         \
-	while (0) {                                                                                \
-	}
+    while (0) {                                                                                    \
+    }
 #define BL_MAGIC_ADD
 #define BL_MAGIC_SET(O)                                                                            \
-	while (0) {                                                                                \
-	}
+    while (0) {                                                                                    \
+    }
 #endif
 
 #ifdef BL_DEBUG
 #define BL_LOG(format, ...)                                                                        \
-	{                                                                                          \
-		_log(LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                      \
-	}
+    {                                                                                              \
+        _log(LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                              \
+    }
 
 #define BL_WARNING(format, ...)                                                                    \
-	{                                                                                          \
-		_log(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                  \
-	}
+    {                                                                                              \
+        _log(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                          \
+    }
 
 #else /* !BL_DEBUG */
 
 #define BL_LOG(format, ...)                                                                        \
-	while (0) {                                                                                \
-	}
+    while (0) {                                                                                    \
+    }
 
 #define BL_WARNING(format, ...)                                                                    \
-	while (0) {                                                                                \
-	}
+    while (0) {                                                                                    \
+    }
 
 #endif /* BL_DEBUG */
 
 #define BL_ABORT(format, ...)                                                                      \
-	{                                                                                          \
-		_log(LOG_ABORT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                    \
-		print_trace();                                                                     \
-		BL_DEBUG_BREAK;                                                                    \
-		abort();                                                                           \
-	}
+    {                                                                                              \
+        _log(LOG_ABORT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                            \
+        print_trace();                                                                             \
+        BL_DEBUG_BREAK;                                                                            \
+        abort();                                                                                   \
+    }
 
 #define BL_ABORT_ISSUE(N)                                                                          \
-	{                                                                                          \
-		_log(LOG_ABORT,                                                                    \
-		     __FILENAME__,                                                                 \
-		     __LINE__,                                                                     \
-		     "Issue: https://github.com/travisdoor/bl/issues/" #N);                        \
-		print_trace();                                                                     \
-		abort();                                                                           \
-	}
+    {                                                                                              \
+        _log(LOG_ABORT,                                                                            \
+             __FILENAME__,                                                                         \
+             __LINE__,                                                                             \
+             "Issue: https://github.com/travisdoor/bl/issues/" #N);                                \
+        print_trace();                                                                             \
+        abort();                                                                                   \
+    }
 
 #define BL_WARNING_ISSUE(N)                                                                        \
-	{                                                                                          \
-		_log(LOG_WARNING,                                                                  \
-		     __FILENAME__,                                                                 \
-		     __LINE__,                                                                     \
-		     "Issue: https://github.com/travisdoor/bl/issues/" #N);                        \
-	}
+    {                                                                                              \
+        _log(LOG_WARNING,                                                                          \
+             __FILENAME__,                                                                         \
+             __LINE__,                                                                             \
+             "Issue: https://github.com/travisdoor/bl/issues/" #N);                                \
+    }
 
 #define BL_UNIMPLEMENTED                                                                           \
-	{                                                                                          \
-		_log(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented");                          \
-		print_trace();                                                                     \
-		BL_DEBUG_BREAK;                                                                    \
-		abort();                                                                           \
-	}
+    {                                                                                              \
+        _log(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented");                                  \
+        print_trace();                                                                             \
+        BL_DEBUG_BREAK;                                                                            \
+        abort();                                                                                   \
+    }
 
 #define BL_UNIMPLEMENTED_REGION(R)                                                                 \
-	{                                                                                          \
-		_log(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented region '" #R "'");          \
-		print_trace();                                                                     \
-		BL_DEBUG_BREAK;                                                                    \
-		abort();                                                                           \
-	}
+    {                                                                                              \
+        _log(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented region '" #R "'");                  \
+        print_trace();                                                                             \
+        BL_DEBUG_BREAK;                                                                            \
+        abort();                                                                                   \
+    }
 
 #if TRACY_ENABLE
 #define BL_TRACY_MESSAGE(tag, format, ...)                                                         \
-	{                                                                                          \
-		char buf[256];                                                                     \
-		snprintf(buf, ARRAY_SIZE(buf), "#%s " format, tag, ##__VA_ARGS__);                 \
-		TracyCMessageC(buf, strlen(buf), thash_from_str(tag));                             \
-	}
+    {                                                                                              \
+        char buf[256];                                                                             \
+        snprintf(buf, ARRAY_SIZE(buf), "#%s " format, tag, ##__VA_ARGS__);                         \
+        TracyCMessageC(buf, strlen(buf), thash_from_str(tag));                                     \
+    }
 #else
 #define BL_TRACY_MESSAGE(format, ...)                                                              \
-	while (0) {                                                                                \
-	}
+    while (0) {                                                                                    \
+    }
 #endif
 #ifdef __cplusplus
 }
