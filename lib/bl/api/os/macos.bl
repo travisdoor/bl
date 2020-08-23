@@ -171,20 +171,6 @@ os_get_exec_path :: fn () string {
     return string_new(buf.ptr);
 }
 
-/*
- * os_dlopen
- *
- * Description:
- *   Dynamically link native library file. 
- * 
- * Arguments: 
- *   lib_name: 
- *     Name of the library. If lib_name is empty string, then function return 
- *     handle for main program. 
- *
- * Result: 
- *   Library handle or null.
- */
 os_dlopen :: fn (lib_name: string) OSLibrary #inline {
     clib_name: *u8 = null;
     if lib_name.len > 0 { clib_name = lib_name.ptr; }
@@ -192,37 +178,10 @@ os_dlopen :: fn (lib_name: string) OSLibrary #inline {
     return _posix_dlopen(clib_name, RTLD_LAZY); 
 }
 
-/*
- * os_dlsym
- *
- * Description:
- *   Dynamically load procedure. 
- * 
- * Arguments: 
- *   lib: 
- *     Library handle.
- * 
- *   sym_name: 
- *     Symbol name.
- *
- * Result: 
- *   Procedure handle or null.
- */
 os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 #inline {
     return _posix_dlsym(lib, sym_name.ptr);
 }
 
-/*
- * os_close
- *
- * Description:
- *   Close dynamically loded library. 
- * 
- * Arguments: 
- *   lib: 
- *     Library handle. 
- *
- */
 os_dlclose :: fn (lib: OSLibrary) #inline {
     _posix_dlclose(lib);
 }
