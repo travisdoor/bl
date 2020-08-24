@@ -41,7 +41,7 @@ search_source_file(const char *filepath, char **out_filepath, char **out_dirpath
     char        tmp[PATH_MAX] = {0};
     const char *rpath         = tmp;
 
-    /* Lookup in working directory. */
+    // Lookup in working directory.
     if (wdir) {
         strncpy(tmp, wdir, TARRAY_SIZE(tmp));
         strncat(tmp, PATH_SEPARATOR, TARRAY_SIZE(tmp) - 1);
@@ -58,7 +58,7 @@ search_source_file(const char *filepath, char **out_filepath, char **out_dirpath
         goto FOUND;
     }
 
-    /* file has not been found in current working direcotry -> search in LIB_DIR */
+    // file has not been found in current working direcotry -> search in LIB_DIR
     if (ENV_LIB_DIR) {
         char tmp_lib_dir[PATH_MAX];
 
@@ -73,7 +73,7 @@ search_source_file(const char *filepath, char **out_filepath, char **out_dirpath
         }
     }
 
-    /* file has not been found in current working direcotry -> search in PATH */
+    // file has not been found in current working direcotry -> search in PATH
     {
         char  tmp_env[PATH_MAX] = {0};
         char *env               = strdup(getenv(ENV_PATH));
@@ -105,10 +105,10 @@ NOT_FOUND:
     return false;
 
 FOUND:
-    /* Absolute file path. */
+    // Absolute file path.
     *out_filepath = strdup(rpath);
 
-    /* Absolute directory path. */
+    // Absolute directory path.
     memset(tmp, 0, TARRAY_SIZE(tmp));
     if (get_dir_from_filepath(tmp, PATH_MAX, *out_filepath)) {
         *out_dirpath = strdup(tmp);
@@ -117,7 +117,7 @@ FOUND:
     return true;
 }
 
-/* public */
+// public
 Unit *unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
 {
     Unit *unit = bl_malloc(sizeof(Unit));

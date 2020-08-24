@@ -29,9 +29,7 @@
 #ifndef BL_CONFIG_H
 #define BL_CONFIG_H
 
-/*
- * Values set automatically during build by cmake.
- */
+// Values set automatically during build by cmake.
 #define BL_VERSION "@PROJECT_VERSION@"
 #define BL_VERSION_MAJOR @PROJECT_VERSION_MAJOR @
 #define BL_VERSION_MINOR @PROJECT_VERSION_MINOR @
@@ -87,18 +85,14 @@
 #define BUILD_API_FILE "build/build.bl"
 #define BUILTIN_FILE "a.bl"
 
-/*
- * NOTE: We are converting all backslashes on Windows to the forward slashes.
- */
+// NOTE: We are converting all backslashes on Windows to the forward slashes.
 #define PATH_SEPARATOR "/"
 #define PATH_SEPARATORC '/'
 
-/*
- * LLVM_EXCLUDE_UNUSED_SYM - Exclude all unused functions and variables from LLVM IR when this is
- * enabled.
- *
- * ASSERT_ON_CMP_ERROR - assert on compiler error.
- */
+// LLVM_EXCLUDE_UNUSED_SYM - Exclude all unused functions and variables from LLVM IR when this is
+// enabled.
+//
+// ASSERT_ON_CMP_ERROR - assert on compiler error.
 
 #if BL_DEBUG
 #define ASSERT_ON_CMP_ERROR 0

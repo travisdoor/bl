@@ -116,11 +116,9 @@ typedef struct ID {
 
 void id_init(ID *id, const char *str);
 
-/*
- * Replace all backslashes in passed path with forward slash, this is used as workaround on Windows
- * platform due to inconsistency 'Unix vs Windows' path separators. This function will modify passed
- * buffer.
- */
+// Replace all backslashes in passed path with forward slash, this is used as workaround on Windows
+// platform due to inconsistency 'Unix vs Windows' path separators. This function will modify passed
+// buffer.
 void        win_fix_path(char *buf, usize buf_size);
 bool        file_exists(const char *filepath);
 bool        dir_exists(const char *dirpath);
@@ -140,16 +138,12 @@ int         count_bits(u64 n);
 void        platform_lib_name(const char *name, char *buffer, usize max_len);
 f64         get_tick_ms(void);
 
-/*
- * Creates BArray inside Assembly arena.
- * Note: no free is needed.
- */
+// Creates BArray inside Assembly arena.
+// Note: no free is needed.
 TArray *create_arr(struct Assembly *assembly, usize size);
 
-/*
- * Creates SmallArray inside Assembly arena.
- * Note: no free is needed.
- */
+// Creates SmallArray inside Assembly arena.
+// Note: no free is needed.
 void *_create_sarr(struct Assembly *cnt, usize arr_size);
 u32   next_pow_2(u32 n);
 void  color_print(FILE *stream, s32 color, const char *format, ...);

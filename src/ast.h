@@ -44,20 +44,20 @@ typedef enum {
 } AstKind;
 
 typedef enum {
-    FLAG_EXTERN = 1 << 0, /* methods marked as extern */
+    FLAG_EXTERN = 1 << 0, // methods marked as extern
     // 1 << 1, free
-    FLAG_COMPILER    = 1 << 2,  /* compiler internal */
-    FLAG_PRIVATE     = 1 << 3,  /* declared in private scope */
-    FLAG_INLINE      = 1 << 4,  /* inline function */
-    FLAG_NO_INLINE   = 1 << 5,  /* no inline function */
-    FLAG_ENTRY       = 1 << 6,  /* marking entry point function */
-    FLAG_BUILD_ENTRY = 1 << 7,  /* marking build entry point function */
-    FLAG_NO_INIT     = 1 << 8,  /* no default initialization */
-    FLAG_INTRINSIC   = 1 << 9,  /* intrinsics declaration */
-    FLAG_TEST_FN     = 1 << 10, /* intrinsics declaration */
+    FLAG_COMPILER    = 1 << 2,  // compiler internal
+    FLAG_PRIVATE     = 1 << 3,  // declared in private scope
+    FLAG_INLINE      = 1 << 4,  // inline function
+    FLAG_NO_INLINE   = 1 << 5,  // no inline function
+    FLAG_ENTRY       = 1 << 6,  // marking entry point function
+    FLAG_BUILD_ENTRY = 1 << 7,  // marking build entry point function
+    FLAG_NO_INIT     = 1 << 8,  // no default initialization 
+    FLAG_INTRINSIC   = 1 << 9,  // intrinsics declaration
+    FLAG_TEST_FN     = 1 << 10, // intrinsics declaration
 } AstFlag;
 
-/* map symbols to binary operation kind */
+// map symbols to binary operation kind
 typedef enum {
     BINOP_INVALID = 0,
     BINOP_ASSIGN,
@@ -166,7 +166,7 @@ struct AstDecl {
 struct AstDeclEntity {
     struct AstDecl base;
     Ast *          value;
-    Ast *          explicit_linkage_name; /* Optional. */
+    Ast *          explicit_linkage_name; // Optional.
     u32            flags;
     bool           in_gscope;
     bool           mut;
@@ -174,7 +174,7 @@ struct AstDeclEntity {
 
 struct AstDeclMember {
     struct AstDecl base;
-    Ast *          tags; /* Optional. */
+    Ast *          tags; // Optional.
 };
 
 struct AstDeclArg {
@@ -353,10 +353,10 @@ struct AstCallLoc {
 /* AST base type */
 struct Ast {
     AstKind          kind;
-    struct Location *location;     /* Location in source file. */
-    struct Location *location_end; /* Optional ending location. */
-    struct Scope *   owner_scope;  /* Scope in which is AST node. */
-    struct Ast *     meta_node;    /* Metadata assigned to node. */
+    struct Location *location;     // Location in source file. 
+    struct Location *location_end; // Optional ending location. 
+    struct Scope *   owner_scope;  // Scope in which is AST node.
+    struct Ast *     meta_node;    // Metadata assigned to node.
 
     union {
 #define GEN_AST_DATA

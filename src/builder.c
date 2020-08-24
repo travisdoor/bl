@@ -243,14 +243,14 @@ void builder_init(void)
     builder.conf   = conf_data_new();
     arena_init(&builder.str_cache, sizeof(TString), 256, (ArenaElemDtor)str_cache_dtor);
 
-    /* TODO: this is invalid for Windows MSVC DLLs??? */
+    // TODO: this is invalid for Windows MSVC DLLs???
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
     builder.options.reg_split = true;
 #else
     builder.options.reg_split     = false;
 #endif
 
-    /* initialize LLVM statics */
+    // initialize LLVM statics
     llvm_init();
     tarray_init(&builder.assembly_queue, sizeof(Assembly *));
     tsa_init(&builder.message_handlers);
@@ -277,15 +277,15 @@ int builder_load_conf_file(const char *filepath)
 {
     Unit *unit = unit_new_file(filepath, NULL, NULL);
 
-    /* load */
+    // load
     file_loader_run(unit);
     INTERRUPT_ON_ERROR;
 
-    /* use standart lexer */
+    // use standart lexer
     lexer_run(unit);
     INTERRUPT_ON_ERROR;
 
-    /* print output */
+    // print output
     conf_parser_run(unit);
     INTERRUPT_ON_ERROR;
 
@@ -351,7 +351,7 @@ int builder_compile(Assembly *assembly)
 
     TARRAY_FOREACH(Unit *, &assembly->units, unit)
     {
-        /* IDEA: can run in separate thread */
+        // IDEA: can run in separate thread
         if ((state = compile_unit(unit, assembly)) != COMPILE_OK) {
             break;
         }
@@ -367,8 +367,8 @@ int builder_compile(Assembly *assembly)
         builder_log("There were errors, sorry...");
     }
 
-    /* We return count of failed compile time test cases as state even if there was no
-     * compilation errors. Compilation errors has priority here. */
+    // We return count of failed compile time test cases as state even if there was no
+    // compilation errors. Compilation errors has priority here.
     return builder.errorc ? builder.errorc : builder.test_failc;
 }
 

@@ -38,20 +38,20 @@
 #include <dyncall_callback.h>
 #include <dynload.h>
 
-/* Slice member indices */
+// Slice member indices
 #define MIR_SLICE_LEN_INDEX 0
 #define MIR_SLICE_PTR_INDEX 1
 
-/* String member indices */
+// String member indices
 #define MIR_STRING_LEN_INDEX MIR_SLICE_LEN_INDEX
 #define MIR_STRING_PTR_INDEX MIR_SLICE_PTR_INDEX
 
-/* Dynamic array member indices */
+// Dynamic array member indices
 #define MIR_DYNARR_LEN_INDEX MIR_SLICE_LEN_INDEX
 #define MIR_DYNARR_PTR_INDEX MIR_SLICE_PTR_INDEX
 #define MIR_DYNARR_ALLOCATED_INDEX 2
 
-/* Helper macro for reading Const Expression Values of fundamental types. */
+// Helper macro for reading Const Expression Values of fundamental types.
 #if BL_DEBUG
 #define MIR_CEV_READ_AS(T, src) (*((T *)_mir_cev_read(src)))
 #else
@@ -169,27 +169,27 @@ typedef enum MirTypeKind {
 typedef enum MirValueAddressMode {
     MIR_VAM_UNKNOWN,
 
-    /* Value points to memory allocation on the stack or heap. */
+    // Value points to memory allocation on the stack or heap.
     MIR_VAM_LVALUE,
-    /* Value points to memeory allocation on the stack or heap but value itself is immutable and
-       cannot be modified. */
+    // Value points to memeory allocation on the stack or heap but value itself is immutable and
+    // cannot be modified.
     MIR_VAM_LVALUE_CONST,
-    /* Does not point to allocated memory (ex: const literals). */
+    // Does not point to allocated memory (ex: const literals).
     MIR_VAM_RVALUE,
 } MirValueAddressMode;
 
-/* External function arguments passing composit types by value needs special handling in IR. */
+// External function arguments passing composit types by value needs special handling in IR.
 typedef enum LLVMExternArgStructGenerationMode {
-    LLVM_EASGM_NONE,  /* No special handling */
-    LLVM_EASGM_8,     /* Promote composit as i8 */
-    LLVM_EASGM_16,    /* Promote composit as i16 */
-    LLVM_EASGM_32,    /* Promote composit as i32 */
-    LLVM_EASGM_64,    /* Promote composit as i64 */
-    LLVM_EASGM_64_8,  /* Promote composit as i64, i8 */
-    LLVM_EASGM_64_16, /* Promote composit as i64, i16 */
-    LLVM_EASGM_64_32, /* Promote composit as i64, i32 */
-    LLVM_EASGM_64_64, /* Promote composit as i64, i64 */
-    LLVM_EASGM_BYVAL, /* Promote composit as byval */
+    LLVM_EASGM_NONE,  // No special handling
+    LLVM_EASGM_8,     // Promote composit as i8
+    LLVM_EASGM_16,    // Promote composit as i16
+    LLVM_EASGM_32,    // Promote composit as i32
+    LLVM_EASGM_64,    // Promote composit as i64
+    LLVM_EASGM_64_8,  // Promote composit as i64, i8
+    LLVM_EASGM_64_16, // Promote composit as i64, i16
+    LLVM_EASGM_64_32, // Promote composit as i64, i32
+    LLVM_EASGM_64_64, // Promote composit as i64, i64
+    LLVM_EASGM_BYVAL, // Promote composit as byval
 } LLVMExternArgStructGenerationMode;
 
 typedef enum MirInstrKind {
@@ -222,21 +222,21 @@ typedef struct {
     MirFn *fn;
 } DyncallCBContext;
 
-/* FN */
+// FN
 struct MirFn {
-    /* Must be first!!! */
+    // Must be first!!!
     MirInstr *prototype;
     ID *      id;
     Ast *     decl_node;
 
-    /* function body scope if there is one (optional) */
+    // function body scope if there is one (optional)
     Scope *  body_scope;
     MirType *type;
     TArray * variables;
 
-    /* Linkage name of the function, this name is used during linking to identify function,
-     * actual implementation can be external, internal or intrinsic embedded in compiler,
-     * depending on function flags. */
+    // Linkage name of the function, this name is used during linking to identify function,
+    // actual implementation can be external, internal or intrinsic embedded in compiler,
+    // depending on function flags.
     const char *linkage_name;
 
     LLVMValueRef llvm_value;
@@ -248,19 +248,19 @@ struct MirFn {
     u32              flags;
     MirBuiltinIdKind builtin_id;
 
-    /* pointer to the first block inside function body */
+    // pointer to the first block inside function body
     MirInstrBlock *first_block;
     MirInstrBlock *last_block;
     s32            block_count;
 
-    /* Teporary variable used for return value. */
+    // Teporary variable used for return value.
     MirInstr *ret_tmp;
 
-    /* Return instruction of function. */
+    // Return instruction of function.
     MirInstrRet *    terminal_instr;
     struct Location *first_unreachable_loc;
 
-    /* dyncall external context */
+    // dyncall external context
     struct {
         DCpointer        extern_entry;
         DCCallback *     extern_callback_handle;
@@ -275,7 +275,7 @@ struct MirFnGroup {
     BL_MAGIC_ADD
 };
 
-/* MEMBER */
+// MEMBER
 struct MirMember {
     MirType *type;
     ID *     id;
@@ -284,29 +284,29 @@ struct MirMember {
     s32      offset_bytes;
     s64      index;
     s32      tags;
-    bool     is_base; /* inherrited struct base */
+    bool     is_base; // inherrited struct base
     bool     is_parent_union;
     BL_MAGIC_ADD
 };
 
-/* FUNCTION ARGUMENT */
+// FUNCTION ARGUMENT
 struct MirArg {
     MirType *type;
     ID *     id;
     Ast *    decl_node;
     Scope *  decl_scope;
 
-    /* This is index of this argument in LLVM IR not in MIR, it can be different based on
-     * compiler configuration (vix. System V ABI) */
+    // This is index of this argument in LLVM IR not in MIR, it can be different based on
+    // compiler configuration (vix. System V ABI)
     u32 llvm_index;
 
-    /* Optional default value. */
+    // Optional default value.
     MirInstr *value;
 
     LLVMExternArgStructGenerationMode llvm_easgm;
 };
 
-/* TYPE */
+// TYPE
 struct MirTypeInt {
     s32  bitcount;
     bool is_signed;
@@ -336,27 +336,27 @@ struct MirTypePtr {
 };
 
 struct MirTypeStruct {
-    Scope *                scope; /* struct body scope */
+    Scope *                scope; // struct body scope
     TSmallArray_MemberPtr *members;
     bool                   is_packed;
 
-    /* C-style union is represented as regular structure with special memory layout. Every
-     * member is stored at same memory offset. */
+    // C-style union is represented as regular structure with special memory layout. Every
+    // member is stored at same memory offset.
     bool is_union;
 
-    /* Set true only for incomplete forward declarations of the struct. */
+    // Set true only for incomplete forward declarations of the struct.
     bool is_incomplete;
 
-    /* This is optional base type, only structures with #base hash directive has this
-     * information.*/
+    // This is optional base type, only structures with #base hash directive has this
+    // information.
     MirType *base_type;
 };
 
-/* Enum variants must be baked into enum type. */
+// Enum variants must be baked into enum type.
 struct MirTypeEnum {
     Scope *                 scope;
     MirType *               base_type;
-    TSmallArray_VariantPtr *variants; /* MirVariant * */
+    TSmallArray_VariantPtr *variants; // MirVariant *
 };
 
 struct MirTypeNull {
@@ -378,7 +378,7 @@ struct MirType {
     usize           store_size_bytes;
     s32             alignment;
 
-    /* Optionally set pointer to RTTI var used by VM. */
+    // Optionally set pointer to RTTI var used by VM.
     MirVar *vm_rtti_var_cache;
 
     union {
@@ -395,7 +395,7 @@ struct MirType {
     BL_MAGIC_ADD
 };
 
-/* VALUE */
+// VALUE
 struct MirConstExprValue {
     VMValue             _tmp;
     VMStackPtr          data;
@@ -404,16 +404,16 @@ struct MirConstExprValue {
     bool                is_comptime;
 };
 
-/* VARIANT */
+// VARIANT
 struct MirVariant {
     ID *               id;
     Scope *            decl_scope;
     MirConstExprValue *value;
 };
 
-/* VAR */
+// VAR
 struct MirVar {
-    MirConstExprValue  value; /* contains also allocated type */
+    MirConstExprValue  value; // contains also allocated type
     ID *               id;
     Ast *              decl_node;
     Scope *            decl_scope;
@@ -441,7 +441,7 @@ struct MirInstr {
     s32  ref_count;
     bool analyzed;
     bool is_unreachable;
-    bool is_implicit; /* generated by compiler */
+    bool is_implicit; // generated by compiler
 
     MirInstr *prev;
     MirInstr *next;
@@ -455,7 +455,7 @@ struct MirInstrBlock {
     MirInstr *  entry_instr;
     MirInstr *  last_instr;
     MirInstr *  terminal;
-    /* Optional; when not set block is implicit global block. */
+    // Optional; when not set block is implicit global block.
     MirFn *owner_fn;
 };
 
@@ -473,14 +473,14 @@ struct MirInstrDeclMember {
     MirMember *member;
     MirInstr * type;
 
-    TSmallArray_InstrPtr *tags; /* Optional. */
+    TSmallArray_InstrPtr *tags; // Optional.
 };
 
 struct MirInstrDeclVariant {
     MirInstr base;
 
     MirVariant *variant;
-    MirInstr *  value; /* Optional. */
+    MirInstr *  value; // Optional.
 };
 
 struct MirInstrDeclArg {
@@ -488,7 +488,7 @@ struct MirInstrDeclArg {
 
     MirArg *arg;
 
-    /* @CLEANUP: are in MirArg and can be replaced? */
+    // @CLEANUP: are in MirArg and can be replaced?
     MirInstr *type;
     bool      llvm_byval;
 };
@@ -538,14 +538,14 @@ struct MirInstrArg {
 
 struct MirInstrConst {
     MirInstr base;
-    /* Constant marked as volatile can change it's type as needed by expression. */
+    // Constant marked as volatile can change it's type as needed by expression.
     bool volatile_type;
 };
 
 struct MirInstrLoad {
     MirInstr base;
 
-    /* This flag is set when laod is user-level dereference. */
+    // This flag is set when laod is user-level dereference.
     bool      is_deref;
     MirInstr *src;
 };
@@ -625,7 +625,7 @@ struct MirInstrTypeFnGroup {
 struct MirInstrTypeStruct {
     MirInstr base;
 
-    /* fwd_decl is optional pointer to forward declaration of this structure type.  */
+    // fwd_decl is optional pointer to forward declaration of this structure type.
     MirInstr *            fwd_decl;
     ID *                  id;
     Scope *               scope;
@@ -690,7 +690,7 @@ struct MirInstrDeclRef {
     Scope *      scope;
     ScopeEntry * scope_entry;
 
-    /* Set only for decl_refs inside struct member type resolvers. */
+    // Set only for decl_refs inside struct member type resolvers.
     bool accept_incomplete_type;
 };
 
@@ -753,8 +753,8 @@ struct MirInstrTestCases {
 struct MirInstrCallLoc {
     MirInstr base;
 
-    struct Location *call_location; /* Optional call location */
-    MirVar *         meta_var;      /* Optional meta var. */
+    struct Location *call_location; // Optional call location
+    MirVar *         meta_var;      // Optional meta var.
 };
 
 struct MirInstrTypeKind {
@@ -773,9 +773,9 @@ struct MirInstrToAny {
 
     MirInstr *expr;
     MirType * rtti_type;
-    MirType * rtti_data; /* optional */
+    MirType * rtti_data; // optional
     MirVar *  tmp;
-    MirVar *  expr_tmp; /* optional */
+    MirVar *  expr_tmp; // optional
 };
 
 struct MirInstrSwitch {
@@ -787,7 +787,7 @@ struct MirInstrSwitch {
     bool                    has_user_defined_default;
 };
 
-/* public */
+// public
 static bool mir_is_pointer_type(const MirType *type)
 {
     BL_ASSERT(type);
@@ -836,7 +836,7 @@ static MirType *mir_get_fn_arg_type(const MirType *type, u32 i)
     return args->data[i]->type;
 }
 
-/* Determinates if the instruction has compile time known value. */
+// Determinates if the instruction has compile time known value.
 static bool mir_is_comptime(const MirInstr *instr)
 {
     return instr->value.is_comptime;
@@ -847,7 +847,7 @@ static bool mir_is_global_block(const MirInstrBlock *instr)
     return instr->owner_fn == NULL;
 }
 
-/* Determinates if the instruction is in the global block. */
+// Determinates if the instruction is in the global block.
 static bool mir_is_global(const MirInstr *instr)
 {
     return mir_is_global_block(instr->owner_block);

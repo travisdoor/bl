@@ -50,7 +50,7 @@ TSMALL_ARRAY_TYPE(ScopePtr64, Scope *, 64);
         builder_msg(BUILDER_MSG_NOTE, 0, &(tok)->location, (pos), (format), ##__VA_ARGS__);        \
     }
 
-/* swap current compound with _cmp and create temporary variable with previous one */
+// swap current compound with _cmp and create temporary variable with previous one
 
 #define SCOPE_PUSH(_cnt, _scope) tsa_push_ScopePtr64(&(_cnt)->_scope_stack, (_scope))
 #define SCOPE_POP(_cnt) tsa_pop_ScopePtr64(&(_cnt)->_scope_stack)
@@ -92,13 +92,13 @@ typedef struct {
     ScopeArenas *          scope_arenas;
     Tokens *               tokens;
 
-    /* tmps */
+    // tmps
     bool   inside_loop;
     Scope *current_private_scope;
 } Context;
 
-/* helpers */
-/* fw decls */
+// helpers
+// fw decls
 static BinopKind sym_to_binop_kind(Sym sm);
 static UnopKind  sym_to_unop_kind(Sym sm);
 static void      parse_ublock_content(Context *cnt, Ast *ublock);
@@ -130,7 +130,7 @@ static Ast *     parse_stmt_defer(Context *cnt);
 static Ast *     parse_stmt_switch(Context *cnt);
 static Ast *     parse_stmt_case(Context *cnt);
 
-/* EXPRESSIONS */
+// EXPRESSIONS
 static Ast *       parse_expr(Context *cnt);
 static Ast *       _parse_expr(Context *cnt, s32 p);
 static Ast *       parse_expr_atom(Context *cnt);
@@ -256,10 +256,8 @@ Ast *parse_expr_ref(Context *cnt)
     return ref;
 }
 
-/*
- * Try to parse hash directive. List of enabled directives can be set by 'expected_mask',
- * 'satisfied' is optional output set to parsed directive id if there is one.
- */
+// Try to parse hash directive. List of enabled directives can be set by 'expected_mask',
+// 'satisfied' is optional output set to parsed directive id if there is one.
 Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 {
 #define set_satisfied(_hd)                                                                         \
@@ -279,7 +277,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
     BL_ASSERT(directive);
 
     if (strcmp(directive, "load") == 0) {
-        /* load <string> */
+        // load <string>
         set_satisfied(HD_LOAD);
         if (IS_NOT_FLAG(expected_mask, HD_LOAD)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -310,7 +308,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
     }
 
     if (strcmp(directive, "link") == 0) {
-        /* link <string> */
+        // link <string>
         set_satisfied(HD_LINK);
         if (IS_NOT_FLAG(expected_mask, HD_LINK)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -388,9 +386,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
 
-        /*
-         * Tags can contain one or mover references separated by comma
-         */
+        // Tags can contain one or mover references separated by comma
         Ast *tag;
         bool rq = false;
 
@@ -511,11 +507,11 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
 
-        /* Extern flag extension could be linkage name as string */
+        // Extern flag extension could be linkage name as string
         Token *tok_ext = tokens_consume_if(cnt->tokens, SYM_STRING);
         if (!tok_ext) return NULL;
 
-        /* Parse extension token. */
+        // Parse extension token.
         Ast *ext = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ext, SCOPE_GET(cnt));
         id_init(&ext->data.ident.id, tok_ext->value.str);
         return ext;
@@ -529,11 +525,11 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
 
-        /* Intrinsic flag extension could be linkage name as string */
+        // Intrinsic flag extension could be linkage name as string
         Token *tok_ext = tokens_consume_if(cnt->tokens, SYM_STRING);
         if (!tok_ext) return NULL;
 
-        /* Parse extension token. */
+        // Parse extension token.
         Ast *ext = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ext, SCOPE_GET(cnt));
         id_init(&ext->data.ident.id, tok_ext->value.str);
         return ext;
@@ -600,17 +596,15 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
 
-        /*
-         * Here we create private scope for the current unit. (only when source file
-         * contains private block).
-         *
-         * Parent of this scope is a global-scope.
-         *
-         * This scope has also highest priority during symbol lookup inside the current unit
-         * and it is visible only from such unit.
-         * Private scope contains only global entity declarations with 'private' flag set
-         * in AST node.
-         */
+        // Here we create private scope for the current unit. (only when source file
+        // contains private block).
+        //
+        // Parent of this scope is a global-scope.
+        //
+        // This scope has also highest priority during symbol lookup inside the current unit
+        // and it is visible only from such unit.
+        // Private scope contains only global entity declarations with 'private' flag set
+        // in AST node.
         Scope *scope = scope_create(cnt->scope_arenas,
                                     SCOPE_PRIVATE,
                                     cnt->assembly->gscope,
@@ -620,7 +614,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         cnt->current_private_scope = scope;
         scope->llvm_meta           = scope->parent->llvm_meta;
 
-        /* Make all other declarations in file nested in private scope */
+        // Make all other declarations in file nested in private scope
         cnt->unit->private_scope = scope;
         SCOPE_SET(cnt, scope);
 
@@ -633,17 +627,12 @@ INVALID:
 #undef set_satisfied
 }
 
-/*
- * Compound expression syntax:
- *
- * {:<type>: <value>, ... }
- */
 Ast *parse_expr_compound(Context *cnt)
 {
     if (!tokens_is_seq(cnt->tokens, 2, SYM_LBLOCK, SYM_COLON)) return NULL;
-    /* eat { */
+    // eat {
     Token *tok_begin = tokens_consume(cnt->tokens);
-    /* eat : */
+    // eat :
     tokens_consume(cnt->tokens);
 
     Ast *type = parse_type(cnt);
@@ -653,7 +642,7 @@ Ast *parse_expr_compound(Context *cnt)
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
     }
 
-    /* eat : */
+    // eat :
     if (!tokens_consume_if(cnt->tokens, SYM_COLON)) {
         Token *tok_err = tokens_peek(cnt->tokens);
         PARSE_ERROR(ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD, "Expected colon after type.");
@@ -663,7 +652,7 @@ Ast *parse_expr_compound(Context *cnt)
     Ast *compound = ast_create_node(cnt->ast_arena, AST_EXPR_COMPOUND, tok_begin, SCOPE_GET(cnt));
     compound->data.expr_compound.type = type;
 
-    /* parse values */
+    // parse values
     bool rq = false;
     Ast *tmp;
 
@@ -951,7 +940,7 @@ Ast *parse_decl_arg(Context *cnt, bool rq_named)
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
     }
     type = parse_type(cnt);
-    /* Parse optional default value expression. */
+    // Parse optional default value expression.
     if (tokens_current_is(cnt->tokens, SYM_COLON)) {
         Token *tok_err = tokens_consume(cnt->tokens);
         builder_msg(BUILDER_MSG_ERROR,
@@ -997,7 +986,7 @@ Ast *parse_decl_variant(Context *cnt, Ast *prev)
 
     Ast *var = ast_create_node(cnt->ast_arena, AST_DECL_VARIANT, tok_begin, SCOPE_GET(cnt));
 
-    /* TODO: Validate correcly '::' */
+    // TODO: Validate correcly '::'
     Token *tok_assign = tokens_consume_if(cnt->tokens, SYM_COLON);
     tok_assign        = tokens_consume_if(cnt->tokens, SYM_COLON);
     if (tok_assign) {
@@ -1016,7 +1005,7 @@ Ast *parse_decl_variant(Context *cnt, Ast *prev)
 
         var->data.decl_variant.value = binop;
     } else {
-        /* first variant is allways 0 */
+        // first variant is allways 0
         var->data.decl_variant.value =
             ast_create_node(cnt->ast_arena, AST_EXPR_LIT_INT, NULL, SCOPE_GET(cnt));
         var->data.decl_variant.value->data.expr_integer.val = 0;
@@ -1253,7 +1242,7 @@ Ast *parse_stmt_loop(Context *cnt)
 
     if (!while_true) {
         if (tokens_lookahead(cnt->tokens, cmp_stmt_loop)) {
-            /* for loop construct loop [init]; [condition]; [increment] {} */
+            // for loop construct loop [init]; [condition]; [increment] {}
             loop->data.stmt_loop.init = parse_decl(cnt);
             if (!parse_semicolon_rq(cnt)) {
                 BL_ASSERT(false);
@@ -1266,12 +1255,12 @@ Ast *parse_stmt_loop(Context *cnt)
 
             loop->data.stmt_loop.increment = parse_expr(cnt);
         } else {
-            /* while construct with optional condition */
+            // while construct with optional condition
             loop->data.stmt_loop.condition = parse_expr(cnt);
         }
     }
 
-    /* block */
+    // block
     loop->data.stmt_loop.block = parse_block(cnt, false);
     if (!loop->data.stmt_loop.block) {
         Token *tok_err = tokens_peek(cnt->tokens);
@@ -1386,7 +1375,6 @@ Ast *parse_expr_primary(Context *cnt)
     return NULL;
 }
 
-/* <unary operator> <expression> */
 Ast *parse_expr_unary(Context *cnt)
 {
     Token *op = tokens_peek(cnt->tokens);
@@ -1430,7 +1418,6 @@ Ast *parse_expr_atom(Context *cnt)
     return NULL;
 }
 
-/* <expression> <binary operator> <expression>*/
 Ast *parse_expr_binary(Context *cnt, Ast *lhs, Ast *rhs, Token *op)
 {
     if (!token_is_binop(op)) return NULL;
@@ -1560,7 +1547,7 @@ Ast *parse_expr_lit_fn(Context *cnt)
     BL_ASSERT(type);
     fn->data.expr_fn.type = type;
 
-    /* parse flags */
+    // parse flags
     Ast *curr_decl = DECL_GET(cnt);
     if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
         u32 accepted = HD_EXTERN | HD_NO_INLINE | HD_INLINE | HD_COMPILER | HD_ENTRY |
@@ -1572,7 +1559,7 @@ Ast *parse_expr_lit_fn(Context *cnt)
             if (!hash_directive_to_flags(found, &flags)) break;
 
             if ((found == HD_EXTERN || found == HD_INTRINSIC) && hd_extension) {
-                /* Use extern flag extension on function declaration. */
+                // Use extern flag extension on function declaration.
 
                 BL_ASSERT(hd_extension->kind == AST_IDENT &&
                           "Expected ident as #extern extension.");
@@ -1586,7 +1573,7 @@ Ast *parse_expr_lit_fn(Context *cnt)
         curr_decl->data.decl_entity.flags |= flags;
     }
 
-    /* parse block (block is optional function body can be external) */
+    // parse block (block is optional function body can be external)
     fn->data.expr_fn.block = parse_block(cnt, false);
 
     SCOPE_POP(cnt);
@@ -1619,7 +1606,6 @@ NEXT:
     return group;
 }
 
-/* ( expression ) */
 Ast *parse_expr_nested(Context *cnt)
 {
     Ast *  expr      = NULL;
@@ -1631,7 +1617,7 @@ Ast *parse_expr_nested(Context *cnt)
         PARSE_ERROR(ERR_EXPECTED_EXPR, tok_begin, BUILDER_CUR_WORD, "Expected expression.");
     }
 
-    /* eat ) */
+    // eat )
     Token *tok_end = tokens_consume_if(cnt->tokens, SYM_RPAREN);
     if (!tok_end) {
         Token *tok_err = tokens_peek(cnt->tokens);
@@ -1646,7 +1632,6 @@ Ast *parse_expr_nested(Context *cnt)
     return expr;
 }
 
-/* <expression>.<identifier> */
 Ast *parse_expr_member(Context *cnt, Ast *prev)
 {
     if (!prev) return NULL;
@@ -1667,7 +1652,6 @@ Ast *parse_expr_member(Context *cnt, Ast *prev)
     return mem;
 }
 
-/* <expression>[<index>] */
 Ast *parse_expr_elem(Context *cnt, Ast *prev)
 {
     if (!prev) return NULL;
@@ -1732,7 +1716,7 @@ Ast *parse_type_enum(Context *cnt)
     enm->data.type_enm.variants = create_sarr(TSmallArray_AstPtr, cnt->assembly);
     enm->data.type_enm.type     = parse_type(cnt);
 
-    /* parse flags */
+    // parse flags
     Ast *curr_decl = DECL_GET(cnt);
     if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
         u32 accepted = HD_COMPILER;
@@ -1758,7 +1742,7 @@ Ast *parse_type_enum(Context *cnt)
     enm->data.type_enm.scope = scope;
     SCOPE_PUSH(cnt, scope);
 
-    /* parse enum varinats */
+    // parse enum varinats
     bool rq = false;
     Ast *tmp;
     Ast *prev_tmp = NULL;
@@ -1851,7 +1835,7 @@ Ast *parse_type_slice(Context *cnt)
     if (tokens_peek(cnt->tokens)->sym != SYM_LBRACKET) return NULL;
     if (tokens_peek_2nd(cnt->tokens)->sym != SYM_RBRACKET) return NULL;
 
-    /* eat [] */
+    // eat []
     Token *tok_begin = tokens_consume(cnt->tokens);
     tok_begin        = tokens_consume(cnt->tokens);
 
@@ -1872,7 +1856,7 @@ Ast *parse_type_dynarr(Context *cnt)
     if (tokens_peek(cnt->tokens)->sym != SYM_LBRACKET) return NULL;
     if (tokens_peek_2nd(cnt->tokens)->sym != SYM_DYNARR) return NULL;
 
-    /* eat [.. */
+    // eat [..
     Token *tok_begin = tokens_consume(cnt->tokens);
     tokens_consume(cnt->tokens);
 
@@ -1940,7 +1924,7 @@ Ast *parse_type_fn(Context *cnt, bool rq_named_args)
 
     Ast *fn = ast_create_node(cnt->ast_arena, AST_TYPE_FN, tok_fn, SCOPE_GET(cnt));
 
-    /* parse arg types */
+    // parse arg types
     bool rq = false;
     Ast *tmp;
 
@@ -1993,8 +1977,8 @@ NEXT:
     if (parse_semicolon(cnt)) goto NEXT;
     if ((tmp = parse_type(cnt))) {
         if (tmp->kind != AST_TYPE_FN) {
-            /* This check is important, when we decide to remove this, validation should
-             * be handled in MIR. */
+            // This check is important, when we decide to remove this, validation should
+            // be handled in MIR.
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_INVALID_TYPE,
                         tmp->location,
@@ -2023,7 +2007,7 @@ Ast *parse_type_struct(Context *cnt)
 
     const bool is_union = tok_struct->sym == SYM_UNION;
 
-    /* parse flags */
+    // parse flags
     u32  accepted  = is_union ? 0 : HD_COMPILER | HD_BASE;
     u32  flags     = 0;
     Ast *base_type = NULL;
@@ -2062,7 +2046,7 @@ Ast *parse_type_struct(Context *cnt)
     type_struct->data.type_strct.base_type = base_type;
     type_struct->data.type_strct.is_union  = is_union;
 
-    /* parse members */
+    // parse members
     bool       rq = false;
     Ast *      tmp;
     const bool type_only = tokens_peek_2nd(cnt->tokens)->sym == SYM_COMMA ||
@@ -2105,7 +2089,7 @@ NEXT:
 
 Ast *parse_decl(Context *cnt)
 {
-    /* is value declaration? */
+    // is value declaration?
     Token *tok_ident = tokens_peek(cnt->tokens);
     if (token_is_not(tok_ident, SYM_IDENT)) return NULL;
 
@@ -2115,7 +2099,7 @@ Ast *parse_decl(Context *cnt)
     Ast *ident = parse_ident(cnt);
     if (!ident) return NULL;
 
-    /* eat : */
+    // eat :
     tokens_consume(cnt->tokens);
 
     Ast *decl = ast_create_node(cnt->ast_arena, AST_DECL_ENTITY, tok_ident, SCOPE_GET(cnt));
@@ -2128,13 +2112,13 @@ Ast *parse_decl(Context *cnt)
     Token *tok_assign    = tokens_consume_if(cnt->tokens, SYM_ASSIGN);
     if (!tok_assign) tok_assign = tokens_consume_if(cnt->tokens, SYM_COLON);
 
-    /* Parse hash directives. */
+    // Parse hash directives.
     s32 hd_accepted = HD_NONE;
 
     if (tok_assign) {
         decl->data.decl_entity.mut = token_is(tok_assign, SYM_ASSIGN);
 
-        /* parse declaration expression */
+        // parse declaration expression
         decl->data.decl_entity.value = parse_expr(cnt);
 
         if (IS_NOT_FLAG(decl->data.decl_entity.flags, FLAG_EXTERN)) {
@@ -2189,7 +2173,7 @@ Ast *parse_expr_call(Context *cnt, Ast *prev)
     call->data.expr_call.ref = prev;
     call->data.expr_call.run = false;
 
-    /* parse args */
+    // parse args
     bool rq = false;
     Ast *tmp;
 
@@ -2387,7 +2371,7 @@ NEXT:
         if (tmp->kind != AST_BAD) {
             Ast *decl = tmp->data.decl_entity.value;
             if (decl && rq_semicolon_after_decl_entity(decl)) parse_semicolon_rq(cnt);
-            /* setup global scope flag for declaration */
+            // setup global scope flag for declaration
             tmp->data.decl_entity.in_gscope = true;
             if (cnt->current_private_scope) tmp->data.decl_entity.flags |= FLAG_PRIVATE;
         }
@@ -2396,7 +2380,7 @@ NEXT:
         goto NEXT;
     }
 
-    /* load, link, test, private - enabled in global scope */
+    // load, link, test, private - enabled in global scope
     const int enabled_hd = HD_LOAD | HD_LINK | HD_PRIVATE;
     if ((tmp = parse_hash_directive(cnt, enabled_hd, NULL))) {
         if (tmp->kind == AST_META_DATA) {

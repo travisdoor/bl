@@ -53,35 +53,27 @@ _SHUT_UP_END
 extern "C" {
 #endif
 
-/* TODO: intrinsic generators */
+// TODO: intrinsic generators
 
-/* Custom C wrapper for LLVM C++ API, this is kinda needed because original C API for LLVM is
- * incomplete. All used calls to original API should be replaced by this wrapper later. */
+// Custom C wrapper for LLVM C++ API, this is kinda needed because original C API for LLVM is
+// incomplete. All used calls to original API should be replaced by this wrapper later.
 
-typedef s32 LLVMAttributeKind;
-
+typedef s32       LLVMAttributeKind;
 LLVMAttributeKind llvm_get_attribute_kind(const char *name);
-
-LLVMAttributeRef llvm_create_attribute(LLVMContextRef context_ref, LLVMAttributeKind kind);
-
+LLVMAttributeRef  llvm_create_attribute(LLVMContextRef context_ref, LLVMAttributeKind kind);
 LLVMAttributeRef
 llvm_create_attribute_int(LLVMContextRef context_ref, LLVMAttributeKind kind, s32 v);
-
 LLVMAttributeRef
-llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef v);
-
+             llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef v);
 LLVMValueRef llvm_const_string_in_context(LLVMContextRef context_ref,
                                           LLVMTypeRef    t,
                                           const char *   str,
                                           bool           zero_terminate);
-
-u32 llvm_lookup_intrinsic_id(const char *name);
-
+u32          llvm_lookup_intrinsic_id(const char *name);
 LLVMValueRef llvm_get_intrinsic_decl(LLVMModuleRef mod_ref,
                                      u32           id,
                                      LLVMTypeRef * param_types_ref,
                                      usize         param_types_count);
-
 #ifdef __cplusplus
 }
 #endif

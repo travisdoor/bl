@@ -31,7 +31,7 @@
 
 #include "common.h"
 
-/* Stack data manipulation helper macros. */
+// Stack data manipulation helper macros.
 #define VM_STACK_PTR_DEREF(ptr) ((VMStackPtr) * ((uintptr_t *)(ptr)))
 
 struct MirType;
@@ -50,17 +50,17 @@ typedef u8 *      VMStackPtr;
 
 typedef struct VMFrame {
     struct VMFrame * prev;
-    struct MirInstr *caller; /* Optional */
+    struct MirInstr *caller; // Optional
 } VMFrame;
 
 typedef struct VMStack {
-    VMStackPtr            top_ptr;         /* pointer to top of the stack */
-    usize                 used_bytes;      /* size of the used stack in bytes */
-    usize                 allocated_bytes; /* total allocated size of the stack in bytes */
-    VMFrame *             ra;              /* current frame beginning (return address)*/
-    struct MirInstr *     pc;              /* currently executed instruction (program counter) */
-    struct MirInstrBlock *prev_block;      /* used by phi instruction */
-    bool                  aborted;         /* true when execution was aborted */
+    VMStackPtr            top_ptr;         // pointer to top of the stack
+    usize                 used_bytes;      // size of the used stack in bytes
+    usize                 allocated_bytes; // total allocated size of the stack in bytes
+    VMFrame *             ra;              // current frame beginning (return address)
+    struct MirInstr *     pc;              // currently executed instruction (program counter)
+    struct MirInstrBlock *prev_block;      // used by phi instruction
+    bool                  aborted;         // true when execution was aborted
 } VMStack;
 
 typedef struct VM {
@@ -82,18 +82,17 @@ void vm_do_cast(VMStackPtr      dest,
                 struct MirType *src_type,
                 s32             op);
 
-/* Allocate space on the stack for passed variable in VM. This method works also for comptime
- * variables, but it's used only for implicit compiler generated variables without SetInitializer
- * instruction defined! When SetInitializer is used we can simply move memory pointer from
- * initialization value to variable const expression value (to safe memory and time needed by
- * copying).
- */
+// Allocate space on the stack for passed variable in VM. This method works also for comptime
+// variables, but it's used only for implicit compiler generated variables without SetInitializer
+// instruction defined! When SetInitializer is used we can simply move memory pointer from
+// initialization value to variable const expression value (to safe memory and time needed by
+// copying).
 VMStackPtr vm_alloc_global(VM *vm, struct Assembly *assembly, struct MirVar *var);
 
-/* Allocate raw memory on the stack to hold sizeof(type) value. */
+// Allocate raw memory on the stack to hold sizeof(type) value.
 VMStackPtr vm_alloc_raw(VM *vm, struct Assembly *assembly, struct MirType *type);
 
-/* Return pointer to constant or stack allocated variable. */
+// Return pointer to constant or stack allocated variable.
 VMStackPtr vm_read_var(VM *vm, const struct MirVar *var);
 
 #define vm_read_as(T, src) (*((T *)(src)))

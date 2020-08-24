@@ -40,23 +40,22 @@ struct MirModule;
 struct Builder;
 
 typedef enum BuildMode {
-    BUILD_MODE_DEBUG         = 1, /* Standard debug mode. Opt: NONE */
-    BUILD_MODE_RELEASE_FAST  = 2, /* Standard release mode. Opt: Aggresive */
-    BUILD_MODE_RELEASE_SMALL = 3, /* Standard release mode. Opt: Default */
-
-    BUILD_MODE_BUILD = 4, /* Build pipeline entry mode. */
+    BUILD_MODE_DEBUG         = 1, // Standard debug mode. Opt: NONE
+    BUILD_MODE_RELEASE_FAST  = 2, // Standard release mode. Opt: Aggresive
+    BUILD_MODE_RELEASE_SMALL = 3, // Standard release mode. Opt: Default
+    BUILD_MODE_BUILD         = 4, // Build pipeline entry mode.
 } BuildMode;
 
 typedef enum BuildDIKind {
-    BUILD_DI_DWARF    = 1, /* Emit DWARF debug information in LLVM IR. */
-    BUILD_DI_CODEVIEW = 2, /* Emit MS CodeView debug info (PDB file). */
+    BUILD_DI_DWARF    = 1, // Emit DWARF debug information in LLVM IR.
+    BUILD_DI_CODEVIEW = 2, // Emit MS CodeView debug info (PDB file).
 } BuildDIKind;
 
 typedef struct AssemblyOptions {
     BuildMode   build_mode;
     BuildDIKind build_di_kind;
     TString     custom_linker_opt;
-    TString     out_dir; /* Build output directory */
+    TString     out_dir; // Build output directory
     TArray      lib_paths;
     TArray      libs;
     bool        run_tests;
@@ -69,38 +68,38 @@ typedef struct Assembly {
         ScopeArenas scope;
         MirArenas   mir;
         Arena       ast;
-        Arena       array;       /* used for all TArrays */
-        Arena       small_array; /* used for all SmallArrays */
+        Arena       array;       // Used for all TArrays
+        Arena       small_array; // Used for all SmallArrays
     } arenas;
 
     struct {
-        TArray global_instrs; /* All global instructions. */
+        TArray global_instrs; // All global instructions.
 
-        /* Map type ids to RTTI variables. */
+        // Map type ids to RTTI variables.
         THashTable RTTI_table;
     } MIR;
 
     struct {
-        LLVMModuleRef        module; /* LLVM Module. */
-        LLVMContextRef       cnt;    /* LLVM Context. */
-        LLVMTargetDataRef    TD;     /* LLVM Target data. */
-        LLVMTargetMachineRef TM;     /* LLVM Machine. */
-        char *               triple; /* LLVM triple. */
+        LLVMModuleRef        module; // LLVM Module.
+        LLVMContextRef       cnt;    // LLVM Context.
+        LLVMTargetDataRef    TD;     // LLVM Target data.
+        LLVMTargetMachineRef TM;     // LLVM Machine.
+        char *               triple; // LLVM triple.
     } llvm;
 
-    /* DynCall/Lib data used for external method execution in compile time */
+    // DynCall/Lib data used for external method execution in compile time
     DCCallVM *dc_vm;
     VM        vm;
 
-    TArray     units;       /* array of all units in assembly */
-    THashTable unit_cache;  /* cache for loading only unique units */
-    char *     name;        /* assembly name */
-    Scope *    gscope;      /* global scope of the assembly */
-    MirFn *    build_entry; /* Set for build assembly. */
+    TArray     units;       // array of all units in assembly
+    THashTable unit_cache;  // cache for loading only unique units
+    char *     name;        // assembly name
+    Scope *    gscope;      // global scope of the assembly
+    MirFn *    build_entry; // Set for build assembly
 
     struct {
-        TArray  cases;    /* Optionally contains list of test case functions. */
-        MirVar *meta_var; /* Optional variable containing runtime test case information. */
+        TArray  cases;    // Optionally contains list of test case functions.
+        MirVar *meta_var; // Optional variable containing runtime test case information.
     } testing;
 
     /* Builtins */

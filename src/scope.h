@@ -86,9 +86,9 @@ typedef struct Scope {
     struct Scope *   parent;
     THashTable       entries;
     LLVMMetadataRef  llvm_meta;
-    struct Location *location; /* Optional scope start location in the source file (ex.:
-                                  function body  starting with '{'). Note: global scope has no
-                                  location data. */
+    struct Location *location; // Optional scope start location in the source file (ex.:
+                               // function body  starting with '{'). Note: global scope has no
+                               // location data.
 } Scope;
 
 void scope_arenas_init(ScopeArenas *arenas);

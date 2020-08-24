@@ -51,21 +51,14 @@ typedef struct context {
     s32     col;
 } Context;
 
-static void scan(Context *cnt);
-
-static bool scan_comment(Context *cnt, const char *term);
-
-static bool scan_ident(Context *cnt, Token *tok);
-
-static bool scan_string(Context *cnt, Token *tok);
-
-static bool scan_char(Context *cnt, Token *tok);
-
-static bool scan_number(Context *cnt, Token *tok);
-
+static void       scan(Context *cnt);
+static bool       scan_comment(Context *cnt, const char *term);
+static bool       scan_ident(Context *cnt, Token *tok);
+static bool       scan_string(Context *cnt, Token *tok);
+static bool       scan_char(Context *cnt, Token *tok);
+static bool       scan_number(Context *cnt, Token *tok);
 static INLINE int c_to_number(char c, s32 base);
-
-static char scan_specch(char c);
+static char       scan_specch(char c);
 
 bool scan_comment(Context *cnt, const char *term)
 {
@@ -75,9 +68,7 @@ bool scan_comment(Context *cnt, const char *term)
             cnt->line++;
             cnt->col = 1;
         } else if (*cnt->c == '\0' && strcmp(term, "\n") != 0) {
-            /*
-             * Unterminated comment
-             */
+            // Unterminated comment
             SCAN_ERROR(ERR_UNTERMINATED_COMMENT,
                        "%s %d:%d unterminated comment block.",
                        cnt->unit->name,
@@ -90,7 +81,7 @@ bool scan_comment(Context *cnt, const char *term)
         cnt->c++;
     }
 
-    /* skip terminator */
+    // skip terminator
     cnt->c += len;
     return true;
 }
@@ -114,14 +105,9 @@ bool scan_ident(Context *cnt, Token *tok)
     }
 
     if (len == 0) return false;
-
-    /* RACECOND */
-    /* RACECOND */
-    /* RACECOND */
     TString *cstr = builder_create_cached_str();
     tstring_append_n(cstr, begin, len);
-    tok->value.str = cstr->data;
-
+    tok->value.str    = cstr->data;
     tok->location.len = len;
     cnt->col += len;
     return true;
@@ -158,14 +144,11 @@ bool scan_string(Context *cnt, Token *tok)
     tok->location.line = cnt->line;
     tok->location.col  = cnt->col;
     tok->sym           = SYM_STRING;
-
-    /* eat " */
+    // eat "
     cnt->c++;
-
     TString *cstr = builder_create_cached_str();
-
-    char c;
-    s32  len = 0;
+    char     c;
+    s32      len = 0;
 
 scan:
     while (true) {
@@ -173,11 +156,11 @@ scan:
         case '\"': {
             cnt->c++;
             char *tmp_c = cnt->c;
-            /* check multiline string */
+            // check multiline string
             while (true) {
                 if (*tmp_c == '\"') {
                     cnt->line++;
-                    /* skip " */
+                    // skip "
                     cnt->c = tmp_c + 1;
                     goto scan;
                 } else if ((*tmp_c != ' ' && *tmp_c != '\n' && *tmp_c != '\t') ||
@@ -197,7 +180,7 @@ scan:
                        cnt->col);
         }
         case '\\':
-            /* special character */
+            // special character
 
             // @INCOMPLETE: this can fail!!!
             // @INCOMPLETE: this can fail!!!
@@ -229,7 +212,7 @@ bool scan_char(Context *cnt, Token *tok)
     tok->location.len  = 0;
     tok->sym           = SYM_CHAR;
 
-    /* eat ' */
+    // eat '
     cnt->c++;
 
     switch (*cnt->c) {
@@ -245,7 +228,7 @@ bool scan_char(Context *cnt, Token *tok)
                    cnt->col);
     }
     case '\\':
-        /* special character */
+        // special character
         tok->value.c = scan_specch(*(cnt->c + 1));
         cnt->c += 2;
         tok->location.len = 2;
@@ -256,7 +239,7 @@ bool scan_char(Context *cnt, Token *tok)
         cnt->c++;
     }
 
-    /* eat ' */
+    // eat '
     if (*cnt->c != '\'') {
         SCAN_ERROR(ERR_UNTERMINATED_STRING,
                    "%s %d:%d unterminated character expected '.",
@@ -380,9 +363,7 @@ scan_double : {
         if (n < prev_n) tok->overflow = true;
     }
 
-    /*
-     * valid d. or .d -> minimal 2 characters
-     */
+    // valid d. or .d -> minimal 2 characters
     if (len < 2) return false;
 
     if (*(cnt->c) == 'f') {
@@ -410,9 +391,7 @@ scan:
     tok.location.line = cnt->line;
     tok.location.col  = cnt->col;
 
-    /*
-     * Ignored characters
-     */
+    // Ignored characters
     switch (*cnt->c) {
     case '\0':
         tok.sym = SYM_EOF;
@@ -427,7 +406,7 @@ scan:
         cnt->c++;
         goto scan;
     case '\t':
-        /* TODO: can be set by user */
+        // TODO: can be set by user
         cnt->col += 4;
         cnt->c++;
         goto scan;
@@ -439,9 +418,7 @@ scan:
         break;
     }
 
-    /*
-     * Scan symbols described directly as strings.
-     */
+    // Scan symbols described directly as strings.
     usize len = 0;
     for (s32 i = SYM_IF; i < SYM_NONE; ++i) {
         len = strlen(sym_strings[i]);
@@ -450,22 +427,20 @@ scan:
             tok.sym          = (Sym)i;
             tok.location.len = (s32)len;
 
-            /*
-             * Two joined symbols will be parsed as identifier.
-             */
+            // Two joined symbols will be parsed as identifier.
             if (i >= SYM_IF && i <= SYM_UNREACHABLE && IS_IDENT(*cnt->c)) {
-                /* roll back */
+                // roll back
                 cnt->c -= len;
                 break;
             }
 
             switch (tok.sym) {
             case SYM_LCOMMENT:
-                /* begin of line comment */
+                // begin of line comment
                 scan_comment(cnt, "\n");
                 goto scan;
             case SYM_LBCOMMENT:
-                /* begin of block comment */
+                // begin of block comment
                 scan_comment(cnt, sym_strings[SYM_RBCOMMENT]);
                 goto scan;
             case SYM_RBCOMMENT: {
@@ -482,15 +457,13 @@ scan:
         }
     }
 
-    /*
-     * Scan special tokens.
-     */
+    // Scan special tokens.
     if (scan_number(cnt, &tok)) goto push_token;
     if (scan_ident(cnt, &tok)) goto push_token;
     if (scan_string(cnt, &tok)) goto push_token;
     if (scan_char(cnt, &tok)) goto push_token;
 
-    /* When symbol is unknown report error */
+    // When symbol is unknown report error
     SCAN_ERROR(ERR_INVALID_TOKEN,
                "%s %d:%d Unexpected token '%c' (%d)",
                cnt->unit->name,

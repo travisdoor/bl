@@ -64,7 +64,7 @@ Ast *ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct Scope *p
     return node;
 }
 
-/* public */
+// public
 void ast_arena_init(Arena *arena)
 {
     arena_init(arena, sizeof(Ast), ARENA_CHUNK_COUNT, (ArenaElemDtor)node_dtor);

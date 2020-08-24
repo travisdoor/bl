@@ -122,7 +122,7 @@ static void print_expr_lit_fn_group(Ast *group, s32 pad, FILE *stream);
 static void print_expr_call(Ast *call, s32 pad, FILE *stream);
 static void print_expr_elem(Ast *elem, s32 pad, FILE *stream);
 
-/* impl */
+// impl
 void print_ublock(Ast *ublock, s32 pad, FILE *stream)
 {
     print_head(ublock, pad, stream);

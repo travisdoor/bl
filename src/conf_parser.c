@@ -94,6 +94,5 @@ static void parse_top_level(Context *cnt)
 void conf_parser_run(Unit *unit)
 {
     Context cnt = {.tokens = &unit->tokens};
-
     parse_top_level(&cnt);
 }

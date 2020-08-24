@@ -41,19 +41,12 @@ typedef void *Mutex;
 typedef void (*ThreadFn)();
 
 u64 thread_get_id(void);
-
 Thread thread_new(ThreadFn fn);
-
 void thread_delete(Thread t);
-
 void thread_join(Thread t);
-
 Mutex thread_mutex_new(void);
-
 void thread_mutex_delete(Mutex m);
-
 void thread_mutex_lock(Mutex m);
-
 void thread_mutex_unlock(Mutex m);
 
 #ifdef __cplusplus

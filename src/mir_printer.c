@@ -280,7 +280,7 @@ static void print_instr_test_cases(Context *cnt, MirInstrTestCases *tc);
 static void print_instr_call_loc(Context *cnt, MirInstrCallLoc *loc);
 static void print_instr(Context *cnt, MirInstr *instr);
 
-/* impl */
+// impl
 void print_comptime_value_or_id(Context *cnt, MirInstr *instr)
 {
     if (!instr) {
@@ -293,7 +293,7 @@ void print_comptime_value_or_id(Context *cnt, MirInstr *instr)
         return;
     }
 
-    /* Value is compile time known constant. */
+    // Value is compile time known constant.
     if (instr->kind == MIR_INSTR_DECL_REF) {
         fprintf(cnt->stream, "%s", ((MirInstrDeclRef *)instr)->rid->str);
         return;
@@ -701,7 +701,7 @@ void print_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     const char *name = var->linkage_name ? var->linkage_name : "<unknown>";
 
     if (var->is_global) {
-        /* global scope variable */
+        // global scope variable
         fprintf(cnt->stream, "\n@%s : ", name);
         print_type(cnt, var->value.type, false, true);
         fprintf(cnt->stream, " %s ", var->is_mutable ? "=" : ":");
@@ -709,13 +709,13 @@ void print_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
         if (var->value.is_comptime) {
             print_const_value(cnt, &var->value);
         } else {
-            /* HACK: globals use static allocation segment on the stack so relative
-             * pointer = absolute pointer. */
+            // HACK: globals use static allocation segment on the stack so relative
+            // pointer = absolute pointer.
             VMStackPtr data_ptr = (VMStackPtr)var->rel_stack_ptr;
             _print_const_value(cnt, var->value.type, data_ptr);
         }
     } else {
-        /* local scope variable */
+        // local scope variable
         print_instr_head(cnt, &decl->base, "decl");
 
         fprintf(cnt->stream, "%s : ", name);

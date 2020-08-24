@@ -68,7 +68,7 @@ typedef struct Token {
     bool       overflow;
 } Token;
 
-/* sizeof this structure is 8 bytes so it can be passed by value */
+// sizeof this structure is 8 bytes so it can be passed by value
 typedef struct {
     s32                priority;
     TokenAssociativity associativity;

@@ -93,7 +93,7 @@ typedef struct Builder {
     TArray assembly_queue;
 } Builder;
 
-/* Builder global instance */
+// Builder global instance.
 extern Builder builder;
 
 typedef enum {

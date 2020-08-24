@@ -112,7 +112,7 @@ int main(s32 argc, char *argv[])
         EXIT(EXIT_FAILURE);
     }
 
-    /* Run configure if needed. */
+    // Run configure if needed.
     if (builder.options.run_configure) {
         if (generate_conf() != 0) {
             builder_error("Cannot generate '%s' file. If you are compiler developer please "
@@ -147,7 +147,7 @@ int main(s32 argc, char *argv[])
 
     builder_load_conf_file(ENV_CONF_FILEPATH);
 
-    /* setup LIB_DIR */
+    // setup LIB_DIR
     ENV_LIB_DIR = strdup(conf_data_get_str(builder.conf, CONF_LIB_DIR_KEY));
 
     Assembly *assembly = assembly_new("out");

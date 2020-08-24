@@ -106,7 +106,7 @@ typedef struct {
     MirFn *   entry_fn;
     bool      debug_mode;
 
-    /* AST -> MIR generation */
+    // AST -> MIR generation
     struct {
         TSmallArray_DeferStack defer_stack;
         MirInstrBlock *        current_block;
@@ -114,61 +114,58 @@ typedef struct {
         MirInstrBlock *        exit_block;
         MirInstrBlock *        continue_block;
 
-        /* @CLEANUP: get rid of this!!!  */
-        /* @CLEANUP: get rid of this!!!  */
-        /* @CLEANUP: get rid of this!!!  */
+        // @CLEANUP: get rid of this!!!
         ID *current_entity_id;
 
         MirInstr *current_fwd_struct_decl;
         bool      enable_incomplete_decl_refs;
     } ast;
 
-    /* Analyze MIR generated from AST */
+    // Analyze MIR generated from AST
     struct {
-        /* Instructions waiting for analyze. */
+        // Instructions waiting for analyze.
         TList queue;
 
-        /* Hash table of arrays. Hash is ID of symbol and array contains queue
-         * of waiting instructions (DeclRefs). */
+        // Hash table of arrays. Hash is ID of symbol and array contains queue
+        // of waiting instructions (DeclRefs).
         THashTable waiting;
 
-        /* Structure members can sometimes point to self, in such case we end up with
-         * endless looping RTTI generation, to solve this problem we create dummy RTTI
-         * variable for all pointer types and store them in this array. When strucutre RTTI
-         * is complete we can fill missing pointer RTTIs in second generation pass.
-         */
+        // Structure members can sometimes point to self, in such case we end up with
+        // endless looping RTTI generation, to solve this problem we create dummy RTTI
+        // variable for all pointer types and store them in this array. When strucutre RTTI
+        // is complete we can fill missing pointer RTTIs in second generation pass.
         TSmallArray_RTTIIncomplete incomplete_rtti;
     } analyze;
 
     struct {
-        /* Same as assembly->testing.cases. */
+        // Same as assembly->testing.cases.
         TArray *cases;
 
-        /* Expected unit test count is evaluated before analyze pass. We need this
-         * information before we analyze all test functions because metadata runtime
-         * variable must be preallocated (testcases builtin operator cannot wait for all
-         * test case functions to be analyzed). This count must match cases->size. */
+        // Expected unit test count is evaluated before analyze pass. We need this
+        // information before we analyze all test functions because metadata runtime
+        // variable must be preallocated (testcases builtin operator cannot wait for all
+        // test case functions to be analyzed). This count must match cases->size.
         s32 expected_test_count;
     } testing;
 
-    /* Builtins */
+    // Builtins
     struct BuiltinTypes *builtin_types;
 } Context;
 
 typedef enum {
-    /* Analyze pass failed. */
+    // Analyze pass failed.
     ANALYZE_FAILED = 0,
 
-    /* Analyze pass passed. */
+    // Analyze pass passed.
     ANALYZE_PASSED = 1,
 
-    /* Analyze pass cannot be done because some of sub-parts has not been
-       analyzed yet and probably needs to be executed during analyze pass. In
-       such case we push analyzed instruction at the end of analyze queue. */
+    // Analyze pass cannot be done because some of sub-parts has not been
+    // analyzed yet and probably needs to be executed during analyze pass. In
+    // such case we push analyzed instruction at the end of analyze queue.
     ANALYZE_POSTPONE = 2,
 
-    /* In this case AnalyzeResult will contain hash of desired symbol which be satisfied later,
-       instruction is pushed into waiting table. */
+    // In this case AnalyzeResult will contain hash of desired symbol which be satisfied later,
+    // instruction is pushed into waiting table.
     ANALYZE_WAITING = 3,
 } AnalyzeState;
 
@@ -183,7 +180,7 @@ typedef enum {
     ANALYZE_STAGE_FAILED,
 } AnalyzeStageState;
 
-/* Argument list used in slot analyze functions */
+// Argument list used in slot analyze functions
 // clang-format off
 #define ANALYZE_STAGE_ARGS                                                                            \
     	Context   UNUSED(*cnt),          /* Stage context. */                                             \
@@ -200,70 +197,69 @@ typedef struct {
     AnalyzeStageFn stages[];
 } AnalyzeSlotConfig;
 
-/* Ids of builtin symbols, hash is calculated inside builtin_inits function
- * later. */
+// Ids of builtin symbols, hash is calculated inside builtin_inits function later.
 static ID builtin_ids[_MIR_BUILTIN_ID_COUNT] = {
 #define GEN_BUILTIN_IDS
 #include "mir.inc"
 #undef GEN_BUILTIN_IDS
 };
 
-/* Arena destructor for functions. */
+// Arena destructor for functions.
 static void fn_dtor(MirFn **_fn)
 {
     MirFn *fn = *_fn;
     if (fn->dyncall.extern_callback_handle) dcbFreeCallback(fn->dyncall.extern_callback_handle);
 }
 
-/* FW decls */
+// FW decls
 static void msg_handle(Context *cnt, MirInstr *instr);
-/* Initialize all builtin types. */
+// Initialize all builtin types.
 static void    builtin_inits(Context *cnt);
 static void    testing_add_test_case(Context *cnt, MirFn *fn);
 static MirVar *testing_gen_meta(Context *cnt);
 
-/* Execute all registered test cases in current assembly. */
+// Execute all registered test cases in current assembly.
 static void        testing_run(Context *cnt);
 static const char *get_intrinsic(const char *name);
 static MirFn *     group_select_overload(Context *                  cnt,
                                          const MirFnGroup *         group,
                                          const TSmallArray_TypePtr *expected_args);
 
-/* Start top-level execution of entry function using MIR-VM. (Usualy 'main' funcition) */
+// Start top-level execution of entry function using MIR-VM. (Usualy 'main' funcition)
 static void execute_entry_fn(Context *cnt);
 
-/* Start top-level execution of build entry function using MIR-VM. (Usualy 'build' funcition) */
+// Start top-level execution of build entry function using MIR-VM. (Usualy 'build' funcition)
 static void execute_build_entry_fn(Context *cnt, MirFn *fn);
 
-/* Register incomplete scope entry for symbol. */
+// Register incomplete scope entry for symbol.
 static ScopeEntry *register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool is_builtin);
 
-/* Lookup builtin by builtin kind in global scope. Return NULL even if builtin is valid symbol in
- * case when it's not been analyzed yet or is incomplete struct type. In such case caller must
- * postpone analyze process. This is an error in any post-analyze processing (every type must be
- * complete when analyze pass id completed!). */
+// Lookup builtin by builtin kind in global scope. Return NULL even if builtin is valid symbol in
+// case when it's not been analyzed yet or is incomplete struct type. In such case caller must
+// postpone analyze process. This is an error in any post-analyze processing (every type must be
+// complete when analyze pass id completed!).
 static MirType *lookup_builtin_type(Context *cnt, MirBuiltinIdKind kind);
 static MirFn *  lookup_builtin_fn(Context *cnt, MirBuiltinIdKind kind);
 
-/* @HACK: Better way to do this will be enable compiler to have default preload file; we need to
- * make lexing, parsing, MIR generation and analyze of this file first and then process rest of the
- * source base. Then it will be guaranteed that all desired builtins are ready to use. */
+// @HACK: Better way to do this will be enable compiler to have default preload file; we need to
+// make lexing, parsing, MIR generation and analyze of this file first and then process rest of the
+// source base. Then it will be guaranteed that all desired builtins are ready to use.
 
-/* Try to complete cached RTTI related types, return NULL if all types are resolved or return ID for
- * first missing type. */
+// Try to complete cached RTTI related types, return NULL if all types are resolved or return ID for
+// first missing type.
 static ID *lookup_builtins_rtti(Context *cnt);
 static ID *lookup_builtins_any(Context *cnt);
 static ID *lookup_builtins_test_cases(Context *cnt);
 static ID *lookup_builtins_code_loc(Context *cnt);
 
-/* Provide global bool constant into the assembly. */
+// Provide global bool constant into the assembly.
 static MirInstr *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v);
 
-/* Initialize type ID. This function creates and set ID string and calculates integer hash from this
- * string. The type.id.str could be also used as name for unnamed types. */
+// Initialize type ID. This function creates and set ID string and calculates integer hash from this
+// string. The type.id.str could be also used as name for unnamed types.
 static void type_init_id(Context *cnt, MirType *type);
 
-/* Create new type. The 'user_id' is optional. */
+// Create new type. The 'user_id' is optional.
 static MirType *create_type(Context *cnt, MirTypeKind kind, ID *user_id);
 static MirType *create_type_type(Context *cnt);
 static MirType *create_type_null(Context *cnt, MirType *base_type);
@@ -284,22 +280,22 @@ static MirType *create_type_struct(Context *              cnt,
                                    MirTypeKind            kind,
                                    ID *                   id,
                                    Scope *                scope,
-                                   TSmallArray_MemberPtr *members,   /* MirMember */
-                                   MirType *              base_type, /* optional */
+                                   TSmallArray_MemberPtr *members,   // MirMember
+                                   MirType *              base_type, // optional
                                    bool                   is_union,
                                    bool                   is_packed);
 
-/* Make incomplete type struct declaration complete. This function sets all desired information
- * about struct to the forward declaration type. */
+// Make incomplete type struct declaration complete. This function sets all desired information
+// about struct to the forward declaration type.
 static MirType *complete_type_struct(Context *              cnt,
                                      MirInstr *             fwd_decl,
                                      Scope *                scope,
                                      TSmallArray_MemberPtr *members,
-                                     MirType *              base_type, /* optional */
+                                     MirType *              base_type, // optional
                                      bool                   is_packed,
                                      bool                   is_union);
 
-/* Create incomplete struct type placeholer to be filled later. */
+// Create incomplete struct type placeholer to be filled later.
 static MirType *create_type_struct_incomplete(Context *cnt, ID *user_id, bool is_union);
 static MirType *create_type_enum(Context *               cnt,
                                  ID *                    id,
@@ -357,7 +353,7 @@ static MirVariant *   create_variant(Context *cnt, ID *id, Scope *scope, MirCons
 static MirInstrBlock *append_block(Context *cnt, MirFn *fn, const char *name);
 static MirInstrBlock *append_global_block(Context *cnt, const char *name);
 
-/* instructions */
+// instructions
 static void *    create_instr(Context *cnt, MirInstrKind kind, Ast *node);
 static MirInstr *create_instr_const_type(Context *cnt, Ast *node, MirType *type);
 static MirInstr *create_instr_const_int(Context *cnt, Ast *node, MirType *type, u64 val);
@@ -441,7 +437,7 @@ append_instr_type_fn_group(Context *cnt, Ast *node, ID *id, TSmallArray_InstrPtr
 static MirInstr *append_instr_type_struct(Context *             cnt,
                                           Ast *                 node,
                                           ID *                  id,
-                                          MirInstr *            fwd_decl, /*Optional */
+                                          MirInstr *            fwd_decl, // Optional
                                           Scope *               scope,
                                           TSmallArray_InstrPtr *members,
                                           bool                  is_packed,
@@ -481,13 +477,13 @@ static MirInstr *
 append_instr_call(Context *cnt, Ast *node, MirInstr *callee, TSmallArray_InstrPtr *args);
 
 static MirInstr *append_instr_decl_var(Context * cnt,
-                                       Ast *     node, /* Optional */
+                                       Ast *     node, // Optional
                                        ID *      id,
                                        Scope *   scope,
                                        MirInstr *type,
                                        MirInstr *init,
                                        bool      is_mutable,
-                                       s32       order, /* -1 of none */
+                                       s32       order, // -1 of none
                                        u32       flags);
 
 static MirInstr *append_instr_decl_var_impl(Context *   cnt,
@@ -496,7 +492,7 @@ static MirInstr *append_instr_decl_var_impl(Context *   cnt,
                                             MirInstr *  init,
                                             bool        is_mutable,
                                             bool        is_global,
-                                            s32         order, /* -1 of none */
+                                            s32         order, // -1 of none
                                             u32         flags);
 
 static MirInstr *
@@ -526,14 +522,12 @@ static MirInstr *append_instr_unop(Context *cnt, Ast *node, MirInstr *instr, Uno
 static MirInstr *append_instr_unrecheable(Context *cnt, Ast *node);
 static MirInstr *append_instr_addrof(Context *cnt, Ast *node, MirInstr *src);
 
-/*
- * This will erase whole instruction tree of instruction with ref_count == 0. When force is set
- * ref_count is ignored.
- */
+// This will erase whole instruction tree of instruction with ref_count == 0. When force is set
+// ref_count is ignored.
 static void      erase_instr_tree(MirInstr *instr, bool keep_root, bool force);
 static MirInstr *append_instr_call_loc(Context *cnt, Ast *node);
 
-/* ast */
+// ast
 static MirInstr *ast_create_global_initializer(Context *cnt, Ast *node, MirInstr *decl_var);
 static MirInstr *ast_create_impl_fn_call(Context *   cnt,
                                          Ast *       node,
@@ -599,7 +593,7 @@ static MirInstr *ast_expr_unary(Context *cnt, Ast *unop);
 static MirInstr *ast_expr_compound(Context *cnt, Ast *cmp);
 static MirInstr *ast_call_loc(Context *cnt, Ast *loc);
 
-/* analyze */
+// analyze
 static bool          evaluate(Context *cnt, MirInstr *instr);
 static AnalyzeResult analyze_var(Context *cnt, MirVar *var);
 static AnalyzeResult analyze_instr(Context *cnt, MirInstr *instr);
@@ -656,9 +650,9 @@ static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 9,
                                                              analyze_stage_report_type_mismatch,
                                                          }};
 
-/* This function produce analyze of implicit call to the type resolver function in MIR and set
- * out_type when analyze passed without problems. When analyze does not pass postpone is returned
- * and out_type stay unchanged.*/
+// This function produce analyze of implicit call to the type resolver function in MIR and set
+// out_type when analyze passed without problems. When analyze does not pass postpone is returned
+// and out_type stay unchanged.
 static AnalyzeResult
                      analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
 static AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp);
@@ -708,9 +702,9 @@ static AnalyzeResult analyze_instr_binop(Context *cnt, MirInstrBinop *binop);
 static AnalyzeResult analyze_instr_call_loc(Context *cnt, MirInstrCallLoc *loc);
 static void          analyze_report_unresolved(Context *cnt);
 
-/***********/
-/*  RTTI   */
-/***********/
+//***********/
+//*  RTTI   */
+//***********/
 static MirVar *   _rtti_gen(Context *cnt, MirType *type);
 static MirVar *   rtti_gen(Context *cnt, MirType *type);
 static MirVar *   rtti_create_and_alloc_var(Context *cnt, MirType *type);
@@ -741,7 +735,7 @@ static MirVar *   rtti_gen_fn(Context *cnt, MirType *type);
 static void       rtti_gen_fn_slice(Context *cnt, VMStackPtr dest, TSmallArray_TypePtr *fns);
 static MirVar *   rtti_gen_fn_group(Context *cnt, MirType *type);
 
-/* INLINES */
+// INLINES
 static INLINE bool can_mutate_comptime_to_const(MirInstr *instr)
 {
     BL_ASSERT(instr->analyzed && "Non-analyzed instruction.");
@@ -772,7 +766,7 @@ static INLINE bool can_mutate_comptime_to_const(MirInstr *instr)
     }
 }
 
-/* Get struct base type if there is one. */
+// Get struct base type if there is one.
 static INLINE MirType *get_base_type(const MirType *struct_type)
 {
     if (struct_type->kind != MIR_TYPE_STRUCT) return NULL;
@@ -780,7 +774,7 @@ static INLINE MirType *get_base_type(const MirType *struct_type)
     return base_type;
 }
 
-/* Get base type scope if there is one. */
+// Get base type scope if there is one.
 static INLINE Scope *get_base_type_scope(MirType *struct_type)
 {
     MirType *base_type = get_base_type(struct_type);
@@ -790,14 +784,14 @@ static INLINE Scope *get_base_type_scope(MirType *struct_type)
     return base_type->data.strct.scope;
 }
 
-/* Determinate if type is incomplete struct type. */
+// Determinate if type is incomplete struct type.
 static INLINE bool is_incomplete_struct_type(MirType *type)
 {
     return type->kind == MIR_TYPE_STRUCT && type->data.strct.is_incomplete;
 }
 
-/* Determinate if instruction has volatile type, that means we can change type of the value during
- * analyze pass as needed. This is used for constant integer literals. */
+// Determinate if instruction has volatile type, that means we can change type of the value during
+// analyze pass as needed. This is used for constant integer literals.
 static INLINE bool is_instr_type_volatile(MirInstr *instr)
 {
     switch (instr->kind) {
@@ -832,20 +826,18 @@ static INLINE bool type_cmp(const MirType *first, const MirType *second)
 
 static INLINE bool can_impl_cast(const MirType *from, const MirType *to)
 {
-    /*
-      Here we allow implicit cast from any pointer type to bool, this breaks quite strict
-      implicit casting rules in this language, but this kind of cast can be handy because we
-      check pointer values for null very often. Until this was enabled, programmer was forced to
-      explicitly type down comparation to null.
-
-      We should consider later if this implicit casting shoult not be enabled only in
-      expressions used in if statement because globally enabled implicit cast from pointer to
-      bool could be misleading sometimes. Consider calling of a function, taking as parameter
-      bool, in such case we can pass pointer to such function instead of bool without any
-      explicit information about casting.
-     */
+    // Here we allow implicit cast from any pointer type to bool, this breaks quite strict
+    // implicit casting rules in this language, but this kind of cast can be handy because we
+    // check pointer values for null very often. Until this was enabled, programmer was forced to
+    // explicitly type down comparation to null.
+    //
+    // We should consider later if this implicit casting shoult not be enabled only in
+    // expressions used in if statement because globally enabled implicit cast from pointer to
+    // bool could be misleading sometimes. Consider calling of a function, taking as parameter
+    // bool, in such case we can pass pointer to such function instead of bool without any
+    // explicit information about casting.
     if (from->kind == MIR_TYPE_PTR && to->kind == MIR_TYPE_BOOL) return true;
-    /* Implicit cast of vargs to slice. */
+    // Implicit cast of vargs to slice.
     if (from->kind == MIR_TYPE_VARGS && to->kind == MIR_TYPE_SLICE) {
         from = mir_get_struct_elem_type(from, MIR_SLICE_PTR_INDEX);
         to   = mir_get_struct_elem_type(to, MIR_SLICE_PTR_INDEX);
@@ -853,7 +845,7 @@ static INLINE bool can_impl_cast(const MirType *from, const MirType *to)
     }
     if (from->kind != to->kind) return false;
 
-    /* Check base types for structs. */
+    // Check base types for structs.
     if (from->kind == MIR_TYPE_PTR) {
         from = mir_deref_type(from);
         to   = mir_deref_type(to);
@@ -924,7 +916,7 @@ static INLINE void erase_instr(MirInstr *instr)
     MirInstrBlock *block = instr->owner_block;
     if (!block) return;
 
-    /* first in block */
+    // first in block
     if (block->entry_instr == instr) block->entry_instr = instr->next;
     if (instr->prev) instr->prev->next = instr->next;
     if (instr->next) instr->next->prev = instr->prev;
@@ -988,7 +980,7 @@ static INLINE void analyze_notify_provided(Context *cnt, u64 hash)
 {
     TIterator iter = thtbl_find(&cnt->analyze.waiting, hash);
     TIterator end  = thtbl_end(&cnt->analyze.waiting);
-    if (TITERATOR_EQUAL(iter, end)) return; /* No one is waiting for this... */
+    if (TITERATOR_EQUAL(iter, end)) return; // No one is waiting for this...
 
 #if BL_DEBUG && VERBOSE_ANALYZE
     printf("Analyze: Notify '%llu'.\n", (unsigned long long)hash);
@@ -1003,7 +995,7 @@ static INLINE void analyze_notify_provided(Context *cnt, u64 hash)
         analyze_push_back(cnt, instr);
     }
 
-    /* Also clear element content! */
+    // Also clear element content!
     tarray_terminate(wq);
     thtbl_erase(&cnt->analyze.waiting, iter);
 }
@@ -1032,8 +1024,7 @@ static MirBuiltinIdKind get_builtin_kind(Ast *ident)
     if (!ident) return false;
     BL_ASSERT(ident->kind == AST_IDENT);
 
-    /* PERFORMANCE: Eventually use hash table. */
-
+    // PERFORMANCE: Eventually use hash table.
     for (u32 i = 0; i < ARRAY_SIZE(builtin_ids); ++i) {
         if (builtin_ids[i].hash == ident->data.ident.id.hash) {
             return i;
@@ -1114,13 +1105,10 @@ static INLINE void commit_var(Context *cnt, MirVar *var)
     if (var->is_global || var->is_struct_typedef) analyze_notify_provided(cnt, id->hash);
 }
 
-/*
- * Provide builtin type. Register & commit.
- */
+// Provide builtin type. Register & commit.
 static INLINE void provide_builtin_type(Context *cnt, MirType *type)
 {
-    ScopeEntry *entry = register_symbol(
-        cnt, NULL /* node */, type->user_id, cnt->assembly->gscope, true /* is_builtin */);
+    ScopeEntry *entry = register_symbol(cnt, NULL, type->user_id, cnt->assembly->gscope, true);
     if (!entry) return;
     entry->kind      = SCOPE_ENTRY_TYPE;
     entry->data.type = type;
@@ -1128,8 +1116,7 @@ static INLINE void provide_builtin_type(Context *cnt, MirType *type)
 
 static INLINE void provide_builtin_member(Context *cnt, Scope *scope, MirMember *member)
 {
-    ScopeEntry *entry =
-        register_symbol(cnt, NULL /* node */, member->id, scope, true /* is_builtin */);
+    ScopeEntry *entry = register_symbol(cnt, NULL, member->id, scope, true);
     if (!entry) return;
     entry->kind        = SCOPE_ENTRY_MEMBER;
     entry->data.member = member;
@@ -1188,13 +1175,13 @@ static INLINE bool is_load_needed(MirInstr *instr)
         return false;
 
     case MIR_INSTR_LOAD: {
-        /* @HACK: this solves problem with user-level dereference of pointer to pointer
-         * values. We get s32 vs *s32 type mismatch without this.
-         *
-         * Ex.: j : *s32 = ^ (cast(**s32) i_ptr_ptr);
-         *
-         * But I'm not 100% sure that this didn't broke something else...
-         */
+        // @HACK: this solves problem with user-level dereference of pointer to pointer
+        // values. We get s32 vs *s32 type mismatch without this.
+        //
+        // Ex.: j : *s32 = ^ (cast(**s32) i_ptr_ptr);
+        //
+        // But I'm not 100% sure that this didn't broke something else...
+        //
         MirInstrLoad *load = (MirInstrLoad *)instr;
         return load->is_deref && is_load_needed(load->src);
     }
@@ -1224,7 +1211,7 @@ static INLINE bool is_to_any_needed(Context *cnt, MirInstr *src, MirType *dest_t
 
 void type_init_id(Context *cnt, MirType *type)
 {
-    /******************************************************************************************/
+    //*********************************************************************************************/
 #define GEN_ID_STRUCT                                                                              \
     if (type->user_id) {                                                                           \
         tstring_append(tmp, type->user_id->str);                                                   \
@@ -1243,7 +1230,7 @@ void type_init_id(Context *cnt, MirType *type)
     }                                                                                              \
                                                                                                    \
     tstring_append(tmp, "}");                                                                      \
-    /******************************************************************************************/
+    //*********************************************************************************************/
 
     BL_ASSERT(type && "Invalid type pointer!");
     TString *tmp = &cnt->tmp_sh;
@@ -1261,7 +1248,7 @@ void type_init_id(Context *cnt, MirType *type)
     }
 
     case MIR_TYPE_NULL: {
-        /* n.<name> */
+        // n.<name>
         tstring_clear(tmp);
         tstring_append(tmp, "n.");
         tstring_append(tmp, type->data.null.base_type->id.str);
@@ -1269,7 +1256,7 @@ void type_init_id(Context *cnt, MirType *type)
     }
 
     case MIR_TYPE_PTR: {
-        /* p.<name> */
+        // p.<name>
         tstring_clear(tmp);
         tstring_append(tmp, "p.");
         tstring_append(tmp, type->data.ptr.expr->id.str);
@@ -1280,7 +1267,7 @@ void type_init_id(Context *cnt, MirType *type)
     case MIR_TYPE_FN: {
         tstring_append(tmp, "f.(");
 
-        /* append all arg types isd */
+        // append all arg types isd
         if (type->data.fn.args) {
             MirArg *arg;
             TSA_FOREACH(type->data.fn.args, arg)
@@ -1299,7 +1286,7 @@ void type_init_id(Context *cnt, MirType *type)
             BL_ASSERT(type->data.fn.ret_type->id.str);
             tstring_append(tmp, type->data.fn.ret_type->id.str);
         } else {
-            /* implicit return void */
+            // implicit return void
             tstring_append(tmp, cnt->builtin_types->t_void->id.str);
         }
         break;
@@ -1307,7 +1294,7 @@ void type_init_id(Context *cnt, MirType *type)
 
     case MIR_TYPE_FN_GROUP: {
         tstring_append(tmp, "f.{");
-        /* append all arg types isd */
+        // append all arg types isd
         if (type->data.fn_group.variants) {
             MirType *variant;
             TSA_FOREACH(type->data.fn_group.variants, variant)
@@ -1447,7 +1434,7 @@ ScopeEntry *register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool 
         }
     }
 
-    /* no collision */
+    // no collision
     ScopeEntry *entry = scope_create_entry(
         &cnt->assembly->arenas.scope, SCOPE_ENTRY_INCOMPLETE, id, node, is_builtin);
     scope_insert(scope, entry);
@@ -1499,7 +1486,7 @@ MirType *lookup_builtin_type(Context *cnt, MirBuiltinIdKind kind)
     MirType *var_type = MIR_CEV_READ_AS(MirType *, &var->value);
     BL_MAGIC_ASSERT(var_type);
 
-    /* Wait when internal is not complete!  */
+    // Wait when internal is not complete!
     if (is_incomplete_struct_type(var_type)) {
         return NULL;
     }
@@ -1531,7 +1518,7 @@ MirFn *lookup_builtin_fn(Context *cnt, MirBuiltinIdKind kind)
 
 ID *lookup_builtins_rtti(Context *cnt)
 {
-    /******************************************************************************************/
+    //*********************************************************************************************/
 #define LOOKUP_TYPE(N, K)                                                                          \
     if (!cnt->builtin_types->t_Type##N) {                                                          \
         cnt->builtin_types->t_Type##N = lookup_builtin_type(cnt, MIR_BUILTIN_ID_TYPE_##K);         \
@@ -1539,7 +1526,7 @@ ID *lookup_builtins_rtti(Context *cnt)
             return &builtin_ids[MIR_BUILTIN_ID_TYPE_##K];                                          \
         }                                                                                          \
     }                                                                                              \
-    /******************************************************************************************/
+    //*********************************************************************************************/
 
     if (cnt->builtin_types->is_rtti_ready) return NULL;
     LOOKUP_TYPE(Kind, KIND);
@@ -1567,15 +1554,15 @@ ID *lookup_builtins_rtti(Context *cnt)
     cnt->builtin_types->t_TypeInfo_ptr   = create_type_ptr(cnt, cnt->builtin_types->t_TypeInfo);
     cnt->builtin_types->t_TypeInfoFn_ptr = create_type_ptr(cnt, cnt->builtin_types->t_TypeInfoFn);
     cnt->builtin_types->t_TypeInfo_slice =
-        CREATE_TYPE_STRUCT_SLICE(cnt, NULL /* id */, cnt->builtin_types->t_TypeInfo_ptr);
+        CREATE_TYPE_STRUCT_SLICE(cnt, NULL, cnt->builtin_types->t_TypeInfo_ptr);
     cnt->builtin_types->t_TypeInfoStructMembers_slice = CREATE_TYPE_STRUCT_SLICE(
-        cnt, NULL /* id */, create_type_ptr(cnt, cnt->builtin_types->t_TypeInfoStructMember));
+        cnt, NULL, create_type_ptr(cnt, cnt->builtin_types->t_TypeInfoStructMember));
     cnt->builtin_types->t_TypeInfoEnumVariants_slice = CREATE_TYPE_STRUCT_SLICE(
-        cnt, NULL /* id */, create_type_ptr(cnt, cnt->builtin_types->t_TypeInfoEnumVariant));
+        cnt, NULL, create_type_ptr(cnt, cnt->builtin_types->t_TypeInfoEnumVariant));
     cnt->builtin_types->t_TypeInfoFnArgs_slice = CREATE_TYPE_STRUCT_SLICE(
-        cnt, NULL /* id */, create_type_ptr(cnt, cnt->builtin_types->t_TypeInfoFnArg));
+        cnt, NULL, create_type_ptr(cnt, cnt->builtin_types->t_TypeInfoFnArg));
     cnt->builtin_types->t_TypeInfoFn_ptr_slice = CREATE_TYPE_STRUCT_SLICE(
-        cnt, NULL /* id */, create_type_ptr(cnt, cnt->builtin_types->t_TypeInfoFn_ptr));
+        cnt, NULL, create_type_ptr(cnt, cnt->builtin_types->t_TypeInfoFn_ptr));
     cnt->builtin_types->is_rtti_ready = true;
     return NULL;
 #undef LOOKUP_TYPE
@@ -1600,8 +1587,8 @@ ID *lookup_builtins_test_cases(Context *cnt)
     if (!cnt->builtin_types->t_TestCase) {
         return &builtin_ids[MIR_BUILTIN_ID_TYPE_TEST_CASES];
     }
-    cnt->builtin_types->t_TestCases_slice = CREATE_TYPE_STRUCT_SLICE(
-        cnt, NULL /* id */, create_type_ptr(cnt, cnt->builtin_types->t_TestCase));
+    cnt->builtin_types->t_TestCases_slice =
+        CREATE_TYPE_STRUCT_SLICE(cnt, NULL, create_type_ptr(cnt, cnt->builtin_types->t_TestCase));
     return NULL;
 }
 
@@ -1622,36 +1609,25 @@ MirInstr *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v)
 {
     Scope *scope = cnt->assembly->gscope;
 
-    /*
-     * 1) Create global variable.
-     * 2) Create initializer block.
-     * 3) Register new variable into scope.
-     */
-    MirInstr *decl_var = append_instr_decl_var(cnt,
-                                               NULL /* node */,
-                                               id,
-                                               scope,
-                                               NULL /* type */,
-                                               NULL /* init */,
-                                               is_mutable,
-                                               -1 /* order */,
-                                               0);
+    // 1) Create global variable.
+    // 2) Create initializer block.
+    // 3) Register new variable into scope.
+    MirInstr *decl_var = append_instr_decl_var(cnt, NULL, id, scope, NULL, NULL, is_mutable, -1, 0);
 
     MirInstrBlock *prev_block = get_current_block(cnt);
     MirInstrBlock *block      = append_global_block(cnt, INIT_VALUE_FN_NAME);
     set_current_block(cnt, block);
     MirInstr *init = append_instr_const_bool(cnt, NULL, v);
-    append_instr_set_initializer(cnt, NULL /* node */, decl_var, init);
+    append_instr_set_initializer(cnt, NULL, decl_var, init);
     set_current_block(cnt, prev_block);
-
-    register_symbol(cnt, NULL /* node */, id, scope, true /* is_builtin */);
+    register_symbol(cnt, NULL, id, scope, true);
     return decl_var;
 }
 
 MirType *create_type_type(Context *cnt)
 {
     MirType *tmp = create_type(cnt, MIR_TYPE_TYPE, &builtin_ids[MIR_BUILTIN_ID_TYPE_TYPE]);
-    /* NOTE: TypeType has no LLVM representation */
+    // NOTE: TypeType has no LLVM representation
     tmp->alignment        = __alignof(MirType *);
     tmp->size_bits        = sizeof(MirType *) * 8;
     tmp->store_size_bytes = sizeof(MirType *);
@@ -1768,10 +1744,10 @@ MirType *create_type_array(Context *cnt, ID *id, MirType *elem_type, s64 len)
 
 MirType *create_type_struct(Context *              cnt,
                             MirTypeKind            kind,
-                            ID *                   id, /* optional */
+                            ID *                   id, // optional
                             Scope *                scope,
-                            TSmallArray_MemberPtr *members,   /* MirMember */
-                            MirType *              base_type, /* optional */
+                            TSmallArray_MemberPtr *members,   // MirMember
+                            MirType *              base_type, // optional
                             bool                   is_union,
                             bool                   is_packed)
 {
@@ -1836,33 +1812,24 @@ MirType *_create_type_struct_slice(Context *cnt, MirTypeKind kind, ID *id, MirTy
 
     TSmallArray_MemberPtr *members = create_sarr(TSmallArray_MemberPtr, cnt->assembly);
 
-    /* Slice layout struct { s64, *T } */
+    // Slice layout struct { s64, *T }
     Scope *body_scope = scope_create(
         &cnt->assembly->arenas.scope, SCOPE_TYPE_STRUCT, cnt->assembly->gscope, 2, NULL);
 
     MirMember *tmp;
-    tmp = create_member(cnt,
-                        NULL /* node */,
-                        &builtin_ids[MIR_BUILTIN_ID_ARR_LEN],
-                        body_scope,
-                        0 /* index */,
-                        cnt->builtin_types->t_s64);
+    tmp = create_member(
+        cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_LEN], body_scope, 0, cnt->builtin_types->t_s64);
 
     tsa_push_MemberPtr(members, tmp);
     provide_builtin_member(cnt, body_scope, tmp);
 
-    tmp = create_member(cnt,
-                        NULL /* node */,
-                        &builtin_ids[MIR_BUILTIN_ID_ARR_PTR],
-                        body_scope,
-                        1 /* index */,
-                        elem_ptr_type);
+    tmp = create_member(
+        cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_PTR], body_scope, 1, elem_ptr_type);
 
     tsa_push_MemberPtr(members, tmp);
     provide_builtin_member(cnt, body_scope, tmp);
 
-    return create_type_struct(
-        cnt, kind, id, body_scope, members, NULL /* base_type */, false, false);
+    return create_type_struct(cnt, kind, id, body_scope, members, NULL, false, false);
 }
 
 MirType *create_type_struct_dynarr(Context *cnt, ID *id, MirType *elem_ptr_type)
@@ -1871,49 +1838,44 @@ MirType *create_type_struct_dynarr(Context *cnt, ID *id, MirType *elem_ptr_type)
 
     TSmallArray_MemberPtr *members = create_sarr(TSmallArray_MemberPtr, cnt->assembly);
 
-    /* Dynamic array layout struct { s64, *T, usize } */
+    // Dynamic array layout struct { s64, *T, usize }
     Scope *body_scope = scope_create(
         &cnt->assembly->arenas.scope, SCOPE_TYPE_STRUCT, cnt->assembly->gscope, 2, NULL);
 
     MirMember *tmp;
-    { /* .len */
+    { // .len
         tmp = create_member(cnt,
-                            NULL /* node */,
+                            NULL,
                             &builtin_ids[MIR_BUILTIN_ID_ARR_LEN],
                             body_scope,
-                            0 /* index */,
+                            0,
                             cnt->builtin_types->t_s64);
 
         tsa_push_MemberPtr(members, tmp);
         provide_builtin_member(cnt, body_scope, tmp);
     }
 
-    { /* .ptr */
-        tmp = create_member(cnt,
-                            NULL /* node */,
-                            &builtin_ids[MIR_BUILTIN_ID_ARR_PTR],
-                            body_scope,
-                            1 /* index */,
-                            elem_ptr_type);
+    { // .ptr
+        tmp = create_member(
+            cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_PTR], body_scope, 1, elem_ptr_type);
 
         tsa_push_MemberPtr(members, tmp);
         provide_builtin_member(cnt, body_scope, tmp);
     }
 
-    { /* .allocated */
+    { // .allocated
         tmp = create_member(cnt,
-                            NULL /* node */,
+                            NULL,
                             &builtin_ids[MIR_BUILTIN_ID_ARR_ALLOCATED],
                             body_scope,
-                            2 /* index */,
+                            2,
                             cnt->builtin_types->t_usize);
 
         tsa_push_MemberPtr(members, tmp);
         provide_builtin_member(cnt, body_scope, tmp);
     }
 
-    return create_type_struct(
-        cnt, MIR_TYPE_DYNARR, id, body_scope, members, NULL /* base_type */, false, false);
+    return create_type_struct(cnt, MIR_TYPE_DYNARR, id, body_scope, members, NULL, false, false);
 }
 
 MirType *create_type_enum(Context *               cnt,
@@ -1960,7 +1922,7 @@ void type_init_llvm_real(Context *cnt, MirType *type)
 void type_init_llvm_ptr(Context *cnt, MirType *type)
 {
     MirType *tmp = mir_deref_type(type);
-    /* Pointer to Type has no LLVM representation and cannot not be generated into IR.*/
+    // Pointer to Type has no LLVM representation and cannot not be generated into IR.
     if (!mir_type_has_llvm_representation(tmp)) return;
     BL_ASSERT(tmp);
     BL_ASSERT(tmp->llvm_type);
@@ -2052,7 +2014,7 @@ void type_init_llvm_fn(Context *cnt, MirType *type)
         {
             arg->llvm_index = (u32)llvm_args.size;
 
-            /* Composit types. */
+            // Composit types.
             if (builder.options.reg_split && mir_is_composit_type(arg->type)) {
                 LLVMContextRef llvm_cnt = cnt->assembly->llvm.cnt;
 
@@ -2170,9 +2132,9 @@ void type_init_llvm_struct(Context *cnt, MirType *type)
     TSmallArray_LLVMType llvm_members;
     tsa_init(&llvm_members);
 
-    /* When structure is union we have to find biggest member and use only found one since LLVM
-     * has no explicit union representation. We select biggest one. We have to consider better
-     * selection later due to correct union alignment. */
+    // When structure is union we have to find biggest member and use only found one since LLVM
+    // has no explicit union representation. We select biggest one. We have to consider better
+    // selection later due to correct union alignment.
     MirMember *union_member = NULL;
 
     MirMember *member;
@@ -2195,11 +2157,11 @@ void type_init_llvm_struct(Context *cnt, MirType *type)
 
     if (union_member) tsa_push_LLVMType(&llvm_members, union_member->type->llvm_type);
 
-    /* named structure type */
+    // named structure type
     if (type->user_id) {
         if (type->llvm_type == NULL) {
-            /* Create new named type only if it's not already created (by incomplete
-             * type declaration). */
+            // Create new named type only if it's not already created (by incomplete
+            // type declaration).
             type->llvm_type = LLVMStructCreateNamed(cnt->assembly->llvm.cnt, type->user_id->str);
         }
 
@@ -2216,10 +2178,10 @@ void type_init_llvm_struct(Context *cnt, MirType *type)
 
     tsa_terminate(&llvm_members);
 
-    /* set offsets for members */
+    // set offsets for members
     TSA_FOREACH(members, member)
     {
-        /* Note: Union members has 0 offset. */
+        // Note: Union members has 0 offset.
         member->offset_bytes = (s32)vm_get_struct_elem_offset(cnt->assembly, type, (u32)i);
     }
 }
@@ -2362,7 +2324,7 @@ MirVariant *create_variant(Context *cnt, ID *id, Scope *scope, MirConstExprValue
     return tmp;
 }
 
-/* instructions */
+// instructions
 void append_current_block(Context *cnt, MirInstr *instr)
 {
     BL_ASSERT(instr);
@@ -2370,9 +2332,9 @@ void append_current_block(Context *cnt, MirInstr *instr)
     BL_ASSERT(block);
 
     if (is_block_terminated(block)) {
-        /* Append this instruction into unreachable block if current block was termianted
-         * already. Unrechable block will never be generated into LLVM and compiler can
-         * complain later about this and give hit to the user. */
+        // Append this instruction into unreachable block if current block was termianted
+        // already. Unrechable block will never be generated into LLVM and compiler can
+        // complain later about this and give hit to the user.
         block = append_block(cnt, block->owner_fn, ".unreachable");
         set_current_block(cnt, block);
     }
@@ -2453,15 +2415,15 @@ MirCastOp get_cast_op(MirType *from, MirType *to)
 
     switch (from->kind) {
     case MIR_TYPE_ENUM:
-        /* from enum */
+        // from enum
         from = from->data.enm.base_type;
     case MIR_TYPE_INT: {
-        /* from integer */
+        // from integer
         switch (to->kind) {
         case MIR_TYPE_ENUM:
             to = to->data.enm.base_type;
         case MIR_TYPE_INT: {
-            /* to integer */
+            // to integer
             const bool is_to_signed = to->data.integer.is_signed;
             if (fsize < tsize) {
                 return is_to_signed ? MIR_CAST_SEXT : MIR_CAST_ZEXT;
@@ -2476,7 +2438,7 @@ MirCastOp get_cast_op(MirType *from, MirType *to)
         }
 
         case MIR_TYPE_PTR: {
-            /* to ptr */
+            // to ptr
             return MIR_CAST_INTTOPTR;
         }
 
@@ -2486,20 +2448,20 @@ MirCastOp get_cast_op(MirType *from, MirType *to)
     }
 
     case MIR_TYPE_PTR: {
-        /* from pointer */
+        // from pointer
         switch (to->kind) {
         case MIR_TYPE_PTR: {
-            /* to pointer */
+            // to pointer
             return MIR_CAST_BITCAST;
         }
 
         case MIR_TYPE_INT: {
-            /* to int */
+            // to int
             return MIR_CAST_PTRTOINT;
         }
 
         case MIR_TYPE_BOOL: {
-            /* to bool */
+            // to bool
             return MIR_CAST_PTRTOBOOL;
         }
 
@@ -2509,16 +2471,16 @@ MirCastOp get_cast_op(MirType *from, MirType *to)
     }
 
     case MIR_TYPE_REAL: {
-        /* from real */
+        // from real
         switch (to->kind) {
         case MIR_TYPE_INT: {
-            /* to integer */
+            // to integer
             const bool is_to_signed = to->data.integer.is_signed;
             return is_to_signed ? MIR_CAST_FPTOSI : MIR_CAST_FPTOUI;
         }
 
         case MIR_TYPE_REAL: {
-            /* to integer */
+            // to integer
             if (fsize < tsize) {
                 return MIR_CAST_FPEXT;
             } else {
@@ -2729,7 +2691,7 @@ MirInstrBlock *append_block(Context *cnt, MirFn *fn, const char *name)
     if (!fn->first_block) {
         fn->first_block = tmp;
 
-        /* first block is referenced everytime!!! */
+        // first block is referenced everytime!!!
         ref_instr(&tmp->base);
     }
 
@@ -2777,7 +2739,7 @@ MirInstr *append_instr_set_initializer(Context *cnt, Ast *node, MirInstr *dest, 
 
 MirInstr *append_instr_set_initializer_impl(Context *cnt, MirInstr *dest, MirInstr *src)
 {
-    MirInstr *tmp    = append_instr_set_initializer(cnt, NULL /* node */, dest, src);
+    MirInstr *tmp    = append_instr_set_initializer(cnt, NULL, dest, src);
     tmp->is_implicit = true;
     return tmp;
 }
@@ -2978,7 +2940,7 @@ append_instr_compound(Context *cnt, Ast *node, MirInstr *type, TSmallArray_Instr
 MirInstr *
 append_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values)
 {
-    MirInstr *tmp    = append_instr_compound(cnt, node, NULL /* type */, values);
+    MirInstr *tmp    = append_instr_compound(cnt, node, NULL, values);
     tmp->value.type  = type;
     tmp->is_implicit = true;
 
@@ -2987,15 +2949,15 @@ append_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_I
 
 MirInstr *create_default_value_for_type(Context *cnt, MirType *type, bool is_global)
 {
-    /* Default initializer is only zero initialized compound expression known in compile time,
-     * this is universal for every type. */
+    // Default initializer is only zero initialized compound expression known in compile time,
+    // this is universal for every type.
     BL_ASSERT(type && "Missing type for default zero initializer!");
 
     MirInstr *default_value = NULL;
 
     switch (type->kind) {
     case MIR_TYPE_ENUM: {
-        /* Use first enum variant as default. */
+        // Use first enum variant as default.
         MirType *   base_type = type->data.enm.base_type;
         MirVariant *variant   = type->data.enm.variants->data[0];
         const u64   v         = MIR_CEV_READ_AS(u64, variant->value);
@@ -3023,11 +2985,11 @@ MirInstr *create_default_value_for_type(Context *cnt, MirType *type, bool is_glo
     }
 
     default: {
-        /* Use zero initialized compound. */
+        // Use zero initialized compound.
         MirInstrCompound *compound =
             (MirInstrCompound *)create_instr_compound_impl(cnt, NULL, type, NULL);
-        /* Global initializers should be naked for some reason and I don't remember why,
-         * somebody should double check this in future. */
+        // Global initializers should be naked for some reason and I don't remember why,
+        // somebody should double check this in future.
         compound->is_naked               = is_global;
         compound->is_zero_initialized    = true;
         compound->base.value.is_comptime = true;
@@ -3289,12 +3251,12 @@ MirInstr *append_instr_call(Context *cnt, Ast *node, MirInstr *callee, TSmallArr
 
     ref_instr(&tmp->base);
 
-    /* Callee must be referenced even if we call no-ref counted fn_proto instructions, because
-     * sometimes callee is declaration reference poining to variable containing pointer to some
-     * function. */
+    // Callee must be referenced even if we call no-ref counted fn_proto instructions, because
+    // sometimes callee is declaration reference poining to variable containing pointer to some
+    // function.
     ref_instr(callee);
 
-    /* reference all arguments */
+    // reference all arguments
     if (args) {
         MirInstr *instr;
         TSA_FOREACH(args, instr) ref_instr(instr);
@@ -3326,8 +3288,7 @@ MirInstr *append_instr_decl_var(Context * cnt,
 
     const bool is_global = scope_is_global(scope);
 
-    tmp->var =
-        create_var(cnt, node, scope, id, NULL /* alloc_type */, is_mutable, is_global, false, 0);
+    tmp->var = create_var(cnt, node, scope, id, NULL, is_mutable, is_global, false, 0);
 
     if (is_global) {
         push_into_gscope(cnt, &tmp->base);
@@ -3359,7 +3320,7 @@ MirInstr *append_instr_decl_var_impl(Context *   cnt,
     tmp->type            = type;
     tmp->init            = init;
 
-    tmp->var = create_var_impl(cnt, name, NULL /* alloc_type */, is_mutable, is_global, false);
+    tmp->var = create_var_impl(cnt, name, NULL, is_mutable, is_global, false);
     if (is_global) {
         push_into_gscope(cnt, &tmp->base);
         analyze_push_back(cnt, &tmp->base);
@@ -3394,7 +3355,7 @@ MirInstr *append_instr_decl_member_impl(Context *             cnt,
     tmp->type                   = type;
     tmp->tags                   = tags;
 
-    tmp->member = create_member(cnt, node, id, NULL /* scope */, -1 /* index */, NULL /* type */);
+    tmp->member = create_member(cnt, node, id, NULL, -1, NULL);
 
     append_current_block(cnt, &tmp->base);
     return &tmp->base;
@@ -3413,7 +3374,7 @@ MirInstr *append_instr_decl_arg(Context *cnt, Ast *node, MirInstr *type, MirInst
     tmp->type           = type;
 
     ID *id   = node ? &node->data.ident.id : NULL;
-    tmp->arg = create_arg(cnt, node, id, NULL /* scope */, NULL /* type */, value);
+    tmp->arg = create_arg(cnt, node, id, NULL, NULL, value);
 
     append_current_block(cnt, &tmp->base);
     return &tmp->base;
@@ -3467,7 +3428,7 @@ INLINE MirInstr *append_instr_const_bool(Context *cnt, Ast *node, bool val)
 
 MirInstr *append_instr_const_string(Context *cnt, Ast *node, const char *str)
 {
-    /* Build up string as compound expression of lenght and pointer to data. */
+    // Build up string as compound expression of lenght and pointer to data.
     TSmallArray_InstrPtr *values = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
 
     MirInstr *len = create_instr_const_int(cnt, node, cnt->builtin_types->t_s64, strlen(str));
@@ -3595,7 +3556,7 @@ MirInstr *append_instr_call_loc(Context *cnt, Ast *node)
     return tmp;
 }
 
-/* analyze */
+// analyze
 void erase_instr_tree(MirInstr *instr, bool keep_root, bool force)
 {
     if (!instr) return;
@@ -3837,11 +3798,11 @@ bool evaluate(Context *cnt, MirInstr *instr)
     if (!instr) return true;
 
     BL_ASSERT(instr->analyzed && "Non-analyzed instruction cannot be evaluated!");
-    /* We can evaluate compile time know instructions only.  */
+    // We can evaluate compile time know instructions only.
     if (!instr->value.is_comptime) return true;
 
     if (!vm_eval_instr(cnt->vm, cnt->assembly, instr)) {
-        /* Evaluation was aborted due to error. */
+        // Evaluation was aborted due to error.
         return false;
     }
 
@@ -3903,13 +3864,13 @@ AnalyzeResult analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
     }
 
     if (is_tmp_needed && expr_type->store_size_bytes > 0) {
-        /* Target expression is not allocated object on the stack, so we need to crate
-         * temporary variable containing the value and fetch pointer to this variable. */
+        // Target expression is not allocated object on the stack, so we need to crate
+        // temporary variable containing the value and fetch pointer to this variable.
         const char *tmp_var_name = gen_uq_name(IMPL_ANY_EXPR_TMP);
         toany->expr_tmp = create_var_impl(cnt, tmp_var_name, rtti_type, false, false, false);
     }
 
-    /* Generate RTTI for expression's type. */
+    // Generate RTTI for expression's type.
     toany->rtti_type = rtti_type;
     rtti_gen(cnt, rtti_type);
 
@@ -3949,7 +3910,7 @@ AnalyzeResult analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
         erase_instr_tree(expr, false, true);
     }
 
-    /* This is temporary vaiable used for Any data. */
+    // This is temporary vaiable used for Any data.
     const char *tmp_var_name = gen_uq_name(IMPL_ANY_TMP);
     toany->tmp               = create_var_impl(cnt, tmp_var_name, any_type, false, false, false);
 
@@ -4002,9 +3963,9 @@ AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
         goto SKIP_IMPLICIT;
     }
 
-    /* Setup compound type. */
+    // Setup compound type.
     if (!type) {
-        /* generate load instruction if needed */
+        // generate load instruction if needed
         BL_ASSERT(cmp->type->analyzed);
         if (analyze_slot(cnt, &analyze_slot_conf_basic, &cmp->type, NULL) != ANALYZE_PASSED)
             return ANALYZE_RESULT(FAILED, 0);
@@ -4034,9 +3995,9 @@ AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
     }
 
     cmp->base.value.type        = type;
-    cmp->base.value.is_comptime = true; /* can be overriden later */
+    cmp->base.value.is_comptime = true; // can be overriden later
 
-    /* Check if array is supposed to be initilialized to {0} */
+    // Check if array is supposed to be initilialized to {0}
     if (values->size == 1) {
         MirInstr *value = values->data[0];
         if (value->kind == MIR_INSTR_CONST && value->value.type->kind == MIR_TYPE_INT &&
@@ -4062,7 +4023,7 @@ AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
             return ANALYZE_RESULT(FAILED, 0);
         }
 
-        /* Else iterate over values */
+        // Else iterate over values
         MirInstr **value_ref;
         for (usize i = 0; i < values->size; ++i) {
             value_ref = &values->data[i];
@@ -4110,7 +4071,7 @@ AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
                 return ANALYZE_RESULT(FAILED, 0);
             }
 
-            /* Else iterate over values */
+            // Else iterate over values
             MirInstr **value_ref;
             MirType *  member_type;
             for (u32 i = 0; i < values->size; ++i) {
@@ -4130,7 +4091,7 @@ AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
     }
 
     default: {
-        /* Non-agregate type. */
+        // Non-agregate type.
         if (values->size > 1) {
             MirInstr *value = values->data[1];
             builder_msg(BUILDER_MSG_ERROR,
@@ -4155,9 +4116,8 @@ AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 
 SKIP_IMPLICIT:
     if (!mir_is_global(&cmp->base) && cmp->is_naked) {
-        /* For naked non-compile time compounds we need to generate implicit temp storage to
-         * keep all data. */
-
+        // For naked non-compile time compounds we need to generate implicit temp storage to
+        // keep all data.
         const char *tmp_name = gen_uq_name(IMPL_COMPOUND_TMP);
         MirVar *    tmp_var  = create_var_impl(cnt, tmp_name, type, true, false, false);
         cmp->tmp_var         = tmp_var;
@@ -4174,9 +4134,9 @@ AnalyzeResult analyze_var(Context *cnt, MirVar *var)
     }
     switch (var->value.type->kind) {
     case MIR_TYPE_TYPE:
-        /* Disable LLVM generation of typedefs. */
+        // Disable LLVM generation of typedefs.
         if (!var->is_mutable) break;
-        /* Typedef must be immutable! */
+        // Typedef must be immutable!
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_INVALID_MUTABILITY,
                     var->decl_node ? var->decl_node->location : NULL,
@@ -4200,7 +4160,7 @@ AnalyzeResult analyze_var(Context *cnt, MirVar *var)
                     "Function group must be immutable.");
         return ANALYZE_RESULT(FAILED, 0);
     case MIR_TYPE_VOID:
-        /* Allocated type is void type. */
+        // Allocated type is void type.
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_INVALID_TYPE,
                     var->decl_node ? var->decl_node->location : NULL,
@@ -4212,10 +4172,10 @@ AnalyzeResult analyze_var(Context *cnt, MirVar *var)
     }
 
     if (!var->is_implicit) commit_var(cnt, var);
-    /* Type declaration should not be generated in LLVM. */
+    // Type declaration should not be generated in LLVM.
     const MirTypeKind var_type_kind = var->value.type->kind;
     var->emit_llvm = var_type_kind != MIR_TYPE_TYPE && var_type_kind != MIR_TYPE_FN_GROUP;
-    /* Just take note whether variable was fully analyzed.  */
+    // Just take note whether variable was fully analyzed.
     var->analyzed = true;
     return ANALYZE_RESULT(PASSED, 0);
 }
@@ -4230,8 +4190,8 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
     BL_ASSERT((var->is_global || var->is_struct_typedef) &&
               "Only globals can be initialized by initializer!");
 
-    /* When there is no source initialization value to set global we can omit type inferring and
-     * initialization value slot analyze pass. */
+    // When there is no source initialization value to set global we can omit type inferring and
+    // initialization value slot analyze pass.
     const bool is_default = !si->src;
     if (!is_default) {
         const AnalyzeSlotConfig *config =
@@ -4241,10 +4201,10 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
             return ANALYZE_RESULT(FAILED, 0);
         }
 
-        /* Infer variable type if needed. */
+        // Infer variable type if needed.
         if (!var->value.type) var->value.type = si->src->value.type;
     } else {
-        /* Generate default value based on type! */
+        // Generate default value based on type!
         MirType *type = var->value.type;
         BL_ASSERT(type && "Missing variable initializer type for default global initializer!");
 
@@ -4260,7 +4220,7 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
     BL_ASSERT(var->value.type->kind != MIR_TYPE_VOID && "Global value cannot be void!");
     BL_ASSERT(si->src && "Invalid global initializer source value.");
 
-    /* Global initializer must be compile time known. */
+    // Global initializer must be compile time known.
     if (!si->src->value.is_comptime) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_EXPECTED_COMPTIME,
@@ -4270,25 +4230,25 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
         return ANALYZE_RESULT(FAILED, 0);
     }
 
-    /* Initializer value is guaranteed to be comptime so we just check variable muttablility.
-     * (mutable variables cannot be comptime) */
+    // Initializer value is guaranteed to be comptime so we just check variable muttablility.
+    // (mutable variables cannot be comptime)
     var->value.is_comptime = !var->is_mutable;
 
     AnalyzeResult state = analyze_var(cnt, var);
     if (state.state != ANALYZE_PASSED) return state;
 
-    /* Typedef resolvers cannot be generated into LLVM IR because TypeType has no LLVM
-     * representation and should live only during compile time of MIR. */
+    // Typedef resolvers cannot be generated into LLVM IR because TypeType has no LLVM
+    // representation and should live only during compile time of MIR.
     si->base.owner_block->emit_llvm = var->emit_llvm;
 
     if (!var->value.is_comptime) {
-        /* Global variables which are not compile time constants are allocated
-         * on the stack, one option is to do allocation every time when we
-         * invoke comptime function execution, but we don't know which globals
-         * will be used by function and we also don't known whatever function
-         * has some side effect or not. So we produce allocation here. Variable
-         * will be stored in static data segment. There is no need to use
-         * relative pointers here. */
+        // Global variables which are not compile time constants are allocated
+        // on the stack, one option is to do allocation every time when we
+        // invoke comptime function execution, but we don't know which globals
+        // will be used by function and we also don't known whatever function
+        // has some side effect or not. So we produce allocation here. Variable
+        // will be stored in static data segment. There is no need to use
+        // relative pointers here.
         vm_alloc_global(cnt->vm, cnt->assembly, var);
     }
 
@@ -4300,20 +4260,17 @@ AnalyzeResult analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
     MirType *             type   = vargs->type;
     TSmallArray_InstrPtr *values = vargs->values;
     BL_ASSERT(type && values);
-
-    type = CREATE_TYPE_STRUCT_VARGS(cnt, NULL /* id */, create_type_ptr(cnt, type));
-
+    type             = CREATE_TYPE_STRUCT_VARGS(cnt, NULL, create_type_ptr(cnt, type));
     const usize valc = values->size;
-
     if (valc > 0) {
-        /* Prepare tmp array for values */
+        // Prepare tmp array for values
         const char *tmp_name = gen_uq_name(IMPL_VARGS_TMP_ARR);
-        MirType *   tmp_type = create_type_array(cnt, NULL /* id */, vargs->type, (u32)valc);
+        MirType *   tmp_type = create_type_array(cnt, NULL, vargs->type, (u32)valc);
         vargs->arr_tmp       = create_var_impl(cnt, tmp_name, tmp_type, true, false, false);
     }
 
     {
-        /* Prepare tmp slice for vargs */
+        // Prepare tmp slice for vargs
         const char *tmp_name = gen_uq_name(IMPL_VARGS_TMP);
         vargs->vargs_tmp     = create_var_impl(cnt, tmp_name, type, true, false, false);
     }
@@ -4358,7 +4315,6 @@ AnalyzeResult analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
 
     switch (arr_type->kind) {
     case MIR_TYPE_ARRAY: {
-        /* array */
         if (mir_is_comptime(elem_ptr->index)) {
             const s64 len = arr_type->data.array.len;
             const s64 i   = MIR_CEV_READ_AS(s64, &elem_ptr->index->value);
@@ -4375,7 +4331,7 @@ AnalyzeResult analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
             }
         }
 
-        /* setup ElemPtr instruction const_value type */
+        // setup ElemPtr instruction const_value type
         MirType *elem_type = arr_type->data.array.elem_type;
         BL_ASSERT(elem_type);
         elem_ptr->base.value.type = create_type_ptr(cnt, elem_type);
@@ -4385,15 +4341,14 @@ AnalyzeResult analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
     case MIR_TYPE_STRING:
     case MIR_TYPE_VARGS:
     case MIR_TYPE_DYNARR: {
-        /* Support of direct slice access -> slice[N]
-         * Since slice is special kind of structure data we need to handle
-         * access to pointer and lenght later during execuion. We cannot create
-         * member poiner instruction here because we need check boundaries on
-         * array later during runtime. This leads to special kind of elemptr
-         * interpretation and IR generation also.
-         */
+        // Support of direct slice access -> slice[N]
+        // Since slice is special kind of structure data we need to handle
+        // access to pointer and lenght later during execuion. We cannot create
+        // member poiner instruction here because we need check boundaries on
+        // array later during runtime. This leads to special kind of elemptr
+        // interpretation and IR generation also.
 
-        /* setup type */
+        // setup type
         MirType *elem_type = mir_get_struct_elem_type(arr_type, MIR_SLICE_PTR_INDEX);
         BL_ASSERT(elem_type);
         elem_ptr->base.value.type = elem_type;
@@ -4434,13 +4389,13 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
 
     target_type = mir_deref_type(target_type);
 
-    /* Array type */
+    // Array type
     if (target_type->kind == MIR_TYPE_ARRAY) {
-        /* check array builtin members */
+        // check array builtin members
         if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN ||
             is_builtin(ast_member_ident, MIR_BUILTIN_ID_ARR_LEN)) {
-            /* .len */
-            /* mutate instruction into constant */
+            // .len
+            // mutate instruction into constant
             unref_instr(member_ptr->target_ptr);
             erase_instr_tree(member_ptr->target_ptr, false, false);
             MirInstrConst *len = (MirInstrConst *)mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
@@ -4450,12 +4405,10 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
             MIR_CEV_WRITE_AS(s64, &len->base.value, target_type->data.array.len);
         } else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR ||
                    is_builtin(ast_member_ident, MIR_BUILTIN_ID_ARR_PTR)) {
-            /* .ptr -> This will be replaced by:
-             *     elemptr
-             *     addrof
-             * to match syntax: &array[0]
-             */
-
+            // .ptr -> This will be replaced by:
+            //     elemptr
+            //     addrof
+            // to match syntax: &array[0]
             MirInstr *index = create_instr_const_int(cnt, NULL, cnt->builtin_types->t_s64, 0);
 
             insert_instr_before(&member_ptr->base, index);
@@ -4487,16 +4440,14 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
 
     bool additional_load_needed = false;
     if (target_type->kind == MIR_TYPE_PTR) {
-        /* We try to access structure member via pointer so we need one more load.
-         */
-
+        // We try to access structure member via pointer so we need one more load.
         additional_load_needed = true;
         target_type            = mir_deref_type(target_type);
     }
 
-    /* struct type */
+    // struct type
     if (mir_is_composit_type(target_type)) {
-        /* Check if structure type is complete, if not analyzer must wait for it! */
+        // Check if structure type is complete, if not analyzer must wait for it!
         if (is_incomplete_struct_type(target_type))
             return ANALYZE_RESULT(WAITING, target_type->user_id->hash);
 
@@ -4520,12 +4471,12 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
             if (!scope) break;
         }
 
-        /* Check if member was found in base type's scope. */
+        // Check if member was found in base type's scope.
         if (found && found->parent_scope != target_type->data.strct.scope) {
-            /* @HACK: It seems to be the best way for now just create implicit
-             * cast to desired base type and use this as target, that also
-             * should solve problems with deeper nesting (bitcast of pointer is
-             * better then multiple GEPs?) */
+            // @HACK: It seems to be the best way for now just create implicit
+            // cast to desired base type and use this as target, that also
+            // should solve problems with deeper nesting (bitcast of pointer is
+            // better then multiple GEPs?)
             if (is_load_needed(member_ptr->target_ptr)) {
                 member_ptr->target_ptr = insert_instr_addrof(cnt, member_ptr->target_ptr);
 
@@ -4539,7 +4490,7 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
         }
 
         if (!found) {
-            /* Member not found! */
+            // Member not found!
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_UNKNOWN_SYMBOL,
                         member_ptr->member_ident->location,
@@ -4551,7 +4502,7 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
         BL_ASSERT(found->kind == SCOPE_ENTRY_MEMBER);
         MirMember *member = found->data.member;
 
-        /* setup member_ptr type */
+        // setup member_ptr type
         MirType *member_ptr_type           = create_type_ptr(cnt, member->type);
         member_ptr->base.value.type        = member_ptr_type;
         member_ptr->base.value.addr_mode   = target_addr_mode;
@@ -4561,10 +4512,9 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
         return ANALYZE_RESULT(PASSED, 0);
     }
 
-    /* Sub type member. */
+    // Sub type member.
     if (target_type->kind == MIR_TYPE_TYPE) {
-        /* generate load instruction if needed */
-
+        // generate load instruction if needed
         if (analyze_slot(cnt, &analyze_slot_conf_basic, &member_ptr->target_ptr, NULL) !=
             ANALYZE_PASSED) {
             return ANALYZE_RESULT(FAILED, 0);
@@ -4577,7 +4527,7 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
             goto INVALID;
         }
 
-        /* lookup for member inside struct */
+        // lookup for member inside struct
         Scope *     scope = sub_type->data.enm.scope;
         ID *        rid   = &ast_member_ident->data.ident.id;
         ScopeEntry *found = scope_lookup(scope, rid, false, true, NULL);
@@ -4600,7 +4550,7 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
         return ANALYZE_RESULT(PASSED, 0);
     }
 
-    /* Invalid */
+    // Invalid
 INVALID:
     builder_msg(BUILDER_MSG_ERROR,
                 ERR_INVALID_MEMBER_ACCESS,
@@ -4631,14 +4581,14 @@ AnalyzeResult analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
         return ANALYZE_RESULT(FAILED, 0);
     }
 
-    /* setup type */
+    // setup type
     MirType *type = NULL;
     BL_ASSERT(src->value.type);
     if (src->value.type->kind == MIR_TYPE_FN) {
         MirFn *fn = MIR_CEV_READ_AS(MirFn *, &src->value);
         BL_MAGIC_ASSERT(fn);
 
-        /* NOTE: Here we increase function ref count. */
+        // NOTE: Here we increase function ref count.
         ++fn->ref_count;
 
         type = create_type_ptr(cnt, src->value.type);
@@ -4650,7 +4600,6 @@ AnalyzeResult analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
     addrof->base.value.is_comptime = addrof->src->value.is_comptime;
     addrof->base.value.addr_mode   = MIR_VAM_RVALUE;
     BL_ASSERT(addrof->base.value.type && "invalid type");
-
     return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -4683,7 +4632,7 @@ AnalyzeResult analyze_instr_cast(Context *cnt, MirInstrCast *cast, bool analyze_
 
     MirType *expr_type = cast->expr->value.type;
 
-    /* Setup const int type. */
+    // Setup const int type.
     if (analyze_stage_set_volatile_expr(cnt, &cast->expr, dest_type, false) ==
         ANALYZE_STAGE_BREAK) {
         cast->op = MIR_CAST_NONE;
@@ -4719,8 +4668,8 @@ AnalyzeResult analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof)
         BL_MAGIC_ASSERT(type);
     }
 
-    /* sizeof operator needs only type of input expression so we can erase whole call
-     * tree generated to get this expression */
+    // sizeof operator needs only type of input expression so we can erase whole call
+    // tree generated to get this expression
     unref_instr(szof->expr);
     erase_instr_tree(szof->expr, false, false);
 
@@ -4778,14 +4727,14 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     ScopeEntry *found                        = NULL;
     Scope *     private_scope                = ref->parent_unit->private_scope;
     bool        is_ref_out_of_fn_local_scope = false;
-    if (!private_scope) { /* reference in unit without private scope  */
+    if (!private_scope) { // reference in unit without private scope
         found = scope_lookup(ref->scope, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
-    } else { /* reference in unit with private scope */
-        /* search in current tree and ignore global scope */
+    } else { // reference in unit with private scope
+        // search in current tree and ignore global scope
         found = scope_lookup(ref->scope, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
 
-        /* lookup in private scope and global scope also (private scope has global
-         * scope as parent every time) */
+        // lookup in private scope and global scope also (private scope has global
+        // scope as parent every time)
         if (!found)
             found =
                 scope_lookup(private_scope, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
@@ -4804,15 +4753,14 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
         ref->base.value.is_comptime = true;
         ref->base.value.addr_mode   = MIR_VAM_RVALUE;
 
-        /* CLEANUP: We should be able to delete this line but, it's not working in
-         * all test cases.
-         *
-         * We increase ref_count when function is called and also if we take address
-         * of it, but it's probably not handle all possible cases. So I leave this
-         * problem open, basically it's not an issue to have invalid function
-         * reference count, main goal is not to have zero ref count for function
-         * which are used.
-         */
+        // CLEANUP: We should be able to delete this line but, it's not working in
+        // all test cases.
+        //
+        // We increase ref_count when function is called and also if we take address
+        // of it, but it's probably not handle all possible cases. So I leave this
+        // problem open, basically it's not an issue to have invalid function
+        // reference count, main goal is not to have zero ref count for function
+        // which are used.
         ++fn->ref_count;
         break;
     }
@@ -4842,7 +4790,7 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
         MirType *type = var->value.type;
         BL_ASSERT(type);
         ++var->ref_count;
-        /* Check if we try get reference to incomplete structure type. */
+        // Check if we try get reference to incomplete structure type.
         if (type->kind == MIR_TYPE_TYPE) {
             MirType *t = MIR_CEV_READ_AS(MirType *, &var->value);
             BL_MAGIC_ASSERT(t);
@@ -4850,12 +4798,10 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
                 return ANALYZE_RESULT(WAITING, t->user_id->hash);
             }
         } else if (!var->is_global && is_ref_out_of_fn_local_scope) {
-            /*
-             * Here we must handle situation when we try to reference variables
-             * declared in parent functions of local functions. (We try to
-             * implicitly capture those variables and this leads to invalid LLVM
-             * IR.)
-             */
+            // Here we must handle situation when we try to reference variables
+            // declared in parent functions of local functions. (We try to
+            // implicitly capture those variables and this leads to invalid LLVM
+            // IR.)
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_INVALID_REFERENCE,
                         ref->base.node->location,
@@ -4945,14 +4891,13 @@ AnalyzeResult analyze_instr_test_cases(Context *cnt, MirInstrTestCases UNUSED(*t
 
 AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
-    /* resolve type */
+    // resolve type
     if (!fn_proto->base.value.type) {
         MirType *     fn_type = NULL;
         AnalyzeResult result  = analyze_resolve_type(cnt, fn_proto->type, &fn_type);
         if (result.state != ANALYZE_PASSED) return result;
 
-        /* Analyze user defined type (this must be compared with infered type).
-         */
+        // Analyze user defined type (this must be compared with infered type).
         if (fn_proto->user_type) {
             MirType *user_fn_type = NULL;
             result                = analyze_resolve_type(cnt, fn_proto->user_type, &user_fn_type);
@@ -4975,7 +4920,7 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     BL_MAGIC_ASSERT(fn);
 
     if (IS_FLAG(fn->flags, FLAG_TEST_FN)) {
-        /* We must wait for builtin types for test cases. */
+        // We must wait for builtin types for test cases.
         ID *missing = lookup_builtins_test_cases(cnt);
         if (missing) return ANALYZE_RESULT(WAITING, missing->hash);
     }
@@ -4984,9 +4929,9 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
     BL_ASSERT(fn->type);
 
-    /* Set builtin ID to type if there is one. We must store this information in function type
-     * because we need it during call analyze pass, in this case function can be called via
-     * pointer or directly, so we don't have access to MirFn instance. */
+    // Set builtin ID to type if there is one. We must store this information in function type
+    // because we need it during call analyze pass, in this case function can be called via
+    // pointer or directly, so we don't have access to MirFn instance.
     fn->type->data.fn.builtin_id = fn->builtin_id;
 
     if (fn->ret_tmp) {
@@ -4994,7 +4939,7 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
         ((MirInstrDeclVar *)fn->ret_tmp)->var->value.type = value->type->data.fn.ret_type;
     }
 
-    /* Setup function linkage name, this will be later used by LLVM backend. */
+    // Setup function linkage name, this will be later used by LLVM backend.
     if (fn->id && !fn->linkage_name) { // Has ID and has no linkage name specified.
         if (IS_FLAG(fn->flags, FLAG_EXTERN) || IS_FLAG(fn->flags, FLAG_ENTRY) ||
             IS_FLAG(fn->flags, FLAG_INTRINSIC)) {
@@ -5004,7 +4949,7 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
             fn->linkage_name = gen_uq_name(fn->id->str);
         }
     } else if (!fn->linkage_name) {
-        /* Anonymous function use implicit unique name. */
+        // Anonymous function use implicit unique name.
         fn->linkage_name = gen_uq_name(IMPL_FN_NAME);
     } else {
         BL_ASSERT(fn->linkage_name && "Linkage name must be set explicitly!");
@@ -5014,7 +4959,7 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
         fn->ref_count = NO_REF_COUNTING;
     }
 
-    /* Check build entry function. */
+    // Check build entry function.
     if (IS_FLAG(fn->flags, FLAG_BUILD_ENTRY)) {
         if (fn->type->data.fn.args) {
             builder_msg(BUILDER_MSG_ERROR,
@@ -5049,12 +4994,12 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     BL_ASSERT(fn->linkage_name && "Function without linkage name!");
 
     if (IS_FLAG(fn->flags, FLAG_EXTERN)) {
-        /* lookup external function exec handle */
+        // lookup external function exec handle
         fn->dyncall.extern_entry = assembly_find_extern(cnt->assembly, fn->linkage_name);
         fn->fully_analyzed       = true;
     } else if (IS_FLAG(fn->flags, FLAG_INTRINSIC)) {
-        /* For intrinsics we use shorter names defined in user code, so we need username ->
-         * internal name mapping in this case. */
+        // For intrinsics we use shorter names defined in user code, so we need username ->
+        // internal name mapping in this case.
         const char *intrinsic_name = get_intrinsic(fn->linkage_name);
         if (!intrinsic_name) {
             builder_msg(BUILDER_MSG_ERROR,
@@ -5073,12 +5018,11 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
                IS_FLAG(fn->flags, FLAG_ENTRY)) {
         // IGNORE BODY OF ENTRY FUNCTION WHEN WE BUILD 'BUILD ENTRY' ASSEMBLY.
     } else {
-        /* Add entry block of the function into analyze queue. */
+        // Add entry block of the function into analyze queue.
         MirInstr *entry_block = (MirInstr *)fn->first_block;
         if (!entry_block) {
-            /* INCOMPLETE: not the best place to do this check, move into ast
-             * generation later
-             */
+            // INCOMPLETE: not the best place to do this check, move into ast
+            // generation later
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_EXPECTED_BODY,
                         fn_proto->base.node->location,
@@ -5090,7 +5034,7 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
         analyze_push_front(cnt, entry_block);
     }
 
-    /* Store test case for later use if it's going to be tested. */
+    // Store test case for later use if it's going to be tested.
     if (IS_FLAG(fn->flags, FLAG_TEST_FN)) {
         BL_ASSERT(fn->id && "Test case without name!");
 
@@ -5175,7 +5119,7 @@ AnalyzeResult analyze_instr_fn_group(Context *cnt, MirInstrFnGroup *group)
         variant_types->data[i]   = fn->type;
         validation_queue.data[i] = fn;
     }
-    /* Validate group. */
+    // Validate group.
     qsort(&validation_queue.data[0], validation_queue.size, sizeof(MirFn *), &_group_compare);
     MirFn *prev_fn = NULL;
     for (usize i = validation_queue.size; i-- > 0;) {
@@ -5214,10 +5158,9 @@ AnalyzeResult analyze_instr_cond_br(Context *cnt, MirInstrCondBr *br)
         return ANALYZE_RESULT(FAILED, 0);
     }
 
-    /* PERFORMANCE: When condition is known in compile time, we can discard
-     * whole else/then block based on condition resutl. It is not possible
-     * because we don't have tracked down execution tree for now. */
-
+    // PERFORMANCE: When condition is known in compile time, we can discard
+    // whole else/then block based on condition resutl. It is not possible
+    // because we don't have tracked down execution tree for now.
     return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -5227,7 +5170,7 @@ AnalyzeResult analyze_instr_br(Context UNUSED(*cnt), MirInstrBr *br)
     return ANALYZE_RESULT(PASSED, 0);
 }
 
-/* True when switch contains same case value from start_from to the end of cases array. */
+// True when switch contains same case value from start_from to the end of cases array.
 static INLINE bool _analyze_switch_has_case_value(TSmallArray_SwitchCase *cases,
                                                   usize                   start_from,
                                                   MirInstr *              const_value)
@@ -5499,7 +5442,7 @@ AnalyzeResult analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
     TSmallArray_InstrPtr *tags      = decl->tags;
     s32                   tag_group = 0;
 
-    /* Analyze struct member tags. */
+    // Analyze struct member tags.
     if (tags) {
         for (usize i = 0; i < tags->size; ++i) {
             MirInstr **tag = &tags->data[i];
@@ -5517,10 +5460,9 @@ AnalyzeResult analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
                 return ANALYZE_RESULT(FAILED, 0);
             }
 
-            /* NOTE:
-             * Tag values are used in the same way as flags, here we produce
-             * mergin of all into one integer value.
-             */
+            // NOTE:
+            // Tag values are used in the same way as flags, here we produce
+            // mergin of all into one integer value.
             tag_group |= MIR_CEV_READ_AS(s32, &(*tag)->value);
         }
     }
@@ -5531,9 +5473,9 @@ AnalyzeResult analyze_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
         return ANALYZE_RESULT(FAILED, 0);
     }
 
-    /* NOTE: Members will be provided by instr type struct because we need to
-     * know right ordering of members inside structure layout. (index and llvm
-     * element offet need to be calculated)*/
+    // NOTE: Members will be provided by instr type struct because we need to
+    // know right ordering of members inside structure layout. (index and llvm
+    // element offet need to be calculated)
     return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -5543,7 +5485,7 @@ AnalyzeResult analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *vari
     BL_ASSERT(variant && "Missing variant.");
 
     if (variant_instr->value) {
-        /* User defined initialization value. */
+        // User defined initialization value.
         if (!mir_is_comptime(variant_instr->value)) {
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_INVALID_EXPR,
@@ -5558,14 +5500,12 @@ AnalyzeResult analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *vari
             return ANALYZE_RESULT(FAILED, 0);
         }
 
-        /* Setup value. */
+        // Setup value.
         variant_instr->variant->value = &variant_instr->value->value;
     } else {
-        /*
-         * CLENUP: Automatic initialization value is set in parser, mabye we will
-         * prefer to do automatic initialization here instead of doing so in parser
-         * pass.
-         */
+        // CLENUP: Automatic initialization value is set in parser, mabye we will
+        // prefer to do automatic initialization here instead of doing so in parser
+        // pass.
         BL_UNIMPLEMENTED;
     }
 
@@ -5579,7 +5519,7 @@ AnalyzeResult analyze_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
     MirArg *arg = decl->arg;
     BL_ASSERT(arg);
     if (decl->type) {
-        /* Variable type is explicitly defined. */
+        // Variable type is explicitly defined.
         if (decl->type->kind == MIR_INSTR_CALL) {
             AnalyzeResult result = analyze_resolve_type(cnt, decl->type, &arg->type);
             if (result.state != ANALYZE_PASSED) return result;
@@ -5590,12 +5530,12 @@ AnalyzeResult analyze_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
             arg->type = MIR_CEV_READ_AS(MirType *, &decl->type->value);
             BL_MAGIC_ASSERT(arg->type);
         }
-        /* @NOTE: Argument default value is generated as an implicit global constant
-         * variable with proper expected type defined, so there is no need to do any type
-         * validation with user type, variable analyze pass will do it for us.*/
+        // @NOTE: Argument default value is generated as an implicit global constant
+        // variable with proper expected type defined, so there is no need to do any type
+        // validation with user type, variable analyze pass will do it for us.*/
     } else {
-        /* There is no explicitly defined argument type, but we have default argument value
-         * to infer type from. */
+        // There is no explicitly defined argument type, but we have default argument value
+        // to infer type from.
         BL_ASSERT(arg->value);
         if (!arg->value->analyzed) {
             // @PERFORMANCE: WAITING is preferred here, but we don't have ID to wait
@@ -5637,7 +5577,7 @@ AnalyzeResult analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_s
             BL_ASSERT(decl_member->base.kind == MIR_INSTR_DECL_MEMBER);
             BL_ASSERT(mir_is_comptime(&decl_member->base));
 
-            /* solve member type */
+            // solve member type
             member_type = MIR_CEV_READ_AS(MirType *, &decl_member->type->value);
             BL_MAGIC_ASSERT(member_type);
             if (member_type->kind == MIR_TYPE_FN) {
@@ -5658,7 +5598,7 @@ AnalyzeResult analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_s
                 return ANALYZE_RESULT(FAILED, 0);
             }
 
-            /* setup and provide member */
+            // setup and provide member
             MirMember *member = decl_member->member;
             BL_ASSERT(member);
             member->type            = member_type;
@@ -5679,8 +5619,8 @@ AnalyzeResult analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_s
     MirType *result_type = NULL;
 
     if (type_struct->fwd_decl) {
-        /* Type has fwd declaration. In this case we set all desired information
-         * about struct type into previously created forward declaration. */
+        // Type has fwd declaration. In this case we set all desired information
+        // about struct type into previously created forward declaration.
         result_type = complete_type_struct(cnt,
                                            type_struct->fwd_decl,
                                            type_struct->scope,
@@ -5752,8 +5692,7 @@ AnalyzeResult analyze_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_sli
 
 AnalyzeResult analyze_instr_type_dynarr(Context *cnt, MirInstrTypeDynArr *type_dynarr)
 {
-    /* We need TypeInfo initialized because it's needed as member of dynamic array type!
-     */
+    // We need TypeInfo initialized because it's needed as member of dynamic array type!
     ID *missing_rtti_type_id = lookup_builtins_rtti(cnt);
     if (missing_rtti_type_id) {
         return ANALYZE_RESULT(WAITING, missing_rtti_type_id->hash);
@@ -5823,18 +5762,14 @@ AnalyzeResult analyze_instr_type_vargs(Context *cnt, MirInstrTypeVArgs *type_var
         elem_type = MIR_CEV_READ_AS(MirType *, &type_vargs->elem_type->value);
         BL_MAGIC_ASSERT(elem_type);
     } else {
-        /* use Any */
+        // use Any
         elem_type = lookup_builtin_type(cnt, MIR_BUILTIN_ID_ANY);
         if (!elem_type) return ANALYZE_RESULT(WAITING, builtin_ids[MIR_BUILTIN_ID_ANY].hash);
     }
-
     BL_ASSERT(elem_type);
-
     elem_type = create_type_ptr(cnt, elem_type);
-
-    MIR_CEV_WRITE_AS(MirType *,
-                     &type_vargs->base.value,
-                     CREATE_TYPE_STRUCT_VARGS(cnt, NULL /* id */, elem_type));
+    MIR_CEV_WRITE_AS(
+        MirType *, &type_vargs->base.value, CREATE_TYPE_STRUCT_VARGS(cnt, NULL, elem_type));
 
     return ANALYZE_RESULT(PASSED, 0);
 }
@@ -5853,7 +5788,7 @@ AnalyzeResult analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr
         return ANALYZE_RESULT(FAILED, 0);
     }
 
-    /* len */
+    // len
     if (!mir_is_comptime(type_arr->len)) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_EXPECTED_CONST,
@@ -5882,7 +5817,7 @@ AnalyzeResult analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr
         return ANALYZE_RESULT(FAILED, 0);
     }
 
-    /* elem type */
+    // elem type
     BL_ASSERT(mir_is_comptime(type_arr->elem_type));
 
     MirType *elem_type = MIR_CEV_READ_AS(MirType *, &type_arr->elem_type->value);
@@ -5909,15 +5844,13 @@ AnalyzeResult analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
     BL_ASSERT(variant_instrs);
     BL_ASSERT(scope);
     BL_ASSERT(variant_instrs->size);
-    /*
-     * Validate and setup enum base type.
-     */
+    // Validate and setup enum base type.
     MirType *base_type;
     if (type_enum->base_type) {
         base_type = MIR_CEV_READ_AS(MirType *, &type_enum->base_type->value);
         BL_MAGIC_ASSERT(base_type);
 
-        /* Enum type must be integer! */
+        // Enum type must be integer!
         if (base_type->kind != MIR_TYPE_INT) {
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_INVALID_TYPE,
@@ -5927,12 +5860,12 @@ AnalyzeResult analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
             return ANALYZE_RESULT(FAILED, 0);
         }
     } else {
-        /* Use s32 by default. */
+        // Use s32 by default.
         base_type = cnt->builtin_types->t_s32;
     }
     BL_ASSERT(base_type && "Invalid enum base type.");
     TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, cnt->assembly);
-    /* Iterate over all enum variants and validate them. */
+    // Iterate over all enum variants and validate them.
     MirInstr *  it;
     MirVariant *variant;
     TSA_FOREACH(variant_instrs, it)
@@ -5997,15 +5930,15 @@ AnalyzeResult analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 
 AnalyzeResult analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
-    /******************************************************************************************/
+    //*********************************************************************************************/
 #define is_valid(_type, _op)                                                                       \
     (((_type)->kind == MIR_TYPE_INT) || ((_type)->kind == MIR_TYPE_NULL) ||                        \
      ((_type)->kind == MIR_TYPE_REAL) || ((_type)->kind == MIR_TYPE_PTR) ||                        \
      ((_type)->kind == MIR_TYPE_BOOL && ast_binop_is_logic(_op)) ||                                \
      ((_type)->kind == MIR_TYPE_ENUM && (_op == BINOP_EQ || _op == BINOP_NEQ)))
-    /******************************************************************************************/
+    //*********************************************************************************************/
 
-    { /* Handle type propagation. */
+    { // Handle type propagation.
         MirType *lhs_type = binop->lhs->value.type;
         MirType *rhs_type = binop->rhs->value.type;
 
@@ -6017,7 +5950,7 @@ AnalyzeResult analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
             can_impl_cast(lhs_type, rhs_type) || is_instr_type_volatile(binop->lhs);
 
         if (can_propagate_RtoL) {
-            /* Propagate right hand side expression type to the left.  */
+            // Propagate right hand side expression type to the left.
             if (analyze_slot(cnt, &analyze_slot_conf_default, &binop->lhs, rhs_type) !=
                 ANALYZE_PASSED)
                 return ANALYZE_RESULT(FAILED, 0);
@@ -6025,7 +5958,7 @@ AnalyzeResult analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
             if (analyze_slot(cnt, &analyze_slot_conf_basic, &binop->rhs, NULL) != ANALYZE_PASSED)
                 return ANALYZE_RESULT(FAILED, 0);
         } else {
-            /* Propagate left hand side expression type to the right.  */
+            // Propagate left hand side expression type to the right.
             if (analyze_slot(cnt, &analyze_slot_conf_basic, &binop->lhs, NULL) != ANALYZE_PASSED)
                 return ANALYZE_RESULT(FAILED, 0);
 
@@ -6062,9 +5995,8 @@ AnalyzeResult analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
     BL_ASSERT(type);
     binop->base.value.type = type;
 
-    /* when binary operation has lhs and rhs values known in compile it is known
-     * in compile time also
-     */
+    // when binary operation has lhs and rhs values known in compile it is known
+    // in compile time also
     binop->base.value.is_comptime = lhs->value.is_comptime && rhs->value.is_comptime;
     binop->base.value.addr_mode   = MIR_VAM_RVALUE;
     binop->volatile_type          = is_instr_type_volatile(lhs) && is_instr_type_volatile(rhs);
@@ -6177,7 +6109,7 @@ AnalyzeResult analyze_instr_const(Context UNUSED(*cnt), MirInstrConst *cnst)
 
 AnalyzeResult analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 {
-    /* compare return value with current function type */
+    // compare return value with current function type
     MirInstrBlock *block = ret->base.owner_block;
     if (!block->terminal) block->terminal = &ret->base;
 
@@ -6200,12 +6132,12 @@ AnalyzeResult analyze_instr_ret(Context *cnt, MirInstrRet *ret)
     const bool expected_ret_value =
         !type_cmp(fn_type->data.fn.ret_type, cnt->builtin_types->t_void);
 
-    /* return value is not expected, and it's not provided */
+    // return value is not expected, and it's not provided
     if (!expected_ret_value && !value) {
         return ANALYZE_RESULT(PASSED, 0);
     }
 
-    /* return value is expected, but it's not provided */
+    // return value is expected, but it's not provided
     if (expected_ret_value && !value) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_INVALID_EXPR,
@@ -6215,7 +6147,7 @@ AnalyzeResult analyze_instr_ret(Context *cnt, MirInstrRet *ret)
         return ANALYZE_RESULT(FAILED, 0);
     }
 
-    /* return value is not expected, but it's provided */
+    // return value is not expected, but it's provided
     if (!expected_ret_value && value) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_INVALID_EXPR,
@@ -6233,40 +6165,40 @@ AnalyzeResult analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     MirVar *var = decl->var;
     BL_ASSERT(var);
 
-    /* Immutable declaration can be comptime, but only if it's initializer value is also
-     * comptime! Value of this variable can be adjusted later during analyze pass when
-     * we know actual initialization value. */
+    // Immutable declaration can be comptime, but only if it's initializer value is also
+    // comptime! Value of this variable can be adjusted later during analyze pass when
+    // we know actual initialization value.
     bool is_decl_comptime = !var->is_mutable;
 
-    /* Resolve declaration type if not set implicitly to the target variable by
-     * compiler. */
+    // Resolve declaration type if not set implicitly to the target variable by
+    // compiler.
     if (decl->type && !var->value.type) {
         AnalyzeResult result = analyze_resolve_type(cnt, decl->type, &var->value.type);
         if (result.state != ANALYZE_PASSED) return result;
     }
 
     if (var->is_global && !var->is_struct_typedef) {
-        /* Unexported globals have unique linkage name to solve potential conflicts
-         * with extern symbols. */
+        // Unexported globals have unique linkage name to solve potential conflicts
+        // with extern symbols.
         var->linkage_name = gen_uq_name(var->linkage_name);
 
-        /* Globals are set by initializer so we can skip all checks, rest of the
-         * work is up to set initializer instruction! There is one exceptional case:
-         * we use init value as temporary value for incomplete structure
-         * declarations (struct can use pointer to self type inside it's body). This
-         * value is later replaced by initializer instruction.*/
+        // Globals are set by initializer so we can skip all checks, rest of the
+        // work is up to set initializer instruction! There is one exceptional case:
+        // we use init value as temporary value for incomplete structure
+        // declarations (struct can use pointer to self type inside it's body). This
+        // value is later replaced by initializer instruction.
         return ANALYZE_RESULT(PASSED, 0);
     }
 
-    /* Continue only with local variables and struct typedefs. */
+    // Continue only with local variables and struct typedefs.
     bool has_initializer = decl->init;
     if (has_initializer) {
         if (decl->init->kind == MIR_INSTR_COMPOUND) {
             ((MirInstrCompound *)decl->init)->is_naked = false;
         }
 
-        /* Resolve variable intializer. Here we use analyze_slot_initializer call to
-         * fulfill possible array to slice cast. */
+        // Resolve variable intializer. Here we use analyze_slot_initializer call to
+        // fulfill possible array to slice cast.
         if (var->value.type) {
             if (analyze_slot_initializer(
                     cnt, &analyze_slot_conf_default, &decl->init, var->value.type) !=
@@ -6279,18 +6211,17 @@ AnalyzeResult analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
                 return ANALYZE_RESULT(FAILED, 0);
             }
 
-            /* infer type */
+            // infer type
             MirType *type = decl->init->value.type;
             BL_ASSERT(type);
             if (type->kind == MIR_TYPE_NULL) type = type->data.null.base_type;
             var->value.type = type;
         }
 
-        /* Immutable and comptime initializer value. */
+        // Immutable and comptime initializer value.
         is_decl_comptime &= decl->init->value.is_comptime;
     } else if (IS_NOT_FLAG(var->flags, FLAG_NO_INIT)) {
-        /* Create default initilializer for locals without explicit initialization.
-         */
+        // Create default initilializer for locals without explicit initialization.
         MirType * type         = var->value.type;
         MirInstr *default_init = create_default_value_for_type(cnt, type, false);
         insert_instr_before(&decl->base, default_init);
@@ -6301,7 +6232,7 @@ AnalyzeResult analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     AnalyzeResult state                                   = analyze_var(cnt, decl->var);
     if (state.state != ANALYZE_PASSED) return state;
     if (decl->base.value.is_comptime && decl->init) {
-        /* initialize when known in compiletime */
+        // initialize when known in compiletime
         var->value.data = decl->init->value.data;
         BL_ASSERT(var->value.data && "Incomplete comptime var initialization.");
     }
@@ -6406,15 +6337,13 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
     ID *missing_any = lookup_builtins_any(cnt);
     if (missing_any) return ANALYZE_RESULT(WAITING, missing_any->hash);
 
-    /*
-     * Direct call is call without any reference lookup, usually call to anonymous
-     * function, type resolver or variable initializer. Contant value of callee
-     * instruction must containt pointer to the MirFn object.
-     */
+    // Direct call is call without any reference lookup, usually call to anonymous
+    // function, type resolver or variable initializer. Contant value of callee
+    // instruction must containt pointer to the MirFn object.
     const MirInstrKind callee_kind    = call->callee->kind;
     const bool         is_direct_call = callee_kind == MIR_INSTR_FN_PROTO;
 
-    /* callee has not been analyzed yet -> postpone call analyze */
+    // callee has not been analyzed yet -> postpone call analyze
     if (!call->callee->analyzed) {
         BL_ASSERT(call->callee->kind == MIR_INSTR_FN_PROTO);
         MirInstrFnProto *fn_proto = (MirInstrFnProto *)call->callee;
@@ -6433,8 +6362,8 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
     BL_ASSERT(type && "invalid type of called object");
 
     if (mir_is_pointer_type(type)) {
-        /* we want to make calls also via pointer to functions so in such case
-         * we need to resolve pointed function */
+        // we want to make calls also via pointer to functions so in such case
+        // we need to resolve pointed function
         type = mir_deref_type(type);
     }
 
@@ -6453,12 +6382,11 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
         if (call->base.value.is_comptime) {
             if (!fn->fully_analyzed) return ANALYZE_RESULT(POSTPONE, 0);
         } else if (call->callee->kind == MIR_INSTR_FN_PROTO) {
-            /* Direct call of anonymous function. */
+            // Direct call of anonymous function.
 
-            /* NOTE: We increase ref count of called function here, but this
-             * will not work for functions called by pointer in obtained in
-             * runtime
-             */
+            // NOTE: We increase ref count of called function here, but this
+            // will not work for functions called by pointer in obtained in
+            // runtime
             ++fn->ref_count;
             fn->emit_llvm = true;
         }
@@ -6466,10 +6394,10 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 
     const bool is_group = type->kind == MIR_TYPE_FN_GROUP;
     if (is_group) {
-        /* Function group will be replaced with constant function reference. Best callee
-         * candidate selection is based on call arguments not on return type! The best
-         * function is selected but it could be still invalid so we have to validate it as
-         * usual. */
+        // Function group will be replaced with constant function reference. Best callee
+        // candidate selection is based on call arguments not on return type! The best
+        // function is selected but it could be still invalid so we have to validate it as
+        // usual.
         MirFnGroup *group = MIR_CEV_READ_AS(MirFnGroup *, &call->callee->value);
         BL_MAGIC_ASSERT(group);
         MirFn *selected_overload_fn = NULL;
@@ -6499,7 +6427,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
     BL_ASSERT(result_type && "invalid type of call result");
     call->base.value.type = result_type;
 
-    /* validate arguments */
+    // validate arguments
     usize       callee_argc      = type->data.fn.args ? type->data.fn.args->size : 0;
     const usize call_argc        = call->args ? call->args->size : 0;
     const bool  is_vargs         = type->data.fn.is_vargs;
@@ -6515,7 +6443,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 
     BL_ASSERT(!(is_vargs && has_default_args));
     if (is_vargs && !is_last_call_arg_vargs) {
-        /* This is gonna be tricky... */
+        // This is gonna be tricky...
         --callee_argc;
         if ((call_argc < callee_argc)) {
             goto INVALID_ARGC;
@@ -6526,13 +6454,13 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
         BL_ASSERT(vargs_type && mir_is_pointer_type(vargs_type));
         vargs_type = mir_deref_type(vargs_type);
 
-        /* Prepare vargs values. */
+        // Prepare vargs values.
         const usize           vargsc = call_argc - callee_argc;
         TSmallArray_InstrPtr *values = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
         MirInstr *            vargs  = create_instr_vargs_impl(cnt, vargs_type, values);
         ref_instr(vargs);
         if (vargsc > 0) {
-            /* One or more vargs passed. */
+            // One or more vargs passed.
             // @INCOMPLETE: check it this is ok!!!
             for (usize i = 0; i < vargsc; ++i) {
                 tsa_push_InstrPtr(values, call->args->data[callee_argc + i]);
@@ -6541,8 +6469,8 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
             MirInstr *insert_loc = call->args->data[callee_argc];
             insert_instr_after(insert_loc, vargs);
         } else if (callee_argc > 0) {
-            /* No arguments passed into vargs but there are more regular
-             * arguments before vargs. */
+            // No arguments passed into vargs but there are more regular
+            // arguments before vargs.
             MirInstr *insert_loc = call->args->data[call_argc - 1];
             insert_instr_before(insert_loc, vargs);
         } else {
@@ -6552,18 +6480,18 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
         if (analyze_instr_vargs(cnt, (MirInstrVArgs *)vargs).state != ANALYZE_PASSED)
             return ANALYZE_RESULT(FAILED, 0);
         vargs->analyzed = true;
-        /* Erase vargs from arguments. @NOTE: function does nothing when array size is equal
-         * to callee_argc.*/
+        // Erase vargs from arguments. @NOTE: function does nothing when array size is equal
+        // to callee_argc.
         tsa_resize_InstrPtr(call->args, callee_argc);
-        /* Replace last with vargs. */
+        // Replace last with vargs.
         tsa_push_InstrPtr(call->args, vargs);
     } else if (has_default_args) {
-        /* Call have more arguments than a function. */
+        // Call have more arguments than a function.
         if (callee_argc < call_argc) {
             goto INVALID_ARGC;
         }
 
-        /* Check if all arguments are explicitly provided. */
+        // Check if all arguments are explicitly provided.
         if (callee_argc > call_argc) {
             for (usize i = call_argc; i < callee_argc; ++i) {
                 MirArg *arg = type->data.fn.args->data[i];
@@ -6573,16 +6501,16 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
                     goto INVALID_ARGC;
                 }
 
-                /* Create direct reference to default value and insert it into call
-                 * argument list. Here we modify call->args array!!!*/
+                // Create direct reference to default value and insert it into call
+                // argument list. Here we modify call->args array!!!
                 MirInstr *insert_location =
                     call->args->size > 0 ? call->args->data[call->args->size - 1] : &call->base;
 
                 MirInstr *call_default_arg;
                 if (arg->value->kind == MIR_INSTR_CALL_LOC) {
-                    /* Original InstrCallLoc is used only as note that we must
-                     * generate real one containing information about call
-                     * instruction location. */
+                    // Original InstrCallLoc is used only as note that we must
+                    // generate real one containing information about call
+                    // instruction location.
                     BL_ASSERT(call->base.node);
                     BL_ASSERT(call->base.node->location);
                     Ast *orig_node = arg->value->node;
@@ -6595,8 +6523,8 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
                 tsa_push_InstrPtr(call->args, call_default_arg);
                 insert_instr_before(insert_location, call_default_arg);
                 const AnalyzeResult result = analyze_instr(cnt, call_default_arg);
-                /* Default value reference MUST be analyzed before any call to owner
-                 * function! */
+                // Default value reference MUST be analyzed before any call to owner
+                // function!
                 if (result.state != ANALYZE_PASSED) return ANALYZE_RESULT(FAILED, 0);
             }
         }
@@ -6611,7 +6539,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
         if (result.state != ANALYZE_PASSED) return result;
     }
 
-    /* validate argument types */
+    // validate argument types
     if (!callee_argc) return ANALYZE_RESULT(PASSED, 0);
     for (u32 i = 0; i < callee_argc; ++i) {
         MirInstr **call_arg   = &call->args->data[i];
@@ -6625,7 +6553,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
     }
 
     return ANALYZE_RESULT(PASSED, 0);
-    /* ERROR */
+    // ERROR
 INVALID_ARGC:
     builder_msg(BUILDER_MSG_ERROR,
                 ERR_INVALID_ARG_COUNT,
@@ -6684,7 +6612,7 @@ AnalyzeResult analyze_instr_block(Context *cnt, MirInstrBlock *block)
     BL_ASSERT(block);
 
     MirFn *fn = block->owner_fn;
-    if (!fn) { /* block in global scope */
+    if (!fn) { // block in global scope
         return ANALYZE_RESULT(PASSED, 0);
     }
 
@@ -6694,8 +6622,7 @@ AnalyzeResult analyze_instr_block(Context *cnt, MirInstrBlock *block)
     block->base.is_unreachable = block->base.ref_count == 0;
     if (!fn->first_unreachable_loc && block->base.is_unreachable && block->entry_instr &&
         block->entry_instr->node) {
-        /* Report unreachable code if there is one only once inside funcition body.
-         */
+        // Report unreachable code if there is one only once inside funcition body.
         fn->first_unreachable_loc = block->entry_instr->node->location;
 
         builder_msg(BUILDER_MSG_WARNING,
@@ -6705,9 +6632,8 @@ AnalyzeResult analyze_instr_block(Context *cnt, MirInstrBlock *block)
                     "Unreachable code detected.");
     }
 
-    /* append implicit return for void functions or generate error when last
-     * block is not terminated
-     */
+    // Append implicit return for void functions or generate error when last
+    // block is not terminated
     if (!is_block_terminated(block)) {
         if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
             set_current_block(cnt, block);
@@ -6814,7 +6740,7 @@ ANALYZE_STAGE_FN(toany)
 {
     BL_ASSERT(slot_type);
 
-    /* check any */
+    // check any
     if (!is_to_any_needed(cnt, *input, slot_type)) return ANALYZE_STAGE_CONTINUE;
 
     AnalyzeResult result;
@@ -6831,9 +6757,8 @@ ANALYZE_STAGE_FN(toany)
 
 ANALYZE_STAGE_FN(dynarrtoslice)
 {
-    /* Cast from dynamic array to slice can be done by bitcast from pointer to dynamic array to
-     * slice pointer, both structures have same data layout of first two members.
-     */
+    // Cast from dynamic array to slice can be done by bitcast from pointer to dynamic array to
+    // slice pointer, both structures have same data layout of first two members.
     BL_ASSERT(slot_type);
 
     MirType *from_type = (*input)->value.type;
@@ -6875,10 +6800,8 @@ ANALYZE_STAGE_FN(dynarrtoslice)
 
 ANALYZE_STAGE_FN(arrtoslice)
 {
-    /*
-     * Produce implicit cast from array type to slice. This will create implicit compound
-     * initializer representing array legth and pointer to array data.
-     */
+    // Produce implicit cast from array type to slice. This will create implicit compound
+    // initializer representing array legth and pointer to array data.
     BL_ASSERT(slot_type);
 
     MirType *from_type = (*input)->value.type;
@@ -6906,12 +6829,8 @@ ANALYZE_STAGE_FN(arrtoslice)
         TSmallArray_InstrPtr *values    = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
 
         // Build array pointer
-        MirInstr *instr_ptr = create_instr_member_ptr(cnt,
-                                                      NULL /* node */,
-                                                      instr_arr,
-                                                      NULL /* member_ident */,
-                                                      NULL /* scope_entry */,
-                                                      MIR_BUILTIN_ID_ARR_PTR);
+        MirInstr *instr_ptr =
+            create_instr_member_ptr(cnt, NULL, instr_arr, NULL, NULL, MIR_BUILTIN_ID_ARR_PTR);
         insert_instr_after(*input, instr_ptr);
         *input = instr_ptr;
         ANALYZE_INSTR_RQ(instr_ptr);
@@ -6976,7 +6895,7 @@ AnalyzeResult analyze_instr(Context *cnt, MirInstr *instr)
 {
     if (!instr) return ANALYZE_RESULT(PASSED, 0);
 
-    /* skip already analyzed instructions */
+    // skip already analyzed instructions
     if (instr->analyzed) return ANALYZE_RESULT(PASSED, 0);
     AnalyzeResult state = ANALYZE_RESULT(PASSED, 0);
 
@@ -7122,8 +7041,8 @@ AnalyzeResult analyze_instr(Context *cnt, MirInstr *instr)
 
     if (state.state == ANALYZE_PASSED) {
         instr->analyzed = true;
-        /* An auto cast cannot be directly evaluated because it's destination type
-         * could change based on usage. */
+        // An auto cast cannot be directly evaluated because it's destination type
+        // could change based on usage.
         if (instr->kind == MIR_INSTR_CAST && ((MirInstrCast *)instr)->auto_cast) {
             return state;
         }
@@ -7146,14 +7065,14 @@ static INLINE MirInstr *analyze_try_get_next(MirInstr *instr)
         return block->entry_instr;
     }
 
-    /* Instruction can be the last instruction inside block, but block may not
-     * be the last block inside function, we try to get following one. */
+    // Instruction can be the last instruction inside block, but block may not
+    // be the last block inside function, we try to get following one.
     MirInstrBlock *owner_block = instr->owner_block;
     if (owner_block && instr == owner_block->last_instr) {
         if (owner_block->base.next == NULL && owner_block->owner_fn) {
-            /* Instruction is last instruction of the function body, so the
-             * function can be executed in compile time if needed, we need to
-             * set flag with this information here. */
+            // Instruction is last instruction of the function body, so the
+            // function can be executed in compile time if needed, we need to
+            // set flag with this information here.
             owner_block->owner_fn->fully_analyzed = true;
 #if BL_DEBUG && VERBOSE_ANALYZE
             printf("Analyze: " BLUE("Function '%s' completely analyzed.\n"),
@@ -7161,7 +7080,7 @@ static INLINE MirInstr *analyze_try_get_next(MirInstr *instr)
 #endif
         }
 
-        /* Return following block. */
+        // Return following block.
         return owner_block->base.next;
     }
 
@@ -7170,7 +7089,7 @@ static INLINE MirInstr *analyze_try_get_next(MirInstr *instr)
 
 void analyze(Context *cnt)
 {
-    /******************************************************************************************/
+    //*********************************************************************************************/
 #if BL_DEBUG && VERBOSE_ANALYZE
 #define LOG_ANALYZE_PASSED printf("Analyze: [ " PASSED " ] %16s\n", mir_instr_name(ip));
 #define LOG_ANALYZE_FAILED printf("Analyze: [ " FAILED " ] %16s\n", mir_instr_name(ip));
@@ -7187,11 +7106,9 @@ void analyze(Context *cnt)
 #define LOG_ANALYZE_POSTPONE
 #define LOG_ANALYZE_WAITING
 #endif
-    /******************************************************************************************/
+    //*********************************************************************************************/
 
-    /* PERFORMANCE: use array??? */
-    /* PERFORMANCE: use array??? */
-    /* PERFORMANCE: use array??? */
+    // PERFORMANCE: use array???
     TList *       q = &cnt->analyze.queue;
     AnalyzeResult result;
     usize         postpone_loop_count = 0;
@@ -7260,12 +7177,12 @@ void analyze(Context *cnt)
         }
     }
 
-    /******************************************************************************************/
+    //******************************************************************************************/
 #undef LOG_ANALYZE_PASSED
 #undef LOG_ANALYZE_FAILED
 #undef LOG_ANALYZE_POSTPONE
 #undef LOG_ANALYZE_WAITING
-    /******************************************************************************************/
+    //******************************************************************************************/
 }
 
 void analyze_report_unresolved(Context *cnt)
@@ -7297,7 +7214,7 @@ MirVar *testing_gen_meta(Context *cnt)
     if (len == 0) return NULL;
     if (cnt->assembly->testing.meta_var) return cnt->assembly->testing.meta_var;
 
-    MirType *type = create_type_array(cnt, NULL /* ID */, cnt->builtin_types->t_TestCase, len);
+    MirType *type = create_type_array(cnt, NULL, cnt->builtin_types->t_TestCase, len);
     MirVar * var  = create_var_impl(cnt, IMPL_TESTCASES_TMP, type, false, true, true);
     vm_alloc_global(cnt->vm, cnt->assembly, var);
 
@@ -7388,7 +7305,7 @@ void testing_run(Context *cnt)
     tarray_terminate(&failed);
 }
 
-/* Top-level rtti generation. */
+// Top-level rtti generation.
 INLINE MirVar *rtti_gen(Context *cnt, MirType *type)
 {
     MirVar *tmp = _rtti_gen(cnt, type);
@@ -7453,8 +7370,8 @@ MirVar *_rtti_gen(Context *cnt, MirType *type)
         break;
 
     case MIR_TYPE_PTR:
-        /* We generate dummy pointer RTTI when incomplete is enabled and complete
-         * this in second pass to prove endless looping. */
+        // We generate dummy pointer RTTI when incomplete is enabled and complete
+        // this in second pass to prove endless looping.
         rtti_var = rtti_gen_ptr(cnt, cnt->builtin_types->t_u8_ptr, NULL);
         tsa_push_RTTIIncomplete(&cnt->analyze.incomplete_rtti,
                                 (RTTIIncomplete){.var = rtti_var, .type = type});
@@ -7500,7 +7417,7 @@ INLINE MirVar *rtti_create_and_alloc_var(Context *cnt, MirType *type)
 
 INLINE MirVar *rtti_prepare_var(Context *cnt)
 {
-    return create_var_impl(cnt, IMPL_RTTI_ENTRY, NULL /* alloc_type */, false, true, true);
+    return create_var_impl(cnt, IMPL_RTTI_ENTRY, NULL, false, true, true);
 }
 
 static INLINE void rtti_gen_base(Context *cnt, VMStackPtr dest, u8 kind, usize size_bytes)
@@ -7574,21 +7491,21 @@ MirVar *rtti_gen_array(Context *cnt, MirType *type)
     VMStackPtr dest      = vm_read_var(cnt->vm, rtti_var);
     rtti_gen_base(cnt, dest, type->kind, type->store_size_bytes);
 
-    /* name */
+    // name
     MirType *   dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
     VMStackPtr  dest_name      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
     const char *name           = type->user_id ? type->user_id->str : type->id.str;
 
     vm_write_string(cnt->vm, dest_name_type, dest_name, name, strlen(name));
 
-    /* elem_type */
+    // elem_type
     MirType *  dest_elem_type = mir_get_struct_elem_type(rtti_type, 2);
     VMStackPtr dest_elem      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 2);
 
     MirVar *elem = _rtti_gen(cnt, type->data.array.elem_type);
     vm_write_ptr(dest_elem_type, dest_elem, vm_read_var(cnt->vm, elem));
 
-    /* len */
+    // len
     MirType *  dest_len_type = mir_get_struct_elem_type(rtti_type, 3);
     VMStackPtr dest_len      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 3);
 
@@ -7621,7 +7538,7 @@ void rtti_gen_enum_variant(Context *cnt, VMStackPtr dest, MirVariant *variant)
 VMStackPtr rtti_gen_enum_variants_array(Context *cnt, TSmallArray_VariantPtr *variants)
 {
     MirType *rtti_type    = cnt->builtin_types->t_TypeInfoEnumVariant;
-    MirType *arr_tmp_type = create_type_array(cnt, NULL /* ID */, rtti_type, variants->size);
+    MirType *arr_tmp_type = create_type_array(cnt, NULL, rtti_type, variants->size);
 
     VMStackPtr dest_arr_tmp = vm_alloc_raw(cnt->vm, cnt->assembly, arr_tmp_type);
 
@@ -7657,20 +7574,20 @@ MirVar *rtti_gen_enum(Context *cnt, MirType *type)
     VMStackPtr dest      = vm_read_var(cnt->vm, rtti_var);
     rtti_gen_base(cnt, dest, type->kind, type->store_size_bytes);
 
-    /* name */
+    // name
     MirType *   dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
     VMStackPtr  dest_name      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
     const char *name           = type->user_id ? type->user_id->str : type->id.str;
     vm_write_string(cnt->vm, dest_name_type, dest_name, name, strlen(name));
 
-    /* base_type */
+    // base_type
     MirType *  dest_base_type_type = mir_get_struct_elem_type(rtti_type, 2);
     VMStackPtr dest_base_type      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 2);
 
     MirVar *base_type = _rtti_gen(cnt, type->data.enm.base_type);
     vm_write_ptr(dest_base_type_type, dest_base_type, vm_read_var(cnt->vm, base_type));
 
-    /* variants */
+    // variants
     VMStackPtr dest_variants = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 3);
     rtti_gen_enum_variants_slice(cnt, dest_variants, type->data.enm.variants);
 
@@ -7681,33 +7598,33 @@ void rtti_gen_struct_member(Context *cnt, VMStackPtr dest, MirMember *member)
 {
     MirType *rtti_type = cnt->builtin_types->t_TypeInfoStructMember;
 
-    /* name */
+    // name
     MirType *  dest_name_type = mir_get_struct_elem_type(rtti_type, 0);
     VMStackPtr dest_name      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 0);
     vm_write_string(cnt->vm, dest_name_type, dest_name, member->id->str, strlen(member->id->str));
 
-    /* base_type */
+    // base_type
     MirType *  dest_base_type_type = mir_get_struct_elem_type(rtti_type, 1);
     VMStackPtr dest_base_type      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
     MirVar *   base_type           = _rtti_gen(cnt, member->type);
     vm_write_ptr(dest_base_type_type, dest_base_type, vm_read_var(cnt->vm, base_type));
 
-    /* offset_bytes */
+    // offset_bytes
     MirType *  dest_offset_type = mir_get_struct_elem_type(rtti_type, 2);
     VMStackPtr dest_offset      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 2);
     vm_write_int(dest_offset_type, dest_offset, (u64)member->offset_bytes);
 
-    /* index */
+    // index
     MirType *  dest_index_type = mir_get_struct_elem_type(rtti_type, 3);
     VMStackPtr dest_index      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 3);
     vm_write_int(dest_index_type, dest_index, (u64)member->index);
 
-    /* tag */
+    // tag
     MirType *  dest_tags_type = mir_get_struct_elem_type(rtti_type, 4);
     VMStackPtr dest_tags      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 4);
     vm_write_int(dest_tags_type, dest_tags, (u64)member->tags);
 
-    /* is_base */
+    // is_base
     MirType *  dest_is_base_type = mir_get_struct_elem_type(rtti_type, 5);
     VMStackPtr dest_is_base      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 5);
     vm_write_int(dest_is_base_type, dest_is_base, (u64)member->is_base);
@@ -7716,7 +7633,7 @@ void rtti_gen_struct_member(Context *cnt, VMStackPtr dest, MirMember *member)
 VMStackPtr rtti_gen_struct_members_array(Context *cnt, TSmallArray_MemberPtr *members)
 {
     MirType *rtti_type    = cnt->builtin_types->t_TypeInfoStructMember;
-    MirType *arr_tmp_type = create_type_array(cnt, NULL /* ID */, rtti_type, (s64)members->size);
+    MirType *arr_tmp_type = create_type_array(cnt, NULL, rtti_type, (s64)members->size);
 
     VMStackPtr dest_arr_tmp = vm_alloc_raw(cnt->vm, cnt->assembly, arr_tmp_type);
 
@@ -7752,28 +7669,28 @@ MirVar *rtti_gen_struct(Context *cnt, MirType *type)
     VMStackPtr dest      = vm_read_var(cnt->vm, rtti_var);
     rtti_gen_base(cnt, dest, MIR_TYPE_STRUCT, type->store_size_bytes);
 
-    /* name */
+    // name
     MirType *   dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
     VMStackPtr  dest_name      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
     const char *name           = type->user_id ? type->user_id->str : type->id.str;
     vm_write_string(cnt->vm, dest_name_type, dest_name, name, strlen(name));
 
-    /* members */
+    // members
     VMStackPtr dest_members = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 2);
     rtti_gen_struct_members_slice(cnt, dest_members, type->data.strct.members);
 
-    /* is_slice */
+    // is_slice
     MirType *  dest_is_slice_type = mir_get_struct_elem_type(rtti_type, 3);
     VMStackPtr dest_is_slice      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 3);
     const bool is_slice           = type->kind == MIR_TYPE_SLICE || type->kind == MIR_TYPE_VARGS;
     vm_write_int(dest_is_slice_type, dest_is_slice, (u64)is_slice);
 
-    /* is_union */
+    // is_union
     MirType *  dest_is_union_type = mir_get_struct_elem_type(rtti_type, 4);
     VMStackPtr dest_is_union      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 4);
     vm_write_int(dest_is_union_type, dest_is_union, (u64)type->data.strct.is_union);
 
-    /* is_dynamic_array */
+    // is_dynamic_array
     MirType *  dest_is_da_type = mir_get_struct_elem_type(rtti_type, 5);
     VMStackPtr dest_is_da      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 5);
     const bool is_da           = type->kind == MIR_TYPE_DYNARR;
@@ -7786,12 +7703,12 @@ void rtti_gen_fn_arg(Context *cnt, VMStackPtr dest, MirArg *arg)
 {
     MirType *rtti_type = cnt->builtin_types->t_TypeInfoFnArg;
 
-    /* name */
+    // name
     MirType *  dest_name_type = mir_get_struct_elem_type(rtti_type, 0);
     VMStackPtr dest_name      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 0);
     vm_write_string(cnt->vm, dest_name_type, dest_name, arg->id->str, strlen(arg->id->str));
 
-    /* base_type */
+    // base_type
     MirType *  dest_base_type_type = mir_get_struct_elem_type(rtti_type, 1);
     VMStackPtr dest_base_type      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
     MirVar *   base_type           = _rtti_gen(cnt, arg->type);
@@ -7801,7 +7718,7 @@ void rtti_gen_fn_arg(Context *cnt, VMStackPtr dest, MirArg *arg)
 VMStackPtr rtti_gen_fn_args_array(Context *cnt, TSmallArray_ArgPtr *args)
 {
     MirType *rtti_type    = cnt->builtin_types->t_TypeInfoFnArg;
-    MirType *arr_tmp_type = create_type_array(cnt, NULL /* ID */, rtti_type, (s64)args->size);
+    MirType *arr_tmp_type = create_type_array(cnt, NULL, rtti_type, (s64)args->size);
 
     VMStackPtr dest_arr_tmp = vm_alloc_raw(cnt->vm, cnt->assembly, arr_tmp_type);
 
@@ -7818,7 +7735,7 @@ VMStackPtr rtti_gen_fn_args_array(Context *cnt, TSmallArray_ArgPtr *args)
 VMStackPtr rtti_gen_fns_array(Context *cnt, TSmallArray_TypePtr *fns)
 {
     MirType *  rtti_type    = cnt->builtin_types->t_TypeInfoFn_ptr;
-    MirType *  arr_tmp_type = create_type_array(cnt, NULL /* ID */, rtti_type, (s64)fns->size);
+    MirType *  arr_tmp_type = create_type_array(cnt, NULL, rtti_type, (s64)fns->size);
     VMStackPtr dest_arr_tmp = vm_alloc_raw(cnt->vm, cnt->assembly, arr_tmp_type);
     MirType *  it;
     TSA_FOREACH(fns, it)
@@ -7872,24 +7789,24 @@ MirVar *rtti_gen_fn(Context *cnt, MirType *type)
     rtti_gen_base(cnt, dest, type->kind, type->store_size_bytes);
 
 #if 0
-	/* name */
+	// name
 	MirType *   dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
 	VMStackPtr  dest_name      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
 	const char *name           = type->user_id ? type->user_id->str : type->id.str;
 	vm_write_string(cnt->vm, dest_name_type, dest_name, name, strlen(name));
 #endif
 
-    /* args */
+    // args
     VMStackPtr dest_args = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
     rtti_gen_fn_args_slice(cnt, dest_args, type->data.fn.args);
 
-    /* ret_type */
+    // ret_type
     MirType *  dest_ret_type_type = mir_get_struct_elem_type(rtti_type, 2);
     VMStackPtr dest_ret_type      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 2);
     MirVar *   ret_type           = _rtti_gen(cnt, type->data.fn.ret_type);
     vm_write_ptr(dest_ret_type_type, dest_ret_type, ret_type->value.data);
 
-    /* is_vargs */
+    // is_vargs
     MirType *  dest_is_vargs_type = mir_get_struct_elem_type(rtti_type, 3);
     VMStackPtr dest_is_vargs      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 3);
     vm_write_int(dest_is_vargs_type, dest_is_vargs, (u64)type->data.fn.is_vargs);
@@ -7904,14 +7821,14 @@ MirVar *rtti_gen_fn_group(Context *cnt, MirType *type)
     VMStackPtr dest      = vm_read_var(cnt->vm, rtti_var);
     rtti_gen_base(cnt, dest, type->kind, type->store_size_bytes);
 
-    /* variants */
+    // variants
     VMStackPtr dest_args = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
     rtti_gen_fn_slice(cnt, dest_args, type->data.fn_group.variants);
 
     return rtti_var;
 }
 
-/* MIR builting */
+// MIR builting
 void ast_defer_block(Context *cnt, Ast *block, bool whole_tree)
 {
     TSmallArray_DeferStack *stack = &cnt->ast.defer_stack;
@@ -7972,17 +7889,17 @@ void ast_stmt_if(Context *cnt, Ast *stmt_if)
     MirInstr *cond = ast(cnt, ast_cond);
     append_instr_cond_br(cnt, stmt_if, cond, then_block, else_block);
 
-    /* then block */
+    // then block
     set_current_block(cnt, then_block);
     ast(cnt, ast_then);
 
     tmp_block = get_current_block(cnt);
     if (!get_block_terminator(tmp_block)) {
-        /* block has not been terminated -> add terminator */
+        // block has not been terminated -> add terminator
         append_instr_br(cnt, NULL, cont_block);
     }
 
-    /* else if */
+    // else if
     if (ast_else) {
         set_current_block(cnt, else_block);
         ast(cnt, ast_else);
@@ -7994,7 +7911,7 @@ void ast_stmt_if(Context *cnt, Ast *stmt_if)
     }
 
     if (!is_block_terminated(else_block)) {
-        /* block has not been terminated -> add terminator */
+        // block has not been terminated -> add terminator
         set_current_block(cnt, else_block);
         append_instr_br(cnt, NULL, cont_block);
     }
@@ -8013,7 +7930,7 @@ void ast_stmt_loop(Context *cnt, Ast *loop)
     MirFn *fn = get_current_fn(cnt);
     BL_ASSERT(fn);
 
-    /* prepare all blocks */
+    // prepare all blocks
     MirInstrBlock *tmp_block       = NULL;
     MirInstrBlock *increment_block = ast_increment ? append_block(cnt, fn, "loop_increment") : NULL;
     MirInstrBlock *decide_block    = append_block(cnt, fn, "loop_decide");
@@ -8025,12 +7942,12 @@ void ast_stmt_loop(Context *cnt, Ast *loop)
     cnt->ast.break_block               = cont_block;
     cnt->ast.continue_block            = ast_increment ? increment_block : decide_block;
 
-    /* generate initialization if there is one */
+    // generate initialization if there is one
     if (ast_init) {
         ast(cnt, ast_init);
     }
 
-    /* decide block */
+    // decide block
     append_instr_br(cnt, loop, decide_block);
     set_current_block(cnt, decide_block);
 
@@ -8038,7 +7955,7 @@ void ast_stmt_loop(Context *cnt, Ast *loop)
 
     append_instr_cond_br(cnt, ast_cond, cond, body_block, cont_block);
 
-    /* loop body */
+    // loop body
     set_current_block(cnt, body_block);
     ast(cnt, ast_block);
 
@@ -8047,7 +7964,7 @@ void ast_stmt_loop(Context *cnt, Ast *loop)
         append_instr_br(cnt, loop, ast_increment ? increment_block : decide_block);
     }
 
-    /* increment if there is one */
+    // increment if there is one
     if (ast_increment) {
         set_current_block(cnt, increment_block);
         ast(cnt, ast_increment);
@@ -8102,7 +8019,7 @@ void ast_stmt_switch(Context *cnt, Ast *stmt_switch)
                 append_instr_br(cnt, ast_case, cont_block);
             }
         } else {
-            /* Handle empty cases. */
+            // Handle empty cases.
             case_block = cont_block;
         }
 
@@ -8123,7 +8040,7 @@ void ast_stmt_switch(Context *cnt, Ast *stmt_switch)
         }
     }
 
-    /* Generate instructions for switch value and create switch itself. */
+    // Generate instructions for switch value and create switch itself.
     set_current_block(cnt, src_block);
 
     MirInstr *value = ast(cnt, stmt_switch->data.stmt_switch.expr);
@@ -8134,8 +8051,8 @@ void ast_stmt_switch(Context *cnt, Ast *stmt_switch)
 
 void ast_stmt_return(Context *cnt, Ast *ret)
 {
-    /* Return statement produce only setup of .ret temporary and break into the exit
-     * block of the function. */
+    // Return statement produce only setup of .ret temporary and break into the exit
+    // block of the function.
     MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
 
     if (!is_current_block_terminated(cnt)) {
@@ -8176,7 +8093,7 @@ void ast_stmt_return(Context *cnt, Ast *ret)
 
 void ast_stmt_defer(Context *cnt, Ast *defer)
 {
-    /* push new defer record */
+    // push new defer record
     tsa_push_DeferStack(&cnt->ast.defer_stack, defer);
 }
 
@@ -8193,7 +8110,7 @@ MirInstr *ast_expr_compound(Context *cnt, Ast *cmp)
     BL_ASSERT(type);
 
     if (!ast_values) {
-        return append_instr_compound(cnt, cmp, type, NULL /* values */);
+        return append_instr_compound(cnt, cmp, type, NULL);
     }
 
     const usize valc = ast_values->size;
@@ -8206,7 +8123,7 @@ MirInstr *ast_expr_compound(Context *cnt, Ast *cmp)
     Ast *     ast_value;
     MirInstr *value;
 
-    /* Values must be appended in reverse order. */
+    // Values must be appended in reverse order.
     for (usize i = valc; i-- > 0;) {
         ast_value = ast_values->data[i];
         value     = ast(cnt, ast_value);
@@ -8302,8 +8219,8 @@ MirInstr *ast_expr_lit_int(Context *cnt, Ast *expr)
     MirType * type         = NULL;
     const int desired_bits = count_bits(val);
 
-    /* Here we choose best type for const integer literal: s32, s64 or u64. When u64 is
-     * selected, this number cannot be negative. */
+    // Here we choose best type for const integer literal: s32, s64 or u64. When u64 is
+    // selected, this number cannot be negative.
     if (desired_bits < 32) {
         type = cnt->builtin_types->t_s32;
     } else if (desired_bits < 64) {
@@ -8364,8 +8281,8 @@ MirInstr *ast_expr_call(Context *cnt, Ast *call)
 
     TSmallArray_InstrPtr *args = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
 
-    /* arguments need to be generated into reverse order due to bytecode call
-     * conventions */
+    // arguments need to be generated into reverse order due to bytecode call
+    // conventions
     if (ast_args) {
         const usize argc = ast_args->size;
         tsa_resize_InstrPtr(args, argc);
@@ -8430,14 +8347,14 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
                           u32              flags,
                           MirBuiltinIdKind builtin_id)
 {
-    /* creates function prototype */
+    // creates function prototype
     Ast *ast_block   = lit_fn->data.expr_fn.block;
     Ast *ast_fn_type = lit_fn->data.expr_fn.type;
 
-    MirInstrFnProto *fn_proto = (MirInstrFnProto *)append_instr_fn_proto(
-        cnt, lit_fn, NULL /* type */, NULL /* user_type */, true);
+    MirInstrFnProto *fn_proto =
+        (MirInstrFnProto *)append_instr_fn_proto(cnt, lit_fn, NULL, NULL, true);
 
-    /* Generate type resolver for function type. */
+    // Generate type resolver for function type.
     fn_proto->type = CREATE_TYPE_RESOLVER_CALL(ast_fn_type);
     BL_ASSERT(fn_proto->type);
 
@@ -8460,8 +8377,8 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
 
     MIR_CEV_WRITE_AS(MirFn *, &fn_proto->base.value, fn);
 
-    /* FUNCTION BODY */
-    /* External or intrinsic function declaration has no body so we can skip body generation. */
+    // FUNCTION BODY
+    // External or intrinsic function declaration has no body so we can skip body generation.
     if (IS_FLAG(flags, FLAG_EXTERN) || IS_FLAG(flags, FLAG_INTRINSIC)) {
         return &fn_proto->base;
     }
@@ -8475,32 +8392,26 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
         return &fn_proto->base;
     }
 
-    /* Set body scope for DI. */
+    // Set body scope for DI.
     fn->body_scope = ast_block->owner_scope;
 
-    /* create block for initialization locals and arguments */
+    // create block for initialization locals and arguments
     MirInstrBlock *init_block = append_block(cnt, fn, "entry");
 
-    /* Every user generated function must contain exit block; this block is invoked last
-     * in every function eventually can return .ret value stored in temporary storage.
-     * When ast parser hit user defined 'return' statement it sets up .ret temporary if
-     * there is one and produce break into exit block. This approach is needed due to
-     * defer statement, because we need to call defer blocks after return value
-     * evaluation and before terminal instruction of the function. Last defer block
-     * always breaks into the exit block. */
+    // Every user generated function must contain exit block; this block is invoked last
+    // in every function eventually can return .ret value stored in temporary storage.
+    // When ast parser hit user defined 'return' statement it sets up .ret temporary if
+    // there is one and produce break into exit block. This approach is needed due to
+    // defer statement, because we need to call defer blocks after return value
+    // evaluation and before terminal instruction of the function. Last defer block
+    // always breaks into the exit block.
     cnt->ast.exit_block = append_block(cnt, fn, "exit");
     ref_instr(&cnt->ast.exit_block->base);
 
     if (ast_fn_type->data.type_fn.ret_type) {
         set_current_block(cnt, init_block);
-        fn->ret_tmp = append_instr_decl_var_impl(cnt,
-                                                 gen_uq_name(IMPL_RET_TMP),
-                                                 NULL /* type */,
-                                                 NULL /* init */,
-                                                 true,
-                                                 false,
-                                                 -1 /* order */,
-                                                 0 /* flags */);
+        fn->ret_tmp = append_instr_decl_var_impl(
+            cnt, gen_uq_name(IMPL_RET_TMP), NULL, NULL, true, false, -1, 0);
 
         set_current_block(cnt, cnt->ast.exit_block);
         MirInstr *ret_init = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
@@ -8513,7 +8424,7 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
 
     set_current_block(cnt, init_block);
 
-    /* build MIR for fn arguments */
+    // build MIR for fn arguments
     TSmallArray_AstPtr *ast_args = ast_fn_type->data.type_fn.args;
     if (ast_args) {
         Ast *ast_arg;
@@ -8527,23 +8438,20 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
             BL_ASSERT(ast_arg_name);
             BL_ASSERT(ast_arg_name->kind == AST_IDENT && "Expected identificator.");
 
-            /* create tmp declaration for arg variable */
+            // create tmp declaration for arg variable
             MirInstr *arg = append_instr_arg(cnt, NULL, (u32)i);
             append_instr_decl_var(cnt,
                                   ast_arg_name,
                                   &ast_arg_name->data.ident.id,
                                   ast_arg_name->owner_scope,
-                                  NULL /* type */,
+                                  NULL,
                                   arg,
                                   true,
                                   (s32)i,
                                   0);
 
-            register_symbol(cnt,
-                            ast_arg_name,
-                            &ast_arg_name->data.ident.id,
-                            ast_arg_name->owner_scope,
-                            true /* is_builtin */);
+            register_symbol(
+                cnt, ast_arg_name, &ast_arg_name->data.ident.id, ast_arg_name->owner_scope, true);
         }
     }
 
@@ -8551,7 +8459,7 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
         ++cnt->testing.expected_test_count;
     }
 
-    /* generate body instructions */
+    // generate body instructions
     ast(cnt, ast_block);
 
     cnt->ast.exit_block = prev_exit_block;
@@ -8594,9 +8502,9 @@ MirInstr *ast_expr_binop(Context *cnt, Ast *binop)
         MirInstr *rhs = ast(cnt, ast_rhs);
         MirInstr *lhs = ast(cnt, ast_lhs);
 
-        /* In case right hand side expression is compound initializer, we don't need
-         * temp storage for it, we can just copy compound content directly into
-         * variable, so we set it here as non-naked. */
+        // In case right hand side expression is compound initializer, we don't need
+        // temp storage for it, we can just copy compound content directly into
+        // variable, so we set it here as non-naked.
         if (rhs->kind == MIR_INSTR_COMPOUND) {
             ((MirInstrCompound *)rhs)->is_naked = false;
         }
@@ -8732,7 +8640,7 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
     const bool       is_compiler = IS_FLAG(entity->data.decl_entity.flags, FLAG_COMPILER);
     MirBuiltinIdKind builtin_id  = MIR_BUILTIN_ID_NONE;
 
-    /* initialize value */
+    // initialize value
     MirInstr *value = NULL;
 
     BL_ASSERT(ast_name && "Missing entity name.");
@@ -8742,12 +8650,12 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
     ID *   id    = &ast_name->data.ident.id;
 
     if (is_compiler) {
-        /* Check builtin ids for symbols marked as compiler. */
+        // Check builtin ids for symbols marked as compiler.
         builtin_id = get_builtin_kind(ast_name);
     }
 
     if (is_fn_decl) {
-        /* recognised named function declaraton */
+        // recognised named function declaraton
         const s32 flags                     = entity->data.decl_entity.flags;
         Ast *     ast_explicit_linkage_name = entity->data.decl_entity.explicit_linkage_name;
 
@@ -8766,12 +8674,12 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
             ((MirInstrFnProto *)value)->user_type = CREATE_TYPE_RESOLVER_CALL(ast_type);
         }
     } else {
-        /* other declaration types */
+        // other declaration types
         MirInstr *type             = ast_type ? CREATE_TYPE_RESOLVER_CALL(ast_type) : NULL;
         cnt->ast.current_entity_id = &ast_name->data.ident.id;
         const bool use_initializer = is_struct_decl || is_global;
 
-        /* Struct use forward type declarations! */
+        // Struct use forward type declarations!
         if (is_struct_decl) {
             // Set to const type fwd decl
             MirType *fwd_decl_type =
@@ -8787,9 +8695,9 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
             cnt->ast.enable_incomplete_decl_refs = true;
         }
 
-        /* When symbol is not declared in global scope, we can generate
-         * initialization tree directly into current block, even for type
-         * declarations.  */
+        // When symbol is not declared in global scope, we can generate
+        // initialization tree directly into current block, even for type
+        // declarations.
         if (!use_initializer) {
             value = ast(cnt, ast_value);
         }
@@ -8801,25 +8709,24 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
                                                    type,
                                                    value,
                                                    is_mutable,
-                                                   -1 /* order */,
+                                                   -1,
                                                    entity->data.decl_entity.flags);
 
-        /* For globals we must generate initialization after variable declaration,
-         * SetInitializer instruction will be used to set actual value, also
-         * implicit initialization block is created into MIR (such block does not
-         * have LLVM representation -> globals must be evaluated in compile time).
-         */
+        // For globals we must generate initialization after variable declaration,
+        // SetInitializer instruction will be used to set actual value, also
+        // implicit initialization block is created into MIR (such block does not
+        // have LLVM representation -> globals must be evaluated in compile time).
         if (use_initializer) {
             if (ast_value) {
-                /* Generate implicit global initializer block. */
+                // Generate implicit global initializer block.
                 ast_create_global_initializer(cnt, ast_value, decl_var);
             } else {
-                /* Global has no eplicit initialization in code so we must
-                 * create default global initializer. */
+                // Global has no eplicit initialization in code so we must
+                // create default global initializer.
                 ast_create_global_initializer(cnt, NULL, decl_var);
             }
         }
-        /* Struct decl cleanup. */
+        // Struct decl cleanup.
         if (is_struct_decl) {
             cnt->ast.enable_incomplete_decl_refs = false;
             cnt->ast.current_fwd_struct_decl     = NULL;
@@ -8829,7 +8736,7 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
         cnt->ast.current_entity_id = NULL;
     }
 
-    /* check main */
+    // check main
     if (is_builtin(ast_name, MIR_BUILTIN_ID_MAIN)) {
         if (!is_fn_decl) {
             builder_msg(BUILDER_MSG_ERROR,
@@ -8857,23 +8764,23 @@ MirInstr *ast_decl_arg(Context *cnt, Ast *arg)
     Ast *     ast_name  = arg->data.decl.name;
     Ast *     ast_type  = arg->data.decl.type;
     MirInstr *value     = NULL;
-    /* Type is resolved in type resolver in case we have default value defined. */
+    // Type is resolved in type resolver in case we have default value defined.
     MirInstr *type = NULL;
 
     if (ast_value) {
         type = CREATE_TYPE_RESOLVER_CALL(ast_type);
-        /* Main idea here is create implicit global constant to hold default value, since
-         * value can be more complex compound with references, we need to use same solution
-         * like we already use for globals. This approach is also more effective than
-         * reinserting of whole MIR generated by expression on call side.
-         *
-         * Note: #call_location node must be created on caller side as constant so we don't
-         * generate global container.  */
+        // Main idea here is create implicit global constant to hold default value, since
+        // value can be more complex compound with references, we need to use same solution
+        // like we already use for globals. This approach is also more effective than
+        // reinserting of whole MIR generated by expression on call side.
+        //
+        // Note: #call_location node must be created on caller side as constant so we don't
+        // generate global container.
         if (ast_value->kind == AST_CALL_LOC) {
             value = ast(cnt, ast_value);
         } else {
-            value = append_instr_decl_var_impl(
-                cnt, IMPL_ARG_DEFAULT, type, NULL /* init */, false, true, 0, 0);
+            value =
+                append_instr_decl_var_impl(cnt, IMPL_ARG_DEFAULT, type, NULL, false, true, 0, 0);
             ast_create_global_initializer(cnt, ast_value, value);
         }
     } else {
@@ -8886,23 +8793,21 @@ MirInstr *ast_decl_arg(Context *cnt, Ast *arg)
 
 MirInstr *ast_decl_member(Context *cnt, Ast *arg)
 {
-    /* INCOMPLETE:
-     * It's not clear how we handle creation of MirMember if we have anonymous struct
-     * member (without name). In such case we still need to create Member object because
-     * it's needed for type info related to owner structure. This is also related to
-     * TAGS associated with member, result value has to be stored in the MirMember.
-     *
-     * TODO:
-     * Take a look at anonymous structures and related RTTI + tag information.
-     */
-
+    // INCOMPLETE:
+    // It's not clear how we handle creation of MirMember if we have anonymous struct
+    // member (without name). In such case we still need to create Member object because
+    // it's needed for type info related to owner structure. This is also related to
+    // TAGS associated with member, result value has to be stored in the MirMember.
+    //
+    // TODO:
+    // Take a look at anonymous structures and related RTTI + tag information.
     Ast *ast_type = arg->data.decl.type;
     Ast *ast_name = arg->data.decl.name;
     Ast *ast_tags = arg->data.decl_member.tags;
 
     TSmallArray_InstrPtr *tags = NULL;
 
-    /* has member user defined tags? */
+    // has member user defined tags?
     if (ast_tags) {
         TSmallArray_AstPtr *ast_values = ast_tags->data.tags.values;
         BL_ASSERT(ast_values && "Invalid tag values array.");
@@ -8921,13 +8826,12 @@ MirInstr *ast_decl_member(Context *cnt, Ast *arg)
     BL_ASSERT(ast_type);
     MirInstr *result = ast(cnt, ast_type);
 
-    /* named member? */
+    // named member?
     if (ast_name) {
         BL_ASSERT(ast_name->kind == AST_IDENT);
         result = append_instr_decl_member(cnt, ast_name, result, tags);
 
-        register_symbol(
-            cnt, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false /* is_builtin */);
+        register_symbol(cnt, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false);
     }
 
     BL_ASSERT(result);
@@ -8942,8 +8846,7 @@ MirInstr *ast_decl_variant(Context *cnt, Ast *variant)
 
     MirInstr *value = ast(cnt, ast_value);
 
-    register_symbol(
-        cnt, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false /* is_builtin */);
+    register_symbol(cnt, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false);
 
     return append_instr_decl_variant(cnt, ast_name, value);
 }
@@ -8966,7 +8869,7 @@ MirInstr *ast_type_fn(Context *cnt, Ast *type_fn)
 {
     Ast *               ast_ret_type  = type_fn->data.type_fn.ret_type;
     TSmallArray_AstPtr *ast_arg_types = type_fn->data.type_fn.args;
-    /* return type */
+    // return type
     MirInstr *ret_type = NULL;
     if (ast_ret_type) {
         ret_type = ast(cnt, ast_ret_type);
@@ -9003,7 +8906,7 @@ MirInstr *ast_type_fn_group(Context *cnt, Ast *group)
     {
         variants->data[i] = ast(cnt, it);
     }
-    /* Consume declaration identificator. */
+    // Consume declaration identificator.
     ID *id                     = cnt->ast.current_entity_id;
     cnt->ast.current_entity_id = NULL;
     return append_instr_type_fn_group(cnt, group, id, variants);
@@ -9049,7 +8952,7 @@ MirInstr *ast_type_ptr(Context *cnt, Ast *type_ptr)
     BL_ASSERT(type);
 
     if (cnt->ast.enable_incomplete_decl_refs && type->kind == MIR_INSTR_DECL_REF) {
-        /* Enable incomplete types for pointers to declarations. */
+        // Enable incomplete types for pointers to declarations.
         ((MirInstrDeclRef *)type)->accept_incomplete_type = true;
     }
 
@@ -9058,7 +8961,7 @@ MirInstr *ast_type_ptr(Context *cnt, Ast *type_ptr)
 
 MirInstr *ast_type_vargs(Context *cnt, Ast *type_vargs)
 {
-    /* type is optional (Any will be used when no type was specified) */
+    // type is optional (Any will be used when no type was specified)
     Ast *     ast_type = type_vargs->data.type_vargs.type;
     MirInstr *type     = ast(cnt, ast_type);
     return append_instr_type_vargs(cnt, type_vargs, type);
@@ -9085,7 +8988,7 @@ MirInstr *ast_type_enum(Context *cnt, Ast *type_enum)
     Scope *               scope    = type_enum->data.type_enm.scope;
     TSmallArray_InstrPtr *variants = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
 
-    /* Build variant instructions */
+    // Build variant instructions
     MirInstr *variant;
     Ast *     ast_variant;
     TSA_FOREACH(ast_variants, ast_variant)
@@ -9094,7 +8997,7 @@ MirInstr *ast_type_enum(Context *cnt, Ast *type_enum)
         BL_ASSERT(variant);
         tsa_push_InstrPtr(variants, variant);
     }
-    /* Consume declaration identificator. */
+    // Consume declaration identificator.
     ID *id                     = cnt->ast.current_entity_id;
     cnt->ast.current_entity_id = NULL;
     return append_instr_type_enum(cnt, type_enum, id, scope, variants, base_type);
@@ -9102,11 +9005,11 @@ MirInstr *ast_type_enum(Context *cnt, Ast *type_enum)
 
 MirInstr *ast_type_struct(Context *cnt, Ast *type_struct)
 {
-    /* Consume declaration identificator. */
+    // Consume declaration identificator.
     ID *id                     = cnt->ast.current_entity_id;
     cnt->ast.current_entity_id = NULL;
 
-    /* Consume current struct fwd decl. */
+    // Consume current struct fwd decl.
     MirInstr *fwd_decl               = cnt->ast.current_fwd_struct_decl;
     cnt->ast.current_fwd_struct_decl = NULL;
 
@@ -9136,9 +9039,8 @@ MirInstr *ast_type_struct(Context *cnt, Ast *type_struct)
     BL_ASSERT(scope);
 
     if (ast_base_type) {
-        /* Structure has base type, in such case we generate implicit first member
-         * 'base'.
-         */
+        // Structure has base type, in such case we generate implicit first member
+        // 'base'.
         MirInstr *base_type = ast(cnt, ast_base_type);
         ID *      id2       = &builtin_ids[MIR_BUILTIN_ID_STRUCT_BASE];
         base_type = append_instr_decl_member_impl(cnt, ast_base_type, id2, base_type, NULL);
@@ -9189,19 +9091,11 @@ MirInstr *ast_create_impl_fn_call(Context *   cnt,
     if (!node) return NULL;
 
     MirInstrBlock *prev_block = get_current_block(cnt);
-    MirInstr *     fn_proto   = append_instr_fn_proto(
-        cnt, NULL /* node */, NULL /* type */, NULL /* user_type */, schedule_analyze);
-    fn_proto->value.type = fn_type;
+    MirInstr *     fn_proto   = append_instr_fn_proto(cnt, NULL, NULL, NULL, schedule_analyze);
+    fn_proto->value.type      = fn_type;
 
-    MirFn *fn = create_fn(cnt,
-                          NULL /* node */,
-                          NULL /* id */,
-                          fn_name,
-                          0,
-                          (MirInstrFnProto *)fn_proto,
-                          false,
-                          true,
-                          MIR_BUILTIN_ID_NONE);
+    MirFn *fn = create_fn(
+        cnt, NULL, NULL, fn_name, 0, (MirInstrFnProto *)fn_proto, false, true, MIR_BUILTIN_ID_NONE);
 
     MIR_CEV_WRITE_AS(MirFn *, &fn_proto->value, fn);
 
@@ -9211,7 +9105,7 @@ MirInstr *ast_create_impl_fn_call(Context *   cnt,
     set_current_block(cnt, entry);
 
     MirInstr *result = ast(cnt, node);
-    append_instr_ret(cnt, NULL /* node */, result);
+    append_instr_ret(cnt, NULL, result);
 
     set_current_block(cnt, prev_block);
     return create_instr_call_comptime(cnt, node, fn_proto);
@@ -9298,13 +9192,7 @@ MirInstr *ast(Context *cnt, Ast *node)
     case AST_EXPR_LIT_BOOL:
         return ast_expr_lit_bool(cnt, node);
     case AST_EXPR_LIT_FN:
-        return ast_expr_lit_fn(cnt,
-                               node,
-                               NULL /* decl_node */,
-                               NULL /* explicit_linkage_name */,
-                               false,
-                               0,
-                               MIR_BUILTIN_ID_NONE);
+        return ast_expr_lit_fn(cnt, node, NULL, NULL, false, 0, MIR_BUILTIN_ID_NONE);
     case AST_EXPR_LIT_FN_GROUP:
         return ast_expr_lit_fn_group(cnt, node);
     case AST_EXPR_LIT_STRING:
@@ -9451,16 +9339,16 @@ const char *mir_instr_name(const MirInstr *instr)
     return "UNKNOWN";
 }
 
-/* public */
+// public
 static void _type_to_str(char *buf, usize len, const MirType *type, bool prefer_name)
 {
-    /******************************************************************************************/
+    //*********************************************************************************************/
 #define append_buf(buf, len, str)                                                                  \
     {                                                                                              \
         const usize filled = strlen(buf);                                                          \
         snprintf((buf) + filled, (len)-filled, "%s", str);                                         \
     }
-    /******************************************************************************************/
+    //*********************************************************************************************/
 
     if (!buf) return;
     if (!type) {
@@ -9644,13 +9532,13 @@ void execute_entry_fn(Context *cnt)
     MirType *fn_type = cnt->entry_fn->type;
     BL_ASSERT(fn_type && fn_type->kind == MIR_TYPE_FN);
 
-    /* INCOMPLETE: support passing of arguments. */
+    // INCOMPLETE: support passing of arguments.
     if (fn_type->data.fn.args) {
         builder_error("Main function expects arguments, this is not supported yet!");
         return;
     }
 
-    /* tmp return value storage */
+    // tmp return value storage
     VMStackPtr ret_ptr = NULL;
     if (vm_execute_fn(cnt->vm, cnt->assembly, cnt->entry_fn, &ret_ptr)) {
         if (ret_ptr) {
@@ -9672,7 +9560,7 @@ void execute_build_entry_fn(Context *cnt, MirFn *fn)
         return;
     }
 
-    /* tmp return value storage */
+    // tmp return value storage
     vm_execute_fn(cnt->vm, cnt->assembly, fn, NULL);
 }
 
@@ -9710,7 +9598,7 @@ void builtin_inits(Context *cnt)
     bt->t_resolve_type_fn = create_type_fn(cnt, NULL, bt->t_type, NULL, false, false);
     bt->t_test_case_fn    = create_type_fn(cnt, NULL, bt->t_void, NULL, false, false);
 
-    /* Provide types into global scope */
+    // Provide types into global scope
     PROVIDE(type);
     PROVIDE(s8);
     PROVIDE(s16);
@@ -9726,10 +9614,9 @@ void builtin_inits(Context *cnt)
     PROVIDE(f64);
     PROVIDE(string);
 
-    /* Add IS_DEBUG immutable into the global scope to provide information about enabled
-     * debug mode. */
-    add_global_bool(
-        cnt, &builtin_ids[MIR_BUILTIN_ID_IS_DEBUG], false /* is_mutable */, cnt->debug_mode);
+    // Add IS_DEBUG immutable into the global scope to provide information about enabled
+    // debug mode.
+    add_global_bool(cnt, &builtin_ids[MIR_BUILTIN_ID_IS_DEBUG], false, cnt->debug_mode);
 #undef PROVIDE
 }
 
@@ -9872,19 +9759,19 @@ void mir_run(Assembly *assembly)
     tsa_init(&cnt.ast.defer_stack);
     tsa_init(&cnt.analyze.incomplete_rtti);
 
-    /* initialize all builtin types */
+    // initialize all builtin types
     builtin_inits(&cnt);
 
-    /* Gen MIR from AST pass */
+    // Gen MIR from AST pass
     Unit *unit;
     TARRAY_FOREACH(Unit *, &assembly->units, unit) ast(&cnt, unit->ast);
 
     if (builder.errorc) goto SKIP;
 
-    /* Skip analyze if no_analyze is set by user. */
+    // Skip analyze if no_analyze is set by user.
     if (builder.options.no_analyze) goto SKIP;
 
-    /* Analyze pass */
+    // Analyze pass
     analyze(&cnt);
     analyze_report_unresolved(&cnt);
 

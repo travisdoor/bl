@@ -107,7 +107,7 @@ void *arena_alloc(Arena *arena)
     void *elem = get_from_chunk(arena, arena->current_chunk, arena->current_chunk->count);
     arena->current_chunk->count++;
 
-    BL_ASSERT(is_aligned(elem, MAX_ALIGNMENT) && "unaligned allocation of arena element");
+      BL_ASSERT(is_aligned(elem, MAX_ALIGNMENT) && "unaligned allocation of arena element");
 
-    return elem;
+      return elem;
 }

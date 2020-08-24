@@ -49,17 +49,11 @@ typedef struct ConfDataValue {
 typedef THashTable ConfData;
 
 ConfData *conf_data_new(void);
-
 void conf_data_delete(ConfData *data);
-
 bool conf_data_has_key(ConfData *data, const char *key);
-
 void conf_data_add(ConfData *data, const char *key, ConfDataValue *value);
-
 ConfDataValue *conf_data_get(ConfData *data, const char *key);
-
 const char *conf_data_get_str(ConfData *data, const char *key);
-
 int conf_data_get_int(ConfData *data, const char *key);
 
 #endif

@@ -26,10 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
-/**
- * Those methods are used only during compilation pass to setup builder pipeline. No C interfaces
- * are needed here.
- */
+// Those methods are used only during compilation pass to setup builder pipeline. No C interfaces
+// are needed here.
 
 #include "builder.h"
 #include "common.h"

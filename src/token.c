@@ -50,13 +50,13 @@ bool token_is_unary(Token *token)
 TokenPrecedence token_prec(Token *token)
 {
     switch (token->sym) {
-        /* . [ ( */
+        // . [ (
     case SYM_DOT:
     case SYM_LBRACKET:
     case SYM_LPAREN:
         return (TokenPrecedence){.priority = 60, .associativity = TOKEN_ASSOC_LEFT};
 
-        /* cast sizeof alignof typeinfo */
+        // cast sizeof alignof typeinfo
     case SYM_CAST:
     case SYM_SIZEOF:
     case SYM_ALIGNOF:
@@ -64,52 +64,52 @@ TokenPrecedence token_prec(Token *token)
     case SYM_TESTCASES:
         return (TokenPrecedence){.priority = 50, .associativity = TOKEN_ASSOC_RIGHT};
 
-        /* * ^ / % */
+        // * ^ / %
     case SYM_ASTERISK:
     case SYM_CARET:
     case SYM_SLASH:
     case SYM_PERCENT:
         return (TokenPrecedence){.priority = 40, .associativity = TOKEN_ASSOC_LEFT};
 
-        /* + - */
+        // + -
     case SYM_PLUS:
     case SYM_MINUS:
         return (TokenPrecedence){.priority = 20, .associativity = TOKEN_ASSOC_LEFT};
 
-        /* >> << */
+        // >> <<
     case SYM_SHR:
     case SYM_SHL:
         return (TokenPrecedence){.priority = 18, .associativity = TOKEN_ASSOC_LEFT};
 
-        /* < > <= >= */
+        // < > <= >=
     case SYM_LESS:
     case SYM_GREATER:
     case SYM_LESS_EQ:
     case SYM_GREATER_EQ:
         return (TokenPrecedence){.priority = 15, .associativity = TOKEN_ASSOC_LEFT};
 
-        /* == != */
+        // == !=
     case SYM_EQ:
     case SYM_NEQ:
         return (TokenPrecedence){.priority = 10, .associativity = TOKEN_ASSOC_LEFT};
 
-        /* & */
+        // &
     case SYM_AND:
         return (TokenPrecedence){.priority = 9, .associativity = TOKEN_ASSOC_LEFT};
 
-        /* | */
+        // |
     case SYM_OR:
         return (TokenPrecedence){.priority = 8, .associativity = TOKEN_ASSOC_LEFT};
 
-        /* && */
+        // &&
     case SYM_LOGIC_AND:
         return (TokenPrecedence){.priority = 6, .associativity = TOKEN_ASSOC_LEFT};
 
-        /* || */
+        // ||
     case SYM_LOGIC_OR:
         return (TokenPrecedence){.priority = 5, .associativity = TOKEN_ASSOC_LEFT};
 
-        /* = += -= *= /= */
+        // = += -= *= /=
     case SYM_ASSIGN:
     case SYM_PLUS_ASSIGN:
     case SYM_MINUS_ASSIGN:

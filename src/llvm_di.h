@@ -26,8 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
-/* Note: this is custom wrapper for LLVM DI used by compiler since original C-API for DWARF
- * generation in experimental. */
+// Note: this is custom wrapper for LLVM DI used by compiler since original C-API for DWARF
+// generation in experimental.
 
 #ifndef BL_LLVM_DI_H
 #define BL_LLVM_DI_H
@@ -66,8 +66,7 @@ void llvm_add_module_flag_int(LLVMModuleRef          module_ref,
                               LLVMModuleFlagBehavior behavior,
                               const char *           key,
                               s32                    val);
-
-s32 llvm_get_dwarf_version(void);
+s32  llvm_get_dwarf_version(void);
 
 LLVMDIBuilderRef llvm_di_new_di_builder(LLVMModuleRef module_ref);
 

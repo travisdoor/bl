@@ -70,7 +70,7 @@ static void llvm_init(Assembly *assembly)
 {
     if (assembly->llvm.module) BL_ABORT("Attempt to override assembly options.");
 
-    /* init LLVM */
+    // init LLVM
     char *triple    = LLVMGetDefaultTargetTriple();
     char *cpu       = /*LLVMGetHostCPUName()*/ "";
     char *features  = /*LLVMGetHostCPUFeatures()*/ "";
@@ -156,7 +156,7 @@ static void set_default_out_dir(Assembly *assembly)
     tstring_append(&assembly->options.out_dir, path);
 }
 
-/* public */
+// public
 Assembly *assembly_new(const char *name)
 {
     Assembly *assembly = bl_malloc(sizeof(Assembly));
@@ -299,7 +299,7 @@ void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct To
 {
     const u64 hash = thash_from_str(lib_name);
 
-    { /* Search for duplicity. */
+    { // Search for duplicity.
         NativeLib *lib;
         for (usize i = 0; i < assembly->options.libs.size; ++i) {
             lib = &tarray_at(NativeLib, &assembly->options.libs, i);

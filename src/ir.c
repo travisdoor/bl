@@ -65,7 +65,7 @@ typedef struct {
     LLVMBuilderRef    llvm_builder;
     LLVMDIBuilderRef  llvm_di_builder;
 
-    /* Constants */
+    // Constants
     LLVMValueRef llvm_const_i64_zero;
     LLVMValueRef llvm_const_i8_zero;
 
@@ -114,11 +114,7 @@ static LLVMMetadataRef DI_type_init(Context *cnt, MirType *type);
 static LLVMMetadataRef DI_complete_type(Context *cnt, MirType *type);
 static LLVMMetadataRef DI_scope_init(Context *cnt, Scope *scope);
 static LLVMMetadataRef DI_unit_init(Context *cnt, Unit *unit);
-
-/*
- * Tmp is optional but needed for naked compound expressions.
- */
-static LLVMValueRef emit_const_string(Context *cnt, const char *str, usize len);
+static LLVMValueRef    emit_const_string(Context *cnt, const char *str, usize len);
 static State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp);
 static State emit_instr_binop(Context *cnt, MirInstrBinop *binop);
 static State emit_instr_phi(Context *cnt, MirInstrPhi *phi);
@@ -217,7 +213,7 @@ static INLINE LLVMValueRef emit_global_var_proto(Context *cnt, MirVar *var)
 
     LLVMSetGlobalConstant(var->llvm_value, !var->is_mutable);
 
-    /* Linkage should be later set by user. */
+    // Linkage should be later set by user.
     LLVMSetLinkage(var->llvm_value, LLVMPrivateLinkage);
     LLVMSetAlignment(var->llvm_value, (unsigned)var->value.type->alignment);
 
@@ -266,7 +262,7 @@ const char *get_intrinsic(const char *name)
     return NULL;
 }
 
-/* impl */
+// impl
 LLVMMetadataRef DI_type_init(Context *cnt, MirType *type)
 {
     if (type->llvm_meta) return type->llvm_meta;
@@ -339,8 +335,8 @@ LLVMMetadataRef DI_type_init(Context *cnt, MirType *type)
     case MIR_TYPE_SLICE:
     case MIR_TYPE_DYNARR:
     case MIR_TYPE_STRUCT: {
-        /* Struct type will be generated as forward declaration and postponed to be filled
-         * later. This approach solves problems with circular references. */
+        // Struct type will be generated as forward declaration and postponed to be filled
+        // later. This approach solves problems with circular references.
         const DW_TAG dw_tag = type->data.strct.is_union ? DW_TAG_union_type : DW_TAG_structure_type;
 
         type->llvm_meta = type->data.strct.scope->llvm_meta =
@@ -390,7 +386,7 @@ LLVMMetadataRef DI_type_init(Context *cnt, MirType *type)
         TSmallArray_LLVMMetadata params;
         tsa_init(&params);
 
-        /* return type is first */
+        // return type is first
         tsa_push_LLVMMetadata(&params, DI_type_init(cnt, type->data.fn.ret_type));
 
         if (type->data.fn.args) {
@@ -450,7 +446,7 @@ LLVMMetadataRef DI_complete_type(Context *cnt, MirType *type)
         if (type->user_id) {
             struct_name = type->user_id->str;
         } else {
-            /* NOTE: string has buildin ID */
+            // NOTE: string has buildin ID
             switch (type->kind) {
             case MIR_TYPE_STRUCT: {
                 if (is_union) {
@@ -477,7 +473,7 @@ LLVMMetadataRef DI_complete_type(Context *cnt, MirType *type)
             }
 
             default:
-                /* use default implicit name */
+                // use default implicit name
                 break;
             }
         }
@@ -690,7 +686,7 @@ static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn)
 
     fn->llvm_value = LLVMAddFunction(cnt->llvm_module, linkage_name, get_type(cnt, fn->type));
 
-    /* Setup attributes for sret */
+    // Setup attributes for sret.
     if (fn->type->data.fn.has_sret) {
         LLVMAddAttributeAtIndex(fn->llvm_value,
                                 LLVM_SRET_INDEX + 1,
@@ -701,7 +697,7 @@ static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn)
                                 llvm_create_attribute(cnt->llvm_cnt, LLVM_ATTR_STRUCTRET));
     }
 
-    /* Setup attributes for byval */
+    // Setup attributes for byval.
     if (fn->type->data.fn.has_byval) {
         TSmallArray_ArgPtr *args = fn->type->data.fn.args;
         BL_ASSERT(args);
@@ -710,7 +706,7 @@ static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn)
         TSA_FOREACH(args, arg)
         {
             if (arg->llvm_easgm != LLVM_EASGM_BYVAL) continue;
-            /* Setup attributes. */
+            // Setup attributes.
             LLVMAttributeRef llvm_attr = llvm_create_attribute_type(
                 cnt->llvm_cnt, LLVM_ATTR_BYVAL, get_type(cnt, arg->type));
 
@@ -757,11 +753,11 @@ LLVMValueRef emit_const_string(Context *cnt, const char *str, usize len)
             LLVMSetLinkage(llvm_str, LLVMPrivateLinkage);
             LLVMSetGlobalConstant(llvm_str, true);
 
-            /* Store for reuse into the cache! */
+            // Store for reuse into the cache!
             thtbl_insert(&cnt->gstring_cache, hash, llvm_str);
         }
     } else {
-        /* null string content  */
+        // null string content
         MirType *str_type = mir_get_struct_elem_type(type, 1);
         llvm_str          = LLVMConstNull(get_type(cnt, str_type));
     }
@@ -907,19 +903,19 @@ LLVMValueRef rtti_emit_enum(Context *cnt, MirType *type)
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
-    /* base */
+    // base
     MirType *base_type = mir_get_struct_elem_type(rtti_type, 0);
     tsa_push_LLVMValue(&llvm_vals,
                        rtti_emit_base(cnt, base_type, type->kind, type->store_size_bytes));
 
-    /* name */
+    // name
     const char *name = type->user_id ? type->user_id->str : type->id.str;
     tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, name, strlen(name)));
 
-    /* base_type */
+    // base_type
     tsa_push_LLVMValue(&llvm_vals, _rtti_emit(cnt, type->data.enm.base_type));
 
-    /* variants */
+    // variants
     tsa_push_LLVMValue(&llvm_vals, rtti_emit_enum_variants_slice(cnt, type->data.enm.variants));
 
     LLVMValueRef llvm_result =
@@ -935,11 +931,11 @@ LLVMValueRef rtti_emit_enum_variant(Context *cnt, MirVariant *variant)
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
-    /* name */
+    // name
     tsa_push_LLVMValue(&llvm_vals,
                        emit_const_string(cnt, variant->id->str, strlen(variant->id->str)));
 
-    /* value */
+    // value
     MirType *value_type = mir_get_struct_elem_type(rtti_type, 1);
     tsa_push_LLVMValue(&llvm_vals,
                        LLVMConstInt(get_type(cnt, value_type),
@@ -1007,19 +1003,19 @@ LLVMValueRef rtti_emit_struct(Context *cnt, MirType *type)
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
-    /* base */
+    // base
     MirType *base_type = mir_get_struct_elem_type(rtti_type, 0);
     tsa_push_LLVMValue(&llvm_vals,
                        rtti_emit_base(cnt, base_type, MIR_TYPE_STRUCT, type->store_size_bytes));
 
-    /* name */
+    // name
     const char *name = type->user_id ? type->user_id->str : type->id.str;
     tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, name, strlen(name)));
 
-    /* members */
+    // members
     tsa_push_LLVMValue(&llvm_vals, rtti_emit_struct_members_slice(cnt, type->data.strct.members));
 
-    /* is_slice */
+    // is_slice
     const bool is_slice      = type->kind == MIR_TYPE_SLICE || type->kind == MIR_TYPE_VARGS;
     MirType *  is_slice_type = mir_get_struct_elem_type(rtti_type, 3);
     tsa_push_LLVMValue(&llvm_vals,
@@ -1027,14 +1023,14 @@ LLVMValueRef rtti_emit_struct(Context *cnt, MirType *type)
                                     (u64)is_slice,
                                     is_slice_type->data.integer.is_signed));
 
-    /* is_union */
+    // is_union
     const bool is_union      = type->data.strct.is_union;
     MirType *  is_union_type = mir_get_struct_elem_type(rtti_type, 4);
     tsa_push_LLVMValue(&llvm_vals,
                        LLVMConstInt(get_type(cnt, is_union_type),
                                     (u64)is_union,
                                     is_union_type->data.integer.is_signed));
-    /* is_dynamic_array*/
+    // is_dynamic_array
     const bool is_da      = type->kind == MIR_TYPE_DYNARR;
     MirType *  is_da_type = mir_get_struct_elem_type(rtti_type, 5);
     tsa_push_LLVMValue(
@@ -1054,35 +1050,35 @@ LLVMValueRef rtti_emit_struct_member(Context *cnt, MirMember *member)
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
-    /* name */
+    // name
     tsa_push_LLVMValue(&llvm_vals,
                        emit_const_string(cnt, member->id->str, strlen(member->id->str)));
 
-    /* base_type */
+    // base_type
     tsa_push_LLVMValue(&llvm_vals, _rtti_emit(cnt, member->type));
 
-    /* offset_bytes */
+    // offset_bytes
     MirType *offset_type = mir_get_struct_elem_type(rtti_type, 2);
     tsa_push_LLVMValue(&llvm_vals,
                        LLVMConstInt(get_type(cnt, offset_type),
                                     (u32)member->offset_bytes,
                                     offset_type->data.integer.is_signed));
 
-    /* index */
+    // index
     MirType *index_type = mir_get_struct_elem_type(rtti_type, 3);
     tsa_push_LLVMValue(&llvm_vals,
                        LLVMConstInt(get_type(cnt, offset_type),
                                     (u32)member->index,
                                     index_type->data.integer.is_signed));
 
-    /* tags */
+    // tags
     MirType *tags_type = mir_get_struct_elem_type(rtti_type, 4);
     tsa_push_LLVMValue(&llvm_vals,
                        LLVMConstInt(get_type(cnt, offset_type),
                                     (u32)member->tags,
                                     tags_type->data.integer.is_signed));
 
-    /* is_base */
+    // is_base
     MirType *is_base_type = mir_get_struct_elem_type(rtti_type, 5);
     tsa_push_LLVMValue(&llvm_vals,
                        LLVMConstInt(get_type(cnt, is_base_type),
@@ -1150,24 +1146,24 @@ LLVMValueRef rtti_emit_fn(Context *cnt, MirType *type)
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
-    /* base */
+    // base
     MirType *base_type = mir_get_struct_elem_type(rtti_type, 0);
     tsa_push_LLVMValue(&llvm_vals,
                        rtti_emit_base(cnt, base_type, type->kind, type->store_size_bytes));
 
 #if 0
-	/* name */
+	// name
 	const char *name = type->user_id ? type->user_id->str : type->id.str;
 	tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, name, strlen(name)));
 #endif
 
-    /* args */
+    // args
     tsa_push_LLVMValue(&llvm_vals, rtti_emit_fn_args_slice(cnt, type->data.fn.args));
 
-    /* ret_type */
+    // ret_type
     tsa_push_LLVMValue(&llvm_vals, _rtti_emit(cnt, type->data.fn.ret_type));
 
-    /* is_vargs */
+    // is_vargs
     MirType *is_vargs_type = mir_get_struct_elem_type(rtti_type, 3);
     tsa_push_LLVMValue(&llvm_vals,
                        LLVMConstInt(get_type(cnt, is_vargs_type),
@@ -1187,12 +1183,12 @@ LLVMValueRef rtti_emit_fn_group(Context *cnt, MirType *type)
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
-    /* base */
+    // base
     MirType *base_type = mir_get_struct_elem_type(rtti_type, 0);
     tsa_push_LLVMValue(&llvm_vals,
                        rtti_emit_base(cnt, base_type, type->kind, type->store_size_bytes));
 
-    /* variants */
+    // variants
     tsa_push_LLVMValue(&llvm_vals, rtti_emit_fn_slice(cnt, type->data.fn_group.variants));
     LLVMValueRef llvm_result =
         LLVMConstNamedStruct(get_type(cnt, rtti_type), llvm_vals.data, (u32)llvm_vals.size);
@@ -1254,10 +1250,10 @@ LLVMValueRef rtti_emit_fn_arg(Context *cnt, MirArg *arg)
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
-    /* name */
+    // name
     tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, arg->id->str, strlen(arg->id->str)));
 
-    /* base_type */
+    // base_type
     tsa_push_LLVMValue(&llvm_vals, _rtti_emit(cnt, arg->type));
 
     LLVMValueRef llvm_result =
@@ -1379,7 +1375,7 @@ LLVMValueRef rtti_emit_ptr(Context *cnt, MirType *type)
     tsa_push_LLVMValue(&llvm_vals,
                        rtti_emit_base(cnt, base_type, type->kind, type->store_size_bytes));
 
-    /* pointee */
+    // pointee
     tsa_push_LLVMValue(&llvm_vals, _rtti_emit(cnt, type->data.ptr.expr));
 
     LLVMValueRef llvm_result =
@@ -1399,14 +1395,14 @@ LLVMValueRef rtti_emit_array(Context *cnt, MirType *type)
     tsa_push_LLVMValue(&llvm_vals,
                        rtti_emit_base(cnt, base_type, type->kind, type->store_size_bytes));
 
-    /* name */
+    // name
     const char *name = type->user_id ? type->user_id->str : type->id.str;
     tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, name, strlen(name)));
 
-    /* elem_type */
+    // elem_type
     tsa_push_LLVMValue(&llvm_vals, _rtti_emit(cnt, type->data.array.elem_type));
 
-    /* len */
+    // len
     MirType *len_type = mir_get_struct_elem_type(rtti_type, 3);
     tsa_push_LLVMValue(&llvm_vals,
                        LLVMConstInt(get_type(cnt, len_type),
@@ -1579,7 +1575,7 @@ MirVar *testing_fetch_meta(Context *cnt)
         return var;
     }
 
-    /* Emit global for storing test case informations only once and only if needed. */
+    // Emit global for storing test case informations only once and only if needed.
     LLVMTypeRef  llvm_var_type = get_type(cnt, var->value.type);
     LLVMValueRef llvm_var      = LLVMAddGlobal(cnt->llvm_module, llvm_var_type, var->linkage_name);
     LLVMSetLinkage(llvm_var, LLVMPrivateLinkage);
@@ -1608,9 +1604,8 @@ MirVar *testing_fetch_meta(Context *cnt)
 
 State emit_instr_test_cases(Context *cnt, MirInstrTestCases *tc)
 {
-    /* Test case metadata variable is optional an can be null in case there are no test cases.
-     * In such case we generate empty slice with zero lenght.
-     */
+    // Test case metadata variable is optional an can be null in case there are no test cases.
+    // In such case we generate empty slice with zero lenght.
     MirVar * var  = testing_fetch_meta(cnt);
     MirType *type = cnt->builtin_types->t_TestCases_slice;
 
@@ -1699,11 +1694,9 @@ State emit_instr_cast(Context *cnt, MirInstrCast *cast)
         break;
 
     case MIR_CAST_PTRTOBOOL: {
-        /*
-          Cast from pointer to bool has no internal LLVM representation so we have
-          to emulate it here by simple comparation pointer value to it's null
-          equivalent.
-         */
+        // Cast from pointer to bool has no internal LLVM representation so we have
+        // to emulate it here by simple comparation pointer value to it's null
+        // equivalent.
         LLVMTypeRef  llvm_src_type = get_type(cnt, cast->expr->value.type);
         LLVMValueRef llvm_null     = LLVMConstNull(llvm_src_type);
 
@@ -1750,7 +1743,7 @@ State emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg_instr)
     BL_ASSERT(llvm_dest);
 
     switch (arg->llvm_easgm) {
-    case LLVM_EASGM_NONE: { /* Default. Arg value unchanged. */
+    case LLVM_EASGM_NONE: { // Default. Arg value unchanged.
         LLVMValueRef llvm_arg = LLVMGetParam(llvm_fn, arg->llvm_index);
         LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_dest);
         break;
@@ -1831,7 +1824,7 @@ State emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
     case MIR_TYPE_SLICE:
     case MIR_TYPE_STRING:
     case MIR_TYPE_VARGS: {
-        /* special case for slices */
+        // special case for slices
         llvm_arr_ptr = LLVMBuildStructGEP(cnt->llvm_builder, llvm_arr_ptr, 1, "");
         llvm_arr_ptr = LLVMBuildLoad(cnt->llvm_builder, llvm_arr_ptr, "");
         BL_ASSERT(llvm_arr_ptr);
@@ -1862,7 +1855,7 @@ State emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
         BL_ASSERT(member);
 
         if (member->is_parent_union) {
-            /* Union's member produce bitcast only. */
+            // Union's member produce bitcast only.
             LLVMTypeRef llvm_member_type = get_type(cnt, member_ptr->base.value.type);
             member_ptr->base.llvm_value =
                 LLVMBuildBitCast(cnt->llvm_builder, llvm_target_ptr, llvm_member_type, "");
@@ -1876,14 +1869,14 @@ State emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
         return STATE_PASSED;
     }
 
-    /* builtin member */
+    // builtin member
 
-    /* Valid only for slice types, we generate direct replacement for arrays. */
+    // Valid only for slice types, we generate direct replacement for arrays.
     if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN) {
-        /* .len */
+        // .len
         member_ptr->base.llvm_value = LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 0, "");
     } else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR) {
-        /* .ptr*/
+        // .ptr
         member_ptr->base.llvm_value = LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 1, "");
     }
     return STATE_PASSED;
@@ -1895,17 +1888,17 @@ State emit_instr_load(Context *cnt, MirInstrLoad *load)
     LLVMValueRef llvm_src = load->src->llvm_value;
     BL_ASSERT(llvm_src);
 
-    /* Check if we deal with global constant, in such case no load is needed, LLVM
-     * global
-     * constants are referenced by value, so we need to fetch initializer instead of
-     * load. */
+    // Check if we deal with global constant, in such case no load is needed, LLVM
+    // global
+    // constants are referenced by value, so we need to fetch initializer instead of
+    // load. */
     // if (mir_is_global(&load->base) && mir_is_comptime(&load->base)) {
     // if (mir_is_comptime(&load->base) && LLVMIsAGlobalObject(llvm_src)) {
     if (mir_is_global(load->src)) {
-        /* When we try to create comptime constant composition and load value,
-         * initializer is needed. But loaded value could be in incomplete state
-         * during instruction emit, we need to postpone this instruction in such
-         * case and try to resume later. */
+        // When we try to create comptime constant composition and load value,
+        // initializer is needed. But loaded value could be in incomplete state
+        // during instruction emit, we need to postpone this instruction in such
+        // case and try to resume later.
         if (!is_initialized(llvm_src)) {
             return STATE_POSTPONE;
         }
@@ -2018,8 +2011,8 @@ State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound
     MirType *  type      = cmp->base.value.type;
     const bool is_global = mir_is_global(&cmp->base);
 
-    /* Fist of all we are going to check zero initialized compounds since there is no
-     * additional work needed. */
+    // Fist of all we are going to check zero initialized compounds since there is no
+    // additional work needed.
     if (cmp->is_zero_initialized) {
         if (llvm_tmp) {
             if (type->store_size_bytes <= cnt->builtin_types->t_u8_ptr->store_size_bytes) {
@@ -2049,9 +2042,9 @@ State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound
         return STATE_PASSED;
     }
 
-    /**********************/
-    /* Generate constants */
-    /**********************/
+    //**********************/
+    //* Generate constants */
+    //**********************/
     if (is_global) {
         switch (type->kind) {
         case MIR_TYPE_ARRAY: {
@@ -2125,9 +2118,9 @@ State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound
         return STATE_PASSED;
     }
 
-    /**************************/
-    /* Generate non-constants */
-    /**************************/
+    //**************************/
+    //* Generate non-constants */
+    //**************************/
     BL_ASSERT(llvm_tmp && "Missing temp storage for compound value!");
 
     TSmallArray_InstrPtr *values = cmp->values;
@@ -2294,7 +2287,7 @@ State emit_instr_binop(Context *cnt, MirInstrBinop *binop)
 
 State emit_instr_call(Context *cnt, MirInstrCall *call)
 {
-    /******************************************************************************************/
+    //*********************************************************************************************/
 #define INSERT_TMP(_name, _type)                                                                   \
     LLVMValueRef _name = NULL;                                                                     \
     {                                                                                              \
@@ -2313,7 +2306,7 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
         _name = LLVMBuildAlloca(cnt->llvm_builder, _type, "");                                     \
         LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_prev_block);                              \
     }                                                                                              \
-    /******************************************************************************************/
+    //*********************************************************************************************/
 
     MirInstr *callee = call->callee;
     BL_ASSERT(callee);
@@ -2332,18 +2325,18 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
     bool       has_byval_arg = false;
     const bool has_args      = call->args->size > 0;
 
-    /* Tmp for arg values passed into the Call Instruction. */
+    // Tmp for arg values passed into the Call Instruction.
     TSmallArray_LLVMValue llvm_args;
     tsa_init(&llvm_args);
 
-    /* Callee required argument types. */
+    // Callee required argument types.
     TSmallArray_LLVMType llvm_callee_arg_types;
     tsa_init(&llvm_callee_arg_types);
 
     LLVMValueRef llvm_result = NULL;
-    /* SRET must come first!!! */
+    // SRET must come first!!!
     if (callee_type->data.fn.has_sret) {
-        /* PERFORMANCE: Reuse ret_tmp inside function??? */
+        // PERFORMANCE: Reuse ret_tmp inside function???
         INSERT_TMP(llvm_tmp, get_type(cnt, callee_type->data.fn.ret_type));
         tsa_push_LLVMValue(&llvm_args, llvm_tmp);
     }
@@ -2353,7 +2346,7 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
         MirArg *    arg;
         LLVMTypeRef llvm_callee_type = get_type(cnt, callee_type);
 
-        /* Get real argument types of LLMV function. */
+        // Get real argument types of LLMV function.
         tsa_resize_LLVMType(&llvm_callee_arg_types, LLVMCountParamTypes(llvm_callee_type));
         LLVMGetParamTypes(llvm_callee_type, llvm_callee_arg_types.data);
 
@@ -2363,7 +2356,7 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
             LLVMValueRef llvm_arg = arg_instr->llvm_value;
 
             switch (arg->llvm_easgm) {
-            case LLVM_EASGM_NONE: { /* Default behavior. */
+            case LLVM_EASGM_NONE: { // Default behavior.
                 tsa_push_LLVMValue(&llvm_args, llvm_arg);
                 break;
             }
@@ -2371,9 +2364,8 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
             case LLVM_EASGM_8:
             case LLVM_EASGM_16:
             case LLVM_EASGM_32:
-            case LLVM_EASGM_64: { /* Struct fits into one register. */
-                /* PERFORMANCE: insert only when llvm_arg is not alloca???
-                 */
+            case LLVM_EASGM_64: { // Struct fits into one register.
+                // PERFORMANCE: insert only when llvm_arg is not alloca???
                 INSERT_TMP(llvm_tmp, get_type(cnt, arg->type));
                 LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_tmp);
 
@@ -2391,9 +2383,8 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
             case LLVM_EASGM_64_8:
             case LLVM_EASGM_64_16:
             case LLVM_EASGM_64_32:
-            case LLVM_EASGM_64_64: { /* Struct fits into two registers. */
-                /* PERFORMANCE: insert only when llvm_arg is not alloca???
-                 */
+            case LLVM_EASGM_64_64: { // Struct fits into two registers.
+                // PERFORMANCE: insert only when llvm_arg is not alloca???
                 INSERT_TMP(llvm_tmp, get_type(cnt, arg->type));
                 LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_tmp);
 
@@ -2414,12 +2405,9 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
                 break;
             }
 
-            case LLVM_EASGM_BYVAL: { /* Struct is too big and must be passed by
-                                      * value.
-                                      */
+            case LLVM_EASGM_BYVAL: { // Struct is too big and must be passed by value.
                 if (!has_byval_arg) has_byval_arg = true;
-                /* PERFORMANCE: insert only when llvm_arg is not alloca???
-                 */
+                // PERFORMANCE: insert only when llvm_arg is not alloca???
                 INSERT_TMP(llvm_tmp, get_type(cnt, arg->type));
                 LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_tmp);
 
@@ -2442,8 +2430,7 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
         llvm_result = LLVMBuildLoad(cnt->llvm_builder, llvm_args.data[LLVM_SRET_INDEX], "");
     }
 
-    /* PERFORMANCE: LLVM API requires to set call side attributes after call is created.
-     */
+    // PERFORMANCE: LLVM API requires to set call side attributes after call is created.
     if (has_byval_arg) {
         BL_ASSERT(has_args);
         TSmallArray_ArgPtr *args = callee_type->data.fn.args;
@@ -2487,7 +2474,7 @@ State emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     if (var->ref_count == 0) return STATE_PASSED;
 #endif
 
-    /* skip when we should not generate LLVM representation */
+    // Skip when we should not generate LLVM representation
     if (!mir_type_has_llvm_representation(var->value.type)) return STATE_PASSED;
     if (var->is_global) {
         emit_global_var_proto(cnt, var);
@@ -2499,16 +2486,15 @@ State emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     } else {
         BL_ASSERT(var->llvm_value);
 
-        /* generate DI for debug build */
+        // generate DI for debug build
         if (decl->init) {
-            /* There is special handling for initialization via compound
-             * instruction */
+            // There is special handling for initialization via compound instruction
             if (decl->init->kind == MIR_INSTR_COMPOUND) {
                 emit_instr_compound(cnt, var->llvm_value, (MirInstrCompound *)decl->init);
             } else if (decl->init->kind == MIR_INSTR_ARG) {
                 emit_instr_arg(cnt, var, (MirInstrArg *)decl->init);
             } else {
-                /* use simple store */
+                // use simple store
                 LLVMValueRef llvm_init = decl->init->llvm_value;
                 BL_ASSERT(llvm_init);
                 LLVMBuildStore(cnt->llvm_builder, llvm_init, var->llvm_value);
@@ -2712,7 +2698,7 @@ State emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
     const usize vargsc = values->size;
     BL_ASSERT(vargs_type && vargs_type->kind == MIR_TYPE_VARGS);
 
-    /* Setup tmp array values. */
+    // Setup tmp array values.
     if (vargsc > 0) {
         MirInstr *   value;
         LLVMValueRef llvm_value;
@@ -2760,12 +2746,11 @@ State emit_instr_toany(Context *cnt, MirInstrToAny *toany)
 
     BL_ASSERT(llvm_dest && llvm_type_info);
 
-    /* Setup tmp variable */
-    /* pointer to type info */
+    // Setup tmp variable pointer to type info
     LLVMValueRef llvm_dest_type_info = LLVMBuildStructGEP(cnt->llvm_builder, llvm_dest, 0, "");
     LLVMBuildStore(cnt->llvm_builder, llvm_type_info, llvm_dest_type_info);
 
-    /* data */
+    // data
     LLVMTypeRef llvm_dest_data_type =
         get_type(cnt, mir_get_struct_elem_type(toany->tmp->value.type, 1));
     LLVMValueRef llvm_dest_data = LLVMBuildStructGEP(cnt->llvm_builder, llvm_dest, 1, "");
@@ -2825,7 +2810,7 @@ State emit_instr_call_loc(Context *cnt, MirInstrCallLoc *loc)
 
 State emit_instr_block(Context *cnt, MirInstrBlock *block)
 {
-    /* We don't want to genrate type resolvers for typedefs!!! */
+    // We don't want to genrate type resolvers for typedefs!!!
     if (!block->emit_llvm) return STATE_PASSED;
 
     MirFn *           fn              = block->owner_fn;
@@ -2834,8 +2819,8 @@ State emit_instr_block(Context *cnt, MirInstrBlock *block)
 
     if (!block->terminal) BL_ABORT("Block '%s', is not terminated", block->name);
 
-    /* Global-scope blocks does not have LLVM equivalent, we can generate just the
-     * content of our block, but every instruction must be comptime constant. */
+    // Global-scope blocks does not have LLVM equivalent, we can generate just the
+    // content of our block, but every instruction must be comptime constant.
     if (!is_global) {
         BL_ASSERT(fn->llvm_value);
         LLVMBasicBlockRef llvm_block = emit_basic_block(cnt, block);
@@ -2843,7 +2828,7 @@ State emit_instr_block(Context *cnt, MirInstrBlock *block)
 
         LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_block);
 
-        /* gen allocas fist in entry block!!! */
+        // gen allocas fist in entry block!!!
         if (fn->first_block == block) {
             emit_allocas(cnt, fn);
         }
@@ -2930,7 +2915,7 @@ State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
     BL_MAGIC_ASSERT(fn);
 
-    /* unused function */
+    // unused function
     if (!fn->emit_llvm) {
         return STATE_PASSED;
     }
@@ -2940,7 +2925,7 @@ State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
     emit_fn_proto(cnt, fn);
 
-    /* External functions does not have any body block. */
+    // External functions does not have any body block.
     if (IS_NOT_FLAG(fn->flags, FLAG_EXTERN) && IS_NOT_FLAG(fn->flags, FLAG_INTRINSIC)) {
         if (cnt->debug_mode) {
             emit_DI_fn(cnt, fn);
@@ -3117,7 +3102,7 @@ static void DI_init(Context *cnt)
     Scope *       gscope      = cnt->assembly->gscope;
     LLVMModuleRef llvm_module = cnt->assembly->llvm.module;
 
-    /* setup module flags for debug */
+    // setup module flags for debug
     llvm_add_module_flag_int(
         llvm_module, LLVMModuleFlagBehaviorWarning, "Debug Info Version", llvm_get_dwarf_version());
 
@@ -3126,13 +3111,13 @@ static void DI_init(Context *cnt)
         llvm_add_module_flag_int(llvm_module, LLVMModuleFlagBehaviorWarning, "CodeView", 1);
     }
 
-    /* create DI builder */
+    // create DI builder
     cnt->llvm_di_builder = llvm_di_new_di_builder(llvm_module);
 
-    /* create dummy file used as DI global scope */
+    // create dummy file used as DI global scope
     gscope->llvm_meta = llvm_di_create_file(cnt->llvm_di_builder, cnt->assembly->name, ".");
 
-    /* create main compile unit */
+    // create main compile unit
     llvm_di_create_compile_unit(cnt->llvm_di_builder, gscope->llvm_meta, producer);
 }
 
@@ -3154,7 +3139,7 @@ static void DI_complete_types(Context *cnt)
     }
 }
 
-/* public */
+// public
 void ir_run(Assembly *assembly)
 {
     Context cnt;

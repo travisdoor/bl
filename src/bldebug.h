@@ -105,7 +105,7 @@ void *_assert_invalid_expr(const char *expr, const char *file, s32 line);
         _log(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                          \
     }
 
-#else /* !BL_DEBUG */
+#else // !BL_DEBUG
 
 #define BL_LOG(format, ...)                                                                        \
     while (0) {                                                                                    \
@@ -115,7 +115,7 @@ void *_assert_invalid_expr(const char *expr, const char *file, s32 line);
     while (0) {                                                                                    \
     }
 
-#endif /* BL_DEBUG */
+#endif // BL_DEBUG
 
 #define BL_ABORT(format, ...)                                                                      \
     {                                                                                              \
