@@ -115,8 +115,8 @@ abs :: fn { f32_abs; f64_abs; }
 compare :: fn { f32_compare; f64_compare; }
 degtorad :: fn { f32_degtorad; f64_degtorad; }
 radtodeg :: fn { f32_radtodeg; f64_radtodeg; }
-max :: fn { s32_max; s64_max; }
-min :: fn { s32_min; s64_min; }
+max :: fn { s32_max; s64_max; f32_max; f64_max; }
+min :: fn { s32_min; s64_min; f32_min; f64_max; }
 
 lerp :: fn (a: f32, b: f32, fraction: f32) f32 #inline {
     return a + fraction * (b - a);
@@ -201,6 +201,16 @@ s64_max :: fn (a: s64, b: s64) s64 #inline {
     return b;
 }
 
+f32_max :: fn (a: f32, b: f32) f32 #inline { 
+    if a > b { return a; }
+    return b;
+}
+
+f64_max :: fn (a: f64, b: f64) f64 #inline { 
+    if a > b { return a; }
+    return b;
+}
+
 s32_min :: fn (a: s32, b: s32) s32 #inline { 
     if a < b { return a; }
     return b;
@@ -211,3 +221,12 @@ s64_min :: fn (a: s64, b: s64) s64 #inline {
     return b;
 }
 
+f32_min :: fn (a: f32, b: f32) f32 #inline { 
+    if a < b { return a; }
+    return b;
+}
+
+f64_min :: fn (a: f64, b: f64) f64 #inline { 
+    if a < b { return a; }
+    return b;
+}
