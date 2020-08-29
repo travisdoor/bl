@@ -165,6 +165,13 @@ os_get_exec_path :: fn () string {
     return string_new(); 
 }
 
+os_get_home_path :: fn () string {
+    tmp :: "USERPROFILE";
+    cdir :: getenv(tmp.ptr);
+    if !cdir { return string_new(); }
+    return string_new(cdir);
+}
+
 os_dlopen :: fn (lib_name: string) OSLibrary {
     if lib_name.len > 0 {
         return win32_LoadLibraryA(auto lib_name.ptr); 
@@ -318,12 +325,13 @@ SIGTRAP :: 5;
 SIGABRT :: 6;
 
 CP_UTF8 : u32 : 65001;
-
+// TODO: use _posix prefix for all of those...
 write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern "_write";
 exit   :: fn (v: s32) #extern "_exit";
 system :: fn (command: *c_char) c_int #extern;
 wcslen :: fn (str: *u16) usize #extern;
 raise  :: fn (sig: s32) s32 #extern;
+getenv :: fn (name: *u8) *u8 #extern;
 
 /*
  * Get command-line arguments passed to this executable.
