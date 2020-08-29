@@ -171,6 +171,13 @@ os_get_exec_path :: fn () string {
     return string_new(buf.ptr);
 }
 
+os_get_home_path :: fn () string {
+    tmp :: "HOME";
+    cdir :: _posix_getenv(tmp.ptr);
+    if !cdir { return string_new(); }
+    return string_new(cdir);
+}
+
 os_dlopen :: fn (lib_name: string) OSLibrary #inline {
     clib_name: *u8 = null;
     if lib_name.len > 0 { clib_name = lib_name.ptr; }
@@ -355,6 +362,7 @@ _posix_closedir  :: fn (dirp: *u8) s32 #extern "closedir";
 _posix_readdir   :: fn (dirp: *u8) *dirent #extern "readdir$INODE64";
 _posix_rewinddir :: fn (dirp: *u8) #extern "rewinddir$INODE64";
 _posix_system    :: fn (command: *c_char) c_int #extern "system";
+_posix_getenv    :: fn (name: *u8) *u8 #extern "getenv";
 
 // Threading
 _PosixThread :: c_void_ptr;

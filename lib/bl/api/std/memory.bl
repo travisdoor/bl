@@ -26,6 +26,9 @@
 // SOFTWARE.
 //************************************************************************************************
 
+c_malloc :: fn (size: c_size_t) c_void_ptr #extern "malloc";
+c_free :: fn (ptr: c_void_ptr) #extern "free";
+
 /*!
 # alloc
 ## Declaration
@@ -255,8 +258,6 @@ AllocOp :: enum {
 }
 
 _mem_allocator_default :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := string_empty, line := 0) *u8 {
-    c_malloc :: fn (size: c_size_t) c_void_ptr #extern "malloc";
-    c_free :: fn (ptr: c_void_ptr) #extern "free";
     switch operation {
         AllocOp.Allocate {
             return c_malloc(size);
