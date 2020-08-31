@@ -234,16 +234,17 @@ FmtIntBase :: enum u8 {
 // @DOC
 FmtInt :: struct {
     base: FmtIntBase;
+    print_prefix: bool;
     v: Any;
 }
 
 // @DOC
-fmt_int :: fn (v: Any, base: FmtIntBase) FmtInt #inline {
+fmt_int :: fn (v: Any, base: FmtIntBase, print_prefix := true) FmtInt #inline {
     if v.type_info.kind != TypeKind.Int {
         panic("Invalid format input, got % but expected is Integer number!", v.type_info.kind);
     }
 
-    return {:FmtInt: base, v};
+    return {:FmtInt: base, print_prefix, v};
 }
 
 #private
@@ -342,7 +343,7 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
                 cur = print_string(buf, cur, "-");
                 int = -int;
             }
-            return print_u64(buf, cur, auto int, fmt.base, 1);
+            return print_u64(buf, cur, auto int, fmt.base, 1, fmt.print_prefix);
         }
         
         info := cast(*TypeInfoStruct) any.type_info;
@@ -543,15 +544,24 @@ print_char :: fn (buf: []u8, cur: s32, c: u8) s32 #inline {
     return cur + 1;
 };
 
-print_u64 :: fn (buf: []u8, cur: s32, v: u64, base: FmtIntBase, digits: s32) s32 {
+print_u64 :: fn (buf: []u8, cur: s32, v: u64, base: FmtIntBase, digits: s32, print_prefix := true) s32 {
     tbl :: "0123456789abcdef";
     b: u64 #noinit;
 
     switch base {
         FmtIntBase.Dec { b = 10; }
-        FmtIntBase.Bin { b = 2;  cur = print_string(buf, cur, "0b"); }
-        FmtIntBase.Oct { b = 8;  cur = print_char(buf, cur, '0');    }
-        FmtIntBase.Hex { b = 16; cur = print_string(buf, cur, "0x"); }
+        FmtIntBase.Bin { 
+            b = 2;  
+            if print_prefix { cur = print_string(buf, cur, "0b"); }
+        }
+        FmtIntBase.Oct { 
+            b = 8;  
+            if print_prefix { cur = print_char(buf, cur, '0'); }
+        }
+        FmtIntBase.Hex { 
+            b = 16; 
+            if print_prefix { cur = print_string(buf, cur, "0x"); }
+        }
     }
 
     prev_cur :: cur;
