@@ -118,7 +118,6 @@ typedef struct {
         ID *current_entity_id;
 
         MirInstr *current_fwd_struct_decl;
-        bool      enable_incomplete_decl_refs;
     } ast;
 
     // Analyze MIR generated from AST
@@ -1102,6 +1101,7 @@ static INLINE void commit_var(Context *cnt, MirVar *var)
     BL_ASSERT(entry && "cannot commit unregistred var");
     entry->kind     = SCOPE_ENTRY_VAR;
     entry->data.var = var;
+    BL_TRACY_MESSAGE("COMMIT_VAR", "%s", id->str);
     if (var->is_global || var->is_struct_typedef) analyze_notify_provided(cnt, id->hash);
 }
 
@@ -1402,7 +1402,10 @@ void type_init_id(Context *cnt, MirType *type)
 #if TRACY_ENABLE
     static int tc = 0;
     TracyCPlot("Type count", ++tc);
-    BL_TRACY_MESSAGE("TYPE", "%s", type->id.str);
+    BL_TRACY_MESSAGE("CREATE_TYPE",
+                     "%s %s",
+                     type->id.str,
+                     is_incomplete_struct_type(type) ? "<INCOMPLETE>" : "");
 #endif
 
 #undef GEN_ID_STRUCT
@@ -1438,6 +1441,7 @@ ScopeEntry *register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool 
     ScopeEntry *entry = scope_create_entry(
         &cnt->assembly->arenas.scope, SCOPE_ENTRY_INCOMPLETE, id, node, is_builtin);
     scope_insert(scope, entry);
+    BL_TRACY_MESSAGE("REGISTER_SYMBOL", "%s", id->str);
     return entry;
 
 COLLIDE : {
@@ -1777,9 +1781,7 @@ MirType *complete_type_struct(Context *              cnt,
 
     MirType *incomplete_type = MIR_CEV_READ_AS(MirType *, &fwd_decl->value);
     BL_MAGIC_ASSERT(incomplete_type);
-
     BL_ASSERT(incomplete_type->kind == MIR_TYPE_STRUCT && "Incomplete type is not struct type!");
-
     BL_ASSERT(incomplete_type->data.strct.is_incomplete &&
               "Incomplete struct type is not marked as incomplete!");
 
@@ -1790,6 +1792,13 @@ MirType *complete_type_struct(Context *              cnt,
     incomplete_type->data.strct.is_packed     = is_packed;
     incomplete_type->data.strct.is_union      = is_union;
 
+#if TRACY_ENABLE
+    {
+        char type_name[256];
+        mir_type_to_str(type_name, 256, incomplete_type, true);
+        BL_TRACY_MESSAGE("COMPLETE_TYPE", "%s", type_name);
+    }
+#endif
     type_init_llvm_struct(cnt, incomplete_type);
     return incomplete_type;
 }
@@ -4741,7 +4750,10 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     }
 
     if (!found) return ANALYZE_RESULT(WAITING, ref->rid->hash);
-    if (found->kind == SCOPE_ENTRY_INCOMPLETE) return ANALYZE_RESULT(WAITING, ref->rid->hash);
+    if (found->kind == SCOPE_ENTRY_INCOMPLETE) {
+        BL_TRACY_MESSAGE("INCOMPLETE_DECL_REF", "%s", ref->rid->str);
+        return ANALYZE_RESULT(WAITING, ref->rid->hash);
+    }
     switch (found->kind) {
     case SCOPE_ENTRY_FN: {
         MirFn *fn = found->data.fn;
@@ -6899,6 +6911,10 @@ AnalyzeResult analyze_instr(Context *cnt, MirInstr *instr)
     if (instr->analyzed) return ANALYZE_RESULT(PASSED, 0);
     AnalyzeResult state = ANALYZE_RESULT(PASSED, 0);
 
+#if TRACY_ENABLE
+    BL_TRACY_MESSAGE("ANALYZE", "[%llu] %s", instr->id, mir_instr_name(instr));
+#endif
+
     if (instr->owner_block) set_current_block(cnt, instr->owner_block);
 
     switch (instr->kind) {
@@ -7664,6 +7680,8 @@ void rtti_gen_struct_members_slice(Context *cnt, VMStackPtr dest, TSmallArray_Me
 
 MirVar *rtti_gen_struct(Context *cnt, MirType *type)
 {
+    BL_ASSERT(!is_incomplete_struct_type(type) &&
+              "Attempt to generate RTTI for incomplete struct type!");
     MirType *  rtti_type = cnt->builtin_types->t_TypeInfoStruct;
     MirVar *   rtti_var  = rtti_create_and_alloc_var(cnt, rtti_type);
     VMStackPtr dest      = vm_read_var(cnt->vm, rtti_var);
@@ -8690,9 +8708,6 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
 
             // Set current fwd decl
             cnt->ast.current_fwd_struct_decl = value;
-
-            // Enable incomplete types for decl_ref instructions.
-            cnt->ast.enable_incomplete_decl_refs = true;
         }
 
         // When symbol is not declared in global scope, we can generate
@@ -8728,10 +8743,9 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
         }
         // Struct decl cleanup.
         if (is_struct_decl) {
-            cnt->ast.enable_incomplete_decl_refs = false;
-            cnt->ast.current_fwd_struct_decl     = NULL;
-            MirVar *var                          = ((MirInstrDeclVar *)decl_var)->var;
-            var->is_struct_typedef               = true;
+            cnt->ast.current_fwd_struct_decl = NULL;
+            MirVar *var                      = ((MirInstrDeclVar *)decl_var)->var;
+            var->is_struct_typedef           = true;
         }
         cnt->ast.current_entity_id = NULL;
     }
@@ -8951,7 +8965,7 @@ MirInstr *ast_type_ptr(Context *cnt, Ast *type_ptr)
     MirInstr *type = ast(cnt, ast_type);
     BL_ASSERT(type);
 
-    if (cnt->ast.enable_incomplete_decl_refs && type->kind == MIR_INSTR_DECL_REF) {
+    if (type->kind == MIR_INSTR_DECL_REF) {
         // Enable incomplete types for pointers to declarations.
         ((MirInstrDeclRef *)type)->accept_incomplete_type = true;
     }
