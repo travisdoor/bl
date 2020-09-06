@@ -5326,7 +5326,7 @@ AnalyzeResult analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
                             "Same value found here.");
                 return ANALYZE_RESULT(FAILED, 0);
             }
-            thtbl_insert(presented, (u64)v, &c);
+            thtbl_insert(presented, (u64)v, c);
         }
     }
 
