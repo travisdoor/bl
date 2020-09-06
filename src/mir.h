@@ -377,6 +377,7 @@ struct MirType {
     usize           size_bits;
     usize           store_size_bytes;
     s32             alignment;
+    bool            checked_and_complete;
 
     // Optionally set pointer to RTTI var used by VM.
     MirVar *vm_rtti_var_cache;
@@ -679,7 +680,8 @@ struct MirInstrCall {
     MirInstr base;
 
     MirInstr *            callee;
-    TSmallArray_InstrPtr *args;
+    TSmallArray_InstrPtr *args; // Optional
+    bool                  callee_analyzed;
 };
 
 struct MirInstrDeclRef {

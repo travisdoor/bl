@@ -134,6 +134,13 @@ typedef struct {
         // variable for all pointer types and store them in this array. When strucutre RTTI
         // is complete we can fill missing pointer RTTIs in second generation pass.
         TSmallArray_RTTIIncomplete incomplete_rtti;
+
+        // Incomplete type check stack.
+        TSmallArray_TypePtr complete_check_type_stack;
+        THashTable          complete_check_visited;
+
+        // Switch cases duplicity check
+        THashTable presented_switch_cases;
     } analyze;
 
     struct {
@@ -456,7 +463,6 @@ append_instr_type_array(Context *cnt, Ast *node, ID *id, MirInstr *elem_type, Mi
 static MirInstr *append_instr_type_slice(Context *cnt, Ast *node, MirInstr *elem_type);
 static MirInstr *append_instr_type_dynarr(Context *cnt, Ast *node, MirInstr *elem_type);
 static MirInstr *append_instr_type_vargs(Context *cnt, Ast *node, MirInstr *elem_type);
-static MirInstr *append_instr_type_const(Context *cnt, Ast *node, MirInstr *type);
 static MirInstr *append_instr_fn_proto(Context * cnt,
                                        Ast *     node,
                                        MirInstr *type,
@@ -707,7 +713,6 @@ static void          analyze_report_unresolved(Context *cnt);
 static MirVar *   _rtti_gen(Context *cnt, MirType *type);
 static MirVar *   rtti_gen(Context *cnt, MirType *type);
 static MirVar *   rtti_create_and_alloc_var(Context *cnt, MirType *type);
-static MirVar *   rtti_prepare_var(Context *cnt);
 static void       rtti_satisfy_incomplete(Context *cnt, RTTIIncomplete *incomplete);
 static MirVar *   rtti_gen_integer(Context *cnt, MirType *type);
 static MirVar *   rtti_gen_real(Context *cnt, MirType *type);
@@ -786,7 +791,71 @@ static INLINE Scope *get_base_type_scope(MirType *struct_type)
 // Determinate if type is incomplete struct type.
 static INLINE bool is_incomplete_struct_type(MirType *type)
 {
-    return type->kind == MIR_TYPE_STRUCT && type->data.strct.is_incomplete;
+    return mir_is_composit_type(type) && type->data.strct.is_incomplete;
+}
+
+// Checks whether type is complete type, checks also dependencies. In practice only composit types
+// can be incomplete, but in some cases (RTTI generation) we need to check whole dependency type
+// tree for completeness.
+static bool is_complete_type(Context *cnt, MirType *type)
+{
+    TracyCZone(_tctx, true);
+    TSmallArray_TypePtr *stack   = &cnt->analyze.complete_check_type_stack;
+    THashTable *         visited = &cnt->analyze.complete_check_visited;
+    tsa_push_TypePtr(stack, type);
+    bool result = true;
+    while (stack->size > 0) {
+        MirType *top = tsa_pop_TypePtr(stack);
+        BL_ASSERT(top);
+        if (top->checked_and_complete) continue;
+        if (is_incomplete_struct_type(top)) {
+            result = false;
+            goto DONE;
+        }
+        switch (top->kind) {
+        case MIR_TYPE_PTR: {
+            tsa_push_TypePtr(stack, top->data.ptr.expr);
+            break;
+        }
+        case MIR_TYPE_ARRAY: {
+            tsa_push_TypePtr(stack, top->data.array.elem_type);
+            break;
+        }
+        case MIR_TYPE_FN: {
+            if (top->data.fn.ret_type) tsa_push_TypePtr(stack, top->data.fn.ret_type);
+            if (top->data.fn.args) {
+                MirArg *arg;
+                TSA_FOREACH(top->data.fn.args, arg)
+                {
+                    tsa_push_TypePtr(stack, arg->type);
+                }
+            }
+            break;
+        }
+        case MIR_TYPE_DYNARR:
+        case MIR_TYPE_SLICE:
+        case MIR_TYPE_STRING:
+        case MIR_TYPE_VARGS:
+        case MIR_TYPE_STRUCT: {
+            if (thtbl_has_key(visited, (u64)top)) break;
+            thtbl_insert_empty(visited, (u64)top);
+            MirMember *member;
+            TSA_FOREACH(top->data.strct.members, member)
+            {
+                tsa_push_TypePtr(stack, member->type);
+            }
+            break;
+        }
+        default:
+            continue;
+        }
+    }
+DONE:
+    stack->size = 0;
+    thtbl_clear(visited);
+    type->checked_and_complete = result;
+    TracyCZoneEnd(_tctx);
+    return result;
 }
 
 // Determinate if instruction has volatile type, that means we can change type of the value during
@@ -1405,7 +1474,7 @@ void type_init_id(Context *cnt, MirType *type)
     BL_TRACY_MESSAGE("CREATE_TYPE",
                      "%s %s",
                      type->id.str,
-                     is_incomplete_struct_type(type) ? "<INCOMPLETE>" : "");
+                     !is_incomplete_struct_type(type) ? "<INCOMPLETE>" : "");
 #endif
 
 #undef GEN_ID_STRUCT
@@ -1445,7 +1514,7 @@ ScopeEntry *register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool 
     return entry;
 
 COLLIDE : {
-    char *err_msg = (collision->is_buildin || is_builtin)
+    char *err_msg = (collision->is_builtin || is_builtin)
                         ? "Symbol name colision with compiler builtin '%s'."
                         : "Duplicate symbol";
 
@@ -1476,7 +1545,7 @@ MirType *lookup_builtin_type(Context *cnt, MirBuiltinIdKind kind)
     if (!found) BL_ABORT("Missing compiler internal symbol '%s'", id->str);
     if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
 
-    if (!found->is_buildin) {
+    if (!found->is_builtin) {
         builder_msg(BUILDER_MSG_WARNING,
                     0,
                     found->node ? found->node->location : NULL,
@@ -1507,7 +1576,7 @@ MirFn *lookup_builtin_fn(Context *cnt, MirBuiltinIdKind kind)
     if (!found) BL_ABORT("Missing compiler internal symbol '%s'", id->str);
     if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
 
-    if (!found->is_buildin) {
+    if (!found->is_builtin) {
         builder_msg(BUILDER_MSG_WARNING,
                     0,
                     found->node ? found->node->location : NULL,
@@ -4688,22 +4757,27 @@ AnalyzeResult analyze_instr_sizeof(Context *cnt, MirInstrSizeof *szof)
 
 AnalyzeResult analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
 {
-    BL_ASSERT(type_info->expr);
-    ID *missing_rtti_type_id = lookup_builtins_rtti(cnt);
-    if (missing_rtti_type_id) {
-        return ANALYZE_RESULT(WAITING, missing_rtti_type_id->hash);
-    }
-    if (analyze_slot(cnt, &analyze_slot_conf_basic, &type_info->expr, NULL) != ANALYZE_PASSED) {
-        return ANALYZE_RESULT(FAILED, 0);
-    }
-    MirType *type = type_info->expr->value.type;
-    BL_MAGIC_ASSERT(type);
-    if (type->kind == MIR_TYPE_TYPE) {
-        type = MIR_CEV_READ_AS(MirType *, &type_info->expr->value);
+    if (!type_info->rtti_type) {
+        BL_ASSERT(type_info->expr);
+        ID *missing_rtti_type_id = lookup_builtins_rtti(cnt);
+        if (missing_rtti_type_id) {
+            return ANALYZE_RESULT(WAITING, missing_rtti_type_id->hash);
+        }
+        if (analyze_slot(cnt, &analyze_slot_conf_basic, &type_info->expr, NULL) != ANALYZE_PASSED) {
+            return ANALYZE_RESULT(FAILED, 0);
+        }
+        MirType *type = type_info->expr->value.type;
         BL_MAGIC_ASSERT(type);
+        if (type->kind == MIR_TYPE_TYPE) {
+            type = MIR_CEV_READ_AS(MirType *, &type_info->expr->value);
+            BL_MAGIC_ASSERT(type);
+        }
+        type_info->rtti_type = type;
     }
-    type_info->rtti_type = type;
-    rtti_gen(cnt, type);
+    if (!is_complete_type(cnt, type_info->rtti_type)) {
+        return ANALYZE_RESULT(POSTPONE, 0);
+    }
+    rtti_gen(cnt, type_info->rtti_type);
     type_info->base.value.type = cnt->builtin_types->t_TypeInfo_ptr;
 
     erase_instr_tree(type_info->expr, false, true);
@@ -4807,6 +4881,7 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
             MirType *t = MIR_CEV_READ_AS(MirType *, &var->value);
             BL_MAGIC_ASSERT(t);
             if (is_incomplete_struct_type(t) && !ref->accept_incomplete_type) {
+                BL_ASSERT(t->user_id);
                 return ANALYZE_RESULT(WAITING, t->user_id->hash);
             }
         } else if (!var->is_global && is_ref_out_of_fn_local_scope) {
@@ -5182,22 +5257,6 @@ AnalyzeResult analyze_instr_br(Context UNUSED(*cnt), MirInstrBr *br)
     return ANALYZE_RESULT(PASSED, 0);
 }
 
-// True when switch contains same case value from start_from to the end of cases array.
-static INLINE bool _analyze_switch_has_case_value(TSmallArray_SwitchCase *cases,
-                                                  usize                   start_from,
-                                                  MirInstr *              const_value)
-{
-    const s64 v = MIR_CEV_READ_AS(s64, &const_value->value);
-    for (usize i = start_from; i < cases->size; ++i) {
-        MirSwitchCase *c  = &cases->data[i];
-        const s64      cv = MIR_CEV_READ_AS(s64, &c->on_value->value);
-
-        if (v == cv) return true;
-    }
-
-    return false;
-}
-
 AnalyzeResult analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
 {
     if (analyze_slot(cnt, &analyze_slot_conf_basic, &sw->value, NULL) != ANALYZE_PASSED) {
@@ -5229,7 +5288,9 @@ AnalyzeResult analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
     }
 
     MirSwitchCase *c;
-    for (usize i = 0; i < sw->cases->size; ++i) {
+    THashTable *   presented = &cnt->analyze.presented_switch_cases;
+    thtbl_clear(presented);
+    for (usize i = sw->cases->size; i-- > 0; ) {
         c = &sw->cases->data[i];
 
         if (!mir_is_comptime(c->on_value)) {
@@ -5246,12 +5307,26 @@ AnalyzeResult analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
             return ANALYZE_RESULT(FAILED, 0);
         }
 
-        if (_analyze_switch_has_case_value(sw->cases, i + 1, c->on_value)) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_DUPLICIT_SWITCH_CASE,
-                        c->on_value->node->location,
-                        BUILDER_CUR_WORD,
-                        "Switch already contains case for this value!");
+        { // validate value
+            const s64 v    = MIR_CEV_READ_AS(s64, &c->on_value->value);
+            TIterator iter = thtbl_find(presented, v);
+            TIterator end  = thtbl_end(presented);
+            if (!TITERATOR_EQUAL(iter, end)) {
+                builder_msg(BUILDER_MSG_ERROR,
+                            ERR_DUPLICIT_SWITCH_CASE,
+                            c->on_value->node->location,
+                            BUILDER_CUR_WORD,
+                            "Switch already contains case for this value!");
+
+                MirSwitchCase *ce = thtbl_iter_peek_value(MirSwitchCase *, iter);
+                builder_msg(BUILDER_MSG_NOTE,
+                            0,
+                            ce->on_value->node->location,
+                            BUILDER_CUR_WORD,
+                            "Same value found here.");
+                return ANALYZE_RESULT(FAILED, 0);
+            }
+            thtbl_insert(presented, (u64)v, &c);
         }
     }
 
@@ -6345,32 +6420,33 @@ AnalyzeResult analyze_builtin_call(Context UNUSED(*cnt), MirInstrCall *call)
 AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 {
     BL_ASSERT(call->callee);
+    if (!call->callee_analyzed) {
+        ID *missing_any = lookup_builtins_any(cnt);
+        if (missing_any) return ANALYZE_RESULT(WAITING, missing_any->hash);
 
-    ID *missing_any = lookup_builtins_any(cnt);
-    if (missing_any) return ANALYZE_RESULT(WAITING, missing_any->hash);
+        // callee has not been analyzed yet -> postpone call analyze
+        if (!call->callee->analyzed) {
+            BL_ASSERT(call->callee->kind == MIR_INSTR_FN_PROTO);
+            MirInstrFnProto *fn_proto = (MirInstrFnProto *)call->callee;
+            if (!fn_proto->pushed_for_analyze) {
+                fn_proto->pushed_for_analyze = true;
+                analyze_push_back(cnt, call->callee);
+            }
+            return ANALYZE_RESULT(POSTPONE, 0);
+        }
+
+        if (analyze_slot(cnt, &analyze_slot_conf_basic, &call->callee, NULL) != ANALYZE_PASSED) {
+            return ANALYZE_RESULT(FAILED, 0);
+        }
+        call->callee_analyzed = true;
+    }
 
     // Direct call is call without any reference lookup, usually call to anonymous
     // function, type resolver or variable initializer. Contant value of callee
     // instruction must containt pointer to the MirFn object.
     const MirInstrKind callee_kind    = call->callee->kind;
     const bool         is_direct_call = callee_kind == MIR_INSTR_FN_PROTO;
-
-    // callee has not been analyzed yet -> postpone call analyze
-    if (!call->callee->analyzed) {
-        BL_ASSERT(call->callee->kind == MIR_INSTR_FN_PROTO);
-        MirInstrFnProto *fn_proto = (MirInstrFnProto *)call->callee;
-        if (!fn_proto->pushed_for_analyze) {
-            fn_proto->pushed_for_analyze = true;
-            analyze_push_back(cnt, call->callee);
-        }
-        return ANALYZE_RESULT(POSTPONE, 0);
-    }
-
-    if (analyze_slot(cnt, &analyze_slot_conf_basic, &call->callee, NULL) != ANALYZE_PASSED) {
-        return ANALYZE_RESULT(FAILED, 0);
-    }
-
-    MirType *type = call->callee->value.type;
+    MirType *          type           = call->callee->value.type;
     BL_ASSERT(type && "invalid type of called object");
 
     if (mir_is_pointer_type(type)) {
@@ -6386,6 +6462,18 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
                     BUILDER_CUR_WORD,
                     "Expected a function of function group name.");
         return ANALYZE_RESULT(FAILED, 0);
+    }
+
+    // Pre-scan of all arguments passed to function call is needed in case we want to convert some
+    // arguments to Any type, because to Any conversion requires generation of rtti metadata about
+    // argument value type, we must check all argument types for it's completeness.
+    if (call->args) {
+        MirInstr *it;
+        TSA_FOREACH(call->args, it)
+        {
+            MirType *t = it->value.type;
+            if (!is_complete_type(cnt, t)) return ANALYZE_RESULT(POSTPONE, 0);
+        }
     }
 
     if (is_direct_call) {
@@ -6911,9 +6999,8 @@ AnalyzeResult analyze_instr(Context *cnt, MirInstr *instr)
     if (instr->analyzed) return ANALYZE_RESULT(PASSED, 0);
     AnalyzeResult state = ANALYZE_RESULT(PASSED, 0);
 
-#if TRACY_ENABLE
+    TracyCZone(_tctx, true);
     BL_TRACY_MESSAGE("ANALYZE", "[%llu] %s", instr->id, mir_instr_name(instr));
-#endif
 
     if (instr->owner_block) set_current_block(cnt, instr->owner_block);
 
@@ -7054,7 +7141,9 @@ AnalyzeResult analyze_instr(Context *cnt, MirInstr *instr)
     default:
         BL_ABORT("Missing analyze of instruction!");
     }
-
+#if TRACY_ENABLE
+    TracyCZoneEnd(_tctx);
+#endif
     if (state.state == ANALYZE_PASSED) {
         instr->analyzed = true;
         // An auto cast cannot be directly evaluated because it's destination type
@@ -7124,6 +7213,7 @@ void analyze(Context *cnt)
 #endif
     //*********************************************************************************************/
 
+    TracyCZone(_tctx, true);
     // PERFORMANCE: use array???
     TList *       q = &cnt->analyze.queue;
     AnalyzeResult result;
@@ -7193,6 +7283,7 @@ void analyze(Context *cnt)
         }
     }
 
+    TracyCZoneEnd(_tctx);
     //******************************************************************************************/
 #undef LOG_ANALYZE_PASSED
 #undef LOG_ANALYZE_FAILED
@@ -7429,11 +7520,6 @@ INLINE MirVar *rtti_create_and_alloc_var(Context *cnt, MirType *type)
     MirVar *var = create_var_impl(cnt, IMPL_RTTI_ENTRY, type, false, true, true);
     vm_alloc_global(cnt->vm, cnt->assembly, var);
     return var;
-}
-
-INLINE MirVar *rtti_prepare_var(Context *cnt)
-{
-    return create_var_impl(cnt, IMPL_RTTI_ENTRY, NULL, false, true, true);
 }
 
 static INLINE void rtti_gen_base(Context *cnt, VMStackPtr dest, u8 kind, usize size_bytes)
@@ -8469,7 +8555,7 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
                                   0);
 
             register_symbol(
-                cnt, ast_arg_name, &ast_arg_name->data.ident.id, ast_arg_name->owner_scope, true);
+                cnt, ast_arg_name, &ast_arg_name->data.ident.id, ast_arg_name->owner_scope, false);
         }
     }
 
@@ -9758,6 +9844,7 @@ void mir_arenas_terminate(MirArenas *arenas)
 void mir_run(Assembly *assembly)
 {
     Context cnt;
+    TracyCZone(_tctx, true);
     memset(&cnt, 0, sizeof(Context));
     cnt.assembly = assembly;
     // cnt.debug_mode              = assembly->options.build_mode == BUILD_MODE_DEBUG;
@@ -9772,6 +9859,9 @@ void mir_run(Assembly *assembly)
 
     tsa_init(&cnt.ast.defer_stack);
     tsa_init(&cnt.analyze.incomplete_rtti);
+    tsa_init(&cnt.analyze.complete_check_type_stack);
+    thtbl_init(&cnt.analyze.complete_check_visited, 0, 128);
+    thtbl_init(&cnt.analyze.presented_switch_cases, sizeof(MirSwitchCase *), 64);
 
     // initialize all builtin types
     builtin_inits(&cnt);
@@ -9807,4 +9897,8 @@ SKIP:
 
     tsa_terminate(&cnt.analyze.incomplete_rtti);
     tsa_terminate(&cnt.ast.defer_stack);
+    tsa_terminate(&cnt.analyze.complete_check_type_stack);
+    thtbl_terminate(&cnt.analyze.complete_check_visited);
+    thtbl_terminate(&cnt.analyze.presented_switch_cases);
+    TracyCZoneEnd(_tctx);
 }

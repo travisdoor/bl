@@ -1,6 +1,10 @@
 0.7.1 - BETA
 ---------------------------------------------------------------------------------------
 Fix nested self-references to incomplete types.
+Fix crash on incomplete struct RTTI generation.
+Fix crash error report at the end of file.
+Fix invalid report for duplicate arguments.
+Fix invalid duplicate switch value checking.
 
 0.7.0 - BETA
 ---------------------------------------------------------------------------------------

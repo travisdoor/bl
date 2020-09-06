@@ -1,3 +1,0 @@
-main :: fn () s32 {
-    return _tmp;
-}

@@ -1,8 +1,0 @@
-regex_new :: fn (pattern: string) {
-    pattern := "void";
-}
-
-main :: fn () s32 {
-    regex_new("hello!");
-    return 0;
-}

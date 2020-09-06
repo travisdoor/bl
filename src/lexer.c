@@ -488,10 +488,12 @@ void lexer_run(Unit *unit)
         .col    = 1,
     };
 
+    TracyCZone(_tctx, true);
     s32 error = 0;
     if ((error = setjmp(cnt.jmp_error))) return;
 
     scan(&cnt);
 
     builder.total_lines += cnt.line;
+    TracyCZoneEnd(_tctx);
 }

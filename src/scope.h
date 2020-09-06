@@ -66,7 +66,7 @@ typedef struct ScopeEntry {
     ScopeEntryKind kind;
     struct Scope * parent_scope;
     struct Ast *   node;
-    bool           is_buildin;
+    bool           is_builtin;
 
     ScopeEntryData data;
 } ScopeEntry;
@@ -101,7 +101,7 @@ ScopeEntry *scope_create_entry(ScopeArenas *  arenas,
                                ScopeEntryKind kind,
                                ID *           id,
                                struct Ast *   node,
-                               bool           is_buildin);
+                               bool           is_builtin);
 
 void scope_insert(Scope *scope, ScopeEntry *entry);
 

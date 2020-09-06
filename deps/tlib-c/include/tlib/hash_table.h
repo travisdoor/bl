@@ -32,37 +32,36 @@
 #include "tlib/common.h"
 
 struct THtblNode {
-	struct THtblNode *next;
-	struct THtblNode *prev;
+    struct THtblNode *next;
+    struct THtblNode *prev;
 #ifndef NDEBUG
-	struct THtblNode *_this;
+    struct THtblNode *_this;
 #endif
-	u64 key;
+    u64 key;
 };
 
 struct THtblBucket {
-	struct THtblNode *first;
-	struct THtblNode *last;
+    struct THtblNode *first;
+    struct THtblNode *last;
 };
 
 typedef struct THashTable {
-	usize               bucket_count;
-	usize               data_size;
-	usize               size;
-	struct THtblNode    end;
-	struct THtblNode *  begin;
-	struct THtblBucket *buckets;
+    usize               bucket_count;
+    usize               data_size;
+    usize               size;
+    struct THtblNode    end;
+    struct THtblNode *  begin;
+    struct THtblBucket *buckets;
 } THashTable;
 
 #define thtbl_insert(tbl, key, data) _thtbl_insert((tbl), (key), &(data))
 #define thtbl_insert_empty(tbl, key) _thtbl_insert((tbl), (key), NULL)
-#define thtbl_at(T, tbl, key) (*(T*)_thtbl_at((tbl), (key)))
+#define thtbl_at(T, tbl, key) (*(T *)_thtbl_at((tbl), (key)))
 #define thtbl_iter_peek_value(T, iter) (*(T *)_thtbl_iter_peek_value((iter)))
 
 #define THTBL_FOREACH(_htbl, _it)                                                                  \
-	(_it) = thtbl_begin((_htbl));                                                              \
-	for (TIterator end = thtbl_end((_htbl)); !TITERATOR_EQUAL((_it), end);                     \
-	     thtbl_iter_next(&(_it)))
+    (_it) = thtbl_begin((_htbl));                                                                  \
+    for (TIterator end = thtbl_end((_htbl)); !TITERATOR_EQUAL((_it), end); thtbl_iter_next(&(_it)))
 
 /* clang-format off */
 TAPI THashTable *

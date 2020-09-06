@@ -158,6 +158,7 @@ static bool link_working_environment(Context *cnt, const char *lib_name)
 
 void linker_run(Assembly *assembly)
 {
+    TracyCZone(_tctx, true);
     Context cnt;
     cnt.assembly  = assembly;
     cnt.lib_paths = &assembly->options.lib_paths;
@@ -180,6 +181,7 @@ void linker_run(Assembly *assembly)
         }
     }
 
+    TracyCZoneEnd(_tctx);
 #ifdef BL_PLATFORM_WIN
     if (!link_working_environment(&cnt, MSVC_CRT)) {
         Token *dummy = NULL;

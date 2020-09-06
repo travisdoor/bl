@@ -2405,6 +2405,7 @@ void parser_run(Assembly *assembly, Unit *unit)
 {
     BL_ASSERT(assembly->gscope && "Missing global scope for assembly.");
 
+    TracyCZone(_tctx, true);
     Context cnt = {.assembly     = assembly,
                    .unit         = unit,
                    .ast_arena    = &assembly->arenas.ast,
@@ -2432,4 +2433,5 @@ void parser_run(Assembly *assembly, Unit *unit)
 
     tsa_terminate(&cnt._decl_stack);
     tsa_terminate(&cnt._scope_stack);
+    TracyCZoneEnd(_tctx);
 }

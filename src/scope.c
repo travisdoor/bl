@@ -69,13 +69,13 @@ ScopeEntry *scope_create_entry(ScopeArenas *  arenas,
                                ScopeEntryKind kind,
                                ID *           id,
                                struct Ast *   node,
-                               bool           is_buildin)
+                               bool           is_builtin)
 {
     ScopeEntry *entry = arena_alloc(&arenas->entries);
     entry->id         = id;
     entry->kind       = kind;
     entry->node       = node;
-    entry->is_buildin = is_buildin;
+    entry->is_builtin = is_builtin;
     return entry;
 }
 

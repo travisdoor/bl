@@ -43,12 +43,14 @@
 
 void file_loader_run(Unit *unit)
 {
+    TracyCZone(_tctx, true);
     if (!unit->filepath) {
         load_error(ERR_FILE_NOT_FOUND,
                    unit->loaded_from,
                    BUILDER_CUR_WORD,
                    "file not found %s",
                    unit->name);
+        TracyCZoneEnd(_tctx);
         return;
     }
 
@@ -57,6 +59,7 @@ void file_loader_run(Unit *unit)
     if (f == NULL) {
         load_error(
             ERR_FILE_READ, unit->loaded_from, BUILDER_CUR_WORD, "cannot read file %s", unit->name);
+        TracyCZoneEnd(_tctx);
         return;
     }
 
@@ -69,6 +72,7 @@ void file_loader_run(Unit *unit)
                    BUILDER_CUR_WORD,
                    "invalid or empty source file %s",
                    unit->name);
+        TracyCZoneEnd(_tctx);
         return;
     }
 
@@ -82,4 +86,5 @@ void file_loader_run(Unit *unit)
     fclose(f);
 
     unit->src = src;
+    TracyCZoneEnd(_tctx);
 }

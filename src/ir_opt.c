@@ -34,6 +34,7 @@
 
 void ir_opt_run(Assembly *assembly)
 {
+    TracyCZone(_tctx, true);
     LLVMModuleRef        llvm_module = assembly->llvm.module;
     LLVMTargetMachineRef llvm_tm     = assembly->llvm.TM;
     const s32            opt_level   = get_opt_level_for_build_mode(assembly->options.build_mode);
@@ -50,4 +51,5 @@ void ir_opt_run(Assembly *assembly)
 
     LLVMDisposePassManager(llvm_pm);
     LLVMPassManagerBuilderDispose(llvm_pm_builder);
+    TracyCZoneEnd(_tctx);
 }
