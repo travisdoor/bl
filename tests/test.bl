@@ -1,15 +1,11 @@
 // playground 
-#load "std/array.bl"
-
 main :: fn () s32 {
-    i :: typeinfo(_arr);
+    lhs: string;
+    rhs: string;
+    if string_split_at_index("foobar", 3, &lhs, &rhs) {
+        print("lhs = %\n", lhs);
+        print("rhs = %\n", rhs);
+    }
+
     return 0;
 }
-
-_arr: [..]*Foo;
-
-Foo :: struct {
-    i: MyFn;
-}
-
-MyFn :: *fn(foo: *Foo);

@@ -5290,7 +5290,7 @@ AnalyzeResult analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
     MirSwitchCase *c;
     THashTable *   presented = &cnt->analyze.presented_switch_cases;
     thtbl_clear(presented);
-    for (usize i = sw->cases->size; i-- > 0; ) {
+    for (usize i = sw->cases->size; i-- > 0;) {
         c = &sw->cases->data[i];
 
         if (!mir_is_comptime(c->on_value)) {
@@ -9846,9 +9846,8 @@ void mir_run(Assembly *assembly)
     Context cnt;
     TracyCZone(_tctx, true);
     memset(&cnt, 0, sizeof(Context));
-    cnt.assembly = assembly;
-    // cnt.debug_mode              = assembly->options.build_mode == BUILD_MODE_DEBUG;
-    cnt.debug_mode    = false;
+    cnt.assembly      = assembly;
+    cnt.debug_mode    = assembly->options.build_mode == BUILD_MODE_DEBUG;
     cnt.builtin_types = &assembly->builtin_types;
     cnt.vm            = &assembly->vm;
     cnt.testing.cases = &assembly->testing.cases;

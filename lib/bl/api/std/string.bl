@@ -421,7 +421,44 @@ string_split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *stri
     return true;
 }
 
-// @DOC
+/*!
+# string_split_at_index 
+## Declaration
+```c
+string_split_at_index :: fn (str: string, index: s32, lhs: *string, rhs: *string) bool
+```
+## Description
+  Split input string `str` at index position and return true when split was done. Result tokens 
+only points into original memory of the `str`, they are not supposed to be freed. When index is 
+out of `str` range function return `false`, `lhs` and `rhs` buffers are not modified.
+ 
+## Arguments
+  * `str`
+    String to be splitted.
+  * `index`
+    Split position.
+  * `lhs`
+    Optional output left hand side string.
+  * `rhs`
+    Optional output right hand side string.
+
+## Result
+  True when delimiter was found.
+
+## Example
+```c
+main :: fn () s32 {
+    lhs: string;
+    rhs: string;
+    if string_split_at_index("foobar", 3, &lhs, &rhs) {
+        print("lhs = %\n", lhs);
+        print("rhs = %\n", rhs);
+    }
+
+    return 0;
+}
+```
+*/
 string_split_at_index :: fn (str: string, index: s32, lhs: *string, rhs: *string) bool {
     if index > str.len { return false; }
     if index < 0 { return false; }
@@ -432,7 +469,47 @@ string_split_at_index :: fn (str: string, index: s32, lhs: *string, rhs: *string
     return true;
 }
 
-// @DOC // lhs is not zero terminated!!!
+/*!
+# string_split_by_first
+## Declaration
+```c
+string_split_by_first :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string) bool
+```
+## Description
+  Split input string `str` into two tokens based on the first occurrence of `delimiter`.
+Delimiter is not included in resulting tokens. Result tokens only points into original
+memory of the `str`, they are not supposed to be freed.
+  When delimiter is not present in the input string function return `false`, `lhs` and
+`rhs` buffers are not modified, otherwise function return `true` and sets `lhs` and `rhs`
+to found values.
+ 
+## Arguments
+  * `str`
+    String to be splitted.
+  * `delimiter`
+    Delimiter to be found.
+  * `lhs`
+    Optional output left hand side string.
+  * `rhs`
+    Optional output right hand side string.
+
+## Result
+  True when delimiter was found.
+
+## Example
+```c
+main :: fn () s32 {
+    lhs: string;
+    rhs: string;
+    if string_split_by_first("this/is/my/epic/path", '/', &lhs, &rhs) {
+        print("lhs = %\n", lhs);
+        print("rhs = %\n", rhs);
+    }
+
+    return 0;
+}
+```
+*/
 string_split_by_first :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string, di: *s32 = null) bool {
     i := 0;
     loop ; i < str.len && str[i] != delimiter; i += 1 {}

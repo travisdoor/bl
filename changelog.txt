@@ -5,6 +5,7 @@ Fix crash on incomplete struct RTTI generation.
 Fix crash error report at the end of file.
 Fix invalid report for duplicate arguments.
 Fix invalid duplicate switch value checking.
+Fix invalid IS_DEBUG builtin value in debug mode.
 
 0.7.0 - BETA
 ---------------------------------------------------------------------------------------
