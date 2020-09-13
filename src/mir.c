@@ -258,6 +258,10 @@ static ID *lookup_builtins_any(Context *cnt);
 static ID *lookup_builtins_test_cases(Context *cnt);
 static ID *lookup_builtins_code_loc(Context *cnt);
 
+// Lookup member in composit structure type. Searching also in base types. When 'out_base_type' is
+// set to base member type if entry was found in parent.
+static ScopeEntry *lookup_composit_member(MirType *type, ID *rid, MirType **out_base_type);
+
 // Provide global bool constant into the assembly.
 static MirInstr *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v);
 
@@ -1280,7 +1284,7 @@ static INLINE bool is_to_any_needed(Context *cnt, MirInstr *src, MirType *dest_t
 
 void type_init_id(Context *cnt, MirType *type)
 {
-    //*********************************************************************************************/
+//*********************************************************************************************/
 #define GEN_ID_STRUCT                                                                              \
     if (type->user_id) {                                                                           \
         tstring_append(tmp, type->user_id->str);                                                   \
@@ -1300,7 +1304,6 @@ void type_init_id(Context *cnt, MirType *type)
                                                                                                    \
     tstring_append(tmp, "}");                                                                      \
     //*********************************************************************************************/
-
     BL_ASSERT(type && "Invalid type pointer!");
     TString *tmp = &cnt->tmp_sh;
     tstring_clear(tmp);
@@ -1591,7 +1594,7 @@ MirFn *lookup_builtin_fn(Context *cnt, MirBuiltinIdKind kind)
 
 ID *lookup_builtins_rtti(Context *cnt)
 {
-    //*********************************************************************************************/
+//*********************************************************************************************/
 #define LOOKUP_TYPE(N, K)                                                                          \
     if (!cnt->builtin_types->t_Type##N) {                                                          \
         cnt->builtin_types->t_Type##N = lookup_builtin_type(cnt, MIR_BUILTIN_ID_TYPE_##K);         \
@@ -1600,7 +1603,6 @@ ID *lookup_builtins_rtti(Context *cnt)
         }                                                                                          \
     }                                                                                              \
     //*********************************************************************************************/
-
     if (cnt->builtin_types->is_rtti_ready) return NULL;
     LOOKUP_TYPE(Kind, KIND);
     LOOKUP_TYPE(Info, INFO);
@@ -1676,6 +1678,24 @@ ID *lookup_builtins_code_loc(Context *cnt)
     cnt->builtin_types->t_CodeLocation_ptr =
         create_type_ptr(cnt, cnt->builtin_types->t_CodeLocation);
     return NULL;
+}
+
+ScopeEntry *lookup_composit_member(MirType *type, ID *rid, MirType **out_base_type)
+{
+    BL_ASSERT(type);
+    BL_ASSERT(mir_is_composit_type(type) && "Expected composit type!");
+
+    Scope *     scope = type->data.strct.scope;
+    ScopeEntry *found = NULL;
+    while (true) {
+        found = scope_lookup(scope, rid, false, true, NULL);
+        if (found) break;
+        scope = get_base_type_scope(type);
+        type  = get_base_type(type);
+        if (!scope) break;
+    }
+    if (out_base_type) *out_base_type = type;
+    return found;
 }
 
 MirInstr *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v)
@@ -4535,19 +4555,9 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
             ANALYZE_INSTR_RQ(member_ptr->target_ptr);
         }
 
-        Scope *     scope = target_type->data.strct.scope;
         ID *        rid   = &ast_member_ident->data.ident.id;
-        ScopeEntry *found = NULL;
         MirType *   type  = target_type;
-
-        while (true) {
-            found = scope_lookup(scope, rid, false, true, NULL);
-            if (found) break;
-
-            scope = get_base_type_scope(type);
-            type  = get_base_type(type);
-            if (!scope) break;
-        }
+        ScopeEntry *found = lookup_composit_member(target_type, rid, &type);
 
         // Check if member was found in base type's scope.
         if (found && found->parent_scope != target_type->data.strct.scope) {
@@ -6017,7 +6027,7 @@ AnalyzeResult analyze_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 
 AnalyzeResult analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
 {
-    //*********************************************************************************************/
+//*********************************************************************************************/
 #define is_valid(_type, _op)                                                                       \
     (((_type)->kind == MIR_TYPE_INT) || ((_type)->kind == MIR_TYPE_NULL) ||                        \
      ((_type)->kind == MIR_TYPE_REAL) || ((_type)->kind == MIR_TYPE_PTR) ||                        \
@@ -7194,7 +7204,7 @@ static INLINE MirInstr *analyze_try_get_next(MirInstr *instr)
 
 void analyze(Context *cnt)
 {
-    //*********************************************************************************************/
+//*********************************************************************************************/
 #if BL_DEBUG && VERBOSE_ANALYZE
 #define LOG_ANALYZE_PASSED printf("Analyze: [ " PASSED " ] %16s\n", mir_instr_name(ip));
 #define LOG_ANALYZE_FAILED printf("Analyze: [ " FAILED " ] %16s\n", mir_instr_name(ip));
@@ -7305,7 +7315,36 @@ void analyze_report_unresolved(Context *cnt)
         TARRAY_FOREACH(MirInstr *, wq, instr)
         {
             BL_ASSERT(instr);
-
+            switch (instr->kind) {
+#if 0 // Should not happen
+            case MIR_INSTR_MEMBER_PTR: {
+                MirInstrMemberPtr *mp          = (MirInstrMemberPtr *)instr;
+                MirType *          target_type = mp->target_ptr->value.type;
+                if (!target_type) break;
+                target_type = mir_deref_type(target_type);
+                if (target_type->kind != MIR_TYPE_PTR) break;
+                target_type = mir_deref_type(target_type);
+                if (mir_is_composit_type(target_type)) {
+                    if (!target_type->data.strct.scope) break;
+                    if (lookup_composit_member(target_type, &mp->member_ident->data.ident.id, NULL)) {
+                        continue;
+                    }
+                }
+                break;
+            }
+#endif
+            case MIR_INSTR_DECL_REF: {
+                MirInstrDeclRef *ref = (MirInstrDeclRef *)instr;
+                if (!ref->scope) break;
+                if (!ref->rid) break;
+                if (scope_lookup(ref->scope, ref->rid, true, false, NULL)) {
+                    continue;
+                }
+                break;
+            }
+            default:
+                break;
+            }
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_UNKNOWN_SYMBOL,
                         instr->node->location,
@@ -9442,7 +9481,7 @@ const char *mir_instr_name(const MirInstr *instr)
 // public
 static void _type_to_str(char *buf, usize len, const MirType *type, bool prefer_name)
 {
-    //*********************************************************************************************/
+//*********************************************************************************************/
 #define append_buf(buf, len, str)                                                                  \
     {                                                                                              \
         const usize filled = strlen(buf);                                                          \

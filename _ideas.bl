@@ -33,3 +33,24 @@ memcpy :: fn (dest: *u8, src: *u8, len: s64) void #intrinsic "memcpy";
 // comtime function call
 #comptime foo();
 
+
+
+
+// Function tags
+my_command :: fn (buf: *Buffer, args: ...string) bool
+#tags COMMAND 
+#meta "This is my cool command!" 
+{
+    return true;
+}
+
+main :: fn () s32 {
+    fns :: tagged_functions(); // []Any
+    loop i := 0; i < fns.len; i += 1 {
+        f :: fns[i];
+        if f.type_info.tag & COMMAND {
+            print("%\n", f.type_info.meta)
+        }
+    }
+    return 0;
+}
