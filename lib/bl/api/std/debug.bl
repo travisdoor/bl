@@ -27,42 +27,48 @@
 //************************************************************************************************
 
 /*!
-# print_log
-## Declaration
-```c
-print_log :: fn (format: string, args: ...)
-```
+print_log
+=========
 
-## Description
-  Print debug log using `_context.print_log_fn` function. 
+Declaration
+-----------
+::
 
-## Arguments
-  * `format`
-    Formating string accepting `%` character as value placeholder.
-  * `args`
-    Optional values passed in order which is supposed to be printed
-    out.
+    print_log :: fn (format: string, args: ...)
+
+Description
+-----------
+Print debug log using `_context.print_log_fn` function. 
+
+Arguments
+---------
+* `format` Formating string accepting `%` character as value placeholder.
+* `args` Optional values passed in order which is supposed to be printed
+         out.
 */
 print_log :: fn (format: string, args: ...) #inline {
     _context.print_log_fn(PrintLogKind.Message, "", 0, format, args);
 };
 
 /*!
-# print_warn
-## Declaration
-```c
-print_warn :: fn (format: string, args: ...)
-```
+print_warn
+==========
 
-## Description
-  Print debug warning using `_context.print_log_fn` function. 
+Declaration
+-----------
+::
 
-## Arguments: 
-  * `format`
-    Formating string accepting '%' character as value placeholder.
-  * `args`
-    Optional values passed in order which is supposed to be printed
-    out.
+    print_warn :: fn (format: string, args: ...)
+
+Description
+-----------
+Print debug warning using `_context.print_log_fn` function. 
+
+Arguments
+---------
+* `format` Formating string accepting '%' character as value placeholder.
+* `args` Optional values passed in order which is supposed to be printed
+         out.
  */
 print_warn :: fn (format: string, args: ...) #inline {
     _context.print_log_fn(PrintLogKind.Warning, "", 0, format, args);
@@ -70,41 +76,47 @@ print_warn :: fn (format: string, args: ...) #inline {
 
 
 /*!
-# print_err
-## Declaration
-```c
-print_err :: fn (format: string, args: ...)
-```
+print_err
+=========
 
-## Description
-  Print debug error using _context.print_log_fn function. 
+Declaration
+-----------
+::
 
-## Arguments
-  * `format`
-    Formating string accepting `%` character as value placeholder.
-  * `args`
-    Optional values passed in order which is supposed to be printed
-    out.
+    print_err :: fn (format: string, args: ...)
+
+Description
+-----------
+Print debug error using _context.print_log_fn function. 
+
+Arguments
+---------
+* `format` Formating string accepting `%` character as value placeholder.
+* `args` Optional values passed in order which is supposed to be printed
+         out.
 */
 print_err :: fn (format: string, args: ...) #inline {
     _context.print_log_fn(PrintLogKind.Error, "", 0, format, args);
 };
 
 /*!
-# assert
-## Declaration
-```c
-assert :: fn (cond: bool, loc := #call_location)
-```
+assert
+======
 
-## Description
-  Interrupt execution when `cond` is false. Assert use `_context.print_log_fn`
+Declaration
+-----------
+::
+
+    assert :: fn (cond: bool, loc := #call_location)
+
+Description
+-----------
+Interrupt execution when `cond` is false. Assert use `_context.print_log_fn`
 to print out error message containing assert location in source code.
 
-## Arguments
-  * `cond`
-    Condition to be validated. 
-
+Arguments
+---------
+* `cond` Condition to be validated. 
 */
 assert :: fn (cond: bool, loc := #call_location) {
     if cond { return; }
@@ -113,33 +125,53 @@ assert :: fn (cond: bool, loc := #call_location) {
     unreachable;
 };
 
-// @DOC
+/*!
+debug_break
+===========
+
+Declaration
+-----------
+::
+
+    debug_break :: fn () #inline
+
+Description
+-----------
+Triggers breakpoint, when debbuging, at curent call location.
+
+*/
 debug_break :: fn () #inline {
     _os_debug_break();
 }
 
 /*!
-# panic
-## Declaration
-```c
-panic :: fn (args: ...)
-```
+panic
+=====
 
-## Description
-  Abort execution and eventually print panic message if there is one specified. First
+Declaration
+-----------
+::
+
+    panic :: fn (args: ...)
+
+Description
+-----------
+Abort execution and eventually print panic message if there is one specified. First
 passed argument in 'args' will act like format string and can be eventually followed
 by any additional values required.
 
-## Arguments
-  * `args`
-    Variable argument count of Any type. 
+Arguments
+---------
+* `args` Variable argument count of Any type. 
 
-## Example
-```c
-panic(); // abort without any messages
-panic("oops!"); // abort with message prited out.
-panic("Failed with error: %", errn); // first argument passed acts like formating string
-```
+Example
+-------
+.. code-block:: c
+
+    panic(); // abort without any messages
+    panic("oops!"); // abort with message prited out.
+    panic("Failed with error: %", errn); // first argument passed acts like formating string
+
 */
 panic :: fn (args: ...) {
     if args.len == 0 { unreachable; }
@@ -157,26 +189,32 @@ panic :: fn (args: ...) {
 };
 
 /*!
-# PrintLogKind
-## Declaration
-```c
-PrintLogKind :: enum u8 {
-    Message;
-    Warning;
-    Error;
-    Assert;
-    Panic;
-};
-```
-## Description
-  Kinds of log messages.
+PrintLogKind
+============
 
-## Variants
-  * `Message` Ordinary debug log message.
-  * `Warning` Warning log message.
-  * `Error` Error log message.
-  * `Assert` Assert log message.
-  * `Panic` Panic log message.
+Declaration
+-----------
+.. code-block:: c
+
+    PrintLogKind :: enum u8 {
+        Message;
+        Warning;
+        Error;
+        Assert;
+        Panic;
+    };
+
+Description
+-----------
+Kinds of log messages.
+
+Variants
+--------
+* `Message` Ordinary debug log message.
+* `Warning` Warning log message.
+* `Error` Error log message.
+* `Assert` Assert log message.
+* `Panic` Panic log message.
 */
 PrintLogKind :: enum u8 {
     Message;

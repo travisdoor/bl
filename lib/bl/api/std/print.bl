@@ -30,56 +30,70 @@
 #load "std/string.bl"
 
 /*!
-# PRINT_MAX_LENGTH  
-## Declaration
-```c
-PRINT_MAX_LENGTH :: 4096;
-```
-## Description
-  Size of buffer used by `print` function, this is maximum text legth
+PRINT_MAX_LENGTH  
+================
+
+Declaration
+-----------
+::
+
+    PRINT_MAX_LENGTH :: 4096;
+
+Description
+-----------
+Size of buffer used by `print` function, this is maximum text legth
 which can be printed at once.
 */
 PRINT_MAX_LENGTH :: 4096;
 
 /*!
-# print
-## Declaration
-```c
-print :: fn (format: string, args: ...) s32
-```
-## Description
-  Write string to the standart output (stdout). Format string can include
+print
+=====
+
+Declaration
+-----------
+::
+
+    print :: fn (format: string, args: ...) s32
+
+Description
+-----------
+Write string to the standart output (stdout). Format string can include
 format specifiers `%` which are replaced by corresponding argument value
 passed in `args`. Value-string conversion is done automatically, we can
 pass values of any type as an arguments, even structures or arrays.
 
-  The `print` function accepts C-like escape sequences as `\n`, `\t`, `\r`, etc.
+The `print` function accepts C-like escape sequences as `\n`, `\t`, `\r`, etc.
 
-## Arguments
-  * `format` Formatting string. 
-  * `args` Additional values. 
+Arguments
+---------
+* `format` Formatting string. 
+* `args` Additional values. 
 
-## Result
-  Count of bytes printed out.
+Result
+------
+Count of characters printed out.
 
-## Example
-```c
-main :: fn () s32 {
-    print("Hello world!\n");
-    print("My name is '%'.\n", "Travis");
-    print("Number: %\n", 10);
+Example
+-------
+.. code-block:: c
 
-    Foo :: struct {
-        i: s32;
-        j: s32;
-    };
+    main :: fn () s32 {
+        print("Hello world!\n");
+        print("My name is '%'.\n", "Travis");
+        print("Number: %\n", 10);
 
-    foo := {:Foo: 10, 20};
-    print("foo = '%'\n", foo);
+        Foo :: struct {
+            i: s32;
+            j: s32;
+        };
 
-    return 0;
-}
-```
+        foo := {:Foo: 10, 20};
+        print("foo = '%'\n", foo);
+
+        return 0;
+    }
+
 */
 print :: fn (format: string, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8 #noinit;
@@ -89,25 +103,32 @@ print :: fn (format: string, args: ...) s32 {
 };
 
 /*!
-# eprint
-## Declaration
-```c
-eprint :: fn (format: string, args: ...) s32
-```
-## Description
-  Write string to the error output (stderr). Format string can include
+eprint
+======
+
+Declaration
+-----------
+::
+
+    eprint :: fn (format: string, args: ...) s32
+
+Description
+-----------
+Write string to the error output (stderr). Format string can include
 format specifiers `%` which are replaced by corresponding argument value
 passed in `args`. Value-string conversion is done automatically, we can
 pass values of any type as an arguments, even structures or arrays.
 
-  The `eprint` function accepts C-like escape sequences as `\n`, `\t`, `\r`, etc.
+The `eprint` function accepts C-like escape sequences as `\n`, `\t`, `\r`, etc.
 
-## Arguments
-  * `format` Formatting string. 
-  * `args` Additional values. 
+Arguments
+---------
+* `format` Formatting string. 
+* `args` Additional values. 
 
-## Result
-  Count of bytes printed out.
+Result
+------
+Count of bytes printed out.
 */
 eprint :: fn (format: string, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8 #noinit;
@@ -117,29 +138,36 @@ eprint :: fn (format: string, args: ...) s32 {
 };
 
 /*!
-# bprint
-## Declaration
-```c
-bprint :: fn (buf: []u8, format: string, args: ...) s32
-```
-## Description
-  Write string to the input buffer. Format string can include
+bprint
+======
+
+Declaration
+-----------
+::
+
+    bprint :: fn (buf: []u8, format: string, args: ...) s32
+
+Description
+-----------
+Write string to the input buffer. Format string can include
 format specifiers `%` which are replaced by corresponding argument value
 passed in `args`. Value-string conversion is done automatically, we can
 pass values of any type as an arguments, even structures or arrays.
 
-  The `bprint` function accepts C-like escape sequences as `\n`, `\t`, `\r`, etc.
+The `bprint` function accepts C-like escape sequences as `\n`, `\t`, `\r`, etc.
 
-  When passed buffer has not enough space to handle whole resulting 
+When passed buffer has not enough space to handle whole resulting 
 string, function will print just part fitting into the buffer.  
 
-## Arguments
-  * `buf` Destination buffer.
-  * `format` Formatting string. 
-  * `args` Additional values. 
+Arguments
+---------
+* `buf` Destination buffer.
+* `format` Formatting string. 
+* `args` Additional values. 
 
-## Result
-  Count of characters written into buffer, this count does not include terminal
+Result
+------
+Count of characters written into buffer, this count does not include terminal
 character written at the end of the result string.
 */
 bprint :: fn (buf: []u8, format: string, args: ...) s32 {
@@ -149,30 +177,37 @@ bprint :: fn (buf: []u8, format: string, args: ...) s32 {
 };
 
 /*!
-# boprint
-## Declaration
-```c
-boprint :: fn (buf: []u8, offset: s32, format: string, args: ...) s32
-```
-## Description
-  Write string to the input buffer starting write on offset. Format string can include
+boprint
+=======
+
+Declaration
+-----------
+::
+
+    boprint :: fn (buf: []u8, offset: s32, format: string, args: ...) s32
+
+Description
+-----------
+Write string to the input buffer starting write on offset. Format string can include
 format specifiers `%` which are replaced by corresponding argument value
 passed in `args`. Value-string conversion is done automatically, we can
 pass values of any type as an arguments, even structures or arrays.
 
-  The `bprint` function accepts C-like escape sequences as `\n`, `\t`, `\r`, etc.
+The `bprint` function accepts C-like escape sequences as `\n`, `\t`, `\r`, etc.
 
-  When passed buffer has not enough space to handle whole resulting 
+When passed buffer has not enough space to handle whole resulting 
 string, function will print just part fitting into the buffer.  
 
-## Arguments
-  * `buf` Destination buffer.
-  * `offset` Buffer offset.
-  * `format` Formatting string. 
-  * `args` Additional values. 
+Arguments
+---------
+* `buf` Destination buffer.
+* `offset` Buffer offset.
+* `format` Formatting string. 
+* `args` Additional values. 
 
-## Result
-  Count of characters written into buffer, this count does not include terminal
+Result
+------
+Count of characters written into buffer, this count does not include terminal
 character written at the end of the result string.
 */
 boprint :: fn (buf: []u8, offset: s32, format: string, args: ...) s32 {
@@ -182,21 +217,27 @@ boprint :: fn (buf: []u8, offset: s32, format: string, args: ...) s32 {
 };
 
 /*!
-# sprint
-## Declaration
-```c
-sprint :: fn (args: ...) string
-```
-## Description
-  Create new dynamic string with variable content.
+sprint
+======
+
+Declaration
+-----------
+::
+
+    sprint :: fn (args: ...) string
+
+Description
+-----------
+Create new dynamic string with variable content.
 This instance must be freed by `string_delete` call.
 
-## Arguments
-  * `args`
-    String content.
+Arguments
+---------
+* `args` String content.
 
-## Result
-  New string.
+Result
+------
+New string.
 */
 sprint :: fn (args: ...) string {
     tmp := string_new();
@@ -207,15 +248,61 @@ sprint :: fn (args: ...) string {
     return tmp;
 };
 
-// @DOC
+/*!
+FmtReal
+=======
+
+Declaration
+-----------
+.. code-block:: c
+
+    FmtReal :: struct {
+        trailing: s8;
+        v: Any;
+    }
+
+Description
+-----------
+Structure to hold information about custom real print formatting. Use
+`fmt_real` function to create formatted printable value.
+
+Members
+-------
+* `trailing` Count of trailing zeros. When this value is less than
+  zero, default (6) trailing will be used.
+* `v` Value.
+*/
 FmtReal :: struct {
-    trailing: u8;
-    
+    trailing: s8;
     v: Any;
 }
 
-// @DOC
-fmt_real :: fn (v: Any, trailing: u8) FmtReal #inline {
+/*!
+fmt_real
+========
+
+Declaration
+-----------
+:: 
+
+    fmt_real :: fn (v: Any, trailing: s8) FmtReal #inline
+
+Description
+-----------
+Create formatted printable object for real number. Created `FmtReal` object
+is valid for direct printing.
+
+Arguments
+---------
+* `v` Value to be formatted.
+* `trailing` Count of trailing zeros. When this value is less than
+  zero, default (6) trailing will be used.
+
+Result
+------
+Formatted real value.
+*/
+fmt_real :: fn (v: Any, trailing: s8) FmtReal #inline {
     if v.type_info.kind != TypeKind.Real {
         panic("Invalid format input, got % but expected is Real number!", v.type_info.kind);
     }
@@ -223,7 +310,32 @@ fmt_real :: fn (v: Any, trailing: u8) FmtReal #inline {
     return {:FmtReal: trailing, v};
 }
 
-// @DOC
+/*!
+FmtIntBase
+==========
+
+Declaration
+-----------
+.. code-block:: c
+
+    FmtIntBase :: enum u8 {
+        Bin;
+        Dec;
+        Oct;
+        Hex;
+    }
+
+Description
+-----------
+Number base used for formatted printing.
+
+Variants
+--------
+* `Bin` Format as binary number.
+* `Dec` Format as decimal number.
+* `Oct` Format as octal number.
+* `Hex` Format as haxadecimal number.
+*/
 FmtIntBase :: enum u8 {
     Bin;
     Dec;
@@ -231,14 +343,67 @@ FmtIntBase :: enum u8 {
     Hex;
 }
 
-// @DOC
+/*!
+FmtInt
+======
+
+Declaration
+-----------
+.. code-block:: c
+
+    FmtInt :: struct {
+        base: FmtIntBase;
+        print_prefix: bool;
+        v: Any;
+    }
+
+Description
+-----------
+Specify number printing format. Use `fmt_int` helper function
+to create instance of this type.
+
+Members
+-------
+* `base` Numeric base.
+* `print_prefix` Prints prefix based on desired numeric base.
+
+  * `0b` for binary.
+  * `0` for octal.
+  * `0x` for hexadecimal.
+
+* `v` Printed value.
+*/
 FmtInt :: struct {
     base: FmtIntBase;
     print_prefix: bool;
     v: Any;
 }
 
-// @DOC
+/*!
+fmt_int
+=======
+
+Declaration
+-----------
+:: 
+
+    fmt_int :: fn (v: Any, base: FmtIntBase, print_prefix := true) FmtInt #inline
+
+Description
+-----------
+Create formatted printable object for number. Created `FmtInt` object
+is valid for direct printing.
+
+Arguments
+---------
+* `v` Value to be formatted.
+* `base` Numeric base. 
+* `print_prefix` Prints numeric base prefix when `true`
+
+Result
+------
+Formatted int value.
+*/
 fmt_int :: fn (v: Any, base: FmtIntBase, print_prefix := true) FmtInt #inline {
     if v.type_info.kind != TypeKind.Int {
         panic("Invalid format input, got % but expected is Integer number!", v.type_info.kind);
