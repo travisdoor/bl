@@ -34,6 +34,7 @@
 
 void bc_writer_run(Assembly *assembly)
 {
+    TracyCZone(_tctx, true);
     char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
     if (!export_file) BL_ABORT("bad alloc");
     strcpy(export_file, assembly->name);
@@ -45,6 +46,7 @@ void bc_writer_run(Assembly *assembly)
     if (f == NULL) {
         builder_error("Cannot open file %s", export_file);
         free(export_file);
+        TracyCZoneEnd(_tctx);
         return;
     }
     fprintf(f, "%s\n", str);
@@ -54,4 +56,5 @@ void bc_writer_run(Assembly *assembly)
     builder_log("Byte code written into %s", export_file);
 
     free(export_file);
+    TracyCZoneEnd(_tctx);
 }

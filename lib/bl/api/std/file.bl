@@ -189,6 +189,22 @@ file_read_all :: fn (file: File) string {
     return tmp;
 };
 
+// @DOC
+file_read_all_slice :: fn (file: File) []u8 {
+    result: []u8;
+    c_fseek(file, 0, SEEK_END);
+    size := cast(usize) c_ftell(file);
+    if size == 0 {
+        return result;
+    }
+
+    c_fseek(file, 0, SEEK_SET);
+    slice_init(result, auto size);
+    read := c_fread(result.ptr, sizeof(u8), size, file);
+    result.len = auto read;
+    return result;
+};
+
 /*!
 # file_get_size_bytes
 ## Declaration

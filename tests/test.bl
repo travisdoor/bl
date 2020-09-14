@@ -1,49 +1,11 @@
-/* playground */
-
-// Simple static allocator and executable context
-
-/*
-   Sometimes we need to change behaviour of default used allocator (ex.: we want 
-   to log all allocations or allocate memory in pools etc.).
-
-*/
-
+// playground 
 main :: fn () s32 {
-    orig_allocator :: _context.alloc_fn;
-    _context.alloc_fn = &my_allocator;
-    defer _context.alloc_fn = orig_allocator;
-
-    str :: string_new("abc");
-    defer string_delete(str);
-    loop i := 0; i < 100; i += 1 {
-        string_append(&str, i);
+    lhs: string;
+    rhs: string;
+    if string_split_at_index("foobar", 3, &lhs, &rhs) {
+        print("lhs = %\n", lhs);
+        print("rhs = %\n", rhs);
     }
+
     return 0;
-}
-
-#private 
-_buffer: [4098]u8;
-_bi: usize;
-my_allocator :: fn (
-        operation: AllocOp, 
-        size: usize, 
-        ptr: *u8 = null, 
-        file := string_empty, 
-        line := 0) *u8 
-{
-    switch operation {
-        AllocOp.Allocate {
-            if _bi >= auto _buffer.len { panic(); }
-            mem :: ptr_shift_bytes(_buffer.ptr, auto _bi);
-            _bi += size;
-            print_log("Allocate % bytes called from %:%.", size, file, line);
-            return mem;
-        }
-        AllocOp.Free {
-            print_log("Free called from %:%.", file, line);
-        }
-        AllocOp.Release;
-        default { panic(); }
-    }
-    return null; 
 }

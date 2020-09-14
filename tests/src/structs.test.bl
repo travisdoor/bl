@@ -121,3 +121,24 @@ pointer_to_self :: fn () #test {
 
     bar: Bar;
 }
+
+PointerToSelfNestedA :: struct {
+    func: PointerToSelfNestedB;
+    bar: *PointerToSelfNestedA;
+};
+    
+PointerToSelfNestedB :: *fn(i: *PointerToSelfNestedA);
+
+pointer_to_self_nested :: fn () #test {
+    Bar :: struct {
+        bar: *Bar;
+        func: *fn (i: *Bar);
+    };
+    
+    foo: Foo;
+    foo.foo = &foo;
+
+    bar: Bar;
+}
+
+

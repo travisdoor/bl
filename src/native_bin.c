@@ -84,6 +84,7 @@ void native_bin_run(Assembly *assembly)
     TString buf;
     tstring_init(&buf);
     Context cnt = {.assembly = assembly};
+    TracyCZone(_tctx, true);
 
 #ifdef BL_PLATFORM_WIN
     const char *linker_exec = conf_data_get_str(builder.conf, CONF_LINKER_EXEC_KEY);
@@ -160,4 +161,5 @@ void native_bin_run(Assembly *assembly)
     }
 
     tstring_terminate(&buf);
+    TracyCZoneEnd(_tctx);
 }

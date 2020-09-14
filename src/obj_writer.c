@@ -40,6 +40,7 @@
 /* Emit assembly object file. */
 void obj_writer_run(Assembly *assembly)
 {
+    TracyCZone(_tctx, true);
     TString filename;
     tstring_init(&filename);
     tstring_append(&filename, assembly->options.out_dir.data);
@@ -56,4 +57,5 @@ void obj_writer_run(Assembly *assembly)
     }
 
     tstring_terminate(&filename);
+    TracyCZoneEnd(_tctx);
 }

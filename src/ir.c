@@ -3142,6 +3142,7 @@ static void DI_complete_types(Context *cnt)
 // public
 void ir_run(Assembly *assembly)
 {
+    TracyCZone(_tctx, true);
     Context cnt;
     memset(&cnt, 0, sizeof(Context));
     cnt.assembly      = assembly;
@@ -3196,4 +3197,5 @@ void ir_run(Assembly *assembly)
     tlist_terminate(&cnt.incomplete_queue);
     tsa_terminate(&cnt.incomplete_rtti);
     thtbl_terminate(&cnt.gstring_cache);
+    TracyCZoneEnd(_tctx);
 }

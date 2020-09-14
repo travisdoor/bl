@@ -214,12 +214,17 @@ main :: fn () s32 {
 */
 slice_init :: fn (_v: Any, n: s64) #compiler {
     if n < 0 { panic("Attempt to allocate 0 values by make!"); }
-
     T :: cast(*TypeInfoStruct) _v.type_info;
     T_ptr :: cast(*TypeInfoPtr) (cast(*TypeInfoStruct) T).members[1].base_type;
 
-    elem_size :: T_ptr.pointee_type.size_bytes;
     dest := cast(*[]u8) _v.data;
+    if n == 0  {
+        dest.ptr = null;
+        dest.len = 0;
+        return;
+    }
+
+    elem_size :: T_ptr.pointee_type.size_bytes;
     bytes :: elem_size * auto n;
     dest.ptr = alloc(bytes);
     dest.len = n;
@@ -244,8 +249,10 @@ slice_terminate :: fn (_v: Any)
 */
 slice_terminate :: fn (_v: Any) #compiler {
     tmp := cast(*[]u8) _v.data;
-    free (tmp.ptr);
-    tmp.ptr = null;
+    if tmp.ptr {
+        free (tmp.ptr);
+        tmp.ptr = null;
+    }
     tmp.len = 0;
 }
 
