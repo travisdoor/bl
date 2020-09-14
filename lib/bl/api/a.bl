@@ -31,18 +31,22 @@
 #load "std/utils.bl"
 
 /*!
-# OSKind
-## Declaration
-```c
-OSKind :: enum {
-    Windows;
-    Linux;
-    MacOS;
-}
-```
+OSKind
+======
 
-## Description
-  Describe supported platforms.
+Declaration
+-----------
+.. code-block:: c
+
+    OSKind :: enum {
+        Windows;
+        Linux;
+        MacOS;
+    }
+
+Description
+-----------
+Describe supported platforms.
 */
 OSKind :: enum {
     Windows;
@@ -51,44 +55,49 @@ OSKind :: enum {
 }
 
 /*!
-# TypeKind
-## Declaration
-```c
-TypeKind :: enum #compiler {
-    Type   :: 1;
-    Void   :: 2;
-    Int    :: 3;
-    Real   :: 4;
-    Fn     :: 5;
-    Ptr    :: 6;
-    Bool   :: 7;
-    Array  :: 8;
-    Struct :: 9;
-    Enum   :: 10;
-    Null   :: 11;
-    String :: 12;
-    FnGroup :: 16;
-}
-```
+TypeKind
+========
 
-## Description
-  TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 
+Declaration
+-----------
+.. code-block:: c
+
+    TypeKind :: enum #compiler {
+        Type   :: 1;
+        Void   :: 2;
+        Int    :: 3;
+        Real   :: 4;
+        Fn     :: 5;
+        Ptr    :: 6;
+        Bool   :: 7;
+        Array  :: 8;
+        Struct :: 9;
+        Enum   :: 10;
+        Null   :: 11;
+        String :: 12;
+        FnGroup :: 16;
+    }
+
+Description
+-----------
+TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 
 safe casting.
 
-## Variants
-  * `Type` Base type of all types in type system.
-  * `Void` Void type. (Implicitly used for functions without return value)
-  * `Int` Any integer type: `s8`, `s16`, `s32`, `s64`, `u8`, `u16`, `u32`, `u64`, `usize`.
-  * `Real` Any real type: `f32`, `f64`.
-  * `Fn` Function type. 
-  * `Ptr` Pointer type. 
-  * `Bool` Boolean type. 
-  * `Array` Array type. 
-  * `Struct` Structure type. 
-  * `Enum` Enumerator type. 
-  * `Null` Null-value type. 
-  * `String` String type. 
-  * `FnGroup` Function group type. 
+Variants
+--------
+* `Type` Base type of all types in type system.
+* `Void` Void type. (Implicitly used for functions without return value)
+* `Int` Any integer type: `s8`, `s16`, `s32`, `s64`, `u8`, `u16`, `u32`, `u64`, `usize`.
+* `Real` Any real type: `f32`, `f64`.
+* `Fn` Function type. 
+* `Ptr` Pointer type. 
+* `Bool` Boolean type. 
+* `Array` Array type. 
+* `Struct` Structure type. 
+* `Enum` Enumerator type. 
+* `Null` Null-value type. 
+* `String` String type. 
+* `FnGroup` Function group type. 
 */
 TypeKind :: enum #compiler {
     Type    :: 1;
@@ -107,22 +116,27 @@ TypeKind :: enum #compiler {
 };
 
 /*!
-# TypeInfo
-## Declaration
-```c
-TypeInfo :: struct #compiler {
-    kind: TypeKind;
-    size_bytes: usize
-}
-```
+TypeInfo
+========
 
-## Description
-  Base `TypeInfo` structure returned by `typeinfo` operator. This structure pointer can be casted to child type to get more
-descriptive information about the type.
+Declaration
+-----------
+.. code-block:: c
 
-## Members
-  * `kind` Type info kind.
-  * `size_bytes` Size of type in bytes.
+    TypeInfo :: struct #compiler {
+        kind: TypeKind;
+        size_bytes: usize
+    }
+
+Description
+-----------
+Base `TypeInfo` structure returned by `typeinfo` operator. This structure pointer can be casted to 
+child type to get more descriptive information about the type.
+
+Members
+-------
+* `kind` Type info kind.
+* `size_bytes` Size of type in bytes.
 */
 TypeInfo :: struct #compiler {
     kind: TypeKind;
@@ -130,21 +144,26 @@ TypeInfo :: struct #compiler {
 };
 
 /*!
-# TypeInfoInt
-## Declaration
-```c
-TypeInfoInt :: struct #base TypeInfo #compiler {
-    bit_count: s32;
-    is_signed: bool;
-}
-```
+TypeInfoInt
+===========
 
-## Description
-  Detailed information about integer types: `s8`, `s16`, `s32`, `s64`, `u8`, `u16`, `u32`, `u64`, `usize`.
+Declaration
+-----------
+.. code-block:: c
 
-## Members
-  * `bit_count` Size of type in bits.
-  * `is_signed` True when type is signed integer type.
+    TypeInfoInt :: struct #base TypeInfo #compiler {
+        bit_count: s32;
+        is_signed: bool;
+    }
+
+Description
+-----------
+Detailed information about integer types: `s8`, `s16`, `s32`, `s64`, `u8`, `u16`, `u32`, `u64`, `usize`.
+
+Members
+-------
+* `bit_count` Size of type in bits.
+* `is_signed` True when type is signed integer type.
 */
 TypeInfoInt :: struct #base TypeInfo #compiler {
     bit_count: s32; 
@@ -152,42 +171,52 @@ TypeInfoInt :: struct #base TypeInfo #compiler {
 };
 
 /*!
-# TypeInfoReal
-## Declaration
-```c
-TypeInfoReal :: struct #base TypeInfo  #compiler {
-    bit_count: s32
-}
-```
+TypeInfoReal
+============
 
-## Description
-  Detailed information about real types: `f32`, `f64`.
+Declaration
+-----------
+.. code-block:: c
 
-## Members
-  * `bit_count` Size of type in bits.
+    TypeInfoReal :: struct #base TypeInfo  #compiler {
+        bit_count: s32
+    }
+
+Description
+-----------
+Detailed information about real types: `f32`, `f64`.
+
+Members
+-------
+* `bit_count` Size of type in bits.
 */
 TypeInfoReal :: struct #base TypeInfo  #compiler {
     bit_count: s32 
 };
 
 /*!
-# TypeInfoFn
-## Declaration
-```c
-TypeInfoFn :: struct #base TypeInfo #compiler {
-    args: []TypeInfoFnArg; 
-    ret_type: *TypeInfo;
-    is_vargs: bool;
-}
-```
+TypeInfoFn
+==========
 
-## Description
-  Detailed information about function types.
+Declaration
+-----------
+.. code-block:: c
 
-## Members
-  * `args` Slice of argument type infos.
-  * `ret_type` Return type info.
-  * `is_vargs` True when function has variable argument list.
+    TypeInfoFn :: struct #base TypeInfo #compiler {
+        args: []TypeInfoFnArg; 
+        ret_type: *TypeInfo;
+        is_vargs: bool;
+    }
+
+Description
+-----------
+Detailed information about function types.
+
+Members
+-------
+* `args` Slice of argument type infos.
+* `ret_type` Return type info.
+* `is_vargs` True when function has variable argument list.
 */
 TypeInfoFn :: struct #base TypeInfo #compiler {
     args: []TypeInfoFnArg; 
@@ -197,61 +226,76 @@ TypeInfoFn :: struct #base TypeInfo #compiler {
 
 
 /*!
-# TypeInfoFnGroup
-## Declaration
-```c
-TypeInfoFnGroup :: struct #base TypeInfo #compiler {
-    variants: []*TypeInfoFn; 
-}
-```
+TypeInfoFnGroup
+===============
 
-## Description
-  Detailed information about function group and contained possible overloads.
+Declaration
+-----------
+.. code-block:: c
 
-## Members
-  * `variants` Group content. 
+    TypeInfoFnGroup :: struct #base TypeInfo #compiler {
+        variants: []*TypeInfoFn; 
+    }
+
+Description
+-----------
+Detailed information about function group and contained possible overloads.
+
+Members
+-------
+* `variants` Group content. 
 */
 TypeInfoFnGroup :: struct #base TypeInfo #compiler {
     variants: []*TypeInfoFn; 
 }
 
 /*!
-# TypeInfoPtr
-## Declaration
-```c
-TypeInfoPtr :: struct #base TypeInfo #compiler {
-    pointee_type: *TypeInfo 
-}
-```
+TypeInfoPtr
+===========
 
-## Description
-  Detailed information about pointer types.
+Declaration
+-----------
+.. code-block:: c
 
-## Members
-  * `pointee_type` Underlaying pointed type info.
+    TypeInfoPtr :: struct #base TypeInfo #compiler {
+        pointee_type: *TypeInfo 
+    }
+
+Description
+-----------
+Detailed information about pointer types.
+
+Members
+-------
+* `pointee_type` Underlaying pointed type info.
 */
 TypeInfoPtr :: struct #base TypeInfo #compiler {
     pointee_type: *TypeInfo
 };
 
 /*!
-# TypeInfoArray
-## Declaration
-```c
-TypeInfoArray :: struct #base TypeInfo #compiler {
-    name: string;
-    elem_type: *TypeInfo; 
-    len: s64 
-}
-```
+TypeInfoArray
+=============
 
-## Description
-  Detailed information about array types.
+Declaration
+-----------
+.. code-block:: c
 
-## Members
-  * `name` Array name.
-  * `elem_type` Array element type info.
-  * `len` Array element count.
+    TypeInfoArray :: struct #base TypeInfo #compiler {
+        name: string;
+        elem_type: *TypeInfo; 
+        len: s64 
+    }
+
+Description
+-----------
+Detailed information about array types.
+
+Members
+-------
+* `name` Array name.
+* `elem_type` Array element type info.
+* `len` Array element count.
 */
 TypeInfoArray :: struct #base TypeInfo #compiler {
     name: string;
@@ -260,27 +304,32 @@ TypeInfoArray :: struct #base TypeInfo #compiler {
 };
 
 /*!
-# TypeInfoStruct
-## Declaration
-```c
-TypeInfoStruct :: struct #base TypeInfo #compiler {
-    name: string;
-    members: []TypeInfoStructMember; 
-    is_slice: bool
-    is_union: bool;
-    is_dynamic_array: bool;
-}
-```
+TypeInfoStruct
+==============
 
-## Description
-  Detailed information about structure types.
+Declaration
+-----------
+.. code-block:: c
 
-## Members
-  * `name` Structure type name.
-  * `members` Slice of structure member infos.
-  * `is_slice` True when structure is slice.
-  * `is_union` True when structure is union.
-  * `is_dynamic_array` True when structure is dynamic array.
+    TypeInfoStruct :: struct #base TypeInfo #compiler {
+        name: string;
+        members: []TypeInfoStructMember; 
+        is_slice: bool
+        is_union: bool;
+        is_dynamic_array: bool;
+    }
+
+Description
+-----------
+Detailed information about structure types.
+
+Members
+-------
+* `name` Structure type name.
+* `members` Slice of structure member infos.
+* `is_slice` True when structure is slice.
+* `is_union` True when structure is union.
+* `is_dynamic_array` True when structure is dynamic array.
 */
 TypeInfoStruct :: struct #base TypeInfo #compiler {
     name: string; 
@@ -295,23 +344,28 @@ TypeInfoStruct :: struct #base TypeInfo #compiler {
 };
 
 /*!
-# TypeInfoEnum
-## Declaration
-```c
-TypeInfoEnum :: struct #base TypeInfo #compiler {
-    name: string;
-    base_type: *TypeInfo; 
-    variants: []TypeInfoEnumVariant
-}
-```
+TypeInfoEnum
+============
 
-## Description
-  Detailed information about enumerator types.
+Declaration
+-----------
+.. code-block:: c
 
-## Members
-  * `name` Enumerator type name.
-  * `base_type` Base type info.
-  * `variants` Slice of all enumerator variants.
+    TypeInfoEnum :: struct #base TypeInfo #compiler {
+        name: string;
+        base_type: *TypeInfo; 
+        variants: []TypeInfoEnumVariant
+    }
+
+Description
+-----------
+Detailed information about enumerator types.
+
+Members
+-------
+* `name` Enumerator type name.
+* `base_type` Base type info.
+* `variants` Slice of all enumerator variants.
 */
 TypeInfoEnum :: struct #base TypeInfo #compiler {
     name: string;
@@ -320,113 +374,141 @@ TypeInfoEnum :: struct #base TypeInfo #compiler {
 };
 
 /*!
-# TypeInfoVoid
-## Declaration
-```c
-TypeInfoVoid :: struct #base TypeInfo #compiler {
-}
-```
+TypeInfoVoid
+============
 
-## Description
-  Placeholer for information about `void` type.
+Declaration
+-----------
+.. code-block:: c
+
+    TypeInfoVoid :: struct #base TypeInfo #compiler {
+    }
+
+Description
+-----------
+Placeholer for information about `void` type.
 */
 TypeInfoVoid :: struct #base TypeInfo #compiler {
 };
 
 /*!
-# TypeInfoNull
-## Declaration
-```c
-TypeInfoNull :: struct #base TypeInfo #compiler {
-}
-```
+TypeInfoNull
+============
 
-## Description
-  Placeholer for information about `null` type.
+Declaration
+-----------
+.. code-block:: c
+
+    TypeInfoNull :: struct #base TypeInfo #compiler {
+    }
+
+Description
+-----------
+Placeholer for information about `null` type.
 */
 TypeInfoNull :: struct #base TypeInfo #compiler {
 };
 
 /*!
-# TypeInfoString
-## Declaration
-```c
-TypeInfoString :: struct #base TypeInfo #compiler {
-}
-```
+TypeInfoString
+==============
 
-## Description
-  Placeholer for information about `string` type.
+Declaration
+-----------
+.. code-block:: c
+
+    TypeInfoString :: struct #base TypeInfo #compiler {
+    }
+
+Description
+-----------
+Placeholer for information about `string` type.
 */
 TypeInfoString :: struct #base TypeInfo #compiler {
 };
 
 /*!
-# TypeInfoType
-## Declaration
-```c
-TypeInfoType :: struct #base TypeInfo #compiler {
-}
-```
+TypeInfoType
+============
 
-## Description
-  Placeholer for information about `type` type.
+Declaration
+-----------
+.. code-block:: c
+
+    TypeInfoType :: struct #base TypeInfo #compiler {
+    }
+
+Description
+-----------
+Placeholer for information about `type` type.
 */
 TypeInfoType :: struct #base TypeInfo  #compiler {
 };
 
 /*!
-# TypeInfoBool
-## Declaration
-```c
-TypeInfoBool :: struct #base TypeInfo #compiler {
-}
-```
+TypeInfoBool
+============
 
-## Description
-  Placeholer for information about `bool` type.
+Declaration
+-----------
+.. code-block:: c
+
+    TypeInfoBool :: struct #base TypeInfo #compiler {
+    }
+
+Description
+-----------
+Placeholer for information about `bool` type.
 */
 TypeInfoBool :: struct #base TypeInfo #compiler {
 };
 
 /*!
-# TypeInfoStructMember
-## Declaration
-```c
-TypeInfoStructMember :: struct #compiler {
-    name: string;
-    base_type: *TypeInfo;
-    offset_bytes: s32;
-    index: s32;
-    tags: s32;
-    is_base: bool;
-}
-```
+TypeInfoStructMember
+====================
 
-## Description
-  Detailed information about structure member.
+Declaration
+-----------
+.. code-block:: c
 
-## Members
-  * `name` Member type name.
-  * `base_type` Member type info.
-  * `offset_bytes` Byte-offset of member inside structure ABI.
-  * `index` Order in structure.
-  * `tags` 
-    User tags contains merge of all tag values assigned to member in structure declaration.
-Basically tags behave like a flags value, merge is done by binary `or` of all defined tag values.
-User tags can be defined by `#tags` hash directive written after member type in following way:
+    TypeInfoStructMember :: struct #compiler {
+        name: string;
+        base_type: *TypeInfo;
+        offset_bytes: s32;
+        index: s32;
+        tags: s32;
+        is_base: bool;
+    }
 
-        Foo :: struct {
-            i: s32 #tags TAG1;
-            j: s32 #tags TAG1, TAG2;
-        };
-    
-    Where tags must be `compile-time` constant of `s32` type.
+Description
+-----------
+Detailed information about structure member.
+
+Members
+-------
+* `name` Member type name.
+* `base_type` Member type info.
+* `offset_bytes` Byte-offset of member inside structure ABI.
+* `index` Order in structure.
+* `tags` User tags contains merge of all tag values assigned to member in structure declaration.
+  Basically tags behave like a flags value, merge is done by binary `or` of all defined tag values.
+  User tags can be defined by `#tags` hash directive written after member type in following way:
+
+  .. code-block:: c
+
+      Foo :: struct {
+          i: s32 #tags TAG1;
+          j: s32 #tags TAG1, TAG2;
+      };
+        
+  Where tags must be `compile-time` constant of `s32` type.
+
+  .. code-block:: text
 
         TAG1 :: 0x1;
         TAG2 :: 0x2;
 
-  * `is_base` True when member is inherrited base of the parent structure type.
+* `is_base` True when member is inherrited base of the parent structure type.
 */
 TypeInfoStructMember :: struct #compiler {
     name: string;
@@ -438,21 +520,26 @@ TypeInfoStructMember :: struct #compiler {
 };
 
 /*!
-# TypeInfoEnumVariant
-## Declaration
-```c
-TypeInfoEnumVariant :: struct #compiler {
-    name: string;
-    value: s64
-}
-```
+TypeInfoEnumVariant
+===================
 
-## Description
-  Detailed information about enumerator variant.
+Declaration
+-----------
+.. code-block:: c
 
-## Members
-  * `name` Member type name.
-  * `value` Variant value.
+    TypeInfoEnumVariant :: struct #compiler {
+        name: string;
+        value: s64
+    }
+
+Description
+-----------
+Detailed information about enumerator variant.
+
+Members
+-------
+* `name` Member type name.
+* `value` Variant value.
 */
 TypeInfoEnumVariant :: struct #compiler {
     name: string;
@@ -460,21 +547,26 @@ TypeInfoEnumVariant :: struct #compiler {
 };
 
 /*!
-# TypeInfoFnArg
-## Declaration
-```c
-TypeInfoFnArg :: struct #compiler {
-    name: string;
-    base_type: *TypeInfo
-}
-```
+TypeInfoFnArg
+=============
 
-## Description
-  Detailed information about function's argument.
+Declaration
+-----------
+.. code-block:: c
 
-## Members
-  * `name` Member type name.
-  * `base_type` Argument type info.
+    TypeInfoFnArg :: struct #compiler {
+        name: string;
+        base_type: *TypeInfo
+    }
+
+Description
+-----------
+Detailed information about function's argument.
+
+Members
+-------
+* `name` Member type name.
+* `base_type` Argument type info.
 */
 TypeInfoFnArg :: struct #compiler {
     name: string;
@@ -482,21 +574,26 @@ TypeInfoFnArg :: struct #compiler {
 };
 
 /*!
-# Any
-## Declaration
-```c
-Any :: struct #compiler {
-    type_info: *TypeInfo;
-    data: *u8
-}
-```
+Any
+===
 
-## Description
-  Any type is special builtin type used for passing value of "any" type as function argument. 
+Declaration
+-----------
+.. code-block:: c
 
-## Members
-  * `type_info` Type info associated to data type.
-  * `value` Data pointer. (not owner!)
+    Any :: struct #compiler {
+        type_info: *TypeInfo;
+        data: *u8
+    }
+
+Description
+-----------
+Any type is special builtin type used for passing value of "any" type as function argument. 
+
+Members
+-------
+* `type_info` Type info associated to data type.
+* `value` Data pointer. (not owner!)
 */
 Any :: struct #compiler {
     type_info: *TypeInfo;
@@ -504,21 +601,26 @@ Any :: struct #compiler {
 };
 
 /*!
-# TestCase
-## Declaration
-```c
-TestCase :: struct #compiler {
-    func: *fn();
-    name: string;
-}
-```
+TestCase
+========
 
-## Description
-  Type of test case record found during compilation.
+Declaration
+-----------
+.. code-block:: c
 
-## Members
-  * `func` Pointer to test case function.
-  * `name` Name of the test case. 
+    TestCase :: struct #compiler {
+        func: *fn();
+        name: string;
+    }
+
+Description
+-----------
+Type of test case record found during compilation.
+
+Members
+-------
+* `func` Pointer to test case function.
+* `name` Name of the test case. 
 */
 TestCase :: struct #compiler {
     func: *fn();
@@ -526,33 +628,40 @@ TestCase :: struct #compiler {
 }
 
 /*!
-# CodeLocation
-## Declaration
-```c
-CodeLocation :: struct #compiler {
-    file: string;
-    line: s32;
-}
-```
+CodeLocation
+============
 
-## Description
-  Type of source code location used by `#call_location` directive.
+Declaration
+-----------
+.. code-block:: c
 
-## Members
-  * `file` Name of the source file.
-  * `line` Line in source file. 
+    CodeLocation :: struct #compiler {
+        file: string;
+        line: s32;
+    }
 
-## Example
-```c
-foo :: fn (loc: *CodeLocation = #call_location) {
-    print("%\n", ^loc);
-}
+Description
+-----------
+Type of source code location used by `#call_location` directive.
 
-main :: fn () s32 {
-    foo();
-    return 0;
-}
-```
+Members
+-------
+* `file` Name of the source file.
+* `line` Line in source file. 
+
+Example
+-------
+.. code-block:: c 
+
+    foo :: fn (loc: *CodeLocation = #call_location) {
+        print("%\n", ^loc);
+    }
+
+    main :: fn () s32 {
+        foo();
+        return 0;
+    }
+
 */
 CodeLocation :: struct #compiler {
     file: string;
@@ -560,54 +669,56 @@ CodeLocation :: struct #compiler {
 }
 
 /*!
-# _PrintLogFn
-## Declaration
-```c
-_PrintLogFn :: * fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32)
-```
+_PrintLogFn
+===========
 
-## Description
-  Type of print log function.
+Declaration
+-----------
+::
 
-## Arguments
-  * `kind`
-  * `file`
-    Call side filename. 
-  * `line`
-    Call side line in source file. 
-    Kind of report message. 
-  * `format`
-    Format string. 
-  * `args`
-    Additional arguments. 
+    _PrintLogFn :: * fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32)
+
+Description
+-----------
+Type of print log function.
+
+Arguments
+---------
+* `kind` Kind of report message. 
+* `format` Format string. 
+* `args` Additional arguments. 
+* `file` Call side filename. 
+* `line` Call side line in source file. 
 */
 _PrintLogFn :: * fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...);
 
 _AbortFn :: * fn ();
 
 /*!
-# _Context
-## Declaration
-```c
-_Context :: struct {
-    alloc_fn: _AllocFn;
-    print_log_fn: _PrintLogFn;
-    abort_fn: _AbortFn;
-};
-```
+_Context
+========
 
-## Description
-  Default implicit context type. Implicit context is compiler internal global variable 
+Declaration
+-----------
+.. code-block:: c
+
+    _Context :: struct {
+        alloc_fn: _AllocFn;
+        print_log_fn: _PrintLogFn;
+        abort_fn: _AbortFn;
+    }
+
+Description
+-----------
+Default implicit context type. Implicit context is compiler internal global variable 
 containing basic context for whole assembly. This variable is mutable and can 
 be modified by user code. 
 
-## Members
-  * `alloc_fn`
-    Pointer to memory allocator function. 
-  * `print_log_fn`
-    Pointer to log print function. 
-  * `abort_fn`
-    Pointer to abort handler function. 
+Members
+-------
+* `alloc_fn` Pointer to memory allocator function. 
+* `print_log_fn` Pointer to log print function. 
+* `abort_fn` Pointer to abort handler function. 
 */
 _Context :: struct {
     alloc_fn: _AllocFn;
@@ -616,18 +727,21 @@ _Context :: struct {
 };
 
 /*!
-# _context 
-## Declaration
-```c
-_context := {:_Context: 
-                &_mem_allocator_default, 
-                &_print_log_default, 
-                &_os_abort_default,
-            };
-```
+_context 
+========
 
-## Description
-  Default implicit context. Implicit context is compiler internal global variable 
+Declaration
+.. code-block:: c
+
+    _context := {:_Context: 
+                    &_mem_allocator_default, 
+                    &_print_log_default, 
+                    &_os_abort_default,
+                };
+
+Description
+-----------
+Default implicit context. Implicit context is compiler internal global variable 
 containing basic context for whole assembly. This variable is mutable and can 
 be modified by user code. For example we can replace default memory allocator
 with custom one, this will affect all allocations made later.
@@ -639,14 +753,18 @@ _context := {:_Context:
             };
 
 /*!
-# command_line_arguments
-## Declaration
-```c
-command_line_arguments: []string;
-```
+command_line_arguments
+======================
 
-## Description
-  Contains all arguments passed from command line. First argument is executable name.
+Declaration
+-----------
+::
+
+    command_line_arguments: []string;
+
+Description
+-----------
+Contains all arguments passed from command line. First argument is executable name.
 */
 command_line_arguments: []string;
 
