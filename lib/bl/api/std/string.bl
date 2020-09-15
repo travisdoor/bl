@@ -204,12 +204,12 @@ Declaration
     string_append :: fn (v: *string, add: Any)
 
 Description
-===========
+-----------
 Append dynamic string with any value. Allocation is done in case there
 is not enough space reminding in string.
 
 Arguments
-=========
+---------
 * `v` String to be cleared.
 * `add` Value to be appended.
 */

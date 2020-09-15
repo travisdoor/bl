@@ -166,7 +166,8 @@ Arguments
 ---------
 * `ptr` Value to be checked.
 * `loc` Optional call side location.
-*/
+
+ */
 test_null :: fn (ptr: *u8, loc := #call_location) {
     if ptr == null { return; }
     print_err("Pointer is expected to be null.");

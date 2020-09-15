@@ -208,7 +208,7 @@ file_read_all :: fn (file: File) string {
     tmp := string_new(size * sizeof(u8));
     read := c_fread(tmp.ptr, sizeof(u8), size, file);
     tmp.len = auto read;
-    //tmp[tmp.len - 1] = '\0';
+    tmp[tmp.len - 1] = '\0';
     return tmp;
 };
 
