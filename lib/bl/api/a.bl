@@ -500,7 +500,7 @@ Members
           i: s32 #tags TAG1;
           j: s32 #tags TAG1, TAG2;
       };
-        
+
   Where tags must be `compile-time` constant of `s32` type.
 
   .. code-block:: text
@@ -669,14 +669,14 @@ CodeLocation :: struct #compiler {
 }
 
 /*!
-_PrintLogFn
+PrintLogFn
 ===========
 
 Declaration
 -----------
 ::
 
-    _PrintLogFn :: * fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32)
+    PrintLogFn :: * fn (kind: PrintLogKind, format: string, args: []Any, file: string, line: s32)
 
 Description
 -----------
@@ -690,21 +690,21 @@ Arguments
 * `file` Call side filename. 
 * `line` Call side line in source file. 
 */
-_PrintLogFn :: * fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...);
+PrintLogFn :: * fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...);
 
 _AbortFn :: * fn ();
 
 /*!
-_Context
-========
+Context
+=======
 
 Declaration
 -----------
 .. code-block:: c
 
-    _Context :: struct {
+    Context :: struct {
         alloc_fn: _AllocFn;
-        print_log_fn: _PrintLogFn;
+        print_log_fn: PrintLogFn;
         abort_fn: _AbortFn;
     }
 
@@ -720,20 +720,21 @@ Members
 * `print_log_fn` Pointer to log print function. 
 * `abort_fn` Pointer to abort handler function. 
 */
-_Context :: struct {
+Context :: struct {
     alloc_fn: _AllocFn;
-    print_log_fn: _PrintLogFn;
+    print_log_fn: PrintLogFn;
     abort_fn: _AbortFn;
 };
 
 /*!
-_context 
+_context
 ========
 
 Declaration
+-----------
 .. code-block:: c
 
-    _context := {:_Context: 
+    _context := {:Context: 
                     &_mem_allocator_default, 
                     &_print_log_default, 
                     &_os_abort_default,
@@ -746,7 +747,7 @@ containing basic context for whole assembly. This variable is mutable and can
 be modified by user code. For example we can replace default memory allocator
 with custom one, this will affect all allocations made later.
 */
-_context := {:_Context: 
+_context := {:Context: 
                 &_mem_allocator_default, 
                 &_print_log_default, 
                 &_os_abort_default,
@@ -765,6 +766,7 @@ Declaration
 Description
 -----------
 Contains all arguments passed from command line. First argument is executable name.
+
 */
 command_line_arguments: []string;
 

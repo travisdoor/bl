@@ -368,7 +368,7 @@ file_write_string :: fn (file: File, data: string) usize {
 }
 
 /*!
-file_remove_ext 
+file_remove_ext
 ===============
 
 Declaration

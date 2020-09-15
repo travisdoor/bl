@@ -34,7 +34,7 @@ string_new
 Overloaded function creating new dynamic string instance. Created string is 
 guaranteed to be zero terminated.
 
-.. warning:: Every new string must be deleted by `string_delete` call.
+.. warning:: Every new string must be deleted by :ref:`string_delete` call.
 
 Declaration
 -----------
@@ -713,7 +713,7 @@ Description
 Split the `str` input string by delimiter and return new slice containing
 all found sub-strings. 
 
-.. warning:: String slice should be terminated by `slice_terminate` call.
+.. warning:: String slice should be terminated by :ref:`slice_terminate` call.
 .. note:: Slice elements just points into original string and should not be terminated.
 
 Arguments
@@ -824,7 +824,7 @@ string_to_upper :: fn (str: string) {
 }
 
 /*!
-string_replace_all  
+string_replace_all
 ==================
 
 Declaration

@@ -58,7 +58,7 @@ Declaration
 Description
 -----------
 Opaque file unit handle. Unit is representation of single source file which can be loaded into 
-the Assambly.
+the :ref:`Assembly`.
  */
 Unit :: *u8;
 
@@ -78,7 +78,7 @@ Declaration
  
 Description
 -----------
-Specify assembly build mode. Every Assembly can be compiled with various configuration options.
+Specify assembly build mode. Every :ref:`Assembly` can be compiled with various configuration options.
 The `BuildMode` can specify which set of options compiler should use.
  
 Variants
@@ -132,7 +132,7 @@ Arguments
 
 Result
 ------
-Assembly handle.
+:ref:`Assembly` handle.
 
 Example
 -------
@@ -175,7 +175,7 @@ Declaration
 Description
 -----------
 Add new source file into the assembly. This basically load new source file into
-the `Assembly`.
+the :ref:`Assembly`.
 
 Arguments
 ---------
@@ -208,7 +208,7 @@ Add path for linker library lookup.
 
 Arguments
 ---------
-* `assembly` Assembly to append the new file. 
+* `assembly` :ref:`Assembly` to append the new file. 
 * `path` Path to be added. 
 
 Result
@@ -295,7 +295,7 @@ is added without any processing and copatibility validation.
 
 Arguments
 ---------
-* `assembly` Assembly handle. 
+* `assembly` :ref:`Assembly` handle. 
 * `option` Option string.
 */
 append_linker_options :: fn (assembly: Assembly, option: string) {
@@ -320,7 +320,7 @@ Get build mode of the assembly.
 
 Arguments
 ---------
-* `assembly` Assembly handle. 
+* `assembly` :ref:`Assembly` handle. 
 
 Result
 ------
@@ -372,7 +372,7 @@ written. For example diferent output directory can be set for any build mode.
 
 Arguments
 ---------
-* `assembly` Assembly handle. 
+* `assembly` :ref:`Assembly` handle. 
 * `dir` Directory path. This can contain non-existing directories separated by `/`,
   compiler will create all missing directories in passed path.
 */
@@ -398,7 +398,7 @@ Enable compile-time execution of all tests declared in assembly.
 
 Arguments
 ---------
-* `assembly` Assembly handle. 
+* `assembly` :ref:`Assembly` handle. 
 */
 enable_testing :: fn (assembly: Assembly) {
     __toggle_testing(assembly, 1);

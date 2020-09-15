@@ -42,7 +42,7 @@ Declaration
 Description
 -----------
 Allocates count of bytes on heap using default allocator.
-Use `free` to free allocated memory when it's no longer
+Use :ref:`free` to free allocated memory when it's no longer
 needed. Cause panic when allocation is not possible. This
 function use allocator set in `_context.alloc_fn`
 
@@ -75,7 +75,7 @@ Description
 Allocates count of bytes on heap using default allocator and
 return pointer to begin of this allocated block. Resulting
 block is set to 0 value.
-Use `free` to free allocated memory when it's no longer
+Use :ref:`free` to free allocated memory when it's no longer
 needed.
 
 Arguments
@@ -204,11 +204,11 @@ Declaration
 Description
 -----------
 Allocate heap memory for `n` elements in `_v` slice. Allocated block is set to
-zero default value. Allocated memory must be released by `slice_terminate` call.
+zero default value. Allocated memory must be released by :ref:`slice_terminate` call.
 
 This way of memory allocation cause some overhead compared to plain `alloc` due to 
 conversion to `Any` and more 'generic' behaviour, also setting to 0 have some 
-runtime cost. Consider use of `alloc` instead in performance-critical cases.
+runtime cost. Consider use of :ref:`alloc` instead in performance-critical cases.
 
 Arguments
 ---------
@@ -267,8 +267,7 @@ Declaration
 
 Description
 -----------
-Release slice memory allocated by `slice_init` call. For more information check out
-`slice_init` documentation page.
+Release slice memory allocated by :ref:`slice_init` call. 
 
 Arguments
 ---------
