@@ -30,24 +30,29 @@ c_malloc :: fn (size: c_size_t) c_void_ptr #extern "malloc";
 c_free :: fn (ptr: c_void_ptr) #extern "free";
 
 /*!
-# alloc
-## Declaration
-```c
-alloc :: fn (size: usize) *u8
-```
+alloc
+=====
 
-## Description
-  Allocates count of bytes on heap using default allocator.
-Use `free` to free allocated memory when it's no longer
+Declaration
+-----------
+::
+
+    alloc :: fn (size: usize) *u8
+
+Description
+-----------
+Allocates count of bytes on heap using default allocator.
+Use :ref:`free` to free allocated memory when it's no longer
 needed. Cause panic when allocation is not possible. This
 function use allocator set in `_context.alloc_fn`
 
-## Arguments
-  * `size`
-    Bytes to be allocated. 
+Arguments
+---------
+* `size` Bytes to be allocated. 
 
-## Result
-  Pointer to begin of the new allocated block of memory.
+Result
+------
+Pointer to begin of the new allocated block of memory.
 */
 alloc :: fn (size: usize, loc := #call_location) *u8 {
     mem :: _context.alloc_fn(AllocOp.Allocate, size, null, loc.file, loc.line); 
@@ -56,27 +61,31 @@ alloc :: fn (size: usize, loc := #call_location) *u8 {
 };
 
 /*!
-# calloc
-## Declaration
-```c
-calloc :: fn (num: usize, size: usize) *u8
-```
+calloc
+======
 
-## Description
-  Allocates count of bytes on heap using default allocator and
-  return pointer to begin of this allocated block. Resulting
-  block is set to 0 value.
-  Use `free` to free allocated memory when it's no longer
-  needed.
+Declaration
+-----------
+::
 
-## Arguments
-  * `num`
-    Count of items to be allocated. 
-  * `size`
-    Item size in bytes. 
+    calloc :: fn (num: usize, size: usize) *u8
 
-## Result
-  Pointer to begin of the new allocated block of memory.
+Description
+-----------
+Allocates count of bytes on heap using default allocator and
+return pointer to begin of this allocated block. Resulting
+block is set to 0 value.
+Use :ref:`free` to free allocated memory when it's no longer
+needed.
+
+Arguments
+---------
+* `num` Count of items to be allocated. 
+* `size` Item size in bytes. 
+
+Result
+------
+Pointer to begin of the new allocated block of memory.
 */
 calloc :: fn (num: usize, size: usize, loc := #call_location) *u8 {
     mem :: _context.alloc_fn(AllocOp.Allocate, size * num, null, loc.file, loc.line); 
@@ -84,43 +93,49 @@ calloc :: fn (num: usize, size: usize, loc := #call_location) *u8 {
 };
 
 /*!
-# free
-## Declaration
-```c
-free :: fn (ptr: *u8)
-```
+free
+====
 
-## Description
-  Free memory alocated on heap. This function use default
-  deallocator `_context.free_fn`.
+Declaration
+-----------
+::
 
-## Arguments
-  * `ptr`
-    Memory to be deallocated. 
+    free :: fn (ptr: *u8)
+
+Description
+-----------
+Free memory alocated on heap. This function use default deallocator 
+`_context.free_fn`.
+
+Arguments
+---------
+* `ptr` Memory to be deallocated. 
 */
 free :: fn (ptr: *u8, loc := #call_location) {
     _context.alloc_fn(AllocOp.Free, 0, ptr, loc.file, loc.line); 
 };
 
 /*!
-# memcpy
-## Declaration
-```c
-memcpy :: fn (dest: *u8, src: *u8, size: usize)
-```
+memcpy
+======
 
-## Description
-  Copy memory of defined size from source to destination. Destination
+Declaration
+-----------
+::
+
+    memcpy :: fn (dest: *u8, src: *u8, size: usize)
+
+Description
+-----------
+Copy memory of defined size from source to destination. Destination
 and source size must be at least `size` bytes.
 
-## Arguments
-  * `dest`
-    Pointer to destination memory. 
-  * `src`
-    Pointer to source memory. 
-  * `size`
-    Count of bytes to be copied. 
- */
+Arguments
+---------
+* `dest` Pointer to destination memory. 
+* `src` Pointer to source memory. 
+* `size` Count of bytes to be copied. 
+*/
 memcpy :: fn (dest: *u8, src: *u8, size: usize) {
     m := size / sizeof(u64);
     d := size - m * sizeof(u64);
@@ -143,26 +158,29 @@ memcpy :: fn (dest: *u8, src: *u8, size: usize) {
 };
 
 /*!
-# memset
-## Declaration
-```c
-memset :: fn (_dest: *u8, v: u8, size: usize) *u8
-```
+memset
+======
 
-## Description
-  Set memory to desired value. Destination size must be at 
+Declaration
+-----------
+::
+
+    memset :: fn (_dest: *u8, v: u8, size: usize) *u8
+
+Description
+-----------
+Set memory to desired value. Destination size must be at 
 least `size` bytes.
 
-## Arguments
-  * `_dest`
-    Pointer to target memory block. 
-  * `v`
-    Desired value. 
-  * `size`
-    Count of bytes to be set. 
+Arguments
+---------
+* `_dest` Pointer to target memory block. 
+* `v` Desired value. 
+* `size` Count of bytes to be set. 
 
-## Result
-  Pointer to destination memory. 
+Result
+------
+Pointer to destination memory. 
 */
 memset :: fn (_dest: *u8, v: u8, size: usize) *u8 {
     dest := {:[]u8: auto size, _dest};
@@ -174,43 +192,48 @@ memset :: fn (_dest: *u8, v: u8, size: usize) *u8 {
 }
 
 /*!
-# slice_init
-## Declaration
-```c
-slice_init :: fn (_v: Any, n: s64)
-```
+slice_init
+==========
 
-## Description
-  Allocate heap memory for `n` elements in `_v` slice. Allocated block is set to
-zero default value. Allocated memory must be released by `slice_terminate` call.
+Declaration
+-----------
+::
 
-  This way of memory allocation cause some overhead compared to plain `alloc` due to 
+    slice_init :: fn (_v: Any, n: s64)
+
+Description
+-----------
+Allocate heap memory for `n` elements in `_v` slice. Allocated block is set to
+zero default value. Allocated memory must be released by :ref:`slice_terminate` call.
+
+This way of memory allocation cause some overhead compared to plain `alloc` due to 
 conversion to `Any` and more 'generic' behaviour, also setting to 0 have some 
-runtime cost. Consider use of `alloc` instead in performance-critical cases.
+runtime cost. Consider use of :ref:`alloc` instead in performance-critical cases.
 
-## Arguments
-  * `_v`
-    Slice to be initialized. 
-  * `n`
-    Number of elements. 
+Arguments
+---------
+* `_v` Slice to be initialized. 
+* `n` Number of elements. 
 
-## Example
-```c
-main :: fn () s32 {
-    // Allocate slice of 10 numbers
-    sl: []s32;
-    slice_init(sl, 10);
+Example
+-------
+.. code-block:: c
 
-    loop i := 0; i < sl.len; i += 1 {
-        sl[i] = i;
+    main :: fn () s32 {
+        // Allocate slice of 10 numbers
+        sl: []s32;
+        slice_init(sl, 10);
+
+        loop i := 0; i < sl.len; i += 1 {
+            sl[i] = i;
+        }
+
+        // release memory allocated by init
+        slice_terminate(sl);
+
+        return 0;
     }
 
-    // release memory allocated by init
-    slice_terminate(sl);
-
-    return 0;
-}
-```
 */
 slice_init :: fn (_v: Any, n: s64) #compiler {
     if n < 0 { panic("Attempt to allocate 0 values by make!"); }
@@ -233,19 +256,22 @@ slice_init :: fn (_v: Any, n: s64) #compiler {
 }
 
 /*!
-# slice_terminate
-## Declaration
-```c
-slice_terminate :: fn (_v: Any)
-```
+slice_terminate
+===============
 
-## Description
-  Release slice memory allocated by `slice_init` call. For more information check out
-`slice_init` documentation page.
+Declaration
+-----------
+::
 
-## Arguments
-  * `_v`
-    Allocated slice. 
+    slice_terminate :: fn (_v: Any)
+
+Description
+-----------
+Release slice memory allocated by :ref:`slice_init` call. 
+
+Arguments
+---------
+* `_v` Allocated slice. 
 */
 slice_terminate :: fn (_v: Any) #compiler {
     tmp := cast(*[]u8) _v.data;
@@ -258,6 +284,30 @@ slice_terminate :: fn (_v: Any) #compiler {
 
 _AllocFn :: *fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := string_empty, line := 0) *u8;
 
+/*!
+AllocOp
+=======
+
+Declaration
+-----------
+.. code-block:: c
+
+    AllocOp :: enum {
+        Allocate;
+        Free;
+        Release;
+    }
+
+Description
+-----------
+Specify allocator opratation.
+
+Variants
+--------
+* `Allocate` Allocation of new memory block is required. 
+* `Free` Free of previously allocated memory is required. 
+* `Release` Release of all allocated memory is required.
+*/
 AllocOp :: enum {
     Allocate;
     Free;

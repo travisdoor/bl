@@ -29,38 +29,44 @@
 #load "std/string.bl"
 
 /*!
-# File
-## Declaration
-```c
-File :: *u8; 
-```
+File
+====
 
-## Description
-  Opaque file handle. 
- */
+Declaration
+-----------
+::
+
+    File :: *u8; 
+
+Description
+-----------
+Opaque file handle. 
+*/
 File :: *u8; 
 
 /*!
-# FileOpenMode
-## Declaration
-```c
-FileOpenMode :: enum {
-    Read;
-    Write;
-    Binary
-};
-```
+FileOpenMode
+============
 
-## Description
-  Used as additional information during file opening.
+Declaration
+-----------
+.. code-block: c 
 
-## Variants
-  * `Read`
-    Open file for reading.
-  * `Write`
-    Open file for writing.
-  * `Binary`
-    Open file as binary file.
+    FileOpenMode :: enum {
+        Read;
+        Write;
+        Binary
+    };
+
+Description
+-----------
+Used as additional information during file opening.
+
+Variants
+--------
+* `Read` Open file for reading.
+* `Write` Open file for writing.
+* `Binary` Open file as binary file.
 */
 FileOpenMode :: enum {
     Read;
@@ -69,22 +75,27 @@ FileOpenMode :: enum {
 };
 
 /*!
-# file_create
-## Declaration
-```c
-file_create :: fn (filename: string) File 
-```
+file_create
+===========
 
-## Description
-  Create and open new file or open existing one. Call of file_close is required after opened file is
-  is no longer needed. This function can return `null` when file cannot be created or opened.
+Declaration
+-----------
+::
 
-## Arguments
-  * `filename`
-    File name on disk.
+    file_create :: fn (filename: string) File 
 
-## Result
-  File handle or null.
+Description
+-----------
+Create and open new file or open existing one. Call of file_close is required after opened file is
+is no longer needed. This function can return `null` when file cannot be created or opened.
+
+Arguments
+---------
+* `filename` File name on disk.
+
+Result
+------
+File handle or null.
 */
 file_create :: fn (filename: string) File {
     mode := "w+";
@@ -92,30 +103,33 @@ file_create :: fn (filename: string) File {
 };
 
 /*!
-# file_open
-## Declaration
-```c
-file_open :: fn (filename: string, modes: ...FileOpenMode) File
-```
+file_open
+=========
 
-## Description
-  Open an existing file or create new one. Call of file_close is required after file is
-is no longer needed. This function can return `null` file handle when file is not found
-or cannot be open.
+Declaration
+-----------
+::
 
-## Arguments
-  * `filename`
-    File name on disk.
-  * `modes`
-    File open modes can be passed here in any order. 
+    file_open :: fn (filename: string, modes: ...FileOpenMode) File
 
-## Result
-  File handle or null.
+Description
+-----------
+Open an existing file or create new one. Call of file_close is required after file is is 
+no longer needed. This function can return `null` file handle when file is not found or 
+cannot be open.
 
-## Note
-  Signature of this procedure will be changed in the future to indicate possible errors
-back to caller (most likely it will take out_file as an parameter and return non-zero number
-on fail).
+Arguments
+---------
+* `filename` File name on disk.
+* `modes` File open modes can be passed here in any order. 
+
+Result
+------
+File handle or null.
+
+.. note:: Signature of this procedure will be changed in the future to indicate possible errors
+          back to caller (most likely it will take out_file as an parameter and return non-zero 
+          number on fail).
 */
 file_open :: fn (filename: string, modes: ...FileOpenMode) File {
     mode: [4]u8;
@@ -137,18 +151,22 @@ file_open :: fn (filename: string, modes: ...FileOpenMode) File {
 };
 
 /*!
-# file_close
-## Declaration
-```c
-file_close :: fn (file: File)
-```
+file_close
+==========
 
-## Description
-  Close openned file. 
+Declaration
+-----------
+::
 
-## Arguments
-  * `file`
-    File to be closed.
+    file_close :: fn (file: File)
+
+Description
+-----------
+Close openned file. 
+
+Arguments
+---------
+* `file` File to be closed.
 */
 file_close :: fn (file: File) {
     if file == null { return; }
@@ -156,23 +174,28 @@ file_close :: fn (file: File) {
 };
 
 /*!
-# file_read_all
-## Declaration
-```c
-file_read_all :: fn (file: File) string
-```
+file_read_all
+=============
 
-## Description
-  Load whole content of the file into the string buffer. Call string_delete when 
+Declaration
+-----------
+::
+
+    file_read_all :: fn (file: File) string
+
+Description
+-----------
+Load whole content of the file into the string buffer. Call `string_delete` when 
 string buffer is no longer needed. When file is empty, function will return an
 empty string.
 
-## Arguments
-  * `file`
-    File to be read.
+Arguments
+---------
+* `file` File to be read.
 
-## Result
-  String containing file content or empty string.
+Result
+------
+String containing file content or empty string.
 */
 file_read_all :: fn (file: File) string {
     c_fseek(file, 0, SEEK_END);
@@ -185,11 +208,34 @@ file_read_all :: fn (file: File) string {
     tmp := string_new(size * sizeof(u8));
     read := c_fread(tmp.ptr, sizeof(u8), size, file);
     tmp.len = auto read;
-    //tmp[tmp.len - 1] = '\0';
+    tmp[tmp.len - 1] = '\0';
     return tmp;
 };
 
-// @DOC
+/*!
+file_read_all_slice
+===================
+
+Declaration
+-----------
+::
+
+    file_read_all_slice :: fn (file: File) []u8
+
+Description
+-----------
+Read content of file into slice array of characters. New memory is allocated
+for the slice on the heap, call `slice_terminate` when slice is no longer
+needed.
+
+Arguments
+---------
+* `file` File to be read.
+
+Result
+------
+Slice of characters containing file content.
+*/
 file_read_all_slice :: fn (file: File) []u8 {
     result: []u8;
     c_fseek(file, 0, SEEK_END);
@@ -206,21 +252,26 @@ file_read_all_slice :: fn (file: File) []u8 {
 };
 
 /*!
-# file_get_size_bytes
-## Declaration
-```c
-file_get_size_bytes :: fn (file: File) usize
-```
+file_get_size_bytes
+===================
 
-## Description
-  Determinates size of file content in bytes.
+Declaration
+-----------
+::
 
-## Arguments
-  * `file`
-    File handle.
+    file_get_size_bytes :: fn (file: File) usize
 
-## Result
-  Size of file content in bytes.
+Description
+-----------
+Determinates size of file content in bytes.
+
+Arguments
+---------
+* `file` File handle.
+
+Result
+------
+Size of file content in bytes.
 */
 file_get_size_bytes :: fn (file: File) usize {
     c_fseek(file, 0, SEEK_END);
@@ -230,99 +281,119 @@ file_get_size_bytes :: fn (file: File) usize {
 }
 
 /*!
-# file_real_all_binary
-## Declaration
-```c
-file_read_all_binary :: fn (file: File, dest: *u8, size: usize) usize
-```
+file_real_all_binary
+====================
 
-## Description
-  Read content of whole binary file into destination buffer and return count of written
+Declaration
+-----------
+::
+
+    file_read_all_binary :: fn (file: File, dest: *u8, size: usize) usize
+
+Description
+-----------
+Read content of whole binary file into destination buffer and return count of written
 bytes. Destination buffer must be valid memory block of sufficient size.
 
-## Arguments
-  * `file`
-    File to be read.
-  * `dest`
-    Destination buffer.
-  * `size`
-    Count of bytes which will be copied from file into the buffer.
+Arguments
+---------
+* `file` File to be read.
+* `dest` Destination buffer.
+* `size` Count of bytes which will be copied from file into the buffer.
 
-## Result
-  Bytes written into buffer.
+Result
+------
+Bytes written into buffer.
 */
 file_read_all_binary :: fn (file: File, dest: *u8, size: usize) usize {
     return c_fread(dest, sizeof(u8), size, file);
 }
 
 /*!
-# file_write_binary
-## Declaration
-```c
-file_write_binary :: fn (file: File, data: *u8, size: usize) usize
-```
+file_write_binary
+=================
 
-## Description
-  Write content of passed buffer into the binary file. File must be valid file handle
-openned for writing. Function returns zero written bytes if writing is not 
-possible.
+Declaration
+-----------
+::
 
-## Arguments
-  * `file`
-    File to be modified.
-  * `data`
-    Source data buffer.
-  * `size`
-    Count of bytes to be written.
+    file_write_binary :: fn (file: File, data: *u8, size: usize) usize
 
-## Result:
-  Bytes written into file.
+Description
+-----------
+Write content of passed buffer into the binary file. File must be valid file handle
+openned for writing. Function returns zero written bytes if writing is not possible.
+
+Arguments
+---------
+* `file` File to be modified.
+* `data` Source data buffer.
+* `size` Count of bytes to be written.
+
+Result
+------
+Bytes written into file.
 */
 file_write_binary :: fn (file: File, data: *u8, size: usize) usize {
     return c_fwrite(data, sizeof(u8), size, file);
 }
 
 /*!
-# file_write_string
-## Declaration
-```
-file_write_string :: fn (file: File, data: string) usize
-```
+file_write_string
+=================
 
-## Description
-  Write content of passed string into the file. File must be valid file handle 
+Declaration
+-----------
+::
+
+    file_write_string :: fn (file: File, data: string) usize
+
+Description
+-----------
+Write content of passed string into the file. File must be valid file handle 
 openned for writing. Function returns zero written bytes if writing is not 
 possible.
 
-## Arguments
-  * `file`
-    File to be modified.
-  * `data`
-    String content.
+Arguments
+---------
+* `file` File to be modified.
+* `data` String content.
 
-## Result:
-  Bytes written into file.
+Result
+------
+Bytes written into file.
 */
 file_write_string :: fn (file: File, data: string) usize {
     return c_fwrite(data.ptr, sizeof(u8), auto data.len, file);
 }
 
 /*!
-# file_remove_ext 
-## Declaration
-```
-file_remove_ext :: fn (filename: *string)
-```
+file_remove_ext
+===============
 
-## Description
-  Removes file name extension.
+Declaration
+-----------
+::
 
-## Arguments
-  * `filename`
-    File name to be modified.
+    file_remove_ext :: fn (filename: *string)
 
-## Result:
-  File name without extension.
+Description
+-----------
+Removes file name extension. Expects `filename` in format "foo.ext",
+does nothing when input `filename` does not contain any extensions or
+is empty. Returned string value is just subset of input string, no
+allocations and copying is done.
+
+.. note:: This function is simply looking for the first occourence of `.` 
+          character and does split at that position.
+
+Arguments
+---------
+* `filename` File name to be modified.
+
+Result
+------
+File name without extension.
 */
 file_remove_ext :: fn (filename: string) string {
     tmp := {:[]u8: filename.len, filename.ptr};
@@ -337,21 +408,26 @@ file_remove_ext :: fn (filename: string) string {
 }
 
 /*!
-# file_get_ext
-## Declaration
-```
-file_get_ext :: fn (filename: string) string
-```
+file_get_ext
+============
 
-## Description
-  Return file name extension (string token after last dot separator).
+Declaration
+-----------
+::
 
-## Arguments
-  * `filename`
-    File name to extract extension from.
+    file_get_ext :: fn (filename: string) string
 
-## Result:
-  File extension string.
+Description
+-----------
+Return file name extension (string token after last dot separator).
+
+Arguments
+---------
+* `filename` File name to extract extension from.
+
+Result
+------
+File extension string.
 */
 file_get_ext :: fn (filename: string) string {
     tmp := {:[]u8: filename.len, filename.ptr};

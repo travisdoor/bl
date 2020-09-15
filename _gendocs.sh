@@ -10,8 +10,8 @@ echo
 echo Process $(pwd)
 bdg *.bl
 mkdir -p ${WDIR}/docs/api/build
-rm ${WDIR}/docs/api/build/*.md
-mv *.md ${WDIR}/docs/api/build
+rm ${WDIR}/docs/api/build/*.rst
+mv *.rst ${WDIR}/docs/api/build
 cd ${WDIR}
 
 # STD
@@ -20,8 +20,8 @@ echo
 echo Process $(pwd)
 bdg *.bl
 mkdir -p ${WDIR}/docs/api/std
-rm ${WDIR}/docs/api/std/*.md
-mv *.md ${WDIR}/docs/api/std
+rm ${WDIR}/docs/api/std/*.rst
+mv *.rst ${WDIR}/docs/api/std
 cd ${WDIR}
 
 # Builtin
@@ -30,8 +30,8 @@ echo
 echo Process $(pwd)
 bdg *.bl
 mkdir -p ${WDIR}/docs/api/builtin
-rm ${WDIR}/docs/api/builtin/*.md
-mv *.md ${WDIR}/docs/api/builtin
+rm ${WDIR}/docs/api/builtin/*.rst
+mv *.rst ${WDIR}/docs/api/builtin
 cd ${WDIR}
 
 # OS
@@ -40,8 +40,8 @@ echo
 echo Process $(pwd)
 bdg docs.txt
 mkdir -p ${WDIR}/docs/api/os
-rm ${WDIR}/docs/api/os/*.md
-mv *.md ${WDIR}/docs/api/os
+rm ${WDIR}/docs/api/os/*.rst
+mv *.rst ${WDIR}/docs/api/os
 cd ${WDIR}
 
 # examples
