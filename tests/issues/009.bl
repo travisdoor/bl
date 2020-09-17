@@ -1,0 +1,10 @@
+struct_member_tags :: fn () #test {
+    TAG1 :: 1;
+    TAG2 :: 2;
+    T1 :: struct {
+        a: s32 #tags TAG1;
+        b: s32 #tags TAG1, TAG2;
+    };
+
+    info :: typeinfo(T1);
+}

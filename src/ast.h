@@ -161,6 +161,7 @@ struct AstStmtLoop {
 struct AstDecl {
     Ast *name;
     Ast *type;
+    Ast *tags; // Optional.
 };
 
 struct AstDeclEntity {
@@ -174,7 +175,6 @@ struct AstDeclEntity {
 
 struct AstDeclMember {
     struct AstDecl base;
-    Ast *          tags; // Optional.
 };
 
 struct AstDeclArg {

@@ -386,7 +386,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
 
-        // Tags can contain one or mover references separated by comma
+        // Tags can contain one or move references separated by comma
         Ast *tag;
         bool rq = false;
 
@@ -913,7 +913,7 @@ Ast *parse_decl_member(Context *cnt, bool type_only)
     Ast *mem = ast_create_node(cnt->ast_arena, AST_DECL_MEMBER, tok_begin, SCOPE_GET(cnt));
     mem->data.decl.type        = type;
     mem->data.decl.name        = name;
-    mem->data.decl_member.tags = tags;
+    mem->data.decl.tags        = tags;
 
     return mem;
 }

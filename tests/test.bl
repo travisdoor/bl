@@ -1,11 +1,10 @@
 // playground 
-main :: fn () s32 {
-    lhs: string;
-    rhs: string;
-    if string_split_at_index("foobar", 3, &lhs, &rhs) {
-        print("lhs = %\n", lhs);
-        print("rhs = %\n", rhs);
-    }
 
+MY_TAG1 :: 1;
+
+foo :: fn () #tags MY_TAG1 {
+}
+
+main :: fn () s32 {
     return 0;
 }

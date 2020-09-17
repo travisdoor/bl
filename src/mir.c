@@ -8942,7 +8942,7 @@ MirInstr *ast_decl_member(Context *cnt, Ast *arg)
     // Take a look at anonymous structures and related RTTI + tag information.
     Ast *ast_type = arg->data.decl.type;
     Ast *ast_name = arg->data.decl.name;
-    Ast *ast_tags = arg->data.decl_member.tags;
+    Ast *ast_tags = arg->data.decl.tags;
 
     TSmallArray_InstrPtr *tags = NULL;
 
