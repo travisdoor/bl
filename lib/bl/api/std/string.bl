@@ -29,6 +29,68 @@
 #load "std/print.bl"
 
 /*!
+string
+======
+
+Declaration
+-----------
+.. code-block:: c
+
+    string :: struct {
+        len: s64;
+        ptr: *u8;
+    }
+
+Description
+-----------
+Builtin string storage. `string` type could represent dynamic and compile time static strings. 
+
+.. code-block:: c
+
+    // Compile-time string literal
+    my_string :: "This is my string!"; 
+
+.. code-block:: c
+
+    // Dynamic string allocated on heap.
+    // New dynamic string can be created from string literal. 
+    my_string :: string_new("This is my string!");
+    defer string_delete(my_string);
+
+All BL strings are zero terminated, due to better interaction with C APIs, terminator is
+not counted in string length. However BL API functions does not relly on this.
+
+Related functions
+-----------------
+* :ref:`string_new`
+* :ref:`string_delete`
+* :ref:`string_clear`
+* :ref:`string_append`
+* :ref:`string_concatenate`
+* :ref:`string_compare`
+* :ref:`string_to_f32`
+* :ref:`string_to_s64`
+* :ref:`string_split_by_last`
+* :ref:`string_split_at_index`
+* :ref:`string_split_by_first`
+* :ref:`string_insert`
+* :ref:`string_erase`
+* :ref:`string_split_by`
+* :ref:`string_count`
+* :ref:`string_to_lower`
+* :ref:`string_to_upper`
+* :ref:`string_replace_all`
+* :ref:`string_hash`
+* :ref:`string_is_null`
+* :ref:`string_is_empty`
+* :ref:`string_is_null_or_empty`
+* :ref:`sprint`
+
+.. note:: String manipulation functions are related only to dynamic strings and cannot be used with
+          string literals since those are constants allocated on stack.
+*/
+
+/*!
 string_new
 ==========
 Overloaded function creating new dynamic string instance. Created string is 
@@ -980,7 +1042,7 @@ STRING_BLOCK_SIZE :: 64 - sizeof(BlockHead);
 
 BlockHead :: struct {
     allocated_size: usize;
-    allocator: _AllocFn;
+    allocator: AllocFn;
 };
 
 new :: fn () string {
@@ -1039,7 +1101,7 @@ make_more_room_if_needed :: fn (ptr: *u8, size: usize) *u8 {
     return ptr;
 };
 
-alloc_block :: fn (size: usize, allocator: _AllocFn) *u8 {
+alloc_block :: fn (size: usize, allocator: AllocFn) *u8 {
     if !allocator { allocator = _context.alloc_fn; }
     d := size / STRING_BLOCK_SIZE + 1;
     size = d * STRING_BLOCK_SIZE;

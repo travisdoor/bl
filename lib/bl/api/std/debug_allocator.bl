@@ -1,0 +1,305 @@
+//************************************************************************************************
+// bl
+//
+// File:   debug_allocator.bl
+// Author: Martin Dorazil
+// Date:   18/9/20
+//
+// Copyright 2020 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//************************************************************************************************
+
+#load "experimental/hash_table.bl"
+
+/*!
+debug_allocator
+===============
+
+Description
+-----------
+Debug allocator can be used to analyze memory usage of program and eventually analyze
+possible memory leaks. By :ref:`dbgalloc_init` call the global `context` allocator is
+replaced by debug allocator, every following allocations are recorded and analyzed in
+runtime since then. Call :ref:`dbgalloc_terminate` to swap default context allocator
+back to previous one.
+
+Example
+-------
+.. code-block:: c
+
+    #load "std/debug_allocator.bl"
+
+    main :: fn () s32 {
+        dbgalloc_init();
+        defer dbgalloc_terminate();
+
+        // leaking allocation
+        alloc(64); 
+        return 0;
+    }
+
+.. code-block:: text
+
+    $ ./out.exe
+    ******************* MEMORY REPORT ******************
+    * Allocated 64 Bytes.
+    * Count of allocations 1.
+    ****************************************************
+    Dump memory leaks begin:
+        [1] - test.bl:10 (64 bytes)
+    Dump memory leaks end.
+
+
+Related functions
+-----------------
+* :ref:`dbgalloc_init`
+* :ref:`dbgalloc_terminate`
+* :ref:`dbgalloc_break_on`
+* :ref:`dbgalloc_allocated_bytes`
+* :ref:`dbgalloc_print_memory_report`
+*/
+
+/*!
+dbgalloc_init
+=============
+
+Declaration
+-----------
+::
+
+    dbgalloc_init :: fn ()
+
+Description
+-----------
+Initialize :ref:`debug_allocator`. This function internally swap current global context
+allocator to debug one. Deinitialization must be done by :ref:`dbgalloc_terminate` call.
+*/
+dbgalloc_init :: fn () {
+    _prev_alloc_fn = _context.alloc_fn;
+    _context.alloc_fn = &debug_allocator;
+    _alloc_table = htbl_new(*Meta, 2048, &_default_allocator);
+}
+
+/*!
+dbgalloc_terminate
+==================
+
+Declaration
+-----------
+::
+
+    dbgalloc_terminate :: fn (print_report := true)
+
+Description
+-----------
+Terminate :ref:`debug_allocator`. 
+
+Arguments
+---------
+* `print_report` Prints current memory report when `true`.
+*/
+dbgalloc_terminate :: fn (print_report := true) {
+    if print_report {
+        dbgalloc_print_memory_report(true);
+    }
+    _context.alloc_fn = _prev_alloc_fn;
+    htbl_delete(_alloc_table);
+}
+
+/*!
+dbgalloc_break_on
+=================
+
+Declaration
+-----------
+::
+
+    dbgalloc_break_on :: fn (serial: u64) #inline 
+
+Description
+-----------
+Invoke :ref:`debug_break` before allocation with defined serial ID.
+
+Arguments
+---------
+* `serial` Allocation serial ID.
+
+.. note:: See also :ref:`dbgalloc_print_memory_report`
+*/
+dbgalloc_break_on :: fn (serial: u64) #inline {
+    _break_on = serial;
+}
+
+/*!
+dbgalloc_allocated_bytes
+========================
+
+Declaration
+-----------
+::
+
+    dbgalloc_allocated_bytes :: fn () usize #inline
+
+Description
+-----------
+Return currently allocated memory in bytes.
+
+Result
+------
+Allocated memory in bytes.
+*/
+dbgalloc_allocated_bytes :: fn () usize #inline {
+    return auto _total_allocated;
+}
+
+/*!
+dbgalloc_print_memory_report
+============================
+
+Declaration
+-----------
+::
+
+    dbgalloc_print_memory_report :: fn (dump_leaks := false)
+
+Description
+-----------
+Print memory report. First block contains currently allocated bytes and current count
+of allocations. Optional memory leak dump block (enabled by `dump_leaks` argument) contains:
+
+::
+
+    [allocation serial ID] - <file>:<line> (allocation size in bytes) 
+
+.. code-block:: text
+
+    $ ./out.exe
+    ******************* MEMORY REPORT ******************
+    * Allocated 64 Bytes.
+    * Count of allocations 1.
+    ****************************************************
+    Dump memory leaks begin:
+        [1] - test.bl:10 (64 bytes)
+    Dump memory leaks end.
+
+.. note:: Printed report contains all remaining (not freed) allocations in time when function was
+          called. Memory leaks can contain false-positives when function is called before execution end.
+
+.. hint:: Allocation serail ID can be used by :ref:`dbgalloc_break_on` to interrupt execution before
+          memory is allocated and eventually localize allocation in debbuger.
+
+Arguments
+---------
+* `dump_leaks` Print also leaking memory when `true`.
+*/
+dbgalloc_print_memory_report :: fn (dump_leaks := false) {
+    unit := "Bytes";
+    total := _total_allocated;
+    if total > 1024 { total /= 1024; unit = "kB"; }
+    if total > 1024 { total /= 1024; unit = "MB"; }
+    if total > 1024 { total /= 1024; unit = "GB"; }
+    
+    print("******************* MEMORY REPORT ******************\n");
+    print("* Allocated % %.\n", total, unit);
+    print("* Count of allocations %.\n", _allocation_count);
+    print("****************************************************\n");
+
+    if dump_leaks && _allocation_count > 0 {
+        print("Dump memory leaks begin:\n");
+        iter := htbl_begin(_alloc_table);
+        end  :: htbl_end(_alloc_table);
+        loop !iter_equal(iter, end) {
+            meta :: ^cast(**Meta)htbl_iter_peek_value(iter);
+            htbl_iter_next(&iter);
+            print("    [%] - %:% (% bytes)\n", meta.serial, meta.file, meta.line, meta.allocated_size);
+        }
+        print("Dump memory leaks end.\n");
+    }
+}
+
+#private
+
+_allocation_count: s64;
+_total_allocated: s64;
+_prev_alloc_fn: AllocFn;
+_alloc_table: *HashTable;
+_serial: u64;
+_break_on: u64;
+
+Meta :: struct {
+    serial: u64;
+    allocated_size: usize;
+    used: usize;
+    file: string;
+    line: s32;
+}
+
+debug_allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := string_empty, line := 0) *u8 {
+    switch operation {
+        AllocOp.Allocate {
+            return debug_malloc(size, file, line);
+        }
+        AllocOp.Free {
+            debug_free(ptr);
+        }
+        AllocOp.Release;
+        default { panic(); }
+    }
+    return null;
+}
+
+debug_malloc :: fn (size: usize, file: string, line: s32) *u8 {
+    if size == 0 { panic("Zero allocation!"); }
+
+    _serial += 1;
+    if _break_on == _serial {
+        debug_break();
+    }
+    total_size :: sizeof(Meta) + size;
+    mem := cast(*Meta) _default_allocator(AllocOp.Allocate, total_size);
+    mem.allocated_size = size; 
+    mem.used = auto mem;
+    mem.file = file;
+    mem.line = line;
+    mem.serial = _serial;
+
+    if htbl_has_key(_alloc_table, cast(u64) mem) { panic("Invalid allocation!"); }
+    htbl_insert(_alloc_table, cast(u64) mem, mem);
+
+    _total_allocated += auto size;
+    _allocation_count += 1;
+    return ptr_shift_bytes(auto mem, auto sizeof(Meta));
+}
+
+debug_free :: fn (ptr: *u8) {
+    if ptr == null { return; }
+
+    meta := cast(*Meta) ptr_shift_bytes(ptr, - (cast(s64) sizeof(Meta)));
+
+    if meta.used == 0         { panic("Attempt to free unused memory!"); }
+    if meta.used != auto meta { panic("Memory malformed!"); }
+    meta.used = 0;
+    
+    _total_allocated -= auto meta.allocated_size;
+    _allocation_count -= 1;
+
+    htbl_erase(_alloc_table, cast(u64) meta);
+    _default_allocator(AllocOp.Free, 0, auto meta);
+}

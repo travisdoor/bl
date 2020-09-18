@@ -72,6 +72,7 @@ HashTable :: struct {
     end: Node;
     begin: *Node;
     buckets: []Bucket;
+    allocator: AllocFn;
 }
 
 /*
@@ -91,18 +92,18 @@ HashTable :: struct {
  * Result:
  *   New hash table instance.
  */
-htbl_new :: fn (v: Any, expected_size: usize) *HashTable
+htbl_new :: fn (v: Any, expected_size: usize, allocator: AllocFn = null) *HashTable
 {
     if v.type_info.kind != TypeKind.Type {
         panic("Hash table expects type passed as T not '%'", v.type_info.kind);
     }
 
-    T :: cast(*TypeInfo) v.data;
+    T := cast(*TypeInfo) v.data;
 
-    tbl := cast(*HashTable) alloc(sizeof(HashTable));
+    tbl := cast(*HashTable) htbl_alloc(allocator, sizeof(HashTable));
     if tbl == null { panic("Bad alloc!!"); }
 
-    htbl_init(tbl, T, expected_size);
+    init(tbl, T, expected_size, allocator);
     return tbl;
 }
 
@@ -118,8 +119,8 @@ htbl_new :: fn (v: Any, expected_size: usize) *HashTable
  */
 htbl_delete :: fn (tbl: *HashTable) {
     if tbl == null { return; }
-    htbl_terminate(tbl);
-    free(auto tbl);
+    terminate(tbl);
+    htbl_free(tbl.allocator, auto tbl);
 }
 
 /*
@@ -177,7 +178,7 @@ htbl_clear :: fn (tbl: *HashTable) {
 		node = auto iter.opaque;
 
 		htbl_iter_next(&iter);
-		free(auto node);
+		htbl_free(tbl.allocator, auto node);
 	}
 
     memset(auto tbl.buckets.ptr, 0, (cast(usize) tbl.buckets.len) * sizeof(Bucket));
@@ -370,68 +371,8 @@ htbl_at :: fn (tbl: *HashTable, key: u64) *u8 {
     return null;
 }
 
-/*
- * htbl_erase
- * 
- * Description:
- *   Erase table element pointed by iterator.
- * 
- * Arguments: 
- *   tbl: 
- *     Pointer to hash table. 
- *
- *   iter:
- *     Iterator pointing to element.
- *
- * Result:
- *   New iterator pointing to next element or table end.
- */
-htbl_erase :: fn (tbl: *HashTable, iter: Iterator) Iterator {
-	if iter.opaque == auto &tbl.end {
-		return {:Iterator: auto &tbl.end};
-	}
 
-	node :: cast(*Node) iter.opaque;
-	hash :: hash_index(tbl, node.key);
-	bucket :: &tbl.buckets[auto hash];
-	return erase_node(tbl, node, bucket);
-}
-
-/*
- * htbl_erase_key
- * 
- * Description:
- *   Erase table element related to key value. If table does
- *   not contain such key, panic is invoked.
- * 
- * Arguments: 
- *   tbl: 
- *     Pointer to hash table. 
- *
- *   key:
- *     Existing element key value.
- *
- * Result:
- *   New iterator pointing to next element or table end.
- */
-htbl_erase_key :: fn (tbl: *HashTable, key: u64) Iterator {
-	hash :: hash_index(tbl, key);
-	bucket :: &tbl.buckets[auto hash];
-
-	node := bucket.first;
-	loop node != null {
-		if node.key == key {
-			return erase_node(tbl, node, bucket);
-		}
-
-		if node == bucket.last { break; }
-		node = node.next;
-	}
-
-	panic("No such key % in hash table.", key);
-    return {:Iterator: 0};
-}
-
+htbl_erase :: fn { erase_iter; erase_key; }
 
 #private
 
@@ -475,7 +416,7 @@ get_data_ptr :: fn (node: *Node) *u8 #inline {
     return ptr_shift_bytes(auto node, auto sizeof(Node));
 }
 
-htbl_init :: fn (tbl: *HashTable, T: *TypeInfo, expected_size: usize) {
+init :: fn (tbl: *HashTable, T: *TypeInfo, expected_size: usize, allocator: AllocFn = null) {
     tbl.T = T;
 	tbl.end = {:Node: 0};
 	tbl.begin = &tbl.end;
@@ -483,14 +424,17 @@ htbl_init :: fn (tbl: *HashTable, T: *TypeInfo, expected_size: usize) {
 	// init buckets
 	if expected_size == 0 { expected_size = DEFAULT_EXPECTED_SIZE; }
 
+    tbl.allocator   = allocator;
 	tbl.buckets.len = auto next_prime(cast(s32)ceil(cast(f64)expected_size / cast(f64)MAX_LOAD_FACTOR));
-	tbl.buckets.ptr = auto calloc(auto tbl.buckets.len, sizeof(Bucket));
+    size : usize : cast(usize) tbl.buckets.len * sizeof(Bucket);
+	tbl.buckets.ptr = auto htbl_alloc(tbl.allocator, size);
 	tbl.len         = 0;
+    memset(auto tbl.buckets.ptr, 0, size);
 }
 
-htbl_terminate :: fn (tbl: *HashTable) {
+terminate :: fn (tbl: *HashTable) {
 	htbl_clear(tbl);
-	free(auto tbl.buckets.ptr);
+	htbl_free(tbl.allocator, auto tbl.buckets.ptr);
     tbl.buckets.len = 0;
 	tbl.len         = 0;
 	tbl.begin       = &tbl.end;
@@ -498,7 +442,7 @@ htbl_terminate :: fn (tbl: *HashTable) {
 
 create_node :: fn (tbl: *HashTable) *Node {
     node_size :: get_node_size(tbl);
-	new_node := cast(*Node) alloc(node_size);
+	new_node := cast(*Node) htbl_alloc(tbl.allocator, node_size);
     if new_node == null { panic("Bad alloc!"); }
 	memset(auto new_node, 0, node_size);
 
@@ -531,7 +475,7 @@ erase_node :: fn (tbl: *HashTable, node: *Node, bucket: *Bucket) Iterator {
 	}
 
 	iter_next := {:Iterator: auto node.next};
-	free(auto node);
+	htbl_free(tbl.allocator, auto node);
 	tbl.len -= 1;
 	return iter_next;
 }
@@ -572,5 +516,44 @@ insert :: fn (tbl: *HashTable, key: u64, data: *u8) *u8 {
 	return get_data_ptr(new_node);
 }
 
-/*
-*/
+erase_iter :: fn (tbl: *HashTable, iter: Iterator) Iterator {
+	if iter.opaque == auto &tbl.end {
+		return {:Iterator: auto &tbl.end};
+	}
+
+	node :: cast(*Node) iter.opaque;
+	hash :: hash_index(tbl, node.key);
+	bucket :: &tbl.buckets[auto hash];
+	return erase_node(tbl, node, bucket);
+}
+
+erase_key :: fn (tbl: *HashTable, key: u64) Iterator {
+	hash :: hash_index(tbl, key);
+	bucket :: &tbl.buckets[auto hash];
+
+	node := bucket.first;
+	loop node != null {
+		if node.key == key {
+			return erase_node(tbl, node, bucket);
+		}
+
+		if node == bucket.last { break; }
+		node = node.next;
+	}
+
+	panic("No such key % in hash table.", key);
+    return {:Iterator: 0};
+}
+
+htbl_alloc :: fn (allocator: AllocFn, size: usize) *u8 #inline {
+    if !allocator { return alloc(size); }
+    return allocator(AllocOp.Allocate, size, null, #file, #line);
+}
+
+htbl_free :: fn (allocator: AllocFn, ptr: *u8) #inline {
+    if !allocator {
+        free(ptr);
+        return;
+    }
+    allocator(AllocOp.Free, 0, ptr, #file, #line);
+}

@@ -692,7 +692,7 @@ Arguments
 */
 PrintLogFn :: * fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...);
 
-_AbortFn :: * fn ();
+AbortFn :: * fn ();
 
 /*!
 Context
@@ -703,9 +703,9 @@ Declaration
 .. code-block:: c
 
     Context :: struct {
-        alloc_fn: _AllocFn;
+        alloc_fn: AllocFn;
         print_log_fn: PrintLogFn;
-        abort_fn: _AbortFn;
+        abort_fn: AbortFn;
     }
 
 Description
@@ -721,9 +721,9 @@ Members
 * `abort_fn` Pointer to abort handler function. 
 */
 Context :: struct {
-    alloc_fn: _AllocFn;
+    alloc_fn: AllocFn;
     print_log_fn: PrintLogFn;
-    abort_fn: _AbortFn;
+    abort_fn: AbortFn;
 };
 
 /*!
@@ -735,7 +735,7 @@ Declaration
 .. code-block:: c
 
     _context := {:Context: 
-                    &_mem_allocator_default, 
+                    &_default_allocator, 
                     &_print_log_default, 
                     &_os_abort_default,
                 };
@@ -748,7 +748,7 @@ be modified by user code. For example we can replace default memory allocator
 with custom one, this will affect all allocations made later.
 */
 _context := {:Context: 
-                &_mem_allocator_default, 
+                &_default_allocator, 
                 &_print_log_default, 
                 &_os_abort_default,
             };

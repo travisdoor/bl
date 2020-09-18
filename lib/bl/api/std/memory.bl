@@ -37,7 +37,7 @@ Declaration
 -----------
 ::
 
-    alloc :: fn (size: usize) *u8
+    alloc :: fn (size: usize, loc := #call_location) *u8
 
 Description
 -----------
@@ -49,6 +49,7 @@ function use allocator set in `_context.alloc_fn`
 Arguments
 ---------
 * `size` Bytes to be allocated. 
+* `loc` Call location. 
 
 Result
 ------
@@ -68,7 +69,7 @@ Declaration
 -----------
 ::
 
-    calloc :: fn (num: usize, size: usize) *u8
+    calloc :: fn (num: usize, size: usize, loc := #call_location) *u8
 
 Description
 -----------
@@ -82,6 +83,7 @@ Arguments
 ---------
 * `num` Count of items to be allocated. 
 * `size` Item size in bytes. 
+* `loc` Call location. 
 
 Result
 ------
@@ -100,7 +102,7 @@ Declaration
 -----------
 ::
 
-    free :: fn (ptr: *u8)
+    free :: fn (ptr: *u8, loc := #call_location)
 
 Description
 -----------
@@ -110,6 +112,7 @@ Free memory alocated on heap. This function use default deallocator
 Arguments
 ---------
 * `ptr` Memory to be deallocated. 
+* `loc` Call location. 
 */
 free :: fn (ptr: *u8, loc := #call_location) {
     _context.alloc_fn(AllocOp.Free, 0, ptr, loc.file, loc.line); 
@@ -235,7 +238,7 @@ Example
     }
 
 */
-slice_init :: fn (_v: Any, n: s64) #compiler {
+slice_init :: fn (_v: Any, n: s64, loc := #call_location) #compiler {
     if n < 0 { panic("Attempt to allocate 0 values by make!"); }
     T :: cast(*TypeInfoStruct) _v.type_info;
     T_ptr :: cast(*TypeInfoPtr) (cast(*TypeInfoStruct) T).members[1].base_type;
@@ -249,7 +252,7 @@ slice_init :: fn (_v: Any, n: s64) #compiler {
 
     elem_size :: T_ptr.pointee_type.size_bytes;
     bytes :: elem_size * auto n;
-    dest.ptr = alloc(bytes);
+    dest.ptr = alloc(bytes, loc);
     dest.len = n;
 
     memset(dest.ptr, 0, bytes); 
@@ -273,16 +276,16 @@ Arguments
 ---------
 * `_v` Allocated slice. 
 */
-slice_terminate :: fn (_v: Any) #compiler {
+slice_terminate :: fn (_v: Any, loc := #call_location) #compiler {
     tmp := cast(*[]u8) _v.data;
     if tmp.ptr {
-        free (tmp.ptr);
+        free (tmp.ptr, loc);
         tmp.ptr = null;
     }
     tmp.len = 0;
 }
 
-_AllocFn :: *fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := string_empty, line := 0) *u8;
+AllocFn :: *fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := string_empty, line := 0) *u8;
 
 /*!
 AllocOp
@@ -314,7 +317,7 @@ AllocOp :: enum {
     Release;
 }
 
-_mem_allocator_default :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := string_empty, line := 0) *u8 {
+_default_allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := string_empty, line := 0) *u8 {
     switch operation {
         AllocOp.Allocate {
             return c_malloc(size);
