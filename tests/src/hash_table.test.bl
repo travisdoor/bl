@@ -56,7 +56,7 @@ erase :: fn () #test {
     }
 
     loop i := 0; i < 1024; i += 1 {
-        htbl_erase_key(tbl, auto i);
+        htbl_erase(tbl, cast(u64) i);
     }
 
     assert(iter_equal(htbl_begin(tbl), htbl_end(tbl)));
