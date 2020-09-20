@@ -26,10 +26,13 @@
 // SOFTWARE.
 //************************************************************************************************
 
+// @NOTE: Not direcly used internally, when layout of this structure is changed, internal
+// compiler representation must be modified too.
 _Array :: struct #compiler {
     len: s64;
     ptr: *u8;
     allocated: usize;
+    allocator: AllocFn;
 }
 
 /*!
@@ -40,22 +43,24 @@ Declaration
 -----------
 ::
 
-    array_init :: fn (_arr: Any)
+    array_init :: fn (_arr: Any, allocator: AllocFn = null) #inline #compiler
 
 Description
 -----------
 Sets dynamic array to default state. If array contains already allocated memory 
 `array_terminate` must be called first.
+`allocator` optional custom allocator.
 
 Arguments
 ---------
 * `_arr` Array to be initialized. 
 */
-array_init :: fn (_arr: Any) #inline #compiler {
+array_init :: fn (_arr: Any, allocator: AllocFn = null) #inline #compiler {
     arr := cast(*_Array) _arr.data;
     arr.ptr = null;
     arr.len = 0;
     arr.allocated = 0;
+    arr.allocator = allocator;
 }
 
 /*!
@@ -80,7 +85,11 @@ Arguments
 */
 array_terminate :: fn (_arr: Any) #inline #compiler {
     arr := cast(*_Array) _arr.data;
-    free(arr.ptr);
+    if arr.allocator {
+        arr.allocator(AllocOp.Free, 0, arr.ptr, #file, #line);
+    } else {
+        free(arr.ptr);
+    }
     arr.ptr = null;
     arr.len = 0;
     arr.allocated = 0;
@@ -238,10 +247,18 @@ ensure_space :: fn (arr: *_Array, elem_size: usize, space: usize, exact: bool) {
 
     tmp := arr.ptr;
 
-    arr.ptr = alloc(space * elem_size); 
+    if arr.allocator {
+        arr.ptr = arr.allocator(AllocOp.Allocate, space * elem_size, null, #file, #line);
+    } else {
+        arr.ptr = alloc(space * elem_size); 
+    }
     if tmp != null {
         memcpy(arr.ptr, tmp, arr.allocated * elem_size);
-        free(tmp);
+        if arr.allocator {
+            arr.allocator(AllocOp.Free, 0, tmp, #file, #line);
+        } else {
+            free(tmp);
+        }
     }
     
     arr.allocated = space;

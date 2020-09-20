@@ -1839,6 +1839,7 @@ void interp_instr_call(VM *vm, MirInstrCall *call)
     }
 
     MirFn *callee = (MirFn *)vm_read_ptr(callee_ptr_type, callee_ptr);
+    BL_MAGIC_ASSERT(callee);
     if (callee == NULL) {
         builder_error("Function pointer not set!");
         exec_abort(vm, 0);
@@ -2174,8 +2175,8 @@ void eval_instr_compound(VM *vm, MirInstrCompound *compound)
 {
     MirConstExprValue *value = &compound->base.value;
     if (needs_tmp_alloc(value)) {
-        // Compound data does't fit into default static memory register, we need to
-        // allcate temporary block on the stack.
+        // Compound data doesn't fit into default static memory register, we need to
+        // allocate temporary block on the stack.
         value->data = stack_push_empty(vm, value->type);
     }
 

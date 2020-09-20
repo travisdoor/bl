@@ -1,7 +1,7 @@
 #load "std/array.bl"
 
 #private
-test_basic_inserting_s32 :: fn () #test{
+test_basic_inserting_s32 :: fn () #test {
     arr: [..]s32;
     defer array_terminate(arr);
             
@@ -118,4 +118,43 @@ test_cast_to_slice :: fn () #test {
     }
 
     foo(arr);
+}
+
+alloc_count := 0;
+free_count := 0;
+
+test_allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := string_empty, line := 0) *u8 {
+    switch operation {
+        AllocOp.Allocate {
+            alloc_count += 1;
+            return c_malloc(size);
+        }
+        AllocOp.Free {
+            free_count += 1;
+            c_free(ptr);
+        }
+        AllocOp.Release;
+        default { panic(); }
+    }
+    return null;
+}
+
+test_custom_allocator :: fn () #test {
+    alloc_count = 0;
+    free_count = 0;
+
+    arr: [..]s32;
+    array_init(arr, &test_allocator);
+            
+    loop i := 0; i < 1000; i += 1 {
+        array_push(arr, i);
+    }
+
+    loop i := 0; i < arr.len; i += 1 {
+        assert(arr[i] == i);
+    }
+    array_terminate(arr);
+
+    test_eq(alloc_count, 6);
+    test_eq(alloc_count, free_count);
 }

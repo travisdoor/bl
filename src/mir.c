@@ -1936,7 +1936,7 @@ MirType *create_type_struct_dynarr(Context *cnt, ID *id, MirType *elem_ptr_type)
 
     TSmallArray_MemberPtr *members = create_sarr(TSmallArray_MemberPtr, cnt->assembly);
 
-    // Dynamic array layout struct { s64, *T, usize }
+    // Dynamic array layout struct { s64, *T, usize, allocator }
     Scope *body_scope = scope_create(
         &cnt->assembly->arenas.scope, SCOPE_TYPE_STRUCT, cnt->assembly->gscope, 2, NULL);
 
@@ -1968,6 +1968,14 @@ MirType *create_type_struct_dynarr(Context *cnt, ID *id, MirType *elem_ptr_type)
                             body_scope,
                             2,
                             cnt->builtin_types->t_usize);
+
+        tsa_push_MemberPtr(members, tmp);
+        provide_builtin_member(cnt, body_scope, tmp);
+    }
+
+    { // .allocator
+        tmp = create_member(
+            cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_ALLOCATOR], body_scope, 3, elem_ptr_type);
 
         tsa_push_MemberPtr(members, tmp);
         provide_builtin_member(cnt, body_scope, tmp);
@@ -3087,7 +3095,7 @@ MirInstr *create_default_value_for_type(Context *cnt, MirType *type, bool is_glo
         MirInstrCompound *compound =
             (MirInstrCompound *)create_instr_compound_impl(cnt, NULL, type, NULL);
         // Global initializers should be naked for some reason and I don't remember why,
-        // somebody should double check this in future.
+        // someone should double check this in future.
         compound->is_naked               = is_global;
         compound->is_zero_initialized    = true;
         compound->base.value.is_comptime = true;
