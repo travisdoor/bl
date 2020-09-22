@@ -26,6 +26,35 @@
 // SOFTWARE.
 //************************************************************************************************
 
+/*!
+array
+=====
+
+Declaration
+-----------
+.. code-block:: c
+
+    _Array :: struct #compiler {
+        len: s64;
+        ptr: *u8;
+        allocated: usize;
+        allocator: AllocFn;
+    }
+
+Description
+-----------
+Compiler builtin dynamic array.
+
+Related functions
+-----------------
+* :ref:`array_init`
+* :ref:`array_terminate`
+* :ref:`array_push`
+* :ref:`array_reserve`
+* :ref:`array_erase`
+* :ref:`array_clear`
+*/
+
 // @NOTE: Not direcly used internally, when layout of this structure is changed, internal
 // compiler representation must be modified too.
 _Array :: struct #compiler {
