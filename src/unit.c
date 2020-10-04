@@ -151,24 +151,25 @@ void unit_delete(Unit *unit)
 
 const char *unit_get_src_ln(Unit *unit, s32 line, long *len)
 {
-    s32         lc    = 1;
-    const char *c     = unit->src;
+    if (line < 1) return NULL;
+    const char *c = unit->src;
     const char *begin = c;
     while (true) {
         if (*c == '\n') {
-            if (lc == line) {
-                --c;
-                break;
-            }
+            --line;
+            if (line == 0) break;
             begin = c + 1;
-            ++lc;
         }
-        if (*c == '\0') break;
+        if (*c == '\0') {
+            --line;
+            break;
+        }
         ++c;
     }
-    if (line != lc) c = begin = NULL;
+    if (line > 0) return NULL;
     if (len) {
-        *len = (long)(c - begin);
+        (*len) = (long)(c - begin);
+        BL_ASSERT(*len >= 0);
     }
     return begin;
 }

@@ -36,7 +36,6 @@
 
 struct Token;
 
-// class Unit object members
 typedef struct Unit {
     u64             hash;
     Tokens          tokens;        // Unit tokens as lexer output.
@@ -46,13 +45,23 @@ typedef struct Unit {
     char *          filepath;      // Loaded source file name with path.
     char *          dirpath;       // Parent directory.
     char *          name;          // Unit name
-    char *          src;           // Unit raw source data. 
+    char *          src;           // Unit raw source data.
     struct Token *  loaded_from;   // Optionally set when unit is loaded from another unit.
     LLVMMetadataRef llvm_file_meta;
 } Unit;
 
-Unit *      unit_new_file(const char *filepath, struct Token *loaded_from, Unit *parent_unit);
-void        unit_delete(Unit *unit);
+/// Create new Unit instance.
+/// \param filepath File location and name.
+/// \param loaded_from Optional token from where file was loaded in source code.
+/// \param parent_unit Optional parent unit from where new unit was created.
+Unit *unit_new_file(const char *filepath, struct Token *loaded_from, Unit *parent_unit);
+void  unit_delete(Unit *unit);
+
+/// Get pointer to begin of desired line in source code.
+/// \param unit Pointer to unit.
+/// \param line Desired line greater then one.
+/// \param len  Set to line length when line was found. [optional]
+/// \return Pointer to line location if line was found otherwise NULL.
 const char *unit_get_src_ln(Unit *unit, s32 line, long *len);
 
 #endif

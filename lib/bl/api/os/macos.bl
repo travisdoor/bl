@@ -397,4 +397,3 @@ _posix_thread_mutex_trylock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_m
 _posix_thread_mutex_unlock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_unlock"; 
 _posix_thread_mutex_init :: fn (mutex: *_PosixMutex, attr: c_void_ptr) c_int #extern "pthread_mutex_init";
 _posix_thread_mutex_destroy :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_destroy";
-

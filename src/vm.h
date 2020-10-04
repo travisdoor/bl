@@ -82,17 +82,19 @@ void vm_do_cast(VMStackPtr      dest,
                 struct MirType *src_type,
                 s32             op);
 
-// Allocate space on the stack for passed variable in VM. This method works also for comptime
-// variables, but it's used only for implicit compiler generated variables without SetInitializer
-// instruction defined! When SetInitializer is used we can simply move memory pointer from
-// initialization value to variable const expression value (to safe memory and time needed by
-// copying).
+/// Allocates global variable.
+///
+/// Allocate space on the stack for passed variable in VM. This method works also for comptime
+/// variables, but it's used only for implicit compiler generated variables without SetInitializer
+/// instruction defined! When SetInitializer is used we can simply move memory pointer from
+/// initialization value to variable const expression value (to safe memory and time needed by
+/// copying).
 VMStackPtr vm_alloc_global(VM *vm, struct Assembly *assembly, struct MirVar *var);
 
-// Allocate raw memory on the stack to hold sizeof(type) value.
+/// Allocate raw memory on the stack to hold sizeof(type) value.
 VMStackPtr vm_alloc_raw(VM *vm, struct Assembly *assembly, struct MirType *type);
 
-// Return pointer to constant or stack allocated variable.
+/// Return pointer to constant or stack allocated variable.
 VMStackPtr vm_read_var(VM *vm, const struct MirVar *var);
 
 #define vm_read_as(T, src) (*((T *)(src)))
