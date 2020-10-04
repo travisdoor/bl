@@ -50,18 +50,12 @@ typedef struct Unit {
     LLVMMetadataRef llvm_file_meta;
 } Unit;
 
-/// Create new Unit instance.
-/// \param filepath File location and name.
-/// \param loaded_from Optional token from where file was loaded in source code.
-/// \param parent_unit Optional parent unit from where new unit was created.
+// Create new Unit instance.
 Unit *unit_new_file(const char *filepath, struct Token *loaded_from, Unit *parent_unit);
 void  unit_delete(Unit *unit);
 
-/// Get pointer to begin of desired line in source code.
-/// \param unit Pointer to unit.
-/// \param line Desired line greater then one.
-/// \param len  Set to line length when line was found. [optional]
-/// \return Pointer to line location if line was found otherwise NULL.
+// Get pointer to begin of desired line in source code. Line must be greater then one. Len is
+// optional output parameter set to line length.
 const char *unit_get_src_ln(Unit *unit, s32 line, long *len);
 
 #endif
