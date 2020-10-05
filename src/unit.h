@@ -54,7 +54,7 @@ typedef struct Unit {
 Unit *unit_new_file(const char *filepath, struct Token *loaded_from, Unit *parent_unit);
 void  unit_delete(Unit *unit);
 
-// Get pointer to begin of desired line in source code. Line must be greater then one. Len is
+// Get pointer to begin of desired line in source code. 'Line' must be greater then one. 'Len' is
 // optional output parameter set to line length.
 const char *unit_get_src_ln(Unit *unit, s32 line, long *len);
 
