@@ -86,9 +86,10 @@ if (MSVC)
 endif ()
 
 if (UNIX AND NOT APPLE)
-	find_package(LLVM 10 REQUIRED)
+    # There is no LLVM v10 on Ubuntu 18.04 by default.
+    find_package(LLVM 9 REQUIRED)
 else ()
-	find_package(LLVM 10 REQUIRED)
+    find_package(LLVM 10 REQUIRED)
 endif ()
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
