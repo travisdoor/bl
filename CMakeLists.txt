@@ -86,7 +86,7 @@ if (MSVC)
 endif ()
 
 if (UNIX AND NOT APPLE)
-	find_package(LLVM 9 REQUIRED)
+	find_package(LLVM 10 REQUIRED)
 else ()
 	find_package(LLVM 10 REQUIRED)
 endif ()
