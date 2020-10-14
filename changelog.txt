@@ -3,6 +3,7 @@
 Add debug allocator.
 Support custom allocators in containers.
 Fix segfault on error get line.
+Fix invalid character when comment block is very last in source file.
 
 0.7.1 - BETA
 ---------------------------------------------------------------------------------------

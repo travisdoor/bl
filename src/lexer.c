@@ -75,9 +75,8 @@ bool scan_comment(Context *cnt, const char *term)
                        cnt->line,
                        cnt->col);
         }
-        if (*cnt->c == SYM_EOF || strncmp(cnt->c, term, len) == 0) {
-            break;
-        }
+        if (*cnt->c == SYM_EOF) return true;
+        if (strncmp(cnt->c, term, len) == 0) break;
         cnt->c++;
     }
 
