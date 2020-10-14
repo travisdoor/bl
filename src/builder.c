@@ -318,7 +318,7 @@ int builder_compile(Assembly *assembly)
     s32     state       = COMPILE_OK;
     builder.total_lines = 0;
 
-    builder_log("Compile assembly: %s [%s]",
+    builder_note("Compile assembly: %s [%s]",
                 assembly->name,
                 build_mode_to_str(assembly->options.build_mode));
 
