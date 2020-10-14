@@ -32,7 +32,7 @@
 #ifdef BL_PLATFORM_WIN
 static const char *link_flag      = "";
 static const char *link_path_flag = "/LIBPATH:";
-static const char *cmd = "call \"%s\" %s && \"%s\" \"%s//%s.obj\" /OUT:\"%s//%s.exe\" %s %s";
+static const char *cmd = "call \"%s\" %s >NUL && \"%s\" \"%s//%s.obj\" /OUT:\"%s//%s.exe\" %s %s";
 static const char *cmd_no_vcvars = "call \"%s\" \"%s//%s.obj\" /OUT:\"%s//%s.exe\" %s %s";
 #else
 static const char *link_flag      = "-l";

@@ -79,14 +79,11 @@ static void llvm_terminate(void)
 
 int compile_unit(Unit *unit, Assembly *assembly)
 {
-    if (builder.options.verbose) {
-        if (unit->loaded_from) {
-            builder_log("Compile: %s (loaded from '%s')",
-                        unit->name,
-                        unit->loaded_from->location.unit->name);
-        } else {
-            builder_log("Compile: %s", unit->name);
-        }
+    if (unit->loaded_from) {
+        builder_log(
+            "Compile: %s (loaded from '%s')", unit->name, unit->loaded_from->location.unit->name);
+    } else {
+        builder_log("Compile: %s", unit->name);
     }
 
     file_loader_run(unit);
@@ -364,7 +361,7 @@ int builder_compile(Assembly *assembly)
 
     builder_log("Compiled %i lines in %f seconds.", builder.total_lines, time_spent);
     if (state != COMPILE_OK) {
-        builder_log("There were errors, sorry...");
+        builder_warning("There were errors, sorry...");
     }
 
     // We return count of failed compile time test cases as state even if there was no
@@ -380,6 +377,7 @@ void builder_msg(BuilderMsgType type,
                  ...)
 {
     if (type == BUILDER_MSG_ERROR && builder.errorc > MAX_ERROR_REPORTED) return;
+    if (type == BUILDER_MSG_LOG && !builder.options.verbose) return;
     if (builder.options.no_warn && type == BUILDER_MSG_WARNING) return;
 
     TString tmp;
@@ -474,10 +472,6 @@ void builder_msg(BuilderMsgType type,
     }
     case BUILDER_MSG_WARNING: {
         color_print(stdout, BL_YELLOW, tmp.data);
-        break;
-    }
-    case BUILDER_MSG_NOTE: {
-        color_print(stdout, BL_BLUE, tmp.data);
         break;
     }
 

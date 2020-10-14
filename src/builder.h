@@ -120,6 +120,7 @@ void builder_add_assembly(Assembly *assembly);
 s32  builder_compile_all(void);
 s32  builder_compile(Assembly *assembly);
 void builder_invoke_message(const Assembly *assembly, const BuilderMessage *msg);
+
 #define builder_log(format, ...)                                                                   \
     builder_msg(BUILDER_MSG_LOG, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
 #define builder_note(format, ...)                                                                  \

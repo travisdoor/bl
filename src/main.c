@@ -99,7 +99,6 @@ int main(s32 argc, char *argv[])
     setup_env();
     main_thread_id = thread_get_id();
 
-    printf("Compiler version: %s, LLVM: %d\n", BL_VERSION, LLVM_VERSION_MAJOR);
 #ifdef BL_DEBUG
     puts("Running in DEBUG mode");
     printf("Main thread ID: 0x%llx\n", main_thread_id);
@@ -107,6 +106,7 @@ int main(s32 argc, char *argv[])
 
     builder_init();
     s32 next_arg = builder_parse_options(argc, argv);
+    builder_log("Compiler version: %s, LLVM: %d", BL_VERSION, LLVM_VERSION_MAJOR);
     if (next_arg == -1) {
         fprintf(stdout, "%s", help_text);
         EXIT(EXIT_FAILURE);
@@ -178,7 +178,7 @@ int main(s32 argc, char *argv[])
 
     char date[26];
     date_time(date, 26, "%d-%m-%Y %H:%M:%S");
-    printf("\nFinished at %s", date);
+    builder_note("Finished at %s", date);
 
 RELEASE:
     builder_terminate();
