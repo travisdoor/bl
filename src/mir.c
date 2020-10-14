@@ -4836,9 +4836,10 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 
         // lookup in private scope and global scope also (private scope has global
         // scope as parent every time)
-        if (!found)
+        if (!found) {
             found =
                 scope_lookup(private_scope, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
+        }
     }
 
     if (!found) return ANALYZE_RESULT(WAITING, ref->rid->hash);
@@ -4898,7 +4899,7 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
         if (type->kind == MIR_TYPE_TYPE) {
             MirType *t = MIR_CEV_READ_AS(MirType *, &var->value);
             BL_MAGIC_ASSERT(t);
-            if (is_incomplete_struct_type(t) && !ref->accept_incomplete_type) {
+            if (!ref->accept_incomplete_type && is_incomplete_struct_type(t)) {
                 BL_ASSERT(t->user_id);
                 return ANALYZE_RESULT(WAITING, t->user_id->hash);
             }
@@ -6485,12 +6486,23 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
     // Pre-scan of all arguments passed to function call is needed in case we want to convert some
     // arguments to Any type, because to Any conversion requires generation of rtti metadata about
     // argument value type, we must check all argument types for it's completeness.
+
+    // @PERFORMANCE This is really needed only in case the function argument list contains
+    // conversion to Any, there is no need to scan everything, also there is possible option do this
+    // check in analyze_instr_decl_ref pass. @travis  14-Oct-2020
     if (call->args) {
         MirInstr *it;
         TSA_FOREACH(call->args, it)
         {
             MirType *t = it->value.type;
-            if (!is_complete_type(cnt, t)) return ANALYZE_RESULT(POSTPONE, 0);
+            if (t->kind == MIR_TYPE_PTR && mir_deref_type(t)->kind == MIR_TYPE_TYPE) {
+                t = *MIR_CEV_READ_AS(MirType **, &it->value);
+                BL_MAGIC_ASSERT(t);
+            }
+            if (!is_complete_type(cnt, t)) {
+                if (t->user_id) return ANALYZE_RESULT(WAITING, t->user_id->hash);
+                return ANALYZE_RESULT(POSTPONE, 0);
+            }
         }
     }
 
@@ -7315,6 +7327,7 @@ void analyze_report_unresolved(Context *cnt)
     MirInstr *instr;
     TArray *  wq;
     TIterator iter;
+    s32       reported = 0;
 
     THTBL_FOREACH(&cnt->analyze.waiting, iter)
     {
@@ -7323,42 +7336,37 @@ void analyze_report_unresolved(Context *cnt)
         TARRAY_FOREACH(MirInstr *, wq, instr)
         {
             BL_ASSERT(instr);
+            const char *sym_name = NULL;
             switch (instr->kind) {
-#if 0 // Should not happen
-            case MIR_INSTR_MEMBER_PTR: {
-                MirInstrMemberPtr *mp          = (MirInstrMemberPtr *)instr;
-                MirType *          target_type = mp->target_ptr->value.type;
-                if (!target_type) break;
-                target_type = mir_deref_type(target_type);
-                if (target_type->kind != MIR_TYPE_PTR) break;
-                target_type = mir_deref_type(target_type);
-                if (mir_is_composit_type(target_type)) {
-                    if (!target_type->data.strct.scope) break;
-                    if (lookup_composit_member(target_type, &mp->member_ident->data.ident.id, NULL)) {
-                        continue;
-                    }
-                }
-                break;
-            }
-#endif
             case MIR_INSTR_DECL_REF: {
                 MirInstrDeclRef *ref = (MirInstrDeclRef *)instr;
-                if (!ref->scope) break;
-                if (!ref->rid) break;
+                if (!ref->scope) continue;
+                if (!ref->rid) continue;
+                sym_name = ref->rid->str;
                 if (scope_lookup(ref->scope, ref->rid, true, false, NULL)) {
                     continue;
                 }
                 break;
             }
             default:
-                break;
+                continue;
             }
+            BL_ASSERT(sym_name && "Invalid unresolved symbol name!");
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_UNKNOWN_SYMBOL,
                         instr->node->location,
                         BUILDER_CUR_WORD,
-                        "Unknown symbol.");
+                        "Unknown symbol '%s'.",
+                        sym_name);
+            ++reported;
         }
+    }
+    if (cnt->analyze.waiting.size && !reported) {
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_UNKNOWN_SYMBOL,
+                    NULL,
+                    BUILDER_CUR_WORD,
+                    "Unknown symbol/s detected but not correctly reported, this is compiler bug!");
     }
 }
 
