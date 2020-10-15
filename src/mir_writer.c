@@ -69,7 +69,7 @@ void mir_writer_run(Assembly *assembly)
     mir_print_assembly(assembly, f);
 
     fclose(f);
-    builder_log("Mir code written into %s", export_file);
+    builder_note("Mir code written into %s", export_file);
 
     bl_free(export_file);
 }

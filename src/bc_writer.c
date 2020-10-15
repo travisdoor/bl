@@ -53,7 +53,7 @@ void bc_writer_run(Assembly *assembly)
     fclose(f);
     LLVMDisposeMessage(str);
 
-    builder_log("Byte code written into %s", export_file);
+    builder_note("Byte code written into %s", export_file);
 
     free(export_file);
     TracyCZoneEnd(_tctx);

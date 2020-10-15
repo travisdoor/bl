@@ -57,8 +57,8 @@ Builtin string storage. `string` type could represent dynamic and compile time s
     my_string :: string_new("This is my string!");
     defer string_delete(my_string);
 
-All BL strings are zero terminated, due to better interaction with C APIs, terminator is
-not counted in string length. However BL API functions does not relly on this.
+BL strings are zero terinated execept of sub-string view function (terminator cannot be added 
+because we cannot modify original string).
 
 Related functions
 -----------------
@@ -490,6 +490,9 @@ memory of the `str`, they are not supposed to be freed.
 When delimiter is not present in the input string function return `false`, `lhs` and
 `rhs` buffers are not modified, otherwise function return `true` and sets `lhs` and `rhs`
 to found values.
+
+.. warning:: `lhs` and `rhs` sub strings are not guaranteed to be zero terminated and they are not
+             supposed to be freed. 
  
 Arguments
 ---------
@@ -558,6 +561,9 @@ Description
 Split input string `str` at index position and return true when split was done. Result tokens 
 only points into original memory of the `str`, they are not supposed to be freed. When index is 
 out of `str` range function return `false`, `lhs` and `rhs` buffers are not modified.
+
+.. warning:: `lhs` and `rhs` sub strings are not guaranteed to be zero terminated and they are not
+             supposed to be freed. 
  
 Arguments
 ---------
@@ -615,6 +621,9 @@ memory of the `str`, they are not supposed to be freed.
 When delimiter is not present in the input string function return `false`, `lhs` and
 `rhs` buffers are not modified, otherwise function return `true` and sets `lhs` and `rhs`
 to found values.
+
+.. warning:: `lhs` and `rhs` sub strings are not guaranteed to be zero terminated and they are not
+             supposed to be freed. 
  
 Arguments
 ---------
@@ -776,7 +785,8 @@ Split the `str` input string by delimiter and return new slice containing
 all found sub-strings. 
 
 .. warning:: String slice should be terminated by :ref:`slice_terminate` call.
-.. note:: Slice elements just points into original string and should not be terminated.
+.. warning:: Slice elements are not guaranteed to be zero terminated and they are not
+             supposed to be freed. 
 
 Arguments
 ---------
@@ -1032,6 +1042,45 @@ Result
 True when string `len` is 0 and `ptr` is null.
 */
 string_is_null_or_empty :: fn (s: string) bool #inline { return s.ptr == null || s.len == 0; }
+
+
+/*!
+string_sub
+==========
+
+Declaration
+-----------
+::
+
+    string_sub :: fn (s: string, start: s32, len := -1) string #inline
+
+Description
+-----------
+Creates substring from passed string starting at `start` index of input string and ending at `start` + `len`
+index.
+
+.. warning:: Result sub-string is not guaranteed to be zero terminated and it's not supposed to
+             be freed.
+ 
+Arguments
+---------
+* `str` Input string.
+* `start` Starting index greated than 0 and less than `str.len`.
+* `len` Optional length of substring. When not specified, length from `start` to the end of the `str` is used.
+
+Result
+------
+True when string `len` is 0 and `ptr` is null.
+
+*/ 
+string_sub :: fn (s: string, start: s64, len : s64 = -1) string #inline {
+    if len < -1 { panic("Invalid substring len %", len); }
+    if start < 0 { panic("Invalid substring start %", start); }
+    if start > s.len { panic("Invalid substring start index %", start); }
+    if len == -1 { len = s.len - start; }
+    if len == 0 { return string_empty; }
+    return {:string: len, &s[start]};
+}
 
 // Some legacy C string libc apis.
 c_strlen :: fn (str: *c_char) c_size_t #extern "strlen";

@@ -9678,7 +9678,7 @@ void mir_type_to_str(char *buf, usize len, const MirType *type, bool prefer_name
 
 void execute_entry_fn(Context *cnt)
 {
-    builder_log("\nExecuting 'main' in compile time...");
+    builder_note("\nExecuting 'main' in compile time...");
     if (!cnt->entry_fn) {
         builder_error("Assembly '%s' has no entry function!", cnt->assembly->name);
         return;
@@ -9699,12 +9699,12 @@ void execute_entry_fn(Context *cnt)
         if (ret_ptr) {
             MirType * ret_type = fn_type->data.fn.ret_type;
             const s64 result   = vm_read_int(ret_type, ret_ptr);
-            builder_log("Execution finished with state: %lld\n", (long long)result);
+            builder_note("Execution finished with state: %lld\n", (long long)result);
         } else {
-            builder_log("Execution finished without errors");
+            builder_note("Execution finished without errors");
         }
     } else {
-        builder_log("Execution finished with errors");
+        builder_note("Execution finished with errors");
     }
 }
 

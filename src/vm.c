@@ -680,7 +680,7 @@ void print_call_stack(VM *vm, usize max_nesting)
 
     if (!instr) return;
     // print last instruction
-    builder_msg(BUILDER_MSG_LOG, 0, instr->node->location, BUILDER_CUR_WORD, "");
+    builder_msg(BUILDER_MSG_NOTE, 0, instr->node->location, BUILDER_CUR_WORD, "");
     builder_note("called from:");
 
     while (fr) {
@@ -693,7 +693,7 @@ void print_call_stack(VM *vm, usize max_nesting)
             break;
         }
 
-        builder_msg(BUILDER_MSG_LOG, 0, instr->node->location, BUILDER_CUR_WORD, "");
+        builder_msg(BUILDER_MSG_NOTE, 0, instr->node->location, BUILDER_CUR_WORD, "");
         ++n;
     }
 }

@@ -54,9 +54,7 @@ static bool search_library(Context *   cnt,
     char lib_name_full[256]     = {0};
 
     platform_lib_name(lib_name, lib_name_full, TARRAY_SIZE(lib_name_full));
-
-    if (builder.options.verbose) builder_log("- Looking for: '%s'", lib_name_full);
-
+    builder_log("- Looking for: '%s'", lib_name_full);
     const char *dir;
     TARRAY_FOREACH(const char *, cnt->lib_paths, dir)
     {
@@ -68,7 +66,7 @@ static bool search_library(Context *   cnt,
         strcat(lib_filepath, lib_name_full);
 
         if (file_exists(lib_filepath)) {
-            if (builder.options.verbose) builder_log("  Found: '%s'", lib_filepath);
+            builder_log("  Found: '%s'", lib_filepath);
             if (out_lib_name) (*out_lib_name) = strdup(lib_name_full);
             if (out_lib_dir) (*out_lib_dir) = strdup(dir);
             if (out_lib_filepath) (*out_lib_filepath) = strdup(lib_filepath);
@@ -76,7 +74,7 @@ static bool search_library(Context *   cnt,
         }
     }
 
-    if (builder.options.verbose) builder_log("  Not found: '%s'", lib_filepath);
+    builder_log("  Not found: '%s'", lib_filepath);
     return false;
 }
 
@@ -162,11 +160,7 @@ void linker_run(Assembly *assembly)
     Context cnt;
     cnt.assembly  = assembly;
     cnt.lib_paths = &assembly->options.lib_paths;
-
-    if (builder.options.verbose) {
-        builder_log("Running runtime linker...");
-    }
-
+    builder_log("Running runtime linker...");
     set_lib_paths(&cnt);
 
     NativeLib *lib;

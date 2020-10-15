@@ -404,3 +404,63 @@ test_string_count2 :: fn () #test {
     defer string_delete(s1);
     test_eq(string_count(s1, ' '), 5);
 }
+
+test_string_sub_default_len :: fn () #test {
+    s1 :: string_sub("hello world", 0);
+    test_eq(s1.len, 11); 
+    test_eq(s1, "hello world"); 
+}
+
+test_string_sub_empty :: fn () #test {
+    s1 :: string_sub(string_empty, 0);
+    test_eq(s1.len, 0); 
+    test_eq(s1, string_empty); 
+}
+
+test_string_sub_empty2 :: fn () #test {
+    s1 :: string_sub("hello world", 0, 0);
+    test_eq(s1.len, 0); 
+    test_eq(s1, string_empty); 
+}
+
+test_string_sub_full :: fn () #test {
+    s1 :: string_sub("hello world", 0, 11);
+    test_eq(s1.len, 11); 
+    test_eq(s1, "hello world"); 
+}
+
+test_string_sub_1 :: fn () #test {
+    s1 :: string_sub("hello world", 0, 5);
+    test_eq(s1.len, 5); 
+    test_eq(s1, "hello"); 
+}
+
+test_string_sub_2 :: fn () #test {
+    s1 :: string_sub("hello world", 6, 5);
+    test_eq(s1.len, 5); 
+    test_eq(s1, "world"); 
+}
+
+test_string_sub_3 :: fn () #test {
+    s1 :: string_sub("hello world", 10, 1);
+    test_eq(s1.len, 1); 
+    test_eq(s1, "d"); 
+}
+
+test_string_sub_4 :: fn () #test {
+    s1 :: string_sub("hello world", 10);
+    test_eq(s1.len, 1); 
+    test_eq(s1, "d"); 
+}
+
+test_string_sub_5 :: fn () #test {
+    s1 :: string_sub("hello world", 6);
+    test_eq(s1.len, 5); 
+    test_eq(s1, "world"); 
+}
+
+test_string_sub_6 :: fn () #test {
+    s1 :: string_sub("hello world", 11);
+    test_eq(s1.len, 0); 
+    test_eq(s1, string_empty); 
+}
