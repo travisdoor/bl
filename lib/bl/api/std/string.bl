@@ -85,6 +85,7 @@ Related functions
 * :ref:`string_is_empty`
 * :ref:`string_is_null_or_empty`
 * :ref:`sprint`
+* :ref: `string_sub`
 
 .. note:: String manipulation functions are related only to dynamic strings and cannot be used with
           string literals since those are constants allocated on stack.
@@ -1070,7 +1071,7 @@ Arguments
 
 Result
 ------
-True when string `len` is 0 and `ptr` is null.
+Sub-string.
 
 */ 
 string_sub :: fn (s: string, start: s64, len : s64 = -1) string #inline {
