@@ -178,7 +178,7 @@ os_get_home_path :: fn () string {
     return string_new(cdir);
 }
 
-os_dlopen :: fn (lib_name: string) OSLibrary #inline {
+os_dlopen :: fn (lib_name := string_empty) OSLibrary #inline {
     clib_name: *u8 = null;
     if lib_name.len > 0 { clib_name = lib_name.ptr; }
 

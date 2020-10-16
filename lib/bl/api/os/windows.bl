@@ -172,7 +172,7 @@ os_get_home_path :: fn () string {
     return string_new(cdir);
 }
 
-os_dlopen :: fn (lib_name: string) OSLibrary {
+os_dlopen :: fn (lib_name := string_empty) OSLibrary {
     if lib_name.len > 0 {
         return win32_LoadLibraryA(auto lib_name.ptr); 
     }

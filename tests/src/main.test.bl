@@ -2,6 +2,7 @@
 #load "std/test.bl"
 
 /////////////////////////////////////////////////////
+#load "std/debug_allocator.bl"
 #load "intrinsics.test.bl"
 #load "dynamic_arrays.test.bl"
 #load "print.test.bl"
@@ -34,9 +35,12 @@
 #load "debug.test.bl"
 #load "fn_overload.test.bl"
 #load "tags.test.bl"
+#load "os.test.bl"
 /////////////////////////////////////////////////////
 
 main :: fn () s32 {
+    dbgalloc_init();
+    defer dbgalloc_terminate();
     return test_run(); 
 } 
 

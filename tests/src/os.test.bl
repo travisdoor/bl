@@ -1,0 +1,69 @@
+#private
+
+test_os_tick_ms :: fn () #test {
+    test_true(os_tick_ms() > 0.);
+}
+
+test_os_sleep_ms :: fn () #test {
+    t :: os_tick_ms();
+    os_sleep_ms(100.);
+    elapsed :: os_tick_ms() - t;
+    test_true(elapsed > 100.);
+}
+
+test_os_normalize_path :: fn () #test {
+    path := string_new(#file);
+    defer string_delete(path);
+    test_true(os_normalize_path(&path));
+    test_eq(path, #file);
+}
+
+test_os_normalize_path2 :: fn () #test {
+    path :: string_new("src/main.test.bl");
+    defer string_delete(path);
+    test_true(os_normalize_path(&path));
+    test_true(path.len > 0);
+    filename: string;
+    test_true(string_split_by_last(path, '/', null, &filename));
+    test_eq(filename, "main.test.bl");
+}
+
+test_os_normalize_path3 :: fn () #test {
+    path :: string_new("foobar");
+    defer string_delete(path);
+    test_false(os_normalize_path(&path));
+    test_eq(path, "foobar");
+}
+
+test_os_get_real_path :: fn () #test {
+    path :: os_get_real_path(#file);
+    defer string_delete(path);
+    test_eq(path, #file);
+}
+
+test_os_get_real_path2 :: fn () #test {
+    path :: os_get_real_path("src/main.test.bl");
+    defer string_delete(path);
+    test_true(path.len > 0);
+    filename: string;
+    test_true(string_split_by_last(path, '/', null, &filename));
+    test_eq(filename, "main.test.bl");
+}
+
+test_os_get_real_path3 :: fn () #test {
+    path :: os_get_real_path("foobar");
+    defer string_delete(path);
+    test_eq(path, "foobar");
+}
+
+test_os_get_home_path :: fn () #test {
+    path :: os_get_home_path();
+    defer string_delete(path);
+    test_neq(path, string_empty);
+}
+
+test_os_dlopen :: fn () #test {
+    lib :: os_dlopen();
+    defer os_dlclose(lib);
+    test_not_null(lib);
+}

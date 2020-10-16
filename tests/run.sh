@@ -15,4 +15,8 @@ echo "**************************"
 echo "*** Running test cases ***"
 echo "**************************"
 echo 
-blc -rt -no-warning src/main.test.bl && ./out.exe
+if [[ "$OSTYPE" == "win32" ]]; then
+    blc -rt -no-warning src/main.test.bl && ./out.exe
+else
+    blc -rt -no-warning src/main.test.bl && ./out
+fi
