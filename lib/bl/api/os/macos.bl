@@ -52,19 +52,10 @@ c_ulonglong :: u64;
 c_void_ptr  :: *u8;
 c_size_t    :: u64;
 
-/*
- * Maximum path size in bytes.
- */
 OS_PATH_MAX :: DARWIN_MAXPATHLEN;
 OS_PATH_DELIMITER_C :: '/';
 OS_PATH_DELIMITER_STR :: "/";
 
-/*
- * OSLibrary
- *
- * Description:
- *   Library handle.
- */
 OSLibrary :: *u8;
 
 OSThread :: _PosixThread;
