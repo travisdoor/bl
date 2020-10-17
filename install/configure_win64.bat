@@ -49,8 +49,8 @@ if not exist "..\etc" mkdir ..\etc
   echo.LIB_DIR "%LIB_DIR%"
   echo.LINKER_EXEC "link.exe"
   echo.VC_VARS_ALL "%VC_VARS_ALL%"
-  echo.LINKER_OPT "/ENTRY:__os_start /SUBSYSTEM:CONSOLE /NOLOGO /INCREMENTAL:NO /MACHINE:x64 kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib Msvcrt.lib vcruntime.lib"
-  echo.LINKER_OPT_DEBUG "/ENTRY:__os_start /SUBSYSTEM:CONSOLE /NOLOGO /INCREMENTAL:NO /MACHINE:x64 /DEBUG kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib Msvcrt.lib vcruntime.lib"
+  echo.LINKER_OPT "/ENTRY:__os_start /SUBSYSTEM:CONSOLE /NOLOGO /INCREMENTAL:NO /MACHINE:x64 kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib Msvcrt.lib vcruntime.lib Shlwapi.lib"
+  echo.LINKER_OPT_DEBUG "/ENTRY:__os_start /SUBSYSTEM:CONSOLE /NOLOGO /INCREMENTAL:NO /MACHINE:x64 /DEBUG kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib Msvcrt.lib vcruntime.lib Shlwapi.lib"
   echo.LINKER_LIB_PATH ""
 ) > %CONFIG_FILE%
 

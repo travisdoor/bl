@@ -78,6 +78,8 @@
 #define ENVPATH_SEPARATOR ';'
 #define CONF_VC_VARS_ALL_KEY "VC_VARS_ALL"
 #define MSVC_CRT "msvcrt"
+#define KERNEL32 "Kernel32"
+#define SHLWAPI "Shlwapi"
 #else
 #define ENVPATH_SEPARATOR ':'
 #endif

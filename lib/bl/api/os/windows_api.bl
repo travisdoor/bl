@@ -193,6 +193,7 @@ win32_GetFullPathNameA    :: fn (lpFileName: WIN32_LPCSTR,
                                  nBufferLength: WIN32_DWORD,
                                  lpBuffer: WIN32_LPSTR,
                                  lpFilePart: *WIN32_LPSTR) WIN32_DWORD #extern "GetFullPathNameA";
+win32_PathFileExistsA     :: fn (pszPath: WIN32_LPCSTR) WIN32_BOOL #extern "PathFileExistsA";
 win32_LoadLibraryA        :: fn (lpLibFileName: WIN32_LPCSTR) WIN32_HMODULE #extern "LoadLibraryA";
 win32_FreeLibrary         :: fn (hLibModule: WIN32_HMODULE) WIN32_BOOL #extern "FreeLibrary";
 win32_GetModuleHandleA    :: fn (lpModuleName: WIN32_LPCSTR) WIN32_HMODULE #extern "GetModuleHandleA";

@@ -182,6 +182,16 @@ void linker_run(Assembly *assembly)
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " MSVC_CRT);
         return;
     }
+    if (!link_working_environment(&cnt, KERNEL32)) {
+        Token *dummy = NULL;
+        link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " KERNEL32);
+        return;
+    }
+    if (!link_working_environment(&cnt, SHLWAPI)) {
+        Token *dummy = NULL;
+        link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " KERNEL32);
+        return;
+    }
 #endif
 
     if (!link_working_environment(&cnt, NULL)) {

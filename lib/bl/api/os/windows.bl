@@ -135,6 +135,7 @@ os_tick_ms :: fn () f64 #inline {
 os_normalize_path :: fn (filepath: *string) bool {
     buf : [OS_PATH_MAX]u8 #noinit;
     if win32_GetFullPathNameA(auto filepath.ptr, auto buf.len, buf.ptr, null) > 0 {
+        if win32_PathFileExistsA(auto filepath.ptr) == 0 { return false; }
         string_clear(filepath);
         string_append(filepath, cstr_to_str(buf.ptr));
         string_replace_all(filepath, '\\', '/');
@@ -146,6 +147,7 @@ os_normalize_path :: fn (filepath: *string) bool {
 os_get_real_path :: fn (filename: string) string {
     buf : [OS_PATH_MAX]u8 #noinit;
     if win32_GetFullPathNameA(auto filename.ptr, auto buf.len, buf.ptr, null) > 0 {
+        if win32_PathFileExistsA(auto buf.ptr) == 0 { return string_new(filename); }
         result :: string_new(buf.ptr);
         string_replace_all(&result, '\\', '/');
         return result;
