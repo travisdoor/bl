@@ -1,7 +1,3 @@
-// Intrinsics
-sin :: fn (v: f32) f32 #intrinsic "sin";
-memcpy :: fn (dest: *u8, src: *u8, len: s64) void #intrinsic "memcpy";
-
 /*
     Comptime blocks before static if.
 
@@ -54,3 +50,11 @@ main :: fn () s32 {
     }
     return 0;
 }
+
+
+
+
+// Import
+
+#import "ModuleName"
+

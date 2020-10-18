@@ -122,6 +122,7 @@ WIN32_PWIN32_FIND_DATAA :: *WIN32_FIND_DATA;
 WIN32_LPWIN32_FIND_DATAA :: *WIN32_FIND_DATA;
 
 WIN32_INVALID_HANDLE :: cast(*u8) -1;
+WIN32_INVALID_FILE_ATTRIBUTES :: cast(WIN32_DWORD) -1;
 WIN32_WAIT_TIMEOUT :: 258;
 
 win32_CloseHandle :: fn (hObject: WIN32_HANDLE) WIN32_BOOL #extern "CloseHandle";
@@ -129,6 +130,7 @@ win32_CloseHandle :: fn (hObject: WIN32_HANDLE) WIN32_BOOL #extern "CloseHandle"
 win32_FindFirstFile :: fn  (lpFileName: WIN32_LPCSTR, lpFindFileData: WIN32_LPWIN32_FIND_DATAA) WIN32_HANDLE #extern "FindFirstFileA";
 win32_FindClose :: fn (hFindFile: WIN32_HANDLE) WIN32_BOOL #extern "FindClose";
 win32_FindNextFile :: fn (hFindFile: WIN32_HANDLE, lpFindFileData: WIN32_LPWIN32_FIND_DATAA) WIN32_BOOL #extern "FindNextFileA";
+win32_GetFileAttributesA :: fn (lpFileName: WIN32_LPCSTR) WIN32_DWORD #extern "GetFileAttributesA";
 
 win32_CreateFile :: fn (
     lpFileName: WIN32_LPCSTR,

@@ -207,17 +207,9 @@ _OSFileInfo :: struct {
 _OSFileList :: []_OSFileInfo;
 
 _os_is_dir :: fn (dirpath: string) bool {
-    if dirpath.len > (WIN32_MAX_PATH-3) { panic("Path too long!"); }
-    tmp := string_new(dirpath);
-    defer string_delete(tmp);
-    string_append(&tmp, "\\*");
-
-    ffd: WIN32_FIND_DATA;
-    hFind := win32_FindFirstFile(auto tmp.ptr, &ffd);
-    if WIN32_INVALID_HANDLE_VALUE == hFind { return false; }
-
-    defer win32_FindClose(hFind);
-    return is_flag_u32(ffd.dwFileAttributes, auto WIN32_FILE_ATTRIBUTE_DIRECTORY);
+    attributes :: win32_GetFileAttributesA(auto dirpath.ptr);
+    if attributes == WIN32_INVALID_FILE_ATTRIBUTES { return false; }
+    return is_flag_u32(attributes, auto WIN32_FILE_ATTRIBUTE_DIRECTORY);
 }
 
 _os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {

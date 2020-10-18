@@ -189,7 +189,7 @@ void linker_run(Assembly *assembly)
     }
     if (!link_working_environment(&cnt, SHLWAPI)) {
         Token *dummy = NULL;
-        link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " KERNEL32);
+        link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " SHLWAPI);
         return;
     }
 #endif
