@@ -216,6 +216,16 @@ _OSFileInfo :: struct {
 
 _OSFileList :: []_OSFileInfo;
 
+_os_is_dir :: fn (dirpath: string) bool {
+    if dirpath.len > OS_PATH_MAX { panic("Path too long!"); }
+    dir := _posix_opendir(dirpath.ptr);
+    if dir == null { return false; }
+    defer _posix_closedir(dir);
+    info :: _posix_readdir(dir);
+    if info == null { return false; }
+    return info.d_type == auto DT_DIR;
+}
+
 _os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
     if dirpath.len > OS_PATH_MAX { panic("Path too long!"); }
     dir := _posix_opendir(dirpath.ptr);
