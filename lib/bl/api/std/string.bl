@@ -354,8 +354,7 @@ Result
 ------
 Return `true` if `n` characters in `first` string are same as the same range in `second` string.
 */
-string_compare :: fn (first: string, second: string, n := -1) bool
-{
+string_compare :: fn (first: string, second: string, n := -1) bool {
     // @CLEANUP: simplify this
     range := n;
     if range < 0 { 
@@ -370,6 +369,20 @@ string_compare :: fn (first: string, second: string, n := -1) bool
     }
     return true;
 };
+
+// @DOC
+// @TEST
+string_compare2 :: fn (first: string, second: string, n := -1) s32 {
+    len :: max(first.len, second.len);
+    loop i := 0; i < len; i += 1 {
+        f: u8; s: u8;
+        if i < first.len  { f = first[i]; }
+        if i < second.len { s = second[i]; }
+        diff :: s - f;
+        if diff != 0 { return auto diff; }
+    }
+    return 0;
+}
 
 /*!
 string_to_f32
