@@ -1522,7 +1522,7 @@ Ast *parse_expr_lit(Context *cnt)
         Token *     tok_next = tokens_peek_2nd(cnt->tokens);
         if (tok_next->sym == SYM_STRING) {
             TString *tmp = builder_create_cached_str();
-            while (tok = tokens_consume_if(cnt->tokens, SYM_STRING)) {
+            while ((tok = tokens_consume_if(cnt->tokens, SYM_STRING))) {
                 BL_ASSERT(tok->value.str);
                 tstring_append(tmp, tok->value.str);
             }
