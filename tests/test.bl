@@ -1,5 +1,13 @@
 // playground 
 
+
+FOO :: "Hello"
+       " this"
+       " is"
+       " multiline"
+       " string";
+
 main :: fn () s32 {
+    print("%\n", FOO);
     return 0;
 }

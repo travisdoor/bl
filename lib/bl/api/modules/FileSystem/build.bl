@@ -1,0 +1,7 @@
+__setup :: fn () {
+    switch OS_KIND {
+        OSKind.Windows { target_windows(exe); }
+        OSKind.MacOS   { target_macos(exe);   }
+        default        { panic("Unknown build target!"); }
+    }
+}

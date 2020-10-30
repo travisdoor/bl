@@ -136,40 +136,21 @@ char scan_specch(char c)
 
 bool scan_string(Context *cnt, Token *tok)
 {
-    if (*cnt->c != '\"') {
-        return false;
-    }
-
+    if (*cnt->c != '"') return false;
     tok->location.line = cnt->line;
     tok->location.col  = cnt->col;
     tok->sym           = SYM_STRING;
-    // eat "
-    cnt->c++;
-    TString *cstr = builder_create_cached_str();
+    TString *cstr      = builder_create_cached_str();
     char     c;
     s32      len = 0;
 
-scan:
+    // eat "
+    cnt->c++;
     while (true) {
         switch (*cnt->c) {
-        case '\"': {
+        case '"': {
             cnt->c++;
-            char *tmp_c = cnt->c;
-            // check multiline string
-            while (true) {
-                if (*tmp_c == '\"') {
-                    cnt->line++;
-                    // skip "
-                    cnt->c = tmp_c + 1;
-                    goto scan;
-                } else if ((*tmp_c != ' ' && *tmp_c != '\n' && *tmp_c != '\t') ||
-                           (*tmp_c == '\0')) {
-                    goto exit;
-                }
-
-                tmp_c++;
-            }
-            // FALLTROUGH
+            goto DONE;
         }
         case '\0': {
             SCAN_ERROR(ERR_UNTERMINATED_STRING,
@@ -195,10 +176,10 @@ scan:
         }
         tstring_append_n(cstr, &c, 1);
     }
-exit:
+DONE:
     tok->value.str    = cstr->data;
     tok->location.len = len;
-    tok->location.col = tok->location.col + 1;
+    tok->location.col += 1;
     cnt->col += len + 2;
     return true;
 }
@@ -320,7 +301,7 @@ bool scan_number(Context *cnt, Token *tok)
 
             len++;
             cnt->c++;
-            goto scan_double;
+            goto SCAN_DOUBLE;
         }
 
         buf = c_to_number(*(cnt->c), base);
@@ -344,7 +325,7 @@ bool scan_number(Context *cnt, Token *tok)
     tok->value.u = n;
     return true;
 
-scan_double : {
+SCAN_DOUBLE : {
     u64 e = 1;
 
     while (true) {
@@ -385,8 +366,8 @@ scan_double : {
 
 void scan(Context *cnt)
 {
-    Token tok;
-scan:
+    Token tok = {0};
+SCAN:
     tok.location.line = cnt->line;
     tok.location.col  = cnt->col;
 
@@ -398,21 +379,21 @@ scan:
         return;
     case '\r':
         cnt->c++;
-        goto scan;
+        goto SCAN;
     case '\n':
         cnt->line++;
         cnt->col = 1;
         cnt->c++;
-        goto scan;
+        goto SCAN;
     case '\t':
         // TODO: can be set by user
         cnt->col += 4;
         cnt->c++;
-        goto scan;
+        goto SCAN;
     case ' ':
         cnt->col++;
         cnt->c++;
-        goto scan;
+        goto SCAN;
     default:
         break;
     }
@@ -437,11 +418,11 @@ scan:
             case SYM_LCOMMENT:
                 // begin of line comment
                 scan_comment(cnt, "\n");
-                goto scan;
+                goto SCAN;
             case SYM_LBCOMMENT:
                 // begin of block comment
                 scan_comment(cnt, sym_strings[SYM_RBCOMMENT]);
-                goto scan;
+                goto SCAN;
             case SYM_RBCOMMENT: {
                 SCAN_ERROR(ERR_INVALID_TOKEN,
                            "%s %d:%d unexpected token.",
@@ -451,16 +432,16 @@ scan:
             }
             default:
                 cnt->col += (s32)len;
-                goto push_token;
+                goto PUSH_TOKEN;
             }
         }
     }
 
     // Scan special tokens.
-    if (scan_number(cnt, &tok)) goto push_token;
-    if (scan_ident(cnt, &tok)) goto push_token;
-    if (scan_string(cnt, &tok)) goto push_token;
-    if (scan_char(cnt, &tok)) goto push_token;
+    if (scan_number(cnt, &tok)) goto PUSH_TOKEN;
+    if (scan_ident(cnt, &tok)) goto PUSH_TOKEN;
+    if (scan_string(cnt, &tok)) goto PUSH_TOKEN;
+    if (scan_char(cnt, &tok)) goto PUSH_TOKEN;
 
     // When symbol is unknown report error
     SCAN_ERROR(ERR_INVALID_TOKEN,
@@ -470,11 +451,11 @@ scan:
                cnt->col,
                *cnt->c,
                *cnt->c);
-push_token : {
+PUSH_TOKEN:
     tok.location.unit = cnt->unit;
     tokens_push(cnt->tokens, &tok);
-}
-    goto scan;
+
+    goto SCAN;
 }
 
 void lexer_run(Unit *unit)

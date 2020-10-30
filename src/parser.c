@@ -911,9 +911,9 @@ Ast *parse_decl_member(Context *cnt, bool type_only)
     Ast *         tags     = parse_hash_directive(cnt, HD_TAGS, &found_hd);
 
     Ast *mem = ast_create_node(cnt->ast_arena, AST_DECL_MEMBER, tok_begin, SCOPE_GET(cnt));
-    mem->data.decl.type        = type;
-    mem->data.decl.name        = name;
-    mem->data.decl.tags        = tags;
+    mem->data.decl.type = type;
+    mem->data.decl.name = name;
+    mem->data.decl.tags = tags;
 
     return mem;
 }
@@ -1492,11 +1492,6 @@ Ast *parse_expr_lit(Context *cnt)
 
         break;
 
-    case SYM_STRING:
-        lit = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_STRING, tok, SCOPE_GET(cnt));
-        lit->data.expr_string.val = tok->value.str;
-        break;
-
     case SYM_TRUE:
         lit = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_BOOL, tok, SCOPE_GET(cnt));
         lit->data.expr_boolean.val = true;
@@ -1518,6 +1513,28 @@ Ast *parse_expr_lit(Context *cnt)
         lit->data.expr_float.val      = (f32)tok->value.d;
         lit->data.expr_float.overflow = tok->overflow;
         break;
+
+    case SYM_STRING: {
+        // There is special case for string literals, those can be split into multiple lines and we
+        // should handle such situation here, so some pre-scan is needed.
+        lit             = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_STRING, tok, SCOPE_GET(cnt));
+        const char *str = tok->value.str;
+        Token *     tok_next = tokens_peek_2nd(cnt->tokens);
+        if (tok_next->sym == SYM_STRING) {
+            TString *tmp = builder_create_cached_str();
+            while (tok = tokens_consume_if(cnt->tokens, SYM_STRING)) {
+                BL_ASSERT(tok->value.str);
+                tstring_append(tmp, tok->value.str);
+            }
+            str = tmp->data;
+        } else {
+            tokens_consume(cnt->tokens);
+        }
+        BL_ASSERT(str);
+        lit->data.expr_string.val = str;
+        // Directly return, all tokens were consumed.
+        return lit;
+    }
 
     default:
         return NULL;

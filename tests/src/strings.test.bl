@@ -1,6 +1,17 @@
 #load "std/string.bl"
 
 #private
+test_multiline_string_literal :: fn () #test {
+    FOO :: 
+       "Hello "
+       "this "
+       "is "
+       "multiline "
+       "string"
+       "!";
+    test_eq(FOO, "Hello this is multiline string!");
+}
+
 test_strings_init1 :: fn () #test {
     s1 := string_new();
     assert(s1.ptr != null);

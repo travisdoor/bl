@@ -62,7 +62,7 @@ Token *tokens_peek_last(Tokens *tokens)
         return NULL;
     }
 
-    return &tarray_at(Token, &tokens->buf, i);
+    return &tarray_at(Token, &tokens->buf, i - 1);
 }
 
 Token *tokens_peek_prev(Tokens *tokens)
