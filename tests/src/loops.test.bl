@@ -2,19 +2,15 @@
 simple_loops :: fn () #test {
     count :: 10;
     i := 0;
-
     loop i < count {
         i += 1;
     }
-
-    assert(i == count);
-
+    test_eq(i, count);
     i = 0;
     loop j := 0; j < count; j += 1 {
         i += 1;
     }
-
-    assert(i == count);
+    test_eq(i, count);
 };
 
 nested_loops :: fn () #test {
@@ -26,8 +22,7 @@ nested_loops :: fn () #test {
             i += 1;
         }
     }
-
-    assert(i == count * count); 
+    test_eq(i, count * count);
 };
 
 break_continue_loop :: fn () #test {
@@ -40,6 +35,14 @@ break_continue_loop :: fn () #test {
             continue;
         }
     }
-
-    assert(i == 10);
+    test_eq(i, 10);
 };
+
+fn_call_initializer :: fn () #test {
+    foo :: fn () s32 { return 0; };
+    c := 0;
+    loop i := foo(); i < 100; i += 1 {
+        c += 1;
+    }
+    test_eq(c, 100);
+}

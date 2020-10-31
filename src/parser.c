@@ -1214,10 +1214,10 @@ SKIP_EXPRS:
 
 static TokensLookaheadState cmp_stmt_loop(Token *curr)
 {
-    if (token_is(curr, SYM_SEMICOLON))
-        return TOK_LOOK_HIT;
-    else if (token_is(curr, SYM_RPAREN))
-        return TOK_LOOK_TERMINAL;
+    if (token_is(curr, SYM_SEMICOLON)) return TOK_LOOK_HIT;
+    // @INCOMPLETE I'm not sure why this was here, check it later.
+    // else if (token_is(curr, SYM_RPAREN))
+    //    return TOK_LOOK_TERMINAL;
     else if (token_is(curr, SYM_LBLOCK))
         return TOK_LOOK_TERMINAL;
 
@@ -1229,6 +1229,7 @@ Ast *parse_stmt_loop(Context *cnt)
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LOOP);
     if (!tok_begin) return NULL;
 
+    // Loop statement is immediately followed by block; this should act like while (true) {} in C.
     const bool while_true = tokens_current_is(cnt->tokens, SYM_LBLOCK);
 
     Ast *      loop = ast_create_node(cnt->ast_arena, AST_STMT_LOOP, tok_begin, SCOPE_GET(cnt));
