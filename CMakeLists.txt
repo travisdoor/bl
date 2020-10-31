@@ -49,39 +49,39 @@ add_subdirectory(deps/tlib-c)
 if (MSVC)
 	# DOWNLOAD LLVM
 	if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-		set(LLVM_BIN_DEBUG ${CMAKE_CURRENT_BINARY_DIR}/llvm-debug)
-		set(LLVM_BIN_DEBUG_ZIP ${CMAKE_CURRENT_BINARY_DIR}/llvm-11.0.1-Win64-debug.zip)
+    		set(LLVM_BIN_DEBUG ${CMAKE_CURRENT_BINARY_DIR}/llvm-debug)
+		    set(LLVM_BIN_DEBUG_ZIP ${CMAKE_CURRENT_BINARY_DIR}/llvm-11.0.1-Win64-debug.zip)
 
-		if(NOT EXISTS ${LLVM_BIN_DEBUG})
-			if(NOT EXISTS ${LLVM_BIN_DEBUG_ZIP})
-				message(STATUS "Downloading LLVM binaries for Debug build.")
-				file(DOWNLOAD biscuitlang.org/releases/llvm-11.0.1-Win64-debug.zip ${LLVM_BIN_DEBUG_ZIP}
-			     	     SHOW_PROGRESS
-			     	     EXPECTED_HASH MD5=71adf8bf8b205dfb8db6381ec041bfb9)
+    		if(NOT EXISTS ${LLVM_BIN_DEBUG})
+		        	if(NOT EXISTS ${LLVM_BIN_DEBUG_ZIP})
+				            message(STATUS "Downloading LLVM binaries for Debug build.")
+				            file(DOWNLOAD biscuitlang.org/releases/llvm-11.0.1-Win64-debug.zip ${LLVM_BIN_DEBUG_ZIP}
+			     	            SHOW_PROGRESS
+			     	            EXPECTED_HASH MD5=71adf8bf8b205dfb8db6381ec041bfb9)
 		        endif ()
 
-			execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${LLVM_BIN_DEBUG_ZIP}
-			                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-		endif()
+        			execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${LLVM_BIN_DEBUG_ZIP}
+			                        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+		    endif()
 
-		set(LLVM_DIR "${LLVM_BIN_DEBUG}/lib/cmake/llvm")
+    		set(LLVM_DIR "${LLVM_BIN_DEBUG}/lib/cmake/llvm")
 	else ()
-		set(LLVM_BIN_RELEASE ${CMAKE_CURRENT_BINARY_DIR}/llvm-release)
-		set(LLVM_BIN_RELEASE_ZIP ${CMAKE_CURRENT_BINARY_DIR}/llvm-11.0.1-Win64-release.zip)
+    		set(LLVM_BIN_RELEASE ${CMAKE_CURRENT_BINARY_DIR}/llvm-release)
+		    set(LLVM_BIN_RELEASE_ZIP ${CMAKE_CURRENT_BINARY_DIR}/llvm-11.0.1-Win64-release.zip)
 
-		if(NOT EXISTS ${LLVM_BIN_RELEASE})
-			if(NOT EXISTS ${LLVM_BIN_RELEASE_ZIP})
-				message(STATUS "Downloading LLVM binaries for Release build.")
-				file(DOWNLOAD biscuitlang.org/releases/llvm-11.0.1-Win64-release.zip ${LLVM_BIN_RELEASE_ZIP}
-			     	     SHOW_PROGRESS
-			     	     EXPECTED_HASH MD5=764ede9bdd1dff8e9e97ca536b4981e2)
-			endif ()
+    		if(NOT EXISTS ${LLVM_BIN_RELEASE})
+		        	if(NOT EXISTS ${LLVM_BIN_RELEASE_ZIP})
+				            message(STATUS "Downloading LLVM binaries for Release build.")
+				            file(DOWNLOAD biscuitlang.org/releases/llvm-11.0.1-Win64-release.zip ${LLVM_BIN_RELEASE_ZIP}
+			     	            SHOW_PROGRESS
+			     	            EXPECTED_HASH MD5=764ede9bdd1dff8e9e97ca536b4981e2)
+			        endif ()
 
-			execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${LLVM_BIN_RELEASE_ZIP}
-			                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-		endif()
+        			execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${LLVM_BIN_RELEASE_ZIP}
+			                        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+		    endif()
 
-		set(LLVM_DIR "${LLVM_BIN_RELEASE}/lib/cmake/llvm")
+    		set(LLVM_DIR "${LLVM_BIN_RELEASE}/lib/cmake/llvm")
 	endif ()
 endif ()
 
@@ -112,12 +112,12 @@ set(HEADER_FILES
         src/mir.h
         src/mir_printer.h
         src/arena.h
-	src/llvm_di.h
-	src/vm.h
-	src/threading.h
-	src/llvm_api.h
+        	src/llvm_di.h
+	        src/vm.h
+	        src/threading.h
+	        src/llvm_api.h
         src/ast.h
-	src/experimental/puml_export.h
+        	src/experimental/puml_export.h
 	)
 
 set(SOURCE_FILES
@@ -140,7 +140,7 @@ set(SOURCE_FILES
         src/linker.c
         src/obj_writer.c
         src/bc_writer.c
-	src/mir_writer.c
+        	src/mir_writer.c
         src/native_bin.c
         src/scope.c
         src/common.c 
@@ -152,11 +152,11 @@ set(SOURCE_FILES
         src/ast.c
         src/build_api.c
         src/intrinsic.c
-	src/experimental/puml_export.cpp
-	src/threading.cpp
-	src/llvm_api.cpp
+        	src/experimental/puml_export.cpp
+        	src/threading.cpp
+        	src/llvm_api.cpp
         src/llvm_di.cpp
-	deps/tracy/TracyClient.cpp
+        	deps/tracy/TracyClient.cpp
 	)
 
 add_definitions(${LLVM_DEFINITIONS})
@@ -167,7 +167,7 @@ llvm_map_components_to_libnames(LLVM_LIBS core support X86 passes)
 if (MSVC)
     target_link_libraries(blc PUBLIC
         shlwapi
-	DbgHelp
+        	DbgHelp
     )
 
     # C 

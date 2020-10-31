@@ -41,6 +41,7 @@ typedef struct BuilderOptions {
     BuildMode   build_mode;
     BuildDIKind build_di_kind;
     bool        print_help;
+    bool        print_about;
     bool        print_tokens;
     bool        print_ast;
     bool        run;

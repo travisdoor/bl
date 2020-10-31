@@ -94,6 +94,9 @@ int main(s32 argc, char *argv[])
     const char *help_text =
 #include "help_text.txt"
         ;
+    const char *about_text =
+#include "about_text.txt"
+        ;
 
     setlocale(LC_ALL, "C");
     setup_env();
@@ -127,7 +130,12 @@ int main(s32 argc, char *argv[])
     argv += next_arg;
 
     if (builder.options.print_help) {
-        fprintf(stdout, "%s", help_text);
+        fprintf(stdout, help_text);
+        EXIT(EXIT_SUCCESS);
+    }
+
+    if (builder.options.print_about) {
+        fprintf(stdout, about_text, BL_VERSION, LLVM_VERSION_STRING);
         EXIT(EXIT_SUCCESS);
     }
 

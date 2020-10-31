@@ -9,6 +9,7 @@ Fix garbage in unknown symbol reports.
 Fix attempt to generate type info for incomplete types referenced by aliases.
 Less descriptive terminal output during compilation.
 Fix invalid multi-line string literals parsing.
+Fix usage of function call to initialize loop iterator.
 
 0.7.1 - BETA
 ---------------------------------------------------------------------------------------

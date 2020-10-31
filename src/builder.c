@@ -172,6 +172,8 @@ s32 builder_parse_options(s32 argc, char *argv[])
             builder.options.print_ast = true;
         } else if (IS_PARAM("h") || IS_PARAM("help")) {
             builder.options.print_help = true;
+        } else if (IS_PARAM("a") || IS_PARAM("about")) {
+            builder.options.print_about = true;
         } else if (IS_PARAM("b") || IS_PARAM("build")) {
             builder.options.use_pipeline = true;
         } else if (IS_PARAM("lex-dump")) {
@@ -319,8 +321,8 @@ int builder_compile(Assembly *assembly)
     builder.total_lines = 0;
 
     builder_note("Compile assembly: %s [%s]",
-                assembly->name,
-                build_mode_to_str(assembly->options.build_mode));
+                 assembly->name,
+                 build_mode_to_str(assembly->options.build_mode));
 
     // This will apply all modification to build mode, target platform, etc. made on assembly
     // instance during initialization process. (Must be called only once);
