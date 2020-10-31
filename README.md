@@ -49,7 +49,7 @@ please specify one of the release branches during clone or checkout.
 ## Requirements
 * git
 * CMake
-* LLVM 11
+* LLVM 11/10
 * GCC/CLANG/Visual Studio compiler
 
     
@@ -123,10 +123,10 @@ make
 
 
 ## Linux
-* Install LLVM 11 dev packages with your favourite package manager.
+* Install LLVM 10 dev packages with your favourite package manager.
 
 ```bash
-sudo apt install llvm-dev 
+sudo apt install llvm-10-dev 
 ```
 
 * Download and compile bl.
