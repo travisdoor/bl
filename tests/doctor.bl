@@ -1,0 +1,82 @@
+#load "std/dir.bl"
+
+main :: fn () s32 {
+    print("--------------------------------------------------------------------------------\n");
+    print("-                               Start BL doctor                                -\n");
+    print("--------------------------------------------------------------------------------\n\n");
+    
+    print("Test general suite.\n");    
+    test_file("src/main.test.bl", TEST_COMPILE_TIME | TEST_RUN_TIME);
+    test_all_in_dir(EXAMPLES_DIR);
+    return 0;
+}
+
+#private
+BL_EXE_PATH_WIN  :: "..\\bin\\blc.exe";
+BL_EXE_PATH_UNIX :: "../bin/blc";
+
+// paths
+EXAMPLES_DIR :: "../examples";
+
+blc :: fn (file: string, args := "-no-bin -no-warning") s32 {
+    cmd :: string_new(64);
+    defer string_delete(cmd);
+    
+    if OS_KIND == OSKind.Windows {
+         string_concatenate(&cmd, BL_EXE_PATH_WIN, " ", args, " ", file, " 2>&1 1>nul");   
+    } else {
+         string_concatenate(&cmd, BL_EXE_PATH_UNIX, " ", args, " ", file);   
+    }
+    return os_execute(cmd);
+}
+
+TEST_COMPILE_TIME : u32 : 1;
+TEST_RUN_TIME     : u32 : 2;
+
+test_file :: fn (file: string, flags: u32 = TEST_RUN_TIME) bool {
+    if is_flag_u32(flags, TEST_RUN_TIME) {
+        if blc(file, "-no-warning") == 0 {
+           print("[   OK   ] Compilation '%'\n", file);
+        } else {
+           print("[ FAILED ] Compilation '%'\n", file);            
+           return false;
+        }
+    
+        if os_execute("out.exe 2>&1 1>nul") == 0 {
+            print("[   OK   ] Native run '%'\n", file);
+        } else {
+            print("[ FAILED ] Native run '%'\n", file);
+            return false;
+        } 
+    }
+    
+    if is_flag_u32(flags, TEST_COMPILE_TIME) {
+        if blc(file, "-r -no-warning") == 0 {
+           print("[   OK   ] Compile time run '%'\n", file);
+        } else {
+           print("[ FAILED ] Compile time run '%'\n", file);            
+           return false;
+        }
+    }
+    
+    return true;
+}
+
+test_all_in_dir :: fn (dir: string) s32 {
+    print("Testing files in directory '%'\n", dir);
+    file :: string_new(64);
+    defer string_delete(file);
+    file_list: FileList #noinit;
+    if !dir_scan(dir, &file_list) { print_err("Cannot scan directory!"); }
+    defer dir_file_list_delete(file_list);
+
+    loop i := 0; i < file_list.len; i += 1 {
+        info :: &file_list[i];
+        if info.kind != FileKind.Directory {
+            string_concatenate(&file, dir, "/", info.name);
+            test_file(file);
+            string_clear(&file);
+        }
+    }
+    return 0;
+}
