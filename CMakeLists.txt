@@ -57,7 +57,7 @@ if (MSVC)
 				message(STATUS "Downloading LLVM binaries for Debug build.")
 				file(DOWNLOAD biscuitlang.org/releases/llvm-11.0.1-Win64-debug.zip ${LLVM_BIN_DEBUG_ZIP}
 			     	     SHOW_PROGRESS
-			     	     EXPECTED_HASH MD5=06bca2aed70f4b190f8e44410200b1da)
+			     	     EXPECTED_HASH MD5=71adf8bf8b205dfb8db6381ec041bfb9)
 		        endif ()
 
 			execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${LLVM_BIN_DEBUG_ZIP}
@@ -74,7 +74,7 @@ if (MSVC)
 				message(STATUS "Downloading LLVM binaries for Release build.")
 				file(DOWNLOAD biscuitlang.org/releases/llvm-11.0.1-Win64-release.zip ${LLVM_BIN_RELEASE_ZIP}
 			     	     SHOW_PROGRESS
-			     	     EXPECTED_HASH MD5=d0fad9fcd821ed3fdd738229ac674a83)
+			     	     EXPECTED_HASH MD5=764ede9bdd1dff8e9e97ca536b4981e2)
 			endif ()
 
 			execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${LLVM_BIN_RELEASE_ZIP}
