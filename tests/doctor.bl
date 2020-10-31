@@ -25,7 +25,7 @@ blc :: fn (file: string, args := "-no-bin -no-warning") s32 {
     if OS_KIND == OSKind.Windows {
          string_concatenate(&cmd, BL_EXE_PATH_WIN, " ", args, " ", file, " 2>&1 1>nul");   
     } else {
-         string_concatenate(&cmd, BL_EXE_PATH_UNIX, " ", args, " ", file);   
+         string_concatenate(&cmd, BL_EXE_PATH_UNIX, " ", args, " ", file, " 2>&1 > /dev/null");   
     }
     return os_execute(cmd);
 }
@@ -42,14 +42,12 @@ test_file :: fn (file: string, flags: u32 = TEST_RUN_TIME) bool {
            return false;
         }
         
-        tmp :: string_new(32);
-        defer string_delete(tmp);    
+        tmp: string;
         if OS_KIND == OSKind.Windows { 
-            string_append(&tmp, "out.exe"); 
+            tmp = "out.exe 2>&1 1>nul"; 
         } else {
-            string_append(&tmp, "./out"); 
+            tmp = "./out 2>&1 > /dev/null"; 
         }
-        string_append(&tmp, " 2>&1 1>nul");
         if os_execute(tmp) == 0 {
             print("[   OK   ] Native run '%'\n", file);
         } else {
