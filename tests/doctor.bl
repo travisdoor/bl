@@ -42,9 +42,13 @@ test_file :: fn (file: string, flags: u32 = TEST_RUN_TIME) bool {
            return false;
         }
         
-        tmp :: string_new("out");
+        tmp :: string_new(32);
         defer string_delete(tmp);    
-        if OS_KIND == OSKind.Windows { string_append(&tmp, ".exe"); }
+        if OS_KIND == OSKind.Windows { 
+            string_append(&tmp, "out.exe"); 
+        } else {
+            string_append(&tmp, "./out"); 
+        }
         string_append(&tmp, " 2>&1 1>nul");
         if os_execute(tmp) == 0 {
             print("[   OK   ] Native run '%'\n", file);
