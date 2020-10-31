@@ -26,6 +26,14 @@ BL_EXE_PATH_UNIX :: "../bin/blc";
 // paths
 EXAMPLES_DIR :: "../examples";
 
+TestKind :: enum {
+    Runtime;
+    CompileTime;
+    Analyze;
+}
+
+TEST_RUN_OK :: 0;
+
 _errc := 0;
 
 blc :: fn (file: string, args := "-no-bin -no-warning", print_errors := true) s32 {
@@ -41,16 +49,9 @@ blc :: fn (file: string, args := "-no-bin -no-warning", print_errors := true) s3
         if !print_errors { mute = "1>/dev/null 2>/dev/null"; }
         string_concatenate(&cmd, BL_EXE_PATH_UNIX, " ", args, " ", file, " ", mute);   
     }
+    print("%\n", cmd);
     return os_execute(cmd);
 }
-
-TestKind :: enum {
-    Runtime;
-    CompileTime;
-    Analyze;
-}
-
-TEST_RUN_OK :: 0;
 
 report_ok :: fn (msg: string, file: string, state: s32) #inline {
     print("[   OK   ] % '%' (%)\n", msg, file, state);
