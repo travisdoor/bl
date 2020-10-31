@@ -238,7 +238,7 @@ s32 builder_parse_options(s32 argc, char *argv[])
 void builder_init(void)
 {
     memset(&builder, 0, sizeof(Builder));
-    builder.errorc = 0;
+    builder.errorc =  builder.max_error = 0;
     builder.conf   = conf_data_new();
     arena_init(&builder.str_cache, sizeof(TString), 256, (ArenaElemDtor)str_cache_dtor);
 
@@ -368,11 +368,11 @@ int builder_compile(Assembly *assembly)
 
     // We return count of failed compile time test cases as state even if there was no
     // compilation errors. Compilation errors has priority here.
-    return builder.errorc ? builder.errorc : builder.test_failc;
+    return builder.errorc ? builder.max_error : builder.test_failc;
 }
 
 void builder_msg(BuilderMsgType type,
-                 s32            UNUSED(code),
+                 s32            code,
                  Location *     src,
                  BuilderCurPos  pos,
                  const char *   format,
@@ -469,6 +469,7 @@ void builder_msg(BuilderMsgType type,
     switch (type) {
     case BUILDER_MSG_ERROR: {
         builder.errorc++;
+        builder.max_error = code > builder.max_error ? code : builder.max_error;
         color_print(stderr, BL_RED, tmp.data);
         break;
     }
