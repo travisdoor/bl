@@ -49,7 +49,7 @@ please specify one of the release branches during clone or checkout.
 ## Requirements
 * git
 * CMake
-* LLVM 10
+* LLVM 11
 * GCC/CLANG/Visual Studio compiler
 
     
@@ -92,10 +92,10 @@ blc.exe -configure
 xcode-select --install
 ```
 
-* Install LLVM 10 dev packages with your favourite package manager. Brew:
+* Install LLVM 11 dev packages with your favourite package manager. Brew:
 
 ```bash
-brew install llvm@10
+brew install llvm
 ```
 
 * Download and compile bl.
@@ -123,7 +123,7 @@ make
 
 
 ## Linux
-* Install LLVM 10 dev packages with your favourite package manager.
+* Install LLVM 11 dev packages with your favourite package manager.
 
 ```bash
 sudo apt install llvm-dev 

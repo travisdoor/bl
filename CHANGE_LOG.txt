@@ -1,5 +1,6 @@
 0.7.2 - BETA
 ---------------------------------------------------------------------------------------
+Migration to LLVM 11.
 Add debug allocator.
 Support custom allocators in containers.
 Fix segfault on error get line.
@@ -7,6 +8,7 @@ Fix invalid character when comment block is very last in source file.
 Fix garbage in unknown symbol reports.
 Fix attempt to generate type info for incomplete types referenced by aliases.
 Less descriptive terminal output during compilation.
+Fix invalid multi-line string literals parsing.
 
 0.7.1 - BETA
 ---------------------------------------------------------------------------------------
