@@ -41,8 +41,12 @@ test_file :: fn (file: string, flags: u32 = TEST_RUN_TIME) bool {
            print("[ FAILED ] Compilation '%'\n", file);            
            return false;
         }
-    
-        if os_execute("out.exe 2>&1 1>nul") == 0 {
+        
+        tmp :: string_new("out");
+        defer string_delete(tmp);    
+        if OS_KIND == OSKind.Windows { string_append(&tmp, ".exe"); }
+        string_append(&tmp, " 2>&1 1>nul");
+        if os_execute(tmp) == 0 {
             print("[   OK   ] Native run '%'\n", file);
         } else {
             print("[ FAILED ] Native run '%'\n", file);
