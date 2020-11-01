@@ -194,7 +194,7 @@ os_dlclose :: fn (lib: OSLibrary) #inline {
 }
 
 os_execute :: fn (command: string) s32 {
-    return _posix_system(auto command.ptr);
+    return WEXITSTATUS(_posix_system(auto command.ptr));
 }
 
 // CLEANUP: This must be in gl.bl file not here, but we keep it
@@ -345,6 +345,10 @@ dirent :: struct {
     d_reclen: c_ushort;
     d_type: c_uchar; 
     d_name: [256]c_char;
+}
+
+WEXITSTATUS :: fn (x: s32) s32 #inline {
+    return (x >> 8) & 0x000000ff;
 }
 
 __S_IFMT : u32 : 0xf000;
