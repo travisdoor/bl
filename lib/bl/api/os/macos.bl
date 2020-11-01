@@ -256,7 +256,7 @@ _os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
 }
 
 _os_debug_break :: fn () #inline {
-    _posix_raise(SIGTRAP);
+    //_posix_raise(SIGTRAP);
 }
 
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 #inline {
@@ -264,10 +264,10 @@ __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 #inline {
 };
 
 __os_abort :: fn () #compiler {
-    if IS_DEBUG { _os_debug_break(); }
     if _context.abort_fn {
         _context.abort_fn();
     } else {
+        if IS_DEBUG { _os_debug_break(); }
         _os_abort_default();
     }
 }

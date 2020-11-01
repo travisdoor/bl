@@ -313,7 +313,7 @@ abort_handler :: fn () {
     _current.passed = false;
     print("[      | FAIL ] % (% ms)\n", _current.case.name, _current.runtime_ms);
     thread :: os_thread_current();
-    os_thread_kill(thread, 1);
+    os_thread_kill(thread, 1);    
 }
 
 worker :: fn (args: []Any) {

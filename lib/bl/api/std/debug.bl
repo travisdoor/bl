@@ -121,7 +121,6 @@ Arguments
 assert :: fn (cond: bool, loc := #call_location) {
     if cond { return; }
     _context.print_log_fn(PrintLogKind.Assert, loc.file, loc.line, "Assertion failed!");
-    //if IS_DEBUG { _os_debug_break(); } // @PERFORMANCE: cound be static if later
     unreachable;
 };
 

@@ -42,6 +42,7 @@ WIN32_LPCWCH       :: c_ushort;
 WIN32_LPBOOL       :: c_int;
 WIN32_HMODULE      :: *c_uchar;
 WIN32_BOOL         :: c_int;
+WIN32_PBOOL        :: *WIN32_BOOL;
 WIN32_FARPROC      :: *c_uchar; 
 WIN32_LPVOID       :: *c_uchar; 
 WIN32_LPOVERLAPPED :: *WIN32_OVERLAPPED;
@@ -202,6 +203,8 @@ win32_GetModuleHandleA    :: fn (lpModuleName: WIN32_LPCSTR) WIN32_HMODULE #exte
 win32_GetProcAddress      :: fn (hModule: WIN32_HMODULE, lpProcName: WIN32_LPCSTR) WIN32_FARPROC #extern "GetProcAddress";
 
 win32_DebugBreak          :: fn () #extern "DebugBreak";
+win32_IsDebuggerPresent   :: fn () WIN32_BOOL #extern "IsDebuggerPresent";
+win32_CheckRemoteDebuggerPresent :: fn (hProcess: WIN32_HANDLE, pbDebuggerPresent: WIN32_PBOOL) WIN32_BOOL #extern "CheckRemoteDebuggerPresent";
 win32_GetModuleFileNameA  :: fn (hModule: WIN32_HMODULE, lpFilename: WIN32_LPSTR, nSize: WIN32_DWORD) WIN32_DWORD #extern "GetModuleFileNameA";
 
 WIN32_SECURITY_ATTRIBUTES :: struct {
