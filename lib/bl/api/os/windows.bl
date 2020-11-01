@@ -269,7 +269,7 @@ __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
 };
 
 __os_abort :: fn () #compiler {
-    if IS_DEBUG { _os_debug_break(); }
+    //if IS_DEBUG { _os_debug_break(); }
     if _context.abort_fn {
         _context.abort_fn();
     } else {

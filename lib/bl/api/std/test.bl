@@ -314,8 +314,6 @@ abort_handler :: fn () {
     print("[      | FAIL ] % (% ms)\n", _current.case.name, _current.runtime_ms);
     thread :: os_thread_current();
     os_thread_kill(thread, 1);
-
-    unreachable;
 }
 
 worker :: fn (args: []Any) {
