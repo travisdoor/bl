@@ -57,7 +57,7 @@ BL_EXE_PATH_WIN  :: "..\\bin\\blc.exe";
 BL_EXE_PATH_UNIX :: "../bin/blc";
 
 // paths
-MAIN_TEST_SUITE_FILEPATH :: "str/main.test.bl";
+MAIN_TEST_SUITE_FILEPATH :: "src/main.test.bl";
 EXAMPLES_DIR :: "../examples";
 EXPECT_FAIL_DIR :: "src/expect_fail";
 
