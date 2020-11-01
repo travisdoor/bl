@@ -1,0 +1,11 @@
+// @ERR_DUPLICIT_SWITCH_CASE@
+
+main :: fn () s32 {
+    i :: 10;
+    switch i {
+        10,
+        10 {}
+        default {}
+    }
+    return 0;
+}

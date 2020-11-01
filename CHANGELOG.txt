@@ -11,6 +11,7 @@ Less descriptive terminal output during compilation.
 Fix invalid multi-line string literals parsing.
 Fix usage of function call to initialize loop iterator.
 Compiler now returns numerical maximum error code if compilation fail.
+Added BL Doctor for better unit testing.
 
 0.7.1 - BETA
 ---------------------------------------------------------------------------------------

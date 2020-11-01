@@ -8900,7 +8900,8 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
                         BUILDER_CUR_WORD,
                         "Main is expected to be a function.");
         } else {
-            BL_ASSERT(!cnt->entry_fn);
+            // This is reported as an error.
+            //BL_ASSERT(!cnt->entry_fn); 
             BL_ASSERT(value);
             MirFn *fn = MIR_CEV_READ_AS(MirFn *, &value->value);
             BL_MAGIC_ASSERT(fn);

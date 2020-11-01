@@ -1,0 +1,4 @@
+// @ERR_DUPLICATE_SYMBOL@
+
+main :: fn () s32 { return 10; }
+main :: fn () s32 { return 12; }

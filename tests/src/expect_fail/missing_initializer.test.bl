@@ -1,0 +1,8 @@
+// @ERR_INVALID_INITIALIZER@
+
+Foo :: struct {
+    a: s32;
+    b: s32;
+}
+
+foo := {:Foo: 10};

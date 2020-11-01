@@ -38,7 +38,7 @@
 
 #define SCAN_ERROR(code, format, ...)                                                              \
     {                                                                                              \
-        builder_error((format), ##__VA_ARGS__);                                                    \
+        builder_msg(BUILDER_MSG_ERROR, (code), NULL, BUILDER_CUR_NONE, (format), ##__VA_ARGS__);   \
         longjmp((cnt)->jmp_error, code);                                                           \
     }
 
