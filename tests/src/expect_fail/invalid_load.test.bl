@@ -1,0 +1,4 @@
+// @ERR_FILE_NOT_FOUND@
+#load "some non existing file"
+
+

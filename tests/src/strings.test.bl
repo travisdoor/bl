@@ -31,7 +31,7 @@ test_strings_init2 :: fn () #test {
     s :: string_new();
     defer string_delete(s);
     test_eq(s.len, 0);
-    test_false(s.ptr);
+    test_true(s.ptr);
 }
 
 test_strings_init3 :: fn () #test {

@@ -1,9 +1,10 @@
 #load "std/dir.bl"
+#load "std/file.bl"
 
 main :: fn () s32 {
-    print("--------------------------------------------------------------------------------\n");
-    print("-                               Start BL doctor                                -\n");
-    print("--------------------------------------------------------------------------------\n\n");
+    if !parse_args() { return 1; }
+    print("---------------------------------- BL DOCTOR -----------------------------------\n");    
+    start_time_ms :: os_tick_ms();
     
     // general
     print("Test general suite:\n");    
@@ -14,8 +15,15 @@ main :: fn () s32 {
     test_all_in_dir(EXAMPLES_DIR);
     
     // expect fail to compile
-    print("Test expected to fail:\n");
-    test_file("src/expect-fail/sizeof.test.bl", TestKind.Analyze, ERR_MISSING_SEMICOLON);
+    test_all_in_dir(EXPECT_FAIL_DIR, true);
+        
+    duration_ms :: os_tick_ms() - start_time_ms;
+    print("\n----------------------------------- RESULTS ------------------------------------\n");
+    print("Test suite count:  %\n", _suitec);
+    print("Test suite failed: %\n", _errc);
+    print("Finished in:       %s\n", fmt_real(duration_ms*0.001, 2));
+    print("--------------------------------------------------------------------------------\n\n");
+        
     return _errc;
 }
 
@@ -25,6 +33,7 @@ BL_EXE_PATH_UNIX :: "../bin/blc";
 
 // paths
 EXAMPLES_DIR :: "../examples";
+EXPECT_FAIL_DIR :: "src/expect_fail";
 
 TestKind :: enum {
     Runtime;
@@ -35,31 +44,83 @@ TestKind :: enum {
 
 TEST_RUN_OK :: 0;
 
+_suitec := 0;
 _errc := 0;
+_diag_mode := false;
+_help_text :: 
+"Usage\n"
+"  doctor [options]\n\n"
+"Options:\n"
+"  -h, -help = Print this help and exit.\n"
+"  -d, -diag = Execute in diagnostic mode.";
 
-blc :: fn (file: string, args := "-no-bin -no-warning", print_errors := true) s32 {
+parse_args :: fn () bool {
+    is_arg :: fn (arg: string, long: string, short: string) bool #inline {
+        return string_compare(arg, short) || string_compare(arg, long);
+    };
+    
+    loop i := 1; i < command_line_arguments.len; i += 1 {
+        arg :: command_line_arguments[i];
+        if is_arg(arg, "-diag", "-d") {
+            _diag_mode = true;
+        } else if is_arg(arg, "-help", "-h") {
+            print(_help_text);
+            return false;
+        } else {
+            print_err("Invalid argument '%'.", arg);
+            print(_help_text);
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+get_verbosity :: fn () string #inline {
+    if _diag_mode { return ""; } // print all
+    if OS_KIND == OSKind.Windows {
+        return "2>nul 1>nul";
+    }
+    
+    return "1>/dev/null 2>/dev/null";
+}
+
+get_expected_error :: fn (filepath: string, out_err: *s32) bool {
+    file :: file_open(filepath, FileOpenMode.Read);
+    defer file_close(file);
+    if !file { print_err("Cannot open file '%'", filepath); return false; }
+    content :: file_read_all(file);
+    defer string_delete(content);
+    
+    tmp :: string_split_by(content, '@');
+    defer slice_terminate(tmp);
+    if tmp.len != 3 { return false; }
+    err :: strtoerr(tmp[1]);
+    if err == -1 { return false; }
+    ^out_err = err;
+    return true;
+}
+
+blc :: fn (file: string, args := "-no-bin -no-warning") s32 {
     cmd :: string_new(64);
     defer string_delete(cmd);
-    
+    _suitec += 1;
     if OS_KIND == OSKind.Windows {
-        mute := "2>&1 1>nul";
-        if !print_errors { mute = "2>nul 1>nul"; }
-        string_concatenate(&cmd, BL_EXE_PATH_WIN, " ", args, " ", file, " ", mute);   
+        string_concatenate(&cmd, BL_EXE_PATH_WIN, " ", args, " ", file, " ", get_verbosity());   
     } else {
-        mute := "2>&1 > /dev/null";
-        if !print_errors { mute = "1>/dev/null 2>/dev/null"; }
-        string_concatenate(&cmd, BL_EXE_PATH_UNIX, " ", args, " ", file, " ", mute);   
+        string_concatenate(&cmd, BL_EXE_PATH_UNIX, " ", args, " ", file, " ", get_verbosity());   
     }
     state :: os_execute(cmd);
     return state;
 }
 
 report_ok :: fn (msg: string, file: string, state: s32) #inline {
-    print("[   OK   ] % '%' (%)\n", msg, file, state);
+    print("[   OK   ] % '%' (Process exit with state: %)\n", msg, file, state);
 }
 
 report_failed :: fn (msg: string, file: string, state: s32) #inline {
-    print("[ FAILED ] % '%' (%)\n", msg, file, state);
+    print("[ FAILED ] % '%' (Process exit with state: %)\n", msg, file, state);
+    _errc += 1;
 }
 
 test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_RUN_OK) {
@@ -73,62 +134,53 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
                 report_ok("Compilation", file, state);
             } else {
                 report_failed("Compilation", file, state);
-                _errc += 1;
                 return;
             }
 
             tmp: string;
             if OS_KIND == OSKind.Windows { 
-                tmp = "out.exe 2>&1 1>nul"; 
+                tmp = "out.exe 2>nul 1>nul"; 
             } else {
-                tmp = "./out 2>&1 > /dev/null"; 
+                tmp = "./out 1>/dev/null 2>/dev/null"; 
             }
             state = os_execute(tmp);
             if state == 0 {
                 report_ok("Execution", file, state);
             } else {
                 report_failed("Execution", file, state);
-                _errc += 1;
-                return;
             } 
         }
 
         TestKind.CompileTime {
-            state = blc(file, "-r -no-warning", print_errors);
+            state = blc(file, "-r -no-warning");
             if state == expected_state {
                 report_ok("Interpretation", file, state);
             } else {
                 report_failed("Interpretation", file, state);
-                _errc += 1;
-                return;
             }
         }
         
         TestKind.Test {
-            state = blc(file, "-rt -no-bin -no-warning", print_errors);
+            state = blc(file, "-rt -no-bin -no-warning");
             if state == expected_state {
                 report_ok("Run compile time tests", file, state);
             } else {
                 report_failed("Run compile time tests", file, state);
-                _errc += 1;
-                return;
             }
         }
 
         TestKind.Analyze {
-            state = blc(file, "-no-warning -no-bin", print_errors);
+            state = blc(file, "-no-warning -no-bin");
             if state == expected_state {
                 report_ok("Analyze", file, state);
             } else {
                 report_failed("Analyze", file, state);
-                _errc += 1;
-                return;
             }
         }
     }
 }
 
-test_all_in_dir :: fn (dir: string) {
+test_all_in_dir :: fn (dir: string, expect_fail := false) {
     print("Testing files in directory '%':\n", dir);
     file :: string_new(64);
     defer string_delete(file);
@@ -139,92 +191,111 @@ test_all_in_dir :: fn (dir: string) {
     loop i := 0; i < file_list.len; i += 1 {
         info :: &file_list[i];
         if info.kind != FileKind.Directory {
-            string_concatenate(&file, dir, "/", info.name);
-            test_file(file);
             string_clear(&file);
+            string_concatenate(&file, dir, "/", info.name);
+            if expect_fail {
+                error_code: s32 #noinit;
+                if get_expected_error(file, &error_code) {
+                    test_file(file, TestKind.Analyze, error_code);
+                } else {
+                    print_err("Cannot get expected error code for file '%'", file);
+                }
+            } else {
+                test_file(file);
+            }
         }
     }
 }
 
 
 // ERROR CODES (This must be keept in sync with src/error.h)
-NO_ERR :: 0;
+BlError :: enum s32 {
+    NO_ERR :: 0;
+    ERR_FILE_NOT_FOUND          :: 1;
+    ERR_INVALID_SOURCE          :: 2;
+    ERR_INVALID_TOKEN           :: 3;
+    ERR_UNTERMINATED_COMMENT    :: 4;
+    ERR_UNTERMINATED_STRING     :: 5;
+    ERR_MISSING_SEMICOLON       :: 6;
+    ERR_MISSING_BRACKET         :: 7;
+    ERR_UNEXPECTED_DECL         :: 8;
+    ERR_EXPECTED_EXPR           :: 9;
+    ERR_MISSING_COMMA           :: 10;
+    ERR_EXPECTED_BODY           :: 11;
+    ERR_EXPECTED_BODY_END       :: 12;
+    ERR_EXPECTED_STMT           :: 13;
+    ERR_BREAK_OUTSIDE_LOOP      :: 14;
+    ERR_CONTINUE_OUTSIDE_LOOP   :: 15;
+    ERR_UNEXPECTED_DIRECTIVE    :: 16;
+    ERR_DUPLICATE_SYMBOL        :: 17;
+    ERR_UNKNOWN_SYMBOL          :: 18;
+    ERR_EXPECTED_TYPE           :: 19;
+    ERR_EXPECTED_NAME           :: 20;
+    ERR_EXPECTED_BINOP          :: 21;
+    ERR_DUPLICATE_ENTRY         :: 22;
+    ERR_NOT_VERIFIED            :: 23;
+    ERR_CANNOT_WRITE_BC         :: 24;
+    ERR_CANNOT_LINK             :: 25;
+    ERR_DIFF_KIND_OF_SYMBOL     :: 26;
+    ERR_INVALID_PARAM_COUNT     :: 27;
+    ERR_UNKNOWN_TYPE            :: 28;
+    ERR_PRIVATE                 :: 29;
+    ERR_UNCOMPATIBLE_MODIF      :: 30;
+    ERR_NO_MAIN_METHOD          :: 31;
+    ERR_INVALID_RESULT          :: 32;
+    ERR_INVALID_ARG_COUNT       :: 33;
+    ERR_INVALID_ARG_TYPE        :: 34;
+    ERR_INVALID_TYPE            :: 35;
+    ERR_INVALID_EXPR            :: 36;
+    ERR_JIT_RUN_FAILED          :: 37;
+    ERR_EXPECTED_STRING         :: 38;
+    ERR_EXPECTED_MODULE         :: 39;
+    ERR_EXPECTED_FUNC           :: 40;
+    ERR_MISSING_RETURN          :: 41;
+    ERR_EMPTY                   :: 42;
+    ERR_UNEXPECTED_SYMBOL       :: 43;
+    ERR_MULTIPLE_MAIN           :: 44;
+    ERR_EXPECTED_INITIALIZATION :: 45;
+    ERR_EXPECTED_TYPE_REF       :: 46;
+    ERR_EXPECTED_TYPE_STRUCT    :: 47;
+    ERR_INVALID_MUTABILITY      :: 48;
+    ERR_INVALID_NAME            :: 49;
+    ERR_INVALID_MEMBER_ACCESS   :: 50;
+    ERR_UNIMPLEMENTED           :: 51;
+    ERR_EXPECTED_CONST          :: 52;
+    ERR_EXPECTED_DECL           :: 53;
+    ERR_FILE_READ               :: 54;
+    ERR_FILE_EMPTY              :: 55;
+    ERR_INVALID_INITIALIZER     :: 56;
+    ERR_INVALID_CAST            :: 57;
+    ERR_INVALID_ADM             :: 58;
+    ERR_DIV_BY_ZERO             :: 59;
+    ERR_LIB_NOT_FOUND           :: 60;
+    ERR_LIB_SYMBOL_NOT_FOUND    :: 61;
+    ERR_EXPECTED_TEST_DESC      :: 62;
+    ERR_NULL_POINTER            :: 63;
+    ERR_INVALID_ARR_SIZE        :: 64;
+    ERR_BOUND_CHECK_FAILED      :: 65;
+    ERR_EMPTY_STRUCT            :: 66;
+    ERR_UNINITIALIZED           :: 67;
+    ERR_INVALID_ADDRES_MODE     :: 68;
+    ERR_EMPTY_ENUM              :: 69;
+    ERR_INVALID_DIRECTIVE       :: 70;
+    ERR_UNEXPECTED_EXPR         :: 71;
+    ERR_EXPECTED_COMPTIME       :: 72;
+    ERR_NUM_LIT_OVERFLOW        :: 73;
+    ERR_INVALID_SWITCH_CASE     :: 74;
+    ERR_DUPLICIT_SWITCH_CASE    :: 75;
+    ERR_INVALID_REFERENCE       :: 76;
+    ERR_UNEXPECTED_RETURN       :: 77;
+    ERR_AMBIGUOUS_OVERLOAD      :: 78;
+}
 
-ERR_FILE_NOT_FOUND          :: 1;
-ERR_INVALID_SOURCE          :: 2;
-ERR_INVALID_TOKEN           :: 3;
-ERR_UNTERMINATED_COMMENT    :: 4;
-ERR_UNTERMINATED_STRING     :: 5;
-ERR_MISSING_SEMICOLON       :: 6;
-ERR_MISSING_BRACKET         :: 7;
-ERR_UNEXPECTED_DECL         :: 8;
-ERR_EXPECTED_EXPR           :: 9;
-ERR_MISSING_COMMA           :: 10;
-ERR_EXPECTED_BODY           :: 11;
-ERR_EXPECTED_BODY_END       :: 12;
-ERR_EXPECTED_STMT           :: 13;
-ERR_BREAK_OUTSIDE_LOOP      :: 14;
-ERR_CONTINUE_OUTSIDE_LOOP   :: 15;
-ERR_UNEXPECTED_DIRECTIVE    :: 16;
-ERR_DUPLICATE_SYMBOL        :: 17;
-ERR_UNKNOWN_SYMBOL          :: 18;
-ERR_EXPECTED_TYPE           :: 19;
-ERR_EXPECTED_NAME           :: 20;
-ERR_EXPECTED_BINOP          :: 21;
-ERR_DUPLICATE_ENTRY         :: 22;
-ERR_NOT_VERIFIED            :: 23;
-ERR_CANNOT_WRITE_BC         :: 24;
-ERR_CANNOT_LINK             :: 25;
-ERR_DIFF_KIND_OF_SYMBOL     :: 26;
-ERR_INVALID_PARAM_COUNT     :: 27;
-ERR_UNKNOWN_TYPE            :: 28;
-ERR_PRIVATE                 :: 29;
-ERR_UNCOMPATIBLE_MODIF      :: 30;
-ERR_NO_MAIN_METHOD          :: 31;
-ERR_INVALID_RESULT          :: 32;
-ERR_INVALID_ARG_COUNT       :: 33;
-ERR_INVALID_ARG_TYPE        :: 34;
-ERR_INVALID_TYPE            :: 35;
-ERR_INVALID_EXPR            :: 36;
-ERR_JIT_RUN_FAILED          :: 37;
-ERR_EXPECTED_STRING         :: 38;
-ERR_EXPECTED_MODULE         :: 39;
-ERR_EXPECTED_FUNC           :: 40;
-ERR_MISSING_RETURN          :: 41;
-ERR_EMPTY                   :: 42;
-ERR_UNEXPECTED_SYMBOL       :: 43;
-ERR_MULTIPLE_MAIN           :: 44;
-ERR_EXPECTED_INITIALIZATION :: 45;
-ERR_EXPECTED_TYPE_REF       :: 46;
-ERR_EXPECTED_TYPE_STRUCT    :: 47;
-ERR_INVALID_MUTABILITY      :: 48;
-ERR_INVALID_NAME            :: 49;
-ERR_INVALID_MEMBER_ACCESS   :: 50;
-ERR_UNIMPLEMENTED           :: 51;
-ERR_EXPECTED_CONST          :: 52;
-ERR_EXPECTED_DECL           :: 53;
-ERR_FILE_READ               :: 54;
-ERR_FILE_EMPTY              :: 55;
-ERR_INVALID_INITIALIZER     :: 56;
-ERR_INVALID_CAST            :: 57;
-ERR_INVALID_ADM             :: 58;
-ERR_DIV_BY_ZERO             :: 59;
-ERR_LIB_NOT_FOUND           :: 60;
-ERR_LIB_SYMBOL_NOT_FOUND    :: 61;
-ERR_EXPECTED_TEST_DESC      :: 62;
-ERR_NULL_POINTER            :: 63;
-ERR_INVALID_ARR_SIZE        :: 64;
-ERR_BOUND_CHECK_FAILED      :: 65;
-ERR_EMPTY_STRUCT            :: 66;
-ERR_UNINITIALIZED           :: 67;
-ERR_INVALID_ADDRES_MODE     :: 68;
-ERR_EMPTY_ENUM              :: 69;
-ERR_INVALID_DIRECTIVE       :: 70;
-ERR_UNEXPECTED_EXPR         :: 71;
-ERR_EXPECTED_COMPTIME       :: 72;
-ERR_NUM_LIT_OVERFLOW        :: 73;
-ERR_INVALID_SWITCH_CASE     :: 74;
-ERR_DUPLICIT_SWITCH_CASE    :: 75;
-ERR_INVALID_REFERENCE       :: 76;
-ERR_UNEXPECTED_RETURN       :: 77;
-ERR_AMBIGUOUS_OVERLOAD      :: 78;
+strtoerr :: fn (s: string) s32 {
+    info :: cast(*TypeInfoEnum) typeinfo(BlError);
+    loop i := 0; i < info.variants.len; i += 1 {
+        variant :: &info.variants[i];
+        if string_compare(variant.name, s) { return auto variant.value; }
+    }
+    return -1;
+}
