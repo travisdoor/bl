@@ -1,0 +1,13 @@
+build :: fn () #build_entry {
+    exe_name: string;
+    switch OS_KIND {
+        OSKind.Windows { exe_name = "doctor-win64"; }
+        OSKind.MacOS   { exe_name = "doctor-macos"; }
+        OSKind.Linux   { exe_name = "doctor-linux"; }
+        default        { panic("Unknown build target!"); }
+    }
+    
+    exe :: add_executable(exe_name);
+    add_unit(exe, "doctor.bl");
+    set_output_dir(exe, "../");
+}

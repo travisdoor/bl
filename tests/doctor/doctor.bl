@@ -3,13 +3,28 @@
 
 main :: fn () s32 {
     if !parse_args() { return 1; }
+    init_wdir();
+    defer string_delete(_wdir);
+    
+    if OS_KIND == OSKind.Windows {
+        _compiler_path = get_path(BL_EXE_PATH_WIN);
+    } else {
+        _compiler_path = get_path(BL_EXE_PATH_UNIX);
+    }
+    defer string_delete(_compiler_path);
+        
     print("---------------------------------- BL DOCTOR -----------------------------------\n");    
     start_time_ms :: os_tick_ms();
-    
+
+    print("Run in '%'\n", _wdir);    
     // general
     print("Test general suite:\n");    
-    test_file("src/main.test.bl", TestKind.Runtime);
-    test_file("src/main.test.bl", TestKind.Test);
+    {
+        file :: get_path(MAIN_TEST_SUITE_FILEPATH);
+        defer string_delete(file);
+        test_file(file, TestKind.Runtime);
+        test_file(file, TestKind.Test);
+    }
     
     // examples
     test_all_in_dir(EXAMPLES_DIR);
@@ -23,7 +38,17 @@ main :: fn () s32 {
     print("Test suite failed: %\n", _errc);
     print("Finished in:       %s\n", fmt_real(duration_ms*0.001, 2));
     print("--------------------------------------------------------------------------------\n\n");
-        
+    
+    
+    // cleanup
+    if OS_KIND == OSKind.Windows {
+        os_execute("call del out.exe /f /q");
+        os_execute("call del out.obj /f /q");
+        os_execute("call del out.pdb /f /q");    
+    } else {
+        os_execute("rm -f out");
+        os_execute("rm -f out.o");
+    }        
     return _errc;
 }
 
@@ -32,6 +57,7 @@ BL_EXE_PATH_WIN  :: "..\\bin\\blc.exe";
 BL_EXE_PATH_UNIX :: "../bin/blc";
 
 // paths
+MAIN_TEST_SUITE_FILEPATH :: "str/main.test.bl";
 EXAMPLES_DIR :: "../examples";
 EXPECT_FAIL_DIR :: "src/expect_fail";
 
@@ -43,10 +69,11 @@ TestKind :: enum {
 }
 
 TEST_RUN_OK :: 0;
-
+_compiler_path: string;
 _suitec := 0;
 _errc := 0;
 _diag_mode := false;
+_wdir: string;
 _help_text :: 
 "Usage\n"
 "  doctor [options]\n\n"
@@ -74,6 +101,24 @@ parse_args :: fn () bool {
     }
     
     return true;
+}
+
+init_wdir :: fn () {
+    exec_path :: os_get_exec_path();
+    defer string_delete(exec_path);
+    dir: string;
+    if string_split_by_last(exec_path, '/', &dir, null) {
+        _wdir = string_new(dir);
+    } else {
+        _wdir = string_new("");
+    }
+    print_log("Working directory: %", _wdir);
+}
+
+get_path :: fn (p: string) string #inline {
+    tmp :: sprint(_wdir, "/", p);
+    os_normalize_path(&tmp);
+    return tmp;
 }
 
 get_verbosity :: fn () string #inline {
@@ -105,11 +150,7 @@ blc :: fn (file: string, args := "-no-bin -no-warning") s32 {
     cmd :: string_new(64);
     defer string_delete(cmd);
     _suitec += 1;
-    if OS_KIND == OSKind.Windows {
-        string_concatenate(&cmd, BL_EXE_PATH_WIN, " ", args, " ", file, " ", get_verbosity());   
-    } else {
-        string_concatenate(&cmd, BL_EXE_PATH_UNIX, " ", args, " ", file, " ", get_verbosity());   
-    }
+    string_concatenate(&cmd, _compiler_path, " ", args, " ", file, " ", get_verbosity());   
     state :: os_execute(cmd);
     return state;
 }
@@ -125,8 +166,6 @@ report_failed :: fn (msg: string, file: string, state: s32) #inline {
 
 test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_RUN_OK) {
     state: s32;
-    print_errors := true;
-    if expected_state != TEST_RUN_OK { print_errors = false; }
     switch kind {
         TestKind.Runtime {
             state = blc(file, "-no-warning");
@@ -180,10 +219,14 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
     }
 }
 
-test_all_in_dir :: fn (dir: string, expect_fail := false) {
-    print("Testing files in directory '%':\n", dir);
+test_all_in_dir :: fn (_dir: string, expect_fail := false) {
     file :: string_new(64);
     defer string_delete(file);
+    
+    dir :: get_path(_dir);
+    defer string_delete(dir);
+    
+    print("Testing files in directory '%':\n", dir);        
     file_list: FileList #noinit;
     if !dir_scan(dir, &file_list) { print_err("Cannot scan directory!"); }
     defer dir_file_list_delete(file_list);
