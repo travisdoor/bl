@@ -26,5 +26,4 @@ jobs:
         cd install
         ./configure_macos.sh
     - name: Run tests
-      run: cd tests && ../bin/blc -rt -no-warning src/main.test.bl && ./out
-
+      run: ./tests/doctor-macos -d
