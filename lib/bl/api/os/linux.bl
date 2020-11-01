@@ -389,7 +389,7 @@ _posix_opendir   :: fn (name: *u8) *u8 #extern "opendir";
 _posix_closedir  :: fn (dirp: *u8) s32 #extern "closedir";
 _posix_readdir   :: fn (dirp: *u8) *dirent #extern "readdir";
 _posix_rewinddir :: fn (dirp: *u8) #extern "rewinddir";
-_posix_system    :: fn (command: *c_char) c_int #extern "system";
+_posix_system    :: fn (command: *c_char) c_long #extern "system";
 _posix_readlink  :: fn (pathname: *c_char, buf: *c_char, bufsiz: c_size_t) c_int #extern "readlink";
 _posix_getenv    :: fn (name: *u8) *u8 #extern "getenv";
 _posix_stat      :: fn (path: *c_char, buf: *_stat_t) c_int #extern "stat";
