@@ -130,7 +130,7 @@ int main(s32 argc, char *argv[])
     argv += next_arg;
 
     if (builder.options.print_help) {
-        fprintf(stdout, help_text);
+        fprintf(stdout, "%s", help_text);
         EXIT(EXIT_SUCCESS);
     }
 
