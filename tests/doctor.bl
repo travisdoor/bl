@@ -50,7 +50,8 @@ blc :: fn (file: string, args := "-no-bin -no-warning", print_errors := true) s3
         if !print_errors { mute = "1>/dev/null 2>/dev/null"; }
         string_concatenate(&cmd, BL_EXE_PATH_UNIX, " ", args, " ", file, " ", mute);   
     }
-    return os_execute(cmd);
+    state :: os_execute(cmd);
+    return state;
 }
 
 report_ok :: fn (msg: string, file: string, state: s32) #inline {
