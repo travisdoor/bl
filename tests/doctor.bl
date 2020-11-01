@@ -6,15 +6,15 @@ main :: fn () s32 {
     print("--------------------------------------------------------------------------------\n\n");
     
     // general
-    print("Test general suite.\n");    
-    test_file("src/main.test.bl", TestKind.CompileTime);
+    print("Test general suite:\n");    
+    test_file("src/main.test.bl", TestKind.Runtime);
+    test_file("src/main.test.bl", TestKind.Test);
     
     // examples
-    test_file("src/main.test.bl", TestKind.Runtime);
     test_all_in_dir(EXAMPLES_DIR);
     
     // expect fail to compile
-    print("Test expected to fail.\n");
+    print("Test expected to fail:\n");
     test_file("src/expect-fail/sizeof.test.bl", TestKind.Analyze, ERR_MISSING_SEMICOLON);
     return _errc;
 }
@@ -29,6 +29,7 @@ EXAMPLES_DIR :: "../examples";
 TestKind :: enum {
     Runtime;
     CompileTime;
+    Test;
     Analyze;
 }
 
@@ -49,7 +50,6 @@ blc :: fn (file: string, args := "-no-bin -no-warning", print_errors := true) s3
         if !print_errors { mute = "1>/dev/null 2>/dev/null"; }
         string_concatenate(&cmd, BL_EXE_PATH_UNIX, " ", args, " ", file, " ", mute);   
     }
-    print("%\n", cmd);
     return os_execute(cmd);
 }
 
@@ -102,6 +102,17 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
                 return;
             }
         }
+        
+        TestKind.Test {
+            state = blc(file, "-rt -no-bin -no-warning", print_errors);
+            if state == expected_state {
+                report_ok("Run compile time tests", file, state);
+            } else {
+                report_failed("Run compile time tests", file, state);
+                _errc += 1;
+                return;
+            }
+        }
 
         TestKind.Analyze {
             state = blc(file, "-no-warning -no-bin", print_errors);
@@ -117,7 +128,7 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
 }
 
 test_all_in_dir :: fn (dir: string) {
-    print("Testing files in directory '%'\n", dir);
+    print("Testing files in directory '%':\n", dir);
     file :: string_new(64);
     defer string_delete(file);
     file_list: FileList #noinit;

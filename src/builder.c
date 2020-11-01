@@ -238,7 +238,7 @@ s32 builder_parse_options(s32 argc, char *argv[])
 void builder_init(void)
 {
     memset(&builder, 0, sizeof(Builder));
-    builder.errorc =  builder.max_error = 0;
+    builder.errorc =  builder.max_error = builder.test_failc = 0;
     builder.conf   = conf_data_new();
     arena_init(&builder.str_cache, sizeof(TString), 256, (ArenaElemDtor)str_cache_dtor);
 
