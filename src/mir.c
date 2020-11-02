@@ -4038,7 +4038,7 @@ AnalyzeResult analyze_instr_phi(Context *cnt, MirInstrPhi *phi)
         value_ref = &phi->incoming_values->data[i];
         block     = phi->incoming_blocks->data[i];
         BL_ASSERT(block && block->kind == MIR_INSTR_BLOCK)
-
+        BL_ASSERT((*value_ref)->analyzed && "Phi incomming value is not analyzed!");
         const AnalyzeSlotConfig *conf =
             type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
 
@@ -4064,7 +4064,7 @@ AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
     if (cmp->base.is_implicit) {
         BL_ASSERT(type && "Missig type for implicit compound!");
         BL_ASSERT((cmp->is_zero_initialized || values->size) &&
-                  "Missig type for implicit compound!");
+                  "Missnig type for implicit compound!");
 
         goto SKIP_IMPLICIT;
     }
