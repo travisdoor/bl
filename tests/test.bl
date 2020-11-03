@@ -5,7 +5,6 @@ main :: fn () s32 {
     b :: false;
     c :: true;
 
-    if a || (b && c) {
-    }
+    r := a || b || c;
     return 0;
 }

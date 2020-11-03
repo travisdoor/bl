@@ -99,6 +99,7 @@ TSMALL_ARRAY_TYPE(InstrPtr64, MirInstr *, 64);
 TSMALL_ARRAY_TYPE(String, char *, 64);
 TSMALL_ARRAY_TYPE(RTTIIncomplete, RTTIIncomplete, 64);
 
+// Instance in run method is zero initialized, no need to set default values explicitly.
 typedef struct {
     VM *      vm;
     Assembly *assembly;
@@ -113,7 +114,8 @@ typedef struct {
         MirInstrBlock *        break_block;
         MirInstrBlock *        exit_block;
         MirInstrBlock *        continue_block;
-
+        MirInstrBlock *        current_phi_end_block;
+        MirInstrPhi *          current_phi;
         // @CLEANUP: get rid of this!!!
         ID *current_entity_id;
 
@@ -359,8 +361,13 @@ create_member(Context *cnt, Ast *node, ID *id, Scope *scope, s64 index, MirType 
 static MirArg *
 create_arg(Context *cnt, Ast *node, ID *id, Scope *scope, MirType *type, MirInstr *value);
 
-static MirVariant *   create_variant(Context *cnt, ID *id, Scope *scope, MirConstExprValue *value);
+static MirVariant *create_variant(Context *cnt, ID *id, Scope *scope, MirConstExprValue *value);
+// Create block without owner function.
+static MirInstrBlock *create_block(Context *cnt, const char *name);
+// Create and append block into function specified.
 static MirInstrBlock *append_block(Context *cnt, MirFn *fn, const char *name);
+// Append already created block into function. Block cannot be already member of other function.
+static MirInstrBlock *append_block2(Context *cnt, MirFn *fn, MirInstrBlock *block);
 static MirInstrBlock *append_global_block(Context *cnt, const char *name);
 
 // instructions
@@ -391,6 +398,7 @@ static MirInstr *create_instr_member_ptr(Context *        cnt,
                                          Ast *            member_ident,
                                          ScopeEntry *     scope_entry,
                                          MirBuiltinIdKind builtin_id);
+static MirInstr *create_instr_phi(Context *cnt, Ast *node);
 
 static MirInstr *insert_instr_load(Context *cnt, MirInstr *src);
 static MirInstr *insert_instr_cast(Context *cnt, MirInstr *src, MirType *to_type);
@@ -403,6 +411,8 @@ static MirInstr *
 append_instr_set_initializer(Context *cnt, Ast *node, MirInstr *dest, MirInstr *src);
 
 static MirInstr *append_instr_set_initializer_impl(Context *cnt, MirInstr *dest, MirInstr *src);
+
+// @CLEANUP Is this even used?
 static MirInstr *append_instr_phi(Context *cnt, Ast *node);
 static MirInstr *
 append_instr_compound(Context *cnt, Ast *node, MirInstr *type, TSmallArray_InstrPtr *values);
@@ -2785,26 +2795,38 @@ MirInstr *create_instr_call_loc(Context *cnt, Ast *node, Location *call_location
     return &tmp->base;
 }
 
-MirInstrBlock *append_block(Context *cnt, MirFn *fn, const char *name)
+MirInstrBlock *create_block(Context *cnt, const char *name)
 {
-    BL_ASSERT(fn && name);
+    BL_ASSERT(name);
     MirInstrBlock *tmp   = create_instr(cnt, MIR_INSTR_BLOCK, NULL);
     tmp->base.value.type = cnt->builtin_types->t_void;
     tmp->name            = name;
-    tmp->owner_fn        = fn;
     tmp->emit_llvm       = true;
+    tmp->owner_fn        = NULL;
+    return tmp;
+}
 
+MirInstrBlock *append_block2(Context UNUSED(*cnt), MirFn *fn, MirInstrBlock *block)
+{
+    BL_ASSERT(block && fn);
+    BL_ASSERT(!block->owner_fn && "Block is already appended to function!");
+    block->owner_fn = fn;
     if (!fn->first_block) {
-        fn->first_block = tmp;
-
+        fn->first_block = block;
         // first block is referenced everytime!!!
-        ref_instr(&tmp->base);
+        ref_instr(&block->base);
     }
+    block->base.prev = &fn->last_block->base;
+    if (fn->last_block) fn->last_block->base.next = &block->base;
+    fn->last_block = block;
+    return block;
+}
 
-    tmp->base.prev = &fn->last_block->base;
-    if (fn->last_block) fn->last_block->base.next = &tmp->base;
-    fn->last_block = tmp;
-
+MirInstrBlock *append_block(Context *cnt, MirFn *fn, const char *name)
+{
+    BL_ASSERT(fn && name);
+    MirInstrBlock *tmp = create_block(cnt, name);
+    append_block2(cnt, fn, tmp);
     return tmp;
 }
 
@@ -3026,13 +3048,19 @@ MirInstr *append_instr_arg(Context *cnt, Ast *node, unsigned i)
     return &tmp->base;
 }
 
-MirInstr *append_instr_phi(Context *cnt, Ast *node)
+MirInstr *create_instr_phi(Context *cnt, Ast *node)
 {
     MirInstrPhi *tmp     = create_instr(cnt, MIR_INSTR_PHI, node);
     tmp->incoming_values = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
     tmp->incoming_blocks = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
-    append_current_block(cnt, &tmp->base);
     return &tmp->base;
+}
+
+MirInstr *append_instr_phi(Context *cnt, Ast *node)
+{
+    MirInstr *tmp = create_instr_phi(cnt, node);
+    append_current_block(cnt, tmp);
+    return tmp;
 }
 
 MirInstr *
@@ -8738,24 +8766,41 @@ MirInstr *ast_expr_binop(Context *cnt, Ast *binop)
     }
 
     case BINOP_LOGIC_OR: {
-        MirFn *        fn        = get_current_fn(cnt);
-        MirInstrBlock *rhs_block = append_block(cnt, fn, "rhs_block");
-        MirInstrBlock *end_block = append_block(cnt, fn, "end_block");
+        MirFn *        fn               = get_current_fn(cnt);
+        MirInstrBlock *rhs_block        = append_block(cnt, fn, "rhs_block");
+        MirInstrBlock *end_block        = cnt->ast.current_phi_end_block;
+        MirInstrBlock *top_block        = get_current_block(cnt);
+        MirInstrPhi *  phi              = cnt->ast.current_phi;
+        bool           append_end_block = false;
+        // If no end block is specified, we are on the top level of PHI expresion generation and we
+        // must create one. Also PHI instruction must be crated (but not appended yet); created PHI
+        // gather incomes from all nested branches created by expression.
+        if (!end_block) {
+            BL_ASSERT(!phi);
+            end_block                      = create_block(cnt, "end_block");
+            phi                            = (MirInstrPhi *)create_instr_phi(cnt, binop);
+            cnt->ast.current_phi_end_block = end_block;
+            cnt->ast.current_phi           = phi;
+            append_end_block               = true;
+        }
 
         MirInstr *lhs = ast(cnt, ast_lhs);
         append_instr_cond_br(cnt, NULL, lhs, end_block, rhs_block);
-
         set_current_block(cnt, rhs_block);
         MirInstr *rhs = ast(cnt, ast_rhs);
-        append_instr_br(cnt, NULL, end_block);
-
-        set_current_block(cnt, end_block);
-        MirInstr *   const_true = append_instr_const_bool(cnt, NULL, true);
-        MirInstrPhi *phi        = (MirInstrPhi *)append_instr_phi(cnt, binop);
-        phi_add_income(phi, const_true, lhs->owner_block);
         phi_add_income(phi, rhs, rhs_block);
-
-        return &phi->base;
+        if (append_end_block) {
+            append_instr_br(cnt, NULL, end_block);
+            append_block2(cnt, fn, end_block);
+            set_current_block(cnt, end_block);
+            MirInstr *const_true = append_instr_const_bool(cnt, NULL, true);
+            append_current_block(cnt, &phi->base);
+            phi_add_income(phi, const_true, top_block);
+            cnt->ast.current_phi_end_block = NULL;
+            cnt->ast.current_phi           = NULL;
+            return &phi->base;
+        }
+        return rhs;
     }
 
     default: {
@@ -8901,7 +8946,7 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
                         "Main is expected to be a function.");
         } else {
             // This is reported as an error.
-            //BL_ASSERT(!cnt->entry_fn); 
+            // BL_ASSERT(!cnt->entry_fn);
             BL_ASSERT(value);
             MirFn *fn = MIR_CEV_READ_AS(MirFn *, &value->value);
             BL_MAGIC_ASSERT(fn);

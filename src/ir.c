@@ -824,8 +824,6 @@ State emit_instr_decl_direct_ref(Context UNUSED(*cnt), MirInstrDeclDirectRef *re
 State emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 {
     if (cnt->debug_mode) emit_DI_instr_loc(cnt, &phi->base);
-    LLVMValueRef llvm_phi =
-        LLVMBuildPhi(cnt->llvm_builder, get_type(cnt, phi->base.value.type), "");
 
     const usize count = phi->incoming_blocks->size;
 
@@ -840,11 +838,13 @@ State emit_instr_phi(Context *cnt, MirInstrPhi *phi)
     for (usize i = 0; i < count; ++i) {
         value = phi->incoming_values->data[i];
         block = (MirInstrBlock *)phi->incoming_blocks->data[i];
-
-        tsa_push_LLVMValue(&llvm_iv, value->llvm_value);
+        BL_ASSERT(value->llvm_value);
+        tsa_push_LLVMValue(&llvm_iv,  value->llvm_value);
         tsa_push_LLVMValue(&llvm_ib, LLVMBasicBlockAsValue(emit_basic_block(cnt, block)));
     }
 
+    LLVMValueRef llvm_phi =
+        LLVMBuildPhi(cnt->llvm_builder, get_type(cnt, phi->base.value.type), "");
     LLVMAddIncoming(llvm_phi, llvm_iv.data, (LLVMBasicBlockRef *)llvm_ib.data, (unsigned int)count);
 
     tsa_terminate(&llvm_iv);
