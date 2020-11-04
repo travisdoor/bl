@@ -1634,7 +1634,7 @@ void interp_instr_cond_br(VM *vm, MirInstrCondBr *br)
     // pop condition from stack
     VMStackPtr cond_ptr = NULL;
     if (br->keep_stack_value) {
-        BL_ASSERT(false && "Keep value!!!");
+        cond_ptr = peek_value(vm, &br->cond->value);
     } else {
         cond_ptr = fetch_value(vm, &br->cond->value);
     }
