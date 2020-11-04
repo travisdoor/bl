@@ -673,7 +673,7 @@ static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 9,
 // out_type when analyze passed without problems. When analyze does not pass postpone is returned
 // and out_type stay unchanged.
 static AnalyzeResult
-                     analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
+analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
 static AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp);
 static AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
 static AnalyzeResult analyze_instr_phi(Context *cnt, MirInstrPhi *phi);
@@ -4051,8 +4051,15 @@ AnalyzeResult analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
     return ANALYZE_RESULT(PASSED, 0);
 }
 
-AnalyzeResult analyze_instr_phi(Context *cnt, MirInstrPhi *phi)
+AnalyzeResult analyze_instr_phi(Context UNUSED(*cnt), MirInstrPhi *phi)
 {
+    // PHI instruction accept income values of two kinds, one is direct value and second reference
+    // to last conditional break instruction in the income's block. Second case is supported due to
+    // nature of instruction analyze; when instruction is referenced in conditionali break, it's
+    // going to be analyzed as an input slot and could be eventually replaced by proper constant or
+    // load instruction. In such case PHI would do same slot analyze pass again; this behaviour is
+    // undefined, PHI income value can refer to already deleted instruction and ends up with invalid
+    // value.
     BL_ASSERT(phi->incoming_blocks && phi->incoming_values);
     BL_ASSERT(phi->incoming_values->size == phi->incoming_blocks->size);
 
@@ -4067,12 +4074,16 @@ AnalyzeResult analyze_instr_phi(Context *cnt, MirInstrPhi *phi)
         block     = phi->incoming_blocks->data[i];
         BL_ASSERT(block && block->kind == MIR_INSTR_BLOCK)
         BL_ASSERT((*value_ref)->analyzed && "Phi incomming value is not analyzed!");
-        const AnalyzeSlotConfig *conf =
-            type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
-
-        if (analyze_slot(cnt, conf, value_ref, type) != ANALYZE_PASSED)
-            return ANALYZE_RESULT(FAILED, 0);
-
+        if ((*value_ref)->kind == MIR_INSTR_COND_BR) {
+            *value_ref = ((MirInstrCondBr *)(*value_ref))->cond;
+            BL_ASSERT(value_ref && *value_ref);
+            BL_ASSERT((*value_ref)->analyzed && "Phi incomming value is not analyzed!");
+        } else {
+            const AnalyzeSlotConfig *conf =
+                type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
+            if (analyze_slot(cnt, conf, value_ref, type) != ANALYZE_PASSED)
+                return ANALYZE_RESULT(FAILED, 0);
+        }
         if (!type) type = (*value_ref)->value.type;
     }
 
@@ -8769,7 +8780,6 @@ MirInstr *ast_expr_binop(Context *cnt, Ast *binop)
         MirFn *        fn               = get_current_fn(cnt);
         MirInstrBlock *rhs_block        = append_block(cnt, fn, "rhs_block");
         MirInstrBlock *end_block        = cnt->ast.current_phi_end_block;
-        MirInstrBlock *top_block        = get_current_block(cnt);
         MirInstrPhi *  phi              = cnt->ast.current_phi;
         bool           append_end_block = false;
         // If no end block is specified, we are on the top level of PHI expresion generation and we
@@ -8785,17 +8795,16 @@ MirInstr *ast_expr_binop(Context *cnt, Ast *binop)
         }
 
         MirInstr *lhs = ast(cnt, ast_lhs);
-        append_instr_cond_br(cnt, NULL, lhs, end_block, rhs_block);
+        MirInstr *brk = append_instr_cond_br(cnt, NULL, lhs, end_block, rhs_block);
+        phi_add_income(phi, brk, get_current_block(cnt));
         set_current_block(cnt, rhs_block);
         MirInstr *rhs = ast(cnt, ast_rhs);
-        phi_add_income(phi, rhs, rhs_block);
         if (append_end_block) {
             append_instr_br(cnt, NULL, end_block);
+            phi_add_income(phi, rhs, get_current_block(cnt));
             append_block2(cnt, fn, end_block);
             set_current_block(cnt, end_block);
-            MirInstr *const_true = append_instr_const_bool(cnt, NULL, true);
             append_current_block(cnt, &phi->base);
-            phi_add_income(phi, const_true, top_block);
             cnt->ast.current_phi_end_block = NULL;
             cnt->ast.current_phi           = NULL;
             return &phi->base;

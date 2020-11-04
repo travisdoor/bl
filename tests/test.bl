@@ -1,10 +1,14 @@
 // playground 
 
+fib :: fn (n: s32) s32 {
+    if n == 0 || n == 1 {
+        return n;
+    } else {
+        return fib(n-1) + fib(n-2);
+    }
+}
+
 main :: fn () s32 {
-    a :: true;
-    b :: false;
-    c :: true;
-
-    r := a || b || c;
+    fib(2);
     return 0;
 }

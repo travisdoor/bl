@@ -354,7 +354,8 @@ static INLINE VMStackPtr stack_rel_to_abs_ptr(VM *vm, VMRelativeStackPtr rel_ptr
     return base + rel_ptr;
 }
 
-// Fetch value into Temp
+// Fetch value; use internal ConstExprValue storage if value is compile time known, otherwise use
+// stack.
 static INLINE VMStackPtr fetch_value(VM *vm, MirConstExprValue *v)
 {
     if (v->is_comptime) return v->data;
