@@ -1,37 +1,4 @@
 #private
-ifs :: fn () #test {
-    b := true;
-    if b {
-        if !b {
-          unreachable;
-        }
-    } else {
-        unreachable;
-    }
-
-    if !b {
-        unreachable;
-    }
-};
-
-logical_op1 :: fn () #test {
-    a :: true;
-    b :: false;
-    test_true(a || b);
-    test_true(b || a);
-    test_true(a || a);
-    test_false(b || b);
-}
-
-logical_op2 :: fn () #test {
-    a := true;
-    b := false;
-    test_true(a || b);
-    test_true(b || a);
-    test_true(a || a);
-    test_false(b || b);
-}
-
 f1_called := 0;
 f2_called := 0;
 f3_called := 0;
@@ -56,6 +23,30 @@ f3 :: fn (v: bool) bool {
     f3_called += 1;
     return v; 
 }
+
+ifs :: fn () #test {
+    b := true;
+    if b {
+        if !b {
+          unreachable;
+        }
+    } else {
+        unreachable;
+    }
+
+    if !b {
+        unreachable;
+    }
+};
+
+logical_op1 :: fn () #test {
+    a :: true;
+    b :: false;
+    test_true(a || b);
+    test_true(b || a);
+    test_true(a || a);
+    test_false(b || b);
+}
     
 logical_op3 :: fn () #test {
     test_true(f1(true) || f2(false));
@@ -63,19 +54,17 @@ logical_op3 :: fn () #test {
     test_eq(f2_called, 0);
     reset();
     
-    test_true(f2(false) || f1(true));
+    test_true(f1(false) || f2(true));
     test_eq(f1_called, 1);
     test_eq(f2_called, 1);
     reset();
     
     test_true(f1(true) || f1(true));
     test_eq(f1_called, 1);
-    test_eq(f2_called, 0);
     reset();
       
-    test_false(f2(false) || f2(false));
-    test_eq(f1_called, 0);
-    test_eq(f2_called, 2);
+    test_false(f1(false) || f1(false));
+    test_eq(f1_called, 2);
     reset();
 }
 
@@ -86,9 +75,73 @@ logical_op4 :: fn () #test {
     test_eq(f3_called, 0);
     reset();
     
-    test_true(f1(false) || f2(false) || f3(true));
+    test_true(f1(false) || f1(false) || f1(true));
+    test_eq(f1_called, 3);
+    reset();
+}
+
+logical_op5 :: fn () #test {
+    a :: true;
+    b :: false;
+    test_false(a && b);
+    test_false(b && a);
+    test_true(a && a);
+    test_false(b && b);
+}
+
+logical_op6 :: fn () #test {
+    a := true;
+    b := false;
+    test_true(a || b);
+    test_true(b || a);
+    test_true(a || a);
+    test_false(b || b);
+}
+
+logical_op7 :: fn () #test {
+    test_false(f1(true) && f2(false));
     test_eq(f1_called, 1);
     test_eq(f2_called, 1);
-    test_eq(f3_called, 1);
+    reset();
+    
+    test_false(f1(false) && f2(true));
+    test_eq(f1_called, 1);
+    test_eq(f2_called, 0);
+    reset();
+    
+    test_true(f1(true) && f1(true));
+    test_eq(f1_called, 2);
+    reset();
+      
+    test_false(f1(false) && f1(false));
+    test_eq(f1_called, 1);
+    reset();
+}
+
+logical_op8 :: fn () #test {
+    test_true(f1(true) && f1(true) && f1(true));
+    test_eq(f1_called, 3);
+    reset();
+    
+    test_false(f1(false) && f1(true) && f1(true));
+    test_eq(f1_called, 1);
+    reset();
+    
+    test_false(f1(true) && f1(false) && f1(true));
+    test_eq(f1_called, 2);
+    reset();
+    
+    test_false(f1(true) && f1(true) && f1(false));
+    test_eq(f1_called, 3);
+    reset();
+}
+
+logical_op9 :: fn () #test {
+    test_true(f1(true) || f1(true) && f1(true));
+    test_eq(f1_called, 1);
+    reset();
+
+    test_true(f1(true) && f1(true) || f1(true));
+    test_eq(f1_called, 2);
     reset();
 }

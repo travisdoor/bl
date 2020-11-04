@@ -1231,10 +1231,7 @@ static INLINE void phi_add_income(MirInstrPhi *phi, MirInstr *value, MirInstrBlo
     tsa_push_InstrPtr(phi->incoming_blocks, &block->base);
 
     if (value->kind == MIR_INSTR_COND_BR) {
-        // @INCOMPLETE: enable this after && is implemented
-        // @INCOMPLETE: enable this after && is implemented
-        // @INCOMPLETE: enable this after && is implemented
-        //((MirInstrCondBr *)value)->keep_stack_value = true;
+        ((MirInstrCondBr *)value)->keep_stack_value = true;
     }
 }
 
@@ -8762,28 +8759,9 @@ MirInstr *ast_expr_binop(Context *cnt, Ast *binop)
         return append_instr_store(cnt, binop, tmp, lhs);
     }
 
-    case BINOP_LOGIC_AND: {
-        MirFn *        fn        = get_current_fn(cnt);
-        MirInstrBlock *rhs_block = append_block(cnt, fn, "rhs_block");
-        MirInstrBlock *end_block = append_block(cnt, fn, "end_block");
-
-        MirInstr *lhs = ast(cnt, ast_lhs);
-        append_instr_cond_br(cnt, NULL, lhs, rhs_block, end_block);
-
-        set_current_block(cnt, rhs_block);
-        MirInstr *rhs = ast(cnt, ast_rhs);
-        append_instr_br(cnt, NULL, end_block);
-
-        set_current_block(cnt, end_block);
-        MirInstr *   const_false = append_instr_const_bool(cnt, NULL, false);
-        MirInstrPhi *phi         = (MirInstrPhi *)append_instr_phi(cnt, binop);
-        phi_add_income(phi, const_false, lhs->owner_block);
-        phi_add_income(phi, rhs, rhs_block);
-
-        return &phi->base;
-    }
-
+    case BINOP_LOGIC_AND:
     case BINOP_LOGIC_OR: {
+        const bool     swap_condition   = op == BINOP_LOGIC_AND;
         MirFn *        fn               = get_current_fn(cnt);
         MirInstrBlock *rhs_block        = append_block(cnt, fn, "rhs_block");
         MirInstrBlock *end_block        = cnt->ast.current_phi_end_block;
@@ -8802,11 +8780,12 @@ MirInstr *ast_expr_binop(Context *cnt, Ast *binop)
         }
 
         MirInstr *lhs = ast(cnt, ast_lhs);
-        MirInstr *brk = append_instr_cond_br(cnt, NULL, lhs, end_block, rhs_block);
-        // @INCOMPLETE: Later done by phi_add_income function!!!
-        // @INCOMPLETE: Later done by phi_add_income function!!!
-        // @INCOMPLETE: Later done by phi_add_income function!!!
-        ((MirInstrCondBr *)brk)->keep_stack_value = true;
+        MirInstr *brk = NULL;
+        if (swap_condition) {
+            brk = append_instr_cond_br(cnt, NULL, lhs, rhs_block, end_block);
+        } else {
+            brk = append_instr_cond_br(cnt, NULL, lhs, end_block, rhs_block);
+        }
         phi_add_income(phi, brk, get_current_block(cnt));
         set_current_block(cnt, rhs_block);
         MirInstr *rhs = ast(cnt, ast_rhs);
