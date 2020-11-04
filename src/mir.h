@@ -714,6 +714,11 @@ struct MirInstrCondBr {
     MirInstr *     cond;
     MirInstrBlock *then_block;
     MirInstrBlock *else_block;
+
+    // This value is used only during execution in VM, when conditional break is generated to be
+    // used as pre-instruction to PHI, we must keep condition value on stack (if it's not compile
+    // time known) in order to be used as resolution of PHI expression.
+    bool keep_stack_value;
 };
 
 struct MirInstrBr {

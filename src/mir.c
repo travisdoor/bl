@@ -673,7 +673,7 @@ static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 9,
 // out_type when analyze passed without problems. When analyze does not pass postpone is returned
 // and out_type stay unchanged.
 static AnalyzeResult
-analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
+                     analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
 static AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp);
 static AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
 static AnalyzeResult analyze_instr_phi(Context *cnt, MirInstrPhi *phi);
@@ -1229,6 +1229,13 @@ static INLINE void phi_add_income(MirInstrPhi *phi, MirInstr *value, MirInstrBlo
 
     tsa_push_InstrPtr(phi->incoming_values, value);
     tsa_push_InstrPtr(phi->incoming_blocks, &block->base);
+
+    if (value->kind == MIR_INSTR_COND_BR) {
+        // @INCOMPLETE: enable this after && is implemented
+        // @INCOMPLETE: enable this after && is implemented
+        // @INCOMPLETE: enable this after && is implemented
+        //((MirInstrCondBr *)value)->keep_stack_value = true;
+    }
 }
 
 static INLINE bool is_load_needed(MirInstr *instr)
@@ -8796,6 +8803,10 @@ MirInstr *ast_expr_binop(Context *cnt, Ast *binop)
 
         MirInstr *lhs = ast(cnt, ast_lhs);
         MirInstr *brk = append_instr_cond_br(cnt, NULL, lhs, end_block, rhs_block);
+        // @INCOMPLETE: Later done by phi_add_income function!!!
+        // @INCOMPLETE: Later done by phi_add_income function!!!
+        // @INCOMPLETE: Later done by phi_add_income function!!!
+        ((MirInstrCondBr *)brk)->keep_stack_value = true;
         phi_add_income(phi, brk, get_current_block(cnt));
         set_current_block(cnt, rhs_block);
         MirInstr *rhs = ast(cnt, ast_rhs);

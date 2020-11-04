@@ -334,11 +334,21 @@ static INLINE VMStackPtr stack_pop(VM *vm, MirType *type)
 {
     BL_ASSERT(type);
     const usize size = type->store_size_bytes;
-    BL_ASSERT(size && "popping zero sized data on stack");
+    BL_ASSERT(size && "popping zero sized data from stack");
 
     LOG_POP_STACK;
 
     return stack_free(vm, size);
+}
+
+static INLINE VMStackPtr stack_peek(VM *vm, MirType *type)
+{
+    usize size = type->store_size_bytes;
+    BL_ASSERT(size && "peeking zero sized data on stack");
+    size           = stack_alloc_size(size);
+    VMStackPtr top = vm->stack->top_ptr - size;
+    if (top < (u8 *)(vm->stack->ra + 1)) BL_ABORT("Stack underflow!!!");
+    return top;
 }
 
 // Global variables are allocated in static data segment, so there is no need to
@@ -360,6 +370,13 @@ static INLINE VMStackPtr fetch_value(VM *vm, MirConstExprValue *v)
 {
     if (v->is_comptime) return v->data;
     return stack_pop(vm, v->type);
+}
+
+// Similar to fetch_value but in case value comes from stack we keep it there.
+static INLINE VMStackPtr peek_value(VM *vm, MirConstExprValue *v)
+{
+    if (v->is_comptime) return v->data;
+    return stack_peek(vm, v->type);
 }
 
 static INLINE MirInstr *get_pc(VM *vm)
@@ -1614,13 +1631,15 @@ void interp_instr_cond_br(VM *vm, MirInstrCondBr *br)
 {
     BL_ASSERT(br->cond);
     MirType *type = br->cond->value.type;
-
     // pop condition from stack
-    VMStackPtr cond_ptr = fetch_value(vm, &br->cond->value);
+    VMStackPtr cond_ptr = NULL;
+    if (br->keep_stack_value) {
+        BL_ASSERT(false && "Keep value!!!");
+    } else {
+        cond_ptr = fetch_value(vm, &br->cond->value);
+    }
     BL_ASSERT(cond_ptr);
-
     const bool condition = vm_read_int(type, cond_ptr);
-
     // Set previous block.
     vm->stack->prev_block = br->base.owner_block;
     if (condition) {
