@@ -1,8 +1,8 @@
 TODO:
-- add debug allocator into API
-- add support of break on allocation
 - document hash table
 - test hash table
 - add hash table into API
-- array support custom allocator
 - string support custom allocator
+- FileSystem (fs) package as first one!
+    - directory manipulation
+    - file manipulation
