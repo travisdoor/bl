@@ -58,10 +58,7 @@ Token *tokens_peek_2nd(Tokens *tokens)
 Token *tokens_peek_last(Tokens *tokens)
 {
     const usize i = tokens->buf.size;
-    if (i == 0) {
-        return NULL;
-    }
-
+    if (i == 0) BL_ABORT("Peeking empty tokens!");
     return &tarray_at(Token, &tokens->buf, i - 1);
 }
 
@@ -77,14 +74,12 @@ Token *tokens_peek_nth(Tokens *tokens, usize n)
 {
     const usize i = tokens->iter + n - 1;
     if (i < tokens->buf.size) return &tarray_at(Token, &tokens->buf, i);
-
-    return NULL;
+    return tokens_peek_last(tokens);
 }
 
 Token *tokens_consume(Tokens *tokens)
 {
     if (tokens->iter < tokens->buf.size) return &tarray_at(Token, &tokens->buf, tokens->iter++);
-
     return NULL;
 }
 

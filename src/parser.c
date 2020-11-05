@@ -288,10 +288,11 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
 
-        Token *tok_path = tokens_consume(cnt->tokens);
-        if (!token_is(tok_path, SYM_STRING)) {
+        Token *tok_path = tokens_consume_if(cnt->tokens, SYM_STRING);
+        if (!tok_path) {
+            Token *tok_err = tokens_peek(cnt->tokens);
             PARSE_ERROR(ERR_INVALID_DIRECTIVE,
-                        tok_path,
+                        tok_err,
                         BUILDER_CUR_WORD,
                         "Expected path \"some/path\" after 'load' directive.");
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
@@ -300,7 +301,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         Ast *load = ast_create_node(cnt->ast_arena, AST_LOAD, tok_directive, SCOPE_GET(cnt));
         load->data.load.filepath = tok_path->value.str;
 
-        Unit *unit = unit_new_file(load->data.load.filepath, tok_path, cnt->unit);
+        Unit *unit = unit_new_file(load->data.load.filepath, tok_path);
         if (!assembly_add_unit_unique(cnt->assembly, unit)) {
             unit_delete(unit);
         }
@@ -318,17 +319,18 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
 
-        Token *tok_path = tokens_consume(cnt->tokens);
-        if (!token_is(tok_path, SYM_STRING)) {
+        Token *tok_path = tokens_consume_if(cnt->tokens, SYM_STRING);
+        if (!tok_path) {
+            Token *tok_err = tokens_peek(cnt->tokens);
             PARSE_ERROR(ERR_INVALID_DIRECTIVE,
-                        tok_path,
+                        tok_err,
                         BUILDER_CUR_WORD,
                         "Expected path \"some/path\" after 'import' directive.");
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
         Ast *import = ast_create_node(cnt->ast_arena, AST_IMPORT, tok_directive, SCOPE_GET(cnt));
         import->data.import.filepath = tok_path->value.str;
-        assembly_import_module(cnt->assembly, tok_path->value.str);
+        assembly_import_module(cnt->assembly, tok_path->value.str, tok_path);
         return import;
     }
 

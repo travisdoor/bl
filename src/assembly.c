@@ -315,27 +315,31 @@ void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct To
     tarray_push(&assembly->options.libs, lib);
 }
 
-bool assembly_import_module(Assembly UNUSED(*assembly), const char *modulepath)
+bool assembly_import_module(Assembly UNUSED(*assembly), const char *modulepath, Token *import_from)
 {
     char tmp_path[PATH_MAX] = {0};
     snprintf(
         tmp_path, ARRAY_SIZE(tmp_path), "%s/%s/%s", MODULES_DIR, modulepath, MODULE_CONFIG_FILE);
-    BL_LOG("Import module '%s'.", tmp_path);
     ConfData config;
     conf_data_init(&config);
-    if (builder_compile_config(tmp_path, &config) != COMPILE_OK) goto INTERRUPT;
-
+    if (builder_compile_config(tmp_path, &config, import_from) != COMPILE_OK) goto INTERRUPT;
     if (!conf_data_has_key(&config, CONF_ENTRY)) {
-        builder_error("Module '%s' does not specify entry file ('%s') for current target platform.",
-                      modulepath,
-                      CONF_ENTRY);
+        builder_msg(
+            BUILDER_MSG_ERROR,
+            ERR_MISSING_PLATFORM,
+            TOKEN_OPTIONAL_LOCATION(import_from),
+            BUILDER_CUR_WORD,
+            "Module doesn't support current target platform, configuration entry ('%s') not "
+            "found in module config file '%s'.",
+            CONF_ENTRY,
+            tmp_path);
         goto INTERRUPT;
     }
 
     const char *entry_file = conf_data_get_str(&config, CONF_ENTRY);
     BL_ASSERT(entry_file && strlen(entry_file) > 0);
     snprintf(tmp_path, ARRAY_SIZE(tmp_path), "%s/%s/%s", MODULES_DIR, modulepath, entry_file);
-    Unit *unit = unit_new_file(tmp_path, NULL, NULL);
+    Unit *unit = unit_new_file(tmp_path, NULL);
     if (!assembly_add_unit_unique(assembly, unit)) {
         unit_delete(unit);
     }

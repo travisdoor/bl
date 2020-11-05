@@ -32,6 +32,8 @@
 #include "common.h"
 #include <stdio.h>
 
+#define TOKEN_OPTIONAL_LOCATION(tok) ((tok) ? &(tok)->location : NULL)
+
 typedef enum {
 #define sm(tok, str) SYM_##tok,
 #include "token.inc"

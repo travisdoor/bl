@@ -118,9 +118,9 @@ FOUND:
 }
 
 // public
-Unit *unit_new_file(const char *filepath, Token *loaded_from)
+Unit *unit_new_file(const char *filepath, Token *load_from)
 {
-    Unit *parent_unit = loaded_from ? loaded_from->location.unit : NULL;
+    Unit *parent_unit = load_from ? load_from->location.unit : NULL;
     Unit *unit        = bl_malloc(sizeof(Unit));
     memset(unit, 0, sizeof(Unit));
     search_source_file(
@@ -132,7 +132,7 @@ Unit *unit_new_file(const char *filepath, Token *loaded_from)
     } else {
         BL_ABORT("invalid file");
     }
-    unit->loaded_from = loaded_from;
+    unit->loaded_from = load_from;
     unit->ast         = NULL;
     unit->hash        = thash_from_str(unit->filepath ? unit->filepath : unit->name);
     tokens_init(&unit->tokens);

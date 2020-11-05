@@ -118,7 +118,10 @@ void builder_init(void);
 void builder_terminate(void);
 s32  builder_parse_options(s32 argc, char *argv[]);
 int  builder_load_config(const char *filepath);
-int  builder_compile_config(const char *filepath, ConfData *out_data);
+int  builder_compile_config(const char *  filepath,
+                            ConfData *    out_data,
+                            struct Token *import_from // optional
+ );
 void builder_add_assembly(Assembly *assembly);
 s32  builder_compile_all(void);
 s32  builder_compile(Assembly *assembly);

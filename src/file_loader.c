@@ -32,24 +32,16 @@
 #include <stdio.h>
 #include <string.h>
 
-#define load_error(code, tok, pos, format, ...)                                                    \
-    {                                                                                              \
-        if (tok)                                                                                   \
-            builder_msg(                                                                           \
-                BUILDER_MSG_ERROR, (code), &(tok)->location, (pos), (format), ##__VA_ARGS__);      \
-        else                                                                                       \
-            builder_error((format), ##__VA_ARGS__);                                                \
-    }
-
 void file_loader_run(Unit *unit)
 {
     TracyCZone(_tctx, true);
     if (!unit->filepath) {
-        load_error(ERR_FILE_NOT_FOUND,
-                   unit->loaded_from,
-                   BUILDER_CUR_WORD,
-                   "file not found %s",
-                   unit->name);
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_FILE_NOT_FOUND,
+                    TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
+                    BUILDER_CUR_WORD,
+                    "File not found '%s'.",
+                    unit->name);
         TracyCZoneEnd(_tctx);
         return;
     }
@@ -57,11 +49,13 @@ void file_loader_run(Unit *unit)
     FILE *f = fopen(unit->filepath, "rb");
 
     if (f == NULL) {
-        load_error(ERR_FILE_READ,
-                   unit->loaded_from,
-                   BUILDER_CUR_WORD,
-                   "Cannot read file '%s'.",
-                   unit->name);
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_FILE_READ,
+                    TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
+                    BUILDER_CUR_WORD,
+                    "Cannot read file '%s'.",
+                    unit->name);
+
         TracyCZoneEnd(_tctx);
         return;
     }
@@ -70,11 +64,13 @@ void file_loader_run(Unit *unit)
     usize fsize = (usize)ftell(f);
     if (fsize == 0) {
         fclose(f);
-        load_error(ERR_FILE_EMPTY,
-                   unit->loaded_from,
-                   BUILDER_CUR_WORD,
-                   "Invalid or empty source file '%s'.",
-                   unit->name);
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_FILE_EMPTY,
+                    TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
+                    BUILDER_CUR_WORD,
+                    "Invalid or empty source file '%s'.",
+                    unit->name);
+
         TracyCZoneEnd(_tctx);
         return;
     }

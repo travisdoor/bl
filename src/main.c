@@ -162,7 +162,7 @@ int main(s32 argc, char *argv[])
     if (builder.options.use_pipeline) {
         assembly->options.build_mode = BUILD_MODE_BUILD;
 
-        Unit *unit = unit_new_file(BUILD_SCRIPT_FILE, NULL, NULL);
+        Unit *unit = unit_new_file(BUILD_SCRIPT_FILE, NULL);
 
         bool added = assembly_add_unit_unique(assembly, unit);
         if (added == false) {
@@ -171,7 +171,7 @@ int main(s32 argc, char *argv[])
     }
 
     while (*argv != NULL) {
-        Unit *unit = unit_new_file(*argv, NULL, NULL);
+        Unit *unit = unit_new_file(*argv, NULL);
 
         bool added = assembly_add_unit_unique(assembly, unit);
         if (added == false) {

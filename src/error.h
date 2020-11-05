@@ -112,6 +112,7 @@ typedef enum {
     ERR_INVALID_REFERENCE       = 76,
     ERR_UNEXPECTED_RETURN       = 77,
     ERR_AMBIGUOUS_OVERLOAD      = 78,
+    ERR_MISSING_PLATFORM        = 79,
 } Error;
 
 #endif // BL_ERROR_H

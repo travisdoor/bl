@@ -273,9 +273,9 @@ void builder_terminate(void)
     llvm_terminate();
 }
 
-int builder_compile_config(const char *filepath, ConfData *out_data)
+int builder_compile_config(const char *filepath, ConfData *out_data, Token *import_from)
 {
-    Unit *unit = unit_new_file(filepath, NULL, NULL);
+    Unit *unit = unit_new_file(filepath, import_from);
     // load
     file_loader_run(unit);
     INTERRUPT_ON_ERROR;
@@ -293,7 +293,7 @@ INTERRUPT:
 int builder_load_config(const char *filepath)
 {
     conf_data_clear(&builder.conf);
-    return builder_compile_config(filepath, &builder.conf);
+    return builder_compile_config(filepath, &builder.conf, NULL);
 }
 
 void builder_add_assembly(Assembly *assembly)
@@ -329,21 +329,21 @@ int builder_compile(Assembly *assembly)
     // instance during initialization process. (Must be called only once);
     assembly_apply_options(assembly);
 
-    unit = unit_new_file(BUILTIN_FILE, NULL, NULL);
+    unit = unit_new_file(BUILTIN_FILE, NULL);
     if (!assembly_add_unit_unique(assembly, unit)) {
         unit_delete(unit);
     }
 
     // include core source file
     if (!builder.options.no_api) {
-        unit = unit_new_file(OS_PRELOAD_FILE, NULL, NULL);
+        unit = unit_new_file(OS_PRELOAD_FILE, NULL);
         if (!assembly_add_unit_unique(assembly, unit)) {
             unit_delete(unit);
         }
     }
 
     if (assembly->options.build_mode == BUILD_MODE_BUILD) {
-        unit = unit_new_file(BUILD_API_FILE, NULL, NULL);
+        unit = unit_new_file(BUILD_API_FILE, NULL);
         if (!assembly_add_unit_unique(assembly, unit)) {
             unit_delete(unit);
         }

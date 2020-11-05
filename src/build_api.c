@@ -42,7 +42,7 @@ BL_EXPORT Assembly *__add_executable(const char *name)
 
 BL_EXPORT Unit *__add_unit(Assembly *assembly, const char *filepath)
 {
-    Unit *new_unit = unit_new_file(filepath, NULL, NULL);
+    Unit *new_unit = unit_new_file(filepath, NULL);
     assembly_add_unit_unique(assembly, new_unit);
 
     return new_unit;
