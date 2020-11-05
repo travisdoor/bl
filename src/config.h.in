@@ -116,11 +116,11 @@
 #define CONF_LIB_DIR_KEY "LIB_DIR"
 
 // module related config
-#ifdef BL_PLATFORM_WIN 
+#if defined(BL_PLATFORM_WIN)
 #define CONF_ENTRY "WIN32_ENTRY"
-#elif BL_PLATFORM_LINUX
+#elif defined(BL_PLATFORM_LINUX)
 #define CONF_ENTRY "LINUX_ENTRY"
-#elif BL_PLATFORM_MACOS
+#elif defined(BL_PLATFORM_MACOS)
 #define CONF_ENTRY "MACOS_ENTRY"
 #else
 #error "Unknown platform"
