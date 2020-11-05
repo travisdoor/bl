@@ -1,8 +1,0 @@
-TODO:
-- document hash table
-- test hash table
-- add hash table into API
-- string support custom allocator
-- FileSystem (fs) package as first one!
-    - directory manipulation
-    - file manipulation

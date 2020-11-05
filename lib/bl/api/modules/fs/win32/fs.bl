@@ -1,0 +1,3 @@
+fs_test :: fn () {
+    print("Hello from windows!!!\n");
+}

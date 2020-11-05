@@ -1,0 +1,20 @@
+-- TODO --
+* document hash table
+* test hash table
+* add hash table into API
+* string support custom allocator
+* FileSystem (fs) package as first one!
+    * directory manipulation
+    * file manipulation
+    
+    
+-- Module concept -- 
+
+Init file `module.conf`
+
+WIN32_UNITS "win32/fs.bl"
+LINUX_UNITS "linux/fs.bl"
+MACOS_UNITS "macos/fs.bl"
+
+usage:
+`#import "modules/fs"
