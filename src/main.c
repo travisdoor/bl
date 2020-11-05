@@ -153,10 +153,10 @@ int main(s32 argc, char *argv[])
         EXIT(EXIT_SUCCESS);
     }
 
-    builder_load_conf_file(ENV_CONF_FILEPATH);
+    builder_load_config(ENV_CONF_FILEPATH);
 
     // setup LIB_DIR
-    ENV_LIB_DIR = strdup(conf_data_get_str(builder.conf, CONF_LIB_DIR_KEY));
+    ENV_LIB_DIR = strdup(conf_data_get_str(&builder.conf, CONF_LIB_DIR_KEY));
 
     Assembly *assembly = assembly_new("out");
     if (builder.options.use_pipeline) {
@@ -191,5 +191,6 @@ int main(s32 argc, char *argv[])
 RELEASE:
     builder_terminate();
     free_env();
+    BL_LOG("Exit with state %d.", state);
     return state;
 }

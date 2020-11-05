@@ -81,7 +81,7 @@ static bool search_library(Context *   cnt,
 static void set_lib_paths(Context *cnt)
 {
     char        tmp[PATH_MAX] = {0};
-    const char *lib_path      = conf_data_get_str(builder.conf, CONF_LINKER_LIB_PATH_KEY);
+    const char *lib_path      = conf_data_get_str(&builder.conf, CONF_LINKER_LIB_PATH_KEY);
     if (!strlen(lib_path)) return;
 
     s64         len;

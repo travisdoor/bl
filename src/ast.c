@@ -87,6 +87,8 @@ const char *ast_get_name(const Ast *n)
         return "Tags";
     case AST_LOAD:
         return "Load";
+    case AST_IMPORT:
+        return "Import";
     case AST_LINK:
         return "Link";
     case AST_PRIVATE:

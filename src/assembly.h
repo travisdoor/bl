@@ -131,6 +131,7 @@ void            assembly_add_unit(Assembly *assembly, Unit *unit);
 void            assembly_add_lib_path(Assembly *assembly, const char *path);
 void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
 bool assembly_add_unit_unique(Assembly *assembly, Unit *unit);
+bool assembly_import_module(Assembly *assembly, const char *modulepath);
 DCpointer assembly_find_extern(Assembly *assembly, const char *symbol);
 void      assembly_apply_options(Assembly *assembly);
 void      assembly_set_output_dir(Assembly *assembly, const char *dir);

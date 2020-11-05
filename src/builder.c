@@ -238,15 +238,16 @@ s32 builder_parse_options(s32 argc, char *argv[])
 void builder_init(void)
 {
     memset(&builder, 0, sizeof(Builder));
-    builder.errorc =  builder.max_error = builder.test_failc = 0;
-    builder.conf   = conf_data_new();
+    builder.errorc = builder.max_error = builder.test_failc = 0;
+
+    conf_data_init(&builder.conf);
     arena_init(&builder.str_cache, sizeof(TString), 256, (ArenaElemDtor)str_cache_dtor);
 
     // TODO: this is invalid for Windows MSVC DLLs???
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split     = false;
+    builder.options.reg_split = false;
 #endif
 
     // initialize LLVM statics
@@ -266,33 +267,33 @@ void builder_terminate(void)
     }
 
     tarray_terminate(&builder.assembly_queue);
-    conf_data_delete(builder.conf);
+    conf_data_terminate(&builder.conf);
     arena_terminate(&builder.str_cache);
 
     llvm_terminate();
 }
 
-int builder_load_conf_file(const char *filepath)
+int builder_compile_config(const char *filepath, ConfData *out_data)
 {
     Unit *unit = unit_new_file(filepath, NULL, NULL);
-
     // load
     file_loader_run(unit);
     INTERRUPT_ON_ERROR;
-
     // use standart lexer
     lexer_run(unit);
     INTERRUPT_ON_ERROR;
-
-    // print output
-    conf_parser_run(unit);
+    conf_parser_run(unit, out_data);
     INTERRUPT_ON_ERROR;
-
     unit_delete(unit);
-
     return COMPILE_OK;
 INTERRUPT:
     return COMPILE_FAIL;
+}
+
+int builder_load_config(const char *filepath)
+{
+    conf_data_clear(&builder.conf);
+    return builder_compile_config(filepath, &builder.conf);
 }
 
 void builder_add_assembly(Assembly *assembly)

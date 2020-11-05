@@ -118,9 +118,10 @@ FOUND:
 }
 
 // public
-Unit *unit_new_file(const char *filepath, Token *loaded_from, Unit *parent_unit)
+Unit *unit_new_file(const char *filepath, Token *loaded_from)
 {
-    Unit *unit = bl_malloc(sizeof(Unit));
+    Unit *parent_unit = loaded_from ? loaded_from->location.unit : NULL;
+    Unit *unit        = bl_malloc(sizeof(Unit));
     memset(unit, 0, sizeof(Unit));
     search_source_file(
         filepath, &unit->filepath, &unit->dirpath, parent_unit ? parent_unit->dirpath : NULL);
@@ -152,7 +153,7 @@ void unit_delete(Unit *unit)
 const char *unit_get_src_ln(Unit *unit, s32 line, long *len)
 {
     if (line < 1) return NULL;
-    const char *c = unit->src;
+    const char *c     = unit->src;
     const char *begin = c;
     while (true) {
         if (*c == '\n') {

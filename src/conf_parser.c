@@ -30,7 +30,8 @@
 #include "stages.h"
 
 typedef struct {
-    Tokens *tokens;
+    Tokens *  tokens;
+    ConfData *data;
 } Context;
 
 static bool parse_key_value_rq(Context *cnt)
@@ -71,14 +72,14 @@ static bool parse_key_value_rq(Context *cnt)
 
     const char *key = tok_ident->value.str;
     BL_ASSERT(key);
-    if (conf_data_has_key(builder.conf, key)) {
+    if (conf_data_has_key(cnt->data, key)) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_DUPLICATE_SYMBOL,
                     &tok_ident->location,
                     BUILDER_CUR_WORD,
-                    "Duplicate symbol in conf scope.");
+                    "Duplicate symbol in config scope.");
     } else {
-        conf_data_add(builder.conf, key, &tmp);
+        conf_data_add(cnt->data, key, &tmp);
     }
 
     return true;
@@ -91,8 +92,9 @@ static void parse_top_level(Context *cnt)
     }
 }
 
-void conf_parser_run(Unit *unit)
+void conf_parser_run(Unit *unit, ConfData *out_data)
 {
-    Context cnt = {.tokens = &unit->tokens};
+    BL_ASSERT(out_data && "Missing output data buffer for config file parser!");
+    Context cnt = {.tokens = &unit->tokens, .data = out_data};
     parse_top_level(&cnt);
 }

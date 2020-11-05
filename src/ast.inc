@@ -1,6 +1,7 @@
 #ifdef GEN_AST_KINDS
 	AST_BAD,
 	AST_LOAD,
+	AST_IMPORT,
 	AST_PRIVATE,
 	AST_LINK,
 	AST_IDENT,
@@ -69,6 +70,7 @@
 	struct AstPrivate        priv;
 	struct AstMetaData       meta_data;
 	struct AstLoad           load;
+	struct AstImport         import;
 	struct AstLink           link;
 	struct AstIdent          ident;
 	struct AstUBlock         ublock;

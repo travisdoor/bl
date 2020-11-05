@@ -81,6 +81,7 @@ typedef enum {
     HD_NO_INIT     = 1 << 16,
     HD_INTRINSIC   = 1 << 17,
     HD_TEST_FN     = 1 << 18,
+    HD_IMPORT      = 1 << 19,
 } HashDirective;
 
 typedef struct {
@@ -305,6 +306,30 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         }
 
         return load;
+    }
+
+    if (strcmp(directive, "import") == 0) {
+        set_satisfied(HD_IMPORT);
+        if (IS_NOT_FLAG(expected_mask, HD_IMPORT)) {
+            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+                        tok_directive,
+                        BUILDER_CUR_WORD,
+                        "Unexpected directive. Import can be used only in global scope.");
+            return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
+        }
+
+        Token *tok_path = tokens_consume(cnt->tokens);
+        if (!token_is(tok_path, SYM_STRING)) {
+            PARSE_ERROR(ERR_INVALID_DIRECTIVE,
+                        tok_path,
+                        BUILDER_CUR_WORD,
+                        "Expected path \"some/path\" after 'import' directive.");
+            return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
+        }
+        Ast *import = ast_create_node(cnt->ast_arena, AST_IMPORT, tok_directive, SCOPE_GET(cnt));
+        import->data.import.filepath = tok_path->value.str;
+        assembly_import_module(cnt->assembly, tok_path->value.str);
+        return import;
     }
 
     if (strcmp(directive, "link") == 0) {
@@ -2398,8 +2423,8 @@ NEXT:
         goto NEXT;
     }
 
-    // load, link, test, private - enabled in global scope
-    const int enabled_hd = HD_LOAD | HD_LINK | HD_PRIVATE;
+    // load, import, link, test, private - enabled in global scope
+    const int enabled_hd = HD_LOAD | HD_LINK | HD_PRIVATE | HD_IMPORT;
     if ((tmp = parse_hash_directive(cnt, enabled_hd, NULL))) {
         if (tmp->kind == AST_META_DATA) {
             ublock->meta_node = tmp;

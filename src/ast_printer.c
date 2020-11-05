@@ -76,6 +76,7 @@ static INLINE void print_flags(s32 flags, FILE *stream)
 static void print_node(Ast *node, s32 pad, FILE *stream);
 static void print_ublock(Ast *ublock, s32 pad, FILE *stream);
 static void print_load(Ast *load, s32 pad, FILE *stream);
+static void print_import(Ast *import, s32 pad, FILE *stream);
 static void print_link(Ast *link, s32 pad, FILE *stream);
 static void print_private(Ast *private, s32 pad, FILE *stream);
 static void print_call_loc(Ast *call_loc, s32 pad, FILE *stream);
@@ -143,6 +144,12 @@ void print_load(Ast *load, s32 pad, FILE *stream)
 {
     print_head(load, pad, stream);
     fprintf(stream, "%s", load->data.load.filepath);
+}
+
+void print_import(Ast *import, s32 pad, FILE *stream)
+{
+    print_head(import, pad, stream);
+    fprintf(stream, "%s", import->data.load.filepath);
 }
 
 void print_link(Ast *link, s32 pad, FILE *stream)
@@ -515,7 +522,11 @@ void print_node(Ast *node, s32 pad, FILE *stream)
     case AST_LOAD:
         print_load(node, pad, stream);
         break;
-
+        
+    case AST_IMPORT:
+        print_import(node, pad, stream);
+        break;
+        
     case AST_LINK:
         print_link(node, pad, stream);
         break;

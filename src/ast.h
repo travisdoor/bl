@@ -97,6 +97,10 @@ struct AstLoad {
     const char *filepath;
 };
 
+struct AstImport {
+    const char *filepath;
+};
+
 struct AstPrivate {
     void *_;
 };

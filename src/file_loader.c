@@ -57,8 +57,11 @@ void file_loader_run(Unit *unit)
     FILE *f = fopen(unit->filepath, "rb");
 
     if (f == NULL) {
-        load_error(
-            ERR_FILE_READ, unit->loaded_from, BUILDER_CUR_WORD, "cannot read file %s", unit->name);
+        load_error(ERR_FILE_READ,
+                   unit->loaded_from,
+                   BUILDER_CUR_WORD,
+                   "Cannot read file '%s'.",
+                   unit->name);
         TracyCZoneEnd(_tctx);
         return;
     }
@@ -70,7 +73,7 @@ void file_loader_run(Unit *unit)
         load_error(ERR_FILE_EMPTY,
                    unit->loaded_from,
                    BUILDER_CUR_WORD,
-                   "invalid or empty source file %s",
+                   "Invalid or empty source file '%s'.",
                    unit->name);
         TracyCZoneEnd(_tctx);
         return;
@@ -80,7 +83,7 @@ void file_loader_run(Unit *unit)
 
     char *src = calloc(fsize + 1, sizeof(char));
     if (src == NULL) BL_ABORT("bad alloc");
-    if (!fread(src, sizeof(char), fsize, f)) BL_ABORT("cannot read file %s", unit->name);
+    if (!fread(src, sizeof(char), fsize, f)) BL_ABORT("Cannot read file '%s'.", unit->name);
 
     src[fsize] = '\0';
     fclose(f);

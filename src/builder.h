@@ -90,7 +90,7 @@ typedef struct Builder {
     s32                        errorc;
     s32                        max_error;
     s32                        test_failc;
-    ConfData *                 conf;
+    ConfData                   conf;
 
     TArray assembly_queue;
 } Builder;
@@ -117,7 +117,8 @@ struct Location;
 void builder_init(void);
 void builder_terminate(void);
 s32  builder_parse_options(s32 argc, char *argv[]);
-int  builder_load_conf_file(const char *filepath);
+int  builder_load_config(const char *filepath);
+int  builder_compile_config(const char *filepath, ConfData *out_data);
 void builder_add_assembly(Assembly *assembly);
 s32  builder_compile_all(void);
 s32  builder_compile(Assembly *assembly);

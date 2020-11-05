@@ -9427,6 +9427,7 @@ MirInstr *ast(Context *cnt, Ast *node)
         return ast_call_loc(cnt, node);
 
     case AST_LOAD:
+    case AST_IMPORT:
     case AST_LINK:
     case AST_PRIVATE:
     case AST_META_DATA:

@@ -28,14 +28,19 @@
 
 #include "conf_data.h"
 
-ConfData *conf_data_new(void)
+void conf_data_init(ConfData *data)
 {
-    return thtbl_new(sizeof(ConfDataValue), 32);
+    thtbl_init(data, sizeof(ConfDataValue), 32);
 }
 
-void conf_data_delete(ConfData *data)
+void conf_data_terminate(ConfData *data)
 {
-    thtbl_delete(data);
+    thtbl_terminate(data);
+}
+
+void conf_data_clear(ConfData *data)
+{
+    thtbl_clear(data);
 }
 
 bool conf_data_has_key(ConfData *data, const char *key)

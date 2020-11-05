@@ -38,7 +38,7 @@ void file_loader_run(Unit *unit);
 void lexer_run(Unit *unit);
 void token_printer_run(Unit *unit);
 void parser_run(Assembly *assembly, Unit *unit);
-void conf_parser_run(Unit *unit);
+void conf_parser_run(Unit *unit, ConfData* out_data);
 void ast_printer_run(Assembly *assembly, FILE *stream);
 void ir_run(Assembly *assembly);
 void ir_opt_run(Assembly *assembly);

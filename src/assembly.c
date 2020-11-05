@@ -315,6 +315,37 @@ void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct To
     tarray_push(&assembly->options.libs, lib);
 }
 
+bool assembly_import_module(Assembly UNUSED(*assembly), const char *modulepath)
+{
+    char tmp_path[PATH_MAX] = {0};
+    snprintf(
+        tmp_path, ARRAY_SIZE(tmp_path), "%s/%s/%s", MODULES_DIR, modulepath, MODULE_CONFIG_FILE);
+    BL_LOG("Import module '%s'.", tmp_path);
+    ConfData config;
+    conf_data_init(&config);
+    if (builder_compile_config(tmp_path, &config) != COMPILE_OK) goto INTERRUPT;
+
+    if (!conf_data_has_key(&config, CONF_ENTRY)) {
+        builder_error("Module '%s' does not specify entry file ('%s') for current target platform.",
+                      modulepath,
+                      CONF_ENTRY);
+        goto INTERRUPT;
+    }
+
+    const char *entry_file = conf_data_get_str(&config, CONF_ENTRY);
+    BL_ASSERT(entry_file && strlen(entry_file) > 0);
+    snprintf(tmp_path, ARRAY_SIZE(tmp_path), "%s/%s/%s", MODULES_DIR, modulepath, entry_file);
+    Unit *unit = unit_new_file(tmp_path, NULL, NULL);
+    if (!assembly_add_unit_unique(assembly, unit)) {
+        unit_delete(unit);
+    }
+    conf_data_terminate(&config);
+    return true;
+INTERRUPT:
+    conf_data_terminate(&config);
+    return false;
+}
+
 DCpointer assembly_find_extern(Assembly *assembly, const char *symbol)
 {
     void *     handle = NULL;
