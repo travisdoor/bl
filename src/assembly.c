@@ -317,6 +317,14 @@ void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct To
 
 bool assembly_import_module(Assembly UNUSED(*assembly), const char *modulepath, Token *import_from)
 {
+    if (!strlen(modulepath)) {
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_FILE_NOT_FOUND,
+                    TOKEN_OPTIONAL_LOCATION(import_from),
+                    BUILDER_CUR_WORD,
+                    "Module name is empty.");
+        goto INTERRUPT;
+    }
     char tmp_path[PATH_MAX] = {0};
     snprintf(
         tmp_path, ARRAY_SIZE(tmp_path), "%s/%s/%s", MODULES_DIR, modulepath, MODULE_CONFIG_FILE);

@@ -3,15 +3,17 @@
 Migration to LLVM 11.
 Add debug allocator.
 Support custom allocators in containers.
+Compiler now returns numerical maximum error code if compilation fail.
+Add BL Doctor for better unit testing.
+Add first prototype of modules and #import hash directive. 
+Less descriptive terminal output during compilation.
 Fix segfault on error get line.
 Fix invalid character when comment block is very last in source file.
 Fix garbage in unknown symbol reports.
 Fix attempt to generate type info for incomplete types referenced by aliases.
-Less descriptive terminal output during compilation.
 Fix invalid multi-line string literals parsing.
 Fix usage of function call to initialize loop iterator.
-Compiler now returns numerical maximum error code if compilation fail.
-Added BL Doctor for better unit testing.
+Fix invalid generation of more complex PHI expressions.
 
 0.7.1 - BETA
 ---------------------------------------------------------------------------------------
