@@ -26,7 +26,7 @@
 // SOFTWARE.
 //************************************************************************************************
 WIN32_MAX_PATH :: 260;
-WIN32_INVALID_HANDLE_VALUE :: cast(WIN32_HANDLE) (cast(WIN32_LONG_PTR)-1);
+WIN32_INVALID_HANDLE_VALUE :: cast(WIN32_HANDLE) (cast(WIN32_LONG_PTR)0xffffffffffffffff);
 WIN32_INFINITE : u32 : 0xFFFFFFFF;
 
 WIN32_WCHAR        :: *c_ushort;

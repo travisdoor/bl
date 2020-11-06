@@ -44,6 +44,11 @@ rm ${WDIR}/docs/api/os/*.rst
 mv *.rst ${WDIR}/docs/api/os
 cd ${WDIR}
 
+# modules
+mkdir -p ${WDIR}/docs/api/modules
+rm ${WDIR}/docs/api/modules/*.rst
+cp lib/bl/api/modules/fs/*.rst ${WDIR}/docs/api/modules
+
 # examples
 cd examples
 echo

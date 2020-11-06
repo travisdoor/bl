@@ -1,3 +1,79 @@
-fs_test :: fn () {
-    print("Hello from windows!!!\n");
+#load "../shared.bl"
+
+fs_exist :: fn (filepath: string) bool #inline {
+    return _PathFileExistsA(auto filepath.ptr) > 0;
 }
+
+fs_file_open :: fn (handle: *FSFile, filepath: string, mode: ...FSFileOpenMode) FSError {
+    if !handle { return FSError.InvalidInput; }
+    access :: modes_to_flags(mode);
+    tmp :: _CreateFile(auto filepath.ptr, access, 0, null, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, null);
+    if tmp == WIN32_INVALID_HANDLE_VALUE {
+        return error();                
+    }
+    ^handle = tmp;
+    return FSError.OK;
+}
+
+fs_file_close :: fn (handle: *FSFile) {
+    if !handle { return; }
+    _CloseHandle(^handle);
+    ^handle = null;
+}
+
+fs_remove_extension :: fn (filename: string) string {
+    return string_empty;
+}
+
+#private
+GENERIC_READ : u32 : 0x80000000;
+GENERIC_WRITE : u32 : 0x40000000;
+
+CREATE_NEW : u32 : 1;
+CREATE_ALWAYS : u32 : 2;
+OPEN_EXISTING : u32 : 3;
+OPEN_ALWAYS : u32 : 4;
+TRUNCATE_EXISTING : u32 : 5;
+
+FILE_ATTRIBUTE_NORMAL : u32 : 0x00000080;
+
+ERROR_FILE_NOT_FOUND :: 2;
+ERROR_ALREADY_EXISTS :: 183;
+ERROR_ACCESS_DENIED  :: 5;
+
+modes_to_flags :: fn (modes: []FSFileOpenMode) u32 #inline {
+    if modes.len == 0 { return GENERIC_READ | GENERIC_WRITE; }
+    flags: u32;
+    loop i := 0; i < modes.len; i += 1 {
+        switch modes[i] {
+            FSFileOpenMode.Read    { flags = flags | GENERIC_READ;  }            
+            FSFileOpenMode.Write   { flags = flags | GENERIC_WRITE; }
+            default { panic(); }
+        }
+    }
+    return flags;
+}
+
+error :: fn () FSError #inline {
+    ec :: _GetLastError();
+    switch ec {
+        0                    { return FSError.OK;           }
+        ERROR_FILE_NOT_FOUND { return FSError.NotFound;     }
+        ERROR_ALREADY_EXISTS { return FSError.AlreadyExist; }
+        ERROR_ACCESS_DENIED  { return FSError.AccessDenied; }
+        default { return FSError.Unknown; }
+    }
+}
+
+_GetLastError :: fn () WIN32_DWORD #extern "GetLastError";
+_PathFileExistsA :: fn (pszPath: WIN32_LPCSTR) WIN32_BOOL #extern "PathFileExistsA";
+_CreateFile :: fn (
+    lpFileName: WIN32_LPCSTR,
+    dwDesiredAccess: WIN32_DWORD,
+    dwShareMode: WIN32_DWORD,
+    lpSecurityAttributes: WIN32_LPSECURITY_ATTRIBUTES,
+    dwCreationDisposition: WIN32_DWORD,
+    dwFlagsAndAttributes: WIN32_DWORD,
+    hTemplateFile: WIN32_HANDLE
+) *u8 #extern "CreateFileA"; 
+_CloseHandle :: fn (hObject: WIN32_HANDLE) WIN32_BOOL #extern "CloseHandle";

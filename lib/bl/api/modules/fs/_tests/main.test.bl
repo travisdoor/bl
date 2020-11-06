@@ -1,0 +1,26 @@
+#load "std/test.bl"
+#load "std/debug_allocator.bl"
+
+#import "fs"
+
+main :: fn () s32 {
+    dbgalloc_init();
+    defer dbgalloc_terminate();
+    return test_run();    
+}
+
+fs_exist_test :: fn () #test {
+    test_true(fs_exist(#file));
+    test_false(fs_exist("foobar"));
+}
+
+fs_file_open_test :: fn () #test {
+    f: FSFile;
+    test_true(fs_file_open(null, #file) == FSError.InvalidInput);    
+    test_true(fs_file_open(&f, "foobar") == FSError.NotFound);
+    
+    test_true(fs_file_open(&f, #file) == FSError.OK);
+    test_not_null(f);
+    fs_file_close(&f);
+    test_null(f);
+}

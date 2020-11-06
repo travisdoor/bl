@@ -1,0 +1,15 @@
+FSError :: enum {
+    OK;
+    InvalidInput;
+    NotFound;
+    AlreadyExist;
+    AccessDenied;
+    Unknown;
+}
+
+FSFileOpenMode :: enum {
+    Read;
+    Write;
+}
+
+FSFile :: *u8;
