@@ -1,8 +1,14 @@
 // playground 
 
-#import "fs"
+foo :: fn () struct { a: s32; b: bool } {
+    tmp: struct { a: s32; b: bool; };
+    return tmp;
+}
+
+//bar :: fn () s32, bool {
+//}
 
 main :: fn () s32 {
-    fs_test();
+    foo: struct { s32 };
     return 0;
 }

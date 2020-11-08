@@ -2004,8 +2004,11 @@ NEXT:
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn, SCOPE_GET(cnt));
     }
 
-    fn->data.type_fn.ret_type = parse_type(cnt);
-    return fn;
+    Ast *ret_type             = parse_type(cnt);
+    fn->data.type_fn.ret_type = ret_type; // REMOVE
+    if (!ret_type) return fn;
+    
+    // Parse multiple return types.
 }
 
 Ast *parse_type_fn_group(Context *cnt)
