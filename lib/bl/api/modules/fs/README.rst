@@ -241,6 +241,27 @@ Path to `home` directory or empty string.
 
 ----
 
+.. _fs_pwd:
+
+fs_pwd
+======
+
+Declaration
+-----------
+::
+
+    fs_pwd :: fn () string #inline
+
+Description
+-----------
+Get current working directory. Use :ref:`string_delete` to delete result string.
+ 
+Result
+------
+Path to current working directory or empty string.
+
+----
+
 .. _fs_tmp:
 
 fs_tmp

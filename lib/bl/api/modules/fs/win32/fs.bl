@@ -35,13 +35,21 @@ fs_file_delete :: fn (filepath: string) bool #inline {
     return true;
 }
 
-fs_file_close :: fn (handle: *FSFile) {
-    if !handle { return; }
-    _CloseHandle(^handle);
-    ^handle = null;
+fs_file_close :: fn (handle: FSFile) {
+    _CloseHandle(handle);
 }
 
-// @DOC
+// @DOC, @INCOMPLETE
+//fs_read :: fn (handle: FSFile) string {
+//    size: WIN32_LARGE_INTEGER #noinit;
+//    if _GetFileSizeEx(auto handle, &size) == 0 {
+//        // error;
+//        panic();
+//    }
+//    print("Size: %B\n", size);
+//    return "";
+//}
+
 fs_pwd :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
     written :: _GetCurrentDirectoryA(auto buf.len, auto buf.ptr);
@@ -165,3 +173,4 @@ _CloseHandle :: fn (hObject: WIN32_HANDLE) WIN32_BOOL #extern "CloseHandle";
 _GetTempPathA :: fn (nBufferLength: WIN32_DWORD, lpBuffer: WIN32_LPSTR) WIN32_DWORD #extern "GetTempPathA";
 _DeleteFileA :: fn (lpFileName: WIN32_LPCSTR) WIN32_BOOL #extern "DeleteFileA";
 _GetCurrentDirectoryA :: fn (nBufferLength: WIN32_DWORD, lpBuffer: WIN32_LPSTR) WIN32_DWORD #extern "GetCurrentDirectoryA";
+_GetFileSizeEx :: fn (hFile: WIN32_HANDLE, lpFileSize: WIN32_PLARGE_INTEGER) WIN32_BOOL #extern "GetFileSizeEx";

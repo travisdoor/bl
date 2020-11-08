@@ -54,6 +54,7 @@ WIN32_PVOID        :: *c_uchar;
 WIN32_CHAR         :: c_uchar; 
 WIN32_LONG_PTR     :: *c_long;
 WIN32_LARGE_INTEGER :: c_longlong;
+WIN32_PLARGE_INTEGER :: *WIN32_LARGE_INTEGER;
 WIN32_HGLOBAL      :: c_void_ptr;
 WIN32_HWND         :: c_void_ptr;
 

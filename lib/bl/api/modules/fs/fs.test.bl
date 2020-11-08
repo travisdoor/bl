@@ -49,8 +49,7 @@ fs_file_open_test :: fn () #test {
     
     test_true(fs_file_open(&f, #file) == FSError.OK);
     test_not_null(f);
-    fs_file_close(&f);
-    test_null(f);
+    fs_file_close(f);
 }
 
 fs_file_create_test :: fn () #test {
@@ -62,8 +61,12 @@ fs_file_create_test :: fn () #test {
     test_true(fs_file_create(null, #file) == FSError.InvalidInput);    
     test_true(fs_file_create(&f, #file) == FSError.AlreadyExist);
     test_true(fs_file_create(&f, filepath) == FSError.OK);
-    fs_file_close(&f);
+    fs_file_close(f);
     fs_file_delete(filepath);
+}
+
+fs_read_test :: fn () #test {
+    // TODO
 }
 
 fs_get_extension_test :: fn () #test {
@@ -179,6 +182,6 @@ fs_file_delete_test :: fn () #test {
     fs_file_delete(filepath);
     f: FSFile;
     test_true(fs_file_create(&f, filepath) == FSError.OK);
-    fs_file_close(&f);
+    fs_file_close(f);
     test_true(fs_file_delete(filepath));
 }
