@@ -631,8 +631,10 @@ struct MirInstrTypeStruct {
     ID *                  id;
     Scope *               scope;
     TSmallArray_InstrPtr *members;
-    bool                  is_packed;
-    bool                  is_union;
+    // @CLEANUP: use flags here
+    bool is_packed;
+    bool is_union;
+    bool is_tuple;
 };
 
 struct MirInstrTypeEnum {

@@ -108,7 +108,7 @@ static Ast *     parse_unrecheable(Context *cnt);
 static Ast *     parse_ident(Context *cnt);
 static Ast *     parse_block(Context *cnt, bool create_scope);
 static Ast *     parse_decl(Context *cnt);
-static Ast *     parse_decl_member(Context *cnt, bool type_only);
+static Ast *     parse_decl_member(Context *cnt, bool type_only, s32 index);
 static Ast *     parse_decl_arg(Context *cnt, bool rq_named);
 static Ast *     parse_decl_variant(Context *cnt, Ast *prev);
 static Ast *     parse_type(Context *cnt);
@@ -912,12 +912,11 @@ Ast *parse_expr_cast(Context *cnt)
     return cast;
 }
 
-Ast *parse_decl_member(Context *cnt, bool type_only)
+Ast *parse_decl_member(Context *cnt, bool type_only, s32 index)
 {
     Token *tok_begin = tokens_peek(cnt->tokens);
     Ast *  name      = NULL;
     Ast *  type      = NULL;
-
     if (type_only) {
         type = parse_type(cnt);
     } else {
@@ -931,17 +930,24 @@ Ast *parse_decl_member(Context *cnt, bool type_only)
         }
         type = parse_type(cnt);
     }
-
     if (!type && !name) return NULL;
+    if (!name) {
+        BL_ASSERT(index >= 0);
+        BL_ASSERT(type_only && "Implicit name generation is not allowed!");
+        char index_str[22];
+        sprintf(index_str, "_%d", index);
+        TString *ident_str = builder_create_cached_str();
+        tstring_append(ident_str, index_str);
+        name = ast_create_node(cnt->ast_arena, AST_IDENT, tok_begin, SCOPE_GET(cnt));
+        id_init(&name->data.ident.id, ident_str->data);
+    }
 
     HashDirective found_hd = HD_NONE;
     Ast *         tags     = parse_hash_directive(cnt, HD_TAGS, &found_hd);
-
-    Ast *mem = ast_create_node(cnt->ast_arena, AST_DECL_MEMBER, tok_begin, SCOPE_GET(cnt));
+    Ast *         mem = ast_create_node(cnt->ast_arena, AST_DECL_MEMBER, tok_begin, SCOPE_GET(cnt));
     mem->data.decl.type = type;
     mem->data.decl.name = name;
     mem->data.decl.tags = tags;
-
     return mem;
 }
 
@@ -1693,7 +1699,6 @@ Ast *parse_expr_member(Context *cnt, Ast *prev)
     Ast *mem = ast_create_node(cnt->ast_arena, AST_EXPR_MEMBER, tok, SCOPE_GET(cnt));
     mem->data.expr_member.ident = ident;
     mem->data.expr_member.next  = prev;
-    mem->data.expr_member.i     = -1;
     return mem;
 }
 
@@ -1724,10 +1729,8 @@ Ast *parse_ident(Context *cnt)
 {
     Token *tok_ident = tokens_consume_if(cnt->tokens, SYM_IDENT);
     if (!tok_ident) return NULL;
-
     Ast *ident = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ident, SCOPE_GET(cnt));
     id_init(&ident->data.ident.id, tok_ident->value.str);
-
     return ident;
 }
 
@@ -2003,12 +2006,8 @@ NEXT:
                     "by comma.");
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn, SCOPE_GET(cnt));
     }
-
-    Ast *ret_type             = parse_type(cnt);
-    fn->data.type_fn.ret_type = ret_type; // REMOVE
-    if (!ret_type) return fn;
-    
-    // Parse multiple return types.
+    fn->data.type_fn.ret_type = parse_type(cnt);
+    return fn;
 }
 
 Ast *parse_type_fn_group(Context *cnt)
@@ -2051,12 +2050,24 @@ Ast *parse_type_struct(Context *cnt)
 {
     Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
     if (!tok_struct) tok_struct = tokens_consume_if(cnt->tokens, SYM_UNION);
+    if (!tok_struct) tok_struct = tokens_consume_if(cnt->tokens, SYM_TUPLE);
     if (!tok_struct) return NULL;
 
-    const bool is_union = tok_struct->sym == SYM_UNION;
+    bool is_union = false;
+    bool is_tuple = false;
+    switch (tok_struct->sym) {
+    case SYM_UNION:
+        is_union = true;
+        break;
+    case SYM_TUPLE:
+        is_tuple = true;
+        break;
+    default: // otherwise it's struct
+        break;
+    }
 
     // parse flags
-    u32  accepted  = is_union ? 0 : HD_COMPILER | HD_BASE;
+    u32  accepted  = (is_union || is_tuple) ? 0 : HD_COMPILER | HD_BASE;
     u32  flags     = 0;
     Ast *base_type = NULL;
     while (true) {
@@ -2089,22 +2100,20 @@ Ast *parse_type_struct(Context *cnt)
 
     Ast *type_struct = ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct, SCOPE_GET(cnt));
     type_struct->data.type_strct.scope     = scope;
-    type_struct->data.type_strct.raw       = false;
     type_struct->data.type_strct.members   = create_sarr(TSmallArray_AstPtr, cnt->assembly);
     type_struct->data.type_strct.base_type = base_type;
     type_struct->data.type_strct.is_union  = is_union;
+    type_struct->data.type_strct.is_tuple  = is_tuple;
 
     // parse members
-    bool       rq = false;
-    Ast *      tmp;
-    const bool type_only = tokens_peek_2nd(cnt->tokens)->sym == SYM_COMMA ||
-                           tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK;
-    type_struct->data.type_strct.raw = type_only;
+    bool rq = false;
+    Ast *tmp;
+    s32  index = 0;
 NEXT:
-    tmp = parse_decl_member(cnt, type_only);
+    tmp = parse_decl_member(cnt, is_tuple, index);
     if (tmp) {
         tsa_push_AstPtr(type_struct->data.type_strct.members, tmp);
-
+        ++index;
         if (tokens_consume_if(cnt->tokens, SYM_SEMICOLON)) {
             rq = true;
             goto NEXT;
@@ -2112,8 +2121,10 @@ NEXT:
     } else if (rq) {
         Token *tok_err = tokens_peek(cnt->tokens);
         if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
-            PARSE_ERROR(
-                ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected member after semicolon.");
+            PARSE_ERROR(ERR_EXPECTED_NAME,
+                        tok_err,
+                        BUILDER_CUR_WORD,
+                        "Expected struct member after semicolon.");
 
             SCOPE_POP(cnt);
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_struct, SCOPE_GET(cnt));
@@ -2125,7 +2136,7 @@ NEXT:
         PARSE_ERROR(ERR_MISSING_BRACKET,
                     tok,
                     BUILDER_CUR_WORD,
-                    "Expected end of member list '}' or another memeber separated by semicolon.");
+                    "Expected end of member list '}' or another member separated by semicolon.");
         tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
         SCOPE_POP(cnt);
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_struct, SCOPE_GET(cnt));

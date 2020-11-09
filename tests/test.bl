@@ -1,14 +1,18 @@
 // playground 
 
-foo :: fn () struct { a: s32; b: bool } {
-    tmp: struct { a: s32; b: bool; };
-    return tmp;
-}
-
-//bar :: fn () s32, bool {
-//}
+// TUPLE
+//
+// - Ordinary struct type, but with unnamed members.
+// - New struct flag is_tuple.
+// - Refecence members by _1, _2, ..., _N
+// - Implicit packing and unpacking based on type infer
+//   v: struct { s32; bool } = 10, true;
+//   int, boolean :: v;
 
 main :: fn () s32 {
-    foo: struct { s32 };
+    v: tuple { s32; s32 } : 20, 10;
+    v._0 = 20;
+    v._1 = 10;
     return 0;
 }
+

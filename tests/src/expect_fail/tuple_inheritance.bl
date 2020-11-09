@@ -1,0 +1,3 @@
+// @ERR_UNEXPECTED_DIRECTIVE@
+Foo :: struct { i: s32; }
+Bar :: tuple #base
