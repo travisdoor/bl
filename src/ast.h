@@ -114,6 +114,9 @@ struct AstLink {
 
 struct AstIdent {
     ID id;
+    
+    // Optional other identificator (group);
+    Ast *other;
 };
 
 struct AstUBlock {

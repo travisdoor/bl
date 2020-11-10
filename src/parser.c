@@ -2221,8 +2221,22 @@ NEXT:
     return type_struct;
 }
 
+static TokensLookaheadState cmp_decl(Token *curr)
+{
+    switch (curr->sym) {
+    case SYM_COLON:
+        return TOK_LOOK_HIT;
+    case SYM_COMMA:
+    case SYM_IDENT:
+        return TOK_LOOK_CONTINUE;
+    default:
+        return TOK_LOOK_TERMINAL;
+    }
+}
+
 Ast *parse_decl(Context *cnt)
 {
+    if (!tokens_lookahead(cnt->tokens, cmp_decl)) return NULL;
     // is value declaration?
     Token *tok_ident = tokens_peek(cnt->tokens);
     if (token_is_not(tok_ident, SYM_IDENT)) return NULL;
