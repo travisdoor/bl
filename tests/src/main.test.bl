@@ -36,7 +36,7 @@
 #load "fn_overload.test.bl"
 #load "tags.test.bl"
 #load "os.test.bl"
-#load "tuple.test.bl"
+#load "inheritance.test.bl"
 /////////////////////////////////////////////////////
 
 main :: fn () s32 {

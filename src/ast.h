@@ -32,6 +32,9 @@
 #include "arena.h"
 #include "common.h"
 
+#define AST_IS_BAD(node) ((node)->kind == AST_BAD)
+#define AST_IS_OK(node) ((node)->kind != AST_BAD)
+
 struct Scope;
 struct Token;
 struct Location;
@@ -217,7 +220,6 @@ struct AstTypeStruct {
     struct Scope *      scope;
     TSmallArray_AstPtr *members;
     Ast *               base_type;
-    bool                is_tuple; // Structure type with anonymous members.
     bool                is_union;
 };
 
@@ -309,6 +311,7 @@ struct AstExprCall {
 struct AstExprMember {
     Ast *ident;
     Ast *next;
+    s32  i;
 };
 
 struct AstExprElem {

@@ -461,8 +461,7 @@ static MirInstr *append_instr_type_struct(Context *             cnt,
                                           Scope *               scope,
                                           TSmallArray_InstrPtr *members,
                                           bool                  is_packed,
-                                          bool                  is_union,
-                                          bool                  is_tuple);
+                                          bool                  is_union);
 
 static MirInstr *append_instr_type_enum(Context *             cnt,
                                         Ast *                 node,
@@ -674,7 +673,7 @@ static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 9,
 // out_type when analyze passed without problems. When analyze does not pass postpone is returned
 // and out_type stay unchanged.
 static AnalyzeResult
-analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
+                     analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
 static AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp);
 static AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
 static AnalyzeResult analyze_instr_phi(Context *cnt, MirInstrPhi *phi);
@@ -2925,8 +2924,7 @@ MirInstr *append_instr_type_struct(Context *             cnt,
                                    Scope *               scope,
                                    TSmallArray_InstrPtr *members,
                                    bool                  is_packed,
-                                   bool                  is_union,
-                                   bool                  is_tuple)
+                                   bool                  is_union)
 {
     MirInstrTypeStruct *tmp     = create_instr(cnt, MIR_INSTR_TYPE_STRUCT, node);
     tmp->base.value.type        = cnt->builtin_types->t_type;
@@ -2936,7 +2934,6 @@ MirInstr *append_instr_type_struct(Context *             cnt,
     tmp->scope                  = scope;
     tmp->is_packed              = is_packed;
     tmp->is_union               = is_union;
-    tmp->is_tuple               = is_tuple;
     tmp->id                     = id;
     tmp->fwd_decl               = fwd_decl;
 
@@ -8534,8 +8531,12 @@ MirInstr *ast_expr_elem(Context *cnt, Ast *elem)
 
 MirInstr *ast_expr_member(Context *cnt, Ast *member)
 {
-    Ast *     ast_next = member->data.expr_member.next;
-    MirInstr *target   = ast(cnt, ast_next);
+    Ast *ast_next = member->data.expr_member.next;
+    // BL_ASSERT(ast_next);
+
+    MirInstr *target = ast(cnt, ast_next);
+    // BL_ASSERT(target);
+
     return append_instr_member_ptr(
         cnt, member, target, member->data.expr_member.ident, NULL, MIR_BUILTIN_ID_NONE);
 }
@@ -8992,13 +8993,12 @@ MirInstr *ast_decl_arg(Context *cnt, Ast *arg)
 
 MirInstr *ast_decl_member(Context *cnt, Ast *arg)
 {
-    // TODO:
-    // Take a look at anonymous structures and related RTTI + tag information.
-    Ast *ast_type = arg->data.decl.type;
-    Ast *ast_name = arg->data.decl.name;
-    Ast *ast_tags = arg->data.decl.tags;
-
-    TSmallArray_InstrPtr *tags = NULL;
+    Ast *                 ast_type = arg->data.decl.type;
+    Ast *                 ast_name = arg->data.decl.name;
+    Ast *                 ast_tags = arg->data.decl.tags;
+    TSmallArray_InstrPtr *tags     = NULL;
+    BL_ASSERT(ast_name);
+    BL_ASSERT(ast_type);
 
     // has member user defined tags?
     if (ast_tags) {
@@ -9015,13 +9015,7 @@ MirInstr *ast_decl_member(Context *cnt, Ast *arg)
             tsa_push_InstrPtr(tags, value);
         }
     }
-
-    // type
-    BL_ASSERT(ast_type && "Missing struct member type!");
     MirInstr *result = ast(cnt, ast_type);
-
-    // name
-    BL_ASSERT(ast_name && "Missing struct member name!");
     BL_ASSERT(ast_name->kind == AST_IDENT);
     result = append_instr_decl_member(cnt, ast_name, result, tags);
     register_symbol(cnt, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false);
@@ -9205,7 +9199,6 @@ MirInstr *ast_type_struct(Context *cnt, Ast *type_struct)
     cnt->ast.current_fwd_struct_decl = NULL;
 
     TSmallArray_AstPtr *ast_members = type_struct->data.type_strct.members;
-    const bool          is_tuple    = type_struct->data.type_strct.is_tuple;
     const bool          is_union    = type_struct->data.type_strct.is_union;
     BL_ASSERT(ast_members);
     Ast *       ast_base_type = type_struct->data.type_strct.base_type;
@@ -9247,7 +9240,7 @@ MirInstr *ast_type_struct(Context *cnt, Ast *type_struct)
     }
 
     return append_instr_type_struct(
-        cnt, type_struct, id, fwd_decl, scope, members, false, is_union, is_tuple);
+        cnt, type_struct, id, fwd_decl, scope, members, false, is_union);
 }
 
 MirInstr *ast_create_global_initializer(Context *cnt, Ast *ast_value, MirInstr *decl_var)
@@ -9404,8 +9397,10 @@ MirInstr *ast(Context *cnt, Ast *node)
         return ast_expr_compound(cnt, node);
     case AST_EXPR_TYPE_INFO:
         return ast_expr_type_info(cnt, node);
+
     case AST_EXPR_TEST_CASES:
         return ast_expr_test_cases(cnt, node);
+
     case AST_CALL_LOC:
         return ast_call_loc(cnt, node);
 
