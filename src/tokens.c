@@ -181,7 +181,7 @@ void tokens_consume_till2(Tokens *tokens, usize argc, Sym *args)
 {
     BL_ASSERT(argc && args);
     while (tokens_current_is_not(tokens, SYM_EOF)) {
-        for (int i = 0; i < argc; ++i) {
+        for (usize i = 0; i < argc; ++i) {
             if (tokens_current_is(tokens, args[i])) return;
         }
         tokens_consume(tokens);
