@@ -116,7 +116,7 @@ struct AstIdent {
     ID id;
     
     // Optional other identificator (group);
-    Ast *other;
+    Ast *next;
 };
 
 struct AstUBlock {

@@ -682,7 +682,7 @@ static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 9,
 // out_type when analyze passed without problems. When analyze does not pass postpone is returned
 // and out_type stay unchanged.
 static AnalyzeResult
-analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
+                     analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
 static AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp);
 static AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
 static AnalyzeResult analyze_instr_phi(Context *cnt, MirInstrPhi *phi);

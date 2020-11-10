@@ -113,6 +113,7 @@ static void      parse_ublock_content(Context *cnt, Ast *ublock);
 static Ast *     parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied);
 static Ast *     parse_unrecheable(Context *cnt);
 static Ast *     parse_ident(Context *cnt);
+static Ast *     parse_ident_group(Context *cnt);
 static Ast *     parse_block(Context *cnt, bool create_scope);
 static Ast *     parse_decl(Context *cnt);
 static Ast *     parse_decl_member(Context *cnt, s32 index);
@@ -1225,7 +1226,7 @@ Ast *parse_stmt_switch(Context *cnt)
     Ast *               default_case = NULL;
 NEXT:
     stmt_case = parse_stmt_case(cnt);
-    if (stmt_case && AST_IS_OK(stmt_case)) {
+    if (AST_IS_OK(stmt_case)) {
         if (stmt_case->data.stmt_case.is_default) {
             if (default_case) {
                 builder_msg(BUILDER_MSG_ERROR,
@@ -1795,6 +1796,31 @@ Ast *parse_ident(Context *cnt)
     return ident;
 }
 
+Ast *parse_ident_group(Context *cnt)
+{
+    Ast *root = NULL;
+    Ast *prev = NULL;
+    bool rq   = false;
+    Ast *ident;
+NEXT:
+    ident = parse_ident(cnt);
+    if (ident) {
+        if (prev) prev->data.ident.next = ident;
+        if (!root) root = ident;
+        prev = ident;
+        if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
+            rq = true;
+            goto NEXT;
+        }
+    } else if (rq) {
+        Token *tok_err = tokens_peek(cnt->tokens);
+        PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected name after comma ','.");
+        CONSUME_TILL(cnt->tokens, SYM_COLON, SYM_SEMICOLON, SYM_IDENT);
+        return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
+    }
+    return root;
+}
+
 Ast *parse_type_ptr(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_ASTERISK);
@@ -2236,21 +2262,15 @@ static TokensLookaheadState cmp_decl(Token *curr)
 
 Ast *parse_decl(Context *cnt)
 {
-    if (!tokens_lookahead(cnt->tokens, cmp_decl)) return NULL;
     // is value declaration?
-    Token *tok_ident = tokens_peek(cnt->tokens);
-    if (token_is_not(tok_ident, SYM_IDENT)) return NULL;
-
-    Token *tok_2nd = tokens_peek_2nd(cnt->tokens);
-    if (token_is_not(tok_2nd, SYM_COLON)) return NULL;
-
-    Ast *ident = parse_ident(cnt);
+    if (!tokens_lookahead(cnt->tokens, cmp_decl)) return NULL;
+    Token *tok_begin = tokens_peek(cnt->tokens);
+    Ast *  ident     = parse_ident_group(cnt);
     if (!ident) return NULL;
-
     // eat :
     tokens_consume(cnt->tokens);
 
-    Ast *decl = ast_create_node(cnt->ast_arena, AST_DECL_ENTITY, tok_ident, SCOPE_GET(cnt));
+    Ast *decl = ast_create_node(cnt->ast_arena, AST_DECL_ENTITY, tok_begin, SCOPE_GET(cnt));
     decl->data.decl.name       = ident;
     decl->data.decl_entity.mut = true;
 
@@ -2276,7 +2296,7 @@ Ast *parse_decl(Context *cnt)
                             BUILDER_CUR_AFTER,
                             "Expected binding of declaration to some value.");
                 DECL_POP(cnt);
-                return ast_create_node(cnt->ast_arena, AST_BAD, tok_ident, SCOPE_GET(cnt));
+                return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
             }
         }
     } else {
@@ -2296,11 +2316,11 @@ Ast *parse_decl(Context *cnt)
 
         if (IS_FLAG(flags, FLAG_NO_INIT) && scope_is_global(SCOPE_GET(cnt))) {
             PARSE_ERROR(ERR_EXPECTED_INITIALIZATION,
-                        tok_ident,
+                        tok_begin,
                         BUILDER_CUR_AFTER,
                         "Invalid 'noinit' directive for global variable '%s'. All globals must "
                         "be initialized either by explicit value or implicit default value.",
-                        tok_ident->value.str);
+                        ident->data.ident.id.str);
         }
 
         decl->data.decl_entity.flags |= flags;
