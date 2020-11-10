@@ -141,4 +141,33 @@ pointer_to_self_nested :: fn () #test {
     bar: Bar;
 }
 
+tuple1 :: fn () #test {
+    Tuple :: struct { s32 };
+    v: Tuple;
+    test_eq(v._0, 0);
+}
 
+tuple2 :: fn () #test {
+    Tuple :: struct { s32; s32 };
+    v: Tuple;
+    test_eq(v._0, 0);
+    test_eq(v._1, 0);
+}
+
+tuple3 :: fn () #test {
+    Tuple :: struct { s32; s32 };
+    v: Tuple #noinit;
+    v._0 = 10;
+    v._1 = 20;
+    test_eq(v._0, 10);
+    test_eq(v._1, 20);
+}
+
+hybrid1 :: fn () #test {
+    Tuple :: struct { s32; i: s32 };
+    v: Tuple #noinit;
+    v._0 = 10;
+    v.i = 20;
+    test_eq(v._0, 10);
+    test_eq(v.i, 20);
+}

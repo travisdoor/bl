@@ -1,14 +1,8 @@
 // playground 
 
-foo :: fn () struct { a: s32; b: bool } {
-    tmp: struct { a: s32; b: bool; };
-    return tmp;
+bar :: fn () (err: s32, file: *u8) {
 }
 
-//bar :: fn () s32, bool {
-//}
-
 main :: fn () s32 {
-    foo: struct { s32 };
     return 0;
 }

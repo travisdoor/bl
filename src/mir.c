@@ -8993,19 +8993,12 @@ MirInstr *ast_decl_arg(Context *cnt, Ast *arg)
 
 MirInstr *ast_decl_member(Context *cnt, Ast *arg)
 {
-    // INCOMPLETE:
-    // It's not clear how we handle creation of MirMember if we have anonymous struct
-    // member (without name). In such case we still need to create Member object because
-    // it's needed for type info related to owner structure. This is also related to
-    // TAGS associated with member, result value has to be stored in the MirMember.
-    //
-    // TODO:
-    // Take a look at anonymous structures and related RTTI + tag information.
-    Ast *ast_type = arg->data.decl.type;
-    Ast *ast_name = arg->data.decl.name;
-    Ast *ast_tags = arg->data.decl.tags;
-
-    TSmallArray_InstrPtr *tags = NULL;
+    Ast *                 ast_type = arg->data.decl.type;
+    Ast *                 ast_name = arg->data.decl.name;
+    Ast *                 ast_tags = arg->data.decl.tags;
+    TSmallArray_InstrPtr *tags     = NULL;
+    BL_ASSERT(ast_name);
+    BL_ASSERT(ast_type);
 
     // has member user defined tags?
     if (ast_tags) {
@@ -9022,18 +9015,10 @@ MirInstr *ast_decl_member(Context *cnt, Ast *arg)
             tsa_push_InstrPtr(tags, value);
         }
     }
-
-    BL_ASSERT(ast_type);
     MirInstr *result = ast(cnt, ast_type);
-
-    // named member?
-    if (ast_name) {
-        BL_ASSERT(ast_name->kind == AST_IDENT);
-        result = append_instr_decl_member(cnt, ast_name, result, tags);
-
-        register_symbol(cnt, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false);
-    }
-
+    BL_ASSERT(ast_name->kind == AST_IDENT);
+    result = append_instr_decl_member(cnt, ast_name, result, tags);
+    register_symbol(cnt, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false);
     BL_ASSERT(result);
     return result;
 }
@@ -9214,15 +9199,8 @@ MirInstr *ast_type_struct(Context *cnt, Ast *type_struct)
     cnt->ast.current_fwd_struct_decl = NULL;
 
     TSmallArray_AstPtr *ast_members = type_struct->data.type_strct.members;
-    const bool          is_raw      = type_struct->data.type_strct.raw;
     const bool          is_union    = type_struct->data.type_strct.is_union;
-
-    if (is_raw) {
-        BL_ABORT_ISSUE(31);
-    }
-
     BL_ASSERT(ast_members);
-
     Ast *       ast_base_type = type_struct->data.type_strct.base_type;
     const usize memc          = ast_members->size;
     if (!memc && !ast_base_type) {

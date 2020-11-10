@@ -32,6 +32,9 @@
 #include "arena.h"
 #include "common.h"
 
+#define AST_IS_BAD(node) ((node)->kind == AST_BAD)
+#define AST_IS_OK(node) ((node)->kind != AST_BAD)
+
 struct Scope;
 struct Token;
 struct Location;
@@ -52,7 +55,7 @@ typedef enum {
     FLAG_NO_INLINE   = 1 << 5,  // no inline function
     FLAG_ENTRY       = 1 << 6,  // marking entry point function
     FLAG_BUILD_ENTRY = 1 << 7,  // marking build entry point function
-    FLAG_NO_INIT     = 1 << 8,  // no default initialization 
+    FLAG_NO_INIT     = 1 << 8,  // no default initialization
     FLAG_INTRINSIC   = 1 << 9,  // intrinsics declaration
     FLAG_TEST_FN     = 1 << 10, // intrinsics declaration
 } AstFlag;
@@ -217,7 +220,6 @@ struct AstTypeStruct {
     struct Scope *      scope;
     TSmallArray_AstPtr *members;
     Ast *               base_type;
-    bool                raw;
     bool                is_union;
 };
 
@@ -357,8 +359,8 @@ struct AstCallLoc {
 /* AST base type */
 struct Ast {
     AstKind          kind;
-    struct Location *location;     // Location in source file. 
-    struct Location *location_end; // Optional ending location. 
+    struct Location *location;     // Location in source file.
+    struct Location *location_end; // Optional ending location.
     struct Scope *   owner_scope;  // Scope in which is AST node.
     struct Ast *     meta_node;    // Metadata assigned to node.
 

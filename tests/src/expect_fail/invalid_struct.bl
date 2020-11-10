@@ -1,0 +1,2 @@
+// @ERR_EXPECTED_TYPE@
+Foo :: struct { i:; }

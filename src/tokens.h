@@ -60,11 +60,12 @@ bool   tokens_previous_is(Tokens *tokens, Sym sym);
 bool   tokens_next_is(Tokens *tokens, Sym sym);
 bool   tokens_current_is_not(Tokens *tokens, Sym sym);
 bool   tokens_next_is_not(Tokens *tokens, Sym sym);
-bool   tokens_is_seq(Tokens *tokens, usize cnt, ...);
+bool   tokens_is_seq(Tokens *tokens, usize argc, ...);
 void   tokens_reset_iter(Tokens *tokens);
 usize  tokens_get_marker(Tokens *tokens);
 void   tokens_back_to_marker(Tokens *tokens, usize marker);
 void   tokens_consume_till(Tokens *tokens, Sym sym);
+void   tokens_consume_till2(Tokens *tokens, usize argc, Sym *args);
 bool   tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal);
 bool   tokens_lookahead(Tokens *tokens, TokenCmpFunc cmp);
 

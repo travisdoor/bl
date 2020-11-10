@@ -123,17 +123,17 @@ bool tokens_next_is_not(Tokens *tokens, Sym sym)
     return (&tarray_at(Token, &tokens->buf, tokens->iter + 1))->sym != sym;
 }
 
-bool tokens_is_seq(Tokens *tokens, usize cnt, ...)
+bool tokens_is_seq(Tokens *tokens, usize argc, ...)
 {
     bool  ret = true;
     usize c   = tokens->buf.size;
     Sym   sym = SYM_EOF;
-    cnt += (int)tokens->iter;
+    argc += (int)tokens->iter;
 
     va_list valist;
-    va_start(valist, cnt);
+    va_start(valist, argc);
 
-    for (usize i = tokens->iter; i < cnt && i < c; ++i) {
+    for (usize i = tokens->iter; i < argc && i < c; ++i) {
         sym = va_arg(valist, Sym);
         if ((&tarray_at(Token, &tokens->buf, i))->sym != sym) {
             ret = false;
@@ -173,6 +173,17 @@ int tokens_count(Tokens *tokens)
 void tokens_consume_till(Tokens *tokens, Sym sym)
 {
     while (tokens_current_is_not(tokens, sym) && tokens_current_is_not(tokens, SYM_EOF)) {
+        tokens_consume(tokens);
+    }
+}
+
+void tokens_consume_till2(Tokens *tokens, usize argc, Sym *args)
+{
+    BL_ASSERT(argc && args);
+    while (tokens_current_is_not(tokens, SYM_EOF)) {
+        for (int i = 0; i < argc; ++i) {
+            if (tokens_current_is(tokens, args[i])) return;
+        }
         tokens_consume(tokens);
     }
 }
