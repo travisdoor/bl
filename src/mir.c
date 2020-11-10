@@ -295,7 +295,8 @@ static MirType *create_type_struct(Context *              cnt,
                                    TSmallArray_MemberPtr *members,   // MirMember
                                    MirType *              base_type, // optional
                                    bool                   is_union,
-                                   bool                   is_packed);
+                                   bool                   is_packed,
+                                   bool                   is_multiple_return_type);
 
 // Make incomplete type struct declaration complete. This function sets all desired information
 // about struct to the forward declaration type.
@@ -305,7 +306,8 @@ static MirType *complete_type_struct(Context *              cnt,
                                      TSmallArray_MemberPtr *members,
                                      MirType *              base_type, // optional
                                      bool                   is_packed,
-                                     bool                   is_union);
+                                     bool                   is_union,
+                                     bool                   is_multiple_return_type);
 
 // Create incomplete struct type placeholer to be filled later.
 static MirType *create_type_struct_incomplete(Context *cnt, ID *user_id, bool is_union);
@@ -383,8 +385,11 @@ static MirInstr *create_instr_vargs_impl(Context *cnt, MirType *type, TSmallArra
 static MirInstr *create_instr_decl_direct_ref(Context *cnt, MirInstr *ref);
 static MirInstr *create_instr_call_comptime(Context *cnt, Ast *node, MirInstr *fn);
 static MirInstr *create_instr_call_loc(Context *cnt, Ast *node, Location *call_location);
-static MirInstr *
-create_instr_compound(Context *cnt, Ast *node, MirInstr *type, TSmallArray_InstrPtr *values);
+static MirInstr *create_instr_compound(Context *             cnt,
+                                       Ast *                 node,
+                                       MirInstr *            type,
+                                       TSmallArray_InstrPtr *values,
+                                       bool                  is_multiple_return_value);
 
 static MirInstr *
 create_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values);
@@ -414,8 +419,11 @@ static MirInstr *append_instr_set_initializer_impl(Context *cnt, MirInstr *dest,
 
 // @CLEANUP Is this even used?
 static MirInstr *append_instr_phi(Context *cnt, Ast *node);
-static MirInstr *
-append_instr_compound(Context *cnt, Ast *node, MirInstr *type, TSmallArray_InstrPtr *values);
+static MirInstr *append_instr_compound(Context *             cnt,
+                                       Ast *                 node,
+                                       MirInstr *            type,
+                                       TSmallArray_InstrPtr *values,
+                                       bool                  is_multiple_return_value);
 
 static MirInstr *
 append_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values);
@@ -461,7 +469,8 @@ static MirInstr *append_instr_type_struct(Context *             cnt,
                                           Scope *               scope,
                                           TSmallArray_InstrPtr *members,
                                           bool                  is_packed,
-                                          bool                  is_union);
+                                          bool                  is_union,
+                                          bool                  is_multiple_return_type);
 
 static MirInstr *append_instr_type_enum(Context *             cnt,
                                         Ast *                 node,
@@ -673,7 +682,7 @@ static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 9,
 // out_type when analyze passed without problems. When analyze does not pass postpone is returned
 // and out_type stay unchanged.
 static AnalyzeResult
-                     analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
+analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
 static AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp);
 static AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
 static AnalyzeResult analyze_instr_phi(Context *cnt, MirInstrPhi *phi);
@@ -958,12 +967,18 @@ static INLINE MirFn *get_callee(MirInstrCall *call)
     return fn;
 }
 
-static INLINE MirInstrBlock *get_current_block(Context *cnt)
+static INLINE MirFn *instr_owner_fn(MirInstr *instr)
+{
+    if (!instr->owner_block) return NULL;
+    return instr->owner_block->owner_fn;
+}
+
+static INLINE MirInstrBlock *ast_current_block(Context *cnt)
 {
     return cnt->ast.current_block;
 }
 
-static INLINE MirFn *get_current_fn(Context *cnt)
+static INLINE MirFn *ast_current_fn(Context *cnt)
 {
     return cnt->ast.current_block ? cnt->ast.current_block->owner_fn : NULL;
 }
@@ -982,7 +997,7 @@ static INLINE bool is_block_terminated(MirInstrBlock *block)
 
 static INLINE bool is_current_block_terminated(Context *cnt)
 {
-    return get_current_block(cnt)->terminal;
+    return ast_current_block(cnt)->terminal;
 }
 
 static INLINE MirInstr *mutate_instr(MirInstr *instr, MirInstrKind kind)
@@ -1721,7 +1736,7 @@ MirInstr *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v)
     // 3) Register new variable into scope.
     MirInstr *decl_var = append_instr_decl_var(cnt, NULL, id, scope, NULL, NULL, is_mutable, -1, 0);
 
-    MirInstrBlock *prev_block = get_current_block(cnt);
+    MirInstrBlock *prev_block = ast_current_block(cnt);
     MirInstrBlock *block      = append_global_block(cnt, INIT_VALUE_FN_NAME);
     set_current_block(cnt, block);
     MirInstr *init = append_instr_const_bool(cnt, NULL, v);
@@ -1856,14 +1871,16 @@ MirType *create_type_struct(Context *              cnt,
                             TSmallArray_MemberPtr *members,   // MirMember
                             MirType *              base_type, // optional
                             bool                   is_union,
-                            bool                   is_packed)
+                            bool                   is_packed,
+                            bool                   is_multiple_return_type)
 {
-    MirType *tmp              = create_type(cnt, kind, id);
-    tmp->data.strct.members   = members;
-    tmp->data.strct.scope     = scope;
-    tmp->data.strct.is_packed = is_packed;
-    tmp->data.strct.is_union  = is_union;
-    tmp->data.strct.base_type = base_type;
+    MirType *tmp                            = create_type(cnt, kind, id);
+    tmp->data.strct.members                 = members;
+    tmp->data.strct.scope                   = scope;
+    tmp->data.strct.is_packed               = is_packed;
+    tmp->data.strct.is_union                = is_union;
+    tmp->data.strct.is_multiple_return_type = is_multiple_return_type;
+    tmp->data.strct.base_type               = base_type;
     type_init_id(cnt, tmp);
     type_init_llvm_struct(cnt, tmp);
     return tmp;
@@ -1875,7 +1892,8 @@ MirType *complete_type_struct(Context *              cnt,
                               TSmallArray_MemberPtr *members,
                               MirType *              base_type,
                               bool                   is_packed,
-                              bool                   is_union)
+                              bool                   is_union,
+                              bool                   is_multiple_return_type)
 {
     BL_ASSERT(fwd_decl && "Invalid fwd_decl pointer!");
 
@@ -1888,12 +1906,13 @@ MirType *complete_type_struct(Context *              cnt,
     BL_ASSERT(incomplete_type->data.strct.is_incomplete &&
               "Incomplete struct type is not marked as incomplete!");
 
-    incomplete_type->data.strct.members       = members;
-    incomplete_type->data.strct.scope         = scope;
-    incomplete_type->data.strct.is_incomplete = false;
-    incomplete_type->data.strct.base_type     = base_type;
-    incomplete_type->data.strct.is_packed     = is_packed;
-    incomplete_type->data.strct.is_union      = is_union;
+    incomplete_type->data.strct.members                 = members;
+    incomplete_type->data.strct.scope                   = scope;
+    incomplete_type->data.strct.is_incomplete           = false;
+    incomplete_type->data.strct.base_type               = base_type;
+    incomplete_type->data.strct.is_packed               = is_packed;
+    incomplete_type->data.strct.is_union                = is_union;
+    incomplete_type->data.strct.is_multiple_return_type = is_multiple_return_type;
 
 #if TRACY_ENABLE
     {
@@ -1941,7 +1960,7 @@ MirType *_create_type_struct_slice(Context *cnt, MirTypeKind kind, ID *id, MirTy
     tsa_push_MemberPtr(members, tmp);
     provide_builtin_member(cnt, body_scope, tmp);
 
-    return create_type_struct(cnt, kind, id, body_scope, members, NULL, false, false);
+    return create_type_struct(cnt, kind, id, body_scope, members, NULL, false, false, false);
 }
 
 MirType *create_type_struct_dynarr(Context *cnt, ID *id, MirType *elem_ptr_type)
@@ -1995,7 +2014,8 @@ MirType *create_type_struct_dynarr(Context *cnt, ID *id, MirType *elem_ptr_type)
         provide_builtin_member(cnt, body_scope, tmp);
     }
 
-    return create_type_struct(cnt, MIR_TYPE_DYNARR, id, body_scope, members, NULL, false, false);
+    return create_type_struct(
+        cnt, MIR_TYPE_DYNARR, id, body_scope, members, NULL, false, false, false);
 }
 
 MirType *create_type_enum(Context *               cnt,
@@ -2325,7 +2345,7 @@ static INLINE void push_var(Context *cnt, MirVar *var)
 
     if (var->is_global) return;
 
-    MirFn *fn = get_current_fn(cnt);
+    MirFn *fn = ast_current_fn(cnt);
     BL_ASSERT(fn);
     tarray_push(fn->variables, var);
 }
@@ -2448,7 +2468,7 @@ MirVariant *create_variant(Context *cnt, ID *id, Scope *scope, MirConstExprValue
 void append_current_block(Context *cnt, MirInstr *instr)
 {
     BL_ASSERT(instr);
-    MirInstrBlock *block = get_current_block(cnt);
+    MirInstrBlock *block = ast_current_block(cnt);
     BL_ASSERT(block);
 
     if (is_block_terminated(block)) {
@@ -2651,26 +2671,30 @@ MirInstr *create_instr_call_comptime(Context *cnt, Ast *node, MirInstr *fn)
     return &tmp->base;
 }
 
-MirInstr *
-create_instr_compound(Context *cnt, Ast *node, MirInstr *type, TSmallArray_InstrPtr *values)
+MirInstr *create_instr_compound(Context *             cnt,
+                                Ast *                 node,
+                                MirInstr *            type,
+                                TSmallArray_InstrPtr *values,
+                                bool                  is_multiple_return_value)
 {
     if (values) {
         MirInstr *value;
         TSA_FOREACH(values, value) ref_instr(value);
     }
     ref_instr(type);
-    MirInstrCompound *tmp     = create_instr(cnt, MIR_INSTR_COMPOUND, node);
-    tmp->base.value.addr_mode = MIR_VAM_RVALUE;
-    tmp->type                 = type;
-    tmp->values               = values;
-    tmp->is_naked             = true;
+    MirInstrCompound *tmp         = create_instr(cnt, MIR_INSTR_COMPOUND, node);
+    tmp->base.value.addr_mode     = MIR_VAM_RVALUE;
+    tmp->type                     = type;
+    tmp->values                   = values;
+    tmp->is_naked                 = true;
+    tmp->is_multiple_return_value = is_multiple_return_value;
     return &tmp->base;
 }
 
 MirInstr *
 create_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values)
 {
-    MirInstr *tmp    = create_instr_compound(cnt, node, NULL, values);
+    MirInstr *tmp    = create_instr_compound(cnt, node, NULL, values, false);
     tmp->value.type  = type;
     tmp->is_implicit = true;
     return tmp;
@@ -2863,7 +2887,7 @@ MirInstr *append_instr_set_initializer(Context *cnt, Ast *node, MirInstr *dest, 
 
     append_current_block(cnt, &tmp->base);
 
-    MirInstrBlock *block = get_current_block(cnt);
+    MirInstrBlock *block = ast_current_block(cnt);
     if (!is_block_terminated(block)) terminate_block(block, &tmp->base);
 
     return &tmp->base;
@@ -2924,18 +2948,21 @@ MirInstr *append_instr_type_struct(Context *             cnt,
                                    Scope *               scope,
                                    TSmallArray_InstrPtr *members,
                                    bool                  is_packed,
-                                   bool                  is_union)
+                                   bool                  is_union,
+                                   bool                  is_multiple_return_type)
 {
-    MirInstrTypeStruct *tmp     = create_instr(cnt, MIR_INSTR_TYPE_STRUCT, node);
-    tmp->base.value.type        = cnt->builtin_types->t_type;
-    tmp->base.value.is_comptime = true;
-    tmp->base.value.addr_mode   = MIR_VAM_RVALUE;
-    tmp->members                = members;
-    tmp->scope                  = scope;
-    tmp->is_packed              = is_packed;
-    tmp->is_union               = is_union;
-    tmp->id                     = id;
-    tmp->fwd_decl               = fwd_decl;
+    MirInstrTypeStruct *tmp      = create_instr(cnt, MIR_INSTR_TYPE_STRUCT, node);
+    tmp->base.value.type         = cnt->builtin_types->t_type;
+    tmp->base.value.is_comptime  = true;
+    tmp->base.value.addr_mode    = MIR_VAM_RVALUE;
+    tmp->members                 = members;
+    tmp->scope                   = scope;
+    tmp->is_packed               = is_packed;
+    tmp->is_union                = is_union;
+    tmp->is_multiple_return_type = is_multiple_return_type;
+
+    tmp->id       = id;
+    tmp->fwd_decl = fwd_decl;
 
     if (members) {
         MirInstr *it;
@@ -3067,10 +3094,13 @@ MirInstr *append_instr_phi(Context *cnt, Ast *node)
     return tmp;
 }
 
-MirInstr *
-append_instr_compound(Context *cnt, Ast *node, MirInstr *type, TSmallArray_InstrPtr *values)
+MirInstr *append_instr_compound(Context *             cnt,
+                                Ast *                 node,
+                                MirInstr *            type,
+                                TSmallArray_InstrPtr *values,
+                                bool                  is_multiple_return_value)
 {
-    MirInstr *tmp = create_instr_compound(cnt, node, type, values);
+    MirInstr *tmp = create_instr_compound(cnt, node, type, values, is_multiple_return_value);
     append_current_block(cnt, tmp);
     return tmp;
 }
@@ -3078,7 +3108,7 @@ append_instr_compound(Context *cnt, Ast *node, MirInstr *type, TSmallArray_Instr
 MirInstr *
 append_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values)
 {
-    MirInstr *tmp    = append_instr_compound(cnt, node, NULL, values);
+    MirInstr *tmp    = append_instr_compound(cnt, node, NULL, values, false);
     tmp->value.type  = type;
     tmp->is_implicit = true;
 
@@ -3218,7 +3248,7 @@ MirInstr *append_instr_cond_br(Context *      cnt,
 
     append_current_block(cnt, &tmp->base);
 
-    MirInstrBlock *block = get_current_block(cnt);
+    MirInstrBlock *block = ast_current_block(cnt);
     if (!is_block_terminated(block)) terminate_block(block, &tmp->base);
     return &tmp->base;
 }
@@ -3232,7 +3262,7 @@ MirInstr *append_instr_br(Context *cnt, Ast *node, MirInstrBlock *then_block)
     tmp->base.ref_count  = NO_REF_COUNTING;
     tmp->then_block      = then_block;
 
-    MirInstrBlock *block = get_current_block(cnt);
+    MirInstrBlock *block = ast_current_block(cnt);
 
     append_current_block(cnt, &tmp->base);
     if (!is_block_terminated(block)) terminate_block(block, &tmp->base);
@@ -3267,7 +3297,7 @@ MirInstr *append_instr_switch(Context *               cnt,
     tmp->cases                    = cases;
     tmp->has_user_defined_default = user_defined_default;
 
-    MirInstrBlock *block = get_current_block(cnt);
+    MirInstrBlock *block = ast_current_block(cnt);
 
     append_current_block(cnt, &tmp->base);
     if (!is_block_terminated(block)) terminate_block(block, &tmp->base);
@@ -3627,7 +3657,7 @@ MirInstr *append_instr_ret(Context *cnt, Ast *node, MirInstr *value)
 
     append_current_block(cnt, &tmp->base);
 
-    MirInstrBlock *block = get_current_block(cnt);
+    MirInstrBlock *block = ast_current_block(cnt);
     if (!is_block_terminated(block)) terminate_block(block, &tmp->base);
 
     MirFn *fn = block->owner_fn;
@@ -4101,9 +4131,18 @@ AnalyzeResult analyze_instr_phi(Context UNUSED(*cnt), MirInstrPhi *phi)
 
 AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 {
-    MirType *             type   = cmp->base.value.type;
     TSmallArray_InstrPtr *values = cmp->values;
 
+    if (cmp->is_multiple_return_value) {
+        // Compound expression used as multiple return value has no type specified; function return
+        // type must by used.
+        MirFn *fn = instr_owner_fn(&cmp->base);
+        BL_ASSERT(fn && fn->type);
+        cmp->base.value.type = fn->type->data.fn.ret_type;
+        BL_ASSERT(cmp->base.value.type);
+    }
+
+    MirType *type = cmp->base.value.type;
     if (cmp->base.is_implicit) {
         BL_ASSERT(type && "Missig type for implicit compound!");
         BL_ASSERT((cmp->is_zero_initialized || values->size) &&
@@ -4111,7 +4150,6 @@ AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
 
         goto SKIP_IMPLICIT;
     }
-
     // Setup compound type.
     if (!type) {
         // generate load instruction if needed
@@ -4195,8 +4233,9 @@ AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
     case MIR_TYPE_VARGS:
     case MIR_TYPE_STRUCT: {
         if (cmp->is_zero_initialized) break;
-        const bool  is_union = type->data.strct.is_union;
-        const usize memc     = type->data.strct.members->size;
+        const bool  is_union                = type->data.strct.is_union;
+        const bool  is_multiple_return_type = type->data.strct.is_multiple_return_type;
+        const usize memc                    = type->data.strct.members->size;
 
         if (is_union) {
             builder_msg(BUILDER_MSG_ERROR,
@@ -4208,13 +4247,17 @@ AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
             return ANALYZE_RESULT(FAILED, 0);
         } else {
             if (values->size != memc) {
+                const char *msg =
+                    is_multiple_return_type
+                        ? "Expected %llu return values but given %llu."
+                        : "Structure initializer must explicitly set all members of the "
+                          "structure or initialize structure to 0 by zero initializer "
+                          "{0}. Expected is %llu but given %llu.";
                 builder_msg(BUILDER_MSG_ERROR,
                             ERR_INVALID_INITIALIZER,
                             cmp->base.node->location,
                             BUILDER_CUR_WORD,
-                            "Structure initializer must explicitly set all members of the "
-                            "structure or initialize structure to 0 by zero initializer "
-                            "{0}. Expected is %llu but given %llu.",
+                            msg,
                             (unsigned long long)memc,
                             (unsigned long long)values->size);
                 return ANALYZE_RESULT(FAILED, 0);
@@ -5776,7 +5819,8 @@ AnalyzeResult analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_s
                                            members,
                                            base_type,
                                            type_struct->is_packed,
-                                           type_struct->is_union);
+                                           type_struct->is_union,
+                                           type_struct->is_multiple_return_type);
 
         analyze_notify_provided(cnt, result_type->user_id->hash);
     } else {
@@ -5787,7 +5831,8 @@ AnalyzeResult analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_s
                                          members,
                                          base_type,
                                          is_union,
-                                         type_struct->is_packed);
+                                         type_struct->is_packed,
+                                         type_struct->is_multiple_return_type);
     }
 
     BL_ASSERT(result_type);
@@ -6262,7 +6307,7 @@ AnalyzeResult analyze_instr_ret(Context *cnt, MirInstrRet *ret)
     MirInstrBlock *block = ret->base.owner_block;
     if (!block->terminal) block->terminal = &ret->base;
 
-    MirType *fn_type = get_current_fn(cnt)->type;
+    MirType *fn_type = ast_current_fn(cnt)->type;
     BL_ASSERT(fn_type);
     BL_ASSERT(fn_type->kind == MIR_TYPE_FN);
 
@@ -8058,7 +8103,7 @@ void ast_ublock(Context *cnt, Ast *ublock)
 void ast_block(Context *cnt, Ast *block)
 {
     if (cnt->debug_mode) {
-        MirFn *current_fn = get_current_fn(cnt);
+        MirFn *current_fn = ast_current_fn(cnt);
         BL_ASSERT(current_fn);
     }
 
@@ -8080,7 +8125,7 @@ void ast_stmt_if(Context *cnt, Ast *stmt_if)
     Ast *ast_else = stmt_if->data.stmt_if.false_stmt;
     BL_ASSERT(ast_cond && ast_then);
 
-    MirFn *fn = get_current_fn(cnt);
+    MirFn *fn = ast_current_fn(cnt);
     BL_ASSERT(fn);
 
     MirInstrBlock *tmp_block  = NULL;
@@ -8095,7 +8140,7 @@ void ast_stmt_if(Context *cnt, Ast *stmt_if)
     set_current_block(cnt, then_block);
     ast(cnt, ast_then);
 
-    tmp_block = get_current_block(cnt);
+    tmp_block = ast_current_block(cnt);
     if (!get_block_terminator(tmp_block)) {
         // block has not been terminated -> add terminator
         append_instr_br(cnt, NULL, cont_block);
@@ -8106,7 +8151,7 @@ void ast_stmt_if(Context *cnt, Ast *stmt_if)
         set_current_block(cnt, else_block);
         ast(cnt, ast_else);
 
-        tmp_block = get_current_block(cnt);
+        tmp_block = ast_current_block(cnt);
         if (!is_block_terminated(tmp_block)) {
             append_instr_br(cnt, NULL, cont_block);
         }
@@ -8129,7 +8174,7 @@ void ast_stmt_loop(Context *cnt, Ast *loop)
     Ast *ast_init      = loop->data.stmt_loop.init;
     BL_ASSERT(ast_block);
 
-    MirFn *fn = get_current_fn(cnt);
+    MirFn *fn = ast_current_fn(cnt);
     BL_ASSERT(fn);
 
     // prepare all blocks
@@ -8161,7 +8206,7 @@ void ast_stmt_loop(Context *cnt, Ast *loop)
     set_current_block(cnt, body_block);
     ast(cnt, ast_block);
 
-    tmp_block = get_current_block(cnt);
+    tmp_block = ast_current_block(cnt);
     if (!is_block_terminated(tmp_block)) {
         append_instr_br(cnt, loop, ast_increment ? increment_block : decide_block);
     }
@@ -8197,10 +8242,10 @@ void ast_stmt_switch(Context *cnt, Ast *stmt_switch)
 
     TSmallArray_SwitchCase *cases = create_sarr(TSmallArray_SwitchCase, cnt->assembly);
 
-    MirFn *fn = get_current_fn(cnt);
+    MirFn *fn = ast_current_fn(cnt);
     BL_ASSERT(fn);
 
-    MirInstrBlock *src_block            = get_current_block(cnt);
+    MirInstrBlock *src_block            = ast_current_block(cnt);
     MirInstrBlock *cont_block           = append_block(cnt, fn, "switch_continue");
     MirInstrBlock *default_block        = cont_block;
     bool           user_defined_default = false;
@@ -8216,7 +8261,7 @@ void ast_stmt_switch(Context *cnt, Ast *stmt_switch)
             set_current_block(cnt, case_block);
             ast(cnt, ast_case->data.stmt_case.block);
 
-            MirInstrBlock *curr_block = get_current_block(cnt);
+            MirInstrBlock *curr_block = ast_current_block(cnt);
             if (!is_block_terminated(curr_block)) {
                 append_instr_br(cnt, ast_case, cont_block);
             }
@@ -8256,11 +8301,9 @@ void ast_stmt_return(Context *cnt, Ast *ret)
     // Return statement produce only setup of .ret temporary and break into the exit
     // block of the function.
     MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
-
     if (!is_current_block_terminated(cnt)) {
-        MirFn *fn = get_current_fn(cnt);
+        MirFn *fn = ast_current_fn(cnt);
         BL_ASSERT(fn);
-
         if (fn->ret_tmp) {
             if (!value) {
                 builder_msg(BUILDER_MSG_ERROR,
@@ -8270,13 +8313,10 @@ void ast_stmt_return(Context *cnt, Ast *ret)
                             "Expected return value.");
                 return;
             }
-
             MirInstr *ref = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
-
             if (value->kind == MIR_INSTR_COMPOUND) {
                 ((MirInstrCompound *)value)->is_naked = false;
             }
-
             append_instr_store(cnt, ret, value, ref);
         } else if (value) {
             builder_msg(BUILDER_MSG_ERROR,
@@ -8285,10 +8325,8 @@ void ast_stmt_return(Context *cnt, Ast *ret)
                         BUILDER_CUR_WORD,
                         "Unexpected return value.");
         }
-
         ast_defer_block(cnt, ret->data.stmt_return.owner_block, true);
     }
-
     BL_ASSERT(cnt->ast.exit_block);
     append_instr_br(cnt, ret, cnt->ast.exit_block);
 }
@@ -8306,25 +8344,25 @@ MirInstr *ast_call_loc(Context *cnt, Ast *loc)
 
 MirInstr *ast_expr_compound(Context *cnt, Ast *cmp)
 {
-    TSmallArray_AstPtr *ast_values = cmp->data.expr_compound.values;
-    Ast *               ast_type   = cmp->data.expr_compound.type;
-    MirInstr *          type       = ast(cnt, ast_type);
-    BL_ASSERT(type);
-
-    if (!ast_values) {
-        return append_instr_compound(cnt, cmp, type, NULL);
+    TSmallArray_AstPtr *ast_values               = cmp->data.expr_compound.values;
+    const bool          is_multiple_return_value = cmp->data.expr_compound.is_multiple_return_value;
+    Ast *               ast_type                 = cmp->data.expr_compound.type;
+    MirInstr *          type                     = NULL;
+    if (is_multiple_return_value) {
+        // If compound expression is used as expression for multiple return value, we must aquire
+        // it's type from current function return type, which is not known yet. This must be done in
+        // analyze pass after function type is fully analyzed.
+        BL_ASSERT(ast_type == NULL);
+    } else {
+        type = ast(cnt, ast_type);
+        BL_ASSERT(type);
     }
-
-    const usize valc = ast_values->size;
-
-    BL_ASSERT(ast_type);
-
+    if (!ast_values) return append_instr_compound(cnt, cmp, type, NULL, is_multiple_return_value);
+    const usize           valc   = ast_values->size;
     TSmallArray_InstrPtr *values = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
     tsa_resize_InstrPtr(values, valc);
-
     Ast *     ast_value;
     MirInstr *value;
-
     // Values must be appended in reverse order.
     for (usize i = valc; i-- > 0;) {
         ast_value = ast_values->data[i];
@@ -8332,8 +8370,7 @@ MirInstr *ast_expr_compound(Context *cnt, Ast *cmp)
         BL_ASSERT(value);
         values->data[i] = value;
     }
-
-    return append_instr_compound(cnt, cmp, type, values);
+    return append_instr_compound(cnt, cmp, type, values, is_multiple_return_value);
 }
 
 MirInstr *ast_expr_addrof(Context *cnt, Ast *addrof)
@@ -8560,7 +8597,7 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
     fn_proto->type = CREATE_TYPE_RESOLVER_CALL(ast_fn_type);
     BL_ASSERT(fn_proto->type);
 
-    MirInstrBlock *prev_block      = get_current_block(cnt);
+    MirInstrBlock *prev_block      = ast_current_block(cnt);
     MirInstrBlock *prev_exit_block = cnt->ast.exit_block;
 
     const char *linkage_name =
@@ -8762,7 +8799,7 @@ MirInstr *ast_expr_binop(Context *cnt, Ast *binop)
     case BINOP_LOGIC_AND:
     case BINOP_LOGIC_OR: {
         const bool     swap_condition   = op == BINOP_LOGIC_AND;
-        MirFn *        fn               = get_current_fn(cnt);
+        MirFn *        fn               = ast_current_fn(cnt);
         MirInstrBlock *rhs_block        = append_block(cnt, fn, "rhs_block");
         MirInstrBlock *end_block        = cnt->ast.current_phi_end_block;
         MirInstrPhi *  phi              = cnt->ast.current_phi;
@@ -8786,12 +8823,12 @@ MirInstr *ast_expr_binop(Context *cnt, Ast *binop)
         } else {
             brk = append_instr_cond_br(cnt, NULL, lhs, end_block, rhs_block);
         }
-        phi_add_income(phi, brk, get_current_block(cnt));
+        phi_add_income(phi, brk, ast_current_block(cnt));
         set_current_block(cnt, rhs_block);
         MirInstr *rhs = ast(cnt, ast_rhs);
         if (append_end_block) {
             append_instr_br(cnt, NULL, end_block);
-            phi_add_income(phi, rhs, get_current_block(cnt));
+            phi_add_income(phi, rhs, ast_current_block(cnt));
             append_block2(cnt, fn, end_block);
             set_current_block(cnt, end_block);
             append_current_block(cnt, &phi->base);
@@ -9198,8 +9235,9 @@ MirInstr *ast_type_struct(Context *cnt, Ast *type_struct)
     MirInstr *fwd_decl               = cnt->ast.current_fwd_struct_decl;
     cnt->ast.current_fwd_struct_decl = NULL;
 
-    TSmallArray_AstPtr *ast_members = type_struct->data.type_strct.members;
-    const bool          is_union    = type_struct->data.type_strct.is_union;
+    TSmallArray_AstPtr *ast_members    = type_struct->data.type_strct.members;
+    const bool          is_union       = type_struct->data.type_strct.is_union;
+    const bool is_multiple_return_type = type_struct->data.type_strct.is_multiple_return_type;
     BL_ASSERT(ast_members);
     Ast *       ast_base_type = type_struct->data.type_strct.base_type;
     const usize memc          = ast_members->size;
@@ -9240,13 +9278,13 @@ MirInstr *ast_type_struct(Context *cnt, Ast *type_struct)
     }
 
     return append_instr_type_struct(
-        cnt, type_struct, id, fwd_decl, scope, members, false, is_union);
+        cnt, type_struct, id, fwd_decl, scope, members, false, is_union, is_multiple_return_type);
 }
 
 MirInstr *ast_create_global_initializer(Context *cnt, Ast *ast_value, MirInstr *decl_var)
 {
     BL_ASSERT(decl_var);
-    MirInstrBlock *prev_block = get_current_block(cnt);
+    MirInstrBlock *prev_block = ast_current_block(cnt);
     MirInstrBlock *block      = append_global_block(cnt, INIT_VALUE_FN_NAME);
     set_current_block(cnt, block);
     MirInstr *result = ast(cnt, ast_value);
@@ -9268,7 +9306,7 @@ MirInstr *ast_create_impl_fn_call(Context *   cnt,
 {
     if (!node) return NULL;
 
-    MirInstrBlock *prev_block = get_current_block(cnt);
+    MirInstrBlock *prev_block = ast_current_block(cnt);
     MirInstr *     fn_proto   = append_instr_fn_proto(cnt, NULL, NULL, NULL, schedule_analyze);
     fn_proto->value.type      = fn_type;
 

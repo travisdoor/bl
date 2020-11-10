@@ -347,6 +347,9 @@ struct MirTypeStruct {
     // Set true only for incomplete forward declarations of the struct.
     bool is_incomplete;
 
+    // Set true for struct type used as multiple return temporary.
+    bool is_multiple_return_type;
+
     // This is optional base type, only structures with #base hash directive has this
     // information.
     MirType *base_type;
@@ -634,7 +637,8 @@ struct MirInstrTypeStruct {
     // @CLEANUP: use flags here
     bool is_packed;
     bool is_union;
-    bool is_tuple;
+    // Set true for struct type used as multiple return temporary.
+    bool is_multiple_return_type;
 };
 
 struct MirInstrTypeEnum {
@@ -737,6 +741,8 @@ struct MirInstrCompound {
     MirVar *              tmp_var;
     bool                  is_naked;
     bool                  is_zero_initialized;
+    // Set when compound is used as multiple return value.
+    bool is_multiple_return_value;
 };
 
 struct MirInstrVArgs {

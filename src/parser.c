@@ -102,6 +102,7 @@ typedef struct {
     // tmps
     bool   inside_loop;
     Scope *current_private_scope;
+    Ast *  current_fn_type;
 } Context;
 
 // helpers
@@ -169,6 +170,13 @@ static Ast *       parse_expr_elem(Context *cnt, Ast *prev);
 static Ast *       parse_expr_compound(Context *cnt);
 
 // impl
+
+static INLINE void id_init(ID *id, const char *str)
+{
+    BL_ASSERT(id);
+    id->hash = thash_from_str(str);
+    id->str  = str;
+}
 
 static INLINE bool rq_semicolon_after_decl_entity(Ast *node)
 {
@@ -540,11 +548,9 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
                         "Unexpected directive. Extern can be used only for external entities.");
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
-
         // Extern flag extension could be linkage name as string
         Token *tok_ext = tokens_consume_if(cnt->tokens, SYM_STRING);
         if (!tok_ext) return NULL;
-
         // Parse extension token.
         Ast *ext = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ext, SCOPE_GET(cnt));
         id_init(&ext->data.ident.id, tok_ext->value.str);
@@ -558,11 +564,9 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
                 ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
-
         // Intrinsic flag extension could be linkage name as string
         Token *tok_ext = tokens_consume_if(cnt->tokens, SYM_STRING);
         if (!tok_ext) return NULL;
-
         // Parse extension token.
         Ast *ext = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ext, SCOPE_GET(cnt));
         id_init(&ext->data.ident.id, tok_ext->value.str);
@@ -690,7 +694,7 @@ Ast *parse_expr_compound(Context *cnt)
     bool rq = false;
     Ast *tmp;
 
-value:
+NEXT:
     tmp = parse_expr(cnt);
     if (tmp) {
         if (!compound->data.expr_compound.values)
@@ -700,7 +704,7 @@ value:
 
         if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
             rq = true;
-            goto value;
+            goto NEXT;
         }
     } else if (rq) {
         Token *tok_err = tokens_peek(cnt->tokens);
@@ -1079,7 +1083,8 @@ bool parse_semicolon_rq(Context *cnt)
     Token *tok = tokens_consume_if(cnt->tokens, SYM_SEMICOLON);
     if (!tok) {
         tok = tokens_peek_prev(cnt->tokens);
-        PARSE_ERROR(ERR_MISSING_SEMICOLON, tok, BUILDER_CUR_AFTER, "Missing semicolon ';'.");
+        PARSE_ERROR(ERR_MISSING_SEMICOLON, tok, BUILDER_CUR_AFTER, "Expected semicolon ';'.");
+        CONSUME_TILL(cnt->tokens, SYM_IDENT, SYM_RBLOCK);
         return false;
     }
     return true;
@@ -1113,11 +1118,46 @@ Ast *parse_stmt_return(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_RETURN);
     if (!tok_begin) return NULL;
-
     Ast *ret = ast_create_node(cnt->ast_arena, AST_STMT_RETURN, tok_begin, SCOPE_GET(cnt));
+    // @CLEANUP Check this for lambdas.
+    // @CLEANUP Check this for lambdas.
+    // @CLEANUP Check this for lambdas.
     ret->data.stmt_return.fn_decl = DECL_GET(cnt);
-    ret->data.stmt_return.expr    = parse_expr(cnt);
-    return ret;
+    tok_begin                     = tokens_peek(cnt->tokens);
+    BL_ASSERT(cnt->current_fn_type && cnt->current_fn_type->kind == AST_TYPE_FN);
+    Ast *rt = cnt->current_fn_type->data.type_fn.ret_type;
+    if (rt && rt->kind == AST_TYPE_STRUCT && rt->data.type_strct.is_multiple_return_type) {
+        // Generate untyped compound expression for multiple return types.
+        Ast *group = ast_create_node(cnt->ast_arena, AST_EXPR_COMPOUND, tok_begin, SCOPE_GET(cnt));
+        group->data.expr_compound.values = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+        // Allow type infer from function return type.
+        group->data.expr_compound.is_multiple_return_value = true;
+        ret->data.stmt_return.expr                         = group;
+        Ast *expr;
+        bool rq = false;
+    NEXT:
+        expr = parse_expr(cnt);
+        if (expr) {
+            tsa_push_AstPtr(group->data.expr_compound.values, expr);
+            if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
+                rq = true;
+                goto NEXT;
+            }
+        } else if (rq) {
+            Token *tok_err = tokens_peek(cnt->tokens);
+            PARSE_ERROR(ERR_EXPECTED_EXPR,
+                        tok_err,
+                        BUILDER_CUR_WORD,
+                        "Expected expression after comma ','.");
+            CONSUME_TILL(cnt->tokens, SYM_SEMICOLON, SYM_RBLOCK, SYM_IDENT);
+            return group;
+        }
+        group->location_end = &tokens_peek(cnt->tokens)->location;
+        return ret;
+    } else {
+        ret->data.stmt_return.expr = parse_expr(cnt);
+        return ret;
+    }
 }
 
 Ast *parse_stmt_if(Context *cnt)
@@ -1617,7 +1657,7 @@ Ast *parse_expr_lit_fn(Context *cnt)
     Ast *type = parse_type_fn(cnt, true);
     BL_ASSERT(type);
     fn->data.expr_fn.type = type;
-
+    cnt->current_fn_type  = type;
     // parse flags
     Ast *curr_decl = DECL_GET(cnt);
     if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
@@ -1750,10 +1790,8 @@ Ast *parse_ident(Context *cnt)
 {
     Token *tok_ident = tokens_consume_if(cnt->tokens, SYM_IDENT);
     if (!tok_ident) return NULL;
-
     Ast *ident = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ident, SCOPE_GET(cnt));
     id_init(&ident->data.ident.id, tok_ident->value.str);
-
     return ident;
 }
 
@@ -1985,7 +2023,6 @@ Ast *parse_type_fn_return(Context *cnt)
 {
     if (tokens_current_is(cnt->tokens, SYM_LPAREN)) {
         // multiple return type ( T1, T2 )
-        BL_LOG("Multiple return type!");
         // eat (
         Token *tok_begin = tokens_consume(cnt->tokens);
         Scope *scope     = scope_create(
@@ -1996,6 +2033,7 @@ Ast *parse_type_fn_return(Context *cnt)
             ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_begin, SCOPE_GET(cnt));
         type_struct->data.type_strct.scope   = scope;
         type_struct->data.type_strct.members = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+        type_struct->data.type_strct.is_multiple_return_type = true;
         Ast *tmp;
         s32  index = 0;
     NEXT:
@@ -2015,6 +2053,13 @@ Ast *parse_type_fn_return(Context *cnt)
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
         }
         SCOPE_POP(cnt);
+        if (!type_struct->data.type_strct.members->size) {
+            PARSE_ERROR(ERR_INVALID_TYPE,
+                        tok_begin,
+                        BUILDER_CUR_WORD,
+                        "Expected at least one return type inside parenthesis, if function should "
+                        "return 'void' remove parenthesis and leave return type unspecified.");
+        }
         return type_struct;
     }
     return parse_type(cnt);
@@ -2031,21 +2076,16 @@ Ast *parse_type_fn(Context *cnt, bool named_args)
             ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Expected function parameter list.");
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn, SCOPE_GET(cnt));
     }
-
     Ast *fn = ast_create_node(cnt->ast_arena, AST_TYPE_FN, tok_fn, SCOPE_GET(cnt));
-
     // parse arg types
     bool rq = false;
     Ast *tmp;
-
 NEXT:
     tmp = parse_decl_arg(cnt, named_args);
     if (tmp) {
         if (!fn->data.type_fn.args)
             fn->data.type_fn.args = create_sarr(TSmallArray_AstPtr, cnt->assembly);
-
         tsa_push_AstPtr(fn->data.type_fn.args, tmp);
-
         if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
             rq = true;
             goto NEXT;
@@ -2138,9 +2178,10 @@ Ast *parse_type_struct(Context *cnt)
         curr_decl->data.decl_entity.flags |= flags;
     }
 
-    Token *tok = tokens_consume(cnt->tokens);
-    if (tok->sym != SYM_LBLOCK) {
-        PARSE_ERROR(ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Expected struct member list.");
+    Token *tok = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
+    if (!tok) {
+        PARSE_ERROR(
+            ERR_MISSING_BRACKET, tok_struct, BUILDER_CUR_AFTER, "Expected struct member list.");
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_struct, SCOPE_GET(cnt));
     }
 
@@ -2499,12 +2540,15 @@ void parser_run(Assembly *assembly, Unit *unit)
     BL_ASSERT(assembly->gscope && "Missing global scope for assembly.");
 
     TracyCZone(_tctx, true);
-    Context cnt = {.assembly     = assembly,
-                   .unit         = unit,
-                   .ast_arena    = &assembly->arenas.ast,
-                   .scope_arenas = &assembly->arenas.scope,
-                   .tokens       = &unit->tokens,
-                   .inside_loop  = false};
+    Context cnt = {
+        .assembly        = assembly,
+        .unit            = unit,
+        .ast_arena       = &assembly->arenas.ast,
+        .scope_arenas    = &assembly->arenas.scope,
+        .tokens          = &unit->tokens,
+        .current_fn_type = NULL,
+        .inside_loop     = false,
+    };
 
     tsa_init(&cnt._decl_stack);
     tsa_init(&cnt._scope_stack);

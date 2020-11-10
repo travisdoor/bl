@@ -32,8 +32,8 @@
 #include "arena.h"
 #include "common.h"
 
-#define AST_IS_BAD(node) ((node)->kind == AST_BAD)
-#define AST_IS_OK(node) ((node)->kind != AST_BAD)
+#define AST_IS_BAD(node) ((node) && (node)->kind == AST_BAD)
+#define AST_IS_OK(node) ((node) && (node)->kind != AST_BAD)
 
 struct Scope;
 struct Token;
@@ -221,6 +221,7 @@ struct AstTypeStruct {
     TSmallArray_AstPtr *members;
     Ast *               base_type;
     bool                is_union;
+    bool                is_multiple_return_type;
 };
 
 struct AstTypeEnum {
@@ -248,6 +249,8 @@ struct AstExprType {
 struct AstExprCompound {
     Ast *               type;
     TSmallArray_AstPtr *values;
+    // Allow type infer from function return type.
+    bool is_multiple_return_value;
 };
 
 struct AstExprLitFn {

@@ -1,9 +1,17 @@
 // playground 
 
 bar :: fn () (err: s32, file: *u8) {
-    return {:struct { s32; *u8 }: 0, null};
+    return 10, null;
+}
+
+foo :: fn () (i: s32) {
+    return 10;
 }
 
 main :: fn () s32 {
+    // tmp :: bar();
+    // i :: tmp._0;
+    // j :: tmp._1; 
+    err, file :: bar();
     return 0;
 }
