@@ -655,7 +655,7 @@ void print_instr_unroll(Context *cnt, MirInstrUnroll *unroll)
 {
     print_instr_head(cnt, &unroll->base, "unroll");
     print_comptime_value_or_id(cnt, unroll->var);
-    fprintf(cnt->stream, "$%d", unroll->index);
+    fprintf(cnt->stream, ".%d", unroll->index);
 }
 
 void print_instr_br(Context *cnt, MirInstrBr *br)

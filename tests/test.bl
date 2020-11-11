@@ -1,13 +1,18 @@
 // playground 
 
+File :: *u8;
 sym : u8 : 10;
 
-bar :: fn () (err: s32, file: *u8) {
-    print("Call bar!\n");
-    return 10, &sym;
+file_open :: fn () (file: File, err: s32) {
+    print("Call open file!!!\n");
+    return &sym, -1;
 }
 
 main :: fn () s32 {
-    a, b :: bar();
+    file :: file_open();
+    print("file = %\n", file);
+    
+    file2, err :: file_open();
+    print("file = %\nerr = %\n", file2, err);
     return 0;
 }

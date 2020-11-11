@@ -141,6 +141,7 @@ static State emit_instr_load(Context *cnt, MirInstrLoad *load);
 static State emit_instr_call(Context *cnt, MirInstrCall *call);
 static State emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
 static State emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
+static State emit_instr_unroll(Context *cnt, MirInstrUnroll *unroll);
 static State emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
 static State emit_instr_toany(Context *cnt, MirInstrToAny *toany);
 static State emit_intr_call_loc(Context *cnt, MirInstrCallLoc *loc);
@@ -839,7 +840,7 @@ State emit_instr_phi(Context *cnt, MirInstrPhi *phi)
         value = phi->incoming_values->data[i];
         block = (MirInstrBlock *)phi->incoming_blocks->data[i];
         BL_ASSERT(value->llvm_value);
-        tsa_push_LLVMValue(&llvm_iv,  value->llvm_value);
+        tsa_push_LLVMValue(&llvm_iv, value->llvm_value);
         tsa_push_LLVMValue(&llvm_ib, LLVMBasicBlockAsValue(emit_basic_block(cnt, block)));
     }
 
@@ -1879,6 +1880,15 @@ State emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
         // .ptr
         member_ptr->base.llvm_value = LLVMBuildStructGEP(cnt->llvm_builder, llvm_target_ptr, 1, "");
     }
+    return STATE_PASSED;
+}
+
+State emit_instr_unroll(Context *cnt, MirInstrUnroll *unroll)
+{
+    LLVMValueRef llvm_var_ptr = unroll->var->llvm_value;
+    BL_ASSERT(llvm_var_ptr);
+    const unsigned int index = (const unsigned int)unroll->index;
+    unroll->base.llvm_value  = LLVMBuildStructGEP(cnt->llvm_builder, llvm_var_ptr, index, "");
     return STATE_PASSED;
 }
 
@@ -3055,6 +3065,9 @@ State emit_instr(Context *cnt, MirInstr *instr)
         break;
     case MIR_INSTR_CALL_LOC:
         state = emit_instr_call_loc(cnt, (MirInstrCallLoc *)instr);
+        break;
+    case MIR_INSTR_UNROLL:
+        state = emit_instr_unroll(cnt, (MirInstrUnroll *)instr);
         break;
 
     default:
