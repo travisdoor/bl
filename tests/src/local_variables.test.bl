@@ -76,3 +76,30 @@ enum_type_default_init :: fn () #test {
     bar: Bar;
     assert(bar == Bar.A);
 }
+
+multi_declaration1 :: fn () #test {
+    a, b, c, d := 999;
+    test_eq(a, 999);
+    test_eq(b, 999);
+    test_eq(c, 999);
+    test_eq(d, 999);    
+}
+
+multi_declaration2 :: fn () #test {
+    a, b, c, d :: 999;
+    test_eq(a, 999);
+    test_eq(b, 999);
+    test_eq(c, 999);
+    test_eq(d, 999);    
+}
+
+cc := 0;
+get_value :: fn (v: s32) s32 { cc += 1; return v; }
+multi_declaration3 :: fn () #test {
+    a, b, c, d :: get_value(999);
+    test_eq(cc, 1);
+    test_eq(a, 999);
+    test_eq(b, 999);
+    test_eq(c, 999);
+    test_eq(d, 999);    
+}

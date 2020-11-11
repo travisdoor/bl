@@ -682,7 +682,7 @@ static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 9,
 // out_type when analyze passed without problems. When analyze does not pass postpone is returned
 // and out_type stay unchanged.
 static AnalyzeResult
-                     analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
+analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
 static AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp);
 static AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
 static AnalyzeResult analyze_instr_phi(Context *cnt, MirInstrPhi *phi);
@@ -8868,7 +8868,6 @@ MirInstr *ast_expr_type(Context *cnt, Ast *type)
 
 MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
 {
-    MirInstr * result         = NULL;
     Ast *      ast_name       = entity->data.decl.name;
     Ast *      ast_type       = entity->data.decl.type;
     Ast *      ast_value      = entity->data.decl_entity.value;
@@ -8885,10 +8884,7 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
 
     BL_ASSERT(ast_name && "Missing entity name.");
     BL_ASSERT(ast_name->kind == AST_IDENT && "Expected identificator.");
-
     Scope *scope = ast_name->owner_scope;
-    ID *   id    = &ast_name->data.ident.id;
-
     if (is_compiler) {
         // Check builtin ids for symbols marked as compiler.
         builtin_id = get_builtin_kind(ast_name);
@@ -8939,16 +8935,26 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
             value = ast(cnt, ast_value);
         }
 
-        MirInstr *decl_var = append_instr_decl_var(cnt,
-                                                   ast_name,
-                                                   &ast_name->data.ident.id,
-                                                   ast_name->owner_scope,
-                                                   type,
-                                                   value,
-                                                   is_mutable,
-                                                   -1,
-                                                   entity->data.decl_entity.flags);
+        // Generate variables for all declarations.
+        TSmallArray_InstrPtr vars;
+        tsa_init(&vars);
+        Ast *ast_current_name = ast_name;
+        while (ast_current_name) {
+            ID *      id  = &ast_current_name->data.ident.id;
+            MirInstr *var = append_instr_decl_var(cnt,
+                                                  ast_current_name,
+                                                  id,
+                                                  scope,
+                                                  type,
+                                                  value,
+                                                  is_mutable,
+                                                  -1,
+                                                  entity->data.decl_entity.flags);
 
+            tsa_push_InstrPtr(&vars, var);
+            BL_ASSERT(ast_current_name->kind == AST_IDENT);
+            ast_current_name = ast_current_name->data.ident.next;
+        }
         // For globals we must generate initialization after variable declaration,
         // SetInitializer instruction will be used to set actual value, also
         // implicit initialization block is created into MIR (such block does not
@@ -8956,43 +8962,52 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
         if (use_initializer) {
             if (ast_value) {
                 // Generate implicit global initializer block.
-                ast_create_global_initializer(cnt, ast_value, decl_var);
+                // @HACK: Global initializar generator should accept multiple variables.
+                ast_create_global_initializer(cnt, ast_value, vars.data[0]);
             } else {
-                // Global has no eplicit initialization in code so we must
+                // Global has no explicit initialization in code so we must
                 // create default global initializer.
-                ast_create_global_initializer(cnt, NULL, decl_var);
+                // @HACK: Global initializar generator should accept multiple variables.
+                ast_create_global_initializer(cnt, NULL, vars.data[0]);
             }
         }
         // Struct decl cleanup.
         if (is_struct_decl) {
             cnt->ast.current_fwd_struct_decl = NULL;
-            MirVar *var                      = ((MirInstrDeclVar *)decl_var)->var;
-            var->is_struct_typedef           = true;
+            // @HACK: Used only for first in group!!!
+            MirVar *var            = ((MirInstrDeclVar *)vars.data[0])->var;
+            var->is_struct_typedef = true;
         }
         cnt->ast.current_entity_id = NULL;
+        tsa_terminate(&vars);
     }
 
-    // check main
-    if (is_builtin(ast_name, MIR_BUILTIN_ID_MAIN)) {
-        if (!is_fn_decl) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_EXPECTED_FUNC,
-                        ast_name->location,
-                        BUILDER_CUR_WORD,
-                        "Main is expected to be a function.");
-        } else {
-            // This is reported as an error.
-            // BL_ASSERT(!cnt->entry_fn);
-            BL_ASSERT(value);
-            MirFn *fn = MIR_CEV_READ_AS(MirFn *, &value->value);
-            BL_MAGIC_ASSERT(fn);
-            cnt->entry_fn            = fn;
-            cnt->entry_fn->emit_llvm = true;
+    // register all in group
+    Ast *ast_current_name = ast_name;
+    while (ast_current_name) {
+        // check main
+        if (is_builtin(ast_current_name, MIR_BUILTIN_ID_MAIN)) {
+            if (!is_fn_decl) {
+                builder_msg(BUILDER_MSG_ERROR,
+                            ERR_EXPECTED_FUNC,
+                            ast_current_name->location,
+                            BUILDER_CUR_WORD,
+                            "Main is expected to be a function.");
+            } else {
+                // This is reported as an error.
+                // BL_ASSERT(!cnt->entry_fn);
+                BL_ASSERT(value);
+                MirFn *fn = MIR_CEV_READ_AS(MirFn *, &value->value);
+                BL_MAGIC_ASSERT(fn);
+                cnt->entry_fn            = fn;
+                cnt->entry_fn->emit_llvm = true;
+            }
         }
+        ID *id = &ast_current_name->data.ident.id;
+        register_symbol(cnt, ast_current_name, id, scope, is_compiler);
+        ast_current_name = ast_current_name->data.ident.next;
     }
-
-    register_symbol(cnt, ast_name, id, scope, is_compiler);
-    return result;
+    return NULL;
 }
 
 MirInstr *ast_decl_arg(Context *cnt, Ast *arg)

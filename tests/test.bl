@@ -1,17 +1,20 @@
 // playground 
 
+sym : u8 : 10;
+
 bar :: fn () (err: s32, file: *u8) {
-    return 10, null;
+    print("Call bar!\n");
+    return 10, &sym;
 }
 
-foo :: fn () (i: s32) {
+foo :: fn () s32 {
+    print("Call foo!\n");
     return 10;
 }
 
 main :: fn () s32 {
-    // tmp :: bar();
-    // i :: tmp._0;
-    // j :: tmp._1; 
-    err, file :: bar();
+    a, b :: bar();
+    c, d :: foo();    
+    print("a = %\nb = %\nc = %\nd = %\n", a, b, c, d);
     return 0;
 }
