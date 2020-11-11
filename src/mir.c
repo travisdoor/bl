@@ -8962,12 +8962,12 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
         if (use_initializer) {
             if (ast_value) {
                 // Generate implicit global initializer block.
-                // @HACK: Global initializar generator should accept multiple variables.
+                // @HACK: Global initializer generator should accept multiple variables.
                 ast_create_global_initializer(cnt, ast_value, vars.data[0]);
             } else {
                 // Global has no explicit initialization in code so we must
                 // create default global initializer.
-                // @HACK: Global initializar generator should accept multiple variables.
+                // @HACK: Global initializer generator should accept multiple variables.
                 ast_create_global_initializer(cnt, NULL, vars.data[0]);
             }
         }
