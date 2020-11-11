@@ -278,6 +278,7 @@ static void print_instr_unop(Context *cnt, MirInstrUnop *unop);
 static void print_instr_arg(Context *cnt, MirInstrArg *arg);
 static void print_instr_test_cases(Context *cnt, MirInstrTestCases *tc);
 static void print_instr_call_loc(Context *cnt, MirInstrCallLoc *loc);
+static void print_instr_unroll(Context *cnt, MirInstrUnroll *unroll);
 static void print_instr(Context *cnt, MirInstr *instr);
 
 // impl
@@ -648,6 +649,13 @@ void print_instr_test_cases(Context *cnt, MirInstrTestCases *tc)
 void print_instr_call_loc(Context *cnt, MirInstrCallLoc *loc)
 {
     print_instr_head(cnt, &loc->base, "call_location");
+}
+
+void print_instr_unroll(Context *cnt, MirInstrUnroll *unroll)
+{
+    print_instr_head(cnt, &unroll->base, "unroll");
+    print_comptime_value_or_id(cnt, unroll->var);
+    fprintf(cnt->stream, "$%d", unroll->index);
 }
 
 void print_instr_br(Context *cnt, MirInstrBr *br)
@@ -1074,6 +1082,9 @@ void print_instr(Context *cnt, MirInstr *instr)
         break;
     case MIR_INSTR_CALL_LOC:
         print_instr_call_loc(cnt, (MirInstrCallLoc *)instr);
+        break;
+    case MIR_INSTR_UNROLL:
+        print_instr_unroll(cnt, (MirInstrUnroll *)instr);
         break;
     }
 

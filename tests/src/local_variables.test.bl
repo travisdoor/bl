@@ -103,3 +103,11 @@ multi_declaration3 :: fn () #test {
     test_eq(c, 999);
     test_eq(d, 999);    
 }
+
+multi_declaration4 :: fn () #test {
+    a, b, c, d : s32 : 999;
+    test_eq(a, 999);
+    test_eq(b, 999);
+    test_eq(c, 999);
+    test_eq(d, 999);
+}

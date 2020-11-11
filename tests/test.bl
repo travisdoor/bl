@@ -7,14 +7,7 @@ bar :: fn () (err: s32, file: *u8) {
     return 10, &sym;
 }
 
-foo :: fn () s32 {
-    print("Call foo!\n");
-    return 10;
-}
-
 main :: fn () s32 {
     a, b :: bar();
-    c, d :: foo();    
-    print("a = %\nb = %\nc = %\nd = %\n", a, b, c, d);
-    return 0;
+    return 0;
 }

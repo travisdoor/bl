@@ -119,6 +119,7 @@ typedef struct MirInstrSwitch         MirInstrSwitch;
 typedef struct MirInstrSetInitializer MirInstrSetInitializer;
 typedef struct MirInstrTestCases      MirInstrTestCases;
 typedef struct MirInstrCallLoc        MirInstrCallLoc;
+typedef struct MirInstrUnroll         MirInstrUnroll;
 
 typedef struct MirArenas {
     Arena instr;
@@ -770,6 +771,13 @@ struct MirInstrCallLoc {
 
     struct Location *call_location; // Optional call location
     MirVar *         meta_var;      // Optional meta var.
+};
+
+struct MirInstrUnroll {
+    MirInstr base;
+
+    MirInstr *var;
+    s32       index;
 };
 
 struct MirInstrTypeKind {

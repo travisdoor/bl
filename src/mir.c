@@ -52,6 +52,7 @@
 #define IMPL_ARG_DEFAULT ".arg.default"
 #define IMPL_CALL_LOC ".call.loc"
 #define IMPL_RET_TMP ".ret"
+#define IMPL_UNROLL_TMP ".unroll"
 #define NO_REF_COUNTING -1
 #define VERBOSE_ANALYZE false
 
@@ -412,6 +413,7 @@ static MirInstr *insert_instr_toany(Context *cnt, MirInstr *expr);
 static MirCastOp get_cast_op(MirType *from, MirType *to);
 static void      append_current_block(Context *cnt, MirInstr *instr);
 static MirInstr *append_instr_arg(Context *cnt, Ast *node, unsigned i);
+static MirInstr *append_instr_unroll(Context *cnt, Ast *node, MirInstr *var, s32 index);
 static MirInstr *
 append_instr_set_initializer(Context *cnt, Ast *node, MirInstr *dest, MirInstr *src);
 
@@ -682,7 +684,7 @@ static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 9,
 // out_type when analyze passed without problems. When analyze does not pass postpone is returned
 // and out_type stay unchanged.
 static AnalyzeResult
-analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
+                     analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
 static AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp);
 static AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
 static AnalyzeResult analyze_instr_phi(Context *cnt, MirInstrPhi *phi);
@@ -3075,6 +3077,17 @@ MirInstr *append_instr_arg(Context *cnt, Ast *node, unsigned i)
     MirInstrArg *tmp = create_instr(cnt, MIR_INSTR_ARG, node);
     tmp->i           = i;
 
+    append_current_block(cnt, &tmp->base);
+    return &tmp->base;
+}
+
+MirInstr *append_instr_unroll(Context *cnt, Ast *node, MirInstr *var, s32 index)
+{
+    BL_ASSERT(index >= 0);
+    BL_ASSERT(var);
+    MirInstrUnroll *tmp = create_instr(cnt, MIR_INSTR_UNROLL, node);
+    tmp->var            = var;
+    tmp->index          = index;
     append_current_block(cnt, &tmp->base);
     return &tmp->base;
 }
@@ -7256,6 +7269,9 @@ AnalyzeResult analyze_instr(Context *cnt, MirInstr *instr)
     case MIR_INSTR_CALL_LOC:
         state = analyze_instr_call_loc(cnt, (MirInstrCallLoc *)instr);
         break;
+    case MIR_INSTR_UNROLL:
+        BL_UNIMPLEMENTED
+        break;
     default:
         BL_ABORT("Missing analyze of instruction!");
     }
@@ -8289,10 +8305,8 @@ void ast_stmt_switch(Context *cnt, Ast *stmt_switch)
 
     // Generate instructions for switch value and create switch itself.
     set_current_block(cnt, src_block);
-
     MirInstr *value = ast(cnt, stmt_switch->data.stmt_switch.expr);
     append_instr_switch(cnt, stmt_switch, value, default_block, user_defined_default, cases);
-
     set_current_block(cnt, cont_block);
 }
 
@@ -8874,10 +8888,12 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
     const bool is_fn_decl     = ast_value && ast_value->kind == AST_EXPR_LIT_FN;
     const bool is_struct_decl = ast_value && ast_value->kind == AST_EXPR_TYPE &&
                                 ast_value->data.expr_type.type->kind == AST_TYPE_STRUCT;
-    const bool       is_mutable  = entity->data.decl_entity.mut;
-    const bool       is_global   = entity->data.decl_entity.in_gscope;
-    const bool       is_compiler = IS_FLAG(entity->data.decl_entity.flags, FLAG_COMPILER);
-    MirBuiltinIdKind builtin_id  = MIR_BUILTIN_ID_NONE;
+
+    const bool       is_mutable    = entity->data.decl_entity.mut;
+    const bool       is_global     = entity->data.decl_entity.in_gscope;
+    const bool       is_compiler   = IS_FLAG(entity->data.decl_entity.flags, FLAG_COMPILER);
+    const bool       is_multi_decl = ast_name && ast_name->data.ident.next;
+    MirBuiltinIdKind builtin_id    = MIR_BUILTIN_ID_NONE;
 
     // initialize value
     MirInstr *value = NULL;
@@ -8933,20 +8949,26 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
         // declarations.
         if (!use_initializer) {
             value = ast(cnt, ast_value);
+            if (is_multi_decl) {
+                value = append_instr_decl_var_impl(
+                    cnt, gen_uq_name(IMPL_UNROLL_TMP), NULL, value, false, false, 0, 0);
+            }
         }
 
         // Generate variables for all declarations.
         TSmallArray_InstrPtr vars;
         tsa_init(&vars);
-        Ast *ast_current_name = ast_name;
+        Ast *     ast_current_name = ast_name;
+        MirInstr *current_value    = value;
         while (ast_current_name) {
+            if (is_multi_decl) current_value = append_instr_decl_direct_ref(cnt, value);
             ID *      id  = &ast_current_name->data.ident.id;
             MirInstr *var = append_instr_decl_var(cnt,
                                                   ast_current_name,
                                                   id,
                                                   scope,
                                                   type,
-                                                  value,
+                                                  current_value,
                                                   is_mutable,
                                                   -1,
                                                   entity->data.decl_entity.flags);
@@ -9566,6 +9588,8 @@ const char *mir_instr_name(const MirInstr *instr)
         return "InstrTestCases";
     case MIR_INSTR_CALL_LOC:
         return "InstrCallLoc";
+    case MIR_INSTR_UNROLL:
+        return "InstrUnroll";
     }
 
     return "UNKNOWN";
