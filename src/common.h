@@ -114,8 +114,6 @@ typedef struct ID {
     u64         hash;
 } ID;
 
-void id_init(ID *id, const char *str);
-
 // Replace all backslashes in passed path with forward slash, this is used as workaround on Windows
 // platform due to inconsistency 'Unix vs Windows' path separators. This function will modify passed
 // buffer.

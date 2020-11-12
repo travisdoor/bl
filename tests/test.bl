@@ -1,5 +1,25 @@
 // playground 
 
+File :: *u8;
+sym : u8 : 10;
+
+file_open :: fn () (file: File, err: s32) {
+    print("Call open file!!!\n");
+    return &sym, -1;
+}
+
+foo :: fn () s32 {
+    return 10;
+}
+
 main :: fn () s32 {
-    return 0;
+    a, b := foo();
+    
+    c, d, e := 10;
+    //file : s32 : file_open();
+    //print("file = %\n\n", file);
+    
+    //file2, err :: file_open();
+    //print("file = %\nerr = %\n", file2, err);
+    return 0;
 }

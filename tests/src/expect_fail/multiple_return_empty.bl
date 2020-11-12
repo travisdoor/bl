@@ -1,0 +1,4 @@
+// @ERR_INVALID_TYPE@
+
+foo :: fn () () {
+}

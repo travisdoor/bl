@@ -92,13 +92,6 @@ const char *get_current_working_dir(char *buf, usize buf_size)
     return brealpath(".", buf, buf_size);
 }
 
-void id_init(ID *id, const char *str)
-{
-    BL_ASSERT(id);
-    id->hash = thash_from_str(str);
-    id->str  = str;
-}
-
 bool file_exists(const char *filepath)
 {
 #if defined(BL_PLATFORM_WIN)

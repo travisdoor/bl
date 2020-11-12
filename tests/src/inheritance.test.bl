@@ -1,0 +1,37 @@
+#private
+
+Base :: struct {
+    i: s32;
+}
+
+Empty :: struct #base Base {
+}
+
+T :: struct #base Base {
+    j: s32;
+}
+
+size :: fn () #test {
+    test_eq(cast(s64) sizeof(Empty), cast(s64) sizeof(Base));
+    test_eq(cast(s64) sizeof(T), 8);
+}
+
+initialization :: fn () #test {
+    {
+        v: Empty;
+        test_eq(v.i, 0);
+    }
+    {
+        v: T;
+        test_eq(v.i, 0);
+        test_eq(v.j, 0);
+    }
+    {
+        v: T;
+        v.i = 10;
+        v.j = 20;
+        test_eq(v.base.i, 10);
+        test_eq(v.i, 10);
+        test_eq(v.j, 20);
+    }
+}

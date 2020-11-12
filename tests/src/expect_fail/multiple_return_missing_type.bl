@@ -1,0 +1,3 @@
+// @ERR_EXPECTED_TYPE@
+
+foo :: fn () (i:) {}

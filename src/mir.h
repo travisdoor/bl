@@ -119,6 +119,7 @@ typedef struct MirInstrSwitch         MirInstrSwitch;
 typedef struct MirInstrSetInitializer MirInstrSetInitializer;
 typedef struct MirInstrTestCases      MirInstrTestCases;
 typedef struct MirInstrCallLoc        MirInstrCallLoc;
+typedef struct MirInstrUnroll         MirInstrUnroll;
 
 typedef struct MirArenas {
     Arena instr;
@@ -346,6 +347,9 @@ struct MirTypeStruct {
 
     // Set true only for incomplete forward declarations of the struct.
     bool is_incomplete;
+
+    // Set true for struct type used as multiple return temporary.
+    bool is_multiple_return_type;
 
     // This is optional base type, only structures with #base hash directive has this
     // information.
@@ -631,8 +635,11 @@ struct MirInstrTypeStruct {
     ID *                  id;
     Scope *               scope;
     TSmallArray_InstrPtr *members;
-    bool                  is_packed;
-    bool                  is_union;
+    // @CLEANUP: use flags here
+    bool is_packed;
+    bool is_union;
+    // Set true for struct type used as multiple return temporary.
+    bool is_multiple_return_type;
 };
 
 struct MirInstrTypeEnum {
@@ -682,6 +689,9 @@ struct MirInstrCall {
     MirInstr *            callee;
     TSmallArray_InstrPtr *args; // Optional
     bool                  callee_analyzed;
+
+    // Optional temporary variable for unroll multi-return struct type.
+    MirInstr *unroll_tmp_var;
 };
 
 struct MirInstrDeclRef {
@@ -735,6 +745,8 @@ struct MirInstrCompound {
     MirVar *              tmp_var;
     bool                  is_naked;
     bool                  is_zero_initialized;
+    // Set when compound is used as multiple return value.
+    bool is_multiple_return_value;
 };
 
 struct MirInstrVArgs {
@@ -762,6 +774,15 @@ struct MirInstrCallLoc {
 
     struct Location *call_location; // Optional call location
     MirVar *         meta_var;      // Optional meta var.
+};
+
+struct MirInstrUnroll {
+    MirInstr base;
+
+    MirInstr *src;
+    MirInstr *remove_src;
+    s32       index;
+    bool      remove;
 };
 
 struct MirInstrTypeKind {
@@ -824,7 +845,7 @@ static bool mir_is_composit_type(const MirType *type)
     return false;
 }
 
-static MirType *mir_get_struct_elem_type(const MirType *type, u32 i)
+static INLINE MirType *mir_get_struct_elem_type(const MirType *type, u32 i)
 {
     BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
     TSmallArray_MemberPtr *members = type->data.strct.members;
@@ -833,7 +854,7 @@ static MirType *mir_get_struct_elem_type(const MirType *type, u32 i)
     return members->data[i]->type;
 }
 
-static MirType *mir_get_fn_arg_type(const MirType *type, u32 i)
+static INLINE MirType *mir_get_fn_arg_type(const MirType *type, u32 i)
 {
     BL_ASSERT(type->kind == MIR_TYPE_FN && "Expected function type");
     TSmallArray_ArgPtr *args = type->data.fn.args;
@@ -844,23 +865,23 @@ static MirType *mir_get_fn_arg_type(const MirType *type, u32 i)
 }
 
 // Determinates if the instruction has compile time known value.
-static bool mir_is_comptime(const MirInstr *instr)
+static INLINE bool mir_is_comptime(const MirInstr *instr)
 {
     return instr->value.is_comptime;
 }
 
-static bool mir_is_global_block(const MirInstrBlock *instr)
+static INLINE bool mir_is_global_block(const MirInstrBlock *instr)
 {
     return instr->owner_fn == NULL;
 }
 
 // Determinates if the instruction is in the global block.
-static bool mir_is_global(const MirInstr *instr)
+static INLINE bool mir_is_global(const MirInstr *instr)
 {
     return mir_is_global_block(instr->owner_block);
 }
 
-static bool mir_type_has_llvm_representation(const MirType *type)
+static INLINE bool mir_type_has_llvm_representation(const MirType *type)
 {
     BL_ASSERT(type);
     return type->kind != MIR_TYPE_TYPE && type->kind != MIR_TYPE_FN_GROUP;

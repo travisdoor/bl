@@ -53,3 +53,29 @@ nested_function_pointers :: fn () #test {
 
     foo.v_fn();
 };
+
+multiple_return1 :: fn () #test {
+    foo :: fn () (s32, s32) {
+        return 10, 20;
+    };
+    a, b :: foo();
+    test_eq(a, 10);
+    test_eq(b, 20);
+}
+
+multiple_return2 :: fn () #test {
+    foo :: fn () (s32, s32) {
+        return 10, 20;
+    };
+    a :: foo();
+    test_eq(a, 10);
+}
+
+multiple_return3 :: fn () #test {
+    foo :: &fn () (s32, s32) {
+        return 10, 20;
+    };
+    a, b :: foo();
+    test_eq(a, 10);
+    test_eq(b, 20);
+}

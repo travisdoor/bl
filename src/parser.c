@@ -62,6 +62,12 @@ TSMALL_ARRAY_TYPE(ScopePtr64, Scope *, 64);
 #define DECL_POP(_cnt) tsa_pop_AstPtr64(&(_cnt)->_decl_stack)
 #define DECL_GET(_cnt) ((_cnt)->_decl_stack.size ? tsa_last_AstPtr64(&(_cnt)->_decl_stack) : NULL)
 
+#define CONSUME_TILL(tokens, ...)                                                                  \
+    {                                                                                              \
+        Sym _[] = {__VA_ARGS__};                                                                   \
+        tokens_consume_till2((tokens), ARRAY_SIZE(_), &_[0]);                                      \
+    }
+
 typedef enum {
     HD_NONE        = 1 << 0,
     HD_LOAD        = 1 << 1,
@@ -96,6 +102,7 @@ typedef struct {
     // tmps
     bool   inside_loop;
     Scope *current_private_scope;
+    Ast *  current_fn_type;
 } Context;
 
 // helpers
@@ -106,18 +113,20 @@ static void      parse_ublock_content(Context *cnt, Ast *ublock);
 static Ast *     parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied);
 static Ast *     parse_unrecheable(Context *cnt);
 static Ast *     parse_ident(Context *cnt);
+static Ast *     parse_ident_group(Context *cnt);
 static Ast *     parse_block(Context *cnt, bool create_scope);
 static Ast *     parse_decl(Context *cnt);
-static Ast *     parse_decl_member(Context *cnt, bool type_only);
-static Ast *     parse_decl_arg(Context *cnt, bool rq_named);
+static Ast *     parse_decl_member(Context *cnt, s32 index);
+static Ast *     parse_decl_arg(Context *cnt, bool named);
 static Ast *     parse_decl_variant(Context *cnt, Ast *prev);
 static Ast *     parse_type(Context *cnt);
 static Ast *     parse_type_ref(Context *cnt);
 static Ast *     parse_type_arr(Context *cnt);
 static Ast *     parse_type_slice(Context *cnt);
 static Ast *     parse_type_dynarr(Context *cnt);
-static Ast *     parse_type_fn(Context *cnt, bool rq_named_args);
+static Ast *     parse_type_fn(Context *cnt, bool named_args);
 static Ast *     parse_type_fn_group(Context *cnt);
+static Ast *     parse_type_fn_return(Context *cnt);
 static Ast *     parse_type_struct(Context *cnt);
 static Ast *     parse_type_enum(Context *cnt);
 static Ast *     parse_type_ptr(Context *cnt);
@@ -162,6 +171,13 @@ static Ast *       parse_expr_elem(Context *cnt, Ast *prev);
 static Ast *       parse_expr_compound(Context *cnt);
 
 // impl
+
+static INLINE void id_init(ID *id, const char *str)
+{
+    BL_ASSERT(id);
+    id->hash = thash_from_str(str);
+    id->str  = str;
+}
 
 static INLINE bool rq_semicolon_after_decl_entity(Ast *node)
 {
@@ -533,11 +549,9 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
                         "Unexpected directive. Extern can be used only for external entities.");
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
-
         // Extern flag extension could be linkage name as string
         Token *tok_ext = tokens_consume_if(cnt->tokens, SYM_STRING);
         if (!tok_ext) return NULL;
-
         // Parse extension token.
         Ast *ext = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ext, SCOPE_GET(cnt));
         id_init(&ext->data.ident.id, tok_ext->value.str);
@@ -551,11 +565,9 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
                 ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
-
         // Intrinsic flag extension could be linkage name as string
         Token *tok_ext = tokens_consume_if(cnt->tokens, SYM_STRING);
         if (!tok_ext) return NULL;
-
         // Parse extension token.
         Ast *ext = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ext, SCOPE_GET(cnt));
         id_init(&ext->data.ident.id, tok_ext->value.str);
@@ -683,7 +695,7 @@ Ast *parse_expr_compound(Context *cnt)
     bool rq = false;
     Ast *tmp;
 
-value:
+NEXT:
     tmp = parse_expr(cnt);
     if (tmp) {
         if (!compound->data.expr_compound.values)
@@ -693,7 +705,7 @@ value:
 
         if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
             rq = true;
-            goto value;
+            goto NEXT;
         }
     } else if (rq) {
         Token *tok_err = tokens_peek(cnt->tokens);
@@ -912,40 +924,59 @@ Ast *parse_expr_cast(Context *cnt)
     return cast;
 }
 
-Ast *parse_decl_member(Context *cnt, bool type_only)
+Ast *parse_decl_member(Context *cnt, s32 UNUSED(index))
 {
-    Token *tok_begin = tokens_peek(cnt->tokens);
-    Ast *  name      = NULL;
-    Ast *  type      = NULL;
+    Token *    tok_begin = tokens_peek(cnt->tokens);
+    Ast *      name      = NULL;
+    Ast *      type      = NULL;
+    const bool named     = tokens_peek_2nd(cnt->tokens)->sym == SYM_COLON;
 
-    if (type_only) {
-        type = parse_type(cnt);
-    } else {
+    if (named) {
         name = parse_ident(cnt);
-        if (name && !tokens_consume_if(cnt->tokens, SYM_COLON)) {
+        if (!name) {
+            builder_msg(BUILDER_MSG_ERROR,
+                        ERR_EXPECTED_TYPE,
+                        &tok_begin->location,
+                        BUILDER_CUR_AFTER,
+                        "Expected member name.");
+            tokens_consume(cnt->tokens);
+        }
+        BL_ASSERT(tokens_current_is(cnt->tokens, SYM_COLON));
+        tokens_consume(cnt->tokens);
+        type = parse_type(cnt);
+        if (!type) {
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_EXPECTED_TYPE,
                         name->location,
                         BUILDER_CUR_AFTER,
-                        "Expected colon after struct member name.");
+                        "Expected type.");
+            return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
         }
+    } else {
         type = parse_type(cnt);
+        if (!type) return NULL;
     }
 
-    if (!type && !name) return NULL;
+    if (!name) {
+        BL_ASSERT(index >= 0);
+        char index_str[22];
+        sprintf(index_str, "_%d", index);
+        TString *ident_str = builder_create_cached_str();
+        tstring_append(ident_str, index_str);
+        name = ast_create_node(cnt->ast_arena, AST_IDENT, tok_begin, SCOPE_GET(cnt));
+        id_init(&name->data.ident.id, ident_str->data);
+    }
 
     HashDirective found_hd = HD_NONE;
     Ast *         tags     = parse_hash_directive(cnt, HD_TAGS, &found_hd);
-
-    Ast *mem = ast_create_node(cnt->ast_arena, AST_DECL_MEMBER, tok_begin, SCOPE_GET(cnt));
+    Ast *         mem = ast_create_node(cnt->ast_arena, AST_DECL_MEMBER, tok_begin, SCOPE_GET(cnt));
     mem->data.decl.type = type;
     mem->data.decl.name = name;
     mem->data.decl.tags = tags;
-
     return mem;
 }
 
-Ast *parse_decl_arg(Context *cnt, bool rq_named)
+Ast *parse_decl_arg(Context *cnt, bool named)
 {
     Token *tok_begin = tokens_peek(cnt->tokens);
     Ast *  name      = NULL;
@@ -956,7 +987,7 @@ Ast *parse_decl_arg(Context *cnt, bool rq_named)
         // <name> :
         name = parse_ident(cnt);
         tokens_consume(cnt->tokens); // eat :
-    } else if (rq_named) {
+    } else if (named) {
         Token *tok_err = tokens_peek(cnt->tokens);
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_EXPECTED_NAME,
@@ -1053,7 +1084,8 @@ bool parse_semicolon_rq(Context *cnt)
     Token *tok = tokens_consume_if(cnt->tokens, SYM_SEMICOLON);
     if (!tok) {
         tok = tokens_peek_prev(cnt->tokens);
-        PARSE_ERROR(ERR_MISSING_SEMICOLON, tok, BUILDER_CUR_AFTER, "Missing semicolon ';'.");
+        PARSE_ERROR(ERR_MISSING_SEMICOLON, tok, BUILDER_CUR_AFTER, "Expected semicolon ';'.");
+        CONSUME_TILL(cnt->tokens, SYM_IDENT, SYM_RBLOCK);
         return false;
     }
     return true;
@@ -1087,11 +1119,46 @@ Ast *parse_stmt_return(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_RETURN);
     if (!tok_begin) return NULL;
-
     Ast *ret = ast_create_node(cnt->ast_arena, AST_STMT_RETURN, tok_begin, SCOPE_GET(cnt));
+    // @CLEANUP Check this for lambdas.
+    // @CLEANUP Check this for lambdas.
+    // @CLEANUP Check this for lambdas.
     ret->data.stmt_return.fn_decl = DECL_GET(cnt);
-    ret->data.stmt_return.expr    = parse_expr(cnt);
-    return ret;
+    tok_begin                     = tokens_peek(cnt->tokens);
+    BL_ASSERT(cnt->current_fn_type && cnt->current_fn_type->kind == AST_TYPE_FN);
+    Ast *rt = cnt->current_fn_type->data.type_fn.ret_type;
+    if (rt && rt->kind == AST_TYPE_STRUCT && rt->data.type_strct.is_multiple_return_type) {
+        // Generate untyped compound expression for multiple return types.
+        Ast *group = ast_create_node(cnt->ast_arena, AST_EXPR_COMPOUND, tok_begin, SCOPE_GET(cnt));
+        group->data.expr_compound.values = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+        // Allow type infer from function return type.
+        group->data.expr_compound.is_multiple_return_value = true;
+        ret->data.stmt_return.expr                         = group;
+        Ast *expr;
+        bool rq = false;
+    NEXT:
+        expr = parse_expr(cnt);
+        if (expr) {
+            tsa_push_AstPtr(group->data.expr_compound.values, expr);
+            if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
+                rq = true;
+                goto NEXT;
+            }
+        } else if (rq) {
+            Token *tok_err = tokens_peek(cnt->tokens);
+            PARSE_ERROR(ERR_EXPECTED_EXPR,
+                        tok_err,
+                        BUILDER_CUR_WORD,
+                        "Expected expression after comma ','.");
+            CONSUME_TILL(cnt->tokens, SYM_SEMICOLON, SYM_RBLOCK, SYM_IDENT);
+            return group;
+        }
+        group->location_end = &tokens_peek(cnt->tokens)->location;
+        return ret;
+    } else {
+        ret->data.stmt_return.expr = parse_expr(cnt);
+        return ret;
+    }
 }
 
 Ast *parse_stmt_if(Context *cnt)
@@ -1111,7 +1178,7 @@ Ast *parse_stmt_if(Context *cnt)
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
     }
 
-    if (stmt_if->data.stmt_if.test->kind == AST_BAD) {
+    if (AST_IS_OK(stmt_if->data.stmt_if.test)) {
         tokens_consume_till(cnt->tokens, SYM_LBLOCK);
     }
 
@@ -1159,7 +1226,7 @@ Ast *parse_stmt_switch(Context *cnt)
     Ast *               default_case = NULL;
 NEXT:
     stmt_case = parse_stmt_case(cnt);
-    if (stmt_case && stmt_case->kind != AST_BAD) {
+    if (AST_IS_OK(stmt_case)) {
         if (stmt_case->data.stmt_case.is_default) {
             if (default_case) {
                 builder_msg(BUILDER_MSG_ERROR,
@@ -1591,7 +1658,7 @@ Ast *parse_expr_lit_fn(Context *cnt)
     Ast *type = parse_type_fn(cnt, true);
     BL_ASSERT(type);
     fn->data.expr_fn.type = type;
-
+    cnt->current_fn_type  = type;
     // parse flags
     Ast *curr_decl = DECL_GET(cnt);
     if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
@@ -1724,11 +1791,34 @@ Ast *parse_ident(Context *cnt)
 {
     Token *tok_ident = tokens_consume_if(cnt->tokens, SYM_IDENT);
     if (!tok_ident) return NULL;
-
     Ast *ident = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ident, SCOPE_GET(cnt));
     id_init(&ident->data.ident.id, tok_ident->value.str);
-
     return ident;
+}
+
+Ast *parse_ident_group(Context *cnt)
+{
+    Ast *root = NULL;
+    Ast *prev = NULL;
+    bool rq   = false;
+    Ast *ident;
+NEXT:
+    ident = parse_ident(cnt);
+    if (ident) {
+        if (prev) prev->data.ident.next = ident;
+        if (!root) root = ident;
+        prev = ident;
+        if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
+            rq = true;
+            goto NEXT;
+        }
+    } else if (rq) {
+        Token *tok_err = tokens_peek(cnt->tokens);
+        PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected name after comma ','.");
+        CONSUME_TILL(cnt->tokens, SYM_COLON, SYM_SEMICOLON, SYM_IDENT);
+        return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
+    }
+    return root;
 }
 
 Ast *parse_type_ptr(Context *cnt)
@@ -1955,7 +2045,53 @@ Ast *parse_type(Context *cnt)
     return type;
 }
 
-Ast *parse_type_fn(Context *cnt, bool rq_named_args)
+Ast *parse_type_fn_return(Context *cnt)
+{
+    if (tokens_current_is(cnt->tokens, SYM_LPAREN)) {
+        // multiple return type ( T1, T2 )
+        // eat (
+        Token *tok_begin = tokens_consume(cnt->tokens);
+        Scope *scope     = scope_create(
+            cnt->scope_arenas, SCOPE_TYPE_STRUCT, SCOPE_GET(cnt), 16, &tok_begin->location);
+        SCOPE_PUSH(cnt, scope);
+
+        Ast *type_struct =
+            ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_begin, SCOPE_GET(cnt));
+        type_struct->data.type_strct.scope   = scope;
+        type_struct->data.type_strct.members = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+        type_struct->data.type_strct.is_multiple_return_type = true;
+        Ast *tmp;
+        s32  index = 0;
+    NEXT:
+        tmp = parse_decl_member(cnt, index++);
+        if (tmp) {
+            if (AST_IS_BAD(tmp)) CONSUME_TILL(cnt->tokens, SYM_COMMA, SYM_RPAREN);
+            tsa_push_AstPtr(type_struct->data.type_strct.members, tmp);
+            if (tokens_consume_if(cnt->tokens, SYM_COMMA)) goto NEXT;
+        }
+        Token *tok = tokens_consume_if(cnt->tokens, SYM_RPAREN);
+        if (!tok) {
+            PARSE_ERROR(ERR_MISSING_BRACKET,
+                        tokens_peek(cnt->tokens),
+                        BUILDER_CUR_WORD,
+                        "Expected end of return list or another return type separated by comma.");
+            SCOPE_POP(cnt);
+            return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
+        }
+        SCOPE_POP(cnt);
+        if (!type_struct->data.type_strct.members->size) {
+            PARSE_ERROR(ERR_INVALID_TYPE,
+                        tok_begin,
+                        BUILDER_CUR_WORD,
+                        "Expected at least one return type inside parenthesis, if function should "
+                        "return 'void' remove parenthesis and leave return type unspecified.");
+        }
+        return type_struct;
+    }
+    return parse_type(cnt);
+}
+
+Ast *parse_type_fn(Context *cnt, bool named_args)
 {
     Token *tok_fn = tokens_consume_if(cnt->tokens, SYM_FN);
     if (!tok_fn) return NULL;
@@ -1966,21 +2102,16 @@ Ast *parse_type_fn(Context *cnt, bool rq_named_args)
             ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Expected function parameter list.");
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn, SCOPE_GET(cnt));
     }
-
     Ast *fn = ast_create_node(cnt->ast_arena, AST_TYPE_FN, tok_fn, SCOPE_GET(cnt));
-
     // parse arg types
     bool rq = false;
     Ast *tmp;
-
 NEXT:
-    tmp = parse_decl_arg(cnt, rq_named_args);
+    tmp = parse_decl_arg(cnt, named_args);
     if (tmp) {
         if (!fn->data.type_fn.args)
             fn->data.type_fn.args = create_sarr(TSmallArray_AstPtr, cnt->assembly);
-
         tsa_push_AstPtr(fn->data.type_fn.args, tmp);
-
         if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
             rq = true;
             goto NEXT;
@@ -2003,8 +2134,7 @@ NEXT:
                     "by comma.");
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn, SCOPE_GET(cnt));
     }
-
-    fn->data.type_fn.ret_type = parse_type(cnt);
+    fn->data.type_fn.ret_type = parse_type_fn_return(cnt);
     return fn;
 }
 
@@ -2074,53 +2204,38 @@ Ast *parse_type_struct(Context *cnt)
         curr_decl->data.decl_entity.flags |= flags;
     }
 
-    Token *tok = tokens_consume(cnt->tokens);
-    if (tok->sym != SYM_LBLOCK) {
-        PARSE_ERROR(ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Expected struct member list.");
+    Token *tok = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
+    if (!tok) {
+        PARSE_ERROR(
+            ERR_MISSING_BRACKET, tok_struct, BUILDER_CUR_AFTER, "Expected struct member list.");
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_struct, SCOPE_GET(cnt));
     }
 
     Scope *scope =
-        scope_create(cnt->scope_arenas, SCOPE_TYPE_STRUCT, SCOPE_GET(cnt), 256, &tok->location);
+        scope_create(cnt->scope_arenas, SCOPE_TYPE_STRUCT, SCOPE_GET(cnt), 128, &tok->location);
     SCOPE_PUSH(cnt, scope);
 
     Ast *type_struct = ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct, SCOPE_GET(cnt));
     type_struct->data.type_strct.scope     = scope;
-    type_struct->data.type_strct.raw       = false;
     type_struct->data.type_strct.members   = create_sarr(TSmallArray_AstPtr, cnt->assembly);
     type_struct->data.type_strct.base_type = base_type;
     type_struct->data.type_strct.is_union  = is_union;
 
     // parse members
-    bool       rq = false;
-    Ast *      tmp;
-    const bool type_only = tokens_peek_2nd(cnt->tokens)->sym == SYM_COMMA ||
-                           tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK;
-    type_struct->data.type_strct.raw = type_only;
+    Ast *tmp;
+    s32  index = 0;
 NEXT:
-    tmp = parse_decl_member(cnt, type_only);
+    tmp = parse_decl_member(cnt, index++);
     if (tmp) {
+        if (AST_IS_BAD(tmp)) CONSUME_TILL(cnt->tokens, SYM_SEMICOLON, SYM_RBLOCK);
         tsa_push_AstPtr(type_struct->data.type_strct.members, tmp);
-
-        if (tokens_consume_if(cnt->tokens, SYM_SEMICOLON)) {
-            rq = true;
-            goto NEXT;
-        }
-    } else if (rq) {
-        Token *tok_err = tokens_peek(cnt->tokens);
-        if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
-            PARSE_ERROR(
-                ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected member after semicolon.");
-
-            SCOPE_POP(cnt);
-            return ast_create_node(cnt->ast_arena, AST_BAD, tok_struct, SCOPE_GET(cnt));
-        }
+        if (tokens_consume_if(cnt->tokens, SYM_SEMICOLON)) goto NEXT;
     }
 
-    tok = tokens_consume(cnt->tokens);
-    if (tok->sym != SYM_RBLOCK) {
+    tok = tokens_consume_if(cnt->tokens, SYM_RBLOCK);
+    if (!tok) {
         PARSE_ERROR(ERR_MISSING_BRACKET,
-                    tok,
+                    tokens_peek(cnt->tokens),
                     BUILDER_CUR_WORD,
                     "Expected end of member list '}' or another memeber separated by semicolon.");
         tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
@@ -2132,22 +2247,30 @@ NEXT:
     return type_struct;
 }
 
+static TokensLookaheadState cmp_decl(Token *curr)
+{
+    switch (curr->sym) {
+    case SYM_COLON:
+        return TOK_LOOK_HIT;
+    case SYM_COMMA:
+    case SYM_IDENT:
+        return TOK_LOOK_CONTINUE;
+    default:
+        return TOK_LOOK_TERMINAL;
+    }
+}
+
 Ast *parse_decl(Context *cnt)
 {
     // is value declaration?
-    Token *tok_ident = tokens_peek(cnt->tokens);
-    if (token_is_not(tok_ident, SYM_IDENT)) return NULL;
-
-    Token *tok_2nd = tokens_peek_2nd(cnt->tokens);
-    if (token_is_not(tok_2nd, SYM_COLON)) return NULL;
-
-    Ast *ident = parse_ident(cnt);
+    if (!tokens_lookahead(cnt->tokens, cmp_decl)) return NULL;
+    Token *tok_begin = tokens_peek(cnt->tokens);
+    Ast *  ident     = parse_ident_group(cnt);
     if (!ident) return NULL;
-
     // eat :
     tokens_consume(cnt->tokens);
 
-    Ast *decl = ast_create_node(cnt->ast_arena, AST_DECL_ENTITY, tok_ident, SCOPE_GET(cnt));
+    Ast *decl = ast_create_node(cnt->ast_arena, AST_DECL_ENTITY, tok_begin, SCOPE_GET(cnt));
     decl->data.decl.name       = ident;
     decl->data.decl_entity.mut = true;
 
@@ -2173,7 +2296,7 @@ Ast *parse_decl(Context *cnt)
                             BUILDER_CUR_AFTER,
                             "Expected binding of declaration to some value.");
                 DECL_POP(cnt);
-                return ast_create_node(cnt->ast_arena, AST_BAD, tok_ident, SCOPE_GET(cnt));
+                return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
             }
         }
     } else {
@@ -2193,11 +2316,11 @@ Ast *parse_decl(Context *cnt)
 
         if (IS_FLAG(flags, FLAG_NO_INIT) && scope_is_global(SCOPE_GET(cnt))) {
             PARSE_ERROR(ERR_EXPECTED_INITIALIZATION,
-                        tok_ident,
+                        tok_begin,
                         BUILDER_CUR_AFTER,
                         "Invalid 'noinit' directive for global variable '%s'. All globals must "
                         "be initialized either by explicit value or implicit default value.",
-                        tok_ident->value.str);
+                        ident->data.ident.id.str);
         }
 
         decl->data.decl_entity.flags |= flags;
@@ -2324,13 +2447,13 @@ NEXT:
     parse_hash_directive(cnt, 0, NULL);
 
     if ((tmp = (Ast *)parse_decl(cnt))) {
-        if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
+        if (AST_IS_OK(tmp)) parse_semicolon_rq(cnt);
         tarray_push(block->data.block.nodes, tmp);
         goto NEXT;
     }
 
     if ((tmp = parse_stmt_return(cnt))) {
-        if ((tmp)->kind != AST_BAD) parse_semicolon_rq(cnt);
+        if (!AST_IS_BAD(tmp)) parse_semicolon_rq(cnt);
         tarray_push(block->data.block.nodes, tmp);
         block->data.block.has_return      = true;
         tmp->data.stmt_return.owner_block = block;
@@ -2353,25 +2476,25 @@ NEXT:
     }
 
     if ((tmp = parse_stmt_break(cnt))) {
-        if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
+        if (AST_IS_OK(tmp)) parse_semicolon_rq(cnt);
         tarray_push(block->data.block.nodes, tmp);
         goto NEXT;
     }
 
     if ((tmp = parse_stmt_continue(cnt))) {
-        if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
+        if (AST_IS_OK(tmp)) parse_semicolon_rq(cnt);
         tarray_push(block->data.block.nodes, tmp);
         goto NEXT;
     }
 
     if ((tmp = parse_stmt_defer(cnt))) {
-        if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
+        if (AST_IS_OK(tmp)) parse_semicolon_rq(cnt);
         tarray_push(block->data.block.nodes, tmp);
         goto NEXT;
     }
 
     if ((tmp = parse_expr(cnt))) {
-        if (tmp->kind != AST_BAD) parse_semicolon_rq(cnt);
+        if (AST_IS_OK(tmp)) parse_semicolon_rq(cnt);
         tarray_push(block->data.block.nodes, tmp);
         goto NEXT;
     }
@@ -2413,7 +2536,7 @@ NEXT:
     if (parse_semicolon(cnt)) goto NEXT;
 
     if ((tmp = parse_decl(cnt))) {
-        if (tmp->kind != AST_BAD) {
+        if (AST_IS_OK(tmp)) {
             Ast *decl = tmp->data.decl_entity.value;
             if (decl && rq_semicolon_after_decl_entity(decl)) parse_semicolon_rq(cnt);
             // setup global scope flag for declaration
@@ -2451,12 +2574,15 @@ void parser_run(Assembly *assembly, Unit *unit)
     BL_ASSERT(assembly->gscope && "Missing global scope for assembly.");
 
     TracyCZone(_tctx, true);
-    Context cnt = {.assembly     = assembly,
-                   .unit         = unit,
-                   .ast_arena    = &assembly->arenas.ast,
-                   .scope_arenas = &assembly->arenas.scope,
-                   .tokens       = &unit->tokens,
-                   .inside_loop  = false};
+    Context cnt = {
+        .assembly        = assembly,
+        .unit            = unit,
+        .ast_arena       = &assembly->arenas.ast,
+        .scope_arenas    = &assembly->arenas.scope,
+        .tokens          = &unit->tokens,
+        .current_fn_type = NULL,
+        .inside_loop     = false,
+    };
 
     tsa_init(&cnt._decl_stack);
     tsa_init(&cnt._scope_stack);

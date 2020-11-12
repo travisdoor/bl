@@ -173,6 +173,7 @@ static void interp_instr_br(VM *vm, MirInstrBr *br);
 static void interp_instr_switch(VM *vm, MirInstrSwitch *sw);
 static void interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr);
 static void interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr);
+static void interp_instr_unroll(VM *vm, MirInstrUnroll *unroll);
 static void interp_instr_arg(VM *vm, MirInstrArg *arg);
 static void interp_instr_cond_br(VM *vm, MirInstrCondBr *br);
 static void interp_instr_load(VM *vm, MirInstrLoad *load);
@@ -1297,6 +1298,9 @@ void interp_instr(VM *vm, MirInstr *instr)
     case MIR_INSTR_MEMBER_PTR:
         interp_instr_member_ptr(vm, (MirInstrMemberPtr *)instr);
         break;
+    case MIR_INSTR_UNROLL:
+        interp_instr_unroll(vm, (MirInstrUnroll *)instr);
+        break;
     case MIR_INSTR_VARGS:
         interp_instr_vargs(vm, (MirInstrVArgs *)instr);
         break;
@@ -1526,6 +1530,21 @@ void interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 
     // push result address on the stack
     stack_push(vm, (VMStackPtr)&result, member_ptr->base.value.type);
+}
+
+void interp_instr_unroll(VM *vm, MirInstrUnroll *unroll)
+{
+    BL_ASSERT(unroll->src);
+    MirType * src_type = unroll->src->value.type;
+    const s32 index    = unroll->index;
+    BL_ASSERT(src_type->kind == MIR_TYPE_PTR && "expected pointer");
+    src_type = mir_deref_type(src_type);
+    BL_ASSERT(mir_is_composit_type(src_type) && "expected structure");
+    VMStackPtr ptr = fetch_value(vm, &unroll->src->value);
+    ptr            = VM_STACK_PTR_DEREF(ptr);
+    BL_ASSERT(ptr);
+    VMStackPtr result = vm_get_struct_elem_ptr(vm->assembly, src_type, ptr, (u32)index);
+    stack_push(vm, (VMStackPtr)&result, unroll->base.value.type);
 }
 
 void interp_instr_unreachable(VM *vm, MirInstrUnreachable UNUSED(*unr))
