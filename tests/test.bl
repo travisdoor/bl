@@ -8,11 +8,18 @@ file_open :: fn () (file: File, err: s32) {
     return &sym, -1;
 }
 
+foo :: fn () s32 {
+    return 10;
+}
+
 main :: fn () s32 {
-    file : s32 : file_open();
-    print("file = %\n\n", file);
+    a, b := foo();
     
-    file2, err :: file_open();
-    print("file = %\nerr = %\n", file2, err);
+    c, d, e := 10;
+    //file : s32 : file_open();
+    //print("file = %\n\n", file);
+    
+    //file2, err :: file_open();
+    //print("file = %\nerr = %\n", file2, err);
     return 0;
 }

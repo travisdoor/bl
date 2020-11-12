@@ -96,6 +96,7 @@ multi_declaration2 :: fn () #test {
 cc := 0;
 get_value :: fn (v: s32) s32 { cc += 1; return v; }
 multi_declaration3 :: fn () #test {
+    cc = 0;
     a, b, c, d :: get_value(999);
     test_eq(cc, 1);
     test_eq(a, 999);
@@ -110,4 +111,13 @@ multi_declaration4 :: fn () #test {
     test_eq(b, 999);
     test_eq(c, 999);
     test_eq(d, 999);
+}
+
+multi_declaration5 :: fn () #test {
+    cc = 0;
+    a, b, c, d : s32 = get_value(10) * get_value(2);
+    test_eq(a, 20);
+    test_eq(b, 20);
+    test_eq(c, 20);
+    test_eq(d, 20);
 }

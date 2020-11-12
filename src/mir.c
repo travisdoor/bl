@@ -413,7 +413,8 @@ static MirInstr *insert_instr_toany(Context *cnt, MirInstr *expr);
 static MirCastOp get_cast_op(MirType *from, MirType *to);
 static void      append_current_block(Context *cnt, MirInstr *instr);
 static MirInstr *append_instr_arg(Context *cnt, Ast *node, unsigned i);
-static MirInstr *append_instr_unroll(Context *cnt, Ast *node, MirInstr *src, s32 index);
+static MirInstr *
+append_instr_unroll(Context *cnt, Ast *node, MirInstr *src, MirInstr *remove_src, s32 index);
 static MirInstr *
 append_instr_set_initializer(Context *cnt, Ast *node, MirInstr *dest, MirInstr *src);
 
@@ -691,7 +692,7 @@ static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 9,
 // out_type when analyze passed without problems. When analyze does not pass postpone is returned
 // and out_type stay unchanged.
 static AnalyzeResult
-analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
+                     analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
 static AnalyzeResult analyze_instr_unroll(Context *cnt, MirInstrUnroll *unroll);
 static AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp);
 static AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
@@ -3059,12 +3060,14 @@ MirInstr *append_instr_arg(Context *cnt, Ast *node, unsigned i)
     return &tmp->base;
 }
 
-MirInstr *append_instr_unroll(Context *cnt, Ast *node, MirInstr *src, s32 index)
+MirInstr *
+append_instr_unroll(Context *cnt, Ast *node, MirInstr *src, MirInstr *remove_src, s32 index)
 {
     BL_ASSERT(index >= 0);
     BL_ASSERT(src);
     MirInstrUnroll *tmp = create_instr(cnt, MIR_INSTR_UNROLL, node);
     tmp->src            = ref_instr(src);
+    tmp->remove_src     = ref_instr(remove_src);
     tmp->index          = index;
     append_current_block(cnt, &tmp->base);
     return &tmp->base;
@@ -4120,12 +4123,11 @@ AnalyzeResult analyze_instr_unroll(Context *cnt, MirInstrUnroll *unroll)
     MirType *type     = src_type;
     if (mir_is_composit_type(src_type) && src_type->data.strct.is_multiple_return_type) {
         if (index >= src_type->data.strct.members->size) {
-            // @INCOMPLETE Improve message!!!
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_INVALID_MEMBER_ACCESS,
                         unroll->base.node->location,
                         BUILDER_CUR_AFTER,
-                        "Unroll index out of range.");
+                        "Expected more return values than function returns.");
             return ANALYZE_RESULT(FAILED, 0);
         }
         MirInstrCall *src_call = (MirInstrCall *)src;
@@ -6941,7 +6943,14 @@ ANALYZE_STAGE_FN(unroll)
     if (!unroll) return ANALYZE_STAGE_CONTINUE;
     // Erase unroll instruction in case it's marked for remove.
     if (unroll->remove) {
-        (*input) = unroll->src;
+        if (unroll->remove_src) {
+            MirInstr *ref = create_instr_decl_direct_ref(cnt, unroll->remove_src);
+            insert_instr_after(*input, ref);
+            ANALYZE_INSTR_RQ(ref);
+            (*input) = ref;
+        } else {
+            (*input) = unroll->src;
+        }
         unref_instr(&unroll->base);
         erase_instr_tree(&unroll->base, false, false);
     }
@@ -8915,11 +8924,12 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
     const bool is_struct_decl = ast_value && ast_value->kind == AST_EXPR_TYPE &&
                                 ast_value->data.expr_type.type->kind == AST_TYPE_STRUCT;
 
-    const bool       is_mutable  = entity->data.decl_entity.mut;
-    const bool       is_global   = entity->data.decl_entity.in_gscope;
-    const bool       is_compiler = IS_FLAG(entity->data.decl_entity.flags, FLAG_COMPILER);
-    const bool       is_unroll   = ast_value && ast_value->kind == AST_EXPR_CALL;
-    MirBuiltinIdKind builtin_id  = MIR_BUILTIN_ID_NONE;
+    const bool is_mutable  = entity->data.decl_entity.mut;
+    const bool is_global   = entity->data.decl_entity.in_gscope;
+    const bool is_compiler = IS_FLAG(entity->data.decl_entity.flags, FLAG_COMPILER);
+    const bool is_unroll   = ast_value && ast_value->kind == AST_EXPR_CALL;
+
+    MirBuiltinIdKind builtin_id = MIR_BUILTIN_ID_NONE;
 
     // initialize value
     MirInstr *value = NULL;
@@ -8978,17 +8988,39 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
         }
 
         // Generate variables for all declarations.
+        //
+        // Variable groups can be initialized by multi-return function, in such situation we
+        // must handle unrolling of function return value into separate variables. Sad thing
+        // here is that we don't know if function return is multi-return because called function
+        // has not been analyzed yet; however only multi-return (structs) produced by function
+        // call has ability to unroll into separate variables; this is indicated by is_unroll
+        // flag. We decide later during analyze if unroll is keept or not. So finally there
+        // are tree possible cases:
+        //
+        // 1) Variable is not group: We generate unroll instruction as initializer in case value
+        //    is function call; once when function return type is known we decide if only first
+        //    return value should be picked or not. (unroll can be removed if not)
+        //
+        // 2) Variables in group: For every variable in group we generate unroll instruction
+        //    with two possibilites what to do during analyze; when called function returns
+        //    multiple values we use unroll to set every variable (by index) to proper value;
+        //    initializer is any other value we generate vN .. v3 = v2 = v1 = value.
+        //
+        // 3) Variables in group initialized by single value: In such case we only follow rule
+        //    vN .. v3 = v2 = v1 = value. Unroll is still generated when value is function call but
+        //    is removed when function type is analyzed and considered to be multi-return.
         TSmallArray_InstrPtr vars;
         tsa_init(&vars);
         Ast *     ast_current_name = ast_name;
         MirInstr *current_value    = value;
         s32       index            = 0;
         while (ast_current_name) {
-            // @INCOMPLETE: Add heavy comment here!!!
-            // @INCOMPLETE: Add heavy comment here!!!
-            // @INCOMPLETE: Add heavy comment here!!!
+            MirInstr *prev_var = vars.size > 0 ? vars.data[vars.size - 1] : NULL;
             if (is_unroll) {
-                current_value = append_instr_unroll(cnt, ast_current_name, value, index++);
+                current_value =
+                    append_instr_unroll(cnt, ast_current_name, value, prev_var, index++);
+            } else if (prev_var) {
+                current_value = append_instr_decl_direct_ref(cnt, prev_var);
             }
             ID *      id  = &ast_current_name->data.ident.id;
             MirInstr *var = append_instr_decl_var(cnt,

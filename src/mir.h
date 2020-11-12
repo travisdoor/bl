@@ -780,6 +780,7 @@ struct MirInstrUnroll {
     MirInstr base;
 
     MirInstr *src;
+    MirInstr *remove_src;
     s32       index;
     bool      remove;
 };

@@ -285,7 +285,7 @@ static void print_instr(Context *cnt, MirInstr *instr);
 void print_comptime_value_or_id(Context *cnt, MirInstr *instr)
 {
     if (!instr) {
-        fprintf(cnt->stream, "<invalid>");
+        fprintf(cnt->stream, "<NULL>");
         return;
     }
 
@@ -655,7 +655,8 @@ void print_instr_unroll(Context *cnt, MirInstrUnroll *unroll)
 {
     print_instr_head(cnt, &unroll->base, "unroll");
     print_comptime_value_or_id(cnt, unroll->src);
-    fprintf(cnt->stream, ".%d", unroll->index);
+    fprintf(cnt->stream, ".%d : ", unroll->index);
+    print_comptime_value_or_id(cnt, unroll->remove_src);
 }
 
 void print_instr_br(Context *cnt, MirInstrBr *br)
