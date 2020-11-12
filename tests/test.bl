@@ -9,8 +9,8 @@ file_open :: fn () (file: File, err: s32) {
 }
 
 main :: fn () s32 {
-    file :: file_open();
-    print("file = %\n", file);
+    file : s32 : file_open();
+    print("file = %\n\n", file);
     
     file2, err :: file_open();
     print("file = %\nerr = %\n", file2, err);

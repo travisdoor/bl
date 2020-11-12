@@ -1885,10 +1885,10 @@ State emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 
 State emit_instr_unroll(Context *cnt, MirInstrUnroll *unroll)
 {
-    LLVMValueRef llvm_var_ptr = unroll->var->llvm_value;
-    BL_ASSERT(llvm_var_ptr);
+    LLVMValueRef llvm_src_ptr = unroll->src->llvm_value;
+    BL_ASSERT(llvm_src_ptr);
     const unsigned int index = (const unsigned int)unroll->index;
-    unroll->base.llvm_value  = LLVMBuildStructGEP(cnt->llvm_builder, llvm_var_ptr, index, "");
+    unroll->base.llvm_value  = LLVMBuildStructGEP(cnt->llvm_builder, llvm_src_ptr, index, "");
     return STATE_PASSED;
 }
 

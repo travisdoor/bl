@@ -689,6 +689,9 @@ struct MirInstrCall {
     MirInstr *            callee;
     TSmallArray_InstrPtr *args; // Optional
     bool                  callee_analyzed;
+
+    // Optional temporary variable for unroll multi-return struct type.
+    MirInstr *unroll_tmp_var;
 };
 
 struct MirInstrDeclRef {
@@ -776,8 +779,9 @@ struct MirInstrCallLoc {
 struct MirInstrUnroll {
     MirInstr base;
 
-    MirInstr *var;
+    MirInstr *src;
     s32       index;
+    bool      remove;
 };
 
 struct MirInstrTypeKind {

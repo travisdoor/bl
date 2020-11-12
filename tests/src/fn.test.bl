@@ -58,92 +58,24 @@ multiple_return1 :: fn () #test {
     foo :: fn () (s32, s32) {
         return 10, 20;
     };
-    tmp :: foo();
-    test_eq(tmp._0, 10);
-    test_eq(tmp._1, 20);
+    a, b :: foo();
+    test_eq(a, 10);
+    test_eq(b, 20);
 }
 
 multiple_return2 :: fn () #test {
-    foo :: fn () (s32) {
-        return 10;
+    foo :: fn () (s32, s32) {
+        return 10, 20;
     };
-    tmp :: foo();
-    test_eq(tmp._0, 10);
+    a :: foo();
+    test_eq(a, 10);
 }
 
 multiple_return3 :: fn () #test {
-    foo :: fn () (i: s32) {
-        return 10;
+    foo :: &fn () (s32, s32) {
+        return 10, 20;
     };
-    tmp :: foo();
-    test_eq(tmp.i, 10);
+    a, b :: foo();
+    test_eq(a, 10);
+    test_eq(b, 20);
 }
-
-multiple_return4 :: fn () #test {
-    foo :: fn () (i: s32, j: s32, k: bool, l: string) {
-        return 10, 20, true, "hello";
-    };
-    tmp :: foo();
-    test_eq(tmp.i, 10);
-    test_eq(tmp.j, 20);
-    test_true(tmp.k);    
-    test_eq(tmp.l, "hello");        
-}
-
-boo :: fn (i: s32) (bool, s32) {
-    return true, i;
-}
-
-multiple_return5 :: fn () #test {
-    foo :: fn () *fn(s32) (bool, s32) {
-        return &boo;
-    };
-    f :: foo();
-    tmp :: f(10);
-    test_true(tmp._0);
-    test_eq(tmp._1, 10);
-}
-
-multiple_return6 :: fn () #test {
-    foo :: fn () (*fn(s32) (bool, s32), *fn(s32) (bool, s32)) {
-        return &boo, &boo;
-    };
-    funcs :: foo();
-    {
-        tmp :: funcs._0(10);
-        test_true(tmp._0);
-        test_eq(tmp._1, 10);
-    }
-    {
-        tmp :: funcs._1(20);
-        test_true(tmp._0);
-        test_eq(tmp._1, 20);
-    }
-}
-
-multiple_return7 :: fn () #test {
-    // Lets rock!!!    
-    foo :: fn () (*fn(s32) (bool, s32), *fn(s32) (bool, s32)) {
-        return 
-            &fn (i: s32) (bool, s32) { 
-                return true, i; 
-            }, 
-            &fn (i: s32) (bool, s32) {
-                return false, i;
-            };
-    };
-    
-    funcs :: foo();
-    {
-        tmp :: funcs._0(10);
-        test_true(tmp._0);
-        test_eq(tmp._1, 10);
-    }
-    {
-        tmp :: funcs._1(20);
-        test_false(tmp._0);
-        test_eq(tmp._1, 20);
-    }
-}
-
-
