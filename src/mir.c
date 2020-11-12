@@ -4122,7 +4122,7 @@ AnalyzeResult analyze_instr_unroll(Context *cnt, MirInstrUnroll *unroll)
     MirType *src_type = src->value.type;
     MirType *type     = src_type;
     if (mir_is_composit_type(src_type) && src_type->data.strct.is_multiple_return_type) {
-        if (index >= src_type->data.strct.members->size) {
+        if (index >= (s32)src_type->data.strct.members->size) {
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_INVALID_MEMBER_ACCESS,
                         unroll->base.node->location,
