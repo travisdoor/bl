@@ -1,31 +1,33 @@
 #load "../shared.bl"
 
+// TODO
+// create_dir
+// open_dir
+// list_dir
+// rename
+
 fs_exist :: fn (filepath: string) bool #inline {
     return _PathFileExistsA(auto filepath.ptr) > 0;
 }
 
-fs_file_open :: fn (handle: *FSFile, filepath: string, mode: ...FSFileOpenMode) FSError {
-    if !handle { return FSError.InvalidInput; }
-    if string_is_empty(filepath) { return FSError.InvalidInput; }
+fs_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, FSError) {
+    if string_is_empty(filepath) { return null, FSError.InvalidInput; }
     access :: modes_to_flags(mode);
-    tmp :: _CreateFile(auto filepath.ptr, access, 0, null, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, null);
-    if tmp == WIN32_INVALID_HANDLE_VALUE {
-        return error();                
+    handle :: _CreateFile(auto filepath.ptr, access, 0, null, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, null);
+    if handle == WIN32_INVALID_HANDLE_VALUE {
+        return null, error();                
     }
-    ^handle = tmp;
-    return FSError.OK;
+    return handle, FSError.OK;
 }
 
-fs_file_create :: fn (handle: *FSFile, filepath: string, mode: ...FSFileOpenMode) FSError {
-    if !handle { return FSError.InvalidInput; }
-    if string_is_empty(filepath) { return FSError.InvalidInput; }
+fs_file_create :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, FSError) {
+    if string_is_empty(filepath) { return null, FSError.InvalidInput; }
     access :: modes_to_flags(mode);
-    tmp :: _CreateFile(auto filepath.ptr, access, 0, null, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, null);
-    if tmp == WIN32_INVALID_HANDLE_VALUE {
-        return error();                
+    handle :: _CreateFile(auto filepath.ptr, access, 0, null, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, null);
+    if handle == WIN32_INVALID_HANDLE_VALUE {
+        return null, error();                
     }
-    ^handle = tmp;
-    return FSError.OK;
+    return handle, FSError.OK;
 }
 
 fs_file_delete :: fn (filepath: string) bool #inline {
@@ -36,6 +38,7 @@ fs_file_delete :: fn (filepath: string) bool #inline {
 }
 
 fs_file_close :: fn (handle: FSFile) {
+    if !handle { return; }
     _CloseHandle(handle);
 }
 

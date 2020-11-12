@@ -43,13 +43,22 @@ fs_pwd_test :: fn () #test {
 }
 
 fs_file_open_test :: fn () #test {
-    f: FSFile;
-    test_true(fs_file_open(null, #file) == FSError.InvalidInput);    
-    test_true(fs_file_open(&f, "foobar") == FSError.NotFound);
+    {
+        file, err :: fs_file_open("");
+        test_true(err == FSError.InvalidInput);    
+    }
     
-    test_true(fs_file_open(&f, #file) == FSError.OK);
-    test_not_null(f);
-    fs_file_close(f);
+    {
+        file, err :: fs_file_open("foobar");
+        test_true(err == FSError.NotFound);
+    }
+    
+    {
+        file, err :: fs_file_open(#file);    
+        test_true(err == FSError.OK);
+        test_not_null(file);
+        fs_file_close(file);
+    }
 }
 
 fs_file_create_test :: fn () #test {
@@ -57,11 +66,24 @@ fs_file_create_test :: fn () #test {
     defer string_delete(filepath);
     
     fs_file_delete(filepath);
-    f: FSFile;
-    test_true(fs_file_create(null, #file) == FSError.InvalidInput);    
-    test_true(fs_file_create(&f, #file) == FSError.AlreadyExist);
-    test_true(fs_file_create(&f, filepath) == FSError.OK);
-    fs_file_close(f);
+    
+    {
+        file, err :: fs_file_create("");
+        test_true(err == FSError.InvalidInput);    
+    }
+    
+    {
+        file, err :: fs_file_create(#file);
+        test_true(err == FSError.AlreadyExist);
+    }
+    
+    {
+        file, err :: fs_file_create(filepath);
+        test_true(err == FSError.OK);
+        test_not_null(file);
+        fs_file_close(file);
+    }    
+    
     fs_file_delete(filepath);
 }
 
@@ -180,8 +202,9 @@ fs_file_delete_test :: fn () #test {
     defer string_delete(filepath);
     
     fs_file_delete(filepath);
-    f: FSFile;
-    test_true(fs_file_create(&f, filepath) == FSError.OK);
-    fs_file_close(f);
+    file, err :: fs_file_create(filepath);
+    test_true(err == FSError.OK);
+    test_not_null(file);    
+    fs_file_close(file);
     test_true(fs_file_delete(filepath));
 }

@@ -85,22 +85,21 @@ Declaration
 -----------
 ::
 
-    fs_file_open :: fn (handle: *FSFile, filepath: string, mode: ...FSFileOpenMode) FSError
+    fs_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, FSError)
 
 Description
 -----------
-Open an existing file specified by `filepath`. File `handle` is set to valid file handle in case function return
-`FSError.OK` state, otherwise handle's value does not change. File must be closed by :ref:`fs_close` call.
+Open an existing file specified by `filepath`. Function return file handle and `FSError.OK` status code
+when file was openned, otherwise return `null` and proper error code. File must be closed by :ref:`fs_close` call.
  
 Arguments
 ---------
-* `handle` File handle to be set.
 * `filepath` File path.
 * `mode` Open mode. :ref:`FSFileOpenMode` When no mode is specified, `Read` and `Write` is used.
 
 Result
 ------
-Resulting error code :ref:`FSError`.
+File handle and status code :ref:`FSError`.
 
 Example
 -------
@@ -108,12 +107,12 @@ Example
 .. code-block:: c
 
     main :: fn () s32 {
-        file: FSFile;
-        if fs_file_open(&file, #file) != FSError.OK {
+        file, err :: fs_file_open(#file);
+        defer fs_file_close(file);
+        if err != FSError.OK {
             print_err("Cannot open file!");
 	    return 1;
 	}
-        defer fs_file_close(&file);
         return 0;
     }
 
@@ -128,22 +127,21 @@ Declaration
 -----------
 ::
 
-    fs_file_create :: fn (handle: *FSFile, filepath: string, mode: ...FSFileOpenMode) FSError
+    fs_file_create :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, FSError)
 
 Description
 -----------
-Create new file specified by `filepath`. File `handle` is set to valid file handle in case function return
-`FSError.OK` state, otherwise handle's value does not change. File must be closed by :ref:`fs_close` call.
+Create new file specified by `filepath`. Return file `handle` and `FSError.OK` status code when
+file was created, otherwise only status code is returned. File must be closed by :ref:`fs_close` call.
  
 Arguments
 ---------
-* `handle` File handle to be set.
 * `filepath` File path.
 * `mode` Open mode. :ref:`FSFileOpenMode` When no mode is specified, `Read` and `Write` is used.
 
 Result
 ------
-Resulting error code :ref:`FSError`.
+File handle and status code :ref:`FSError`.
 
 ----
 
@@ -183,7 +181,7 @@ Declaration
 
 ::
 
-    fs_file_close :: fn (handle: *File)
+    fs_file_close :: fn (handle: FSFile)
 
 Description
 -----------
