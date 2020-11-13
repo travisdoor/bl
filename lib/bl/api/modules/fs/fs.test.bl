@@ -87,8 +87,33 @@ fs_file_create_test :: fn () #test {
     fs_file_delete(filepath);
 }
 
-fs_read_test :: fn () #test {
-    // TODO
+fs_file_read_test :: fn () #test {
+    file, err1 :: fs_file_open(#file, FSFileOpenMode.Read);
+    defer fs_file_close(file);
+    test_true(err1 == FSError.OK);
+    data, err2 := fs_file_read(file);
+    defer string_delete(data);
+    test_true(err2 == FSError.OK);
+    test_neq(data, string_empty);
+    data.len += 1;
+    test_true(data[data.len-1] == '\0');
+}
+
+fs_validate_filename_test :: fn () #test {
+    if OS_KIND == OSKind.Windows {
+        test_false(fs_validate_filename("<"));
+        test_false(fs_validate_filename(">"));
+        test_false(fs_validate_filename(":")); 
+        test_false(fs_validate_filename("\""));     
+        test_false(fs_validate_filename("/"));
+        test_false(fs_validate_filename("\\"));
+        test_false(fs_validate_filename("|")); 
+        test_false(fs_validate_filename("?"));        
+        test_false(fs_validate_filename("*"));
+        test_false(fs_validate_filename("\t"));
+        test_false(fs_validate_filename("foo<"));
+        test_true(fs_validate_filename("foo_bar-File.txt"));
+    }
 }
 
 fs_get_extension_test :: fn () #test {

@@ -171,6 +171,33 @@ return `false` and doesn't produce any file system operation.
 
 ----
 
+.. _fs_file_read:
+
+fs_file_read
+============
+
+Declaration
+-----------
+
+::
+
+    fs_file_read :: fn (handle: FSFile) (string, FSError) {
+
+Description
+-----------
+Load file content into the string.
+ 
+Arguments
+---------
+* `handle` File handle.
+
+Result
+------
+String content of file and status :ref:`FSError`. Returned string must be released by :ref:`string_delete` call
+in case there is no error reported.
+
+----
+
 .. _fs_close:
 
 fs_file_close
@@ -181,7 +208,7 @@ Declaration
 
 ::
 
-    fs_file_close :: fn (handle: FSFile)
+    fs_file_close :: fn (handle: FSFile) #inline
 
 Description
 -----------

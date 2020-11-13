@@ -4,6 +4,7 @@ FSError :: enum {
     NotFound;
     AlreadyExist;
     AccessDenied;
+    InvalidHandle;    
     Unknown;
 }
 

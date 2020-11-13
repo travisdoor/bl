@@ -1,10 +1,13 @@
 #load "../shared.bl"
 
 // TODO
+// file_read
+// file_read_buffer
 // create_dir
 // open_dir
 // list_dir
 // rename
+// is_path_valid
 
 fs_exist :: fn (filepath: string) bool #inline {
     return _PathFileExistsA(auto filepath.ptr) > 0;
@@ -37,21 +40,33 @@ fs_file_delete :: fn (filepath: string) bool #inline {
     return true;
 }
 
-fs_file_close :: fn (handle: FSFile) {
+fs_file_close :: fn (handle: FSFile) #inline {
     if !handle { return; }
     _CloseHandle(handle);
 }
 
-// @DOC, @INCOMPLETE
-//fs_read :: fn (handle: FSFile) string {
-//    size: WIN32_LARGE_INTEGER #noinit;
-//    if _GetFileSizeEx(auto handle, &size) == 0 {
-//        // error;
-//        panic();
-//    }
-//    print("Size: %B\n", size);
-//    return "";
-//}
+fs_file_read :: fn (handle: FSFile) (string, FSError) {
+    size: WIN32_LARGE_INTEGER #noinit;
+    if _GetFileSizeEx(auto handle, &size) == 0 {
+        return string_empty, error();                
+    }
+    buf := string_new(cast(usize) size);
+    if _ReadFile(handle, buf.ptr, auto size, null, null) == 0 {
+        string_delete(buf);
+        return string_empty, error();                
+    }
+    buf.len = size;
+    return buf, FSError.OK;
+}
+
+fs_validate_filename :: fn (path: string) bool {
+    if path.len == 0 { return false; }
+    invalid :: "<>:\"/\\|?*\t";
+    loop i := 0; i < invalid.len; i += 1 {
+        if string_count(path, invalid[i]) > 0 { return false; }
+    }
+    return true;
+}
 
 fs_pwd :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
@@ -130,6 +145,7 @@ FILE_ATTRIBUTE_NORMAL : u32 : 0x00000080;
 ERROR_FILE_NOT_FOUND :: 2;
 ERROR_FILE_EXISTS :: 80;
 ERROR_ACCESS_DENIED  :: 5;
+ERROR_INVALID_HANDLE :: 6;
 
 modes_to_flags :: fn (modes: []FSFileOpenMode) u32 #inline {
     if modes.len == 0 { return GENERIC_READ | GENERIC_WRITE; }
@@ -147,10 +163,11 @@ modes_to_flags :: fn (modes: []FSFileOpenMode) u32 #inline {
 error :: fn () FSError #inline {
     ec :: _GetLastError();
     switch ec {
-        0                    { return FSError.OK;           }
-        ERROR_FILE_NOT_FOUND { return FSError.NotFound;     }
-        ERROR_FILE_EXISTS    { return FSError.AlreadyExist; }
-        ERROR_ACCESS_DENIED  { return FSError.AccessDenied; }
+        0                    { return FSError.OK;            }
+        ERROR_FILE_NOT_FOUND { return FSError.NotFound;      }
+        ERROR_FILE_EXISTS    { return FSError.AlreadyExist;  }
+        ERROR_ACCESS_DENIED  { return FSError.AccessDenied;  }
+        ERROR_INVALID_HANDLE { return FSError.InvalidHandle; }
         default { return FSError.Unknown; }
     }
 }
@@ -177,3 +194,4 @@ _GetTempPathA :: fn (nBufferLength: WIN32_DWORD, lpBuffer: WIN32_LPSTR) WIN32_DW
 _DeleteFileA :: fn (lpFileName: WIN32_LPCSTR) WIN32_BOOL #extern "DeleteFileA";
 _GetCurrentDirectoryA :: fn (nBufferLength: WIN32_DWORD, lpBuffer: WIN32_LPSTR) WIN32_DWORD #extern "GetCurrentDirectoryA";
 _GetFileSizeEx :: fn (hFile: WIN32_HANDLE, lpFileSize: WIN32_PLARGE_INTEGER) WIN32_BOOL #extern "GetFileSizeEx";
+_ReadFile :: fn (hFile: WIN32_HANDLE, lpBuffer: WIN32_LPVOID, nNumberOfBytesToRead: WIN32_DWORD, lpNumberOfBytesRead: WIN32_LPDWORD, lpOverlapped: WIN32_LPOVERLAPPED) WIN32_BOOL #extern "ReadFile";
