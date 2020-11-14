@@ -58,6 +58,7 @@ Declaration
         NotFound;
         AlreadyExist;
         AccessDenied;
+        InvalidHandle;
         Unknown;
     }
 
@@ -72,6 +73,7 @@ Variants
 * `NotFound` File or directory not found.
 * `AlreadyExist` File or directory already exist.
 * `AccessDenied` File or directory cannot be manipulated.
+* `InvalidHandle` Given file handle is invalid. 
 * `Unknown` All other unspecified errors.
 
 ----
@@ -198,6 +200,33 @@ in case there is no error reported.
 
 ----
 
+.. _fs_file_read_slice:
+
+fs_file_read_slice
+==================
+
+Declaration
+-----------
+
+::
+
+    fs_file_read_slice :: fn (handle: FSFile) ([]u8, FSError)
+
+Description
+-----------
+Load file content into the slice.
+ 
+Arguments
+---------
+* `handle` File handle.
+
+Result
+------
+Content of the file and status :ref:`FSError`. Returned slice must be released by :ref:`slice_terminate` call
+in case there is no error reported.
+
+----
+
 .. _fs_close:
 
 fs_file_close
@@ -266,16 +295,43 @@ Path to `home` directory or empty string.
 
 ----
 
-.. _fs_pwd:
+.. _fs_validate_filename:
 
-fs_pwd
+fs_validate_filename
+====================
+
+Declaration
+-----------
+
+::
+
+    fs_validate_filename :: fn (name: string) bool
+
+Description
+-----------
+Validate file name. 
+ 
+Arguments
+---------
+* `name` File name (not path).
+
+Result
+------
+Return `true` if name is valid file name on target platform.
+
+----
+
+
+.. _fs_cwd:
+
+fs_cwd
 ======
 
 Declaration
 -----------
 ::
 
-    fs_pwd :: fn () string #inline
+    fs_cwd :: fn () string #inline
 
 Description
 -----------
@@ -305,6 +361,28 @@ Get path to `temp` directory. Use :ref:`string_delete` to delete result string.
 Result
 ------
 Path to `temp` directory or empty string.
+
+----
+
+.. _fs_normalize:
+
+fs_normalize
+============
+
+Declaration
+-----------
+::
+
+    fs_normalize :: fn (filepath: *string) bool
+
+
+Description
+-----------
+Normalize path in `filepath` and check if result path exist; also resolve references `.` and `..`.
+ 
+Result
+------
+Return `true` and set `filepath` when path was normalized and points to existing entry.
 
 ----
 

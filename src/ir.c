@@ -2144,7 +2144,6 @@ State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound
     {
         llvm_value = value->llvm_value;
         BL_ASSERT(llvm_value)
-
         switch (type->kind) {
         case MIR_TYPE_ARRAY:
             llvm_indices[1] = LLVMConstInt(get_type(cnt, cnt->builtin_types->t_s64), i, true);
@@ -2165,10 +2164,8 @@ State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound
             llvm_value_dest = llvm_tmp;
             break;
         }
-
         LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
     }
-
     cmp->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, "");
     return STATE_PASSED;
 }
@@ -3069,13 +3066,9 @@ State emit_instr(Context *cnt, MirInstr *instr)
     case MIR_INSTR_UNROLL:
         state = emit_instr_unroll(cnt, (MirInstrUnroll *)instr);
         break;
-
     default:
         BL_ABORT("Missing emit instruction!");
     }
-
-    // if (cnt->debug_mode) emit_DI_instr_loc(cnt, NULL);
-
     return state;
 }
 

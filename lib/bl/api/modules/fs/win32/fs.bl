@@ -1,7 +1,6 @@
 #load "../shared.bl"
 
 // TODO
-// file_read
 // file_read_buffer
 // create_dir
 // open_dir
@@ -9,7 +8,11 @@
 // rename
 // is_path_valid
 
+FSFile :: *u8;
+FSFileInvalid : FSFile : null;
+
 fs_exist :: fn (filepath: string) bool #inline {
+    if filepath.len == 0 { return false; }
     return _PathFileExistsA(auto filepath.ptr) > 0;
 }
 
@@ -59,16 +62,32 @@ fs_file_read :: fn (handle: FSFile) (string, FSError) {
     return buf, FSError.OK;
 }
 
-fs_validate_filename :: fn (path: string) bool {
-    if path.len == 0 { return false; }
+// @DOC
+fs_file_read_slice :: fn (handle: FSFile) ([]u8, FSError) {
+    size: WIN32_LARGE_INTEGER #noinit;
+    if _GetFileSizeEx(auto handle, &size) == 0 {
+        return string_empty, error();                
+    }
+    buf: []u8;
+    slice_init(buf, size);
+    if _ReadFile(handle, buf.ptr, auto size, null, null) == 0 {
+        slice_terminate(buf);
+        return {:[]u8: 0 }, error();                
+    }
+    buf.len = size;
+    return buf, FSError.OK;
+}
+
+fs_validate_filename :: fn (name: string) bool {
+    if name.len == 0 { return false; }
     invalid :: "<>:\"/\\|?*\t";
     loop i := 0; i < invalid.len; i += 1 {
-        if string_count(path, invalid[i]) > 0 { return false; }
+        if string_count(name, invalid[i]) > 0 { return false; }
     }
     return true;
 }
 
-fs_pwd :: fn () string #inline {
+fs_cwd :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
     written :: _GetCurrentDirectoryA(auto buf.len, auto buf.ptr);
     if written == 0 { return string_new(); }
@@ -96,7 +115,7 @@ fs_tmp :: fn () string #inline {
 fs_normalize :: fn (filepath: *string) bool {
     buf : [OS_PATH_MAX]u8 #noinit;
     if _GetFullPathNameA(auto filepath.ptr, auto buf.len, buf.ptr, null) > 0 {
-//        if win32_PathFileExistsA(auto filepath.ptr) == 0 { return false; }
+        if win32_PathFileExistsA(auto filepath.ptr) == 0 { return false; }
         string_clear(filepath);
         string_append(filepath, cstr_to_str(buf.ptr));
         string_replace_all(filepath, '\\', '/');

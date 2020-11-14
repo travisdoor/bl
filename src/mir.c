@@ -804,6 +804,26 @@ static INLINE bool can_mutate_comptime_to_const(MirInstr *instr)
     }
 }
 
+// Sets naked value for compound instruction and all its nested compounds in values.
+static INLINE void instr_compound_set_naked(MirInstr *cmp, bool is_naked)
+{
+    BL_ASSERT(cmp->kind == MIR_INSTR_COMPOUND);
+    TSmallArray_InstrPtr stack;
+    tsa_init(&stack);
+    tsa_push_InstrPtr(&stack, cmp);
+    MirInstrCompound *current;
+    while ((current = (MirInstrCompound *)tsa_pop_InstrPtr(&stack))) {
+        MirInstr *value;
+        TSA_FOREACH(current->values, value)
+        {
+            if (value->kind != MIR_INSTR_COMPOUND) continue;
+            tsa_push_InstrPtr(&stack, value);
+        }
+        current->is_naked = is_naked;
+    }
+    tsa_terminate(&stack);
+}
+
 // Get struct base type if there is one.
 static INLINE MirType *get_base_type(const MirType *struct_type)
 {
@@ -3451,7 +3471,7 @@ MirInstr *append_instr_decl_var(Context * cnt,
     }
 
     if (init && init->kind == MIR_INSTR_COMPOUND) {
-        ((MirInstrCompound *)init)->is_naked = false;
+        instr_compound_set_naked(init, false);
     }
     return &tmp->base;
 }
@@ -3470,7 +3490,7 @@ MirInstr *create_instr_decl_var_impl(Context *   cnt,
     tmp->init            = ref_instr(init);
     tmp->var             = create_var_impl(cnt, name, NULL, is_mutable, is_global, false);
     if (init && init->kind == MIR_INSTR_COMPOUND) {
-        ((MirInstrCompound *)init)->is_naked = false;
+        instr_compound_set_naked(init, false);
     }
     return &tmp->base;
 }
@@ -4148,7 +4168,7 @@ AnalyzeResult analyze_instr_unroll(Context *cnt, MirInstrUnroll *unroll)
         tmp_var = create_instr_decl_direct_ref(cnt, tmp_var);
         insert_instr_before(&unroll->base, tmp_var);
         ANALYZE_INSTR_RQ(tmp_var);
-        unroll->src = tmp_var;
+        unroll->src = ref_instr(tmp_var);
         type        = create_type_ptr(cnt, mir_get_struct_elem_type(src_type, index));
     } else {
         unroll->remove = true;
@@ -4324,15 +4344,11 @@ AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
                         "One value only is expected for non-agragate types.");
             return ANALYZE_RESULT(FAILED, 0);
         }
-
-        MirInstr **value_ref = &values->data[0];
-
+        MirInstr **              value_ref = &values->data[0];
         const AnalyzeSlotConfig *conf =
             type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
-
         if (analyze_slot(cnt, conf, value_ref, type) != ANALYZE_PASSED)
             return ANALYZE_RESULT(FAILED, 0);
-
         cmp->base.value.is_comptime = (*value_ref)->value.is_comptime;
     }
     }
@@ -4341,9 +4357,9 @@ SKIP_IMPLICIT:
     if (!mir_is_global(&cmp->base) && cmp->is_naked) {
         // For naked non-compile time compounds we need to generate implicit temp storage to
         // keep all data.
-        const char *tmp_name = gen_uq_name(IMPL_COMPOUND_TMP);
-        MirVar *    tmp_var  = create_var_impl(cnt, tmp_name, type, true, false, false);
-        cmp->tmp_var         = tmp_var;
+        MirVar *tmp_var =
+            create_var_impl(cnt, gen_uq_name(IMPL_COMPOUND_TMP), type, true, false, false);
+        cmp->tmp_var = tmp_var;
     }
 
     return ANALYZE_RESULT(PASSED, 0);
@@ -6416,7 +6432,7 @@ AnalyzeResult analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     bool has_initializer = decl->init;
     if (has_initializer) {
         if (decl->init->kind == MIR_INSTR_COMPOUND) {
-            ((MirInstrCompound *)decl->init)->is_naked = false;
+            instr_compound_set_naked(decl->init, false);
         }
 
         // Resolve variable intializer. Here we use analyze_slot_initializer call to
@@ -7112,7 +7128,7 @@ ANALYZE_STAGE_FN(arrtoslice)
         tsa_push_InstrPtr(values, instr_ptr);
 
         MirInstr *compound = create_instr_compound_impl(cnt, NULL, slot_type, values);
-        ((MirInstrCompound *)compound)->is_naked = !is_initializer;
+        instr_compound_set_naked(compound, !is_initializer);
         ref_instr(compound);
 
         insert_instr_after(*input, compound);
@@ -8364,7 +8380,7 @@ void ast_stmt_return(Context *cnt, Ast *ret)
             }
             MirInstr *ref = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
             if (value->kind == MIR_INSTR_COMPOUND) {
-                ((MirInstrCompound *)value)->is_naked = false;
+                instr_compound_set_naked(value, false);
             }
             append_instr_store(cnt, ret, value, ref);
         } else if (value) {
@@ -8794,7 +8810,7 @@ MirInstr *ast_expr_binop(Context *cnt, Ast *binop)
         // temp storage for it, we can just copy compound content directly into
         // variable, so we set it here as non-naked.
         if (rhs->kind == MIR_INSTR_COMPOUND) {
-            ((MirInstrCompound *)rhs)->is_naked = false;
+            instr_compound_set_naked(rhs, false);
         }
 
         return append_instr_store(cnt, binop, rhs, lhs);

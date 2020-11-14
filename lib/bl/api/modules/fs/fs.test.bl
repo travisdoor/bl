@@ -35,8 +35,8 @@ fs_tmp_test :: fn () #test {
     test_true(fs_exist(tmp));    
 }
 
-fs_pwd_test :: fn () #test {
-    tmp :: fs_pwd();
+fs_cwd_test :: fn () #test {
+    tmp :: fs_cwd();
     defer string_delete(tmp);
     test_neq(tmp, string_empty);
     test_true(fs_exist(tmp));    
@@ -56,7 +56,6 @@ fs_file_open_test :: fn () #test {
     {
         file, err :: fs_file_open(#file);    
         test_true(err == FSError.OK);
-        test_not_null(file);
         fs_file_close(file);
     }
 }
@@ -80,7 +79,6 @@ fs_file_create_test :: fn () #test {
     {
         file, err :: fs_file_create(filepath);
         test_true(err == FSError.OK);
-        test_not_null(file);
         fs_file_close(file);
     }    
     
@@ -92,11 +90,26 @@ fs_file_read_test :: fn () #test {
     defer fs_file_close(file);
     test_true(err1 == FSError.OK);
     data, err2 := fs_file_read(file);
-    defer string_delete(data);
     test_true(err2 == FSError.OK);
+    defer string_delete(data);
     test_neq(data, string_empty);
     data.len += 1;
     test_true(data[data.len-1] == '\0');
+}
+
+fs_file_read_test2 :: fn () #test {
+    data, err := fs_file_read(FSFileInvalid);
+    test_true(err == FSError.InvalidHandle);
+}
+
+fs_file_read_slice_test :: fn () #test {
+    file :: fs_file_open(#file, FSFileOpenMode.Read);
+    defer fs_file_close(file);
+    data, err := fs_file_read_slice(file);
+    //test_true(err == FSError.OK);
+    //defer slice_terminate(data);
+    //test_not_null(data.ptr);
+    //test_neq(data.len, 0);
 }
 
 fs_validate_filename_test :: fn () #test {
@@ -112,6 +125,9 @@ fs_validate_filename_test :: fn () #test {
         test_false(fs_validate_filename("*"));
         test_false(fs_validate_filename("\t"));
         test_false(fs_validate_filename("foo<"));
+        test_true(fs_validate_filename("foo_bar-File.txt"));
+    } else {
+        test_false(fs_validate_filename("foo/"));
         test_true(fs_validate_filename("foo_bar-File.txt"));
     }
 }
@@ -194,31 +210,34 @@ fs_remove_extension_test :: fn () #test {
 
 fs_normalize_test :: fn () #test {
     {
-        pwd :: fs_pwd();
-        defer string_delete(pwd);
+        cwd :: fs_cwd();
+        defer string_delete(cwd);
         parent: string;
-        test_true(string_split_by_last(pwd, '/', &parent, null));
+        test_true(string_split_by_last(cwd, '/', &parent, null));
         filepath :: string_new("..");
         defer string_delete(filepath);
-        fs_normalize(&filepath);
+        test_true(fs_normalize(&filepath));
         test_eq(filepath, parent);
     }
     {
-        pwd :: fs_pwd();
-        defer string_delete(pwd);
+        cwd :: fs_cwd();
+        defer string_delete(cwd);
         filepath :: string_new(".");
         defer string_delete(filepath);
         test_true(fs_normalize(&filepath));
-        test_eq(filepath, pwd);
+        test_eq(filepath, cwd);
     }    
     {
-        pwd :: fs_pwd();
-        defer string_delete(pwd);    
+        file :: fs_file_create("foo");
+        fs_file_close(file);
+        defer fs_file_delete("foo");
+        cwd :: fs_cwd();
+        defer string_delete(cwd);    
         filepath :: string_new("foo");
-        string_concatenate(&pwd, "/", filepath);
+        string_concatenate(&cwd, "/", filepath);
         defer string_delete(filepath);
         test_true(fs_normalize(&filepath));
-        test_eq(filepath, pwd);
+        test_eq(filepath, cwd);
     }    
 }
 
@@ -229,7 +248,6 @@ fs_file_delete_test :: fn () #test {
     fs_file_delete(filepath);
     file, err :: fs_file_create(filepath);
     test_true(err == FSError.OK);
-    test_not_null(file);    
     fs_file_close(file);
     test_true(fs_file_delete(filepath));
 }

@@ -1,0 +1,23 @@
+_Stat :: struct {
+    st_dev: u64;
+    st_ino: u64;
+    st_nlink: u64;
+    st_mode: u32;
+    st_uid: u32;
+    st_gid: u32;
+    _0: c_int;
+    st_rdev: u64;
+    st_size: s64;
+    st_blksize: s64;
+    st_blocks: s64;
+    st_atime: s64;
+    st_atime_nsec: c_long;
+    st_mtime: s64;
+    st_mtime_nsec: c_long;
+    st_ctime: s64;
+    st_ctime_nsec: c_long;
+    _1: [3]c_long;
+}
+
+_stat :: fn (path: *c_char, buf: *_Stat) c_int #extern "stat";
+_fstat :: fn (fd: c_int, stat: *_Stat) c_int #extern "fstat";

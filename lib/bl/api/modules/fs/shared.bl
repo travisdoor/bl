@@ -12,5 +12,4 @@ FSFileOpenMode :: enum {
     Read;
     Write;
 }
-
-FSFile :: *u8;
+

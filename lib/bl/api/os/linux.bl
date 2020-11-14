@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   posix.bl 
+// File:   linux.bl 
 // Author: Martin Dorazil
 // Date:   2/11/19
 //
@@ -51,6 +51,7 @@ c_longlong  :: s64;
 c_ulonglong :: u64;
 c_void_ptr  :: *u8;
 c_size_t    :: u64;
+c_ssize_t   :: s64;
 
 // Threading
 OSThread :: _PosixThread;
