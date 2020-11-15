@@ -4,7 +4,7 @@ foo :: fn () (s32, s32) {
     return 10, 20;
 }
 
-main :: fn () s32 {
+main :: fn () s32 { 
     a, b := foo();
-    return 0;
-}
+    return 0;
+}

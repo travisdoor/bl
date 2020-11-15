@@ -1992,7 +1992,6 @@ State emit_instr_unop(Context *cnt, MirInstrUnop *unop)
 State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp)
 {
     LLVMValueRef llvm_tmp = NULL;
-
     if (_llvm_tmp) {
         llvm_tmp = _llvm_tmp;
 #if BL_DEBUG
@@ -2017,10 +2016,8 @@ State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound
         }
 #endif
     }
-
     MirType *  type      = cmp->base.value.type;
     const bool is_global = mir_is_global(&cmp->base);
-
     // Fist of all we are going to check zero initialized compounds since there is no
     // additional work needed.
     if (cmp->is_zero_initialized) {
@@ -2136,14 +2133,13 @@ State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound
     TSmallArray_InstrPtr *values = cmp->values;
     MirInstr *            value;
     LLVMValueRef          llvm_value;
-    LLVMValueRef          llvm_value_dest;
     LLVMValueRef          llvm_indices[2];
+    LLVMValueRef          llvm_value_dest = llvm_tmp;
+
     llvm_indices[0] = cnt->llvm_const_i64_zero;
 
     TSA_FOREACH(values, value)
     {
-        llvm_value = value->llvm_value;
-        BL_ASSERT(llvm_value)
         switch (type->kind) {
         case MIR_TYPE_ARRAY:
             llvm_indices[1] = LLVMConstInt(get_type(cnt, cnt->builtin_types->t_s64), i, true);
@@ -2164,8 +2160,20 @@ State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound
             llvm_value_dest = llvm_tmp;
             break;
         }
+#if 1
+        if (!value->llvm_value) {
+            // We generate non-naked compound constant containing other nested compounds.
+            BL_ASSERT(value->kind == MIR_INSTR_COMPOUND && "Expected compount expression!");
+            MirInstrCompound *nested_cmp = (MirInstrCompound *)value;
+            const State       state      = emit_instr_compound(cnt, NULL, nested_cmp);
+            BL_ASSERT(state == STATE_PASSED);
+        }
+#endif
+        llvm_value = value->llvm_value;
+        BL_ASSERT(llvm_value && "Missing LLVM value for nested compound constant expression.");
         LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
     }
+    BL_ASSERT(llvm_value_dest && "Invalid LLVM destination value!")
     cmp->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, "");
     return STATE_PASSED;
 }

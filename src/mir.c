@@ -692,7 +692,7 @@ static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 9,
 // out_type when analyze passed without problems. When analyze does not pass postpone is returned
 // and out_type stay unchanged.
 static AnalyzeResult
-                     analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
+analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
 static AnalyzeResult analyze_instr_unroll(Context *cnt, MirInstrUnroll *unroll);
 static AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp);
 static AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
@@ -804,7 +804,12 @@ static INLINE bool can_mutate_comptime_to_const(MirInstr *instr)
     }
 }
 
+// @INCOMPLETE
+// @INCOMPLETE
+// @INCOMPLETE
+
 // Sets naked value for compound instruction and all its nested compounds in values.
+#if 0
 static INLINE void instr_compound_set_naked(MirInstr *cmp, bool is_naked)
 {
     BL_ASSERT(cmp->kind == MIR_INSTR_COMPOUND);
@@ -823,6 +828,9 @@ static INLINE void instr_compound_set_naked(MirInstr *cmp, bool is_naked)
     }
     tsa_terminate(&stack);
 }
+#else
+#define instr_compound_set_naked(cmp, v) (((MirInstrCompound *)(cmp))->is_naked = (v))
+#endif
 
 // Get struct base type if there is one.
 static INLINE MirType *get_base_type(const MirType *struct_type)
