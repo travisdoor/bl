@@ -61,6 +61,7 @@ typedef struct BuilderOptions {
     bool        use_pipeline;
     bool        no_color;
     bool        no_vcvars;
+    bool        verify_llvm;
 } BuilderOptions;
 
 typedef enum {
