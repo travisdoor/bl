@@ -160,6 +160,10 @@ s32 builder_parse_options(s32 argc, char *argv[])
 
     builder.options.build_mode = BUILD_MODE_DEBUG;
 
+#ifdef BL_DEBUG
+    builder.options.verify_llvm = true;
+#endif
+
 #if defined(BL_PLATFORM_WIN)
     builder.options.build_di_kind = BUILD_DI_CODEVIEW;
 #else
@@ -218,6 +222,8 @@ s32 builder_parse_options(s32 argc, char *argv[])
             builder.options.build_di_kind = BUILD_DI_CODEVIEW;
         } else if (IS_PARAM("no-vcvars")) {
             builder.options.no_vcvars = true;
+        } else if (IS_PARAM("verify-llvm")) {
+            builder.options.verify_llvm = true;
         } else {
             builder_error("invalid params '%s'", &argv[optind][1]);
             return -1;
@@ -247,7 +253,7 @@ void builder_init(void)
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split = false;
+    builder.options.reg_split     = false;
 #endif
 
     // initialize LLVM statics

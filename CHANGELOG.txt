@@ -7,6 +7,7 @@ Compiler now returns numerical maximum error code if compilation fail.
 Add BL Doctor for better unit testing.
 Add first prototype of modules and #import hash directive. 
 Less descriptive terminal output during compilation.
+Add -verify-llvm option to enable LLVM IR verification.
 Fix segfault on error get line.
 Fix invalid character when comment block is very last in source file.
 Fix garbage in unknown symbol reports.

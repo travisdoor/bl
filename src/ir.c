@@ -3195,13 +3195,15 @@ void ir_run(Assembly *assembly)
         llvm_di_builder_finalize(cnt.llvm_di_builder);
     }
 
-#if BL_DEBUG
-    char *error = NULL;
-    if (LLVMVerifyModule(cnt.llvm_module, LLVMReturnStatusAction, &error)) {
-        builder_error("LLVM module not verified with error: %s", error);
+    if (builder.options.verify_llvm) {
+        char *llvm_error = NULL;
+        if (LLVMVerifyModule(cnt.llvm_module, LLVMReturnStatusAction, &llvm_error)) {
+            builder_warning("\nLLVM module not verified; error: \n%s", llvm_error);
+            LLVMDisposeMessage(llvm_error);
+        } else {
+            builder_note("LLVM module verified without errors.");
+        }
     }
-    LLVMDisposeMessage(error);
-#endif
 
     LLVMDisposeBuilder(cnt.llvm_builder);
     if (cnt.debug_mode) {
