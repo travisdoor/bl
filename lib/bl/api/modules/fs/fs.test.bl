@@ -106,10 +106,10 @@ fs_file_read_slice_test :: fn () #test {
     file :: fs_file_open(#file, FSFileOpenMode.Read);
     defer fs_file_close(file);
     data, err := fs_file_read_slice(file);
-    //test_true(err == FSError.OK);
-    //defer slice_terminate(data);
-    //test_not_null(data.ptr);
-    //test_neq(data.len, 0);
+    test_true(err == FSError.OK);
+    defer slice_terminate(data);
+    test_not_null(data.ptr);
+    test_neq(data.len, 0);
 }
 
 fs_validate_filename_test :: fn () #test {

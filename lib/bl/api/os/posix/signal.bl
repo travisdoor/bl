@@ -1,0 +1,9 @@
+_SIGHUP  :: 1;
+_SIGINT  :: 2;
+_SIGQUIT :: 3; 
+_SIGILL  :: 4; 
+_SIGTRAP :: 5;
+_SIGABRT :: 6;
+
+
+_raise :: fn (sig: c_int) c_int #extern "raise";

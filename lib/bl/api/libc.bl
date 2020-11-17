@@ -27,4 +27,8 @@
 //************************************************************************************************
 
 c_getenv :: fn (name: *c_char) *c_char #extern "getenv";
-c_realpath  :: fn (path: *c_char, resolved_path: *c_char) *c_char #extern "realpath";
+c_realpath :: fn (path: *c_char, resolved_path: *c_char) *c_char #extern "realpath";
+c_exit :: fn (v: c_int) #extern "_exit";
+c_system :: fn (command: *c_char) c_int #extern "system";
+c_malloc :: fn (size: c_size_t) c_void_ptr #extern "malloc";
+c_free :: fn (ptr: c_void_ptr) #extern "free";

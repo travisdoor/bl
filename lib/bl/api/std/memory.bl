@@ -26,8 +26,7 @@
 // SOFTWARE.
 //************************************************************************************************
 
-c_malloc :: fn (size: c_size_t) c_void_ptr #extern "malloc";
-c_free :: fn (ptr: c_void_ptr) #extern "free";
+#load "libc.bl"
 
 /*!
 alloc

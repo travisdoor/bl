@@ -388,31 +388,24 @@ void builder_msg(BuilderMsgType type,
     if (type == BUILDER_MSG_ERROR && builder.errorc > MAX_ERROR_REPORTED) return;
     if (type == BUILDER_MSG_LOG && !builder.options.verbose) return;
     if (builder.options.no_warn && type == BUILDER_MSG_WARNING) return;
-
     TString tmp;
-
     tstring_init(&tmp);
     char msg[MAX_MSG_LEN] = {0};
-
     if (src) {
         s32 line = src->line;
         s32 col  = src->col;
         s32 len  = src->len;
-
         switch (pos) {
         case BUILDER_CUR_AFTER:
             col += len;
             len = 1;
             break;
-
         case BUILDER_CUR_WORD:
             break;
-
         case BUILDER_CUR_BEFORE:
             col -= col < 1 ? 0 : 1;
             len = 1;
             break;
-
         case BUILDER_CUR_NONE:
             break;
         }
@@ -477,16 +470,16 @@ void builder_msg(BuilderMsgType type,
     case BUILDER_MSG_ERROR: {
         builder.errorc++;
         builder.max_error = code > builder.max_error ? code : builder.max_error;
-        color_print(stderr, BL_RED, tmp.data);
+        color_print(stderr, BL_RED, "%s", tmp.data);
         break;
     }
     case BUILDER_MSG_WARNING: {
-        color_print(stdout, BL_YELLOW, tmp.data);
+        color_print(stdout, BL_YELLOW, "%s", tmp.data);
         break;
     }
 
     default: {
-        color_print(stdout, BL_NO_COLOR, tmp.data);
+        color_print(stdout, BL_NO_COLOR, "%s", tmp.data);
     }
     }
 
