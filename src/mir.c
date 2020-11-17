@@ -809,7 +809,7 @@ static INLINE bool can_mutate_comptime_to_const(MirInstr *instr)
 // @INCOMPLETE
 
 // Sets naked value for compound instruction and all its nested compounds in values.
-#if 0
+#if 1
 static INLINE void instr_compound_set_naked(MirInstr *cmp, bool is_naked)
 {
     BL_ASSERT(cmp->kind == MIR_INSTR_COMPOUND);

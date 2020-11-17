@@ -1989,6 +1989,10 @@ State emit_instr_unop(Context *cnt, MirInstrUnop *unop)
     return STATE_PASSED;
 }
 
+static _emit_instr_compound_comptime(Context *cnt, MirInstrCompound *cmp) {
+    
+}
+
 State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp)
 {
     LLVMValueRef llvm_tmp = NULL;

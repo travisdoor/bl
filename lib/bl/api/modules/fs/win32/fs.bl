@@ -65,14 +65,15 @@ fs_file_read :: fn (handle: FSFile) (string, FSError) {
 // @DOC
 fs_file_read_slice :: fn (handle: FSFile) ([]u8, FSError) {
     size: WIN32_LARGE_INTEGER #noinit;
+    invalid: []u8;
     if _GetFileSizeEx(auto handle, &size) == 0 {
-        return string_empty, error();                
+        return invalid, error();                
     }
     buf: []u8;
     slice_init(buf, size);
     if _ReadFile(handle, buf.ptr, auto size, null, null) == 0 {
         slice_terminate(buf);
-        return {:[]u8: 0 }, error();                
+        return invalid, error();                
     }
     buf.len = size;
     return buf, FSError.OK;

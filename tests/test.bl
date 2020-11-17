@@ -1,10 +1,14 @@
 // playground 
 
-foo :: fn () (s32, s32) {
-    return 10, 20;
+get :: fn () s32 {
+    return 30;
+}
+
+func :: fn () ([]u8, s32) {
+    return {:[]u8: 0}, get();
 }
 
 main :: fn () s32 { 
-    a, b := foo();
+    func();    
     return 0;
 }
