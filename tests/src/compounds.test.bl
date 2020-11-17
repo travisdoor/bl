@@ -99,3 +99,11 @@ compound_fundamentals :: fn () #test {
     assert(ptr == &num);
     assert(day == Days.MON);
 };
+
+compound_composition :: fn () #test {
+    get :: fn () s32 { return 30; };
+    T :: struct { slice: []u8; int: s32 };
+    v :: {:T: {:[]u8: 0}, get()};
+    test_eq(v.int, 30);    
+    test_eq(v.slice.len, 30);
+}

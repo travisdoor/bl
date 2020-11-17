@@ -162,10 +162,3 @@ void print_trace(void)
     SymCleanup(process);
 #endif
 }
-
-void *_assert_invalid_expr(const char *expr, const char *file, s32 line)
-{
-    _log(LOG_ASSERT, file, line, "Required pointer '%s' is NULL.", expr);
-    print_trace();
-    abort();
-}

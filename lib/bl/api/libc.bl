@@ -32,3 +32,5 @@ c_exit :: fn (v: c_int) #extern "_exit";
 c_system :: fn (command: *c_char) c_int #extern "system";
 c_malloc :: fn (size: c_size_t) c_void_ptr #extern "malloc";
 c_free :: fn (ptr: c_void_ptr) #extern "free";
+c_strlen :: fn (str: *c_char) c_size_t #extern "strlen";
+c_strcmp :: fn (first: *c_char, second: *c_char) c_int #extern "strcmp";

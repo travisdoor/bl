@@ -115,39 +115,65 @@ static LLVMMetadataRef DI_complete_type(Context *cnt, MirType *type);
 static LLVMMetadataRef DI_scope_init(Context *cnt, Scope *scope);
 static LLVMMetadataRef DI_unit_init(Context *cnt, Unit *unit);
 static LLVMValueRef    emit_const_string(Context *cnt, const char *str, usize len);
-static State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp);
-static State emit_instr_binop(Context *cnt, MirInstrBinop *binop);
-static State emit_instr_phi(Context *cnt, MirInstrPhi *phi);
-static State emit_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
-static State emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
-static State emit_instr_test_cases(Context *cnt, MirInstrTestCases *tc);
-static State emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
-static State emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref);
-static State emit_instr_cast(Context *cnt, MirInstrCast *cast);
-static State emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
-static State emit_instr_unop(Context *cnt, MirInstrUnop *unop);
-static State emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
-static State emit_instr_store(Context *cnt, MirInstrStore *store);
-static State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
-static State emit_instr_block(Context *cnt, MirInstrBlock *block);
-static State emit_instr_br(Context *cnt, MirInstrBr *br);
-static State emit_instr_switch(Context *cnt, MirInstrSwitch *sw);
-static State emit_instr_const(Context *cnt, MirInstrConst *c);
-static State emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg);
-static State emit_instr_cond_br(Context *cnt, MirInstrCondBr *br);
-static State emit_instr_ret(Context *cnt, MirInstrRet *ret);
-static State emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl);
-static State emit_instr_load(Context *cnt, MirInstrLoad *load);
-static State emit_instr_call(Context *cnt, MirInstrCall *call);
-static State emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
-static State emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
-static State emit_instr_unroll(Context *cnt, MirInstrUnroll *unroll);
-static State emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
-static State emit_instr_toany(Context *cnt, MirInstrToAny *toany);
-static State emit_intr_call_loc(Context *cnt, MirInstrCallLoc *loc);
-static void  emit_allocas(Context *cnt, MirFn *fn);
-static void  emit_incomplete(Context *cnt);
-static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn);
+static State           emit_instr_binop(Context *cnt, MirInstrBinop *binop);
+static State           emit_instr_phi(Context *cnt, MirInstrPhi *phi);
+static State           emit_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
+static State           emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
+static State           emit_instr_test_cases(Context *cnt, MirInstrTestCases *tc);
+static State           emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
+static State           emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref);
+static State           emit_instr_cast(Context *cnt, MirInstrCast *cast);
+static State           emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
+static State           emit_instr_unop(Context *cnt, MirInstrUnop *unop);
+static State           emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
+static State           emit_instr_store(Context *cnt, MirInstrStore *store);
+static State           emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
+static State           emit_instr_block(Context *cnt, MirInstrBlock *block);
+static State           emit_instr_br(Context *cnt, MirInstrBr *br);
+static State           emit_instr_switch(Context *cnt, MirInstrSwitch *sw);
+static State           emit_instr_const(Context *cnt, MirInstrConst *c);
+static State           emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg);
+static State           emit_instr_cond_br(Context *cnt, MirInstrCondBr *br);
+static State           emit_instr_ret(Context *cnt, MirInstrRet *ret);
+static State           emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl);
+static State           emit_instr_load(Context *cnt, MirInstrLoad *load);
+static State           emit_instr_call(Context *cnt, MirInstrCall *call);
+static State           emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
+static State           emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
+static State           emit_instr_unroll(Context *cnt, MirInstrUnroll *unroll);
+static State           emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
+static State           emit_instr_toany(Context *cnt, MirInstrToAny *toany);
+static State           emit_instr_call_loc(Context *cnt, MirInstrCallLoc *loc);
+static LLVMValueRef    emit_fn_proto(Context *cnt, MirFn *fn);
+static void            emit_allocas(Context *cnt, MirFn *fn);
+static void            emit_incomplete(Context *cnt);
+
+static void emit_instr_compound(Context *cnt, LLVMValueRef llvm_dest, MirInstrCompound *cmp);
+static LLVMValueRef _emit_instr_compound_zero_initialized(Context *         cnt,
+                                                          LLVMValueRef      llvm_dest, // optional
+                                                          MirInstrCompound *cmp);
+static LLVMValueRef _emit_instr_compound_comptime(Context *cnt, MirInstrCompound *cmp);
+
+static INLINE LLVMValueRef emit_instr_compound_global(Context *cnt, MirInstrCompound *cmp)
+{
+    BL_ASSERT(mir_is_global(&cmp->base) && "Expected global compound expression!");
+    BL_ASSERT(mir_is_comptime(&cmp->base) && "Expected compile time known compound expression!");
+    BL_ASSERT(!cmp->is_naked && "Global compound expression cannot be naked!");
+    return _emit_instr_compound_comptime(cnt, cmp);
+}
+
+static State emit_instr_compound_naked(Context *cnt, MirInstrCompound *cmp)
+{
+    BL_ASSERT(cmp->is_naked && "Expected naked compound initializer!");
+    BL_ASSERT(cmp->tmp_var && "Missing tmp variable for naked compound instruction!");
+    BL_ASSERT(!mir_is_global(&cmp->base) && "Global compound cannot be naked!");
+    LLVMValueRef llvm_tmp = cmp->tmp_var->llvm_value;
+    BL_ASSERT(llvm_tmp && "Missing LLVM representation for compound tmp variable!")
+
+    emit_instr_compound(cnt, llvm_tmp, cmp);
+    cmp->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, "");
+    return STATE_PASSED;
+}
 
 static INLINE void emit_DI_loc(Context *cnt, Scope *scope, Location *loc)
 {
@@ -1696,7 +1722,7 @@ State emit_instr_cast(Context *cnt, MirInstrCast *cast)
 
     case MIR_CAST_PTRTOBOOL: {
         // Cast from pointer to bool has no internal LLVM representation so we have
-        // to emulate it here by simple comparation pointer value to it's null
+        // to emulate it here by simple comparison pointer value to it's null
         // equivalent.
         LLVMTypeRef  llvm_src_type = get_type(cnt, cast->expr->value.type);
         LLVMValueRef llvm_null     = LLVMConstNull(llvm_src_type);
@@ -1989,166 +2015,156 @@ State emit_instr_unop(Context *cnt, MirInstrUnop *unop)
     return STATE_PASSED;
 }
 
-static _emit_instr_compound_comptime(Context *cnt, MirInstrCompound *cmp) {
-    
+// Generates zero initialized value from compound expression, `llvm_dest` is optional specification
+// of destination variable or GEP to be set to zero. Result LLVM value is either compile time
+// constant or `llvm_dest` if provided.
+LLVMValueRef _emit_instr_compound_zero_initialized(Context *         cnt,
+                                                   LLVMValueRef      llvm_dest, // optional
+                                                   MirInstrCompound *cmp)
+{
+    MirType *type = cmp->base.value.type;
+    BL_ASSERT(type);
+    BL_ASSERT(mir_is_comptime(&cmp->base) &&
+              "Zero initialized compound expression is supposed to be compile time known!");
+    if (!llvm_dest) {
+        cmp->base.llvm_value = LLVMConstNull(get_type(cnt, type));
+        return cmp->base.llvm_value;
+    }
+
+    // Directly initialize destination variable!
+    if (type->store_size_bytes <= cnt->builtin_types->t_u8_ptr->store_size_bytes) {
+        // Small values use store instruction.
+        cmp->base.llvm_value = LLVMConstNull(get_type(cnt, type));
+        LLVMBuildStore(cnt->llvm_builder, cmp->base.llvm_value, llvm_dest);
+    } else {
+        BL_ASSERT(!mir_is_global(&cmp->base) &&
+                  "Cannot use memset for global zero initialization!");
+        // Use memset intrinsic for zero initialization of variable
+        LLVMValueRef args[4];
+        args[0] = LLVMBuildBitCast(
+            cnt->llvm_builder, llvm_dest, get_type(cnt, cnt->builtin_types->t_u8_ptr), "");
+        args[1] = cnt->llvm_const_i8_zero;
+        args[2] =
+            LLVMConstInt(get_type(cnt, cnt->builtin_types->t_u64), type->store_size_bytes, false);
+        args[3] = LLVMConstInt(get_type(cnt, cnt->builtin_types->t_bool), 0, false);
+        LLVMBuildCall(cnt->llvm_builder, cnt->intrinsic_memset, args, ARRAY_SIZE(args), "");
+    }
+    cmp->base.llvm_value = llvm_dest;
+    return llvm_dest;
 }
 
-State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound *cmp)
+#define EMIT_NESTED_COMPOUND_IF_NEEDED(cnt, instr)                                                 \
+    if (!(instr)->llvm_value) {                                                                    \
+        BL_ASSERT((instr)->kind == MIR_INSTR_COMPOUND);                                            \
+        _emit_instr_compound_comptime(cnt, ((MirInstrCompound *)instr));                           \
+        BL_ASSERT((instr)->llvm_value);                                                            \
+    }
+
+// Generates comptime compound expression value, every nested member must be compile time known.
+LLVMValueRef _emit_instr_compound_comptime(Context *cnt, MirInstrCompound *cmp)
 {
-    LLVMValueRef llvm_tmp = NULL;
-    if (_llvm_tmp) {
-        llvm_tmp = _llvm_tmp;
-#if BL_DEBUG
-        if (cmp->is_naked) {
-            Location *loc = cmp->base.node ? cmp->base.node->location : NULL;
-            BL_WARNING("Compound initialized has set value destination but is marked "
-                       "as "
-                       "naked, this will cause generation of unused temp! (%s:%d)",
-                       loc ? loc->unit->filename : "<UNKNOWN_FILE>",
-                       loc ? loc->line : -1);
-        }
-#endif
-    } else if (cmp->tmp_var) {
-        llvm_tmp = cmp->tmp_var->llvm_value;
-#if BL_DEBUG
-        if (!cmp->is_naked) {
-            Location *loc = cmp->base.node ? cmp->base.node->location : NULL;
-            BL_WARNING("Compound initializer with temp variable should be marked as "
-                       "naked! (%s:%d)",
-                       loc ? loc->unit->filename : "<UNKNOWN_FILE>",
-                       loc ? loc->line : -1);
-        }
-#endif
-    }
-    MirType *  type      = cmp->base.value.type;
-    const bool is_global = mir_is_global(&cmp->base);
-    // Fist of all we are going to check zero initialized compounds since there is no
-    // additional work needed.
+    BL_ASSERT(mir_is_comptime(&cmp->base) && "Expected comptime known compound expression!");
     if (cmp->is_zero_initialized) {
-        if (llvm_tmp) {
-            if (type->store_size_bytes <= cnt->builtin_types->t_u8_ptr->store_size_bytes) {
-
-                cmp->base.llvm_value = LLVMConstNull(get_type(cnt, type));
-                LLVMBuildStore(cnt->llvm_builder, cmp->base.llvm_value, llvm_tmp);
-            } else {
-                // Use memset intrinsic for zero initialization of variable
-                LLVMValueRef args[4];
-
-                args[0] = LLVMBuildBitCast(
-                    cnt->llvm_builder, llvm_tmp, get_type(cnt, cnt->builtin_types->t_u8_ptr), "");
-
-                args[1] = cnt->llvm_const_i8_zero;
-                args[2] = LLVMConstInt(
-                    get_type(cnt, cnt->builtin_types->t_u64), type->store_size_bytes, false);
-
-                args[3] = LLVMConstInt(get_type(cnt, cnt->builtin_types->t_bool), 0, false);
-
-                LLVMBuildCall(cnt->llvm_builder, cnt->intrinsic_memset, args, ARRAY_SIZE(args), "");
-            }
-        } else {
-            cmp->base.llvm_value = LLVMConstNull(get_type(cnt, type));
-        }
-
-        // DONE!!!
-        return STATE_PASSED;
-    }
-
-    //**********************/
-    //* Generate constants */
-    //**********************/
-    if (is_global) {
-        switch (type->kind) {
-        case MIR_TYPE_ARRAY: {
-            const usize len            = type->data.array.len;
-            LLVMTypeRef llvm_elem_type = get_type(cnt, type->data.array.elem_type);
-            BL_ASSERT(len && llvm_elem_type);
-
-            TSmallArray_LLVMValue llvm_elems;
-            tsa_init(&llvm_elems);
-
-            MirInstr *it;
-            TSA_FOREACH(cmp->values, it)
-            {
-                LLVMValueRef llvm_elem = it->llvm_value;
-                BL_ASSERT(LLVMIsConstant(llvm_elem) && "Expected constant!");
-                tsa_push_LLVMValue(&llvm_elems, llvm_elem);
-            }
-
-            cmp->base.llvm_value =
-                LLVMConstArray(llvm_elem_type, llvm_elems.data, (unsigned int)len);
-
-            tsa_terminate(&llvm_elems);
-            break;
-        }
-
-        case MIR_TYPE_STRING: {
-            const u32   len = MIR_CEV_READ_AS(const u32, &cmp->values->data[0]->value);
-            const char *str = MIR_CEV_READ_AS(const char *, &cmp->values->data[1]->value);
-
-            cmp->base.llvm_value = emit_const_string(cnt, str, len);
-            break;
-        }
-
-        case MIR_TYPE_DYNARR:
-        case MIR_TYPE_SLICE:
-        case MIR_TYPE_VARGS:
-        case MIR_TYPE_STRUCT: {
-            TSmallArray_LLVMValue llvm_members;
-            tsa_init(&llvm_members);
-
-            MirInstr *it;
-            TSA_FOREACH(cmp->values, it)
-            {
-                LLVMValueRef llvm_member = it->llvm_value;
-                BL_ASSERT(LLVMIsConstant(llvm_member) && "Expected constant!");
-                tsa_push_LLVMValue(&llvm_members, llvm_member);
-            }
-
-            cmp->base.llvm_value = LLVMConstNamedStruct(
-                get_type(cnt, type), llvm_members.data, (u32)cmp->values->size);
-
-            tsa_terminate(&llvm_members);
-            break;
-        }
-
-        default: {
-            BL_ASSERT(cmp->values->size == 1 && "Expected only one compound initializer value!");
-
-            LLVMValueRef llvm_value = cmp->values->data[0]->llvm_value;
-            BL_ASSERT(LLVMIsConstant(llvm_value) && "Expected constant!");
-            cmp->base.llvm_value = llvm_value;
-        }
-        }
-
+        cmp->base.llvm_value = _emit_instr_compound_zero_initialized(cnt, NULL, cmp);
         BL_ASSERT(cmp->base.llvm_value);
-        if (llvm_tmp) {
-            LLVMBuildStore(cnt->llvm_builder, cmp->base.llvm_value, llvm_tmp);
-        }
-
-        // DONE!!!
-        return STATE_PASSED;
+        return cmp->base.llvm_value;
     }
 
-    //**************************/
-    //* Generate non-constants */
-    //**************************/
-    BL_ASSERT(llvm_tmp && "Missing temp storage for compound value!");
+    MirType *type = cmp->base.value.type;
+    BL_ASSERT(type);
+    switch (type->kind) {
+    case MIR_TYPE_ARRAY: {
+        const usize len            = type->data.array.len;
+        LLVMTypeRef llvm_elem_type = get_type(cnt, type->data.array.elem_type);
+        BL_ASSERT(len && llvm_elem_type);
+        TSmallArray_LLVMValue llvm_elems;
+        tsa_init(&llvm_elems);
+        MirInstr *it;
+        TSA_FOREACH(cmp->values, it)
+        {
+            EMIT_NESTED_COMPOUND_IF_NEEDED(cnt, it);
+            LLVMValueRef llvm_elem = it->llvm_value;
+            BL_ASSERT(LLVMIsConstant(llvm_elem) && "Expected constant!");
+            tsa_push_LLVMValue(&llvm_elems, llvm_elem);
+        }
+        cmp->base.llvm_value = LLVMConstArray(llvm_elem_type, llvm_elems.data, (unsigned int)len);
+        tsa_terminate(&llvm_elems);
+        break;
+    }
+
+    case MIR_TYPE_STRING: {
+        const u32   len      = MIR_CEV_READ_AS(const u32, &cmp->values->data[0]->value);
+        const char *str      = MIR_CEV_READ_AS(const char *, &cmp->values->data[1]->value);
+        cmp->base.llvm_value = emit_const_string(cnt, str, len);
+        break;
+    }
+
+    case MIR_TYPE_DYNARR:
+    case MIR_TYPE_SLICE:
+    case MIR_TYPE_VARGS:
+    case MIR_TYPE_STRUCT: {
+        TSmallArray_LLVMValue llvm_members;
+        tsa_init(&llvm_members);
+        MirInstr *it;
+        TSA_FOREACH(cmp->values, it)
+        {
+            EMIT_NESTED_COMPOUND_IF_NEEDED(cnt, it);
+            LLVMValueRef llvm_member = it->llvm_value;
+            BL_ASSERT(LLVMIsConstant(llvm_member) && "Expected constant!");
+            tsa_push_LLVMValue(&llvm_members, llvm_member);
+        }
+        cmp->base.llvm_value =
+            LLVMConstNamedStruct(get_type(cnt, type), llvm_members.data, (u32)cmp->values->size);
+        tsa_terminate(&llvm_members);
+        break;
+    }
+
+    default: {
+        BL_ASSERT(cmp->values->size == 1 && "Expected only one compound initializer value!");
+        MirInstr *it = cmp->values->data[0];
+        EMIT_NESTED_COMPOUND_IF_NEEDED(cnt, it);
+        LLVMValueRef llvm_value = it->llvm_value;
+        BL_ASSERT(LLVMIsConstant(llvm_value) && "Expected constant!");
+        cmp->base.llvm_value = llvm_value;
+    }
+    }
+
+    BL_ASSERT(cmp->base.llvm_value);
+    return cmp->base.llvm_value;
+}
+
+void emit_instr_compound(Context *cnt, LLVMValueRef llvm_dest, MirInstrCompound *cmp)
+{
+    BL_ASSERT(llvm_dest && "Missing temp storage for compound value!");
+    if (cmp->is_zero_initialized) {
+        // Set tmp variable to zero.
+        _emit_instr_compound_zero_initialized(cnt, llvm_dest, cmp);
+        return;
+    }
+
+    if (mir_is_comptime(&cmp->base)) {
+        LLVMValueRef llvm_value = _emit_instr_compound_comptime(cnt, cmp);
+        BL_ASSERT(llvm_value);
+        LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_dest);
+        return;
+    }
+
+    MirType *type = cmp->base.value.type;
+    BL_ASSERT(type);
 
     TSmallArray_InstrPtr *values = cmp->values;
     MirInstr *            value;
     LLVMValueRef          llvm_value;
     LLVMValueRef          llvm_indices[2];
-    LLVMValueRef          llvm_value_dest = llvm_tmp;
-
-    llvm_indices[0] = cnt->llvm_const_i64_zero;
-
+    LLVMValueRef          llvm_value_dest = llvm_dest;
+    llvm_indices[0]                       = cnt->llvm_const_i64_zero;
     TSA_FOREACH(values, value)
     {
         switch (type->kind) {
         case MIR_TYPE_ARRAY:
             llvm_indices[1] = LLVMConstInt(get_type(cnt, cnt->builtin_types->t_s64), i, true);
             llvm_value_dest = LLVMBuildGEP(
-                cnt->llvm_builder, llvm_tmp, llvm_indices, TARRAY_SIZE(llvm_indices), "");
+                cnt->llvm_builder, llvm_dest, llvm_indices, TARRAY_SIZE(llvm_indices), "");
             break;
 
         case MIR_TYPE_DYNARR:
@@ -2156,30 +2172,25 @@ State emit_instr_compound(Context *cnt, LLVMValueRef _llvm_tmp, MirInstrCompound
         case MIR_TYPE_SLICE:
         case MIR_TYPE_VARGS:
         case MIR_TYPE_STRUCT:
-            llvm_value_dest = LLVMBuildStructGEP(cnt->llvm_builder, llvm_tmp, (unsigned int)i, "");
+            llvm_value_dest = LLVMBuildStructGEP(cnt->llvm_builder, llvm_dest, (unsigned int)i, "");
             break;
 
         default:
             BL_ASSERT(i == 0)
-            llvm_value_dest = llvm_tmp;
+            llvm_value_dest = llvm_dest;
             break;
         }
-#if 1
-        if (!value->llvm_value) {
-            // We generate non-naked compound constant containing other nested compounds.
-            BL_ASSERT(value->kind == MIR_INSTR_COMPOUND && "Expected compount expression!");
+
+        if (value->kind == MIR_INSTR_COMPOUND) {
             MirInstrCompound *nested_cmp = (MirInstrCompound *)value;
-            const State       state      = emit_instr_compound(cnt, NULL, nested_cmp);
-            BL_ASSERT(state == STATE_PASSED);
+            BL_ASSERT(!nested_cmp->is_naked && "Directly nested compounds cannot be naked!");
+            emit_instr_compound(cnt, llvm_value_dest, nested_cmp);
+        } else {
+            llvm_value = value->llvm_value;
+            BL_ASSERT(llvm_value && "Missing LLVM value for nested compound expression member.");
+            LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
         }
-#endif
-        llvm_value = value->llvm_value;
-        BL_ASSERT(llvm_value && "Missing LLVM value for nested compound constant expression.");
-        LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_value_dest);
     }
-    BL_ASSERT(llvm_value_dest && "Invalid LLVM destination value!")
-    cmp->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, "");
-    return STATE_PASSED;
 }
 
 State emit_instr_binop(Context *cnt, MirInstrBinop *binop)
@@ -2479,9 +2490,13 @@ State emit_instr_set_initializer(Context UNUSED(*cnt), MirInstrSetInitializer *s
     if (var->ref_count == 0) return STATE_PASSED;
 #endif
     BL_ASSERT(var->llvm_value);
-    BL_ASSERT(si->src->llvm_value);
-
-    LLVMSetInitializer(var->llvm_value, si->src->llvm_value);
+    LLVMValueRef llvm_init_value = si->src->llvm_value;
+    if (!llvm_init_value) {
+        BL_ASSERT(si->src->kind == MIR_INSTR_COMPOUND);
+        llvm_init_value = emit_instr_compound_global(cnt, (MirInstrCompound *)si->src);
+    }
+    BL_ASSERT(llvm_init_value);
+    LLVMSetInitializer(var->llvm_value, llvm_init_value);
     return STATE_PASSED;
 }
 
@@ -2496,13 +2511,14 @@ State emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     // Skip when we should not generate LLVM representation
     if (!mir_type_has_llvm_representation(var->value.type)) return STATE_PASSED;
     if (var->is_global) {
+        // Global variables use set-initializer instruction for initialization.
         emit_global_var_proto(cnt, var);
 
         if (cnt->debug_mode) {
             emit_DI_instr_loc(cnt, &decl->base);
             emit_DI_var(cnt, var);
         }
-    } else {
+    } else { // local variable
         BL_ASSERT(var->llvm_value);
 
         // generate DI for debug build
@@ -2903,17 +2919,14 @@ void emit_incomplete(Context *cnt)
 void emit_allocas(Context *cnt, MirFn *fn)
 {
     BL_ASSERT(fn);
-
     const char *var_name;
     LLVMTypeRef var_type;
     unsigned    var_alignment;
     MirVar *    var;
-
     TARRAY_FOREACH(MirVar *, fn->variables, var)
     {
         BL_ASSERT(var);
         if (!var->emit_llvm) continue;
-
 #if NAMED_VARS
         var_name = var->linkage_name;
 #else
@@ -2921,9 +2934,7 @@ void emit_allocas(Context *cnt, MirFn *fn)
 #endif
         var_type      = get_type(cnt, var->value.type);
         var_alignment = (unsigned int)var->value.type->alignment;
-
         BL_ASSERT(var_type);
-
         var->llvm_value = LLVMBuildAlloca(cnt->llvm_builder, var_type, var_name);
         LLVMSetAlignment(var->llvm_value, var_alignment);
     }
@@ -3054,7 +3065,7 @@ State emit_instr(Context *cnt, MirInstr *instr)
     case MIR_INSTR_COMPOUND: {
         MirInstrCompound *cmp = (MirInstrCompound *)instr;
         if (!cmp->is_naked) break;
-        state = emit_instr_compound(cnt, NULL, cmp);
+        state = emit_instr_compound_naked(cnt, cmp);
         break;
     }
     case MIR_INSTR_TOANY:

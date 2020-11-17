@@ -878,6 +878,8 @@ static INLINE bool mir_is_global_block(const MirInstrBlock *instr)
 // Determinates if the instruction is in the global block.
 static INLINE bool mir_is_global(const MirInstr *instr)
 {
+    // Instructions without owner block lives in global scope.
+    if (!instr->owner_block) return true;
     return mir_is_global_block(instr->owner_block);
 }
 

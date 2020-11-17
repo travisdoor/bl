@@ -27,6 +27,7 @@
 //************************************************************************************************
 
 #load "std/print.bl"
+#load "libc.bl"
 
 /*!
 string
@@ -1095,10 +1096,6 @@ string_sub :: fn (s: string, start: s64, len : s64 = -1) string #inline {
     if len == 0 { return string_empty; }
     return {:string: len, &s[start]};
 }
-
-// Some legacy C string libc apis.
-c_strlen :: fn (str: *c_char) c_size_t #extern "strlen";
-c_strcmp :: fn (first: *c_char, second: *c_char) c_int #extern "strcmp";
 
 #private
 STRING_BLOCK_SIZE :: 64 - sizeof(BlockHead);

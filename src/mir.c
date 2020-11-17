@@ -808,30 +808,6 @@ static INLINE bool can_mutate_comptime_to_const(MirInstr *instr)
 // @INCOMPLETE
 // @INCOMPLETE
 
-// Sets naked value for compound instruction and all its nested compounds in values.
-#if 1
-static INLINE void instr_compound_set_naked(MirInstr *cmp, bool is_naked)
-{
-    BL_ASSERT(cmp->kind == MIR_INSTR_COMPOUND);
-    TSmallArray_InstrPtr stack;
-    tsa_init(&stack);
-    tsa_push_InstrPtr(&stack, cmp);
-    MirInstrCompound *current;
-    while ((current = (MirInstrCompound *)tsa_pop_InstrPtr(&stack))) {
-        MirInstr *value;
-        TSA_FOREACH(current->values, value)
-        {
-            if (value->kind != MIR_INSTR_COMPOUND) continue;
-            tsa_push_InstrPtr(&stack, value);
-        }
-        current->is_naked = is_naked;
-    }
-    tsa_terminate(&stack);
-}
-#else
-#define instr_compound_set_naked(cmp, v) (((MirInstrCompound *)(cmp))->is_naked = (v))
-#endif
-
 // Get struct base type if there is one.
 static INLINE MirType *get_base_type(const MirType *struct_type)
 {
@@ -3178,9 +3154,7 @@ MirInstr *create_default_value_for_type(Context *cnt, MirType *type, bool is_glo
         // Use zero initialized compound.
         MirInstrCompound *compound =
             (MirInstrCompound *)create_instr_compound_impl(cnt, NULL, type, NULL);
-        // Global initializers should be naked for some reason and I don't remember why,
-        // someone should double check this in future.
-        compound->is_naked               = is_global;
+        compound->is_naked               = false;
         compound->is_zero_initialized    = true;
         compound->base.value.is_comptime = true;
         default_value                    = &compound->base;
@@ -3479,7 +3453,7 @@ MirInstr *append_instr_decl_var(Context * cnt,
     }
 
     if (init && init->kind == MIR_INSTR_COMPOUND) {
-        instr_compound_set_naked(init, false);
+        ((MirInstrCompound *)init)->is_naked = false;
     }
     return &tmp->base;
 }
@@ -3498,7 +3472,7 @@ MirInstr *create_instr_decl_var_impl(Context *   cnt,
     tmp->init            = ref_instr(init);
     tmp->var             = create_var_impl(cnt, name, NULL, is_mutable, is_global, false);
     if (init && init->kind == MIR_INSTR_COMPOUND) {
-        instr_compound_set_naked(init, false);
+        ((MirInstrCompound *)init)->is_naked = false;
     }
     return &tmp->base;
 }
@@ -4454,9 +4428,7 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
         // Generate default value based on type!
         MirType *type = var->value.type;
         BL_ASSERT(type && "Missing variable initializer type for default global initializer!");
-
         MirInstr *default_init = create_default_value_for_type(cnt, type, true);
-
         insert_instr_before(&si->base, default_init);
         ANALYZE_INSTR_RQ(default_init);
         si->src = default_init;
@@ -4476,6 +4448,7 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
                     "Global variables must be initialized with compile time known value.");
         return ANALYZE_RESULT(FAILED, 0);
     }
+    if (si->src->kind == MIR_INSTR_COMPOUND) ((MirInstrCompound *)si->src)->is_naked = false;
 
     // Initializer value is guaranteed to be comptime so we just check variable muttablility.
     // (mutable variables cannot be comptime)
@@ -4799,10 +4772,8 @@ AnalyzeResult analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
     MirInstr *src = addrof->src;
     BL_ASSERT(src);
     if (!src->analyzed) return ANALYZE_RESULT(POSTPONE, 0);
-
     const MirValueAddressMode src_addr_mode = src->value.addr_mode;
-
-    const bool can_grab_address =
+    const bool                can_grab_address =
         (src_addr_mode == MIR_VAM_LVALUE || src_addr_mode == MIR_VAM_LVALUE_CONST ||
          src->value.type->kind == MIR_TYPE_FN);
 
@@ -4821,17 +4792,14 @@ AnalyzeResult analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
     if (src->value.type->kind == MIR_TYPE_FN) {
         MirFn *fn = MIR_CEV_READ_AS(MirFn *, &src->value);
         BL_MAGIC_ASSERT(fn);
-
         // NOTE: Here we increase function ref count.
         ++fn->ref_count;
-
         type = create_type_ptr(cnt, src->value.type);
     } else {
         type = src->value.type;
     }
-
     addrof->base.value.type        = type;
-    addrof->base.value.is_comptime = addrof->src->value.is_comptime;
+    addrof->base.value.is_comptime = addrof->src->value.is_comptime && mir_is_global(addrof->src);
     addrof->base.value.addr_mode   = MIR_VAM_RVALUE;
     BL_ASSERT(addrof->base.value.type && "invalid type");
     return ANALYZE_RESULT(PASSED, 0);
@@ -6440,7 +6408,7 @@ AnalyzeResult analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     bool has_initializer = decl->init;
     if (has_initializer) {
         if (decl->init->kind == MIR_INSTR_COMPOUND) {
-            instr_compound_set_naked(decl->init, false);
+            ((MirInstrCompound *)decl->init)->is_naked = false;
         }
 
         // Resolve variable intializer. Here we use analyze_slot_initializer call to
@@ -6874,6 +6842,13 @@ AnalyzeResult analyze_instr_store(Context *cnt, MirInstrStore *store)
         return ANALYZE_RESULT(FAILED, 0);
     }
 
+#if BL_DEBUG
+    // If store instruction source value is compound expression it should not be naked.
+    if (store->src->kind == MIR_INSTR_COMPOUND) {
+        BL_ASSERT(!((MirInstrCompound *)store->src)->is_naked);
+    }
+#endif
+
     return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -7136,7 +7111,7 @@ ANALYZE_STAGE_FN(arrtoslice)
         tsa_push_InstrPtr(values, instr_ptr);
 
         MirInstr *compound = create_instr_compound_impl(cnt, NULL, slot_type, values);
-        instr_compound_set_naked(compound, !is_initializer);
+        ((MirInstrCompound *)compound)->is_naked = !is_initializer;
         ref_instr(compound);
 
         insert_instr_after(*input, compound);
@@ -8388,7 +8363,7 @@ void ast_stmt_return(Context *cnt, Ast *ret)
             }
             MirInstr *ref = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
             if (value->kind == MIR_INSTR_COMPOUND) {
-                instr_compound_set_naked(value, false);
+                ((MirInstrCompound *)value)->is_naked = false;
             }
             append_instr_store(cnt, ret, value, ref);
         } else if (value) {
@@ -8442,6 +8417,10 @@ MirInstr *ast_expr_compound(Context *cnt, Ast *cmp)
         value     = ast(cnt, ast_value);
         BL_ASSERT(value);
         values->data[i] = value;
+        if (value->kind == MIR_INSTR_COMPOUND) {
+            // Direct nested compound cannot be naked!
+            ((MirInstrCompound *)value)->is_naked = false;
+        }
     }
     return append_instr_compound(cnt, cmp, type, values, is_multiple_return_value);
 }
@@ -8818,7 +8797,7 @@ MirInstr *ast_expr_binop(Context *cnt, Ast *binop)
         // temp storage for it, we can just copy compound content directly into
         // variable, so we set it here as non-naked.
         if (rhs->kind == MIR_INSTR_COMPOUND) {
-            instr_compound_set_naked(rhs, false);
+            ((MirInstrCompound *)rhs)->is_naked = false;
         }
 
         return append_instr_store(cnt, binop, rhs, lhs);
