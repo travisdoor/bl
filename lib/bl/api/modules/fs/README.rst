@@ -223,7 +223,34 @@ Arguments
 Result
 ------
 Content of the file and status :ref:`FSError`. Returned slice must be released by :ref:`slice_terminate` call
-in case there is no error reported.
+in case there is no error reported. When error occured returned slice is zero initialized and should not be
+released.
+
+----
+
+.. _fs_file_size:
+
+fs_file_size
+============
+
+Declaration
+-----------
+
+::
+
+    fs_file_size :: fn (handle: FSFile) (usize, FSError) #inline
+
+Description
+-----------
+Return size of opened file in bytes.
+ 
+Arguments
+---------
+* `handle` File handle.
+
+Result
+------
+Content size of the file and status :ref:`FSError`. 
 
 ----
 

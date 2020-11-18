@@ -1,8 +1,8 @@
 #private
 compound_arrays :: fn () #test {
     validate :: fn (v: [2]s32, i: s32, j: s32) {
-        assert(v[0] == i);
-        assert(v[1] == j);
+        test_eq(v[0], i);
+        test_eq(v[1], j);
     };
 
     // Var initializers
@@ -42,8 +42,8 @@ compound_structs :: fn () #test {
     };
 
     validate :: fn (v: Foo, i: s32, j: s32) {
-        assert(v.i == i);
-        assert(v.j == j);
+        test_eq(v.i, i);
+        test_eq(v.j, j);
     };
 
     { // zero initialized
@@ -79,13 +79,13 @@ compound_fundamentals :: fn () #test {
     Days :: enum { MON; };
     
     i := 10;
-    assert({:s32: 10} == 10);
-    assert({:s32: i} == i);
-    assert({:s32: 0} == 0);
+    test_eq({:s32: 10},  10);
+    test_eq({:s32: i}, i);
+    test_eq({:s32: 0}, 0);
 
     b := true;
-    assert({:bool: true} == true);
-    assert({:bool: b} == b);
+    test_true({:bool: true});
+    test_true({:bool: b});
 
     num     :: {:s32: 10};
     real    :: {:f32: 0.5f};
@@ -93,11 +93,11 @@ compound_fundamentals :: fn () #test {
     ptr     : *s32 : {:*s32: &num};
     day     :: {:Days: Days.MON};
 
-    assert(num == 10);
-    assert(real == 0.5f);
-    assert(boolean == true);
-    assert(ptr == &num);
-    assert(day == Days.MON);
+    test_eq(num, 10);
+    test_eq(real, 0.5f);
+    test_true(boolean);
+    test_true(ptr == &num);
+    test_true(day == Days.MON);
 };
 
 compound_composition :: fn () #test {
@@ -105,5 +105,35 @@ compound_composition :: fn () #test {
     T :: struct { slice: []u8; int: s32 };
     v :: {:T: {:[]u8: 0}, get()};
     test_eq(v.int, 30);    
-    test_eq(v.slice.len, 30);
+    test_eq(v.slice.len, 0);
+}
+
+T1 :: struct { i: s64; j: s64 }
+T2 :: struct { a: T1;  b: T1  }
+
+g1 :: {:T2: {:T1: 10, 20}, {:T1: 30, 40}};
+g2 :: {:T2: {:T1: 0}, {:T1: 30, 40}};
+g3 :: {:T2: {:T1: 10, 20}, {:T1: 0}};
+g4 :: {:T2: {:T1: 0}, {:T1: 0}};
+
+compound_comptime_composition :: fn () #test {
+    test_eq(g1.a.i, 10);
+    test_eq(g1.a.j, 20);    
+    test_eq(g1.b.i, 30);    
+    test_eq(g1.b.j, 40);
+    
+    test_eq(g2.a.i, 0);
+    test_eq(g2.a.j, 0);
+    test_eq(g2.b.i, 30);
+    test_eq(g2.b.j, 40);
+
+    test_eq(g3.a.i, 10);
+    test_eq(g3.a.j, 20);
+    test_eq(g3.b.i, 0);
+    test_eq(g3.b.j, 0);
+    
+    test_eq(g4.a.i, 0);
+    test_eq(g4.a.j, 0);
+    test_eq(g4.b.i, 0);
+    test_eq(g4.b.j, 0);
 }

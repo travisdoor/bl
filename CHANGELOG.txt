@@ -1,7 +1,10 @@
 0.7.2 - BETA
 ---------------------------------------------------------------------------------------
 Migration to LLVM 11.
+Add multiple return values and group declarations.
 Add debug allocator.
+Add new FileSystem module.
+Add #import directive for modules.
 Support custom allocators in containers.
 Compiler now returns numerical maximum error code if compilation fail.
 Add BL Doctor for better unit testing.

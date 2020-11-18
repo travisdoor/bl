@@ -395,7 +395,7 @@ static MirInstr *create_instr_compound(Context *             cnt,
 static MirInstr *
 create_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values);
 
-static MirInstr *create_default_value_for_type(Context *cnt, MirType *type, bool is_global);
+static MirInstr *create_default_value_for_type(Context *cnt, MirType *type);
 static MirInstr *create_instr_elem_ptr(Context *cnt, Ast *node, MirInstr *arr_ptr, MirInstr *index);
 static MirInstr *create_instr_type_info(Context *cnt, Ast *node, MirInstr *expr);
 static MirInstr *create_instr_member_ptr(Context *        cnt,
@@ -3113,7 +3113,7 @@ append_instr_compound_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_I
     return tmp;
 }
 
-MirInstr *create_default_value_for_type(Context *cnt, MirType *type, bool is_global)
+MirInstr *create_default_value_for_type(Context *cnt, MirType *type)
 {
     // Default initializer is only zero initialized compound expression known in compile time,
     // this is universal for every type.
@@ -4428,7 +4428,7 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
         // Generate default value based on type!
         MirType *type = var->value.type;
         BL_ASSERT(type && "Missing variable initializer type for default global initializer!");
-        MirInstr *default_init = create_default_value_for_type(cnt, type, true);
+        MirInstr *default_init = create_default_value_for_type(cnt, type);
         insert_instr_before(&si->base, default_init);
         ANALYZE_INSTR_RQ(default_init);
         si->src = default_init;
@@ -6437,7 +6437,7 @@ AnalyzeResult analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     } else if (IS_NOT_FLAG(var->flags, FLAG_NO_INIT)) {
         // Create default initilializer for locals without explicit initialization.
         MirType * type         = var->value.type;
-        MirInstr *default_init = create_default_value_for_type(cnt, type, false);
+        MirInstr *default_init = create_default_value_for_type(cnt, type);
         insert_instr_before(&decl->base, default_init);
         ANALYZE_INSTR_RQ(default_init);
         decl->init = default_init;

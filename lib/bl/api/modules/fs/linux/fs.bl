@@ -7,7 +7,7 @@
 #load "../shared.bl"
 
 FSFile :: s64;
-FSFileInvalid : FSFile : -1;
+FS_FILE_INVALID : FSFile : -1;
 
 fs_exist :: fn (filepath: string) bool #inline {
     if filepath.len == 0 { return false; }

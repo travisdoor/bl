@@ -9,7 +9,7 @@
 // is_path_valid
 
 FSFile :: *u8;
-FSFileInvalid : FSFile : null;
+FS_FILE_INVALID : FSFile : null;
 
 fs_exist :: fn (filepath: string) bool #inline {
     if filepath.len == 0 { return false; }
@@ -48,35 +48,73 @@ fs_file_close :: fn (handle: FSFile) #inline {
     _CloseHandle(handle);
 }
 
-fs_file_read :: fn (handle: FSFile) (string, FSError) {
-    size: WIN32_LARGE_INTEGER #noinit;
-    if _GetFileSizeEx(auto handle, &size) == 0 {
-        return string_empty, error();                
+fs_file_read_string :: fn (handle: FSFile) (string, FSError) {
+    size, err :: fs_file_size(handle);
+    if err != FSError.OK {
+        return string_empty, err;
     }
     buf := string_new(cast(usize) size);
-    if _ReadFile(handle, buf.ptr, auto size, null, null) == 0 {
+    read, err2 :: fs_file_read(handle, buf.ptr, auto size);
+    if err2 != FSError.OK {
         string_delete(buf);
-        return string_empty, error();                
+        return string_empty, err2;                
     }
-    buf.len = size;
+    buf.len = auto read;
     return buf, FSError.OK;
 }
 
-// @DOC
 fs_file_read_slice :: fn (handle: FSFile) ([]u8, FSError) {
-    size: WIN32_LARGE_INTEGER #noinit;
     invalid: []u8;
-    if _GetFileSizeEx(auto handle, &size) == 0 {
-        return invalid, error();                
+    size, err :: fs_file_size(handle);
+    if err != FSError.OK {
+        return invalid, err;
     }
     buf: []u8;
-    slice_init(buf, size);
-    if _ReadFile(handle, buf.ptr, auto size, null, null) == 0 {
+    slice_init(buf, auto size);
+    read, err2 :: fs_file_read(handle, buf.ptr, auto size);
+    if err2 != FSError.OK {
         slice_terminate(buf);
-        return invalid, error();                
+        return invalid, err2;                
     }
-    buf.len = size;
+    buf.len = read;
     return buf, FSError.OK;
+}
+
+fs_file_size :: fn (handle: FSFile) (usize, FSError) #inline {
+    size: WIN32_LARGE_INTEGER #noinit;
+    if _GetFileSizeEx(auto handle, &size) == 0 {
+        return 0, error();                
+    }
+    return auto size, FSError.OK;
+}
+
+// @DOC
+fs_file_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, FSError) {
+    if !dest { return 0, FSError.InvalidHandle; }
+    read_bytes: WIN32_DWORD #noinit;
+    if _ReadFile(handle, dest, auto size, &read_bytes, null) == 0 {
+        return 0, error();                
+    }
+    return auto read_bytes, FSError.OK;
+}
+
+// @DOC
+fs_file_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, FSError) {
+    if !src { return 0, FSError.InvalidHandle; }
+    written_bytes: WIN32_DWORD #noinit;
+    if _WriteFile(handle, src, auto size, &written_bytes, null) == 0 {
+        return 0, error();
+    }
+    return auto written_bytes, FSError.OK;
+}
+
+// @DOC
+fs_file_write_string :: fn (handle: FSFile, str: string) FSError {
+    return FSError.Unknown;
+}
+
+fs_file_write_slice :: fn (handle: FSFile, v: []u8) FSError {
+    return FSError.Unknown;
 }
 
 fs_validate_filename :: fn (name: string) bool {
@@ -215,3 +253,4 @@ _DeleteFileA :: fn (lpFileName: WIN32_LPCSTR) WIN32_BOOL #extern "DeleteFileA";
 _GetCurrentDirectoryA :: fn (nBufferLength: WIN32_DWORD, lpBuffer: WIN32_LPSTR) WIN32_DWORD #extern "GetCurrentDirectoryA";
 _GetFileSizeEx :: fn (hFile: WIN32_HANDLE, lpFileSize: WIN32_PLARGE_INTEGER) WIN32_BOOL #extern "GetFileSizeEx";
 _ReadFile :: fn (hFile: WIN32_HANDLE, lpBuffer: WIN32_LPVOID, nNumberOfBytesToRead: WIN32_DWORD, lpNumberOfBytesRead: WIN32_LPDWORD, lpOverlapped: WIN32_LPOVERLAPPED) WIN32_BOOL #extern "ReadFile";
+_WriteFile :: fn (hFile: WIN32_HANDLE, lpBuffer: WIN32_LPVOID, nNumberOfBytesToWrite: WIN32_DWORD, lpNumberOfBytesWritten: WIN32_LPDWORD, lpOverlapped: WIN32_LPOVERLAPPED) WIN32_BOOL #extern "WriteFile";
