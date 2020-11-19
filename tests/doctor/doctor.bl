@@ -1,6 +1,18 @@
 #load "std/dir.bl"
 #load "std/file.bl"
 
+BL_EXE_PATH_WIN  :: "..\\bin\\blc.exe";
+BL_EXE_PATH_UNIX :: "../bin/blc";
+
+// paths
+MAIN_TEST_SUITE_FILEPATH :: "src/main.test.bl";
+EXAMPLES_DIR :: "../examples";
+EXPECT_FAIL_DIR :: "src/expect_fail";
+
+HARDCODED_MODULES :: {:[1]string:
+                      "../lib/bl/api/modules/fs/fs.test.bl"
+                     };
+
 main :: fn () s32 {
     if !parse_args() { return 1; }
     init_wdir();
@@ -24,6 +36,15 @@ main :: fn () s32 {
         defer string_delete(file);
         test_file(file, TestKind.Runtime);
         test_file(file, TestKind.Test);
+    }
+
+    // modules
+    print("Test modules:\n");    
+    loop i := 0; i < HARDCODED_MODULES.len; i += 1 {
+        file :: get_path(HARDCODED_MODULES[i]);
+        defer string_delete(file);
+        test_file(file, TestKind.Runtime);
+        //test_file(file, TestKind.Test);
     }
     
     // examples
@@ -53,14 +74,6 @@ main :: fn () s32 {
 }
 
 #private
-BL_EXE_PATH_WIN  :: "..\\bin\\blc.exe";
-BL_EXE_PATH_UNIX :: "../bin/blc";
-
-// paths
-MAIN_TEST_SUITE_FILEPATH :: "src/main.test.bl";
-EXAMPLES_DIR :: "../examples";
-EXPECT_FAIL_DIR :: "src/expect_fail";
-
 TestKind :: enum {
     Runtime;
     CompileTime;

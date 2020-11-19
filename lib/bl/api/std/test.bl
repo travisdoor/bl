@@ -201,6 +201,69 @@ test_not_null :: fn (ptr: *u8, loc := #call_location) {
 }
 
 /*!
+test_ok
+=======
+
+Declaration
+-----------
+::
+
+    test_ok :: fn (err: Error, loc := #call_location) #inline
+
+Description
+-----------
+Test whether `err` is OK.
+
+Arguments
+---------
+* `err` Error to be checked.
+* `loc` Optional call side location.
+*/
+test_ok :: fn (err: Error, loc := #call_location) #inline {
+    if is_ok(err) { return; }
+    print_err("Expected to be OK not '%'.", err);
+    assert(false, loc);
+}
+
+/*!
+test_is_error
+=============
+
+Declaration
+-----------
+::
+
+    test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) #inline
+
+Description
+-----------
+Test whether `got_err` code is `expected_code`.
+
+Arguments
+---------
+* `got_err` Error to be checked.
+* `expected_code` Expected error code.
+* `loc` Optional call side location.
+*/
+test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) #inline {
+    if is_error(got_err, expected_code) { return; }
+    if got_err {
+        print_err(
+            "\n"
+            "Unexpected error:    '%'\n"
+            "Expected error code: '%'\n"
+            "Got:                 '%'.", got_err, expected_code, got_err.code);
+    } else {
+        print_err(
+            "\n"
+            "Unexpected error:    null\n"
+            "Expected error code: '%'\n"
+            "Got:                 null.", expected_code);
+    } 
+    assert(false, loc);
+}
+
+/*!
 test_run
 ========
 

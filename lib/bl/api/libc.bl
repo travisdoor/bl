@@ -39,3 +39,4 @@ c_free :: fn (ptr: c_void_ptr) #extern "free";
 c_strlen :: fn (str: *c_char) c_size_t #extern "strlen";
 c_strcmp :: fn (first: *c_char, second: *c_char) c_int #extern "strcmp";
 c_wcslen :: fn (str: *u16) usize #extern "wcslen";
+c_strerror :: fn (errnum: c_int) *c_char #extern "strerror";

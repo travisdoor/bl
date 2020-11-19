@@ -563,11 +563,15 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
     } else if any.type_info.kind == TypeKind.Ptr {
         if any.type_info == typeinfo(Error) {
             // Error
-            str := ^ cast(**string) any.data;
-            if !str {
+            err := ^ cast(**_Error) any.data;
+            if !err {
                 return print_string(buf, cur, "null");
             }
-            return print_string(buf, cur, ^str);
+
+            cur = print_string(buf, cur, "Error [");
+            cur = print_u64(buf, cur, auto err.code, FmtIntBase.Dec, 1);
+            cur = print_string(buf, cur, "] ");
+            return print_string(buf, cur, err.msg);
         } else {
             // Pointer
             ptr := ^ cast(*u64) any.data;

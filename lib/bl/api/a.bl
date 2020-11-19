@@ -770,66 +770,6 @@ Contains all arguments passed from command line. First argument is executable na
 */
 command_line_arguments: []string;
 
-/*!
-Error
-=====
-
-Declaration
------------
-::
-
-    Error :: *string;
-
-Description
------------
-Specify simple error type used across the BL API as pointer to string error message. Error can 
-be directly printed by :ref:`print` function even without dereference of actual value. There is 
-special error value :ref:`OK` used to to indicate that there is no error.
-
-Example of custom error handling:
-::
-
-    ERR_OOPS :: &_ERR_OOPS;
-    _ERR_OOPS :: "My custom error message.";
-
-    is_zero :: fn (i: s32) (s32, Error) {
-        if i == 0 { return i, OK; }
-        return i, ERR_OOPS;
-    }
-
-    main :: fn () s32 {
-        i, err :: is_zero(10);
-        if err != OK { 
-            print("%\n", err); 
-        } else { 
-            print("Success!\n");
-        }
-        return 0;
-    }
-
-
-
-*/
-Error :: *string;
-
-/*!
-OK
-==
-
-Declaration
------------
-::
-
-    OK : Error : &_OK;
-
-Description
------------
-Reserved error value indicating valid state. (no error)
-*/
-OK : Error : &_OK;
-
-#private
-_OK :: "OK";
 
 
 

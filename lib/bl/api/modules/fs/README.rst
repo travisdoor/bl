@@ -16,6 +16,17 @@ File system module for manipulation with files and directories.
 
 ----
 
+.. _FSFile:
+
+FSFile
+======
+
+Description
+-----------
+File handle type.
+
+----
+
 .. _FSFileOpenMode:
 
 FSFileOpenMode
@@ -42,42 +53,6 @@ Variants
 
 ----
 
-.. _FSError:
-
-FSError
-=======
-
-Declaration
------------
-
-::
-
-    FSError :: enum {
-        OK;
-        InvalidInput;
-        NotFound;
-        AlreadyExist;
-        AccessDenied;
-        InvalidHandle;
-        Unknown;
-    }
-
-Description
------------
-Specify all possible errors in module.
-
-Variants
---------
-* `OK` No error.
-* `InvalidInput` Function input is invalid.
-* `NotFound` File or directory not found.
-* `AlreadyExist` File or directory already exist.
-* `AccessDenied` File or directory cannot be manipulated.
-* `InvalidHandle` Given file handle is invalid. 
-* `Unknown` All other unspecified errors.
-
-----
-
 .. _fs_file_open:
 
 fs_file_open
@@ -87,11 +62,11 @@ Declaration
 -----------
 ::
 
-    fs_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, FSError)
+    fs_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error)
 
 Description
 -----------
-Open an existing file specified by `filepath`. Function return file handle and `FSError.OK` status code
+Open an existing file specified by `filepath`. Function return file handle and `OK` status code
 when file was openned, otherwise return `null` and proper error code. File must be closed by :ref:`fs_close` call.
  
 Arguments
@@ -101,17 +76,19 @@ Arguments
 
 Result
 ------
-File handle and status code :ref:`FSError`.
+File handle and status code :ref:`Error`.
 
 Example
 -------
 
 .. code-block:: c
 
+    #import "fs"
+
     main :: fn () s32 {
         file, err :: fs_file_open(#file);
         defer fs_file_close(file);
-        if err != FSError.OK {
+        if err != OK {
             print_err("Cannot open file!");
 	    return 1;
 	}
@@ -129,11 +106,11 @@ Declaration
 -----------
 ::
 
-    fs_file_create :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, FSError)
+    fs_file_create :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error)
 
 Description
 -----------
-Create new file specified by `filepath`. Return file `handle` and `FSError.OK` status code when
+Create new file specified by `filepath`. Return file `handle` and `OK` status code when
 file was created, otherwise only status code is returned. File must be closed by :ref:`fs_close` call.
  
 Arguments
@@ -143,7 +120,29 @@ Arguments
 
 Result
 ------
-File handle and status code :ref:`FSError`.
+File handle and status code :ref:`Error`.
+
+----
+
+.. _fs_close:
+
+fs_file_close
+=============
+
+Declaration
+-----------
+
+::
+
+    fs_file_close :: fn (handle: FSFile) #inline
+
+Description
+-----------
+Close opened file.
+ 
+Arguments
+---------
+* `handle` File handle.
 
 ----
 
@@ -183,7 +182,36 @@ Declaration
 
 ::
 
-    fs_file_read :: fn (handle: FSFile) (string, FSError) {
+    fs_file_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error)
+
+Description
+-----------
+Load file content into the `dest` buffer with maximum `size` specified. Fails with `ERR_INVALID_HANDLE`
+when `dest` is `null`.
+ 
+Arguments
+---------
+* `handle` File handle.
+* `dest` Destination buffer.
+* `size` Maximum size to read.
+
+Result
+------
+Count of bytes filled in destination buffer when status is :ref:`OK`.
+
+----
+
+.. _fs_file_read_string:
+
+fs_file_read_string
+===================
+
+Declaration
+-----------
+
+::
+
+    fs_file_read_string :: fn (handle: FSFile) (string, Error) 
 
 Description
 -----------
@@ -195,8 +223,42 @@ Arguments
 
 Result
 ------
-String content of file and status :ref:`FSError`. Returned string must be released by :ref:`string_delete` call
-in case there is no error reported.
+Return new `string` instance when status is :ref:`OK`. String must be released by :ref:`string_delete` call only
+in case there is no error reported by function.
+
+Example
+-------
+
+::
+
+    #import "fs"
+
+    main :: fn () s32 {
+        // Open this file.
+        file, open_err :: fs_file_open(#file, FSFileOpenMode.Read);
+
+        // Always check for errors.
+        if open_err != OK {
+            panic("Cannot open file with error: '%'!", open_err);
+        }
+        // Close file at the end of scope.
+        defer fs_file_close(file);
+
+        // Read it's content.
+        content, read_err :: fs_file_read_string(file);
+
+        // Check for errors.
+        if read_err != OK {
+            panic("Cannot read file with error: '%'!", read_err);
+        }
+        // Delete content string at the end of scope.
+        defer string_delete(content);
+
+        // Print file content to stdout.
+        print("%\n", content);
+        return 0;
+    }
+
 
 ----
 
@@ -210,7 +272,7 @@ Declaration
 
 ::
 
-    fs_file_read_slice :: fn (handle: FSFile) ([]u8, FSError)
+    fs_file_read_slice :: fn (handle: FSFile) ([]u8, Error)
 
 Description
 -----------
@@ -222,7 +284,7 @@ Arguments
 
 Result
 ------
-Content of the file and status :ref:`FSError`. Returned slice must be released by :ref:`slice_terminate` call
+Content of the file and status :ref:`Error`. Returned slice must be released by :ref:`slice_terminate` call
 in case there is no error reported. When error occured returned slice is zero initialized and should not be
 released.
 
@@ -238,7 +300,7 @@ Declaration
 
 ::
 
-    fs_file_size :: fn (handle: FSFile) (usize, FSError) #inline
+    fs_file_size :: fn (handle: FSFile) (usize, Error) #inline
 
 Description
 -----------
@@ -250,13 +312,13 @@ Arguments
 
 Result
 ------
-Content size of the file and status :ref:`FSError`. 
+Content size of the file and status :ref:`Error`. 
 
 ----
 
-.. _fs_close:
+.. _fs_write:
 
-fs_file_close
+fs_file_write
 =============
 
 Declaration
@@ -264,15 +326,75 @@ Declaration
 
 ::
 
-    fs_file_close :: fn (handle: FSFile) #inline
+    fs_file_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) 
 
 Description
 -----------
-Close opened file.
+Write `size` bytes of `src` buffer content into the file specified by `handle`.
  
 Arguments
 ---------
-* `handle` File handle.
+* `handle` Valid file handle open for writing.
+* `src` Pointer to source buffer.
+* `size` Size of bytes to be written from the buffer (maximum is buffer size).
+
+Result
+------
+Number of successfuly written bytes when there is no error.
+
+----
+
+.. _fs_write_string:
+
+fs_file_write_string
+====================
+
+Declaration
+-----------
+
+::
+
+    fs_file_write_string :: fn (handle: FSFile, str: string) (s64, Error)
+
+Description
+-----------
+Write content of `str` string into file specified by `handle`.
+ 
+Arguments
+---------
+* `handle` Valid file handle open for writing.
+* `str` String to be written.
+
+Result
+------
+Number of successfuly written bytes when there is no error.
+
+----
+
+.. _fs_write_slice:
+
+fs_file_write_slice
+===================
+
+Declaration
+-----------
+
+::
+
+    fs_file_write_slice :: fn (handle: FSFile, v: []u8) (s64, Error)
+
+Description
+-----------
+Write content of `v` slice into file specified by `handle`.
+ 
+Arguments
+---------
+* `handle` Valid file handle open for writing.
+* `str` String to be written.
+
+Result
+------
+Number of successfuly written bytes when there is no error.
 
 ----
 
@@ -298,27 +420,6 @@ Arguments
 Result
 ------
 True when file of directory exists.
-
-----
-
-.. _fs_home:
-
-fs_home
-=======
-
-Declaration
------------
-::
-
-    fs_home :: fn () string #inline
-
-Description
------------
-Get path to `home` directory. Use :ref:`string_delete` to delete result string.
- 
-Result
-------
-Path to `home` directory or empty string.
 
 ----
 
@@ -348,6 +449,26 @@ Return `true` if name is valid file name on target platform.
 
 ----
 
+.. _fs_home:
+
+fs_home
+=======
+
+Declaration
+-----------
+::
+
+    fs_home :: fn () string #inline
+
+Description
+-----------
+Get path to `home` directory. Use :ref:`string_delete` to delete result string.
+ 
+Result
+------
+Path to `home` directory or empty string.
+
+----
 
 .. _fs_cwd:
 

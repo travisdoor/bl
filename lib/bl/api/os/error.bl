@@ -26,17 +26,53 @@
 // SOFTWARE.
 //************************************************************************************************
 
-ERR_UNKNOWN :: &_ERR_UNKNOWN;
-ERR_INVALID_INPUT :: &_ERR_INVALID_INPUT;
-ERR_NOT_FOUND :: &_ERR_NOT_FOUND;
-ERR_ALREADY_EXIST :: &_ERR_ALREADY_EXIST;
-ERR_ACCESS_DENIED :: &_ERR_ACCESS_DENIED;
-ERR_INVALID_HANDLE :: &_ERR_INVALID_HANDLE;
-    
+OK :: 0;
+ERR_UNKNOWN        :: 1;
+ERR_INVALID_INPUT  :: 2;
+ERR_NOT_FOUND      :: 3;
+ERR_ALREADY_EXIST  :: 4;
+ERR_ACCESS_DENIED  :: 5;
+ERR_INVALID_HANDLE :: 6;
+
+_Error :: struct {
+    msg: string;
+    code: s32;
+}
+
+Error :: *_Error;
+
+is_ok :: fn (err: Error) bool #inline {
+    if !err { return false; }
+    return err.code == 0;
+}
+
+is_error :: fn (err: Error, code: s32) bool #inline {
+    if !err { return false; }
+    return err.code == code;
+}
+
+ok :: fn () Error #inline {
+    return error3(0, "");
+}
+
+error :: fn {  error1; error2; error3; }
+
 #private
-_ERR_UNKNOWN :: "Unknown error.";
-_ERR_INVALID_INPUT :: "Invalid input.";
-_ERR_NOT_FOUND :: "Resource not found.";
-_ERR_ALREADY_EXIST :: "Resource already exist.";
-_ERR_ACCESS_DENIED :: "Access denied.";
-_ERR_INVALID_HANDLE :: "Invalid handle.";
+_last_error_msg_buffer: [1024]u8;
+_last_error: _Error;
+
+error1 :: fn (code: s32) Error #inline {
+    return error3(code, string_empty);
+}
+
+error2 :: fn (msg: string, args: ...) Error #inline {
+    return error3(ERR_UNKNOWN, msg, args);
+}
+
+error3 :: fn (code: s32, format: string, args: ...) Error {
+    e := &_last_error;
+    msg_size :: bprint(_last_error_msg_buffer, format, args);
+    e.code = code;
+    e.msg = {:string: msg_size, _last_error_msg_buffer.ptr};
+    return e;
+}

@@ -1,16 +1,14 @@
 // playground 
-
-Tuple :: struct {
-    i: s32;
-    j: *string;
-}
+#import "fs"
 
 main :: fn () s32 {
-    v :: {:Tuple: 10, FOO};    
-    //v;
+    file, err :: fs_file_open("root");
+    if is_ok(err) {
+        print("OK!\n");
+    } else {
+        print("%\n", err);
+    }
+    fs_file_close(file);
     return 0;
 }
-
-FOO :: &_FOO;
-_FOO :: "HELLO";
 

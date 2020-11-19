@@ -1,8 +1,196 @@
+#load "os/posix/unistd.bl"
+#load "os/posix/fcntl.bl"
+#load "libc.bl"
 #load "../shared.bl"
+
+// @INCOMPLETE
+// @INCOMPLETE
+// @INCOMPLETE
 
 FSFile :: s64;
 FS_FILE_INVALID : FSFile : -1;
 
-fs_test :: fn () {
-    print("Hello from macos!!!\n");
+fs_exist :: fn (filepath: string) bool #inline {
+    if filepath.len == 0 { return false; }
+    tmp: _Stat;
+    return _stat(auto filepath.ptr, &tmp) == 0;
+}
+
+fs_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
+    if string_is_empty(filepath) { return 0, ERR_INVALID_INPUT; }
+    flags := modes_to_flags(mode);
+    handle :: _open(auto filepath.ptr, flags, 0);
+    if handle == -1 { // error
+        return 0, os_get_last_error();
+    }    
+    return handle, OK;   
+}
+
+fs_file_create :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
+    if string_is_empty(filepath) { return 0, ERR_INVALID_INPUT; }
+    flags := modes_to_flags(mode) | _O_CREAT | _O_EXCL;
+    handle :: _open(auto filepath.ptr, flags, _S_IRUSR | _S_IWUSR | _S_IRGRP | _S_IWGRP | _S_IROTH | _S_IWOTH);
+    if handle == -1 { // error
+        return 0, os_get_last_error();
+    }    
+    return handle, OK;
+}
+
+fs_file_delete :: fn (filepath: string) bool #inline {
+    if string_is_empty(filepath) { return false; }
+    return _unlink(auto filepath.ptr) == 0;
+}
+
+fs_file_close :: fn (handle: FSFile) #inline {
+    _close(auto handle);
+}
+
+fs_file_size :: fn (handle: FSFile) (usize, Error) #inline {
+    tmp: _Stat;
+    if _fstat(auto handle, &tmp) != 0 {
+        return 0, os_get_last_error();
+    }
+    return auto tmp.st_size, OK;
+}
+
+fs_file_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) {
+    if !dest { return 0, ERR_INVALID_HANDLE; }
+    read :: _read(auto handle, auto dest, auto size);
+    if read < 0 { 
+        return 0, os_get_last_error();
+    }
+    return auto read, OK;
+}
+
+fs_file_read_string :: fn (handle: FSFile) (string, Error) {
+    size, err :: fs_file_size(handle);
+    if err != OK {
+        return string_empty, err;
+    }
+    buf := string_new(cast(usize) size);
+    read, err2 :: fs_file_read(handle, buf.ptr, auto size);
+    if err2 != OK {
+        string_delete(buf);
+        return string_empty, err2;                
+    }
+    buf.len = auto read;
+    return buf, OK;
+}
+
+fs_file_read_slice :: fn (handle: FSFile) ([]u8, Error) {
+    invalid: []u8;
+    size, err :: fs_file_size(handle);
+    if err != OK {
+        return invalid, err;
+    }
+    buf: []u8;
+    slice_init(buf, auto size);
+    read, err2 :: fs_file_read(handle, buf.ptr, auto size);
+    if err2 != OK {
+        slice_terminate(buf);
+        return invalid, err2;                
+    }
+    buf.len = read;
+    return buf, OK;
+}
+
+fs_file_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) {
+    if !src { return 0, ERR_INVALID_HANDLE; }
+    written :: _write(auto handle, auto src, auto size);
+    if written < 0 { 
+        return 0, os_get_last_error();
+    }
+    return auto written, OK;
+}
+
+fs_file_write_string :: fn (handle: FSFile, str: string) (s64, Error) {
+    written_bytes, err :: fs_file_write(handle, str.ptr, str.len);
+    if err != OK { return 0, err; }
+    return auto written_bytes, OK;    
+}
+
+fs_file_write_slice :: fn (handle: FSFile, v: []u8) (s64, Error) {
+    written_bytes, err :: fs_file_write(handle, v.ptr, v.len);
+    if err != OK { return 0, err; }
+    return auto written_bytes, OK;
+}
+
+fs_validate_filename :: fn (name: string) bool {
+    if name.len == 0 { return false; }
+    invalid :: "/";
+    loop i := 0; i < invalid.len; i += 1 {
+        if string_count(name, invalid[i]) > 0 { return false; }
+    }
+    return true;
+}
+
+fs_cwd :: fn () string #inline {
+    buf: [OS_PATH_MAX]u8;
+    if !_getcwd(auto buf.ptr, auto buf.len) { return string_new(); }
+    return string_new(buf.ptr);
+}
+
+fs_home :: fn () string #inline {
+    tmp :: "HOME";
+    cdir :: cast(*u8) c_getenv(auto tmp.ptr);
+    if !cdir { return string_new(); }
+    return string_new(cdir);
+}
+
+fs_tmp :: fn () string #inline {
+    tmp :: "TMPDIR";
+    cdir :: cast(*u8) c_getenv(auto tmp.ptr);
+    if !cdir { return string_new("/tmp"); }
+    return string_new(cdir);
+}
+
+fs_normalize :: fn (filepath: *string) bool {
+    buf : [OS_PATH_MAX]u8;
+    if !c_realpath(auto filepath.ptr, auto buf.ptr) {
+        return false;
+    }
+    string_clear(filepath);
+    string_append(filepath, cstr_to_str(buf.ptr));
+    return true;
+}
+
+fs_remove_extension :: fn (filename: string) string #inline {
+    if string_is_empty(filename) { return string_empty; }
+    tmp := filename;
+    tmp.len = 0;
+    loop i := 0; i < filename.len; i += 1 {
+        c :: filename[i];
+        if c == '.' && i > 0 { break; }
+        tmp.len += 1;
+    }
+    return tmp;
+}
+
+fs_get_extension :: fn (filename: string) string #inline {
+    if string_is_empty(filename) { return string_empty; }
+    if filename[0] == '.' {
+        if filename.len == 1 { return string_empty; }
+        filename.len -= 1; filename.ptr = &filename[1]; 
+    }
+    rhs: string;
+    if string_split_by_first(filename, '.', null, &rhs) {
+        return rhs;
+    }
+    return string_empty;
+}
+
+#private
+modes_to_flags :: fn (modes: []FSFileOpenMode) s32 #inline {
+    if modes.len == 0 { return _O_RDWR; }
+    r, w := false;
+    loop i := 0; i < modes.len; i += 1 {
+        switch modes[i] {
+            FSFileOpenMode.Read    { r = true; }
+            FSFileOpenMode.Write   { w = true; }
+            default { panic(); }
+        }
+    }
+    if w && (!r) { return _O_WRONLY; }
+    if r && (!w) { return _O_RDONLY; }
+    return _O_RDWR;
 }

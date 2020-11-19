@@ -1,0 +1,22 @@
+#private
+
+error_test1 :: fn () #test {
+    e := ok();
+    test_ok(e);
+
+    e =  error(666);
+    test_is_error(e, 666);
+    test_eq(e.msg, string_empty);
+
+    e =  error("Only msg");
+    test_is_error(e, ERR_UNKNOWN);
+    test_eq(e.msg, "Only msg");
+
+    e =  error(666, "Only msg");
+    test_is_error(e, 666);
+    test_eq(e.msg, "Only msg");
+
+    e =  error(666, "Only msg % %", 10, 20);
+    test_is_error(e, 666);
+    test_eq(e.msg, "Only msg 10 20");
+}

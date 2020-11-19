@@ -37,6 +37,7 @@
 #load "tags.test.bl"
 #load "os.test.bl"
 #load "inheritance.test.bl"
+#load "error.test.bl"
 /////////////////////////////////////////////////////
 
 main :: fn () s32 {
