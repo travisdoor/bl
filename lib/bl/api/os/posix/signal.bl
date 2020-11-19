@@ -5,5 +5,6 @@ _SIGILL  :: 4;
 _SIGTRAP :: 5;
 _SIGABRT :: 6;
 
-
+_Sighandler :: *fn (v: c_int);
 _raise :: fn (sig: c_int) c_int #extern "raise";
+_signal :: fn (signum: c_int, handler: _Sighandler) _Sighandler #extern "signal";

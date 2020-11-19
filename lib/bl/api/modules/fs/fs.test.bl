@@ -260,7 +260,7 @@ fs_file_size_test :: fn () #test {
     test_true(size > 0);
 }
 
-fs_file_read_buffer_test :: fn () #test {
+fs_file_read_test :: fn () #test {
     file :: fs_file_open(#file);
     defer fs_file_close(file);
     buf: [1042]u8 #noinit;
@@ -297,20 +297,22 @@ fs_file_write_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer string_delete(filepath);
     fs_file_delete(filepath);
-    defer fs_file_delete(filepath);
-    file :: fs_file_create(filepath);
-    defer fs_file_close(file);
-
     content :: "Hello I'm cool file content!";    
+    
     { // write
+        file :: fs_file_create(filepath);
         written, err :: fs_file_write(file, content.ptr, content.len);
         test_true(err == FSError.OK);
         test_eq(written, content.len);
+        fs_file_close(file);
     }
     { // read
+        file :: fs_file_open(filepath);
         tmp, err :: fs_file_read_string(file);
         test_true(err == FSError.OK);
         defer string_delete(tmp);
         test_eq(tmp, content);
+        fs_file_close(file);
     }
+    fs_file_delete(filepath);
 }

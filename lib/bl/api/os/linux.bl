@@ -273,7 +273,7 @@ _os_debug_break :: fn () #inline {
 }
 
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
-    return _write(fd, auto buf, count);
+    return auto _write(auto fd, auto buf, count);
 };
 
 __os_abort :: fn () #compiler {

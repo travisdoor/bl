@@ -1,3 +1,17 @@
+_S_IRUSR	 :: 0x100;
+_S_IWUSR	 :: 0x80;
+_S_IXUSR	 :: 0x40;
+_S_IRWXU	 :: (_S_IRUSR|_S_IWUSR|_S_IXUSR);
+_S_IRGRP :: _S_IRUSR >> 3;
+_S_IWGRP :: _S_IWUSR >> 3;
+_S_IXGRP :: _S_IXUSR >> 3;
+_S_IRWXG :: _S_IRWXU >> 3;
+_S_IROTH :: _S_IRGRP >> 3;
+_S_IWOTH :: _S_IWGRP >> 3;
+_S_IXOTH :: _S_IXGRP >> 3;
+_S_IRWXO :: _S_IRWXG >> 3;
+
+
 _Stat :: struct {
     st_dev: u64;
     st_ino: u64;

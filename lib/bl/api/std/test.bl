@@ -29,6 +29,7 @@
 #load "std/debug.bl"
 #load "std/string.bl"
 #load "std/array.bl"
+#load "os/posix/signal.bl"
 
 /*!
 test_eq
@@ -244,9 +245,12 @@ Example
 
 */
 test_run :: fn () s32 {
+    sighup :: fn (v: c_int) {};
+    _signal(_SIGHUP, &sighup);
+
     cases :: testcases();
     if cases.len == 0 { return 0; }
-
+        
     print("\n");
     prev_abort_handler :: _context.abort_fn;
     defer _context.abort_fn = prev_abort_handler;
