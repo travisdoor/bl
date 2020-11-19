@@ -29,15 +29,16 @@
 #load "os/linux/stat.bl"
 #load "os/posix/signal.bl"
 #load "os/posix/unistd.bl"
+#load "error.bl"
 #load "libc.bl"
 #load "std/string.bl"
 
 OS_KIND :: OSKind.Linux;
 OS_NAME :: "Linux";
 
-OS_STDIN  :: 0;
-OS_STDOUT :: 1;
-OS_STDERR :: 2;
+OS_STDIN  :: C_STDIN;
+OS_STDOUT :: C_STDOUT;
+OS_STDERR :: C_STDERR;
 
 OS_PATH_MAX :: 1024;
 
@@ -162,6 +163,20 @@ os_dlclose :: fn (lib: OSLibrary) #inline {
 os_execute :: fn (command: string) s32 {
     return WEXITSTATUS(c_system(auto command.ptr));
 }
+
+os_get_last_error :: fn (native_code: *s32 = null) FSError #inline {
+    ec :: _errno();
+    if native_code { ^native_code = ec; }
+    switch ec {
+        0       { return OK; }
+        _ENOENT { return ERR_NOT_FOUND; }
+        _EEXIST { return ERR_ALREADY_EXIST; }
+        _EACCES { return ERR_ACCESS_DENIED; }
+        _EBADF  { return ERR_INVALID_HANDLE; }
+        default { return ERR_UNKNOWN; }
+    }
+}
+
 
 // CLEANUP: This must be in gl.bl file not here, but we keep it
 // until static 'if' will be supported by compiler.

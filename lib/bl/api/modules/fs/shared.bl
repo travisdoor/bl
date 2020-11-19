@@ -1,13 +1,3 @@
-FSError :: enum {
-    OK;
-    InvalidInput;
-    NotFound;
-    AlreadyExist;
-    AccessDenied;
-    InvalidHandle;    
-    Unknown;
-}
-
 FSFileOpenMode :: enum {
     Read;
     Write;

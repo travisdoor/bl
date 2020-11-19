@@ -1,14 +1,16 @@
 // playground 
 
-get :: fn () s32 {
-    return 30;
+Tuple :: struct {
+    i: s32;
+    j: *string;
 }
 
-func :: fn () ([]u8, s32) {
-    return {:[]u8: 0}, get();
-}
-
-main :: fn () s32 { 
-    func();    
+main :: fn () s32 {
+    v :: {:Tuple: 10, FOO};    
+    //v;
     return 0;
 }
+
+FOO :: &_FOO;
+_FOO :: "HELLO";
+

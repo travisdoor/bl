@@ -15,24 +15,24 @@ fs_exist :: fn (filepath: string) bool #inline {
     return _stat(auto filepath.ptr, &tmp) == 0;
 }
 
-fs_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, FSError) {
-    if string_is_empty(filepath) { return 0, FSError.InvalidInput; }
+fs_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
+    if string_is_empty(filepath) { return 0, ERR_INVALID_INPUT; }
     flags := modes_to_flags(mode);
     handle :: _open(auto filepath.ptr, flags, 0);
     if handle == -1 { // error
-        return 0, error();
+        return 0, os_get_last_error();
     }    
-    return handle, FSError.OK;   
+    return handle, OK;   
 }
 
-fs_file_create :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, FSError) {
-    if string_is_empty(filepath) { return 0, FSError.InvalidInput; }
+fs_file_create :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
+    if string_is_empty(filepath) { return 0, ERR_INVALID_INPUT; }
     flags := modes_to_flags(mode) | _O_CREAT | _O_EXCL;
     handle :: _open(auto filepath.ptr, flags, _S_IRUSR | _S_IWUSR | _S_IRGRP | _S_IWGRP | _S_IROTH | _S_IWOTH);
     if handle == -1 { // error
-        return 0, error();
+        return 0, os_get_last_error();
     }    
-    return handle, FSError.OK;
+    return handle, OK;
 }
 
 fs_file_delete :: fn (filepath: string) bool #inline {
@@ -44,71 +44,70 @@ fs_file_close :: fn (handle: FSFile) #inline {
     _close(auto handle);
 }
 
-fs_file_size :: fn (handle: FSFile) (usize, FSError) #inline {
+fs_file_size :: fn (handle: FSFile) (usize, Error) #inline {
     tmp: _Stat;
     if _fstat(auto handle, &tmp) != 0 {
-        return 0, error();
+        return 0, os_get_last_error();
     }
-    return auto tmp.st_size, FSError.OK;
+    return auto tmp.st_size, OK;
 }
 
-fs_file_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, FSError) {
-    if !dest { return 0, FSError.InvalidHandle; }
+fs_file_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) {
+    if !dest { return 0, ERR_INVALID_HANDLE; }
     read :: _read(auto handle, auto dest, auto size);
     if read < 0 { 
-        return 0, error();
+        return 0, os_get_last_error();
     }
-    return auto read, FSError.OK;
+    return auto read, OK;
 }
 
-fs_file_read_string :: fn (handle: FSFile) (string, FSError) {
+fs_file_read_string :: fn (handle: FSFile) (string, Error) {
     size, err :: fs_file_size(handle);
-    if err != FSError.OK {
+    if err != OK {
         return string_empty, err;
     }
     buf := string_new(cast(usize) size);
     read, err2 :: fs_file_read(handle, buf.ptr, auto size);
-    if err2 != FSError.OK {
+    if err2 != OK {
         string_delete(buf);
         return string_empty, err2;                
     }
     buf.len = auto read;
-    return buf, FSError.OK;
+    return buf, OK;
 }
 
-fs_file_read_slice :: fn (handle: FSFile) ([]u8, FSError) {
+fs_file_read_slice :: fn (handle: FSFile) ([]u8, Error) {
     invalid: []u8;
     size, err :: fs_file_size(handle);
-    if err != FSError.OK {
+    if err != OK {
         return invalid, err;
     }
     buf: []u8;
     slice_init(buf, auto size);
     read, err2 :: fs_file_read(handle, buf.ptr, auto size);
-    if err2 != FSError.OK {
+    if err2 != OK {
         slice_terminate(buf);
         return invalid, err2;                
     }
     buf.len = read;
-    return buf, FSError.OK;
+    return buf, OK;
 }
 
-fs_file_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, FSError) {
-    if !src { return 0, FSError.InvalidHandle; }
+fs_file_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) {
+    if !src { return 0, ERR_INVALID_HANDLE; }
     written :: _write(auto handle, auto src, auto size);
     if written < 0 { 
-        return 0, error();
+        return 0, os_get_last_error();
     }
-    return auto written, FSError.OK;
+    return auto written, OK;
 }
 
-// @DOC
-fs_file_write_string :: fn (handle: FSFile, str: string) FSError {
-    return FSError.Unknown;
+fs_file_write_string :: fn (handle: FSFile, str: string) Error {
+    return ERR_UNKNOWN;
 }
 
-fs_file_write_slice :: fn (handle: FSFile, v: []u8) FSError {
-    return FSError.Unknown;
+fs_file_write_slice :: fn (handle: FSFile, v: []u8) Error {
+    return ERR_UNKNOWN;
 }
 
 fs_validate_filename :: fn (name: string) bool {
@@ -190,16 +189,3 @@ modes_to_flags :: fn (modes: []FSFileOpenMode) s32 #inline {
     if r && (!w) { return _O_RDONLY; }
     return _O_RDWR;
 }
-
-error :: fn () FSError #inline {
-    ec :: _errno();
-    switch ec {
-        0       { return FSError.OK;            }
-        _ENOENT { return FSError.NotFound;      }
-        _EEXIST { return FSError.AlreadyExist;  }
-        _EACCES { return FSError.AccessDenied;  }
-        _EBADF  { return FSError.InvalidHandle; }
-        default { return FSError.Unknown; }
-    }
-}
-

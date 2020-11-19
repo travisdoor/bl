@@ -26,16 +26,20 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#load "windows/winapi.bl"
+#load "windows/io.bl"
+#load "posix/signal.bl"
+#load "libc.bl"
+#load "error.bl"
 #load "std/string.bl"
 #load "std/utils.bl"
-#load "windows_api.bl"
 
 OS_KIND :: OSKind.Windows;
 OS_NAME :: "Windows";
 
-OS_STDIN  :: 0;
-OS_STDOUT :: 1;
-OS_STDERR :: 2;
+OS_STDIN  :: C_STDIN;
+OS_STDOUT :: C_STDOUT;
+OS_STDERR :: C_STDERR;
 
 /*
  * Platform depend C types compatible with C ABI.
@@ -52,11 +56,12 @@ c_longlong  :: s64;
 c_ulonglong :: u64;
 c_void_ptr  :: *u8;
 c_size_t    :: u64;
+c_ssize_t   :: s64;
 
 /*
  * Maximum path size in bytes.
  */
-OS_PATH_MAX :: WIN32_MAX_PATH;
+OS_PATH_MAX :: _MAX_PATH;
 
 /*
  * OSLibrary
@@ -67,8 +72,8 @@ OS_PATH_MAX :: WIN32_MAX_PATH;
 OSLibrary :: *u8;
 
 // Threading
-OSThread :: WIN32_HANDLE;
-OSMutex :: WIN32_HANDLE;
+OSThread :: _HANDLE;
+OSMutex :: _HANDLE;
 OSThreadEntryFn :: *fn (args: []Any);
 
 os_thread_create :: fn (entry: OSThreadEntryFn, args: ...) OSThread {
@@ -76,36 +81,36 @@ os_thread_create :: fn (entry: OSThreadEntryFn, args: ...) OSThread {
     tmp.entry = entry;
     tmp.args = {:[]Any: args.len, args.ptr};
 
-    thread :: win32_CreateThread(null, 0, &thread_entry, auto tmp, 0, null);
+    thread :: _CreateThread(null, 0, &thread_entry, auto tmp, 0, null);
 
     return thread;
 }
 
 os_thread_join :: fn (thread: OSThread) {
-    win32_WaitForSingleObject(thread, WIN32_INFINITE);
-    win32_CloseHandle(thread);
+    _WaitForSingleObject(thread, _INFINITE);
+    _CloseHandle(thread);
 }
 
 // @MULTIPLATFORM: implement this for linux!!!
 os_thread_current :: fn () OSThread #inline {
-    return win32_GetCurrentThread();
+    return _GetCurrentThread();
 }
 
 // @MULTIPLATFORM: implement this for linux!!!
 os_thread_kill :: fn (thread: OSThread, exit_code: s32 = 0) bool #inline {
-    return win32_TerminateThread(thread, auto exit_code) > 1;
+    return _TerminateThread(thread, auto exit_code) > 1;
 }
 
 os_mutex_init :: fn (mutex: *OSMutex) #inline {
-    (^mutex) = win32_CreateMutexA(null, 0, null);
+    (^mutex) = _CreateMutexA(null, 0, null);
 }
 
 os_mutex_terminate :: fn (mutex: *OSMutex) #inline {
-    win32_CloseHandle(^mutex);
+    _CloseHandle(^mutex);
 }
 
 os_mutex_lock :: fn (mutex: *OSMutex) #inline {
-    win32_WaitForSingleObject(^mutex, WIN32_INFINITE);
+    _WaitForSingleObject(^mutex, _INFINITE);
 }
 
 os_mutex_trylock :: fn (mutex: *OSMutex) bool #inline {
@@ -114,28 +119,29 @@ os_mutex_trylock :: fn (mutex: *OSMutex) bool #inline {
 }
 
 os_mutex_unlock :: fn (mutex: *OSMutex) #inline {
-    if win32_ReleaseMutex(^mutex) == 0 {
+    if _ReleaseMutex(^mutex) == 0 {
         panic("Cannot unlock mutex!");
     }
 }
 
 os_sleep_ms :: fn (ms: f64) #inline {
-    win32_Sleep(auto ms);
+    _Sleep(auto ms);
 };
 
 os_tick_ms :: fn () f64 #inline {
-    f: WIN32_LARGE_INTEGER #noinit;
-    t: WIN32_LARGE_INTEGER #noinit;
+    f: _LARGE_INTEGER #noinit;
+    t: _LARGE_INTEGER #noinit;
 
-    if win32_QueryPerformanceFrequency(&f) == 0 { return 0.; }
-    if win32_QueryPerformanceCounter(&t) == 0 { return 0.; }
+    if _QueryPerformanceFrequency(&f) == 0 { return 0.; }
+    if _QueryPerformanceCounter(&t) == 0 { return 0.; }
     return (cast(f64) t / cast(f64) f) * 1000.;
 };
 
+// remove
 os_normalize_path :: fn (filepath: *string) bool {
     buf : [OS_PATH_MAX]u8 #noinit;
-    if win32_GetFullPathNameA(auto filepath.ptr, auto buf.len, buf.ptr, null) > 0 {
-        if win32_PathFileExistsA(auto filepath.ptr) == 0 { return false; }
+    if _GetFullPathNameA(auto filepath.ptr, auto buf.len, buf.ptr, null) > 0 {
+        if _PathFileExistsA(auto filepath.ptr) == 0 { return false; }
         string_clear(filepath);
         string_append(filepath, cstr_to_str(buf.ptr));
         string_replace_all(filepath, '\\', '/');
@@ -144,10 +150,11 @@ os_normalize_path :: fn (filepath: *string) bool {
     return false;
 }
 
+// remove
 os_get_real_path :: fn (filename: string) string {
     buf : [OS_PATH_MAX]u8 #noinit;
-    if win32_GetFullPathNameA(auto filename.ptr, auto buf.len, buf.ptr, null) > 0 {
-        if win32_PathFileExistsA(auto buf.ptr) == 0 { return string_new(filename); }
+    if _GetFullPathNameA(auto filename.ptr, auto buf.len, buf.ptr, null) > 0 {
+        if _PathFileExistsA(auto buf.ptr) == 0 { return string_new(filename); }
         result :: string_new(buf.ptr);
         string_replace_all(&result, '\\', '/');
         return result;
@@ -158,7 +165,7 @@ os_get_real_path :: fn (filename: string) string {
 
 os_get_exec_path :: fn () string {
     buf : [OS_PATH_MAX]u8 #noinit;
-    if win32_GetModuleFileNameA(null, buf.ptr, auto buf.len) > 0 {
+    if _GetModuleFileNameA(null, buf.ptr, auto buf.len) > 0 {
         result :: string_new(buf.ptr);
         string_replace_all(&result, '\\', '/');
         return result;
@@ -167,31 +174,45 @@ os_get_exec_path :: fn () string {
     return string_new(); 
 }
 
+// remove
 os_get_home_path :: fn () string {
     tmp :: "USERPROFILE";
-    cdir :: getenv(tmp.ptr);
+    cdir :: cast(*u8) c_getenv(auto tmp.ptr);
     if !cdir { return string_new(); }
     return string_new(cdir);
 }
 
 os_dlopen :: fn (lib_name := string_empty) OSLibrary {
     if lib_name.len > 0 {
-        return win32_LoadLibraryA(auto lib_name.ptr); 
+        return _LoadLibraryA(auto lib_name.ptr); 
     }
 
-    return win32_GetModuleHandleA(null); 
+    return _GetModuleHandleA(null); 
 }
 
 os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 {
-    return win32_GetProcAddress(lib, auto sym_name.ptr);
+    return _GetProcAddress(lib, auto sym_name.ptr);
 }
 
 os_dlclose :: fn (lib: OSLibrary) {
-    win32_FreeLibrary(lib);
+    _FreeLibrary(lib);
 }
 
 os_execute :: fn (command: string) s32 {
-    return system(auto command.ptr);
+    return c_system(auto command.ptr);
+}
+
+os_get_last_error :: fn (native_code: *s32 = null) Error {
+    ec :: _GetLastError();
+    if native_code { ^native_code = auto ec; }
+    switch ec {
+        0                     { return OK; }
+        _ERROR_FILE_NOT_FOUND { return ERR_NOT_FOUND; }
+        _ERROR_FILE_EXISTS    { return ERR_ALREADY_EXIST; }
+        _ERROR_ACCESS_DENIED  { return ERR_ACCESS_DENIED; }
+        _ERROR_INVALID_HANDLE { return ERR_INVALID_HANDLE; }
+        default { return ERR_UNKNOWN; }
+    }
 }
 
 _OSFileKind :: enum {
@@ -207,43 +228,43 @@ _OSFileInfo :: struct {
 _OSFileList :: []_OSFileInfo;
 
 _os_is_dir :: fn (dirpath: string) bool {
-    attributes :: win32_GetFileAttributesA(auto dirpath.ptr);
-    if attributes == WIN32_INVALID_FILE_ATTRIBUTES { return false; }
-    return is_flag_u32(attributes, auto WIN32_FILE_ATTRIBUTE_DIRECTORY);
+    attributes :: _GetFileAttributesA(auto dirpath.ptr);
+    if attributes == _INVALID_FILE_ATTRIBUTES { return false; }
+    return is_flag_u32(attributes, auto _FILE_ATTRIBUTE_DIRECTORY);
 }
 
 _os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
-    if dirpath.len > (WIN32_MAX_PATH-3) { panic("Path too long!"); }
+    if dirpath.len > (_MAX_PATH-3) { panic("Path too long!"); }
     tmp := string_new(dirpath);
     defer string_delete(tmp);
     string_append(&tmp, "\\*");
 
-    ffd: WIN32_FIND_DATA;
-    hFind := win32_FindFirstFile(auto tmp.ptr, &ffd);
-    if WIN32_INVALID_HANDLE_VALUE == hFind { return false; }
+    ffd: _FIND_DATA;
+    hFind := _FindFirstFile(auto tmp.ptr, &ffd);
+    if _INVALID_HANDLE_VALUE == hFind { return false; }
 
     fc := 0;
     loop {
         fc += 1;
-        if win32_FindNextFile(hFind, &ffd) == 0 { break; }
+        if _FindNextFile(hFind, &ffd) == 0 { break; }
     }
 
-    win32_FindClose(hFind);
+    _FindClose(hFind);
     (^out_buf).len = fc;
     if fc == 0 { return true; }
 
     (^out_buf).ptr = auto alloc(sizeof(_OSFileInfo) * auto fc);
 
-    hFind = win32_FindFirstFile(auto tmp.ptr, &ffd);
-    if WIN32_INVALID_HANDLE_VALUE == hFind { return false; }
-    defer win32_FindClose(hFind);
+    hFind = _FindFirstFile(auto tmp.ptr, &ffd);
+    if _INVALID_HANDLE_VALUE == hFind { return false; }
+    defer _FindClose(hFind);
 
     i := 0;
     loop {
         kind: _OSFileKind;
         name: string;
 
-        if is_flag_u32(ffd.dwFileAttributes, auto WIN32_FILE_ATTRIBUTE_DIRECTORY) {
+        if is_flag_u32(ffd.dwFileAttributes, auto _FILE_ATTRIBUTE_DIRECTORY) {
             kind = _OSFileKind.Directory;
             name = string_new(ffd.cFileName.ptr);
         } else {
@@ -254,20 +275,20 @@ _os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
         (^out_buf)[i] = {:_OSFileInfo: kind, name};
 
         i += 1;
-        if win32_FindNextFile(hFind, &ffd) == 0 { break; }
+        if _FindNextFile(hFind, &ffd) == 0 { break; }
     }
 
     return true;
 }
 
 _os_debug_break :: fn () #inline {
-    if win32_IsDebuggerPresent() != 0 {
-        win32_DebugBreak();
+    if _IsDebuggerPresent() != 0 {
+        _DebugBreak();
     }
 }
 
-__os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
-    return write(fd, buf, count);
+__os_write :: fn (fd: s32, buf: *u8, count: usize) s64 {
+    return _write(fd, auto buf, count);
 };
 
 __os_abort :: fn () #compiler {
@@ -280,7 +301,7 @@ __os_abort :: fn () #compiler {
 }
 
 _os_abort_default :: fn () {
-    raise(SIGABRT);
+    _raise(_SIGABRT);
 }
 
 __os_start :: fn () #entry {
@@ -292,7 +313,7 @@ __os_start :: fn () #entry {
 
     out :: cast(s32) main();
     _default_allocator(AllocOp.Free, 0, auto args.ptr); 
-    exit(out);
+    c_exit(out);
 }
 
 // @CLEANUP: This must be in gl.bl file not here, but we keep it
@@ -312,23 +333,6 @@ _os_gl_get_proc :: fn (proc_name: string) *u8 {
 
 
 #private
-
-SIGHUP  :: 1;
-SIGINT  :: 2;
-SIGQUIT :: 3; 
-SIGILL  :: 4; 
-SIGTRAP :: 5;
-SIGABRT :: 6;
-
-CP_UTF8 : u32 : 65001;
-// TODO: use _posix prefix for all of those...
-write :: fn (fd: s32, buf: *u8, count: usize) s32 #extern "_write";
-exit   :: fn (v: s32) #extern "_exit";
-system :: fn (command: *c_char) c_int #extern;
-wcslen :: fn (str: *u16) usize #extern;
-raise  :: fn (sig: s32) s32 #extern;
-getenv :: fn (name: *u8) *u8 #extern;
-
 /*
  * Get command-line arguments passed to this executable.
  * We need custom function here to convert UTF16 to UTF8,
@@ -340,9 +344,9 @@ getenv :: fn (name: *u8) *u8 #extern;
  */
 get_command_line_args :: fn (out_args: *[]string) #no_inline {
     wargs: []*u16;
-    cmd_line :: win32_GetCommandLineW();
-    wargs.ptr = win32_CommandLineToArgvW(cmd_line, auto &wargs.len);
-    defer win32_LocalFree(auto wargs.ptr);
+    cmd_line :: _GetCommandLineW();
+    wargs.ptr = _CommandLineToArgvW(cmd_line, auto &wargs.len);
+    defer _LocalFree(auto wargs.ptr);
 
     // Determinate size needed for all argument strings listed in one array including
     // zero terminator for each one.
@@ -350,7 +354,7 @@ get_command_line_args :: fn (out_args: *[]string) #no_inline {
     result_size: usize = sizeof(string) * auto wargs.len;
     
     loop i := 0; i < wargs.len; i += 1 {
-        tmp_size += auto win32_WideCharToMultiByte(CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
+        tmp_size += auto _WideCharToMultiByte(_CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
     }
 
     buffer :: _default_allocator(AllocOp.Allocate, result_size + tmp_size); 
@@ -362,8 +366,8 @@ get_command_line_args :: fn (out_args: *[]string) #no_inline {
 
     tmp_i := 0;
     loop i := 0; i < wargs.len; i += 1 {
-        len :: win32_WideCharToMultiByte(CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
-        win32_WideCharToMultiByte(CP_UTF8, null, wargs[i], auto wcslen(wargs[i]), &tmp[tmp_i], len, null, null); 
+        len :: _WideCharToMultiByte(_CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
+        _WideCharToMultiByte(_CP_UTF8, null, wargs[i], auto c_wcslen(wargs[i]), &tmp[tmp_i], len, null, null); 
         
         (^out_args)[i].len = len - 1;
         (^out_args)[i].ptr = &tmp[tmp_i];

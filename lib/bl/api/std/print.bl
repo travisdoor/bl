@@ -561,13 +561,21 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
         return print_string(buf, cur, "]");
 
     } else if any.type_info.kind == TypeKind.Ptr {
-        // Pointer
-        ptr := ^ cast(*u64) any.data;
-        if ptr == 0 {
-            return print_string(buf, cur, "null");
+        if any.type_info == typeinfo(Error) {
+            // Error
+            str := ^ cast(**string) any.data;
+            if !str {
+                return print_string(buf, cur, "null");
+            }
+            return print_string(buf, cur, ^str);
+        } else {
+            // Pointer
+            ptr := ^ cast(*u64) any.data;
+            if ptr == 0 {
+                return print_string(buf, cur, "null");
+            }
+            return print_u64(buf, cur, ptr, FmtIntBase.Hex, 1);
         }
-        return print_u64(buf, cur, ptr, FmtIntBase.Hex, 1);
-
     } else if any.type_info.kind == TypeKind.Bool {
         // Bool
         b := ^ cast(*bool) any.data;

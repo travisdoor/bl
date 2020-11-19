@@ -1,0 +1,2 @@
+_write :: fn (fd: c_int, buf: *c_char, count: c_size_t) c_ssize_t #extern "_write";
+_read :: fn (fd: c_int, buf: *c_char, count: c_size_t) c_ssize_t #extern "_read";

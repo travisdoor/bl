@@ -788,22 +788,16 @@ LLVMValueRef emit_const_string(Context *cnt, const char *str, usize len)
         MirType *str_type = mir_get_struct_elem_type(type, 1);
         llvm_str          = LLVMConstNull(get_type(cnt, str_type));
     }
-
-    MirType *    len_type = mir_get_struct_elem_type(type, 0);
-    MirType *    ptr_type = mir_get_struct_elem_type(type, 1);
-    LLVMValueRef llvm_len = LLVMConstInt(get_type(cnt, len_type), (u64)len, true);
-
+    MirType *             len_type = mir_get_struct_elem_type(type, 0);
+    MirType *             ptr_type = mir_get_struct_elem_type(type, 1);
+    LLVMValueRef          llvm_len = LLVMConstInt(get_type(cnt, len_type), (u64)len, true);
     TSmallArray_LLVMValue llvm_members;
     tsa_init(&llvm_members);
-
     tsa_push_LLVMValue(&llvm_members, llvm_len);
     tsa_push_LLVMValue(&llvm_members, LLVMConstBitCast(llvm_str, get_type(cnt, ptr_type)));
-
     LLVMValueRef llvm_result =
         LLVMConstNamedStruct(get_type(cnt, type), llvm_members.data, (u32)llvm_members.size);
-
     tsa_terminate(&llvm_members);
-
     return llvm_result;
 }
 
@@ -811,7 +805,6 @@ State emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
     ScopeEntry *entry = ref->scope_entry;
     BL_ASSERT(entry);
-
     switch (entry->kind) {
     case SCOPE_ENTRY_VAR: {
         MirVar *var = entry->data.var;
@@ -829,7 +822,6 @@ State emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     default:
         BL_UNIMPLEMENTED;
     }
-
     BL_ASSERT(ref->base.llvm_value);
     return STATE_PASSED;
 }
@@ -1726,7 +1718,6 @@ State emit_instr_cast(Context *cnt, MirInstrCast *cast)
         // equivalent.
         LLVMTypeRef  llvm_src_type = get_type(cnt, cast->expr->value.type);
         LLVMValueRef llvm_null     = LLVMConstNull(llvm_src_type);
-
         cast->base.llvm_value =
             LLVMBuildICmp(cnt->llvm_builder, LLVMIntNE, llvm_src, llvm_null, "");
         return STATE_PASSED;
@@ -1938,7 +1929,6 @@ State emit_instr_load(Context *cnt, MirInstrLoad *load)
         if (!is_initialized(llvm_src)) {
             return STATE_POSTPONE;
         }
-
         load->base.llvm_value = LLVMGetInitializer(llvm_src);
         return STATE_PASSED;
     }
@@ -2142,7 +2132,7 @@ void emit_instr_compound(Context *cnt, LLVMValueRef llvm_dest, MirInstrCompound 
         return;
     }
 
-    if (mir_is_comptime(&cmp->base)) {
+    if (mir_is_comptime(&cmp->base) && mir_is_global(&cmp->base)) {
         LLVMValueRef llvm_value = _emit_instr_compound_comptime(cnt, cmp);
         BL_ASSERT(llvm_value);
         LLVMBuildStore(cnt->llvm_builder, llvm_value, llvm_dest);
