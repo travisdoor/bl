@@ -1,3 +1,8 @@
+#load "../shared.bl"
+
+FSFile :: s64;
+FS_FILE_INVALID : FSFile : -1;
+
 fs_test :: fn () {
     print("Hello from macos!!!\n");
 }

@@ -2,4 +2,4 @@ FSFileOpenMode :: enum {
     Read;
     Write;
 }
-
+

@@ -41,7 +41,6 @@ OS_STDOUT :: C_STDOUT;
 OS_STDERR :: C_STDERR;
 
 OS_PATH_MAX :: 1024;
-
 OSLibrary :: *u8;
 
 c_char      :: s8;
@@ -164,7 +163,7 @@ os_execute :: fn (command: string) s32 {
     return WEXITSTATUS(c_system(auto command.ptr));
 }
 
-os_get_last_error :: fn (native_code: *s32 = null) FSError #inline {
+os_get_last_error :: fn (native_code: *s32 = null) Error #inline {
     ec :: _errno();
     if native_code { ^native_code = ec; }
     switch ec {

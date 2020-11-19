@@ -26,15 +26,24 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#load "macos/macosapi.bl"
+#load "macos/errno.bl"
+#load "posix/fcntl.bl"
+#load "posix/signal.bl"
+#load "posix/error.bl"
+#load "error.bl"
+#load "libc.bl"
 #load "std/string.bl"
-#load "macos_api.bl"
 
 OS_KIND :: OSKind.MacOS;
 OS_NAME :: "MacOS";
 
-OS_STDIN  :: 0;
-OS_STDOUT :: 1;
-OS_STDERR :: 2;
+OS_STDIN  :: C_STDIN;
+OS_STDOUT :: C_STDOUT;
+OS_STDERR :: C_STDERR;
+
+OS_PATH_MAX :: DARWIN_MAXPATHLEN;
+OSLibrary :: *u8;
 
 /*
  * Platform depend C types compatible with C ABI.
@@ -51,12 +60,7 @@ c_longlong  :: s64;
 c_ulonglong :: u64;
 c_void_ptr  :: *u8;
 c_size_t    :: u64;
-
-OS_PATH_MAX :: DARWIN_MAXPATHLEN;
-OS_PATH_DELIMITER_C :: '/';
-OS_PATH_DELIMITER_STR :: "/";
-
-OSLibrary :: *u8;
+c_ssize_t   :: s64;
 
 OSThread :: _PosixThread;
 OSMutex :: _PosixMutex;
@@ -131,7 +135,7 @@ os_sleep_ms :: fn (ms: f64) #inline {
 };
 
 os_tick_ms :: fn () f64 #inline {
-    t :: cast(f64) macOS_mach_absolute_time();
+    t :: cast(f64) _mach_absolute_time();
     return t * 0.00001;
 }
 
@@ -157,7 +161,7 @@ os_get_real_path :: fn (filename: string) string {
 os_get_exec_path :: fn () string {
     buf : [DARWIN_MAXPATHLEN]u8 #noinit;
     buf_len := cast(u32) buf.len;
-    if macOS_NSGetExecutablePath(auto buf.ptr, &buf_len) == -1 { return string_new(); }
+    if _NSGetExecutablePath(auto buf.ptr, &buf_len) == -1 { return string_new(); }
 
     return string_new(buf.ptr);
 }
@@ -186,6 +190,19 @@ os_dlclose :: fn (lib: OSLibrary) #inline {
 
 os_execute :: fn (command: string) s32 {
     return WEXITSTATUS(_posix_system(auto command.ptr));
+}
+
+os_get_last_error :: fn (native_code: *s32 = null) Error #inline {
+    ec :: _errno();
+    if native_code { ^native_code = ec; }
+    switch ec {
+        0       { return OK; }
+        _ENOENT { return ERR_NOT_FOUND; }
+        _EEXIST { return ERR_ALREADY_EXIST; }
+        _EACCES { return ERR_ACCESS_DENIED; }
+        _EBADF  { return ERR_INVALID_HANDLE; }
+        default { return ERR_UNKNOWN; }
+    }
 }
 
 // CLEANUP: This must be in gl.bl file not here, but we keep it
@@ -273,7 +290,7 @@ __os_abort :: fn () #compiler {
 }
 
 _os_abort_default :: fn () {
-    _posix_raise(SIGABRT);
+    _posix_raise(_SIGABRT);
 }
 
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
@@ -306,13 +323,6 @@ __os_start :: fn (argc: s64, argv: **u8, env: **u8) #entry {
 }
 
 #private
-
-SIGHUP  :: 1;
-SIGINT  :: 2;
-SIGQUIT :: 3; 
-SIGILL  :: 4; 
-SIGTRAP :: 5;
-SIGABRT :: 6;
 
 RTLD_LAZY   :: 0x1;
 RTLD_NOW    :: 0x2;
