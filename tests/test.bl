@@ -2,13 +2,17 @@
 #import "fs"
 
 main :: fn () s32 {
-    file, err :: fs_file_open("root");
+    file, err :: fs_file_open("/");
     if is_ok(err) {
         print("OK!\n");
     } else {
         print("%\n", err);
     }
     fs_file_close(file);
+
+    print("%\n", error("Foo!"));
+    print("%\n", error(-666, "Foo!"));
+    print("%\n", error(-2, "Cannot parse xml '%' [%:%]", "foo.xml", "parser.bl", 145));
     return 0;
 }
 

@@ -165,20 +165,12 @@ os_execute :: fn (command: string) s32 {
     return WEXITSTATUS(c_system(auto command.ptr));
 }
 
-os_get_last_error :: fn (native_code: *s32 = null) (s32, string) #inline {
+os_get_last_error :: fn () (s32, string) #inline {
     ec :: _errno();
     str := string_empty;
     c_str :: cast(*u8) c_strerror(ec);
     if c_str && ec != 0 { str = cstr_to_str(c_str); }
-    if native_code { ^native_code = ec; }
-    switch ec {
-        0       { return 0, str; }
-        _ENOENT { return ERR_NOT_FOUND, str; }
-        _EEXIST { return ERR_ALREADY_EXIST, str; }
-        _EACCES { return ERR_ACCESS_DENIED, str; }
-        _EBADF  { return ERR_INVALID_HANDLE, str; }
-        default { return ERR_UNKNOWN, str; }
-    }
+    return ec, str;
 }
 
 

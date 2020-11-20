@@ -27,12 +27,6 @@
 //************************************************************************************************
 
 OK :: 0;
-ERR_UNKNOWN        :: 1;
-ERR_INVALID_INPUT  :: 2;
-ERR_NOT_FOUND      :: 3;
-ERR_ALREADY_EXIST  :: 4;
-ERR_ACCESS_DENIED  :: 5;
-ERR_INVALID_HANDLE :: 6;
 
 _Error :: struct {
     msg: string;

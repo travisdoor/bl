@@ -45,7 +45,7 @@ fs_cwd_test :: fn () #test {
 fs_file_open_test :: fn () #test {
     {
         file, err :: fs_file_open("");
-        test_is_error(err, ERR_INVALID_INPUT);    
+        test_is_error(err, ERR_INVALID_HANDLE);    
     }
     
     {
@@ -68,7 +68,7 @@ fs_file_create_test :: fn () #test {
     
     {
         file, err :: fs_file_create("");
-        test_is_error(err, ERR_INVALID_INPUT);    
+        test_is_error(err, ERR_INVALID_HANDLE);    
     }
     
     {
@@ -280,7 +280,7 @@ fs_file_read_buffer_test3 :: fn () #test {
     file :: fs_file_open(#file);
     defer fs_file_close(file);
     bytes, err :: fs_file_read(file, null, 0);
-    test_is_error(err, ERR_INVALID_INPUT);
+    test_is_error(err, ERR_INVALID_HANDLE);
     test_eq(bytes, 0);
 }
 

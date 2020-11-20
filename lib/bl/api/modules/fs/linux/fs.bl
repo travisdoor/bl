@@ -14,23 +14,23 @@ fs_exist :: fn (filepath: string) bool #inline {
 }
 
 fs_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
-    if string_is_empty(filepath) { return 0, error(ERR_INVALID_INPUT, "File path is empty!"); }
+    if string_is_empty(filepath) { return 0, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     flags := modes_to_flags(mode);
     handle :: _open(auto filepath.ptr, flags, 0);
     if handle == -1 { // error
         ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot open file '%'! (%)", filepath, estr);
+        return 0, error(ec, "Cannot open file '%': %.", filepath, estr);
     }    
     return handle, ok();   
 }
 
 fs_file_create :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
-    if string_is_empty(filepath) { return 0, error(ERR_INVALID_INPUT, "File path is empty!"); }
+    if string_is_empty(filepath) { return 0, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     flags := modes_to_flags(mode) | _O_CREAT | _O_EXCL;
     handle :: _open(auto filepath.ptr, flags, _S_IRUSR | _S_IWUSR | _S_IRGRP | _S_IWGRP | _S_IROTH | _S_IWOTH);
     if handle == -1 { // error
         ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot create file '%'! (%)", filepath, estr);
+        return 0, error(ec, "Cannot create file '%': %.", filepath, estr);
     }    
     return handle, ok();
 }
@@ -48,17 +48,17 @@ fs_file_size :: fn (handle: FSFile) (usize, Error) #inline {
     tmp: _Stat;
     if _fstat(auto handle, &tmp) != 0 {
         ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot get file size! (%)", estr);
+        return 0, error(ec, "Cannot get file size: %.", estr);
     }
     return auto tmp.st_size, ok();
 }
 
 fs_file_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) {
-    if !dest { return 0, error(ERR_INVALID_INPUT, "Cannot read, destination is null!"); }
+    if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
     read :: _read(auto handle, auto dest, auto size);
     if read < 0 { 
         ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot read file! (%)", estr);
+        return 0, error(ec, "Cannot read file: %", estr);
     }
     return auto read, ok();
 }
@@ -96,11 +96,11 @@ fs_file_read_slice :: fn (handle: FSFile) ([]u8, Error) {
 }
 
 fs_file_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) {
-    if !src { return 0, error(ERR_INVALID_INPUT, "Cannot write, source is null!"); }
+    if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
     written :: _write(auto handle, auto src, auto size);
     if written < 0 { 
         ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot write to file! (%)", estr);
+        return 0, error(ec, "Cannot write to file: %.", estr);
     }
     return auto written, ok();
 }
