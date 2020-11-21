@@ -25,24 +25,8 @@ New thread.
 
 Example
 -------
-.. code-block:: c
-
-	// Worker function called from new thread.
-	worker :: fn (args: []Any) {
-	    print("Thread started!\n");
-	    os_sleep_ms(1000.0);
-	}
-
-	main :: fn () s32 {
-	    // Create and execute thread without parameters.
-	    t :: os_thread_create(&worker);
-	    
-	    // Wait for thread. 
-	    os_thread_join(t);
-	    print("Thread joined.\n");
-	    
-	    return 0;
-	}
+.. literalinclude:: /examples/docs/006.bl
+   :language: c 
 
 */
 
@@ -264,32 +248,6 @@ Return system tick in ms.
 Result
 ------
 System tick.
-*/
-
-//---------------------------------------------------------------------------
-
-
-/*!
-os_get_real_path
-================
-
-Declaration
------------
-::
-
-	os_get_real_path :: fn (filename: string) string
-
-Description
------------
-Find real path of passed file or directory name.
-
-Arguments
----------
-* `filename` Name of the file or directory. 
-
-Result
-------
-Real path.
 */
 
 //---------------------------------------------------------------------------

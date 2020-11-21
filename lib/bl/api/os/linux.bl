@@ -31,9 +31,9 @@
 #load "os/posix/signal.bl"
 #load "os/posix/error.bl"
 #load "os/posix/unistd.bl"
-#load "os/error.bl"
 #load "libc.bl"
 #load "std/string.bl"
+#load "std/error.bl"
 
 OS_KIND :: OSKind.Linux;
 OS_NAME :: "Linux";

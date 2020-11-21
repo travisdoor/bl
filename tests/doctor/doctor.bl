@@ -7,6 +7,7 @@ BL_EXE_PATH_UNIX :: "../bin/blc";
 // paths
 MAIN_TEST_SUITE_FILEPATH :: "src/main.test.bl";
 EXAMPLES_DIR :: "../examples";
+EXAMPLES_DOCS_DIR :: "../examples/docs";
 EXPECT_FAIL_DIR :: "src/expect_fail";
 
 HARDCODED_MODULES :: {:[1]string:
@@ -49,6 +50,9 @@ main :: fn () s32 {
     
     // examples
     test_all_in_dir(EXAMPLES_DIR);
+
+    // examples docs
+    test_all_in_dir(EXAMPLES_DOCS_DIR);
     
     // expect fail to compile
     test_all_in_dir(EXPECT_FAIL_DIR, true);

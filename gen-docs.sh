@@ -47,7 +47,17 @@ cd ${WDIR}
 # modules
 mkdir -p ${WDIR}/docs/api/modules
 rm ${WDIR}/docs/api/modules/*.rst
-cp lib/bl/api/modules/fs/*.rst ${WDIR}/docs/api/modules
+
+#cp lib/bl/api/modules/fs/*.rst ${WDIR}/docs/api/modules
+#cp lib/bl/api/modules/sync/*.rst ${WDIR}/docs/api/modules
+#cp lib/bl/api/modules/thread/*.rst ${WDIR}/docs/api/modules
+#cp lib/bl/api/modules/dl/*.rst ${WDIR}/docs/api/modules
+
+for f in lib/bl/api/modules/*/*.rst
+do
+	echo "Processing $f file..."
+	cp ${f} ${WDIR}/docs/api/modules
+done
 
 # examples
 cd examples
@@ -68,5 +78,7 @@ done
 
 mkdir -p ${WDIR}/docs/examples
 mv _tmp/*.md ${WDIR}/docs/examples
+mkdir -p ${WDIR}/docs/examples/docs
+cp ${WDIR}/examples/docs/*.bl ${WDIR}/docs/examples/docs
 rm -r -f _tmp
 cd ${WDIR}

@@ -114,17 +114,6 @@ Result
 ------
 New empty string.
 
-.. code-block:: c
-
-    main :: fn () s32 {
-        str :: string_new();
-        defer string_delete(str);
-        string_append(&str, "Hello");
-
-        print("str = %\n", str);
-        return 0;
-    }
-
 ----
 
 Declaration
@@ -153,16 +142,8 @@ New string.
 Example
 -------
 
-.. code-block:: c
-
-    main :: fn () s32 {
-        str :: string_new(256);
-        defer string_delete(str);
-        string_append(&str, "Hello");
-
-        print("str = %\n", str);
-        return 0;
-    }
+.. literalinclude:: /examples/docs/009.bl
+   :language: c 
 
 ----
 
@@ -523,18 +504,8 @@ True when delimiter was found.
 
 Example
 -------
-.. code-block:: c
-
-    main :: fn () s32 {
-        lhs: string;
-        rhs: string;
-        if string_split_by_last("this/is/my/epic/path", '/', &lhs, &rhs) {
-            print("lhs = %\n", lhs);
-            print("rhs = %\n", rhs);
-        }
-
-        return 0;
-    }
+.. literalinclude:: /examples/docs/010.bl
+   :language: c 
 
 */
 string_split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string, di: *s32 = null) bool {
@@ -593,18 +564,9 @@ True when delimiter was found.
 
 Example
 -------
-.. code-block:: c
+.. literalinclude:: /examples/docs/011.bl
+   :language: c 
 
-    main :: fn () s32 {
-        lhs: string;
-        rhs: string;
-        if string_split_at_index("foobar", 3, &lhs, &rhs) {
-            print("lhs = %\n", lhs);
-            print("rhs = %\n", rhs);
-        }
-
-        return 0;
-    }
 
 */
 string_split_at_index :: fn (str: string, index: s32, lhs: *string, rhs: *string) bool {
@@ -653,18 +615,9 @@ True when delimiter was found.
 
 Example
 -------
-.. code-block:: c
+.. literalinclude:: /examples/docs/012.bl
+   :language: c 
 
-    main :: fn () s32 {
-        lhs: string;
-        rhs: string;
-        if string_split_by_first("this/is/my/epic/path", '/', &lhs, &rhs) {
-            print("lhs = %\n", lhs);
-            print("rhs = %\n", rhs);
-        }
-
-        return 0;
-    }
 
 */
 string_split_by_first :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string, di: *s32 = null) bool {

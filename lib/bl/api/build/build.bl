@@ -68,7 +68,7 @@ BuildMode
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     BuildMode :: enum s32 {
         Debug        :: 1;
@@ -136,7 +136,7 @@ Result
 
 Example
 -------
-.. code-block:: c
+::
 
     build :: fn () #build_entry {
         exe :: add_executable("MyProgram");
@@ -252,7 +252,7 @@ Arguments
 
 Example
 -------
-.. code-block:: c
+::
 
     build :: fn () #build_entry {
         exe :: add_executable("MyGame");

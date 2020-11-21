@@ -226,6 +226,31 @@ test_ok :: fn (err: Error, loc := #call_location) #inline {
 }
 
 /*!
+test_not_ok
+===========
+
+Declaration
+-----------
+::
+
+    test_not_ok :: fn (err: Error, loc := #call_location) #inline
+
+Description
+-----------
+Test whether `err` is not OK.
+
+Arguments
+---------
+* `err` Error to be checked.
+* `loc` Optional call side location.
+*/
+test_not_ok :: fn (err: Error, loc := #call_location) #inline {
+    if !is_ok(err) { return; }
+    print_err("Expected not to be OK not '%'.", err);
+    assert(false, loc);
+}
+
+/*!
 test_is_error
 =============
 

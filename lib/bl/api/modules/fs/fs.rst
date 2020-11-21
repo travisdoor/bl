@@ -14,8 +14,9 @@ File system module for manipulation with files and directories.
    :local:
    :depth: 1
 
-----
 
+
+	   
 .. _FSFile:
 
 FSFile
@@ -25,7 +26,8 @@ Description
 -----------
 File handle type.
 
-----
+
+
 
 .. _FSFileOpenMode:
 
@@ -51,8 +53,9 @@ Variants
 * `Read` Open file for reading.
 * `Write` Open file for writing.
 
-----
 
+
+  
 .. _fs_file_open:
 
 fs_file_open
@@ -80,22 +83,10 @@ File handle and status code :ref:`Error`.
 
 Example
 -------
+.. literalinclude:: /examples/docs/004.bl
+   :language: bl
 
-.. code-block:: c
 
-    #import "fs"
-
-    main :: fn () s32 {
-        file, err :: fs_file_open(#file);
-        defer fs_file_close(file);
-        if err != OK {
-            print_err("Cannot open file!");
-	    return 1;
-	}
-        return 0;
-    }
-
-----
 
 .. _fs_file_create:
 
@@ -122,7 +113,8 @@ Result
 ------
 File handle and status code :ref:`Error`.
 
-----
+
+
 
 .. _fs_close:
 
@@ -144,8 +136,9 @@ Arguments
 ---------
 * `handle` File handle.
 
-----
 
+
+  
 .. _fs_file_delete:
 
 fs_file_delete
@@ -170,7 +163,8 @@ Result
 True when file was deleted, otherwise return false. When `filepath` is invalid or empty string function also
 return `false` and doesn't produce any file system operation.
 
-----
+
+
 
 .. _fs_file_read:
 
@@ -199,7 +193,8 @@ Result
 ------
 Count of bytes filled in destination buffer when status is :ref:`OK`.
 
-----
+
+
 
 .. _fs_file_read_string:
 
@@ -229,39 +224,13 @@ in case there is no error reported by function.
 Example
 -------
 
-::
-
-    #import "fs"
-
-    main :: fn () s32 {
-        // Open this file.
-        file, open_err :: fs_file_open(#file, FSFileOpenMode.Read);
-
-        // Always check for errors.
-        if open_err != OK {
-            panic("Cannot open file with error: '%'!", open_err);
-        }
-        // Close file at the end of scope.
-        defer fs_file_close(file);
-
-        // Read it's content.
-        content, read_err :: fs_file_read_string(file);
-
-        // Check for errors.
-        if read_err != OK {
-            panic("Cannot read file with error: '%'!", read_err);
-        }
-        // Delete content string at the end of scope.
-        defer string_delete(content);
-
-        // Print file content to stdout.
-        print("%\n", content);
-        return 0;
-    }
+.. literalinclude:: /examples/docs/005.bl
+   :language: c 
 
 
-----
 
+
+	      
 .. _fs_file_read_slice:
 
 fs_file_read_slice
@@ -288,7 +257,9 @@ Content of the file and status :ref:`Error`. Returned slice must be released by 
 in case there is no error reported. When error occured returned slice is zero initialized and should not be
 released.
 
-----
+
+
+
 
 .. _fs_file_size:
 
@@ -314,7 +285,9 @@ Result
 ------
 Content size of the file and status :ref:`Error`. 
 
-----
+
+
+
 
 .. _fs_write:
 
@@ -342,7 +315,9 @@ Result
 ------
 Number of successfuly written bytes when there is no error.
 
-----
+
+
+
 
 .. _fs_write_string:
 
@@ -369,7 +344,9 @@ Result
 ------
 Number of successfuly written bytes when there is no error.
 
-----
+
+
+
 
 .. _fs_write_slice:
 
@@ -396,7 +373,9 @@ Result
 ------
 Number of successfuly written bytes when there is no error.
 
-----
+
+
+
 
 .. _fs_exist:
 
@@ -421,7 +400,9 @@ Result
 ------
 True when file of directory exists.
 
-----
+
+
+
 
 .. _fs_validate_filename:
 
@@ -447,7 +428,9 @@ Result
 ------
 Return `true` if name is valid file name on target platform.
 
-----
+
+
+
 
 .. _fs_home:
 
@@ -468,7 +451,9 @@ Result
 ------
 Path to `home` directory or empty string.
 
-----
+
+
+
 
 .. _fs_cwd:
 
@@ -489,7 +474,9 @@ Result
 ------
 Path to current working directory or empty string.
 
-----
+
+
+
 
 .. _fs_tmp:
 
@@ -510,7 +497,9 @@ Result
 ------
 Path to `temp` directory or empty string.
 
-----
+
+
+
 
 .. _fs_normalize:
 
@@ -532,7 +521,9 @@ Result
 ------
 Return `true` and set `filepath` when path was normalized and points to existing entry.
 
-----
+
+
+
 
 .. _fs_remove_extension:
 
@@ -558,7 +549,9 @@ Result
 ------
 File name without extension (not including dot separator) or empty string.
 
-----
+
+
+
 
 .. _fs_get_extension:
 

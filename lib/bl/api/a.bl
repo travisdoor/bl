@@ -36,7 +36,7 @@ OSKind
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     OSKind :: enum {
         Windows;
@@ -60,7 +60,7 @@ TypeKind
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeKind :: enum #compiler {
         Type   :: 1;
@@ -121,7 +121,7 @@ TypeInfo
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfo :: struct #compiler {
         kind: TypeKind;
@@ -149,7 +149,7 @@ TypeInfoInt
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfoInt :: struct #base TypeInfo #compiler {
         bit_count: s32;
@@ -176,7 +176,7 @@ TypeInfoReal
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfoReal :: struct #base TypeInfo  #compiler {
         bit_count: s32
@@ -200,7 +200,7 @@ TypeInfoFn
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfoFn :: struct #base TypeInfo #compiler {
         args: []TypeInfoFnArg; 
@@ -231,7 +231,7 @@ TypeInfoFnGroup
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfoFnGroup :: struct #base TypeInfo #compiler {
         variants: []*TypeInfoFn; 
@@ -255,7 +255,7 @@ TypeInfoPtr
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfoPtr :: struct #base TypeInfo #compiler {
         pointee_type: *TypeInfo 
@@ -279,7 +279,7 @@ TypeInfoArray
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfoArray :: struct #base TypeInfo #compiler {
         name: string;
@@ -309,7 +309,7 @@ TypeInfoStruct
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfoStruct :: struct #base TypeInfo #compiler {
         name: string;
@@ -349,7 +349,7 @@ TypeInfoEnum
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfoEnum :: struct #base TypeInfo #compiler {
         name: string;
@@ -379,7 +379,7 @@ TypeInfoVoid
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfoVoid :: struct #base TypeInfo #compiler {
     }
@@ -397,7 +397,7 @@ TypeInfoNull
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfoNull :: struct #base TypeInfo #compiler {
     }
@@ -415,7 +415,7 @@ TypeInfoString
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfoString :: struct #base TypeInfo #compiler {
     }
@@ -433,7 +433,7 @@ TypeInfoType
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfoType :: struct #base TypeInfo #compiler {
     }
@@ -451,7 +451,7 @@ TypeInfoBool
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfoBool :: struct #base TypeInfo #compiler {
     }
@@ -469,7 +469,7 @@ TypeInfoStructMember
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfoStructMember :: struct #compiler {
         name: string;
@@ -494,7 +494,7 @@ Members
   Basically tags behave like a flags value, merge is done by binary `or` of all defined tag values.
   User tags can be defined by `#tags` hash directive written after member type in following way:
 
-  .. code-block:: c
+  ::
 
       Foo :: struct {
           i: s32 #tags TAG1;
@@ -525,7 +525,7 @@ TypeInfoEnumVariant
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfoEnumVariant :: struct #compiler {
         name: string;
@@ -552,7 +552,7 @@ TypeInfoFnArg
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TypeInfoFnArg :: struct #compiler {
         name: string;
@@ -579,7 +579,7 @@ Any
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     Any :: struct #compiler {
         type_info: *TypeInfo;
@@ -606,7 +606,7 @@ TestCase
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     TestCase :: struct #compiler {
         func: *fn();
@@ -633,7 +633,7 @@ CodeLocation
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     CodeLocation :: struct #compiler {
         file: string;
@@ -651,16 +651,8 @@ Members
 
 Example
 -------
-.. code-block:: c 
-
-    foo :: fn (loc: *CodeLocation = #call_location) {
-        print("%\n", ^loc);
-    }
-
-    main :: fn () s32 {
-        foo();
-        return 0;
-    }
+.. literalinclude:: /examples/docs/002.bl
+   :language: c 
 
 */
 CodeLocation :: struct #compiler {
@@ -700,7 +692,7 @@ Context
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     Context :: struct {
         alloc_fn: AllocFn;
@@ -732,7 +724,7 @@ _context
 
 Declaration
 -----------
-.. code-block:: c
+::
 
     _context := {:Context: 
                     &_default_allocator, 

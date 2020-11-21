@@ -26,6 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#import "fs"
+
 END_OF_STREAM :: '\0';
 
 StringStream :: struct {
@@ -39,7 +41,7 @@ ss_new :: fn () *StringStream {
     return ss;
 }
 
-ss_new_from_file :: fn (file: File) *StringStream {
+ss_new_from_file :: fn (file: FSFile) *StringStream {
     ss :: cast(*StringStream) alloc(sizeof(StringStream));
     ss_init_from_file(ss, file);
     return ss;
@@ -51,10 +53,10 @@ ss_delete :: fn (ss: *StringStream) {
     free(auto ss);
 }
 
-ss_init_from_file :: fn (ss: *StringStream, file: File) {
+ss_init_from_file :: fn (ss: *StringStream, file: FSFile) {
     if !file { panic(); }
-
-    ss._data = file_read_all(file);
+    data :: fs_file_read_string(file);
+    ss._data = data;
     ss.i = 0;
 }
 
@@ -67,8 +69,9 @@ ss_terminate :: fn (ss: *StringStream) {
     string_delete(ss._data);
 }
 
-ss_write_to_file :: fn (ss: *StringStream, file: File) usize {
-    return file_write_string(file, ss._data);
+ss_write_to_file :: fn (ss: *StringStream, file: FSFile) usize {
+    written :: fs_file_write_string(file, ss._data);
+    return auto written;
 }
 
 ss_peek :: fn (ss: *StringStream) u8 {
@@ -80,7 +83,6 @@ ss_get :: fn (ss: *StringStream) u8 {
     if ss.i >= ss._data.len { return END_OF_STREAM; }
     tmp :: ss._data[ss.i];
     ss.i += 1;
-
     return tmp;
 }
 

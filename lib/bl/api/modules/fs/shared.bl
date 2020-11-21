@@ -1,5 +1,0 @@
-FSFileOpenMode :: enum {
-    Read;
-    Write;
-}
-

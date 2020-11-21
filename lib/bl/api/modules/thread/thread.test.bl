@@ -1,0 +1,52 @@
+#load "std/test.bl"
+#load "std/debug_allocator.bl"
+
+#import "thread"
+
+main :: fn () s32 {
+    dbgalloc_init();
+    defer dbgalloc_terminate();
+    return test_run();    
+}
+
+#private
+thread_create_test :: fn () #test {
+    t, err :: thread_create(null);
+    test_not_ok(err);
+}
+
+_worker_called: s32;
+
+thread_create_test2 :: fn () #test {
+    worker :: fn (args: ...) {
+        _worker_called += 1;
+    };
+    
+    t, err :: thread_create(&worker);
+    test_ok(err);
+
+    thread_join(t, 1000);
+    test_eq(_worker_called, 1);
+    _worker_called = 0;
+}
+
+thread_kill_test :: fn () #test {
+    err :: thread_kill(null);
+    test_not_ok(err);
+}
+
+
+thread_kill_test2 :: fn () #test {
+    worker :: fn (args: ...) {
+        current :: thread_current();
+        thread_kill(current);
+        _worker_called += 1;
+    };
+    
+    t, err :: thread_create(&worker);
+    test_ok(err);
+
+    thread_join(t, 1000);
+    test_eq(_worker_called, 0);
+    _worker_called = 0;
+}

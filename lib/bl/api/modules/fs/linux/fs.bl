@@ -2,7 +2,11 @@
 #load "os/posix/unistd.bl"
 #load "os/posix/fcntl.bl"
 #load "libc.bl"
-#load "../shared.bl"
+
+FSFileOpenMode :: enum {
+    Read;
+    Write;
+}
 
 FSFile :: s64;
 FS_FILE_INVALID : FSFile : -1;

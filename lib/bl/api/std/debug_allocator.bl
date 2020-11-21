@@ -42,18 +42,8 @@ back to previous one.
 
 Example
 -------
-.. code-block:: c
-
-    #load "std/debug_allocator.bl"
-
-    main :: fn () s32 {
-        dbgalloc_init();
-        defer dbgalloc_terminate();
-
-        // leaking allocation
-        alloc(64); 
-        return 0;
-    }
+.. literalinclude:: /examples/docs/003.bl
+   :language: c 
 
 .. code-block:: text
 

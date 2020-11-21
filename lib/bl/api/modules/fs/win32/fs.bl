@@ -1,4 +1,7 @@
-#load "../shared.bl"
+FSFileOpenMode :: enum {
+    Read;
+    Write;
+}
 
 FSFile :: *u8;
 FS_FILE_INVALID : FSFile : null;
@@ -9,23 +12,25 @@ fs_exist :: fn (filepath: string) bool #inline {
 }
 
 fs_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
-    if string_is_empty(filepath) { return null, ERR_INVALID_INPUT; }
+    if string_is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     access :: modes_to_flags(mode);
     handle :: _CreateFile(auto filepath.ptr, access, 0, null, _OPEN_EXISTING, _FILE_ATTRIBUTE_NORMAL, null);
     if handle == _INVALID_HANDLE_VALUE {
-        return null, os_get_last_error();                
+        ec, estr :: os_get_last_error();
+        return null, error(ec, "Cannot open file '%': %.", filepath, estr);
     }
-    return handle, OK;
+    return handle, ok();
 }
 
 fs_file_create :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
-    if string_is_empty(filepath) { return null, ERR_INVALID_INPUT; }
+    if string_is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     access :: modes_to_flags(mode);
     handle :: _CreateFile(auto filepath.ptr, access, 0, null, _CREATE_NEW, _FILE_ATTRIBUTE_NORMAL, null);
     if handle == _INVALID_HANDLE_VALUE {
-        return null, os_get_last_error();                
+        ec, estr :: os_get_last_error();
+        return null, error(ec, "Cannot create file '%': %.", filepath, estr);
     }
-    return handle, OK;
+    return handle, ok();
 }
 
 fs_file_delete :: fn (filepath: string) bool #inline {
@@ -40,74 +45,77 @@ fs_file_close :: fn (handle: FSFile) #inline {
     _CloseHandle(handle);
 }
 
+fs_file_size :: fn (handle: FSFile) (usize, Error) #inline {
+    size: _LARGE_INTEGER #noinit;
+    if _GetFileSizeEx(auto handle, &size) == 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot get file size: %.", estr);
+    }
+    return auto size, ok();
+}
+
 fs_file_read_string :: fn (handle: FSFile) (string, Error) {
     size, err :: fs_file_size(handle);
-    if err != OK {
+    if !is_ok(err) {
         return string_empty, err;
     }
     buf := string_new(cast(usize) size);
     read, err2 :: fs_file_read(handle, buf.ptr, auto size);
-    if err2 != OK {
+    if !is_ok(err2) {
         string_delete(buf);
         return string_empty, err2;                
     }
     buf.len = auto read;
-    return buf, OK;
+    return buf, ok();
 }
 
 fs_file_read_slice :: fn (handle: FSFile) ([]u8, Error) {
     invalid: []u8;
     size, err :: fs_file_size(handle);
-    if err != OK {
+    if !is_ok(err) {
         return invalid, err;
     }
     buf: []u8;
     slice_init(buf, auto size);
     read, err2 :: fs_file_read(handle, buf.ptr, auto size);
-    if err2 != OK {
+    if !is_ok(err2) {
         slice_terminate(buf);
         return invalid, err2;                
     }
     buf.len = read;
-    return buf, OK;
-}
-
-fs_file_size :: fn (handle: FSFile) (usize, Error) #inline {
-    size: _LARGE_INTEGER #noinit;
-    if _GetFileSizeEx(auto handle, &size) == 0 {
-        return 0, os_get_last_error();                
-    }
-    return auto size, OK;
+    return buf, ok();
 }
 
 fs_file_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) {
-    if !dest { return 0, ERR_INVALID_HANDLE; }
+    if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
     read_bytes: _DWORD #noinit;
     if _ReadFile(handle, dest, auto size, &read_bytes, null) == 0 {
-        return 0, os_get_last_error();                
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot read file: %", estr);
     }
-    return auto read_bytes, OK;
+    return auto read_bytes, ok();
 }
 
 fs_file_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) {
-    if !src { return 0, ERR_INVALID_HANDLE; }
+    if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
     written_bytes: _DWORD #noinit;
     if _WriteFile(handle, src, auto size, &written_bytes, null) == 0 {
-        return 0, os_get_last_error();
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot write to file: %.", estr);
     }
-    return auto written_bytes, OK;
+    return auto written_bytes, ok();
 }
 
 fs_file_write_string :: fn (handle: FSFile, str: string) (s64, Error) #inline {
     written_bytes, err :: fs_file_write(handle, str.ptr, str.len);
-    if err != OK { return 0, err; }
-    return auto written_bytes, OK;    
+    if !is_ok(err) { return 0, err; }
+    return auto written_bytes, ok();    
 }
 
 fs_file_write_slice :: fn (handle: FSFile, v: []u8) (s64, Error) #inline {
     written_bytes, err :: fs_file_write(handle, v.ptr, v.len);
-    if err != OK { return 0, err; }
-    return auto written_bytes, OK;
+    if !is_ok(err) { return 0, err; }
+    return auto written_bytes, ok();
 }
 
 fs_validate_filename :: fn (name: string) bool {

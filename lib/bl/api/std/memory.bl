@@ -219,22 +219,8 @@ Arguments
 
 Example
 -------
-.. code-block:: c
-
-    main :: fn () s32 {
-        // Allocate slice of 10 numbers
-        sl: []s32;
-        slice_init(sl, 10);
-
-        loop i := 0; i < sl.len; i += 1 {
-            sl[i] = i;
-        }
-
-        // release memory allocated by init
-        slice_terminate(sl);
-
-        return 0;
-    }
+.. literalinclude:: /examples/docs/008.bl
+   :language: c 
 
 */
 slice_init :: fn (_v: Any, n: s64, loc := #call_location) #compiler {

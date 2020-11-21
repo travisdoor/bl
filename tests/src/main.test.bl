@@ -31,7 +31,6 @@
 #load "typeinfo.test.bl"
 #load "vargs.test.bl"
 #load "fn_default_args.test.bl"
-#load "file.test.bl"
 #load "debug.test.bl"
 #load "fn_overload.test.bl"
 #load "tags.test.bl"

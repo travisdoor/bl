@@ -30,9 +30,9 @@
 #load "windows/io.bl"
 #load "posix/signal.bl"
 #load "libc.bl"
-#load "error.bl"
 #load "std/string.bl"
 #load "std/utils.bl"
+#load "std/error.bl"
 
 OS_KIND :: OSKind.Windows;
 OS_NAME :: "Windows";
@@ -137,32 +137,6 @@ os_tick_ms :: fn () f64 #inline {
     return (cast(f64) t / cast(f64) f) * 1000.;
 };
 
-// remove
-os_normalize_path :: fn (filepath: *string) bool {
-    buf : [OS_PATH_MAX]u8 #noinit;
-    if _GetFullPathNameA(auto filepath.ptr, auto buf.len, buf.ptr, null) > 0 {
-        if _PathFileExistsA(auto filepath.ptr) == 0 { return false; }
-        string_clear(filepath);
-        string_append(filepath, cstr_to_str(buf.ptr));
-        string_replace_all(filepath, '\\', '/');
-        return true;
-    }
-    return false;
-}
-
-// remove
-os_get_real_path :: fn (filename: string) string {
-    buf : [OS_PATH_MAX]u8 #noinit;
-    if _GetFullPathNameA(auto filename.ptr, auto buf.len, buf.ptr, null) > 0 {
-        if _PathFileExistsA(auto buf.ptr) == 0 { return string_new(filename); }
-        result :: string_new(buf.ptr);
-        string_replace_all(&result, '\\', '/');
-        return result;
-    }
-
-    return string_new(filename);
-}
-
 os_get_exec_path :: fn () string {
     buf : [OS_PATH_MAX]u8 #noinit;
     if _GetModuleFileNameA(null, buf.ptr, auto buf.len) > 0 {
@@ -172,14 +146,6 @@ os_get_exec_path :: fn () string {
     }
 
     return string_new(); 
-}
-
-// remove
-os_get_home_path :: fn () string {
-    tmp :: "USERPROFILE";
-    cdir :: cast(*u8) c_getenv(auto tmp.ptr);
-    if !cdir { return string_new(); }
-    return string_new(cdir);
 }
 
 os_dlopen :: fn (lib_name := string_empty) OSLibrary {
@@ -202,17 +168,12 @@ os_execute :: fn (command: string) s32 {
     return c_system(auto command.ptr);
 }
 
-os_get_last_error :: fn (native_code: *s32 = null) Error {
-    ec :: _GetLastError();
-    if native_code { ^native_code = auto ec; }
-    switch ec {
-        0                     { return OK; }
-        _ERROR_FILE_NOT_FOUND { return ERR_NOT_FOUND; }
-        _ERROR_FILE_EXISTS    { return ERR_ALREADY_EXIST; }
-        _ERROR_ACCESS_DENIED  { return ERR_ACCESS_DENIED; }
-        _ERROR_INVALID_HANDLE { return ERR_INVALID_HANDLE; }
-        default { return ERR_UNKNOWN; }
-    }
+os_get_last_error :: fn () (s32, string) #inline {
+    ec :: cast(s32) _GetLastError();
+    str := string_empty;
+    c_str :: cast(*u8) c_strerror(ec);
+    if c_str && ec != 0 { str = cstr_to_str(c_str); }
+    return ec, str;
 }
 
 _OSFileKind :: enum {

@@ -1,0 +1,50 @@
+#load "os/windows/winapi.bl"
+
+Mutex :: _HANDLE;
+
+mutex_init :: fn (mutex: *Mutex) Error #inline {
+    if !mutex { return error(ERR_INVALID_HANDLE, "Cannot create mutex. Handle is invalid."); }
+    tmp :: _CreateMutexA(null, 0, null);
+    if !tmp {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot create mutex: %.", estr);
+    }
+    (^mutex) = tmp;
+    return ok();
+}
+
+mutex_terminate :: fn (mutex: *Mutex) Error #inline {
+    if !mutex { return error(ERR_INVALID_HANDLE, "Cannot terminate mutex. Handle is invalid."); }
+    if _CloseHandle(^mutex) == 0 {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot terminate mutex: %.", estr);
+    }
+    return ok();
+}
+
+mutex_lock :: fn (mutex: *Mutex) Error #inline {
+    if !mutex { return error(ERR_INVALID_HANDLE, "Cannot terminate mutex. Handle is invalid."); }
+    if _WaitForSingleObject(^mutex, _INFINITE) == _WAIT_FAILED {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot lock mutex: %.", estr);
+    }
+    return ok();
+}
+
+mutex_trylock :: fn (mutex: *Mutex) (bool, Error) #inline {
+    if !mutex { return false, error(ERR_INVALID_HANDLE, "Cannot lock mutex. Handle is invalid."); }
+    state :: _WaitForSingleObject(^mutex, 0);
+    if state != 0 { 
+        ec, estr :: os_get_last_error();
+        return false, error(ec, "Cannot lock mutex: %.", estr);
+    }
+    return true, ok();
+}
+
+mutex_unlock :: fn (mutex: *Mutex) Error #inline {
+    if _ReleaseMutex(^mutex) == 0 {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot unlock mutex: %.", estr);
+    }
+    return ok();
+}
