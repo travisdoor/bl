@@ -30,12 +30,13 @@
 #load "libc.bl"
 
 /*!
-string
+======
+String
 ======
 
 Declaration
 -----------
-.. code-block:: c
+:: 
 
     string :: struct {
         len: s64;
@@ -46,19 +47,19 @@ Description
 -----------
 Builtin string storage. `string` type could represent dynamic and compile time static strings. 
 
-.. code-block:: c
+::
 
     // Compile-time string literal
     my_string :: "This is my string!"; 
 
-.. code-block:: c
+:: 
 
     // Dynamic string allocated on heap.
     // New dynamic string can be created from string literal. 
     my_string :: string_new("This is my string!");
     defer string_delete(my_string);
 
-BL strings are zero terinated execept of sub-string view function (terminator cannot be added 
+BL strings are zero terminated except of sub-string view function (terminator cannot be added 
 because we cannot modify original string).
 
 Related functions
@@ -143,7 +144,7 @@ Example
 -------
 
 .. literalinclude:: /examples/docs/009.bl
-   :language: c 
+   :language: bl
 
 ----
 
@@ -505,7 +506,7 @@ True when delimiter was found.
 Example
 -------
 .. literalinclude:: /examples/docs/010.bl
-   :language: c 
+   :language: bl
 
 */
 string_split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string, di: *s32 = null) bool {
@@ -565,7 +566,7 @@ True when delimiter was found.
 Example
 -------
 .. literalinclude:: /examples/docs/011.bl
-   :language: c 
+   :language: bl
 
 
 */
@@ -616,7 +617,7 @@ True when delimiter was found.
 Example
 -------
 .. literalinclude:: /examples/docs/012.bl
-   :language: c 
+   :language: bl
 
 
 */
