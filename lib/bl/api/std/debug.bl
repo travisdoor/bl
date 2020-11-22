@@ -37,12 +37,6 @@
 //! ::
 //!
 //! Set of common debugging tools.
-//! 
-//! .. toctree::
-//!    :glob:
-//!    :titlesonly:
-//! 
-//!    debug.bl/*
 
 /// Print debug log using `_context.print_log_fn` function. See also :ref:`print`.
 print_log :: fn (format: string, args: ...) #inline {

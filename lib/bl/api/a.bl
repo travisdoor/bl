@@ -35,12 +35,6 @@
 //! =======
 //! 
 //! Compiler builtins are automatically loaded into every assembly.
-//! 
-//! .. toctree::
-//!    :glob:
-//!    :titlesonly:
-//! 
-//!    a.bl/*
 
 /// Describe supported platforms.
 OSKind :: enum {

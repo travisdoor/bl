@@ -35,12 +35,6 @@
 //!     #load "std/utils.bl"
 //! 
 //! Set of various utility functions.
-//! 
-//! .. toctree::
-//!    :glob:
-//!    :titlesonly:
-//! 
-//!    utils.bl/*
 
 /// Checks whether `v` has set `flag`.
 is_flag_u32 :: fn (v: u32, flag: u32) bool #inline {

@@ -48,12 +48,6 @@
 //! -------
 //! .. literalinclude:: /examples/docs/001.bl
 //!    :language: bl
-//!
-//! .. toctree::
-//!    :glob:
-//!    :titlesonly:
-//! 
-//!    error.bl/*
 
 OK :: 0;
 

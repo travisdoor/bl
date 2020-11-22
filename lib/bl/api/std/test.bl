@@ -40,12 +40,6 @@
 //!     #load "std/test.bl"
 //! 
 //! Integrated unit testing API.
-//! 
-//! .. toctree::
-//!    :glob:
-//!    :titlesonly:
-//! 
-//!    test.bl/*
 
 /// Overloads
 /// ---------

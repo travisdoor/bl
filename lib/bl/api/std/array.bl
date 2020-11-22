@@ -44,12 +44,6 @@
 //!     }
 //! 
 //! Compiler builtin dynamic array.
-//! 
-//! .. toctree::
-//!    :glob:
-//!    :titlesonly:
-//! 
-//!    array.bl/*
 
 // @NOTE: Not direcly used internally, when layout of this structure is changed, internal
 // compiler representation must be modified too.

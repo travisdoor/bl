@@ -362,11 +362,14 @@ void doc(Context *cnt, Ast *node)
 void doc_unit(Context *cnt, Unit *unit)
 {
     if (!unit->filename) return;
+    TString unit_name;
+    tstring_init(&unit_name);
+    tstring_append_n(&unit_name, unit->filename, strlen(unit->filename) - 3); // -3 ('.bl')
     cnt->unit = unit;
     // prepare unit output directory
     {
         tstring_clear(&cnt->path_unit_dir);
-        tstring_setf(&cnt->path_unit_dir, "%s/%s", OUT_DIR, unit->filename);
+        tstring_setf(&cnt->path_unit_dir, "%s/%s", OUT_DIR, unit_name.data);
         const char *dirpath = cnt->path_unit_dir.data;
         if (!dir_exists(dirpath)) create_dir(dirpath);
     }
@@ -375,7 +378,7 @@ void doc_unit(Context *cnt, Unit *unit)
 
     // write unit global docs
     tstring_clear(&cnt->path_tmp);
-    tstring_setf(&cnt->path_tmp, "%s/%s.rst", OUT_DIR, unit->filename);
+    tstring_setf(&cnt->path_tmp, "%s/%s.rst", OUT_DIR, unit_name.data);
     char *export_file = cnt->path_tmp.data;
     FILE *f           = fopen(export_file, "w");
     if (f == NULL) {
@@ -386,9 +389,10 @@ void doc_unit(Context *cnt, Unit *unit)
         fprintf(f, "%s", unit->ast->docs);
     } else {
         H1(f, unit->filename);
-        DEFAULT_TOC(f, unit->filename);
     }
+    DEFAULT_TOC(f, unit_name.data);
     fclose(f);
+    tstring_terminate(&unit_name);
 }
 
 void docs_run(Assembly *assembly)

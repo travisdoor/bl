@@ -35,12 +35,6 @@
 //!     #load "build/build.bl"
 //! 
 //! Compiler integrated build pipeline.
-//! 
-//! .. toctree::
-//!    :glob:
-//!    :titlesonly:
-//! 
-//!    build.bl/*
 
 /// Opaque assembly handle. Assembly is representation of whole program workspace, it can be compiled
 /// into executable or binary. Assembly is consist of Units, every unit represents one source file.

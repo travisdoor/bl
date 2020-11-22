@@ -33,12 +33,6 @@
 //! ::
 //! 
 //!     #load "std/math.bl"
-//! 
-//! .. toctree::
-//!    :glob:
-//!    :titlesonly:
-//! 
-//!    math.bl/*
 
 
 PI          :: 3.141592653589793;

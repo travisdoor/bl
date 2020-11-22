@@ -59,12 +59,6 @@
 //!     Dump memory leaks end.
 //! 
 //! .. note:: Debug allocator is thread safe. Init and terminate must be called from main thread.
-//! 
-//! .. toctree::
-//!    :glob:
-//!    :titlesonly:
-//! 
-//!    debug_allocator.bl/*
 
 /// Initialize :ref:`debug_allocator`. This function internally swap current global context
 /// allocator to debug one. Deinitialization must be done by :ref:`dbgalloc_terminate` call.

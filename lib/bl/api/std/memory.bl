@@ -37,12 +37,6 @@
 //!     #load "std/memory.bl"
 //! 
 //! Toolset for manipulation with system memory.
-//! 
-//! .. toctree::
-//!    :glob:
-//!    :titlesonly:
-//! 
-//!    memory.bl/*
 
 /// Allocates count of bytes on heap using default allocator.
 /// Use :ref:`free` to free allocated memory when it's no longer

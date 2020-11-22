@@ -38,12 +38,6 @@
 //!     #load "std/print.bl"
 //! 
 //! Printing functions collection.
-//! 
-//! .. toctree::
-//!    :glob:
-//!    :titlesonly:
-//! 
-//!    print.bl/*
 
 /// Size of buffer used by `print` function, this is maximum text legth
 /// which can be printed at once.

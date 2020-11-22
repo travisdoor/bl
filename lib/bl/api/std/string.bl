@@ -63,12 +63,6 @@
 //! 
 //! .. note:: String manipulation functions are related only to dynamic strings and cannot be used with
 //!           string literals since those are constants allocated on stack.
-//!
-//! .. toctree::
-//!    :glob:
-//!    :titlesonly:
-//! 
-//!    string.bl/*
 
 /// Overloaded function creating new dynamic string instance. Created string is 
 /// guaranteed to be zero terminated.
