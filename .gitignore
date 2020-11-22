@@ -57,3 +57,4 @@ src/config.h
 *.ll
 *.sln
 .suo
+/CMakeLists.txt.user

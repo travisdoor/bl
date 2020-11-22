@@ -100,15 +100,19 @@ typedef struct {
     Tokens *               tokens;
 
     // tmps
-    bool   inside_loop;
-    Scope *current_private_scope;
-    Ast *  current_fn_type;
+    bool     inside_loop;
+    Scope *  current_private_scope;
+    Ast *    current_fn_type;
+    Ast *    current_docs;
+    TString *unit_docs_tmp;
 } Context;
 
 // helpers
 // fw decls
 static BinopKind sym_to_binop_kind(Sym sm);
 static UnopKind  sym_to_unop_kind(Sym sm);
+static bool      parse_docs(Context *cnt);
+static bool      parse_unit_docs(Context *cnt);
 static void      parse_ublock_content(Context *cnt, Ast *ublock);
 static Ast *     parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied);
 static Ast *     parse_unrecheable(Context *cnt);
@@ -192,6 +196,16 @@ static INLINE bool rq_semicolon_after_decl_entity(Ast *node)
     }
 }
 
+static INLINE const char *pop_docs(Context *cnt)
+{
+    const char *text = NULL;
+    if (cnt->current_docs) {
+        text              = cnt->current_docs->data.docs.text;
+        cnt->current_docs = NULL;
+    }
+    return text;
+}
+
 BinopKind sym_to_binop_kind(Sym sm)
 {
     switch (sm) {
@@ -273,6 +287,37 @@ Ast *parse_expr_ref(Context *cnt)
     return ref;
 }
 
+bool parse_docs(Context *cnt)
+{
+    Token *tok_begin = tokens_peek(cnt->tokens);
+    if (token_is_not(tok_begin, SYM_DCOMMENT)) return false;
+    TString *str = builder_create_cached_str();
+    Token *  tok;
+    while ((tok = tokens_consume_if(cnt->tokens, SYM_DCOMMENT))) {
+        if (str->len > 0) tstring_append(str, "\n");
+        tstring_append(str, tok->value.str);
+    }
+
+    Ast *docs            = ast_create_node(cnt->ast_arena, AST_DOCS, tok_begin, SCOPE_GET(cnt));
+    docs->data.docs.text = str->data;
+    cnt->current_docs    = docs;
+    return true;
+}
+
+bool parse_unit_docs(Context *cnt)
+{
+    Token *tok_begin = tokens_peek(cnt->tokens);
+    if (token_is_not(tok_begin, SYM_DGCOMMENT)) return false;
+    if (!cnt->unit_docs_tmp) cnt->unit_docs_tmp = builder_create_cached_str();
+    TString *str = cnt->unit_docs_tmp;
+    Token *  tok;
+    while ((tok = tokens_consume_if(cnt->tokens, SYM_DGCOMMENT))) {
+        if (str->len > 0) tstring_append(str, "\n");
+        tstring_append(str, tok->value.str);
+    }
+    return true;
+}
+
 // Try to parse hash directive. List of enabled directives can be set by 'expected_mask',
 // 'satisfied' is optional output set to parsed directive id if there is one.
 Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
@@ -317,9 +362,11 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         Ast *load = ast_create_node(cnt->ast_arena, AST_LOAD, tok_directive, SCOPE_GET(cnt));
         load->data.load.filepath = tok_path->value.str;
 
-        Unit *unit = unit_new_file(load->data.load.filepath, tok_path);
-        if (!assembly_add_unit_unique(cnt->assembly, unit)) {
-            unit_delete(unit);
+        if (!builder.options.docs) {
+            Unit *unit = unit_new_file(load->data.load.filepath, tok_path);
+            if (!assembly_add_unit_unique(cnt->assembly, unit)) {
+                unit_delete(unit);
+            }
         }
 
         return load;
@@ -346,7 +393,9 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         }
         Ast *import = ast_create_node(cnt->ast_arena, AST_IMPORT, tok_directive, SCOPE_GET(cnt));
         import->data.import.filepath = tok_path->value.str;
-        assembly_import_module(cnt->assembly, tok_path->value.str, tok_path);
+        if (!builder.options.docs) {
+            assembly_import_module(cnt->assembly, tok_path->value.str, tok_path);
+        }
         return import;
     }
 
@@ -970,6 +1019,7 @@ Ast *parse_decl_member(Context *cnt, s32 UNUSED(index))
     HashDirective found_hd = HD_NONE;
     Ast *         tags     = parse_hash_directive(cnt, HD_TAGS, &found_hd);
     Ast *         mem = ast_create_node(cnt->ast_arena, AST_DECL_MEMBER, tok_begin, SCOPE_GET(cnt));
+    mem->docs         = pop_docs(cnt);
     mem->data.decl.type = type;
     mem->data.decl.name = name;
     mem->data.decl.tags = tags;
@@ -1042,7 +1092,8 @@ Ast *parse_decl_variant(Context *cnt, Ast *prev)
     Ast *  name      = parse_ident(cnt);
     if (!name) return NULL;
 
-    Ast *var = ast_create_node(cnt->ast_arena, AST_DECL_VARIANT, tok_begin, SCOPE_GET(cnt));
+    Ast *var  = ast_create_node(cnt->ast_arena, AST_DECL_VARIANT, tok_begin, SCOPE_GET(cnt));
+    var->docs = pop_docs(cnt);
 
     // TODO: Validate correcly '::'
     Token *tok_assign = tokens_consume_if(cnt->tokens, SYM_COLON);
@@ -1883,6 +1934,7 @@ Ast *parse_type_enum(Context *cnt)
     Ast *prev_tmp = NULL;
 
 NEXT:
+    if (parse_docs(cnt)) goto NEXT;
     tmp = parse_decl_variant(cnt, prev_tmp);
     if (tmp) {
         prev_tmp = tmp;
@@ -2225,6 +2277,7 @@ Ast *parse_type_struct(Context *cnt)
     Ast *tmp;
     s32  index = 0;
 NEXT:
+    if (parse_docs(cnt)) goto NEXT;
     tmp = parse_decl_member(cnt, index++);
     if (tmp) {
         if (AST_IS_BAD(tmp)) CONSUME_TILL(cnt->tokens, SYM_SEMICOLON, SYM_RBLOCK);
@@ -2270,7 +2323,8 @@ Ast *parse_decl(Context *cnt)
     // eat :
     tokens_consume(cnt->tokens);
 
-    Ast *decl = ast_create_node(cnt->ast_arena, AST_DECL_ENTITY, tok_begin, SCOPE_GET(cnt));
+    Ast *decl  = ast_create_node(cnt->ast_arena, AST_DECL_ENTITY, tok_begin, SCOPE_GET(cnt));
+    decl->docs = pop_docs(cnt);
     decl->data.decl.name       = ident;
     decl->data.decl_entity.mut = true;
 
@@ -2534,6 +2588,8 @@ void parse_ublock_content(Context *cnt, Ast *ublock)
     Ast *tmp;
 NEXT:
     if (parse_semicolon(cnt)) goto NEXT;
+    if (parse_docs(cnt)) goto NEXT;
+    if (parse_unit_docs(cnt)) goto NEXT;
 
     if ((tmp = parse_decl(cnt))) {
         if (AST_IS_OK(tmp)) {
@@ -2551,11 +2607,7 @@ NEXT:
     // load, import, link, test, private - enabled in global scope
     const int enabled_hd = HD_LOAD | HD_LINK | HD_PRIVATE | HD_IMPORT;
     if ((tmp = parse_hash_directive(cnt, enabled_hd, NULL))) {
-        if (tmp->kind == AST_META_DATA) {
-            ublock->meta_node = tmp;
-        } else {
-            tarray_push(ublock->data.ublock.nodes, tmp);
-        }
+        tarray_push(ublock->data.ublock.nodes, tmp);
         goto NEXT;
     }
 
@@ -2601,6 +2653,7 @@ void parser_run(Assembly *assembly, Unit *unit)
 #endif
 
     parse_ublock_content(&cnt, unit->ast);
+    if (cnt.unit_docs_tmp) unit->ast->docs = cnt.unit_docs_tmp->data;
 
     tsa_terminate(&cnt._decl_stack);
     tsa_terminate(&cnt._scope_stack);

@@ -8,9 +8,9 @@
 	AST_UBLOCK,
 	AST_BLOCK,
 	AST_UNREACHABLE,
-	AST_META_DATA,
 	AST_TAGS,
 	AST_CALL_LOC,
+	AST_DOCS,
 	_AST_DECL_FIRST,
 	AST_DECL_ENTITY,
 	AST_DECL_MEMBER,
@@ -68,7 +68,6 @@
 
 #ifdef GEN_AST_DATA
 	struct AstPrivate        priv;
-	struct AstMetaData       meta_data;
 	struct AstLoad           load;
 	struct AstImport         import;
 	struct AstLink           link;
@@ -77,6 +76,7 @@
 	struct AstBlock          block;
 	struct AstTags           tags;
 	struct AstCallLoc        call_loc;
+	struct AstDocs           docs;
 	struct AstStmtReturn     stmt_return;
 	struct AstStmtIf         stmt_if;
 	struct AstStmtLoop       stmt_loop;

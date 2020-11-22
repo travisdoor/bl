@@ -26,34 +26,30 @@
 // SOFTWARE.
 //************************************************************************************************
 
-/*!
-array
-=====
-
-Declaration
------------
-.. code-block:: c
-
-    _Array :: struct #compiler {
-        len: s64;
-        ptr: *u8;
-        allocated: usize;
-        allocator: AllocFn;
-    }
-
-Description
------------
-Compiler builtin dynamic array.
-
-Related functions
------------------
-* :ref:`array_init`
-* :ref:`array_terminate`
-* :ref:`array_push`
-* :ref:`array_reserve`
-* :ref:`array_erase`
-* :ref:`array_clear`
-*/
+//! =====
+//! Array
+//! =====
+//! 
+//! ::
+//! 
+//!     #load "std/array.bl"
+//! 
+//! ::
+//! 
+//!     _Array :: struct #compiler {
+//!         len: s64;
+//!         ptr: *u8;
+//!         allocated: usize;
+//!         allocator: AllocFn;
+//!     }
+//! 
+//! Compiler builtin dynamic array.
+//! 
+//! .. toctree::
+//!    :glob:
+//!    :titlesonly:
+//! 
+//!    array.bl/*
 
 // @NOTE: Not direcly used internally, when layout of this structure is changed, internal
 // compiler representation must be modified too.
@@ -64,26 +60,8 @@ _Array :: struct #compiler {
     allocator: AllocFn;
 }
 
-/*!
-array_init
-==========
-
-Declaration
------------
-::
-
-    array_init :: fn (_arr: Any, allocator: AllocFn = null) #inline #compiler
-
-Description
------------
-Sets dynamic array to default state. If array contains already allocated memory 
-`array_terminate` must be called first.
-`allocator` optional custom allocator.
-
-Arguments
----------
-* `_arr` Array to be initialized. 
-*/
+/// Sets dynamic array to default state. If array contains already allocated memory 
+/// `array_terminate` must be called first. Custom `allocator` can be specified.
 array_init :: fn (_arr: Any, allocator: AllocFn = null) #inline #compiler {
     arr := cast(*_Array) _arr.data;
     arr.ptr = null;
@@ -92,26 +70,9 @@ array_init :: fn (_arr: Any, allocator: AllocFn = null) #inline #compiler {
     arr.allocator = allocator;
 }
 
-/*!
-array_terminate
-===============
-
-Declaration
------------
-::
-
-    array_terminate :: fn (_arr: Any)
-
-Description
------------
-Release memory allocated by dynamic array. This function is supposed to
-be called when dynamic array is no longer needed. Passed dynamic array is set to 
-default state also.
-
-Arguments
----------
-* `_arr` Array to be terminated.
-*/
+/// Release memory allocated by dynamic array. This function is supposed to
+/// be called when dynamic array is no longer needed. Passed dynamic array is set to 
+/// default state also.
 array_terminate :: fn (_arr: Any) #inline #compiler {
     arr := cast(*_Array) _arr.data;
     if arr.allocator {
@@ -124,27 +85,9 @@ array_terminate :: fn (_arr: Any) #inline #compiler {
     arr.allocated = 0;
 }
 
-/*!
-array_push
-==========
-
-Declaration
------------
-::
-
-    array_push :: fn (_arr: Any, v: Any)
-
-Description
------------
-Append new value at the dynamic array end. New heap allocation is done
-here only in cases when there is not enough memory allocated to
-store all values.
-
-Arguments
----------
-* `_arr` Array to be appedned. 
-* `v` Value to be appended. 
-*/
+/// Append new value at the dynamic array end. New heap allocation is done
+/// here only in cases when there is not enough memory allocated to store all 
+/// values.
 array_push :: fn (_arr: Any, v: Any) #compiler {
     arr := cast(*_Array) _arr.data;
     if v.data == null { panic("Invalid value (null)."); }
@@ -158,25 +101,7 @@ array_push :: fn (_arr: Any, v: Any) #compiler {
     memcpy(dest, v.data, elem_size);
 };
 
-/*!
-array_reserve
-=============
-
-Declaration
------------
-::
-
-    array_reserve :: fn (_arr: Any, n: s64)
-
-Description
------------
-Reserve heap memory for `n` elements.
-
-Arguments
----------
-* `_arr` Array. 
-* `n` Count of elemets for which should reserve space. 
-*/
+/// Reserve heap memory for `n` elements in array.
 array_reserve :: fn (_arr: Any, n: s64) #compiler {
     arr := cast(*_Array) _arr.data;
     if n == 0 { return; }
@@ -184,27 +109,9 @@ array_reserve :: fn (_arr: Any, n: s64) #compiler {
     ensure_space(arr, elem_size, auto n, true);
 };
 
-/*!
-array_erase
-===========
-
-Declaration
------------
-::
-
-    array_erase :: fn (_arr: Any, i: s64)
-
-Description
------------
-Erase element on index `i`. Call to this function can cause reordering
-of an dynamic array. Allocated memory is kept even if we erase entire dynamic array. 
-Function invoke panic in case of index overflow.
-
-Arguments
----------
-* `_arr` Array. 
-* `i` Index of erased element. 
-*/
+/// Erase element on index `i`. Call to this function can cause reordering
+/// of an dynamic array. Allocated memory is kept even if we erase entire dynamic array. 
+/// Function invoke panic in case of index overflow.
 array_erase :: fn (_arr: Any, i: s64) #compiler {
     arr := cast(*_Array) _arr.data;
     if i >= arr.len { panic("Index overflow!"); }
@@ -224,24 +131,7 @@ array_erase :: fn (_arr: Any, i: s64) #compiler {
     arr.len -= 1;
 };
 
-/*!
-array_clear
-===========
-
-Declaration
------------
-::
-
-    array_clear :: fn (_arr: Any)
-
-Description
------------
-Erase all elements in dynamic array but keep allocated memory.
-
-Arguments
----------
-* `_arr` Array to be cleared. 
-*/
+/// Erase all elements in dynamic array but keep allocated memory.
 array_clear :: fn (_arr: Any) #inline #compiler {
     arr := cast(*_Array) _arr.data;
     arr.len = 0;

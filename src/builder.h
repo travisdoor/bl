@@ -62,30 +62,11 @@ typedef struct BuilderOptions {
     bool        no_color;
     bool        no_vcvars;
     bool        verify_llvm;
+    bool        docs;
 } BuilderOptions;
-
-typedef enum {
-    BUILDER_MSG_ASSEMBLY_BEGIN,
-    BUILDER_MSG_ASSEMBLY_END,
-    BUILDER_MSG_ASSEMBLY_FAILED,
-    BUILDER_MSG_VAR,
-    BUILDER_MSG_FN,
-} BuilderMessageKind;
-
-typedef struct BuilderMessage {
-    BuilderMessageKind kind;
-    union {
-        MirVar *var;
-        MirFn * fn;
-    } data;
-} BuilderMessage;
-
-typedef void (*BuilderMessageHandler)(const Assembly *, const BuilderMessage *);
-TSMALL_ARRAY_TYPE(MessageHandler, BuilderMessageHandler, 8);
 
 typedef struct Builder {
     BuilderOptions             options;
-    TSmallArray_MessageHandler message_handlers;
     Arena                      str_cache;
     s32                        total_lines;
     s32                        errorc;
@@ -126,7 +107,6 @@ int  builder_compile_config(const char *  filepath,
 void builder_add_assembly(Assembly *assembly);
 s32  builder_compile_all(void);
 s32  builder_compile(Assembly *assembly);
-void builder_invoke_message(const Assembly *assembly, const BuilderMessage *msg);
 
 #define builder_log(format, ...)                                                                   \
     builder_msg(BUILDER_MSG_LOG, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)

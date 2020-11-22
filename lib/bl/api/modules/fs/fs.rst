@@ -225,7 +225,7 @@ Example
 -------
 
 .. literalinclude:: /examples/docs/005.bl
-   :language: c 
+   :language: bl 
 
 
 

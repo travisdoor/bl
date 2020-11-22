@@ -40,6 +40,7 @@ void token_printer_run(Unit *unit);
 void parser_run(Assembly *assembly, Unit *unit);
 void conf_parser_run(Unit *unit, ConfData* out_data);
 void ast_printer_run(Assembly *assembly, FILE *stream);
+void docs_run(Assembly *assembly);
 void ir_run(Assembly *assembly);
 void ir_opt_run(Assembly *assembly);
 void obj_writer_run(Assembly *assembly);

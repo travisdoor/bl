@@ -29,163 +29,92 @@
 #load "std/print.bl"
 #load "libc.bl"
 
-/*!
-======
-String
-======
+//! ======
+//! String
+//! ======
+//! 
+//! ::
+//! 
+//!     #load "std/string.bl"
+//! 
+//! :: 
+//! 
+//!     string :: struct {
+//!         len: s64;
+//!         ptr: *u8;
+//!     }
+//! 
+//! Builtin string storage. `string` type could represent dynamic and compile time static strings. 
+//! 
+//! ::
+//! 
+//!     // Compile-time string literal
+//!     my_string :: "This is my string!"; 
+//! 
+//! :: 
+//! 
+//!     // Dynamic string allocated on heap.
+//!     // New dynamic string can be created from string literal. 
+//!     my_string :: string_new("This is my string!");
+//!     defer string_delete(my_string);
+//! 
+//! BL strings are zero terminated except of sub-string view function (terminator cannot be added 
+//! because we cannot modify original string).
+//! 
+//! .. note:: String manipulation functions are related only to dynamic strings and cannot be used with
+//!           string literals since those are constants allocated on stack.
+//!
+//! .. toctree::
+//!    :glob:
+//!    :titlesonly:
+//! 
+//!    string.bl/*
 
-Declaration
------------
-:: 
-
-    string :: struct {
-        len: s64;
-        ptr: *u8;
-    }
-
-Description
------------
-Builtin string storage. `string` type could represent dynamic and compile time static strings. 
-
-::
-
-    // Compile-time string literal
-    my_string :: "This is my string!"; 
-
-:: 
-
-    // Dynamic string allocated on heap.
-    // New dynamic string can be created from string literal. 
-    my_string :: string_new("This is my string!");
-    defer string_delete(my_string);
-
-BL strings are zero terminated except of sub-string view function (terminator cannot be added 
-because we cannot modify original string).
-
-Related functions
------------------
-* :ref:`string_new`
-* :ref:`string_delete`
-* :ref:`string_clear`
-* :ref:`string_append`
-* :ref:`string_concatenate`
-* :ref:`string_compare`
-* :ref:`string_to_f32`
-* :ref:`string_to_s64`
-* :ref:`string_split_by_last`
-* :ref:`string_split_at_index`
-* :ref:`string_split_by_first`
-* :ref:`string_insert`
-* :ref:`string_erase`
-* :ref:`string_split_by`
-* :ref:`string_count`
-* :ref:`string_to_lower`
-* :ref:`string_to_upper`
-* :ref:`string_replace_all`
-* :ref:`string_hash`
-* :ref:`string_is_null`
-* :ref:`string_is_empty`
-* :ref:`string_is_null_or_empty`
-* :ref:`sprint`
-* :ref: `string_sub`
-
-.. note:: String manipulation functions are related only to dynamic strings and cannot be used with
-          string literals since those are constants allocated on stack.
-*/
-
-/*!
-string_new
-==========
-Overloaded function creating new dynamic string instance. Created string is 
-guaranteed to be zero terminated.
-
-.. warning:: Every new string must be deleted by :ref:`string_delete` call.
-
-Declaration
------------
-::
-
-    fn () string
-
-Description
------------
-Create new empty string object.
-
-Result
-------
-New empty string.
-
-----
-
-Declaration
------------
-::
-
-    fn (size: usize) string
-
-Description
------------
-Create new string with preallocated space. This type of string
-initialization can reduce count of allocations made later by extending
-string content. String with length up to `size` require only one memory
-allocation.
-
-.. hint:: This initialization should be preferred if string length can be predicted.
-
-Arguments
----------
-* `size` Preallocation size in characters.
-
-Result
-------
-New string.
-
-Example
--------
-
-.. literalinclude:: /examples/docs/009.bl
-   :language: bl
-
-----
-
-Declaration
------------
-:: 
-
-    fn (v: string) string
-
-Description
------------
-Create copy of `v` string. Allocates memory to hold exactly size of `v` string data.
-
-Arguments
----------
-* `v` String to be copied.
-
-Result
-------
-New duplicate string.
-
-----
-
-Declaration
------------
-::
-
-    fn (cstr: *u8) string
-
-Description
------------
-Create copy of C zero terminated string.
-
-Arguments
----------
-* `v` Pointer to C string.
-
-Result
-------
-New duplicate string.
-*/
+/// Overloaded function creating new dynamic string instance. Created string is 
+/// guaranteed to be zero terminated.
+/// 
+/// .. warning:: Every new string must be deleted by :ref:`string_delete` call.
+/// 
+/// ::
+/// 
+///     fn () string
+/// 
+/// Create new empty string object.
+/// 
+/// ----
+/// 
+/// ::
+/// 
+///     fn (size: usize) string
+/// 
+/// Create new string with preallocated space. This type of string
+/// initialization can reduce count of allocations made later by extending
+/// string content. String with length up to `size` require only one memory
+/// allocation.
+/// 
+/// .. hint:: This initialization should be preferred if string length can be predicted.
+/// 
+/// Example
+/// -------
+/// 
+/// .. literalinclude:: /examples/docs/009.bl
+///    :language: bl
+/// 
+/// ----
+/// 
+/// :: 
+/// 
+///     fn (v: string) string
+/// 
+/// Create copy of `v` string. Allocates memory to hold exactly size of `v` string data.
+/// 
+/// ----
+/// 
+/// ::
+/// 
+///     fn (cstr: *u8) string
+/// 
+/// Create copy of C zero terminated string.
 string_new :: fn {
     new;
     new_reserved;
@@ -193,72 +122,20 @@ string_new :: fn {
     new_cstr;
 }
 
-/*!
-string_delete
-=============
-
-Declaration
------------
-::
-
-    string_delete :: fn (v: string)
-
-Description
------------
-Delete dynamic string.
-
-Arguments
----------
-* `v` String to be deleted.
-*/
+/// Delete dynamic string.
 string_delete :: fn (v: string) {
     if !v.ptr { return; }
     free_block(v.ptr);
 };
 
-/*!
-string_clear
-============
-
-Declaration
------------
-::
-
-    string_clear :: fn (v: *string)
-
-Description
------------
-Clear dynamic string but keep allocated storage.
-
-Arguments
----------
-* `v` String to be cleared.
-*/
+/// Clear dynamic string but keep allocated storage.
 string_clear :: fn (v: *string) {
     v.len = 0;
     set_terminator(^v);
 };
 
-/*!
-string_append
-=============
-
-Declaration
------------
-::
-
-    string_append :: fn (v: *string, add: Any)
-
-Description
------------
-Append dynamic string with any value. Allocation is done in case there
-is not enough space reminding in string.
-
-Arguments
----------
-* `v` String to be cleared.
-* `add` Value to be appended.
-*/
+/// Append dynamic string with any value. Allocation is done in case there
+/// is not enough space reminding in string.
 string_append :: fn (v: *string, add: Any) {
     new_len: s64;
     add_len: s64;
@@ -287,56 +164,17 @@ string_append :: fn (v: *string, add: Any) {
     set_terminator(^v);
 };
 
-/*!
-string_concatenate
-==================
-
-Declaration
------------
-::
-
-    string_concatenate :: fn (v: *string, args: ...)
-
-Description
------------
-Append string with multiple values passed as `args`.
-
-Arguments
----------
-* `v` String to be appended.
-* `args` String content.
-*/
+/// Append string with multiple values passed as `args`.
 string_concatenate :: fn (v: *string, args: ...) {
     loop i := 0; i < args.len; i += 1 {
         string_append(v, args[i]);
     }
 };
 
-/*!
-string_compare
-==============
-
-Declaration
------------
-::
-
-    string_compare :: fn (first: string, second: string, n := -1) bool
-
-Description
------------
-Compare two strings in specified range and return `true` if they are same 
-otherwise return `false`.
- 
-Arguments
----------
-* `first` First string to be compared.
-* `second` Second string to be compared.
-* `n` Optional count of characters to be compared. This value is ignored when less than 0 (default is -1).
-
-Result
-------
-Return `true` if `n` characters in `first` string are same as the same range in `second` string.
-*/
+/// Compare `first` and `second` strings in specified range `n` and return `true` if they are same 
+/// otherwise return `false`.
+///
+/// Range value `n` is optional and ignored when it's less than 0.
 string_compare :: fn (first: string, second: string, n := -1) bool {
     // @CLEANUP: simplify this
     range := n;
@@ -367,29 +205,7 @@ string_compare2 :: fn (first: string, second: string, n := -1) s32 {
     return 0;
 }
 
-/*!
-string_to_f32
-=============
-
-Declaration
------------
-::
-
-    string_to_f32 :: fn (str: string, count := -1) f32
-
-Description
------------
-Convert first `count` characters from string to `f32`.
- 
-Arguments
----------
-* `str` Float as string.
-* `count` Count of characters to be converted.
-
-Result
-------
-Converted float value.
-*/
+/// Convert first `count` characters of `str` to `f32`.
 string_to_f32 :: fn (str: string, count := -1) f32 {
     if count < 0 { count = auto str.len; }
     else if count > str.len { count = auto str.len; }
@@ -423,29 +239,7 @@ string_to_f32 :: fn (str: string, count := -1) f32 {
     return v;
 }
 
-/*!
-string_to_s64
-=============
-
-Declaration
------------
-::
-
-    string_to_s64 :: fn (str: string, count := -1) s64
-
-Description
------------
-Convert first `count` characters from string to `s64`.
- 
-Arguments
----------
-* `str` Integer as string.
-* `count` Count of characters to be converted.
-
-Result
-------
-Converted integer value.
-*/
+/// Convert first `count` characters from `str` to `s64`.
 string_to_s64 :: fn (str: string, count := -1) s64 {
     if count < 0 { count = auto str.len; }
     else if count > str.len { count = auto str.len; }
@@ -468,47 +262,23 @@ string_to_s64 :: fn (str: string, count := -1) s64 {
     return n;
 }
 
-/*!
-string_split_by_last 
-====================
-
-Declaration
------------
-::
-
-    string_split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string, di: *s32 = null) bool
-
-Description
------------
-Split input string `str` into two tokens based on the last occurrence of `delimiter`.
-Delimiter is not included in resulting tokens. Result tokens only points into original
-memory of the `str`, they are not supposed to be freed.
-
-When delimiter is not present in the input string function return `false`, `lhs` and
-`rhs` buffers are not modified, otherwise function return `true` and sets `lhs` and `rhs`
-to found values.
-
-.. warning:: `lhs` and `rhs` sub strings are not guaranteed to be zero terminated and they are not
-             supposed to be freed. 
- 
-Arguments
----------
-* `str` String to be splitted.
-* `delimiter` Delimiter to be found.
-* `lhs` Optional output left hand side string.
-* `rhs` Optional output right hand side string.
-* `di` Optional output split destination index.
-
-Result
-------
-True when delimiter was found.
-
-Example
--------
-.. literalinclude:: /examples/docs/010.bl
-   :language: bl
-
-*/
+/// Split input string `str` into two tokens based on the last occurrence of `delimiter`.
+/// Delimiter is not included in resulting tokens. Result tokens only points into original
+/// memory of the `str`, they are not supposed to be freed.
+/// 
+/// When delimiter is not present in the input string function return `false`, `lhs` and
+/// `rhs` buffers are not modified, otherwise function return `true` and sets `lhs` and `rhs`
+/// to valid values.
+/// 
+/// Token destination pointers `lhs` and `rhs` are optional. The `di` output variable
+/// is set to index of the split position when it's not `null`.
+/// 
+/// .. warning:: `lhs` and `rhs` sub strings are not guaranteed to be zero terminated and they are not
+///              supposed to be freed. 
+/// Example
+/// -------
+/// .. literalinclude:: /examples/docs/010.bl
+///    :language: bl
 string_split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string, di: *s32 = null) bool {
     i := str.len - 1;
     loop ; i >= 0 && str[i] != delimiter; i -= 1 {}
@@ -533,43 +303,19 @@ string_split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *stri
     return true;
 }
 
-/*!
-string_split_at_index 
-=====================
-
-Declaration
------------
-::
-
-    string_split_at_index :: fn (str: string, index: s32, lhs: *string, rhs: *string) bool
-
-Description
------------
-Split input string `str` at index position and return true when split was done. Result tokens 
-only points into original memory of the `str`, they are not supposed to be freed. When index is 
-out of `str` range function return `false`, `lhs` and `rhs` buffers are not modified.
-
-.. warning:: `lhs` and `rhs` sub strings are not guaranteed to be zero terminated and they are not
-             supposed to be freed. 
- 
-Arguments
----------
-* `str` String to be splitted.
-* `index` Split position.
-* `lhs` Optional output left hand side string.
-* `rhs` Optional output right hand side string.
-
-Result
-------
-True when delimiter was found.
-
-Example
--------
-.. literalinclude:: /examples/docs/011.bl
-   :language: bl
-
-
-*/
+/// Split input string `str` at index position and return true when split was done. Result tokens 
+/// only points into original memory of the `str`, they are not supposed to be freed. When index is 
+/// out of `str` range function return `false`, `lhs` and `rhs` buffers are not modified.
+/// 
+/// Token destination pointers `lhs` and `rhs` are optional. 
+/// 
+/// .. warning:: `lhs` and `rhs` sub strings are not guaranteed to be zero terminated and they are not
+///              supposed to be freed. 
+///  
+/// Example
+/// -------
+/// .. literalinclude:: /examples/docs/011.bl
+///    :language: bl
 string_split_at_index :: fn (str: string, index: s32, lhs: *string, rhs: *string) bool {
     if index > str.len { return false; }
     if index < 0 { return false; }
@@ -580,47 +326,23 @@ string_split_at_index :: fn (str: string, index: s32, lhs: *string, rhs: *string
     return true;
 }
 
-/*!
-string_split_by_first
-=====================
-
-Declaration
------------
-::
-
-    string_split_by_first :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string) bool
-
-Description
------------
-Split input string `str` into two tokens based on the first occurrence of `delimiter`.
-Delimiter is not included in resulting tokens. Result tokens only points into original
-memory of the `str`, they are not supposed to be freed.
-
-When delimiter is not present in the input string function return `false`, `lhs` and
-`rhs` buffers are not modified, otherwise function return `true` and sets `lhs` and `rhs`
-to found values.
-
-.. warning:: `lhs` and `rhs` sub strings are not guaranteed to be zero terminated and they are not
-             supposed to be freed. 
- 
-Arguments
----------
-* `str` String to be splitted.
-* `delimiter` Delimiter to be found.
-* `lhs` Optional output left hand side string.
-* `rhs` Optional output right hand side string.
-
-Result
-------
-True when delimiter was found.
-
-Example
--------
-.. literalinclude:: /examples/docs/012.bl
-   :language: bl
-
-
-*/
+/// Split input string `str` into two tokens based on the first occurrence of `delimiter`.
+/// Delimiter is not included in resulting tokens. Result tokens only points into original
+/// memory of the `str`, they are not supposed to be freed.
+/// 
+/// When delimiter is not present in the input string function return `false`, `lhs` and
+/// `rhs` buffers are not modified, otherwise function return `true` and sets `lhs` and `rhs`
+/// to found values.
+/// 
+/// Token destination pointers `lhs` and `rhs` are optional. 
+/// 
+/// .. warning:: `lhs` and `rhs` sub strings are not guaranteed to be zero terminated and they are not
+///              supposed to be freed. 
+///  
+/// Example
+/// -------
+/// .. literalinclude:: /examples/docs/012.bl
+///    :language: bl
 string_split_by_first :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string, di: *s32 = null) bool {
     i := 0;
     loop ; i < str.len && str[i] != delimiter; i += 1 {}
@@ -702,30 +424,8 @@ Returns `true` when string was inserted.
 */
 string_insert :: fn { _string_insert; u8_insert; };
 
-/*!
-string_erase
-============
-
-Declaration
------------
-::
-
-    string_erase :: fn (str: *string, index: s32) bool
-
-Description
------------
-Erase one character at `index` position and return true when character
-was erased. The '`index` value is checked to fit in string bounds.
-
-Arguments
----------
-* `str` Pointer to string.
-* `index` Index position in string to be erased.
-
-Result
-------
-True when index points to valid position in string.
-*/
+/// Erase one character at `index` position and return true when character
+/// was erased. The '`index` value is checked to fit in string bounds.
 string_erase :: fn (str: *string, index: s32) bool {
     if str.len == 0 { return false; }
     if index >= str.len { return false; }
@@ -738,34 +438,12 @@ string_erase :: fn (str: *string, index: s32) bool {
     return true;
 }
 
-/*!
-string_split_by
-===============
-
-Declaration
------------
-::
-
-    string_split_by :: fn (str: string, delimiter: u8) []string
-
-Description
------------
-Split the `str` input string by delimiter and return new slice containing
-all found sub-strings. 
-
-.. warning:: String slice should be terminated by :ref:`slice_terminate` call.
-.. warning:: Slice elements are not guaranteed to be zero terminated and they are not
-             supposed to be freed. 
-
-Arguments
----------
-* `str` String.
-* `delimiter` Delimiter character.
-
-Result
-------
-String slice.
-*/
+/// Split the `str` input string by delimiter and return new slice containing
+/// all found sub-strings. 
+/// 
+/// .. warning:: String slice should be terminated by :ref:`slice_terminate` call.
+/// .. warning:: Slice elements are not guaranteed to be zero terminated and they are not
+///              supposed to be freed. 
 string_split_by :: fn (str: string, delimiter: u8) []string {
     count :: string_count(str, delimiter) + 1;
     ret: []string;
@@ -783,30 +461,8 @@ string_split_by :: fn (str: string, delimiter: u8) []string {
     return ret;
 }
 
-/*!
-string_count
-============
-
-Declaration
------------
-::
-
-    string_count :: fn (str: string, c: u8) s32
-
-Description
------------
-Counts desired character occurrence in the input string.
- 
-Arguments
----------
-* `str` Input string.
-* `c` Character.
-
-Result
-------
-Count of character occurrence.
-*/
-string_count :: fn (str: string, c: u8) s32 {
+/// Counts desired character occurrence in the input string.
+string_count :: fn (str: string, c: u8) s32 #inline {
     count := 0;
     loop i := 0; i < str.len; i += 1 {
         if str[i] == c { count += 1; }
@@ -814,83 +470,29 @@ string_count :: fn (str: string, c: u8) s32 {
     return count;
 }
 
-/*!
-string_to_lower
-===============
-
-Declaration
------------
-::
-
-    string_to_lower :: fn (str: string)
-
-Description
------------
-Converts input string to lower case.
- 
-Arguments
----------
-* `str` Input string.
-*/
-string_to_lower :: fn (str: string) {
+/// Converts input string to lower case.
+string_to_lower :: fn (str: string) #inline {
     c_tolower :: fn (c: s32) s32 #extern "tolower";
     loop i := 0; i < str.len; i += 1 {
         str[i] = auto c_tolower(auto str[i]); 
     }
 }
 
-/*!
-string_to_upper
-===============
-
-Declaration
------------
-::
-
-    string_to_upper :: fn (str: string)
-
-Description
------------
-Converts input string to upper case.
- 
-Arguments
----------
-* `str` Input string.
-*/
-string_to_upper :: fn (str: string) {
+/// Converts input string to upper case.
+string_to_upper :: fn (str: string) #inline {
     c_toupper :: fn (c: s32) s32 #extern "toupper";
     loop i := 0; i < str.len; i += 1 {
         str[i] = auto c_toupper(auto str[i]); 
     }
 }
 
-/*!
-string_replace_all
-==================
-
-Declaration
------------
-::
-
-    string_replace_all :: fn (str: string, c: u8, with := '\0') s32
-
-Description
------------
-Replace all found occurrences of character `c` in the input string with `with`
-character and return count of replacements made. This function cannot be used with
-constant string literals as input.
- 
-Arguments
----------
-* `str` Input string.
-* `c` Character to be replaced.
-* `with` Replacement. If replacement is 0 character, all `c` occourences will be erased
-  from the string.
-
-Result
-------
-Count of replacements made.
-*/
+/// Replace all found occurrences of character `c` in the input string with `with`
+/// character and return count of replacements made. This function cannot be used with
+/// constant string literals as input.
+/// 
+/// If `with` replacement is 0 character, all `c` occourences will be erased from the string.
+/// 
+/// Function return count of replaced characters or zero.
 string_replace_all :: fn (str: *string, c: u8, with := '\0') s32 {
     replaced := 0;
     loop i := 0; i < (^str).len; i += 1 {
@@ -905,28 +507,7 @@ string_replace_all :: fn (str: *string, c: u8, with := '\0') s32 {
     return replaced;
 }
 
-/*!
-string_hash 
-===========
-
-Declaration
------------
-::
-
-    string_hash :: fn (str: string) u32
-
-Description
------------
-Calculates string `u32` hash.
- 
-Arguments
----------
-* `str` Input string.
-
-Result
-------
-String hash.
-*/
+/// Calculates string `u32` hash.
 string_hash :: fn (str: string) u32 {
 	hash : u32 = 5381;
     loop i := 0; i < str.len; i += 1 {
@@ -936,112 +517,28 @@ string_hash :: fn (str: string) u32 {
     return hash;
 }
 
-/*!
-string_is_null
-==============
-
-Declaration
------------
-::
-
-    string_is_null  :: fn (s: string) bool #inline
-
-Description
------------
-Helper inline function returning `true` when string is null. In such case string
-`len` cound be any value.
- 
-Arguments
----------
-* `str` Input string.
-
-Result
-------
-True when string `ptr` is null.
-*/
+/// Helper inline function returning `true` when string is null. In such case string
+/// `len` cound be any value.
 string_is_null  :: fn (s: string) bool #inline { return s.ptr == null; }
 
-/*!
-string_is_empty
-===============
-
-Declaration
------------
-:: 
-
-    string_is_empty :: fn (s: string) bool #inline
-
-Description
------------
-Helper inline function returning `true` when string is empty. In such case string
-`ptr` cound be any pointer.
- 
-Arguments
----------
-* `str` Input string.
-
-Result
-------
-True when string `len` is 0.
-*/
+/// Helper inline function returning `true` when string is empty. In such case string
+/// `ptr` cound be any pointer.
 string_is_empty :: fn (s: string) bool #inline { return s.len == 0; }
 
 string_empty :: {:string: 0};
 
-/*!
-string_is_null_or_empty
-=======================
-
-Declaration
------------
-::
-
-    string_is_null_or_empty :: fn (s: string) bool #inline
-
-Description
------------
-Helper inline function returning `true` when string is empty and null. 
- 
-Arguments
----------
-* `str` Input string.
-
-Result
-------
-True when string `len` is 0 and `ptr` is null.
-*/
+/// Helper inline function returning `true` when string is empty and null. 
 string_is_null_or_empty :: fn (s: string) bool #inline { return s.ptr == null || s.len == 0; }
 
 
-/*!
-string_sub
-==========
-
-Declaration
------------
-::
-
-    string_sub :: fn (s: string, start: s32, len := -1) string #inline
-
-Description
------------
-Creates substring from passed string starting at `start` index of input string and ending at `start` + `len`
-index.
-
-.. warning:: Result sub-string is not guaranteed to be zero terminated and it's not supposed to
-             be freed.
- 
-Arguments
----------
-* `str` Input string.
-* `start` Starting index greated than 0 and less than `str.len`.
-* `len` Optional length of substring. When not specified, length from `start` to the end of the `str` is used.
-
-Result
-------
-Sub-string.
-
-*/ 
+/// Creates substring from passed string starting at `start` index of input string and ending at `start` + `len`
+/// index.
+/// 
+/// Starting index `start` must be greated than 0 and less than `str.len`. `len` specifies optional length of substring.
+/// When not specified, length from `start` to the end of the `str` is used.
+/// 
+/// .. warning:: Result sub-string is not guaranteed to be zero terminated and it's not supposed to
+///              be freed.
 string_sub :: fn (s: string, start: s64, len : s64 = -1) string #inline {
     if len < -1 { panic("Invalid substring len %", len); }
     if start < 0 { panic("Invalid substring start %", start); }

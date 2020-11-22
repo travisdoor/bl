@@ -143,13 +143,11 @@ int main(s32 argc, char *argv[])
         builder_error("Configuration file '%s' not found, run 'blc -configure' to "
                       "generate one.",
                       ENV_CONF_FILEPATH);
-
         EXIT(EXIT_FAILURE);
     }
 
     if (*argv == NULL && !builder.options.use_pipeline) {
         builder_warning("nothing to do, no input files, sorry :(");
-
         EXIT(EXIT_SUCCESS);
     }
 

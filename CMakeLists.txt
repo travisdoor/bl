@@ -112,12 +112,11 @@ set(HEADER_FILES
         src/mir.h
         src/mir_printer.h
         src/arena.h
-        	src/llvm_di.h
-	        src/vm.h
-	        src/threading.h
-	        src/llvm_api.h
+        src/llvm_di.h
+	src/vm.h
+	src/threading.h
+	src/llvm_api.h
         src/ast.h
-        	src/experimental/puml_export.h
 	)
 
 set(SOURCE_FILES
@@ -140,7 +139,7 @@ set(SOURCE_FILES
         src/linker.c
         src/obj_writer.c
         src/bc_writer.c
-        	src/mir_writer.c
+        src/mir_writer.c
         src/native_bin.c
         src/scope.c
         src/common.c 
@@ -152,11 +151,11 @@ set(SOURCE_FILES
         src/ast.c
         src/build_api.c
         src/intrinsic.c
-        	src/experimental/puml_export.cpp
-        	src/threading.cpp
-        	src/llvm_api.cpp
+        src/docs.c
+        src/threading.cpp
+        src/llvm_api.cpp
         src/llvm_di.cpp
-        	deps/tracy/TracyClient.cpp
+        deps/tracy/TracyClient.cpp
 	)
 
 add_definitions(${LLVM_DEFINITIONS})

@@ -81,8 +81,6 @@ const char *ast_get_name(const Ast *n)
     switch (n->kind) {
     case AST_BAD:
         return "Bad";
-    case AST_META_DATA:
-        return "MetaData";
     case AST_TAGS:
         return "Tags";
     case AST_LOAD:
@@ -99,6 +97,8 @@ const char *ast_get_name(const Ast *n)
         return "UBlock";
     case AST_BLOCK:
         return "Block";
+    case AST_DOCS:
+        return "Docs";
     case AST_UNREACHABLE:
         return "Unreachable";
     case AST_CALL_LOC:

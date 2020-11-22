@@ -96,6 +96,10 @@ typedef enum {
     UNOP_BIT_NOT,
 } UnopKind;
 
+struct AstDocs {
+    const char *text;
+};
+
 struct AstLoad {
     const char *filepath;
 };
@@ -114,7 +118,7 @@ struct AstLink {
 
 struct AstIdent {
     ID id;
-    
+
     // Optional other identificator (group);
     Ast *next;
 };
@@ -350,10 +354,6 @@ struct AstExprDeref {
     Ast *next;
 };
 
-struct AstMetaData {
-    const char *str;
-};
-
 struct AstTags {
     TSmallArray_AstPtr *values;
 };
@@ -368,7 +368,7 @@ struct Ast {
     struct Location *location;     // Location in source file.
     struct Location *location_end; // Optional ending location.
     struct Scope *   owner_scope;  // Scope in which is AST node.
-    struct Ast *     meta_node;    // Metadata assigned to node.
+    const char *     docs;         // Optional documentation string.
 
     union {
 #define GEN_AST_DATA

@@ -221,7 +221,6 @@ static void fn_dtor(MirFn **_fn)
 }
 
 // FW decls
-static void msg_handle(Context *cnt, MirInstr *instr);
 // Initialize all builtin types.
 static void    builtin_inits(Context *cnt);
 static void    testing_add_test_case(Context *cnt, MirFn *fn);
@@ -7323,8 +7322,6 @@ AnalyzeResult analyze_instr(Context *cnt, MirInstr *instr)
         if (!evaluate(cnt, instr)) {
             return ANALYZE_RESULT(FAILED, 0);
         }
-
-        msg_handle(cnt, instr);
     }
 
     return state;
@@ -9060,7 +9057,8 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
         if (is_struct_decl) {
             cnt->ast.current_fwd_struct_decl = NULL;
             // @HACK: Used only for first in group!!!
-            MirVar *var            = ((MirInstrDeclVar *)vars.data[0])->var;
+            MirVar *var = ((MirInstrDeclVar *)vars.data[0])->var;
+
             var->is_struct_typedef = true;
         }
         cnt->ast.current_entity_id = NULL;
@@ -9545,7 +9543,6 @@ MirInstr *ast(Context *cnt, Ast *node)
     case AST_IMPORT:
     case AST_LINK:
     case AST_PRIVATE:
-    case AST_META_DATA:
         break;
     default:
         BL_ABORT("invalid node %s", ast_get_name(node));
@@ -10009,29 +10006,6 @@ MirFn *group_select_overload(Context *                  cnt,
     }
     BL_MAGIC_ASSERT(selected);
     return selected;
-}
-
-void msg_handle(Context *cnt, MirInstr *instr)
-{
-    if (!instr) return;
-
-    BuilderMessage msg;
-    switch (instr->kind) {
-    case MIR_INSTR_DECL_VAR:
-        msg.kind     = BUILDER_MSG_VAR;
-        msg.data.var = ((MirInstrDeclVar *)instr)->var;
-        if (!msg.data.var) return;
-        break;
-    case MIR_INSTR_FN_PROTO:
-        msg.kind    = BUILDER_MSG_FN;
-        msg.data.fn = MIR_CEV_READ_AS(MirFn *, &instr->value);
-        BL_MAGIC_ASSERT(msg.data.fn);
-        break;
-    default:
-        return;
-    }
-
-    builder_invoke_message(cnt->assembly, &msg);
 }
 
 void mir_arenas_init(MirArenas *arenas)

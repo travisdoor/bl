@@ -32,7 +32,6 @@
 #include "assembly.h"
 #include "builder.h"
 #include "common.h"
-#include "experimental/puml_export.h"
 #include "stages.h"
 #include "token.h"
 #include "unit.h"
@@ -102,14 +101,11 @@ INTERRUPT:
 
 int compile_assembly(Assembly *assembly)
 {
-    { // MSG
-        BuilderMessage msg = {.kind = BUILDER_MSG_ASSEMBLY_BEGIN};
-        builder_invoke_message(assembly, &msg);
-    }
-    if (builder.options.print_ast) {
-        ast_printer_run(assembly, stdout);
-    }
+    if (builder.options.print_ast) ast_printer_run(assembly, stdout);
     INTERRUPT_ON_ERROR;
+
+    if (builder.options.docs) docs_run(assembly);
+    FINISH_IF(builder.options.docs);
 
     linker_run(assembly);
     INTERRUPT_ON_ERROR;
@@ -141,15 +137,9 @@ int compile_assembly(Assembly *assembly)
         INTERRUPT_ON_ERROR;
     }
 
-FINISH : {
-    BuilderMessage msg = {.kind = BUILDER_MSG_ASSEMBLY_END};
-    builder_invoke_message(assembly, &msg);
-}
+FINISH:
     return COMPILE_OK;
-INTERRUPT : { // MSG
-    BuilderMessage msg = {.kind = BUILDER_MSG_ASSEMBLY_FAILED};
-    builder_invoke_message(assembly, &msg);
-}
+INTERRUPT:
     return COMPILE_FAIL;
 }
 
@@ -224,6 +214,8 @@ s32 builder_parse_options(s32 argc, char *argv[])
             builder.options.no_vcvars = true;
         } else if (IS_PARAM("verify-llvm")) {
             builder.options.verify_llvm = true;
+        } else if (IS_PARAM("docs")) {
+            builder.options.docs = true;
         } else {
             builder_error("invalid params '%s'", &argv[optind][1]);
             return -1;
@@ -253,19 +245,16 @@ void builder_init(void)
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split     = false;
+    builder.options.reg_split = false;
 #endif
 
     // initialize LLVM statics
     llvm_init();
     tarray_init(&builder.assembly_queue, sizeof(Assembly *));
-    tsa_init(&builder.message_handlers);
-    // tsa_push_MessageHandler(&builder.message_handlers, puml_message_handler);
 }
 
 void builder_terminate(void)
 {
-    tsa_terminate(&builder.message_handlers);
     Assembly *assembly;
     TARRAY_FOREACH(Assembly *, &builder.assembly_queue, assembly)
     {
@@ -335,13 +324,15 @@ int builder_compile(Assembly *assembly)
     // instance during initialization process. (Must be called only once);
     assembly_apply_options(assembly);
 
-    unit = unit_new_file(BUILTIN_FILE, NULL);
-    if (!assembly_add_unit_unique(assembly, unit)) {
-        unit_delete(unit);
+    if (!builder.options.docs) {
+        unit = unit_new_file(BUILTIN_FILE, NULL);
+        if (!assembly_add_unit_unique(assembly, unit)) {
+            unit_delete(unit);
+        }
     }
 
     // include core source file
-    if (!builder.options.no_api) {
+    if (!builder.options.no_api && !builder.options.docs) {
         unit = unit_new_file(OS_PRELOAD_FILE, NULL);
         if (!assembly_add_unit_unique(assembly, unit)) {
             unit_delete(unit);
@@ -496,15 +487,4 @@ TString *builder_create_cached_str(void)
     tstring_init(str);
 
     return str;
-}
-
-void builder_invoke_message(const Assembly *assembly, const BuilderMessage *msg)
-{
-    if (!msg) return;
-    if (builder.message_handlers.size == 0) return;
-    BuilderMessageHandler it;
-    TSA_FOREACH(&builder.message_handlers, it)
-    {
-        it(assembly, msg);
-    }
 }

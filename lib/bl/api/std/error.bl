@@ -26,37 +26,34 @@
 // SOFTWARE.
 //************************************************************************************************
 
-/*!
-Error
-=====
-
-Declaration
------------
-.. code-block:: c
-
-    _Error :: struct {
-        msg: string;
-        code: s32;
-    }
-
-    Error :: *_Error;
-
-Description
------------
-Error state representation. 
-
-Example
--------
-.. literalinclude:: /examples/docs/001.bl
-   :language: c 
-
-Related functions
------------------
-* :ref:`is_ok`
-* :ref:`is_error`
-* :ref:`ok`
-* :ref:`error`
-*/
+//! =====
+//! Error
+//! =====
+//! ::
+//! 
+//!     #load "std/error.bl"
+//! 
+//! .. code-block:: bl
+//! 
+//!     _Error :: struct {
+//!         msg: string;
+//!         code: s32;
+//!     }
+//! 
+//!     Error :: *_Error;
+//! 
+//! Universal error state representation used across the API.
+//! 
+//! Example
+//! -------
+//! .. literalinclude:: /examples/docs/001.bl
+//!    :language: bl
+//!
+//! .. toctree::
+//!    :glob:
+//!    :titlesonly:
+//! 
+//!    error.bl/*
 
 OK :: 0;
 
@@ -67,154 +64,55 @@ _Error :: struct {
 
 Error :: *_Error;
 
-/*!
-is_ok
-=====
-
-Declaration
------------
-::
-
-    is_ok :: fn (err: Error) bool #inline
-
-Description
------------
-Check whether `err` is no-error valid state.
- 
-Arguments
----------
-* `err` Error.
-
-Result
-------
-Return `true` when err is OK and not `null`. 
-*/
+/// Check whether `err` is no-error valid state. Returns `false` when
+/// `err` is `null`.
 is_ok :: fn (err: Error) bool #inline {
     if !err { return false; }
     return err.code == 0;
 }
 
-/*!
-is_error
-========
-
-Declaration
------------
-::
-
-    is_error :: fn (err: Error, code: s32) bool #inline
-
-Description
------------
-Check whether `err` is representing error `code`.
- 
-Arguments
----------
-* `err` Error.
-* `code` Error code.
-
-Result
-------
-Return `true` when `err` code is equal to `code` and `err` is not `null`. 
-*/
+/// Check whether `err` is representing error `code`. Returns `false` when
+/// `err` is `null`.
 is_error :: fn (err: Error, code: s32) bool #inline {
     if !err { return false; }
     return err.code == code;
 }
 
-/*!
-ok
-==
-
-Declaration
------------
-::
-
-    ok :: fn () Error #inline
-
-Description
------------
-Creates no-error :ref:`Error`.
- 
-Result
-------
-Valid no-error state. 
-*/
+/// Creates no-error :ref:`Error`.
 ok :: fn () Error #inline {
     return error3(0, "");
 }
 
-/*!
-error
-=====
-Overloaded function setting up error state. Error state is global variable holding :ref:`Error` 
-instance, `error` function sets desired values and return pointer to this global. That means
-the `Error` must be handled immediately after it's returned from failing function since every
-`Error` state points to the same memory.
-
-Error creating does not require any HEAP memory alocations.
-
-Declaration
------------
-::
-
-    fn (code: s32) Error #inline
-
-Description
------------
-Sets error code.
-
-Arguments
----------
-* `code` Error code.
-
-Result
-------
-Error.
-
-----
-
-Declaration
------------
-::
-
-    fn (format: string, args: ...) Error #inline
-
-Description
------------
-Sets error state with `ERR_UNKNOWN` code and formatted message.
-
-Arguments
----------
-* `format` Message formatting string.
-* `args` Values inserted into formatted message.
-
-Result
-------
-Error.
-
-----
-
-Declaration
------------
-:: 
-
-    fn (code: s32, format: string, args: ...) Error
-
-Description
------------
-Sets error state with `code` and formatted message.
-
-Arguments
----------
-* `code` Error code.
-* `format` Message formatting string.
-* `args` Values inserted into formatted message.
-
-Result
-------
-Error.
-*/
+/// error
+/// =====
+/// Overloaded function setting up error state. Error state is global variable holding :ref:`Error` 
+/// instance, `error` function sets desired values and return pointer to this global. That means
+/// the `Error` must be handled immediately after it's returned from failing function since every
+/// `Error` state points to the same memory.
+/// 
+/// Error creating does not require any HEAP memory alocations.
+/// 
+/// ::
+/// 
+///     fn (code: s32) Error #inline
+/// 
+/// Sets error code.
+/// 
+/// ----
+/// 
+/// ::
+/// 
+///     fn (format: string, args: ...) Error #inline
+/// 
+/// Sets error state with `ERR_UNKNOWN` code and formatted message.
+/// 
+/// ----
+/// 
+/// :: 
+/// 
+///     fn (code: s32, format: string, args: ...) Error
+/// 
+/// Sets error state with `code` and formatted message.
 error :: fn {  error1; error2; error3; }
 
 #private

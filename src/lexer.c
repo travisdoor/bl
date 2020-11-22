@@ -53,6 +53,7 @@ typedef struct context {
 
 static void       scan(Context *cnt);
 static bool       scan_comment(Context *cnt, const char *term);
+static bool       scan_docs(Context *cnt, Token *tok);
 static bool       scan_ident(Context *cnt, Token *tok);
 static bool       scan_string(Context *cnt, Token *tok);
 static bool       scan_char(Context *cnt, Token *tok);
@@ -79,9 +80,36 @@ bool scan_comment(Context *cnt, const char *term)
         if (strncmp(cnt->c, term, len) == 0) break;
         cnt->c++;
     }
-
-    // skip terminator
     cnt->c += len;
+    return true;
+}
+
+bool scan_docs(Context *cnt, Token *tok)
+{
+    BL_ASSERT(token_is(tok, SYM_DCOMMENT) || token_is(tok, SYM_DGCOMMENT));
+    tok->location.line = cnt->line;
+    tok->location.col  = cnt->col;
+
+    char *begin      = cnt->c;
+    s32   len_parsed = 0;
+    s32   len_str    = 0;
+    while (true) {
+        if (*cnt->c == SYM_EOF) break;
+        if (*cnt->c == '\r' || *cnt->c == '\n') break;
+        if (!len_parsed && *cnt->c == ' ') {
+            ++begin;
+        } else {
+            len_str++;
+        }
+        len_parsed++;
+        cnt->c++;
+    }
+
+    TString *cstr = builder_create_cached_str();
+    tstring_append_n(cstr, begin, len_str);
+    tok->value.str    = cstr->data;
+    tok->location.len = len_parsed + 3; // + 3 = '///'
+    cnt->col += len_parsed;
     return true;
 }
 
@@ -415,6 +443,10 @@ SCAN:
             }
 
             switch (tok.sym) {
+            case SYM_DCOMMENT:
+            case SYM_DGCOMMENT:
+                scan_docs(cnt, &tok);
+                goto PUSH_TOKEN;
             case SYM_LCOMMENT:
                 // begin of line comment
                 scan_comment(cnt, "\n");

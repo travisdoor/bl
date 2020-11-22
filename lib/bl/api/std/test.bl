@@ -31,31 +31,34 @@
 #load "std/array.bl"
 #load "os/posix/signal.bl"
 
-/*!
-test_eq
-=======
+//! ====
+//! Test
+//! ====
+//! 
+//! ::
+//! 
+//!     #load "std/test.bl"
+//! 
+//! Integrated unit testing API.
+//! 
+//! .. toctree::
+//!    :glob:
+//!    :titlesonly:
+//! 
+//!    test.bl/*
 
-Declaration
------------
-.. code-block:: c
-
-    test_eq :: fn (got: string, expected: string, loc := #call_location)
-    test_eq :: fn (got: s64, expected: s64, loc := #call_location)
-    test_eq :: fn (got: u64, expected: u64, loc := #call_location)
-    test_eq :: fn (got: f32, expected: f32, loc := #call_location)
-    test_eq :: fn (got: f64, expected: f64, loc := #call_location)
-    test_eq :: fn (got: *u8, expected: *u8, loc := #call_location)
-
-Description
------------
-Test whether `got` value is equal to `expected` value.
- 
-Arguments
----------
-* `got` Value to be checked.
-* `expected` Expected value of `got`.
-* `loc` Optional call side location.
-*/
+/// Overloads
+/// ---------
+/// ::
+/// 
+///     fn (got: string, expected: string, loc := #call_location)
+///     fn (got: s64, expected: s64, loc := #call_location)
+///     fn (got: u64, expected: u64, loc := #call_location)
+///     fn (got: f32, expected: f32, loc := #call_location)
+///     fn (got: f64, expected: f64, loc := #call_location)
+///     fn (got: *u8, expected: *u8, loc := #call_location)
+/// 
+/// Test whether `got` value is equal to `expected` value.
 test_eq :: fn {
     str_eq;
     s64_eq;
@@ -65,31 +68,18 @@ test_eq :: fn {
     ptr_eq;
 }
 
-/*!
-test_neq
-========
-
-Declaration
------------
-.. code-block:: c
-
-    test_neq :: fn (got: string, not_expected: string, loc := #call_location)
-    test_neq :: fn (got: s64, not_expected: s64, loc := #call_location)
-    test_neq :: fn (got: u64, not_expected: u64, loc := #call_location)
-    test_neq :: fn (got: f32, not_expected: f32, loc := #call_location)
-    test_neq :: fn (got: f64, not_expected: f64, loc := #call_location)
-    test_neq :: fn (got: *u8, not_expected: *u8, loc := #call_location)
-
-Description
------------
-Test whether `got` value is not equal to `not_expected` value.
- 
-Arguments
----------
-* `got` Value to be checked.
-* `not_expected` Not expected value of `got`.
-* `loc` Optional call side location.
-*/
+/// Overloads
+/// ---------
+/// ::
+/// 
+///     fn (got: string, not_expected: string, loc := #call_location)
+///     fn (got: s64, not_expected: s64, loc := #call_location)
+///     fn (got: u64, not_expected: u64, loc := #call_location)
+///     fn (got: f32, not_expected: f32, loc := #call_location)
+///     fn (got: f64, not_expected: f64, loc := #call_location)
+///     fn (got: *u8, not_expected: *u8, loc := #call_location)
+/// 
+/// Test whether `got` value is not equal to `not_expected` value.
 test_neq :: fn {
     str_neq;
     s64_neq;
@@ -99,177 +89,49 @@ test_neq :: fn {
     ptr_neq;
 }
 
-/*!
-test_true
-=========
-
-Declaration
------------
-::
-
-    test_true :: fn (v: bool, loc := #call_location) 
-
-Description
------------
-Test whether `v` value is `true`.
- 
-Arguments
----------
-* `v` Value to be checked.
-* `loc` Optional call side location.
-*/
+/// Test whether `v` value is `true`.
 test_true :: fn (v: bool, loc := #call_location) {
     if v { return; }
     print_err("Value expected to be true.");
     assert(false, loc);
 }
 
-/*!
-test_false
-==========
-
-Declaration
------------
-::
-
-    test_false :: fn (v: bool, loc := #call_location) 
-
-Description
------------
-Test whether `v` value is `false`.
- 
-Arguments
----------
-* `v` Value to be checked.
-* `loc` Optional call side location.
-*/
+/// Test whether `v` value is `false`.
 test_false :: fn (v: bool, loc := #call_location) {
     if !v { return; }
     print_err("Value expected to be false.");
     assert(false, loc);
 }
 
-/*!
-test_null
-=========
-
-Declaration
------------
-::
-
-    test_null :: fn (ptr: *u8, loc := #call_location) 
-
-Description
------------
-Test whether `ptr` pointer value is `null`.
- 
-Arguments
----------
-* `ptr` Value to be checked.
-* `loc` Optional call side location.
-
- */
+/// Test whether `ptr` pointer value is `null`.
 test_null :: fn (ptr: *u8, loc := #call_location) {
     if ptr == null { return; }
     print_err("Pointer is expected to be null.");
     assert(false, loc);
 }
 
-/*!
-test_not_null
-=============
-
-Declaration
------------
-::
-
-    test_not_null :: fn (ptr: *u8, loc := #call_location)
-
-Description
------------
-Test whether `ptr` pointer value is not `null`.
-
-Arguments
----------
-* `ptr` Value to be checked.
-* `loc` Optional call side location.
-*/
+/// Test whether `ptr` pointer value is not `null`.
 test_not_null :: fn (ptr: *u8, loc := #call_location) {
     if ptr != null { return; }
     print_err("Pointer is expected not to be null.");
     assert(false, loc);
 }
 
-/*!
-test_ok
-=======
-
-Declaration
------------
-::
-
-    test_ok :: fn (err: Error, loc := #call_location) #inline
-
-Description
------------
-Test whether `err` is OK.
-
-Arguments
----------
-* `err` Error to be checked.
-* `loc` Optional call side location.
-*/
+/// Test whether `err` is OK.
 test_ok :: fn (err: Error, loc := #call_location) #inline {
     if is_ok(err) { return; }
     print_err("Expected to be OK not '%'.", err);
     assert(false, loc);
 }
 
-/*!
-test_not_ok
-===========
-
-Declaration
------------
-::
-
-    test_not_ok :: fn (err: Error, loc := #call_location) #inline
-
-Description
------------
-Test whether `err` is not OK.
-
-Arguments
----------
-* `err` Error to be checked.
-* `loc` Optional call side location.
-*/
+/// Test whether `err` is not OK.
 test_not_ok :: fn (err: Error, loc := #call_location) #inline {
     if !is_ok(err) { return; }
     print_err("Expected not to be OK not '%'.", err);
     assert(false, loc);
 }
 
-/*!
-test_is_error
-=============
-
-Declaration
------------
-::
-
-    test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) #inline
-
-Description
------------
-Test whether `got_err` code is `expected_code`.
-
-Arguments
----------
-* `got_err` Error to be checked.
-* `expected_code` Expected error code.
-* `loc` Optional call side location.
-*/
+/// Test whether `got_err` code is `expected_code`.
 test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) #inline {
     if is_error(got_err, expected_code) { return; }
     if got_err {
@@ -288,50 +150,34 @@ test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) 
     assert(false, loc);
 }
 
-/*!
-test_run
-========
-
-Declaration
------------
-::
-
-    test_run :: fn () s32
-
-Description
------------
-Execute all registered test cases in current assembly. The `test_run` function
-uses compiler builtin `testcases()` function returning slice of all registered 
-test cases in the current assembly (all function with hash directive `#test`).
-
-Test case execution can be used in runtime and compile time, in both cases
-function remap default behaviour of `panic()` function call and try to report
-all failing tests without execution termination.
-
-Formatted output containing information about every test run status and summary
-report is produced during execution of this function. In case of test failure
-all needed information about fail source location is reported into standard
-output.
-
-Result
-------
-Number of failed tests.
-
-Example
--------
-.. code-block:: c
-    
-    #load "std/test.bl"
-    
-    my_test :: fn () #test {
-        print("Hello from test case!!!\n");     
-    }
-
-    main :: fn () s32 {
-        return test_run(); 
-    } 
-
-*/
+/// Execute all registered test cases in current assembly. The `test_run` function
+/// uses compiler builtin `testcases()` function returning slice of all registered 
+/// test cases in the current assembly (all function with hash directive `#test`).
+/// 
+/// Test case execution can be used in runtime and compile time, in both cases
+/// function remap default behaviour of `panic()` function call and try to report
+/// all failing tests without execution termination.
+/// 
+/// Formatted output containing information about every test run status and summary
+/// report is produced during execution of this function. In case of test failure
+/// all needed information about fail source location is reported into standard
+/// output.
+/// 
+/// Returns number of failed tests.
+/// 
+/// Example
+/// -------
+/// ::
+///     
+///     #load "std/test.bl"
+///     
+///     my_test :: fn () #test {
+///         print("Hello from test case!!!\n");     
+///     }
+/// 
+///     main :: fn () s32 {
+///         return test_run(); 
+///     } 
 test_run :: fn () s32 {
     sighup :: fn (v: c_int) {};
     _signal(_SIGHUP, &sighup);
