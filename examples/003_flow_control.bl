@@ -1,16 +1,3 @@
-// Program flow control
-
-/*
-   You can find several ways to control program execution flow in BL, 
-   the simplest one is 'if' statement. We use if to check the value of
-   'should_print' boolean variable and if the value is true we
-   continue with execution to the following block. The else statement
-   is optional and will be executed in case 'should_print' was false.
-
-   Sometimes we want to execute part of program multiple times. In
-   such case use of the 'loop' statement is the best choise.
-*/
-
 main :: fn () s32 {
     // Declare bool variable and set it to true.
     should_print := true;

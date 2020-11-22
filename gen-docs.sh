@@ -69,5 +69,13 @@ do
 	echo "Processing $f file..."
 	cp ${f} ${WDIR}/docs/api/modules
 done
+cd ${WDIR}
+
+# examples
+rm -rf ${WDIR}/docs/examples
+mkdir -p ${WDIR}/docs/examples
+mkdir -p ${WDIR}/docs/examples/docs
+cp ${WDIR}/examples/*.bl ${WDIR}/docs/examples
+cp ${WDIR}/examples/docs/*.bl ${WDIR}/docs/examples/docs
 
 cd ${WDIR}

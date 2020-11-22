@@ -354,6 +354,7 @@ void doc(Context *cnt, Ast *node)
         doc_type_vargs(cnt, node);
         break;
     default:
+        builder_warning("Missing doc generation for AST node '%s'.", ast_get_name(node));
         break;
     }
 }

@@ -2,6 +2,7 @@
 ---------------------------------------------------------------------------------------
 Migration to LLVM 11.
 Add multiple return values and group declarations.
+Add automatic documentation generator (-docs flag).
 Add debug allocator.
 Add new FileSystem module.
 Add #import directive for modules.

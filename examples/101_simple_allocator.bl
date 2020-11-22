@@ -1,17 +1,3 @@
-// Simple static allocator and executable context
-
-/*
-   Memory management in BL programs is handled by alocator function set in
-   global context. Every allocation and free via alloc or free function call 
-   ends up in default or custom allocator provided by context, so we can change
-   the way memory allocates for whole program even for standart API function.
-
-   This can be helpful during development when we want to track down all
-   allocations or basically when we want to optimize memory usage of program.
-
-   Following example shows simple allocator using static buffer.
-*/
-
 // Preallocate memory on stack
 _buffer: [4098]u8;
 _bi: usize;

@@ -1,13 +1,3 @@
-// Slices
-
-/*
-    Slice type is similar to array, but it's size isn't explicitly baked
-    into the type declaration. Slice value contains information about element
-    count and pointer to propper allocated memory block.
-
-    Any array can be implicitly converted to slice.
-*/
-
 main :: fn () s32 {
     // Declare slice variable, no allocation is done here, my_slice.len is zero
     // and my_slice.ptr is null.

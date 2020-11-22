@@ -24,4 +24,5 @@ Options\n\
   -reg-split-<on|off>   = Enable or disable splitting structures passed into the function by value into registers.\n\
   -no-vcvars            = Disable injection of Visual Studio environment on Windows.\n\
   -verify-llvm          = Verify LLVM IR after generation.\n\
+  -docs                 = Generate documentation and exit.\n\
   -di-<dwarf|codeview>  = Set debug info format."

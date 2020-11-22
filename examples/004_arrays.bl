@@ -1,39 +1,3 @@
-// Arrays
-
-/*
-   Array type is special composit type containing multiple values of the 
-   same base type. We must explicitly specify how many elements could 
-   an array contain. 
-
-   my_array: [5]s32;
-
-   You can use [N-1] operator to modify or read each array element but keep
-   in mind that we have only limited count of them specified in type
-   array type definition.
-
-   my_array[0] = 10;
-   my_array[1] = 20;
-
-   Our example array of size 5 have memory reserved for 5 elements. Indices
-   of those elements are counted from 0, so maximum posible index is 4. 
-   Compiler will internally allocate continuous memory block on stack with
-   propper size. So index 0 points to the very beginning of this memory
-   block, index 1 points to memory block of next element. 
-
-   You can get address of allocated memory block via '.ptr' array member
-   field and length of an array via '.len' field.
-
-   N = 5  
-   my_array.len -> yields 5 of s64 type
-   my_array.ptr -> yields address of element on 0 index of type *s32
-
-    1st 2nd 3rd 4th 5th
-   ---------------------
-   | 0 | 1 | 2 | 3 | 4 |
-   ---------------------
-     ^ .ptr          
-*/
-
 main :: fn () s32 {
     // This is array variable as consist of 10 numbers of s32 type.
     // In this case we do not initialize the array we only reserve

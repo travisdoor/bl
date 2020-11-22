@@ -1,8 +1,0 @@
-main :: fn () s32 {
-    str :: string_new();
-    defer string_delete(str);
-    string_append(&str, "Hello");
-
-    print("str = %\n", str);
-    return 0;
-}

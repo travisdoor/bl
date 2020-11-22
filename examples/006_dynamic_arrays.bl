@@ -1,14 +1,3 @@
-// Dynamic arrays
-
-/*
-    Until now we've used only arrays with fixed size known in compile time,
-    but sometimes we need array size to be changed in runtime. In such case 
-    we can use builtin dynamic array type.
-
-    Dynamic arrays can be extended in runtime, memory allocated to store all
-    values is dynamically reserved on heap as needed.
-*/
-
 // First of all we must load API functions for dynamic array. The #load hash
 // directive can be used to "include" other source files.
 #load "std/array.bl"

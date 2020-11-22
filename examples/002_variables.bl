@@ -1,22 +1,3 @@
-// Variables
-
-/*
-   Variable represents named piece of data used by program.
-   Every variable has name, type and some value. Every variable
-   can be mutable or immutable, the value of mutable variable can
-   be changed any time during program executions, immutable variable
-   can be set only once.
-
-   Variables can be declared in local scope of any funcion or in
-   global scope of whole program. Variables in local scope are visible
-   only in that scope, on the other hand global variables are visible
-   everywhere.
-
-   There is one limitation for global variables, they must be initialized
-   to some value known in compile time.
-
-*/
-
 // Global variable is visible in whole source. This variable is initialized
 // by constant literal '10' which is known in compile time.
 MyGlobal : s32 = 10;

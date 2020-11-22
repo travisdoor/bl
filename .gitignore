@@ -58,3 +58,5 @@ src/config.h
 *.sln
 .suo
 /CMakeLists.txt.user
+/docs/examples
+/docs
