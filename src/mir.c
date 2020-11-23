@@ -8127,16 +8127,13 @@ void ast_defer_block(Context *cnt, Ast *block, bool whole_tree)
 {
     TSmallArray_DeferStack *stack = &cnt->ast.defer_stack;
     Ast *                   defer;
-
     for (usize i = stack->size; i-- > 0;) {
         defer = stack->data[i];
-
         if (defer->owner_scope == block->owner_scope) {
             tsa_pop_DeferStack(stack);
         } else if (!whole_tree) {
             break;
         }
-
         ast(cnt, defer->data.stmt_defer.expr);
     }
 }
@@ -8750,6 +8747,7 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
     // generate body instructions
     ast(cnt, ast_block);
 
+    // Use stack instead of local variables?
     cnt->ast.exit_block = prev_exit_block;
     set_current_block(cnt, prev_block);
     return &fn_proto->base;

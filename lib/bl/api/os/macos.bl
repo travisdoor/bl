@@ -139,25 +139,6 @@ os_tick_ms :: fn () f64 #inline {
     return t * 0.00001;
 }
 
-os_normalize_path :: fn (filepath: *string) bool {
-    tmp: [OS_PATH_MAX]u8 #noinit;
-    if _posix_realpath(filepath.ptr, &tmp[0]) != null {
-        string_clear(filepath);
-        string_append(filepath, cstr_to_str(tmp.ptr));
-        return true;
-    } 
-    return false;
-}
-
-os_get_real_path :: fn (filename: string) string {
-    tmp: [OS_PATH_MAX]u8 #noinit;
-    if _posix_realpath(filename.ptr, &tmp[0]) != null {
-        return string_new(tmp.ptr);
-    } 
-
-    return string_new(filename);
-}
-
 os_get_exec_path :: fn () string {
     buf : [DARWIN_MAXPATHLEN]u8 #noinit;
     buf_len := cast(u32) buf.len;
@@ -210,66 +191,6 @@ os_get_last_error :: fn (native_code: *s32 = null) Error #inline {
 _os_gl_get_proc :: fn (proc_name: string) *u8 #inline {
     module :: os_dlopen("");
     return os_dlsym(module, proc_name);
-}
-
-_OSFileKind :: enum {
-    File;
-    Directory;
-}
-
-_OSFileInfo :: struct {
-    kind: _OSFileKind;
-    name: string;
-}
-
-_OSFileList :: []_OSFileInfo;
-
-_os_is_dir :: fn (dirpath: string) bool {
-    if dirpath.len > DARWIN_MAXPATHLEN { panic("Path too long!"); }
-    dir := _posix_opendir(dirpath.ptr);
-    if dir == null { return false; }
-    defer _posix_closedir(dir);
-    info :: _posix_readdir(dir);
-    if info == null { return false; }
-    return info.d_type == auto DT_DIR;
-}
-
-_os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
-    if dirpath.len > DARWIN_MAXPATHLEN { panic("Path too long!"); }
-    dir := _posix_opendir(dirpath.ptr);
-    if dir == null { return false; }
-    defer _posix_closedir(dir);
-
-    fc := 0;
-    loop _posix_readdir(dir) != null { fc += 1; }
-    _posix_rewinddir(dir);
-
-    (^out_buf).len = fc;
-    if fc == 0 { return true; }
-
-    (^out_buf).ptr = auto alloc(sizeof(_OSFileInfo) * auto fc);
-
-    i := 0;
-    loop {
-        info :: _posix_readdir(dir);
-        if info == null { break; }
-
-        kind: _OSFileKind;
-        name: string;
-
-        if info.d_type == auto DT_DIR {
-            kind = _OSFileKind.Directory;
-            name = string_new(cast(*u8) info.d_name.ptr);
-        } else {
-            kind = _OSFileKind.File;
-            name = string_new(cast(*u8) info.d_name.ptr);
-        }
-
-        (^out_buf)[i] = {:_OSFileInfo: kind, name};
-        i += 1;
-    }
-
-    return true;
 }
 
 _os_debug_break :: fn () #inline {

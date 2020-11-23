@@ -64,7 +64,7 @@ fs_file_create_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer string_delete(filepath);
     
-    fs_file_delete(filepath);
+    fs_file_remove(filepath);
     
     {
         file, err :: fs_file_create("");
@@ -82,7 +82,7 @@ fs_file_create_test :: fn () #test {
         fs_file_close(file);
     }    
     
-    fs_file_delete(filepath);
+    fs_file_remove(filepath);
 }
 
 fs_file_read_string_test :: fn () #test {
@@ -230,7 +230,7 @@ fs_normalize_test :: fn () #test {
     {
         file :: fs_file_create("foo");
         fs_file_close(file);
-        defer fs_file_delete("foo");
+        defer fs_file_remove("foo");
         cwd :: fs_cwd();
         defer string_delete(cwd);    
         filepath :: string_new("foo");
@@ -241,15 +241,16 @@ fs_normalize_test :: fn () #test {
     }    
 }
 
-fs_file_delete_test :: fn () #test {
+fs_file_remove_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer string_delete(filepath);
     
-    fs_file_delete(filepath);
+    fs_file_remove(filepath);
     file, err :: fs_file_create(filepath);
     test_ok(err);
     fs_file_close(file);
-    test_true(fs_file_delete(filepath));
+    err2 :: fs_file_remove(filepath);
+    test_ok(err2);
 }
 
 fs_file_size_test :: fn () #test {
@@ -296,7 +297,7 @@ fs_file_read_test4 :: fn () #test {
 fs_file_write_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer string_delete(filepath);
-    fs_file_delete(filepath);
+    fs_file_remove(filepath);
     content :: "Hello I'm cool file content!";    
     
     { // write
@@ -314,13 +315,13 @@ fs_file_write_test :: fn () #test {
         test_eq(tmp, content);
         fs_file_close(file);
     }
-    fs_file_delete(filepath);
+    fs_file_remove(filepath);
 }
 
 fs_file_write_string_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer string_delete(filepath);
-    fs_file_delete(filepath);
+    fs_file_remove(filepath);
     content :: "Hello I'm cool file content!";    
     
     { // write
@@ -338,13 +339,13 @@ fs_file_write_string_test :: fn () #test {
         test_eq(tmp, content);
         fs_file_close(file);
     }
-    fs_file_delete(filepath);
+    fs_file_remove(filepath);
 }
 
 fs_file_write_slice_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer string_delete(filepath);
-    fs_file_delete(filepath);
+    fs_file_remove(filepath);
     content :: {:[5]u8: 'H', 'e', 'l', 'o', 'o' };
     
     { // write
@@ -362,5 +363,65 @@ fs_file_write_slice_test :: fn () #test {
         test_eq(tmp.len, content.len);
         fs_file_close(file);
     }
-    fs_file_delete(filepath);
+    fs_file_remove(filepath);
+}
+
+fs_list_dir_test1 :: fn () #test {
+    dir :: fs_cwd();
+    defer string_delete(dir);
+    list, err :: fs_dir_scan(dir);
+    defer fs_info_list_terminate(list);
+    test_ok(err);
+    test_true(list.len > 0);
+    loop i := 0; i < list.len; i += 1 {
+        test_neq(list[i].name, string_empty);
+    }
+}
+
+fs_list_dir_test2 :: fn () #test {
+    dir :: fs_cwd();
+    defer string_delete(dir);
+    list, err :: fs_dir_scan(dir, &fn (info: *FSInfo) bool {
+        return info.kind == FSInfoKind.Directory;
+    });
+    defer fs_info_list_terminate(list);
+    test_ok(err);
+    test_true(list.len > 0);
+    loop i := 0; i < list.len; i += 1 {
+        test_neq(list[i].name, string_empty);
+        test_true(list[i].kind == FSInfoKind.Directory);
+    }
+}
+
+fs_is_directory_test1 :: fn () #test {
+    tmp :: fs_tmp();
+    defer string_delete(tmp);
+    state, err :: fs_is_directory(tmp);
+    test_ok(err);
+    test_true(state);
+}
+
+fs_is_directory_test2 :: fn () #test {
+    state, err :: fs_is_directory(#file);
+    test_ok(err);
+    test_false(state);
+}
+
+fs_dir_create_remove_test1 :: fn () #test {
+    dir :: fs_tmp();
+    defer string_delete(dir);
+    string_append(&dir, "__DELETE_ME__");
+
+    fs_dir_remove(dir);
+    state1 :: fs_dir_create(dir);
+    test_ok(state1);
+
+    state2 :: fs_dir_create(dir);
+    test_not_ok(state1);
+
+    state3 :: fs_dir_remove(dir);
+    test_ok(state3);
+}
+
+fs_dir_create_remove_test2 :: fn () #test {
 }

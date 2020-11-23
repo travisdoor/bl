@@ -62,13 +62,14 @@ cd ${WDIR}
 
 # modules
 mkdir -p ${WDIR}/docs/api/modules
-rm ${WDIR}/docs/api/modules/*.rst
+rm ${WDIR}/docs/api/modules/*
 
-for f in lib/bl/api/modules/*/*.rst
-do
-	echo "Processing $f file..."
-	cp ${f} ${WDIR}/docs/api/modules
-done
+
+cd ${WDIR}/docs/api/modules
+blc -docs ${WDIR}/lib/bl/api/modules/fs/win32/*.bl
+mv out/* .
+rm -r -f out
+cp ${WDIR}/lib/bl/api/modules/fs/examples/*.bl fs/
 cd ${WDIR}
 
 # examples

@@ -1,16 +1,54 @@
+//! ===========
+//! File System
+//! ===========
+//! 
+//! ::
+//! 
+//!    #import "std/fs"
+//! 
+//! File system module for manipulation with files and directories.
+//! 
+//! .. warning:: This module is experimental and not fully supported across all platforms.
+
+
+/// Specify operation with opened file.
 FSFileOpenMode :: enum {
+    /// Open file for reading.
     Read;
+    /// Open file for writing.
     Write;
 }
 
+/// Specify kind of file system entry.
+FSInfoKind :: enum {
+    File;
+    Directory;
+}
+
+/// Helper container to hold information about file system entry.
+FSInfo :: struct {
+    kind: FSInfoKind;
+    name: string;
+}
+
+FSInfoList :: []FSInfo;
+
+/// File handle type.
 FSFile :: *u8;
 FS_FILE_INVALID : FSFile : null;
 
+/// Check whether file or directory exists.
 fs_exist :: fn (filepath: string) bool #inline {
     if filepath.len == 0 { return false; }
     return _PathFileExistsA(auto filepath.ptr) > 0;
 }
 
+/// Open an existing file specified by `filepath`. Function return file handle and `OK` status
+/// when file was openned, otherwise return invalid handle and proper error. File must be closed
+/// by :ref:`fs_file_close` call.
+///
+/// File open `mode` is optional, any combination of :ref:`FSFileOpenMode` can be used. Default
+/// `mode` for `Read` and `Write` is used when not specified.
 fs_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
     if string_is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     access :: modes_to_flags(mode);
@@ -22,6 +60,12 @@ fs_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
     return handle, ok();
 }
 
+/// Create new file specified by `filepath`. Function return handle and `OK` status when
+/// file was created, otherwise return invalid handle and proper error. File must be closed
+/// by :ref:`fs_file_close` call.
+///
+/// File open `mode` is optional, any combination of :ref:`FSFileOpenMode` can be used. Default
+/// `mode` for `Read` and `Write` is used when not specified.
 fs_file_create :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
     if string_is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     access :: modes_to_flags(mode);
@@ -33,18 +77,26 @@ fs_file_create :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error)
     return handle, ok();
 }
 
-fs_file_delete :: fn (filepath: string) bool #inline {
-    if string_is_empty(filepath) { return false; }
+/// Try to remove file specified by `filepath` and return `OK` on success, otherwise
+/// return error.
+fs_file_remove :: fn (filepath: string) Error #inline {
+    if string_is_empty(filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     tmp :: _DeleteFileA(auto filepath.ptr);
-    if tmp == 0 { return false; }
-    return true;
+    if tmp == 0 {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot remove file '%': %.", filepath, estr);
+    }
+    return ok();
 }
 
+/// Close previously openned file. Does nothing when `handle` is not valid.
 fs_file_close :: fn (handle: FSFile) #inline {
     if !handle { return; }
     _CloseHandle(handle);
 }
 
+/// Return file content size in bytes and `OK` status on success, otherwise
+/// return zero and proper error.
 fs_file_size :: fn (handle: FSFile) (usize, Error) #inline {
     size: _LARGE_INTEGER #noinit;
     if _GetFileSizeEx(auto handle, &size) == 0 {
@@ -54,6 +106,10 @@ fs_file_size :: fn (handle: FSFile) (usize, Error) #inline {
     return auto size, ok();
 }
 
+/// Read whole file content into string. Return new string instance containting
+/// file data and `OK` status on success, otherwise return empty string and error.
+/// Returned string is expected to be released by :ref:`string_delete` call if
+/// there was no error reported by function.
 fs_file_read_string :: fn (handle: FSFile) (string, Error) {
     size, err :: fs_file_size(handle);
     if !is_ok(err) {
@@ -69,6 +125,10 @@ fs_file_read_string :: fn (handle: FSFile) (string, Error) {
     return buf, ok();
 }
 
+/// Read whole file content into slice array. Return new slice instance containting
+/// file data and `OK` status on success, otherwise return empty slice and error.
+/// Returned slice is expected to be released by :ref:`slice_terminatr` call if
+/// there was no error reported by function.
 fs_file_read_slice :: fn (handle: FSFile) ([]u8, Error) {
     invalid: []u8;
     size, err :: fs_file_size(handle);
@@ -86,6 +146,11 @@ fs_file_read_slice :: fn (handle: FSFile) ([]u8, Error) {
     return buf, ok();
 }
 
+
+/// Read `size` bytes from file into raw `dest` buffer. Return count of bytes
+/// written into buffer and `OK` status when there was no error. `dest` buffer
+/// must be allocated to handle at least `size` bytes. There is no overflow
+/// check.
 fs_file_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) {
     if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
     read_bytes: _DWORD #noinit;
@@ -96,6 +161,10 @@ fs_file_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) {
     return auto read_bytes, ok();
 }
 
+/// Write `size` bytes from raw buffer `src` into the file. Return count of
+/// bytes written into the buffer and `OK` on success, otherwise return error.
+/// `src` buffer size must be at least `size` bytes. No overflow checking
+/// is done.
 fs_file_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) {
     if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
     written_bytes: _DWORD #noinit;
@@ -106,18 +175,134 @@ fs_file_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) {
     return auto written_bytes, ok();
 }
 
+/// Write content of `str` into the file, return count of written bytes and `OK` if
+/// there is no error, otherwise return 0 and error.
 fs_file_write_string :: fn (handle: FSFile, str: string) (s64, Error) #inline {
     written_bytes, err :: fs_file_write(handle, str.ptr, str.len);
     if !is_ok(err) { return 0, err; }
     return auto written_bytes, ok();    
 }
 
+/// Write content of `v` slice into the file, return count of written bytes and `OK` if
+/// there is no error, otherwise return 0 and error.
 fs_file_write_slice :: fn (handle: FSFile, v: []u8) (s64, Error) #inline {
     written_bytes, err :: fs_file_write(handle, v.ptr, v.len);
     if !is_ok(err) { return 0, err; }
     return auto written_bytes, ok();
 }
 
+/// Create new directory and return `OK` on success. This function does not
+/// create directories recursively.
+fs_dir_create :: fn (dirpath: string) Error {
+    if string_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
+    if _CreateDirectoryA(auto dirpath.ptr, null) == 0 {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot create directory '%': %.", dirpath, estr);
+    }
+    return ok();
+}
+
+/// Remove directory specified by `dirpath` and return `OK` on success,
+/// otherwise return error.
+fs_dir_remove :: fn (dirpath: string) Error {
+    if string_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot remove directory, dirpath is empty."); }
+    if _RemoveDirectoryA(auto dirpath.ptr) == 0 {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot remove directory '%': %.", dirpath, estr);
+    }
+    return ok();
+}
+
+/// Check whether `path` points to valid directory and return true with `OK` state,
+/// otherwise return `false` and error.
+fs_is_directory :: fn (path: string) (bool, Error) #inline {
+    if string_is_empty(path) { return false, error(ERR_INVALID_HANDLE, "Path is empty."); }
+    attributes :: _GetFileAttributesA(auto path.ptr);
+    if attributes == _INVALID_FILE_ATTRIBUTES {
+        ec, estr :: os_get_last_error();
+        return false, error(ec, "Cannot check directory '%': %.", path, estr);
+    }
+    return is_flag_u32(attributes, auto _FILE_ATTRIBUTE_DIRECTORY), ok();
+}
+
+/// Type of `fs_dir_scan` filter function.
+FSDirScanFilterFn :: *fn(info: *FSInfo) bool;
+
+/// Scan `dirpath` directory and return list of information for every file system
+/// entry found on success. Otherwise return empty list and error. Use :ref:`fs_info_list_terminate`
+/// to release list when there was no error reported by this function.
+///
+/// Optional `filter` funtion :ref:`FSDirScanFilterFn` can be used to filter scan results
+/// directly during scanning, it's called for every found entry and only those for
+/// whose filter yealds true are added into the output list.
+fs_dir_scan :: fn (dirpath: string, filter: FSDirScanFilterFn = null) (FSInfoList, Error) {
+    invalid: FSInfoList;
+    if dirpath.len > (_MAX_PATH-3) { return invalid, error("Path too long!"); }
+    tmp := string_new(dirpath);
+    defer string_delete(tmp);
+    string_append(&tmp, "\\*");
+
+    ffd: _FIND_DATA;
+    h_find := _FindFirstFile(auto tmp.ptr, &ffd);
+    if h_find == _INVALID_HANDLE_VALUE {
+        ec, estr :: os_get_last_error();
+        return invalid, error(ec, "Cannot list directory '%': %.", dirpath, estr);
+    }
+
+    fc := 0;
+    loop {
+        fc += 1;
+        if _FindNextFile(h_find, &ffd) == 0 { break; }
+    }
+
+    if _FindClose(h_find) == 0 {
+        ec, estr :: os_get_last_error();
+        return invalid, error(ec, "Cannot list directory '%': %.", dirpath, estr);
+    }
+    buf: FSInfoList;
+    slice_init(buf, fc);
+    if fc == 0 { return buf, ok(); }
+
+    h_find = _FindFirstFile(auto tmp.ptr, &ffd);
+    if h_find == _INVALID_HANDLE_VALUE { 
+        slice_terminate(buf);
+        ec, estr :: os_get_last_error();
+        return invalid, error(ec, "Cannot list directory '%': %.", dirpath, estr);
+    }
+    defer _FindClose(h_find);
+
+    buf.len = 0;
+    loop {
+        kind: FSInfoKind #noinit;
+        name: string;
+        if is_flag_u32(ffd.dwFileAttributes, auto _FILE_ATTRIBUTE_DIRECTORY) {
+            kind = FSInfoKind.Directory;
+            name = string_new(ffd.cFileName.ptr);
+        } else {
+            kind = FSInfoKind.File;
+            name = string_new(ffd.cFileName.ptr);
+        }
+        push := true;
+        info :: {:FSInfo: kind, name};
+        if filter { push = filter(&info); }
+        if push {
+            buf.len += 1;
+            buf[buf.len-1] = info;
+        }
+        if _FindNextFile(h_find, &ffd) == 0 { break; }
+    }
+    return buf, ok();
+}
+
+/// Release allocated file system entry info list.
+fs_info_list_terminate :: fn (list: FSInfoList) {
+    loop i := 0; i < list.len; i += 1 {
+        string_delete(list[i].name);
+    }
+    slice_terminate(list);
+}
+
+/// Checks whether `name` is valid file name on current platform.
 fs_validate_filename :: fn (name: string) bool {
     if name.len == 0 { return false; }
     invalid :: "<>:\"/\\|?*\t";
@@ -127,6 +312,8 @@ fs_validate_filename :: fn (name: string) bool {
     return true;
 }
 
+/// Return current working directory, result must be released by
+/// :ref:`string_delete`.
 fs_cwd :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
     written :: _GetCurrentDirectoryA(auto buf.len, auto buf.ptr);
@@ -136,6 +323,8 @@ fs_cwd :: fn () string #inline {
     return out;
 }
 
+/// Return home directory, result must be released by
+/// :ref:`string_delete`.
 fs_home :: fn () string #inline {
     tmp :: "USERPROFILE";
     cdir :: cast(*u8) c_getenv(auto tmp.ptr);
@@ -143,6 +332,8 @@ fs_home :: fn () string #inline {
     return string_new(cdir);
 }
 
+/// Return temporary directory, result must be released by
+/// :ref:`string_delete`.
 fs_tmp :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
     written :: _GetTempPathA(auto buf.len, auto buf.ptr);
@@ -152,6 +343,8 @@ fs_tmp :: fn () string #inline {
     return out;
 }
 
+/// Try to normalize file path, basically try to remove all relative path
+/// nodes `..` and `.`. Path must be valid path (existing) on system.
 fs_normalize :: fn (filepath: *string) bool {
     buf : [OS_PATH_MAX]u8 #noinit;
     if _GetFullPathNameA(auto filepath.ptr, auto buf.len, buf.ptr, null) > 0 {
@@ -164,6 +357,8 @@ fs_normalize :: fn (filepath: *string) bool {
     return false;
 }
 
+/// Remove file extension (token after first `.`) from the `filename` and
+/// return the rest. Function does not create copy of original `filepath`.
 fs_remove_extension :: fn (filename: string) string #inline {
     if string_is_empty(filename) { return string_empty; }
     tmp := filename;
@@ -176,6 +371,9 @@ fs_remove_extension :: fn (filename: string) string #inline {
     return tmp;
 }
 
+/// Get file extension (token after first `.`) from the `filename`.
+/// Function does not create copy of original `filepath`.
+/// The `.` separator is not included into result string.
 fs_get_extension :: fn (filename: string) string #inline {
     if string_is_empty(filename) { return string_empty; }
     if filename[0] == '.' {

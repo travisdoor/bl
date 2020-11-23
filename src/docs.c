@@ -73,12 +73,26 @@
 #define DEFAULT_TOC(stream, filename)                                                              \
     fprintf(f, "\n\n.. toctree::\n    :glob:\n    :titlesonly:\n\n    %s/*", filename);
 
+#define PUSH_IS_INLINE(cnt)                                                                        \
+    const bool _prev_is_inline = cnt->is_inline;                                                   \
+    cnt->is_inline             = true;
+
+#define POP_IS_INLINE(cnt) cnt->is_inline = _prev_is_inline;
+
+#define PUSH_IS_MULTI_RETURN(cnt)                                                                  \
+    const bool _prev_is_mr = cnt->is_multi_return;                                                 \
+    cnt->is_multi_return   = true;
+
+#define POP_IS_MULTI_RETURN(cnt) cnt->is_multi_return = _prev_is_mr;
+
 typedef struct {
     Unit *  unit;
     FILE *  stream;
     TString path_unit_dir;
     TString path_tmp;
     s32     pad;
+    bool    is_inline;
+    bool    is_multi_return;
 
     TString section_variants;
     TString section_members;
@@ -99,6 +113,7 @@ static void doc_type_ptr(Context *cnt, Ast *type);
 static void doc_type_fn(Context *cnt, Ast *type);
 static void doc_type_enum(Context *cnt, Ast *type);
 static void doc_type_struct(Context *cnt, Ast *type);
+static void doc_type_slice(Context *cnt, Ast *type);
 static void doc_type_vargs(Context *cnt, Ast *type);
 
 void append_section(Context *cnt, const char *name, const char *content)
@@ -234,6 +249,7 @@ void doc_type_fn(Context *cnt, Ast *type)
 {
     Ast *ret_type = type->data.type_fn.ret_type;
     fprintf(cnt->stream, "fn (");
+    PUSH_IS_INLINE(cnt);
     if (type->data.type_fn.args) {
         Ast *arg;
         TSA_FOREACH(type->data.type_fn.args, arg)
@@ -243,7 +259,10 @@ void doc_type_fn(Context *cnt, Ast *type)
         }
     }
     fprintf(cnt->stream, ") ");
+    PUSH_IS_MULTI_RETURN(cnt);
     if (ret_type) doc(cnt, ret_type);
+    POP_IS_MULTI_RETURN(cnt);
+    POP_IS_INLINE(cnt);
 }
 
 void doc_type_enum(Context *cnt, Ast *type)
@@ -270,19 +289,39 @@ void doc_type_enum(Context *cnt, Ast *type)
 
 void doc_type_struct(Context *cnt, Ast UNUSED(*type))
 {
-    fprintf(cnt->stream, "struct {");
+    if (!cnt->is_multi_return)
+        fprintf(cnt->stream, "struct {");
+    else
+        fprintf(cnt->stream, "(");
+
     if (type->data.type_strct.members) {
         Ast *member;
         TSA_FOREACH(type->data.type_strct.members, member)
         {
-            CODE_BLOCK_NEW_LINE(cnt->stream);
-            fprintf(cnt->stream, "    ");
-            doc(cnt, member);
-            fprintf(cnt->stream, ";");
+            if (cnt->is_multi_return) {
+                doc(cnt, member);
+                if (i + 1 < type->data.type_strct.members->size) fprintf(cnt->stream, ", ");
+            } else {
+                CODE_BLOCK_NEW_LINE(cnt->stream);
+                fprintf(cnt->stream, "    ");
+                doc(cnt, member);
+                fprintf(cnt->stream, ";");
+            }
         }
     }
-    CODE_BLOCK_NEW_LINE(cnt->stream);
-    fprintf(cnt->stream, "}");
+    if (cnt->is_multi_return) {
+        fprintf(cnt->stream, ")");
+    } else {
+        CODE_BLOCK_NEW_LINE(cnt->stream);
+        fprintf(cnt->stream, "}");
+    }
+}
+
+void doc_type_slice(Context *cnt, Ast *type)
+{
+    Ast *elem_type = type->data.type_slice.elem_type;
+    fprintf(cnt->stream, "[]");
+    doc(cnt, elem_type);
 }
 
 void doc_type_ref(Context *cnt, Ast *type)
@@ -350,8 +389,16 @@ void doc(Context *cnt, Ast *node)
     case AST_TYPE_FN:
         doc_type_fn(cnt, node);
         break;
+    case AST_TYPE_SLICE:
+        doc_type_slice(cnt, node);
+        break;
     case AST_TYPE_VARGS:
         doc_type_vargs(cnt, node);
+        break;
+    case AST_LOAD:
+    case AST_PRIVATE:
+    case AST_LINK:
+    case AST_IMPORT:
         break;
     default:
         builder_warning("Missing doc generation for AST node '%s'.", ast_get_name(node));

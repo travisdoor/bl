@@ -181,86 +181,6 @@ _os_gl_get_proc :: fn (proc_name: string) *u8 #inline {
     return os_dlsym(module, proc_name);
 }
 
-
-//****************************************************************************
-// MOVE TO fs module
-_OSFileKind :: enum {
-    File;
-    Directory;
-}
-
-_OSFileInfo :: struct {
-    kind: _OSFileKind;
-    name: string;
-}
-
-_OSFileList :: []_OSFileInfo;
-
-_os_is_dir :: fn (dirpath: string) bool {
-    if dirpath.len > OS_PATH_MAX { panic("Path too long!"); }
-    info: _Stat #noinit;
-    if _stat(auto dirpath.ptr, &info) != 0 { return false; }
-    return _S_ISDIR(info.st_mode);
-}
-
-_os_scandir :: fn (dirpath: string, out_buf: *_OSFileList) bool {
-    if dirpath.len > OS_PATH_MAX { panic("Path too long!"); }
-    dir := _posix_opendir(dirpath.ptr);
-    if !dir { return false; }
-    defer _posix_closedir(dir);
-
-    fc := 0;
-    loop _posix_readdir(dir) != null { fc += 1; }
-    _posix_rewinddir(dir);
-    defer _posix_rewinddir(dir);
-
-    (^out_buf).len = fc;
-    if fc == 0 { return true; }
-
-    (^out_buf).ptr = auto alloc(sizeof(_OSFileInfo) * auto fc);
-
-    i := 0;
-    loop {
-        info :: _posix_readdir(dir);
-        if info == null { break; }
-
-        kind: _OSFileKind;
-        name: string;
-
-        if info.d_type == auto DT_DIR {
-            kind = _OSFileKind.Directory;
-            name = string_new(cast(*u8) info.d_name.ptr);
-        } else {
-            kind = _OSFileKind.File;
-            name = string_new(cast(*u8) info.d_name.ptr);
-        }
-
-        (^out_buf)[i] = {:_OSFileInfo: kind, name};
-        i += 1;
-    }
-
-    return true;
-}
-
-os_normalize_path :: fn (filepath: *string) bool {
-    tmp: [OS_PATH_MAX]u8 #noinit;
-    if c_realpath(auto filepath.ptr, auto tmp.ptr) != null {
-        string_clear(filepath);
-        string_append(filepath, cstr_to_str(tmp.ptr));
-        return true;
-    } 
-    return false;
-}
-
-os_get_real_path :: fn (filename: string) string {
-    tmp: [OS_PATH_MAX]u8 #noinit;
-    if c_realpath(auto filename.ptr, auto tmp.ptr) == null {
-        return string_new(filename);
-    }
-
-    return string_new(tmp.ptr);
-}
-
 os_get_exec_path :: fn () string {
     buf : [OS_PATH_MAX]u8 #noinit;
     buf_len := cast(c_size_t) buf.len;
@@ -270,14 +190,6 @@ os_get_exec_path :: fn () string {
     }
     return string_new(buf.ptr);
 }
-
-os_get_home_path :: fn () string {
-    tmp :: "HOME";
-    cdir :: c_getenv(auto tmp.ptr);
-    if !cdir { return string_new(); }
-    return string_new(cast(*u8) cdir);
-}
-//****************************************************************************
 
 _os_debug_break :: fn () #inline {
     //_raise(_SIGTRAP);
@@ -348,6 +260,7 @@ DT_WHT     :: 14;
 
 CLOCK_REALTIME :: 0;
 
+/* REMOVE
 dirent :: struct {
     d_ino: c_ulong; 
     d_off: c_long; 
@@ -355,6 +268,7 @@ dirent :: struct {
     d_type: c_uchar; 
     d_name: [256]c_char;
 }
+*/
 
 WEXITSTATUS :: fn (x: s32) s32 #inline {
     return (x >> 8) & 0x000000ff;
@@ -372,10 +286,6 @@ __S_IFSOCK	 : u32 : 0xC000;
 _posix_dlopen    :: fn (path: *u8, mode: s32) *u8 #extern "dlopen";
 _posix_dlclose   :: fn (handle: *u8) s32 #extern "dlclose";
 _posix_dlsym     :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
-_posix_opendir   :: fn (name: *u8) *u8 #extern "opendir";
-_posix_closedir  :: fn (dirp: *u8) s32 #extern "closedir";
-_posix_readdir   :: fn (dirp: *u8) *dirent #extern "readdir";
-_posix_rewinddir :: fn (dirp: *u8) #extern "rewinddir";
 
 _S_ISDIR :: fn (mode: u32) bool #inline {
     return (mode & __S_IFMT) == __S_IFDIR;    

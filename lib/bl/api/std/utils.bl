@@ -46,9 +46,8 @@ is_flag_s32 :: fn (v: s32, flag: s32) bool #inline {
     return (v & flag) == flag;
 };
 
-/// Converts zero terminated C style string to BL string. New memory block
-/// to hold string's content is allocated, call `string_terminate` when
-/// value is no longer needed.
+/// Converts zero terminated C style string to BL string. Result
+/// string shares original memory of `cstr`.
 cstr_to_str :: fn (cstr: *u8) string #inline {
     return {:string: auto c_strlen(auto cstr), cstr};
 };

@@ -34,11 +34,14 @@ ERR_NOT_FOUND      :: _ERROR_FILE_NOT_FOUND;
 ERR_ALREADY_EXIST  :: _ERROR_FILE_EXISTS;
 ERR_ACCESS_DENIED  :: _ERROR_ACCESS_DENIED;
 ERR_INVALID_HANDLE :: _ERROR_INVALID_HANDLE;
+ERR_DIRECTORY      :: _ERROR_DIRECTORY;
 
 _ERROR_FILE_NOT_FOUND :: 2;
 _ERROR_FILE_EXISTS :: 80;
 _ERROR_ACCESS_DENIED  :: 5;
 _ERROR_INVALID_HANDLE :: 6;
+_ERROR_DIRECTORY :: 267;
+
 
 _CP_UTF8 : u32 : 65001;
 
@@ -166,6 +169,11 @@ _CreateFile :: fn (
     hTemplateFile: _HANDLE
 ) *u8 #extern "CreateFileA"; 
 
+_CreateDirectoryA :: fn (
+    lpPathName: _LPCSTR,
+    lpSecurityAttributes: _LPSECURITY_ATTRIBUTES,
+) _BOOL #extern "CreateDirectoryA";
+
 _ReadDirectoryChanges :: fn (
     hDirectory: _HANDLE,
     lpBuffer: _LPVOID,
@@ -277,6 +285,7 @@ _GetLastError :: fn () _DWORD #extern "GetLastError";
 _CloseHandle :: fn (hObject: _HANDLE) _BOOL #extern "CloseHandle";
 _GetTempPathA :: fn (nBufferLength: _DWORD, lpBuffer: _LPSTR) _DWORD #extern "GetTempPathA";
 _DeleteFileA :: fn (lpFileName: _LPCSTR) _BOOL #extern "DeleteFileA";
+_RemoveDirectoryA :: fn (lpPathName: _LPCSTR) _BOOL #extern "RemoveDirectoryA";
 _GetCurrentDirectoryA :: fn (nBufferLength: _DWORD, lpBuffer: _LPSTR) _DWORD #extern "GetCurrentDirectoryA";
 _GetFileSizeEx :: fn (hFile: _HANDLE, lpFileSize: _PLARGE_INTEGER) _BOOL #extern "GetFileSizeEx";
 _ReadFile :: fn (hFile: _HANDLE, lpBuffer: _LPVOID, nNumberOfBytesToRead: _DWORD, lpNumberOfBytesRead: _LPDWORD, lpOverlapped: _LPOVERLAPPED) _BOOL #extern "ReadFile";
