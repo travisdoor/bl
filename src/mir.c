@@ -100,6 +100,11 @@ TSMALL_ARRAY_TYPE(InstrPtr64, MirInstr *, 64);
 TSMALL_ARRAY_TYPE(String, char *, 64);
 TSMALL_ARRAY_TYPE(RTTIIncomplete, RTTIIncomplete, 64);
 
+typedef struct {
+    TSmallArray_DeferStack defer_stack;
+    MirInstrBlock *        exit_block;
+} AstFnContext;
+
 // Instance in run method is zero initialized, no need to set default values explicitly.
 typedef struct {
     VM *      vm;
@@ -110,17 +115,16 @@ typedef struct {
 
     // AST -> MIR generation
     struct {
-        TSmallArray_DeferStack defer_stack;
-        MirInstrBlock *        current_block;
-        MirInstrBlock *        break_block;
-        MirInstrBlock *        exit_block;
-        MirInstrBlock *        continue_block;
-        MirInstrBlock *        current_phi_end_block;
-        MirInstrPhi *          current_phi;
-        // @CLEANUP: get rid of this!!!
-        ID *current_entity_id;
+        TArray _fnctx_stack;
 
-        MirInstr *current_fwd_struct_decl;
+        MirInstrBlock *current_block;
+        MirInstrBlock *current_phi_end_block;
+        MirInstrPhi *  current_phi;
+        MirInstrBlock *break_block;
+        MirInstrBlock *continue_block;
+        AstFnContext * fnctx;
+        ID *           current_entity_id;
+        MirInstr *     current_fwd_struct_decl;
     } ast;
 
     // Analyze MIR generated from AST
@@ -134,7 +138,7 @@ typedef struct {
 
         // Structure members can sometimes point to self, in such case we end up with
         // endless looping RTTI generation, to solve this problem we create dummy RTTI
-        // variable for all pointer types and store them in this array. When strucutre RTTI
+        // variable for all pointer types and store them in this array. When structure RTTI
         // is complete we can fill missing pointer RTTIs in second generation pass.
         TSmallArray_RTTIIncomplete incomplete_rtti;
 
@@ -233,10 +237,10 @@ static MirFn *     group_select_overload(Context *                  cnt,
                                          const MirFnGroup *         group,
                                          const TSmallArray_TypePtr *expected_args);
 
-// Start top-level execution of entry function using MIR-VM. (Usualy 'main' funcition)
+// Start top-level execution of entry function using MIR-VM. (Usually 'main' function)
 static void execute_entry_fn(Context *cnt);
 
-// Start top-level execution of build entry function using MIR-VM. (Usualy 'build' funcition)
+// Start top-level execution of build entry function using MIR-VM. (Usually 'build' function)
 static void execute_build_entry_fn(Context *cnt, MirFn *fn);
 
 // Register incomplete scope entry for symbol.
@@ -570,6 +574,8 @@ static MirInstr *ast_create_impl_fn_call(Context *   cnt,
                                          MirType *   fn_type,
                                          bool        schedule_analyze);
 
+static void      ast_push_fn_context(Context *cnt);
+static void      ast_pop_fn_context(Context *cnt);
 static MirInstr *ast(Context *cnt, Ast *node);
 static void      ast_ublock(Context *cnt, Ast *ublock);
 static void      ast_unrecheable(Context *cnt, Ast *unr);
@@ -1319,6 +1325,32 @@ static INLINE bool is_to_any_needed(Context *cnt, MirInstr *src, MirType *dest_t
     }
 
     return true;
+}
+
+void ast_push_fn_context(Context *cnt)
+{
+    AstFnContext *fnctx;
+    {
+        TArray *     stack = &cnt->ast._fnctx_stack;
+        AstFnContext _fnctx;
+        tarray_push(stack, _fnctx);
+        fnctx = &tarray_at(AstFnContext, stack, stack->size - 1);
+    }
+    memset(fnctx, 0, sizeof(AstFnContext));
+    tsa_init(&fnctx->defer_stack);
+    cnt->ast.fnctx = fnctx;
+}
+
+void ast_pop_fn_context(Context *cnt)
+{
+    TArray *stack = &cnt->ast._fnctx_stack;
+    BL_ASSERT(stack->size);
+    AstFnContext *fnctx = &tarray_at(AstFnContext, stack, stack->size - 1);
+    BL_ASSERT(fnctx == cnt->ast.fnctx &&
+              "AST function generation context malformed, push and pop out of sycn?");
+    tsa_terminate(&fnctx->defer_stack);
+    tarray_pop(stack);
+    cnt->ast.fnctx = stack->size ? &tarray_at(AstFnContext, stack, stack->size - 1) : NULL;
 }
 
 void type_init_id(Context *cnt, MirType *type)
@@ -8125,7 +8157,7 @@ MirVar *rtti_gen_fn_group(Context *cnt, MirType *type)
 // MIR builting
 void ast_defer_block(Context *cnt, Ast *block, bool whole_tree)
 {
-    TSmallArray_DeferStack *stack = &cnt->ast.defer_stack;
+    TSmallArray_DeferStack *stack = &cnt->ast.fnctx->defer_stack;
     Ast *                   defer;
     for (usize i = stack->size; i-- > 0;) {
         defer = stack->data[i];
@@ -8369,14 +8401,14 @@ void ast_stmt_return(Context *cnt, Ast *ret)
         }
         ast_defer_block(cnt, ret->data.stmt_return.owner_block, true);
     }
-    BL_ASSERT(cnt->ast.exit_block);
-    append_instr_br(cnt, ret, cnt->ast.exit_block);
+    BL_ASSERT(cnt->ast.fnctx->exit_block);
+    append_instr_br(cnt, ret, cnt->ast.fnctx->exit_block);
 }
 
 void ast_stmt_defer(Context *cnt, Ast *defer)
 {
     // push new defer record
-    tsa_push_DeferStack(&cnt->ast.defer_stack, defer);
+    tsa_push_DeferStack(&cnt->ast.fnctx->defer_stack, defer);
 }
 
 MirInstr *ast_call_loc(Context *cnt, Ast *loc)
@@ -8643,8 +8675,12 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
     fn_proto->type = CREATE_TYPE_RESOLVER_CALL(ast_fn_type);
     BL_ASSERT(fn_proto->type);
 
-    MirInstrBlock *prev_block      = ast_current_block(cnt);
-    MirInstrBlock *prev_exit_block = cnt->ast.exit_block;
+    // Prepare new function context. Must be in sync with pop at the end of scope!
+    // DON'T CALL FINISH BEFORE THIS!!!
+    // DON'T CALL FINISH BEFORE THIS!!!
+    // DON'T CALL FINISH BEFORE THIS!!!
+    ast_push_fn_context(cnt);
+    MirInstrBlock *prev_block = ast_current_block(cnt);
 
     const char *linkage_name =
         explicit_linkage_name ? explicit_linkage_name->data.ident.id.str : NULL;
@@ -8665,7 +8701,7 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
     // FUNCTION BODY
     // External or intrinsic function declaration has no body so we can skip body generation.
     if (IS_FLAG(flags, FLAG_EXTERN) || IS_FLAG(flags, FLAG_INTRINSIC)) {
-        return &fn_proto->base;
+        goto FINISH;
     }
 
     if (!ast_block) {
@@ -8674,7 +8710,7 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
                     decl_node ? decl_node->location : lit_fn->location,
                     BUILDER_CUR_WORD,
                     "Missing function body.");
-        return &fn_proto->base;
+        goto FINISH;
     }
 
     // Set body scope for DI.
@@ -8690,20 +8726,20 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
     // defer statement, because we need to call defer blocks after return value
     // evaluation and before terminal instruction of the function. Last defer block
     // always breaks into the exit block.
-    cnt->ast.exit_block = append_block(cnt, fn, "exit");
-    ref_instr(&cnt->ast.exit_block->base);
+    cnt->ast.fnctx->exit_block = append_block(cnt, fn, "exit");
+    ref_instr(&cnt->ast.fnctx->exit_block->base);
 
     if (ast_fn_type->data.type_fn.ret_type) {
         set_current_block(cnt, init_block);
         fn->ret_tmp =
             append_instr_decl_var_impl(cnt, gen_uq_name(IMPL_RET_TMP), NULL, NULL, true, false);
 
-        set_current_block(cnt, cnt->ast.exit_block);
+        set_current_block(cnt, cnt->ast.fnctx->exit_block);
         MirInstr *ret_init = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
 
         append_instr_ret(cnt, ast_block, ret_init);
     } else {
-        set_current_block(cnt, cnt->ast.exit_block);
+        set_current_block(cnt, cnt->ast.fnctx->exit_block);
         append_instr_ret(cnt, ast_block, NULL);
     }
 
@@ -8747,9 +8783,9 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
     // generate body instructions
     ast(cnt, ast_block);
 
-    // Use stack instead of local variables?
-    cnt->ast.exit_block = prev_exit_block;
+FINISH:
     set_current_block(cnt, prev_block);
+    ast_pop_fn_context(cnt);
     return &fn_proto->base;
 }
 
@@ -10046,7 +10082,7 @@ void mir_run(Assembly *assembly)
     tlist_init(&cnt.analyze.queue, sizeof(MirInstr *));
     tstring_init(&cnt.tmp_sh);
 
-    tsa_init(&cnt.ast.defer_stack);
+    tarray_init(&cnt.ast._fnctx_stack, sizeof(AstFnContext));
     tsa_init(&cnt.analyze.incomplete_rtti);
     tsa_init(&cnt.analyze.complete_check_type_stack);
     thtbl_init(&cnt.analyze.complete_check_visited, 0, 128);
@@ -10084,8 +10120,8 @@ SKIP:
     thtbl_terminate(&cnt.analyze.waiting);
     tstring_terminate(&cnt.tmp_sh);
 
+    tarray_terminate(&cnt.ast._fnctx_stack);
     tsa_terminate(&cnt.analyze.incomplete_rtti);
-    tsa_terminate(&cnt.ast.defer_stack);
     tsa_terminate(&cnt.analyze.complete_check_type_stack);
     thtbl_terminate(&cnt.analyze.complete_check_visited);
     thtbl_terminate(&cnt.analyze.presented_switch_cases);

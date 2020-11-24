@@ -393,6 +393,21 @@ fs_list_dir_test2 :: fn () #test {
     }
 }
 
+fs_list_dir_test3 :: fn () #test {
+    dir :: fs_cwd();
+    defer string_delete(dir);
+    list, err :: fs_dir_scan(dir, &fn (info: *FSInfo) bool {
+        return info.kind == FSInfoKind.File;
+    });
+    defer fs_info_list_terminate(list);
+    test_ok(err);
+    test_true(list.len > 0);
+    loop i := 0; i < list.len; i += 1 {
+        test_neq(list[i].name, string_empty);
+        test_true(list[i].kind == FSInfoKind.File);
+    }
+}
+
 fs_is_directory_test1 :: fn () #test {
     tmp :: fs_tmp();
     defer string_delete(tmp);

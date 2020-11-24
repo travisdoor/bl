@@ -3,6 +3,7 @@
 
 /////////////////////////////////////////////////////
 #load "std/debug_allocator.bl"
+#load "defer.test.bl"
 #load "intrinsics.test.bl"
 #load "dynamic_arrays.test.bl"
 #load "print.test.bl"
