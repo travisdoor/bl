@@ -203,7 +203,7 @@ fs_dir_create :: fn (dirpath: string) Error {
 }
 
 /// Remove directory specified by `dirpath` and return `OK` on success,
-/// otherwise return error.
+/// otherwise return an error.
 fs_dir_remove :: fn (dirpath: string) Error {
     if string_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot remove directory, dirpath is empty."); }
     if _RemoveDirectoryA(auto dirpath.ptr) == 0 {
@@ -211,6 +211,36 @@ fs_dir_remove :: fn (dirpath: string) Error {
         return error(ec, "Cannot remove directory '%': %.", dirpath, estr);
     }
     return ok();
+}
+
+/// Remove non-empty directory specified by `dirpath` and return `OK` on success,
+/// otherwise return an error.
+/// .. note:: This function recursively remove all nested folders and files in specified
+///           sub tree so it can be expensive.
+fs_dir_remove_all :: fn (dirpath: string) Error {
+    tmp :: string_new(cast(usize) dirpath.len);
+    defer string_delete(tmp);
+    list, err :: fs_dir_scan(dirpath, &fn (item: *FSInfo) bool {
+        return string_compare(item.name, ".") == false && string_compare(item.name, "..") == false;
+    });
+    if !is_ok(err) { return err; }
+    defer fs_info_list_terminate(list);
+    loop i := 0; i < list.len; i += 1 {
+        node :: &list[i];
+        string_concatenate(&tmp, dirpath, "/", node.name);
+        switch node.kind {
+            FSInfoKind.Directory {
+                err :: fs_dir_remove_all(tmp);
+                if !is_ok(err) { return err; }
+            }            
+            FSInfoKind.File {
+                err :: fs_file_remove(tmp);
+                if !is_ok(err) { return err; }
+            }
+        }
+        string_clear(&tmp);
+    }
+    return fs_dir_remove(dirpath);
 }
 
 /// Check whether `path` points to valid directory and return true with `OK` state,

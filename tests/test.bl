@@ -1,132 +1,14 @@
 // playground 
 
+#import "fs"
+#load "std/debug_allocator.bl"
+
 main :: fn () s32 {
+    dbgalloc_init();
+    defer dbgalloc_terminate();
+    
+    err :: fs_dir_remove_all("foo");
+    if !is_ok(err) { print("%\n", err); }
+    else { print("DONE!!!\n"); }
     return 0;
 }
-
-//! ======
-//! String
-//! ======
-//! 
-//! ::
-//! 
-//!     #load "std/string.bl"
-//!
-//! :: 
-//! 
-//!     string :: struct {
-//!         len: s64;
-//!         ptr: *u8;
-//!     }
-//! 
-//! Builtin string storage. `string` type could represent dynamic and compile time static strings. 
-//! 
-//! ::
-//! 
-//!     // Compile-time string literal
-//!     my_string :: "This is my string!"; 
-//! 
-//! :: 
-//! 
-//!     // Dynamic string allocated on heap.
-//!     // New dynamic string can be created from string literal. 
-//!     my_string :: string_new("This is my string!");
-//!     defer string_delete(my_string);
-//! 
-//! BL strings are zero terinated execept of sub-string view function (terminator cannot be added 
-//! because we cannot modify original string).
-//! 
-//! 
-//! .. contents::
-//!    :local:
-//!    :depth: 1
-
-/// Split input string `str` at index position and return true when split was done. Result tokens 
-/// only points into original memory of the `str`, they are not supposed to be freed. When index is 
-/// out of `str` range function return `false`, `lhs` and `rhs` buffers are not modified.
-///
-/// Both `lhs` and `rhs` destination tokens are optional.
-///
-/// .. warning:: `lhs` and `rhs` sub strings are not guaranteed to be zero terminated and they are not
-///              supposed to be freed. 
-///  
-/// 
-/// Example
-/// -------
-/// ::
-/// 
-///     main :: fn () s32 {
-///         lhs: string;
-///         rhs: string;
-///         if string_split_at_index("foobar", 3, &lhs, &rhs) {
-///             print("lhs = %\n", lhs);
-///             print("rhs = %\n", rhs);
-///         }
-/// 
-///         return 0;
-///     }
-///
-string_split_at_index :: fn (str: string, index: s32, lhs: *string, rhs: *string) bool {
-    if index > str.len { return false; }
-    if index < 0 { return false; }
-    lhsc :: cast(s64) index;
-    rhsc :: cast(s64) str.len - index;
-    if lhs { ^lhs = {:string: lhsc, str.ptr}; }
-    if rhs { ^rhs = {:string: rhsc, ptr_shift_bytes(str.ptr, lhsc)}; }
-    return true;
-}
-
-/// Append dynamic string with any value. Allocation is done in case there
-/// is not enough space reminding in string.
-string_append :: fn (v: *string, add: Any) {
-    new_len: s64;
-    add_len: s64;
-    add_ptr: *u8;
-
-    if add.type_info.kind == TypeKind.String {
-        str := ^ cast(*string) add.data;
-        new_len = v.len + str.len;
-        add_ptr = str.ptr;
-        add_len = str.len;
-    } else {
-        // other values than string
-        buf := {:[PRINT_MAX_LENGTH]u8: 0};
-        tmp := {:[]u8: buf.len, buf.ptr };
-
-        bprint(tmp, "%", add);
-        add_len = auto c_strlen(auto buf.ptr);
-        add_ptr = buf.ptr;
-        new_len = v.len + add_len;
-    }
-
-    v.ptr = make_more_room_if_needed(v.ptr, auto new_len);
-    memcpy(cast(*u8) (cast(u64) v.ptr + auto v.len) , add_ptr, auto add_len);
-    v.len = new_len;
-
-    set_terminator(^v);
-};
-
-/// Append string with multiple values passed as `args`.
-string_concatenate :: fn (v: *string, args: ...) {
-    loop i := 0; i < args.len; i += 1 {
-        string_append(v, args[i]);
-    }
-};
-
-/// Compare two strings in specified range and return `true` if they are same 
-/// otherwise return `false`.
-string_compare :: fn (first: string, second: string, n := -1) bool {
-    // @CLEANUP: simplify this
-    range := n;
-    if range < 0 { 
-        if first.len != second.len { return false; }
-        range = auto max(first.len, second.len); 
-    } else if first.len != second.len {
-        if first.len < range { return false; }
-        if second.len < range { return false; }
-    }
-    loop i := 0; i < range && i < first.len && i < second.len; i += 1 {
-        if first[i] != second[i] { return false; }
-    }
-    return true;
-};
