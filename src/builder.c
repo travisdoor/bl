@@ -182,6 +182,8 @@ s32 builder_parse_options(s32 argc, char *argv[])
             builder.options.run = true;
         } else if (IS_PARAM("rt") || IS_PARAM("run-tests")) {
             builder.options.run_tests = true;
+        } else if (IS_PARAM("s") || IS_PARAM("silent")) {
+            builder.options.silent = true;
         } else if (IS_PARAM("no-bin")) {
             builder.options.no_bin = true;
         } else if (IS_PARAM("no-warning")) {
@@ -378,6 +380,7 @@ void builder_msg(BuilderMsgType type,
 {
     if (type == BUILDER_MSG_ERROR && builder.errorc > MAX_ERROR_REPORTED) return;
     if (type == BUILDER_MSG_LOG && !builder.options.verbose) return;
+    if (type != BUILDER_MSG_ERROR && builder.options.silent) return;
     if (builder.options.no_warn && type == BUILDER_MSG_WARNING) return;
     TString tmp;
     tstring_init(&tmp);

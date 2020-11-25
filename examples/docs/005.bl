@@ -1,0 +1,27 @@
+#import "fs"
+
+main :: fn () s32 {
+    // Open this file.
+    file, open_err :: fs_file_open(#file, FSFileOpenMode.Read);
+
+    // Always check for errors.
+    if !is_ok(open_err) {
+        panic("Cannot open file with error: '%'!", open_err);
+    }
+    // Close file at the end of scope.
+    defer fs_file_close(file);
+
+    // Read it's content.
+    content, read_err :: fs_file_read_string(file);
+
+    // Check for errors.
+    if !is_ok(read_err) {
+        panic("Cannot read file with error: '%'!", read_err);
+    }
+    // Delete content string at the end of scope.
+    defer string_delete(content);
+
+    // Print file content to stdout.
+    print("%\n", content);
+    return 0;
+}

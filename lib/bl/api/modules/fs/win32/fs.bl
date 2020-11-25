@@ -49,6 +49,11 @@ fs_exist :: fn (filepath: string) bool #inline {
 ///
 /// File open `mode` is optional, any combination of :ref:`FSFileOpenMode` can be used. Default
 /// `mode` for `Read` and `Write` is used when not specified.
+///
+/// Example
+/// -------
+/// .. literalinclude:: /examples/docs/004.bl
+///    :language: bl
 fs_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
     if string_is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     access :: modes_to_flags(mode);
@@ -110,6 +115,11 @@ fs_file_size :: fn (handle: FSFile) (usize, Error) #inline {
 /// file data and `OK` status on success, otherwise return empty string and error.
 /// Returned string is expected to be released by :ref:`string_delete` call if
 /// there was no error reported by function.
+///
+/// Example
+/// -------
+/// .. literalinclude:: /examples/docs/005.bl
+///    :language: bl
 fs_file_read_string :: fn (handle: FSFile) (string, Error) {
     size, err :: fs_file_size(handle);
     if !is_ok(err) {
@@ -215,6 +225,7 @@ fs_dir_remove :: fn (dirpath: string) Error {
 
 /// Remove non-empty directory specified by `dirpath` and return `OK` on success,
 /// otherwise return an error.
+///
 /// .. note:: This function recursively remove all nested folders and files in specified
 ///           sub tree so it can be expensive.
 fs_dir_remove_all :: fn (dirpath: string) Error {
@@ -318,6 +329,8 @@ fs_dir_scan :: fn (dirpath: string, filter: FSDirScanFilterFn = null) (FSInfoLis
         if push {
             buf.len += 1;
             buf[buf.len-1] = info;
+        } else {
+            string_delete(name);
         }
         if _FindNextFile(h_find, &ffd) == 0 { break; }
     }

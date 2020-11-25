@@ -1,0 +1,10 @@
+#load "std/debug_allocator.bl"
+
+main :: fn () s32 {
+    dbgalloc_init();
+    defer dbgalloc_terminate();
+
+    // leaking allocation
+    alloc(64);
+    return 0;
+}

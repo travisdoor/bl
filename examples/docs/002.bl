@@ -1,0 +1,8 @@
+foo :: fn (loc: *CodeLocation = #call_location) {
+    print("%\n", ^loc);
+}
+
+main :: fn () s32 {
+    foo();
+    return 0;
+}

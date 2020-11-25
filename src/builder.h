@@ -63,16 +63,17 @@ typedef struct BuilderOptions {
     bool        no_vcvars;
     bool        verify_llvm;
     bool        docs;
+    bool        silent;
 } BuilderOptions;
 
 typedef struct Builder {
-    BuilderOptions             options;
-    Arena                      str_cache;
-    s32                        total_lines;
-    s32                        errorc;
-    s32                        max_error;
-    s32                        test_failc;
-    ConfData                   conf;
+    BuilderOptions options;
+    Arena          str_cache;
+    s32            total_lines;
+    s32            errorc;
+    s32            max_error;
+    s32            test_failc;
+    ConfData       conf;
 
     TArray assembly_queue;
 } Builder;

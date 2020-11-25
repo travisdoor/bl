@@ -1,14 +1,20 @@
 // playground 
+/*
+foo :: fn () (s32, s32) {
+    return 10, 20;
+}
 
-#import "fs"
-#load "std/debug_allocator.bl"
+bar :: fn () (s32, s32) {
+    return foo();
+}
+*/
+
+func :: fn () s32 {
+    return 10;
+}
 
 main :: fn () s32 {
-    dbgalloc_init();
-    defer dbgalloc_terminate();
-    
-    err :: fs_dir_remove_all("foo");
-    if !is_ok(err) { print("%\n", err); }
-    else { print("DONE!!!\n"); }
+    //bar();
+    func();
     return 0;
 }

@@ -427,7 +427,7 @@ fs_dir_create_remove_test1 :: fn () #test {
     defer string_delete(dir);
     string_append(&dir, "__DELETE_ME__");
 
-    fs_dir_remove(dir);
+    fs_dir_remove_all(dir);
     state1 :: fs_dir_create(dir);
     test_ok(state1);
 
@@ -438,5 +438,27 @@ fs_dir_create_remove_test1 :: fn () #test {
     test_ok(state3);
 }
 
-fs_dir_create_remove_test2 :: fn () #test {
+fs_dir_remove_all_test1 :: fn () #test {
+    dir :: fs_tmp();
+    defer string_delete(dir);
+    string_append(&dir, "__DELETE_ME__");
+    
+    fs_dir_remove_all(dir);
+    {
+        s :: fs_dir_create(dir);
+        test_ok(s);
+    }
+    
+    {
+        file :: string_new(dir);
+        defer string_delete(file);
+        string_append(&file, "/file.txt");
+        f, e :: fs_file_create(file);
+        test_ok(e);
+        fs_file_close(f);
+    }
+    
+    state :: fs_dir_remove_all(dir);
+    test_ok(state);
+    test_false(fs_exist(dir));
 }
