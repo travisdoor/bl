@@ -119,7 +119,7 @@ static void doc_type_vargs(Context *cnt, Ast *type);
 void append_section(Context *cnt, const char *name, const char *content)
 {
     H2(cnt->stream, name);
-    fprintf(cnt->stream, content);
+    fprintf(cnt->stream, "%s", content);
 }
 
 void doc_ublock(Context *cnt, Ast *block)

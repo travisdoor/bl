@@ -120,7 +120,7 @@ typedef struct {
         MirInstrBlock *current_block;
         MirInstrBlock *current_phi_end_block;
         MirInstrPhi *  current_phi;
-        MirInstrBlock *break_blocksilent;
+        MirInstrBlock *break_block;
         MirInstrBlock *continue_block;
         AstFnContext * fnctx;
         ID *           current_entity_id;
