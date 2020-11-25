@@ -139,9 +139,10 @@ struct AstTestCase {
 };
 
 struct AstStmtReturn {
-    Ast *expr;
-    Ast *fn_decl;
-    Ast *owner_block;
+    // Optional return values.
+    TSmallArray_AstPtr *exprs;
+    Ast *               fn_decl;
+    Ast *               owner_block;
 };
 
 struct AstStmtDefer {

@@ -8374,7 +8374,32 @@ void ast_stmt_return(Context *cnt, Ast *ret)
 {
     // Return statement produce only setup of .ret temporary and break into the exit
     // block of the function.
-    MirInstr *value = ast(cnt, ret->data.stmt_return.expr);
+    TSmallArray_AstPtr *ast_values     = ret->data.stmt_return.exprs;
+    const bool          is_multireturn = ast_values && ast_values->size > 1;
+    MirInstr *          value          = NULL;
+    if (is_multireturn) {
+        // Generate multi-return compound expression to group all values into single one.
+        const usize           valc   = ast_values->size;
+        TSmallArray_InstrPtr *values = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
+        tsa_resize_InstrPtr(values, valc);
+        Ast *ast_value;
+        for (usize i = valc; i-- > 0;) {
+            ast_value = ast_values->data[i];
+            value     = ast(cnt, ast_value);
+            BL_ASSERT(value);
+            values->data[i] = value;
+            if (value->kind == MIR_INSTR_COMPOUND) {
+                // Direct nested compound cannot be naked!
+                ((MirInstrCompound *)value)->is_naked = false;
+            }
+        }
+        value = append_instr_compound(cnt, ast_value, NULL, values, true);
+    } else if (ast_values) {
+        Ast *ast_value = ast_values->data[0];
+        BL_ASSERT(ast_value &&
+                  "Expected at least one return value when return expression array is not NULL.");
+        value = ast(cnt, ast_value);
+    }
     if (!is_current_block_terminated(cnt)) {
         MirFn *fn = ast_current_fn(cnt);
         BL_ASSERT(fn);
@@ -8393,6 +8418,7 @@ void ast_stmt_return(Context *cnt, Ast *ret)
             }
             append_instr_store(cnt, ret, value, ref);
         } else if (value) {
+
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_UNEXPECTED_EXPR,
                         value->node->location,
@@ -8418,20 +8444,14 @@ MirInstr *ast_call_loc(Context *cnt, Ast *loc)
 
 MirInstr *ast_expr_compound(Context *cnt, Ast *cmp)
 {
-    TSmallArray_AstPtr *ast_values               = cmp->data.expr_compound.values;
-    const bool          is_multiple_return_value = cmp->data.expr_compound.is_multiple_return_value;
-    Ast *               ast_type                 = cmp->data.expr_compound.type;
-    MirInstr *          type                     = NULL;
-    if (is_multiple_return_value) {
-        // If compound expression is used as expression for multiple return value, we must aquire
-        // it's type from current function return type, which is not known yet. This must be done in
-        // analyze pass after function type is fully analyzed.
-        BL_ASSERT(ast_type == NULL);
-    } else {
-        type = ast(cnt, ast_type);
-        BL_ASSERT(type);
-    }
-    if (!ast_values) return append_instr_compound(cnt, cmp, type, NULL, is_multiple_return_value);
+    TSmallArray_AstPtr *ast_values = cmp->data.expr_compound.values;
+    Ast *               ast_type   = cmp->data.expr_compound.type;
+    MirInstr *          type       = NULL;
+    BL_ASSERT(ast_type);
+
+    type = ast(cnt, ast_type);
+    BL_ASSERT(type);
+    if (!ast_values) return append_instr_compound(cnt, cmp, type, NULL, false);
     const usize           valc   = ast_values->size;
     TSmallArray_InstrPtr *values = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
     tsa_resize_InstrPtr(values, valc);
@@ -8448,7 +8468,7 @@ MirInstr *ast_expr_compound(Context *cnt, Ast *cmp)
             ((MirInstrCompound *)value)->is_naked = false;
         }
     }
-    return append_instr_compound(cnt, cmp, type, values, is_multiple_return_value);
+    return append_instr_compound(cnt, cmp, type, values, false);
 }
 
 MirInstr *ast_expr_addrof(Context *cnt, Ast *addrof)

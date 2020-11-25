@@ -79,3 +79,17 @@ multiple_return3 :: fn () #test {
     test_eq(a, 10);
     test_eq(b, 20);
 }
+
+multiple_return4 :: fn () #test {
+    foo :: fn () (s32, s32) {
+        return 10, 20;
+    };
+
+    bar :: fn () (s32, s32) {
+        return foo();
+    };
+
+    a, b :: bar();
+    test_eq(a, 10);
+    test_eq(b, 20);
+}

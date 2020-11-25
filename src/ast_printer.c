@@ -270,7 +270,14 @@ void print_stmt_continue(Ast *cnt, s32 pad, FILE *stream)
 void print_stmt_return(Ast *ret, s32 pad, FILE *stream)
 {
     print_head(ret, pad, stream);
-    print_node(ret->data.stmt_return.expr, pad + 1, stream);
+    TSmallArray_AstPtr *exprs = ret->data.stmt_return.exprs;
+    if (exprs) {
+        Ast *value;
+        TSA_FOREACH(exprs, value)
+        {
+            print_node(value, pad + 1, stream);
+        }
+    }
 }
 
 void print_stmt_defer(Ast *defer, s32 pad, FILE *stream)
@@ -522,11 +529,11 @@ void print_node(Ast *node, s32 pad, FILE *stream)
     case AST_LOAD:
         print_load(node, pad, stream);
         break;
-        
+
     case AST_IMPORT:
         print_import(node, pad, stream);
         break;
-        
+
     case AST_LINK:
         print_link(node, pad, stream);
         break;

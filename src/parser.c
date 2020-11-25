@@ -102,7 +102,6 @@ typedef struct {
     // tmps
     bool     inside_loop;
     Scope *  current_private_scope;
-    Ast *    current_fn_type;
     Ast *    current_docs;
     TString *unit_docs_tmp;
 } Context;
@@ -1171,45 +1170,29 @@ Ast *parse_stmt_return(Context *cnt)
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_RETURN);
     if (!tok_begin) return NULL;
     Ast *ret = ast_create_node(cnt->ast_arena, AST_STMT_RETURN, tok_begin, SCOPE_GET(cnt));
-    // @CLEANUP Check this for lambdas.
-    // @CLEANUP Check this for lambdas.
-    // @CLEANUP Check this for lambdas.
     ret->data.stmt_return.fn_decl = DECL_GET(cnt);
     tok_begin                     = tokens_peek(cnt->tokens);
-    BL_ASSERT(cnt->current_fn_type && cnt->current_fn_type->kind == AST_TYPE_FN);
-    Ast *rt = cnt->current_fn_type->data.type_fn.ret_type;
-    if (rt && rt->kind == AST_TYPE_STRUCT && rt->data.type_strct.is_multiple_return_type) {
-        // Generate untyped compound expression for multiple return types.
-        Ast *group = ast_create_node(cnt->ast_arena, AST_EXPR_COMPOUND, tok_begin, SCOPE_GET(cnt));
-        group->data.expr_compound.values = create_sarr(TSmallArray_AstPtr, cnt->assembly);
-        // Allow type infer from function return type.
-        group->data.expr_compound.is_multiple_return_value = true;
-        ret->data.stmt_return.expr                         = group;
-        Ast *expr;
-        bool rq = false;
-    NEXT:
-        expr = parse_expr(cnt);
-        if (expr) {
-            tsa_push_AstPtr(group->data.expr_compound.values, expr);
-            if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
-                rq = true;
-                goto NEXT;
-            }
-        } else if (rq) {
-            Token *tok_err = tokens_peek(cnt->tokens);
-            PARSE_ERROR(ERR_EXPECTED_EXPR,
-                        tok_err,
-                        BUILDER_CUR_WORD,
-                        "Expected expression after comma ','.");
-            CONSUME_TILL(cnt->tokens, SYM_SEMICOLON, SYM_RBLOCK, SYM_IDENT);
-            return group;
+
+    Ast *expr;
+    bool rq = false;
+NEXT:
+    expr = parse_expr(cnt);
+    if (expr) {
+        if (!ret->data.stmt_return.exprs)
+            ret->data.stmt_return.exprs = create_sarr(TSmallArray_AstPtr, cnt->assembly);
+        tsa_push_AstPtr(ret->data.stmt_return.exprs, expr);
+        if (tokens_consume_if(cnt->tokens, SYM_COMMA)) {
+            rq = true;
+            goto NEXT;
         }
-        group->location_end = &tokens_peek(cnt->tokens)->location;
-        return ret;
-    } else {
-        ret->data.stmt_return.expr = parse_expr(cnt);
-        return ret;
+    } else if (rq) {
+        Token *tok_err = tokens_peek(cnt->tokens);
+        PARSE_ERROR(
+            ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "Expected expression after comma ','.");
+        CONSUME_TILL(cnt->tokens, SYM_SEMICOLON, SYM_RBLOCK, SYM_IDENT);
+        return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
     }
+    return ret;
 }
 
 Ast *parse_stmt_if(Context *cnt)
@@ -1709,7 +1692,6 @@ Ast *parse_expr_lit_fn(Context *cnt)
     Ast *type = parse_type_fn(cnt, true);
     BL_ASSERT(type);
     fn->data.expr_fn.type = type;
-    cnt->current_fn_type  = type;
     // parse flags
     Ast *curr_decl = DECL_GET(cnt);
     if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
@@ -2627,13 +2609,12 @@ void parser_run(Assembly *assembly, Unit *unit)
 
     TracyCZone(_tctx, true);
     Context cnt = {
-        .assembly        = assembly,
-        .unit            = unit,
-        .ast_arena       = &assembly->arenas.ast,
-        .scope_arenas    = &assembly->arenas.scope,
-        .tokens          = &unit->tokens,
-        .current_fn_type = NULL,
-        .inside_loop     = false,
+        .assembly     = assembly,
+        .unit         = unit,
+        .ast_arena    = &assembly->arenas.ast,
+        .scope_arenas = &assembly->arenas.scope,
+        .tokens       = &unit->tokens,
+        .inside_loop  = false,
     };
 
     tsa_init(&cnt._decl_stack);

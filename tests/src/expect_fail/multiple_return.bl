@@ -1,4 +1,4 @@
-// @ERR_INVALID_INITIALIZER@
+// @ERR_EXPECTED_EXPRESSION@
 
 foo :: fn () (s32, s32) {
     return;

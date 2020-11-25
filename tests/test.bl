@@ -7,14 +7,13 @@ foo :: fn () (s32, s32) {
 bar :: fn () (s32, s32) {
     return foo();
 }
-*/
-
-func :: fn () s32 {
-    return 10;
-}
 
 main :: fn () s32 {
-    //bar();
-    func();
+    bar();
+    return 0;
+}
+*/
+
+main :: fn () s32 {
     return 0;
 }
