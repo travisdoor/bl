@@ -326,8 +326,7 @@ bool assembly_import_module(Assembly UNUSED(*assembly), const char *modulepath, 
         goto INTERRUPT;
     }
     char tmp_path[PATH_MAX] = {0};
-    snprintf(
-        tmp_path, ARRAY_SIZE(tmp_path), "%s/%s/%s", MODULES_DIR, modulepath, MODULE_CONFIG_FILE);
+    snprintf(tmp_path, ARRAY_SIZE(tmp_path), "%s/%s", modulepath, MODULE_CONFIG_FILE);
     ConfData config;
     conf_data_init(&config);
     if (builder_compile_config(tmp_path, &config, import_from) != COMPILE_OK) goto INTERRUPT;
@@ -346,7 +345,7 @@ bool assembly_import_module(Assembly UNUSED(*assembly), const char *modulepath, 
 
     const char *entry_file = conf_data_get_str(&config, CONF_ENTRY);
     BL_ASSERT(entry_file && strlen(entry_file) > 0);
-    snprintf(tmp_path, ARRAY_SIZE(tmp_path), "%s/%s/%s", MODULES_DIR, modulepath, entry_file);
+    snprintf(tmp_path, ARRAY_SIZE(tmp_path), "%s/%s", modulepath, entry_file);
     Unit *unit = unit_new_file(tmp_path, NULL);
     if (!assembly_add_unit_unique(assembly, unit)) {
         unit_delete(unit);

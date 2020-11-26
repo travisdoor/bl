@@ -10,6 +10,8 @@
 //! 
 //! .. warning:: This module is experimental and not fully supported across all platforms.
 
+// TODO: copy, move, rename (dir/file)
+
 /// File handle type.
 FSFile :: _FSImplFile;
 FS_FILE_INVALID :: _FS_IMPL_FILE_INVALID;

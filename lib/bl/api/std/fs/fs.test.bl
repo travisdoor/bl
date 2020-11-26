@@ -1,0 +1,464 @@
+#load "std/test.bl"
+#load "std/debug_allocator.bl"
+
+#import "std/fs"
+
+main :: fn () s32 {
+    dbgalloc_init();
+    defer dbgalloc_terminate();
+    return test_run();    
+}
+
+#private
+get_dummy_filepath :: fn () string {
+    tmp :: fs_tmp();
+    string_concatenate(&tmp, "/", "deleteme.txt");
+    return tmp;
+}
+
+fs_exist_test :: fn () #test {
+    test_true(fs_exist(#file));
+    test_false(fs_exist("foobar"));
+}
+
+fs_home_test :: fn () #test {
+    tmp :: fs_home();
+    defer string_delete(tmp);
+    test_neq(tmp, string_empty);
+    test_true(fs_exist(tmp));
+}
+
+fs_tmp_test :: fn () #test {
+    tmp :: fs_tmp();
+    defer string_delete(tmp);
+    test_neq(tmp, string_empty);
+    test_true(fs_exist(tmp));    
+}
+
+fs_cwd_test :: fn () #test {
+    tmp :: fs_cwd();
+    defer string_delete(tmp);
+    test_neq(tmp, string_empty);
+    test_true(fs_exist(tmp));    
+}
+
+fs_file_open_test :: fn () #test {
+    {
+        file, err :: fs_file_open("");
+        test_is_error(err, ERR_INVALID_HANDLE);    
+    }
+    
+    {
+        file, err :: fs_file_open("foobar");
+        test_is_error(err, ERR_NOT_FOUND);
+    }
+    
+    {
+        file, err :: fs_file_open(#file);    
+        test_ok(err);
+        fs_file_close(file);
+    }
+}
+
+fs_file_create_test :: fn () #test {
+    filepath :: get_dummy_filepath();
+    defer string_delete(filepath);
+    
+    fs_file_remove(filepath);
+    
+    {
+        file, err :: fs_file_create("");
+        test_is_error(err, ERR_INVALID_HANDLE);    
+    }
+    
+    {
+        file, err :: fs_file_create(#file);
+        test_is_error(err, ERR_ALREADY_EXIST);
+    }
+    
+    {
+        file, err :: fs_file_create(filepath);
+        test_ok(err);
+        fs_file_close(file);
+    }    
+    
+    fs_file_remove(filepath);
+}
+
+fs_file_read_string_test :: fn () #test {
+    file, err1 :: fs_file_open(#file, FSFileOpenMode.Read);
+    defer fs_file_close(file);
+    test_ok(err1);
+    data, err2 := fs_file_read_string(file);
+    test_ok(err2);
+    defer string_delete(data);
+    test_neq(data, string_empty);
+    data.len += 1;
+    test_true(data[data.len-1] == '\0');
+}
+
+fs_file_read_string_test2 :: fn () #test {
+    data, err := fs_file_read_string(FS_FILE_INVALID);
+    test_is_error(err, ERR_INVALID_HANDLE);
+}
+
+fs_file_read_slice_test :: fn () #test {
+    file :: fs_file_open(#file, FSFileOpenMode.Read);
+    defer fs_file_close(file);
+    data, err := fs_file_read_slice(file);
+    test_ok(err);
+    defer slice_terminate(data);
+    test_not_null(data.ptr);
+    test_neq(data.len, 0);
+}
+
+fs_validate_filename_test :: fn () #test {
+    if OS_KIND == OSKind.Windows {
+        test_false(fs_validate_filename("<"));
+        test_false(fs_validate_filename(">"));
+        test_false(fs_validate_filename(":")); 
+        test_false(fs_validate_filename("\""));     
+        test_false(fs_validate_filename("/"));
+        test_false(fs_validate_filename("\\"));
+        test_false(fs_validate_filename("|")); 
+        test_false(fs_validate_filename("?"));        
+        test_false(fs_validate_filename("*"));
+        test_false(fs_validate_filename("\t"));
+        test_false(fs_validate_filename("foo<"));
+        test_true(fs_validate_filename("foo_bar-File.txt"));
+    } else {
+        test_false(fs_validate_filename("foo/"));
+        test_true(fs_validate_filename("foo_bar-File.txt"));
+    }
+}
+
+fs_get_extension_test :: fn () #test {
+    {
+        filename :: "foo.bar";
+        ext      :: fs_get_extension(filename);
+        test_eq(ext, "bar");
+    }
+    {
+        filename :: "foo.bar.bar";
+        ext      :: fs_get_extension(filename);
+        test_eq(ext, "bar.bar");
+    }
+    {
+        filename :: "";
+        ext      :: fs_get_extension(filename);
+        test_eq(ext, string_empty);
+    }    
+    {
+        filename :: ".";
+        ext      :: fs_get_extension(filename);
+        test_eq(ext, string_empty);
+    }
+    {
+        filename :: ".foo";
+        ext      :: fs_get_extension(filename);
+        test_eq(ext, string_empty);
+    }
+    {
+        filename :: ".foo.bar";
+        ext      :: fs_get_extension(filename);
+        test_eq(ext, "bar");
+    }
+    {
+        filename :: ".foo.bar.bar";
+        ext      :: fs_get_extension(filename);
+        test_eq(ext, "bar.bar");
+    }        
+}
+
+fs_remove_extension_test :: fn () #test {
+    {
+        filename :: "foo.bar";
+        ext      :: fs_remove_extension(filename);
+        test_eq(ext, "foo");
+    }
+    {
+        filename :: "foo.bar.bar";
+        ext      :: fs_remove_extension(filename);
+        test_eq(ext, "foo");
+    }
+    {
+        filename :: "";
+        ext      :: fs_remove_extension(filename);
+        test_eq(ext, string_empty);
+    }    
+    {
+        filename :: ".";
+        ext      :: fs_remove_extension(filename);
+        test_eq(ext, ".");
+    }
+    {
+        filename :: ".foo";
+        ext      :: fs_remove_extension(filename);
+        test_eq(ext, ".foo");
+    }
+    {
+        filename :: ".foo.bar";
+        ext      :: fs_remove_extension(filename);
+        test_eq(ext, ".foo");
+    }
+    {
+        filename :: ".foo.bar.bar";
+        ext      :: fs_remove_extension(filename);
+        test_eq(ext, ".foo");
+    }
+}
+
+fs_normalize_test :: fn () #test {
+    {
+        cwd :: fs_cwd();
+        defer string_delete(cwd);
+        parent: string;
+        test_true(string_split_by_last(cwd, '/', &parent, null));
+        filepath :: string_new("..");
+        defer string_delete(filepath);
+        test_true(fs_normalize(&filepath));
+        test_eq(filepath, parent);
+    }
+    {
+        cwd :: fs_cwd();
+        defer string_delete(cwd);
+        filepath :: string_new(".");
+        defer string_delete(filepath);
+        test_true(fs_normalize(&filepath));
+        test_eq(filepath, cwd);
+    }    
+    {
+        file :: fs_file_create("foo");
+        fs_file_close(file);
+        defer fs_file_remove("foo");
+        cwd :: fs_cwd();
+        defer string_delete(cwd);    
+        filepath :: string_new("foo");
+        string_concatenate(&cwd, "/", filepath);
+        defer string_delete(filepath);
+        test_true(fs_normalize(&filepath));
+        test_eq(filepath, cwd);
+    }    
+}
+
+fs_file_remove_test :: fn () #test {
+    filepath :: get_dummy_filepath();
+    defer string_delete(filepath);
+    
+    fs_file_remove(filepath);
+    file, err :: fs_file_create(filepath);
+    test_ok(err);
+    fs_file_close(file);
+    err2 :: fs_file_remove(filepath);
+    test_ok(err2);
+}
+
+fs_file_size_test :: fn () #test {
+    file :: fs_file_open(#file);
+    defer fs_file_close(file);
+    size, err :: fs_file_size(file);
+    test_ok(err);
+    test_true(size > 0);
+}
+
+fs_file_read_test :: fn () #test {
+    file :: fs_file_open(#file);
+    defer fs_file_close(file);
+    buf: [1042]u8 #noinit;
+    bytes, err :: fs_file_read(file, buf.ptr, buf.len);
+    test_ok(err);
+    test_eq(bytes, buf.len);
+}
+
+fs_file_read_buffer_test2 :: fn () #test {
+    buf: [1042]u8 #noinit;
+    bytes, err :: fs_file_read(FS_FILE_INVALID, buf.ptr, buf.len);
+    test_is_error(err, ERR_INVALID_HANDLE);
+    test_eq(bytes, 0);
+}
+
+fs_file_read_buffer_test3 :: fn () #test {
+    file :: fs_file_open(#file);
+    defer fs_file_close(file);
+    bytes, err :: fs_file_read(file, null, 0);
+    test_is_error(err, ERR_INVALID_HANDLE);
+    test_eq(bytes, 0);
+}
+
+fs_file_read_test4 :: fn () #test {
+    file :: fs_file_open(#file);
+    defer fs_file_close(file);
+    buf: [1024]u8 #noinit;
+    bytes, err :: fs_file_read(file, buf.ptr, 100);
+    test_ok(err);
+    test_eq(bytes, 100);
+}
+
+fs_file_write_test :: fn () #test {
+    filepath :: get_dummy_filepath();
+    defer string_delete(filepath);
+    fs_file_remove(filepath);
+    content :: "Hello I'm cool file content!";    
+    
+    { // write
+        file :: fs_file_create(filepath);
+        written, err :: fs_file_write(file, content.ptr, content.len);
+        test_ok(err);
+        test_eq(written, content.len);
+        fs_file_close(file);
+    }
+    { // read
+        file :: fs_file_open(filepath);
+        tmp, err :: fs_file_read_string(file);
+        test_ok(err);
+        defer string_delete(tmp);
+        test_eq(tmp, content);
+        fs_file_close(file);
+    }
+    fs_file_remove(filepath);
+}
+
+fs_file_write_string_test :: fn () #test {
+    filepath :: get_dummy_filepath();
+    defer string_delete(filepath);
+    fs_file_remove(filepath);
+    content :: "Hello I'm cool file content!";    
+    
+    { // write
+        file :: fs_file_create(filepath);
+        written, err :: fs_file_write_string(file, content);
+        test_ok(err);
+        test_eq(written, content.len);
+        fs_file_close(file);
+    }
+    { // read
+        file :: fs_file_open(filepath);
+        tmp, err :: fs_file_read_string(file);
+        test_ok(err);
+        defer string_delete(tmp);
+        test_eq(tmp, content);
+        fs_file_close(file);
+    }
+    fs_file_remove(filepath);
+}
+
+fs_file_write_slice_test :: fn () #test {
+    filepath :: get_dummy_filepath();
+    defer string_delete(filepath);
+    fs_file_remove(filepath);
+    content :: {:[5]u8: 'H', 'e', 'l', 'o', 'o' };
+    
+    { // write
+        file :: fs_file_create(filepath);
+        written, err :: fs_file_write_slice(file, content);
+        test_ok(err);
+        test_eq(written, content.len);
+        fs_file_close(file);
+    }
+    { // read
+        file :: fs_file_open(filepath);
+        tmp, err :: fs_file_read_string(file);
+        test_ok(err);
+        defer string_delete(tmp);
+        test_eq(tmp.len, content.len);
+        fs_file_close(file);
+    }
+    fs_file_remove(filepath);
+}
+
+fs_list_dir_test1 :: fn () #test {
+    dir :: fs_cwd();
+    defer string_delete(dir);
+    list, err :: fs_dir_scan(dir);
+    defer fs_info_list_terminate(list);
+    test_ok(err);
+    test_true(list.len > 0);
+    loop i := 0; i < list.len; i += 1 {
+        test_neq(list[i].name, string_empty);
+    }
+}
+
+fs_list_dir_test2 :: fn () #test {
+    dir :: fs_cwd();
+    defer string_delete(dir);
+    list, err :: fs_dir_scan(dir, &fn (info: *FSInfo) bool {
+        return info.kind == FSInfoKind.Directory;
+    });
+    defer fs_info_list_terminate(list);
+    test_ok(err);
+    test_true(list.len > 0);
+    loop i := 0; i < list.len; i += 1 {
+        test_neq(list[i].name, string_empty);
+        test_true(list[i].kind == FSInfoKind.Directory);
+    }
+}
+
+fs_list_dir_test3 :: fn () #test {
+    dir :: fs_cwd();
+    defer string_delete(dir);
+    list, err :: fs_dir_scan(dir, &fn (info: *FSInfo) bool {
+        return info.kind == FSInfoKind.File;
+    });
+    defer fs_info_list_terminate(list);
+    test_ok(err);
+    test_true(list.len > 0);
+    loop i := 0; i < list.len; i += 1 {
+        test_neq(list[i].name, string_empty);
+        test_true(list[i].kind == FSInfoKind.File);
+    }
+}
+
+fs_is_directory_test1 :: fn () #test {
+    tmp :: fs_tmp();
+    defer string_delete(tmp);
+    state, err :: fs_is_directory(tmp);
+    test_ok(err);
+    test_true(state);
+}
+
+fs_is_directory_test2 :: fn () #test {
+    state, err :: fs_is_directory(#file);
+    test_ok(err);
+    test_false(state);
+}
+
+fs_dir_create_remove_test1 :: fn () #test {
+    dir :: fs_tmp();
+    defer string_delete(dir);
+    string_append(&dir, "__DELETE_ME__");
+
+    fs_dir_remove_all(dir);
+    state1 :: fs_dir_create(dir);
+    test_ok(state1);
+
+    state2 :: fs_dir_create(dir);
+    test_not_ok(state1);
+
+    state3 :: fs_dir_remove(dir);
+    test_ok(state3);
+}
+
+fs_dir_remove_all_test1 :: fn () #test {
+    dir :: fs_tmp();
+    defer string_delete(dir);
+    string_append(&dir, "__DELETE_ME__");
+    
+    fs_dir_remove_all(dir);
+    {
+        s :: fs_dir_create(dir);
+        test_ok(s);
+    }
+    
+    {
+        file :: string_new(dir);
+        defer string_delete(file);
+        string_append(&file, "/file.txt");
+        f, e :: fs_file_create(file);
+        test_ok(e);
+        fs_file_close(f);
+    }
+    
+    state :: fs_dir_remove_all(dir);
+    test_ok(state);
+    test_false(fs_exist(dir));
+}

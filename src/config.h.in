@@ -125,8 +125,6 @@
 #else
 #error "Unknown platform"
 #endif
-// Specify modules directory in lib/bl/api
-#define MODULES_DIR "modules"
 #define MODULE_CONFIG_FILE "module.conf"
 
 #define BUILD_SCRIPT_FILE "build.bl"

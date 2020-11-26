@@ -52,7 +52,7 @@ typedef struct context {
 } Context;
 
 static void       scan(Context *cnt);
-static bool       scan_comment(Context *cnt, const char *term);
+static bool       scan_comment(Context *cnt, Token *tok, const char *term);
 static bool       scan_docs(Context *cnt, Token *tok);
 static bool       scan_ident(Context *cnt, Token *tok);
 static bool       scan_string(Context *cnt, Token *tok);
@@ -61,8 +61,16 @@ static bool       scan_number(Context *cnt, Token *tok);
 static INLINE int c_to_number(char c, s32 base);
 static char       scan_specch(char c);
 
-bool scan_comment(Context *cnt, const char *term)
+bool scan_comment(Context *cnt, Token *tok, const char *term)
 {
+    if (tok->sym == SYM_SHEBANG && cnt->line != 1) {
+        // Unterminated comment
+        SCAN_ERROR(ERR_INVALID_TOKEN,
+                   "%s %d:%d Shebang is allowed only on the first line of the file.",
+                   cnt->unit->name,
+                   cnt->line,
+                   cnt->col);
+    }
     const usize len = strlen(term);
     while (true) {
         if (*cnt->c == '\n') {
@@ -447,13 +455,12 @@ SCAN:
             case SYM_DGCOMMENT:
                 scan_docs(cnt, &tok);
                 goto PUSH_TOKEN;
+            case SYM_SHEBANG:
             case SYM_LCOMMENT:
-                // begin of line comment
-                scan_comment(cnt, "\n");
+                scan_comment(cnt, &tok, "\n");
                 goto SCAN;
             case SYM_LBCOMMENT:
-                // begin of block comment
-                scan_comment(cnt, sym_strings[SYM_RBCOMMENT]);
+                scan_comment(cnt, &tok, sym_strings[SYM_RBCOMMENT]);
                 goto SCAN;
             case SYM_RBCOMMENT: {
                 SCAN_ERROR(ERR_INVALID_TOKEN,

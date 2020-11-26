@@ -1,0 +1,91 @@
+#!blc -rs 
+#import "std/fs"
+
+DEST_DOCS_DIR :: "docs";
+DEST_API_DIR :: "docs/api";
+SRC_API_DIR :: "lib/bl/api";
+
+cmd :: fn (fmt: string, args: ...) {
+    buf: [2048]u8 #noinit;
+    bprint(buf, fmt, args);
+    os_execute({:string: buf.len, buf.ptr});
+}
+
+pre_cleanup :: fn () Error {
+    print("Cleanup\n");
+    if fs_exist(DEST_DOCS_DIR) {
+        err :: fs_dir_remove_all(DEST_DOCS_DIR);
+        if !is_ok(err) { return err; }
+    }
+    { // create docs
+        err :: fs_dir_create(DEST_DOCS_DIR);
+        if !is_ok(err) { return err; }
+    }
+    { // create api
+        err :: fs_dir_create(DEST_API_DIR);
+        if !is_ok(err) { return err; }
+    }
+    return ok();
+}
+
+docs_dir :: fn (dest_path: string, src_path: string) Error {
+    list, err :: fs_dir_scan(src_path, &fn (info: *FSInfo) bool {
+        if string_is_empty(info.name)        { return false; }
+        if string_compare(info.name, ".")    { return false; }
+        if string_compare(info.name, "..")   { return false; }
+        if string_compare(info.name, "_", 1) { return false; }
+        if info.kind == FSInfoKind.File {
+            ext :: fs_get_extension(info.name);
+            if !string_compare(ext, "bl") { return false; }
+        }
+        return true;
+    });
+    defer fs_info_list_terminate(list);
+    if !is_ok(err) { return err; }
+
+    file_list :: string_new(128);
+    defer string_delete(file_list);
+    loop i := 0; i < list.len; i += 1 {
+        info :: &list[i];
+        switch info.kind {
+            FSInfoKind.File {
+                string_append(&file_list, src_path);
+                string_append(&file_list, "/");
+                string_append(&file_list, info.name);
+                string_append(&file_list, " ");
+            }
+            FSInfoKind.Directory {
+                new_dest_path :: sprint(dest_path, "/", info.name);
+                new_src_path :: sprint(src_path, "/", info.name);
+                defer string_delete(new_dest_path);
+                defer string_delete(new_src_path);
+                if !fs_exist(new_dest_path) {
+                    err :: fs_dir_create(new_dest_path);
+                    if !is_ok(err) { return err; }
+                }
+                err :: docs_dir(new_dest_path, new_src_path);
+                if !is_ok(err) { return err; }
+            }
+        }
+    }
+    
+    cmd("blc -docs %", file_list);
+    cmd("mv out/* %", dest_path);
+    
+    return ok();
+}
+
+main :: fn () s32 {
+    print("Generate BL documentation...\n");
+    { // cleanup
+        err :: pre_cleanup();
+        if !is_ok(err) { print_err("%", err); return err.code; }
+    }
+
+    { // run
+        err :: docs_dir(DEST_API_DIR, SRC_API_DIR);
+        if !is_ok(err) { print_err("%", err); return err.code; }
+    }
+    print("DONE\n");
+    return 0;
+}

@@ -7,6 +7,7 @@ Options\n\
   -a, -about            = Print compiler info.\n\
   -r, -run              = Execute 'main' method in compile time.\n\
   -rt, -run-tests       = Execute all unit tests in compile time.\n\
+  -rs, -run-script      = Run as script (same as '-r -s -no-llvm').\n\
   -s, -silent           = Silent mode.\n\
   -emit-llvm            = Write LLVM-IR to file.\n\
   -emit-mir             = Write MIR to file.\n\
