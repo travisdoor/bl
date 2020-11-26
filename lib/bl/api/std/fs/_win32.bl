@@ -55,39 +55,6 @@ _fs_impl_file_size :: fn (handle: FSFile) (usize, Error) #inline {
     return auto size, ok();
 }
 
-_fs_impl_file_read_string :: fn (handle: FSFile) (string, Error) {
-    size, err :: _fs_impl_file_size(handle);
-    if !is_ok(err) {
-        return string_empty, err;
-    }
-    buf := string_new(cast(usize) size);
-    read, err2 :: _fs_impl_file_read(handle, buf.ptr, auto size);
-    if !is_ok(err2) {
-        string_delete(buf);
-        return string_empty, err2;                
-    }
-    buf.len = auto read;
-    return buf, ok();
-}
-
-_fs_impl_file_read_slice :: fn (handle: FSFile) ([]u8, Error) {
-    invalid: []u8;
-    size, err :: _fs_impl_file_size(handle);
-    if !is_ok(err) {
-        return invalid, err;
-    }
-    buf: []u8;
-    slice_init(buf, auto size);
-    read, err2 :: _fs_impl_file_read(handle, buf.ptr, auto size);
-    if !is_ok(err2) {
-        slice_terminate(buf);
-        return invalid, err2;                
-    }
-    buf.len = read;
-    return buf, ok();
-}
-
-
 _fs_impl_file_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) {
     if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
     read_bytes: _DWORD #noinit;
@@ -108,18 +75,6 @@ _fs_impl_file_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) {
     return auto written_bytes, ok();
 }
 
-_fs_impl_file_write_string :: fn (handle: FSFile, str: string) (s64, Error) #inline {
-    written_bytes, err :: _fs_impl_file_write(handle, str.ptr, str.len);
-    if !is_ok(err) { return 0, err; }
-    return auto written_bytes, ok();    
-}
-
-_fs_impl_file_write_slice :: fn (handle: FSFile, v: []u8) (s64, Error) #inline {
-    written_bytes, err :: _fs_impl_file_write(handle, v.ptr, v.len);
-    if !is_ok(err) { return 0, err; }
-    return auto written_bytes, ok();
-}
-
 _fs_impl_dir_create :: fn (dirpath: string) Error {
     if string_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
     if _CreateDirectoryA(auto dirpath.ptr, null) == 0 {
@@ -136,32 +91,6 @@ _fs_impl_dir_remove :: fn (dirpath: string) Error {
         return error(ec, "Cannot remove directory '%': %.", dirpath, estr);
     }
     return ok();
-}
-
-_fs_impl_dir_remove_all :: fn (dirpath: string) Error {
-    tmp :: string_new(cast(usize) dirpath.len);
-    defer string_delete(tmp);
-    list, err :: _fs_impl_dir_scan(dirpath, &fn (item: *FSInfo) bool {
-        return string_compare(item.name, ".") == false && string_compare(item.name, "..") == false;
-    });
-    if !is_ok(err) { return err; }
-    defer fs_info_list_terminate(list);
-    loop i := 0; i < list.len; i += 1 {
-        node :: &list[i];
-        string_concatenate(&tmp, dirpath, "/", node.name);
-        switch node.kind {
-            FSInfoKind.Directory {
-                err :: _fs_impl_dir_remove_all(tmp);
-                if !is_ok(err) { return err; }
-            }            
-            FSInfoKind.File {
-                err :: _fs_impl_file_remove(tmp);
-                if !is_ok(err) { return err; }
-            }
-        }
-        string_clear(&tmp);
-    }
-    return _fs_impl_dir_remove(dirpath);
 }
 
 _fs_impl_is_directory :: fn (path: string) (bool, Error) #inline {
@@ -235,13 +164,6 @@ _fs_impl_dir_scan :: fn (dirpath: string, filter: FSDirScanFilterFn) (FSInfoList
     return buf, ok();
 }
 
-_fs_impl_info_list_terminate :: fn (list: FSInfoList) {
-    loop i := 0; i < list.len; i += 1 {
-        string_delete(list[i].name);
-    }
-    slice_terminate(list);
-}
-
 _fs_impl_validate_filename :: fn (name: string) bool {
     if name.len == 0 { return false; }
     invalid :: "<>:\"/\\|?*\t";
@@ -257,14 +179,16 @@ _fs_impl_cwd :: fn () string #inline {
     if written == 0 { return string_new(); }
     out :: string_new(buf.ptr);
     string_replace_all(&out, '\\', '/');
-    return out;
+    return remove_last_separator(out);
 }
 
 _fs_impl_home :: fn () string #inline {
     tmp :: "USERPROFILE";
     cdir :: cast(*u8) c_getenv(auto tmp.ptr);
     if !cdir { return string_new(); }
-    return string_new(cdir);
+    out :: string_new(cdir)
+    string_replace_all(&out, '\\', '/');
+    return remove_last_separator(out);
 }
 
 _fs_impl_tmp :: fn () string #inline {
@@ -273,7 +197,8 @@ _fs_impl_tmp :: fn () string #inline {
     if written == 0 { return string_new(); }
     out :: string_new(buf.ptr);
     string_replace_all(&out, '\\', '/');
-    return out;
+    return remove_last_separator(out);
+;
 }
 
 _fs_impl_normalize :: fn (filepath: *string) bool {
@@ -325,4 +250,12 @@ modes_to_flags :: fn (modes: []FSFileOpenMode) u32 #inline {
         }
     }
     return flags;
+}
+
+remove_last_separator :: fn (path: string) string {
+    if string_is_empty(^path) return;
+    if (^path)[path.len-1] == '/' {
+        path.len -= 1;
+    }
+    return path;
 }

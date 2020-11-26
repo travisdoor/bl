@@ -1,16 +1,6 @@
-#!blc -rs 
-
-#import "std/fs"
+#!/usr/bin/blc -rs 
 
 main :: fn () s32 {
-    list, err :: fs_dir_scan(".");
-    defer fs_info_list_terminate(list);
-    if !is_ok(err) {
-        print_err("%", err); 
-        return 1;
-    }
-    loop i := 0; i < list.len; i += 1 {
-        print("%\n", list[i].name);
-    }
+    print("Hello!!!\n");
     return 0;
 }

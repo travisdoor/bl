@@ -26,6 +26,7 @@ fs_home_test :: fn () #test {
     defer string_delete(tmp);
     test_neq(tmp, string_empty);
     test_true(fs_exist(tmp));
+    print("%\n", tmp);
 }
 
 fs_tmp_test :: fn () #test {
@@ -425,7 +426,7 @@ fs_is_directory_test2 :: fn () #test {
 fs_dir_create_remove_test1 :: fn () #test {
     dir :: fs_tmp();
     defer string_delete(dir);
-    string_append(&dir, "__DELETE_ME__");
+    string_append(&dir, "/__DELETE_ME__");
 
     fs_dir_remove_all(dir);
     state1 :: fs_dir_create(dir);
@@ -441,7 +442,7 @@ fs_dir_create_remove_test1 :: fn () #test {
 fs_dir_remove_all_test1 :: fn () #test {
     dir :: fs_tmp();
     defer string_delete(dir);
-    string_append(&dir, "__DELETE_ME__");
+    string_append(&dir, "/__DELETE_ME__");
     
     fs_dir_remove_all(dir);
     {

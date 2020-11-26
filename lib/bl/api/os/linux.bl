@@ -248,52 +248,15 @@ RTLD_NOW    :: 0x2;
 RTLD_LOCAL  :: 0x4;
 RTLD_GLOBAL :: 0x8;
 
-DT_UNKNOWN ::  0;
-DT_FIFO    ::  1;
-DT_CHR     ::  2;
-DT_DIR     ::  4;
-DT_BLK     ::  6;
-DT_REG     ::  8;
-DT_LNK     :: 10;
-DT_SOCK    :: 12;
-DT_WHT     :: 14;
-
 CLOCK_REALTIME :: 0;
-
-/* REMOVE
-dirent :: struct {
-    d_ino: c_ulong; 
-    d_off: c_long; 
-    d_reclen: c_ushort;
-    d_type: c_uchar; 
-    d_name: [256]c_char;
-}
-*/
 
 WEXITSTATUS :: fn (x: s32) s32 #inline {
     return (x >> 8) & 0x000000ff;
 }
 
-__S_IFMT : u32 : 0xf000;
-__S_IFDIR : u32 : 	0x4000;
-__S_IFCHR	 : u32 : 0x2000;
-__S_IFBLK	 : u32 : 0x6000;	
-__S_IFREG	 : u32 : 0x8000;
-__S_IFIFO	 : u32 : 0x1000	;
-__S_IFLNK	 : u32 : 0xA000;
-__S_IFSOCK	 : u32 : 0xC000;
-
 _posix_dlopen    :: fn (path: *u8, mode: s32) *u8 #extern "dlopen";
 _posix_dlclose   :: fn (handle: *u8) s32 #extern "dlclose";
 _posix_dlsym     :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
-
-_S_ISDIR :: fn (mode: u32) bool #inline {
-    return (mode & __S_IFMT) == __S_IFDIR;    
-}
-
-_S_ISREG :: fn (mode: u32) bool #inline {
-    return (mode & __S_IFMT) == __S_IFREG;    
-}
 
 
 // Threading

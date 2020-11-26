@@ -12,6 +12,24 @@ _S_IXOTH :: _S_IXGRP >> 3;
 _S_IRWXO :: _S_IRWXG >> 3;
 
 
+__S_IFMT : u32 : 0xf000;
+__S_IFDIR : u32 : 0x4000;
+__S_IFCHR : u32 : 0x2000;
+__S_IFBLK : u32 : 0x6000;	
+__S_IFREG : u32 : 0x8000;
+__S_IFIFO : u32 : 0x1000;
+__S_IFLNK : u32 : 0xA000;
+__S_IFSOCK : u32 : 0xC000;
+
+_S_ISDIR :: fn (mode: u32) bool #inline {
+    return (mode & __S_IFMT) == __S_IFDIR;    
+}
+
+_S_ISREG :: fn (mode: u32) bool #inline {
+    return (mode & __S_IFMT) == __S_IFREG;    
+}
+
+
 _Stat :: struct {
     st_dev: u64;
     st_ino: u64;
@@ -35,3 +53,4 @@ _Stat :: struct {
 
 _stat :: fn (path: *c_char, buf: *_Stat) c_int #extern "stat";
 _fstat :: fn (fd: c_int, stat: *_Stat) c_int #extern "fstat";
+_mkdir :: fn (path: *c_char, mode: c_int) c_int #extern "mkdir";
