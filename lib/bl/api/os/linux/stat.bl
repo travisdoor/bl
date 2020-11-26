@@ -51,6 +51,6 @@ _Stat :: struct {
     _1: [3]c_long;
 }
 
-_stat :: fn (path: *c_char, buf: *_Stat) c_int #extern "stat";
-_fstat :: fn (fd: c_int, stat: *_Stat) c_int #extern "fstat";
+_stat :: fn (path: *c_char, buf: *_Stat) c_int #extern "statfs";
+_fstat :: fn (fd: c_int, stat: *_Stat) c_int #extern "fstatfs";
 _mkdir :: fn (path: *c_char, mode: c_int) c_int #extern "mkdir";

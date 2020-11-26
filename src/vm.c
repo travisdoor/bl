@@ -699,8 +699,8 @@ void print_call_stack(VM *vm, usize max_nesting)
 
     if (!instr) return;
     // print last instruction
-    builder_msg(BUILDER_MSG_NOTE, 0, instr->node->location, BUILDER_CUR_WORD, "");
-    builder_note("called from:");
+    builder_msg(BUILDER_MSG_ERROR, 0, instr->node->location, BUILDER_CUR_WORD, "");
+    builder_error("called from:");
 
     while (fr) {
         instr = (MirInstr *)fr->caller;
@@ -708,11 +708,11 @@ void print_call_stack(VM *vm, usize max_nesting)
         if (!instr) break;
 
         if (max_nesting && n == max_nesting) {
-            builder_note("continue...");
+            builder_error("continue...");
             break;
         }
 
-        builder_msg(BUILDER_MSG_NOTE, 0, instr->node->location, BUILDER_CUR_WORD, "");
+        builder_msg(BUILDER_MSG_ERROR, 0, instr->node->location, BUILDER_CUR_WORD, "");
         ++n;
     }
 }

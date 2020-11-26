@@ -1,14 +1,19 @@
-#!blc -rs 
+#!/usr/local/bin/blc -rs 
 #import "std/fs"
 
 DEST_DOCS_DIR :: "docs";
 DEST_API_DIR :: "docs/api";
 SRC_API_DIR :: "lib/bl/api";
 
-cmd :: fn (fmt: string, args: ...) {
+cmd :: fn (fmt: string, args: ...) Error {
     buf: [2048]u8 #noinit;
     bprint(buf, fmt, args);
-    os_execute({:string: buf.len, buf.ptr});
+    tmp :: {:string: buf.len, buf.ptr};
+    state :: os_execute(tmp);
+    if state != 0 {
+        return error(state, "Executed shell command failed '%'!", tmp);
+    }
+    return ok();
 }
 
 pre_cleanup :: fn () Error {
@@ -69,8 +74,16 @@ docs_dir :: fn (dest_path: string, src_path: string) Error {
         }
     }
     
-    cmd("blc -docs %", file_list);
-    cmd("mv out/* %", dest_path);
+    print("Process '%'\n", src_path);
+    if string_is_empty(file_list) { return ok(); }
+    {
+        err :: cmd("blc -docs -s %", file_list);
+        if !is_ok(err) { return err; }
+    }
+    {
+        err :: cmd("mv out/* %", dest_path);
+        if !is_ok(err) { return err; }
+    }
     
     return ok();
 }
@@ -86,6 +99,11 @@ main :: fn () s32 {
         err :: docs_dir(DEST_API_DIR, SRC_API_DIR);
         if !is_ok(err) { print_err("%", err); return err.code; }
     }
-    print("DONE\n");
+
+    { // copy examples
+        err :: cmd("cp -r examples %/", DEST_DOCS_DIR);
+        if !is_ok(err) { print_err("%", err); return err.code; }
+    }
+    print("Output written in '%' folder.\n", DEST_DOCS_DIR);
     return 0;
 }

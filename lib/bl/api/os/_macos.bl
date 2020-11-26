@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   linux.bl 
+// File:   posix.bl 
 // Author: Martin Dorazil
 // Date:   2/11/19
 //
@@ -26,25 +26,28 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#load "os/linux/stat.bl"
-#load "os/linux/errno.bl"
-#load "os/posix/signal.bl"
-#load "os/posix/error.bl"
-#load "os/posix/unistd.bl"
-#load "libc.bl"
+#load "macos/macosapi.bl"
+#load "macos/errno.bl"
+#load "posix/fcntl.bl"
+#load "posix/signal.bl"
+#load "posix/error.bl"
+#load "error.bl"
+#load "std/libc.bl"
 #load "std/string.bl"
-#load "std/error.bl"
 
-OS_KIND :: OSKind.Linux;
-OS_NAME :: "Linux";
+OS_KIND :: OSKind.MacOS;
+OS_NAME :: "MacOS";
 
 OS_STDIN  :: C_STDIN;
 OS_STDOUT :: C_STDOUT;
 OS_STDERR :: C_STDERR;
 
-OS_PATH_MAX :: 1024;
+OS_PATH_MAX :: DARWIN_MAXPATHLEN;
 OSLibrary :: *u8;
 
+/*
+ * Platform depend C types compatible with C ABI.
+ */
 c_char      :: s8;
 c_uchar     :: u8;
 c_short     :: s16;
@@ -59,7 +62,6 @@ c_void_ptr  :: *u8;
 c_size_t    :: u64;
 c_ssize_t   :: s64;
 
-// Threading
 OSThread :: _PosixThread;
 OSMutex :: _PosixMutex;
 OSThreadEntryFn :: *fn (args: []Any);
@@ -97,23 +99,17 @@ os_thread_kill :: fn (thread: OSThread, exit_code: s32 = 0) bool #inline {
 
 os_mutex_init :: fn (mutex: *OSMutex) #inline {
     _posix_thread_mutex_init(mutex, null);
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
+    // @INCOMPLETE: handle errors
 }
 
 os_mutex_terminate :: fn (mutex: *OSMutex) #inline {
     _posix_thread_mutex_destroy(mutex);
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
+    // @INCOMPLETE: handle errors
 }
 
 os_mutex_lock :: fn (mutex: *OSMutex) #inline {
     _posix_thread_mutex_lock(mutex);
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
+    // @INCOMPLETE: handle errors
 }
 
 os_mutex_trylock :: fn (mutex: *OSMutex) bool #inline {
@@ -134,16 +130,28 @@ os_mutex_unlock :: fn (mutex: *OSMutex) #inline {
     // INCOMPLETE: handle errors
 }
 
-os_sleep_ms :: fn (ms: f64) {
-    _usleep(auto ms * 1000.0);
+os_sleep_ms :: fn (ms: f64) #inline {
+    _posix_usleep(auto ms * 1000.0);
 };
 
 os_tick_ms :: fn () f64 #inline {
-    t: _posix_timespec;
-    _posix_clock_gettime(CLOCK_REALTIME, &t);
-    s :: cast(f64) t.tv_sec;
-    n :: cast(f64) t.tv_nsec;
-    return (s*1000.) + (n/1000000.);
+    t :: cast(f64) _mach_absolute_time();
+    return t * 0.00001;
+}
+
+os_get_exec_path :: fn () string {
+    buf : [DARWIN_MAXPATHLEN]u8 #noinit;
+    buf_len := cast(u32) buf.len;
+    if _NSGetExecutablePath(auto buf.ptr, &buf_len) == -1 { return string_new(); }
+
+    return string_new(buf.ptr);
+}
+
+os_get_home_path :: fn () string {
+    tmp :: "HOME";
+    cdir :: _posix_getenv(tmp.ptr);
+    if !cdir { return string_new(); }
+    return string_new(cdir);
 }
 
 os_dlopen :: fn (lib_name := string_empty) OSLibrary #inline {
@@ -162,17 +170,21 @@ os_dlclose :: fn (lib: OSLibrary) #inline {
 }
 
 os_execute :: fn (command: string) s32 {
-    return WEXITSTATUS(c_system(auto command.ptr));
+    return WEXITSTATUS(_posix_system(auto command.ptr));
 }
 
-os_get_last_error :: fn () (s32, string) #inline {
+os_get_last_error :: fn (native_code: *s32 = null) Error #inline {
     ec :: _errno();
-    str := string_empty;
-    c_str :: cast(*u8) c_strerror(ec);
-    if c_str && ec != 0 { str = cstr_to_str(c_str); }
-    return ec, str;
+    if native_code { ^native_code = ec; }
+    switch ec {
+        0       { return OK; }
+        _ENOENT { return ERR_NOT_FOUND; }
+        _EEXIST { return ERR_ALREADY_EXIST; }
+        _EACCES { return ERR_ACCESS_DENIED; }
+        _EBADF  { return ERR_INVALID_HANDLE; }
+        default { return ERR_UNKNOWN; }
+    }
 }
-
 
 // CLEANUP: This must be in gl.bl file not here, but we keep it
 // until static 'if' will be supported by compiler.
@@ -181,22 +193,12 @@ _os_gl_get_proc :: fn (proc_name: string) *u8 #inline {
     return os_dlsym(module, proc_name);
 }
 
-os_get_exec_path :: fn () string {
-    buf : [OS_PATH_MAX]u8 #noinit;
-    buf_len := cast(c_size_t) buf.len;
-    link :: "/proc/self/exe";
-    if _readlink(auto link.ptr, auto buf.ptr, buf_len) == -1 {
-        return string_new(); 
-    }
-    return string_new(buf.ptr);
-}
-
 _os_debug_break :: fn () #inline {
-    //_raise(_SIGTRAP);
+    //_posix_raise(SIGTRAP);
 }
 
-__os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
-    return auto _write(auto fd, auto buf, count);
+__os_write :: fn (fd: s32, buf: *u8, count: usize) s32 #inline {
+    return _posix_write(fd, buf, count);
 };
 
 __os_abort :: fn () #compiler {
@@ -209,12 +211,12 @@ __os_abort :: fn () #compiler {
 }
 
 _os_abort_default :: fn () {
-    _raise(_SIGABRT);
+    _posix_raise(_SIGABRT);
 }
 
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
 
-__os_start :: fn (argc: s64, argv: **u8, env: **u8) s32 #entry {
+__os_start :: fn (argc: s64, argv: **u8, env: **u8) #entry {
     args :: {:[]*u8: argc, argv};
     tmp: [__MAX_ARGS_WITHOUT_ALLOC]string #noinit;
     is_allocated :: args.len > tmp.len;
@@ -223,7 +225,7 @@ __os_start :: fn (argc: s64, argv: **u8, env: **u8) s32 #entry {
 
     if is_allocated {
         command_line_arguments.ptr = auto _default_allocator(AllocOp.Allocate, sizeof(string) * auto args.len);
-        if !command_line_arguments.ptr { __os_abort(); }
+        if command_line_arguments.ptr == null { __os_abort(); }
     } else {
         command_line_arguments.ptr = tmp.ptr;
     }
@@ -238,7 +240,7 @@ __os_start :: fn (argc: s64, argv: **u8, env: **u8) s32 #entry {
         _default_allocator(AllocOp.Free, 0, auto command_line_arguments.ptr);
     }
 
-    return out;
+    _posix_exit(out);
 }
 
 #private
@@ -248,16 +250,45 @@ RTLD_NOW    :: 0x2;
 RTLD_LOCAL  :: 0x4;
 RTLD_GLOBAL :: 0x8;
 
-CLOCK_REALTIME :: 0;
+DT_UNKNOWN ::  0;
+DT_FIFO    ::  1;
+DT_CHR     ::  2;
+DT_DIR     ::  4;
+DT_BLK     ::  6;
+DT_REG     ::  8;
+DT_LNK     :: 10;
+DT_SOCK    :: 12;
+DT_WHT     :: 14;
+
+DARWIN_MAXPATHLEN :: 1024;
 
 WEXITSTATUS :: fn (x: s32) s32 #inline {
     return (x >> 8) & 0x000000ff;
 }
 
+dirent :: struct {
+    d_ino: c_ulonglong; 
+    d_seekoff: c_ulonglong;
+    d_reclen: c_ushort;
+    d_namlen: c_ushort;
+    d_type: c_uchar; 
+    d_name: [DARWIN_MAXPATHLEN]c_char;
+}
+
+_posix_raise     :: fn (sig: s32) s32 #extern "raise";
+_posix_write     :: fn (fd: s32, buf: *u8, count: usize) s32 #extern "write";
+_posix_usleep    :: fn (us: u32) s32 #extern "usleep";
+_posix_realpath  :: fn (path: *u8, resolved_path: *u8) *u8 #extern "realpath$DARWIN_EXTSN";
+_posix_exit      :: fn (v: s32) #extern "_exit";
 _posix_dlopen    :: fn (path: *u8, mode: s32) *u8 #extern "dlopen";
 _posix_dlclose   :: fn (handle: *u8) s32 #extern "dlclose";
 _posix_dlsym     :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
-
+_posix_opendir   :: fn (name: *u8) *u8 #extern "opendir";
+_posix_closedir  :: fn (dirp: *u8) s32 #extern "closedir";
+_posix_readdir   :: fn (dirp: *u8) *dirent #extern "readdir$INODE64";
+_posix_rewinddir :: fn (dirp: *u8) #extern "rewinddir$INODE64";
+_posix_system    :: fn (command: *c_char) c_int #extern "system";
+_posix_getenv    :: fn (name: *u8) *u8 #extern "getenv";
 
 // Threading
 _PosixThread :: c_void_ptr;
@@ -292,13 +323,3 @@ _posix_thread_mutex_trylock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_m
 _posix_thread_mutex_unlock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_unlock"; 
 _posix_thread_mutex_init :: fn (mutex: *_PosixMutex, attr: c_void_ptr) c_int #extern "pthread_mutex_init";
 _posix_thread_mutex_destroy :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_destroy";
-
-_posix_clockid_t :: c_int;
-_posix_time_t    :: c_long;
-
-_posix_timespec :: struct {
-    tv_sec: _posix_time_t;
-    tv_nsec: c_long;
-}
-
-_posix_clock_gettime :: fn (clk_id: _posix_clockid_t, tp: *_posix_timespec) c_int #extern "clock_gettime";

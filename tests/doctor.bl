@@ -1,5 +1,5 @@
-#load "std/dir.bl"
-#load "std/file.bl"
+#!/usr/local/bin/blc -rs
+#import "std/fs"
 
 BL_EXE_PATH_WIN  :: "..\\bin\\blc.exe";
 BL_EXE_PATH_UNIX :: "../bin/blc";
@@ -11,7 +11,7 @@ EXAMPLES_DOCS_DIR :: "../examples/docs";
 EXPECT_FAIL_DIR :: "src/expect_fail";
 
 HARDCODED_MODULES :: {:[1]string:
-                      "../lib/bl/api/modules/fs/fs.test.bl"
+                      "../lib/bl/api/std/fs/fs.test.bl"
                      };
 
 main :: fn () s32 {
@@ -20,31 +20,26 @@ main :: fn () s32 {
     defer string_delete(_wdir);
     
     if OS_KIND == OSKind.Windows {
-        _compiler_path = get_path(BL_EXE_PATH_WIN);
+        _compiler_path = BL_EXE_PATH_WIN;
     } else {
-        _compiler_path = get_path(BL_EXE_PATH_UNIX);
+        _compiler_path = BL_EXE_PATH_UNIX;
     }
     defer string_delete(_compiler_path);
         
     print("---------------------------------- BL DOCTOR -----------------------------------\n");    
     start_time_ms :: os_tick_ms();
 
-    print("Run in '%'\n", _wdir);    
     // general
     print("Test general suite:\n");    
     {
-        file :: get_path(MAIN_TEST_SUITE_FILEPATH);
-        defer string_delete(file);
-        test_file(file, TestKind.Runtime);
-        test_file(file, TestKind.Test);
+        test_file(MAIN_TEST_SUITE_FILEPATH, TestKind.Runtime);
+        test_file(MAIN_TEST_SUITE_FILEPATH, TestKind.Test);
     }
 
     // modules
     print("Test modules:\n");    
     loop i := 0; i < HARDCODED_MODULES.len; i += 1 {
-        file :: get_path(HARDCODED_MODULES[i]);
-        defer string_delete(file);
-        test_file(file, TestKind.Runtime);
+        test_file(HARDCODED_MODULES[i], TestKind.Runtime);
         //test_file(file, TestKind.Test);
     }
     
@@ -132,12 +127,6 @@ init_wdir :: fn () {
     print_log("Working directory: %", _wdir);
 }
 
-get_path :: fn (p: string) string #inline {
-    tmp :: sprint(_wdir, "/", p);
-    os_normalize_path(&tmp);
-    return tmp;
-}
-
 get_verbosity :: fn () string #inline {
     if _diag_mode { return ""; } // print all
     if OS_KIND == OSKind.Windows {
@@ -148,11 +137,12 @@ get_verbosity :: fn () string #inline {
 }
 
 get_expected_error :: fn (filepath: string, out_err: *s32) bool {
-    file :: file_open(filepath, FileOpenMode.Read);
-    defer file_close(file);
-    if !file { print_err("Cannot open file '%'", filepath); return false; }
-    content :: file_read_all(file);
+    file, err1 :: fs_file_open(filepath, FSFileOpenMode.Read);
+    defer fs_file_close(file);
+    if !is_ok(err1) { print_err("%", err1); return false; }
+    content, err2 :: fs_file_read_string(file);
     defer string_delete(content);
+    if !is_ok(err2) { print_err("%", err2); return false; }
     
     tmp :: string_split_by(content, '@');
     defer slice_terminate(tmp);
@@ -236,21 +226,20 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
     }
 }
 
-test_all_in_dir :: fn (_dir: string, expect_fail := false) {
+test_all_in_dir :: fn (dir: string, expect_fail := false) {
     file :: string_new(64);
     defer string_delete(file);
     
-    dir :: get_path(_dir);
-    defer string_delete(dir);
-    
     print("Testing files in directory '%':\n", dir);        
-    file_list: FileList #noinit;
-    if !dir_scan(dir, &file_list) { print_err("Cannot scan directory!"); }
-    defer dir_file_list_delete(file_list);
+    list, err :: fs_dir_scan(dir);
+    if !is_ok(err) {
+        print_err("%", err);
+    }
+    defer fs_info_list_terminate(list);
 
-    loop i := 0; i < file_list.len; i += 1 {
-        info :: &file_list[i];
-        if info.kind != FileKind.Directory {
+    loop i := 0; i < list.len; i += 1 {
+        info :: &list[i];
+        if info.kind != FSInfoKind.Directory {
             string_clear(&file);
             string_concatenate(&file, dir, "/", info.name);
             if expect_fail {

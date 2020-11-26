@@ -35,6 +35,7 @@
 #include <locale.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 
 char *ENV_EXEC_DIR      = NULL;
 char *ENV_LIB_DIR       = NULL;
@@ -42,6 +43,7 @@ char *ENV_CONF_FILEPATH = NULL;
 
 static void free_env(void)
 {
+    int i = stat("", NULL);
     free(ENV_EXEC_DIR);
     free(ENV_LIB_DIR);
     free(ENV_CONF_FILEPATH);

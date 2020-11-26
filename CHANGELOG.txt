@@ -5,10 +5,10 @@ Add multiple return values and group declarations.
 Add automatic documentation generator (-docs flag).
 Add debug allocator.
 Add new FileSystem module.
-Add #import directive for modules.
+Add #import directive for modules
 Add BL Doctor for better unit testing.
 Add first prototype of modules and #import hash directive. [TODO: documentation]
-Add support of shebang and silent execution. [TODO: documentation]
+Add support of shebang and silent execution.
 Add -silent and -rs options.
 Add -verify-llvm option to enable LLVM IR verification.
 Support custom allocators in containers.

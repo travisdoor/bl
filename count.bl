@@ -1,0 +1,7 @@
+#!/usr/local/bin/blc -rs
+
+main :: fn () s32 {
+   return os_execute("cloc src --include-lang=C,C++,C/C++\ Header --exclude-dir=build --exclude-dir=deps");
+}
+
+

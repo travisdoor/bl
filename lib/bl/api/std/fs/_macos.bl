@@ -1,6 +1,6 @@
 #load "os/posix/unistd.bl"
 #load "os/posix/fcntl.bl"
-#load "libc.bl"
+#load "std/libc.bl"
 
 FSFileOpenMode :: enum {
     Read;

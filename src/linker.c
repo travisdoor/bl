@@ -193,7 +193,6 @@ void linker_run(Assembly *assembly)
         return;
     }
 #endif
-
     if (!link_working_environment(&cnt, NULL)) {
         Token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link working environment.");

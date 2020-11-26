@@ -1,4 +1,4 @@
-#load "experimental/hash_table.bl"
+#load "_experimental/hash_table.bl"
 
 #private 
 init :: fn () #test {

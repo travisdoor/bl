@@ -2,7 +2,7 @@
 #load "os/posix/unistd.bl"
 #load "os/posix/fcntl.bl"
 #load "os/posix/dirent.bl"
-#load "libc.bl"
+#load "std/libc.bl"
 #load "fs.bl"
 
 /// File handle type.
