@@ -1,4 +1,4 @@
-#load "interface.bl"
+#load "fs.bl"
 
 /// File handle type.
 FSFile :: *u8;

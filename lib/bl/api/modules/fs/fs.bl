@@ -201,7 +201,7 @@ fs_tmp :: fn () string #inline {
 
 /// Try to normalize file path, basically try to remove all relative path
 /// nodes `..` and `.`. Path must be valid path (existing) on system.
-fs_normalize :: fn (filepath: *string) bool {
+fs_normalize :: fn (filepath: *string) bool #inline {
     return _fs_impl_normalize(filepath);
 }
 
