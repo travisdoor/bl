@@ -10,6 +10,9 @@
 //! 
 //! .. warning:: This module is experimental and not fully supported across all platforms.
 
+/// File handle type.
+FSFile :: _FSImplFile;
+FS_FILE_INVALID :: _FS_IMPL_FILE_INVALID;
 
 /// Specify operation with opened file.
 FSFileOpenMode :: enum {
@@ -127,7 +130,7 @@ fs_file_write_string :: fn (handle: FSFile, str: string) (s64, Error) #inline {
 /// Write content of `v` slice into the file, return count of written bytes and `OK` if
 /// there is no error, otherwise return 0 and error.
 fs_file_write_slice :: fn (handle: FSFile, v: []u8) (s64, Error) #inline {
-    return _fs_impl_file_wite_slice(handle, v);
+    return _fs_impl_file_write_slice(handle, v);
 }
 
 /// Create new directory and return `OK` on success. This function does not
