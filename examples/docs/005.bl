@@ -1,4 +1,4 @@
-#import "fs"
+#import "std/fs"
 
 main :: fn () s32 {
     // Open this file.

@@ -186,7 +186,7 @@ _fs_impl_home :: fn () string #inline {
     tmp :: "USERPROFILE";
     cdir :: cast(*u8) c_getenv(auto tmp.ptr);
     if !cdir { return string_new(); }
-    out :: string_new(cdir)
+    out :: string_new(cdir);
     string_replace_all(&out, '\\', '/');
     return remove_last_separator(out);
 }
@@ -198,7 +198,6 @@ _fs_impl_tmp :: fn () string #inline {
     out :: string_new(buf.ptr);
     string_replace_all(&out, '\\', '/');
     return remove_last_separator(out);
-;
 }
 
 _fs_impl_normalize :: fn (filepath: *string) bool {

@@ -8382,7 +8382,7 @@ void ast_stmt_return(Context *cnt, Ast *ret)
         const usize           valc   = ast_values->size;
         TSmallArray_InstrPtr *values = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
         tsa_resize_InstrPtr(values, valc);
-        Ast *ast_value;
+        Ast *ast_value = NULL;
         for (usize i = valc; i-- > 0;) {
             ast_value = ast_values->data[i];
             value     = ast(cnt, ast_value);
@@ -8393,6 +8393,7 @@ void ast_stmt_return(Context *cnt, Ast *ret)
                 ((MirInstrCompound *)value)->is_naked = false;
             }
         }
+        BL_ASSERT(ast_value);
         value = append_instr_compound(cnt, ast_value, NULL, values, true);
     } else if (ast_values) {
         Ast *ast_value = ast_values->data[0];

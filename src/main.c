@@ -43,7 +43,6 @@ char *ENV_CONF_FILEPATH = NULL;
 
 static void free_env(void)
 {
-    int i = stat("", NULL);
     free(ENV_EXEC_DIR);
     free(ENV_LIB_DIR);
     free(ENV_CONF_FILEPATH);
@@ -149,7 +148,7 @@ int main(s32 argc, char *argv[])
     }
 
     if (*argv == NULL && !builder.options.use_pipeline) {
-        builder_warning("nothing to do, no input files, sorry :(");
+        builder_warning("Nothing to do, no input files, sorry :(");
         EXIT(EXIT_SUCCESS);
     }
 

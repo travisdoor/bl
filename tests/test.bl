@@ -1,6 +1,7 @@
-#!/usr/bin/blc -rs 
+#!/usr/local/bin/blc -rs 
 
 main :: fn () s32 {
-    print("Hello!!!\n");
+    state := os_execute("call blc.exe");
+    print("state = %\n", state);
     return 0;
 }
