@@ -1,7 +1,7 @@
-_S_IRUSR	 :: 0x100;
-_S_IWUSR	 :: 0x80;
-_S_IXUSR	 :: 0x40;
-_S_IRWXU	 :: (_S_IRUSR|_S_IWUSR|_S_IXUSR);
+_S_IRUSR :: 0x100;
+_S_IWUSR :: 0x80;
+_S_IXUSR :: 0x40;
+_S_IRWXU :: (_S_IRUSR|_S_IWUSR|_S_IXUSR);
 _S_IRGRP :: _S_IRUSR >> 3;
 _S_IWGRP :: _S_IWUSR >> 3;
 _S_IXGRP :: _S_IXUSR >> 3;

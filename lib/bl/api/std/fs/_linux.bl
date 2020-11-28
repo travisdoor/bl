@@ -1,4 +1,4 @@
-#load "os/linux/stat.bl"
+#load "os/posix/stat.bl"
 #load "os/posix/unistd.bl"
 #load "os/posix/fcntl.bl"
 #load "os/posix/dirent.bl"

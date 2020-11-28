@@ -30,6 +30,8 @@ C_STDIN :: 0;
 C_STDOUT :: 1;
 C_STDERR :: 2;
 
+C_RAND_MAX :: 0x7fffffff;
+
 c_getenv :: fn (name: *c_char) *c_char #extern "getenv";
 c_realpath :: fn (path: *c_char, resolved_path: *c_char) *c_char #extern "realpath";
 c_exit :: fn (v: c_int) #extern "_exit";
