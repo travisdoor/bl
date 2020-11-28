@@ -1,4 +1,4 @@
-#load "os/posix/stat.bl"
+#load "os/macos/stat.bl"
 #load "os/posix/unistd.bl"
 #load "os/posix/fcntl.bl"
 #load "os/posix/dirent.bl"
@@ -11,7 +11,7 @@ _FS_IMPL_FILE_INVALID : _FSImplFile : -1;
 
 _fs_impl_exist :: fn (filepath: string) bool #inline {
     if filepath.len == 0 { return false; }
-    tmp: _Stat;
+    tmp: _stat_t;
     return _stat(auto filepath.ptr, &tmp) == 0;
 }
 
@@ -51,7 +51,7 @@ _fs_impl_file_close :: fn (handle: FSFile) #inline {
 }
 
 _fs_impl_file_size :: fn (handle: FSFile) (usize, Error) #inline {
-    tmp: _Stat;
+    tmp: _stat_t;
     if _fstat(auto handle, &tmp) != 0 {
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot get file size: %.", estr);
@@ -143,7 +143,7 @@ _fs_impl_dir_scan :: fn (dirpath: string, filter: FSDirScanFilterFn) (FSInfoList
 
 _fs_impl_is_directory :: fn (path: string) (bool, Error) #inline {
     if string_is_empty(path) { return false, error(ERR_INVALID_HANDLE, "Path is empty."); }
-    stat: _Stat #noinit;
+    stat: _stat_t #noinit;
     if _stat(auto path.ptr, &stat) != 0 {
         ec, estr :: os_get_last_error();
         return false, error(ec, "Cannot check directory '%': %.", path, estr);

@@ -26,7 +26,6 @@ fs_home_test :: fn () #test {
     defer string_delete(tmp);
     test_neq(tmp, string_empty);
     test_true(fs_exist(tmp));
-    print("%\n", tmp);
 }
 
 fs_tmp_test :: fn () #test {

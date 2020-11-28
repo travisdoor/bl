@@ -27,7 +27,6 @@
 //************************************************************************************************
 
 #load "os/linux/errno.bl"
-#load "os/posix/stat.bl"
 #load "os/posix/signal.bl"
 #load "os/posix/error.bl"
 #load "os/posix/unistd.bl"
