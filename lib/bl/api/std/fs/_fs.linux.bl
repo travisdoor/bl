@@ -1,6 +1,6 @@
 #load "os/linux/stat.bl"
+#load "os/linux/fcntl.bl"
 #load "os/posix/unistd.bl"
-#load "os/posix/fcntl.bl"
 #load "os/posix/dirent.bl"
 #load "std/libc.bl"
 #load "fs.bl"
@@ -176,7 +176,7 @@ _fs_impl_home :: fn () string #inline {
 _fs_impl_tmp :: fn () string #inline {
     tmp :: "TMPDIR";
     cdir :: cast(*u8) c_getenv(auto tmp.ptr);
-    if !cdir { return string_new("/tmp"); }
+    if !cdir { return string_new("/tmp/"); }
     return string_new(cdir);
 }
 

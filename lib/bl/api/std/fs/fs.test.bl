@@ -12,7 +12,7 @@ main :: fn () s32 {
 #private
 get_dummy_filepath :: fn () string {
     tmp :: fs_tmp();
-    string_concatenate(&tmp, "/", "deleteme.txt");
+    string_concatenate(&tmp, "deleteme.txt");
     return tmp;
 }
 
@@ -85,6 +85,7 @@ fs_file_create_test :: fn () #test {
     fs_file_remove(filepath);
 }
 
+/*
 fs_file_read_string_test :: fn () #test {
     file, err1 :: fs_file_open(#file, FSFileOpenMode.Read);
     defer fs_file_close(file);
@@ -462,3 +463,4 @@ fs_dir_remove_all_test1 :: fn () #test {
     test_ok(state);
     test_false(fs_exist(dir));
 }
+*/

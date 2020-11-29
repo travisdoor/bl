@@ -179,7 +179,7 @@ _fs_impl_cwd :: fn () string #inline {
     if written == 0 { return string_new(); }
     out :: string_new(buf.ptr);
     string_replace_all(&out, '\\', '/');
-    return remove_last_separator(out);
+    return out;
 }
 
 _fs_impl_home :: fn () string #inline {
@@ -188,7 +188,7 @@ _fs_impl_home :: fn () string #inline {
     if !cdir { return string_new(); }
     out :: string_new(cdir);
     string_replace_all(&out, '\\', '/');
-    return remove_last_separator(out);
+    return out;
 }
 
 _fs_impl_tmp :: fn () string #inline {
@@ -197,7 +197,7 @@ _fs_impl_tmp :: fn () string #inline {
     if written == 0 { return string_new(); }
     out :: string_new(buf.ptr);
     string_replace_all(&out, '\\', '/');
-    return remove_last_separator(out);
+    return out;
 }
 
 _fs_impl_normalize :: fn (filepath: *string) bool {
@@ -249,12 +249,4 @@ modes_to_flags :: fn (modes: []FSFileOpenMode) u32 #inline {
         }
     }
     return flags;
-}
-
-remove_last_separator :: fn (path: string) string {
-    if string_is_empty(^path) return;
-    if (^path)[path.len-1] == '/' {
-        path.len -= 1;
-    }
-    return path;
 }
