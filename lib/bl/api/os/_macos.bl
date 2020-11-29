@@ -92,8 +92,13 @@ os_thread_current :: fn () OSThread #inline {
     return _posix_thread_self();
 }
 
+// @INCOMPLETE: calling kill does not work on current thread, this kinda
+// breaks testing framework. Redesing api when threads will be moved into
+// separate module.
 os_thread_kill :: fn (thread: OSThread, exit_code: s32 = 0) bool #inline {
-    return _posix_thread_kill(thread, auto exit_code) == 0;
+    _posix_thread_exit(null);
+    return true;
+    //return _posix_thread_kill(thread, auto exit_code) == 0;
     // @INCOMPLETE: handle errors
 }
 
