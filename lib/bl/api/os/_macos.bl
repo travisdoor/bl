@@ -42,7 +42,7 @@ OS_STDIN  :: C_STDIN;
 OS_STDOUT :: C_STDOUT;
 OS_STDERR :: C_STDERR;
 
-OS_PATH_MAX :: DARWIN_MAXPATHLEN;
+OS_PATH_MAX :: _DARWIN_MAXPATHLEN;
 OSLibrary :: *u8;
 
 /*
@@ -140,7 +140,7 @@ os_tick_ms :: fn () f64 #inline {
 }
 
 os_get_exec_path :: fn () string {
-    buf : [DARWIN_MAXPATHLEN]u8 #noinit;
+    buf : [_DARWIN_MAXPATHLEN]u8 #noinit;
     buf_len := cast(u32) buf.len;
     if _NSGetExecutablePath(auto buf.ptr, &buf_len) == -1 { return string_new(); }
 
@@ -237,8 +237,6 @@ RTLD_LAZY   :: 0x1;
 RTLD_NOW    :: 0x2;
 RTLD_LOCAL  :: 0x4;
 RTLD_GLOBAL :: 0x8;
-
-DARWIN_MAXPATHLEN :: 1024;
 
 WEXITSTATUS :: fn (x: s32) s32 #inline {
     return (x >> 8) & 0x000000ff;

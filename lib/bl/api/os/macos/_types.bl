@@ -20,3 +20,7 @@ _uuid_t :: [16]c_uchar;
 _uuid_string_t :: [37]c_char;
 _nlink_t :: u16; 
 _time_t :: c_long;
+_timespec :: struct {
+    tv_sec: _time_t;
+	tv_nsec: c_long;
+}
