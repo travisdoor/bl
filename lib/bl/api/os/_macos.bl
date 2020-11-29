@@ -28,6 +28,7 @@
 
 #load "macos/macosapi.bl"
 #load "macos/errno.bl"
+#load "macos/dirent.bl"
 #load "posix/unistd.bl"
 #load "posix/signal.bl"
 #load "posix/error.bl"
