@@ -51,16 +51,12 @@ else
     echo "  FOUND - $LINKER_EXEC"
 fi
 
-#echo "- Looking for C runtime objects"
-#CRT_O="$CMD_TOOLS/SDKs/MacOSX.sdk/usr/lib/crt1.o"
-#if [ -e "$CRT_O" ]; then
-#    echo "  FOUND - $CRT_O"
-#else
-#    echo "  error: Cannot find '$CRT_O'. You can try to set correct path manually in etc/bl.conf file."
-#    $STATUS=1
-#fi
+OS_VER=${1-:$(sw_vers -productVersion)}
+if [[ "$OS_VER" == :11.*.* ]]; then
+    MACOS_SDK="-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib"
+fi
 
-LINKER_OPT="-e $RT_ENTRY_POINT -macosx_version_min $MACOS_VER -lc -lpthread"
+LINKER_OPT="-e $RT_ENTRY_POINT -macosx_version_min $MACOS_VER -lc -lpthread $MACOS_SDK"
 
 rm -f $CONFIG_FILE
 mkdir -p ../etc
