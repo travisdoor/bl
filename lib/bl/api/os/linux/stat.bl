@@ -30,7 +30,7 @@ _S_ISREG :: fn (mode: u32) bool #inline {
 }
 
 
-_Stat :: struct {
+_stat_t :: struct {
     st_dev: u64;
     st_ino: u64;
     st_nlink: u64;
@@ -51,6 +51,6 @@ _Stat :: struct {
     _1: [3]c_long;
 }
 
-_stat :: fn (path: *c_char, buf: *_Stat) c_int #extern "statfs";
-_fstat :: fn (fd: c_int, stat: *_Stat) c_int #extern "fstatfs";
+_stat :: fn (path: *c_char, buf: *_stat_t) c_int #extern "statfs";
+_fstat :: fn (fd: c_int, stat: *_stat_t) c_int #extern "fstatfs";
 _mkdir :: fn (path: *c_char, mode: c_int) c_int #extern "mkdir";
