@@ -239,20 +239,20 @@ fs_validate_filename :: fn (name: string) bool #inline {
     return _fs_impl_validate_filename(name);
 }
 
-/// Return current working directory, result must be released by
-/// :ref:`string_delete`.
+/// Try to obtain current working directory, result must be released by
+/// :ref:`string_delete`. Path does not contain last path separator.
 fs_cwd :: fn () string #inline {
     return _fs_impl_cwd();
 }
 
-/// Return home directory, result must be released by
-/// :ref:`string_delete`.
+/// Try to obtain system home directory, result must be released by
+/// :ref:`string_delete`. Path does not contain last path separator.
 fs_home :: fn () string #inline {
     return _fs_impl_home();
 }
 
-/// Return temporary directory, result must be released by
-/// :ref:`string_delete`.
+/// Try to obtain system temporary directory, result must be released by
+/// :ref:`string_delete`. Path does not contain last path separator.
 fs_tmp :: fn () string #inline {
     return _fs_impl_tmp();
 }
