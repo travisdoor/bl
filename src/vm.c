@@ -202,7 +202,7 @@ static void eval_instr_load(VM *vm, MirInstrLoad *load);
 static void eval_instr_addrof(VM *vm, MirInstrAddrOf *addrof);
 static void eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si);
 static void eval_instr_cast(VM *vm, MirInstrCast *cast);
-static void eval_instr_compound(VM *vm, MirInstrCompound *compound);
+static void eval_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *compound);
 
 //***********/
 //* inlines */
@@ -1707,7 +1707,6 @@ void interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref)
 void interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 {
     BL_ASSERT(!mir_is_comptime(&cmp->base));
-
     const bool will_push = tmp_ptr == NULL;
     if (will_push) {
         BL_ASSERT(cmp->tmp_var && "Missing temp variable for compound.");
@@ -2035,7 +2034,9 @@ void eval_instr(VM *vm, MirInstr *instr)
         break;
 
     case MIR_INSTR_COMPOUND:
-        eval_instr_compound(vm, (MirInstrCompound *)instr);
+        // MirInstrCompound *cmp = (MirInstrCompound *)instr;
+        // if (!cmp->is_naked) break;
+        eval_instr_compound(vm, NULL, (MirInstrCompound *)instr);
         break;
 
     case MIR_INSTR_ELEM_PTR:
@@ -2210,8 +2211,9 @@ void eval_instr_member_ptr(VM UNUSED(*vm), MirInstrMemberPtr *member_ptr)
     }
 }
 
-void eval_instr_compound(VM *vm, MirInstrCompound *compound)
+void eval_instr_compound(VM *vm, VMStackPtr UNUSED(tmp_ptr), MirInstrCompound *compound)
 {
+    //BL_LOG("Eval: %llu %s", compound->base.id, compound->is_naked ? "NAKED" : "");
     MirConstExprValue *value = &compound->base.value;
     if (needs_tmp_alloc(value)) {
         // Compound data doesn't fit into default static memory register, we need to
@@ -2227,6 +2229,7 @@ void eval_instr_compound(VM *vm, MirInstrCompound *compound)
     MirInstr *it;
     TSA_FOREACH(compound->values, it)
     {
+        BL_ASSERT(mir_is_comptime(it) && "Expected compile time known value.");
         VMStackPtr dest_ptr = value->data;
         VMStackPtr src_ptr  = it->value.data;
         BL_ASSERT(src_ptr && "Invalid compound element value!");

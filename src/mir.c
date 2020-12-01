@@ -88,6 +88,12 @@
 #define CREATE_TYPE_STRUCT_STRING(cnt, id, elem_ptr_type)                                          \
     _create_type_struct_slice(cnt, MIR_TYPE_STRING, id, elem_ptr_type)
 
+// Sets is_naked flag to 'v' if '_instr' is valid compound expression.
+#define SET_IS_NAKED_IF_COMPOUND(_instr, v)                                                        \
+    if ((_instr) && (_instr)->kind == MIR_INSTR_COMPOUND) {                                        \
+        ((MirInstrCompound *)(_instr))->is_naked = v;                                              \
+    }
+
 typedef struct {
     MirVar * var;
     MirType *type;
@@ -697,7 +703,7 @@ static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 9,
 // out_type when analyze passed without problems. When analyze does not pass postpone is returned
 // and out_type stay unchanged.
 static AnalyzeResult
-analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
+                     analyze_resolve_type(Context *cnt, MirInstr *resolver_call, MirType **out_type);
 static AnalyzeResult analyze_instr_unroll(Context *cnt, MirInstrUnroll *unroll);
 static AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp);
 static AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
@@ -3471,21 +3477,15 @@ MirInstr *append_instr_decl_var(Context * cnt,
     tmp->base.ref_count  = NO_REF_COUNTING;
     tmp->type            = ref_instr(type);
     tmp->init            = ref_instr(init);
-
     const bool is_global = scope_is_global(scope);
-
-    tmp->var = create_var(cnt, node, scope, id, NULL, is_mutable, is_global, false, 0);
-
+    tmp->var             = create_var(cnt, node, scope, id, NULL, is_mutable, is_global, false, 0);
     if (is_global) {
         push_into_gscope(cnt, &tmp->base);
         analyze_push_back(cnt, &tmp->base);
     } else {
         append_current_block(cnt, &tmp->base);
     }
-
-    if (init && init->kind == MIR_INSTR_COMPOUND) {
-        ((MirInstrCompound *)init)->is_naked = false;
-    }
+    SET_IS_NAKED_IF_COMPOUND(init, false);
     return &tmp->base;
 }
 
@@ -3502,9 +3502,7 @@ MirInstr *create_instr_decl_var_impl(Context *   cnt,
     tmp->type            = ref_instr(type);
     tmp->init            = ref_instr(init);
     tmp->var             = create_var_impl(cnt, name, NULL, is_mutable, is_global, false);
-    if (init && init->kind == MIR_INSTR_COMPOUND) {
-        ((MirInstrCompound *)init)->is_naked = false;
-    }
+    SET_IS_NAKED_IF_COMPOUND(init, false);
     return &tmp->base;
 }
 
@@ -3696,7 +3694,7 @@ MirInstr *append_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *d
     tmp->base.ref_count  = NO_REF_COUNTING;
     tmp->src             = ref_instr(src);
     tmp->dest            = ref_instr(dest);
-
+    SET_IS_NAKED_IF_COMPOUND(src, false);
     append_current_block(cnt, &tmp->base);
     return &tmp->base;
 }
@@ -4479,7 +4477,8 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
                     "Global variables must be initialized with compile time known value.");
         return ANALYZE_RESULT(FAILED, 0);
     }
-    if (si->src->kind == MIR_INSTR_COMPOUND) ((MirInstrCompound *)si->src)->is_naked = false;
+
+    SET_IS_NAKED_IF_COMPOUND(si->src, false);
 
     // Initializer value is guaranteed to be comptime so we just check variable muttablility.
     // (mutable variables cannot be comptime)
@@ -5751,9 +5750,7 @@ AnalyzeResult analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *vari
         // pass.
         BL_UNIMPLEMENTED;
     }
-
     commit_variant(cnt, variant);
-
     return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -6438,10 +6435,6 @@ AnalyzeResult analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     // Continue only with local variables and struct typedefs.
     bool has_initializer = decl->init;
     if (has_initializer) {
-        if (decl->init->kind == MIR_INSTR_COMPOUND) {
-            ((MirInstrCompound *)decl->init)->is_naked = false;
-        }
-
         // Resolve variable intializer. Here we use analyze_slot_initializer call to
         // fulfill possible array to slice cast.
         if (var->value.type) {
@@ -8388,10 +8381,7 @@ void ast_stmt_return(Context *cnt, Ast *ret)
             value     = ast(cnt, ast_value);
             BL_ASSERT(value);
             values->data[i] = value;
-            if (value->kind == MIR_INSTR_COMPOUND) {
-                // Direct nested compound cannot be naked!
-                ((MirInstrCompound *)value)->is_naked = false;
-            }
+            SET_IS_NAKED_IF_COMPOUND(value, false);
         }
         BL_ASSERT(ast_value);
         value = append_instr_compound(cnt, ast_value, NULL, values, true);
@@ -8414,9 +8404,6 @@ void ast_stmt_return(Context *cnt, Ast *ret)
                 return;
             }
             MirInstr *ref = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
-            if (value->kind == MIR_INSTR_COMPOUND) {
-                ((MirInstrCompound *)value)->is_naked = false;
-            }
             append_instr_store(cnt, ret, value, ref);
         } else if (value) {
 
@@ -8464,10 +8451,7 @@ MirInstr *ast_expr_compound(Context *cnt, Ast *cmp)
         value     = ast(cnt, ast_value);
         BL_ASSERT(value);
         values->data[i] = value;
-        if (value->kind == MIR_INSTR_COMPOUND) {
-            // Direct nested compound cannot be naked!
-            ((MirInstrCompound *)value)->is_naked = false;
-        }
+        SET_IS_NAKED_IF_COMPOUND(value, false);
     }
     return append_instr_compound(cnt, cmp, type, values, false);
 }
@@ -8848,10 +8832,7 @@ MirInstr *ast_expr_binop(Context *cnt, Ast *binop)
         // In case right hand side expression is compound initializer, we don't need
         // temp storage for it, we can just copy compound content directly into
         // variable, so we set it here as non-naked.
-        if (rhs->kind == MIR_INSTR_COMPOUND) {
-            ((MirInstrCompound *)rhs)->is_naked = false;
-        }
-
+        SET_IS_NAKED_IF_COMPOUND(rhs, false);
         return append_instr_store(cnt, binop, rhs, lhs);
     }
 
@@ -9217,11 +9198,8 @@ MirInstr *ast_decl_variant(Context *cnt, Ast *variant)
     Ast *ast_name  = variant->data.decl.name;
     Ast *ast_value = variant->data.decl_variant.value;
     BL_ASSERT(ast_name && "Missing enum variant name!");
-
     MirInstr *value = ast(cnt, ast_value);
-
     register_symbol(cnt, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false);
-
     return append_instr_decl_variant(cnt, ast_name, value);
 }
 
