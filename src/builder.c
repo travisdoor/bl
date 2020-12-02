@@ -243,6 +243,7 @@ void builder_init(void)
 {
     memset(&builder, 0, sizeof(Builder));
     builder.errorc = builder.max_error = builder.test_failc = 0;
+    builder.last_script_mode_run_status                     = 0;
 
     conf_data_init(&builder.conf);
     arena_init(&builder.str_cache, sizeof(TString), 256, (ArenaElemDtor)str_cache_dtor);
@@ -251,7 +252,7 @@ void builder_init(void)
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split = false;
+    builder.options.reg_split     = false;
 #endif
 
     // initialize LLVM statics
@@ -370,9 +371,10 @@ int builder_compile(Assembly *assembly)
         builder_warning("There were errors, sorry...");
     }
 
-    // We return count of failed compile time test cases as state even if there was no
-    // compilation errors. Compilation errors has priority here.
-    return builder.errorc ? builder.max_error : builder.test_failc;
+    if (builder.errorc) return builder.max_error;
+    if (builder.options.run) return builder.last_script_mode_run_status;
+    if (builder.options.run_tests) return builder.test_failc;
+    return EXIT_SUCCESS;
 }
 
 void builder_msg(BuilderMsgType type,

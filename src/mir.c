@@ -243,8 +243,9 @@ static MirFn *     group_select_overload(Context *                  cnt,
                                          const MirFnGroup *         group,
                                          const TSmallArray_TypePtr *expected_args);
 
-// Start top-level execution of entry function using MIR-VM. (Usually 'main' function)
-static void execute_entry_fn(Context *cnt);
+// Start top-level execution of entry function using MIR-VM. (Usually 'main' function) and return
+// result state.
+static s32 execute_entry_fn(Context *cnt);
 
 // Start top-level execution of build entry function using MIR-VM. (Usually 'build' function)
 static void execute_build_entry_fn(Context *cnt, MirFn *fn);
@@ -9869,22 +9870,17 @@ void mir_type_to_str(char *buf, usize len, const MirType *type, bool prefer_name
     _type_to_str(buf, len, type, prefer_name);
 }
 
-void execute_entry_fn(Context *cnt)
+s32 execute_entry_fn(Context *cnt)
 {
     builder_note("\nExecuting 'main' in compile time...");
     if (!cnt->entry_fn) {
         builder_error("Assembly '%s' has no entry function!", cnt->assembly->name);
-        return;
+        return EXIT_FAILURE;
     }
 
     MirType *fn_type = cnt->entry_fn->type;
     BL_ASSERT(fn_type && fn_type->kind == MIR_TYPE_FN);
-
-    // INCOMPLETE: support passing of arguments.
-    if (fn_type->data.fn.args) {
-        builder_error("Main function expects arguments, this is not supported yet!");
-        return;
-    }
+    BL_ASSERT(!fn_type->data.fn.args);
 
     // tmp return value storage
     VMStackPtr ret_ptr = NULL;
@@ -9893,12 +9889,14 @@ void execute_entry_fn(Context *cnt)
             MirType * ret_type = fn_type->data.fn.ret_type;
             const s64 result   = vm_read_int(ret_type, ret_ptr);
             builder_note("Execution finished with state: %lld\n", (long long)result);
+            return (s32)result;
         } else {
             builder_note("Execution finished without errors");
         }
     } else {
         builder_note("Execution finished with errors");
     }
+    return 0;
 }
 
 void execute_build_entry_fn(Context *cnt, MirFn *fn)
@@ -10111,7 +10109,9 @@ void mir_run(Assembly *assembly)
     }
 
     if (assembly->options.run_tests) testing_run(&cnt); // @CLEANUP
-    if (builder.options.run) execute_entry_fn(&cnt);
+    if (builder.options.run) {
+        builder.last_script_mode_run_status = execute_entry_fn(&cnt);
+    }
 
     BL_LOG("Analyze queue push count: %i", push_count);
 SKIP:

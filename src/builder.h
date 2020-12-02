@@ -73,6 +73,7 @@ typedef struct Builder {
     s32            errorc;
     s32            max_error;
     s32            test_failc;
+    s32            last_script_mode_run_status;
     ConfData       conf;
 
     TArray assembly_queue;

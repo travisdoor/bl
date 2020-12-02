@@ -24,5 +24,5 @@ jobs:
         cd install
         ./configure_linux.sh
     - name: Run tests
-      run: ./tests/doctor-linux -d
+      run: ./bin/blc.exe -rs doctor.bl
 
