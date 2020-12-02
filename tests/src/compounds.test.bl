@@ -137,3 +137,102 @@ compound_comptime_composition :: fn () #test {
     test_eq(g4.b.i, 0);
     test_eq(g4.b.j, 0);
 }
+
+g5 := {:T2: {:T1: 10, 20}, {:T1: 30, 40}};
+g6 := {:T2: {:T1: 0}, {:T1: 30, 40}};
+g7 := {:T2: {:T1: 10, 20}, {:T1: 0}};
+g8 := {:T2: {:T1: 0}, {:T1: 0}};
+
+compound_comptime_composition2 :: fn () #test {
+    test_eq(g5.a.i, 10);
+    test_eq(g5.a.j, 20);    
+    test_eq(g5.b.i, 30);    
+    test_eq(g5.b.j, 40);
+    
+    test_eq(g6.a.i, 0);
+    test_eq(g6.a.j, 0);
+    test_eq(g6.b.i, 30);
+    test_eq(g6.b.j, 40);
+
+    test_eq(g7.a.i, 10);
+    test_eq(g7.a.j, 20);
+    test_eq(g7.b.i, 0);
+    test_eq(g7.b.j, 0);
+    
+    test_eq(g8.a.i, 0);
+    test_eq(g8.a.j, 0);
+    test_eq(g8.b.i, 0);
+    test_eq(g8.b.j, 0);
+}
+
+compound_comptime_composition3 :: fn () #test {
+    l5 :: {:T2: {:T1: 10, 20}, {:T1: 30, 40}};
+    l6 :: {:T2: {:T1: 0}, {:T1: 30, 40}};
+    l7 :: {:T2: {:T1: 10, 20}, {:T1: 0}};
+    l8 :: {:T2: {:T1: 0}, {:T1: 0}};
+
+    test_eq(l5.a.i, 10);
+    test_eq(l5.a.j, 20);    
+    test_eq(l5.b.i, 30);    
+    test_eq(l5.b.j, 40);
+    
+    test_eq(l6.a.i, 0);
+    test_eq(l6.a.j, 0);
+    test_eq(l6.b.i, 30);
+    test_eq(l6.b.j, 40);
+
+    test_eq(l7.a.i, 10);
+    test_eq(l7.a.j, 20);
+    test_eq(l7.b.i, 0);
+    test_eq(l7.b.j, 0);
+    
+    test_eq(l8.a.i, 0);
+    test_eq(l8.a.j, 0);
+    test_eq(l8.b.i, 0);
+    test_eq(l8.b.j, 0);
+}
+
+compound_comptime_composition4 :: fn () #test {
+    l5 := {:T2: {:T1: 10, 20}, {:T1: 30, 40}};
+    l6 := {:T2: {:T1: 0}, {:T1: 30, 40}};
+    l7 := {:T2: {:T1: 10, 20}, {:T1: 0}};
+    l8 := {:T2: {:T1: 0}, {:T1: 0}};
+
+    test_eq(l5.a.i, 10);
+    test_eq(l5.a.j, 20);    
+    test_eq(l5.b.i, 30);    
+    test_eq(l5.b.j, 40);
+    
+    test_eq(l6.a.i, 0);
+    test_eq(l6.a.j, 0);
+    test_eq(l6.b.i, 30);
+    test_eq(l6.b.j, 40);
+
+    test_eq(l7.a.i, 10);
+    test_eq(l7.a.j, 20);
+    test_eq(l7.b.i, 0);
+    test_eq(l7.b.j, 0);
+    
+    test_eq(l8.a.i, 0);
+    test_eq(l8.a.j, 0);
+    test_eq(l8.b.i, 0);
+    test_eq(l8.b.j, 0);
+}
+
+g9 :: {:[2]T1: {:T1: 10, 20}, {:T1: 10, 20}};
+
+compound_comptime_composition5 :: fn () #test {
+    loop i := 0; i < g9.len; i += 1 {
+        test_eq(g9[i].i, 10);
+        test_eq(g9[i].j, 20);
+    }
+}
+
+g10 := {:[2]T1: {:T1: 10, 20}, {:T1: 10, 20}};
+
+compound_comptime_composition6 :: fn () #test {
+    loop i := 0; i < g10.len; i += 1 {
+        test_eq(g10[i].i, 10);
+        test_eq(g10[i].j, 20);
+    }
+}

@@ -1,17 +1,6 @@
-Foo :: struct {
-    bar: Bar;
-    i: s32;
-    j: s32;
-}
-
-Bar :: struct {
-    k: s32;
-    l: s32;
-}
-
-    foo :: {:Foo: {:Bar: 10, 20}, 10, 20};
 main :: fn () s32 {
-    //get :: fn () s32 { return 10; };
-
+    arr :: {:[10]s32: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    slice : []s32 = arr;
+    print("%\n", slice);
     return 0;
 }

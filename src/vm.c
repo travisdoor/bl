@@ -202,7 +202,7 @@ static void eval_instr_load(VM *vm, MirInstrLoad *load);
 static void eval_instr_addrof(VM *vm, MirInstrAddrOf *addrof);
 static void eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si);
 static void eval_instr_cast(VM *vm, MirInstrCast *cast);
-static void eval_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *compound);
+static void eval_instr_compound(VM *vm, MirInstrCompound *cmp);
 
 //***********/
 //* inlines */
@@ -345,10 +345,14 @@ static INLINE VMStackPtr stack_pop(VM *vm, MirType *type)
 static INLINE VMStackPtr stack_peek(VM *vm, MirType *type)
 {
     usize size = type->store_size_bytes;
+#if CHCK_STACK
+    const usize orig_size = size;
+#endif
     BL_ASSERT(size && "peeking zero sized data on stack");
     size           = stack_alloc_size(size);
     VMStackPtr top = vm->stack->top_ptr - size;
     if (top < (u8 *)(vm->stack->ra + 1)) BL_ABORT("Stack underflow!!!");
+    CHCK_VALIDATE(top, orig_size);
     return top;
 }
 
@@ -1405,15 +1409,14 @@ void interp_instr_addrof(VM *vm, MirInstrAddrOf *addrof)
     MirInstr *src  = addrof->src;
     MirType * type = src->value.type;
     BL_ASSERT(type);
-
-    if (src->kind == MIR_INSTR_ELEM_PTR || src->kind == MIR_INSTR_COMPOUND) {
+    if (!mir_is_comptime(src) &&
+        (src->kind == MIR_INSTR_ELEM_PTR || src->kind == MIR_INSTR_COMPOUND)) {
         // address of the element is already on the stack
+        BL_ASSERT(stack_peek(vm, type) != NULL);
         return;
     }
-
     VMStackPtr ptr = fetch_value(vm, &src->value);
     ptr            = VM_STACK_PTR_DEREF(ptr);
-
     stack_push(vm, (VMStackPtr)&ptr, type);
 }
 
@@ -1741,12 +1744,8 @@ void interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
             BL_ASSERT(i == 0 && "Invalid elem count for non-agregate type!!!");
         }
 
-        if (value->kind == MIR_INSTR_COMPOUND) {
-            interp_instr_compound(vm, elem_ptr, (MirInstrCompound *)value);
-        } else {
-            VMStackPtr value_ptr = fetch_value(vm, &value->value);
-            memcpy(elem_ptr, value_ptr, elem_type->store_size_bytes);
-        }
+        VMStackPtr value_ptr = fetch_value(vm, &value->value);
+        memcpy(elem_ptr, value_ptr, elem_type->store_size_bytes);
     }
 
     if (will_push) stack_push(vm, tmp_ptr, cmp->base.value.type);
@@ -2034,9 +2033,7 @@ void eval_instr(VM *vm, MirInstr *instr)
         break;
 
     case MIR_INSTR_COMPOUND:
-        // MirInstrCompound *cmp = (MirInstrCompound *)instr;
-        // if (!cmp->is_naked) break;
-        eval_instr_compound(vm, NULL, (MirInstrCompound *)instr);
+        eval_instr_compound(vm, (MirInstrCompound *)instr);
         break;
 
     case MIR_INSTR_ELEM_PTR:
@@ -2211,23 +2208,22 @@ void eval_instr_member_ptr(VM UNUSED(*vm), MirInstrMemberPtr *member_ptr)
     }
 }
 
-void eval_instr_compound(VM *vm, VMStackPtr UNUSED(tmp_ptr), MirInstrCompound *compound)
+void eval_instr_compound(VM *vm, MirInstrCompound *cmp)
 {
-    //BL_LOG("Eval: %llu %s", compound->base.id, compound->is_naked ? "NAKED" : "");
-    MirConstExprValue *value = &compound->base.value;
+    MirConstExprValue *value = &cmp->base.value;
     if (needs_tmp_alloc(value)) {
         // Compound data doesn't fit into default static memory register, we need to
         // allocate temporary block on the stack.
         value->data = stack_push_empty(vm, value->type);
     }
 
-    if (compound->is_zero_initialized) {
+    if (cmp->is_zero_initialized) {
         memset(value->data, 0, value->type->store_size_bytes);
         return;
     }
 
     MirInstr *it;
-    TSA_FOREACH(compound->values, it)
+    TSA_FOREACH(cmp->values, it)
     {
         BL_ASSERT(mir_is_comptime(it) && "Expected compile time known value.");
         VMStackPtr dest_ptr = value->data;
@@ -2250,7 +2246,6 @@ void eval_instr_compound(VM *vm, VMStackPtr UNUSED(tmp_ptr), MirInstrCompound *c
             MirType * member_type = value->type->data.strct.members->data[i]->type;
             ptrdiff_t offset      = vm_get_struct_elem_offset(vm->assembly, value->type, (u32)i);
             dest_ptr += offset;
-
             memcpy(dest_ptr, src_ptr, member_type->store_size_bytes);
             break;
         }
