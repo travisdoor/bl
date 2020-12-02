@@ -148,6 +148,7 @@ _fs_impl_is_directory :: fn (path: string) (bool, Error) #inline {
         ec, estr :: os_get_last_error();
         return false, error(ec, "Cannot check directory '%': %.", path, estr);
     }
+    print("Is dir? '%'\n", stat);
     return _S_ISDIR(stat.st_mode), ok();
 }
 
@@ -163,21 +164,24 @@ _fs_impl_validate_filename :: fn (name: string) bool {
 _fs_impl_cwd :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
     if !_getcwd(auto buf.ptr, auto buf.len) { return string_new(); }
-    return string_new(buf.ptr);
+    path :: string_new(buf.ptr);
+    return remove_last_separator(path);
 }
 
 _fs_impl_home :: fn () string #inline {
     tmp :: "HOME";
     cdir :: cast(*u8) c_getenv(auto tmp.ptr);
     if !cdir { return string_new(); }
-    return string_new(cdir);
+    path :: string_new(cdir);
+    return remove_last_separator(path);
 }
 
 _fs_impl_tmp :: fn () string #inline {
     tmp :: "TMPDIR";
     cdir :: cast(*u8) c_getenv(auto tmp.ptr);
-    if !cdir { return string_new("/tmp/"); }
-    return string_new(cdir);
+    if !cdir { return string_new("/tmp"); }
+    path :: string_new(cdir);
+    return remove_last_separator(path);
 }
 
 _fs_impl_normalize :: fn (filepath: *string) bool {
@@ -229,4 +233,13 @@ modes_to_flags :: fn (modes: []FSFileOpenMode) s32 #inline {
     if w && (!r) { return _O_WRONLY; }
     if r && (!w) { return _O_RDONLY; }
     return _O_RDWR;
+}
+
+remove_last_separator :: fn (path: string) string {
+    if string_is_empty(path) { return path; }
+    if path[path.len-1] == '/' {
+        path[path.len-1] = '\0';
+        path.len -= 1;
+    }
+    return path;
 }
