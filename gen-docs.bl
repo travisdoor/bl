@@ -45,7 +45,7 @@ docs_dir :: fn (dest_path: string, src_path: string) Error {
         }
         return true;
     });
-    defer fs_info_list_terminate(list);
+    defer fs_info_list_delete(list);
     if !is_ok(err) { return err; }
 
     file_list :: string_new(128);

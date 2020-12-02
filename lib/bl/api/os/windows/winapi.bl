@@ -287,6 +287,7 @@ _GetTempPathA :: fn (nBufferLength: _DWORD, lpBuffer: _LPSTR) _DWORD #extern "Ge
 _DeleteFileA :: fn (lpFileName: _LPCSTR) _BOOL #extern "DeleteFileA";
 _RemoveDirectoryA :: fn (lpPathName: _LPCSTR) _BOOL #extern "RemoveDirectoryA";
 _GetCurrentDirectoryA :: fn (nBufferLength: _DWORD, lpBuffer: _LPSTR) _DWORD #extern "GetCurrentDirectoryA";
+_SetCurrentDirectoryA :: fn (lpPathName: _LPSTR) _BOOL #extern "SetCurrentDirectoryA";
 _GetFileSizeEx :: fn (hFile: _HANDLE, lpFileSize: _PLARGE_INTEGER) _BOOL #extern "GetFileSizeEx";
 _ReadFile :: fn (hFile: _HANDLE, lpBuffer: _LPVOID, nNumberOfBytesToRead: _DWORD, lpNumberOfBytesRead: _LPDWORD, lpOverlapped: _LPOVERLAPPED) _BOOL #extern "ReadFile";
 _WriteFile :: fn (hFile: _HANDLE, lpBuffer: _LPVOID, nNumberOfBytesToWrite: _DWORD, lpNumberOfBytesWritten: _LPDWORD, lpOverlapped: _LPOVERLAPPED) _BOOL #extern "WriteFile";

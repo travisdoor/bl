@@ -11,22 +11,11 @@ _fs_impl_exist :: fn (filepath: string) bool #inline {
 
 _fs_impl_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
     if string_is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    access :: modes_to_flags(mode);
-    handle :: _CreateFile(auto filepath.ptr, access, 0, null, _OPEN_EXISTING, _FILE_ATTRIBUTE_NORMAL, null);
+    access, create :: modes_to_flags(mode);
+    handle :: _CreateFile(auto filepath.ptr, access, 0, null, create, _FILE_ATTRIBUTE_NORMAL, null);
     if handle == _INVALID_HANDLE_VALUE {
         ec, estr :: os_get_last_error();
         return null, error(ec, "Cannot open file '%': %.", filepath, estr);
-    }
-    return handle, ok();
-}
-
-_fs_impl_file_create :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
-    if string_is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    access :: modes_to_flags(mode);
-    handle :: _CreateFile(auto filepath.ptr, access, 0, null, _CREATE_NEW, _FILE_ATTRIBUTE_NORMAL, null);
-    if handle == _INVALID_HANDLE_VALUE {
-        ec, estr :: os_get_last_error();
-        return null, error(ec, "Cannot create file '%': %.", filepath, estr);
     }
     return handle, ok();
 }
@@ -182,6 +171,15 @@ _fs_impl_cwd :: fn () string #inline {
     return remove_last_separator(out);
 }
 
+_fs_impl_set_cwd :: fn (path: string) Error #inline {
+    if string_is_empty(path) { return error(ERR_INVALID_HANDLE, "Path is empty!"); }
+    if _SetCurrentDirectoryA(auto path.ptr) == 0 {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot set current directory to '%': %.", path, estr);
+    }
+    return ok();
+}
+
 _fs_impl_home :: fn () string #inline {
     tmp :: "USERPROFILE";
     cdir :: cast(*u8) c_getenv(auto tmp.ptr);
@@ -201,6 +199,8 @@ _fs_impl_tmp :: fn () string #inline {
 }
 
 _fs_impl_normalize :: fn (filepath: *string) Error {
+    if !filepath { return error(ERR_INVALID_HANDLE, "File path is null!"); }
+    if string_is_empty(^filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     buf : [OS_PATH_MAX]u8 #noinit;
     if _GetFullPathNameA(auto filepath.ptr, auto buf.len, buf.ptr, null) == 0 {
         ec, estr :: os_get_last_error();
@@ -242,17 +242,20 @@ _fs_impl_get_extension :: fn (filename: string) string #inline {
 }
 
 #private
-modes_to_flags :: fn (modes: []FSFileOpenMode) u32 #inline {
-    if modes.len == 0 { return _GENERIC_READ | _GENERIC_WRITE; }
-    flags: u32;
+modes_to_flags :: fn (modes: []FSFileOpenMode) (access: u32, create: u32) #inline {
+    access: u32;
+    create: u32;
     loop i := 0; i < modes.len; i += 1 {
         switch modes[i] {
-            FSFileOpenMode.Read    { flags = flags | _GENERIC_READ;  }            
-            FSFileOpenMode.Write   { flags = flags | _GENERIC_WRITE; }
+            FSFileOpenMode.Read    { access = access | _GENERIC_READ;  }            
+            FSFileOpenMode.Write   { access = access | _GENERIC_WRITE; }
+            FSFileOpenMode.Create  { create = create | _OPEN_ALWAYS; }
             default { panic(); }
         }
     }
-    return flags;
+    if access == 0 { access = _GENERIC_READ | _GENERIC_WRITE; }
+    if create == 0 { create = _OPEN_EXISTING; }
+    return access, create;
 }
 
 remove_last_separator :: fn (path: string) string {

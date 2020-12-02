@@ -26,17 +26,6 @@ _fs_impl_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Er
     return handle, ok();   
 }
 
-_fs_impl_file_create :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
-    if string_is_empty(filepath) { return 0, error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    flags := modes_to_flags(mode) | _O_CREAT | _O_EXCL;
-    handle :: _open(auto filepath.ptr, flags, _S_IRUSR | _S_IWUSR | _S_IRGRP | _S_IWGRP | _S_IROTH | _S_IWOTH);
-    if handle == -1 { // error
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot create file '%': %.", filepath, estr);
-    }    
-    return handle, ok();
-}
-
 _fs_impl_file_remove :: fn (filepath: string) Error #inline {
     if string_is_empty(filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     if _unlink(auto filepath.ptr) != 0 {

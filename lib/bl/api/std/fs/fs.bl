@@ -22,6 +22,8 @@ FSFileOpenMode :: enum {
     Read;
     /// Open file for writing.
     Write;
+    /// Create file if it does not exist.
+    Create;
 }
 
 /// Specify kind of file system entry.
@@ -43,12 +45,14 @@ fs_exist :: fn (filepath: string) bool #inline {
     return _fs_impl_exist(filepath);
 }
 
-/// Open an existing file specified by `filepath`. Function return file handle and `OK` status
-/// when file was openned, otherwise return invalid handle and proper error. File must be closed
+/// Open an file specified by `filepath`. Function return file handle and `OK` status when
+/// file was openned, otherwise return invalid handle and proper error. File must be closed
 /// by :ref:`fs_file_close` call.
 ///
-/// File open `mode` is optional, any combination of :ref:`FSFileOpenMode` can be used. Default
-/// `mode` for `Read` and `Write` is used when not specified.
+/// File open `mode` is optional, any combination of :ref:`FSFileOpenMode` can be used.
+/// When `Create` `mode` is specified, new file is created on `filepath` only if it does
+/// not exist, otherwise already existing file is openned. Default `mode` for `Read` and
+/// `Write` is used when not specified.
 ///
 /// Example
 /// -------
@@ -56,16 +60,6 @@ fs_exist :: fn (filepath: string) bool #inline {
 ///    :language: bl
 fs_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) #inline {
     return _fs_impl_file_open(filepath, mode);
-}
-
-/// Create new file specified by `filepath`. Function return handle and `OK` status when
-/// file was created, otherwise return invalid handle and proper error. File must be closed
-/// by :ref:`fs_file_close` call.
-///
-/// File open `mode` is optional, any combination of :ref:`FSFileOpenMode` can be used. Default
-/// `mode` for `Read` and `Write` is used when not specified.
-fs_file_create :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) #inline {
-    return _fs_impl_file_create(filepath, mode);
 }
 
 /// Try to remove file specified by `filepath` and return `OK` on success, otherwise
@@ -120,6 +114,7 @@ fs_file_read_slice :: fn (handle: FSFile) ([]u8, Error) {
         return invalid, err;
     }
     buf: []u8;
+    if size == 0 { return buf, ok(); }
     slice_init(buf, auto size);
     read, err2 :: _fs_impl_file_read(handle, buf.ptr, auto size);
     if !is_ok(err2) {
@@ -187,7 +182,7 @@ fs_dir_remove_all :: fn (dirpath: string) Error {
         return string_compare(item.name, ".") == false && string_compare(item.name, "..") == false;
     });
     if !is_ok(err) { return err; }
-    defer fs_info_list_terminate(list);
+    defer fs_info_list_delete(list);
     loop i := 0; i < list.len; i += 1 {
         node :: &list[i];
         string_concatenate(&tmp, dirpath, "/", node.name);
@@ -216,7 +211,7 @@ fs_is_directory :: fn (path: string) (bool, Error) #inline {
 FSDirScanFilterFn :: *fn(info: *FSInfo) bool;
 
 /// Scan `dirpath` directory and return list of information for every file system
-/// entry found on success. Otherwise return empty list and error. Use :ref:`fs_info_list_terminate`
+/// entry found on success. Otherwise return empty list and error. Use :ref:`fs_info_list_delete
 /// to release list when there was no error reported by this function.
 ///
 /// Optional `filter` funtion :ref:`FSDirScanFilterFn` can be used to filter scan results
@@ -227,7 +222,7 @@ fs_dir_scan :: fn (dirpath: string, filter: FSDirScanFilterFn = null) (FSInfoLis
 }
 
 /// Release allocated file system entry info list.
-fs_info_list_terminate :: fn (list: FSInfoList) #inline {
+fs_info_list_delete :: fn (list: FSInfoList) #inline {
     loop i := 0; i < list.len; i += 1 {
         string_delete(list[i].name);
     }
@@ -243,6 +238,12 @@ fs_validate_filename :: fn (name: string) bool #inline {
 /// :ref:`string_delete`. Path does not contain last path separator.
 fs_cwd :: fn () string #inline {
     return _fs_impl_cwd();
+}
+
+/// Sets current working directory and return `OK` on success, otherwise
+/// return error.
+fs_set_cwd :: fn (path: string) Error #inline {
+    return _fs_impl_set_cwd(path);
 }
 
 /// Try to obtain system home directory, result must be released by

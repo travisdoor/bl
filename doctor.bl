@@ -253,7 +253,7 @@ test_all_in_dir :: fn (dir: string, expect_fail := false) {
     if !is_ok(err) {
         print_err("%", err);
     }
-    defer fs_info_list_terminate(list);
+    defer fs_info_list_delete(list);
 
     loop i := 0; i < list.len; i += 1 {
         info :: &list[i];

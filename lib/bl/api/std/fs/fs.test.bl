@@ -82,20 +82,26 @@ fs_file_create_test :: fn () #test {
     fs_file_remove(filepath);
     
     {
-        file, err :: fs_file_create("");
+        file, err :: fs_file_open("", FSFileOpenMode.Create);
+        defer fs_file_close(file);
         test_is_error(err, ERR_INVALID_HANDLE);    
     }
     
     {
-        file, err :: fs_file_create(#file);
-        test_is_error(err, ERR_ALREADY_EXIST);
+        file, err :: fs_file_open(filepath, FSFileOpenMode.Create);
+        defer fs_file_close(file);
+        test_ok(err);
+        fs_file_write_string(file, "hello!");
+    }    
+
+    { // This should reuse already created file!
+        file, err :: fs_file_open(filepath, FSFileOpenMode.Create);
+        defer fs_file_close(file);
+        test_ok(err);
+        str :: fs_file_read_string(file);
+        test_eq(str, "hello!");
     }
     
-    {
-        file, err :: fs_file_create(filepath);
-        test_ok(err);
-        fs_file_close(file);
-    }    
     
     fs_file_remove(filepath);
 }
@@ -246,7 +252,7 @@ fs_normalize_test2 :: fn () #test {
 }    
 
 fs_normalize_test3 :: fn () #test {
-    file :: fs_file_create("foo");
+    file :: fs_file_open("foo", FSFileOpenMode.Create);
     fs_file_close(file);
     defer fs_file_remove("foo");
     cwd :: fs_cwd();
@@ -264,7 +270,7 @@ fs_file_remove_test :: fn () #test {
     defer string_delete(filepath);
     
     fs_file_remove(filepath);
-    file, err :: fs_file_create(filepath);
+    file, err :: fs_file_open(filepath, FSFileOpenMode.Create);
     test_ok(err);
     fs_file_close(file);
     err2 :: fs_file_remove(filepath);
@@ -319,7 +325,7 @@ fs_file_write_test :: fn () #test {
     content :: "Hello I'm cool file content!";    
     
     { // write
-        file :: fs_file_create(filepath);
+        file :: fs_file_open(filepath, FSFileOpenMode.Create);
         written, err :: fs_file_write(file, content.ptr, content.len);
         test_ok(err);
         test_eq(written, content.len);
@@ -343,7 +349,7 @@ fs_file_write_string_test :: fn () #test {
     content :: "Hello I'm cool file content!";    
     
     { // write
-        file :: fs_file_create(filepath);
+        file :: fs_file_open(filepath, FSFileOpenMode.Create);
         written, err :: fs_file_write_string(file, content);
         test_ok(err);
         test_eq(written, content.len);
@@ -367,7 +373,7 @@ fs_file_write_slice_test :: fn () #test {
     content :: {:[5]u8: 'H', 'e', 'l', 'o', 'o' };
     
     { // write
-        file :: fs_file_create(filepath);
+        file :: fs_file_open(filepath, FSFileOpenMode.Create);
         written, err :: fs_file_write_slice(file, content);
         test_ok(err);
         test_eq(written, content.len);
@@ -388,7 +394,7 @@ fs_list_dir_test1 :: fn () #test {
     dir :: fs_cwd();
     defer string_delete(dir);
     list, err :: fs_dir_scan(dir);
-    defer fs_info_list_terminate(list);
+    defer fs_info_list_delete(list);
     test_ok(err);
     test_true(list.len > 0);
     loop i := 0; i < list.len; i += 1 {
@@ -402,7 +408,7 @@ fs_list_dir_test2 :: fn () #test {
     list, err :: fs_dir_scan(dir, &fn (info: *FSInfo) bool {
         return info.kind == FSInfoKind.Directory;
     });
-    defer fs_info_list_terminate(list);
+    defer fs_info_list_delete(list);
     test_ok(err);
     test_true(list.len > 0);
     loop i := 0; i < list.len; i += 1 {
@@ -417,7 +423,7 @@ fs_list_dir_test3 :: fn () #test {
     list, err :: fs_dir_scan(dir, &fn (info: *FSInfo) bool {
         return info.kind == FSInfoKind.File;
     });
-    defer fs_info_list_terminate(list);
+    defer fs_info_list_delete(list);
     test_ok(err);
     test_true(list.len > 0);
     loop i := 0; i < list.len; i += 1 {
@@ -471,7 +477,7 @@ fs_dir_remove_all_test1 :: fn () #test {
         file :: string_new(dir);
         defer string_delete(file);
         string_append(&file, "/file.txt");
-        f, e :: fs_file_create(file);
+        f, e :: fs_file_open(file, FSFileOpenMode.Create);
         test_ok(e);
         fs_file_close(f);
     }
