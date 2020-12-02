@@ -223,37 +223,40 @@ fs_remove_extension_test :: fn () #test {
     }
 }
 
-fs_normalize_test :: fn () #test {
-    {
-        cwd :: fs_cwd();
-        defer string_delete(cwd);
-        parent: string;
-        test_true(string_split_by_last(cwd, '/', &parent, null));
-        filepath :: string_new("..");
-        defer string_delete(filepath);
-        test_true(fs_normalize(&filepath));
-        test_eq(filepath, parent);
-    }
-    {
-        cwd :: fs_cwd();
-        defer string_delete(cwd);
-        filepath :: string_new(".");
-        defer string_delete(filepath);
-        test_true(fs_normalize(&filepath));
-        test_eq(filepath, cwd);
-    }    
-    {
-        file :: fs_file_create("foo");
-        fs_file_close(file);
-        defer fs_file_remove("foo");
-        cwd :: fs_cwd();
-        defer string_delete(cwd);    
-        filepath :: string_new("foo");
-        string_concatenate(&cwd, "/", filepath);
-        defer string_delete(filepath);
-        test_true(fs_normalize(&filepath));
-        test_eq(filepath, cwd);
-    }    
+fs_normalize_test1 :: fn () #test {
+    cwd :: fs_cwd();
+    defer string_delete(cwd);
+    parent: string;
+    test_true(string_split_by_last(cwd, '/', &parent, null));
+    filepath :: string_new("..");
+    defer string_delete(filepath);
+    status :: fs_normalize(&filepath);
+    test_ok(status);
+    test_eq(filepath, parent);
+}
+
+fs_normalize_test2 :: fn () #test {
+    cwd :: fs_cwd();
+    defer string_delete(cwd);
+    filepath :: string_new(".");
+    defer string_delete(filepath);
+    status :: fs_normalize(&filepath);
+    test_ok(status);
+    test_eq(filepath, cwd);
+}    
+
+fs_normalize_test3 :: fn () #test {
+    file :: fs_file_create("foo");
+    fs_file_close(file);
+    defer fs_file_remove("foo");
+    cwd :: fs_cwd();
+    defer string_delete(cwd);    
+    filepath :: string_new("foo");
+    string_concatenate(&cwd, "/", filepath);
+    defer string_delete(filepath);
+    status :: fs_normalize(&filepath);
+    test_ok(status);
+    test_eq(filepath, cwd);
 }
 
 fs_file_remove_test :: fn () #test {

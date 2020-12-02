@@ -184,14 +184,23 @@ _fs_impl_tmp :: fn () string #inline {
     return remove_last_separator(path);
 }
 
-_fs_impl_normalize :: fn (filepath: *string) bool {
+_fs_impl_normalize :: fn (filepath: *string) Error {
+    if !filepath { return error(ERR_INVALID_HANDLE, "File path is null!"); }
+    if string_is_empty(^filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     buf : [OS_PATH_MAX]u8;
-    if !c_realpath(auto filepath.ptr, auto buf.ptr) {
-        return false;
+    in_buf : [OS_PATH_MAX]u8 #noinit;
+
+    cwd :: _fs_impl_cwd();
+    defer string_delete(cwd);
+    bprint(in_buf, "%/%", cwd, ^filepath);
+    
+    if !c_realpath(auto in_buf.ptr, auto buf.ptr) {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot normalize '%': %.", filepath, estr);
     }
     string_clear(filepath);
     string_append(filepath, cstr_to_str(buf.ptr));
-    return true;
+    return ok();
 }
 
 _fs_impl_remove_extension :: fn (filename: string) string #inline {
