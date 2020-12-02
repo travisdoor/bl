@@ -57,21 +57,21 @@ fs_cwd_test :: fn () #test {
     test_true(state);
 }
 
-fs_file_open_test :: fn () #test {
+fs_open_test :: fn () #test {
     {
-        file, err :: fs_file_open("");
+        file, err :: fs_open("");
         test_is_error(err, ERR_INVALID_HANDLE);    
     }
     
     {
-        file, err :: fs_file_open("foobar");
+        file, err :: fs_open("foobar");
         test_is_error(err, ERR_NOT_FOUND);
     }
     
     {
-        file, err :: fs_file_open(#file);    
+        file, err :: fs_open(#file);    
         test_ok(err);
-        fs_file_close(file);
+        fs_close(file);
     }
 }
 
@@ -82,23 +82,23 @@ fs_file_create_test :: fn () #test {
     fs_file_remove(filepath);
     
     {
-        file, err :: fs_file_open("", FSFileOpenMode.Create);
-        defer fs_file_close(file);
+        file, err :: fs_open("", FSOpenMode.Create);
+        defer fs_close(file);
         test_is_error(err, ERR_INVALID_HANDLE);    
     }
     
     {
-        file, err :: fs_file_open(filepath, FSFileOpenMode.Create);
-        defer fs_file_close(file);
+        file, err :: fs_open(filepath, FSOpenMode.Create);
+        defer fs_close(file);
         test_ok(err);
-        fs_file_write_string(file, "hello!");
+        fs_write_string(file, "hello!");
     }    
 
     { // This should reuse already created file!
-        file, err :: fs_file_open(filepath, FSFileOpenMode.Create);
-        defer fs_file_close(file);
+        file, err :: fs_open(filepath, FSOpenMode.Create);
+        defer fs_close(file);
         test_ok(err);
-        str :: fs_file_read_string(file);
+        str :: fs_read_string(file);
         test_eq(str, "hello!");
     }
     
@@ -106,11 +106,11 @@ fs_file_create_test :: fn () #test {
     fs_file_remove(filepath);
 }
 
-fs_file_read_string_test :: fn () #test {
-    file, err1 :: fs_file_open(#file, FSFileOpenMode.Read);
-    defer fs_file_close(file);
+fs_read_string_test :: fn () #test {
+    file, err1 :: fs_open(#file, FSOpenMode.Read);
+    defer fs_close(file);
     test_ok(err1);
-    data, err2 := fs_file_read_string(file);
+    data, err2 := fs_read_string(file);
     test_ok(err2);
     defer string_delete(data);
     test_neq(data, string_empty);
@@ -118,15 +118,15 @@ fs_file_read_string_test :: fn () #test {
     test_true(data[data.len-1] == '\0');
 }
 
-fs_file_read_string_test2 :: fn () #test {
-    data, err := fs_file_read_string(FS_FILE_INVALID);
+fs_read_string_test2 :: fn () #test {
+    data, err := fs_read_string(FS_FILE_INVALID);
     test_is_error(err, ERR_INVALID_HANDLE);
 }
 
-fs_file_read_slice_test :: fn () #test {
-    file :: fs_file_open(#file, FSFileOpenMode.Read);
-    defer fs_file_close(file);
-    data, err := fs_file_read_slice(file);
+fs_read_slice_test :: fn () #test {
+    file :: fs_open(#file, FSOpenMode.Read);
+    defer fs_close(file);
+    data, err := fs_read_slice(file);
     test_ok(err);
     defer slice_terminate(data);
     test_not_null(data.ptr);
@@ -252,8 +252,8 @@ fs_normalize_test2 :: fn () #test {
 }    
 
 fs_normalize_test3 :: fn () #test {
-    file :: fs_file_open("foo", FSFileOpenMode.Create);
-    fs_file_close(file);
+    file :: fs_open("foo", FSOpenMode.Create);
+    fs_close(file);
     defer fs_file_remove("foo");
     cwd :: fs_cwd();
     defer string_delete(cwd);    
@@ -270,122 +270,122 @@ fs_file_remove_test :: fn () #test {
     defer string_delete(filepath);
     
     fs_file_remove(filepath);
-    file, err :: fs_file_open(filepath, FSFileOpenMode.Create);
+    file, err :: fs_open(filepath, FSOpenMode.Create);
     test_ok(err);
-    fs_file_close(file);
+    fs_close(file);
     err2 :: fs_file_remove(filepath);
     test_ok(err2);
 }
 
 fs_file_size_test :: fn () #test {
-    file :: fs_file_open(#file);
-    defer fs_file_close(file);
+    file :: fs_open(#file);
+    defer fs_close(file);
     size, err :: fs_file_size(file);
     test_ok(err);
     test_true(size > 0);
 }
 
-fs_file_read_test :: fn () #test {
-    file :: fs_file_open(#file);
-    defer fs_file_close(file);
+fs_read_test :: fn () #test {
+    file :: fs_open(#file);
+    defer fs_close(file);
     buf: [1042]u8 #noinit;
-    bytes, err :: fs_file_read(file, buf.ptr, buf.len);
+    bytes, err :: fs_read(file, buf.ptr, buf.len);
     test_ok(err);
     test_eq(bytes, buf.len);
 }
 
-fs_file_read_buffer_test2 :: fn () #test {
+fs_read_buffer_test2 :: fn () #test {
     buf: [1042]u8 #noinit;
-    bytes, err :: fs_file_read(FS_FILE_INVALID, buf.ptr, buf.len);
+    bytes, err :: fs_read(FS_FILE_INVALID, buf.ptr, buf.len);
     test_is_error(err, ERR_INVALID_HANDLE);
     test_eq(bytes, 0);
 }
 
-fs_file_read_buffer_test3 :: fn () #test {
-    file :: fs_file_open(#file);
-    defer fs_file_close(file);
-    bytes, err :: fs_file_read(file, null, 0);
+fs_read_buffer_test3 :: fn () #test {
+    file :: fs_open(#file);
+    defer fs_close(file);
+    bytes, err :: fs_read(file, null, 0);
     test_is_error(err, ERR_INVALID_HANDLE);
     test_eq(bytes, 0);
 }
 
-fs_file_read_test4 :: fn () #test {
-    file :: fs_file_open(#file);
-    defer fs_file_close(file);
+fs_read_test4 :: fn () #test {
+    file :: fs_open(#file);
+    defer fs_close(file);
     buf: [1024]u8 #noinit;
-    bytes, err :: fs_file_read(file, buf.ptr, 100);
+    bytes, err :: fs_read(file, buf.ptr, 100);
     test_ok(err);
     test_eq(bytes, 100);
 }
 
-fs_file_write_test :: fn () #test {
+fs_write_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer string_delete(filepath);
     fs_file_remove(filepath);
     content :: "Hello I'm cool file content!";    
     
     { // write
-        file :: fs_file_open(filepath, FSFileOpenMode.Create);
-        written, err :: fs_file_write(file, content.ptr, content.len);
+        file :: fs_open(filepath, FSOpenMode.Create);
+        written, err :: fs_write(file, content.ptr, content.len);
         test_ok(err);
         test_eq(written, content.len);
-        fs_file_close(file);
+        fs_close(file);
     }
     { // read
-        file :: fs_file_open(filepath);
-        tmp, err :: fs_file_read_string(file);
+        file :: fs_open(filepath);
+        tmp, err :: fs_read_string(file);
         test_ok(err);
         defer string_delete(tmp);
         test_eq(tmp, content);
-        fs_file_close(file);
+        fs_close(file);
     }
     fs_file_remove(filepath);
 }
 
-fs_file_write_string_test :: fn () #test {
+fs_write_string_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer string_delete(filepath);
     fs_file_remove(filepath);
     content :: "Hello I'm cool file content!";    
     
     { // write
-        file :: fs_file_open(filepath, FSFileOpenMode.Create);
-        written, err :: fs_file_write_string(file, content);
+        file :: fs_open(filepath, FSOpenMode.Create);
+        written, err :: fs_write_string(file, content);
         test_ok(err);
         test_eq(written, content.len);
-        fs_file_close(file);
+        fs_close(file);
     }
     { // read
-        file :: fs_file_open(filepath);
-        tmp, err :: fs_file_read_string(file);
+        file :: fs_open(filepath);
+        tmp, err :: fs_read_string(file);
         test_ok(err);
         defer string_delete(tmp);
         test_eq(tmp, content);
-        fs_file_close(file);
+        fs_close(file);
     }
     fs_file_remove(filepath);
 }
 
-fs_file_write_slice_test :: fn () #test {
+fs_write_slice_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer string_delete(filepath);
     fs_file_remove(filepath);
     content :: {:[5]u8: 'H', 'e', 'l', 'o', 'o' };
     
     { // write
-        file :: fs_file_open(filepath, FSFileOpenMode.Create);
-        written, err :: fs_file_write_slice(file, content);
+        file :: fs_open(filepath, FSOpenMode.Create);
+        written, err :: fs_write_slice(file, content);
         test_ok(err);
         test_eq(written, content.len);
-        fs_file_close(file);
+        fs_close(file);
     }
     { // read
-        file :: fs_file_open(filepath);
-        tmp, err :: fs_file_read_string(file);
+        file :: fs_open(filepath);
+        tmp, err :: fs_read_string(file);
         test_ok(err);
         defer string_delete(tmp);
         test_eq(tmp.len, content.len);
-        fs_file_close(file);
+        fs_close(file);
     }
     fs_file_remove(filepath);
 }
@@ -477,9 +477,9 @@ fs_dir_remove_all_test1 :: fn () #test {
         file :: string_new(dir);
         defer string_delete(file);
         string_append(&file, "/file.txt");
-        f, e :: fs_file_open(file, FSFileOpenMode.Create);
+        f, e :: fs_open(file, FSOpenMode.Create);
         test_ok(e);
-        fs_file_close(f);
+        fs_close(f);
     }
     
     state :: fs_dir_remove_all(dir);

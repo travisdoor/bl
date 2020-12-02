@@ -55,7 +55,7 @@ ss_delete :: fn (ss: *StringStream) {
 
 ss_init_from_file :: fn (ss: *StringStream, file: FSFile) {
     if !file { panic(); }
-    data :: fs_file_read_string(file);
+    data :: fs_read_string(file);
     ss._data = data;
     ss.i = 0;
 }
@@ -70,7 +70,7 @@ ss_terminate :: fn (ss: *StringStream) {
 }
 
 ss_write_to_file :: fn (ss: *StringStream, file: FSFile) usize {
-    written :: fs_file_write_string(file, ss._data);
+    written :: fs_write_string(file, ss._data);
     return auto written;
 }
 

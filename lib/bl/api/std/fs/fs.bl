@@ -17,7 +17,7 @@ FSFile :: _FSImplFile;
 FS_FILE_INVALID :: _FS_IMPL_FILE_INVALID;
 
 /// Specify operation with opened file.
-FSFileOpenMode :: enum {
+FSOpenMode :: enum {
     /// Open file for reading.
     Read;
     /// Open file for writing.
@@ -47,9 +47,9 @@ fs_exist :: fn (filepath: string) bool #inline {
 
 /// Open an file specified by `filepath`. Function return file handle and `OK` status when
 /// file was openned, otherwise return invalid handle and proper error. File must be closed
-/// by :ref:`fs_file_close` call.
+/// by :ref:`fs_close` call.
 ///
-/// File open `mode` is optional, any combination of :ref:`FSFileOpenMode` can be used.
+/// File open `mode` is optional, any combination of :ref:`FSOpenMode` can be used.
 /// When `Create` `mode` is specified, new file is created on `filepath` only if it does
 /// not exist, otherwise already existing file is openned. Default `mode` for `Read` and
 /// `Write` is used when not specified.
@@ -58,19 +58,19 @@ fs_exist :: fn (filepath: string) bool #inline {
 /// -------
 /// .. literalinclude:: /examples/docs/004.bl
 ///    :language: bl
-fs_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) #inline {
+fs_open :: fn (filepath: string, mode: ...FSOpenMode) (FSFile, Error) #inline {
     return _fs_impl_file_open(filepath, mode);
+}
+
+/// Close previously openned file. Does nothing when `handle` is not valid.
+fs_close :: fn (handle: FSFile) #inline {
+    _fs_impl_file_close(handle);
 }
 
 /// Try to remove file specified by `filepath` and return `OK` on success, otherwise
 /// return error.
 fs_file_remove :: fn (filepath: string) Error #inline {
     return _fs_impl_file_remove(filepath);
-}
-
-/// Close previously openned file. Does nothing when `handle` is not valid.
-fs_file_close :: fn (handle: FSFile) #inline {
-    _fs_impl_file_close(handle);
 }
 
 /// Return file content size in bytes and `OK` status on success, otherwise
@@ -88,7 +88,7 @@ fs_file_size :: fn (handle: FSFile) (usize, Error) #inline {
 /// -------
 /// .. literalinclude:: /examples/docs/005.bl
 ///    :language: bl
-fs_file_read_string :: fn (handle: FSFile) (string, Error) {
+fs_read_string :: fn (handle: FSFile) (string, Error) {
     size, err :: _fs_impl_file_size(handle);
     if !is_ok(err) {
         return string_empty, err;
@@ -107,7 +107,7 @@ fs_file_read_string :: fn (handle: FSFile) (string, Error) {
 /// file data and `OK` status on success, otherwise return empty slice and error.
 /// Returned slice is expected to be released by :ref:`slice_terminatr` call if
 /// there was no error reported by function.
-fs_file_read_slice :: fn (handle: FSFile) ([]u8, Error) {
+fs_read_slice :: fn (handle: FSFile) ([]u8, Error) {
     invalid: []u8;
     size, err :: _fs_impl_file_size(handle);
     if !is_ok(err) {
@@ -130,7 +130,7 @@ fs_file_read_slice :: fn (handle: FSFile) ([]u8, Error) {
 /// written into buffer and `OK` status when there was no error. `dest` buffer
 /// must be allocated to handle at least `size` bytes. There is no overflow
 /// check.
-fs_file_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) #inline {
+fs_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) #inline {
     return _fs_impl_file_read(handle, dest, size);
 }
 
@@ -138,13 +138,13 @@ fs_file_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) #inline {
 /// bytes written into the buffer and `OK` on success, otherwise return error.
 /// `src` buffer size must be at least `size` bytes. No overflow checking
 /// is done.
-fs_file_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) #inline {
+fs_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) #inline {
     return _fs_impl_file_write(handle, src, size);
 }
 
 /// Write content of `str` into the file, return count of written bytes and `OK` if
 /// there is no error, otherwise return 0 and error.
-fs_file_write_string :: fn (handle: FSFile, str: string) (s64, Error) #inline {
+fs_write_string :: fn (handle: FSFile, str: string) (s64, Error) #inline {
     written_bytes, err :: _fs_impl_file_write(handle, str.ptr, str.len);
     if !is_ok(err) { return 0, err; }
     return auto written_bytes, ok();    
@@ -152,7 +152,7 @@ fs_file_write_string :: fn (handle: FSFile, str: string) (s64, Error) #inline {
 
 /// Write content of `v` slice into the file, return count of written bytes and `OK` if
 /// there is no error, otherwise return 0 and error.
-fs_file_write_slice :: fn (handle: FSFile, v: []u8) (s64, Error) #inline {
+fs_write_slice :: fn (handle: FSFile, v: []u8) (s64, Error) #inline {
     written_bytes, err :: _fs_impl_file_write(handle, v.ptr, v.len);
     if !is_ok(err) { return 0, err; }
     return auto written_bytes, ok();

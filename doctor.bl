@@ -156,10 +156,10 @@ get_verbosity :: fn () string #inline {
 }
 
 get_expected_error :: fn (filepath: string, out_err: *s32) bool {
-    file, err1 :: fs_file_open(filepath, FSFileOpenMode.Read);
-    defer fs_file_close(file);
+    file, err1 :: fs_open(filepath, FSOpenMode.Read);
+    defer fs_close(file);
     if !is_ok(err1) { print_err("%", err1); return false; }
-    content, err2 :: fs_file_read_string(file);
+    content, err2 :: fs_read_string(file);
     defer string_delete(content);
     if !is_ok(err2) { print_err("%", err2); return false; }
     

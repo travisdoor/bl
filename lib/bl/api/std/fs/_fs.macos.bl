@@ -15,7 +15,7 @@ _fs_impl_exist :: fn (filepath: string) bool #inline {
     return _stat(auto filepath.ptr, &tmp) == 0;
 }
 
-_fs_impl_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
+_fs_impl_file_open :: fn (filepath: string, mode: ...FSOpenMode) (FSFile, Error) {
     if string_is_empty(filepath) { return 0, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     flags := modes_to_flags(mode);
     handle :: _open(auto filepath.ptr, flags, 0);
@@ -217,13 +217,13 @@ _fs_impl_get_extension :: fn (filename: string) string #inline {
 }
 
 #private
-modes_to_flags :: fn (modes: []FSFileOpenMode) s32 #inline {
+modes_to_flags :: fn (modes: []FSOpenMode) s32 #inline {
     if modes.len == 0 { return _O_RDWR; }
     r, w := false;
     loop i := 0; i < modes.len; i += 1 {
         switch modes[i] {
-            FSFileOpenMode.Read    { r = true; }
-            FSFileOpenMode.Write   { w = true; }
+            FSOpenMode.Read    { r = true; }
+            FSOpenMode.Write   { w = true; }
             default { panic(); }
         }
     }

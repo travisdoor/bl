@@ -9,7 +9,7 @@ _fs_impl_exist :: fn (filepath: string) bool #inline {
     return _PathFileExistsA(auto filepath.ptr) > 0;
 }
 
-_fs_impl_file_open :: fn (filepath: string, mode: ...FSFileOpenMode) (FSFile, Error) {
+_fs_impl_file_open :: fn (filepath: string, mode: ...FSOpenMode) (FSFile, Error) {
     if string_is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     access, create :: modes_to_flags(mode);
     handle :: _CreateFile(auto filepath.ptr, access, 0, null, create, _FILE_ATTRIBUTE_NORMAL, null);
@@ -242,14 +242,14 @@ _fs_impl_get_extension :: fn (filename: string) string #inline {
 }
 
 #private
-modes_to_flags :: fn (modes: []FSFileOpenMode) (access: u32, create: u32) #inline {
+modes_to_flags :: fn (modes: []FSOpenMode) (access: u32, create: u32) #inline {
     access: u32;
     create: u32;
     loop i := 0; i < modes.len; i += 1 {
         switch modes[i] {
-            FSFileOpenMode.Read    { access = access | _GENERIC_READ;  }            
-            FSFileOpenMode.Write   { access = access | _GENERIC_WRITE; }
-            FSFileOpenMode.Create  { create = create | _OPEN_ALWAYS; }
+            FSOpenMode.Read    { access = access | _GENERIC_READ;  }            
+            FSOpenMode.Write   { access = access | _GENERIC_WRITE; }
+            FSOpenMode.Create  { create = create | _OPEN_ALWAYS; }
             default { panic(); }
         }
     }
