@@ -200,16 +200,20 @@ _fs_impl_tmp :: fn () string #inline {
     return remove_last_separator(out);
 }
 
-_fs_impl_normalize :: fn (filepath: *string) bool {
+_fs_impl_normalize :: fn (filepath: *string) Error {
     buf : [OS_PATH_MAX]u8 #noinit;
-    if _GetFullPathNameA(auto filepath.ptr, auto buf.len, buf.ptr, null) > 0 {
-        if _PathFileExistsA(auto filepath.ptr) == 0 { return false; }
-        string_clear(filepath);
-        string_append(filepath, cstr_to_str(buf.ptr));
-        string_replace_all(filepath, '\\', '/');
-        return true;
+    if _GetFullPathNameA(auto filepath.ptr, auto buf.len, buf.ptr, null) == 0 {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot normalize '%': %.", filepath, estr);
     }
-    return false;
+    if _PathFileExistsA(auto filepath.ptr) == 0 {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot normalize '%': %.", filepath, estr);
+    }
+    string_clear(filepath);
+    string_append(filepath, cstr_to_str(buf.ptr));
+    string_replace_all(filepath, '\\', '/');
+    return ok();
 }
 
 _fs_impl_remove_extension :: fn (filename: string) string #inline {
