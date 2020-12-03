@@ -254,7 +254,6 @@ _LPSECURITY_ATTRIBUTES :: *_SECURITY_ATTRIBUTES;
 
 _LPTHREAD_START_ROUTINE :: *fn (args: _LPVOID) _DWORD;
 
-
 _CreateThread :: fn (
     lpThreadAttributes: _LPSECURITY_ATTRIBUTES,
     dwStackSize: _SIZE_T,
@@ -266,6 +265,7 @@ _CreateThread :: fn (
 
 _GetCurrentThread :: fn () _HANDLE #extern "GetCurrentThread";
 _TerminateThread :: fn (handle: _HANDLE, exit_code: _DWORD) _BOOL #extern "TerminateThread";
+_GetExitCodeThread :: fn (hThread: _HANDLE, lpExitCode: _LPDWORD) _BOOL #extern "GetExitCodeThread";
 
 _CreateMutexA :: fn (
     lpMutexAttributes: _LPSECURITY_ATTRIBUTES,

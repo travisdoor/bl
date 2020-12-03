@@ -2,6 +2,7 @@
 #load "os/windows/winapi.bl"
 
 _ImplThread :: _HANDLE;
+_IMPL_THREAD_INFINITE :: _INFINITE;
 
 _thread_impl_create :: fn (entry: ThreadEntryFn, args: ...) (Thread, Error) {
     if !entry { return null, error(ERR_INVALID_HANDLE, "Cannot create thread. Handle is invalid."); }
@@ -17,17 +18,22 @@ _thread_impl_create :: fn (entry: ThreadEntryFn, args: ...) (Thread, Error) {
     return thread, ok();
 }
 
-_thread_impl_join :: fn (thread: Thread, timeout_ms := _INFINITE) Error {
+_thread_impl_join :: fn (thread: Thread, timeout_ms: u32) (exit_code: s32, err: Error) {
     if !thread { error(ERR_INVALID_HANDLE, "Cannot join. Handle is invalid."); }
     if _WaitForSingleObject(thread, timeout_ms) == _WAIT_FAILED {
         ec, estr :: os_get_last_error();
-        return error(ec, "Cannot join: %.", estr);
+        return -1, error(ec, "Cannot join: %.", estr);
+    }
+    exit_code: u32;
+    if _GetExitCodeThread(thread, &exit_code) == 0 {
+        ec, estr :: os_get_last_error();
+        return -1, error(ec, "Cannot join: %.", estr);
     }
     if _CloseHandle(thread) == 0 {
         ec, estr :: os_get_last_error();
-        return error(ec, "Cannot join: %.", estr);
+        return -1, error(ec, "Cannot join: %.", estr);
     }
-    return ok();
+    return auto exit_code, ok();
 }
 
 #private
@@ -39,6 +45,5 @@ _ThreadArgs :: struct {
 thread_entry :: fn (_args: *u8) u32 {
     tmp :: cast(*_ThreadArgs) _args;
     defer free(auto tmp);
-    tmp.entry(tmp.args);
-    return 0;
+    return auto tmp.entry(tmp.args);
 }
