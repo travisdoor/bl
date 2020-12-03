@@ -73,9 +73,15 @@ _LARGE_INTEGER :: c_longlong;
 _PLARGE_INTEGER :: *_LARGE_INTEGER;
 _HGLOBAL      :: c_void_ptr;
 _HWND         :: c_void_ptr;
+_LONG         :: c_long;
+_PLONG        :: *_LONG;
 
 _GENERIC_READ : u32 : 0x80000000;
 _GENERIC_WRITE : u32 : 0x40000000;
+
+_FILE_BEGIN : u32 : 0;
+_FILE_CURRENT : u32: 1;
+_FILE_END : u32 : 2;
 
 _CREATE_NEW : u32 : 1;
 _CREATE_ALWAYS : u32 : 2;
@@ -291,3 +297,5 @@ _SetCurrentDirectoryA :: fn (lpPathName: _LPSTR) _BOOL #extern "SetCurrentDirect
 _GetFileSizeEx :: fn (hFile: _HANDLE, lpFileSize: _PLARGE_INTEGER) _BOOL #extern "GetFileSizeEx";
 _ReadFile :: fn (hFile: _HANDLE, lpBuffer: _LPVOID, nNumberOfBytesToRead: _DWORD, lpNumberOfBytesRead: _LPDWORD, lpOverlapped: _LPOVERLAPPED) _BOOL #extern "ReadFile";
 _WriteFile :: fn (hFile: _HANDLE, lpBuffer: _LPVOID, nNumberOfBytesToWrite: _DWORD, lpNumberOfBytesWritten: _LPDWORD, lpOverlapped: _LPOVERLAPPED) _BOOL #extern "WriteFile";
+_SetEndOfFile :: fn (hFile: _HANDLE) _BOOL #extern "SetEndOfFile";
+_SetFilePointer :: fn (hFile: _HANDLE, lDistanceToMove: _LONG, lpDistanceToMoveHigh: _PLONG, dwMoveMethod: _DWORD) _DWORD #extern "SetFilePointer";

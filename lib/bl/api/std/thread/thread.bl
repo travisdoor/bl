@@ -1,0 +1,27 @@
+//! ======
+//! Thread
+//! ======
+//! 
+//! ::
+//! 
+//!    #import "std/thread"
+//! 
+//! This module contains tools for managing multithreading. It's basically wrapper for
+//! Windows thread system and pthread on posix systems.
+//! 
+//! .. warning:: This module is experimental and not fully supported across all platforms.
+
+/// Thread entry function type.
+ThreadEntryFn :: *fn (args: ...);
+
+/// Thread handle.
+Thread :: _ImplThread;
+
+thread_create :: fn (entry: ThreadEntryFn, args: ...) (Thread, Error) #inline {
+    return _thread_impl_create(entry, args);
+}
+
+thread_join :: fn (thread: Thread, timeout_ms := _INFINITE) Error #inline {
+    return _thread_impl_join(thread, timeout_ms);
+}
+ 

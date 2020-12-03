@@ -11,7 +11,7 @@ main :: fn () s32 {
 
 #private
 get_dummy_filepath :: fn () string {
-    tmp :: fs_tmp();
+    tmp :: fs_get_tmp();
     string_concatenate(&tmp, "/deleteme.txt");
     return tmp;
 }
@@ -21,8 +21,8 @@ fs_exist_test :: fn () #test {
     test_false(fs_exist("foobar"));
 }
 
-fs_home_test :: fn () #test {
-    tmp :: fs_home();
+fs_get_home_test :: fn () #test {
+    tmp :: fs_get_home();
     defer string_delete(tmp);
     test_neq(tmp, string_empty);
     test_true(fs_exist(tmp));
@@ -33,8 +33,8 @@ fs_home_test :: fn () #test {
     test_true(state);
 }
 
-fs_tmp_test :: fn () #test {
-    tmp :: fs_tmp();
+fs_get_tmp_test :: fn () #test {
+    tmp :: fs_get_tmp();
     defer string_delete(tmp);
     test_neq(tmp, string_empty);
     test_true(fs_exist(tmp));    
@@ -45,8 +45,8 @@ fs_tmp_test :: fn () #test {
     test_true(state);
 }
 
-fs_cwd_test :: fn () #test {
-    tmp :: fs_cwd();
+fs_get_cwd_test :: fn () #test {
+    tmp :: fs_get_cwd();
     defer string_delete(tmp);
     test_neq(tmp, string_empty);
     test_true(fs_exist(tmp));    
@@ -57,41 +57,60 @@ fs_cwd_test :: fn () #test {
     test_true(state);
 }
 
-fs_open_test :: fn () #test {
-    {
-        file, err :: fs_open("");
-        test_is_error(err, ERR_INVALID_HANDLE);    
-    }
+fs_open_test1 :: fn () #test {
+    file, err :: fs_open("");
+    defer fs_close(file);
+    test_is_error(err, ERR_INVALID_HANDLE);    
+}
     
-    {
-        file, err :: fs_open("foobar");
-        test_is_error(err, ERR_NOT_FOUND);
-    }
+fs_open_test2 :: fn () #test {
+    file, err :: fs_open("foobar");
+    defer fs_close(file);
+    test_is_error(err, ERR_NOT_FOUND);
+}
     
-    {
-        file, err :: fs_open(#file);    
-        test_ok(err);
-        fs_close(file);
-    }
+fs_open_test3 :: fn () #test {
+    file, err :: fs_open(#file);    
+    defer fs_close(file);
+    test_ok(err);
+
+    // Cannot write to file when Write or Append is not specified.
+    written, err2 :: fs_write_string(file, "Hello!");
+    test_not_ok(err2);
+    test_eq(written, 0);
 }
 
-fs_file_create_test :: fn () #test {
+
+fs_file_create_test1 :: fn () #test {
+    file, err :: fs_open("", FSOpenMode.Create);
+    defer fs_close(file);
+    test_is_error(err, ERR_INVALID_HANDLE);    
+}
+
+fs_file_create_test2 :: fn () #test {
     filepath :: get_dummy_filepath();
     defer string_delete(filepath);
-    
-    fs_file_remove(filepath);
-    
-    {
-        file, err :: fs_open("", FSOpenMode.Create);
-        defer fs_close(file);
-        test_is_error(err, ERR_INVALID_HANDLE);    
-    }
-    
+    fs_remove(filepath);
+
     {
         file, err :: fs_open(filepath, FSOpenMode.Create);
         defer fs_close(file);
         test_ok(err);
-        fs_write_string(file, "hello!");
+
+        // Cannot write to file when Write or Append is not specified.
+        written, err2 :: fs_write_string(file, "Hello!");
+        test_not_ok(err2);
+        test_eq(written, 0);
+    }    
+
+    {
+        file, err :: fs_open(filepath, FSOpenMode.Create, FSOpenMode.Write);
+        defer fs_close(file);
+        test_ok(err);
+
+        written, err2 :: fs_write_string(file, "Hello!");
+        test_ok(err2);
+        test_neq(written, 0);
     }    
 
     { // This should reuse already created file!
@@ -99,11 +118,36 @@ fs_file_create_test :: fn () #test {
         defer fs_close(file);
         test_ok(err);
         str :: fs_read_string(file);
-        test_eq(str, "hello!");
+        test_eq(str, "Hello!");
     }
-    
-    
-    fs_file_remove(filepath);
+    fs_remove(filepath);
+}
+
+fs_create_append :: fn () #test {
+    filepath :: get_dummy_filepath();
+    defer string_delete(filepath);
+    fs_remove(filepath);
+    { // initial create
+        file, err :: fs_open(filepath, FSOpenMode.Create, FSOpenMode.Write);
+        defer fs_close(file);
+        test_ok(err);
+        fs_write_string(file, "Hello!");
+    }
+    { // append
+        file, err :: fs_open(filepath, FSOpenMode.Append);
+        defer fs_close(file);
+        test_ok(err);
+        fs_write_string(file, "Hello!");
+    }
+    { // check
+        file, err :: fs_open(filepath);
+        defer fs_close(file);
+        test_ok(err);
+        str, err2 :: fs_read_string(file);
+        test_ok(err2);
+        test_eq(str, "Hello!Hello!");
+    }
+    fs_remove(filepath);
 }
 
 fs_read_string_test :: fn () #test {
@@ -230,7 +274,7 @@ fs_remove_extension_test :: fn () #test {
 }
 
 fs_normalize_test1 :: fn () #test {
-    cwd :: fs_cwd();
+    cwd :: fs_get_cwd();
     defer string_delete(cwd);
     parent: string;
     test_true(string_split_by_last(cwd, '/', &parent, null));
@@ -242,7 +286,7 @@ fs_normalize_test1 :: fn () #test {
 }
 
 fs_normalize_test2 :: fn () #test {
-    cwd :: fs_cwd();
+    cwd :: fs_get_cwd();
     defer string_delete(cwd);
     filepath :: string_new(".");
     defer string_delete(filepath);
@@ -254,8 +298,8 @@ fs_normalize_test2 :: fn () #test {
 fs_normalize_test3 :: fn () #test {
     file :: fs_open("foo", FSOpenMode.Create);
     fs_close(file);
-    defer fs_file_remove("foo");
-    cwd :: fs_cwd();
+    defer fs_remove("foo");
+    cwd :: fs_get_cwd();
     defer string_delete(cwd);    
     filepath :: string_new("foo");
     string_concatenate(&cwd, "/", filepath);
@@ -265,22 +309,22 @@ fs_normalize_test3 :: fn () #test {
     test_eq(filepath, cwd);
 }
 
-fs_file_remove_test :: fn () #test {
+fs_remove_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer string_delete(filepath);
     
-    fs_file_remove(filepath);
+    fs_remove(filepath);
     file, err :: fs_open(filepath, FSOpenMode.Create);
     test_ok(err);
     fs_close(file);
-    err2 :: fs_file_remove(filepath);
+    err2 :: fs_remove(filepath);
     test_ok(err2);
 }
 
-fs_file_size_test :: fn () #test {
+fs_size_test :: fn () #test {
     file :: fs_open(#file);
     defer fs_close(file);
-    size, err :: fs_file_size(file);
+    size, err :: fs_size(file);
     test_ok(err);
     test_true(size > 0);
 }
@@ -321,11 +365,11 @@ fs_read_test4 :: fn () #test {
 fs_write_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer string_delete(filepath);
-    fs_file_remove(filepath);
+    fs_remove(filepath);
     content :: "Hello I'm cool file content!";    
     
     { // write
-        file :: fs_open(filepath, FSOpenMode.Create);
+        file :: fs_open(filepath, FSOpenMode.Create, FSOpenMode.Write);
         written, err :: fs_write(file, content.ptr, content.len);
         test_ok(err);
         test_eq(written, content.len);
@@ -339,17 +383,17 @@ fs_write_test :: fn () #test {
         test_eq(tmp, content);
         fs_close(file);
     }
-    fs_file_remove(filepath);
+    fs_remove(filepath);
 }
 
 fs_write_string_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer string_delete(filepath);
-    fs_file_remove(filepath);
+    fs_remove(filepath);
     content :: "Hello I'm cool file content!";    
     
     { // write
-        file :: fs_open(filepath, FSOpenMode.Create);
+        file :: fs_open(filepath, FSOpenMode.Create, FSOpenMode.Write);
         written, err :: fs_write_string(file, content);
         test_ok(err);
         test_eq(written, content.len);
@@ -363,17 +407,17 @@ fs_write_string_test :: fn () #test {
         test_eq(tmp, content);
         fs_close(file);
     }
-    fs_file_remove(filepath);
+    fs_remove(filepath);
 }
 
 fs_write_slice_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer string_delete(filepath);
-    fs_file_remove(filepath);
+    fs_remove(filepath);
     content :: {:[5]u8: 'H', 'e', 'l', 'o', 'o' };
     
     { // write
-        file :: fs_open(filepath, FSOpenMode.Create);
+        file :: fs_open(filepath, FSOpenMode.Create, FSOpenMode.Write);
         written, err :: fs_write_slice(file, content);
         test_ok(err);
         test_eq(written, content.len);
@@ -387,11 +431,11 @@ fs_write_slice_test :: fn () #test {
         test_eq(tmp.len, content.len);
         fs_close(file);
     }
-    fs_file_remove(filepath);
+    fs_remove(filepath);
 }
 
 fs_list_dir_test1 :: fn () #test {
-    dir :: fs_cwd();
+    dir :: fs_get_cwd();
     defer string_delete(dir);
     list, err :: fs_dir_scan(dir);
     defer fs_info_list_delete(list);
@@ -403,7 +447,7 @@ fs_list_dir_test1 :: fn () #test {
 }
 
 fs_list_dir_test2 :: fn () #test {
-    dir :: fs_cwd();
+    dir :: fs_get_cwd();
     defer string_delete(dir);
     list, err :: fs_dir_scan(dir, &fn (info: *FSInfo) bool {
         return info.kind == FSInfoKind.Directory;
@@ -418,7 +462,7 @@ fs_list_dir_test2 :: fn () #test {
 }
 
 fs_list_dir_test3 :: fn () #test {
-    dir :: fs_cwd();
+    dir :: fs_get_cwd();
     defer string_delete(dir);
     list, err :: fs_dir_scan(dir, &fn (info: *FSInfo) bool {
         return info.kind == FSInfoKind.File;
@@ -433,7 +477,7 @@ fs_list_dir_test3 :: fn () #test {
 }
 
 fs_is_directory_test1 :: fn () #test {
-    tmp :: fs_tmp();
+    tmp :: fs_get_tmp();
     defer string_delete(tmp);
     state, err :: fs_is_directory(tmp);
     test_ok(err);
@@ -447,7 +491,7 @@ fs_is_directory_test2 :: fn () #test {
 }
 
 fs_dir_create_remove_test1 :: fn () #test {
-    dir :: fs_tmp();
+    dir :: fs_get_tmp();
     defer string_delete(dir);
     string_append(&dir, "/__DELETE_ME__");
 
@@ -463,7 +507,7 @@ fs_dir_create_remove_test1 :: fn () #test {
 }
 
 fs_dir_remove_all_test1 :: fn () #test {
-    dir :: fs_tmp();
+    dir :: fs_get_tmp();
     defer string_delete(dir);
     string_append(&dir, "/__DELETE_ME__");
     

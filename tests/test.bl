@@ -1,6 +1,12 @@
+#import "std/fs"
+
 main :: fn () s32 {
-    arr :: {:[10]s32: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    slice : []s32 = arr;
-    print("%\n", slice);
+    file, err :: fs_open("file.txt");
+    defer fs_close(file);
+    if !is_ok(err) { print("%\n", err); }
+
+    _, err2 :: fs_write_string(file, "\nHello!");
+    print("%\n", err2);
+    
     return 0;
 }

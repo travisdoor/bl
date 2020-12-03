@@ -77,12 +77,12 @@ main :: fn () s32 {
     
     // cleanup
     if OS_KIND == OSKind.Windows {
-        os_execute("call del out.exe /f /q");
-        os_execute("call del out.obj /f /q");
-        os_execute("call del out.pdb /f /q");    
+        fs_remove("out.exe");
+        fs_remove("out.obj");
+        fs_remove("out.pdb");
     } else {
-        os_execute("rm -f out");
-        os_execute("rm -f out.o");
+        fs_remove("out");
+        fs_remove("out.o");
     }        
     return _errc;
 }

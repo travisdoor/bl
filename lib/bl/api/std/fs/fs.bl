@@ -20,8 +20,10 @@ FS_FILE_INVALID :: _FS_IMPL_FILE_INVALID;
 FSOpenMode :: enum {
     /// Open file for reading.
     Read;
-    /// Open file for writing.
+    /// Open file for writing and truncate its content.
     Write;
+    /// Open file for appending (keeps current content).
+    Append;
     /// Create file if it does not exist.
     Create;
 }
@@ -51,8 +53,8 @@ fs_exist :: fn (filepath: string) bool #inline {
 ///
 /// File open `mode` is optional, any combination of :ref:`FSOpenMode` can be used.
 /// When `Create` `mode` is specified, new file is created on `filepath` only if it does
-/// not exist, otherwise already existing file is openned. Default `mode` for `Read` and
-/// `Write` is used when not specified.
+/// not exist, otherwise already existing file is used. `Read` `mode` is used as default 
+/// when nither `Read`, `Write` or `Append` is specified.
 ///
 /// Example
 /// -------
@@ -69,13 +71,13 @@ fs_close :: fn (handle: FSFile) #inline {
 
 /// Try to remove file specified by `filepath` and return `OK` on success, otherwise
 /// return error.
-fs_file_remove :: fn (filepath: string) Error #inline {
+fs_remove :: fn (filepath: string) Error #inline {
     return _fs_impl_file_remove(filepath);
 }
 
 /// Return file content size in bytes and `OK` status on success, otherwise
 /// return zero and proper error.
-fs_file_size :: fn (handle: FSFile) (usize, Error) #inline {
+fs_size :: fn (handle: FSFile) (usize, Error) #inline {
     return _fs_impl_file_size(handle);
 }
 
@@ -236,7 +238,7 @@ fs_validate_filename :: fn (name: string) bool #inline {
 
 /// Try to obtain current working directory, result must be released by
 /// :ref:`string_delete`. Path does not contain last path separator.
-fs_cwd :: fn () string #inline {
+fs_get_cwd :: fn () string #inline {
     return _fs_impl_cwd();
 }
 
@@ -248,13 +250,13 @@ fs_set_cwd :: fn (path: string) Error #inline {
 
 /// Try to obtain system home directory, result must be released by
 /// :ref:`string_delete`. Path does not contain last path separator.
-fs_home :: fn () string #inline {
+fs_get_home :: fn () string #inline {
     return _fs_impl_home();
 }
 
 /// Try to obtain system temporary directory, result must be released by
 /// :ref:`string_delete`. Path does not contain last path separator.
-fs_tmp :: fn () string #inline {
+fs_get_tmp :: fn () string #inline {
     return _fs_impl_tmp();
 }
 

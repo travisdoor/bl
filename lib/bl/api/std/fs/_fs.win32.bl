@@ -11,11 +11,17 @@ _fs_impl_exist :: fn (filepath: string) bool #inline {
 
 _fs_impl_file_open :: fn (filepath: string, mode: ...FSOpenMode) (FSFile, Error) {
     if string_is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    access, create :: modes_to_flags(mode);
+    access, create, append :: modes_to_flags(mode);
     handle :: _CreateFile(auto filepath.ptr, access, 0, null, create, _FILE_ATTRIBUTE_NORMAL, null);
     if handle == _INVALID_HANDLE_VALUE {
         ec, estr :: os_get_last_error();
         return null, error(ec, "Cannot open file '%': %.", filepath, estr);
+    }
+    write :: is_flag_u32(access, _GENERIC_WRITE);
+    if write && !append {
+        _SetEndOfFile(handle);
+    } else if write {
+        _SetFilePointer(handle, 0, null, _FILE_END);
     }
     return handle, ok();
 }
@@ -242,20 +248,22 @@ _fs_impl_get_extension :: fn (filename: string) string #inline {
 }
 
 #private
-modes_to_flags :: fn (modes: []FSOpenMode) (access: u32, create: u32) #inline {
+modes_to_flags :: fn (modes: []FSOpenMode) (access: u32, create: u32, append: bool) #inline {
     access: u32;
     create: u32;
+    append: bool;
     loop i := 0; i < modes.len; i += 1 {
         switch modes[i] {
             FSOpenMode.Read    { access = access | _GENERIC_READ;  }            
             FSOpenMode.Write   { access = access | _GENERIC_WRITE; }
-            FSOpenMode.Create  { create = create | _OPEN_ALWAYS; }
+            FSOpenMode.Append  { access = access | _GENERIC_WRITE; append = true; }
+            FSOpenMode.Create  { create = _OPEN_ALWAYS; }
             default { panic(); }
         }
     }
-    if access == 0 { access = _GENERIC_READ | _GENERIC_WRITE; }
+    if access == 0 { access = _GENERIC_READ; }
     if create == 0 { create = _OPEN_EXISTING; }
-    return access, create;
+    return access, create, append;
 }
 
 remove_last_separator :: fn (path: string) string {
