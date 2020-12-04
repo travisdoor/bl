@@ -156,6 +156,15 @@ _fs_impl_get_cwd :: fn () string #inline {
     return remove_last_separator(path);
 }
 
+_fs_impl_set_cwd :: fn (path: string) Error #inline {
+    if string_is_empty(path) { return error(ERR_INVALID_HANDLE, "Path is empty!"); }
+    if _chdir(auto path.ptr) != 0 {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot set current directory to '%': %.", path, estr);
+    }
+    return ok();
+}
+
 _fs_impl_get_home :: fn () string #inline {
     tmp :: "HOME";
     cdir :: cast(*u8) c_getenv(auto tmp.ptr);
@@ -218,18 +227,24 @@ _fs_impl_get_extension :: fn (filename: string) string #inline {
 
 #private
 modes_to_flags :: fn (modes: []FSOpenMode) s32 #inline {
-    if modes.len == 0 { return _O_RDWR; }
-    r, w := false;
+    r, w, create, append := false;
     loop i := 0; i < modes.len; i += 1 {
         switch modes[i] {
-            FSOpenMode.Read    { r = true; }
+            FSOpenMode.Read    { r = true; }            
             FSOpenMode.Write   { w = true; }
+            FSOpenMode.Append  { w = true; append = true; }
+            FSOpenMode.Create  { create = true; }
             default { panic(); }
         }
     }
-    if w && (!r) { return _O_WRONLY; }
-    if r && (!w) { return _O_RDONLY; }
-    return _O_RDWR;
+    flags: s32;
+    if ((!w) && (!r)) { flags = _O_RDONLY; }
+    else if (w && r) { flags = _O_RDWR; }
+    else if w { flags = _O_WRONLY; }
+    else if r { flags = _O_RDONLY; }
+    if create { flags = flags | _O_CREAT; }
+    if append { flags = flags | _O_APPEND; }
+    return flags;
 }
 
 remove_last_separator :: fn (path: string) string {
