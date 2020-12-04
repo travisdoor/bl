@@ -9,7 +9,7 @@ _fs_impl_exist :: fn (filepath: string) bool #inline {
     return _PathFileExistsA(auto filepath.ptr) > 0;
 }
 
-_fs_impl_file_open :: fn (filepath: string, mode: ...FSOpenMode) (FSFile, Error) {
+_fs_impl_open :: fn (filepath: string, mode: ...FSOpenMode) (FSFile, Error) {
     if string_is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     access, create, append :: modes_to_flags(mode);
     handle :: _CreateFile(auto filepath.ptr, access, 0, null, create, _FILE_ATTRIBUTE_NORMAL, null);
@@ -26,7 +26,7 @@ _fs_impl_file_open :: fn (filepath: string, mode: ...FSOpenMode) (FSFile, Error)
     return handle, ok();
 }
 
-_fs_impl_file_remove :: fn (filepath: string) Error #inline {
+_fs_impl_remove :: fn (filepath: string) Error #inline {
     if string_is_empty(filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     tmp :: _DeleteFileA(auto filepath.ptr);
     if tmp == 0 {
@@ -36,12 +36,12 @@ _fs_impl_file_remove :: fn (filepath: string) Error #inline {
     return ok();
 }
 
-_fs_impl_file_close :: fn (handle: FSFile) #inline {
+_fs_impl_close :: fn (handle: FSFile) #inline {
     if !handle { return; }
     _CloseHandle(handle);
 }
 
-_fs_impl_file_size :: fn (handle: FSFile) (usize, Error) #inline {
+_fs_impl_size :: fn (handle: FSFile) (usize, Error) #inline {
     size: _LARGE_INTEGER #noinit;
     if _GetFileSizeEx(auto handle, &size) == 0 {
         ec, estr :: os_get_last_error();
@@ -50,7 +50,7 @@ _fs_impl_file_size :: fn (handle: FSFile) (usize, Error) #inline {
     return auto size, ok();
 }
 
-_fs_impl_file_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) {
+_fs_impl_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) {
     if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
     read_bytes: _DWORD #noinit;
     if _ReadFile(handle, dest, auto size, &read_bytes, null) == 0 {
@@ -60,7 +60,7 @@ _fs_impl_file_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) {
     return auto read_bytes, ok();
 }
 
-_fs_impl_file_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) {
+_fs_impl_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) {
     if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
     written_bytes: _DWORD #noinit;
     if _WriteFile(handle, src, auto size, &written_bytes, null) == 0 {
@@ -168,7 +168,7 @@ _fs_impl_validate_filename :: fn (name: string) bool {
     return true;
 }
 
-_fs_impl_cwd :: fn () string #inline {
+_fs_impl_get_cwd :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
     written :: _GetCurrentDirectoryA(auto buf.len, auto buf.ptr);
     if written == 0 { return string_new(); }
@@ -186,7 +186,7 @@ _fs_impl_set_cwd :: fn (path: string) Error #inline {
     return ok();
 }
 
-_fs_impl_home :: fn () string #inline {
+_fs_impl_get_home :: fn () string #inline {
     tmp :: "USERPROFILE";
     cdir :: cast(*u8) c_getenv(auto tmp.ptr);
     if !cdir { return string_new(); }
@@ -195,7 +195,7 @@ _fs_impl_home :: fn () string #inline {
     return remove_last_separator(out);
 }
 
-_fs_impl_tmp :: fn () string #inline {
+_fs_impl_get_tmp :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
     written :: _GetTempPathA(auto buf.len, auto buf.ptr);
     if written == 0 { return string_new(); }

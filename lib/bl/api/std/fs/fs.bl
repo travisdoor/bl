@@ -61,24 +61,24 @@ fs_exist :: fn (filepath: string) bool #inline {
 /// .. literalinclude:: /examples/docs/004.bl
 ///    :language: bl
 fs_open :: fn (filepath: string, mode: ...FSOpenMode) (FSFile, Error) #inline {
-    return _fs_impl_file_open(filepath, mode);
+    return _fs_impl_open(filepath, mode);
 }
 
 /// Close previously openned file. Does nothing when `handle` is not valid.
 fs_close :: fn (handle: FSFile) #inline {
-    _fs_impl_file_close(handle);
+    _fs_impl_close(handle);
 }
 
 /// Try to remove file specified by `filepath` and return `OK` on success, otherwise
 /// return error.
 fs_remove :: fn (filepath: string) Error #inline {
-    return _fs_impl_file_remove(filepath);
+    return _fs_impl_remove(filepath);
 }
 
 /// Return file content size in bytes and `OK` status on success, otherwise
 /// return zero and proper error.
 fs_size :: fn (handle: FSFile) (usize, Error) #inline {
-    return _fs_impl_file_size(handle);
+    return _fs_impl_size(handle);
 }
 
 /// Read whole file content into string. Return new string instance containting
@@ -91,12 +91,12 @@ fs_size :: fn (handle: FSFile) (usize, Error) #inline {
 /// .. literalinclude:: /examples/docs/005.bl
 ///    :language: bl
 fs_read_string :: fn (handle: FSFile) (string, Error) {
-    size, err :: _fs_impl_file_size(handle);
+    size, err :: _fs_impl_size(handle);
     if !is_ok(err) {
         return string_empty, err;
     }
     buf := string_new(cast(usize) size);
-    read, err2 :: _fs_impl_file_read(handle, buf.ptr, auto size);
+    read, err2 :: _fs_impl_read(handle, buf.ptr, auto size);
     if !is_ok(err2) {
         string_delete(buf);
         return string_empty, err2;                
@@ -111,14 +111,14 @@ fs_read_string :: fn (handle: FSFile) (string, Error) {
 /// there was no error reported by function.
 fs_read_slice :: fn (handle: FSFile) ([]u8, Error) {
     invalid: []u8;
-    size, err :: _fs_impl_file_size(handle);
+    size, err :: _fs_impl_size(handle);
     if !is_ok(err) {
         return invalid, err;
     }
     buf: []u8;
     if size == 0 { return buf, ok(); }
     slice_init(buf, auto size);
-    read, err2 :: _fs_impl_file_read(handle, buf.ptr, auto size);
+    read, err2 :: _fs_impl_read(handle, buf.ptr, auto size);
     if !is_ok(err2) {
         slice_terminate(buf);
         return invalid, err2;                
@@ -133,7 +133,7 @@ fs_read_slice :: fn (handle: FSFile) ([]u8, Error) {
 /// must be allocated to handle at least `size` bytes. There is no overflow
 /// check.
 fs_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) #inline {
-    return _fs_impl_file_read(handle, dest, size);
+    return _fs_impl_read(handle, dest, size);
 }
 
 /// Write `size` bytes from raw buffer `src` into the file. Return count of
@@ -141,13 +141,13 @@ fs_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) #inline {
 /// `src` buffer size must be at least `size` bytes. No overflow checking
 /// is done.
 fs_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) #inline {
-    return _fs_impl_file_write(handle, src, size);
+    return _fs_impl_write(handle, src, size);
 }
 
 /// Write content of `str` into the file, return count of written bytes and `OK` if
 /// there is no error, otherwise return 0 and error.
 fs_write_string :: fn (handle: FSFile, str: string) (s64, Error) #inline {
-    written_bytes, err :: _fs_impl_file_write(handle, str.ptr, str.len);
+    written_bytes, err :: _fs_impl_write(handle, str.ptr, str.len);
     if !is_ok(err) { return 0, err; }
     return auto written_bytes, ok();    
 }
@@ -155,7 +155,7 @@ fs_write_string :: fn (handle: FSFile, str: string) (s64, Error) #inline {
 /// Write content of `v` slice into the file, return count of written bytes and `OK` if
 /// there is no error, otherwise return 0 and error.
 fs_write_slice :: fn (handle: FSFile, v: []u8) (s64, Error) #inline {
-    written_bytes, err :: _fs_impl_file_write(handle, v.ptr, v.len);
+    written_bytes, err :: _fs_impl_write(handle, v.ptr, v.len);
     if !is_ok(err) { return 0, err; }
     return auto written_bytes, ok();
 }
@@ -194,7 +194,7 @@ fs_dir_remove_all :: fn (dirpath: string) Error {
                 if !is_ok(err) { return err; }
             }            
             FSInfoKind.File {
-                err :: _fs_impl_file_remove(tmp);
+                err :: _fs_impl_remove(tmp);
                 if !is_ok(err) { return err; }
             }
         }
@@ -239,7 +239,7 @@ fs_validate_filename :: fn (name: string) bool #inline {
 /// Try to obtain current working directory, result must be released by
 /// :ref:`string_delete`. Path does not contain last path separator.
 fs_get_cwd :: fn () string #inline {
-    return _fs_impl_cwd();
+    return _fs_impl_get_cwd();
 }
 
 /// Sets current working directory and return `OK` on success, otherwise
@@ -251,13 +251,13 @@ fs_set_cwd :: fn (path: string) Error #inline {
 /// Try to obtain system home directory, result must be released by
 /// :ref:`string_delete`. Path does not contain last path separator.
 fs_get_home :: fn () string #inline {
-    return _fs_impl_home();
+    return _fs_impl_get_home();
 }
 
 /// Try to obtain system temporary directory, result must be released by
 /// :ref:`string_delete`. Path does not contain last path separator.
 fs_get_tmp :: fn () string #inline {
-    return _fs_impl_tmp();
+    return _fs_impl_get_tmp();
 }
 
 /// Try to normalize `filepath`, basically try to remove all relative path

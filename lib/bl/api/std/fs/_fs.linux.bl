@@ -15,7 +15,7 @@ _fs_impl_exist :: fn (filepath: string) bool #inline {
     return _stat(auto filepath.ptr, &tmp) == 0;
 }
 
-_fs_impl_file_open :: fn (filepath: string, mode: ...FSOpenMode) (FSFile, Error) {
+_fs_impl_open :: fn (filepath: string, mode: ...FSOpenMode) (FSFile, Error) {
     if string_is_empty(filepath) { return 0, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     flags := modes_to_flags(mode);
     handle :: _open(auto filepath.ptr, flags, 0);
@@ -26,7 +26,7 @@ _fs_impl_file_open :: fn (filepath: string, mode: ...FSOpenMode) (FSFile, Error)
     return handle, ok();   
 }
 
-_fs_impl_file_remove :: fn (filepath: string) Error #inline {
+_fs_impl_remove :: fn (filepath: string) Error #inline {
     if string_is_empty(filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     if _unlink(auto filepath.ptr) != 0 {
         ec, estr :: os_get_last_error();
@@ -35,11 +35,11 @@ _fs_impl_file_remove :: fn (filepath: string) Error #inline {
     return ok();
 }
 
-_fs_impl_file_close :: fn (handle: FSFile) #inline {
+_fs_impl_close :: fn (handle: FSFile) #inline {
     _close(auto handle);
 }
 
-_fs_impl_file_size :: fn (handle: FSFile) (usize, Error) #inline {
+_fs_impl_size :: fn (handle: FSFile) (usize, Error) #inline {
     tmp: _stat_t;
     if _fstat(auto handle, &tmp) != 0 {
         ec, estr :: os_get_last_error();
@@ -48,7 +48,7 @@ _fs_impl_file_size :: fn (handle: FSFile) (usize, Error) #inline {
     return auto tmp.st_size, ok();
 }
 
-_fs_impl_file_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) {
+_fs_impl_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) {
     if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
     read :: _read(auto handle, auto dest, auto size);
     if read < 0 { 
@@ -58,7 +58,7 @@ _fs_impl_file_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) {
     return auto read, ok();
 }
 
-_fs_impl_file_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) {
+_fs_impl_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) {
     if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
     written :: _write(auto handle, auto src, auto size);
     if written < 0 { 
@@ -150,14 +150,14 @@ _fs_impl_validate_filename :: fn (name: string) bool {
     return true;
 }
 
-_fs_impl_cwd :: fn () string #inline {
+_fs_impl_get_cwd :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
     if !_getcwd(auto buf.ptr, auto buf.len) { return string_new(); }
     path :: string_new(buf.ptr);
     return remove_last_separator(path);
 }
 
-_fs_impl_home :: fn () string #inline {
+_fs_impl_get_home :: fn () string #inline {
     tmp :: "HOME";
     cdir :: cast(*u8) c_getenv(auto tmp.ptr);
     if !cdir { return string_new(); }
@@ -165,7 +165,7 @@ _fs_impl_home :: fn () string #inline {
     return remove_last_separator(path);
 }
 
-_fs_impl_tmp :: fn () string #inline {
+_fs_impl_get_tmp :: fn () string #inline {
     tmp :: "TMPDIR";
     cdir :: cast(*u8) c_getenv(auto tmp.ptr);
     if !cdir { return string_new("/tmp"); }
@@ -179,7 +179,7 @@ _fs_impl_normalize :: fn (filepath: *string) Error {
     buf : [OS_PATH_MAX]u8;
     in_buf : [OS_PATH_MAX]u8 #noinit;
 
-    cwd :: _fs_impl_cwd();
+    cwd :: _fs_impl_get_cwd();
     defer string_delete(cwd);
     bprint(in_buf, "%/%", cwd, ^filepath);
     
