@@ -18,7 +18,7 @@ thread_create_test :: fn () #test {
 _worker_called: s32;
 
 thread_create_test2 :: fn () #test {
-    worker :: fn (args: ...) s32 {
+    worker :: fn (ctx: *u8) s32 {
         _worker_called += 1;
         return 0;
     };
@@ -34,7 +34,7 @@ thread_create_test2 :: fn () #test {
 }
 
 thread_create_test3 :: fn () #test {
-    worker :: fn (args: ...) s32 {
+    worker :: fn (ctx: *u8) s32 {
         _worker_called += 1;
         return 666;
     };
@@ -49,23 +49,42 @@ thread_create_test3 :: fn () #test {
     _worker_called = 0;
 }
 
+MyContext :: struct {
+    i: s32;
+}
+
 thread_create_test4 :: fn () #test {
-    worker :: fn (args: ...) s32 {
-        sum: s32;
-        loop i := 0; i < args.len; i += 1 {
-            arg :: &args[i];
-            sum += ^(cast(*s32) arg.data);
-        }
+    worker :: fn (_ctx: *u8) s32 {
+        ctx :: cast(*MyContext) _ctx;
         _worker_called += 1;
-        return sum;
+        return ctx.i;
     };
-    
-    t, err :: thread_create(&worker, 10, 20, 30);
+ 
+    ctx := {:MyContext: 10};   
+    t, err :: thread_create(&worker, auto &ctx);
     test_ok(err);
 
     code, err2 :: thread_join(t, 1000);
     test_ok(err2);
-    test_eq(code, 60);
+    test_eq(code, 10);
+    test_eq(_worker_called, 1);
+    _worker_called = 0;
+}
+
+thread_exit_test :: fn () #test {
+    worker :: fn (_ctx: *u8) s32 {
+        _worker_called += 1;
+        thread_exit(10);
+        unreachable;
+        return 0;
+    };
+ 
+    t, err :: thread_create(&worker);
+    test_ok(err);
+
+    code, err2 :: thread_join(t, 1000);
+    test_ok(err2);
+    test_eq(code, 10);
     test_eq(_worker_called, 1);
     _worker_called = 0;
 }

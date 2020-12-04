@@ -4,14 +4,10 @@
 _ImplThread :: _HANDLE;
 _IMPL_THREAD_INFINITE :: _INFINITE;
 
-_thread_impl_create :: fn (entry: ThreadEntryFn, args: ...) (Thread, Error) {
+_thread_impl_create :: fn (entry: ThreadEntryFn, ctx: *u8) (Thread, Error) {
     if !entry { return null, error(ERR_INVALID_HANDLE, "Cannot create thread. Handle is invalid."); }
-    tmp: *_ThreadArgs = auto alloc(sizeof(_ThreadArgs));
-    tmp.entry = entry;
-    tmp.args = args;
-    thread :: _CreateThread(null, 0, &thread_entry, auto tmp, 0, null);
+    thread :: _CreateThread(null, 0, auto entry, auto ctx, 0, null);
     if !thread {
-        free(auto tmp);
         ec, estr :: os_get_last_error();
         return null, error(ec, "Cannot create thread: %.", estr);
     }
@@ -36,14 +32,16 @@ _thread_impl_join :: fn (thread: Thread, timeout_ms: u32) (exit_code: s32, err: 
     return auto exit_code, ok();
 }
 
-#private
-_ThreadArgs :: struct {
-    entry: ThreadEntryFn;
-    args: ...; 
+_thread_impl_current :: fn () Thread #inline {
+    return _GetCurrentThread();
 }
 
-thread_entry :: fn (_args: *u8) u32 {
-    tmp :: cast(*_ThreadArgs) _args;
-    defer free(auto tmp);
-    return auto tmp.entry(tmp.args);
+_thread_impl_exit :: fn (exit_code: s32) Error {
+    thread :: _thread_impl_current();
+    if _TerminateThread(thread, auto exit_code) == 1 {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot exit thread: %.", estr);
+    }
+    return ok();
 }
+
