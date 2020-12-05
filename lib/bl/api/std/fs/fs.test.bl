@@ -80,7 +80,6 @@ fs_open_test3 :: fn () #test {
     test_eq(written, 0);
 }
 
-
 fs_file_create_test1 :: fn () #test {
     file, err :: fs_open("", FSOpenMode.Create);
     defer fs_close(file);

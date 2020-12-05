@@ -1,3 +1,7 @@
+#load "os/linux/types.bl"
+
+_STAT_VER :: 1;
+
 _S_IRUSR :: 0x100;
 _S_IWUSR :: 0x80;
 _S_IXUSR :: 0x40;
@@ -31,26 +35,36 @@ _S_ISREG :: fn (mode: u32) bool #inline {
 
 
 _stat_t :: struct {
-    st_dev: u64;
-    st_ino: u64;
-    st_nlink: u64;
-    st_mode: u32;
-    st_uid: u32;
-    st_gid: u32;
+    st_dev: _dev_t;
+    st_ino: _ino_t;
+    st_nlink: _nlink_t;
+    st_mode: _mode_t;
+    st_uid: _uid_t;
+    st_gid: _gid_t;
     _0: c_int;
-    st_rdev: u64;
-    st_size: s64;
-    st_blksize: s64;
-    st_blocks: s64;
-    st_atime: s64;
-    st_atime_nsec: c_long;
-    st_mtime: s64;
-    st_mtime_nsec: c_long;
-    st_ctime: s64;
-    st_ctime_nsec: c_long;
+    st_rdev: _dev_t;
+    st_size: _off_t;
+    st_blksize: _blksize_t;
+    st_blocks: _blkcnt_t;
+    st_atime: _time_t;
+    st_atime_nsec: _syscall_ulong_t;
+    st_mtime: _time_t;
+    st_mtime_nsec: _syscall_ulong_t;
+    st_ctime: _time_t;
+    st_ctime_nsec: _syscall_ulong_t;
     _1: [3]c_long;
 }
 
-_stat :: fn (path: *c_char, buf: *_stat_t) c_int #extern "statfs";
-_fstat :: fn (fd: c_int, stat: *_stat_t) c_int #extern "fstatfs";
 _mkdir :: fn (path: *c_char, mode: c_int) c_int #extern "mkdir";
+
+_stat :: fn (path: *c_char, buf: *_stat_t) c_int #inline {
+    return _stat_v(_STAT_VER, path, buf);
+}
+
+_fstat :: fn (fd: c_int, buf: *_stat_t) c_int #inline {
+    return _fstat_v(_STAT_VER, fd, buf);
+}
+
+#private
+_stat_v :: fn (ver: c_int, path: *c_char, buf: *_stat_t) c_int #extern "__xstat64";
+_fstat_v :: fn (ver: c_int, fd: c_int, stat: *_stat_t) c_int #extern "__fxstat64";

@@ -1,7 +1,7 @@
 #load "os/linux/stat.bl"
 #load "os/linux/fcntl.bl"
-#load "os/posix/unistd.bl"
 #load "os/linux/dirent.bl"
+#load "os/posix/unistd.bl"
 #load "std/libc.bl"
 #load "fs.bl"
 
@@ -18,8 +18,9 @@ _fs_impl_exist :: fn (filepath: string) bool #inline {
 _fs_impl_open :: fn (filepath: string, mode: ...FSOpenMode) (FSFile, Error) {
     if string_is_empty(filepath) { return 0, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     flags := modes_to_flags(mode);
-    handle :: _open(auto filepath.ptr, flags, 0);
-    if handle == -1 { // error
+    mode_flags :: _S_IRUSR | _S_IWUSR | _S_IROTH | _S_IWOTH;
+    handle :: _open(auto filepath.ptr, flags, mode_flags);
+    if handle < 0 { // error
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot open file '%': %.", filepath, estr);
     }    
@@ -89,11 +90,11 @@ _fs_impl_dir_remove :: fn (dirpath: string) Error {
 _fs_impl_dir_scan :: fn (dirpath: string, filter: FSDirScanFilterFn) (FSInfoList, Error) {
     invalid: FSInfoList;
     dir := _opendir(auto dirpath.ptr);
-    defer _closedir(dir);
     if !dir {
         ec, estr :: os_get_last_error();
         return invalid, error(ec, "Cannot list directory '%': %.", dirpath, estr);
     }
+    defer _closedir(dir);
 
     fc := 0;
     loop _readdir(dir) != null { fc += 1; }
@@ -137,7 +138,6 @@ _fs_impl_is_directory :: fn (path: string) (bool, Error) #inline {
         ec, estr :: os_get_last_error();
         return false, error(ec, "Cannot check directory '%': %.", path, estr);
     }
-    print("Is dir? '%'\n", stat);
     return _S_ISDIR(stat.st_mode), ok();
 }
 
@@ -155,6 +155,15 @@ _fs_impl_get_cwd :: fn () string #inline {
     if !_getcwd(auto buf.ptr, auto buf.len) { return string_new(); }
     path :: string_new(buf.ptr);
     return remove_last_separator(path);
+}
+
+_fs_impl_set_cwd :: fn (path: string) Error #inline {
+    if string_is_empty(path) { return error(ERR_INVALID_HANDLE, "Path is empty!"); }
+    if _chdir(auto path.ptr) != 0 {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot set current directory to '%': %.", path, estr);
+    }
+    return ok();
 }
 
 _fs_impl_get_home :: fn () string #inline {
@@ -219,18 +228,24 @@ _fs_impl_get_extension :: fn (filename: string) string #inline {
 
 #private
 modes_to_flags :: fn (modes: []FSOpenMode) s32 #inline {
-    if modes.len == 0 { return _O_RDWR; }
-    r, w := false;
+    r, w, create, append := false;
     loop i := 0; i < modes.len; i += 1 {
         switch modes[i] {
-            FSOpenMode.Read    { r = true; }
+            FSOpenMode.Read    { r = true; }            
             FSOpenMode.Write   { w = true; }
+            FSOpenMode.Append  { w = true; append = true; }
+            FSOpenMode.Create  { create = true; }
             default { panic(); }
         }
     }
-    if w && (!r) { return _O_WRONLY; }
-    if r && (!w) { return _O_RDONLY; }
-    return _O_RDWR;
+    flags: s32;
+    if ((!w) && (!r)) { flags = _O_RDONLY; }
+    else if (w && r) { flags = _O_RDWR; }
+    else if w { flags = _O_WRONLY; }
+    else if r { flags = _O_RDONLY; }
+    if create { flags = flags | _O_CREAT; }
+    if append { flags = flags | _O_APPEND; }
+    return flags;
 }
 
 remove_last_separator :: fn (path: string) string {
