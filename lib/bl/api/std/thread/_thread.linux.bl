@@ -1,0 +1,22 @@
+#load "thread.bl"
+
+_ImplThread :: *u8;
+_IMPL_THREAD_INFINITE :: 0;
+
+_thread_impl_create :: fn (entry: ThreadEntryFn, ctx: *u8) (Thread, Error) {
+    if !entry { return null, error(ERR_INVALID_HANDLE, "Cannot create thread. Handle is invalid."); }
+    return thread, ok();
+}
+
+_thread_impl_join :: fn (thread: Thread, timeout_ms: u32) (exit_code: s32, err: Error) {
+    if !thread { error(ERR_INVALID_HANDLE, "Cannot join. Handle is invalid."); }
+    return auto exit_code, ok();
+}
+
+_thread_impl_current :: fn () Thread #inline {
+    return null;
+}
+
+_thread_impl_exit :: fn (exit_code: s32) Error {
+    return ok();
+}
