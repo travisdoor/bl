@@ -166,7 +166,7 @@ llvm_map_components_to_libnames(LLVM_LIBS core support X86 passes)
 if (MSVC)
     target_link_libraries(blc PUBLIC
         shlwapi
-        	DbgHelp
+        DbgHelp
     )
 
     # C 
@@ -178,12 +178,17 @@ if (MSVC)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd /W4 /WX /GS")
 else()
     # C 
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG -Wno-format-overflow")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wextra -Wno-format-overflow -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -Werror -O0")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -Werror -O0")
 
     # CXX 
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG -fno-strict-aliasing -fno-exceptions -fno-rtti")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-strict-aliasing -fno-exceptions -fno-rtti -g -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -O0")
+endif()
+
+if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wno-format-overflow")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_RELEASE} -Wno-format-overflow")
 endif()
 
 target_link_libraries(blc PUBLIC
