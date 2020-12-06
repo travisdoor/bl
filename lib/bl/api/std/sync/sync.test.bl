@@ -1,0 +1,44 @@
+#load "std/test.bl"
+#load "std/debug_allocator.bl"
+
+#import "std/thread"
+#import "std/sync"
+
+main :: fn () s32 {
+    dbgalloc_init();
+    defer dbgalloc_terminate();
+    return test_run();    
+}
+
+#private
+THREAD_COUNT :: 8;
+DATA_COUNT :: 1000;
+TOTAL :: THREAD_COUNT * DATA_COUNT;
+_mutex: Mutex;
+_data: [..]s32;
+
+
+worker :: fn (_: *u8) s32 {
+    mutex_lock(&_mutex);
+    defer mutex_unlock(&_mutex);
+
+    loop i := 0; i < DATA_COUNT; i += 1 {
+        array_push(_data, i);
+    }
+    return 0;
+}
+
+mutex_test_1 :: fn () #test {
+    array_init(_data);
+    defer array_terminate(_data);
+    mutex_init(&_mutex);
+    defer mutex_terminate(&_mutex);
+    t: [THREAD_COUNT]Thread;
+    loop i := 0; i < t.len; i += 1 {
+        tmp :: thread_create(&worker);
+        t[i] = tmp;
+    }
+
+    thread_join_all(t);
+    test_eq(_data.len, TOTAL);
+}

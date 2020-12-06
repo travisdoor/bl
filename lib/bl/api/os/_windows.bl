@@ -29,9 +29,7 @@
 #load "windows/winapi.bl"
 #load "windows/io.bl"
 #load "posix/signal.bl"
-#load "std/libc.bl"
 #load "std/string.bl"
-#load "std/utils.bl"
 #load "std/error.bl"
 
 OS_KIND :: OSKind.Windows;
@@ -41,9 +39,6 @@ OS_STDIN  :: C_STDIN;
 OS_STDOUT :: C_STDOUT;
 OS_STDERR :: C_STDERR;
 
-/*
- * Platform depend C types compatible with C ABI.
- */
 c_char      :: s8;
 c_uchar     :: u8;
 c_short     :: s16;
@@ -58,42 +53,9 @@ c_void_ptr  :: *u8;
 c_size_t    :: u64;
 c_ssize_t   :: s64;
 
-/*
- * Maximum path size in bytes.
- */
 OS_PATH_MAX :: _MAX_PATH;
 
-/*
- * OSLibrary
- *
- * Description:
- *   Library handle.
- */
 OSLibrary :: *u8;
-OSMutex :: _HANDLE;
-
-os_mutex_init :: fn (mutex: *OSMutex) #inline {
-    (^mutex) = _CreateMutexA(null, 0, null);
-}
-
-os_mutex_terminate :: fn (mutex: *OSMutex) #inline {
-    _CloseHandle(^mutex);
-}
-
-os_mutex_lock :: fn (mutex: *OSMutex) #inline {
-    _WaitForSingleObject(^mutex, _INFINITE);
-}
-
-os_mutex_trylock :: fn (mutex: *OSMutex) bool #inline {
-    unreachable;
-    return false;
-}
-
-os_mutex_unlock :: fn (mutex: *OSMutex) #inline {
-    if _ReleaseMutex(^mutex) == 0 {
-        panic("Cannot unlock mutex!");
-    }
-}
 
 os_sleep_ms :: fn (ms: f64) #inline {
     _Sleep(auto ms);

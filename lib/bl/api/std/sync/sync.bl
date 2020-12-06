@@ -1,0 +1,33 @@
+//! ====
+//! Sync
+//! ====
+//! 
+//! ::
+//! 
+//!    #import "std/sync"
+//!
+//! Multiplatform implementation of various thread synchronization tools.
+//! 
+//! .. warning:: This module is experimental and not fully supported across all platforms.
+
+Mutex :: _MutexImpl;
+
+mutex_init :: fn (mutex: *Mutex) #inline {
+    _mutex_impl_init(mutex);
+}
+
+mutex_terminate :: fn (mutex: *Mutex) #inline {
+    _mutex_impl_terminate(mutex);
+}
+
+mutex_lock :: fn (mutex: *Mutex) #inline {
+    _mutex_impl_lock(mutex);
+}
+
+mutex_try_lock :: fn (mutex: *Mutex) bool #inline {
+    return _mutex_impl_try_lock(mutex);
+}
+
+mutex_unlock :: fn (mutex: *Mutex) #inline {
+    _mutex_impl_unlock(mutex);
+}

@@ -26,6 +26,7 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#import "std/sync"
 #load "_experimental/hash_table.bl"
 
 //! ===============
@@ -66,7 +67,7 @@ dbgalloc_init :: fn () {
     _prev_alloc_fn = _context.alloc_fn;
     _context.alloc_fn = &debug_allocator;
     _alloc_table = htbl_new(*Meta, 2048, &_default_allocator);
-    os_mutex_init(&_mutex);
+    mutex_init(&_mutex);
 }
 
 /// Terminate :ref:`debug_allocator`. Prints current memory report when `print_report` is `true`.
@@ -76,7 +77,7 @@ dbgalloc_terminate :: fn (print_report := true) {
     }
     _context.alloc_fn = _prev_alloc_fn;
     htbl_delete(_alloc_table);
-    os_mutex_terminate(&_mutex);
+    mutex_terminate(&_mutex);
 }
 
 /// Invoke :ref:`debug_break` before allocation with defined serial ID.
@@ -87,8 +88,8 @@ dbgalloc_break_on :: fn (serial: u64) #inline {
 
 /// Return currently allocated memory in bytes.
 dbgalloc_allocated_bytes :: fn () usize #inline {
-    os_mutex_lock(&_mutex);
-    defer os_mutex_unlock(&_mutex);
+    mutex_lock(&_mutex);
+    defer mutex_unlock(&_mutex);
     return auto _total_allocated;
 }
 
@@ -116,8 +117,8 @@ dbgalloc_allocated_bytes :: fn () usize #inline {
 /// .. hint:: Allocation serail ID can be used by :ref:`dbgalloc_break_on` to interrupt execution before
 ///           memory is allocated and eventually localize allocation in debbuger.
 dbgalloc_print_memory_report :: fn (dump_leaks := false) {
-    os_mutex_lock(&_mutex);
-    defer os_mutex_unlock(&_mutex);
+    mutex_lock(&_mutex);
+    defer mutex_unlock(&_mutex);
     unit := "Bytes";
     total := _total_allocated;
     if total > 1024 { total /= 1024; unit = "kB"; }
@@ -143,7 +144,7 @@ dbgalloc_print_memory_report :: fn (dump_leaks := false) {
 }
 
 #private
-_mutex: OSMutex;
+_mutex: Mutex;
 _allocation_count: s64;
 _total_allocated: s64;
 _prev_alloc_fn: AllocFn;
@@ -175,8 +176,8 @@ debug_allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file :
 
 debug_malloc :: fn (size: usize, file: string, line: s32) *u8 {
     if size == 0 { panic("Zero allocation!"); }
-    os_mutex_lock(&_mutex);
-    defer os_mutex_unlock(&_mutex);
+    mutex_lock(&_mutex);
+    defer mutex_unlock(&_mutex);
     _serial += 1;
     if _break_on == _serial {
         debug_break();
@@ -204,8 +205,8 @@ debug_free :: fn (ptr: *u8) {
     if meta.used != auto meta { panic("Memory malformed!"); }
     meta.used = 0;
     { // CRITICAL
-        os_mutex_lock(&_mutex);
-        defer os_mutex_unlock(&_mutex);    
+        mutex_lock(&_mutex);
+        defer mutex_unlock(&_mutex);    
         _total_allocated -= auto meta.allocated_size;
         _allocation_count -= 1;
         htbl_erase(_alloc_table, cast(u64) meta);
