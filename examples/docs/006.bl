@@ -1,15 +1,18 @@
+#import "std/thread"
+
 // Worker function called from new thread.
-worker :: fn (args: []Any) {
+worker :: fn (args: *u8) s32 {
     print("Thread started!\n");
     os_sleep_ms(1000.0);
+    return 0;
 }
 
 main :: fn () s32 {
     // Create and execute thread without parameters.
-    t :: os_thread_create(&worker);
+    t :: thread_create(&worker);
 
     // Wait for thread.
-    os_thread_join(t);
+    thread_join(t);
     print("Thread joined.\n");
 
     return 0;

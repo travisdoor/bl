@@ -70,36 +70,7 @@ OS_PATH_MAX :: _MAX_PATH;
  *   Library handle.
  */
 OSLibrary :: *u8;
-
-// Threading
-OSThread :: _HANDLE;
 OSMutex :: _HANDLE;
-OSThreadEntryFn :: *fn (args: []Any);
-
-os_thread_create :: fn (entry: OSThreadEntryFn, args: ...) OSThread {
-    tmp: *_ThreadArgs = auto alloc(sizeof(_ThreadArgs));
-    tmp.entry = entry;
-    tmp.args = {:[]Any: args.len, args.ptr};
-
-    thread :: _CreateThread(null, 0, &thread_entry, auto tmp, 0, null);
-
-    return thread;
-}
-
-os_thread_join :: fn (thread: OSThread) {
-    _WaitForSingleObject(thread, _INFINITE);
-    _CloseHandle(thread);
-}
-
-// @MULTIPLATFORM: implement this for linux!!!
-os_thread_current :: fn () OSThread #inline {
-    return _GetCurrentThread();
-}
-
-// @MULTIPLATFORM: implement this for linux!!!
-os_thread_kill :: fn (thread: OSThread, exit_code: s32 = 0) bool #inline {
-    return _TerminateThread(thread, auto exit_code) > 1;
-}
 
 os_mutex_init :: fn (mutex: *OSMutex) #inline {
     (^mutex) = _CreateMutexA(null, 0, null);
@@ -271,15 +242,3 @@ get_command_line_args :: fn (out_args: *[]string) #no_inline {
     }
 }
 
-// Threading
-_ThreadArgs :: struct {
-    entry: OSThreadEntryFn;
-    args: []Any; 
-}
-
-thread_entry :: fn (_args: *u8) u32 {
-    tmp :: cast(*_ThreadArgs) _args;
-    defer free(auto tmp);
-    tmp.entry(tmp.args);
-    return 0;
-}
