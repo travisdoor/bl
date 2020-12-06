@@ -292,7 +292,7 @@ _context := {:Context:
             };
 
 /// Contains all arguments passed from command line. First argument is executable name.
-command_line_arguments: []string;
+command_line_arguments: []string #compiler;
 
 
 

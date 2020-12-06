@@ -1,3 +1,8 @@
+_pthread_mutex_t :: struct { 
+    __sig: c_long;
+    __opaque: [_SIZE_OF_PTHREAD_MUTEX_T]c_char;
+}
+
 _pthread_t :: *u8;
 _pthread_attr_t :: *u8;
 _pthread_start_routine_t :: *fn (args: c_void_ptr) c_void_ptr;
@@ -6,3 +11,11 @@ _pthread_create :: fn (thread: *_pthread_t, attr: _pthread_attr_t, start_routine
 _pthread_join :: fn (thread: _pthread_t, retval: *c_void_ptr) c_int #extern "pthread_join";
 _pthread_exit :: fn (retval: c_void_ptr) #extern "pthread_exit";
 _pthread_self :: fn () _pthread_t #extern "pthread_self";
+_pthread_mutex_lock :: fn (mutex: *_pthread_mutex_t) c_int #extern "pthread_mutex_lock";
+_pthread_mutex_trylock :: fn (mutex: *_pthread_mutex_t) c_int #extern "pthread_mutex_trylock";
+_pthread_mutex_unlock :: fn (mutex: *_pthread_mutex_t) c_int #extern "pthread_mutex_unlock"; 
+_pthread_mutex_init :: fn (mutex: *_pthread_mutex_t, attr: c_void_ptr) c_int #extern "pthread_mutex_init";
+_pthread_mutex_destroy :: fn (mutex: *_pthread_mutex_t) c_int #extern "pthread_mutex_destroy";
+
+#private
+_SIZE_OF_PTHREAD_MUTEX_T :: 56;

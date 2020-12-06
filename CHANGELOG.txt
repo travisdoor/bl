@@ -7,10 +7,11 @@ Add debug allocator.
 Add new FileSystem module.
 Add #import directive for modules
 Add BL Doctor for better unit testing.
-Add first prototype of modules and #import hash directive. [TODO: documentation]
+Add first prototype of modules and #import hash directive.
 Add support of shebang and silent execution.
 Add -silent and -rs options.
 Add -verify-llvm option to enable LLVM IR verification.
+Add modules: thread, sync, fs
 Support custom allocators in containers.
 Compiler now returns numerical maximum error code if compilation fail.
 Less descriptive terminal output during compilation.

@@ -58,48 +58,6 @@ c_void_ptr  :: *u8;
 c_size_t    :: u64;
 c_ssize_t   :: s64;
 
-// Threading
-OSMutex :: _PosixMutex;
-
-os_mutex_init :: fn (mutex: *OSMutex) #inline {
-    _posix_thread_mutex_init(mutex, null);
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
-}
-
-os_mutex_terminate :: fn (mutex: *OSMutex) #inline {
-    _posix_thread_mutex_destroy(mutex);
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
-}
-
-os_mutex_lock :: fn (mutex: *OSMutex) #inline {
-    _posix_thread_mutex_lock(mutex);
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
-}
-
-os_mutex_trylock :: fn (mutex: *OSMutex) bool #inline {
-    if _posix_thread_mutex_trylock(mutex) != 0 {
-        return false;
-    }
-
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
-    return true;
-}
-
-os_mutex_unlock :: fn (mutex: *OSMutex) #inline {
-    _posix_thread_mutex_unlock(mutex);
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
-    // INCOMPLETE: handle errors
-}
-
 os_sleep_ms :: fn (ms: f64) {
     _usleep(auto ms * 1000.0);
 };
@@ -223,21 +181,6 @@ WEXITSTATUS :: fn (x: s32) s32 #inline {
 _posix_dlopen    :: fn (path: *u8, mode: s32) *u8 #extern "dlopen";
 _posix_dlclose   :: fn (handle: *u8) s32 #extern "dlclose";
 _posix_dlsym     :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
-
-
-// Threading
-// This is platform depend!!!
-__POSIX_THREAD_MUTEX_SIZE__ :: 56;
-_PosixMutex :: struct { 
-    __sig: c_long;
-    __opaque: [__POSIX_THREAD_MUTEX_SIZE__]c_char;
-}
-
-_posix_thread_mutex_lock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_lock";
-_posix_thread_mutex_trylock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_trylock";
-_posix_thread_mutex_unlock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_unlock"; 
-_posix_thread_mutex_init :: fn (mutex: *_PosixMutex, attr: c_void_ptr) c_int #extern "pthread_mutex_init";
-_posix_thread_mutex_destroy :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_destroy";
 
 _posix_clockid_t :: c_int;
 _posix_time_t    :: c_long;
