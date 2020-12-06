@@ -24,11 +24,9 @@ thread_create :: fn (entry: ThreadEntryFn, ctx: *u8 = null) (Thread, Error) #inl
 }
 
 /// Blocks until `thread` exits. Return value from worker function is returned as
-/// `exit_code`. Wait timeout can be optioanlly specified by `timeout_ms` argument,
-/// infinite timeout is used by default. When execution is successful all thread
-/// resources are released.
-thread_join :: fn (thread: Thread, timeout_ms := _IMPL_THREAD_INFINITE) (exit_code: s32, err: Error) #inline {
-    return _thread_impl_join(thread, timeout_ms);
+/// `exit_code`. When execution is successful all thread resources are released.
+thread_join :: fn (thread: Thread) (exit_code: s32, err: Error) #inline {
+    return _thread_impl_join(thread);
 }
 
 /// Exit current thread with optional `exit_code` return value.

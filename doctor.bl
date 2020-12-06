@@ -11,8 +11,8 @@ EXAMPLES_DOCS_DIR :: "examples/docs";
 EXPECT_FAIL_DIR :: "tests/src/expect_fail";
 
 HARDCODED_MODULES :: {:[2]string:
-                      "lib/bl/api/std/fs/fs.test.bl",
-                      "lib/bl/api/std/thread/thread.test.bl",
+                      "lib/bl/api/std/fs/fs.test.bl",
+                      "lib/bl/api/std/thread/thread.test.bl",
                      };
 
 main :: fn () s32 {

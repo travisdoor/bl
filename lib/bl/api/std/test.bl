@@ -26,6 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#import "std/thread"
+
 #load "std/debug.bl"
 #load "std/string.bl"
 #load "std/array.bl"
@@ -199,8 +201,8 @@ test_run :: fn () s32 {
     }
 
     loop _ci < _queue.len {
-        t :: os_thread_create(&worker);
-        os_thread_join(t);
+        t :: thread_create(&worker);
+        thread_join(t);
     }
 
     print("\nResults:\n");
@@ -244,12 +246,11 @@ abort_handler :: fn () {
     _current.runtime_ms = os_tick_ms() - _start_time;
     _current.passed = false;
     print("[      | FAIL ] % (% ms)\n", _current.case.name, _current.runtime_ms);
-    thread :: os_thread_current();
-    os_thread_kill(thread, 1);
+    thread_exit(1);
     _os_abort_default();
 }
 
-worker :: fn (args: []Any) {
+worker :: fn (args: *u8) s32 {
     loop _ci < _queue.len {
         _current = &_queue[_ci];
         _ci += 1; 
@@ -262,6 +263,7 @@ worker :: fn (args: []Any) {
         _current.passed = true;
         print("[ PASS |      ] % (% ms)\n", _current.case.name, _current.runtime_ms);
     }
+    return 0;
 }
 
 str_eq :: fn (got: string, expected: string, loc := #call_location) {

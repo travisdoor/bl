@@ -1,0 +1,37 @@
+#load "thread.bl"
+#load "os/posix/pthread.bl"
+
+_ImplThread :: _pthread_t;
+
+_thread_impl_create :: fn (entry: ThreadEntryFn, ctx: *u8) (Thread, Error) {
+    if !entry { return null, error(ERR_INVALID_HANDLE, "Cannot create thread. Handle is invalid."); }
+    thread: _pthread_t #noinit;
+    err :: _pthread_create(&thread, null, auto entry, ctx);
+    if err != 0 {
+        estr :: cast(*u8) c_strerror(err);
+        return null, error(err, "Cannot create thread: %.", estr);
+    }    
+
+    return thread, ok();
+}
+
+_thread_impl_join :: fn (thread: Thread) (exit_code: s32, err: Error) {
+    if !thread { error(ERR_INVALID_HANDLE, "Cannot join. Handle is invalid."); }
+    exit_code: u64 #noinit;
+    err :: _pthread_join(thread, auto &exit_code); 
+    if err != 0 {
+        estr :: cast(*u8) c_strerror(err);
+        return -1, error(err, "Cannot join thread: %.", estr);
+    }    
+    return auto exit_code, ok();
+}
+
+_thread_impl_current :: fn () Thread #inline {
+    return _pthread_self();
+}
+
+_thread_impl_exit :: fn (exit_code: s32) Error {
+    _pthread_exit(auto exit_code);
+    return ok();
+}
+

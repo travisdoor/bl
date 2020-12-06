@@ -1,0 +1,8 @@
+_pthread_t :: *u8;
+_pthread_attr_t :: *u8;
+_pthread_start_routine_t :: *fn (args: c_void_ptr) c_void_ptr;
+
+_pthread_create :: fn (thread: *_pthread_t, attr: _pthread_attr_t, start_routine: _pthread_start_routine_t, args: c_void_ptr) c_int #extern "pthread_create";
+_pthread_join :: fn (thread: _pthread_t, retval: *c_void_ptr) c_int #extern "pthread_join";
+_pthread_exit :: fn (retval: c_void_ptr) #extern "pthread_exit";
+_pthread_self :: fn () _pthread_t #extern "pthread_self";

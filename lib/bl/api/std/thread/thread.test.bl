@@ -26,7 +26,7 @@ thread_create_test2 :: fn () #test {
     t, err :: thread_create(&worker);
     test_ok(err);
 
-    code, err2 :: thread_join(t, 1000);
+    code, err2 :: thread_join(t);
     test_ok(err2);
     test_eq(code, 0);
     test_eq(_worker_called, 1);
@@ -42,7 +42,7 @@ thread_create_test3 :: fn () #test {
     t, err :: thread_create(&worker);
     test_ok(err);
 
-    code, err2 :: thread_join(t, 1000);
+    code, err2 :: thread_join(t);
     test_ok(err2);
     test_eq(code, 666);
     test_eq(_worker_called, 1);
@@ -64,7 +64,7 @@ thread_create_test4 :: fn () #test {
     t, err :: thread_create(&worker, auto &ctx);
     test_ok(err);
 
-    code, err2 :: thread_join(t, 1000);
+    code, err2 :: thread_join(t);
     test_ok(err2);
     test_eq(code, 10);
     test_eq(_worker_called, 1);
@@ -82,7 +82,7 @@ thread_exit_test :: fn () #test {
     t, err :: thread_create(&worker);
     test_ok(err);
 
-    code, err2 :: thread_join(t, 1000);
+    code, err2 :: thread_join(t);
     test_ok(err2);
     test_eq(code, 10);
     test_eq(_worker_called, 1);

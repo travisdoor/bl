@@ -59,45 +59,7 @@ c_size_t    :: u64;
 c_ssize_t   :: s64;
 
 // Threading
-OSThread :: _PosixThread;
 OSMutex :: _PosixMutex;
-OSThreadEntryFn :: *fn (args: []Any);
-
-os_thread_create :: fn (entry: OSThreadEntryFn, args: ...) OSThread {
-    t: OSThread #noinit;
-
-    tmp: *_ThreadArgs = auto alloc(sizeof(_ThreadArgs));
-    tmp.entry = entry;
-    tmp.args = {:[]Any: args.len, args.ptr};
-
-    status :: _posix_thread_create(&t, null, &_thread_entry, auto tmp);
-    if status != 0 {
-        panic("Cannot create thread!");
-    }
-
-    return t;
-}
-
-os_thread_join :: fn (thread: OSThread) {
-    status :: _posix_thread_join(thread, null);
-    if status != 0 {
-        panic("Cannot join thread!");
-    }
-}
-
-os_thread_current :: fn () OSThread #inline {
-    return _posix_thread_self();
-}
-
-// @INCOMPLETE: calling kill does not work on current thread, this kinda
-// breaks testing framework. Redesing api when threads will be moved into
-// separate module.
-os_thread_kill :: fn (thread: OSThread, exit_code: s32 = 0) bool #inline {
-    _posix_thread_exit(null);
-    return true;
-    //return _posix_thread_kill(thread, auto exit_code) == 0;
-    // @INCOMPLETE: handle errors
-}
 
 os_mutex_init :: fn (mutex: *OSMutex) #inline {
     _posix_thread_mutex_init(mutex, null);
@@ -264,21 +226,6 @@ _posix_dlsym     :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
 
 
 // Threading
-_PosixThread :: c_void_ptr;
-_PosixThreadFn :: *fn (args: c_void_ptr);
-
-_ThreadArgs :: struct {
-    entry: OSThreadEntryFn;
-    args: []Any; 
-}
-
-_thread_entry :: fn (_args: *u8) {
-    tmp :: cast(*_ThreadArgs) _args;
-    defer free(auto tmp);
-    tmp.entry(tmp.args);
-    _posix_thread_exit(null);
-}
-
 // This is platform depend!!!
 __POSIX_THREAD_MUTEX_SIZE__ :: 56;
 _PosixMutex :: struct { 
@@ -286,11 +233,6 @@ _PosixMutex :: struct {
     __opaque: [__POSIX_THREAD_MUTEX_SIZE__]c_char;
 }
 
-_posix_thread_create :: fn (thread: *_PosixThread, attr: c_void_ptr, start_routine: _PosixThreadFn, args: c_void_ptr) c_int #extern "pthread_create";
-_posix_thread_join :: fn (thread: _PosixThread, retval: *c_void_ptr) c_int #extern "pthread_join";
-_posix_thread_exit :: fn (retval: c_void_ptr) #extern "pthread_exit";
-_posix_thread_self :: fn () _PosixThread #extern "pthread_self";
-_posix_thread_kill :: fn (thread: _PosixThread, sig: s32) s32 #extern "pthread_kill";
 _posix_thread_mutex_lock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_lock";
 _posix_thread_mutex_trylock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_trylock";
 _posix_thread_mutex_unlock :: fn (mutex: *_PosixMutex) c_int #extern "pthread_mutex_unlock"; 
