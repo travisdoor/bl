@@ -77,7 +77,7 @@ void vm_execute_instr(VM *vm, struct Assembly *assembly, struct MirInstr *instr)
 bool vm_eval_instr(VM *vm, struct Assembly *assembly, struct MirInstr *instr);
 bool vm_execute_instr_top_level_call(VM *vm, struct Assembly *assembly, struct MirInstrCall *call);
 bool vm_execute_fn(VM *vm, struct Assembly *assembly, struct MirFn *fn, VMStackPtr *out_ptr);
-void vm_provide_command_line_arguments(VM *vm, const char *args[]);
+void vm_provide_command_line_arguments(VM *vm, s32 argc, char *argv[]);
 void vm_do_cast(VMStackPtr      dest,
                 VMStackPtr      src,
                 struct MirType *dest_type,
@@ -111,6 +111,7 @@ void       vm_write_double(const struct MirType *type, VMStackPtr dest, f64 i);
 void       vm_write_float(const struct MirType *type, VMStackPtr dest, f32 i);
 void       vm_write_ptr(const struct MirType *type, VMStackPtr dest, VMStackPtr ptr);
 void vm_write_string(VM *vm, const struct MirType *type, VMStackPtr dest, const char *str, s64 len);
+void vm_write_slice(VM *vm, const struct MirType *type, VMStackPtr dest, void *ptr, s64 len);
 ptrdiff_t  vm_get_struct_elem_offset(struct Assembly *assembly, const struct MirType *type, u32 i);
 ptrdiff_t  vm_get_array_elem_offset(const struct MirType *type, u32 i);
 VMStackPtr vm_get_struct_elem_ptr(struct Assembly *     assembly,

@@ -9905,8 +9905,8 @@ s32 execute_entry_fn(Context *cnt)
     BL_ASSERT(fn_type && fn_type->kind == MIR_TYPE_FN);
     BL_ASSERT(!fn_type->data.fn.args);
 
-    const char *args[2] = {"hello", "world"};
-    vm_provide_command_line_arguments(cnt->vm, args);
+    char *args[4] = {"tereza", "kristyna", "petra", "brona"};
+    vm_provide_command_line_arguments(cnt->vm, 4, args);
 
     // tmp return value storage
     VMStackPtr ret_ptr = NULL;
@@ -10129,12 +10129,16 @@ void mir_run(Assembly *assembly)
 
     if (builder.errorc) goto SKIP;
 
+    // Handle build mode
     if (assembly->options.build_mode == BUILD_MODE_BUILD) {
         execute_build_entry_fn(&cnt, assembly->build_entry);
         goto SKIP;
     }
 
+    // Run test cases
     if (assembly->options.run_tests) testing_run(&cnt); // @CLEANUP
+
+    // Run main
     if (builder.options.run) {
         builder.last_script_mode_run_status = execute_entry_fn(&cnt);
     }

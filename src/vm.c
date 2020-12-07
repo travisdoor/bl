@@ -2425,21 +2425,33 @@ bool vm_eval_instr(VM *vm, Assembly *assembly, struct MirInstr *instr)
     return !vm->aborted;
 }
 
-void vm_provide_command_line_arguments(VM UNUSED(*vm), const char UNUSED(*args[]))
+void vm_provide_command_line_arguments(VM *vm, const s32 argc, char *argv[])
 {
-    /*
-struct BLSlice {
-    s64   len;
-    void *data;
-};
+    BL_ASSERT(argc > 0 && "At least one command line argument must be provided!");
+    BL_ASSERT(argv && "Invalid arguments value pointer!");
+    MirType *  slice_type;
+    VMStackPtr slice_dest;
+    VMStackPtr args_dest;
+    { // Slice destination pointer.
+        MirVar *dest_var = vm->command_line_arguments;
+        BL_ASSERT(dest_var && "Missing destination variable for command line arguments!");
+        slice_dest = vm_read_var(vm, vm->command_line_arguments);
+        BL_ASSERT(slice_dest && "Command line arguments not allocated!");
+        slice_type = dest_var->value.type;
+    }
 
-    char *         first        = "Hello!";
-    char *         second       = "Args!";
-    struct BLSlice args_data[2] = {{strlen(first), first}, {strlen(second), second}};
-    struct BLSlice args         = {2, &args_data};
-    memcpy((void *)cnt->command_line_arguments->rel_stack_ptr, &args, sizeof(args));
-    // cnt->command_line_arguments->value.data = (VMStackPtr)&args;
-    */
+    { // Allocate temp for arguments.
+        MirType *   string_type      = vm->assembly->builtin_types.t_string;
+        const usize string_size      = string_type->store_size_bytes;
+        const usize total_array_size = string_size * argc;
+        args_dest = stack_alloc(vm, total_array_size);
+        for (s32 i = 0; i < argc; ++i) {
+            VMStackPtr dest_elem = args_dest + string_size * i;
+            vm_write_string(vm, string_type, dest_elem, argv[i], strlen(argv[i]));
+        }
+    }
+
+    vm_write_slice(vm, slice_type, slice_dest, args_dest, argc);
 }
 
 bool vm_execute_fn(VM *vm, Assembly *assembly, MirFn *fn, VMStackPtr *out_ptr)
@@ -2606,14 +2618,19 @@ void vm_write_string(VM *vm, const MirType *type, VMStackPtr dest, const char *s
 {
     BL_ASSERT(str && len && "Invalid string constant!");
     BL_ASSERT(type->kind == MIR_TYPE_STRING && "Expected string type!");
-    MirType *  dest_len_type = mir_get_struct_elem_type(type, MIR_STRING_LEN_INDEX);
-    VMStackPtr dest_len = vm_get_struct_elem_ptr(vm->assembly, type, dest, MIR_STRING_LEN_INDEX);
+    vm_write_slice(vm, type, dest, (void *)str, len);
+}
 
-    MirType *  dest_ptr_type = mir_get_struct_elem_type(type, MIR_STRING_PTR_INDEX);
-    VMStackPtr dest_ptr = vm_get_struct_elem_ptr(vm->assembly, type, dest, MIR_STRING_PTR_INDEX);
-
+void vm_write_slice(VM *vm, const struct MirType *type, VMStackPtr dest, void *ptr, s64 len)
+{
+    BL_ASSERT((type->kind == MIR_TYPE_SLICE || type->kind == MIR_TYPE_STRING) &&
+              "Expected slice or string type!");
+    MirType *  dest_len_type = mir_get_struct_elem_type(type, MIR_SLICE_LEN_INDEX);
+    MirType *  dest_ptr_type = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
+    VMStackPtr dest_len = vm_get_struct_elem_ptr(vm->assembly, type, dest, MIR_SLICE_LEN_INDEX);
+    VMStackPtr dest_ptr = vm_get_struct_elem_ptr(vm->assembly, type, dest, MIR_SLICE_PTR_INDEX);
     vm_write_int(dest_len_type, dest_len, (u64)len);
-    vm_write_ptr(dest_ptr_type, dest_ptr, (VMStackPtr)str);
+    vm_write_ptr(dest_ptr_type, dest_ptr, (VMStackPtr)ptr);
 }
 
 ptrdiff_t vm_get_struct_elem_offset(Assembly *assembly, const MirType *type, u32 i)
