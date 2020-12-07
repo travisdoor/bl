@@ -1,12 +1,9 @@
-#import "std/fs"
-
+//foo, bar :: 10 #compiler;
 main :: fn () s32 {
-    file, err :: fs_open("file.txt");
-    defer fs_close(file);
-    if !is_ok(err) { print("%\n", err); }
 
-    _, err2 :: fs_write_string(file, "\nHello!");
-    print("%\n", err2);
+    loop i := 0; i < command_line_arguments.len; i += 1 {
+        print("%\n", command_line_arguments[i]);
+    }
     
     return 0;
 }

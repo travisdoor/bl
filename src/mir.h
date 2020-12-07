@@ -433,6 +433,7 @@ struct MirVar {
     VMRelativeStackPtr rel_stack_ptr;
     LLVMValueRef       llvm_value;
     const char *       linkage_name;
+    MirBuiltinIdKind   builtin_id;
 };
 
 struct MirInstr {

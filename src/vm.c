@@ -2425,6 +2425,23 @@ bool vm_eval_instr(VM *vm, Assembly *assembly, struct MirInstr *instr)
     return !vm->aborted;
 }
 
+void vm_provide_command_line_arguments(VM UNUSED(*vm), const char UNUSED(*args[]))
+{
+    /*
+struct BLSlice {
+    s64   len;
+    void *data;
+};
+
+    char *         first        = "Hello!";
+    char *         second       = "Args!";
+    struct BLSlice args_data[2] = {{strlen(first), first}, {strlen(second), second}};
+    struct BLSlice args         = {2, &args_data};
+    memcpy((void *)cnt->command_line_arguments->rel_stack_ptr, &args, sizeof(args));
+    // cnt->command_line_arguments->value.data = (VMStackPtr)&args;
+    */
+}
+
 bool vm_execute_fn(VM *vm, Assembly *assembly, MirFn *fn, VMStackPtr *out_ptr)
 {
     vm->assembly       = assembly;

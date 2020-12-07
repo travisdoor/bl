@@ -2317,7 +2317,7 @@ Ast *parse_decl(Context *cnt)
     if (!tok_assign) tok_assign = tokens_consume_if(cnt->tokens, SYM_COLON);
 
     // Parse hash directives.
-    s32 hd_accepted = HD_NONE;
+    s32 hd_accepted = HD_COMPILER;
 
     if (tok_assign) {
         decl->data.decl_entity.mut = token_is(tok_assign, SYM_ASSIGN);

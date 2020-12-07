@@ -68,6 +68,7 @@ typedef struct VM {
     struct Assembly *assembly;
     TSmallArray_Char dyncall_sig_tmp;
     bool             aborted;
+    struct MirVar *  command_line_arguments;
 } VM;
 
 void vm_init(VM *vm, usize stack_size);
@@ -76,6 +77,7 @@ void vm_execute_instr(VM *vm, struct Assembly *assembly, struct MirInstr *instr)
 bool vm_eval_instr(VM *vm, struct Assembly *assembly, struct MirInstr *instr);
 bool vm_execute_instr_top_level_call(VM *vm, struct Assembly *assembly, struct MirInstrCall *call);
 bool vm_execute_fn(VM *vm, struct Assembly *assembly, struct MirFn *fn, VMStackPtr *out_ptr);
+void vm_provide_command_line_arguments(VM *vm, const char *args[]);
 void vm_do_cast(VMStackPtr      dest,
                 VMStackPtr      src,
                 struct MirType *dest_type,

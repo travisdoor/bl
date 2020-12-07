@@ -320,7 +320,7 @@ static MirType *complete_type_struct(Context *              cnt,
                                      bool                   is_union,
                                      bool                   is_multiple_return_type);
 
-// Create incomplete struct type placeholer to be filled later.
+// Create incomplete struct type placeholder to be filled later.
 static MirType *create_type_struct_incomplete(Context *cnt, ID *user_id, bool is_union);
 static MirType *create_type_enum(Context *               cnt,
                                  ID *                    id,
@@ -341,15 +341,16 @@ static void type_init_llvm_array(Context *cnt, MirType *type);
 static void type_init_llvm_struct(Context *cnt, MirType *type);
 static void type_init_llvm_enum(Context *cnt, MirType *type);
 
-static MirVar *create_var(Context *cnt,
-                          Ast *    decl_node,
-                          Scope *  scope,
-                          ID *     id,
-                          MirType *alloc_type,
-                          bool     is_mutable,
-                          bool     is_global,
-                          bool     is_comptime,
-                          u32      flags);
+static MirVar *create_var(Context *        cnt,
+                          Ast *            decl_node,
+                          Scope *          scope,
+                          ID *             id,
+                          MirType *        alloc_type,
+                          bool             is_mutable,
+                          bool             is_global,
+                          bool             is_comptime,
+                          u32              flags,
+                          MirBuiltinIdKind builtin_id);
 
 static MirVar *create_var_impl(Context *   cnt,
                                const char *name,
@@ -517,15 +518,15 @@ static MirInstr *append_instr_decl_direct_ref(Context *cnt, MirInstr *ref);
 static MirInstr *
 append_instr_call(Context *cnt, Ast *node, MirInstr *callee, TSmallArray_InstrPtr *args);
 
-static MirInstr *append_instr_decl_var(Context * cnt,
-                                       Ast *     node, // Optional
-                                       ID *      id,
-                                       Scope *   scope,
-                                       MirInstr *type,
-                                       MirInstr *init,
-                                       bool      is_mutable,
-                                       s32       order, // -1 of none
-                                       u32       flags);
+static MirInstr *append_instr_decl_var(Context *        cnt,
+                                       Ast *            node, // Optional
+                                       ID *             id,
+                                       Scope *          scope,
+                                       MirInstr *       type,
+                                       MirInstr *       init,
+                                       bool             is_mutable,
+                                       u32              flags,
+                                       MirBuiltinIdKind builtin_id);
 
 static MirInstr *create_instr_decl_var_impl(Context *   cnt,
                                             const char *name,
@@ -947,9 +948,9 @@ static INLINE bool can_impl_cast(const MirType *from, const MirType *to)
     // Here we allow implicit cast from any pointer type to bool, this breaks quite strict
     // implicit casting rules in this language, but this kind of cast can be handy because we
     // check pointer values for null very often. Until this was enabled, programmer was forced to
-    // explicitly type down comparation to null.
+    // explicitly type down comparison to null.
     //
-    // We should consider later if this implicit casting shoult not be enabled only in
+    // We should consider later if this implicit casting should not be enabled only in
     // expressions used in if statement because globally enabled implicit cast from pointer to
     // bool could be misleading sometimes. Consider calling of a function, taking as parameter
     // bool, in such case we can pass pointer to such function instead of bool without any
@@ -1192,7 +1193,7 @@ static INLINE void commit_fn(Context *cnt, MirFn *fn)
     ID *id = fn->id;
     BL_ASSERT(id);
     ScopeEntry *entry = scope_lookup(fn->decl_node->owner_scope, id, true, false, NULL);
-    BL_ASSERT(entry && "cannot commit unregistred function");
+    BL_ASSERT(entry && "cannot commit unregistered function");
     entry->kind    = SCOPE_ENTRY_FN;
     entry->data.fn = fn;
     analyze_notify_provided(cnt, id->hash);
@@ -1203,7 +1204,7 @@ static INLINE void commit_variant(Context UNUSED(*cnt), MirVariant *v)
     ID *id = v->id;
     BL_ASSERT(id);
     ScopeEntry *entry = scope_lookup(v->decl_scope, id, false, true, NULL);
-    BL_ASSERT(entry && "cannot commit unregistred variant");
+    BL_ASSERT(entry && "cannot commit unregistered variant");
     entry->kind         = SCOPE_ENTRY_VARIANT;
     entry->data.variant = v;
 }
@@ -1213,7 +1214,7 @@ static INLINE void commit_member(Context UNUSED(*cnt), MirMember *member)
     ID *id = member->id;
     BL_ASSERT(id);
     ScopeEntry *entry = scope_lookup(member->decl_scope, id, false, true, NULL);
-    BL_ASSERT(entry && "cannot commit unregistred member");
+    BL_ASSERT(entry && "cannot commit unregistered member");
     entry->kind        = SCOPE_ENTRY_MEMBER;
     entry->data.member = member;
 }
@@ -1223,7 +1224,7 @@ static INLINE void commit_var(Context *cnt, MirVar *var)
     ID *id = var->id;
     BL_ASSERT(id);
     ScopeEntry *entry = scope_lookup(var->decl_scope, id, true, false, NULL);
-    BL_ASSERT(entry && "cannot commit unregistred var");
+    BL_ASSERT(entry && "cannot commit unregistered var");
     entry->kind     = SCOPE_ENTRY_VAR;
     entry->data.var = var;
     BL_TRACY_MESSAGE("COMMIT_VAR", "%s", id->str);
@@ -1596,7 +1597,7 @@ ScopeEntry *register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool 
 
 COLLIDE : {
     char *err_msg = (collision->is_builtin || is_builtin)
-                        ? "Symbol name colision with compiler builtin '%s'."
+                        ? "Symbol name collision with compiler builtin '%s'."
                         : "Duplicate symbol";
 
     builder_msg(BUILDER_MSG_ERROR,
@@ -1783,7 +1784,8 @@ MirInstr *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v)
     // 1) Create global variable.
     // 2) Create initializer block.
     // 3) Register new variable into scope.
-    MirInstr *decl_var = append_instr_decl_var(cnt, NULL, id, scope, NULL, NULL, is_mutable, -1, 0);
+    MirInstr *decl_var =
+        append_instr_decl_var(cnt, NULL, id, scope, NULL, NULL, is_mutable, 0, MIR_BUILTIN_ID_NONE);
 
     MirInstrBlock *prev_block = ast_current_block(cnt);
     MirInstrBlock *block      = append_global_block(cnt, INIT_VALUE_FN_NAME);
@@ -2399,15 +2401,16 @@ static INLINE void push_var(Context *cnt, MirVar *var)
     tarray_push(fn->variables, var);
 }
 
-MirVar *create_var(Context *cnt,
-                   Ast *    decl_node,
-                   Scope *  scope,
-                   ID *     id,
-                   MirType *alloc_type,
-                   bool     is_mutable,
-                   bool     is_global,
-                   bool     is_comptime,
-                   u32      flags)
+MirVar *create_var(Context *        cnt,
+                   Ast *            decl_node,
+                   Scope *          scope,
+                   ID *             id,
+                   MirType *        alloc_type,
+                   bool             is_mutable,
+                   bool             is_global,
+                   bool             is_comptime,
+                   u32              flags,
+                   MirBuiltinIdKind builtin_id)
 {
     BL_ASSERT(id);
     MirVar *tmp            = arena_alloc(&cnt->assembly->arenas.mir.var);
@@ -2421,6 +2424,7 @@ MirVar *create_var(Context *cnt,
     tmp->linkage_name      = id->str;
     tmp->flags             = flags;
     tmp->emit_llvm         = true;
+    tmp->builtin_id        = builtin_id;
     push_var(cnt, tmp);
     return tmp;
 }
@@ -2521,8 +2525,8 @@ void append_current_block(Context *cnt, MirInstr *instr)
     BL_ASSERT(block);
 
     if (is_block_terminated(block)) {
-        // Append this instruction into unreachable block if current block was termianted
-        // already. Unrechable block will never be generated into LLVM and compiler can
+        // Append this instruction into unreachable block if current block was terminated
+        // already. Unreachable block will never be generated into LLVM and compiler can
         // complain later about this and give hit to the user.
         block = append_block(cnt, block->owner_fn, ".unreachable");
         set_current_block(cnt, block);
@@ -2881,7 +2885,7 @@ MirInstrBlock *append_block2(Context UNUSED(*cnt), MirFn *fn, MirInstrBlock *blo
     block->owner_fn = fn;
     if (!fn->first_block) {
         fn->first_block = block;
-        // first block is referenced everytime!!!
+        // first block is referenced every time!!!
         ref_instr(&block->base);
     }
     block->base.prev = &fn->last_block->base;
@@ -3461,15 +3465,15 @@ MirInstr *append_instr_call(Context *cnt, Ast *node, MirInstr *callee, TSmallArr
     return &tmp->base;
 }
 
-MirInstr *append_instr_decl_var(Context * cnt,
-                                Ast *     node,
-                                ID *      id,
-                                Scope *   scope,
-                                MirInstr *type,
-                                MirInstr *init,
-                                bool      is_mutable,
-                                s32       UNUSED(order),
-                                u32       flags)
+MirInstr *append_instr_decl_var(Context *        cnt,
+                                Ast *            node,
+                                ID *             id,
+                                Scope *          scope,
+                                MirInstr *       type,
+                                MirInstr *       init,
+                                bool             is_mutable,
+                                u32              flags,
+                                MirBuiltinIdKind builtin_id)
 {
     BL_ASSERT(id && "Missing id.");
     BL_ASSERT(scope && "Missing scope.");
@@ -3479,7 +3483,8 @@ MirInstr *append_instr_decl_var(Context * cnt,
     tmp->type            = ref_instr(type);
     tmp->init            = ref_instr(init);
     const bool is_global = scope_is_global(scope);
-    tmp->var             = create_var(cnt, node, scope, id, NULL, is_mutable, is_global, false, 0);
+    tmp->var =
+        create_var(cnt, node, scope, id, NULL, is_mutable, is_global, false, flags, builtin_id);
     if (is_global) {
         push_into_gscope(cnt, &tmp->base);
         analyze_push_back(cnt, &tmp->base);
@@ -4346,14 +4351,14 @@ AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
     }
 
     default: {
-        // Non-agregate type.
+        // Non-aggregate type.
         if (values->size > 1) {
             MirInstr *value = values->data[1];
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_INVALID_INITIALIZER,
                         value->node->location,
                         BUILDER_CUR_WORD,
-                        "One value only is expected for non-agragate types.");
+                        "One value only is expected for non-aggregate types.");
             return ANALYZE_RESULT(FAILED, 0);
         }
         MirInstr **              value_ref = &values->data[0];
@@ -4481,14 +4486,14 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
 
     SET_IS_NAKED_IF_COMPOUND(si->src, false);
 
-    // Initializer value is guaranteed to be comptime so we just check variable muttablility.
+    // Initializer value is guaranteed to be comptime so we just check variable mutability.
     // (mutable variables cannot be comptime)
     var->value.is_comptime = !var->is_mutable;
 
     AnalyzeResult state = analyze_var(cnt, var);
     if (state.state != ANALYZE_PASSED) return state;
 
-    // Typedef resolvers cannot be generated into LLVM IR because TypeType has no LLVM
+    // Typedef resolver cannot be generated into LLVM IR because TypeType has no LLVM
     // representation and should live only during compile time of MIR.
     si->base.owner_block->emit_llvm = var->emit_llvm;
 
@@ -4501,6 +4506,11 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
         // will be stored in static data segment. There is no need to use
         // relative pointers here.
         vm_alloc_global(cnt->vm, cnt->assembly, var);
+    }
+
+    if (var->builtin_id == MIR_BUILTIN_ID_COMMAND_LINE_ARGUMENTS) {
+        BL_ASSERT(!cnt->vm->command_line_arguments);
+        cnt->vm->command_line_arguments = var;
     }
 
     return ANALYZE_RESULT(PASSED, 0);
@@ -8774,8 +8784,8 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
                                   NULL,
                                   arg,
                                   true,
-                                  (s32)i,
-                                  0);
+                                  0,
+                                  MIR_BUILTIN_ID_NONE);
 
             register_symbol(
                 cnt, ast_arg_name, &ast_arg_name->data.ident.id, ast_arg_name->owner_scope, false);
@@ -8952,6 +8962,20 @@ MirInstr *ast_expr_type(Context *cnt, Ast *type)
     return ast(cnt, next_type);
 }
 
+static INLINE MirBuiltinIdKind check_symbol_marked_compiler(Ast *ident)
+{
+    // Check builtin ids for symbols marked as compiler.
+    MirBuiltinIdKind builtin_id = get_builtin_kind(ident);
+    if (builtin_id == MIR_BUILTIN_ID_NONE) {
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_UNKNOWN_SYMBOL,
+                    ident->location,
+                    BUILDER_CUR_WORD,
+                    "Symbol marked as #compiler is not known compiler internal.");
+    }
+    return builtin_id;
+}
+
 MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
 {
     Ast *      ast_name       = entity->data.decl.name;
@@ -8966,25 +8990,12 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
     const bool is_compiler = IS_FLAG(entity->data.decl_entity.flags, FLAG_COMPILER);
     const bool is_unroll   = ast_value && ast_value->kind == AST_EXPR_CALL;
 
-    MirBuiltinIdKind builtin_id = MIR_BUILTIN_ID_NONE;
-
     // initialize value
     MirInstr *value = NULL;
 
     BL_ASSERT(ast_name && "Missing entity name.");
     BL_ASSERT(ast_name->kind == AST_IDENT && "Expected identificator.");
     Scope *scope = ast_name->owner_scope;
-    if (is_compiler) {
-        // Check builtin ids for symbols marked as compiler.
-        builtin_id = get_builtin_kind(ast_name);
-        if (builtin_id == MIR_BUILTIN_ID_NONE) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_UNKNOWN_SYMBOL,
-                        ast_name->location,
-                        BUILDER_CUR_WORD,
-                        "Symbol marked as #compiler is not known compiler internal.");
-        }
-    }
 
     if (is_fn_decl) {
         // recognized named function declaration
@@ -8998,6 +9009,9 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
                         BUILDER_CUR_WORD,
                         "Function declaration is expected to be immutable.");
         }
+
+        MirBuiltinIdKind builtin_id = MIR_BUILTIN_ID_NONE;
+        if (is_compiler) builtin_id = check_symbol_marked_compiler(ast_name);
 
         value = ast_expr_lit_fn(
             cnt, ast_value, ast_name, ast_explicit_linkage_name, is_global, flags, builtin_id);
@@ -9038,7 +9052,7 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
         // here is that we don't know if function return is multi-return because called function
         // has not been analyzed yet; however only multi-return (structs) produced by function
         // call has ability to unroll into separate variables; this is indicated by is_unroll
-        // flag. We decide later during analyze if unroll is keept or not. So finally there
+        // flag. We decide later during analyze if unroll is kept or not. So finally there
         // are tree possible cases:
         //
         // 1) Variable is not group: We generate unroll instruction as initializer in case value
@@ -9046,7 +9060,7 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
         //    return value should be picked or not. (unroll can be removed if not)
         //
         // 2) Variables in group: For every variable in group we generate unroll instruction
-        //    with two possibilites what to do during analyze; when called function returns
+        //    with two possibilities what to do during analyze; when called function returns
         //    multiple values we use unroll to set every variable (by index) to proper value;
         //    initializer is any other value we generate vN .. v3 = v2 = v1 = value.
         //
@@ -9059,6 +9073,8 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
         MirInstr *current_value    = value;
         s32       index            = 0;
         while (ast_current_name) {
+            MirBuiltinIdKind builtin_id = MIR_BUILTIN_ID_NONE;
+            if (is_compiler) builtin_id = check_symbol_marked_compiler(ast_current_name);
             MirInstr *prev_var = vars.size > 0 ? vars.data[vars.size - 1] : NULL;
             if (is_unroll) {
                 current_value =
@@ -9074,8 +9090,8 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
                                                   type,
                                                   current_value,
                                                   is_mutable,
-                                                  -1,
-                                                  entity->data.decl_entity.flags);
+                                                  entity->data.decl_entity.flags,
+                                                  builtin_id);
 
             tsa_push_InstrPtr(&vars, var);
             BL_ASSERT(ast_current_name->kind == AST_IDENT);
@@ -9888,6 +9904,9 @@ s32 execute_entry_fn(Context *cnt)
     MirType *fn_type = cnt->entry_fn->type;
     BL_ASSERT(fn_type && fn_type->kind == MIR_TYPE_FN);
     BL_ASSERT(!fn_type->data.fn.args);
+
+    const char *args[2] = {"hello", "world"};
+    vm_provide_command_line_arguments(cnt->vm, args);
 
     // tmp return value storage
     VMStackPtr ret_ptr = NULL;

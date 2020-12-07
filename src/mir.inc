@@ -155,6 +155,7 @@ union __INSTR_T {\
 	MIR_BUILTIN_ID_IS_DEBUG,
 	MIR_BUILTIN_ID_TYPE_TEST_CASES,
 	MIR_BUILTIN_ID_TYPE_CALL_LOCATION,
+    MIR_BUILTIN_ID_COMMAND_LINE_ARGUMENTS,
 #endif
 
 #ifdef GEN_BUILTIN_IDS
@@ -214,4 +215,5 @@ union __INSTR_T {\
     {.str = "IS_DEBUG",              .hash = 0},
     {.str = "TestCase",              .hash = 0},
     {.str = "CodeLocation",          .hash = 0},
+    {.str = "command_line_arguments", .hash = 0},
 #endif
