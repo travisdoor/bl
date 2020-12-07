@@ -68,7 +68,6 @@ typedef struct VM {
     struct Assembly *assembly;
     TSmallArray_Char dyncall_sig_tmp;
     bool             aborted;
-    struct MirVar *  command_line_arguments;
 } VM;
 
 void vm_init(VM *vm, usize stack_size);

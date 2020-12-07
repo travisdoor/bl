@@ -2433,9 +2433,9 @@ void vm_provide_command_line_arguments(VM *vm, const s32 argc, char *argv[])
     VMStackPtr slice_dest;
     VMStackPtr args_dest;
     { // Slice destination pointer.
-        MirVar *dest_var = vm->command_line_arguments;
+        MirVar *dest_var = vm->assembly->command_line_arguments;
         BL_ASSERT(dest_var && "Missing destination variable for command line arguments!");
-        slice_dest = vm_read_var(vm, vm->command_line_arguments);
+        slice_dest = vm_read_var(vm, dest_var);
         BL_ASSERT(slice_dest && "Command line arguments not allocated!");
         slice_type = dest_var->value.type;
     }

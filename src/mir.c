@@ -4509,8 +4509,8 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
     }
 
     if (var->builtin_id == MIR_BUILTIN_ID_COMMAND_LINE_ARGUMENTS) {
-        BL_ASSERT(!cnt->vm->command_line_arguments);
-        cnt->vm->command_line_arguments = var;
+        BL_ASSERT(!cnt->assembly->command_line_arguments);
+        cnt->assembly->command_line_arguments = var;
     }
 
     return ANALYZE_RESULT(PASSED, 0);
@@ -9905,8 +9905,7 @@ s32 execute_entry_fn(Context *cnt)
     BL_ASSERT(fn_type && fn_type->kind == MIR_TYPE_FN);
     BL_ASSERT(!fn_type->data.fn.args);
 
-    char *args[4] = {"tereza", "kristyna", "petra", "brona"};
-    vm_provide_command_line_arguments(cnt->vm, 4, args);
+    vm_provide_command_line_arguments(cnt->vm, cnt->assembly->vm_argc, cnt->assembly->vm_argv);
 
     // tmp return value storage
     VMStackPtr ret_ptr = NULL;

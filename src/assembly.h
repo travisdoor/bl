@@ -96,6 +96,9 @@ typedef struct Assembly {
     char *     name;        // assembly name
     Scope *    gscope;      // global scope of the assembly
     MirFn *    build_entry; // Set for build assembly
+    MirVar *   command_line_arguments;
+    s32        vm_argc;
+    char **    vm_argv;
 
     struct {
         TArray  cases;    // Optionally contains list of test case functions.
@@ -129,6 +132,7 @@ void            assembly_delete(Assembly *assembly);
 AssemblyOptions assembly_get_default_options(void);
 void            assembly_add_unit(Assembly *assembly, Unit *unit);
 void            assembly_add_lib_path(Assembly *assembly, const char *path);
+void            assembly_set_vm_args(Assembly *assembly, s32 argc, char **argv);
 void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
 bool assembly_add_unit_unique(Assembly *assembly, Unit *unit);
 bool assembly_import_module(Assembly *    assembly,

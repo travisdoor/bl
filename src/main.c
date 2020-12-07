@@ -129,6 +129,8 @@ int main(s32 argc, char *argv[])
     }
 
     argv += next_arg;
+    const s32 vm_argc = argc - next_arg;
+    char **   vm_argv = argv;
 
     if (builder.options.print_help) {
         fprintf(stdout, "%s", help_text);
@@ -158,6 +160,7 @@ int main(s32 argc, char *argv[])
     ENV_LIB_DIR = strdup(conf_data_get_str(&builder.conf, CONF_LIB_DIR_KEY));
 
     Assembly *assembly = assembly_new("out");
+    assembly_set_vm_args(assembly, vm_argc, vm_argv);
     if (builder.options.use_pipeline) {
         assembly->options.build_mode = BUILD_MODE_BUILD;
 
@@ -170,13 +173,12 @@ int main(s32 argc, char *argv[])
     }
 
     while (*argv != NULL) {
-        Unit *unit = unit_new_file(*argv, NULL);
-
-        bool added = assembly_add_unit_unique(assembly, unit);
+        Unit *unit  = unit_new_file(*argv, NULL);
+        bool  added = assembly_add_unit_unique(assembly, unit);
         if (added == false) {
             unit_delete(unit);
         }
-
+        if (builder.options.run) break;
         argv++;
     }
 

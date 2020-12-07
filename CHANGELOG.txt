@@ -12,6 +12,7 @@ Add support of shebang and silent execution.
 Add -silent and -rs options.
 Add -verify-llvm option to enable LLVM IR verification.
 Add modules: thread, sync, fs
+Add forward of command line arguments into bl executed by interpreter (-r, -rs).
 Support custom allocators in containers.
 Compiler now returns numerical maximum error code if compilation fail.
 Less descriptive terminal output during compilation.

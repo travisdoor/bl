@@ -20,4 +20,4 @@ jobs:
         cd install
         .\configure_win64.bat
     - name: Run tests
-      run: bin\blc.exe -rs doctor.bl
+      run: bin\blc.exe -rs doctor.bl -d

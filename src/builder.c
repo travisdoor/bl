@@ -146,7 +146,11 @@ INTERRUPT:
 /* public */
 s32 builder_parse_options(s32 argc, char *argv[])
 {
-#define IS_PARAM(_arg) (strcmp(&argv[optind][1], _arg) == 0)
+#define BREAK                                                                                      \
+    optind++;                                                                                      \
+    break;                                                                                         \
+
+#define IS_PARAM(_arg)(strcmp(&argv[optind][1], _arg) == 0)
 
     builder.options.build_mode = BUILD_MODE_DEBUG;
 
@@ -174,6 +178,7 @@ s32 builder_parse_options(s32 argc, char *argv[])
             builder.options.run     = true;
             builder.options.silent  = true;
             builder.options.no_llvm = true;
+            BREAK
         } else if (IS_PARAM("lex-dump")) {
             builder.options.print_tokens = true;
         } else if (IS_PARAM("syntax-only")) {
@@ -184,6 +189,7 @@ s32 builder_parse_options(s32 argc, char *argv[])
             builder.options.emit_mir = true;
         } else if (IS_PARAM("r") || IS_PARAM("run")) {
             builder.options.run = true;
+            BREAK
         } else if (IS_PARAM("rt") || IS_PARAM("run-tests")) {
             builder.options.run_tests = true;
         } else if (IS_PARAM("s") || IS_PARAM("silent")) {
@@ -252,7 +258,7 @@ void builder_init(void)
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split     = false;
+    builder.options.reg_split = false;
 #endif
 
     // initialize LLVM statics

@@ -357,6 +357,13 @@ INTERRUPT:
     return false;
 }
 
+void assembly_set_vm_args(Assembly *assembly, s32 argc, char **argv)
+{
+    BL_LOG("argc = %d", argc);
+    assembly->vm_argc = argc;
+    assembly->vm_argv = argv;
+}
+
 DCpointer assembly_find_extern(Assembly *assembly, const char *symbol)
 {
     void *     handle = NULL;
