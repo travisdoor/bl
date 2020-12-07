@@ -1,0 +1,89 @@
+#!/usr/local/bin/blc -rs
+
+#import "std/arg_parser"
+#import "std/fs"
+
+Args :: struct #base ArgCtx {
+    generate_debug: bool;
+    make: bool;
+}
+
+DIR :: "build";
+CMAKE_CACHE :: "build/CMakeCache.txt";
+
+main :: fn () s32 {
+    args: Args;
+    arg_parser :: arg_parser_new();
+    defer arg_parser_delete(arg_parser);
+
+    arg_parser_add(
+        arg_parser,
+        "-d",
+        "--debug",
+        "Generate project in debug mode.",
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) s32 {
+            a: *Args = auto ctx;
+            a.generate_debug = true;
+            return 1;
+        });
+
+    arg_parser_add(
+        arg_parser,
+        "-m",
+        "--make",
+        "Make project.",
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) s32 {
+            a: *Args = auto ctx;
+            a.make = true;
+            return 1;
+        });
+
+    state :: arg_parser_run(arg_parser, command_line_arguments, &args, 1);   
+    if !is_ok(state) {
+        print_err("%", state);
+        arg_parser_print_help(arg_parser);
+        return 1;
+    }
+    if args.help { return 0; }
+
+    fs_dir_create(DIR);
+    fs_remove(CMAKE_CACHE);
+    fs_set_cwd(DIR);
+
+    print("Generate configuration '%' in '%'.\n", conf_name(args.generate_debug), DIR);
+    cmake_generate(args.generate_debug);
+    if args.make {
+        print("Build configuration '%' in '%'.\n", conf_name(args.generate_debug), DIR);
+        cmake_compile(args.generate_debug);
+    }
+    return 0;
+}
+
+conf_name :: fn (is_debug: bool) string #inline {
+    if is_debug { return "Debug"; }
+    return "Release";
+}
+
+cmake_generate :: fn (is_debug: bool) s32 #inline {
+    conf :: conf_name(is_debug);
+    cmd: string;
+    defer string_delete(cmd);
+    if OS_KIND == OSKind.Windows {
+        cmd = sprint("cmake .. -G \"Visual Studio 16 2019\" -Thost=x64 -DCMAKE_BUILD_TYPE=", conf);
+    } else {
+        cmd = sprint("cmake .. -DCMAKE_BUILD_TYPE=", conf);
+    }
+    return os_execute(cmd);
+}
+
+cmake_compile :: fn (is_debug: bool) s32 #inline {
+    conf :: conf_name(is_debug);
+    cmd: string;
+    defer string_delete(cmd);
+    if OS_KIND == OSKind.Windows {
+        cmd = sprint("cmake --build . --config ", conf);
+    } else {
+        cmd = sprint("make");
+    }
+    return os_execute(cmd);
+}

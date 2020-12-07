@@ -1,0 +1,144 @@
+#load "std/test.bl"
+#load "std/debug_allocator.bl"
+
+#import "std/arg_parser"
+
+main :: fn () s32 {
+    dbgalloc_init();
+    defer dbgalloc_terminate();
+    return test_run();    
+}
+
+#private
+
+Opt :: struct #base ArgCtx {
+    about: bool;
+    verbose: bool;
+}
+
+arg_parser_test1 :: fn () #test {
+    parser :: arg_parser_new();
+    defer arg_parser_delete(parser);
+
+    arg_parser_add(
+        parser,
+        "-a",
+        "--about",
+        "Print information about application.",
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) s32 {
+            opt: *Opt = auto ctx;
+            opt.about = true;
+            return 1;
+        });
+
+    arg_parser_add(
+        parser,
+        "-v",
+        "--verbose",
+        "Toggle verbose mode.",
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) s32 {
+            opt: *Opt = auto ctx;
+            opt.verbose = true;
+            return 1;
+        });
+
+    arg_parser_print_help(parser);
+
+    {
+        opt: Opt;
+        state :: arg_parser_run(parser, {:[]string: 0}, auto &opt);
+        test_ok(state);
+        test_false(opt.about);
+        test_false(opt.verbose);
+    }
+
+    {
+        opt: Opt;
+        args :: {:[1]string: "-h"};
+        state :: arg_parser_run(parser, args, auto &opt);
+        test_ok(state);
+        test_true(opt.help);
+        test_false(opt.about);
+        test_false(opt.verbose);
+    }
+
+    {
+        opt: Opt;
+        args :: {:[1]string: "--help"};
+        state :: arg_parser_run(parser, args, auto &opt);
+        test_ok(state);
+        test_true(opt.help);
+        test_false(opt.about);
+        test_false(opt.verbose);
+    }
+
+    {
+        opt: Opt;
+        args :: {:[1]string: "-a"};
+        state :: arg_parser_run(parser, args, auto &opt);
+        test_ok(state);
+        test_true(opt.about);
+        test_false(opt.help);
+        test_false(opt.verbose);
+    }
+
+    {
+        opt: Opt;
+        args :: {:[1]string: "--about"};
+        state :: arg_parser_run(parser, args, auto &opt);
+        test_ok(state);
+        test_true(opt.about);
+        test_false(opt.help);
+        test_false(opt.verbose);
+    }
+
+    {
+        opt: Opt;
+        args :: {:[1]string: "-v"};
+        state :: arg_parser_run(parser, args, auto &opt);
+        test_ok(state);
+        test_false(opt.about);
+        test_false(opt.help);
+        test_true(opt.verbose);
+    }
+
+    {
+        opt: Opt;
+        args :: {:[1]string: "--verbose"};
+        state :: arg_parser_run(parser, args, auto &opt);
+        test_ok(state);
+        test_false(opt.about);
+        test_false(opt.help);
+        test_true(opt.verbose);
+    }
+
+    {
+        opt: Opt;
+        args :: {:[2]string: "-a", "-v"};
+        state :: arg_parser_run(parser, args, auto &opt);
+        test_ok(state);
+        test_true(opt.about);
+        test_false(opt.help);
+        test_true(opt.verbose);
+    }
+
+    {
+        opt: Opt;
+        args :: {:[2]string: "--about", "--verbose"};
+        state :: arg_parser_run(parser, args, auto &opt);
+        test_ok(state);
+        test_true(opt.about);
+        test_true(opt.verbose);
+        test_false(opt.help);
+    }
+
+    {
+        opt: Opt;
+        args :: {:[2]string: "--about", "-verbose"};
+        state :: arg_parser_run(parser, args, auto &opt);
+        test_not_ok(state);
+        test_true(opt.about);
+        test_false(opt.verbose);
+        test_false(opt.help);
+    }
+}

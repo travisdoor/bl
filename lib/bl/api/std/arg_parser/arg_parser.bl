@@ -1,0 +1,132 @@
+//! ============================
+//! Command Line Argument Parser
+//! ============================
+//! 
+//! ::
+//! 
+//!    #import "std/arg_parser"
+//!
+//! Command line argument parsing tool. 
+
+#load "std/array.bl"
+
+ARG_PARSER_BREAK :: 0;
+
+ArgCtx :: struct {
+    help: bool;
+}
+
+ArgParser :: *u8;
+ArgParserHandlerFn :: *fn (parser: ArgParser, args: []string, ctx: *ArgCtx) s32;
+
+arg_parser_new :: fn () ArgParser {
+    parser := cast(*Parser) alloc(sizeof(Parser));
+    parser.pad = 0;
+    array_init(parser.entries);
+
+    arg_parser_add(
+        auto parser,
+        "-h",
+        "--help",
+        "Print this help.",
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) s32 {
+            if ctx { ctx.help = true; }
+            arg_parser_print_help(parser);
+            return 1;
+        });
+
+    return auto parser;
+}
+
+arg_parser_delete :: fn (_parser: ArgParser) {
+    parser: *Parser = auto _parser;
+    loop i := 0; i < parser.entries.len; i += 1 {
+        entry_delete(&parser.entries[i]);
+    }
+    array_terminate(parser.entries);
+    free(auto parser);
+}
+
+arg_parser_run :: fn (_parser: ArgParser, args: []string, ctx: *ArgCtx, start := 0) Error {
+    parser: *Parser = auto _parser;
+    if start >= args.len {
+        return ok();
+    } else {
+        args.ptr = &args[start];
+        args.len -= start;
+    }
+
+    loop args.len > 0 {
+        arg :: &args[0];
+        found: bool;
+        loop e := 0; e < parser.entries.len; e += 1 {
+            entry :: &parser.entries[e];
+            if string_compare(^arg, entry.short) || string_compare(^arg, entry.long) {
+                found = true;
+                parsed :: entry.handler(_parser, args, ctx);
+                if parsed == ARG_PARSER_BREAK {
+                    return ok();
+                }
+                if args.len > 1 { args.ptr = &args[parsed]; }
+                args.len -= parsed;
+                break;
+            }
+        }
+        if !found {
+            return error("Invalid argument '%'.", ^arg);
+        }
+    }
+    return ok();
+}
+
+arg_parser_add :: fn (
+    _parser: ArgParser,
+    short: string,
+    long: string,
+    help: string,
+    handler: ArgParserHandlerFn
+) {
+    parser: *Parser = auto _parser;
+    entry: Entry #noinit;
+    entry.short = string_new(short);
+    entry.long = string_new(long);
+    entry.help = string_new(help);
+    entry.handler = handler;
+    array_push(parser.entries, entry);
+
+    // '  short, long '
+    pad :: 2 + short.len + 2 + long.len + 1;
+    if parser.pad < pad { parser.pad = auto pad; }
+}
+
+arg_parser_print_help :: fn (_parser: ArgParser) {
+    parser: *Parser = auto _parser;
+    print("Options:\n");
+    loop i := 0; i < parser.entries.len; i += 1 {
+        entry :: &parser.entries[i];
+        printed :: print("  %, % ", entry.short, entry.long);
+        loop p := 0; p < (parser.pad - printed); p += 1 {
+            print(" ");
+        }
+        print("%\n", entry.help);
+    }
+}
+
+#private
+Parser :: struct {
+    entries: [..]Entry;
+    pad: s32;
+}
+
+Entry :: struct {
+    short: string;
+    long: string;
+    help: string;
+    handler: ArgParserHandlerFn;
+}
+
+entry_delete :: fn (entry: *Entry) {
+    string_delete(entry.short);
+    string_delete(entry.long);
+    string_delete(entry.help);
+}
