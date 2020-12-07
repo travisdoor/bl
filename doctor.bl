@@ -1,5 +1,6 @@
 #!/usr/local/bin/blc -rs
 #import "std/fs"
+#import "std/arg_parser"
 
 BL_EXE_PATH_WIN  :: "bin/blc.exe";
 BL_EXE_PATH_UNIX :: "bin/blc";
@@ -10,10 +11,11 @@ EXAMPLES_DIR :: "examples";
 EXAMPLES_DOCS_DIR :: "examples/docs";
 EXPECT_FAIL_DIR :: "tests/src/expect_fail";
 
-HARDCODED_MODULES :: {:[3]string:
+HARDCODED_MODULES :: {:[4]string:
                       "lib/bl/api/std/fs/fs.test.bl",
                       "lib/bl/api/std/thread/thread.test.bl",
                       "lib/bl/api/std/sync/sync.test.bl",
+                      "lib/bl/api/std/arg_parser/arg_parser.test.bl",
                      };
 
 main :: fn () s32 {
@@ -97,18 +99,16 @@ TestKind :: enum {
     Analyze;
 }
 
+Args :: struct #base ArgCtx {
+    diag_mode: bool;
+}
+
 TEST_RUN_OK :: 0;
+_args: Args;
 _compiler_path: string;
 _wdir: string;
 _suitec := 0;
 _errc := 0;
-_diag_mode := false;
-_help_text :: 
-    "Usage\n"
-    "  doctor [options]\n\n"
-    "Options:\n"
-    "  -h, -help = Print this help and exit.\n"
-    "  -d, -diag = Execute in diagnostic mode.";
 
 wdir_init :: fn () {
     lhs: string;
@@ -128,28 +128,32 @@ get_path :: fn (sub: string) string {
 }
 
 parse_args :: fn () bool {
-    is_arg :: fn (arg: string, long: string, short: string) bool #inline {
-        return string_compare(arg, short) || string_compare(arg, long);
-    };
-    
-    loop i := 1; i < command_line_arguments.len; i += 1 {
-        arg :: command_line_arguments[i];
-        if is_arg(arg, "-diag", "-d") {
-            _diag_mode = true;
-        } else if is_arg(arg, "-help", "-h") {
-            print(_help_text);
-            return false;
-        } else {
-            print_err("Invalid argument '%'.", arg);
-            print(_help_text);
-            return false;
-        }
+    arg_parser :: arg_parser_new();
+    defer arg_parser_delete(arg_parser);
+
+    arg_parser_add(
+        arg_parser,
+        "-d",
+        "--diag",
+        "Diagnostic mode.",
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) s32 {
+            a: *Args = auto ctx;
+            a.diag_mode = true;
+            return 1;
+        });
+
+    state :: arg_parser_run(arg_parser, command_line_arguments, &_args, 1);   
+    if !is_ok(state) {
+        print_err("%", state);
+        arg_parser_print_help(arg_parser);
+        return false;
     }
+    if _args.help { return false; }
     return true;
 }
 
 get_verbosity :: fn () string #inline {
-    if _diag_mode { return ""; } // print all
+    if _args.diag_mode { return ""; } // print all
     if OS_KIND == OSKind.Windows {
         return "2>nul 1>nul";
     }

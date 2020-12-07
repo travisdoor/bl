@@ -50,10 +50,11 @@ main :: fn () s32 {
     fs_remove(CMAKE_CACHE);
     fs_set_cwd(DIR);
 
-    print("Generate configuration '%' in '%'.\n", conf_name(args.generate_debug), DIR);
+    conf :: conf_name(args.generate_debug);
+    print("Generate configuration '%' in '%'.\n", conf, DIR);
     cmake_generate(args.generate_debug);
     if args.make {
-        print("Build configuration '%' in '%'.\n", conf_name(args.generate_debug), DIR);
+        print("Build configuration '%' in '%'.\n", conf, DIR);
         cmake_compile(args.generate_debug);
     }
     return 0;
