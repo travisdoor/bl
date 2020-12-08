@@ -49,5 +49,7 @@ void bc_writer_run(Assembly *assembly);
 void native_bin_run(Assembly *assembly);
 void mir_writer_run(Assembly *assembly);
 s32  vm_entry_run(Assembly *assembly);
+s32  vm_build_entry_run(Assembly *assembly);
+s32  vm_tests_run(Assembly *assembly);
 
 #endif

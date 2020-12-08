@@ -87,24 +87,27 @@ typedef struct Assembly {
         char *               triple; // LLVM triple.
     } llvm;
 
-    // DynCall/Lib data used for external method execution in compile time
-    DCCallVM *dc_vm;
-    VM        vm;
-
-    TArray     units;       // array of all units in assembly
-    THashTable unit_cache;  // cache for loading only unique units
-    char *     name;        // assembly name
-    Scope *    gscope;      // global scope of the assembly
-    MirFn *    entry;       // Main function
-    MirFn *    build_entry; // Set for build assembly
-    MirVar *   command_line_arguments;
-    s32        vm_argc;
-    char **    vm_argv;
-
     struct {
         TArray  cases;    // Optionally contains list of test case functions.
         MirVar *meta_var; // Optional variable containing runtime test case information.
     } testing;
+
+    struct {
+        MirFn * entry;                  // Main function
+        MirFn * build_entry;            // Set for build assembly
+        MirVar *command_line_arguments; // Command line arguments variable.
+        s32     argc;                   // Count of arguments forwarded in script mode.
+        char ** argv;                   // Values of arguments forwarded in script mode.
+    } vm_run;
+
+    // DynCall/Lib data used for external method execution in compile time
+    DCCallVM *dc_vm;
+    VM        vm;
+
+    TArray     units;      // array of all units in assembly
+    THashTable unit_cache; // cache for loading only unique units
+    char *     name;       // assembly name
+    Scope *    gscope;     // global scope of the assembly
 
     /* Builtins */
     struct BuiltinTypes {

@@ -115,6 +115,13 @@ int compile_assembly(Assembly *assembly)
     mir_run(assembly);
     // Run main
     if (builder.options.run) builder.last_script_mode_run_status = vm_entry_run(assembly);
+
+    // Handle build mode
+    if (assembly->options.build_mode == BUILD_MODE_BUILD) vm_build_entry_run(assembly);
+
+    // Run test cases
+    if (assembly->options.run_tests) builder.test_failc = vm_tests_run(assembly);
+
     if (builder.options.emit_mir) mir_writer_run(assembly);
     INTERRUPT_ON_ERROR;
 

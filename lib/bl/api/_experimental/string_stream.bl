@@ -54,7 +54,7 @@ ss_delete :: fn (ss: *StringStream) {
 }
 
 ss_init_from_file :: fn (ss: *StringStream, file: FSFile) {
-    if !file { panic(); }
+    if file == FS_FILE_INVALID { panic(); }
     data :: fs_read_string(file);
     ss._data = data;
     ss.i = 0;

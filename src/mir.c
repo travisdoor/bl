@@ -236,14 +236,10 @@ static void    testing_add_test_case(Context *cnt, MirFn *fn);
 static MirVar *testing_gen_meta(Context *cnt);
 
 // Execute all registered test cases in current assembly.
-static void        testing_run(Context *cnt);
 static const char *get_intrinsic(const char *name);
 static MirFn *     group_select_overload(Context *                  cnt,
                                          const MirFnGroup *         group,
                                          const TSmallArray_TypePtr *expected_args);
-
-// Start top-level execution of build entry function using MIR-VM. (Usually 'build' function)
-static void execute_build_entry_fn(Context *cnt, MirFn *fn);
 
 // Register incomplete scope entry for symbol.
 static ScopeEntry *register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool is_builtin);
@@ -4504,8 +4500,8 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
     }
 
     if (var->builtin_id == MIR_BUILTIN_ID_COMMAND_LINE_ARGUMENTS) {
-        BL_ASSERT(!cnt->assembly->command_line_arguments);
-        cnt->assembly->command_line_arguments = var;
+        BL_ASSERT(!cnt->assembly->vm_run.command_line_arguments);
+        cnt->assembly->vm_run.command_line_arguments = var;
     }
 
     return ANALYZE_RESULT(PASSED, 0);
@@ -5228,7 +5224,7 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
         }
 
         if (cnt->assembly->options.build_mode == BUILD_MODE_BUILD) {
-            cnt->assembly->build_entry = fn;
+            cnt->assembly->vm_run.build_entry = fn;
         } else {
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_DUPLICATE_ENTRY,
@@ -7577,62 +7573,6 @@ INLINE void testing_add_test_case(Context *cnt, MirFn *fn)
     vm_write_string(cnt->vm, name_type, name_ptr, fn->id->str, strlen(fn->id->str));
 }
 
-void testing_run(Context *cnt)
-{
-    printf("\nTesting start in compile time\n");
-    printf(TEXT_LINE "\n");
-
-    const usize tc = cnt->testing.cases->size;
-    MirFn *     test_fn;
-
-    typedef struct {
-        const char *name;
-        f64         runtime_ms;
-    } CaseMeta;
-
-    TArray failed;
-    tarray_init(&failed, sizeof(CaseMeta));
-
-    TARRAY_FOREACH(MirFn *, cnt->testing.cases, test_fn)
-    {
-        BL_ASSERT(IS_FLAG(test_fn->flags, FLAG_TEST_FN));
-
-        const f64  start      = get_tick_ms();
-        const bool passed     = vm_execute_fn(cnt->vm, cnt->assembly, test_fn, NULL);
-        const f64  runtime_ms = get_tick_ms() - start;
-
-        const char *name = test_fn->id->str;
-        if (passed) {
-            printf("[ PASS |      ] %s (%f ms)\n", name, runtime_ms);
-        } else {
-            printf("[      | FAIL ] %s (%f ms)\n", name, runtime_ms);
-
-            CaseMeta tmp = {.name = name, .runtime_ms = runtime_ms};
-            tarray_push(&failed, tmp);
-
-            builder.errorc = 0;
-            ++builder.test_failc;
-        }
-    }
-
-    const u64 fc   = failed.size;
-    s32       perc = 100;
-    if (fc > 0) perc = (s32)((f32)(tc - fc) / ((f32)tc * 0.01f));
-
-    printf("\nResults:\n");
-    printf(TEXT_LINE "\n");
-
-    for (usize i = 0; i < failed.size; ++i) {
-        CaseMeta *f = &tarray_at(CaseMeta, &failed, i);
-        printf("[      | FAIL ] %s (%f ms)\n", f->name, f->runtime_ms);
-    }
-
-    if (failed.size) printf(TEXT_LINE "\n");
-    printf("Executed: %llu, passed %d%%.\n", (unsigned long long)tc, perc);
-    printf(TEXT_LINE "\n");
-    tarray_terminate(&failed);
-}
-
 // Top-level rtti generation.
 INLINE MirVar *rtti_gen(Context *cnt, MirType *type)
 {
@@ -9136,8 +9076,8 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
                 BL_ASSERT(value);
                 MirFn *fn = MIR_CEV_READ_AS(MirFn *, &value->value);
                 BL_MAGIC_ASSERT(fn);
-                fn->emit_llvm        = true;
-                cnt->assembly->entry = fn;
+                fn->emit_llvm               = true;
+                cnt->assembly->vm_run.entry = fn;
             }
         }
         ID *id = &ast_current_name->data.ident.id;
@@ -9887,17 +9827,6 @@ void mir_type_to_str(char *buf, usize len, const MirType *type, bool prefer_name
     _type_to_str(buf, len, type, prefer_name);
 }
 
-void execute_build_entry_fn(Context *cnt, MirFn *fn)
-{
-    if (!fn) {
-        builder_error("Assembly '%s' has no build entry function!", cnt->assembly->name);
-        return;
-    }
-
-    // tmp return value storage
-    vm_execute_fn(cnt->vm, cnt->assembly, fn, NULL);
-}
-
 void builtin_inits(Context *cnt)
 {
 #define PROVIDE(N) provide_builtin_type(cnt, bt->t_##N) // initialize all hashes once
@@ -10090,15 +10019,6 @@ void mir_run(Assembly *assembly)
     analyze_report_unresolved(&cnt);
 
     if (builder.errorc) goto SKIP;
-
-    // Handle build mode
-    if (assembly->options.build_mode == BUILD_MODE_BUILD) {
-        execute_build_entry_fn(&cnt, assembly->build_entry);
-        goto SKIP;
-    }
-
-    // Run test cases
-    if (assembly->options.run_tests) testing_run(&cnt); // @CLEANUP
 
     BL_LOG("Analyze queue push count: %i", push_count);
 SKIP:
