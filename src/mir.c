@@ -266,8 +266,8 @@ static ID *lookup_builtins_code_loc(Context *cnt);
 // set to base member type if entry was found in parent.
 static ScopeEntry *lookup_composit_member(MirType *type, ID *rid, MirType **out_base_type);
 
-// Provide global bool constant into the assembly.
-static MirInstr *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v);
+// Provide global bool variable into the assembly.
+static MirVar *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v);
 
 // Initialize type ID. This function creates and set ID string and calculates integer hash from this
 // string. The type.id.str could be also used as name for unnamed types.
@@ -1768,7 +1768,7 @@ ScopeEntry *lookup_composit_member(MirType *type, ID *rid, MirType **out_base_ty
     return found;
 }
 
-MirInstr *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v)
+MirVar *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v)
 {
     Scope *scope = cnt->assembly->gscope;
 
@@ -1785,7 +1785,7 @@ MirInstr *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v)
     append_instr_set_initializer(cnt, NULL, decl_var, init);
     set_current_block(cnt, prev_block);
     register_symbol(cnt, NULL, id, scope, true);
-    return decl_var;
+    return ((MirInstrDeclVar *)decl_var)->var;
 }
 
 MirType *create_type_type(Context *cnt)
@@ -9880,6 +9880,11 @@ void builtin_inits(Context *cnt)
     // Add IS_DEBUG immutable into the global scope to provide information about enabled
     // debug mode.
     add_global_bool(cnt, &builtin_ids[MIR_BUILTIN_ID_IS_DEBUG], false, cnt->debug_mode);
+
+    // Add IS_COMPTIME_RUN immutable into the global scope to provide information about compile time
+    // run.
+    cnt->assembly->vm_run.is_comptime_run =
+        add_global_bool(cnt, &builtin_ids[MIR_BUILTIN_ID_IS_COMPTIME_RUN], false, false);
 #undef PROVIDE
 }
 

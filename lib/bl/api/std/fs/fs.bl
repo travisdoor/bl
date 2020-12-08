@@ -14,6 +14,8 @@
 
 /// File handle type.
 FSFile :: _FSImplFile;
+
+/// Invalid file handle. This can be used for file handle validation.
 FS_FILE_INVALID :: _FS_IMPL_FILE_INVALID;
 
 /// Specify operation with opened file.

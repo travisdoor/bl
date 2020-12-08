@@ -2454,6 +2454,15 @@ void vm_provide_command_line_arguments(VM *vm, const s32 argc, char *argv[])
     vm_write_slice(vm, slice_type, slice_dest, args_dest, argc);
 }
 
+void vm_override_var(VM *vm, struct MirVar *var, const u64 value)
+{
+    BL_ASSERT(var);
+    MirType *  type     = var->value.type;
+    VMStackPtr dest_ptr = vm_read_var(vm, var);
+    BL_ASSERT(dest_ptr);
+    vm_write_int(type, dest_ptr, value);
+}
+
 bool vm_execute_fn(VM *vm, Assembly *assembly, MirFn *fn, VMStackPtr *out_ptr)
 {
     vm->assembly       = assembly;

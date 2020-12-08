@@ -96,8 +96,10 @@ typedef struct Assembly {
         MirFn * entry;                  // Main function
         MirFn * build_entry;            // Set for build assembly
         MirVar *command_line_arguments; // Command line arguments variable.
-        s32     argc;                   // Count of arguments forwarded in script mode.
-        char ** argv;                   // Values of arguments forwarded in script mode.
+        // Provide information whether application run in compile time or not.
+        MirVar *is_comptime_run;
+        s32     argc; // Count of arguments forwarded in script mode.
+        char ** argv; // Values of arguments forwarded in script mode.
     } vm_run;
 
     // DynCall/Lib data used for external method execution in compile time

@@ -77,6 +77,7 @@ bool vm_eval_instr(VM *vm, struct Assembly *assembly, struct MirInstr *instr);
 bool vm_execute_instr_top_level_call(VM *vm, struct Assembly *assembly, struct MirInstrCall *call);
 bool vm_execute_fn(VM *vm, struct Assembly *assembly, struct MirFn *fn, VMStackPtr *out_ptr);
 void vm_provide_command_line_arguments(VM *vm, s32 argc, char *argv[]);
+void vm_override_var(VM *vm, struct MirVar *var, u64 value);
 void vm_do_cast(VMStackPtr      dest,
                 VMStackPtr      src,
                 struct MirType *dest_type,

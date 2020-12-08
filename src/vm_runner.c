@@ -112,18 +112,20 @@ s32 vm_entry_run(Assembly *assembly)
     BL_ASSERT(fn_type && fn_type->kind == MIR_TYPE_FN);
     BL_ASSERT(!fn_type->data.fn.args);
     vm_provide_command_line_arguments(vm, assembly->vm_run.argc, assembly->vm_run.argv);
+    vm_override_var(vm, assembly->vm_run.is_comptime_run, true);
     VMStackPtr ret_ptr = NULL;
+    s32        result  = EXIT_SUCCESS;
     if (vm_execute_fn(vm, assembly, entry, &ret_ptr)) {
         if (ret_ptr) {
-            MirType * ret_type = fn_type->data.fn.ret_type;
-            const s64 result   = vm_read_int(ret_type, ret_ptr);
-            builder_note("Execution finished with state: %lld\n", (long long)result);
-            return (s32)result;
+            MirType *ret_type = fn_type->data.fn.ret_type;
+            result            = (s32)vm_read_int(ret_type, ret_ptr);
+            builder_note("Execution finished with state: %d\n", result);
         } else {
             builder_note("Execution finished without errors");
         }
     } else {
         builder_note("Execution finished with errors");
     }
-    return EXIT_SUCCESS;
+    vm_override_var(vm, assembly->vm_run.is_comptime_run, false);
+    return result;
 }
