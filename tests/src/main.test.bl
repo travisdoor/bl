@@ -1,12 +1,10 @@
-#load "std/string.bl"
-#load "std/test.bl"
+#import "std/string"
+#import "std/test"
 
 /////////////////////////////////////////////////////
-#load "std/debug_allocator.bl"
+#import "std/debug_allocator"
 #load "defer.test.bl"
 #load "intrinsics.test.bl"
-#load "dynamic_arrays.test.bl"
-#load "print.test.bl"
 #load "arrtoslice.test.bl"
 #load "casting.test.bl"
 #load "compounds.test.bl"
@@ -25,7 +23,6 @@
 #load "simple_assignments.test.bl"
 #load "sizeof.test.bl"
 #load "slice_init.test.bl"
-#load "strings.test.bl"
 #load "structs.test.bl"
 #load "type_infer.test.bl"
 #load "union.test.bl"

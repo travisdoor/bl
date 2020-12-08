@@ -1,4 +1,13 @@
-#load "std/string.bl"
+#import "std/test"
+#import "std/debug_allocator"
+
+#import "std/string"
+
+main :: fn () s32 {
+    dbgalloc_init();
+    defer dbgalloc_terminate();
+    return test_run();    
+}
 
 #private
 test_multiline_string_literal :: fn () #test {

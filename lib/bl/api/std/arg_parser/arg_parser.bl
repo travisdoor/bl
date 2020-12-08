@@ -8,7 +8,7 @@
 //!
 //! Command line argument parsing tool. 
 
-#load "std/array.bl"
+#import "std/array"
 
 ARG_PARSER_BREAK :: 0;
 

@@ -1,4 +1,13 @@
-#load "std/array.bl"
+#import "std/test"
+#import "std/debug_allocator"
+
+#import "std/array"
+
+main :: fn () s32 {
+    dbgalloc_init();
+    defer dbgalloc_terminate();
+    return test_run();    
+}
 
 #private
 test_basic_inserting_s32 :: fn () #test {

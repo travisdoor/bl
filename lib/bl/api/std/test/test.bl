@@ -27,10 +27,10 @@
 //************************************************************************************************
 
 #import "std/thread"
+#import "std/string"
+#import "std/array"
 
 #load "std/debug.bl"
-#load "std/string.bl"
-#load "std/array.bl"
 #load "os/posix/signal.bl"
 
 //! ====

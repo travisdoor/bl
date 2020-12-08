@@ -1,6 +1,6 @@
 // First of all we must load API functions for dynamic array. The #load hash
 // directive can be used to "include" other source files.
-#load "std/array.bl"
+#import "std/array"
 
 main :: fn () s32 {
     // Now we create new dynamic array to store numbers. No heap alloacation 

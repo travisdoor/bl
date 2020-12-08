@@ -26,12 +26,13 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#import "std/string"
+
 #load "os/linux/errno.bl"
 #load "os/posix/signal.bl"
 #load "os/posix/error.bl"
 #load "os/posix/unistd.bl"
 #load "std/libc.bl"
-#load "std/string.bl"
 #load "std/error.bl"
 
 OS_KIND :: OSKind.Linux;

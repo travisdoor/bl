@@ -11,10 +11,14 @@ EXAMPLES_DIR :: "examples";
 EXAMPLES_DOCS_DIR :: "examples/docs";
 EXPECT_FAIL_DIR :: "tests/src/expect_fail";
 
-HARDCODED_MODULES :: {:[4]string:
+HARDCODED_MODULES :: {:[8]string:
                       "lib/bl/api/std/fs/fs.test.bl",
                       "lib/bl/api/std/thread/thread.test.bl",
+                      "lib/bl/api/std/string/string.test.bl",
+                      "lib/bl/api/std/array/array.test.bl",
                       "lib/bl/api/std/sync/sync.test.bl",
+                      "lib/bl/api/std/print/print.test.bl",
+                      "lib/bl/api/std/debug_allocator/debug_allocator.test.bl",
                       "lib/bl/api/std/arg_parser/arg_parser.test.bl",
                      };
 

@@ -26,10 +26,10 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#import "std/string"
 #load "windows/winapi.bl"
 #load "windows/io.bl"
 #load "posix/signal.bl"
-#load "std/string.bl"
 #load "std/error.bl"
 
 OS_KIND :: OSKind.Windows;

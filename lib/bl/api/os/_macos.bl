@@ -26,6 +26,7 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#import "std/string"
 #load "macos/macosapi.bl"
 #load "macos/errno.bl"
 #load "macos/dirent.bl"
@@ -34,7 +35,6 @@
 #load "posix/error.bl"
 #load "std/error.bl"
 #load "std/libc.bl"
-#load "std/string.bl"
 
 OS_KIND :: OSKind.MacOS;
 OS_NAME :: "MacOS";

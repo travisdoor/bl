@@ -1,5 +1,5 @@
-#load "std/test.bl"
-#load "std/debug_allocator.bl"
+#import "std/test"
+#import "std/debug_allocator"
 
 #import "std/thread"
 #import "std/sync"

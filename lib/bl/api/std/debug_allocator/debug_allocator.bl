@@ -35,7 +35,7 @@
 //! 
 //! ::
 //! 
-//!     #load "std/debug_allocator.bl"
+//!     #import "std/debug_allocator"
 //! 
 //! Debug allocator can be used to analyze memory usage of program and eventually analyze
 //! possible memory leaks. By :ref:`dbgalloc_init` call the global `context` allocator is

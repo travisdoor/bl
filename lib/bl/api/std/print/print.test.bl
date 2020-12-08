@@ -1,20 +1,12 @@
-#import "std/print"
 #import "std/test"
+#import "std/debug_allocator"
+#import "std/print"
 
-/*
-test_print :: fn () {
-    test_add(&test_print_int, "test_print_int");
-    test_add(&test_print_bool, "test_print_bool");
-    test_add(&test_fmt_f32, "test_fmt_f32");
-    test_add(&test_fmt_s32_base10, "test_fmt_s32_base10");
-    test_add(&test_fmt_s32_base2, "test_fmt_s32_base2");
-    test_add(&test_fmt_s32_base16, "test_fmt_s32_base16");
-    test_add(&test_print_content_simple, "test_print_content_simple");
-    test_add(&test_print_array, "test_print_array");
-    test_add(&test_print_struct, "test_print_struct");
-    test_add(&test_complex_type, "test_complex_type");
+main :: fn () s32 {
+    dbgalloc_init();
+    defer dbgalloc_terminate();
+    return test_run();    
 }
-*/
 
 #private
 test_print_int :: fn () #test {
