@@ -160,6 +160,7 @@ set(SOURCE_FILES
     src/build_api.c
     src/intrinsic.c
     src/docs.c
+    src/vm_runner.c
     src/threading.cpp
     src/llvm_api.cpp
     src/llvm_di.cpp

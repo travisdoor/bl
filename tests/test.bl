@@ -1,4 +1,4 @@
 main :: fn () s32 {
-    args: Args;
+    print("Hello!\n");
     return 0;
 }

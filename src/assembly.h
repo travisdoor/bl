@@ -95,6 +95,7 @@ typedef struct Assembly {
     THashTable unit_cache;  // cache for loading only unique units
     char *     name;        // assembly name
     Scope *    gscope;      // global scope of the assembly
+    MirFn *    entry;       // Main function
     MirFn *    build_entry; // Set for build assembly
     MirVar *   command_line_arguments;
     s32        vm_argc;

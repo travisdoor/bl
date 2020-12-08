@@ -1,11 +1,11 @@
 //************************************************************************************************
 // bl
 //
-// File:   stages.h
+// File:   vm_runner.c
 // Author: Martin Dorazil
-// Date:   02/03/2018
+// Date:   8.12.20
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2020 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,28 +26,37 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#ifndef BL_STAGES_H
-#define BL_STAGES_H
-
 #include "assembly.h"
-#include "builder.h"
+#include "bldebug.h"
 #include "error.h"
-#include "unit.h"
+#include "stages.h"
+#include "vm.h"
 
-void file_loader_run(Unit *unit);
-void lexer_run(Unit *unit);
-void token_printer_run(Unit *unit);
-void parser_run(Assembly *assembly, Unit *unit);
-void conf_parser_run(Unit *unit, ConfData *out_data);
-void ast_printer_run(Assembly *assembly, FILE *stream);
-void docs_run(Assembly *assembly);
-void ir_run(Assembly *assembly);
-void ir_opt_run(Assembly *assembly);
-void obj_writer_run(Assembly *assembly);
-void linker_run(Assembly *assembly);
-void bc_writer_run(Assembly *assembly);
-void native_bin_run(Assembly *assembly);
-void mir_writer_run(Assembly *assembly);
-s32  vm_entry_run(Assembly *assembly);
-
-#endif
+s32 vm_entry_run(Assembly *assembly)
+{
+    VM *   vm    = &assembly->vm;
+    MirFn *entry = assembly->entry;
+    builder_note("\nExecuting 'main' in compile time...");
+    if (!entry) {
+        builder_error("Assembly '%s' has no entry function!", assembly->name);
+        return EXIT_FAILURE;
+    }
+    MirType *fn_type = entry->type;
+    BL_ASSERT(fn_type && fn_type->kind == MIR_TYPE_FN);
+    BL_ASSERT(!fn_type->data.fn.args);
+    vm_provide_command_line_arguments(vm, assembly->vm_argc, assembly->vm_argv);
+    VMStackPtr ret_ptr = NULL;
+    if (vm_execute_fn(vm, assembly, entry, &ret_ptr)) {
+        if (ret_ptr) {
+            MirType * ret_type = fn_type->data.fn.ret_type;
+            const s64 result   = vm_read_int(ret_type, ret_ptr);
+            builder_note("Execution finished with state: %lld\n", (long long)result);
+            return (s32)result;
+        } else {
+            builder_note("Execution finished without errors");
+        }
+    } else {
+        builder_note("Execution finished with errors");
+    }
+    return EXIT_SUCCESS;
+}

@@ -113,6 +113,8 @@ int compile_assembly(Assembly *assembly)
     FINISH_IF(builder.options.syntax_only);
 
     mir_run(assembly);
+    // Run main
+    if (builder.options.run) builder.last_script_mode_run_status = vm_entry_run(assembly);
     if (builder.options.emit_mir) mir_writer_run(assembly);
     INTERRUPT_ON_ERROR;
 
@@ -148,9 +150,9 @@ s32 builder_parse_options(s32 argc, char *argv[])
 {
 #define BREAK                                                                                      \
     optind++;                                                                                      \
-    break;                                                                                         \
+    break;
 
-#define IS_PARAM(_arg)(strcmp(&argv[optind][1], _arg) == 0)
+#define IS_PARAM(_arg) (strcmp(&argv[optind][1], _arg) == 0)
 
     builder.options.build_mode = BUILD_MODE_DEBUG;
 
@@ -258,7 +260,7 @@ void builder_init(void)
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split = false;
+    builder.options.reg_split     = false;
 #endif
 
     // initialize LLVM statics
