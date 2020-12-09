@@ -307,7 +307,7 @@ void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct To
         }
     }
 
-    NativeLib lib   = {};
+    NativeLib lib   = {0};
     lib.hash        = hash;
     lib.user_name   = strdup(lib_name);
     lib.linked_from = link_token;
