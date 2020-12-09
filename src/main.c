@@ -155,7 +155,7 @@ int main(s32 argc, char *argv[])
     ENV_LIB_DIR = strdup(conf_data_get_str(&builder.conf, CONF_LIB_DIR_KEY));
 
     if (builder.options.where_is_api) {
-        fprintf(stdout, "%s\n", ENV_LIB_DIR);
+        fprintf(stdout, "%s", ENV_LIB_DIR);
         EXIT(EXIT_SUCCESS);
     }
 
