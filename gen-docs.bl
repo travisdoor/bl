@@ -5,6 +5,10 @@ DEST_DOCS_DIR :: "docs";
 DEST_API_DIR :: "docs/api";
 SRC_API_DIR :: "lib/bl/api";
 
+IGNORE :: {:[1]string:
+           "sdl2"
+          };
+
 cmd :: fn (fmt: string, args: ...) Error {
     buf: [2048]u8 #noinit;
     bprint(buf, fmt, args);
@@ -39,6 +43,9 @@ docs_dir :: fn (dest_path: string, src_path: string) Error {
         if string_compare(info.name, ".")    { return false; }
         if string_compare(info.name, "..")   { return false; }
         if string_compare(info.name, "_", 1) { return false; }
+        loop i := 0; i < IGNORE.len; i += 1 {
+            if string_compare(info.name, IGNORE[i]) { return false; }
+        }
         if info.kind == FSInfoKind.File {
             ext :: fs_get_extension(info.name);
             if !string_compare(ext, "bl") { return false; }
