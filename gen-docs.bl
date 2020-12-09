@@ -5,8 +5,9 @@ DEST_DOCS_DIR :: "docs";
 DEST_API_DIR :: "docs/api";
 SRC_API_DIR :: "lib/bl/api";
 
-IGNORE :: {:[1]string:
-           "sdl2"
+IGNORE :: {:[2]string:
+           "sdl2",
+           "glfw3",
           };
 
 cmd :: fn (fmt: string, args: ...) Error {
