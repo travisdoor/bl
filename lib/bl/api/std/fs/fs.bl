@@ -155,9 +155,13 @@ fs_write_string :: fn (handle: FSFile, str: string) (s64, Error) #inline {
 }
 
 /// Write content of `v` slice into the file, return count of written bytes and `OK` if
-/// there is no error, otherwise return 0 and error.
-fs_write_slice :: fn (handle: FSFile, v: []u8) (s64, Error) #inline {
-    written_bytes, err :: _fs_impl_write(handle, v.ptr, v.len);
+/// there is no error, otherwise return 0 and error. Optional argument `count` specify
+/// count of bytes from `v` to be written, negative value means whole content. When
+/// passed count is greater than `v.len`, count value is set to `v.len`.
+fs_write_slice :: fn (handle: FSFile, v: []u8, count : s64 = -1) (s64, Error) #inline {
+    if count < 0 { count = v.len; } 
+    if count > v.len { count = v.len; }
+    written_bytes, err :: _fs_impl_write(handle, v.ptr, count);
     if !is_ok(err) { return 0, err; }
     return auto written_bytes, ok();
 }

@@ -64,6 +64,7 @@ typedef struct BuilderOptions {
     bool        verify_llvm;
     bool        docs;
     bool        silent;
+    bool        where_is_api;
 } BuilderOptions;
 
 typedef struct Builder {

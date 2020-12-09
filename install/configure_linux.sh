@@ -42,31 +42,6 @@ else
     echo "  FOUND - $LINKER_EXEC"
 fi
 
-#echo "- Looking for C runtime objects"
-#CRT1_O="/usr/lib/x86_64-linux-gnu/crt1.o"
-#if [ -e "$CRT1_O" ]; then
-#    echo "  FOUND - $CRT1_O"
-#else
-#    echo "  error: Cannot find '$CRT1_O'. You can try to set correct path manually in etc/bl.conf file."
-#    $STATUS=1
-#fi
-
-#CRTI_O="/usr/lib/x86_64-linux-gnu/crti.o"
-#if [ -e "$CRTI_O" ]; then
-#    echo "  FOUND - $CRTI_O"
-#else
-#    echo "  error: Cannot find '$CRTI_O'. You can try to set correct path manually in etc/bl.conf file."
-#    $STATUS=1
-#fi
-
-#CRTN_O="/usr/lib/x86_64-linux-gnu/crtn.o"
-#if [ -e "$CRTN_O" ]; then
-#    echo "  FOUND - $CRTN_O"
-#else
-#    echo "  error: Cannot find '$CRTN_O'. You can try to set correct path manually in etc/bl.conf file."
-#    $STATUS=1
-#fi
-
 LDLIB="/lib64/ld-linux-x86-64.so.2"
 if [ -e "$LDLIB" ]; then
     echo "  FOUND - $LDLIB"
@@ -84,7 +59,7 @@ printf "/*\n * blc config file\n */\n\n" >> $CONFIG_FILE
 echo LIB_DIR \"$LIB_DIR/api\" >> $CONFIG_FILE
 echo LINKER_EXEC \"$LINKER_EXEC\" >> $CONFIG_FILE
 echo LINKER_OPT \"$LINKER_OPT\" >> $CONFIG_FILE
-echo LINKER_LIB_PATH \"/usr/lib:/usr/local/lib:/lib64\" >> $CONFIG_FILE
+echo LINKER_LIB_PATH \"/usr/lib:/usr/local/lib:/lib64:/usr/lib/x86_64-linux-gnu\" >> $CONFIG_FILE
 
 if [ $STATUS -eq 0 ]; then
     CONFIG_FILE=$(realpath $CONFIG_FILE)

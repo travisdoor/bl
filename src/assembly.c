@@ -307,7 +307,7 @@ void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct To
         }
     }
 
-    NativeLib lib   = {0};
+    NativeLib lib   = {};
     lib.hash        = hash;
     lib.user_name   = strdup(lib_name);
     lib.linked_from = link_token;
@@ -315,7 +315,7 @@ void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct To
     tarray_push(&assembly->options.libs, lib);
 }
 
-bool assembly_import_module(Assembly UNUSED(*assembly), const char *modulepath, Token *import_from)
+bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *import_from)
 {
     if (!strlen(modulepath)) {
         builder_msg(BUILDER_MSG_ERROR,
@@ -343,12 +343,40 @@ bool assembly_import_module(Assembly UNUSED(*assembly), const char *modulepath, 
         goto INTERRUPT;
     }
 
-    const char *entry_file = conf_data_get_str(&config, CONF_ENTRY);
-    BL_ASSERT(entry_file && strlen(entry_file) > 0);
-    snprintf(tmp_path, ARRAY_SIZE(tmp_path), "%s/%s", modulepath, entry_file);
-    Unit *unit = unit_new_file(tmp_path, NULL);
-    if (!assembly_add_unit_unique(assembly, unit)) {
-        unit_delete(unit);
+    { // entry file
+        const char *entry_file = conf_data_get_str(&config, CONF_ENTRY);
+        BL_ASSERT(entry_file && strlen(entry_file) > 0);
+        snprintf(tmp_path, ARRAY_SIZE(tmp_path), "%s/%s", modulepath, entry_file);
+        Unit *unit = unit_new_file(tmp_path, NULL);
+        if (!assembly_add_unit_unique(assembly, unit)) {
+            unit_delete(unit);
+        }
+    }
+
+    // Optional lib path
+    if (conf_data_has_key(&config, CONF_LIB_PATH)) {
+        const char *lib_path = conf_data_get_str(&config, CONF_LIB_PATH);
+        BL_ASSERT(lib_path && strlen(lib_path) > 0);
+        snprintf(tmp_path, ARRAY_SIZE(tmp_path), "%s/%s/%s", ENV_LIB_DIR, modulepath, lib_path);
+        if (!dir_exists(tmp_path)) {
+            builder_msg(BUILDER_MSG_ERROR,
+                        ERR_FILE_NOT_FOUND,
+                        TOKEN_OPTIONAL_LOCATION(import_from),
+                        BUILDER_CUR_WORD,
+                        "Cannot find module imported library path '%s' defined by '%s'.",
+                        tmp_path,
+                        CONF_LIB_PATH,
+                        tmp_path);
+            goto INTERRUPT;
+        }
+        assembly_add_lib_path(assembly, tmp_path);
+    }
+
+    // Optional libs
+    if (conf_data_has_key(&config, CONF_LINK)) {
+        const char *lib = conf_data_get_str(&config, CONF_LINK);
+        BL_ASSERT(lib && strlen(lib) > 0);
+        assembly_add_native_lib(assembly, lib, NULL);
     }
     conf_data_terminate(&config);
     return true;

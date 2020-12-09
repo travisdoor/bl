@@ -97,7 +97,8 @@ bool file_exists(const char *filepath)
 #if defined(BL_PLATFORM_WIN)
     return (bool)PathFileExistsA(filepath);
 #else
-    return access(filepath, F_OK) != -1;
+    struct stat tmp;
+    return stat(filepath, &tmp) == 0;
 #endif
 }
 

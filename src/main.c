@@ -149,15 +149,20 @@ int main(s32 argc, char *argv[])
         EXIT(EXIT_FAILURE);
     }
 
-    if (*argv == NULL && !builder.options.use_pipeline) {
-        builder_warning("Nothing to do, no input files, sorry :(");
-        EXIT(EXIT_SUCCESS);
-    }
-
     builder_load_config(ENV_CONF_FILEPATH);
 
     // setup LIB_DIR
     ENV_LIB_DIR = strdup(conf_data_get_str(&builder.conf, CONF_LIB_DIR_KEY));
+
+    if (builder.options.where_is_api) {
+        fprintf(stdout, "%s\n", ENV_LIB_DIR);
+        EXIT(EXIT_SUCCESS);
+    }
+
+    if (*argv == NULL && !builder.options.use_pipeline) {
+        builder_warning("Nothing to do, no input files, sorry :(");
+        EXIT(EXIT_SUCCESS);
+    }
 
     Assembly *assembly = assembly_new("out");
     assembly_set_vm_args(assembly, vm_argc, vm_argv);

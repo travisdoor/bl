@@ -423,6 +423,10 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
 
         assembly_add_native_lib(cnt->assembly, tok_path->value.str, tok_path);
 
+        PARSE_WARNING(tok_directive,
+                      BUILDER_CUR_WORD,
+                      "Link directive is deprecated and will be removed in next release. Please "
+                      "use build system to link dependencies or module import.");
         return link;
     }
 

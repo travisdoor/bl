@@ -130,7 +130,8 @@ typedef struct NativeLib {
     char *        filename;
     char *        filepath;
     char *        dir;
-    bool          is_internal;
+    // Disable appending of this library to the linker options.
+    bool is_internal;
 } NativeLib;
 
 Assembly *      assembly_new(const char *name);

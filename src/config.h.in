@@ -118,10 +118,16 @@
 // module related config
 #if defined(BL_PLATFORM_WIN)
 #define CONF_ENTRY "WIN32_ENTRY"
+#define CONF_LIB_PATH "WIN32_LIB_PATH"
+#define CONF_LINK "WIN32_LINK"
 #elif defined(BL_PLATFORM_LINUX)
 #define CONF_ENTRY "LINUX_ENTRY"
+#define CONF_LIB_PATH "LINUX_LIB_PATH"
+#define CONF_LINK "LINUX_LINK"
 #elif defined(BL_PLATFORM_MACOS)
 #define CONF_ENTRY "MACOS_ENTRY"
+#define CONF_LIB_PATH "MACOS_LIB_PATH"
+#define CONF_LINK "MACOS_LINK"
 #else
 #error "Unknown platform"
 #endif

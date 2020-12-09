@@ -58,13 +58,13 @@ static bool search_library(Context *   cnt,
     const char *dir;
     TARRAY_FOREACH(const char *, cnt->lib_paths, dir)
     {
-        if (strlen(dir) + strlen(PATH_SEPARATOR) + strlen(lib_name_full) >= PATH_MAX)
+        builder_log("- Search in: '%s'", dir);
+        if (strlen(dir) + strlen(PATH_SEPARATOR) + strlen(lib_name_full) >= PATH_MAX) {
             BL_ABORT("Path too long");
-
+        }
         strcpy(lib_filepath, dir);
         strcat(lib_filepath, PATH_SEPARATOR);
         strcat(lib_filepath, lib_name_full);
-
         if (file_exists(lib_filepath)) {
             builder_log("  Found: '%s'", lib_filepath);
             if (out_lib_name) (*out_lib_name) = strdup(lib_name_full);

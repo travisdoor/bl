@@ -84,7 +84,7 @@ cmake_compile :: fn (is_debug: bool) s32 #inline {
     if OS_KIND == OSKind.Windows {
         cmd = sprint("cmake --build . --config ", conf);
     } else {
-        cmd = sprint("make");
+        cmd = sprint("make -j");
     }
     return os_execute(cmd);
 }

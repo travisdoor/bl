@@ -184,6 +184,10 @@ if(MSVC)
   set(CMAKE_CXX_FLAGS_DEBUG
       "${CMAKE_CXX_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd /W4 /WX /GS")
 else()
+  set(THREADS_PREFER_PTHREAD_FLAG ON)
+  find_package(Threads REQUIRED)
+  target_link_libraries(blc PRIVATE Threads::Threads)
+
   # C
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
   set(CMAKE_C_FLAGS_DEBUG
@@ -211,8 +215,14 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wno-nullability-completeness -Wno-unused-local-typedef")
 endif()
 
-target_link_libraries(blc PUBLIC dynload_s dyncall_s dyncallback_s tlib
-                                 ${CMAKE_DL_LIBS} ${LLVM_LIBS})
+target_link_libraries(
+  blc
+  PRIVATE dynload_s
+          dyncall_s
+          dyncallback_s tlib
+          ${CMAKE_DL_LIBS}
+          #LLVM) #use only LLVM to link dynamically
+          ${LLVM_LIBS})
 
 target_include_directories(
   blc
