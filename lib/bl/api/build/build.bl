@@ -91,7 +91,7 @@ add_executable :: fn (name: string) Assembly {
 /// Add new source file into the assembly. This basically load new source file into
 /// the :ref:`Assembly`.
 add_unit :: fn (assembly: Assembly, filepath: string) Unit {
-    if assembly == null { panic("Invalid assembly!"); }
+    if !assembly { panic("Invalid assembly!"); }
     if filepath.len == 0 { panic("Invalid unit path!"); }
 
     return __add_unit(assembly, auto filepath.ptr);
@@ -99,7 +99,7 @@ add_unit :: fn (assembly: Assembly, filepath: string) Unit {
 
 /// Add path for linker library lookup.
 add_lib_path :: fn (assembly: Assembly, path: string) {
-    if assembly == null { panic("Invalid assembly!"); }
+    if !assembly { panic("Invalid assembly!"); }
     if path.len == 0 { panic("Invalid library path!"); }
 
     __add_lib_path(assembly, auto path.ptr);
@@ -138,7 +138,7 @@ add_lib_path :: fn (assembly: Assembly, path: string) {
 ///         link_library(exe, "png");
 ///     }
 link_library :: fn (assembly: Assembly, name: string) {
-    if assembly == null { panic("Invalid assembly!"); }
+    if !assembly { panic("Invalid assembly!"); }
     if name.len == 0 { panic("Invalid library name!"); }
 
     __link_library(assembly, auto name.ptr);
@@ -147,20 +147,20 @@ link_library :: fn (assembly: Assembly, name: string) {
 /// Appends raw string data directly to linker command. Passed option
 /// is added without any processing and copatibility validation. 
 append_linker_options :: fn (assembly: Assembly, option: string) {
-    if assembly == null { panic("Invalid assembly!"); }
+    if !assembly { panic("Invalid assembly!"); }
     if option.len == 0 { return; }
     __append_linker_options(assembly, auto option.ptr);
 }
 
 /// Get build mode of the assembly. 
 get_build_mode :: fn (assembly: Assembly) BuildMode {
-    if assembly == null { panic("Invalid assembly!"); }
+    if !assembly { panic("Invalid assembly!"); }
     return auto __get_build_mode(assembly);
 }
 
 /// Set build mode of the assembly. 
 set_build_mode :: fn (assembly: Assembly, mode: BuildMode) {
-    if assembly == null { panic("Invalid assembly!"); }
+    if !assembly { panic("Invalid assembly!"); }
     __set_build_mode(assembly, auto mode);
 }
 
@@ -170,14 +170,39 @@ set_build_mode :: fn (assembly: Assembly, mode: BuildMode) {
 /// Directory path `dir`. This can contain non-existing directories separated by `/`,
 /// compiler will create all missing directories in passed path.
 set_output_dir :: fn (assembly: Assembly, dir: string) {
-    if assembly == null { panic("Invalid assembly!"); }
-    if dir.len == 0 { return; }
+    if !assembly { panic("Invalid assembly!"); }
+    if string_is_empty(dir) { return; }
     __set_output_dir(assembly, auto dir.ptr);
 }
 
 /// Enable compile-time execution of all tests declared in assembly.
 enable_testing :: fn (assembly: Assembly) {
     __toggle_testing(assembly, 1);
+}
+
+/// Specify import mode policy in :ref:`set_module_dir` function call. Module dependencies
+/// of any assembly can be treated in different ways depending on use case and needs of
+/// programmer. Sometimes program stability and maintainability is more important than
+/// use of latest versions of modules. These flags can specify how local modules should
+/// be updated.
+ModuleImportPolicy :: enum s32 {
+    // __System     :: 0;
+    /// Bundle only missing modules from system into the local module folder and ignore
+    /// if there is newer version available. Individual module updates can be done by
+    /// renaming old one and re-run compilation.
+    Bundle       :: 1;
+
+    /// Bundle all missing modules from system into the local module folder and update
+    /// old ones also.
+    BundleLatest :: 2;
+}
+
+/// Sets module directory `dir` for `assembly`. All imported modules will be copied into
+/// this directory according to chosen :ref:`ModuleImportPolicy`.
+set_module_dir :: fn (assembly: Assembly, dir: string, policy := ModuleImportPolicy.BundleLatest) {
+    if !assembly { panic("Invalid assembly!"); }
+    if string_is_empty(dir) { return; }
+    __set_module_dir(assembly, auto dir.ptr, auto policy);
 }
 
 #private
@@ -190,3 +215,4 @@ __set_build_mode :: fn (assembly: Assembly, mode: c_int) #extern;
 __get_build_mode :: fn (assembly: Assembly) c_int #extern;
 __set_output_dir :: fn (assembly: Assembly, dir: *c_char) #extern;
 __toggle_testing :: fn (assembly: Assembly, v: c_int) #extern;
+__set_module_dir :: fn (assembly: Assembly, dir: *c_char, policy: c_int) #extern;

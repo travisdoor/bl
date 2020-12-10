@@ -1,3 +1,4 @@
+
 main :: fn () s32 {
     print("Run %\n", IS_COMPTIME_RUN);
     return 0;
