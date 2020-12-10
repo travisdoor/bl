@@ -180,7 +180,7 @@ enable_testing :: fn (assembly: Assembly) {
     __toggle_testing(assembly, 1);
 }
 
-/// Specify import mode policy in :ref:`set_module_dir` function call. Module dependencies
+/// Specify import module policy in :ref:`set_module_dir` function call. Module dependencies
 /// of any assembly can be treated in different ways depending on use case and needs of
 /// programmer. Sometimes program stability and maintainability is more important than
 /// use of latest versions of modules. These flags can specify how local modules should

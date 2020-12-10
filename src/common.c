@@ -48,6 +48,72 @@
 
 u64 main_thread_id = 0;
 
+bool search_source_file(const char *filepath,
+                        const u32   flags,
+                        const char *wdir,
+                        char **     out_filepath,
+                        char **     out_dirpath)
+{
+    BL_ASSERT(out_filepath);
+    BL_ASSERT(out_dirpath);
+    if (!filepath) goto NOT_FOUND;
+    char        tmp[PATH_MAX] = {0};
+    const char *rpath         = tmp;
+    // Lookup in working directory.
+    if (wdir && IS_FLAG(flags, SEARCH_FLAG_WDIR)) {
+        strncpy(tmp, wdir, TARRAY_SIZE(tmp));
+        strncat(tmp, PATH_SEPARATOR, TARRAY_SIZE(tmp) - 1);
+        strncat(tmp, filepath, TARRAY_SIZE(tmp) - 1);
+        if (file_exists(tmp)) goto FOUND;
+    }
+    rpath = brealpath(filepath, tmp, PATH_MAX);
+    if (rpath) goto FOUND;
+
+    // file has not been found in current working direcotry -> search in LIB_DIR
+    if (ENV_LIB_DIR && IS_FLAG(flags, SEARCH_FLAG_LIB_DIR)) {
+        char tmp_lib_dir[PATH_MAX];
+        strncpy(tmp_lib_dir, ENV_LIB_DIR, TARRAY_SIZE(tmp_lib_dir));
+        strncat(tmp_lib_dir, PATH_SEPARATOR, TARRAY_SIZE(tmp_lib_dir) - 1);
+        strncat(tmp_lib_dir, filepath, TARRAY_SIZE(tmp_lib_dir) - 1);
+        rpath = brealpath(tmp_lib_dir, tmp, PATH_MAX);
+        if (rpath) goto FOUND;
+    }
+
+    // file has not been found in current working direcotry -> search in PATH
+    if (IS_FLAG(flags, SEARCH_FLAG_SYSTEM_PATH)) {
+        char  tmp_env[PATH_MAX] = {0};
+        char *env               = strdup(getenv(ENV_PATH));
+        char *s                 = env;
+        char *p                 = NULL;
+        do {
+            p = strchr(s, ENVPATH_SEPARATOR);
+            if (p != NULL) {
+                p[0] = 0;
+            }
+            strncpy(tmp_env, s, TARRAY_SIZE(tmp_env));
+            strncat(tmp_env, PATH_SEPARATOR, TARRAY_SIZE(tmp_env) - 1);
+            strncat(tmp_env, filepath, TARRAY_SIZE(tmp_env) - 1);
+            rpath = brealpath(&tmp_env[0], tmp, PATH_MAX);
+            s     = p + 1;
+        } while (p != NULL && rpath == NULL);
+        free(env);
+        if (rpath) goto FOUND;
+    }
+
+NOT_FOUND:
+    return false;
+
+FOUND:
+    // Absolute file path.
+    *out_filepath = strdup(rpath);
+    // Absolute directory path.
+    memset(tmp, 0, TARRAY_SIZE(tmp));
+    if (get_dir_from_filepath(tmp, PATH_MAX, *out_filepath)) {
+        *out_dirpath = strdup(tmp);
+    }
+    return true;
+}
+
 void win_fix_path(char *buf, usize buf_size)
 {
     if (!buf) return;

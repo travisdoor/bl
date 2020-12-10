@@ -139,21 +139,124 @@ static void llvm_terminate(Assembly *assembly)
     LLVMContextDispose(assembly->llvm.cnt);
 }
 
-static void mir_terminate(Assembly *assembly)
+static INLINE void mir_terminate(Assembly *assembly)
 {
     thtbl_terminate(&assembly->MIR.RTTI_table);
     tarray_terminate(&assembly->MIR.global_instrs);
-
     mir_arenas_terminate(&assembly->arenas.mir);
 }
 
-static void set_default_out_dir(Assembly *assembly)
+static INLINE void set_default_out_dir(Assembly *assembly)
 {
     char path[PATH_MAX] = {0};
     get_current_working_dir(&path[0], PATH_MAX);
-
     tstring_clear(&assembly->options.out_dir);
     tstring_append(&assembly->options.out_dir, path);
+}
+
+// Create directory tree and set out_path.
+static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *out_path)
+{
+    BL_ASSERT(_path);
+    BL_ASSERT(out_path);
+#ifdef BL_PLATFORM_WIN
+    char *path = strdup(_path);
+    if (!path) BL_ABORT("Invalid directory copy.");
+    win_fix_path(path, strlen(path));
+#else
+    const char *path = _path;
+#endif
+    if (!dir_exists(path)) {
+        if (!create_dir_tree(path)) {
+#ifdef BL_PLATFORM_WIN
+            free(path);
+#endif
+            return false;
+        }
+    }
+    char full_path[PATH_MAX] = {0};
+    brealpath(path, full_path, PATH_MAX);
+    tstring_clear(out_path);
+    tstring_append(out_path, full_path);
+#ifdef BL_PLATFORM_WIN
+    free(path);
+#endif
+    return true;
+}
+
+static bool import_module(Assembly *assembly, const char *modulepath, Token *import_from)
+{
+    if (!strlen(modulepath)) {
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_FILE_NOT_FOUND,
+                    TOKEN_OPTIONAL_LOCATION(import_from),
+                    BUILDER_CUR_WORD,
+                    "Module name is empty.");
+        goto INTERRUPT;
+    }
+    char tmp_path[PATH_MAX] = {0};
+    snprintf(tmp_path, ARRAY_SIZE(tmp_path), "%s/%s", modulepath, MODULE_CONFIG_FILE);
+    ConfData config;
+    conf_data_init(&config);
+    if (builder_compile_config(tmp_path, &config, import_from) != COMPILE_OK) goto INTERRUPT;
+    if (!conf_data_has_key(&config, CONF_MODULE_ENTRY)) {
+        builder_msg(
+            BUILDER_MSG_ERROR,
+            ERR_MISSING_PLATFORM,
+            TOKEN_OPTIONAL_LOCATION(import_from),
+            BUILDER_CUR_WORD,
+            "Module doesn't support current target platform, configuration entry ('%s') not "
+            "found in module config file '%s'.",
+            CONF_MODULE_ENTRY,
+            tmp_path);
+        goto INTERRUPT;
+    }
+
+    if (conf_data_has_key(&config, CONF_MODULE_VERSION)) { // optional version
+        const s32 version = conf_data_get_int(&config, CONF_MODULE_VERSION);
+        BL_LOG("module version is %d", version);
+    }
+
+    { // entry file
+        const char *entry_file = conf_data_get_str(&config, CONF_MODULE_ENTRY);
+        BL_ASSERT(entry_file && strlen(entry_file) > 0);
+        snprintf(tmp_path, ARRAY_SIZE(tmp_path), "%s/%s", modulepath, entry_file);
+        Unit *unit = unit_new_file(tmp_path, NULL);
+        if (!assembly_add_unit_unique(assembly, unit)) {
+            unit_delete(unit);
+        }
+    }
+
+    // Optional lib path
+    if (conf_data_has_key(&config, CONF_MODULE_LIB_PATH)) {
+        const char *lib_path = conf_data_get_str(&config, CONF_MODULE_LIB_PATH);
+        BL_ASSERT(lib_path && strlen(lib_path) > 0);
+        snprintf(tmp_path, ARRAY_SIZE(tmp_path), "%s/%s/%s", ENV_LIB_DIR, modulepath, lib_path);
+        if (!dir_exists(tmp_path)) {
+            builder_msg(BUILDER_MSG_ERROR,
+                        ERR_FILE_NOT_FOUND,
+                        TOKEN_OPTIONAL_LOCATION(import_from),
+                        BUILDER_CUR_WORD,
+                        "Cannot find module imported library path '%s' defined by '%s'.",
+                        tmp_path,
+                        CONF_MODULE_LIB_PATH,
+                        tmp_path);
+            goto INTERRUPT;
+        }
+        assembly_add_lib_path(assembly, tmp_path);
+    }
+
+    // Optional libs
+    if (conf_data_has_key(&config, CONF_MODULE_LINK)) {
+        const char *lib = conf_data_get_str(&config, CONF_MODULE_LINK);
+        BL_ASSERT(lib && strlen(lib) > 0);
+        assembly_add_native_lib(assembly, lib, NULL);
+    }
+    conf_data_terminate(&config);
+    return true;
+INTERRUPT:
+    conf_data_terminate(&config);
+    return false;
 }
 
 // public
@@ -167,15 +270,17 @@ Assembly *assembly_new(const char *name)
     thtbl_init(&assembly->unit_cache, 0, EXPECTED_UNIT_COUNT);
     tstring_init(&assembly->options.custom_linker_opt);
     tstring_init(&assembly->options.out_dir);
+    tstring_init(&assembly->options.module_dir);
     tarray_init(&assembly->options.libs, sizeof(NativeLib));
     tarray_init(&assembly->options.lib_paths, sizeof(char *));
     tarray_init(&assembly->testing.cases, sizeof(struct MirFn *));
     vm_init(&assembly->vm, VM_STACK_SIZE);
 
     // set defaults
-    assembly->options.build_mode    = builder.options.build_mode;
-    assembly->options.build_di_kind = builder.options.build_di_kind;
-    assembly->options.run_tests     = builder.options.run_tests;
+    assembly->options.build_mode           = builder.options.build_mode;
+    assembly->options.build_di_kind        = builder.options.build_di_kind;
+    assembly->options.run_tests            = builder.options.run_tests;
+    assembly->options.module_import_policy = IMPORT_POLICY_SYSTEM;
     set_default_out_dir(assembly);
 
     scope_arenas_init(&assembly->arenas.scope);
@@ -220,6 +325,7 @@ void assembly_delete(Assembly *assembly)
     tarray_terminate(&assembly->options.lib_paths);
     tstring_terminate(&assembly->options.custom_linker_opt);
     tstring_terminate(&assembly->options.out_dir);
+    tstring_terminate(&assembly->options.module_dir);
     vm_terminate(&assembly->vm);
     tarray_terminate(&assembly->testing.cases);
     arena_terminate(&assembly->arenas.small_array);
@@ -249,36 +355,22 @@ void assembly_add_lib_path(Assembly *assembly, const char *path)
     tarray_push(&assembly->options.lib_paths, tmp);
 }
 
-void assembly_set_output_dir(Assembly *assembly, const char *_dir)
+void assembly_set_output_dir(Assembly *assembly, const char *dir)
 {
-    if (!_dir) builder_error("Cannot create output directory.");
-
-#ifdef BL_PLATFORM_WIN
-    char *dir = strdup(_dir);
-    if (dir) {
-        win_fix_path(dir, strlen(dir));
-    } else {
-        BL_ABORT("Invalid directory copy.");
+    if (!dir) builder_error("Cannot create output directory.");
+    if (!create_auxiliary_dir_tree_if_not_exist(dir, &assembly->options.out_dir)) {
+        builder_error("Cannot create output directory '%s'.", dir);
     }
-#else
-    const char *dir = _dir;
-#endif
+}
 
-    if (!dir_exists(dir)) {
-        if (!create_dir_tree(dir)) {
-            builder_error("Cannot create output directory '%s'.", dir);
-            return;
-        }
+void assembly_set_module_dir(Assembly *assembly, const char *dir, ModuleImportPolicy policy)
+{
+    if (!dir) builder_error("Cannot create module directory.");
+    if (!create_auxiliary_dir_tree_if_not_exist(dir, &assembly->options.module_dir)) {
+        builder_error("Cannot create module directory '%s'.", dir);
     }
-
-    char path[PATH_MAX] = {0};
-    brealpath(dir, path, PATH_MAX);
-    tstring_clear(&assembly->options.out_dir);
-    tstring_append(&assembly->options.out_dir, path);
-
-#ifdef BL_PLATFORM_WIN
-    free(dir);
-#endif
+    assembly->options.module_import_policy = policy;
+    BL_LOG("set module directory %s", assembly->options.module_dir.data);
 }
 
 void assembly_add_unit(Assembly *assembly, Unit *unit)
@@ -317,72 +409,20 @@ void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct To
 
 bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *import_from)
 {
-    if (!strlen(modulepath)) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_FILE_NOT_FOUND,
-                    TOKEN_OPTIONAL_LOCATION(import_from),
-                    BUILDER_CUR_WORD,
-                    "Module name is empty.");
-        goto INTERRUPT;
+    switch (assembly->options.module_import_policy) {
+    case IMPORT_POLICY_SYSTEM:
+        BL_LOG("Policy SYSTEM.");
+        break;
+    case IMPORT_POLICY_BUNDLE:
+        BL_LOG("Policy BUNDLE.");
+        break;
+    case IMPORT_POLICY_BUNDLE_LATEST:
+        BL_LOG("Policy BUNDLE LATEST.");
+        break;
+    default:
+        BL_ASSERT("Invalid module import policy!");
     }
-    char tmp_path[PATH_MAX] = {0};
-    snprintf(tmp_path, ARRAY_SIZE(tmp_path), "%s/%s", modulepath, MODULE_CONFIG_FILE);
-    ConfData config;
-    conf_data_init(&config);
-    if (builder_compile_config(tmp_path, &config, import_from) != COMPILE_OK) goto INTERRUPT;
-    if (!conf_data_has_key(&config, CONF_ENTRY)) {
-        builder_msg(
-            BUILDER_MSG_ERROR,
-            ERR_MISSING_PLATFORM,
-            TOKEN_OPTIONAL_LOCATION(import_from),
-            BUILDER_CUR_WORD,
-            "Module doesn't support current target platform, configuration entry ('%s') not "
-            "found in module config file '%s'.",
-            CONF_ENTRY,
-            tmp_path);
-        goto INTERRUPT;
-    }
-
-    { // entry file
-        const char *entry_file = conf_data_get_str(&config, CONF_ENTRY);
-        BL_ASSERT(entry_file && strlen(entry_file) > 0);
-        snprintf(tmp_path, ARRAY_SIZE(tmp_path), "%s/%s", modulepath, entry_file);
-        Unit *unit = unit_new_file(tmp_path, NULL);
-        if (!assembly_add_unit_unique(assembly, unit)) {
-            unit_delete(unit);
-        }
-    }
-
-    // Optional lib path
-    if (conf_data_has_key(&config, CONF_LIB_PATH)) {
-        const char *lib_path = conf_data_get_str(&config, CONF_LIB_PATH);
-        BL_ASSERT(lib_path && strlen(lib_path) > 0);
-        snprintf(tmp_path, ARRAY_SIZE(tmp_path), "%s/%s/%s", ENV_LIB_DIR, modulepath, lib_path);
-        if (!dir_exists(tmp_path)) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_FILE_NOT_FOUND,
-                        TOKEN_OPTIONAL_LOCATION(import_from),
-                        BUILDER_CUR_WORD,
-                        "Cannot find module imported library path '%s' defined by '%s'.",
-                        tmp_path,
-                        CONF_LIB_PATH,
-                        tmp_path);
-            goto INTERRUPT;
-        }
-        assembly_add_lib_path(assembly, tmp_path);
-    }
-
-    // Optional libs
-    if (conf_data_has_key(&config, CONF_LINK)) {
-        const char *lib = conf_data_get_str(&config, CONF_LINK);
-        BL_ASSERT(lib && strlen(lib) > 0);
-        assembly_add_native_lib(assembly, lib, NULL);
-    }
-    conf_data_terminate(&config);
-    return true;
-INTERRUPT:
-    conf_data_terminate(&config);
-    return false;
+    return import_module(assembly, modulepath, import_from);
 }
 
 void assembly_set_vm_args(Assembly *assembly, s32 argc, char **argv)

@@ -1,0 +1,6 @@
+build :: fn () #build_entry {
+    exe :: add_executable("run");
+    add_unit(exe, "main.bl");
+    set_module_dir(exe, "modules");
+    set_output_dir(exe, "bin");
+}

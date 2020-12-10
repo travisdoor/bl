@@ -79,6 +79,11 @@ BL_EXPORT void __set_output_dir(Assembly *assembly, const char *dir)
     assembly_set_output_dir(assembly, dir);
 }
 
+BL_EXPORT void __set_module_dir(Assembly *assembly, const char *dir, const s32 policy)
+{
+    assembly_set_module_dir(assembly, dir, policy);
+}
+
 BL_EXPORT void __toggle_testing(Assembly *assembly, int v)
 {
     assembly->options.run_tests = (bool)v;

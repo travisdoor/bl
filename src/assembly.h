@@ -51,14 +51,23 @@ typedef enum BuildDIKind {
     BUILD_DI_CODEVIEW = 2, // Emit MS CodeView debug info (PDB file).
 } BuildDIKind;
 
+// keep in sync with build.bl
+typedef enum {
+    IMPORT_POLICY_SYSTEM        = 0,
+    IMPORT_POLICY_BUNDLE        = 1,
+    IMPORT_POLICY_BUNDLE_LATEST = 2,
+} ModuleImportPolicy;
+
 typedef struct AssemblyOptions {
-    BuildMode   build_mode;
-    BuildDIKind build_di_kind;
-    TString     custom_linker_opt;
-    TString     out_dir; // Build output directory
-    TArray      lib_paths;
-    TArray      libs;
-    bool        run_tests;
+    BuildMode          build_mode;
+    BuildDIKind        build_di_kind;
+    ModuleImportPolicy module_import_policy;
+    TString            custom_linker_opt;
+    TString            out_dir;    // Build output directory
+    TString            module_dir; // Module directory
+    TArray             lib_paths;
+    TArray             libs;
+    bool               run_tests;
 } AssemblyOptions;
 
 typedef struct Assembly {
@@ -149,6 +158,7 @@ bool assembly_import_module(Assembly *    assembly,
 DCpointer assembly_find_extern(Assembly *assembly, const char *symbol);
 void      assembly_apply_options(Assembly *assembly);
 void      assembly_set_output_dir(Assembly *assembly, const char *dir);
+void      assembly_set_module_dir(Assembly *assembly, const char *dir, ModuleImportPolicy policy);
 
 static INLINE bool assembly_has_rtti(Assembly *assembly, u64 type_id)
 {

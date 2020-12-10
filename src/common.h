@@ -114,6 +114,28 @@ typedef struct ID {
     u64         hash;
 } ID;
 
+typedef enum {
+    SEARCH_FLAG_WDIR        = 1,
+    SEARCH_FLAG_LIB_DIR     = 2,
+    SEARCH_FLAG_SYSTEM_PATH = 4,
+    SEARCH_FLAG_ALL         = SEARCH_FLAG_WDIR | SEARCH_FLAG_LIB_DIR | SEARCH_FLAG_SYSTEM_PATH,
+} SearchFlags;
+
+// Search file specified by 'filepath' and sets output filepath (full file location) and output
+// directory path (path without file name).
+//
+// Search order:
+//     1) wdir (working directory if not NULL)
+//     2) LIB_DIR specified in global congig file
+//     3) system PATH
+//
+// Function returns true and modify output variables if file was found otherwise returns false.
+bool search_source_file(const char *filepath,
+                        const u32   flags,
+                        const char *wdir,
+                        char **     out_filepath,
+                        char **     out_dirpath);
+
 // Replace all backslashes in passed path with forward slash, this is used as workaround on Windows
 // platform due to inconsistency 'Unix vs Windows' path separators. This function will modify passed
 // buffer.
