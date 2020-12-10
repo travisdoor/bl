@@ -409,13 +409,21 @@ void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct To
 
 bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *import_from)
 {
+    char       path[PATH_MAX] = {0};
+    const bool has_module_dir = assembly->options.module_dir.len > 0;
+    if (!has_module_dir) return import_module(assembly, modulepath, import_from);
+    const char *module_dir = assembly->options.module_dir.data;
     switch (assembly->options.module_import_policy) {
     case IMPORT_POLICY_SYSTEM:
-        BL_LOG("Policy SYSTEM.");
-        break;
+        BL_ABORT("System import policy does not require special handling!");
     case IMPORT_POLICY_BUNDLE:
         BL_LOG("Policy BUNDLE.");
-        break;
+        snprintf(path, ARRAY_SIZE(path), "%s/%s/%s", module_dir, modulepath, MODULE_CONFIG_FILE);
+        BL_LOG("lookup %s", path);
+        if (search_source_file(path, SEARCH_FLAG_PATH_ONLY, NULL, NULL, NULL)) {
+            BL_LOG("found", path);
+        }
+        return import_module(assembly, modulepath, import_from);
     case IMPORT_POLICY_BUNDLE_LATEST:
         BL_LOG("Policy BUNDLE LATEST.");
         break;

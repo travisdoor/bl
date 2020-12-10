@@ -115,6 +115,7 @@ typedef struct ID {
 } ID;
 
 typedef enum {
+    SEARCH_FLAG_PATH_ONLY   = 0,
     SEARCH_FLAG_WDIR        = 1,
     SEARCH_FLAG_LIB_DIR     = 2,
     SEARCH_FLAG_SYSTEM_PATH = 4,

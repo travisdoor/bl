@@ -54,8 +54,6 @@ bool search_source_file(const char *filepath,
                         char **     out_filepath,
                         char **     out_dirpath)
 {
-    BL_ASSERT(out_filepath);
-    BL_ASSERT(out_dirpath);
     if (!filepath) goto NOT_FOUND;
     char        tmp[PATH_MAX] = {0};
     const char *rpath         = tmp;
@@ -105,11 +103,13 @@ NOT_FOUND:
 
 FOUND:
     // Absolute file path.
-    *out_filepath = strdup(rpath);
-    // Absolute directory path.
-    memset(tmp, 0, TARRAY_SIZE(tmp));
-    if (get_dir_from_filepath(tmp, PATH_MAX, *out_filepath)) {
-        *out_dirpath = strdup(tmp);
+    if (out_filepath) *out_filepath = strdup(rpath);
+    if (out_dirpath) {
+        // Absolute directory path.
+        memset(tmp, 0, TARRAY_SIZE(tmp));
+        if (get_dir_from_filepath(tmp, PATH_MAX, rpath)) {
+            *out_dirpath = strdup(tmp);
+        }
     }
     return true;
 }
@@ -296,18 +296,15 @@ int count_bits(u64 n)
 bool get_dir_from_filepath(char *buf, const usize l, const char *filepath)
 {
     if (!filepath) return false;
-
     char *ptr = strrchr(filepath, PATH_SEPARATORC);
     if (!ptr) return false;
     if (filepath == ptr) {
         strncpy(buf, filepath, l);
         return true;
     }
-
     usize len = ptr - filepath;
     if (len + 1 > l) BL_ABORT("path too long!!!");
     strncpy(buf, filepath, len);
-
     return true;
 }
 
