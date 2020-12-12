@@ -65,7 +65,7 @@ TSMALL_ARRAY_TYPE(ScopePtr64, Scope *, 64);
 #define CONSUME_TILL(tokens, ...)                                                                  \
     {                                                                                              \
         Sym _[] = {__VA_ARGS__};                                                                   \
-        tokens_consume_till2((tokens), ARRAY_SIZE(_), &_[0]);                                      \
+        tokens_consume_till2((tokens), TARRAY_SIZE(_), &_[0]);                                     \
     }
 
 typedef enum {

@@ -82,12 +82,11 @@ struct Assembly;
 #error "Unsuported compiler!"
 #endif
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #define IS_FLAG(_v, _flag) ((bool)((_v & _flag) == _flag))
 #define IS_NOT_FLAG(_v, _flag) ((bool)((_v & _flag) != _flag))
 
 #define ARRAY_FOREACH(arr, it)                                                                     \
-    for (usize _keep = 1, i = 0, _size = ARRAY_SIZE((arr)); _keep && i != _size;                   \
+    for (usize _keep = 1, i = 0, _size = TARRAY_SIZE((arr)); _keep && i != _size;                  \
          _keep = !_keep, i++)                                                                      \
         for (it = (arr)[i]; _keep; _keep = !_keep)
 
@@ -115,7 +114,7 @@ typedef struct ID {
 } ID;
 
 typedef enum {
-    SEARCH_FLAG_PATH_ONLY   = 0,
+    SEARCH_FLAG_ABS         = 0,
     SEARCH_FLAG_WDIR        = 1,
     SEARCH_FLAG_LIB_DIR     = 2,
     SEARCH_FLAG_SYSTEM_PATH = 4,
@@ -140,7 +139,8 @@ bool search_source_file(const char *filepath,
 // Replace all backslashes in passed path with forward slash, this is used as workaround on Windows
 // platform due to inconsistency 'Unix vs Windows' path separators. This function will modify passed
 // buffer.
-void        win_fix_path(char *buf, usize buf_size);
+void        win_path_to_unix(char *buf, usize buf_size);
+void        unix_path_to_win(char *buf, usize buf_size);
 bool        file_exists(const char *filepath);
 bool        dir_exists(const char *dirpath);
 const char *brealpath(const char *file, char *out, s32 out_len);
@@ -151,6 +151,8 @@ bool        get_current_exec_path(char *buf, usize buf_size);
 bool        get_current_exec_dir(char *buf, usize buf_size);
 bool        create_dir(const char *dirpath);
 bool        create_dir_tree(const char *dirpath);
+bool        copy_dir(const char *src, const char *dest);
+bool        remove_dir(const char *path);
 void        date_time(char *buf, s32 len, const char *format);
 bool        is_aligned(const void *p, usize alignment);
 void        align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment);

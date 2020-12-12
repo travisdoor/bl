@@ -1141,7 +1141,7 @@ static MirBuiltinIdKind get_builtin_kind(Ast *ident)
     BL_ASSERT(ident->kind == AST_IDENT);
 
     // PERFORMANCE: Eventually use hash table.
-    for (u32 i = 0; i < ARRAY_SIZE(builtin_ids); ++i) {
+    for (u32 i = 0; i < TARRAY_SIZE(builtin_ids); ++i) {
         if (builtin_ids[i].hash == ident->data.ident.id.hash) {
             return i;
         }

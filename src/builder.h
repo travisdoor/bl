@@ -78,6 +78,7 @@ typedef struct Builder {
     ConfData       conf;
 
     TArray assembly_queue;
+    TArray tmp_strings;
 } Builder;
 
 // Builder global instance.
@@ -128,5 +129,7 @@ void builder_msg(BuilderMsgType   type,
                  ...);
 
 TString *builder_create_cached_str(void);
+TString *get_tmpstr(void);
+void     put_tmpstr(TString *str);
 
 #endif

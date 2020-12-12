@@ -48,6 +48,8 @@ typedef struct ConfDataValue {
 
 typedef THashTable ConfData;
 
+ConfData *     conf_data_new();
+void           conf_data_delete(ConfData *data);
 void           conf_data_init(ConfData *data);
 void           conf_data_terminate(ConfData *data);
 void           conf_data_clear(ConfData *data);

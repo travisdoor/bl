@@ -269,12 +269,13 @@ void builder_init(void)
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split     = false;
+    builder.options.reg_split = false;
 #endif
 
     // initialize LLVM statics
     llvm_init();
     tarray_init(&builder.assembly_queue, sizeof(Assembly *));
+    tarray_init(&builder.tmp_strings, sizeof(TString *));
 }
 
 void builder_terminate(void)
@@ -284,8 +285,16 @@ void builder_terminate(void)
     {
         assembly_delete(assembly);
     }
-
     tarray_terminate(&builder.assembly_queue);
+
+    TString *str;
+    TARRAY_FOREACH(TString *, &builder.tmp_strings, str)
+    {
+        tstring_delete(str);
+    }
+    BL_LOG("Used %llu temp-strings.", builder.tmp_strings.size);
+    tarray_terminate(&builder.assembly_queue);
+
     conf_data_terminate(&builder.conf);
     arena_terminate(&builder.str_cache);
 
@@ -513,4 +522,26 @@ TString *builder_create_cached_str(void)
     tstring_init(str);
 
     return str;
+}
+
+TString *get_tmpstr(void)
+{
+    TString *   str  = NULL;
+    const usize size = builder.tmp_strings.size;
+    if (size) {
+        str = tarray_at(TString *, &builder.tmp_strings, size - 1);
+        tarray_pop(&builder.tmp_strings);
+    } else {
+        str = tstring_new();
+        tstring_reserve(str, 256);
+    }
+    BL_ASSERT(str);
+    return str;
+}
+
+void put_tmpstr(TString *str)
+{
+    BL_ASSERT(str);
+    tstring_clear(str);
+    tarray_push(&builder.tmp_strings, str);
 }

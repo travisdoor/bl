@@ -34,7 +34,13 @@
 //! 
 //!     #load "build/build.bl"
 //! 
-//! Compiler integrated build pipeline.
+//! Compiler integrated build pipeline. Build pipline can be used to manage whole project compilation 
+//! process directly in BL. All you need is to create the build file called `build.bl` and specify the
+//! `build_entry` function inside. When `-b` flag is used without need of specifying any files, the
+//! compiler will lookup `build.bl` file in the current directory and execute it in compile time. All 
+//! compilation steps, assembly input and output can be specified here.
+//!
+//! .. warning:: Build API is available only in compile-time.
 
 /// Opaque assembly handle. Assembly is representation of whole program workspace, it can be compiled
 /// into executable or binary. Assembly is consist of Units, every unit represents one source file.
@@ -175,6 +181,14 @@ set_output_dir :: fn (assembly: Assembly, dir: string) {
     __set_output_dir(assembly, auto dir.ptr);
 }
 
+/// Get output directory specified by :ref:`set_output_dir` or empty string.
+get_output_dir :: fn (assembly: Assembly) string {
+    if !assembly { panic("Invalid assembly!"); }
+    cdir :: __get_output_dir(assembly);    
+    if !cdir { return string_empty; }
+    return cstr_to_str(auto cdir);
+}
+
 /// Enable compile-time execution of all tests declared in assembly.
 enable_testing :: fn (assembly: Assembly) {
     __toggle_testing(assembly, 1);
@@ -186,23 +200,42 @@ enable_testing :: fn (assembly: Assembly) {
 /// use of latest versions of modules. These flags can specify how local modules should
 /// be updated.
 ModuleImportPolicy :: enum s32 {
-    // __System     :: 0;
+    /// Use system modules but prefer local ones in module directory. This option
+    /// disables any copying and version check. Local module directory can contain custom
+    /// project related modules you don't want to expose to the whole system.
+    System :: 0;
+ 
     /// Bundle only missing modules from system into the local module folder and ignore
     /// if there is newer version available. Individual module updates can be done by
-    /// renaming old one and re-run compilation.
-    Bundle       :: 1;
+    /// renaming old one and re-run compilation. Custom modules (not comming from main
+    /// API folder are kept untouched.)
+    Bundle :: 1;
 
     /// Bundle all missing modules from system into the local module folder and update
-    /// old ones also.
+    /// old ones also. Custom modules (not comming from main API folder are kept untouched.)
     BundleLatest :: 2;
 }
 
 /// Sets module directory `dir` for `assembly`. All imported modules will be copied into
 /// this directory according to chosen :ref:`ModuleImportPolicy`.
-set_module_dir :: fn (assembly: Assembly, dir: string, policy := ModuleImportPolicy.BundleLatest) {
+set_module_dir :: fn (assembly: Assembly, dir: string, policy := ModuleImportPolicy.System) {
     if !assembly { panic("Invalid assembly!"); }
     if string_is_empty(dir) { return; }
     __set_module_dir(assembly, auto dir.ptr, auto policy);
+}
+
+/// Get module directory specified by :ref:`set_module_dir` or empty string.
+get_module_dir :: fn (assembly: Assembly) string {
+    if !assembly { panic("Invalid assembly!"); }
+    cdir :: __get_module_dir(assembly);    
+    if !cdir { return string_empty; }
+    return cstr_to_str(auto cdir);
+}
+
+/// Get module import policy specified by :ref:`set_module_dir`.
+get_module_import_policy :: fn (assembly: Assembly) ModuleImportPolicy {
+    if !assembly { panic("Invalid assembly!"); }
+    return auto __get_module_import_policy(assembly);    
 }
 
 #private
@@ -214,5 +247,8 @@ __append_linker_options :: fn (assembly: Assembly, option: *c_char) #extern;
 __set_build_mode :: fn (assembly: Assembly, mode: c_int) #extern;
 __get_build_mode :: fn (assembly: Assembly) c_int #extern;
 __set_output_dir :: fn (assembly: Assembly, dir: *c_char) #extern;
+__get_output_dir :: fn (assembly: Assembly) *c_char #extern;
 __toggle_testing :: fn (assembly: Assembly, v: c_int) #extern;
 __set_module_dir :: fn (assembly: Assembly, dir: *c_char, policy: c_int) #extern;
+__get_module_dir :: fn (assembly: Assembly) *c_char #extern;
+__get_module_import_policy :: fn (assembly: Assembly) s32 #extern;

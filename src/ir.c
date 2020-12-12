@@ -2037,7 +2037,7 @@ LLVMValueRef _emit_instr_compound_zero_initialized(Context *         cnt,
         args[2] =
             LLVMConstInt(get_type(cnt, cnt->builtin_types->t_u64), type->store_size_bytes, false);
         args[3] = LLVMConstInt(get_type(cnt, cnt->builtin_types->t_bool), 0, false);
-        LLVMBuildCall(cnt->llvm_builder, cnt->intrinsic_memset, args, ARRAY_SIZE(args), "");
+        LLVMBuildCall(cnt->llvm_builder, cnt->intrinsic_memset, args, TARRAY_SIZE(args), "");
     }
     cmp->base.llvm_value = llvm_dest;
     return llvm_dest;
@@ -3094,7 +3094,7 @@ static void intrinsics_init(Context *cnt)
         pt[1] = get_type(cnt, cnt->builtin_types->t_u64);
 
         cnt->intrinsic_memset = llvm_get_intrinsic_decl(
-            cnt->llvm_module, llvm_lookup_intrinsic_id("llvm.memset"), pt, ARRAY_SIZE(pt));
+            cnt->llvm_module, llvm_lookup_intrinsic_id("llvm.memset"), pt, TARRAY_SIZE(pt));
 
         BL_ASSERT(cnt->intrinsic_memset && "Invalid memset intrinsic!");
     }
@@ -3106,7 +3106,7 @@ static void intrinsics_init(Context *cnt)
         pt[2] = get_type(cnt, cnt->builtin_types->t_u64);
 
         cnt->intrinsic_memcpy = llvm_get_intrinsic_decl(
-            cnt->llvm_module, llvm_lookup_intrinsic_id("llvm.memcpy"), pt, ARRAY_SIZE(pt));
+            cnt->llvm_module, llvm_lookup_intrinsic_id("llvm.memcpy"), pt, TARRAY_SIZE(pt));
 
         BL_ASSERT(cnt->intrinsic_memcpy && "Invalid memcpy intrinsic!");
     }

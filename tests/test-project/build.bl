@@ -1,6 +1,10 @@
 build :: fn () #build_entry {
     exe :: add_executable("run");
     add_unit(exe, "main.bl");
-    set_module_dir(exe, "modules", ModuleImportPolicy.Bundle);
+    set_module_dir(exe, "modules", ModuleImportPolicy.BundleLatest);
     set_output_dir(exe, "bin");
+
+    print("Out dir:       %\n", get_output_dir(exe));
+    print("Module dir:    %\n", get_module_dir(exe));
+    print("Module policy: %\n", get_module_import_policy(exe));
 }

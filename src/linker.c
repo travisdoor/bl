@@ -103,7 +103,7 @@ static void set_lib_paths(Context *cnt)
                     dup[len] = '\0';
 
 #ifdef BL_PLATFORM_WIN
-                    win_fix_path(dup, len);
+                    win_path_to_unix(dup, len);
 #endif
 
                     tarray_push(cnt->lib_paths, dup);

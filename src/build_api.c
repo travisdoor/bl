@@ -79,9 +79,24 @@ BL_EXPORT void __set_output_dir(Assembly *assembly, const char *dir)
     assembly_set_output_dir(assembly, dir);
 }
 
+BL_EXPORT const char *__get_output_dir(Assembly *assembly)
+{
+    return assembly->options.out_dir.len > 0 ? assembly->options.out_dir.data : NULL;
+}
+
 BL_EXPORT void __set_module_dir(Assembly *assembly, const char *dir, const s32 policy)
 {
     assembly_set_module_dir(assembly, dir, policy);
+}
+
+BL_EXPORT const char *__get_module_dir(Assembly *assembly)
+{
+    return assembly->options.module_dir.len > 0 ? assembly->options.module_dir.data : NULL;
+}
+
+BL_EXPORT s32 __get_module_import_policy(Assembly *assembly)
+{
+    return assembly->options.module_import_policy;
 }
 
 BL_EXPORT void __toggle_testing(Assembly *assembly, int v)

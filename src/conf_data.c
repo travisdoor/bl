@@ -28,6 +28,16 @@
 
 #include "conf_data.h"
 
+ConfData *conf_data_new()
+{
+    return thtbl_new(sizeof(ConfDataValue), 32);
+}
+
+void conf_data_delete(ConfData *data)
+{
+    thtbl_delete(data);
+}
+
 void conf_data_init(ConfData *data)
 {
     thtbl_init(data, sizeof(ConfDataValue), 32);

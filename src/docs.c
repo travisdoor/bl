@@ -220,7 +220,7 @@ void doc_decl_variant(Context *cnt, Ast *decl)
         }
     }
     if (value && value->kind == AST_EXPR_LIT_INT) {
-        fprintf(cnt->stream, ": ");
+        fprintf(cnt->stream, " :: ");
         doc(cnt, value);
     }
 }

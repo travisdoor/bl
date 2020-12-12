@@ -55,47 +55,41 @@ bool search_source_file(const char *filepath,
                         char **     out_dirpath)
 {
     if (!filepath) goto NOT_FOUND;
-    char        tmp[PATH_MAX] = {0};
-    const char *rpath         = tmp;
+    char        tmp[PATH_MAX]        = {0};
+    char        tmp_result[PATH_MAX] = {0};
+    const char *result               = brealpath(filepath, tmp_result, TARRAY_SIZE(tmp_result));
+    if (result) goto FOUND;
+
     // Lookup in working directory.
     if (wdir && IS_FLAG(flags, SEARCH_FLAG_WDIR)) {
-        strncpy(tmp, wdir, TARRAY_SIZE(tmp));
-        strncat(tmp, PATH_SEPARATOR, TARRAY_SIZE(tmp) - 1);
-        strncat(tmp, filepath, TARRAY_SIZE(tmp) - 1);
-        if (file_exists(tmp)) goto FOUND;
+        snprintf(tmp, TARRAY_SIZE(tmp), "%s" PATH_SEPARATOR "%s", wdir, filepath);
+        result = brealpath(tmp, tmp_result, TARRAY_SIZE(tmp_result));
+        if (result) goto FOUND;
     }
-    rpath = brealpath(filepath, tmp, PATH_MAX);
-    if (rpath) goto FOUND;
 
     // file has not been found in current working direcotry -> search in LIB_DIR
     if (ENV_LIB_DIR && IS_FLAG(flags, SEARCH_FLAG_LIB_DIR)) {
-        char tmp_lib_dir[PATH_MAX];
-        strncpy(tmp_lib_dir, ENV_LIB_DIR, TARRAY_SIZE(tmp_lib_dir));
-        strncat(tmp_lib_dir, PATH_SEPARATOR, TARRAY_SIZE(tmp_lib_dir) - 1);
-        strncat(tmp_lib_dir, filepath, TARRAY_SIZE(tmp_lib_dir) - 1);
-        rpath = brealpath(tmp_lib_dir, tmp, PATH_MAX);
-        if (rpath) goto FOUND;
+        snprintf(tmp, TARRAY_SIZE(tmp), "%s" PATH_SEPARATOR "%s", ENV_LIB_DIR, filepath);
+        result = brealpath(tmp, tmp_result, TARRAY_SIZE(tmp_result));
+        if (result) goto FOUND;
     }
 
     // file has not been found in current working direcotry -> search in PATH
     if (IS_FLAG(flags, SEARCH_FLAG_SYSTEM_PATH)) {
-        char  tmp_env[PATH_MAX] = {0};
-        char *env               = strdup(getenv(ENV_PATH));
-        char *s                 = env;
-        char *p                 = NULL;
+        char *env = strdup(getenv(ENV_PATH));
+        char *s   = env;
+        char *p   = NULL;
         do {
             p = strchr(s, ENVPATH_SEPARATOR);
             if (p != NULL) {
                 p[0] = 0;
             }
-            strncpy(tmp_env, s, TARRAY_SIZE(tmp_env));
-            strncat(tmp_env, PATH_SEPARATOR, TARRAY_SIZE(tmp_env) - 1);
-            strncat(tmp_env, filepath, TARRAY_SIZE(tmp_env) - 1);
-            rpath = brealpath(&tmp_env[0], tmp, PATH_MAX);
-            s     = p + 1;
-        } while (p != NULL && rpath == NULL);
+            snprintf(tmp, TARRAY_SIZE(tmp), "%s" PATH_SEPARATOR "%s", s, filepath);
+            result = brealpath(tmp, tmp_result, TARRAY_SIZE(tmp_result));
+            s      = p + 1;
+        } while (p && !result);
         free(env);
-        if (rpath) goto FOUND;
+        if (result) goto FOUND;
     }
 
 NOT_FOUND:
@@ -103,26 +97,36 @@ NOT_FOUND:
 
 FOUND:
     // Absolute file path.
-    if (out_filepath) *out_filepath = strdup(rpath);
+    if (out_filepath) *out_filepath = strdup(result);
     if (out_dirpath) {
         // Absolute directory path.
         memset(tmp, 0, TARRAY_SIZE(tmp));
-        if (get_dir_from_filepath(tmp, PATH_MAX, rpath)) {
+        if (get_dir_from_filepath(tmp, PATH_MAX, result)) {
             *out_dirpath = strdup(tmp);
         }
     }
     return true;
 }
 
-void win_fix_path(char *buf, usize buf_size)
+void win_path_to_unix(char *buf, usize buf_size)
 {
     if (!buf) return;
     for (usize i = 0; i < buf_size; ++i) {
         const char c = buf[i];
         if (c == 0) break;
         if (c != '\\') continue;
-
         buf[i] = '/';
+    }
+}
+
+void unix_path_to_win(char *buf, usize buf_size)
+{
+    if (!buf) return;
+    for (usize i = 0; i < buf_size; ++i) {
+        const char c = buf[i];
+        if (c == 0) break;
+        if (c != '/') continue;
+        buf[i] = '\\';
     }
 }
 
@@ -130,7 +134,7 @@ bool get_current_exec_path(char *buf, usize buf_size)
 {
 #if defined(BL_PLATFORM_WIN)
     if (GetModuleFileNameA(NULL, buf, (DWORD)buf_size)) {
-        win_fix_path(buf, buf_size);
+        win_path_to_unix(buf, buf_size);
         return true;
     }
 
@@ -149,7 +153,6 @@ bool get_current_exec_dir(char *buf, usize buf_size)
     char tmp[PATH_MAX] = {0};
     if (!get_current_exec_path(tmp, PATH_MAX)) return false;
     if (!get_dir_from_filepath(buf, buf_size, tmp)) return false;
-
     return true;
 }
 
@@ -188,7 +191,7 @@ const char *brealpath(const char *file, char *out, s32 out_len)
 
 #if defined(BL_PLATFORM_WIN)
     if (GetFullPathNameA(file, out_len, out, NULL) && file_exists(out)) {
-        win_fix_path(out, out_len);
+        win_path_to_unix(out, out_len);
         return &out[0];
     }
 
@@ -211,7 +214,6 @@ bool create_dir_tree(const char *dirpath)
 {
     char tmp[PATH_MAX] = {0};
     s32  prev_i        = 0;
-
     for (s32 i = 0; dirpath[i]; ++i) {
         if (dirpath[i] == PATH_SEPARATORC) {
             if (i - prev_i > 1) {
@@ -219,29 +221,57 @@ bool create_dir_tree(const char *dirpath)
                     if (!create_dir(tmp)) return false;
                 }
             }
-
             prev_i = i;
         }
-
         tmp[i] = dirpath[i];
     }
-
     if (!dir_exists(tmp)) {
         if (!create_dir(tmp)) return false;
     }
-
     return true;
 }
 
+bool copy_dir(const char *src, const char *dest)
+{
+    TString *tmp = get_tmpstr();
+#if defined(BL_PLATFORM_WIN)
+    char *_src  = strdup(src);
+    char *_dest = strdup(dest);
+    unix_path_to_win(_src, strlen(_src));
+    unix_path_to_win(_dest, strlen(_dest));
+    tstring_setf(tmp, "xcopy \"%s\" \"%s\" /h /e /y /i 2>nul 1>nul", _src, _dest);
+    free(_src);
+    free(_dest);
+#else
+    tstring_setf(tmp, "cp -rf %s %s", src, dest);
+#endif
+    const bool result = system(tmp->data) == 0;
+    put_tmpstr(tmp);
+    return result;
+}
+
+bool remove_dir(const char *path)
+{
+    TString *tmp = get_tmpstr();
+#if defined(BL_PLATFORM_WIN)
+    char *_path  = strdup(path);
+    unix_path_to_win(_path, strlen(_path));
+    tstring_setf(tmp, "del \"%s\" /q /s 2>nul 1>nul", _path);
+    free(_path);
+#else
+    tstring_setf(tmp, "rm -rf %s", path);
+#endif
+    const bool result = system(tmp->data) == 0;
+    put_tmpstr(tmp);
+    return result;
+}
 void date_time(char *buf, s32 len, const char *format)
 {
     BL_ASSERT(buf && len);
     time_t     timer;
     struct tm *tm_info;
-
     time(&timer);
     tm_info = localtime(&timer);
-
     strftime(buf, len, format, tm_info);
 }
 
