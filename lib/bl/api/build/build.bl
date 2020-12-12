@@ -213,18 +213,20 @@ ModuleImportPolicy :: enum s32 {
 
     /// Bundle all missing modules from system into the local module folder and update
     /// old ones also. Custom modules (not comming from main API folder are kept untouched.)
+    /// Compiler will create `.bak` backup directory for every module before any updates.
     BundleLatest :: 2;
 }
 
 /// Sets module directory `dir` for `assembly`. All imported modules will be copied into
-/// this directory according to chosen :ref:`ModuleImportPolicy`.
+/// this directory according to chosen :ref:`ModuleImportPolicy`. Module policy is set to
+/// `System` by default even if this function has not been called.
 set_module_dir :: fn (assembly: Assembly, dir: string, policy := ModuleImportPolicy.System) {
     if !assembly { panic("Invalid assembly!"); }
     if string_is_empty(dir) { return; }
     __set_module_dir(assembly, auto dir.ptr, auto policy);
 }
 
-/// Get module directory specified by :ref:`set_module_dir` or empty string.
+/// Get module directory specified by :ref:`set_module_dir` or default one.
 get_module_dir :: fn (assembly: Assembly) string {
     if !assembly { panic("Invalid assembly!"); }
     cdir :: __get_module_dir(assembly);    
@@ -232,7 +234,7 @@ get_module_dir :: fn (assembly: Assembly) string {
     return cstr_to_str(auto cdir);
 }
 
-/// Get module import policy specified by :ref:`set_module_dir`.
+/// Get module import policy specified by :ref:`set_module_dir` or default one.
 get_module_import_policy :: fn (assembly: Assembly) ModuleImportPolicy {
     if !assembly { panic("Invalid assembly!"); }
     return auto __get_module_import_policy(assembly);    

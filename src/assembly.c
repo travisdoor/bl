@@ -471,7 +471,7 @@ bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *i
                 TString *backup_name = get_tmpstr();
                 char     date[26];
                 date_time(date, TARRAY_SIZE(date), "%d-%m-%Y_%H-%M-%S");
-                tstring_setf(backup_name, "%s_BAK_%s", local_path->data, date);
+                tstring_setf(backup_name, "%s_%s.bak", local_path->data, date);
                 copy_dir(local_path->data, backup_name->data);
                 remove_dir(local_path->data);
                 builder_warning("Backup module '%s'.", backup_name->data);
