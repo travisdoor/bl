@@ -99,7 +99,13 @@ BL_EXPORT s32 __get_module_import_policy(Assembly *assembly)
     return assembly->options.module_import_policy;
 }
 
-BL_EXPORT void __toggle_testing(Assembly *assembly, int v)
+BL_EXPORT void __set_testing(Assembly *assembly, int v)
 {
     assembly->options.run_tests = (bool)v;
 }
+
+BL_EXPORT void __set_copy_deps(Assembly *assembly, int v)
+{
+    assembly->options.copy_deps = (bool)v;
+}
+

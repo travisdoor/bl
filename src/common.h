@@ -96,6 +96,8 @@ struct Assembly;
 #define BL_GREEN 4
 #define BL_NO_COLOR -1
 
+#define LIB_NAME_MAX 256
+
 extern u64 main_thread_id;
 
 TSMALL_ARRAY_TYPE(AstPtr, struct Ast *, 16);
@@ -152,6 +154,7 @@ bool        get_current_exec_dir(char *buf, usize buf_size);
 bool        create_dir(const char *dirpath);
 bool        create_dir_tree(const char *dirpath);
 bool        copy_dir(const char *src, const char *dest);
+bool        copy_file(const char *src, const char *dest);
 bool        remove_dir(const char *path);
 void        date_time(char *buf, s32 len, const char *format);
 bool        is_aligned(const void *p, usize alignment);

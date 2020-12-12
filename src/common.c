@@ -239,11 +239,30 @@ bool copy_dir(const char *src, const char *dest)
     char *_dest = strdup(dest);
     unix_path_to_win(_src, strlen(_src));
     unix_path_to_win(_dest, strlen(_dest));
-    tstring_setf(tmp, "xcopy \"%s\" \"%s\" /h /e /y /i 2>nul 1>nul", _src, _dest);
+    tstring_setf(tmp, "xcopy /H /E /Y /I \"%s\" \"%s\" 2>nul 1>nul", _src, _dest);
     free(_src);
     free(_dest);
 #else
     tstring_setf(tmp, "cp -rf %s %s", src, dest);
+#endif
+    const bool result = system(tmp->data) == 0;
+    put_tmpstr(tmp);
+    return result;
+}
+
+bool copy_file(const char *src, const char *dest)
+{
+    TString *tmp = get_tmpstr();
+#if defined(BL_PLATFORM_WIN)
+    char *_src  = strdup(src);
+    char *_dest = strdup(dest);
+    unix_path_to_win(_src, strlen(_src));
+    unix_path_to_win(_dest, strlen(_dest));
+    tstring_setf(tmp, "copy /Y /B \"%s\" \"%s\" 2>nul 1>nul", _src, _dest);
+    free(_src);
+    free(_dest);
+#else
+    tstring_setf(tmp, "cp -f %s %s", src, dest);
 #endif
     const bool result = system(tmp->data) == 0;
     put_tmpstr(tmp);

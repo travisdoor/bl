@@ -50,32 +50,30 @@ static bool search_library(Context *   cnt,
                            char **     out_lib_dir,
                            char **     out_lib_filepath)
 {
-    char lib_filepath[PATH_MAX] = {0};
-    char lib_name_full[256]     = {0};
-
+    TString *lib_filepath                = get_tmpstr();
+    char     lib_name_full[LIB_NAME_MAX] = {0};
+    bool     found                       = false;
     platform_lib_name(lib_name, lib_name_full, TARRAY_SIZE(lib_name_full));
     builder_log("- Looking for: '%s'", lib_name_full);
     const char *dir;
     TARRAY_FOREACH(const char *, cnt->lib_paths, dir)
     {
         builder_log("- Search in: '%s'", dir);
-        if (strlen(dir) + strlen(PATH_SEPARATOR) + strlen(lib_name_full) >= PATH_MAX) {
-            BL_ABORT("Path too long");
-        }
-        strcpy(lib_filepath, dir);
-        strcat(lib_filepath, PATH_SEPARATOR);
-        strcat(lib_filepath, lib_name_full);
-        if (file_exists(lib_filepath)) {
-            builder_log("  Found: '%s'", lib_filepath);
+        tstring_setf(lib_filepath, "%s/%s", dir, lib_name_full);
+        if (file_exists(lib_filepath->data)) {
+            builder_log("  Found: '%s'", lib_filepath->data);
             if (out_lib_name) (*out_lib_name) = strdup(lib_name_full);
             if (out_lib_dir) (*out_lib_dir) = strdup(dir);
-            if (out_lib_filepath) (*out_lib_filepath) = strdup(lib_filepath);
-            return true;
+            if (out_lib_filepath) (*out_lib_filepath) = strdup(lib_filepath->data);
+            found = true;
+            goto DONE;
         }
     }
 
-    builder_log("  Not found: '%s'", lib_filepath);
-    return false;
+DONE:
+    if (!found) builder_log("  Not found: '%s'", lib_filepath->data);
+    put_tmpstr(lib_filepath);
+    return found;
 }
 
 static void set_lib_paths(Context *cnt)

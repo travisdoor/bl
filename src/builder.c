@@ -182,6 +182,7 @@ s32 builder_parse_options(s32 argc, char *argv[])
             builder.options.print_about = true;
         } else if (IS_PARAM("b") || IS_PARAM("build")) {
             builder.options.use_pipeline = true;
+            BREAK
         } else if (IS_PARAM("rs") || IS_PARAM("run-script")) {
             builder.options.run     = true;
             builder.options.silent  = true;

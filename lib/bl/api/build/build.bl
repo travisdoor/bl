@@ -26,9 +26,11 @@
 // SOFTWARE.
 //************************************************************************************************
 
-//! =====
-//! Build
-//! =====
+//! .. _Build_System:
+//!
+//! ============
+//! Build system
+//! ============
 //! 
 //! ::
 //! 
@@ -38,9 +40,71 @@
 //! process directly in BL. All you need is to create the build file called `build.bl` and specify the
 //! `build_entry` function inside. When `-b` flag is used without need of specifying any files, the
 //! compiler will lookup `build.bl` file in the current directory and execute it in compile time. All 
-//! compilation steps, assembly input and output can be specified here.
+//! compilation steps, assembly input and output can be specified here. Example: :ref:`Build_System_Example`.
+//!
+//! Example of minimal build.bl:
+//! 
+//! .. code-block:: bl
+//! 
+//!    build :: fn () #build_entry {
+//!        // create new executable assembly
+//!        exe :: add_executable("MyProgram");
+//! 
+//!        // add 'main.bl' file into the assembly 'exe'
+//!        add_unit(exe, "main.bl");
+//!    }
+//! 
+//! Start build pipeline using our build.bl file:
+//! 
+//! .. code-block:: bash
+//! 
+//!    $ blc -build
+//! 
+//! Compiler will automatically use build.bl file as build script and execute build function in compile time.
+//! SDK file build/build.bl containing compiler API for build pipeline manipulation is loaded implicitly.
 //!
 //! .. warning:: Build API is available only in compile-time.
+//!
+//! Basics
+//! ======
+//!
+//! Create new assembly
+//! -------------------
+//! 
+//! Assembly is a single build target defined as consisting of build Units representing source files
+//! needed for compilation. It’s basically a target compiled into an executable or binary file. Use
+//! :ref:`add_executable` function to specify your assembly. There are several options related to assembly,
+//! described later  in this documentation.
+//! 
+//! .. code-block:: bl
+//! 
+//!     exe :: add_assembly("MyProgram");
+//! 
+//! Add file into assembly
+//! ----------------------
+//! 
+//! Use :ref:`add_unit` function to add source files into the assembly. There is no need to add all files
+//! you want to use, general `load` and `import` will do so automatically. Only `main` or entry files must
+//! be included.
+//! 
+//! .. code-block:: bl
+//! 
+//!     add_unit(exe, "main.bl");
+//! 
+//! Specify output directory
+//! ------------------------
+//! 
+//! Output directory is a directory where all compiler-produced files will be written (i.e. native executables).
+//! Use :ref:`set_output_dir` function to specify this directory, current directory is used by default.
+//!
+//! .. code-block:: bl
+//! 
+//!     set_output_dir(exe, "bin");
+//!
+//! Command line argumets
+//! ---------------------
+//! All argumets passed after `-build|-b` compiler flag are automatically forwarded into
+//! `command_line_arguments` global variable.
 
 /// Opaque assembly handle. Assembly is representation of whole program workspace, it can be compiled
 /// into executable or binary. Assembly is consist of Units, every unit represents one source file.
@@ -113,10 +177,13 @@ add_lib_path :: fn (assembly: Assembly, path: string) {
 
 /// Add system library. Only name is required (without extension and prefix).
 /// Compiler will lookup for this library in working directory, system `PATH`
-/// and `LINKER_LIB_PATH` variable specified in bl.conf file. Linked library
+/// and `LINKER_LIB_PATH` variable specified in `bl.conf` file. Linked library
 /// can be used also during compile-time execution, in such case all needed
-/// symbols are loaded in compile-time. This does not work for `.lib` files
-/// on Windows.
+/// symbols are loaded in compile-time.
+///
+/// In general there is no need to link libraries manually, all needed dependencies
+/// should be handled by module import mechanism, however there is still an option 
+/// do it manually.
 /// 
 /// Library name platform specific rules:
 /// 
@@ -164,7 +231,7 @@ get_build_mode :: fn (assembly: Assembly) BuildMode {
     return auto __get_build_mode(assembly);
 }
 
-/// Set build mode of the assembly. 
+/// Set build mode of the assembly. See :ref:`BuildMode`.
 set_build_mode :: fn (assembly: Assembly, mode: BuildMode) {
     if !assembly { panic("Invalid assembly!"); }
     __set_build_mode(assembly, auto mode);
@@ -189,9 +256,31 @@ get_output_dir :: fn (assembly: Assembly) string {
     return cstr_to_str(auto cdir);
 }
 
-/// Enable compile-time execution of all tests declared in assembly.
-enable_testing :: fn (assembly: Assembly) {
-    __toggle_testing(assembly, 1);
+/// Set whether copying of all runtime dependencies of executable into the current output
+/// directory set by :ref:`set_output_dir` is enabled. This value is `true` by default on
+/// Windows and `false` by default on Unix platforms. When this feature is enabled, an output
+/// directory will contain all dynamically linked libraries added into the solution by
+/// :ref:`link_library` function call or specified as dependency of imported module.
+///
+/// No copying is done when library is already present in the output directory (to speed
+/// up compilation times), library updates must be handled manually (for example by deleting
+/// or renaming all libraries you want update).
+///
+/// When :ref:`ModuleImportPolicy` is set to `Bundle` or `BundleLatest` compiler will lookup
+/// dependencies in project's local modules.
+set_copy_deps :: fn (assembly: Assembly, v: bool) {
+    if !assembly { panic("Invalid assembly!"); }
+    cbool := 0;
+    if v { cbool = 1; }
+    __set_copy_deps(assembly, cbool);
+}
+
+/// Set whether compile-time execution of all tests declared in assembly is enabled.
+set_testing :: fn (assembly: Assembly, v: bool) {
+    if !assembly { panic("Invalid assembly!"); }
+    cbool := 0;
+    if v { cbool = 1; }
+    __set_testing(assembly, cbool);
 }
 
 /// Specify import module policy in :ref:`set_module_dir` function call. Module dependencies
@@ -250,7 +339,8 @@ __set_build_mode :: fn (assembly: Assembly, mode: c_int) #extern;
 __get_build_mode :: fn (assembly: Assembly) c_int #extern;
 __set_output_dir :: fn (assembly: Assembly, dir: *c_char) #extern;
 __get_output_dir :: fn (assembly: Assembly) *c_char #extern;
-__toggle_testing :: fn (assembly: Assembly, v: c_int) #extern;
 __set_module_dir :: fn (assembly: Assembly, dir: *c_char, policy: c_int) #extern;
 __get_module_dir :: fn (assembly: Assembly) *c_char #extern;
 __get_module_import_policy :: fn (assembly: Assembly) s32 #extern;
+__set_testing :: fn (assembly: Assembly, v: c_int) #extern;
+__set_copy_deps :: fn (assembly: Assembly, v: c_int) #extern;

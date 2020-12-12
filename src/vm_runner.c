@@ -95,7 +95,12 @@ s32 vm_build_entry_run(Assembly *assembly)
         builder_error("Assembly '%s' has no build entry function!", assembly->name);
         return EXIT_FAILURE;
     }
+    if (assembly->vm_run.argc > 0) {
+        vm_provide_command_line_arguments(vm, assembly->vm_run.argc, assembly->vm_run.argv);
+    }
+    vm_override_var(vm, assembly->vm_run.is_comptime_run, true);
     vm_execute_fn(vm, assembly, entry, NULL);
+    vm_override_var(vm, assembly->vm_run.is_comptime_run, false);
     return EXIT_SUCCESS;
 }
 

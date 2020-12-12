@@ -68,6 +68,7 @@ typedef struct AssemblyOptions {
     TArray             lib_paths;
     TArray             libs;
     bool               run_tests;
+    bool               copy_deps;
 } AssemblyOptions;
 
 typedef struct Assembly {

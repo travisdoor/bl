@@ -44,7 +44,27 @@ typedef struct {
     Assembly *assembly;
 } Context;
 
-static void add_lib_paths(Context *cnt, TString *buf)
+static void copy_user_libs(Context *cnt)
+{
+    TString *   dest_path = get_tmpstr();
+    const char *out_dir   = cnt->assembly->options.out_dir.data;
+    NativeLib * lib;
+    for (usize i = 0; i < cnt->assembly->options.libs.size; ++i) {
+        lib = &tarray_at(NativeLib, &cnt->assembly->options.libs, i);
+        if (lib->is_internal) continue;
+        if (!lib->user_name) continue;
+
+        tstring_setf(dest_path, "%s/%s", out_dir, lib->filename);
+        if (file_exists(dest_path->data)) continue;
+        builder_warning("Copy '%s' to '%s'.", lib->filepath, dest_path->data);
+        if (!copy_file(lib->filepath, dest_path->data)) {
+            builder_error("Cannot copy '%s' to '%s'.", lib->filepath, dest_path->data);
+        }
+    }
+    put_tmpstr(dest_path);
+}
+
+static void append_lib_paths(Context *cnt, TString *buf)
 {
 
     const char *dir;
@@ -62,7 +82,7 @@ static void add_lib_paths(Context *cnt, TString *buf)
     }
 }
 
-static void add_libs(Context *cnt, TString *buf)
+static void append_libs(Context *cnt, TString *buf)
 {
     NativeLib *lib;
     for (usize i = 0; i < cnt->assembly->options.libs.size; ++i) {
@@ -81,9 +101,9 @@ static void add_libs(Context *cnt, TString *buf)
 
 void native_bin_run(Assembly *assembly)
 {
-    TString buf;
-    tstring_init(&buf);
-    Context cnt = {.assembly = assembly};
+    TString *   buf     = get_tmpstr();
+    Context     cnt     = {.assembly = assembly};
+    const char *out_dir = assembly->options.out_dir.data;
     TracyCZone(_tctx, true);
 
 #ifdef BL_PLATFORM_WIN
@@ -98,10 +118,9 @@ void native_bin_run(Assembly *assembly)
 
         const char *custom_opt =
             assembly->options.custom_linker_opt.len ? assembly->options.custom_linker_opt.data : "";
-        const char *out_dir = assembly->options.out_dir.data;
 
         if (builder.options.no_vcvars) {
-            tstring_setf(&buf,
+            tstring_setf(buf,
                          cmd_no_vcvars,
                          linker_exec,
                          out_dir,
@@ -111,7 +130,7 @@ void native_bin_run(Assembly *assembly)
                          default_opt,
                          custom_opt);
         } else {
-            tstring_setf(&buf,
+            tstring_setf(buf,
                          cmd,
                          vc_vars_all,
                          vc_arch,
@@ -131,9 +150,7 @@ void native_bin_run(Assembly *assembly)
         const char *custom_opt =
             assembly->options.custom_linker_opt.len ? assembly->options.custom_linker_opt.data : "";
 
-        const char *out_dir = assembly->options.out_dir.data;
-
-        tstring_setf(&buf,
+        tstring_setf(buf,
                      cmd,
                      linker_exec,
                      out_dir,
@@ -145,21 +162,28 @@ void native_bin_run(Assembly *assembly)
     }
 #endif
 
-    add_lib_paths(&cnt, &buf);
-    add_libs(&cnt, &buf);
+    append_lib_paths(&cnt, buf);
+    append_libs(&cnt, buf);
 
     builder_log("Running native linker...");
-    if (builder.options.verbose) builder_log("%s", buf.data);
+    if (builder.options.verbose) builder_log("%s", buf->data);
     /* TODO: handle error */
-    if (system(buf.data) != 0) {
+    if (system(buf->data) != 0) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_LIB_NOT_FOUND,
                     NULL,
                     BUILDER_CUR_WORD,
                     "Native link execution failed '%s'",
-                    buf.data);
+                    buf->data);
+        goto DONE;
     }
 
-    tstring_terminate(&buf);
+    if (assembly->options.copy_deps) {
+        builder_log("Copy assembly dependencies into '%s'.", out_dir);
+        copy_user_libs(&cnt);
+    }
+
+DONE:
+    put_tmpstr(buf);
     TracyCZoneEnd(_tctx);
 }

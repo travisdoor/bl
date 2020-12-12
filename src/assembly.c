@@ -284,6 +284,11 @@ Assembly *assembly_new(const char *name)
     assembly->options.build_di_kind        = builder.options.build_di_kind;
     assembly->options.run_tests            = builder.options.run_tests;
     assembly->options.module_import_policy = IMPORT_POLICY_SYSTEM;
+#ifdef BL_PLATFORM_WIN // Use target platform tag.
+    assembly->options.copy_deps = true;
+#else
+    assembly->options.copy_deps = false;
+#endif
     set_default_out_dir(assembly);
 
     scope_arenas_init(&assembly->arenas.scope);
