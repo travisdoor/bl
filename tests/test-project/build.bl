@@ -9,7 +9,7 @@ build :: fn () #build_entry {
     if args.help { return; }
     if args.clean {
         print("Cleanup '%'.\n", BIN_DIR);
-        fs_dir_remove_all(BIN_DIR);
+        fs_dir_remove_all(BIN_DIR, false);
         return;
     }
 

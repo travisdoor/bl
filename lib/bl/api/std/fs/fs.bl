@@ -179,11 +179,11 @@ fs_dir_remove :: fn (dirpath: string) Error #inline {
 }
 
 /// Remove non-empty directory specified by `dirpath` and return `OK` on success,
-/// otherwise return an error.
+/// otherwise return an error. Root directory is removed if `remove_root` is `true`.
 ///
 /// .. note:: This function recursively remove all nested folders and files in specified
 ///           sub tree so it can be expensive.
-fs_dir_remove_all :: fn (dirpath: string) Error {
+fs_dir_remove_all :: fn (dirpath: string, remove_root := true) Error {
     tmp :: string_new(cast(usize) dirpath.len);
     defer string_delete(tmp);
     list, err :: _fs_impl_dir_scan(dirpath, &fn (item: *FSInfo) bool {
@@ -206,7 +206,8 @@ fs_dir_remove_all :: fn (dirpath: string) Error {
         }
         string_clear(&tmp);
     }
-    return _fs_impl_dir_remove(dirpath);
+    if remove_root { return _fs_impl_dir_remove(dirpath); }
+    return ok();
 }
 
 /// Check whether `path` points to valid directory and return true with `OK` state,
