@@ -128,14 +128,24 @@ string_append :: fn (v: *string, add: Any) {
     v.len = new_len;
 
     set_terminator(^v);
-};
+}
 
-/// Append string with multiple values passed as `args`.
-string_concatenate :: fn (v: *string, args: ...) {
+/// Append string with multiple values passed as `args` and return `^v`.
+string_concatenate :: fn (v: *string, args: ...) string {
     loop i := 0; i < args.len; i += 1 {
         string_append(v, args[i]);
     }
-};
+    return ^v;
+}
+
+/// Clear string, append with multiple values passed as `args` and return `^v`.
+string_clear_concat :: fn (v: *string, args: ...) string {
+    string_clear(v);
+    loop i := 0; i < args.len; i += 1 {
+        string_append(v, args[i]);
+    }
+    return ^v;
+}
 
 /// Compare `first` and `second` strings in specified range `n` and return `true` if they are same 
 /// otherwise return `false`.
@@ -155,7 +165,7 @@ string_compare :: fn (first: string, second: string, n := -1) bool {
         if first[i] != second[i] { return false; }
     }
     return true;
-};
+}
 
 // @DOC
 // @TEST
@@ -478,6 +488,12 @@ string_sub :: fn (s: string, start: s64, len : s64 = -1) string #inline {
     if len == -1 { len = s.len - start; }
     if len == 0 { return string_empty; }
     return {:string: len, &s[start]};
+}
+
+/// Checks whether string is zero terminated.
+string_is_zero_terminated :: fn (str: string) bool {
+    str.len += 1;
+    return str[str.len-1] == '\0';
 }
 
 #private

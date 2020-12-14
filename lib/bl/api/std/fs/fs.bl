@@ -77,6 +77,11 @@ fs_remove :: fn (filepath: string) Error #inline {
     return _fs_impl_remove(filepath);
 }
 
+
+fs_copy :: fn (src: string, dest: string, override := false) Error #inline {
+    return _fs_impl_copy(src, dest, override);
+}
+
 /// Return file content size in bytes and `OK` status on success, otherwise
 /// return zero and proper error.
 fs_size :: fn (handle: FSFile) (usize, Error) #inline {
@@ -172,6 +177,24 @@ fs_dir_create :: fn (dirpath: string) Error #inline {
     return _fs_impl_dir_create(dirpath);
 }
 
+fs_dir_create_all :: fn (dirpath: string) Error {
+    if string_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
+    if _fs_impl_exist(dirpath) { return ok(); } 
+    nodes :: string_split_by(dirpath, '/');
+    defer slice_terminate(nodes);
+    path :: string_new(auto dirpath.len);
+    defer string_delete(path);
+    loop i := 0; i < nodes.len; i += 1 {
+        if nodes[i].len == 0 { continue; }
+        string_append(&path, nodes[i]);
+        string_append(&path, "/");
+        if _fs_impl_exist(path) { continue; } 
+        err :: _fs_impl_dir_create(path);
+        if !is_ok(err) { return err; }
+    }
+    return ok();
+}
+
 /// Remove directory specified by `dirpath` and return `OK` on success,
 /// otherwise return an error.
 fs_dir_remove :: fn (dirpath: string) Error #inline {
@@ -183,12 +206,15 @@ fs_dir_remove :: fn (dirpath: string) Error #inline {
 ///
 /// .. note:: This function recursively remove all nested folders and files in specified
 ///           sub tree so it can be expensive.
-fs_dir_remove_all :: fn (dirpath: string, remove_root := true) Error {
+fs_dir_remove_all :: fn (dirpath: string, remove_root := true, filter: FSDirScanFilterFn = null) Error {
     tmp :: string_new(cast(usize) dirpath.len);
     defer string_delete(tmp);
-    list, err :: _fs_impl_dir_scan(dirpath, &fn (item: *FSInfo) bool {
-        return string_compare(item.name, ".") == false && string_compare(item.name, "..") == false;
-    });
+    if !filter {
+        filter = &fn (item: *FSInfo) bool {
+            return string_compare(item.name, ".") == false && string_compare(item.name, "..") == false;
+        };
+    }
+    list, err :: _fs_impl_dir_scan(dirpath, filter);
     if !is_ok(err) { return err; }
     defer fs_info_list_delete(list);
     loop i := 0; i < list.len; i += 1 {

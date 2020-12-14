@@ -36,6 +36,18 @@ _fs_impl_remove :: fn (filepath: string) Error #inline {
     return ok();
 }
 
+_fs_impl_copy :: fn (src: string, dest: string, override: bool) Error {
+    if string_is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+    if string_is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+    fail_if_exist := 1;
+    if  override { fail_if_exist = 0; }
+    if _CopyFileA(auto src.ptr, auto dest.ptr, fail_if_exist) == 0 {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot copy file '%' to '%': %.", src, dest, estr);
+    }
+    return ok();
+}
+
 _fs_impl_close :: fn (handle: FSFile) #inline {
     if !handle { return; }
     _CloseHandle(handle);

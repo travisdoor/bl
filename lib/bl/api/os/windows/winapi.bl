@@ -45,6 +45,7 @@ _LPWSTR       :: *c_ushort;
 _LPCWSTR      :: *c_ushort;
 _LPCSTR       :: *c_ushort;
 _LPSTR        :: *c_uchar;
+_LPCTSTR      :: *c_uchar;
 _HLOCAL       :: *c_uchar;
 _UINT         :: c_uint;
 _DWORD        :: c_uint;
@@ -286,6 +287,7 @@ _SetCurrentDirectoryA :: fn (lpPathName: _LPSTR) _BOOL #extern "SetCurrentDirect
 _GetFileSizeEx :: fn (hFile: _HANDLE, lpFileSize: _PLARGE_INTEGER) _BOOL #extern "GetFileSizeEx";
 _ReadFile :: fn (hFile: _HANDLE, lpBuffer: _LPVOID, nNumberOfBytesToRead: _DWORD, lpNumberOfBytesRead: _LPDWORD, lpOverlapped: _LPOVERLAPPED) _BOOL #extern "ReadFile";
 _WriteFile :: fn (hFile: _HANDLE, lpBuffer: _LPVOID, nNumberOfBytesToWrite: _DWORD, lpNumberOfBytesWritten: _LPDWORD, lpOverlapped: _LPOVERLAPPED) _BOOL #extern "WriteFile";
+_CopyFileA :: fn (lpExistingFileName: _LPCTSTR, lpNewFileName: _LPCTSTR, bFailIfExists: _BOOL) _BOOL #extern "CopyFileA";
 _SetEndOfFile :: fn (hFile: _HANDLE) _BOOL #extern "SetEndOfFile";
 _SetFilePointer :: fn (hFile: _HANDLE, lDistanceToMove: _LONG, lpDistanceToMoveHigh: _PLONG, dwMoveMethod: _DWORD) _DWORD #extern "SetFilePointer";
 _InitializeCriticalSection :: fn (lpCriticalSection: _LPCRITICAL_SECTION) #extern "InitializeCriticalSection";

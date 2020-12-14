@@ -10,9 +10,9 @@ main :: fn () s32 {
 }
 
 #private
-get_dummy_filepath :: fn () string {
+get_dummy_filepath :: fn (i := 0) string {
     tmp :: fs_get_tmp();
-    string_concatenate(&tmp, "/deleteme.txt");
+    string_concatenate(&tmp, "/deleteme_", i);
     return tmp;
 }
 
@@ -433,6 +433,35 @@ fs_write_slice_test :: fn () #test {
     fs_remove(filepath);
 }
 
+fs_copy_test :: fn () #test {
+    filepath1 :: get_dummy_filepath(1);
+    filepath2 :: get_dummy_filepath(2);
+    defer string_delete(filepath1);
+    defer string_delete(filepath2);
+    fs_remove(filepath1);
+    fs_remove(filepath2);
+    
+    { // new file
+        file :: fs_open(filepath1, FSOpenMode.Create);
+        fs_close(file);
+    }
+    { // copy
+        err :: fs_copy(filepath1, filepath2);
+        test_ok(err);
+        test_true(fs_exist(filepath1));
+        test_true(fs_exist(filepath2));
+    }
+    { // copy 2
+        err :: fs_copy(filepath1, filepath2, false);
+        test_not_ok(err);
+        test_true(fs_exist(filepath1));
+        test_true(fs_exist(filepath2));
+    }
+
+    fs_remove(filepath1);
+    fs_remove(filepath2);
+}
+
 fs_list_dir_test1 :: fn () #test {
     dir :: fs_get_cwd();
     defer string_delete(dir);
@@ -528,4 +557,14 @@ fs_dir_remove_all_test1 :: fn () #test {
     state :: fs_dir_remove_all(dir);
     test_ok(state);
     test_false(fs_exist(dir));
+}
+
+fs_dir_create_all_test1 :: fn () #test {
+    dir :: fs_get_tmp();
+    defer string_delete(dir);
+    string_append(&dir, "/foo");
+    fs_dir_remove_all(dir);
+    string_append(&dir, "/bar/bazz");
+    err :: fs_dir_create_all(dir);
+    test_ok(err);
 }

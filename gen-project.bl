@@ -9,7 +9,7 @@ Args :: struct #base ArgCtx {
 }
 
 DIR :: "build";
-CMAKE_CACHE :: "build/CMakeCache.txt";
+CMAKE_CACHE :: "CMakeCache.txt";
 
 main :: fn () s32 {
     args: Args;
@@ -46,8 +46,10 @@ main :: fn () s32 {
     }
     if args.help { return 0; }
 
+    path :: string_new();
+    defer string_delete(path);
     fs_dir_create(DIR);
-    fs_remove(CMAKE_CACHE);
+    fs_remove(string_clear_concat(&path, DIR, "/", CMAKE_CACHE));
     fs_set_cwd(DIR);
 
     conf :: conf_name(args.generate_debug);
