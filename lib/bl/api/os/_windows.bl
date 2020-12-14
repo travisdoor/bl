@@ -144,21 +144,6 @@ __os_start :: fn () #entry {
     c_exit(out);
 }
 
-// @CLEANUP: This must be in gl.bl file not here, but we keep it
-// until static 'if' will be supported by compiler.
-_os_gl_get_proc :: fn (proc_name: string) *u8 {
-    wglGetProcAddress :: fn (procName: *u8) *u8 #extern;
-
-    if proc_name.len == 0 { return null; }
-    p := wglGetProcAddress(proc_name.ptr);
-    ip :: cast(s64) p;
-    if ip != 0 && ip != 0x1 && ip != 0x2 && ip != 0x3 { return p; }
-
-    module :: os_dlopen("opengl32");
-    if module == null { panic("OpenGL not linked?"); }
-    return os_dlsym(module, proc_name);
-}
-
 
 #private
 /*

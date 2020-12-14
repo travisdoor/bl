@@ -149,6 +149,7 @@ void            assembly_delete(Assembly *assembly);
 AssemblyOptions assembly_get_default_options(void);
 void            assembly_add_unit(Assembly *assembly, Unit *unit);
 void            assembly_add_lib_path(Assembly *assembly, const char *path);
+void            assembly_append_linker_options(Assembly *assembly, const char *opt);
 void            assembly_set_vm_args(Assembly *assembly, s32 argc, char **argv);
 void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
 bool assembly_add_unit_unique(Assembly *assembly, Unit *unit);

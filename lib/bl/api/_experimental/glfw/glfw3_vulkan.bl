@@ -1,4 +1,0 @@
-// Vulkan stuff
-glfwGetInstanceProcAddress :: fn (instance: VkInstance, procname: *u8) GLFWvkproc #extern;
-glfwGetPhysicalDevicePresentationSupport :: fn (instance: VkInstance, device: VkPhysicalDevice, queuefamily: u32) s32 #extern;
-glfwCreateWindowSurface :: fn (instance: VkInstance, window: *GLFWwindow, allocator: *VkAllocationCallbacks, surface: *VkSurfaceKHR) VkResult #extern; 

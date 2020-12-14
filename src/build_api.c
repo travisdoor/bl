@@ -60,8 +60,7 @@ BL_EXPORT void __link_library(Assembly *assembly, const char *name)
 
 BL_EXPORT void __append_linker_options(Assembly *assembly, const char *opt)
 {
-    tstring_append(&assembly->options.custom_linker_opt, opt);
-    tstring_append(&assembly->options.custom_linker_opt, " ");
+    assembly_append_linker_options(assembly, opt);
 }
 
 BL_EXPORT s32 __get_build_mode(Assembly *assembly)
@@ -108,4 +107,3 @@ BL_EXPORT void __set_copy_deps(Assembly *assembly, int v)
 {
     assembly->options.copy_deps = (bool)v;
 }
-

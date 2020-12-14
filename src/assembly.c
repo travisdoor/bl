@@ -252,6 +252,13 @@ import_module(Assembly *assembly, ConfData *config, const char *modulepath, Toke
         put_tmpstr(path);
     }
 
+    // Optional linker options
+    if (conf_data_has_key(config, CONF_MODULE_LINKER_OPT)) {
+        const char *opt = conf_data_get_str(config, CONF_MODULE_LINKER_OPT);
+        BL_ASSERT(opt && strlen(opt) > 0);
+        assembly_append_linker_options(assembly, opt);
+    }
+
     // Optional libs
     if (conf_data_has_key(config, CONF_MODULE_LINK)) {
         const char *lib = conf_data_get_str(config, CONF_MODULE_LINK);
@@ -356,11 +363,16 @@ void assembly_apply_options(Assembly *assembly)
 void assembly_add_lib_path(Assembly *assembly, const char *path)
 {
     if (!path) return;
-
     char *tmp = strdup(path);
     if (!tmp) return;
-
     tarray_push(&assembly->options.lib_paths, tmp);
+}
+
+void assembly_append_linker_options(Assembly *assembly, const char *opt)
+{
+    if (!opt) return;
+    tstring_append(&assembly->options.custom_linker_opt, opt);
+    tstring_append(&assembly->options.custom_linker_opt, " ");
 }
 
 void assembly_set_output_dir(Assembly *assembly, const char *dir)
@@ -378,7 +390,6 @@ void assembly_set_module_dir(Assembly *assembly, const char *dir, ModuleImportPo
         builder_error("Cannot create module directory '%s'.", dir);
     }
     assembly->options.module_import_policy = policy;
-    BL_LOG("set module directory %s", assembly->options.module_dir.data);
 }
 
 void assembly_add_unit(Assembly *assembly, Unit *unit)
