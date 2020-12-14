@@ -426,6 +426,15 @@ void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct To
     tarray_push(&assembly->options.libs, lib);
 }
 
+static INLINE bool module_exist(const char *module_dir, const char *modulepath)
+{
+    TString *local_conf_path = get_tmpstr();
+    tstring_setf(local_conf_path, "%s/%s/%s", module_dir, modulepath, MODULE_CONFIG_FILE);
+    const bool found = search_source_file(local_conf_path->data, SEARCH_FLAG_ABS, NULL, NULL, NULL);
+    put_tmpstr(local_conf_path);
+    return found;
+}
+
 bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *import_from)
 {
     if (!strlen(modulepath)) {
@@ -441,14 +450,8 @@ bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *i
     ConfData *  config     = NULL;
     const char *module_dir =
         assembly->options.module_dir.len > 0 ? assembly->options.module_dir.data : NULL;
-    const ModuleImportPolicy policy      = assembly->options.module_import_policy;
-    bool                     local_found = false;
-    if (module_dir) {
-        TString *local_conf_path = get_tmpstr();
-        tstring_setf(local_conf_path, "%s/%s/%s", module_dir, modulepath, MODULE_CONFIG_FILE);
-        local_found = search_source_file(local_conf_path->data, SEARCH_FLAG_ABS, NULL, NULL, NULL);
-        put_tmpstr(local_conf_path);
-    }
+    const ModuleImportPolicy policy = assembly->options.module_import_policy;
+    const bool local_found          = module_dir ? module_exist(module_dir, modulepath) : false;
     switch (policy) {
     case IMPORT_POLICY_SYSTEM: {
         if (local_found) {
@@ -468,9 +471,10 @@ bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *i
         const bool check_version = policy == IMPORT_POLICY_BUNDLE_LATEST;
         tstring_setf(local_path, "%s/%s", module_dir, modulepath);
         tstring_setf(system_path, "%s/%s", ENV_LIB_DIR, modulepath);
+        const bool system_found = module_exist(ENV_LIB_DIR, modulepath);
         // Check if module is present in module directory.
         bool do_copy = !local_found;
-        if (check_version && local_found) {
+        if (check_version && local_found && system_found) {
             s32 system_version = 0;
             s32 local_version  = 0;
             tstring_setf(system_path, "%s/%s", ENV_LIB_DIR, modulepath);
@@ -482,7 +486,7 @@ bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *i
             do_copy = system_version > local_version;
         }
         if (do_copy) {
-            // Delete onld one.
+            // Delete old one.
             if (local_found) {
                 TString *backup_name = get_tmpstr();
                 char     date[26];
@@ -512,6 +516,7 @@ bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *i
     }
     bool state = false;
     if (config) {
+        builder_log("%s", local_path->data);
         state = import_module(assembly, config, local_path->data, import_from);
     }
     put_tmpstr(local_path);
