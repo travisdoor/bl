@@ -484,3 +484,16 @@ test_string_sub_6 :: fn () #test {
     test_eq(s1.len, 0); 
     test_eq(s1, string_empty); 
 }
+
+test_string_clean_concat_1 :: fn () #test {
+    s :: string_new();
+    defer string_delete(s);
+    string_clear_concat(&s);
+    test_eq(s.len, 0);
+
+    string_clear_concat(&s, "Hello");
+    test_eq(s, "Hello");
+
+    string_clear_concat(&s, 1, 2, 3);
+    test_eq(s, "123");
+}

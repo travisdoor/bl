@@ -250,7 +250,8 @@ _fs_impl_get_extension :: fn (filename: string) string #inline {
     if string_is_empty(filename) { return string_empty; }
     if filename[0] == '.' {
         if filename.len == 1 { return string_empty; }
-        filename.len -= 1; filename.ptr = &filename[1]; 
+        filename.ptr = &filename[1]; 
+        filename.len -= 1; 
     }
     rhs: string;
     if string_split_by_first(filename, '.', null, &rhs) {
