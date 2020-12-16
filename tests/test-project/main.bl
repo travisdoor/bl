@@ -1,4 +1,3 @@
-#import "_experimental/test_module"
 #import "sdl2"
 
 TITLE :: "SDL2";

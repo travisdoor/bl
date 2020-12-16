@@ -36,6 +36,23 @@ _fs_impl_remove :: fn (filepath: string) Error #inline {
     return ok();
 }
 
+_fs_impl_copy :: fn (src: string, dest: string, override: bool) Error {
+    if string_is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+    if string_is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+    if _fs_impl_exist(dest) && !override { return error(ERR_ALREADY_EXIST, "Destination already exist '%'", dest); }
+    file_src, err1 :: _fs_impl_open(src, FSOpenMode.Read);
+    defer _fs_impl_close(file_src);
+    if !is_ok(err1) { return err1; }
+    tmp, err2 :: fs_read_slice(file_src);
+    defer slice_terminate(tmp);
+    if !is_ok(err2) { return err2; }
+    file_dest, err3:: _fs_impl_open(dest, FSOpenMode.Write, FSOpenMode.Create);
+    defer _fs_impl_close(file_dest);
+    if !is_ok(err3) { return err3; }
+    _, err4 :: fs_write_slice(file_dest, tmp);
+    return ok();
+}
+
 _fs_impl_close :: fn (handle: FSFile) #inline {
     _close(auto handle);
 }

@@ -243,7 +243,8 @@ bool copy_dir(const char *src, const char *dest)
     free(_src);
     free(_dest);
 #else
-    tstring_setf(tmp, "cp -rf %s %s", src, dest);
+    tstring_setf(tmp, "mkdir -p %s && cp -rf %s/* %s", dest, src, dest);
+    BL_LOG("%s", tmp->data);
 #endif
     const bool result = system(tmp->data) == 0;
     put_tmpstr(tmp);
@@ -273,7 +274,7 @@ bool remove_dir(const char *path)
 {
     TString *tmp = get_tmpstr();
 #if defined(BL_PLATFORM_WIN)
-    char *_path  = strdup(path);
+    char *_path = strdup(path);
     unix_path_to_win(_path, strlen(_path));
     tstring_setf(tmp, "del \"%s\" /q /s 2>nul 1>nul", _path);
     free(_path);
