@@ -105,6 +105,7 @@ TestKind :: enum {
 
 Args :: struct #base ArgCtx {
     diag_mode: bool;
+    no_vcvars: bool;
 }
 
 TEST_RUN_OK :: 0;
@@ -143,6 +144,17 @@ parse_args :: fn () bool {
         &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) s32 {
             a: *Args = auto ctx;
             a.diag_mode = true;
+            return 1;
+        });
+
+    arg_parser_add(
+        arg_parser,
+        "-nv",
+        "--no-vcvars",
+        "Disable injection of Visual Studio environment on Windows.",
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) s32 {
+            a: *Args = auto ctx;
+            a.no_vcvars = true;
             return 1;
         });
 
@@ -186,7 +198,11 @@ blc :: fn (file: string, args := "-no-bin -no-warning") s32 {
     cmd :: string_new(64);
     defer string_delete(cmd);
     _suitec += 1;
-    string_concatenate(&cmd, _compiler_path, " ", args, " ", file, " ", get_verbosity());   
+    string_concatenate(&cmd, _compiler_path, " ", args, " ");   
+    if _args.no_vcvars { string_append(&cmd, "-no-vcvars "); }
+    string_append(&cmd, file);
+    string_append(&cmd, " ");
+    string_append(&cmd, get_verbosity());
     return os_execute(cmd);
 }
 
