@@ -2,7 +2,7 @@
   blc [options] <source-files>\n\
 \n\
 Alternative usage\n\
-  blc [-r|-rs] <source-file> [arguments]\n\
+  blc [-r|-rs|-b] <source-file> [arguments]\n\
 \n\
 Options\n\
   -b, -build            = Use BL build pipeline.\n\

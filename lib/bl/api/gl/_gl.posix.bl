@@ -1,0 +1,6 @@
+#load "gl.bl"
+
+__gl_get_proc :: fn (proc_name: string) *u8 {
+    module :: os_dlopen("");
+    return os_dlsym(module, proc_name);
+}

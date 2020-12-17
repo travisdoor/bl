@@ -107,13 +107,6 @@ os_get_last_error :: fn () (s32, string) #inline {
     return ec, str;
 }
 
-// CLEANUP: This must be in gl.bl file not here, but we keep it
-// until static 'if' will be supported by compiler.
-_os_gl_get_proc :: fn (proc_name: string) *u8 #inline {
-    module :: os_dlopen("");
-    return os_dlsym(module, proc_name);
-}
-
 _os_debug_break :: fn () #inline {
     //_posix_raise(SIGTRAP);
 }

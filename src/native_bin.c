@@ -29,6 +29,12 @@
 #include "config.h"
 #include "stages.h"
 
+#if defined(BL_PLATFORM_LINUX) || defined(BL_PLATFORM_MACOS)
+#include <errno.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
 #ifdef BL_PLATFORM_WIN
 static const char *link_flag      = "";
 static const char *link_path_flag = "/LIBPATH:";
@@ -53,8 +59,21 @@ static void copy_user_libs(Context *cnt)
         lib = &tarray_at(NativeLib, &cnt->assembly->options.libs, i);
         if (lib->is_internal) continue;
         if (!lib->user_name) continue;
+        char *lib_dest_name = lib->filename;
+#if defined(BL_PLATFORM_LINUX) || defined(BL_PLATFORM_MACOS)
+        struct stat statbuf;
+        lstat(lib->filepath, &statbuf);
+        if (S_ISLNK(statbuf.st_mode)) {
+            char buf[PATH_MAX] = {0};
+            if (readlink(lib->filepath, buf, TARRAY_SIZE(buf)) == -1) {
+                builder_error("Cannot follow symlink '%s' with error: %d", lib->filepath, errno);
+                continue;
+            }
+            lib_dest_name = buf;
+        }
+#endif
 
-        tstring_setf(dest_path, "%s/%s", out_dir, lib->filename);
+        tstring_setf(dest_path, "%s/%s", out_dir, lib_dest_name);
         if (file_exists(dest_path->data)) continue;
         builder_warning("Copy '%s' to '%s'.", lib->filepath, dest_path->data);
         if (!copy_file(lib->filepath, dest_path->data)) {
