@@ -203,15 +203,18 @@ _fs_impl_normalize :: fn (filepath: *string) Error {
     if !filepath { return error(ERR_INVALID_HANDLE, "File path is null!"); }
     if string_is_empty(^filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     buf : [OS_PATH_MAX]u8;
-    in_buf : [OS_PATH_MAX]u8 #noinit;
+    in_buf : [OS_PATH_MAX]u8;
 
-    cwd :: _fs_impl_get_cwd();
-    defer string_delete(cwd);
-    bprint(in_buf, "%/%", cwd, ^filepath);
-    
+    if !is_path_absolute(^filepath) {
+        cwd :: _fs_impl_get_cwd();
+        defer string_delete(cwd);
+        bprint(in_buf, "%/%", cwd, ^filepath);
+    } else {
+        bprint(in_buf, "%", ^filepath);
+    }
     if !c_realpath(auto in_buf.ptr, auto buf.ptr) {
         ec, estr :: os_get_last_error();
-        return error(ec, "Cannot normalize '%': %.", filepath, estr);
+        return error(ec, "Cannot normalize '%': %.", ^filepath, estr);
     }
     string_clear(filepath);
     string_append(filepath, cstr_to_str(buf.ptr));
@@ -262,6 +265,7 @@ modes_to_flags :: fn (modes: []FSOpenMode) s32 #inline {
     else if r { flags = _O_RDONLY; }
     if create { flags = flags | _O_CREAT; }
     if append { flags = flags | _O_APPEND; }
+    if w && !append { flags = flags | _O_TRUNC; }
     return flags;
 }
 
@@ -272,4 +276,8 @@ remove_last_separator :: fn (path: string) string {
         path.len -= 1;
     }
     return path;
+}
+
+is_path_absolute :: fn (path: string) bool #inline {
+    return path.len > 0 && path[0] == '/';
 }

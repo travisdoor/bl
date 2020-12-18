@@ -10,3 +10,28 @@ main :: fn () s32 {
 }
 
 #private
+dl_open_test1 :: fn () #test {
+    lib, err :: dl_open("foobar");
+    test_not_ok(err);
+}
+
+dl_open_test2 :: fn () #test {
+    lib, err :: dl_open();
+    defer dl_close(lib);
+    test_ok(err);
+    test_not_null(lib);
+}
+
+dl_sym_test1 :: fn () #test {
+    lib, err :: dl_open();
+    defer dl_close(lib);
+    sym, err :: dl_sym(lib, "foobar");
+    test_not_ok(err);    
+}
+
+dl_sym_test2 :: fn () #test {
+    lib, err :: dl_open();
+    defer dl_close(lib);
+    sym, err :: dl_sym(lib, "malloc");
+    test_ok(err);    
+}

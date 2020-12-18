@@ -84,7 +84,7 @@ os_get_last_error :: fn () (s32, string) #inline {
 }
 
 os_get_exec_path :: fn () string {
-    buf : [OS_PATH_MAX]u8 #noinit;
+    buf : [OS_PATH_MAX]u8;
     buf_len := cast(c_size_t) buf.len;
     link :: "/proc/self/exe";
     if _readlink(auto link.ptr, auto buf.ptr, buf_len) == -1 {

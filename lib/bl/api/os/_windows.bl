@@ -55,8 +55,6 @@ c_ssize_t   :: s64;
 
 OS_PATH_MAX :: _MAX_PATH;
 
-OSLibrary :: *u8;
-
 os_sleep_ms :: fn (ms: f64) #inline {
     _Sleep(auto ms);
 };
@@ -79,22 +77,6 @@ os_get_exec_path :: fn () string {
     }
 
     return string_new(); 
-}
-
-os_dlopen :: fn (lib_name := string_empty) OSLibrary {
-    if lib_name.len > 0 {
-        return _LoadLibraryA(auto lib_name.ptr); 
-    }
-
-    return _GetModuleHandleA(null); 
-}
-
-os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 {
-    return _GetProcAddress(lib, auto sym_name.ptr);
-}
-
-os_dlclose :: fn (lib: OSLibrary) {
-    _FreeLibrary(lib);
 }
 
 os_execute :: fn (command: string) s32 {

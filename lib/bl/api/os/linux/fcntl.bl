@@ -4,6 +4,7 @@ _O_RDWR :: 0x2;
 _O_CREAT :: 0x40;
 _O_EXCL :: 0x80;
 _O_APPEND :: 0x400;
+_O_TRUNC :: 0x200;
 
 _open :: fn (path: *c_char, oflag: c_int, mode: c_int) c_int #extern "open";
 

@@ -5,17 +5,28 @@
 //! ::
 //! 
 //!    #import "std/dl"
+//!
+//! Dynamic library tools for runtime library loading and symbol
+//! resolving.
 
+/// Platform specific library handle.
 DLibrary :: _ImplDLibrary;
 
+/// Dynamically loads library specified by `lib_name` and return it's
+/// handle or null with error. When `lib_name` is empty, current binary
+/// will be loaded.
+/// Use :ref:`dl_close` call to close library when it's not needed
+/// anymore.
 dl_open :: fn (lib_name := string_empty) (DLibrary, Error) #inline {
     return _dl_impl_open(lib_name);
 }
 
+/// Resolve named symbol in library and return pointer to it.
 dl_sym :: fn (lib: DLibrary, sym_name: string) (*u8, Error) #inline {
     return _dl_impl_sym(lib, sym_name);
 }
 
+/// Close library opened by :ref:`dl_open` call.
 dl_close :: fn (lib: DLibrary) #inline {
     _dl_impl_close(lib);
 }
