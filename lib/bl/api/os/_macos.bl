@@ -44,7 +44,6 @@ OS_STDOUT :: C_STDOUT;
 OS_STDERR :: C_STDERR;
 
 OS_PATH_MAX :: _DARWIN_MAXPATHLEN;
-OSLibrary :: *u8;
 
 /*
  * Platform depend C types compatible with C ABI.
@@ -78,21 +77,6 @@ os_get_exec_path :: fn () string {
     if _NSGetExecutablePath(auto buf.ptr, &buf_len) == -1 { return string_new(); }
 
     return string_new(buf.ptr);
-}
-
-os_dlopen :: fn (lib_name := string_empty) OSLibrary #inline {
-    clib_name: *u8 = null;
-    if lib_name.len > 0 { clib_name = lib_name.ptr; }
-
-    return _posix_dlopen(clib_name, RTLD_LAZY); 
-}
-
-os_dlsym :: fn (lib: OSLibrary, sym_name: string) *u8 #inline {
-    return _posix_dlsym(lib, sym_name.ptr);
-}
-
-os_dlclose :: fn (lib: OSLibrary) #inline {
-    _posix_dlclose(lib);
 }
 
 os_execute :: fn (command: string) s32 {
@@ -158,17 +142,7 @@ __os_start :: fn (argc: s64, argv: **u8, env: **u8) #entry {
 }
 
 #private
-
-RTLD_LAZY   :: 0x1;
-RTLD_NOW    :: 0x2;
-RTLD_LOCAL  :: 0x4;
-RTLD_GLOBAL :: 0x8;
-
 WEXITSTATUS :: fn (x: s32) s32 #inline {
     return (x >> 8) & 0x000000ff;
 }
-
-_posix_dlopen    :: fn (path: *u8, mode: s32) *u8 #extern "dlopen";
-_posix_dlclose   :: fn (handle: *u8) s32 #extern "dlclose";
-_posix_dlsym     :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
 

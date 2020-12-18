@@ -1,0 +1,40 @@
+#load "dl.bl"
+
+_ImplDLibrary :: *u8;
+
+_dl_impl_open :: fn (lib_name: string) (DLibrary, Error) {
+    clib: *u8 = null;
+    if lib_name.len > 0 { clib = lib_name.ptr; }
+    handle :: _dlopen(clib, RTLD_LAZY);
+    if !handle {
+        cerr :: cast(*u8) _dlerror();
+        return null, error(cstr_to_str(cerr));
+    }
+    return handle, ok();
+}
+
+_dl_impl_sym :: fn (lib: DLibrary, sym_name: string) (*u8, Error) {
+    handle :: _dlsym(lib, sym_name.ptr);
+    if !handle {
+        cerr :: cast(*u8) _dlerror();
+        return null, error(cstr_to_str(cerr));
+    }
+    return handle, ok();
+}
+
+_dl_impl_close :: fn (lib: DLibrary) {
+    if !lib { return; }
+    _dlclose(lib);
+}
+
+#private
+
+RTLD_LAZY   :: 0x1;
+RTLD_NOW    :: 0x2;
+RTLD_LOCAL  :: 0x4;
+RTLD_GLOBAL :: 0x8;
+
+_dlopen :: fn (path: *u8, mode: s32) *u8 #extern "dlopen";
+_dlclose :: fn (handle: *u8) s32 #extern "dlclose";
+_dlsym :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
+_dlerror :: fn () *c_char #extern "dlerror";

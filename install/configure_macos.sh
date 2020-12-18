@@ -56,7 +56,7 @@ if [[ "$OS_VER" == :11.*.* ]]; then
     MACOS_SDK="-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib"
 fi
 
-LINKER_OPT="-e $RT_ENTRY_POINT -macosx_version_min $MACOS_VER -lc -lpthread $MACOS_SDK"
+LINKER_OPT="-e $RT_ENTRY_POINT -macosx_version_min $MACOS_VER -lc $MACOS_SDK"
 
 rm -f $CONFIG_FILE
 mkdir -p ../etc

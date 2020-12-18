@@ -1,0 +1,21 @@
+//! =====================
+//! Dynamic Library Tools
+//! =====================
+//! 
+//! ::
+//! 
+//!    #import "std/dl"
+
+DLibrary :: _ImplDLibrary;
+
+dl_open :: fn (lib_name := string_empty) (DLibrary, Error) #inline {
+    return _dl_impl_open(lib_name);
+}
+
+dl_sym :: fn (lib: DLibrary, sym_name: string) (*u8, Error) #inline {
+    return _dl_impl_sym(lib, sym_name);
+}
+
+dl_close :: fn (lib: DLibrary) #inline {
+    _dl_impl_close(lib);
+}

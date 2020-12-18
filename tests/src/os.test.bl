@@ -11,8 +11,3 @@ test_os_sleep_ms :: fn () #test {
     test_true(elapsed > 100.);
 }
 
-test_os_dlopen :: fn () #test {
-    lib :: os_dlopen();
-    defer os_dlclose(lib);
-    test_not_null(lib);
-}
