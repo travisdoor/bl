@@ -1,0 +1,2 @@
+// @ERR_INVALID_NAME@
+foo, bar :: fn () {}

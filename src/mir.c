@@ -8911,178 +8911,212 @@ static INLINE MirBuiltinIdKind check_symbol_marked_compiler(Ast *ident)
     return builtin_id;
 }
 
+// Helper for function declaration generation.
+static void ast_decl_fn(Context *cnt, Ast *ast_fn)
+{
+    Ast *ast_name  = ast_fn->data.decl.name;
+    Ast *ast_type  = ast_fn->data.decl.type;
+    Ast *ast_value = ast_fn->data.decl_entity.value;
+
+    // recognized named function declaration
+    Ast *      ast_explicit_linkage_name = ast_fn->data.decl_entity.explicit_linkage_name;
+    const s32  flags                     = ast_fn->data.decl_entity.flags;
+    const bool is_mutable                = ast_fn->data.decl_entity.mut;
+    if (is_mutable) {
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_INVALID_MUTABILITY,
+                    ast_name->location,
+                    BUILDER_CUR_WORD,
+                    "Function declaration is expected to be immutable.");
+    }
+
+    const bool is_multidecl = ast_name->data.ident.next;
+    if (is_multidecl) {
+        const Ast *ast_next_name = ast_name->data.ident.next;
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_INVALID_NAME,
+                    ast_next_name->location,
+                    BUILDER_CUR_WORD,
+                    "Function cannot be multi-declared.");
+    }
+
+    MirBuiltinIdKind builtin_id  = MIR_BUILTIN_ID_NONE;
+    const bool       is_compiler = IS_FLAG(ast_fn->data.decl_entity.flags, FLAG_COMPILER);
+    if (is_compiler) builtin_id = check_symbol_marked_compiler(ast_name);
+    const bool is_global = ast_fn->data.decl_entity.in_gscope;
+    MirInstr * value     = ast_expr_lit_fn(
+        cnt, ast_value, ast_name, ast_explicit_linkage_name, is_global, flags, builtin_id);
+    if (ast_type) ((MirInstrFnProto *)value)->user_type = CREATE_TYPE_RESOLVER_CALL(ast_type);
+
+    // check main
+    if (is_builtin(ast_name, MIR_BUILTIN_ID_MAIN)) {
+        // This is reported as an error.
+        BL_ASSERT(value);
+        MirFn *fn = MIR_CEV_READ_AS(MirFn *, &value->value);
+        BL_MAGIC_ASSERT(fn);
+        fn->emit_llvm               = true;
+        cnt->assembly->vm_run.entry = fn;
+    }
+    ID *   id    = &ast_name->data.ident.id;
+    Scope *scope = ast_name->owner_scope;
+    register_symbol(cnt, ast_name, id, scope, is_compiler);
+}
+
+// Helper for local variable declaration generation.
+static void ast_decl_var_local(Context *cnt, Ast *ast_local)
+{
+    Ast *ast_name  = ast_local->data.decl.name;
+    Ast *ast_type  = ast_local->data.decl.type;
+    Ast *ast_value = ast_local->data.decl_entity.value;
+    // Create type resolver if there is explicitly defined type mentioned by user in declaration.
+    MirInstr * type        = ast_type ? CREATE_TYPE_RESOLVER_CALL(ast_type) : NULL;
+    MirInstr * value       = ast(cnt, ast_value);
+    const bool is_compiler = IS_FLAG(ast_local->data.decl_entity.flags, FLAG_COMPILER);
+    const bool is_unroll   = ast_value && ast_value->kind == AST_EXPR_CALL;
+    const bool is_mutable  = ast_local->data.decl_entity.mut;
+
+    Scope *scope = ast_name->owner_scope;
+
+    // Generate variables for all declarations.
+    //
+    // Variable groups can be initialized by multi-return function, in such situation we
+    // must handle unrolling of function return value into separate variables. Sad thing
+    // here is that we don't know if function return is multi-return because called function
+    // has not been analyzed yet; however only multi-return (structs) produced by function
+    // call has ability to unroll into separate variables; this is indicated by is_unroll
+    // flag. We decide later during analyze if unroll is kept or not. So finally there
+    // are tree possible cases:
+    //
+    // 1) Variable is not group: We generate unroll instruction as initializer in case value
+    //    is function call; once when function return type is known we decide if only first
+    //    return value should be picked or not. (unroll can be removed if not)
+    //
+    // 2) Variables in group: For every variable in group we generate unroll instruction
+    //    with two possibilities what to do during analyze; when called function returns
+    //    multiple values we use unroll to set every variable (by index) to proper value;
+    //    initializer is any other value we generate vN .. v3 = v2 = v1 = value.
+    //
+    // 3) Variables in group initialized by single value: In such case we only follow rule
+    //    vN .. v3 = v2 = v1 = value. Unroll is still generated when value is function call but
+    //    is removed when function type is analyzed and considered to be multi-return.
+    Ast *     ast_current_name = ast_name;
+    MirInstr *current_value    = value;
+    MirInstr *prev_var         = NULL;
+    s32       index            = 0;
+    while (ast_current_name) {
+        MirBuiltinIdKind builtin_id = MIR_BUILTIN_ID_NONE;
+        if (is_compiler) builtin_id = check_symbol_marked_compiler(ast_current_name);
+        if (is_unroll) {
+            current_value = append_instr_unroll(cnt, ast_current_name, value, prev_var, index++);
+        } else if (prev_var) {
+            current_value = append_instr_decl_direct_ref(cnt, prev_var);
+        }
+        ID *      id  = &ast_current_name->data.ident.id;
+        MirInstr *var = append_instr_decl_var(cnt,
+                                              ast_current_name,
+                                              id,
+                                              scope,
+                                              type,
+                                              current_value,
+                                              is_mutable,
+                                              ast_local->data.decl_entity.flags,
+                                              builtin_id);
+        register_symbol(cnt, ast_current_name, id, scope, is_compiler);
+
+        BL_ASSERT(ast_current_name->kind == AST_IDENT);
+        ast_current_name = ast_current_name->data.ident.next;
+        prev_var         = var;
+    }
+}
+
+static void ast_decl_var_global_or_struct(Context *cnt, Ast *ast_global)
+{
+    Ast *ast_name  = ast_global->data.decl.name;
+    Ast *ast_type  = ast_global->data.decl.type;
+    Ast *ast_value = ast_global->data.decl_entity.value;
+    // Create type resolver if there is explicitly defined type mentioned by user in declaration.
+    MirInstr * type           = ast_type ? CREATE_TYPE_RESOLVER_CALL(ast_type) : NULL;
+    const bool is_struct_decl = ast_value && ast_value->kind == AST_EXPR_TYPE &&
+                                ast_value->data.expr_type.type->kind == AST_TYPE_STRUCT;
+    const bool is_mutable  = ast_global->data.decl_entity.mut;
+    const bool is_compiler = IS_FLAG(ast_global->data.decl_entity.flags, FLAG_COMPILER);
+
+    MirInstr *value = NULL;
+    Scope *   scope = ast_name->owner_scope;
+
+    BL_ASSERT(!ast_name->data.ident.next && "Global multi-decls are not supported!");
+
+    // Struct use forward type declarations!
+    if (is_struct_decl) {
+        // Set to const type fwd decl
+        MirType *fwd_decl_type =
+            create_type_struct_incomplete(cnt, cnt->ast.current_entity_id, false);
+
+        value = create_instr_const_type(cnt, ast_value, fwd_decl_type);
+        ANALYZE_INSTR_RQ(value);
+
+        // Set current fwd decl
+        cnt->ast.current_fwd_struct_decl = value;
+    }
+
+    MirBuiltinIdKind builtin_id = MIR_BUILTIN_ID_NONE;
+    if (is_compiler) builtin_id = check_symbol_marked_compiler(ast_name);
+    ID *      id        = &ast_name->data.ident.id;
+    MirInstr *instr_var = append_instr_decl_var(cnt,
+                                                ast_name,
+                                                id,
+                                                scope,
+                                                type,
+                                                value,
+                                                is_mutable,
+                                                ast_global->data.decl_entity.flags,
+                                                builtin_id);
+
+    // For globals we must generate initialization after variable declaration,
+    // SetInitializer instruction will be used to set actual value, also
+    // implicit initialization block is created into MIR (such block does not
+    // have LLVM representation -> globals must be evaluated in compile time).
+    if (ast_value) {
+        // Generate implicit global initializer block.
+        // @HACK: Global initializer generator should accept multiple variables.
+        ast_create_global_initializer(cnt, ast_value, instr_var);
+    } else {
+        // Global has no explicit initialization in code so we must
+        // create default global initializer.
+        // @HACK: Global initializer generator should accept multiple variables.
+        ast_create_global_initializer(cnt, NULL, instr_var);
+    }
+
+    // Struct decl cleanup.
+    if (is_struct_decl) {
+        cnt->ast.current_fwd_struct_decl = NULL;
+        // @HACK: Used only for first in group!!!
+        MirVar *var            = ((MirInstrDeclVar *)instr_var)->var;
+        var->is_struct_typedef = true;
+    }
+    register_symbol(cnt, ast_name, id, scope, is_compiler);
+}
+
 MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
 {
     Ast *      ast_name       = entity->data.decl.name;
-    Ast *      ast_type       = entity->data.decl.type;
     Ast *      ast_value      = entity->data.decl_entity.value;
     const bool is_fn_decl     = ast_value && ast_value->kind == AST_EXPR_LIT_FN;
+    const bool is_global      = entity->data.decl_entity.in_gscope;
     const bool is_struct_decl = ast_value && ast_value->kind == AST_EXPR_TYPE &&
                                 ast_value->data.expr_type.type->kind == AST_TYPE_STRUCT;
-
-    const bool is_mutable  = entity->data.decl_entity.mut;
-    const bool is_global   = entity->data.decl_entity.in_gscope;
-    const bool is_compiler = IS_FLAG(entity->data.decl_entity.flags, FLAG_COMPILER);
-    const bool is_unroll   = ast_value && ast_value->kind == AST_EXPR_CALL;
-
-    // initialize value
-    MirInstr *value = NULL;
-
     BL_ASSERT(ast_name && "Missing entity name.");
     BL_ASSERT(ast_name->kind == AST_IDENT && "Expected identificator.");
-    Scope *scope = ast_name->owner_scope;
-
     if (is_fn_decl) {
-        // recognized named function declaration
-        const s32 flags                     = entity->data.decl_entity.flags;
-        Ast *     ast_explicit_linkage_name = entity->data.decl_entity.explicit_linkage_name;
-
-        if (is_mutable) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_MUTABILITY,
-                        ast_name->location,
-                        BUILDER_CUR_WORD,
-                        "Function declaration is expected to be immutable.");
-        }
-
-        MirBuiltinIdKind builtin_id = MIR_BUILTIN_ID_NONE;
-        if (is_compiler) builtin_id = check_symbol_marked_compiler(ast_name);
-
-        value = ast_expr_lit_fn(
-            cnt, ast_value, ast_name, ast_explicit_linkage_name, is_global, flags, builtin_id);
-
-        if (ast_type) {
-            ((MirInstrFnProto *)value)->user_type = CREATE_TYPE_RESOLVER_CALL(ast_type);
-        }
+        ast_decl_fn(cnt, entity);
     } else {
-        // other declaration types
-        MirInstr *type             = ast_type ? CREATE_TYPE_RESOLVER_CALL(ast_type) : NULL;
         cnt->ast.current_entity_id = &ast_name->data.ident.id;
-        const bool use_initializer = is_struct_decl || is_global;
-
-        // Struct use forward type declarations!
-        if (is_struct_decl) {
-            // Set to const type fwd decl
-            MirType *fwd_decl_type =
-                create_type_struct_incomplete(cnt, cnt->ast.current_entity_id, false);
-
-            value = create_instr_const_type(cnt, ast_value, fwd_decl_type);
-            ANALYZE_INSTR_RQ(value);
-
-            // Set current fwd decl
-            cnt->ast.current_fwd_struct_decl = value;
-        }
-
-        // When symbol is not declared in global scope, we can generate
-        // initialization tree directly into current block, even for type
-        // declarations.
-        if (!use_initializer) {
-            value = ast(cnt, ast_value);
-        }
-
-        // Generate variables for all declarations.
-        //
-        // Variable groups can be initialized by multi-return function, in such situation we
-        // must handle unrolling of function return value into separate variables. Sad thing
-        // here is that we don't know if function return is multi-return because called function
-        // has not been analyzed yet; however only multi-return (structs) produced by function
-        // call has ability to unroll into separate variables; this is indicated by is_unroll
-        // flag. We decide later during analyze if unroll is kept or not. So finally there
-        // are tree possible cases:
-        //
-        // 1) Variable is not group: We generate unroll instruction as initializer in case value
-        //    is function call; once when function return type is known we decide if only first
-        //    return value should be picked or not. (unroll can be removed if not)
-        //
-        // 2) Variables in group: For every variable in group we generate unroll instruction
-        //    with two possibilities what to do during analyze; when called function returns
-        //    multiple values we use unroll to set every variable (by index) to proper value;
-        //    initializer is any other value we generate vN .. v3 = v2 = v1 = value.
-        //
-        // 3) Variables in group initialized by single value: In such case we only follow rule
-        //    vN .. v3 = v2 = v1 = value. Unroll is still generated when value is function call but
-        //    is removed when function type is analyzed and considered to be multi-return.
-        TSmallArray_InstrPtr vars;
-        tsa_init(&vars);
-        Ast *     ast_current_name = ast_name;
-        MirInstr *current_value    = value;
-        s32       index            = 0;
-        while (ast_current_name) {
-            MirBuiltinIdKind builtin_id = MIR_BUILTIN_ID_NONE;
-            if (is_compiler) builtin_id = check_symbol_marked_compiler(ast_current_name);
-            MirInstr *prev_var = vars.size > 0 ? vars.data[vars.size - 1] : NULL;
-            if (is_unroll) {
-                current_value =
-                    append_instr_unroll(cnt, ast_current_name, value, prev_var, index++);
-            } else if (prev_var) {
-                current_value = append_instr_decl_direct_ref(cnt, prev_var);
-            }
-            ID *      id  = &ast_current_name->data.ident.id;
-            MirInstr *var = append_instr_decl_var(cnt,
-                                                  ast_current_name,
-                                                  id,
-                                                  scope,
-                                                  type,
-                                                  current_value,
-                                                  is_mutable,
-                                                  entity->data.decl_entity.flags,
-                                                  builtin_id);
-
-            tsa_push_InstrPtr(&vars, var);
-            BL_ASSERT(ast_current_name->kind == AST_IDENT);
-            ast_current_name = ast_current_name->data.ident.next;
-        }
-        // For globals we must generate initialization after variable declaration,
-        // SetInitializer instruction will be used to set actual value, also
-        // implicit initialization block is created into MIR (such block does not
-        // have LLVM representation -> globals must be evaluated in compile time).
-        if (use_initializer) {
-            if (ast_value) {
-                // Generate implicit global initializer block.
-                // @HACK: Global initializer generator should accept multiple variables.
-                ast_create_global_initializer(cnt, ast_value, vars.data[0]);
-            } else {
-                // Global has no explicit initialization in code so we must
-                // create default global initializer.
-                // @HACK: Global initializer generator should accept multiple variables.
-                ast_create_global_initializer(cnt, NULL, vars.data[0]);
-            }
-        }
-        // Struct decl cleanup.
-        if (is_struct_decl) {
-            cnt->ast.current_fwd_struct_decl = NULL;
-            // @HACK: Used only for first in group!!!
-            MirVar *var = ((MirInstrDeclVar *)vars.data[0])->var;
-
-            var->is_struct_typedef = true;
+        if (is_global || is_struct_decl) {
+            ast_decl_var_global_or_struct(cnt, entity);
+        } else {
+            ast_decl_var_local(cnt, entity);
         }
         cnt->ast.current_entity_id = NULL;
-        tsa_terminate(&vars);
-    }
-
-    // register all in group
-    Ast *ast_current_name = ast_name;
-    while (ast_current_name) {
-        // check main
-        if (is_builtin(ast_current_name, MIR_BUILTIN_ID_MAIN)) {
-            if (!is_fn_decl) {
-                builder_msg(BUILDER_MSG_ERROR,
-                            ERR_EXPECTED_FUNC,
-                            ast_current_name->location,
-                            BUILDER_CUR_WORD,
-                            "Main is expected to be a function.");
-            } else {
-                // This is reported as an error.
-                BL_ASSERT(value);
-                MirFn *fn = MIR_CEV_READ_AS(MirFn *, &value->value);
-                BL_MAGIC_ASSERT(fn);
-                fn->emit_llvm               = true;
-                cnt->assembly->vm_run.entry = fn;
-            }
-        }
-        ID *id = &ast_current_name->data.ident.id;
-        register_symbol(cnt, ast_current_name, id, scope, is_compiler);
-        ast_current_name = ast_current_name->data.ident.next;
     }
     return NULL;
 }
