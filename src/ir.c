@@ -2475,18 +2475,22 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
 
 State emit_instr_set_initializer(Context UNUSED(*cnt), MirInstrSetInitializer *si)
 {
-    MirVar *var = ((MirInstrDeclVar *)si->dest)->var;
+    MirInstr *dest;
+    TSA_FOREACH(si->dests, dest)
+    {
+        MirVar *var = ((MirInstrDeclVar *)dest)->var;
 #if LLVM_EXCLUDE_UNUSED_SYM
-    if (var->ref_count == 0) return STATE_PASSED;
+        if (var->ref_count == 0) return STATE_PASSED;
 #endif
-    BL_ASSERT(var->llvm_value);
-    LLVMValueRef llvm_init_value = si->src->llvm_value;
-    if (!llvm_init_value) {
-        BL_ASSERT(si->src->kind == MIR_INSTR_COMPOUND);
-        llvm_init_value = emit_instr_compound_global(cnt, (MirInstrCompound *)si->src);
+        BL_ASSERT(var->llvm_value);
+        LLVMValueRef llvm_init_value = si->src->llvm_value;
+        if (!llvm_init_value) {
+            BL_ASSERT(si->src->kind == MIR_INSTR_COMPOUND);
+            llvm_init_value = emit_instr_compound_global(cnt, (MirInstrCompound *)si->src);
+        }
+        BL_ASSERT(llvm_init_value);
+        LLVMSetInitializer(var->llvm_value, llvm_init_value);
     }
-    BL_ASSERT(llvm_init_value);
-    LLVMSetInitializer(var->llvm_value, llvm_init_value);
     return STATE_PASSED;
 }
 

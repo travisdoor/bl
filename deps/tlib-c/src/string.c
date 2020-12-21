@@ -27,139 +27,121 @@
 //*****************************************************************************
 
 #include "tlib/string.h"
+#include "tmemory.h"
 #include <stdarg.h>
 
-static void
-ensure_space(TString *str, usize space)
+static void ensure_space(TString *str, usize space)
 {
-	if (!space) return;
-	space += 1; /* zero terminated */
-	if (space <= TARRAY_SIZE(str->_tmp)) return;
-	if (str->allocated >= space) return;
-
-	if (str->allocated == 0) {
-		char *tmp = malloc(space * sizeof(char));
-		memcpy(tmp, str->data, str->len + 1);
-		str->data = tmp;
-	} else {
-		space *= 2;
-		str->data = realloc(str->data, space * sizeof(char));
-	}
-
-	str->allocated = space;
+    if (!space) return;
+    space += 1; /* zero terminated */
+    if (space <= TARRAY_SIZE(str->_tmp)) return;
+    if (str->allocated >= space) return;
+    char *tmp = _tmalloc(space * sizeof(char));
+    memcpy(tmp, str->data, str->len + 1);
+    str->data      = tmp;
+    str->allocated = space;
 }
 
 /* public */
-TString *
-tstring_new(void)
+TString *tstring_new(void)
 {
-	TString *str = malloc(sizeof(TString));
-	if (!str) TABORT("Bad alloc.");
+    TString *str = _tmalloc(sizeof(TString));
+    if (!str) TABORT("Bad alloc.");
 
-	tstring_init(str);
-	return str;
+    tstring_init(str);
+    return str;
 }
 
-void
-tstring_delete(TString *str)
+void tstring_delete(TString *str)
 {
-	if (!str) return;
-	tstring_terminate(str);
+    if (!str) return;
+    tstring_terminate(str);
 
-	free(str);
+    _tfree(str);
 }
 
-void
-tstring_init(TString *str)
+void tstring_init(TString *str)
 {
-	str->_tmp[0]   = '\0';
-	str->data      = str->_tmp;
-	str->len       = 0;
-	str->allocated = 0;
+    str->_tmp[0]   = '\0';
+    str->data      = str->_tmp;
+    str->len       = 0;
+    str->allocated = 0;
 }
 
-void
-tstring_terminate(TString *str)
+void tstring_terminate(TString *str)
 {
-	if (str->allocated) free(str->data);
-	str->allocated = 0;
-	str->len       = 0;
-	str->_tmp[0]   = '\0';
-	str->data      = str->_tmp;
+    if (str->allocated) free(str->data);
+    str->allocated = 0;
+    str->len       = 0;
+    str->_tmp[0]   = '\0';
+    str->data      = str->_tmp;
 }
 
-void
-tstring_reserve(TString *str, usize len)
+void tstring_reserve(TString *str, usize len)
 {
-	ensure_space(str, len);
+    ensure_space(str, len);
 }
 
-void
-tstring_append(TString *str, const char *v)
+void tstring_append(TString *str, const char *v)
 {
-	tstring_append_n(str, v, strlen(v));
+    tstring_append_n(str, v, strlen(v));
 }
 
-void
-tstring_clear(TString *str)
+void tstring_clear(TString *str)
 {
-	str->data[0] = '\0';
-	str->len     = 0;
+    str->data[0] = '\0';
+    str->len     = 0;
 }
 
-void
-tstring_append_n(TString *str, const char *v, usize N)
+void tstring_append_n(TString *str, const char *v, usize N)
 {
-	if (!v) return;
-	const usize new_len = str->len + N;
-	ensure_space(str, new_len);
+    if (!v) return;
+    const usize new_len = str->len + N;
+    ensure_space(str, new_len);
 
-	memcpy(&str->data[str->len], v, N * sizeof(char));
-	str->data[new_len] = '\0';
-	str->len           = new_len;
+    memcpy(&str->data[str->len], v, N * sizeof(char));
+    str->data[new_len] = '\0';
+    str->len           = new_len;
 }
 
-void
-tstring_append_c(TString *str, const char v)
+void tstring_append_c(TString *str, const char v)
 {
-	tstring_append_n(str, &v, 1);
+    tstring_append_n(str, &v, 1);
 }
 
-void
-tstring_setf(TString *str, const char *format, ...)
+void tstring_setf(TString *str, const char *format, ...)
 {
-	tstring_clear(str);
-	ensure_space(str, strlen(format));
+    tstring_clear(str);
+    ensure_space(str, strlen(format));
 
-	va_list argp;
-	va_start(argp, format);
-	while (*format != '\0') {
-		if (*format == '%') {
-			format++;
-			if (*format == '%') {
-				tstring_append_c(str, '%');
-			} else if (*format == 's') {
-				char *s = va_arg(argp, char *);
-				tstring_append(str, s);
-			} else {
-				fputs("Unssuported formating character for 'tstring_setf'.",
-				      stdout);
-			}
-		} else {
-			tstring_append_c(str, *format);
-		}
-		format++;
-	}
-	va_end(argp);
+    va_list argp;
+    va_start(argp, format);
+    while (*format != '\0') {
+        if (*format == '%') {
+            format++;
+            if (*format == '%') {
+                tstring_append_c(str, '%');
+            } else if (*format == 's') {
+                char *s = va_arg(argp, char *);
+                tstring_append(str, s);
+            } else {
+                fputs("Unssuported formating character for 'tstring_setf'.", stdout);
+            }
+        } else {
+            tstring_append_c(str, *format);
+        }
+        format++;
+    }
+    va_end(argp);
 }
 
-s32
-tstring_replace_all(TString *str, char old, char replace) {
-	s32 replaced = 0;
-	for (usize i = 0; i < str->len; ++i) {
-		if (str->data[i] != old) continue;
-		str->data[i] = replace;
-		++replaced;
-	}
-	return replaced;
+s32 tstring_replace_all(TString *str, char old, char replace)
+{
+    s32 replaced = 0;
+    for (usize i = 0; i < str->len; ++i) {
+        if (str->data[i] != old) continue;
+        str->data[i] = replace;
+        ++replaced;
+    }
+    return replaced;
 }

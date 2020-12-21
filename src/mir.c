@@ -418,9 +418,10 @@ static MirInstr *append_instr_arg(Context *cnt, Ast *node, unsigned i);
 static MirInstr *
 append_instr_unroll(Context *cnt, Ast *node, MirInstr *src, MirInstr *remove_src, s32 index);
 static MirInstr *
-append_instr_set_initializer(Context *cnt, Ast *node, MirInstr *dest, MirInstr *src);
+append_instr_set_initializer(Context *cnt, Ast *node, TSmallArray_InstrPtr *dests, MirInstr *src);
 
-static MirInstr *append_instr_set_initializer_impl(Context *cnt, MirInstr *dest, MirInstr *src);
+static MirInstr *
+append_instr_set_initializer_impl(Context *cnt, TSmallArray_InstrPtr *dests, MirInstr *src);
 
 // @CLEANUP Is this even used?
 static MirInstr *append_instr_phi(Context *cnt, Ast *node);
@@ -566,7 +567,9 @@ static void      erase_instr_tree(MirInstr *instr, bool keep_root, bool force);
 static MirInstr *append_instr_call_loc(Context *cnt, Ast *node);
 
 // ast
-static MirInstr *ast_create_global_initializer(Context *cnt, Ast *node, MirInstr *decl_var);
+static MirInstr *
+ast_create_global_initializer2(Context *cnt, Ast *ast_value, TSmallArray_InstrPtr *decls);
+static MirInstr *ast_create_global_initializer(Context *cnt, Ast *node, MirInstr *decls);
 static MirInstr *ast_create_impl_fn_call(Context *   cnt,
                                          Ast *       node,
                                          const char *fn_name,
@@ -1781,8 +1784,10 @@ MirVar *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v)
     MirInstrBlock *prev_block = ast_current_block(cnt);
     MirInstrBlock *block      = append_global_block(cnt, INIT_VALUE_FN_NAME);
     set_current_block(cnt, block);
-    MirInstr *init = append_instr_const_bool(cnt, NULL, v);
-    append_instr_set_initializer(cnt, NULL, decl_var, init);
+    MirInstr *            init  = append_instr_const_bool(cnt, NULL, v);
+    TSmallArray_InstrPtr *decls = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
+    tsa_push_InstrPtr(decls, decl_var);
+    append_instr_set_initializer(cnt, NULL, decls, init);
     set_current_block(cnt, prev_block);
     register_symbol(cnt, NULL, id, scope, true);
     return ((MirInstrDeclVar *)decl_var)->var;
@@ -2699,6 +2704,11 @@ void *create_instr(Context *cnt, MirInstrKind kind, Ast *node)
     tmp->kind       = kind;
     tmp->node       = node;
     tmp->id         = _id_counter++;
+#if BL_DEBUG
+    static int ic = 0;
+    TracyCPlot("INSTR", ++ic);
+    BL_TRACY_MESSAGE("INSTR_CREATE", "size: %lluB", (unsigned long long)SIZEOF_MIR_INSTR);
+#endif
     return tmp;
 }
 
@@ -2906,26 +2916,30 @@ MirInstrBlock *append_global_block(Context *cnt, const char *name)
     return tmp;
 }
 
-MirInstr *append_instr_set_initializer(Context *cnt, Ast *node, MirInstr *dest, MirInstr *src)
+MirInstr *
+append_instr_set_initializer(Context *cnt, Ast *node, TSmallArray_InstrPtr *dests, MirInstr *src)
 {
     MirInstrSetInitializer *tmp = create_instr(cnt, MIR_INSTR_SET_INITIALIZER, node);
     tmp->base.value.type        = cnt->builtin_types->t_void;
     tmp->base.value.is_comptime = true;
     tmp->base.ref_count         = NO_REF_COUNTING;
-    tmp->dest                   = ref_instr(dest);
+    tmp->dests                  = dests;
     tmp->src                    = ref_instr(src);
-
+    MirInstr *dest;
+    TSA_FOREACH(tmp->dests, dest)
+    {
+        ref_instr(dest);
+    }
     append_current_block(cnt, &tmp->base);
-
     MirInstrBlock *block = ast_current_block(cnt);
     if (!is_block_terminated(block)) terminate_block(block, &tmp->base);
-
     return &tmp->base;
 }
 
-MirInstr *append_instr_set_initializer_impl(Context *cnt, MirInstr *dest, MirInstr *src)
+MirInstr *
+append_instr_set_initializer_impl(Context *cnt, TSmallArray_InstrPtr *dests, MirInstr *src)
 {
-    MirInstr *tmp    = append_instr_set_initializer(cnt, NULL, dest, src);
+    MirInstr *tmp    = append_instr_set_initializer(cnt, NULL, dests, src);
     tmp->is_implicit = true;
     return tmp;
 }
@@ -4429,30 +4443,33 @@ AnalyzeResult analyze_var(Context *cnt, MirVar *var)
 
 AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
 {
-    BL_ASSERT(si->dest && si->dest->kind == MIR_INSTR_DECL_VAR);
-    if (!si->dest->analyzed) return ANALYZE_RESULT(POSTPONE, 0); // PERFORMANCE: use wait???
+    TSmallArray_InstrPtr *dests = si->dests;
+    BL_ASSERT(dests && "Missing variables to initialize.")
+    BL_ASSERT(dests->size && "Expected at least one variable.")
+    MirInstr *dest;
+    TSA_FOREACH(dests, dest)
+    {
+        // Just pre-scan to check if all destination variables are analyzed.
+        BL_ASSERT(dest && dest->kind == MIR_INSTR_DECL_VAR);
+        if (!dest->analyzed) return ANALYZE_RESULT(POSTPONE, 0); // PERFORMANCE: use wait???
+    }
 
-    MirVar *var = ((MirInstrDeclVar *)si->dest)->var;
-    BL_ASSERT(var && "Missing MirVar for variable declaration!");
-    BL_ASSERT((var->is_global || var->is_struct_typedef) &&
-              "Only globals can be initialized by initializer!");
-
+    MirType *type = ((MirInstrDeclVar *)dests->data[0])->var->value.type;
     // When there is no source initialization value to set global we can omit type inferring and
     // initialization value slot analyze pass.
     const bool is_default = !si->src;
     if (!is_default) {
         const AnalyzeSlotConfig *config =
-            var->value.type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
+            type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
 
-        if (analyze_slot(cnt, config, &si->src, var->value.type) != ANALYZE_PASSED) {
+        if (analyze_slot(cnt, config, &si->src, type) != ANALYZE_PASSED) {
             return ANALYZE_RESULT(FAILED, 0);
         }
 
         // Infer variable type if needed.
-        if (!var->value.type) var->value.type = si->src->value.type;
+        if (!type) type = si->src->value.type;
     } else {
         // Generate default value based on type!
-        MirType *type = var->value.type;
         BL_ASSERT(type && "Missing variable initializer type for default global initializer!");
         MirInstr *default_init = create_default_value_for_type(cnt, type);
         insert_instr_before(&si->base, default_init);
@@ -4460,11 +4477,9 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
         si->src = default_init;
     }
 
-    BL_ASSERT(var->value.type &&
-              "Missing variable initializer type for default global initializer!");
-    BL_ASSERT(var->value.type->kind != MIR_TYPE_VOID && "Global value cannot be void!");
+    BL_ASSERT(type && "Missing variable initializer type for default global initializer!");
+    BL_ASSERT(type->kind != MIR_TYPE_VOID && "Global value cannot be void!");
     BL_ASSERT(si->src && "Invalid global initializer source value.");
-
     // Global initializer must be compile time known.
     if (!si->src->value.is_comptime) {
         builder_msg(BUILDER_MSG_ERROR,
@@ -4477,33 +4492,43 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
 
     SET_IS_NAKED_IF_COMPOUND(si->src, false);
 
-    // Initializer value is guaranteed to be comptime so we just check variable mutability.
-    // (mutable variables cannot be comptime)
-    var->value.is_comptime = !var->is_mutable;
+    TSA_FOREACH(dests, dest)
+    {
+        MirVar *var = ((MirInstrDeclVar *)dest)->var;
+        BL_ASSERT(var && "Missing MirVar for variable declaration!");
+        BL_ASSERT((var->is_global || var->is_struct_typedef) &&
+                  "Only global variables can be initialized by initializer!");
+        var->value.type = type;
+        // Initializer value is guaranteed to be comptime so we just check variable mutability.
+        // (mutable variables cannot be comptime)
+        var->value.is_comptime = !var->is_mutable;
 
-    AnalyzeResult state = analyze_var(cnt, var);
-    if (state.state != ANALYZE_PASSED) return state;
+        AnalyzeResult state = analyze_var(cnt, var);
+        if (state.state != ANALYZE_PASSED) return state;
 
-    // Typedef resolver cannot be generated into LLVM IR because TypeType has no LLVM
-    // representation and should live only during compile time of MIR.
-    si->base.owner_block->emit_llvm = var->emit_llvm;
+        // Typedef resolver cannot be generated into LLVM IR because TypeType has no LLVM
+        // representation and should live only during compile time of MIR.
+        si->base.owner_block->emit_llvm = var->emit_llvm;
 
-    if (!var->value.is_comptime) {
-        // Global variables which are not compile time constants are allocated
-        // on the stack, one option is to do allocation every time when we
-        // invoke comptime function execution, but we don't know which globals
-        // will be used by function and we also don't known whatever function
-        // has some side effect or not. So we produce allocation here. Variable
-        // will be stored in static data segment. There is no need to use
-        // relative pointers here.
-        vm_alloc_global(cnt->vm, cnt->assembly, var);
+        if (!var->value.is_comptime) {
+            // Global variables which are not compile time constants are allocated
+            // on the stack, one option is to do allocation every time when we
+            // invoke comptime function execution, but we don't know which globals
+            // will be used by function and we also don't known whatever function
+            // has some side effect or not. So we produce allocation here. Variable
+            // will be stored in static data segment. There is no need to use
+            // relative pointers here.
+            vm_alloc_global(cnt->vm, cnt->assembly, var);
+        }
+
+        // Check whether variable is command_line_arguments, we store pointer to this variable for
+        // later use (it's going to be set to user input arguments in case of compile-time
+        // execution).
+        if (var->builtin_id == MIR_BUILTIN_ID_COMMAND_LINE_ARGUMENTS) {
+            BL_ASSERT(!cnt->assembly->vm_run.command_line_arguments);
+            cnt->assembly->vm_run.command_line_arguments = var;
+        }
     }
-
-    if (var->builtin_id == MIR_BUILTIN_ID_COMMAND_LINE_ARGUMENTS) {
-        BL_ASSERT(!cnt->assembly->vm_run.command_line_arguments);
-        cnt->assembly->vm_run.command_line_arguments = var;
-    }
-
     return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -9044,10 +9069,17 @@ static void ast_decl_var_global_or_struct(Context *cnt, Ast *ast_global)
     MirInstr *value = NULL;
     Scope *   scope = ast_name->owner_scope;
 
-    BL_ASSERT(!ast_name->data.ident.next && "Global multi-decls are not supported!");
-
     // Struct use forward type declarations!
     if (is_struct_decl) {
+        const bool is_multidecl = ast_name->data.ident.next;
+        if (is_multidecl) {
+            const Ast *ast_next_name = ast_name->data.ident.next;
+            builder_msg(BUILDER_MSG_ERROR,
+                        ERR_INVALID_NAME,
+                        ast_next_name->location,
+                        BUILDER_CUR_WORD,
+                        " cannot be multi-declared.");
+        }
         // Set to const type fwd decl
         MirType *fwd_decl_type =
             create_type_struct_incomplete(cnt, cnt->ast.current_entity_id, false);
@@ -9059,18 +9091,30 @@ static void ast_decl_var_global_or_struct(Context *cnt, Ast *ast_global)
         cnt->ast.current_fwd_struct_decl = value;
     }
 
-    MirBuiltinIdKind builtin_id = MIR_BUILTIN_ID_NONE;
-    if (is_compiler) builtin_id = check_symbol_marked_compiler(ast_name);
-    ID *      id        = &ast_name->data.ident.id;
-    MirInstr *instr_var = append_instr_decl_var(cnt,
-                                                ast_name,
-                                                id,
-                                                scope,
-                                                type,
-                                                value,
-                                                is_mutable,
-                                                ast_global->data.decl_entity.flags,
-                                                builtin_id);
+    TSmallArray_InstrPtr *decls            = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
+    Ast *                 ast_current_name = ast_name;
+    while (ast_current_name) {
+        MirBuiltinIdKind builtin_id = MIR_BUILTIN_ID_NONE;
+        if (is_compiler) builtin_id = check_symbol_marked_compiler(ast_name);
+        ID *      id   = &ast_current_name->data.ident.id;
+        MirInstr *decl = append_instr_decl_var(cnt,
+                                               ast_current_name,
+                                               id,
+                                               scope,
+                                               type,
+                                               value,
+                                               is_mutable,
+                                               ast_global->data.decl_entity.flags,
+                                               builtin_id);
+        tsa_push_InstrPtr(decls, decl);
+
+        if (is_struct_decl) {
+            MirVar *var            = ((MirInstrDeclVar *)decl)->var;
+            var->is_struct_typedef = true;
+        }
+        register_symbol(cnt, ast_current_name, id, scope, is_compiler);
+        ast_current_name = ast_current_name->data.ident.next;
+    }
 
     // For globals we must generate initialization after variable declaration,
     // SetInitializer instruction will be used to set actual value, also
@@ -9078,23 +9122,17 @@ static void ast_decl_var_global_or_struct(Context *cnt, Ast *ast_global)
     // have LLVM representation -> globals must be evaluated in compile time).
     if (ast_value) {
         // Generate implicit global initializer block.
-        // @HACK: Global initializer generator should accept multiple variables.
-        ast_create_global_initializer(cnt, ast_value, instr_var);
+        ast_create_global_initializer2(cnt, ast_value, decls);
     } else {
         // Global has no explicit initialization in code so we must
         // create default global initializer.
-        // @HACK: Global initializer generator should accept multiple variables.
-        ast_create_global_initializer(cnt, NULL, instr_var);
+        ast_create_global_initializer2(cnt, NULL, decls);
     }
 
     // Struct decl cleanup.
     if (is_struct_decl) {
         cnt->ast.current_fwd_struct_decl = NULL;
-        // @HACK: Used only for first in group!!!
-        MirVar *var            = ((MirInstrDeclVar *)instr_var)->var;
-        var->is_struct_typedef = true;
     }
-    register_symbol(cnt, ast_name, id, scope, is_compiler);
 }
 
 MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
@@ -9403,21 +9441,28 @@ MirInstr *ast_type_struct(Context *cnt, Ast *type_struct)
         cnt, type_struct, id, fwd_decl, scope, members, false, is_union, is_multiple_return_type);
 }
 
-MirInstr *ast_create_global_initializer(Context *cnt, Ast *ast_value, MirInstr *decl_var)
+MirInstr *ast_create_global_initializer2(Context *cnt, Ast *ast_value, TSmallArray_InstrPtr *decls)
 {
-    BL_ASSERT(decl_var);
     MirInstrBlock *prev_block = ast_current_block(cnt);
     MirInstrBlock *block      = append_global_block(cnt, INIT_VALUE_FN_NAME);
     set_current_block(cnt, block);
     MirInstr *result = ast(cnt, ast_value);
 
     if (ast_value)
-        result = append_instr_set_initializer(cnt, ast_value, decl_var, result);
+        result = append_instr_set_initializer(cnt, ast_value, decls, result);
     else
-        result = append_instr_set_initializer_impl(cnt, decl_var, result);
+        result = append_instr_set_initializer_impl(cnt, decls, result);
 
     set_current_block(cnt, prev_block);
     return result;
+}
+
+MirInstr *ast_create_global_initializer(Context *cnt, Ast *ast_value, MirInstr *decl)
+{
+    BL_ASSERT(decl);
+    TSmallArray_InstrPtr *decls = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
+    tsa_push_InstrPtr(decls, decl);
+    return ast_create_global_initializer2(cnt, ast_value, decls);
 }
 
 MirInstr *ast_create_impl_fn_call(Context *   cnt,

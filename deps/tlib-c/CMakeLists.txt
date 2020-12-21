@@ -25,6 +25,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(SOURCE_FILES 
+	src/common.c
 	src/string.c
 	src/array.c
 	src/hash_table.c
@@ -41,6 +42,7 @@ set(HEADER_FILES
 	include/tlib/small_array.h
 	include/tlib/list.h
 	include/tlib/hash.h
+	src/tmemory.h
   )
 
 if (MSVC)

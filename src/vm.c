@@ -2304,24 +2304,25 @@ void eval_instr_load(VM *vm, MirInstrLoad *load)
 
 void eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si)
 {
-    MirVar *var = ((MirInstrDeclVar *)si->dest)->var;
-    BL_ASSERT((var->is_global || var->is_struct_typedef) &&
-              "Only globals can be initialized by initializer!");
-
-    if (var->value.is_comptime) {
-        // This is little optimization, we can simply reuse initializer pointer
-        // since we are dealing with constant values and variable is immutable
-        // comptime.
-        var->value.data = si->src->value.data;
-    } else {
-        MirType *var_type = var->value.type;
-
-        // Gloabals always use static segment allocation!!!
-        VMStackPtr var_ptr = vm_read_var(vm, var);
-
-        // Runtime variable needs it's own memory location so we must create copy of
-        // initializer data
-        memcpy(var_ptr, si->src->value.data, var_type->store_size_bytes);
+    MirInstr *dest;
+    TSA_FOREACH(si->dests, dest)
+    {
+        MirVar *var = ((MirInstrDeclVar *)dest)->var;
+        BL_ASSERT((var->is_global || var->is_struct_typedef) &&
+                  "Only globals can be initialized by initializer!");
+        if (var->value.is_comptime) {
+            // This is little optimization, we can simply reuse initializer pointer
+            // since we are dealing with constant values and variable is immutable
+            // comptime.
+            var->value.data = si->src->value.data;
+        } else {
+            MirType *var_type = var->value.type;
+            // Globals always use static segment allocation!!!
+            VMStackPtr var_ptr = vm_read_var(vm, var);
+            // Runtime variable needs it's own memory location so we must create copy of
+            // initializer data
+            memcpy(var_ptr, si->src->value.data, var_type->store_size_bytes);
+        }
     }
 }
 

@@ -578,8 +578,8 @@ struct MirInstrRet {
 struct MirInstrSetInitializer {
     MirInstr base;
 
-    MirInstr *dest;
-    MirInstr *src;
+    TSmallArray_InstrPtr *dests;
+    MirInstr *            src;
 };
 
 struct MirInstrBinop {

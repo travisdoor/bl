@@ -342,11 +342,16 @@ void print_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
     print_instr_head(cnt, &si->base, "setinit");
     print_comptime_value_or_id(cnt, si->src);
     fprintf(cnt->stream, " -> ");
-    MirInstrDeclVar *dest = (MirInstrDeclVar *)si->dest;
-    if (dest && dest->var->linkage_name) {
-        fprintf(cnt->stream, "%s", dest->var->linkage_name);
-    } else {
-        print_comptime_value_or_id(cnt, si->dest);
+
+    MirInstr *_dest;
+    TSA_FOREACH(si->dests, _dest)
+    {
+        MirInstrDeclVar *dest = (MirInstrDeclVar *)_dest;
+        if (dest && dest->var->linkage_name) {
+            fprintf(cnt->stream, "%s", dest->var->linkage_name);
+        } else {
+            print_comptime_value_or_id(cnt, _dest);
+        }
     }
 }
 

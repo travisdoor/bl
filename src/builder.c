@@ -270,7 +270,7 @@ void builder_init(void)
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split = false;
+    builder.options.reg_split     = false;
 #endif
 
     // initialize LLVM statics
@@ -521,7 +521,6 @@ TString *builder_create_cached_str(void)
 {
     TString *str = arena_alloc(&builder.str_cache);
     tstring_init(str);
-
     return str;
 }
 

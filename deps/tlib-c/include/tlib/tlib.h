@@ -33,13 +33,13 @@
 extern "C" {
 #endif
 
-#include "tlib/config.h"
-#include "tlib/string.h"
 #include "tlib/array.h"
-#include "tlib/hash_table.h"
-#include "tlib/small_array.h"
-#include "tlib/list.h"
+#include "tlib/config.h"
 #include "tlib/hash.h"
+#include "tlib/hash_table.h"
+#include "tlib/list.h"
+#include "tlib/small_array.h"
+#include "tlib/string.h"
 
 #ifdef __cplusplus
 }

@@ -164,7 +164,7 @@ void print_trace(void);
         TracyCMessageC(buf, strlen(buf), thash_from_str(tag));                                     \
     }
 #else
-#define BL_TRACY_MESSAGE(format, ...)                                                              \
+#define BL_TRACY_MESSAGE(tag, format, ...)                                                         \
     while (0) {                                                                                    \
     }
 #endif

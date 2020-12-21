@@ -30,19 +30,19 @@
 #define T_COMMON_H
 
 #include "tlib/config.h"
-#include <string.h>
-#include <stdio.h>
 #include <assert.h>
-#include <stdlib.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define TITERATOR_EQUAL(_first, _second) ((_first).opaque == (_second).opaque)
 #define TARRAY_SIZE(_array) (sizeof((_array)) / sizeof((_array)[0]))
 #define TABORT(_msg, ...)                                                                          \
-	{                                                                                          \
-		fprintf(stderr, (_msg), ##__VA_ARGS__);                                            \
-		abort();                                                                           \
-	}
+    {                                                                                              \
+        fprintf(stderr, (_msg), ##__VA_ARGS__);                                                    \
+        abort();                                                                                   \
+    }
 
 #ifdef _MSC_VER
 #define TAPI __declspec(dllexport)
@@ -64,8 +64,12 @@ typedef float              f32;
 typedef double             f64;
 
 typedef struct TIterator {
-	void *opaque;
+    void *opaque;
 } TIterator;
 
+typedef void *(*TAllocFn)(usize bytes);
+typedef void (*TFreeFn)(void *ptr);
+
+TAPI void tlib_set_allocator(TAllocFn malloc_fn, TFreeFn free_fn);
 
 #endif

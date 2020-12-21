@@ -27,116 +27,109 @@
 //*****************************************************************************
 
 #include "tlib/array.h"
+#include "tmemory.h"
 
 #define ALLOC_BLOCK_SIZE 32
 #define ELEM_PTR(_i) (&((u8 *)arr->data)[(_i)*arr->elem_size])
 
-static void
-ensure_space(TArray *arr, usize space, bool exact)
+static void ensure_space(TArray *arr, usize space, bool exact)
 {
-	if (!space) return;
-	if (arr->allocated >= space) return;
+    if (!space) return;
+    if (arr->allocated >= space) return;
 
-	if (arr->allocated == 0) {
-		space     = exact ? space : ALLOC_BLOCK_SIZE;
-		arr->data = malloc(space * arr->elem_size);
-	} else {
-		space *= 2;
-		arr->data = realloc(arr->data, space * arr->elem_size);
-	}
+    if (arr->allocated == 0) {
+        space     = exact ? space : ALLOC_BLOCK_SIZE;
+        arr->data = _tmalloc(space * arr->elem_size);
+    } else {
+        const usize old_space = space;
+        space *= 2;
+        void *tmp = _tmalloc(space * arr->elem_size);
+        memcpy(tmp, arr->data, old_space * arr->elem_size);
+        arr->data = tmp;
+    }
 
-	arr->allocated = space;
+    arr->allocated = space;
 }
 
 /* public */
 
-TArray *
-tarray_new(usize elem_size)
+TArray *tarray_new(usize elem_size)
 {
-	TArray *arr = malloc(sizeof(TArray));
-	if (!arr) TABORT("Bad alloc.");
+    TArray *arr = _tmalloc(sizeof(TArray));
+    if (!arr) TABORT("Bad alloc.");
 
-	tarray_init(arr, elem_size);
-	return arr;
+    tarray_init(arr, elem_size);
+    return arr;
 }
 
-void
-tarray_delete(TArray *arr)
+void tarray_delete(TArray *arr)
 {
-	if (!arr) return;
-	tarray_terminate(arr);
+    if (!arr) return;
+    tarray_terminate(arr);
 
-	free(arr);
+    _tfree(arr);
 }
 
-void
-tarray_init(TArray *arr, usize elem_size)
+void tarray_init(TArray *arr, usize elem_size)
 {
-	if (!elem_size) TABORT("Size of array element cannot be 0.");
-	arr->data      = NULL;
-	arr->size      = 0;
-	arr->allocated = 0;
-	arr->elem_size = elem_size;
+    if (!elem_size) TABORT("Size of array element cannot be 0.");
+    arr->data      = NULL;
+    arr->size      = 0;
+    arr->allocated = 0;
+    arr->elem_size = elem_size;
 }
 
-void
-tarray_terminate(TArray *arr)
+void tarray_terminate(TArray *arr)
 {
-	free(arr->data);
-	arr->data      = NULL;
-	arr->allocated = 0;
-	arr->size      = 0;
+    _tfree(arr->data);
+    arr->data      = NULL;
+    arr->allocated = 0;
+    arr->size      = 0;
 }
 
-void
-tarray_reserve(TArray *arr, usize size)
+void tarray_reserve(TArray *arr, usize size)
 {
-	if (!size) return;
-	ensure_space(arr, size, true);
+    if (!size) return;
+    ensure_space(arr, size, true);
 }
 
-void
-tarray_clear(TArray *arr)
+void tarray_clear(TArray *arr)
 {
-	arr->size = 0;
+    arr->size = 0;
 }
 
-void *
-_tarray_push(TArray *arr, void *v_ptr)
+void *_tarray_push(TArray *arr, void *v_ptr)
 {
-	ensure_space(arr, arr->size + 1, false);
+    ensure_space(arr, arr->size + 1, false);
 
-	void *elem_ptr = ELEM_PTR(arr->size);
-	if (v_ptr) {
-		memcpy(elem_ptr, v_ptr, arr->elem_size);
-	}
+    void *elem_ptr = ELEM_PTR(arr->size);
+    if (v_ptr) {
+        memcpy(elem_ptr, v_ptr, arr->elem_size);
+    }
 
-	arr->size += 1;
-	return elem_ptr;
+    arr->size += 1;
+    return elem_ptr;
 }
 
-void *
-_tarray_at(TArray *arr, usize i)
+void *_tarray_at(TArray *arr, usize i)
 {
-	if (i > arr->size) TABORT("Array index out of the bounds.");
-	return ELEM_PTR(i);
+    if (i > arr->size) TABORT("Array index out of the bounds.");
+    return ELEM_PTR(i);
 }
 
-void
-tarray_pop(TArray *arr)
+void tarray_pop(TArray *arr)
 {
-	if (arr->size > 0) arr->size--;
+    if (arr->size > 0) arr->size--;
 }
 
-void
-tarray_erase(TArray *arr, usize i)
+void tarray_erase(TArray *arr, usize i)
 {
-	if (i >= arr->size) abort();
-	// single element in bo_vector or last have to be erased
-	if (arr->size == 1 || i == arr->size - 1) {
-		tarray_pop(arr);
-	} else {
-		arr->size--;
-		memcpy(ELEM_PTR(i), ELEM_PTR(arr->size), arr->elem_size);
-	}
+    if (i >= arr->size) abort();
+    // single element in bo_vector or last have to be erased
+    if (arr->size == 1 || i == arr->size - 1) {
+        tarray_pop(arr);
+    } else {
+        arr->size--;
+        memcpy(ELEM_PTR(i), ELEM_PTR(arr->size), arr->elem_size);
+    }
 }
