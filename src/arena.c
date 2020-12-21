@@ -41,7 +41,11 @@ static INLINE ArenaChunk *alloc_chunk(Arena *arena)
     ArenaChunk *chunk               = bl_malloc(chunk_size_in_bytes);
     if (!chunk) BL_ABORT("bad alloc");
 
+#ifdef BL_PLATFORM_WINDOWS
     memset(chunk, 0, chunk_size_in_bytes);
+#else
+    bzero(chunk, chunk_size_in_bytes);
+#endif
     chunk->count = 1;
     return chunk;
 }

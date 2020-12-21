@@ -29,11 +29,18 @@
 #include "tlib/common.h"
 #include "tmemory.h"
 
-TAllocFn _tmalloc = &malloc;
-TFreeFn _tfree = &free;
+static void *default_malloc(usize size, const char *filename, s32 line)
+{
+    (void)filename;
+    (void)line;
+    return malloc(size);
+}
+
+TAllocFn _tmalloc = &default_malloc;
+TFreeFn  _tfree   = &free;
 
 void tlib_set_allocator(TAllocFn malloc_fn, TFreeFn free_fn)
 {
     _tmalloc = malloc_fn;
-    _tfree = free_fn;
+    _tfree   = free_fn;
 }

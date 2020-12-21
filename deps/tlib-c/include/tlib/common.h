@@ -67,7 +67,7 @@ typedef struct TIterator {
     void *opaque;
 } TIterator;
 
-typedef void *(*TAllocFn)(usize bytes);
+typedef void *(*TAllocFn)(usize bytes, const char *filename, s32 line);
 typedef void (*TFreeFn)(void *ptr);
 
 TAPI void tlib_set_allocator(TAllocFn malloc_fn, TFreeFn free_fn);

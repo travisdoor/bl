@@ -39,11 +39,11 @@ static void ensure_space(TArray *arr, usize space, bool exact)
 
     if (arr->allocated == 0) {
         space     = exact ? space : ALLOC_BLOCK_SIZE;
-        arr->data = _tmalloc(space * arr->elem_size);
+        arr->data = tmalloc(space * arr->elem_size);
     } else {
         const usize old_space = space;
         space *= 2;
-        void *tmp = _tmalloc(space * arr->elem_size);
+        void *tmp = tmalloc(space * arr->elem_size);
         memcpy(tmp, arr->data, old_space * arr->elem_size);
         arr->data = tmp;
     }
@@ -55,7 +55,7 @@ static void ensure_space(TArray *arr, usize space, bool exact)
 
 TArray *tarray_new(usize elem_size)
 {
-    TArray *arr = _tmalloc(sizeof(TArray));
+    TArray *arr = tmalloc(sizeof(TArray));
     if (!arr) TABORT("Bad alloc.");
 
     tarray_init(arr, elem_size);
@@ -67,7 +67,7 @@ void tarray_delete(TArray *arr)
     if (!arr) return;
     tarray_terminate(arr);
 
-    _tfree(arr);
+    tfree(arr);
 }
 
 void tarray_init(TArray *arr, usize elem_size)
@@ -81,7 +81,7 @@ void tarray_init(TArray *arr, usize elem_size)
 
 void tarray_terminate(TArray *arr)
 {
-    _tfree(arr->data);
+    tfree(arr->data);
     arr->data      = NULL;
     arr->allocated = 0;
     arr->size      = 0;

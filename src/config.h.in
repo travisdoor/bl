@@ -100,9 +100,11 @@
 #if BL_DEBUG
 #define ASSERT_ON_CMP_ERROR 0
 #define LLVM_EXCLUDE_UNUSED_SYM 1
+#define BL_MAGIC_ENABLE 1
 #else
 #define ASSERT_ON_CMP_ERROR 0
 #define LLVM_EXCLUDE_UNUSED_SYM 1
+#define BL_MAGIC_ENABLE 0
 #endif
 
 #define VM_STACK_SIZE 2097152          // 2MB

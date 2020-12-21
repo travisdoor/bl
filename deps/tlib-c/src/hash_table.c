@@ -55,7 +55,7 @@ static inline s32 next_prime(s32 num)
 
 static struct THtblNode *create_node(THashTable *tbl)
 {
-    struct THtblNode *new_node = _tmalloc(NODE_SIZE);
+    struct THtblNode *new_node = tmalloc(NODE_SIZE);
     memset(new_node, 0, NODE_SIZE);
 #ifndef NDEBUG
     new_node->_this = new_node;
@@ -89,7 +89,7 @@ static TIterator erase_node(THashTable *tbl, struct THtblNode *node, struct THtb
     }
 
     TIterator iter_next = (TIterator){.opaque = node->next};
-    _tfree(node);
+    tfree(node);
     tbl->size--;
     return iter_next;
 }
@@ -112,7 +112,7 @@ void thtbl_init(THashTable *tbl, usize data_size, usize expected_size)
     if (!expected_size) expected_size = DEFAULT_EXPECTED_SIZE;
 
     tbl->bucket_count = (usize)next_prime((s32)ceil((f64)expected_size / (f64)MAX_LOAD_FACTOR));
-    tbl->buckets      = _tmalloc(tbl->bucket_count * sizeof(struct THtblBucket));
+    tbl->buckets      = tmalloc(tbl->bucket_count * sizeof(struct THtblBucket));
     memset(tbl->buckets, 0, tbl->bucket_count * sizeof(struct THtblBucket));
     tbl->size = 0;
 }
@@ -120,14 +120,14 @@ void thtbl_init(THashTable *tbl, usize data_size, usize expected_size)
 void thtbl_terminate(THashTable *tbl)
 {
     thtbl_clear(tbl);
-    _tfree(tbl->buckets);
+    tfree(tbl->buckets);
     tbl->size  = 0;
     tbl->begin = &tbl->end;
 }
 
 THashTable *thtbl_new(usize data_size, usize expected_size)
 {
-    THashTable *tbl = _tmalloc(sizeof(THashTable));
+    THashTable *tbl = tmalloc(sizeof(THashTable));
     if (!tbl) TABORT("Bad alloc.");
     thtbl_init(tbl, data_size, expected_size);
 
@@ -138,7 +138,7 @@ void thtbl_delete(THashTable *tbl)
 {
     if (!tbl) return;
     thtbl_terminate(tbl);
-    _tfree(tbl);
+    tfree(tbl);
 }
 
 void *_thtbl_insert(THashTable *tbl, u64 key, void *data)
@@ -277,7 +277,7 @@ void thtbl_clear(THashTable *tbl)
         node = (struct THtblNode *)iter.opaque;
 
         thtbl_iter_next(&iter);
-        _tfree(node);
+        tfree(node);
     }
     memset(tbl->buckets, 0, tbl->bucket_count * sizeof(struct THtblBucket));
 

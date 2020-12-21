@@ -38,6 +38,7 @@
 #endif
 
 #define ARENA_CHUNK_COUNT 512
+#define ARENA_INSTR_CHUNK_COUNT 2048
 #define ANALYZE_TABLE_SIZE 8192
 #define RESOLVE_TYPE_FN_NAME ".type"
 #define INIT_VALUE_FN_NAME ".init"
@@ -1548,9 +1549,10 @@ void type_init_id(Context *cnt, MirType *type)
     static int tc = 0;
     TracyCPlot("Type count", ++tc);
     BL_TRACY_MESSAGE("CREATE_TYPE",
-                     "%s %s",
+                     "%s %s (%lluB)",
                      type->id.str,
-                     !is_incomplete_struct_type(type) ? "<INCOMPLETE>" : "");
+                     !is_incomplete_struct_type(type) ? "<INCOMPLETE>" : "",
+                     (unsigned long long)sizeof(MirType));
 #endif
 
 #undef GEN_ID_STRUCT
@@ -10043,7 +10045,7 @@ MirFn *group_select_overload(Context *                  cnt,
 void mir_arenas_init(MirArenas *arenas)
 {
     const size_t instr_size = SIZEOF_MIR_INSTR;
-    arena_init(&arenas->instr, instr_size, ARENA_CHUNK_COUNT, NULL);
+    arena_init(&arenas->instr, instr_size, ARENA_INSTR_CHUNK_COUNT, NULL);
     arena_init(&arenas->type, sizeof(MirType), ARENA_CHUNK_COUNT, NULL);
     arena_init(&arenas->var, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
     arena_init(&arenas->fn, sizeof(MirFn), ARENA_CHUNK_COUNT, (ArenaElemDtor)&fn_dtor);
@@ -10079,6 +10081,8 @@ void mir_run(Assembly *assembly)
     thtbl_init(&cnt.analyze.waiting, sizeof(TArray), ANALYZE_TABLE_SIZE);
     tlist_init(&cnt.analyze.queue, sizeof(MirInstr *));
     tstring_init(&cnt.tmp_sh);
+
+    tlist_reserve(&cnt.analyze.queue, 1024);
 
     tarray_init(&cnt.ast._fnctx_stack, sizeof(AstFnContext));
     tsa_init(&cnt.analyze.incomplete_rtti);

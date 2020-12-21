@@ -29,6 +29,7 @@
 #ifndef T_LIST_H
 #define T_LIST_H
 
+#include "tlib/array.h"
 #include "tlib/common.h"
 
 #define tlist_push_back(list, data) _tlist_push_back((list), &(data))
@@ -38,23 +39,23 @@
 #define tlist_back(T, list) (*(T *)_tlist_back((list)))
 
 #define TLIST_FOREACH(list, it)                                                                    \
-	(it) = tlist_begin((list));                                                                \
-	for (TIterator end = tlist_end((list)); !TITERATOR_EQUAL((it), end);                       \
-	     tlist_iter_next(&(it)))
+    (it) = tlist_begin((list));                                                                    \
+    for (TIterator end = tlist_end((list)); !TITERATOR_EQUAL((it), end); tlist_iter_next(&(it)))
 
 struct TListNode {
-	struct TListNode *prev;
-	struct TListNode *next;
+    struct TListNode *prev;
+    struct TListNode *next;
 #ifndef NDEBUG
-	struct TListNode *_this;
+    struct TListNode *_this;
 #endif
 };
 
 typedef struct TList {
-	usize             data_size;
-	usize             size;
-	struct TListNode *begin;
-	struct TListNode  end;
+    TArray            buf;
+    usize             data_size;
+    usize             size;
+    struct TListNode *begin;
+    struct TListNode  end;
 } TList;
 
 /* clang-format off */
@@ -69,6 +70,9 @@ tlist_init(TList *list, usize data_size);
 
 TAPI void
 tlist_terminate(TList *list);
+
+TAPI void
+tlist_reserve(TList *list, usize count);
 
 TAPI void
 _tlist_push_back(TList *list, void *data);

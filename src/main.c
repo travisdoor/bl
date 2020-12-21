@@ -100,7 +100,7 @@ int main(s32 argc, char *argv[])
         ;
 
     setlocale(LC_ALL, "C");
-    tlib_set_allocator(&bl_malloc, &bl_free);
+    tlib_set_allocator(&_bl_malloc, &bl_free);
     setup_env();
     main_thread_id = thread_get_id();
 

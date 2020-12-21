@@ -26,5 +26,8 @@
 // SOFTWARE.
 //*****************************************************************************
 
+#define tmalloc(size) _tmalloc(size, __FILE__, __LINE__)
+#define tfree(ptr) _tfree(ptr)
+
 extern TAllocFn _tmalloc;
-extern TFreeFn _tfree;
+extern TFreeFn  _tfree;

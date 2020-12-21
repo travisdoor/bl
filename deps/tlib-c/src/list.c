@@ -37,23 +37,38 @@
 #define ERROR_ON_EMPTY                                                                             \
     if (tlist_empty(list)) TABORT("List is empty.");
 
+static struct TListNode *node_get(TList *list)
+{
+    struct TListNode *node;
+    if (list->buf.size > 0) {
+        const usize buf_len = list->buf.size;
+        node                = tarray_at(struct TListNode *, &list->buf, buf_len - 1);
+        list->buf.size -= 1;
+    } else {
+        node = tmalloc(GET_NODE_SIZE);
+    }
+    memset(node, 0, GET_NODE_SIZE);
+    return node;
+}
+
+static void node_put(TList *list, struct TListNode *node)
+{
+    tarray_push(&list->buf, node);
+}
+
 static struct TListNode *
 insert_node(TList *list, struct TListNode *prev, struct TListNode *next, void *data)
 {
-    struct TListNode *node = _tmalloc(GET_NODE_SIZE);
-    memset(node, 0, GET_NODE_SIZE);
+    struct TListNode *node = node_get(list);
 #ifndef NDEBUG
     node->_this = node;
 #endif
     memcpy(GET_DATA_PTR(node), data, list->data_size);
-
     if (prev) prev->next = node;
     node->prev = prev;
     if (next) next->prev = node;
     node->next = next;
-
     list->size++;
-
     return node;
 }
 
@@ -68,15 +83,14 @@ static struct TListNode *erase_node(TList *list, struct TListNode *node)
         list->begin      = node->next;
         node->next->prev = NULL;
     }
-
-    _tfree(node);
+    node_put(list, node);
     list->size--;
     return ret;
 }
 
 TList *tlist_new(usize data_size)
 {
-    TList *list = _tmalloc(sizeof(TList));
+    TList *list = tmalloc(sizeof(TList));
     memset(list, 0, sizeof(TList));
     if (!list) TABORT("Bad alloc");
 
@@ -88,11 +102,12 @@ void tlist_delete(TList *list)
 {
     if (!list) return;
     tlist_terminate(list);
-    _tfree(list);
+    tfree(list);
 }
 
 void tlist_init(TList *list, usize data_size)
 {
+    tarray_init(&list->buf, GET_NODE_SIZE);
     list->data_size = data_size;
     list->begin     = &list->end;
     list->size      = 0;
@@ -100,10 +115,21 @@ void tlist_init(TList *list, usize data_size)
 
 void tlist_terminate(TList *list)
 {
+    tarray_terminate(&list->buf);
     tlist_clear(list);
     list->size  = 0;
     list->begin = &list->end;
     list->size  = 0;
+    struct TListNode *node;
+    TARRAY_FOREACH(struct TListNode *, &list->buf, node)
+    {
+        tfree(node);
+    }
+}
+
+void tlist_reserve(TList *list, usize count)
+{
+    tarray_reserve(&list->buf, count);
 }
 
 void _tlist_push_back(TList *list, void *data)
@@ -192,7 +218,7 @@ void tlist_clear(TList *list)
         current = (struct TListNode *)iter.opaque;
         tlist_iter_next(&iter);
 
-        _tfree(current);
+        tfree(current);
     }
 
     list->size  = 0;

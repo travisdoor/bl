@@ -164,7 +164,7 @@ int         count_bits(u64 n);
 void        platform_lib_name(const char *name, char *buffer, usize max_len);
 f64         get_tick_ms(void);
 
-// Creates BArray inside Assembly arena.
+// Creates TArray inside Assembly arena.
 // Note: no free is needed.
 TArray *create_arr(struct Assembly *assembly, usize size);
 

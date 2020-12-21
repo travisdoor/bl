@@ -450,11 +450,17 @@ SCAN:
                 break;
             }
 
+#ifndef _MSC_VER
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
             switch (tok.sym) {
             case SYM_DCOMMENT:
             case SYM_DGCOMMENT:
-                scan_docs(cnt, &tok);
-                goto PUSH_TOKEN;
+                if (builder.options.docs) {
+                    scan_docs(cnt, &tok);
+                    goto PUSH_TOKEN;
+                }
             case SYM_SHEBANG:
             case SYM_LCOMMENT:
                 scan_comment(cnt, &tok, "\n");
@@ -473,6 +479,9 @@ SCAN:
                 cnt->col += (s32)len;
                 goto PUSH_TOKEN;
             }
+#ifndef _MSC_VER
+#pragma GCC diagnostic pop
+#endif
         }
     }
 

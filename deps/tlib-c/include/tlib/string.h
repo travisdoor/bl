@@ -32,12 +32,12 @@
 #include "tlib/common.h"
 
 typedef struct TString {
-	char *data;
-	usize len;
-	usize allocated;
+    char *data;
+    usize len;
+    usize allocated;
 
-	/* Small strings can fit into this statically callocated block. */
-	char _tmp[64];
+    /* Small strings can fit into this statically allocated block. */
+    char _tmp[64];
 } TString;
 
 /* clang-format off */

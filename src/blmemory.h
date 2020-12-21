@@ -29,10 +29,12 @@
 #ifndef BL_BLMEMORY_H
 #define BL_BLMEMORY_H
 
+#include "common.h"
 #include <memory.h>
 
-void *bl_malloc(const size_t size);
+#define bl_malloc(size) _bl_malloc((size), __FILE__, __LINE__)
 
-void bl_free(void *ptr);
+void *_bl_malloc(const size_t size, const char *filename, s32 line);
+void  bl_free(void *ptr);
 
 #endif // BL_BLMEMORY_H

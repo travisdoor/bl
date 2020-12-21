@@ -36,7 +36,7 @@ static void ensure_space(TString *str, usize space)
     space += 1; /* zero terminated */
     if (space <= TARRAY_SIZE(str->_tmp)) return;
     if (str->allocated >= space) return;
-    char *tmp = _tmalloc(space * sizeof(char));
+    char *tmp = tmalloc(space * sizeof(char));
     memcpy(tmp, str->data, str->len + 1);
     str->data      = tmp;
     str->allocated = space;
@@ -45,7 +45,7 @@ static void ensure_space(TString *str, usize space)
 /* public */
 TString *tstring_new(void)
 {
-    TString *str = _tmalloc(sizeof(TString));
+    TString *str = tmalloc(sizeof(TString));
     if (!str) TABORT("Bad alloc.");
 
     tstring_init(str);
@@ -57,7 +57,7 @@ void tstring_delete(TString *str)
     if (!str) return;
     tstring_terminate(str);
 
-    _tfree(str);
+    tfree(str);
 }
 
 void tstring_init(TString *str)
