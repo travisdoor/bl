@@ -41,10 +41,12 @@ static void ensure_space(TArray *arr, usize space, bool exact)
         space     = exact ? space : ALLOC_BLOCK_SIZE;
         arr->data = tmalloc(space * arr->elem_size);
     } else {
-        const usize old_space = space;
         space *= 2;
         void *tmp = tmalloc(space * arr->elem_size);
-        memcpy(tmp, arr->data, old_space * arr->elem_size);
+        if (arr->size) {
+            memcpy(tmp, arr->data, arr->size * arr->elem_size);
+        }
+        tfree(arr->data);
         arr->data = tmp;
     }
 

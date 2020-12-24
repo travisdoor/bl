@@ -115,7 +115,6 @@ void tlist_init(TList *list, usize data_size)
 
 void tlist_terminate(TList *list)
 {
-    tarray_terminate(&list->buf);
     tlist_clear(list);
     list->size  = 0;
     list->begin = &list->end;
@@ -125,6 +124,7 @@ void tlist_terminate(TList *list)
     {
         tfree(node);
     }
+    tarray_terminate(&list->buf);
 }
 
 void tlist_reserve(TList *list, usize count)

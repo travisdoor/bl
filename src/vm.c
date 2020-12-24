@@ -29,7 +29,6 @@
 #include "vm.h"
 #include "builder.h"
 #include "mir.h"
-#include "threading.h"
 
 #define MAX_ALIGNMENT 8
 #define VERBOSE_EXEC false
@@ -803,9 +802,6 @@ char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result
     // TODO: External callback can be invoked from different thread. This can cause problems for
     // now since interpreter is strictly single-threaded, but we must handle such situation in
     // future.
-    BL_ASSERT(thread_get_id() == main_thread_id &&
-              "External callback handler must be invoked from main thread.");
-
     DyncallCBContext *cnt = (DyncallCBContext *)userdata;
     MirFn *           fn  = cnt->fn;
     VM *              vm  = cnt->vm;

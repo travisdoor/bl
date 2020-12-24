@@ -30,7 +30,6 @@
 #include "bldebug.h"
 #include "builder.h"
 #include "error.h"
-#include "threading.h"
 #include "unit.h"
 #include <locale.h>
 #include <stdio.h>
@@ -102,11 +101,9 @@ int main(s32 argc, char *argv[])
     setlocale(LC_ALL, "C");
     tlib_set_allocator(&_bl_malloc, &bl_free);
     setup_env();
-    main_thread_id = thread_get_id();
 
 #ifdef BL_DEBUG
     puts("Running in DEBUG mode");
-    printf("Main thread ID: 0x%llx\n", main_thread_id);
 #endif
 
     builder_init();

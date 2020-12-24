@@ -2706,7 +2706,7 @@ void *create_instr(Context *cnt, MirInstrKind kind, Ast *node)
     tmp->kind       = kind;
     tmp->node       = node;
     tmp->id         = _id_counter++;
-#if BL_DEBUG
+#if BL_DEBUG && defined(TRACY_ENABLE)
     static int ic = 0;
     TracyCPlot("INSTR", ++ic);
     BL_TRACY_MESSAGE("INSTR_CREATE", "size: %lluB", (unsigned long long)SIZEOF_MIR_INSTR);

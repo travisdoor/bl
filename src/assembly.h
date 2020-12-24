@@ -130,6 +130,8 @@ typedef struct Assembly {
         bool is_any_ready;
         bool is_test_cases_ready;
     } builtin_types;
+
+    struct AssemblySyncImpl *sync;
 } Assembly;
 
 typedef struct NativeLib {

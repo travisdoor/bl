@@ -37,17 +37,157 @@
 #include "unit.h"
 
 #ifdef BL_PLATFORM_WIN
+#include "winpthreads.h"
 #include <windows.h>
+#define sleep_ms(ms) Sleep(ms)
+#else
+#include <pthread.h>
+#include <unistd.h>
+#define sleep_ms(ms) usleep(ms * 1000)
 #endif
 
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
+#define MAX_THREAD 8
 
 Builder builder;
 
 static int  compile_unit(Unit *unit, Assembly *assembly);
 static int  compile_assembly(Assembly *assembly);
 static bool llvm_initialized = false;
+
+typedef struct ThreadingImpl {
+    Assembly *    assembly;
+    pthread_t     workers[MAX_THREAD];
+    TArray        queue;
+    volatile bool will_quit;
+    volatile bool done;
+    volatile s32  active;
+
+    pthread_spinlock_t active_lock;
+    pthread_spinlock_t queue_lock;
+    pthread_spinlock_t str_tmp_lock;
+    pthread_mutex_t    cond_mutex;
+    pthread_cond_t     cond_var;
+} ThreadingImpl;
+
+static void queue_push(Unit *unit)
+{
+    ThreadingImpl *threading = builder.threading;
+    pthread_spin_lock(&threading->queue_lock);
+    tarray_push(&threading->queue, unit);
+    pthread_spin_unlock(&threading->queue_lock);
+}
+
+static Unit *queue_pop(void)
+{
+    ThreadingImpl *threading = builder.threading;
+    Unit *         unit      = NULL;
+    pthread_spin_lock(&threading->queue_lock);
+    if (threading->queue.size) {
+        unit = tarray_at(Unit *, &threading->queue, threading->queue.size - 1);
+        tarray_pop(&threading->queue);
+    }
+    pthread_spin_unlock(&threading->queue_lock);
+    return unit;
+}
+
+static void active(void)
+{
+    ThreadingImpl *threading = builder.threading;
+    pthread_spin_lock(&threading->active_lock);
+    threading->active++;
+    pthread_spin_unlock(&threading->active_lock);
+}
+
+static void notify_done(void)
+{
+    ThreadingImpl *threading = builder.threading;
+    pthread_spin_lock(&threading->active_lock);
+    threading->active--;
+    threading->done = !threading->active;
+    pthread_spin_unlock(&threading->active_lock);
+}
+
+static void *worker()
+{
+    ThreadingImpl *threading = builder.threading;
+    while (true) {
+        pthread_mutex_lock(&threading->cond_mutex);
+        Unit *unit;
+        while (!(unit = queue_pop()) && !threading->will_quit) {
+            pthread_cond_wait(&threading->cond_var, &threading->cond_mutex);
+        }
+        active();
+        pthread_mutex_unlock(&threading->cond_mutex);
+        if (!unit) break;
+        compile_unit(unit, threading->assembly);
+        notify_done();
+    }
+    pthread_exit(NULL);
+}
+
+static ThreadingImpl *threading_new(void)
+{
+    ThreadingImpl *t = bl_malloc(sizeof(ThreadingImpl));
+    memset(t, 0, sizeof(ThreadingImpl));
+    pthread_spin_init(&t->queue_lock, PTHREAD_PROCESS_PRIVATE);
+    pthread_spin_init(&t->active_lock, PTHREAD_PROCESS_PRIVATE);
+    pthread_spin_init(&t->str_tmp_lock, PTHREAD_PROCESS_PRIVATE);
+    pthread_mutex_init(&t->cond_mutex, NULL);
+    pthread_cond_init(&t->cond_var, NULL);
+    tarray_init(&t->queue, sizeof(Unit *));
+    t->assembly  = NULL;
+    t->will_quit = false;
+    return t;
+}
+
+static void threading_delete(ThreadingImpl *t)
+{
+    ThreadingImpl *threading = builder.threading;
+    threading->will_quit     = true;
+    pthread_cond_broadcast(&threading->cond_var);
+    for (usize i = 0; i < TARRAY_SIZE(t->workers); ++i) {
+        pthread_join(t->workers[i], NULL);
+    }
+    pthread_mutex_destroy(&t->cond_mutex);
+    pthread_cond_destroy(&t->cond_var);
+    pthread_spin_destroy(&t->queue_lock);
+    pthread_spin_destroy(&t->active_lock);
+    pthread_spin_destroy(&t->str_tmp_lock);
+    tarray_terminate(&t->queue);
+    bl_free(t);
+}
+
+static void start_threads()
+{
+    ThreadingImpl *threading = builder.threading;
+    for (usize i = 0; i < TARRAY_SIZE(threading->workers); ++i) {
+        pthread_create(&threading->workers[i], NULL, &worker, NULL);
+    }
+}
+
+static void async_compile(Assembly *assembly)
+{
+    ThreadingImpl *threading = builder.threading;
+    threading->assembly      = assembly;
+    threading->active        = 0;
+    threading->done          = false;
+
+    Unit *unit;
+    TARRAY_FOREACH(Unit *, &assembly->units, unit)
+    {
+        builder_submit_unit(unit);
+    }
+
+    while (!threading->done) {
+        Unit *unit = queue_pop();
+        if (unit) {
+            compile_unit(unit, assembly);
+        }
+    }
+    threading->assembly = NULL;
+}
 
 static void str_cache_dtor(TString *str)
 {
@@ -260,6 +400,7 @@ s32 builder_parse_options(s32 argc, char *argv[])
 void builder_init(void)
 {
     memset(&builder, 0, sizeof(Builder));
+    builder.threading = threading_new();
     builder.errorc = builder.max_error = builder.test_failc = 0;
     builder.last_script_mode_run_status                     = 0;
 
@@ -277,6 +418,7 @@ void builder_init(void)
     llvm_init();
     tarray_init(&builder.assembly_queue, sizeof(Assembly *));
     tarray_init(&builder.tmp_strings, sizeof(TString *));
+    start_threads();
 }
 
 void builder_terminate(void)
@@ -300,6 +442,7 @@ void builder_terminate(void)
     arena_terminate(&builder.str_cache);
 
     llvm_terminate();
+    threading_delete(builder.threading);
 }
 
 int builder_compile_config(const char *filepath, ConfData *out_data, Token *import_from)
@@ -373,20 +516,22 @@ int builder_compile(Assembly *assembly)
         }
     }
 
-    if (assembly->options.build_mode == BUILD_MODE_BUILD) {
+    const bool build_mode = assembly->options.build_mode == BUILD_MODE_BUILD;
+    if (build_mode) {
         unit = unit_new_file(BUILD_API_FILE, NULL);
         if (!assembly_add_unit_unique(assembly, unit)) {
             unit_delete(unit);
         }
     }
 
+#if 0
+    async_compile(assembly);
+#else
     TARRAY_FOREACH(Unit *, &assembly->units, unit)
     {
-        // IDEA: can run in separate thread
-        if ((state = compile_unit(unit, assembly)) != COMPILE_OK) {
-            break;
-        }
+        if ((state = compile_unit(unit, assembly)) != COMPILE_OK) break;
     }
+#endif
 
     if (state == COMPILE_OK) state = compile_assembly(assembly);
 
@@ -526,6 +671,8 @@ TString *builder_create_cached_str(void)
 
 TString *get_tmpstr(void)
 {
+    ThreadingImpl *threading = builder.threading;
+    pthread_spin_lock(&threading->str_tmp_lock);
     TString *   str  = NULL;
     const usize size = builder.tmp_strings.size;
     if (size) {
@@ -536,6 +683,7 @@ TString *get_tmpstr(void)
         tstring_reserve(str, 256);
     }
     BL_ASSERT(str);
+    pthread_spin_unlock(&threading->str_tmp_lock);
     return str;
 }
 
@@ -543,5 +691,17 @@ void put_tmpstr(TString *str)
 {
     BL_ASSERT(str);
     tstring_clear(str);
+    ThreadingImpl *threading = builder.threading;
+    pthread_spin_lock(&threading->str_tmp_lock);
     tarray_push(&builder.tmp_strings, str);
+    pthread_spin_unlock(&threading->str_tmp_lock);
+}
+
+void builder_submit_unit(Unit *unit)
+{
+    BL_ASSERT(unit);
+    ThreadingImpl *threading = builder.threading;
+    if (!threading->assembly) return;
+    queue_push(unit);
+    pthread_cond_signal(&threading->cond_var);
 }

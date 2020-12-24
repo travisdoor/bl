@@ -123,7 +123,6 @@ set(HEADER_FILES
     src/arena.h
     src/llvm_di.h
     src/vm.h
-    src/threading.h
     src/llvm_api.h
     src/ast.h)
 
@@ -161,7 +160,6 @@ set(SOURCE_FILES
     src/intrinsic.c
     src/docs.c
     src/vm_runner.c
-    src/threading.cpp
     src/llvm_api.cpp
     src/llvm_di.cpp
     deps/tracy/TracyClient.cpp)

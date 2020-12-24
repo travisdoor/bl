@@ -98,8 +98,6 @@ struct Assembly;
 
 #define LIB_NAME_MAX 256
 
-extern u64 main_thread_id;
-
 TSMALL_ARRAY_TYPE(AstPtr, struct Ast *, 16);
 TSMALL_ARRAY_TYPE(TypePtr, struct MirType *, 16);
 TSMALL_ARRAY_TYPE(MemberPtr, struct MirMember *, 16);

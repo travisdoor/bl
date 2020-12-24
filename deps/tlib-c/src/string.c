@@ -36,9 +36,19 @@ static void ensure_space(TString *str, usize space)
     space += 1; /* zero terminated */
     if (space <= TARRAY_SIZE(str->_tmp)) return;
     if (str->allocated >= space) return;
-    char *tmp = tmalloc(space * sizeof(char));
-    memcpy(tmp, str->data, str->len + 1);
-    str->data      = tmp;
+
+    if (str->allocated == 0) {
+        char *tmp = tmalloc(space * sizeof(char));
+        memcpy(tmp, str->data, str->len + 1);
+        str->data = tmp;
+    } else {
+        space *= 2;
+        void *tmp = tmalloc(space * sizeof(char));
+        memcpy(tmp, str->data, str->len + 1);
+        tfree(str->data);
+        str->data = tmp;
+    }
+
     str->allocated = space;
 }
 

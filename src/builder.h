@@ -37,6 +37,8 @@
 #define COMPILE_OK 0
 #define COMPILE_FAIL 1
 
+struct ThreadingImpl;
+
 typedef struct BuilderOptions {
     BuildMode   build_mode;
     BuildDIKind build_di_kind;
@@ -70,7 +72,7 @@ typedef struct BuilderOptions {
 typedef struct Builder {
     BuilderOptions options;
     Arena          str_cache;
-    s32            total_lines;
+    volatile s32   total_lines;
     s32            errorc;
     s32            max_error;
     s32            test_failc;
@@ -79,6 +81,8 @@ typedef struct Builder {
 
     TArray assembly_queue;
     TArray tmp_strings;
+
+    struct ThreadingImpl *threading;
 } Builder;
 
 // Builder global instance.
@@ -111,6 +115,10 @@ int  builder_compile_config(const char *  filepath,
 void builder_add_assembly(Assembly *assembly);
 s32  builder_compile_all(void);
 s32  builder_compile(Assembly *assembly);
+
+// Submit new unit into builder async pipeline, this has no effect when async compilation is not
+// running.
+void builder_submit_unit(Unit *unit);
 
 #define builder_log(format, ...)                                                                   \
     builder_msg(BUILDER_MSG_LOG, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)

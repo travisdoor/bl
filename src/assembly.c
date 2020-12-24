@@ -33,6 +33,13 @@
 #include "unit.h"
 #include <string.h>
 
+#ifdef BL_PLATFORM_WIN
+#include "winpthreads.h"
+#include <windows.h>
+#else
+#include <pthread.h>
+#endif
+
 #define EXPECTED_GSCOPE_COUNT 4096
 #define EXPECTED_ARRAY_COUNT 256
 #define EXPECTED_UNIT_COUNT 512
@@ -58,6 +65,24 @@ static void tarray_dtor(TArray **arr)
 static void small_array_dtor(TSmallArrayAny *arr)
 {
     tsa_terminate(arr);
+}
+
+typedef struct AssemblySyncImpl {
+    pthread_spinlock_t units_lock;
+    pthread_spinlock_t add_native_lib_lock;
+} AssemblySyncImpl;
+
+static AssemblySyncImpl *sync_new(void)
+{
+    AssemblySyncImpl *impl = bl_malloc(sizeof(AssemblySyncImpl));
+    pthread_spin_init(&impl->units_lock, PTHREAD_PROCESS_PRIVATE);
+    return impl;
+}
+
+static void sync_delete(AssemblySyncImpl *impl)
+{
+    pthread_spin_destroy(&impl->units_lock);
+    bl_free(impl);
 }
 
 static void dl_init(Assembly *assembly)
@@ -159,7 +184,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) BL_ABORT("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path = _path;
+    const char *path            = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {
@@ -274,6 +299,7 @@ Assembly *assembly_new(const char *name)
 {
     Assembly *assembly = bl_malloc(sizeof(Assembly));
     memset(assembly, 0, sizeof(Assembly));
+    assembly->sync = sync_new();
     assembly->name = strdup(name);
 
     tarray_init(&assembly->units, sizeof(Unit *));
@@ -352,6 +378,7 @@ void assembly_delete(Assembly *assembly)
     dl_terminate(assembly);
     mir_terminate(assembly);
     llvm_terminate(assembly);
+    sync_delete(assembly->sync);
     bl_free(assembly);
 }
 
@@ -395,15 +422,23 @@ void assembly_set_module_dir(Assembly *assembly, const char *dir, ModuleImportPo
 void assembly_add_unit(Assembly *assembly, Unit *unit)
 {
     tarray_push(&assembly->units, unit);
+    builder_submit_unit(unit);
 }
 
 bool assembly_add_unit_unique(Assembly *assembly, Unit *unit)
 {
-    const u64 hash = unit->hash;
-    if (thtbl_has_key(&assembly->unit_cache, hash)) return false;
+    AssemblySyncImpl *sync = assembly->sync;
+    pthread_spin_lock(&sync->units_lock);
+    bool      result = false;
+    const u64 hash   = unit->hash;
+    if (thtbl_has_key(&assembly->unit_cache, hash)) goto DONE;
     thtbl_insert_empty(&assembly->unit_cache, hash);
     assembly_add_unit(assembly, unit);
-    return true;
+    result = true;
+
+DONE:
+    pthread_spin_unlock(&sync->units_lock);
+    return result;
 }
 
 void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token)

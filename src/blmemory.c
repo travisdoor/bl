@@ -41,7 +41,7 @@ void *_bl_malloc(const size_t size, const char *filename, s32 line)
         abort();
     }
 
-#if BL_DEBUG
+#if BL_DEBUG && defined(TRACY_ENABLE)
     static u64 id = 0;
     BL_TRACY_MESSAGE("ALLOC",
                      "%lluB <%llu> %s:%d",

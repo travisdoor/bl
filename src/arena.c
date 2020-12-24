@@ -27,6 +27,12 @@
 //************************************************************************************************
 
 #include "arena.h"
+#ifdef BL_PLATFORM_WIN
+#include "winpthreads.h"
+#include <windows.h>
+#else
+#include <pthread.h>
+#endif
 
 #define MAX_ALIGNMENT 16
 
@@ -35,17 +41,29 @@ typedef struct ArenaChunk {
     s32                count;
 } ArenaChunk;
 
+typedef struct ArenaSyncImpl {
+    pthread_mutex_t mtx;
+} ArenaSyncImpl;
+
+static ArenaSyncImpl *sync_new(void)
+{
+    ArenaSyncImpl *s = bl_malloc(sizeof(ArenaSyncImpl));
+    pthread_mutex_init(&s->mtx, NULL);
+    return s;
+}
+
+static void sync_delete(ArenaSyncImpl *s)
+{
+    pthread_mutex_destroy(&s->mtx);
+    bl_free(s);
+}
+
 static INLINE ArenaChunk *alloc_chunk(Arena *arena)
 {
     const usize chunk_size_in_bytes = arena->elem_size_in_bytes * arena->elems_per_chunk;
     ArenaChunk *chunk               = bl_malloc(chunk_size_in_bytes);
     if (!chunk) BL_ABORT("bad alloc");
-
-#ifdef BL_PLATFORM_WINDOWS
     memset(chunk, 0, chunk_size_in_bytes);
-#else
-    bzero(chunk, chunk_size_in_bytes);
-#endif
     chunk->count = 1;
     return chunk;
 }
@@ -84,6 +102,7 @@ void arena_init(Arena *       arena,
     arena->first_chunk        = NULL;
     arena->current_chunk      = NULL;
     arena->elem_dtor          = elem_dtor;
+    arena->sync               = sync_new();
 }
 
 void arena_terminate(Arena *arena)
@@ -92,10 +111,12 @@ void arena_terminate(Arena *arena)
     while (chunk) {
         chunk = free_chunk(arena, chunk);
     }
+    sync_delete(arena->sync);
 }
 
 void *arena_alloc(Arena *arena)
 {
+    pthread_mutex_lock(&arena->sync->mtx);
     if (!arena->current_chunk) {
         arena->current_chunk = alloc_chunk(arena);
         arena->first_chunk   = arena->current_chunk;
@@ -111,5 +132,6 @@ void *arena_alloc(Arena *arena)
     void *elem = get_from_chunk(arena, arena->current_chunk, arena->current_chunk->count);
     arena->current_chunk->count++;
     BL_ASSERT(is_aligned(elem, MAX_ALIGNMENT) && "unaligned allocation of arena element");
+    pthread_mutex_unlock(&arena->sync->mtx);
     return elem;
 }

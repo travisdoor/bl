@@ -1775,7 +1775,7 @@ State emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg_instr)
         llvm_dest             = LLVMBuildBitCast(
             cnt->llvm_builder, llvm_dest, LLVMPointerType(LLVMTypeOf(llvm_arg), 0), "");
 
-        llvm_arg = LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_dest);
+        LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_dest);
         break;
     }
 
@@ -1803,7 +1803,7 @@ State emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg_instr)
     case LLVM_EASGM_BYVAL: {
         LLVMValueRef llvm_arg = LLVMGetParam(llvm_fn, arg->llvm_index);
         llvm_arg              = LLVMBuildLoad(cnt->llvm_builder, llvm_arg, "");
-        llvm_arg              = LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_dest);
+        LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_dest);
         break;
     }
     }
@@ -3208,10 +3208,10 @@ void ir_run(Assembly *assembly)
         char *llvm_error = NULL;
         if (LLVMVerifyModule(cnt.llvm_module, LLVMReturnStatusAction, &llvm_error)) {
             builder_warning("\nLLVM module not verified; error: \n%s", llvm_error);
-            LLVMDisposeMessage(llvm_error);
         } else {
             builder_note("LLVM module verified without errors.");
         }
+        LLVMDisposeMessage(llvm_error);
     }
 
     LLVMDisposeBuilder(cnt.llvm_builder);

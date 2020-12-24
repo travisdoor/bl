@@ -2630,13 +2630,6 @@ void parser_run(Assembly *assembly, Unit *unit)
     root->data.ublock.unit = unit;
     unit->ast              = root;
 
-#if 0
-	if (assembly->options.build_mode == BUILD_MODE_DEBUG) {
-		unit->llvm_file_meta =
-		    llvm_di_create_file(assembly->llvm.di_builder, unit->filename, unit->dirpath);
-	}
-#endif
-
     parse_ublock_content(&cnt, unit->ast);
     if (cnt.unit_docs_tmp) unit->ast->docs = cnt.unit_docs_tmp->data;
 
