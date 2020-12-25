@@ -33,7 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void *_bl_malloc(const size_t size, const char *filename, s32 line)
+void *_bl_malloc(const size_t size, const char UNUSED(*filename), s32 UNUSED(line))
 {
     void *mem = malloc(size);
     if (!mem) {

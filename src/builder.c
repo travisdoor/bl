@@ -109,7 +109,7 @@ static void notify_done(void)
     pthread_spin_unlock(&threading->active_lock);
 }
 
-static void *worker()
+static void *worker(void UNUSED(*args))
 {
     ThreadingImpl *threading = builder.threading;
     while (true) {
@@ -125,6 +125,7 @@ static void *worker()
         notify_done();
     }
     pthread_exit(NULL);
+    return NULL;
 }
 
 static ThreadingImpl *threading_new(void)
@@ -181,7 +182,7 @@ static void async_compile(Assembly *assembly)
     }
 
     while (!threading->done) {
-        Unit *unit = queue_pop();
+        unit = queue_pop();
         if (unit) {
             compile_unit(unit, assembly);
         }
@@ -524,7 +525,7 @@ int builder_compile(Assembly *assembly)
         }
     }
 
-#if 0
+#if 1
     async_compile(assembly);
 #else
     TARRAY_FOREACH(Unit *, &assembly->units, unit)

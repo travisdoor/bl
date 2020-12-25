@@ -46,14 +46,16 @@
 #ifndef WIN_PTHREADS
 #define WIN_PTHREADS
 
+#pragma warning(push, 0)
 
 #include <windows.h>
 #include <setjmp.h>
 #include <errno.h>
 #include <sys/timeb.h>
+#include <time.h>
 
-#define ETIMEDOUT	110
-#define ENOTSUP		134
+//#define ETIMEDOUT	110
+//#define ENOTSUP		134
 
 
 #define PTHREAD_CANCEL_DISABLE 0
@@ -100,15 +102,6 @@
 #define PTHREAD_PROCESS_PRIVATE 1
 
 #define PTHREAD_BARRIER_SERIAL_THREAD 1
-
-
-/* Windows doesn't have this, so declare it ourselves. */
-struct timespec
-{
-	/* long long in windows is the same as long in unix for 64bit */
-	long long tv_sec;
-	long long tv_nsec;
-};
 
 typedef struct _pthread_cleanup _pthread_cleanup;
 struct _pthread_cleanup
@@ -1602,4 +1595,5 @@ static int pthread_rwlockattr_setpshared(pthread_rwlockattr_t *a, int s)
 #define wprintf(...) (pthread_testcancel(), wprintf(__VA_ARGS__))
 #define wscanf(...) (pthread_testcancel(), wscanf(__VA_ARGS__))
 
+#pragma warning(pop)
 #endif /* WIN_PTHREADS */
