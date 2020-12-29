@@ -120,7 +120,10 @@ static void *worker(void UNUSED(*args))
         }
         active();
         pthread_mutex_unlock(&threading->cond_mutex);
-        if (!unit) break;
+        if (!unit) {
+            notify_done();
+            break;
+        }
         compile_unit(unit, threading->assembly);
         notify_done();
     }
@@ -412,7 +415,7 @@ void builder_init(void)
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split     = false;
+    builder.options.reg_split = false;
 #endif
 
     // initialize LLVM statics
