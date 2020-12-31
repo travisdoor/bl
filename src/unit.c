@@ -33,8 +33,19 @@
 #include "token.h"
 #include <string.h>
 
+u64 unit_hash(const char *filepath, struct Token *load_from)
+{
+    Unit *parent_unit = load_from ? load_from->location.unit : NULL;
+    char *real_path   = NULL;
+    search_source_file(
+        filepath, SEARCH_FLAG_ALL, parent_unit ? parent_unit->dirpath : NULL, &real_path, NULL);
+    const u64 hash = thash_from_str(real_path ? real_path : filepath);
+    free(real_path);
+    return hash;
+}
+
 // public
-Unit *unit_new_file(const char *filepath, Token *load_from)
+Unit *unit_new(const char *filepath, Token *load_from)
 {
     Unit *parent_unit = load_from ? load_from->location.unit : NULL;
     Unit *unit        = bl_malloc(sizeof(Unit));
@@ -52,7 +63,6 @@ Unit *unit_new_file(const char *filepath, Token *load_from)
         BL_ABORT("invalid file");
     }
     unit->loaded_from = load_from;
-    unit->ast         = NULL;
     unit->hash        = thash_from_str(unit->filepath ? unit->filepath : unit->name);
     tokens_init(&unit->tokens);
     return unit;

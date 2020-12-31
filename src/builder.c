@@ -48,7 +48,7 @@
 
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
-#define MAX_THREAD 8
+#define MAX_THREAD 16
 
 Builder builder;
 
@@ -57,56 +57,36 @@ static int  compile_assembly(Assembly *assembly);
 static bool llvm_initialized = false;
 
 typedef struct ThreadingImpl {
-    Assembly *    assembly;
-    pthread_t     workers[MAX_THREAD];
-    TArray        queue;
-    volatile bool will_quit;
-    volatile bool done;
-    volatile s32  active;
+    Assembly *   assembly;
+    pthread_t    workers[MAX_THREAD];
+    TArray       queue;
+    volatile s32 active;
+    volatile s32 will_exit;
 
-    pthread_spinlock_t active_lock;
-    pthread_spinlock_t queue_lock;
     pthread_spinlock_t str_tmp_lock;
     pthread_mutex_t    cond_mutex;
+    pthread_mutex_t    log_mutex;
     pthread_cond_t     cond_var;
 } ThreadingImpl;
 
 static void queue_push(Unit *unit)
 {
     ThreadingImpl *threading = builder.threading;
-    pthread_spin_lock(&threading->queue_lock);
+    pthread_mutex_lock(&threading->cond_mutex);
     tarray_push(&threading->queue, unit);
-    pthread_spin_unlock(&threading->queue_lock);
+    pthread_cond_signal(&threading->cond_var);
+    pthread_mutex_unlock(&threading->cond_mutex);
 }
 
 static Unit *queue_pop(void)
 {
     ThreadingImpl *threading = builder.threading;
     Unit *         unit      = NULL;
-    pthread_spin_lock(&threading->queue_lock);
     if (threading->queue.size) {
         unit = tarray_at(Unit *, &threading->queue, threading->queue.size - 1);
         tarray_pop(&threading->queue);
     }
-    pthread_spin_unlock(&threading->queue_lock);
     return unit;
-}
-
-static void active(void)
-{
-    ThreadingImpl *threading = builder.threading;
-    pthread_spin_lock(&threading->active_lock);
-    threading->active++;
-    pthread_spin_unlock(&threading->active_lock);
-}
-
-static void notify_done(void)
-{
-    ThreadingImpl *threading = builder.threading;
-    pthread_spin_lock(&threading->active_lock);
-    threading->active--;
-    threading->done = !threading->active;
-    pthread_spin_unlock(&threading->active_lock);
 }
 
 static void *worker(void UNUSED(*args))
@@ -114,18 +94,19 @@ static void *worker(void UNUSED(*args))
     ThreadingImpl *threading = builder.threading;
     while (true) {
         pthread_mutex_lock(&threading->cond_mutex);
+        threading->active--;
         Unit *unit;
-        while (!(unit = queue_pop()) && !threading->will_quit) {
+        while (!(unit = queue_pop())) {
             pthread_cond_wait(&threading->cond_var, &threading->cond_mutex);
+            if (threading->will_exit) {
+                pthread_mutex_unlock(&threading->cond_mutex);
+                pthread_exit(NULL);
+            }
         }
-        active();
+        threading->active++;
         pthread_mutex_unlock(&threading->cond_mutex);
-        if (!unit) {
-            notify_done();
-            break;
-        }
+        BL_ASSERT(unit);
         compile_unit(unit, threading->assembly);
-        notify_done();
     }
     pthread_exit(NULL);
     return NULL;
@@ -135,29 +116,27 @@ static ThreadingImpl *threading_new(void)
 {
     ThreadingImpl *t = bl_malloc(sizeof(ThreadingImpl));
     memset(t, 0, sizeof(ThreadingImpl));
-    pthread_spin_init(&t->queue_lock, PTHREAD_PROCESS_PRIVATE);
-    pthread_spin_init(&t->active_lock, PTHREAD_PROCESS_PRIVATE);
     pthread_spin_init(&t->str_tmp_lock, PTHREAD_PROCESS_PRIVATE);
     pthread_mutex_init(&t->cond_mutex, NULL);
+    pthread_mutex_init(&t->log_mutex, NULL);
     pthread_cond_init(&t->cond_var, NULL);
     tarray_init(&t->queue, sizeof(Unit *));
-    t->assembly  = NULL;
-    t->will_quit = false;
     return t;
 }
 
 static void threading_delete(ThreadingImpl *t)
 {
     ThreadingImpl *threading = builder.threading;
-    threading->will_quit     = true;
+    pthread_mutex_lock(&threading->cond_mutex);
+    threading->will_exit = true;
     pthread_cond_broadcast(&threading->cond_var);
+    pthread_mutex_unlock(&threading->cond_mutex);
     for (usize i = 0; i < TARRAY_SIZE(t->workers); ++i) {
         pthread_join(t->workers[i], NULL);
     }
     pthread_mutex_destroy(&t->cond_mutex);
+    pthread_mutex_destroy(&t->log_mutex);
     pthread_cond_destroy(&t->cond_var);
-    pthread_spin_destroy(&t->queue_lock);
-    pthread_spin_destroy(&t->active_lock);
     pthread_spin_destroy(&t->str_tmp_lock);
     tarray_terminate(&t->queue);
     bl_free(t);
@@ -176,20 +155,23 @@ static void async_compile(Assembly *assembly)
     ThreadingImpl *threading = builder.threading;
     threading->assembly      = assembly;
     threading->active        = 0;
-    threading->done          = false;
 
     Unit *unit;
     TARRAY_FOREACH(Unit *, &assembly->units, unit)
     {
         builder_submit_unit(unit);
     }
-
-    while (!threading->done) {
-        unit = queue_pop();
-        if (unit) {
-            compile_unit(unit, assembly);
+    while (true) {
+        pthread_mutex_lock(&threading->cond_mutex);
+        if (threading->active == 0 && threading->queue.size == 0) {
+            pthread_mutex_unlock(&threading->cond_mutex);
+            break;
         }
+        pthread_mutex_unlock(&threading->cond_mutex);
+        sleep_ms(8);
     }
+    BL_ASSERT(threading->active == 0 && "Not all units processed!");
+    BL_ASSERT(threading->queue.size == 0 && "Not all units processed!");
     threading->assembly = NULL;
 }
 
@@ -381,6 +363,8 @@ s32 builder_parse_options(s32 argc, char *argv[])
             builder.options.verify_llvm = true;
         } else if (IS_PARAM("docs")) {
             builder.options.docs = true;
+        } else if (IS_PARAM("no-jobs")) {
+            builder.options.no_jobs = true;
         } else if (IS_PARAM("where-is-api")) {
             builder.options.where_is_api = true;
             builder.options.silent       = true;
@@ -415,7 +399,7 @@ void builder_init(void)
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split = false;
+    builder.options.reg_split     = false;
 #endif
 
     // initialize LLVM statics
@@ -451,7 +435,7 @@ void builder_terminate(void)
 
 int builder_compile_config(const char *filepath, ConfData *out_data, Token *import_from)
 {
-    Unit *unit = unit_new_file(filepath, import_from);
+    Unit *unit = unit_new(filepath, import_from);
     // load
     file_loader_run(unit);
     INTERRUPT_ON_ERROR;
@@ -505,37 +489,23 @@ int builder_compile(Assembly *assembly)
     // instance during initialization process. (Must be called only once);
     assembly_apply_options(assembly);
 
-    if (!builder.options.docs) {
-        unit = unit_new_file(BUILTIN_FILE, NULL);
-        if (!assembly_add_unit_unique(assembly, unit)) {
-            unit_delete(unit);
-        }
-    }
+    if (!builder.options.docs) assembly_add_unit(assembly, BUILTIN_FILE, NULL);
 
     // include core source file
-    if (!builder.options.no_api && !builder.options.docs) {
-        unit = unit_new_file(OS_PRELOAD_FILE, NULL);
-        if (!assembly_add_unit_unique(assembly, unit)) {
-            unit_delete(unit);
-        }
-    }
+    if (!builder.options.no_api && !builder.options.docs)
+        assembly_add_unit(assembly, OS_PRELOAD_FILE, NULL);
 
     const bool build_mode = assembly->options.build_mode == BUILD_MODE_BUILD;
-    if (build_mode) {
-        unit = unit_new_file(BUILD_API_FILE, NULL);
-        if (!assembly_add_unit_unique(assembly, unit)) {
-            unit_delete(unit);
-        }
-    }
+    if (build_mode) assembly_add_unit(assembly, BUILD_API_FILE, NULL);
 
-#if 1
-    async_compile(assembly);
-#else
-    TARRAY_FOREACH(Unit *, &assembly->units, unit)
-    {
-        if ((state = compile_unit(unit, assembly)) != COMPILE_OK) break;
+    if (builder.options.no_jobs) {
+        TARRAY_FOREACH(Unit *, &assembly->units, unit)
+        {
+            if ((state = compile_unit(unit, assembly)) != COMPILE_OK) break;
+        }
+    } else {
+        async_compile(assembly);
     }
-#endif
 
     if (state == COMPILE_OK) state = compile_assembly(assembly);
 
@@ -560,10 +530,12 @@ void builder_msg(BuilderMsgType type,
                  const char *   format,
                  ...)
 {
-    if (type == BUILDER_MSG_ERROR && builder.errorc > MAX_ERROR_REPORTED) return;
-    if (type == BUILDER_MSG_LOG && !builder.options.verbose) return;
-    if (type != BUILDER_MSG_ERROR && builder.options.silent) return;
-    if (builder.options.no_warn && type == BUILDER_MSG_WARNING) return;
+    ThreadingImpl *threading = builder.threading;
+    pthread_mutex_lock(&threading->log_mutex);
+    if (type == BUILDER_MSG_ERROR && builder.errorc > MAX_ERROR_REPORTED) goto DONE;
+    if (type == BUILDER_MSG_LOG && !builder.options.verbose) goto DONE;
+    if (type != BUILDER_MSG_ERROR && builder.options.silent) goto DONE;
+    if (builder.options.no_warn && type == BUILDER_MSG_WARNING) goto DONE;
     TString tmp;
     tstring_init(&tmp);
     char msg[MAX_MSG_LEN] = {0};
@@ -660,6 +632,8 @@ void builder_msg(BuilderMsgType type,
     }
 
     tstring_terminate(&tmp);
+DONE:
+    pthread_mutex_unlock(&threading->log_mutex);
 
 #if ASSERT_ON_CMP_ERROR
     if (type == BUILDER_MSG_ERROR) BL_ASSERT(false);
@@ -707,5 +681,4 @@ void builder_submit_unit(Unit *unit)
     ThreadingImpl *threading = builder.threading;
     if (!threading->assembly) return;
     queue_push(unit);
-    pthread_cond_signal(&threading->cond_var);
 }

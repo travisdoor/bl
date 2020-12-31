@@ -67,6 +67,7 @@ typedef struct BuilderOptions {
     bool        docs;
     bool        silent;
     bool        where_is_api;
+    bool        no_jobs;
 } BuilderOptions;
 
 typedef struct Builder {

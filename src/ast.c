@@ -60,8 +60,7 @@ Ast *ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct Scope *p
 #if BL_DEBUG && defined(TRACY_ENABLE)
     static u64 serial = 0;
     node->_serial     = serial++;
-    static int ac     = 0;
-    TracyCPlot("AST", ++ac);
+    TracyCPlot("AST", serial);
     BL_TRACY_MESSAGE("AST_CREATE", "size: %lluB", (unsigned long long)sizeof(Ast));
 #endif
     return node;

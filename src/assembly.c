@@ -69,19 +69,21 @@ static void small_array_dtor(TSmallArrayAny *arr)
 
 typedef struct AssemblySyncImpl {
     pthread_spinlock_t units_lock;
-    pthread_spinlock_t add_native_lib_lock;
+    pthread_mutex_t    import_module_lock;
 } AssemblySyncImpl;
 
 static AssemblySyncImpl *sync_new(void)
 {
     AssemblySyncImpl *impl = bl_malloc(sizeof(AssemblySyncImpl));
     pthread_spin_init(&impl->units_lock, PTHREAD_PROCESS_PRIVATE);
+    pthread_mutex_init(&impl->import_module_lock, NULL);
     return impl;
 }
 
 static void sync_delete(AssemblySyncImpl *impl)
 {
     pthread_spin_destroy(&impl->units_lock);
+    pthread_mutex_destroy(&impl->import_module_lock);
     bl_free(impl);
 }
 
@@ -249,10 +251,7 @@ import_module(Assembly *assembly, ConfData *config, const char *modulepath, Toke
         BL_ASSERT(entry_file && strlen(entry_file) > 0);
         TString *entry_file_path = get_tmpstr();
         tstring_setf(entry_file_path, "%s/%s", modulepath, entry_file);
-        Unit *unit = unit_new_file(entry_file_path->data, NULL);
-        if (!assembly_add_unit_unique(assembly, unit)) {
-            unit_delete(unit);
-        }
+        assembly_add_unit(assembly, entry_file_path->data, NULL);
         put_tmpstr(entry_file_path);
     }
 
@@ -303,7 +302,6 @@ Assembly *assembly_new(const char *name)
     assembly->name = strdup(name);
 
     tarray_init(&assembly->units, sizeof(Unit *));
-    thtbl_init(&assembly->unit_cache, 0, EXPECTED_UNIT_COUNT);
     tstring_init(&assembly->options.custom_linker_opt);
     tstring_init(&assembly->options.out_dir);
     tstring_init(&assembly->options.module_dir);
@@ -374,7 +372,6 @@ void assembly_delete(Assembly *assembly)
     ast_arena_terminate(&assembly->arenas.ast);
     scope_arenas_terminate(&assembly->arenas.scope);
     tarray_terminate(&assembly->units);
-    thtbl_terminate(&assembly->unit_cache);
     dl_terminate(assembly);
     mir_terminate(assembly);
     llvm_terminate(assembly);
@@ -419,26 +416,33 @@ void assembly_set_module_dir(Assembly *assembly, const char *dir, ModuleImportPo
     assembly->options.module_import_policy = policy;
 }
 
-void assembly_add_unit(Assembly *assembly, Unit *unit)
+static INLINE bool assembly_has_unit(Assembly *assembly, const u64 hash)
 {
-    tarray_push(&assembly->units, unit);
-    builder_submit_unit(unit);
+    Unit *unit;
+    TARRAY_FOREACH(Unit *, &assembly->units, unit)
+    {
+        if (hash == unit->hash) return true;
+    }
+    return false;
 }
 
-bool assembly_add_unit_unique(Assembly *assembly, Unit *unit)
+Unit *assembly_add_unit(Assembly *assembly, const char *filepath, Token *load_from)
 {
     AssemblySyncImpl *sync = assembly->sync;
     pthread_spin_lock(&sync->units_lock);
-    bool      result = false;
-    const u64 hash   = unit->hash;
-    if (thtbl_has_key(&assembly->unit_cache, hash)) goto DONE;
-    thtbl_insert_empty(&assembly->unit_cache, hash);
-    assembly_add_unit(assembly, unit);
-    result = true;
+    Unit *    unit = NULL;
+    const u64 hash = unit_hash(filepath, load_from);
+    if (assembly_has_unit(assembly, hash)) {
+        goto DONE;
+    }
+
+    unit = unit_new(filepath, load_from);
+    tarray_push(&assembly->units, unit);
+    builder_submit_unit(unit);
 
 DONE:
     pthread_spin_unlock(&sync->units_lock);
-    return result;
+    return unit;
 }
 
 void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token)
@@ -472,13 +476,16 @@ static INLINE bool module_exist(const char *module_dir, const char *modulepath)
 
 bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *import_from)
 {
+    AssemblySyncImpl *sync = assembly->sync;
+    pthread_mutex_lock(&sync->import_module_lock);
+    bool state = false;
     if (!strlen(modulepath)) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_FILE_NOT_FOUND,
                     TOKEN_OPTIONAL_LOCATION(import_from),
                     BUILDER_CUR_WORD,
                     "Module name is empty.");
-        return false;
+        goto DONE;
     }
 
     TString *   local_path = get_tmpstr();
@@ -549,13 +556,14 @@ bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *i
     default:
         BL_ASSERT("Invalid module import policy!");
     }
-    bool state = false;
     if (config) {
         builder_log("%s", local_path->data);
         state = import_module(assembly, config, local_path->data, import_from);
     }
     put_tmpstr(local_path);
     conf_data_delete(config);
+DONE:
+    pthread_mutex_unlock(&sync->import_module_lock);
     return state;
 }
 

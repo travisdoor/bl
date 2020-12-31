@@ -360,14 +360,9 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
 
         Ast *load = ast_create_node(cnt->ast_arena, AST_LOAD, tok_directive, SCOPE_GET(cnt));
         load->data.load.filepath = tok_path->value.str;
-
         if (!builder.options.docs) {
-            Unit *unit = unit_new_file(load->data.load.filepath, tok_path);
-            if (!assembly_add_unit_unique(cnt->assembly, unit)) {
-                unit_delete(unit);
-            }
+            assembly_add_unit(cnt->assembly, load->data.load.filepath, tok_path);
         }
-
         return load;
     }
 

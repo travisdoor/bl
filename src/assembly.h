@@ -116,10 +116,9 @@ typedef struct Assembly {
     DCCallVM *dc_vm;
     VM        vm;
 
-    TArray     units;      // array of all units in assembly
-    THashTable unit_cache; // cache for loading only unique units
-    char *     name;       // assembly name
-    Scope *    gscope;     // global scope of the assembly
+    TArray units;  // array of all units in assembly
+    char * name;   // assembly name
+    Scope *gscope; // global scope of the assembly
 
     /* Builtins */
     struct BuiltinTypes {
@@ -149,16 +148,15 @@ typedef struct NativeLib {
 Assembly *      assembly_new(const char *name);
 void            assembly_delete(Assembly *assembly);
 AssemblyOptions assembly_get_default_options(void);
-void            assembly_add_unit(Assembly *assembly, Unit *unit);
-void            assembly_add_lib_path(Assembly *assembly, const char *path);
-void            assembly_append_linker_options(Assembly *assembly, const char *opt);
-void            assembly_set_vm_args(Assembly *assembly, s32 argc, char **argv);
-void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
-bool assembly_add_unit_unique(Assembly *assembly, Unit *unit);
-bool assembly_import_module(Assembly *    assembly,
-                            const char *  modulepath,
-                            struct Token *import_from // optional
-);
+Unit *assembly_add_unit(Assembly *assembly, const char *filepath, struct Token *load_from);
+void  assembly_add_lib_path(Assembly *assembly, const char *path);
+void  assembly_append_linker_options(Assembly *assembly, const char *opt);
+void  assembly_set_vm_args(Assembly *assembly, s32 argc, char **argv);
+void  assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
+bool  assembly_import_module(Assembly *    assembly,
+                             const char *  modulepath,
+                             struct Token *import_from // optional
+ );
 DCpointer assembly_find_extern(Assembly *assembly, const char *symbol);
 void      assembly_apply_options(Assembly *assembly);
 void      assembly_set_output_dir(Assembly *assembly, const char *dir);

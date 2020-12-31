@@ -166,18 +166,10 @@ int main(s32 argc, char *argv[])
     assembly_set_vm_args(assembly, vm_argc, vm_argv);
     if (builder.options.use_pipeline) {
         assembly->options.build_mode = BUILD_MODE_BUILD;
-        Unit *unit                   = unit_new_file(BUILD_SCRIPT_FILE, NULL);
-        bool  added                  = assembly_add_unit_unique(assembly, unit);
-        if (added == false) {
-            unit_delete(unit);
-        }
+        assembly_add_unit(assembly, BUILD_SCRIPT_FILE, NULL);
     } else {
         while (*argv != NULL) {
-            Unit *unit  = unit_new_file(*argv, NULL);
-            bool  added = assembly_add_unit_unique(assembly, unit);
-            if (added == false) {
-                unit_delete(unit);
-            }
+            assembly_add_unit(assembly, *argv, NULL);
             if (builder.options.run) break;
             argv++;
         }

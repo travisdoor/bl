@@ -50,10 +50,10 @@ typedef struct Unit {
     LLVMMetadataRef llvm_file_meta;
 } Unit;
 
+u64 unit_hash(const char *filepath, struct Token *load_from);
+
 // Create new Unit instance.
-Unit *unit_new_file(const char *  filepath,
-                    struct Token *load_from // optional
-);
+Unit *unit_new(const char *filepath, struct Token *load_from);
 void  unit_delete(Unit *unit);
 
 // Get pointer to begin of desired line in source code. 'Line' must be greater then one. 'Len' is
