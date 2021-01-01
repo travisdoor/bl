@@ -1,17 +1,4 @@
-foo, bar :: 10;
-
-Foo, Bar :: struct {
-    foo: *Foo;
-    bar: *Bar;
-}
-
 main :: fn () s32 {
-    b: Bar;
-    f: Foo;
-    t1 :: cast(*TypeInfoStruct) typeinfo(Foo);
-    t2 :: cast(*TypeInfoStruct) typeinfo(Bar);
-    print("t1 = %\n", ^t1);
-    print("t2 = %\n", ^t2);
     return 0;
 }
 

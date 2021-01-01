@@ -94,7 +94,7 @@ static void *worker(void UNUSED(*args))
     ThreadingImpl *threading = builder.threading;
     while (true) {
         pthread_mutex_lock(&threading->cond_mutex);
-        threading->active--;
+        if (threading->active > 0) threading->active--;
         Unit *unit;
         while (!(unit = queue_pop())) {
             pthread_cond_wait(&threading->cond_var, &threading->cond_mutex);
@@ -163,6 +163,7 @@ static void async_compile(Assembly *assembly)
     }
     while (true) {
         pthread_mutex_lock(&threading->cond_mutex);
+        BL_ASSERT(threading->active >= 0);
         if (threading->active == 0 && threading->queue.size == 0) {
             pthread_mutex_unlock(&threading->cond_mutex);
             break;
