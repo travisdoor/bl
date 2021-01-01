@@ -26,7 +26,7 @@ first :: fn (args: *u8) s32 {
         print("Hello from first thread!\n");
 
         mutex_unlock(&mutex);
-        os_sleep_ms(500.0);
+        os_sleep_ms(50.0);
     }
     return 0;
 }
@@ -38,7 +38,7 @@ second :: fn (args: *u8) s32 {
         print("Hello from second thread!\n");
 
         mutex_unlock(&mutex);
-        os_sleep_ms(1000.0);
+        os_sleep_ms(100.0);
     }
     return 0;
 }

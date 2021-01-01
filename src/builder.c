@@ -205,6 +205,12 @@ static void llvm_terminate(void)
 
 int compile_unit(Unit *unit, Assembly *assembly)
 {
+    printf("compile %s\n", unit->name);
+#if BL_DEBUG
+    BL_ASSERT(!unit->_compiled && "Unit compiled multiple times!!!");
+    unit->_compiled = true;
+#endif
+
     if (unit->loaded_from) {
         builder_log(
             "Compile: %s (loaded from '%s')", unit->name, unit->loaded_from->location.unit->name);
@@ -505,7 +511,9 @@ int builder_compile(Assembly *assembly)
             if ((state = compile_unit(unit, assembly)) != COMPILE_OK) break;
         }
     } else {
+        printf("Async start!\n");
         async_compile(assembly);
+        printf("Async stop!\n");
     }
 
     if (state == COMPILE_OK) state = compile_assembly(assembly);
