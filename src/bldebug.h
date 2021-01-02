@@ -35,6 +35,10 @@
 #include <stdlib.h>
 #include <tlib/tlib.h>
 
+#ifdef BL_PLATFORM_MACOS
+#include <signal.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -63,10 +63,10 @@ typedef struct ThreadingImpl {
     volatile s32 active;
     volatile s32 will_exit;
 
-    pthread_spinlock_t str_tmp_lock;
-    pthread_mutex_t    cond_mutex;
-    pthread_mutex_t    log_mutex;
-    pthread_cond_t     cond_var;
+    pthread_mutex_t str_tmp_lock;
+    pthread_mutex_t cond_mutex;
+    pthread_mutex_t log_mutex;
+    pthread_cond_t  cond_var;
 } ThreadingImpl;
 
 static void queue_push(Unit *unit)
@@ -120,7 +120,7 @@ static ThreadingImpl *threading_new(void)
 {
     ThreadingImpl *t = bl_malloc(sizeof(ThreadingImpl));
     memset(t, 0, sizeof(ThreadingImpl));
-    pthread_spin_init(&t->str_tmp_lock, PTHREAD_PROCESS_PRIVATE);
+    pthread_mutex_init(&t->str_tmp_lock, NULL);
     pthread_mutex_init(&t->cond_mutex, NULL);
     pthread_mutex_init(&t->log_mutex, NULL);
     pthread_cond_init(&t->cond_var, NULL);
@@ -140,8 +140,8 @@ static void threading_delete(ThreadingImpl *t)
     }
     pthread_mutex_destroy(&t->cond_mutex);
     pthread_mutex_destroy(&t->log_mutex);
+    pthread_mutex_destroy(&t->str_tmp_lock);
     pthread_cond_destroy(&t->cond_var);
-    pthread_spin_destroy(&t->str_tmp_lock);
     tarray_terminate(&t->queue);
     bl_free(t);
 }
@@ -409,7 +409,7 @@ void builder_init(void)
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split     = false;
+    builder.options.reg_split = false;
 #endif
 
     // initialize LLVM statics
@@ -660,7 +660,7 @@ TString *builder_create_cached_str(void)
 TString *get_tmpstr(void)
 {
     ThreadingImpl *threading = builder.threading;
-    pthread_spin_lock(&threading->str_tmp_lock);
+    pthread_mutex_lock(&threading->str_tmp_lock);
     TString *   str  = NULL;
     const usize size = builder.tmp_strings.size;
     if (size) {
@@ -671,7 +671,7 @@ TString *get_tmpstr(void)
         tstring_reserve(str, 256);
     }
     BL_ASSERT(str);
-    pthread_spin_unlock(&threading->str_tmp_lock);
+    pthread_mutex_unlock(&threading->str_tmp_lock);
     return str;
 }
 
@@ -680,9 +680,9 @@ void put_tmpstr(TString *str)
     BL_ASSERT(str);
     tstring_clear(str);
     ThreadingImpl *threading = builder.threading;
-    pthread_spin_lock(&threading->str_tmp_lock);
+    pthread_mutex_lock(&threading->str_tmp_lock);
     tarray_push(&builder.tmp_strings, str);
-    pthread_spin_unlock(&threading->str_tmp_lock);
+    pthread_mutex_unlock(&threading->str_tmp_lock);
 }
 
 void builder_submit_unit(Unit *unit)

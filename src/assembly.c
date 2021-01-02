@@ -68,21 +68,21 @@ static void small_array_dtor(TSmallArrayAny *arr)
 }
 
 typedef struct AssemblySyncImpl {
-    pthread_spinlock_t units_lock;
-    pthread_mutex_t    import_module_lock;
+    pthread_mutex_t units_lock;
+    pthread_mutex_t import_module_lock;
 } AssemblySyncImpl;
 
 static AssemblySyncImpl *sync_new(void)
 {
     AssemblySyncImpl *impl = bl_malloc(sizeof(AssemblySyncImpl));
-    pthread_spin_init(&impl->units_lock, PTHREAD_PROCESS_PRIVATE);
+    pthread_mutex_init(&impl->units_lock, NULL);
     pthread_mutex_init(&impl->import_module_lock, NULL);
     return impl;
 }
 
 static void sync_delete(AssemblySyncImpl *impl)
 {
-    pthread_spin_destroy(&impl->units_lock);
+    pthread_mutex_destroy(&impl->units_lock);
     pthread_mutex_destroy(&impl->import_module_lock);
     bl_free(impl);
 }
@@ -186,7 +186,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) BL_ABORT("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path            = _path;
+    const char *path = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {
@@ -429,7 +429,7 @@ static INLINE bool assembly_has_unit(Assembly *assembly, const u64 hash)
 Unit *assembly_add_unit(Assembly *assembly, const char *filepath, Token *load_from)
 {
     AssemblySyncImpl *sync = assembly->sync;
-    pthread_spin_lock(&sync->units_lock);
+    pthread_mutex_lock(&sync->units_lock);
     Unit *    unit = NULL;
     const u64 hash = unit_hash(filepath, load_from);
     if (assembly_has_unit(assembly, hash)) {
@@ -441,7 +441,7 @@ Unit *assembly_add_unit(Assembly *assembly, const char *filepath, Token *load_fr
     builder_submit_unit(unit);
 
 DONE:
-    pthread_spin_unlock(&sync->units_lock);
+    pthread_mutex_unlock(&sync->units_lock);
     return unit;
 }
 
