@@ -94,19 +94,23 @@ static void *worker(void UNUSED(*args))
     ThreadingImpl *threading = builder.threading;
     while (true) {
         pthread_mutex_lock(&threading->cond_mutex);
-        if (threading->active > 0) threading->active--;
-        Unit *unit;
-        while (!(unit = queue_pop())) {
+        while (threading->queue.size == 0) {
             pthread_cond_wait(&threading->cond_var, &threading->cond_mutex);
             if (threading->will_exit) {
                 pthread_mutex_unlock(&threading->cond_mutex);
                 pthread_exit(NULL);
             }
         }
+        Unit *unit = queue_pop();
+        BL_ASSERT(unit);
         threading->active++;
         pthread_mutex_unlock(&threading->cond_mutex);
-        BL_ASSERT(unit);
+
         compile_unit(unit, threading->assembly);
+
+        pthread_mutex_lock(&threading->cond_mutex);
+        threading->active--;
+        pthread_mutex_unlock(&threading->cond_mutex);
     }
     pthread_exit(NULL);
     return NULL;
@@ -205,7 +209,6 @@ static void llvm_terminate(void)
 
 int compile_unit(Unit *unit, Assembly *assembly)
 {
-    printf("compile %s\n", unit->name);
 #if BL_DEBUG
     BL_ASSERT(!unit->_compiled && "Unit compiled multiple times!!!");
     unit->_compiled = true;
@@ -511,9 +514,7 @@ int builder_compile(Assembly *assembly)
             if ((state = compile_unit(unit, assembly)) != COMPILE_OK) break;
         }
     } else {
-        printf("Async start!\n");
         async_compile(assembly);
-        printf("Async stop!\n");
     }
 
     if (state == COMPILE_OK) state = compile_assembly(assembly);
