@@ -25,6 +25,7 @@ HARDCODED_MODULES :: {:[8]string:
 main :: fn () s32 {
     wdir_init();
     defer wdir_terminate();
+    _args.test_count = 100;
     if !parse_args() { return 1; }
     if OS_KIND == OSKind.Windows {
         _compiler_path = get_path(BL_EXE_PATH_WIN);
@@ -32,55 +33,57 @@ main :: fn () s32 {
         _compiler_path = get_path(BL_EXE_PATH_UNIX);
     }
     defer string_delete(_compiler_path);
-        
-    print("---------------------------------- BL DOCTOR -----------------------------------\n");    
-    start_time_ms :: os_tick_ms();
 
-    // general
-    print("Test general suite:\n");    
-    {
-        path :: get_path(MAIN_TEST_SUITE_FILEPATH);
-        defer string_delete(path);
-        test_file(path, TestKind.Runtime);
-        test_file(path, TestKind.Test);
-    }
+    loop c := 0; c < _args.test_count; c += 1 {
+        print("---------------------------------- BL DOCTOR -----------------------------------\n");    
+        start_time_ms :: os_tick_ms();
 
-    // modules
-    print("Test modules:\n");    
-    loop i := 0; i < HARDCODED_MODULES.len; i += 1 {
-        path :: get_path(HARDCODED_MODULES[i]);
-        defer string_delete(path);
-        test_file(path, TestKind.Runtime);
-        //test_file(file, TestKind.Test);
-    }
-    
-    { // examples
+        // general
+        print("Test general suite:\n");    
+        {
+            path :: get_path(MAIN_TEST_SUITE_FILEPATH);
+            defer string_delete(path);
+            test_file(path, TestKind.Runtime);
+            test_file(path, TestKind.Test);
+        }
 
-        path :: get_path(EXAMPLES_DIR);
-        defer string_delete(path);
-        test_all_in_dir(path);
-    }
+        // modules
+        print("Test modules:\n");    
+        loop i := 0; i < HARDCODED_MODULES.len; i += 1 {
+            path :: get_path(HARDCODED_MODULES[i]);
+            defer string_delete(path);
+            test_file(path, TestKind.Runtime);
+            //test_file(file, TestKind.Test);
+        }
 
-    // examples docs
-    {
-        path :: get_path(EXAMPLES_DOCS_DIR);
-        defer string_delete(path);
-        test_all_in_dir(path);
+        { // examples
+
+            path :: get_path(EXAMPLES_DIR);
+            defer string_delete(path);
+            test_all_in_dir(path);
+        }
+
+        // examples docs
+        {
+            path :: get_path(EXAMPLES_DOCS_DIR);
+            defer string_delete(path);
+            test_all_in_dir(path);
+        }
+
+        // expect fail to compile
+        {
+            path :: get_path(EXPECT_FAIL_DIR);
+            defer string_delete(path);
+            test_all_in_dir(path, true);
+        }
+
+        duration_ms :: os_tick_ms() - start_time_ms;
+        print("\n----------------------------------- RESULTS ------------------------------------\n");
+        print("Test suite count:  %\n", _suitec);
+        print("Test suite failed: %\n", _errc);
+        print("Finished in:       %s\n", fmt_real(duration_ms*0.001, 2));
+        print("--------------------------------------------------------------------------------\n\n");
     }
-    
-    // expect fail to compile
-    {
-        path :: get_path(EXPECT_FAIL_DIR);
-        defer string_delete(path);
-        test_all_in_dir(path, true);
-    }
-        
-    duration_ms :: os_tick_ms() - start_time_ms;
-    print("\n----------------------------------- RESULTS ------------------------------------\n");
-    print("Test suite count:  %\n", _suitec);
-    print("Test suite failed: %\n", _errc);
-    print("Finished in:       %s\n", fmt_real(duration_ms*0.001, 2));
-    print("--------------------------------------------------------------------------------\n\n");
     
     
     // cleanup
@@ -107,6 +110,7 @@ Args :: struct #base ArgCtx {
     diag_mode: bool;
     no_vcvars: bool;
     stop_on_fail: bool;
+    test_count: s32;
 }
 
 TEST_RUN_OK :: 0;

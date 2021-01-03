@@ -186,7 +186,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) BL_ABORT("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path = _path;
+    const char *path            = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {
@@ -438,7 +438,7 @@ Unit *assembly_add_unit(Assembly *assembly, const char *filepath, Token *load_fr
 
     unit = unit_new(filepath, load_from);
     tarray_push(&assembly->units, unit);
-    builder_submit_unit(unit);
+    builder_async_submit_unit(unit);
 
 DONE:
     pthread_mutex_unlock(&sync->units_lock);

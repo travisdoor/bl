@@ -57,28 +57,31 @@ static int  compile_assembly(Assembly *assembly);
 static bool llvm_initialized = false;
 
 typedef struct ThreadingImpl {
-    Assembly *   assembly;
-    pthread_t    workers[MAX_THREAD];
-    TArray       queue;
-    volatile s32 active;
-    volatile s32 will_exit;
+    Assembly *    assembly;
+    pthread_t     workers[MAX_THREAD];
+    TArray        queue;
+    volatile s32  active;       // count of currently active workers
+    volatile s32  will_exit;    // true when main thread will exit
+    volatile bool is_compiling; // true when async compilation is running
 
     pthread_mutex_t str_tmp_lock;
-    pthread_mutex_t cond_mutex;
     pthread_mutex_t log_mutex;
-    pthread_cond_t  cond_var;
+    pthread_mutex_t queue_mutex;
+    pthread_cond_t  queue_condition;
+    pthread_mutex_t active_mutex;
+    pthread_cond_t  active_condition;
 } ThreadingImpl;
 
-static void queue_push(Unit *unit)
+static void async_push(Unit *unit)
 {
     ThreadingImpl *threading = builder.threading;
-    pthread_mutex_lock(&threading->cond_mutex);
+    pthread_mutex_lock(&threading->queue_mutex);
     tarray_push(&threading->queue, unit);
-    pthread_cond_signal(&threading->cond_var);
-    pthread_mutex_unlock(&threading->cond_mutex);
+    if (threading->is_compiling) pthread_cond_signal(&threading->queue_condition);
+    pthread_mutex_unlock(&threading->queue_mutex);
 }
 
-static Unit *queue_pop(void)
+static Unit *async_pop_unsafe(void)
 {
     ThreadingImpl *threading = builder.threading;
     Unit *         unit      = NULL;
@@ -93,24 +96,28 @@ static void *worker(void UNUSED(*args))
 {
     ThreadingImpl *threading = builder.threading;
     while (true) {
-        pthread_mutex_lock(&threading->cond_mutex);
-        while (threading->queue.size == 0) {
-            pthread_cond_wait(&threading->cond_var, &threading->cond_mutex);
+        pthread_mutex_lock(&threading->queue_mutex);
+        Unit *unit;
+        while (!threading->is_compiling || !(unit = async_pop_unsafe())) {
+            pthread_cond_wait(&threading->queue_condition, &threading->queue_mutex);
             if (threading->will_exit) {
-                pthread_mutex_unlock(&threading->cond_mutex);
+                pthread_mutex_unlock(&threading->queue_mutex);
                 pthread_exit(NULL);
             }
         }
-        Unit *unit = queue_pop();
         BL_ASSERT(unit);
+        pthread_mutex_unlock(&threading->queue_mutex);
+
+        pthread_mutex_lock(&threading->active_mutex);
         threading->active++;
-        pthread_mutex_unlock(&threading->cond_mutex);
+        pthread_mutex_unlock(&threading->active_mutex);
 
         compile_unit(unit, threading->assembly);
 
-        pthread_mutex_lock(&threading->cond_mutex);
+        pthread_mutex_lock(&threading->active_mutex);
         threading->active--;
-        pthread_mutex_unlock(&threading->cond_mutex);
+        pthread_cond_signal(&threading->active_condition);
+        pthread_mutex_unlock(&threading->active_mutex);
     }
     pthread_exit(NULL);
     return NULL;
@@ -121,9 +128,11 @@ static ThreadingImpl *threading_new(void)
     ThreadingImpl *t = bl_malloc(sizeof(ThreadingImpl));
     memset(t, 0, sizeof(ThreadingImpl));
     pthread_mutex_init(&t->str_tmp_lock, NULL);
-    pthread_mutex_init(&t->cond_mutex, NULL);
+    pthread_mutex_init(&t->queue_mutex, NULL);
+    pthread_mutex_init(&t->active_mutex, NULL);
     pthread_mutex_init(&t->log_mutex, NULL);
-    pthread_cond_init(&t->cond_var, NULL);
+    pthread_cond_init(&t->queue_condition, NULL);
+    pthread_cond_init(&t->active_condition, NULL);
     tarray_init(&t->queue, sizeof(Unit *));
     return t;
 }
@@ -131,17 +140,19 @@ static ThreadingImpl *threading_new(void)
 static void threading_delete(ThreadingImpl *t)
 {
     ThreadingImpl *threading = builder.threading;
-    pthread_mutex_lock(&threading->cond_mutex);
+    pthread_mutex_lock(&threading->queue_mutex);
     threading->will_exit = true;
-    pthread_cond_broadcast(&threading->cond_var);
-    pthread_mutex_unlock(&threading->cond_mutex);
+    pthread_cond_broadcast(&threading->queue_condition);
+    pthread_mutex_unlock(&threading->queue_mutex);
     for (usize i = 0; i < TARRAY_SIZE(t->workers); ++i) {
         pthread_join(t->workers[i], NULL);
     }
-    pthread_mutex_destroy(&t->cond_mutex);
+    pthread_mutex_destroy(&t->queue_mutex);
+    pthread_mutex_destroy(&t->active_mutex);
     pthread_mutex_destroy(&t->log_mutex);
     pthread_mutex_destroy(&t->str_tmp_lock);
-    pthread_cond_destroy(&t->cond_var);
+    pthread_cond_destroy(&t->queue_condition);
+    pthread_cond_destroy(&t->active_condition);
     tarray_terminate(&t->queue);
     bl_free(t);
 }
@@ -159,25 +170,20 @@ static void async_compile(Assembly *assembly)
     ThreadingImpl *threading = builder.threading;
     threading->assembly      = assembly;
     threading->active        = 0;
+    threading->is_compiling  = true;
+    pthread_cond_broadcast(&threading->queue_condition);
 
-    Unit *unit;
-    TARRAY_FOREACH(Unit *, &assembly->units, unit)
-    {
-        builder_submit_unit(unit);
+    pthread_mutex_lock(&threading->queue_mutex);
+    pthread_mutex_lock(&threading->active_mutex);
+    while (threading->active || threading->queue.size) {
+        pthread_mutex_unlock(&threading->queue_mutex);
+        pthread_cond_wait(&threading->active_condition, &threading->active_mutex);
     }
-    while (true) {
-        pthread_mutex_lock(&threading->cond_mutex);
-        BL_ASSERT(threading->active >= 0);
-        if (threading->active == 0 && threading->queue.size == 0) {
-            pthread_mutex_unlock(&threading->cond_mutex);
-            break;
-        }
-        pthread_mutex_unlock(&threading->cond_mutex);
-        sleep_ms(8);
-    }
+    pthread_mutex_unlock(&threading->queue_mutex);
+    pthread_mutex_unlock(&threading->active_mutex);
+    threading->is_compiling = false;
     BL_ASSERT(threading->active == 0 && "Not all units processed!");
     BL_ASSERT(threading->queue.size == 0 && "Not all units processed!");
-    threading->assembly = NULL;
 }
 
 static void str_cache_dtor(TString *str)
@@ -209,10 +215,10 @@ static void llvm_terminate(void)
 
 int compile_unit(Unit *unit, Assembly *assembly)
 {
-#if BL_DEBUG
-    BL_ASSERT(!unit->_compiled && "Unit compiled multiple times!!!");
+    //#if BL_DEBUG
+    if (unit->_compiled) BL_ABORT("Unit compiled multiple times!!!");
     unit->_compiled = true;
-#endif
+    //#endif
 
     if (unit->loaded_from) {
         builder_log(
@@ -409,7 +415,7 @@ void builder_init(void)
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split = false;
+    builder.options.reg_split     = false;
 #endif
 
     // initialize LLVM statics
@@ -486,8 +492,7 @@ int builder_compile_all(void)
 
 int builder_compile(Assembly *assembly)
 {
-    clock_t begin = clock();
-    Unit *  unit;
+    clock_t begin       = clock();
     s32     state       = COMPILE_OK;
     builder.total_lines = 0;
 
@@ -509,6 +514,7 @@ int builder_compile(Assembly *assembly)
     if (build_mode) assembly_add_unit(assembly, BUILD_API_FILE, NULL);
 
     if (builder.options.no_jobs) {
+        Unit *unit;
         TARRAY_FOREACH(Unit *, &assembly->units, unit)
         {
             if ((state = compile_unit(unit, assembly)) != COMPILE_OK) break;
@@ -685,10 +691,9 @@ void put_tmpstr(TString *str)
     pthread_mutex_unlock(&threading->str_tmp_lock);
 }
 
-void builder_submit_unit(Unit *unit)
+void builder_async_submit_unit(Unit *unit)
 {
     BL_ASSERT(unit);
-    ThreadingImpl *threading = builder.threading;
-    if (!threading->assembly) return;
-    queue_push(unit);
+    if (builder.options.no_jobs) return;
+    async_push(unit);
 }

@@ -36,20 +36,15 @@ static void ensure_space(TArray *arr, usize space, bool exact)
 {
     if (!space) return;
     if (arr->allocated >= space) return;
-
-    if (arr->allocated == 0) {
-        space     = exact ? space : ALLOC_BLOCK_SIZE;
-        arr->data = tmalloc(space * arr->elem_size);
-    } else {
-        space *= 2;
-        void *tmp = tmalloc(space * arr->elem_size);
-        if (arr->size) {
-            memcpy(tmp, arr->data, arr->size * arr->elem_size);
-        }
-        tfree(arr->data);
-        arr->data = tmp;
+    if (!exact) {
+        space = space == 1 ? ALLOC_BLOCK_SIZE : space * 2;
     }
-
+    void *tmp = tmalloc(space * arr->elem_size);
+    if (arr->size) {
+        memcpy(tmp, arr->data, arr->size * arr->elem_size);
+    }
+    tfree(arr->data);
+    arr->data      = tmp;
     arr->allocated = space;
 }
 

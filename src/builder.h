@@ -117,9 +117,8 @@ void builder_add_assembly(Assembly *assembly);
 s32  builder_compile_all(void);
 s32  builder_compile(Assembly *assembly);
 
-// Submit new unit into builder async pipeline, this has no effect when async compilation is not
-// running.
-void builder_submit_unit(Unit *unit);
+// Submit new unit for async compilation, in case no-jobs flag is set, this function does nothing.
+void builder_async_submit_unit(Unit *unit);
 
 #define builder_log(format, ...)                                                                   \
     builder_msg(BUILDER_MSG_LOG, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
