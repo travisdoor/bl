@@ -92,37 +92,6 @@ static Unit *async_pop_unsafe(void)
     return unit;
 }
 
-static void *worker(void UNUSED(*args))
-{
-    ThreadingImpl *threading = builder.threading;
-    while (true) {
-        pthread_mutex_lock(&threading->queue_mutex);
-        Unit *unit;
-        while (!threading->is_compiling || !(unit = async_pop_unsafe())) {
-            pthread_cond_wait(&threading->queue_condition, &threading->queue_mutex);
-            if (threading->will_exit) {
-                pthread_mutex_unlock(&threading->queue_mutex);
-                pthread_exit(NULL);
-            }
-        }
-        BL_ASSERT(unit);
-        pthread_mutex_unlock(&threading->queue_mutex);
-
-        pthread_mutex_lock(&threading->active_mutex);
-        threading->active++;
-        pthread_mutex_unlock(&threading->active_mutex);
-
-        compile_unit(unit, threading->assembly);
-
-        pthread_mutex_lock(&threading->active_mutex);
-        threading->active--;
-        pthread_cond_signal(&threading->active_condition);
-        pthread_mutex_unlock(&threading->active_mutex);
-    }
-    pthread_exit(NULL);
-    return NULL;
-}
-
 static ThreadingImpl *threading_new(void)
 {
     ThreadingImpl *t = bl_malloc(sizeof(ThreadingImpl));
@@ -157,6 +126,36 @@ static void threading_delete(ThreadingImpl *t)
     bl_free(t);
 }
 
+static void *worker(void UNUSED(*args))
+{
+    ThreadingImpl *threading = builder.threading;
+    while (true) {
+        pthread_mutex_lock(&threading->queue_mutex);
+        Unit *unit;
+        while (!threading->is_compiling || !(unit = async_pop_unsafe())) {
+            pthread_cond_wait(&threading->queue_condition, &threading->queue_mutex);
+            if (threading->will_exit) {
+                pthread_mutex_unlock(&threading->queue_mutex);
+                pthread_exit(NULL);
+            }
+        }
+        BL_ASSERT(unit);
+        pthread_mutex_lock(&threading->active_mutex);
+        threading->active++;
+        pthread_mutex_unlock(&threading->active_mutex);
+        pthread_mutex_unlock(&threading->queue_mutex);
+
+        compile_unit(unit, threading->assembly);
+
+        pthread_mutex_lock(&threading->active_mutex);
+        threading->active--;
+        pthread_cond_signal(&threading->active_condition);
+        pthread_mutex_unlock(&threading->active_mutex);
+    }
+    pthread_exit(NULL);
+    return NULL;
+}
+
 static void start_threads()
 {
     ThreadingImpl *threading = builder.threading;
@@ -177,13 +176,17 @@ static void async_compile(Assembly *assembly)
     pthread_mutex_lock(&threading->active_mutex);
     while (threading->active || threading->queue.size) {
         pthread_mutex_unlock(&threading->queue_mutex);
+        printf("wait\n");
         pthread_cond_wait(&threading->active_condition, &threading->active_mutex);
+        printf("active = %d\n", threading->active);
     }
-    pthread_mutex_unlock(&threading->queue_mutex);
     pthread_mutex_unlock(&threading->active_mutex);
+    pthread_mutex_unlock(&threading->queue_mutex);
     threading->is_compiling = false;
-    BL_ASSERT(threading->active == 0 && "Not all units processed!");
-    BL_ASSERT(threading->queue.size == 0 && "Not all units processed!");
+    if (threading->active) BL_ABORT("Not all units processed! (active)");
+    if (threading->queue.size) BL_ABORT("Not all units processed! (queued)");
+    //BL_ASSERT(threading->active == 0 && "Not all units processed!");
+    //BL_ASSERT(threading->queue.size == 0 && "Not all units processed!");
 }
 
 static void str_cache_dtor(TString *str)
