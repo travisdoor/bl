@@ -48,7 +48,7 @@
 
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
-#define MAX_THREAD 16
+#define MAX_THREAD 4
 
 Builder builder;
 
@@ -172,21 +172,25 @@ static void async_compile(Assembly *assembly)
     threading->is_compiling  = true;
     pthread_cond_broadcast(&threading->queue_condition);
 
-    pthread_mutex_lock(&threading->queue_mutex);
-    pthread_mutex_lock(&threading->active_mutex);
-    while (threading->active || threading->queue.size) {
-        pthread_mutex_unlock(&threading->queue_mutex);
-        printf("wait\n");
-        pthread_cond_wait(&threading->active_condition, &threading->active_mutex);
-        printf("active = %d\n", threading->active);
+    while (true) {
+        pthread_mutex_lock(&threading->queue_mutex);
+        pthread_mutex_lock(&threading->active_mutex);
+        if (threading->active || threading->queue.size) {
+            pthread_mutex_unlock(&threading->queue_mutex);
+            //printf("wait (active = %d, queued = %llu)\n", threading->active, threading->queue.size);
+            pthread_cond_wait(&threading->active_condition, &threading->active_mutex);
+        } else {
+            pthread_mutex_unlock(&threading->queue_mutex);
+            pthread_mutex_unlock(&threading->active_mutex);
+            break;
+        }
+        pthread_mutex_unlock(&threading->active_mutex);
     }
-    pthread_mutex_unlock(&threading->active_mutex);
-    pthread_mutex_unlock(&threading->queue_mutex);
     threading->is_compiling = false;
     if (threading->active) BL_ABORT("Not all units processed! (active)");
     if (threading->queue.size) BL_ABORT("Not all units processed! (queued)");
-    //BL_ASSERT(threading->active == 0 && "Not all units processed!");
-    //BL_ASSERT(threading->queue.size == 0 && "Not all units processed!");
+    // BL_ASSERT(threading->active == 0 && "Not all units processed!");
+    // BL_ASSERT(threading->queue.size == 0 && "Not all units processed!");
 }
 
 static void str_cache_dtor(TString *str)
@@ -218,6 +222,7 @@ static void llvm_terminate(void)
 
 int compile_unit(Unit *unit, Assembly *assembly)
 {
+    //printf("compile = %s\n", unit->name);
     //#if BL_DEBUG
     if (unit->_compiled) BL_ABORT("Unit compiled multiple times!!!");
     unit->_compiled = true;
@@ -418,7 +423,7 @@ void builder_init(void)
 #if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split     = false;
+    builder.options.reg_split = false;
 #endif
 
     // initialize LLVM statics
