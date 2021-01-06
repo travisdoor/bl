@@ -48,9 +48,9 @@ typedef struct Unit {
     char *          src;           // Unit raw source data.
     struct Token *  loaded_from;   // Optionally set when unit is loaded from another unit.
     LLVMMetadataRef llvm_file_meta;
-//#if BL_DEBUG
+#if BL_DEBUG
     bool _compiled;
-//#endif
+#endif
 } Unit;
 
 u64 unit_hash(const char *filepath, struct Token *load_from);

@@ -177,7 +177,6 @@ static void async_compile(Assembly *assembly)
         pthread_mutex_lock(&threading->active_mutex);
         if (threading->active || threading->queue.size) {
             pthread_mutex_unlock(&threading->queue_mutex);
-            //printf("wait (active = %d, queued = %llu)\n", threading->active, threading->queue.size);
             pthread_cond_wait(&threading->active_condition, &threading->active_mutex);
         } else {
             pthread_mutex_unlock(&threading->queue_mutex);
@@ -187,10 +186,9 @@ static void async_compile(Assembly *assembly)
         pthread_mutex_unlock(&threading->active_mutex);
     }
     threading->is_compiling = false;
+    // Eventually use asserts here when there will be no threading-related errors.
     if (threading->active) BL_ABORT("Not all units processed! (active)");
     if (threading->queue.size) BL_ABORT("Not all units processed! (queued)");
-    // BL_ASSERT(threading->active == 0 && "Not all units processed!");
-    // BL_ASSERT(threading->queue.size == 0 && "Not all units processed!");
 }
 
 static void str_cache_dtor(TString *str)
@@ -222,11 +220,10 @@ static void llvm_terminate(void)
 
 int compile_unit(Unit *unit, Assembly *assembly)
 {
-    //printf("compile = %s\n", unit->name);
-    //#if BL_DEBUG
+#if BL_DEBUG
     if (unit->_compiled) BL_ABORT("Unit compiled multiple times!!!");
     unit->_compiled = true;
-    //#endif
+#endif
 
     if (unit->loaded_from) {
         builder_log(
