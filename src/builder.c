@@ -48,7 +48,7 @@
 
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
-#define MAX_THREAD 4
+#define MAX_THREAD 2
 
 Builder builder;
 
@@ -133,11 +133,11 @@ static void *worker(void UNUSED(*args))
         pthread_mutex_lock(&threading->queue_mutex);
         Unit *unit;
         while (!threading->is_compiling || !(unit = async_pop_unsafe())) {
-            pthread_cond_wait(&threading->queue_condition, &threading->queue_mutex);
             if (threading->will_exit) {
                 pthread_mutex_unlock(&threading->queue_mutex);
                 pthread_exit(NULL);
             }
+            pthread_cond_wait(&threading->queue_condition, &threading->queue_mutex);
         }
         BL_ASSERT(unit);
         pthread_mutex_lock(&threading->active_mutex);
