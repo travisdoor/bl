@@ -48,7 +48,7 @@
 
 #define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
-#define MAX_THREAD 2
+#define MAX_THREAD 8
 
 Builder builder;
 
