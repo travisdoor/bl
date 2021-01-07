@@ -9,6 +9,7 @@ _dl_impl_open :: fn (lib_name: string) (DLibrary, Error) {
             ec, emsg :: os_get_last_error();
             return null, error(ec, emsg);
         }
+        return handle, ok();
     }
     return _GetModuleHandleA(null), ok(); 
 }
