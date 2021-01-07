@@ -1,6 +1,5 @@
 0.7.2 - BETA
 ---------------------------------------------------------------------------------------
-* fix array docs
 Migration to LLVM 11.
 Add multiple return values and group declarations.
 Add automatic documentation generator (-docs flag).
