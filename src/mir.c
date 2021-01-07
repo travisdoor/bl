@@ -9253,6 +9253,8 @@ MirInstr *ast_type_fn(Context *cnt, Ast *type_fn)
 {
     Ast *               ast_ret_type  = type_fn->data.type_fn.ret_type;
     TSmallArray_AstPtr *ast_arg_types = type_fn->data.type_fn.args;
+
+    cnt->ast.current_entity_id = NULL;
     // return type
     MirInstr *ret_type = NULL;
     if (ast_ret_type) {

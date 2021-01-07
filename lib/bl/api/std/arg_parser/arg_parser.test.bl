@@ -25,10 +25,10 @@ arg_parser_test1 :: fn () #test {
         "-a",
         "--about",
         "Print information about application.",
-        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) s32 {
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
             opt: *Opt = auto ctx;
             opt.about = true;
-            return 1;
+            return 1, ok();
         });
 
     arg_parser_add(
@@ -36,10 +36,10 @@ arg_parser_test1 :: fn () #test {
         "-v",
         "--verbose",
         "Toggle verbose mode.",
-        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) s32 {
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
             opt: *Opt = auto ctx;
             opt.verbose = true;
-            return 1;
+            return 1, ok();
         });
 
     arg_parser_print_help(parser);

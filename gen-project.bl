@@ -21,10 +21,10 @@ main :: fn () s32 {
         "-d",
         "--debug",
         "Generate project in debug mode.",
-        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) s32 {
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.generate_debug = true;
-            return 1;
+            return 1, ok();
         });
 
     arg_parser_add(
@@ -32,10 +32,10 @@ main :: fn () s32 {
         "-m",
         "--make",
         "Make project.",
-        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) s32 {
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.make = true;
-            return 1;
+            return 1, ok();
         });
 
     state :: arg_parser_run(arg_parser, command_line_arguments, &args, 1);   

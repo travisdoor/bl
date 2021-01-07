@@ -10,14 +10,12 @@
 
 #import "std/array"
 
-ARG_PARSER_BREAK :: 0;
-
 ArgCtx :: struct {
     help: bool;
 }
 
 ArgParser :: *u8;
-ArgParserHandlerFn :: *fn (parser: ArgParser, args: []string, ctx: *ArgCtx) s32;
+ArgParserHandlerFn :: *fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error);
 
 arg_parser_new :: fn () ArgParser {
     parser := cast(*Parser) alloc(sizeof(Parser));
@@ -29,10 +27,10 @@ arg_parser_new :: fn () ArgParser {
         "-h",
         "--help",
         "Print this help.",
-        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) s32 {
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
             if ctx { ctx.help = true; }
             arg_parser_print_help(parser);
-            return 1;
+            return 1, ok();
         });
 
     return auto parser;
@@ -63,11 +61,14 @@ arg_parser_run :: fn (_parser: ArgParser, args: []string, ctx: *ArgCtx, start :=
             entry :: &parser.entries[e];
             if string_compare(^arg, entry.short) || string_compare(^arg, entry.long) {
                 found = true;
-                parsed :: entry.handler(_parser, args, ctx);
-                if parsed == ARG_PARSER_BREAK {
-                    return ok();
+                parsed, err :: entry.handler(_parser, args, ctx);
+                if !is_ok(err) {
+                    return err;
                 }
-                if args.len > 1 { args.ptr = &args[parsed]; }
+                if parsed == 0 {
+                    panic("Parsed count returned from arguemnt lambda is supposed to be at least 1, not %!", parsed); 
+                }
+                if args.len > parsed { args.ptr = &args[parsed]; }
                 args.len -= parsed;
                 break;
             }
