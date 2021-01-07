@@ -33,10 +33,10 @@ main :: fn () s32 {
         _compiler_path = get_path(BL_EXE_PATH_UNIX);
     }
     defer string_delete(_compiler_path);
+    start_time_ms :: os_tick_ms();
 
     loop c := 0; c < _args.test_count; c += 1 {
         print("---------------------------------- BL DOCTOR -----------------------------------\n");    
-        start_time_ms :: os_tick_ms();
 
         // general
         print("Test general suite:\n");    
