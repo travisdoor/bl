@@ -60,3 +60,6 @@ src/config.h
 /CMakeLists.txt.user
 /docs/examples
 /docs
+/lib/bl/api/gl
+/lib/bl/api/glfw3
+/lib/bl/api/sdl2
