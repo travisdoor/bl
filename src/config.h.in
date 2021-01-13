@@ -52,7 +52,7 @@
 #define OS_PRELOAD_FILE "os/_macos.bl"
 #elif __linux__
 #define BL_PLATFORM_WIN 0
-#define BL_PLATFORM_MACOS 1
+#define BL_PLATFORM_MACOS 0
 #define BL_PLATFORM_LINUX 1
 #define OS_PRELOAD_FILE "os/_linux.bl"
 #define BL_EXPORT
