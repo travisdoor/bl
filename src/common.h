@@ -43,7 +43,7 @@ struct Assembly;
 //************************************************************************************************
 // Clang and gcc
 //************************************************************************************************
-#if defined(BL_COMPILER_CLANG) || defined(BL_COMPILER_GNUC)
+#if BL_COMPILER_CLANG || BL_COMPILER_GNUC
 #define BL_DEPRECATED __attribute__((deprecated))
 //#define INLINE __attribute__((always_inline))
 #define INLINE inline
@@ -54,7 +54,7 @@ struct Assembly;
 //************************************************************************************************
 // MSVC
 //************************************************************************************************
-#elif defined(BL_COMPILER_MSVC)
+#elif BL_COMPILER_MSVC
 #pragma warning(disable : 4002)
 #pragma warning(disable : 6011)
 #pragma warning(disable : 4013)
@@ -139,28 +139,28 @@ bool search_source_file(const char *filepath,
 // Replace all backslashes in passed path with forward slash, this is used as workaround on Windows
 // platform due to inconsistency 'Unix vs Windows' path separators. This function will modify passed
 // buffer.
-void        win_path_to_unix(char *buf, usize buf_size);
-void        unix_path_to_win(char *buf, usize buf_size);
-bool        file_exists(const char *filepath);
-bool        dir_exists(const char *dirpath);
-const char *brealpath(const char *file, char *out, s32 out_len);
-const char *get_current_working_dir(char *buf, usize buf_size);
-bool        get_dir_from_filepath(char *buf, const usize l, const char *filepath);
-bool        get_filename_from_filepath(char *buf, const usize l, const char *filepath);
-bool        get_current_exec_path(char *buf, usize buf_size);
-bool        get_current_exec_dir(char *buf, usize buf_size);
-bool        create_dir(const char *dirpath);
-bool        create_dir_tree(const char *dirpath);
-bool        copy_dir(const char *src, const char *dest);
-bool        copy_file(const char *src, const char *dest);
-bool        remove_dir(const char *path);
-void        date_time(char *buf, s32 len, const char *format);
-bool        is_aligned(const void *p, usize alignment);
-void        align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment);
-void        print_bits(s32 const size, void const *const ptr);
-int         count_bits(u64 n);
-void        platform_lib_name(const char *name, char *buffer, usize max_len);
-f64         get_tick_ms(void);
+void win_path_to_unix(char *buf, usize buf_size);
+void unix_path_to_win(char *buf, usize buf_size);
+bool file_exists(const char *filepath);
+bool dir_exists(const char *dirpath);
+bool brealpath(const char *file, char *out, s32 out_len);
+bool get_current_working_dir(char *buf, usize buf_size);
+bool get_dir_from_filepath(char *buf, const usize l, const char *filepath);
+bool get_filename_from_filepath(char *buf, const usize l, const char *filepath);
+bool get_current_exec_path(char *buf, usize buf_size);
+bool get_current_exec_dir(char *buf, usize buf_size);
+bool create_dir(const char *dirpath);
+bool create_dir_tree(const char *dirpath);
+bool copy_dir(const char *src, const char *dest);
+bool copy_file(const char *src, const char *dest);
+bool remove_dir(const char *path);
+void date_time(char *buf, s32 len, const char *format);
+bool is_aligned(const void *p, usize alignment);
+void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment);
+void print_bits(s32 const size, void const *const ptr);
+int  count_bits(u64 n);
+void platform_lib_name(const char *name, char *buffer, usize max_len);
+f64  get_tick_ms(void);
 
 // Creates TArray inside Assembly arena.
 // Note: no free is needed.

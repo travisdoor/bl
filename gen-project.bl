@@ -44,7 +44,7 @@ main :: fn () s32 {
         arg_parser,
         "-te",
         "--tracy-enable",
-        "Make project.",
+        "Enable tracy profiler (available only in debug build).",
         &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.tracy_enable = true;

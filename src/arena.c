@@ -27,7 +27,7 @@
 //************************************************************************************************
 
 #include "arena.h"
-#ifdef BL_PLATFORM_WIN
+#if BL_PLATFORM_WIN
 #include "winpthreads.h"
 #include <windows.h>
 #else

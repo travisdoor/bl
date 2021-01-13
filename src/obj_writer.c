@@ -31,13 +31,14 @@
 #include "llvm_api.h"
 #include "stages.h"
 
-#ifdef BL_PLATFORM_WIN
+// Target specific.
+#if BL_PLATFORM_WIN
 #define OBJ_EXT ".obj"
 #else
 #define OBJ_EXT ".o"
 #endif
 
-/* Emit assembly object file. */
+// Emit assembly object file.
 void obj_writer_run(Assembly *assembly)
 {
     TracyCZone(_tctx, true);

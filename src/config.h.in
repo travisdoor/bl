@@ -39,15 +39,21 @@
 
 // MULTIPLATFROM: os preload depends on target build platfrom and should be chosen in runtime later!
 #ifdef _WIN32
-#define BL_PLATFORM_WIN
+#define BL_PLATFORM_WIN 1
+#define BL_PLATFORM_MACOS 0
+#define BL_PLATFORM_LINUX 0
 #define BL_EXPORT __declspec(dllexport)
 #define OS_PRELOAD_FILE "os/_windows.bl"
 #elif __APPLE__
-#define BL_PLATFORM_MACOS
+#define BL_PLATFORM_WIN 0
+#define BL_PLATFORM_MACOS 1
+#define BL_PLATFORM_LINUX 0
 #define BL_EXPORT
 #define OS_PRELOAD_FILE "os/_macos.bl"
 #elif __linux__
-#define BL_PLATFORM_LINUX
+#define BL_PLATFORM_WIN 0
+#define BL_PLATFORM_MACOS 1
+#define BL_PLATFORM_LINUX 1
 #define OS_PRELOAD_FILE "os/_linux.bl"
 #define BL_EXPORT
 #elif __CYGWIN__
@@ -57,25 +63,29 @@
 #endif
 
 #ifdef __clang__
-#define BL_COMPILER_CLANG
-#elif __GNUC__
-#define BL_COMPILER_GNUC
-#elif __MINGW32__
-#define BL_COMPILER_GNUC
+#define BL_COMPILER_CLANG 1
+#define BL_COMPILER_GNUC 0
+#define BL_COMPILER_MSVC 0
+#elif defined(__GNUC__) || defined(__MINGW32__)
+#define BL_COMPILER_CLANG 0
+#define BL_COMPILER_GNUC 1
+#define BL_COMPILER_MSVC 0
 #elif _MSC_VER
-#define BL_COMPILER_MSVC
+#define BL_COMPILER_CLANG 0
+#define BL_COMPILER_GNUC 0
+#define BL_COMPILER_MSVC 1
 #endif
 
-#ifdef BL_COMPILER_MSVC
+#if BL_COMPILER_MSVC
 #define NOMINMAX /* WTF??? */
 #endif
 
 #define ENV_PATH "PATH"
 #ifndef PATH_MAX
-#define PATH_MAX 1024
+#define PATH_MAX MAX_PATH
 #endif
 
-#ifdef BL_PLATFORM_WIN
+#if BL_PLATFORM_WIN
 #define ENVPATH_SEPARATOR ';'
 #define CONF_VC_VARS_ALL_KEY "VC_VARS_ALL"
 #define MSVC_CRT "msvcrt"
@@ -119,17 +129,17 @@
 
 // module related config
 #define CONF_MODULE_VERSION "VERSION"
-#if defined(BL_PLATFORM_WIN)
+#if BL_PLATFORM_WIN
 #define CONF_MODULE_ENTRY "WIN32_ENTRY"
 #define CONF_MODULE_LIB_PATH "WIN32_LIB_PATH"
 #define CONF_MODULE_LINK "WIN32_LINK"
 #define CONF_MODULE_LINKER_OPT "WIN32_LINKER_OPT"
-#elif defined(BL_PLATFORM_LINUX)
+#elif BL_PLATFORM_LINUX
 #define CONF_MODULE_ENTRY "LINUX_ENTRY"
 #define CONF_MODULE_LIB_PATH "LINUX_LIB_PATH"
 #define CONF_MODULE_LINK "LINUX_LINK"
 #define CONF_MODULE_LINKER_OPT "LINUX_LINKER_OPT"
-#elif defined(BL_PLATFORM_MACOS)
+#elif BL_PLATFORM_MACOS
 #define CONF_MODULE_ENTRY "MACOS_ENTRY"
 #define CONF_MODULE_LIB_PATH "MACOS_LIB_PATH"
 #define CONF_MODULE_LINK "MACOS_LINK"

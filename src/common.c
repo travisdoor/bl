@@ -32,17 +32,17 @@
 #include <stdarg.h>
 #include <time.h>
 
-#ifndef BL_COMPILER_MSVC
+#if !BL_COMPILER_MSVC
 #include "unistd.h"
 #include <sys/stat.h>
 #endif
 
-#ifdef BL_PLATFORM_MACOS
+#if BL_PLATFORM_MACOS
 #include <mach-o/dyld.h>
 #include <mach/mach_time.h>
 #endif
 
-#ifdef BL_PLATFORM_WIN
+#if BL_PLATFORM_WIN
 #include <windows.h>
 #endif
 
@@ -54,24 +54,31 @@ bool search_source_file(const char *filepath,
                         char **     out_filepath,
                         char **     out_dirpath)
 {
+    TString *tmp = get_tmpstr();
     if (!filepath) goto NOT_FOUND;
-    char        tmp[PATH_MAX]        = {0};
     char        tmp_result[PATH_MAX] = {0};
-    const char *result               = brealpath(filepath, tmp_result, TARRAY_SIZE(tmp_result));
-    if (result) goto FOUND;
+    const char *result               = NULL;
+    if (brealpath(filepath, tmp_result, TARRAY_SIZE(tmp_result))) {
+        result = &tmp_result[0];
+        goto FOUND;
+    }
 
     // Lookup in working directory.
     if (wdir && IS_FLAG(flags, SEARCH_FLAG_WDIR)) {
-        snprintf(tmp, TARRAY_SIZE(tmp), "%s" PATH_SEPARATOR "%s", wdir, filepath);
-        result = brealpath(tmp, tmp_result, TARRAY_SIZE(tmp_result));
-        if (result) goto FOUND;
+        tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", wdir, filepath);
+        if (brealpath(tmp->data, tmp_result, TARRAY_SIZE(tmp_result))) {
+            result = &tmp_result[0];
+            goto FOUND;
+        }
     }
 
     // file has not been found in current working direcotry -> search in LIB_DIR
     if (ENV_LIB_DIR && IS_FLAG(flags, SEARCH_FLAG_LIB_DIR)) {
-        snprintf(tmp, TARRAY_SIZE(tmp), "%s" PATH_SEPARATOR "%s", ENV_LIB_DIR, filepath);
-        result = brealpath(tmp, tmp_result, TARRAY_SIZE(tmp_result));
-        if (result) goto FOUND;
+        tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", ENV_LIB_DIR, filepath);
+        if (brealpath(tmp->data, tmp_result, TARRAY_SIZE(tmp_result))) {
+            result = &tmp_result[0];
+            goto FOUND;
+        }
     }
 
     // file has not been found in current working direcotry -> search in PATH
@@ -84,15 +91,16 @@ bool search_source_file(const char *filepath,
             if (p != NULL) {
                 p[0] = 0;
             }
-            snprintf(tmp, TARRAY_SIZE(tmp), "%s" PATH_SEPARATOR "%s", s, filepath);
-            result = brealpath(tmp, tmp_result, TARRAY_SIZE(tmp_result));
-            s      = p + 1;
+            tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", s, filepath);
+            if (brealpath(tmp->data, tmp_result, TARRAY_SIZE(tmp_result))) result = &tmp_result[0];
+            s = p + 1;
         } while (p && !result);
         free(env);
         if (result) goto FOUND;
     }
 
 NOT_FOUND:
+    put_tmpstr(tmp);
     return false;
 
 FOUND:
@@ -100,11 +108,12 @@ FOUND:
     if (out_filepath) *out_filepath = strdup(result);
     if (out_dirpath) {
         // Absolute directory path.
-        memset(tmp, 0, TARRAY_SIZE(tmp));
-        if (get_dir_from_filepath(tmp, PATH_MAX, result)) {
-            *out_dirpath = strdup(tmp);
+        char dirpath[PATH_MAX] = {0};
+        if (get_dir_from_filepath(dirpath, TARRAY_SIZE(dirpath), result)) {
+            *out_dirpath = strdup(dirpath);
         }
     }
+    put_tmpstr(tmp);
     return true;
 }
 
@@ -132,16 +141,15 @@ void unix_path_to_win(char *buf, usize buf_size)
 
 bool get_current_exec_path(char *buf, usize buf_size)
 {
-#if defined(BL_PLATFORM_WIN)
+#if BL_PLATFORM_WIN
     if (GetModuleFileNameA(NULL, buf, (DWORD)buf_size)) {
         win_path_to_unix(buf, buf_size);
         return true;
     }
-
     return false;
-#elif defined(BL_PLATFORM_LINUX)
+#elif BL_PLATFORM_LINUX
     return readlink("/proc/self/exe", buf, buf_size) != -1;
-#elif defined(BL_PLATFORM_MACOS)
+#elif BL_PLATFORM_MACOS
     return _NSGetExecutablePath(buf, (u32 *)&buf_size) != -1;
 #else
     return false;
@@ -156,14 +164,14 @@ bool get_current_exec_dir(char *buf, usize buf_size)
     return true;
 }
 
-const char *get_current_working_dir(char *buf, usize buf_size)
+bool get_current_working_dir(char *buf, usize buf_size)
 {
     return brealpath(".", buf, buf_size);
 }
 
 bool file_exists(const char *filepath)
 {
-#if defined(BL_PLATFORM_WIN)
+#if BL_PLATFORM_WIN
     return (bool)PathFileExistsA(filepath);
 #else
     struct stat tmp;
@@ -173,7 +181,7 @@ bool file_exists(const char *filepath)
 
 bool dir_exists(const char *dirpath)
 {
-#if defined(BL_PLATFORM_WIN)
+#if BL_PLATFORM_WIN
     DWORD dwAttrib = GetFileAttributesA(dirpath);
     return (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 #else
@@ -182,20 +190,25 @@ bool dir_exists(const char *dirpath)
 #endif
 }
 
-const char *brealpath(const char *file, char *out, s32 out_len)
+bool brealpath(const char *file, char *out, s32 out_len)
 {
-    const char *resolved = NULL;
     BL_ASSERT(out);
     BL_ASSERT(out_len);
-    if (!file) return resolved;
-
-#if defined(BL_PLATFORM_WIN)
-    if (GetFullPathNameA(file, out_len, out, NULL) && file_exists(out)) {
-        win_path_to_unix(out, out_len);
-        return &out[0];
+    if (!file) return false;
+#if BL_PLATFORM_WIN
+    const DWORD len = GetFullPathNameA(file, out_len, out, NULL);
+    if (!len) {
+        DWORD ec = GetLastError();
+        if (ec == ERROR_FILENAME_EXCED_RANGE)
+            builder_error("Cannot get full path of '%s', resulting path is too long. (expected "
+                          "maximum %d characters)",
+                          file,
+                          PATH_MAX);
+        return false;
     }
-
-    return NULL;
+    if (!file_exists(out)) return false;
+    win_path_to_unix(out, out_len);
+    return true;
 #else
     return realpath(file, out);
 #endif
@@ -203,7 +216,7 @@ const char *brealpath(const char *file, char *out, s32 out_len)
 
 bool create_dir(const char *dirpath)
 {
-#if defined(BL_PLATFORM_WIN)
+#if BL_PLATFORM_WIN
     return CreateDirectoryA(dirpath, NULL) != 0;
 #else
     return mkdir(dirpath, 0700) == 0;
@@ -234,7 +247,7 @@ bool create_dir_tree(const char *dirpath)
 bool copy_dir(const char *src, const char *dest)
 {
     TString *tmp = get_tmpstr();
-#if defined(BL_PLATFORM_WIN)
+#if BL_PLATFORM_WIN
     char *_src  = strdup(src);
     char *_dest = strdup(dest);
     unix_path_to_win(_src, strlen(_src));
@@ -254,7 +267,7 @@ bool copy_dir(const char *src, const char *dest)
 bool copy_file(const char *src, const char *dest)
 {
     TString *tmp = get_tmpstr();
-#if defined(BL_PLATFORM_WIN)
+#if BL_PLATFORM_WIN
     char *_src  = strdup(src);
     char *_dest = strdup(dest);
     unix_path_to_win(_src, strlen(_src));
@@ -273,7 +286,7 @@ bool copy_file(const char *src, const char *dest)
 bool remove_dir(const char *path)
 {
     TString *tmp = get_tmpstr();
-#if defined(BL_PLATFORM_WIN)
+#if BL_PLATFORM_WIN
     char *_path = strdup(path);
     unix_path_to_win(_path, strlen(_path));
     tstring_setf(tmp, "del \"%s\" /q /s 2>nul 1>nul", _path);
@@ -379,11 +392,11 @@ void platform_lib_name(const char *name, char *buffer, usize max_len)
 {
     if (!name) return;
 
-#ifdef BL_PLATFORM_MACOS
+#if BL_PLATFORM_MACOS
     snprintf(buffer, max_len, "lib%s.dylib", name);
-#elif defined(BL_PLATFORM_LINUX)
+#elif BL_PLATFORM_LINUX
     snprintf(buffer, max_len, "lib%s.so", name);
-#elif defined(BL_PLATFORM_WIN)
+#elif BL_PLATFORM_WIN
     snprintf(buffer, max_len, "%s.dll", name);
 #else
     BL_ABORT("Unknown dynamic library format.");
@@ -392,13 +405,13 @@ void platform_lib_name(const char *name, char *buffer, usize max_len)
 
 f64 get_tick_ms(void)
 {
-#ifdef BL_PLATFORM_MACOS
+#if BL_PLATFORM_MACOS
     const f64 t = (f64)mach_absolute_time();
     return t * 0.00001;
-#elif defined(BL_PLATFORM_LINUX)
+#elif BL_PLATFORM_LINUX
     // @INCOMPLETE
     return 0.;
-#elif defined(BL_PLATFORM_WIN)
+#elif BL_PLATFORM_WIN
     LARGE_INTEGER f;
     LARGE_INTEGER t;
 
@@ -450,7 +463,7 @@ void color_print(FILE *stream, s32 color, const char *format, ...)
     va_list args;
     va_start(args, format);
 
-#ifdef BL_PLATFORM_WIN
+#if BL_PLATFORM_WIN
     s32 c;
     switch (color) {
     case BL_YELLOW:

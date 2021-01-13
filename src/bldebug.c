@@ -30,7 +30,7 @@
 #include "common.h"
 #include <stdarg.h>
 
-#if defined(BL_PLATFORM_WIN)
+#if BL_PLATFORM_WIN
 // clang-format off
 #include <windows.h>
 #include <DbgHelp.h>
@@ -66,9 +66,10 @@ void _log(bl_log_msg_type_e t, const char *file, s32 line, const char *msg, ...)
     va_end(args);
 }
 
+#ifdef BL_DEBUG
 void print_trace(void)
 {
-#if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
+#if BL_PLATFORM_MACOS || BL_PLATFORM_LINUX
 #include <execinfo.h>
     void * tmp[32];
     usize  size;
@@ -84,7 +85,7 @@ void print_trace(void)
         printf("%s\n", strings[i]);
 
     free(strings);
-#elif defined(BL_PLATFORM_WIN)
+#elif BL_PLATFORM_WIN
     HANDLE process = GetCurrentProcess();
     HANDLE thread  = GetCurrentThread();
 
@@ -162,3 +163,8 @@ void print_trace(void)
     SymCleanup(process);
 #endif
 }
+#else
+void print_trace(void)
+{
+}
+#endif

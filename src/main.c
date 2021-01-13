@@ -36,6 +36,10 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#if BL_PLATFORM_WIN
+#include <windows.h>
+#endif
+
 char *ENV_EXEC_DIR      = NULL;
 char *ENV_LIB_DIR       = NULL;
 char *ENV_CONF_FILEPATH = NULL;
@@ -50,16 +54,12 @@ static void free_env(void)
 static void setup_env(void)
 {
     char tmp[PATH_MAX] = {0};
-
     if (!get_current_exec_dir(tmp, PATH_MAX)) {
         BL_ABORT("Cannot locate compiler executable path.");
     }
-
     ENV_EXEC_DIR = strdup(tmp);
-
     strcat(tmp, PATH_SEPARATOR ".." PATH_SEPARATOR);
     strcat(tmp, BL_CONF_FILE);
-
     if (strlen(tmp) == 0) BL_ABORT("Invalid conf file path.");
     ENV_CONF_FILEPATH = strdup(tmp);
 }
@@ -67,8 +67,7 @@ static void setup_env(void)
 static int generate_conf(void)
 {
     char tmp[PATH_MAX] = {0};
-
-#if defined(BL_PLATFORM_LINUX) || defined(BL_PLATFORM_MACOS)
+#if BL_PLATFORM_LINUX || BL_PLATFORM_MACOS
     strcat(tmp, "sh ");
     strcat(tmp, ENV_EXEC_DIR);
     strcat(tmp, PATH_SEPARATOR);
@@ -80,14 +79,12 @@ static int generate_conf(void)
     strcat(tmp, BL_CONFIGURE_SH);
     strcat(tmp, "\"");
 #endif
-
     return system(tmp);
 }
 
 #define EXIT(_state)                                                                               \
     state = _state;                                                                                \
     goto RELEASE;
-
 int main(s32 argc, char *argv[])
 {
     s32         state = EXIT_SUCCESS;

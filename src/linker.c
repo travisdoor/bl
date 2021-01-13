@@ -30,6 +30,10 @@
 #include "error.h"
 #include "stages.h"
 
+#if BL_PLATFORM_WIN
+#include <windows.h>
+#endif
+
 #define link_error(code, tok, pos, format, ...)                                                    \
     {                                                                                              \
         if (tok)                                                                                   \
@@ -100,7 +104,7 @@ static void set_lib_paths(Context *cnt)
                     memcpy(dup, begin, len);
                     dup[len] = '\0';
 
-#ifdef BL_PLATFORM_WIN
+#if BL_PLATFORM_WIN
                     win_path_to_unix(dup, len);
 #endif
 
@@ -174,7 +178,7 @@ void linker_run(Assembly *assembly)
     }
 
     TracyCZoneEnd(_tctx);
-#ifdef BL_PLATFORM_WIN
+#if BL_PLATFORM_WIN
     if (!link_working_environment(&cnt, MSVC_CRT)) {
         Token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " MSVC_CRT);

@@ -33,6 +33,10 @@
 #include "token.h"
 #include <string.h>
 
+#if BL_PLATFORM_WIN
+#include <windows.h>
+#endif
+
 u64 unit_hash(const char *filepath, struct Token *load_from)
 {
     Unit *parent_unit = load_from ? load_from->location.unit : NULL;

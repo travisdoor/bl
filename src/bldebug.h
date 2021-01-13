@@ -35,7 +35,7 @@
 #include <stdlib.h>
 #include <tlib/tlib.h>
 
-#ifdef BL_PLATFORM_MACOS
+#if BL_PLATFORM_MACOS
 #include <signal.h>
 #endif
 
@@ -43,11 +43,11 @@
 extern "C" {
 #endif
 
-#if defined(BL_COMPILER_GNUC) || defined(BL_COMPILER_CLANG)
+#if BL_COMPILER_GNUC || BL_COMPILER_CLANG
 #ifndef __FILENAME__
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #endif
-#elif defined(BL_COMPILER_MSVC)
+#elif BL_COMPILER_MSVC
 #ifndef __FILENAME__
 #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 #endif
@@ -104,7 +104,7 @@ void print_trace(void);
         _log(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                          \
     }
 
-#if defined(BL_COMPILER_MSVC)
+#if BL_COMPILER_MSVC
 #define BL_DEBUG_BREAK __debugbreak()
 #else
 #define BL_DEBUG_BREAK raise(SIGTRAP)

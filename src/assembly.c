@@ -33,7 +33,7 @@
 #include "unit.h"
 #include <string.h>
 
-#ifdef BL_PLATFORM_WIN
+#if BL_PLATFORM_WIN
 #include "winpthreads.h"
 #include <windows.h>
 #else
@@ -171,7 +171,10 @@ static INLINE void mir_terminate(Assembly *assembly)
 static INLINE void set_default_out_dir(Assembly *assembly)
 {
     char path[PATH_MAX] = {0};
-    get_current_working_dir(&path[0], PATH_MAX);
+    if (!get_current_working_dir(&path[0], PATH_MAX)) {
+        builder_error("Cannot get current working directory!");
+        return;
+    }
     tstring_clear(&assembly->options.out_dir);
     tstring_append(&assembly->options.out_dir, path);
 }
@@ -181,7 +184,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
 {
     BL_ASSERT(_path);
     BL_ASSERT(out_path);
-#ifdef BL_PLATFORM_WIN
+#if BL_PLATFORM_WIN
     char *path = strdup(_path);
     if (!path) BL_ABORT("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
@@ -190,17 +193,19 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {
-#ifdef BL_PLATFORM_WIN
+#if BL_PLATFORM_WIN
             free(path);
 #endif
             return false;
         }
     }
     char full_path[PATH_MAX] = {0};
-    brealpath(path, full_path, PATH_MAX);
+    if (!brealpath(path, full_path, PATH_MAX)) {
+        return false;
+    }
     tstring_clear(out_path);
     tstring_append(out_path, full_path);
-#ifdef BL_PLATFORM_WIN
+#if BL_PLATFORM_WIN
     free(path);
 #endif
     return true;
@@ -315,7 +320,7 @@ Assembly *assembly_new(const char *name)
     assembly->options.build_di_kind        = builder.options.build_di_kind;
     assembly->options.run_tests            = builder.options.run_tests;
     assembly->options.module_import_policy = IMPORT_POLICY_SYSTEM;
-#ifdef BL_PLATFORM_WIN // Use target platform tag.
+#if BL_PLATFORM_WIN // Use target platform tag.
     assembly->options.copy_deps = true;
 #else
     assembly->options.copy_deps = false;

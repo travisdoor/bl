@@ -36,7 +36,7 @@
 #include "token.h"
 #include "unit.h"
 
-#ifdef BL_PLATFORM_WIN
+#if BL_PLATFORM_WIN
 #include "winpthreads.h"
 #include <windows.h>
 #define sleep_ms(ms) Sleep(ms)
@@ -313,7 +313,7 @@ s32 builder_parse_options(s32 argc, char *argv[])
     builder.options.verify_llvm = true;
 #endif
 
-#if defined(BL_PLATFORM_WIN)
+#if BL_PLATFORM_WIN
     builder.options.build_di_kind = BUILD_DI_CODEVIEW;
 #else
     builder.options.build_di_kind = BUILD_DI_DWARF;
@@ -396,7 +396,7 @@ s32 builder_parse_options(s32 argc, char *argv[])
     }
     argv += optind;
 
-#if !defined(BL_PLATFORM_WIN)
+#if !BL_PLATFORM_WIN
     if (builder.options.no_vcvars) {
         builder_warning("Ignore parameter '-no-vcvars', this is valid on Windows only!");
     }
@@ -417,10 +417,10 @@ void builder_init(void)
     arena_init(&builder.str_cache, sizeof(TString), 256, (ArenaElemDtor)str_cache_dtor);
 
     // TODO: this is invalid for Windows MSVC DLLs???
-#if defined(BL_PLATFORM_MACOS) || defined(BL_PLATFORM_LINUX)
+#if BL_PLATFORM_MACOS || BL_PLATFORM_LINUX
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split = false;
+    builder.options.reg_split     = false;
 #endif
 
     // initialize LLVM statics
