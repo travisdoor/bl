@@ -1,6 +1,8 @@
-#load "bar_bar_bar_bar/foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo_foo.bl"
 main :: fn () s32 {
-    foo();
+    a.b;
+    
     return 0;
 }
+
+
 

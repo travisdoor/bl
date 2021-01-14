@@ -81,7 +81,8 @@
 #endif
 
 #define ENV_PATH "PATH"
-#ifndef PATH_MAX
+#if BL_PLATFORM_WIN
+#include <windows.h>
 #define PATH_MAX MAX_PATH
 #endif
 
