@@ -149,6 +149,30 @@ fs_create_append :: fn () #test {
     fs_remove(filepath);
 }
 
+fs_get_uid_test :: fn () #test {
+    filepath :: get_dummy_filepath();
+    defer string_delete(filepath);
+    fs_remove(filepath);
+    file, err :: fs_open(filepath, FSOpenMode.Create);
+    defer fs_close(file);
+    test_ok(err);
+    uid, err2 :: fs_get_uid(file);
+    test_ok(err2);
+    test_true(uid > 0);
+}
+
+fs_get_uid_test2 :: fn () #test {
+    filepath :: get_dummy_filepath();
+    defer string_delete(filepath);
+    fs_remove(filepath);
+    file, err :: fs_open(filepath, FSOpenMode.Create);
+    fs_close(file);
+    test_ok(err);
+    uid, err2 :: fs_get_uid(filepath);
+    test_ok(err2);
+    test_true(uid > 0);
+}
+
 fs_read_string_test :: fn () #test {
     file, err1 :: fs_open(#file, FSOpenMode.Read);
     defer fs_close(file);

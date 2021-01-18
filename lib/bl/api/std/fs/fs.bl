@@ -90,6 +90,9 @@ fs_close :: fn (handle: FSFile) #inline {
     _fs_impl_close(handle);
 }
 
+/// Return uniquie file id.
+fs_get_uid :: fn { _fs_impl_get_uid; _fs_impl_get_uid_by_name; }
+
 /// Try to remove file specified by `filepath` and return `OK` on success, otherwise
 /// return error.
 fs_remove :: fn (filepath: string) Error #inline {

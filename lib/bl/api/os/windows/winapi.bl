@@ -135,6 +135,20 @@ _FIND_DATA :: struct {
     cFileName: [_MAX_PATH]_CHAR;
     cAlternateFileName: [14]_CHAR;
 }
+
+_BY_HANDLE_FILE_INFORMATION :: struct {
+    dwFileAttributes: _DWORD;
+    ftCreationTime: _FILETIME;
+    ftLastAccessTime: _FILETIME;
+    ftLastWriteTime: _FILETIME;
+    dwVolumeSerialNumber: _DWORD;
+    nFileSizeHigh: _DWORD;
+    nFileSizeLow: _DWORD;
+    nNumberOfLinks: _DWORD;
+    nFileIndexHigh: _DWORD;
+    nFileIndexLow: _DWORD;
+}
+_LPBY_HANDLE_FILE_INFORMATION :: *_BY_HANDLE_FILE_INFORMATION;
 _FIND_DATAA :: _FIND_DATA;
 _P_FIND_DATAA :: *_FIND_DATA;
 _LP_FIND_DATAA :: *_FIND_DATA;
@@ -249,6 +263,7 @@ _SECURITY_ATTRIBUTES :: struct {
 _PSECURITY_ATTRIBUTES  :: *_SECURITY_ATTRIBUTES;
 _LPSECURITY_ATTRIBUTES :: *_SECURITY_ATTRIBUTES;
 _LPTHREAD_START_ROUTINE :: *fn (args: _LPVOID) _DWORD;
+
 _CreateThread :: fn (
     lpThreadAttributes: _LPSECURITY_ATTRIBUTES,
     dwStackSize: _SIZE_T,
@@ -257,14 +272,17 @@ _CreateThread :: fn (
     dwCreationFlags: _DWORD,
     lpThreadId: _LPDWORD 
 ) _HANDLE #extern "CreateThread";
+
 _GetCurrentThread :: fn () _HANDLE #extern "GetCurrentThread";
 _TerminateThread :: fn (handle: _HANDLE, exit_code: _DWORD) _BOOL #extern "TerminateThread";
 _GetExitCodeThread :: fn (hThread: _HANDLE, lpExitCode: _LPDWORD) _BOOL #extern "GetExitCodeThread";
+
 _CreateMutexA :: fn (
     lpMutexAttributes: _LPSECURITY_ATTRIBUTES,
     bInitialOwner: _BOOL,
     lpName: _LPCSTR
 ) _HANDLE #extern "CreateMutexA";
+
 _ReleaseMutex :: fn (hMutex: _HANDLE) _BOOL #extern "ReleaseMutex";
 _GetTickCount :: fn () _DWORD #extern "GetTickCount";
 _QueryPerformanceCounter :: fn (lpPerformanceCount: *_LARGE_INTEGER) _BOOL #extern "QueryPerformanceCounter";
@@ -296,3 +314,4 @@ _DeleteCriticalSection :: fn (lpCriticalSection: _LPCRITICAL_SECTION) #extern "D
 _EnterCriticalSection  :: fn (lpCriticalSection: _LPCRITICAL_SECTION) #extern "EnterCriticalSection";
 _LeaveCriticalSection  :: fn (lpCriticalSection: _LPCRITICAL_SECTION) #extern "LeaveCriticalSection";
 _TryEnterCriticalSection :: fn (lpCriticalSection: _LPCRITICAL_SECTION ) _BOOL #extern "TryEnterCriticalSection";
+_GetFileInformationByHandle :: fn (hFile: _HANDLE, lpFileInformation: _LPBY_HANDLE_FILE_INFORMATION) _BOOL #extern "GetFileInformationByHandle";
