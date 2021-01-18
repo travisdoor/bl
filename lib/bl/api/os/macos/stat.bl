@@ -32,23 +32,23 @@ _S_ISREG :: fn (mode: u32) bool #inline {
 }
 
 _stat_t :: struct {
-	st_dev: _dev_t;
-	st_mode: _mode_t;
-	st_nlink: _nlink_t;
-	st_ino: _ino64_t;
-	st_uid: _uid_t;
-	st_gid: _gid_t;
-	st_rdev: _dev_t;
-	st_atimespec: _timespec;
-	st_mtimespec: _timespec;
-	st_ctimespec: _timespec;
-	st_birthtimespec: _timespec;
-	st_size: _off_t;
-	st_blocks: _blkcnt_t; 
-	st_blksize: _blksize_t;
-	st_flags: u32;
-	st_gen: u32;
-	st_lspare: s32;
+    	st_dev: _dev_t;
+	    st_mode: _mode_t;
+	    st_nlink: _nlink_t;
+	    st_ino: _ino64_t;
+	    st_uid: _uid_t;
+	    st_gid: _gid_t;
+	    st_rdev: _dev_t;
+	    st_atimespec: _timespec;
+	    st_mtimespec: _timespec;
+	    st_ctimespec: _timespec;
+	    st_birthtimespec: _timespec;
+	    st_size: _off_t;
+	    st_blocks: _blkcnt_t; 
+    	st_blksize: _blksize_t;
+    	st_flags: u32;
+    	st_gen: u32;
+    	st_lspare: s32;
     st_qspare: [2]s64;
 }
 _stat :: fn (path: *c_char, buf: *_stat_t) c_int #extern "stat$INODE64";

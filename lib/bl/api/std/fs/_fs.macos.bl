@@ -36,6 +36,22 @@ _fs_impl_remove :: fn (filepath: string) Error #inline {
     return ok();
 }
 
+_fs_impl_get_uid :: fn (handle: FSFile) (u64, Error) {
+    tmp: _stat_t;
+    if _fstat(auto handle, &tmp) != 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot get file information.", estr);
+    }
+    return auto tmp.st_ino, ok();
+}
+
+_fs_impl_get_uid_by_name :: fn (filepath: string) (u64, Error) {
+    file, err1 :: fs_open(filepath);
+    defer fs_close(file);
+    if !is_ok(err1) { return 0, err1; }
+    return _fs_impl_get_uid(file);
+}
+
 _fs_impl_copy :: fn (src: string, dest: string, override: bool) Error {
     if string_is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     if string_is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }

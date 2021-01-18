@@ -57,6 +57,22 @@ _fs_impl_close :: fn (handle: FSFile) #inline {
     _close(auto handle);
 }
 
+_fs_impl_get_uid :: fn (handle: FSFile) (u64, Error) {
+    tmp: _stat_t;
+    if _fstat(auto handle, &tmp) != 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot get file information.", estr);
+    }
+    return auto tmp.st_ino, ok();
+}
+
+_fs_impl_get_uid_by_name :: fn (filepath: string) (u64, Error) {
+    file, err1 :: fs_open(filepath);
+    defer fs_close(file);
+    if !is_ok(err1) { return 0, err1; }
+    return _fs_impl_get_uid(file);
+}
+
 _fs_impl_size :: fn (handle: FSFile) (usize, Error) #inline {
     tmp: _stat_t;
     if _fstat(auto handle, &tmp) != 0 {
