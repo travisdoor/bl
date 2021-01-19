@@ -54,12 +54,12 @@ _fs_impl_close :: fn (handle: FSFile) #inline {
 }
 
 _fs_impl_get_uid :: fn (handle: FSFile) (u64, Error) {
-    tmp: _BY_HANDLE_FILE_INFORMATION #noinit;
+    tmp: _BY_HANDLE_FILE_INFORMATION;
     if _GetFileInformationByHandle(auto handle, &tmp) == 0 {
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot get file information.", estr);
     }
-    uid :: ((cast(u64) tmp.nFileIndexHigh) << sizeof(tmp.nFileIndexLow)) | (cast(u64) tmp.nFileIndexLow);
+    uid :: ((cast(u64) tmp.nFileIndexHigh) << 32) + (cast(u64) tmp.nFileIndexLow);
     return uid, ok();
 }
 
