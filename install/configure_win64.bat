@@ -53,9 +53,9 @@ if not exist "..\etc" mkdir ..\etc
   echo.// Full path to Visual Studio vcvarsall.bat file.
   echo.VC_VARS_ALL "%VC_VARS_ALL%"
   echo.// Linker options used for release linking.
-  echo.LINKER_OPT "/ENTRY:__os_start /SUBSYSTEM:CONSOLE /NOLOGO /INCREMENTAL:NO /MACHINE:x64 kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib Msvcrt.lib vcruntime.lib Shlwapi.lib"
+  echo.LINKER_OPT "/ENTRY:__os_start /SUBSYSTEM:CONSOLE /NOLOGO /INCREMENTAL:NO /MACHINE:x64 kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib msvcrt.lib vcruntime.lib Shlwapi.lib"
   echo.// Linker options used for debug linking.
-  echo.LINKER_OPT_DEBUG "/ENTRY:__os_start /SUBSYSTEM:CONSOLE /NOLOGO /INCREMENTAL:NO /MACHINE:x64 /DEBUG kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib Msvcrt.lib vcruntime.lib Shlwapi.lib"
+  echo.LINKER_OPT_DEBUG "/ENTRY:__os_start /SUBSYSTEM:CONSOLE /NOLOGO /INCREMENTAL:NO /MACHINE:x64 /DEBUG kernel32.lib user32.lib gdi32.lib shell32.lib ucrtd.lib legacy_stdio_definitions.lib msvcrtd.lib vcruntimed.lib Shlwapi.lib"
   echo.// Additional linker library path.
   echo.LINKER_LIB_PATH ""
 ) > %CONFIG_FILE%
