@@ -36,15 +36,7 @@
 //! 
 //! Set of various utility functions.
 
-/// Checks whether `v` has set `flag`.
-is_flag_u32 :: fn (v: u32, flag: u32) bool #inline {
-    return (v & flag) == flag;
-};
-
-/// Checks whether `v` has set `flag`.
-is_flag_s32 :: fn (v: s32, flag: s32) bool #inline {
-    return (v & flag) == flag;
-};
+is_flag :: fn { is_flag_u64; is_flag_s64; }
 
 /// Converts zero terminated C style string to BL string. Result
 /// string shares original memory of `cstr`.
@@ -62,3 +54,13 @@ ptr_diff :: fn (a: *u8, b: *u8) s64 #inline {
     return (cast(s64) a) - (cast(s64) b); 
 }
 
+#private
+/// Checks whether `v` has set `flag`.
+is_flag_u64 :: fn (v: u64, flag: u64) bool #inline {
+    return (v & flag) == flag;
+};
+
+/// Checks whether `v` has set `flag`.
+is_flag_s64 :: fn (v: s64, flag: s64) bool #inline {
+    return (v & flag) == flag;
+};

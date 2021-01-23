@@ -2184,7 +2184,7 @@ void type_init_llvm_fn(Context *cnt, MirType *type)
 
     if (has_ret) {
         if (cnt->assembly->options.reg_split && mir_is_composit_type(ret_type) &&
-            ret_type->store_size_bytes > 16) {
+            ret_type->store_size_bytes >= 16) {
             type->data.fn.has_sret = true;
             tsa_push_LLVMType(&llvm_args, LLVMPointerType(ret_type->llvm_type, 0));
             llvm_ret = LLVMVoidTypeInContext(cnt->assembly->llvm.cnt);
