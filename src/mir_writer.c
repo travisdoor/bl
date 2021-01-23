@@ -53,23 +53,17 @@ static void print_header(const char *name, const char *filename, FILE *stream)
 
 void mir_writer_run(Assembly *assembly)
 {
-    char *export_file = bl_malloc(sizeof(char) * (strlen(assembly->name) + 5));
-    if (!export_file) BL_ABORT("bad alloc");
-    strcpy(export_file, assembly->name);
-    strcat(export_file, ".blm");
-
-    FILE *f = fopen(export_file, "w");
+    TString *export_file = get_tmpstr();
+    tstring_setf(export_file, "%s/%s.blm", assembly->options.out_dir.data, assembly->name);
+    FILE *f = fopen(export_file->data, "w");
     if (f == NULL) {
-        builder_error("cannot open file %s", export_file);
-        free(export_file);
+        builder_error("cannot open file %s", export_file->data);
+        put_tmpstr(export_file);
         return;
     }
-
-    print_header(assembly->name, export_file, f);
+    print_header(assembly->name, export_file->data, f);
     mir_print_assembly(assembly, f);
-
     fclose(f);
-    builder_note("Mir code written into %s", export_file);
-
-    bl_free(export_file);
+    builder_note("Mir code written into %s", export_file->data);
+    put_tmpstr(export_file);
 }

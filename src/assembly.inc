@@ -51,3 +51,42 @@
 	MirType *t_CodeLocation;
 	MirType *t_CodeLocation_ptr;
 #endif
+
+#if defined(GEN_ASSEMBLY_OPT_DECLS) || defined(GEN_ASSEMBLY_OPT_DEFAULTS)
+    #define OPTS_SHARED \
+        OPT(BuildMode,   build_mode,     builder.options.build_mode) \
+        OPT(BuildDIKind, build_di_kind,  builder.options.build_di_kind) \
+        OPT(bool,        run,            builder.options.run) \
+        OPT(bool,        run_tests,      builder.options.run_tests) \
+        OPT(bool,        copy_deps,      false) \
+        OPT(bool,        verify_llvm,    builder.options.verify_llvm) \
+        OPT(bool,        reg_split,      builder.options.reg_split) \
+        OPT(bool,        print_tokens,   builder.options.print_tokens) \
+        OPT(bool,        print_ast,      builder.options.print_ast) \
+        OPT(bool,        emit_llvm,      builder.options.emit_llvm) \
+        OPT(bool,        emit_mir,       builder.options.emit_mir) \
+        OPT(bool,        no_bin,         builder.options.no_bin) \
+        OPT(bool,        no_llvm,        builder.options.no_llvm) \
+        OPT(bool,        no_analyze,     builder.options.no_analyze) \
+        OPT(bool,        syntax_only,    builder.options.syntax_only) \
+
+    #define OPTS \
+        OPT(ModuleImportPolicy, module_import_policy, IMPORT_POLICY_SYSTEM) 
+#endif
+
+#if defined(GEN_ASSEMBLY_OPT_DECLS)
+    #define OPT(type, name, default_value) type name;
+    OPTS_SHARED
+    OPTS
+    #undef OPT
+    #undef OPTS
+    #undef OPTS_SHARED
+#elif defined(GEN_ASSEMBLY_OPT_DEFAULTS)
+    #define OPT(type, name, default_value) assembly->options.##name = default_value;
+    OPTS_SHARED
+    OPTS
+    #undef OPT
+    #undef OPTS
+    #undef OPTS_SHARED
+#endif
+

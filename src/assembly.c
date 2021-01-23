@@ -189,7 +189,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) BL_ABORT("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path            = _path;
+    const char *path = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {
@@ -316,10 +316,9 @@ Assembly *assembly_new(const char *name)
     vm_init(&assembly->vm, VM_STACK_SIZE);
 
     // set defaults
-    assembly->options.build_mode           = builder.options.build_mode;
-    assembly->options.build_di_kind        = builder.options.build_di_kind;
-    assembly->options.run_tests            = builder.options.run_tests;
-    assembly->options.module_import_policy = IMPORT_POLICY_SYSTEM;
+#define GEN_ASSEMBLY_OPT_DEFAULTS
+#include "assembly.inc"
+#undef GEN_ASSEMBLY_OPT_DEFAULTS
 #if BL_PLATFORM_WIN // Use target platform tag.
     assembly->options.copy_deps = true;
 #else

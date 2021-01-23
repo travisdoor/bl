@@ -1,8 +1,9 @@
 main :: fn () s32 {
-    a.b;
-    
+    func1();
+    func2();    
     return 0;
 }
 
 
-
+func1 :: fn () #deprecated {}
+func2 :: fn () #deprecated "Use func1 instead!" {}

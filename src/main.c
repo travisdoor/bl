@@ -167,7 +167,7 @@ int main(s32 argc, char *argv[])
     } else {
         while (*argv != NULL) {
             assembly_add_unit(assembly, *argv, NULL);
-            if (builder.options.run) break;
+            if (assembly->options.run) break;
             argv++;
         }
     }

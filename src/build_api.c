@@ -60,16 +60,6 @@ BL_EXPORT void __append_linker_options(Assembly *assembly, const char *opt)
     assembly_append_linker_options(assembly, opt);
 }
 
-BL_EXPORT s32 __get_build_mode(Assembly *assembly)
-{
-    return assembly->options.build_mode;
-}
-
-BL_EXPORT void __set_build_mode(Assembly *assembly, s32 mode)
-{
-    assembly->options.build_mode = mode;
-}
-
 BL_EXPORT void __set_output_dir(Assembly *assembly, const char *dir)
 {
     assembly_set_output_dir(assembly, dir);
@@ -95,12 +85,4 @@ BL_EXPORT s32 __get_module_import_policy(Assembly *assembly)
     return assembly->options.module_import_policy;
 }
 
-BL_EXPORT void __set_testing(Assembly *assembly, int v)
-{
-    assembly->options.run_tests = (bool)v;
-}
 
-BL_EXPORT void __set_copy_deps(Assembly *assembly, int v)
-{
-    assembly->options.copy_deps = (bool)v;
-}

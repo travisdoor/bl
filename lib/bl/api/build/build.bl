@@ -106,9 +106,51 @@
 //! All argumets passed after `-build|-b` compiler flag are automatically forwarded into
 //! `command_line_arguments` global variable.
 
-/// Opaque assembly handle. Assembly is representation of whole program workspace, it can be compiled
-/// into executable or binary. Assembly is consist of Units, every unit represents one source file.
-Assembly :: *u8;
+/// Assembly is representation of whole program workspace, it's a consist of Units, every unit represents 
+/// one source file.
+Assembly :: struct { // !!! ABI sync AssemblyOptions !!!
+    /// Specify build mode of the assembly. See :ref:`BuildMode`.
+    build_mode: BuildMode;
+    /// Specify debug information format used for assembly in debug mode. See :ref:`DebugInfo`.
+    debug_info_kind: DebugInfo;
+    /// Execute main function of assembly in compile time when true.
+    run: bool;
+    /// Execute all available unit tests in compile time when true.
+    run_tests: bool;
+    /// Tells whether copying of all runtime dependencies of executable into the current output
+    /// directory set by :ref:`set_output_dir` is enabled. This value is `true` by default on
+    /// Windows and `false` by default on Unix platforms. When this feature is enabled, an output
+    /// directory will contain all dynamically linked libraries added into the solution by
+    /// :ref:`link_library` function call or specified as dependency of imported module.
+    ///
+    /// No copying is done when library is already present in the output directory (to speed
+    /// up compilation times), library updates must be handled manually (for example by deleting
+    /// or renaming all libraries you want update).
+    ///
+    /// When :ref:`ModuleImportPolicy` is set to `Bundle` or `BundleLatest` compiler will lookup
+    /// dependencies in project's local modules.
+    copy_dependencies: bool;
+    /// Verify created llvm module and print the result when true.
+    verify_llvm: bool;
+    /// Enable funcion interfaces to optimize inputs and outputs to fit register values.
+    register_split: bool;
+    /// Print lexer output into console.
+    print_tokens: bool;
+    /// Print parser output into console.
+    print_ast: bool;
+    /// Emit llvm IR into file.
+    emit_llvm: bool;
+    /// Emit MIR into file.    
+    emit_mir: bool;
+    /// Do not create any binary output when true.
+    no_bin: bool;
+    /// Do not generate LLVM IR when true.
+    no_llvm: bool;
+    /// Disable semantic analyze of code when true.
+    no_analyze: bool;
+    /// Check only syntax when true.
+    syntax_only: bool;
+}
 
 /// Opaque file unit handle. Unit is representation of single source file which can be loaded into 
 /// the :ref:`Assembly`.
@@ -125,6 +167,12 @@ BuildMode :: enum s32 {
     /// Small release mode; no debug symbols are produced, optimizations are applied
     /// to produce binary reasonably fast and as small as possible.
     ReleaseSmall :: 3;
+}
+
+/// Debug information format.
+DebugInfo :: enum s32 {
+    Dwarf :: 1;
+    Codeview :: 2;
 }
 
 /// Add new executable assembly into the current compilation queue. Assembly with
@@ -152,7 +200,7 @@ BuildMode :: enum s32 {
 ///             }
 ///         }
 ///     }
-add_executable :: fn (name: string) Assembly {
+add_executable :: fn (name: string) *Assembly {
     if name.len == 0 { panic("Invalid executable name!"); }
 
     return __add_executable(auto name.ptr);
@@ -160,7 +208,7 @@ add_executable :: fn (name: string) Assembly {
 
 /// Add new source file into the assembly. This basically load new source file into
 /// the :ref:`Assembly`.
-add_unit :: fn (assembly: Assembly, filepath: string) Unit {
+add_unit :: fn (assembly: *Assembly, filepath: string) Unit {
     if !assembly { panic("Invalid assembly!"); }
     if filepath.len == 0 { panic("Invalid unit path!"); }
 
@@ -168,7 +216,7 @@ add_unit :: fn (assembly: Assembly, filepath: string) Unit {
 }
 
 /// Add path for linker library lookup.
-add_lib_path :: fn (assembly: Assembly, path: string) {
+add_lib_path :: fn (assembly: *Assembly, path: string) {
     if !assembly { panic("Invalid assembly!"); }
     if path.len == 0 { panic("Invalid library path!"); }
 
@@ -205,12 +253,12 @@ add_lib_path :: fn (assembly: Assembly, path: string) {
 ///         }
 ///     }
 /// 
-///     target_windows :: fn (exe: Assembly) {
+///     target_windows :: fn (exe: *Assembly) {
 ///         link_library(exe, "freetype");
 ///         link_library(exe, "zlib");
 ///         link_library(exe, "png");
 ///     }
-link_library :: fn (assembly: Assembly, name: string) {
+link_library :: fn (assembly: *Assembly, name: string) {
     if !assembly { panic("Invalid assembly!"); }
     if name.len == 0 { panic("Invalid library name!"); }
 
@@ -219,22 +267,10 @@ link_library :: fn (assembly: Assembly, name: string) {
 
 /// Appends raw string data directly to linker command. Passed option
 /// is added without any processing and copatibility validation. 
-append_linker_options :: fn (assembly: Assembly, option: string) {
+append_linker_options :: fn (assembly: *Assembly, option: string) {
     if !assembly { panic("Invalid assembly!"); }
     if option.len == 0 { return; }
     __append_linker_options(assembly, auto option.ptr);
-}
-
-/// Get build mode of the assembly. 
-get_build_mode :: fn (assembly: Assembly) BuildMode {
-    if !assembly { panic("Invalid assembly!"); }
-    return auto __get_build_mode(assembly);
-}
-
-/// Set build mode of the assembly. See :ref:`BuildMode`.
-set_build_mode :: fn (assembly: Assembly, mode: BuildMode) {
-    if !assembly { panic("Invalid assembly!"); }
-    __set_build_mode(assembly, auto mode);
 }
 
 /// Set build output directory. This is directory where all output files will be
@@ -242,45 +278,20 @@ set_build_mode :: fn (assembly: Assembly, mode: BuildMode) {
 /// 
 /// Directory path `dir`. This can contain non-existing directories separated by `/`,
 /// compiler will create all missing directories in passed path.
-set_output_dir :: fn (assembly: Assembly, dir: string) {
+///
+/// Specified directory will be used also for build temporary files.
+set_output_dir :: fn (assembly: *Assembly, dir: string) {
     if !assembly { panic("Invalid assembly!"); }
     if string_is_empty(dir) { return; }
     __set_output_dir(assembly, auto dir.ptr);
 }
 
 /// Get output directory specified by :ref:`set_output_dir` or empty string.
-get_output_dir :: fn (assembly: Assembly) string {
+get_output_dir :: fn (assembly: *Assembly) string {
     if !assembly { panic("Invalid assembly!"); }
     cdir :: __get_output_dir(assembly);    
     if !cdir { return string_empty; }
     return cstr_to_str(auto cdir);
-}
-
-/// Set whether copying of all runtime dependencies of executable into the current output
-/// directory set by :ref:`set_output_dir` is enabled. This value is `true` by default on
-/// Windows and `false` by default on Unix platforms. When this feature is enabled, an output
-/// directory will contain all dynamically linked libraries added into the solution by
-/// :ref:`link_library` function call or specified as dependency of imported module.
-///
-/// No copying is done when library is already present in the output directory (to speed
-/// up compilation times), library updates must be handled manually (for example by deleting
-/// or renaming all libraries you want update).
-///
-/// When :ref:`ModuleImportPolicy` is set to `Bundle` or `BundleLatest` compiler will lookup
-/// dependencies in project's local modules.
-set_copy_deps :: fn (assembly: Assembly, v: bool) {
-    if !assembly { panic("Invalid assembly!"); }
-    cbool := 0;
-    if v { cbool = 1; }
-    __set_copy_deps(assembly, cbool);
-}
-
-/// Set whether compile-time execution of all tests declared in assembly is enabled.
-set_testing :: fn (assembly: Assembly, v: bool) {
-    if !assembly { panic("Invalid assembly!"); }
-    cbool := 0;
-    if v { cbool = 1; }
-    __set_testing(assembly, cbool);
 }
 
 /// Specify import module policy in :ref:`set_module_dir` function call. Module dependencies
@@ -309,14 +320,14 @@ ModuleImportPolicy :: enum s32 {
 /// Sets module directory `dir` for `assembly`. All imported modules will be copied into
 /// this directory according to chosen :ref:`ModuleImportPolicy`. Module policy is set to
 /// `System` by default even if this function has not been called.
-set_module_dir :: fn (assembly: Assembly, dir: string, policy := ModuleImportPolicy.System) {
+set_module_dir :: fn (assembly: *Assembly, dir: string, policy := ModuleImportPolicy.System) {
     if !assembly { panic("Invalid assembly!"); }
     if string_is_empty(dir) { return; }
     __set_module_dir(assembly, auto dir.ptr, auto policy);
 }
 
 /// Get module directory specified by :ref:`set_module_dir` or default one.
-get_module_dir :: fn (assembly: Assembly) string {
+get_module_dir :: fn (assembly: *Assembly) string {
     if !assembly { panic("Invalid assembly!"); }
     cdir :: __get_module_dir(assembly);    
     if !cdir { return string_empty; }
@@ -324,23 +335,19 @@ get_module_dir :: fn (assembly: Assembly) string {
 }
 
 /// Get module import policy specified by :ref:`set_module_dir` or default one.
-get_module_import_policy :: fn (assembly: Assembly) ModuleImportPolicy {
+get_module_import_policy :: fn (assembly: *Assembly) ModuleImportPolicy {
     if !assembly { panic("Invalid assembly!"); }
     return auto __get_module_import_policy(assembly);    
 }
 
 #private
-__add_executable :: fn (name: *c_char) Assembly #extern;
-__add_unit :: fn (assembly: Assembly, filepath: *c_char) Unit #extern;
-__add_lib_path :: fn (assembly: Assembly, path: *c_char) #extern;
-__link_library :: fn (assembly: Assembly, name: *c_char) #extern;
-__append_linker_options :: fn (assembly: Assembly, option: *c_char) #extern;
-__set_build_mode :: fn (assembly: Assembly, mode: c_int) #extern;
-__get_build_mode :: fn (assembly: Assembly) c_int #extern;
-__set_output_dir :: fn (assembly: Assembly, dir: *c_char) #extern;
-__get_output_dir :: fn (assembly: Assembly) *c_char #extern;
-__set_module_dir :: fn (assembly: Assembly, dir: *c_char, policy: c_int) #extern;
-__get_module_dir :: fn (assembly: Assembly) *c_char #extern;
-__get_module_import_policy :: fn (assembly: Assembly) s32 #extern;
-__set_testing :: fn (assembly: Assembly, v: c_int) #extern;
-__set_copy_deps :: fn (assembly: Assembly, v: c_int) #extern;
+__add_executable :: fn (name: *c_char) *Assembly #extern;
+__add_unit :: fn (assembly: *Assembly, filepath: *c_char) Unit #extern;
+__add_lib_path :: fn (assembly: *Assembly, path: *c_char) #extern;
+__link_library :: fn (assembly: *Assembly, name: *c_char) #extern;
+__append_linker_options :: fn (assembly: *Assembly, option: *c_char) #extern;
+__set_output_dir :: fn (assembly: *Assembly, dir: *c_char) #extern;
+__get_output_dir :: fn (assembly: *Assembly) *c_char #extern;
+__set_module_dir :: fn (assembly: *Assembly, dir: *c_char, policy: c_int) #extern;
+__get_module_dir :: fn (assembly: *Assembly) *c_char #extern;
+__get_module_import_policy :: fn (assembly: *Assembly) s32 #extern;

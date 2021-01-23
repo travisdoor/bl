@@ -35,17 +35,13 @@
 void bc_writer_run(Assembly *assembly)
 {
     TracyCZone(_tctx, true);
-    char *export_file = malloc(sizeof(char) * (strlen(assembly->name) + 4));
-    if (!export_file) BL_ABORT("bad alloc");
-    strcpy(export_file, assembly->name);
-    strcat(export_file, ".ll");
-
+    TString *export_file = get_tmpstr();
+    tstring_setf(export_file, "%s/%s.ll", assembly->options.out_dir.data, assembly->name);
     char *str = LLVMPrintModuleToString(assembly->llvm.module);
-
-    FILE *f = fopen(export_file, "w");
+    FILE *f   = fopen(export_file->data, "w");
     if (f == NULL) {
-        builder_error("Cannot open file %s", export_file);
-        free(export_file);
+        builder_error("Cannot open file %s", export_file->data);
+        put_tmpstr(export_file);
         TracyCZoneEnd(_tctx);
         return;
     }
@@ -53,8 +49,8 @@ void bc_writer_run(Assembly *assembly)
     fclose(f);
     LLVMDisposeMessage(str);
 
-    builder_note("Byte code written into %s", export_file);
+    builder_note("Byte code written into %s", export_file->data);
 
-    free(export_file);
+    put_tmpstr(export_file);
     TracyCZoneEnd(_tctx);
 }

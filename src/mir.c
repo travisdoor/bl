@@ -2183,7 +2183,7 @@ void type_init_llvm_fn(Context *cnt, MirType *type)
     tsa_init(&llvm_args);
 
     if (has_ret) {
-        if (builder.options.reg_split && mir_is_composit_type(ret_type) &&
+        if (cnt->assembly->options.reg_split && mir_is_composit_type(ret_type) &&
             ret_type->store_size_bytes > 16) {
             type->data.fn.has_sret = true;
             tsa_push_LLVMType(&llvm_args, LLVMPointerType(ret_type->llvm_type, 0));
@@ -2204,7 +2204,7 @@ void type_init_llvm_fn(Context *cnt, MirType *type)
             arg->llvm_index = (u32)llvm_args.size;
 
             // Composit types.
-            if (builder.options.reg_split && mir_is_composit_type(arg->type)) {
+            if (cnt->assembly->options.reg_split && mir_is_composit_type(arg->type)) {
                 LLVMContextRef llvm_cnt = cnt->assembly->llvm.cnt;
 
                 u32   start = 0;
@@ -10104,7 +10104,7 @@ void mir_run(Assembly *assembly)
     if (builder.errorc) goto SKIP;
 
     // Skip analyze if no_analyze is set by user.
-    if (builder.options.no_analyze) goto SKIP;
+    if (assembly->options.no_analyze) goto SKIP;
 
     // Analyze pass
     analyze(&cnt);

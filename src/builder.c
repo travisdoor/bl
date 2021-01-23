@@ -236,7 +236,7 @@ int compile_unit(Unit *unit, Assembly *assembly)
     INTERRUPT_ON_ERROR;
     lexer_run(unit);
     INTERRUPT_ON_ERROR;
-    if (builder.options.print_tokens) {
+    if (assembly->options.print_tokens) {
         token_printer_run(unit);
         INTERRUPT_ON_ERROR;
     }
@@ -248,7 +248,7 @@ INTERRUPT:
 
 int compile_assembly(Assembly *assembly)
 {
-    if (builder.options.print_ast) ast_printer_run(assembly, stdout);
+    if (assembly->options.print_ast) ast_printer_run(assembly, stdout);
     INTERRUPT_ON_ERROR;
 
     if (builder.options.docs) docs_run(assembly);
@@ -257,13 +257,13 @@ int compile_assembly(Assembly *assembly)
     linker_run(assembly);
     INTERRUPT_ON_ERROR;
 
-    FINISH_IF(builder.options.syntax_only);
+    FINISH_IF(assembly->options.syntax_only);
 
     mir_run(assembly);
-    if (builder.options.emit_mir) mir_writer_run(assembly);
+    if (assembly->options.emit_mir) mir_writer_run(assembly);
     INTERRUPT_ON_ERROR;
     // Run main
-    if (builder.options.run) builder.last_script_mode_run_status = vm_entry_run(assembly);
+    if (assembly->options.run) builder.last_script_mode_run_status = vm_entry_run(assembly);
 
     // Handle build mode
     if (assembly->options.build_mode == BUILD_MODE_BUILD) vm_build_entry_run(assembly);
@@ -271,8 +271,8 @@ int compile_assembly(Assembly *assembly)
     // Run test cases
     if (assembly->options.run_tests) builder.test_failc = vm_tests_run(assembly);
 
-    FINISH_IF(builder.options.no_analyze);
-    FINISH_IF(builder.options.no_llvm);
+    FINISH_IF(assembly->options.no_analyze);
+    FINISH_IF(assembly->options.no_llvm);
     FINISH_IF(assembly->options.build_mode == BUILD_MODE_BUILD);
     ir_run(assembly);
     INTERRUPT_ON_ERROR;
@@ -280,12 +280,12 @@ int compile_assembly(Assembly *assembly)
     ir_opt_run(assembly);
     INTERRUPT_ON_ERROR;
 
-    if (builder.options.emit_llvm) {
+    if (assembly->options.emit_llvm) {
         bc_writer_run(assembly);
         INTERRUPT_ON_ERROR;
     }
 
-    if (!builder.options.no_bin) {
+    if (!assembly->options.no_bin) {
         obj_writer_run(assembly);
         INTERRUPT_ON_ERROR;
         native_bin_run(assembly);
@@ -420,7 +420,7 @@ void builder_init(void)
 #if BL_PLATFORM_MACOS || BL_PLATFORM_LINUX
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split     = false;
+    builder.options.reg_split = false;
 #endif
 
     // initialize LLVM statics
@@ -539,7 +539,7 @@ int builder_compile(Assembly *assembly)
     }
 
     if (builder.errorc) return builder.max_error;
-    if (builder.options.run) return builder.last_script_mode_run_status;
+    if (assembly->options.run) return builder.last_script_mode_run_status;
     if (builder.options.run_tests) return builder.test_failc;
     return EXIT_SUCCESS;
 }

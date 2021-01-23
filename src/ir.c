@@ -3204,7 +3204,7 @@ void ir_run(Assembly *assembly)
         llvm_di_builder_finalize(cnt.llvm_di_builder);
     }
 
-    if (builder.options.verify_llvm) {
+    if (assembly->options.verify_llvm) {
         char *llvm_error = NULL;
         if (LLVMVerifyModule(cnt.llvm_module, LLVMReturnStatusAction, &llvm_error)) {
             builder_warning("\nLLVM module not verified; error: \n%s", llvm_error);

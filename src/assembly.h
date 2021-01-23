@@ -59,20 +59,19 @@ typedef enum {
 } ModuleImportPolicy;
 
 typedef struct AssemblyOptions {
-    BuildMode          build_mode;
-    BuildDIKind        build_di_kind;
-    ModuleImportPolicy module_import_policy;
-    TString            custom_linker_opt;
-    TString            out_dir;    // Build output directory
-    TString            module_dir; // Module directory
-    TArray             lib_paths;
-    TArray             libs;
-    bool               run_tests;
-    bool               copy_deps;
+#define GEN_ASSEMBLY_OPT_DECLS
+#include "assembly.inc"
+#undef GEN_ASSEMBLY_OPT_DECLS
+
+    TString custom_linker_opt;
+    TString out_dir;    // Build output directory
+    TString module_dir; // Module directory
+    TArray  lib_paths;
+    TArray  libs;
 } AssemblyOptions;
 
 typedef struct Assembly {
-    AssemblyOptions options;
+    AssemblyOptions options; // must be first
 
     struct {
         ScopeArenas scope;

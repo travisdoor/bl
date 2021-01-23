@@ -5,6 +5,7 @@
 
 main :: fn () s32 {
     dbgalloc_init();
+    //dbgalloc_break_on(6);
     defer dbgalloc_terminate();
     return test_run();    
 }
@@ -117,6 +118,7 @@ fs_file_create_test2 :: fn () #test {
         defer fs_close(file);
         test_ok(err);
         str :: fs_read_string(file);
+        defer string_delete(str);
         test_eq(str, "Hello!");
     }
     fs_remove(filepath);
@@ -143,6 +145,7 @@ fs_create_append :: fn () #test {
         defer fs_close(file);
         test_ok(err);
         str, err2 :: fs_read_string(file);
+        defer string_delete(str);
         test_ok(err2);
         test_eq(str, "Hello!Hello!");
     }
@@ -191,10 +194,11 @@ fs_read_string_test2 :: fn () #test {
 }
 
 fs_read_slice_test :: fn () #test {
-    file :: fs_open(#file, FSOpenMode.Read);
+    file, err1 :: fs_open(#file, FSOpenMode.Read);
+    test_ok(err1);
     defer fs_close(file);
-    data, err := fs_read_slice(file);
-    test_ok(err);
+    data, err2 := fs_read_slice(file);
+    test_ok(err2);
     defer slice_terminate(data);
     test_not_null(data.ptr);
     test_neq(data.len, 0);

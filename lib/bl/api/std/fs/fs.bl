@@ -194,24 +194,28 @@ fs_size :: fn (handle: FSFile) (usize, Error) #inline {
 /// Read whole file content into string. Return new string instance containting
 /// file data and `OK` status on success, otherwise return empty string and error.
 /// Returned string is expected to be released by :ref:`string_delete` call if
-/// there was no error reported by function.
+/// there was no error reported by function. Result string is zero terminated even
+/// if file is empty.
 ///
 /// Example
 /// -------
 /// .. literalinclude:: /examples/docs/005.bl
 ///    :language: bl
 fs_read_string :: fn (handle: FSFile) (string, Error) {
-    size, err :: _fs_impl_size(handle);
-    if !is_ok(err) {
-        return string_empty, err;
+    size, err1 := _fs_impl_size(handle);
+    if !is_ok(err1) {
+        return string_empty, err1;
     }
+    size += 1; // To handle zero terminator.
     buf := string_new(cast(usize) size);
-    read, err2 :: _fs_impl_read(handle, buf.ptr, auto size);
+    read, err2 :: _fs_impl_read(handle, buf.ptr, auto size - 1);
     if !is_ok(err2) {
         string_delete(buf);
         return string_empty, err2;                
     }
-    buf.len = auto read;
+    buf.len = auto read + 1;
+    buf[buf.len-1] = '\0';
+    buf.len -= 1;
     return buf, ok();
 }
 

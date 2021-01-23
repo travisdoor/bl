@@ -56,7 +56,6 @@ typedef struct BuilderOptions {
     bool        no_analyze;
     bool        emit_llvm;
     bool        emit_mir;
-    bool        load_from_file;
     bool        syntax_only;
     bool        verbose;
     bool        reg_split;

@@ -262,12 +262,14 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
                 return;
             }
 
-            tmp: string;
+            tmp := string_new();
+            defer string_delete(tmp);
             if OS_KIND == OSKind.Windows { 
-                tmp = "out.exe 2>nul 1>nul"; 
+                string_append(&tmp, "out.exe ");
             } else {
-                tmp = "./out 1>/dev/null 2>/dev/null"; 
+                string_append(&tmp, "out ");
             }
+            string_append(&tmp, get_verbosity());
             state = os_execute(tmp);
             if state == 0 {
                 report_ok("Execution", file, state);
