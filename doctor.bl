@@ -267,7 +267,7 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
             if OS_KIND == OSKind.Windows { 
                 string_append(&tmp, "out.exe ");
             } else {
-                string_append(&tmp, "out ");
+                string_append(&tmp, "./out ");
             }
             string_append(&tmp, get_verbosity());
             state = os_execute(tmp);
