@@ -82,7 +82,7 @@
     #undef OPTS
     #undef OPTS_SHARED
 #elif defined(GEN_ASSEMBLY_OPT_DEFAULTS)
-    #define OPT(type, name, default_value) assembly->options.##name = default_value;
+    #define OPT(type, name, default_value) assembly->options.name = default_value;
     OPTS_SHARED
     OPTS
     #undef OPT
