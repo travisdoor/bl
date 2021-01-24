@@ -11,6 +11,7 @@
 #import "std/array"
 
 ArgCtx :: struct {
+    other: []string;
     help: bool;
 }
 
@@ -56,6 +57,11 @@ arg_parser_run :: fn (_parser: ArgParser, args: []string, ctx: *ArgCtx, start :=
 
     loop args.len > 0 {
         arg :: &args[0];
+        if arg.len > 0 && (^arg)[0] != '-' {
+            ctx.other.ptr = &args[0];
+            ctx.other.len = args.len;
+            break;
+        }
         found: bool;
         loop e := 0; e < parser.entries.len; e += 1 {
             entry :: &parser.entries[e];

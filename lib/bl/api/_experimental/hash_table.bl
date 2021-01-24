@@ -68,7 +68,7 @@ iter_equal :: fn (first: Iterator, second: Iterator) bool #inline {
  */
 HashTable :: struct {
     T: *TypeInfo;
-	len: usize;
+    	len: usize;
     end: Node;
     begin: *Node;
     buckets: []Bucket;

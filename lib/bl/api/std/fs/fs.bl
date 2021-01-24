@@ -266,6 +266,12 @@ fs_write_string :: fn (handle: FSFile, str: string) (s64, Error) #inline {
     return auto written_bytes, ok();    
 }
 
+fs_write_fmt :: fn (handle: FSFile, fmt: string, args: ...) (s64, Error) #inline {
+    buf: [1024]u8 #noinit;
+    len :: bprint(buf, fmt, args);
+    return fs_write_slice(handle, buf, len);
+}
+
 /// Write content of `v` slice into the file, return count of written bytes and `OK` if
 /// there is no error, otherwise return 0 and error. Optional argument `count` specify
 /// count of bytes from `v` to be written, negative value means whole content. When
