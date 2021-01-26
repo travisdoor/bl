@@ -6,21 +6,41 @@
 //! 
 //!    #import "std/arg_parser"
 //!
-//! Command line argument parsing tool. 
+//! Generic command line argument parsing tool.
+//! 
+//! Example
+//! -------
+//! .. literalinclude:: /examples/docs/014.bl
+//!    :language: bl
 
 #import "std/array"
 
+/// Arguments context base type.
 ArgCtx :: struct {
+    /// Contains other arguments not considered as options (i.e. input files).
     other: []string;
+    /// True when help was invoked implicitly.
     help: bool;
 }
 
+/// Argument parser opaque handle.
 ArgParser :: *u8;
+
+/// Argument parser callback function type. In context of :ref:`arg_parser_add`
+/// this callback function provides current `parser`, rest of the input argument
+/// slice starting from currently captured argument name and custom argument context `ctx`.
+/// Expected return of such function is count of parsed arguments from `args` input (at least
+/// one for successfully parsed argument with no additional input) and status.
+///
+/// See also: :ref:`arg_parser_add`
 ArgParserHandlerFn :: *fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error);
 
-arg_parser_new :: fn () ArgParser {
+/// Create new instance of parser with possibility to set custom help text. Use
+/// :ref:`arg_parser_delete` to release parser instance.
+arg_parser_new :: fn (help_text := string_empty) ArgParser {
     parser := cast(*Parser) alloc(sizeof(Parser));
     parser.pad = 0;
+    parser.help_text = string_new(help_text);
     array_init(parser.entries);
 
     arg_parser_add(
@@ -37,15 +57,20 @@ arg_parser_new :: fn () ArgParser {
     return auto parser;
 }
 
+/// Delete parser instance.
 arg_parser_delete :: fn (_parser: ArgParser) {
     parser: *Parser = auto _parser;
     loop i := 0; i < parser.entries.len; i += 1 {
         entry_delete(&parser.entries[i]);
     }
     array_terminate(parser.entries);
+    string_delete(parser.help_text);
     free(auto parser);
 }
 
+/// Perform parsing on input `args` slice and provide `ctx` as context to the argument parsing
+/// callbacks. `start` specify first element of `args` slice considered to be an argument.
+/// See also: :ref:`command_line_arguments` (note: first element contains name of the executable)
 arg_parser_run :: fn (_parser: ArgParser, args: []string, ctx: *ArgCtx, start := 0) Error {
     parser: *Parser = auto _parser;
     if start >= args.len {
@@ -86,6 +111,27 @@ arg_parser_run :: fn (_parser: ArgParser, args: []string, ctx: *ArgCtx, start :=
     return ok();
 }
 
+/// Add new argument specified by `short` and `long` name to be recognised by parser.
+/// The argument description can be specified as `help`. `handler` function is called
+/// every time parser hits this argument (`short` or `long` name match).
+/// Argument name must be unique name starting with `-`. Help command (as `-h` or `--help`)
+/// is added by default.
+///
+/// Example
+/// -------
+/// .. code-block:: bl
+///
+///    arg_parser_add(
+///        parser,
+///        "-d", // short name.
+///        "--debug", // long name.
+///        "Enable debug mode.", // Help text.
+///        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
+///            a: *MyArgs = auto ctx;
+///            a.is_debug = true;
+///            return 1, ok(); // One argument parsed ('-d' or '--debug') 
+///        });
+///
 arg_parser_add :: fn (
     _parser: ArgParser,
     short: string,
@@ -106,8 +152,12 @@ arg_parser_add :: fn (
     if parser.pad < pad { parser.pad = auto pad; }
 }
 
+/// Print help for all registered commands.
 arg_parser_print_help :: fn (_parser: ArgParser) {
     parser: *Parser = auto _parser;
+    if !string_is_empty(parser.help_text) {
+        print("%\n", parser.help_text);
+    }
     print("Options:\n");
     loop i := 0; i < parser.entries.len; i += 1 {
         entry :: &parser.entries[i];
@@ -123,6 +173,7 @@ arg_parser_print_help :: fn (_parser: ArgParser) {
 Parser :: struct {
     entries: [..]Entry;
     pad: s32;
+    help_text: string; 
 }
 
 Entry :: struct {
