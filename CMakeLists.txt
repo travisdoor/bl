@@ -160,6 +160,7 @@ set(SOURCE_FILES
     src/intrinsic.c
     src/docs.c
     src/vm_runner.c
+    src/link.c
     src/llvm_api.cpp
     src/llvm_di.cpp
     deps/tracy/TracyClient.cpp)

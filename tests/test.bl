@@ -1,9 +1,4 @@
 main :: fn () s32 {
-    func1();
-    func2();    
+    print("Hello!\n");
     return 0;
 }
-
-
-func1 :: fn () #deprecated {}
-func2 :: fn () #deprecated "Use func1 instead!" {}

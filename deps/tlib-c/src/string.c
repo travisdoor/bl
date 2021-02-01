@@ -119,11 +119,9 @@ void tstring_append_c(TString *str, const char v)
     tstring_append_n(str, &v, 1);
 }
 
-void tstring_setf(TString *str, const char *format, ...)
+void tstring_appendf(TString *str, const char *format, ...)
 {
-    tstring_clear(str);
-    ensure_space(str, strlen(format));
-
+    ensure_space(str, str->len + strlen(format));
     va_list argp;
     va_start(argp, format);
     while (*format != '\0') {

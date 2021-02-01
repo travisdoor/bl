@@ -35,6 +35,8 @@
 #include <unistd.h>
 #endif
 
+s32 link_exe(Assembly *assembly);
+
 #if BL_PLATFORM_WIN
 static const char *link_flag      = "";
 static const char *link_path_flag = "/LIBPATH:";
@@ -120,6 +122,8 @@ static void append_libs(Context *cnt, TString *buf)
 
 void native_bin_run(Assembly *assembly)
 {
+	link_exe(assembly);
+	
     TString *   buf     = get_tmpstr();
     Context     cnt     = {.assembly = assembly};
     const char *out_dir = assembly->options.out_dir.data;
@@ -186,7 +190,6 @@ void native_bin_run(Assembly *assembly)
 
     builder_log("Running native linker...");
     if (builder.options.verbose) builder_log("%s", buf->data);
-    /* TODO: handle error */
     if (system(buf->data) != 0) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_LIB_NOT_FOUND,
