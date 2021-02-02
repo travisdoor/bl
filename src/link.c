@@ -31,17 +31,29 @@
 #include "config.h"
 
 #define EXECUTABLE_EXT "exe"
+#define DLL_EXT "dll"
 #define LIB_EXT "lib"
 #define OBJECT_EXT "obj"
-#define LIB_PATH_FLAG "/LIBPATH"
-#define OUT_FLAG "/OUT"
+
+#define FLAG_LIBPATH "/LIBPATH"
+#define FLAG_OUT "/OUT"
+#define FLAG_ENTRY "/ENTRY"
+#define FLAG_SUBSYSTEM "/SUBSYSTEM"
+#define FLAG_NOLOGO "/NOLOGO"
+#define FLAG_INCPREMENTAL "/INCREMENTAL"
+#define FLAG_MACHINE "/MACHINE"
+#define FLAG_DEBUG "/DEBUG"
+#define FLAG_DLL "/DLL"
+
+#define DEFAULT_ARCH "x64"
+#define DEFAULT_ENTRY "__os_start"
 
 static void append_lib_paths(Assembly *assembly, TString *buf)
 {
     const char *dir;
     TARRAY_FOREACH(const char *, &assembly->options.lib_paths, dir)
     {
-        tstring_appendf(buf, "%s:\"%s\" ", LIB_PATH_FLAG, dir);
+        tstring_appendf(buf, "%s:\"%s\" ", FLAG_LIBPATH, dir);
     }
 }
 
@@ -56,24 +68,61 @@ static void append_libs(Assembly *assembly, TString *buf)
     }
 }
 
-s32 link_exe(Assembly UNUSED(*assembly))
+static void append_options(Assembly *assembly, TString *buf)
+{
+    // Some defaults which should be possible to modify later
+    const bool is_debug = assembly->options.build_mode == BUILD_MODE_DEBUG;
+
+    tstring_appendf(buf, "%s ", FLAG_NOLOGO);
+    //tstring_appendf(buf, "%s:%s ", FLAG_ENTRY, DEFAULT_ENTRY);
+    //tstring_appendf(buf, "%s:%s ", FLAG_SUBSYSTEM, "CONSOLE");
+    tstring_appendf(buf, "%s ", FLAG_DLL);
+    tstring_appendf(buf, "%s:%s ", FLAG_INCPREMENTAL, "NO");
+    tstring_appendf(buf, "%s:%s ", FLAG_MACHINE, DEFAULT_ARCH);
+    if (is_debug) tstring_appendf(buf, "%s ", FLAG_DEBUG);
+}
+
+static void append_default_opt(Assembly *assembly, TString *buf)
+{
+    const bool  is_debug    = assembly->options.build_mode == BUILD_MODE_DEBUG;
+    const char *default_opt = is_debug ? conf_data_get_str(&builder.conf, CONF_LINKER_OPT_DEBUG_KEY)
+                                       : conf_data_get_str(&builder.conf, CONF_LINKER_OPT_KEY);
+    tstring_appendf(buf, "%s ", default_opt);
+}
+
+static void append_custom_opt(Assembly *assembly, TString *buf)
+{
+    const char *custom_opt = assembly->options.custom_linker_opt.data;
+    if (custom_opt) tstring_appendf(buf, "%s ", custom_opt);
+}
+
+s32 link_exe(Assembly *assembly)
 {
     TString *   buf         = get_tmpstr();
     const char *linker_exec = conf_data_get_str(&builder.conf, CONF_LINKER_EXEC_KEY);
     const char *out_dir     = assembly->options.out_dir.data;
     const char *name        = assembly->name;
-    // const bool is_debug = assembly->options.build_mode == BUILD_MODE_DEBUG;
+
+    tstring_append(buf, "call ");
+    if (!builder.options.no_vcvars) {
+        const char *vc_vars_all = conf_data_get_str(&builder.conf, CONF_VC_VARS_ALL_KEY);
+        tstring_appendf(buf, "\"%s\" %s >NUL && ", vc_vars_all, DEFAULT_ARCH);
+    }
 
     // set executable
-    tstring_appendf(buf, "%s ", linker_exec);
+    tstring_appendf(buf, "\"%s\" ", linker_exec);
     // set input file
     tstring_appendf(buf, "\"%s/%s.%s\" ", out_dir, name, OBJECT_EXT);
     // set output file
-    tstring_appendf(buf, "%s:\"%s/%s.%s\" ", OUT_FLAG, out_dir, name, EXECUTABLE_EXT);
+    tstring_appendf(buf, "%s:\"%s/%s.%s\" ", FLAG_OUT, out_dir, name, DLL_EXT);
+    append_options(assembly, buf);
     append_lib_paths(assembly, buf);
     append_libs(assembly, buf);
+    append_default_opt(assembly, buf);
+    append_custom_opt(assembly, buf);
 
-    BL_LOG("command: %s", buf->data);
+    if (builder.options.verbose) builder_log("%s", buf->data);
+    s32 state = system(buf->data);
     put_tmpstr(buf);
-    return 0;
+    return state;
 }

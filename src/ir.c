@@ -741,17 +741,18 @@ static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn)
             LLVMAddAttributeAtIndex(fn->llvm_value, arg->llvm_index + 1, llvm_attr);
         }
     }
-
     if (IS_FLAG(fn->flags, FLAG_INLINE)) {
         LLVMAttributeRef llvm_attr = llvm_create_attribute(cnt->llvm_cnt, LLVM_ATTR_ALWAYSINLINE);
 
         LLVMAddAttributeAtIndex(fn->llvm_value, (unsigned)LLVMAttributeFunctionIndex, llvm_attr);
     }
-
     if (IS_FLAG(fn->flags, FLAG_NO_INLINE)) {
         LLVMAttributeRef llvm_attr = llvm_create_attribute(cnt->llvm_cnt, LLVM_ATTR_NOINLINE);
 
         LLVMAddAttributeAtIndex(fn->llvm_value, (unsigned)LLVMAttributeFunctionIndex, llvm_attr);
+    }
+    if (IS_FLAG(fn->flags, FLAG_EXPORT)) {
+        LLVMSetDLLStorageClass(fn->llvm_value, LLVMDLLExportStorageClass);
     }
 
     return fn->llvm_value;

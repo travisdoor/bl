@@ -5213,7 +5213,7 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     // Setup function linkage name, this will be later used by LLVM backend.
     if (fn->id && !fn->linkage_name) { // Has ID and has no linkage name specified.
         if (IS_FLAG(fn->flags, FLAG_EXTERN) || IS_FLAG(fn->flags, FLAG_ENTRY) ||
-            IS_FLAG(fn->flags, FLAG_INTRINSIC)) {
+            IS_FLAG(fn->flags, FLAG_EXPORT) || IS_FLAG(fn->flags, FLAG_INTRINSIC)) {
             fn->linkage_name = fn->id->str;
         } else {
             // Here we generate unique linkage name
@@ -5332,6 +5332,11 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
         testing_add_test_case(cnt, fn);
 
         // To be sure that test case will be generated in LLVM.
+        fn->emit_llvm = true;
+        ++fn->ref_count;
+    }
+
+    if (IS_FLAG(fn->flags, FLAG_EXPORT)) {
         fn->emit_llvm = true;
         ++fn->ref_count;
     }

@@ -88,6 +88,7 @@ typedef enum {
     HD_INTRINSIC   = 1 << 17,
     HD_TEST_FN     = 1 << 18,
     HD_IMPORT      = 1 << 19,
+    HD_EXPORT      = 1 << 20,
 } HashDirective;
 
 typedef struct {
@@ -603,6 +604,16 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         Ast *ext = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ext, SCOPE_GET(cnt));
         id_init(&ext->data.ident.id, tok_ext->value.str);
         return ext;
+    }
+
+    if (strcmp(directive, "export") == 0) {
+        set_satisfied(HD_EXPORT);
+        if (IS_NOT_FLAG(expected_mask, HD_EXPORT)) {
+            PARSE_ERROR(
+                ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
+            return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
+        }
+        return NULL;
     }
 
     if (strcmp(directive, "intrinsic") == 0) {
@@ -1157,6 +1168,7 @@ bool hash_directive_to_flags(HashDirective hd, u32 *out_flags)
         FLAG_CASE(HD_NO_INLINE, FLAG_NO_INLINE);
         FLAG_CASE(HD_NO_INIT, FLAG_NO_INIT);
         FLAG_CASE(HD_TEST_FN, FLAG_TEST_FN);
+        FLAG_CASE(HD_EXPORT, FLAG_EXPORT);
     default:
         break;
     }
@@ -1695,25 +1707,21 @@ Ast *parse_expr_lit_fn(Context *cnt)
     Ast *curr_decl = DECL_GET(cnt);
     if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
         u32 accepted = HD_EXTERN | HD_NO_INLINE | HD_INLINE | HD_COMPILER | HD_ENTRY |
-                       HD_BUILD_ENTRY | HD_INTRINSIC | HD_TEST_FN;
+                       HD_BUILD_ENTRY | HD_INTRINSIC | HD_TEST_FN | HD_EXPORT;
         u32 flags = 0;
         while (true) {
             HashDirective found        = HD_NONE;
             Ast *         hd_extension = parse_hash_directive(cnt, accepted, &found);
             if (!hash_directive_to_flags(found, &flags)) break;
-
             if ((found == HD_EXTERN || found == HD_INTRINSIC) && hd_extension) {
                 // Use extern flag extension on function declaration.
-
                 BL_ASSERT(hd_extension->kind == AST_IDENT &&
                           "Expected ident as #extern extension.");
                 BL_ASSERT(curr_decl->data.decl_entity.explicit_linkage_name == NULL);
                 curr_decl->data.decl_entity.explicit_linkage_name = hd_extension;
             }
-
             accepted &= ~found;
         }
-
         curr_decl->data.decl_entity.flags |= flags;
     }
 

@@ -58,6 +58,7 @@ typedef enum {
     FLAG_NO_INIT     = 1 << 8,  // no default initialization
     FLAG_INTRINSIC   = 1 << 9,  // intrinsics declaration
     FLAG_TEST_FN     = 1 << 10, // test function
+    FLAG_EXPORT      = 1 << 11, // symbols marked for dll export 
 } AstFlag;
 
 // map symbols to binary operation kind
