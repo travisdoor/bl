@@ -10,4 +10,5 @@ build :: fn () #build_entry {
 
 target_windows :: fn (exe: *Assembly) {
     set_output_dir(exe, "bin/win32");
+    add_unit(exe, "src/win32_impl.bl");
 }

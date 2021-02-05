@@ -1261,10 +1261,21 @@ Ast *parse_stmt_switch(Context *cnt)
     if (!tok_switch) return NULL;
 
     Ast *expr = parse_expr(cnt);
-    BL_ASSERT(expr && "This should be an error!");
+    if (!expr) {
+        Token *tok_err = tokens_consume(cnt->tokens);
+        PARSE_ERROR(ERR_EXPECTED_EXPR,
+                    tok_err,
+                    BUILDER_CUR_WORD,
+                    "Expected expression for the switch statement.");
+        return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
+    }
 
     Token *tok = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
-    BL_ASSERT(tok && "This should be an error!");
+    if (!tok) {
+        Token *tok_err = tokens_peek(cnt->tokens);
+        PARSE_ERROR(ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "Expected switch body block.");
+        return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
+    }
 
     TSmallArray_AstPtr *cases        = create_sarr(TSmallArray_AstPtr, cnt->assembly);
     Ast *               stmt_case    = NULL;
@@ -1295,7 +1306,12 @@ NEXT:
     }
 
     tok = tokens_consume_if(cnt->tokens, SYM_RBLOCK);
-    BL_ASSERT(tok && "This should be an error!");
+    if (!tok) {
+        Token *tok_err = tokens_peek(cnt->tokens);
+        PARSE_ERROR(
+            ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "Expected end of switch body block.");
+        return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
+    }
 
     Ast *stmt_switch = ast_create_node(cnt->ast_arena, AST_STMT_SWITCH, tok_switch, SCOPE_GET(cnt));
 

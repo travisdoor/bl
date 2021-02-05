@@ -1,0 +1,21 @@
+VS_WHERE :: "%ProgramFiles(x86)%/Microsoft Visual Studio/Installer/vswhere.exe";
+
+REQUIRED_DEPS :: {:[4]string:
+    CONF_FILE,
+    LIB_DIR,
+    "blc.exe",
+    "bl-lld-link.exe"
+};
+
+configure :: fn () Error {
+    if fs_exist(VS_WHERE) {
+        return error("Cannot find Visual Studio installation!");
+    } else {
+        tmp :: string_new();
+        defer string_delete(tmp);
+        os_execute(string_clear_concat(&tmp, "call \"", VS_WHERE, "\"", " -property installationPath"));
+    }
+    return ok();
+}
+
+#private

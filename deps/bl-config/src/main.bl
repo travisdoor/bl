@@ -7,21 +7,134 @@ HELP_TEXT ::
 "  bl-config [options]";
 
 LIB_DIR :: "../lib/bl/api";
+CONF_FILE :: "../etc/bl.conf";
 
 // Command line arguments context.
 Args :: struct #base ArgCtx {
+    silent: bool;
+    validate_only: bool;
+}
+
+Dependency :: struct {
+    path: string;
+    is_valid: bool;
 }
 
 g_args: Args;
+g_pwd: string;
+g_deps: [..]Dependency;
 
 main :: fn () s32 {
+    _context.print_log_fn = &custom_logger;
+    { // Setup pwd
+        exec_path :: os_get_exec_path();
+        defer string_delete(exec_path);
+        dir: string;
+        if string_split_by_last(exec_path, '/', &dir, null) {
+            g_pwd = string_new(dir);
+        } else {
+            g_pwd = string_new(exec_path);
+        }
+    }
+    defer string_delete(g_pwd);
+    defer cleanup();
+
     arg_parser :: arg_parser_new(HELP_TEXT);
     defer arg_parser_delete(arg_parser);
-    state :: arg_parser_run(arg_parser, command_line_arguments, &g_args, 1);
+    
+    arg_parser_add(
+        arg_parser,
+        "-s",
+        "--silent",
+        "Print only errors.",
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
+            a: *Args = auto ctx;
+            a.silent = true;
+            return 1, ok();
+        });
+        
+    arg_parser_add(
+        arg_parser,
+        "-vo",
+        "--validate-only",
+        "Validate compiler consistency, and keep configuration file as it is.",
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
+            a: *Args = auto ctx;
+            a.validate_only = true;
+            return 1, ok();
+        });
+        
+    state: Error;
+    state = arg_parser_run(arg_parser, command_line_arguments, &g_args, 1);
     if !is_ok(state) {
         print_err("%", state);
         arg_parser_print_help(arg_parser);
         return 1;
     }
+    
+    if g_args.help { return 0; }
+    defer print_last_error(state);    
+    
+    gather_deps(REQUIRED_DEPS);
+    state = validate_deps();
+    if !is_ok(state) { return 1; }
+    if g_args.validate_only { return 0; }
+    
+    state = configure();
+    if !is_ok(state) { return 1; }
     return 0;
+}
+
+#private
+print_last_error :: fn (state: Error) #inline {
+    if !is_ok(state) {
+       print_err("%", state);        
+    }
+}
+
+cleanup :: fn () {
+    loop i := 0; i < g_deps.len; i += 1 {
+        string_delete(g_deps[i].path);
+    }
+    array_terminate(g_deps);
+}
+
+gather_deps :: fn (required: []string) {
+    loop i := 0; i < required.len; i += 1 {
+        rq :: required[i];
+        if string_is_empty(rq) { panic("Invalid dependency!"); }
+        dep: Dependency;
+        dep.path = sprint(g_pwd, "/", rq);
+        dep.is_valid = fs_exist(dep.path);
+        array_push(g_deps, dep);
+    }    
+}
+
+validate_deps :: fn () Error {
+    ec: s32;
+    loop i := 0; i < g_deps.len; i += 1 {
+        dep :: &g_deps[i];
+        if dep.is_valid {
+            print_log("Dependency '%' ... OK", dep.path);
+        } else {
+            print_err("Dependency '%' ... MISSING", dep.path);
+            ec += 1;
+        }
+    }
+    if ec == 0 {
+        return ok();
+    } else {
+        return error("Validation failed (% of % dependencies are missing).", ec, g_deps.len);
+    }
+}
+
+custom_logger :: fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...) {
+    if g_args.silent && kind == PrintLogKind.Message { return; }
+    switch kind {
+        PrintLogKind.Message { print("  "); }
+        PrintLogKind.Warning { print("  [W] "); }
+        default { print("  [E] "); }                        
+    }
+    print(format, args);
+    print("\n");
 }
