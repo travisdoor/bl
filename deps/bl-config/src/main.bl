@@ -11,7 +11,7 @@ ETC_DIR :: "../etc";
 CONF_FILE :: "bl.conf";
 
 // Command line arguments context.
-Args :: struct #base ArgCtx {
+Args :: struct #base ArgsImpl {
     silent: bool;
     override_config: bool;
 }
@@ -57,7 +57,8 @@ main :: fn () s32 {
             a.override_config = true;
             return 1, ok();
         });
-    
+
+    setup(arg_parser);    
         
     state: Error;
     state = arg_parser_run(arg_parser, command_line_arguments, &g_args, 1);
