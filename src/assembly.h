@@ -41,10 +41,15 @@ struct Builder;
 
 typedef enum BuildMode {
     BUILD_MODE_DEBUG         = 1, // Standard debug mode. Opt: NONE
-    BUILD_MODE_RELEASE_FAST  = 2, // Standard release mode. Opt: Aggresive
+    BUILD_MODE_RELEASE_FAST  = 2, // Standard release mode. Opt: Aggressive
     BUILD_MODE_RELEASE_SMALL = 3, // Standard release mode. Opt: Default
     BUILD_MODE_BUILD         = 4, // Build pipeline entry mode.
 } BuildMode;
+
+typedef enum BuildOutputKind {
+    BUILD_OUT_EXECUTABLE = 1,
+    BUILD_OUT_SHARED_LIB = 2,
+} BuildOutputKind;
 
 typedef enum BuildDIKind {
     BUILD_DI_DWARF    = 1, // Emit DWARF debug information in LLVM IR.
@@ -62,7 +67,6 @@ typedef struct AssemblyOptions {
 #define GEN_ASSEMBLY_OPT_DECLS
 #include "assembly.inc"
 #undef GEN_ASSEMBLY_OPT_DECLS
-
     TString custom_linker_opt;
     TString out_dir;    // Build output directory
     TString module_dir; // Module directory

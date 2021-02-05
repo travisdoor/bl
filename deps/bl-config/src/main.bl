@@ -1,0 +1,27 @@
+#import "std/arg_parser"
+#import "std/fs"
+
+HELP_TEXT ::
+"Platform specific bl configuration generator.\n"
+"Usage:\n"
+"  bl-config [options]";
+
+LIB_DIR :: "../lib/bl/api";
+
+// Command line arguments context.
+Args :: struct #base ArgCtx {
+}
+
+g_args: Args;
+
+main :: fn () s32 {
+    arg_parser :: arg_parser_new(HELP_TEXT);
+    defer arg_parser_delete(arg_parser);
+    state :: arg_parser_run(arg_parser, command_line_arguments, &g_args, 1);
+    if !is_ok(state) {
+        print_err("%", state);
+        arg_parser_print_help(arg_parser);
+        return 1;
+    }
+    return 0;
+}

@@ -308,6 +308,7 @@ s32 builder_parse_options(s32 argc, char *argv[])
 #define IS_PARAM(_arg) (strcmp(&argv[optind][1], _arg) == 0)
 
     builder.options.build_mode = BUILD_MODE_DEBUG;
+    builder.options.build_output_kind = BUILD_OUT_EXECUTABLE;
 
 #ifdef BL_DEBUG
     builder.options.verify_llvm = true;
@@ -386,6 +387,8 @@ s32 builder_parse_options(s32 argc, char *argv[])
             builder.options.docs = true;
         } else if (IS_PARAM("no-jobs")) {
             builder.options.no_jobs = true;
+        } else if (IS_PARAM("shared")) {
+            builder.options.build_output_kind = BUILD_OUT_SHARED_LIB;
         } else if (IS_PARAM("where-is-api")) {
             builder.options.where_is_api = true;
             builder.options.silent       = true;

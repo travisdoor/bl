@@ -44,6 +44,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/bin")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/bin")
 set(BL_CONF_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.conf)
 
+
 add_subdirectory(deps/dyncall-1.0)
 add_subdirectory(deps/tlib-c)
 
@@ -253,6 +254,26 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
 endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+  # Copy LLD executable into output directory
+  set(BL_LLD_EXE "bl-lld-link.exe")
+  set(BL_LLD "${CMAKE_SOURCE_DIR}/deps/lld/bin/win32/lld-link.exe")
+  if(NOT EXISTS ${BL_LLD})
+    message(FATAL_ERROR "LLD not found expected location is ${BL_LLD}" )
+  endif()
+  add_custom_command(TARGET blc POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${BL_LLD} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_LLD_EXE}
+  )
+
+  # Copy bl-config executable into output directory
+  set(BL_CONFIG_EXE "bl-config.exe")
+  set(BL_CONFIG "${CMAKE_SOURCE_DIR}/deps/bl-config/bin/win32/bl-config.exe")
+  if(NOT EXISTS ${BL_CONFIG})
+    message(FATAL_ERROR "BL configuration tool not found expected location is ${BL_CONFIG}" )
+  endif()
+  add_custom_command(TARGET blc POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${BL_CONFIG} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_CONFIG_EXE}
+  )
+
   set(BL_CONFIGURE_SH "blc_configure.bat")
   install(
     FILES ${CMAKE_SOURCE_DIR}/install/configure_win64.bat

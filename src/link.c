@@ -48,6 +48,17 @@
 #define DEFAULT_ARCH "x64"
 #define DEFAULT_ENTRY "__os_start"
 
+static const char *get_out_extension(Assembly *assembly)
+{
+    switch (assembly->options.build_output_kind) {
+    case BUILD_OUT_EXECUTABLE:
+        return EXECUTABLE_EXT;
+    case BUILD_OUT_SHARED_LIB:
+        return DLL_EXT;
+    }
+    BL_ABORT("Unknown output kind!");
+}
+
 static void append_lib_paths(Assembly *assembly, TString *buf)
 {
     const char *dir;
@@ -72,11 +83,19 @@ static void append_options(Assembly *assembly, TString *buf)
 {
     // Some defaults which should be possible to modify later
     const bool is_debug = assembly->options.build_mode == BUILD_MODE_DEBUG;
-
     tstring_appendf(buf, "%s ", FLAG_NOLOGO);
-    //tstring_appendf(buf, "%s:%s ", FLAG_ENTRY, DEFAULT_ENTRY);
-    //tstring_appendf(buf, "%s:%s ", FLAG_SUBSYSTEM, "CONSOLE");
-    tstring_appendf(buf, "%s ", FLAG_DLL);
+
+    switch (assembly->options.build_output_kind) {
+    case BUILD_OUT_EXECUTABLE: {
+        tstring_appendf(buf, "%s:%s ", FLAG_ENTRY, DEFAULT_ENTRY);
+        tstring_appendf(buf, "%s:%s ", FLAG_SUBSYSTEM, "CONSOLE");
+        break;
+    }
+    case BUILD_OUT_SHARED_LIB: {
+        tstring_appendf(buf, "%s ", FLAG_DLL);
+        break;
+    }
+    }
     tstring_appendf(buf, "%s:%s ", FLAG_INCPREMENTAL, "NO");
     tstring_appendf(buf, "%s:%s ", FLAG_MACHINE, DEFAULT_ARCH);
     if (is_debug) tstring_appendf(buf, "%s ", FLAG_DEBUG);
@@ -114,7 +133,7 @@ s32 link_exe(Assembly *assembly)
     // set input file
     tstring_appendf(buf, "\"%s/%s.%s\" ", out_dir, name, OBJECT_EXT);
     // set output file
-    tstring_appendf(buf, "%s:\"%s/%s.%s\" ", FLAG_OUT, out_dir, name, DLL_EXT);
+    tstring_appendf(buf, "%s:\"%s/%s.%s\" ", FLAG_OUT, out_dir, name, get_out_extension(assembly));
     append_options(assembly, buf);
     append_lib_paths(assembly, buf);
     append_libs(assembly, buf);

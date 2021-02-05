@@ -36,4 +36,5 @@ Options\n\
   -docs                 = Generate documentation and exit.\n\
   -where-is-api         = Return path to API folder and exit.\n\
   -no-jobs              = Compile on single thread.\n\
+  -shared               = Compile shared library.\n\
   -di-<dwarf|codeview>  = Set debug info format."

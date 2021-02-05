@@ -69,6 +69,7 @@
         OPT(bool,        no_llvm,        builder.options.no_llvm) \
         OPT(bool,        no_analyze,     builder.options.no_analyze) \
         OPT(bool,        syntax_only,    builder.options.syntax_only) \
+        OPT(BuildOutputKind, build_output_kind,    builder.options.build_output_kind) \
 
     #define OPTS \
         OPT(ModuleImportPolicy, module_import_policy, IMPORT_POLICY_SYSTEM) 
