@@ -66,20 +66,18 @@ static void setup_env(void)
 
 static int generate_conf(void)
 {
-    char tmp[PATH_MAX] = {0};
+    TString *cmd = get_tmpstr();
 #if BL_PLATFORM_LINUX || BL_PLATFORM_MACOS
     strcat(tmp, "sh ");
     strcat(tmp, ENV_EXEC_DIR);
     strcat(tmp, PATH_SEPARATOR);
     strcat(tmp, BL_CONFIGURE_SH);
 #else
-    strcat(tmp, "\"");
-    strcat(tmp, ENV_EXEC_DIR);
-    strcat(tmp, PATH_SEPARATOR);
-    strcat(tmp, BL_CONFIGURE_SH);
-    strcat(tmp, "\"");
+    tstring_setf(cmd, "call \"%s/%s\" -f -s", ENV_EXEC_DIR, BL_CONFIGURE_SH);
 #endif
-    return system(tmp);
+    const s32 state = system(cmd->data);
+    put_tmpstr(cmd);
+    return state;
 }
 
 #define EXIT(_state)                                                                               \
@@ -114,9 +112,7 @@ int main(s32 argc, char *argv[])
     // Run configure if needed.
     if (builder.options.run_configure) {
         if (generate_conf() != 0) {
-            builder_error("Cannot generate '%s' file. If you are compiler developer please "
-                          "run configuration script in 'install' directory.",
-                          ENV_CONF_FILEPATH);
+            builder_error("Cannot generate '%s' file.", ENV_CONF_FILEPATH);
             EXIT(EXIT_FAILURE);
         }
 

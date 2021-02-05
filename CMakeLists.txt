@@ -274,11 +274,14 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     COMMAND ${CMAKE_COMMAND} -E copy ${BL_CONFIG} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_CONFIG_EXE}
   )
 
-  set(BL_CONFIGURE_SH "blc_configure.bat")
+  set(BL_CONFIGURE_SH "bl-config.exe")
   install(
-    FILES ${CMAKE_SOURCE_DIR}/install/configure_win64.bat
+    FILES ${BL_CONFIG}
     DESTINATION ${CMAKE_INSTALL_BINDIR}
     RENAME ${BL_CONFIGURE_SH})
+  install(
+    FILES ${BL_LLD}
+    DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
 
 configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in

@@ -7,22 +7,17 @@ HELP_TEXT ::
 "  bl-config [options]";
 
 LIB_DIR :: "../lib/bl/api";
-CONF_FILE :: "../etc/bl.conf";
+ETC_DIR :: "../etc";
+CONF_FILE :: "bl.conf";
 
 // Command line arguments context.
 Args :: struct #base ArgCtx {
     silent: bool;
-    validate_only: bool;
-}
-
-Dependency :: struct {
-    path: string;
-    is_valid: bool;
+    override_config: bool;
 }
 
 g_args: Args;
 g_pwd: string;
-g_deps: [..]Dependency;
 
 main :: fn () s32 {
     _context.print_log_fn = &custom_logger;
@@ -37,7 +32,6 @@ main :: fn () s32 {
         }
     }
     defer string_delete(g_pwd);
-    defer cleanup();
 
     arg_parser :: arg_parser_new(HELP_TEXT);
     defer arg_parser_delete(arg_parser);
@@ -53,16 +47,17 @@ main :: fn () s32 {
             return 1, ok();
         });
         
-    arg_parser_add(
+     arg_parser_add(
         arg_parser,
-        "-vo",
-        "--validate-only",
-        "Validate compiler consistency, and keep configuration file as it is.",
+        "-f",
+        "--force-override",
+        "Override existing configuration file.",
         &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
             a: *Args = auto ctx;
-            a.validate_only = true;
+            a.override_config = true;
             return 1, ok();
         });
+    
         
     state: Error;
     state = arg_parser_run(arg_parser, command_line_arguments, &g_args, 1);
@@ -73,61 +68,35 @@ main :: fn () s32 {
     }
     
     if g_args.help { return 0; }
-    defer print_last_error(state);    
-    
-    gather_deps(REQUIRED_DEPS);
-    state = validate_deps();
-    if !is_ok(state) { return 1; }
-    if g_args.validate_only { return 0; }
-    
     state = configure();
-    if !is_ok(state) { return 1; }
+    if !is_ok(state) { 
+        print_err("%", state);
+        print_err("Configuration generation failed!");
+        return 1; 
+    }
+    print_log("DONE.");
     return 0;
 }
 
-#private
-print_last_error :: fn (state: Error) #inline {
-    if !is_ok(state) {
-       print_err("%", state);        
-    }
-}
-
-cleanup :: fn () {
-    loop i := 0; i < g_deps.len; i += 1 {
-        string_delete(g_deps[i].path);
-    }
-    array_terminate(g_deps);
-}
-
-gather_deps :: fn (required: []string) {
-    loop i := 0; i < required.len; i += 1 {
-        rq :: required[i];
-        if string_is_empty(rq) { panic("Invalid dependency!"); }
-        dep: Dependency;
-        dep.path = sprint(g_pwd, "/", rq);
-        dep.is_valid = fs_exist(dep.path);
-        array_push(g_deps, dep);
-    }    
-}
-
-validate_deps :: fn () Error {
-    ec: s32;
-    loop i := 0; i < g_deps.len; i += 1 {
-        dep :: &g_deps[i];
-        if dep.is_valid {
-            print_log("Dependency '%' ... OK", dep.path);
-        } else {
-            print_err("Dependency '%' ... MISSING", dep.path);
-            ec += 1;
+write_config :: fn (fmt: string, args: ...) Error {
+    conf_file_path := sprint(g_pwd, "/", ETC_DIR);
+    defer string_delete(conf_file_path);
+    fs_dir_create(conf_file_path);
+    string_concatenate(&conf_file_path, "/", CONF_FILE);
+    if fs_exist(conf_file_path) {
+        if !g_args.override_config {
+            return error("Configuration file '%' already exists, use '-f' to override.", conf_file_path);
         }
     }
-    if ec == 0 {
-        return ok();
-    } else {
-        return error("Validation failed (% of % dependencies are missing).", ec, g_deps.len);
-    }
+    file, err :: fs_open(conf_file_path, FSOpenMode.Create, FSOpenMode.Write);
+    defer fs_close(file);
+    if !is_ok(err) { return err; }
+    fs_write_fmt(file, fmt, args);
+    print_log("Configuration written to '%'.", conf_file_path);
+    return ok();
 }
 
+#private
 custom_logger :: fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...) {
     if g_args.silent && kind == PrintLogKind.Message { return; }
     switch kind {

@@ -1,21 +1,111 @@
-VS_WHERE :: "%ProgramFiles(x86)%/Microsoft Visual Studio/Installer/vswhere.exe";
+#load "std/utils.bl"
 
-REQUIRED_DEPS :: {:[4]string:
-    CONF_FILE,
-    LIB_DIR,
-    "blc.exe",
-    "bl-lld-link.exe"
-};
+VS_WHERE :: "Microsoft Visual Studio/Installer/vswhere.exe";
+VC_VARS_ALL :: "VC/Auxiliary/Build/vcvarsall.bat";
+LINKER_EXEC :: "bl-lld-link.exe";
+LINKER_OPT :: "kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib msvcrt.lib vcruntime.lib Shlwapi.lib";
+LINKER_OPT_DEBUG :: "kernel32.lib user32.lib gdi32.lib shell32.lib ucrtd.lib legacy_stdio_definitions.lib msvcrtd.lib vcruntimed.lib Shlwapi.lib";
+
+CONFIG :: 
+    "// blc configuration file\n\n"
+    "// Main API directory containing all modules and source files.\n"
+    "LIB_DIR \"%\"\n"
+    "// Native linker executable.\n"
+    "LINKER_EXEC \"%\"\n"
+    "// Full path to Visual Studio vcvarsall.bat file.\n"
+    "VC_VARS_ALL \"%\"\n"
+    "// Linker options used for release linking.\n"
+    "LINKER_OPT \"%\"\n"
+    "// Linker options used for debug linking.\n"
+    "LINKER_OPT_DEBUG \"%\"\n"
+    "// Additional linker library path.\n"
+    "LINKER_LIB_PATH \"\"\n"
+    ;
 
 configure :: fn () Error {
-    if fs_exist(VS_WHERE) {
-        return error("Cannot find Visual Studio installation!");
+    print_log("Generate configuration file");
+    program_files_path :: env_get("ProgramFiles(x86)");
+    string_replace_all(&program_files_path, '\\', '/'); // oh my!
+    vs_where_path: string;
+    vs_path: string;
+    vc_vars_all : string;
+    lib_dir: string; 
+    linker_exec: string;
+    defer string_delete(linker_exec);
+    defer string_delete(lib_dir);
+    defer string_delete(program_files_path);
+    defer string_delete(vs_where_path);
+    defer string_delete(vs_path);
+    defer string_delete(vc_vars_all);
+    
+    // Lookup VS instalation.
+    vs_where_path = sprint(program_files_path, "/", VS_WHERE);
+    if !fs_exist(vs_where_path) {
+        return error("Cannot find Visual Studio installation on '%'!", vs_where_path);
     } else {
-        tmp :: string_new();
+        tmp :: sprint("call \"", vs_where_path, "\"", " -property installationPath");
         defer string_delete(tmp);
-        os_execute(string_clear_concat(&tmp, "call \"", VS_WHERE, "\"", " -property installationPath"));
+        out, err :: execute(tmp);
+        if !is_ok(err) { return err; }
+        vs_path = out;
+        string_replace_all(&vs_path, '\\', '/'); // oh my!
     }
-    return ok();
+    print_log("Found Visual Studio instalation on '%'.", vs_path);
+    
+    // Lookup vcvars bullshit
+    vc_vars_all = sprint(vs_path, "/", VC_VARS_ALL);
+    if !fs_exist(vc_vars_all) {
+        return error("Cannot find vcvarsall.bat on '%'!", vc_vars_all);
+    }
+    print_log("Found vcvarsall.bat on '%'.", vc_vars_all);
+    
+    lib_dir = sprint(g_pwd, "/", LIB_DIR);
+    {
+       err :: fs_normalize(&lib_dir);
+       if !is_ok(err) {
+           return error("Cannot find BL API libs on '%'", lib_dir);
+       }
+    }
+    print_log("Found BL API on '%'.", lib_dir);
+    
+    linker_exec = sprint(g_pwd, "/", LINKER_EXEC);
+    {
+       err :: fs_normalize(&linker_exec);
+       if !is_ok(err) {
+           return error("Cannot find linker on '%'", linker_exec);
+       }
+    }
+    print_log("Found linker executable on '%'.", linker_exec);
+    
+    return write_config(
+        CONFIG, 
+        lib_dir,
+        linker_exec,
+        vc_vars_all,
+        LINKER_OPT,
+        LINKER_OPT_DEBUG
+    );
 }
 
 #private
+execute :: fn (cmd: string) (string, Error) {
+    // This is little bit hacky but we don't have PIPE abstraction in BL yet.
+    popen :: fn (f: *c_char, m: *c_char) c_void_ptr #extern "_popen";
+    pclose :: fn (f: c_void_ptr) #extern "_pclose";
+    fgets :: fn (buf: c_void_ptr, size: c_int, f: c_void_ptr) c_void_ptr #extern;
+    
+    mode :: "r";
+    file :: popen(auto cmd.ptr, auto mode.ptr); 
+    defer pclose(file);
+    if !file { return "", error("Execution of command failed!"); }
+    buf: [1024]u8 #noinit;
+    out := string_new();
+    loop fgets(buf.ptr, auto buf.len, file) {
+        tmp :: {:string: auto c_strlen(auto buf.ptr), buf.ptr};
+        string_append(&out, tmp);
+    }
+    if !string_is_empty(out) && out[out.len-1] == '\n' {
+        out.len -= 1;
+    }
+    return out, ok();   
+}
