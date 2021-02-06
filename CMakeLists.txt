@@ -161,8 +161,8 @@ set(SOURCE_FILES
     src/intrinsic.c
     src/docs.c
     src/vm_runner.c
-    src/link.c
-    src/ld.c
+    src/lld_link.c
+    src/lld_ld.c
     src/llvm_api.cpp
     src/llvm_di.cpp
     deps/tracy/TracyClient.cpp)
@@ -182,7 +182,6 @@ if(MSVC)
   # CXX
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /wd4996 /MD /Oi")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd /W4 /WX /GS")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:MSVCRT")
 else()
   set(THREADS_PREFER_PTHREAD_FLAG ON)
   find_package(Threads REQUIRED)
@@ -259,6 +258,8 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
   )
 
   set(BL_CONFIGURE_SH ${BL_CONFIG_EXE})
+  set(BL_LINKER ${BL_LLD_EXE})
+  
   install(
     FILES ${BL_CONFIG}
     DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -268,17 +269,42 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 endif()
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-  set(BL_CONFIGURE_SH "blc_configure.sh")
+  # Copy LLD executable into output directory
+  set(BL_LLD_EXE "bl-lld")
+  set(BL_LLD "${CMAKE_SOURCE_DIR}/deps/lld/bin/macos/lld")
+  if(NOT EXISTS ${BL_LLD})
+    message(FATAL_ERROR "LLD not found expected location is ${BL_LLD}" )
+  endif()
+  add_custom_command(TARGET blc POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${BL_LLD} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_LLD_EXE}
+  )
+
+  # Copy bl-config executable into output directory
+  set(BL_CONFIG_EXE "bl-config")
+  set(BL_CONFIG "${CMAKE_SOURCE_DIR}/deps/bl-config/bin/macos/${BL_CONFIG_EXE}")
+  if(NOT EXISTS ${BL_CONFIG})
+    message(FATAL_ERROR "BL configuration tool not found expected location is ${BL_CONFIG}" )
+  endif()
+  add_custom_command(TARGET blc POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${BL_CONFIG} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_CONFIG_EXE}
+  )
+
+  set(BL_CONFIGURE_SH ${BL_CONFIG_EXE})
+  set(BL_LINKER ${BL_LLD_EXE})
+  
   install(
-    FILES ${CMAKE_SOURCE_DIR}/install/configure_macos.sh
+    FILES ${BL_CONFIG}
+    DESTINATION ${CMAKE_INSTALL_BINDIR})
+  install(
+    FILES ${BL_LLD}
     DESTINATION ${CMAKE_INSTALL_BINDIR}
-    RENAME ${BL_CONFIGURE_SH})
+    RENAME ${BL_LLD_EXE})
 endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   # Copy LLD executable into output directory
-  set(BL_LLD_EXE "bl-lld-link.exe")
-  set(BL_LLD "${CMAKE_SOURCE_DIR}/deps/lld/bin/win32/lld-link.exe")
+  set(BL_LLD_EXE "bl-lld.exe")
+  set(BL_LLD "${CMAKE_SOURCE_DIR}/deps/lld/bin/win32/lld.exe")
   if(NOT EXISTS ${BL_LLD})
     message(FATAL_ERROR "LLD not found expected location is ${BL_LLD}" )
   endif()
@@ -296,14 +322,20 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     COMMAND ${CMAKE_COMMAND} -E copy ${BL_CONFIG} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_CONFIG_EXE}
   )
 
-  set(BL_CONFIGURE_SH "bl-config.exe")
+  set(BL_CONFIGURE_SH ${BL_CONFIG_EXE})
+  set(BL_LINKER ${BL_LLD_EXE})
+  
   install(
     FILES ${BL_CONFIG}
     DESTINATION ${CMAKE_INSTALL_BINDIR})
   install(
     FILES ${BL_LLD}
-    DESTINATION ${CMAKE_INSTALL_BINDIR})
+    DESTINATION ${CMAKE_INSTALL_BINDIR}
+    RENAME ${BL_LLD_EXE})
 endif()
 
 configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in
                ${CMAKE_SOURCE_DIR}/src/config.h)
+
+configure_file(${CMAKE_SOURCE_DIR}/deps/bl-config/src/config.bl.in
+               ${CMAKE_SOURCE_DIR}/deps/bl-config/src/config.bl)

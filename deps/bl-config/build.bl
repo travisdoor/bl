@@ -1,6 +1,7 @@
 build :: fn () #build_entry {
     exe :: add_executable("bl-config");
     add_unit(exe, "src/main.bl");
+    add_unit(exe, "src/config.bl");
 
     switch OS_KIND {
         OSKind.Windows { target_windows(exe); }

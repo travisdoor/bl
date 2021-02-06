@@ -37,8 +37,8 @@
 
 typedef s32(*LinkerFn)(Assembly*);
 
-s32 link_exe(Assembly *assembly);
-s32 ld(Assembly *assembly);
+s32 lld_link(Assembly *assembly);
+s32 lld_ld(Assembly *assembly);
 
 static void copy_user_libs(Assembly *assembly)
 {
@@ -77,10 +77,10 @@ void native_bin_run(Assembly *assembly)
 {
     builder_log("Running native linker...");
     LinkerFn linker = NULL;
-#if BL_PLATFORM_WINDOWS
-    linker = &link;
+#if BL_PLATFORM_WIN
+    linker = &lld_link;
 #elif BL_PLATFORM_LINUX || BL_PLATFORM_MACOS
-    linker = &ld;
+    linker = &lld_ld;
 #else
 #error "Unknown platform"
 #endif

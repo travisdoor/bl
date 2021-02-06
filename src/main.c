@@ -64,6 +64,20 @@ static void setup_env(void)
     ENV_CONF_FILEPATH = strdup(tmp);
 }
 
+static void check_config_version(void)
+{
+    const char *expected = BL_VERSION;
+    const char *got      = conf_data_has_key(&builder.conf, CONF_VERSION)
+                               ? conf_data_get_str(&builder.conf, CONF_VERSION)
+                               : "(UNKNOWN)";
+    if (strcmp(expected, got)) {
+        builder_warning("Invalid version of configuration file expected is '%s' not '%s'. Consider "
+                        "running 'blc -configure' or 'bl-config' again.",
+                        expected,
+                        got);
+    }
+}
+
 static int generate_conf(void)
 {
     TString *cmd = get_tmpstr();
@@ -131,13 +145,15 @@ int main(s32 argc, char *argv[])
     }
 
     if (!file_exists(ENV_CONF_FILEPATH)) {
-        builder_error("Configuration file '%s' not found, run 'blc -configure' to "
+        builder_error("Configuration file '%s' not found, run 'blc -configure' or 'bl-config' to "
                       "generate one.",
                       ENV_CONF_FILEPATH);
         EXIT(EXIT_FAILURE);
     }
 
     builder_load_config(ENV_CONF_FILEPATH);
+    // check config version
+    check_config_version();
 
     // setup LIB_DIR
     ENV_LIB_DIR = strdup(conf_data_get_str(&builder.conf, CONF_LIB_DIR_KEY));
