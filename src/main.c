@@ -68,10 +68,7 @@ static int generate_conf(void)
 {
     TString *cmd = get_tmpstr();
 #if BL_PLATFORM_LINUX || BL_PLATFORM_MACOS
-    strcat(tmp, "sh ");
-    strcat(tmp, ENV_EXEC_DIR);
-    strcat(tmp, PATH_SEPARATOR);
-    strcat(tmp, BL_CONFIGURE_SH);
+    tstring_setf(cmd, "sh %s/%s", ENV_EXEC_DIR, BL_CONFIGURE_SH);
 #else
     tstring_setf(cmd, "call \"%s/%s\" -f -s", ENV_EXEC_DIR, BL_CONFIGURE_SH);
 #endif

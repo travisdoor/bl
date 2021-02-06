@@ -1,7 +1,7 @@
 //************************************************************************************************
 // bl
 //
-// File:   link.c
+// File:   ld.c
 // Author: Martin Dorazil
 // Date:   1/02/2020
 //
@@ -30,33 +30,29 @@
 #include "builder.h"
 #include "config.h"
 
-// Wrapper for link.exe or lld-link.exe on Windows platform.
+#if BL_PLATFORM_LINUX
+#define SHARED_EXT "so"
+#elif BL_PLATFORM_MACOS
+#define SHARED_EXT "dylib"
+#else
+#error "Unknown platform!"
+#endif
+#define OBJECT_EXT "o"
+#define DEFAULT_ENTRY "_start"
 
-#define EXECUTABLE_EXT "exe"
-#define DLL_EXT "dll"
-#define LIB_EXT "lib"
-#define OBJECT_EXT "obj"
+#define FLAG_LIBPATH "-L"
+#define FLAG_LIB "-l"
+#define FLAG_ENTRY "-e"
+#define FLAG_OUT "-o"
 
-#define FLAG_LIBPATH "/LIBPATH"
-#define FLAG_OUT "/OUT"
-#define FLAG_ENTRY "/ENTRY"
-#define FLAG_SUBSYSTEM "/SUBSYSTEM"
-#define FLAG_NOLOGO "/NOLOGO"
-#define FLAG_INCPREMENTAL "/INCREMENTAL"
-#define FLAG_MACHINE "/MACHINE"
-#define FLAG_DEBUG "/DEBUG"
-#define FLAG_DLL "/DLL"
-
-#define DEFAULT_ARCH "x64"
-#define DEFAULT_ENTRY "__os_start"
-
+// Wrapper for ld linker on Unix platforms.
 static const char *get_out_extension(Assembly *assembly)
 {
     switch (assembly->options.build_output_kind) {
     case BUILD_OUT_EXECUTABLE:
-        return EXECUTABLE_EXT;
+        return "";
     case BUILD_OUT_SHARED_LIB:
-        return DLL_EXT;
+        return SHARED_EXT;
     }
     BL_ABORT("Unknown output kind!");
 }
@@ -66,7 +62,7 @@ static void append_lib_paths(Assembly *assembly, TString *buf)
     const char *dir;
     TARRAY_FOREACH(const char *, &assembly->options.lib_paths, dir)
     {
-        tstring_appendf(buf, "%s:\"%s\" ", FLAG_LIBPATH, dir);
+        tstring_appendf(buf, "%s%s ", FLAG_LIBPATH, dir);
     }
 }
 
@@ -77,37 +73,28 @@ static void append_libs(Assembly *assembly, TString *buf)
         lib = &tarray_at(NativeLib, &assembly->options.libs, i);
         if (lib->is_internal) continue;
         if (!lib->user_name) continue;
-        tstring_appendf(buf, "%s.%s ", lib->user_name, LIB_EXT);
+        tstring_appendf(buf, "%s%s ", FLAG_LIB, lib->user_name);
     }
 }
 
 static void append_options(Assembly *assembly, TString *buf)
 {
     // Some defaults which should be possible to modify later
-    const bool is_debug = assembly->options.build_mode == BUILD_MODE_DEBUG;
-    tstring_appendf(buf, "%s ", FLAG_NOLOGO);
-
     switch (assembly->options.build_output_kind) {
     case BUILD_OUT_EXECUTABLE: {
-        tstring_appendf(buf, "%s:%s ", FLAG_ENTRY, DEFAULT_ENTRY);
-        tstring_appendf(buf, "%s:%s ", FLAG_SUBSYSTEM, "CONSOLE");
+        tstring_appendf(buf, "%s %s ", FLAG_ENTRY, DEFAULT_ENTRY);
         break;
     }
     case BUILD_OUT_SHARED_LIB: {
-        tstring_appendf(buf, "%s ", FLAG_DLL);
+        BL_ABORT("Unimplemented linker output type!");
         break;
     }
     }
-    tstring_appendf(buf, "%s:%s ", FLAG_INCPREMENTAL, "NO");
-    tstring_appendf(buf, "%s:%s ", FLAG_MACHINE, DEFAULT_ARCH);
-    if (is_debug) tstring_appendf(buf, "%s ", FLAG_DEBUG);
 }
 
 static void append_default_opt(Assembly *assembly, TString *buf)
 {
-    const bool  is_debug    = assembly->options.build_mode == BUILD_MODE_DEBUG;
-    const char *default_opt = is_debug ? conf_data_get_str(&builder.conf, CONF_LINKER_OPT_DEBUG_KEY)
-                                       : conf_data_get_str(&builder.conf, CONF_LINKER_OPT_KEY);
+    const char *default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_KEY);
     tstring_appendf(buf, "%s ", default_opt);
 }
 
@@ -117,25 +104,24 @@ static void append_custom_opt(Assembly *assembly, TString *buf)
     if (custom_opt) tstring_appendf(buf, "%s ", custom_opt);
 }
 
-s32 link_exe(Assembly *assembly)
+s32 ld(Assembly *assembly)
 {
     TString *   buf         = get_tmpstr();
     const char *linker_exec = conf_data_get_str(&builder.conf, CONF_LINKER_EXEC_KEY);
     const char *out_dir     = assembly->options.out_dir.data;
     const char *name        = assembly->name;
 
-    tstring_append(buf, "call ");
-    if (!builder.options.no_vcvars) {
-        const char *vc_vars_all = conf_data_get_str(&builder.conf, CONF_VC_VARS_ALL_KEY);
-        tstring_appendf(buf, "\"%s\" %s >NUL && ", vc_vars_all, DEFAULT_ARCH);
-    }
-
     // set executable
-    tstring_appendf(buf, "\"%s\" ", linker_exec);
+    tstring_appendf(buf, "%s ", linker_exec);
     // set input file
-    tstring_appendf(buf, "\"%s/%s.%s\" ", out_dir, name, OBJECT_EXT);
+    tstring_appendf(buf, "%s/%s.%s ", out_dir, name, OBJECT_EXT);
     // set output file
-    tstring_appendf(buf, "%s:\"%s/%s.%s\" ", FLAG_OUT, out_dir, name, get_out_extension(assembly));
+    const char *ext = get_out_extension(assembly);
+    if (strlen(ext)) {
+        tstring_appendf(buf, "%s %s/%s.%s ", FLAG_OUT, out_dir, name, ext);
+    } else {
+        tstring_appendf(buf, "%s %s/%s ", FLAG_OUT, out_dir, name);
+    }
     append_options(assembly, buf);
     append_lib_paths(assembly, buf);
     append_libs(assembly, buf);

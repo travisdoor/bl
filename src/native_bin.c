@@ -35,11 +35,10 @@
 #include <unistd.h>
 #endif
 
-s32 link_exe(Assembly *assembly);
+typedef s32(*LinkerFn)(Assembly*);
 
-static const char *link_flag      = "-l";
-static const char *link_path_flag = "-L";
-static const char *cmd            = "%s %s/%s.o -o %s/%s %s %s";
+s32 link_exe(Assembly *assembly);
+s32 ld(Assembly *assembly);
 
 static void copy_user_libs(Assembly *assembly)
 {
@@ -74,83 +73,21 @@ static void copy_user_libs(Assembly *assembly)
     put_tmpstr(dest_path);
 }
 
-static void append_lib_paths(Assembly *assembly, TString *buf)
-{
-
-    const char *dir;
-    TARRAY_FOREACH(const char *, &assembly->options.lib_paths, dir)
-    {
-        tstring_append(buf, " ");
-        tstring_append(buf, link_path_flag);
-        tstring_append(buf, dir);
-    }
-}
-
-static void append_libs(Assembly *assembly, TString *buf)
-{
-    NativeLib *lib;
-    for (usize i = 0; i < assembly->options.libs.size; ++i) {
-        lib = &tarray_at(NativeLib, &assembly->options.libs, i);
-        if (lib->is_internal) continue;
-        if (!lib->user_name) continue;
-
-        tstring_append(buf, " ");
-        tstring_append(buf, link_flag);
-        tstring_append(buf, lib->user_name);
-    }
-}
-
 void native_bin_run(Assembly *assembly)
 {
     builder_log("Running native linker...");
-    const char *out_dir = assembly->options.out_dir.data;
-#if !BL_PLATFORM_WIN
-    TString *buf = get_tmpstr();
-    TracyCZone(_tctx, true);
-
-    const char *linker_exec = conf_data_get_str(&builder.conf, CONF_LINKER_EXEC_KEY);
-    { /* setup link command */
-        const char *default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_KEY);
-        const char *custom_opt =
-            assembly->options.custom_linker_opt.len ? assembly->options.custom_linker_opt.data : "";
-
-        tstring_setf(buf,
-                     cmd,
-                     linker_exec,
-                     out_dir,
-                     assembly->name,
-                     out_dir,
-                     assembly->name,
-                     default_opt,
-                     custom_opt);
-    }
-
-    append_lib_paths(assembly, buf);
-    append_libs(assembly, buf);
-
-    builder_log("Running native linker...");
-    if (builder.options.verbose) builder_log("%s", buf->data);
-    if (system(buf->data) != 0) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_LIB_NOT_FOUND,
-                    NULL,
-                    BUILDER_CUR_WORD,
-                    "Native link execution failed '%s'",
-                    buf->data);
-        goto DONE;
-    }
-
-    if (assembly->options.copy_deps) {
-        builder_log("Copy assembly dependencies into '%s'.", out_dir);
-        copy_user_libs(assembly);
-    }
-
-DONE:
-    put_tmpstr(buf);
-    TracyCZoneEnd(_tctx);
+    LinkerFn linker = NULL;
+#if BL_PLATFORM_WINDOWS
+    linker = &link;
+#elif BL_PLATFORM_LINUX || BL_PLATFORM_MACOS
+    linker = &ld;
 #else
+#error "Unknown platform"
+#endif
+
+    const char *out_dir = assembly->options.out_dir.data;
     TracyCZone(_tctx, true);
-    if (link_exe(assembly) != 0) {
+    if (linker(assembly) != 0) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_LIB_NOT_FOUND,
                     NULL,
@@ -165,5 +102,4 @@ DONE:
     }
 DONE:
     TracyCZoneEnd(_tctx);
-#endif
 }

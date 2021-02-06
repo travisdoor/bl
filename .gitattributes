@@ -1,0 +1,2 @@
+deps/lld/bin/linux/lld filter=lfs diff=lfs merge=lfs -text
+deps/lld/bin/win32/lld-link.exe filter=lfs diff=lfs merge=lfs -text

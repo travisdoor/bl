@@ -162,6 +162,7 @@ set(SOURCE_FILES
     src/docs.c
     src/vm_runner.c
     src/link.c
+    src/ld.c
     src/llvm_api.cpp
     src/llvm_di.cpp
     deps/tracy/TracyClient.cpp)
@@ -181,6 +182,7 @@ if(MSVC)
   # CXX
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /wd4996 /MD /Oi")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd /W4 /WX /GS")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:MSVCRT")
 else()
   set(THREADS_PREFER_PTHREAD_FLAG ON)
   find_package(Threads REQUIRED)
@@ -196,8 +198,6 @@ else()
   )
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-strict-aliasing -fno-exceptions -fno-rtti -g -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -O0"
   )
-
-  SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:MSVCRT")
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -238,6 +238,16 @@ install(DIRECTORY lib/bl/api DESTINATION ${CMAKE_INSTALL_LIBDIR}/bl)
 install(DIRECTORY lib/bl/rt DESTINATION ${CMAKE_INSTALL_LIBDIR}/bl)
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+  # Copy LLD executable into output directory
+  set(BL_LLD_EXE "bl-lld")
+  set(BL_LLD "${CMAKE_SOURCE_DIR}/deps/lld/bin/linux/lld")
+  if(NOT EXISTS ${BL_LLD})
+    message(FATAL_ERROR "LLD not found expected location is ${BL_LLD}" )
+  endif()
+  add_custom_command(TARGET blc POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${BL_LLD} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_LLD_EXE}
+  )
+
   set(BL_CONFIGURE_SH "blc_configure.sh")
   install(
     FILES ${CMAKE_SOURCE_DIR}/install/configure_linux.sh
