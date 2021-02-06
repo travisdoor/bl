@@ -1,0 +1,81 @@
+#load "std/utils.bl"
+
+LINKER_EXEC :: "bl-lld";
+LINKER_OPT :: "-lc -lm";
+LINKER_LIB_PATH :: "/usr/lib:/usr/local/lib:/lib64:/usr/lib/x86_64-linux-gnu";
+LD_LINUX_SO :: "/lib64/ld-linux-x86-64.so.2";
+BLRT_64 :: "../lib/bl/rt/blrt_x86_64_linux.o";
+
+CONFIG :: 
+    "// blc configuration file\n\n"
+    "// Main API directory containing all modules and source files.\n"
+    "LIB_DIR \"%\"\n"
+    "// Native linker executable.\n"
+    "LINKER_EXEC \"% -flavor gnu\"\n"
+    "// Linker options used for linking.\n"
+    "LINKER_OPT \"%\"\n"
+    "// Additional linker library path.\n"
+    "LINKER_LIB_PATH \"%\"\n"
+    ;
+
+ArgsImpl :: struct #base ArgCtx {
+}
+    
+setup :: fn (arg_parser: ArgParser) {}
+
+configure :: fn () Error {
+    print_log("Generate configuration file");
+    lib_dir: string; 
+    linker_exec: string;
+    ld_linux_so: string;
+    blrt_64: string;
+    linker_opt: string;
+    defer string_delete(linker_opt);    
+    defer string_delete(blrt_64);
+    defer string_delete(ld_linux_so);
+    defer string_delete(linker_exec);
+    defer string_delete(lib_dir);
+    
+    lib_dir = sprint(g_pwd, "/", LIB_DIR);
+    {
+       err :: fs_normalize(&lib_dir);
+       if !is_ok(err) {
+           return error("Cannot find BL API libs on '%'", lib_dir);
+       }
+    }
+    print_log("Found BL API on '%'.", lib_dir);
+    
+    linker_exec = sprint(g_pwd, "/", LINKER_EXEC);
+    {
+       err :: fs_normalize(&linker_exec);
+       if !is_ok(err) {
+           return error("Cannot find linker on '%'", linker_exec);
+       }
+    }
+    print_log("Found linker executable on '%'.", linker_exec);
+    
+    ld_linux_so = string_new(LD_LINUX_SO);
+    if !fs_exist(ld_linux_so) {
+        return error("Cannot find 64bit version of 'ld-linux.so' on '%'", ld_linux_so);
+    }
+    print_log("Found ld-linux.so 64bit on '%'.", ld_linux_so);
+    
+    blrt_64 = sprint(g_pwd, "/", BLRT_64);
+    {
+       err :: fs_normalize(&blrt_64);
+       if !is_ok(err) {
+           return error("Cannot find BL runtime on '%'", blrt_64);
+       }
+    }
+    print_log("Found BL runtime on '%'.", blrt_64);
+    
+    linker_opt = sprint(blrt_64, " -dynamic-linker ", ld_linux_so, " ", LINKER_OPT);
+
+    return write_config(
+        CONFIG, 
+        lib_dir,
+        linker_exec,
+        linker_opt,
+        LINKER_LIB_PATH,
+    );
+}

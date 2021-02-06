@@ -248,11 +248,23 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     COMMAND ${CMAKE_COMMAND} -E copy ${BL_LLD} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_LLD_EXE}
   )
 
-  set(BL_CONFIGURE_SH "blc_configure.sh")
+  # Copy bl-config executable into output directory
+  set(BL_CONFIG_EXE "bl-config")
+  set(BL_CONFIG "${CMAKE_SOURCE_DIR}/deps/bl-config/bin/linux/${BL_CONFIG_EXE}")
+  if(NOT EXISTS ${BL_CONFIG})
+    message(FATAL_ERROR "BL configuration tool not found expected location is ${BL_CONFIG}" )
+  endif()
+  add_custom_command(TARGET blc POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${BL_CONFIG} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_CONFIG_EXE}
+  )
+
+  set(BL_CONFIGURE_SH ${BL_CONFIG_EXE})
   install(
-    FILES ${CMAKE_SOURCE_DIR}/install/configure_linux.sh
-    DESTINATION ${CMAKE_INSTALL_BINDIR}
-    RENAME ${BL_CONFIGURE_SH})
+    FILES ${BL_CONFIG}
+    DESTINATION ${CMAKE_INSTALL_BINDIR})
+  install(
+    FILES ${BL_LLD}
+    DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
