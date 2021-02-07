@@ -24,7 +24,6 @@ jobs:
       run: cmake --build . --config Debug
     - name: Configure
       run: |
-        cd install
-        ./configure_macos.sh
+        ./bin/bl-config -f
     - name: Run tests
       run: ./bin/blc -rs doctor.bl -d
