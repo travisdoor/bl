@@ -112,7 +112,7 @@ endif()
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
   set(LLD_BIN ${CMAKE_CURRENT_BINARY_DIR}/lld)
   set(LLD_ZIP lld-11.0.0-macos-release.zip)
-  set(LLD_ZIP_MD5 e9606991f195b22e55cfdafa1213031a)
+  set(LLD_ZIP_MD5 b37f7524cf2d12efa4f27268713b45f3)
 endif()
 
 # DOWNLOAD LLD binary
