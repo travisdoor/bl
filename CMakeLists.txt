@@ -12,6 +12,8 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(HAVE_64_BIT 1)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+set(BL_DEPS_REMOTE biscuitlang.org/releases)
+
 # Set a default build type if none was specified
 set(DEFAULT_BUILD_TYPE "Release")
 set(CMAKE_C_FLAGS_DEBUG "-DBL_DEBUG")
@@ -60,7 +62,7 @@ if(MSVC)
       if(NOT EXISTS ${LLVM_BIN_DEBUG_ZIP})
         message(STATUS "Downloading LLVM binaries for Debug build.")
         file(
-          DOWNLOAD biscuitlang.org/releases/llvm-11.0.1-Win64-debug.zip
+          DOWNLOAD ${BL_DEPS_REMOTE}/llvm-11.0.1-Win64-debug.zip
           ${LLVM_BIN_DEBUG_ZIP}
           SHOW_PROGRESS
           EXPECTED_HASH MD5=71adf8bf8b205dfb8db6381ec041bfb9)
@@ -80,7 +82,7 @@ if(MSVC)
       if(NOT EXISTS ${LLVM_BIN_RELEASE_ZIP})
         message(STATUS "Downloading LLVM binaries for Release build.")
         file(
-          DOWNLOAD biscuitlang.org/releases/llvm-11.0.1-Win64-release.zip
+          DOWNLOAD ${BL_DEPS_REMOTE}/llvm-11.0.1-Win64-release.zip
           ${LLVM_BIN_RELEASE_ZIP}
           SHOW_PROGRESS
           EXPECTED_HASH MD5=764ede9bdd1dff8e9e97ca536b4981e2)
@@ -93,23 +95,40 @@ if(MSVC)
 
     set(LLVM_DIR "${LLVM_BIN_RELEASE}/lib/cmake/llvm")
   endif()
+endif()
 
-  # DOWNLOAD LLD binary
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   set(LLD_BIN ${CMAKE_CURRENT_BINARY_DIR}/lld.exe)
-  set(LLD_BIN_ZIP
-      ${CMAKE_CURRENT_BINARY_DIR}/lld-11.0.1-win64-release.zip)
-  if(NOT EXISTS ${LLD_BIN})
-    if(NOT EXISTS ${LLD_BIN_ZIP})
-      message(STATUS "Downloading LLD binaries.")
-      file(
-        DOWNLOAD biscuitlang.org/releases/lld-11.0.1-win64-release.zip
-        ${LLD_BIN_ZIP}
-        SHOW_PROGRESS
-        EXPECTED_HASH MD5=e9606991f195b22e55cfdafa1213031a)
-    endif()
-    execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${LLD_BIN_ZIP}
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+  set(LLD_ZIP lld-11.0.1-win64-release.zip)
+  set(LLD_ZIP_MD5 e9606991f195b22e55cfdafa1213031a)
+endif()
+
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+  set(LLD_BIN ${CMAKE_CURRENT_BINARY_DIR}/lld)
+  set(LLD_ZIP lld-13.0.0-linux64-release.zip)
+  set(LLD_ZIP_MD5 fb35de76f484c729af25e243b6deda5e)
+endif()
+
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+  set(LLD_BIN ${CMAKE_CURRENT_BINARY_DIR}/lld)
+  set(LLD_ZIP lld-11.0.0-macos-release.zip)
+  set(LLD_ZIP_MD5 e9606991f195b22e55cfdafa1213031a)
+endif()
+
+# DOWNLOAD LLD binary
+if(NOT EXISTS ${LLD_BIN})
+  set(LLD_LOCAL_ZIP ${CMAKE_CURRENT_BINARY_DIR}/${LLD_ZIP})
+  set(LLD_REMOTE_ZIP ${BL_DEPS_REMOTE}/${LLD_ZIP})
+  if(NOT EXISTS ${LLD_LOCAL_ZIP})
+    message(STATUS "Downloading LLD binaries.")
+    file(
+      DOWNLOAD ${LLD_REMOTE_ZIP} 
+      ${LLD_LOCAL_ZIP}
+      SHOW_PROGRESS
+      EXPECTED_HASH MD5=${LLD_ZIP_MD5})
   endif()
+  execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${LLD_LOCAL_ZIP}
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 if(UNIX AND NOT APPLE)
@@ -256,12 +275,11 @@ install(DIRECTORY lib/bl/rt DESTINATION ${CMAKE_INSTALL_LIBDIR}/bl)
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
   # Copy LLD executable into output directory
   set(BL_LLD_EXE "bl-lld")
-  set(BL_LLD "${CMAKE_SOURCE_DIR}/deps/lld/bin/linux/lld")
-  if(NOT EXISTS ${BL_LLD})
-    message(FATAL_ERROR "LLD not found expected location is ${BL_LLD}" )
+  if(NOT EXISTS ${LLD_BIN})
+    message(FATAL_ERROR "LLD not found expected location is ${LLD_BIN}" )
   endif()
   add_custom_command(TARGET blc POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${BL_LLD} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_LLD_EXE}
+    COMMAND ${CMAKE_COMMAND} -E copy ${LLD_BIN} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_LLD_EXE}
   )
 
   # Copy bl-config executable into output directory
@@ -282,20 +300,20 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
     DESTINATION ${CMAKE_INSTALL_BINDIR})
   install(
-    FILES ${BL_LLD}
+    FILES ${LLD_BIN}
     PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-    DESTINATION ${CMAKE_INSTALL_BINDIR})
+    DESTINATION ${CMAKE_INSTALL_BINDIR}
+    RENAME ${BL_LLD_EXE})
 endif()
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
   # Copy LLD executable into output directory
   set(BL_LLD_EXE "bl-lld")
-  set(BL_LLD "${CMAKE_SOURCE_DIR}/deps/lld/bin/macos/lld")
-  if(NOT EXISTS ${BL_LLD})
-    message(FATAL_ERROR "LLD not found expected location is ${BL_LLD}" )
+  if(NOT EXISTS ${LLD_BIN})
+    message(FATAL_ERROR "LLD not found expected location is ${LLD_BIN}" )
   endif()
   add_custom_command(TARGET blc POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${BL_LLD} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_LLD_EXE}
+    COMMAND ${CMAKE_COMMAND} -E copy ${LLD_BIN} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_LLD_EXE}
   )
 
   # Copy bl-config executable into output directory
@@ -317,7 +335,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     DESTINATION ${CMAKE_INSTALL_BINDIR}
     )
   install(
-    FILES ${BL_LLD}
+    FILES ${LLD_BIN}
     PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
     DESTINATION ${CMAKE_INSTALL_BINDIR}
     RENAME ${BL_LLD_EXE})
