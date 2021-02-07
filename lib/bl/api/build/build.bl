@@ -68,8 +68,8 @@
 //! Basics
 //! ======
 //!
-//! Create new assembly
-//! -------------------
+//! Create new executable assembly
+//! ------------------------------
 //! 
 //! Assembly is a single build target defined as consisting of build Units representing source files
 //! needed for compilation. It’s basically a target compiled into an executable or binary file. Use
@@ -78,7 +78,7 @@
 //! 
 //! .. code-block:: bl
 //! 
-//!     exe :: add_assembly("MyProgram");
+//!     exe :: add_executable("MyProgram");
 //! 
 //! Add file into assembly
 //! ----------------------
@@ -202,8 +202,13 @@ DebugInfo :: enum s32 {
 ///     }
 add_executable :: fn (name: string) *Assembly {
     if name.len == 0 { panic("Invalid executable name!"); }
-
     return __add_executable(auto name.ptr);
+}
+
+/// Add new shared library target assembly into the current compilation queue.
+add_library :: fn (name: string) *Assembly {
+    if name.len == 0 { panic("Invalid library name!"); }
+    return __add_library(auto name.ptr);
 }
 
 /// Add new source file into the assembly. This basically load new source file into
@@ -342,6 +347,7 @@ get_module_import_policy :: fn (assembly: *Assembly) ModuleImportPolicy {
 
 #private
 __add_executable :: fn (name: *c_char) *Assembly #extern;
+__add_library :: fn (name: *c_char) *Assembly #extern;
 __add_unit :: fn (assembly: *Assembly, filepath: *c_char) Unit #extern;
 __add_lib_path :: fn (assembly: *Assembly, path: *c_char) #extern;
 __link_library :: fn (assembly: *Assembly, name: *c_char) #extern;
