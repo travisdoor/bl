@@ -17,6 +17,6 @@ jobs:
       run: cmake --build . --config Debug
     - name: Configure
       run: |
-        bin\bl-config.exe -f
+        bin\bl-config.exe --build-tools-path "%ProgramFiles(x86)%/Microsoft Visual Studio/2019/Community"
     - name: Run tests
       run: bin\blc.exe -rs doctor.bl -d
