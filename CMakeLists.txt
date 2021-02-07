@@ -105,8 +105,8 @@ endif()
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
   set(LLD_BIN ${CMAKE_CURRENT_BINARY_DIR}/lld)
-  set(LLD_ZIP lld-13.0.0-linux64-release.zip)
-  set(LLD_ZIP_MD5 fb35de76f484c729af25e243b6deda5e)
+  set(LLD_ZIP lld-11.1.0-linux64-release.zip)
+  set(LLD_ZIP_MD5 11f5a022f6eee0231900fedd3335c6a7)
 endif()
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
