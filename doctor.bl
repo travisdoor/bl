@@ -228,12 +228,12 @@ get_expected_error :: fn (filepath: string, out_err: *s32) bool {
     return true;
 }
 
-blc :: fn (file: string, args := "-no-bin -no-warning") s32 {
+blc :: fn (file: string, args := "--no-bin --no-warning") s32 {
     cmd :: string_new(64);
     defer string_delete(cmd);
     _suitec += 1;
     string_concatenate(&cmd, _compiler_path, " ", args, " ");   
-    if _args.no_vcvars { string_append(&cmd, "-no-vcvars "); }
+    if _args.no_vcvars { string_append(&cmd, "--no-vcvars "); }
     string_append(&cmd, file);
     string_append(&cmd, " ");
     string_append(&cmd, get_verbosity());
@@ -254,7 +254,7 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
     state: s32;
     switch kind {
         TestKind.Runtime {
-            state = blc(file, "-no-warning");
+            state = blc(file, "--no-warning");
             if state == expected_state {
                 report_ok("Compilation", file, state);
             } else {
@@ -279,7 +279,7 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
         }
 
         TestKind.CompileTime {
-            state = blc(file, "-r -no-warning");
+            state = blc(file, "-r --no-warning");
             if state == expected_state {
                 report_ok("Interpretation", file, state);
             } else {
@@ -288,7 +288,7 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
         }
         
         TestKind.Test {
-            state = blc(file, "-rt -no-bin -no-warning");
+            state = blc(file, "-rt --no-bin --no-warning");
             if state == expected_state {
                 report_ok("Run compile time tests", file, state);
             } else {
@@ -297,7 +297,7 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
         }
 
         TestKind.Analyze {
-            state = blc(file, "-no-warning -no-bin");
+            state = blc(file, "--no-warning --no-bin");
             if state == expected_state {
                 report_ok("Analyze", file, state);
             } else {

@@ -97,9 +97,6 @@ static int generate_conf(void)
 int main(s32 argc, char *argv[])
 {
     s32         state = EXIT_SUCCESS;
-    const char *help_text =
-#include "help_text.txt"
-        ;
     const char *about_text =
 #include "about_text.txt"
         ;
@@ -116,7 +113,7 @@ int main(s32 argc, char *argv[])
     s32 next_arg = builder_parse_options(argc, argv);
     builder_log("Compiler version: %s, LLVM: %d", BL_VERSION, LLVM_VERSION_MAJOR);
     if (next_arg == -1) {
-        fprintf(stdout, "%s", help_text);
+        builder_print_help(stdout);
         EXIT(EXIT_FAILURE);
     }
 
@@ -135,7 +132,7 @@ int main(s32 argc, char *argv[])
     char **   vm_argv = argv;
 
     if (builder.options.print_help) {
-        fprintf(stdout, "%s", help_text);
+        builder_print_help(stdout);
         EXIT(EXIT_SUCCESS);
     }
 

@@ -753,6 +753,8 @@ static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn)
     }
     if (IS_FLAG(fn->flags, FLAG_EXPORT)) {
         LLVMSetDLLStorageClass(fn->llvm_value, LLVMDLLExportStorageClass);
+    } else if (!IS_FLAG(fn->flags, FLAG_EXTERN)) {
+        LLVMSetVisibility(fn->llvm_value, LLVMHiddenVisibility);
     }
 
     return fn->llvm_value;
@@ -2006,9 +2008,9 @@ State emit_instr_unop(Context *cnt, MirInstrUnop *unop)
     return STATE_PASSED;
 }
 
-// Generates zero initialized value from compound expression, `llvm_dest` is optional specification
-// of destination variable or GEP to be set to zero. Result LLVM value is either compile time
-// constant or `llvm_dest` if provided.
+// Generates zero initialized value from compound expression, `llvm_dest` is optional
+// specification of destination variable or GEP to be set to zero. Result LLVM value is either
+// compile time constant or `llvm_dest` if provided.
 LLVMValueRef _emit_instr_compound_zero_initialized(Context *         cnt,
                                                    LLVMValueRef      llvm_dest, // optional
                                                    MirInstrCompound *cmp)

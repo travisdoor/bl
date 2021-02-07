@@ -111,13 +111,21 @@ static void llvm_init(Assembly *assembly)
     }
     LLVMContextRef llvm_context = LLVMContextCreate();
     LLVMModuleRef  llvm_module  = LLVMModuleCreateWithNameInContext(assembly->name, llvm_context);
+    LLVMRelocMode  reloc_mode   = LLVMRelocDefault;
+    switch (assembly->options.build_output_kind) {
+    case BUILD_OUT_EXECUTABLE:
+        break;
+    case BUILD_OUT_SHARED_LIB:
+        reloc_mode = LLVMRelocPIC;
+        break;
+    }
     LLVMTargetMachineRef llvm_tm =
         LLVMCreateTargetMachine(llvm_target,
                                 triple,
                                 cpu,
                                 features,
                                 get_opt_level_for_build_mode(assembly->options.build_mode),
-                                LLVMRelocDefault,
+                                reloc_mode,
                                 LLVMCodeModelDefault);
 
     LLVMTargetDataRef llvm_td = LLVMCreateTargetDataLayout(llvm_tm);
@@ -189,7 +197,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) BL_ABORT("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path = _path;
+    const char *path            = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {

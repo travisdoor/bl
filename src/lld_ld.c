@@ -34,14 +34,13 @@
 #define SHARED_EXT "dylib"
 #else
 #define SHARED_EXT "so"
+#define SHARED_PREFIX "lib"
 #define LLD_FLAVOR "gnu"
 #endif
 #define OBJECT_EXT "o"
-#define DEFAULT_ENTRY "_start"
 
 #define FLAG_LIBPATH "-L"
 #define FLAG_LIB "-l"
-#define FLAG_ENTRY "-e"
 #define FLAG_OUT "-o"
 
 // Wrapper for ld linker on Unix platforms.
@@ -52,6 +51,17 @@ static const char *get_out_extension(Assembly *assembly)
         return "";
     case BUILD_OUT_SHARED_LIB:
         return SHARED_EXT;
+    }
+    BL_ABORT("Unknown output kind!");
+}
+
+static const char *get_out_prefix(Assembly *assembly)
+{
+    switch (assembly->options.build_output_kind) {
+    case BUILD_OUT_EXECUTABLE:
+        return "";
+    case BUILD_OUT_SHARED_LIB:
+        return SHARED_PREFIX;
     }
     BL_ABORT("Unknown output kind!");
 }
@@ -76,24 +86,16 @@ static void append_libs(Assembly *assembly, TString *buf)
     }
 }
 
-static void append_options(Assembly *assembly, TString *buf)
-{
-    // Some defaults which should be possible to modify later
-    switch (assembly->options.build_output_kind) {
-    case BUILD_OUT_EXECUTABLE: {
-        tstring_appendf(buf, "%s %s ", FLAG_ENTRY, DEFAULT_ENTRY);
-        break;
-    }
-    case BUILD_OUT_SHARED_LIB: {
-        BL_ABORT("Unimplemented linker output type!");
-        break;
-    }
-    }
-}
-
 static void append_default_opt(Assembly *assembly, TString *buf)
 {
-    const char *default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_EXEC_KEY);
+    const char *default_opt = "";
+    switch (assembly->options.build_output_kind) {
+    case BUILD_OUT_EXECUTABLE:
+        default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_EXEC_KEY);
+        break;
+    case BUILD_OUT_SHARED_LIB:
+        default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_SHARED_KEY);
+    }
     tstring_appendf(buf, "%s ", default_opt);
 }
 
@@ -110,22 +112,22 @@ static void append_linker_exec(TString *buf)
 
 s32 lld_ld(Assembly *assembly)
 {
-    TString *   buf         = get_tmpstr();
-    const char *out_dir     = assembly->options.out_dir.data;
-    const char *name        = assembly->name;
+    TString *   buf     = get_tmpstr();
+    const char *out_dir = assembly->options.out_dir.data;
+    const char *name    = assembly->name;
 
     // set executable
     append_linker_exec(buf);
     // set input file
     tstring_appendf(buf, "%s/%s.%s ", out_dir, name, OBJECT_EXT);
     // set output file
-    const char *ext = get_out_extension(assembly);
+    const char *ext    = get_out_extension(assembly);
+    const char *prefix = get_out_prefix(assembly);
     if (strlen(ext)) {
-        tstring_appendf(buf, "%s %s/%s.%s ", FLAG_OUT, out_dir, name, ext);
+        tstring_appendf(buf, "%s %s/%s%s.%s ", FLAG_OUT, out_dir, prefix, name, ext);
     } else {
-        tstring_appendf(buf, "%s %s/%s ", FLAG_OUT, out_dir, name);
+        tstring_appendf(buf, "%s %s/%s%s ", FLAG_OUT, out_dir, prefix, name);
     }
-    append_options(assembly, buf);
     append_lib_paths(assembly, buf);
     append_libs(assembly, buf);
     append_default_opt(assembly, buf);

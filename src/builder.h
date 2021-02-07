@@ -136,6 +136,7 @@ void builder_msg(BuilderMsgType   type,
                  const char *     format,
                  ...);
 
+void     builder_print_help(FILE *stream);
 TString *builder_create_cached_str(void);
 TString *get_tmpstr(void);
 void     put_tmpstr(TString *str);

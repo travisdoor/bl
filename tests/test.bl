@@ -3,8 +3,3 @@ my_bl_function :: fn (count: s32) #export {
         print("Hello from foo library!!!\n");
     }
 }
-
-main :: fn () s32 {
-    print("Hello!\n");
-    return 0;
-}

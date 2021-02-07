@@ -49,51 +49,51 @@ using namespace llvm;
 LLVMAttributeKind llvm_get_attribute_kind(const char *name)
 {
 #if LLVM_VERSION_MAJOR >= 11
-	return Attribute::getAttrKindFromName({name, strlen(name)});
+    return Attribute::getAttrKindFromName({name, strlen(name)});
 #else
-	return getAttrKindFromName({name, strlen(name)});
+    return getAttrKindFromName({name, strlen(name)});
 #endif
 }
 
 LLVMAttributeRef llvm_create_attribute(LLVMContextRef context_ref, LLVMAttributeKind kind)
 {
-	return CAST(LLVMAttributeRef)(
-	    Attribute::get(*CAST(LLVMContext *)(context_ref), (Attribute::AttrKind)kind)
-	        .getRawPointer());
+    return CAST(LLVMAttributeRef)(
+        Attribute::get(*CAST(LLVMContext *)(context_ref), (Attribute::AttrKind)kind)
+            .getRawPointer());
 }
 
 LLVMAttributeRef
 llvm_create_attribute_int(LLVMContextRef context_ref, LLVMAttributeKind kind, s32 v)
 {
-	return CAST(LLVMAttributeRef)(
-	    Attribute::get(*CAST(LLVMContext *)(context_ref), (Attribute::AttrKind)kind, v)
-	        .getRawPointer());
+    return CAST(LLVMAttributeRef)(
+        Attribute::get(*CAST(LLVMContext *)(context_ref), (Attribute::AttrKind)kind, v)
+            .getRawPointer());
 }
 
 LLVMAttributeRef
 llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef v)
 {
 #if LLVM_VERSION_MAJOR >= 9
-	return CAST(LLVMAttributeRef)(Attribute::get(*CAST(LLVMContext *)(context_ref),
-	                                             (Attribute::AttrKind)kind,
-	                                             CAST(Type *)(v))
-	                                  .getRawPointer());
+    return CAST(LLVMAttributeRef)(Attribute::get(*CAST(LLVMContext *)(context_ref),
+                                                 (Attribute::AttrKind)kind,
+                                                 CAST(Type *)(v))
+                                      .getRawPointer());
 #else
-	return CAST(LLVMAttributeRef)(
-	    Attribute::get(*CAST(LLVMContext *)(context_ref), (Attribute::AttrKind)kind)
-	        .getRawPointer());
+    return CAST(LLVMAttributeRef)(
+        Attribute::get(*CAST(LLVMContext *)(context_ref), (Attribute::AttrKind)kind)
+            .getRawPointer());
 #endif
 }
 
 u32 llvm_lookup_intrinsic_id(const char *name)
 {
-	return Function::lookupIntrinsicID({name, strlen(name)});
+    return Function::lookupIntrinsicID({name, strlen(name)});
 }
 
 static Intrinsic::ID llvm_map_to_intrinsic_id(unsigned ID)
 {
-	assert(ID < llvm::Intrinsic::num_intrinsics && "Intrinsic ID out of range");
-	return llvm::Intrinsic::ID(ID);
+    assert(ID < llvm::Intrinsic::num_intrinsics && "Intrinsic ID out of range");
+    return llvm::Intrinsic::ID(ID);
 }
 
 LLVMValueRef llvm_get_intrinsic_decl(LLVMModuleRef mod_ref,
@@ -101,11 +101,10 @@ LLVMValueRef llvm_get_intrinsic_decl(LLVMModuleRef mod_ref,
                                      LLVMTypeRef * param_types_ref,
                                      usize         param_types_count)
 {
-	ArrayRef<Type *> types(CAST(Type **)(param_types_ref), param_types_count);
+    ArrayRef<Type *> types(CAST(Type **)(param_types_ref), param_types_count);
 
-	auto iid = llvm_map_to_intrinsic_id(id);
-	return CAST(LLVMValueRef)(
-	    llvm::Intrinsic::getDeclaration(CAST(Module *)(mod_ref), iid, types));
+    auto iid = llvm_map_to_intrinsic_id(id);
+    return CAST(LLVMValueRef)(llvm::Intrinsic::getDeclaration(CAST(Module *)(mod_ref), iid, types));
 }
 
 LLVMValueRef llvm_const_string_in_context(LLVMContextRef UNUSED(context_ref),
@@ -113,19 +112,19 @@ LLVMValueRef llvm_const_string_in_context(LLVMContextRef UNUSED(context_ref),
                                           const char *   str,
                                           bool           zero_terminate)
 {
-	size_t                      len = strlen(str);
-	SmallVector<Constant *, 32> chars;
-	for (size_t i = 0; i < len; ++i) {
-		auto c = ConstantInt::get(CAST(Type *)(t), (uint64_t)str[i]);
-		chars.push_back(c);
-	}
+    size_t                      len = strlen(str);
+    SmallVector<Constant *, 32> chars;
+    for (size_t i = 0; i < len; ++i) {
+        auto c = ConstantInt::get(CAST(Type *)(t), (uint64_t)str[i]);
+        chars.push_back(c);
+    }
 
-	if (zero_terminate) {
-		auto c = ConstantInt::get(CAST(Type *)(t), (uint64_t)'\0');
-		chars.push_back(c);
-		++len;
-	}
+    if (zero_terminate) {
+        auto c = ConstantInt::get(CAST(Type *)(t), (uint64_t)'\0');
+        chars.push_back(c);
+        ++len;
+    }
 
-	ArrayRef<Constant *> V(chars);
-	return CAST(LLVMValueRef)(ConstantArray::get(ArrayType::get(CAST(Type *)(t), len), V));
+    ArrayRef<Constant *> V(chars);
+    return CAST(LLVMValueRef)(ConstantArray::get(ArrayType::get(CAST(Type *)(t), len), V));
 }

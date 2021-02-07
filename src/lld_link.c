@@ -78,7 +78,7 @@ static void append_default_opt(Assembly *assembly, TString *buf)
 {
     const bool is_debug = assembly->options.build_mode == BUILD_MODE_DEBUG;
     if (is_debug) tstring_appendf(buf, "%s ", FLAG_DEBUG);
-    char *default_opt = "";
+    const char *default_opt = "";
     switch (assembly->options.build_output_kind) {
     case BUILD_OUT_EXECUTABLE:
         default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_EXEC_KEY);

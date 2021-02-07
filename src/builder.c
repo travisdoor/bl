@@ -52,6 +52,16 @@
 
 Builder builder;
 
+typedef struct {
+    const char *s;
+    const char *l;
+    const char *help;
+} Arg;
+
+#define GEN_BUILDER_ARGS_DEFINITIONS
+#include "builder.inc"
+#undef GEN_BUILDER_ARGS_DEFINITIONS
+
 static int  compile_unit(Unit *unit, Assembly *assembly);
 static int  compile_assembly(Assembly *assembly);
 static bool llvm_initialized = false;
@@ -305,9 +315,19 @@ s32 builder_parse_options(s32 argc, char *argv[])
     optind++;                                                                                      \
     break;
 
-#define IS_PARAM(_arg) (strcmp(&argv[optind][1], _arg) == 0)
+#define ARG(kind, action)                                                                          \
+    if ((strcmp(&argv[optind][1], ARGS[kind].s) == 0) ||                                           \
+        (strcmp(&argv[optind][1], ARGS[kind].l) == 0)) {                                           \
+        action continue;                                                                           \
+    }
+#define ARG_BREAK(kind, action)                                                                    \
+    if ((strcmp(&argv[optind][1], ARGS[kind].s) == 0) ||                                           \
+        (strcmp(&argv[optind][1], ARGS[kind].l) == 0)) {                                           \
+        action++ optind;                                                                           \
+        break;                                                                                     \
+    }
 
-    builder.options.build_mode = BUILD_MODE_DEBUG;
+    builder.options.build_mode        = BUILD_MODE_DEBUG;
     builder.options.build_output_kind = BUILD_OUT_EXECUTABLE;
 
 #ifdef BL_DEBUG
@@ -322,91 +342,55 @@ s32 builder_parse_options(s32 argc, char *argv[])
 
     s32 optind = 1;
     for (; optind < argc && argv[optind][0] == '-'; optind++) {
-        if (IS_PARAM("ast-dump")) {
-            builder.options.print_ast = true;
-        } else if (IS_PARAM("h") || IS_PARAM("help")) {
-            builder.options.print_help = true;
-        } else if (IS_PARAM("a") || IS_PARAM("about")) {
-            builder.options.print_about = true;
-        } else if (IS_PARAM("b") || IS_PARAM("build")) {
-            builder.options.use_pipeline = true;
-            BREAK
-        } else if (IS_PARAM("rs") || IS_PARAM("run-script")) {
-            builder.options.run     = true;
-            builder.options.silent  = true;
-            builder.options.no_llvm = true;
-            BREAK
-        } else if (IS_PARAM("lex-dump")) {
-            builder.options.print_tokens = true;
-        } else if (IS_PARAM("syntax-only")) {
-            builder.options.syntax_only = true;
-        } else if (IS_PARAM("emit-llvm")) {
-            builder.options.emit_llvm = true;
-        } else if (IS_PARAM("emit-mir")) {
-            builder.options.emit_mir = true;
-        } else if (IS_PARAM("r") || IS_PARAM("run")) {
-            builder.options.run = true;
-            BREAK
-        } else if (IS_PARAM("rt") || IS_PARAM("run-tests")) {
-            builder.options.run_tests = true;
-        } else if (IS_PARAM("s") || IS_PARAM("silent")) {
-            builder.options.silent = true;
-        } else if (IS_PARAM("no-bin")) {
-            builder.options.no_bin = true;
-        } else if (IS_PARAM("no-warning")) {
-            builder.options.no_warn = true;
-        } else if (IS_PARAM("verbose")) {
-            builder.options.verbose = true;
-        } else if (IS_PARAM("no-color")) {
-            builder.options.no_color = true;
-        } else if (IS_PARAM("no-api")) {
-            builder.options.no_api = true;
-        } else if (IS_PARAM("no-analyze")) {
-            builder.options.no_analyze = true;
-        } else if (IS_PARAM("no-llvm")) {
-            builder.options.no_llvm = true;
-        } else if (IS_PARAM("configure")) {
-            builder.options.run_configure = true;
-        } else if (IS_PARAM("reg-split-on")) {
-            builder.options.reg_split = true;
-        } else if (IS_PARAM("reg-split-off")) {
-            builder.options.reg_split = false;
-        } else if (IS_PARAM("release-fast")) {
-            builder.options.build_mode = BUILD_MODE_RELEASE_FAST;
-        } else if (IS_PARAM("release-small")) {
-            builder.options.build_mode = BUILD_MODE_RELEASE_SMALL;
-        } else if (IS_PARAM("di-dwarf")) {
-            builder.options.build_di_kind = BUILD_DI_DWARF;
-        } else if (IS_PARAM("di-codeview")) {
-            builder.options.build_di_kind = BUILD_DI_CODEVIEW;
-        } else if (IS_PARAM("no-vcvars")) {
-            builder.options.no_vcvars = true;
-        } else if (IS_PARAM("verify-llvm")) {
-            builder.options.verify_llvm = true;
-        } else if (IS_PARAM("docs")) {
-            builder.options.docs = true;
-        } else if (IS_PARAM("no-jobs")) {
-            builder.options.no_jobs = true;
-        } else if (IS_PARAM("shared")) {
-            builder.options.build_output_kind = BUILD_OUT_SHARED_LIB;
-        } else if (IS_PARAM("where-is-api")) {
-            builder.options.where_is_api = true;
-            builder.options.silent       = true;
-        } else {
-            builder_error("invalid params '%s'", &argv[optind][1]);
-            return -1;
-        }
+        ARG_BREAK(BUILDER_ARG_BUILD, builder.options.use_pipeline = true;)
+        ARG_BREAK(BUILDER_ARG_RUN, builder.options.run = true;)
+        ARG_BREAK(BUILDER_ARG_RUN_SCRIPT, builder.options.run = true; builder.options.silent = true;
+                  builder.options.no_llvm = true;)
+        ARG(BUILDER_ARG_HELP, builder.options.print_help = true;)
+        ARG(BUILDER_ARG_ABOUT, builder.options.print_about = true;)
+        ARG(BUILDER_ARG_AST_DUMP, builder.options.print_ast = true;)
+        ARG(BUILDER_ARG_LEX_DUMP, builder.options.print_tokens = true;)
+        ARG(BUILDER_ARG_SYNTAX_ONLY, builder.options.syntax_only = true;)
+        ARG(BUILDER_ARG_EMIT_LLVM, builder.options.emit_llvm = true;)
+        ARG(BUILDER_ARG_EMIT_MIR, builder.options.emit_mir = true;)
+        ARG(BUILDER_ARG_RUN_TESTS, builder.options.run_tests = true;)
+        ARG(BUILDER_ARG_SILENT, builder.options.silent = true;)
+        ARG(BUILDER_ARG_NO_BIN, builder.options.no_bin = true;)
+        ARG(BUILDER_ARG_NO_WARNING, builder.options.no_warn = true;)
+        ARG(BUILDER_ARG_VERBOSE, builder.options.verbose = true;)
+        ARG(BUILDER_ARG_NO_COLOR, builder.options.no_color = true;)
+        ARG(BUILDER_ARG_NO_API, builder.options.no_api = true;)
+        ARG(BUILDER_ARG_NO_ANALYZE, builder.options.no_analyze = true;)
+        ARG(BUILDER_ARG_NO_LLVM, builder.options.no_llvm = true;)
+        ARG(BUILDER_ARG_CONFIGURE, builder.options.run_configure = true;)
+        ARG(BUILDER_ARG_REG_SPLIT_ON, builder.options.reg_split = true;)
+        ARG(BUILDER_ARG_REG_SPLIT_OFF, builder.options.reg_split = false;)
+        ARG(BUILDER_ARG_RELEASE_FAST, builder.options.build_mode = BUILD_MODE_RELEASE_FAST;)
+        ARG(BUILDER_ARG_RELEASE_SMALL, builder.options.build_mode = BUILD_MODE_RELEASE_SMALL;)
+        ARG(BUILDER_ARG_DI_DWARF, builder.options.build_di_kind = BUILD_DI_DWARF;)
+        ARG(BUILDER_ARG_DI_CODEVIEW, builder.options.build_di_kind = BUILD_DI_CODEVIEW;)
+        ARG(BUILDER_ARG_NO_VCVARS, builder.options.no_vcvars = true;)
+        ARG(BUILDER_ARG_VERIFY_LLVM, builder.options.verify_llvm = true;)
+        ARG(BUILDER_ARG_DOCS, builder.options.docs = true;)
+        ARG(BUILDER_ARG_NO_JOBS, builder.options.no_jobs = true;)
+        ARG(BUILDER_ARG_SHARED, builder.options.build_output_kind = BUILD_OUT_SHARED_LIB;)
+        ARG(BUILDER_ARG_WHERE_IS_API, builder.options.where_is_api = true;
+            builder.options.silent = true;)
+
+        builder_error("Invalid argument '%s'", &argv[optind][1]);
+        return -1;
     }
-    argv += optind;
 
 #if !BL_PLATFORM_WIN
     if (builder.options.no_vcvars) {
-        builder_warning("Ignore parameter '-no-vcvars', this is valid on Windows only!");
+        builder_warning("Ignore argument '%s', this is valid on Windows only!",
+                        ARGS[BUILDER_ARG_NO_VCVARS].l);
     }
 #endif
 
     return optind;
-#undef IS_PARAM
+#undef ARG
+#undef ARG_BREAK
 }
 
 void builder_init(void)
@@ -423,7 +407,7 @@ void builder_init(void)
 #if BL_PLATFORM_MACOS || BL_PLATFORM_LINUX
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split = false;
+    builder.options.reg_split     = false;
 #endif
 
     // initialize LLVM statics
@@ -662,6 +646,24 @@ DONE:
 #if ASSERT_ON_CMP_ERROR
     if (type == BUILDER_MSG_ERROR) BL_ASSERT(false);
 #endif
+}
+
+void builder_print_help(FILE *stream)
+{
+    const char *text = "Usage:\n  blc [options] <source-files>\n\nAlternative usage:\n  blc "
+                       "[-r|-rs|-b] <source-file> [arguments]\n\nOptions:\n";
+    fprintf(stream, "%s", text);
+
+    char buf[256];
+    for (u32 i = 0; i < TARRAY_SIZE(ARGS); ++i) {
+        const Arg *arg = &ARGS[i];
+        if (strlen(arg->s)) {
+            snprintf(buf, TARRAY_SIZE(buf), "-%s, -%s", arg->s, arg->l);
+        } else {
+            snprintf(buf, TARRAY_SIZE(buf), "-%s", arg->l);
+        }
+        fprintf(stream, "  %-30s = %s\n", buf, arg->help);
+    }
 }
 
 TString *builder_create_cached_str(void)

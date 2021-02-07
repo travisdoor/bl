@@ -8954,6 +8954,12 @@ static void ast_decl_fn(Context *cnt, Ast *ast_fn)
     Ast *      ast_explicit_linkage_name = ast_fn->data.decl_entity.explicit_linkage_name;
     const s32  flags                     = ast_fn->data.decl_entity.flags;
     const bool is_mutable                = ast_fn->data.decl_entity.mut;
+    const bool generate_entry = cnt->assembly->options.build_output_kind == BUILD_OUT_EXECUTABLE;
+    if (!generate_entry && IS_FLAG(flags, FLAG_ENTRY)) {
+        // Generate entry function only in case we are compiling executable binary, otherwise it's
+        // not needed, and main should be also optional.
+        return;
+    }
     if (is_mutable) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_INVALID_MUTABILITY,

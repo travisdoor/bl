@@ -33,30 +33,23 @@
 
 // Target specific.
 #if BL_PLATFORM_WIN
-#define OBJ_EXT ".obj"
+#define OBJ_EXT "obj"
 #else
-#define OBJ_EXT ".o"
+#define OBJ_EXT "o"
 #endif
 
 // Emit assembly object file.
 void obj_writer_run(Assembly *assembly)
 {
     TracyCZone(_tctx, true);
-    TString filename;
-    tstring_init(&filename);
-    tstring_append(&filename, assembly->options.out_dir.data);
-    tstring_append(&filename, PATH_SEPARATOR);
-    tstring_append(&filename, assembly->name);
-    tstring_append(&filename, OBJ_EXT);
-
+    TString *buf = get_tmpstr();
+    tstring_setf(buf, "%s/%s.%s", assembly->options.out_dir.data, assembly->name, OBJ_EXT);
     char *error_msg = NULL;
     if (LLVMTargetMachineEmitToFile(
-            assembly->llvm.TM, assembly->llvm.module, filename.data, LLVMObjectFile, &error_msg)) {
-        builder_error("Cannot emit object file: %s with error: %s", filename.data, error_msg);
-
+            assembly->llvm.TM, assembly->llvm.module, buf->data, LLVMObjectFile, &error_msg)) {
+        builder_error("Cannot emit object file: %s with error: %s", buf->data, error_msg);
         LLVMDisposeMessage(error_msg);
     }
-
-    tstring_terminate(&filename);
+    put_tmpstr(buf);
     TracyCZoneEnd(_tctx);
 }
