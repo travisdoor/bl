@@ -72,7 +72,7 @@ static void check_config_version(void)
                                : "(UNKNOWN)";
     if (strcmp(expected, got)) {
         builder_warning("Invalid version of configuration file expected is '%s' not '%s'. Consider "
-                        "running 'blc -configure' or 'bl-config' again.",
+                        "running 'blc --configure' or 'bl-config' again.",
                         expected,
                         got);
     }
@@ -142,7 +142,7 @@ int main(s32 argc, char *argv[])
     }
 
     if (!file_exists(ENV_CONF_FILEPATH)) {
-        builder_error("Configuration file '%s' not found, run 'blc -configure' or 'bl-config' to "
+        builder_error("Configuration file '%s' not found, run 'blc --configure' or 'bl-config' to "
                       "generate one.",
                       ENV_CONF_FILEPATH);
         EXIT(EXIT_FAILURE);

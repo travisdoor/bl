@@ -21,6 +21,9 @@ CONFIG ::
     "LINKER_LIB_PATH \"%\"\n"
     ;
 
+popen :: fn (f: *c_char, m: *c_char) c_void_ptr #extern "popen";
+pclose :: fn (f: c_void_ptr) #extern "pclose";
+
 ArgsImpl :: struct #base ArgCtx {
 }
     

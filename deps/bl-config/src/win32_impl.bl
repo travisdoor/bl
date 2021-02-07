@@ -27,6 +27,9 @@ CONFIG ::
     "LINKER_LIB_PATH \"\"\n"
     ;
 
+popen :: fn (f: *c_char, m: *c_char) c_void_ptr #extern "_popen";
+pclose :: fn (f: c_void_ptr) #extern "_pclose";
+
 ArgsImpl :: struct #base ArgCtx {
     build_tools_path: string;
 }

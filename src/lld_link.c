@@ -97,6 +97,14 @@ static void append_custom_opt(Assembly *assembly, TString *buf)
 
 static void append_linker_exec(TString *buf)
 {
+    if (conf_data_has_key(&builder.conf, CONF_LINKER_EXECUTABLE)) {
+        const char *custom_linker = conf_data_get_str(&builder.conf, CONF_LINKER_EXECUTABLE);
+        if (strlen(custom_linker)) {
+            tstring_appendf(buf, "\"%s\" ", custom_linker);
+            return;
+        }
+    }
+    // Use LLD as default.
     tstring_appendf(buf, "\"%s\" -flavor %s ", BL_LINKER, LLD_FLAVOR);
 }
 

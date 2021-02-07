@@ -97,6 +97,26 @@ write_config :: fn (fmt: string, args: ...) Error {
     return ok();
 }
 
+pipe_execute :: fn (cmd: string) (string, Error) {
+    // This is little bit hacky but we don't have PIPE abstraction in BL yet.
+    fgets :: fn (buf: c_void_ptr, size: c_int, f: c_void_ptr) c_void_ptr #extern;
+
+    mode :: "r";
+    file :: popen(auto cmd.ptr, auto mode.ptr); 
+    defer pclose(file);
+    if !file { return "", error("Execution of command failed!"); }
+    buf: [1024]u8 #noinit;
+    out := string_new();
+    loop fgets(buf.ptr, auto buf.len, file) {
+        tmp :: {:string: auto c_strlen(auto buf.ptr), buf.ptr};
+        string_append(&out, tmp);
+    }
+    if !string_is_empty(out) && out[out.len-1] == '\n' {
+        out.len -= 1;
+    }
+    return out, ok();   
+} 
+
 #private
 custom_logger :: fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...) {
     if g_args.silent && kind == PrintLogKind.Message { return; }

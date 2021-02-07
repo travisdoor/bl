@@ -32,6 +32,8 @@
 
 #if BL_PLATFORM_MACOS
 #define SHARED_EXT "dylib"
+#define SHARED_PREFIX "lib"
+#define LLD_FLAVOR "darwin"
 #else
 #define SHARED_EXT "so"
 #define SHARED_PREFIX "lib"
@@ -107,7 +109,18 @@ static void append_custom_opt(Assembly *assembly, TString *buf)
 
 static void append_linker_exec(TString *buf)
 {
+    if (conf_data_has_key(&builder.conf, CONF_LINKER_EXECUTABLE)) {
+        const char *custom_linker = conf_data_get_str(&builder.conf, CONF_LINKER_EXECUTABLE);
+        if (strlen(custom_linker)) {
+            tstring_appendf(buf, "%s ", custom_linker);
+            return;
+        }
+    }
+    // Use LLD as default.
     tstring_appendf(buf, "%s -flavor %s ", BL_LINKER, LLD_FLAVOR);
+#if BL_PLATFORM_MACOS
+    builder_warning("Using experimental LLD linker. (There are known issues with LLD on MacOS)");
+#endif
 }
 
 s32 lld_ld(Assembly *assembly)

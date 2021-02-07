@@ -6,6 +6,7 @@ build :: fn () #build_entry {
     switch OS_KIND {
         OSKind.Windows { target_windows(exe); }
         OSKind.Linux   { target_linux(exe); }
+        OSKind.MacOS   { target_macos(exe); }
         default        { panic("Unknown build target!"); }
     }
 }
@@ -18,4 +19,9 @@ target_windows :: fn (exe: *Assembly) {
 target_linux :: fn (exe: *Assembly) {
     set_output_dir(exe, "bin/linux");
     add_unit(exe, "src/linux_impl.bl");
+}
+
+target_macos :: fn (exe: *Assembly) {
+    set_output_dir(exe, "bin/macos");
+    add_unit(exe, "src/macos_impl.bl");
 }

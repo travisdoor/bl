@@ -161,7 +161,12 @@ arg_parser_print_help :: fn (_parser: ArgParser) {
     print("Options:\n");
     loop i := 0; i < parser.entries.len; i += 1 {
         entry :: &parser.entries[i];
-        printed :: print("  %, % ", entry.short, entry.long);
+        printed: s32;
+        if string_is_empty(entry.short) {
+            printed = print("  % ", entry.long);
+        } else {
+            printed = print("  %, % ", entry.short, entry.long);
+        }
         loop p := 0; p < (parser.pad - printed); p += 1 {
             print(" ");
         }
