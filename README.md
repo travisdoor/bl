@@ -91,7 +91,7 @@ bl-config.exe --build-tools-path "C:\Program Files (x86)\Microsoft Visual Studio
 ​		Generate config using MS Build Tools.
 
 ```bash
-blc -configure
+blc --configure
 ```
 
 ​		Results will be written into `etc/bl.conf` file and can be regenerated or changed later as needed.
@@ -130,7 +130,7 @@ make
 * Run bl.conf file generation
 
 ```bash
-[sudo] blc -configure
+[sudo] blc --configure
 ```
 
 
@@ -161,5 +161,5 @@ make
 * Run bl.conf file generation
 
 ```bash
-[sudo] blc -configure
+[sudo] blc --configure
 ```
