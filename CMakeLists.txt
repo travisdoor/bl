@@ -93,6 +93,23 @@ if(MSVC)
 
     set(LLVM_DIR "${LLVM_BIN_RELEASE}/lib/cmake/llvm")
   endif()
+
+  # DOWNLOAD LLD binary
+  set(LLD_BIN ${CMAKE_CURRENT_BINARY_DIR}/lld.exe)
+  set(LLD_BIN_ZIP
+      ${CMAKE_CURRENT_BINARY_DIR}/lld-11.0.1-win64-release.zip)
+  if(NOT EXISTS ${LLD_BIN})
+    if(NOT EXISTS ${LLD_BIN_ZIP})
+      message(STATUS "Downloading LLD binaries.")
+      file(
+        DOWNLOAD biscuitlang.org/releases/lld-11.0.1-win64-release.zip
+        ${LLD_BIN_ZIP}
+        SHOW_PROGRESS
+        EXPECTED_HASH MD5=e9606991f195b22e55cfdafa1213031a)
+    endif()
+    execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${LLD_BIN_ZIP}
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+  endif()
 endif()
 
 if(UNIX AND NOT APPLE)
@@ -309,12 +326,11 @@ endif()
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   # Copy LLD executable into output directory
   set(BL_LLD_EXE "bl-lld.exe")
-  set(BL_LLD "${CMAKE_SOURCE_DIR}/deps/lld/bin/win32/lld.exe")
-  if(NOT EXISTS ${BL_LLD})
-    message(FATAL_ERROR "LLD not found expected location is ${BL_LLD}" )
+  if(NOT EXISTS ${LLD_BIN})
+    message(FATAL_ERROR "LLD not found expected location is ${LLD_BIN}" )
   endif()
   add_custom_command(TARGET blc POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${BL_LLD} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_LLD_EXE}
+    COMMAND ${CMAKE_COMMAND} -E copy ${LLD_BIN} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_LLD_EXE}
   )
 
   # Copy bl-config executable into output directory
@@ -334,7 +350,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     FILES ${BL_CONFIG}
     DESTINATION ${CMAKE_INSTALL_BINDIR})
   install(
-    FILES ${BL_LLD}
+    FILES ${LLD_BIN}
     DESTINATION ${CMAKE_INSTALL_BINDIR}
     RENAME ${BL_LLD_EXE})
 endif()
