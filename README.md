@@ -1,3 +1,5 @@
+<div style="text-align:center"><img src="http://biscuitlang.org/versions/0.9.0/_static/header.png" /></div>
+
 # About
 ![Windows](https://github.com/travisdoor/bl/workflows/Windows/badge.svg?branch=master)
 ![Linux](https://github.com/travisdoor/bl/workflows/Linux/badge.svg?branch=master)
