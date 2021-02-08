@@ -24,7 +24,7 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 * Rich type info in runtime.
 * Debuggable in gdb, lldb and Visual Studio.
 
-## Installation
+# Installation
 See installation guide [here](http://biscuitlang.org/versions/0.9.0/index.html).
 
 # Example
