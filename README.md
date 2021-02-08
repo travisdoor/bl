@@ -13,7 +13,6 @@ Project homepage: [biscuitlang.org](http://biscuitlang.org)
 Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 
 # Features & descriptions
-
 * Simple small language.
 * Manual memory management.
 * ABI compatibility with C libraries.
@@ -25,9 +24,10 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 * Rich type info in runtime.
 * Debuggable in gdb, lldb and Visual Studio.
 
+## Installation
+See installation guide [here](http://biscuitlang.org/versions/0.9.0/index.html).
 
 # Example
-
 ```c
 main :: fn () s32 {
     return fib(10);
@@ -42,124 +42,4 @@ fib :: fn (n: s32) s32 {
     
     return -1;
 }
-```
-
-## Installation from source code
-Following guide uses master branch as default which contains latest unstable changes, if you want to use stable version, 
-please specify one of the release branches during clone or checkout.
-
-## Requirements
-* git
-* CMake
-* LLVM 11/10
-* GCC/CLANG/Visual Studio
-
-    
-## Windows
-You will need Visual Studio 2019 installed on your machine. 
-
-* Download and compile BL.
-
-```bash
-git clone https://github.com/travisdoor/bl.git
-cd bl
-mkdir build
-cd build
-cmake .. -G "Visual Studio 16 2019" -Thost=x64 -DCMAKE_BUILD_TYPE=Release
-```
-
-* Now you should be able to compile the BL target from the Visual Studio or from the terminal with following command.
-
-```bash
-cmake --build . --config Release
-```
-
-* Use this for installation into Program Files (default location). This step require run command line emulator as an administrator (when default install location is used).
-
-```bash
-cmake --build . --config Release --target Install
-```
-
-* Run `bl.conf` file generation.
-
-  `bl` compiler internally use MS Build Tools by default, in case you want to use dependencies already provided by Visual Studio installation, you must specify path to VS toolchain manually. See example bellow. You can also eventually download and install [MS Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools).
-
-```bash
-bl-config.exe --build-tools-path "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community"
-```
-
-​		Generate config using MS Build Tools.
-
-```bash
-blc --configure
-```
-
-​		Results will be written into `etc/bl.conf` file and can be regenerated or changed later as needed.
-
-## macOS
-
-* Install command line tools.
-
-```bash
-xcode-select --install
-```
-
-* Install LLVM 11 dev packages with your favourite package manager. Brew:
-
-```bash
-brew install llvm
-```
-
-* Download and compile bl.
-
-```bash
-git clone https://github.com/travisdoor/bl.git
-cd bl
-mkdir build
-cd build
-cmake ..
-make
-```
-
-* For installation use:
-
-```bash
-[sudo] make install
-```
-
-* Run bl.conf file generation
-
-```bash
-[sudo] blc --configure
-```
-
-
-## Linux
-* Install LLVM 10 dev packages with your favourite package manager.
-
-```bash
-sudo apt install llvm-10-dev 
-```
-
-* Download and compile bl.
-
-```bash
-git clone https://github.com/travisdoor/bl.git
-cd bl
-mkdir build
-cd build
-cmake ..
-make
-```
-
-* For installation use:
-
-```bash
-[sudo] make install
-```
-
-* Run bl.conf file generation
-
-```bash
-[sudo] blc --configure
 ```
