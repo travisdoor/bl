@@ -1,18 +1,21 @@
 #import "std/arg_parser"
 #import "std/fs"
 
-ProjKind :: enum {
-    Executable;
-    Shared;
-    CommandLineTool;
-}
+HELP ::
+    "BL project generator.\n"
+    "Usage:\n"
+    "  bl-make-project [options] <name>"
+    ;
 
-HELP_TEXT ::
-"Generate BL new project.\n"
-"Usage:\n"
-"  bl-make-project [options] <name>";
+MAIN_BODY :: 
+    "main :: fn () s32 {\n"
+    "    return 0;\n"
+    "}\n"
+    ;
 
-// Command line arguments context.
+MAIN_FILE :: "main";    
+SRC_DIR :: "src";
+
 Args :: struct #base ArgCtx {
     proj_dir: string;
     proj_kind: ProjKind;
@@ -20,35 +23,33 @@ Args :: struct #base ArgCtx {
 
 g_args: Args;
 
+ProjKind :: enum {
+    Executable;
+    Shared;
+    CommandLineTool;
+}
+
 main :: fn () s32 {
     _context.print_log_fn = &custom_logger;
-    arg_parser :: arg_parser_new(HELP_TEXT);
+    arg_parser :: arg_parser_new(HELP);
     defer arg_parser_delete(arg_parser);
     
     arg_parser_add(
         arg_parser,
         "",
-        "--dir",
-        "Project directory.",
+        "--output-dir",
+        "Sets the output directory.",
         &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
-            a := cast(*Args) ctx;
+            a: *Args = auto ctx;
             if (args.len < 2) {
                 return 0, error("Expected directory name!");
             }
-            path := args[1];
-            string_replace_all(&path, '\\', '/');
-            if (!string_is_empty(path)) && path[path.len-1] == '\"' {
-                path[path.len-1] = '\0';
-                path.len -= 1;
-            }
-            a.proj_dir = path;
-            is_valid_directory :: fs_is_directory(a.proj_dir);
-            if !is_valid_directory {  
-                return 0, error("Invalid directory path '%'!", a.proj_dir);
-            }
+            a.proj_dir = args[1];
+            is_dir, err :: fs_is_directory(a.proj_dir);
+            if (!is_ok(err)) || (!is_dir) { return 0, error("Invalid directory '%'.", a.proj_dir); }
             return 2, ok();
         });
-        
+     
      arg_parser_add(
         arg_parser,
         "",
@@ -81,9 +82,11 @@ main :: fn () s32 {
             a.proj_kind = ProjKind.CommandLineTool;
             return 1, ok();
         });        
-          
-    g_args.proj_dir = ".";   
+        
+    g_args.proj_dir = ".";
     state: Error;
+    
+    // Start parsing.
     state = arg_parser_run(arg_parser, command_line_arguments, &g_args, 1);
     if !is_ok(state) {
         print_err("%", state);
@@ -91,14 +94,35 @@ main :: fn () s32 {
         return 1;
     }
     if g_args.help { return 0; }
-    if g_args.other.len == 0 { 
+    if g_args.other.len == 0 {
         print_err("Expected project name!");
         arg_parser_print_help(arg_parser);
         return 1;
     }
     proj_name :: g_args.other[0];
-    print_log("Generate project '%' at '%' (%).", proj_name, g_args.proj_dir, g_args.proj_kind); 
+    print_log("Generate new project '%' in '%'.", proj_name, g_args.proj_dir);
     
+    proj_root :: sprint(g_args.proj_dir, "/", proj_name);
+    proj_src  :: sprint(proj_root, "/", SRC_DIR);
+    defer string_delete(proj_src);    
+    defer string_delete(proj_root);
+    
+    // create root directory
+    state = fs_dir_create(proj_root);
+    if !is_ok(state) { print_err("%", state); return 1; }
+
+    // create src directory
+    state = fs_dir_create(proj_src);
+    if !is_ok(state) { print_err("%", state); return 1; }
+ 
+    { // create main file
+        proj_main :: sprint(proj_src, "/", MAIN_FILE);
+        defer string_delete(proj_main);            
+        file, err :: fs_open(proj_main, FSOpenMode.Write, FSOpenMode.Create);
+        defer fs_close(file);
+        if !is_ok(err) { print_err("%", err); return 1; }
+        fs_write_string(file, MAIN_BODY);
+    }
     return 0;
 }
 
@@ -108,7 +132,7 @@ custom_logger :: fn (kind: PrintLogKind, file: string, line: s32, format: string
         PrintLogKind.Message { print("  "); }
         PrintLogKind.Warning { print("  [W] "); }
         default { print("  [E] "); }                        
-    }
+    }    
     print(format, args);
     print("\n");
 }
