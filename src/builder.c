@@ -177,9 +177,16 @@ static void start_threads()
 static void async_compile(Assembly *assembly)
 {
     ThreadingImpl *threading = builder.threading;
-    threading->assembly      = assembly;
-    threading->active        = 0;
-    threading->is_compiling  = true;
+
+    Unit *unit;
+    TARRAY_FOREACH(Unit *, &assembly->units, unit)
+    {
+        async_push(unit);
+    }
+
+    threading->assembly     = assembly;
+    threading->active       = 0;
+    threading->is_compiling = true;
     pthread_cond_broadcast(&threading->queue_condition);
 
     while (true) {
@@ -407,7 +414,7 @@ void builder_init(void)
 #if BL_PLATFORM_MACOS || BL_PLATFORM_LINUX
     builder.options.reg_split = true;
 #else
-    builder.options.reg_split     = false;
+    builder.options.reg_split = false;
 #endif
 
     // initialize LLVM statics
@@ -705,5 +712,8 @@ void builder_async_submit_unit(Unit *unit)
 {
     BL_ASSERT(unit);
     if (builder.options.no_jobs) return;
+    ThreadingImpl *threading = builder.threading;
+    if (!threading->is_compiling) return;
+
     async_push(unit);
 }

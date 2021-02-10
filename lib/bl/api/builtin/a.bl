@@ -37,10 +37,11 @@
 //! Compiler builtins are automatically loaded into every assembly.
 
 /// Describe supported platforms.
-OSKind :: enum {
-    Windows;
-    Linux;
-    MacOS;
+OSKind :: enum u32 {
+    Unknown :: 0;
+    Windows :: 1 << 1;
+    Linux   :: 1 << 2;
+    MacOS   :: 1 << 3;
 }
 
 /// TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 

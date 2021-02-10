@@ -1,0 +1,513 @@
+//*****************************************************************************
+// c2bl
+//
+// File:   c2bl.bl
+// Author: Martin Dorazil
+// Date:   9/19/2019
+//
+// Copyright 2019 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//*****************************************************************************
+
+#import "std/fs"
+#import "std/array"
+#import "std/arg_parser"
+#import "clang"
+
+VERSION :: "1.0.0";
+
+main :: fn () s32 {
+    if !handle_args() { return 1; }
+    if _args.help { return 0; }
+    if _args.other.len == 0 { eprint("No input files!\n"); return 1; }
+
+    state := 0;
+    loop i := 0; i < _args.other.len; i += 1 {
+        in_filepath :: _args.other[i];
+        string_replace_all(&in_filepath, '\\', '/');
+        err :: process_file(in_filepath);
+        if !is_ok(err) {
+            eprint("ERROR: %\n", err);
+            state += 1;
+        }
+    }
+    return state;
+}
+
+#private 
+HELP_TEXT ::
+"Converter from C API header files to BL wrappers.\n"
+"Usage:\n"
+"  c2bl [options] <input files>";
+
+Ctx :: struct {
+    out: FSFile;    
+    filename: string;
+    sym_cache: [..]u32;
+    type_cache: [..]CXType;
+}
+
+Args :: struct #base ArgCtx {
+    out_filepath: string;
+    include_dir: string;
+    translate_macros: bool;
+    check_syntax: bool;
+}
+
+_args: Args;
+
+handle_args :: fn () bool {
+    arg_parser :: arg_parser_new(HELP_TEXT);
+    defer arg_parser_delete(arg_parser);
+
+    _args.include_dir = ".";
+
+    arg_parser_add(
+        arg_parser,
+        "-I",
+        "--include-directory",
+        "Specify include directory.",
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
+            a: *Args = auto ctx;
+            if (args.len < 2) {
+                return 0, error("Expected directory name!");
+            }
+            string_replace_all(&args[1], '\\', '/');
+            a.include_dir = args[1];
+            is_valid_directory :: fs_is_directory(a.include_dir);
+            if !is_valid_directory {  
+                return 0, error("Invalid include directory path '%'!", a.include_dir);
+            }
+            return 2, ok();
+        });
+        
+    arg_parser_add(
+        arg_parser,
+        "-sc",
+        "--syntax-check",
+        "Check syntax of output files. BL compiler is required in PATH.",
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
+            a: *Args = auto ctx;
+            a.check_syntax = true;
+            return 1, ok();
+        });
+        
+    arg_parser_add(
+        arg_parser,
+        "-tm",
+        "--translate-macros",
+        "Translate C macros into BL, this feature is experimental.",
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
+            a: *Args = auto ctx;
+            a.translate_macros = true;
+            return 1, ok();
+        });
+
+    arg_parser_add(
+        arg_parser,
+        "-o",
+        "--output",
+        "Specify name of the output file.",
+        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
+            a: *Args = auto ctx;
+            if (args.len < 2) {
+                return 0, error("Expected output file name!");
+            }
+            string_replace_all(&args[1], '\\', '/');
+            a.out_filepath = args[1];
+            return 2, ok();
+        });
+        
+    state :: arg_parser_run(arg_parser, command_line_arguments, &_args, 1);
+    if !is_ok(state) {
+        print_err("%", state);
+        arg_parser_print_help(arg_parser);
+        return false;
+    }
+    return true;
+}
+
+process_file :: fn (in_filepath: string) Error {
+    idx := clang_createIndex(0, 0);
+    defer clang_disposeIndex(idx);
+    options: u32;
+    if _args.translate_macros {
+        options = make_TU_flags(CXTranslationUnit_Flags.SkipFunctionBodies, CXTranslationUnit_Flags.DetailedPreprocessingRecord);
+    } else {
+        options = make_TU_flags(CXTranslationUnit_Flags.SkipFunctionBodies);
+    }
+    tu : CXTranslationUnit = null;
+
+    arg_include_path :: sprint("-I", _args.include_dir);
+    defer string_delete(arg_include_path);
+    parser_args :: {:[1]*u8: arg_include_path.ptr};
+
+    result := clang_parseTranslationUnit2(idx, in_filepath.ptr, parser_args.ptr, 1, null, 0, options, &tu);
+    defer clang_disposeTranslationUnit(tu);
+    if result != CXErrorCode.Success {
+        return error("Cannot process file '%'.", in_filepath);
+    }
+    cursor := clang_getTranslationUnitCursor(tu);
+    
+    // prepare output file 
+    ctx: Ctx;
+    if !string_split_by_last(in_filepath, '/', null, &ctx.filename) {
+        ctx.filename = in_filepath;
+    }
+    out_filepath := string_new(_args.out_filepath);
+    defer string_delete(out_filepath);
+    if string_is_empty(_args.out_filepath) {
+        out_filepath = sprint(fs_remove_extension(ctx.filename), ".bl");
+    }
+    out_file, err :: fs_open(out_filepath, FSOpenMode.Create, FSOpenMode.Write);
+    if !is_ok(err) {
+        return error("Cannot create output file '%'.", out_filepath);
+    }
+    ctx.out = out_file;
+
+    print("Converting file '%' to '%'.\n", in_filepath, out_filepath);
+    fs_write_fmt(ctx.out, "// Generated from '%'.\n// c2bl version: %\n", ctx.filename, VERSION);    
+    clang_visitChildren(cursor, &visitor, auto &ctx);
+    fs_close(out_file);
+    array_terminate(ctx.type_cache);
+    array_terminate(ctx.sym_cache);
+
+    if _args.check_syntax {
+        cmd :: sprint("blc -silent -syntax-only ", out_filepath);
+        defer string_delete(cmd);
+        if os_execute(cmd) != 0 {
+            return error("Code validation failed.");
+        }
+    }
+    return ok();
+}
+
+visitor :: fn (c: CXCursor, parent: CXCursor, client_data: CXClientData) CXChildVisitResult {
+    ctx :: cast(*Ctx) client_data;
+    loc := clang_getCursorLocation(c);
+    if false { // TEST
+        file: CXFile;
+        clang_getExpansionLocation(loc, &file, null, null, null);
+        spelling :: clang_getFileName(file);
+        if spelling.data {
+            name :: {:string: auto c_strlen(auto spelling.data), spelling.data};
+            print("% ", name);
+        }
+    }
+    if clang_Location_isFromMainFile(loc) == 0 { 
+        return CXChildVisitResult.Continue;
+    }
+    
+    sym_name, is_sym_name_valid :: get_name(c);
+    if (!is_sym_name_valid) || (!is_new_sym(ctx, sym_name)) {
+        return CXChildVisitResult.Continue;    
+    }
+    switch c.kind {
+        CXCursorKind.MacroDefinition {
+            if clang_Cursor_isMacroFunctionLike(c) != 0 { return CXChildVisitResult.Continue; }
+            if clang_Cursor_isMacroBuiltin(c) != 0 { return CXChildVisitResult.Continue; }
+            emit_macro(ctx, c);
+        }
+        CXCursorKind.FunctionDecl {
+            emit_func(ctx, c);
+        }
+        CXCursorKind.StructDecl,
+        CXCursorKind.UnionDecl,
+        CXCursorKind.EnumDecl {
+            if !clang_isCursorDefinition(c) { return CXChildVisitResult.Continue; }
+            emit_name(ctx, c);
+            fs_write_string(ctx.out, " :: ");
+            switch c.kind {
+                CXCursorKind.StructDecl { emit_struct(ctx, c); }
+                CXCursorKind.UnionDecl  { emit_union(ctx, c);  }
+                CXCursorKind.EnumDecl   { emit_enum(ctx, c);   }
+                default;
+            }                                
+            fs_write_string(ctx.out, "\n");
+            add_cached_type(ctx, clang_getCursorType(c));
+        }
+        CXCursorKind.TypedefDecl {
+            emit_typedef(ctx, c);
+        }
+        
+        CXCursorKind.MacroExpansion,
+        CXCursorKind.InclusionDirective;
+        
+        default {
+            error_cursor(ctx, c, "unknown statement name as %", c.kind);
+        }
+    }
+
+    add_cached_sym(ctx, sym_name);    
+    return CXChildVisitResult.Continue;
+}
+
+emit_macro :: fn (ctx: *Ctx, c: CXCursor) {
+    tu :: clang_Cursor_getTranslationUnit(c);
+    range :: clang_getCursorExtent(c);
+    tokens: []CXToken;
+    clang_tokenize(tu, range, &tokens.ptr, auto &tokens.len);
+    defer clang_disposeTokens(tu, tokens.ptr, auto tokens.len);
+    if tokens.len < 2 { return; }
+    loop i := 0; i < tokens.len; i += 1 {
+        spelling :: clang_getTokenSpelling(tu, tokens[i]);
+        str :: {:string: auto c_strlen(auto spelling.data), spelling.data};
+        if i == 0 {
+            if string_is_empty(str) { break; }
+            fs_write_fmt(ctx.out, "% :: ", str);
+        } else {
+            fs_write_string(ctx.out, str);
+        }
+    }
+    //if tokens.len < 2 { error_cursor(ctx, c, "invalid macro expansion"); }
+    fs_write_string(ctx.out, ";\n");
+}
+
+emit_func :: fn (ctx: *Ctx, c: CXCursor) {
+    type :: clang_getCursorType(c);
+    if !emit_name(ctx, c) { return; }
+    fs_write_string(ctx.out, " :: fn (");
+    argc :: clang_Cursor_getNumArguments(c);
+    loop i := 0; i < argc; i += 1 {
+        arg_cursor :: clang_Cursor_getArgument(c, auto i);
+        if !emit_name(ctx, arg_cursor) {
+            fs_write_fmt(ctx.out, "_%: ", i);
+        } else {
+            fs_write_fmt(ctx.out, ": ", i);
+        }
+        arg_type :: clang_getArgType(type, i);
+        emit_type(ctx, arg_type, true);
+        if i < argc - 1 { fs_write_string(ctx.out, ", "); }
+    }
+    fs_write_string(ctx.out, ") ");
+    type_result := clang_getResultType(type);
+    emit_type(ctx, type_result, true);
+    fs_write_string(ctx.out, " #extern;\n");
+}
+
+emit_enum :: fn (ctx: *Ctx, c: CXCursor) {
+    fs_write_string(ctx.out, "enum c_int {\n");
+    clang_visitChildren(c, &emit_enum_variant, auto ctx);
+    fs_write_string(ctx.out, "}");
+}
+
+emit_enum_variant :: fn (c: CXCursor, parent: CXCursor, client_data: CXClientData) CXChildVisitResult {
+    ctx :: cast(*Ctx) client_data;
+    fs_write_string(ctx.out, "    ");
+    emit_name(ctx, c);
+    value :: clang_getEnumConstantDeclValue(c);
+    fs_write_fmt(ctx.out, " :: %;\n", value);
+    return CXChildVisitResult.Continue;
+}
+
+emit_struct :: fn (ctx: *Ctx, c: CXCursor) {
+    fs_write_string(ctx.out, "struct {\n");
+    clang_visitChildren(c, &emit_struct_member, auto ctx);
+    fs_write_string(ctx.out, "}");
+}
+
+emit_union :: fn (ctx: *Ctx, c: CXCursor) {
+    fs_write_string(ctx.out, "union {\n");
+    clang_visitChildren(c, &emit_struct_member, auto ctx);
+    fs_write_string(ctx.out, "}");
+}
+
+emit_struct_member :: fn (c: CXCursor, parent: CXCursor, client_data: CXClientData) CXChildVisitResult {
+    ctx :: cast(*Ctx) client_data;
+    fs_write_string(ctx.out, "    ");
+    emit_name(ctx, c);
+    fs_write_fmt(ctx.out, ": ");
+    type :: clang_getCursorType(c);
+    emit_type(ctx, type);
+    fs_write_fmt(ctx.out, ";\n");
+    return CXChildVisitResult.Continue;
+}
+
+emit_typedef :: fn (ctx: *Ctx, c: CXCursor) {
+    if !emit_name(ctx, c) { return; }
+    fs_write_string(ctx.out, " :: ");
+    type :: clang_getTypedefDeclUnderlyingType(c);
+    emit_type(ctx, type, true);
+    fs_write_string(ctx.out, ";\n");
+}
+
+emit_name :: fn (ctx: *Ctx, c: CXCursor) bool {
+    name, is_valid :: get_name(c);
+    if is_valid {
+        fs_write_string(ctx.out, name);
+        return true;
+    }
+    return false;
+}
+
+emit_type :: fn (ctx: *Ctx, type: CXType, ignore_void := false) {
+    switch type.kind {
+        CXTypeKind.Bool       { fs_write_string(ctx.out, "bool"); }
+        CXTypeKind.Char_U     { fs_write_string(ctx.out, "c_uchar");   }
+        CXTypeKind.UChar      { fs_write_string(ctx.out, "c_uchar");   }
+        CXTypeKind.Char16     { fs_write_string(ctx.out, "c_short");  }
+        CXTypeKind.Char32     { fs_write_string(ctx.out, "c_int");  }
+        CXTypeKind.UShort     { fs_write_string(ctx.out, "c_ushort");  }
+        CXTypeKind.UInt       { fs_write_string(ctx.out, "c_uint");  }
+        CXTypeKind.ULong      { fs_write_string(ctx.out, "c_ulong");  }
+        CXTypeKind.ULongLong  { fs_write_string(ctx.out, "c_ulonglong");  }
+        CXTypeKind.Char_S     { fs_write_string(ctx.out, "c_char");   }
+        CXTypeKind.SChar      { fs_write_string(ctx.out, "c_char");   }
+        CXTypeKind.WChar      { fs_write_string(ctx.out, "c_short");  }
+        CXTypeKind.Short      { fs_write_string(ctx.out, "c_short");  }
+        CXTypeKind.Int        { fs_write_string(ctx.out, "c_int");  }
+        CXTypeKind.Long       { fs_write_string(ctx.out, "c_long");  }
+        CXTypeKind.LongLong   { fs_write_string(ctx.out, "c_longlong");  }
+        CXTypeKind.Float      { fs_write_string(ctx.out, "f32");  }
+        CXTypeKind.Double     { fs_write_string(ctx.out, "f64");  }
+        CXTypeKind.NullPtr    { fs_write_string(ctx.out, "null"); }
+
+        CXTypeKind.Void {
+            if !ignore_void {
+                fs_write_string(ctx.out, "c_void");
+            }
+        }
+        CXTypeKind.Elaborated,
+        CXTypeKind.Typedef {
+            c := clang_getTypeDeclaration(type);
+            if !emit_name(ctx, c) { 
+                type = clang_getCanonicalType(type);
+                emit_type(ctx, type);
+            }
+        }
+        
+        CXTypeKind.Record,
+        CXTypeKind.Enum {
+            c := clang_getTypeDeclaration(type);
+            if clang_isCursorDefinition(c) {
+                if is_new_type(ctx, type) {
+                    switch type.kind {
+                        CXTypeKind.Record { emit_struct(ctx, c); }
+                        CXTypeKind.Enum   { emit_enum(ctx, c);   }
+                        default;
+                    }
+                    add_cached_type(ctx, type);
+                } else {
+                    name, is_valid :: get_name(type);
+                    if is_valid {
+                        fs_write_string(ctx.out, name);
+                    } else {
+                        error_cursor(ctx, c, "unknown type/reference name as %", type.kind);
+                    }
+                }
+            } else {
+                emit_name(ctx, c);
+            }
+        }
+          
+        CXTypeKind.FunctionNoProto,  
+        CXTypeKind.FunctionProto {
+            fs_write_string(ctx.out, "fn (");
+            argc := clang_getNumArgTypes(type);
+            loop i := 0; i < argc; i += 1 {
+                fs_write_fmt(ctx.out, "_%: ", i);
+                arg_type :: clang_getArgType(type, i);
+                emit_type(ctx, arg_type, true);
+                if i < argc - 1 { fs_write_string(ctx.out, ", "); }
+            }
+            fs_write_string(ctx.out, ") ");
+            type_result := clang_getResultType(type);
+            emit_type(ctx, type_result, true);
+        }
+
+        CXTypeKind.ConstantArray {
+            l := clang_getNumElements(type);
+            fs_write_fmt(ctx.out, "[%]", l);
+            type_elem := clang_getArrayElementType(type);
+            emit_type(ctx, type_elem, true);
+        }
+
+        CXTypeKind.Pointer {
+            fs_write_string(ctx.out, "*");
+            emit_type(ctx, clang_getPointeeType(type), false);
+        }
+        
+        default {
+            c :: clang_getTypeDeclaration(type);
+            error_cursor(ctx, c, "unsupported type as %", type.kind);
+        }
+    }
+}
+
+get_name :: fn { _get_name_cursor; _get_name_type; }
+
+_get_name_cursor :: fn (c: CXCursor) (string, bool) {
+    spelling :: clang_getCursorSpelling(c);
+    name :: {:string: auto c_strlen(auto spelling.data), spelling.data};
+    if string_is_empty(name) { return "", false; }
+    return name, true;
+}
+
+_get_name_type :: fn (type: CXType) (string, bool) {
+    spelling :: clang_getTypeSpelling(type);
+    name :: {:string: auto c_strlen(auto spelling.data), spelling.data};
+    if string_is_empty(name) { return "", false; }
+    return name, true;
+}
+
+
+make_TU_flags :: fn (flags: ...CXTranslationUnit_Flags) u32 {
+    result: u32;
+    loop i := 0; i < flags.len; i += 1 {
+        result = result | auto flags[i];
+    }
+    return result;
+}
+
+is_new_type :: fn (ctx: *Ctx, type: CXType) bool {
+    loop i := 0; i < ctx.type_cache.len; i += 1 {
+        if clang_equalTypes(type, ctx.type_cache[i]) != 0 { return false; }
+    }
+    return true;
+}
+
+add_cached_type :: fn (ctx: *Ctx, type: CXType) {
+    array_push(ctx.type_cache, type);
+}
+
+is_new_sym :: fn (ctx: *Ctx, sym: string) bool {
+    if string_is_empty(sym) { return true; }
+    hash :: string_hash(sym);
+    loop i := 0; i < ctx.sym_cache.len; i += 1 {
+        if hash == ctx.sym_cache[i] { return false; }
+    }
+    return true;
+}
+
+add_cached_sym :: fn (ctx: *Ctx, sym: string) {
+    hash :: string_hash(sym);
+    array_push(ctx.sym_cache, hash);
+}
+
+error_cursor :: fn (ctx: *Ctx, c: CXCursor, fmt: string, args: ...) {
+    location := clang_getCursorLocation(c);
+    line : u32;
+    clang_getExpansionLocation(location, null, &line, null, null);
+    buf: [1024]u8;
+    len :: bprint(buf, fmt, args);
+    str :: {:string: auto len, buf.ptr};
+    eprint("ERROR [%:%] %\n", ctx.filename, line, str);
+    fs_write_fmt(ctx.out, "\n// ERROR [%:%] %\n", ctx.filename, line, str);
+}

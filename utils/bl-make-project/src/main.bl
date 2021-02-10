@@ -7,13 +7,66 @@ HELP ::
     "  bl-make-project [options] <name>"
     ;
 
-MAIN_BODY :: 
+MAIN_BODY_EXE :: 
     "main :: fn () s32 {\n"
     "    return 0;\n"
     "}\n"
     ;
-
-MAIN_FILE :: "main";    
+    
+MAIN_BODY_SHARED :: 
+    "my_func :: fn () s32 #export {\n"
+    "    return 0;\n"
+    "}\n"
+    ;
+    
+MAIN_BODY_CLT :: 
+    "#import \"std/arg_parser\"\n"
+    "\n"
+    "// Command line arguments context.\n"
+    "Args :: struct #base ArgCtx {\n"
+    "    my_flag: bool;\n"
+    "}\n"
+    "\n"
+    "g_args: Args;\n"
+    "\n"
+    "main :: fn () s32 {\n"
+    "    arg_parser :: arg_parser_new();\n"
+    "    defer arg_parser_delete(arg_parser);\n"
+    "\n"
+    "    // Add new argument.\n"
+    "    arg_parser_add(\n"
+    "        arg_parser, \n"
+    "        \"-f\", // Short name (must start with -)\n"
+    "        \"--flag\", // Long name (must start with -)\n"
+    "        \"Specify my flag.\", // Help text.\n"
+    "        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {\n"
+    "            a: *Args = auto ctx;\n"
+    "            a.my_flag = true;\n"
+    "            return 1, ok(); // Return number of parsed arguments and state.\n"
+    "        });\n"
+    "\n"
+    "    // Start parsing.\n"
+    "    state :: arg_parser_run(arg_parser, command_line_arguments, &g_args, 1);\n"
+    "    if !is_ok(state) {\n"
+    "        print_err(\"%\", state);\n"
+    "        arg_parser_print_help(arg_parser);\n"
+    "        return 1;\n"
+    "    }\n"
+    "    if g_args.help { return 0; }\n"
+    "    return 0;\n"
+    "}"
+    ;
+    
+BUILD_BODY :: // executable/library ; name ; entry
+    "build :: fn () #build_entry {\n"
+    "    exe :: add_%(\"%\");\n"
+    "    set_output_dir(exe, \"bin\");\n"
+    "    add_unit(exe, \"%/%\");\n"
+    "}\n"
+    ;
+    
+MAIN_FILE :: "main.bl";    
+BUILD_FILE :: "build.bl";    
 SRC_DIR :: "src";
 
 Args :: struct #base ArgCtx {
@@ -38,7 +91,7 @@ main :: fn () s32 {
         arg_parser,
         "",
         "--output-dir",
-        "Sets the output directory.",
+        "Sets the output directory. This is directory in which root project directory will be created.",
         &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
             a: *Args = auto ctx;
             if (args.len < 2) {
@@ -53,7 +106,7 @@ main :: fn () s32 {
      arg_parser_add(
         arg_parser,
         "",
-        "--kind=exe",
+        "--exe",
         "Generate simple executable project (default).",
         &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
             a: *Args = auto ctx;
@@ -64,7 +117,7 @@ main :: fn () s32 {
      arg_parser_add(
         arg_parser,
         "",
-        "--kind=shared",
+        "--shared",
         "Generate shared library project.",
         &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
             a: *Args = auto ctx;
@@ -75,7 +128,7 @@ main :: fn () s32 {
      arg_parser_add(
         arg_parser,
         "",
-        "--kind=tool",
+        "--tool",
         "Generate command line tool project.",
         &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
             a: *Args = auto ctx;
@@ -100,7 +153,7 @@ main :: fn () s32 {
         return 1;
     }
     proj_name :: g_args.other[0];
-    print_log("Generate new project '%' in '%'.", proj_name, g_args.proj_dir);
+    print_log("Generate new project '%' in '%' (%).", proj_name, g_args.proj_dir, g_args.proj_kind);
     
     proj_root :: sprint(g_args.proj_dir, "/", proj_name);
     proj_src  :: sprint(proj_root, "/", SRC_DIR);
@@ -114,16 +167,49 @@ main :: fn () s32 {
     // create src directory
     state = fs_dir_create(proj_src);
     if !is_ok(state) { print_err("%", state); return 1; }
- 
-    { // create main file
-        proj_main :: sprint(proj_src, "/", MAIN_FILE);
-        defer string_delete(proj_main);            
-        file, err :: fs_open(proj_main, FSOpenMode.Write, FSOpenMode.Create);
-        defer fs_close(file);
-        if !is_ok(err) { print_err("%", err); return 1; }
-        fs_write_string(file, MAIN_BODY);
+
+    switch g_args.proj_kind {
+        ProjKind.Executable {
+            proj_main :: sprint(proj_src, "/", MAIN_FILE);
+            defer string_delete(proj_main);            
+            make_file(proj_main, MAIN_BODY_EXE);
+            
+            proj_build :: sprint(proj_root, "/", BUILD_FILE);
+            defer string_delete(proj_build);            
+            make_file(proj_build, BUILD_BODY, "executable", proj_name, SRC_DIR, MAIN_FILE);
+        }
+        ProjKind.Shared {
+            proj_main_filename :: sprint(proj_name, ".bl");
+            proj_main :: sprint(proj_src, "/", proj_main_filename);
+            defer string_delete(proj_main);            
+            defer string_delete(proj_main_filename);            
+            make_file(proj_main, MAIN_BODY_SHARED);
+
+            proj_build :: sprint(proj_root, "/", BUILD_FILE);
+            defer string_delete(proj_build);            
+            make_file(proj_build, BUILD_BODY, "library", proj_name, SRC_DIR, proj_main_filename);
+
+        }
+        ProjKind.CommandLineTool {
+            proj_main :: sprint(proj_src, "/", MAIN_FILE);
+            defer string_delete(proj_main);            
+            make_file(proj_main, MAIN_BODY_CLT);
+
+            proj_build :: sprint(proj_root, "/", BUILD_FILE);
+            defer string_delete(proj_build);            
+            make_file(proj_build, BUILD_BODY, "executable", proj_name, SRC_DIR, MAIN_FILE);
+        }
     }
+
     return 0;
+}
+
+make_file :: fn (filepath: string, content: string, args: ...) Error {
+    file, err :: fs_open(filepath, FSOpenMode.Write, FSOpenMode.Create);
+    defer fs_close(file);
+    if !is_ok(err) { return err; }
+    fs_write_fmt(file, content, args);
+    return ok();
 }
 
 #private
