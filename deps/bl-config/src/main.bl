@@ -16,21 +16,23 @@ Args :: struct #base ArgsImpl {
     override_config: bool;
 }
 
+g_etc_dir: string;
+g_conf_filepath: string;
 g_args: Args;
 g_pwd: string;
 
 main :: fn () s32 {
     _context.print_log_fn = &custom_logger;
     { // Setup pwd
-        exec_path :: os_get_exec_path();
-        defer string_delete(exec_path);
-        dir: string;
-        if string_split_by_last(exec_path, '/', &dir, null) {
-            g_pwd = string_new(dir);
-        } else {
-            g_pwd = string_new(exec_path);
-        }
-    }
+        exec_path :: os_get_exec_path();
+        defer string_delete(exec_path);
+        dir: string;
+        if string_split_by_last(exec_path, '/', &dir, null) {
+            g_pwd = string_new(dir);
+        } else {
+            g_pwd = string_new(exec_path);
+        }
+    }
     defer string_delete(g_pwd);
 
     arg_parser :: arg_parser_new(HELP_TEXT);
@@ -69,32 +71,35 @@ main :: fn () s32 {
     }
     
     if g_args.help { return 0; }
+
+    g_etc_dir = sprint(g_pwd, "/", ETC_DIR);
+    g_conf_filepath = sprint(g_etc_dir, "/", CONF_FILE);
+    defer string_delete(g_etc_dir);
+    defer string_delete(g_conf_filepath);
+
+    if fs_exist(g_conf_filepath) {
+        if !g_args.override_config {
+            print_warn("Configuration file '%' already exists, use '-f' to override.", g_conf_filepath);
+            return 0;
+        }
+    }
+
     state = configure();
     if !is_ok(state) { 
         print_err("%", state);
         print_err("Configuration generation failed!");
         return 1; 
     }
-    print_log("DONE.");
     return 0;
 }
 
 write_config :: fn (fmt: string, args: ...) Error {
-    conf_file_path := sprint(g_pwd, "/", ETC_DIR);
-    defer string_delete(conf_file_path);
-    fs_dir_create(conf_file_path);
-    string_concatenate(&conf_file_path, "/", CONF_FILE);
-    if fs_exist(conf_file_path) {
-        if !g_args.override_config {
-            print_warn("Configuration file '%' already exists, use '-f' to override.", conf_file_path);
-            return ok();
-        }
-    }
-    file, err :: fs_open(conf_file_path, FSOpenMode.Create, FSOpenMode.Write);
+    fs_dir_create(g_etc_dir);
+    file, err :: fs_open(g_conf_filepath, FSOpenMode.Create, FSOpenMode.Write);
     defer fs_close(file);
     if !is_ok(err) { return err; }
     fs_write_fmt(file, fmt, args);
-    print_log("Configuration written to '%'.", conf_file_path);
+    print_log("Configuration written to '%'.", g_conf_filepath);
     return ok();
 }
 
