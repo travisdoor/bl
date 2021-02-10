@@ -380,11 +380,11 @@ configure_file(${CMAKE_SOURCE_DIR}/deps/bl-config/src/config.bl.in
                ${CMAKE_SOURCE_DIR}/deps/bl-config/src/config.bl)
   
 # Compile utils
-add_custom_target(complete
+add_custom_target(utils
   COMMAND 
     ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/blc --configure && ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/blc --release-fast --build
   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/utils"
   COMMENT "Compile bl utils."
 )
 
-add_dependencies(complete blc)
+add_dependencies(utils blc)
