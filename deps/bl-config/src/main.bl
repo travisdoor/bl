@@ -86,7 +86,8 @@ write_config :: fn (fmt: string, args: ...) Error {
     string_concatenate(&conf_file_path, "/", CONF_FILE);
     if fs_exist(conf_file_path) {
         if !g_args.override_config {
-            return error("Configuration file '%' already exists, use '-f' to override.", conf_file_path);
+            print_warn("Configuration file '%' already exists, use '-f' to override.", conf_file_path);
+            return ok();
         }
     }
     file, err :: fs_open(conf_file_path, FSOpenMode.Create, FSOpenMode.Write);
