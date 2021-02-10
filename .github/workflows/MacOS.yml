@@ -25,5 +25,7 @@ jobs:
     - name: Configure
       run: |
         ./bin/bl-config -f
+    - name: Compile tools 
+      run: cmake --build . --config Debug --target Utils
     - name: Run tests
       run: ./bin/blc -rs doctor.bl -d
