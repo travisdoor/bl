@@ -58,6 +58,12 @@ BL_EXPORT void __add_lib_path(Assembly *assembly, const char *path)
     assembly_add_lib_path(assembly, path);
 }
 
+BL_EXPORT s32 __compile(Assembly *assembly)
+{
+    if (!assembly) BL_ABORT("Invalid assembly!");
+    return builder_compile(assembly);
+}
+
 BL_EXPORT void __link_library(Assembly *assembly, const char *name)
 {
     assembly_add_native_lib(assembly, name, NULL);

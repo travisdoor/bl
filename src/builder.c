@@ -279,6 +279,11 @@ int compile_assembly(Assembly *assembly)
     mir_run(assembly);
     if (assembly->options.emit_mir) mir_writer_run(assembly);
     INTERRUPT_ON_ERROR;
+    FINISH_IF(assembly->options.no_analyze);
+
+    //********************************************************************************************
+	// EXECUTION
+    //********************************************************************************************
     // Run main
     if (assembly->options.run) builder.last_script_mode_run_status = vm_entry_run(assembly);
 
@@ -287,8 +292,8 @@ int compile_assembly(Assembly *assembly)
 
     // Run test cases
     if (assembly->options.run_tests) builder.test_failc = vm_tests_run(assembly);
+    //********************************************************************************************
 
-    FINISH_IF(assembly->options.no_analyze);
     FINISH_IF(assembly->options.no_llvm);
     FINISH_IF(assembly->options.build_mode == BUILD_MODE_BUILD);
     ir_run(assembly);
