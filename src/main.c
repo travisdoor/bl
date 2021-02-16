@@ -160,15 +160,16 @@ int main(s32 argc, char *argv[])
         EXIT(EXIT_SUCCESS);
     }
 
-    if (*argv == NULL && !builder.options.use_pipeline) {
+    const bool use_build_pipeline = builder.options.assembly_kind == ASSEMBLY_BUILD_PIPELINE;
+    if (*argv == NULL && !use_build_pipeline) {
         builder_warning("Nothing to do, no input files, sorry :(");
         EXIT(EXIT_SUCCESS);
     }
 
-    Assembly *assembly = assembly_new("out");
+    Assembly *assembly = assembly_new(builder.options.assembly_kind, "out");
     assembly_set_vm_args(assembly, vm_argc, vm_argv);
-    if (builder.options.use_pipeline) {
-        assembly->options.build_mode = BUILD_MODE_BUILD;
+    if (use_build_pipeline) {
+        assembly->options.opt = ASSEMBLY_OPT_RELEASE_FAST;
         assembly_add_unit(assembly, BUILD_SCRIPT_FILE, NULL);
     } else {
         while (*argv != NULL) {

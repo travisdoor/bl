@@ -48,10 +48,10 @@
 // Wrapper for ld linker on Unix platforms.
 static const char *get_out_extension(Assembly *assembly)
 {
-    switch (assembly->options.build_output_kind) {
-    case BUILD_OUT_EXECUTABLE:
+    switch (assembly->kind) {
+    case ASSEMBLY_EXECUTABLE:
         return "";
-    case BUILD_OUT_SHARED_LIB:
+    case ASSEMBLY_SHARED_LIB:
         return SHARED_EXT;
     }
     BL_ABORT("Unknown output kind!");
@@ -59,10 +59,10 @@ static const char *get_out_extension(Assembly *assembly)
 
 static const char *get_out_prefix(Assembly *assembly)
 {
-    switch (assembly->options.build_output_kind) {
-    case BUILD_OUT_EXECUTABLE:
+    switch (assembly->kind) {
+    case ASSEMBLY_EXECUTABLE:
         return "";
-    case BUILD_OUT_SHARED_LIB:
+    case ASSEMBLY_SHARED_LIB:
         return SHARED_PREFIX;
     }
     BL_ABORT("Unknown output kind!");
@@ -91,11 +91,11 @@ static void append_libs(Assembly *assembly, TString *buf)
 static void append_default_opt(Assembly *assembly, TString *buf)
 {
     const char *default_opt = "";
-    switch (assembly->options.build_output_kind) {
-    case BUILD_OUT_EXECUTABLE:
+    switch (assembly->kind) {
+    case ASSEMBLY_EXECUTABLE:
         default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_EXEC_KEY);
         break;
-    case BUILD_OUT_SHARED_LIB:
+    case ASSEMBLY_SHARED_LIB:
         default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_SHARED_KEY);
     }
     tstring_appendf(buf, "%s ", default_opt);

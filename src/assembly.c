@@ -112,21 +112,18 @@ static void llvm_init(Assembly *assembly)
     LLVMContextRef llvm_context = LLVMContextCreate();
     LLVMModuleRef  llvm_module  = LLVMModuleCreateWithNameInContext(assembly->name, llvm_context);
     LLVMRelocMode  reloc_mode   = LLVMRelocDefault;
-    switch (assembly->options.build_output_kind) {
-    case BUILD_OUT_EXECUTABLE:
-        break;
-    case BUILD_OUT_SHARED_LIB:
+    switch (assembly->kind) {
+    case ASSEMBLY_SHARED_LIB:
         reloc_mode = LLVMRelocPIC;
         break;
     }
-    LLVMTargetMachineRef llvm_tm =
-        LLVMCreateTargetMachine(llvm_target,
-                                triple,
-                                cpu,
-                                features,
-                                get_opt_level_for_build_mode(assembly->options.build_mode),
-                                reloc_mode,
-                                LLVMCodeModelDefault);
+    LLVMTargetMachineRef llvm_tm = LLVMCreateTargetMachine(llvm_target,
+                                                           triple,
+                                                           cpu,
+                                                           features,
+                                                           opt_to_LLVM(assembly->options.opt),
+                                                           reloc_mode,
+                                                           LLVMCodeModelDefault);
 
     LLVMTargetDataRef llvm_td = LLVMCreateTargetDataLayout(llvm_tm);
     LLVMSetModuleDataLayout(llvm_module, llvm_td);
@@ -163,10 +160,15 @@ static void dl_terminate(Assembly *assembly)
 static void llvm_terminate(Assembly *assembly)
 {
     LLVMDisposeModule(assembly->llvm.module);
+    assembly->llvm.module = NULL;
     LLVMDisposeTargetMachine(assembly->llvm.TM);
+    assembly->llvm.TM = NULL;
     LLVMDisposeMessage(assembly->llvm.triple);
+    assembly->llvm.triple = NULL;
     LLVMDisposeTargetData(assembly->llvm.TD);
+    assembly->llvm.TD = NULL;
     LLVMContextDispose(assembly->llvm.cnt);
+    assembly->llvm.cnt = NULL;
 }
 
 static INLINE void mir_terminate(Assembly *assembly)
@@ -197,7 +199,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) BL_ABORT("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path            = _path;
+    const char *path = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {
@@ -307,10 +309,11 @@ import_module(Assembly *assembly, ConfData *config, const char *modulepath, Toke
 }
 
 // public
-Assembly *assembly_new(const char *name)
+Assembly *assembly_new(AssemblyKind kind, const char *name)
 {
     Assembly *assembly = bl_malloc(sizeof(Assembly));
     memset(assembly, 0, sizeof(Assembly));
+    assembly->kind = kind;
     assembly->sync = sync_new();
     assembly->name = strdup(name);
 
@@ -333,7 +336,6 @@ Assembly *assembly_new(const char *name)
     assembly->options.copy_deps = false;
 #endif
     set_default_out_dir(assembly);
-
     scope_arenas_init(&assembly->arenas.scope);
     ast_arena_init(&assembly->arenas.ast);
     arena_init(&assembly->arenas.array,
@@ -344,18 +346,18 @@ Assembly *assembly_new(const char *name)
                sizeof(union _SmallArrays),
                EXPECTED_ARRAY_COUNT,
                (ArenaElemDtor)small_array_dtor);
-
     assembly->gscope =
         scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT, NULL);
-
     dl_init(assembly);
     mir_init(assembly);
-
     return assembly;
 }
 
 void assembly_delete(Assembly *assembly)
 {
+#ifdef BL_DEBUG
+    BL_ASSERT(assembly->_prepared == false && "Assembly not cleaned up!");
+#endif
     free(assembly->name);
     Unit *unit;
     TARRAY_FOREACH(Unit *, &assembly->units, unit)
@@ -374,16 +376,17 @@ void assembly_delete(Assembly *assembly)
 
     tarray_terminate(&assembly->options.libs);
     tarray_terminate(&assembly->options.lib_paths);
+    tarray_terminate(&assembly->testing.cases);
+    tarray_terminate(&assembly->units);
+
     tstring_terminate(&assembly->options.custom_linker_opt);
     tstring_terminate(&assembly->options.out_dir);
     tstring_terminate(&assembly->options.module_dir);
     vm_terminate(&assembly->vm);
-    tarray_terminate(&assembly->testing.cases);
     arena_terminate(&assembly->arenas.small_array);
     arena_terminate(&assembly->arenas.array);
     ast_arena_terminate(&assembly->arenas.ast);
     scope_arenas_terminate(&assembly->arenas.scope);
-    tarray_terminate(&assembly->units);
     dl_terminate(assembly);
     mir_terminate(assembly);
     llvm_terminate(assembly);
@@ -391,9 +394,22 @@ void assembly_delete(Assembly *assembly)
     bl_free(assembly);
 }
 
-void assembly_apply_options(Assembly *assembly)
+void assembly_prepare(Assembly *assembly)
 {
+#ifdef BL_DEBUG
+    BL_ASSERT(assembly->_prepared == false && "Attempt to reinitialize assembly!");
+    assembly->_prepared = true;
+#endif
     llvm_init(assembly);
+}
+
+void assembly_cleanup(Assembly *assembly)
+{
+#ifdef BL_DEBUG
+    BL_ASSERT(assembly->_prepared && "Assembly not prepared.");
+    assembly->_prepared = false;
+#endif
+    llvm_terminate(assembly);
 }
 
 void assembly_add_lib_path(Assembly *assembly, const char *path)

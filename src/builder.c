@@ -237,11 +237,6 @@ static void llvm_terminate(void)
 
 int compile_unit(Unit *unit, Assembly *assembly)
 {
-#if BL_DEBUG
-    if (unit->_compiled) BL_ABORT("Unit compiled multiple times!!!");
-    unit->_compiled = true;
-#endif
-
     if (unit->loaded_from) {
         builder_log(
             "Compile: %s (loaded from '%s')", unit->name, unit->loaded_from->location.unit->name);
@@ -282,20 +277,20 @@ int compile_assembly(Assembly *assembly)
     FINISH_IF(assembly->options.no_analyze);
 
     //********************************************************************************************
-	// EXECUTION
+    // EXECUTION
     //********************************************************************************************
     // Run main
     if (assembly->options.run) builder.last_script_mode_run_status = vm_entry_run(assembly);
 
     // Handle build mode
-    if (assembly->options.build_mode == BUILD_MODE_BUILD) vm_build_entry_run(assembly);
+    if (assembly->kind == ASSEMBLY_BUILD_PIPELINE) vm_build_entry_run(assembly);
 
     // Run test cases
     if (assembly->options.run_tests) builder.test_failc = vm_tests_run(assembly);
     //********************************************************************************************
 
     FINISH_IF(assembly->options.no_llvm);
-    FINISH_IF(assembly->options.build_mode == BUILD_MODE_BUILD);
+    FINISH_IF(assembly->kind == ASSEMBLY_BUILD_PIPELINE);
     ir_run(assembly);
     INTERRUPT_ON_ERROR;
 
@@ -339,22 +334,22 @@ s32 builder_parse_options(s32 argc, char *argv[])
         break;                                                                                     \
     }
 
-    builder.options.build_mode        = BUILD_MODE_DEBUG;
-    builder.options.build_output_kind = BUILD_OUT_EXECUTABLE;
+    builder.options.assembly_opt  = ASSEMBLY_OPT_DEBUG;
+    builder.options.assembly_kind = ASSEMBLY_EXECUTABLE;
 
 #ifdef BL_DEBUG
     builder.options.verify_llvm = true;
 #endif
 
 #if BL_PLATFORM_WIN
-    builder.options.build_di_kind = BUILD_DI_CODEVIEW;
+    builder.options.assembly_di_kind = ASSEMBLY_DI_CODEVIEW;
 #else
     builder.options.build_di_kind = BUILD_DI_DWARF;
 #endif
 
     s32 optind = 1;
     for (; optind < argc && argv[optind][0] == '-'; optind++) {
-        ARG_BREAK(BUILDER_ARG_BUILD, builder.options.use_pipeline = true;)
+        ARG_BREAK(BUILDER_ARG_BUILD, builder.options.assembly_kind = ASSEMBLY_BUILD_PIPELINE;)
         ARG_BREAK(BUILDER_ARG_RUN, builder.options.run = true;)
         ARG_BREAK(BUILDER_ARG_RUN_SCRIPT, builder.options.run = true; builder.options.silent = true;
                   builder.options.no_llvm = true;)
@@ -377,15 +372,15 @@ s32 builder_parse_options(s32 argc, char *argv[])
         ARG(BUILDER_ARG_CONFIGURE, builder.options.run_configure = true;)
         ARG(BUILDER_ARG_REG_SPLIT_ON, builder.options.reg_split = true;)
         ARG(BUILDER_ARG_REG_SPLIT_OFF, builder.options.reg_split = false;)
-        ARG(BUILDER_ARG_RELEASE_FAST, builder.options.build_mode = BUILD_MODE_RELEASE_FAST;)
-        ARG(BUILDER_ARG_RELEASE_SMALL, builder.options.build_mode = BUILD_MODE_RELEASE_SMALL;)
-        ARG(BUILDER_ARG_DI_DWARF, builder.options.build_di_kind = BUILD_DI_DWARF;)
-        ARG(BUILDER_ARG_DI_CODEVIEW, builder.options.build_di_kind = BUILD_DI_CODEVIEW;)
+        ARG(BUILDER_ARG_RELEASE_FAST, builder.options.assembly_opt = ASSEMBLY_OPT_RELEASE_FAST;)
+        ARG(BUILDER_ARG_RELEASE_SMALL, builder.options.assembly_opt = ASSEMBLY_OPT_RELEASE_SMALL;)
+        ARG(BUILDER_ARG_DI_DWARF, builder.options.assembly_di_kind = ASSEMBLY_DI_DWARF;)
+        ARG(BUILDER_ARG_DI_CODEVIEW, builder.options.assembly_di_kind = ASSEMBLY_DI_DWARF;)
         ARG(BUILDER_ARG_NO_VCVARS, builder.options.no_vcvars = true;)
         ARG(BUILDER_ARG_VERIFY_LLVM, builder.options.verify_llvm = true;)
         ARG(BUILDER_ARG_DOCS, builder.options.docs = true;)
         ARG(BUILDER_ARG_NO_JOBS, builder.options.no_jobs = true;)
-        ARG(BUILDER_ARG_SHARED, builder.options.build_output_kind = BUILD_OUT_SHARED_LIB;)
+        ARG(BUILDER_ARG_SHARED, builder.options.assembly_kind = ASSEMBLY_SHARED_LIB;)
         ARG(BUILDER_ARG_WHERE_IS_API, builder.options.where_is_api = true;
             builder.options.silent = true;)
 
@@ -500,21 +495,17 @@ int builder_compile(Assembly *assembly)
     s32     state       = COMPILE_OK;
     builder.total_lines = 0;
 
-    builder_note("Compile assembly: %s [%s]",
-                 assembly->name,
-                 build_mode_to_str(assembly->options.build_mode));
+    builder_note("Compile assembly: %s [%s]", assembly->name, opt_to_str(assembly->options.opt));
 
-    // This will apply all modification to build mode, target platform, etc. made on assembly
-    // instance during initialization process. (Must be called only once);
-    assembly_apply_options(assembly);
-
+    // Prepare assembly for compilation.
+    assembly_prepare(assembly);
     if (!builder.options.docs) assembly_add_unit(assembly, BUILTIN_FILE, NULL);
 
     // include core source file
     if (!builder.options.no_api && !builder.options.docs)
         assembly_add_unit(assembly, OS_PRELOAD_FILE, NULL);
 
-    const bool build_mode = assembly->options.build_mode == BUILD_MODE_BUILD;
+    const bool build_mode = assembly->kind == ASSEMBLY_BUILD_PIPELINE;
     if (build_mode) assembly_add_unit(assembly, BUILD_API_FILE, NULL);
 
     if (builder.options.no_jobs) {
@@ -537,6 +528,8 @@ int builder_compile(Assembly *assembly)
         builder_warning("There were errors, sorry...");
     }
 
+    // Cleanup assembly.
+    assembly_cleanup(assembly);
     if (builder.errorc) return builder.max_error;
     if (assembly->options.run) return builder.last_script_mode_run_status;
     if (builder.options.run_tests) return builder.test_failc;

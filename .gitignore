@@ -63,3 +63,4 @@ src/config.h
 /lib/bl/api/gl
 /lib/bl/api/glfw3
 /lib/bl/api/sdl2
+/.idea

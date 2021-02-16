@@ -34,17 +34,15 @@
 
 BL_EXPORT Assembly *__add_executable(const char *name)
 {
-    Assembly *new_assembly = assembly_new(name);
+    Assembly *new_assembly = assembly_new(ASSEMBLY_EXECUTABLE, name);
     builder_add_assembly(new_assembly);
-    new_assembly->options.build_output_kind = BUILD_OUT_EXECUTABLE;
     return new_assembly;
 }
 
 BL_EXPORT Assembly *__add_library(const char *name)
 {
-    Assembly *new_assembly = assembly_new(name);
+    Assembly *new_assembly = assembly_new(ASSEMBLY_SHARED_LIB, name);
     builder_add_assembly(new_assembly);
-    new_assembly->options.build_output_kind = BUILD_OUT_SHARED_LIB;
     return new_assembly;
 }
 

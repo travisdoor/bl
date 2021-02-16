@@ -45,10 +45,10 @@
 
 static const char *get_out_extension(Assembly *assembly)
 {
-    switch (assembly->options.build_output_kind) {
-    case BUILD_OUT_EXECUTABLE:
+    switch (assembly->kind) {
+    case ASSEMBLY_EXECUTABLE:
         return EXECUTABLE_EXT;
-    case BUILD_OUT_SHARED_LIB:
+    case ASSEMBLY_SHARED_LIB:
         return DLL_EXT;
     }
     BL_ABORT("Unknown output kind!");
@@ -76,14 +76,14 @@ static void append_libs(Assembly *assembly, TString *buf)
 
 static void append_default_opt(Assembly *assembly, TString *buf)
 {
-    const bool is_debug = assembly->options.build_mode == BUILD_MODE_DEBUG;
+    const bool is_debug = assembly->options.opt == ASSEMBLY_OPT_DEBUG;
     if (is_debug) tstring_appendf(buf, "%s ", FLAG_DEBUG);
     const char *default_opt = "";
-    switch (assembly->options.build_output_kind) {
-    case BUILD_OUT_EXECUTABLE:
+    switch (assembly->kind) {
+    case ASSEMBLY_EXECUTABLE:
         default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_EXEC_KEY);
         break;
-    case BUILD_OUT_SHARED_LIB:
+    case ASSEMBLY_SHARED_LIB:
         default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_SHARED_KEY);
     }
     tstring_appendf(buf, "%s ", default_opt);

@@ -326,7 +326,7 @@ LLVMMetadataRef llvm_di_create_struct_type(LLVMDIBuilderRef builder_ref,
                                   align_in_bits,
                                   DINode::DIFlags::FlagZero,
                                   nullptr,
-                                  builder->getOrCreateArray({CAST(Metadata **)(elems), elemsc}));
+                                  builder->getOrCreateArray({CAST(Metadata **)(elems), (size_t)elemsc}));
 
     return CAST(LLVMMetadataRef)(type);
 }
@@ -350,7 +350,7 @@ LLVMMetadataRef llvm_di_create_union_type(LLVMDIBuilderRef builder_ref,
                                  size_in_bits,
                                  align_in_bits,
                                  DINode::DIFlags::FlagZero,
-                                 builder->getOrCreateArray({CAST(Metadata **)(elems), elemsc}));
+                                 builder->getOrCreateArray({CAST(Metadata **)(elems), (size_t)elemsc}));
 
     return CAST(LLVMMetadataRef)(type);
 }
