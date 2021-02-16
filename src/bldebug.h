@@ -132,35 +132,9 @@ void print_trace(void);
         abort();                                                                                   \
     }
 
-#define BL_ABORT_ISSUE(N)                                                                          \
-    {                                                                                              \
-        _log(LOG_ABORT,                                                                            \
-             __FILENAME__,                                                                         \
-             __LINE__,                                                                             \
-             "Issue: https://github.com/travisdoor/bl/issues/" #N);                                \
-        print_trace();                                                                             \
-        abort();                                                                                   \
-    }
-
-#define BL_WARNING_ISSUE(N)                                                                        \
-    {                                                                                              \
-        _log(LOG_WARNING,                                                                          \
-             __FILENAME__,                                                                         \
-             __LINE__,                                                                             \
-             "Issue: https://github.com/travisdoor/bl/issues/" #N);                                \
-    }
-
 #define BL_UNIMPLEMENTED                                                                           \
     {                                                                                              \
         _log(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented");                                  \
-        print_trace();                                                                             \
-        BL_DEBUG_BREAK;                                                                            \
-        abort();                                                                                   \
-    }
-
-#define BL_UNIMPLEMENTED_REGION(R)                                                                 \
-    {                                                                                              \
-        _log(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented region '" #R "'");                  \
         print_trace();                                                                             \
         BL_DEBUG_BREAK;                                                                            \
         abort();                                                                                   \

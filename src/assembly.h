@@ -74,6 +74,14 @@ typedef struct AssemblyOptions {
     TArray  libs;
 } AssemblyOptions;
 
+// Specify template used for creations of new assembly instance.
+typedef struct AssemblyBlueprint {
+    AssemblyKind kind;
+    AssemblyOpt  opt;
+    TString      name;
+    TArray       input_units;
+} AssemblyBlueprint;
+
 typedef struct Assembly {
     AssemblyOptions options; // must be first
     AssemblyKind    kind;
@@ -152,22 +160,49 @@ typedef struct NativeLib {
     bool is_internal;
 } NativeLib;
 
-Assembly *      assembly_new(AssemblyKind kind, const char *name);
-void            assembly_delete(Assembly *assembly);
+// Create instance of default assembly blueprint.
+AssemblyBlueprint *assembly_blueprint_new(AssemblyKind kind, const char*name);
+
+// Delete instance of assembly blueprint.
+void assembly_blueprint_delete(AssemblyBlueprint *bp);
+
+// Create new assembly instance.
+Assembly *assembly_new(AssemblyKind kind, const char *name);
+
+// Delete created assembly instance and release all internally initialized resources.
+void assembly_delete(Assembly *assembly);
+
+// Add new unit into the assembly.
 Unit *assembly_add_unit(Assembly *assembly, const char *filepath, struct Token *load_from);
-void  assembly_add_lib_path(Assembly *assembly, const char *path);
-void  assembly_append_linker_options(Assembly *assembly, const char *opt);
-void  assembly_set_vm_args(Assembly *assembly, s32 argc, char **argv);
-void  assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
-bool  assembly_import_module(Assembly *    assembly,
-                             const char *  modulepath,
-                             struct Token *import_from // optional
- );
+
+// Add library path.
+void assembly_add_lib_path(Assembly *assembly, const char *path);
+
+// Append linker options string.
+void assembly_append_linker_options(Assembly *assembly, const char *opt);
+
+// Set command line arguments for VM execution.
+void assembly_set_vm_args(Assembly *assembly, s32 argc, char **argv);
+
+// Add native library.
+void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
+
+// Import module.
+bool assembly_import_module(Assembly *assembly, const char *modulepath, struct Token *import_from);
+
 DCpointer assembly_find_extern(Assembly *assembly, const char *symbol);
-void      assembly_prepare(Assembly *assembly);
-void      assembly_cleanup(Assembly *assembly);
-void      assembly_set_output_dir(Assembly *assembly, const char *dir);
-void      assembly_set_module_dir(Assembly *assembly, const char *dir, ModuleImportPolicy policy);
+
+// Remove
+void assembly_prepare(Assembly *assembly);
+
+// Remove
+void assembly_cleanup(Assembly *assembly);
+
+// Set assembly output directory.
+void assembly_set_output_dir(Assembly *assembly, const char *dir);
+
+// Set module directory.
+void assembly_set_module_dir(Assembly *assembly, const char *dir, ModuleImportPolicy policy);
 
 static INLINE bool assembly_has_rtti(Assembly *assembly, u64 type_id)
 {
@@ -184,6 +219,7 @@ static INLINE void assembly_add_rtti(Assembly *assembly, u64 type_id, MirVar *rt
     thtbl_insert(&assembly->MIR.RTTI_table, type_id, rtti_var);
 }
 
+// Convert opt level to string.
 static INLINE const char *opt_to_str(AssemblyOpt opt)
 {
     switch (opt) {
@@ -194,10 +230,10 @@ static INLINE const char *opt_to_str(AssemblyOpt opt)
     case ASSEMBLY_OPT_RELEASE_SMALL:
         return "RELEASE-SMALL";
     }
-
     BL_ABORT("Invalid build mode");
 }
 
+// Convert opt level to LLVM.
 static INLINE LLVMCodeGenOptLevel opt_to_LLVM(AssemblyOpt opt)
 {
     switch (opt) {
