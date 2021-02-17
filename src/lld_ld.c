@@ -53,8 +53,9 @@ static const char *get_out_extension(Assembly *assembly)
         return "";
     case ASSEMBLY_SHARED_LIB:
         return SHARED_EXT;
+    default:
+        BL_ABORT("Unknown output kind!");
     }
-    BL_ABORT("Unknown output kind!");
 }
 
 static const char *get_out_prefix(Assembly *assembly)
@@ -64,6 +65,8 @@ static const char *get_out_prefix(Assembly *assembly)
         return "";
     case ASSEMBLY_SHARED_LIB:
         return SHARED_PREFIX;
+    default:
+        BL_ABORT("Unknown output kind!");
     }
     BL_ABORT("Unknown output kind!");
 }
@@ -97,6 +100,8 @@ static void append_default_opt(Assembly *assembly, TString *buf)
         break;
     case ASSEMBLY_SHARED_LIB:
         default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_SHARED_KEY);
+    default:
+        BL_ABORT("Unknown output kind!");
     }
     tstring_appendf(buf, "%s ", default_opt);
 }

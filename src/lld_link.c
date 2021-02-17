@@ -50,8 +50,9 @@ static const char *get_out_extension(Assembly *assembly)
         return EXECUTABLE_EXT;
     case ASSEMBLY_SHARED_LIB:
         return DLL_EXT;
+    default:
+        BL_ABORT("Unknown output kind!");
     }
-    BL_ABORT("Unknown output kind!");
 }
 
 static void append_lib_paths(Assembly *assembly, TString *buf)
@@ -85,6 +86,8 @@ static void append_default_opt(Assembly *assembly, TString *buf)
         break;
     case ASSEMBLY_SHARED_LIB:
         default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_SHARED_KEY);
+    default:
+        BL_ABORT("Unknown output kind!");
     }
     tstring_appendf(buf, "%s ", default_opt);
 }
