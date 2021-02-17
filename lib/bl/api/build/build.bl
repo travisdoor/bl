@@ -220,12 +220,14 @@ add_unit :: fn (assembly: *Assembly, filepath: string) Unit {
     return __add_unit(assembly, auto filepath.ptr);
 }
 
+/*
 compile :: fn (assembly: *Assembly) Error {
     if !assembly { panic("Invalid assembly!"); }
     state :: __compile(assembly);
     if state == 0 { return ok(); }
     return error("Compilation failed!", state);
 }
+*/
 
 /// Add path for linker library lookup.
 add_lib_path :: fn (assembly: *Assembly, path: string) {
