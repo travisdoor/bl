@@ -40,38 +40,39 @@
 struct ThreadingImpl;
 
 typedef struct BuilderOptions {
-    BuildMode       build_mode;
-    BuildDIKind     build_di_kind;
-    BuildOutputKind build_output_kind;
-    bool            print_help;
-    bool            print_about;
-    bool            print_tokens;
-    bool            print_ast;
-    bool            run;
-    bool            run_tests;
-    bool            run_configure;
-    bool            no_bin;
-    bool            no_warn;
-    bool            no_api;
-    bool            no_llvm;
-    bool            no_analyze;
-    bool            emit_llvm;
-    bool            emit_mir;
-    bool            syntax_only;
-    bool            verbose;
-    bool            reg_split;
-    bool            use_pipeline;
-    bool            no_color;
-    bool            no_vcvars;
-    bool            verify_llvm;
-    bool            docs;
-    bool            silent;
-    bool            where_is_api;
-    bool            no_jobs;
+    AssemblyKind   assembly_kind;
+    AssemblyOpt    assembly_opt;
+    AssemblyDIKind assembly_di_kind;
+    bool           print_help;
+    bool           print_about;
+    bool           print_tokens;
+    bool           print_ast;
+    bool           run;
+    bool           run_tests;
+    bool           run_configure;
+    bool           no_bin;
+    bool           no_warn;
+    bool           no_api;
+    bool           no_llvm;
+    bool           no_analyze;
+    bool           emit_llvm;
+    bool           emit_mir;
+    bool           syntax_only;
+    bool           verbose;
+    bool           reg_split;
+    bool           no_color;
+    bool           no_vcvars;
+    bool           verify_llvm;
+    bool           docs;
+    bool           silent;
+    bool           where_is_api;
+    bool           no_jobs;
 } BuilderOptions;
 
 typedef struct Builder {
     BuilderOptions options;
+    char *         exec_dir;
+    char *         lib_dir;
     Arena          str_cache;
     volatile s32   total_lines;
     s32            errorc;
@@ -105,8 +106,12 @@ typedef enum {
 
 struct Location;
 
-void builder_init(void);
+// Initialize builder global instance with executable directory specified.
+void builder_init(const char *exec_dir);
 void builder_terminate(void);
+void builder_set_lib_dir(const char *lib_dir);
+const char* builder_get_lib_dir(void);
+const char* builder_get_exec_dir(void);
 s32  builder_parse_options(s32 argc, char *argv[]);
 int  builder_load_config(const char *filepath);
 int  builder_compile_config(const char *  filepath,

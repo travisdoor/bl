@@ -220,6 +220,15 @@ add_unit :: fn (assembly: *Assembly, filepath: string) Unit {
     return __add_unit(assembly, auto filepath.ptr);
 }
 
+/*
+compile :: fn (assembly: *Assembly) Error {
+    if !assembly { panic("Invalid assembly!"); }
+    state :: __compile(assembly);
+    if state == 0 { return ok(); }
+    return error("Compilation failed!", state);
+}
+*/
+
 /// Add path for linker library lookup.
 add_lib_path :: fn (assembly: *Assembly, path: string) {
     if !assembly { panic("Invalid assembly!"); }
@@ -349,6 +358,7 @@ get_module_import_policy :: fn (assembly: *Assembly) ModuleImportPolicy {
 __add_executable :: fn (name: *c_char) *Assembly #extern;
 __add_library :: fn (name: *c_char) *Assembly #extern;
 __add_unit :: fn (assembly: *Assembly, filepath: *c_char) Unit #extern;
+__compile :: fn (assembly: *Assembly) c_int #extern;
 __add_lib_path :: fn (assembly: *Assembly, path: *c_char) #extern;
 __link_library :: fn (assembly: *Assembly, name: *c_char) #extern;
 __append_linker_options :: fn (assembly: *Assembly, option: *c_char) #extern;

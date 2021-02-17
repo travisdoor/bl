@@ -38,23 +38,25 @@
 
 struct MirModule;
 struct Builder;
+struct BuilderOptions;
 
-typedef enum BuildMode {
-    BUILD_MODE_DEBUG         = 1, // Standard debug mode. Opt: NONE
-    BUILD_MODE_RELEASE_FAST  = 2, // Standard release mode. Opt: Aggressive
-    BUILD_MODE_RELEASE_SMALL = 3, // Standard release mode. Opt: Default
-    BUILD_MODE_BUILD         = 4, // Build pipeline entry mode.
-} BuildMode;
+typedef enum AssemblyKind {
+    ASSEMBLY_EXECUTABLE     = 1,
+    ASSEMBLY_SHARED_LIB     = 2,
+    ASSEMBLY_BUILD_PIPELINE = 3,
+    ASSEMBLY_DOCS           = 4,
+} AssemblyKind;
 
-typedef enum BuildOutputKind {
-    BUILD_OUT_EXECUTABLE = 1,
-    BUILD_OUT_SHARED_LIB = 2,
-} BuildOutputKind;
+typedef enum AssemblyOpt {
+    ASSEMBLY_OPT_DEBUG         = 1, // Standard debug mode. Opt: NONE
+    ASSEMBLY_OPT_RELEASE_FAST  = 2, // Standard release mode. Opt: Aggressive
+    ASSEMBLY_OPT_RELEASE_SMALL = 3, // Standard release mode. Opt: Default
+} AssemblyOpt;
 
-typedef enum BuildDIKind {
-    BUILD_DI_DWARF    = 1, // Emit DWARF debug information in LLVM IR.
-    BUILD_DI_CODEVIEW = 2, // Emit MS CodeView debug info (PDB file).
-} BuildDIKind;
+typedef enum AssemblyDIKind {
+    ASSEMBLY_DI_DWARF    = 1, // Emit DWARF debug information in LLVM IR.
+    ASSEMBLY_DI_CODEVIEW = 2, // Emit MS CodeView debug info (PDB file).
+} AssemblyDIKind;
 
 // keep in sync with build.bl
 typedef enum {
@@ -74,8 +76,18 @@ typedef struct AssemblyOptions {
     TArray  libs;
 } AssemblyOptions;
 
+// Specify template used for creations of new assembly instance.
+typedef struct AssemblyBlueprint {
+    AssemblyKind   kind;
+    AssemblyOpt    opt;
+    AssemblyDIKind di;
+    TString        name;
+    TArray         input_units;
+} AssemblyBlueprint;
+
 typedef struct Assembly {
     AssemblyOptions options; // must be first
+    AssemblyKind    kind;
 
     struct {
         ScopeArenas scope;
@@ -134,6 +146,9 @@ typedef struct Assembly {
     } builtin_types;
 
     struct AssemblySyncImpl *sync;
+#ifdef BL_DEBUG
+    bool _prepared;
+#endif
 } Assembly;
 
 typedef struct NativeLib {
@@ -148,22 +163,53 @@ typedef struct NativeLib {
     bool is_internal;
 } NativeLib;
 
-Assembly *      assembly_new(const char *name);
-void            assembly_delete(Assembly *assembly);
-AssemblyOptions assembly_get_default_options(void);
+// Create instance of default assembly blueprint.
+AssemblyBlueprint *assembly_blueprint_new(struct BuilderOptions *default_options,
+                                          AssemblyKind           kind,
+                                          const char *           name,
+                                          const s32              vm_argc,
+                                          char **                vm_argv);
+
+// Delete instance of assembly blueprint.
+void assembly_blueprint_delete(AssemblyBlueprint *bp);
+
+// Create new assembly instance.
+Assembly *assembly_new(AssemblyKind kind, const char *name);
+
+// Delete created assembly instance and release all internally initialized resources.
+void assembly_delete(Assembly *assembly);
+
+// Add new unit into the assembly.
 Unit *assembly_add_unit(Assembly *assembly, const char *filepath, struct Token *load_from);
-void  assembly_add_lib_path(Assembly *assembly, const char *path);
-void  assembly_append_linker_options(Assembly *assembly, const char *opt);
-void  assembly_set_vm_args(Assembly *assembly, s32 argc, char **argv);
-void  assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
-bool  assembly_import_module(Assembly *    assembly,
-                             const char *  modulepath,
-                             struct Token *import_from // optional
- );
+
+// Add library path.
+void assembly_add_lib_path(Assembly *assembly, const char *path);
+
+// Append linker options string.
+void assembly_append_linker_options(Assembly *assembly, const char *opt);
+
+// Set command line arguments for VM execution.
+void assembly_set_vm_args(Assembly *assembly, s32 argc, char **argv);
+
+// Add native library.
+void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
+
+// Import module.
+bool assembly_import_module(Assembly *assembly, const char *modulepath, struct Token *import_from);
+
 DCpointer assembly_find_extern(Assembly *assembly, const char *symbol);
-void      assembly_apply_options(Assembly *assembly);
-void      assembly_set_output_dir(Assembly *assembly, const char *dir);
-void      assembly_set_module_dir(Assembly *assembly, const char *dir, ModuleImportPolicy policy);
+
+// Remove
+void assembly_prepare(Assembly *assembly);
+
+// Remove
+void assembly_cleanup(Assembly *assembly);
+
+// Set assembly output directory.
+void assembly_set_output_dir(Assembly *assembly, const char *dir);
+
+// Set module directory.
+void assembly_set_module_dir(Assembly *assembly, const char *dir, ModuleImportPolicy policy);
 
 static INLINE bool assembly_has_rtti(Assembly *assembly, u64 type_id)
 {
@@ -180,36 +226,31 @@ static INLINE void assembly_add_rtti(Assembly *assembly, u64 type_id, MirVar *rt
     thtbl_insert(&assembly->MIR.RTTI_table, type_id, rtti_var);
 }
 
-static INLINE const char *build_mode_to_str(BuildMode mode)
+// Convert opt level to string.
+static INLINE const char *opt_to_str(AssemblyOpt opt)
 {
-    switch (mode) {
-    case BUILD_MODE_DEBUG:
+    switch (opt) {
+    case ASSEMBLY_OPT_DEBUG:
         return "DEBUG";
-    case BUILD_MODE_RELEASE_FAST:
+    case ASSEMBLY_OPT_RELEASE_FAST:
         return "RELEASE-FAST";
-    case BUILD_MODE_RELEASE_SMALL:
+    case ASSEMBLY_OPT_RELEASE_SMALL:
         return "RELEASE-SMALL";
-    case BUILD_MODE_BUILD:
-        return "BUILD";
     }
-
     BL_ABORT("Invalid build mode");
 }
 
-static INLINE s32 get_opt_level_for_build_mode(BuildMode mode)
+// Convert opt level to LLVM.
+static INLINE LLVMCodeGenOptLevel opt_to_LLVM(AssemblyOpt opt)
 {
-    switch (mode) {
-    case BUILD_MODE_DEBUG:
-        return 0;
-
-    case BUILD_MODE_BUILD:
-    case BUILD_MODE_RELEASE_FAST:
-        return 3;
-
-    case BUILD_MODE_RELEASE_SMALL:
-        return 2;
+    switch (opt) {
+    case ASSEMBLY_OPT_DEBUG:
+        return LLVMCodeGenLevelNone;
+    case ASSEMBLY_OPT_RELEASE_FAST:
+        return LLVMCodeGenLevelAggressive;
+    case ASSEMBLY_OPT_RELEASE_SMALL:
+        return LLVMCodeGenLevelDefault;
     }
-
     BL_ABORT("Invalid build mode");
 }
 

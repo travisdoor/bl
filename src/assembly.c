@@ -112,21 +112,20 @@ static void llvm_init(Assembly *assembly)
     LLVMContextRef llvm_context = LLVMContextCreate();
     LLVMModuleRef  llvm_module  = LLVMModuleCreateWithNameInContext(assembly->name, llvm_context);
     LLVMRelocMode  reloc_mode   = LLVMRelocDefault;
-    switch (assembly->options.build_output_kind) {
-    case BUILD_OUT_EXECUTABLE:
-        break;
-    case BUILD_OUT_SHARED_LIB:
+    switch (assembly->kind) {
+    case ASSEMBLY_SHARED_LIB:
         reloc_mode = LLVMRelocPIC;
         break;
+    default:
+        break;
     }
-    LLVMTargetMachineRef llvm_tm =
-        LLVMCreateTargetMachine(llvm_target,
-                                triple,
-                                cpu,
-                                features,
-                                get_opt_level_for_build_mode(assembly->options.build_mode),
-                                reloc_mode,
-                                LLVMCodeModelDefault);
+    LLVMTargetMachineRef llvm_tm = LLVMCreateTargetMachine(llvm_target,
+                                                           triple,
+                                                           cpu,
+                                                           features,
+                                                           opt_to_LLVM(assembly->options.opt),
+                                                           reloc_mode,
+                                                           LLVMCodeModelDefault);
 
     LLVMTargetDataRef llvm_td = LLVMCreateTargetDataLayout(llvm_tm);
     LLVMSetModuleDataLayout(llvm_module, llvm_td);
@@ -163,10 +162,15 @@ static void dl_terminate(Assembly *assembly)
 static void llvm_terminate(Assembly *assembly)
 {
     LLVMDisposeModule(assembly->llvm.module);
+    assembly->llvm.module = NULL;
     LLVMDisposeTargetMachine(assembly->llvm.TM);
+    assembly->llvm.TM = NULL;
     LLVMDisposeMessage(assembly->llvm.triple);
+    assembly->llvm.triple = NULL;
     LLVMDisposeTargetData(assembly->llvm.TD);
+    assembly->llvm.TD = NULL;
     LLVMContextDispose(assembly->llvm.cnt);
+    assembly->llvm.cnt = NULL;
 }
 
 static INLINE void mir_terminate(Assembly *assembly)
@@ -197,7 +201,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) BL_ABORT("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path            = _path;
+    const char *path = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {
@@ -307,10 +311,63 @@ import_module(Assembly *assembly, ConfData *config, const char *modulepath, Toke
 }
 
 // public
-Assembly *assembly_new(const char *name)
+AssemblyBlueprint *assembly_blueprint_new(BuilderOptions *default_options,
+                                          AssemblyKind    kind,
+                                          const char *    name,
+                                          const s32       vm_argc,
+                                          char **         vm_argv)
+{
+    AssemblyBlueprint *bp = bl_malloc(sizeof(AssemblyBlueprint));
+    memset(bp, 0, sizeof(AssemblyBlueprint));
+    // defaults
+    tstring_init(&bp->name);
+    tarray_init(&bp->input_units, sizeof(TString *));
+
+    bp->kind = kind;
+    tstring_append(&bp->name, name);
+
+    switch (kind) {
+    case ASSEMBLY_BUILD_PIPELINE:
+        bp->opt = ASSEMBLY_OPT_RELEASE_FAST;
+        tarray_push(&bp->input_units, BUILTIN_FILE);
+        tarray_push(&bp->input_units, OS_PRELOAD_FILE);
+        tarray_push(&bp->input_units, BUILD_API_FILE);
+        tarray_push(&bp->input_units, BUILD_SCRIPT_FILE);
+        break;
+    case ASSEMBLY_EXECUTABLE:
+        bp->opt = ASSEMBLY_OPT_DEBUG;
+        tarray_push(&bp->input_units, BUILTIN_FILE);
+        tarray_push(&bp->input_units, OS_PRELOAD_FILE);
+        break;
+    case ASSEMBLY_SHARED_LIB:
+        bp->opt = ASSEMBLY_OPT_DEBUG;
+        tarray_push(&bp->input_units, BUILTIN_FILE);
+        tarray_push(&bp->input_units, OS_PRELOAD_FILE);
+        break;
+    case ASSEMBLY_DOCS:
+        bp->opt = ASSEMBLY_OPT_DEBUG;
+        break;
+    }
+    return bp;
+}
+
+void assembly_blueprint_delete(AssemblyBlueprint *bp)
+{
+    BL_ASSERT(bp);
+    TString *unit_path;
+    TARRAY_FOREACH(TString *, &bp->input_units, unit_path)
+    {
+        tstring_delete(unit_path);
+    }
+    tarray_terminate(&bp->input_units);
+    tstring_terminate(&bp->name);
+}
+
+Assembly *assembly_new(AssemblyKind kind, const char *name)
 {
     Assembly *assembly = bl_malloc(sizeof(Assembly));
     memset(assembly, 0, sizeof(Assembly));
+    assembly->kind = kind;
     assembly->sync = sync_new();
     assembly->name = strdup(name);
 
@@ -333,7 +390,6 @@ Assembly *assembly_new(const char *name)
     assembly->options.copy_deps = false;
 #endif
     set_default_out_dir(assembly);
-
     scope_arenas_init(&assembly->arenas.scope);
     ast_arena_init(&assembly->arenas.ast);
     arena_init(&assembly->arenas.array,
@@ -344,18 +400,18 @@ Assembly *assembly_new(const char *name)
                sizeof(union _SmallArrays),
                EXPECTED_ARRAY_COUNT,
                (ArenaElemDtor)small_array_dtor);
-
     assembly->gscope =
         scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT, NULL);
-
     dl_init(assembly);
     mir_init(assembly);
-
     return assembly;
 }
 
 void assembly_delete(Assembly *assembly)
 {
+#ifdef BL_DEBUG
+    BL_ASSERT(assembly->_prepared == false && "Assembly not cleaned up!");
+#endif
     free(assembly->name);
     Unit *unit;
     TARRAY_FOREACH(Unit *, &assembly->units, unit)
@@ -374,16 +430,17 @@ void assembly_delete(Assembly *assembly)
 
     tarray_terminate(&assembly->options.libs);
     tarray_terminate(&assembly->options.lib_paths);
+    tarray_terminate(&assembly->testing.cases);
+    tarray_terminate(&assembly->units);
+
     tstring_terminate(&assembly->options.custom_linker_opt);
     tstring_terminate(&assembly->options.out_dir);
     tstring_terminate(&assembly->options.module_dir);
     vm_terminate(&assembly->vm);
-    tarray_terminate(&assembly->testing.cases);
     arena_terminate(&assembly->arenas.small_array);
     arena_terminate(&assembly->arenas.array);
     ast_arena_terminate(&assembly->arenas.ast);
     scope_arenas_terminate(&assembly->arenas.scope);
-    tarray_terminate(&assembly->units);
     dl_terminate(assembly);
     mir_terminate(assembly);
     llvm_terminate(assembly);
@@ -391,9 +448,22 @@ void assembly_delete(Assembly *assembly)
     bl_free(assembly);
 }
 
-void assembly_apply_options(Assembly *assembly)
+void assembly_prepare(Assembly *assembly)
 {
+#ifdef BL_DEBUG
+    BL_ASSERT(assembly->_prepared == false && "Attempt to reinitialize assembly!");
+    assembly->_prepared = true;
+#endif
     llvm_init(assembly);
+}
+
+void assembly_cleanup(Assembly *assembly)
+{
+#ifdef BL_DEBUG
+    BL_ASSERT(assembly->_prepared && "Assembly not prepared.");
+    assembly->_prepared = false;
+#endif
+    llvm_terminate(assembly);
 }
 
 void assembly_add_lib_path(Assembly *assembly, const char *path)
@@ -512,7 +582,7 @@ bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *i
             tstring_setf(local_path, "%s/%s", module_dir, modulepath);
             config = load_module_config(local_path->data, import_from);
         } else {
-            tstring_setf(local_path, "%s/%s", ENV_LIB_DIR, modulepath);
+            tstring_setf(local_path, "%s/%s", builder_get_lib_dir(), modulepath);
             config = load_module_config(local_path->data, import_from);
         }
         break;
@@ -524,14 +594,14 @@ bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *i
         TString *  system_path   = get_tmpstr();
         const bool check_version = policy == IMPORT_POLICY_BUNDLE_LATEST;
         tstring_setf(local_path, "%s/%s", module_dir, modulepath);
-        tstring_setf(system_path, "%s/%s", ENV_LIB_DIR, modulepath);
-        const bool system_found = module_exist(ENV_LIB_DIR, modulepath);
+        tstring_setf(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
+        const bool system_found = module_exist(builder_get_lib_dir(), modulepath);
         // Check if module is present in module directory.
         bool do_copy = !local_found;
         if (check_version && local_found && system_found) {
             s32 system_version = 0;
             s32 local_version  = 0;
-            tstring_setf(system_path, "%s/%s", ENV_LIB_DIR, modulepath);
+            tstring_setf(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
             config = load_module_config(system_path->data, import_from);
             if (config) system_version = get_module_version(config);
             ConfData *local_config = load_module_config(local_path->data, import_from);
