@@ -344,7 +344,7 @@ s32 builder_parse_options(s32 argc, char *argv[])
 #if BL_PLATFORM_WIN
     builder.options.assembly_di_kind = ASSEMBLY_DI_CODEVIEW;
 #else
-    builder.options.build_di_kind = BUILD_DI_DWARF;
+    builder.options.assembly_di_kind = ASSEMBLY_DI_CODEVIEW;
 #endif
 
     s32 optind = 1;

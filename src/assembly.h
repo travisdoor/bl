@@ -76,15 +76,6 @@ typedef struct AssemblyOptions {
     TArray  libs;
 } AssemblyOptions;
 
-// Specify template used for creations of new assembly instance.
-typedef struct AssemblyBlueprint {
-    AssemblyKind   kind;
-    AssemblyOpt    opt;
-    AssemblyDIKind di;
-    TString        name;
-    TArray         input_units;
-} AssemblyBlueprint;
-
 typedef struct Assembly {
     AssemblyOptions options; // must be first
     AssemblyKind    kind;
@@ -162,16 +153,6 @@ typedef struct NativeLib {
     // Disable appending of this library to the linker options.
     bool is_internal;
 } NativeLib;
-
-// Create instance of default assembly blueprint.
-AssemblyBlueprint *assembly_blueprint_new(struct BuilderOptions *default_options,
-                                          AssemblyKind           kind,
-                                          const char *           name,
-                                          const s32              vm_argc,
-                                          char **                vm_argv);
-
-// Delete instance of assembly blueprint.
-void assembly_blueprint_delete(AssemblyBlueprint *bp);
 
 // Create new assembly instance.
 Assembly *assembly_new(AssemblyKind kind, const char *name);

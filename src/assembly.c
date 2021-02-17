@@ -311,58 +311,6 @@ import_module(Assembly *assembly, ConfData *config, const char *modulepath, Toke
 }
 
 // public
-AssemblyBlueprint *assembly_blueprint_new(BuilderOptions *default_options,
-                                          AssemblyKind    kind,
-                                          const char *    name,
-                                          const s32       vm_argc,
-                                          char **         vm_argv)
-{
-    AssemblyBlueprint *bp = bl_malloc(sizeof(AssemblyBlueprint));
-    memset(bp, 0, sizeof(AssemblyBlueprint));
-    // defaults
-    tstring_init(&bp->name);
-    tarray_init(&bp->input_units, sizeof(TString *));
-
-    bp->kind = kind;
-    tstring_append(&bp->name, name);
-
-    switch (kind) {
-    case ASSEMBLY_BUILD_PIPELINE:
-        bp->opt = ASSEMBLY_OPT_RELEASE_FAST;
-        tarray_push(&bp->input_units, BUILTIN_FILE);
-        tarray_push(&bp->input_units, OS_PRELOAD_FILE);
-        tarray_push(&bp->input_units, BUILD_API_FILE);
-        tarray_push(&bp->input_units, BUILD_SCRIPT_FILE);
-        break;
-    case ASSEMBLY_EXECUTABLE:
-        bp->opt = ASSEMBLY_OPT_DEBUG;
-        tarray_push(&bp->input_units, BUILTIN_FILE);
-        tarray_push(&bp->input_units, OS_PRELOAD_FILE);
-        break;
-    case ASSEMBLY_SHARED_LIB:
-        bp->opt = ASSEMBLY_OPT_DEBUG;
-        tarray_push(&bp->input_units, BUILTIN_FILE);
-        tarray_push(&bp->input_units, OS_PRELOAD_FILE);
-        break;
-    case ASSEMBLY_DOCS:
-        bp->opt = ASSEMBLY_OPT_DEBUG;
-        break;
-    }
-    return bp;
-}
-
-void assembly_blueprint_delete(AssemblyBlueprint *bp)
-{
-    BL_ASSERT(bp);
-    TString *unit_path;
-    TARRAY_FOREACH(TString *, &bp->input_units, unit_path)
-    {
-        tstring_delete(unit_path);
-    }
-    tarray_terminate(&bp->input_units);
-    tstring_terminate(&bp->name);
-}
-
 Assembly *assembly_new(AssemblyKind kind, const char *name)
 {
     Assembly *assembly = bl_malloc(sizeof(Assembly));
