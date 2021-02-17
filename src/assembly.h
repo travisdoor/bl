@@ -38,11 +38,13 @@
 
 struct MirModule;
 struct Builder;
+struct BuilderOptions;
 
 typedef enum AssemblyKind {
     ASSEMBLY_EXECUTABLE     = 1,
     ASSEMBLY_SHARED_LIB     = 2,
     ASSEMBLY_BUILD_PIPELINE = 3,
+    ASSEMBLY_DOCS           = 4,
 } AssemblyKind;
 
 typedef enum AssemblyOpt {
@@ -76,10 +78,11 @@ typedef struct AssemblyOptions {
 
 // Specify template used for creations of new assembly instance.
 typedef struct AssemblyBlueprint {
-    AssemblyKind kind;
-    AssemblyOpt  opt;
-    TString      name;
-    TArray       input_units;
+    AssemblyKind   kind;
+    AssemblyOpt    opt;
+    AssemblyDIKind di;
+    TString        name;
+    TArray         input_units;
 } AssemblyBlueprint;
 
 typedef struct Assembly {
@@ -161,7 +164,11 @@ typedef struct NativeLib {
 } NativeLib;
 
 // Create instance of default assembly blueprint.
-AssemblyBlueprint *assembly_blueprint_new(AssemblyKind kind, const char*name);
+AssemblyBlueprint *assembly_blueprint_new(struct BuilderOptions *default_options,
+                                          AssemblyKind           kind,
+                                          const char *           name,
+                                          const s32              vm_argc,
+                                          char **                vm_argv);
 
 // Delete instance of assembly blueprint.
 void assembly_blueprint_delete(AssemblyBlueprint *bp);

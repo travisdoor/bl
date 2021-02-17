@@ -105,7 +105,7 @@ static void append_linker_exec(TString *buf)
         }
     }
     // Use LLD as default.
-    tstring_appendf(buf, "\"%s/%s\" -flavor %s ", ENV_EXEC_DIR, BL_LINKER, LLD_FLAVOR);
+    tstring_appendf(buf, "\"%s/%s\" -flavor %s ", builder.exec_dir, BL_LINKER, LLD_FLAVOR);
 }
 
 s32 lld_link(Assembly *assembly)

@@ -117,7 +117,7 @@ static void append_linker_exec(TString *buf)
         }
     }
     // Use LLD as default.
-    tstring_appendf(buf, "%s/%s -flavor %s ", ENV_EXEC_DIR, BL_LINKER, LLD_FLAVOR);
+    tstring_appendf(buf, "%s/%s -flavor %s ", builder.exec_dir, BL_LINKER, LLD_FLAVOR);
 #if BL_PLATFORM_MACOS
     builder_warning("Using experimental LLD linker. (There are known issues with LLD on MacOS)");
 #endif

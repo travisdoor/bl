@@ -40,9 +40,9 @@
 struct ThreadingImpl;
 
 typedef struct BuilderOptions {
+    AssemblyKind   assembly_kind;
     AssemblyOpt    assembly_opt;
     AssemblyDIKind assembly_di_kind;
-    AssemblyKind   assembly_kind;
     bool           print_help;
     bool           print_about;
     bool           print_tokens;
@@ -71,6 +71,8 @@ typedef struct BuilderOptions {
 
 typedef struct Builder {
     BuilderOptions options;
+    char *         exec_dir;
+    char *         lib_dir;
     Arena          str_cache;
     volatile s32   total_lines;
     s32            errorc;
@@ -104,8 +106,12 @@ typedef enum {
 
 struct Location;
 
-void builder_init(void);
+// Initialize builder global instance with executable directory specified.
+void builder_init(const char *exec_dir);
 void builder_terminate(void);
+void builder_set_lib_dir(const char *lib_dir);
+const char* builder_get_lib_dir(void);
+const char* builder_get_exec_dir(void);
 s32  builder_parse_options(s32 argc, char *argv[]);
 int  builder_load_config(const char *filepath);
 int  builder_compile_config(const char *  filepath,

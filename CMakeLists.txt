@@ -53,19 +53,20 @@ add_subdirectory(deps/tlib-c)
 # deps
 if(MSVC)
   # DOWNLOAD LLVM
+  set(BL_LLVM_VER "11.1.0")
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(LLVM_BIN_DEBUG ${CMAKE_CURRENT_BINARY_DIR}/llvm-debug)
     set(LLVM_BIN_DEBUG_ZIP
-        ${CMAKE_CURRENT_BINARY_DIR}/llvm-11.0.1-Win64-debug.zip)
+        ${CMAKE_CURRENT_BINARY_DIR}/llvm-${BL_LLVM_VER}-win64-debug.zip)
 
     if(NOT EXISTS ${LLVM_BIN_DEBUG})
       if(NOT EXISTS ${LLVM_BIN_DEBUG_ZIP})
         message(STATUS "Downloading LLVM binaries for Debug build.")
         file(
-          DOWNLOAD ${BL_DEPS_REMOTE}/llvm-11.0.1-Win64-debug.zip
+          DOWNLOAD ${BL_DEPS_REMOTE}/llvm-${BL_LLVM_VER}-win64-debug.zip
           ${LLVM_BIN_DEBUG_ZIP}
           SHOW_PROGRESS
-          EXPECTED_HASH MD5=71adf8bf8b205dfb8db6381ec041bfb9)
+          EXPECTED_HASH MD5=7a4888c51fe7f7140928b43680c363cc)
       endif()
 
       execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${LLVM_BIN_DEBUG_ZIP}
@@ -76,16 +77,16 @@ if(MSVC)
   else()
     set(LLVM_BIN_RELEASE ${CMAKE_CURRENT_BINARY_DIR}/llvm-release)
     set(LLVM_BIN_RELEASE_ZIP
-        ${CMAKE_CURRENT_BINARY_DIR}/llvm-11.0.1-Win64-release.zip)
+        ${CMAKE_CURRENT_BINARY_DIR}/llvm-${BL_LLVM_VER}-win64-release.zip)
 
     if(NOT EXISTS ${LLVM_BIN_RELEASE})
       if(NOT EXISTS ${LLVM_BIN_RELEASE_ZIP})
         message(STATUS "Downloading LLVM binaries for Release build.")
         file(
-          DOWNLOAD ${BL_DEPS_REMOTE}/llvm-11.0.1-Win64-release.zip
+          DOWNLOAD ${BL_DEPS_REMOTE}/llvm-${BL_LLVM_VER}-win64-release.zip
           ${LLVM_BIN_RELEASE_ZIP}
           SHOW_PROGRESS
-          EXPECTED_HASH MD5=764ede9bdd1dff8e9e97ca536b4981e2)
+          EXPECTED_HASH MD5=85f65d2fa3278b53262f99d570108c58)
       endif()
 
       execute_process(

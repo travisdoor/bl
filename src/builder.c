@@ -400,12 +400,15 @@ s32 builder_parse_options(s32 argc, char *argv[])
 #undef ARG_BREAK
 }
 
-void builder_init(void)
+void builder_init(const char *exec_dir)
 {
+    BL_ASSERT(exec_dir);
     memset(&builder, 0, sizeof(Builder));
     builder.threading = threading_new();
     builder.errorc = builder.max_error = builder.test_failc = 0;
     builder.last_script_mode_run_status                     = 0;
+
+    builder.exec_dir = strdup(exec_dir);
 
     conf_data_init(&builder.conf);
     arena_init(&builder.str_cache, sizeof(TString), 256, (ArenaElemDtor)str_cache_dtor);
@@ -446,6 +449,27 @@ void builder_terminate(void)
 
     llvm_terminate();
     threading_delete(builder.threading);
+    free(builder.exec_dir);
+    free(builder.lib_dir);
+}
+
+void builder_set_lib_dir(const char *lib_dir)
+{
+    BL_ASSERT(lib_dir);
+    BL_ASSERT(builder.lib_dir == NULL && "Library directory already set!");
+    builder.lib_dir = strdup(lib_dir);
+}
+
+const char *builder_get_lib_dir(void)
+{
+    BL_ASSERT(builder.lib_dir && "Library directory not set, call 'builder_set_lib_dir' first.")
+    return builder.lib_dir;
+}
+
+const char *builder_get_exec_dir(void)
+{
+    BL_ASSERT(builder.exec_dir && "Executable directory not set, call 'builder_init' first.")
+    return builder.exec_dir;
 }
 
 int builder_compile_config(const char *filepath, ConfData *out_data, Token *import_from)

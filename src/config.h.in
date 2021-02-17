@@ -156,8 +156,4 @@
 
 #define BUILD_SCRIPT_FILE "build.bl"
 
-extern char *ENV_LIB_DIR;
-extern char *ENV_EXEC_DIR;
-extern char *ENV_CONF_FILEPATH;
-
 #endif // BL_CONFIG_H

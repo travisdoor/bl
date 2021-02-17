@@ -125,7 +125,7 @@ typedef enum {
 // directory path (path without file name).
 //
 // Search order:
-//     1) wdir (working directory if not NULL)
+//     1) exec_dir (working directory if not NULL)
 //     2) LIB_DIR specified in global congig file
 //     3) system PATH
 //

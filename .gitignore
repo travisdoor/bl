@@ -64,3 +64,5 @@ src/config.h
 /lib/bl/api/glfw3
 /lib/bl/api/sdl2
 /.idea
+/build-stable/
+/build-release/

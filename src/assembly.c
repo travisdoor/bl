@@ -116,6 +116,8 @@ static void llvm_init(Assembly *assembly)
     case ASSEMBLY_SHARED_LIB:
         reloc_mode = LLVMRelocPIC;
         break;
+    default:
+        break;
     }
     LLVMTargetMachineRef llvm_tm = LLVMCreateTargetMachine(llvm_target,
                                                            triple,
@@ -309,7 +311,11 @@ import_module(Assembly *assembly, ConfData *config, const char *modulepath, Toke
 }
 
 // public
-AssemblyBlueprint *assembly_blueprint_new(AssemblyKind kind, const char *name)
+AssemblyBlueprint *assembly_blueprint_new(BuilderOptions *default_options,
+                                          AssemblyKind    kind,
+                                          const char *    name,
+                                          const s32       vm_argc,
+                                          char **         vm_argv)
 {
     AssemblyBlueprint *bp = bl_malloc(sizeof(AssemblyBlueprint));
     memset(bp, 0, sizeof(AssemblyBlueprint));
@@ -326,6 +332,7 @@ AssemblyBlueprint *assembly_blueprint_new(AssemblyKind kind, const char *name)
         tarray_push(&bp->input_units, BUILTIN_FILE);
         tarray_push(&bp->input_units, OS_PRELOAD_FILE);
         tarray_push(&bp->input_units, BUILD_API_FILE);
+        tarray_push(&bp->input_units, BUILD_SCRIPT_FILE);
         break;
     case ASSEMBLY_EXECUTABLE:
         bp->opt = ASSEMBLY_OPT_DEBUG;
@@ -336,6 +343,9 @@ AssemblyBlueprint *assembly_blueprint_new(AssemblyKind kind, const char *name)
         bp->opt = ASSEMBLY_OPT_DEBUG;
         tarray_push(&bp->input_units, BUILTIN_FILE);
         tarray_push(&bp->input_units, OS_PRELOAD_FILE);
+        break;
+    case ASSEMBLY_DOCS:
+        bp->opt = ASSEMBLY_OPT_DEBUG;
         break;
     }
     return bp;
@@ -572,7 +582,7 @@ bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *i
             tstring_setf(local_path, "%s/%s", module_dir, modulepath);
             config = load_module_config(local_path->data, import_from);
         } else {
-            tstring_setf(local_path, "%s/%s", ENV_LIB_DIR, modulepath);
+            tstring_setf(local_path, "%s/%s", builder_get_lib_dir(), modulepath);
             config = load_module_config(local_path->data, import_from);
         }
         break;
@@ -584,14 +594,14 @@ bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *i
         TString *  system_path   = get_tmpstr();
         const bool check_version = policy == IMPORT_POLICY_BUNDLE_LATEST;
         tstring_setf(local_path, "%s/%s", module_dir, modulepath);
-        tstring_setf(system_path, "%s/%s", ENV_LIB_DIR, modulepath);
-        const bool system_found = module_exist(ENV_LIB_DIR, modulepath);
+        tstring_setf(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
+        const bool system_found = module_exist(builder_get_lib_dir(), modulepath);
         // Check if module is present in module directory.
         bool do_copy = !local_found;
         if (check_version && local_found && system_found) {
             s32 system_version = 0;
             s32 local_version  = 0;
-            tstring_setf(system_path, "%s/%s", ENV_LIB_DIR, modulepath);
+            tstring_setf(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
             config = load_module_config(system_path->data, import_from);
             if (config) system_version = get_module_version(config);
             ConfData *local_config = load_module_config(local_path->data, import_from);

@@ -72,9 +72,9 @@ bool search_source_file(const char *filepath,
         }
     }
 
-    // file has not been found in current working direcotry -> search in LIB_DIR
-    if (ENV_LIB_DIR && IS_FLAG(flags, SEARCH_FLAG_LIB_DIR)) {
-        tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", ENV_LIB_DIR, filepath);
+    // file has not been found in current working directory -> search in LIB_DIR
+    if (builder_get_lib_dir() && IS_FLAG(flags, SEARCH_FLAG_LIB_DIR)) {
+        tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", builder_get_lib_dir(), filepath);
         if (brealpath(tmp->data, tmp_result, TARRAY_SIZE(tmp_result))) {
             result = &tmp_result[0];
             goto FOUND;
