@@ -86,6 +86,7 @@ static void append_default_opt(Assembly *assembly, TString *buf)
         break;
     case ASSEMBLY_SHARED_LIB:
         default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_SHARED_KEY);
+        break;
     default:
         BL_ABORT("Unknown output kind!");
     }
