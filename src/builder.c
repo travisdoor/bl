@@ -318,10 +318,6 @@ INTERRUPT:
 /* public */
 s32 builder_parse_options(s32 argc, char *argv[])
 {
-#define BREAK                                                                                      \
-    optind++;                                                                                      \
-    break;
-
 #define ARG(kind, action)                                                                          \
     if ((strcmp(&argv[optind][1], ARGS[kind].s) == 0) ||                                           \
         (strcmp(&argv[optind][1], ARGS[kind].l) == 0)) {                                           \

@@ -1,4 +1,4 @@
-//************************************************************************************************
+// =================================================================================================
 // blc
 //
 // File:   main.c
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+// =================================================================================================
 
 #include "assembly.h"
 #include "bldebug.h"
@@ -90,16 +90,107 @@ static int generate_conf(void)
     return state;
 }
 
-//**************************************************************************************************
+// =================================================================================================
+// Command line arguments + Options
+// =================================================================================================
+
+#define GEN_CLA_ARGS_DEFINITIONS
+#include "command_line_arguments.inc"
+#undef GEN_CLA_ARGS_DEFINITIONS
+
+typedef struct ApplicationOptions {
+    bool print_help;
+    bool print_about;
+    bool where_is_api;
+    bool configure;
+} ApplicationOptions;
+
+typedef struct Options {
+    ApplicationOptions app;
+    BuilderOptions2    builder;
+    TargetOptions      target;
+} Options;
+
+void print_help(FILE *stream)
+{
+    const char *text = "Usage:\n  blc [options] <source-files>\n\nAlternative usage:\n  blc "
+                       "[-r|-rs|-b] <source-file> [arguments]\n\nOptions:\n";
+    fprintf(stream, "%s", text);
+
+    char buf[256];
+    for (u32 i = 0; i < TARRAY_SIZE(ARGS); ++i) {
+        const Arg *arg = &ARGS[i];
+        if (strlen(arg->s)) {
+            snprintf(buf, TARRAY_SIZE(buf), "-%s, -%s", arg->s, arg->l);
+        } else {
+            snprintf(buf, TARRAY_SIZE(buf), "-%s", arg->l);
+        }
+        fprintf(stream, "  %-30s = %s\n", buf, arg->help);
+    }
+}
+
+void print_about(FILE *stream)
+{
+    const char *text =
+#include "about_text.txt"
+        ;
+
+    fprintf(stream, text, BL_VERSION, LLVM_VERSION_STRING);
+}
+
+s32 parse_arguments(Options *opt, s32 argc, char *argv[])
+{
+#define ARG(kind, action)                                                                          \
+    if ((strcmp(&argv[optind][1], ARGS[kind].s) == 0) ||                                           \
+        (strcmp(&argv[optind][1], ARGS[kind].l) == 0)) {                                           \
+        action continue;                                                                           \
+    }
+#define ARG_BREAK(kind, action)                                                                    \
+    if ((strcmp(&argv[optind][1], ARGS[kind].s) == 0) ||                                           \
+        (strcmp(&argv[optind][1], ARGS[kind].l) == 0)) {                                           \
+        action++ optind;                                                                           \
+        break;                                                                                     \
+    }
+
+    opt->target.assembly_opt  = ASSEMBLY_OPT_DEBUG;
+    opt->target.assembly_kind = ASSEMBLY_EXECUTABLE;
+
+#ifdef BL_DEBUG
+    opt->target.verify_llvm = true;
+#endif
+
+#if BL_PLATFORM_WIN
+    opt->target.assembly_di_kind = ASSEMBLY_DI_CODEVIEW;
+#else
+    opt->target.assembly_di_kind = ASSEMBLY_DI_CODEVIEW;
+#endif
+
+    s32 optind = 1;
+    for (; optind < argc && argv[optind][0] == '-'; optind++) {
+        ARG(CLA_ARG_HELP, opt->app.print_help = true;)
+        ARG(CLA_ARG_ABOUT, opt->app.print_about = true;)
+        ARG(CLA_ARG_WHERE_IS_API, opt->app.where_is_api = true; opt->builder.silent = true;)
+        ARG(CLA_ARG_CONFIGURE, opt->app.configure = true;)
+
+        builder_error("Invalid argument '%s'", &argv[optind][1]);
+        return -1;
+    }
+
+    return optind;
+#undef ARG
+#undef ARG_BREAK
+}
+
+// =================================================================================================
 // MAIN
-//**************************************************************************************************
+// =================================================================================================
 int main(s32 argc, char *argv[])
 {
-    //**********************************************************************************************
+    // =============================================================================================
 #define EXIT(_state)                                                                               \
     state = _state;                                                                                \
     goto RELEASE;                                                                                  \
-    //**********************************************************************************************
+    // =============================================================================================
 
 #ifdef BL_DEBUG
     puts("Running in DEBUG mode");
@@ -113,6 +204,7 @@ int main(s32 argc, char *argv[])
 
     exec_dir = get_exec_dir();
     builder_init(exec_dir);
+    parse_arguments(argc, argv);
     s32 next_arg = builder_parse_options(argc, argv);
     builder_log("Compiler version: %s, LLVM: %d", BL_VERSION, LLVM_VERSION_MAJOR);
     if (next_arg == -1) {

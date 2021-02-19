@@ -39,6 +39,35 @@
 
 struct ThreadingImpl;
 
+typedef struct BuilderOptions2 {
+    bool verbose;
+    bool no_color;
+    bool silent;
+    bool no_jobs;
+    bool no_warn;
+} BuilderOptions2;
+
+typedef struct TargetOptions {
+    AssemblyKind   assembly_kind;
+    AssemblyOpt    assembly_opt;
+    AssemblyDIKind assembly_di_kind;
+    bool           run;
+    bool           run_tests;
+    bool           print_tokens;
+    bool           print_ast;
+    bool           emit_llvm;
+    bool           emit_mir;
+    bool           no_bin;
+    bool           no_api;
+    bool           no_llvm;
+    bool           no_analyze;
+    bool           syntax_only;
+    bool           reg_split;
+    bool           no_vcvars;
+    bool           verify_llvm;
+    bool           docs;
+} TargetOptions;
+
 typedef struct BuilderOptions {
     AssemblyKind   assembly_kind;
     AssemblyOpt    assembly_opt;
@@ -107,20 +136,20 @@ typedef enum {
 struct Location;
 
 // Initialize builder global instance with executable directory specified.
-void builder_init(const char *exec_dir);
-void builder_terminate(void);
-void builder_set_lib_dir(const char *lib_dir);
-const char* builder_get_lib_dir(void);
-const char* builder_get_exec_dir(void);
-s32  builder_parse_options(s32 argc, char *argv[]);
-int  builder_load_config(const char *filepath);
-int  builder_compile_config(const char *  filepath,
-                            ConfData *    out_data,
-                            struct Token *import_from // optional
- );
-void builder_add_assembly(Assembly *assembly);
-s32  builder_compile_all(void);
-s32  builder_compile(Assembly *assembly);
+void        builder_init(const char *exec_dir);
+void        builder_terminate(void);
+void        builder_set_lib_dir(const char *lib_dir);
+const char *builder_get_lib_dir(void);
+const char *builder_get_exec_dir(void);
+s32         builder_parse_options(s32 argc, char *argv[]);
+int         builder_load_config(const char *filepath);
+int         builder_compile_config(const char *  filepath,
+                                   ConfData *    out_data,
+                                   struct Token *import_from // optional
+        );
+void        builder_add_assembly(Assembly *assembly);
+s32         builder_compile_all(void);
+s32         builder_compile(Assembly *assembly);
 
 // Submit new unit for async compilation, in case no-jobs flag is set, this function does nothing.
 void builder_async_submit_unit(Unit *unit);
