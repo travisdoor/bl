@@ -47,27 +47,6 @@ typedef struct BuilderOptions2 {
     bool no_warn;
 } BuilderOptions2;
 
-typedef struct TargetOptions {
-    AssemblyKind   assembly_kind;
-    AssemblyOpt    assembly_opt;
-    AssemblyDIKind assembly_di_kind;
-    bool           run;
-    bool           run_tests;
-    bool           print_tokens;
-    bool           print_ast;
-    bool           emit_llvm;
-    bool           emit_mir;
-    bool           no_bin;
-    bool           no_api;
-    bool           no_llvm;
-    bool           no_analyze;
-    bool           syntax_only;
-    bool           reg_split;
-    bool           no_vcvars;
-    bool           verify_llvm;
-    bool           docs;
-} TargetOptions;
-
 typedef struct BuilderOptions {
     AssemblyKind   assembly_kind;
     AssemblyOpt    assembly_opt;
@@ -170,7 +149,6 @@ void builder_msg(BuilderMsgType   type,
                  const char *     format,
                  ...);
 
-void     builder_print_help(FILE *stream);
 TString *builder_create_cached_str(void);
 TString *get_tmpstr(void);
 void     put_tmpstr(TString *str);

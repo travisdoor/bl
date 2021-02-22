@@ -673,24 +673,6 @@ DONE:
 #endif
 }
 
-void builder_print_help(FILE *stream)
-{
-    const char *text = "Usage:\n  blc [options] <source-files>\n\nAlternative usage:\n  blc "
-                       "[-r|-rs|-b] <source-file> [arguments]\n\nOptions:\n";
-    fprintf(stream, "%s", text);
-
-    char buf[256];
-    for (u32 i = 0; i < TARRAY_SIZE(ARGS); ++i) {
-        const Arg *arg = &ARGS[i];
-        if (strlen(arg->s)) {
-            snprintf(buf, TARRAY_SIZE(buf), "-%s, -%s", arg->s, arg->l);
-        } else {
-            snprintf(buf, TARRAY_SIZE(buf), "-%s", arg->l);
-        }
-        fprintf(stream, "  %-30s = %s\n", buf, arg->help);
-    }
-}
-
 TString *builder_create_cached_str(void)
 {
     TString *str = arena_alloc(&builder.str_cache);

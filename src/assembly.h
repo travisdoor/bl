@@ -65,6 +65,30 @@ typedef enum {
     IMPORT_POLICY_BUNDLE_LATEST = 2,
 } ModuleImportPolicy;
 
+typedef struct AssemblyOptions2 {
+    AssemblyKind   kind;
+    AssemblyOpt    opt;
+    AssemblyDIKind di;
+    bool           run;
+    bool           run_tests;
+    bool           print_tokens;
+    bool           print_ast;
+    bool           emit_llvm;
+    bool           emit_mir;
+    bool           no_bin;
+    bool           no_api;
+    bool           no_llvm;
+    bool           no_analyze;
+    bool           syntax_only;
+    bool           reg_split;
+    bool           no_vcvars;
+    bool           verify_llvm;
+    bool           docs;
+
+    char *  name;
+    TArray *units;
+} AssemblyOptions2;
+
 typedef struct AssemblyOptions {
 #define GEN_ASSEMBLY_OPT_DECLS
 #include "assembly.inc"
@@ -153,6 +177,10 @@ typedef struct NativeLib {
     // Disable appending of this library to the linker options.
     bool is_internal;
 } NativeLib;
+
+AssemblyOptions2 *assembly_opt_new(void);
+
+void assembly_opt_delete(AssemblyOptions2 *o);
 
 // Create new assembly instance.
 Assembly *assembly_new(AssemblyKind kind, const char *name);

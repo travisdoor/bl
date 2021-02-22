@@ -108,7 +108,7 @@ typedef struct ApplicationOptions {
 typedef struct Options {
     ApplicationOptions app;
     BuilderOptions2    builder;
-    TargetOptions      target;
+    AssemblyOptions2 * target;
 } Options;
 
 void print_help(FILE *stream)
@@ -138,8 +138,14 @@ void print_about(FILE *stream)
     fprintf(stream, text, BL_VERSION, LLVM_VERSION_STRING);
 }
 
+void print_where_is_api(FILE *stream)
+{
+    fprintf(stream, "%s", builder_get_lib_dir());
+}
+
 s32 parse_arguments(Options *opt, s32 argc, char *argv[])
 {
+    BL_ASSERT(opt->target && "Target not initialized!");
 #define ARG(kind, action)                                                                          \
     if ((strcmp(&argv[optind][1], ARGS[kind].s) == 0) ||                                           \
         (strcmp(&argv[optind][1], ARGS[kind].l) == 0)) {                                           \
@@ -152,17 +158,17 @@ s32 parse_arguments(Options *opt, s32 argc, char *argv[])
         break;                                                                                     \
     }
 
-    opt->target.assembly_opt  = ASSEMBLY_OPT_DEBUG;
-    opt->target.assembly_kind = ASSEMBLY_EXECUTABLE;
+    opt->target->opt  = ASSEMBLY_OPT_DEBUG;
+    opt->target->kind = ASSEMBLY_EXECUTABLE;
 
 #ifdef BL_DEBUG
-    opt->target.verify_llvm = true;
+    opt->target->verify_llvm = true;
 #endif
 
 #if BL_PLATFORM_WIN
-    opt->target.assembly_di_kind = ASSEMBLY_DI_CODEVIEW;
+    opt->target->di = ASSEMBLY_DI_CODEVIEW;
 #else
-    opt->target.assembly_di_kind = ASSEMBLY_DI_CODEVIEW;
+    opt->target->di = ASSEMBLY_DI_DRAWF;
 #endif
 
     s32 optind = 1;
@@ -195,6 +201,10 @@ int main(s32 argc, char *argv[])
 #ifdef BL_DEBUG
     puts("Running in DEBUG mode");
 #endif
+    Options opt = {0};
+    // Just create default empty target assembly options here and setup it later depending on user
+    // passed arguments!
+    opt.target = assembly_opt_new("out");
     setlocale(LC_ALL, "C");
     tlib_set_allocator(&_bl_malloc, &bl_free);
 
@@ -204,16 +214,15 @@ int main(s32 argc, char *argv[])
 
     exec_dir = get_exec_dir();
     builder_init(exec_dir);
-    parse_arguments(argc, argv);
-    s32 next_arg = builder_parse_options(argc, argv);
+    s32 next_arg = parse_arguments(&opt, argc, argv);
     builder_log("Compiler version: %s, LLVM: %d", BL_VERSION, LLVM_VERSION_MAJOR);
     if (next_arg == -1) {
-        builder_print_help(stdout);
+        print_help(stdout);
         EXIT(EXIT_FAILURE);
     }
 
     // Run configure if needed.
-    if (builder.options.run_configure) {
+    if (opt.app.configure) {
         if (generate_conf() != 0) {
             builder_error("Cannot generate config file.");
             EXIT(EXIT_FAILURE);
@@ -226,13 +235,13 @@ int main(s32 argc, char *argv[])
     const s32 vm_argc = argc - next_arg;
     char **   vm_argv = argv;
 
-    if (builder.options.print_help) {
-        builder_print_help(stdout);
+    if (opt.app.print_help) {
+        print_help(stdout);
         EXIT(EXIT_SUCCESS);
     }
 
-    if (builder.options.print_about) {
-        fprintf(stdout, ABOUT_TEXT, BL_VERSION, LLVM_VERSION_STRING);
+    if (opt.app.print_about) {
+        print_about(stdout);
         EXIT(EXIT_SUCCESS);
     }
 
@@ -244,8 +253,8 @@ int main(s32 argc, char *argv[])
     // setup LIB_DIR
     builder_set_lib_dir(conf_data_get_str(&builder.conf, CONF_LIB_DIR_KEY));
 
-    if (builder.options.where_is_api) {
-        fprintf(stdout, "%s", builder_get_lib_dir());
+    if (opt.app.where_is_api) {
+        print_where_is_api(stdout);
         EXIT(EXIT_SUCCESS);
     }
 
@@ -277,6 +286,7 @@ int main(s32 argc, char *argv[])
 
 RELEASE:
     builder_terminate();
+    assembly_opt_delete(opt.target);
     free(exec_dir);
     free(conf_file);
     BL_LOG("Exit with state %d.", state);

@@ -311,6 +311,29 @@ import_module(Assembly *assembly, ConfData *config, const char *modulepath, Toke
 }
 
 // public
+AssemblyOptions2 *assembly_opt_new(const char *name)
+{
+	BL_ASSERT(name && "Assembly name not specified!");
+    AssemblyOptions2 *o = bl_malloc(sizeof(AssemblyOptions2));
+    memset(o, 0, sizeof(AssemblyOptions2));
+    o->units = tarray_new(sizeof(char *));
+	o->name = strdup(name);
+    return o;
+}
+
+void assembly_opt_delete(AssemblyOptions2 *o)
+{
+    char *unit;
+    TARRAY_FOREACH(char *, o->units, unit)
+    {
+        free(unit);
+    }
+
+    tarray_delete(o->units);
+    free(o->name);
+    bl_free(o);
+}
+
 Assembly *assembly_new(AssemblyKind kind, const char *name)
 {
     Assembly *assembly = bl_malloc(sizeof(Assembly));
