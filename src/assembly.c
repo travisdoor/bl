@@ -1,4 +1,4 @@
-//************************************************************************************************
+// =================================================================================================
 // blc
 //
 // File:   assembly.c
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+// =================================================================================================
 
 #include "assembly.h"
 #include "blmemory.h"
@@ -311,27 +311,33 @@ import_module(Assembly *assembly, ConfData *config, const char *modulepath, Toke
 }
 
 // public
-AssemblyOptions2 *assembly_opt_new(const char *name)
+Target *target_new(const char *name)
 {
-	BL_ASSERT(name && "Assembly name not specified!");
-    AssemblyOptions2 *o = bl_malloc(sizeof(AssemblyOptions2));
-    memset(o, 0, sizeof(AssemblyOptions2));
-    o->units = tarray_new(sizeof(char *));
-	o->name = strdup(name);
-    return o;
+    BL_ASSERT(name && "Assembly name not specified!");
+    Target *target = bl_malloc(sizeof(Target));
+    memset(target, 0, sizeof(Target));
+    tarray_init(&target->files, sizeof(char *));
+    target->name = strdup(name);
+    return target;
 }
 
-void assembly_opt_delete(AssemblyOptions2 *o)
+void target_delete(Target *target)
 {
-    char *unit;
-    TARRAY_FOREACH(char *, o->units, unit)
+    char *file;
+    TARRAY_FOREACH(char *, &target->files, file)
     {
-        free(unit);
+        free(file);
     }
+    tarray_terminate(&target->files);
+    free(target->name);
+    bl_free(target);
+}
 
-    tarray_delete(o->units);
-    free(o->name);
-    bl_free(o);
+void target_add_file(Target *target, const char *filepath)
+{
+    BL_ASSERT(filepath && "Invalid filepath!");
+    char *dup = strdup(filepath);
+    tarray_push(&target->files, dup);
 }
 
 Assembly *assembly_new(AssemblyKind kind, const char *name)

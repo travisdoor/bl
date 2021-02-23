@@ -108,7 +108,7 @@ typedef struct ApplicationOptions {
 typedef struct Options {
     ApplicationOptions app;
     BuilderOptions2    builder;
-    AssemblyOptions2 * target;
+    Target *           target;
 } Options;
 
 void print_help(FILE *stream)
@@ -187,6 +187,17 @@ s32 parse_arguments(Options *opt, s32 argc, char *argv[])
 #undef ARG_BREAK
 }
 
+s32 parse_input_files(Options *opt, s32 argc, char *argv[])
+{
+    while (*argv != NULL) {
+        target_add_file(opt->target, *argv);
+        // if (assembly->options.run) break;
+        argv++;
+        argc--;
+    }
+    return argc;
+}
+
 // =================================================================================================
 // MAIN
 // =================================================================================================
@@ -204,7 +215,7 @@ int main(s32 argc, char *argv[])
     Options opt = {0};
     // Just create default empty target assembly options here and setup it later depending on user
     // passed arguments!
-    opt.target = assembly_opt_new("out");
+    opt.target = builder_add_target("out");
     setlocale(LC_ALL, "C");
     tlib_set_allocator(&_bl_malloc, &bl_free);
 
@@ -264,21 +275,19 @@ int main(s32 argc, char *argv[])
         EXIT(EXIT_SUCCESS);
     }
 
-    Assembly *assembly = assembly_new(builder.options.assembly_kind, "out");
-    assembly_set_vm_args(assembly, vm_argc, vm_argv);
+    // assembly_set_vm_args(assembly, vm_argc, vm_argv); @INCOMPLETE builder_set_vm_args???
     if (use_build_pipeline) {
-        assembly->options.opt = ASSEMBLY_OPT_RELEASE_FAST;
-        assembly_add_unit(assembly, BUILD_SCRIPT_FILE, NULL);
+        // @INCOMPLETE
+        // assembly->options.opt = ASSEMBLY_OPT_RELEASE_FAST;
+        // assembly_add_unit(assembly, BUILD_SCRIPT_FILE, NULL);
     } else {
-        while (*argv != NULL) {
-            assembly_add_unit(assembly, *argv, NULL);
-            if (assembly->options.run) break;
-            argv++;
-        }
+        parse_input_files(&opt, argc, argv);
     }
 
-    builder_add_assembly(assembly);
-    state = builder_compile_all();
+    state = builder_compile2(opt.target);
+    // @CLEANUP
+    // builder_add_assembly(assembly);
+    // state = builder_compile_all();
 
     char date[26];
     date_time(date, 26, "%d-%m-%Y %H:%M:%S");
@@ -286,7 +295,6 @@ int main(s32 argc, char *argv[])
 
 RELEASE:
     builder_terminate();
-    assembly_opt_delete(opt.target);
     free(exec_dir);
     free(conf_file);
     BL_LOG("Exit with state %d.", state);

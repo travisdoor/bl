@@ -65,7 +65,7 @@ typedef enum {
     IMPORT_POLICY_BUNDLE_LATEST = 2,
 } ModuleImportPolicy;
 
-typedef struct AssemblyOptions2 {
+typedef struct Target {
     AssemblyKind   kind;
     AssemblyOpt    opt;
     AssemblyDIKind di;
@@ -85,9 +85,9 @@ typedef struct AssemblyOptions2 {
     bool           verify_llvm;
     bool           docs;
 
-    char *  name;
-    TArray *units;
-} AssemblyOptions2;
+    char * name;
+    TArray files;
+} Target;
 
 typedef struct AssemblyOptions {
 #define GEN_ASSEMBLY_OPT_DECLS
@@ -178,9 +178,9 @@ typedef struct NativeLib {
     bool is_internal;
 } NativeLib;
 
-AssemblyOptions2 *assembly_opt_new(void);
-
-void assembly_opt_delete(AssemblyOptions2 *o);
+Target *target_new(const char *name);
+void    target_delete(Target *target);
+void    target_add_file(Target *target, const char *filepath);
 
 // Create new assembly instance.
 Assembly *assembly_new(AssemblyKind kind, const char *name);

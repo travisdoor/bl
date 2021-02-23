@@ -419,6 +419,7 @@ void builder_init(const char *exec_dir)
     // initialize LLVM statics
     llvm_init();
     tarray_init(&builder.assembly_queue, sizeof(Assembly *));
+    tarray_init(&builder.targets, sizeof(Target *));
     tarray_init(&builder.tmp_strings, sizeof(TString *));
     start_threads();
 }
@@ -431,6 +432,13 @@ void builder_terminate(void)
         assembly_delete(assembly);
     }
     tarray_terminate(&builder.assembly_queue);
+
+    Target *target;
+    TARRAY_FOREACH(Target *, &builder.targets, target)
+    {
+        target_delete(target);
+    }
+    tarray_terminate(&builder.targets);
 
     TString *str;
     TARRAY_FOREACH(TString *, &builder.tmp_strings, str)
@@ -497,6 +505,13 @@ void builder_add_assembly(Assembly *assembly)
     tarray_push(&builder.assembly_queue, assembly);
 }
 
+Target *builder_add_target(const char *name)
+{
+    Target *target = target_new(name);
+    tarray_push(&builder.targets, target);
+    return target;
+}
+
 int builder_compile_all(void)
 {
     Assembly *assembly;
@@ -553,6 +568,19 @@ int builder_compile(Assembly *assembly)
     if (builder.errorc) return builder.max_error;
     if (assembly->options.run) return builder.last_script_mode_run_status;
     if (builder.options.run_tests) return builder.test_failc;
+    return EXIT_SUCCESS;
+}
+
+s32 builder_compile2(Target *target)
+{
+    BL_ASSERT(target && "Invalid compilation target!");
+    // @CLEANUP
+    BL_LOG("Compile target: %s", target->name);
+    char *file;
+    TARRAY_FOREACH(char *, &target->files, file)
+    {
+        BL_LOG("    Compile file: %s", file);
+    }
     return EXIT_SUCCESS;
 }
 
