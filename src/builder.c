@@ -1,4 +1,4 @@
-//************************************************************************************************
+// =================================================================================================
 // blc
 //
 // File:   builder.c
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+// =================================================================================================
 
 #include <stdarg.h>
 #include <time.h>
@@ -32,7 +32,6 @@
 #include "assembly.h"
 #include "builder.h"
 #include "common.h"
-#include "stages.h"
 #include "token.h"
 #include "unit.h"
 
@@ -52,16 +51,36 @@
 
 Builder builder;
 
-typedef struct {
-    const char *s;
-    const char *l;
-    const char *help;
-} Arg;
+// =================================================================================================
+// Stages
+// =================================================================================================
+void conf_parser_run(Unit *unit, ConfData *out_data);
 
-#define GEN_BUILDER_ARGS_DEFINITIONS
-#include "builder.inc"
-#undef GEN_BUILDER_ARGS_DEFINITIONS
+// Unit
+void file_loader_run(Assembly *assembly, Unit *unit);
+void lexer_run(Assembly *assembly, Unit *unit);
+void token_printer_run(Assembly *assembly, Unit *unit);
+void parser_run(Assembly *assembly, Unit *unit);
 
+// Assembly
+void ast_printer_run(Assembly *assembly, FILE *stream);
+void docs_run(Assembly *assembly);
+void ir_run(Assembly *assembly);
+void ir_opt_run(Assembly *assembly);
+void obj_writer_run(Assembly *assembly);
+void linker_run(Assembly *assembly);
+void bc_writer_run(Assembly *assembly);
+void native_bin_run(Assembly *assembly);
+void mir_writer_run(Assembly *assembly);
+
+// VM
+s32 vm_entry_run(Assembly *assembly);
+s32 vm_build_entry_run(Assembly *assembly);
+s32 vm_tests_run(Assembly *assembly);
+
+// =================================================================================================
+// Builder
+// =================================================================================================
 static int  compile_unit(Unit *unit, Assembly *assembly);
 static int  compile_assembly(Assembly *assembly);
 static bool llvm_initialized = false;
@@ -244,12 +263,12 @@ int compile_unit(Unit *unit, Assembly *assembly)
         builder_log("Compile: %s", unit->name);
     }
 
-    file_loader_run(unit);
+    file_loader_run(assembly, unit);
     INTERRUPT_ON_ERROR;
-    lexer_run(unit);
+    lexer_run(assembly, unit);
     INTERRUPT_ON_ERROR;
-    if (assembly->options.print_tokens) {
-        token_printer_run(unit);
+    if (assembly->target->print_tokens) {
+        token_printer_run(assembly, unit);
         INTERRUPT_ON_ERROR;
     }
     parser_run(assembly, unit);
@@ -260,49 +279,49 @@ INTERRUPT:
 
 int compile_assembly(Assembly *assembly)
 {
-    if (assembly->options.print_ast) ast_printer_run(assembly, stdout);
+    if (assembly->target->print_ast) ast_printer_run(assembly, stdout);
     INTERRUPT_ON_ERROR;
 
-    if (builder.options.docs) docs_run(assembly);
-    FINISH_IF(builder.options.docs);
+    if (assembly->target->docs) docs_run(assembly);
+    FINISH_IF(assembly->target->docs);
 
     linker_run(assembly);
     INTERRUPT_ON_ERROR;
 
-    FINISH_IF(assembly->options.syntax_only);
+    FINISH_IF(assembly->target->syntax_only);
 
     mir_run(assembly);
-    if (assembly->options.emit_mir) mir_writer_run(assembly);
+    if (assembly->target->emit_mir) mir_writer_run(assembly);
     INTERRUPT_ON_ERROR;
-    FINISH_IF(assembly->options.no_analyze);
+    FINISH_IF(assembly->target->no_analyze);
 
     //********************************************************************************************
     // EXECUTION
     //********************************************************************************************
     // Run main
-    if (assembly->options.run) builder.last_script_mode_run_status = vm_entry_run(assembly);
+    if (assembly->target->run) builder.last_script_mode_run_status = vm_entry_run(assembly);
 
     // Handle build mode
-    if (assembly->kind == ASSEMBLY_BUILD_PIPELINE) vm_build_entry_run(assembly);
+    if (assembly->target->kind == ASSEMBLY_BUILD_PIPELINE) vm_build_entry_run(assembly);
 
     // Run test cases
-    if (assembly->options.run_tests) builder.test_failc = vm_tests_run(assembly);
+    if (assembly->target->run_tests) builder.test_failc = vm_tests_run(assembly);
     //********************************************************************************************
 
-    FINISH_IF(assembly->options.no_llvm);
-    FINISH_IF(assembly->kind == ASSEMBLY_BUILD_PIPELINE);
+    FINISH_IF(assembly->target->no_llvm);
+    FINISH_IF(assembly->target->kind == ASSEMBLY_BUILD_PIPELINE);
     ir_run(assembly);
     INTERRUPT_ON_ERROR;
 
     ir_opt_run(assembly);
     INTERRUPT_ON_ERROR;
 
-    if (assembly->options.emit_llvm) {
+    if (assembly->target->emit_llvm) {
         bc_writer_run(assembly);
         INTERRUPT_ON_ERROR;
     }
 
-    if (!assembly->options.no_bin) {
+    if (!assembly->target->no_bin) {
         obj_writer_run(assembly);
         INTERRUPT_ON_ERROR;
         native_bin_run(assembly);
@@ -315,87 +334,56 @@ INTERRUPT:
     return COMPILE_FAIL;
 }
 
-/* public */
-s32 builder_parse_options(s32 argc, char *argv[])
+static int compile(Assembly *assembly)
 {
-#define ARG(kind, action)                                                                          \
-    if ((strcmp(&argv[optind][1], ARGS[kind].s) == 0) ||                                           \
-        (strcmp(&argv[optind][1], ARGS[kind].l) == 0)) {                                           \
-        action continue;                                                                           \
-    }
-#define ARG_BREAK(kind, action)                                                                    \
-    if ((strcmp(&argv[optind][1], ARGS[kind].s) == 0) ||                                           \
-        (strcmp(&argv[optind][1], ARGS[kind].l) == 0)) {                                           \
-        action++ optind;                                                                           \
-        break;                                                                                     \
-    }
+    clock_t begin       = clock();
+    s32     state       = COMPILE_OK;
+    builder.total_lines = 0;
 
-    builder.options.assembly_opt  = ASSEMBLY_OPT_DEBUG;
-    builder.options.assembly_kind = ASSEMBLY_EXECUTABLE;
+    builder_note("Compile assembly: %s [%s]", assembly->name, opt_to_str(assembly->target->opt));
 
-#ifdef BL_DEBUG
-    builder.options.verify_llvm = true;
-#endif
+    // Prepare assembly for compilation.
+    assembly_prepare(assembly);
+    if (!assembly->target->docs) assembly_add_unit(assembly, BUILTIN_FILE, NULL);
 
-#if BL_PLATFORM_WIN
-    builder.options.assembly_di_kind = ASSEMBLY_DI_CODEVIEW;
-#else
-    builder.options.assembly_di_kind = ASSEMBLY_DI_CODEVIEW;
-#endif
+    // include core source file
+    if (!assembly->target->no_api && !assembly->target->docs)
+        assembly_add_unit(assembly, OS_PRELOAD_FILE, NULL);
 
-    s32 optind = 1;
-    for (; optind < argc && argv[optind][0] == '-'; optind++) {
-        ARG_BREAK(BUILDER_ARG_BUILD, builder.options.assembly_kind = ASSEMBLY_BUILD_PIPELINE;)
-        ARG_BREAK(BUILDER_ARG_RUN, builder.options.run = true;)
-        ARG_BREAK(BUILDER_ARG_RUN_SCRIPT, builder.options.run = true; builder.options.silent = true;
-                  builder.options.no_llvm = true;)
-        ARG(BUILDER_ARG_HELP, builder.options.print_help = true;)
-        ARG(BUILDER_ARG_ABOUT, builder.options.print_about = true;)
-        ARG(BUILDER_ARG_AST_DUMP, builder.options.print_ast = true;)
-        ARG(BUILDER_ARG_LEX_DUMP, builder.options.print_tokens = true;)
-        ARG(BUILDER_ARG_SYNTAX_ONLY, builder.options.syntax_only = true;)
-        ARG(BUILDER_ARG_EMIT_LLVM, builder.options.emit_llvm = true;)
-        ARG(BUILDER_ARG_EMIT_MIR, builder.options.emit_mir = true;)
-        ARG(BUILDER_ARG_RUN_TESTS, builder.options.run_tests = true;)
-        ARG(BUILDER_ARG_SILENT, builder.options.silent = true;)
-        ARG(BUILDER_ARG_NO_BIN, builder.options.no_bin = true;)
-        ARG(BUILDER_ARG_NO_WARNING, builder.options.no_warn = true;)
-        ARG(BUILDER_ARG_VERBOSE, builder.options.verbose = true;)
-        ARG(BUILDER_ARG_NO_COLOR, builder.options.no_color = true;)
-        ARG(BUILDER_ARG_NO_API, builder.options.no_api = true;)
-        ARG(BUILDER_ARG_NO_ANALYZE, builder.options.no_analyze = true;)
-        ARG(BUILDER_ARG_NO_LLVM, builder.options.no_llvm = true;)
-        ARG(BUILDER_ARG_CONFIGURE, builder.options.run_configure = true;)
-        ARG(BUILDER_ARG_REG_SPLIT_ON, builder.options.reg_split = true;)
-        ARG(BUILDER_ARG_REG_SPLIT_OFF, builder.options.reg_split = false;)
-        ARG(BUILDER_ARG_RELEASE_FAST, builder.options.assembly_opt = ASSEMBLY_OPT_RELEASE_FAST;)
-        ARG(BUILDER_ARG_RELEASE_SMALL, builder.options.assembly_opt = ASSEMBLY_OPT_RELEASE_SMALL;)
-        ARG(BUILDER_ARG_DI_DWARF, builder.options.assembly_di_kind = ASSEMBLY_DI_DWARF;)
-        ARG(BUILDER_ARG_DI_CODEVIEW, builder.options.assembly_di_kind = ASSEMBLY_DI_DWARF;)
-        ARG(BUILDER_ARG_NO_VCVARS, builder.options.no_vcvars = true;)
-        ARG(BUILDER_ARG_VERIFY_LLVM, builder.options.verify_llvm = true;)
-        ARG(BUILDER_ARG_DOCS, builder.options.docs = true;)
-        ARG(BUILDER_ARG_NO_JOBS, builder.options.no_jobs = true;)
-        ARG(BUILDER_ARG_SHARED, builder.options.assembly_kind = ASSEMBLY_SHARED_LIB;)
-        ARG(BUILDER_ARG_WHERE_IS_API, builder.options.where_is_api = true;
-            builder.options.silent = true;)
+    const bool build_mode = assembly->target->kind == ASSEMBLY_BUILD_PIPELINE;
+    if (build_mode) assembly_add_unit(assembly, BUILD_API_FILE, NULL);
 
-        builder_error("Invalid argument '%s'", &argv[optind][1]);
-        return -1;
+    if (builder.options.no_jobs) {
+        Unit *unit;
+        TARRAY_FOREACH(Unit *, &assembly->units, unit)
+        {
+            if ((state = compile_unit(unit, assembly)) != COMPILE_OK) break;
+        }
+    } else {
+        async_compile(assembly);
     }
 
-#if !BL_PLATFORM_WIN
-    if (builder.options.no_vcvars) {
-        builder_warning("Ignore argument '%s', this is valid on Windows only!",
-                        ARGS[BUILDER_ARG_NO_VCVARS].l);
-    }
-#endif
+    if (state == COMPILE_OK) state = compile_assembly(assembly);
 
-    return optind;
-#undef ARG
-#undef ARG_BREAK
+    clock_t end        = clock();
+    f64     time_spent = (f64)(end - begin) / CLOCKS_PER_SEC;
+
+    builder_log("Compiled %i lines in %f seconds.", builder.total_lines, time_spent);
+    if (state != COMPILE_OK) {
+        builder_warning("There were errors, sorry...");
+    }
+
+    // Cleanup assembly.
+    assembly_cleanup(assembly);
+    if (builder.errorc) return builder.max_error;
+    if (assembly->target->run) return builder.last_script_mode_run_status;
+    if (assembly->target->run_tests) return builder.test_failc;
+    return EXIT_SUCCESS;
 }
 
+// =================================================================================================
+// PUBLIC
+// =================================================================================================
 void builder_init(const char *exec_dir)
 {
     BL_ASSERT(exec_dir);
@@ -409,16 +397,8 @@ void builder_init(const char *exec_dir)
     conf_data_init(&builder.conf);
     arena_init(&builder.str_cache, sizeof(TString), 256, (ArenaElemDtor)str_cache_dtor);
 
-    // TODO: this is invalid for Windows MSVC DLLs???
-#if BL_PLATFORM_MACOS || BL_PLATFORM_LINUX
-    builder.options.reg_split = true;
-#else
-    builder.options.reg_split = false;
-#endif
-
     // initialize LLVM statics
     llvm_init();
-    tarray_init(&builder.assembly_queue, sizeof(Assembly *));
     tarray_init(&builder.targets, sizeof(Target *));
     tarray_init(&builder.tmp_strings, sizeof(TString *));
     start_threads();
@@ -426,13 +406,6 @@ void builder_init(const char *exec_dir)
 
 void builder_terminate(void)
 {
-    Assembly *assembly;
-    TARRAY_FOREACH(Assembly *, &builder.assembly_queue, assembly)
-    {
-        assembly_delete(assembly);
-    }
-    tarray_terminate(&builder.assembly_queue);
-
     Target *target;
     TARRAY_FOREACH(Target *, &builder.targets, target)
     {
@@ -446,8 +419,6 @@ void builder_terminate(void)
         tstring_delete(str);
     }
     BL_LOG("Used %llu temp-strings.", builder.tmp_strings.size);
-    tarray_terminate(&builder.assembly_queue);
-
     conf_data_terminate(&builder.conf);
     arena_terminate(&builder.str_cache);
 
@@ -480,10 +451,10 @@ int builder_compile_config(const char *filepath, ConfData *out_data, Token *impo
 {
     Unit *unit = unit_new(filepath, import_from);
     // load
-    file_loader_run(unit);
+    file_loader_run(NULL, unit);
     INTERRUPT_ON_ERROR;
     // use standart lexer
-    lexer_run(unit);
+    lexer_run(NULL, unit);
     INTERRUPT_ON_ERROR;
     conf_parser_run(unit, out_data);
     INTERRUPT_ON_ERROR;
@@ -499,12 +470,6 @@ int builder_load_config(const char *filepath)
     return builder_compile_config(filepath, &builder.conf, NULL);
 }
 
-void builder_add_assembly(Assembly *assembly)
-{
-    if (!assembly) return;
-    tarray_push(&builder.assembly_queue, assembly);
-}
-
 Target *builder_add_target(const char *name)
 {
     Target *target = target_new(name);
@@ -514,74 +479,30 @@ Target *builder_add_target(const char *name)
 
 int builder_compile_all(void)
 {
-    Assembly *assembly;
-    TARRAY_FOREACH(Assembly *, &builder.assembly_queue, assembly)
-    {
-        s32 state = builder_compile(assembly);
-        if (state != COMPILE_OK) return state;
-    }
-
     return COMPILE_OK;
 }
 
-int builder_compile(Assembly *assembly)
-{
-    clock_t begin       = clock();
-    s32     state       = COMPILE_OK;
-    builder.total_lines = 0;
-
-    builder_note("Compile assembly: %s [%s]", assembly->name, opt_to_str(assembly->options.opt));
-
-    // Prepare assembly for compilation.
-    assembly_prepare(assembly);
-    if (!builder.options.docs) assembly_add_unit(assembly, BUILTIN_FILE, NULL);
-
-    // include core source file
-    if (!builder.options.no_api && !builder.options.docs)
-        assembly_add_unit(assembly, OS_PRELOAD_FILE, NULL);
-
-    const bool build_mode = assembly->kind == ASSEMBLY_BUILD_PIPELINE;
-    if (build_mode) assembly_add_unit(assembly, BUILD_API_FILE, NULL);
-
-    if (builder.options.no_jobs) {
-        Unit *unit;
-        TARRAY_FOREACH(Unit *, &assembly->units, unit)
-        {
-            if ((state = compile_unit(unit, assembly)) != COMPILE_OK) break;
-        }
-    } else {
-        async_compile(assembly);
-    }
-
-    if (state == COMPILE_OK) state = compile_assembly(assembly);
-
-    clock_t end        = clock();
-    f64     time_spent = (f64)(end - begin) / CLOCKS_PER_SEC;
-
-    builder_log("Compiled %i lines in %f seconds.", builder.total_lines, time_spent);
-    if (state != COMPILE_OK) {
-        builder_warning("There were errors, sorry...");
-    }
-
-    // Cleanup assembly.
-    assembly_cleanup(assembly);
-    if (builder.errorc) return builder.max_error;
-    if (assembly->options.run) return builder.last_script_mode_run_status;
-    if (builder.options.run_tests) return builder.test_failc;
-    return EXIT_SUCCESS;
-}
-
-s32 builder_compile2(Target *target)
+s32 builder_compile(const Target *target)
 {
     BL_ASSERT(target && "Invalid compilation target!");
-    // @CLEANUP
-    BL_LOG("Compile target: %s", target->name);
-    char *file;
-    TARRAY_FOREACH(char *, &target->files, file)
+
+    // @CLEANUP move to compile_assembly!!!
+    // @CLEANUP move to compile_assembly!!!
+    // @CLEANUP move to compile_assembly!!!
+    UnitStageFn unit_stages[4] = {0};
     {
-        BL_LOG("    Compile file: %s", file);
+        s32 si = 0;
+
+        unit_stages[si++] = &file_loader_run;
+        unit_stages[si++] = &lexer_run;
+        if (target->print_tokens) unit_stages[si++] = &token_printer_run;
+        unit_stages[si++] = &parser_run;
     }
-    return EXIT_SUCCESS;
+
+    Assembly *assembly = assembly_new(target);
+    s32       state    = compile_assembly(assembly);
+    assembly_delete(assembly);
+    return state;
 }
 
 void builder_msg(BuilderMsgType type,

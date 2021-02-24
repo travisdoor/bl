@@ -26,18 +26,17 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "assembly.h"
 #include "bldebug.h"
 #include "error.h"
 #include "llvm_api.h"
-#include "stages.h"
+#include "builder.h"
 
 void ir_opt_run(Assembly *assembly)
 {
     TracyCZone(_tctx, true);
     LLVMModuleRef             llvm_module     = assembly->llvm.module;
     LLVMTargetMachineRef      llvm_tm         = assembly->llvm.TM;
-    const LLVMCodeGenOptLevel opt_level       = opt_to_LLVM(assembly->options.opt);
+    const LLVMCodeGenOptLevel opt_level       = opt_to_LLVM(assembly->target->opt);
     LLVMPassManagerBuilderRef llvm_pm_builder = LLVMPassManagerBuilderCreate();
     LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, (unsigned)opt_level);
     LLVMPassManagerRef llvm_pm = LLVMCreatePassManager();

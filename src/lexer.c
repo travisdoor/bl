@@ -26,8 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#include "builder.h"
 #include "common.h"
-#include "stages.h"
 #include <float.h>
 #include <setjmp.h>
 #include <string.h>
@@ -43,12 +43,13 @@
     }
 
 typedef struct context {
-    Unit *  unit;
-    Tokens *tokens;
-    jmp_buf jmp_error;
-    char *  c;
-    s32     line;
-    s32     col;
+    Assembly *assembly;
+    Unit *    unit;
+    Tokens *  tokens;
+    jmp_buf   jmp_error;
+    char *    c;
+    s32       line;
+    s32       col;
 } Context;
 
 static void       scan(Context *cnt);
@@ -457,7 +458,7 @@ SCAN:
             switch (tok.sym) {
             case SYM_DCOMMENT:
             case SYM_DGCOMMENT:
-                if (builder.options.docs) {
+                if (cnt->assembly->target->docs) {
                     scan_docs(cnt, &tok);
                     goto PUSH_TOKEN;
                 }
@@ -506,14 +507,15 @@ PUSH_TOKEN:
     goto SCAN;
 }
 
-void lexer_run(Unit *unit)
+void lexer_run(Assembly *assembly, Unit *unit)
 {
     Context cnt = {
-        .tokens = &unit->tokens,
-        .unit   = unit,
-        .c      = unit->src,
-        .line   = 1,
-        .col    = 1,
+        .assembly = assembly,
+        .tokens   = &unit->tokens,
+        .unit     = unit,
+        .c        = unit->src,
+        .line     = 1,
+        .col      = 1,
     };
 
     TracyCZone(_tctx, true);

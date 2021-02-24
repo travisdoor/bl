@@ -26,13 +26,13 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#include "builder.h"
 #include "common.h"
-#include "stages.h"
 #include "unit.h"
 #include <stdio.h>
 #include <string.h>
 
-void file_loader_run(Unit *unit)
+void file_loader_run(Assembly *UNUSED(assembly), Unit *unit)
 {
     TracyCZone(_tctx, true);
     if (!unit->filepath) {

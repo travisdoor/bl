@@ -1100,7 +1100,7 @@ void print_instr(Context *cnt, MirInstr *instr)
         fprintf(cnt->stream, " // comptime");
     }
 
-    if (cnt->assembly->options.opt == ASSEMBLY_OPT_DEBUG) {
+    if (cnt->assembly->target->opt == ASSEMBLY_OPT_DEBUG) {
         if (instr->node && instr->node->location) {
             const Location *loc1 = instr->node->location;
             const Location *loc2 = instr->node->location_end;

@@ -65,44 +65,54 @@ typedef enum {
     IMPORT_POLICY_BUNDLE_LATEST = 2,
 } ModuleImportPolicy;
 
+typedef struct NativeLib {
+    u32           hash;
+    DLLib *       handle;
+    struct Token *linked_from;
+    char *        user_name;
+    char *        filename;
+    char *        filepath;
+    char *        dir;
+    // Disable appending of this library to the linker options.
+    bool is_internal;
+} NativeLib;
+
 typedef struct Target {
     AssemblyKind   kind;
     AssemblyOpt    opt;
     AssemblyDIKind di;
-    bool           run;
-    bool           run_tests;
-    bool           print_tokens;
-    bool           print_ast;
-    bool           emit_llvm;
-    bool           emit_mir;
-    bool           no_bin;
-    bool           no_api;
-    bool           no_llvm;
-    bool           no_analyze;
-    bool           syntax_only;
     bool           reg_split;
     bool           no_vcvars;
-    bool           verify_llvm;
     bool           docs;
+    bool           verify_llvm;
+    bool           run_tests;
+    bool           no_api;
+    bool           copy_deps;
+
+    ModuleImportPolicy module_policy;
+    bool               run;
+    bool               print_tokens;
+    bool               print_ast;
+    bool               emit_llvm;
+    bool               emit_mir;
+    bool               no_bin;
+    bool               no_llvm;
+    bool               no_analyze;
+    bool               syntax_only;
 
     char * name;
     TArray files;
 } Target;
 
-typedef struct AssemblyOptions {
-#define GEN_ASSEMBLY_OPT_DECLS
-#include "assembly.inc"
-#undef GEN_ASSEMBLY_OPT_DECLS
+typedef struct Assembly {
+    // Readonly target options.
+    const Target *target;
+
     TString custom_linker_opt;
-    TString out_dir;    // Build output directory
-    TString module_dir; // Module directory
+    TString out_dir;
+    TString module_dir;
     TArray  lib_paths;
     TArray  libs;
-} AssemblyOptions;
-
-typedef struct Assembly {
-    AssemblyOptions options; // must be first
-    AssemblyKind    kind;
 
     struct {
         ScopeArenas scope;
@@ -166,24 +176,12 @@ typedef struct Assembly {
 #endif
 } Assembly;
 
-typedef struct NativeLib {
-    u32           hash;
-    DLLib *       handle;
-    struct Token *linked_from;
-    char *        user_name;
-    char *        filename;
-    char *        filepath;
-    char *        dir;
-    // Disable appending of this library to the linker options.
-    bool is_internal;
-} NativeLib;
-
 Target *target_new(const char *name);
 void    target_delete(Target *target);
 void    target_add_file(Target *target, const char *filepath);
 
 // Create new assembly instance.
-Assembly *assembly_new(AssemblyKind kind, const char *name);
+Assembly *assembly_new(const Target *target);
 
 // Delete created assembly instance and release all internally initialized resources.
 void assembly_delete(Assembly *assembly);

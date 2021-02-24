@@ -1,4 +1,4 @@
-//************************************************************************************************
+// =================================================================================================
 // bl
 //
 // File:   build_api.c
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+// =================================================================================================
 
 // Those methods are used only during compilation pass to setup builder pipeline. No C interfaces
 // are needed here.
@@ -32,18 +32,28 @@
 #include "builder.h"
 #include "common.h"
 
+// @CLEANUP
+// @CLEANUP
+// @CLEANUP
+
 BL_EXPORT Assembly *__add_executable(const char *name)
 {
+    /* @INCOMPLETE
     Assembly *new_assembly = assembly_new(ASSEMBLY_EXECUTABLE, name);
     builder_add_assembly(new_assembly);
     return new_assembly;
+     */
+    return NULL;
 }
 
 BL_EXPORT Assembly *__add_library(const char *name)
 {
+    /*
     Assembly *new_assembly = assembly_new(ASSEMBLY_SHARED_LIB, name);
     builder_add_assembly(new_assembly);
     return new_assembly;
+     */
+    return NULL;
 }
 
 BL_EXPORT Unit *__add_unit(Assembly *assembly, const char *filepath)
@@ -59,7 +69,8 @@ BL_EXPORT void __add_lib_path(Assembly *assembly, const char *path)
 BL_EXPORT s32 __compile(Assembly *assembly)
 {
     if (!assembly) BL_ABORT("Invalid assembly!");
-    return builder_compile(assembly);
+    //return builder_compile(assembly);
+    return 0;
 }
 
 BL_EXPORT void __link_library(Assembly *assembly, const char *name)
@@ -79,7 +90,7 @@ BL_EXPORT void __set_output_dir(Assembly *assembly, const char *dir)
 
 BL_EXPORT const char *__get_output_dir(Assembly *assembly)
 {
-    return assembly->options.out_dir.len > 0 ? assembly->options.out_dir.data : NULL;
+    return assembly->out_dir.len > 0 ? assembly->out_dir.data : NULL;
 }
 
 BL_EXPORT void __set_module_dir(Assembly *assembly, const char *dir, const s32 policy)
@@ -89,10 +100,10 @@ BL_EXPORT void __set_module_dir(Assembly *assembly, const char *dir, const s32 p
 
 BL_EXPORT const char *__get_module_dir(Assembly *assembly)
 {
-    return assembly->options.module_dir.len > 0 ? assembly->options.module_dir.data : NULL;
+    return assembly->module_dir.len > 0 ? assembly->module_dir.data : NULL;
 }
 
 BL_EXPORT s32 __get_module_import_policy(Assembly *assembly)
 {
-    return assembly->options.module_import_policy;
+    return assembly->target->module_policy;
 }

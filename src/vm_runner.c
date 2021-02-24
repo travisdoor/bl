@@ -26,10 +26,9 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "assembly.h"
 #include "bldebug.h"
 #include "error.h"
-#include "stages.h"
+#include "builder.h"
 #include "vm.h"
 
 #define TEXT_LINE "--------------------------------------------------------------------------------"

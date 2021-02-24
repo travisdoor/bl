@@ -29,7 +29,7 @@
 #include "common.h"
 #include "error.h"
 #include "llvm_api.h"
-#include "stages.h"
+#include "builder.h"
 
 // Target specific.
 #if BL_PLATFORM_WIN
@@ -43,7 +43,7 @@ void obj_writer_run(Assembly *assembly)
 {
     TracyCZone(_tctx, true);
     TString *buf = get_tmpstr();
-    tstring_setf(buf, "%s/%s.%s", assembly->options.out_dir.data, assembly->name, OBJ_EXT);
+    tstring_setf(buf, "%s/%s.%s", assembly->out_dir.data, assembly->name, OBJ_EXT);
     char *error_msg = NULL;
     if (LLVMTargetMachineEmitToFile(
             assembly->llvm.TM, assembly->llvm.module, buf->data, LLVMObjectFile, &error_msg)) {

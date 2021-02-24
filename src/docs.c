@@ -27,7 +27,7 @@
 //************************************************************************************************
 
 #include "common.h"
-#include "stages.h"
+#include "builder.h"
 
 #define OUT_DIR "out"
 

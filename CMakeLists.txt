@@ -155,7 +155,6 @@ set(HEADER_FILES
     src/token.h
     src/tokens.h
     src/unit.h
-    src/stages.h
     src/common.h
     src/scope.h
     src/mir.h

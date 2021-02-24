@@ -1,4 +1,4 @@
-//************************************************************************************************
+// =================================================================================================
 // bl
 //
 // File:   builder.h
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+// =================================================================================================
 
 #ifndef BL_BUILDER_H
 #define BL_BUILDER_H
@@ -39,42 +39,15 @@
 
 struct ThreadingImpl;
 
-typedef struct BuilderOptions2 {
+typedef void (*UnitStageFn)(Assembly *, Unit *);
+typedef void (*AssemblyStageFn)(Assembly *);
+
+typedef struct BuilderOptions {
     bool verbose;
     bool no_color;
     bool silent;
     bool no_jobs;
     bool no_warn;
-} BuilderOptions2;
-
-typedef struct BuilderOptions {
-    AssemblyKind   assembly_kind;
-    AssemblyOpt    assembly_opt;
-    AssemblyDIKind assembly_di_kind;
-    bool           print_help;
-    bool           print_about;
-    bool           print_tokens;
-    bool           print_ast;
-    bool           run;
-    bool           run_tests;
-    bool           run_configure;
-    bool           no_bin;
-    bool           no_warn;
-    bool           no_api;
-    bool           no_llvm;
-    bool           no_analyze;
-    bool           emit_llvm;
-    bool           emit_mir;
-    bool           syntax_only;
-    bool           verbose;
-    bool           reg_split;
-    bool           no_color;
-    bool           no_vcvars;
-    bool           verify_llvm;
-    bool           docs;
-    bool           silent;
-    bool           where_is_api;
-    bool           no_jobs;
 } BuilderOptions;
 
 typedef struct Builder {
@@ -88,9 +61,6 @@ typedef struct Builder {
     s32            test_failc;
     s32            last_script_mode_run_status;
     ConfData       conf;
-
-    // @CLEANUP
-    TArray assembly_queue;
 
     TArray targets;
     TArray tmp_strings;
@@ -123,24 +93,11 @@ void        builder_terminate(void);
 void        builder_set_lib_dir(const char *lib_dir);
 const char *builder_get_lib_dir(void);
 const char *builder_get_exec_dir(void);
-
-// @CLEANUP
-s32 builder_parse_options(s32 argc, char *argv[]);
-
-int builder_load_config(const char *filepath);
-int builder_compile_config(const char *filepath, ConfData *out_data, struct Token *import_from);
-
-// @CLEANUP
-void builder_add_assembly(Assembly *assembly);
-
+int         builder_load_config(const char *filepath);
+int     builder_compile_config(const char *filepath, ConfData *out_data, struct Token *import_from);
 Target *builder_add_target(const char *name);
-
-s32 builder_compile_all(void);
-
-// @CLEANUP make private!
-s32 builder_compile(Assembly *assembly);
-
-s32 builder_compile2(Target *target);
+s32     builder_compile_all(void);
+s32     builder_compile(const Target *target);
 
 // Submit new unit for async compilation, in case no-jobs flag is set, this function does nothing.
 void builder_async_submit_unit(Unit *unit);

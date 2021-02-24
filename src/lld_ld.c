@@ -48,7 +48,7 @@
 // Wrapper for ld linker on Unix platforms.
 static const char *get_out_extension(Assembly *assembly)
 {
-    switch (assembly->kind) {
+    switch (assembly->target->kind) {
     case ASSEMBLY_EXECUTABLE:
         return "";
     case ASSEMBLY_SHARED_LIB:
@@ -60,7 +60,7 @@ static const char *get_out_extension(Assembly *assembly)
 
 static const char *get_out_prefix(Assembly *assembly)
 {
-    switch (assembly->kind) {
+    switch (assembly->target->kind) {
     case ASSEMBLY_EXECUTABLE:
         return "";
     case ASSEMBLY_SHARED_LIB:
@@ -74,7 +74,7 @@ static const char *get_out_prefix(Assembly *assembly)
 static void append_lib_paths(Assembly *assembly, TString *buf)
 {
     const char *dir;
-    TARRAY_FOREACH(const char *, &assembly->options.lib_paths, dir)
+    TARRAY_FOREACH(const char *, &assembly->lib_paths, dir)
     {
         tstring_appendf(buf, "%s%s ", FLAG_LIBPATH, dir);
     }
@@ -83,8 +83,8 @@ static void append_lib_paths(Assembly *assembly, TString *buf)
 static void append_libs(Assembly *assembly, TString *buf)
 {
     NativeLib *lib;
-    for (usize i = 0; i < assembly->options.libs.size; ++i) {
-        lib = &tarray_at(NativeLib, &assembly->options.libs, i);
+    for (usize i = 0; i < assembly->libs.size; ++i) {
+        lib = &tarray_at(NativeLib, &assembly->libs, i);
         if (lib->is_internal) continue;
         if (!lib->user_name) continue;
         tstring_appendf(buf, "%s%s ", FLAG_LIB, lib->user_name);
@@ -94,7 +94,7 @@ static void append_libs(Assembly *assembly, TString *buf)
 static void append_default_opt(Assembly *assembly, TString *buf)
 {
     const char *default_opt = "";
-    switch (assembly->kind) {
+    switch (assembly->target->kind) {
     case ASSEMBLY_EXECUTABLE:
         default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_EXEC_KEY);
         break;
@@ -109,7 +109,7 @@ static void append_default_opt(Assembly *assembly, TString *buf)
 
 static void append_custom_opt(Assembly *assembly, TString *buf)
 {
-    const char *custom_opt = assembly->options.custom_linker_opt.data;
+    const char *custom_opt = assembly->custom_linker_opt.data;
     if (custom_opt) tstring_appendf(buf, "%s ", custom_opt);
 }
 
@@ -132,7 +132,7 @@ static void append_linker_exec(TString *buf)
 s32 lld_ld(Assembly *assembly)
 {
     TString *   buf     = get_tmpstr();
-    const char *out_dir = assembly->options.out_dir.data;
+    const char *out_dir = assembly->out_dir.data;
     const char *name    = assembly->name;
 
     // set executable

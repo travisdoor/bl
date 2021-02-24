@@ -107,7 +107,7 @@ typedef struct ApplicationOptions {
 
 typedef struct Options {
     ApplicationOptions app;
-    BuilderOptions2    builder;
+    BuilderOptions     builder;
     Target *           target;
 } Options;
 
@@ -157,19 +157,6 @@ s32 parse_arguments(Options *opt, s32 argc, char *argv[])
         action++ optind;                                                                           \
         break;                                                                                     \
     }
-
-    opt->target->opt  = ASSEMBLY_OPT_DEBUG;
-    opt->target->kind = ASSEMBLY_EXECUTABLE;
-
-#ifdef BL_DEBUG
-    opt->target->verify_llvm = true;
-#endif
-
-#if BL_PLATFORM_WIN
-    opt->target->di = ASSEMBLY_DI_CODEVIEW;
-#else
-    opt->target->di = ASSEMBLY_DI_DRAWF;
-#endif
 
     s32 optind = 1;
     for (; optind < argc && argv[optind][0] == '-'; optind++) {
@@ -269,7 +256,7 @@ int main(s32 argc, char *argv[])
         EXIT(EXIT_SUCCESS);
     }
 
-    const bool use_build_pipeline = builder.options.assembly_kind == ASSEMBLY_BUILD_PIPELINE;
+    const bool use_build_pipeline = opt.target->kind == ASSEMBLY_BUILD_PIPELINE;
     if (*argv == NULL && !use_build_pipeline) {
         builder_warning("Nothing to do, no input files, sorry :(");
         EXIT(EXIT_SUCCESS);
@@ -284,7 +271,7 @@ int main(s32 argc, char *argv[])
         parse_input_files(&opt, argc, argv);
     }
 
-    state = builder_compile2(opt.target);
+    state = builder_compile(opt.target);
     // @CLEANUP
     // builder_add_assembly(assembly);
     // state = builder_compile_all();

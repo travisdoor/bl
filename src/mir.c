@@ -2183,7 +2183,7 @@ void type_init_llvm_fn(Context *cnt, MirType *type)
     tsa_init(&llvm_args);
 
     if (has_ret) {
-        if (cnt->assembly->options.reg_split && mir_is_composit_type(ret_type) &&
+        if (cnt->assembly->target->reg_split && mir_is_composit_type(ret_type) &&
             ret_type->store_size_bytes >= 16) {
             type->data.fn.has_sret = true;
             tsa_push_LLVMType(&llvm_args, LLVMPointerType(ret_type->llvm_type, 0));
@@ -2204,7 +2204,7 @@ void type_init_llvm_fn(Context *cnt, MirType *type)
             arg->llvm_index = (u32)llvm_args.size;
 
             // Composit types.
-            if (cnt->assembly->options.reg_split && mir_is_composit_type(arg->type)) {
+            if (cnt->assembly->target->reg_split && mir_is_composit_type(arg->type)) {
                 LLVMContextRef llvm_cnt = cnt->assembly->llvm.cnt;
 
                 u32   start = 0;
@@ -5250,7 +5250,7 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
             return ANALYZE_RESULT(FAILED, 0);
         }
 
-        if (cnt->assembly->kind == ASSEMBLY_BUILD_PIPELINE) {
+        if (cnt->assembly->target->kind == ASSEMBLY_BUILD_PIPELINE) {
             cnt->assembly->vm_run.build_entry = fn;
         } else {
             builder_msg(BUILDER_MSG_ERROR,
@@ -5285,7 +5285,8 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
         fn->dyncall.extern_entry = assembly_find_extern(cnt->assembly, intrinsic_name);
         fn->fully_analyzed       = true;
-    } else if (cnt->assembly->kind == ASSEMBLY_BUILD_PIPELINE && IS_FLAG(fn->flags, FLAG_ENTRY)) {
+    } else if (cnt->assembly->target->kind == ASSEMBLY_BUILD_PIPELINE &&
+               IS_FLAG(fn->flags, FLAG_ENTRY)) {
         // IGNORE BODY OF ENTRY FUNCTION WHEN WE BUILD 'BUILD ENTRY' ASSEMBLY.
     } else {
         // Add entry block of the function into analyze queue.
@@ -8953,7 +8954,7 @@ static void ast_decl_fn(Context *cnt, Ast *ast_fn)
     Ast *      ast_explicit_linkage_name = ast_fn->data.decl_entity.explicit_linkage_name;
     const s32  flags                     = ast_fn->data.decl_entity.flags;
     const bool is_mutable                = ast_fn->data.decl_entity.mut;
-    const bool generate_entry            = cnt->assembly->kind == ASSEMBLY_EXECUTABLE;
+    const bool generate_entry            = cnt->assembly->target->kind == ASSEMBLY_EXECUTABLE;
     if (!generate_entry && IS_FLAG(flags, FLAG_ENTRY)) {
         // Generate entry function only in case we are compiling executable binary, otherwise it's
         // not needed, and main should be also optional.
@@ -10087,7 +10088,7 @@ void mir_run(Assembly *assembly)
     TracyCZone(_tctx, true);
     memset(&cnt, 0, sizeof(Context));
     cnt.assembly      = assembly;
-    cnt.debug_mode    = assembly->options.opt == ASSEMBLY_OPT_DEBUG;
+    cnt.debug_mode    = assembly->target->opt == ASSEMBLY_OPT_DEBUG;
     cnt.builtin_types = &assembly->builtin_types;
     cnt.vm            = &assembly->vm;
     cnt.testing.cases = &assembly->testing.cases;
@@ -10114,7 +10115,7 @@ void mir_run(Assembly *assembly)
     if (builder.errorc) goto SKIP;
 
     // Skip analyze if no_analyze is set by user.
-    if (assembly->options.no_analyze) goto SKIP;
+    if (assembly->target->no_analyze) goto SKIP;
 
     // Analyze pass
     analyze(&cnt);

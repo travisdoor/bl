@@ -26,11 +26,10 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "assembly.h"
 #include "bldebug.h"
+#include "builder.h"
 #include "error.h"
 #include "mir_printer.h"
-#include "stages.h"
 
 static void print_header(const char *name, const char *filename, FILE *stream)
 {
@@ -54,7 +53,7 @@ static void print_header(const char *name, const char *filename, FILE *stream)
 void mir_writer_run(Assembly *assembly)
 {
     TString *export_file = get_tmpstr();
-    tstring_setf(export_file, "%s/%s.blm", assembly->options.out_dir.data, assembly->name);
+    tstring_setf(export_file, "%s/%s.blm", assembly->out_dir.data, assembly->name);
     FILE *f = fopen(export_file->data, "w");
     if (f == NULL) {
         builder_error("cannot open file %s", export_file->data);

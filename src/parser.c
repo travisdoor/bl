@@ -26,8 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#include "builder.h"
 #include "common.h"
-#include "stages.h"
 #include <setjmp.h>
 
 TSMALL_ARRAY_TYPE(AstPtr64, Ast *, 64);
@@ -361,7 +361,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
 
         Ast *load = ast_create_node(cnt->ast_arena, AST_LOAD, tok_directive, SCOPE_GET(cnt));
         load->data.load.filepath = tok_path->value.str;
-        if (!builder.options.docs) {
+        if (!cnt->assembly->target->docs) {
             assembly_add_unit(cnt->assembly, load->data.load.filepath, tok_path);
         }
         return load;
@@ -388,7 +388,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         }
         Ast *import = ast_create_node(cnt->ast_arena, AST_IMPORT, tok_directive, SCOPE_GET(cnt));
         import->data.import.filepath = tok_path->value.str;
-        if (!builder.options.docs) {
+        if (!cnt->assembly->target->docs) {
             assembly_import_module(cnt->assembly, tok_path->value.str, tok_path);
         }
         return import;

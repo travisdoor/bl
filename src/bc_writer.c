@@ -26,17 +26,16 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "assembly.h"
 #include "bldebug.h"
+#include "builder.h"
 #include "error.h"
-#include "stages.h"
 #include <string.h>
 
 void bc_writer_run(Assembly *assembly)
 {
     TracyCZone(_tctx, true);
     TString *export_file = get_tmpstr();
-    tstring_setf(export_file, "%s/%s.ll", assembly->options.out_dir.data, assembly->name);
+    tstring_setf(export_file, "%s/%s.ll", assembly->out_dir.data, assembly->name);
     char *str = LLVMPrintModuleToString(assembly->llvm.module);
     FILE *f   = fopen(export_file->data, "w");
     if (f == NULL) {

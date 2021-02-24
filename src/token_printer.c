@@ -26,10 +26,10 @@
 // SOFTWARE.
 //************************************************************************************************
 
+#include "builder.h"
 #include "common.h"
-#include "stages.h"
 
-void token_printer_run(Unit *unit)
+void token_printer_run(Assembly *UNUSED(assembly), Unit *unit)
 {
     TArray *tokens_arr = &unit->tokens.buf;
 

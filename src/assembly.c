@@ -94,9 +94,13 @@ static void dl_init(Assembly *assembly)
     assembly->dc_vm = vm;
 }
 
+static void dl_terminate(Assembly *assembly)
+{
+    dcFree(assembly->dc_vm);
+}
+
 static void llvm_init(Assembly *assembly)
 {
-    if (assembly->llvm.module) BL_ABORT("Attempt to override assembly options.");
     // init LLVM
     char *triple    = LLVMGetDefaultTargetTriple();
     char *cpu       = /*LLVMGetHostCPUName()*/ "";
@@ -112,7 +116,7 @@ static void llvm_init(Assembly *assembly)
     LLVMContextRef llvm_context = LLVMContextCreate();
     LLVMModuleRef  llvm_module  = LLVMModuleCreateWithNameInContext(assembly->name, llvm_context);
     LLVMRelocMode  reloc_mode   = LLVMRelocDefault;
-    switch (assembly->kind) {
+    switch (assembly->target->kind) {
     case ASSEMBLY_SHARED_LIB:
         reloc_mode = LLVMRelocPIC;
         break;
@@ -123,7 +127,7 @@ static void llvm_init(Assembly *assembly)
                                                            triple,
                                                            cpu,
                                                            features,
-                                                           opt_to_LLVM(assembly->options.opt),
+                                                           opt_to_LLVM(assembly->target->opt),
                                                            reloc_mode,
                                                            LLVMCodeModelDefault);
 
@@ -137,11 +141,13 @@ static void llvm_init(Assembly *assembly)
     assembly->llvm.triple = triple;
 }
 
-static void mir_init(Assembly *assembly)
+static void llvm_terminate(Assembly *assembly)
 {
-    mir_arenas_init(&assembly->arenas.mir);
-    tarray_init(&assembly->MIR.global_instrs, sizeof(MirInstr *));
-    thtbl_init(&assembly->MIR.RTTI_table, sizeof(MirVar *), 2048);
+    LLVMDisposeModule(assembly->llvm.module);
+    LLVMDisposeTargetMachine(assembly->llvm.TM);
+    LLVMDisposeMessage(assembly->llvm.triple);
+    LLVMDisposeTargetData(assembly->llvm.TD);
+    LLVMContextDispose(assembly->llvm.cnt);
 }
 
 static void native_lib_terminate(NativeLib *lib)
@@ -154,23 +160,11 @@ static void native_lib_terminate(NativeLib *lib)
     free(lib->user_name);
 }
 
-static void dl_terminate(Assembly *assembly)
+static void mir_init(Assembly *assembly)
 {
-    dcFree(assembly->dc_vm);
-}
-
-static void llvm_terminate(Assembly *assembly)
-{
-    LLVMDisposeModule(assembly->llvm.module);
-    assembly->llvm.module = NULL;
-    LLVMDisposeTargetMachine(assembly->llvm.TM);
-    assembly->llvm.TM = NULL;
-    LLVMDisposeMessage(assembly->llvm.triple);
-    assembly->llvm.triple = NULL;
-    LLVMDisposeTargetData(assembly->llvm.TD);
-    assembly->llvm.TD = NULL;
-    LLVMContextDispose(assembly->llvm.cnt);
-    assembly->llvm.cnt = NULL;
+    mir_arenas_init(&assembly->arenas.mir);
+    tarray_init(&assembly->MIR.global_instrs, sizeof(MirInstr *));
+    thtbl_init(&assembly->MIR.RTTI_table, sizeof(MirVar *), 2048);
 }
 
 static INLINE void mir_terminate(Assembly *assembly)
@@ -187,8 +181,8 @@ static INLINE void set_default_out_dir(Assembly *assembly)
         builder_error("Cannot get current working directory!");
         return;
     }
-    tstring_clear(&assembly->options.out_dir);
-    tstring_append(&assembly->options.out_dir, path);
+    tstring_clear(&assembly->out_dir);
+    tstring_append(&assembly->out_dir, path);
 }
 
 // Create directory tree and set out_path.
@@ -310,7 +304,9 @@ import_module(Assembly *assembly, ConfData *config, const char *modulepath, Toke
     return true;
 }
 
-// public
+// =================================================================================================
+// PUBLIC
+// =================================================================================================
 Target *target_new(const char *name)
 {
     BL_ASSERT(name && "Assembly name not specified!");
@@ -318,6 +314,23 @@ Target *target_new(const char *name)
     memset(target, 0, sizeof(Target));
     tarray_init(&target->files, sizeof(char *));
     target->name = strdup(name);
+
+    // Setup some defaults.
+    target->opt           = ASSEMBLY_OPT_DEBUG;
+    target->kind          = ASSEMBLY_EXECUTABLE;
+    target->module_policy = IMPORT_POLICY_SYSTEM;
+    target->reg_split     = true;
+#ifdef BL_DEBUG
+    target->verify_llvm = true;
+#endif
+
+#if BL_PLATFORM_WIN
+    target->di        = ASSEMBLY_DI_CODEVIEW;
+    target->copy_deps = true;
+#else
+    target->di        = ASSEMBLY_DI_DWARF;
+    target->copy_deps = false;
+#endif
     return target;
 }
 
@@ -340,32 +353,22 @@ void target_add_file(Target *target, const char *filepath)
     tarray_push(&target->files, dup);
 }
 
-Assembly *assembly_new(AssemblyKind kind, const char *name)
+Assembly *assembly_new(const Target *target)
 {
     Assembly *assembly = bl_malloc(sizeof(Assembly));
     memset(assembly, 0, sizeof(Assembly));
-    assembly->kind = kind;
-    assembly->sync = sync_new();
-    assembly->name = strdup(name);
+    assembly->target = target;
 
     tarray_init(&assembly->units, sizeof(Unit *));
-    tstring_init(&assembly->options.custom_linker_opt);
-    tstring_init(&assembly->options.out_dir);
-    tstring_init(&assembly->options.module_dir);
-    tarray_init(&assembly->options.libs, sizeof(NativeLib));
-    tarray_init(&assembly->options.lib_paths, sizeof(char *));
+    tstring_init(&assembly->custom_linker_opt);
+    tstring_init(&assembly->out_dir);
+    tstring_init(&assembly->module_dir);
+    tarray_init(&assembly->libs, sizeof(NativeLib));
+    tarray_init(&assembly->lib_paths, sizeof(char *));
     tarray_init(&assembly->testing.cases, sizeof(struct MirFn *));
     vm_init(&assembly->vm, VM_STACK_SIZE);
 
     // set defaults
-#define GEN_ASSEMBLY_OPT_DEFAULTS
-#include "assembly.inc"
-#undef GEN_ASSEMBLY_OPT_DEFAULTS
-#if BL_PLATFORM_WIN // Use target platform tag.
-    assembly->options.copy_deps = true;
-#else
-    assembly->options.copy_deps = false;
-#endif
     set_default_out_dir(assembly);
     scope_arenas_init(&assembly->arenas.scope);
     ast_arena_init(&assembly->arenas.ast);
@@ -381,6 +384,13 @@ Assembly *assembly_new(AssemblyKind kind, const char *name)
         scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT, NULL);
     dl_init(assembly);
     mir_init(assembly);
+
+    // Add units from target
+    for (usize i = 0; i < target->files.size; ++i) {
+        char *file = tarray_at(char *, (TArray *)&target->files, i);
+        assembly_add_unit(assembly, file, NULL);
+    }
+
     return assembly;
 }
 
@@ -397,22 +407,22 @@ void assembly_delete(Assembly *assembly)
     }
 
     NativeLib *lib;
-    for (usize i = 0; i < assembly->options.libs.size; ++i) {
-        lib = &tarray_at(NativeLib, &assembly->options.libs, i);
+    for (usize i = 0; i < assembly->libs.size; ++i) {
+        lib = &tarray_at(NativeLib, &assembly->libs, i);
         native_lib_terminate(lib);
     }
 
     char *p;
-    TARRAY_FOREACH(char *, &assembly->options.lib_paths, p) free(p);
+    TARRAY_FOREACH(char *, &assembly->lib_paths, p) free(p);
 
-    tarray_terminate(&assembly->options.libs);
-    tarray_terminate(&assembly->options.lib_paths);
+    tarray_terminate(&assembly->libs);
+    tarray_terminate(&assembly->lib_paths);
     tarray_terminate(&assembly->testing.cases);
     tarray_terminate(&assembly->units);
 
-    tstring_terminate(&assembly->options.custom_linker_opt);
-    tstring_terminate(&assembly->options.out_dir);
-    tstring_terminate(&assembly->options.module_dir);
+    tstring_terminate(&assembly->custom_linker_opt);
+    tstring_terminate(&assembly->out_dir);
+    tstring_terminate(&assembly->module_dir);
     vm_terminate(&assembly->vm);
     arena_terminate(&assembly->arenas.small_array);
     arena_terminate(&assembly->arenas.array);
@@ -448,31 +458,32 @@ void assembly_add_lib_path(Assembly *assembly, const char *path)
     if (!path) return;
     char *tmp = strdup(path);
     if (!tmp) return;
-    tarray_push(&assembly->options.lib_paths, tmp);
+    tarray_push(&assembly->lib_paths, tmp);
 }
 
 void assembly_append_linker_options(Assembly *assembly, const char *opt)
 {
     if (!opt) return;
-    tstring_append(&assembly->options.custom_linker_opt, opt);
-    tstring_append(&assembly->options.custom_linker_opt, " ");
+    tstring_append(&assembly->custom_linker_opt, opt);
+    tstring_append(&assembly->custom_linker_opt, " ");
 }
 
 void assembly_set_output_dir(Assembly *assembly, const char *dir)
 {
     if (!dir) builder_error("Cannot create output directory.");
-    if (!create_auxiliary_dir_tree_if_not_exist(dir, &assembly->options.out_dir)) {
+    if (!create_auxiliary_dir_tree_if_not_exist(dir, &assembly->out_dir)) {
         builder_error("Cannot create output directory '%s'.", dir);
     }
 }
 
 void assembly_set_module_dir(Assembly *assembly, const char *dir, ModuleImportPolicy policy)
 {
+    BL_ABORT("Fail!");
     if (!dir) builder_error("Cannot create module directory.");
-    if (!create_auxiliary_dir_tree_if_not_exist(dir, &assembly->options.module_dir)) {
+    if (!create_auxiliary_dir_tree_if_not_exist(dir, &assembly->module_dir)) {
         builder_error("Cannot create module directory '%s'.", dir);
     }
-    assembly->options.module_import_policy = policy;
+    // assembly->target->module_policy = policy;
 }
 
 static INLINE bool assembly_has_unit(Assembly *assembly, const u64 hash)
@@ -507,21 +518,18 @@ DONE:
 void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token)
 {
     const u64 hash = thash_from_str(lib_name);
-
     { // Search for duplicity.
         NativeLib *lib;
-        for (usize i = 0; i < assembly->options.libs.size; ++i) {
-            lib = &tarray_at(NativeLib, &assembly->options.libs, i);
+        for (usize i = 0; i < assembly->libs.size; ++i) {
+            lib = &tarray_at(NativeLib, &assembly->libs, i);
             if (lib->hash == hash) return;
         }
     }
-
     NativeLib lib   = {0};
     lib.hash        = hash;
     lib.user_name   = strdup(lib_name);
     lib.linked_from = link_token;
-
-    tarray_push(&assembly->options.libs, lib);
+    tarray_push(&assembly->libs, lib);
 }
 
 static INLINE bool module_exist(const char *module_dir, const char *modulepath)
@@ -549,9 +557,8 @@ bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *i
 
     TString *   local_path = get_tmpstr();
     ConfData *  config     = NULL;
-    const char *module_dir =
-        assembly->options.module_dir.len > 0 ? assembly->options.module_dir.data : NULL;
-    const ModuleImportPolicy policy = assembly->options.module_import_policy;
+    const char *module_dir = assembly->module_dir.len > 0 ? assembly->module_dir.data : NULL;
+    const ModuleImportPolicy policy = assembly->target->module_policy;
     const bool local_found          = module_dir ? module_exist(module_dir, modulepath) : false;
     switch (policy) {
     case IMPORT_POLICY_SYSTEM: {
@@ -636,12 +643,10 @@ DCpointer assembly_find_extern(Assembly *assembly, const char *symbol)
 {
     void *     handle = NULL;
     NativeLib *lib;
-
-    for (usize i = 0; i < assembly->options.libs.size; ++i) {
-        lib    = &tarray_at(NativeLib, &assembly->options.libs, i);
+    for (usize i = 0; i < assembly->libs.size; ++i) {
+        lib    = &tarray_at(NativeLib, &assembly->libs, i);
         handle = dlFindSymbol(lib->handle, symbol);
         if (handle) break;
     }
-
     return handle;
 }

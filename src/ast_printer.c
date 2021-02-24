@@ -28,7 +28,7 @@
 
 #include "ast.h"
 #include "common.h"
-#include "stages.h"
+#include "builder.h"
 #include <stdio.h>
 
 #define MAX_STR_BUF 256

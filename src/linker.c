@@ -28,7 +28,7 @@
 
 #include "common.h"
 #include "error.h"
-#include "stages.h"
+#include "builder.h"
 
 #if BL_PLATFORM_WIN
 #include <windows.h>
@@ -152,7 +152,7 @@ static bool link_working_environment(Context *cnt, const char *lib_name)
     native_lib.filepath    = NULL;
     native_lib.is_internal = true;
 
-    tarray_push(&cnt->assembly->options.libs, native_lib);
+    tarray_push(&cnt->assembly->libs, native_lib);
     return true;
 }
 
@@ -161,13 +161,13 @@ void linker_run(Assembly *assembly)
     TracyCZone(_tctx, true);
     Context cnt;
     cnt.assembly  = assembly;
-    cnt.lib_paths = &assembly->options.lib_paths;
+    cnt.lib_paths = &assembly->lib_paths;
     builder_log("Running runtime linker...");
     set_lib_paths(&cnt);
 
     NativeLib *lib;
-    for (usize i = 0; i < assembly->options.libs.size; ++i) {
-        lib = &tarray_at(NativeLib, &assembly->options.libs, i);
+    for (usize i = 0; i < assembly->libs.size; ++i) {
+        lib = &tarray_at(NativeLib, &assembly->libs, i);
         if (!link_lib(&cnt, lib)) {
             link_error(ERR_LIB_NOT_FOUND,
                        lib->linked_from,

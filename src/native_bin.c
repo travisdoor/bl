@@ -27,7 +27,7 @@
 //************************************************************************************************
 
 #include "config.h"
-#include "stages.h"
+#include "builder.h"
 
 #if !BL_PLATFORM_WIN
 #include <errno.h>
@@ -43,10 +43,10 @@ s32 lld_ld(Assembly *assembly);
 static void copy_user_libs(Assembly *assembly)
 {
     TString *   dest_path = get_tmpstr();
-    const char *out_dir   = assembly->options.out_dir.data;
+    const char *out_dir   = assembly->out_dir.data;
     NativeLib * lib;
-    for (usize i = 0; i < assembly->options.libs.size; ++i) {
-        lib = &tarray_at(NativeLib, &assembly->options.libs, i);
+    for (usize i = 0; i < assembly->libs.size; ++i) {
+        lib = &tarray_at(NativeLib, &assembly->libs, i);
         if (lib->is_internal) continue;
         if (!lib->user_name) continue;
         char *lib_dest_name = lib->filename;
@@ -85,7 +85,7 @@ void native_bin_run(Assembly *assembly)
 #error "Unknown platform"
 #endif
 
-    const char *out_dir = assembly->options.out_dir.data;
+    const char *out_dir = assembly->out_dir.data;
     TracyCZone(_tctx, true);
     if (linker(assembly) != 0) {
         builder_msg(BUILDER_MSG_ERROR,
@@ -96,7 +96,7 @@ void native_bin_run(Assembly *assembly)
         goto DONE;
     }
 
-    if (assembly->options.copy_deps) {
+    if (assembly->target->copy_deps) {
         builder_log("Copy assembly dependencies into '%s'.", out_dir);
         copy_user_libs(assembly);
     }

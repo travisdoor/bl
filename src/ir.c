@@ -3132,8 +3132,8 @@ static void DI_init(Context *cnt)
     llvm_add_module_flag_int(
         llvm_module, LLVMModuleFlagBehaviorWarning, "Debug Info Version", llvm_get_dwarf_version());
 
-    if (cnt->assembly->options.di_kind == ASSEMBLY_DI_DWARF) {
-    } else if (cnt->assembly->options.di_kind == ASSEMBLY_DI_CODEVIEW) {
+    if (cnt->assembly->target->di == ASSEMBLY_DI_DWARF) {
+    } else if (cnt->assembly->target->di == ASSEMBLY_DI_CODEVIEW) {
         llvm_add_module_flag_int(llvm_module, LLVMModuleFlagBehaviorWarning, "CodeView", 1);
     }
 
@@ -3173,7 +3173,7 @@ void ir_run(Assembly *assembly)
     memset(&cnt, 0, sizeof(Context));
     cnt.assembly      = assembly;
     cnt.builtin_types = &assembly->builtin_types;
-    cnt.debug_mode    = assembly->options.opt == ASSEMBLY_OPT_DEBUG;
+    cnt.debug_mode    = assembly->target->opt == ASSEMBLY_OPT_DEBUG;
     cnt.llvm_cnt      = assembly->llvm.cnt;
     cnt.llvm_module   = assembly->llvm.module;
     cnt.llvm_td       = assembly->llvm.TD;
@@ -3207,7 +3207,7 @@ void ir_run(Assembly *assembly)
         llvm_di_builder_finalize(cnt.llvm_di_builder);
     }
 
-    if (assembly->options.verify_llvm) {
+    if (assembly->target->verify_llvm) {
         char *llvm_error = NULL;
         if (LLVMVerifyModule(cnt.llvm_module, LLVMReturnStatusAction, &llvm_error)) {
             builder_warning("\nLLVM module not verified; error: \n%s", llvm_error);
