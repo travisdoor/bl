@@ -116,7 +116,7 @@ s32 lld_link(Assembly *assembly)
 {
     TString *   buf     = get_tmpstr();
     const char *out_dir = assembly->out_dir.data;
-    const char *name    = assembly->name;
+    const char *name    = assembly->target->name;
 
     tstring_append(buf, "call ");
     if (!assembly->target->no_vcvars) {
@@ -135,7 +135,7 @@ s32 lld_link(Assembly *assembly)
     append_default_opt(assembly, buf);
     append_custom_opt(assembly, buf);
 
-    if (builder.options.verbose) builder_log("%s", buf->data);
+    builder_log("%s", buf->data);
     s32 state = system(buf->data);
     put_tmpstr(buf);
     return state;

@@ -456,10 +456,7 @@ u32 next_pow_2(u32 n)
 
 void color_print(FILE *stream, s32 color, const char *format, ...)
 {
-    // HACK: Is this reference really needed????
-    // HACK: Is this reference really needed????
-    // HACK: Is this reference really needed????
-    if (builder.options.no_color) color = BL_NO_COLOR;
+    if (builder.options->no_color) color = BL_NO_COLOR;
     va_list args;
     va_start(args, format);
 

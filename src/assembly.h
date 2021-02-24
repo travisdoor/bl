@@ -1,4 +1,4 @@
-//************************************************************************************************
+// =================================================================================================
 // blc
 //
 // File:   assembly.h
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+// =================================================================================================
 
 #ifndef BL_ASSEMBLY_BL
 #define BL_ASSEMBLY_BL
@@ -83,7 +83,7 @@ typedef struct Target {
     AssemblyDIKind di;
     bool           reg_split;
     bool           no_vcvars;
-    bool           docs;
+    bool           docs; // @CLEANUP
     bool           verify_llvm;
     bool           run_tests;
     bool           no_api;
@@ -150,6 +150,9 @@ typedef struct Assembly {
         MirVar *is_comptime_run;
         s32     argc; // Count of arguments forwarded in script mode.
         char ** argv; // Values of arguments forwarded in script mode.
+
+        // Store status of last execution of this assembly.
+        s32 last_execution_status;
     } vm_run;
 
     // DynCall/Lib data used for external method execution in compile time
@@ -157,7 +160,6 @@ typedef struct Assembly {
     VM        vm;
 
     TArray units;  // array of all units in assembly
-    char * name;   // assembly name
     Scope *gscope; // global scope of the assembly
 
     /* Builtins */
@@ -171,9 +173,6 @@ typedef struct Assembly {
     } builtin_types;
 
     struct AssemblySyncImpl *sync;
-#ifdef BL_DEBUG
-    bool _prepared;
-#endif
 } Assembly;
 
 Target *target_new(const char *name);
@@ -205,12 +204,6 @@ void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct To
 bool assembly_import_module(Assembly *assembly, const char *modulepath, struct Token *import_from);
 
 DCpointer assembly_find_extern(Assembly *assembly, const char *symbol);
-
-// Remove
-void assembly_prepare(Assembly *assembly);
-
-// Remove
-void assembly_cleanup(Assembly *assembly);
 
 // Set assembly output directory.
 void assembly_set_output_dir(Assembly *assembly, const char *dir);

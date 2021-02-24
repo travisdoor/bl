@@ -160,12 +160,26 @@ s32 parse_arguments(Options *opt, s32 argc, char *argv[])
 
     s32 optind = 1;
     for (; optind < argc && argv[optind][0] == '-'; optind++) {
+        // Application
         ARG(CLA_ARG_HELP, opt->app.print_help = true;)
         ARG(CLA_ARG_ABOUT, opt->app.print_about = true;)
         ARG(CLA_ARG_WHERE_IS_API, opt->app.where_is_api = true; opt->builder.silent = true;)
         ARG(CLA_ARG_CONFIGURE, opt->app.configure = true;)
 
-        builder_error("Invalid argument '%s'", &argv[optind][1]);
+        // Builder
+        ARG(CLA_ARG_VERBOSE, opt->builder.verbose = true;)
+        ARG(CLA_ARG_NO_COLOR, opt->builder.no_color = true;)
+        ARG(CLA_ARG_SILENT, opt->builder.silent = true;)
+        ARG(CLA_ARG_NO_JOBS, opt->builder.no_jobs = true;)
+        ARG(CLA_ARG_NO_WARNING, opt->builder.no_warning = true;)
+
+        // Target
+        ARG(CLA_ARG_LEX_DUMP, opt->target->print_tokens = true;)
+        ARG(CLA_ARG_AST_DUMP, opt->target->print_ast = true;)
+        ARG(CLA_ARG_EMIT_LLVM, opt->target->emit_llvm = true;)
+        ARG(CLA_ARG_EMIT_MIR, opt->target->emit_mir = true;)
+
+        builder_error("Invalid argument '%s'", &argv[optind][0]);
         return -1;
     }
 
@@ -211,7 +225,7 @@ int main(s32 argc, char *argv[])
     char *conf_file = NULL;
 
     exec_dir = get_exec_dir();
-    builder_init(exec_dir);
+    builder_init(&opt.builder, exec_dir);
     s32 next_arg = parse_arguments(&opt, argc, argv);
     builder_log("Compiler version: %s, LLVM: %d", BL_VERSION, LLVM_VERSION_MAJOR);
     if (next_arg == -1) {

@@ -27,13 +27,13 @@
 //************************************************************************************************
 
 #include "bldebug.h"
-#include "error.h"
 #include "builder.h"
+#include "error.h"
 #include "vm.h"
 
 #define TEXT_LINE "--------------------------------------------------------------------------------"
 
-s32 vm_tests_run(Assembly *assembly)
+void vm_tests_run(Assembly *assembly)
 {
     VM *    vm    = &assembly->vm;
     TArray *cases = &assembly->testing.cases;
@@ -83,16 +83,17 @@ s32 vm_tests_run(Assembly *assembly)
     printf("Executed: %llu, passed %d%%.\n", (unsigned long long)tc, perc);
     printf(TEXT_LINE "\n");
     tarray_terminate(&failed);
-    return fc;
+    assembly->vm_run.last_execution_status = fc;
 }
 
-s32 vm_build_entry_run(Assembly *assembly)
+void vm_build_entry_run(Assembly *assembly)
 {
     VM *   vm    = &assembly->vm;
     MirFn *entry = assembly->vm_run.build_entry;
     if (!entry) {
-        builder_error("Assembly '%s' has no build entry function!", assembly->name);
-        return EXIT_FAILURE;
+        builder_error("Assembly '%s' has no build entry function!", assembly->target->name);
+        assembly->vm_run.last_execution_status = EXIT_FAILURE;
+        return;
     }
     if (assembly->vm_run.argc > 0) {
         vm_provide_command_line_arguments(vm, assembly->vm_run.argc, assembly->vm_run.argv);
@@ -100,17 +101,18 @@ s32 vm_build_entry_run(Assembly *assembly)
     vm_override_var(vm, assembly->vm_run.is_comptime_run, true);
     vm_execute_fn(vm, assembly, entry, NULL);
     vm_override_var(vm, assembly->vm_run.is_comptime_run, false);
-    return EXIT_SUCCESS;
+    assembly->vm_run.last_execution_status = EXIT_SUCCESS;
 }
 
-s32 vm_entry_run(Assembly *assembly)
+void vm_entry_run(Assembly *assembly)
 {
     VM *   vm    = &assembly->vm;
     MirFn *entry = assembly->vm_run.entry;
     builder_note("\nExecuting 'main' in compile time...");
     if (!entry) {
-        builder_error("Assembly '%s' has no entry function!", assembly->name);
-        return EXIT_FAILURE;
+        builder_error("Assembly '%s' has no entry function!", assembly->target->name);
+        assembly->vm_run.last_execution_status = EXIT_FAILURE;
+        return;
     }
     MirType *fn_type = entry->type;
     BL_ASSERT(fn_type && fn_type->kind == MIR_TYPE_FN);
@@ -131,5 +133,5 @@ s32 vm_entry_run(Assembly *assembly)
         builder_note("Execution finished with errors");
     }
     vm_override_var(vm, assembly->vm_run.is_comptime_run, false);
-    return result;
+    assembly->vm_run.last_execution_status = result;
 }

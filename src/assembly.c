@@ -114,7 +114,7 @@ static void llvm_init(Assembly *assembly)
         BL_ABORT("Cannot get target");
     }
     LLVMContextRef llvm_context = LLVMContextCreate();
-    LLVMModuleRef  llvm_module  = LLVMModuleCreateWithNameInContext(assembly->name, llvm_context);
+    LLVMModuleRef  llvm_module  = LLVMModuleCreateWithNameInContext(assembly->target->name, llvm_context);
     LLVMRelocMode  reloc_mode   = LLVMRelocDefault;
     switch (assembly->target->kind) {
     case ASSEMBLY_SHARED_LIB:
@@ -358,7 +358,9 @@ Assembly *assembly_new(const Target *target)
     Assembly *assembly = bl_malloc(sizeof(Assembly));
     memset(assembly, 0, sizeof(Assembly));
     assembly->target = target;
+    assembly->sync   = sync_new();
 
+    llvm_init(assembly);
     tarray_init(&assembly->units, sizeof(Unit *));
     tstring_init(&assembly->custom_linker_opt);
     tstring_init(&assembly->out_dir);
@@ -391,15 +393,30 @@ Assembly *assembly_new(const Target *target)
         assembly_add_unit(assembly, file, NULL);
     }
 
+    // Add default units based on assembly kind
+    switch (assembly->target->kind) {
+    case ASSEMBLY_EXECUTABLE:
+        assembly_add_unit(assembly, BUILTIN_FILE, NULL);
+        assembly_add_unit(assembly, OS_PRELOAD_FILE, NULL);
+        break;
+    case ASSEMBLY_SHARED_LIB:
+        assembly_add_unit(assembly, BUILTIN_FILE, NULL);
+        assembly_add_unit(assembly, OS_PRELOAD_FILE, NULL);
+        break;
+    case ASSEMBLY_BUILD_PIPELINE:
+        assembly_add_unit(assembly, BUILTIN_FILE, NULL);
+        assembly_add_unit(assembly, OS_PRELOAD_FILE, NULL);
+        assembly_add_unit(assembly, BUILD_API_FILE, NULL);
+        break;
+    case ASSEMBLY_DOCS:
+        break;
+    }
+
     return assembly;
 }
 
 void assembly_delete(Assembly *assembly)
 {
-#ifdef BL_DEBUG
-    BL_ASSERT(assembly->_prepared == false && "Assembly not cleaned up!");
-#endif
-    free(assembly->name);
     Unit *unit;
     TARRAY_FOREACH(Unit *, &assembly->units, unit)
     {
@@ -428,29 +445,11 @@ void assembly_delete(Assembly *assembly)
     arena_terminate(&assembly->arenas.array);
     ast_arena_terminate(&assembly->arenas.ast);
     scope_arenas_terminate(&assembly->arenas.scope);
+    llvm_terminate(assembly);
     dl_terminate(assembly);
     mir_terminate(assembly);
-    llvm_terminate(assembly);
     sync_delete(assembly->sync);
     bl_free(assembly);
-}
-
-void assembly_prepare(Assembly *assembly)
-{
-#ifdef BL_DEBUG
-    BL_ASSERT(assembly->_prepared == false && "Attempt to reinitialize assembly!");
-    assembly->_prepared = true;
-#endif
-    llvm_init(assembly);
-}
-
-void assembly_cleanup(Assembly *assembly)
-{
-#ifdef BL_DEBUG
-    BL_ASSERT(assembly->_prepared && "Assembly not prepared.");
-    assembly->_prepared = false;
-#endif
-    llvm_terminate(assembly);
 }
 
 void assembly_add_lib_path(Assembly *assembly, const char *path)

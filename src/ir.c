@@ -3141,7 +3141,7 @@ static void DI_init(Context *cnt)
     cnt->llvm_di_builder = llvm_di_new_di_builder(llvm_module);
 
     // create dummy file used as DI global scope
-    gscope->llvm_meta = llvm_di_create_file(cnt->llvm_di_builder, cnt->assembly->name, ".");
+    gscope->llvm_meta = llvm_di_create_file(cnt->llvm_di_builder, cnt->assembly->target->name, ".");
 
     // create main compile unit
     llvm_di_create_compile_unit(cnt->llvm_di_builder, gscope->llvm_meta, producer);

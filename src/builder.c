@@ -63,7 +63,7 @@ void token_printer_run(Assembly *assembly, Unit *unit);
 void parser_run(Assembly *assembly, Unit *unit);
 
 // Assembly
-void ast_printer_run(Assembly *assembly, FILE *stream);
+void ast_printer_run(Assembly *assembly);
 void docs_run(Assembly *assembly);
 void ir_run(Assembly *assembly);
 void ir_opt_run(Assembly *assembly);
@@ -74,17 +74,20 @@ void native_bin_run(Assembly *assembly);
 void mir_writer_run(Assembly *assembly);
 
 // VM
-s32 vm_entry_run(Assembly *assembly);
-s32 vm_build_entry_run(Assembly *assembly);
-s32 vm_tests_run(Assembly *assembly);
+void vm_entry_run(Assembly *assembly);
+void vm_build_entry_run(Assembly *assembly);
+void vm_tests_run(Assembly *assembly);
 
 // =================================================================================================
 // Builder
 // =================================================================================================
-static int  compile_unit(Unit *unit, Assembly *assembly);
-static int  compile_assembly(Assembly *assembly);
+static int  compile_unit(Unit *unit, Assembly *assembly, UnitStageFn *pipeline);
+static int  compile_assembly(Assembly *assembly, AssemblyStageFn *pipeline);
 static bool llvm_initialized = false;
 
+// =================================================================================================
+// Threading
+// =================================================================================================
 typedef struct ThreadingImpl {
     Assembly *    assembly;
     pthread_t     workers[MAX_THREAD];
@@ -99,6 +102,8 @@ typedef struct ThreadingImpl {
     pthread_cond_t  queue_condition;
     pthread_mutex_t active_mutex;
     pthread_cond_t  active_condition;
+
+    UnitStageFn *unit_pipeline;
 } ThreadingImpl;
 
 static void async_push(Unit *unit)
@@ -174,7 +179,7 @@ static void *worker(void UNUSED(*args))
         pthread_mutex_unlock(&threading->active_mutex);
         pthread_mutex_unlock(&threading->queue_mutex);
 
-        compile_unit(unit, threading->assembly);
+        compile_unit(unit, threading->assembly, threading->unit_pipeline);
 
         pthread_mutex_lock(&threading->active_mutex);
         threading->active--;
@@ -193,7 +198,7 @@ static void start_threads()
     }
 }
 
-static void async_compile(Assembly *assembly)
+static void async_compile(Assembly *assembly, UnitStageFn *unit_pipeline)
 {
     ThreadingImpl *threading = builder.threading;
 
@@ -203,9 +208,10 @@ static void async_compile(Assembly *assembly)
         async_push(unit);
     }
 
-    threading->assembly     = assembly;
-    threading->active       = 0;
-    threading->is_compiling = true;
+    threading->assembly      = assembly;
+    threading->unit_pipeline = unit_pipeline;
+    threading->active        = 0;
+    threading->is_compiling  = true;
     pthread_cond_broadcast(&threading->queue_condition);
 
     while (true) {
@@ -227,6 +233,9 @@ static void async_compile(Assembly *assembly)
     if (threading->queue.size) BL_ABORT("Not all units processed! (queued)");
 }
 
+// =================================================================================================
+// Builder
+// =================================================================================================
 static void str_cache_dtor(TString *str)
 {
     tstring_terminate(str);
@@ -249,89 +258,90 @@ static void llvm_terminate(void)
     LLVMShutdown();
 }
 
-#define INTERRUPT_ON_ERROR                                                                         \
-    if (builder.errorc) goto INTERRUPT;
-#define FINISH_IF(expr)                                                                            \
-    if ((expr)) goto FINISH;
-
-int compile_unit(Unit *unit, Assembly *assembly)
+int compile_unit(Unit *unit, Assembly *assembly, UnitStageFn *pipeline)
 {
+    BL_ASSERT(pipeline && "Invalid unit pipeline!");
     if (unit->loaded_from) {
         builder_log(
             "Compile: %s (loaded from '%s')", unit->name, unit->loaded_from->location.unit->name);
     } else {
         builder_log("Compile: %s", unit->name);
     }
-
-    file_loader_run(assembly, unit);
-    INTERRUPT_ON_ERROR;
-    lexer_run(assembly, unit);
-    INTERRUPT_ON_ERROR;
-    if (assembly->target->print_tokens) {
-        token_printer_run(assembly, unit);
-        INTERRUPT_ON_ERROR;
+    s32         i     = 0;
+    UnitStageFn stage = NULL;
+    while ((stage = pipeline[i++])) {
+        stage(assembly, unit);
+        if (builder.errorc) return COMPILE_FAIL;
     }
-    parser_run(assembly, unit);
     return COMPILE_OK;
-INTERRUPT:
-    return COMPILE_FAIL;
 }
 
-int compile_assembly(Assembly *assembly)
+int compile_assembly(Assembly *assembly, AssemblyStageFn *pipeline)
 {
-    if (assembly->target->print_ast) ast_printer_run(assembly, stdout);
-    INTERRUPT_ON_ERROR;
-
-    if (assembly->target->docs) docs_run(assembly);
-    FINISH_IF(assembly->target->docs);
-
-    linker_run(assembly);
-    INTERRUPT_ON_ERROR;
-
-    FINISH_IF(assembly->target->syntax_only);
-
-    mir_run(assembly);
-    if (assembly->target->emit_mir) mir_writer_run(assembly);
-    INTERRUPT_ON_ERROR;
-    FINISH_IF(assembly->target->no_analyze);
-
-    //********************************************************************************************
-    // EXECUTION
-    //********************************************************************************************
-    // Run main
-    if (assembly->target->run) builder.last_script_mode_run_status = vm_entry_run(assembly);
-
-    // Handle build mode
-    if (assembly->target->kind == ASSEMBLY_BUILD_PIPELINE) vm_build_entry_run(assembly);
-
-    // Run test cases
-    if (assembly->target->run_tests) builder.test_failc = vm_tests_run(assembly);
-    //********************************************************************************************
-
-    FINISH_IF(assembly->target->no_llvm);
-    FINISH_IF(assembly->target->kind == ASSEMBLY_BUILD_PIPELINE);
-    ir_run(assembly);
-    INTERRUPT_ON_ERROR;
-
-    ir_opt_run(assembly);
-    INTERRUPT_ON_ERROR;
-
-    if (assembly->target->emit_llvm) {
-        bc_writer_run(assembly);
-        INTERRUPT_ON_ERROR;
+    BL_ASSERT(pipeline && "Invalid assembly pipeline!");
+    s32             i     = 0;
+    AssemblyStageFn stage = NULL;
+    while ((stage = pipeline[i++])) {
+        stage(assembly);
+        if (builder.errorc) return COMPILE_FAIL;
     }
-
-    if (!assembly->target->no_bin) {
-        obj_writer_run(assembly);
-        INTERRUPT_ON_ERROR;
-        native_bin_run(assembly);
-        INTERRUPT_ON_ERROR;
-    }
-
-FINISH:
     return COMPILE_OK;
-INTERRUPT:
-    return COMPILE_FAIL;
+}
+
+static void setup_unit_pipeline(Assembly *assembly, UnitStageFn *stages, s32 stage_count)
+{
+#define STAGE(i, fn)                                                                               \
+    {                                                                                              \
+        BL_ASSERT(i < stage_count - 1 && "Stage out of bounds!");                                  \
+        stages[i++] = fn;                                                                          \
+    }
+
+    const Target *t = assembly->target;
+
+    s32 index = 0;
+    memset(stages, 0, stage_count * sizeof(UnitStageFn));
+    STAGE(index, &file_loader_run);
+    STAGE(index, &lexer_run);
+    if (t->print_tokens) STAGE(index, &token_printer_run);
+    STAGE(index, &parser_run);
+
+#undef STAGE
+}
+
+static void setup_assembly_pipeline(Assembly *assembly, AssemblyStageFn *stages, s32 stage_count)
+{
+#define STAGE(i, fn)                                                                               \
+    {                                                                                              \
+        BL_ASSERT(i < stage_count - 1 && "Stage out of bounds!");                                  \
+        stages[i++] = fn;                                                                          \
+    }
+
+    const Target *t = assembly->target;
+
+    s32 index = 0;
+    memset(stages, 0, stage_count * sizeof(AssemblyStageFn));
+    if (t->print_ast) STAGE(index, &ast_printer_run);
+    if (t->kind == ASSEMBLY_DOCS) {
+        STAGE(index, &docs_run);
+        return;
+    }
+    if (t->syntax_only) return;
+    STAGE(index, &linker_run);
+    STAGE(index, &mir_run);
+    if (t->run) STAGE(index, &vm_entry_run);
+    if (t->kind == ASSEMBLY_BUILD_PIPELINE) STAGE(index, vm_build_entry_run);
+    if (t->run_tests) STAGE(index, vm_tests_run);
+    if (t->emit_mir) STAGE(index, &mir_writer_run);
+    if (t->no_analyze) return;
+    if (t->no_analyze) return;
+    if (t->kind == ASSEMBLY_BUILD_PIPELINE) return;
+    STAGE(index, &ir_run);
+    STAGE(index, &ir_opt_run);
+    if (t->emit_llvm) STAGE(index, &bc_writer_run);
+    if (t->no_bin) return;
+    STAGE(index, &obj_writer_run);
+    STAGE(index, &native_bin_run);
+#undef STAGE
 }
 
 static int compile(Assembly *assembly)
@@ -340,41 +350,37 @@ static int compile(Assembly *assembly)
     s32     state       = COMPILE_OK;
     builder.total_lines = 0;
 
-    builder_note("Compile assembly: %s [%s]", assembly->name, opt_to_str(assembly->target->opt));
+    builder_note(
+        "Compile assembly: %s [%s]", assembly->target->name, opt_to_str(assembly->target->opt));
 
-    // Prepare assembly for compilation.
-    assembly_prepare(assembly);
-    if (!assembly->target->docs) assembly_add_unit(assembly, BUILTIN_FILE, NULL);
+    UnitStageFn     unit_pipeline[5];
+    AssemblyStageFn assembly_pipeline[14];
+    setup_unit_pipeline(assembly, unit_pipeline, TARRAY_SIZE(unit_pipeline));
+    setup_assembly_pipeline(assembly, assembly_pipeline, TARRAY_SIZE(assembly_pipeline));
 
-    // include core source file
-    if (!assembly->target->no_api && !assembly->target->docs)
-        assembly_add_unit(assembly, OS_PRELOAD_FILE, NULL);
-
-    const bool build_mode = assembly->target->kind == ASSEMBLY_BUILD_PIPELINE;
-    if (build_mode) assembly_add_unit(assembly, BUILD_API_FILE, NULL);
-
-    if (builder.options.no_jobs) {
+    if (builder.options->no_jobs) {
+        BL_LOG("Running in single thread mode!");
         Unit *unit;
         TARRAY_FOREACH(Unit *, &assembly->units, unit)
         {
-            if ((state = compile_unit(unit, assembly)) != COMPILE_OK) break;
+            if ((state = compile_unit(unit, assembly, unit_pipeline)) != COMPILE_OK) break;
         }
     } else {
-        async_compile(assembly);
+        // Compile units in parallel.
+        async_compile(assembly, unit_pipeline);
     }
+    // Compile assembly using pipeline.
+    if (state == COMPILE_OK) state = compile_assembly(assembly, assembly_pipeline);
 
-    if (state == COMPILE_OK) state = compile_assembly(assembly);
+    clock_t end = clock();
 
-    clock_t end        = clock();
-    f64     time_spent = (f64)(end - begin) / CLOCKS_PER_SEC;
+    f64 time_spent = (f64)(end - begin) / CLOCKS_PER_SEC;
 
     builder_log("Compiled %i lines in %f seconds.", builder.total_lines, time_spent);
     if (state != COMPILE_OK) {
         builder_warning("There were errors, sorry...");
     }
 
-    // Cleanup assembly.
-    assembly_cleanup(assembly);
     if (builder.errorc) return builder.max_error;
     if (assembly->target->run) return builder.last_script_mode_run_status;
     if (assembly->target->run_tests) return builder.test_failc;
@@ -384,11 +390,13 @@ static int compile(Assembly *assembly)
 // =================================================================================================
 // PUBLIC
 // =================================================================================================
-void builder_init(const char *exec_dir)
+void builder_init(const BuilderOptions *options, const char *exec_dir)
 {
-    BL_ASSERT(exec_dir);
+    BL_ASSERT(options && "Invalid builder options!");
+    BL_ASSERT(exec_dir && "Invalid executable directory");
     memset(&builder, 0, sizeof(Builder));
     builder.threading = threading_new();
+    builder.options   = options;
     builder.errorc = builder.max_error = builder.test_failc = 0;
     builder.last_script_mode_run_status                     = 0;
 
@@ -450,14 +458,12 @@ const char *builder_get_exec_dir(void)
 int builder_compile_config(const char *filepath, ConfData *out_data, Token *import_from)
 {
     Unit *unit = unit_new(filepath, import_from);
-    // load
     file_loader_run(NULL, unit);
-    INTERRUPT_ON_ERROR;
-    // use standart lexer
+    if (builder.errorc) goto INTERRUPT;
     lexer_run(NULL, unit);
-    INTERRUPT_ON_ERROR;
+    if (builder.errorc) goto INTERRUPT;
     conf_parser_run(unit, out_data);
-    INTERRUPT_ON_ERROR;
+    if (builder.errorc) goto INTERRUPT;
     unit_delete(unit);
     return COMPILE_OK;
 INTERRUPT:
@@ -479,28 +485,24 @@ Target *builder_add_target(const char *name)
 
 int builder_compile_all(void)
 {
-    return COMPILE_OK;
+    s32     state = COMPILE_OK;
+    Target *target;
+    TARRAY_FOREACH(Target *, &builder.targets, target)
+    {
+        if (target->kind == ASSEMBLY_BUILD_PIPELINE) continue;
+        state = builder_compile(target);
+        if (state != COMPILE_OK) break;
+    }
+    return state;
 }
 
 s32 builder_compile(const Target *target)
 {
     BL_ASSERT(target && "Invalid compilation target!");
-
-    // @CLEANUP move to compile_assembly!!!
-    // @CLEANUP move to compile_assembly!!!
-    // @CLEANUP move to compile_assembly!!!
-    UnitStageFn unit_stages[4] = {0};
-    {
-        s32 si = 0;
-
-        unit_stages[si++] = &file_loader_run;
-        unit_stages[si++] = &lexer_run;
-        if (target->print_tokens) unit_stages[si++] = &token_printer_run;
-        unit_stages[si++] = &parser_run;
-    }
-
     Assembly *assembly = assembly_new(target);
-    s32       state    = compile_assembly(assembly);
+
+    s32 state = compile(assembly);
+
     assembly_delete(assembly);
     return state;
 }
@@ -515,9 +517,9 @@ void builder_msg(BuilderMsgType type,
     ThreadingImpl *threading = builder.threading;
     pthread_mutex_lock(&threading->log_mutex);
     if (type == BUILDER_MSG_ERROR && builder.errorc > MAX_ERROR_REPORTED) goto DONE;
-    if (type == BUILDER_MSG_LOG && !builder.options.verbose) goto DONE;
-    if (type != BUILDER_MSG_ERROR && builder.options.silent) goto DONE;
-    if (builder.options.no_warn && type == BUILDER_MSG_WARNING) goto DONE;
+    if (type == BUILDER_MSG_LOG && !builder.options->verbose) goto DONE;
+    if (type != BUILDER_MSG_ERROR && builder.options->silent) goto DONE;
+    if (builder.options->no_warning && type == BUILDER_MSG_WARNING) goto DONE;
     TString tmp;
     tstring_init(&tmp);
     char msg[MAX_MSG_LEN] = {0};
@@ -660,7 +662,7 @@ void put_tmpstr(TString *str)
 void builder_async_submit_unit(Unit *unit)
 {
     BL_ASSERT(unit);
-    if (builder.options.no_jobs) return;
+    if (builder.options->no_jobs) return;
     ThreadingImpl *threading = builder.threading;
     if (!threading->is_compiling) return;
 

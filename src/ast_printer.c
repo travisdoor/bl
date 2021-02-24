@@ -27,8 +27,8 @@
 //************************************************************************************************
 
 #include "ast.h"
-#include "common.h"
 #include "builder.h"
+#include "common.h"
 #include <stdio.h>
 
 #define MAX_STR_BUF 256
@@ -717,12 +717,12 @@ void print_node(Ast *node, s32 pad, FILE *stream)
     }
 }
 
-void ast_printer_run(Assembly *assembly, FILE *stream)
+void ast_printer_run(Assembly *assembly)
 {
     Unit *unit;
     TARRAY_FOREACH(Unit *, &assembly->units, unit)
     {
-        print_node(unit->ast, 0, stream);
+        print_node(unit->ast, 0, stdout);
     }
-    fprintf(stream, "\n\n");
+    fprintf(stdout, "\n\n");
 }

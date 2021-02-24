@@ -52,15 +52,16 @@ static void print_header(const char *name, const char *filename, FILE *stream)
 
 void mir_writer_run(Assembly *assembly)
 {
-    TString *export_file = get_tmpstr();
-    tstring_setf(export_file, "%s/%s.blm", assembly->out_dir.data, assembly->name);
+    const char *name        = assembly->target->name;
+    TString *   export_file = get_tmpstr();
+    tstring_setf(export_file, "%s/%s.blm", assembly->out_dir.data, name);
     FILE *f = fopen(export_file->data, "w");
     if (f == NULL) {
         builder_error("cannot open file %s", export_file->data);
         put_tmpstr(export_file);
         return;
     }
-    print_header(assembly->name, export_file->data, f);
+    print_header(name, export_file->data, f);
     mir_print_assembly(assembly, f);
     fclose(f);
     builder_note("Mir code written into %s", export_file->data);

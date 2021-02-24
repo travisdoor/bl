@@ -47,20 +47,20 @@ typedef struct BuilderOptions {
     bool no_color;
     bool silent;
     bool no_jobs;
-    bool no_warn;
+    bool no_warning;
 } BuilderOptions;
 
 typedef struct Builder {
-    BuilderOptions options;
-    char *         exec_dir;
-    char *         lib_dir;
-    Arena          str_cache;
-    volatile s32   total_lines;
-    s32            errorc;
-    s32            max_error;
-    s32            test_failc;
-    s32            last_script_mode_run_status;
-    ConfData       conf;
+    const BuilderOptions *options;
+    char *                exec_dir;
+    char *                lib_dir;
+    Arena                 str_cache;
+    volatile s32          total_lines;
+    s32                   errorc;
+    s32                   max_error;
+    s32                   test_failc;
+    s32                   last_script_mode_run_status;
+    ConfData              conf;
 
     TArray targets;
     TArray tmp_strings;
@@ -88,7 +88,7 @@ typedef enum {
 struct Location;
 
 // Initialize builder global instance with executable directory specified.
-void        builder_init(const char *exec_dir);
+void        builder_init(const BuilderOptions *options, const char *exec_dir);
 void        builder_terminate(void);
 void        builder_set_lib_dir(const char *lib_dir);
 const char *builder_get_lib_dir(void);
