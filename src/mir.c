@@ -1,4 +1,4 @@
-//************************************************************************************************
+// =================================================================================================
 // bl
 //
 // File:   mir.c
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+// =================================================================================================
 
 #include "mir.h"
 #include "ast.h"
@@ -1358,7 +1358,7 @@ void ast_pop_fn_context(Context *cnt)
 
 void type_init_id(Context *cnt, MirType *type)
 {
-//*********************************************************************************************/
+    // =============================================================================================
 #define GEN_ID_STRUCT                                                                              \
     if (type->user_id) {                                                                           \
         tstring_append(tmp, type->user_id->str);                                                   \
@@ -1376,8 +1376,8 @@ void type_init_id(Context *cnt, MirType *type)
         }                                                                                          \
     }                                                                                              \
                                                                                                    \
-    tstring_append(tmp, "}");                                                                      \
-    //*********************************************************************************************/
+    tstring_append(tmp, "}");
+    // =============================================================================================
     BL_ASSERT(type && "Invalid type pointer!");
     TString *tmp = &cnt->tmp_sh;
     tstring_clear(tmp);

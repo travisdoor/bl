@@ -77,31 +77,33 @@ typedef struct NativeLib {
     bool is_internal;
 } NativeLib;
 
-typedef struct Target {
-    AssemblyKind   kind;
-    AssemblyOpt    opt;
-    AssemblyDIKind di;
-    bool           reg_split;
-    bool           no_vcvars;
-    bool           docs; // @CLEANUP
-    bool           verify_llvm;
-    bool           run_tests;
-    bool           no_api;
-    bool           copy_deps;
-
+#define TARGET_COPYABLE_CONTENT                                                                    \
+    AssemblyKind       kind;                                                                       \
+    AssemblyOpt        opt;                                                                        \
+    AssemblyDIKind     di;                                                                         \
+    bool               reg_split;                                                                  \
+    bool               no_vcvars;                                                                  \
+    bool               verify_llvm;                                                                \
+    bool               run_tests;                                                                  \
+    bool               no_api;                                                                     \
+    bool               copy_deps;                                                                  \
+    bool               run;                                                                        \
+    bool               print_tokens;                                                               \
+    bool               print_ast;                                                                  \
+    bool               emit_llvm;                                                                  \
+    bool               emit_mir;                                                                   \
+    bool               no_bin;                                                                     \
+    bool               no_llvm;                                                                    \
+    bool               no_analyze;                                                                 \
+    bool               syntax_only;                                                                \
     ModuleImportPolicy module_policy;
-    bool               run;
-    bool               print_tokens;
-    bool               print_ast;
-    bool               emit_llvm;
-    bool               emit_mir;
-    bool               no_bin;
-    bool               no_llvm;
-    bool               no_analyze;
-    bool               syntax_only;
+
+typedef struct Target {
+    TARGET_COPYABLE_CONTENT
 
     char * name;
     TArray files;
+    BL_MAGIC_ADD
 } Target;
 
 typedef struct Assembly {
@@ -176,6 +178,7 @@ typedef struct Assembly {
 } Assembly;
 
 Target *target_new(const char *name);
+Target *target_dup(const char *name, const Target *other);
 void    target_delete(Target *target);
 void    target_add_file(Target *target, const char *filepath);
 

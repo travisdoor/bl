@@ -361,7 +361,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
 
         Ast *load = ast_create_node(cnt->ast_arena, AST_LOAD, tok_directive, SCOPE_GET(cnt));
         load->data.load.filepath = tok_path->value.str;
-        if (!cnt->assembly->target->docs) {
+        if (cnt->assembly->target->kind != ASSEMBLY_DOCS) {
             assembly_add_unit(cnt->assembly, load->data.load.filepath, tok_path);
         }
         return load;
@@ -388,7 +388,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         }
         Ast *import = ast_create_node(cnt->ast_arena, AST_IMPORT, tok_directive, SCOPE_GET(cnt));
         import->data.import.filepath = tok_path->value.str;
-        if (!cnt->assembly->target->docs) {
+        if (cnt->assembly->target->kind != ASSEMBLY_DOCS) {
             assembly_import_module(cnt->assembly, tok_path->value.str, tok_path);
         }
         return import;
@@ -2628,6 +2628,7 @@ NEXT:
 
 void parser_run(Assembly *assembly, Unit *unit)
 {
+    BL_ASSERT(assembly);
     BL_ASSERT(assembly->gscope && "Missing global scope for assembly.");
 
     TracyCZone(_tctx, true);

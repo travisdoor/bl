@@ -160,6 +160,8 @@ s32 parse_arguments(Options *opt, s32 argc, char *argv[])
 
     s32 optind = 1;
     for (; optind < argc && argv[optind][0] == '-'; optind++) {
+        ARG_BREAK(CLA_ARG_BUILD, opt->target->kind = ASSEMBLY_BUILD_PIPELINE;)
+
         // Application
         ARG(CLA_ARG_HELP, opt->app.print_help = true;)
         ARG(CLA_ARG_ABOUT, opt->app.print_about = true;)
@@ -178,6 +180,16 @@ s32 parse_arguments(Options *opt, s32 argc, char *argv[])
         ARG(CLA_ARG_AST_DUMP, opt->target->print_ast = true;)
         ARG(CLA_ARG_EMIT_LLVM, opt->target->emit_llvm = true;)
         ARG(CLA_ARG_EMIT_MIR, opt->target->emit_mir = true;)
+        ARG(CLA_ARG_DI_DWARF, opt->target->di = ASSEMBLY_DI_DWARF;)
+        ARG(CLA_ARG_DI_CODEVIEW, opt->target->di = ASSEMBLY_DI_CODEVIEW;)
+        ARG(CLA_ARG_RELEASE_FAST, opt->target->opt = ASSEMBLY_OPT_RELEASE_FAST;)
+        ARG(CLA_ARG_RELEASE_SMALL, opt->target->opt = ASSEMBLY_OPT_RELEASE_SMALL;)
+        ARG(CLA_ARG_REG_SPLIT_ON, opt->target->reg_split = true;)
+        ARG(CLA_ARG_REG_SPLIT_OFF, opt->target->reg_split = false;)
+        ARG(CLA_ARG_NO_VCVARS, opt->target->no_vcvars = true;)
+        ARG(CLA_ARG_VERIFY_LLVM, opt->target->verify_llvm = true;)
+        ARG(CLA_ARG_RUN_TESTS, opt->target->run_tests = true;)
+        ARG(CLA_ARG_NO_API, opt->target->no_api = true;)
 
         builder_error("Invalid argument '%s'", &argv[optind][0]);
         return -1;
@@ -214,9 +226,6 @@ int main(s32 argc, char *argv[])
     puts("Running in DEBUG mode");
 #endif
     Options opt = {0};
-    // Just create default empty target assembly options here and setup it later depending on user
-    // passed arguments!
-    opt.target = builder_add_target("out");
     setlocale(LC_ALL, "C");
     tlib_set_allocator(&_bl_malloc, &bl_free);
 
@@ -226,6 +235,9 @@ int main(s32 argc, char *argv[])
 
     exec_dir = get_exec_dir();
     builder_init(&opt.builder, exec_dir);
+    // Just create default empty target assembly options here and setup it later depending on user
+    // passed arguments!
+    opt.target   = builder_add_default_target("out");
     s32 next_arg = parse_arguments(&opt, argc, argv);
     builder_log("Compiler version: %s, LLVM: %d", BL_VERSION, LLVM_VERSION_MAJOR);
     if (next_arg == -1) {

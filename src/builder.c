@@ -393,7 +393,7 @@ static int compile(Assembly *assembly)
 void builder_init(const BuilderOptions *options, const char *exec_dir)
 {
     BL_ASSERT(options && "Invalid builder options!");
-    BL_ASSERT(exec_dir && "Invalid executable directory");
+    BL_ASSERT(exec_dir && "Invalid executable directory!");
     memset(&builder, 0, sizeof(Builder));
     builder.threading = threading_new();
     builder.options   = options;
@@ -476,9 +476,16 @@ int builder_load_config(const char *filepath)
     return builder_compile_config(filepath, &builder.conf, NULL);
 }
 
-Target *builder_add_target(const char *name)
+Target *_builder_add_target(const char *name, bool is_default)
 {
-    Target *target = target_new(name);
+    Target *target = NULL;
+    if (is_default) {
+        target                 = target_new(name);
+        builder.default_target = target;
+    } else {
+        target = target_dup(name, builder.default_target);
+    }
+    BL_ASSERT(target);
     tarray_push(&builder.targets, target);
     return target;
 }
@@ -498,7 +505,7 @@ int builder_compile_all(void)
 
 s32 builder_compile(const Target *target)
 {
-    BL_ASSERT(target && "Invalid compilation target!");
+    BL_MAGIC_ASSERT(target);
     Assembly *assembly = assembly_new(target);
 
     s32 state = compile(assembly);

@@ -36,41 +36,31 @@
 // @CLEANUP
 // @CLEANUP
 
-BL_EXPORT Assembly *__add_executable(const char *name)
+BL_EXPORT Target *__add_target(const char *name, AssemblyKind kind)
 {
-    /* @INCOMPLETE
-    Assembly *new_assembly = assembly_new(ASSEMBLY_EXECUTABLE, name);
-    builder_add_assembly(new_assembly);
-    return new_assembly;
-     */
-    return NULL;
+    Target *target = builder_add_target(name);
+    target->kind = kind;
+    return target;
 }
 
-BL_EXPORT Assembly *__add_library(const char *name)
+BL_EXPORT void __add_unit(Target *target, const char *filepath)
 {
-    /*
-    Assembly *new_assembly = assembly_new(ASSEMBLY_SHARED_LIB, name);
-    builder_add_assembly(new_assembly);
-    return new_assembly;
-     */
-    return NULL;
-}
-
-BL_EXPORT Unit *__add_unit(Assembly *assembly, const char *filepath)
-{
-    return assembly_add_unit(assembly, filepath, NULL);
+    target_add_file(target, filepath);
 }
 
 BL_EXPORT void __add_lib_path(Assembly *assembly, const char *path)
 {
-    assembly_add_lib_path(assembly, path);
+    //assembly_add_lib_path(assembly, path);
 }
 
-BL_EXPORT s32 __compile(Assembly *assembly)
+BL_EXPORT s32 __compile(Target *target)
 {
-    if (!assembly) BL_ABORT("Invalid assembly!");
-    //return builder_compile(assembly);
-    return 0;
+    return builder_compile(target);
+}
+
+BL_EXPORT s32 __compile_all(void)
+{
+    return builder_compile_all();
 }
 
 BL_EXPORT void __link_library(Assembly *assembly, const char *name)

@@ -458,7 +458,7 @@ SCAN:
             switch (tok.sym) {
             case SYM_DCOMMENT:
             case SYM_DGCOMMENT:
-                if (cnt->assembly->target->docs) {
+                if (cnt->assembly && cnt->assembly->target->kind == ASSEMBLY_DOCS) {
                     scan_docs(cnt, &tok);
                     goto PUSH_TOKEN;
                 }

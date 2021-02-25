@@ -114,8 +114,9 @@ static void llvm_init(Assembly *assembly)
         BL_ABORT("Cannot get target");
     }
     LLVMContextRef llvm_context = LLVMContextCreate();
-    LLVMModuleRef  llvm_module  = LLVMModuleCreateWithNameInContext(assembly->target->name, llvm_context);
-    LLVMRelocMode  reloc_mode   = LLVMRelocDefault;
+    LLVMModuleRef  llvm_module =
+        LLVMModuleCreateWithNameInContext(assembly->target->name, llvm_context);
+    LLVMRelocMode reloc_mode = LLVMRelocDefault;
     switch (assembly->target->kind) {
     case ASSEMBLY_SHARED_LIB:
         reloc_mode = LLVMRelocPIC;
@@ -312,6 +313,7 @@ Target *target_new(const char *name)
     BL_ASSERT(name && "Assembly name not specified!");
     Target *target = bl_malloc(sizeof(Target));
     memset(target, 0, sizeof(Target));
+    BL_MAGIC_SET(target);
     tarray_init(&target->files, sizeof(char *));
     target->name = strdup(name);
 
@@ -334,6 +336,15 @@ Target *target_new(const char *name)
     return target;
 }
 
+Target *target_dup(const char *name, const Target *other)
+{
+    BL_MAGIC_ASSERT(other);
+    Target *target = target_new(name);
+    memcpy(target, other, sizeof(struct {TARGET_COPYABLE_CONTENT}));
+    BL_MAGIC_SET(target);
+    return target;
+}
+
 void target_delete(Target *target)
 {
     char *file;
@@ -348,6 +359,7 @@ void target_delete(Target *target)
 
 void target_add_file(Target *target, const char *filepath)
 {
+    BL_MAGIC_ASSERT(target);
     BL_ASSERT(filepath && "Invalid filepath!");
     char *dup = strdup(filepath);
     tarray_push(&target->files, dup);
@@ -355,6 +367,7 @@ void target_add_file(Target *target, const char *filepath)
 
 Assembly *assembly_new(const Target *target)
 {
+    BL_MAGIC_ASSERT(target);
     Assembly *assembly = bl_malloc(sizeof(Assembly));
     memset(assembly, 0, sizeof(Assembly));
     assembly->target = target;
@@ -396,10 +409,12 @@ Assembly *assembly_new(const Target *target)
     // Add default units based on assembly kind
     switch (assembly->target->kind) {
     case ASSEMBLY_EXECUTABLE:
+        if (assembly->target->no_api) break;
         assembly_add_unit(assembly, BUILTIN_FILE, NULL);
         assembly_add_unit(assembly, OS_PRELOAD_FILE, NULL);
         break;
     case ASSEMBLY_SHARED_LIB:
+        if (assembly->target->no_api) break;
         assembly_add_unit(assembly, BUILTIN_FILE, NULL);
         assembly_add_unit(assembly, OS_PRELOAD_FILE, NULL);
         break;
@@ -407,6 +422,7 @@ Assembly *assembly_new(const Target *target)
         assembly_add_unit(assembly, BUILTIN_FILE, NULL);
         assembly_add_unit(assembly, OS_PRELOAD_FILE, NULL);
         assembly_add_unit(assembly, BUILD_API_FILE, NULL);
+        assembly_add_unit(assembly, BUILD_SCRIPT_FILE, NULL);
         break;
     case ASSEMBLY_DOCS:
         break;
