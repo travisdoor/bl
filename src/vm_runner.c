@@ -88,15 +88,16 @@ void vm_tests_run(Assembly *assembly)
 
 void vm_build_entry_run(Assembly *assembly)
 {
-    VM *   vm    = &assembly->vm;
-    MirFn *entry = assembly->vm_run.build_entry;
+    VM *          vm     = &assembly->vm;
+    MirFn *       entry  = assembly->vm_run.build_entry;
+    const Target *target = assembly->target;
     if (!entry) {
         builder_error("Assembly '%s' has no build entry function!", assembly->target->name);
         assembly->vm_run.last_execution_status = EXIT_FAILURE;
         return;
     }
-    if (assembly->vm_run.argc > 0) {
-        vm_provide_command_line_arguments(vm, assembly->vm_run.argc, assembly->vm_run.argv);
+    if (target->vm.argc > 0) {
+        vm_provide_command_line_arguments(vm, target->vm.argc, target->vm.argv);
     }
     vm_override_var(vm, assembly->vm_run.is_comptime_run, true);
     vm_execute_fn(vm, assembly, entry, NULL);
@@ -108,6 +109,7 @@ void vm_entry_run(Assembly *assembly)
 {
     VM *   vm    = &assembly->vm;
     MirFn *entry = assembly->vm_run.entry;
+    const Target *target = assembly->target;
     builder_note("\nExecuting 'main' in compile time...");
     if (!entry) {
         builder_error("Assembly '%s' has no entry function!", assembly->target->name);
@@ -117,7 +119,9 @@ void vm_entry_run(Assembly *assembly)
     MirType *fn_type = entry->type;
     BL_ASSERT(fn_type && fn_type->kind == MIR_TYPE_FN);
     BL_ASSERT(!fn_type->data.fn.args);
-    vm_provide_command_line_arguments(vm, assembly->vm_run.argc, assembly->vm_run.argv);
+    if (target->vm.argc > 0) {
+        vm_provide_command_line_arguments(vm, target->vm.argc, target->vm.argv);
+    }
     vm_override_var(vm, assembly->vm_run.is_comptime_run, true);
     VMStackPtr ret_ptr = NULL;
     s32        result  = EXIT_SUCCESS;

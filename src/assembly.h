@@ -78,31 +78,36 @@ typedef struct NativeLib {
 } NativeLib;
 
 #define TARGET_COPYABLE_CONTENT                                                                    \
-    AssemblyKind       kind;                                                                       \
-    AssemblyOpt        opt;                                                                        \
-    AssemblyDIKind     di;                                                                         \
-    bool               reg_split;                                                                  \
-    bool               no_vcvars;                                                                  \
-    bool               verify_llvm;                                                                \
-    bool               run_tests;                                                                  \
-    bool               no_api;                                                                     \
-    bool               copy_deps;                                                                  \
-    bool               run;                                                                        \
-    bool               print_tokens;                                                               \
-    bool               print_ast;                                                                  \
-    bool               emit_llvm;                                                                  \
-    bool               emit_mir;                                                                   \
-    bool               no_bin;                                                                     \
-    bool               no_llvm;                                                                    \
-    bool               no_analyze;                                                                 \
-    bool               syntax_only;                                                                \
-    ModuleImportPolicy module_policy;
+    AssemblyKind   kind;                                                                           \
+    AssemblyOpt    opt;                                                                            \
+    AssemblyDIKind di;                                                                             \
+    bool           reg_split;                                                                      \
+    bool           no_vcvars;                                                                      \
+    bool           verify_llvm;                                                                    \
+    bool           run_tests;                                                                      \
+    bool           no_api;                                                                         \
+    bool           copy_deps;                                                                      \
+    bool           run;                                                                            \
+    bool           print_tokens;                                                                   \
+    bool           print_ast;                                                                      \
+    bool           emit_llvm;                                                                      \
+    bool           emit_mir;                                                                       \
+    bool           no_bin;                                                                         \
+    bool           no_llvm;                                                                        \
+    bool           no_analyze;                                                                     \
+    bool           syntax_only;
 
 typedef struct Target {
     TARGET_COPYABLE_CONTENT
 
-    char * name;
-    TArray files;
+    char *             name;
+    ModuleImportPolicy module_policy;
+    TArray             files;
+
+    struct {
+        s32    argc;
+        char **argv;
+    } vm;
     BL_MAGIC_ADD
 } Target;
 
@@ -150,8 +155,6 @@ typedef struct Assembly {
         MirVar *command_line_arguments; // Command line arguments variable.
         // Provide information whether application run in compile time or not.
         MirVar *is_comptime_run;
-        s32     argc; // Count of arguments forwarded in script mode.
-        char ** argv; // Values of arguments forwarded in script mode.
 
         // Store status of last execution of this assembly.
         s32 last_execution_status;
@@ -181,6 +184,7 @@ Target *target_new(const char *name);
 Target *target_dup(const char *name, const Target *other);
 void    target_delete(Target *target);
 void    target_add_file(Target *target, const char *filepath);
+void    target_set_vm_args(Target *target, s32 argc, char **argv);
 
 // Create new assembly instance.
 Assembly *assembly_new(const Target *target);
@@ -196,9 +200,6 @@ void assembly_add_lib_path(Assembly *assembly, const char *path);
 
 // Append linker options string.
 void assembly_append_linker_options(Assembly *assembly, const char *opt);
-
-// Set command line arguments for VM execution.
-void assembly_set_vm_args(Assembly *assembly, s32 argc, char **argv);
 
 // Add native library.
 void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);

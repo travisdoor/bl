@@ -5,6 +5,7 @@ my_bl_function :: fn (count: s32) #export {
 }
 
 main :: fn () s32 {
+    print("ARGS: %\n", command_line_arguments);
     print("hello!!!\n");
     return 0;
 }

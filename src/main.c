@@ -143,24 +143,33 @@ void print_where_is_api(FILE *stream)
     fprintf(stream, "%s", builder_get_lib_dir());
 }
 
+#define INVALID_ARGS -1
+
 s32 parse_arguments(Options *opt, s32 argc, char *argv[])
 {
     BL_ASSERT(opt->target && "Target not initialized!");
 #define ARG(kind, action)                                                                          \
-    if ((strcmp(&argv[optind][1], ARGS[kind].s) == 0) ||                                           \
-        (strcmp(&argv[optind][1], ARGS[kind].l) == 0)) {                                           \
-        action continue;                                                                           \
+    if ((strcmp(&argv[i][1], ARGS[kind].s) == 0) || (strcmp(&argv[i][1], ARGS[kind].l) == 0)) {    \
+        action;                                                                                    \
+        continue;                                                                                  \
     }
 #define ARG_BREAK(kind, action)                                                                    \
-    if ((strcmp(&argv[optind][1], ARGS[kind].s) == 0) ||                                           \
-        (strcmp(&argv[optind][1], ARGS[kind].l) == 0)) {                                           \
-        action++ optind;                                                                           \
+    if ((strcmp(&argv[i][1], ARGS[kind].s) == 0) || (strcmp(&argv[i][1], ARGS[kind].l) == 0)) {    \
+        action;                                                                                    \
+        ++i;                                                                                       \
         break;                                                                                     \
     }
 
-    s32 optind = 1;
-    for (; optind < argc && argv[optind][0] == '-'; optind++) {
+    // skip executable name
+    s32 i = 1;
+    for (; i < argc && *argv[i] == '-'; i++) {
         ARG_BREAK(CLA_ARG_BUILD, opt->target->kind = ASSEMBLY_BUILD_PIPELINE;)
+        ARG_BREAK(CLA_ARG_RUN, opt->target->run = true;)
+        ARG_BREAK(CLA_ARG_RUN_SCRIPT, {
+            opt->builder.silent  = true;
+            opt->target->run     = true;
+            opt->target->no_llvm = true;
+        })
 
         // Application
         ARG(CLA_ARG_HELP, opt->app.print_help = true;)
@@ -191,11 +200,11 @@ s32 parse_arguments(Options *opt, s32 argc, char *argv[])
         ARG(CLA_ARG_RUN_TESTS, opt->target->run_tests = true;)
         ARG(CLA_ARG_NO_API, opt->target->no_api = true;)
 
-        builder_error("Invalid argument '%s'", &argv[optind][0]);
-        return -1;
+        builder_error("Invalid argument '%s'", *argv[i]);
+        return INVALID_ARGS;
     }
 
-    return optind;
+    return i;
 #undef ARG
 #undef ARG_BREAK
 }
@@ -237,13 +246,17 @@ int main(s32 argc, char *argv[])
     builder_init(&opt.builder, exec_dir);
     // Just create default empty target assembly options here and setup it later depending on user
     // passed arguments!
-    opt.target   = builder_add_default_target("out");
-    s32 next_arg = parse_arguments(&opt, argc, argv);
+    opt.target = builder_add_default_target("out");
+    // Parse command line arguments and return count args parsed.
+    const s32 parsed_argc = parse_arguments(&opt, argc, argv);
     builder_log("Compiler version: %s, LLVM: %d", BL_VERSION, LLVM_VERSION_MAJOR);
-    if (next_arg == -1) {
+    if (parsed_argc == INVALID_ARGS) {
         print_help(stdout);
         EXIT(EXIT_FAILURE);
     }
+    // Shift pointer of argv.
+    argc -= parsed_argc;
+    argv += parsed_argc;
 
     // Run configure if needed.
     if (opt.app.configure) {
@@ -254,10 +267,6 @@ int main(s32 argc, char *argv[])
 
         EXIT(EXIT_SUCCESS);
     }
-
-    argv += next_arg;
-    const s32 vm_argc = argc - next_arg;
-    char **   vm_argv = argv;
 
     if (opt.app.print_help) {
         print_help(stdout);
@@ -283,12 +292,13 @@ int main(s32 argc, char *argv[])
     }
 
     const bool use_build_pipeline = opt.target->kind == ASSEMBLY_BUILD_PIPELINE;
-    if (*argv == NULL && !use_build_pipeline) {
+    if (argc == 0 && !use_build_pipeline) {
         builder_warning("Nothing to do, no input files, sorry :(");
         EXIT(EXIT_SUCCESS);
     }
 
-    // assembly_set_vm_args(assembly, vm_argc, vm_argv); @INCOMPLETE builder_set_vm_args???
+    // Forward reminding ars to vm.
+    target_set_vm_args(opt.target, argc, argv);
     if (use_build_pipeline) {
         // @INCOMPLETE
         // assembly->options.opt = ASSEMBLY_OPT_RELEASE_FAST;

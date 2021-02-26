@@ -52,6 +52,9 @@
 //! 
 //!        // add 'main.bl' file into the target 'exe'
 //!        add_unit(exe, "main.bl");
+//!
+//!        // Start compilation
+//!        compile(exe);
 //!    }
 //! 
 //! Start build pipeline using our build.bl file:
@@ -122,6 +125,15 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
     run_tests: bool;
     no_api: bool;
     copy_deps: bool;
+    run: bool;
+    print_tokens: bool;
+    print_ast: bool;
+    emit_llvm: bool;
+    emit_mir: bool;
+    no_bin: bool;
+    no_llvm: bool;
+    no_analyze: bool;
+    syntax_only: bool;
 }
 
 TargetKind :: enum {

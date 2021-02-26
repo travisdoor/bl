@@ -365,6 +365,13 @@ void target_add_file(Target *target, const char *filepath)
     tarray_push(&target->files, dup);
 }
 
+void target_set_vm_args(Target *target, s32 argc, char **argv)
+{
+    BL_MAGIC_ASSERT(target);
+    target->vm.argc = argc;
+    target->vm.argv = argv;
+}
+
 Assembly *assembly_new(const Target *target)
 {
     BL_MAGIC_ASSERT(target);
@@ -646,12 +653,6 @@ bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *i
 DONE:
     pthread_mutex_unlock(&sync->import_module_lock);
     return state;
-}
-
-void assembly_set_vm_args(Assembly *assembly, s32 argc, char **argv)
-{
-    assembly->vm_run.argc = argc;
-    assembly->vm_run.argv = argv;
 }
 
 DCpointer assembly_find_extern(Assembly *assembly, const char *symbol)
