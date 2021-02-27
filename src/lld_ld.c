@@ -131,9 +131,10 @@ static void append_linker_exec(TString *buf)
 
 s32 lld_ld(Assembly *assembly)
 {
-    TString *   buf     = get_tmpstr();
-    const char *out_dir = assembly->out_dir.data;
-    const char *name    = assembly->target->name;
+    TString *     buf     = get_tmpstr();
+    const Target *target  = assembly->target;
+    const char *  out_dir = target->out_dir.data;
+    const char *  name    = target->name;
 
     // set executable
     append_linker_exec(buf);

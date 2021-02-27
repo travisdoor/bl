@@ -32,14 +32,10 @@
 #include "builder.h"
 #include "common.h"
 
-// @CLEANUP
-// @CLEANUP
-// @CLEANUP
-
 BL_EXPORT Target *__add_target(const char *name, AssemblyKind kind)
 {
     Target *target = builder_add_target(name);
-    target->kind = kind;
+    target->kind   = kind;
     return target;
 }
 
@@ -50,7 +46,8 @@ BL_EXPORT void __add_unit(Target *target, const char *filepath)
 
 BL_EXPORT void __add_lib_path(Assembly *assembly, const char *path)
 {
-    //assembly_add_lib_path(assembly, path);
+    BL_ABORT("Unimplemented!");
+    // assembly_add_lib_path(assembly, path);
 }
 
 BL_EXPORT s32 __compile(Target *target)
@@ -65,35 +62,41 @@ BL_EXPORT s32 __compile_all(void)
 
 BL_EXPORT void __link_library(Assembly *assembly, const char *name)
 {
-    assembly_add_native_lib(assembly, name, NULL);
+    BL_ABORT("Unimplemented!");
+    // assembly_add_native_lib(assembly, name, NULL);
 }
 
 BL_EXPORT void __append_linker_options(Assembly *assembly, const char *opt)
 {
-    assembly_append_linker_options(assembly, opt);
+    BL_ABORT("Unimplemented!");
+    // assembly_append_linker_options(assembly, opt);
 }
 
-BL_EXPORT void __set_output_dir(Assembly *assembly, const char *dir)
+BL_EXPORT void __set_output_dir(Target *target, const char *dir)
 {
-    assembly_set_output_dir(assembly, dir);
+    target_set_output_dir(target, dir);
 }
 
-BL_EXPORT const char *__get_output_dir(Assembly *assembly)
+BL_EXPORT const char *__get_output_dir(Target *target)
 {
-    return assembly->out_dir.len > 0 ? assembly->out_dir.data : NULL;
+    BL_MAGIC_ASSERT(target);
+    return target->out_dir.len > 0 ? target->out_dir.data : NULL;
 }
 
 BL_EXPORT void __set_module_dir(Assembly *assembly, const char *dir, const s32 policy)
 {
-    assembly_set_module_dir(assembly, dir, policy);
+    BL_ABORT("Unimplemented!");
+    // assembly_set_module_dir(assembly, dir, policy);
 }
 
 BL_EXPORT const char *__get_module_dir(Assembly *assembly)
 {
-    return assembly->module_dir.len > 0 ? assembly->module_dir.data : NULL;
+    BL_ABORT("Unimplemented!");
+    // return assembly->module_dir.len > 0 ? assembly->module_dir.data : NULL;
 }
 
 BL_EXPORT s32 __get_module_import_policy(Assembly *assembly)
 {
-    return assembly->target->module_policy;
+    BL_ABORT("Unimplemented!");
+    // return assembly->target->module_policy;
 }

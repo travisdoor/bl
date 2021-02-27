@@ -78,31 +78,32 @@ typedef struct NativeLib {
 } NativeLib;
 
 #define TARGET_COPYABLE_CONTENT                                                                    \
-    AssemblyKind   kind;                                                                           \
-    AssemblyOpt    opt;                                                                            \
-    AssemblyDIKind di;                                                                             \
-    bool           reg_split;                                                                      \
-    bool           no_vcvars;                                                                      \
-    bool           verify_llvm;                                                                    \
-    bool           run_tests;                                                                      \
-    bool           no_api;                                                                         \
-    bool           copy_deps;                                                                      \
-    bool           run;                                                                            \
-    bool           print_tokens;                                                                   \
-    bool           print_ast;                                                                      \
-    bool           emit_llvm;                                                                      \
-    bool           emit_mir;                                                                       \
-    bool           no_bin;                                                                         \
-    bool           no_llvm;                                                                        \
-    bool           no_analyze;                                                                     \
-    bool           syntax_only;
+    AssemblyKind       kind;                                                                       \
+    AssemblyOpt        opt;                                                                        \
+    AssemblyDIKind     di;                                                                         \
+    bool               reg_split;                                                                  \
+    bool               no_vcvars;                                                                  \
+    bool               verify_llvm;                                                                \
+    bool               run_tests;                                                                  \
+    bool               no_api;                                                                     \
+    bool               copy_deps;                                                                  \
+    bool               run;                                                                        \
+    bool               print_tokens;                                                               \
+    bool               print_ast;                                                                  \
+    bool               emit_llvm;                                                                  \
+    bool               emit_mir;                                                                   \
+    bool               no_bin;                                                                     \
+    bool               no_llvm;                                                                    \
+    bool               no_analyze;                                                                 \
+    bool               syntax_only;                                                                \
+    ModuleImportPolicy module_policy;
 
 typedef struct Target {
     TARGET_COPYABLE_CONTENT
 
-    char *             name;
-    ModuleImportPolicy module_policy;
-    TArray             files;
+    char *  name;
+    TArray  files;
+    TString out_dir;
 
     struct {
         s32    argc;
@@ -116,7 +117,6 @@ typedef struct Assembly {
     const Target *target;
 
     TString custom_linker_opt;
-    TString out_dir;
     TString module_dir;
     TArray  lib_paths;
     TArray  libs;
@@ -185,6 +185,8 @@ Target *target_dup(const char *name, const Target *other);
 void    target_delete(Target *target);
 void    target_add_file(Target *target, const char *filepath);
 void    target_set_vm_args(Target *target, s32 argc, char **argv);
+void    target_add_lib_path(Target *target, const char *path);
+void    target_set_output_dir(Target *target, const char *dirpath);
 
 // Create new assembly instance.
 Assembly *assembly_new(const Target *target);
@@ -208,9 +210,6 @@ void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct To
 bool assembly_import_module(Assembly *assembly, const char *modulepath, struct Token *import_from);
 
 DCpointer assembly_find_extern(Assembly *assembly, const char *symbol);
-
-// Set assembly output directory.
-void assembly_set_output_dir(Assembly *assembly, const char *dir);
 
 // Set module directory.
 void assembly_set_module_dir(Assembly *assembly, const char *dir, ModuleImportPolicy policy);

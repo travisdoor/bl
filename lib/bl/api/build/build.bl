@@ -106,7 +106,7 @@
 //!
 //! Command line argumets
 //! ---------------------
-//! All argumets passed after `-build|-b` compiler flag are automatically forwarded into
+//! All argumets passed after `--build|-b` compiler flag are automatically forwarded into
 //! `command_line_arguments` global variable.
 
 /// Target is representation of whole program workspace, it's a consist of Units, every unit represents 
@@ -119,12 +119,12 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
     /// Specify debug information format used for target in debug mode. See :ref:`DebugInfo`.
     debug_info_kind: DebugInfo;
 
-    reg_split: bool;
+    register_split: bool;
     no_vcvars: bool;
     verify_llvm: bool;
     run_tests: bool;
     no_api: bool;
-    copy_deps: bool;
+    copy_dependencies: bool;
     run: bool;
     print_tokens: bool;
     print_ast: bool;

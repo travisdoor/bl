@@ -175,15 +175,15 @@ static INLINE void mir_terminate(Assembly *assembly)
     mir_arenas_terminate(&assembly->arenas.mir);
 }
 
-static INLINE void set_default_out_dir(Assembly *assembly)
+static INLINE void set_default_out_dir(TString *dir)
 {
     char path[PATH_MAX] = {0};
     if (!get_current_working_dir(&path[0], PATH_MAX)) {
         builder_error("Cannot get current working directory!");
         return;
     }
-    tstring_clear(&assembly->out_dir);
-    tstring_append(&assembly->out_dir, path);
+    tstring_clear(dir);
+    tstring_append(dir, path);
 }
 
 // Create directory tree and set out_path.
@@ -196,7 +196,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) BL_ABORT("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path = _path;
+    const char *path  = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {
@@ -317,6 +317,9 @@ Target *target_new(const char *name)
     tarray_init(&target->files, sizeof(char *));
     target->name = strdup(name);
 
+    tstring_init(&target->out_dir);
+    set_default_out_dir(&target->out_dir);
+
     // Setup some defaults.
     target->opt           = ASSEMBLY_OPT_DEBUG;
     target->kind          = ASSEMBLY_EXECUTABLE;
@@ -341,6 +344,8 @@ Target *target_dup(const char *name, const Target *other)
     BL_MAGIC_ASSERT(other);
     Target *target = target_new(name);
     memcpy(target, other, sizeof(struct {TARGET_COPYABLE_CONTENT}));
+    tstring_append(&target->out_dir, other->out_dir.data);
+    target->vm = other->vm;
     BL_MAGIC_SET(target);
     return target;
 }
@@ -354,6 +359,7 @@ void target_delete(Target *target)
     }
     tarray_terminate(&target->files);
     free(target->name);
+    tstring_terminate(&target->out_dir);
     bl_free(target);
 }
 
@@ -372,6 +378,24 @@ void target_set_vm_args(Target *target, s32 argc, char **argv)
     target->vm.argv = argv;
 }
 
+void target_add_lib_path(Target *target, const char *path)
+{
+    BL_MAGIC_ASSERT(target);
+    if (!path) return;
+    char *tmp = strdup(path);
+    if (!tmp) return;
+    // tarray_push(&target->lib_paths, tmp);
+}
+
+void target_set_output_dir(Target *target, const char *dir)
+{
+    BL_MAGIC_ASSERT(target);
+    if (!dir) builder_error("Cannot create output directory.");
+    if (!create_auxiliary_dir_tree_if_not_exist(dir, &target->out_dir)) {
+        builder_error("Cannot create output directory '%s'.", dir);
+    }
+}
+
 Assembly *assembly_new(const Target *target)
 {
     BL_MAGIC_ASSERT(target);
@@ -383,7 +407,6 @@ Assembly *assembly_new(const Target *target)
     llvm_init(assembly);
     tarray_init(&assembly->units, sizeof(Unit *));
     tstring_init(&assembly->custom_linker_opt);
-    tstring_init(&assembly->out_dir);
     tstring_init(&assembly->module_dir);
     tarray_init(&assembly->libs, sizeof(NativeLib));
     tarray_init(&assembly->lib_paths, sizeof(char *));
@@ -391,7 +414,6 @@ Assembly *assembly_new(const Target *target)
     vm_init(&assembly->vm, VM_STACK_SIZE);
 
     // set defaults
-    set_default_out_dir(assembly);
     scope_arenas_init(&assembly->arenas.scope);
     ast_arena_init(&assembly->arenas.ast);
     arena_init(&assembly->arenas.array,
@@ -461,7 +483,6 @@ void assembly_delete(Assembly *assembly)
     tarray_terminate(&assembly->units);
 
     tstring_terminate(&assembly->custom_linker_opt);
-    tstring_terminate(&assembly->out_dir);
     tstring_terminate(&assembly->module_dir);
     vm_terminate(&assembly->vm);
     arena_terminate(&assembly->arenas.small_array);
@@ -488,14 +509,6 @@ void assembly_append_linker_options(Assembly *assembly, const char *opt)
     if (!opt) return;
     tstring_append(&assembly->custom_linker_opt, opt);
     tstring_append(&assembly->custom_linker_opt, " ");
-}
-
-void assembly_set_output_dir(Assembly *assembly, const char *dir)
-{
-    if (!dir) builder_error("Cannot create output directory.");
-    if (!create_auxiliary_dir_tree_if_not_exist(dir, &assembly->out_dir)) {
-        builder_error("Cannot create output directory '%s'.", dir);
-    }
 }
 
 void assembly_set_module_dir(Assembly *assembly, const char *dir, ModuleImportPolicy policy)

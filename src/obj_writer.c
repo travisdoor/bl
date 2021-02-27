@@ -43,8 +43,9 @@ void obj_writer_run(Assembly *assembly)
 {
     TracyCZone(_tctx, true);
     TString *   buf  = get_tmpstr();
-    const char *name = assembly->target->name;
-    tstring_setf(buf, "%s/%s.%s", assembly->out_dir.data, name, OBJ_EXT);
+    const Target *target = assembly->target;
+    const char *name = target->name;
+    tstring_setf(buf, "%s/%s.%s", target->out_dir.data, name, OBJ_EXT);
     char *error_msg = NULL;
     if (LLVMTargetMachineEmitToFile(
             assembly->llvm.TM, assembly->llvm.module, buf->data, LLVMObjectFile, &error_msg)) {

@@ -288,6 +288,21 @@ int compile_assembly(Assembly *assembly, AssemblyStageFn *pipeline)
     return COMPILE_OK;
 }
 
+static void entry_run(Assembly *assembly)
+{
+    vm_entry_run(assembly);
+    builder.last_script_mode_run_status = assembly->vm_run.last_execution_status;
+}
+
+static void build_entry_run(Assembly *assembly) {
+    vm_build_entry_run(assembly);
+}
+
+static void tests_run(Assembly *assembly) {
+    vm_tests_run(assembly);
+    builder.test_failc = assembly->vm_run.last_execution_status;
+}
+
 static void setup_unit_pipeline(Assembly *assembly, UnitStageFn *stages, s32 stage_count)
 {
 #define STAGE(i, fn)                                                                               \
@@ -328,9 +343,9 @@ static void setup_assembly_pipeline(Assembly *assembly, AssemblyStageFn *stages,
     if (t->syntax_only) return;
     STAGE(index, &linker_run);
     STAGE(index, &mir_run);
-    if (t->run) STAGE(index, &vm_entry_run);
-    if (t->kind == ASSEMBLY_BUILD_PIPELINE) STAGE(index, vm_build_entry_run);
-    if (t->run_tests) STAGE(index, vm_tests_run);
+    if (t->run) STAGE(index, &entry_run);
+    if (t->kind == ASSEMBLY_BUILD_PIPELINE) STAGE(index, build_entry_run);
+    if (t->run_tests) STAGE(index, tests_run);
     if (t->emit_mir) STAGE(index, &mir_writer_run);
     if (t->no_analyze) return;
     if (t->no_analyze) return;

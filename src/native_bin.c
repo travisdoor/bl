@@ -26,8 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "config.h"
 #include "builder.h"
+#include "config.h"
 
 #if !BL_PLATFORM_WIN
 #include <errno.h>
@@ -35,16 +35,17 @@
 #include <unistd.h>
 #endif
 
-typedef s32(*LinkerFn)(Assembly*);
+typedef s32 (*LinkerFn)(Assembly *);
 
 s32 lld_link(Assembly *assembly);
 s32 lld_ld(Assembly *assembly);
 
 static void copy_user_libs(Assembly *assembly)
 {
-    TString *   dest_path = get_tmpstr();
-    const char *out_dir   = assembly->out_dir.data;
-    NativeLib * lib;
+    TString *     dest_path = get_tmpstr();
+    const Target *target    = assembly->target;
+    const char *  out_dir   = target->out_dir.data;
+    NativeLib *   lib;
     for (usize i = 0; i < assembly->libs.size; ++i) {
         lib = &tarray_at(NativeLib, &assembly->libs, i);
         if (lib->is_internal) continue;
@@ -85,7 +86,7 @@ void native_bin_run(Assembly *assembly)
 #error "Unknown platform"
 #endif
 
-    const char *out_dir = assembly->out_dir.data;
+    const char *out_dir = assembly->target->out_dir.data;
     TracyCZone(_tctx, true);
     if (linker(assembly) != 0) {
         builder_msg(BUILDER_MSG_ERROR,
