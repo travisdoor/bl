@@ -40,10 +40,6 @@
 #include <windows.h>
 #endif
 
-static const char *ABOUT_TEXT =
-#include "about_text.txt"
-    ;
-
 static char *get_exec_dir(void)
 {
     char tmp[PATH_MAX] = {0};
@@ -179,8 +175,8 @@ s32 parse_arguments(Options *opt, s32 argc, char *argv[])
 
         // Builder
         ARG(CLA_ARG_VERBOSE, opt->builder.verbose = true;)
-        ARG(CLA_ARG_NO_COLOR, opt->builder.no_color = true;)
         ARG(CLA_ARG_SILENT, opt->builder.silent = true;)
+        ARG(CLA_ARG_NO_COLOR, opt->builder.no_color = true;)
         ARG(CLA_ARG_NO_JOBS, opt->builder.no_jobs = true;)
         ARG(CLA_ARG_NO_WARNING, opt->builder.no_warning = true;)
 
@@ -195,12 +191,18 @@ s32 parse_arguments(Options *opt, s32 argc, char *argv[])
         ARG(CLA_ARG_RELEASE_SMALL, opt->target->opt = ASSEMBLY_OPT_RELEASE_SMALL;)
         ARG(CLA_ARG_REG_SPLIT_ON, opt->target->reg_split = true;)
         ARG(CLA_ARG_REG_SPLIT_OFF, opt->target->reg_split = false;)
-        ARG(CLA_ARG_NO_VCVARS, opt->target->no_vcvars = true;)
         ARG(CLA_ARG_VERIFY_LLVM, opt->target->verify_llvm = true;)
         ARG(CLA_ARG_RUN_TESTS, opt->target->run_tests = true;)
+        ARG(CLA_ARG_SHARED, opt->target->kind = ASSEMBLY_SHARED_LIB;)
+        ARG(CLA_ARG_NO_VCVARS, opt->target->no_vcvars = true;)
         ARG(CLA_ARG_NO_API, opt->target->no_api = true;)
+        ARG(CLA_ARG_NO_BIN, opt->target->no_bin = true;)
+        ARG(CLA_ARG_NO_LLVM, opt->target->no_llvm = true;)
+        ARG(CLA_ARG_NO_ANALYZE, opt->target->no_analyze = true;)
+        ARG(CLA_ARG_DOCS, opt->target->kind = ASSEMBLY_DOCS;)
+        ARG(CLA_ARG_SYNTAX_ONLY, opt->target->syntax_only = true;)
 
-        builder_error("Invalid argument '%s'", *argv[i]);
+        builder_error("Invalid argument '%s'", argv[i]);
         return INVALID_ARGS;
     }
 
@@ -213,7 +215,8 @@ s32 parse_input_files(Options *opt, s32 argc, char *argv[])
 {
     while (*argv != NULL) {
         target_add_file(opt->target, *argv);
-        // if (assembly->options.run) break;
+        // Add ony first file rest will be consumed as command line arguments in running script.
+        if (opt->target->run) break;
         argv++;
         argc--;
     }
@@ -299,11 +302,7 @@ int main(s32 argc, char *argv[])
 
     // Forward reminding ars to vm.
     target_set_vm_args(opt.target, argc, argv);
-    if (use_build_pipeline) {
-        // @INCOMPLETE
-        // assembly->options.opt = ASSEMBLY_OPT_RELEASE_FAST;
-        // assembly_add_unit(assembly, BUILD_SCRIPT_FILE, NULL);
-    } else {
+    if (!use_build_pipeline) {
         parse_input_files(&opt, argc, argv);
     }
 
