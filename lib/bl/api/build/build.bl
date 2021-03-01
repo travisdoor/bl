@@ -118,21 +118,35 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
     build_mode: BuildMode;
     /// Specify debug information format used for target in debug mode. See :ref:`DebugInfo`.
     debug_info_kind: DebugInfo;
-
+    /// Enable split of function arguments and return value into registers.
     register_split: bool;
+    /// Disable invocation of vcvars.bat on Windows.
     no_vcvars: bool;
+    /// Verify LLVM module.
     verify_llvm: bool;
+    /// Execute compile time tests.
     run_tests: bool;
+    /// Disable default API import.
     no_api: bool;
+    /// Copy all known dependencies into output folder.
     copy_dependencies: bool;
+    /// Execute main function in compile time.
     run: bool;
+    /// Print out lexer output.
     print_tokens: bool;
+    /// Print out AST.
     print_ast: bool;
+    /// Emit LLVM IR code into file.
     emit_llvm: bool;
+    /// Emit MIR code into file.
     emit_mir: bool;
+    /// Disable generation of native binary.
     no_bin: bool;
+    /// Disable LLVM backend.
     no_llvm: bool;
+    /// Disable analyze pass of code generation.
     no_analyze: bool;
+    /// Check only code syntax.
     syntax_only: bool;
 }
 
