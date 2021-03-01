@@ -315,9 +315,13 @@ Target *target_new(const char *name)
     memset(target, 0, sizeof(Target));
     BL_MAGIC_SET(target);
     tarray_init(&target->files, sizeof(char *));
+    tarray_init(&target->default_lib_paths, sizeof(char *));
+    tarray_init(&target->default_libs, sizeof(char *));
+    tstring_init(&target->default_custom_linker_opt);
+    tstring_init(&target->module_dir);
+    tstring_init(&target->out_dir);
     target->name = strdup(name);
 
-    tstring_init(&target->out_dir);
     set_default_out_dir(&target->out_dir);
 
     // Setup some defaults.
@@ -353,13 +357,21 @@ Target *target_dup(const char *name, const Target *other)
 void target_delete(Target *target)
 {
     char *file;
-    TARRAY_FOREACH(char *, &target->files, file)
-    {
-        free(file);
-    }
+    TARRAY_FOREACH(char *, &target->files, file) free(file);
+
+    char *path;
+    TARRAY_FOREACH(char *, &target->default_lib_paths, path) free(path);
+
+    char *lib;
+    TARRAY_FOREACH(char *, &target->default_libs, lib) free(lib);
+
     tarray_terminate(&target->files);
-    free(target->name);
+    tarray_terminate(&target->default_lib_paths);
+    tarray_terminate(&target->default_libs);
     tstring_terminate(&target->out_dir);
+    tstring_terminate(&target->default_custom_linker_opt);
+    tstring_terminate(&target->module_dir);
+    free(target->name);
     bl_free(target);
 }
 
@@ -384,7 +396,16 @@ void target_add_lib_path(Target *target, const char *path)
     if (!path) return;
     char *tmp = strdup(path);
     if (!tmp) return;
-    // tarray_push(&target->lib_paths, tmp);
+    tarray_push(&target->default_lib_paths, tmp);
+}
+
+void target_add_lib(Target *target, const char *lib)
+{
+    BL_MAGIC_ASSERT(target);
+    if (!lib) return;
+    char *tmp = strdup(lib);
+    if (!tmp) return;
+    tarray_push(&target->default_libs, tmp);
 }
 
 void target_set_output_dir(Target *target, const char *dir)
@@ -394,6 +415,28 @@ void target_set_output_dir(Target *target, const char *dir)
     if (!create_auxiliary_dir_tree_if_not_exist(dir, &target->out_dir)) {
         builder_error("Cannot create output directory '%s'.", dir);
     }
+}
+
+void target_append_linker_options(Target *target, const char *option)
+{
+    BL_MAGIC_ASSERT(target);
+    if (!option) return;
+    tstring_append(&target->default_custom_linker_opt, option);
+    tstring_append(&target->default_custom_linker_opt, " ");
+}
+
+void target_set_module_dir(Target *target, const char *dir, ModuleImportPolicy policy)
+{
+    BL_MAGIC_ASSERT(target);
+    if (!dir) {
+        builder_error("Cannot create module directory.");
+        return;
+    }
+    if (!create_auxiliary_dir_tree_if_not_exist(dir, &target->module_dir)) {
+        builder_error("Cannot create module directory '%s'.", dir);
+        return;
+    }
+    target->module_policy = policy;
 }
 
 Assembly *assembly_new(const Target *target)
@@ -407,7 +450,6 @@ Assembly *assembly_new(const Target *target)
     llvm_init(assembly);
     tarray_init(&assembly->units, sizeof(Unit *));
     tstring_init(&assembly->custom_linker_opt);
-    tstring_init(&assembly->module_dir);
     tarray_init(&assembly->libs, sizeof(NativeLib));
     tarray_init(&assembly->lib_paths, sizeof(char *));
     tarray_init(&assembly->testing.cases, sizeof(struct MirFn *));
@@ -457,6 +499,23 @@ Assembly *assembly_new(const Target *target)
         break;
     }
 
+    // Duplicate default library paths
+    char *lib_path;
+    TARRAY_FOREACH(char *, (TArray *)&target->default_lib_paths, lib_path)
+    {
+        assembly_add_lib_path(assembly, lib_path);
+    }
+
+    // Duplicate default libs
+    char *lib;
+    TARRAY_FOREACH(char *, (TArray *)&target->default_libs, lib)
+    {
+        assembly_add_native_lib(assembly, lib, NULL);
+    }
+
+    // Append custom linker options
+    assembly_append_linker_options(assembly, target->default_custom_linker_opt.data);
+
     return assembly;
 }
 
@@ -483,7 +542,6 @@ void assembly_delete(Assembly *assembly)
     tarray_terminate(&assembly->units);
 
     tstring_terminate(&assembly->custom_linker_opt);
-    tstring_terminate(&assembly->module_dir);
     vm_terminate(&assembly->vm);
     arena_terminate(&assembly->arenas.small_array);
     arena_terminate(&assembly->arenas.array);
@@ -509,16 +567,6 @@ void assembly_append_linker_options(Assembly *assembly, const char *opt)
     if (!opt) return;
     tstring_append(&assembly->custom_linker_opt, opt);
     tstring_append(&assembly->custom_linker_opt, " ");
-}
-
-void assembly_set_module_dir(Assembly *assembly, const char *dir, ModuleImportPolicy policy)
-{
-    BL_ABORT("Fail!");
-    if (!dir) builder_error("Cannot create module directory.");
-    if (!create_auxiliary_dir_tree_if_not_exist(dir, &assembly->module_dir)) {
-        builder_error("Cannot create module directory '%s'.", dir);
-    }
-    // assembly->target->module_policy = policy;
 }
 
 static INLINE bool assembly_has_unit(Assembly *assembly, const u64 hash)
@@ -590,9 +638,10 @@ bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *i
         goto DONE;
     }
 
-    TString *   local_path = get_tmpstr();
-    ConfData *  config     = NULL;
-    const char *module_dir = assembly->module_dir.len > 0 ? assembly->module_dir.data : NULL;
+    TString *     local_path        = get_tmpstr();
+    ConfData *    config            = NULL;
+    const Target *target            = assembly->target;
+    const char *  module_dir        = target->module_dir.len > 0 ? target->module_dir.data : NULL;
     const ModuleImportPolicy policy = assembly->target->module_policy;
     const bool local_found          = module_dir ? module_exist(module_dir, modulepath) : false;
     switch (policy) {

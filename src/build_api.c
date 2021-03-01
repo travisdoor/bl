@@ -44,10 +44,9 @@ BL_EXPORT void __add_unit(Target *target, const char *filepath)
     target_add_file(target, filepath);
 }
 
-BL_EXPORT void __add_lib_path(Assembly *assembly, const char *path)
+BL_EXPORT void __add_lib_path(Target *target, const char *path)
 {
-    BL_ABORT("Unimplemented!");
-    // assembly_add_lib_path(assembly, path);
+    target_add_lib_path(target, path);
 }
 
 BL_EXPORT s32 __compile(Target *target)
@@ -60,16 +59,14 @@ BL_EXPORT s32 __compile_all(void)
     return builder_compile_all();
 }
 
-BL_EXPORT void __link_library(Assembly *assembly, const char *name)
+BL_EXPORT void __link_library(Target *target, const char *name)
 {
-    BL_ABORT("Unimplemented!");
-    // assembly_add_native_lib(assembly, name, NULL);
+    target_add_lib(target, name);
 }
 
-BL_EXPORT void __append_linker_options(Assembly *assembly, const char *opt)
+BL_EXPORT void __append_linker_options(Target *target, const char *opt)
 {
-    BL_ABORT("Unimplemented!");
-    // assembly_append_linker_options(assembly, opt);
+    target_append_linker_options(target, opt);
 }
 
 BL_EXPORT void __set_output_dir(Target *target, const char *dir)
@@ -83,20 +80,18 @@ BL_EXPORT const char *__get_output_dir(Target *target)
     return target->out_dir.len > 0 ? target->out_dir.data : NULL;
 }
 
-BL_EXPORT void __set_module_dir(Assembly *assembly, const char *dir, const s32 policy)
+BL_EXPORT void __set_module_dir(Target *target, const char *dir, const s32 policy)
 {
-    BL_ABORT("Unimplemented!");
-    // assembly_set_module_dir(assembly, dir, policy);
+    target_set_module_dir(target, dir, policy);
 }
 
-BL_EXPORT const char *__get_module_dir(Assembly *assembly)
+BL_EXPORT const char *__get_module_dir(Target *target)
 {
-    BL_ABORT("Unimplemented!");
-    // return assembly->module_dir.len > 0 ? assembly->module_dir.data : NULL;
+    return target->module_dir.len > 0 ? target->module_dir.data : NULL;
 }
 
-BL_EXPORT s32 __get_module_import_policy(Assembly *assembly)
+BL_EXPORT s32 __get_module_import_policy(Target *target)
 {
-    BL_ABORT("Unimplemented!");
-    // return assembly->target->module_policy;
+    BL_MAGIC_ASSERT(target);
+    return target->module_policy;
 }
