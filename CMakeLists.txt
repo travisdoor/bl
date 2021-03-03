@@ -137,8 +137,6 @@ if(UNIX AND NOT APPLE)
   find_package(LLVM 10 REQUIRED)
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   find_package(LLVM 11.1 REQUIRED)
-else()
-  find_package(LLVM 11 REQUIRED)
 endif()
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
