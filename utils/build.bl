@@ -1,6 +1,7 @@
 build :: fn () #build_entry {
     target_bl_make_project();    
     target_c2bl();
+    compile_all();
 }
 
 target_bl_make_project :: fn () {

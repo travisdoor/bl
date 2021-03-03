@@ -63,6 +63,11 @@ env_get :: fn (var: string) string {
     return string_new(out);
 }
 
+/// Sets environment variable.
+env_set :: fn (var: string) #inline {
+    c_putenv(auto var.ptr);
+}
+
 #private
 /// Checks whether `v` has set `flag`.
 is_flag_u64 :: fn (v: u64, flag: u64) bool #inline {

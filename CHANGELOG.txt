@@ -1,12 +1,14 @@
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------
 Use LLD as default linker on Windows and Linux (experimental on macOS).
+Update command line arguments to match unix common naming standarts.
 Improve build system api and remove some obsolete functions.
+Change build pipeline to call compile/compile_all explicitly.
 Fix switch related parser bugs.
 Fix unit mixing when using multithreaded build pipeline.
-Update command line arguments to match unix common naming standarts.
 Add support of shared library output.
 Add cmake build target Utils.
+Add hash into CodeLocation.
 
 0.8.0 - BETA
 ---------------------------------------------------------------------------------------
