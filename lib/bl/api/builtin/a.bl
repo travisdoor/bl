@@ -251,10 +251,12 @@ TestCase :: struct #compiler {
 /// .. literalinclude:: /examples/docs/002.bl
 ///    :language: bl
 CodeLocation :: struct #compiler {
-    /// Name of the source file.
+    /// Full path of the source file.
     file: string;
     /// Line in source file. 
     line: s32;
+    /// File and line string combination hash.
+    hash: u32;
 }
 
 /// Type of print log function.

@@ -2823,12 +2823,15 @@ State emit_instr_call_loc(Context *cnt, MirInstrCallLoc *loc)
 
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
-    const char *filename = loc->call_location->unit->filename;
-    tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, filename, strlen(filename)));
+    const char *filepath = loc->call_location->unit->filepath;
+    tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, filepath, strlen(filepath)));
 
     MirType *line_type = mir_get_struct_elem_type(type, 1);
     tsa_push_LLVMValue(&llvm_vals,
                        LLVMConstInt(get_type(cnt, line_type), (u32)loc->call_location->line, true));
+
+    MirType *hash_type = mir_get_struct_elem_type(type, 2);
+    tsa_push_LLVMValue(&llvm_vals, LLVMConstInt(get_type(cnt, hash_type), (u32)loc->hash, false));
 
     LLVMValueRef llvm_value =
         LLVMConstNamedStruct(get_type(cnt, type), llvm_vals.data, (u32)llvm_vals.size);

@@ -772,6 +772,7 @@ struct MirInstrCallLoc {
 
     struct Location *call_location; // Optional call location
     MirVar *         meta_var;      // Optional meta var.
+    u32              hash;
 };
 
 struct MirInstrUnroll {

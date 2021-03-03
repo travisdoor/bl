@@ -6297,12 +6297,27 @@ AnalyzeResult analyze_instr_call_loc(Context *cnt, MirInstrCallLoc *loc)
     VMStackPtr dest_file      = vm_get_struct_elem_ptr(cnt->assembly, type, dest, 0);
     MirType *  dest_line_type = mir_get_struct_elem_type(type, 1);
     VMStackPtr dest_line      = vm_get_struct_elem_ptr(cnt->assembly, type, dest, 1);
+    MirType *  dest_hash_type = mir_get_struct_elem_type(type, 2);
+    VMStackPtr dest_hash      = vm_get_struct_elem_ptr(cnt->assembly, type, dest, 2);
 
-    const char *filename = loc->call_location->unit->filename;
-    vm_write_string(cnt->vm, dest_file_type, dest_file, filename, strlen(filename));
+    const char *filepath = loc->call_location->unit->filepath;
+    BL_ASSERT(filepath);
+    BL_LOG("Loc: %s", filepath);
+
+    TString *str_hash = get_tmpstr();
+    tstring_append(str_hash, filepath);
+    char str_line[10];
+    snprintf(str_line, TARRAY_SIZE(str_line), "%d", loc->call_location->line);
+    tstring_append(str_hash, str_line);
+    const u32 hash = thash_from_str(str_hash->data);
+    put_tmpstr(str_hash);
+
+    vm_write_string(cnt->vm, dest_file_type, dest_file, filepath, strlen(filepath));
     vm_write_int(dest_line_type, dest_line, (u64)loc->call_location->line);
+    vm_write_int(dest_hash_type, dest_hash, (u64)hash);
 
     loc->meta_var = var;
+    loc->hash     = hash;
     return ANALYZE_RESULT(PASSED, 0);
 }
 

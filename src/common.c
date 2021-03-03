@@ -1,4 +1,4 @@
-//************************************************************************************************
+// =================================================================================================
 // bl
 //
 // File:   common.c
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+// =================================================================================================
 
 #include "common.h"
 #include "assembly.h"
@@ -81,7 +81,7 @@ bool search_source_file(const char *filepath,
         }
     }
 
-    // file has not been found in current working direcotry -> search in PATH
+    // file has not been found in current working directory -> search in PATH
     if (IS_FLAG(flags, SEARCH_FLAG_SYSTEM_PATH)) {
         char *env = strdup(getenv(ENV_PATH));
         char *s   = env;

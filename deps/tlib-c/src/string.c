@@ -133,7 +133,7 @@ void tstring_appendf(TString *str, const char *format, ...)
                 char *s = va_arg(argp, char *);
                 tstring_append(str, s);
             } else {
-                fputs("Unssuported formating character for 'tstring_setf'.", stdout);
+                fputs("Unsupported formatting character for 'tstring_setf'.", stdout);
             }
         } else {
             tstring_append_c(str, *format);

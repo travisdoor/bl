@@ -109,12 +109,7 @@ default_args_call_side_location :: fn () #test {
         test_eq(loc.line, expected_line);
     };
 
-    filename: string;
-    if string_split_by_last(#file, '/', null, &filename) {
-        foo(filename, #line);
-    } else {
-        assert(false);
-    }
+    foo(#file, #line);
 }
 
 default_args_array :: fn () #test {

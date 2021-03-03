@@ -5,8 +5,13 @@ my_bl_function :: fn (count: s32) #export {
     }
 }
 
+another_function :: fn (loc := #call_location) {
+    print("%\n", ^loc);
+}
+
 main :: fn () s32 {
     print("ARGS: %\n", command_line_arguments);
     print("hello!!!\n");
+    another_function();
     return 0;
 }
