@@ -2845,7 +2845,7 @@ State emit_instr_call_loc(Context *cnt, MirInstrCallLoc *loc)
 
 State emit_instr_block(Context *cnt, MirInstrBlock *block)
 {
-    // We don't want to genrate type resolvers for typedefs!!!
+    // We don't want to generate type resolvers for typedefs!!!
     if (!block->emit_llvm) return STATE_PASSED;
 
     MirFn *           fn              = block->owner_fn;

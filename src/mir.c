@@ -6302,7 +6302,6 @@ AnalyzeResult analyze_instr_call_loc(Context *cnt, MirInstrCallLoc *loc)
 
     const char *filepath = loc->call_location->unit->filepath;
     BL_ASSERT(filepath);
-    BL_LOG("Loc: %s", filepath);
 
     TString *str_hash = get_tmpstr();
     tstring_append(str_hash, filepath);
