@@ -135,7 +135,7 @@ endif()
 if(UNIX AND NOT APPLE)
   # There is no LLVM v11 on Ubuntu 18.04 by default.
   find_package(LLVM 10 REQUIRED)
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+else()
   find_package(LLVM 11.1 REQUIRED)
 endif()
 
