@@ -294,11 +294,13 @@ static void entry_run(Assembly *assembly)
     builder.last_script_mode_run_status = assembly->vm_run.last_execution_status;
 }
 
-static void build_entry_run(Assembly *assembly) {
+static void build_entry_run(Assembly *assembly)
+{
     vm_build_entry_run(assembly);
 }
 
-static void tests_run(Assembly *assembly) {
+static void tests_run(Assembly *assembly)
+{
     vm_tests_run(assembly);
     builder.test_failc = assembly->vm_run.last_execution_status;
 }
@@ -365,8 +367,10 @@ static int compile(Assembly *assembly)
     s32     state       = COMPILE_OK;
     builder.total_lines = 0;
 
-    builder_note(
-        "Compile assembly: %s [%s]", assembly->target->name, opt_to_str(assembly->target->opt));
+    if (assembly->target->kind != ASSEMBLY_BUILD_PIPELINE) {
+        builder_note(
+            "Compile assembly: %s [%s]", assembly->target->name, opt_to_str(assembly->target->opt));
+    }
 
     UnitStageFn     unit_pipeline[5];
     AssemblyStageFn assembly_pipeline[14];

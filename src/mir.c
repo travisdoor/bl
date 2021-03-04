@@ -9008,6 +9008,13 @@ static void ast_decl_fn(Context *cnt, Ast *ast_fn)
         BL_MAGIC_ASSERT(fn);
         fn->emit_llvm               = true;
         cnt->assembly->vm_run.entry = fn;
+        if (scope_is_subtree_of_kind(ast_name->owner_scope, SCOPE_PRIVATE)) {
+            builder_msg(BUILDER_MSG_ERROR,
+                        ERR_UNEXPECTED_DIRECTIVE,
+                        ast_name->location,
+                        BUILDER_CUR_WORD,
+                        "Main function cannot be declared in private scope.");
+        }
     }
     ID *   id    = &ast_name->data.ident.id;
     Scope *scope = ast_name->owner_scope;

@@ -1,17 +1,4 @@
-/// Test documentation!!!
-my_bl_function :: fn (count: s32) #export {
-    loop i := 0; i < count; i += 1 {
-        print("Hello from foo library!!!\n");
-    }
-}
-
-another_function :: fn (loc := #call_location) {
-    print("%\n", ^loc);
-}
-
+//#load "foo.bl"
 main :: fn () s32 {
-    print("ARGS: %\n", command_line_arguments);
-    print("hello!!!\n");
-    another_function();
     return 0;
 }
