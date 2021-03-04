@@ -1,0 +1,5 @@
+#scope FooModule
+
+hello :: fn () {
+    print("Hello!");
+}
