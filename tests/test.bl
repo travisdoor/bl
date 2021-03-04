@@ -1,4 +1,11 @@
 //#load "foo.bl"
+
+
 main :: fn () s32 {
     return 0;
+}
+
+#private
+
+foo :: fn () #extern {
 }
