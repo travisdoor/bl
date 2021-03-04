@@ -7,5 +7,5 @@ main :: fn () s32 {
 
 #private
 
-foo :: fn () #extern {
+foo :: fn () #export {
 }

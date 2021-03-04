@@ -8698,6 +8698,14 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
     // FUNCTION BODY
     // External or intrinsic function declaration has no body so we can skip body generation.
     if (IS_FLAG(flags, FLAG_EXTERN) || IS_FLAG(flags, FLAG_INTRINSIC)) {
+        if (ast_block) {
+            builder_msg(BUILDER_MSG_ERROR,
+                        ERR_UNEXPECTED_FUNCTION_BODY,
+                        ast_block->location,
+                        BUILDER_CUR_WORD,
+                        "Unexpected body, for %s function.",
+                        IS_FLAG(flags, FLAG_EXTERN) ? "external" : "intrinsic");
+        }
         goto FINISH;
     }
 
@@ -9016,6 +9024,16 @@ static void ast_decl_fn(Context *cnt, Ast *ast_fn)
                         "Main function cannot be declared in private scope.");
         }
     }
+
+    if (IS_FLAG(flags, FLAG_EXPORT) &&
+        scope_is_subtree_of_kind(ast_name->owner_scope, SCOPE_PRIVATE)) {
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_UNEXPECTED_DIRECTIVE,
+                    ast_name->location,
+                    BUILDER_CUR_WORD,
+                    "Exported function cannot be declared in private scope.");
+    }
+
     ID *   id    = &ast_name->data.ident.id;
     Scope *scope = ast_name->owner_scope;
     register_symbol(cnt, ast_name, id, scope, is_compiler);
