@@ -1,0 +1,5 @@
+#scope Foo
+
+scoped2 :: fn () {
+    print("%:%\n", #file, #line);
+}
