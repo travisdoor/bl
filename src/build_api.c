@@ -87,6 +87,7 @@ BL_EXPORT void __set_module_dir(Target *target, const char *dir, const s32 polic
 
 BL_EXPORT const char *__get_module_dir(Target *target)
 {
+    BL_MAGIC_ASSERT(target);
     return target->module_dir.len > 0 ? target->module_dir.data : NULL;
 }
 

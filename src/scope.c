@@ -140,6 +140,8 @@ const char *scope_kind_name(const Scope *scope)
         return "Struct";
     case SCOPE_TYPE_ENUM:
         return "Enum";
+    case SCOPE_NAMED:
+        return "Named";
     }
 
     return "<INVALID>";

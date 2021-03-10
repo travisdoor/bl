@@ -34,6 +34,7 @@ TSMALL_ARRAY_TYPE(AstPtr64, Ast *, 64);
 TSMALL_ARRAY_TYPE(ScopePtr64, Scope *, 64);
 
 #define EXPECTED_PRIVATE_SCOPE_COUNT 256
+#define EXPECTED_NAMED_SCOPE_COUNT 4094
 
 #define PARSE_ERROR(kind, tok, pos, format, ...)                                                   \
     {                                                                                              \
@@ -89,6 +90,7 @@ typedef enum {
     HD_TEST_FN     = 1 << 18,
     HD_IMPORT      = 1 << 19,
     HD_EXPORT      = 1 << 20,
+    HD_SCOPE       = 1 << 21,
 } HashDirective;
 
 typedef struct {
@@ -103,6 +105,7 @@ typedef struct {
     // tmps
     bool     inside_loop;
     Scope *  current_private_scope;
+    Scope *  current_named_scope;
     Ast *    current_docs;
     TString *unit_docs_tmp;
 } Context;
@@ -716,6 +719,60 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         SCOPE_SET(cnt, scope);
 
         return ast_create_node(cnt->ast_arena, AST_PRIVATE, tok_directive, SCOPE_GET(cnt));
+    }
+
+    if (strcmp(directive, "scope") == 0) {
+        set_satisfied(HD_SCOPE);
+        if (IS_NOT_FLAG(expected_mask, HD_SCOPE)) {
+            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+                        tok_directive,
+                        BUILDER_CUR_WORD,
+                        "Unexpected directive. Scope name can be specified only in global scope.");
+            return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
+        }
+        Ast *ident = parse_ident(cnt);
+        if (!ident) {
+            Token *tok_err = tokens_peek(cnt->tokens);
+            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+                        tok_err,
+                        BUILDER_CUR_WORD,
+                        "Expected scope name after #scope directive.");
+            return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
+        }
+        Ast *scope = ast_create_node(cnt->ast_arena, AST_SCOPE, tok_directive, SCOPE_GET(cnt));
+        scope->data.scope.ident = ident;
+        ID *id                  = &ident->data.ident.id;
+
+        // Perform lookup of named scope here, in case named scope already exist in global scope
+        // we can reuse it!.
+        ScopeEntry *scope_entry = scope_lookup(SCOPE_GET(cnt), id, false, false, NULL);
+        if (scope_entry) {
+            BL_LOG("Reuse scope from other file!");
+            BL_ASSERT(scope_entry->kind == SCOPE_ENTRY_NAMESPACE &&
+                      "Found scope entry is expected to be Namespace!");
+            BL_ASSERT(scope_entry->data.scope && scope_entry->data.scope->kind == SCOPE_NAMED);
+        } else {
+            BL_LOG("Create new named scope '%s'.", id->str);
+            scope_entry = scope_create_entry(
+                &cnt->assembly->arenas.scope, SCOPE_ENTRY_NAMESPACE, id, scope, false);
+            scope_insert(SCOPE_GET(cnt), scope_entry);
+            scope_entry->data.scope = scope_create(cnt->scope_arenas,
+                                                   SCOPE_NAMED,
+                                                   SCOPE_GET(cnt),
+                                                   EXPECTED_NAMED_SCOPE_COUNT,
+                                                   &tok_directive->location);
+        }
+        if (cnt->current_named_scope) {
+            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+                        tok_directive,
+                        BUILDER_CUR_WORD,
+                        "Unexpected directive. File already contains named scope block.");
+            return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
+        }
+        BL_ASSERT(scope_entry->data.scope);
+        cnt->current_named_scope = scope_entry->data.scope;
+        SCOPE_SET(cnt, cnt->current_named_scope);
+        return scope;
     }
 
 INVALID:
@@ -2610,7 +2667,7 @@ NEXT:
     }
 
     // load, import, link, test, private - enabled in global scope
-    const int enabled_hd = HD_LOAD | HD_LINK | HD_PRIVATE | HD_IMPORT;
+    const int enabled_hd = HD_LOAD | HD_LINK | HD_PRIVATE | HD_IMPORT | HD_SCOPE;
     if ((tmp = parse_hash_directive(cnt, enabled_hd, NULL))) {
         tarray_push(ublock->data.ublock.nodes, tmp);
         goto NEXT;

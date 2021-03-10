@@ -3,6 +3,7 @@
 	AST_LOAD,
 	AST_IMPORT,
 	AST_PRIVATE,
+	AST_SCOPE,
 	AST_LINK,
 	AST_IDENT,
 	AST_UBLOCK,
@@ -68,6 +69,7 @@
 
 #ifdef GEN_AST_DATA
 	struct AstPrivate        priv;
+	struct AstScope          scope;
 	struct AstLoad           load;
 	struct AstImport         import;
 	struct AstLink           link;

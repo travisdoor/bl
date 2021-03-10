@@ -1,5 +1,15 @@
-#scope FooModule
-
-hello :: fn () {
-    print("Hello!");
+non_scoped :: fn () {
+    print("%:%\n", #file, #line);
 }
+
+#scope Foo
+
+scoped1 :: fn () {
+    print("%:%\n", #file, #line);
+}
+
+
+// parse scope directive
+// create new scope or reuse already existing one in assembly context
+// linkage name as 'Foo@hello'
+// every . operator must be distinguished during analyze process

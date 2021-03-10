@@ -51,6 +51,7 @@ typedef enum ScopeEntryKind {
     SCOPE_ENTRY_FN,
     SCOPE_ENTRY_MEMBER,
     SCOPE_ENTRY_VARIANT,
+    SCOPE_ENTRY_NAMESPACE,
 } ScopeEntryKind;
 
 typedef union ScopeEntryData {
@@ -59,6 +60,7 @@ typedef union ScopeEntryData {
     struct MirVar *    var;
     struct MirMember * member;
     struct MirVariant *variant;
+    struct Scope *     scope;
 } ScopeEntryData;
 
 typedef struct ScopeEntry {
@@ -79,6 +81,7 @@ typedef enum ScopeKind {
     SCOPE_LEXICAL,
     SCOPE_TYPE_STRUCT,
     SCOPE_TYPE_ENUM,
+    SCOPE_NAMED,
 } ScopeKind;
 
 typedef struct Scope {

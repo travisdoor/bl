@@ -1,11 +1,10 @@
-//#load "foo.bl"
-
+#load "foo.bl"
+#load "bar.bl"
 
 main :: fn () s32 {
+    non_scoped();
+    //Foo.hello();
     return 0;
 }
 
-#private
 
-foo :: fn () #export {
-}

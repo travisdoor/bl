@@ -350,7 +350,7 @@ static void setup_assembly_pipeline(Assembly *assembly, AssemblyStageFn *stages,
     if (t->run_tests) STAGE(index, tests_run);
     if (t->emit_mir) STAGE(index, &mir_writer_run);
     if (t->no_analyze) return;
-    if (t->no_analyze) return;
+    if (t->no_llvm) return;
     if (t->kind == ASSEMBLY_BUILD_PIPELINE) return;
     STAGE(index, &ir_run);
     STAGE(index, &ir_opt_run);

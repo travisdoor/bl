@@ -79,6 +79,7 @@ static void print_load(Ast *load, s32 pad, FILE *stream);
 static void print_import(Ast *import, s32 pad, FILE *stream);
 static void print_link(Ast *link, s32 pad, FILE *stream);
 static void print_private(Ast *private, s32 pad, FILE *stream);
+static void print_scope(Ast *scope, s32 pad, FILE *stream);
 static void print_call_loc(Ast *call_loc, s32 pad, FILE *stream);
 static void print_block(Ast *block, s32 pad, FILE *stream);
 static void print_unrecheable(Ast *unr, s32 pad, FILE *stream);
@@ -161,6 +162,13 @@ void print_link(Ast *link, s32 pad, FILE *stream)
 void print_private(Ast *private, s32 pad, FILE *stream)
 {
     print_head(private, pad, stream);
+}
+
+void print_scope(Ast *scope, s32 pad, FILE *stream)
+{
+    print_head(scope, pad, stream);
+    Ast *ident = scope->data.scope.ident;
+    if (ident) fprintf(stream, "'%s' ", ident->data.ident.id.str);
 }
 
 void print_call_loc(Ast *call_loc, s32 pad, FILE *stream)
@@ -540,6 +548,10 @@ void print_node(Ast *node, s32 pad, FILE *stream)
 
     case AST_PRIVATE:
         print_private(node, pad, stream);
+        break;
+
+    case AST_SCOPE:
+        print_scope(node, pad, stream);
         break;
 
     case AST_CALL_LOC:
