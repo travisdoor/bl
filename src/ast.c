@@ -103,6 +103,8 @@ const char *ast_get_name(const Ast *n)
         return "Block";
     case AST_DOCS:
         return "Docs";
+    case AST_REF:
+        return "Ref";
     case AST_UNREACHABLE:
         return "Unreachable";
     case AST_CALL_LOC:
@@ -131,8 +133,6 @@ const char *ast_get_name(const Ast *n)
         return "DeclArg";
     case AST_DECL_VARIANT:
         return "DeclVariant";
-    case AST_TYPE_REF:
-        return "TypeRef";
     case AST_TYPE_ARR:
         return "TypeArr";
     case AST_TYPE_SLICE:
@@ -151,16 +151,12 @@ const char *ast_get_name(const Ast *n)
         return "TypeVargs";
     case AST_TYPE_FN_GROUP:
         return "TypeFnGroup";
-    case AST_EXPR_REF:
-        return "ExprRef";
     case AST_EXPR_CAST:
         return "ExprCast";
     case AST_EXPR_BINOP:
         return "ExprBinop";
     case AST_EXPR_CALL:
         return "ExprCall";
-    case AST_EXPR_MEMBER:
-        return "ExprMember";
     case AST_EXPR_ELEM:
         return "ExprElem";
     case AST_EXPR_SIZEOF:

@@ -51,7 +51,7 @@ typedef enum ScopeEntryKind {
     SCOPE_ENTRY_FN,
     SCOPE_ENTRY_MEMBER,
     SCOPE_ENTRY_VARIANT,
-    SCOPE_ENTRY_NAMESPACE,
+    SCOPE_ENTRY_NAMED_SCOPE,
 } ScopeEntryKind;
 
 typedef union ScopeEntryData {
@@ -92,13 +92,24 @@ typedef struct Scope {
     struct Location *location; // Optional scope start location in the source file (ex.:
                                // function body  starting with '{'). Note: global scope has no
                                // location data.
+    struct ScopeSyncImpl *sync;
 } Scope;
 
 void scope_arenas_init(ScopeArenas *arenas);
 void scope_arenas_terminate(ScopeArenas *arenas);
 
-Scope *
-scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, usize size, struct Location *loc);
+#define scope_create(arenas, kind, parent, size, loc)                                              \
+    _scope_create(arenas, kind, parent, size, loc, false);
+
+#define scope_create_safe(arenas, kind, parent, size, loc)                                         \
+    _scope_create(arenas, kind, parent, size, loc, true);
+
+Scope *_scope_create(ScopeArenas *    arenas,
+                     ScopeKind        kind,
+                     Scope *          parent,
+                     usize            size,
+                     struct Location *loc,
+                     const bool       safe);
 
 ScopeEntry *scope_create_entry(ScopeArenas *  arenas,
                                ScopeEntryKind kind,
@@ -108,6 +119,9 @@ ScopeEntry *scope_create_entry(ScopeArenas *  arenas,
 
 void scope_insert(Scope *scope, ScopeEntry *entry);
 
+void scope_lock(Scope *scope);
+void scope_unlock(Scope *scope);
+
 ScopeEntry *
 scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_global, bool *out_of_fn_local_scope);
 
@@ -116,7 +130,8 @@ const char *scope_kind_name(const Scope *scope);
 
 static INLINE bool scope_is_global(const Scope *scope)
 {
-    return scope->kind == SCOPE_GLOBAL || scope->kind == SCOPE_PRIVATE;
+    return scope->kind == SCOPE_GLOBAL || scope->kind == SCOPE_PRIVATE ||
+           scope->kind == SCOPE_NAMED;
 }
 
 #endif

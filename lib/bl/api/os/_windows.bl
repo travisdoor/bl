@@ -29,6 +29,7 @@
 #import "std/string"
 #load "windows/winapi.bl"
 #load "windows/io.bl"
+#load "windows/libc.bl"
 #load "posix/signal.bl"
 #load "std/error.bl"
 

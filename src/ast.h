@@ -128,6 +128,11 @@ struct AstIdent {
     Ast *next;
 };
 
+struct AstRef {
+    Ast *ident;
+    Ast *next;
+};
+
 struct AstUBlock {
     TArray *     nodes;
     struct Unit *unit;
@@ -251,10 +256,6 @@ struct AstTypeVargs {
     Ast *type;
 };
 
-struct AstTypeRef {
-    Ast *ident;
-};
-
 struct AstExprType {
     Ast *type;
 };
@@ -302,10 +303,6 @@ struct AstExprLitBool {
     bool val;
 };
 
-struct AstExprRef {
-    Ast *ident;
-};
-
 struct AstExprCast {
     Ast *type;
     Ast *next;
@@ -322,12 +319,6 @@ struct AstExprCall {
     Ast *               ref;
     TSmallArray_AstPtr *args;
     bool                run;
-};
-
-struct AstExprMember {
-    Ast *ident;
-    Ast *next;
-    s32  i;
 };
 
 struct AstExprElem {
@@ -389,38 +380,14 @@ struct Ast {
 
 void ast_arena_init(Arena *arena);
 void ast_arena_terminate(Arena *arena);
-void ast_small_array_arena_init(struct Arena *arena);
 Ast *ast_create_node(struct Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope);
 const char *ast_binop_to_str(BinopKind op);
 const char *ast_unop_to_str(UnopKind op);
 const char *ast_get_name(const Ast *n);
 
-static INLINE bool ast_binop_is_assign(BinopKind op)
-{
-    return op >= BINOP_ASSIGN && op <= BINOP_MOD_ASSIGN;
-}
-
 static INLINE bool ast_binop_is_logic(BinopKind op)
 {
     return op >= BINOP_EQ && op <= BINOP_LOGIC_OR;
-}
-
-static INLINE bool ast_is_expr(Ast *node)
-{
-    BL_ASSERT(node);
-    return node->kind > _AST_EXPR_FIRST && node->kind < _AST_EXPR_LAST;
-}
-
-static INLINE bool ast_is_decl(Ast *node)
-{
-    BL_ASSERT(node);
-    return node->kind > _AST_DECL_FIRST && node->kind < _AST_DECL_LAST;
-}
-
-static INLINE bool ast_is_type(Ast *node)
-{
-    BL_ASSERT(node);
-    return node->kind > _AST_TYPE_FIRST && node->kind < _AST_TYPE_LAST;
 }
 
 #endif

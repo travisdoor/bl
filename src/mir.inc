@@ -100,6 +100,7 @@ union __INSTR_T {\
 
 #ifdef GEN_BUILTIN_NAMES
 	MIR_BUILTIN_ID_TYPE_TYPE,
+	MIR_BUILTIN_ID_TYPE_NAMED_SCOPE,
 	MIR_BUILTIN_ID_TYPE_S8,
 	MIR_BUILTIN_ID_TYPE_S16,
 	MIR_BUILTIN_ID_TYPE_S32,
@@ -161,6 +162,7 @@ union __INSTR_T {\
 
 #ifdef GEN_BUILTIN_IDS
     {.str = "type",                  .hash = 0},
+    {.str = "scope",                 .hash = 0},
     {.str = "s8",                    .hash = 0},
     {.str = "s16",                   .hash = 0},
     {.str = "s32",                   .hash = 0},

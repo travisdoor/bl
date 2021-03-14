@@ -42,8 +42,6 @@
 
 #define EXPECTED_GSCOPE_COUNT 4094
 #define EXPECTED_ARRAY_COUNT 256
-#define EXPECTED_UNIT_COUNT 512
-#define EXPECTED_LINK_COUNT 32
 
 union _SmallArrays {
     TSmallArray_TypePtr       type;
@@ -467,7 +465,7 @@ Assembly *assembly_new(const Target *target)
                EXPECTED_ARRAY_COUNT,
                (ArenaElemDtor)small_array_dtor);
     assembly->gscope =
-        scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT, NULL);
+        scope_create_safe(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT, NULL);
     dl_init(assembly);
     mir_init(assembly);
 

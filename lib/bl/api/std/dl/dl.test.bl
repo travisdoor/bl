@@ -11,27 +11,29 @@ main :: fn () s32 {
 
 #private
 dl_open_test1 :: fn () #test {
-    lib, err :: dl_open("foobar");
+    lib, err :: DL.open("foobar");
     test_not_ok(err);
 }
 
 dl_open_test2 :: fn () #test {
-    lib, err :: dl_open();
-    defer dl_close(lib);
+    lib, err :: DL.open();
+    defer DL.close(lib);
     test_ok(err);
     test_not_null(lib);
 }
 
 dl_sym_test1 :: fn () #test {
-    lib, err :: dl_open();
-    defer dl_close(lib);
-    sym, err :: dl_sym(lib, "foobar");
-    test_not_ok(err);    
+    lib, err1 :: DL.open();
+    defer DL.close(lib);
+    sym, err2 :: DL.sym(lib, "foobar");
+    test_not_ok(err2);    
 }
 
+/*
 dl_sym_test2 :: fn () #test {
-    lib, err :: dl_open();
-    defer dl_close(lib);
-    sym, err :: dl_sym(lib, "malloc");
-    test_ok(err);    
+    lib, err1 :: DL.open();
+    defer DL.close(lib);
+    sym, err2 :: DL.sym(lib, "main");
+    test_ok(err2);    
 }
+*/

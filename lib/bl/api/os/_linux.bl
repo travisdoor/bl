@@ -28,11 +28,11 @@
 
 #import "std/string"
 
-#load "os/linux/errno.bl"
-#load "os/posix/signal.bl"
-#load "os/posix/error.bl"
-#load "os/posix/unistd.bl"
-#load "std/libc.bl"
+#load "linux/errno.bl"
+#load "posix/signal.bl"
+#load "posix/error.bl"
+#load "posix/unistd.bl"
+#load "posix/libc.bl"
 #load "std/error.bl"
 
 OS_KIND :: OSKind.Linux;

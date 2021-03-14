@@ -277,6 +277,7 @@ static void type_init_id(Context *cnt, MirType *type);
 // Create new type. The 'user_id' is optional.
 static MirType *create_type(Context *cnt, MirTypeKind kind, ID *user_id);
 static MirType *create_type_type(Context *cnt);
+static MirType *create_type_named_scope(Context *cnt);
 static MirType *create_type_null(Context *cnt, MirType *base_type);
 static MirType *create_type_void(Context *cnt);
 static MirType *create_type_bool(Context *cnt);
@@ -595,7 +596,7 @@ static MirInstr *ast_decl_entity(Context *cnt, Ast *entity);
 static MirInstr *ast_decl_arg(Context *cnt, Ast *arg);
 static MirInstr *ast_decl_member(Context *cnt, Ast *arg);
 static MirInstr *ast_decl_variant(Context *cnt, Ast *variant);
-static MirInstr *ast_type_ref(Context *cnt, Ast *type_ref);
+static MirInstr *ast_ref(Context *cnt, Ast *ref);
 static MirInstr *ast_type_struct(Context *cnt, Ast *type_struct);
 static MirInstr *ast_type_fn(Context *cnt, Ast *type_fn);
 static MirInstr *ast_type_fn_group(Context *cnt, Ast *group);
@@ -613,10 +614,8 @@ static MirInstr *ast_expr_test_cases(Context *cnt, Ast *tc);
 static MirInstr *ast_expr_alignof(Context *cnt, Ast *szof);
 static MirInstr *ast_expr_type(Context *cnt, Ast *type);
 static MirInstr *ast_expr_deref(Context *cnt, Ast *deref);
-static MirInstr *ast_expr_ref(Context *cnt, Ast *ref);
 static MirInstr *ast_expr_call(Context *cnt, Ast *call);
 static MirInstr *ast_expr_elem(Context *cnt, Ast *elem);
-static MirInstr *ast_expr_member(Context *cnt, Ast *member);
 static MirInstr *ast_expr_null(Context *cnt, Ast *nl);
 static MirInstr *ast_expr_lit_int(Context *cnt, Ast *expr);
 static MirInstr *ast_expr_lit_float(Context *cnt, Ast *expr);
@@ -804,6 +803,7 @@ static INLINE bool can_mutate_comptime_to_const(MirInstr *instr)
     case MIR_TYPE_BOOL:
     case MIR_TYPE_ENUM:
     case MIR_TYPE_STRING:
+    case MIR_TYPE_NAMED_SCOPE:
         return true;
         break;
 
@@ -1387,6 +1387,7 @@ void type_init_id(Context *cnt, MirType *type)
     case MIR_TYPE_VOID:
     case MIR_TYPE_TYPE:
     case MIR_TYPE_REAL:
+    case MIR_TYPE_NAMED_SCOPE:
     case MIR_TYPE_INT: {
         BL_ASSERT(type->user_id);
         tstring_append(tmp, type->user_id->str);
@@ -1802,6 +1803,17 @@ MirType *create_type_type(Context *cnt)
     tmp->alignment        = __alignof(MirType *);
     tmp->size_bits        = sizeof(MirType *) * 8;
     tmp->store_size_bytes = sizeof(MirType *);
+    type_init_id(cnt, tmp);
+    return tmp;
+}
+
+MirType *create_type_named_scope(Context *cnt)
+{
+    MirType *tmp =
+        create_type(cnt, MIR_TYPE_NAMED_SCOPE, &builtin_ids[MIR_BUILTIN_ID_TYPE_NAMED_SCOPE]);
+    tmp->alignment        = __alignof(Scope *);
+    tmp->size_bits        = sizeof(Scope *) * 8;
+    tmp->store_size_bytes = sizeof(Scope *);
     type_init_id(cnt, tmp);
     return tmp;
 }
@@ -2391,9 +2403,7 @@ void type_init_llvm_enum(Context *cnt, MirType *type)
 static INLINE void push_var(Context *cnt, MirVar *var)
 {
     BL_ASSERT(var);
-
     if (var->is_global) return;
-
     MirFn *fn = ast_current_fn(cnt);
     BL_ASSERT(fn);
     tarray_push(fn->variables, var);
@@ -4654,6 +4664,27 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
     BL_ASSERT(target_ptr);
     MirType *target_type = target_ptr->value.type;
 
+    MirValueAddressMode target_addr_mode = target_ptr->value.addr_mode;
+    Ast *               ast_member_ident = member_ptr->member_ident;
+
+    if (target_type->kind == MIR_TYPE_NAMED_SCOPE) {
+        Scope *scope = MIR_CEV_READ_AS(Scope *, &target_ptr->value);
+        BL_ASSERT(scope);
+        BL_ASSERT(scope->kind == SCOPE_NAMED && "Expected named scope.");
+        ID *  rid         = &ast_member_ident->data.ident.id;
+        Unit *parent_unit = ast_member_ident->location->unit;
+        BL_ASSERT(rid);
+        BL_ASSERT(parent_unit);
+        MirInstrDeclRef *decl_ref =
+            (MirInstrDeclRef *)mutate_instr(&member_ptr->base, MIR_INSTR_DECL_REF);
+        decl_ref->scope                  = scope;
+        decl_ref->scope_entry            = NULL;
+        decl_ref->accept_incomplete_type = false;
+        decl_ref->parent_unit            = parent_unit;
+        decl_ref->rid                    = rid;
+        return ANALYZE_RESULT(POSTPONE, 0);
+    }
+
     if (target_type->kind != MIR_TYPE_PTR) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_INVALID_TYPE,
@@ -4662,9 +4693,6 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
                     "Expected structure type.");
         return ANALYZE_RESULT(FAILED, 0);
     }
-
-    MirValueAddressMode target_addr_mode = target_ptr->value.addr_mode;
-    Ast *               ast_member_ident = member_ptr->member_ident;
 
     target_type = mir_deref_type(target_type);
 
@@ -4960,6 +4988,14 @@ AnalyzeResult analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
     if (!is_complete_type(cnt, type_info->rtti_type)) {
         return ANALYZE_RESULT(POSTPONE, 0);
     }
+    if (type_info->rtti_type->kind == MIR_TYPE_NAMED_SCOPE) {
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_INVALID_TYPE,
+                    type_info->expr->node->location,
+                    BUILDER_CUR_WORD,
+                    "No type info available for scope type.");
+        return ANALYZE_RESULT(FAILED, 0);
+    }
     rtti_gen(cnt, type_info->rtti_type);
     type_info->base.value.type = cnt->builtin_types->t_TypeInfo_ptr;
 
@@ -5037,6 +5073,13 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 
     case SCOPE_ENTRY_TYPE: {
         ref->base.value.type        = cnt->builtin_types->t_type;
+        ref->base.value.is_comptime = true;
+        ref->base.value.addr_mode   = MIR_VAM_RVALUE;
+        break;
+    }
+
+    case SCOPE_ENTRY_NAMED_SCOPE: {
+        ref->base.value.type        = cnt->builtin_types->t_scope;
         ref->base.value.is_comptime = true;
         ref->base.value.addr_mode   = MIR_VAM_RVALUE;
         break;
@@ -8615,20 +8658,6 @@ MirInstr *ast_expr_call(Context *cnt, Ast *call)
     return append_instr_call(cnt, call, callee, args);
 }
 
-MirInstr *ast_expr_ref(Context *cnt, Ast *ref)
-{
-    Ast *ident = ref->data.expr_ref.ident;
-    BL_ASSERT(ident);
-    BL_ASSERT(ident->kind == AST_IDENT);
-
-    Scope *scope = ident->owner_scope;
-    Unit * unit  = ident->location->unit;
-    BL_ASSERT(unit);
-    BL_ASSERT(scope);
-
-    return append_instr_decl_ref(cnt, ref, unit, &ident->data.ident.id, scope, NULL);
-}
-
 MirInstr *ast_expr_elem(Context *cnt, Ast *elem)
 {
     Ast *ast_arr   = elem->data.expr_elem.next;
@@ -8639,18 +8668,6 @@ MirInstr *ast_expr_elem(Context *cnt, Ast *elem)
     MirInstr *index   = ast(cnt, ast_index);
 
     return append_instr_elem_ptr(cnt, elem, arr_ptr, index);
-}
-
-MirInstr *ast_expr_member(Context *cnt, Ast *member)
-{
-    Ast *ast_next = member->data.expr_member.next;
-    // BL_ASSERT(ast_next);
-
-    MirInstr *target = ast(cnt, ast_next);
-    // BL_ASSERT(target);
-
-    return append_instr_member_ptr(
-        cnt, member, target, member->data.expr_member.ident, NULL, MIR_BUILTIN_ID_NONE);
 }
 
 MirInstr *ast_expr_lit_fn(Context *        cnt,
@@ -9285,18 +9302,20 @@ MirInstr *ast_decl_variant(Context *cnt, Ast *variant)
     return append_instr_decl_variant(cnt, ast_name, value);
 }
 
-MirInstr *ast_type_ref(Context *cnt, Ast *type_ref)
+MirInstr *ast_ref(Context *cnt, Ast *ref)
 {
-    Ast *ident = type_ref->data.type_ref.ident;
+    Ast *ident = ref->data.ref.ident;
+    Ast *next  = ref->data.ref.next;
     BL_ASSERT(ident);
-
     Scope *scope = ident->owner_scope;
     Unit * unit  = ident->location->unit;
     BL_ASSERT(unit);
     BL_ASSERT(scope);
-
-    MirInstr *ref = append_instr_decl_ref(cnt, type_ref, unit, &ident->data.ident.id, scope, NULL);
-    return ref;
+    if (next) {
+        MirInstr *target = ast(cnt, next);
+        return append_instr_member_ptr(cnt, ref, target, ident, NULL, MIR_BUILTIN_ID_NONE);
+    }
+    return append_instr_decl_ref(cnt, ref, unit, &ident->data.ident.id, scope, NULL);
 }
 
 MirInstr *ast_type_fn(Context *cnt, Ast *type_fn)
@@ -9592,8 +9611,8 @@ MirInstr *ast(Context *cnt, Ast *node)
         return ast_decl_member(cnt, node);
     case AST_DECL_VARIANT:
         return ast_decl_variant(cnt, node);
-    case AST_TYPE_REF:
-        return ast_type_ref(cnt, node);
+    case AST_REF:
+        return ast_ref(cnt, node);
     case AST_TYPE_STRUCT:
         return ast_type_struct(cnt, node);
     case AST_TYPE_FN:
@@ -9642,16 +9661,12 @@ MirInstr *ast(Context *cnt, Ast *node)
         return ast_expr_binop(cnt, node);
     case AST_EXPR_UNARY:
         return ast_expr_unary(cnt, node);
-    case AST_EXPR_REF:
-        return ast_expr_ref(cnt, node);
     case AST_EXPR_CALL:
         return ast_expr_call(cnt, node);
     case AST_EXPR_ELEM:
         return ast_expr_elem(cnt, node);
     case AST_EXPR_NULL:
         return ast_expr_null(cnt, node);
-    case AST_EXPR_MEMBER:
-        return ast_expr_member(cnt, node);
     case AST_EXPR_TYPE:
         return ast_expr_type(cnt, node);
     case AST_EXPR_COMPOUND:
@@ -9972,6 +9987,7 @@ void builtin_inits(Context *cnt)
 
     struct BuiltinTypes *bt = cnt->builtin_types;
     bt->t_type              = create_type_type(cnt);
+    bt->t_scope             = create_type_named_scope(cnt);
     bt->t_void              = create_type_void(cnt);
 
     bt->t_s8     = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S8], 8, true);

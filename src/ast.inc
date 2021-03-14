@@ -12,12 +12,11 @@
 	AST_TAGS,
 	AST_CALL_LOC,
 	AST_DOCS,
-	_AST_DECL_FIRST,
+    AST_REF,
 	AST_DECL_ENTITY,
 	AST_DECL_MEMBER,
 	AST_DECL_ARG,
 	AST_DECL_VARIANT,
-	_AST_DECL_LAST,
 	AST_STMT_RETURN,
 	AST_STMT_IF,
 	AST_STMT_LOOP,
@@ -26,8 +25,6 @@
 	AST_STMT_DEFER,
 	AST_STMT_SWITCH,
 	AST_STMT_CASE,
-	_AST_TYPE_FIRST,
-	AST_TYPE_REF,
 	AST_TYPE_ARR,
 	AST_TYPE_SLICE,
 	AST_TYPE_DYNARR,
@@ -37,14 +34,10 @@
 	AST_TYPE_PTR,
 	AST_TYPE_VARGS,
 	AST_TYPE_FN_GROUP,
-	_AST_TYPE_LAST,
-	_AST_EXPR_FIRST,
 	AST_EXPR_TYPE,
-	AST_EXPR_REF,
 	AST_EXPR_CAST,
 	AST_EXPR_BINOP,
 	AST_EXPR_CALL,
-	AST_EXPR_MEMBER,
 	AST_EXPR_ELEM,
 	AST_EXPR_SIZEOF,
 	AST_EXPR_ALIGNOF,
@@ -64,7 +57,6 @@
 	AST_EXPR_LIT_STRING,
 	AST_EXPR_LIT_BOOL,
 	AST_EXPR_LIT_FN_GROUP,
-	_AST_EXPR_LAST,
 #endif
 
 #ifdef GEN_AST_DATA
@@ -79,6 +71,7 @@
 	struct AstTags           tags;
 	struct AstCallLoc        call_loc;
 	struct AstDocs           docs;
+	struct AstRef            ref;
 	struct AstStmtReturn     stmt_return;
 	struct AstStmtIf         stmt_if;
 	struct AstStmtLoop       stmt_loop;
@@ -90,7 +83,6 @@
 	struct AstDeclArg        decl_arg;
 	struct AstDeclMember     decl_member;
 	struct AstDeclVariant    decl_variant;
-	struct AstTypeRef        type_ref;
 	struct AstTypeArr        type_arr;
 	struct AstTypeSlice      type_slice;
 	struct AstTypeDynArr     type_dynarr;
@@ -109,11 +101,9 @@
 	struct AstExprLitString  expr_string;
 	struct AstExprLitBool    expr_boolean;
 	struct AstExprLitFnGroup expr_fn_group;
-	struct AstExprRef        expr_ref;
 	struct AstExprCast       expr_cast;
 	struct AstExprBinop      expr_binop;
 	struct AstExprCall       expr_call;
-	struct AstExprMember     expr_member;
 	struct AstExprElem       expr_elem;
 	struct AstExprSizeof     expr_sizeof;
 	struct AstExprTypeInfo   expr_type_info;

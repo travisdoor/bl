@@ -1,15 +1,22 @@
 non_scoped :: fn () {
     print("%:%\n", #file, #line);
+    priv_scoped();
+    Foo.priv_scoped();
 }
 
 #scope Foo
 
-scoped1 :: fn () {
-    print("%:%\n", #file, #line);
+variable := 10;
+
+scoped :: fn () #export {
+    priv_scoped();
 }
 
+MyType :: struct {
+    i: s32;
+}
 
-// parse scope directive
-// create new scope or reuse already existing one in assembly context
-// linkage name as 'Foo@hello'
-// every . operator must be distinguished during analyze process
+#private
+priv_scoped :: fn () {
+    print("%:%\n", #file, #line);
+}

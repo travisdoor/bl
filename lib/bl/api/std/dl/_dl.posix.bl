@@ -1,8 +1,10 @@
 #load "dl.bl"
 
-_ImplDLibrary :: *u8;
+#scope _DLImpl
 
-_dl_impl_open :: fn (lib_name: string) (DLibrary, Error) {
+Library :: *u8;
+
+open :: fn (lib_name: string) (Library, Error) {
     clib: *u8 = null;
     if lib_name.len > 0 { clib = lib_name.ptr; }
     handle :: _dlopen(clib, RTLD_LAZY);
@@ -13,7 +15,7 @@ _dl_impl_open :: fn (lib_name: string) (DLibrary, Error) {
     return handle, ok();
 }
 
-_dl_impl_sym :: fn (lib: DLibrary, sym_name: string) (*u8, Error) {
+sym :: fn (lib: Library, sym_name: string) (*u8, Error) {
     handle :: _dlsym(lib, sym_name.ptr);
     if !handle {
         cerr :: cast(*u8) _dlerror();
@@ -22,7 +24,7 @@ _dl_impl_sym :: fn (lib: DLibrary, sym_name: string) (*u8, Error) {
     return handle, ok();
 }
 
-_dl_impl_close :: fn (lib: DLibrary) {
+close :: fn (lib: Library) {
     if !lib { return; }
     _dlclose(lib);
 }

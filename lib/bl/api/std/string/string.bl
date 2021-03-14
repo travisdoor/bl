@@ -1,5 +1,4 @@
 #import "std/print"
-#load "std/libc.bl"
 
 //! ======
 //! String

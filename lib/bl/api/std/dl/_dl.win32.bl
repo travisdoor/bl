@@ -1,8 +1,10 @@
 #load "dl.bl"
 
-_ImplDLibrary :: *u8;
+#scope _DLImpl
 
-_dl_impl_open :: fn (lib_name: string) (DLibrary, Error) {
+Library :: *u8;
+
+open :: fn (lib_name: string) (Library, Error) {
     if lib_name.len > 0 {
         handle :: _LoadLibraryA(auto lib_name.ptr); 
         if !handle {
@@ -14,7 +16,7 @@ _dl_impl_open :: fn (lib_name: string) (DLibrary, Error) {
     return _GetModuleHandleA(null), ok(); 
 }
 
-_dl_impl_sym :: fn (lib: DLibrary, sym_name: string) (*u8, Error) {
+sym :: fn (lib: Library, sym_name: string) (*u8, Error) {
     handle :: _GetProcAddress(lib, auto sym_name.ptr);
     if !handle {
         ec, emsg :: os_get_last_error();
@@ -23,7 +25,7 @@ _dl_impl_sym :: fn (lib: DLibrary, sym_name: string) (*u8, Error) {
     return handle, ok();
 }
 
-_dl_impl_close :: fn (lib: DLibrary) {
+close :: fn (lib: Library) {
     if !lib { return; }
     _FreeLibrary(lib);
 }

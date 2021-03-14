@@ -1,5 +1,6 @@
 #ifdef GEN_BUILTIN_TYPES
 MirType *t_type;
+MirType *t_scope;
 MirType *t_s8;
 MirType *t_s16;
 MirType *t_s32;

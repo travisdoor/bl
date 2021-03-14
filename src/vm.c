@@ -2368,6 +2368,10 @@ void eval_instr_decl_ref(VM UNUSED(*vm), MirInstrDeclRef *decl_ref)
         MIR_CEV_WRITE_AS(VMStackPtr, &decl_ref->base.value, entry->data.variant->value->data);
         break;
 
+    case SCOPE_ENTRY_NAMED_SCOPE:
+        MIR_CEV_WRITE_AS(Scope *, &decl_ref->base.value, entry->data.scope);
+        break;
+
     default:
         BL_UNIMPLEMENTED;
     }

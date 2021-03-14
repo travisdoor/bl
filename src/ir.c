@@ -2625,7 +2625,12 @@ State emit_instr_switch(Context *cnt, MirInstrSwitch *sw)
 
 State emit_instr_const(Context *cnt, MirInstrConst *c)
 {
-    MirType *    type       = c->base.value.type;
+    MirType *type = c->base.value.type;
+    if (type->kind == MIR_TYPE_NAMED_SCOPE) {
+        // Named scope is just mir related temporary type, it has no LLVM representation!
+        return STATE_PASSED;
+    }
+
     LLVMValueRef llvm_value = NULL;
     LLVMTypeRef  llvm_type  = get_type(cnt, type);
 

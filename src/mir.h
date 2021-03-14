@@ -148,23 +148,24 @@ typedef enum MirBuiltinIdKind {
 } MirBuiltinIdKind;
 
 typedef enum MirTypeKind {
-    MIR_TYPE_INVALID  = 0,
-    MIR_TYPE_TYPE     = 1,
-    MIR_TYPE_VOID     = 2,
-    MIR_TYPE_INT      = 3,
-    MIR_TYPE_REAL     = 4,
-    MIR_TYPE_FN       = 5,
-    MIR_TYPE_PTR      = 6,
-    MIR_TYPE_BOOL     = 7,
-    MIR_TYPE_ARRAY    = 8,
-    MIR_TYPE_STRUCT   = 9,
-    MIR_TYPE_ENUM     = 10,
-    MIR_TYPE_NULL     = 11,
-    MIR_TYPE_STRING   = 12,
-    MIR_TYPE_VARGS    = 13,
-    MIR_TYPE_SLICE    = 14,
-    MIR_TYPE_DYNARR   = 15,
-    MIR_TYPE_FN_GROUP = 16
+    MIR_TYPE_INVALID     = 0,
+    MIR_TYPE_TYPE        = 1,
+    MIR_TYPE_VOID        = 2,
+    MIR_TYPE_INT         = 3,
+    MIR_TYPE_REAL        = 4,
+    MIR_TYPE_FN          = 5,
+    MIR_TYPE_PTR         = 6,
+    MIR_TYPE_BOOL        = 7,
+    MIR_TYPE_ARRAY       = 8,
+    MIR_TYPE_STRUCT      = 9,
+    MIR_TYPE_ENUM        = 10,
+    MIR_TYPE_NULL        = 11,
+    MIR_TYPE_STRING      = 12,
+    MIR_TYPE_VARGS       = 13,
+    MIR_TYPE_SLICE       = 14,
+    MIR_TYPE_DYNARR      = 15,
+    MIR_TYPE_FN_GROUP    = 16,
+    MIR_TYPE_NAMED_SCOPE = 17,
 } MirTypeKind;
 
 typedef enum MirValueAddressMode {
@@ -332,6 +333,10 @@ struct MirTypeFnGroup {
     TSmallArray_TypePtr *variants;
 };
 
+struct MirTypeNamedScope {
+    void *_;
+};
+
 struct MirTypePtr {
     MirType *expr;
 };
@@ -383,15 +388,16 @@ struct MirType {
     MirVar *vm_rtti_var_cache;
 
     union {
-        struct MirTypeInt     integer;
-        struct MirTypeFn      fn;
-        struct MirTypeFnGroup fn_group;
-        struct MirTypePtr     ptr;
-        struct MirTypeReal    real;
-        struct MirTypeArray   array;
-        struct MirTypeStruct  strct;
-        struct MirTypeEnum    enm;
-        struct MirTypeNull    null;
+        struct MirTypeInt        integer;
+        struct MirTypeFn         fn;
+        struct MirTypeFnGroup    fn_group;
+        struct MirTypePtr        ptr;
+        struct MirTypeReal       real;
+        struct MirTypeArray      array;
+        struct MirTypeStruct     strct;
+        struct MirTypeEnum       enm;
+        struct MirTypeNull       null;
+        struct MirTypeNamedScope named_scope;
     } data;
 
     BL_MAGIC_ADD

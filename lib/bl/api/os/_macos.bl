@@ -33,8 +33,8 @@
 #load "posix/unistd.bl"
 #load "posix/signal.bl"
 #load "posix/error.bl"
+#load "posix/libc.bl"
 #load "std/error.bl"
-#load "std/libc.bl"
 
 OS_KIND :: OSKind.MacOS;
 OS_NAME :: "MacOS";

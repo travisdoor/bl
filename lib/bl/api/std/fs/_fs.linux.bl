@@ -2,7 +2,6 @@
 #load "os/linux/fcntl.bl"
 #load "os/linux/dirent.bl"
 #load "os/posix/unistd.bl"
-#load "std/libc.bl"
 #load "fs.bl"
 
 /// File handle type.

@@ -127,7 +127,8 @@ static Ast *     parse_decl_member(Context *cnt, s32 index);
 static Ast *     parse_decl_arg(Context *cnt, bool named);
 static Ast *     parse_decl_variant(Context *cnt, Ast *prev);
 static Ast *     parse_type(Context *cnt);
-static Ast *     parse_type_ref(Context *cnt);
+static Ast *     parse_ref(Context *cnt);
+static Ast *     parse_ref_nested(Context *cnt, Ast *prev);
 static Ast *     parse_type_arr(Context *cnt);
 static Ast *     parse_type_slice(Context *cnt);
 static Ast *     parse_type_dynarr(Context *cnt);
@@ -172,7 +173,6 @@ static Ast *       parse_expr_alignof(Context *cnt);
 static INLINE bool parse_semicolon(Context *cnt);
 static INLINE bool parse_semicolon_rq(Context *cnt);
 static INLINE bool hash_directive_to_flags(HashDirective hd, u32 *out_flags);
-static Ast *       parse_expr_member(Context *cnt, Ast *prev);
 static Ast *       parse_expr_call(Context *cnt, Ast *prev);
 static Ast *       parse_expr_elem(Context *cnt, Ast *prev);
 static Ast *       parse_expr_compound(Context *cnt);
@@ -285,8 +285,8 @@ Ast *parse_expr_ref(Context *cnt)
     Ast *  ident = parse_ident(cnt);
     if (!ident) return NULL;
 
-    Ast *ref                 = ast_create_node(cnt->ast_arena, AST_EXPR_REF, tok, SCOPE_GET(cnt));
-    ref->data.expr_ref.ident = ident;
+    Ast *ref            = ast_create_node(cnt->ast_arena, AST_REF, tok, SCOPE_GET(cnt));
+    ref->data.ref.ident = ident;
     return ref;
 }
 
@@ -732,10 +732,9 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         }
         Ast *ident = parse_ident(cnt);
         if (!ident) {
-            Token *tok_err = tokens_peek(cnt->tokens);
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_err,
-                        BUILDER_CUR_WORD,
+            PARSE_ERROR(ERR_INVALID_DIRECTIVE,
+                        tok_directive,
+                        BUILDER_CUR_AFTER,
                         "Expected scope name after #scope directive.");
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
@@ -745,16 +744,17 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
 
         // Perform lookup of named scope here, in case named scope already exist in global scope
         // we can reuse it!.
+        if (SCOPE_GET(cnt)->kind == SCOPE_GLOBAL) scope_lock(SCOPE_GET(cnt));
         ScopeEntry *scope_entry = scope_lookup(SCOPE_GET(cnt), id, false, false, NULL);
         if (scope_entry) {
             BL_LOG("Reuse scope from other file!");
-            BL_ASSERT(scope_entry->kind == SCOPE_ENTRY_NAMESPACE &&
+            BL_ASSERT(scope_entry->kind == SCOPE_ENTRY_NAMED_SCOPE &&
                       "Found scope entry is expected to be Namespace!");
             BL_ASSERT(scope_entry->data.scope && scope_entry->data.scope->kind == SCOPE_NAMED);
         } else {
             BL_LOG("Create new named scope '%s'.", id->str);
             scope_entry = scope_create_entry(
-                &cnt->assembly->arenas.scope, SCOPE_ENTRY_NAMESPACE, id, scope, false);
+                &cnt->assembly->arenas.scope, SCOPE_ENTRY_NAMED_SCOPE, id, scope, false);
             scope_insert(SCOPE_GET(cnt), scope_entry);
             scope_entry->data.scope = scope_create(cnt->scope_arenas,
                                                    SCOPE_NAMED,
@@ -762,6 +762,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
                                                    EXPECTED_NAMED_SCOPE_COUNT,
                                                    &tok_directive->location);
         }
+        if (SCOPE_GET(cnt)->kind == SCOPE_GLOBAL) scope_unlock(SCOPE_GET(cnt));
         if (cnt->current_named_scope) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
                         tok_directive,
@@ -1546,11 +1547,10 @@ Ast *_parse_expr(Context *cnt, s32 p)
 {
     Ast *lhs = parse_expr_atom(cnt);
     Ast *tmp = NULL;
-
     do {
         tmp = parse_expr_call(cnt, lhs);
         if (!tmp) tmp = parse_expr_elem(cnt, lhs);
-        if (!tmp) tmp = parse_expr_member(cnt, lhs);
+        if (!tmp) tmp = parse_ref_nested(cnt, lhs);
         lhs = tmp ? tmp : lhs;
     } while (tmp);
 
@@ -1857,26 +1857,6 @@ Ast *parse_expr_nested(Context *cnt)
     return expr;
 }
 
-Ast *parse_expr_member(Context *cnt, Ast *prev)
-{
-    if (!prev) return NULL;
-    Token *tok = tokens_consume_if(cnt->tokens, SYM_DOT);
-    if (!tok) return NULL;
-
-    Ast *ident = parse_ident(cnt);
-    if (!ident) {
-        Token *tok_err = tokens_peek(cnt->tokens);
-        PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected member name.");
-        return ast_create_node(cnt->ast_arena, AST_BAD, tok, SCOPE_GET(cnt));
-    }
-
-    Ast *mem = ast_create_node(cnt->ast_arena, AST_EXPR_MEMBER, tok, SCOPE_GET(cnt));
-    mem->data.expr_member.ident = ident;
-    mem->data.expr_member.next  = prev;
-    mem->data.expr_member.i     = -1;
-    return mem;
-}
-
 Ast *parse_expr_elem(Context *cnt, Ast *prev)
 {
     if (!prev) return NULL;
@@ -2031,15 +2011,38 @@ NEXT:
     return enm;
 }
 
-Ast *parse_type_ref(Context *cnt)
+Ast *parse_ref(Context *cnt)
 {
     Token *tok   = tokens_peek(cnt->tokens);
     Ast *  ident = parse_ident(cnt);
     if (!ident) return NULL;
+    Ast *lhs            = ast_create_node(cnt->ast_arena, AST_REF, tok, SCOPE_GET(cnt));
+    lhs->data.ref.ident = ident;
+    Ast *tmp            = NULL;
+    do {
+        tmp = parse_ref_nested(cnt, lhs);
+        lhs = tmp ? tmp : lhs;
+    } while (tmp);
+    return lhs;
+}
 
-    Ast *type_ref = ast_create_node(cnt->ast_arena, AST_TYPE_REF, tok, SCOPE_GET(cnt));
-    type_ref->data.type_ref.ident = ident;
-    return type_ref;
+Ast *parse_ref_nested(Context *cnt, Ast *prev)
+{
+    if (!prev) return NULL;
+    Token *tok = tokens_consume_if(cnt->tokens, SYM_DOT);
+    if (!tok) return NULL;
+
+    Ast *ident = parse_ident(cnt);
+    if (!ident) {
+        Token *tok_err = tokens_peek(cnt->tokens);
+        PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected name.");
+        return ast_create_node(cnt->ast_arena, AST_BAD, tok, SCOPE_GET(cnt));
+    }
+
+    Ast *ref            = ast_create_node(cnt->ast_arena, AST_REF, tok, SCOPE_GET(cnt));
+    ref->data.ref.ident = ident;
+    ref->data.ref.next  = prev;
+    return ref;
 }
 
 Ast *parse_type_arr(Context *cnt)
@@ -2154,7 +2157,7 @@ Ast *parse_type(Context *cnt)
     if (!type) type = parse_type_arr(cnt);
     // Keep order!!!
 
-    if (!type) type = parse_type_ref(cnt);
+    if (!type) type = parse_ref(cnt);
 
     return type;
 }

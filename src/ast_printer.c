@@ -83,6 +83,7 @@ static void print_scope(Ast *scope, s32 pad, FILE *stream);
 static void print_call_loc(Ast *call_loc, s32 pad, FILE *stream);
 static void print_block(Ast *block, s32 pad, FILE *stream);
 static void print_unrecheable(Ast *unr, s32 pad, FILE *stream);
+static void print_ref(Ast *ref, s32 pad, FILE *stream);
 static void print_type_struct(Ast *strct, s32 pad, FILE *stream);
 static void print_type_enum(Ast *enm, s32 pad, FILE *stream);
 static void print_type_fn_group(Ast *group, s32 pad, FILE *stream);
@@ -103,7 +104,6 @@ static void print_expr_line(Ast *line, s32 pad, FILE *stream);
 static void print_expr_file(Ast *file, s32 pad, FILE *stream);
 static void print_expr_unary(Ast *unary, s32 pad, FILE *stream);
 static void print_expr_cast(Ast *cast, s32 pad, FILE *stream);
-static void print_expr_member(Ast *member, s32 pad, FILE *stream);
 static void print_expr_addrof(Ast *addrof, s32 pad, FILE *stream);
 static void print_expr_sizeof(Ast *szof, s32 pad, FILE *stream);
 static void print_expr_type_info(Ast *type_info, s32 pad, FILE *stream);
@@ -112,7 +112,6 @@ static void print_expr_deref(Ast *deref, s32 pad, FILE *stream);
 static void print_expr_binop(Ast *binop, s32 pad, FILE *stream);
 static void print_expr_type(Ast *expr_type, s32 pad, FILE *stream);
 static void print_expr_compound(Ast *expr_compound, s32 pad, FILE *stream);
-static void print_expr_ref(Ast *ref, s32 pad, FILE *stream);
 static void print_expr_lit_int(Ast *lit, s32 pad, FILE *stream);
 static void print_expr_lit_float(Ast *lit, s32 pad, FILE *stream);
 static void print_expr_lit_double(Ast *lit, s32 pad, FILE *stream);
@@ -190,6 +189,17 @@ void print_type_struct(Ast *strct, s32 pad, FILE *stream)
     {
         print_node(node, pad + 1, stream);
     }
+}
+
+void print_ref(Ast *ref, s32 pad, FILE *stream)
+{
+    print_head(ref, pad, stream);
+
+    Ast *ident = ref->data.ref.ident;
+    if (ident) fprintf(stream, "'%s' ", ident->data.ident.id.str);
+
+    Ast *next = ref->data.ref.next;
+    if (next) print_node(next, pad + 1, stream);
 }
 
 void print_type_fn_group(Ast *group, s32 pad, FILE *stream)
@@ -304,6 +314,7 @@ void print_decl_entity(Ast *entity, s32 pad, FILE *stream)
             entity->data.decl_entity.mut ? "mutable" : "immutable");
 
     print_flags(entity->data.decl_entity.flags, stream);
+    print_node((Ast *)entity->data.decl.type, pad + 1, stream);
     print_node((Ast *)entity->data.decl_entity.value, pad + 1, stream);
 }
 
@@ -378,15 +389,6 @@ void print_expr_unary(Ast *unary, s32 pad, FILE *stream)
     print_node(unary->data.expr_unary.next, pad + 1, stream);
 }
 
-void print_expr_member(Ast *member, s32 pad, FILE *stream)
-{
-    print_head(member, pad, stream);
-
-    Ast *ident = member->data.expr_member.ident;
-    if (ident) fprintf(stream, "'%s' ", ident->data.ident.id.str);
-    print_node(member->data.expr_member.next, pad + 1, stream);
-}
-
 void print_expr_addrof(Ast *addrof, s32 pad, FILE *stream)
 {
     print_head(addrof, pad, stream);
@@ -435,12 +437,6 @@ void print_expr_type(Ast *expr_type, s32 pad, FILE *stream)
 {
     print_head(expr_type, pad, stream);
     print_node(expr_type->data.expr_type.type, pad + 1, stream);
-}
-
-void print_expr_ref(Ast *ref, s32 pad, FILE *stream)
-{
-    print_head(ref, pad, stream);
-    fprintf(stream, "'%s' ", ref->data.expr_ref.ident->data.ident.id.str);
 }
 
 void print_expr_lit_int(Ast *lit, s32 pad, FILE *stream)
@@ -581,6 +577,10 @@ void print_node(Ast *node, s32 pad, FILE *stream)
         print_type_enum(node, pad, stream);
         break;
 
+    case AST_REF:
+        print_ref(node, pad, stream);
+        break;
+
     case AST_TYPE_FN_GROUP:
         print_type_fn_group(node, pad, stream);
         break;
@@ -641,10 +641,6 @@ void print_node(Ast *node, s32 pad, FILE *stream)
         print_expr_type(node, pad, stream);
         break;
 
-    case AST_EXPR_REF:
-        print_expr_ref(node, pad, stream);
-        break;
-
     case AST_EXPR_CAST:
         print_expr_cast(node, pad, stream);
         break;
@@ -655,10 +651,6 @@ void print_node(Ast *node, s32 pad, FILE *stream)
 
     case AST_EXPR_CALL:
         print_expr_call(node, pad, stream);
-        break;
-
-    case AST_EXPR_MEMBER:
-        print_expr_member(node, pad, stream);
         break;
 
     case AST_EXPR_ELEM:

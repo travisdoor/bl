@@ -32,7 +32,32 @@
 #include "common.h"
 #include "unit.h"
 
+#if BL_PLATFORM_WIN
+#include "winpthreads.h"
+#include <windows.h>
+#else
+#include <pthread.h>
+#endif
+
 #define ARENA_CHUNK_COUNT 256
+
+typedef struct ScopeSyncImpl {
+    pthread_mutex_t lock;
+} ScopeSyncImpl;
+
+static ScopeSyncImpl *sync_new(void)
+{
+    ScopeSyncImpl *impl = bl_malloc(sizeof(ScopeSyncImpl));
+    pthread_mutex_init(&impl->lock, NULL);
+    return impl;
+}
+
+static void sync_delete(ScopeSyncImpl *impl)
+{
+    if (!impl) return;
+    pthread_mutex_destroy(&impl->lock);
+    bl_free(impl);
+}
 
 static void scope_dtor(Scope *scope)
 {
@@ -52,13 +77,18 @@ void scope_arenas_terminate(ScopeArenas *arenas)
     arena_terminate(&arenas->entries);
 }
 
-Scope *
-scope_create(ScopeArenas *arenas, ScopeKind kind, Scope *parent, usize size, struct Location *loc)
+Scope *_scope_create(ScopeArenas *    arenas,
+                     ScopeKind        kind,
+                     Scope *          parent,
+                     usize            size,
+                     struct Location *loc,
+                     const bool       safe)
 {
     Scope *scope    = arena_alloc(&arenas->scopes);
     scope->parent   = parent;
     scope->kind     = kind;
     scope->location = loc;
+    if (safe) scope->sync = sync_new();
 
     thtbl_init(&scope->entries, sizeof(ScopeEntry *), size);
 
@@ -110,6 +140,18 @@ scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_global, bool *out_o
     }
 
     return NULL;
+}
+
+void scope_lock(Scope *scope)
+{
+    BL_ASSERT(scope && scope->sync);
+    pthread_mutex_lock(&scope->sync->lock);
+}
+
+void scope_unlock(Scope *scope)
+{
+    BL_ASSERT(scope && scope->sync);
+    pthread_mutex_unlock(&scope->sync->lock);
 }
 
 bool scope_is_subtree_of_kind(const Scope *scope, ScopeKind kind)

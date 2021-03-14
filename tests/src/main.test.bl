@@ -35,6 +35,7 @@
 #load "os.test.bl"
 #load "inheritance.test.bl"
 #load "error.test.bl"
+#load "scope.test.bl"
 /////////////////////////////////////////////////////
 
 main :: fn () s32 {

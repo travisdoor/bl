@@ -26,8 +26,8 @@
 // SOFTWARE.
 //************************************************************************************************
 
-#include "common.h"
 #include "builder.h"
+#include "common.h"
 
 #define OUT_DIR "out"
 
@@ -108,7 +108,6 @@ static void doc_decl_entity(Context *cnt, Ast *decl);
 static void doc_decl_arg(Context *cnt, Ast *decl);
 static void doc_decl_variant(Context *cnt, Ast *decl);
 static void doc_decl_member(Context *cnt, Ast *decl);
-static void doc_type_ref(Context *cnt, Ast *type);
 static void doc_type_ptr(Context *cnt, Ast *type);
 static void doc_type_fn(Context *cnt, Ast *type);
 static void doc_type_enum(Context *cnt, Ast *type);
@@ -324,9 +323,9 @@ void doc_type_slice(Context *cnt, Ast *type)
     doc(cnt, elem_type);
 }
 
-void doc_type_ref(Context *cnt, Ast *type)
+void doc_ref(Context *cnt, Ast *ref)
 {
-    Ast *ident = type->data.expr_ref.ident;
+    Ast *ident = ref->data.ref.ident;
     if (!ident) return;
     const char *name = ident->data.ident.id.str;
     fprintf(cnt->stream, "%s", name);
@@ -383,8 +382,8 @@ void doc(Context *cnt, Ast *node)
     case AST_TYPE_PTR:
         doc_type_ptr(cnt, node);
         break;
-    case AST_TYPE_REF:
-        doc_type_ref(cnt, node);
+    case AST_REF:
+        doc_ref(cnt, node);
         break;
     case AST_TYPE_FN:
         doc_type_fn(cnt, node);
