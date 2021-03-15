@@ -45,6 +45,8 @@ void obj_writer_run(Assembly *assembly)
     TString *   buf  = get_tmpstr();
     const Target *target = assembly->target;
     const char *name = target->name;
+    BL_LOG("out_dir = %s", target->out_dir.data);
+    BL_LOG("name = %s", name);
     tstring_setf(buf, "%s/%s.%s", target->out_dir.data, name, OBJ_EXT);
     char *error_msg = NULL;
     if (LLVMTargetMachineEmitToFile(

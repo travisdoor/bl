@@ -61,21 +61,21 @@ configure :: fn () Error {
     
     lib_dir = sprint(g_pwd, "/", LIB_DIR);
     {
-       err :: fs_normalize(&lib_dir);
+       err :: Fs.normalize(&lib_dir);
        if !is_ok(err) {
            return error("Cannot find BL API libs on '%'", lib_dir);
        }
     }
     print_log("Found BL API on '%'.", lib_dir);
     
-    if !fs_exist(COMMAND_LINE_TOOLS) {
+    if !Fs.exist(COMMAND_LINE_TOOLS) {
         return error("Cannot find Command Line Tools on '%', use 'xcode-select --install'.", COMMAND_LINE_TOOLS);
     }
     print_log("Found Command Line Tools on '%'.", COMMAND_LINE_TOOLS);
 
     if !g_args.use_lld {
         linker_executable = sprint(COMMAND_LINE_TOOLS, "/", LINKER_EXEC);
-        if !fs_exist(linker_executable) {
+        if !Fs.exist(linker_executable) {
             return error("Cannot find linker on '%'.", linker_executable);
         }
         print_log("Found linker on '%'.", linker_executable);
@@ -85,7 +85,7 @@ configure :: fn () Error {
 
     print_log("Setup for MacOS version '%'.", os_ver);
     if get_os_ver_major(os_ver) >= 11 {
-        if !fs_exist(MACOS_SDK) {
+        if !Fs.exist(MACOS_SDK) {
             return error("Cannot find MacOS SDK on '%'.", MACOS_SDK);
         }
         print_log("Found MacOS SDK on '%'.", MACOS_SDK);

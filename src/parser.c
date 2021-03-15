@@ -707,7 +707,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         // in AST node.
         Scope *scope = scope_create(cnt->scope_arenas,
                                     SCOPE_PRIVATE,
-                                    cnt->assembly->gscope,
+                                    SCOPE_GET(cnt),
                                     EXPECTED_PRIVATE_SCOPE_COUNT,
                                     &tok_directive->location);
 

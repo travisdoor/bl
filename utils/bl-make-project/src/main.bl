@@ -98,7 +98,7 @@ main :: fn () s32 {
                 return 0, error("Expected directory name!");
             }
             a.proj_dir = args[1];
-            is_dir, err :: fs_is_directory(a.proj_dir);
+            is_dir, err :: Fs.is_directory(a.proj_dir);
             if (!is_ok(err)) || (!is_dir) { return 0, error("Invalid directory '%'.", a.proj_dir); }
             return 2, ok();
         });
@@ -161,11 +161,11 @@ main :: fn () s32 {
     defer String.delete(proj_root);
     
     // create root directory
-    state = fs_dir_create(proj_root);
+    state = Fs.dir_create(proj_root);
     if !is_ok(state) { print_err("%", state); return 1; }
 
     // create src directory
-    state = fs_dir_create(proj_src);
+    state = Fs.dir_create(proj_src);
     if !is_ok(state) { print_err("%", state); return 1; }
 
     switch g_args.proj_kind {
@@ -205,10 +205,10 @@ main :: fn () s32 {
 }
 
 make_file :: fn (filepath: string, content: string, args: ...) Error {
-    file, err :: fs_open(filepath, FSOpenMode.Write, FSOpenMode.Create);
-    defer fs_close(file);
+    file, err :: Fs.open(filepath, Fs.OpenMode.Write, Fs.OpenMode.Create);
+    defer Fs.close(file);
     if !is_ok(err) { return err; }
-    fs_write_fmt(file, content, args);
+    Fs.write_fmt(file, content, args);
     return ok();
 }
 

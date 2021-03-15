@@ -5,8 +5,8 @@
 #import "std/sync"
 
 main :: fn () s32 {
-    dbgalloc_init();
-    defer dbgalloc_terminate();
+    DebugAllocator.init();
+    defer DebugAllocator.terminate();
     return test_run();    
 }
 
@@ -33,12 +33,12 @@ mutex_test_1 :: fn () #test {
     defer array_terminate(_data);
     mutex_init(&_mutex);
     defer mutex_terminate(&_mutex);
-    t: [THREAD_COUNT]Thread;
+    t: [THREAD_COUNT]Thread.Handle;
     loop i := 0; i < t.len; i += 1 {
-        tmp :: thread_create(&worker);
+        tmp :: Thread.create(&worker);
         t[i] = tmp;
     }
 
-    thread_join_all(t);
+    Thread.join_all(t);
     test_eq(_data.len, TOTAL);
 }

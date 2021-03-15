@@ -1,0 +1,10 @@
+#scope Scope2
+
+variable := 10;
+
+function :: fn () {
+}
+
+MyType :: struct {
+    i: s32;
+}

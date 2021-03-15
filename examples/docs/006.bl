@@ -9,10 +9,10 @@ worker :: fn (args: *u8) s32 {
 
 main :: fn () s32 {
     // Create and execute thread without parameters.
-    t :: thread_create(&worker);
+    t :: Thread.create(&worker);
 
     // Wait for thread.
-    thread_join(t);
+    Thread.join(t);
     print("Thread joined.\n");
 
     return 0;

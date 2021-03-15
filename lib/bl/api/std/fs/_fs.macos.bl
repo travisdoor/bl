@@ -4,9 +4,11 @@
 #load "os/posix/unistd.bl"
 #load "fs.bl"
 
+#scope _FsImpl
+
 /// File handle type.
-_FSImplFile :: s64;
-_FS_IMPL_FILE_INVALID : _FSImplFile : -1;
+File :: s64;
+FILE_INVALID : File : -1;
 
 _fs_impl_exist :: fn (filepath: string) bool #inline {
     if filepath.len == 0 { return false; }

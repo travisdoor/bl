@@ -29,6 +29,8 @@
 #import "std/sync"
 #load "_experimental/hash_table.bl"
 
+#scope DebugAllocator
+
 //! ===============
 //! Debug Allocator
 //! ===============
@@ -38,9 +40,9 @@
 //!     #import "std/debug_allocator"
 //! 
 //! Debug allocator can be used to analyze memory usage of program and eventually analyze
-//! possible memory leaks. By :ref:`dbgalloc_init` call the global `context` allocator is
+//! possible memory leaks. By :ref:`init` call the global `context` allocator is
 //! replaced by debug allocator, every following allocations are recorded and analyzed in
-//! runtime since then. Call :ref:`dbgalloc_terminate` to swap default context allocator
+//! runtime since then. Call :ref:`terminate` to swap default context allocator
 //! back to previous one.
 //! 
 //! Example
@@ -62,8 +64,8 @@
 //! .. note:: Debug allocator is thread safe. Init and terminate must be called from main thread.
 
 /// Initialize :ref:`debug_allocator`. This function internally swap current global context
-/// allocator to debug one. Deinitialization must be done by :ref:`dbgalloc_terminate` call.
-dbgalloc_init :: fn () {
+/// allocator to debug one. Deinitialization must be done by :ref:`terminate` call.
+init :: fn () {
     _prev_alloc_fn = _context.alloc_fn;
     _context.alloc_fn = &debug_allocator;
     _alloc_table = htbl_new(*Meta, 2048, &_default_allocator);
@@ -71,9 +73,9 @@ dbgalloc_init :: fn () {
 }
 
 /// Terminate :ref:`debug_allocator`. Prints current memory report when `print_report` is `true`.
-dbgalloc_terminate :: fn (print_report := true) {
+terminate :: fn (print_report := true) {
     if print_report {
-        dbgalloc_print_memory_report(true);
+        print_memory_report(true);
     }
     _context.alloc_fn = _prev_alloc_fn;
     htbl_delete(_alloc_table);
@@ -81,13 +83,13 @@ dbgalloc_terminate :: fn (print_report := true) {
 }
 
 /// Invoke :ref:`debug_break` before allocation with defined serial ID.
-/// .. note:: See also :ref:`dbgalloc_print_memory_report`
-dbgalloc_break_on :: fn (serial: u64) #inline {
+/// .. note:: See also :ref:`print_memory_report`
+break_on :: fn (serial: u64) #inline {
     _break_on = serial;
 }
 
 /// Return currently allocated memory in bytes.
-dbgalloc_allocated_bytes :: fn () usize #inline {
+allocated_bytes :: fn () usize #inline {
     mutex_lock(&_mutex);
     defer mutex_unlock(&_mutex);
     return auto _total_allocated;
@@ -114,9 +116,9 @@ dbgalloc_allocated_bytes :: fn () usize #inline {
 /// .. note:: Printed report contains all remaining (not freed) allocations in time when function was
 ///           called. Memory leaks can contain false-positives when function is called before execution end.
 /// 
-/// .. hint:: Allocation serail ID can be used by :ref:`dbgalloc_break_on` to interrupt execution before
+/// .. hint:: Allocation serail ID can be used by :ref:`break_on` to interrupt execution before
 ///           memory is allocated and eventually localize allocation in debbuger.
-dbgalloc_print_memory_report :: fn (dump_leaks := false) {
+print_memory_report :: fn (dump_leaks := false) {
     mutex_lock(&_mutex);
     defer mutex_unlock(&_mutex);
     unit := "Bytes";

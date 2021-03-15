@@ -9,19 +9,20 @@ build :: fn () #build_entry {
         OSKind.MacOS   { target_macos(exe); }
         default        { panic("Unknown build target!"); }
     }
+    compile(exe);
 }
 
-target_windows :: fn (exe: *Assembly) {
+target_windows :: fn (exe: *Target) {
     set_output_dir(exe, "bin/win32");
     add_unit(exe, "src/win32_impl.bl");
 }
 
-target_linux :: fn (exe: *Assembly) {
+target_linux :: fn (exe: *Target) {
     set_output_dir(exe, "bin/linux");
     add_unit(exe, "src/linux_impl.bl");
 }
 
-target_macos :: fn (exe: *Assembly) {
+target_macos :: fn (exe: *Target) {
     set_output_dir(exe, "bin/macos");
     add_unit(exe, "src/macos_impl.bl");
 }

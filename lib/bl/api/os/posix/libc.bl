@@ -1,11 +1,11 @@
 //************************************************************************************************
 // bl
 //
-// File:   module.conf
+// File:   libc.bl 
 // Author: Martin Dorazil
-// Date:   5/11/20
+// Date:   2/11/19
 //
-// Copyright 2020 Martin Dorazil
+// Copyright 2018 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,20 @@
 // SOFTWARE.
 //************************************************************************************************
 
-VERSION 4
-WIN32_ENTRY "_fs.win32.bl"
-LINUX_ENTRY "_fs.linux.bl"
-MACOS_ENTRY "_fs.macos.bl"
+C_STDIN :: 0;
+C_STDOUT :: 1;
+C_STDERR :: 2;
+
+C_RAND_MAX :: 0x7fffffff;
+
+c_getenv :: fn (name: *c_char) *c_char #extern "getenv";
+c_putenv :: fn (var: *c_char) c_int #extern "putenv";
+c_realpath :: fn (path: *c_char, resolved_path: *c_char) *c_char #extern "realpath";
+c_exit :: fn (v: c_int) #extern "_exit";
+c_system :: fn (command: *c_char) c_int #extern "system";
+c_malloc :: fn (size: c_size_t) c_void_ptr #extern "malloc";
+c_free :: fn (ptr: c_void_ptr) #extern "free";
+c_strlen :: fn (str: *c_char) c_size_t #extern "strlen";
+c_strcmp :: fn (first: *c_char, second: *c_char) c_int #extern "strcmp";
+c_wcslen :: fn (str: *u16) usize #extern "wcslen";
+c_strerror :: fn (errnum: c_int) *c_char #extern "strerror";

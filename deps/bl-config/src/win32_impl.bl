@@ -52,7 +52,7 @@ setup :: fn (arg_parser: ArgParser) {
                 path.len -= 1;
             }
             a.build_tools_path = path;
-            is_valid_directory :: fs_is_directory(a.build_tools_path);
+            is_valid_directory :: Fs.is_directory(a.build_tools_path);
             if !is_valid_directory {  
                 return 0, error("Invalid directory path '%'!", a.build_tools_path);
             }
@@ -80,7 +80,7 @@ configure :: fn () Error {
     } else {
         build_tools_path = String.new(g_args.build_tools_path);
     }
-    if !fs_exist(build_tools_path) {
+    if !Fs.exist(build_tools_path) {
         return error(
             "Cannot find MS Build Tools installation on '%'. "
             "Download & install MS Build Tools from https://visualstudio.microsoft.com/visual-cpp-build-tools "
@@ -91,14 +91,14 @@ configure :: fn () Error {
     
     // Lookup vcvars bullshit
     vc_vars_all = sprint(build_tools_path, "/", VC_VARS_ALL);
-    if !fs_exist(vc_vars_all) {
+    if !Fs.exist(vc_vars_all) {
         return error("Cannot find vcvarsall.bat on '%'!", vc_vars_all);
     }
     print_log("Found vcvarsall.bat on '%'.", vc_vars_all);
     
     lib_dir = sprint(g_pwd, "/", LIB_DIR);
     {
-       err :: fs_normalize(&lib_dir);
+       err :: Fs.normalize(&lib_dir);
        if !is_ok(err) {
            return error("Cannot find BL API libs on '%'", lib_dir);
        }

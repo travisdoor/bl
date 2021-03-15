@@ -39,8 +39,8 @@
 /////////////////////////////////////////////////////
 
 main :: fn () s32 {
-    dbgalloc_init();
-    defer dbgalloc_terminate();
+    DebugAllocator.init();
+    defer DebugAllocator.terminate();
     return test_run(); 
 } 
 

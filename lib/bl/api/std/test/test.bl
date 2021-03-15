@@ -201,8 +201,8 @@ test_run :: fn () s32 {
     }
 
     loop _ci < _queue.len {
-        t :: thread_create(&worker);
-        thread_join(t);
+        t :: Thread.create(&worker);
+        Thread.join(t);
     }
 
     print("\nResults:\n");
@@ -246,7 +246,7 @@ abort_handler :: fn () {
     _current.runtime_ms = os_tick_ms() - _start_time;
     _current.passed = false;
     print("[      | FAIL ] % (% ms)\n", _current.case.name, _current.runtime_ms);
-    thread_exit(1);
+    Thread.exit(1);
     _os_abort_default();
 }
 

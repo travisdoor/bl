@@ -346,7 +346,7 @@ Target *target_dup(const char *name, const Target *other)
     BL_MAGIC_ASSERT(other);
     Target *target = target_new(name);
     memcpy(target, other, sizeof(struct {TARGET_COPYABLE_CONTENT}));
-    tstring_append(&target->out_dir, other->out_dir.data);
+    target_set_output_dir(target, other->out_dir.data);
     target->vm = other->vm;
     BL_MAGIC_SET(target);
     return target;

@@ -1,15 +1,16 @@
 #load "fs.bl"
 
-/// File handle type.
-_FSImplFile :: *u8;
-_FS_IMPL_FILE_INVALID : _FSImplFile : null;
+#scope _FsImpl
 
-_fs_impl_exist :: fn (filepath: string) bool #inline {
+File :: *u8;
+FILE_INVALID : File : null;
+
+exist :: fn (filepath: string) bool #inline {
     if filepath.len == 0 { return false; }
     return _PathFileExistsA(auto filepath.ptr) > 0;
 }
 
-_fs_impl_open :: fn (filepath: string, mode: ...FSOpenMode) (FSFile, Error) {
+open :: fn (filepath: string, mode: ...Fs.OpenMode) (Fs.File, Error) {
     if String.is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     access, create, append :: modes_to_flags(mode);
     handle :: _CreateFile(auto filepath.ptr, access, 0, null, create, _FILE_ATTRIBUTE_NORMAL, null);
@@ -26,7 +27,7 @@ _fs_impl_open :: fn (filepath: string, mode: ...FSOpenMode) (FSFile, Error) {
     return handle, ok();
 }
 
-_fs_impl_remove :: fn (filepath: string) Error #inline {
+remove :: fn (filepath: string) Error #inline {
     if String.is_empty(filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     tmp :: _DeleteFileA(auto filepath.ptr);
     if tmp == 0 {
@@ -36,7 +37,7 @@ _fs_impl_remove :: fn (filepath: string) Error #inline {
     return ok();
 }
 
-_fs_impl_copy :: fn (src: string, dest: string, override: bool) Error {
+copy :: fn (src: string, dest: string, override: bool) Error {
     if String.is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     if String.is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     fail_if_exist := 1;
@@ -48,12 +49,12 @@ _fs_impl_copy :: fn (src: string, dest: string, override: bool) Error {
     return ok();
 }
 
-_fs_impl_close :: fn (handle: FSFile) #inline {
+close :: fn (handle: Fs.File) #inline {
     if !handle { return; }
     _CloseHandle(handle);
 }
 
-_fs_impl_get_uid :: fn (handle: FSFile) (u64, Error) {
+get_uid :: fn (handle: Fs.File) (u64, Error) {
     tmp: _BY_HANDLE_FILE_INFORMATION;
     if _GetFileInformationByHandle(auto handle, &tmp) == 0 {
         ec, estr :: os_get_last_error();
@@ -63,14 +64,14 @@ _fs_impl_get_uid :: fn (handle: FSFile) (u64, Error) {
     return uid, ok();
 }
 
-_fs_impl_get_uid_by_name :: fn (filepath: string) (u64, Error) {
-    file, err1 :: fs_open(filepath);
-    defer fs_close(file);
+get_uid_by_name :: fn (filepath: string) (u64, Error) {
+    file, err1 :: open(filepath);
+    defer close(file);
     if !is_ok(err1) { return 0, err1; }
-    return _fs_impl_get_uid(file);
+    return get_uid(file);
 }
 
-_fs_impl_size :: fn (handle: FSFile) (usize, Error) #inline {
+size :: fn (handle: Fs.File) (usize, Error) #inline {
     size: _LARGE_INTEGER #noinit;
     if _GetFileSizeEx(auto handle, &size) == 0 {
         ec, estr :: os_get_last_error();
@@ -79,7 +80,7 @@ _fs_impl_size :: fn (handle: FSFile) (usize, Error) #inline {
     return auto size, ok();
 }
 
-_fs_impl_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) {
+read :: fn (handle: Fs.File, dest: *u8, size: s64) (s64, Error) {
     if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
     read_bytes: _DWORD #noinit;
     if _ReadFile(handle, dest, auto size, &read_bytes, null) == 0 {
@@ -89,7 +90,7 @@ _fs_impl_read :: fn (handle: FSFile, dest: *u8, size: s64) (s64, Error) {
     return auto read_bytes, ok();
 }
 
-_fs_impl_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) {
+write :: fn (handle: Fs.File, src: *u8, size: s64) (s64, Error) {
     if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
     written_bytes: _DWORD #noinit;
     if _WriteFile(handle, src, auto size, &written_bytes, null) == 0 {
@@ -99,7 +100,7 @@ _fs_impl_write :: fn (handle: FSFile, src: *u8, size: s64) (s64, Error) {
     return auto written_bytes, ok();
 }
 
-_fs_impl_dir_create :: fn (dirpath: string) Error {
+dir_create :: fn (dirpath: string) Error {
     if String.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
     if _CreateDirectoryA(auto dirpath.ptr, null) == 0 {
         ec, estr :: os_get_last_error();
@@ -108,7 +109,7 @@ _fs_impl_dir_create :: fn (dirpath: string) Error {
     return ok();
 }
 
-_fs_impl_dir_remove :: fn (dirpath: string) Error {
+dir_remove :: fn (dirpath: string) Error {
     if String.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot remove directory, dirpath is empty."); }
     if _RemoveDirectoryA(auto dirpath.ptr) == 0 {
         ec, estr :: os_get_last_error();
@@ -117,7 +118,7 @@ _fs_impl_dir_remove :: fn (dirpath: string) Error {
     return ok();
 }
 
-_fs_impl_is_directory :: fn (path: string) (bool, Error) #inline {
+is_directory :: fn (path: string) (bool, Error) #inline {
     if String.is_empty(path) { return false, error(ERR_INVALID_HANDLE, "Path is empty."); }
     attributes :: _GetFileAttributesA(auto path.ptr);
     if attributes == _INVALID_FILE_ATTRIBUTES {
@@ -127,8 +128,8 @@ _fs_impl_is_directory :: fn (path: string) (bool, Error) #inline {
     return is_flag(attributes, auto _FILE_ATTRIBUTE_DIRECTORY), ok();
 }
 
-_fs_impl_dir_scan :: fn (dirpath: string, filter: FSDirScanFilterFn) (FSInfoList, Error) {
-    invalid: FSInfoList;
+dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error) {
+    invalid: Fs.InfoList;
     if dirpath.len > (_MAX_PATH-3) { return invalid, error("Path too long!"); }
     tmp := String.new(dirpath);
     defer String.delete(tmp);
@@ -151,7 +152,7 @@ _fs_impl_dir_scan :: fn (dirpath: string, filter: FSDirScanFilterFn) (FSInfoList
         ec, estr :: os_get_last_error();
         return invalid, error(ec, "Cannot list directory '%': %.", dirpath, estr);
     }
-    buf: FSInfoList;
+    buf: Fs.InfoList;
     slice_init(buf, fc);
     if fc == 0 { return buf, ok(); }
 
@@ -165,17 +166,17 @@ _fs_impl_dir_scan :: fn (dirpath: string, filter: FSDirScanFilterFn) (FSInfoList
 
     buf.len = 0;
     loop {
-        kind: FSInfoKind #noinit;
+        kind: Fs.InfoKind #noinit;
         name: string;
         if is_flag(ffd.dwFileAttributes, auto _FILE_ATTRIBUTE_DIRECTORY) {
-            kind = FSInfoKind.Directory;
+            kind = Fs.InfoKind.Directory;
             name = String.new(ffd.cFileName.ptr);
         } else {
-            kind = FSInfoKind.File;
+            kind = Fs.InfoKind.File;
             name = String.new(ffd.cFileName.ptr);
         }
         push := true;
-        info :: {:FSInfo: kind, name};
+        info :: {:Fs.Info: kind, name};
         if filter { push = filter(&info); }
         if push {
             buf.len += 1;
@@ -188,7 +189,7 @@ _fs_impl_dir_scan :: fn (dirpath: string, filter: FSDirScanFilterFn) (FSInfoList
     return buf, ok();
 }
 
-_fs_impl_validate_filename :: fn (name: string) bool {
+validate_filename :: fn (name: string) bool {
     if name.len == 0 { return false; }
     invalid :: "<>:\"/\\|?*\t";
     loop i := 0; i < invalid.len; i += 1 {
@@ -197,7 +198,7 @@ _fs_impl_validate_filename :: fn (name: string) bool {
     return true;
 }
 
-_fs_impl_get_cwd :: fn () string #inline {
+get_cwd :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
     written :: _GetCurrentDirectoryA(auto buf.len, auto buf.ptr);
     if written == 0 { return String.new(); }
@@ -206,7 +207,7 @@ _fs_impl_get_cwd :: fn () string #inline {
     return remove_last_separator(out);
 }
 
-_fs_impl_set_cwd :: fn (path: string) Error #inline {
+set_cwd :: fn (path: string) Error #inline {
     if String.is_empty(path) { return error(ERR_INVALID_HANDLE, "Path is empty!"); }
     if _SetCurrentDirectoryA(auto path.ptr) == 0 {
         ec, estr :: os_get_last_error();
@@ -215,7 +216,7 @@ _fs_impl_set_cwd :: fn (path: string) Error #inline {
     return ok();
 }
 
-_fs_impl_get_home :: fn () string #inline {
+get_home :: fn () string #inline {
     tmp :: "USERPROFILE";
     cdir :: cast(*u8) c_getenv(auto tmp.ptr);
     if !cdir { return String.new(); }
@@ -224,7 +225,7 @@ _fs_impl_get_home :: fn () string #inline {
     return remove_last_separator(out);
 }
 
-_fs_impl_get_tmp :: fn () string #inline {
+get_tmp :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
     written :: _GetTempPathA(auto buf.len, auto buf.ptr);
     if written == 0 { return String.new(); }
@@ -233,7 +234,7 @@ _fs_impl_get_tmp :: fn () string #inline {
     return remove_last_separator(out);
 }
 
-_fs_impl_normalize :: fn (filepath: *string) Error {
+normalize :: fn (filepath: *string) Error {
     if !filepath { return error(ERR_INVALID_HANDLE, "File path is null!"); }
     if String.is_empty(^filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     buf : [OS_PATH_MAX]u8 #noinit;
@@ -251,7 +252,7 @@ _fs_impl_normalize :: fn (filepath: *string) Error {
     return ok();
 }
 
-_fs_impl_remove_extension :: fn (filename: string) string #inline {
+remove_extension :: fn (filename: string) string #inline {
     if String.is_empty(filename) { return String.empty; }
     tmp := filename;
     tmp.len = 0;
@@ -263,7 +264,7 @@ _fs_impl_remove_extension :: fn (filename: string) string #inline {
     return tmp;
 }
 
-_fs_impl_get_extension :: fn (filename: string) string #inline {
+get_extension :: fn (filename: string) string #inline {
     if String.is_empty(filename) { return String.empty; }
     if filename[0] == '.' {
         if filename.len == 1 { return String.empty; }
@@ -278,16 +279,16 @@ _fs_impl_get_extension :: fn (filename: string) string #inline {
 }
 
 #private
-modes_to_flags :: fn (modes: []FSOpenMode) (access: u32, create: u32, append: bool) #inline {
+modes_to_flags :: fn (modes: []Fs.OpenMode) (access: u32, create: u32, append: bool) #inline {
     access: u32;
     create: u32;
     append: bool;
     loop i := 0; i < modes.len; i += 1 {
         switch modes[i] {
-            FSOpenMode.Read    { access = access | _GENERIC_READ;  }            
-            FSOpenMode.Write   { access = access | _GENERIC_WRITE; }
-            FSOpenMode.Append  { access = access | _GENERIC_WRITE; append = true; }
-            FSOpenMode.Create  { create = _OPEN_ALWAYS; }
+            Fs.OpenMode.Read    { access = access | _GENERIC_READ;  }            
+            Fs.OpenMode.Write   { access = access | _GENERIC_WRITE; }
+            Fs.OpenMode.Append  { access = access | _GENERIC_WRITE; append = true; }
+            Fs.OpenMode.Create  { create = _OPEN_ALWAYS; }
             default { panic(); }
         }
     }

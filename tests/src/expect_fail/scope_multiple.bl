@@ -1,0 +1,3 @@
+// @ERR_UNEXPECTED_DIRECTIVE@
+#scope Foo
+#scope Bar

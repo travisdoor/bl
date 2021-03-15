@@ -66,5 +66,6 @@ src/config.h
 /.idea
 /build-stable/
 /build-release/
+/build-debug/
 /cmake-build*
 /bin
