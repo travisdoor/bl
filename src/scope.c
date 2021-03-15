@@ -63,6 +63,8 @@ static void scope_dtor(Scope *scope)
 {
     BL_ASSERT(scope);
     thtbl_terminate(&scope->entries);
+    tsa_terminate(&scope->using);
+    sync_delete(scope->sync);
 }
 
 void scope_arenas_init(ScopeArenas *arenas)
@@ -88,10 +90,12 @@ Scope *_scope_create(ScopeArenas *    arenas,
     scope->parent   = parent;
     scope->kind     = kind;
     scope->location = loc;
+    tsa_init(&scope->using);
     if (safe) scope->sync = sync_new();
 
     thtbl_init(&scope->entries, sizeof(ScopeEntry *), size);
 
+    BL_MAGIC_SET(scope);
     return scope;
 }
 
@@ -106,6 +110,7 @@ ScopeEntry *scope_create_entry(ScopeArenas *  arenas,
     entry->kind       = kind;
     entry->node       = node;
     entry->is_builtin = is_builtin;
+    BL_MAGIC_SET(entry);
     return entry;
 }
 
@@ -118,16 +123,53 @@ void scope_insert(Scope *scope, ScopeEntry *entry)
     thtbl_insert(&scope->entries, entry->id->hash, entry);
 }
 
-ScopeEntry *
-scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_global, bool *out_of_fn_local_scope)
+void scope_add_using(Scope *scope, Scope *using)
+{
+    BL_ASSERT(scope);
+    BL_ASSERT(using);
+    Scope *other;
+    TSA_FOREACH(&scope->using, other)
+    {
+        if (other == using) return;
+    }
+    tsa_push_Scope(&scope->using, using);
+}
+
+ScopeEntry *scope_lookup(Scope *      scope,
+                         ID *         id,
+                         bool         in_tree,
+                         bool         ignore_global,
+                         bool *       out_of_fn_local_scope,
+                         ScopeEntry **ambiguous_entry)
 {
     BL_ASSERT(scope && id);
-
+    TIterator   iter;
+    ScopeEntry *found = NULL;
     while (scope) {
         if (ignore_global && scope->kind == SCOPE_GLOBAL) break;
-        if (thtbl_has_key(&scope->entries, id->hash))
-            return thtbl_at(ScopeEntry *, &scope->entries, id->hash);
+        // Lookup in current scope first
+        iter = thtbl_find(&scope->entries, id->hash);
+        if (!TITERATOR_EQUAL(iter, thtbl_end(&scope->entries))) {
+            found = thtbl_iter_peek_value(ScopeEntry *, iter);
+        }
 
+        // Lookup in scopes injected by using.
+        Scope *using_scope;
+        TSA_FOREACH(&scope->using, using_scope)
+        {
+            iter = thtbl_find(&using_scope->entries, id->hash);
+            if (!TITERATOR_EQUAL(iter, thtbl_end(&using_scope->entries))) {
+                ScopeEntry *tmp = thtbl_iter_peek_value(ScopeEntry *, iter);
+                if (!found) {
+                    found = tmp;
+                } else {
+                    if (ambiguous_entry) (*ambiguous_entry) = tmp;
+                    break;
+                }
+            }
+        }
+        if (found) return found;
+        // Lookup in parent.
         if (in_tree) {
             if (out_of_fn_local_scope && scope->kind == SCOPE_FN_LOCAL) {
                 *out_of_fn_local_scope = true;

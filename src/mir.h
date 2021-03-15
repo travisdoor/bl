@@ -120,6 +120,7 @@ typedef struct MirInstrSetInitializer MirInstrSetInitializer;
 typedef struct MirInstrTestCases      MirInstrTestCases;
 typedef struct MirInstrCallLoc        MirInstrCallLoc;
 typedef struct MirInstrUnroll         MirInstrUnroll;
+typedef struct MirInstrUsing          MirInstrUsing;
 
 typedef struct MirArenas {
     Arena instr;
@@ -781,6 +782,12 @@ struct MirInstrCallLoc {
     u32              hash;
 };
 
+struct MirInstrUsing {
+    MirInstr base;
+
+    MirInstr *ref;
+};
+
 struct MirInstrUnroll {
     MirInstr base;
 
@@ -891,7 +898,8 @@ static INLINE bool mir_is_global(const MirInstr *instr)
 static INLINE bool mir_type_has_llvm_representation(const MirType *type)
 {
     BL_ASSERT(type);
-    return type->kind != MIR_TYPE_TYPE && type->kind != MIR_TYPE_FN_GROUP;
+    return type->kind != MIR_TYPE_TYPE && type->kind != MIR_TYPE_FN_GROUP &&
+           type->kind != MIR_TYPE_NAMED_SCOPE;
 }
 
 void        mir_arenas_init(MirArenas *arenas);

@@ -8,12 +8,12 @@ non_scoped :: fn () {
 
 variable := 10;
 
-scoped :: fn () #export {
-    priv_scoped();
-}
-
 MyType :: struct {
     i: s32;
+}
+
+scoped :: fn () (s32, bool) {
+    return 10, true;
 }
 
 #private

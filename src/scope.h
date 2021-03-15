@@ -71,6 +71,8 @@ typedef struct ScopeEntry {
     bool           is_builtin;
 
     ScopeEntryData data;
+
+    BL_MAGIC_ADD
 } ScopeEntry;
 
 typedef enum ScopeKind {
@@ -86,6 +88,7 @@ typedef enum ScopeKind {
 
 typedef struct Scope {
     ScopeKind        kind;
+    ID *             name; // optional
     struct Scope *   parent;
     THashTable       entries;
     LLVMMetadataRef  llvm_meta;
@@ -93,6 +96,9 @@ typedef struct Scope {
                                // function body  starting with '{'). Note: global scope has no
                                // location data.
     struct ScopeSyncImpl *sync;
+    TSmallArray_Scope using;
+
+    BL_MAGIC_ADD
 } Scope;
 
 void scope_arenas_init(ScopeArenas *arenas);
@@ -118,12 +124,17 @@ ScopeEntry *scope_create_entry(ScopeArenas *  arenas,
                                bool           is_builtin);
 
 void scope_insert(Scope *scope, ScopeEntry *entry);
+void scope_add_using(Scope *scope, Scope *using);
 
 void scope_lock(Scope *scope);
 void scope_unlock(Scope *scope);
 
-ScopeEntry *
-scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_global, bool *out_of_fn_local_scope);
+ScopeEntry *scope_lookup(Scope *      scope,
+                         ID *         id,
+                         bool         in_tree,
+                         bool         ignore_global,
+                         bool *       out_of_fn_local_scope,
+                         ScopeEntry **ambiguous_entry);
 
 bool        scope_is_subtree_of_kind(const Scope *scope, ScopeKind kind);
 const char *scope_kind_name(const Scope *scope);

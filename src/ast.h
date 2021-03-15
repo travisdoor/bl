@@ -133,6 +133,10 @@ struct AstRef {
     Ast *next;
 };
 
+struct AstUsing {
+    Ast *ident;
+};
+
 struct AstUBlock {
     TArray *     nodes;
     struct Unit *unit;

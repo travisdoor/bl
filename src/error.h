@@ -111,7 +111,7 @@ typedef enum {
     ERR_DUPLICIT_SWITCH_CASE     = 75,
     ERR_INVALID_REFERENCE        = 76,
     ERR_UNEXPECTED_RETURN        = 77,
-    ERR_AMBIGUOUS_OVERLOAD       = 78,
+    ERR_AMBIGUOUS                = 78,
     ERR_MISSING_PLATFORM         = 79,
     ERR_UNEXPECTED_FUNCTION_BODY = 80,
 } Error;

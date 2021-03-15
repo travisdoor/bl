@@ -17,18 +17,18 @@ Library :: _DlImpl.Library;
 /// Dynamically loads library specified by `lib_name` and return it's
 /// handle or null with error. When `lib_name` is empty, current binary
 /// will be loaded.
-/// Use :ref:`Dl.close` call to close library when it's not needed
+/// Use :ref:`Dl.close_library` call to close library when it's not needed
 /// anymore.
-open :: fn (lib_name := string_empty) (Library, Error) #inline {
+open_library :: fn (lib_name := string_empty) (Library, Error) #inline {
     return _DlImpl.open(lib_name);
 }
 
 /// Resolve named symbol in library and return pointer to it.
-sym :: fn (lib: Library, sym_name: string) (*u8, Error) #inline {
+get_symbol :: fn (lib: Library, sym_name: string) (*u8, Error) #inline {
     return _DlImpl.sym(lib, sym_name);
 }
 
 /// Close library opened by :ref:`dl_open` call.
-close :: fn (lib: Library) #inline {
+close_library :: fn (lib: Library) #inline {
     _DlImpl.close(lib);
 }

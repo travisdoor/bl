@@ -91,7 +91,7 @@ static INLINE void _print_const_value(Context *cnt, MirType *type, VMStackPtr va
 {
     if (!type) return;
     if (!value) {
-        fprintf(cnt->stream, "<null>");
+        fprintf(cnt->stream, "<NULL>");
         return;
     }
 
@@ -231,7 +231,7 @@ static INLINE void _print_const_value(Context *cnt, MirType *type, VMStackPtr va
     }
 
     default:
-        fprintf(cnt->stream, "<cannot read value>");
+        fprintf(cnt->stream, "<CANNOT READ VALUE>");
     }
 }
 
@@ -252,6 +252,7 @@ static void print_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
 static void print_instr_br(Context *cnt, MirInstrBr *br);
 static void print_instr_switch(Context *cnt, MirInstrSwitch *sw);
 static void print_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
+static void print_instr_using(Context *cnt, MirInstrUsing *using);
 static void print_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
 static void print_instr_fn_group(Context *cnt, MirInstrFnGroup *group);
 static void print_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn);
@@ -502,7 +503,7 @@ void print_instr_cast(Context *cnt, MirInstrCast *cast)
         print_instr_head(cnt, &cast->base, "ptrtobool");
         break;
     case MIR_CAST_INVALID:
-        print_instr_head(cnt, &cast->base, "<invalid cast>");
+        print_instr_head(cnt, &cast->base, "<INVALID CAST>");
         break;
     }
 
@@ -528,7 +529,7 @@ void print_instr_compound(Context *cnt, MirInstrCompound *init)
             if (i < values->size - 1) fprintf(cnt->stream, ", ");
         }
     } else {
-        fprintf(cnt->stream, "<zero initializer>");
+        fprintf(cnt->stream, "<ZERO INITIALIZER>");
     }
     fprintf(cnt->stream, "}");
 
@@ -550,7 +551,7 @@ void print_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
             if (i < values->size - 1) fprintf(cnt->stream, ", ");
         }
     } else {
-        fprintf(cnt->stream, "<invalid values>");
+        fprintf(cnt->stream, "<INVALID VALUES>");
     }
     fprintf(cnt->stream, "}");
 }
@@ -587,7 +588,7 @@ void print_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
 {
     print_instr_head(cnt, &member_ptr->base, "memberptr");
     if (!member_ptr->target_ptr) {
-        fprintf(cnt->stream, "<unknown>.");
+        fprintf(cnt->stream, "<UNKNOWN>.");
     } else {
         print_comptime_value_or_id(cnt, member_ptr->target_ptr);
         fprintf(cnt->stream, ".");
@@ -597,7 +598,7 @@ void print_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
         if (member_ptr->member_ident) {
             fprintf(cnt->stream, "%s", member_ptr->member_ident->data.ident.id.str);
         } else {
-            fprintf(cnt->stream, "<unknown>");
+            fprintf(cnt->stream, "<UNKNOWN>");
         }
     } else {
         switch (member_ptr->builtin_id) {
@@ -609,7 +610,7 @@ void print_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr)
             break;
 
         default:
-            fprintf(cnt->stream, "<unknown>");
+            fprintf(cnt->stream, "<UNKNOWN>");
         }
     }
 }
@@ -644,6 +645,15 @@ void print_instr_arg(Context *cnt, MirInstrArg *arg)
 void print_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
     print_instr_head(cnt, &unr->base, "unreachable");
+}
+
+void print_instr_using(Context *cnt, MirInstrUsing *using)
+{
+    print_instr_head(cnt, &using->base, "using");
+    if (using->ref)
+        print_comptime_value_or_id(cnt, using->ref);
+    else
+        fprintf(cnt->stream, "<INVALID>");
 }
 
 void print_instr_test_cases(Context *cnt, MirInstrTestCases *tc)
@@ -712,7 +722,7 @@ void print_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     MirVar *var = decl->var;
     BL_ASSERT(var);
 
-    const char *name = var->linkage_name ? var->linkage_name : "<unknown>";
+    const char *name = var->linkage_name ? var->linkage_name : "<UNKNOWN>";
 
     if (var->is_global) {
         // global scope variable
@@ -1091,6 +1101,9 @@ void print_instr(Context *cnt, MirInstr *instr)
         break;
     case MIR_INSTR_UNROLL:
         print_instr_unroll(cnt, (MirInstrUnroll *)instr);
+        break;
+    case MIR_INSTR_USING:
+        print_instr_using(cnt, (MirInstrUsing *)instr);
         break;
     }
 

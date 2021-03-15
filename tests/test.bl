@@ -1,11 +1,30 @@
 #load "foo.bl"
 #load "bar.bl"
 
+
 main :: fn () s32 {
     non_scoped();
     Foo.variable = 10;
     Bar.scoped();
     Foo.scoped();
-    v: Foo.MyType;
+
+    if true {
+        #using Foo 
+        //i: s32;
+        scoped();
+        scoped :: fn () (s32, bool) {
+            return 10, true;
+        };
+        loop i := 0; i < 10; i += 1 {
+            v: MyType;
+            scoped();
+        }
+    }
+    
     return 0;
+}
+
+func :: fn () {
+    #using Foo
+    scoped();
 }

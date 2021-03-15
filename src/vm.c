@@ -2071,6 +2071,7 @@ void eval_instr(VM *vm, MirInstr *instr)
     case MIR_INSTR_DECL_VARIANT:
     case MIR_INSTR_SIZEOF:
     case MIR_INSTR_ALIGNOF:
+    case MIR_INSTR_USING:
         break;
 
     default:
@@ -2369,7 +2370,7 @@ void eval_instr_decl_ref(VM UNUSED(*vm), MirInstrDeclRef *decl_ref)
         break;
 
     case SCOPE_ENTRY_NAMED_SCOPE:
-        MIR_CEV_WRITE_AS(Scope *, &decl_ref->base.value, entry->data.scope);
+        MIR_CEV_WRITE_AS(ScopeEntry *, &decl_ref->base.value, entry);
         break;
 
     default:

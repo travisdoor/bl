@@ -84,6 +84,7 @@ static void print_call_loc(Ast *call_loc, s32 pad, FILE *stream);
 static void print_block(Ast *block, s32 pad, FILE *stream);
 static void print_unrecheable(Ast *unr, s32 pad, FILE *stream);
 static void print_ref(Ast *ref, s32 pad, FILE *stream);
+static void print_using(Ast *using, s32 pad, FILE *stream);
 static void print_type_struct(Ast *strct, s32 pad, FILE *stream);
 static void print_type_enum(Ast *enm, s32 pad, FILE *stream);
 static void print_type_fn_group(Ast *group, s32 pad, FILE *stream);
@@ -200,6 +201,13 @@ void print_ref(Ast *ref, s32 pad, FILE *stream)
 
     Ast *next = ref->data.ref.next;
     if (next) print_node(next, pad + 1, stream);
+}
+
+void print_using(Ast *using, s32 pad, FILE *stream)
+{
+    print_head(using, pad, stream);
+    Ast *ident = using->data.using.ident;
+    if (ident) fprintf(stream, "'%s' ", ident->data.ident.id.str);
 }
 
 void print_type_fn_group(Ast *group, s32 pad, FILE *stream)
@@ -579,6 +587,10 @@ void print_node(Ast *node, s32 pad, FILE *stream)
 
     case AST_REF:
         print_ref(node, pad, stream);
+        break;
+
+    case AST_USING:
+        print_using(node, pad, stream);
         break;
 
     case AST_TYPE_FN_GROUP:

@@ -107,6 +107,7 @@ TSMALL_ARRAY_TYPE(InstrPtr, struct MirInstr *, 16);
 TSMALL_ARRAY_TYPE(ConstValuePtr, struct MirConstValue *, 16);
 TSMALL_ARRAY_TYPE(Char, char, 128);
 TSMALL_ARRAY_TYPE(FnPtr, struct MirFn *, 8);
+TSMALL_ARRAY_TYPE(Scope, struct Scope *, 4);
 
 typedef struct ID {
     const char *str;

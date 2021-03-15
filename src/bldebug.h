@@ -61,25 +61,14 @@ typedef enum { LOG_ASSERT, LOG_ABORT, LOG_WARNING, LOG_MSG } bl_log_msg_type_e;
 void _log(bl_log_msg_type_e t, const char *file, s32 line, const char *msg, ...);
 void print_trace(void);
 
-#if BL_ASSERT_ENABLE || BL_MAGIC_ENABLE
-#define BL_MAGIC_ASSERT(O)                                                                         \
-    {                                                                                              \
-        BL_ASSERT(O && "Invalid reference!");                                                      \
-        BL_ASSERT((O)->_magic == (void *)&(O)->_magic && "Invalid magic!");                        \
-    }
-#define BL_MAGIC_ADD void *_magic;
-#define BL_MAGIC_SET(O) (O)->_magic = (void *)&(O)->_magic
+#if defined(BL_DEBUG) || BL_ASSERT_ENABLE
+// =================================================================================================
+#if BL_COMPILER_MSVC
+#define BL_DEBUG_BREAK __debugbreak()
 #else
-#define BL_MAGIC_ASSERT(O)                                                                         \
-    while (0) {                                                                                    \
-    }
-#define BL_MAGIC_ADD
-#define BL_MAGIC_SET(O)                                                                            \
-    while (0) {                                                                                    \
-    }
+#define BL_DEBUG_BREAK
 #endif
 
-#if BL_ASSERT_ENABLE || BL_DEBUG
 #define BL_ASSERT(e)                                                                               \
     if (!(e)) {                                                                                    \
         _log(LOG_ASSERT, __FILENAME__, __LINE__, #e);                                              \
@@ -87,13 +76,40 @@ void print_trace(void);
         BL_DEBUG_BREAK;                                                                            \
         abort();                                                                                   \
     }
+
+#define BL_MAGIC_ASSERT(O)                                                                         \
+    {                                                                                              \
+        BL_ASSERT(O && "Invalid reference!");                                                      \
+        BL_ASSERT((O)->_magic == (void *)&(O)->_magic && "Invalid magic!");                        \
+    }
+#define BL_MAGIC_ADD void *_magic;
+#define BL_MAGIC_SET(O) (O)->_magic = (void *)&(O)->_magic
+
+// =================================================================================================
 #else
+// =================================================================================================
+#define BL_DEBUG_BREAK                                                                             \
+    while (0) {                                                                                    \
+    }
+
 #define BL_ASSERT(e)                                                                               \
     while (0) {                                                                                    \
     }
+
+#define BL_MAGIC_ASSERT(O)                                                                         \
+    while (0) {                                                                                    \
+    }
+
+#define BL_MAGIC_ADD
+#define BL_MAGIC_SET(O)                                                                            \
+    while (0) {                                                                                    \
+    }
+
+// =================================================================================================
 #endif
 
-#ifdef BL_DEBUG
+#if defined(BL_DEBUG)
+// =================================================================================================
 #define BL_LOG(format, ...)                                                                        \
     {                                                                                              \
         _log(LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                              \
@@ -103,17 +119,9 @@ void print_trace(void);
     {                                                                                              \
         _log(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                          \
     }
-
-#if BL_COMPILER_MSVC
-#define BL_DEBUG_BREAK __debugbreak()
+// =================================================================================================
 #else
-#define BL_DEBUG_BREAK raise(SIGTRAP)
-#endif
-
-#else // !BL_DEBUG
-#define BL_DEBUG_BREAK                                                                             \
-    while (0) {                                                                                    \
-    }
+// =================================================================================================
 #define BL_LOG(format, ...)                                                                        \
     while (0) {                                                                                    \
     }
@@ -121,8 +129,8 @@ void print_trace(void);
 #define BL_WARNING(format, ...)                                                                    \
     while (0) {                                                                                    \
     }
-
-#endif // BL_DEBUG
+// =================================================================================================
+#endif
 
 #define BL_ABORT(format, ...)                                                                      \
     {                                                                                              \

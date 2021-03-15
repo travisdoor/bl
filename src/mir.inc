@@ -45,6 +45,7 @@ union __INSTR_T {\
 	MirInstrTestCases      tcs; \
 	MirInstrCallLoc        cl; \
 	MirInstrUnroll         unroll; \
+	MirInstrUsing          using; \
 };
 
 #define SIZEOF_MIR_INSTR sizeof(union __INSTR_T)
@@ -96,6 +97,7 @@ union __INSTR_T {\
 	MIR_INSTR_TEST_CASES,
 	MIR_INSTR_CALL_LOC,
 	MIR_INSTR_UNROLL,
+	MIR_INSTR_USING,
 #endif
 
 #ifdef GEN_BUILTIN_NAMES
