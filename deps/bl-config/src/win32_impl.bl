@@ -30,17 +30,17 @@ CONFIG ::
 popen :: fn (f: *c_char, m: *c_char) c_void_ptr #extern "_popen";
 pclose :: fn (f: c_void_ptr) #extern "_pclose";
 
-ArgsImpl :: struct #base ArgCtx {
+ArgsImpl :: struct #base ArgParser.Ctx {
     build_tools_path: string;
 }
     
-setup :: fn (arg_parser: ArgParser) {
-     arg_parser_add(
+setup :: fn (arg_parser: ArgParser.Parser) {
+     ArgParser.add(
         arg_parser,
         "-b",
         "--build-tools-path",
         "Specify custom MS Build Tools directory.",
-        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
+        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a := cast(*Args) ctx;
             if (args.len < 2) {
                 return 0, error("Expected directory name!");

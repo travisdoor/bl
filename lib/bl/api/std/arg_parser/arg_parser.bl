@@ -15,8 +15,10 @@
 
 #import "std/array"
 
+#scope ArgParser
+
 /// Arguments context base type.
-ArgCtx :: struct {
+Ctx :: struct {
     /// Contains other arguments not considered as options (i.e. input files).
     other: []string;
     /// True when help was invoked implicitly.
@@ -24,33 +26,32 @@ ArgCtx :: struct {
 }
 
 /// Argument parser opaque handle.
-ArgParser :: *u8;
+Parser :: *u8;
 
-/// Argument parser callback function type. In context of :ref:`arg_parser_add`
+/// Argument parser callback function type. In context of :ref:`add`
 /// this callback function provides current `parser`, rest of the input argument
 /// slice starting from currently captured argument name and custom argument context `ctx`.
 /// Expected return of such function is count of parsed arguments from `args` input (at least
 /// one for successfully parsed argument with no additional input) and status.
 ///
-/// See also: :ref:`arg_parser_add`
-ArgParserHandlerFn :: *fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error);
+/// See also: :ref:`add`
+HandlerFn :: *fn (parser: Parser, args: []string, ctx: *Ctx) (s32, Error);
 
 /// Create new instance of parser with possibility to set custom help text. Use
-/// :ref:`arg_parser_delete` to release parser instance.
-arg_parser_new :: fn (help_text := String.empty) ArgParser {
-    parser := cast(*Parser) alloc(sizeof(Parser));
+/// :ref:`delete` to release parser instance.
+new :: fn (help_text := String.empty) Parser {
+    parser := cast(*ParserImpl) alloc(sizeof(ParserImpl));
     parser.pad = 0;
     parser.help_text = String.new(help_text);
     array_init(parser.entries);
 
-    arg_parser_add(
-        auto parser,
+    add(auto parser,
         "-h",
         "--help",
         "Print this help.",
-        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
+        &fn (parser: Parser, args: []string, ctx: *Ctx) (s32, Error) {
             if ctx { ctx.help = true; }
-            arg_parser_print_help(parser);
+            print_help(parser);
             return 1, ok();
         });
 
@@ -58,8 +59,8 @@ arg_parser_new :: fn (help_text := String.empty) ArgParser {
 }
 
 /// Delete parser instance.
-arg_parser_delete :: fn (_parser: ArgParser) {
-    parser: *Parser = auto _parser;
+delete :: fn (_parser: Parser) {
+    parser: *ParserImpl = auto _parser;
     loop i := 0; i < parser.entries.len; i += 1 {
         entry_delete(&parser.entries[i]);
     }
@@ -71,8 +72,8 @@ arg_parser_delete :: fn (_parser: ArgParser) {
 /// Perform parsing on input `args` slice and provide `ctx` as context to the argument parsing
 /// callbacks. `start` specify first element of `args` slice considered to be an argument.
 /// See also: :ref:`command_line_arguments` (note: first element contains name of the executable)
-arg_parser_run :: fn (_parser: ArgParser, args: []string, ctx: *ArgCtx, start := 0) Error {
-    parser: *Parser = auto _parser;
+run :: fn (_parser: Parser, args: []string, ctx: *Ctx, start := 0) Error {
+    parser: *ParserImpl = auto _parser;
     if start >= args.len {
         return ok();
     } else {
@@ -121,25 +122,24 @@ arg_parser_run :: fn (_parser: ArgParser, args: []string, ctx: *ArgCtx, start :=
 /// -------
 /// .. code-block:: bl
 ///
-///    arg_parser_add(
-///        parser,
+///    add(parser,
 ///        "-d", // short name.
 ///        "--debug", // long name.
 ///        "Enable debug mode.", // Help text.
-///        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
+///        &fn (parser: Parser, args: []string, ctx: *Ctx) (s32, Error) {
 ///            a: *MyArgs = auto ctx;
 ///            a.is_debug = true;
 ///            return 1, ok(); // One argument parsed ('-d' or '--debug') 
 ///        });
 ///
-arg_parser_add :: fn (
-    _parser: ArgParser,
+add :: fn (
+    _parser: Parser,
     short: string,
     long: string,
     help: string,
-    handler: ArgParserHandlerFn
+    handler: HandlerFn
 ) {
-    parser: *Parser = auto _parser;
+    parser: *ParserImpl = auto _parser;
     entry: Entry #noinit;
     entry.short = String.new(short);
     entry.long = String.new(long);
@@ -153,8 +153,8 @@ arg_parser_add :: fn (
 }
 
 /// Print help for all registered commands.
-arg_parser_print_help :: fn (_parser: ArgParser) {
-    parser: *Parser = auto _parser;
+print_help :: fn (_parser: Parser) {
+    parser: *ParserImpl = auto _parser;
     if !String.is_empty(parser.help_text) {
         print("%\n", parser.help_text);
     }
@@ -175,7 +175,7 @@ arg_parser_print_help :: fn (_parser: ArgParser) {
 }
 
 #private
-Parser :: struct {
+ParserImpl :: struct {
     entries: [..]Entry;
     pad: s32;
     help_text: string; 
@@ -185,7 +185,7 @@ Entry :: struct {
     short: string;
     long: string;
     help: string;
-    handler: ArgParserHandlerFn;
+    handler: HandlerFn;
 }
 
 entry_delete :: fn (entry: *Entry) {
