@@ -1,9 +1,11 @@
 #load "sync.bl"
 #load "os/posix/pthread.bl"
 
-_MutexImpl :: _pthread_mutex_t;
+#scope _SyncImpl
 
-_mutex_impl_init :: fn (mutex: *Mutex) #inline {
+Mutex :: _pthread_mutex_t;
+
+init :: fn (mutex: *Mutex) #inline {
     err :: _pthread_mutex_init(mutex, null);
     if err != 0 {
         estr :: cast(*u8) c_strerror(err);
@@ -11,7 +13,7 @@ _mutex_impl_init :: fn (mutex: *Mutex) #inline {
     }
 }
 
-_mutex_impl_terminate :: fn (mutex: *Mutex) #inline {
+terminate :: fn (mutex: *Mutex) #inline {
     err :: _pthread_mutex_destroy(mutex);
     if err != 0 {
         estr :: cast(*u8) c_strerror(err);
@@ -19,7 +21,7 @@ _mutex_impl_terminate :: fn (mutex: *Mutex) #inline {
     }
 }
 
-_mutex_impl_lock :: fn (mutex: *Mutex) #inline {
+lock :: fn (mutex: *Mutex) #inline {
     err :: _pthread_mutex_lock(mutex);
     if err != 0 {
         estr :: cast(*u8) c_strerror(err);
@@ -27,11 +29,11 @@ _mutex_impl_lock :: fn (mutex: *Mutex) #inline {
     }
 }
 
-_mutex_impl_try_lock :: fn (mutex: *Mutex) bool #inline {
+try_lock :: fn (mutex: *Mutex) bool #inline {
     return _pthread_mutex_lock(mutex) == 0;
 }
 
-_mutex_impl_unlock :: fn (mutex: *Mutex) #inline {
+unlock :: fn (mutex: *Mutex) #inline {
     err :: _pthread_mutex_unlock(mutex);
     if err != 0 {
         estr :: cast(*u8) c_strerror(err);

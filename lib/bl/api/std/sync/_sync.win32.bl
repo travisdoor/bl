@@ -1,24 +1,25 @@
 #load "sync.bl"
 
-_MutexImpl :: _RTL_CRITICAL_SECTION;
+#scope _SyncImpl
 
+Mutex :: _RTL_CRITICAL_SECTION;
 
-_mutex_impl_init :: fn (mutex: *Mutex) #inline {
+init :: fn (mutex: *Mutex) #inline {
     _InitializeCriticalSection(mutex);
 }
 
-_mutex_impl_terminate :: fn (mutex: *Mutex) #inline {
+terminate :: fn (mutex: *Mutex) #inline {
     _DeleteCriticalSection(mutex);
 }
 
-_mutex_impl_lock :: fn (mutex: *Mutex) #inline {
+lock :: fn (mutex: *Mutex) #inline {
     _EnterCriticalSection(mutex);
 }
 
-_mutex_impl_try_lock :: fn (mutex: *Mutex) bool #inline {
+try_lock :: fn (mutex: *Mutex) bool #inline {
     return _TryEnterCriticalSection(mutex) != 0;
 }
 
-_mutex_impl_unlock :: fn (mutex: *Mutex) #inline {
+unlock :: fn (mutex: *Mutex) #inline {
     _LeaveCriticalSection(mutex);
 }
