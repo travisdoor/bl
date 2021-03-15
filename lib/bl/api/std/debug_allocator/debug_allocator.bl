@@ -160,7 +160,7 @@ Meta :: struct {
     line: s32;
 }
 
-debug_allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := string_empty, line := 0) *u8 {
+debug_allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := String.empty, line := 0) *u8 {
     switch operation {
         AllocOp.Allocate {
             return debug_malloc(size, file, line);

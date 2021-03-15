@@ -748,12 +748,10 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         if (SCOPE_GET(cnt)->kind == SCOPE_GLOBAL) scope_lock(SCOPE_GET(cnt));
         ScopeEntry *scope_entry = scope_lookup(SCOPE_GET(cnt), id, false, false, NULL, NULL);
         if (scope_entry) {
-            BL_LOG("Reuse scope from other file!");
             BL_ASSERT(scope_entry->kind == SCOPE_ENTRY_NAMED_SCOPE &&
                       "Found scope entry is expected to be Namespace!");
             BL_ASSERT(scope_entry->data.scope && scope_entry->data.scope->kind == SCOPE_NAMED);
         } else {
-            BL_LOG("Create new named scope '%s'.", id->str);
             scope_entry = scope_create_entry(
                 &cnt->assembly->arenas.scope, SCOPE_ENTRY_NAMED_SCOPE, id, scope, false);
             scope_insert(SCOPE_GET(cnt), scope_entry);

@@ -137,7 +137,7 @@ slice_terminate :: fn (_v: Any, loc := #call_location) #compiler {
     tmp.len = 0;
 }
 
-AllocFn :: *fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := string_empty, line := 0) *u8;
+AllocFn :: *fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := String.empty, line := 0) *u8;
 
 /// Specify allocator opratation.
 AllocOp :: enum {
@@ -149,7 +149,7 @@ AllocOp :: enum {
     Release;
 }
 
-_default_allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := string_empty, line := 0) *u8 {
+_default_allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := String.empty, line := 0) *u8 {
     switch operation {
         AllocOp.Allocate {
             return c_malloc(size);

@@ -1,62 +1,62 @@
 #private
 
 f1 :: fn (list: *string) {
-    defer string_append(list, "B");    
-    string_append(list, "A");    
+    defer String.append(list, "B");    
+    String.append(list, "A");    
 }
 
 f2 :: fn (list: *string) {
-    defer string_append(list, "D");    
-    defer string_append(list, "C");
-    defer string_append(list, "B");
-    string_append(list, "A");    
+    defer String.append(list, "D");    
+    defer String.append(list, "C");
+    defer String.append(list, "B");
+    String.append(list, "A");    
 }
 
 f3 :: fn (list: *string) {
-    defer string_append(list, "G");    
-    defer string_append(list, "F");
-    defer string_append(list, "E");
-    string_append(list, "A");    
+    defer String.append(list, "G");    
+    defer String.append(list, "F");
+    defer String.append(list, "E");
+    String.append(list, "A");    
     {
-        defer string_append(list, "C");        
-        defer string_append(list, "B");        
+        defer String.append(list, "C");        
+        defer String.append(list, "B");        
     }
-    string_append(list, "D");    
+    String.append(list, "D");    
 }
 
 f4 :: fn (list: *string) {
-    defer string_append(list, "H");    
-    defer string_append(list, "G");
-    defer string_append(list, "F");
+    defer String.append(list, "H");    
+    defer String.append(list, "G");
+    defer String.append(list, "F");
     
     fn (list: *string) {
-        defer string_append(list, "B");            
-        defer string_append(list, "A");            
+        defer String.append(list, "B");            
+        defer String.append(list, "A");            
     } (list);
     {
-        defer string_append(list, "D");        
-        defer string_append(list, "C");        
+        defer String.append(list, "D");        
+        defer String.append(list, "C");        
     }
-    string_append(list, "E");    
+    String.append(list, "E");    
 }
 
 defer_test :: fn () #test {
-    list :: string_new();
-    defer string_delete(list);
+    list :: String.new();
+    defer String.delete(list);
     
     f1(&list);
     test_eq(list, "AB");
-    string_clear(&list);
+    String.clear(&list);
     
     f2(&list);
     test_eq(list, "ABCD");
-    string_clear(&list);
+    String.clear(&list);
     
     f3(&list);
     test_eq(list, "ABCDEFG");
-    string_clear(&list);
+    String.clear(&list);
 
     f4(&list);
     test_eq(list, "ABCDEFGH");
-    string_clear(&list);
+    String.clear(&list);
 }

@@ -61,12 +61,12 @@ ss_init_from_file :: fn (ss: *StringStream, file: FSFile) {
 }
 
 ss_init :: fn (ss: *StringStream) {
-    ss._data = string_empty;
+    ss._data = String.empty;
     ss.i = 0;
 }
 
 ss_terminate :: fn (ss: *StringStream) {
-    string_delete(ss._data);
+    String.delete(ss._data);
 }
 
 ss_write_to_file :: fn (ss: *StringStream, file: FSFile) usize {
@@ -87,8 +87,8 @@ ss_get :: fn (ss: *StringStream) u8 {
 }
 
 ss_push :: fn (ss: *StringStream, v: Any) {
-    if string_is_null(ss._data) { ss._data = string_new(); }
-    string_append(&ss._data, v);
+    if String.is_null(ss._data) { ss._data = String.new(); }
+    String.append(&ss._data, v);
 }
 
 ss_rewind :: fn (ss: *StringStream) {

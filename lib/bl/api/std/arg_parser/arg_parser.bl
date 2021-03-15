@@ -37,10 +37,10 @@ ArgParserHandlerFn :: *fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32
 
 /// Create new instance of parser with possibility to set custom help text. Use
 /// :ref:`arg_parser_delete` to release parser instance.
-arg_parser_new :: fn (help_text := string_empty) ArgParser {
+arg_parser_new :: fn (help_text := String.empty) ArgParser {
     parser := cast(*Parser) alloc(sizeof(Parser));
     parser.pad = 0;
-    parser.help_text = string_new(help_text);
+    parser.help_text = String.new(help_text);
     array_init(parser.entries);
 
     arg_parser_add(
@@ -64,7 +64,7 @@ arg_parser_delete :: fn (_parser: ArgParser) {
         entry_delete(&parser.entries[i]);
     }
     array_terminate(parser.entries);
-    string_delete(parser.help_text);
+    String.delete(parser.help_text);
     free(auto parser);
 }
 
@@ -90,7 +90,7 @@ arg_parser_run :: fn (_parser: ArgParser, args: []string, ctx: *ArgCtx, start :=
         found: bool;
         loop e := 0; e < parser.entries.len; e += 1 {
             entry :: &parser.entries[e];
-            if string_compare(^arg, entry.short) || string_compare(^arg, entry.long) {
+            if String.compare(^arg, entry.short) || String.compare(^arg, entry.long) {
                 found = true;
                 parsed, err :: entry.handler(_parser, args, ctx);
                 if !is_ok(err) {
@@ -141,9 +141,9 @@ arg_parser_add :: fn (
 ) {
     parser: *Parser = auto _parser;
     entry: Entry #noinit;
-    entry.short = string_new(short);
-    entry.long = string_new(long);
-    entry.help = string_new(help);
+    entry.short = String.new(short);
+    entry.long = String.new(long);
+    entry.help = String.new(help);
     entry.handler = handler;
     array_push(parser.entries, entry);
 
@@ -155,14 +155,14 @@ arg_parser_add :: fn (
 /// Print help for all registered commands.
 arg_parser_print_help :: fn (_parser: ArgParser) {
     parser: *Parser = auto _parser;
-    if !string_is_empty(parser.help_text) {
+    if !String.is_empty(parser.help_text) {
         print("%\n", parser.help_text);
     }
     print("Options:\n");
     loop i := 0; i < parser.entries.len; i += 1 {
         entry :: &parser.entries[i];
         printed: s32;
-        if string_is_empty(entry.short) {
+        if String.is_empty(entry.short) {
             printed = print("  % ", entry.long);
         } else {
             printed = print("  %, % ", entry.short, entry.long);
@@ -189,7 +189,7 @@ Entry :: struct {
 }
 
 entry_delete :: fn (entry: *Entry) {
-    string_delete(entry.short);
-    string_delete(entry.long);
-    string_delete(entry.help);
+    String.delete(entry.short);
+    String.delete(entry.long);
+    String.delete(entry.help);
 }

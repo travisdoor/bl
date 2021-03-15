@@ -13,7 +13,7 @@ main :: fn () s32 {
 #private
 get_dummy_filepath :: fn (i := 0) string {
     tmp :: fs_get_tmp();
-    string_concatenate(&tmp, "/deleteme_", i);
+    String.concatenate(&tmp, "/deleteme_", i);
     return tmp;
 }
 
@@ -24,8 +24,8 @@ fs_exist_test :: fn () #test {
 
 fs_get_home_test :: fn () #test {
     tmp :: fs_get_home();
-    defer string_delete(tmp);
-    test_neq(tmp, string_empty);
+    defer String.delete(tmp);
+    test_neq(tmp, String.empty);
     test_true(fs_exist(tmp));
     test_true(tmp[tmp.len-1] != '/');
 
@@ -36,8 +36,8 @@ fs_get_home_test :: fn () #test {
 
 fs_get_tmp_test :: fn () #test {
     tmp :: fs_get_tmp();
-    defer string_delete(tmp);
-    test_neq(tmp, string_empty);
+    defer String.delete(tmp);
+    test_neq(tmp, String.empty);
     test_true(fs_exist(tmp));    
     test_true(tmp[tmp.len-1] != '/');
 
@@ -48,8 +48,8 @@ fs_get_tmp_test :: fn () #test {
 
 fs_get_cwd_test :: fn () #test {
     tmp :: fs_get_cwd();
-    defer string_delete(tmp);
-    test_neq(tmp, string_empty);
+    defer String.delete(tmp);
+    test_neq(tmp, String.empty);
     test_true(fs_exist(tmp));    
     test_true(tmp[tmp.len-1] != '/');
 
@@ -89,7 +89,7 @@ fs_file_create_test1 :: fn () #test {
 
 fs_file_create_test2 :: fn () #test {
     filepath :: get_dummy_filepath();
-    defer string_delete(filepath);
+    defer String.delete(filepath);
     fs_remove(filepath);
 
     {
@@ -118,7 +118,7 @@ fs_file_create_test2 :: fn () #test {
         defer fs_close(file);
         test_ok(err);
         str :: fs_read_string(file);
-        defer string_delete(str);
+        defer String.delete(str);
         test_eq(str, "Hello!");
     }
     fs_remove(filepath);
@@ -126,7 +126,7 @@ fs_file_create_test2 :: fn () #test {
 
 fs_create_append :: fn () #test {
     filepath :: get_dummy_filepath();
-    defer string_delete(filepath);
+    defer String.delete(filepath);
     fs_remove(filepath);
     { // initial create
         file, err :: fs_open(filepath, FSOpenMode.Create, FSOpenMode.Write);
@@ -145,7 +145,7 @@ fs_create_append :: fn () #test {
         defer fs_close(file);
         test_ok(err);
         str, err2 :: fs_read_string(file);
-        defer string_delete(str);
+        defer String.delete(str);
         test_ok(err2);
         test_eq(str, "Hello!Hello!");
     }
@@ -154,7 +154,7 @@ fs_create_append :: fn () #test {
 
 fs_get_uid_test :: fn () #test {
     filepath :: get_dummy_filepath();
-    defer string_delete(filepath);
+    defer String.delete(filepath);
     fs_remove(filepath);
     file, err :: fs_open(filepath, FSOpenMode.Create);
     defer fs_close(file);
@@ -166,7 +166,7 @@ fs_get_uid_test :: fn () #test {
 
 fs_get_uid_test2 :: fn () #test {
     filepath :: get_dummy_filepath();
-    defer string_delete(filepath);
+    defer String.delete(filepath);
     fs_remove(filepath);
     file, err :: fs_open(filepath, FSOpenMode.Create);
     fs_close(file);
@@ -182,8 +182,8 @@ fs_read_string_test :: fn () #test {
     test_ok(err1);
     data, err2 := fs_read_string(file);
     test_ok(err2);
-    defer string_delete(data);
-    test_neq(data, string_empty);
+    defer String.delete(data);
+    test_neq(data, String.empty);
     data.len += 1;
     test_true(data[data.len-1] == '\0');
 }
@@ -238,17 +238,17 @@ fs_get_extension_test :: fn () #test {
     {
         filename :: "";
         ext      :: fs_get_extension(filename);
-        test_eq(ext, string_empty);
+        test_eq(ext, String.empty);
     }    
     {
         filename :: ".";
         ext      :: fs_get_extension(filename);
-        test_eq(ext, string_empty);
+        test_eq(ext, String.empty);
     }
     {
         filename :: ".foo";
         ext      :: fs_get_extension(filename);
-        test_eq(ext, string_empty);
+        test_eq(ext, String.empty);
     }
     {
         filename :: ".foo.bar";
@@ -276,7 +276,7 @@ fs_remove_extension_test :: fn () #test {
     {
         filename :: "";
         ext      :: fs_remove_extension(filename);
-        test_eq(ext, string_empty);
+        test_eq(ext, String.empty);
     }    
     {
         filename :: ".";
@@ -302,11 +302,11 @@ fs_remove_extension_test :: fn () #test {
 
 fs_normalize_test1 :: fn () #test {
     cwd :: fs_get_cwd();
-    defer string_delete(cwd);
+    defer String.delete(cwd);
     parent: string;
-    test_true(string_split_by_last(cwd, '/', &parent, null));
-    filepath :: string_new("..");
-    defer string_delete(filepath);
+    test_true(String.split_by_last(cwd, '/', &parent, null));
+    filepath :: String.new("..");
+    defer String.delete(filepath);
     status :: fs_normalize(&filepath);
     test_ok(status);
     test_eq(filepath, parent);
@@ -314,9 +314,9 @@ fs_normalize_test1 :: fn () #test {
 
 fs_normalize_test2 :: fn () #test {
     cwd :: fs_get_cwd();
-    defer string_delete(cwd);
-    filepath :: string_new(".");
-    defer string_delete(filepath);
+    defer String.delete(cwd);
+    filepath :: String.new(".");
+    defer String.delete(filepath);
     status :: fs_normalize(&filepath);
     test_ok(status);
     test_eq(filepath, cwd);
@@ -327,10 +327,10 @@ fs_normalize_test3 :: fn () #test {
     fs_close(file);
     defer fs_remove("foo");
     cwd :: fs_get_cwd();
-    defer string_delete(cwd);    
-    filepath :: string_new("foo");
-    string_concatenate(&cwd, "/", filepath);
-    defer string_delete(filepath);
+    defer String.delete(cwd);    
+    filepath :: String.new("foo");
+    String.concatenate(&cwd, "/", filepath);
+    defer String.delete(filepath);
     status :: fs_normalize(&filepath);
     test_ok(status);
     test_eq(filepath, cwd);
@@ -338,7 +338,7 @@ fs_normalize_test3 :: fn () #test {
 
 fs_remove_test :: fn () #test {
     filepath :: get_dummy_filepath();
-    defer string_delete(filepath);
+    defer String.delete(filepath);
     
     fs_remove(filepath);
     file, err :: fs_open(filepath, FSOpenMode.Create);
@@ -391,7 +391,7 @@ fs_read_test4 :: fn () #test {
 
 fs_write_test :: fn () #test {
     filepath :: get_dummy_filepath();
-    defer string_delete(filepath);
+    defer String.delete(filepath);
     fs_remove(filepath);
     content :: "Hello I'm cool file content!";    
     
@@ -406,7 +406,7 @@ fs_write_test :: fn () #test {
         file :: fs_open(filepath);
         tmp, err :: fs_read_string(file);
         test_ok(err);
-        defer string_delete(tmp);
+        defer String.delete(tmp);
         test_eq(tmp, content);
         fs_close(file);
     }
@@ -415,7 +415,7 @@ fs_write_test :: fn () #test {
 
 fs_write_string_test :: fn () #test {
     filepath :: get_dummy_filepath();
-    defer string_delete(filepath);
+    defer String.delete(filepath);
     fs_remove(filepath);
     content :: "Hello I'm cool file content!";    
     
@@ -430,7 +430,7 @@ fs_write_string_test :: fn () #test {
         file :: fs_open(filepath);
         tmp, err :: fs_read_string(file);
         test_ok(err);
-        defer string_delete(tmp);
+        defer String.delete(tmp);
         test_eq(tmp, content);
         fs_close(file);
     }
@@ -439,7 +439,7 @@ fs_write_string_test :: fn () #test {
 
 fs_write_slice_test :: fn () #test {
     filepath :: get_dummy_filepath();
-    defer string_delete(filepath);
+    defer String.delete(filepath);
     fs_remove(filepath);
     content :: {:[5]u8: 'H', 'e', 'l', 'o', 'o' };
     
@@ -454,7 +454,7 @@ fs_write_slice_test :: fn () #test {
         file :: fs_open(filepath);
         tmp, err :: fs_read_string(file);
         test_ok(err);
-        defer string_delete(tmp);
+        defer String.delete(tmp);
         test_eq(tmp.len, content.len);
         fs_close(file);
     }
@@ -464,8 +464,8 @@ fs_write_slice_test :: fn () #test {
 fs_copy_test :: fn () #test {
     filepath1 :: get_dummy_filepath(1);
     filepath2 :: get_dummy_filepath(2);
-    defer string_delete(filepath1);
-    defer string_delete(filepath2);
+    defer String.delete(filepath1);
+    defer String.delete(filepath2);
     fs_remove(filepath1);
     fs_remove(filepath2);
     
@@ -492,19 +492,19 @@ fs_copy_test :: fn () #test {
 
 fs_list_dir_test1 :: fn () #test {
     dir :: fs_get_cwd();
-    defer string_delete(dir);
+    defer String.delete(dir);
     list, err :: fs_dir_scan(dir);
     defer fs_info_list_delete(list);
     test_ok(err);
     test_true(list.len > 0);
     loop i := 0; i < list.len; i += 1 {
-        test_neq(list[i].name, string_empty);
+        test_neq(list[i].name, String.empty);
     }
 }
 
 fs_list_dir_test2 :: fn () #test {
     dir :: fs_get_cwd();
-    defer string_delete(dir);
+    defer String.delete(dir);
     list, err :: fs_dir_scan(dir, &fn (info: *FSInfo) bool {
         return info.kind == FSInfoKind.Directory;
     });
@@ -512,14 +512,14 @@ fs_list_dir_test2 :: fn () #test {
     test_ok(err);
     test_true(list.len > 0);
     loop i := 0; i < list.len; i += 1 {
-        test_neq(list[i].name, string_empty);
+        test_neq(list[i].name, String.empty);
         test_true(list[i].kind == FSInfoKind.Directory);
     }
 }
 
 fs_list_dir_test3 :: fn () #test {
     dir :: fs_get_cwd();
-    defer string_delete(dir);
+    defer String.delete(dir);
     list, err :: fs_dir_scan(dir, &fn (info: *FSInfo) bool {
         return info.kind == FSInfoKind.File;
     });
@@ -527,14 +527,14 @@ fs_list_dir_test3 :: fn () #test {
     test_ok(err);
     test_true(list.len > 0);
     loop i := 0; i < list.len; i += 1 {
-        test_neq(list[i].name, string_empty);
+        test_neq(list[i].name, String.empty);
         test_true(list[i].kind == FSInfoKind.File);
     }
 }
 
 fs_is_directory_test1 :: fn () #test {
     tmp :: fs_get_tmp();
-    defer string_delete(tmp);
+    defer String.delete(tmp);
     state, err :: fs_is_directory(tmp);
     test_ok(err);
     test_true(state);
@@ -548,8 +548,8 @@ fs_is_directory_test2 :: fn () #test {
 
 fs_dir_create_remove_test1 :: fn () #test {
     dir :: fs_get_tmp();
-    defer string_delete(dir);
-    string_append(&dir, "/__DELETE_ME__");
+    defer String.delete(dir);
+    String.append(&dir, "/__DELETE_ME__");
 
     fs_dir_remove_all(dir);
     state1 :: fs_dir_create(dir);
@@ -564,8 +564,8 @@ fs_dir_create_remove_test1 :: fn () #test {
 
 fs_dir_remove_all_test1 :: fn () #test {
     dir :: fs_get_tmp();
-    defer string_delete(dir);
-    string_append(&dir, "/__DELETE_ME__");
+    defer String.delete(dir);
+    String.append(&dir, "/__DELETE_ME__");
     
     fs_dir_remove_all(dir);
     {
@@ -574,9 +574,9 @@ fs_dir_remove_all_test1 :: fn () #test {
     }
     
     {
-        file :: string_new(dir);
-        defer string_delete(file);
-        string_append(&file, "/file.txt");
+        file :: String.new(dir);
+        defer String.delete(file);
+        String.append(&file, "/file.txt");
         f, e :: fs_open(file, FSOpenMode.Create);
         test_ok(e);
         fs_close(f);
@@ -589,10 +589,10 @@ fs_dir_remove_all_test1 :: fn () #test {
 
 fs_dir_create_all_test1 :: fn () #test {
     dir :: fs_get_tmp();
-    defer string_delete(dir);
-    string_append(&dir, "/foo");
+    defer String.delete(dir);
+    String.append(&dir, "/foo");
     fs_dir_remove_all(dir);
-    string_append(&dir, "/bar/bazz");
+    String.append(&dir, "/bar/bazz");
     err :: fs_dir_create_all(dir);
     test_ok(err);
 }

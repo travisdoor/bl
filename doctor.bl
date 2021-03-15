@@ -33,7 +33,7 @@ main :: fn () s32 {
     } else {
         _compiler_path = get_path(BL_EXE_PATH_UNIX);
     }
-    defer string_delete(_compiler_path);
+    defer String.delete(_compiler_path);
     start_time_ms :: os_tick_ms();
 
     loop c := 0; c < _args.test_count; c += 1 {
@@ -43,7 +43,7 @@ main :: fn () s32 {
         print("Test general suite:\n");    
         {
             path :: get_path(MAIN_TEST_SUITE_FILEPATH);
-            defer string_delete(path);
+            defer String.delete(path);
             test_file(path, TestKind.Runtime);
             test_file(path, TestKind.Test);
         }
@@ -52,7 +52,7 @@ main :: fn () s32 {
         print("Test modules:\n");    
         loop i := 0; i < HARDCODED_MODULES.len; i += 1 {
             path :: get_path(HARDCODED_MODULES[i]);
-            defer string_delete(path);
+            defer String.delete(path);
             test_file(path, TestKind.Runtime);
             //test_file(file, TestKind.Test);
         }
@@ -60,21 +60,21 @@ main :: fn () s32 {
         { // examples
 
             path :: get_path(EXAMPLES_DIR);
-            defer string_delete(path);
+            defer String.delete(path);
             test_all_in_dir(path);
         }
 
         // examples docs
         {
             path :: get_path(EXAMPLES_DOCS_DIR);
-            defer string_delete(path);
+            defer String.delete(path);
             test_all_in_dir(path);
         }
 
         // expect fail to compile
         {
             path :: get_path(EXPECT_FAIL_DIR);
-            defer string_delete(path);
+            defer String.delete(path);
             test_all_in_dir(path, true);
         }
 
@@ -123,15 +123,15 @@ _errc := 0;
 
 wdir_init :: fn () {
     lhs: string;
-    if string_split_by_last(#file, '/', &lhs, null) {
-        _wdir = string_new(lhs);
+    if String.split_by_last(#file, '/', &lhs, null) {
+        _wdir = String.new(lhs);
     } else {
-        _wdir = string_new();
+        _wdir = String.new();
     }
 }
 
 wdir_terminate :: fn () {
-    string_delete(_wdir);
+    String.delete(_wdir);
 }
 
 get_path :: fn (sub: string) string {
@@ -185,7 +185,7 @@ parse_args :: fn () bool {
             if (args.len < 2) {
                 return 0, error("Expected count of test repeat!");
             }
-            c :: string_to_s64(args[1]);
+            c :: String.to_s64(args[1]);
             if c < 1 {  
                 return 0, error("Test count is expected to be at least 1 not %!", c);
             }
@@ -217,10 +217,10 @@ get_expected_error :: fn (filepath: string, out_err: *s32) bool {
     defer fs_close(file);
     if !is_ok(err1) { print_err("%", err1); return false; }
     content, err2 :: fs_read_string(file);
-    defer string_delete(content);
+    defer String.delete(content);
     if !is_ok(err2) { print_err("%", err2); return false; }
     
-    tmp :: string_split_by(content, '@');
+    tmp :: String.split_by(content, '@');
     defer slice_terminate(tmp);
     if tmp.len != 3 { return false; }
     err :: strtoerr(tmp[1]);
@@ -230,14 +230,14 @@ get_expected_error :: fn (filepath: string, out_err: *s32) bool {
 }
 
 blc :: fn (file: string, args := "--no-bin --no-warning") s32 {
-    cmd :: string_new(64);
-    defer string_delete(cmd);
+    cmd :: String.new(64);
+    defer String.delete(cmd);
     _suitec += 1;
-    string_concatenate(&cmd, _compiler_path, " ", args, " ");   
-    if _args.no_vcvars { string_append(&cmd, "--no-vcvars "); }
-    string_append(&cmd, file);
-    string_append(&cmd, " ");
-    string_append(&cmd, get_verbosity());
+    String.concatenate(&cmd, _compiler_path, " ", args, " ");   
+    if _args.no_vcvars { String.append(&cmd, "--no-vcvars "); }
+    String.append(&cmd, file);
+    String.append(&cmd, " ");
+    String.append(&cmd, get_verbosity());
     return os_execute(cmd);
 }
 
@@ -263,14 +263,14 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
                 return;
             }
 
-            tmp := string_new();
-            defer string_delete(tmp);
+            tmp := String.new();
+            defer String.delete(tmp);
             if OS_KIND == OSKind.Windows { 
-                string_append(&tmp, "out.exe ");
+                String.append(&tmp, "out.exe ");
             } else {
-                string_append(&tmp, "./out ");
+                String.append(&tmp, "./out ");
             }
-            string_append(&tmp, get_verbosity());
+            String.append(&tmp, get_verbosity());
             state = os_execute(tmp);
             if state == 0 {
                 report_ok("Execution", file, state);
@@ -309,8 +309,8 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
 }
 
 test_all_in_dir :: fn (dir: string, expect_fail := false) {
-    file :: string_new(64);
-    defer string_delete(file);
+    file :: String.new(64);
+    defer String.delete(file);
     
     print("Testing files in directory '%':\n", dir);        
     list, err :: fs_dir_scan(dir);
@@ -322,8 +322,8 @@ test_all_in_dir :: fn (dir: string, expect_fail := false) {
     loop i := 0; i < list.len; i += 1 {
         info :: &list[i];
         if info.kind != FSInfoKind.Directory {
-            string_clear(&file);
-            string_concatenate(&file, dir, "/", info.name);
+            String.clear(&file);
+            String.concatenate(&file, dir, "/", info.name);
             if expect_fail {
                 error_code: s32 #noinit;
                 if get_expected_error(file, &error_code) {
@@ -428,7 +428,7 @@ strtoerr :: fn (s: string) s32 {
     info :: cast(*TypeInfoEnum) typeinfo(BlError);
     loop i := 0; i < info.variants.len; i += 1 {
         variant :: &info.variants[i];
-        if string_compare(variant.name, s) { return auto variant.value; }
+        if String.compare(variant.name, s) { return auto variant.value; }
     }
     return -1;
 }

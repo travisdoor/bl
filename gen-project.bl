@@ -59,10 +59,10 @@ main :: fn () s32 {
     }
     if _args.help { return 0; }
 
-    path :: string_new();
-    defer string_delete(path);
+    path :: String.new();
+    defer String.delete(path);
     fs_dir_create(DIR);
-    fs_remove(string_clear_concat(&path, DIR, "/", CMAKE_CACHE));
+    fs_remove(String.clear_concat(&path, DIR, "/", CMAKE_CACHE));
     fs_set_cwd(DIR);
 
     conf :: conf_name(_args.is_debug);
@@ -84,7 +84,7 @@ cmake_generate :: fn () s32 #inline {
     is_debug :: _args.is_debug;
     conf :: conf_name(is_debug);
     cmd: string;
-    defer string_delete(cmd);
+    defer String.delete(cmd);
     if OS_KIND == OSKind.Windows {
         cmd = sprint("cmake .. -G \"Visual Studio 16 2019\" -Thost=x64 -DCMAKE_BUILD_TYPE=", conf);
     } else {
@@ -94,7 +94,7 @@ cmake_generate :: fn () s32 #inline {
         if !_args.is_debug {
             print_warn("Tracy profiler can be enabled only in debug mode.");
         } else {
-            string_append(&cmd, " -DTRACY_ENABLE=ON");
+            String.append(&cmd, " -DTRACY_ENABLE=ON");
         }
     }
     return os_execute(cmd);
@@ -104,7 +104,7 @@ cmake_compile :: fn () s32 #inline {
     is_debug :: _args.is_debug;
     conf :: conf_name(is_debug);
     cmd: string;
-    defer string_delete(cmd);
+    defer String.delete(cmd);
     if OS_KIND == OSKind.Windows {
         cmd = sprint("cmake --build . --config ", conf);
     } else {

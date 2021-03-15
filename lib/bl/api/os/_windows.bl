@@ -72,12 +72,12 @@ os_tick_ms :: fn () f64 #inline {
 os_get_exec_path :: fn () string {
     buf : [OS_PATH_MAX]u8 #noinit;
     if _GetModuleFileNameA(null, buf.ptr, auto buf.len) > 0 {
-        result :: string_new(buf.ptr);
-        string_replace_all(&result, '\\', '/');
+        result :: String.new(buf.ptr);
+        String.replace_all(&result, '\\', '/');
         return result;
     }
 
-    return string_new(); 
+    return String.new(); 
 }
 
 os_execute :: fn (command: string) s32 {
@@ -86,7 +86,7 @@ os_execute :: fn (command: string) s32 {
 
 os_get_last_error :: fn () (s32, string) #inline {
     ec :: cast(s32) _GetLastError();
-    str := string_empty;
+    str := String.empty;
     c_str :: cast(*u8) c_strerror(ec);
     if c_str && ec != 0 { str = cstr_to_str(c_str); }
     return ec, str;

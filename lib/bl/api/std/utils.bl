@@ -59,8 +59,8 @@ ptr_diff :: fn (a: *u8, b: *u8) s64 #inline {
 /// responsibility to delete result string.
 env_get :: fn (var: string) string {
     out :: cast(*u8) c_getenv(auto var.ptr);
-    if !out { return string_new(); }
-    return string_new(out);
+    if !out { return String.new(); }
+    return String.new(out);
 }
 
 /// Sets environment variable.

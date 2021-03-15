@@ -114,7 +114,7 @@ _last_error_msg_buffer: [1024]u8;
 _last_error: _Error;
 
 error1 :: fn (code: s32) Error #inline {
-    return error3(code, string_empty);
+    return error3(code, String.empty);
 }
 
 error2 :: fn (format: string, args: ...) Error #inline {

@@ -19,7 +19,7 @@ main :: fn () s32 {
         panic("Cannot read file with error: '%'!", read_err);
     }
     // Delete content string at the end of scope.
-    defer string_delete(content);
+    defer String.delete(content);
 
     // Print file content to stdout.
     print("%\n", content);
