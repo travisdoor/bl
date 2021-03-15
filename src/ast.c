@@ -105,8 +105,6 @@ const char *ast_get_name(const Ast *n)
         return "Docs";
     case AST_REF:
         return "Ref";
-    case AST_USING:
-        return "Using";
     case AST_UNREACHABLE:
         return "Unreachable";
     case AST_CALL_LOC:

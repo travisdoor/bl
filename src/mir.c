@@ -567,7 +567,6 @@ static MirInstr *append_instr_addrof(Context *cnt, Ast *node, MirInstr *src);
 // ref_count is ignored.
 static void      erase_instr_tree(MirInstr *instr, bool keep_root, bool force);
 static MirInstr *append_instr_call_loc(Context *cnt, Ast *node);
-static MirInstr *append_instr_using(Context *cnt, Ast *node, MirInstr *ref);
 
 // ast
 static MirInstr *
@@ -636,7 +635,6 @@ static MirInstr *ast_expr_binop(Context *cnt, Ast *binop);
 static MirInstr *ast_expr_unary(Context *cnt, Ast *unop);
 static MirInstr *ast_expr_compound(Context *cnt, Ast *cmp);
 static MirInstr *ast_call_loc(Context *cnt, Ast *loc);
-static MirInstr *ast_using(Context *cnt, Ast *using);
 
 // analyze
 static bool          evaluate(Context *cnt, MirInstr *instr);
@@ -717,7 +715,6 @@ static AnalyzeResult analyze_instr_arg(Context *cnt, MirInstrArg *arg);
 static AnalyzeResult analyze_instr_unop(Context *cnt, MirInstrUnop *unop);
 static AnalyzeResult analyze_instr_test_cases(Context *cnt, MirInstrTestCases *tc);
 static AnalyzeResult analyze_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
-static AnalyzeResult analyze_instr_using(Context *cnt, MirInstrUsing *using);
 static AnalyzeResult analyze_instr_cond_br(Context *cnt, MirInstrCondBr *br);
 static AnalyzeResult analyze_instr_br(Context *cnt, MirInstrBr *br);
 static AnalyzeResult analyze_instr_switch(Context *cnt, MirInstrSwitch *sw);
@@ -1189,7 +1186,7 @@ static INLINE void commit_fn(Context *cnt, MirFn *fn)
 {
     ID *id = fn->id;
     BL_ASSERT(id);
-    ScopeEntry *entry = scope_lookup(fn->decl_node->owner_scope, id, true, false, NULL, NULL);
+    ScopeEntry *entry = scope_lookup(fn->decl_node->owner_scope, id, true, false, NULL);
     BL_ASSERT(entry && "cannot commit unregistered function");
     entry->kind    = SCOPE_ENTRY_FN;
     entry->data.fn = fn;
@@ -1200,7 +1197,7 @@ static INLINE void commit_variant(Context UNUSED(*cnt), MirVariant *v)
 {
     ID *id = v->id;
     BL_ASSERT(id);
-    ScopeEntry *entry = scope_lookup(v->decl_scope, id, false, true, NULL, NULL);
+    ScopeEntry *entry = scope_lookup(v->decl_scope, id, false, true, NULL);
     BL_ASSERT(entry && "cannot commit unregistered variant");
     entry->kind         = SCOPE_ENTRY_VARIANT;
     entry->data.variant = v;
@@ -1210,7 +1207,7 @@ static INLINE void commit_member(Context UNUSED(*cnt), MirMember *member)
 {
     ID *id = member->id;
     BL_ASSERT(id);
-    ScopeEntry *entry = scope_lookup(member->decl_scope, id, false, true, NULL, NULL);
+    ScopeEntry *entry = scope_lookup(member->decl_scope, id, false, true, NULL);
     BL_ASSERT(entry && "cannot commit unregistered member");
     entry->kind        = SCOPE_ENTRY_MEMBER;
     entry->data.member = member;
@@ -1220,7 +1217,7 @@ static INLINE void commit_var(Context *cnt, MirVar *var)
 {
     ID *id = var->id;
     BL_ASSERT(id);
-    ScopeEntry *entry = scope_lookup(var->decl_scope, id, true, false, NULL, NULL);
+    ScopeEntry *entry = scope_lookup(var->decl_scope, id, true, false, NULL);
     BL_ASSERT(entry && "cannot commit unregistered var");
     entry->kind     = SCOPE_ENTRY_VAR;
     entry->data.var = var;
@@ -1575,7 +1572,7 @@ ScopeEntry *register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool 
     BL_ASSERT(id && "Missing symbol ID.");
     BL_ASSERT(scope && "Missing entry scope.");
     const bool  is_private = scope->kind == SCOPE_PRIVATE;
-    ScopeEntry *collision  = scope_lookup(scope, id, is_private, false, NULL, NULL);
+    ScopeEntry *collision  = scope_lookup(scope, id, is_private, false, NULL);
     if (collision) {
         if (!is_private) goto COLLIDE;
         const bool collision_in_same_unit =
@@ -1621,7 +1618,7 @@ MirType *lookup_builtin_type(Context *cnt, MirBuiltinIdKind kind)
 {
     ID *        id    = &builtin_ids[kind];
     Scope *     scope = cnt->assembly->gscope;
-    ScopeEntry *found = scope_lookup(scope, id, true, false, NULL, NULL);
+    ScopeEntry *found = scope_lookup(scope, id, true, false, NULL);
 
     if (!found) BL_ABORT("Missing compiler internal symbol '%s'", id->str);
     if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
@@ -1652,7 +1649,7 @@ MirFn *lookup_builtin_fn(Context *cnt, MirBuiltinIdKind kind)
 {
     ID *        id    = &builtin_ids[kind];
     Scope *     scope = cnt->assembly->gscope;
-    ScopeEntry *found = scope_lookup(scope, id, true, false, NULL, NULL);
+    ScopeEntry *found = scope_lookup(scope, id, true, false, NULL);
 
     if (!found) BL_ABORT("Missing compiler internal symbol '%s'", id->str);
     if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
@@ -1766,7 +1763,7 @@ ScopeEntry *lookup_composit_member(MirType *type, ID *rid, MirType **out_base_ty
     Scope *     scope = type->data.strct.scope;
     ScopeEntry *found = NULL;
     while (true) {
-        found = scope_lookup(scope, rid, false, true, NULL, NULL);
+        found = scope_lookup(scope, rid, false, true, NULL);
         if (found) break;
         scope = get_base_type_scope(type);
         type  = get_base_type(type);
@@ -3761,19 +3758,6 @@ MirInstr *append_instr_call_loc(Context *cnt, Ast *node)
     return tmp;
 }
 
-MirInstr *append_instr_using(Context *cnt, Ast *node, MirInstr *ref)
-{
-    BL_ASSERT(ref);
-    MirInstrUsing *tmp   = create_instr(cnt, MIR_INSTR_USING, node);
-    tmp->base.value.type = cnt->builtin_types->t_void;
-    // Explicitly set to zero (this instruction can be removed after analyze pass)
-    tmp->base.ref_count         = 0;
-    tmp->base.value.is_comptime = true;
-    tmp->ref                    = ref_instr(ref);
-    append_current_block(cnt, &tmp->base);
-    return &tmp->base;
-}
-
 // analyze
 void erase_instr_tree(MirInstr *instr, bool keep_root, bool force)
 {
@@ -3833,13 +3817,6 @@ void erase_instr_tree(MirInstr *instr, bool keep_root, bool force)
             MirInstrSizeof *szof = (MirInstrSizeof *)top;
             unref_instr(szof->expr);
             tsa_push_InstrPtr64(&queue, szof->expr);
-            break;
-        }
-
-        case MIR_INSTR_USING: {
-            MirInstrUsing *using = (MirInstrUsing *)top;
-            unref_instr(using->ref);
-            tsa_push_InstrPtr64(&queue, using->ref);
             break;
         }
 
@@ -4848,7 +4825,7 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
         // lookup for member inside struct
         Scope *     scope = sub_type->data.enm.scope;
         ID *        rid   = &ast_member_ident->data.ident.id;
-        ScopeEntry *found = scope_lookup(scope, rid, false, true, NULL, NULL);
+        ScopeEntry *found = scope_lookup(scope, rid, false, true, NULL);
         if (!found) {
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_UNKNOWN_SYMBOL,
@@ -5051,43 +5028,23 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
     BL_ASSERT(ref->rid && ref->scope);
     ScopeEntry *found                        = NULL;
-    ScopeEntry *ambiguous                    = NULL;
     Scope *     private_scope                = ref->parent_unit->private_scope;
     bool        is_ref_out_of_fn_local_scope = false;
     if (!private_scope) { // reference in unit without private scope
-        found = scope_lookup(
-            ref->scope, ref->rid, true, false, &is_ref_out_of_fn_local_scope, &ambiguous);
+        found = scope_lookup(ref->scope, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
     } else { // reference in unit with private scope
         // search in current tree and ignore global scope
-        found = scope_lookup(
-            ref->scope, ref->rid, true, false, &is_ref_out_of_fn_local_scope, &ambiguous);
+        found = scope_lookup(ref->scope, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
 
         // lookup in private scope and global scope also (private scope has global
         // scope as parent every time)
         if (!found) {
-            found = scope_lookup(
-                private_scope, ref->rid, true, false, &is_ref_out_of_fn_local_scope, &ambiguous);
+            found =
+                scope_lookup(private_scope, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
         }
     }
 
     if (!found) return ANALYZE_RESULT(WAITING, ref->rid->hash);
-    if (ambiguous) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_AMBIGUOUS,
-                    ref->base.node->location,
-                    BUILDER_CUR_WORD,
-                    "Ambiguous reference to symbol.");
-        builder_msg(BUILDER_MSG_NOTE,
-                    0,
-                    found->node->location,
-                    BUILDER_CUR_WORD,
-                    "First definition found here.");
-        builder_msg(BUILDER_MSG_NOTE,
-                    0,
-                    ambiguous->node->location,
-                    BUILDER_CUR_WORD,
-                    "Other definition found here.");
-    }
     if (found->kind == SCOPE_ENTRY_INCOMPLETE) {
         BL_TRACY_MESSAGE("INCOMPLETE_DECL_REF", "%s", ref->rid->str);
         return ANALYZE_RESULT(WAITING, ref->rid->hash);
@@ -5230,30 +5187,6 @@ AnalyzeResult analyze_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
     if (!abort_fn) return ANALYZE_RESULT(POSTPONE, 0);
     ++abort_fn->ref_count;
     unr->abort_fn = abort_fn;
-
-    return ANALYZE_RESULT(PASSED, 0);
-}
-
-AnalyzeResult analyze_instr_using(Context *cnt, MirInstrUsing *using)
-{
-    BL_ASSERT(using->ref);
-    if (using->ref->value.type->kind != MIR_TYPE_NAMED_SCOPE) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    using->ref->node->location,
-                    BUILDER_CUR_WORD,
-                    "Expected scope name.");
-        return ANALYZE_RESULT(FAILED, 0);
-    }
-    ScopeEntry *using_scope_entry = MIR_CEV_READ_AS(ScopeEntry *, &using->ref->value);
-    BL_ASSERT(using_scope_entry);
-    BL_MAGIC_ASSERT(using_scope_entry);
-    BL_ASSERT(using_scope_entry->kind == SCOPE_ENTRY_NAMED_SCOPE && "Expected named scope.");
-
-    Scope *using_scope = using_scope_entry->data.scope;
-    Scope *owner_scope = using->base.node->owner_scope;
-    BL_ASSERT(using_scope && owner_scope);
-    scope_add_using(owner_scope, using_scope);
 
     return ANALYZE_RESULT(PASSED, 0);
 }
@@ -7489,9 +7422,6 @@ AnalyzeResult analyze_instr(Context *cnt, MirInstr *instr)
     case MIR_INSTR_UNROLL:
         state = analyze_instr_unroll(cnt, (MirInstrUnroll *)instr);
         break;
-    case MIR_INSTR_USING:
-        state = analyze_instr_using(cnt, (MirInstrUsing *)instr);
-        break;
     default:
         BL_ABORT("Missing analyze of instruction!");
     }
@@ -7666,7 +7596,7 @@ void analyze_report_unresolved(Context *cnt)
                 if (!ref->scope) continue;
                 if (!ref->rid) continue;
                 sym_name = ref->rid->str;
-                if (scope_lookup(ref->scope, ref->rid, true, false, NULL, NULL)) {
+                if (scope_lookup(ref->scope, ref->rid, true, false, NULL)) {
                     continue;
                 }
                 break;
@@ -8535,19 +8465,6 @@ void ast_stmt_defer(Context *cnt, Ast *defer)
 MirInstr *ast_call_loc(Context *cnt, Ast *loc)
 {
     return append_instr_call_loc(cnt, loc);
-}
-
-MirInstr *ast_using(Context *cnt, Ast *using)
-{
-    Ast *ident = using->data.using.ident;
-    BL_ASSERT(ident);
-    ID *   id    = &ident->data.ident.id;
-    Scope *scope = ident->owner_scope;
-    Unit * unit  = ident->location->unit;
-    BL_ASSERT(unit);
-    BL_ASSERT(scope);
-    MirInstr *ref = append_instr_decl_ref(cnt, ident, unit, &ident->data.ident.id, scope, NULL);
-    return append_instr_using(cnt, using, ref);
 }
 
 MirInstr *ast_expr_compound(Context *cnt, Ast *cmp)
@@ -9762,8 +9679,6 @@ MirInstr *ast(Context *cnt, Ast *node)
         return ast_expr_test_cases(cnt, node);
     case AST_CALL_LOC:
         return ast_call_loc(cnt, node);
-    case AST_USING:
-        return ast_using(cnt, node);
 
     case AST_LOAD:
     case AST_IMPORT:
@@ -9876,8 +9791,6 @@ const char *mir_instr_name(const MirInstr *instr)
         return "InstrCallLoc";
     case MIR_INSTR_UNROLL:
         return "InstrUnroll";
-    case MIR_INSTR_USING:
-        return "InstrUsing";
     }
 
     return "UNKNOWN";

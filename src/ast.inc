@@ -13,7 +13,6 @@
 	AST_CALL_LOC,
 	AST_DOCS,
     AST_REF,
-    AST_USING,
 	AST_DECL_ENTITY,
 	AST_DECL_MEMBER,
 	AST_DECL_ARG,
@@ -73,7 +72,6 @@
 	struct AstCallLoc        call_loc;
 	struct AstDocs           docs;
 	struct AstRef            ref;
-	struct AstUsing          using;
 	struct AstStmtReturn     stmt_return;
 	struct AstStmtIf         stmt_if;
 	struct AstStmtLoop       stmt_loop;

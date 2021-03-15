@@ -91,7 +91,6 @@ typedef enum {
     HD_IMPORT      = 1 << 19,
     HD_EXPORT      = 1 << 20,
     HD_SCOPE       = 1 << 21,
-    HD_USING       = 1 << 22,
 } HashDirective;
 
 typedef struct {
@@ -746,7 +745,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         // Perform lookup of named scope here, in case named scope already exist in global scope
         // we can reuse it!.
         if (SCOPE_GET(cnt)->kind == SCOPE_GLOBAL) scope_lock(SCOPE_GET(cnt));
-        ScopeEntry *scope_entry = scope_lookup(SCOPE_GET(cnt), id, false, false, NULL, NULL);
+        ScopeEntry *scope_entry = scope_lookup(SCOPE_GET(cnt), id, false, false, NULL);
         if (scope_entry) {
             BL_ASSERT(scope_entry->kind == SCOPE_ENTRY_NAMED_SCOPE &&
                       "Found scope entry is expected to be Namespace!");
@@ -775,26 +774,6 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         cnt->current_named_scope = scope_entry->data.scope;
         SCOPE_SET(cnt, cnt->current_named_scope);
         return scope;
-    }
-
-    if (strcmp(directive, "using") == 0) {
-        set_satisfied(HD_USING);
-        if (IS_NOT_FLAG(expected_mask, HD_USING)) {
-            PARSE_ERROR(
-                ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
-            return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
-        }
-        Ast *ident = parse_ident(cnt);
-        if (!ident) {
-            PARSE_ERROR(ERR_INVALID_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_AFTER,
-                        "Expected scope name after #using directive.");
-            return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
-        }
-        Ast *using = ast_create_node(cnt->ast_arena, AST_USING, tok_directive, SCOPE_GET(cnt));
-        using->data.using.ident = ident;
-        return using;
     }
 
 INVALID:
@@ -2584,11 +2563,7 @@ NEXT:
         goto NEXT;
     }
 
-    const int enabled_hd = HD_USING;
-    if ((tmp = parse_hash_directive(cnt, enabled_hd, NULL))) {
-        tarray_push(block->data.block.nodes, tmp);
-        goto NEXT;
-    }
+    parse_hash_directive(cnt, HD_NONE, NULL);
 
     if ((tmp = (Ast *)parse_decl(cnt))) {
         if (AST_IS_OK(tmp)) parse_semicolon_rq(cnt);

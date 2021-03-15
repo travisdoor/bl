@@ -252,7 +252,6 @@ static void print_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
 static void print_instr_br(Context *cnt, MirInstrBr *br);
 static void print_instr_switch(Context *cnt, MirInstrSwitch *sw);
 static void print_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
-static void print_instr_using(Context *cnt, MirInstrUsing *using);
 static void print_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
 static void print_instr_fn_group(Context *cnt, MirInstrFnGroup *group);
 static void print_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn);
@@ -645,15 +644,6 @@ void print_instr_arg(Context *cnt, MirInstrArg *arg)
 void print_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
     print_instr_head(cnt, &unr->base, "unreachable");
-}
-
-void print_instr_using(Context *cnt, MirInstrUsing *using)
-{
-    print_instr_head(cnt, &using->base, "using");
-    if (using->ref)
-        print_comptime_value_or_id(cnt, using->ref);
-    else
-        fprintf(cnt->stream, "<INVALID>");
 }
 
 void print_instr_test_cases(Context *cnt, MirInstrTestCases *tc)
@@ -1101,9 +1091,6 @@ void print_instr(Context *cnt, MirInstr *instr)
         break;
     case MIR_INSTR_UNROLL:
         print_instr_unroll(cnt, (MirInstrUnroll *)instr);
-        break;
-    case MIR_INSTR_USING:
-        print_instr_using(cnt, (MirInstrUsing *)instr);
         break;
     }
 

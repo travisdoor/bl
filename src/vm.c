@@ -2071,7 +2071,6 @@ void eval_instr(VM *vm, MirInstr *instr)
     case MIR_INSTR_DECL_VARIANT:
     case MIR_INSTR_SIZEOF:
     case MIR_INSTR_ALIGNOF:
-    case MIR_INSTR_USING:
         break;
 
     default:
