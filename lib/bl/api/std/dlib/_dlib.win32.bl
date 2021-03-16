@@ -1,6 +1,6 @@
-#load "dl.bl"
+#load "dlib.bl"
 
-#scope _DlImpl
+#scope _dlib_impl
 
 Library :: *u8;
 

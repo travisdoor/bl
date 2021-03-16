@@ -9,6 +9,8 @@ Fix unit mixing when using multithreaded build pipeline.
 Add support of shared library output.
 Add cmake build target Utils.
 Add hash into CodeLocation.
+Add namespace support.
+Cleanup modules.
 
 0.8.0 - BETA
 ---------------------------------------------------------------------------------------

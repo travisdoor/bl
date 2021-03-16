@@ -26,7 +26,7 @@
 // SOFTWARE.
 // =================================================================================================
 
-#import "std/string"
+#import "std/strings"
 #load "macos/macosapi.bl"
 #load "macos/errno.bl"
 #load "macos/dirent.bl"

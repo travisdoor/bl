@@ -26,7 +26,7 @@
 // SOFTWARE.
 // =================================================================================================
 
-#import "std/string"
+#import "std/strings"
 
 #load "linux/errno.bl"
 #load "posix/signal.bl"

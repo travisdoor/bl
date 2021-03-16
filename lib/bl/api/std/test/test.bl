@@ -27,7 +27,7 @@
 // =================================================================================================
 
 #import "std/thread"
-#import "std/string"
+#import "std/strings"
 #import "std/array"
 
 #load "std/debug.bl"

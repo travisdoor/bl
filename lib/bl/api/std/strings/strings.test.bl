@@ -1,7 +1,6 @@
 #import "std/test"
 #import "std/debug_allocator"
-
-#import "std/string"
+#import "std/strings"
 
 main :: fn () s32 {
     debug_allocator.init();
