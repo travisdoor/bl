@@ -10,32 +10,32 @@
 //! 
 //! .. warning:: This module is experimental and not fully supported across all platforms.
 
-#scope Sync
+#scope sync
 
 /// Mutex type.
-Mutex :: _SyncImpl.Mutex;
+Mutex :: _sync_impl.Mutex;
 
 /// Initialize mutex. Call :ref:`terminate` when mutex is no longer
 /// needed.
 init :: fn (mutex: *Mutex) #inline {
-    _SyncImpl.init(mutex);
+    _sync_impl.init(mutex);
 }
 
 /// Terminate mutex.
 terminate :: fn (mutex: *Mutex) #inline {
-    _SyncImpl.terminate(mutex);
+    _sync_impl.terminate(mutex);
 }
 
 /// Lock mutex and enter critical section.
 lock :: fn (mutex: *Mutex) #inline {
-    _SyncImpl.lock(mutex);
+    _sync_impl.lock(mutex);
 }
 
 try_lock :: fn (mutex: *Mutex) bool #inline {
-    return _SyncImpl.try_lock(mutex);
+    return _sync_impl.try_lock(mutex);
 }
 
 /// Unlock previously locked mutex and leave critical section.
 unlock :: fn (mutex: *Mutex) #inline {
-    _SyncImpl.unlock(mutex);
+    _sync_impl.unlock(mutex);
 }
