@@ -61,9 +61,9 @@ main :: fn () s32 {
 
     path :: String.new();
     defer String.delete(path);
-    Fs.dir_create(DIR);
-    Fs.remove(String.clear_concat(&path, DIR, "/", CMAKE_CACHE));
-    Fs.set_cwd(DIR);
+    fs.dir_create(DIR);
+    fs.remove(String.clear_concat(&path, DIR, "/", CMAKE_CACHE));
+    fs.set_cwd(DIR);
 
     conf :: conf_name(_args.is_debug);
     print("Generate configuration '%' in '%'.\n", conf, DIR);

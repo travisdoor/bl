@@ -89,12 +89,12 @@ main :: fn () s32 {
     
     // cleanup
     if OS_KIND == OSKind.Windows {
-        Fs.remove("out.exe");
-        Fs.remove("out.obj");
-        Fs.remove("out.pdb");
+        fs.remove("out.exe");
+        fs.remove("out.obj");
+        fs.remove("out.pdb");
     } else {
-        Fs.remove("out");
-        Fs.remove("out.o");
+        fs.remove("out");
+        fs.remove("out.o");
     }        
     return _errc;
 }
@@ -213,10 +213,10 @@ get_verbosity :: fn () string #inline {
 }
 
 get_expected_error :: fn (filepath: string, out_err: *s32) bool {
-    file, err1 :: Fs.open(filepath, Fs.OpenMode.Read);
-    defer Fs.close(file);
+    file, err1 :: fs.open(filepath, fs.OpenMode.Read);
+    defer fs.close(file);
     if !is_ok(err1) { print_err("%", err1); return false; }
-    content, err2 :: Fs.read_string(file);
+    content, err2 :: fs.read_string(file);
     defer String.delete(content);
     if !is_ok(err2) { print_err("%", err2); return false; }
     
@@ -313,15 +313,15 @@ test_all_in_dir :: fn (dir: string, expect_fail := false) {
     defer String.delete(file);
     
     print("Testing files in directory '%':\n", dir);        
-    list, err :: Fs.dir_scan(dir);
+    list, err :: fs.dir_scan(dir);
     if !is_ok(err) {
         print_err("%", err);
     }
-    defer Fs.info_list_delete(list);
+    defer fs.info_list_delete(list);
 
     loop i := 0; i < list.len; i += 1 {
         info :: &list[i];
-        if info.kind != Fs.InfoKind.Directory {
+        if info.kind != fs.InfoKind.Directory {
             String.clear(&file);
             String.concatenate(&file, dir, "/", info.name);
             if expect_fail {

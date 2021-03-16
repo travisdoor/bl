@@ -4,7 +4,7 @@
 #load "os/posix/unistd.bl"
 #load "fs.bl"
 
-#scope _FsImpl
+#scope _fs_impl
 
 File :: s64;
 FILE_INVALID : File : -1;
@@ -15,7 +15,7 @@ exist :: fn (filepath: string) bool #inline {
     return _stat(auto filepath.ptr, &tmp) == 0;
 }
 
-open :: fn (filepath: string, mode: ...Fs.OpenMode) (Fs.File, Error) {
+open :: fn (filepath: string, mode: ...fs.OpenMode) (fs.File, Error) {
     if String.is_empty(filepath) { return 0, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     flags := modes_to_flags(mode);
     mode_flags :: _S_IRUSR | _S_IWUSR | _S_IROTH | _S_IWOTH;
@@ -40,24 +40,24 @@ copy :: fn (src: string, dest: string, override: bool) Error {
     if String.is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     if String.is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     if exist(dest) && !override { return error(ERR_ALREADY_EXIST, "Destination already exist '%'", dest); }
-    file_src, err1 :: open(src, Fs.OpenMode.Read);
+    file_src, err1 :: open(src, fs.OpenMode.Read);
     defer close(file_src);
     if !is_ok(err1) { return err1; }
-    tmp, err2 :: Fs.read_slice(file_src);
+    tmp, err2 :: fs.read_slice(file_src);
     defer slice_terminate(tmp);
     if !is_ok(err2) { return err2; }
-    file_dest, err3:: open(dest, Fs.OpenMode.Write, Fs.OpenMode.Create);
+    file_dest, err3:: open(dest, fs.OpenMode.Write, fs.OpenMode.Create);
     defer close(file_dest);
     if !is_ok(err3) { return err3; }
-    _, err4 :: Fs.write_slice(file_dest, tmp);
+    _, err4 :: fs.write_slice(file_dest, tmp);
     return ok();
 }
 
-close :: fn (handle: Fs.File) #inline {
+close :: fn (handle: fs.File) #inline {
     _close(auto handle);
 }
 
-get_uid :: fn (handle: Fs.File) (u64, Error) {
+get_uid :: fn (handle: fs.File) (u64, Error) {
     tmp: _stat_t;
     if _fstat(auto handle, &tmp) != 0 {
         ec, estr :: os_get_last_error();
@@ -73,7 +73,7 @@ get_uid_by_name :: fn (filepath: string) (u64, Error) {
     return get_uid(file);
 }
 
-size :: fn (handle: Fs.File) (usize, Error) #inline {
+size :: fn (handle: fs.File) (usize, Error) #inline {
     tmp: _stat_t;
     if _fstat(auto handle, &tmp) != 0 {
         ec, estr :: os_get_last_error();
@@ -82,7 +82,7 @@ size :: fn (handle: Fs.File) (usize, Error) #inline {
     return auto tmp.st_size, ok();
 }
 
-read :: fn (handle: Fs.File, dest: *u8, size: s64) (s64, Error) {
+read :: fn (handle: fs.File, dest: *u8, size: s64) (s64, Error) {
     if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
     read :: _read(auto handle, auto dest, auto size);
     if read < 0 { 
@@ -92,7 +92,7 @@ read :: fn (handle: Fs.File, dest: *u8, size: s64) (s64, Error) {
     return auto read, ok();
 }
 
-write :: fn (handle: Fs.File, src: *u8, size: s64) (s64, Error) {
+write :: fn (handle: fs.File, src: *u8, size: s64) (s64, Error) {
     if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
     written :: _write(auto handle, auto src, auto size);
     if written < 0 { 
@@ -120,8 +120,8 @@ dir_remove :: fn (dirpath: string) Error {
     return ok();
 }
 
-dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error) {
-    invalid: Fs.InfoList;
+dir_scan :: fn (dirpath: string, filter: fs.DirScanFilterFn) (fs.InfoList, Error) {
+    invalid: fs.InfoList;
     dir := _opendir(auto dirpath.ptr);
     if !dir {
         ec, estr :: os_get_last_error();
@@ -134,7 +134,7 @@ dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error
     _rewinddir(dir);
     defer _rewinddir(dir);
 
-    buf: Fs.InfoList;
+    buf: fs.InfoList;
     slice_init(buf, fc);
     if fc == 0 { return buf, ok(); }
 
@@ -142,17 +142,17 @@ dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error
     loop {
         stat :: _readdir(dir);
         if stat == null { break; }
-        kind: Fs.InfoKind;
+        kind: fs.InfoKind;
         name: string;
         if stat.d_type == auto _DT_DIR {
-            kind = Fs.InfoKind.Directory;
+            kind = fs.InfoKind.Directory;
             name = String.new(cast(*u8) stat.d_name.ptr);
         } else {
-            kind = Fs.InfoKind.File;
+            kind = fs.InfoKind.File;
             name = String.new(cast(*u8) stat.d_name.ptr);
         }
         push := true;
-        info :: {:Fs.Info: kind, name};
+        info :: {:fs.Info: kind, name};
         if filter { push = filter(&info); }
         if push {
             buf.len += 1;
@@ -263,14 +263,14 @@ get_extension :: fn (filename: string) string #inline {
 }
 
 #private
-modes_to_flags :: fn (modes: []Fs.OpenMode) s32 #inline {
+modes_to_flags :: fn (modes: []fs.OpenMode) s32 #inline {
     r, w, create, append := false;
     loop i := 0; i < modes.len; i += 1 {
         switch modes[i] {
-            Fs.OpenMode.Read    { r = true; }            
-            Fs.OpenMode.Write   { w = true; }
-            Fs.OpenMode.Append  { w = true; append = true; }
-            Fs.OpenMode.Create  { create = true; }
+            fs.OpenMode.Read    { r = true; }            
+            fs.OpenMode.Write   { w = true; }
+            fs.OpenMode.Append  { w = true; append = true; }
+            fs.OpenMode.Create  { create = true; }
             default { panic(); }
         }
     }

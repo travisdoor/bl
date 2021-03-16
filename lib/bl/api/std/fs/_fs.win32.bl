@@ -1,6 +1,6 @@
 #load "fs.bl"
 
-#scope _FsImpl
+#scope _fs_impl
 
 File :: *u8;
 FILE_INVALID : File : null;
@@ -10,7 +10,7 @@ exist :: fn (filepath: string) bool #inline {
     return _PathFileExistsA(auto filepath.ptr) > 0;
 }
 
-open :: fn (filepath: string, mode: ...Fs.OpenMode) (Fs.File, Error) {
+open :: fn (filepath: string, mode: ...fs.OpenMode) (fs.File, Error) {
     if String.is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     access, create, append :: modes_to_flags(mode);
     handle :: _CreateFile(auto filepath.ptr, access, 0, null, create, _FILE_ATTRIBUTE_NORMAL, null);
@@ -49,12 +49,12 @@ copy :: fn (src: string, dest: string, override: bool) Error {
     return ok();
 }
 
-close :: fn (handle: Fs.File) #inline {
+close :: fn (handle: fs.File) #inline {
     if !handle { return; }
     _CloseHandle(handle);
 }
 
-get_uid :: fn (handle: Fs.File) (u64, Error) {
+get_uid :: fn (handle: fs.File) (u64, Error) {
     tmp: _BY_HANDLE_FILE_INFORMATION;
     if _GetFileInformationByHandle(auto handle, &tmp) == 0 {
         ec, estr :: os_get_last_error();
@@ -71,7 +71,7 @@ get_uid_by_name :: fn (filepath: string) (u64, Error) {
     return get_uid(file);
 }
 
-size :: fn (handle: Fs.File) (usize, Error) #inline {
+size :: fn (handle: fs.File) (usize, Error) #inline {
     size: _LARGE_INTEGER #noinit;
     if _GetFileSizeEx(auto handle, &size) == 0 {
         ec, estr :: os_get_last_error();
@@ -80,7 +80,7 @@ size :: fn (handle: Fs.File) (usize, Error) #inline {
     return auto size, ok();
 }
 
-read :: fn (handle: Fs.File, dest: *u8, size: s64) (s64, Error) {
+read :: fn (handle: fs.File, dest: *u8, size: s64) (s64, Error) {
     if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
     read_bytes: _DWORD #noinit;
     if _ReadFile(handle, dest, auto size, &read_bytes, null) == 0 {
@@ -90,7 +90,7 @@ read :: fn (handle: Fs.File, dest: *u8, size: s64) (s64, Error) {
     return auto read_bytes, ok();
 }
 
-write :: fn (handle: Fs.File, src: *u8, size: s64) (s64, Error) {
+write :: fn (handle: fs.File, src: *u8, size: s64) (s64, Error) {
     if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
     written_bytes: _DWORD #noinit;
     if _WriteFile(handle, src, auto size, &written_bytes, null) == 0 {
@@ -128,8 +128,8 @@ is_directory :: fn (path: string) (bool, Error) #inline {
     return is_flag(attributes, auto _FILE_ATTRIBUTE_DIRECTORY), ok();
 }
 
-dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error) {
-    invalid: Fs.InfoList;
+dir_scan :: fn (dirpath: string, filter: fs.DirScanFilterFn) (fs.InfoList, Error) {
+    invalid: fs.InfoList;
     if dirpath.len > (_MAX_PATH-3) { return invalid, error("Path too long!"); }
     tmp := String.new(dirpath);
     defer String.delete(tmp);
@@ -152,7 +152,7 @@ dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error
         ec, estr :: os_get_last_error();
         return invalid, error(ec, "Cannot list directory '%': %.", dirpath, estr);
     }
-    buf: Fs.InfoList;
+    buf: fs.InfoList;
     slice_init(buf, fc);
     if fc == 0 { return buf, ok(); }
 
@@ -166,17 +166,17 @@ dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error
 
     buf.len = 0;
     loop {
-        kind: Fs.InfoKind #noinit;
+        kind: fs.InfoKind #noinit;
         name: string;
         if is_flag(ffd.dwFileAttributes, auto _FILE_ATTRIBUTE_DIRECTORY) {
-            kind = Fs.InfoKind.Directory;
+            kind = fs.InfoKind.Directory;
             name = String.new(ffd.cFileName.ptr);
         } else {
-            kind = Fs.InfoKind.File;
+            kind = fs.InfoKind.File;
             name = String.new(ffd.cFileName.ptr);
         }
         push := true;
-        info :: {:Fs.Info: kind, name};
+        info :: {:fs.Info: kind, name};
         if filter { push = filter(&info); }
         if push {
             buf.len += 1;
@@ -279,16 +279,16 @@ get_extension :: fn (filename: string) string #inline {
 }
 
 #private
-modes_to_flags :: fn (modes: []Fs.OpenMode) (access: u32, create: u32, append: bool) #inline {
+modes_to_flags :: fn (modes: []fs.OpenMode) (access: u32, create: u32, append: bool) #inline {
     access: u32;
     create: u32;
     append: bool;
     loop i := 0; i < modes.len; i += 1 {
         switch modes[i] {
-            Fs.OpenMode.Read    { access = access | _GENERIC_READ;  }            
-            Fs.OpenMode.Write   { access = access | _GENERIC_WRITE; }
-            Fs.OpenMode.Append  { access = access | _GENERIC_WRITE; append = true; }
-            Fs.OpenMode.Create  { create = _OPEN_ALWAYS; }
+            fs.OpenMode.Read    { access = access | _GENERIC_READ;  }            
+            fs.OpenMode.Write   { access = access | _GENERIC_WRITE; }
+            fs.OpenMode.Append  { access = access | _GENERIC_WRITE; append = true; }
+            fs.OpenMode.Create  { create = _OPEN_ALWAYS; }
             default { panic(); }
         }
     }
