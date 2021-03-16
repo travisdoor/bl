@@ -34,4 +34,5 @@ build :: fn () #build_entry {
     set_output_dir(exe, "bin");
     exe.copy_dependencies = true;
     exe.register_split = true;
+    compile(exe);
 }

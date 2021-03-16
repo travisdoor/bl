@@ -3,7 +3,7 @@
 #import "std/arg_parser"
 #import "std/fs"
 
-Args :: struct #base ArgCtx {
+Args :: struct #base ArgParser.Ctx {
     is_debug: bool;
     make: bool;
     tracy_enable: bool;
@@ -15,46 +15,46 @@ CMAKE_CACHE :: "CMakeCache.txt";
 _args: Args;
 
 main :: fn () s32 {
-    arg_parser :: arg_parser_new();
-    defer arg_parser_delete(arg_parser);
+    arg_parser :: ArgParser.new();
+    defer ArgParser.delete(arg_parser);
 
-    arg_parser_add(
+    ArgParser.add(
         arg_parser,
         "-d",
         "--debug",
         "Generate project in debug mode.",
-        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
+        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.is_debug = true;
             return 1, ok();
         });
 
-    arg_parser_add(
+    ArgParser.add(
         arg_parser,
         "-m",
         "--make",
         "Make project.",
-        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
+        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.make = true;
             return 1, ok();
         });
 
-    arg_parser_add(
+    ArgParser.add(
         arg_parser,
         "-te",
         "--tracy-enable",
         "Enable tracy profiler (available only in debug build).",
-        &fn (parser: ArgParser, args: []string, ctx: *ArgCtx) (s32, Error) {
+        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.tracy_enable = true;
             return 1, ok();
         });
 
-    state :: arg_parser_run(arg_parser, command_line_arguments, &_args, 1);   
+    state :: ArgParser.run(arg_parser, command_line_arguments, &_args, 1);   
     if !is_ok(state) {
         print_err("%", state);
-        arg_parser_print_help(arg_parser);
+        ArgParser.print_help(arg_parser);
         return 1;
     }
     if _args.help { return 0; }
