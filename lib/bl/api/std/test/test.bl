@@ -26,7 +26,7 @@
 // SOFTWARE.
 // =================================================================================================
 
-#import "std/thread"
+#import "std/threads"
 #import "std/strings"
 #import "std/array"
 
@@ -201,8 +201,8 @@ test_run :: fn () s32 {
     }
 
     loop _ci < _queue.len {
-        t :: Thread.create(&worker);
-        Thread.join(t);
+        t :: threads.create(&worker);
+        threads.join(t);
     }
 
     print("\nResults:\n");
@@ -246,7 +246,7 @@ abort_handler :: fn () {
     _current.runtime_ms = os_tick_ms() - _start_time;
     _current.passed = false;
     print("[      | FAIL ] % (% ms)\n", _current.case.name, _current.runtime_ms);
-    Thread.exit(1);
+    threads.exit(1);
     _os_abort_default();
 }
 
