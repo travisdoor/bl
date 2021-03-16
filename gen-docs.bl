@@ -12,9 +12,9 @@ IGNORE :: {:[3]string:
           };
 
 cmd :: fn (fmt: string, args: ...) Error {
-    buf: [2048]u8 #noinit;
-    bprint(buf, fmt, args);
-    tmp :: {:string: buf.len, buf.ptr};
+    buf: [2048]u8;
+    len :: bprint(buf, fmt, args);
+    tmp :: {:string: len, buf.ptr};
     state :: os_execute(tmp);
     if state != 0 {
         return error(state, "Executed shell command failed '%'!", tmp);

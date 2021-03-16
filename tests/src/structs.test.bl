@@ -99,7 +99,7 @@ structure_initialization :: fn () #test {
     }
 };
 
-strings :: fn () #test {
+constant_string :: fn () #test {
     _1 := "hello";
     assert(_1.ptr != null);
     assert(_1.len == 5);

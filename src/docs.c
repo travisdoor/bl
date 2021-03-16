@@ -142,22 +142,31 @@ void doc_decl_entity(Context *cnt, Ast *decl)
     const char *text       = decl->docs;
     const char *name       = ident->data.ident.id.str;
     const bool  is_mutable = decl->data.decl_entity.mut;
+
     // if (!text) return;
     if (!decl->owner_scope) return;
-    if (decl->owner_scope->kind != SCOPE_GLOBAL) return;
+    if (decl->owner_scope->kind != SCOPE_GLOBAL && decl->owner_scope->kind != SCOPE_NAMED) return;
+
+    TString *full_name = get_tmpstr();
+    if (decl->owner_scope->name) {
+        tstring_append(full_name, decl->owner_scope->name->str);
+        tstring_append(full_name, ".");
+    }
+    tstring_append(full_name, ident->data.ident.id.str);
 
     tstring_clear(&cnt->path_tmp);
-    tstring_setf(&cnt->path_tmp, "%s/%s.rst", cnt->path_unit_dir.data, name);
+    tstring_setf(&cnt->path_tmp, "%s/%s.rst", cnt->path_unit_dir.data, full_name->data);
     char *export_file = cnt->path_tmp.data;
     FILE *f           = fopen(export_file, "w");
     if (f == NULL) {
         builder_error("Cannot open file '%s'", export_file);
+        put_tmpstr(full_name);
         return;
     }
     cnt->stream = f;
 
-    REF(cnt->stream, name);
-    H1(cnt->stream, name);
+    REF(cnt->stream, full_name->data);
+    H1(cnt->stream, full_name->data);
     CODE_BLOCK_BEGIN(cnt->stream, "bl");
     CODE_BLOCK_NEW_LINE(cnt->stream);
     fprintf(cnt->stream, "%s :", name);
@@ -188,6 +197,7 @@ void doc_decl_entity(Context *cnt, Ast *decl)
 
     cnt->stream = NULL;
     fclose(f);
+    put_tmpstr(full_name);
 }
 
 void doc_decl_arg(Context *cnt, Ast *decl)

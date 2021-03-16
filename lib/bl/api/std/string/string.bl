@@ -40,7 +40,7 @@
 /// Overloaded function creating new dynamic string instance. Created string is 
 /// guaranteed to be zero terminated.
 /// 
-/// .. warning:: Every new string must be deleted by :ref:`string_delete` call.
+/// .. warning:: Every new string must be deleted by :ref:`String.delete` call.
 /// 
 /// ::
 /// 
