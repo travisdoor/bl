@@ -1,4 +1,4 @@
-//************************************************************************************************
+// =================================================================================================
 // bl
 //
 // File:   utils.bl
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+// =================================================================================================
 
 //! =====
 //! Utils
@@ -59,8 +59,8 @@ ptr_diff :: fn (a: *u8, b: *u8) s64 #inline {
 /// responsibility to delete result string.
 env_get :: fn (var: string) string {
     out :: cast(*u8) c_getenv(auto var.ptr);
-    if !out { return String.new(); }
-    return String.new(out);
+    if !out { return strings.new(); }
+    return strings.new(out);
 }
 
 /// Sets environment variable.

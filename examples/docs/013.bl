@@ -11,7 +11,7 @@ main :: fn () s32 {
     // Copy content of 'foo' into 'bar'
     c, err :: fs.dir_copy("foo", "bar", &opt, &fn (item: *fs.Info) bool {
         // Filter only txt files
-        if String.compare(fs.get_extension(item.name), "txt") { return true; } 
+        if strings.compare(fs.get_extension(item.name), "txt") { return true; } 
         return false;
     });
     if !is_ok(err) { print("%\n", err); }

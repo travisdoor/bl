@@ -1,4 +1,4 @@
-//************************************************************************************************
+// =================================================================================================
 // bl
 //
 // File:   llvm_di.h
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+// =================================================================================================
 
 // Note: this is custom wrapper for LLVM DI used by compiler since original C-API for DWARF
 // generation in experimental.

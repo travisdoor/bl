@@ -11,7 +11,7 @@ exist :: fn (filepath: string) bool #inline {
 }
 
 open :: fn (filepath: string, mode: ...fs.OpenMode) (fs.File, Error) {
-    if String.is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
+    if strings.is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     access, create, append :: modes_to_flags(mode);
     handle :: _CreateFile(auto filepath.ptr, access, 0, null, create, _FILE_ATTRIBUTE_NORMAL, null);
     if handle == _INVALID_HANDLE_VALUE {
@@ -28,7 +28,7 @@ open :: fn (filepath: string, mode: ...fs.OpenMode) (fs.File, Error) {
 }
 
 remove :: fn (filepath: string) Error #inline {
-    if String.is_empty(filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+    if strings.is_empty(filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     tmp :: _DeleteFileA(auto filepath.ptr);
     if tmp == 0 {
         ec, estr :: os_get_last_error();
@@ -38,8 +38,8 @@ remove :: fn (filepath: string) Error #inline {
 }
 
 copy :: fn (src: string, dest: string, override: bool) Error {
-    if String.is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    if String.is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+    if strings.is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+    if strings.is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     fail_if_exist := 1;
     if  override { fail_if_exist = 0; }
     if _CopyFileA(auto src.ptr, auto dest.ptr, fail_if_exist) == 0 {
@@ -101,7 +101,7 @@ write :: fn (handle: fs.File, src: *u8, size: s64) (s64, Error) {
 }
 
 dir_create :: fn (dirpath: string) Error {
-    if String.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
+    if strings.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
     if _CreateDirectoryA(auto dirpath.ptr, null) == 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot create directory '%': %.", dirpath, estr);
@@ -110,7 +110,7 @@ dir_create :: fn (dirpath: string) Error {
 }
 
 dir_remove :: fn (dirpath: string) Error {
-    if String.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot remove directory, dirpath is empty."); }
+    if strings.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot remove directory, dirpath is empty."); }
     if _RemoveDirectoryA(auto dirpath.ptr) == 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot remove directory '%': %.", dirpath, estr);
@@ -119,7 +119,7 @@ dir_remove :: fn (dirpath: string) Error {
 }
 
 is_directory :: fn (path: string) (bool, Error) #inline {
-    if String.is_empty(path) { return false, error(ERR_INVALID_HANDLE, "Path is empty."); }
+    if strings.is_empty(path) { return false, error(ERR_INVALID_HANDLE, "Path is empty."); }
     attributes :: _GetFileAttributesA(auto path.ptr);
     if attributes == _INVALID_FILE_ATTRIBUTES {
         ec, estr :: os_get_last_error();
@@ -131,9 +131,9 @@ is_directory :: fn (path: string) (bool, Error) #inline {
 dir_scan :: fn (dirpath: string, filter: fs.DirScanFilterFn) (fs.InfoList, Error) {
     invalid: fs.InfoList;
     if dirpath.len > (_MAX_PATH-3) { return invalid, error("Path too long!"); }
-    tmp := String.new(dirpath);
-    defer String.delete(tmp);
-    String.append(&tmp, "\\*");
+    tmp := strings.new(dirpath);
+    defer strings.delete(tmp);
+    strings.append(&tmp, "\\*");
 
     ffd: _FIND_DATA;
     h_find := _FindFirstFile(auto tmp.ptr, &ffd);
@@ -170,10 +170,10 @@ dir_scan :: fn (dirpath: string, filter: fs.DirScanFilterFn) (fs.InfoList, Error
         name: string;
         if is_flag(ffd.dwFileAttributes, auto _FILE_ATTRIBUTE_DIRECTORY) {
             kind = fs.InfoKind.Directory;
-            name = String.new(ffd.cFileName.ptr);
+            name = strings.new(ffd.cFileName.ptr);
         } else {
             kind = fs.InfoKind.File;
-            name = String.new(ffd.cFileName.ptr);
+            name = strings.new(ffd.cFileName.ptr);
         }
         push := true;
         info :: {:fs.Info: kind, name};
@@ -182,7 +182,7 @@ dir_scan :: fn (dirpath: string, filter: fs.DirScanFilterFn) (fs.InfoList, Error
             buf.len += 1;
             buf[buf.len-1] = info;
         } else {
-            String.delete(name);
+            strings.delete(name);
         }
         if _FindNextFile(h_find, &ffd) == 0 { break; }
     }
@@ -193,7 +193,7 @@ validate_filename :: fn (name: string) bool {
     if name.len == 0 { return false; }
     invalid :: "<>:\"/\\|?*\t";
     loop i := 0; i < invalid.len; i += 1 {
-        if String.count_of(name, invalid[i]) > 0 { return false; }
+        if strings.count_of(name, invalid[i]) > 0 { return false; }
     }
     return true;
 }
@@ -201,14 +201,14 @@ validate_filename :: fn (name: string) bool {
 get_cwd :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
     written :: _GetCurrentDirectoryA(auto buf.len, auto buf.ptr);
-    if written == 0 { return String.new(); }
-    out :: String.new(buf.ptr);
-    String.replace_all(&out, '\\', '/');
+    if written == 0 { return strings.new(); }
+    out :: strings.new(buf.ptr);
+    strings.replace_all(&out, '\\', '/');
     return remove_last_separator(out);
 }
 
 set_cwd :: fn (path: string) Error #inline {
-    if String.is_empty(path) { return error(ERR_INVALID_HANDLE, "Path is empty!"); }
+    if strings.is_empty(path) { return error(ERR_INVALID_HANDLE, "Path is empty!"); }
     if _SetCurrentDirectoryA(auto path.ptr) == 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot set current directory to '%': %.", path, estr);
@@ -219,24 +219,24 @@ set_cwd :: fn (path: string) Error #inline {
 get_home :: fn () string #inline {
     tmp :: "USERPROFILE";
     cdir :: cast(*u8) c_getenv(auto tmp.ptr);
-    if !cdir { return String.new(); }
-    out :: String.new(cdir);
-    String.replace_all(&out, '\\', '/');
+    if !cdir { return strings.new(); }
+    out :: strings.new(cdir);
+    strings.replace_all(&out, '\\', '/');
     return remove_last_separator(out);
 }
 
 get_tmp :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
     written :: _GetTempPathA(auto buf.len, auto buf.ptr);
-    if written == 0 { return String.new(); }
-    out :: String.new(buf.ptr);
-    String.replace_all(&out, '\\', '/');
+    if written == 0 { return strings.new(); }
+    out :: strings.new(buf.ptr);
+    strings.replace_all(&out, '\\', '/');
     return remove_last_separator(out);
 }
 
 normalize :: fn (filepath: *string) Error {
     if !filepath { return error(ERR_INVALID_HANDLE, "File path is null!"); }
-    if String.is_empty(^filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+    if strings.is_empty(^filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     buf : [OS_PATH_MAX]u8 #noinit;
     if _GetFullPathNameA(auto filepath.ptr, auto buf.len, buf.ptr, null) == 0 {
         ec, estr :: os_get_last_error();
@@ -246,14 +246,14 @@ normalize :: fn (filepath: *string) Error {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot normalize '%': %.", filepath, estr);
     }
-    String.clear(filepath);
-    String.append(filepath, cstr_to_str(buf.ptr));
-    String.replace_all(filepath, '\\', '/');
+    strings.clear(filepath);
+    strings.append(filepath, cstr_to_str(buf.ptr));
+    strings.replace_all(filepath, '\\', '/');
     return ok();
 }
 
 remove_extension :: fn (filename: string) string #inline {
-    if String.is_empty(filename) { return String.empty; }
+    if strings.is_empty(filename) { return strings.empty; }
     tmp := filename;
     tmp.len = 0;
     loop i := 0; i < filename.len; i += 1 {
@@ -265,17 +265,17 @@ remove_extension :: fn (filename: string) string #inline {
 }
 
 get_extension :: fn (filename: string) string #inline {
-    if String.is_empty(filename) { return String.empty; }
+    if strings.is_empty(filename) { return strings.empty; }
     if filename[0] == '.' {
-        if filename.len == 1 { return String.empty; }
+        if filename.len == 1 { return strings.empty; }
         filename.ptr = &filename[1]; 
         filename.len -= 1; 
     }
     rhs: string;
-    if String.split_by_first(filename, '.', null, &rhs) {
+    if strings.split_by_first(filename, '.', null, &rhs) {
         return rhs;
     }
-    return String.empty;
+    return strings.empty;
 }
 
 #private
@@ -298,7 +298,7 @@ modes_to_flags :: fn (modes: []fs.OpenMode) (access: u32, create: u32, append: b
 }
 
 remove_last_separator :: fn (path: string) string {
-    if String.is_empty(path) { return path; }
+    if strings.is_empty(path) { return path; }
     if path[path.len-1] == '/' {
         path[path.len-1] = '\0';
         path.len -= 1;

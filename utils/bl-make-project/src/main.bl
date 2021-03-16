@@ -23,33 +23,33 @@ MAIN_BODY_CLT ::
     "#import \"std/arg_parser\"\n"
     "\n"
     "// Command line arguments context.\n"
-    "Args :: struct #base ArgParser.Ctx {\n"
+    "Args :: struct #base arg_parser.Ctx {\n"
     "    my_flag: bool;\n"
     "}\n"
     "\n"
     "g_args: Args;\n"
     "\n"
     "main :: fn () s32 {\n"
-    "    arg_parser :: ArgParser.new();\n"
-    "    defer ArgParser.delete(arg_parser);\n"
+    "    parser :: arg_parser.new();\n"
+    "    defer arg_parser.delete(parser);\n"
     "\n"
     "    // Add new argument.\n"
-    "    ArgParser.add(\n"
-    "        arg_parser, \n"
+    "    arg_parser.add(\n"
+    "        parser, \n"
     "        \"-f\", // Short name (must start with -)\n"
     "        \"--flag\", // Long name (must start with -)\n"
     "        \"Specify my flag.\", // Help text.\n"
-    "        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {\n"
+    "        &fn (parser: arg_parser.Parser, args: []string, ctx: *arg_parser.Ctx) (s32, Error) {\n"
     "            a: *Args = auto ctx;\n"
     "            a.my_flag = true;\n"
     "            return 1, ok(); // Return number of parsed arguments and state.\n"
     "        });\n"
     "\n"
     "    // Start parsing.\n"
-    "    state :: ArgParser.run(arg_parser, command_line_arguments, &g_args, 1);\n"
+    "    state :: arg_parser.run(parser, command_line_arguments, &g_args, 1);\n"
     "    if !is_ok(state) {\n"
     "        print_err(\"%\", state);\n"
-    "        ArgParser.print_help(arg_parser);\n"
+    "        arg_parser.print_help(parser);\n"
     "        return 1;\n"
     "    }\n"
     "    if g_args.help { return 0; }\n"
@@ -69,7 +69,7 @@ MAIN_FILE :: "main.bl";
 BUILD_FILE :: "build.bl";    
 SRC_DIR :: "src";
 
-Args :: struct #base ArgParser.Ctx {
+Args :: struct #base arg_parser.Ctx {
     proj_dir: string;
     proj_kind: ProjKind;
 }
@@ -84,15 +84,15 @@ ProjKind :: enum {
 
 main :: fn () s32 {
     _context.print_log_fn = &custom_logger;
-    arg_parser :: ArgParser.new(HELP);
-    defer ArgParser.delete(arg_parser);
+    parser :: arg_parser.new(HELP);
+    defer arg_parser.delete(parser);
     
-    ArgParser.add(
-        arg_parser,
+    arg_parser.add(
+        parser,
         "",
         "--output-dir",
         "Sets the output directory. This is directory in which root project directory will be created.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (parser: arg_parser.Parser, args: []string, ctx: *arg_parser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             if (args.len < 2) {
                 return 0, error("Expected directory name!");
@@ -103,34 +103,34 @@ main :: fn () s32 {
             return 2, ok();
         });
      
-     ArgParser.add(
-        arg_parser,
+     arg_parser.add(
+        parser,
         "",
         "--exe",
         "Generate simple executable project (default).",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (parser: arg_parser.Parser, args: []string, ctx: *arg_parser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.proj_kind = ProjKind.Executable;
             return 1, ok();
         });
         
-     ArgParser.add(
-        arg_parser,
+     arg_parser.add(
+        parser,
         "",
         "--shared",
         "Generate shared library project.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (parser: arg_parser.Parser, args: []string, ctx: *arg_parser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.proj_kind = ProjKind.Shared;
             return 1, ok();
         });        
      
-     ArgParser.add(
-        arg_parser,
+     arg_parser.add(
+        parser,
         "",
         "--tool",
         "Generate command line tool project.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (parser: arg_parser.Parser, args: []string, ctx: *arg_parser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.proj_kind = ProjKind.CommandLineTool;
             return 1, ok();
@@ -140,16 +140,16 @@ main :: fn () s32 {
     state: Error;
     
     // Start parsing.
-    state = ArgParser.run(arg_parser, command_line_arguments, &g_args, 1);
+    state = arg_parser.run(parser, command_line_arguments, &g_args, 1);
     if !is_ok(state) {
         print_err("%", state);
-        ArgParser.print_help(arg_parser);
+        arg_parser.print_help(parser);
         return 1;
     }
     if g_args.help { return 0; }
     if g_args.other.len == 0 {
         print_err("Expected project name!");
-        ArgParser.print_help(arg_parser);
+        arg_parser.print_help(parser);
         return 1;
     }
     proj_name :: g_args.other[0];
@@ -157,8 +157,8 @@ main :: fn () s32 {
     
     proj_root :: sprint(g_args.proj_dir, "/", proj_name);
     proj_src  :: sprint(proj_root, "/", SRC_DIR);
-    defer String.delete(proj_src);    
-    defer String.delete(proj_root);
+    defer strings.delete(proj_src);    
+    defer strings.delete(proj_root);
     
     // create root directory
     state = fs.dir_create(proj_root);
@@ -171,32 +171,32 @@ main :: fn () s32 {
     switch g_args.proj_kind {
         ProjKind.Executable {
             proj_main :: sprint(proj_src, "/", MAIN_FILE);
-            defer String.delete(proj_main);            
+            defer strings.delete(proj_main);            
             make_file(proj_main, MAIN_BODY_EXE);
             
             proj_build :: sprint(proj_root, "/", BUILD_FILE);
-            defer String.delete(proj_build);            
+            defer strings.delete(proj_build);            
             make_file(proj_build, BUILD_BODY, "executable", proj_name, SRC_DIR, MAIN_FILE);
         }
         ProjKind.Shared {
             proj_main_filename :: sprint(proj_name, ".bl");
             proj_main :: sprint(proj_src, "/", proj_main_filename);
-            defer String.delete(proj_main);            
-            defer String.delete(proj_main_filename);            
+            defer strings.delete(proj_main);            
+            defer strings.delete(proj_main_filename);            
             make_file(proj_main, MAIN_BODY_SHARED);
 
             proj_build :: sprint(proj_root, "/", BUILD_FILE);
-            defer String.delete(proj_build);            
+            defer strings.delete(proj_build);            
             make_file(proj_build, BUILD_BODY, "library", proj_name, SRC_DIR, proj_main_filename);
 
         }
         ProjKind.CommandLineTool {
             proj_main :: sprint(proj_src, "/", MAIN_FILE);
-            defer String.delete(proj_main);            
+            defer strings.delete(proj_main);            
             make_file(proj_main, MAIN_BODY_CLT);
 
             proj_build :: sprint(proj_root, "/", BUILD_FILE);
-            defer String.delete(proj_build);            
+            defer strings.delete(proj_build);            
             make_file(proj_build, BUILD_BODY, "executable", proj_name, SRC_DIR, MAIN_FILE);
         }
     }

@@ -1,4 +1,4 @@
-//************************************************************************************************
+// =================================================================================================
 // bl
 //
 // File:   debug_allocator.bl
@@ -24,12 +24,12 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+// =================================================================================================
 
 #import "std/sync"
 #load "_experimental/hash_table.bl"
 
-#scope DebugAllocator
+#scope debug_allocator
 
 //! ===============
 //! Debug Allocator
@@ -67,7 +67,7 @@
 /// allocator to debug one. Deinitialization must be done by :ref:`terminate` call.
 init :: fn () {
     _prev_alloc_fn = _context.alloc_fn;
-    _context.alloc_fn = &debug_allocator;
+    _context.alloc_fn = &allocator;
     _alloc_table = htbl_new(*Meta, 2048, &_default_allocator);
     sync.init(&_mutex);
 }
@@ -162,7 +162,7 @@ Meta :: struct {
     line: s32;
 }
 
-debug_allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := String.empty, line := 0) *u8 {
+allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := strings.empty, line := 0) *u8 {
     switch operation {
         AllocOp.Allocate {
             return debug_malloc(size, file, line);

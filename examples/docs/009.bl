@@ -1,7 +1,7 @@
 main :: fn () s32 {
-    str :: String.new();
-    defer String.delete(str);
-    String.append(&str, "Hello");
+    str :: strings.new();
+    defer strings.delete(str);
+    strings.append(&str, "Hello");
 
     print("str = %\n", str);
     return 0;

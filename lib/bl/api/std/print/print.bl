@@ -1,4 +1,4 @@
-//************************************************************************************************
+// =================================================================================================
 // bl
 //
 // File:   print.bl 
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+// =================================================================================================
 
 #import "std/string"
 #load "std/math.bl"
@@ -101,9 +101,9 @@ boprint :: fn (buf: []u8, offset: s32, format: string, args: ...) s32 {
 /// Create new dynamic string with variable content.
 /// This instance must be freed by `string_delete` call.
 sprint :: fn (args: ...) string {
-    tmp := String.new();
+    tmp := strings.new();
     loop i := 0; i < args.len; i += 1 {
-        String.append(&tmp, args[i]);
+        strings.append(&tmp, args[i]);
     }
 
     return tmp;

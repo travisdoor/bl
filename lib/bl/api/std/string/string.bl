@@ -1,10 +1,10 @@
 #import "std/print"
 
-#scope String
+#scope strings
 
-//! ======
-//! String
-//! ======
+//! =======
+//! Strings
+//! =======
 //! 
 //! ::
 //! 
@@ -633,7 +633,7 @@ _string_insert :: fn (str: *string, index: s32, v: string) bool {
     if v.len == 0 { return false; }
     if index > str.len { return false; }
     if index == str.len { // appending
-        String.append(str, v);
+        strings.append(str, v);
         return true;
     }
 

@@ -41,7 +41,7 @@ main :: fn () s32 {
     state := 0;
     loop i := 0; i < _args.other.len; i += 1 {
         in_filepath :: _args.other[i];
-        String.replace_all(&in_filepath, '\\', '/');
+        strings.replace_all(&in_filepath, '\\', '/');
         err :: process_file(in_filepath);
         if !is_ok(err) {
             eprint("ERROR: %\n", err);
@@ -64,7 +64,7 @@ Ctx :: struct {
     type_cache: [..]CXType;
 }
 
-Args :: struct #base ArgParser.Ctx {
+Args :: struct #base arg_parser.Ctx {
     out_filepath: string;
     include_dir: string;
     translate_macros: bool;
@@ -74,22 +74,22 @@ Args :: struct #base ArgParser.Ctx {
 _args: Args;
 
 handle_args :: fn () bool {
-    arg_parser :: ArgParser.new(HELP_TEXT);
-    defer ArgParser.delete(arg_parser);
+    parser :: arg_parser.new(HELP_TEXT);
+    defer arg_parser.delete(parser);
 
     _args.include_dir = ".";
 
-    ArgParser.add(
-        arg_parser,
+    arg_parser.add(
+        parser,
         "-I",
         "--include-directory",
         "Specify include directory.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (parser: arg_parser.Parser, args: []string, ctx: *arg_parser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             if (args.len < 2) {
                 return 0, error("Expected directory name!");
             }
-            String.replace_all(&args[1], '\\', '/');
+            strings.replace_all(&args[1], '\\', '/');
             a.include_dir = args[1];
             is_valid_directory :: fs.is_directory(a.include_dir);
             if !is_valid_directory {  
@@ -98,47 +98,47 @@ handle_args :: fn () bool {
             return 2, ok();
         });
         
-    ArgParser.add(
-        arg_parser,
+    arg_parser.add(
+        parser,
         "-sc",
         "--syntax-check",
         "Check syntax of output files. BL compiler is required in PATH.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (parser: arg_parser.Parser, args: []string, ctx: *arg_parser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.check_syntax = true;
             return 1, ok();
         });
         
-    ArgParser.add(
-        arg_parser,
+    arg_parser.add(
+        parser,
         "-tm",
         "--translate-macros",
         "Translate C macros into BL, this feature is experimental.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (parser: arg_parser.Parser, args: []string, ctx: *arg_parser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.translate_macros = true;
             return 1, ok();
         });
 
-    ArgParser.add(
-        arg_parser,
+    arg_parser.add(
+        parser,
         "-o",
         "--output",
         "Specify name of the output file.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (parser: arg_parser.Parser, args: []string, ctx: *arg_parser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             if (args.len < 2) {
                 return 0, error("Expected output file name!");
             }
-            String.replace_all(&args[1], '\\', '/');
+            strings.replace_all(&args[1], '\\', '/');
             a.out_filepath = args[1];
             return 2, ok();
         });
         
-    state :: ArgParser.run(arg_parser, command_line_arguments, &_args, 1);
+    state :: arg_parser.run(parser, command_line_arguments, &_args, 1);
     if !is_ok(state) {
         print_err("%", state);
-        ArgParser.print_help(arg_parser);
+        arg_parser.print_help(parser);
         return false;
     }
     return true;
@@ -156,7 +156,7 @@ process_file :: fn (in_filepath: string) Error {
     tu : CXTranslationUnit = null;
 
     arg_include_path :: sprint("-I", _args.include_dir);
-    defer String.delete(arg_include_path);
+    defer strings.delete(arg_include_path);
     parser_args :: {:[1]*u8: arg_include_path.ptr};
 
     result := clang_parseTranslationUnit2(idx, in_filepath.ptr, parser_args.ptr, 1, null, 0, options, &tu);
@@ -168,12 +168,12 @@ process_file :: fn (in_filepath: string) Error {
     
     // prepare output file 
     ctx: Ctx;
-    if !String.split_by_last(in_filepath, '/', null, &ctx.filename) {
+    if !strings.split_by_last(in_filepath, '/', null, &ctx.filename) {
         ctx.filename = in_filepath;
     }
-    out_filepath := String.new(_args.out_filepath);
-    defer String.delete(out_filepath);
-    if String.is_empty(_args.out_filepath) {
+    out_filepath := strings.new(_args.out_filepath);
+    defer strings.delete(out_filepath);
+    if strings.is_empty(_args.out_filepath) {
         out_filepath = sprint(fs.remove_extension(ctx.filename), ".bl");
     }
     out_file, err :: fs.open(out_filepath, fs.OpenMode.Create, fs.OpenMode.Write);
@@ -191,7 +191,7 @@ process_file :: fn (in_filepath: string) Error {
 
     if _args.check_syntax {
         cmd :: sprint("blc -silent -syntax-only ", out_filepath);
-        defer String.delete(cmd);
+        defer strings.delete(cmd);
         if os_execute(cmd) != 0 {
             return error("Code validation failed.");
         }
@@ -270,7 +270,7 @@ emit_macro :: fn (ctx: *Ctx, c: CXCursor) {
         spelling :: clang_getTokenSpelling(tu, tokens[i]);
         str :: {:string: auto c_strlen(auto spelling.data), spelling.data};
         if i == 0 {
-            if String.is_empty(str) { break; }
+            if strings.is_empty(str) { break; }
             fs.write_fmt(ctx.out, "% :: ", str);
         } else {
             fs.write_string(ctx.out, str);
@@ -456,14 +456,14 @@ get_name :: fn { _get_name_cursor; _get_name_type; }
 _get_name_cursor :: fn (c: CXCursor) (string, bool) {
     spelling :: clang_getCursorSpelling(c);
     name :: {:string: auto c_strlen(auto spelling.data), spelling.data};
-    if String.is_empty(name) { return "", false; }
+    if strings.is_empty(name) { return "", false; }
     return name, true;
 }
 
 _get_name_type :: fn (type: CXType) (string, bool) {
     spelling :: clang_getTypeSpelling(type);
     name :: {:string: auto c_strlen(auto spelling.data), spelling.data};
-    if String.is_empty(name) { return "", false; }
+    if strings.is_empty(name) { return "", false; }
     return name, true;
 }
 
@@ -488,8 +488,8 @@ add_cached_type :: fn (ctx: *Ctx, type: CXType) {
 }
 
 is_new_sym :: fn (ctx: *Ctx, sym: string) bool {
-    if String.is_empty(sym) { return true; }
-    hash :: String.hash(sym);
+    if strings.is_empty(sym) { return true; }
+    hash :: strings.hash(sym);
     loop i := 0; i < ctx.sym_cache.len; i += 1 {
         if hash == ctx.sym_cache[i] { return false; }
     }
@@ -497,7 +497,7 @@ is_new_sym :: fn (ctx: *Ctx, sym: string) bool {
 }
 
 add_cached_sym :: fn (ctx: *Ctx, sym: string) {
-    hash :: String.hash(sym);
+    hash :: strings.hash(sym);
     array_push(ctx.sym_cache, hash);
 }
 

@@ -25,48 +25,48 @@ main :: fn () s32 {
     _context.print_log_fn = &custom_logger;
     { // Setup pwd
         exec_path :: os_get_exec_path();
-        defer String.delete(exec_path);
+        defer strings.delete(exec_path);
         dir: string;
-        if String.split_by_last(exec_path, '/', &dir, null) {
-            g_pwd = String.new(dir);
+        if strings.split_by_last(exec_path, '/', &dir, null) {
+            g_pwd = strings.new(dir);
         } else {
-            g_pwd = String.new(exec_path);
+            g_pwd = strings.new(exec_path);
         }
     }
-    defer String.delete(g_pwd);
+    defer strings.delete(g_pwd);
 
-    arg_parser :: ArgParser.new(HELP_TEXT);
-    defer ArgParser.delete(arg_parser);
+    parser :: arg_parser.new(HELP_TEXT);
+    defer arg_parser.delete(parser);
     
-    ArgParser.add(
-        arg_parser,
+    arg_parser.add(
+        parser,
         "-s",
         "--silent",
         "Print only errors.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (parser: arg_parser.Parser, args: []string, ctx: *arg_parser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.silent = true;
             return 1, ok();
         });
         
-     ArgParser.add(
-        arg_parser,
+     arg_parser.add(
+        parser,
         "-f",
         "--force-override",
         "Override existing configuration file.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (parser: arg_parser.Parser, args: []string, ctx: *arg_parser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.override_config = true;
             return 1, ok();
         });
 
-    setup(arg_parser);    
+    setup(parser);    
         
     state: Error;
-    state = ArgParser.run(arg_parser, command_line_arguments, &g_args, 1);
+    state = arg_parser.run(parser, command_line_arguments, &g_args, 1);
     if !is_ok(state) {
         print_err("%", state);
-        ArgParser.print_help(arg_parser);
+        arg_parser.print_help(parser);
         return 1;
     }
     
@@ -74,8 +74,8 @@ main :: fn () s32 {
 
     g_etc_dir = sprint(g_pwd, "/", ETC_DIR);
     g_conf_filepath = sprint(g_etc_dir, "/", CONF_FILE);
-    defer String.delete(g_etc_dir);
-    defer String.delete(g_conf_filepath);
+    defer strings.delete(g_etc_dir);
+    defer strings.delete(g_conf_filepath);
 
     if fs.exist(g_conf_filepath) {
         if !g_args.override_config {
@@ -112,12 +112,12 @@ pipe_execute :: fn (cmd: string) (string, Error) {
     defer pclose(file);
     if !file { return "", error("Execution of command failed!"); }
     buf: [1024]u8 #noinit;
-    out := String.new();
+    out := strings.new();
     loop fgets(buf.ptr, auto buf.len, file) {
         tmp :: {:string: auto c_strlen(auto buf.ptr), buf.ptr};
-        String.append(&out, tmp);
+        strings.append(&out, tmp);
     }
-    if !String.is_empty(out) && out[out.len-1] == '\n' {
+    if !strings.is_empty(out) && out[out.len-1] == '\n' {
         out.len -= 1;
     }
     return out, ok();   

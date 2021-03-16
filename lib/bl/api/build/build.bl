@@ -1,4 +1,4 @@
-//************************************************************************************************
+// =================================================================================================
 // bl
 //
 // File:   build.bl
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+// =================================================================================================
 
 //! .. _Build_System:
 //!
@@ -299,7 +299,7 @@ append_linker_options :: fn (target: *Target, option: string) {
 /// Specified directory will be used also for build temporary files.
 set_output_dir :: fn (target: *Target, dir: string) {
     if !target { panic("Invalid target!"); }
-    if String.is_empty(dir) { return; }
+    if strings.is_empty(dir) { return; }
     __set_output_dir(target, auto dir.ptr);
 }
 
@@ -307,7 +307,7 @@ set_output_dir :: fn (target: *Target, dir: string) {
 get_output_dir :: fn (target: *Target) string {
     if !target { panic("Invalid target!"); }
     cdir :: __get_output_dir(target);    
-    if !cdir { return String.empty; }
+    if !cdir { return strings.empty; }
     return cstr_to_str(auto cdir);
 }
 
@@ -339,7 +339,7 @@ ModuleImportPolicy :: enum s32 {
 /// `System` by default even if this function has not been called.
 set_module_dir :: fn (target: *Target, dir: string, policy := ModuleImportPolicy.System) {
     if !target { panic("Invalid target!"); }
-    if String.is_empty(dir) { return; }
+    if strings.is_empty(dir) { return; }
     __set_module_dir(target, auto dir.ptr, auto policy);
 }
 
@@ -347,7 +347,7 @@ set_module_dir :: fn (target: *Target, dir: string, policy := ModuleImportPolicy
 get_module_dir :: fn (target: *Target) string {
     if !target { panic("Invalid target!"); }
     cdir :: __get_module_dir(target);    
-    if !cdir { return String.empty; }
+    if !cdir { return strings.empty; }
     return cstr_to_str(auto cdir);
 }
 

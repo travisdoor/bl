@@ -19,7 +19,7 @@ Library :: _DlImpl.Library;
 /// will be loaded.
 /// Use :ref:`Dl.close_library` call to close library when it's not needed
 /// anymore.
-open_library :: fn (lib_name := String.empty) (Library, Error) #inline {
+open_library :: fn (lib_name := strings.empty) (Library, Error) #inline {
     return _DlImpl.open(lib_name);
 }
 

@@ -4,8 +4,8 @@
 #import "std/thread"
 
 main :: fn () s32 {
-    DebugAllocator.init();
-    defer DebugAllocator.terminate();
+    debug_allocator.init();
+    defer debug_allocator.terminate();
     return test_run();    
 }
 

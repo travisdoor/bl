@@ -1,4 +1,4 @@
-//************************************************************************************************
+// =================================================================================================
 // Adaonia 
 //
 // File:   string_stream.bl
@@ -24,73 +24,73 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//************************************************************************************************
+// =================================================================================================
 
 #import "std/fs"
 
 END_OF_STREAM :: '\0';
 
-StringStream :: struct {
+string_stream :: struct {
     _data: string;
     i: s64;
 }
 
-ss_new :: fn () *StringStream {
-    ss :: cast(*StringStream) alloc(sizeof(StringStream));
+ss_new :: fn () *string_stream {
+    ss :: cast(*string_stream) alloc(sizeof(string_stream));
     ss_init(ss);
     return ss;
 }
 
-ss_new_from_file :: fn (file: fs.File) *StringStream {
-    ss :: cast(*StringStream) alloc(sizeof(StringStream));
+ss_new_from_file :: fn (file: fs.File) *string_stream {
+    ss :: cast(*string_stream) alloc(sizeof(string_stream));
     ss_init_from_file(ss, file);
     return ss;
 }
 
-ss_delete :: fn (ss: *StringStream) {
+ss_delete :: fn (ss: *string_stream) {
     if !ss { return; }
     ss_terminate(ss);
     free(auto ss);
 }
 
-ss_init_from_file :: fn (ss: *StringStream, file: fs.File) {
+ss_init_from_file :: fn (ss: *string_stream, file: fs.File) {
     if file == fs.FILE_INVALID { panic(); }
     data :: fs.read_string(file);
     ss._data = data;
     ss.i = 0;
 }
 
-ss_init :: fn (ss: *StringStream) {
-    ss._data = String.empty;
+ss_init :: fn (ss: *string_stream) {
+    ss._data = strings.empty;
     ss.i = 0;
 }
 
-ss_terminate :: fn (ss: *StringStream) {
-    String.delete(ss._data);
+ss_terminate :: fn (ss: *string_stream) {
+    strings.delete(ss._data);
 }
 
-ss_write_to_file :: fn (ss: *StringStream, file: fs.File) usize {
+ss_write_to_file :: fn (ss: *string_stream, file: fs.File) usize {
     written :: fs.write_string(file, ss._data);
     return auto written;
 }
 
-ss_peek :: fn (ss: *StringStream) u8 {
+ss_peek :: fn (ss: *string_stream) u8 {
     if ss.i >= ss._data.len { return END_OF_STREAM; }
     return ss._data[ss.i];
 }
 
-ss_get :: fn (ss: *StringStream) u8 {
+ss_get :: fn (ss: *string_stream) u8 {
     if ss.i >= ss._data.len { return END_OF_STREAM; }
     tmp :: ss._data[ss.i];
     ss.i += 1;
     return tmp;
 }
 
-ss_push :: fn (ss: *StringStream, v: Any) {
-    if String.is_null(ss._data) { ss._data = String.new(); }
-    String.append(&ss._data, v);
+ss_push :: fn (ss: *string_stream, v: Any) {
+    if strings.is_null(ss._data) { ss._data = strings.new(); }
+    strings.append(&ss._data, v);
 }
 
-ss_rewind :: fn (ss: *StringStream) {
+ss_rewind :: fn (ss: *string_stream) {
     ss.i = 0;
 }

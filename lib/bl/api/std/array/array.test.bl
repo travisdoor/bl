@@ -4,8 +4,8 @@
 #import "std/array"
 
 main :: fn () s32 {
-    DebugAllocator.init();
-    defer DebugAllocator.terminate();
+    debug_allocator.init();
+    defer debug_allocator.terminate();
     return test_run();    
 }
 
@@ -132,7 +132,7 @@ test_cast_to_slice :: fn () #test {
 alloc_count := 0;
 free_count := 0;
 
-test_allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := String.empty, line := 0) *u8 {
+test_allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := strings.empty, line := 0) *u8 {
     switch operation {
         AllocOp.Allocate {
             alloc_count += 1;

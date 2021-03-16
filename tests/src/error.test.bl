@@ -6,7 +6,7 @@ error_test1 :: fn () #test {
 
     e =  error(666);
     test_is_error(e, 666);
-    test_eq(e.msg, String.empty);
+    test_eq(e.msg, strings.empty);
 
     e =  error("Only msg");
     test_is_error(e, ERR_UNKNOWN);
