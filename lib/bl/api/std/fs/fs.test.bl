@@ -4,9 +4,9 @@
 #import "std/fs"
 
 main :: fn () s32 {
-    debug_allocator.init();
-    //debug_allocator.break_on(6);
-    defer debug_allocator.terminate();
+    DebugAllocator.init();
+    //DebugAllocator.break_on(6);
+    defer DebugAllocator.terminate();
     return test_run();    
 }
 

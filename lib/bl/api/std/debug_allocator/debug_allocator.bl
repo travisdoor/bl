@@ -29,7 +29,7 @@
 #import "std/sync"
 #load "_experimental/hash_table.bl"
 
-#scope debug_allocator
+#scope DebugAllocator
 
 //! ===============
 //! Debug Allocator

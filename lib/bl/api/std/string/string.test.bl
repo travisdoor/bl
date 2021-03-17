@@ -3,8 +3,8 @@
 #import "std/string"
 
 main :: fn () s32 {
-    debug_allocator.init();
-    defer debug_allocator.terminate();
+    DebugAllocator.init();
+    defer DebugAllocator.terminate();
     return test_run();    
 }
 

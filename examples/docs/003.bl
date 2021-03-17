@@ -1,8 +1,8 @@
 #import "std/debug_allocator"
 
 main :: fn () s32 {
-    debug_allocator.init();
-    defer debug_allocator.terminate();
+    DebugAllocator.init();
+    defer DebugAllocator.terminate();
 
     // leaking allocation
     alloc(64);
