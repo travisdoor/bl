@@ -157,7 +157,7 @@ compare :: fn (first: string, second: string, n := -1) bool {
     range := n;
     if range < 0 { 
         if first.len != second.len { return false; }
-        range = auto max(first.len, second.len); 
+        range = auto Math.max(first.len, second.len); 
     } else if first.len != second.len {
         if first.len < range { return false; }
         if second.len < range { return false; }
@@ -171,7 +171,7 @@ compare :: fn (first: string, second: string, n := -1) bool {
 // @DOC
 // @TEST
 compare2 :: fn (first: string, second: string, n := -1) s32 {
-    len :: max(first.len, second.len);
+    len :: Math.max(first.len, second.len);
     loop i := 0; i < len; i += 1 {
         f: u8; s: u8;
         if i < first.len  { f = first[i]; }

@@ -11,49 +11,49 @@ main :: fn () s32 {
 #private
 test_print_int :: fn () #test {
     {
-        v : u64 : U64_MAX;
+        v : u64 : Math.U64_MAX;
         str :: sprint(v);     
         defer String.delete(str);
         test_eq(str, "18446744073709551615");
     }
 
     {
-        v : s64 : S64_MAX;
+        v : s64 : Math.S64_MAX;
         str :: sprint(v);     
         defer String.delete(str);
         test_eq(str, "9223372036854775807");
     }
 
     {
-        v : s64 : S64_MIN;
+        v : s64 : Math.S64_MIN;
         str :: sprint(v);     
         defer String.delete(str);
         test_eq(str, "-9223372036854775808");
     }
 
     {
-        v : s32 : S32_MAX;
+        v : s32 : Math.S32_MAX;
         str :: sprint(v);     
         defer String.delete(str);
         test_eq(str, "2147483647");
     }
 
     {
-        v : s32 : S32_MIN;
+        v : s32 : Math.S32_MIN;
         str :: sprint(v);     
         defer String.delete(str);
         test_eq(str, "-2147483648");
     }
 
     {
-        v : s16 : S16_MAX;
+        v : s16 : Math.S16_MAX;
         str :: sprint(v);     
         defer String.delete(str);
         test_eq(str, "32767");
     }
 
     {
-        v : s16 : S16_MIN;
+        v : s16 : Math.S16_MIN;
         str :: sprint(v);     
         defer String.delete(str);
         test_eq(str, "-32768");

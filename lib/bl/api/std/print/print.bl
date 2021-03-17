@@ -540,8 +540,8 @@ print_f64 :: fn (buf: []u8, cur: s32, v: f64, trailing: s32) s32 {
 
     if trailing != 0 { 
         cur = print_char(buf, cur, '.');
-        fpart = fpart * pow(10., auto trailing); 
-        cur = print_u64(buf, cur, cast(u64) ceil(fpart), FmtIntBase.Dec, trailing); 
+        fpart = fpart * Math.pow(10., auto trailing); 
+        cur = print_u64(buf, cur, cast(u64) Math.ceil(fpart), FmtIntBase.Dec, trailing); 
     } 
 
     return cur;
