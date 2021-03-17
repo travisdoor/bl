@@ -1,4 +1,4 @@
-#import "std/threads"
+#import "std/thread"
 #import "std/sync"
 
 mutex: sync.Mutex;
@@ -10,11 +10,11 @@ main :: fn () s32 {
     sync.init(&mutex);
     defer sync.terminate(&mutex);
 
-    t1 :: threads.create(&first);
-    t2 :: threads.create(&second);
+    t1 :: Thread.create(&first);
+    t2 :: Thread.create(&second);
 
-    threads.join(t1);
-    threads.join(t2);
+    Thread.join(t1);
+    Thread.join(t2);
 
     return 0;
 }

@@ -1,7 +1,7 @@
 #import "std/test"
 #import "std/debug_allocator"
 
-#import "std/threads"
+#import "std/thread"
 #import "std/sync"
 
 main :: fn () s32 {
@@ -33,12 +33,12 @@ mutex_test_1 :: fn () #test {
     defer array_terminate(_data);
     sync.init(&_mutex);
     defer sync.terminate(&_mutex);
-    t: [THREAD_COUNT]threads.Handle;
+    t: [THREAD_COUNT]Thread.Handle;
     loop i := 0; i < t.len; i += 1 {
-        tmp :: threads.create(&worker);
+        tmp :: Thread.create(&worker);
         t[i] = tmp;
     }
 
-    threads.join_all(t);
+    Thread.join_all(t);
     test_eq(_data.len, TOTAL);
 }

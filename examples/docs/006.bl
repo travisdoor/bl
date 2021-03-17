@@ -1,4 +1,4 @@
-#import "std/threads"
+#import "std/thread"
 
 // Worker function called from new thread.
 worker :: fn (args: *u8) s32 {
@@ -9,10 +9,10 @@ worker :: fn (args: *u8) s32 {
 
 main :: fn () s32 {
     // Create and execute thread without parameters.
-    t :: threads.create(&worker);
+    t :: Thread.create(&worker);
 
     // Wait for thread.
-    threads.join(t);
+    Thread.join(t);
     print("Thread joined.\n");
 
     return 0;

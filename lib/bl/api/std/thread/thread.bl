@@ -4,37 +4,37 @@
 //! 
 //! ::
 //! 
-//!    #import "std/threads"
+//!    #import "std/thread"
 //! 
 //! This module contains tools for managing multithreading. It's basically wrapper for
 //! Windows thread system and pthread on posix systems.
 //! 
 //! .. warning:: This module is experimental and not fully supported across all platforms.
 
-#scope threads
+#scope Thread
 
 /// Thread entry function type.
 EntryFn :: *fn (ctx: *u8) s32;
 
 /// Thread handle.
-Handle :: _thread_impl.Handle;
+Handle :: _ThreadImpl.Handle;
 
 /// Create and start new thread with specified `entry` function. Pointer to custom
 /// `ctx` can be optionally passed to the entry function here.
 create :: fn (entry: EntryFn, ctx: *u8 = null) (Handle, Error) #inline {
-    return _thread_impl.create(entry, ctx);
+    return _ThreadImpl.create(entry, ctx);
 }
 
 /// Blocks until `thread` exits. Return value from worker function is returned as
 /// `exit_code`. When execution is successful all thread resources are released.
 join :: fn (thread: Handle) (exit_code: s32, err: Error) #inline {
-    return _thread_impl.join(thread);
+    return _ThreadImpl.join(thread);
 }
 
 /// Blocks until all `threads` exits. 
 join_all :: fn (threads: []Handle) Error #inline {
     loop i := 0; i < threads.len; i += 1 {
-        _, err :: _thread_impl.join(threads[i]);
+        _, err :: _ThreadImpl.join(threads[i]);
         if !is_ok(err) { return err; }
     }
     return ok();
@@ -42,10 +42,10 @@ join_all :: fn (threads: []Handle) Error #inline {
 
 /// Exit current thread with optional `exit_code` return value.
 exit :: fn (exit_code: s32 = 0) Error #inline {
-    return _thread_impl.exit(exit_code);
+    return _ThreadImpl.exit(exit_code);
 }
 
 /// Gets current thread.
 current :: fn () Handle #inline {
-    return _thread_impl.current();
+    return _ThreadImpl.current();
 }

@@ -1,7 +1,7 @@
 #import "std/test"
 #import "std/debug_allocator"
 
-#import "std/threads"
+#import "std/thread"
 
 main :: fn () s32 {
     DebugAllocator.init();
@@ -11,7 +11,7 @@ main :: fn () s32 {
 
 #private
 thread_create_test :: fn () #test {
-    t, err :: threads.create(null);
+    t, err :: Thread.create(null);
     test_not_ok(err);
 }
 
@@ -23,10 +23,10 @@ thread_create_test2 :: fn () #test {
         return 0;
     };
     
-    t, err :: threads.create(&worker);
+    t, err :: Thread.create(&worker);
     test_ok(err);
 
-    code, err2 :: threads.join(t);
+    code, err2 :: Thread.join(t);
     test_ok(err2);
     test_eq(code, 0);
     test_eq(_worker_called, 1);
@@ -39,10 +39,10 @@ thread_create_test3 :: fn () #test {
         return 666;
     };
     
-    t, err :: threads.create(&worker);
+    t, err :: Thread.create(&worker);
     test_ok(err);
 
-    code, err2 :: threads.join(t);
+    code, err2 :: Thread.join(t);
     test_ok(err2);
     test_eq(code, 666);
     test_eq(_worker_called, 1);
@@ -61,10 +61,10 @@ thread_create_test4 :: fn () #test {
     };
  
     ctx := {:MyContext: 10};   
-    t, err :: threads.create(&worker, auto &ctx);
+    t, err :: Thread.create(&worker, auto &ctx);
     test_ok(err);
 
-    code, err2 :: threads.join(t);
+    code, err2 :: Thread.join(t);
     test_ok(err2);
     test_eq(code, 10);
     test_eq(_worker_called, 1);
@@ -74,15 +74,15 @@ thread_create_test4 :: fn () #test {
 thread_exit_test :: fn () #test {
     worker :: fn (_ctx: *u8) s32 {
         _worker_called += 1;
-        threads.exit(10);
+        Thread.exit(10);
         unreachable;
         return 0;
     };
  
-    t, err :: threads.create(&worker);
+    t, err :: Thread.create(&worker);
     test_ok(err);
 
-    code, err2 :: threads.join(t);
+    code, err2 :: Thread.join(t);
     test_ok(err2);
     test_eq(code, 10);
     test_eq(_worker_called, 1);
