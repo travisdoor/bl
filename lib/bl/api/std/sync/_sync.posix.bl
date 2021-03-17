@@ -1,7 +1,7 @@
 #load "sync.bl"
 #load "os/posix/pthread.bl"
 
-#scope _sync_impl
+#scope _SyncImpl
 
 Mutex :: _pthread_mutex_t;
 

@@ -1,6 +1,6 @@
 #load "sync.bl"
 
-#scope _sync_impl
+#scope _SyncImpl
 
 Mutex :: _RTL_CRITICAL_SECTION;
 
