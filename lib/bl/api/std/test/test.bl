@@ -27,7 +27,7 @@
 // =================================================================================================
 
 #import "std/threads"
-#import "std/strings"
+#import "std/string"
 #import "std/array"
 
 #load "std/debug.bl"
@@ -267,7 +267,7 @@ worker :: fn (args: *u8) s32 {
 }
 
 str_eq :: fn (got: string, expected: string, loc := #call_location) {
-    if strings.compare(expected, got) { return; }
+    if String.compare(expected, got) { return; }
     print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
     assert(false, loc);
 }
@@ -303,7 +303,7 @@ ptr_neq :: fn (got: *u8, not_expected: *u8, loc := #call_location) {
 }
 
 str_neq :: fn (got: string, not_expected: string, loc := #call_location) {
-    if !strings.compare(not_expected, got) { return; }
+    if !String.compare(not_expected, got) { return; }
     print_err("\nExpected not to be '%'.", not_expected);
     assert(false, loc);
 }

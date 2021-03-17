@@ -26,7 +26,7 @@
 // SOFTWARE.
 // =================================================================================================
 
-#import "std/strings"
+#import "std/string"
 
 #load "linux/errno.bl"
 #load "posix/signal.bl"
@@ -77,7 +77,7 @@ os_execute :: fn (command: string) s32 {
 
 os_get_last_error :: fn () (s32, string) #inline {
     ec :: _errno();
-    str := strings.empty;
+    str := String.empty;
     c_str :: cast(*u8) c_strerror(ec);
     if c_str && ec != 0 { str = cstr_to_str(c_str); }
     return ec, str;
@@ -88,9 +88,9 @@ os_get_exec_path :: fn () string {
     buf_len := cast(c_size_t) buf.len;
     link :: "/proc/self/exe";
     if _readlink(auto link.ptr, auto buf.ptr, buf_len) == -1 {
-        return strings.new(); 
+        return String.new(); 
     }
-    return strings.new(buf.ptr);
+    return String.new(buf.ptr);
 }
 
 _os_debug_break :: fn () #inline {

@@ -26,7 +26,7 @@
 // SOFTWARE.
 // =================================================================================================
 
-#import "std/strings"
+#import "std/string"
 #load "std/math.bl"
 
 //! =====
@@ -101,9 +101,9 @@ boprint :: fn (buf: []u8, offset: s32, format: string, args: ...) s32 {
 /// Create new dynamic string with variable content.
 /// This instance must be freed by `string_delete` call.
 sprint :: fn (args: ...) string {
-    tmp := strings.new();
+    tmp := String.new();
     loop i := 0; i < args.len; i += 1 {
-        strings.append(&tmp, args[i]);
+        String.append(&tmp, args[i]);
     }
 
     return tmp;

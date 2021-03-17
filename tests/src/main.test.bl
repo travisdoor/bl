@@ -1,4 +1,4 @@
-#import "std/strings"
+#import "std/string"
 #import "std/test"
 
 /////////////////////////////////////////////////////

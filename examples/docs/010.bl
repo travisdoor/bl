@@ -1,7 +1,7 @@
 main :: fn () s32 {
     lhs: string;
     rhs: string;
-    if strings.split_by_last("this/is/my/epic/path", '/', &lhs, &rhs) {
+    if String.split_by_last("this/is/my/epic/path", '/', &lhs, &rhs) {
         print("lhs = %\n", lhs);
         print("rhs = %\n", rhs);
     }

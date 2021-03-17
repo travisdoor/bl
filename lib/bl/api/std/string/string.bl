@@ -1,14 +1,14 @@
 #import "std/print"
 
-#scope strings
+#scope String
 
-//! =======
-//! Strings
-//! =======
+//! ======
+//! String
+//! ======
 //! 
 //! ::
 //! 
-//!     #import "std/strings"
+//!     #import "std/string"
 //! 
 //! :: 
 //! 
@@ -633,7 +633,7 @@ _string_insert :: fn (str: *string, index: s32, v: string) bool {
     if v.len == 0 { return false; }
     if index > str.len { return false; }
     if index == str.len { // appending
-        strings.append(str, v);
+        String.append(str, v);
         return true;
     }
 

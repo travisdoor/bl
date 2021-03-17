@@ -132,7 +132,7 @@ copy :: fn (src: string, dest: string, override := false) Error #inline {
 ///         // Copy content of 'foo' into 'bar'
 ///         c, err :: dir_copy("foo", "bar", &opt, &fn (item: *Info) bool {
 ///             // Filter only txt files
-///             if strings.compare(get_extension(item.name), "txt") { return true; } 
+///             if String.compare(get_extension(item.name), "txt") { return true; } 
 ///             return false;
 ///         });
 ///         if !is_ok(err) { print("%\n", err); }
@@ -143,8 +143,8 @@ copy :: fn (src: string, dest: string, override := false) Error #inline {
 dir_copy :: fn (src: string, dest: string, opt: *CopyOpt = &COPY_OPT_DEFAULT, filter: DirScanFilterFn = &_default_file_filter) (s64, Error) {
     cc: s64;
     if !opt                   { return 0, error(ERR_INVALID_HANDLE, "Invalid copy options!"); }
-    if strings.is_empty(src)   { return 0, error(ERR_INVALID_HANDLE, "Source path is empty!"); }
-    if strings.is_empty(dest)  { return 0, error(ERR_INVALID_HANDLE, "Destination path is empty!"); }
+    if String.is_empty(src)   { return 0, error(ERR_INVALID_HANDLE, "Source path is empty!"); }
+    if String.is_empty(dest)  { return 0, error(ERR_INVALID_HANDLE, "Destination path is empty!"); }
     if !_fs_impl.exist(src)   { return 0, error(ERR_NOT_FOUND, "Source path '%' not exist!", src); }
     if !_fs_impl.exist(dest) {
         if opt.recursive {
@@ -159,11 +159,11 @@ dir_copy :: fn (src: string, dest: string, opt: *CopyOpt = &COPY_OPT_DEFAULT, fi
     is_dest_valid := _fs_impl.is_directory(dest);
     if !is_dest_valid { return 0, error("Destination '%' is not directory!", dest); }
 
-    dest_path :: strings.new(128);
-    src_path :: strings.new(128);
-    defer strings.delete(dest_path);
-    defer strings.delete(src_path);
-    strings.clear_concat(&dest_path, dest, "/", src); 
+    dest_path :: String.new(128);
+    src_path :: String.new(128);
+    defer String.delete(dest_path);
+    defer String.delete(src_path);
+    String.clear_concat(&dest_path, dest, "/", src); 
     if _fs_impl.exist(dest_path) { return 0, error("Destination directory '%' already exist!", dest_path); }
     list, list_err :: _fs_impl.dir_scan(src, filter);
     if !is_ok(list_err) { return 0, list_err; }
@@ -171,8 +171,8 @@ dir_copy :: fn (src: string, dest: string, opt: *CopyOpt = &COPY_OPT_DEFAULT, fi
     loop i := 0; i < list.len; i += 1 {
         copy_err: Error;
         _cc: s64;
-        strings.clear_concat(&src_path, src, "/", list[i].name);
-        strings.clear_concat(&dest_path, dest, "/", list[i].name);
+        String.clear_concat(&src_path, src, "/", list[i].name);
+        String.clear_concat(&dest_path, dest, "/", list[i].name);
         if opt.skip_existing && exist(dest_path) { continue; }
         switch list[i].kind {
             InfoKind.File {
@@ -200,7 +200,7 @@ size :: fn (handle: File) (usize, Error) #inline {
 
 /// Read whole file content into string. Return new string instance containting
 /// file data and `OK` status on success, otherwise return empty string and error.
-/// Returned string is expected to be released by :ref:`strings.delete` call if
+/// Returned string is expected to be released by :ref:`String.delete` call if
 /// there was no error reported by function. Result string is zero terminated even
 /// if file is empty.
 ///
@@ -211,14 +211,14 @@ size :: fn (handle: File) (usize, Error) #inline {
 read_string :: fn (handle: File) (string, Error) {
     size, err1 := _fs_impl.size(handle);
     if !is_ok(err1) {
-        return strings.empty, err1;
+        return String.empty, err1;
     }
     size += 1; // To handle zero terminator.
-    buf := strings.new(cast(usize) size);
+    buf := String.new(cast(usize) size);
     read, err2 :: _fs_impl.read(handle, buf.ptr, auto size - 1);
     if !is_ok(err2) {
-        strings.delete(buf);
-        return strings.empty, err2;                
+        String.delete(buf);
+        return String.empty, err2;                
     }
     buf.len = auto read + 1;
     buf[buf.len-1] = '\0';
@@ -298,16 +298,16 @@ dir_create :: fn (dirpath: string) Error #inline {
 }
 
 dir_create_all :: fn (dirpath: string) Error {
-    if strings.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
+    if String.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
     if _fs_impl.exist(dirpath) { return ok(); } 
-    nodes :: strings.split_by(dirpath, '/');
+    nodes :: String.split_by(dirpath, '/');
     defer slice_terminate(nodes);
-    path :: strings.new(auto dirpath.len);
-    defer strings.delete(path);
+    path :: String.new(auto dirpath.len);
+    defer String.delete(path);
     loop i := 0; i < nodes.len; i += 1 {
         if nodes[i].len == 0 { continue; }
-        strings.append(&path, nodes[i]);
-        strings.append(&path, "/");
+        String.append(&path, nodes[i]);
+        String.append(&path, "/");
         if _fs_impl.exist(path) { continue; } 
         err :: _fs_impl.dir_create(path);
         if !is_ok(err) { return err; }
@@ -327,16 +327,16 @@ dir_remove :: fn (dirpath: string) Error #inline {
 /// .. note:: This function recursively remove all nested folders and files in specified
 ///           sub tree so it can be expensive.
 dir_remove_all :: fn (dirpath: string, remove_root := true, filter: DirScanFilterFn = &_default_file_filter) Error {
-    if strings.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
+    if String.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
     if !filter { return error(ERR_INVALID_HANDLE, "Invalid list filter!"); }
-    tmp :: strings.new(cast(usize) dirpath.len);
-    defer strings.delete(tmp);
+    tmp :: String.new(cast(usize) dirpath.len);
+    defer String.delete(tmp);
     list, err :: _fs_impl.dir_scan(dirpath, filter);
     if !is_ok(err) { return err; }
     defer info_list_delete(list);
     loop i := 0; i < list.len; i += 1 {
         node :: &list[i];
-        strings.concatenate(&tmp, dirpath, "/", node.name);
+        String.concatenate(&tmp, dirpath, "/", node.name);
         switch node.kind {
             InfoKind.Directory {
                 err :: dir_remove_all(tmp);
@@ -347,7 +347,7 @@ dir_remove_all :: fn (dirpath: string, remove_root := true, filter: DirScanFilte
                 if !is_ok(err) { return err; }
             }
         }
-        strings.clear(&tmp);
+        String.clear(&tmp);
     }
     if remove_root { return _fs_impl.dir_remove(dirpath); }
     return ok();
@@ -376,7 +376,7 @@ dir_scan :: fn (dirpath: string, filter: DirScanFilterFn = &_default_file_filter
 /// Release allocated file system entry info list.
 info_list_delete :: fn (list: InfoList) #inline {
     loop i := 0; i < list.len; i += 1 {
-        strings.delete(list[i].name);
+        String.delete(list[i].name);
     }
     slice_terminate(list);
 }
@@ -387,7 +387,7 @@ validate_filename :: fn (name: string) bool #inline {
 }
 
 /// Try to obtain current working directory, result must be released by
-/// :ref:`strings.delete`. Path does not contain last path separator.
+/// :ref:`String.delete`. Path does not contain last path separator.
 get_cwd :: fn () string #inline {
     return _fs_impl.get_cwd();
 }
@@ -399,13 +399,13 @@ set_cwd :: fn (path: string) Error #inline {
 }
 
 /// Try to obtain system home directory, result must be released by
-/// :ref:`strings.delete`. Path does not contain last path separator.
+/// :ref:`String.delete`. Path does not contain last path separator.
 get_home :: fn () string #inline {
     return _fs_impl.get_home();
 }
 
 /// Try to obtain system temporary directory, result must be released by
-/// :ref:`strings.delete`. Path does not contain last path separator.
+/// :ref:`String.delete`. Path does not contain last path separator.
 get_tmp :: fn () string #inline {
     return _fs_impl.get_tmp();
 }
@@ -436,6 +436,6 @@ get_extension :: fn (filename: string) string #inline {
 COPY_OPT_DEFAULT :: {:CopyOpt: 0};
 
 _default_file_filter :: fn (item: *Info) bool {
-    return strings.compare(item.name, ".") == false
-        && strings.compare(item.name, "..") == false;
+    return String.compare(item.name, ".") == false
+        && String.compare(item.name, "..") == false;
 }

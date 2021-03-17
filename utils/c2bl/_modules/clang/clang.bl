@@ -276,7 +276,7 @@ CXCursorKind :: enum {
     IntegerLiteral                :: 106;
     FloatingLiteral               :: 107;
     ImaginaryLiteral              :: 108;
-    strings.iteral                 :: 109;
+    StringLiteral                 :: 109;
     CharacterLiteral              :: 110;
     ParenExpr                     :: 111;
     UnaryOperator                 :: 112;
@@ -503,15 +503,22 @@ clang_getCstrings.:: fn (s: CXstrings. *c_char #extern;
 clang_disposestrings.:: fn (s: *c_char) #extern;
 clang_Type_isTransparentTagTypedef :: fn (T: CXType) c_uint #extern;
 clang_Cursor_isAnonymous :: fn (C: CXCursor) c_uint #extern;
-clang_getTypeSpelling :: fn (CT: CXType) CXstrings.#extern;
-clang_equalTypes :: fn (A: CXType, B: CXType) u32 #extern;
-clang_Cursor_isMacroFunctionLike :: fn (C: CXCursor) u32 #extern;
-clang_Cursor_isMacroBuiltin :: fn (C: CXCursor) u32 #extern;
-clang_Cursor_Evaluate :: fn (C: CXCursor) CXEvalResult #extern;
-clang_EvalResult_getAsInt :: fn (E: CXEvalResult) s32 #extern;
+clang_getTypeSpelling :: fn (CT: CXType) CXstrings.#extern;
+
+clang_equalTypes :: fn (A: CXType, B: CXType) u32 #extern;
+
+clang_Cursor_isMacroFunctionLike :: fn (C: CXCursor) u32 #extern;
+
+clang_Cursor_isMacroBuiltin :: fn (C: CXCursor) u32 #extern;
+
+clang_Cursor_Evaluate :: fn (C: CXCursor) CXEvalResult #extern;
+
+clang_EvalResult_getAsInt :: fn (E: CXEvalResult) s32 #extern;
+
 clang_EvalResult_getAsStr :: fn (E: CXEvalResult) *u8 #extern;
 clang_getToken :: fn (TU: CXTranslationUnit, Location: CXSourceLocation) *CXToken #extern;
-clang_getTokenSpelling :: fn (TU: CXTranslationUnit, T: CXToken) CXstrings.#extern; 
+clang_getTokenSpelling :: fn (TU: CXTranslationUnit, T: CXToken) CXstrings.#extern; 
+
 clang_Cursor_getTranslationUnit :: fn (C: CXCursor) CXTranslationUnit #extern;
 clang_getCursorExtent :: fn (C: CXCursor) CXSourceRange #extern;
 clang_tokenize :: fn (TU: CXTranslationUnit, Range: CXSourceRange, Tokens: **CXToken, NumTokens: *u32) #extern;

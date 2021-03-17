@@ -36,11 +36,11 @@ configure :: fn () Error {
     blrt_64: string;
     linker_opt_exec: string;
     linker_opt_shared: string;
-    defer strings.delete(linker_opt_exec);    
-    defer strings.delete(linker_opt_shared);    
-    defer strings.delete(blrt_64);
-    defer strings.delete(ld_linux_so);
-    defer strings.delete(lib_dir);
+    defer String.delete(linker_opt_exec);    
+    defer String.delete(linker_opt_shared);    
+    defer String.delete(blrt_64);
+    defer String.delete(ld_linux_so);
+    defer String.delete(lib_dir);
     
     lib_dir = sprint(g_pwd, "/", LIB_DIR);
     {
@@ -51,7 +51,7 @@ configure :: fn () Error {
     }
     print_log("Found BL API on '%'.", lib_dir);
     
-    ld_linux_so = strings.new(LD_LINUX_SO);
+    ld_linux_so = String.new(LD_LINUX_SO);
     if !fs.exist(ld_linux_so) {
         return error("Cannot find 64bit version of 'ld-linux.so' on '%'", ld_linux_so);
     }

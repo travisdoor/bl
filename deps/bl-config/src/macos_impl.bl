@@ -52,12 +52,12 @@ configure :: fn () Error {
     linker_opt_shared: string;
     linker_lib_path: string;
     linker_executable: string;
-    defer strings.delete(linker_executable);
-    defer strings.delete(linker_lib_path);
-    defer strings.delete(os_ver);
-    defer strings.delete(linker_opt_exec);    
-    defer strings.delete(linker_opt_shared);    
-    defer strings.delete(lib_dir);
+    defer String.delete(linker_executable);
+    defer String.delete(linker_lib_path);
+    defer String.delete(os_ver);
+    defer String.delete(linker_opt_exec);    
+    defer String.delete(linker_opt_shared);    
+    defer String.delete(lib_dir);
     
     lib_dir = sprint(g_pwd, "/", LIB_DIR);
     {
@@ -89,8 +89,8 @@ configure :: fn () Error {
             return error("Cannot find MacOS SDK on '%'.", MACOS_SDK);
         }
         print_log("Found MacOS SDK on '%'.", MACOS_SDK);
-        strings.append(&linker_lib_path, ":");
-        strings.append(&linker_lib_path, MACOS_SDK);
+        String.append(&linker_lib_path, ":");
+        String.append(&linker_lib_path, MACOS_SDK);
     }
     
     linker_opt_exec = sprint("-macosx_version_min ", os_ver, " -sdk_version ", os_ver, " ", LINKER_OPT_EXEC);
@@ -110,8 +110,8 @@ configure :: fn () Error {
 #private
 get_os_ver_major :: fn (ver: string) s32 {
     lhs: string;
-    if strings.split_by_first(ver, '.', &lhs, null) {
-        return auto strings.to_s64(lhs);
+    if String.split_by_first(ver, '.', &lhs, null) {
+        return auto String.to_s64(lhs);
     }
     return 0;
 }

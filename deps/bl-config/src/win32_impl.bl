@@ -46,8 +46,8 @@ setup :: fn (parser: arg_parser.Parser) {
                 return 0, error("Expected directory name!");
             }
             path := args[1];
-            strings.replace_all(&path, '\\', '/');
-            if (!strings.is_empty(path)) && path[path.len-1] == '\"' {
+            String.replace_all(&path, '\\', '/');
+            if (!String.is_empty(path)) && path[path.len-1] == '\"' {
                 path[path.len-1] = '\0';
                 path.len -= 1;
             }
@@ -63,22 +63,22 @@ setup :: fn (parser: arg_parser.Parser) {
 configure :: fn () Error {
     print_log("Generate configuration file");
     program_files_path :: env_get("ProgramFiles(x86)");
-    strings.replace_all(&program_files_path, '\\', '/'); // oh my!
+    String.replace_all(&program_files_path, '\\', '/'); // oh my!
     build_tools_path: string;
     vc_vars_all : string;
     lib_dir: string; 
     linker_exec: string;
-    defer strings.delete(build_tools_path);
-    defer strings.delete(linker_exec);
-    defer strings.delete(lib_dir);
-    defer strings.delete(program_files_path);
-    defer strings.delete(vc_vars_all);
+    defer String.delete(build_tools_path);
+    defer String.delete(linker_exec);
+    defer String.delete(lib_dir);
+    defer String.delete(program_files_path);
+    defer String.delete(vc_vars_all);
     
     // Lookup build tools instalation.
-    if strings.is_empty(g_args.build_tools_path) {
+    if String.is_empty(g_args.build_tools_path) {
         build_tools_path = sprint(program_files_path, "/", BUILD_TOOLS);
     } else {
-        build_tools_path = strings.new(g_args.build_tools_path);
+        build_tools_path = String.new(g_args.build_tools_path);
     }
     if !fs.exist(build_tools_path) {
         return error(

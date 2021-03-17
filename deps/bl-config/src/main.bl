@@ -25,15 +25,15 @@ main :: fn () s32 {
     _context.print_log_fn = &custom_logger;
     { // Setup pwd
         exec_path :: os_get_exec_path();
-        defer strings.delete(exec_path);
+        defer String.delete(exec_path);
         dir: string;
-        if strings.split_by_last(exec_path, '/', &dir, null) {
-            g_pwd = strings.new(dir);
+        if String.split_by_last(exec_path, '/', &dir, null) {
+            g_pwd = String.new(dir);
         } else {
-            g_pwd = strings.new(exec_path);
+            g_pwd = String.new(exec_path);
         }
     }
-    defer strings.delete(g_pwd);
+    defer String.delete(g_pwd);
 
     parser :: arg_parser.new(HELP_TEXT);
     defer arg_parser.delete(parser);
@@ -74,8 +74,8 @@ main :: fn () s32 {
 
     g_etc_dir = sprint(g_pwd, "/", ETC_DIR);
     g_conf_filepath = sprint(g_etc_dir, "/", CONF_FILE);
-    defer strings.delete(g_etc_dir);
-    defer strings.delete(g_conf_filepath);
+    defer String.delete(g_etc_dir);
+    defer String.delete(g_conf_filepath);
 
     if fs.exist(g_conf_filepath) {
         if !g_args.override_config {
@@ -112,12 +112,12 @@ pipe_execute :: fn (cmd: string) (string, Error) {
     defer pclose(file);
     if !file { return "", error("Execution of command failed!"); }
     buf: [1024]u8 #noinit;
-    out := strings.new();
+    out := String.new();
     loop fgets(buf.ptr, auto buf.len, file) {
         tmp :: {:string: auto c_strlen(auto buf.ptr), buf.ptr};
-        strings.append(&out, tmp);
+        String.append(&out, tmp);
     }
-    if !strings.is_empty(out) && out[out.len-1] == '\n' {
+    if !String.is_empty(out) && out[out.len-1] == '\n' {
         out.len -= 1;
     }
     return out, ok();   

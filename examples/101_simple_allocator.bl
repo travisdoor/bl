@@ -11,7 +11,7 @@ my_allocator :: fn (
     // operation is free
     ptr: *u8 = null, 
     // Source file where allocator was called.
-    file := strings.empty, 
+    file := String.empty, 
     // Line in source file where allocator was called.
     line := 0) *u8 
 {
@@ -42,10 +42,10 @@ main :: fn () s32 {
     defer _context.alloc_fn = orig_allocator;
 
     // All following allocations will use our custom allocator.
-    str :: strings.new("abc");
-    defer strings.delete(str);
+    str :: String.new("abc");
+    defer String.delete(str);
     loop i := 0; i < 100; i += 1 {
-        strings.append(&str, i);
+        String.append(&str, i);
     }
     return 0;
 }
