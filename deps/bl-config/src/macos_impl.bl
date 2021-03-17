@@ -27,17 +27,17 @@ CONFIG ::
 popen :: fn (f: *c_char, m: *c_char) c_void_ptr #extern "popen";
 pclose :: fn (f: c_void_ptr) #extern "pclose";
 
-ArgsImpl :: struct #base arg_parser.Ctx {
+ArgsImpl :: struct #base ArgParser.Ctx {
     use_lld: bool;
 }
     
-setup :: fn (parser: arg_parser.Parser) {
-    arg_parser.add(
+setup :: fn (parser: ArgParser.Parser) {
+    ArgParser.add(
         parser,
         "",
         "--use-lld",
         "Use internal LLD linker (this is experimental).",
-        &fn (parser: arg_parser.Parser, args: []string, ctx: *arg_parser.Ctx) (s32, Error) {
+        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.use_lld = true;
             return 1, ok();

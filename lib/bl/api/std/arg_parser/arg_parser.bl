@@ -15,7 +15,7 @@
 
 #import "std/array"
 
-#scope arg_parser
+#scope ArgParser
 
 /// Arguments context base type.
 Ctx :: struct {
@@ -122,11 +122,11 @@ run :: fn (_parser: Parser, args: []string, ctx: *Ctx, start := 0) Error {
 /// -------
 /// .. code-block:: bl
 ///
-///    add(parser,
+///    ArgParser.add(parser,
 ///        "-d", // short name.
 ///        "--debug", // long name.
 ///        "Enable debug mode.", // Help text.
-///        &fn (parser: Parser, args: []string, ctx: *Ctx) (s32, Error) {
+///        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
 ///            a: *MyArgs = auto ctx;
 ///            a.is_debug = true;
 ///            return 1, ok(); // One argument parsed ('-d' or '--debug') 

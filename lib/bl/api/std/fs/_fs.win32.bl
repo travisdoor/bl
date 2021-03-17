@@ -1,6 +1,6 @@
 #load "fs.bl"
 
-#scope _fs_impl
+#scope _FsImpl
 
 File :: *u8;
 FILE_INVALID : File : null;
