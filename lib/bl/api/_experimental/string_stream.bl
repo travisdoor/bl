@@ -41,7 +41,7 @@ ss_new :: fn () *string_stream {
     return ss;
 }
 
-ss_new_from_file :: fn (file: fs.File) *string_stream {
+ss_new_from_file :: fn (file: Fs.File) *string_stream {
     ss :: cast(*string_stream) alloc(sizeof(string_stream));
     ss_init_from_file(ss, file);
     return ss;
@@ -53,9 +53,9 @@ ss_delete :: fn (ss: *string_stream) {
     free(auto ss);
 }
 
-ss_init_from_file :: fn (ss: *string_stream, file: fs.File) {
-    if file == fs.FILE_INVALID { panic(); }
-    data :: fs.read_string(file);
+ss_init_from_file :: fn (ss: *string_stream, file: Fs.File) {
+    if file == Fs.FILE_INVALID { panic(); }
+    data :: Fs.read_string(file);
     ss._data = data;
     ss.i = 0;
 }
@@ -69,8 +69,8 @@ ss_terminate :: fn (ss: *string_stream) {
     String.delete(ss._data);
 }
 
-ss_write_to_file :: fn (ss: *string_stream, file: fs.File) usize {
-    written :: fs.write_string(file, ss._data);
+ss_write_to_file :: fn (ss: *string_stream, file: Fs.File) usize {
+    written :: Fs.write_string(file, ss._data);
     return auto written;
 }
 

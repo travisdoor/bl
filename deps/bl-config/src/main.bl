@@ -77,7 +77,7 @@ main :: fn () s32 {
     defer String.delete(g_etc_dir);
     defer String.delete(g_conf_filepath);
 
-    if fs.exist(g_conf_filepath) {
+    if Fs.exist(g_conf_filepath) {
         if !g_args.override_config {
             print_warn("Configuration file '%' already exists, use '-f' to override.", g_conf_filepath);
             return 0;
@@ -94,11 +94,11 @@ main :: fn () s32 {
 }
 
 write_config :: fn (fmt: string, args: ...) Error {
-    fs.dir_create(g_etc_dir);
-    file, err :: fs.open(g_conf_filepath, fs.OpenMode.Create, fs.OpenMode.Write);
-    defer fs.close(file);
+    Fs.dir_create(g_etc_dir);
+    file, err :: Fs.open(g_conf_filepath, Fs.OpenMode.Create, Fs.OpenMode.Write);
+    defer Fs.close(file);
     if !is_ok(err) { return err; }
-    fs.write_fmt(file, fmt, args);
+    Fs.write_fmt(file, fmt, args);
     print_log("Configuration written to '%'.", g_conf_filepath);
     return ok();
 }

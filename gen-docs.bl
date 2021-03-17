@@ -24,23 +24,23 @@ cmd :: fn (fmt: string, args: ...) Error {
 
 pre_cleanup :: fn () Error {
     print("Cleanup\n");
-    if fs.exist(DEST_DOCS_DIR) {
-        err :: fs.dir_remove_all(DEST_DOCS_DIR);
+    if Fs.exist(DEST_DOCS_DIR) {
+        err :: Fs.dir_remove_all(DEST_DOCS_DIR);
         if !is_ok(err) { return err; }
     }
     { // create docs
-        err :: fs.dir_create(DEST_DOCS_DIR);
+        err :: Fs.dir_create(DEST_DOCS_DIR);
         if !is_ok(err) { return err; }
     }
     { // create api
-        err :: fs.dir_create(DEST_API_DIR);
+        err :: Fs.dir_create(DEST_API_DIR);
         if !is_ok(err) { return err; }
     }
     return ok();
 }
 
 docs_dir :: fn (dest_path: string, src_path: string) Error {
-    list, err :: fs.dir_scan(src_path, &fn (info: *fs.Info) bool {
+    list, err :: Fs.dir_scan(src_path, &fn (info: *Fs.Info) bool {
         if String.is_empty(info.name)        { return false; }
         if String.compare(info.name, ".")    { return false; }
         if String.compare(info.name, "..")   { return false; }
@@ -48,13 +48,13 @@ docs_dir :: fn (dest_path: string, src_path: string) Error {
         loop i := 0; i < IGNORE.len; i += 1 {
             if String.compare(info.name, IGNORE[i]) { return false; }
         }
-        if info.kind == fs.InfoKind.File {
-            ext :: fs.get_extension(info.name);
+        if info.kind == Fs.InfoKind.File {
+            ext :: Fs.get_extension(info.name);
             if !String.compare(ext, "bl") { return false; }
         }
         return true;
     });
-    defer fs.info_list_delete(list);
+    defer Fs.info_list_delete(list);
     if !is_ok(err) { return err; }
 
     file_list :: String.new(128);
@@ -62,19 +62,19 @@ docs_dir :: fn (dest_path: string, src_path: string) Error {
     loop i := 0; i < list.len; i += 1 {
         info :: &list[i];
         switch info.kind {
-            fs.InfoKind.File {
+            Fs.InfoKind.File {
                 String.append(&file_list, src_path);
                 String.append(&file_list, "/");
                 String.append(&file_list, info.name);
                 String.append(&file_list, " ");
             }
-            fs.InfoKind.Directory {
+            Fs.InfoKind.Directory {
                 new_dest_path :: sprint(dest_path, "/", info.name);
                 new_src_path :: sprint(src_path, "/", info.name);
                 defer String.delete(new_dest_path);
                 defer String.delete(new_src_path);
-                if !fs.exist(new_dest_path) {
-                    err :: fs.dir_create(new_dest_path);
+                if !Fs.exist(new_dest_path) {
+                    err :: Fs.dir_create(new_dest_path);
                     if !is_ok(err) { return err; }
                 }
                 err :: docs_dir(new_dest_path, new_src_path);

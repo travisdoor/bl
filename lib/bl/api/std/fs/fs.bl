@@ -92,7 +92,7 @@ close :: fn (handle: File) #inline {
     _FsImpl.close(handle);
 }
 
-get_uid :: fn (handle: fs.File) (u64, Error) {
+get_uid :: fn (handle: Fs.File) (u64, Error) {
     return _FsImpl.get_uid(handle);
 }
 

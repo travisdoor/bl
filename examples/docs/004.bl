@@ -1,8 +1,8 @@
 #import "std/fs"
 
 main :: fn () s32 {
-    file, err :: fs.open(#file);
-    defer fs.close(file);
+    file, err :: Fs.open(#file);
+    defer Fs.close(file);
     if !is_ok(err) {
         print_err("%", err);
         return 1;

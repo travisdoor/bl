@@ -2,17 +2,17 @@
 
 main :: fn () s32 {
     // Open this file.
-    file, open_err :: fs.open(#file, fs.OpenMode.Read);
+    file, open_err :: Fs.open(#file, Fs.OpenMode.Read);
 
     // Always check for errors.
     if !is_ok(open_err) {
         panic("Cannot open file with error: '%'!", open_err);
     }
     // Close file at the end of scope.
-    defer fs.close(file);
+    defer Fs.close(file);
 
     // Read it's content.
-    content, read_err :: fs.read_string(file);
+    content, read_err :: Fs.read_string(file);
 
     // Check for errors.
     if !is_ok(read_err) {

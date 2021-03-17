@@ -44,7 +44,7 @@ configure :: fn () Error {
     
     lib_dir = sprint(g_pwd, "/", LIB_DIR);
     {
-       err :: fs.normalize(&lib_dir);
+       err :: Fs.normalize(&lib_dir);
        if !is_ok(err) {
            return error("Cannot find BL API libs on '%'", lib_dir);
        }
@@ -52,14 +52,14 @@ configure :: fn () Error {
     print_log("Found BL API on '%'.", lib_dir);
     
     ld_linux_so = String.new(LD_LINUX_SO);
-    if !fs.exist(ld_linux_so) {
+    if !Fs.exist(ld_linux_so) {
         return error("Cannot find 64bit version of 'ld-linux.so' on '%'", ld_linux_so);
     }
     print_log("Found ld-linux.so 64bit on '%'.", ld_linux_so);
     
     blrt_64 = sprint(g_pwd, "/", BLRT_64);
     {
-       err :: fs.normalize(&blrt_64);
+       err :: Fs.normalize(&blrt_64);
        if !is_ok(err) {
            return error("Cannot find BL runtime on '%'", blrt_64);
        }
