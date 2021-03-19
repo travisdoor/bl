@@ -429,6 +429,7 @@ void builder_init(const BuilderOptions *options, const char *exec_dir)
     tarray_init(&builder.targets, sizeof(Target *));
     tarray_init(&builder.tmp_strings, sizeof(TString *));
     start_threads();
+    builder.is_initialized = true;
 }
 
 void builder_terminate(void)

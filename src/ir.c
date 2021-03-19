@@ -180,7 +180,7 @@ static INLINE void emit_DI_loc(Context *cnt, Scope *scope, Location *loc)
     BL_ASSERT(scope && "Missing scope for DI!");
     BL_ASSERT(loc && "Missing location for DI!");
     LLVMMetadataRef llvm_scope =
-        scope_is_global(scope) ? DI_unit_init(cnt, loc->unit) : DI_scope_init(cnt, scope);
+        !scope_is_local(scope) ? DI_unit_init(cnt, loc->unit) : DI_scope_init(cnt, scope);
 
     BL_ASSERT(llvm_scope && "Missing DI scope!");
 
@@ -529,7 +529,7 @@ LLVMMetadataRef DI_complete_type(Context *cnt, MirType *type)
 
         LLVMMetadataRef llvm_parent_scope = NULL;
         Scope *         parent_scope      = type->data.strct.scope->parent;
-        if (is_implicit || scope_is_global(parent_scope)) {
+        if (is_implicit || !scope_is_local(parent_scope)) {
             llvm_parent_scope = llvm_file;
         } else {
             llvm_parent_scope = DI_scope_init(cnt, parent_scope);
@@ -2983,6 +2983,7 @@ State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 State emit_instr(Context *cnt, MirInstr *instr)
 {
     State state = STATE_PASSED;
+    BL_ASSERT(instr->analyzed && "Attempt to emit not-analyzed instruction!");
     if (!mir_type_has_llvm_representation((instr->value.type))) return state;
     switch (instr->kind) {
     case MIR_INSTR_INVALID:

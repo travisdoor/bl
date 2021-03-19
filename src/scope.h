@@ -88,7 +88,7 @@ typedef enum ScopeKind {
 
 typedef struct Scope {
     ScopeKind        kind;
-    ID *             name; // optional
+    const char *     name; // optional
     struct Scope *   parent;
     THashTable       entries;
     LLVMMetadataRef  llvm_meta;
@@ -132,11 +132,12 @@ scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_global, bool *out_o
 
 bool        scope_is_subtree_of_kind(const Scope *scope, ScopeKind kind);
 const char *scope_kind_name(const Scope *scope);
+void        scope_get_full_name(TString *dest, Scope *scope);
 
-static INLINE bool scope_is_global(const Scope *scope)
+static INLINE bool scope_is_local(const Scope *scope)
 {
-    return scope->kind == SCOPE_GLOBAL || scope->kind == SCOPE_PRIVATE ||
-           scope->kind == SCOPE_NAMED;
+    return scope->kind != SCOPE_GLOBAL && scope->kind != SCOPE_PRIVATE &&
+           scope->kind != SCOPE_NAMED;
 }
 
 #endif

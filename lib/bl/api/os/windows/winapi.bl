@@ -25,293 +25,297 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 // =================================================================================================
-_MAX_PATH :: 260;
-_INVALID_HANDLE_VALUE :: cast(_HANDLE) (cast(_LONG_PTR)0xffffffffffffffff);
-_INFINITE : u32 : 0xFFFFFFFF;
+
 ERR_UNKNOWN        :: -1;
-ERR_NOT_FOUND      :: _ERROR_FILE_NOT_FOUND;
-ERR_ALREADY_EXIST  :: _ERROR_FILE_EXISTS;
-ERR_ACCESS_DENIED  :: _ERROR_ACCESS_DENIED;
-ERR_INVALID_HANDLE :: _ERROR_INVALID_HANDLE;
-ERR_DIRECTORY      :: _ERROR_DIRECTORY;
+ERR_NOT_FOUND      :: Win32.ERROR_FILE_NOT_FOUND;
+ERR_ALREADY_EXIST  :: Win32.ERROR_FILE_EXISTS;
+ERR_ACCESS_DENIED  :: Win32.ERROR_ACCESS_DENIED;
+ERR_INVALID_HANDLE :: Win32.ERROR_INVALID_HANDLE;
+ERR_DIRECTORY      :: Win32.ERROR_DIRECTORY;
 
-_ERROR_FILE_NOT_FOUND :: 2;
-_ERROR_FILE_EXISTS :: 80;
-_ERROR_ACCESS_DENIED  :: 5;
-_ERROR_INVALID_HANDLE :: 6;
-_ERROR_DIRECTORY :: 267;
-_CP_UTF8 : u32 : 65001;
-_WCHAR        :: *c_ushort;
-_LPWSTR       :: *c_ushort;
-_LPCWSTR      :: *c_ushort;
-_LPCSTR       :: *c_ushort;
-_LPSTR        :: *c_uchar;
-_LPCTSTR      :: *c_uchar;
-_HLOCAL       :: *c_uchar;
-_UINT         :: c_uint;
-_DWORD        :: c_uint;
-_LPCCH        :: c_uchar;
-_LPCWCH       :: c_ushort;
-_LPBOOL       :: c_int;
-_HMODULE      :: *c_uchar;
-_BOOL         :: c_int;
-_PBOOL        :: *_BOOL;
-_FARPROC      :: *c_uchar; 
-_LPVOID       :: *c_uchar; 
-_LPOVERLAPPED :: *_OVERLAPPED;
-_LPDWORD      :: *_DWORD;
-_HANDLE       :: *c_uchar;
-_ULONG_PTR    :: *c_ulong;
-_SIZE_T       :: c_ulong;
-_PVOID        :: *c_uchar; 
-_CHAR         :: c_uchar; 
-_LONG_PTR     :: *c_long;
-_LARGE_INTEGER :: c_longlong;
-_PLARGE_INTEGER :: *_LARGE_INTEGER;
-_HGLOBAL      :: c_void_ptr;
-_HWND         :: c_void_ptr;
-_LONG         :: c_long;
-_PLONG        :: *_LONG;
-_WORD         :: c_ushort;
-_GENERIC_READ : u32 : 0x80000000;
-_GENERIC_WRITE : u32 : 0x40000000;
-_FILE_BEGIN : u32 : 0;
-_FILE_CURRENT : u32: 1;
-_FILE_END : u32 : 2;
-_CREATE_NEW : u32 : 1;
-_CREATE_ALWAYS : u32 : 2;
-_OPEN_EXISTING : u32 : 3;
-_OPEN_ALWAYS : u32 : 4;
-_TRUNCATE_EXISTING : u32 : 5;
-_LPOVERLAPPED_COMPLETION_ROUTINE :: * fn(dwErrorCode: _DWORD, dwNumberOfBytesTransfered: _DWORD, lpOverlapped: _LPOVERLAPPED);
-_FILE_ATTRIBUTE_READONLY : u32 : 0x00000001;
-_FILE_ATTRIBUTE_HIDDEN : u32 : 0x00000002;
-_FILE_ATTRIBUTE_SYSTEM : u32 : 0x00000004;
-_FILE_ATTRIBUTE_DIRECTORY : u32 : 0x00000010;
-_FILE_ATTRIBUTE_ARCHIVE : u32 : 0x00000020;
-_FILE_ATTRIBUTE_DEVICE : u32 : 0x00000040;
-_FILE_ATTRIBUTE_NORMAL : u32 : 0x00000080;
-_FILE_ATTRIBUTE_TEMPORARY : u32 : 0x00000100;
-_FILE_ATTRIBUTE_SPARSE_FILE : u32 : 0x00000200;
-_FILE_ATTRIBUTE_REPARSE_POINT : u32 : 0x00000400;
-_FILE_ATTRIBUTE_COMPRESSED : u32 : 0x00000800;
-_FILE_ATTRIBUTE_OFFLINE : u32 : 0x00001000;
-_FILE_ATTRIBUTE_NOT_CONTENT_INDEXED : u32 : 0x00002000;
-_FILE_ATTRIBUTE_ENCRYPTED : u32 : 0x00004000;
-_FILE_ATTRIBUTE_VIRTUAL : u32 : 0x00010000;
-_GHND : u32 : 0x0042;
-_GMEM_FIXED : u32 : 0x0000;
-_GMEM_MOVEABLE : u32 : 0x0002;
-_GMEM_ZEROINIT : u32 : 0x0040;
-_GPTR : u32 : 0x0040;
-_CF_TEXT : u32 : 1;
-_FILE_NOTIFY_INFORMATION :: struct {
-    NextEntryOffset: _DWORD;
-    Action: _DWORD;
-    FileNameLength: _DWORD;
-    FileName: [1]_WCHAR;
+#scope Win32
+
+MAX_PATH :: 260;
+INVALID_HANDLE_VALUE :: cast(HANDLE) (cast(LONG_PTR)0xffffffffffffffff);
+INFINITE : u32 : 0xFFFFFFFF;
+
+ERROR_FILE_NOT_FOUND :: 2;
+ERROR_FILE_EXISTS :: 80;
+ERROR_ACCESS_DENIED  :: 5;
+ERROR_INVALID_HANDLE :: 6;
+ERROR_DIRECTORY :: 267;
+CP_UTF8 : u32 : 65001;
+WCHAR        :: *c_ushort;
+LPWSTR       :: *c_ushort;
+LPCWSTR      :: *c_ushort;
+LPCSTR       :: *c_ushort;
+LPSTR        :: *c_uchar;
+LPCTSTR      :: *c_uchar;
+HLOCAL       :: *c_uchar;
+UINT         :: c_uint;
+DWORD        :: c_uint;
+LPCCH        :: c_uchar;
+LPCWCH       :: c_ushort;
+LPBOOL       :: c_int;
+HMODULE      :: *c_uchar;
+BOOL         :: c_int;
+PBOOL        :: *BOOL;
+FARPROC      :: *c_uchar; 
+LPVOID       :: *c_uchar; 
+LPOVERLAPPED :: *OVERLAPPED;
+LPDWORD      :: *DWORD;
+HANDLE       :: *c_uchar;
+ULONG_PTR    :: *c_ulong;
+SIZE_T       :: c_ulong;
+PVOID        :: *c_uchar; 
+CHAR         :: c_uchar; 
+LONG_PTR     :: *c_long;
+LARGE_INTEGER :: c_longlong;
+PLARGE_INTEGER :: *LARGE_INTEGER;
+HGLOBAL      :: c_void_ptr;
+HWND         :: c_void_ptr;
+LONG         :: c_long;
+PLONG        :: *LONG;
+WORD         :: c_ushort;
+GENERIC_READ : u32 : 0x80000000;
+GENERIC_WRITE : u32 : 0x40000000;
+FILE_BEGIN : u32 : 0;
+FILE_CURRENT : u32: 1;
+FILE_END : u32 : 2;
+CREATE_NEW : u32 : 1;
+CREATE_ALWAYS : u32 : 2;
+OPEN_EXISTING : u32 : 3;
+OPEN_ALWAYS : u32 : 4;
+TRUNCATE_EXISTING : u32 : 5;
+LPOVERLAPPED_COMPLETION_ROUTINE :: * fn(dwErrorCode: DWORD, dwNumberOfBytesTransfered: DWORD, lpOverlapped: LPOVERLAPPED);
+FILE_ATTRIBUTE_READONLY : u32 : 0x00000001;
+FILE_ATTRIBUTE_HIDDEN : u32 : 0x00000002;
+FILE_ATTRIBUTE_SYSTEM : u32 : 0x00000004;
+FILE_ATTRIBUTE_DIRECTORY : u32 : 0x00000010;
+FILE_ATTRIBUTE_ARCHIVE : u32 : 0x00000020;
+FILE_ATTRIBUTE_DEVICE : u32 : 0x00000040;
+FILE_ATTRIBUTE_NORMAL : u32 : 0x00000080;
+FILE_ATTRIBUTE_TEMPORARY : u32 : 0x00000100;
+FILE_ATTRIBUTE_SPARSE_FILE : u32 : 0x00000200;
+FILE_ATTRIBUTE_REPARSE_POINT : u32 : 0x00000400;
+FILE_ATTRIBUTE_COMPRESSED : u32 : 0x00000800;
+FILE_ATTRIBUTE_OFFLINE : u32 : 0x00001000;
+FILE_ATTRIBUTE_NOT_CONTENT_INDEXED : u32 : 0x00002000;
+FILE_ATTRIBUTE_ENCRYPTED : u32 : 0x00004000;
+FILE_ATTRIBUTE_VIRTUAL : u32 : 0x00010000;
+GHND : u32 : 0x0042;
+GMEM_FIXED : u32 : 0x0000;
+GMEM_MOVEABLE : u32 : 0x0002;
+GMEM_ZEROINIT : u32 : 0x0040;
+GPTR : u32 : 0x0040;
+CF_TEXT : u32 : 1;
+FILE_NOTIFY_INFORMATION :: struct {
+    NextEntryOffset: DWORD;
+    Action: DWORD;
+    FileNameLength: DWORD;
+    FileName: [1]WCHAR;
 }
-_OVERLAPPED :: struct {
-    Internal: _ULONG_PTR;
-    InternalHigh: _ULONG_PTR;
-    Pointer: _PVOID;
-    hEvent: _HANDLE;
+OVERLAPPED :: struct {
+    Internal: ULONG_PTR;
+    InternalHigh: ULONG_PTR;
+    Pointer: PVOID;
+    hEvent: HANDLE;
 }
-_FILETIME :: struct {
-    dwLowDateTime: _DWORD;
-    dwHighDateTime: _DWORD;
+FILETIME :: struct {
+    dwLowDateTime: DWORD;
+    dwHighDateTime: DWORD;
 }
-_PFILETIME :: _FILETIME;
-_LPFILETIME :: *_FILETIME;
-_FIND_DATA :: struct {
-    dwFileAttributes: _DWORD;
-    ftCreationTime: _FILETIME;
-    ftLastAccessTime: _FILETIME;
-    ftLastWriteTime: _FILETIME;
-    nFileSizeHigh: _DWORD;
-    nFileSizeLow: _DWORD;
-    dwReserved0: _DWORD;
-    dwReserved1: _DWORD;
-    cFileName: [_MAX_PATH]_CHAR;
-    cAlternateFileName: [14]_CHAR;
+PFILETIME :: FILETIME;
+LPFILETIME :: *FILETIME;
+FIND_DATA :: struct {
+    dwFileAttributes: DWORD;
+    ftCreationTime: FILETIME;
+    ftLastAccessTime: FILETIME;
+    ftLastWriteTime: FILETIME;
+    nFileSizeHigh: DWORD;
+    nFileSizeLow: DWORD;
+    dwReserved0: DWORD;
+    dwReserved1: DWORD;
+    cFileName: [MAX_PATH]CHAR;
+    cAlternateFileName: [14]CHAR;
 }
 
-_BY_HANDLE_FILE_INFORMATION :: struct {
-    dwFileAttributes: _DWORD;
-    ftCreationTime: _FILETIME;
-    ftLastAccessTime: _FILETIME;
-    ftLastWriteTime: _FILETIME;
-    dwVolumeSerialNumber: _DWORD;
-    nFileSizeHigh: _DWORD;
-    nFileSizeLow: _DWORD;
-    nNumberOfLinks: _DWORD;
-    nFileIndexHigh: _DWORD;
-    nFileIndexLow: _DWORD;
+BY_HANDLE_FILE_INFORMATION :: struct {
+    dwFileAttributes: DWORD;
+    ftCreationTime: FILETIME;
+    ftLastAccessTime: FILETIME;
+    ftLastWriteTime: FILETIME;
+    dwVolumeSerialNumber: DWORD;
+    nFileSizeHigh: DWORD;
+    nFileSizeLow: DWORD;
+    nNumberOfLinks: DWORD;
+    nFileIndexHigh: DWORD;
+    nFileIndexLow: DWORD;
 }
-_LPBY_HANDLE_FILE_INFORMATION :: *_BY_HANDLE_FILE_INFORMATION;
-_FIND_DATAA :: _FIND_DATA;
-_P_FIND_DATAA :: *_FIND_DATA;
-_LP_FIND_DATAA :: *_FIND_DATA;
-_INVALID_HANDLE :: cast(*u8) -1;
-_INVALID_FILE_ATTRIBUTES :: cast(_DWORD) -1;
-_WAIT_TIMEOUT :: 258;
-_WAIT_FAILED : _DWORD : 0xFFFFFFFF;
-_LIST_ENTRY :: struct {
-   Flink: *_LIST_ENTRY;
-   Blink: *_LIST_ENTRY;
+LPBY_HANDLE_FILE_INFORMATION :: *BY_HANDLE_FILE_INFORMATION;
+FIND_DATAA :: FIND_DATA;
+P_FIND_DATAA :: *FIND_DATA;
+LP_FIND_DATAA :: *FIND_DATA;
+INVALID_HANDLE :: cast(*u8) -1;
+INVALID_FILE_ATTRIBUTES :: cast(DWORD) -1;
+WAIT_TIMEOUT :: 258;
+WAIT_FAILED : DWORD : 0xFFFFFFFF;
+LIST_ENTRY :: struct {
+   Flink: *LIST_ENTRY;
+   Blink: *LIST_ENTRY;
 } 
-_RTL_CRITICAL_SECTION_DEBUG :: struct {
-    Type: _WORD;
-    CreatorBackTraceIndex: _WORD;
-    CriticalSection: *_RTL_CRITICAL_SECTION;
-    ProcessLocksList: _LIST_ENTRY;
-    EntryCount: _DWORD;
-    ContentionCount: _DWORD;
-    Flags: _DWORD;
-    CreatorBackTraceIndexHigh: _WORD;
-    SpareWORD: _WORD;
+RTL_CRITICAL_SECTION_DEBUG :: struct {
+    Type: WORD;
+    CreatorBackTraceIndex: WORD;
+    CriticalSection: *RTL_CRITICAL_SECTION;
+    ProcessLocksList: LIST_ENTRY;
+    EntryCount: DWORD;
+    ContentionCount: DWORD;
+    Flags: DWORD;
+    CreatorBackTraceIndexHigh: WORD;
+    SpareWORD: WORD;
 }
-_PRTL_CRITICAL_SECTION_DEBUG :: *_RTL_CRITICAL_SECTION_DEBUG;
-_RTL_CRITICAL_SECTION :: struct {
-    DebugInfo: _PRTL_CRITICAL_SECTION_DEBUG;
-    LockCount: _LONG;
-    RecursionCount: _LONG;
-    OwningThread: _HANDLE; 
-    LockSemaphore: _HANDLE;
-    SpinCount: _ULONG_PTR;
+PRTL_CRITICAL_SECTION_DEBUG :: *RTL_CRITICAL_SECTION_DEBUG;
+RTL_CRITICAL_SECTION :: struct {
+    DebugInfo: PRTL_CRITICAL_SECTION_DEBUG;
+    LockCount: LONG;
+    RecursionCount: LONG;
+    OwningThread: HANDLE; 
+    LockSemaphore: HANDLE;
+    SpinCount: ULONG_PTR;
 }
-_LPCRITICAL_SECTION :: *_RTL_CRITICAL_SECTION;
-_FindFirstFile :: fn  (lpFileName: _LPCSTR, lpFindFileData: _LP_FIND_DATAA) _HANDLE #extern "FindFirstFileA";
-_FindClose :: fn (hFindFile: _HANDLE) _BOOL #extern "FindClose";
-_FindNextFile :: fn (hFindFile: _HANDLE, lpFindFileData: _LP_FIND_DATAA) _BOOL #extern "FindNextFileA";
-_GetFileAttributesA :: fn (lpFileName: _LPCSTR) _DWORD #extern "GetFileAttributesA";
-_CreateFile :: fn (
-    lpFileName: _LPCSTR,
-    dwDesiredAccess: _DWORD,
-    dwShareMode: _DWORD,
-    lpSecurityAttributes: _LPSECURITY_ATTRIBUTES,
-    dwCreationDisposition: _DWORD,
-    dwFlagsAndAttributes: _DWORD,
-    hTemplateFile: _HANDLE
+LPCRITICAL_SECTION :: *RTL_CRITICAL_SECTION;
+FindFirstFile :: fn  (lpFileName: LPCSTR, lpFindFileData: LP_FIND_DATAA) HANDLE #extern "FindFirstFileA";
+FindClose :: fn (hFindFile: HANDLE) BOOL #extern "FindClose";
+FindNextFile :: fn (hFindFile: HANDLE, lpFindFileData: LP_FIND_DATAA) BOOL #extern "FindNextFileA";
+GetFileAttributesA :: fn (lpFileName: LPCSTR) DWORD #extern "GetFileAttributesA";
+CreateFile :: fn (
+    lpFileName: LPCSTR,
+    dwDesiredAccess: DWORD,
+    dwShareMode: DWORD,
+    lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
+    dwCreationDisposition: DWORD,
+    dwFlagsAndAttributes: DWORD,
+    hTemplateFile: HANDLE
 ) *u8 #extern "CreateFileA"; 
-_CreateDirectoryA :: fn (
-    lpPathName: _LPCSTR,
-    lpSecurityAttributes: _LPSECURITY_ATTRIBUTES,
-) _BOOL #extern "CreateDirectoryA";
-_ReadDirectoryChanges :: fn (
-    hDirectory: _HANDLE,
-    lpBuffer: _LPVOID,
-    nBufferLength: _DWORD,
-    bWatchSubtree: _BOOL,
-    dwNotifyFilter: _DWORD,
-    lpBytesReturned: _LPDWORD,
-    lpOverlapped: _LPOVERLAPPED,
-    lpCompletionRoutine: _LPOVERLAPPED_COMPLETION_ROUTINE 
+CreateDirectoryA :: fn (
+    lpPathName: LPCSTR,
+    lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
+) BOOL #extern "CreateDirectoryA";
+ReadDirectoryChanges :: fn (
+    hDirectory: HANDLE,
+    lpBuffer: LPVOID,
+    nBufferLength: DWORD,
+    bWatchSubtree: BOOL,
+    dwNotifyFilter: DWORD,
+    lpBytesReturned: LPDWORD,
+    lpOverlapped: LPOVERLAPPED,
+    lpCompletionRoutine: LPOVERLAPPED_COMPLETION_ROUTINE 
 ) s32 #extern "ReadDirectoryChangesW";
-_WideCharToMultiByte :: fn (
-    CodePage: _UINT,
-    dwFlags: *_DWORD,
-    lpWideCharStr: *_LPCWCH,
+WideCharToMultiByte :: fn (
+    CodePage: UINT,
+    dwFlags: *DWORD,
+    lpWideCharStr: *LPCWCH,
     cchWideChar: s32,
-    lpMultiByteStr: _LPSTR,
+    lpMultiByteStr: LPSTR,
     cbMultiByte: s32,
-    lpDefaultChar: *_LPCCH,
-    lpUsedDefaultChar: *_LPBOOL
+    lpDefaultChar: *LPCCH,
+    lpUsedDefaultChar: *LPBOOL
 ) s32 #extern "WideCharToMultiByte";
-_CreateEvent :: fn (
-  lpEventAttributes: _LPSECURITY_ATTRIBUTES,
-  bManualReset: _BOOL,
-  bInitialState: _BOOL,
-  lpName: _LPCSTR 
-) _HANDLE #extern "CreateEventW";
-_FindFirstChangeNotification :: fn (
-  lpPathName: _LPCSTR,
-  bWatchSubtree: _BOOL,
-  dwNotifyFilter: _DWORD
-) _HANDLE #extern "FindFirstChangeNotificationA";
-_FindNextChangeNotification :: fn (hChangeHandle: _HANDLE) _BOOL #extern "FindNextChangeNotification";
-_FindCloseChangeNotification :: fn (hChangeHandle: _HANDLE) _BOOL #extern "FindCloseChangeNotification";
-_WaitForSingleObject :: fn (hHandle: _HANDLE, dwMilliseconds: _DWORD) _DWORD #extern "WaitForSingleObject";
-_WaitForMultipleObjects :: fn (
-    nCount: _DWORD,
-    lpHandles: *_HANDLE,
-    bWaitAll: _BOOL,
-    dwMilliseconds: _DWORD        
-) _DWORD #extern "WaitForMultipleObjects";
-_GetCommandLineW     :: fn () _LPWSTR #extern "GetCommandLineW";
-_CommandLineToArgvW  :: fn (lpCmdLine: _LPCWSTR, pNumArgs: *s32) *_LPWSTR #extern "CommandLineToArgvW";
-_LocalFree           :: fn (hMem: _HLOCAL) _HLOCAL #extern "LocalFree";
-_Sleep               :: fn (dwMilliseconds: _DWORD) #extern "Sleep";
-_GetFullPathNameA    :: fn (lpFileName: _LPCSTR,
-                                 nBufferLength: _DWORD,
-                                 lpBuffer: _LPSTR,
-                                 lpFilePart: *_LPSTR) _DWORD #extern "GetFullPathNameA";
-_PathFileExistsA     :: fn (pszPath: _LPCSTR) _BOOL #extern "PathFileExistsA";
-_LoadLibraryA        :: fn (lpLibFileName: _LPCSTR) _HMODULE #extern "LoadLibraryA";
-_FreeLibrary         :: fn (hLibModule: _HMODULE) _BOOL #extern "FreeLibrary";
-_GetModuleHandleA    :: fn (lpModuleName: _LPCSTR) _HMODULE #extern "GetModuleHandleA";
-_GetProcAddress      :: fn (hModule: _HMODULE, lpProcName: _LPCSTR) _FARPROC #extern "GetProcAddress";
-_DebugBreak          :: fn () #extern "DebugBreak";
-_IsDebuggerPresent   :: fn () _BOOL #extern "IsDebuggerPresent";
-_CheckRemoteDebuggerPresent :: fn (hProcess: _HANDLE, pbDebuggerPresent: _PBOOL) _BOOL #extern "CheckRemoteDebuggerPresent";
-_GetModuleFileNameA  :: fn (hModule: _HMODULE, lpFilename: _LPSTR, nSize: _DWORD) _DWORD #extern "GetModuleFileNameA";
-_SECURITY_ATTRIBUTES :: struct {
-    nLength: _DWORD;
-    lpSecurityDescriptor: _LPVOID;
-    bInheritHandle: _BOOL;
+CreateEvent :: fn (
+  lpEventAttributes: LPSECURITY_ATTRIBUTES,
+  bManualReset: BOOL,
+  bInitialState: BOOL,
+  lpName: LPCSTR 
+) HANDLE #extern "CreateEventW";
+FindFirstChangeNotification :: fn (
+  lpPathName: LPCSTR,
+  bWatchSubtree: BOOL,
+  dwNotifyFilter: DWORD
+) HANDLE #extern "FindFirstChangeNotificationA";
+FindNextChangeNotification :: fn (hChangeHandle: HANDLE) BOOL #extern "FindNextChangeNotification";
+FindCloseChangeNotification :: fn (hChangeHandle: HANDLE) BOOL #extern "FindCloseChangeNotification";
+WaitForSingleObject :: fn (hHandle: HANDLE, dwMilliseconds: DWORD) DWORD #extern "WaitForSingleObject";
+WaitForMultipleObjects :: fn (
+    nCount: DWORD,
+    lpHandles: *HANDLE,
+    bWaitAll: BOOL,
+    dwMilliseconds: DWORD        
+) DWORD #extern "WaitForMultipleObjects";
+GetCommandLineW     :: fn () LPWSTR #extern "GetCommandLineW";
+CommandLineToArgvW  :: fn (lpCmdLine: LPCWSTR, pNumArgs: *s32) *LPWSTR #extern "CommandLineToArgvW";
+LocalFree           :: fn (hMem: HLOCAL) HLOCAL #extern "LocalFree";
+Sleep               :: fn (dwMilliseconds: DWORD) #extern "Sleep";
+GetFullPathNameA    :: fn (lpFileName: LPCSTR,
+                                 nBufferLength: DWORD,
+                                 lpBuffer: LPSTR,
+                                 lpFilePart: *LPSTR) DWORD #extern "GetFullPathNameA";
+PathFileExistsA     :: fn (pszPath: LPCSTR) BOOL #extern "PathFileExistsA";
+LoadLibraryA        :: fn (lpLibFileName: LPCSTR) HMODULE #extern "LoadLibraryA";
+FreeLibrary         :: fn (hLibModule: HMODULE) BOOL #extern "FreeLibrary";
+GetModuleHandleA    :: fn (lpModuleName: LPCSTR) HMODULE #extern "GetModuleHandleA";
+GetProcAddress      :: fn (hModule: HMODULE, lpProcName: LPCSTR) FARPROC #extern "GetProcAddress";
+DebugBreak          :: fn () #extern "DebugBreak";
+IsDebuggerPresent   :: fn () BOOL #extern "IsDebuggerPresent";
+CheckRemoteDebuggerPresent :: fn (hProcess: HANDLE, pbDebuggerPresent: PBOOL) BOOL #extern "CheckRemoteDebuggerPresent";
+GetModuleFileNameA  :: fn (hModule: HMODULE, lpFilename: LPSTR, nSize: DWORD) DWORD #extern "GetModuleFileNameA";
+SECURITY_ATTRIBUTES :: struct {
+    nLength: DWORD;
+    lpSecurityDescriptor: LPVOID;
+    bInheritHandle: BOOL;
 } 
-_PSECURITY_ATTRIBUTES  :: *_SECURITY_ATTRIBUTES;
-_LPSECURITY_ATTRIBUTES :: *_SECURITY_ATTRIBUTES;
-_LPTHREAD_START_ROUTINE :: *fn (args: _LPVOID) _DWORD;
+PSECURITY_ATTRIBUTES  :: *SECURITY_ATTRIBUTES;
+LPSECURITY_ATTRIBUTES :: *SECURITY_ATTRIBUTES;
+LPTHREAD_START_ROUTINE :: *fn (args: LPVOID) DWORD;
 
-_CreateThread :: fn (
-    lpThreadAttributes: _LPSECURITY_ATTRIBUTES,
-    dwStackSize: _SIZE_T,
-    lpStartAddress: _LPTHREAD_START_ROUTINE,
-    lpParameter: _LPVOID,
-    dwCreationFlags: _DWORD,
-    lpThreadId: _LPDWORD 
-) _HANDLE #extern "CreateThread";
+CreateThread :: fn (
+    lpThreadAttributes: LPSECURITY_ATTRIBUTES,
+    dwStackSize: SIZE_T,
+    lpStartAddress: LPTHREAD_START_ROUTINE,
+    lpParameter: LPVOID,
+    dwCreationFlags: DWORD,
+    lpThreadId: LPDWORD 
+) HANDLE #extern "CreateThread";
 
-_GetCurrentThread :: fn () _HANDLE #extern "GetCurrentThread";
-_TerminateThread :: fn (handle: _HANDLE, exit_code: _DWORD) _BOOL #extern "TerminateThread";
-_GetExitCodeThread :: fn (hThread: _HANDLE, lpExitCode: _LPDWORD) _BOOL #extern "GetExitCodeThread";
+GetCurrentThread :: fn () HANDLE #extern "GetCurrentThread";
+TerminateThread :: fn (handle: HANDLE, exit_code: DWORD) BOOL #extern "TerminateThread";
+GetExitCodeThread :: fn (hThread: HANDLE, lpExitCode: LPDWORD) BOOL #extern "GetExitCodeThread";
 
-_CreateMutexA :: fn (
-    lpMutexAttributes: _LPSECURITY_ATTRIBUTES,
-    bInitialOwner: _BOOL,
-    lpName: _LPCSTR
-) _HANDLE #extern "CreateMutexA";
+CreateMutexA :: fn (
+    lpMutexAttributes: LPSECURITY_ATTRIBUTES,
+    bInitialOwner: BOOL,
+    lpName: LPCSTR
+) HANDLE #extern "CreateMutexA";
 
-_ReleaseMutex :: fn (hMutex: _HANDLE) _BOOL #extern "ReleaseMutex";
-_GetTickCount :: fn () _DWORD #extern "GetTickCount";
-_QueryPerformanceCounter :: fn (lpPerformanceCount: *_LARGE_INTEGER) _BOOL #extern "QueryPerformanceCounter";
-_QueryPerformanceFrequency :: fn (lpPerformanceCount: *_LARGE_INTEGER) _BOOL #extern "QueryPerformanceFrequency";
-_GlobalAlloc :: fn (uFlags: _UINT, dwBytes: _SIZE_T) _HGLOBAL #extern "GlobalAlloc";
-_GlobalFree :: fn (hMem: _HGLOBAL) _HGLOBAL #extern "GlobalFree";
-_GlobalLock :: fn (hMem: _HGLOBAL) _LPVOID #extern "GlobalLock";
-_GlobalUnlock :: fn (hMem: _HGLOBAL) _BOOL #extern "GlobalUnlock";
-_OpenClipboard :: fn (hWndNewOwner: _HWND) _BOOL #extern "OpenClipboard";
-_EmptyClipboard :: fn () _BOOL #extern "EmptyClipboard";
-_SetClipboardData :: fn (uFormat: _UINT, hMem: _HANDLE) _HANDLE #extern "SetClipboardData";
-_GetClipboardData :: fn (uFormat: _UINT) _HANDLE  #extern "GetClipboardData";
-_CloseClipboard :: fn () _BOOL #extern "CloseClipboard";
-_GetLastError :: fn () _DWORD #extern "GetLastError";
-_CloseHandle :: fn (hObject: _HANDLE) _BOOL #extern "CloseHandle";
-_GetTempPathA :: fn (nBufferLength: _DWORD, lpBuffer: _LPSTR) _DWORD #extern "GetTempPathA";
-_DeleteFileA :: fn (lpFileName: _LPCSTR) _BOOL #extern "DeleteFileA";
-_RemoveDirectoryA :: fn (lpPathName: _LPCSTR) _BOOL #extern "RemoveDirectoryA";
-_GetCurrentDirectoryA :: fn (nBufferLength: _DWORD, lpBuffer: _LPSTR) _DWORD #extern "GetCurrentDirectoryA";
-_SetCurrentDirectoryA :: fn (lpPathName: _LPSTR) _BOOL #extern "SetCurrentDirectoryA";
-_GetFileSizeEx :: fn (hFile: _HANDLE, lpFileSize: _PLARGE_INTEGER) _BOOL #extern "GetFileSizeEx";
-_ReadFile :: fn (hFile: _HANDLE, lpBuffer: _LPVOID, nNumberOfBytesToRead: _DWORD, lpNumberOfBytesRead: _LPDWORD, lpOverlapped: _LPOVERLAPPED) _BOOL #extern "ReadFile";
-_WriteFile :: fn (hFile: _HANDLE, lpBuffer: _LPVOID, nNumberOfBytesToWrite: _DWORD, lpNumberOfBytesWritten: _LPDWORD, lpOverlapped: _LPOVERLAPPED) _BOOL #extern "WriteFile";
-_CopyFileA :: fn (lpExistingFileName: _LPCTSTR, lpNewFileName: _LPCTSTR, bFailIfExists: _BOOL) _BOOL #extern "CopyFileA";
-_SetEndOfFile :: fn (hFile: _HANDLE) _BOOL #extern "SetEndOfFile";
-_SetFilePointer :: fn (hFile: _HANDLE, lDistanceToMove: _LONG, lpDistanceToMoveHigh: _PLONG, dwMoveMethod: _DWORD) _DWORD #extern "SetFilePointer";
-_InitializeCriticalSection :: fn (lpCriticalSection: _LPCRITICAL_SECTION) #extern "InitializeCriticalSection";
-_DeleteCriticalSection :: fn (lpCriticalSection: _LPCRITICAL_SECTION) #extern "DeleteCriticalSection";
-_EnterCriticalSection  :: fn (lpCriticalSection: _LPCRITICAL_SECTION) #extern "EnterCriticalSection";
-_LeaveCriticalSection  :: fn (lpCriticalSection: _LPCRITICAL_SECTION) #extern "LeaveCriticalSection";
-_TryEnterCriticalSection :: fn (lpCriticalSection: _LPCRITICAL_SECTION ) _BOOL #extern "TryEnterCriticalSection";
-_GetFileInformationByHandle :: fn (hFile: _HANDLE, lpFileInformation: _LPBY_HANDLE_FILE_INFORMATION) _BOOL #extern "GetFileInformationByHandle";
+ReleaseMutex :: fn (hMutex: HANDLE) BOOL #extern "ReleaseMutex";
+GetTickCount :: fn () DWORD #extern "GetTickCount";
+QueryPerformanceCounter :: fn (lpPerformanceCount: *LARGE_INTEGER) BOOL #extern "QueryPerformanceCounter";
+QueryPerformanceFrequency :: fn (lpPerformanceCount: *LARGE_INTEGER) BOOL #extern "QueryPerformanceFrequency";
+GlobalAlloc :: fn (uFlags: UINT, dwBytes: SIZE_T) HGLOBAL #extern "GlobalAlloc";
+GlobalFree :: fn (hMem: HGLOBAL) HGLOBAL #extern "GlobalFree";
+GlobalLock :: fn (hMem: HGLOBAL) LPVOID #extern "GlobalLock";
+GlobalUnlock :: fn (hMem: HGLOBAL) BOOL #extern "GlobalUnlock";
+OpenClipboard :: fn (hWndNewOwner: HWND) BOOL #extern "OpenClipboard";
+EmptyClipboard :: fn () BOOL #extern "EmptyClipboard";
+SetClipboardData :: fn (uFormat: UINT, hMem: HANDLE) HANDLE #extern "SetClipboardData";
+GetClipboardData :: fn (uFormat: UINT) HANDLE  #extern "GetClipboardData";
+CloseClipboard :: fn () BOOL #extern "CloseClipboard";
+GetLastError :: fn () DWORD #extern "GetLastError";
+CloseHandle :: fn (hObject: HANDLE) BOOL #extern "CloseHandle";
+GetTempPathA :: fn (nBufferLength: DWORD, lpBuffer: LPSTR) DWORD #extern "GetTempPathA";
+DeleteFileA :: fn (lpFileName: LPCSTR) BOOL #extern "DeleteFileA";
+RemoveDirectoryA :: fn (lpPathName: LPCSTR) BOOL #extern "RemoveDirectoryA";
+GetCurrentDirectoryA :: fn (nBufferLength: DWORD, lpBuffer: LPSTR) DWORD #extern "GetCurrentDirectoryA";
+SetCurrentDirectoryA :: fn (lpPathName: LPSTR) BOOL #extern "SetCurrentDirectoryA";
+GetFileSizeEx :: fn (hFile: HANDLE, lpFileSize: PLARGE_INTEGER) BOOL #extern "GetFileSizeEx";
+ReadFile :: fn (hFile: HANDLE, lpBuffer: LPVOID, nNumberOfBytesToRead: DWORD, lpNumberOfBytesRead: LPDWORD, lpOverlapped: LPOVERLAPPED) BOOL #extern "ReadFile";
+WriteFile :: fn (hFile: HANDLE, lpBuffer: LPVOID, nNumberOfBytesToWrite: DWORD, lpNumberOfBytesWritten: LPDWORD, lpOverlapped: LPOVERLAPPED) BOOL #extern "WriteFile";
+CopyFileA :: fn (lpExistingFileName: LPCTSTR, lpNewFileName: LPCTSTR, bFailIfExists: BOOL) BOOL #extern "CopyFileA";
+SetEndOfFile :: fn (hFile: HANDLE) BOOL #extern "SetEndOfFile";
+SetFilePointer :: fn (hFile: HANDLE, lDistanceToMove: LONG, lpDistanceToMoveHigh: PLONG, dwMoveMethod: DWORD) DWORD #extern "SetFilePointer";
+InitializeCriticalSection :: fn (lpCriticalSection: LPCRITICAL_SECTION) #extern "InitializeCriticalSection";
+DeleteCriticalSection :: fn (lpCriticalSection: LPCRITICAL_SECTION) #extern "DeleteCriticalSection";
+EnterCriticalSection  :: fn (lpCriticalSection: LPCRITICAL_SECTION) #extern "EnterCriticalSection";
+LeaveCriticalSection  :: fn (lpCriticalSection: LPCRITICAL_SECTION) #extern "LeaveCriticalSection";
+TryEnterCriticalSection :: fn (lpCriticalSection: LPCRITICAL_SECTION ) BOOL #extern "TryEnterCriticalSection";
+GetFileInformationByHandle :: fn (hFile: HANDLE, lpFileInformation: LPBY_HANDLE_FILE_INFORMATION) BOOL #extern "GetFileInformationByHandle";

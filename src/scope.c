@@ -194,3 +194,20 @@ const char *scope_kind_name(const Scope *scope)
 
     return "<INVALID>";
 }
+
+void scope_get_full_name(TString *dest, Scope *scope)
+{
+    BL_ASSERT(dest && scope);
+    TSmallArray_CharPtr buffer;
+    tsa_init(&buffer);
+    while (scope) {
+        if (scope->name) tsa_push_CharPtr(&buffer, (char *)scope->name);
+        scope = scope->parent;
+    }
+    for (usize i = buffer.size; i-- > 0;) {
+        char *iter = buffer.data[i];
+        tstring_append(dest, iter);
+        if (i > 0) tstring_append_c(dest, '.');
+    }
+    tsa_terminate(&buffer);
+}

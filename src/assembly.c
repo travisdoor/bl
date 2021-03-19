@@ -194,7 +194,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) BL_ABORT("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path  = _path;
+    const char *path = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {
@@ -466,6 +466,7 @@ Assembly *assembly_new(const Target *target)
                (ArenaElemDtor)small_array_dtor);
     assembly->gscope =
         scope_create_safe(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT, NULL);
+
     dl_init(assembly);
     mir_init(assembly);
 

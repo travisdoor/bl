@@ -1490,10 +1490,8 @@ void type_init_id(Context *cnt, MirType *type)
     }
 
     case MIR_TYPE_STRUCT: {
-        static u64 serial = 0;
-
+        static u64 serial   = 0;
         const bool is_union = type->data.strct.is_union;
-
         if (type->user_id) {
             char prefix[37];
             snprintf(prefix, TARRAY_SIZE(prefix), "%s%llu.", is_union ? "u" : "s", ++serial);
@@ -1502,9 +1500,7 @@ void type_init_id(Context *cnt, MirType *type)
             if (type->user_id) tstring_append(tmp, type->user_id->str);
             break;
         }
-
         tstring_append(tmp, is_union ? "u." : "s.");
-
         GEN_ID_STRUCT;
         break;
     }
@@ -1545,6 +1541,7 @@ void type_init_id(Context *cnt, MirType *type)
     tstring_append(copy, tmp->data);
     type->id.str  = copy->data;
     type->id.hash = thash_from_str(copy->data);
+
 #if TRACY_ENABLE
     static int tc = 0;
     TracyCPlot("Type count", ++tc);
@@ -3498,7 +3495,7 @@ MirInstr *append_instr_decl_var(Context *        cnt,
     tmp->base.ref_count  = NO_REF_COUNTING;
     tmp->type            = ref_instr(type);
     tmp->init            = ref_instr(init);
-    const bool is_global = scope_is_global(scope);
+    const bool is_global = !scope_is_local(scope);
     tmp->var =
         create_var(cnt, node, scope, id, NULL, is_mutable, is_global, false, flags, builtin_id);
     if (is_global) {
@@ -4682,7 +4679,8 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
         decl_ref->accept_incomplete_type = false;
         decl_ref->parent_unit            = parent_unit;
         decl_ref->rid                    = rid;
-        erase_instr_tree(target_ptr, false, true);
+        unref_instr(target_ptr);
+        erase_instr_tree(target_ptr, false, false);
         return ANALYZE_RESULT(POSTPONE, 0);
     }
 
@@ -5254,21 +5252,37 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
         ((MirInstrDeclVar *)fn->ret_tmp)->var->value.type = value->type->data.fn.ret_type;
     }
 
+    TString *name_prefix = get_tmpstr();
+    if (fn->decl_node) {
+        Scope *owner_scope = fn->decl_node->owner_scope;
+        BL_ASSERT(owner_scope);
+        scope_get_full_name(name_prefix, owner_scope);
+    }
+
     // Setup function linkage name, this will be later used by LLVM backend.
     if (fn->id && !fn->linkage_name) { // Has ID and has no linkage name specified.
+        TString *full_name = builder_create_cached_str();
+        tstring_appendf(full_name, "%s.%s", name_prefix->data, fn->id->str);
         if (IS_FLAG(fn->flags, FLAG_EXTERN) || IS_FLAG(fn->flags, FLAG_ENTRY) ||
             IS_FLAG(fn->flags, FLAG_EXPORT) || IS_FLAG(fn->flags, FLAG_INTRINSIC)) {
             fn->linkage_name = fn->id->str;
+            fn->full_name    = full_name->data;
         } else {
             // Here we generate unique linkage name
-            fn->linkage_name = gen_uq_name(fn->id->str);
+            fn->linkage_name = gen_uq_name(full_name->data);
+            fn->full_name    = full_name->data;
         }
     } else if (!fn->linkage_name) {
         // Anonymous function use implicit unique name.
-        fn->linkage_name = gen_uq_name(IMPL_FN_NAME);
-    } else {
-        BL_ASSERT(fn->linkage_name && "Linkage name must be set explicitly!");
+        TString *full_name = get_tmpstr();
+        tstring_appendf(full_name, "%s.%s", name_prefix->data, IMPL_FN_NAME);
+        fn->linkage_name = gen_uq_name(full_name->data);
+        fn->full_name    = fn->linkage_name;
+        put_tmpstr(full_name);
     }
+    put_tmpstr(name_prefix);
+    BL_ASSERT(fn->linkage_name);
+    if (!fn->full_name) fn->full_name = fn->linkage_name;
 
     if (IS_FLAG(fn->flags, FLAG_ENTRY)) {
         fn->ref_count = NO_REF_COUNTING;
@@ -7541,7 +7555,7 @@ void analyze(Context *cnt)
             LOG_ANALYZE_POSTPONE
 
             skip = true;
-            if (postpone_loop_count++ < q->size) tlist_push_back(q, ip);
+            if (postpone_loop_count++ <= q->size) tlist_push_back(q, ip);
             break;
 
         case ANALYZE_WAITING: {
@@ -9022,7 +9036,7 @@ static void ast_decl_fn(Context *cnt, Ast *ast_fn)
     MirBuiltinIdKind builtin_id  = MIR_BUILTIN_ID_NONE;
     const bool       is_compiler = IS_FLAG(ast_fn->data.decl_entity.flags, FLAG_COMPILER);
     if (is_compiler) builtin_id = check_symbol_marked_compiler(ast_name);
-    const bool is_global = ast_fn->data.decl_entity.in_gscope;
+    const bool is_global = ast_fn->data.decl_entity.is_global;
     MirInstr * value     = ast_expr_lit_fn(
         cnt, ast_value, ast_name, ast_explicit_linkage_name, is_global, flags, builtin_id);
     if (ast_type) ((MirInstrFnProto *)value)->user_type = CREATE_TYPE_RESOLVER_CALL(ast_type);
@@ -9211,7 +9225,7 @@ MirInstr *ast_decl_entity(Context *cnt, Ast *entity)
     Ast *      ast_name       = entity->data.decl.name;
     Ast *      ast_value      = entity->data.decl_entity.value;
     const bool is_fn_decl     = ast_value && ast_value->kind == AST_EXPR_LIT_FN;
-    const bool is_global      = entity->data.decl_entity.in_gscope;
+    const bool is_global      = entity->data.decl_entity.is_global;
     const bool is_struct_decl = ast_value && ast_value->kind == AST_EXPR_TYPE &&
                                 ast_value->data.expr_type.type->kind == AST_TYPE_STRUCT;
     BL_ASSERT(ast_name && "Missing entity name.");

@@ -759,7 +759,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
                                               SCOPE_GET(cnt),
                                               EXPECTED_NAMED_SCOPE_COUNT,
                                               &tok_directive->location);
-            named_scope->name       = id;
+            named_scope->name       = id->str;
             scope_entry->data.scope = named_scope;
         }
         if (SCOPE_GET(cnt)->kind == SCOPE_GLOBAL) scope_unlock(SCOPE_GET(cnt));
@@ -2433,7 +2433,7 @@ Ast *parse_decl(Context *cnt)
             hd_accepted &= ~found;
         }
 
-        if (IS_FLAG(flags, FLAG_NO_INIT) && scope_is_global(SCOPE_GET(cnt))) {
+        if (IS_FLAG(flags, FLAG_NO_INIT) && !scope_is_local(SCOPE_GET(cnt))) {
             PARSE_ERROR(ERR_EXPECTED_INITIALIZATION,
                         tok_begin,
                         BUILDER_CUR_AFTER,
@@ -2661,7 +2661,7 @@ NEXT:
             Ast *decl = tmp->data.decl_entity.value;
             if (decl && rq_semicolon_after_decl_entity(decl)) parse_semicolon_rq(cnt);
             // setup global scope flag for declaration
-            tmp->data.decl_entity.in_gscope = true;
+            tmp->data.decl_entity.is_global = true;
             if (cnt->current_private_scope) tmp->data.decl_entity.flags |= FLAG_PRIVATE;
         }
 

@@ -241,6 +241,8 @@ struct MirFn {
     // actual implementation can be external, internal or intrinsic embedded in compiler,
     // depending on function flags.
     const char *linkage_name;
+    // Full name contains full function name with parent scopes.
+    const char *full_name;
 
     LLVMValueRef llvm_value;
     bool         fully_analyzed;

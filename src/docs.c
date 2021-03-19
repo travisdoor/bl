@@ -149,7 +149,7 @@ void doc_decl_entity(Context *cnt, Ast *decl)
 
     TString *full_name = get_tmpstr();
     if (decl->owner_scope->name) {
-        tstring_append(full_name, decl->owner_scope->name->str);
+        tstring_append(full_name, decl->owner_scope->name);
         tstring_append(full_name, ".");
     }
     tstring_append(full_name, ident->data.ident.id.str);

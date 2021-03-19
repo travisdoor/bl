@@ -67,6 +67,7 @@ typedef struct Builder {
     TArray tmp_strings;
 
     struct ThreadingImpl *threading;
+    bool                  is_initialized;
 } Builder;
 
 // Builder global instance.
@@ -101,8 +102,8 @@ int builder_compile_config(const char *filepath, ConfData *out_data, struct Toke
 #define builder_add_default_target(name) _builder_add_target(name, true)
 Target *_builder_add_target(const char *name, bool is_default);
 
-s32     builder_compile_all(void);
-s32     builder_compile(const Target *target);
+s32 builder_compile_all(void);
+s32 builder_compile(const Target *target);
 
 // Submit new unit for async compilation, in case no-jobs flag is set, this function does nothing.
 void builder_async_submit_unit(Unit *unit);

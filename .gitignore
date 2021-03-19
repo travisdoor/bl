@@ -67,5 +67,6 @@ src/config.h
 /build-stable/
 /build-release/
 /build-debug/
+/build-assert/
 /cmake-build*
 /bin

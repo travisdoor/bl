@@ -56,9 +56,9 @@ extern "C" {
 #define __FILENAME__
 #endif
 
-typedef enum { LOG_ASSERT, LOG_ABORT, LOG_WARNING, LOG_MSG } bl_log_msg_type_e;
+typedef enum { LOG_ASSERT, LOG_ABORT, LOG_WARNING, LOG_MSG } BlLogMsgKind;
 
-void _log(bl_log_msg_type_e t, const char *file, s32 line, const char *msg, ...);
+void _log(BlLogMsgKind t, const char *file, s32 line, const char *msg, ...);
 void print_trace(void);
 
 #if defined(BL_DEBUG) || BL_ASSERT_ENABLE

@@ -2,24 +2,24 @@
 
 #scope _SyncImpl
 
-Mutex :: _RTL_CRITICAL_SECTION;
+Mutex :: Win32.RTL_CRITICAL_SECTION;
 
 init :: fn (mutex: *Mutex) #inline {
-    _InitializeCriticalSection(mutex);
+    Win32.InitializeCriticalSection(mutex);
 }
 
 terminate :: fn (mutex: *Mutex) #inline {
-    _DeleteCriticalSection(mutex);
+    Win32.DeleteCriticalSection(mutex);
 }
 
 lock :: fn (mutex: *Mutex) #inline {
-    _EnterCriticalSection(mutex);
+    Win32.EnterCriticalSection(mutex);
 }
 
 try_lock :: fn (mutex: *Mutex) bool #inline {
-    return _TryEnterCriticalSection(mutex) != 0;
+    return Win32.TryEnterCriticalSection(mutex) != 0;
 }
 
 unlock :: fn (mutex: *Mutex) #inline {
-    _LeaveCriticalSection(mutex);
+    Win32.LeaveCriticalSection(mutex);
 }

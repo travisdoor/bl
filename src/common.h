@@ -82,8 +82,8 @@ struct Assembly;
 #error "Unsuported compiler!"
 #endif
 
-#define IS_FLAG(_v, _flag) ((bool)((_v & _flag) == _flag))
-#define IS_NOT_FLAG(_v, _flag) ((bool)((_v & _flag) != _flag))
+#define IS_FLAG(_v, _flag) ((bool)(((_v) & (_flag)) == (_flag)))
+#define IS_NOT_FLAG(_v, _flag) ((bool)(((_v) & (_flag)) != (_flag)))
 
 #define ARRAY_FOREACH(arr, it)                                                                     \
     for (usize _keep = 1, i = 0, _size = TARRAY_SIZE((arr)); _keep && i != _size;                  \
@@ -106,6 +106,7 @@ TSMALL_ARRAY_TYPE(ArgPtr, struct MirArg *, 16);
 TSMALL_ARRAY_TYPE(InstrPtr, struct MirInstr *, 16);
 TSMALL_ARRAY_TYPE(ConstValuePtr, struct MirConstValue *, 16);
 TSMALL_ARRAY_TYPE(Char, char, 128);
+TSMALL_ARRAY_TYPE(CharPtr, char*, 8);
 TSMALL_ARRAY_TYPE(FnPtr, struct MirFn *, 8);
 
 typedef struct ID {

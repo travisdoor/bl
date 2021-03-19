@@ -1,3 +1,9 @@
+#load "one.bl"
+#load "two.bl"
+
 main :: fn () s32 {
+    info1 :: typeinfo(One.CoolType);
+    info2 :: typeinfo(Two.CoolType);
+    print("%\n", info1 == info2);
     return 0;
 }

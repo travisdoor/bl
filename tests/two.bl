@@ -1,0 +1,5 @@
+#scope Two
+
+CoolType :: struct {
+    i: s32;
+}

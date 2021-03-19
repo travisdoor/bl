@@ -194,7 +194,7 @@ struct AstDeclEntity {
     Ast *          value;
     Ast *          explicit_linkage_name; // Optional.
     u32            flags;
-    bool           in_gscope;
+    bool           is_global;
     bool           mut;
 };
 
