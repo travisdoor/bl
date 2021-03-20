@@ -5025,9 +5025,21 @@ AnalyzeResult analyze_instr_alignof(Context *cnt, MirInstrAlignof *alof)
 AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 {
     BL_ASSERT(ref->rid && ref->scope);
+
     ScopeEntry *found                        = NULL;
     Scope *     private_scope                = ref->parent_unit->private_scope;
     bool        is_ref_out_of_fn_local_scope = false;
+
+    // Disable access to the symbols declared in private named scope from the outside of the named scope.
+    //     foo();
+    //     #scope Foo
+    //     #private
+    //     foo :: fn () {}
+    if (private_scope && scope_is_subtree_of_kind(private_scope, SCOPE_NAMED) &&
+        !scope_is_subtree_of_kind(ref->scope, SCOPE_NAMED)) {
+        private_scope = NULL;
+    }
+
     if (!private_scope) { // reference in unit without private scope
         found = scope_lookup(ref->scope, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
     } else { // reference in unit with private scope

@@ -28,8 +28,8 @@
 //! 
 //!     // Dynamic string allocated on heap.
 //!     // New dynamic string can be created from string literal. 
-//!     my_string :: string_new("This is my string!");
-//!     defer string_delete(my_string);
+//!     my_string :: String.new("This is my string!");
+//!     defer String.delete(my_string);
 //! 
 //! BL strings are zero terminated except of sub-string view function (terminator cannot be added 
 //! because we cannot modify original string).

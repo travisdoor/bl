@@ -1,10 +1,9 @@
+// @ERR_UNKNOWN_SYMBOL@
 main :: fn () s32 {
     foo();
-    Foo.foo();
     return 0;
 }
 
-#private
-foo :: fn () {}
 #scope Foo
+#private
 foo :: fn () {}

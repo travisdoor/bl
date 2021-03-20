@@ -696,6 +696,8 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
 
+        const bool has_named_parent_scope = cnt->current_named_scope;
+
         // Here we create private scope for the current unit. (only when source file
         // contains private block).
         //
@@ -713,9 +715,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
 
         cnt->current_private_scope = scope;
         scope->llvm_meta           = scope->parent->llvm_meta;
-
-        // Make all other declarations in file nested in private scope
-        cnt->unit->private_scope = scope;
+        cnt->unit->private_scope   = scope;
         SCOPE_SET(cnt, scope);
 
         return ast_create_node(cnt->ast_arena, AST_PRIVATE, tok_directive, SCOPE_GET(cnt));
@@ -748,7 +748,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         ScopeEntry *scope_entry = scope_lookup(SCOPE_GET(cnt), id, false, false, NULL);
         if (scope_entry) {
             BL_ASSERT(scope_entry->kind == SCOPE_ENTRY_NAMED_SCOPE &&
-                      "Found scope entry is expected to be Namespace!");
+                      "Found scope entry is expected to be named scope!");
             BL_ASSERT(scope_entry->data.scope && scope_entry->data.scope->kind == SCOPE_NAMED);
         } else {
             scope_entry = scope_create_entry(

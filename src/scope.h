@@ -130,6 +130,7 @@ void scope_unlock(Scope *scope);
 ScopeEntry *
 scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_global, bool *out_of_fn_local_scope);
 
+// Checks whether passed scope is of kind or is nested in scope of kind.
 bool        scope_is_subtree_of_kind(const Scope *scope, ScopeKind kind);
 const char *scope_kind_name(const Scope *scope);
 void        scope_get_full_name(TString *dest, Scope *scope);
