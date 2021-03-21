@@ -143,65 +143,67 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 set(HEADER_FILES
-    src/conf_data.h
-    src/bldebug.h
-    src/error.h
-    src/config.h
-    src/builder.h
-    src/blmemory.h
+    src/arena.h
     src/assembly.h
+    src/ast.h
+    src/bldebug.h
+    src/blmemory.h
+    src/builder.h
+    src/common.h
+    src/conf_data.h
+    src/config.h
+    src/error.h
+    src/llvm_api.h
+    src/llvm_di.h
+    src/mir.h
+    src/mir_printer.h
+    src/scope.h
     src/token.h
     src/tokens.h
     src/unit.h
-    src/common.h
-    src/scope.h
-    src/mir.h
-    src/mir_printer.h
-    src/arena.h
-    src/llvm_di.h
     src/vm.h
-    src/llvm_api.h
-    src/ast.h)
+)
 
 set(SOURCE_FILES
-    src/main.c
-    src/blmemory.c
-    src/conf_parser.c
-    src/conf_data.c
+    deps/tracy/TracyClient.cpp
     src/arena.c
-    src/tokens.c
-    src/file_loader.c
-    src/unit.c
-    src/ast_printer.c
-    src/token.c
-    src/token_printer.c
     src/assembly.c
-    src/builder.c
-    src/lexer.c
-    src/bldebug.c
-    src/parser.c
-    src/linker.c
-    src/obj_writer.c
-    src/bc_writer.c
-    src/mir_writer.c
-    src/native_bin.c
-    src/scope.c
-    src/common.c
-    src/mir.c
-    src/ir.c
-    src/vm.c
-    src/ir_opt.c
-    src/mir_printer.c
     src/ast.c
+    src/ast_printer.c
+    src/bc_writer.c
+    src/bldebug.c
+    src/blmemory.c
     src/build_api.c
-    src/intrinsic.c
+    src/builder.c
+    src/common.c
+    src/conf_data.c
+    src/conf_parser.c
     src/docs.c
-    src/vm_runner.c
-    src/lld_link.c
+    src/file_loader.c
+    src/intrinsic.c
+    src/ir.c
+    src/ir_opt.c
+    src/lexer.c
+    src/linker.c
     src/lld_ld.c
+    src/lld_link.c
     src/llvm_api.cpp
     src/llvm_di.cpp
-    deps/tracy/TracyClient.cpp)
+    src/main.c
+    src/mir.c
+    src/mir_printer.c
+    src/mir_writer.c
+    src/native_bin.c
+    src/obj_writer.c
+    src/parser.c
+    src/scope.c
+    src/token.c
+    src/token_printer.c
+    src/tokens.c
+    src/unit.c
+    src/vm.c
+    src/vm_runner.c
+)
 
 add_definitions(${LLVM_DEFINITIONS})
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})

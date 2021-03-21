@@ -3,7 +3,9 @@ main :: fn () s32 {
     return 0;
 }
 
-foo :: fn { Foo.foo1; Foo.foo2; 10 +2; }
+
+/// Hello
+foo :: fn { Foo.foo1; Foo.foo2; }
 
 #scope Foo
 foo1 :: fn (i: s32) {}

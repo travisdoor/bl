@@ -114,6 +114,7 @@ static void doc_type_enum(Context *cnt, Ast *type);
 static void doc_type_struct(Context *cnt, Ast *type);
 static void doc_type_slice(Context *cnt, Ast *type);
 static void doc_type_vargs(Context *cnt, Ast *type);
+static void doc_expr_lit_fn_group(Context *cnt, Ast *lit);
 
 void append_section(Context *cnt, const char *name, const char *content)
 {
@@ -343,8 +344,13 @@ void doc_type_slice(Context *cnt, Ast *type)
 
 void doc_ref(Context *cnt, Ast *ref)
 {
-    Ast *ident = ref->data.ref.ident;
-    if (!ident) return;
+    Ast *ident           = ref->data.ref.ident;
+    Ast *ident_namespace = ref->data.ref.next;
+    if (ident_namespace) {
+        doc(cnt, ident_namespace);
+        // const char *name = ident_namespace->data.ident.id.str;
+        fprintf(cnt->stream, ".");
+    }
     const char *name = ident->data.ident.id.str;
     fprintf(cnt->stream, "%s", name);
 }
@@ -361,6 +367,19 @@ void doc_type_vargs(Context *cnt, Ast *type)
     Ast *next_type = type->data.type_vargs.type;
     fprintf(cnt->stream, "...");
     doc(cnt, next_type);
+}
+
+void doc_expr_lit_fn_group(Context *cnt, Ast *lit)
+{
+    TSmallArray_AstPtr *variants = lit->data.expr_fn_group.variants;
+    fprintf(cnt->stream, "fn { ");
+    Ast *iter;
+    TSA_FOREACH(variants, iter)
+    {
+        doc(cnt, iter);
+        if (i < variants->size) fprintf(cnt->stream, "; ");
+    }
+    fprintf(cnt->stream, "}");
 }
 
 void doc(Context *cnt, Ast *node)
@@ -387,6 +406,9 @@ void doc(Context *cnt, Ast *node)
         break;
     case AST_EXPR_LIT_FN:
         doc(cnt, node->data.expr_fn.type);
+        break;
+    case AST_EXPR_LIT_FN_GROUP:
+        doc_expr_lit_fn_group(cnt, node);
         break;
     case AST_EXPR_TYPE:
         doc(cnt, node->data.expr_type.type);
