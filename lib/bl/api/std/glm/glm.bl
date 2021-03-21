@@ -28,13 +28,15 @@
 
 #load "std/math.bl"
 
+#scope Glm
+
 //! ===
 //! GLM
 //! ===
 //! 
 //! ::
 //! 
-//!     #load "std/glm.bl"
+//!     #import "std/glm"
 //!
 //! 3D math tools.
 

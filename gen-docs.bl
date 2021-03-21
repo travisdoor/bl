@@ -89,9 +89,14 @@ docs_dir :: fn (dest_path: string, src_path: string) Error {
         err :: cmd("blc --docs %", file_list);
         if !is_ok(err) { return err; }
     }
-    {
-        err :: cmd("mv out/* %", dest_path);
+    { // copy results into docs folder
+        opt: Fs.CopyOpt;
+        opt.recursive = true;
+        opt.override = true;
+        c, err :: Fs.dir_copy("out", dest_path, &opt);
         if !is_ok(err) { return err; }
+        err2 :: Fs.dir_remove_all("out");
+        if !is_ok(err2) { return err2; }
     }
     
     return ok();
@@ -109,8 +114,14 @@ main :: fn () s32 {
         if !is_ok(err) { print_err("%", err); return err.code; }
     }
 
-    { // copy examples
-        err :: cmd("cp -r examples %/", DEST_DOCS_DIR);
+    { // copy results into docs folder
+        opt: Fs.CopyOpt;
+        opt.recursive = true;
+        opt.override = true;
+        dest :: String.new();
+        defer String.delete(dest);
+        String.concatenate(&dest, DEST_DOCS_DIR, "/", "examples");
+        c, err :: Fs.dir_copy("examples", dest, &opt);
         if !is_ok(err) { print_err("%", err); return err.code; }
     }
     print("Output written in '%' folder.\n", DEST_DOCS_DIR);

@@ -28,7 +28,7 @@ get_symbol :: fn (lib: Library, sym_name: string) (*u8, Error) #inline {
     return _DlibImpl.sym(lib, sym_name);
 }
 
-/// Close library opened by :ref:`dl_open` call.
+/// Close library opened by :ref:`Dlib.open` call.
 close :: fn (lib: Library) #inline {
     _DlibImpl.close(lib);
 }

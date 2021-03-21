@@ -41,7 +41,7 @@ OpenOpt :: struct {
     create: bool;
 }
 
-/// Specify behavior of :ref:`dir_copy`.
+/// Specify behavior of :ref:`Fs.dir_copy`.
 CopyOpt :: struct {
     /// Copy all directories and sub-directories.
     recursive: bool;
@@ -72,7 +72,7 @@ exist :: fn (filepath: string) bool #inline {
 
 /// Open an file specified by `filepath`. Function return file handle and `OK` status when
 /// file was openned, otherwise return invalid handle and proper error. File must be closed
-/// by :ref:`close` call.
+/// by :ref:`Fs.close` call.
 ///
 /// File open `mode` is optional, any combination of :ref:`OpenMode` can be used.
 /// When `Create` `mode` is specified, new file is created on `filepath` only if it does
@@ -118,16 +118,16 @@ copy :: fn (src: string, dest: string, override := false) Error #inline {
 ///     
 ///     main :: fn () s32 {
 ///         // Copy options
-///         opt: CopyOpt;
+///         opt: Fs.CopyOpt;
 ///         // Create destination directory if not exist.
 ///         opt.recursive = true;
 ///         // Override all existing entries.
 ///         opt.override = true;
 ///     
 ///         // Copy content of 'foo' into 'bar'
-///         c, err :: dir_copy("foo", "bar", &opt, &fn (item: *Info) bool {
+///         c, err :: Fs.dir_copy("foo", "bar", &opt, &fn (item: *Fs.Info) bool {
 ///             // Filter only txt files
-///             if String.compare(get_extension(item.name), "txt") { return true; } 
+///             if String.compare(Fs.get_extension(item.name), "txt") { return true; } 
 ///             return false;
 ///         });
 ///         if !is_ok(err) { print("%\n", err); }
@@ -223,7 +223,7 @@ read_string :: fn (handle: File) (string, Error) {
 
 /// Read whole file content into slice array. Return new slice instance containting
 /// file data and `OK` status on success, otherwise return empty slice and error.
-/// Returned slice is expected to be released by :ref:`slice_terminatr` call if
+/// Returned slice is expected to be released by :ref:`slice_terminate` call if
 /// there was no error reported by function.
 read_slice :: fn (handle: File) ([]u8, Error) {
     invalid: []u8;
@@ -318,6 +318,7 @@ dir_remove :: fn (dirpath: string) Error #inline {
 
 /// Remove non-empty directory specified by `dirpath` and return `OK` on success,
 /// otherwise return an error. Root directory is removed if `remove_root` is `true`.
+/// Custom file `filter` function can be specified as needed.
 ///
 /// .. note:: This function recursively remove all nested folders and files in specified
 ///           sub tree so it can be expensive.
@@ -358,10 +359,10 @@ is_directory :: fn (path: string) (bool, Error) #inline {
 DirScanFilterFn :: *fn(info: *Info) bool;
 
 /// Scan `dirpath` directory and return list of information for every file system
-/// entry found on success. Otherwise return empty list and error. Use :ref:`info_list_delete
+/// entry found on success. Otherwise return empty list and error. Use :ref:`Fs.info_list_delete
 /// to release list when there was no error reported by this function.
 ///
-/// Optional `filter` funtion :ref:`DirScanFilterFn` can be used to filter scan results
+/// Optional `filter` funtion :ref:`Fs.DirScanFilterFn` can be used to filter scan results
 /// directly during scanning, it's called for every found entry and only those for
 /// whose filter yealds true are added into the output list.
 dir_scan :: fn (dirpath: string, filter: DirScanFilterFn = &_default_file_filter) (InfoList, Error) #inline {
