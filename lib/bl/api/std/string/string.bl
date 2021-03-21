@@ -168,8 +168,7 @@ compare :: fn (first: string, second: string, n := -1) bool {
     return true;
 }
 
-// @DOC
-// @TEST
+/// @INCOMPLETE
 compare2 :: fn (first: string, second: string, n := -1) s32 {
     len :: Math.max(first.len, second.len);
     loop i := 0; i < len; i += 1 {

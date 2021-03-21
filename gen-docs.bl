@@ -86,7 +86,7 @@ docs_dir :: fn (dest_path: string, src_path: string) Error {
     print("Process '%'\n", src_path);
     if String.is_empty(file_list) { return ok(); }
     {
-        err :: cmd("blc --docs --silent %", file_list);
+        err :: cmd("blc --docs %", file_list);
         if !is_ok(err) { return err; }
     }
     {

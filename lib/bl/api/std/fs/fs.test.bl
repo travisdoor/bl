@@ -171,7 +171,7 @@ fs_get_uid_test2 :: fn () #test {
     file, err :: Fs.open(filepath, Fs.OpenMode.Create);
     Fs.close(file);
     test_ok(err);
-    uid, err2 :: Fs.get_uid_by_name(filepath);
+    uid, err2 :: Fs.get_uid(filepath);
     test_ok(err2);
     test_true(uid > 0);
 }

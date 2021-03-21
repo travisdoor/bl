@@ -1,10 +1,10 @@
 main :: fn () s32 {
-    foo();
-    Foo.foo();
+    foo(10);
     return 0;
 }
 
-#private
-foo :: fn () {}
+foo :: fn { Foo.foo1; Foo.foo2; 10 +2; }
+
 #scope Foo
-foo :: fn () {}
+foo1 :: fn (i: s32) {}
+foo2 :: fn (b: bool) {}

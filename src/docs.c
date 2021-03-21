@@ -143,6 +143,14 @@ void doc_decl_entity(Context *cnt, Ast *decl)
     const char *name       = ident->data.ident.id.str;
     const bool  is_mutable = decl->data.decl_entity.mut;
 
+    if (text && strstr(text, "@INCOMPLETE")) {
+        builder_msg(BUILDER_MSG_WARNING,
+                    0,
+                    ident->location,
+                    BUILDER_CUR_WORD,
+                    "Found incomplete documentation!");
+    }
+
     // if (!text) return;
     if (!decl->owner_scope) return;
     if (decl->owner_scope->kind != SCOPE_GLOBAL && decl->owner_scope->kind != SCOPE_NAMED) return;
@@ -408,9 +416,10 @@ void doc(Context *cnt, Ast *node)
     case AST_PRIVATE:
     case AST_LINK:
     case AST_IMPORT:
+    case AST_SCOPE:
         break;
     default:
-        builder_warning("Missing doc generation for AST node '%s'.", ast_get_name(node));
+        BL_WARNING("Missing doc generation for AST node '%s'.", ast_get_name(node));
         break;
     }
 }
