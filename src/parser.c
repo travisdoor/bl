@@ -696,8 +696,6 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
 
-        const bool has_named_parent_scope = cnt->current_named_scope;
-
         // Here we create private scope for the current unit. (only when source file
         // contains private block).
         //
