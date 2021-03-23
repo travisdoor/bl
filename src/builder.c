@@ -367,11 +367,6 @@ static int compile(Assembly *assembly)
     s32     state       = COMPILE_OK;
     builder.total_lines = 0;
 
-    if (assembly->target->kind != ASSEMBLY_BUILD_PIPELINE) {
-        builder_note(
-            "Compile assembly: %s [%s]", assembly->target->name, opt_to_str(assembly->target->opt));
-    }
-
     UnitStageFn     unit_pipeline[5];
     AssemblyStageFn assembly_pipeline[14];
     setup_unit_pipeline(assembly, unit_pipeline, TARRAY_SIZE(unit_pipeline));

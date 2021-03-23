@@ -307,13 +307,10 @@ int main(s32 argc, char *argv[])
     }
 
     state = builder_compile(opt.target);
-    // @CLEANUP
-    // builder_add_assembly(assembly);
-    // state = builder_compile_all();
 
-    char date[26];
-    date_time(date, 26, "%d-%m-%Y %H:%M:%S");
-    builder_note("Finished at %s", date);
+    //char date[26];
+    //date_time(date, 26, "%d-%m-%Y %H:%M:%S");
+    //builder_note("Finished at %s", date);
 
 RELEASE:
     builder_terminate();
