@@ -12,7 +12,7 @@ CXUnsavedFile :: struct {
     Length: u64
 }
 
-CXstrings.:: struct {
+CXString :: struct {
     data: *u8; 
     private_flags: s32
 }
@@ -304,7 +304,7 @@ CXCursorKind :: enum {
     CXXNewExpr                    :: 134;
     CXXDeleteExpr                 :: 135;
     UnaryExpr                     :: 136;
-    ObjCstrings.iteral             :: 137;
+    ObjCStringLiteral             :: 137;
     ObjCEncodeExpr                :: 138;
     ObjCSelectorExpr              :: 139;
     ObjCProtocolExpr              :: 140;
@@ -462,7 +462,7 @@ CXCursorKind :: enum {
     FriendDecl                    :: 603;
     FirstExtraDecl                :: ModuleImportDecl;
     LastExtraDecl                 :: FriendDecl;
-    OverloadCandidate             :: 700
+    OverloadCandidate             :: 700;
 };
 
 clang_createIndex :: fn (excludeDeclarationsFromPCH: s32, displayDiagnostics: s32) CXIndex #extern;
@@ -470,7 +470,7 @@ clang_disposeIndex :: fn (index: CXIndex) #extern;
 clang_parseTranslationUnit :: fn (CIdx: CXIndex, source_filename: *u8, command_line_args: *u8, num_command_line_args: s32, unsaved_files: *CXUnsavedFile, num_unsaved_files: u32, options: u32) CXTranslationUnit #extern;
 clang_parseTranslationUnit2 :: fn (CIdx: CXIndex, source_filename: *u8, command_line_args: **u8, num_command_line_args: s32, unsaved_files: *CXUnsavedFile, num_unsaved_files: u32, options: u32, out_TU: *CXTranslationUnit) CXErrorCode #extern;
 clang_visitChildren :: fn (parent: CXCursor, visitor: CXCursorVisitor, client_data: CXClientData) u32 #extern;
-clang_getCursorSpelling :: fn (cursor: CXCursor) CXstrings.#extern;
+clang_getCursorSpelling :: fn (cursor: CXCursor) CXString #extern;
 clang_getCursorResultType :: fn (cursor: CXCursor) CXType #extern;
 clang_getTranslationUnitCursor :: fn (tu: CXTranslationUnit) CXCursor #extern;
 clang_disposeTranslationUnit :: fn (tu: CXTranslationUnit) #extern;
@@ -480,9 +480,9 @@ clang_Cursor_getArgument :: fn (C: CXCursor, i: u32) CXCursor #extern;
 clang_getPointeeType :: fn (T: CXType) CXType #extern; 
 clang_getTypeDeclaration :: fn (T: CXType) CXCursor #extern;
 clang_getTypedefDeclUnderlyingType :: fn (C: CXCursor) CXType #extern;
-clang_getTypedefName :: fn (CT: CXType) CXstrings.#extern;
+clang_getTypedefName :: fn (CT: CXType) CXString #extern;
 clang_Cursor_getModule :: fn (C: CXCursor) CXModule #extern;
-clang_Module_getName :: fn (Module: CXModule) CXstrings.#extern;
+clang_Module_getName :: fn (Module: CXModule) CXString #extern;
 clang_Location_isFromMainFile :: fn (location: CXSourceLocation) s32 #extern;
 clang_getCursorLocation :: fn (C: CXCursor) CXSourceLocation #extern;
 clang_getEnumConstantDeclValue :: fn (C: CXCursor) s64 #extern; 
@@ -499,11 +499,11 @@ clang_getArgType :: fn (T: CXType, i: s32) CXType #extern;
 clang_getResultType :: fn (T: CXType) CXType #extern;
 clang_getNumElements :: fn (T: CXType) s64 #extern;
 clang_getArrayElementType :: fn (T: CXType) CXType #extern;
-clang_getCstrings.:: fn (s: CXstrings. *c_char #extern;
-clang_disposestrings.:: fn (s: *c_char) #extern;
+clang_getCString :: fn (s: CXString)  *c_char #extern;
+clang_disposeString :: fn (s: *c_char) #extern;
 clang_Type_isTransparentTagTypedef :: fn (T: CXType) c_uint #extern;
 clang_Cursor_isAnonymous :: fn (C: CXCursor) c_uint #extern;
-clang_getTypeSpelling :: fn (CT: CXType) CXstrings.#extern;
+clang_getTypeSpelling :: fn (CT: CXType) CXString #extern;
 
 clang_equalTypes :: fn (A: CXType, B: CXType) u32 #extern;
 
@@ -517,11 +517,11 @@ clang_EvalResult_getAsInt :: fn (E: CXEvalResult) s32 #extern;
 
 clang_EvalResult_getAsStr :: fn (E: CXEvalResult) *u8 #extern;
 clang_getToken :: fn (TU: CXTranslationUnit, Location: CXSourceLocation) *CXToken #extern;
-clang_getTokenSpelling :: fn (TU: CXTranslationUnit, T: CXToken) CXstrings.#extern; 
+clang_getTokenSpelling :: fn (TU: CXTranslationUnit, T: CXToken) CXString #extern; 
 
 clang_Cursor_getTranslationUnit :: fn (C: CXCursor) CXTranslationUnit #extern;
 clang_getCursorExtent :: fn (C: CXCursor) CXSourceRange #extern;
 clang_tokenize :: fn (TU: CXTranslationUnit, Range: CXSourceRange, Tokens: **CXToken, NumTokens: *u32) #extern;
 clang_disposeTokens :: fn (TU: CXTranslationUnit, Tokens: *CXToken, NumTokens: u32) #extern;
-clang_File_tryGetRealPathName :: fn (file: CXFile) CXstrings.#extern;
-clang_getFileName :: fn (SFile: CXFile) CXstrings.#extern;
+clang_File_tryGetRealPathName :: fn (file: CXFile) CXString #extern;
+clang_getFileName :: fn (SFile: CXFile) CXString #extern;
