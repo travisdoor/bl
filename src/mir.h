@@ -228,9 +228,10 @@ typedef struct {
 // FN
 struct MirFn {
     // Must be first!!!
-    MirInstr *prototype;
-    ID *      id;
-    Ast *     decl_node;
+    MirInstr *  prototype;
+    ID *        id;
+    Ast *       decl_node;
+    ScopeEntry *entry;
 
     // function body scope if there is one (optional)
     Scope *  body_scope;
@@ -282,15 +283,15 @@ struct MirFnGroup {
 
 // MEMBER
 struct MirMember {
-    MirType *type;
-    ID *     id;
-    Ast *    decl_node;
-    Scope *  decl_scope;
-    s64      index;
-    s32      offset_bytes;
-    s32      tags;
-    bool     is_base; // inherrited struct base
-    bool     is_parent_union;
+    MirType *   type;
+    ID *        id;
+    Ast *       decl_node;
+    ScopeEntry *entry;
+    s64         index;
+    s32         offset_bytes;
+    s32         tags;
+    bool        is_base; // inherrited struct base
+    bool        is_parent_union;
     BL_MAGIC_ADD
 };
 
@@ -418,7 +419,7 @@ struct MirConstExprValue {
 // VARIANT
 struct MirVariant {
     ID *               id;
-    Scope *            decl_scope;
+    ScopeEntry *       entry;
     MirConstExprValue *value;
 };
 
@@ -428,6 +429,7 @@ struct MirVar {
     ID *               id;
     Ast *              decl_node;
     Scope *            decl_scope;
+    ScopeEntry *       entry;
     VMRelativeStackPtr rel_stack_ptr;
     LLVMValueRef       llvm_value;
     const char *       linkage_name;

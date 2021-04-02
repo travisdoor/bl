@@ -153,7 +153,9 @@ typedef struct {
         THashTable          complete_check_visited;
 
         // Switch cases duplicity check
-        THashTable presented_switch_cases;
+        THashTable  presented_switch_cases;
+        TArray      usage_check_queue;
+        ScopeEntry *void_entry;
     } analyze;
 
     struct {
@@ -363,12 +365,11 @@ static MirFn *create_fn(Context *        cnt,
                         MirBuiltinIdKind builtin_id);
 
 static MirFnGroup *create_fn_group(Context *cnt, Ast *decl_node, TSmallArray_FnPtr *variants);
-static MirMember *
-create_member(Context *cnt, Ast *node, ID *id, Scope *scope, s64 index, MirType *type);
+static MirMember * create_member(Context *cnt, Ast *node, ID *id, s64 index, MirType *type);
 static MirArg *
 create_arg(Context *cnt, Ast *node, ID *id, Scope *scope, MirType *type, MirInstr *value);
 
-static MirVariant *create_variant(Context *cnt, ID *id, Scope *scope, MirConstExprValue *value);
+static MirVariant *create_variant(Context *cnt, ID *id, MirConstExprValue *value);
 // Create block without owner function.
 static MirInstrBlock *create_block(Context *cnt, const char *name);
 // Create and append block into function specified.
@@ -747,6 +748,7 @@ static AnalyzeResult analyze_instr_alignof(Context *cnt, MirInstrAlignof *alof);
 static AnalyzeResult analyze_instr_binop(Context *cnt, MirInstrBinop *binop);
 static AnalyzeResult analyze_instr_call_loc(Context *cnt, MirInstrCallLoc *loc);
 static void          analyze_report_unresolved(Context *cnt);
+static void          analyze_report_unused(Context *cnt);
 
 //***********/
 //*  RTTI   */
@@ -781,6 +783,14 @@ static void       rtti_gen_fn_slice(Context *cnt, VMStackPtr dest, TSmallArray_T
 static MirVar *   rtti_gen_fn_group(Context *cnt, MirType *type);
 
 // INLINES
+static INLINE void usage_check_push(Context *cnt, ScopeEntry *entry)
+{
+    BL_ASSERT(entry);
+    if (!entry->id) return;
+    if (!entry->node) return;
+    tarray_push(&cnt->analyze.usage_check_queue, entry);
+}
+
 static INLINE bool can_mutate_comptime_to_const(MirInstr *instr)
 {
     BL_ASSERT(instr->analyzed && "Non-analyzed instruction.");
@@ -1186,29 +1196,29 @@ static INLINE void commit_fn(Context *cnt, MirFn *fn)
 {
     ID *id = fn->id;
     BL_ASSERT(id);
-    ScopeEntry *entry = scope_lookup(fn->decl_node->owner_scope, id, true, false, NULL);
-    BL_ASSERT(entry && "cannot commit unregistered function");
+    ScopeEntry *entry = fn->entry;
+    BL_MAGIC_ASSERT(entry);
+    BL_ASSERT(entry->kind != SCOPE_ENTRY_VOID);
     entry->kind    = SCOPE_ENTRY_FN;
     entry->data.fn = fn;
     analyze_notify_provided(cnt, id->hash);
 }
 
-static INLINE void commit_variant(Context UNUSED(*cnt), MirVariant *v)
+static INLINE void commit_variant(Context UNUSED(*cnt), MirVariant *variant)
 {
-    ID *id = v->id;
-    BL_ASSERT(id);
-    ScopeEntry *entry = scope_lookup(v->decl_scope, id, false, true, NULL);
-    BL_ASSERT(entry && "cannot commit unregistered variant");
+    ScopeEntry *entry = variant->entry;
+    BL_MAGIC_ASSERT(entry);
+    BL_ASSERT(entry->kind != SCOPE_ENTRY_VOID);
     entry->kind         = SCOPE_ENTRY_VARIANT;
-    entry->data.variant = v;
+    entry->data.variant = variant;
 }
 
 static INLINE void commit_member(Context UNUSED(*cnt), MirMember *member)
 {
-    ID *id = member->id;
-    BL_ASSERT(id);
-    ScopeEntry *entry = scope_lookup(member->decl_scope, id, false, true, NULL);
-    BL_ASSERT(entry && "cannot commit unregistered member");
+    ScopeEntry *entry = member->entry;
+    BL_MAGIC_ASSERT(entry);
+    // Do not commit void entries
+    if (entry->kind == SCOPE_ENTRY_VOID) return;
     entry->kind        = SCOPE_ENTRY_MEMBER;
     entry->data.member = member;
 }
@@ -1217,8 +1227,10 @@ static INLINE void commit_var(Context *cnt, MirVar *var)
 {
     ID *id = var->id;
     BL_ASSERT(id);
-    ScopeEntry *entry = scope_lookup(var->decl_scope, id, true, false, NULL);
-    BL_ASSERT(entry && "cannot commit unregistered var");
+    ScopeEntry *entry = var->entry;
+    BL_MAGIC_ASSERT(entry);
+    // Do not commit void entries
+    if (entry->kind == SCOPE_ENTRY_VOID) return;
     entry->kind     = SCOPE_ENTRY_VAR;
     entry->data.var = var;
     BL_TRACY_MESSAGE("COMMIT_VAR", "%s", id->str);
@@ -1230,6 +1242,7 @@ static INLINE void provide_builtin_type(Context *cnt, MirType *type)
 {
     ScopeEntry *entry = register_symbol(cnt, NULL, type->user_id, cnt->assembly->gscope, true);
     if (!entry) return;
+    BL_ASSERT(entry->kind != SCOPE_ENTRY_VOID);
     entry->kind      = SCOPE_ENTRY_TYPE;
     entry->data.type = type;
 }
@@ -1238,8 +1251,10 @@ static INLINE void provide_builtin_member(Context *cnt, Scope *scope, MirMember 
 {
     ScopeEntry *entry = register_symbol(cnt, NULL, member->id, scope, true);
     if (!entry) return;
+    BL_ASSERT(entry->kind != SCOPE_ENTRY_VOID);
     entry->kind        = SCOPE_ENTRY_MEMBER;
     entry->data.member = member;
+    member->entry      = entry;
 }
 
 static INLINE MirInstr *unref_instr(MirInstr *instr)
@@ -1568,6 +1583,11 @@ ScopeEntry *register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool 
 {
     BL_ASSERT(id && "Missing symbol ID.");
     BL_ASSERT(scope && "Missing entry scope.");
+    // Do not register explicitly unused symbol!!!
+    if (is_ignored_id(id)) {
+        BL_ASSERT(!is_builtin);
+        return cnt->analyze.void_entry;
+    }
     const bool  is_private = scope->kind == SCOPE_PRIVATE;
     ScopeEntry *collision  = scope_lookup(scope, id, is_private, false, NULL);
     if (collision) {
@@ -1585,6 +1605,11 @@ ScopeEntry *register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool 
     ScopeEntry *entry = scope_create_entry(
         &cnt->assembly->arenas.scope, SCOPE_ENTRY_INCOMPLETE, id, node, is_builtin);
     scope_insert(scope, entry);
+    // Check usage only for function locals not starting with underscore.
+    if (!builder.options->no_usage_check && (scope_is_subtree_of_kind(scope, SCOPE_FN) ||
+                                             scope_is_subtree_of_kind(scope, SCOPE_PRIVATE))) {
+        usage_check_push(cnt, entry);
+    }
     BL_TRACY_MESSAGE("REGISTER_SYMBOL", "%s", id->str);
     return entry;
 
@@ -1788,8 +1813,9 @@ MirVar *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v)
     tsa_push_InstrPtr(decls, decl_var);
     append_instr_set_initializer(cnt, NULL, decls, init);
     set_current_block(cnt, prev_block);
-    register_symbol(cnt, NULL, id, scope, true);
-    return ((MirInstrDeclVar *)decl_var)->var;
+    MirVar *var = ((MirInstrDeclVar *)decl_var)->var;
+    var->entry  = register_symbol(cnt, NULL, id, scope, true);
+    return var;
 }
 
 MirType *create_type_type(Context *cnt)
@@ -2006,13 +2032,12 @@ MirType *_create_type_struct_slice(Context *cnt, MirTypeKind kind, ID *id, MirTy
 
     MirMember *tmp;
     tmp = create_member(
-        cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_LEN], body_scope, 0, cnt->builtin_types->t_s64);
+        cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_LEN], 0, cnt->builtin_types->t_s64);
 
     tsa_push_MemberPtr(members, tmp);
     provide_builtin_member(cnt, body_scope, tmp);
 
-    tmp = create_member(
-        cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_PTR], body_scope, 1, elem_ptr_type);
+    tmp = create_member(cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_PTR], 1, elem_ptr_type);
 
     tsa_push_MemberPtr(members, tmp);
     provide_builtin_member(cnt, body_scope, tmp);
@@ -2032,40 +2057,31 @@ MirType *create_type_struct_dynarr(Context *cnt, ID *id, MirType *elem_ptr_type)
 
     MirMember *tmp;
     { // .len
-        tmp = create_member(cnt,
-                            NULL,
-                            &builtin_ids[MIR_BUILTIN_ID_ARR_LEN],
-                            body_scope,
-                            0,
-                            cnt->builtin_types->t_s64);
+        tmp = create_member(
+            cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_LEN], 0, cnt->builtin_types->t_s64);
 
         tsa_push_MemberPtr(members, tmp);
         provide_builtin_member(cnt, body_scope, tmp);
     }
 
     { // .ptr
-        tmp = create_member(
-            cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_PTR], body_scope, 1, elem_ptr_type);
+        tmp = create_member(cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_PTR], 1, elem_ptr_type);
 
         tsa_push_MemberPtr(members, tmp);
         provide_builtin_member(cnt, body_scope, tmp);
     }
 
     { // .allocated
-        tmp = create_member(cnt,
-                            NULL,
-                            &builtin_ids[MIR_BUILTIN_ID_ARR_ALLOCATED],
-                            body_scope,
-                            2,
-                            cnt->builtin_types->t_usize);
+        tmp = create_member(
+            cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_ALLOCATED], 2, cnt->builtin_types->t_usize);
 
         tsa_push_MemberPtr(members, tmp);
         provide_builtin_member(cnt, body_scope, tmp);
     }
 
     { // .allocator
-        tmp = create_member(
-            cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_ALLOCATOR], body_scope, 3, elem_ptr_type);
+        tmp =
+            create_member(cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_ALLOCATOR], 3, elem_ptr_type);
 
         tsa_push_MemberPtr(members, tmp);
         provide_builtin_member(cnt, body_scope, tmp);
@@ -2489,15 +2505,14 @@ MirFnGroup *create_fn_group(Context *cnt, Ast *decl_node, TSmallArray_FnPtr *var
     return tmp;
 }
 
-MirMember *create_member(Context *cnt, Ast *node, ID *id, Scope *scope, s64 index, MirType *type)
+MirMember *create_member(Context *cnt, Ast *node, ID *id, s64 index, MirType *type)
 {
     MirMember *tmp = arena_alloc(&cnt->assembly->arenas.mir.member);
     BL_MAGIC_SET(tmp);
-    tmp->decl_node  = node;
-    tmp->id         = id;
-    tmp->index      = index;
-    tmp->type       = type;
-    tmp->decl_scope = scope;
+    tmp->decl_node = node;
+    tmp->id        = id;
+    tmp->index     = index;
+    tmp->type      = type;
     return tmp;
 }
 
@@ -2512,11 +2527,10 @@ MirArg *create_arg(Context *cnt, Ast *node, ID *id, Scope *scope, MirType *type,
     return tmp;
 }
 
-MirVariant *create_variant(Context *cnt, ID *id, Scope *scope, MirConstExprValue *value)
+MirVariant *create_variant(Context *cnt, ID *id, MirConstExprValue *value)
 {
     MirVariant *tmp = arena_alloc(&cnt->assembly->arenas.mir.variant);
     tmp->id         = id;
-    tmp->decl_scope = scope;
     tmp->value      = value;
     return tmp;
 }
@@ -3562,7 +3576,7 @@ MirInstr *append_instr_decl_member_impl(Context *             cnt,
     tmp->type                   = ref_instr(type);
     tmp->tags                   = tags;
 
-    tmp->member = create_member(cnt, node, id, NULL, -1, NULL);
+    tmp->member = create_member(cnt, node, id, -1, NULL);
 
     append_current_block(cnt, &tmp->base);
     return &tmp->base;
@@ -3595,9 +3609,8 @@ MirInstr *append_instr_decl_variant(Context *cnt, Ast *node, MirInstr *value)
     tmp->value                  = value;
 
     BL_ASSERT(node && node->kind == AST_IDENT);
-    ID *   id    = &node->data.ident.id;
-    Scope *scope = node->owner_scope;
-    tmp->variant = create_variant(cnt, id, scope, NULL);
+    ID *id       = &node->data.ident.id;
+    tmp->variant = create_variant(cnt, id, NULL);
 
     append_current_block(cnt, &tmp->base);
     return &tmp->base;
@@ -4135,7 +4148,7 @@ AnalyzeResult analyze_instr_phi(Context UNUSED(*cnt), MirInstrPhi *phi)
     for (usize i = 0; i < count; ++i) {
         value_ref = &phi->incoming_values->data[i];
         block     = phi->incoming_blocks->data[i];
-        BL_ASSERT(block && block->kind == MIR_INSTR_BLOCK)
+        BL_ASSERT(block && block->kind == MIR_INSTR_BLOCK);
         BL_ASSERT((*value_ref)->analyzed && "Phi incomming value is not analyzed!");
         if ((*value_ref)->kind == MIR_INSTR_COND_BR) {
             *value_ref = ((MirInstrCondBr *)(*value_ref))->cond;
@@ -4437,7 +4450,17 @@ AnalyzeResult analyze_var(Context *cnt, MirVar *var)
         break;
     }
 
-    if (!var->is_implicit) commit_var(cnt, var);
+    if (!var->is_implicit) {
+        if (var->is_global && var->entry->kind == SCOPE_ENTRY_VOID) {
+            builder_msg(BUILDER_MSG_ERROR,
+                        ERR_INVALID_NAME,
+                        var->decl_node->location,
+                        BUILDER_CUR_WORD,
+                        "Global variable cannot be explicitly unnamed.");
+            return ANALYZE_RESULT(FAILED, 0);
+        }
+        commit_var(cnt, var);
+    }
     // Type declaration should not be generated in LLVM.
     const MirTypeKind var_type_kind = var->value.type->kind;
     var->emit_llvm = var_type_kind != MIR_TYPE_TYPE && var_type_kind != MIR_TYPE_FN_GROUP;
@@ -4449,8 +4472,8 @@ AnalyzeResult analyze_var(Context *cnt, MirVar *var)
 AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si)
 {
     TSmallArray_InstrPtr *dests = si->dests;
-    BL_ASSERT(dests && "Missing variables to initialize.")
-    BL_ASSERT(dests->size && "Expected at least one variable.")
+    BL_ASSERT(dests && "Missing variables to initialize.");
+    BL_ASSERT(dests->size && "Expected at least one variable.");
     MirInstr *dest;
     TSA_FOREACH(dests, dest)
     {
@@ -5030,7 +5053,8 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     Scope *     private_scope                = ref->parent_unit->private_scope;
     bool        is_ref_out_of_fn_local_scope = false;
 
-    // Disable access to the symbols declared in private named scope from the outside of the named scope.
+    // Disable access to the symbols declared in private named scope from the outside of the named
+    // scope.
     //     foo();
     //     #scope Foo
     //     #private
@@ -5059,6 +5083,7 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
         BL_TRACY_MESSAGE("INCOMPLETE_DECL_REF", "%s", ref->rid->str);
         return ANALYZE_RESULT(WAITING, ref->rid->hash);
     }
+    scope_entry_ref(found);
     switch (found->kind) {
     case SCOPE_ENTRY_FN: {
         MirFn *fn = found->data.fn;
@@ -5411,8 +5436,17 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
         ++fn->ref_count;
     }
 
-    if (fn->id) commit_fn(cnt, fn);
-
+    if (fn->id) {
+        if (fn->entry->kind == SCOPE_ENTRY_VOID) {
+            builder_msg(BUILDER_MSG_ERROR,
+                        ERR_INVALID_NAME,
+                        fn->decl_node->location,
+                        BUILDER_CUR_WORD,
+                        "Functions cannot be explicitly unnamed.");
+            return ANALYZE_RESULT(FAILED, 0);
+        }
+        commit_fn(cnt, fn);
+    }
     return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -5849,10 +5883,18 @@ AnalyzeResult analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *vari
         // Setup value.
         variant_instr->variant->value = &variant_instr->value->value;
     } else {
-        // CLENUP: Automatic initialization value is set in parser, mabye we will
+        // CLENUP: Automatic initialization value is set in parser, maybe we will
         // prefer to do automatic initialization here instead of doing so in parser
         // pass.
         BL_UNIMPLEMENTED;
+    }
+    if (variant->entry->kind == SCOPE_ENTRY_VOID) {
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_INVALID_NAME,
+                    variant_instr->base.node->location,
+                    BUILDER_CUR_WORD,
+                    "Enum variant cannot be explicitly unnamed.");
+        return ANALYZE_RESULT(FAILED, 0);
     }
     commit_variant(cnt, variant);
     return ANALYZE_RESULT(PASSED, 0);
@@ -5946,7 +5988,6 @@ AnalyzeResult analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_s
             MirMember *member = decl_member->member;
             BL_ASSERT(member);
             member->type            = member_type;
-            member->decl_scope      = scope;
             member->index           = (s64)i;
             member->is_parent_union = is_union;
 
@@ -7622,12 +7663,14 @@ void analyze_report_unresolved(Context *cnt)
                 if (!ref->scope) continue;
                 if (!ref->rid) continue;
                 sym_name = ref->rid->str;
+                if (ref->scope->kind == SCOPE_FN_LOCAL) break;
                 if (scope_lookup(ref->scope, ref->rid, true, false, NULL)) {
                     continue;
                 }
                 break;
             }
             default:
+                BL_LOG(">> %s", mir_instr_name(instr));
                 continue;
             }
             BL_ASSERT(sym_name && "Invalid unresolved symbol name!");
@@ -7646,6 +7689,25 @@ void analyze_report_unresolved(Context *cnt)
                     NULL,
                     BUILDER_CUR_WORD,
                     "Unknown symbol/s detected but not correctly reported, this is compiler bug!");
+    }
+}
+
+void analyze_report_unused(Context *cnt)
+{
+    TArray *    queue = &cnt->analyze.usage_check_queue;
+    ScopeEntry *entry;
+    TARRAY_FOREACH(ScopeEntry *, queue, entry)
+    {
+        if (entry->ref_count > 0) continue;
+        if (entry->kind != SCOPE_ENTRY_VAR && entry->kind != SCOPE_ENTRY_FN) continue;
+        if (!entry->node || !entry->id) continue;
+        BL_ASSERT(entry->node->location);
+        builder_msg(BUILDER_MSG_WARNING,
+                    0,
+                    entry->node->location,
+                    BUILDER_CUR_WORD,
+                    "Unused symbol '%s'.",
+                    entry->id->str);
     }
 }
 
@@ -8810,18 +8872,19 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
             BL_ASSERT(ast_arg_name->kind == AST_IDENT && "Expected identificator.");
 
             // create tmp declaration for arg variable
-            MirInstr *arg = append_instr_arg(cnt, NULL, (u32)i);
-            append_instr_decl_var(cnt,
-                                  ast_arg_name,
-                                  &ast_arg_name->data.ident.id,
-                                  ast_arg_name->owner_scope,
-                                  NULL,
-                                  arg,
-                                  true,
-                                  0,
-                                  MIR_BUILTIN_ID_NONE);
+            MirInstr *       arg = append_instr_arg(cnt, NULL, (u32)i);
+            MirInstrDeclVar *decl_var =
+                (MirInstrDeclVar *)append_instr_decl_var(cnt,
+                                                         ast_arg_name,
+                                                         &ast_arg_name->data.ident.id,
+                                                         ast_arg_name->owner_scope,
+                                                         NULL,
+                                                         arg,
+                                                         true,
+                                                         0,
+                                                         MIR_BUILTIN_ID_NONE);
 
-            register_symbol(
+            decl_var->var->entry = register_symbol(
                 cnt, ast_arg_name, &ast_arg_name->data.ident.id, ast_arg_name->owner_scope, false);
         }
     }
@@ -9053,12 +9116,13 @@ static void ast_decl_fn(Context *cnt, Ast *ast_fn)
         cnt, ast_value, ast_name, ast_explicit_linkage_name, is_global, flags, builtin_id);
     if (ast_type) ((MirInstrFnProto *)value)->user_type = CREATE_TYPE_RESOLVER_CALL(ast_type);
 
+    BL_ASSERT(value);
+    MirFn *fn = MIR_CEV_READ_AS(MirFn *, &value->value);
+    BL_MAGIC_ASSERT(fn);
+
     // check main
     if (is_builtin(ast_name, MIR_BUILTIN_ID_MAIN)) {
         // This is reported as an error.
-        BL_ASSERT(value);
-        MirFn *fn = MIR_CEV_READ_AS(MirFn *, &value->value);
-        BL_MAGIC_ASSERT(fn);
         fn->emit_llvm               = true;
         cnt->assembly->vm_run.entry = fn;
         if (scope_is_subtree_of_kind(ast_name->owner_scope, SCOPE_PRIVATE)) {
@@ -9081,7 +9145,7 @@ static void ast_decl_fn(Context *cnt, Ast *ast_fn)
 
     ID *   id    = &ast_name->data.ident.id;
     Scope *scope = ast_name->owner_scope;
-    register_symbol(cnt, ast_name, id, scope, is_compiler);
+    fn->entry    = register_symbol(cnt, ast_name, id, scope, is_compiler);
 }
 
 // Helper for local variable declaration generation.
@@ -9143,7 +9207,8 @@ static void ast_decl_var_local(Context *cnt, Ast *ast_local)
                                               is_mutable,
                                               ast_local->data.decl_entity.flags,
                                               builtin_id);
-        register_symbol(cnt, ast_current_name, id, scope, is_compiler);
+        ((MirInstrDeclVar *)var)->var->entry =
+            register_symbol(cnt, ast_current_name, id, scope, is_compiler);
 
         BL_ASSERT(ast_current_name->kind == AST_IDENT);
         ast_current_name = ast_current_name->data.ident.next;
@@ -9205,12 +9270,10 @@ static void ast_decl_var_global_or_struct(Context *cnt, Ast *ast_global)
                                                builtin_id);
         tsa_push_InstrPtr(decls, decl);
 
-        if (is_struct_decl) {
-            MirVar *var            = ((MirInstrDeclVar *)decl)->var;
-            var->is_struct_typedef = true;
-        }
-        register_symbol(cnt, ast_current_name, id, scope, is_compiler);
-        ast_current_name = ast_current_name->data.ident.next;
+        MirVar *var            = ((MirInstrDeclVar *)decl)->var;
+        var->is_struct_typedef = is_struct_decl;
+        var->entry             = register_symbol(cnt, ast_current_name, id, scope, is_compiler);
+        ast_current_name       = ast_current_name->data.ident.next;
     }
 
     // For globals we must generate initialization after variable declaration,
@@ -9315,7 +9378,8 @@ MirInstr *ast_decl_member(Context *cnt, Ast *arg)
     MirInstr *result = ast(cnt, ast_type);
     BL_ASSERT(ast_name->kind == AST_IDENT);
     result = append_instr_decl_member(cnt, ast_name, result, tags);
-    register_symbol(cnt, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false);
+    ((MirInstrDeclMember *)result)->member->entry =
+        register_symbol(cnt, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false);
     BL_ASSERT(result);
     return result;
 }
@@ -9325,9 +9389,12 @@ MirInstr *ast_decl_variant(Context *cnt, Ast *variant)
     Ast *ast_name  = variant->data.decl.name;
     Ast *ast_value = variant->data.decl_variant.value;
     BL_ASSERT(ast_name && "Missing enum variant name!");
-    MirInstr *value = ast(cnt, ast_value);
-    register_symbol(cnt, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false);
-    return append_instr_decl_variant(cnt, ast_name, value);
+    MirInstr *           value = ast(cnt, ast_value);
+    MirInstrDeclVariant *variant_instr =
+        (MirInstrDeclVariant *)append_instr_decl_variant(cnt, ast_name, value);
+    variant_instr->variant->entry =
+        register_symbol(cnt, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false);
+    return (MirInstr *)variant_instr;
 }
 
 MirInstr *ast_ref(Context *cnt, Ast *ref)
@@ -10182,10 +10249,14 @@ void mir_run(Assembly *assembly)
     tlist_reserve(&cnt.analyze.queue, 1024);
 
     tarray_init(&cnt.ast._fnctx_stack, sizeof(AstFnContext));
+    tarray_init(&cnt.analyze.usage_check_queue, sizeof(ScopeEntry *));
     tsa_init(&cnt.analyze.incomplete_rtti);
     tsa_init(&cnt.analyze.complete_check_type_stack);
     thtbl_init(&cnt.analyze.complete_check_visited, 0, 128);
     thtbl_init(&cnt.analyze.presented_switch_cases, sizeof(MirSwitchCase *), 64);
+
+    cnt.analyze.void_entry =
+        scope_create_entry(&cnt.assembly->arenas.scope, SCOPE_ENTRY_VOID, NULL, NULL, true);
 
     // initialize all builtin types
     builtin_inits(&cnt);
@@ -10202,6 +10273,7 @@ void mir_run(Assembly *assembly)
     // Analyze pass
     analyze(&cnt);
     analyze_report_unresolved(&cnt);
+    analyze_report_unused(&cnt);
 
     if (builder.errorc) goto SKIP;
 
@@ -10211,6 +10283,7 @@ SKIP:
     thtbl_terminate(&cnt.analyze.waiting);
     tstring_terminate(&cnt.tmp_sh);
 
+    tarray_terminate(&cnt.analyze.usage_check_queue);
     tarray_terminate(&cnt.ast._fnctx_stack);
     tsa_terminate(&cnt.analyze.incomplete_rtti);
     tsa_terminate(&cnt.analyze.complete_check_type_stack);

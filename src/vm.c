@@ -2680,7 +2680,7 @@ void vm_do_cast(VMStackPtr dest, VMStackPtr src, MirType *dest_type, MirType *sr
 {
     BL_ASSERT(dest && "Missing cast destination!");
     BL_ASSERT(src && "Missing cast source!");
-    BL_ASSERT(src != dest && "Cast operation src and dest points to same memory.")
+    BL_ASSERT(src != dest && "Cast operation src and dest points to same memory.");
     BL_ASSERT(dest_type && "Missing cast destination type!");
     BL_ASSERT(src_type && "Missing cast source type!");
 

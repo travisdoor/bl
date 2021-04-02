@@ -171,3 +171,9 @@ hybrid1 :: fn () #test {
     test_eq(v._0, 10);
     test_eq(v.i, 20);
 }
+
+size :: fn () #test {
+    T1 :: struct { _: s32; _: s32 };
+    T2 :: struct { a: s32; b: s32 };
+    test_eq(sizeof(T1), sizeof(T2));
+}

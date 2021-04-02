@@ -179,6 +179,8 @@ s32 parse_arguments(Options *opt, s32 argc, char *argv[])
         ARG(CLA_ARG_NO_COLOR, opt->builder.no_color = true;)
         ARG(CLA_ARG_NO_JOBS, opt->builder.no_jobs = true;)
         ARG(CLA_ARG_NO_WARNING, opt->builder.no_warning = true;)
+        ARG(CLA_ARG_FULL_PATH, opt->builder.full_path_reports = true;)
+        ARG(CLA_ARG_NO_USAGE_CHECK, opt->builder.no_usage_check = true;)
 
         // Target
         ARG(CLA_ARG_LEX_DUMP, opt->target->print_tokens = true;)
@@ -281,12 +283,12 @@ int main(s32 argc, char *argv[])
         EXIT(EXIT_SUCCESS);
     }
 
-    // Load config file
+    // Load configuration file
     if (!load_conf_file(exec_dir)) {
         EXIT(EXIT_FAILURE);
     }
 
-    // setup LIB_DIR
+    // Setup LIB_DIR
     builder_set_lib_dir(conf_data_get_str(&builder.conf, CONF_LIB_DIR_KEY));
 
     if (opt.app.where_is_api) {
@@ -300,7 +302,7 @@ int main(s32 argc, char *argv[])
         EXIT(EXIT_SUCCESS);
     }
 
-    // Forward reminding ars to vm.
+    // Forward reminding arguments to vm.
     target_set_vm_args(opt.target, argc, argv);
     if (!use_build_pipeline) {
         parse_input_files(&opt, argc, argv);
@@ -308,9 +310,9 @@ int main(s32 argc, char *argv[])
 
     state = builder_compile(opt.target);
 
-    //char date[26];
-    //date_time(date, 26, "%d-%m-%Y %H:%M:%S");
-    //builder_note("Finished at %s", date);
+    char date[26];
+    date_time(date, 26, "%d-%m-%Y %H:%M:%S");
+    builder_note("Finished at %s", date);
 
 RELEASE:
     builder_terminate();

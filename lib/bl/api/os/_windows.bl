@@ -116,6 +116,49 @@ _os_abort_default :: fn () {
 }
 
 __os_start :: fn () #entry {
+    /*
+    * Get command-line arguments passed to this executable.
+    * We need custom function here to convert UTF16 to UTF8,
+    * Windows api does not provide UTF8 version of CommandLineToArgv
+    * function.
+    * Internal allocation to handle argument strings is done
+    * in this method, so we must free memory used by return value
+    * by free(args.ptr) call.
+    */
+    get_command_line_args :: fn (out_args: *[]string) #no_inline {
+        wargs: []*u16;
+        cmd_line :: Win32.GetCommandLineW();
+        wargs.ptr = Win32.CommandLineToArgvW(cmd_line, auto &wargs.len);
+        defer Win32.LocalFree(auto wargs.ptr);
+
+        // Determinate size needed for all argument strings listed in one array including
+        // zero terminator for each one.
+        tmp_size : usize = 0;
+        result_size: usize = sizeof(string) * auto wargs.len;
+
+        loop i := 0; i < wargs.len; i += 1 {
+            tmp_size += auto Win32.WideCharToMultiByte(Win32.CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
+        }
+
+        buffer :: _default_allocator(AllocOp.Allocate, result_size + tmp_size); 
+        if buffer == null { __os_abort(); }
+
+        out_args.len = wargs.len;
+        out_args.ptr = auto buffer; 
+        tmp := {:[]u8: auto tmp_size, ptr_shift_bytes(buffer, auto result_size)};
+
+        tmp_i := 0;
+        loop i := 0; i < wargs.len; i += 1 {
+            len :: Win32.WideCharToMultiByte(Win32.CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
+            Win32.WideCharToMultiByte(Win32.CP_UTF8, null, wargs[i], auto c_wcslen(wargs[i]), &tmp[tmp_i], len, null, null); 
+
+            (^out_args)[i].len = len - 1;
+            (^out_args)[i].ptr = &tmp[tmp_i];
+            tmp_i += len;
+            tmp[tmp_i-1] = '\0';
+        }
+    };
+
     args: []string;
     get_command_line_args(&args);
 
@@ -125,50 +168,5 @@ __os_start :: fn () #entry {
     out :: cast(s32) main();
     _default_allocator(AllocOp.Free, 0, auto args.ptr); 
     c_exit(out);
-}
-
-
-#private
-/*
- * Get command-line arguments passed to this executable.
- * We need custom function here to convert UTF16 to UTF8,
- * Windows api does not provide UTF8 version of CommandLineToArgv
- * function.
- * Internal allocation to handle argument strings is done
- * in this method, so we must free memory used by return value
- * by free(args.ptr) call.
- */
-get_command_line_args :: fn (out_args: *[]string) #no_inline {
-    wargs: []*u16;
-    cmd_line :: Win32.GetCommandLineW();
-    wargs.ptr = Win32.CommandLineToArgvW(cmd_line, auto &wargs.len);
-    defer Win32.LocalFree(auto wargs.ptr);
-
-    // Determinate size needed for all argument strings listed in one array including
-    // zero terminator for each one.
-    tmp_size : usize = 0;
-    result_size: usize = sizeof(string) * auto wargs.len;
-    
-    loop i := 0; i < wargs.len; i += 1 {
-        tmp_size += auto Win32.WideCharToMultiByte(Win32.CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
-    }
-
-    buffer :: _default_allocator(AllocOp.Allocate, result_size + tmp_size); 
-    if buffer == null { __os_abort(); }
-
-    out_args.len = wargs.len;
-    out_args.ptr = auto buffer; 
-    tmp := {:[]u8: auto tmp_size, ptr_shift_bytes(buffer, auto result_size)};
-
-    tmp_i := 0;
-    loop i := 0; i < wargs.len; i += 1 {
-        len :: Win32.WideCharToMultiByte(Win32.CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
-        Win32.WideCharToMultiByte(Win32.CP_UTF8, null, wargs[i], auto c_wcslen(wargs[i]), &tmp[tmp_i], len, null, null); 
-        
-        (^out_args)[i].len = len - 1;
-        (^out_args)[i].ptr = &tmp[tmp_i];
-        tmp_i += len;
-        tmp[tmp_i-1] = '\0';
-    }
 }
 

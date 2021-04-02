@@ -87,7 +87,7 @@ compare :: fn { f32_compare; f64_compare; }
 degtorad :: fn { f32_degtorad; f64_degtorad; }
 radtodeg :: fn { f32_radtodeg; f64_radtodeg; }
 max :: fn { s32_max; s64_max; u32_max; f32_max; f64_max; }
-min :: fn { s32_min; s64_min; u32_min; f32_min; f64_max; }
+min :: fn { s32_min; s64_min; u32_min; f32_min; f64_min; }
 
 lerp :: fn (a: f32, b: f32, fraction: f32) f32 #inline {
     return a + fraction * (b - a);

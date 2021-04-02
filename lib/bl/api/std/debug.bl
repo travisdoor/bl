@@ -48,11 +48,8 @@ print_warn :: fn (format: string, args: ...) #inline {
     _context.print_log_fn(PrintLogKind.Warning, "", 0, format, args);
 };
 
-
 /// Print debug error using _context.print_log_fn function. See also :ref:`print`.
-print_err :: fn (format: string, args: ...) #inline {
-    _context.print_log_fn(PrintLogKind.Error, "", 0, format, args);
-};
+print_err :: fn { print_err_e; print_err_msg; }
 
 /// Interrupt execution when `cond` is false. Assert use `_context.print_log_fn`
 /// to print out error message containing assert location in source code.
@@ -76,22 +73,10 @@ debug_break :: fn () #inline {
 /// ::
 /// 
 ///     panic(); // abort without any messages
+///     panic(error); // abort with :ref:`Error`.
 ///     panic("oops!"); // abort with message prited out.
 ///     panic("Failed with error: %", errn); // first argument passed acts like formating string
-panic :: fn (args: ...) {
-    if args.len == 0 { unreachable; }
-    tmp := {:...: args.len, args.ptr };
-    format := "";
-    arg := args[0];
-    if arg.type_info.kind == TypeKind.String {
-        format = ^cast(*string) arg.data;
-        tmp = {:...:
-                args.len - 1,
-                auto ptr_shift_bytes(auto args.ptr, auto sizeof(arg))};
-    }
-    _context.print_log_fn(PrintLogKind.Panic, "", 0, format, tmp);
-    unreachable;
-};
+panic :: fn { panic_empty; panic_error; panic_msg; }
 
 /// Kinds of log messages.
 /// 
@@ -128,3 +113,25 @@ _print_log_default :: fn (kind: PrintLogKind, file: string, line: s32, format: s
     __os_write(out, buf.ptr, auto w);
 };
 
+#private
+panic_empty :: fn () {
+    unreachable;    
+}
+
+panic_error :: fn (err: Error) {
+    _context.print_log_fn(PrintLogKind.Panic, "", 0, "%", err);
+    unreachable;    
+}
+
+panic_msg :: fn (format: string, args: ...) {
+    _context.print_log_fn(PrintLogKind.Panic, "", 0, format, args);
+    unreachable;
+}
+
+print_err_e :: fn (err: Error) #inline {
+    _context.print_log_fn(PrintLogKind.Error, "", 0, "%", err);
+};
+
+print_err_msg :: fn (format: string, args: ...) #inline {
+    _context.print_log_fn(PrintLogKind.Error, "", 0, format, args);
+};

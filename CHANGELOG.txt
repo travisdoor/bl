@@ -10,6 +10,8 @@ Add support of shared library output.
 Add cmake build target Utils.
 Add hash into CodeLocation.
 Add namespace support.
+Add unnamed symbols. (underscore used as name is not inserted into scope)
+Compiler now reports unused private or local symbols.
 Cleanup modules.
 
 0.8.0 - BETA

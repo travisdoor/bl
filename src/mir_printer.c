@@ -764,7 +764,7 @@ void print_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
     print_instr_head(cnt, &decl->base, "declarg");
 
     MirArg *arg = decl->arg;
-    BL_ASSERT(arg)
+    BL_ASSERT(arg);
 
     fprintf(cnt->stream, "%s : ", arg->id ? arg->id->str : "-");
     print_comptime_value_or_id(cnt, decl->type);

@@ -52,6 +52,7 @@ typedef enum ScopeEntryKind {
     SCOPE_ENTRY_MEMBER,
     SCOPE_ENTRY_VARIANT,
     SCOPE_ENTRY_NAMED_SCOPE,
+    SCOPE_ENTRY_VOID, // Special kind used for unnamed entries.
 } ScopeEntryKind;
 
 typedef union ScopeEntryData {
@@ -69,6 +70,7 @@ typedef struct ScopeEntry {
     struct Scope * parent_scope;
     struct Ast *   node;
     bool           is_builtin;
+    s32            ref_count;
 
     ScopeEntryData data;
 
@@ -139,6 +141,13 @@ static INLINE bool scope_is_local(const Scope *scope)
 {
     return scope->kind != SCOPE_GLOBAL && scope->kind != SCOPE_PRIVATE &&
            scope->kind != SCOPE_NAMED;
+}
+
+static INLINE ScopeEntry *scope_entry_ref(ScopeEntry *entry)
+{
+    BL_MAGIC_ASSERT(entry);
+    ++entry->ref_count;
+    return entry;
 }
 
 #endif

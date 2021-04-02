@@ -90,21 +90,43 @@ OPEN_EXISTING : u32 : 3;
 OPEN_ALWAYS : u32 : 4;
 TRUNCATE_EXISTING : u32 : 5;
 LPOVERLAPPED_COMPLETION_ROUTINE :: * fn(dwErrorCode: DWORD, dwNumberOfBytesTransfered: DWORD, lpOverlapped: LPOVERLAPPED);
-FILE_ATTRIBUTE_READONLY : u32 : 0x00000001;
-FILE_ATTRIBUTE_HIDDEN : u32 : 0x00000002;
-FILE_ATTRIBUTE_SYSTEM : u32 : 0x00000004;
-FILE_ATTRIBUTE_DIRECTORY : u32 : 0x00000010;
+FILE_ADD_FILE             : u32 : 0x0002;
+FILE_ADD_SUBDIRECTORY     : u32 : 0x0004;
+FILE_APPEND_DATA          : u32 : 0x0004;
 FILE_ATTRIBUTE_ARCHIVE : u32 : 0x00000020;
-FILE_ATTRIBUTE_DEVICE : u32 : 0x00000040;
-FILE_ATTRIBUTE_NORMAL : u32 : 0x00000080;
-FILE_ATTRIBUTE_TEMPORARY : u32 : 0x00000100;
-FILE_ATTRIBUTE_SPARSE_FILE : u32 : 0x00000200;
-FILE_ATTRIBUTE_REPARSE_POINT : u32 : 0x00000400;
 FILE_ATTRIBUTE_COMPRESSED : u32 : 0x00000800;
-FILE_ATTRIBUTE_OFFLINE : u32 : 0x00001000;
-FILE_ATTRIBUTE_NOT_CONTENT_INDEXED : u32 : 0x00002000;
+FILE_ATTRIBUTE_DEVICE : u32 : 0x00000040;
+FILE_ATTRIBUTE_DIRECTORY : u32 : 0x00000010;
 FILE_ATTRIBUTE_ENCRYPTED : u32 : 0x00004000;
+FILE_ATTRIBUTE_HIDDEN : u32 : 0x00000002;
+FILE_ATTRIBUTE_NORMAL : u32 : 0x00000080;
+FILE_ATTRIBUTE_NOT_CONTENT_INDEXED : u32 : 0x00002000;
+FILE_ATTRIBUTE_OFFLINE : u32 : 0x00001000;
+FILE_ATTRIBUTE_READONLY : u32 : 0x00000001;
+FILE_ATTRIBUTE_REPARSE_POINT : u32 : 0x00000400;
+FILE_ATTRIBUTE_SPARSE_FILE : u32 : 0x00000200;
+FILE_ATTRIBUTE_SYSTEM : u32 : 0x00000004;
+FILE_ATTRIBUTE_TEMPORARY : u32 : 0x00000100;
 FILE_ATTRIBUTE_VIRTUAL : u32 : 0x00010000;
+FILE_CREATE_PIPE_INSTANCE : u32 : 0x0004;
+FILE_FLAG_BACKUP_SEMANTICS    : u32 :  0x02000000;
+FILE_FLAG_DELETE_ON_CLOSE     : u32 :  0x04000000;
+FILE_FLAG_FIRST_PIPE_INSTANCE : u32 :  0x00080000;
+FILE_FLAG_NO_BUFFERING        : u32 :  0x20000000;
+FILE_FLAG_OPEN_NO_RECALL      : u32 :  0x00100000;
+FILE_FLAG_OPEN_REPARSE_POINT  : u32 :  0x00200000;
+FILE_FLAG_OVERLAPPED          : u32 :  0x40000000;
+FILE_FLAG_POSIX_SEMANTICS     : u32 :  0x01000000;
+FILE_FLAG_RANDOM_ACCESS       : u32 :  0x10000000;
+FILE_FLAG_SEQUENTIAL_SCAN     : u32 :  0x08000000;
+FILE_FLAG_SESSION_AWARE       : u32 :  0x00800000;
+FILE_FLAG_WRITE_THROUGH       : u32 :  0x80000000;
+FILE_LIST_DIRECTORY       : u32 : 0x0001;
+FILE_READ_DATA            : u32 : 0x0001;
+FILE_SHARE_DELETE : u32 : 0x00000004;
+FILE_SHARE_READ   : u32 : 0x00000001;
+FILE_SHARE_WRITE  : u32 : 0x00000002;
+FILE_WRITE_DATA           : u32 : 0x0002;
 GHND : u32 : 0x0042;
 GMEM_FIXED : u32 : 0x0000;
 GMEM_MOVEABLE : u32 : 0x0002;
@@ -238,7 +260,7 @@ CreateEvent :: fn (
   bManualReset: BOOL,
   bInitialState: BOOL,
   lpName: LPCSTR 
-) HANDLE #extern "CreateEventW";
+) HANDLE #extern "CreateEventA";
 SetEvent :: fn (hEvent: HANDLE) BOOL #extern "SetEvent";
 FindFirstChangeNotification :: fn (
   lpPathName: LPCSTR,
@@ -258,6 +280,7 @@ GetCommandLineW     :: fn () LPWSTR #extern "GetCommandLineW";
 CommandLineToArgvW  :: fn (lpCmdLine: LPCWSTR, pNumArgs: *s32) *LPWSTR #extern "CommandLineToArgvW";
 LocalFree           :: fn (hMem: HLOCAL) HLOCAL #extern "LocalFree";
 Sleep               :: fn (dwMilliseconds: DWORD) #extern "Sleep";
+SleepEx             :: fn (dwMilliseconds: DWORD, bAlertable: BOOL) DWORD #extern "SleepEx";
 GetFullPathNameA    :: fn (lpFileName: LPCSTR,
                                  nBufferLength: DWORD,
                                  lpBuffer: LPSTR,
@@ -331,3 +354,5 @@ EnterCriticalSection  :: fn (lpCriticalSection: LPCRITICAL_SECTION) #extern "Ent
 LeaveCriticalSection  :: fn (lpCriticalSection: LPCRITICAL_SECTION) #extern "LeaveCriticalSection";
 TryEnterCriticalSection :: fn (lpCriticalSection: LPCRITICAL_SECTION ) BOOL #extern "TryEnterCriticalSection";
 GetFileInformationByHandle :: fn (hFile: HANDLE, lpFileInformation: LPBY_HANDLE_FILE_INFORMATION) BOOL #extern "GetFileInformationByHandle";
+GetOverlappedResult :: fn (hFile: HANDLE, lpOverlapped: LPOVERLAPPED, lpNumberOfBytesTransferred: LPDWORD, bWait: BOOL) BOOL #extern "GetOverlappedResult";
+ResetEvent :: fn (hEvent: HANDLE) BOOL #extern "ResetEvent";

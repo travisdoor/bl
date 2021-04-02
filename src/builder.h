@@ -48,6 +48,8 @@ typedef struct BuilderOptions {
     bool silent;
     bool no_jobs;
     bool no_warning;
+    bool full_path_reports;
+    bool no_usage_check;
 } BuilderOptions;
 
 typedef struct Builder {

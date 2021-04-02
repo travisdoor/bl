@@ -169,7 +169,7 @@ compare :: fn (first: string, second: string, n := -1) bool {
 }
 
 /// @INCOMPLETE
-compare2 :: fn (first: string, second: string, n := -1) s32 {
+compare2 :: fn (first: string, second: string) s32 {
     len :: Math.max(first.len, second.len);
     loop i := 0; i < len; i += 1 {
         f: u8; s: u8;
@@ -255,7 +255,7 @@ to_s64 :: fn (str: string, count := -1) s64 {
 /// -------
 /// .. literalinclude:: /examples/docs/010.bl
 ///    :language: bl
-split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string, di: *s32 = null) bool {
+split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string = null, di: *s32 = null) bool {
     i := str.len - 1;
     loop ; i >= 0 && str[i] != delimiter; i -= 1 {}
 
@@ -319,7 +319,7 @@ split_at_index :: fn (str: string, index: s32, lhs: *string, rhs: *string) bool 
 /// -------
 /// .. literalinclude:: /examples/docs/012.bl
 ///    :language: bl
-split_by_first :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string, di: *s32 = null) bool {
+split_by_first :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string = null, di: *s32 = null) bool {
     i := 0;
     loop ; i < str.len && str[i] != delimiter; i += 1 {}
 

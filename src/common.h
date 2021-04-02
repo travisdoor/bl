@@ -106,13 +106,19 @@ TSMALL_ARRAY_TYPE(ArgPtr, struct MirArg *, 16);
 TSMALL_ARRAY_TYPE(InstrPtr, struct MirInstr *, 16);
 TSMALL_ARRAY_TYPE(ConstValuePtr, struct MirConstValue *, 16);
 TSMALL_ARRAY_TYPE(Char, char, 128);
-TSMALL_ARRAY_TYPE(CharPtr, char*, 8);
+TSMALL_ARRAY_TYPE(CharPtr, char *, 8);
 TSMALL_ARRAY_TYPE(FnPtr, struct MirFn *, 8);
 
 typedef struct ID {
     const char *str;
     u64         hash;
 } ID;
+
+static INLINE bool is_ignored_id(const ID *id)
+{
+    BL_ASSERT(id);
+    return strcmp(id->str, "_") == 0;
+}
 
 typedef enum {
     SEARCH_FLAG_ABS         = 0,

@@ -77,7 +77,6 @@ memcpy :: fn (dest: *u8, src: *u8, size: usize) {
     }
     
     loop i : usize = 0; i < d; i += 1 {
-        tmp := dest;
         ^dest = ^src;
 
         dest = ptr_shift_bytes(dest, 1);
@@ -149,7 +148,7 @@ AllocOp :: enum {
     Release;
 }
 
-_default_allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := String.empty, line := 0) *u8 {
+_default_allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, _:= String.empty, _:= 0) *u8 {
     switch operation {
         AllocOp.Allocate {
             return c_malloc(size);

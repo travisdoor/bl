@@ -1,12 +1,20 @@
 main :: fn () s32 {
-    foo(10);
+    _: s32 #noinit;
+    _ :: 10;
+    size();
     return 0;
 }
 
+size :: fn () {
+    T1 :: struct { _: s32; _: s32 };
+    T2 :: struct { a: s32; b: s32 };
+    if (sizeof(T1) == sizeof(T2)) { print("OK!!!\n"); }
+}
 
-/// Hello
-foo :: fn { Foo.foo1; Foo.foo2; }
+#private
 
-#scope Foo
-foo1 :: fn (i: s32) {}
-foo2 :: fn (b: bool) {}
+HOMO :: 10;
+
+foo :: fn () {}
+
+

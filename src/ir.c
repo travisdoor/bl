@@ -168,7 +168,7 @@ static State emit_instr_compound_naked(Context *cnt, MirInstrCompound *cmp)
     BL_ASSERT(cmp->tmp_var && "Missing tmp variable for naked compound instruction!");
     BL_ASSERT(!mir_is_global(&cmp->base) && "Global compound cannot be naked!");
     LLVMValueRef llvm_tmp = cmp->tmp_var->llvm_value;
-    BL_ASSERT(llvm_tmp && "Missing LLVM representation for compound tmp variable!")
+    BL_ASSERT(llvm_tmp && "Missing LLVM representation for compound tmp variable!");
 
     emit_instr_compound(cnt, llvm_tmp, cmp);
     cmp->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_tmp, "");
@@ -1727,7 +1727,7 @@ State emit_instr_cast(Context *cnt, MirInstrCast *cast)
     }
 
     default:
-        BL_ABORT("invalid cast type")
+        BL_ABORT("invalid cast type");
     }
 
     cast->base.llvm_value = LLVMBuildCast(cnt->llvm_builder, llvm_op, llvm_src, llvm_dest_type, "");
@@ -2169,7 +2169,7 @@ void emit_instr_compound(Context *cnt, LLVMValueRef llvm_dest, MirInstrCompound 
             break;
 
         default:
-            BL_ASSERT(i == 0)
+            BL_ASSERT(i == 0);
             llvm_value_dest = llvm_dest;
             break;
         }
@@ -2303,7 +2303,7 @@ State emit_instr_binop(Context *cnt, MirInstrBinop *binop)
         break;
 
     default:
-        BL_ABORT("Invalid binary operation.")
+        BL_ABORT("Invalid binary operation.");
     }
     return STATE_PASSED;
 }
@@ -2987,7 +2987,7 @@ State emit_instr(Context *cnt, MirInstr *instr)
     if (!mir_type_has_llvm_representation((instr->value.type))) return state;
     switch (instr->kind) {
     case MIR_INSTR_INVALID:
-        BL_ABORT("Invalid instruction")
+        BL_ABORT("Invalid instruction");
 
     case MIR_INSTR_SIZEOF:
     case MIR_INSTR_ALIGNOF:

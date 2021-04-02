@@ -460,13 +460,13 @@ void builder_set_lib_dir(const char *lib_dir)
 
 const char *builder_get_lib_dir(void)
 {
-    BL_ASSERT(builder.lib_dir && "Library directory not set, call 'builder_set_lib_dir' first.")
+    BL_ASSERT(builder.lib_dir && "Library directory not set, call 'builder_set_lib_dir' first.");
     return builder.lib_dir;
 }
 
 const char *builder_get_exec_dir(void)
 {
-    BL_ASSERT(builder.exec_dir && "Executable directory not set, call 'builder_init' first.")
+    BL_ASSERT(builder.exec_dir && "Executable directory not set, call 'builder_init' first.");
     return builder.exec_dir;
 }
 
@@ -564,7 +564,19 @@ void builder_msg(BuilderMsgType type,
             break;
         }
 
-        snprintf(msg, MAX_MSG_LEN, "%s:%d:%d ", src->unit->filepath, line, col);
+        const char *prefix = "";
+        switch (type) {
+        case BUILDER_MSG_ERROR:
+            prefix = "error";
+            break;
+        case BUILDER_MSG_WARNING:
+            prefix = "warning";
+            break;
+        default:
+            break;
+        }
+        const char *filepath = builder.options->full_path_reports ? src->unit->filepath : src->unit->filename;
+        snprintf(msg, MAX_MSG_LEN, "%s:%d:%d: %s: ", filepath, line, col, prefix);
 
         va_list args;
         va_start(args, format);
@@ -624,16 +636,16 @@ void builder_msg(BuilderMsgType type,
     case BUILDER_MSG_ERROR: {
         builder.errorc++;
         builder.max_error = code > builder.max_error ? code : builder.max_error;
-        color_print(stderr, BL_RED, "%s", tmp.data);
+        color_print(stderr, BL_RED, "%s\n", tmp.data);
         break;
     }
     case BUILDER_MSG_WARNING: {
-        color_print(stdout, BL_YELLOW, "%s", tmp.data);
+        color_print(stdout, BL_YELLOW, "%s\n", tmp.data);
         break;
     }
 
     default: {
-        color_print(stdout, BL_NO_COLOR, "%s", tmp.data);
+        color_print(stdout, BL_NO_COLOR, "%s\n", tmp.data);
     }
     }
 

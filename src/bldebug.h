@@ -75,13 +75,15 @@ void print_trace(void);
         print_trace();                                                                             \
         BL_DEBUG_BREAK;                                                                            \
         abort();                                                                                   \
-    }
+    }                                                                                              \
+    (void)0
 
 #define BL_MAGIC_ASSERT(O)                                                                         \
     {                                                                                              \
         BL_ASSERT(O && "Invalid reference!");                                                      \
         BL_ASSERT((O)->_magic == (void *)&(O)->_magic && "Invalid magic!");                        \
-    }
+    }                                                                                              \
+    (void)0
 #define BL_MAGIC_ADD void *_magic;
 #define BL_MAGIC_SET(O) (O)->_magic = (void *)&(O)->_magic
 
@@ -94,16 +96,19 @@ void print_trace(void);
 
 #define BL_ASSERT(e)                                                                               \
     while (0) {                                                                                    \
-    }
+    }                                                                                              \
+    (void)0
 
 #define BL_MAGIC_ASSERT(O)                                                                         \
     while (0) {                                                                                    \
-    }
+    }                                                                                              \
+    (void)0
 
 #define BL_MAGIC_ADD
 #define BL_MAGIC_SET(O)                                                                            \
     while (0) {                                                                                    \
-    }
+    }                                                                                              \
+    (void)0
 
 // =================================================================================================
 #endif
@@ -113,22 +118,26 @@ void print_trace(void);
 #define BL_LOG(format, ...)                                                                        \
     {                                                                                              \
         _log(LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                              \
-    }
+    }                                                                                              \
+    (void)0
 
 #define BL_WARNING(format, ...)                                                                    \
     {                                                                                              \
         _log(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                          \
-    }
+    }                                                                                              \
+    (void)0
 // =================================================================================================
 #else
 // =================================================================================================
 #define BL_LOG(format, ...)                                                                        \
     while (0) {                                                                                    \
-    }
+    }                                                                                              \
+    (void)0
 
 #define BL_WARNING(format, ...)                                                                    \
     while (0) {                                                                                    \
-    }
+    }                                                                                              \
+    (void)0
 // =================================================================================================
 #endif
 
@@ -138,7 +147,8 @@ void print_trace(void);
         print_trace();                                                                             \
         BL_DEBUG_BREAK;                                                                            \
         abort();                                                                                   \
-    }
+    }                                                                                              \
+    (void)0
 
 #define BL_UNIMPLEMENTED                                                                           \
     {                                                                                              \
@@ -154,11 +164,13 @@ void print_trace(void);
         char buf[256];                                                                             \
         snprintf(buf, TARRAY_SIZE(buf), "#%s " format, tag, ##__VA_ARGS__);                        \
         TracyCMessageC(buf, strlen(buf), thash_from_str(tag));                                     \
-    }
+    }                                                                                              \
+    (void)0
 #else
 #define BL_TRACY_MESSAGE(tag, format, ...)                                                         \
     while (0) {                                                                                    \
-    }
+    }                                                                                              \
+    (void)0
 #endif
 #ifdef __cplusplus
 }

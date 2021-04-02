@@ -57,6 +57,8 @@ typedef struct {
     _ARG(WHERE_IS_API, "", "-where-is-api", "Return path to API folder and exit.")                 \
     _ARG(NO_JOBS, "", "-no-jobs", "Compile on single thread.")                                     \
     _ARG(SHARED, "", "-shared", "Compile shared library.")                                         \
+    _ARG(FULL_PATH, "", "-full-path", "Report full file paths.")                                   \
+    _ARG(NO_USAGE_CHECK, "", "-no-usage-check", "Disable checking of unused symbols.")             \
     _ARG(DI_DWARF, "", "-di-dwarf", "Set debug info to use DWARF format.")                         \
     _ARG(DI_CODEVIEW, "", "-di-codeview", "Set debug info to use Codeview format.")
 

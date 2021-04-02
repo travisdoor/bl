@@ -108,6 +108,7 @@ ScopeEntry *scope_create_entry(ScopeArenas *  arenas,
     entry->kind       = kind;
     entry->node       = node;
     entry->is_builtin = is_builtin;
+    entry->ref_count  = 0;
     BL_MAGIC_SET(entry);
     return entry;
 }
