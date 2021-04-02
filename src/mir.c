@@ -5951,7 +5951,6 @@ AnalyzeResult analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_s
         MirInstr **         member_instr;
         MirInstrDeclMember *decl_member;
         MirType *           member_type;
-        Scope *             scope = type_struct->scope;
         const usize         memc  = type_struct->members->size;
         members                   = create_sarr(TSmallArray_MemberPtr, cnt->assembly);
         for (usize i = 0; i < memc; ++i) {
