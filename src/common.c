@@ -433,15 +433,15 @@ s32 get_last_error(char *buf, s32 buf_len)
 {
 #if BL_PLATFORM_MACOS
     const s32 error_code = errno;
-    if (!error_code) return NULL;
+    if (!error_code) return 0;
     return strncpy(buf, strerror(error_code), buf_len);
 #elif BL_PLATFORM_LINUX
     const s32 error_code = errno;
-    if (!error_code) return NULL;
+    if (!error_code) return 0;
     return strncpy(buf, strerror(error_code), buf_len);
 #elif BL_PLATFORM_WIN
     const s32 error_code = GetLastError();
-    if (error_code == 0) return false;
+    if (error_code == 0) return 0;
     const DWORD msg_len = FormatMessageA(
         FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
         NULL,
