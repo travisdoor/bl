@@ -432,11 +432,11 @@ f64 get_tick_ms(void)
 s32 get_last_error(char *buf, s32 buf_len)
 {
 #if BL_PLATFORM_MACOS
-    const s32 error_code = errno();
+    const s32 error_code = errno;
     if (!error_code) return NULL;
     return strncpy(buf, strerror(error_code), buf_len);
 #elif BL_PLATFORM_LINUX
-    const s32 error_code = errno();
+    const s32 error_code = errno;
     if (!error_code) return NULL;
     return strncpy(buf, strerror(error_code), buf_len);
 #elif BL_PLATFORM_WIN
