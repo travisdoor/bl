@@ -168,6 +168,7 @@ void print_bits(s32 const size, void const *const ptr);
 int  count_bits(u64 n);
 void platform_lib_name(const char *name, char *buffer, usize max_len);
 f64  get_tick_ms(void);
+s32  get_last_error(char *buf, s32 buf_len);
 
 // Creates TArray inside Assembly arena.
 // Note: no free is needed.

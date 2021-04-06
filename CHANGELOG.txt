@@ -11,6 +11,7 @@ Add cmake build target Utils.
 Add hash into CodeLocation.
 Add namespace support.
 Add unnamed symbols. (underscore used as name is not inserted into scope)
+Add support of inline function group members.
 Compiler now reports unused private or local symbols.
 Cleanup modules.
 

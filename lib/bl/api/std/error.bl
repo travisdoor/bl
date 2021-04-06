@@ -110,6 +110,7 @@ ok :: fn () Error #inline {
 error :: fn {  error1; error2; error3; }
 
 #private
+// @INCOMPLETE Those should be threadlocal!!!
 _last_error_msg_buffer: [1024]u8;
 _last_error: _Error;
 

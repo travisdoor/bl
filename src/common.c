@@ -424,6 +424,33 @@ f64 get_tick_ms(void)
 #endif
 }
 
+s32 get_last_error(char *buf, s32 buf_len)
+{
+#if BL_PLATFORM_MACOS
+    const s32 e = errno();
+    if (!e) return NULL;
+    return strncpy(buf, strerror(error_code), buf_len);
+#elif BL_PLATFORM_LINUX
+    const s32 e = errno();
+    if (!e) return NULL;
+    return strncpy(buf, strerror(error_code), buf_len);
+#elif BL_PLATFORM_WIN
+    const s32 error_code = GetLastError();
+    if (error_code == 0) return false;
+    const DWORD msg_len = FormatMessageA(
+        FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
+        NULL,
+        error_code,
+        0,
+        buf,
+        buf_len,
+        NULL);
+    return msg_len;
+#else
+    BL_ABORT("Cannot get last error!");
+#endif
+}
+
 TArray *create_arr(Assembly *assembly, usize size)
 {
     TArray **tmp = arena_alloc(&assembly->arenas.array);

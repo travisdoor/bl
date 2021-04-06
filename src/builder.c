@@ -386,13 +386,16 @@ static int compile(Assembly *assembly)
     // Compile assembly using pipeline.
     if (state == COMPILE_OK) state = compile_assembly(assembly, assembly_pipeline);
 
-    clock_t end = clock();
-
-    f64 time_spent = (f64)(end - begin) / CLOCKS_PER_SEC;
+    const clock_t end = clock();
+    const f64 time_spent = (f64)(end - begin) / CLOCKS_PER_SEC;
 
     builder_log("Compiled %i lines in %f seconds.", builder.total_lines, time_spent);
     if (state != COMPILE_OK) {
-        builder_warning("There were errors, sorry...");
+        if (assembly->target->kind == ASSEMBLY_BUILD_PIPELINE) {
+            builder_warning("Build pipeline failed.");
+        } else {
+            builder_warning("Compilation of '%s' failed.", assembly->target->name);
+        }
     }
 
     if (builder.errorc) return builder.max_error;
@@ -575,7 +578,8 @@ void builder_msg(BuilderMsgType type,
         default:
             break;
         }
-        const char *filepath = builder.options->full_path_reports ? src->unit->filepath : src->unit->filename;
+        const char *filepath =
+            builder.options->full_path_reports ? src->unit->filepath : src->unit->filename;
         snprintf(msg, MAX_MSG_LEN, "%s:%d:%d: %s: ", filepath, line, col, prefix);
 
         va_list args;
@@ -636,16 +640,16 @@ void builder_msg(BuilderMsgType type,
     case BUILDER_MSG_ERROR: {
         builder.errorc++;
         builder.max_error = code > builder.max_error ? code : builder.max_error;
-        color_print(stderr, BL_RED, "%s\n", tmp.data);
+        color_print(stderr, BL_RED, "%s", tmp.data);
         break;
     }
     case BUILDER_MSG_WARNING: {
-        color_print(stdout, BL_YELLOW, "%s\n", tmp.data);
+        color_print(stdout, BL_YELLOW, "%s", tmp.data);
         break;
     }
 
     default: {
-        color_print(stdout, BL_NO_COLOR, "%s\n", tmp.data);
+        color_print(stdout, BL_NO_COLOR, "%s", tmp.data);
     }
     }
 

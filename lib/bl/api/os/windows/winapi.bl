@@ -218,6 +218,14 @@ RTL_CRITICAL_SECTION :: struct {
     SpinCount: ULONG_PTR;
 }
 LPCRITICAL_SECTION :: *RTL_CRITICAL_SECTION;
+
+FORMAT_MESSAGE_IGNORE_INSERTS : u32 : 0x00000200;
+FORMAT_MESSAGE_FROM_STRING    : u32 : 0x00000400;
+FORMAT_MESSAGE_FROM_HMODULE   : u32 : 0x00000800;
+FORMAT_MESSAGE_FROM_SYSTEM    : u32 : 0x00001000;
+FORMAT_MESSAGE_ARGUMENT_ARRAY : u32 : 0x00002000;
+FORMAT_MESSAGE_MAX_WIDTH_MASK : u32 : 0x000000FF;
+
 FindFirstFile :: fn  (lpFileName: LPCSTR, lpFindFileData: LP_FIND_DATAA) HANDLE #extern "FindFirstFileA";
 FindClose :: fn (hFindFile: HANDLE) BOOL #extern "FindClose";
 FindNextFile :: fn (hFindFile: HANDLE, lpFindFileData: LP_FIND_DATAA) BOOL #extern "FindNextFileA";
@@ -356,3 +364,4 @@ TryEnterCriticalSection :: fn (lpCriticalSection: LPCRITICAL_SECTION ) BOOL #ext
 GetFileInformationByHandle :: fn (hFile: HANDLE, lpFileInformation: LPBY_HANDLE_FILE_INFORMATION) BOOL #extern "GetFileInformationByHandle";
 GetOverlappedResult :: fn (hFile: HANDLE, lpOverlapped: LPOVERLAPPED, lpNumberOfBytesTransferred: LPDWORD, bWait: BOOL) BOOL #extern "GetOverlappedResult";
 ResetEvent :: fn (hEvent: HANDLE) BOOL #extern "ResetEvent";
+FormatMessageA :: fn (dwFlags: DWORD, lpSource: LPVOID, dwMessageId: DWORD, dwLanguageId: DWORD, lpBuffer: LPSTR, nSize: DWORD, Arguments: *u8) DWORD #extern "FormatMessageA";

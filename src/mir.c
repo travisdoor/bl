@@ -5462,14 +5462,18 @@ int _group_compare(const void *_first, const void *_second)
 
 AnalyzeResult analyze_instr_fn_group(Context *cnt, MirInstrFnGroup *group)
 {
-    AnalyzeResult         result        = ANALYZE_RESULT(PASSED, 0);
-    TSmallArray_InstrPtr *variants      = group->variants;
-    TSmallArray_TypePtr * variant_types = create_sarr(TSmallArray_TypePtr, cnt->assembly);
-    TSmallArray_FnPtr *   variant_fns   = create_sarr(TSmallArray_FnPtr, cnt->assembly);
-    TSmallArray_FnPtr     validation_queue;
+    TSmallArray_InstrPtr *variants = group->variants;
     BL_ASSERT(variants);
     const usize vc = variants->size;
     BL_ASSERT(vc);
+    for (usize i = 0; i < vc; ++i) {
+        MirInstr *variant_ref = variants->data[i];
+        if (!variant_ref->analyzed) return ANALYZE_RESULT(POSTPONE, 0);
+    }
+    AnalyzeResult        result        = ANALYZE_RESULT(PASSED, 0);
+    TSmallArray_TypePtr *variant_types = create_sarr(TSmallArray_TypePtr, cnt->assembly);
+    TSmallArray_FnPtr *  variant_fns   = create_sarr(TSmallArray_FnPtr, cnt->assembly);
+    TSmallArray_FnPtr    validation_queue;
     tsa_init(&validation_queue);
     tsa_resize_TypePtr(variant_types, vc);
     tsa_resize_FnPtr(variant_fns, vc);
@@ -5498,6 +5502,9 @@ AnalyzeResult analyze_instr_fn_group(Context *cnt, MirInstrFnGroup *group)
         variant_fns->data[i]     = fn;
         variant_types->data[i]   = fn->type;
         validation_queue.data[i] = fn;
+        if (variant->kind == MIR_INSTR_FN_PROTO) {
+            ++fn->ref_count;
+        }
     }
     // Validate group.
     qsort(&validation_queue.data[0], validation_queue.size, sizeof(MirFn *), &_group_compare);
@@ -5951,8 +5958,8 @@ AnalyzeResult analyze_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_s
         MirInstr **         member_instr;
         MirInstrDeclMember *decl_member;
         MirType *           member_type;
-        const usize         memc  = type_struct->members->size;
-        members                   = create_sarr(TSmallArray_MemberPtr, cnt->assembly);
+        const usize         memc = type_struct->members->size;
+        members                  = create_sarr(TSmallArray_MemberPtr, cnt->assembly);
         for (usize i = 0; i < memc; ++i) {
             member_instr = &type_struct->members->data[i];
             if (analyze_slot(cnt, &analyze_slot_conf_basic, member_instr, NULL) != ANALYZE_PASSED) {
@@ -7662,7 +7669,7 @@ void analyze_report_unresolved(Context *cnt)
                 if (!ref->scope) continue;
                 if (!ref->rid) continue;
                 sym_name = ref->rid->str;
-                if (ref->scope->kind == SCOPE_FN_LOCAL) break;
+                if (scope_is_local(ref->scope)) break;
                 if (scope_lookup(ref->scope, ref->rid, true, false, NULL)) {
                     continue;
                 }
@@ -8911,7 +8918,13 @@ MirInstr *ast_expr_lit_fn_group(Context *cnt, Ast *group)
     Ast *it;
     TSA_FOREACH(group->data.expr_fn_group.variants, it)
     {
-        variants->data[i] = ast(cnt, it);
+        MirInstr *variant;
+        if (it->kind == AST_EXPR_LIT_FN) {
+            variant = ast_expr_lit_fn(cnt, it, NULL, NULL, true, 0, MIR_BUILTIN_ID_NONE);
+        } else {
+            variant = ast(cnt, it);
+        }
+        variants->data[i] = variant;
     }
     return append_instr_fn_group(cnt, group, variants);
 }
@@ -10272,9 +10285,9 @@ void mir_run(Assembly *assembly)
     // Analyze pass
     analyze(&cnt);
     analyze_report_unresolved(&cnt);
-    analyze_report_unused(&cnt);
 
     if (builder.errorc) goto SKIP;
+    analyze_report_unused(&cnt);
 
     BL_LOG("Analyze queue push count: %i", push_count);
 SKIP:

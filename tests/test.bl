@@ -1,20 +1,22 @@
 main :: fn () s32 {
-    _: s32 #noinit;
-    _ :: 10;
-    size();
+    foo();
+    foo(10);
+    foo(20, true);
     return 0;
 }
 
-size :: fn () {
-    T1 :: struct { _: s32; _: s32 };
-    T2 :: struct { a: s32; b: s32 };
-    if (sizeof(T1) == sizeof(T2)) { print("OK!!!\n"); }
+#private
+foo :: fn {
+    fn () {
+        print("No arg!\n");
+    };
+    fn (i: s32) {
+        print("i = %\n", i);
+    };
+    fn (i: s32, b: bool) {
+        print("i = %, b = %\n", i, b);
+    };
 }
 
-#private
-
-HOMO :: 10;
-
-foo :: fn () {}
 
 

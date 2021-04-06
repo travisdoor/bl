@@ -111,3 +111,25 @@ fn_overload_invoke3 :: fn () #test {
     invoked = typeinfo(C3);
     group3("hello");
 }
+
+inline_group1 :: fn {
+    fn (i: s32, b := true) s32 {
+        return 1;
+    };
+
+    fn (i: s32, s: bool, b := true) s32 {
+        return 2;
+    };
+
+    fn (i: string, b := true) s32 {
+        return 3;
+    };
+}
+
+fn_overload_invoke4 :: fn () #test {
+    test_eq(inline_group1(10), 1);
+    test_eq(inline_group1(10, true), 1);
+    test_eq(inline_group1(10, true, false), 2);
+    test_eq(inline_group1("hello", true), 3);
+    test_eq(inline_group1("hello"), 3);
+}

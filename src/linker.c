@@ -26,9 +26,9 @@
 // SOFTWARE.
 // =================================================================================================
 
+#include "builder.h"
 #include "common.h"
 #include "error.h"
-#include "builder.h"
 
 #if BL_PLATFORM_WIN
 #include <windows.h>
@@ -41,7 +41,8 @@
                 BUILDER_MSG_ERROR, (code), &(tok)->location, (pos), (format), ##__VA_ARGS__);      \
         else                                                                                       \
             builder_error((format), ##__VA_ARGS__);                                                \
-    }
+    }                                                                                              \
+    (void)0
 
 typedef struct {
     Assembly *assembly;
@@ -128,15 +129,7 @@ static bool link_lib(Context *cnt, NativeLib *lib)
         return false;
 
     lib->handle = dlLoadLibrary(lib->filepath);
-    if (!lib->handle) {
-        free(lib->filename);
-        free(lib->dir);
-        free(lib->filepath);
-
-        return false;
-    }
-
-    return true;
+    return lib->handle;
 }
 
 static bool link_working_environment(Context *cnt, const char *lib_name)
@@ -165,15 +158,17 @@ void linker_run(Assembly *assembly)
     builder_log("Running runtime linker...");
     set_lib_paths(&cnt);
 
-    NativeLib *lib;
     for (usize i = 0; i < assembly->libs.size; ++i) {
-        lib = &tarray_at(NativeLib, &assembly->libs, i);
+        NativeLib *lib = &tarray_at(NativeLib, &assembly->libs, i);
         if (!link_lib(&cnt, lib)) {
+            char      error_buffer[256];
+            const s32 error_len = get_last_error(error_buffer, TARRAY_SIZE(error_buffer));
             link_error(ERR_LIB_NOT_FOUND,
                        lib->linked_from,
                        BUILDER_CUR_WORD,
-                       "Unresolved external library '%s'",
-                       lib->user_name);
+                       "Cannot load library '%s' with error: %s",
+                       lib->user_name,
+                       error_len ? error_buffer : "UNKNOWN");
         }
     }
 
