@@ -40,6 +40,11 @@
 #if BL_PLATFORM_MACOS
 #include <mach-o/dyld.h>
 #include <mach/mach_time.h>
+#include <errno.h>
+#endif
+
+#if BL_PLATFORM_LINUX
+#include <errno.h>
 #endif
 
 #if BL_PLATFORM_WIN
@@ -427,12 +432,12 @@ f64 get_tick_ms(void)
 s32 get_last_error(char *buf, s32 buf_len)
 {
 #if BL_PLATFORM_MACOS
-    const s32 e = errno();
-    if (!e) return NULL;
+    const s32 error_code = errno();
+    if (!error_code) return NULL;
     return strncpy(buf, strerror(error_code), buf_len);
 #elif BL_PLATFORM_LINUX
-    const s32 e = errno();
-    if (!e) return NULL;
+    const s32 error_code = errno();
+    if (!error_code) return NULL;
     return strncpy(buf, strerror(error_code), buf_len);
 #elif BL_PLATFORM_WIN
     const s32 error_code = GetLastError();
