@@ -84,7 +84,7 @@ handle_args :: fn () bool {
         "-I",
         "--include-directory",
         "Specify include directory.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             if (args.len < 2) {
                 return 0, error("Expected directory name!");
@@ -103,7 +103,7 @@ handle_args :: fn () bool {
         "-sc",
         "--syntax-check",
         "Check syntax of output files. BL compiler is required in PATH.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.check_syntax = true;
             return 1, ok();
@@ -114,7 +114,7 @@ handle_args :: fn () bool {
         "-tm",
         "--translate-macros",
         "Translate C macros into BL, this feature is experimental.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.translate_macros = true;
             return 1, ok();
@@ -125,7 +125,7 @@ handle_args :: fn () bool {
         "-o",
         "--output",
         "Specify name of the output file.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             if (args.len < 2) {
                 return 0, error("Expected output file name!");
@@ -199,7 +199,7 @@ process_file :: fn (in_filepath: string) Error {
     return ok();
 }
 
-visitor :: fn (c: CXCursor, parent: CXCursor, client_data: CXClientData) CXChildVisitResult {
+visitor :: fn (c: CXCursor, _: CXCursor, client_data: CXClientData) CXChildVisitResult {
     ctx :: cast(*Ctx) client_data;
     loc := clang_getCursorLocation(c);
     if false { // TEST
@@ -308,7 +308,7 @@ emit_enum :: fn (ctx: *Ctx, c: CXCursor) {
     Fs.write_string(ctx.out, "}");
 }
 
-emit_enum_variant :: fn (c: CXCursor, parent: CXCursor, client_data: CXClientData) CXChildVisitResult {
+emit_enum_variant :: fn (c: CXCursor, _: CXCursor, client_data: CXClientData) CXChildVisitResult {
     ctx :: cast(*Ctx) client_data;
     Fs.write_string(ctx.out, "    ");
     emit_name(ctx, c);
@@ -329,7 +329,7 @@ emit_union :: fn (ctx: *Ctx, c: CXCursor) {
     Fs.write_string(ctx.out, "}");
 }
 
-emit_struct_member :: fn (c: CXCursor, parent: CXCursor, client_data: CXClientData) CXChildVisitResult {
+emit_struct_member :: fn (c: CXCursor, _: CXCursor, client_data: CXClientData) CXChildVisitResult {
     ctx :: cast(*Ctx) client_data;
     Fs.write_string(ctx.out, "    ");
     emit_name(ctx, c);

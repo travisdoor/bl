@@ -10,13 +10,14 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Setup
-      run: cmake . -G "Visual Studio 16 2019" -Thost=x64 -DCMAKE_BUILD_TYPE=Release
+      run: cmake . -G "Visual Studio 16 2019" -Thost=x64 -DCMAKE_BUILD_TYPE=Debug 
     - name: Compile
-      run: cmake --build . --config Release
+      run: cmake --build . --config Debug
     - name: Configure
       run: |
-        cd install
-        .\configure_win64.bat
+        bin\bl-config.exe --force-override --build-tools-path "${Env:ProgramFiles(x86)}/Microsoft Visual Studio/2019/Enterprise"
+    - name: Compile tools 
+      run: cmake --build . --config Release --target Utils
     - name: Run tests
       run: bin\blc.exe -rs doctor.bl -d
     - name: Prepare package
@@ -27,7 +28,6 @@ jobs:
         cp -r bin dist
         cp -r syntax dist
         cp -r examples dist
-        cp install/configure_win64.bat dist/bin/blc_configure.bat
         cp CHANGELOG.txt dist
         cp LEGAL dist
         cp LICENSE dist 
@@ -49,13 +49,14 @@ jobs:
         echo "CPATH=$TMP_PATH" >> $GITHUB_ENV
     - name: Setup
       run: |
-        cmake . -DCMAKE_BUILD_TYPE=Release
+        cmake . -DCMAKE_BUILD_TYPE=Debug 
     - name: Compile
-      run: cmake --build . --config Release
+      run: cmake --build . --config Debug
     - name: Configure
       run: |
-        cd install
-        ./configure_macos.sh
+        ./bin/bl-config -f
+    - name: Compile tools 
+      run: cmake --build . --config Release --target Utils
     - name: Run tests
       run: ./bin/blc -rs doctor.bl -d
     - name: Prepare package
@@ -65,7 +66,6 @@ jobs:
         cp -r bin dist
         cp -r syntax dist
         cp -r examples dist
-        cp install/configure_macos.sh dist/bin/blc_configure.sh
         cp CHANGELOG.txt dist
         cp LEGAL dist
         cp LICENSE dist 
@@ -89,8 +89,9 @@ jobs:
       run: cmake --build . --config Debug
     - name: Configure
       run: |
-        cd install
-        ./configure_linux.sh
+        ./bin/bl-config -f
+    - name: Compile tools 
+      run: cmake --build . --config Release --target Utils
     - name: Run tests
       run: ./bin/blc -rs doctor.bl -d
     - name: Prepare package
@@ -100,7 +101,6 @@ jobs:
         cp -r bin dist
         cp -r syntax dist
         cp -r examples dist
-        cp install/configure_linux.sh dist/bin/blc_configure.sh
         cp CHANGELOG.txt dist
         cp LEGAL dist
         cp LICENSE dist 

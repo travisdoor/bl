@@ -98,7 +98,7 @@ write_config :: fn (fmt: string, args: ...) Error {
     file, err :: Fs.open(g_conf_filepath, Fs.OpenMode.Create, Fs.OpenMode.Write);
     defer Fs.close(file);
     if !is_ok(err) { return err; }
-    Fs.write_fmt(file, 2048, fmt, args);
+    Fs.write_fmt(2048, file, fmt, args);
     print_log("Configuration written to '%'.", g_conf_filepath);
     return ok();
 }

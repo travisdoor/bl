@@ -39,7 +39,7 @@ MAIN_BODY_CLT ::
     "        \"-f\", // Short name (must start with -)\n"
     "        \"--flag\", // Long name (must start with -)\n"
     "        \"Specify my flag.\", // Help text.\n"
-    "        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {\n"
+    "        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {\n"
     "            a: *Args = auto ctx;\n"
     "            a.my_flag = true;\n"
     "            return 1, ok(); // Return number of parsed arguments and state.\n"
@@ -92,7 +92,7 @@ main :: fn () s32 {
         "",
         "--output-dir",
         "Sets the output directory. This is directory in which root project directory will be created.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             if (args.len < 2) {
                 return 0, error("Expected directory name!");
@@ -108,7 +108,7 @@ main :: fn () s32 {
         "",
         "--exe",
         "Generate simple executable project (default).",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.proj_kind = ProjKind.Executable;
             return 1, ok();
@@ -119,7 +119,7 @@ main :: fn () s32 {
         "",
         "--shared",
         "Generate shared library project.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.proj_kind = ProjKind.Shared;
             return 1, ok();
@@ -130,7 +130,7 @@ main :: fn () s32 {
         "",
         "--tool",
         "Generate command line tool project.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.proj_kind = ProjKind.CommandLineTool;
             return 1, ok();
@@ -213,7 +213,7 @@ make_file :: fn (filepath: string, content: string, args: ...) Error {
 }
 
 #private
-custom_logger :: fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...) {
+custom_logger :: fn (kind: PrintLogKind, _: string, _: s32, format: string, args: ...) {
     switch kind {
         PrintLogKind.Message { print("  "); }
         PrintLogKind.Warning { print("  [W] "); }
