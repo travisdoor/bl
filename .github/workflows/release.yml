@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Setup
-      run: cmake . -G "Visual Studio 16 2019" -Thost=x64 -DCMAKE_BUILD_TYPE=Debug 
+      run: cmake . -G "Visual Studio 16 2019" -Thost=x64 -DCMAKE_BUILD_TYPE=Release
     - name: Compile
       run: cmake --build . --config Release
     - name: Configure
