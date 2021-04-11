@@ -12,7 +12,7 @@ jobs:
     - name: Setup
       run: cmake . -G "Visual Studio 16 2019" -Thost=x64 -DCMAKE_BUILD_TYPE=Debug 
     - name: Compile
-      run: cmake --build . --config Debug
+      run: cmake --build . --config Release
     - name: Configure
       run: |
         bin\bl-config.exe --force-override --build-tools-path "${Env:ProgramFiles(x86)}/Microsoft Visual Studio/2019/Enterprise"
@@ -49,9 +49,9 @@ jobs:
         echo "CPATH=$TMP_PATH" >> $GITHUB_ENV
     - name: Setup
       run: |
-        cmake . -DCMAKE_BUILD_TYPE=Debug 
+        cmake . -DCMAKE_BUILD_TYPE=Release 
     - name: Compile
-      run: cmake --build . --config Debug
+      run: cmake --build . --config Release
     - name: Configure
       run: |
         ./bin/bl-config -f
@@ -84,9 +84,9 @@ jobs:
         sudo apt install llvm-10-dev
     - name: Setup
       run: |
-        cmake . -DCMAKE_BUILD_TYPE=Debug 
+        cmake . -DCMAKE_BUILD_TYPE=Release 
     - name: Compile
-      run: cmake --build . --config Debug
+      run: cmake --build . --config Release
     - name: Configure
       run: |
         ./bin/bl-config -f
