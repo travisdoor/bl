@@ -50,8 +50,6 @@ typedef struct {
          "-reg-split=off",                                                                         \
          "Disable splitting structures passed into the function by value into "                    \
          "registers.")                                                                             \
-    _ARG(                                                                                          \
-        NO_VCVARS, "", "-no-vcvars", "Disable injection of Visual Studio environment on Windows.") \
     _ARG(VERIFY_LLVM, "", "-verify-llvm", "Verify LLVM IR after generation.")                      \
     _ARG(DOCS, "", "-docs", "Generate documentation and exit.")                                    \
     _ARG(WHERE_IS_API, "", "-where-is-api", "Return path to API folder and exit.")                 \

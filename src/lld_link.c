@@ -120,10 +120,6 @@ s32 lld_link(Assembly *assembly)
     const char *  name    = target->name;
 
     tstring_append(buf, "call ");
-    if (!assembly->target->no_vcvars) {
-        const char *vc_vars_all = conf_data_get_str(&builder.conf, CONF_VC_VARS_ALL_KEY);
-        tstring_appendf(buf, "\"%s\" %s >NUL && ", vc_vars_all, "x64");
-    }
 
     // set executable
     append_linker_exec(buf);

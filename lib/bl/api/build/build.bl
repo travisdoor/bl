@@ -120,8 +120,6 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
     debug_info_kind: DebugInfo;
     /// Enable split of function arguments and return value into registers.
     register_split: bool;
-    /// Disable invocation of vcvars.bat on Windows.
-    no_vcvars: bool;
     /// Verify LLVM module.
     verify_llvm: bool;
     /// Execute compile time tests.

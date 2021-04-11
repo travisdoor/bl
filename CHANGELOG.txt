@@ -12,6 +12,7 @@ Add hash into CodeLocation.
 Add namespace support.
 Add unnamed symbols. (underscore used as name is not inserted into scope)
 Add support of inline function group members.
+Use faster custom system library and SDK lookup on Windows.
 Compiler now reports unused private or local symbols.
 Cleanup modules.
 

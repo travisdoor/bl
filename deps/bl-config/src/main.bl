@@ -43,7 +43,7 @@ main :: fn () s32 {
         "-s",
         "--silent",
         "Print only errors.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.silent = true;
             return 1, ok();
@@ -54,7 +54,7 @@ main :: fn () s32 {
         "-f",
         "--force-override",
         "Override existing configuration file.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.override_config = true;
             return 1, ok();
@@ -98,7 +98,7 @@ write_config :: fn (fmt: string, args: ...) Error {
     file, err :: Fs.open(g_conf_filepath, Fs.OpenMode.Create, Fs.OpenMode.Write);
     defer Fs.close(file);
     if !is_ok(err) { return err; }
-    Fs.write_fmt(file, fmt, args);
+    Fs.write_fmt(file, 2048, fmt, args);
     print_log("Configuration written to '%'.", g_conf_filepath);
     return ok();
 }
@@ -124,7 +124,7 @@ pipe_execute :: fn (cmd: string) (string, Error) {
 } 
 
 #private
-custom_logger :: fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...) {
+custom_logger :: fn (kind: PrintLogKind, _: string, _: s32, format: string, args: ...) {
     if g_args.silent && kind == PrintLogKind.Message { return; }
     switch kind {
         PrintLogKind.Message { print("  "); }

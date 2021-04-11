@@ -83,7 +83,6 @@ typedef struct NativeLib {
     AssemblyOpt    opt;                                                                            \
     AssemblyDIKind di;                                                                             \
     bool           reg_split;                                                                      \
-    bool           no_vcvars;                                                                      \
     bool           verify_llvm;                                                                    \
     bool           run_tests;                                                                      \
     bool           no_api;                                                                         \

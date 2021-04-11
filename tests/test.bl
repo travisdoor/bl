@@ -1,7 +1,4 @@
 main :: fn () s32 {
-    foo();
-    foo(10);
-    foo(20, true);
     return 0;
 }
 

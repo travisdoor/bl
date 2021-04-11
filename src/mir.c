@@ -7712,7 +7712,7 @@ void analyze_report_unused(Context *cnt)
                     0,
                     entry->node->location,
                     BUILDER_CUR_WORD,
-                    "Unused symbol '%s'.",
+                    "Unused symbol '%s'. (Use unnamed identificator '_' if this is intentional)",
                     entry->id->str);
     }
 }
