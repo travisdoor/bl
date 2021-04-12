@@ -4531,6 +4531,22 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
         // (mutable variables cannot be comptime)
         var->value.is_comptime = !var->is_mutable;
 
+        if (IS_FLAG(var->flags, FLAG_THREAD_LOCAL)) {
+            switch (var->value.type->kind) {
+            case MIR_TYPE_FN:
+            case MIR_TYPE_FN_GROUP:
+            case MIR_TYPE_TYPE:
+                builder_msg(BUILDER_MSG_ERROR,
+                            ERR_INVALID_TYPE,
+                            var->decl_node->location,
+                            BUILDER_CUR_WORD,
+                            "Invalid type of thread local variable.");
+                return ANALYZE_RESULT(FAILED, 0);
+            default:
+                break;
+            }
+        }
+
         AnalyzeResult state = analyze_var(cnt, var);
         if (state.state != ANALYZE_PASSED) return state;
 
@@ -6597,6 +6613,14 @@ AnalyzeResult analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
         return ANALYZE_RESULT(PASSED, 0);
     }
 
+    if (IS_FLAG(var->flags, FLAG_THREAD_LOCAL)) {
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_INVALID_DIRECTIVE,
+                    var->decl_node->location,
+                    BUILDER_CUR_WORD,
+                    "Thread local variable must be global.");
+        return ANALYZE_RESULT(FAILED, 0);
+    }
     // Continue only with local variables and struct typedefs.
     bool has_initializer = decl->init;
     if (has_initializer) {

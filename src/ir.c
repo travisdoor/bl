@@ -244,6 +244,10 @@ static INLINE LLVMValueRef emit_global_var_proto(Context *cnt, MirVar *var)
     LLVMSetLinkage(var->llvm_value, LLVMPrivateLinkage);
     LLVMSetAlignment(var->llvm_value, (unsigned)var->value.type->alignment);
 
+    if (IS_FLAG(var->flags, FLAG_THREAD_LOCAL)) {
+        LLVMSetThreadLocalMode(var->llvm_value, LLVMGeneralDynamicTLSModel);
+    }
+
     return var->llvm_value;
 }
 
@@ -743,12 +747,10 @@ static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn)
     }
     if (IS_FLAG(fn->flags, FLAG_INLINE)) {
         LLVMAttributeRef llvm_attr = llvm_create_attribute(cnt->llvm_cnt, LLVM_ATTR_ALWAYSINLINE);
-
         LLVMAddAttributeAtIndex(fn->llvm_value, (unsigned)LLVMAttributeFunctionIndex, llvm_attr);
     }
     if (IS_FLAG(fn->flags, FLAG_NO_INLINE)) {
         LLVMAttributeRef llvm_attr = llvm_create_attribute(cnt->llvm_cnt, LLVM_ATTR_NOINLINE);
-
         LLVMAddAttributeAtIndex(fn->llvm_value, (unsigned)LLVMAttributeFunctionIndex, llvm_attr);
     }
     if (IS_FLAG(fn->flags, FLAG_EXPORT)) {

@@ -49,16 +49,17 @@ typedef enum {
 typedef enum {
     FLAG_EXTERN = 1 << 0, // methods marked as extern
     // 1 << 1, free
-    FLAG_COMPILER    = 1 << 2,  // compiler internal
-    FLAG_PRIVATE     = 1 << 3,  // declared in private scope
-    FLAG_INLINE      = 1 << 4,  // inline function
-    FLAG_NO_INLINE   = 1 << 5,  // no inline function
-    FLAG_ENTRY       = 1 << 6,  // marking entry point function
-    FLAG_BUILD_ENTRY = 1 << 7,  // marking build entry point function
-    FLAG_NO_INIT     = 1 << 8,  // no default initialization
-    FLAG_INTRINSIC   = 1 << 9,  // intrinsics declaration
-    FLAG_TEST_FN     = 1 << 10, // test function
-    FLAG_EXPORT      = 1 << 11, // symbols marked for dll export
+    FLAG_COMPILER     = 1 << 2,  // compiler internal
+    FLAG_PRIVATE      = 1 << 3,  // declared in private scope
+    FLAG_INLINE       = 1 << 4,  // inline function
+    FLAG_NO_INLINE    = 1 << 5,  // no inline function
+    FLAG_ENTRY        = 1 << 6,  // marking entry point function
+    FLAG_BUILD_ENTRY  = 1 << 7,  // marking build entry point function
+    FLAG_NO_INIT      = 1 << 8,  // no default initialization
+    FLAG_INTRINSIC    = 1 << 9,  // intrinsics declaration
+    FLAG_TEST_FN      = 1 << 10, // test function
+    FLAG_EXPORT       = 1 << 11, // symbols marked for dll export
+    FLAG_THREAD_LOCAL = 1 << 12, // symbols marked as thread local
 } AstFlag;
 
 // map symbols to binary operation kind

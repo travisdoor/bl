@@ -90,3 +90,16 @@ union_type_default_init :: fn () #test {
 enum_type_default_init :: fn () #test {
     assert(UG16 == Bar.A);
 }
+
+// thread locals
+tl1 : s32 = 10 #thread_local;
+tl2: Foo #thread_local;
+tl3: [10]s32 #thread_local;
+
+thread_local :: fn () #test {
+    tl1 = 10;
+    tl2 = {:Foo: 0};
+    tl3[0] = 10;
+}
+
+

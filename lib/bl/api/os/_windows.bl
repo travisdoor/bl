@@ -181,5 +181,4 @@ __os_start :: fn () #entry {
 }
 
 #private
-// @INCOMPLETE This should be threadlocal!!!
-_last_error_msg_buffer: [256]u8;
+_last_error_msg_buffer: [256]u8 #thread_local;

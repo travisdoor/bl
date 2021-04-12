@@ -1,0 +1,34 @@
+#import "std/thread"
+
+COUNT :: 50;
+counter: s32 #thread_local;
+
+main :: fn () s32 {
+    print("Start thread!!!\n");
+    defer print("Threads joined!!!\n");
+    t1 :: Thread.create(&first);
+    t2 :: Thread.create(&second);
+    Thread.join(t1);
+    Thread.join(t2);
+    
+    assert(counter == 0);
+    return 0;
+}
+
+first :: fn (args: *u8) s32 {
+    loop i := 0; i < COUNT; i += 1 {
+        counter += 1;
+        os_sleep_ms(50.0);
+    }
+    assert(counter == COUNT);
+    return 0;
+}
+
+second :: fn (args: *u8) s32 {
+    loop i := 0; i < COUNT; i += 1 {
+        counter += 1;
+        os_sleep_ms(100.0);
+    }
+    assert(counter == COUNT);
+    return 0;
+}

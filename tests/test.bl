@@ -1,19 +1,12 @@
 main :: fn () s32 {
+    foo = 20;
+    bar = 30;
     return 0;
 }
 
-#private
-foo :: fn {
-    fn () {
-        print("No arg!\n");
-    };
-    fn (i: s32) {
-        print("i = %\n", i);
-    };
-    fn (i: s32, b: bool) {
-        print("i = %, b = %\n", i, b);
-    };
-}
+foo := 10 #thread_local;
+bar: s32 #thread_local;
+
 
 
 

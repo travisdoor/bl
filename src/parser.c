@@ -70,27 +70,28 @@ TSMALL_ARRAY_TYPE(ScopePtr64, Scope *, 64);
     }
 
 typedef enum {
-    HD_NONE        = 1 << 0,
-    HD_LOAD        = 1 << 1,
-    HD_LINK        = 1 << 2,
-    HD_CALL_LOC    = 1 << 3,
-    HD_EXTERN      = 1 << 4,
-    HD_COMPILER    = 1 << 5,
-    HD_PRIVATE     = 1 << 6,
-    HD_INLINE      = 1 << 7,
-    HD_NO_INLINE   = 1 << 8,
-    HD_FILE        = 1 << 9,
-    HD_LINE        = 1 << 10,
-    HD_BASE        = 1 << 11,
-    HD_ENTRY       = 1 << 12,
-    HD_BUILD_ENTRY = 1 << 13,
-    HD_TAGS        = 1 << 14,
-    HD_NO_INIT     = 1 << 16,
-    HD_INTRINSIC   = 1 << 17,
-    HD_TEST_FN     = 1 << 18,
-    HD_IMPORT      = 1 << 19,
-    HD_EXPORT      = 1 << 20,
-    HD_SCOPE       = 1 << 21,
+    HD_NONE         = 1 << 0,
+    HD_LOAD         = 1 << 1,
+    HD_LINK         = 1 << 2,
+    HD_CALL_LOC     = 1 << 3,
+    HD_EXTERN       = 1 << 4,
+    HD_COMPILER     = 1 << 5,
+    HD_PRIVATE      = 1 << 6,
+    HD_INLINE       = 1 << 7,
+    HD_NO_INLINE    = 1 << 8,
+    HD_FILE         = 1 << 9,
+    HD_LINE         = 1 << 10,
+    HD_BASE         = 1 << 11,
+    HD_ENTRY        = 1 << 12,
+    HD_BUILD_ENTRY  = 1 << 13,
+    HD_TAGS         = 1 << 14,
+    HD_NO_INIT      = 1 << 16,
+    HD_INTRINSIC    = 1 << 17,
+    HD_TEST_FN      = 1 << 18,
+    HD_IMPORT       = 1 << 19,
+    HD_EXPORT       = 1 << 20,
+    HD_SCOPE        = 1 << 21,
+    HD_THREAD_LOCAL = 1 << 22,
 } HashDirective;
 
 typedef struct {
@@ -669,8 +670,22 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
                         tok_directive,
                         BUILDER_CUR_WORD,
-                        "Unexpected directive. Inline can be used only in context of "
+                        "Unexpected directive. No inline can be used only in context of "
                         "function literal.");
+            return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
+        }
+
+        return NULL;
+    }
+
+    if (strcmp(directive, "thread_local") == 0) {
+        set_satisfied(HD_THREAD_LOCAL);
+        if (IS_NOT_FLAG(expected_mask, HD_THREAD_LOCAL)) {
+            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+                        tok_directive,
+                        BUILDER_CUR_WORD,
+                        "Unexpected directive. Thread local can be used only in context of "
+                        "global variables.");
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
 
@@ -1225,6 +1240,7 @@ bool hash_directive_to_flags(HashDirective hd, u32 *out_flags)
         FLAG_CASE(HD_NO_INIT, FLAG_NO_INIT);
         FLAG_CASE(HD_TEST_FN, FLAG_TEST_FN);
         FLAG_CASE(HD_EXPORT, FLAG_EXPORT);
+        FLAG_CASE(HD_THREAD_LOCAL, FLAG_THREAD_LOCAL);
     default:
         break;
     }
@@ -2398,7 +2414,7 @@ Ast *parse_decl(Context *cnt)
     if (!tok_assign) tok_assign = tokens_consume_if(cnt->tokens, SYM_COLON);
 
     // Parse hash directives.
-    s32 hd_accepted = HD_COMPILER;
+    s32 hd_accepted = HD_COMPILER | HD_THREAD_LOCAL;
 
     if (tok_assign) {
         decl->data.decl_entity.mut = token_is(tok_assign, SYM_ASSIGN);

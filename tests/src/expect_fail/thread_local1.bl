@@ -1,0 +1,6 @@
+// @ERR_INVALID_DIRECTIVE@
+
+main :: fn () s32 { 
+    i := 10 #thread_local;
+    return 10; 
+}
