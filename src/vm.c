@@ -2626,7 +2626,8 @@ void _vm_write_value(usize dest_size, VMStackPtr dest, VMStackPtr src)
 
 void vm_write_string(VM *vm, const MirType *type, VMStackPtr dest, const char *str, s64 len)
 {
-    BL_ASSERT(str && len && "Invalid string constant!");
+    BL_ASSERT(str && "Invalid string constant!");
+    BL_ASSERT(len >= 0 && "Invalid string constant length.");
     BL_ASSERT(type->kind == MIR_TYPE_STRING && "Expected string type!");
     vm_write_slice(vm, type, dest, (void *)str, len);
 }

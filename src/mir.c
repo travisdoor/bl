@@ -7055,6 +7055,9 @@ AnalyzeResult analyze_instr_store(Context *cnt, MirInstrStore *store)
         return ANALYZE_RESULT(FAILED, 0);
     }
 
+    // @BUG Global immutable array converted implicitly to slice cause problems when this check is
+    // enabled INDENT_AFTER :: {:[1]u8: '{'}; opt.indent_after = INDENT_AFTER;
+
 #if BL_DEBUG
     // If store instruction source value is compound expression it should not be naked.
     if (store->src->kind == MIR_INSTR_COMPOUND) {
@@ -8178,9 +8181,10 @@ void rtti_gen_fn_arg(Context *cnt, VMStackPtr dest, MirArg *arg)
     MirType *rtti_type = cnt->builtin_types->t_TypeInfoFnArg;
 
     // name
-    MirType *  dest_name_type = mir_get_struct_elem_type(rtti_type, 0);
-    VMStackPtr dest_name      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 0);
-    vm_write_string(cnt->vm, dest_name_type, dest_name, arg->id->str, strlen(arg->id->str));
+    MirType *   dest_name_type = mir_get_struct_elem_type(rtti_type, 0);
+    VMStackPtr  dest_name      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 0);
+    const char *arg_name       = arg->id ? arg->id->str : "";
+    vm_write_string(cnt->vm, dest_name_type, dest_name, arg_name, strlen(arg_name));
 
     // base_type
     MirType *  dest_base_type_type = mir_get_struct_elem_type(rtti_type, 1);

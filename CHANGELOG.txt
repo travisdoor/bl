@@ -1,6 +1,7 @@
 1.0.0
 ---------------------------------------------------------------------------------------
 Add thread local global storage support.
+Fix crash on unnamed function argument RTTI generation.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

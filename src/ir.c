@@ -1273,16 +1273,13 @@ LLVMValueRef rtti_emit_fn_arg(Context *cnt, MirArg *arg)
     MirType *             rtti_type = cnt->builtin_types->t_TypeInfoFnArg;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
-
     // name
-    tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, arg->id->str, strlen(arg->id->str)));
-
+    const char *arg_name = arg->id ? arg->id->str : "";
+    tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, arg_name, strlen(arg_name)));
     // base_type
     tsa_push_LLVMValue(&llvm_vals, _rtti_emit(cnt, arg->type));
-
     LLVMValueRef llvm_result =
         LLVMConstNamedStruct(get_type(cnt, rtti_type), llvm_vals.data, (u32)llvm_vals.size);
-
     tsa_terminate(&llvm_vals);
     return llvm_result;
 }
