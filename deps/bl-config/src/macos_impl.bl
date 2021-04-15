@@ -37,7 +37,7 @@ setup :: fn (parser: ArgParser.Parser) {
         "",
         "--use-lld",
         "Use internal LLD linker (this is experimental).",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.use_lld = true;
             return 1, ok();
