@@ -1,12 +1,8 @@
 main :: fn () s32 {
-    foo = 20;
-    bar = 30;
+    #warning "This is warning!"
+    #error "This is error!"
     return 0;
 }
-
-foo := 10 #thread_local;
-bar: s32 #thread_local;
-
 
 
 

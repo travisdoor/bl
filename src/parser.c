@@ -342,6 +342,34 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
     const char *directive = tok_directive->value.str;
     BL_ASSERT(directive);
 
+    if (strcmp(directive, "warning") == 0) {
+        Token *tok_msg = tokens_consume_if(cnt->tokens, SYM_STRING);
+        if (!tok_msg) {
+            Token *tok_err = tokens_peek(cnt->tokens);
+            PARSE_ERROR(ERR_INVALID_DIRECTIVE,
+                        tok_err,
+                        BUILDER_CUR_WORD,
+                        "Expected message after 'warning' directive.");
+            return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
+        }
+        PARSE_WARNING(tok_msg, BUILDER_CUR_WORD, "");
+        return NULL;
+    }
+
+    if (strcmp(directive, "error") == 0) {
+        Token *tok_msg = tokens_consume_if(cnt->tokens, SYM_STRING);
+        if (!tok_msg) {
+            Token *tok_err = tokens_peek(cnt->tokens);
+            PARSE_ERROR(ERR_INVALID_DIRECTIVE,
+                        tok_err,
+                        BUILDER_CUR_WORD,
+                        "Expected message after 'error' directive.");
+            return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
+        }
+        PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE, tok_msg, BUILDER_CUR_WORD, "");
+        return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
+    }
+
     if (strcmp(directive, "load") == 0) {
         // load <string>
         set_satisfied(HD_LOAD);
