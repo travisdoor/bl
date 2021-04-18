@@ -26,6 +26,8 @@
 // SOFTWARE.
 // =================================================================================================
 
+#import "std/array"
+
 //! =====
 //! Debug
 //! =====
@@ -113,7 +115,36 @@ _print_log_default :: fn (kind: PrintLogKind, file: string, line: s32, format: s
     __os_write(out, buf.ptr, auto w);
 };
 
+/// Start measure elapsed milliseconds in the current scope. This function call will push the current
+/// time into the thread-local queue. Measurement must be ended by :ref:`measure_elapsed_ms_end` call.
+///
+/// Example
+/// -------
+/// ::
+///     measure_elapsed_ms_begin();
+///     defer measure_elapsed_ms_end("Name");
+///
+/// .. warning:: Every `measure_elapsed_ms_begin` must have corresponding :ref:`measure_elapsed_ms_end` call.
+measure_elapsed_ms_begin :: fn () #inline {
+    array_push(_elapsed_ms_stack, os_tick_ms());
+}
+
+/// Pop the last start time from the runtime measurement queue and log the result time difference when 
+/// the name is specified. Function return time difference between the current time and last start time. 
+measure_elapsed_ms_end :: fn (name := String.empty) f64 #inline {
+    if _elapsed_ms_stack.len == 0 { return 0.0; }
+    index :: _elapsed_ms_stack.len - 1;
+    start_ms :: _elapsed_ms_stack[index];
+    _elapsed_ms_stack.len -= 1;
+    elapsed_ms :: os_tick_ms() - start_ms;
+    if !String.is_empty(name) { print_log("% took %ms.\n", name, elapsed_ms); }
+    if index == 0 { array_terminate(_elapsed_ms_stack); }
+    return elapsed_ms;
+}
+
 #private
+_elapsed_ms_stack: [..]f64 #thread_local;
+
 panic_empty :: fn () {
     unreachable;    
 }
