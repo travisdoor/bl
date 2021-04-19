@@ -5756,7 +5756,7 @@ AnalyzeResult analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
             case MIR_TYPE_VOID:
             case MIR_TYPE_FN:
             case MIR_TYPE_FN_GROUP:
-            case MIR_TYPE_NAMED_SCOPE:
+            case MIR_TYPE_NAMED_SCOPE: {
                 char type_name[256];
                 mir_type_to_str(type_name, 256, arg->type, true);
                 builder_msg(BUILDER_MSG_ERROR,
@@ -5766,6 +5766,7 @@ AnalyzeResult analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
                             "Invalid function argument type '%s'.",
                             type_name);
                 return ANALYZE_RESULT(FAILED, 0);
+            }
             default:
                 break;
             }
