@@ -348,6 +348,7 @@ static MirVar *create_var(Context *        cnt,
                           MirBuiltinIdKind builtin_id);
 
 static MirVar *create_var_impl(Context *   cnt,
+                               Ast *       decl_node, // Optional
                                const char *name,
                                MirType *   alloc_type,
                                bool        is_mutable,
@@ -524,6 +525,7 @@ static MirInstr *append_instr_decl_var(Context *        cnt,
                                        MirBuiltinIdKind builtin_id);
 
 static MirInstr *create_instr_decl_var_impl(Context *   cnt,
+                                            Ast *       node, // Optional
                                             const char *name,
                                             MirInstr *  type,
                                             MirInstr *  init,
@@ -531,6 +533,7 @@ static MirInstr *create_instr_decl_var_impl(Context *   cnt,
                                             bool        is_global);
 
 static MirInstr *append_instr_decl_var_impl(Context *   cnt,
+                                            Ast *       node, // Optional
                                             const char *name,
                                             MirInstr *  type,
                                             MirInstr *  init,
@@ -2450,6 +2453,7 @@ MirVar *create_var(Context *        cnt,
 }
 
 MirVar *create_var_impl(Context *   cnt,
+                        Ast *       decl_node, // Optional
                         const char *name,
                         MirType *   alloc_type,
                         bool        is_mutable,
@@ -2464,6 +2468,7 @@ MirVar *create_var_impl(Context *   cnt,
     tmp->is_global         = is_global;
     tmp->ref_count         = 1;
     tmp->linkage_name      = name;
+    tmp->decl_node         = decl_node;
     tmp->is_implicit       = true;
     tmp->emit_llvm         = true;
     push_var(cnt, tmp);
@@ -3523,30 +3528,32 @@ MirInstr *append_instr_decl_var(Context *        cnt,
 }
 
 MirInstr *create_instr_decl_var_impl(Context *   cnt,
+                                     Ast *       node, // Optional
                                      const char *name,
                                      MirInstr *  type,
                                      MirInstr *  init,
                                      bool        is_mutable,
                                      bool        is_global)
 {
-    MirInstrDeclVar *tmp = create_instr(cnt, MIR_INSTR_DECL_VAR, NULL);
+    MirInstrDeclVar *tmp = create_instr(cnt, MIR_INSTR_DECL_VAR, node);
     tmp->base.value.type = cnt->builtin_types->t_void;
     tmp->base.ref_count  = NO_REF_COUNTING;
     tmp->type            = ref_instr(type);
     tmp->init            = ref_instr(init);
-    tmp->var             = create_var_impl(cnt, name, NULL, is_mutable, is_global, false);
+    tmp->var             = create_var_impl(cnt, node, name, NULL, is_mutable, is_global, false);
     SET_IS_NAKED_IF_COMPOUND(init, false);
     return &tmp->base;
 }
 
 MirInstr *append_instr_decl_var_impl(Context *   cnt,
+                                     Ast *       node, // Optional
                                      const char *name,
                                      MirInstr *  type,
                                      MirInstr *  init,
                                      bool        is_mutable,
                                      bool        is_global)
 {
-    MirInstr *tmp = create_instr_decl_var_impl(cnt, name, type, init, is_mutable, is_global);
+    MirInstr *tmp = create_instr_decl_var_impl(cnt, node, name, type, init, is_mutable, is_global);
     if (is_global) {
         push_into_gscope(cnt, tmp);
         analyze_push_back(cnt, tmp);
@@ -4077,7 +4084,7 @@ AnalyzeResult analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
         // Target expression is not allocated object on the stack, so we need to crate
         // temporary variable containing the value and fetch pointer to this variable.
         const char *tmp_var_name = gen_uq_name(IMPL_ANY_EXPR_TMP);
-        toany->expr_tmp = create_var_impl(cnt, tmp_var_name, rtti_type, false, false, false);
+        toany->expr_tmp = create_var_impl(cnt, NULL, tmp_var_name, rtti_type, false, false, false);
     }
 
     // Generate RTTI for expression's type.
@@ -4122,7 +4129,7 @@ AnalyzeResult analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
 
     // This is temporary vaiable used for Any data.
     const char *tmp_var_name = gen_uq_name(IMPL_ANY_TMP);
-    toany->tmp               = create_var_impl(cnt, tmp_var_name, any_type, false, false, false);
+    toany->tmp = create_var_impl(cnt, NULL, tmp_var_name, any_type, false, false, false);
 
     return ANALYZE_RESULT(PASSED, 0);
 }
@@ -4195,6 +4202,7 @@ AnalyzeResult analyze_instr_unroll(Context *cnt, MirInstrUnroll *unroll)
         if (!tmp_var) {
             // no tmp var to unroll from; create one and insert it after call
             tmp_var = create_instr_decl_var_impl(cnt,
+                                                 NULL,
                                                  gen_uq_name(IMPL_UNROLL_TMP),
                                                  NULL,
                                                  src,
@@ -4398,7 +4406,7 @@ SKIP_IMPLICIT:
         // For naked non-compile time compounds we need to generate implicit temp storage to
         // keep all data.
         MirVar *tmp_var =
-            create_var_impl(cnt, gen_uq_name(IMPL_COMPOUND_TMP), type, true, false, false);
+            create_var_impl(cnt, NULL, gen_uq_name(IMPL_COMPOUND_TMP), type, true, false, false);
         cmp->tmp_var = tmp_var;
     }
 
@@ -4587,13 +4595,13 @@ AnalyzeResult analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
         // Prepare tmp array for values
         const char *tmp_name = gen_uq_name(IMPL_VARGS_TMP_ARR);
         MirType *   tmp_type = create_type_array(cnt, NULL, vargs->type, (u32)valc);
-        vargs->arr_tmp       = create_var_impl(cnt, tmp_name, tmp_type, true, false, false);
+        vargs->arr_tmp       = create_var_impl(cnt, NULL, tmp_name, tmp_type, true, false, false);
     }
 
     {
         // Prepare tmp slice for vargs
         const char *tmp_name = gen_uq_name(IMPL_VARGS_TMP);
-        vargs->vargs_tmp     = create_var_impl(cnt, tmp_name, type, true, false, false);
+        vargs->vargs_tmp     = create_var_impl(cnt, NULL, tmp_name, type, true, false, false);
     }
 
     MirInstr **value;
@@ -5739,6 +5747,29 @@ AnalyzeResult analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 
             MirArg *arg = (*arg_ref)->arg;
             BL_ASSERT(arg);
+            BL_ASSERT(arg->type && "Unknown argument type!");
+
+            // Validate arg type
+            switch (arg->type->kind) {
+            case MIR_TYPE_INVALID:
+            case MIR_TYPE_TYPE:
+            case MIR_TYPE_VOID:
+            case MIR_TYPE_FN:
+            case MIR_TYPE_FN_GROUP:
+            case MIR_TYPE_NAMED_SCOPE:
+                char type_name[256];
+                mir_type_to_str(type_name, 256, arg->type, true);
+                builder_msg(BUILDER_MSG_ERROR,
+                            ERR_INVALID_TYPE,
+                            arg->decl_node->location,
+                            BUILDER_CUR_WORD,
+                            "Invalid function argument type '%s'.",
+                            type_name);
+                return ANALYZE_RESULT(FAILED, 0);
+            default:
+                break;
+            }
+
             is_vargs         = arg->type->kind == MIR_TYPE_VARGS ? true : is_vargs;
             has_default_args = arg->value ? true : has_default_args;
             if (is_vargs && i != type_fn->args->size - 1) {
@@ -6422,7 +6453,7 @@ AnalyzeResult analyze_instr_call_loc(Context *cnt, MirInstrCallLoc *loc)
     if (!loc->call_location) return ANALYZE_RESULT(PASSED, 0);
 
     MirType *type = cnt->builtin_types->t_CodeLocation;
-    MirVar * var  = create_var_impl(cnt, IMPL_CALL_LOC, type, false, true, true);
+    MirVar * var  = create_var_impl(cnt, NULL, IMPL_CALL_LOC, type, false, true, true);
     vm_alloc_global(cnt->vm, cnt->assembly, var);
 
     VMStackPtr dest           = vm_read_var(cnt->vm, var);
@@ -7751,7 +7782,7 @@ MirVar *testing_gen_meta(Context *cnt)
     if (cnt->assembly->testing.meta_var) return cnt->assembly->testing.meta_var;
 
     MirType *type = create_type_array(cnt, NULL, cnt->builtin_types->t_TestCase, len);
-    MirVar * var  = create_var_impl(cnt, IMPL_TESTCASES_TMP, type, false, true, true);
+    MirVar * var  = create_var_impl(cnt, NULL, IMPL_TESTCASES_TMP, type, false, true, true);
     vm_alloc_global(cnt->vm, cnt->assembly, var);
 
     cnt->assembly->testing.meta_var = var;
@@ -7890,7 +7921,7 @@ MirVar *_rtti_gen(Context *cnt, MirType *type)
 
 INLINE MirVar *rtti_create_and_alloc_var(Context *cnt, MirType *type)
 {
-    MirVar *var = create_var_impl(cnt, IMPL_RTTI_ENTRY, type, false, true, true);
+    MirVar *var = create_var_impl(cnt, NULL, IMPL_RTTI_ENTRY, type, false, true, true);
     vm_alloc_global(cnt->vm, cnt->assembly, var);
     return var;
 }
@@ -8877,8 +8908,8 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
 
     if (ast_fn_type->data.type_fn.ret_type) {
         set_current_block(cnt, init_block);
-        fn->ret_tmp =
-            append_instr_decl_var_impl(cnt, gen_uq_name(IMPL_RET_TMP), NULL, NULL, true, false);
+        fn->ret_tmp = append_instr_decl_var_impl(
+            cnt, NULL, gen_uq_name(IMPL_RET_TMP), NULL, NULL, true, false);
 
         set_current_block(cnt, cnt->ast.fnctx->exit_block);
         MirInstr *ret_init = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
@@ -9380,7 +9411,8 @@ MirInstr *ast_decl_arg(Context *cnt, Ast *arg)
         if (ast_value->kind == AST_CALL_LOC) {
             value = ast(cnt, ast_value);
         } else {
-            value = append_instr_decl_var_impl(cnt, IMPL_ARG_DEFAULT, type, NULL, false, true);
+            value = append_instr_decl_var_impl(
+                cnt, ast_name, IMPL_ARG_DEFAULT, type, NULL, false, true);
             ast_create_global_initializer(cnt, ast_value, value);
         }
     } else {

@@ -1,8 +1,10 @@
 main :: fn () s32 {
-    #warning "This is warning!"
-    #error "This is error!"
     return 0;
 }
 
+foo :: fn () {
+    bar :: fn () s32 { return 0; };
+    i :: bar();
+}
 
 
