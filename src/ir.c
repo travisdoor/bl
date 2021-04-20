@@ -700,7 +700,6 @@ static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn)
 {
     BL_ASSERT(fn);
     BL_ASSERT(fn->emit_llvm && "Attempt to generate IR prototype of unused function.");
-    // if (!fn->emit_llvm) return NULL;
 #if LLVM_EXCLUDE_UNUSED_SYM
     BL_ASSERT(fn->ref_count);
 #endif
@@ -2964,9 +2963,9 @@ State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
         return STATE_PASSED;
     }
 #if LLVM_EXCLUDE_UNUSED_SYM
+    // Here we can run into trouble, what about local functions used locally in unused parent function???
     if (fn->ref_count == 0) return STATE_PASSED;
 #endif
-
     emit_fn_proto(cnt, fn);
 
     // External functions does not have any body block.
