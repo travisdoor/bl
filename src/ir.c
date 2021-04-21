@@ -80,6 +80,9 @@ typedef struct {
     // intrinsics
     LLVMValueRef intrinsic_memset;
     LLVMValueRef intrinsic_memcpy;
+
+    // stats
+    s64 emit_instruction_count;
 } Context;
 
 static MirVar *     testing_fetch_meta(Context *cnt);
@@ -2994,6 +2997,7 @@ State emit_instr(Context *cnt, MirInstr *instr)
     State state = STATE_PASSED;
     BL_ASSERT(instr->analyzed && "Attempt to emit not-analyzed instruction!");
     if (!mir_type_has_llvm_representation((instr->value.type))) return state;
+
     switch (instr->kind) {
     case MIR_INSTR_INVALID:
         BL_ABORT("Invalid instruction");
@@ -3107,6 +3111,7 @@ State emit_instr(Context *cnt, MirInstr *instr)
     default:
         BL_ABORT("Missing emit instruction!");
     }
+    cnt->emit_instruction_count++;
     return state;
 }
 
@@ -3210,6 +3215,12 @@ void ir_run(Assembly *assembly)
 
     intrinsics_init(&cnt);
 
+    MirInstr *instr;
+    TARRAY_FOREACH(MirInstr *, &assembly->MIR.exported_instrs, instr)
+    {
+        BL_LOG("LLVM entry = %s", mir_instr_name(instr));
+    }
+
     MirInstr *ginstr;
     TARRAY_FOREACH(MirInstr *, &assembly->MIR.global_instrs, ginstr)
     {
@@ -3239,6 +3250,8 @@ void ir_run(Assembly *assembly)
     if (cnt.debug_mode) {
         DI_terminate(&cnt);
     }
+
+    BL_LOG("Generated %d instructions.", cnt.emit_instruction_count);
 
     tlist_terminate(&cnt.incomplete_queue);
     tsa_terminate(&cnt.incomplete_rtti);

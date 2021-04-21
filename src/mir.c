@@ -5345,10 +5345,6 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     BL_ASSERT(fn->linkage_name);
     if (!fn->full_name) fn->full_name = fn->linkage_name;
 
-    if (IS_FLAG(fn->flags, FLAG_ENTRY)) {
-        fn->ref_count = NO_REF_COUNTING;
-    }
-
     // Check build entry function.
     if (IS_FLAG(fn->flags, FLAG_BUILD_ENTRY)) {
         if (fn->type->data.fn.args) {
@@ -5404,9 +5400,6 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
         fn->dyncall.extern_entry = assembly_find_extern(cnt->assembly, intrinsic_name);
         fn->fully_analyzed       = true;
-    } else if (cnt->assembly->target->kind == ASSEMBLY_BUILD_PIPELINE &&
-               IS_FLAG(fn->flags, FLAG_ENTRY)) {
-        // IGNORE BODY OF ENTRY FUNCTION WHEN WE BUILD 'BUILD ENTRY' ASSEMBLY.
     } else {
         // Add entry block of the function into analyze queue.
         MirInstr *entry_block = (MirInstr *)fn->first_block;
@@ -5424,8 +5417,21 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
         analyze_push_front(cnt, entry_block);
     }
 
+    bool schedule_llvm_generation = false;
+    if (IS_FLAG(fn->flags, FLAG_EXPORT)) {
+        schedule_llvm_generation = true;
+        fn->emit_llvm = true;
+        ++fn->ref_count;
+    }
+
+    if (IS_FLAG(fn->flags, FLAG_ENTRY)) {
+        schedule_llvm_generation = true;
+        fn->ref_count = NO_REF_COUNTING;
+    }
+
     // Store test case for later use if it's going to be tested.
     if (IS_FLAG(fn->flags, FLAG_TEST_FN)) {
+        schedule_llvm_generation = true;
         BL_ASSERT(fn->id && "Test case without name!");
 
         if (fn->type->data.fn.args != NULL) {
@@ -5455,11 +5461,6 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
         ++fn->ref_count;
     }
 
-    if (IS_FLAG(fn->flags, FLAG_EXPORT)) {
-        fn->emit_llvm = true;
-        ++fn->ref_count;
-    }
-
     if (fn->id) {
         if (fn->entry->kind == SCOPE_ENTRY_VOID) {
             builder_msg(BUILDER_MSG_ERROR,
@@ -5471,6 +5472,11 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
         }
         commit_fn(cnt, fn);
     }
+    
+    if (schedule_llvm_generation) {
+        tarray_push(&cnt->assembly->MIR.exported_instrs, fn_proto);
+    }
+    
     return ANALYZE_RESULT(PASSED, 0);
 }
 

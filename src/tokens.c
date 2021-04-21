@@ -33,6 +33,7 @@
 void tokens_init(Tokens *tokens)
 {
     tarray_init(&tokens->buf, sizeof(Token));
+    tarray_reserve(&tokens->buf, 512);
 }
 
 void tokens_terminate(Tokens *tokens)

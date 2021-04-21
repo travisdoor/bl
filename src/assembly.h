@@ -139,6 +139,8 @@ typedef struct Assembly {
 
         // Map type ids to RTTI variables.
         THashTable RTTI_table;
+        // Instructions for exported symbols (function protorypes).
+        TArray exported_instrs;
     } MIR;
 
     struct {

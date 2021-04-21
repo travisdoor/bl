@@ -247,7 +247,7 @@ struct MirFn {
 
     LLVMValueRef llvm_value;
     bool         fully_analyzed;
-    bool         emit_llvm;
+    bool         emit_llvm; // @CLEANUP is this needed?
     bool         is_global;
     s32          ref_count;
 
@@ -440,7 +440,7 @@ struct MirVar {
     bool               is_global;
     bool               is_implicit;
     bool               is_struct_typedef;
-    bool               emit_llvm;
+    bool               emit_llvm; // @CLEANUP is this needed?
     bool               analyzed;
 };
 
@@ -470,7 +470,7 @@ struct MirInstrBlock {
     MirInstr *  terminal;
     // Optional; when not set block is implicit global block.
     MirFn *owner_fn;
-    bool   emit_llvm;
+    bool   emit_llvm; // @CLEANUP is this needed?
 };
 
 struct MirInstrDeclVar {

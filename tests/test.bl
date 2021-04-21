@@ -2,9 +2,13 @@ main :: fn () s32 {
     return 0;
 }
 
-foo :: fn () {
-    bar :: fn () s32 { return 0; };
-    i :: bar();
-}
+foo :: fn () #export {}
+
+bar :: fn () #test {}
+
+//foo :: fn () {
+//    bar :: fn () s32 { return 0; };
+//    i :: bar();
+//}
 
 
