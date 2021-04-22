@@ -59,6 +59,8 @@ TSMALL_ARRAY_TYPE(LLVMMetadata, LLVMMetadataRef, 16);
 typedef struct {
     Assembly *assembly;
 
+    TList queue;
+
     LLVMContextRef    llvm_cnt;
     LLVMModuleRef     llvm_module;
     LLVMTargetDataRef llvm_td;
@@ -218,6 +220,13 @@ static INLINE MirInstr *pop_front_incomplete(Context *cnt)
     return instr;
 }
 
+static INLINE MirInstr *push_back(Context *cnt, MirInstr *instr)
+{
+    BL_ASSERT(instr && "Attempt to push null instruction into generation queue!");
+    tlist_push_back(&cnt->queue, instr);
+    return instr;
+}
+
 static INLINE LLVMTypeRef get_type(Context *cnt, MirType *t)
 {
     BL_ASSERT(t->llvm_type && "Invalid type reference for LLVM!");
@@ -267,6 +276,18 @@ static INLINE LLVMBasicBlockRef emit_basic_block(Context *cnt, MirInstrBlock *bl
         llvm_block = LLVMValueAsBasicBlock(block->base.llvm_value);
     }
     return llvm_block;
+}
+
+static void process_queue(Context *cnt)
+{
+    MirInstr *instr = NULL;
+    TList *   queue = &cnt->queue;
+    while (!tlist_empty(queue)) {
+        instr = tlist_front(MirInstr *, queue);
+        tlist_pop_front(queue);
+        BL_ASSERT(instr);
+        BL_LOG("LLVM emit = %s", mir_instr_name(instr));
+    }
 }
 
 const char *get_intrinsic(const char *name)
@@ -3205,6 +3226,7 @@ void ir_run(Assembly *assembly)
     thtbl_init(&cnt.gstring_cache, sizeof(LLVMValueRef), 1024);
     tsa_init(&cnt.incomplete_rtti);
     tlist_init(&cnt.incomplete_queue, sizeof(MirInstr *));
+    tlist_init(&cnt.queue, sizeof(MirInstr *));
 
     if (cnt.debug_mode) {
         DI_init(&cnt);
@@ -3218,8 +3240,10 @@ void ir_run(Assembly *assembly)
     MirInstr *instr;
     TARRAY_FOREACH(MirInstr *, &assembly->MIR.exported_instrs, instr)
     {
-        BL_LOG("LLVM entry = %s", mir_instr_name(instr));
+        push_back(&cnt, instr);
     }
+
+    process_queue(&cnt);
 
     MirInstr *ginstr;
     TARRAY_FOREACH(MirInstr *, &assembly->MIR.global_instrs, ginstr)
@@ -3252,7 +3276,7 @@ void ir_run(Assembly *assembly)
     }
 
     BL_LOG("Generated %d instructions.", cnt.emit_instruction_count);
-
+    tlist_terminate(&cnt.queue);
     tlist_terminate(&cnt.incomplete_queue);
     tsa_terminate(&cnt.incomplete_rtti);
     thtbl_terminate(&cnt.gstring_cache);
