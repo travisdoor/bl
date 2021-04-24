@@ -246,8 +246,8 @@ struct MirFn {
     const char *full_name;
 
     LLVMValueRef llvm_value;
-    bool         fully_analyzed;
     bool         emit_llvm; // @CLEANUP is this needed?
+    bool         fully_analyzed;
     bool         is_global;
     s32          ref_count;
 

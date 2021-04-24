@@ -149,7 +149,7 @@ static State           emit_instr_unroll(Context *cnt, MirInstrUnroll *unroll);
 static State           emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
 static State           emit_instr_toany(Context *cnt, MirInstrToAny *toany);
 static State           emit_instr_call_loc(Context *cnt, MirInstrCallLoc *loc);
-static LLVMValueRef    emit_fn_proto(Context *cnt, MirFn *fn);
+static LLVMValueRef    emit_fn_proto(Context *cnt, MirFn *fn, bool schedule_full_generation);
 static void            emit_allocas(Context *cnt, MirFn *fn);
 static void            emit_incomplete(Context *cnt);
 
@@ -286,7 +286,7 @@ static void process_queue(Context *cnt)
         instr = tlist_front(MirInstr *, queue);
         tlist_pop_front(queue);
         BL_ASSERT(instr);
-        BL_LOG("LLVM emit = %s", mir_instr_name(instr));
+        emit_instr(cnt, instr);
     }
 }
 
@@ -720,7 +720,7 @@ void emit_DI_var(Context *cnt, MirVar *var)
     }
 }
 
-static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn)
+static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn, bool schedule_full_generation)
 {
     BL_ASSERT(fn);
     BL_ASSERT(fn->emit_llvm && "Attempt to generate IR prototype of unused function.");
@@ -738,10 +738,9 @@ static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn)
     }
 
     BL_ASSERT(linkage_name && "Invalid function name!");
-
     fn->llvm_value = LLVMGetNamedFunction(cnt->llvm_module, linkage_name);
     if (fn->llvm_value) return fn->llvm_value;
-
+    BL_LOG("LLVM emit fn = %s", linkage_name);
     fn->llvm_value = LLVMAddFunction(cnt->llvm_module, linkage_name, get_type(cnt, fn->type));
 
     // Setup attributes for sret.
@@ -786,6 +785,10 @@ static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn)
         LLVMSetVisibility(fn->llvm_value, LLVMHiddenVisibility);
     }
 
+    // Schedule function generation
+    MirInstr *instr_fn_proto = fn->prototype;
+    BL_ASSERT(instr_fn_proto && "Missing function prototype!");
+    push_back(cnt, instr_fn_proto);
     return fn->llvm_value;
 }
 
@@ -848,7 +851,7 @@ State emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
         break;
     }
     case SCOPE_ENTRY_FN: {
-        ref->base.llvm_value = emit_fn_proto(cnt, entry->data.fn);
+        ref->base.llvm_value = emit_fn_proto(cnt, entry->data.fn, true);
         break;
     }
     default:
@@ -909,7 +912,7 @@ State emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
     MirFn *abort_fn = unr->abort_fn;
     BL_ASSERT(abort_fn);
-    if (!abort_fn->llvm_value) emit_fn_proto(cnt, abort_fn);
+    if (!abort_fn->llvm_value) emit_fn_proto(cnt, abort_fn, true);
     if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unr->base);
     LLVMBuildCall(cnt->llvm_builder, abort_fn->llvm_value, NULL, 0, "");
     return STATE_PASSED;
@@ -1599,7 +1602,7 @@ LLVMValueRef testing_emit_meta_case(Context *cnt, MirFn *fn)
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
-    tsa_push_LLVMValue(&llvm_vals, emit_fn_proto(cnt, fn));
+    tsa_push_LLVMValue(&llvm_vals, emit_fn_proto(cnt, fn, true));
     tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, fn->id->str, strlen(fn->id->str)));
 
     LLVMValueRef llvm_result =
@@ -1767,7 +1770,7 @@ State emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
         MirInstrFnProto *fn_proto = (MirInstrFnProto *)addrof->src;
         MirFn *          fn       = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
         BL_MAGIC_ASSERT(fn);
-        addrof->base.llvm_value = emit_fn_proto(cnt, fn);
+        addrof->base.llvm_value = emit_fn_proto(cnt, fn, true);
     } else {
         addrof->base.llvm_value = addrof->src->llvm_value;
     }
@@ -2369,7 +2372,7 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
 
     MirFn *callee_fn = mir_is_comptime(callee) ? MIR_CEV_READ_AS(MirFn *, &callee->value) : NULL;
     LLVMValueRef llvm_called_fn =
-        callee->llvm_value ? callee->llvm_value : emit_fn_proto(cnt, callee_fn);
+        callee->llvm_value ? callee->llvm_value : emit_fn_proto(cnt, callee_fn, true);
 
     bool       has_byval_arg = false;
     const bool has_args      = call->args->size > 0;
@@ -2727,7 +2730,7 @@ State emit_instr_const(Context *cnt, MirInstrConst *c)
     case MIR_TYPE_FN: {
         MirFn *fn = MIR_CEV_READ_AS(MirFn *, &c->base.value);
         BL_MAGIC_ASSERT(fn);
-        llvm_value = emit_fn_proto(cnt, fn);
+        llvm_value = emit_fn_proto(cnt, fn, true);
         break;
     }
 
@@ -2983,6 +2986,7 @@ State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
     BL_MAGIC_ASSERT(fn);
 
+#if 0
     // unused function
     if (!fn->emit_llvm) {
         return STATE_PASSED;
@@ -2990,8 +2994,8 @@ State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 #if LLVM_EXCLUDE_UNUSED_SYM
     if (fn->ref_count == 0) return STATE_PASSED;
 #endif
-
-    emit_fn_proto(cnt, fn);
+#endif
+    emit_fn_proto(cnt, fn, false);
 
     // External functions does not have any body block.
     if (IS_NOT_FLAG(fn->flags, FLAG_EXTERN) && IS_NOT_FLAG(fn->flags, FLAG_INTRINSIC)) {
@@ -3245,11 +3249,13 @@ void ir_run(Assembly *assembly)
 
     process_queue(&cnt);
 
+#if 0
     MirInstr *ginstr;
     TARRAY_FOREACH(MirInstr *, &assembly->MIR.global_instrs, ginstr)
     {
         emit_instr(&cnt, ginstr);
     }
+#endif
 
     emit_incomplete(&cnt);
 
