@@ -718,13 +718,6 @@ void emit_DI_var(Context *cnt, MirVar *var)
 
 LLVMValueRef emit_global_var_proto(Context *cnt, MirVar *var, bool schedule_full_generation)
 {
-<<<<<<< HEAD
-    BL_ASSERT(fn);
-    BL_ASSERT(fn->emit_llvm && "Attempt to generate IR prototype of unused function.");
-#if LLVM_EXCLUDE_UNUSED_SYM
-    BL_ASSERT(fn->ref_count);
-#endif
-=======
     BL_ASSERT(var);
     if (var->llvm_value) return var->llvm_value;
 
@@ -734,7 +727,6 @@ LLVMValueRef emit_global_var_proto(Context *cnt, MirVar *var, bool schedule_full
         BL_ASSERT(instr_init && "Missing initializer block reference for IR global variable!");
         push_back(cnt, instr_init);
     }
->>>>>>> llvm-ir-new
 
     LLVMTypeRef llvm_type = var->value.type->llvm_type;
     var->llvm_value       = LLVMAddGlobal(cnt->llvm_module, llvm_type, var->linkage_name);
@@ -3008,21 +3000,8 @@ State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
     MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
     BL_MAGIC_ASSERT(fn);
-<<<<<<< HEAD
-
-    // unused function
-    if (!fn->emit_llvm) {
-        return STATE_PASSED;
-    }
-#if LLVM_EXCLUDE_UNUSED_SYM
-    // Here we can run into trouble, what about local functions used locally in unused parent function???
-    if (fn->ref_count == 0) return STATE_PASSED;
-#endif
-    emit_fn_proto(cnt, fn);
-=======
     BL_ASSERT(fn->ref_count && "Attempt to generate unused function!");
     emit_fn_proto(cnt, fn, false);
->>>>>>> llvm-ir-new
 
     // External functions does not have any body block.
     if (IS_NOT_FLAG(fn->flags, FLAG_EXTERN) && IS_NOT_FLAG(fn->flags, FLAG_INTRINSIC)) {

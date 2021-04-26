@@ -109,10 +109,6 @@
 
 #if BL_DEBUG
 #define ASSERT_ON_CMP_ERROR 0
-<<<<<<< HEAD
-#define LLVM_EXCLUDE_UNUSED_SYM 1
-=======
->>>>>>> llvm-ir-new
 #define BL_MAGIC_ENABLE 1
 #else
 #define ASSERT_ON_CMP_ERROR 0

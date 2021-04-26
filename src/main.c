@@ -246,6 +246,8 @@ int main(s32 argc, char *argv[])
     char *exec_dir  = NULL;
     char *conf_file = NULL;
 
+    const f64 start_time_ms = get_tick_ms();
+
     exec_dir = get_exec_dir();
     builder_init(&opt.builder, exec_dir);
     // Just create default empty target assembly options here and setup it later depending on user
@@ -307,11 +309,9 @@ int main(s32 argc, char *argv[])
         parse_input_files(&opt, argc, argv);
     }
 
-    state = builder_compile(opt.target);
-
-    char date[26];
-    date_time(date, 26, "%d-%m-%Y %H:%M:%S");
-    builder_note("Finished at %s", date);
+    state                = builder_compile(opt.target);
+    const f64 runtime_ms = get_tick_ms() - start_time_ms;
+    builder_note("Finished in %.3fs.", runtime_ms * 0.001);
 
 RELEASE:
     builder_terminate();
