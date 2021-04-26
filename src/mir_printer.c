@@ -914,10 +914,7 @@ void print_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     BL_ASSERT(fn);
 
     fprintf(cnt->stream, "\n");
-
     if (fn_proto->base.analyzed) fprintf(cnt->stream, "/* analyzed */\n");
-    if (!fn->emit_llvm) fprintf(cnt->stream, "/* no LLVM */\n");
-
     if (fn->linkage_name)
         fprintf(cnt->stream, "@%s ", fn->linkage_name);
     else

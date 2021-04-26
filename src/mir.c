@@ -361,7 +361,6 @@ static MirFn *create_fn(Context *        cnt,
                         const char *     linkage_name,
                         u32              flags,
                         MirInstrFnProto *prototype,
-                        bool             emit_llvm,
                         bool             is_global,
                         MirBuiltinIdKind builtin_id);
 
@@ -2481,7 +2480,6 @@ MirFn *create_fn(Context *        cnt,
                  const char *     linkage_name,
                  u32              flags,
                  MirInstrFnProto *prototype,
-                 bool             emit_llvm,
                  bool             is_global,
                  MirBuiltinIdKind builtin_id)
 {
@@ -2493,7 +2491,6 @@ MirFn *create_fn(Context *        cnt,
     tmp->flags        = flags;
     tmp->decl_node    = node;
     tmp->prototype    = &prototype->base;
-    tmp->emit_llvm    = emit_llvm;
     tmp->is_global    = is_global;
     tmp->builtin_id   = builtin_id;
     return tmp;
@@ -2901,7 +2898,6 @@ MirInstrBlock *create_block(Context *cnt, const char *name)
     MirInstrBlock *tmp   = create_instr(cnt, MIR_INSTR_BLOCK, NULL);
     tmp->base.value.type = cnt->builtin_types->t_void;
     tmp->name            = name;
-    tmp->emit_llvm       = true;
     tmp->owner_fn        = NULL;
     return tmp;
 }
@@ -2936,7 +2932,6 @@ MirInstrBlock *append_global_block(Context *cnt, const char *name)
     tmp->base.value.type        = cnt->builtin_types->t_void;
     tmp->base.value.is_comptime = true;
     tmp->name                   = name;
-    tmp->emit_llvm              = true;
     ref_instr(&tmp->base);
     push_into_gscope(cnt, &tmp->base);
     analyze_push_back(cnt, &tmp->base);
@@ -2955,7 +2950,12 @@ append_instr_set_initializer(Context *cnt, Ast *node, TSmallArray_InstrPtr *dest
     MirInstr *dest;
     TSA_FOREACH(tmp->dests, dest)
     {
+        BL_ASSERT(dest && dest->kind == MIR_INSTR_DECL_VAR && "Expected variable declaration!");
         ref_instr(dest);
+        MirInstrDeclVar *dest_var = (MirInstrDeclVar *)dest;
+        MirVar *         var      = dest_var->var;
+        BL_ASSERT(var && "Missing variable!");
+        var->initializer_block = (MirInstr *)ast_current_block(cnt);
     }
     append_current_block(cnt, &tmp->base);
     MirInstrBlock *block = ast_current_block(cnt);
@@ -4558,10 +4558,6 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
         AnalyzeResult state = analyze_var(cnt, var);
         if (state.state != ANALYZE_PASSED) return state;
 
-        // Typedef resolver cannot be generated into LLVM IR because TypeType has no LLVM
-        // representation and should live only during compile time of MIR.
-        si->base.owner_block->emit_llvm = var->emit_llvm;
-
         if (!var->value.is_comptime) {
             // Global variables which are not compile time constants are allocated
             // on the stack, one option is to do allocation every time when we
@@ -5420,13 +5416,12 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     bool schedule_llvm_generation = false;
     if (IS_FLAG(fn->flags, FLAG_EXPORT)) {
         schedule_llvm_generation = true;
-        fn->emit_llvm = true;
         ++fn->ref_count;
     }
 
     if (IS_FLAG(fn->flags, FLAG_ENTRY)) {
         schedule_llvm_generation = true;
-        fn->ref_count = NO_REF_COUNTING;
+        fn->ref_count            = NO_REF_COUNTING;
     }
 
     // Store test case for later use if it's going to be tested.
@@ -5455,9 +5450,6 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
         }
 
         testing_add_test_case(cnt, fn);
-
-        // To be sure that test case will be generated in LLVM.
-        fn->emit_llvm = true;
         ++fn->ref_count;
     }
 
@@ -5472,11 +5464,11 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
         }
         commit_fn(cnt, fn);
     }
-    
+
     if (schedule_llvm_generation) {
         tarray_push(&cnt->assembly->MIR.exported_instrs, fn_proto);
     }
-    
+
     return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -6877,7 +6869,6 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
             // will not work for functions called by pointer in obtained in
             // runtime
             ++fn->ref_count;
-            fn->emit_llvm = true;
         }
     }
 
@@ -8868,7 +8859,6 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
                           linkage_name,
                           (u32)flags,
                           fn_proto,
-                          true,
                           is_global,
                           builtin_id);
 
@@ -9201,7 +9191,6 @@ static void ast_decl_fn(Context *cnt, Ast *ast_fn)
     // check main
     if (is_builtin(ast_name, MIR_BUILTIN_ID_MAIN)) {
         // This is reported as an error.
-        fn->emit_llvm               = true;
         cnt->assembly->vm_run.entry = fn;
         if (scope_is_subtree_of_kind(ast_name->owner_scope, SCOPE_PRIVATE)) {
             builder_msg(BUILDER_MSG_ERROR,
@@ -9727,7 +9716,7 @@ MirInstr *ast_create_impl_fn_call(Context *   cnt,
     fn_proto->value.type      = fn_type;
 
     MirFn *fn = create_fn(
-        cnt, NULL, NULL, fn_name, 0, (MirInstrFnProto *)fn_proto, false, true, MIR_BUILTIN_ID_NONE);
+        cnt, NULL, NULL, fn_name, 0, (MirInstrFnProto *)fn_proto, true, MIR_BUILTIN_ID_NONE);
 
     MIR_CEV_WRITE_AS(MirFn *, &fn_proto->value, fn);
 
