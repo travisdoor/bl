@@ -59,6 +59,8 @@ TSMALL_ARRAY_TYPE(LLVMMetadata, LLVMMetadataRef, 16);
 typedef struct {
     Assembly *assembly;
 
+    TList queue;
+
     LLVMContextRef    llvm_cnt;
     LLVMModuleRef     llvm_module;
     LLVMTargetDataRef llvm_td;
@@ -80,10 +82,20 @@ typedef struct {
     // intrinsics
     LLVMValueRef intrinsic_memset;
     LLVMValueRef intrinsic_memcpy;
+
+    // stats
+    s64 emit_instruction_count;
 } Context;
 
+// =================================================================================================
+// Tests
+// =================================================================================================
 static MirVar *     testing_fetch_meta(Context *cnt);
 static LLVMValueRef testing_emit_meta_case(Context *cnt, MirFn *fn);
+
+// =================================================================================================
+// RTTI
+// =================================================================================================
 static LLVMValueRef rtti_emit(Context *cnt, MirType *type);
 static void         rtti_satisfy_incomplete(Context *cnt, RTTIIncomplete *incomplete);
 static LLVMValueRef _rtti_emit(Context *cnt, MirType *type);
@@ -107,46 +119,56 @@ static LLVMValueRef rtti_emit_fn_args_slice(Context *cnt, TSmallArray_ArgPtr *ar
 static LLVMValueRef rtti_emit_fn_group(Context *cnt, MirType *type);
 static LLVMValueRef rtti_emit_fn_slice(Context *cnt, TSmallArray_TypePtr *fns);
 static LLVMValueRef rtti_emit_fn_array(Context *cnt, TSmallArray_TypePtr *fns);
-static void         emit_DI_fn(Context *cnt, MirFn *fn);
-static void         emit_DI_var(Context *cnt, MirVar *var);
-static State        emit_instr(Context *cnt, MirInstr *instr);
+
+// =================================================================================================
+// Debug info
+// =================================================================================================
+static void            emit_DI_fn(Context *cnt, MirFn *fn);
+static void            emit_DI_var(Context *cnt, MirVar *var);
+static State           emit_instr(Context *cnt, MirInstr *instr);
 static LLVMMetadataRef DI_type_init(Context *cnt, MirType *type);
 static LLVMMetadataRef DI_complete_type(Context *cnt, MirType *type);
 static LLVMMetadataRef DI_scope_init(Context *cnt, Scope *scope);
 static LLVMMetadataRef DI_unit_init(Context *cnt, Unit *unit);
-static LLVMValueRef    emit_const_string(Context *cnt, const char *str, usize len);
-static State           emit_instr_binop(Context *cnt, MirInstrBinop *binop);
-static State           emit_instr_phi(Context *cnt, MirInstrPhi *phi);
-static State           emit_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
-static State           emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
-static State           emit_instr_test_cases(Context *cnt, MirInstrTestCases *tc);
-static State           emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
-static State           emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref);
-static State           emit_instr_cast(Context *cnt, MirInstrCast *cast);
-static State           emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
-static State           emit_instr_unop(Context *cnt, MirInstrUnop *unop);
-static State           emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
-static State           emit_instr_store(Context *cnt, MirInstrStore *store);
-static State           emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
-static State           emit_instr_block(Context *cnt, MirInstrBlock *block);
-static State           emit_instr_br(Context *cnt, MirInstrBr *br);
-static State           emit_instr_switch(Context *cnt, MirInstrSwitch *sw);
-static State           emit_instr_const(Context *cnt, MirInstrConst *c);
-static State           emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg);
-static State           emit_instr_cond_br(Context *cnt, MirInstrCondBr *br);
-static State           emit_instr_ret(Context *cnt, MirInstrRet *ret);
-static State           emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl);
-static State           emit_instr_load(Context *cnt, MirInstrLoad *load);
-static State           emit_instr_call(Context *cnt, MirInstrCall *call);
-static State           emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
-static State           emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
-static State           emit_instr_unroll(Context *cnt, MirInstrUnroll *unroll);
-static State           emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
-static State           emit_instr_toany(Context *cnt, MirInstrToAny *toany);
-static State           emit_instr_call_loc(Context *cnt, MirInstrCallLoc *loc);
-static LLVMValueRef    emit_fn_proto(Context *cnt, MirFn *fn);
-static void            emit_allocas(Context *cnt, MirFn *fn);
-static void            emit_incomplete(Context *cnt);
+
+// =================================================================================================
+// Instruction emit
+// =================================================================================================
+static LLVMValueRef emit_const_string(Context *cnt, const char *str, usize len);
+static State        emit_instr_binop(Context *cnt, MirInstrBinop *binop);
+static State        emit_instr_phi(Context *cnt, MirInstrPhi *phi);
+static State        emit_instr_set_initializer(Context *cnt, MirInstrSetInitializer *si);
+static State        emit_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info);
+static State        emit_instr_test_cases(Context *cnt, MirInstrTestCases *tc);
+static State        emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref);
+static State        emit_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef *ref);
+static State        emit_instr_cast(Context *cnt, MirInstrCast *cast);
+static State        emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof);
+static State        emit_instr_unop(Context *cnt, MirInstrUnop *unop);
+static State        emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr);
+static State        emit_instr_store(Context *cnt, MirInstrStore *store);
+static State        emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto);
+static State        emit_instr_block(Context *cnt, MirInstrBlock *block);
+static State        emit_instr_br(Context *cnt, MirInstrBr *br);
+static State        emit_instr_switch(Context *cnt, MirInstrSwitch *sw);
+static State        emit_instr_const(Context *cnt, MirInstrConst *c);
+static State        emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg);
+static State        emit_instr_cond_br(Context *cnt, MirInstrCondBr *br);
+static State        emit_instr_ret(Context *cnt, MirInstrRet *ret);
+static State        emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl);
+static State        emit_instr_load(Context *cnt, MirInstrLoad *load);
+static State        emit_instr_call(Context *cnt, MirInstrCall *call);
+static State        emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr);
+static State        emit_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_ptr);
+static State        emit_instr_unroll(Context *cnt, MirInstrUnroll *unroll);
+static State        emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
+static State        emit_instr_toany(Context *cnt, MirInstrToAny *toany);
+static State        emit_instr_call_loc(Context *cnt, MirInstrCallLoc *loc);
+
+static LLVMValueRef emit_global_var_proto(Context *cnt, MirVar *var, bool schedule_full_generation);
+static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn, bool schedule_full_generation);
+static void         emit_allocas(Context *cnt, MirFn *fn);
+static void         emit_incomplete(Context *cnt);
 
 static void emit_instr_compound(Context *cnt, LLVMValueRef llvm_dest, MirInstrCompound *cmp);
 static LLVMValueRef _emit_instr_compound_zero_initialized(Context *         cnt,
@@ -215,6 +237,13 @@ static INLINE MirInstr *pop_front_incomplete(Context *cnt)
     return instr;
 }
 
+static INLINE MirInstr *push_back(Context *cnt, MirInstr *instr)
+{
+    BL_ASSERT(instr && "Attempt to push null instruction into generation queue!");
+    tlist_push_back(&cnt->queue, instr);
+    return instr;
+}
+
 static INLINE LLVMTypeRef get_type(Context *cnt, MirType *t)
 {
     BL_ASSERT(t->llvm_type && "Invalid type reference for LLVM!");
@@ -230,27 +259,6 @@ static INLINE bool is_initialized(LLVMValueRef constant)
     return constant && LLVMGetInitializer(constant);
 }
 
-static INLINE LLVMValueRef emit_global_var_proto(Context *cnt, MirVar *var)
-{
-    BL_ASSERT(var);
-    if (var->llvm_value) return var->llvm_value;
-
-    LLVMTypeRef llvm_type = var->value.type->llvm_type;
-    var->llvm_value       = LLVMAddGlobal(cnt->llvm_module, llvm_type, var->linkage_name);
-
-    LLVMSetGlobalConstant(var->llvm_value, !var->is_mutable);
-
-    // Linkage should be later set by user.
-    LLVMSetLinkage(var->llvm_value, LLVMPrivateLinkage);
-    LLVMSetAlignment(var->llvm_value, (unsigned)var->value.type->alignment);
-
-    if (IS_FLAG(var->flags, FLAG_THREAD_LOCAL)) {
-        LLVMSetThreadLocalMode(var->llvm_value, LLVMGeneralDynamicTLSModel);
-    }
-
-    return var->llvm_value;
-}
-
 static INLINE LLVMBasicBlockRef emit_basic_block(Context *cnt, MirInstrBlock *block)
 {
     if (!block) return NULL;
@@ -264,6 +272,18 @@ static INLINE LLVMBasicBlockRef emit_basic_block(Context *cnt, MirInstrBlock *bl
         llvm_block = LLVMValueAsBasicBlock(block->base.llvm_value);
     }
     return llvm_block;
+}
+
+static void process_queue(Context *cnt)
+{
+    MirInstr *instr = NULL;
+    TList *   queue = &cnt->queue;
+    while (!tlist_empty(queue)) {
+        instr = tlist_front(MirInstr *, queue);
+        tlist_pop_front(queue);
+        BL_ASSERT(instr);
+        emit_instr(cnt, instr);
+    }
 }
 
 const char *get_intrinsic(const char *name)
@@ -696,14 +716,45 @@ void emit_DI_var(Context *cnt, MirVar *var)
     }
 }
 
-static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn)
+LLVMValueRef emit_global_var_proto(Context *cnt, MirVar *var, bool schedule_full_generation)
 {
+<<<<<<< HEAD
     BL_ASSERT(fn);
     BL_ASSERT(fn->emit_llvm && "Attempt to generate IR prototype of unused function.");
 #if LLVM_EXCLUDE_UNUSED_SYM
     BL_ASSERT(fn->ref_count);
 #endif
+=======
+    BL_ASSERT(var);
+    if (var->llvm_value) return var->llvm_value;
 
+    if (schedule_full_generation) {
+        // Push initializer.
+        MirInstr *instr_init = var->initializer_block;
+        BL_ASSERT(instr_init && "Missing initializer block reference for IR global variable!");
+        push_back(cnt, instr_init);
+    }
+>>>>>>> llvm-ir-new
+
+    LLVMTypeRef llvm_type = var->value.type->llvm_type;
+    var->llvm_value       = LLVMAddGlobal(cnt->llvm_module, llvm_type, var->linkage_name);
+
+    LLVMSetGlobalConstant(var->llvm_value, !var->is_mutable);
+
+    // Linkage should be later set by user.
+    LLVMSetLinkage(var->llvm_value, LLVMPrivateLinkage);
+    LLVMSetAlignment(var->llvm_value, (unsigned)var->value.type->alignment);
+
+    if (IS_FLAG(var->flags, FLAG_THREAD_LOCAL)) {
+        LLVMSetThreadLocalMode(var->llvm_value, LLVMGeneralDynamicTLSModel);
+    }
+
+    return var->llvm_value;
+}
+
+LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn, bool schedule_full_generation)
+{
+    BL_ASSERT(fn);
     const char *linkage_name = NULL;
     if (IS_NOT_FLAG(fn->flags, FLAG_INTRINSIC)) {
         linkage_name = fn->linkage_name;
@@ -713,11 +764,16 @@ static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn)
     }
 
     BL_ASSERT(linkage_name && "Invalid function name!");
-
     fn->llvm_value = LLVMGetNamedFunction(cnt->llvm_module, linkage_name);
     if (fn->llvm_value) return fn->llvm_value;
-
     fn->llvm_value = LLVMAddFunction(cnt->llvm_module, linkage_name, get_type(cnt, fn->type));
+
+    if (schedule_full_generation) {
+        // Push function prototype instruction into generation queue.
+        MirInstr *instr_fn_proto = fn->prototype;
+        BL_ASSERT(instr_fn_proto && "Missing function prototype!");
+        push_back(cnt, instr_fn_proto);
+    }
 
     // Setup attributes for sret.
     if (fn->type->data.fn.has_sret) {
@@ -816,14 +872,14 @@ State emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     case SCOPE_ENTRY_VAR: {
         MirVar *var = entry->data.var;
         if (var->is_global) {
-            ref->base.llvm_value = emit_global_var_proto(cnt, var);
+            ref->base.llvm_value = emit_global_var_proto(cnt, var, true);
         } else {
             ref->base.llvm_value = var->llvm_value;
         }
         break;
     }
     case SCOPE_ENTRY_FN: {
-        ref->base.llvm_value = emit_fn_proto(cnt, entry->data.fn);
+        ref->base.llvm_value = emit_fn_proto(cnt, entry->data.fn, true);
         break;
     }
     default:
@@ -839,7 +895,7 @@ State emit_instr_decl_direct_ref(Context UNUSED(*cnt), MirInstrDeclDirectRef *re
     MirVar *var = ((MirInstrDeclVar *)ref->ref)->var;
     BL_ASSERT(var);
     if (var->is_global) {
-        ref->base.llvm_value = emit_global_var_proto(cnt, var);
+        ref->base.llvm_value = emit_global_var_proto(cnt, var, true);
     } else {
         ref->base.llvm_value = var->llvm_value;
     }
@@ -884,7 +940,7 @@ State emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
 {
     MirFn *abort_fn = unr->abort_fn;
     BL_ASSERT(abort_fn);
-    if (!abort_fn->llvm_value) emit_fn_proto(cnt, abort_fn);
+    if (!abort_fn->llvm_value) emit_fn_proto(cnt, abort_fn, true);
     if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unr->base);
     LLVMBuildCall(cnt->llvm_builder, abort_fn->llvm_value, NULL, 0, "");
     return STATE_PASSED;
@@ -1574,7 +1630,7 @@ LLVMValueRef testing_emit_meta_case(Context *cnt, MirFn *fn)
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
-    tsa_push_LLVMValue(&llvm_vals, emit_fn_proto(cnt, fn));
+    tsa_push_LLVMValue(&llvm_vals, emit_fn_proto(cnt, fn, true));
     tsa_push_LLVMValue(&llvm_vals, emit_const_string(cnt, fn->id->str, strlen(fn->id->str)));
 
     LLVMValueRef llvm_result =
@@ -1742,7 +1798,7 @@ State emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
         MirInstrFnProto *fn_proto = (MirInstrFnProto *)addrof->src;
         MirFn *          fn       = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
         BL_MAGIC_ASSERT(fn);
-        addrof->base.llvm_value = emit_fn_proto(cnt, fn);
+        addrof->base.llvm_value = emit_fn_proto(cnt, fn, true);
     } else {
         addrof->base.llvm_value = addrof->src->llvm_value;
     }
@@ -2344,7 +2400,7 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
 
     MirFn *callee_fn = mir_is_comptime(callee) ? MIR_CEV_READ_AS(MirFn *, &callee->value) : NULL;
     LLVMValueRef llvm_called_fn =
-        callee->llvm_value ? callee->llvm_value : emit_fn_proto(cnt, callee_fn);
+        callee->llvm_value ? callee->llvm_value : emit_fn_proto(cnt, callee_fn, true);
 
     bool       has_byval_arg = false;
     const bool has_args      = call->args->size > 0;
@@ -2483,9 +2539,8 @@ State emit_instr_set_initializer(Context UNUSED(*cnt), MirInstrSetInitializer *s
     TSA_FOREACH(si->dests, dest)
     {
         MirVar *var = ((MirInstrDeclVar *)dest)->var;
-#if LLVM_EXCLUDE_UNUSED_SYM
         if (var->ref_count == 0) return STATE_PASSED;
-#endif
+
         BL_ASSERT(var->llvm_value);
         LLVMValueRef llvm_init_value = si->src->llvm_value;
         if (!llvm_init_value) {
@@ -2502,9 +2557,7 @@ State emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
     MirVar *var = decl->var;
     BL_ASSERT(var);
-#if LLVM_EXCLUDE_UNUSED_SYM
     if (var->ref_count == 0) return STATE_PASSED;
-#endif
 
     // Implicit variables are not supposed to have debug info, but even non-implicit ones could have
     // missing decl_node, implicit in this case means it's just not explicitly inserted into scope,
@@ -2517,7 +2570,7 @@ State emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     if (!mir_type_has_llvm_representation(var->value.type)) return STATE_PASSED;
     if (var->is_global) {
         // Global variables use set-initializer instruction for initialization.
-        emit_global_var_proto(cnt, var);
+        emit_global_var_proto(cnt, var, false);
 
         if (emit_DI) {
             emit_DI_instr_loc(cnt, &decl->base);
@@ -2702,7 +2755,7 @@ State emit_instr_const(Context *cnt, MirInstrConst *c)
     case MIR_TYPE_FN: {
         MirFn *fn = MIR_CEV_READ_AS(MirFn *, &c->base.value);
         BL_MAGIC_ASSERT(fn);
-        llvm_value = emit_fn_proto(cnt, fn);
+        llvm_value = emit_fn_proto(cnt, fn, true);
         break;
     }
 
@@ -2859,8 +2912,6 @@ State emit_instr_call_loc(Context *cnt, MirInstrCallLoc *loc)
 State emit_instr_block(Context *cnt, MirInstrBlock *block)
 {
     // We don't want to generate type resolvers for typedefs!!!
-    if (!block->emit_llvm) return STATE_PASSED;
-
     MirFn *           fn              = block->owner_fn;
     const bool        is_global       = fn == NULL;
     LLVMBasicBlockRef llvm_prev_block = LLVMGetInsertBlock(cnt->llvm_builder);
@@ -2957,6 +3008,7 @@ State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
     MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
     BL_MAGIC_ASSERT(fn);
+<<<<<<< HEAD
 
     // unused function
     if (!fn->emit_llvm) {
@@ -2967,6 +3019,10 @@ State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     if (fn->ref_count == 0) return STATE_PASSED;
 #endif
     emit_fn_proto(cnt, fn);
+=======
+    BL_ASSERT(fn->ref_count && "Attempt to generate unused function!");
+    emit_fn_proto(cnt, fn, false);
+>>>>>>> llvm-ir-new
 
     // External functions does not have any body block.
     if (IS_NOT_FLAG(fn->flags, FLAG_EXTERN) && IS_NOT_FLAG(fn->flags, FLAG_INTRINSIC)) {
@@ -2993,6 +3049,7 @@ State emit_instr(Context *cnt, MirInstr *instr)
     State state = STATE_PASSED;
     BL_ASSERT(instr->analyzed && "Attempt to emit not-analyzed instruction!");
     if (!mir_type_has_llvm_representation((instr->value.type))) return state;
+
     switch (instr->kind) {
     case MIR_INSTR_INVALID:
         BL_ABORT("Invalid instruction");
@@ -3106,6 +3163,7 @@ State emit_instr(Context *cnt, MirInstr *instr)
     default:
         BL_ABORT("Missing emit instruction!");
     }
+    cnt->emit_instruction_count++;
     return state;
 }
 
@@ -3199,6 +3257,7 @@ void ir_run(Assembly *assembly)
     thtbl_init(&cnt.gstring_cache, sizeof(LLVMValueRef), 1024);
     tsa_init(&cnt.incomplete_rtti);
     tlist_init(&cnt.incomplete_queue, sizeof(MirInstr *));
+    tlist_init(&cnt.queue, sizeof(MirInstr *));
 
     if (cnt.debug_mode) {
         DI_init(&cnt);
@@ -3209,12 +3268,13 @@ void ir_run(Assembly *assembly)
 
     intrinsics_init(&cnt);
 
-    MirInstr *ginstr;
-    TARRAY_FOREACH(MirInstr *, &assembly->MIR.global_instrs, ginstr)
+    MirInstr *instr;
+    TARRAY_FOREACH(MirInstr *, &assembly->MIR.exported_instrs, instr)
     {
-        emit_instr(&cnt, ginstr);
+        push_back(&cnt, instr);
     }
 
+    process_queue(&cnt);
     emit_incomplete(&cnt);
 
     if (cnt.debug_mode) {
@@ -3239,6 +3299,8 @@ void ir_run(Assembly *assembly)
         DI_terminate(&cnt);
     }
 
+    BL_LOG("Generated %d instructions.", cnt.emit_instruction_count);
+    tlist_terminate(&cnt.queue);
     tlist_terminate(&cnt.incomplete_queue);
     tsa_terminate(&cnt.incomplete_rtti);
     thtbl_terminate(&cnt.gstring_cache);
