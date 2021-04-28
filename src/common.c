@@ -38,9 +38,9 @@
 #endif
 
 #if BL_PLATFORM_MACOS
+#include <errno.h>
 #include <mach-o/dyld.h>
 #include <mach/mach_time.h>
-#include <errno.h>
 #endif
 
 #if BL_PLATFORM_LINUX
@@ -411,8 +411,10 @@ void platform_lib_name(const char *name, char *buffer, usize max_len)
 f64 get_tick_ms(void)
 {
 #if BL_PLATFORM_MACOS
-    const f64 t = (f64)mach_absolute_time();
-    return t * 0.00001;
+    struct mach_timebase_info convfact;
+    mach_timebase_info(&convfact);
+    uint64_t tick = mach_absolute_time();
+    return (f64)((tick * convfact.numer) / (convfact.denom * 1000000));
 #elif BL_PLATFORM_LINUX
     // @INCOMPLETE
     return 0.;
