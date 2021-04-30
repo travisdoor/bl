@@ -27,7 +27,7 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 * Debuggable in gdb, lldb and Visual Studio.
 
 # Installation
-See installation guide [here](http://biscuitlang.org/versions/0.9.0/index.html).
+See installation guide [here](http://biscuitlang.org/versions/1.0.0/index.html).
 
 # Example
 ```c
@@ -45,3 +45,5 @@ fib :: fn (n: s32) s32 {
     return -1;
 }
 ```
+
+See more examples [here](http://biscuitlang.org/versions/1.0.0/examples.html).
