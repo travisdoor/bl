@@ -25,6 +25,10 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 * Debuggable in gdb, lldb and Visual Studio.
 * Explicit function overload.
 * Integrated build system.
+* Integrated module import system.
+* Multiplatform (Windows, macOS, Linux)
+* Fast compilation.
+* Integrated tools for automatic documentation.
 
 # Installation
 See installation guide [here](http://biscuitlang.org/versions/1.0.0/index.html).
