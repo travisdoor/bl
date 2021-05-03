@@ -1,0 +1,13 @@
+Entity :: struct {
+    id: s32;
+    name: string;
+    position: [3]f32;
+}
+
+main :: fn () s32 {
+    str :: sprint({:Entity: 123, "foo", {:[3]f32: 0.5f, 1.2f, -12.f}});
+    defer String.delete(str);
+    
+    print("%\n", str);
+    return 0;
+}

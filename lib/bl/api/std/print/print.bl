@@ -98,6 +98,7 @@ boprint :: fn (buf: []u8, offset: s32, format: string, args: ...) s32 {
     return w;
 };
 
+// @INCOMPLETE: Shouldn't this have same api as print function???
 /// Create new dynamic string with variable content.
 /// This instance must be freed by `string_delete` call.
 sprint :: fn (args: ...) string {
