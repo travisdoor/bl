@@ -19,14 +19,18 @@ test_number :: fn () {
     else { panic(err); }
 }
 
+NO_SERIALIZE :: 1;
+
 test_structure :: fn () {
-    // Simple structure we can serialize.
-    Person :: struct {
+    // Simple structure we can serialize. Tags here are used to skip tagged members
+    // during serialization.
+    Entity :: struct {
         name: string;
         age: s32;
+        value: s32 #tags NO_SERIALIZE;
     };
         
-    str, err :: serialize({:Person: "Martin", 30});
+    str, err :: serialize({:Entity: "Martin", 30, 10});
     defer String.delete(str);
     if is_ok(err) { print("%\n", str); } 
     else { panic(err); }    
@@ -37,28 +41,38 @@ test_structure :: fn () {
 // wrong.
 serialize :: fn (in: Any) (string, Error) {
     dest := String.new();
+    err :: serialize_data(&dest, in.type_info, in.data);
+    return dest, err;
+}
+
+#private
+// Top level serialization function taking destintion string, type info and pointer
+// to serialized value.
+serialize_data :: fn (dest: *string, T: *TypeInfo, v: *u8) Error {
     err: Error;
-    switch in.type_info.kind {
+    switch T.kind {
         TypeKind.String {
-            err = serialize_string(&dest, in.data);
+            err = serialize_string(dest, v);
         }
         TypeKind.Int {
-            err = serialize_int(&dest, in.type_info, in.data);
+            err = serialize_int(dest, T, v);
         }
         TypeKind.Struct {
-            err = serialize_struct(&dest, in.type_info, in.data);
+            err = serialize_struct(dest, T, v);
         }
-        default { return "", error("Unknown type '%'!", ^in.type_info); }
+        default { err = error("Unknown type '%'!", ^T); }
     }
-    return dest, ok();
+    return err;
 }
 
 serialize_string :: fn (dest: *string, v: *u8) Error {
+    // Simply cast pointer to string.
     String.append(dest, ^cast(*string) v);
     return ok();
 }
 
 serialize_int :: fn (dest: *string, T: *TypeInfo, v: *u8) Error {
+    // We support only s32 type in this example.
     if T == typeinfo(s32) {
         String.append(dest, ^cast(*s32) v);
     } else {
@@ -67,6 +81,23 @@ serialize_int :: fn (dest: *string, T: *TypeInfo, v: *u8) Error {
     return ok();
 }
 
-
+serialize_struct :: fn (dest: *string, T: *TypeInfo, v: *u8) Error {
+    T_struct :: cast(*TypeInfoStruct) T;
+    // Go through all struct members and serialize them as name = value.
+    loop i := 0; i < T_struct.members.len; i += 1 {
+        T_member :: T_struct.members[i];
+        
+        // Structure member flags can be used to disable serialization of some 
+        // members.
+        if is_flag(T_member.tags, NO_SERIALIZE) { continue; }
+        member_ptr :: ptr_shift_bytes(v, T_member.offset_bytes);
+        String.concatenate(dest, T_member.name, " = ");
+        serialize_data(dest, T_member.base_type, member_ptr);
+        if i+1 < T_struct.members.len {
+            String.append(dest, "\n");
+        }
+    }
+    return ok();
+}
 
 
