@@ -1,0 +1,72 @@
+main :: fn () s32 {
+    test_string();
+    test_number();
+    test_structure();
+    return 0;
+}
+
+test_string :: fn () {
+    str, err :: serialize("Hello!");
+    defer String.delete(str);
+    if is_ok(err) { print("%\n", str); } 
+    else { panic(err); }
+}
+
+test_number :: fn () {
+    str, err :: serialize(10);
+    defer String.delete(str);
+    if is_ok(err) { print("%\n", str); } 
+    else { panic(err); }
+}
+
+test_structure :: fn () {
+    // Simple structure we can serialize.
+    Person :: struct {
+        name: string;
+        age: s32;
+    };
+        
+    str, err :: serialize({:Person: "Martin", 30});
+    defer String.delete(str);
+    if is_ok(err) { print("%\n", str); } 
+    else { panic(err); }    
+}
+
+// Main serialization entry function taking 'in' Any as an argument and returning
+// string representation of passed data or returning error in case something went
+// wrong.
+serialize :: fn (in: Any) (string, Error) {
+    dest := String.new();
+    err: Error;
+    switch in.type_info.kind {
+        TypeKind.String {
+            err = serialize_string(&dest, in.data);
+        }
+        TypeKind.Int {
+            err = serialize_int(&dest, in.type_info, in.data);
+        }
+        TypeKind.Struct {
+            err = serialize_struct(&dest, in.type_info, in.data);
+        }
+        default { return "", error("Unknown type '%'!", ^in.type_info); }
+    }
+    return dest, ok();
+}
+
+serialize_string :: fn (dest: *string, v: *u8) Error {
+    String.append(dest, ^cast(*string) v);
+    return ok();
+}
+
+serialize_int :: fn (dest: *string, T: *TypeInfo, v: *u8) Error {
+    if T == typeinfo(s32) {
+        String.append(dest, ^cast(*s32) v);
+    } else {
+        return error("Unknown number type '%'!", ^T);
+    }
+    return ok();
+}
+
+
+
+
