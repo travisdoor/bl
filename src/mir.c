@@ -5189,7 +5189,7 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
         }
         ref->base.value.type        = create_type_ptr(cnt, type);
         ref->base.value.is_comptime = var->value.is_comptime;
-        if (type->kind == MIR_TYPE_FN_GROUP) {
+        if (type->kind == MIR_TYPE_FN_GROUP || type->kind == MIR_TYPE_TYPE) {
             ref->base.value.addr_mode = MIR_VAM_RVALUE;
         } else {
             ref->base.value.addr_mode = var->is_mutable ? MIR_VAM_LVALUE : MIR_VAM_LVALUE_CONST;

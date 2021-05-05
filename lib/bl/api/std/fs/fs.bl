@@ -6,9 +6,9 @@
 //! 
 //!    #import "std/fs"
 //! 
-//! File system module for manipulation with files and directories.
-//! 
-//! .. warning:: This module is experimental and not fully supported across all platforms.
+//! File system module for manipulation with files and directories. 
+//! This module provides an abstraction over operating system APIs such as 
+//! creating files and directories, reading and writing, and scanning the filesystem.
 
 #scope Fs
 

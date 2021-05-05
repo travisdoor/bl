@@ -10,6 +10,7 @@ MAIN_TEST_SUITE_FILEPATH :: "tests/src/main.test.bl";
 EXAMPLES_DIR :: "examples";
 EXAMPLES_DOCS_DIR :: "examples/docs";
 EXPECT_FAIL_DIR :: "tests/src/expect_fail";
+ISSUES_DIR :: "tests/issues/closed";
 
 HARDCODED_MODULES :: {:[9]string:
                       "lib/bl/api/std/arg_parser/arg_parser.test.bl",
@@ -70,6 +71,13 @@ main :: fn () s32 {
             defer String.delete(path);
             test_all_in_dir(path);
         }
+        
+        { 
+            path :: get_path(ISSUES_DIR);
+            defer String.delete(path);
+            test_all_in_dir(path);
+        }
+
 
         print("Test misc:\n");    
         { // gen-docs
