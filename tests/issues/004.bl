@@ -1,5 +1,0 @@
-main :: fn () s32 {
-    c :: '\209';
-    tmp :: {:string: 1, &c};
-    return 0;
-}
