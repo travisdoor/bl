@@ -1,4 +1,4 @@
-//*****************************************************************************
+// =================================================================================================
 // tlib-c
 //
 // File:   hash.h
@@ -24,38 +24,38 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//*****************************************************************************
+// =================================================================================================
 
 #ifndef T_HASH_H
 #define T_HASH_H
 
 #include "tlib/common.h"
 
-static inline u32
-thash_from_str(const char *str)
+// Calculate hash from input string.
+static inline u32 thash_from_str(const char *str)
 {
-	u32 hash = 5381;
-	s32 c;
+    u32 hash = 5381;
+    s32 c;
 
-	while ((c = *str++))
-		hash = ((hash << 5) + hash) + c;
+    while ((c = *str++))
+        hash = ((hash << 5) + hash) + c;
 
-	return hash;
+    return hash;
 }
 
-static inline u32
-thash_from_strn(const char *str, usize len)
+// Calculate hash from input string using 'len' character count.
+static inline u32 thash_from_strn(const char *str, usize len)
 {
-	u32   hash = 5381;
-	usize i    = 0;
-	s32   c;
+    u32   hash = 5381;
+    usize i    = 0;
+    s32   c;
 
-	while ((c = *str++) && (i < len)) {
-		++i;
-		hash = ((hash << 5) + hash) + c;
-	}
+    while ((c = *str++) && (i < len)) {
+        ++i;
+        hash = ((hash << 5) + hash) + c;
+    }
 
-	return hash;
+    return hash;
 }
 
 #endif

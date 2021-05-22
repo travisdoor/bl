@@ -1,4 +1,4 @@
-//*****************************************************************************
+// =================================================================================================
 // tlib-c
 //
 // File:   tmemory.h
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//*****************************************************************************
+// =================================================================================================
 
 #define tmalloc(size) _tmalloc(size, __FILE__, __LINE__)
 #define tfree(ptr) _tfree(ptr)

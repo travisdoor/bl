@@ -1,4 +1,4 @@
-//*****************************************************************************
+// =================================================================================================
 // tlib-c
 //
 // File:   common.h
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//*****************************************************************************
+// =================================================================================================
 
 #ifndef T_COMMON_H
 #define T_COMMON_H
@@ -36,8 +36,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Check whether two iterators are equal.
 #define TITERATOR_EQUAL(_first, _second) ((_first).opaque == (_second).opaque)
+
+// Return size of of static array.
 #define TARRAY_SIZE(_array) (sizeof((_array)) / sizeof((_array)[0]))
+
+// Abort execution with message printed out to the stderr stream.
 #define TABORT(_msg, ...)                                                                          \
     {                                                                                              \
         fprintf(stderr, (_msg), ##__VA_ARGS__);                                                    \
@@ -51,6 +56,7 @@
 #define TAPI __attribute__((__visibility__("default")))
 #endif
 
+// Common tlib types.
 typedef char               s8;
 typedef short              s16;
 typedef int                s32;
@@ -63,6 +69,7 @@ typedef size_t             usize;
 typedef float              f32;
 typedef double             f64;
 
+// Iterator handle.
 typedef struct TIterator {
     void *opaque;
 } TIterator;
@@ -70,6 +77,7 @@ typedef struct TIterator {
 typedef void *(*TAllocFn)(usize bytes, const char *filename, s32 line);
 typedef void (*TFreeFn)(void *ptr);
 
+// This setter can be used to specify custom malloc and free handling.
 TAPI void tlib_set_allocator(TAllocFn malloc_fn, TFreeFn free_fn);
 
 #endif

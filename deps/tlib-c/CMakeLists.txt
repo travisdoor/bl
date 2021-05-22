@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
-project(tlib-c VERSION 1.0.0 LANGUAGES C)
+project(tlib-c VERSION 1.1.0 LANGUAGES C)
 
 set(HAVE_64_BIT 1)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)

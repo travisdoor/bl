@@ -1,4 +1,4 @@
-//*****************************************************************************
+// =================================================================================================
 // tlib-c
 //
 // File:   array.c
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//*****************************************************************************
+// =================================================================================================
 
 #include "tlib/array.h"
 #include "tmemory.h"
@@ -40,6 +40,7 @@ static void ensure_space(TArray *arr, usize space, bool exact)
         space = space == 1 ? ALLOC_BLOCK_SIZE : space * 2;
     }
     void *tmp = tmalloc(space * arr->elem_size);
+    if (!tmp) TABORT("Bad alloc.");
     if (arr->size) {
         memcpy(tmp, arr->data, arr->size * arr->elem_size);
     }
@@ -48,8 +49,9 @@ static void ensure_space(TArray *arr, usize space, bool exact)
     arr->allocated = space;
 }
 
-/* public */
-
+// =================================================================================================
+// public
+// =================================================================================================
 TArray *tarray_new(usize elem_size)
 {
     TArray *arr = tmalloc(sizeof(TArray));
@@ -69,7 +71,7 @@ void tarray_delete(TArray *arr)
 
 void tarray_init(TArray *arr, usize elem_size)
 {
-    if (!elem_size) TABORT("Size of array element cannot be 0.");
+    assert(elem_size && "Size of array element cannot be 0.");
     arr->data      = NULL;
     arr->size      = 0;
     arr->allocated = 0;
@@ -84,10 +86,10 @@ void tarray_terminate(TArray *arr)
     arr->size      = 0;
 }
 
-void tarray_reserve(TArray *arr, usize size)
+void tarray_reserve(TArray *arr, usize count)
 {
-    if (!size) return;
-    ensure_space(arr, size, true);
+    if (count == 0) return;
+    ensure_space(arr, count, true);
 }
 
 void tarray_clear(TArray *arr)
@@ -98,20 +100,30 @@ void tarray_clear(TArray *arr)
 void *_tarray_push(TArray *arr, void *v_ptr)
 {
     ensure_space(arr, arr->size + 1, false);
-
     void *elem_ptr = ELEM_PTR(arr->size);
     if (v_ptr) {
         memcpy(elem_ptr, v_ptr, arr->elem_size);
     }
-
     arr->size += 1;
     return elem_ptr;
 }
 
 void *_tarray_at(TArray *arr, usize i)
 {
-    if (i > arr->size) TABORT("Array index out of the bounds.");
+    assert(i < arr->size && "Array index out of the bounds.");
     return ELEM_PTR(i);
+}
+
+void *_tarray_front(TArray *arr)
+{
+    assert(arr->size > 0 && "Attempt to get first element from an empty array.");
+    return ELEM_PTR(0);
+}
+
+void *_tarray_back(TArray *arr)
+{
+    assert(arr->size > 0 && "Attempt to get last element from an empty array.");
+    return ELEM_PTR(arr->size - 1);
 }
 
 void tarray_pop(TArray *arr)
@@ -121,7 +133,7 @@ void tarray_pop(TArray *arr)
 
 void tarray_erase(TArray *arr, usize i)
 {
-    if (i >= arr->size) abort();
+    assert(i < arr->size && "Attempt to erase element which index is out of the array bounds!");
     // single element in bo_vector or last have to be erased
     if (arr->size == 1 || i == arr->size - 1) {
         tarray_pop(arr);

@@ -10314,8 +10314,6 @@ void mir_run(Assembly *assembly)
     tlist_init(&cnt.analyze.queue, sizeof(MirInstr *));
     tstring_init(&cnt.tmp_sh);
 
-    tlist_reserve(&cnt.analyze.queue, 1024);
-
     tarray_init(&cnt.ast._fnctx_stack, sizeof(AstFnContext));
     tarray_init(&cnt.analyze.usage_check_queue, sizeof(ScopeEntry *));
     tsa_init(&cnt.analyze.incomplete_rtti);

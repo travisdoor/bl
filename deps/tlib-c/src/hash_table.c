@@ -1,4 +1,4 @@
-//*****************************************************************************
+// =================================================================================================
 // tlib-c
 //
 // File:   hash_table.c
@@ -24,7 +24,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//*****************************************************************************
+// =================================================================================================
 
 #include "tlib/hash_table.h"
 #include "tmemory.h"
@@ -94,7 +94,9 @@ static TIterator erase_node(THashTable *tbl, struct THtblNode *node, struct THtb
     return iter_next;
 }
 
-/* public */
+// =================================================================================================
+// public
+// =================================================================================================
 void thtbl_init(THashTable *tbl, usize data_size, usize expected_size)
 {
     tbl->data_size = data_size;
@@ -159,7 +161,7 @@ void *_thtbl_insert(THashTable *tbl, u64 key, void *data)
         // find conflicts
         struct THtblNode *node = bucket->first;
         while (node) {
-            if (node->key == key) TABORT("Duplicate key: 0x%llx", key);
+            assert(node->key != key && "Duplicate key.");
             if (node == bucket->last) break;
             node = node->next;
         }
@@ -196,7 +198,6 @@ void *_thtbl_at(THashTable *tbl, u64 key)
     TIterator iter     = thtbl_find(tbl, key);
     TIterator iter_end = thtbl_end(tbl);
     if (!TITERATOR_EQUAL(iter, iter_end)) return GET_DATA_PTR(iter.opaque);
-
     TABORT("No such key %llu in hash table.", key);
 }
 

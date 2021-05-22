@@ -32,9 +32,9 @@
 /*
  * Values set automatically during build by cmake.
  */
-#define T_VERSION       "1.0.0"
+#define T_VERSION       "1.1.0"
 #define T_VERSION_MAJOR 1
-#define T_VERSION_MINOR 0
+#define T_VERSION_MINOR 1
 #define T_VERSION_PATCH 0
 
 #endif 
