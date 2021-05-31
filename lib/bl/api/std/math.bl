@@ -76,11 +76,9 @@ tan       :: fn { f32_tan; f64_tan; }
 atan2     :: fn { f32_atan2; f64_atan2; }
 copysign  :: fn { f32_copysign; f64_copysign; }
 
-/* Lib C functions */
 rand  :: fn () s32 #extern;
 srand :: fn (seed: u32) #extern;
 qsort :: fn (base: *c_void_ptr, nitems: c_size_t, size: c_size_t, compar: *fn (c_void_ptr, c_void_ptr) c_int) #extern;
-/* Lib C functions */
 
 abs :: fn { f32_abs; f64_abs; }
 compare :: fn { f32_compare; f64_compare; }
@@ -88,10 +86,47 @@ degtorad :: fn { f32_degtorad; f64_degtorad; }
 radtodeg :: fn { f32_radtodeg; f64_radtodeg; }
 max :: fn { s32_max; s64_max; u32_max; f32_max; f64_max; }
 min :: fn { s32_min; s64_min; u32_min; f32_min; f64_min; }
+lerp :: fn { 
+    fn (a: f32, b: f32, fraction: f32) f32 #inline {
+        return a + fraction * (b - a);
+    };
+    fn (a: f64, b: f64, fraction: f64) f64 #inline {
+        return a + fraction * (b - a);
+    };
+}
 
-lerp :: fn (a: f32, b: f32, fraction: f32) f32 #inline {
-    return a + fraction * (b - a);
-};
+clamp :: fn {
+    fn (v: s32, minimum: s32, maximum: s32) s32 { 
+        if v <= minimum { return minimum;  }
+        if v >= maximum { return maximum;  }
+        return v;
+    };
+    fn (v: s64, minimum: s64, maximum: s64) s64 { 
+        if v <= minimum { return minimum;  }
+        if v >= maximum { return maximum;  }
+        return v;
+    };
+    fn (v: u32, minimum: u32, maximum: u32) u32 { 
+        if v <= minimum { return minimum;  }
+        if v >= maximum { return maximum;  }
+        return v;
+    };
+    fn (v: u64, minimum: u64, maximum: u64) u64 { 
+        if v <= minimum { return minimum;  }
+        if v >= maximum { return maximum;  }
+        return v;
+    };
+    fn (v: f32, minimum: f32, maximum: f32) f32 { 
+        if v < minimum || compare(v, minimum) { return minimum;  }
+        if v > maximum || compare(v, maximum) { return maximum;  }
+        return v;
+    };
+    fn (v: f64, minimum: f64, maximum: f64) f64 { 
+        if v < minimum || compare(v, minimum) { return minimum;  }
+        if v > maximum || compare(v, maximum) { return maximum;  }
+        return v;
+    };
+}
 
 #private
 f32_sin   :: fn (n: f32) f32 #intrinsic "sin.f32";
