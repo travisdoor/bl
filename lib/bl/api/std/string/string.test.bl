@@ -496,3 +496,16 @@ test_str_clean_concat_1 :: fn () #test {
     String.clear_concat(&s, 1, 2, 3);
     test_eq(s, "123");
 }
+
+test_reserve :: fn () #test {
+    s :: String.new();
+    defer String.delete(s);
+    String.reserve(&s, 1000);
+    allocated :: String.get_allocated_bytes(s);
+    test_true(allocated > 0);
+    
+    loop i := 0; i < 1000; i += 1 {
+        String.append(&s, "1");
+    }
+    test_eq(String.get_allocated_bytes(s), allocated);
+}

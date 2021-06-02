@@ -95,6 +95,20 @@ delete :: fn (v: string) {
     free_block(v.ptr);
 };
 
+/// Ensure that string's underlying buffer is capable to hold `count` of characters
+/// and eventually do preallocation if buffer is too small. The reserve does not take
+/// in account is the string's buffer is full or not. The function does nothing if 
+/// buffer size is enough.
+reserve :: fn (v: *string, count: s64) {
+    v.ptr = make_more_room_if_needed(v.ptr, cast(usize)count);
+}
+
+/// Get currently allocated memory used by the string in bytes.
+get_allocated_bytes :: fn (v: string) usize #inline {
+    head :: get_block_head(v.ptr);
+    return head.allocated_size;
+}
+
 /// Clear dynamic string but keep allocated storage.
 clear :: fn (v: *string) {
     v.len = 0;
@@ -497,11 +511,11 @@ is_zero_terminated :: fn (str: string) bool {
 }
 
 #private
-STRING_BLOCK_SIZE :: 64 - sizeof(BlockHead);
+STRING_BLOCK_SIZE :: 32 - sizeof(BlockHead);
 
 BlockHead :: struct {
     allocated_size: usize;
-    allocator: AllocFn;
+    allocator: AllocFn; // @CLEANUP is this properly used?
 };
 
 new_default :: fn () string {
@@ -546,14 +560,13 @@ new_cstr :: fn (cstr: *u8) string {
 }
 
 make_more_room_if_needed :: fn (ptr: *u8, size: usize) *u8 {
-    head :: get_allocated_size(ptr);
+    head :: get_block_head(ptr);
     allocated :: head.allocated_size;
     allocator :: head.allocator;
     if size > allocated {
         new_ptr := alloc_block(size, allocator);
         memcpy(new_ptr, ptr, allocated);
         free(get_allocation_ptr(ptr));
-
         ptr = new_ptr;
     }
 
@@ -575,7 +588,7 @@ alloc_block :: fn (size: usize, allocator: AllocFn) *u8 {
 };
 
 free_block :: fn (ptr: *u8) {
-    head :: get_allocated_size(ptr);
+    head :: get_block_head(ptr);
     allocator :: head.allocator;
     allocator(AllocOp.Free, 0, get_allocation_ptr(ptr), #file, #line);
 };
@@ -584,7 +597,7 @@ get_allocation_ptr :: fn (ptr: *u8) *u8 {
     return cast(*u8) ((cast(usize) ptr) - sizeof(BlockHead));
 };
 
-get_allocated_size :: fn (ptr: *u8) *BlockHead #inline {
+get_block_head :: fn (ptr: *u8) *BlockHead #inline {
     return cast(*BlockHead) get_allocation_ptr(ptr);
 };
 
