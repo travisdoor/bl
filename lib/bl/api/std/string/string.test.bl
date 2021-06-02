@@ -501,6 +501,7 @@ test_reserve :: fn () #test {
     s :: String.new();
     defer String.delete(s);
     String.reserve(&s, 1000);
+    test_eq(s.len, 0);
     allocated :: String.get_allocated_bytes(s);
     test_true(allocated > 0);
     
@@ -508,4 +509,7 @@ test_reserve :: fn () #test {
         String.append(&s, "1");
     }
     test_eq(String.get_allocated_bytes(s), allocated);
+    String.reserve(&s, 1000);
+    test_eq(String.get_allocated_bytes(s), allocated);
+    test_eq(s.len, 1000);
 }
