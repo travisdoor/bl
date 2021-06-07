@@ -1,13 +1,23 @@
-Flags :: enum {
-    A :: 1;
-    B :: 2;
-    C :: 4;
-}
-
-make_flags :: fn (flags: Any) {
-}
-
 main :: fn () s32 {
-    make_flags(Flags.A);
+    range := get_range();
+    print("Start!");
+    if get() == 10 {
+        print("hello");        
+        if get () == 10 {
+            print("it's 10!");
+            
+            loop i := 0; i < range; i += 1 {
+                print("foo");
+            }
+        }
+    }
     return 0;
+}
+
+get :: fn () s32 {
+    return 10;
+}
+
+get_range :: fn () s32 {
+    return 2;
 }
