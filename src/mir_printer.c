@@ -935,7 +935,7 @@ void print_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     if (!tmp) return;
     fprintf(cnt->stream, "{\n");
     while (tmp) {
-        print_instr_block(cnt, tmp);
+        print_instr(cnt, (MirInstr *)tmp);
         tmp = (MirInstrBlock *)tmp->base.next;
     }
     fprintf(cnt->stream, "}");
@@ -1099,22 +1099,12 @@ void print_instr(Context *cnt, MirInstr *instr)
 
     if (cnt->assembly->target->opt == ASSEMBLY_OPT_DEBUG) {
         if (instr->node && instr->node->location) {
-            const Location *loc1 = instr->node->location;
-            const Location *loc2 = instr->node->location_end;
-            if (loc2) {
-                fprintf(cnt->stream,
-                        " %s[%s:%d-%d]",
-                        has_comment ? "" : "// ",
-                        loc1->unit->filename,
-                        loc1->line,
-                        loc2->line);
-            } else {
-                fprintf(cnt->stream,
-                        " %s[%s:%d]",
-                        has_comment ? "" : "// ",
-                        loc1->unit->filename,
-                        loc1->line);
-            }
+            const Location *loc = instr->node->location;
+            fprintf(cnt->stream,
+                    " %s[%s:%d]",
+                    has_comment ? "" : "// ",
+                    loc->unit->filename,
+                    loc->line);
         }
     }
 

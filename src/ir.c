@@ -43,6 +43,17 @@
 #define NAMED_VARS false
 #endif
 
+#define DI_LOC_BEGIN(instr)                                                                        \
+    if (cnt->debug_mode) {                                                                         \
+        emit_DI_instr_loc(cnt, (instr));                                                           \
+    }                                                                                              \
+    (void)0
+#define DI_LOC_END()                                                                               \
+    if (cnt->debug_mode) {                                                                         \
+        llvm_di_reset_current_location(cnt->llvm_builder);                                         \
+    }                                                                                              \
+    (void)0
+
 typedef struct {
     LLVMValueRef llvm_var;
     MirType *    type;
@@ -210,9 +221,9 @@ static INLINE void emit_DI_loc(Context *cnt, Scope *scope, Location *loc)
 static INLINE void emit_DI_instr_loc(Context *cnt, MirInstr *instr)
 {
     if (!instr || !instr->node) {
+        llvm_di_reset_current_location(cnt->llvm_builder);
         return;
     }
-
     emit_DI_loc(cnt, instr->node->owner_scope, instr->node->location);
 }
 
@@ -260,7 +271,6 @@ static INLINE bool is_initialized(LLVMValueRef constant)
 static INLINE LLVMBasicBlockRef emit_basic_block(Context *cnt, MirInstrBlock *block)
 {
     if (!block) return NULL;
-
     LLVMBasicBlockRef llvm_block = NULL;
     if (!block->base.llvm_value) {
         llvm_block =
@@ -657,7 +667,7 @@ void emit_DI_fn(Context *cnt, MirFn *fn)
                                                   fn->type->llvm_meta,
                                                   (unsigned)location->line);
 
-    llvm_di_reset_current_location(cnt->llvm_builder);
+    // llvm_di_reset_current_location(cnt->llvm_builder);
     llvm_di_set_subprogram(fn->llvm_value, fn->body_scope->llvm_meta);
 }
 
@@ -891,15 +901,11 @@ State emit_instr_decl_direct_ref(Context UNUSED(*cnt), MirInstrDeclDirectRef *re
 
 State emit_instr_phi(Context *cnt, MirInstrPhi *phi)
 {
-    // if (cnt->debug_mode) emit_DI_instr_loc(cnt, &phi->base);
-    const usize count = phi->incoming_blocks->size;
-
+    const usize           count = phi->incoming_blocks->size;
     TSmallArray_LLVMValue llvm_iv;
     TSmallArray_LLVMValue llvm_ib;
-
     tsa_init(&llvm_iv);
     tsa_init(&llvm_ib);
-
     MirInstr *     value;
     MirInstrBlock *block;
     for (usize i = 0; i < count; ++i) {
@@ -909,15 +915,14 @@ State emit_instr_phi(Context *cnt, MirInstrPhi *phi)
         tsa_push_LLVMValue(&llvm_iv, value->llvm_value);
         tsa_push_LLVMValue(&llvm_ib, LLVMBasicBlockAsValue(emit_basic_block(cnt, block)));
     }
-
+    DI_LOC_BEGIN(&phi->base);
     LLVMValueRef llvm_phi =
         LLVMBuildPhi(cnt->llvm_builder, get_type(cnt, phi->base.value.type), "");
     LLVMAddIncoming(llvm_phi, llvm_iv.data, (LLVMBasicBlockRef *)llvm_ib.data, (unsigned int)count);
-
     tsa_terminate(&llvm_iv);
     tsa_terminate(&llvm_ib);
-
     phi->base.llvm_value = llvm_phi;
+    DI_LOC_END();
     return STATE_PASSED;
 }
 
@@ -926,8 +931,9 @@ State emit_instr_unreachable(Context *cnt, MirInstrUnreachable *unr)
     MirFn *abort_fn = unr->abort_fn;
     BL_ASSERT(abort_fn);
     if (!abort_fn->llvm_value) emit_fn_proto(cnt, abort_fn, true);
-    if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unr->base);
+    DI_LOC_BEGIN(&unr->base);
     LLVMBuildCall(cnt->llvm_builder, abort_fn->llvm_value, NULL, 0, "");
+    DI_LOC_END();
     return STATE_PASSED;
 }
 
@@ -1978,8 +1984,9 @@ State emit_instr_load(Context *cnt, MirInstrLoad *load)
         return STATE_PASSED;
     }
 
-    // if (cnt->debug_mode) llvm_di_reset_current_location(cnt->llvm_builder);
+    DI_LOC_BEGIN(&load->base);
     load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
+    DI_LOC_END();
 
     const unsigned alignment = (const unsigned)load->base.value.type->alignment;
     LLVMSetAlignment(load->base.llvm_value, alignment);
@@ -2001,8 +2008,9 @@ State emit_instr_store(Context *cnt, MirInstrStore *store)
 
     const unsigned alignment = (unsigned)store->src->value.type->alignment;
 
-    // if (cnt->debug_mode) emit_DI_instr_loc(cnt, &store->base);
+    DI_LOC_BEGIN(&store->base);
     store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
+    DI_LOC_END();
     LLVMSetAlignment(store->base.llvm_value, alignment);
 
     // PERFORMANCE: We can use memcpy intrinsic for larger values, but in such case we
@@ -2021,8 +2029,7 @@ State emit_instr_unop(Context *cnt, MirInstrUnop *unop)
     LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(llvm_val));
     const bool   float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
 
-    // if (cnt->debug_mode) emit_DI_instr_loc(cnt, &unop->base);
-
+    DI_LOC_BEGIN(&unop->base);
     switch (unop->op) {
     case UNOP_BIT_NOT:
     case UNOP_NOT: {
@@ -2047,6 +2054,7 @@ State emit_instr_unop(Context *cnt, MirInstrUnop *unop)
     default:
         BL_UNIMPLEMENTED;
     }
+    DI_LOC_END();
     return STATE_PASSED;
 }
 
@@ -2234,7 +2242,7 @@ State emit_instr_binop(Context *cnt, MirInstrBinop *binop)
     LLVMValueRef rhs = binop->rhs->llvm_value;
     BL_ASSERT(lhs && rhs);
 
-    // if (cnt->debug_mode) emit_DI_instr_loc(cnt, &binop->base);
+    DI_LOC_BEGIN(&binop->base);
     MirType *  type           = binop->lhs->value.type;
     const bool real_type      = type->kind == MIR_TYPE_REAL;
     const bool signed_integer = type->kind == MIR_TYPE_INT && type->data.integer.is_signed;
@@ -2346,6 +2354,7 @@ State emit_instr_binop(Context *cnt, MirInstrBinop *binop)
     default:
         BL_ABORT("Invalid binary operation.");
     }
+    DI_LOC_END();
     return STATE_PASSED;
 }
 
@@ -2481,9 +2490,10 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
         }
     }
 
-    if (cnt->debug_mode) emit_DI_instr_loc(cnt, &call->base);
+    DI_LOC_BEGIN(&call->base);
     LLVMValueRef llvm_call = LLVMBuildCall(
         cnt->llvm_builder, llvm_called_fn, llvm_args.data, (unsigned int)llvm_args.size, "");
+    DI_LOC_END();
 
     if (callee_type->data.fn.has_sret) {
         LLVMAddCallSiteAttribute(llvm_call,
@@ -2554,11 +2564,7 @@ State emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     if (var->is_global) {
         // Global variables use set-initializer instruction for initialization.
         emit_global_var_proto(cnt, var, false);
-
-        if (emit_DI) {
-            // emit_DI_instr_loc(cnt, &decl->base);
-            emit_DI_var(cnt, var);
-        }
+        if (emit_DI) emit_DI_var(cnt, var);
     } else { // local variable
         BL_ASSERT(var->llvm_value);
 
@@ -2576,11 +2582,7 @@ State emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
                 LLVMBuildStore(cnt->llvm_builder, llvm_init, var->llvm_value);
             }
         }
-
-        if (emit_DI) {
-            // emit_DI_instr_loc(cnt, &decl->base);
-            emit_DI_var(cnt, var);
-        }
+        if (emit_DI) emit_DI_var(cnt, var);
     }
     return STATE_PASSED;
 }
@@ -2593,11 +2595,7 @@ State emit_instr_ret(Context *cnt, MirInstrRet *ret)
     MirType *fn_type = fn->type;
     BL_ASSERT(fn_type);
 
-    // if (cnt->debug_mode && ret->base.node) {
-    // Ast const *node = ret->base.node;
-    // emit_DI_loc(cnt, node->owner_scope, node->location_end);
-    //}
-    // if (cnt->debug_mode) emit_DI_instr_loc(cnt, &ret->base);
+    DI_LOC_BEGIN(&ret->base);
     if (fn_type->data.fn.has_sret) {
         LLVMValueRef llvm_ret_value = ret->value->llvm_value;
         LLVMValueRef llvm_sret      = LLVMGetParam(fn->llvm_value, LLVM_SRET_INDEX);
@@ -2616,6 +2614,7 @@ State emit_instr_ret(Context *cnt, MirInstrRet *ret)
     ret->base.llvm_value = LLVMBuildRetVoid(cnt->llvm_builder);
 
 FINALIZE:
+    DI_LOC_END();
     if (cnt->debug_mode) {
         BL_ASSERT(fn->body_scope->llvm_meta);
         llvm_di_finalize_subprogram(cnt->llvm_di_builder, fn->body_scope->llvm_meta);
@@ -2630,8 +2629,9 @@ State emit_instr_br(Context *cnt, MirInstrBr *br)
     BL_ASSERT(then_block);
     LLVMBasicBlockRef llvm_then_block = emit_basic_block(cnt, then_block);
     BL_ASSERT(llvm_then_block);
-    if (cnt->debug_mode) emit_DI_instr_loc(cnt, &br->base);
+    DI_LOC_BEGIN(&br->base);
     br->base.llvm_value = LLVMBuildBr(cnt->llvm_builder, llvm_then_block);
+    DI_LOC_END();
     LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_then_block);
     return STATE_PASSED;
 }
@@ -2643,7 +2643,8 @@ State emit_instr_switch(Context *cnt, MirInstrSwitch *sw)
     TSmallArray_SwitchCase *cases              = sw->cases;
     LLVMValueRef            llvm_value         = value->llvm_value;
     LLVMBasicBlockRef       llvm_default_block = emit_basic_block(cnt, default_block);
-    LLVMValueRef            llvm_switch        = LLVMBuildSwitch(
+    DI_LOC_BEGIN(&sw->base);
+    LLVMValueRef llvm_switch = LLVMBuildSwitch(
         cnt->llvm_builder, llvm_value, llvm_default_block, (unsigned int)cases->size);
     for (usize i = 0; i < cases->size; ++i) {
         MirSwitchCase *   c             = &cases->data[i];
@@ -2652,6 +2653,7 @@ State emit_instr_switch(Context *cnt, MirInstrSwitch *sw)
         LLVMAddCase(llvm_switch, llvm_on_value, llvm_block);
     }
     sw->base.llvm_value = llvm_switch;
+    DI_LOC_END();
     return STATE_PASSED;
 }
 
@@ -2748,9 +2750,10 @@ State emit_instr_cond_br(Context *cnt, MirInstrCondBr *br)
     LLVMValueRef      llvm_cond       = cond->llvm_value;
     LLVMBasicBlockRef llvm_then_block = emit_basic_block(cnt, then_block);
     LLVMBasicBlockRef llvm_else_block = emit_basic_block(cnt, else_block);
-    if (cnt->debug_mode && br->base.node) emit_DI_instr_loc(cnt, &br->base);
+    DI_LOC_BEGIN(&br->base);
     br->base.llvm_value =
         LLVMBuildCondBr(cnt->llvm_builder, llvm_cond, llvm_then_block, llvm_else_block);
+    DI_LOC_END();
     return STATE_PASSED;
 }
 

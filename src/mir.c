@@ -388,7 +388,7 @@ static MirInstr *create_instr_const_double(Context *cnt, Ast *node, double val);
 static MirInstr *create_instr_const_bool(Context *cnt, Ast *node, bool val);
 static MirInstr *create_instr_addrof(Context *cnt, Ast *node, MirInstr *src);
 static MirInstr *create_instr_vargs_impl(Context *cnt, MirType *type, TSmallArray_InstrPtr *values);
-static MirInstr *create_instr_decl_direct_ref(Context *cnt, MirInstr *ref);
+static MirInstr *create_instr_decl_direct_ref(Context *cnt, Ast *node, MirInstr *ref);
 static MirInstr *create_instr_call_comptime(Context *cnt, Ast *node, MirInstr *fn);
 static MirInstr *create_instr_call_loc(Context *cnt, Ast *node, Location *call_location);
 static MirInstr *create_instr_compound(Context *             cnt,
@@ -508,7 +508,7 @@ static MirInstr *append_instr_decl_ref(Context *   cnt,
                                        Scope *     scope,
                                        ScopeEntry *scope_entry);
 
-static MirInstr *append_instr_decl_direct_ref(Context *cnt, MirInstr *ref);
+static MirInstr *append_instr_decl_direct_ref(Context *cnt, Ast *node, MirInstr *ref);
 
 static MirInstr *
 append_instr_call(Context *cnt, Ast *node, MirInstr *callee, TSmallArray_InstrPtr *args);
@@ -785,6 +785,12 @@ static void       rtti_gen_fn_slice(Context *cnt, VMStackPtr dest, TSmallArray_T
 static MirVar *   rtti_gen_fn_group(Context *cnt, MirType *type);
 
 // INLINES
+static INLINE Ast *get_last_instruction_node(MirInstrBlock *block)
+{
+    if (!block->last_instr) return NULL;
+    return block->last_instr->node;
+}
+
 static INLINE void usage_check_push(Context *cnt, ScopeEntry *entry)
 {
     BL_ASSERT(entry);
@@ -2543,7 +2549,6 @@ void append_current_block(Context *cnt, MirInstr *instr)
     BL_ASSERT(instr);
     MirInstrBlock *block = ast_current_block(cnt);
     BL_ASSERT(block);
-
     if (is_block_terminated(block)) {
         // Append this instruction into unreachable block if current block was terminated
         // already. Unreachable block will never be generated into LLVM and compiler can
@@ -2554,7 +2559,6 @@ void append_current_block(Context *cnt, MirInstr *instr)
 
     instr->owner_block = block;
     instr->prev        = block->last_instr;
-
     if (!block->entry_instr) block->entry_instr = instr;
     if (instr->prev) instr->prev->next = instr;
     block->last_instr = instr;
@@ -2813,10 +2817,10 @@ MirInstr *create_instr_addrof(Context *cnt, Ast *node, MirInstr *src)
     return &tmp->base;
 }
 
-MirInstr *create_instr_decl_direct_ref(Context *cnt, MirInstr *ref)
+MirInstr *create_instr_decl_direct_ref(Context *cnt, Ast *node, MirInstr *ref)
 {
     BL_ASSERT(ref);
-    MirInstrDeclDirectRef *tmp = create_instr(cnt, MIR_INSTR_DECL_DIRECT_REF, NULL);
+    MirInstrDeclDirectRef *tmp = create_instr(cnt, MIR_INSTR_DECL_DIRECT_REF, node);
     tmp->ref                   = ref_instr(ref);
     return &tmp->base;
 }
@@ -3464,9 +3468,9 @@ MirInstr *append_instr_decl_ref(Context *   cnt,
     return &tmp->base;
 }
 
-MirInstr *append_instr_decl_direct_ref(Context *cnt, MirInstr *ref)
+MirInstr *append_instr_decl_direct_ref(Context *cnt, Ast *node, MirInstr *ref)
 {
-    MirInstr *tmp                       = create_instr_decl_direct_ref(cnt, ref);
+    MirInstr *tmp                       = create_instr_decl_direct_ref(cnt, node, ref);
     ((MirInstrDeclDirectRef *)tmp)->ref = ref;
     append_current_block(cnt, tmp);
     return tmp;
@@ -4213,7 +4217,7 @@ AnalyzeResult analyze_instr_unroll(Context *cnt, MirInstrUnroll *unroll)
             ANALYZE_INSTR_RQ(tmp_var);
             src_call->unroll_tmp_var = tmp_var;
         }
-        tmp_var = create_instr_decl_direct_ref(cnt, tmp_var);
+        tmp_var = create_instr_decl_direct_ref(cnt, NULL, tmp_var);
         insert_instr_before(&unroll->base, tmp_var);
         ANALYZE_INSTR_RQ(tmp_var);
         unroll->src = ref_instr(tmp_var);
@@ -6997,7 +7001,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
                     call_default_arg =
                         create_instr_call_loc(cnt, orig_node, call->base.node->location);
                 } else {
-                    call_default_arg = create_instr_decl_direct_ref(cnt, arg->value);
+                    call_default_arg = create_instr_decl_direct_ref(cnt, NULL, arg->value);
                 }
 
                 tsa_push_InstrPtr(call->args, call_default_arg);
@@ -7188,7 +7192,7 @@ ANALYZE_STAGE_FN(unroll)
     // Erase unroll instruction in case it's marked for remove.
     if (unroll->remove) {
         if (unroll->remove_src) {
-            MirInstr *ref = create_instr_decl_direct_ref(cnt, unroll->remove_src);
+            MirInstr *ref = create_instr_decl_direct_ref(cnt, NULL, unroll->remove_src);
             insert_instr_after(*input, ref);
             ANALYZE_INSTR_RQ(ref);
             (*input) = ref;
@@ -8377,32 +8381,26 @@ void ast_unrecheable(Context *cnt, Ast *unr)
 
 void ast_stmt_if(Context *cnt, Ast *stmt_if)
 {
-    Ast *ast_cond = stmt_if->data.stmt_if.test;
-    Ast *ast_then = stmt_if->data.stmt_if.true_stmt;
-    Ast *ast_else = stmt_if->data.stmt_if.false_stmt;
-    BL_ASSERT(ast_cond && ast_then);
-
+    Ast *ast_condition = stmt_if->data.stmt_if.test;
+    Ast *ast_then      = stmt_if->data.stmt_if.true_stmt;
+    Ast *ast_else      = stmt_if->data.stmt_if.false_stmt;
+    BL_ASSERT(ast_condition && ast_then);
     MirFn *fn = ast_current_fn(cnt);
     BL_ASSERT(fn);
-
-    MirInstrBlock *tmp_block  = NULL;
-    MirInstrBlock *then_block = append_block(cnt, fn, "if_then");
-    MirInstrBlock *else_block = append_block(cnt, fn, "if_else");
-    MirInstrBlock *cont_block = append_block(cnt, fn, "if_cont");
-
-    MirInstr *cond = ast(cnt, ast_cond);
+    MirInstrBlock *tmp_block      = NULL;
+    MirInstrBlock *then_block     = append_block(cnt, fn, "if_then");
+    MirInstrBlock *else_block     = append_block(cnt, fn, "if_else");
+    MirInstrBlock *continue_block = append_block(cnt, fn, "if_continue");
+    MirInstr *     cond           = ast(cnt, ast_condition);
     append_instr_cond_br(cnt, stmt_if, cond, then_block, else_block);
-
     // then block
     set_current_block(cnt, then_block);
     ast(cnt, ast_then);
-
     tmp_block = ast_current_block(cnt);
     if (!get_block_terminator(tmp_block)) {
         // block has not been terminated -> add terminator
-        append_instr_br(cnt, NULL, cont_block);
+        append_instr_br(cnt, get_last_instruction_node(tmp_block), continue_block);
     }
-
     // else if
     if (ast_else) {
         set_current_block(cnt, else_block);
@@ -8410,74 +8408,60 @@ void ast_stmt_if(Context *cnt, Ast *stmt_if)
 
         tmp_block = ast_current_block(cnt);
         if (!is_block_terminated(tmp_block)) {
-            append_instr_br(cnt, NULL, cont_block);
+            append_instr_br(cnt, get_last_instruction_node(tmp_block), continue_block);
         }
     }
-
     if (!is_block_terminated(else_block)) {
         // block has not been terminated -> add terminator
         set_current_block(cnt, else_block);
-        append_instr_br(cnt, NULL, cont_block);
+        append_instr_br(cnt, get_last_instruction_node(else_block), continue_block);
     }
-
-    set_current_block(cnt, cont_block);
+    set_current_block(cnt, continue_block);
 }
 
 void ast_stmt_loop(Context *cnt, Ast *loop)
 {
     Ast *ast_block     = loop->data.stmt_loop.block;
-    Ast *ast_cond      = loop->data.stmt_loop.condition;
+    Ast *ast_condition = loop->data.stmt_loop.condition;
     Ast *ast_increment = loop->data.stmt_loop.increment;
     Ast *ast_init      = loop->data.stmt_loop.init;
     BL_ASSERT(ast_block);
-
     MirFn *fn = ast_current_fn(cnt);
     BL_ASSERT(fn);
-
     // prepare all blocks
     MirInstrBlock *tmp_block       = NULL;
     MirInstrBlock *increment_block = ast_increment ? append_block(cnt, fn, "loop_increment") : NULL;
     MirInstrBlock *decide_block    = append_block(cnt, fn, "loop_decide");
     MirInstrBlock *body_block      = append_block(cnt, fn, "loop_body");
-    MirInstrBlock *cont_block      = append_block(cnt, fn, "loop_continue");
-
+    MirInstrBlock *continue_block  = append_block(cnt, fn, "loop_continue");
     MirInstrBlock *prev_break_block    = cnt->ast.break_block;
     MirInstrBlock *prev_continue_block = cnt->ast.continue_block;
-    cnt->ast.break_block               = cont_block;
+    cnt->ast.break_block               = continue_block;
     cnt->ast.continue_block            = ast_increment ? increment_block : decide_block;
-
     // generate initialization if there is one
-    if (ast_init) {
-        ast(cnt, ast_init);
-    }
-
+    if (ast_init) ast(cnt, ast_init);
     // decide block
-    append_instr_br(cnt, loop, decide_block);
+    append_instr_br(cnt, ast_condition, decide_block);
     set_current_block(cnt, decide_block);
-
-    MirInstr *cond = ast_cond ? ast(cnt, ast_cond) : append_instr_const_bool(cnt, NULL, true);
-
-    append_instr_cond_br(cnt, ast_cond, cond, body_block, cont_block);
-
+    MirInstr *condition =
+        ast_condition ? ast(cnt, ast_condition) : append_instr_const_bool(cnt, NULL, true);
+    append_instr_cond_br(cnt, ast_condition, condition, body_block, continue_block);
     // loop body
     set_current_block(cnt, body_block);
     ast(cnt, ast_block);
-
     tmp_block = ast_current_block(cnt);
     if (!is_block_terminated(tmp_block)) {
-        append_instr_br(cnt, loop, ast_increment ? increment_block : decide_block);
+        append_instr_br(cnt, ast_block, ast_increment ? increment_block : decide_block);
     }
-
     // increment if there is one
     if (ast_increment) {
         set_current_block(cnt, increment_block);
         ast(cnt, ast_increment);
-        append_instr_br(cnt, loop, decide_block);
+        append_instr_br(cnt, ast_increment, decide_block);
     }
-
     cnt->ast.break_block    = prev_break_block;
     cnt->ast.continue_block = prev_continue_block;
-    set_current_block(cnt, cont_block);
+    set_current_block(cnt, continue_block);
 }
 
 void ast_stmt_break(Context *cnt, Ast *br)
@@ -8520,7 +8504,9 @@ void ast_stmt_switch(Context *cnt, Ast *stmt_switch)
 
             MirInstrBlock *curr_block = ast_current_block(cnt);
             if (!is_block_terminated(curr_block)) {
-                append_instr_br(cnt, ast_case, cont_block);
+                MirInstr *last_instr = curr_block->last_instr;
+                Ast *     node       = last_instr ? last_instr->node : ast_case;
+                append_instr_br(cnt, node, cont_block);
             }
         } else {
             // Handle empty cases.
@@ -8591,7 +8577,7 @@ void ast_stmt_return(Context *cnt, Ast *ret)
                             "Expected return value.");
                 return;
             }
-            MirInstr *ref = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
+            MirInstr *ref = append_instr_decl_direct_ref(cnt, NULL, fn->ret_tmp);
             append_instr_store(cnt, ret, value, ref);
         } else if (value) {
 
@@ -8909,7 +8895,7 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
             cnt, NULL, gen_uq_name(IMPL_RET_TMP), NULL, NULL, true, false);
 
         set_current_block(cnt, cnt->ast.fnctx->exit_block);
-        MirInstr *ret_init = append_instr_decl_direct_ref(cnt, fn->ret_tmp);
+        MirInstr *ret_init = append_instr_decl_direct_ref(cnt, ast_block, fn->ret_tmp);
 
         append_instr_ret(cnt, ast_block, ret_init);
     } else {
@@ -9262,7 +9248,7 @@ static void ast_decl_var_local(Context *cnt, Ast *ast_local)
         if (is_unroll) {
             current_value = append_instr_unroll(cnt, ast_current_name, value, prev_var, index++);
         } else if (prev_var) {
-            current_value = append_instr_decl_direct_ref(cnt, prev_var);
+            current_value = append_instr_decl_direct_ref(cnt, NULL, prev_var);
         }
         ID *      id  = &ast_current_name->data.ident.id;
         MirInstr *var = append_instr_decl_var(cnt,

@@ -1,15 +1,8 @@
 main :: fn () s32 {
+    print("hello!");
     range := get_range();
-    print("Start!");
-    if get() == 10 {
-        print("hello");        
-        if get () == 10 {
-            print("it's 10!");
-            
-            loop i := 0; i < range; i += 1 {
-                print("foo");
-            }
-        }
+    loop i := 0; i < range; i += 1 {
+        func();
     }
     return 0;
 }
@@ -20,4 +13,13 @@ get :: fn () s32 {
 
 get_range :: fn () s32 {
     return 2;
+}
+
+func :: fn () {
+    loop i := 0; i < 3; i += 1 {
+        loop j := 0; j < 2; j += 1 {
+            print("foo");
+        }
+    }
+
 }

@@ -1469,10 +1469,8 @@ SKIP_EXPRS:
 
 static TokensLookaheadState cmp_stmt_loop(Token *curr)
 {
-    if (token_is(curr, SYM_SEMICOLON)) return TOK_LOOK_HIT;
-    // @INCOMPLETE I'm not sure why this was here, check it later.
-    // else if (token_is(curr, SYM_RPAREN))
-    //    return TOK_LOOK_TERMINAL;
+    if (token_is(curr, SYM_SEMICOLON))
+        return TOK_LOOK_HIT;
     else if (token_is(curr, SYM_LBLOCK))
         return TOK_LOOK_TERMINAL;
 
@@ -2679,9 +2677,6 @@ NEXT:
         if (create_scope) SCOPE_POP(cnt);
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
     }
-
-    // store location of block end
-    block->location_end = &tok->location;
 
     if (create_scope) SCOPE_POP(cnt);
     return block;
