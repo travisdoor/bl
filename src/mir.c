@@ -8387,22 +8387,40 @@ void ast_stmt_if(Context *cnt, Ast *stmt_if)
     BL_ASSERT(ast_condition && ast_then);
     MirFn *fn = ast_current_fn(cnt);
     BL_ASSERT(fn);
+
     MirInstrBlock *tmp_block      = NULL;
     MirInstrBlock *then_block     = append_block(cnt, fn, "if_then");
-    MirInstrBlock *else_block     = append_block(cnt, fn, "if_else");
     MirInstrBlock *continue_block = append_block(cnt, fn, "if_continue");
     MirInstr *     cond           = ast(cnt, ast_condition);
-    append_instr_cond_br(cnt, stmt_if, cond, then_block, else_block);
+
+    // Note: Else block is optional in this case i.e. if (true) { ... } expression does not have
+    // else block at all, so there is no need to generate one and 'conditional break' just breaks
+    // into the `continue` block. Skipping generation of else block also fixes issue with missing DI
+    // location of the last break emitted into the empty else block. Obviously there is no good
+    // source code possition for something not existing in source code!
+    const bool     has_else_branch = ast_else;
+    MirInstrBlock *else_block      = NULL;
+    if (has_else_branch) {
+        else_block = append_block(cnt, fn, "if_else");
+        append_instr_cond_br(cnt, stmt_if, cond, then_block, else_block);
+    } else {
+        append_instr_cond_br(cnt, stmt_if, cond, then_block, continue_block);
+    }
+
     // then block
     set_current_block(cnt, then_block);
     ast(cnt, ast_then);
     tmp_block = ast_current_block(cnt);
     if (!get_block_terminator(tmp_block)) {
         // block has not been terminated -> add terminator
-        append_instr_br(cnt, get_last_instruction_node(tmp_block), continue_block);
+        Ast *location_node = get_last_instruction_node(tmp_block);
+        // BL_ASSERT(location_node); @CLEANUP should this be enabled?
+        append_instr_br(cnt, location_node, continue_block);
     }
+
     // else if
-    if (ast_else) {
+    if (has_else_branch) {
+        BL_ASSERT(else_block);
         set_current_block(cnt, else_block);
         ast(cnt, ast_else);
 
@@ -8410,11 +8428,13 @@ void ast_stmt_if(Context *cnt, Ast *stmt_if)
         if (!is_block_terminated(tmp_block)) {
             append_instr_br(cnt, get_last_instruction_node(tmp_block), continue_block);
         }
-    }
-    if (!is_block_terminated(else_block)) {
-        // block has not been terminated -> add terminator
-        set_current_block(cnt, else_block);
-        append_instr_br(cnt, get_last_instruction_node(else_block), continue_block);
+
+        if (!is_block_terminated(else_block)) {
+            set_current_block(cnt, else_block);
+            append_instr_br(cnt, get_last_instruction_node(else_block), continue_block);
+        }
+    } else {
+        BL_LOG("No else block on %s:%d", stmt_if->location->unit->name, stmt_if->location->line);
     }
     set_current_block(cnt, continue_block);
 }

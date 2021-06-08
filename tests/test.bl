@@ -1,7 +1,6 @@
 main :: fn () s32 {
-    print("hello!");
-    range := get_range();
-    loop i := 0; i < range; i += 1 {
+    if get_range() == 10 { return 1; }
+    loop i := 0; i < 2; i += 1 {
         func();
     }
     return 0;
