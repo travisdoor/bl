@@ -387,7 +387,8 @@ static MirInstr *create_instr_const_float(Context *cnt, Ast *node, float val);
 static MirInstr *create_instr_const_double(Context *cnt, Ast *node, double val);
 static MirInstr *create_instr_const_bool(Context *cnt, Ast *node, bool val);
 static MirInstr *create_instr_addrof(Context *cnt, Ast *node, MirInstr *src);
-static MirInstr *create_instr_vargs_impl(Context *cnt, MirType *type, TSmallArray_InstrPtr *values);
+static MirInstr *
+create_instr_vargs_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values);
 static MirInstr *create_instr_decl_direct_ref(Context *cnt, Ast *node, MirInstr *ref);
 static MirInstr *create_instr_call_comptime(Context *cnt, Ast *node, MirInstr *fn);
 static MirInstr *create_instr_call_loc(Context *cnt, Ast *node, Location *call_location);
@@ -3763,10 +3764,11 @@ MirInstr *append_instr_unop(Context *cnt, Ast *node, MirInstr *instr, UnopKind o
     return &tmp->base;
 }
 
-MirInstr *create_instr_vargs_impl(Context *cnt, MirType *type, TSmallArray_InstrPtr *values)
+MirInstr *
+create_instr_vargs_impl(Context *cnt, Ast *node, MirType *type, TSmallArray_InstrPtr *values)
 {
     BL_ASSERT(type);
-    MirInstrVArgs *tmp = create_instr(cnt, MIR_INSTR_VARGS, NULL);
+    MirInstrVArgs *tmp = create_instr(cnt, MIR_INSTR_VARGS, node);
     tmp->type          = type;
     tmp->values        = values;
     return &tmp->base;
@@ -6941,7 +6943,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
         // Prepare vargs values.
         const usize           vargsc = call_argc - callee_argc;
         TSmallArray_InstrPtr *values = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
-        MirInstr *            vargs  = create_instr_vargs_impl(cnt, vargs_type, values);
+        MirInstr *vargs = create_instr_vargs_impl(cnt, call->base.node, vargs_type, values);
         ref_instr(vargs);
         if (vargsc > 0) {
             // One or more vargs passed.
@@ -8433,8 +8435,6 @@ void ast_stmt_if(Context *cnt, Ast *stmt_if)
             set_current_block(cnt, else_block);
             append_instr_br(cnt, get_last_instruction_node(else_block), continue_block);
         }
-    } else {
-        BL_LOG("No else block on %s:%d", stmt_if->location->unit->name, stmt_if->location->line);
     }
     set_current_block(cnt, continue_block);
 }
