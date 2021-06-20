@@ -673,7 +673,6 @@ void emit_DI_fn(Context *cnt, MirFn *fn)
 
 void emit_DI_var(Context *cnt, MirVar *var)
 {
-    // if (!var->decl_node || var->is_implicit) return;
     BL_ASSERT(var->decl_node && "Variable has no declaration node!");
     BL_ASSERT(var->id && "Variable has no id!");
     BL_ASSERT(!var->is_implicit && "Attempt to generate debug info for implicit variable!");
@@ -820,7 +819,6 @@ LLVMValueRef emit_const_string(Context *cnt, const char *str, usize len)
 {
     MirType *    type     = cnt->builtin_types->t_string;
     LLVMValueRef llvm_str = NULL;
-
     if (str) {
         MirType * raw_str_elem_type = mir_deref_type(mir_get_struct_elem_type(type, 1));
         u64       hash              = thash_from_str(str);
@@ -845,7 +843,8 @@ LLVMValueRef emit_const_string(Context *cnt, const char *str, usize len)
     } else {
         // null string content
         MirType *str_type = mir_get_struct_elem_type(type, 1);
-        llvm_str          = LLVMConstNull(get_type(cnt, str_type));
+        // @PERFORMANCE: Can we reuse same string null constant here???
+        llvm_str = LLVMConstNull(get_type(cnt, str_type));
     }
     MirType *             len_type = mir_get_struct_elem_type(type, 0);
     MirType *             ptr_type = mir_get_struct_elem_type(type, 1);
@@ -1800,7 +1799,6 @@ State emit_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 State emit_instr_arg(Context *cnt, MirVar *dest, MirInstrArg *arg_instr)
 {
     BL_ASSERT(dest);
-
     MirFn *fn = arg_instr->base.owner_block->owner_fn;
     BL_ASSERT(fn);
     MirType *    fn_type = fn->type;
@@ -1899,8 +1897,7 @@ State emit_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
         BL_ASSERT(llvm_arr_ptr);
 
         LLVMValueRef llvm_indices[1];
-        llvm_indices[0] = llvm_index;
-
+        llvm_indices[0]           = llvm_index;
         elem_ptr->base.llvm_value = LLVMBuildInBoundsGEP(
             cnt->llvm_builder, llvm_arr_ptr, llvm_indices, TARRAY_SIZE(llvm_indices), "");
 
@@ -2184,7 +2181,6 @@ void emit_instr_compound(Context *cnt, LLVMValueRef llvm_dest, MirInstrCompound 
         _emit_instr_compound_zero_initialized(cnt, llvm_dest, cmp);
         return;
     }
-
     if (mir_is_comptime(&cmp->base) && mir_is_global(&cmp->base)) {
         LLVMValueRef llvm_value = _emit_instr_compound_comptime(cnt, cmp);
         BL_ASSERT(llvm_value);
@@ -2365,19 +2361,17 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
     LLVMValueRef _name = NULL;                                                                     \
     {                                                                                              \
         LLVMBasicBlockRef llvm_prev_block = LLVMGetInsertBlock(cnt->llvm_builder);                 \
-                                                                                                   \
         LLVMBasicBlockRef llvm_entry_block =                                                       \
             LLVMValueAsBasicBlock(call->base.owner_block->owner_fn->first_block->base.llvm_value); \
-                                                                                                   \
         if (LLVMGetLastInstruction(llvm_entry_block)) {                                            \
             LLVMPositionBuilderBefore(cnt->llvm_builder,                                           \
                                       LLVMGetLastInstruction(llvm_entry_block));                   \
         } else {                                                                                   \
             LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_entry_block);                         \
         }                                                                                          \
-                                                                                                   \
         _name = LLVMBuildAlloca(cnt->llvm_builder, _type, "");                                     \
         LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_prev_block);                              \
+        DI_LOC_END();                                                                              \
     }                                                                                              \
     //*********************************************************************************************/
 
@@ -2396,7 +2390,6 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
 
     bool       has_byval_arg = false;
     const bool has_args      = call->args->size > 0;
-
     // Tmp for arg values passed into the Call Instruction.
     TSmallArray_LLVMValue llvm_args;
     tsa_init(&llvm_args);
@@ -2440,8 +2433,6 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
                 // PERFORMANCE: insert only when llvm_arg is not alloca???
                 INSERT_TMP(llvm_tmp, get_type(cnt, arg->type));
                 LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_tmp);
-
-                LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_tmp);
                 llvm_tmp = LLVMBuildBitCast(
                     cnt->llvm_builder,
                     llvm_tmp,
@@ -2482,7 +2473,6 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
                 // PERFORMANCE: insert only when llvm_arg is not alloca???
                 INSERT_TMP(llvm_tmp, get_type(cnt, arg->type));
                 LLVMBuildStore(cnt->llvm_builder, llvm_arg, llvm_tmp);
-
                 tsa_push_LLVMValue(&llvm_args, llvm_tmp);
                 break;
             }
@@ -2567,8 +2557,6 @@ State emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
         if (emit_DI) emit_DI_var(cnt, var);
     } else { // local variable
         BL_ASSERT(var->llvm_value);
-
-        // generate DI for debug build
         if (decl->init) {
             // There is special handling for initialization via compound instruction
             if (decl->init->kind == MIR_INSTR_COMPOUND) {
@@ -2631,8 +2619,8 @@ State emit_instr_br(Context *cnt, MirInstrBr *br)
     BL_ASSERT(llvm_then_block);
     DI_LOC_BEGIN(&br->base);
     br->base.llvm_value = LLVMBuildBr(cnt->llvm_builder, llvm_then_block);
-    DI_LOC_END();
     LLVMPositionBuilderAtEnd(cnt->llvm_builder, llvm_then_block);
+    DI_LOC_END();
     return STATE_PASSED;
 }
 
@@ -2764,7 +2752,6 @@ State emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
     BL_ASSERT(values);
     const usize vargsc = values->size;
     BL_ASSERT(vargs_type && vargs_type->kind == MIR_TYPE_VARGS);
-
     // Setup tmp array values.
     if (vargsc > 0) {
         MirInstr *   value;
@@ -2824,9 +2811,7 @@ State emit_instr_toany(Context *cnt, MirInstrToAny *toany)
     if (toany->expr_tmp) {
         LLVMValueRef llvm_dest_tmp = toany->expr_tmp->llvm_value;
         BL_ASSERT(llvm_dest_tmp && "Missing tmp variable!");
-
         LLVMBuildStore(cnt->llvm_builder, toany->expr->llvm_value, llvm_dest_tmp);
-
         LLVMValueRef llvm_data =
             LLVMBuildPointerCast(cnt->llvm_builder, llvm_dest_tmp, llvm_dest_data_type, "");
         LLVMBuildStore(cnt->llvm_builder, llvm_data, llvm_dest_data);
@@ -3113,7 +3098,7 @@ State emit_instr(Context *cnt, MirInstr *instr)
     default:
         BL_ABORT("Missing emit instruction!");
     }
-    cnt->emit_instruction_count++;
+    if (state == STATE_PASSED) cnt->emit_instruction_count++;
     return state;
 }
 

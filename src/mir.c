@@ -8433,8 +8433,6 @@ void ast_stmt_if(Context *cnt, Ast *stmt_if)
             set_current_block(cnt, else_block);
             append_instr_br(cnt, get_last_instruction_node(else_block), continue_block);
         }
-    } else {
-        BL_LOG("No else block on %s:%d", stmt_if->location->unit->name, stmt_if->location->line);
     }
     set_current_block(cnt, continue_block);
 }
