@@ -1,0 +1,45 @@
+//! ==========
+//! Hash Table
+//! ==========
+//! 
+//! ::
+//! 
+//!     #import "std/containers"
+//! 
+
+
+// TODO:
+// - takes Any type as value type
+// - can use strings and numbers as keys (overload insert)
+// - auto remap when table load factor reaches specified value
+// - expected size should be optional
+// - test cases should not generate usage warnings even if they are private!!!
+
+// @CLEANUP Rename to HashTable!!!
+HashTable2 :: struct {
+    i: s32;
+}
+
+ht_new :: fn (T: Any, expected_element_count: usize = DEFAULT_TABLE_SIZE) *HashTable2 {
+    ht :: cast(*HashTable2) alloc(sizeof(HashTable2));
+    if ht == null { panic("Bad allocation!"); }
+    ht_init(ht, T, expected_element_count);
+    return ht;
+}
+
+ht_delete :: fn (ht: *HashTable2) {
+    if !ht { return; }
+    ht_terminate(ht);
+    free(auto ht);
+}
+
+ht_init :: fn (ht: *HashTable2, T: Any, expected_element_count: usize = DEFAULT_TABLE_SIZE) {
+    if !ht { panic("Invalid hash table!"); }
+}
+
+ht_terminate :: fn (ht: *HashTable2) {
+    if !ht { panic("Invalid hash table!"); }
+}
+
+#private
+DEFAULT_TABLE_SIZE : usize : 256;

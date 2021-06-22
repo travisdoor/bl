@@ -13,7 +13,7 @@
 //! .. literalinclude:: /examples/docs/014.bl
 //!    :language: bl
 
-#import "std/array"
+#import "std/containers"
 
 #scope ArgParser
 

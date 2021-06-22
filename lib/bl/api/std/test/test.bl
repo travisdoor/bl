@@ -28,7 +28,7 @@
 
 #import "std/thread"
 #import "std/string"
-#import "std/array"
+#import "std/containers"
 
 #load "std/debug.bl"
 #load "os/posix/signal.bl"
