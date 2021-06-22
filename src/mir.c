@@ -7135,7 +7135,7 @@ AnalyzeResult analyze_instr_block(Context *cnt, MirInstrBlock *block)
         if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
             set_current_block(cnt, block);
             BL_ASSERT(fn->exit_block &&
-                      "Curent function does not have exit block set or even generated!");
+                      "Current function does not have exit block set or even generated!");
             append_instr_br(cnt, block->base.node, fn->exit_block);
         } else if (block->base.is_unreachable) {
             set_current_block(cnt, block);
@@ -7162,19 +7162,14 @@ AnalyzeState _analyze_slot(Context *                cnt,
         state = conf->stages[i](cnt, input, slot_type, is_initializer);
         switch (state) {
         case ANALYZE_STAGE_BREAK:
-            goto DONE;
+            return ANALYZE_PASSED;
         case ANALYZE_STAGE_FAILED:
-            goto FAILED;
+            return ANALYZE_FAILED;
         case ANALYZE_STAGE_CONTINUE:
             break;
         }
     }
-
-DONE:
     return ANALYZE_PASSED;
-
-FAILED:
-    return ANALYZE_FAILED;
 }
 
 ANALYZE_STAGE_FN(load)
