@@ -39,6 +39,7 @@ typedef struct Arena {
     struct ArenaChunk *   first_chunk;
     struct ArenaChunk *   current_chunk;
     usize                 elem_size_in_bytes;
+    s32                   elem_alignment;
     s32                   elems_per_chunk;
     ArenaElemDtor         elem_dtor;
     struct ArenaSyncImpl *sync;
@@ -46,6 +47,7 @@ typedef struct Arena {
 
 void arena_init(Arena *       arena,
                 usize         elem_size_in_bytes,
+                s32           elem_alignment,
                 s32           elems_per_chunk,
                 ArenaElemDtor elem_dtor);
 

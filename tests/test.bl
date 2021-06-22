@@ -15,10 +15,6 @@ get_range :: fn () s32 {
 }
 
 func :: fn () {
-    loop i := 0; i < 3; i += 1 {
-        loop j := 0; j < 2; j += 1 {
-            print("foo");
-        }
-    }
-
+    print("foo");
+    loop i := 0; i < 3; i += 1 { }
 }

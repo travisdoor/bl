@@ -34,8 +34,6 @@
 #include <pthread.h>
 #endif
 
-#define MAX_ALIGNMENT 16
-
 typedef struct ArenaChunk {
     struct ArenaChunk *next;
     s32                count;
@@ -60,45 +58,46 @@ static void sync_delete(ArenaSyncImpl *s)
 
 static INLINE ArenaChunk *alloc_chunk(Arena *arena)
 {
-    const usize chunk_size_in_bytes = arena->elem_size_in_bytes * arena->elems_per_chunk;
-    ArenaChunk *chunk               = bl_malloc(chunk_size_in_bytes);
+    const usize chunk_size_in_bytes =
+        sizeof(ArenaChunk) + arena->elem_size_in_bytes * arena->elems_per_chunk;
+    ArenaChunk *chunk = bl_malloc(chunk_size_in_bytes);
     if (!chunk) BL_ABORT("bad alloc");
     memset(chunk, 0, chunk_size_in_bytes);
-    chunk->count = 1;
     return chunk;
 }
 
 static INLINE void *get_from_chunk(Arena *arena, ArenaChunk *chunk, s32 i)
 {
-    void *elem = (void *)((char *)chunk + (i * arena->elem_size_in_bytes));
-    /* New node pointer in chunk must be aligned. (ALLOCATED SIZE FOR EVERY NODE MUST BE
-     * sizeof(node_t) + MAX_ALIGNMENT) */
+    BL_ASSERT(i >= 0 && i < arena->elems_per_chunk);
+    void *    elem = (void *)((char *)chunk + sizeof(ArenaChunk) + i * arena->elem_size_in_bytes);
     ptrdiff_t adj;
-    align_ptr_up(&elem, MAX_ALIGNMENT, &adj);
-    BL_ASSERT(adj < MAX_ALIGNMENT);
+    align_ptr_up(&elem, arena->elem_alignment, &adj);
+    BL_ASSERT(adj < arena->elem_alignment);
     return elem;
 }
 
 static INLINE ArenaChunk *free_chunk(Arena *arena, ArenaChunk *chunk)
 {
     if (!chunk) return NULL;
-
     ArenaChunk *next = chunk->next;
-    for (s32 i = 0; i < chunk->count - 1; ++i) {
-        if (arena->elem_dtor) arena->elem_dtor(get_from_chunk(arena, chunk, i + 1));
+    if (arena->elem_dtor) {
+        for (s32 i = 0; i < chunk->count; ++i) {
+            arena->elem_dtor(get_from_chunk(arena, chunk, i));
+        }
     }
-
     bl_free(chunk);
     return next;
 }
 
 void arena_init(Arena *       arena,
                 usize         elem_size_in_bytes,
+                s32           elem_alignment,
                 s32           elems_per_chunk,
                 ArenaElemDtor elem_dtor)
 {
-    arena->elem_size_in_bytes = elem_size_in_bytes + MAX_ALIGNMENT;
+    arena->elem_size_in_bytes = elem_size_in_bytes + elem_alignment;
     arena->elems_per_chunk    = elems_per_chunk;
+    arena->elem_alignment     = elem_alignment;
     arena->first_chunk        = NULL;
     arena->current_chunk      = NULL;
     arena->elem_dtor          = elem_dtor;
@@ -129,9 +128,8 @@ void *arena_alloc(Arena *arena)
         arena->current_chunk       = chunk;
     }
 
-    void *elem = get_from_chunk(arena, arena->current_chunk, arena->current_chunk->count);
-    arena->current_chunk->count++;
-    BL_ASSERT(is_aligned(elem, MAX_ALIGNMENT) && "unaligned allocation of arena element");
+    void *elem = get_from_chunk(arena, arena->current_chunk, arena->current_chunk->count++);
+    BL_ASSERT(is_aligned(elem, arena->elem_alignment) && "Unaligned allocation of arena element!");
     pthread_mutex_unlock(&arena->sync->mtx);
     return elem;
 }

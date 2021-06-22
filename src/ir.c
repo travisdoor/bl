@@ -1964,8 +1964,9 @@ State emit_instr_load(Context *cnt, MirInstrLoad *load)
         load->base.llvm_value = LLVMGetInitializer(llvm_src);
         return STATE_PASSED;
     }
-
-    load->base.llvm_value    = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
+    DI_LOCATION_SET(&load->base);
+    load->base.llvm_value = LLVMBuildLoad(cnt->llvm_builder, llvm_src, "");
+    DI_LOCATION_RESET();
     const unsigned alignment = (const unsigned)load->base.value.type->alignment;
     LLVMSetAlignment(load->base.llvm_value, alignment);
     return STATE_PASSED;
@@ -1982,7 +1983,9 @@ State emit_instr_store(Context *cnt, MirInstrStore *store)
     LLVMValueRef val = store->src->llvm_value;
     BL_ASSERT(val && "Missing LLVM store source value!");
     const unsigned alignment = (unsigned)store->src->value.type->alignment;
-    store->base.llvm_value   = LLVMBuildStore(cnt->llvm_builder, val, ptr);
+    DI_LOCATION_SET(&store->base);
+    store->base.llvm_value = LLVMBuildStore(cnt->llvm_builder, val, ptr);
+    DI_LOCATION_RESET();
     LLVMSetAlignment(store->base.llvm_value, alignment);
     // PERFORMANCE: We can use memcpy intrinsic for larger values, but in such case we
     // don't need generate load for source value. This change require additional work in
@@ -2212,7 +2215,7 @@ State emit_instr_binop(Context *cnt, MirInstrBinop *binop)
     MirType *  type           = binop->lhs->value.type;
     const bool real_type      = type->kind == MIR_TYPE_REAL;
     const bool signed_integer = type->kind == MIR_TYPE_INT && type->data.integer.is_signed;
-
+    DI_LOCATION_SET(&binop->base);
     switch (binop->op) {
     case BINOP_ADD:
         if (real_type)
@@ -2320,6 +2323,7 @@ State emit_instr_binop(Context *cnt, MirInstrBinop *binop)
     default:
         BL_ABORT("Invalid binary operation.");
     }
+    DI_LOCATION_RESET();
     return STATE_PASSED;
 }
 
@@ -2550,7 +2554,7 @@ State emit_instr_ret(Context *cnt, MirInstrRet *ret)
 
     MirType *fn_type = fn->type;
     BL_ASSERT(fn_type);
-
+    DI_LOCATION_SET(&ret->base);
     if (fn_type->data.fn.has_sret) {
         LLVMValueRef llvm_ret_value = ret->value->llvm_value;
         LLVMValueRef llvm_sret      = LLVMGetParam(fn->llvm_value, LLVM_SRET_INDEX);
@@ -2569,6 +2573,7 @@ State emit_instr_ret(Context *cnt, MirInstrRet *ret)
     ret->base.llvm_value = LLVMBuildRetVoid(cnt->llvm_builder);
 
 FINALIZE:
+    DI_LOCATION_RESET();
     if (cnt->is_debug_mode) {
         BL_ASSERT(fn->body_scope->llvm_meta);
         llvm_di_finalize_subprogram(cnt->llvm_di_builder, fn->body_scope->llvm_meta);

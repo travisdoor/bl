@@ -386,8 +386,8 @@ static int compile(Assembly *assembly)
     // Compile assembly using pipeline.
     if (state == COMPILE_OK) state = compile_assembly(assembly, assembly_pipeline);
 
-    const clock_t end = clock();
-    const f64 time_spent = (f64)(end - begin) / CLOCKS_PER_SEC;
+    const clock_t end        = clock();
+    const f64     time_spent = (f64)(end - begin) / CLOCKS_PER_SEC;
 
     builder_log("Compiled %i lines in %f seconds.", builder.total_lines, time_spent);
     if (state != COMPILE_OK) {
@@ -420,7 +420,8 @@ void builder_init(const BuilderOptions *options, const char *exec_dir)
     builder.exec_dir = strdup(exec_dir);
 
     conf_data_init(&builder.conf);
-    arena_init(&builder.str_cache, sizeof(TString), 256, (ArenaElemDtor)str_cache_dtor);
+    arena_init(
+        &builder.str_cache, sizeof(TString), alignment_of(TString), 256, (ArenaElemDtor)str_cache_dtor);
 
     // initialize LLVM statics
     llvm_init();

@@ -256,6 +256,7 @@ struct MirFn {
     // pointer to the first block inside function body
     MirInstrBlock *first_block;
     MirInstrBlock *last_block;
+    MirInstrBlock *exit_block;
     s32            block_count;
 
     // Temporary variable used for return value.

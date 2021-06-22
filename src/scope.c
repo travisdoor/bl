@@ -68,8 +68,8 @@ static void scope_dtor(Scope *scope)
 
 void scope_arenas_init(ScopeArenas *arenas)
 {
-    arena_init(&arenas->scopes, sizeof(Scope), ARENA_CHUNK_COUNT, (ArenaElemDtor)scope_dtor);
-    arena_init(&arenas->entries, sizeof(ScopeEntry), ARENA_CHUNK_COUNT, NULL);
+    arena_init(&arenas->scopes, sizeof(Scope), alignment_of(Scope), ARENA_CHUNK_COUNT, (ArenaElemDtor)scope_dtor);
+    arena_init(&arenas->entries, sizeof(ScopeEntry), alignment_of(ScopeEntry), ARENA_CHUNK_COUNT, NULL);
 }
 
 void scope_arenas_terminate(ScopeArenas *arenas)

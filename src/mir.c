@@ -109,7 +109,6 @@ TSMALL_ARRAY_TYPE(RTTIIncomplete, RTTIIncomplete, 64);
 
 typedef struct {
     TSmallArray_DeferStack defer_stack;
-    MirInstrBlock *        exit_block;
 } AstFnContext;
 
 // Instance in run method is zero initialized, no need to set default values explicitly.
@@ -128,7 +127,7 @@ typedef struct {
         MirInstrPhi *  current_phi;
         MirInstrBlock *break_block;
         MirInstrBlock *continue_block;
-        AstFnContext * fnctx;
+        AstFnContext * current_fn_context;
         ID *           current_entity_id;
         MirInstr *     current_fwd_struct_decl;
     } ast;
@@ -203,7 +202,7 @@ typedef enum {
 
 // Argument list used in slot analyze functions
 // clang-format off
-#define ANALYZE_STAGE_ARGS                                                                            \
+#define ANALYZE_STAGE_ARGS                                                                                \
     	Context   UNUSED(*cnt),          /* Stage context. */                                             \
 	    MirInstr  UNUSED(**input),       /* Slot input, this represents slot itself and can be changed. */\
 	    MirType   UNUSED(*slot_type),    /* Optional expected result type. */                             \
@@ -226,9 +225,9 @@ static ID builtin_ids[_MIR_BUILTIN_ID_COUNT] = {
 };
 
 // Arena destructor for functions.
-static void fn_dtor(MirFn **_fn)
+static void fn_dtor(MirFn *fn)
 {
-    MirFn *fn = *_fn;
+    BL_MAGIC_ASSERT(fn);
     if (fn->dyncall.extern_callback_handle) dcbFreeCallback(fn->dyncall.extern_callback_handle);
 }
 
@@ -1364,7 +1363,7 @@ void ast_push_fn_context(Context *cnt)
     }
     memset(fnctx, 0, sizeof(AstFnContext));
     tsa_init(&fnctx->defer_stack);
-    cnt->ast.fnctx = fnctx;
+    cnt->ast.current_fn_context = fnctx;
 }
 
 void ast_pop_fn_context(Context *cnt)
@@ -1372,11 +1371,12 @@ void ast_pop_fn_context(Context *cnt)
     TArray *stack = &cnt->ast._fnctx_stack;
     BL_ASSERT(stack->size);
     AstFnContext *fnctx = &tarray_at(AstFnContext, stack, stack->size - 1);
-    BL_ASSERT(fnctx == cnt->ast.fnctx &&
+    BL_ASSERT(fnctx == cnt->ast.current_fn_context &&
               "AST function generation context malformed, push and pop out of sycn?");
     tsa_terminate(&fnctx->defer_stack);
     tarray_pop(stack);
-    cnt->ast.fnctx = stack->size ? &tarray_at(AstFnContext, stack, stack->size - 1) : NULL;
+    cnt->ast.current_fn_context =
+        stack->size ? &tarray_at(AstFnContext, stack, stack->size - 1) : NULL;
 }
 
 void type_init_id(Context *cnt, MirType *type)
@@ -3716,17 +3716,12 @@ MirInstr *append_instr_ret(Context *cnt, Ast *node, MirInstr *value)
     tmp->base.value.addr_mode = MIR_VAM_RVALUE;
     tmp->base.ref_count       = NO_REF_COUNTING;
     tmp->value                = value;
-
     append_current_block(cnt, &tmp->base);
-
     MirInstrBlock *block = ast_current_block(cnt);
     if (!is_block_terminated(block)) terminate_block(block, &tmp->base);
-
     MirFn *fn = block->owner_fn;
     BL_ASSERT(fn);
-
     fn->terminal_instr = tmp;
-
     return &tmp->base;
 }
 
@@ -7118,7 +7113,7 @@ AnalyzeResult analyze_instr_block(Context *cnt, MirInstrBlock *block)
     block->base.is_unreachable = block->base.ref_count == 0;
     if (!fn->first_unreachable_loc && block->base.is_unreachable && block->entry_instr &&
         block->entry_instr->node) {
-        // Report unreachable code if there is one only once inside funcition body.
+        // Report unreachable code if there is one only once inside function body.
         fn->first_unreachable_loc = block->entry_instr->node->location;
 
         builder_msg(BUILDER_MSG_WARNING,
@@ -7131,9 +7126,17 @@ AnalyzeResult analyze_instr_block(Context *cnt, MirInstrBlock *block)
     // Append implicit return for void functions or generate error when last
     // block is not terminated
     if (!is_block_terminated(block)) {
+        // Exit block and it's terminal break instruction are generated during AST instruction pass
+        // and it must be already terminated. Here we generate only breaks to the exit block in case
+        // analyzed block is not correctly terminated (it's pretty common since instruction
+        // generation is just appending blocks).
+        BL_ASSERT(block != fn->exit_block && "Exit block must be terminated!");
+
         if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
             set_current_block(cnt, block);
-            append_instr_ret(cnt, block->base.node, NULL);
+            BL_ASSERT(fn->exit_block &&
+                      "Curent function does not have exit block set or even generated!");
+            append_instr_br(cnt, block->base.node, fn->exit_block);
         } else if (block->base.is_unreachable) {
             set_current_block(cnt, block);
             append_instr_br(cnt, block->base.node, block);
@@ -7145,7 +7148,6 @@ AnalyzeResult analyze_instr_block(Context *cnt, MirInstrBlock *block)
                         "Not every path inside function return value.");
         }
     }
-
     return ANALYZE_RESULT(PASSED, 0);
 }
 
@@ -8344,7 +8346,7 @@ MirVar *rtti_gen_fn_group(Context *cnt, MirType *type)
 // MIR builting
 void ast_defer_block(Context *cnt, Ast *block, bool whole_tree)
 {
-    TSmallArray_DeferStack *stack = &cnt->ast.fnctx->defer_stack;
+    TSmallArray_DeferStack *stack = &cnt->ast.current_fn_context->defer_stack;
     Ast *                   defer;
     for (usize i = stack->size; i-- > 0;) {
         defer = stack->data[i];
@@ -8585,8 +8587,8 @@ void ast_stmt_return(Context *cnt, Ast *ret)
                   "Expected at least one return value when return expression array is not NULL.");
         value = ast(cnt, ast_value);
     }
+    MirFn *fn = ast_current_fn(cnt);
     if (!is_current_block_terminated(cnt)) {
-        MirFn *fn = ast_current_fn(cnt);
         BL_ASSERT(fn);
         if (fn->ret_tmp) {
             if (!value) {
@@ -8600,7 +8602,6 @@ void ast_stmt_return(Context *cnt, Ast *ret)
             MirInstr *ref = append_instr_decl_direct_ref(cnt, NULL, fn->ret_tmp);
             append_instr_store(cnt, ret, value, ref);
         } else if (value) {
-
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_UNEXPECTED_EXPR,
                         value->node->location,
@@ -8609,14 +8610,15 @@ void ast_stmt_return(Context *cnt, Ast *ret)
         }
         ast_defer_block(cnt, ret->data.stmt_return.owner_block, true);
     }
-    BL_ASSERT(cnt->ast.fnctx->exit_block);
-    append_instr_br(cnt, ret, cnt->ast.fnctx->exit_block);
+    MirInstrBlock *exit_block = fn->exit_block;
+    BL_ASSERT(exit_block);
+    append_instr_br(cnt, ret, exit_block);
 }
 
 void ast_stmt_defer(Context *cnt, Ast *defer)
 {
     // push new defer record
-    tsa_push_DeferStack(&cnt->ast.fnctx->defer_stack, defer);
+    tsa_push_DeferStack(&cnt->ast.current_fn_context->defer_stack, defer);
 }
 
 MirInstr *ast_call_loc(Context *cnt, Ast *loc)
@@ -8906,23 +8908,21 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
     // defer statement, because we need to call defer blocks after return value
     // evaluation and before terminal instruction of the function. Last defer block
     // always breaks into the exit block.
-    cnt->ast.fnctx->exit_block = append_block(cnt, fn, "exit");
-    ref_instr(&cnt->ast.fnctx->exit_block->base);
+    MirInstrBlock *exit_block = append_block(cnt, fn, "exit");
+    fn->exit_block =
+        (MirInstrBlock *)ref_instr(&exit_block->base); // Exit block is always referenced
 
     if (ast_fn_type->data.type_fn.ret_type) {
         set_current_block(cnt, init_block);
         fn->ret_tmp = append_instr_decl_var_impl(
             cnt, NULL, gen_uq_name(IMPL_RET_TMP), NULL, NULL, true, false);
-
-        set_current_block(cnt, cnt->ast.fnctx->exit_block);
+        set_current_block(cnt, exit_block);
         MirInstr *ret_init = append_instr_decl_direct_ref(cnt, ast_block, fn->ret_tmp);
-
         append_instr_ret(cnt, ast_block, ret_init);
     } else {
-        set_current_block(cnt, cnt->ast.fnctx->exit_block);
+        set_current_block(cnt, exit_block);
         append_instr_ret(cnt, ast_block, NULL);
     }
-
     set_current_block(cnt, init_block);
 
     // build MIR for fn arguments
@@ -10282,15 +10282,25 @@ MirFn *group_select_overload(Context *                  cnt,
 
 void mir_arenas_init(MirArenas *arenas)
 {
-    const size_t instr_size = SIZEOF_MIR_INSTR;
-    arena_init(&arenas->instr, instr_size, ARENA_INSTR_CHUNK_COUNT, NULL);
-    arena_init(&arenas->type, sizeof(MirType), ARENA_CHUNK_COUNT, NULL);
-    arena_init(&arenas->var, sizeof(MirVar), ARENA_CHUNK_COUNT, NULL);
-    arena_init(&arenas->fn, sizeof(MirFn), ARENA_CHUNK_COUNT, (ArenaElemDtor)&fn_dtor);
-    arena_init(&arenas->member, sizeof(MirMember), ARENA_CHUNK_COUNT, NULL);
-    arena_init(&arenas->variant, sizeof(MirVariant), ARENA_CHUNK_COUNT, NULL);
-    arena_init(&arenas->arg, sizeof(MirArg), ARENA_CHUNK_COUNT / 2, NULL);
-    arena_init(&arenas->fn_group, sizeof(MirFnGroup), ARENA_CHUNK_COUNT / 2, NULL);
+    const usize instr_size = SIZEOF_MIR_INSTR;
+    arena_init(&arenas->instr, instr_size, ALIGNOF_MIR_INSTR, ARENA_INSTR_CHUNK_COUNT, NULL);
+    arena_init(&arenas->type, sizeof(MirType), alignment_of(MirType), ARENA_CHUNK_COUNT, NULL);
+    arena_init(&arenas->var, sizeof(MirVar), alignment_of(MirVar), ARENA_CHUNK_COUNT, NULL);
+    arena_init(&arenas->fn,
+               sizeof(MirFn),
+               alignment_of(MirFn),
+               ARENA_CHUNK_COUNT,
+               (ArenaElemDtor)&fn_dtor);
+    arena_init(
+        &arenas->member, sizeof(MirMember), alignment_of(MirMember), ARENA_CHUNK_COUNT, NULL);
+    arena_init(
+        &arenas->variant, sizeof(MirVariant), alignment_of(MirVariant), ARENA_CHUNK_COUNT, NULL);
+    arena_init(&arenas->arg, sizeof(MirArg), alignment_of(MirArg), ARENA_CHUNK_COUNT / 2, NULL);
+    arena_init(&arenas->fn_group,
+               sizeof(MirFnGroup),
+               alignment_of(MirFnGroup),
+               ARENA_CHUNK_COUNT / 2,
+               NULL);
 }
 
 void mir_arenas_terminate(MirArenas *arenas)

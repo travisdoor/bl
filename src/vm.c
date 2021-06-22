@@ -30,7 +30,7 @@
 #include "builder.h"
 #include "mir.h"
 
-#define MAX_ALIGNMENT 8
+#define VM_MAX_ALIGNMENT 8
 #define VERBOSE_EXEC false
 #define CHCK_STACK (BL_DEBUG || BL_ASSERT_ENABLE)
 #define PTR_SIZE sizeof(void *) // HACK: can cause problems with different build targets.
@@ -236,7 +236,7 @@ static INLINE usize stack_alloc_size(usize size)
 {
     BL_ASSERT(size != 0);
     size += CHCK_SIZE();
-    return size + (MAX_ALIGNMENT - (size % MAX_ALIGNMENT));
+    return size + (VM_MAX_ALIGNMENT - (size % VM_MAX_ALIGNMENT));
 }
 
 // allocate memory on frame stack, size is in bits!!!
@@ -257,7 +257,7 @@ static INLINE VMStackPtr stack_alloc(VM *vm, usize size)
     VMStackPtr mem     = (VMStackPtr)vm->stack->top_ptr;
     vm->stack->top_ptr = vm->stack->top_ptr + size;
 
-    if (!is_aligned(mem, MAX_ALIGNMENT)) {
+    if (!is_aligned(mem, VM_MAX_ALIGNMENT)) {
         BL_WARNING("BAD ALIGNMENT %p, %d bytes", mem, size);
     }
 

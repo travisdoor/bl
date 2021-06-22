@@ -460,10 +460,12 @@ Assembly *assembly_new(const Target *target)
     ast_arena_init(&assembly->arenas.ast);
     arena_init(&assembly->arenas.array,
                sizeof(TArray *),
+               alignment_of(TArray *),
                EXPECTED_ARRAY_COUNT,
                (ArenaElemDtor)tarray_dtor);
     arena_init(&assembly->arenas.small_array,
                sizeof(union _SmallArrays),
+               alignment_of(union _SmallArrays),
                EXPECTED_ARRAY_COUNT,
                (ArenaElemDtor)small_array_dtor);
     assembly->gscope =

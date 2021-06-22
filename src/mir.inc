@@ -48,6 +48,7 @@ union __INSTR_T {\
 };
 
 #define SIZEOF_MIR_INSTR sizeof(union __INSTR_T)
+#define ALIGNOF_MIR_INSTR alignment_of(union __INSTR_T)
 #endif
 
 #ifdef GEN_INSTR_KINDS

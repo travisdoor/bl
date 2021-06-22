@@ -82,6 +82,8 @@ struct Assembly;
 #error "Unsuported compiler!"
 #endif
 
+#define alignment_of(T) _Alignof(T)
+
 #define IS_FLAG(_v, _flag) ((bool)(((_v) & (_flag)) == (_flag)))
 #define IS_NOT_FLAG(_v, _flag) ((bool)(((_v) & (_flag)) != (_flag)))
 
