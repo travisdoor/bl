@@ -1,9 +1,41 @@
-Foo :: enum {
-    First;
-    Second;
-    Third;
+// polymorph types concept.
+
+// Polymorph type
+Table :: struct <TKey, TValue> {
+    key: TKey;
+    value: TValue;
 }
 
+// Polymorph function
+insert :: fn (table: *Table<?TKey, ?TValue>, key: TKey, value: TValue) {
+    table.key   = key;
+    table.value = value;
+}
+
+//   ||
+//   ||
+//   \/
+
+// Generated function 
+insert :: fn (table: *Table<s32, string> key: s32, value: string) {
+    table.key   = key;
+    table.value = value;    
+}
+
+get :: fn (table: *Table<?TKey, ?TValue>, key: TKey) TValue {
+}
+
+maximum :: fn (a: ?T, b: T) T {
+    if a > b { return a; }
+    return b;
+}
+
+v :: maximum(10, 20);
+
+// usage
 main :: fn () s32 {
+    t: Table<s32, string>;
+    insert(&t, 666, "Hello!");
+    v : string : get(&t, 666);
     return 0;
 }
