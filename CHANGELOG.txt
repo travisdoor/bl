@@ -7,6 +7,7 @@ Fix crash when invlid type of default argument value is provided by user.
 Fix invalid conversion of enum variants to Any.
 Fix DI information using Code View.
 Fix generation of unused LLVM IR code paths.
+Test cases are no longer reported as unused during compilation.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------
