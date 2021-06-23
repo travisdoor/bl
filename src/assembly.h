@@ -95,8 +95,8 @@ typedef struct NativeLib {
     bool           no_bin;                                                                         \
     bool           no_llvm;                                                                        \
     bool           no_analyze;                                                                     \
-    bool           syntax_only;
-
+    bool           syntax_only;                                                                    \
+    MirFn *        build_event_callback;
 typedef struct Target {
     // Copyable content of target can be duplicated from default target, the default target is
     // usually target containing some setup acquired from command line arguments of application.

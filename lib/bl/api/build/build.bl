@@ -146,6 +146,8 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
     no_analyze: bool;
     /// Check only code syntax.
     syntax_only: bool;
+    
+    build_event_callback: *fn(name: *u8);
 }
 
 TargetKind :: enum {

@@ -824,14 +824,12 @@ char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result
     if (has_args) {
         TSmallArray_ArgPtr *args = fn->type->data.fn.args;
         tsa_resize_ConstExprValue(&arg_tmp, args->size);
-
         MirArg *it;
         TSA_FOREACH(args, it)
         {
             MirConstExprValue *v = &arg_tmp.data[i];
             v->type              = it->type;
             v->data              = &v->_tmp[0];
-
             dyncall_cb_read_arg(vm, v, dc_args);
         }
     }
@@ -2469,6 +2467,25 @@ bool vm_execute_fn(VM *vm, Assembly *assembly, MirFn *fn, VMStackPtr *out_ptr)
     vm->assembly       = assembly;
     vm->stack->aborted = false;
     return execute_fn_impl_top_level(vm, fn, NULL, out_ptr);
+}
+
+bool vm_execute_fn2(VM *             vm,
+                    struct Assembly *assembly,
+                    struct MirFn *   fn,
+                    void *           ptr_arg,
+                    VMStackPtr *     out_ptr)
+{
+    vm->assembly       = assembly;
+    vm->stack->aborted = false;
+    MirConstExprValue arg;
+    arg.data = ptr_arg;
+    arg.type = assembly->builtin_types.t_u8_ptr;
+    TSmallArray_ConstExprValue args;
+    tsa_init(&args);
+    tsa_push_ConstExprValue(&args, arg);
+    const bool result = execute_fn_impl_top_level(vm, fn, &args, out_ptr);
+    tsa_terminate(&args);
+    return result;
 }
 
 bool vm_execute_instr_top_level_call(VM *vm, Assembly *assembly, MirInstrCall *call)

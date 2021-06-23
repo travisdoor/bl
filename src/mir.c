@@ -8846,6 +8846,15 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
                           u32              flags,
                           MirBuiltinIdKind builtin_id)
 {
+    MirFn *event_callback = cnt->assembly->target->build_event_callback;
+    struct BLString {
+        s64   len;
+        char *ptr;
+    };
+    struct BLString data;
+    data.len = strlen("hello");
+    data.ptr = "hello";
+    if (event_callback) vm_execute_fn2(cnt->vm, cnt->assembly, event_callback, &data, NULL);
     // creates function prototype
     Ast *ast_block   = lit_fn->data.expr_fn.block;
     Ast *ast_fn_type = lit_fn->data.expr_fn.type;
