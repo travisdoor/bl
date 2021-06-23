@@ -1,20 +1,6 @@
 main :: fn () s32 {
-    if get_range() == 10 { return 1; }
-    loop i := 0; i < 2; i += 1 {
-        func();
-    }
     return 0;
 }
 
-get :: fn () s32 {
-    return 10;
-}
-
-get_range :: fn () s32 {
-    return 2;
-}
-
-func :: fn () {
-    print("foo");
-    loop i := 0; i < 3; i += 1 { }
-}
+#private
+my_test :: fn () #test {}

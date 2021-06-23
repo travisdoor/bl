@@ -1614,11 +1614,24 @@ ScopeEntry *register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool 
     ScopeEntry *entry = scope_create_entry(
         &cnt->assembly->arenas.scope, SCOPE_ENTRY_INCOMPLETE, id, node, is_builtin);
     scope_insert(scope, entry);
-    // Check usage only for function locals not starting with underscore.
-    if (!builder.options->no_usage_check && (scope_is_subtree_of_kind(scope, SCOPE_FN) ||
-                                             scope_is_subtree_of_kind(scope, SCOPE_PRIVATE))) {
-        usage_check_push(cnt, entry);
+
+    // Schedule usage check.
+    if (!builder.options->no_usage_check) goto SKIP_USAGE_CHECK;
+    // No usage checking in general is done only for symbols in fuction local scope and symbols
+    // in global private scope.
+    if (!scope_is_subtree_of_kind(scope, SCOPE_FN) &&
+        scope_is_subtree_of_kind(scope, SCOPE_PRIVATE)) {
+        goto SKIP_USAGE_CHECK;
     }
+    if (entry->kind != SCOPE_ENTRY_VAR && entry->kind != SCOPE_ENTRY_FN) {
+        goto SKIP_USAGE_CHECK;
+    }
+    if (entry->kind == SCOPE_ENTRY_FN && IS_FLAG(entry->data.fn->flags, FLAG_TEST_FN)) {
+        goto SKIP_USAGE_CHECK;
+    }
+    usage_check_push(cnt, entry);
+
+SKIP_USAGE_CHECK:
     BL_TRACY_MESSAGE("REGISTER_SYMBOL", "%s", id->str);
     return entry;
 
@@ -7764,7 +7777,6 @@ void analyze_report_unused(Context *cnt)
     TARRAY_FOREACH(ScopeEntry *, queue, entry)
     {
         if (entry->ref_count > 0) continue;
-        if (entry->kind != SCOPE_ENTRY_VAR && entry->kind != SCOPE_ENTRY_FN) continue;
         if (!entry->node || !entry->id) continue;
         BL_ASSERT(entry->node->location);
         builder_msg(BUILDER_MSG_WARNING,
