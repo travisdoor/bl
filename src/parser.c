@@ -2595,6 +2595,7 @@ Ast *parse_block(Context *cnt, bool create_scope)
     Token *tok;
     Ast *  tmp;
     block->data.block.nodes = tarray_new(sizeof(Ast *));
+    tarray_reserve(block->data.block.nodes, 16);
 
 NEXT:
     if (tokens_current_is(cnt->tokens, SYM_SEMICOLON)) {

@@ -305,13 +305,14 @@ static void tests_run(Assembly *assembly)
     builder.test_failc = assembly->vm_run.last_execution_status;
 }
 
-static void setup_unit_pipeline(Assembly *assembly, UnitStageFn *stages, s32 stage_count)
-{
 #define STAGE(i, fn)                                                                               \
     {                                                                                              \
         BL_ASSERT(i < stage_count - 1 && "Stage out of bounds!");                                  \
         stages[i++] = fn;                                                                          \
     }
+
+static void setup_unit_pipeline(Assembly *assembly, UnitStageFn *stages, s32 stage_count)
+{
 
     const Target *t = assembly->target;
 
@@ -321,18 +322,10 @@ static void setup_unit_pipeline(Assembly *assembly, UnitStageFn *stages, s32 sta
     STAGE(index, &lexer_run);
     if (t->print_tokens) STAGE(index, &token_printer_run);
     STAGE(index, &parser_run);
-
-#undef STAGE
 }
 
 static void setup_assembly_pipeline(Assembly *assembly, AssemblyStageFn *stages, s32 stage_count)
 {
-#define STAGE(i, fn)                                                                               \
-    {                                                                                              \
-        BL_ASSERT(i < stage_count - 1 && "Stage out of bounds!");                                  \
-        stages[i++] = fn;                                                                          \
-    }
-
     const Target *t = assembly->target;
 
     s32 index = 0;
@@ -358,13 +351,47 @@ static void setup_assembly_pipeline(Assembly *assembly, AssemblyStageFn *stages,
     if (t->no_bin) return;
     STAGE(index, &obj_writer_run);
     STAGE(index, &native_bin_run);
+}
+
 #undef STAGE
+
+static void print_stats(Assembly *assembly)
+{
+    const f64 total_s = assembly->stats.parsing_lexing_s + assembly->stats.mir_s +
+                        assembly->stats.llvm_s + assembly->stats.linking_s;
+
+    builder_note(
+        "Compiled: %s\n"
+        "--------------------------------------------------------------------------------\n"
+        "Lexing & Parsing: %10.3f seconds    %3.0f%%\n"
+        "MIR:              %10.3f seconds    %3.0f%%\n"
+        "LLVM IR:          %10.3f seconds    %3.0f%%\n"
+        "Linking:          %10.3f seconds    %3.0f%%\n"
+        "--------------------------------------------------------------------------------\n"
+        "Total:            %10.3f seconds\n",
+        assembly->target->name,
+        assembly->stats.parsing_lexing_s,
+        assembly->stats.parsing_lexing_s / total_s * 100.,
+        assembly->stats.mir_s,
+        assembly->stats.mir_s / total_s * 100.,
+        assembly->stats.llvm_s,
+        assembly->stats.llvm_s / total_s * 100.,
+        assembly->stats.linking_s,
+        assembly->stats.linking_s / total_s * 100.,
+        total_s);
+}
+
+static void clear_stats(Assembly *assembly)
+{
+    assembly->stats.parsing_lexing_s = 0;
+    assembly->stats.mir_s            = 0;
+    assembly->stats.llvm_s           = 0;
+    assembly->stats.linking_s        = 0;
 }
 
 static int compile(Assembly *assembly)
 {
-    clock_t begin       = clock();
-    s32     state       = COMPILE_OK;
+    s32 state           = COMPILE_OK;
     builder.total_lines = 0;
 
     UnitStageFn     unit_pipeline[5];
@@ -381,23 +408,24 @@ static int compile(Assembly *assembly)
         }
     } else {
         // Compile units in parallel.
+        RUNTIME_MEASURE_BEGIN_S(process_unit);
         async_compile(assembly, unit_pipeline);
+        assembly->stats.parsing_lexing_s = RUNTIME_MEASURE_END_S(process_unit);
     }
     // Compile assembly using pipeline.
     if (state == COMPILE_OK) state = compile_assembly(assembly, assembly_pipeline);
 
-    const clock_t end        = clock();
-    const f64     time_spent = (f64)(end - begin) / CLOCKS_PER_SEC;
-
-    builder_log("Compiled %i lines in %f seconds.", builder.total_lines, time_spent);
     if (state != COMPILE_OK) {
         if (assembly->target->kind == ASSEMBLY_BUILD_PIPELINE) {
-            builder_warning("Build pipeline failed.");
+            builder_error("Build pipeline failed.");
         } else {
-            builder_warning("Compilation of '%s' failed.", assembly->target->name);
+            builder_error("Compilation of target '%s' failed.", assembly->target->name);
         }
     }
-
+    if (builder.options->time_report && assembly->target->kind != ASSEMBLY_BUILD_PIPELINE) {
+        print_stats(assembly);
+    }
+    clear_stats(assembly);
     if (builder.errorc) return builder.max_error;
     if (assembly->target->run) return builder.last_script_mode_run_status;
     if (assembly->target->run_tests) return builder.test_failc;
@@ -420,8 +448,11 @@ void builder_init(const BuilderOptions *options, const char *exec_dir)
     builder.exec_dir = strdup(exec_dir);
 
     conf_data_init(&builder.conf);
-    arena_init(
-        &builder.str_cache, sizeof(TString), alignment_of(TString), 256, (ArenaElemDtor)str_cache_dtor);
+    arena_init(&builder.str_cache,
+               sizeof(TString),
+               alignment_of(TString),
+               1024,
+               (ArenaElemDtor)str_cache_dtor);
 
     // initialize LLVM statics
     llvm_init();

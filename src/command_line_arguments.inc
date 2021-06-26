@@ -1,4 +1,4 @@
-#if defined(GEN_CLA_ARGS_DEFINITIONS)
+#if defined(GEN_ARGS_DEFINITIONS)
 typedef struct {
     const char *s;
     const char *l;
@@ -57,13 +57,14 @@ typedef struct {
     _ARG(SHARED, "", "-shared", "Compile shared library.")                                         \
     _ARG(FULL_PATH, "", "-full-path", "Report full file paths.")                                   \
     _ARG(NO_USAGE_CHECK, "", "-no-usage-check", "Disable checking of unused symbols.")             \
+    _ARG(TIME_REPORT, "", "-time-report", "Print compilation time report.")                        \
     _ARG(DI_DWARF, "", "-di-dwarf", "Set debug info to use DWARF format.")                         \
     _ARG(DI_CODEVIEW, "", "-di-codeview", "Set debug info to use Codeview format.")
 
-#define _ARG(k, s, l, h) CLA_ARG_##k,
-typedef enum { _ARGS _CLA_ARG_COUNT } ArgKind;
+#define _ARG(k, s, l, h) ARG_##k,
+typedef enum { _ARGS _ARG_COUNT } ArgKind;
 #undef _ARG
 #define _ARG(k, s, l, h) {s, l, h},
-static const Arg ARGS[_CLA_ARG_COUNT] = {_ARGS};
+static const Arg ARGS[_ARG_COUNT] = {_ARGS};
 #undef _ARG
 #endif

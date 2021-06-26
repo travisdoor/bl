@@ -119,7 +119,6 @@ typedef struct Target {
 } Target;
 
 typedef struct Assembly {
-    // Readonly target options.
     const Target *target;
 
     TString custom_linker_opt;
@@ -166,6 +165,14 @@ typedef struct Assembly {
         // Store status of last execution of this assembly.
         s32 last_execution_status;
     } vm_run;
+
+    // Some compilation time related runtimes, this data are reset for every compilation.
+    struct {
+        f64 parsing_lexing_s;
+        f64 mir_s;
+        f64 llvm_s;
+        f64 linking_s;
+    } stats;
 
     // DynCall/Lib data used for external method execution in compile time
     DCCallVM *dc_vm;

@@ -90,9 +90,9 @@ static int generate_conf(void)
 // Command line arguments + Options
 // =================================================================================================
 
-#define GEN_CLA_ARGS_DEFINITIONS
+#define GEN_ARGS_DEFINITIONS
 #include "command_line_arguments.inc"
-#undef GEN_CLA_ARGS_DEFINITIONS
+#undef GEN_ARGS_DEFINITIONS
 
 typedef struct ApplicationOptions {
     bool print_help;
@@ -159,49 +159,50 @@ s32 parse_arguments(Options *opt, s32 argc, char *argv[])
     // skip executable name
     s32 i = 1;
     for (; i < argc && *argv[i] == '-'; i++) {
-        ARG_BREAK(CLA_ARG_BUILD, opt->target->kind = ASSEMBLY_BUILD_PIPELINE;)
-        ARG_BREAK(CLA_ARG_RUN, opt->target->run = true;)
-        ARG_BREAK(CLA_ARG_RUN_SCRIPT, {
+        ARG_BREAK(ARG_BUILD, opt->target->kind = ASSEMBLY_BUILD_PIPELINE;)
+        ARG_BREAK(ARG_RUN, opt->target->run = true;)
+        ARG_BREAK(ARG_RUN_SCRIPT, {
             opt->builder.silent  = true;
             opt->target->run     = true;
             opt->target->no_llvm = true;
         })
 
         // Application
-        ARG(CLA_ARG_HELP, opt->app.print_help = true;)
-        ARG(CLA_ARG_ABOUT, opt->app.print_about = true;)
-        ARG(CLA_ARG_WHERE_IS_API, opt->app.where_is_api = true; opt->builder.silent = true;)
-        ARG(CLA_ARG_CONFIGURE, opt->app.configure = true;)
+        ARG(ARG_HELP, opt->app.print_help = true;)
+        ARG(ARG_ABOUT, opt->app.print_about = true;)
+        ARG(ARG_WHERE_IS_API, opt->app.where_is_api = true; opt->builder.silent = true;)
+        ARG(ARG_CONFIGURE, opt->app.configure = true;)
 
         // Builder
-        ARG(CLA_ARG_VERBOSE, opt->builder.verbose = true;)
-        ARG(CLA_ARG_SILENT, opt->builder.silent = true;)
-        ARG(CLA_ARG_NO_COLOR, opt->builder.no_color = true;)
-        ARG(CLA_ARG_NO_JOBS, opt->builder.no_jobs = true;)
-        ARG(CLA_ARG_NO_WARNING, opt->builder.no_warning = true;)
-        ARG(CLA_ARG_FULL_PATH, opt->builder.full_path_reports = true;)
-        ARG(CLA_ARG_NO_USAGE_CHECK, opt->builder.no_usage_check = true;)
+        ARG(ARG_VERBOSE, opt->builder.verbose = true;)
+        ARG(ARG_SILENT, opt->builder.silent = true;)
+        ARG(ARG_NO_COLOR, opt->builder.no_color = true;)
+        ARG(ARG_NO_JOBS, opt->builder.no_jobs = true;)
+        ARG(ARG_NO_WARNING, opt->builder.no_warning = true;)
+        ARG(ARG_FULL_PATH, opt->builder.full_path_reports = true;)
+        ARG(ARG_NO_USAGE_CHECK, opt->builder.no_usage_check = true;)
+        ARG(ARG_TIME_REPORT, opt->builder.time_report = true;)
 
         // Target
-        ARG(CLA_ARG_LEX_DUMP, opt->target->print_tokens = true;)
-        ARG(CLA_ARG_AST_DUMP, opt->target->print_ast = true;)
-        ARG(CLA_ARG_EMIT_LLVM, opt->target->emit_llvm = true;)
-        ARG(CLA_ARG_EMIT_MIR, opt->target->emit_mir = true;)
-        ARG(CLA_ARG_DI_DWARF, opt->target->di = ASSEMBLY_DI_DWARF;)
-        ARG(CLA_ARG_DI_CODEVIEW, opt->target->di = ASSEMBLY_DI_CODEVIEW;)
-        ARG(CLA_ARG_RELEASE_FAST, opt->target->opt = ASSEMBLY_OPT_RELEASE_FAST;)
-        ARG(CLA_ARG_RELEASE_SMALL, opt->target->opt = ASSEMBLY_OPT_RELEASE_SMALL;)
-        ARG(CLA_ARG_REG_SPLIT_ON, opt->target->reg_split = true;)
-        ARG(CLA_ARG_REG_SPLIT_OFF, opt->target->reg_split = false;)
-        ARG(CLA_ARG_VERIFY_LLVM, opt->target->verify_llvm = true;)
-        ARG(CLA_ARG_RUN_TESTS, opt->target->run_tests = true;)
-        ARG(CLA_ARG_SHARED, opt->target->kind = ASSEMBLY_SHARED_LIB;)
-        ARG(CLA_ARG_NO_API, opt->target->no_api = true;)
-        ARG(CLA_ARG_NO_BIN, opt->target->no_bin = true;)
-        ARG(CLA_ARG_NO_LLVM, opt->target->no_llvm = true;)
-        ARG(CLA_ARG_NO_ANALYZE, opt->target->no_analyze = true;)
-        ARG(CLA_ARG_DOCS, opt->target->kind = ASSEMBLY_DOCS;)
-        ARG(CLA_ARG_SYNTAX_ONLY, opt->target->syntax_only = true;)
+        ARG(ARG_LEX_DUMP, opt->target->print_tokens = true;)
+        ARG(ARG_AST_DUMP, opt->target->print_ast = true;)
+        ARG(ARG_EMIT_LLVM, opt->target->emit_llvm = true;)
+        ARG(ARG_EMIT_MIR, opt->target->emit_mir = true;)
+        ARG(ARG_DI_DWARF, opt->target->di = ASSEMBLY_DI_DWARF;)
+        ARG(ARG_DI_CODEVIEW, opt->target->di = ASSEMBLY_DI_CODEVIEW;)
+        ARG(ARG_RELEASE_FAST, opt->target->opt = ASSEMBLY_OPT_RELEASE_FAST;)
+        ARG(ARG_RELEASE_SMALL, opt->target->opt = ASSEMBLY_OPT_RELEASE_SMALL;)
+        ARG(ARG_REG_SPLIT_ON, opt->target->reg_split = true;)
+        ARG(ARG_REG_SPLIT_OFF, opt->target->reg_split = false;)
+        ARG(ARG_VERIFY_LLVM, opt->target->verify_llvm = true;)
+        ARG(ARG_RUN_TESTS, opt->target->run_tests = true;)
+        ARG(ARG_SHARED, opt->target->kind = ASSEMBLY_SHARED_LIB;)
+        ARG(ARG_NO_API, opt->target->no_api = true;)
+        ARG(ARG_NO_BIN, opt->target->no_bin = true;)
+        ARG(ARG_NO_LLVM, opt->target->no_llvm = true;)
+        ARG(ARG_NO_ANALYZE, opt->target->no_analyze = true;)
+        ARG(ARG_DOCS, opt->target->kind = ASSEMBLY_DOCS;)
+        ARG(ARG_SYNTAX_ONLY, opt->target->syntax_only = true;)
 
         builder_error("Invalid argument '%s'", argv[i]);
         return INVALID_ARGS;
@@ -311,7 +312,7 @@ int main(s32 argc, char *argv[])
 
     state                = builder_compile(opt.target);
     const f64 runtime_ms = get_tick_ms() - start_time_ms;
-    builder_note("Finished in %.3fs.", runtime_ms * 0.001);
+    builder_note("Finished in %.3f seconds.", runtime_ms * 0.001);
 
 RELEASE:
     builder_terminate();

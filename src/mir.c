@@ -10324,6 +10324,7 @@ void mir_arenas_terminate(MirArenas *arenas)
 
 void mir_run(Assembly *assembly)
 {
+    RUNTIME_MEASURE_BEGIN_S(mir);
     Context cnt;
     TracyCZone(_tctx, true);
     memset(&cnt, 0, sizeof(Context));
@@ -10368,6 +10369,7 @@ void mir_run(Assembly *assembly)
 
     BL_LOG("Analyze queue push count: %i", push_count);
 SKIP:
+    assembly->stats.mir_s = RUNTIME_MEASURE_END_S(mir);
     tlist_terminate(&cnt.analyze.queue);
     thtbl_terminate(&cnt.analyze.waiting);
     tstring_terminate(&cnt.tmp_sh);

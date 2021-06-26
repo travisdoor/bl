@@ -3149,6 +3149,7 @@ static void DI_complete_types(Context *cnt)
 void ir_run(Assembly *assembly)
 {
     TracyCZone(_tctx, true);
+    RUNTIME_MEASURE_BEGIN_S(llvm);
     Context cnt;
     memset(&cnt, 0, sizeof(Context));
     cnt.assembly      = assembly;
@@ -3209,5 +3210,6 @@ void ir_run(Assembly *assembly)
     tlist_terminate(&cnt.incomplete_queue);
     tsa_terminate(&cnt.incomplete_rtti);
     thtbl_terminate(&cnt.gstring_cache);
+    assembly->stats.llvm_s = RUNTIME_MEASURE_END_S(llvm);
     TracyCZoneEnd(_tctx);
 }

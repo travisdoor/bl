@@ -36,6 +36,7 @@
 #include "error.h"
 #include <limits.h>
 #include <stddef.h>
+#include <time.h>
 #include <tlib/tlib.h>
 
 struct Assembly;
@@ -97,6 +98,9 @@ struct Assembly;
 #define BL_YELLOW 3
 #define BL_GREEN 4
 #define BL_NO_COLOR -1
+
+#define RUNTIME_MEASURE_BEGIN_S(name) clock_t __##name = clock()
+#define RUNTIME_MEASURE_END_S(name) (f64)(clock() - __##name) / CLOCKS_PER_SEC;
 
 #define LIB_NAME_MAX 256
 
