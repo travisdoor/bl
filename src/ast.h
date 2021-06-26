@@ -140,8 +140,8 @@ struct AstUBlock {
 };
 
 struct AstBlock {
-    TArray *nodes;
-    bool    has_return;
+    TSmallArray_AstPtr *nodes;
+    bool                has_return;
 };
 
 struct AstTestCase {

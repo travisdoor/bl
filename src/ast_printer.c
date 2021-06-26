@@ -137,7 +137,7 @@ void print_block(Ast *block, s32 pad, FILE *stream)
 {
     print_head(block, pad, stream);
     Ast *tmp = NULL;
-    TARRAY_FOREACH(Ast *, block->data.block.nodes, tmp) print_node(tmp, pad + 1, stream);
+    TSA_FOREACH(block->data.block.nodes, tmp) print_node(tmp, pad + 1, stream);
 }
 
 void print_load(Ast *load, s32 pad, FILE *stream)

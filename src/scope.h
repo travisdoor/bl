@@ -93,12 +93,12 @@ typedef struct Scope {
     const char *     name; // optional
     struct Scope *   parent;
     THashTable       entries;
+    bool             entries_initialized;
     LLVMMetadataRef  llvm_meta;
     struct Location *location; // Optional scope start location in the source file (ex.:
                                // function body  starting with '{'). Note: global scope has no
                                // location data.
     struct ScopeSyncImpl *sync;
-
     BL_MAGIC_ADD
 } Scope;
 

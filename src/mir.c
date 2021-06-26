@@ -8380,7 +8380,7 @@ void ast_block(Context *cnt, Ast *block)
     }
 
     Ast *tmp;
-    TARRAY_FOREACH(Ast *, block->data.block.nodes, tmp) ast(cnt, tmp);
+    TSA_FOREACH(block->data.block.nodes, tmp) ast(cnt, tmp);
 
     if (!block->data.block.has_return) ast_defer_block(cnt, block, false);
 }

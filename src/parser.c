@@ -2594,8 +2594,7 @@ Ast *parse_block(Context *cnt, bool create_scope)
 
     Token *tok;
     Ast *  tmp;
-    block->data.block.nodes = tarray_new(sizeof(Ast *));
-    tarray_reserve(block->data.block.nodes, 16);
+    block->data.block.nodes = create_sarr(TSmallArray_AstPtr, cnt->assembly);
 
 NEXT:
     if (tokens_current_is(cnt->tokens, SYM_SEMICOLON)) {
@@ -2608,64 +2607,64 @@ NEXT:
 
     if ((tmp = (Ast *)parse_decl(cnt))) {
         if (AST_IS_OK(tmp)) parse_semicolon_rq(cnt);
-        tarray_push(block->data.block.nodes, tmp);
+        tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
 
     if ((tmp = parse_stmt_return(cnt))) {
         if (!AST_IS_BAD(tmp)) parse_semicolon_rq(cnt);
-        tarray_push(block->data.block.nodes, tmp);
+        tsa_push_AstPtr(block->data.block.nodes, tmp);
         block->data.block.has_return      = true;
         tmp->data.stmt_return.owner_block = block;
         goto NEXT;
     }
 
     if ((tmp = parse_stmt_if(cnt))) {
-        tarray_push(block->data.block.nodes, tmp);
+        tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
 
     if ((tmp = parse_stmt_switch(cnt))) {
-        tarray_push(block->data.block.nodes, tmp);
+        tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
 
     if ((tmp = parse_stmt_loop(cnt))) {
-        tarray_push(block->data.block.nodes, tmp);
+        tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
 
     if ((tmp = parse_stmt_break(cnt))) {
         if (AST_IS_OK(tmp)) parse_semicolon_rq(cnt);
-        tarray_push(block->data.block.nodes, tmp);
+        tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
 
     if ((tmp = parse_stmt_continue(cnt))) {
         if (AST_IS_OK(tmp)) parse_semicolon_rq(cnt);
-        tarray_push(block->data.block.nodes, tmp);
+        tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
 
     if ((tmp = parse_stmt_defer(cnt))) {
         if (AST_IS_OK(tmp)) parse_semicolon_rq(cnt);
-        tarray_push(block->data.block.nodes, tmp);
+        tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
 
     if ((tmp = parse_expr(cnt))) {
         if (AST_IS_OK(tmp)) parse_semicolon_rq(cnt);
-        tarray_push(block->data.block.nodes, tmp);
+        tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
 
     if ((tmp = parse_block(cnt, true))) {
-        tarray_push(block->data.block.nodes, tmp);
+        tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
 
     if ((tmp = parse_unrecheable(cnt))) {
-        tarray_push(block->data.block.nodes, tmp);
+        tsa_push_AstPtr(block->data.block.nodes, tmp);
         parse_semicolon_rq(cnt);
         goto NEXT;
     }

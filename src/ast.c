@@ -37,9 +37,6 @@ static void node_dtor(Ast *node)
     case AST_UBLOCK:
         tarray_delete(node->data.ublock.nodes);
         break;
-    case AST_BLOCK:
-        tarray_delete(node->data.block.nodes);
-        break;
     default:
         break;
     }

@@ -60,7 +60,7 @@ static void sync_delete(ScopeSyncImpl *impl)
 static void scope_dtor(Scope *scope)
 {
     BL_ASSERT(scope);
-    thtbl_terminate(&scope->entries);
+    if (scope->entries_initialized) thtbl_terminate(&scope->entries);
     sync_delete(scope->sync);
 }
 
@@ -83,13 +83,12 @@ Scope *_scope_create(ScopeArenas *    arenas,
                      struct Location *loc,
                      const bool       safe)
 {
-    Scope *scope    = arena_alloc(&arenas->scopes);
-    scope->parent   = parent;
-    scope->kind     = kind;
-    scope->location = loc;
+    Scope *scope               = arena_alloc(&arenas->scopes);
+    scope->parent              = parent;
+    scope->kind                = kind;
+    scope->location            = loc;
+    scope->entries_initialized = false;
     if (safe) scope->sync = sync_new();
-
-    thtbl_init(&scope->entries, sizeof(ScopeEntry *), size);
 
     BL_MAGIC_SET(scope);
     return scope;
@@ -115,6 +114,10 @@ void scope_insert(Scope *scope, ScopeEntry *entry)
 {
     BL_ASSERT(scope);
     BL_ASSERT(entry && entry->id);
+    if (!scope->entries_initialized) {
+        thtbl_init(&scope->entries, sizeof(ScopeEntry *), 256);
+        scope->entries_initialized = true;
+    }
     BL_ASSERT(!thtbl_has_key(&scope->entries, entry->id->hash) && "duplicate scope entry key!!!");
     entry->parent_scope = scope;
     thtbl_insert(&scope->entries, entry->id->hash, entry);
@@ -128,9 +131,11 @@ scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_global, bool *out_o
     while (scope) {
         if (ignore_global && scope->kind == SCOPE_GLOBAL) break;
         // Lookup in current scope first
-        iter = thtbl_find(&scope->entries, id->hash);
-        if (!TITERATOR_EQUAL(iter, thtbl_end(&scope->entries))) {
-            return thtbl_iter_peek_value(ScopeEntry *, iter);
+        if (scope->entries_initialized) {
+            iter = thtbl_find(&scope->entries, id->hash);
+            if (!TITERATOR_EQUAL(iter, thtbl_end(&scope->entries))) {
+                return thtbl_iter_peek_value(ScopeEntry *, iter);
+            }
         }
         // Lookup in parent.
         if (in_tree) {
