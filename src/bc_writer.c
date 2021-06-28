@@ -33,7 +33,7 @@
 
 void bc_writer_run(Assembly *assembly)
 {
-    TracyCZone(_tctx, true);
+    ZONE();
     TString *     export_file = get_tmpstr();
     const Target *target      = assembly->target;
     const char *  name        = target->name;
@@ -43,8 +43,7 @@ void bc_writer_run(Assembly *assembly)
     if (f == NULL) {
         builder_error("Cannot open file %s", export_file->data);
         put_tmpstr(export_file);
-        TracyCZoneEnd(_tctx);
-        return;
+        RETURN_END_ZONE();
     }
     fprintf(f, "%s\n", str);
     fclose(f);
@@ -53,5 +52,5 @@ void bc_writer_run(Assembly *assembly)
     builder_note("Byte code written into %s", export_file->data);
 
     put_tmpstr(export_file);
-    TracyCZoneEnd(_tctx);
+    RETURN_END_ZONE();
 }

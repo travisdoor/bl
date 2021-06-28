@@ -3148,7 +3148,7 @@ static void DI_complete_types(Context *cnt)
 // public
 void ir_run(Assembly *assembly)
 {
-    TracyCZone(_tctx, true);
+    ZONE();
     RUNTIME_MEASURE_BEGIN_S(llvm);
     Context cnt;
     memset(&cnt, 0, sizeof(Context));
@@ -3211,5 +3211,5 @@ void ir_run(Assembly *assembly)
     tsa_terminate(&cnt.incomplete_rtti);
     thtbl_terminate(&cnt.gstring_cache);
     assembly->stats.llvm_s = RUNTIME_MEASURE_END_S(llvm);
-    TracyCZoneEnd(_tctx);
+    RETURN_END_ZONE();
 }

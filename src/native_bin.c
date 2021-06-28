@@ -87,7 +87,7 @@ void native_bin_run(Assembly *assembly)
 #endif
 
     const char *out_dir = assembly->target->out_dir.data;
-    TracyCZone(_tctx, true);
+    ZONE();
     if (linker(assembly) != 0) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_LIB_NOT_FOUND,
@@ -102,5 +102,5 @@ void native_bin_run(Assembly *assembly)
         copy_user_libs(assembly);
     }
 DONE:
-    TracyCZoneEnd(_tctx);
+    RETURN_END_ZONE();
 }

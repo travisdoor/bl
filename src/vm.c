@@ -2410,20 +2410,19 @@ void vm_terminate(VM *vm)
 
 void vm_execute_instr(VM *vm, Assembly *assembly, MirInstr *instr)
 {
-    TracyCZone(_tctx, true);
+    ZONE();
     vm->assembly = assembly;
     interp_instr(vm, instr);
-    TracyCZoneEnd(_tctx);
+    RETURN_END_ZONE();
 }
 
 bool vm_eval_instr(VM *vm, Assembly *assembly, struct MirInstr *instr)
 {
-    TracyCZone(_tctx, true);
+    ZONE();
     vm->aborted  = false;
     vm->assembly = assembly;
     eval_instr(vm, instr);
-    TracyCZoneEnd(_tctx);
-    return !vm->aborted;
+    RETURN_END_ZONE(!vm->aborted);
 }
 
 void vm_provide_command_line_arguments(VM *vm, const s32 argc, char *argv[])
@@ -2473,7 +2472,7 @@ bool vm_execute_fn(VM *vm, Assembly *assembly, MirFn *fn, VMStackPtr *out_ptr)
 
 bool vm_execute_instr_top_level_call(VM *vm, Assembly *assembly, MirInstrCall *call)
 {
-    TracyCZone(_tctx, true);
+    ZONE();
     vm->assembly = assembly;
     BL_ASSERT(call && call->base.analyzed);
 
@@ -2481,8 +2480,7 @@ bool vm_execute_instr_top_level_call(VM *vm, Assembly *assembly, MirInstrCall *c
     if (call->args) BL_ABORT("exec call top level has not implemented passing of arguments");
 
     bool result = execute_fn_top_level(vm, &call->base, NULL);
-    TracyCZoneEnd(_tctx);
-    return result;
+    RETURN_END_ZONE(result);
 }
 
 VMStackPtr vm_alloc_global(VM *vm, Assembly *assembly, MirVar *var)

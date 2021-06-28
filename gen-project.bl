@@ -91,11 +91,7 @@ cmake_generate :: fn () s32 #inline {
         cmd = sprint("cmake .. -DCMAKE_BUILD_TYPE=", conf);
     }
     if _args.tracy_enable {
-        if !_args.is_debug {
-            print_warn("Tracy profiler can be enabled only in debug mode.");
-        } else {
-            String.append(&cmd, " -DTRACY_ENABLE=ON");
-        }
+        String.append(&cmd, " -DTRACY_ENABLE=ON");
     }
     return os_execute(cmd);
 }

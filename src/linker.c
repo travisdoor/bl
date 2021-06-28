@@ -151,7 +151,7 @@ static bool link_working_environment(Context *cnt, const char *lib_name)
 
 void linker_run(Assembly *assembly)
 {
-    TracyCZone(_tctx, true);
+    ZONE();
     Context cnt;
     cnt.assembly  = assembly;
     cnt.lib_paths = &assembly->lib_paths;
@@ -172,27 +172,27 @@ void linker_run(Assembly *assembly)
         }
     }
 
-    TracyCZoneEnd(_tctx);
 #if BL_PLATFORM_WIN
     if (!link_working_environment(&cnt, MSVC_CRT)) {
         Token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " MSVC_CRT);
-        return;
+        RETURN_END_ZONE();
     }
     if (!link_working_environment(&cnt, KERNEL32)) {
         Token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " KERNEL32);
-        return;
+        RETURN_END_ZONE();
     }
     if (!link_working_environment(&cnt, SHLWAPI)) {
         Token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " SHLWAPI);
-        return;
+        RETURN_END_ZONE();
     }
 #endif
     if (!link_working_environment(&cnt, NULL)) {
         Token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link working environment.");
-        return;
+        RETURN_END_ZONE();
     }
+    RETURN_END_ZONE();
 }

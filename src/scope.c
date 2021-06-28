@@ -126,6 +126,7 @@ void scope_insert(Scope *scope, ScopeEntry *entry)
 ScopeEntry *
 scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_global, bool *out_of_fn_local_scope)
 {
+    ZONE();
     BL_ASSERT(scope && id);
     TIterator iter;
     while (scope) {
@@ -134,7 +135,7 @@ scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_global, bool *out_o
         if (scope->entries_initialized) {
             iter = thtbl_find(&scope->entries, id->hash);
             if (!TITERATOR_EQUAL(iter, thtbl_end(&scope->entries))) {
-                return thtbl_iter_peek_value(ScopeEntry *, iter);
+                RETURN_END_ZONE(thtbl_iter_peek_value(ScopeEntry *, iter));
             }
         }
         // Lookup in parent.
@@ -148,8 +149,7 @@ scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_global, bool *out_o
             break;
         }
     }
-
-    return NULL;
+    RETURN_END_ZONE(NULL);
 }
 
 void scope_lock(Scope *scope)

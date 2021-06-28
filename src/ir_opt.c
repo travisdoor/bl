@@ -33,7 +33,7 @@
 
 void ir_opt_run(Assembly *assembly)
 {
-    TracyCZone(_tctx, true);
+    ZONE();
     LLVMModuleRef             llvm_module     = assembly->llvm.module;
     LLVMTargetMachineRef      llvm_tm         = assembly->llvm.TM;
     const LLVMCodeGenOptLevel opt_level       = opt_to_LLVM(assembly->target->opt);
@@ -46,5 +46,5 @@ void ir_opt_run(Assembly *assembly)
     LLVMRunPassManager(llvm_pm, llvm_module);
     LLVMDisposePassManager(llvm_pm);
     LLVMPassManagerBuilderDispose(llvm_pm_builder);
-    TracyCZoneEnd(_tctx);
+    RETURN_END_ZONE();
 }

@@ -518,12 +518,12 @@ void lexer_run(Assembly *assembly, Unit *unit)
         .col      = 1,
     };
 
-    TracyCZone(_tctx, true);
+    ZONE();
     s32 error = 0;
     if ((error = setjmp(cnt.jmp_error))) return;
 
     scan(&cnt);
 
     builder.total_lines += cnt.line;
-    TracyCZoneEnd(_tctx);
+    RETURN_END_ZONE();
 }

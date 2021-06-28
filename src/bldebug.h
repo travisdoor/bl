@@ -172,6 +172,18 @@ void print_trace(void);
     }                                                                                              \
     (void)0
 #endif
+
+#define ZONE()                                                                                     \
+    TracyCZone(_tctx, true);                                                                       \
+    (void)0
+
+#define _BL_VARGS(...) __VA_ARGS__
+#define RETURN_END_ZONE(...)                                                                       \
+    {                                                                                              \
+        TracyCZoneEnd(_tctx) return _BL_VARGS(##__VA_ARGS__);                                      \
+    }                                                                                              \
+    (void)0
+
 #ifdef __cplusplus
 }
 #endif

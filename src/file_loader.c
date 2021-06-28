@@ -34,7 +34,7 @@
 
 void file_loader_run(Assembly *UNUSED(assembly), Unit *unit)
 {
-    TracyCZone(_tctx, true);
+    ZONE();
     if (!unit->filepath) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_FILE_NOT_FOUND,
@@ -42,8 +42,7 @@ void file_loader_run(Assembly *UNUSED(assembly), Unit *unit)
                     BUILDER_CUR_WORD,
                     "File not found '%s'.",
                     unit->name);
-        TracyCZoneEnd(_tctx);
-        return;
+        RETURN_END_ZONE();
     }
 
     FILE *f = fopen(unit->filepath, "rb");
@@ -56,8 +55,7 @@ void file_loader_run(Assembly *UNUSED(assembly), Unit *unit)
                     "Cannot read file '%s'.",
                     unit->name);
 
-        TracyCZoneEnd(_tctx);
-        return;
+        RETURN_END_ZONE();
     }
 
     fseek(f, 0, SEEK_END);
@@ -71,8 +69,7 @@ void file_loader_run(Assembly *UNUSED(assembly), Unit *unit)
                     "Invalid or empty source file '%s'.",
                     unit->name);
 
-        TracyCZoneEnd(_tctx);
-        return;
+        RETURN_END_ZONE();
     }
 
     fseek(f, 0, SEEK_SET);
@@ -85,5 +82,5 @@ void file_loader_run(Assembly *UNUSED(assembly), Unit *unit)
     fclose(f);
 
     unit->src = src;
-    TracyCZoneEnd(_tctx);
+    RETURN_END_ZONE();
 }

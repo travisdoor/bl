@@ -2686,7 +2686,7 @@ void parse_ublock_content(Context *cnt, Ast *ublock)
 {
     BL_ASSERT(ublock->kind == AST_UBLOCK);
     ublock->data.ublock.nodes = tarray_new(sizeof(Ast *));
-
+    tarray_reserve(ublock->data.ublock.nodes, 64);
     Ast *tmp;
 NEXT:
     if (parse_semicolon(cnt)) goto NEXT;
@@ -2728,7 +2728,7 @@ void parser_run(Assembly *assembly, Unit *unit)
     BL_ASSERT(assembly);
     BL_ASSERT(assembly->gscope && "Missing global scope for assembly.");
 
-    TracyCZone(_tctx, true);
+    ZONE();
     Context cnt = {
         .assembly     = assembly,
         .unit         = unit,
@@ -2752,5 +2752,5 @@ void parser_run(Assembly *assembly, Unit *unit)
 
     tsa_terminate(&cnt._decl_stack);
     tsa_terminate(&cnt._scope_stack);
-    TracyCZoneEnd(_tctx);
+    RETURN_END_ZONE();
 }

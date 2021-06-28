@@ -484,9 +484,9 @@ void doc_unit(Context *cnt, Unit *unit)
 
 void docs_run(Assembly *assembly)
 {
+    ZONE();
     Context cnt;
     memset(&cnt, 0, sizeof(Context));
-    TracyCZone(_tctx, true);
     tstring_init(&cnt.path_tmp);
     tstring_init(&cnt.path_unit_dir);
     tstring_init(&cnt.section_variants);
@@ -505,5 +505,5 @@ void docs_run(Assembly *assembly)
     tstring_terminate(&cnt.section_members);
 
     builder_note("Documentation written into '%s' directory.", OUT_DIR);
-    TracyCZoneEnd(_tctx);
+    RETURN_END_ZONE();
 }
