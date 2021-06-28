@@ -368,7 +368,9 @@ static void print_stats(Assembly *assembly)
         "LLVM IR:          %10.3f seconds    %3.0f%%\n"
         "Linking:          %10.3f seconds    %3.0f%%\n"
         "--------------------------------------------------------------------------------\n"
-        "Total:            %10.3f seconds\n",
+        "Total:            %10.3f seconds\n"
+        "Lines:              %8d\n"
+        "Speed:            %10.3f lines/second\n",
         assembly->target->name,
         assembly->stats.parsing_lexing_s,
         assembly->stats.parsing_lexing_s / total_s * 100.,
@@ -378,7 +380,9 @@ static void print_stats(Assembly *assembly)
         assembly->stats.llvm_s / total_s * 100.,
         assembly->stats.linking_s,
         assembly->stats.linking_s / total_s * 100.,
-        total_s);
+        total_s,
+        builder.total_lines,
+        ((f64)builder.total_lines) / total_s);
 }
 
 static void clear_stats(Assembly *assembly)
