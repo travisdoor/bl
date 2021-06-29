@@ -370,7 +370,7 @@ static void print_stats(Assembly *assembly)
         "--------------------------------------------------------------------------------\n"
         "Total:            %10.3f seconds\n"
         "Lines:              %8d\n"
-        "Speed:            %10.3f lines/second\n",
+        "Speed:            %10.0f lines/second\n",
         assembly->target->name,
         assembly->stats.parsing_lexing_s,
         assembly->stats.parsing_lexing_s / total_s * 100.,
