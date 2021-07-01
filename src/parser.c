@@ -104,7 +104,8 @@ typedef struct {
     Tokens *               tokens;
 
     // tmps
-    bool     inside_loop;
+    bool     is_inside_loop;
+    bool     is_inside_function_argument_list;
     Scope *  current_private_scope;
     Scope *  current_named_scope;
     Ast *    current_docs;
@@ -1487,8 +1488,8 @@ Ast *parse_stmt_loop(Context *cnt)
     const bool while_true = tokens_current_is(cnt->tokens, SYM_LBLOCK);
 
     Ast *      loop = ast_create_node(cnt->ast_arena, AST_STMT_LOOP, tok_begin, SCOPE_GET(cnt));
-    const bool prev_in_loop = cnt->inside_loop;
-    cnt->inside_loop        = true;
+    const bool prev_in_loop = cnt->is_inside_loop;
+    cnt->is_inside_loop     = true;
 
     Scope *scope =
         scope_create(cnt->scope_arenas, SCOPE_LEXICAL, SCOPE_GET(cnt), 128, &tok_begin->location);
@@ -1520,12 +1521,12 @@ Ast *parse_stmt_loop(Context *cnt)
     if (!loop->data.stmt_loop.block) {
         Token *tok_err = tokens_peek(cnt->tokens);
         PARSE_ERROR(ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "Expected loop body block.");
-        cnt->inside_loop = prev_in_loop;
+        cnt->is_inside_loop = prev_in_loop;
         SCOPE_POP(cnt);
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
     }
 
-    cnt->inside_loop = prev_in_loop;
+    cnt->is_inside_loop = prev_in_loop;
     SCOPE_POP(cnt);
     return loop;
 }
@@ -1535,7 +1536,7 @@ Ast *parse_stmt_break(Context *cnt)
     Token *tok = tokens_consume_if(cnt->tokens, SYM_BREAK);
     if (!tok) return NULL;
 
-    if (!cnt->inside_loop) {
+    if (!cnt->is_inside_loop) {
         PARSE_ERROR(
             ERR_BREAK_OUTSIDE_LOOP, tok, BUILDER_CUR_WORD, "Break statement outside a loop.");
     }
@@ -1547,7 +1548,7 @@ Ast *parse_stmt_continue(Context *cnt)
     Token *tok = tokens_consume_if(cnt->tokens, SYM_CONTINUE);
     if (!tok) return NULL;
 
-    if (!cnt->inside_loop) {
+    if (!cnt->is_inside_loop) {
         PARSE_ERROR(
             ERR_CONTINUE_OUTSIDE_LOOP, tok, BUILDER_CUR_WORD, "Continue statement outside a loop.");
     }
@@ -2088,10 +2089,18 @@ Ast *parse_ref_nested(Context *cnt, Ast *prev)
 
 Ast *parse_type_polymorph(Context *cnt)
 {
-    // @INCOMPLETE Polymorph types are allowed only in function argument lists. Check current scope
-    // is FN scope?
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_QUESTION);
     if (!tok_begin) return NULL;
+
+    if (!cnt->is_inside_function_argument_list) {
+        PARSE_ERROR(ERR_INVALID_ARG_TYPE,
+                    tok_begin,
+                    BUILDER_CUR_WORD,
+                    "Polymorph type can be specified only in function argument list.");
+        tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+        return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
+    }
+
     Ast *ident = parse_ident(cnt);
     if (!ident) {
         Token *tok_err = tokens_peek(cnt->tokens);
@@ -2283,8 +2292,10 @@ Ast *parse_type_fn(Context *cnt, bool named_args)
     }
     Ast *fn = ast_create_node(cnt->ast_arena, AST_TYPE_FN, tok_fn, SCOPE_GET(cnt));
     // parse arg types
-    bool rq = false;
-    Ast *tmp;
+    bool       rq = false;
+    Ast *      tmp;
+    const bool prev_is_inside_function_argument_list = cnt->is_inside_function_argument_list;
+    cnt->is_inside_function_argument_list            = true;
 NEXT:
     tmp = parse_decl_arg(cnt, named_args);
     if (tmp) {
@@ -2300,6 +2311,7 @@ NEXT:
         if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
             PARSE_ERROR(
                 ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected type after comma ','.");
+            cnt->is_inside_function_argument_list = prev_is_inside_function_argument_list;
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn, SCOPE_GET(cnt));
         }
     }
@@ -2311,9 +2323,11 @@ NEXT:
                     BUILDER_CUR_WORD,
                     "Expected end of argument type list ')' or another argument separated "
                     "by comma.");
+        cnt->is_inside_function_argument_list = prev_is_inside_function_argument_list;
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn, SCOPE_GET(cnt));
     }
-    fn->data.type_fn.ret_type = parse_type_fn_return(cnt);
+    fn->data.type_fn.ret_type             = parse_type_fn_return(cnt);
+    cnt->is_inside_function_argument_list = prev_is_inside_function_argument_list;
     return fn;
 }
 
@@ -2752,12 +2766,13 @@ void parser_run(Assembly *assembly, Unit *unit)
 
     ZONE();
     Context cnt = {
-        .assembly     = assembly,
-        .unit         = unit,
-        .ast_arena    = &assembly->arenas.ast,
-        .scope_arenas = &assembly->arenas.scope,
-        .tokens       = &unit->tokens,
-        .inside_loop  = false,
+        .assembly                         = assembly,
+        .unit                             = unit,
+        .ast_arena                        = &assembly->arenas.ast,
+        .scope_arenas                     = &assembly->arenas.scope,
+        .tokens                           = &unit->tokens,
+        .is_inside_loop                   = false,
+        .is_inside_function_argument_list = false,
     };
 
     tsa_init(&cnt._decl_stack);
