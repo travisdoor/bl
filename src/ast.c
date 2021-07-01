@@ -148,6 +148,8 @@ const char *ast_get_name(const Ast *n)
         return "TypeVargs";
     case AST_TYPE_FN_GROUP:
         return "TypeFnGroup";
+    case AST_TYPE_POLYMORPH:
+        return "TypePoly";
     case AST_EXPR_CAST:
         return "ExprCast";
     case AST_EXPR_BINOP:

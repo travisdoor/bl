@@ -84,10 +84,11 @@ static void print_call_loc(Ast *call_loc, s32 pad, FILE *stream);
 static void print_block(Ast *block, s32 pad, FILE *stream);
 static void print_unrecheable(Ast *unr, s32 pad, FILE *stream);
 static void print_ref(Ast *ref, s32 pad, FILE *stream);
-static void print_type_polymorph(Ast *, s32 pad, FILE *stream);
+static void print_type_polymorph(Ast *poly, s32 pad, FILE *stream);
 static void print_type_struct(Ast *strct, s32 pad, FILE *stream);
 static void print_type_enum(Ast *enm, s32 pad, FILE *stream);
 static void print_type_fn_group(Ast *group, s32 pad, FILE *stream);
+static void print_type_fn(Ast *fn, s32 pad, FILE *stream);
 static void print_stmt_if(Ast *stmt_if, s32 pad, FILE *stream);
 static void print_stmt_switch(Ast *stmt_switch, s32 pad, FILE *stream);
 static void print_stmt_case(Ast *stmt_case, s32 pad, FILE *stream);
@@ -184,7 +185,8 @@ void print_unrecheable(Ast *unr, s32 pad, FILE *stream)
 void print_type_polymorph(Ast *poly, s32 pad, FILE *stream)
 {
     print_head(poly, pad, stream);
-    // @INCOMPLETE
+    Ast *ident = poly->data.type_polymorph.ident;
+    if (ident) fprintf(stream, "'%s' ", ident->data.ident.id.str);
 }
 
 void print_type_struct(Ast *strct, s32 pad, FILE *stream)
@@ -218,6 +220,20 @@ void print_type_fn_group(Ast *group, s32 pad, FILE *stream)
     {
         print_node(node, pad + 1, stream);
     }
+}
+
+void print_type_fn(Ast *fn, s32 pad, FILE *stream)
+{
+    print_head(fn, pad, stream);
+    TSmallArray_AstPtr *args = fn->data.type_fn.args;
+    if (args) {
+        Ast *node;
+        TSA_FOREACH(args, node)
+        {
+            print_node(node, pad + 1, stream);
+        }
+    }
+    print_node(fn->data.type_fn.ret_type, pad + 1, stream);
 }
 
 void print_type_enum(Ast *enm, s32 pad, FILE *stream)
@@ -329,18 +345,21 @@ void print_decl_arg(Ast *arg, s32 pad, FILE *stream)
 {
     print_head(arg, pad, stream);
     fprintf(stream, "'%s'", arg->data.decl.name->data.ident.id.str);
+    print_node(arg->data.decl.type, pad + 1, stream);
 }
 
 void print_decl_member(Ast *member, s32 pad, FILE *stream)
 {
     print_head(member, pad, stream);
     fprintf(stream, "'%s'", member->data.decl.name->data.ident.id.str);
+    print_node(member->data.decl.type, pad + 1, stream);
 }
 
 void print_decl_variant(Ast *variant, s32 pad, FILE *stream)
 {
     print_head(variant, pad, stream);
     fprintf(stream, "'%s'", variant->data.decl.name->data.ident.id.str);
+    print_node(variant->data.decl.type, pad + 1, stream);
 }
 
 void print_bad(Ast *bad, s32 pad, FILE *stream)
@@ -490,6 +509,7 @@ void print_expr_lit_string(Ast *lit, s32 pad, FILE *stream)
 void print_expr_lit_fn(Ast *fn, s32 pad, FILE *stream)
 {
     print_head(fn, pad, stream);
+    print_node(fn->data.expr_fn.type, pad + 1, stream);
     print_node(fn->data.expr_fn.block, pad + 1, stream);
 }
 
@@ -580,16 +600,24 @@ void print_node(Ast *node, s32 pad, FILE *stream)
         print_type_struct(node, pad, stream);
         break;
 
+    case AST_TYPE_FN:
+        print_type_fn(node, pad, stream);
+        break;
+
     case AST_TYPE_ENUM:
         print_type_enum(node, pad, stream);
         break;
 
-    case AST_REF:
-        print_ref(node, pad, stream);
-        break;
-
     case AST_TYPE_FN_GROUP:
         print_type_fn_group(node, pad, stream);
+        break;
+
+    case AST_TYPE_POLYMORPH:
+        print_type_polymorph(node, pad, stream);
+        break;
+
+    case AST_REF:
+        print_ref(node, pad, stream);
         break;
 
     case AST_DECL_ENTITY:

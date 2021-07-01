@@ -2102,6 +2102,7 @@ Ast *parse_type_polymorph(Context *cnt)
     }
     Ast *polymorph = ast_create_node(cnt->ast_arena, AST_TYPE_POLYMORPH, tok_begin, SCOPE_GET(cnt));
     polymorph->data.type_polymorph.ident = ident;
+    BL_LOG("Has polymorph!");
     return polymorph;
 }
 
@@ -2207,11 +2208,11 @@ Ast *parse_type(Context *cnt)
     if (!type) type = parse_type_fn(cnt, false);
     // keep order
 
+    if (!type) type = parse_type_polymorph(cnt);
     if (!type) type = parse_type_struct(cnt);
     if (!type) type = parse_type_enum(cnt);
     if (!type) type = parse_type_vargs(cnt);
-    if (!type) type = parse_type_polymorph(cnt);
-    
+
     // Keep order!!!
     if (!type) type = parse_type_slice(cnt);
     if (!type) type = parse_type_dynarr(cnt);

@@ -191,3 +191,10 @@ default_args_infer_type3 :: fn () #test {
     };
     foo(#line);
 }
+
+default_args_callback_inline :: fn () #test {
+    my_function :: fn (callback: *fn() s32 = &fn () s32 { return 10; }) s32 { 
+        return callback();
+    };
+    test_eq(my_function(), 10);
+}
