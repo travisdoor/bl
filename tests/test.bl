@@ -1,6 +1,17 @@
-main :: fn () s32 {
-    return 0;
+// Polymorph
+
+// 0) Introduce AstTypePolymorph. Available only inside function types. Can be checked
+//    in parser or during type analyze pass.
+// 1) Detect if function type is_polymorph during parsing.
+// 2) Introduce MirTypePolymorph primitive.
+// 3) Function must be generated and analyzed after call arguments are ready.
+// 4) Every polymorph variant must have unique hash based on input type combination,
+//    to generate new one only in case it's not present yet.
+
+foo :: fn (a: ?T) {
 }
 
-#private
-my_test :: fn () #test {}
+main :: fn () s32 {
+    foo(10);
+    return 0;
+}

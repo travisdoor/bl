@@ -130,6 +130,7 @@ static Ast *     parse_decl_variant(Context *cnt, Ast *prev);
 static Ast *     parse_type(Context *cnt);
 static Ast *     parse_ref(Context *cnt);
 static Ast *     parse_ref_nested(Context *cnt, Ast *prev);
+static Ast *     parse_type_polymorph(Context *cnt);
 static Ast *     parse_type_arr(Context *cnt);
 static Ast *     parse_type_slice(Context *cnt);
 static Ast *     parse_type_dynarr(Context *cnt);
@@ -2085,6 +2086,25 @@ Ast *parse_ref_nested(Context *cnt, Ast *prev)
     return ref;
 }
 
+Ast *parse_type_polymorph(Context *cnt)
+{
+    // @INCOMPLETE Polymorph types are allowed only in function argument lists. Check current scope
+    // is FN scope?
+    Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_QUESTION);
+    if (!tok_begin) return NULL;
+    Ast *ident = parse_ident(cnt);
+    if (!ident) {
+        Token *tok_err = tokens_peek(cnt->tokens);
+        PARSE_ERROR(
+            ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected name of polymorph type.");
+        tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+        return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
+    }
+    Ast *polymorph = ast_create_node(cnt->ast_arena, AST_TYPE_POLYMORPH, tok_begin, SCOPE_GET(cnt));
+    polymorph->data.type_polymorph.ident = ident;
+    return polymorph;
+}
+
 Ast *parse_type_arr(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBRACKET);
@@ -2190,7 +2210,8 @@ Ast *parse_type(Context *cnt)
     if (!type) type = parse_type_struct(cnt);
     if (!type) type = parse_type_enum(cnt);
     if (!type) type = parse_type_vargs(cnt);
-
+    if (!type) type = parse_type_polymorph(cnt);
+    
     // Keep order!!!
     if (!type) type = parse_type_slice(cnt);
     if (!type) type = parse_type_dynarr(cnt);

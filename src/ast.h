@@ -218,6 +218,10 @@ struct AstTypeArr {
     Ast *len;
 };
 
+struct AstTypePolymorph {
+    Ast *ident;
+};
+
 struct AstTypeSlice {
     Ast *elem_type;
 };
@@ -360,7 +364,7 @@ struct AstCallLoc {
     void *_;
 };
 
-/* AST base type */
+// AST base type
 struct Ast {
     AstKind          kind;
     struct Location *location;    // Location in source file.

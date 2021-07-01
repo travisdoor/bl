@@ -84,6 +84,7 @@ static void print_call_loc(Ast *call_loc, s32 pad, FILE *stream);
 static void print_block(Ast *block, s32 pad, FILE *stream);
 static void print_unrecheable(Ast *unr, s32 pad, FILE *stream);
 static void print_ref(Ast *ref, s32 pad, FILE *stream);
+static void print_type_polymorph(Ast *, s32 pad, FILE *stream);
 static void print_type_struct(Ast *strct, s32 pad, FILE *stream);
 static void print_type_enum(Ast *enm, s32 pad, FILE *stream);
 static void print_type_fn_group(Ast *group, s32 pad, FILE *stream);
@@ -178,6 +179,12 @@ void print_call_loc(Ast *call_loc, s32 pad, FILE *stream)
 void print_unrecheable(Ast *unr, s32 pad, FILE *stream)
 {
     print_head(unr, pad, stream);
+}
+
+void print_type_polymorph(Ast *poly, s32 pad, FILE *stream)
+{
+    print_head(poly, pad, stream);
+    // @INCOMPLETE
 }
 
 void print_type_struct(Ast *strct, s32 pad, FILE *stream)
