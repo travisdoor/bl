@@ -120,8 +120,7 @@ typedef struct {
 
     // AST -> MIR generation
     struct {
-        TArray              _fnctx_stack;
-        TSmallArray_TypePtr poly_replacement_queue;
+        TArray _fnctx_stack;
 
         MirInstrBlock *current_block;
         MirInstrBlock *current_phi_end_block;
@@ -131,10 +130,13 @@ typedef struct {
         AstFnContext * current_fn_context;
         ID *           current_entity_id;
         MirInstr *     current_fwd_struct_decl;
-
-        bool is_current_fn_type_polymorph;
-        s32  current_scope_layer_index;
     } ast;
+
+    struct {
+        TSmallArray_TypePtr replacement_queue;
+        s32                 current_scope_layer_index;
+        bool                is_replacement_active;
+    } polymorph;
 
     // Analyze MIR generated from AST
     struct {
@@ -514,6 +516,7 @@ static MirInstr *append_instr_decl_ref(Context *   cnt,
                                        Unit *      parent_unit,
                                        ID *        rid,
                                        Scope *     scope,
+                                       s32         scope_layer,
                                        ScopeEntry *scope_entry);
 
 static MirInstr *append_instr_decl_direct_ref(Context *cnt, Ast *node, MirInstr *ref);
@@ -1622,7 +1625,7 @@ ScopeEntry *register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool 
         return cnt->analyze.void_entry;
     }
     const bool  is_private  = scope->kind == SCOPE_PRIVATE;
-    const s32   layer_index = cnt->ast.current_scope_layer_index;
+    const s32   layer_index = cnt->polymorph.current_scope_layer_index;
     ScopeEntry *collision   = scope_lookup(scope, layer_index, id, is_private, false, NULL);
     if (collision) {
         if (!is_private) goto COLLIDE;
@@ -3523,12 +3526,15 @@ MirInstr *append_instr_decl_ref(Context *   cnt,
                                 Unit *      parent_unit,
                                 ID *        rid,
                                 Scope *     scope,
+                                s32         scope_layer,
                                 ScopeEntry *scope_entry)
 {
     BL_ASSERT(scope && rid);
+    BL_ASSERT(scope_layer >= 0);
     MirInstrDeclRef *tmp = create_instr(cnt, MIR_INSTR_DECL_REF, node);
     tmp->scope_entry     = scope_entry;
     tmp->scope           = scope;
+    tmp->scope_layer     = scope_layer;
     tmp->rid             = rid;
     tmp->parent_unit     = parent_unit;
 
@@ -4807,6 +4813,7 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
         decl_ref->accept_incomplete_type = false;
         decl_ref->parent_unit            = parent_unit;
         decl_ref->rid                    = rid;
+        decl_ref->scope_layer            = cnt->polymorph.current_scope_layer_index;
         unref_instr(target_ptr);
         erase_instr_tree(target_ptr, false, false);
         RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
@@ -4951,7 +4958,7 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
         // lookup for member inside struct
         Scope *     scope       = sub_type->data.enm.scope;
         ID *        rid         = &ast_member_ident->data.ident.id;
-        const s32   layer_index = cnt->ast.current_scope_layer_index;
+        const s32   layer_index = cnt->polymorph.current_scope_layer_index;
         ScopeEntry *found       = scope_lookup(scope, layer_index, rid, false, true, NULL);
         if (!found) {
             builder_msg(BUILDER_MSG_ERROR,
@@ -5161,12 +5168,9 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     ZONE();
     BL_ASSERT(ref->rid && ref->scope);
 
-    ScopeEntry *found         = ref->scope_entry;
-    Scope *     private_scope = ref->parent_unit->private_scope;
-    const bool  layer_index =
-        cnt->ast.current_scope_layer_index; // @NOCHECKIN this should be probably cached in ref
-                                            // instruction?
-    bool is_ref_out_of_fn_local_scope = false;
+    ScopeEntry *found                        = ref->scope_entry;
+    Scope *     private_scope                = ref->parent_unit->private_scope;
+    bool        is_ref_out_of_fn_local_scope = false;
 
     if (!found) {
         if (private_scope && scope_is_subtree_of_kind(private_scope, SCOPE_NAMED) &&
@@ -5176,17 +5180,17 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
 
         if (!private_scope) { // reference in unit without private scope
             found = scope_lookup(
-                ref->scope, layer_index, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
+                ref->scope, ref->scope_layer, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
         } else { // reference in unit with private scope
             // search in current tree and ignore global scope
             found = scope_lookup(
-                ref->scope, layer_index, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
+                ref->scope, ref->scope_layer, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
 
             // lookup in private scope and global scope also (private scope has global
             // scope as parent every time)
             if (!found) {
                 found = scope_lookup(private_scope,
-                                     layer_index,
+                                     ref->scope_layer,
                                      ref->rid,
                                      true,
                                      false,
@@ -5399,9 +5403,6 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
     BL_ASSERT(fn->type);
 
-    const bool is_polymorph = IS_FLAG(fn->type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_POLYMORPH);
-    if (is_polymorph) fn->poly = create_fn_poly_recipe(cnt, fn_proto->base.node);
-
     // Set builtin ID to type if there is one. We must store this information in function type
     // because we need it during call analyze pass, in this case function can be called via
     // pointer or directly, so we don't have access to MirFn instance.
@@ -5499,6 +5500,8 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
         fn->dyncall.extern_entry = assembly_find_extern(cnt->assembly, intrinsic_name);
         fn->fully_analyzed       = true;
+    } else if (fn->poly) {
+        // Nothing to do
     } else {
         // Add entry block of the function into analyze queue.
         MirInstr *entry_block = (MirInstr *)fn->first_block;
@@ -6970,7 +6973,7 @@ generate_fn_poly(Context *cnt, Ast *call, MirFn *fn, TSmallArray_InstrPtr *expec
                     "Polymorph function expects at least one argument.");
     }
 
-    TSmallArray_TypePtr *queue = &cnt->ast.poly_replacement_queue;
+    TSmallArray_TypePtr *queue = &cnt->polymorph.replacement_queue;
     queue->size                = 0;                     // clear
     tsa_push_TypePtr(queue, cnt->builtin_types->t_s32); // @NOCHECKIN
 
@@ -6992,12 +6995,14 @@ generate_fn_poly(Context *cnt, Ast *call, MirFn *fn, TSmallArray_InstrPtr *expec
                is_master ? "(master)" : "(slave)");
     }
 
-    const s32 prev_scope_layer_index   = cnt->ast.current_scope_layer_index;
-    cnt->ast.current_scope_layer_index = ++recipe->index;
-    
+    const s32 prev_scope_layer_index         = cnt->polymorph.current_scope_layer_index;
+    cnt->polymorph.current_scope_layer_index = ++recipe->index;
+    cnt->polymorph.is_replacement_active     = true;
+
     ast(cnt, ast_recipe);
-    
-    cnt->ast.current_scope_layer_index = prev_scope_layer_index;
+
+    cnt->polymorph.is_replacement_active     = false;
+    cnt->polymorph.current_scope_layer_index = prev_scope_layer_index;
     RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
 }
 
@@ -9061,6 +9066,8 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
     Ast *ast_fn_type = lit_fn->data.expr_fn.type;
     ID * id          = decl_node ? &decl_node->data.ident.id : NULL;
     BL_ASSERT(ast_fn_type->kind == AST_TYPE_FN);
+    const bool is_polymorph =
+        ast_fn_type->data.type_fn.is_polymorph && !cnt->polymorph.is_replacement_active;
 
     MirInstrFnProto *fn_proto =
         (MirInstrFnProto *)append_instr_fn_proto(cnt, lit_fn, NULL, NULL, true);
@@ -9105,8 +9112,10 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
         goto FINISH;
     }
 
-    if (cnt->ast.is_current_fn_type_polymorph) {
-        (void)0;
+    if (is_polymorph) {
+        BL_LOG("Skip generation of polymorph function body!");
+        fn->poly = create_fn_poly_recipe(cnt, lit_fn);
+        goto FINISH;
     }
 
     if (!ast_block) {
@@ -9701,25 +9710,25 @@ MirInstr *ast_ref(Context *cnt, Ast *ref)
     Ast *ident = ref->data.ref.ident;
     Ast *next  = ref->data.ref.next;
     BL_ASSERT(ident);
-    Scope *scope = ident->owner_scope;
-    Unit * unit  = ident->location->unit;
+    Scope *    scope       = ident->owner_scope;
+    const bool layer_index = cnt->polymorph.current_scope_layer_index;
+    Unit *     unit        = ident->location->unit;
     BL_ASSERT(unit);
     BL_ASSERT(scope);
     if (next) {
         MirInstr *target = ast(cnt, next);
         return append_instr_member_ptr(cnt, ref, target, ident, NULL, MIR_BUILTIN_ID_NONE);
     }
-    return append_instr_decl_ref(cnt, ref, unit, &ident->data.ident.id, scope, NULL);
+    return append_instr_decl_ref(cnt, ref, unit, &ident->data.ident.id, scope, layer_index, NULL);
 }
 
 MirInstr *ast_type_fn(Context *cnt, Ast *type_fn)
 {
-    const bool prev_is_current_fn_type_polymorph = cnt->ast.is_current_fn_type_polymorph;
-    cnt->ast.is_current_fn_type_polymorph        = false;
-
+    BL_ASSERT(type_fn->kind == AST_TYPE_FN);
     Ast *               ast_ret_type  = type_fn->data.type_fn.ret_type;
     TSmallArray_AstPtr *ast_arg_types = type_fn->data.type_fn.args;
-
+    const bool          is_polymorph =
+        type_fn->data.type_fn.is_polymorph && !cnt->polymorph.is_replacement_active;
     // Discard current entity ID to fix bug when multi-return structure takes this name as an alias.
     // There should be probably better way to solve this issue, but lets keep this for now.
     cnt->ast.current_entity_id = NULL;
@@ -9744,8 +9753,6 @@ MirInstr *ast_type_fn(Context *cnt, Ast *type_fn)
             args->data[i] = arg;
         }
     }
-    const bool is_polymorph               = cnt->ast.is_current_fn_type_polymorph;
-    cnt->ast.is_current_fn_type_polymorph = prev_is_current_fn_type_polymorph;
     return append_instr_type_fn(cnt, type_fn, ret_type, args, is_polymorph);
 }
 
@@ -9925,7 +9932,7 @@ MirInstr *ast_type_poly(Context *cnt, Ast *poly)
     ScopeEntry *scope_entry = register_symbol(cnt, ast_ident, T_id, scope, false);
     if (!scope_entry) return NULL;
 
-    TSmallArray_TypePtr *queue = &cnt->ast.poly_replacement_queue;
+    TSmallArray_TypePtr *queue = &cnt->polymorph.replacement_queue;
     if (queue->size) {
         // We are generating function specification -> we have replacement for polymorph types.
         MirType *replacement_type = tsa_last_TypePtr(queue);
@@ -9941,11 +9948,10 @@ MirInstr *ast_type_poly(Context *cnt, Ast *poly)
     // anywhere inside function argument list declaration; even before ?T is appears in
     // declaration. So polymorphic type is completed right after this function ends and no
     // additional analyze is needed.
-    cnt->ast.is_current_fn_type_polymorph = true;
-    MirType *master_type                  = create_type_poly(cnt, scope_entry->id, true);
-    MirType *slave_type                   = create_type_poly(cnt, scope_entry->id, false);
-    scope_entry->kind                     = SCOPE_ENTRY_TYPE;
-    scope_entry->data.type                = slave_type;
+    MirType *master_type   = create_type_poly(cnt, scope_entry->id, true);
+    MirType *slave_type    = create_type_poly(cnt, scope_entry->id, false);
+    scope_entry->kind      = SCOPE_ENTRY_TYPE;
+    scope_entry->data.type = slave_type;
 
     MirInstr *instr_poly = append_instr_type_poly(cnt, poly, scope_entry->id);
     MIR_CEV_WRITE_AS(MirType *, &instr_poly->value, master_type);
@@ -10598,12 +10604,12 @@ void mir_run(Assembly *assembly)
     Context cnt;
     ZONE();
     memset(&cnt, 0, sizeof(Context));
-    cnt.assembly                      = assembly;
-    cnt.debug_mode                    = assembly->target->opt == ASSEMBLY_OPT_DEBUG;
-    cnt.builtin_types                 = &assembly->builtin_types;
-    cnt.vm                            = &assembly->vm;
-    cnt.testing.cases                 = &assembly->testing.cases;
-    cnt.ast.current_scope_layer_index = SCOPE_DEFAULT_LAYER;
+    cnt.assembly                            = assembly;
+    cnt.debug_mode                          = assembly->target->opt == ASSEMBLY_OPT_DEBUG;
+    cnt.builtin_types                       = &assembly->builtin_types;
+    cnt.vm                                  = &assembly->vm;
+    cnt.testing.cases                       = &assembly->testing.cases;
+    cnt.polymorph.current_scope_layer_index = SCOPE_DEFAULT_LAYER;
 
     thtbl_init(&cnt.analyze.waiting, sizeof(TArray), ANALYZE_TABLE_SIZE);
     tlist_init(&cnt.analyze.queue, sizeof(MirInstr *));
@@ -10615,7 +10621,7 @@ void mir_run(Assembly *assembly)
     tsa_init(&cnt.analyze.complete_check_type_stack);
     thtbl_init(&cnt.analyze.complete_check_visited, 0, 128);
     thtbl_init(&cnt.analyze.presented_switch_cases, sizeof(MirSwitchCase *), 64);
-    tsa_init(&cnt.ast.poly_replacement_queue);
+    tsa_init(&cnt.polymorph.replacement_queue);
 
     cnt.analyze.void_entry =
         scope_create_entry(&cnt.assembly->arenas.scope, SCOPE_ENTRY_VOID, NULL, NULL, true);
@@ -10643,7 +10649,7 @@ void mir_run(Assembly *assembly)
 SKIP:
     assembly->stats.mir_s = RUNTIME_MEASURE_END_S(mir);
     tlist_terminate(&cnt.analyze.queue);
-    tsa_terminate(&cnt.ast.poly_replacement_queue);
+    tsa_terminate(&cnt.polymorph.replacement_queue);
     thtbl_terminate(&cnt.analyze.waiting);
     tstring_terminate(&cnt.tmp_sh);
 

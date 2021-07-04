@@ -739,6 +739,7 @@ struct MirInstrDeclRef {
     struct Unit *parent_unit;
     ID *         rid;
     Scope *      scope;
+    s32          scope_layer;
     ScopeEntry * scope_entry;
 
     // Set only for decl_refs inside struct member type resolvers.
