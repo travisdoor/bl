@@ -6935,6 +6935,29 @@ AnalyzeResult analyze_builtin_call(Context UNUSED(*cnt), MirInstrCall *call)
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
+static MirType *poly_type_match(MirType *recipe, MirType *other)
+{
+    MirType *           found = NULL;
+    TSmallArray_TypePtr queue;
+    tsa_init(&queue);
+
+    tsa_push_TypePtr(&queue, other);
+    tsa_push_TypePtr(&queue, recipe);
+    while (queue.size) {
+        MirType *current_recipe = tsa_pop_TypePtr(&queue);
+        MirType *current_other  = tsa_pop_TypePtr(&queue);
+        BL_ASSERT(current_recipe && current_other);
+        const bool is_master =
+            current_recipe->kind == MIR_TYPE_POLY && current_recipe->data.poly.is_master;
+        if (is_master) {
+            found = current_other;
+            break;
+        }
+    }
+    tsa_terminate(&queue);
+    return found;
+}
+
 AnalyzeResult
 generate_fn_poly(Context *cnt, Ast *call, MirFn *fn, TSmallArray_InstrPtr *expected_args)
 {
@@ -6974,25 +6997,21 @@ generate_fn_poly(Context *cnt, Ast *call, MirFn *fn, TSmallArray_InstrPtr *expec
     }
 
     TSmallArray_TypePtr *queue = &cnt->polymorph.replacement_queue;
-    queue->size                = 0;                     // clear
-    tsa_push_TypePtr(queue, cnt->builtin_types->t_s32); // @NOCHECKIN
+    queue->size                = 0; // clear
 
     const usize argc = min(expected_argc, recipe_args->size);
     for (usize i = 0; i < argc; ++i) {
-        MirType *  call_arg_type   = expected_args->data[i]->value.type;
-        MirType *  recipe_arg_type = recipe_args->data[i]->type;
-        const bool is_master =
-            recipe_arg_type->kind == MIR_TYPE_POLY && recipe_arg_type->data.poly.is_master;
+        MirType *call_arg_type   = expected_args->data[i]->value.type;
+        MirType *recipe_arg_type = recipe_args->data[i]->type;
+        MirType *matching_type   = poly_type_match(recipe_arg_type, call_arg_type);
 
-        // @NOCHECKIN
-        char type_name1[256];
-        mir_type_to_str(type_name1, 256, call_arg_type, true);
-        char type_name2[256];
-        mir_type_to_str(type_name2, 256, recipe_arg_type, true);
-        BL_LOG("Match check '%s' vs '%s' %s",
-               type_name1,
-               type_name2,
-               is_master ? "(master)" : "(slave)");
+        if (matching_type) {
+            // @NOCHECKIN
+            char type_name1[256];
+            mir_type_to_str(type_name1, 256, matching_type, true);
+            BL_LOG("Replace poly with: %s", type_name1);
+            tsa_push_TypePtr(queue, matching_type);
+        }
     }
 
     const s32 prev_scope_layer_index         = cnt->polymorph.current_scope_layer_index;
@@ -9710,9 +9729,9 @@ MirInstr *ast_ref(Context *cnt, Ast *ref)
     Ast *ident = ref->data.ref.ident;
     Ast *next  = ref->data.ref.next;
     BL_ASSERT(ident);
-    Scope *    scope       = ident->owner_scope;
-    const bool layer_index = cnt->polymorph.current_scope_layer_index;
-    Unit *     unit        = ident->location->unit;
+    Scope *   scope       = ident->owner_scope;
+    const s32 layer_index = cnt->polymorph.current_scope_layer_index;
+    Unit *    unit        = ident->location->unit;
     BL_ASSERT(unit);
     BL_ASSERT(scope);
     if (next) {
@@ -9935,9 +9954,8 @@ MirInstr *ast_type_poly(Context *cnt, Ast *poly)
     TSmallArray_TypePtr *queue = &cnt->polymorph.replacement_queue;
     if (queue->size) {
         // We are generating function specification -> we have replacement for polymorph types.
-        MirType *replacement_type = tsa_last_TypePtr(queue);
+        MirType *replacement_type = tsa_pop_TypePtr(queue);
         BL_MAGIC_ASSERT(replacement_type);
-        tsa_pop_TypePtr(queue);
 
         scope_entry->kind      = SCOPE_ENTRY_TYPE;
         scope_entry->data.type = replacement_type;
@@ -10641,7 +10659,9 @@ void mir_run(Assembly *assembly)
     // Analyze pass
     analyze(&cnt);
     analyze_report_unresolved(&cnt);
-
+    
+    BL_ASSERT(cnt.analyze.queue.size == 0 && "Not everything is analyzed!");
+    
     if (builder.errorc) goto SKIP;
     analyze_report_unused(&cnt);
 

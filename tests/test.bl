@@ -19,13 +19,22 @@
 // type:  *MirTypeFnPoly
 // value: *MirFnPoly
 
-foo :: fn (a: ?T, b: T, c: s32) T {
-    return a + b + c;
+add :: fn (a: ?T, b: T) T {
+    this_is_it: T;
+    return a + b;
 }
 
 main :: fn () s32 {
-    i :: foo(10, 20, 30);
+    i :: add(cast(s64) 10, cast(s64) 10);
     return 0;
+}
+
+bar :: fn () {
+    k :: add(cast(u8) 10, cast(u8) 10);
+}
+
+sailor :: fn () {
+    k :: add(cast(u64) 10, cast(u64) 10);
 }
 
 /*
@@ -40,12 +49,3 @@ MirFnPoly:
 */
 
 
-/*
-homo :: fn (a: ?T) {
-    if #compitme a == s32 {
-        i := 10;
-    } else {
-        i += 1;        
-    }
-}
-*/
