@@ -26,7 +26,7 @@
     AST_STMT_SWITCH,
     AST_STMT_CASE,
     AST_TYPE_ARR,
-    AST_TYPE_POLYMORPH,
+    AST_TYPE_POLY,
     AST_TYPE_SLICE,
     AST_TYPE_DYNARR,
     AST_TYPE_FN,
@@ -85,7 +85,7 @@
     struct AstDeclMember     decl_member;
     struct AstDeclVariant    decl_variant;
     struct AstTypeArr        type_arr;
-    struct AstTypePolymorph  type_polymorph;
+    struct AstTypePoly       type_poly;
     struct AstTypeSlice      type_slice;
     struct AstTypeDynArr     type_dynarr;
     struct AstTypeFn         type_fn;

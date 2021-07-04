@@ -46,7 +46,7 @@ typedef enum {
 #undef GEN_AST_KINDS
 } AstKind;
 
-typedef enum {
+enum AstFlag {
     FLAG_EXTERN = 1 << 0, // methods marked as extern
     // 1 << 1, free
     FLAG_COMPILER     = 1 << 2,  // compiler internal
@@ -60,7 +60,7 @@ typedef enum {
     FLAG_TEST_FN      = 1 << 10, // test function
     FLAG_EXPORT       = 1 << 11, // symbols marked for dll export
     FLAG_THREAD_LOCAL = 1 << 12, // symbols marked as thread local
-} AstFlag;
+};
 
 // map symbols to binary operation kind
 typedef enum {
@@ -218,7 +218,7 @@ struct AstTypeArr {
     Ast *len;
 };
 
-struct AstTypePolymorph {
+struct AstTypePoly {
     Ast *ident;
 };
 
@@ -233,6 +233,7 @@ struct AstTypeDynArr {
 struct AstTypeFn {
     Ast *               ret_type;
     TSmallArray_AstPtr *args;
+    bool                is_polymorph;
 };
 
 struct AstTypeFnGroup {

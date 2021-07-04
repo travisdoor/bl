@@ -40,6 +40,7 @@
 #include <tlib/tlib.h>
 
 struct Assembly;
+struct Scope;
 
 // =================================================================================================
 // Clang and gcc
@@ -66,7 +67,6 @@ struct Assembly;
 #pragma warning(disable : 4204)
 #pragma warning(disable : 4706)
 
-#define BL_DEPRECATED
 #if BL_DEBUG
 #define INLINE inline
 #else
@@ -87,6 +87,7 @@ struct Assembly;
 
 #define IS_FLAG(_v, _flag) ((bool)(((_v) & (_flag)) == (_flag)))
 #define IS_NOT_FLAG(_v, _flag) ((bool)(((_v) & (_flag)) != (_flag)))
+#define SET_FLAG(_v, _flag) ((_v) |= (_flag))
 
 #define ARRAY_FOREACH(arr, it)                                                                     \
     for (usize _keep = 1, i = 0, _size = TARRAY_SIZE((arr)); _keep && i != _size;                  \

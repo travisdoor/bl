@@ -88,17 +88,23 @@ typedef enum ScopeKind {
     SCOPE_NAMED,
 } ScopeKind;
 
+#define SCOPE_DEFAULT_LAYER 0
+
+struct ScopeLayer {
+    THashTable entries;
+    s32        index;
+};
+
 typedef struct Scope {
-    ScopeKind        kind;
-    const char *     name; // optional
-    struct Scope *   parent;
-    THashTable       entries;
-    bool             entries_initialized;
-    LLVMMetadataRef  llvm_meta;
-    struct Location *location; // Optional scope start location in the source file (ex.:
-                               // function body  starting with '{'). Note: global scope has no
-                               // location data.
+    ScopeKind     kind;
+    const char *  name; // optional
+    struct Scope *parent;
+    usize         expected_entry_count;
+    TArray        layers;
+
     struct ScopeSyncImpl *sync;
+    struct Location *     location;
+    LLVMMetadataRef       llvm_meta;
     BL_MAGIC_ADD
 } Scope;
 
@@ -124,13 +130,16 @@ ScopeEntry *scope_create_entry(ScopeArenas *  arenas,
                                struct Ast *   node,
                                bool           is_builtin);
 
-void scope_insert(Scope *scope, ScopeEntry *entry);
-
+void scope_insert(Scope *scope, s32 layer_index, ScopeEntry *entry);
 void scope_lock(Scope *scope);
 void scope_unlock(Scope *scope);
 
-ScopeEntry *
-scope_lookup(Scope *scope, ID *id, bool in_tree, bool ignore_global, bool *out_of_fn_local_scope);
+ScopeEntry *scope_lookup(Scope *scope,
+                         s32    preferred_layer_index,
+                         ID *   id,
+                         bool   in_tree,
+                         bool   ignore_global,
+                         bool * out_of_fn_local_scope);
 
 // Checks whether passed scope is of kind or is nested in scope of kind.
 bool        scope_is_subtree_of_kind(const Scope *scope, ScopeKind kind);

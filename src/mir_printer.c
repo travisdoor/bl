@@ -259,6 +259,7 @@ static void print_instr_type_fn_group(Context *cnt, MirInstrTypeFnGroup *group);
 static void print_instr_type_struct(Context *cnt, MirInstrTypeStruct *type_struct);
 static void print_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum);
 static void print_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr);
+static void print_instr_type_poly(Context *cnt, MirInstrTypePoly *type_poly);
 static void print_instr_type_array(Context *cnt, MirInstrTypeArray *type_array);
 static void print_instr_type_slice(Context *cnt, MirInstrTypeSlice *type_slice);
 static void print_instr_type_dynarr(Context *cnt, MirInstrTypeDynArr *type_dynarr);
@@ -426,6 +427,12 @@ void print_instr_type_ptr(Context *cnt, MirInstrTypePtr *type_ptr)
 {
     print_instr_head(cnt, &type_ptr->base, "const");
     fprintf(cnt->stream, "*%%%llu", (unsigned long long)type_ptr->type->id);
+}
+
+void print_instr_type_poly(Context *cnt, MirInstrTypePoly *type_poly)
+{
+    print_instr_head(cnt, &type_poly->base, "const");
+    fprintf(cnt->stream, "?%s", type_poly->T_id ? type_poly->T_id->str : "<INVALID>");
 }
 
 void print_instr_type_array(Context *cnt, MirInstrTypeArray *type_array)
@@ -1043,6 +1050,9 @@ void print_instr(Context *cnt, MirInstr *instr)
         break;
     case MIR_INSTR_TYPE_PTR:
         print_instr_type_ptr(cnt, (MirInstrTypePtr *)instr);
+        break;
+    case MIR_INSTR_TYPE_POLY:
+        print_instr_type_poly(cnt, (MirInstrTypePoly *)instr);
         break;
     case MIR_INSTR_ADDROF:
         print_instr_addrof(cnt, (MirInstrAddrOf *)instr);

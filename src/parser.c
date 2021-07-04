@@ -51,8 +51,6 @@ TSMALL_ARRAY_TYPE(ScopePtr64, Scope *, 64);
         builder_msg(BUILDER_MSG_NOTE, 0, &(tok)->location, (pos), (format), ##__VA_ARGS__);        \
     }
 
-// swap current compound with _cmp and create temporary variable with previous one
-
 #define SCOPE_PUSH(_cnt, _scope) tsa_push_ScopePtr64(&(_cnt)->_scope_stack, (_scope))
 #define SCOPE_POP(_cnt) tsa_pop_ScopePtr64(&(_cnt)->_scope_stack)
 #define SCOPE_GET(_cnt) tsa_last_ScopePtr64(&(_cnt)->_scope_stack)
@@ -105,11 +103,11 @@ typedef struct {
 
     // tmps
     bool     is_inside_loop;
-    bool     is_inside_function_argument_list;
     Scope *  current_private_scope;
     Scope *  current_named_scope;
     Ast *    current_docs;
     TString *unit_docs_tmp;
+    Ast *    current_fn_type;
 } Context;
 
 // helpers
@@ -788,7 +786,8 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         // Perform lookup of named scope here, in case named scope already exist in global scope
         // we can reuse it!.
         if (SCOPE_GET(cnt)->kind == SCOPE_GLOBAL) scope_lock(SCOPE_GET(cnt));
-        ScopeEntry *scope_entry = scope_lookup(SCOPE_GET(cnt), id, false, false, NULL);
+        ScopeEntry *scope_entry =
+            scope_lookup(SCOPE_GET(cnt), SCOPE_DEFAULT_LAYER, id, false, false, NULL);
         if (scope_entry) {
             BL_ASSERT(scope_entry->kind == SCOPE_ENTRY_NAMED_SCOPE &&
                       "Found scope entry is expected to be named scope!");
@@ -796,7 +795,7 @@ Ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisf
         } else {
             scope_entry = scope_create_entry(
                 &cnt->assembly->arenas.scope, SCOPE_ENTRY_NAMED_SCOPE, id, scope, false);
-            scope_insert(SCOPE_GET(cnt), scope_entry);
+            scope_insert(SCOPE_GET(cnt), SCOPE_DEFAULT_LAYER, scope_entry);
             Scope *named_scope      = scope_create(cnt->scope_arenas,
                                               SCOPE_NAMED,
                                               SCOPE_GET(cnt),
@@ -2092,7 +2091,7 @@ Ast *parse_type_polymorph(Context *cnt)
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_QUESTION);
     if (!tok_begin) return NULL;
 
-    if (!cnt->is_inside_function_argument_list) {
+    if (!cnt->current_fn_type) {
         PARSE_ERROR(ERR_INVALID_ARG_TYPE,
                     tok_begin,
                     BUILDER_CUR_WORD,
@@ -2100,6 +2099,8 @@ Ast *parse_type_polymorph(Context *cnt)
         tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
     }
+    BL_ASSERT(cnt->current_fn_type->kind == AST_TYPE_FN);
+    cnt->current_fn_type->data.type_fn.is_polymorph = true;
 
     Ast *ident = parse_ident(cnt);
     if (!ident) {
@@ -2109,10 +2110,9 @@ Ast *parse_type_polymorph(Context *cnt)
         tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
     }
-    Ast *polymorph = ast_create_node(cnt->ast_arena, AST_TYPE_POLYMORPH, tok_begin, SCOPE_GET(cnt));
-    polymorph->data.type_polymorph.ident = ident;
-    BL_LOG("Has polymorph!");
-    return polymorph;
+    Ast *poly = ast_create_node(cnt->ast_arena, AST_TYPE_POLY, tok_begin, SCOPE_GET(cnt));
+    poly->data.type_poly.ident = ident;
+    return poly;
 }
 
 Ast *parse_type_arr(Context *cnt)
@@ -2292,10 +2292,10 @@ Ast *parse_type_fn(Context *cnt, bool named_args)
     }
     Ast *fn = ast_create_node(cnt->ast_arena, AST_TYPE_FN, tok_fn, SCOPE_GET(cnt));
     // parse arg types
-    bool       rq = false;
-    Ast *      tmp;
-    const bool prev_is_inside_function_argument_list = cnt->is_inside_function_argument_list;
-    cnt->is_inside_function_argument_list            = true;
+    bool rq = false;
+    Ast *tmp;
+    Ast *prev_fn_type    = cnt->current_fn_type;
+    cnt->current_fn_type = fn;
 NEXT:
     tmp = parse_decl_arg(cnt, named_args);
     if (tmp) {
@@ -2311,7 +2311,7 @@ NEXT:
         if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
             PARSE_ERROR(
                 ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected type after comma ','.");
-            cnt->is_inside_function_argument_list = prev_is_inside_function_argument_list;
+            cnt->current_fn_type = prev_fn_type;
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn, SCOPE_GET(cnt));
         }
     }
@@ -2323,11 +2323,11 @@ NEXT:
                     BUILDER_CUR_WORD,
                     "Expected end of argument type list ')' or another argument separated "
                     "by comma.");
-        cnt->is_inside_function_argument_list = prev_is_inside_function_argument_list;
+        cnt->current_fn_type = prev_fn_type;
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn, SCOPE_GET(cnt));
     }
-    fn->data.type_fn.ret_type             = parse_type_fn_return(cnt);
-    cnt->is_inside_function_argument_list = prev_is_inside_function_argument_list;
+    fn->data.type_fn.ret_type = parse_type_fn_return(cnt);
+    cnt->current_fn_type      = prev_fn_type;
     return fn;
 }
 
@@ -2766,13 +2766,11 @@ void parser_run(Assembly *assembly, Unit *unit)
 
     ZONE();
     Context cnt = {
-        .assembly                         = assembly,
-        .unit                             = unit,
-        .ast_arena                        = &assembly->arenas.ast,
-        .scope_arenas                     = &assembly->arenas.scope,
-        .tokens                           = &unit->tokens,
-        .is_inside_loop                   = false,
-        .is_inside_function_argument_list = false,
+        .assembly     = assembly,
+        .unit         = unit,
+        .ast_arena    = &assembly->arenas.ast,
+        .scope_arenas = &assembly->arenas.scope,
+        .tokens       = &unit->tokens,
     };
 
     tsa_init(&cnt._decl_stack);

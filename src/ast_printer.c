@@ -185,7 +185,7 @@ void print_unrecheable(Ast *unr, s32 pad, FILE *stream)
 void print_type_polymorph(Ast *poly, s32 pad, FILE *stream)
 {
     print_head(poly, pad, stream);
-    Ast *ident = poly->data.type_polymorph.ident;
+    Ast *ident = poly->data.type_poly.ident;
     if (ident) fprintf(stream, "'%s' ", ident->data.ident.id.str);
 }
 
@@ -612,7 +612,7 @@ void print_node(Ast *node, s32 pad, FILE *stream)
         print_type_fn_group(node, pad, stream);
         break;
 
-    case AST_TYPE_POLYMORPH:
+    case AST_TYPE_POLY:
         print_type_polymorph(node, pad, stream);
         break;
 

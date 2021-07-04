@@ -3,15 +3,50 @@
 // 0) Introduce AstTypePolymorph. Available only inside function types. Can be checked
 //    in parser or during type analyze pass.
 // 1) Detect if function type is_polymorph during parsing.
+//    Register function as new symbol, but skip instruction generation when function type is_polymorph.
 // 2) Introduce MirTypePolymorph primitive.
 // 3) Function must be generated and analyzed after call arguments are ready.
 // 4) Every polymorph variant must have unique hash based on input type combination,
 //    to generate new one only in case it's not present yet.
 
-foo :: fn (a: ?T) {
+// Introduce poly table for replacement of Ts, keep order as in parsed AST.
+// Store first use call side to provide better errors.
+
+// Duplicate entries when functions reuse same scopes, we must create layered scope?
+// poly layer index?
+
+// foo
+// type:  *MirTypeFnPoly
+// value: *MirFnPoly
+
+foo :: fn (a: ?T, b: T, c: s32) T {
+    result: T;
+    return result;
 }
 
 main :: fn () s32 {
-    foo(10);
+    i :: foo(10, 20, 30);
     return 0;
 }
+
+/*
+
+MirFnPoly:
+    - ast node for the function literal prototype
+    - array of already generated prototypes (or hash table?)
+    - hashing done by types
+    - first use call position
+
+    generate_fn_poly (recepie: MirFnPoly, expected_argument_list)
+*/
+
+
+/*
+homo :: fn (a: ?T) {
+    if #compitme a == s32 {
+        i := 10;
+    } else {
+        i += 1;        
+    }
+}
+*/

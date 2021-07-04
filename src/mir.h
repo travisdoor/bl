@@ -71,6 +71,7 @@ typedef struct MirArg            MirArg;
 typedef struct MirVar            MirVar;
 typedef struct MirFn             MirFn;
 typedef struct MirFnGroup        MirFnGroup;
+typedef struct MirFnPolyRecipe   MirFnPolyRecipe;
 typedef struct MirConstExprValue MirConstExprValue;
 
 typedef struct MirInstr               MirInstr;
@@ -104,6 +105,7 @@ typedef struct MirInstrTypeDynArr     MirInstrTypeDynArr;
 typedef struct MirInstrTypeVArgs      MirInstrTypeVArgs;
 typedef struct MirInstrTypePtr        MirInstrTypePtr;
 typedef struct MirInstrTypeEnum       MirInstrTypeEnum;
+typedef struct MirInstrTypePoly       MirInstrTypePoly;
 typedef struct MirInstrDeclRef        MirInstrDeclRef;
 typedef struct MirInstrDeclDirectRef  MirInstrDeclDirectRef;
 typedef struct MirInstrCast           MirInstrCast;
@@ -131,6 +133,7 @@ typedef struct MirArenas {
     Arena variant;
     Arena arg;
     Arena fn_group;
+    Arena fn_poly;
 } MirArenas;
 
 typedef struct MirSwitchCase {
@@ -167,6 +170,7 @@ typedef enum MirTypeKind {
     MIR_TYPE_DYNARR      = 15,
     MIR_TYPE_FN_GROUP    = 16,
     MIR_TYPE_NAMED_SCOPE = 17,
+    MIR_TYPE_POLY        = 18,
 } MirTypeKind;
 
 typedef enum MirValueAddressMode {
@@ -225,6 +229,12 @@ typedef struct {
     MirFn *fn;
 } DyncallCBContext;
 
+struct MirFnPolyRecipe {
+    // Function literal
+    Ast *ast_lit_fn;
+    s32  index;
+};
+
 // FN
 struct MirFn {
     // Must be first!!!
@@ -232,6 +242,9 @@ struct MirFn {
     ID *        id;
     Ast *       decl_node;
     ScopeEntry *entry;
+
+    // Optional, set only for polymorphic functions.
+    MirFnPolyRecipe *poly;
 
     // function body scope if there is one (optional)
     Scope *  body_scope;
@@ -322,15 +335,24 @@ struct MirTypeReal {
     s32 bitcount;
 };
 
+enum MirTypeFnFlags {
+    MIR_TYPE_FN_FLAG_IS_VARGS         = 1 << 0,
+    MIR_TYPE_FN_FLAG_HAS_BYVAL        = 1 << 1,
+    MIR_TYPE_FN_FLAG_HAS_SRET         = 1 << 2,
+    MIR_TYPE_FN_FLAG_HAS_DEFAULT_ARGS = 1 << 3,
+    MIR_TYPE_FN_FLAG_IS_POLYMORPH     = 1 << 4,
+};
+
 struct MirTypeFn {
     MirType *           ret_type;
     TSmallArray_ArgPtr *args;
     u64                 argument_hash;
     MirBuiltinIdKind    builtin_id;
-    bool                is_vargs;
-    bool                has_byval;
-    bool                has_sret;
-    bool                has_default_args;
+    u32                 flags;
+};
+
+struct MirTypePoly {
+    bool is_master;
 };
 
 struct MirTypeFnGroup {
@@ -402,6 +424,7 @@ struct MirType {
         struct MirTypeEnum       enm;
         struct MirTypeNull       null;
         struct MirTypeNamedScope named_scope;
+        struct MirTypePoly       poly;
     } data;
 
     BL_MAGIC_ADD
@@ -628,6 +651,7 @@ struct MirInstrTypeFn {
     MirInstr *            ret_type;
     TSmallArray_InstrPtr *args;
     MirBuiltinIdKind      builtin_id;
+    bool                  is_polymorph;
 };
 
 struct MirInstrTypeFnGroup {
@@ -690,6 +714,12 @@ struct MirInstrTypeVArgs {
     MirInstr base;
 
     MirInstr *elem_type;
+};
+
+struct MirInstrTypePoly {
+    MirInstr base;
+
+    ID *T_id;
 };
 
 struct MirInstrCall {
@@ -801,10 +831,6 @@ struct MirInstrUnroll {
     bool      remove;
 };
 
-struct MirInstrTypeKind {
-    MirInstr base;
-};
-
 struct MirInstrPhi {
     MirInstr base;
 
@@ -903,7 +929,7 @@ static INLINE bool mir_type_has_llvm_representation(const MirType *type)
 {
     BL_ASSERT(type);
     return type->kind != MIR_TYPE_TYPE && type->kind != MIR_TYPE_FN_GROUP &&
-           type->kind != MIR_TYPE_NAMED_SCOPE;
+           type->kind != MIR_TYPE_NAMED_SCOPE && type->kind != MIR_TYPE_POLY;
 }
 
 void        mir_arenas_init(MirArenas *arenas);

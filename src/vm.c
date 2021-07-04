@@ -2066,6 +2066,7 @@ void eval_instr(VM *vm, MirInstr *instr)
     case MIR_INSTR_TYPE_SLICE:
     case MIR_INSTR_TYPE_DYNARR:
     case MIR_INSTR_TYPE_VARGS:
+    case MIR_INSTR_TYPE_POLY:
     case MIR_INSTR_DECL_MEMBER:
     case MIR_INSTR_DECL_ARG:
     case MIR_INSTR_DECL_VARIANT:

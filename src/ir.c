@@ -761,7 +761,7 @@ LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn, bool schedule_full_generatio
     }
 
     // Setup attributes for sret.
-    if (fn->type->data.fn.has_sret) {
+    if (IS_FLAG(fn->type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
         LLVMAddAttributeAtIndex(fn->llvm_value,
                                 LLVM_SRET_INDEX + 1,
                                 llvm_create_attribute(cnt->llvm_cnt, LLVM_ATTR_NOALIAS));
@@ -771,7 +771,7 @@ LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn, bool schedule_full_generatio
                                 llvm_create_attribute(cnt->llvm_cnt, LLVM_ATTR_STRUCTRET));
     }
     // Setup attributes for byval.
-    if (fn->type->data.fn.has_byval) {
+    if (IS_FLAG(fn->type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_BYVAL)) {
         TSmallArray_ArgPtr *args = fn->type->data.fn.args;
         BL_ASSERT(args);
         MirArg *arg;
@@ -1221,10 +1221,11 @@ LLVMValueRef rtti_emit_fn(Context *cnt, MirType *type)
     tsa_push_LLVMValue(&llvm_vals, _rtti_emit(cnt, type->data.fn.ret_type));
 
     // is_vargs
-    MirType *is_vargs_type = mir_get_struct_elem_type(rtti_type, 3);
+    MirType *  is_vargs_type = mir_get_struct_elem_type(rtti_type, 3);
+    const bool is_vargs      = IS_FLAG(type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_VARGS);
     tsa_push_LLVMValue(&llvm_vals,
                        LLVMConstInt(get_type(cnt, is_vargs_type),
-                                    (u64)type->data.fn.is_vargs,
+                                    (u64)is_vargs,
                                     is_vargs_type->data.integer.is_signed));
 
     LLVMValueRef llvm_result =
@@ -2373,7 +2374,8 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
 
     LLVMValueRef llvm_result = NULL;
     // SRET must come first!!!
-    if (callee_type->data.fn.has_sret) {
+
+    if (IS_FLAG(callee_type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
         // PERFORMANCE: Reuse ret_tmp inside function???
         INSERT_TMP(llvm_tmp, get_type(cnt, callee_type->data.fn.ret_type));
         tsa_push_LLVMValue(&llvm_args, llvm_tmp);
@@ -2457,7 +2459,7 @@ State emit_instr_call(Context *cnt, MirInstrCall *call)
         cnt->llvm_builder, llvm_called_fn, llvm_args.data, (unsigned int)llvm_args.size, "");
     DI_LOCATION_RESET();
 
-    if (callee_type->data.fn.has_sret) {
+    if (IS_FLAG(callee_type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
         LLVMAddCallSiteAttribute(llvm_call,
                                  LLVM_SRET_INDEX + 1,
                                  llvm_create_attribute(cnt->llvm_cnt, LLVM_ATTR_STRUCTRET));
@@ -2555,7 +2557,8 @@ State emit_instr_ret(Context *cnt, MirInstrRet *ret)
     MirType *fn_type = fn->type;
     BL_ASSERT(fn_type);
     DI_LOCATION_SET(&ret->base);
-    if (fn_type->data.fn.has_sret) {
+
+    if (IS_FLAG(fn_type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
         LLVMValueRef llvm_ret_value = ret->value->llvm_value;
         LLVMValueRef llvm_sret      = LLVMGetParam(fn->llvm_value, LLVM_SRET_INDEX);
         LLVMBuildStore(cnt->llvm_builder, llvm_ret_value, llvm_sret);

@@ -1,50 +1,51 @@
 #ifdef GEN_INSTR_SIZEOF
 union __INSTR_T {\
-	MirInstrBlock          block;\
-	MirInstrDeclVar        var;\
-	MirInstrDeclMember     member;\
-	MirInstrDeclVariant    variant;\
-	MirInstrDeclArg        decl_arg;\
-	MirInstrConst          cnst;\
-	MirInstrLoad           load;\
-	MirInstrStore          store;\
-	MirInstrRet            ret;\
-	MirInstrBinop          binop;\
-	MirInstrFnProto        fn_proto;\
-	MirInstrFnGroup        fn_group;\
-	MirInstrDeclRef        decl_ref;\
-	MirInstrDeclDirectRef  decl_direct_ref;\
-	MirInstrCall           call;\
-	MirInstrUnreachable    unreachable;\
-	MirInstrCondBr         cond_br;\
-	MirInstrBr             br;\
-	MirInstrUnop           unop;\
-	MirInstrArg            arg;\
-	MirInstrElemPtr        elem_ptr;\
-	MirInstrMemberPtr      member_ptr;\
-	MirInstrAddrOf         addrof;\
-	MirInstrTypeArray      type_array;\
-	MirInstrTypeSlice      type_slice;\
-	MirInstrTypeDynArr     type_dynarr;\
-	MirInstrTypeVArgs      type_vargs;\
-	MirInstrTypePtr        type_ptr;\
-	MirInstrTypeStruct     type_struct;\
-	MirInstrTypeFn         type_fn;\
-	MirInstrTypeEnum       type_enum;\
-	MirInstrTypeFnGroup    type_fn_group;\
-	MirInstrCast           cast;\
-	MirInstrSizeof         szof;\
-	MirInstrAlignof        alof;\
-	MirInstrCompound       init;\
-	MirInstrVArgs          vargs;\
-	MirInstrTypeInfo       type_info;\
-	MirInstrPhi            phi;\
-	MirInstrToAny          toany;\
-	MirInstrSwitch         sw;\
-	MirInstrSetInitializer si;\
-	MirInstrTestCases      tcs; \
-	MirInstrCallLoc        cl; \
-	MirInstrUnroll         unroll; \
+    MirInstrBlock          block;\
+    MirInstrDeclVar        var;\
+    MirInstrDeclMember     member;\
+    MirInstrDeclVariant    variant;\
+    MirInstrDeclArg        decl_arg;\
+    MirInstrConst          cnst;\
+    MirInstrLoad           load;\
+    MirInstrStore          store;\
+    MirInstrRet            ret;\
+    MirInstrBinop          binop;\
+    MirInstrFnProto        fn_proto;\
+    MirInstrFnGroup        fn_group;\
+    MirInstrDeclRef        decl_ref;\
+    MirInstrDeclDirectRef  decl_direct_ref;\
+    MirInstrCall           call;\
+    MirInstrUnreachable    unreachable;\
+    MirInstrCondBr         cond_br;\
+    MirInstrBr             br;\
+    MirInstrUnop           unop;\
+    MirInstrArg            arg;\
+    MirInstrElemPtr        elem_ptr;\
+    MirInstrMemberPtr      member_ptr;\
+    MirInstrAddrOf         addrof;\
+    MirInstrTypeArray      type_array;\
+    MirInstrTypeSlice      type_slice;\
+    MirInstrTypeDynArr     type_dynarr;\
+    MirInstrTypeVArgs      type_vargs;\
+    MirInstrTypePtr        type_ptr;\
+    MirInstrTypeStruct     type_struct;\
+    MirInstrTypeFn         type_fn;\
+    MirInstrTypeEnum       type_enum;\
+    MirInstrTypeFnGroup    type_fn_group;\
+    MirInstrTypePoly       type_poly;\
+    MirInstrCast           cast;\
+    MirInstrSizeof         szof;\
+    MirInstrAlignof        alof;\
+    MirInstrCompound       init;\
+    MirInstrVArgs          vargs;\
+    MirInstrTypeInfo       type_info;\
+    MirInstrPhi            phi;\
+    MirInstrToAny          toany;\
+    MirInstrSwitch         sw;\
+    MirInstrSetInitializer si;\
+    MirInstrTestCases      tcs; \
+    MirInstrCallLoc        cl; \
+    MirInstrUnroll         unroll; \
 };
 
 #define SIZEOF_MIR_INSTR sizeof(union __INSTR_T)
@@ -52,111 +53,112 @@ union __INSTR_T {\
 #endif
 
 #ifdef GEN_INSTR_KINDS
-	MIR_INSTR_BLOCK,
-	MIR_INSTR_DECL_VAR,
-	MIR_INSTR_DECL_MEMBER,
-	MIR_INSTR_DECL_VARIANT,
-	MIR_INSTR_DECL_ARG,
-	MIR_INSTR_CONST,
-	MIR_INSTR_LOAD,
-	MIR_INSTR_STORE,
-	MIR_INSTR_BINOP,
-	MIR_INSTR_RET,
-	MIR_INSTR_FN_PROTO,
-	MIR_INSTR_FN_GROUP,
-	MIR_INSTR_TYPE_FN,
-	MIR_INSTR_TYPE_STRUCT,
-	MIR_INSTR_TYPE_PTR,
-	MIR_INSTR_TYPE_ARRAY,
-	MIR_INSTR_TYPE_SLICE,
-	MIR_INSTR_TYPE_DYNARR,
-	MIR_INSTR_TYPE_VARGS,
-	MIR_INSTR_TYPE_ENUM,
-	MIR_INSTR_TYPE_FN_GROUP,
-	MIR_INSTR_CALL,
-	MIR_INSTR_DECL_REF,
-	MIR_INSTR_DECL_DIRECT_REF,
-	MIR_INSTR_UNREACHABLE,
-	MIR_INSTR_COND_BR,
-	MIR_INSTR_BR,
-	MIR_INSTR_UNOP,
-	MIR_INSTR_ARG,
-	MIR_INSTR_ELEM_PTR,
-	MIR_INSTR_MEMBER_PTR,
-	MIR_INSTR_ADDROF,
-	MIR_INSTR_CAST,
-	MIR_INSTR_SIZEOF,
-	MIR_INSTR_ALIGNOF,
-	MIR_INSTR_COMPOUND,
-	MIR_INSTR_VARGS,
-	MIR_INSTR_TYPE_INFO,
-	MIR_INSTR_PHI,
-	MIR_INSTR_TOANY,
-	MIR_INSTR_SWITCH,
-	MIR_INSTR_SET_INITIALIZER,
-	MIR_INSTR_TEST_CASES,
-	MIR_INSTR_CALL_LOC,
-	MIR_INSTR_UNROLL,
+    MIR_INSTR_BLOCK,
+    MIR_INSTR_DECL_VAR,
+    MIR_INSTR_DECL_MEMBER,
+    MIR_INSTR_DECL_VARIANT,
+    MIR_INSTR_DECL_ARG,
+    MIR_INSTR_CONST,
+    MIR_INSTR_LOAD,
+    MIR_INSTR_STORE,
+    MIR_INSTR_BINOP,
+    MIR_INSTR_RET,
+    MIR_INSTR_FN_PROTO,
+    MIR_INSTR_FN_GROUP,
+    MIR_INSTR_TYPE_FN,
+    MIR_INSTR_TYPE_STRUCT,
+    MIR_INSTR_TYPE_PTR,
+    MIR_INSTR_TYPE_ARRAY,
+    MIR_INSTR_TYPE_SLICE,
+    MIR_INSTR_TYPE_DYNARR,
+    MIR_INSTR_TYPE_VARGS,
+    MIR_INSTR_TYPE_ENUM,
+    MIR_INSTR_TYPE_FN_GROUP,
+    MIR_INSTR_TYPE_POLY,
+    MIR_INSTR_CALL,
+    MIR_INSTR_DECL_REF,
+    MIR_INSTR_DECL_DIRECT_REF,
+    MIR_INSTR_UNREACHABLE,
+    MIR_INSTR_COND_BR,
+    MIR_INSTR_BR,
+    MIR_INSTR_UNOP,
+    MIR_INSTR_ARG,
+    MIR_INSTR_ELEM_PTR,
+    MIR_INSTR_MEMBER_PTR,
+    MIR_INSTR_ADDROF,
+    MIR_INSTR_CAST,
+    MIR_INSTR_SIZEOF,
+    MIR_INSTR_ALIGNOF,
+    MIR_INSTR_COMPOUND,
+    MIR_INSTR_VARGS,
+    MIR_INSTR_TYPE_INFO,
+    MIR_INSTR_PHI,
+    MIR_INSTR_TOANY,
+    MIR_INSTR_SWITCH,
+    MIR_INSTR_SET_INITIALIZER,
+    MIR_INSTR_TEST_CASES,
+    MIR_INSTR_CALL_LOC,
+    MIR_INSTR_UNROLL,
 #endif
 
 #ifdef GEN_BUILTIN_NAMES
-	MIR_BUILTIN_ID_TYPE_TYPE,
-	MIR_BUILTIN_ID_TYPE_NAMED_SCOPE,
-	MIR_BUILTIN_ID_TYPE_S8,
-	MIR_BUILTIN_ID_TYPE_S16,
-	MIR_BUILTIN_ID_TYPE_S32,
-	MIR_BUILTIN_ID_TYPE_S64,
-	MIR_BUILTIN_ID_TYPE_U8,
-	MIR_BUILTIN_ID_TYPE_U16,
-	MIR_BUILTIN_ID_TYPE_U32,
-	MIR_BUILTIN_ID_TYPE_U64,
-	MIR_BUILTIN_ID_TYPE_USIZE,
-	MIR_BUILTIN_ID_TYPE_BOOL,
-	MIR_BUILTIN_ID_TYPE_F32,
-	MIR_BUILTIN_ID_TYPE_F64,
-	MIR_BUILTIN_ID_TYPE_VOID,
-	MIR_BUILTIN_ID_TYPE_STRING,
-	MIR_BUILTIN_ID_NULL,
-	MIR_BUILTIN_ID_MAIN,
-	MIR_BUILTIN_ID_ARR_LEN,
-	MIR_BUILTIN_ID_ARR_PTR,
-	MIR_BUILTIN_ID_ARR_ALLOCATED,
-	MIR_BUILTIN_ID_ARR_ALLOCATOR,
-	MIR_BUILTIN_ID_STRUCT_BASE,
-	MIR_BUILTIN_ID_ANY,
-	MIR_BUILTIN_ID_ARRAY,
-	MIR_BUILTIN_ID_TYPE_KIND,
-	MIR_BUILTIN_ID_TYPE_INFO,
-	MIR_BUILTIN_ID_TYPE_INFO_TYPE,
-	MIR_BUILTIN_ID_TYPE_INFO_VOID,
-	MIR_BUILTIN_ID_TYPE_INFO_INT,
-	MIR_BUILTIN_ID_TYPE_INFO_REAL,
-	MIR_BUILTIN_ID_TYPE_INFO_FN,
-	MIR_BUILTIN_ID_TYPE_INFO_PTR,
-	MIR_BUILTIN_ID_TYPE_INFO_BOOL,
-	MIR_BUILTIN_ID_TYPE_INFO_ARRAY,
-	MIR_BUILTIN_ID_TYPE_INFO_STRUCT,
-	MIR_BUILTIN_ID_TYPE_INFO_ENUM,
-	MIR_BUILTIN_ID_TYPE_INFO_NULL,
-	MIR_BUILTIN_ID_TYPE_INFO_STRING,
-	MIR_BUILTIN_ID_TYPE_INFO_VARGS,
-	MIR_BUILTIN_ID_TYPE_INFO_SLICE,
-	MIR_BUILTIN_ID_TYPE_INFO_STRUCT_MEMBER,
-	MIR_BUILTIN_ID_TYPE_INFO_ENUM_VARIANT,
-	MIR_BUILTIN_ID_TYPE_INFO_FN_ARG,
-	MIR_BUILTIN_ID_TYPE_INFO_FN_GROUP,
-	MIR_BUILTIN_ID_ABORT_FN,
-	MIR_BUILTIN_ID_ARRAY_PUSH_FN,
-	MIR_BUILTIN_ID_ARRAY_TERMINATE_FN,
-	MIR_BUILTIN_ID_ARRAY_RESERVE_FN,
-	MIR_BUILTIN_ID_ARRAY_ERASE_FN,
-	MIR_BUILTIN_ID_ARRAY_CLEAR_FN,
-	MIR_BUILTIN_ID_ARRAY_INIT_FN,
-	MIR_BUILTIN_ID_SLICE_INIT_FN,
-	MIR_BUILTIN_ID_SLICE_TERMINATE_FN,
-	MIR_BUILTIN_ID_IS_DEBUG,
-	MIR_BUILTIN_ID_TYPE_TEST_CASES,
-	MIR_BUILTIN_ID_TYPE_CALL_LOCATION,
+    MIR_BUILTIN_ID_TYPE_TYPE,
+    MIR_BUILTIN_ID_TYPE_NAMED_SCOPE,
+    MIR_BUILTIN_ID_TYPE_S8,
+    MIR_BUILTIN_ID_TYPE_S16,
+    MIR_BUILTIN_ID_TYPE_S32,
+    MIR_BUILTIN_ID_TYPE_S64,
+    MIR_BUILTIN_ID_TYPE_U8,
+    MIR_BUILTIN_ID_TYPE_U16,
+    MIR_BUILTIN_ID_TYPE_U32,
+    MIR_BUILTIN_ID_TYPE_U64,
+    MIR_BUILTIN_ID_TYPE_USIZE,
+    MIR_BUILTIN_ID_TYPE_BOOL,
+    MIR_BUILTIN_ID_TYPE_F32,
+    MIR_BUILTIN_ID_TYPE_F64,
+    MIR_BUILTIN_ID_TYPE_VOID,
+    MIR_BUILTIN_ID_TYPE_STRING,
+    MIR_BUILTIN_ID_NULL,
+    MIR_BUILTIN_ID_MAIN,
+    MIR_BUILTIN_ID_ARR_LEN,
+    MIR_BUILTIN_ID_ARR_PTR,
+    MIR_BUILTIN_ID_ARR_ALLOCATED,
+    MIR_BUILTIN_ID_ARR_ALLOCATOR,
+    MIR_BUILTIN_ID_STRUCT_BASE,
+    MIR_BUILTIN_ID_ANY,
+    MIR_BUILTIN_ID_ARRAY,
+    MIR_BUILTIN_ID_TYPE_KIND,
+    MIR_BUILTIN_ID_TYPE_INFO,
+    MIR_BUILTIN_ID_TYPE_INFO_TYPE,
+    MIR_BUILTIN_ID_TYPE_INFO_VOID,
+    MIR_BUILTIN_ID_TYPE_INFO_INT,
+    MIR_BUILTIN_ID_TYPE_INFO_REAL,
+    MIR_BUILTIN_ID_TYPE_INFO_FN,
+    MIR_BUILTIN_ID_TYPE_INFO_PTR,
+    MIR_BUILTIN_ID_TYPE_INFO_BOOL,
+    MIR_BUILTIN_ID_TYPE_INFO_ARRAY,
+    MIR_BUILTIN_ID_TYPE_INFO_STRUCT,
+    MIR_BUILTIN_ID_TYPE_INFO_ENUM,
+    MIR_BUILTIN_ID_TYPE_INFO_NULL,
+    MIR_BUILTIN_ID_TYPE_INFO_STRING,
+    MIR_BUILTIN_ID_TYPE_INFO_VARGS,
+    MIR_BUILTIN_ID_TYPE_INFO_SLICE,
+    MIR_BUILTIN_ID_TYPE_INFO_STRUCT_MEMBER,
+    MIR_BUILTIN_ID_TYPE_INFO_ENUM_VARIANT,
+    MIR_BUILTIN_ID_TYPE_INFO_FN_ARG,
+    MIR_BUILTIN_ID_TYPE_INFO_FN_GROUP,
+    MIR_BUILTIN_ID_ABORT_FN,
+    MIR_BUILTIN_ID_ARRAY_PUSH_FN,
+    MIR_BUILTIN_ID_ARRAY_TERMINATE_FN,
+    MIR_BUILTIN_ID_ARRAY_RESERVE_FN,
+    MIR_BUILTIN_ID_ARRAY_ERASE_FN,
+    MIR_BUILTIN_ID_ARRAY_CLEAR_FN,
+    MIR_BUILTIN_ID_ARRAY_INIT_FN,
+    MIR_BUILTIN_ID_SLICE_INIT_FN,
+    MIR_BUILTIN_ID_SLICE_TERMINATE_FN,
+    MIR_BUILTIN_ID_IS_DEBUG,
+    MIR_BUILTIN_ID_TYPE_TEST_CASES,
+    MIR_BUILTIN_ID_TYPE_CALL_LOCATION,
     MIR_BUILTIN_ID_COMMAND_LINE_ARGUMENTS,
     MIR_BUILTIN_ID_IS_COMPTIME_RUN,
 #endif
