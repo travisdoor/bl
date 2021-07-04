@@ -342,6 +342,7 @@ static void type_init_llvm_fn(Context *cnt, MirType *type);
 static void type_init_llvm_array(Context *cnt, MirType *type);
 static void type_init_llvm_struct(Context *cnt, MirType *type);
 static void type_init_llvm_enum(Context *cnt, MirType *type);
+static void type_init_llvm_poly(Context *cnt, MirType *type);
 
 static MirVar *create_var(Context *        cnt,
                           Ast *            decl_node,
@@ -1923,7 +1924,7 @@ MirType *create_type_poly(Context *cnt, ID *user_id, bool is_master)
     MirType *tmp             = create_type(cnt, MIR_TYPE_POLY, user_id);
     tmp->data.poly.is_master = is_master;
     type_init_id(cnt, tmp);
-    type_init_llvm_bool(cnt, tmp);
+    type_init_llvm_poly(cnt, tmp);
     return tmp;
 }
 
@@ -1958,10 +1959,8 @@ MirType *create_type_ptr(Context *cnt, MirType *src_type)
     BL_ASSERT(src_type && "Invalid src type for pointer type.");
     MirType *tmp       = create_type(cnt, MIR_TYPE_PTR, NULL);
     tmp->data.ptr.expr = src_type;
-
     type_init_id(cnt, tmp);
     type_init_llvm_ptr(cnt, tmp);
-
     return tmp;
 }
 
@@ -2213,6 +2212,14 @@ void type_init_llvm_void(Context *cnt, MirType *type)
     type->size_bits        = 0;
     type->store_size_bytes = 0;
     type->llvm_type        = LLVMVoidTypeInContext(cnt->assembly->llvm.cnt);
+}
+
+void type_init_llvm_poly(Context *cnt, MirType *type)
+{
+    type->llvm_type        = LLVMIntTypeInContext(cnt->assembly->llvm.cnt, 32);
+    type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
+    type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
+    type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
 }
 
 void type_init_llvm_null(Context UNUSED(*cnt), MirType *type)
@@ -7003,6 +7010,7 @@ generate_fn_poly(Context *cnt, Ast *call, MirFn *fn, TSmallArray_InstrPtr *expec
     for (usize i = 0; i < argc; ++i) {
         MirType *call_arg_type   = expected_args->data[i]->value.type;
         MirType *recipe_arg_type = recipe_args->data[i]->type;
+        if (is_load_needed(expected_args->data[i])) call_arg_type = mir_deref_type(call_arg_type);
         MirType *matching_type   = poly_type_match(recipe_arg_type, call_arg_type);
 
         if (matching_type) {
@@ -10659,9 +10667,9 @@ void mir_run(Assembly *assembly)
     // Analyze pass
     analyze(&cnt);
     analyze_report_unresolved(&cnt);
-    
+
     BL_ASSERT(cnt.analyze.queue.size == 0 && "Not everything is analyzed!");
-    
+
     if (builder.errorc) goto SKIP;
     analyze_report_unused(&cnt);
 

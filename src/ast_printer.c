@@ -86,6 +86,7 @@ static void print_unrecheable(Ast *unr, s32 pad, FILE *stream);
 static void print_ref(Ast *ref, s32 pad, FILE *stream);
 static void print_type_polymorph(Ast *poly, s32 pad, FILE *stream);
 static void print_type_struct(Ast *strct, s32 pad, FILE *stream);
+static void print_type_slice(Ast *slice, s32 pad, FILE *stream);
 static void print_type_enum(Ast *enm, s32 pad, FILE *stream);
 static void print_type_fn_group(Ast *group, s32 pad, FILE *stream);
 static void print_type_fn(Ast *fn, s32 pad, FILE *stream);
@@ -198,6 +199,12 @@ void print_type_struct(Ast *strct, s32 pad, FILE *stream)
     {
         print_node(node, pad + 1, stream);
     }
+}
+
+void print_type_slice(Ast *slice, s32 pad, FILE *stream)
+{
+    print_head(slice, pad, stream);
+    print_node(slice->data.type_slice.elem_type, pad + 1, stream);
 }
 
 void print_ref(Ast *ref, s32 pad, FILE *stream)
@@ -598,6 +605,10 @@ void print_node(Ast *node, s32 pad, FILE *stream)
 
     case AST_TYPE_STRUCT:
         print_type_struct(node, pad, stream);
+        break;
+
+    case AST_TYPE_SLICE:
+        print_type_slice(node, pad, stream);
         break;
 
     case AST_TYPE_FN:

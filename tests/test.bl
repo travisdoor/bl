@@ -24,11 +24,6 @@ add :: fn (a: ?T, b: T) T {
     return a + b;
 }
 
-main :: fn () s32 {
-    i :: add(cast(s64) 10, cast(s64) 10);
-    return 0;
-}
-
 bar :: fn () {
     k :: add(cast(u8) 10, cast(u8) 10);
 }
@@ -36,16 +31,18 @@ bar :: fn () {
 sailor :: fn () {
     k :: add(cast(u64) 10, cast(u64) 10);
 }
-
 /*
-
-MirFnPoly:
-    - ast node for the function literal prototype
-    - array of already generated prototypes (or hash table?)
-    - hashing done by types
-    - first use call position
-
-    generate_fn_poly (recepie: MirFnPoly, expected_argument_list)
+sum :: fn (values: []?T) T {
+    result: T;
+    loop i := 0; i < values.len; i += 1 {
+        result += values[i];
+    }
+    return result;
+}
 */
 
-
+main :: fn () s32 {
+    n1 : s64 = 10;
+    i :: add(n1, n1);
+    return 0;
+}
