@@ -134,7 +134,6 @@ typedef struct MirArenas {
     Arena arg;
     Arena fn_group;
     Arena fn_poly;
-    Arena id;
 } MirArenas;
 
 typedef struct MirSwitchCase {
@@ -232,8 +231,11 @@ typedef struct {
 
 struct MirFnPolyRecipe {
     // Function literal
-    Ast *ast_lit_fn;
-    s32  index;
+    Ast *      ast_lit_fn;
+    s32        scope_layer;
+    THashTable entries;
+    
+    BL_MAGIC_ADD
 };
 
 // FN

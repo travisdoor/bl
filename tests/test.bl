@@ -20,24 +20,57 @@
 // value: *MirFnPoly
 
 add :: fn (a: ?T, b: T) T {
-    this_is_it: T;
     return a + b;
 }
 
-/*
-sum :: fn (values: []?T) T {
-    result: T;
-    loop i := 0; i < values.len; i += 1 {
-        result += values[i];
-    }
-    return result;
+print_vec :: fn (v: ?T) {
+    print("x = %\n", v.x);
+    print("y = %\n", v.y);
+    print("z = %\n", v.z);
 }
-*/
+
+maximum :: fn (a: ?T, b: T) T #inline {
+    if a > b { return a; }
+    return b;
+}
+
+table_insert :: fn (key: ?TKey, value: ?TValue) {
+    print("[%] = %\n", key, value);
+}
+
+Vec :: struct {
+    x: s32;
+    y: s32;
+    z: s32;
+}
 
 main :: fn () s32 {
     n1 : s64 = 10;
     n2 : u32 = 20;
-    i :: add(n1, n1);
-    b :: add(n2, n2);
+    n3 :: 0.5f;
+    n4 :: 0.5;
+    
+    print("%\n", add(n1, n1));
+    print("%\n", add(n2, n2));
+    print("%\n", add(n3, n3));
+    print("%\n", add(n4, n4));
+    
+    v := {:Vec: 10, 20, 30};
+    print_vec(v);
+    
+    print("%\n", maximum(10, 20));
+    print("%\n", maximum(34.4f, 20.f));
+    
+    table_insert(10, "hello!");
+    table_insert(30, "foo!");
+    table_insert(40, "bar!");
     return 0;
 }
+
+//sum :: fn (values: []?T) T {
+//    result: T;
+//    loop i := 0; i < values.len; i += 1 {
+//        result += values[i];
+//    }
+//    return result;
+//}

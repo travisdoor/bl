@@ -642,7 +642,8 @@ LLVMMetadataRef DI_unit_init(Context *cnt, Unit *unit)
 void emit_DI_fn(Context *cnt, MirFn *fn)
 {
     if (!fn->decl_node) return;
-    BL_ASSERT(!fn->body_scope->llvm_meta && "Attempt to regenerate function DI!");
+    if (fn->body_scope->llvm_meta) return; // @INCOMPLETE
+    //BL_ASSERT(!fn->body_scope->llvm_meta && "Attempt to regenerate function DI!");
     Location *      location   = fn->decl_node->location;
     LLVMMetadataRef llvm_file  = DI_unit_init(cnt, location->unit);
     LLVMMetadataRef llvm_scope = NULL;

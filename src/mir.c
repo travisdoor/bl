@@ -240,6 +240,12 @@ static void fn_dtor(MirFn *fn)
     if (fn->dyncall.extern_callback_handle) dcbFreeCallback(fn->dyncall.extern_callback_handle);
 }
 
+static void fn_poly_dtor(MirFnPolyRecipe *recipe)
+{
+    BL_MAGIC_ASSERT(recipe);
+    thtbl_terminate(&recipe->entries);
+}
+
 // FW decls
 // Initialize all builtin types.
 static void    builtin_inits(Context *cnt);
@@ -380,7 +386,6 @@ static MirFnPolyRecipe *create_fn_poly_recipe(Context *cnt, Ast *ast_lit_fn);
 static MirMember *      create_member(Context *cnt, Ast *node, ID *id, s64 index, MirType *type);
 static MirArg *
 create_arg(Context *cnt, Ast *node, ID *id, Scope *scope, MirType *type, MirInstr *value);
-static ID *        create_unique_id(Context *cnt, const char *name);
 static MirVariant *create_variant(Context *cnt, ID *id, MirConstExprValue *value);
 // Create block without owner function.
 static MirInstrBlock *create_block(Context *cnt, const char *name);
@@ -776,7 +781,7 @@ static AnalyzeResult generate_fn_poly(Context *             cnt,
                                       Ast *                 call,
                                       MirFn *               fn,
                                       TSmallArray_InstrPtr *expected_args,
-                                      MirFn **              out_fn);
+                                      MirInstrFnProto **    out_fn_proto);
 
 //***********/
 //*  RTTI   */
@@ -2583,7 +2588,9 @@ MirFnPolyRecipe *create_fn_poly_recipe(Context *cnt, Ast *ast_lit_fn)
 {
     BL_ASSERT(ast_lit_fn && ast_lit_fn->kind == AST_EXPR_LIT_FN);
     MirFnPolyRecipe *tmp = arena_alloc(&cnt->assembly->arenas.mir.fn_poly);
-    tmp->ast_lit_fn      = ast_lit_fn;
+    BL_MAGIC_SET(tmp);
+    tmp->ast_lit_fn = ast_lit_fn;
+    thtbl_init(&tmp->entries, sizeof(MirInstr *), 32);
     return tmp;
 }
 
@@ -2615,14 +2622,6 @@ MirVariant *create_variant(Context *cnt, ID *id, MirConstExprValue *value)
     tmp->id         = id;
     tmp->value      = value;
     return tmp;
-}
-
-ID *create_unique_id(Context *cnt, const char *name)
-{
-    const char *unique_name = create_unique_name(name);
-    ID *        id          = arena_alloc(&cnt->assembly->arenas.mir.id);
-    id_init(id, unique_name);
-    return id;
 }
 
 // instructions
@@ -5332,19 +5331,31 @@ AnalyzeResult analyze_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef 
 {
     ZONE();
     BL_ASSERT(ref->ref && "Missing declaration reference for direct ref.");
-    BL_ASSERT(ref->ref->kind == MIR_INSTR_DECL_VAR && "Expected variable declaration.");
-    if (!ref->ref->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+    if (ref->ref->kind == MIR_INSTR_DECL_VAR) {
+        if (!ref->ref->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+        MirVar *var = ((MirInstrDeclVar *)ref->ref)->var;
+        BL_ASSERT(var);
+        ++var->ref_count;
+        MirType *type = var->value.type;
+        BL_ASSERT(type);
+        type                        = create_type_ptr(cnt, type);
+        ref->base.value.type        = type;
+        ref->base.value.is_comptime = var->value.is_comptime;
+        ref->base.value.addr_mode   = var->is_mutable ? MIR_VAM_LVALUE : MIR_VAM_LVALUE_CONST;
+    } else if (ref->ref->kind == MIR_INSTR_FN_PROTO) {
+        if (!ref->ref->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+        MirFn *fn = MIR_CEV_READ_AS(MirFn *, &ref->ref->value);
+        BL_MAGIC_ASSERT(fn);
+        BL_ASSERT(fn->type && fn->type == ref->ref->value.type);
+        ++fn->ref_count;
 
-    MirVar *var = ((MirInstrDeclVar *)ref->ref)->var;
-    BL_ASSERT(var);
-    ++var->ref_count;
-    MirType *type = var->value.type;
-    BL_ASSERT(type);
+        MirInstrConst *replacement   = (MirInstrConst *)mutate_instr(&ref->base, MIR_INSTR_CONST);
+        replacement->volatile_type   = false;
+        replacement->base.value.data = (VMStackPtr)&ref->base.value._tmp;
 
-    type                        = create_type_ptr(cnt, type);
-    ref->base.value.type        = type;
-    ref->base.value.is_comptime = var->value.is_comptime;
-    ref->base.value.addr_mode   = var->is_mutable ? MIR_VAM_LVALUE : MIR_VAM_LVALUE_CONST;
+        replacement->base.value.type = fn->type;
+        MIR_CEV_WRITE_AS(MirFn *, &replacement->base.value, fn);
+    }
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
@@ -6988,16 +6999,32 @@ static MirType *poly_type_match(MirType *recipe, MirType *other)
     return found;
 }
 
+static INLINE u64 get_current_poly_replacement_hash(Context *cnt)
+{
+    ZONE();
+    TString *            str   = get_tmpstr();
+    TSmallArray_TypePtr *queue = &cnt->polymorph.replacement_queue;
+    MirType *            type;
+    TSA_FOREACH(queue, type)
+    {
+        BL_ASSERT(type && type->id.str);
+        tstring_setf(str, "%s##", type->id.str);
+    }
+    const u64 hash = thash_from_str(str->data);
+    put_tmpstr(str);
+    RETURN_END_ZONE(hash);
+}
+
 AnalyzeResult generate_fn_poly(Context *             cnt,
                                Ast *                 call,
                                MirFn *               fn,
                                TSmallArray_InstrPtr *expected_args,
-                               MirFn **              out_fn)
+                               MirInstrFnProto **    out_fn_proto)
 {
     // Polymorph types can be divided into two groups, masters and slaves. The master type is
     // defined as '?<type name>', such type acts like type definition (creates scope entry) and
     // should be replaced by matching argument type deduced from call side of the function. The
-    // slave type on the other hand cannot be directly replaced directly (based on type of matching
+    // slave type on the other hand cannot be directly replaced (based on type of matching
     // argument), it creates only reference to the master.
     //
     // Example:
@@ -7005,13 +7032,14 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
     //     sum(10, 20, 30)
     //
     // The type of first argument 'a' is master polymorph type and it's replacement is deduced from
-    // the first all argument type (s32 in the example). All other slaves 'T' are references to '?T'
-    // so they are replaced by 's32' type even if matching call side argument has different type (ge
-    // must generate compilation error in such case).
-
+    // the first call argument type (s32 in the example). All other slaves 'T' are references to
+    // '?T' so they are replaced by 's32' type even if matching call side argument has different
+    // type
     ZONE();
     MirFnPolyRecipe *recipe = fn->poly;
-    BL_ASSERT(recipe && "Missing generation recipe for polymorph function!");
+    BL_MAGIC_ASSERT(recipe);
+    THashTable *entries = &recipe->entries;
+    BL_ASSERT(out_fn_proto);
 
     MirType *recipe_type = fn->type;
     BL_ASSERT(recipe_type && recipe_type->kind == MIR_TYPE_FN);
@@ -7019,6 +7047,7 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
 
     Ast *ast_recipe = recipe->ast_lit_fn;
     BL_ASSERT(ast_recipe && "Missing AST recipe for polymorph function!");
+    BL_ASSERT(ast_recipe->kind == AST_EXPR_LIT_FN);
 
     const usize expected_argc = expected_args ? expected_args->size : 0;
     if (expected_argc == 0) {
@@ -7030,7 +7059,6 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
     }
 
     TSmallArray_TypePtr *queue = &cnt->polymorph.replacement_queue;
-    queue->size                = 0; // clear
 
     const usize argc = min(expected_argc, recipe_args->size);
     for (usize i = 0; i < argc; ++i) {
@@ -7040,45 +7068,48 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
         MirType *matching_type = poly_type_match(recipe_arg_type, call_arg_type);
 
         if (matching_type) {
-            // @NOCHECKIN
+#if BL_DEBUG
             char type_name1[256];
             mir_type_to_str(type_name1, 256, matching_type, true);
             BL_LOG("Replace poly with: %s", type_name1);
+#endif
             tsa_push_TypePtr(queue, matching_type);
         }
     }
 
-    const s32 prev_scope_layer_index         = cnt->polymorph.current_scope_layer_index;
-    cnt->polymorph.current_scope_layer_index = ++recipe->index;
-    cnt->polymorph.is_replacement_active     = true;
+    const replacement_hash = get_current_poly_replacement_hash(cnt);
 
-    MirInstr *instr_fn_proto = ast(cnt, ast_recipe);
+    TIterator iter = thtbl_find(entries, replacement_hash);
+    TIterator end  = thtbl_end(entries);
+    if (TITERATOR_EQUAL(iter, end)) {
+        const s32 prev_scope_layer_index         = cnt->polymorph.current_scope_layer_index;
+        cnt->polymorph.current_scope_layer_index = ++recipe->scope_layer;
+        cnt->polymorph.is_replacement_active     = true;
 
-    BL_ASSERT(instr_fn_proto && instr_fn_proto->kind == MIR_INSTR_FN_PROTO);
-    MirFn *replacement_fn = MIR_CEV_READ_AS(MirFn *, &instr_fn_proto->value);
-    BL_MAGIC_ASSERT(replacement_fn);
+        // Generate new function.
+        MirInstr *instr_fn_proto = ast(cnt, ast_recipe);
+        BL_ASSERT(instr_fn_proto && instr_fn_proto->kind == MIR_INSTR_FN_PROTO);
 
-    // Setup name for generated function
-    const char *original_fn_name = fn->id ? fn->id->str : IMPL_FN_NAME;
-    replacement_fn->id           = create_unique_id(cnt, original_fn_name);
+        MirFn *replacement_fn = MIR_CEV_READ_AS(MirFn *, &instr_fn_proto->value);
+        BL_MAGIC_ASSERT(replacement_fn);
 
-    // Feed the output
-    BL_ASSERT(out_fn);
-    *out_fn = replacement_fn;
+        // Setup name for generated function
+        const char *original_fn_name = fn->id ? fn->id->str : IMPL_FN_NAME;
+        replacement_fn->linkage_name = create_unique_name(original_fn_name);
 
-    cnt->polymorph.is_replacement_active     = false;
-    cnt->polymorph.current_scope_layer_index = prev_scope_layer_index;
+        cnt->polymorph.is_replacement_active     = false;
+        cnt->polymorph.current_scope_layer_index = prev_scope_layer_index;
+
+        // Feed the output
+        *out_fn_proto = (MirInstrFnProto *)instr_fn_proto;
+
+        thtbl_insert(entries, replacement_hash, instr_fn_proto);
+    } else {
+        BL_LOG("Reuse already existing function!");
+        *out_fn_proto = (MirInstrFnProto *)thtbl_iter_peek_value(MirInstr *, iter);
+    }
+    queue->size = 0; // clear
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
-}
-
-static INLINE void replace_callee(MirInstr *callee, MirFn *fn)
-{
-    BL_ASSERT(fn);
-    erase_instr_tree(callee, false, true);
-    mutate_instr(callee, MIR_INSTR_CONST);
-    callee->value.data = (VMStackPtr)&callee->value._tmp;
-    callee->node       = fn->decl_node;
-    MIR_CEV_WRITE_AS(MirFn *, &callee->value, fn);
 }
 
 AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
@@ -7190,8 +7221,8 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
             tsa_terminate(&arg_types);
         }
         BL_MAGIC_ASSERT(selected_overload_fn);
-        replace_callee(call->callee, selected_overload_fn);
 
+        // Replace callee instruction with constant containing found overload function.
         erase_instr_tree(call->callee, false, true);
         MirInstrConst *callee_replacement =
             (MirInstrConst *)mutate_instr(call->callee, MIR_INSTR_CONST);
@@ -7208,20 +7239,23 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
     if (is_polymorph) {
         MirFn *fn = MIR_CEV_READ_AS(MirFn *, &call->callee->value);
         BL_MAGIC_ASSERT(fn);
-        MirFn *       replacement_fn = NULL;
-        AnalyzeResult state =
-            generate_fn_poly(cnt, call->base.node, fn, call->args, &replacement_fn);
+        MirInstrFnProto *instr_replacement_fn_proto = NULL;
+        AnalyzeResult    state =
+            generate_fn_poly(cnt, call->base.node, fn, call->args, &instr_replacement_fn_proto);
         if (state.state != ANALYZE_PASSED) RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
-        replace_callee(call->callee, replacement_fn);
+        BL_ASSERT(instr_replacement_fn_proto);
 
-        // Polymorph function replacement is not analyzed yet in this time (we've just created the
-        // replacement and pushed it into analyze queue). That means the current call instruction
-        // must wait for it. The waiting queue is used in this case even if the replacement function
-        // does not exist in any scope explicitly (it's symbol is not registered). This leads also
-        // to the special handling of the function analyze pass (see analyze_instr_fn_proto and
-        // part related to symbol commit).
-        BL_ASSERT(replacement_fn->id && "Missing ID of polymorph replacement.");
-        RETURN_END_ZONE(ANALYZE_RESULT(WAITING, replacement_fn->id->hash));
+        // Mutate callee instruction to direct declaration reference.
+        MirInstrDeclDirectRef *callee_replacement =
+            (MirInstrDeclDirectRef *)mutate_instr(call->callee, MIR_INSTR_DECL_DIRECT_REF);
+        callee_replacement->ref              = ref_instr(&instr_replacement_fn_proto->base);
+        callee_replacement->base.is_analyzed = false;
+
+        // We skip analyze of this instruction, newly created polymorph function is not analyzed
+        // yet; however we've changed kind of callee instruction, so we have to roll-back in analyze
+        // stack by re-sumbit callee to analyze again.
+        analyze_push_back(cnt, &callee_replacement->base);
+        RETURN_END_ZONE(ANALYZE_RESULT(SKIP, 0));
     }
 
     MirType *result_type = type->data.fn.ret_type;
@@ -10615,14 +10649,13 @@ void mir_arenas_init(MirArenas *arenas)
 {
     const usize instr_size = SIZEOF_MIR_INSTR;
     arena_init(&arenas->instr, instr_size, ALIGNOF_MIR_INSTR, ARENA_INSTR_CHUNK_COUNT, NULL);
-    arena_init(&arenas->id, sizeof(ID), alignment_of(ID), ARENA_CHUNK_COUNT, NULL);
     arena_init(&arenas->type, sizeof(MirType), alignment_of(MirType), ARENA_CHUNK_COUNT, NULL);
     arena_init(&arenas->var, sizeof(MirVar), alignment_of(MirVar), ARENA_CHUNK_COUNT, NULL);
     arena_init(&arenas->fn_poly,
                sizeof(MirFnPolyRecipe),
                alignment_of(MirFnPolyRecipe),
                ARENA_CHUNK_COUNT,
-               NULL);
+               &fn_poly_dtor);
     arena_init(&arenas->fn,
                sizeof(MirFn),
                alignment_of(MirFn),
@@ -10643,7 +10676,6 @@ void mir_arenas_init(MirArenas *arenas)
 void mir_arenas_terminate(MirArenas *arenas)
 {
     arena_terminate(&arenas->fn);
-    arena_terminate(&arenas->id);
     arena_terminate(&arenas->instr);
     arena_terminate(&arenas->member);
     arena_terminate(&arenas->type);
