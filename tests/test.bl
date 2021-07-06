@@ -37,6 +37,10 @@ sum :: fn (values: []?T) T {
     return result;
 }
 
+foo :: fn (a: ?T, b := 10) {
+    print("a = %\nb = %\n", a, b);
+}
+
 Vec :: struct {
     x: s32;
     y: s32;
@@ -81,7 +85,7 @@ main :: fn () s32 {
         array_push(dyn, i);
     }
     print("sum = %\n", sum(dyn));
-    //sum(10);
+    foo(20);
     return 0;
 }
 
