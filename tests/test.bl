@@ -81,6 +81,7 @@ main :: fn () s32 {
         array_push(dyn, i);
     }
     print("sum = %\n", sum(dyn));
+    //sum(10);
     return 0;
 }
 

@@ -683,6 +683,10 @@ void builder_msg(BuilderMsgType type,
         color_print(stdout, BL_YELLOW, "%s", tmp.data);
         break;
     }
+    case BUILDER_MSG_NOTE: {
+        color_print(stdout, BL_GREEN, "%s", tmp.data);
+        break;
+    }
 
     default: {
         color_print(stdout, BL_NO_COLOR, "%s", tmp.data);

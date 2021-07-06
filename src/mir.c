@@ -6992,20 +6992,26 @@ static poly_type_match(MirType * recipe,
                        MirType **poly_type,
                        MirType **matching_type)
 {
+#define PUSH_IF_VALID(expr)                                                                        \
+    if (is_valid) {                                                                                \
+        tsa_push_TypePtr(&queue, (expr));                                                          \
+    }
+
     TSmallArray_TypePtr queue;
     tsa_init(&queue);
 
+    bool is_valid = true;
     tsa_push_TypePtr(&queue, other);
     tsa_push_TypePtr(&queue, recipe);
     while (queue.size) {
         MirType *current_recipe = tsa_pop_TypePtr(&queue);
-        MirType *current_other  = tsa_pop_TypePtr(&queue);
-        BL_ASSERT(current_recipe && current_other);
+        MirType *current_other  = is_valid ? tsa_pop_TypePtr(&queue) : NULL;
+        BL_ASSERT(current_recipe);
         const bool is_master =
             current_recipe->kind == MIR_TYPE_POLY && current_recipe->data.poly.is_master;
         if (is_master) {
             *matching_type = current_other;
-            *poly_type     = current_other;
+            *poly_type     = current_recipe;
             break;
         }
 
@@ -7014,22 +7020,24 @@ static poly_type_match(MirType * recipe,
             MirType *slice_elem_type =
                 mir_deref_type(mir_get_struct_elem_type(current_recipe, MIR_SLICE_PTR_INDEX));
             if (current_other->kind == MIR_TYPE_ARRAY) {
-                tsa_push_TypePtr(&queue, current_other->data.array.elem_type);
-                tsa_push_TypePtr(&queue, slice_elem_type);
+                PUSH_IF_VALID(current_other->data.array.elem_type);
             } else if (current_other->kind == MIR_TYPE_DYNARR) {
-                tsa_push_TypePtr(
-                    &queue,
+                PUSH_IF_VALID(
                     mir_deref_type(mir_get_struct_elem_type(current_other, MIR_DYNARR_PTR_INDEX)));
-                tsa_push_TypePtr(&queue, slice_elem_type);
+            } else {
+                is_valid = false;
             }
+            tsa_push_TypePtr(&queue, slice_elem_type);
             continue;
         }
-        if (current_recipe->kind != current_other->kind) break;
+        if (current_recipe->kind != current_other->kind) is_valid = false;
         const MirTypeKind kind = current_recipe->kind;
         switch (kind) {
         case MIR_TYPE_PTR:
-            tsa_push_TypePtr(&queue, current_other->data.ptr.expr);
+            PUSH_IF_VALID(current_other->data.ptr.expr);
             tsa_push_TypePtr(&queue, current_recipe->data.ptr.expr);
+            break;
+        case MIR_TYPE_POLY:
             break;
 
         default:
@@ -7037,6 +7045,7 @@ static poly_type_match(MirType * recipe,
         }
     }
     tsa_terminate(&queue);
+#undef PUSH_IF_VALID
 }
 
 static INLINE u64 get_current_poly_replacement_hash(Context *cnt)
@@ -7101,7 +7110,33 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
         MirType *poly_type     = NULL;
         MirType *matching_type = NULL;
         poly_type_match(recipe_arg_type, call_arg_type, &poly_type, &matching_type);
-        if (matching_type && poly_type) tsa_push_TypePtr(queue, matching_type);
+        if (poly_type) {
+            if (!matching_type) {
+                Ast *ast_poly_arg = ast_recipe->data.expr_fn.type->data.type_fn.args->data[i];
+                char recipe_type_name[256];
+                mir_type_to_str(recipe_type_name, 256, recipe_arg_type, true);
+
+                char arg_type_name[256];
+                mir_type_to_str(arg_type_name, 256, call_arg_type, true);
+
+                builder_msg(BUILDER_MSG_ERROR,
+                            ERR_INVALID_POLY_MATCH,
+                            ast_poly_arg->data.decl.type->location,
+                            BUILDER_CUR_WORD,
+                            "Cannot deduce polymorph function argument type '%s'. Expected is "
+                            "'%s' but call-side argument type is '%s'.",
+                            poly_type->user_id->str,
+                            recipe_type_name,
+                            arg_type_name);
+
+                builder_msg(
+                    BUILDER_MSG_NOTE, 0, call->location, BUILDER_CUR_WORD, "Called from here.");
+                tsa_push_TypePtr(queue, cnt->builtin_types->t_s32);
+                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            } else {
+                tsa_push_TypePtr(queue, matching_type);
+            }
+        }
     }
 
     const replacement_hash = get_current_poly_replacement_hash(cnt);
