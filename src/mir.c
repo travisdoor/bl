@@ -351,7 +351,7 @@ static void type_init_llvm_fn(Context *cnt, MirType *type);
 static void type_init_llvm_array(Context *cnt, MirType *type);
 static void type_init_llvm_struct(Context *cnt, MirType *type);
 static void type_init_llvm_enum(Context *cnt, MirType *type);
-static void type_init_llvm_poly(Context *cnt, MirType *type);
+static void type_init_llvm_dummy(Context *cnt, MirType *type);
 
 static MirVar *create_var(Context *        cnt,
                           Ast *            decl_node,
@@ -1888,6 +1888,7 @@ MirType *create_type_type(Context *cnt)
     tmp->size_bits        = sizeof(MirType *) * 8;
     tmp->store_size_bytes = sizeof(MirType *);
     type_init_id(cnt, tmp);
+    type_init_llvm_dummy(cnt, tmp);
     return tmp;
 }
 
@@ -1899,6 +1900,7 @@ MirType *create_type_named_scope(Context *cnt)
     tmp->size_bits        = sizeof(ScopeEntry *) * 8;
     tmp->store_size_bytes = sizeof(ScopeEntry *);
     type_init_id(cnt, tmp);
+    type_init_llvm_dummy(cnt, tmp);
     return tmp;
 }
 
@@ -1934,7 +1936,7 @@ MirType *create_type_poly(Context *cnt, ID *user_id, bool is_master)
     MirType *tmp             = create_type(cnt, MIR_TYPE_POLY, user_id);
     tmp->data.poly.is_master = is_master;
     type_init_id(cnt, tmp);
-    type_init_llvm_poly(cnt, tmp);
+    type_init_llvm_dummy(cnt, tmp);
     return tmp;
 }
 
@@ -2004,6 +2006,7 @@ MirType *create_type_fn_group(Context *cnt, ID *id, TSmallArray_TypePtr *variant
     tmp->size_bits              = sizeof(MirFnGroup *) * 8;
     tmp->store_size_bytes       = sizeof(MirFnGroup *);
     type_init_id(cnt, tmp);
+    type_init_llvm_dummy(cnt, tmp);
     return tmp;
 }
 
@@ -2207,7 +2210,7 @@ void type_init_llvm_ptr(Context *cnt, MirType *type)
 {
     MirType *tmp = mir_deref_type(type);
     // Pointer to Type has no LLVM representation and cannot not be generated into IR.
-    if (!mir_type_has_llvm_representation(tmp)) return;
+    // if (!mir_type_has_llvm_representation(tmp)) return;
     BL_ASSERT(tmp);
     BL_ASSERT(tmp->llvm_type);
     type->llvm_type        = LLVMPointerType(tmp->llvm_type, 0);
@@ -2224,12 +2227,20 @@ void type_init_llvm_void(Context *cnt, MirType *type)
     type->llvm_type        = LLVMVoidTypeInContext(cnt->assembly->llvm.cnt);
 }
 
-void type_init_llvm_poly(Context *cnt, MirType *type)
+void type_init_llvm_dummy(Context *cnt, MirType *type)
 {
-    type->llvm_type        = LLVMIntTypeInContext(cnt->assembly->llvm.cnt, 32);
-    type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
-    type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
-    type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
+    MirType *dummy = cnt->builtin_types->t_s32;
+    if (dummy) {
+        type->llvm_type        = dummy->llvm_type;
+        type->size_bits        = dummy->size_bits;
+        type->store_size_bytes = dummy->store_size_bytes;
+        type->alignment        = dummy->alignment;
+    } else {
+        type->llvm_type        = LLVMIntTypeInContext(cnt->assembly->llvm.cnt, 32);
+        type->size_bits        = LLVMSizeOfTypeInBits(cnt->assembly->llvm.TD, type->llvm_type);
+        type->store_size_bytes = LLVMStoreSizeOfType(cnt->assembly->llvm.TD, type->llvm_type);
+        type->alignment        = LLVMABIAlignmentOfType(cnt->assembly->llvm.TD, type->llvm_type);
+    }
 }
 
 void type_init_llvm_null(Context UNUSED(*cnt), MirType *type)
@@ -6997,6 +7008,33 @@ static poly_type_match(MirType * recipe,
             *poly_type     = current_other;
             break;
         }
+
+        if (current_recipe->kind == MIR_TYPE_SLICE) {
+            // Handle conversion of arrays to slice.
+            MirType *slice_elem_type =
+                mir_deref_type(mir_get_struct_elem_type(current_recipe, MIR_SLICE_PTR_INDEX));
+            if (current_other->kind == MIR_TYPE_ARRAY) {
+                tsa_push_TypePtr(&queue, current_other->data.array.elem_type);
+                tsa_push_TypePtr(&queue, slice_elem_type);
+            } else if (current_other->kind == MIR_TYPE_DYNARR) {
+                tsa_push_TypePtr(
+                    &queue,
+                    mir_deref_type(mir_get_struct_elem_type(current_other, MIR_DYNARR_PTR_INDEX)));
+                tsa_push_TypePtr(&queue, slice_elem_type);
+            }
+            continue;
+        }
+        if (current_recipe->kind != current_other->kind) break;
+        const MirTypeKind kind = current_recipe->kind;
+        switch (kind) {
+        case MIR_TYPE_PTR:
+            tsa_push_TypePtr(&queue, current_other->data.ptr.expr);
+            tsa_push_TypePtr(&queue, current_recipe->data.ptr.expr);
+            break;
+
+        default:
+            BL_ABORT("Cannot deduce polymorph replacement.");
+        }
     }
     tsa_terminate(&queue);
 }
@@ -7063,9 +7101,7 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
         MirType *poly_type     = NULL;
         MirType *matching_type = NULL;
         poly_type_match(recipe_arg_type, call_arg_type, &poly_type, &matching_type);
-        if (matching_type && poly_type) {
-            tsa_push_TypePtr(queue, matching_type);
-        }
+        if (matching_type && poly_type) tsa_push_TypePtr(queue, matching_type);
     }
 
     const replacement_hash = get_current_poly_replacement_hash(cnt);
@@ -7104,7 +7140,6 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
 
         thtbl_insert(entries, replacement_hash, instr_fn_proto);
     } else {
-        BL_LOG("Reuse already existing function!");
         *out_fn_proto = (MirInstrFnProto *)thtbl_iter_peek_value(MirInstr *, iter);
     }
     queue->size = 0; // clear
@@ -9206,7 +9241,6 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
     }
 
     if (is_polymorph) {
-        BL_LOG("Skip generation of polymorph function body!");
         fn->poly = create_fn_poly_recipe(cnt, lit_fn);
         goto FINISH;
     }

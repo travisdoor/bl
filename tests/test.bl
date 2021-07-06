@@ -1,24 +1,5 @@
 // Polymorph
 
-// 0) Introduce AstTypePolymorph. Available only inside function types. Can be checked
-//    in parser or during type analyze pass.
-// 1) Detect if function type is_polymorph during parsing.
-//    Register function as new symbol, but skip instruction generation when function type is_polymorph.
-// 2) Introduce MirTypePolymorph primitive.
-// 3) Function must be generated and analyzed after call arguments are ready.
-// 4) Every polymorph variant must have unique hash based on input type combination,
-//    to generate new one only in case it's not present yet.
-
-// Introduce poly table for replacement of Ts, keep order as in parsed AST.
-// Store first use call side to provide better errors.
-
-// Duplicate entries when functions reuse same scopes, we must create layered scope?
-// poly layer index?
-
-// foo
-// type:  *MirTypeFnPoly
-// value: *MirFnPoly
-
 add :: fn (a: ?T, b: T) T {
     return a + b;
 }
@@ -36,6 +17,24 @@ maximum :: fn (a: ?T, b: T) T #inline {
 
 table_insert :: fn (key: ?TKey, value: ?TValue) {
     print("[%] = %\n", key, value);
+}
+
+my_table_insert :: fn (key: ?TKey, value: ?TValue) {
+    table_insert(key, value);
+}
+
+swap :: fn (a: *?T, b: *T) {
+    tmp :: ^a;
+    ^a = ^b;
+    ^b = tmp;
+}
+
+sum :: fn (values: []?T) T {
+    result: T;
+    loop i := 0; i < values.len; i += 1 {
+        result += values[i];
+    }
+    return result;
 }
 
 Vec :: struct {
@@ -65,13 +64,23 @@ main :: fn () s32 {
     table_insert(30, "foo!");
     table_insert(40, "bar!");
     table_insert(20, 10);
+    my_table_insert(20, "My insert!");
+
+    first := 10;
+    second := 20;    
+    print("Before % vs %\n", first, second);
+    swap(&first, &second);
+    print("After  % vs %\n", first, second);
+    
+    arr :: {:[10]s32: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    print("sum = %\n", sum(arr));
+    
+    dyn: [..]s32;
+    defer array_terminate(dyn);
+    loop i := 0; i < 100; i += 1 {
+        array_push(dyn, i);
+    }
+    print("sum = %\n", sum(dyn));
     return 0;
 }
 
-//sum :: fn (values: []?T) T {
-//    result: T;
-//    loop i := 0; i < values.len; i += 1 {
-//        result += values[i];
-//    }
-//    return result;
-//}
