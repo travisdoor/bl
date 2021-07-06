@@ -180,13 +180,6 @@ static Ast *       parse_expr_compound(Context *cnt);
 
 // impl
 
-static INLINE void id_init(ID *id, const char *str)
-{
-    BL_ASSERT(id);
-    id->hash = thash_from_str(str);
-    id->str  = str;
-}
-
 static INLINE bool rq_semicolon_after_decl_entity(Ast *node)
 {
     BL_ASSERT(node);

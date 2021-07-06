@@ -2956,7 +2956,7 @@ State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 State emit_instr(Context *cnt, MirInstr *instr)
 {
     State state = STATE_PASSED;
-    BL_ASSERT(instr->analyzed && "Attempt to emit not-analyzed instruction!");
+    BL_ASSERT(instr->is_analyzed && "Attempt to emit not-analyzed instruction!");
     if (!mir_type_has_llvm_representation((instr->value.type))) return state;
     switch (instr->kind) {
     case MIR_INSTR_INVALID:

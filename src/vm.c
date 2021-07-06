@@ -1236,7 +1236,7 @@ bool _execute_fn_top_level(VM *                        vm,
 void interp_instr(VM *vm, MirInstr *instr)
 {
     if (!instr) return;
-    if (!instr->analyzed) {
+    if (!instr->is_analyzed) {
         BL_ABORT("instruction %s has not been analyzed!", mir_instr_name(instr));
     }
 
@@ -2475,7 +2475,7 @@ bool vm_execute_instr_top_level_call(VM *vm, Assembly *assembly, MirInstrCall *c
 {
     ZONE();
     vm->assembly = assembly;
-    BL_ASSERT(call && call->base.analyzed);
+    BL_ASSERT(call && call->base.is_analyzed);
 
     assert(call->base.value.is_comptime && "Top level call is expected to be comptime.");
     if (call->args) BL_ABORT("exec call top level has not implemented passing of arguments");

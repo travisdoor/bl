@@ -290,7 +290,7 @@ void print_comptime_value_or_id(Context *cnt, MirInstr *instr)
         return;
     }
 
-    if (!instr->value.is_comptime || !instr->analyzed) {
+    if (!instr->value.is_comptime || !instr->is_analyzed) {
         fprintf(cnt->stream, "%%%llu", (unsigned long long)instr->id);
         return;
     }
@@ -921,7 +921,7 @@ void print_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     BL_ASSERT(fn);
 
     fprintf(cnt->stream, "\n");
-    if (fn_proto->base.analyzed) fprintf(cnt->stream, "/* analyzed */\n");
+    if (fn_proto->base.is_analyzed) fprintf(cnt->stream, "/* analyzed */\n");
     if (fn->linkage_name)
         fprintf(cnt->stream, "@%s ", fn->linkage_name);
     else

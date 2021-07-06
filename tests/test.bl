@@ -24,13 +24,6 @@ add :: fn (a: ?T, b: T) T {
     return a + b;
 }
 
-bar :: fn () {
-    k :: add(cast(u8) 10, cast(u8) 10);
-}
-
-sailor :: fn () {
-    k :: add(cast(u64) 10, cast(u64) 10);
-}
 /*
 sum :: fn (values: []?T) T {
     result: T;
@@ -43,6 +36,8 @@ sum :: fn (values: []?T) T {
 
 main :: fn () s32 {
     n1 : s64 = 10;
+    n2 : u32 = 20;
     i :: add(n1, n1);
+    b :: add(n2, n2);
     return 0;
 }

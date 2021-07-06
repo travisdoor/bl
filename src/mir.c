@@ -193,6 +193,9 @@ typedef enum {
     // In this case AnalyzeResult will contain hash of desired symbol which be satisfied later,
     // instruction is pushed into waiting table.
     ANALYZE_WAITING = 3,
+
+    // Completely skip analyze of instruction.
+    ANALYZE_SKIP = 4,
 } AnalyzeState;
 
 typedef struct {
@@ -377,7 +380,7 @@ static MirFnPolyRecipe *create_fn_poly_recipe(Context *cnt, Ast *ast_lit_fn);
 static MirMember *      create_member(Context *cnt, Ast *node, ID *id, s64 index, MirType *type);
 static MirArg *
 create_arg(Context *cnt, Ast *node, ID *id, Scope *scope, MirType *type, MirInstr *value);
-
+static ID *        create_unique_id(Context *cnt, const char *name);
 static MirVariant *create_variant(Context *cnt, ID *id, MirConstExprValue *value);
 // Create block without owner function.
 static MirInstrBlock *create_block(Context *cnt, const char *name);
@@ -769,8 +772,11 @@ static void          analyze_report_unused(Context *cnt);
 
 // Find or generate implementation of polymorph function template. Function will try to find already
 // generated function based on expected argument list or create new one.
-static AnalyzeResult
-generate_fn_poly(Context *cnt, Ast *call, MirFn *fn, TSmallArray_InstrPtr *expected_args);
+static AnalyzeResult generate_fn_poly(Context *             cnt,
+                                      Ast *                 call,
+                                      MirFn *               fn,
+                                      TSmallArray_InstrPtr *expected_args,
+                                      MirFn **              out_fn);
 
 //***********/
 //*  RTTI   */
@@ -821,7 +827,7 @@ static INLINE void usage_check_push(Context *cnt, ScopeEntry *entry)
 
 static INLINE bool can_mutate_comptime_to_const(MirInstr *instr)
 {
-    BL_ASSERT(instr->analyzed && "Non-analyzed instruction.");
+    BL_ASSERT(instr->is_analyzed && "Non-analyzed instruction.");
     BL_ASSERT(mir_is_comptime(instr));
 
     switch (instr->kind) {
@@ -1158,11 +1164,10 @@ static INLINE void analyze_notify_provided(Context *cnt, u64 hash)
     thtbl_erase(&cnt->analyze.waiting, iter);
 }
 
-static INLINE const char *gen_uq_name(const char *prefix)
+static INLINE const char *create_unique_name(const char *prefix)
 {
     static s32 ui = 0;
     TString *  s  = builder_create_cached_str();
-
     tstring_append(s, prefix);
     char ui_str[22];
     sprintf(ui_str, ".%d", ui++);
@@ -1225,7 +1230,7 @@ static INLINE void commit_fn(Context *cnt, MirFn *fn)
 {
     ID *id = fn->id;
     BL_ASSERT(id);
-    ScopeEntry *entry = fn->entry;
+    ScopeEntry *entry = fn->scope_entry;
     BL_MAGIC_ASSERT(entry);
     BL_ASSERT(entry->kind != SCOPE_ENTRY_VOID);
     entry->kind    = SCOPE_ENTRY_FN;
@@ -2612,6 +2617,14 @@ MirVariant *create_variant(Context *cnt, ID *id, MirConstExprValue *value)
     return tmp;
 }
 
+ID *create_unique_id(Context *cnt, const char *name)
+{
+    const char *unique_name = create_unique_name(name);
+    ID *        id          = arena_alloc(&cnt->assembly->arenas.mir.id);
+    id_init(id, unique_name);
+    return id;
+}
+
 // instructions
 void append_current_block(Context *cnt, MirInstr *instr)
 {
@@ -3875,7 +3888,7 @@ void erase_instr_tree(MirInstr *instr, bool keep_root, bool force)
         top = tsa_pop_InstrPtr64(&queue);
         if (!top) continue;
 
-        BL_ASSERT(top->analyzed && "Trying to erase not analyzed instruction.");
+        BL_ASSERT(top->is_analyzed && "Trying to erase not analyzed instruction.");
         if (!force) {
             if (top->ref_count == NO_REF_COUNTING) continue;
             if (top->ref_count > 0) continue;
@@ -4105,7 +4118,7 @@ void erase_instr_tree(MirInstr *instr, bool keep_root, bool force)
 bool evaluate(Context *cnt, MirInstr *instr)
 {
     if (!instr) return true;
-    BL_ASSERT(instr->analyzed && "Non-analyzed instruction cannot be evaluated!");
+    BL_ASSERT(instr->is_analyzed && "Non-analyzed instruction cannot be evaluated!");
     // We can evaluate compile time know instructions only.
     if (!instr->value.is_comptime) return true;
     if (!vm_eval_instr(cnt->vm, cnt->assembly, instr)) {
@@ -4173,7 +4186,7 @@ AnalyzeResult analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
     if (is_tmp_needed && expr_type->store_size_bytes > 0) {
         // Target expression is not allocated object on the stack, so we need to crate
         // temporary variable containing the value and fetch pointer to this variable.
-        const char *tmp_var_name = gen_uq_name(IMPL_ANY_EXPR_TMP);
+        const char *tmp_var_name = create_unique_name(IMPL_ANY_EXPR_TMP);
         toany->expr_tmp = create_var_impl(cnt, NULL, tmp_var_name, rtti_type, false, false, false);
     }
 
@@ -4218,7 +4231,7 @@ AnalyzeResult analyze_instr_toany(Context *cnt, MirInstrToAny *toany)
     }
 
     // This is temporary vaiable used for Any data.
-    const char *tmp_var_name = gen_uq_name(IMPL_ANY_TMP);
+    const char *tmp_var_name = create_unique_name(IMPL_ANY_TMP);
     toany->tmp = create_var_impl(cnt, NULL, tmp_var_name, any_type, false, false, false);
 
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
@@ -4247,11 +4260,11 @@ AnalyzeResult analyze_instr_phi(Context UNUSED(*cnt), MirInstrPhi *phi)
         value_ref = &phi->incoming_values->data[i];
         block     = phi->incoming_blocks->data[i];
         BL_ASSERT(block && block->kind == MIR_INSTR_BLOCK);
-        BL_ASSERT((*value_ref)->analyzed && "Phi incomming value is not analyzed!");
+        BL_ASSERT((*value_ref)->is_analyzed && "Phi incomming value is not analyzed!");
         if ((*value_ref)->kind == MIR_INSTR_COND_BR) {
             *value_ref = ((MirInstrCondBr *)(*value_ref))->cond;
             BL_ASSERT(value_ref && *value_ref);
-            BL_ASSERT((*value_ref)->analyzed && "Phi incomming value is not analyzed!");
+            BL_ASSERT((*value_ref)->is_analyzed && "Phi incomming value is not analyzed!");
         } else {
             const AnalyzeSlotConfig *conf =
                 type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
@@ -4295,7 +4308,7 @@ AnalyzeResult analyze_instr_unroll(Context *cnt, MirInstrUnroll *unroll)
             // no tmp var to unroll from; create one and insert it after call
             tmp_var = create_instr_decl_var_impl(cnt,
                                                  NULL,
-                                                 gen_uq_name(IMPL_UNROLL_TMP),
+                                                 create_unique_name(IMPL_UNROLL_TMP),
                                                  NULL,
                                                  src,
                                                  false, // is_mutable
@@ -4344,7 +4357,7 @@ AnalyzeResult analyze_instr_compound(Context *cnt, MirInstrCompound *cmp)
     // Setup compound type.
     if (!type) {
         // generate load instruction if needed
-        BL_ASSERT(cmp->type->analyzed);
+        BL_ASSERT(cmp->type->is_analyzed);
         if (analyze_slot(cnt, &analyze_slot_conf_basic, &cmp->type, NULL) != ANALYZE_PASSED)
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
 
@@ -4497,8 +4510,8 @@ SKIP_IMPLICIT:
     if (!mir_is_global(&cmp->base) && cmp->is_naked) {
         // For naked non-compile time compounds we need to generate implicit temp storage to
         // keep all data.
-        MirVar *tmp_var =
-            create_var_impl(cnt, NULL, gen_uq_name(IMPL_COMPOUND_TMP), type, true, false, false);
+        MirVar *tmp_var = create_var_impl(
+            cnt, NULL, create_unique_name(IMPL_COMPOUND_TMP), type, true, false, false);
         cmp->tmp_var = tmp_var;
     }
 
@@ -4566,7 +4579,7 @@ AnalyzeResult analyze_var(Context *cnt, MirVar *var)
     const MirTypeKind var_type_kind = var->value.type->kind;
     var->emit_llvm = var_type_kind != MIR_TYPE_TYPE && var_type_kind != MIR_TYPE_FN_GROUP;
     // Just take note whether variable was fully analyzed.
-    var->analyzed = true;
+    var->is_analyzed = true;
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
@@ -4581,7 +4594,7 @@ AnalyzeResult analyze_instr_set_initializer(Context *cnt, MirInstrSetInitializer
     {
         // Just pre-scan to check if all destination variables are analyzed.
         BL_ASSERT(dest && dest->kind == MIR_INSTR_DECL_VAR);
-        if (!dest->analyzed)
+        if (!dest->is_analyzed)
             RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0)); // PERFORMANCE: use wait???
     }
 
@@ -4685,14 +4698,14 @@ AnalyzeResult analyze_instr_vargs(Context *cnt, MirInstrVArgs *vargs)
     const usize valc = values->size;
     if (valc > 0) {
         // Prepare tmp array for values
-        const char *tmp_name = gen_uq_name(IMPL_VARGS_TMP_ARR);
+        const char *tmp_name = create_unique_name(IMPL_VARGS_TMP_ARR);
         MirType *   tmp_type = create_type_array(cnt, NULL, vargs->type, (u32)valc);
         vargs->arr_tmp       = create_var_impl(cnt, NULL, tmp_name, tmp_type, true, false, false);
     }
 
     {
         // Prepare tmp slice for vargs
-        const char *tmp_name = gen_uq_name(IMPL_VARGS_TMP);
+        const char *tmp_name = create_unique_name(IMPL_VARGS_TMP);
         vargs->vargs_tmp     = create_var_impl(cnt, NULL, tmp_name, type, true, false, false);
     }
 
@@ -4817,10 +4830,10 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
             (MirInstrDeclRef *)mutate_instr(&member_ptr->base, MIR_INSTR_DECL_REF);
         decl_ref->scope                  = scope;
         decl_ref->scope_entry            = NULL;
+        decl_ref->scope_layer            = cnt->polymorph.current_scope_layer_index;
         decl_ref->accept_incomplete_type = false;
         decl_ref->parent_unit            = parent_unit;
         decl_ref->rid                    = rid;
-        decl_ref->scope_layer            = cnt->polymorph.current_scope_layer_index;
         unref_instr(target_ptr);
         erase_instr_tree(target_ptr, false, false);
         RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
@@ -4871,7 +4884,8 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
 
             MirInstrAddrOf *addrof_elem =
                 (MirInstrAddrOf *)mutate_instr(&member_ptr->base, MIR_INSTR_ADDROF);
-            addrof_elem->src = elem_ptr;
+            addrof_elem->base.is_analyzed = false;
+            addrof_elem->src              = elem_ptr;
             ANALYZE_INSTR_RQ(&addrof_elem->base);
         } else {
             builder_msg(BUILDER_MSG_ERROR,
@@ -5001,7 +5015,7 @@ AnalyzeResult analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
     ZONE();
     MirInstr *src = addrof->src;
     BL_ASSERT(src);
-    if (!src->analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+    if (!src->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     const MirValueAddressMode src_addr_mode = src->value.addr_mode;
     const bool                can_grab_address =
         (src_addr_mode == MIR_VAM_LVALUE || src_addr_mode == MIR_VAM_LVALUE_CONST ||
@@ -5319,7 +5333,7 @@ AnalyzeResult analyze_instr_decl_direct_ref(Context *cnt, MirInstrDeclDirectRef 
     ZONE();
     BL_ASSERT(ref->ref && "Missing declaration reference for direct ref.");
     BL_ASSERT(ref->ref->kind == MIR_INSTR_DECL_VAR && "Expected variable declaration.");
-    if (!ref->ref->analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+    if (!ref->ref->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
 
     MirVar *var = ((MirInstrDeclVar *)ref->ref)->var;
     BL_ASSERT(var);
@@ -5400,6 +5414,8 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     MirFn *fn = MIR_CEV_READ_AS(MirFn *, value);
     BL_MAGIC_ASSERT(fn);
 
+    const bool is_polymorph = fn->poly;
+
     if (IS_FLAG(fn->flags, FLAG_TEST_FN)) {
         // We must wait for builtin types for test cases.
         ID *missing = lookup_builtins_test_cases(cnt);
@@ -5437,14 +5453,14 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
             fn->full_name    = full_name->data;
         } else {
             // Here we generate unique linkage name
-            fn->linkage_name = gen_uq_name(full_name->data);
+            fn->linkage_name = create_unique_name(full_name->data);
             fn->full_name    = full_name->data;
         }
     } else if (!fn->linkage_name) {
         // Anonymous function use implicit unique name.
         TString *full_name = get_tmpstr();
         tstring_appendf(full_name, "%s.%s", name_prefix->data, IMPL_FN_NAME);
-        fn->linkage_name = gen_uq_name(full_name->data);
+        fn->linkage_name = create_unique_name(full_name->data);
         fn->full_name    = fn->linkage_name;
         put_tmpstr(full_name);
     }
@@ -5507,7 +5523,7 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 
         fn->dyncall.extern_entry = assembly_find_extern(cnt->assembly, intrinsic_name);
         fn->fully_analyzed       = true;
-    } else if (fn->poly) {
+    } else if (is_polymorph) {
         // Nothing to do
     } else {
         // Add entry block of the function into analyze queue.
@@ -5566,8 +5582,8 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
         ++fn->ref_count;
     }
 
-    if (fn->id) {
-        if (fn->entry->kind == SCOPE_ENTRY_VOID) {
+    if (fn->id && fn->scope_entry) {
+        if (fn->scope_entry->kind == SCOPE_ENTRY_VOID) {
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_INVALID_NAME,
                         fn->decl_node->location,
@@ -5576,6 +5592,13 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         commit_fn(cnt, fn);
+    } else if (fn->id) {
+        // This is special case for functions generated from polymorph replacement. In general we
+        // can replace polymorphs based only on call side information (all argument types are
+        // provided) and call instruction will wait until replacement function is analyzed. However
+        // polymorph replacement does not exist in any scope and cannot be called directly by user
+        // code.
+        analyze_notify_provided(cnt, fn->id->hash);
     }
 
     if (schedule_llvm_generation) {
@@ -5604,7 +5627,7 @@ AnalyzeResult analyze_instr_fn_group(Context *cnt, MirInstrFnGroup *group)
     BL_ASSERT(vc);
     for (usize i = 0; i < vc; ++i) {
         MirInstr *variant_ref = variants->data[i];
-        if (!variant_ref->analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+        if (!variant_ref->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     }
     AnalyzeResult        result        = ANALYZE_RESULT(PASSED, 0);
     TSmallArray_TypePtr *variant_types = create_sarr(TSmallArray_TypePtr, cnt->assembly);
@@ -5675,7 +5698,7 @@ AnalyzeResult analyze_instr_cond_br(Context *cnt, MirInstrCondBr *br)
 {
     ZONE();
     BL_ASSERT(br->cond && br->then_block && br->else_block);
-    BL_ASSERT(br->cond->analyzed);
+    BL_ASSERT(br->cond->is_analyzed);
 
     if (analyze_slot(cnt, &analyze_slot_conf_default, &br->cond, cnt->builtin_types->t_bool) !=
         ANALYZE_PASSED) {
@@ -5833,7 +5856,7 @@ AnalyzeResult analyze_instr_load(Context UNUSED(*cnt), MirInstrLoad *load)
 AnalyzeResult analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
 {
     ZONE();
-    BL_ASSERT(type_fn->ret_type ? type_fn->ret_type->analyzed : true);
+    BL_ASSERT(type_fn->ret_type ? type_fn->ret_type->is_analyzed : true);
 
     bool       is_vargs         = false;
     bool       has_default_args = false;
@@ -5847,7 +5870,7 @@ AnalyzeResult analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
             BL_ASSERT(type_fn->args->data[i]->kind == MIR_INSTR_DECL_ARG);
             MirInstrDeclArg *decl_arg = (MirInstrDeclArg *)type_fn->args->data[i];
             MirArg *         arg      = decl_arg->arg;
-            if (arg->value && !arg->value->analyzed) {
+            if (arg->value && !arg->value->is_analyzed) {
                 RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
             }
         }
@@ -6100,7 +6123,7 @@ AnalyzeResult analyze_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
         // There is no explicitly defined argument type, but we have default argument value
         // to infer type from.
         BL_ASSERT(arg->value);
-        if (!arg->value->analyzed) {
+        if (!arg->value->is_analyzed) {
             // @PERFORMANCE: WAITING is preferred here, but we don't have ID to wait
             // for.
             RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
@@ -6108,7 +6131,7 @@ AnalyzeResult analyze_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
         if (arg->value->kind == MIR_INSTR_DECL_VAR) {
             MirVar *var = ((MirInstrDeclVar *)arg->value)->var;
             BL_ASSERT(var);
-            if (!var->analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+            if (!var->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
             arg->type = var->value.type;
         } else {
             arg->type = arg->value->value.type;
@@ -6346,7 +6369,7 @@ AnalyzeResult analyze_instr_type_array(Context *cnt, MirInstrTypeArray *type_arr
 {
     ZONE();
     BL_ASSERT(type_arr->base.value.type);
-    BL_ASSERT(type_arr->elem_type->analyzed);
+    BL_ASSERT(type_arr->elem_type->is_analyzed);
 
     if (analyze_slot(cnt, &analyze_slot_conf_default, &type_arr->len, cnt->builtin_types->t_s64) !=
         ANALYZE_PASSED) {
@@ -6569,8 +6592,8 @@ AnalyzeResult analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
     MirInstr *lhs = binop->lhs;
     MirInstr *rhs = binop->rhs;
     BL_ASSERT(lhs && rhs);
-    BL_ASSERT(lhs->analyzed);
-    BL_ASSERT(rhs->analyzed);
+    BL_ASSERT(lhs->is_analyzed);
+    BL_ASSERT(rhs->is_analyzed);
 
     const bool lhs_valid = is_type_valid_for_binop(lhs->value.type, binop->op);
     const bool rhs_valid = is_type_valid_for_binop(rhs->value.type, binop->op);
@@ -6645,7 +6668,7 @@ AnalyzeResult analyze_instr_unop(Context *cnt, MirInstrUnop *unop)
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
-    BL_ASSERT(unop->expr && unop->expr->analyzed);
+    BL_ASSERT(unop->expr && unop->expr->is_analyzed);
 
     MirType *expr_type = unop->expr->value.type;
     BL_ASSERT(expr_type);
@@ -6733,7 +6756,7 @@ AnalyzeResult analyze_instr_ret(Context *cnt, MirInstrRet *ret)
 
     MirInstr *value = ret->value;
     if (value) {
-        BL_ASSERT(value->analyzed);
+        BL_ASSERT(value->is_analyzed);
     }
 
     const bool expected_ret_value =
@@ -6788,7 +6811,7 @@ AnalyzeResult analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     if (var->is_global && !var->is_struct_typedef) {
         // Unexported globals have unique linkage name to solve potential conflicts
         // with extern symbols.
-        var->linkage_name = gen_uq_name(var->linkage_name);
+        var->linkage_name = create_unique_name(var->linkage_name);
 
         // Globals are set by initializer so we can skip all checks, rest of the
         // work is up to set initializer instruction! There is one exceptional case:
@@ -6965,10 +6988,13 @@ static MirType *poly_type_match(MirType *recipe, MirType *other)
     return found;
 }
 
-AnalyzeResult
-generate_fn_poly(Context *cnt, Ast *call, MirFn *fn, TSmallArray_InstrPtr *expected_args)
+AnalyzeResult generate_fn_poly(Context *             cnt,
+                               Ast *                 call,
+                               MirFn *               fn,
+                               TSmallArray_InstrPtr *expected_args,
+                               MirFn **              out_fn)
 {
-    // Polymorph types can be devided into two groups, masters and slaves. The master type is
+    // Polymorph types can be divided into two groups, masters and slaves. The master type is
     // defined as '?<type name>', such type acts like type definition (creates scope entry) and
     // should be replaced by matching argument type deduced from call side of the function. The
     // slave type on the other hand cannot be directly replaced directly (based on type of matching
@@ -7011,7 +7037,7 @@ generate_fn_poly(Context *cnt, Ast *call, MirFn *fn, TSmallArray_InstrPtr *expec
         MirType *call_arg_type   = expected_args->data[i]->value.type;
         MirType *recipe_arg_type = recipe_args->data[i]->type;
         if (is_load_needed(expected_args->data[i])) call_arg_type = mir_deref_type(call_arg_type);
-        MirType *matching_type   = poly_type_match(recipe_arg_type, call_arg_type);
+        MirType *matching_type = poly_type_match(recipe_arg_type, call_arg_type);
 
         if (matching_type) {
             // @NOCHECKIN
@@ -7026,11 +7052,33 @@ generate_fn_poly(Context *cnt, Ast *call, MirFn *fn, TSmallArray_InstrPtr *expec
     cnt->polymorph.current_scope_layer_index = ++recipe->index;
     cnt->polymorph.is_replacement_active     = true;
 
-    ast(cnt, ast_recipe);
+    MirInstr *instr_fn_proto = ast(cnt, ast_recipe);
+
+    BL_ASSERT(instr_fn_proto && instr_fn_proto->kind == MIR_INSTR_FN_PROTO);
+    MirFn *replacement_fn = MIR_CEV_READ_AS(MirFn *, &instr_fn_proto->value);
+    BL_MAGIC_ASSERT(replacement_fn);
+
+    // Setup name for generated function
+    const char *original_fn_name = fn->id ? fn->id->str : IMPL_FN_NAME;
+    replacement_fn->id           = create_unique_id(cnt, original_fn_name);
+
+    // Feed the output
+    BL_ASSERT(out_fn);
+    *out_fn = replacement_fn;
 
     cnt->polymorph.is_replacement_active     = false;
     cnt->polymorph.current_scope_layer_index = prev_scope_layer_index;
-    RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+}
+
+static INLINE void replace_callee(MirInstr *callee, MirFn *fn)
+{
+    BL_ASSERT(fn);
+    erase_instr_tree(callee, false, true);
+    mutate_instr(callee, MIR_INSTR_CONST);
+    callee->value.data = (VMStackPtr)&callee->value._tmp;
+    callee->node       = fn->decl_node;
+    MIR_CEV_WRITE_AS(MirFn *, &callee->value, fn);
 }
 
 AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
@@ -7042,7 +7090,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
         if (missing_any) RETURN_END_ZONE(ANALYZE_RESULT(WAITING, missing_any->hash));
 
         // callee has not been analyzed yet -> postpone call analyze
-        if (!call->callee->analyzed) {
+        if (!call->callee->is_analyzed) {
             BL_ASSERT(call->callee->kind == MIR_INSTR_FN_PROTO);
             MirInstrFnProto *fn_proto = (MirInstrFnProto *)call->callee;
             if (!fn_proto->pushed_for_analyze) {
@@ -7142,12 +7190,16 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
             tsa_terminate(&arg_types);
         }
         BL_MAGIC_ASSERT(selected_overload_fn);
+        replace_callee(call->callee, selected_overload_fn);
+
         erase_instr_tree(call->callee, false, true);
-        mutate_instr(call->callee, MIR_INSTR_CONST);
-        call->callee->value.data = (VMStackPtr)&call->callee->value._tmp;
-        call->callee->node       = selected_overload_fn->decl_node;
-        type = call->callee->value.type = selected_overload_fn->type;
-        MIR_CEV_WRITE_AS(MirFn *, &call->callee->value, selected_overload_fn);
+        MirInstrConst *callee_replacement =
+            (MirInstrConst *)mutate_instr(call->callee, MIR_INSTR_CONST);
+        callee_replacement->volatile_type   = false;
+        callee_replacement->base.value.data = (VMStackPtr)&call->callee->value._tmp;
+        callee_replacement->base.node       = selected_overload_fn->decl_node;
+        type = callee_replacement->base.value.type = selected_overload_fn->type;
+        MIR_CEV_WRITE_AS(MirFn *, &callee_replacement->base.value, selected_overload_fn);
     }
 
     BL_ASSERT(type->kind == MIR_TYPE_FN && "Expected function type!");
@@ -7156,7 +7208,20 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
     if (is_polymorph) {
         MirFn *fn = MIR_CEV_READ_AS(MirFn *, &call->callee->value);
         BL_MAGIC_ASSERT(fn);
-        RETURN_END_ZONE(generate_fn_poly(cnt, call->base.node, fn, call->args));
+        MirFn *       replacement_fn = NULL;
+        AnalyzeResult state =
+            generate_fn_poly(cnt, call->base.node, fn, call->args, &replacement_fn);
+        if (state.state != ANALYZE_PASSED) RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        replace_callee(call->callee, replacement_fn);
+
+        // Polymorph function replacement is not analyzed yet in this time (we've just created the
+        // replacement and pushed it into analyze queue). That means the current call instruction
+        // must wait for it. The waiting queue is used in this case even if the replacement function
+        // does not exist in any scope explicitly (it's symbol is not registered). This leads also
+        // to the special handling of the function analyze pass (see analyze_instr_fn_proto and
+        // part related to symbol commit).
+        BL_ASSERT(replacement_fn->id && "Missing ID of polymorph replacement.");
+        RETURN_END_ZONE(ANALYZE_RESULT(WAITING, replacement_fn->id->hash));
     }
 
     MirType *result_type = type->data.fn.ret_type;
@@ -7215,7 +7280,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
 
         if (analyze_instr_vargs(cnt, (MirInstrVArgs *)vargs).state != ANALYZE_PASSED)
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
-        vargs->analyzed = true;
+        vargs->is_analyzed = true;
         // Erase vargs from arguments. @NOTE: function does nothing when array size is equal
         // to callee_argc.
         tsa_resize_InstrPtr(call->args, callee_argc);
@@ -7315,7 +7380,7 @@ AnalyzeResult analyze_instr_store(Context *cnt, MirInstrStore *store)
     ZONE();
     MirInstr *dest = store->dest;
     BL_ASSERT(dest);
-    BL_ASSERT(dest->analyzed);
+    BL_ASSERT(dest->is_analyzed);
 
     if (!mir_is_pointer_type(dest->value.type)) {
         builder_msg(BUILDER_MSG_ERROR,
@@ -7667,7 +7732,7 @@ AnalyzeResult analyze_instr(Context *cnt, MirInstr *instr)
     if (!instr) RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 
     // skip already analyzed instructions
-    if (instr->analyzed) RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    if (instr->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
     AnalyzeResult state = ANALYZE_RESULT(PASSED, 0);
 
     BL_TRACY_MESSAGE("ANALYZE", "[%llu] %s", instr->id, mir_instr_name(instr));
@@ -7818,7 +7883,7 @@ AnalyzeResult analyze_instr(Context *cnt, MirInstr *instr)
         BL_ABORT("Missing analyze of instruction!");
     }
     if (state.state == ANALYZE_PASSED) {
-        instr->analyzed = true;
+        instr->is_analyzed = true;
         if (instr->kind == MIR_INSTR_CAST && ((MirInstrCast *)instr)->auto_cast) {
             // An auto cast cannot be directly evaluated because it's destination type
             // could change based on usage.
@@ -7865,24 +7930,6 @@ static INLINE MirInstr *analyze_try_get_next(MirInstr *instr)
 
 void analyze(Context *cnt)
 {
-//*********************************************************************************************/
-#if BL_DEBUG && VERBOSE_ANALYZE
-#define LOG_ANALYZE_PASSED printf("Analyze: [ " PASSED " ] %16s\n", mir_instr_name(ip));
-#define LOG_ANALYZE_FAILED printf("Analyze: [ " FAILED " ] %16s\n", mir_instr_name(ip));
-
-#define LOG_ANALYZE_POSTPONE                                                                       \
-    printf("Analyze: [" MAGENTA("POSTPONE") "] %16s\n", mir_instr_name(ip));
-#define LOG_ANALYZE_WAITING                                                                        \
-    printf("Analyze: [  " YELLOW("WAIT") "  ] %16s is waiting for: '%llu'\n",                      \
-           mir_instr_name(ip),                                                                     \
-           (unsigned long long)result.waiting_for);
-#else
-#define LOG_ANALYZE_PASSED
-#define LOG_ANALYZE_FAILED
-#define LOG_ANALYZE_POSTPONE
-#define LOG_ANALYZE_WAITING
-#endif
-    //*********************************************************************************************/
     ZONE();
     // PERFORMANCE: use array???
     TList *       q = &cnt->analyze.queue;
@@ -7897,12 +7944,10 @@ void analyze(Context *cnt)
     while (true) {
         prev_ip = ip;
         ip      = skip ? NULL : analyze_try_get_next(ip);
-
-        if (prev_ip && prev_ip->analyzed) {
+        if (prev_ip && prev_ip->is_analyzed) {
             // Remove unused instructions here!
             erase_instr_tree(prev_ip, false, false);
         }
-
         if (!ip) {
             if (tlist_empty(q)) break;
 
@@ -7910,31 +7955,25 @@ void analyze(Context *cnt)
             tlist_pop_front(q);
             skip = false;
         }
-
         result = analyze_instr(cnt, ip);
 
         switch (result.state) {
         case ANALYZE_PASSED:
-            LOG_ANALYZE_PASSED
             postpone_loop_count = 0;
             break;
 
+        case ANALYZE_SKIP:
         case ANALYZE_FAILED:
-            LOG_ANALYZE_FAILED
             skip                = true;
             postpone_loop_count = 0;
             break;
 
         case ANALYZE_POSTPONE:
-            LOG_ANALYZE_POSTPONE
-
             skip = true;
             if (postpone_loop_count++ <= q->size) tlist_push_back(q, ip);
             break;
 
         case ANALYZE_WAITING: {
-            LOG_ANALYZE_WAITING
-
             TArray *  wq   = NULL;
             TIterator iter = thtbl_find(&cnt->analyze.waiting, result.waiting_for);
             TIterator end  = thtbl_end(&cnt->analyze.waiting);
@@ -7954,12 +7993,6 @@ void analyze(Context *cnt)
         }
     }
     RETURN_END_ZONE();
-    //******************************************************************************************/
-#undef LOG_ANALYZE_PASSED
-#undef LOG_ANALYZE_FAILED
-#undef LOG_ANALYZE_POSTPONE
-#undef LOG_ANALYZE_WAITING
-    //******************************************************************************************/
 }
 
 void analyze_report_unresolved(Context *cnt)
@@ -9174,7 +9207,7 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
     if (ast_fn_type->data.type_fn.ret_type) {
         set_current_block(cnt, init_block);
         fn->ret_tmp = append_instr_decl_var_impl(
-            cnt, NULL, gen_uq_name(IMPL_RET_TMP), NULL, NULL, true, false);
+            cnt, NULL, create_unique_name(IMPL_RET_TMP), NULL, NULL, true, false);
         set_current_block(cnt, exit_block);
         MirInstr *ret_init = append_instr_decl_direct_ref(cnt, ast_block, fn->ret_tmp);
         append_instr_ret(cnt, ast_block, ret_init);
@@ -9477,9 +9510,9 @@ static void ast_decl_fn(Context *cnt, Ast *ast_fn)
                     "Exported function cannot be declared in private scope.");
     }
 
-    ID *   id    = &ast_name->data.ident.id;
-    Scope *scope = ast_name->owner_scope;
-    fn->entry    = register_symbol(cnt, ast_name, id, scope, is_compiler);
+    ID *   id       = &ast_name->data.ident.id;
+    Scope *scope    = ast_name->owner_scope;
+    fn->scope_entry = register_symbol(cnt, ast_name, id, scope, is_compiler);
 }
 
 // Helper for local variable declaration generation.
@@ -10022,17 +10055,12 @@ MirInstr *ast_create_impl_fn_call(Context *   cnt,
 
     MirFn *fn = create_fn(
         cnt, NULL, NULL, fn_name, 0, (MirInstrFnProto *)fn_proto, true, MIR_BUILTIN_ID_NONE);
-
     MIR_CEV_WRITE_AS(MirFn *, &fn_proto->value, fn);
-
-    fn->type = fn_type;
-
+    fn->type             = fn_type;
     MirInstrBlock *entry = append_block(cnt, fn, "entry");
     set_current_block(cnt, entry);
-
     MirInstr *result = ast(cnt, node);
     append_instr_ret(cnt, NULL, result);
-
     set_current_block(cnt, prev_block);
     return create_instr_call_comptime(cnt, node, fn_proto);
 }
@@ -10587,6 +10615,7 @@ void mir_arenas_init(MirArenas *arenas)
 {
     const usize instr_size = SIZEOF_MIR_INSTR;
     arena_init(&arenas->instr, instr_size, ALIGNOF_MIR_INSTR, ARENA_INSTR_CHUNK_COUNT, NULL);
+    arena_init(&arenas->id, sizeof(ID), alignment_of(ID), ARENA_CHUNK_COUNT, NULL);
     arena_init(&arenas->type, sizeof(MirType), alignment_of(MirType), ARENA_CHUNK_COUNT, NULL);
     arena_init(&arenas->var, sizeof(MirVar), alignment_of(MirVar), ARENA_CHUNK_COUNT, NULL);
     arena_init(&arenas->fn_poly,
@@ -10614,6 +10643,7 @@ void mir_arenas_init(MirArenas *arenas)
 void mir_arenas_terminate(MirArenas *arenas)
 {
     arena_terminate(&arenas->fn);
+    arena_terminate(&arenas->id);
     arena_terminate(&arenas->instr);
     arena_terminate(&arenas->member);
     arena_terminate(&arenas->type);
