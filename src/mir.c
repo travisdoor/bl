@@ -7129,8 +7129,11 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
                             recipe_type_name,
                             arg_type_name);
 
-                builder_msg(
-                    BUILDER_MSG_NOTE, 0, call->location, BUILDER_CUR_WORD, "Called from here.");
+                builder_msg(BUILDER_MSG_NOTE,
+                            0,
+                            call->data.expr_call.args->data[i]->location,
+                            BUILDER_CUR_WORD,
+                            "Called from here.");
                 tsa_push_TypePtr(queue, cnt->builtin_types->t_s32);
                 RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
             } else {
