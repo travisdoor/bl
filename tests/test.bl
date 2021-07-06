@@ -64,6 +64,7 @@ main :: fn () s32 {
     table_insert(10, "hello!");
     table_insert(30, "foo!");
     table_insert(40, "bar!");
+    table_insert(20, 10);
     return 0;
 }
 

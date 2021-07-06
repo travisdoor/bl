@@ -649,7 +649,7 @@ static MirInstr *ast_expr_lit_bool(Context *cnt, Ast *expr);
 static MirInstr *ast_expr_lit_fn(Context *        cnt,
                                  Ast *            lit_fn,
                                  Ast *            decl_node,
-                                 Ast *            explicit_linkage_name,
+                                 const char *     explicit_linkage_name, // optional
                                  bool             is_global,
                                  u32              flags,
                                  MirBuiltinIdKind builtin_id);
@@ -6976,9 +6976,11 @@ AnalyzeResult analyze_builtin_call(Context UNUSED(*cnt), MirInstrCall *call)
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-static MirType *poly_type_match(MirType *recipe, MirType *other)
+static poly_type_match(MirType * recipe,
+                       MirType * other,
+                       MirType **poly_type,
+                       MirType **matching_type)
 {
-    MirType *           found = NULL;
     TSmallArray_TypePtr queue;
     tsa_init(&queue);
 
@@ -6991,12 +6993,12 @@ static MirType *poly_type_match(MirType *recipe, MirType *other)
         const bool is_master =
             current_recipe->kind == MIR_TYPE_POLY && current_recipe->data.poly.is_master;
         if (is_master) {
-            found = current_other;
+            *matching_type = current_other;
+            *poly_type     = current_other;
             break;
         }
     }
     tsa_terminate(&queue);
-    return found;
 }
 
 static INLINE u64 get_current_poly_replacement_hash(Context *cnt)
@@ -7010,6 +7012,7 @@ static INLINE u64 get_current_poly_replacement_hash(Context *cnt)
         BL_ASSERT(type && type->id.str);
         tstring_setf(str, "%s##", type->id.str);
     }
+
     const u64 hash = thash_from_str(str->data);
     put_tmpstr(str);
     RETURN_END_ZONE(hash);
@@ -7031,8 +7034,9 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
     //     sum :: fn (a: ?T, b: T, c: s32) T
     //     sum(10, 20, 30)
     //
-    // The type of first argument 'a' is master polymorph type and it's replacement is deduced from
-    // the first call argument type (s32 in the example). All other slaves 'T' are references to
+    // The type of first argument 'a' is master polymorph type and it's replacement is deduced
+    // from the first call argument type (s32 in the example). All other slaves 'T' are
+    // references to
     // '?T' so they are replaced by 's32' type even if matching call side argument has different
     // type
     ZONE();
@@ -7049,30 +7053,17 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
     BL_ASSERT(ast_recipe && "Missing AST recipe for polymorph function!");
     BL_ASSERT(ast_recipe->kind == AST_EXPR_LIT_FN);
 
-    const usize expected_argc = expected_args ? expected_args->size : 0;
-    if (expected_argc == 0) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_POLY_MATCH,
-                    call->location,
-                    BUILDER_CUR_WORD,
-                    "Polymorph function expects at least one argument.");
-    }
-
-    TSmallArray_TypePtr *queue = &cnt->polymorph.replacement_queue;
-
-    const usize argc = min(expected_argc, recipe_args->size);
+    TSmallArray_TypePtr *queue         = &cnt->polymorph.replacement_queue;
+    const usize          expected_argc = expected_args ? expected_args->size : 0;
+    const usize          argc          = min(expected_argc, recipe_args->size);
     for (usize i = 0; i < argc; ++i) {
         MirType *call_arg_type   = expected_args->data[i]->value.type;
         MirType *recipe_arg_type = recipe_args->data[i]->type;
         if (is_load_needed(expected_args->data[i])) call_arg_type = mir_deref_type(call_arg_type);
-        MirType *matching_type = poly_type_match(recipe_arg_type, call_arg_type);
-
-        if (matching_type) {
-#if BL_DEBUG
-            char type_name1[256];
-            mir_type_to_str(type_name1, 256, matching_type, true);
-            BL_LOG("Replace poly with: %s", type_name1);
-#endif
+        MirType *poly_type     = NULL;
+        MirType *matching_type = NULL;
+        poly_type_match(recipe_arg_type, call_arg_type, &poly_type, &matching_type);
+        if (matching_type && poly_type) {
             tsa_push_TypePtr(queue, matching_type);
         }
     }
@@ -7086,16 +7077,24 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
         cnt->polymorph.current_scope_layer_index = ++recipe->scope_layer;
         cnt->polymorph.is_replacement_active     = true;
 
+        // Create name for generated function
+        const char *original_fn_name     = fn->id ? fn->id->str : IMPL_FN_NAME;
+        const char *linkage_name         = create_unique_name(original_fn_name);
+        const u32   replacement_fn_flags = fn->flags;
+
         // Generate new function.
-        MirInstr *instr_fn_proto = ast(cnt, ast_recipe);
+        MirInstr *instr_fn_proto = ast_expr_lit_fn(cnt,
+                                                   ast_recipe,
+                                                   fn->decl_node,
+                                                   linkage_name,
+                                                   fn->is_global,
+                                                   replacement_fn_flags,
+                                                   MIR_BUILTIN_ID_NONE);
+
         BL_ASSERT(instr_fn_proto && instr_fn_proto->kind == MIR_INSTR_FN_PROTO);
 
         MirFn *replacement_fn = MIR_CEV_READ_AS(MirFn *, &instr_fn_proto->value);
         BL_MAGIC_ASSERT(replacement_fn);
-
-        // Setup name for generated function
-        const char *original_fn_name = fn->id ? fn->id->str : IMPL_FN_NAME;
-        replacement_fn->linkage_name = create_unique_name(original_fn_name);
 
         cnt->polymorph.is_replacement_active     = false;
         cnt->polymorph.current_scope_layer_index = prev_scope_layer_index;
@@ -7160,13 +7159,14 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
-    // Pre-scan of all arguments passed to function call is needed in case we want to convert some
-    // arguments to Any type, because to Any conversion requires generation of rtti metadata about
-    // argument value type, we must check all argument types for it's completeness.
+    // Pre-scan of all arguments passed to function call is needed in case we want to convert
+    // some arguments to Any type, because to Any conversion requires generation of rtti
+    // metadata about argument value type, we must check all argument types for it's
+    // completeness.
 
     // @PERFORMANCE This is really needed only in case the function argument list contains
-    // conversion to Any, there is no need to scan everything, also there is possible option do this
-    // check in analyze_instr_decl_ref pass. @travis  14-Oct-2020
+    // conversion to Any, there is no need to scan everything, also there is possible option do
+    // this check in analyze_instr_decl_ref pass. @travis  14-Oct-2020
     if (call->args) {
         MirInstr *it;
         TSA_FOREACH(call->args, it)
@@ -7252,8 +7252,8 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
         callee_replacement->base.is_analyzed = false;
 
         // We skip analyze of this instruction, newly created polymorph function is not analyzed
-        // yet; however we've changed kind of callee instruction, so we have to roll-back in analyze
-        // stack by re-sumbit callee to analyze again.
+        // yet; however we've changed kind of callee instruction, so we have to roll-back in
+        // analyze stack by re-sumbit callee to analyze again.
         analyze_push_back(cnt, &callee_replacement->base);
         RETURN_END_ZONE(ANALYZE_RESULT(SKIP, 0));
     }
@@ -7440,8 +7440,8 @@ AnalyzeResult analyze_instr_store(Context *cnt, MirInstrStore *store)
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
-    // @BUG Global immutable array converted implicitly to slice cause problems when this check is
-    // enabled INDENT_AFTER :: {:[1]u8: '{'}; opt.indent_after = INDENT_AFTER;
+    // @BUG Global immutable array converted implicitly to slice cause problems when this check
+    // is enabled INDENT_AFTER :: {:[1]u8: '{'}; opt.indent_after = INDENT_AFTER;
 
 #if BL_DEBUG
     // If store instruction source value is compound expression it should not be naked.
@@ -7482,10 +7482,10 @@ AnalyzeResult analyze_instr_block(Context *cnt, MirInstrBlock *block)
     // Append implicit return for void functions or generate error when last
     // block is not terminated
     if (!is_block_terminated(block)) {
-        // Exit block and it's terminal break instruction are generated during AST instruction pass
-        // and it must be already terminated. Here we generate only breaks to the exit block in case
-        // analyzed block is not correctly terminated (it's pretty common since instruction
-        // generation is just appending blocks).
+        // Exit block and it's terminal break instruction are generated during AST instruction
+        // pass and it must be already terminated. Here we generate only breaks to the exit
+        // block in case analyzed block is not correctly terminated (it's pretty common since
+        // instruction generation is just appending blocks).
         BL_ASSERT(block != fn->exit_block && "Exit block must be terminated!");
 
         if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
@@ -8715,10 +8715,10 @@ void ast_stmt_if(Context *cnt, Ast *stmt_if)
     MirInstr *     cond           = ast(cnt, ast_condition);
 
     // Note: Else block is optional in this case i.e. if (true) { ... } expression does not have
-    // else block at all, so there is no need to generate one and 'conditional break' just breaks
-    // into the `continue` block. Skipping generation of else block also fixes issue with missing DI
-    // location of the last break emitted into the empty else block. Obviously there is no good
-    // source code possition for something not existing in source code!
+    // else block at all, so there is no need to generate one and 'conditional break' just
+    // breaks into the `continue` block. Skipping generation of else block also fixes issue with
+    // missing DI location of the last break emitted into the empty else block. Obviously there
+    // is no good source code possition for something not existing in source code!
     const bool     has_else_branch = ast_else;
     MirInstrBlock *else_block      = NULL;
     if (has_else_branch) {
@@ -9150,7 +9150,7 @@ MirInstr *ast_expr_elem(Context *cnt, Ast *elem)
 MirInstr *ast_expr_lit_fn(Context *        cnt,
                           Ast *            lit_fn,
                           Ast *            decl_node,
-                          Ast *            explicit_linkage_name,
+                          const char *     explicit_linkage_name, // optional
                           bool             is_global,
                           u32              flags,
                           MirBuiltinIdKind builtin_id)
@@ -9177,8 +9177,7 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
     ast_push_fn_context(cnt);
     MirInstrBlock *prev_block = ast_current_block(cnt);
 
-    const char *linkage_name =
-        explicit_linkage_name ? explicit_linkage_name->data.ident.id.str : NULL;
+    const char *linkage_name = explicit_linkage_name;
 
     BL_ASSERT(decl_node ? decl_node->kind == AST_IDENT : true);
     MirFn *fn = create_fn(cnt,
@@ -9397,9 +9396,9 @@ MirInstr *ast_expr_binop(Context *cnt, Ast *binop)
         MirInstrBlock *end_block        = cnt->ast.current_phi_end_block;
         MirInstrPhi *  phi              = cnt->ast.current_phi;
         bool           append_end_block = false;
-        // If no end block is specified, we are on the top level of PHI expresion generation and we
-        // must create one. Also PHI instruction must be crated (but not appended yet); created PHI
-        // gather incomes from all nested branches created by expression.
+        // If no end block is specified, we are on the top level of PHI expresion generation and
+        // we must create one. Also PHI instruction must be crated (but not appended yet);
+        // created PHI gather incomes from all nested branches created by expression.
         if (!end_block) {
             BL_ASSERT(!phi);
             end_block                      = create_block(cnt, "end_block");
@@ -9486,8 +9485,8 @@ static void ast_decl_fn(Context *cnt, Ast *ast_fn)
     const bool is_mutable                = ast_fn->data.decl_entity.mut;
     const bool generate_entry            = cnt->assembly->target->kind == ASSEMBLY_EXECUTABLE;
     if (!generate_entry && IS_FLAG(flags, FLAG_ENTRY)) {
-        // Generate entry function only in case we are compiling executable binary, otherwise it's
-        // not needed, and main should be also optional.
+        // Generate entry function only in case we are compiling executable binary, otherwise
+        // it's not needed, and main should be also optional.
         return;
     }
     if (is_mutable) {
@@ -9511,9 +9510,11 @@ static void ast_decl_fn(Context *cnt, Ast *ast_fn)
     MirBuiltinIdKind builtin_id  = MIR_BUILTIN_ID_NONE;
     const bool       is_compiler = IS_FLAG(ast_fn->data.decl_entity.flags, FLAG_COMPILER);
     if (is_compiler) builtin_id = check_symbol_marked_compiler(ast_name);
-    const bool is_global = ast_fn->data.decl_entity.is_global;
-    MirInstr * value     = ast_expr_lit_fn(
-        cnt, ast_value, ast_name, ast_explicit_linkage_name, is_global, flags, builtin_id);
+    const bool  is_global = ast_fn->data.decl_entity.is_global;
+    const char *optional_explicit_linkage_name =
+        ast_explicit_linkage_name ? ast_explicit_linkage_name->data.ident.id.str : NULL;
+    MirInstr *value = ast_expr_lit_fn(
+        cnt, ast_value, ast_name, optional_explicit_linkage_name, is_global, flags, builtin_id);
     BL_ASSERT(value);
 
     if (ast_type) ((MirInstrFnProto *)value)->user_type = CREATE_TYPE_RESOLVER_CALL(ast_type);
@@ -9555,7 +9556,8 @@ static void ast_decl_var_local(Context *cnt, Ast *ast_local)
     Ast *ast_name  = ast_local->data.decl.name;
     Ast *ast_type  = ast_local->data.decl.type;
     Ast *ast_value = ast_local->data.decl_entity.value;
-    // Create type resolver if there is explicitly defined type mentioned by user in declaration.
+    // Create type resolver if there is explicitly defined type mentioned by user in
+    // declaration.
     MirInstr * type        = ast_type ? CREATE_TYPE_RESOLVER_CALL(ast_type) : NULL;
     MirInstr * value       = ast(cnt, ast_value);
     const bool is_compiler = IS_FLAG(ast_local->data.decl_entity.flags, FLAG_COMPILER);
@@ -9622,7 +9624,8 @@ static void ast_decl_var_global_or_struct(Context *cnt, Ast *ast_global)
     Ast *ast_name  = ast_global->data.decl.name;
     Ast *ast_type  = ast_global->data.decl.type;
     Ast *ast_value = ast_global->data.decl_entity.value;
-    // Create type resolver if there is explicitly defined type mentioned by user in declaration.
+    // Create type resolver if there is explicitly defined type mentioned by user in
+    // declaration.
     MirInstr * type           = ast_type ? CREATE_TYPE_RESOLVER_CALL(ast_type) : NULL;
     const bool is_struct_decl = ast_value && ast_value->kind == AST_EXPR_TYPE &&
                                 ast_value->data.expr_type.type->kind == AST_TYPE_STRUCT;
@@ -9823,8 +9826,9 @@ MirInstr *ast_type_fn(Context *cnt, Ast *type_fn)
     TSmallArray_AstPtr *ast_arg_types = type_fn->data.type_fn.args;
     const bool          is_polymorph =
         type_fn->data.type_fn.is_polymorph && !cnt->polymorph.is_replacement_active;
-    // Discard current entity ID to fix bug when multi-return structure takes this name as an alias.
-    // There should be probably better way to solve this issue, but lets keep this for now.
+    // Discard current entity ID to fix bug when multi-return structure takes this name as an
+    // alias. There should be probably better way to solve this issue, but lets keep this for
+    // now.
     cnt->ast.current_entity_id = NULL;
     // return type
     MirInstr *ret_type = NULL;
@@ -10026,15 +10030,21 @@ MirInstr *ast_type_poly(Context *cnt, Ast *poly)
     ScopeEntry *scope_entry = register_symbol(cnt, ast_ident, T_id, scope, false);
     if (!scope_entry) return NULL;
 
-    TSmallArray_TypePtr *queue = &cnt->polymorph.replacement_queue;
-    if (queue->size) {
-        // We are generating function specification -> we have replacement for polymorph types.
-        MirType *replacement_type = tsa_pop_TypePtr(queue);
-        BL_MAGIC_ASSERT(replacement_type);
+    if (cnt->polymorph.is_replacement_active) {
+        TSmallArray_TypePtr *queue = &cnt->polymorph.replacement_queue;
+        if (queue->size == 0) {
+            // Use s32 as dummy when polymorph replacement fails.
+            return append_instr_const_type(cnt, poly, cnt->builtin_types->t_s32);
+        } else {
+            // We are generating function specification -> we have replacement for polymorph
+            // types.
+            MirType *replacement_type = tsa_pop_TypePtr(queue);
+            BL_MAGIC_ASSERT(replacement_type);
 
-        scope_entry->kind      = SCOPE_ENTRY_TYPE;
-        scope_entry->data.type = replacement_type;
-        return append_instr_const_type(cnt, poly, replacement_type);
+            scope_entry->kind      = SCOPE_ENTRY_TYPE;
+            scope_entry->data.type = replacement_type;
+            return append_instr_const_type(cnt, poly, replacement_type);
+        }
     }
 
     // We directly create polymorphic type here, because we want all references to T available
@@ -10565,8 +10575,8 @@ void builtin_inits(Context *cnt)
     // debug mode.
     add_global_bool(cnt, &builtin_ids[MIR_BUILTIN_ID_IS_DEBUG], false, cnt->debug_mode);
 
-    // Add IS_COMPTIME_RUN immutable into the global scope to provide information about compile time
-    // run.
+    // Add IS_COMPTIME_RUN immutable into the global scope to provide information about compile
+    // time run.
     cnt->assembly->vm_run.is_comptime_run =
         add_global_bool(cnt, &builtin_ids[MIR_BUILTIN_ID_IS_COMPTIME_RUN], false, false);
 #undef PROVIDE
