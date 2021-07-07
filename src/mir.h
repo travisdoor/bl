@@ -234,7 +234,7 @@ struct MirFnPolyRecipe {
     Ast *      ast_lit_fn;
     s32        scope_layer;
     THashTable entries;
-    
+
     BL_MAGIC_ADD
 };
 
@@ -247,7 +247,12 @@ struct MirFn {
     ScopeEntry *scope_entry;
 
     // Optional, set only for polymorphic functions.
+    // @CLEANUP we can use this type directly without function to save some memory.
     MirFnPolyRecipe *poly;
+
+    // Optional, this is set to fisrt call location used for generation of this function from
+    // polymorph recipe.
+    Ast *first_poly_call_node;
 
     // function body scope if there is one (optional)
     Scope *  body_scope;

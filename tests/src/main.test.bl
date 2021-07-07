@@ -36,6 +36,7 @@
 #load "inheritance.test.bl"
 #load "error.test.bl"
 #load "scope.test.bl"
+#load "polymorph.test.bl"
 /////////////////////////////////////////////////////
 
 main :: fn () s32 {

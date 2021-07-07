@@ -1,4 +1,5 @@
 // Polymorph
+// Disable pointers to polymorph functions.
 
 add :: fn (a: ?T, b: T) T {
     return a + b;
@@ -37,7 +38,7 @@ sum :: fn (values: []?T) T {
     return result;
 }
 
-foo :: fn (a: ?T, b := 10) {
+foo :: fn (a: ?T, b : T = 10) {
     print("a = %\nb = %\n", a, b);
 }
 
@@ -86,6 +87,16 @@ main :: fn () s32 {
     }
     print("sum = %\n", sum(dyn));
     foo(20);
+    
+    slice: []s32;
+    slice_init(slice, 10);
+    defer slice_terminate(slice);
+    loop i := 0; i < slice.len; i += 1 {
+        slice[i] = i;
+    }    
+    print("sum = %\n", sum(slice));
+    
+    print_vec(10);
     return 0;
 }
 

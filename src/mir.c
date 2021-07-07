@@ -2717,6 +2717,11 @@ MirCastOp get_cast_op(MirType *from, MirType *to)
 
     if (type_cmp(from, to)) return MIR_CAST_NONE;
 
+    // Allow casting of anything to polymorph type. Polymorph types should exist only in polymorph
+    // function argument list and should not produce any executable code directly; such casting is
+    // allowed only due to analyze of valid concepts like defautl argument values set for deduced
+    // polymorph slave-typed arguments.
+    if (to->kind == MIR_TYPE_POLY) return MIR_CAST_NONE;
 #ifndef _MSC_VER
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
@@ -7024,6 +7029,9 @@ static poly_type_match(MirType * recipe,
             } else if (current_other->kind == MIR_TYPE_DYNARR) {
                 PUSH_IF_VALID(
                     mir_deref_type(mir_get_struct_elem_type(current_other, MIR_DYNARR_PTR_INDEX)));
+            } else if (current_other->kind == MIR_TYPE_SLICE) {
+                PUSH_IF_VALID(
+                    mir_deref_type(mir_get_struct_elem_type(current_other, MIR_SLICE_PTR_INDEX)));
             } else {
                 is_valid = false;
             }
@@ -7041,7 +7049,8 @@ static poly_type_match(MirType * recipe,
             break;
 
         default:
-            BL_ABORT("Cannot deduce polymorph replacement.");
+            is_valid = false;
+            BL_ASSERT(false && "Cannot deduce polymorph replacement.");
         }
     }
     tsa_terminate(&queue);
@@ -7169,6 +7178,7 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
 
         MirFn *replacement_fn = MIR_CEV_READ_AS(MirFn *, &instr_fn_proto->value);
         BL_MAGIC_ASSERT(replacement_fn);
+        replcement_fn->first_poly_call_node = call;
 
         cnt->polymorph.is_replacement_active     = false;
         cnt->polymorph.current_scope_layer_index = prev_scope_layer_index;
@@ -10110,6 +10120,8 @@ MirInstr *ast_type_poly(Context *cnt, Ast *poly)
         } else {
             // We are generating function specification -> we have replacement for polymorph
             // types.
+            // Notice that pop takes the last element from the queue, this is possible due to
+            // reverse order of generated argument instructions.
             MirType *replacement_type = tsa_pop_TypePtr(queue);
             BL_MAGIC_ASSERT(replacement_type);
 

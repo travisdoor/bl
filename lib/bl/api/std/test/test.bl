@@ -33,6 +33,8 @@
 #load "std/debug.bl"
 #load "os/posix/signal.bl"
 
+// @CLEANUP These functions can be rewritten as polymorphs.
+
 //! ====
 //! Test
 //! ====
