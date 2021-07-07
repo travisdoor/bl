@@ -24,18 +24,27 @@ my_table_insert :: fn (key: ?TKey, value: ?TValue) {
     table_insert(key, value);
 }
 
+// Use in API
 swap :: fn (a: *?T, b: *T) {
     tmp :: ^a;
     ^a = ^b;
     ^b = tmp;
 }
 
+// Use in API
 sum :: fn (values: []?T) T {
     result: T;
     loop i := 0; i < values.len; i += 1 {
         result += values[i];
     }
     return result;
+}
+
+find :: fn (arr: []?T, value: T) s64 #inline {
+    loop i := 0; i < arr.len; i += 1 {
+        if arr[i] == value { return i; }
+    }
+    return -1;
 }
 
 foo :: fn (a: ?T, b : T = 10) {
@@ -48,11 +57,39 @@ Vec :: struct {
     z: s32;
 }
 
+bar :: fn (a: ?T1, b: s32, c: T1) {
+    a.x = c.x;
+}
+
+homo :: fn (f: *fn(a: ?T) T) {
+    f(10);
+}
+
+alena :: fn (arg: T, f: *fn(a: ?T) T) T {
+    return f(arg);
+}
+
+my_func :: fn () {
+    local_poly :: fn (a: ?T) {
+        print("local a = %\n", a);
+    };
+    
+    local_poly("is here!!!");
+}
+
+group :: fn {
+    fn (s: string) { print("string = %\n", s); };
+    fn (s: ?T) { print("poly = %\n", s); };
+};
+
+
 main :: fn () s32 {
     n1 : s64 = 10;
     n2 : u32 = 20;
     n3 :: 0.5f;
     n4 :: 0.5;
+
+    my_func();
     
     print("%\n", add(n1, n1));
     print("%\n", add(n2, n2));
@@ -95,8 +132,23 @@ main :: fn () s32 {
         slice[i] = i;
     }    
     print("sum = %\n", sum(slice));
+
+    print("found index %\n", find(arr, 3));
+    print("found index %\n", find(dyn, 3));
+    print("found index %\n", find(slice, 3));
+
+    homo(&fn (i: s32) s32 {
+        print("Hello from callback, i = %\n", i);
+        return i;
+    });
+
+    alena(666, &fn (a: s32) s32 {
+        return a;
+    });
     
-    print_vec(10);
+    group("hello");
+    group(10);
+
     return 0;
 }
 

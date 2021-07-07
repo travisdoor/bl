@@ -3,8 +3,5 @@
 * test hash table
 * add hash table into API
 * string support custom allocator
-* FileSystem (fs) package as first one!
-    * directory manipulation
-    * file manipulation
-    
-    
+* polymorph `...T` does not work.
+* polymorph functions cannot be export, extern, intrinsics

@@ -816,6 +816,12 @@ static void       rtti_gen_fn_slice(Context *cnt, VMStackPtr dest, TSmallArray_T
 static MirVar *   rtti_gen_fn_group(Context *cnt, MirType *type);
 
 // INLINES
+#define REPORT_ERROR(instr, e, loc, cursor, format, ...)                                           \
+    {                                                                                              \
+        builder_msg(BUILDER_MSG_ERROR, (e), (loc), (cursor), (format), ##__VA_ARGS__);             \
+        _report_poly((MirInstr *)(instr));                                                         \
+    }
+
 static INLINE Ast *get_last_instruction_node(MirInstrBlock *block)
 {
     if (!block->last_instr) return NULL;
@@ -970,15 +976,6 @@ static INLINE bool is_instr_type_volatile(MirInstr *instr)
     }
 }
 
-static INLINE bool is_pointer_to_type_type(MirType *type)
-{
-    while (mir_is_pointer_type(type)) {
-        type = mir_deref_type(type);
-    }
-
-    return type->kind == MIR_TYPE_TYPE;
-}
-
 static INLINE bool type_cmp(const MirType *first, const MirType *second)
 {
     BL_ASSERT(first && second);
@@ -1032,17 +1029,32 @@ static INLINE bool can_impl_cast(const MirType *from, const MirType *to)
     return true;
 }
 
-static INLINE MirFn *get_callee(MirInstrCall *call)
-{
-    MirFn *fn = MIR_CEV_READ_AS(MirFn *, &call->callee->value);
-    BL_MAGIC_ASSERT(fn);
-    return fn;
-}
-
 static INLINE MirFn *instr_owner_fn(MirInstr *instr)
 {
     if (!instr->owner_block) return NULL;
     return instr->owner_block->owner_fn;
+}
+
+static INLINE void _report_poly(MirInstr *instr)
+{
+    if (!instr) return;
+    MirFn *owner_fn = instr_owner_fn(instr);
+    if (!owner_fn) return;
+    const char *info =
+        owner_fn->debug_poly_replacement ? owner_fn->debug_poly_replacement->data : "(unknown)";
+    builder_msg(BUILDER_MSG_NOTE,
+                0,
+                owner_fn->decl_node->location,
+                BUILDER_CUR_WORD,
+                "In polymorph function.\n\n%s",
+                info);
+    if (!owner_fn->first_poly_call_node) return;
+    if (!owner_fn->first_poly_call_node->location) return;
+    builder_msg(BUILDER_MSG_NOTE,
+                0,
+                owner_fn->first_poly_call_node->location,
+                BUILDER_CUR_WORD,
+                "First called here:");
 }
 
 static INLINE MirInstrBlock *ast_current_block(Context *cnt)
@@ -4855,11 +4867,11 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
     }
 
     if (target_type->kind != MIR_TYPE_PTR) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    target_ptr->node->location,
-                    BUILDER_CUR_WORD,
-                    "Expected structure type.");
+        REPORT_ERROR(member_ptr,
+                     ERR_INVALID_TYPE,
+                     target_ptr->node->location,
+                     BUILDER_CUR_WORD,
+                     "Expected structure type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -5017,11 +5029,11 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
 
     // Invalid
 INVALID:
-    builder_msg(BUILDER_MSG_ERROR,
-                ERR_INVALID_MEMBER_ACCESS,
-                target_ptr->node->location,
-                BUILDER_CUR_WORD,
-                "Expected structure or enumerator type.");
+    REPORT_ERROR(member_ptr,
+                 ERR_INVALID_TYPE,
+                 target_ptr->node->location,
+                 BUILDER_CUR_WORD,
+                 "Expected structure or enumerator type.");
     RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
 }
 
@@ -5032,9 +5044,12 @@ AnalyzeResult analyze_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
     BL_ASSERT(src);
     if (!src->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     const MirValueAddressMode src_addr_mode = src->value.addr_mode;
-    const bool                can_grab_address =
+    const bool                is_source_polymorph =
+        src->value.type->kind == MIR_TYPE_FN &&
+        IS_FLAG(src->value.type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_POLYMORPH);
+    const bool can_grab_address =
         (src_addr_mode == MIR_VAM_LVALUE || src_addr_mode == MIR_VAM_LVALUE_CONST ||
-         src->value.type->kind == MIR_TYPE_FN);
+         (src->value.type->kind == MIR_TYPE_FN && !is_source_polymorph));
 
     if (!can_grab_address) {
         builder_msg(BUILDER_MSG_ERROR,
@@ -5438,6 +5453,7 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     BL_ASSERT(value->type && "function has no valid type");
     BL_ASSERT(value->data);
 
+    // @INCOMPLETE: Read MirFnPolyRecipe here directly?
     MirFn *fn = MIR_CEV_READ_AS(MirFn *, value);
     BL_MAGIC_ASSERT(fn);
 
@@ -5473,7 +5489,10 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     // Setup function linkage name, this will be later used by LLVM backend.
     if (fn->id && !fn->linkage_name) { // Has ID and has no linkage name specified.
         TString *full_name = builder_create_cached_str();
-        tstring_appendf(full_name, "%s.%s", name_prefix->data, fn->id->str);
+        if (name_prefix->len)
+            tstring_appendf(full_name, "%s.%s", name_prefix->data, fn->id->str);
+        else
+            tstring_append(full_name, fn->id->str);
         if (IS_FLAG(fn->flags, FLAG_EXTERN) || IS_FLAG(fn->flags, FLAG_ENTRY) ||
             IS_FLAG(fn->flags, FLAG_EXPORT) || IS_FLAG(fn->flags, FLAG_INTRINSIC)) {
             fn->linkage_name = fn->id->str;
@@ -5486,7 +5505,10 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     } else if (!fn->linkage_name) {
         // Anonymous function use implicit unique name.
         TString *full_name = get_tmpstr();
-        tstring_appendf(full_name, "%s.%s", name_prefix->data, IMPL_FN_NAME);
+        if (name_prefix->len)
+            tstring_appendf(full_name, "%s%s", name_prefix->data, IMPL_FN_NAME);
+        else
+            tstring_append(full_name, IMPL_FN_NAME);
         fn->linkage_name = create_unique_name(full_name->data);
         fn->full_name    = fn->linkage_name;
         put_tmpstr(full_name);
@@ -5985,6 +6007,15 @@ AnalyzeResult analyze_instr_type_fn(Context *cnt, MirInstrTypeFn *type_fn)
         BL_ASSERT(type_fn->ret_type->value.is_comptime);
         ret_type = MIR_CEV_READ_AS(MirType *, &type_fn->ret_type->value);
         BL_MAGIC_ASSERT(ret_type);
+        // Disable polymorph master as return type.
+        if (ret_type->kind == MIR_TYPE_POLY && ret_type->data.poly.is_master) {
+            builder_msg(BUILDER_MSG_ERROR,
+                        ERR_INVALID_TYPE,
+                        type_fn->ret_type->node->location,
+                        BUILDER_CUR_WORD,
+                        "Polymorph master type cannot be used as return type.");
+            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        }
     }
 
     MirType *result_type =
@@ -6570,6 +6601,8 @@ static INLINE bool is_type_valid_for_binop(const MirType *type, const BinopKind 
         return ast_binop_is_logic(op);
     case MIR_TYPE_ENUM:
         return op == BINOP_EQ || op == BINOP_NEQ;
+    default:
+        break;
     }
     return false;
 }
@@ -6992,10 +7025,8 @@ AnalyzeResult analyze_builtin_call(Context UNUSED(*cnt), MirInstrCall *call)
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-static poly_type_match(MirType * recipe,
-                       MirType * other,
-                       MirType **poly_type,
-                       MirType **matching_type)
+static void
+poly_type_match(MirType *recipe, MirType *other, MirType **poly_type, MirType **matching_type)
 {
 #define PUSH_IF_VALID(expr)                                                                        \
     if (is_valid) {                                                                                \
@@ -7005,8 +7036,8 @@ static poly_type_match(MirType * recipe,
     TSmallArray_TypePtr queue;
     tsa_init(&queue);
 
-    bool is_valid = true;
-    tsa_push_TypePtr(&queue, other);
+    bool is_valid = other != NULL;
+    PUSH_IF_VALID(other);
     tsa_push_TypePtr(&queue, recipe);
     while (queue.size) {
         MirType *current_recipe = tsa_pop_TypePtr(&queue);
@@ -7024,33 +7055,66 @@ static poly_type_match(MirType * recipe,
             // Handle conversion of arrays to slice.
             MirType *slice_elem_type =
                 mir_deref_type(mir_get_struct_elem_type(current_recipe, MIR_SLICE_PTR_INDEX));
-            if (current_other->kind == MIR_TYPE_ARRAY) {
-                PUSH_IF_VALID(current_other->data.array.elem_type);
-            } else if (current_other->kind == MIR_TYPE_DYNARR) {
-                PUSH_IF_VALID(
-                    mir_deref_type(mir_get_struct_elem_type(current_other, MIR_DYNARR_PTR_INDEX)));
-            } else if (current_other->kind == MIR_TYPE_SLICE) {
-                PUSH_IF_VALID(
-                    mir_deref_type(mir_get_struct_elem_type(current_other, MIR_SLICE_PTR_INDEX)));
-            } else {
-                is_valid = false;
+            if (is_valid) {
+                if (current_other->kind == MIR_TYPE_ARRAY) {
+                    PUSH_IF_VALID(current_other->data.array.elem_type);
+                } else if (current_other->kind == MIR_TYPE_DYNARR) {
+                    PUSH_IF_VALID(mir_deref_type(
+                        mir_get_struct_elem_type(current_other, MIR_DYNARR_PTR_INDEX)));
+                } else if (current_other->kind == MIR_TYPE_SLICE) {
+                    PUSH_IF_VALID(mir_deref_type(
+                        mir_get_struct_elem_type(current_other, MIR_SLICE_PTR_INDEX)));
+                } else {
+                    is_valid = false;
+                }
             }
             tsa_push_TypePtr(&queue, slice_elem_type);
             continue;
         }
-        if (current_recipe->kind != current_other->kind) is_valid = false;
-        const MirTypeKind kind = current_recipe->kind;
-        switch (kind) {
+        if (current_other && (current_recipe->kind != current_other->kind)) is_valid = false;
+        switch (current_recipe->kind) {
         case MIR_TYPE_PTR:
             PUSH_IF_VALID(current_other->data.ptr.expr);
             tsa_push_TypePtr(&queue, current_recipe->data.ptr.expr);
             break;
+        case MIR_TYPE_FN: {
+            TSmallArray_ArgPtr *recipe_args = current_recipe->data.fn.args;
+            TSmallArray_ArgPtr *other_args  = is_valid ? current_other->data.fn.args : NULL;
+            if (recipe_args) {
+                MirArg *arg;
+                TSA_FOREACH(recipe_args, arg)
+                {
+                    if (other_args && i < other_args->size)
+                        tsa_push_TypePtr(&queue, other_args->data[i]->type);
+                    else
+                        is_valid = false;
+                    tsa_push_TypePtr(&queue, arg->type);
+                }
+            }
+            break;
+        }
+        case MIR_TYPE_DYNARR: {
+            PUSH_IF_VALID(
+                mir_deref_type(mir_get_struct_elem_type(current_other, MIR_DYNARR_PTR_INDEX)));
+            tsa_push_TypePtr(
+                &queue,
+                mir_deref_type(mir_get_struct_elem_type(current_recipe, MIR_DYNARR_PTR_INDEX)));
+
+            break;
+        }
+        case MIR_TYPE_ARRAY: {
+            PUSH_IF_VALID(current_other->data.array.elem_type);
+            tsa_push_TypePtr(&queue, current_recipe->data.array.elem_type);
+            break;
+        }
+        case MIR_TYPE_BOOL:
+        case MIR_TYPE_REAL:
+        case MIR_TYPE_INT:
         case MIR_TYPE_POLY:
             break;
 
         default:
             is_valid = false;
-            BL_ASSERT(false && "Cannot deduce polymorph replacement.");
         }
     }
     tsa_terminate(&queue);
@@ -7109,13 +7173,17 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
     BL_ASSERT(ast_recipe && "Missing AST recipe for polymorph function!");
     BL_ASSERT(ast_recipe->kind == AST_EXPR_LIT_FN);
 
-    TSmallArray_TypePtr *queue         = &cnt->polymorph.replacement_queue;
-    const usize          expected_argc = expected_args ? expected_args->size : 0;
-    const usize          argc          = min(expected_argc, recipe_args->size);
+    TString *            debug_replacement_str = get_tmpstr();
+    TSmallArray_TypePtr *queue                 = &cnt->polymorph.replacement_queue;
+    const usize          argc                  = recipe_args->size;
     for (usize i = 0; i < argc; ++i) {
-        MirType *call_arg_type   = expected_args->data[i]->value.type;
+        const bool is_expected_arg_valid = expected_args && i < expected_args->size;
+        MirType *call_arg_type = is_expected_arg_valid ? expected_args->data[i]->value.type : NULL;
         MirType *recipe_arg_type = recipe_args->data[i]->type;
-        if (is_load_needed(expected_args->data[i])) call_arg_type = mir_deref_type(call_arg_type);
+        if (is_expected_arg_valid && is_load_needed(expected_args->data[i])) {
+            BL_ASSERT(call_arg_type);
+            call_arg_type = mir_deref_type(call_arg_type);
+        }
         MirType *poly_type     = NULL;
         MirType *matching_type = NULL;
         poly_type_match(recipe_arg_type, call_arg_type, &poly_type, &matching_type);
@@ -7124,34 +7192,53 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
                 Ast *ast_poly_arg = ast_recipe->data.expr_fn.type->data.type_fn.args->data[i];
                 char recipe_type_name[256];
                 mir_type_to_str(recipe_type_name, 256, recipe_arg_type, true);
+                if (call_arg_type) {
+                    char arg_type_name[256];
+                    mir_type_to_str(arg_type_name, 256, call_arg_type, true);
 
-                char arg_type_name[256];
-                mir_type_to_str(arg_type_name, 256, call_arg_type, true);
+                    builder_msg(BUILDER_MSG_ERROR,
+                                ERR_INVALID_POLY_MATCH,
+                                ast_poly_arg->data.decl.type->location,
+                                BUILDER_CUR_WORD,
+                                "Cannot deduce polymorph function argument type '%s'. Expected is "
+                                "'%s' but call-side argument type is '%s'.",
+                                poly_type->user_id->str,
+                                recipe_type_name,
+                                arg_type_name);
 
-                builder_msg(BUILDER_MSG_ERROR,
-                            ERR_INVALID_POLY_MATCH,
-                            ast_poly_arg->data.decl.type->location,
-                            BUILDER_CUR_WORD,
-                            "Cannot deduce polymorph function argument type '%s'. Expected is "
-                            "'%s' but call-side argument type is '%s'.",
-                            poly_type->user_id->str,
-                            recipe_type_name,
-                            arg_type_name);
+                    Location *call_arg_loc = call->data.expr_call.args->data[i]->location;
+                    if (!call_arg_loc) call_arg_loc = call->location;
+                    builder_msg(
+                        BUILDER_MSG_NOTE, 0, call_arg_loc, BUILDER_CUR_WORD, "Called from here.");
+                } else {
+                    // Missing argument on call side required for polymorph deduction.
+                    builder_msg(BUILDER_MSG_ERROR,
+                                ERR_INVALID_POLY_MATCH,
+                                ast_poly_arg->data.decl.type->location,
+                                BUILDER_CUR_WORD,
+                                "Cannot deduce polymorph function argument type '%s'.",
+                                poly_type->user_id->str);
 
-                builder_msg(BUILDER_MSG_NOTE,
-                            0,
-                            call->data.expr_call.args->data[i]->location,
-                            BUILDER_CUR_WORD,
-                            "Called from here.");
+                    builder_msg(
+                        BUILDER_MSG_NOTE, 0, call->location, BUILDER_CUR_WORD, "Called from here.");
+                }
                 tsa_push_TypePtr(queue, cnt->builtin_types->t_s32);
+                put_tmpstr(debug_replacement_str);
                 RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
             } else {
+                // Stringify replacement to get better error reports.
+                char type_name1[256];
+                char type_name2[256];
+                mir_type_to_str(type_name1, 256, poly_type, true);
+                mir_type_to_str(type_name2, 256, matching_type, true);
+                tstring_appendf(debug_replacement_str, "[%s = %s]\n", type_name1, type_name2);
+
                 tsa_push_TypePtr(queue, matching_type);
             }
         }
     }
 
-    const replacement_hash = get_current_poly_replacement_hash(cnt);
+    const u64 replacement_hash = get_current_poly_replacement_hash(cnt);
 
     TIterator iter = thtbl_find(entries, replacement_hash);
     TIterator end  = thtbl_end(entries);
@@ -7178,7 +7265,10 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
 
         MirFn *replacement_fn = MIR_CEV_READ_AS(MirFn *, &instr_fn_proto->value);
         BL_MAGIC_ASSERT(replacement_fn);
-        replcement_fn->first_poly_call_node = call;
+        replacement_fn->first_poly_call_node = call;
+        TString *debug_replacement_str_dup   = builder_create_cached_str();
+        tstring_append(debug_replacement_str_dup, debug_replacement_str->data);
+        replacement_fn->debug_poly_replacement = debug_replacement_str_dup;
 
         cnt->polymorph.is_replacement_active     = false;
         cnt->polymorph.current_scope_layer_index = prev_scope_layer_index;
@@ -7191,6 +7281,7 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
         *out_fn_proto = (MirInstrFnProto *)thtbl_iter_peek_value(MirInstr *, iter);
     }
     queue->size = 0; // clear
+    put_tmpstr(debug_replacement_str);
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
@@ -7293,12 +7384,14 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
         { // lookup best call candidate in group
             TSmallArray_TypePtr arg_types;
             tsa_init(&arg_types);
-            tsa_resize_TypePtr(&arg_types, call->args->size);
-            MirInstr *it;
-            TSA_FOREACH(call->args, it)
-            {
-                MirType *t        = it->value.type;
-                arg_types.data[i] = is_load_needed(it) ? mir_deref_type(t) : t;
+            if (call->args) {
+                tsa_resize_TypePtr(&arg_types, call->args->size);
+                MirInstr *it;
+                TSA_FOREACH(call->args, it)
+                {
+                    MirType *t        = it->value.type;
+                    arg_types.data[i] = is_load_needed(it) ? mir_deref_type(t) : t;
+                }
             }
             selected_overload_fn = group_select_overload(cnt, group, &arg_types);
             tsa_terminate(&arg_types);
@@ -7306,7 +7399,7 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
         BL_MAGIC_ASSERT(selected_overload_fn);
 
         // Replace callee instruction with constant containing found overload function.
-        erase_instr_tree(call->callee, false, true);
+        erase_instr_tree(call->callee, true, true);
         MirInstrConst *callee_replacement =
             (MirInstrConst *)mutate_instr(call->callee, MIR_INSTR_CONST);
         callee_replacement->volatile_type   = false;
@@ -9262,7 +9355,7 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
 
     const char *linkage_name = explicit_linkage_name;
 
-    BL_ASSERT(decl_node ? decl_node->kind == AST_IDENT : true);
+    // BL_ASSERT(decl_node ? decl_node->kind == AST_IDENT : true);
     MirFn *fn = create_fn(cnt,
                           decl_node ? decl_node : lit_fn,
                           id,
@@ -10749,7 +10842,7 @@ void mir_arenas_init(MirArenas *arenas)
                sizeof(MirFnPolyRecipe),
                alignment_of(MirFnPolyRecipe),
                ARENA_CHUNK_COUNT,
-               &fn_poly_dtor);
+               (ArenaElemDtor)&fn_poly_dtor);
     arena_init(&arenas->fn,
                sizeof(MirFn),
                alignment_of(MirFn),

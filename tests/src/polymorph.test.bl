@@ -84,3 +84,20 @@ test_poly_sum_3 :: fn () #test {
     }    
     test_eq(sum(slice), 45);
 }
+
+callback_1 :: fn (call_me: *fn (arg: ?T)) {
+    call_me(10);
+}
+
+test_poly_callback_1 :: fn () #test {
+    callback_1(&fn (arg: s32){});
+    callback_1(&fn (arg: u8){});
+    callback_1(&fn (arg: s64){});
+}
+
+test_poly_local_1 :: fn () #test {
+    local_poly :: fn (a: ?T) T {
+        return a;
+    };
+    test_eq(local_poly(10), 10);
+}

@@ -230,9 +230,11 @@ typedef struct {
 } DyncallCBContext;
 
 struct MirFnPolyRecipe {
-    // Function literal
+    // Function literal (used for function replacement generation).
     Ast *      ast_lit_fn;
+    // Scope layer solves symbol collisions in reused scopes.
     s32        scope_layer;
+    // Cache of already generated functions (replacement hash -> MirFn*).
     THashTable entries;
 
     BL_MAGIC_ADD
@@ -250,9 +252,10 @@ struct MirFn {
     // @CLEANUP we can use this type directly without function to save some memory.
     MirFnPolyRecipe *poly;
 
-    // Optional, this is set to fisrt call location used for generation of this function from
+    // Optional, this is set to first call location used for generation of this function from
     // polymorph recipe.
-    Ast *first_poly_call_node;
+    Ast *    first_poly_call_node;
+    TString *debug_poly_replacement;
 
     // function body scope if there is one (optional)
     Scope *  body_scope;

@@ -306,7 +306,7 @@ split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string = nu
 /// -------
 /// .. literalinclude:: /examples/docs/011.bl
 ///    :language: bl
-split_at_index :: fn (str: string, index: s32, lhs: *string, rhs: *string) bool {
+split_at_index :: fn (str: string, index: s32, lhs: *string = null, rhs: *string = null) bool {
     if index > str.len { return false; }
     if index < 0 { return false; }
     lhsc :: cast(s64) index;

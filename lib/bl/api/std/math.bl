@@ -80,55 +80,37 @@ rand  :: fn () s32 #extern;
 srand :: fn (seed: u32) #extern;
 qsort :: fn (base: *c_void_ptr, nitems: c_size_t, size: c_size_t, compar: *fn (c_void_ptr, c_void_ptr) c_int) #extern;
 
-abs :: fn { f32_abs; f64_abs; }
-compare :: fn { f32_compare; f64_compare; }
+abs :: fn { f32_abs; f64_abs; }compare :: fn { f32_compare; f64_compare; }
 degtorad :: fn { f32_degtorad; f64_degtorad; }
 radtodeg :: fn { f32_radtodeg; f64_radtodeg; }
-max :: fn { s32_max; s64_max; u32_max; f32_max; f64_max; }
-min :: fn { s32_min; s64_min; u32_min; f32_min; f64_min; }
-lerp :: fn { 
-    fn (a: f32, b: f32, fraction: f32) f32 #inline {
-        return a + fraction * (b - a);
-    };
-    fn (a: f64, b: f64, fraction: f64) f64 #inline {
-        return a + fraction * (b - a);
-    };
+
+max :: fn (a: ?T, b: T) T  #inline { 
+    if a > b { return a; }
+    return b;
 }
 
-clamp :: fn {
-    fn (v: s32, minimum: s32, maximum: s32) s32 { 
-        if v <= minimum { return minimum;  }
-        if v >= maximum { return maximum;  }
-        return v;
-    };
-    fn (v: s64, minimum: s64, maximum: s64) s64 { 
-        if v <= minimum { return minimum;  }
-        if v >= maximum { return maximum;  }
-        return v;
-    };
-    fn (v: u32, minimum: u32, maximum: u32) u32 { 
-        if v <= minimum { return minimum;  }
-        if v >= maximum { return maximum;  }
-        return v;
-    };
-    fn (v: u64, minimum: u64, maximum: u64) u64 { 
-        if v <= minimum { return minimum;  }
-        if v >= maximum { return maximum;  }
-        return v;
-    };
-    fn (v: f32, minimum: f32, maximum: f32) f32 { 
-        if v < minimum || compare(v, minimum) { return minimum;  }
-        if v > maximum || compare(v, maximum) { return maximum;  }
-        return v;
-    };
-    fn (v: f64, minimum: f64, maximum: f64) f64 { 
-        if v < minimum || compare(v, minimum) { return minimum;  }
-        if v > maximum || compare(v, maximum) { return maximum;  }
-        return v;
-    };
+min :: fn (a: ?T, b: T) T #inline { 
+    if a < b { return a; }
+    return b;
+}
+
+lerp :: fn (a: ?T, b: T, fraction: T) T  #inline {
+    return a + fraction * (b - a);
+}
+
+clamp :: fn (v: ?T, minimum: T, maximum: T) T { 
+    if typeinfo(T).kind == TypeKind.Int {
+        if v <= minimum { return minimum; }
+        if v >= maximum { return maximum; }
+    } else {
+        if v < minimum { return minimum; }
+        if v > maximum { return maximum; }    
+    }
+    return v;
 }
 
 #private
+// Compiler intrinsics
 f32_sin   :: fn (n: f32) f32 #intrinsic "sin.f32";
 f64_sin   :: fn (n: f64) f64 #intrinsic "sin.f64";
 f32_cos   :: fn (n: f32) f32 #intrinsic "cos.f32";
@@ -150,7 +132,7 @@ f64_sqrt  :: fn (n: f64) f64 #intrinsic "sqrt.f64";
 f32_ceil  :: fn (x: f32) f32 #intrinsic "ceil.f32";
 f64_ceil  :: fn (x: f64) f64 #intrinsic "ceil.f64";
 
-/* Lib C functions */
+// Lib C functions
 f32_asin     :: fn (arg: f32) f32 #extern "asinf";
 f64_asin     :: fn (arg: f64) f64 #extern "asin";
 f32_acos     :: fn (n: f32) f32 #extern "acosf";
@@ -161,7 +143,7 @@ f32_atan2    :: fn (y: f32, x: f32) f32 #extern "atan2f";
 f64_atan2    :: fn (y: f64, x: f64) f64 #extern "atan2";
 f32_copysign :: fn (x: f32, y: f32) f32 #extern "copysingf";
 f64_copysign :: fn (x: f64, y: f64) f64 #extern "copysing";
-/* Lib C functions */
+// Lib C functions
 
 f32_abs :: fn (v: f32) f32 #inline {
     if v < 0.f { return -v; }
@@ -172,6 +154,7 @@ f64_abs :: fn (v: f64) f64 #inline {
     if v < 0. { return -v; }
     return v;
 }
+
 
 f32_compare :: fn (a: f32, b: f32, epsilon := F32_EPSILON) bool #inline {
     return abs(a - b) < epsilon;
@@ -197,52 +180,3 @@ f64_radtodeg :: fn (rad: f64) f64 #inline {
     return (180. * rad) / PI;
 };
 
-s32_max :: fn (a: s32, b: s32) s32 #inline { 
-    if a > b { return a; }
-    return b;
-}
-
-s64_max :: fn (a: s64, b: s64) s64 #inline { 
-    if a > b { return a; }
-    return b;
-}
-
-u32_max :: fn (a: u32, b: u32) u32 #inline { 
-    if a > b { return a; }
-    return b;
-}
-
-f32_max :: fn (a: f32, b: f32) f32 #inline { 
-    if a > b { return a; }
-    return b;
-}
-
-f64_max :: fn (a: f64, b: f64) f64 #inline { 
-    if a > b { return a; }
-    return b;
-}
-
-s32_min :: fn (a: s32, b: s32) s32 #inline { 
-    if a < b { return a; }
-    return b;
-}
-
-s64_min :: fn (a: s64, b: s64) s64 #inline { 
-    if a < b { return a; }
-    return b;
-}
-
-u32_min :: fn (a: u32, b: u32) u32 #inline { 
-    if a < b { return a; }
-    return b;
-}
-
-f32_min :: fn (a: f32, b: f32) f32 #inline { 
-    if a < b { return a; }
-    return b;
-}
-
-f64_min :: fn (a: f64, b: f64) f64 #inline { 
-    if a < b { return a; }
-    return b;
-}

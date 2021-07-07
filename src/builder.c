@@ -611,6 +611,9 @@ void builder_msg(BuilderMsgType type,
         case BUILDER_MSG_WARNING:
             prefix = "warning";
             break;
+        case BUILDER_MSG_NOTE:
+            prefix = "note";
+            break;
         default:
             break;
         }

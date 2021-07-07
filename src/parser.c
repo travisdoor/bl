@@ -107,7 +107,7 @@ typedef struct {
     Scope *  current_named_scope;
     Ast *    current_docs;
     TString *unit_docs_tmp;
-    Ast *    current_fn_type;
+    TSmallArray_AstPtr current_fn_type_stack;
 } Context;
 
 // helpers
@@ -2079,12 +2079,23 @@ Ast *parse_ref_nested(Context *cnt, Ast *prev)
     return ref;
 }
 
+static INLINE void set_polymorph(Context *cnt)
+{
+    TSmallArray_AstPtr *stack = &cnt->current_fn_type_stack;
+    for (usize i = stack->size; i-- > 0;) {
+        Ast *fn_type = stack->data[i];
+        BL_ASSERT(fn_type && fn_type->kind == AST_TYPE_FN);
+        if (fn_type->data.type_fn.is_polymorph) return;
+        fn_type->data.type_fn.is_polymorph = true;
+    }
+}
+
 Ast *parse_type_polymorph(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_QUESTION);
     if (!tok_begin) return NULL;
 
-    if (!cnt->current_fn_type) {
+    if (cnt->current_fn_type_stack.size == 0) {
         PARSE_ERROR(ERR_INVALID_ARG_TYPE,
                     tok_begin,
                     BUILDER_CUR_WORD,
@@ -2092,9 +2103,7 @@ Ast *parse_type_polymorph(Context *cnt)
         tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
     }
-    BL_ASSERT(cnt->current_fn_type->kind == AST_TYPE_FN);
-    cnt->current_fn_type->data.type_fn.is_polymorph = true;
-
+    set_polymorph(cnt);
     Ast *ident = parse_ident(cnt);
     if (!ident) {
         Token *tok_err = tokens_peek(cnt->tokens);
@@ -2287,8 +2296,7 @@ Ast *parse_type_fn(Context *cnt, bool named_args)
     // parse arg types
     bool rq = false;
     Ast *tmp;
-    Ast *prev_fn_type    = cnt->current_fn_type;
-    cnt->current_fn_type = fn;
+    tsa_push_AstPtr(&cnt->current_fn_type_stack, fn);
 NEXT:
     tmp = parse_decl_arg(cnt, named_args);
     if (tmp) {
@@ -2304,7 +2312,7 @@ NEXT:
         if (tokens_peek_2nd(cnt->tokens)->sym == SYM_RBLOCK) {
             PARSE_ERROR(
                 ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected type after comma ','.");
-            cnt->current_fn_type = prev_fn_type;
+            tsa_pop_AstPtr(&cnt->current_fn_type_stack);
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn, SCOPE_GET(cnt));
         }
     }
@@ -2316,11 +2324,11 @@ NEXT:
                     BUILDER_CUR_WORD,
                     "Expected end of argument type list ')' or another argument separated "
                     "by comma.");
-        cnt->current_fn_type = prev_fn_type;
+        tsa_pop_AstPtr(&cnt->current_fn_type_stack);
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn, SCOPE_GET(cnt));
     }
     fn->data.type_fn.ret_type = parse_type_fn_return(cnt);
-    cnt->current_fn_type      = prev_fn_type;
+    tsa_pop_AstPtr(&cnt->current_fn_type_stack);
     return fn;
 }
 
@@ -2768,6 +2776,7 @@ void parser_run(Assembly *assembly, Unit *unit)
 
     tsa_init(&cnt._decl_stack);
     tsa_init(&cnt._scope_stack);
+    tsa_init(&cnt.current_fn_type_stack);
 
     SCOPE_PUSH(&cnt, assembly->gscope);
 
@@ -2780,5 +2789,6 @@ void parser_run(Assembly *assembly, Unit *unit)
 
     tsa_terminate(&cnt._decl_stack);
     tsa_terminate(&cnt._scope_stack);
+    tsa_terminate(&cnt.current_fn_type_stack);
     RETURN_END_ZONE();
 }
