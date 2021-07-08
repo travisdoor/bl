@@ -816,7 +816,7 @@ static void       rtti_gen_fn_slice(Context *cnt, VMStackPtr dest, TSmallArray_T
 static MirVar *   rtti_gen_fn_group(Context *cnt, MirType *type);
 
 // INLINES
-#define REPORT_ERROR(instr, e, loc, cursor, format, ...)                                           \
+#define FULL_ERROR_REPORT(instr, e, loc, cursor, format, ...)                                      \
     {                                                                                              \
         builder_msg(BUILDER_MSG_ERROR, (e), (loc), (cursor), (format), ##__VA_ARGS__);             \
         _report_poly((MirInstr *)(instr));                                                         \
@@ -1040,16 +1040,24 @@ static INLINE void _report_poly(MirInstr *instr)
     if (!instr) return;
     MirFn *owner_fn = instr_owner_fn(instr);
     if (!owner_fn) return;
-    const char *info =
-        owner_fn->debug_poly_replacement ? owner_fn->debug_poly_replacement->data : "(unknown)";
-    builder_msg(BUILDER_MSG_NOTE,
-                0,
-                owner_fn->decl_node->location,
-                BUILDER_CUR_WORD,
-                "In polymorph function.\n\n%s",
-                info);
     if (!owner_fn->first_poly_call_node) return;
     if (!owner_fn->first_poly_call_node->location) return;
+    const char *info =
+        owner_fn->debug_poly_replacement ? owner_fn->debug_poly_replacement->data : NULL;
+    if (info) {
+        builder_msg(BUILDER_MSG_NOTE,
+                    0,
+                    owner_fn->decl_node->location,
+                    BUILDER_CUR_WORD,
+                    "In polymorph function, with substitution: %s",
+                    info);
+    } else {
+        builder_msg(BUILDER_MSG_NOTE,
+                    0,
+                    owner_fn->decl_node->location,
+                    BUILDER_CUR_WORD,
+                    "In polymorph function.");
+    }
     builder_msg(BUILDER_MSG_NOTE,
                 0,
                 owner_fn->first_poly_call_node->location,
@@ -1224,7 +1232,8 @@ static INLINE void set_current_block(Context *cnt, MirInstrBlock *block)
     cnt->ast.current_block = block;
 }
 
-static INLINE void error_types(MirType *from, MirType *to, Ast *loc, const char *msg)
+static INLINE void
+error_types(MirInstr *instr, MirType *from, MirType *to, Ast *loc, const char *msg)
 {
     BL_ASSERT(from && to);
     if (!msg) msg = "No implicit cast for type '%s' and '%s'.";
@@ -1234,13 +1243,13 @@ static INLINE void error_types(MirType *from, MirType *to, Ast *loc, const char 
     mir_type_to_str(tmp_from, 256, from, true);
     mir_type_to_str(tmp_to, 256, to, true);
 
-    builder_msg(BUILDER_MSG_ERROR,
-                ERR_INVALID_TYPE,
-                loc ? loc->location : NULL,
-                BUILDER_CUR_WORD,
-                msg,
-                tmp_from,
-                tmp_to);
+    FULL_ERROR_REPORT(instr,
+                      ERR_INVALID_TYPE,
+                      loc ? loc->location : NULL,
+                      BUILDER_CUR_WORD,
+                      msg,
+                      tmp_from,
+                      tmp_to);
 }
 
 static INLINE void commit_fn(Context *cnt, MirFn *fn)
@@ -2441,8 +2450,7 @@ void type_init_llvm_struct(Context *cnt, MirType *type)
 
     const bool  is_packed = type->data.strct.is_packed;
     const bool  is_union  = type->data.strct.is_union;
-    const usize memc      = members->size;
-    BL_ASSERT(memc > 0);
+    BL_ASSERT(members->size > 0);
 
     TSmallArray_LLVMType llvm_members;
     tsa_init(&llvm_members);
@@ -4867,11 +4875,11 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
     }
 
     if (target_type->kind != MIR_TYPE_PTR) {
-        REPORT_ERROR(member_ptr,
-                     ERR_INVALID_TYPE,
-                     target_ptr->node->location,
-                     BUILDER_CUR_WORD,
-                     "Expected structure type.");
+        FULL_ERROR_REPORT(member_ptr,
+                          ERR_INVALID_TYPE,
+                          target_ptr->node->location,
+                          BUILDER_CUR_WORD,
+                          "Expected structure type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -5029,11 +5037,11 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
 
     // Invalid
 INVALID:
-    REPORT_ERROR(member_ptr,
-                 ERR_INVALID_TYPE,
-                 target_ptr->node->location,
-                 BUILDER_CUR_WORD,
-                 "Expected structure or enumerator type.");
+    FULL_ERROR_REPORT(member_ptr,
+                      ERR_INVALID_TYPE,
+                      target_ptr->node->location,
+                      BUILDER_CUR_WORD,
+                      "Expected structure or enumerator type.");
     RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
 }
 
@@ -5118,7 +5126,8 @@ AnalyzeResult analyze_instr_cast(Context *cnt, MirInstrCast *cast, bool analyze_
 
     cast->op = get_cast_op(expr_type, dest_type);
     if (cast->op == MIR_CAST_INVALID) {
-        error_types(expr_type, dest_type, cast->base.node, "Invalid cast from '%s' to '%s'.");
+        error_types(
+            &cast->base, expr_type, dest_type, cast->base.node, "Invalid cast from '%s' to '%s'.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -5441,7 +5450,8 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
             if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(result);
 
             if (!type_cmp(fn_type, user_fn_type)) {
-                error_types(fn_type, user_fn_type, fn_proto->user_type->node, NULL);
+                error_types(
+                    &fn_proto->base, fn_type, user_fn_type, fn_proto->user_type->node, NULL);
             }
         }
 
@@ -6659,8 +6669,11 @@ AnalyzeResult analyze_instr_binop(Context *cnt, MirInstrBinop *binop)
     const bool rhs_valid = is_type_valid_for_binop(rhs->value.type, binop->op);
 
     if (!(lhs_valid && rhs_valid)) {
-        error_types(
-            lhs->value.type, rhs->value.type, binop->base.node, "Invalid operation for %s type.");
+        error_types(&binop->base,
+                    lhs->value.type,
+                    rhs->value.type,
+                    binop->base.node,
+                    "Invalid operation for %s type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -7231,7 +7244,7 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
                 char type_name2[256];
                 mir_type_to_str(type_name1, 256, poly_type, true);
                 mir_type_to_str(type_name2, 256, matching_type, true);
-                tstring_appendf(debug_replacement_str, "[%s = %s]\n", type_name1, type_name2);
+                tstring_appendf(debug_replacement_str, "%s = %s; ", type_name1, type_name2);
 
                 tsa_push_TypePtr(queue, matching_type);
             }
@@ -7639,9 +7652,6 @@ AnalyzeResult analyze_instr_block(Context *cnt, MirInstrBlock *block)
         RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
     }
 
-    MirInstrFnProto *fn_proto = (MirInstrFnProto *)fn->prototype;
-    BL_ASSERT(fn_proto);
-
     block->base.is_unreachable = block->base.ref_count == 0;
     if (!fn->first_unreachable_loc && block->base.is_unreachable && block->entry_instr &&
         block->entry_instr->node) {
@@ -7932,7 +7942,7 @@ ANALYZE_STAGE_FN(implicit_cast)
 
 ANALYZE_STAGE_FN(report_type_mismatch)
 {
-    error_types((*input)->value.type, slot_type, (*input)->node, NULL);
+    error_types(*input, (*input)->value.type, slot_type, (*input)->node, NULL);
     return ANALYZE_STAGE_FAILED;
 }
 

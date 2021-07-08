@@ -12,89 +12,79 @@ main :: fn () s32 {
 #private
 test_basic_inserting_s32 :: fn () #test {
     arr: [..]s32;
-    defer array_terminate(arr);
+    defer array_terminate_2(&arr);
             
     loop i := 0; i < 1000; i += 1 {
-        array_push(arr, i);
+        array_push_2(&arr, i);
     }
 
     loop i := 0; i < arr.len; i += 1 {
-        assert(arr[i] == i);
+        test_eq(arr[i], i);
     }
 }
 
 test_basic_inserting_bool :: fn () #test {
     arr: [..]bool;
-    defer array_terminate(arr);
+    defer array_terminate_2(&arr);
             
     loop i := 0; i < 1000; i += 1 {
-        array_push(arr, true);
+        array_push_2(&arr, true);
     }
 
     loop i := 0; i < arr.len; i += 1 {
-        assert(arr[i] == true);
+        test_true(arr[i]);
     }
 }
 
 test_basic_inserting_string :: fn () #test {
     arr: [..]string;
-    defer array_terminate(arr);
-            
+    defer array_terminate_2(&arr);
     loop i := 0; i < 1000; i += 1 {
-        array_push(arr, "Hello!!!");
+        array_push_2(&arr, "Hello!!!");
     }
-
     loop i := 0; i < arr.len; i += 1 {
-        assert(arr[i].len == 8);
+        test_eq(arr[i].len, 8);
     }
 }
 
 test_reserve :: fn () #test {
     arr: [..]s32;
-    defer array_terminate(arr);
+    defer array_terminate_2(&arr);
             
-    array_reserve(arr, 1000);
-    assert(arr.len == 0);
-    assert(arr.ptr != null);
-    assert(arr.allocated == 1000);
+    array_reserve_2(&arr, 1000);
+    test_eq(arr.len, 0);
+    test_not_null(arr.ptr);
+    test_eq(arr.allocated, 1000);
 }
 
 test_clear :: fn () #test {
     arr: [..]s32;
-    defer array_terminate(arr);
-            
+    defer array_terminate_2(&arr);
     loop i := 0; i < 1000; i += 1 {
-        array_push(arr, i);
+        array_push_2(&arr, i);
     }
-
-    assert(arr.len == 1000);
-
-    array_clear(arr);
-
-    assert(arr.len == 0);
+    test_eq(arr.len, 1000);
+    array_clear_2(&arr);
+    test_eq(arr.len, 0);
 }
 
 test_erase :: fn () #test {
     arr: [..]s32;
-    defer array_terminate(arr);
-            
+    defer array_terminate_2(&arr);
     loop i := 0; i < 1000; i += 1 {
-        array_push(arr, i);
+        array_push_2(&arr, i);
     }
-
-    assert(arr.len == 1000);
-
+    test_eq(arr.len, 1000);
     loop arr.len > 0 {
-        array_erase(arr, 0);
+        array_erase_2(&arr, 0);
     }
-
-    assert(arr.len == 0);
+    test_eq(arr.len, 0);
 }
 
 test_cast_to_slice :: fn () #test {
     foo :: fn (sl: []s32) {
         loop i := 0; i < sl.len; i += 1 {
-            assert(sl[i] == i);
+            test_eq(sl[i], i);
         }
     };
 
@@ -104,25 +94,23 @@ test_cast_to_slice :: fn () #test {
     };
 
     arr: [..]s32;
-    defer array_terminate(arr);
+    defer array_terminate_2(&arr);
 
     loop i := 0; i < 1000; i += 1 {
-        array_push(arr, i);
+        array_push_2(&arr, i);
     }
 
     {
         sl: []s32 = arr;
-
         loop i := 0; i < sl.len; i += 1 {
-            assert(sl[i] == i);
+            test_eq(sl[i], i);
         }
     }
 
     {
         sl : []s32 : arr;
-
         loop i := 0; i < sl.len; i += 1 {
-            assert(sl[i] == i);
+            test_eq(sl[i], i);
         }
     }
 
@@ -153,16 +141,16 @@ test_custom_allocator :: fn () #test {
     free_count = 0;
 
     arr: [..]s32;
-    array_init(arr, &test_allocator);
+    array_init_2(&arr, &test_allocator);
             
     loop i := 0; i < 1000; i += 1 {
-        array_push(arr, i);
+        array_push_2(&arr, i);
     }
 
     loop i := 0; i < arr.len; i += 1 {
-        assert(arr[i] == i);
+        test_eq(arr[i], i);
     }
-    array_terminate(arr);
+    array_terminate_2(&arr);
 
     test_eq(alloc_count, 6);
     test_eq(alloc_count, free_count);

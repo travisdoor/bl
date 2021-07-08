@@ -126,14 +126,14 @@ test_false :: fn (v: bool, loc := #call_location) {
 }
 
 /// Test whether `ptr` pointer value is `null`.
-test_null :: fn (ptr: *u8, loc := #call_location) {
+test_null :: fn (ptr: *?T, loc := #call_location) {
     if ptr == null { return; }
     print_err("Pointer is expected to be null.");
     assert(false, loc);
 }
 
 /// Test whether `ptr` pointer value is not `null`.
-test_not_null :: fn (ptr: *u8, loc := #call_location) {
+test_not_null :: fn (ptr: *?T, loc := #call_location) {
     if ptr != null { return; }
     print_err("Pointer is expected not to be null.");
     assert(false, loc);

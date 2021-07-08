@@ -82,6 +82,9 @@ group :: fn {
     fn (s: ?T) { print("poly = %\n", s); };
 };
 
+milan :: fn (a: ?T) {
+    i: s8 = a * a;
+}
 
 main :: fn () s32 {
     n1 : s64 = 10;
@@ -149,6 +152,10 @@ main :: fn () s32 {
     group("hello");
     group(10);
 
+
+    arr2: [..]s32;
+    array_push_2(&arr2, "Hello");
+            
     return 0;
 }
 
