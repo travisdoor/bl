@@ -22,17 +22,14 @@ test_multiline_str_literal :: fn () #test {
 
 test_strs_init1 :: fn () #test {
     s1 := String.new();
-    assert(s1.ptr != null);
-    assert(s1.len == 0);
-
+    test_not_null(s1.ptr, null);
+    test_eq(s1.len, 0);
     String.append(&s1, "foo");
-    assert(String.compare("foo", s1));
-
+    test_eq("foo", s1);
     String.append(&s1, 12);
-    assert(String.compare("foo12", s1));
-
+    test_eq("foo12", s1);
     String.append(&s1, true);
-    assert(String.compare("foo12true", s1));
+    test_eq("foo12true", s1);
 };
 
 test_strs_init2 :: fn () #test {
@@ -71,27 +68,27 @@ test_str_split_by_last :: fn () #test {
     rhs: string;
 
     if String.split_by_last("1234/1234", '/', &lhs, &rhs) {
-        assert(lhs.len == 4);
-        assert(rhs.len == 4);
+        test_eq(lhs.len, 4);
+        test_eq(rhs.len, 4);
     }
 
     if String.split_by_last("/12341234", '/', &lhs, &rhs) {
-        assert(lhs.len == 0);
-        assert(rhs.len == 8);
+        test_eq(lhs.len, 0);
+        test_eq(rhs.len, 8);
     }
 
     if String.split_by_last("12341234/", '/', &lhs, &rhs) {
-        assert(lhs.len == 8);
-        assert(rhs.len == 0);
+        test_eq(lhs.len, 8);
+        test_eq(rhs.len, 0);
     }
 
     if String.split_by_last("/", '/', &lhs, &rhs) {
-        assert(lhs.len == 0);
-        assert(rhs.len == 0);
+        test_eq(lhs.len, 0);
+        test_eq(rhs.len, 0);
     }
 
-    assert(!String.split_by_last("12341234", '/', &lhs, &rhs));
-    assert(!String.split_by_last("", '/', &lhs, &rhs));
+    test_false(String.split_by_last("12341234", '/', &lhs, &rhs));
+    test_false(String.split_by_last("", '/', &lhs, &rhs));
 }
 
 test_str_split_by_first :: fn () #test {
@@ -99,27 +96,27 @@ test_str_split_by_first :: fn () #test {
     rhs: string;
 
     if String.split_by_first("1234/1234", '/', &lhs, &rhs) {
-        assert(lhs.len == 4);
-        assert(rhs.len == 4);
+        test_eq(lhs.len, 4);
+        test_eq(rhs.len, 4);
     }
 
     if String.split_by_first("/12341234", '/', &lhs, &rhs) {
-        assert(lhs.len == 0);
-        assert(rhs.len == 8);
+        test_eq(lhs.len, 0);
+        test_eq(rhs.len, 8);
     }
 
     if String.split_by_first("12341234/", '/', &lhs, &rhs) {
-        assert(lhs.len == 8);
-        assert(rhs.len == 0);
+        test_eq(lhs.len, 8);
+        test_eq(rhs.len, 0);
     }
 
     if String.split_by_first("/", '/', &lhs, &rhs) {
-        assert(lhs.len == 0);
-        assert(rhs.len == 0);
+        test_eq(lhs.len, 0);
+        test_eq(rhs.len, 0);
     }
 
-    assert(!String.split_by_first("12341234", '/', &lhs, &rhs));
-    assert(!String.split_by_first("", '/', &lhs, &rhs));
+    test_false(String.split_by_first("12341234", '/', &lhs, &rhs));
+    test_false(String.split_by_first("", '/', &lhs, &rhs));
 }
 
 test_str_compare1 :: fn () #test {
@@ -269,7 +266,7 @@ test_str_count :: fn () #test {
 
 test_str_split_by1 :: fn () #test {
     s1 :: String.split_by("this,is,cool,string", ',');
-    defer slice_terminate(s1);
+    defer slice_terminate(&s1);
     test_eq(s1.len, 4);
     test_eq(s1[0], "this");
     test_eq(s1[1], "is");
@@ -279,7 +276,7 @@ test_str_split_by1 :: fn () #test {
 
 test_str_split_by2 :: fn () #test {
     s1 :: String.split_by(",", ',');
-    defer slice_terminate(s1);
+    defer slice_terminate(&s1);
     test_eq(s1.len, 2);
     test_eq(s1[0], "");
     test_eq(s1[1], "");
@@ -287,7 +284,7 @@ test_str_split_by2 :: fn () #test {
 
 test_str_split_by3 :: fn () #test {
     s1 :: String.split_by(",,,", ',');
-    defer slice_terminate(s1);
+    defer slice_terminate(&s1);
     test_eq(s1.len, 4);
     test_eq(s1[0], "");
     test_eq(s1[1], "");
@@ -297,21 +294,21 @@ test_str_split_by3 :: fn () #test {
 
 test_str_split_by4 :: fn () #test {
     s1 :: String.split_by("abc", ':');
-    defer slice_terminate(s1);
+    defer slice_terminate(&s1);
     test_eq(s1.len, 1);
     test_eq(s1[0], "abc");
 }
 
 test_str_split_by5 :: fn () #test {
     s1 :: String.split_by("", ':');
-    defer slice_terminate(s1);
+    defer slice_terminate(&s1);
     test_eq(s1.len, 1);
     test_eq(s1[0], "");
 }
 
 test_str_split_by6 :: fn () #test {
     s1 :: String.split_by("d,d", ',');
-    defer slice_terminate(s1);
+    defer slice_terminate(&s1);
     test_eq(s1.len, 2);
     test_eq(s1[0], "d");
     test_eq(s1[1], "d");

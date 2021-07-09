@@ -44,7 +44,7 @@ copy :: fn (src: string, dest: string, override: bool) Error {
     defer close(file_src);
     if !is_ok(err1) { return err1; }
     tmp, err2 :: Fs.read_slice(file_src);
-    defer slice_terminate(tmp);
+    defer slice_terminate(&tmp);
     if !is_ok(err2) { return err2; }
     file_dest, err3:: open(dest, Fs.OpenMode.Write, Fs.OpenMode.Create);
     defer close(file_dest);
@@ -135,7 +135,7 @@ dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error
     defer _rewinddir(dir);
 
     buf: Fs.InfoList;
-    slice_init(buf, fc);
+    slice_init(&buf, fc);
     if fc == 0 { return buf, ok(); }
 
     buf.len = 0;

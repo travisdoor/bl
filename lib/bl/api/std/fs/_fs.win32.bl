@@ -153,12 +153,12 @@ dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error
         return invalid, error(ec, "Cannot list directory '%': %.", dirpath, estr);
     }
     buf: Fs.InfoList;
-    slice_init(buf, fc);
+    slice_init(&buf, fc);
     if fc == 0 { return buf, ok(); }
 
     h_find = Win32.FindFirstFile(auto tmp.ptr, &ffd);
     if h_find == Win32.INVALID_HANDLE_VALUE { 
-        slice_terminate(buf);
+        slice_terminate(&buf);
         ec, estr :: os_get_last_error();
         return invalid, error(ec, "Cannot list directory '%': %.", dirpath, estr);
     }

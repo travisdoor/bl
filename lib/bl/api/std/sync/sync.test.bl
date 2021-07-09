@@ -23,14 +23,14 @@ worker :: fn (_: *u8) s32 {
     defer Sync.unlock(&_mutex);
 
     loop i := 0; i < DATA_COUNT; i += 1 {
-        array_push(_data, i);
+        array_push(&_data, i);
     }
     return 0;
 }
 
 mutex_test_1 :: fn () #test {
-    array_init(_data);
-    defer array_terminate(_data);
+    array_init(&_data);
+    defer array_terminate(&_data);
     Sync.init(&_mutex);
     defer Sync.terminate(&_mutex);
     t: [THREAD_COUNT]Thread.Handle;

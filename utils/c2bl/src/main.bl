@@ -186,8 +186,8 @@ process_file :: fn (in_filepath: string) Error {
     Fs.write_fmt(ctx.out, "// Generated from '%'.\n// c2bl version: %\n", ctx.filename, VERSION);    
     clang_visitChildren(cursor, &visitor, auto &ctx);
     Fs.close(out_file);
-    array_terminate(ctx.type_cache);
-    array_terminate(ctx.sym_cache);
+    array_terminate(&ctx.type_cache);
+    array_terminate(&ctx.sym_cache);
 
     if _args.check_syntax {
         cmd :: sprint("blc -silent -syntax-only ", out_filepath);
@@ -484,7 +484,7 @@ is_new_type :: fn (ctx: *Ctx, type: CXType) bool {
 }
 
 add_cached_type :: fn (ctx: *Ctx, type: CXType) {
-    array_push(ctx.type_cache, type);
+    array_push(&ctx.type_cache, type);
 }
 
 is_new_sym :: fn (ctx: *Ctx, sym: string) bool {
@@ -498,7 +498,7 @@ is_new_sym :: fn (ctx: *Ctx, sym: string) bool {
 
 add_cached_sym :: fn (ctx: *Ctx, sym: string) {
     hash :: String.hash(sym);
-    array_push(ctx.sym_cache, hash);
+    array_push(&ctx.sym_cache, hash);
 }
 
 error_cursor :: fn (ctx: *Ctx, c: CXCursor, fmt: string, args: ...) {

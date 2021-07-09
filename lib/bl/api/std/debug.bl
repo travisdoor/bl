@@ -126,7 +126,7 @@ _print_log_default :: fn (kind: PrintLogKind, file: string, line: s32, format: s
 ///
 /// .. warning:: Every `measure_elapsed_ms_begin` must have corresponding :ref:`measure_elapsed_ms_end` call.
 measure_elapsed_ms_begin :: fn () #inline {
-    array_push(_elapsed_ms_stack, os_tick_ms());
+    array_push(&_elapsed_ms_stack, os_tick_ms());
 }
 
 /// Pop the last start time from the runtime measurement queue and log the result time difference when 
@@ -138,7 +138,7 @@ measure_elapsed_ms_end :: fn (name := String.empty) f64 #inline {
     _elapsed_ms_stack.len -= 1;
     elapsed_ms :: os_tick_ms() - start_ms;
     if !String.is_empty(name) { print_log("% took %ms.\n", name, elapsed_ms); }
-    if index == 0 { array_terminate(_elapsed_ms_stack); }
+    if index == 0 { array_terminate(&_elapsed_ms_stack); }
     return elapsed_ms;
 }
 

@@ -4,12 +4,12 @@ main :: fn () s32 {
     my_slice: []s32;
 
     // Use of the 'slice_init' function to allocate memory block for 10 numbers.
-    slice_init(my_slice, 10);
+    slice_init(&my_slice, 10);
 
     // Release memory allocated by 'slice_init' when it's no longer needed. Defer
     // statement will execute 'slice_terminate' function at the end of current 
     // scope.
-    defer slice_terminate(my_slice);
+    defer slice_terminate(&my_slice);
 
 
     // Len is now set to 10.

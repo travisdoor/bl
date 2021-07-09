@@ -43,7 +43,7 @@ new :: fn (help_text := String.empty) Parser {
     parser := cast(*ParserImpl) alloc(sizeof(ParserImpl));
     parser.pad = 0;
     parser.help_text = String.new(help_text);
-    array_init(parser.entries);
+    array_init(&parser.entries);
 
     add(auto parser,
         "-h",
@@ -64,7 +64,7 @@ delete :: fn (_parser: Parser) {
     loop i := 0; i < parser.entries.len; i += 1 {
         entry_delete(&parser.entries[i]);
     }
-    array_terminate(parser.entries);
+    array_terminate(&parser.entries);
     String.delete(parser.help_text);
     free(auto parser);
 }
@@ -145,7 +145,7 @@ add :: fn (
     entry.long = String.new(long);
     entry.help = String.new(help);
     entry.handler = handler;
-    array_push(parser.entries, entry);
+    array_push(&parser.entries, entry);
 
     // '  short, long '
     pad :: 2 + short.len + 2 + long.len + 1;

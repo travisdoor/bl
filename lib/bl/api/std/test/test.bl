@@ -215,15 +215,15 @@ test_run :: fn () s32 {
     _ci = 0;
 
     // setup cases
-    array_init(_queue);
-    array_reserve(_queue, cases.len);
-    defer array_terminate(_queue);
+    array_init(&_queue);
+    array_reserve(&_queue, cases.len);
+    defer array_terminate(&_queue);
 
     print("\nTesting start\n");
     print("%\n", TEXT_LINE);
 
     loop i := 0; i < cases.len; i += 1 {
-        array_push(_queue, {:TestRun: &cases[i], false, 0.});
+        array_push(&_queue, {:TestRun: &cases[i], false, 0.});
     }
 
     loop _ci < _queue.len {

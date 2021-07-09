@@ -403,7 +403,7 @@ erase :: fn (str: *string, index: s32) bool {
 split_by :: fn (str: string, delimiter: u8) []string {
     count :: count_of(str, delimiter) + 1;
     ret: []string;
-    slice_init(ret, count);
+    slice_init(&ret, count);
     ri: s32;
     lhs: string;
     rhs: string;

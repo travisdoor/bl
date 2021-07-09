@@ -242,7 +242,7 @@ get_expected_error :: fn (filepath: string, out_err: *s32) bool {
     if !is_ok(err2) { print_err("%", err2); return false; }
     
     tmp :: String.split_by(content, '@');
-    defer slice_terminate(tmp);
+    defer slice_terminate(&tmp);
     if tmp.len != 3 { return false; }
     err :: strtoerr(tmp[1]);
     if err == -1 { return false; }

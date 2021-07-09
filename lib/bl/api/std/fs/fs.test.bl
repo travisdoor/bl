@@ -199,7 +199,7 @@ fs_read_slice_test :: fn () #test {
     defer Fs.close(file);
     data, err2 := Fs.read_slice(file);
     test_ok(err2);
-    defer slice_terminate(data);
+    defer slice_terminate(&data);
     test_not_null(data.ptr);
     test_neq(data.len, 0);
 }

@@ -12,12 +12,10 @@ main :: fn () s32 {
 #private
 test_basic_inserting_s32 :: fn () #test {
     arr: [..]s32;
-    defer array_terminate_2(&arr);
-            
+    defer array_terminate(&arr);
     loop i := 0; i < 1000; i += 1 {
-        array_push_2(&arr, i);
+        array_push(&arr, i);
     }
-
     loop i := 0; i < arr.len; i += 1 {
         test_eq(arr[i], i);
     }
@@ -25,12 +23,10 @@ test_basic_inserting_s32 :: fn () #test {
 
 test_basic_inserting_bool :: fn () #test {
     arr: [..]bool;
-    defer array_terminate_2(&arr);
-            
+    defer array_terminate(&arr);
     loop i := 0; i < 1000; i += 1 {
-        array_push_2(&arr, true);
+        array_push(&arr, true);
     }
-
     loop i := 0; i < arr.len; i += 1 {
         test_true(arr[i]);
     }
@@ -38,9 +34,9 @@ test_basic_inserting_bool :: fn () #test {
 
 test_basic_inserting_string :: fn () #test {
     arr: [..]string;
-    defer array_terminate_2(&arr);
+    defer array_terminate(&arr);
     loop i := 0; i < 1000; i += 1 {
-        array_push_2(&arr, "Hello!!!");
+        array_push(&arr, "Hello!!!");
     }
     loop i := 0; i < arr.len; i += 1 {
         test_eq(arr[i].len, 8);
@@ -49,9 +45,9 @@ test_basic_inserting_string :: fn () #test {
 
 test_reserve :: fn () #test {
     arr: [..]s32;
-    defer array_terminate_2(&arr);
+    defer array_terminate(&arr);
             
-    array_reserve_2(&arr, 1000);
+    array_reserve(&arr, 1000);
     test_eq(arr.len, 0);
     test_not_null(arr.ptr);
     test_eq(arr.allocated, 1000);
@@ -59,24 +55,24 @@ test_reserve :: fn () #test {
 
 test_clear :: fn () #test {
     arr: [..]s32;
-    defer array_terminate_2(&arr);
+    defer array_terminate(&arr);
     loop i := 0; i < 1000; i += 1 {
-        array_push_2(&arr, i);
+        array_push(&arr, i);
     }
     test_eq(arr.len, 1000);
-    array_clear_2(&arr);
+    array_clear(&arr);
     test_eq(arr.len, 0);
 }
 
 test_erase :: fn () #test {
     arr: [..]s32;
-    defer array_terminate_2(&arr);
+    defer array_terminate(&arr);
     loop i := 0; i < 1000; i += 1 {
-        array_push_2(&arr, i);
+        array_push(&arr, i);
     }
     test_eq(arr.len, 1000);
     loop arr.len > 0 {
-        array_erase_2(&arr, 0);
+        array_erase(&arr, 0);
     }
     test_eq(arr.len, 0);
 }
@@ -94,10 +90,10 @@ test_cast_to_slice :: fn () #test {
     };
 
     arr: [..]s32;
-    defer array_terminate_2(&arr);
+    defer array_terminate(&arr);
 
     loop i := 0; i < 1000; i += 1 {
-        array_push_2(&arr, i);
+        array_push(&arr, i);
     }
 
     {
@@ -141,17 +137,16 @@ test_custom_allocator :: fn () #test {
     free_count = 0;
 
     arr: [..]s32;
-    array_init_2(&arr, &test_allocator);
+    array_init(&arr, &test_allocator);
             
     loop i := 0; i < 1000; i += 1 {
-        array_push_2(&arr, i);
+        array_push(&arr, i);
     }
 
     loop i := 0; i < arr.len; i += 1 {
         test_eq(arr[i], i);
     }
-    array_terminate_2(&arr);
-
+    array_terminate(&arr);
     test_eq(alloc_count, 6);
     test_eq(alloc_count, free_count);
 }

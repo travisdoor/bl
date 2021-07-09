@@ -67,9 +67,9 @@ test_poly_sum_1 :: fn () #test {
 
 test_poly_sum_2 :: fn () #test {
     dyn: [..]s32;
-    defer array_terminate(dyn);
+    defer array_terminate(&dyn);
     loop i := 0; i < 10; i += 1 {
-        array_push(dyn, i);
+        array_push(&dyn, i);
     }
 
     test_eq(sum(dyn), 45);
@@ -77,8 +77,8 @@ test_poly_sum_2 :: fn () #test {
 
 test_poly_sum_3 :: fn () #test {
     slice: []s32;
-    slice_init(slice, 10);
-    defer slice_terminate(slice);
+    slice_init(&slice, 10);
+    defer slice_terminate(&slice);
     loop i := 0; i < slice.len; i += 1 {
         slice[i] = i;
     }    

@@ -8,7 +8,7 @@
 //! 
 //! File system module for manipulation with files and directories. 
 //! This module provides an abstraction over operating system APIs such as 
-//! creating files and directories, reading and writing, and scanning the filesystem.
+//! creating files and directories, reading and writing, and scanning the filesystem.
 
 #scope Fs
 
@@ -233,10 +233,10 @@ read_slice :: fn (handle: File) ([]u8, Error) {
     }
     buf: []u8;
     if size == 0 { return buf, ok(); }
-    slice_init(buf, auto size);
+    slice_init(&buf, auto size);
     read, err2 :: _FsImpl.read(handle, buf.ptr, auto size);
     if !is_ok(err2) {
-        slice_terminate(buf);
+        slice_terminate(&buf);
         return invalid, err2;                
     }
     buf.len = read;
@@ -308,7 +308,7 @@ dir_create_all :: fn (dirpath: string) Error {
     if String.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
     if _FsImpl.exist(dirpath) { return ok(); } 
     nodes :: String.split_by(dirpath, '/');
-    defer slice_terminate(nodes);
+    defer slice_terminate(&nodes);
     path :: String.new(auto dirpath.len);
     defer String.delete(path);
     loop i := 0; i < nodes.len; i += 1 {
@@ -386,7 +386,7 @@ info_list_delete :: fn (list: InfoList) #inline {
     loop i := 0; i < list.len; i += 1 {
         String.delete(list[i].name);
     }
-    slice_terminate(list);
+    slice_terminate(&list);
 }
 
 /// Checks whether `name` is valid file name on current platform.

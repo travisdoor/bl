@@ -2,35 +2,28 @@
 array_to_slice_initialization :: fn () #test {
     arr :: {:[10]s32: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     slice : []s32 = arr;
-
-    assert(arr.len == slice.len);
-
+    test_eq(arr.len, slice.len);
     loop i := 0; i < slice.len; i += 1 {
-        assert(arr[i] == slice[i]);
+        test_eq(arr[i], slice[i]);
     }
 }
 
 array_to_slice_initialization_constants :: fn () #test {
     arr :: {:[10]s32: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     slice :: arr;
-
-    assert(arr.len == slice.len);
-
+    test_eq(arr.len, slice.len);
     loop i := 0; i < slice.len; i += 1 {
-        assert(arr[i] == slice[i]);
+        test_eq(arr[i], slice[i]);
     }
 }
 
 array_to_slice_argument_cast :: fn () #test {
     arr :: {:[10]s32: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-
     foo :: fn (data: []s32) {
-        assert(data.len == 10);
-
+        test_eq(data.len, 10);
         loop i := 0; i < data.len; i += 1 {
-            assert(data[i] == i);
+            test_eq(data[i], i);
         }
     };
-
     foo(arr);
 }
