@@ -32,8 +32,6 @@ main :: fn () s32 {
     print("my_slice: %\n", my_slice);
 
 
-    
-
     // Array can be implicitly converted to slice, in such case no 'slice_init'
     // or 'slice_terminate' is needed. Actual data will stay in original array
     // location, slice in such case acts only like an 'interface' to the original
