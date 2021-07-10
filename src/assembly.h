@@ -172,6 +172,8 @@ typedef struct Assembly {
         f64 mir_s;
         f64 llvm_s;
         f64 linking_s;
+        f64 polymorph_s;
+        s64 polymorph_count;
     } stats;
 
     // DynCall/Lib data used for external method execution in compile time

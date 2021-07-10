@@ -114,6 +114,7 @@ static void doc_type_enum(Context *cnt, Ast *type);
 static void doc_type_struct(Context *cnt, Ast *type);
 static void doc_type_slice(Context *cnt, Ast *type);
 static void doc_type_vargs(Context *cnt, Ast *type);
+static void doc_type_poly(Context *cnt, Ast *type);
 static void doc_expr_lit_fn_group(Context *cnt, Ast *lit);
 
 void append_section(Context *cnt, const char *name, const char *content)
@@ -369,6 +370,12 @@ void doc_type_vargs(Context *cnt, Ast *type)
     doc(cnt, next_type);
 }
 
+void doc_type_poly(Context *cnt, Ast *type)
+{
+    Ast *ident = type->data.type_poly.ident;
+    fprintf(cnt->stream, "?%s", ident->data.ident.id.str);
+}
+
 void doc_expr_lit_fn_group(Context *cnt, Ast *lit)
 {
     TSmallArray_AstPtr *variants = lit->data.expr_fn_group.variants;
@@ -433,6 +440,9 @@ void doc(Context *cnt, Ast *node)
         break;
     case AST_TYPE_VARGS:
         doc_type_vargs(cnt, node);
+        break;
+    case AST_TYPE_POLY:
+        doc_type_poly(cnt, node);
         break;
     case AST_LOAD:
     case AST_PRIVATE:

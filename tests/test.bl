@@ -1,11 +1,11 @@
 #import "std/test"
 
-foo :: fn () #test {
-    ptr: *u8;
-    test_not_null(ptr);
-}
-
 main :: fn () s32 {
     return 0;
 }
+
+my_assert :: fn () {
+    print("hello!!!\n");
+}
+
 

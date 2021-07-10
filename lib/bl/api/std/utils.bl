@@ -36,7 +36,10 @@
 //! 
 //! Set of various utility functions.
 
-is_flag :: fn { is_flag_u64; is_flag_s64; }
+/// Checks whether `v` has set `flag`.
+is_flag :: fn (v: ?T, flag: T) bool #inline {
+    return (v & flag) == flag;
+}
 
 /// Converts zero terminated C style string to BL string. Result
 /// string shares original memory of `cstr`.
@@ -45,12 +48,12 @@ cstr_to_str :: fn (cstr: *u8) string #inline {
 };
 
 /// Produce right-shift of input `ptr` by count of `bytes`.
-ptr_shift_bytes :: fn (ptr: *u8, bytes: s64) *u8 #inline {
+ptr_shift_bytes :: fn (ptr: *?T, bytes: s64) *u8 #inline {
     return cast(*u8) (cast(s64) ptr + bytes);
 };
 
 /// Calculates pointer difference `a` - `b`.
-ptr_diff :: fn (a: *u8, b: *u8) s64 #inline {
+ptr_diff :: fn (a: *?T1, b: *?T2) s64 #inline {
     return (cast(s64) a) - (cast(s64) b); 
 }
 
@@ -68,13 +71,3 @@ env_set :: fn (var: string) #inline {
     c_putenv(auto var.ptr);
 }
 
-#private
-/// Checks whether `v` has set `flag`.
-is_flag_u64 :: fn (v: u64, flag: u64) bool #inline {
-    return (v & flag) == flag;
-};
-
-/// Checks whether `v` has set `flag`.
-is_flag_s64 :: fn (v: s64, flag: s64) bool #inline {
-    return (v & flag) == flag;
-};

@@ -95,8 +95,8 @@ TypeInfoInt :: struct #base TypeInfo #compiler {
 /// Detailed information about real types: `f32`, `f64`.
 TypeInfoReal :: struct #base TypeInfo  #compiler {
     /// Size of type in bits.
-    bit_count: s32 
-};
+    bit_count: s32;
+}
 
 /// Detailed information about function types.
 TypeInfoFn :: struct #base TypeInfo #compiler {

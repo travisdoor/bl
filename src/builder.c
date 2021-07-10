@@ -366,7 +366,8 @@ static void print_stats(Assembly *assembly)
         "Lexing & Parsing: %10.3f seconds    %3.0f%%\n"
         "MIR:              %10.3f seconds    %3.0f%%\n"
         "LLVM IR:          %10.3f seconds    %3.0f%%\n"
-        "Linking:          %10.3f seconds    %3.0f%%\n"
+        "Linking:          %10.3f seconds    %3.0f%%\n\n"
+        "Polymorph:        %10lld generated in %.3f seconds\n"
         "--------------------------------------------------------------------------------\n"
         "Total:            %10.3f seconds\n"
         "Lines:              %8d\n"
@@ -380,6 +381,8 @@ static void print_stats(Assembly *assembly)
         assembly->stats.llvm_s / total_s * 100.,
         assembly->stats.linking_s,
         assembly->stats.linking_s / total_s * 100.,
+        assembly->stats.polymorph_count,
+        assembly->stats.polymorph_s,
         total_s,
         builder.total_lines,
         ((f64)builder.total_lines) / total_s);
@@ -387,10 +390,7 @@ static void print_stats(Assembly *assembly)
 
 static void clear_stats(Assembly *assembly)
 {
-    assembly->stats.parsing_lexing_s = 0;
-    assembly->stats.mir_s            = 0;
-    assembly->stats.llvm_s           = 0;
-    assembly->stats.linking_s        = 0;
+    memset(&assembly->stats, 0, sizeof(assembly->stats));
 }
 
 static int compile(Assembly *assembly)

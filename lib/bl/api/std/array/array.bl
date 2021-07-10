@@ -6,20 +6,11 @@
 //! 
 //!     #import "std/array"
 //! 
-//! ::
-//! 
-//!     _Array :: struct #compiler {
-//!         len: s64;
-//!         ptr: *u8;
-//!         allocated: usize;
-//!         allocator: AllocFn;
-//!     }
-//! 
 //! Compiler builtin dynamic array.
 
 // @NOTE: Not direcly used internally, when layout of this structure is changed, internal
 // compiler representation must be modified too.
-_Array :: struct #compiler {
+_Array :: struct {
     len: s64;
     ptr: *u8;
     allocated: usize;

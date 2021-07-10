@@ -59,22 +59,22 @@ test_eq :: fn {
     fn (got: string, expected: string, loc := #call_location) {
         if String.compare(expected, got) { return; }
         print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
-        assert(false, loc);
+        stop(loc);
     };
     fn (got: f32, expected: f32, epsilon: f32 = Math.F32_EPSILON, loc := #call_location) {
         if Math.compare(got, expected, epsilon) { return; }
         print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
-        assert(false, loc);
+        stop(loc);
     };
     fn (got: f64, expected: f64, epsilon: f64 = Math.F64_EPSILON, loc := #call_location) {
         if Math.compare(got, expected, epsilon) { return; }
         print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
-        assert(false, loc);
+        stop(loc);
     };
     fn (got: ?T, expected: T, loc := #call_location) {
         if expected == got { return; }
         print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
-        assert(false, loc);
+        stop(loc);
     };
 }
 
@@ -92,22 +92,22 @@ test_neq :: fn {
     fn (got: string, not_expected: string, loc := #call_location) {
         if !String.compare(not_expected, got) { return; }
         print_err("\nExpected not to be '%'.", not_expected);
-        assert(false, loc);
+        stop(loc);
     };
     fn (got: f32, not_expected: f32, epsilon: f32 = Math.F32_EPSILON, loc := #call_location) {
         if !Math.compare(got, not_expected, epsilon) { return; }
         print_err("Expected not to be '%'.", not_expected);
-        assert(false, loc);
+        stop(loc);
     };
     fn (got: f64, not_expected: f64, epsilon: f64 = Math.F64_EPSILON, loc := #call_location) {
         if !Math.compare(got, not_expected, epsilon) { return; }
         print_err("Expected not to be '%'.", not_expected);
-        assert(false, loc);
+        stop(loc);
     };
     fn (got: ?T, expected: T, loc := #call_location) {
         if got != expected { return; }
         print_err("Expected '%' got '%'.", expected, got);
-        assert(false, loc);
+        stop(loc);
     };
 }
 
@@ -115,42 +115,42 @@ test_neq :: fn {
 test_true :: fn (v: bool, loc := #call_location) {
     if v { return; }
     print_err("Value expected to be true.");
-    assert(false, loc);
+    stop(loc);
 }
 
 /// Test whether `v` value is `false`.
 test_false :: fn (v: bool, loc := #call_location) {
     if !v { return; }
     print_err("Value expected to be false.");
-    assert(false, loc);
+    stop(loc);
 }
 
 /// Test whether `ptr` pointer value is `null`.
 test_null :: fn (ptr: *?T, loc := #call_location) {
     if ptr == null { return; }
     print_err("Pointer is expected to be null.");
-    assert(false, loc);
+    stop(loc);
 }
 
 /// Test whether `ptr` pointer value is not `null`.
 test_not_null :: fn (ptr: *?T, loc := #call_location) {
     if ptr != null { return; }
     print_err("Pointer is expected not to be null.");
-    assert(false, loc);
+    stop(loc);
 }
 
 /// Test whether `err` is OK.
 test_ok :: fn (err: Error, loc := #call_location) #inline {
     if is_ok(err) { return; }
     print_err("Expected to be OK not '%'.", err);
-    assert(false, loc);
+    stop(loc);
 }
 
 /// Test whether `err` is not OK.
 test_not_ok :: fn (err: Error, loc := #call_location) #inline {
     if !is_ok(err) { return; }
     print_err("Expected not to be OK not '%'.", err);
-    assert(false, loc);
+    stop(loc);
 }
 
 /// Test whether `got_err` code is `expected_code`.
@@ -169,7 +169,7 @@ test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) 
             "Expected error code: '%'\n"
             "Got:                 null.", expected_code);
     } 
-    assert(false, loc);
+    stop(loc);
 }
 
 /// Execute all registered test cases in current assembly. The `test_run` function
@@ -290,4 +290,9 @@ worker :: fn (args: *u8) s32 {
         print("[ PASS |      ] % (% ms)\n", _current.case.name, _current.runtime_ms);
     }
     return 0;
+}
+
+stop :: fn (loc: *CodeLocation) #inline {
+     _context.print_log_fn(PrintLogKind.Error, loc.file, loc.line, "Test failed!");   
+    unreachable;
 }

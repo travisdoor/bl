@@ -2448,8 +2448,8 @@ void type_init_llvm_struct(Context *cnt, MirType *type)
     TSmallArray_MemberPtr *members = type->data.strct.members;
     BL_ASSERT(members);
 
-    const bool  is_packed = type->data.strct.is_packed;
-    const bool  is_union  = type->data.strct.is_union;
+    const bool is_packed = type->data.strct.is_packed;
+    const bool is_union  = type->data.strct.is_union;
     BL_ASSERT(members->size > 0);
 
     TSmallArray_LLVMType llvm_members;
@@ -5195,6 +5195,15 @@ AnalyzeResult analyze_instr_type_info(Context *cnt, MirInstrTypeInfo *type_info)
                     "No type info available for scope type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
+    if (type_info->rtti_type->kind == MIR_TYPE_FN &&
+        IS_FLAG(type_info->rtti_type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_POLYMORPH)) {
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_INVALID_TYPE,
+                    type_info->expr->node->location,
+                    BUILDER_CUR_WORD,
+                    "No type info available for polymorph function recipe.");
+        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+    }
     rtti_gen(cnt, type_info->rtti_type);
     type_info->base.value.type = cnt->builtin_types->t_TypeInfo_ptr;
 
@@ -5605,6 +5614,15 @@ AnalyzeResult analyze_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
     if (IS_FLAG(fn->flags, FLAG_EXPORT)) {
         schedule_llvm_generation = true;
         ++fn->ref_count;
+        if (is_polymorph) {
+            builder_msg(BUILDER_MSG_ERROR,
+                        ERR_UNEXPECTED_DIRECTIVE,
+                        fn_proto->base.node->location,
+                        BUILDER_CUR_WORD,
+                        "Polymorph function cannot be exported.");
+
+            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        }
     }
 
     if (IS_FLAG(fn->flags, FLAG_ENTRY)) {
@@ -6947,94 +6965,10 @@ AnalyzeResult analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-static INLINE MirType *_check_buitin_array_type(MirInstr *arr)
-{
-    MirType *arr_type = arr->value.type;
-    if (is_load_needed(arr)) arr_type = mir_deref_type(arr_type);
-    if (arr_type->kind != MIR_TYPE_DYNARR) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    arr->node->location,
-                    BUILDER_CUR_WORD,
-                    "Expected dynamic array!");
-        return NULL;
-    }
-
-    MirType *expected_type = mir_get_struct_elem_type(arr_type, MIR_DYNARR_PTR_INDEX);
-    return mir_deref_type(expected_type);
-}
-
-static INLINE MirType *_check_buitin_slice_type(MirInstr *slice)
-{
-    MirType *slice_type = slice->value.type;
-    if (is_load_needed(slice)) slice_type = mir_deref_type(slice_type);
-    if (slice_type->kind != MIR_TYPE_SLICE) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    slice->node->location,
-                    BUILDER_CUR_WORD,
-                    "Expected slice!");
-        return NULL;
-    }
-
-    MirType *expected_type = mir_get_struct_elem_type(slice_type, MIR_SLICE_PTR_INDEX);
-    return mir_deref_type(expected_type);
-}
-
 AnalyzeResult analyze_builtin_call(Context UNUSED(*cnt), MirInstrCall *call)
 {
     ZONE();
-    MirType *             callee_type = call->callee->value.type;
-    TSmallArray_InstrPtr *args        = call->args;
-
-    const MirBuiltinIdKind id = callee_type->data.fn.builtin_id;
-    switch (id) {
-        // Array
-    case MIR_BUILTIN_ID_ARRAY_PUSH_FN: {
-        MirType *expected_type = _check_buitin_array_type(args->data[0]);
-        if (!expected_type) RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
-
-        MirInstr *v      = args->data[1];
-        MirType * v_type = v->value.type;
-        if (is_load_needed(v)) v_type = mir_deref_type(v_type);
-
-        if (!type_cmp(expected_type, v_type)) {
-            char expected_name[256];
-            mir_type_to_str(expected_name, 256, expected_type, true);
-
-            char got_name[256];
-            mir_type_to_str(got_name, 256, v_type, true);
-
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_TYPE,
-                        v->node->location,
-                        BUILDER_CUR_WORD,
-                        "Expected '%s' type, but got '%s'!",
-                        expected_name,
-                        got_name);
-        }
-        break;
-    }
-
-    case MIR_BUILTIN_ID_ARRAY_INIT_FN:
-    case MIR_BUILTIN_ID_ARRAY_RESERVE_FN:
-    case MIR_BUILTIN_ID_ARRAY_CLEAR_FN:
-    case MIR_BUILTIN_ID_ARRAY_ERASE_FN:
-    case MIR_BUILTIN_ID_ARRAY_TERMINATE_FN: {
-        if (!_check_buitin_array_type(args->data[0])) RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
-        break;
-    }
-        // Slice
-    case MIR_BUILTIN_ID_SLICE_INIT_FN:
-    case MIR_BUILTIN_ID_SLICE_TERMINATE_FN: {
-        if (!_check_buitin_slice_type(args->data[0])) RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
-        break;
-    }
-
-    default:
-        break;
-    }
-
+    // @CLEANUP: not used right now!
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
@@ -7290,6 +7224,7 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
         *out_fn_proto = (MirInstrFnProto *)instr_fn_proto;
 
         thtbl_insert(entries, replacement_hash, instr_fn_proto);
+        cnt->assembly->stats.polymorph_count += 1;
     } else {
         *out_fn_proto = (MirInstrFnProto *)thtbl_iter_peek_value(MirInstr *, iter);
     }
@@ -7429,9 +7364,11 @@ AnalyzeResult analyze_instr_call(Context *cnt, MirInstrCall *call)
         MirFn *fn = MIR_CEV_READ_AS(MirFn *, &call->callee->value);
         BL_MAGIC_ASSERT(fn);
         MirInstrFnProto *instr_replacement_fn_proto = NULL;
-        AnalyzeResult    state =
+        RUNTIME_MEASURE_BEGIN_S(poly);
+        AnalyzeResult state =
             generate_fn_poly(cnt, call->base.node, fn, call->args, &instr_replacement_fn_proto);
         if (state.state != ANALYZE_PASSED) RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        cnt->assembly->stats.polymorph_s += RUNTIME_MEASURE_END_S(poly);
         BL_ASSERT(instr_replacement_fn_proto);
 
         // Mutate callee instruction to direct declaration reference.

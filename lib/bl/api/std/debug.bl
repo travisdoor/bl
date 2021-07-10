@@ -55,7 +55,7 @@ print_err :: fn { print_err_e; print_err_msg; }
 
 /// Interrupt execution when `cond` is false. Assert use `_context.print_log_fn`
 /// to print out error message containing assert location in source code.
-assert :: fn (cond: bool, loc := #call_location) {
+assert :: fn (cond: bool, loc := #call_location) #compiler {
     if cond { return; }
     _context.print_log_fn(PrintLogKind.Assert, loc.file, loc.line, "Assertion failed!");
     unreachable;
