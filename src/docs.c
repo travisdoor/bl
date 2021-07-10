@@ -113,6 +113,7 @@ static void doc_type_fn(Context *cnt, Ast *type);
 static void doc_type_enum(Context *cnt, Ast *type);
 static void doc_type_struct(Context *cnt, Ast *type);
 static void doc_type_slice(Context *cnt, Ast *type);
+static void doc_type_dynarray(Context *cnt, Ast *type);
 static void doc_type_vargs(Context *cnt, Ast *type);
 static void doc_type_poly(Context *cnt, Ast *type);
 static void doc_expr_lit_fn_group(Context *cnt, Ast *lit);
@@ -343,6 +344,13 @@ void doc_type_slice(Context *cnt, Ast *type)
     doc(cnt, elem_type);
 }
 
+void doc_type_dynarray(Context *cnt, Ast *type)
+{
+    Ast *elem_type = type->data.type_dynarr.elem_type;
+    fprintf(cnt->stream, "[..]");
+    doc(cnt, elem_type);
+}
+
 void doc_ref(Context *cnt, Ast *ref)
 {
     Ast *ident           = ref->data.ref.ident;
@@ -437,6 +445,9 @@ void doc(Context *cnt, Ast *node)
         break;
     case AST_TYPE_SLICE:
         doc_type_slice(cnt, node);
+        break;
+    case AST_TYPE_DYNARR:
+        doc_type_dynarray(cnt, node);
         break;
     case AST_TYPE_VARGS:
         doc_type_vargs(cnt, node);
