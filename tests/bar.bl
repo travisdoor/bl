@@ -1,5 +1,0 @@
-#scope Bar
-
-scoped :: fn () {
-    print("%:%\n", #file, #line);
-}

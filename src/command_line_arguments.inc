@@ -33,6 +33,8 @@ typedef struct {
     _ARG(NO_LLVM, "", "-no-llvm", "Disable LLVM backend.")                                         \
     _ARG(NO_ANALYZE, "", "-no-analyze", "Disable analyze pass, only parse and exit.")              \
     _ARG(NO_COLOR, "", "-no-color", "Disable colored output.")                                     \
+    _ARG(ASSERT_ON, "", "-assert=on", "Enable assert.")                                            \
+    _ARG(ASSERT_OFF, "", "-assert=off", "Disable assert.")                                         \
     _ARG(SYNTAX_ONLY, "", "-syntax-only", "Check syntax and exit.")                                \
     _ARG(EMIT_LLVM, "", "-emit-llvm", "Write LLVM-IR to file.")                                    \
     _ARG(EMIT_MIR, "", "-emit-mir", "Write MIR to file.")                                          \

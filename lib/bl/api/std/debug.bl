@@ -55,6 +55,12 @@ print_err :: fn { print_err_e; print_err_msg; }
 
 /// Interrupt execution when `cond` is false. Assert use `_context.print_log_fn`
 /// to print out error message containing assert location in source code.
+///
+/// .. important:: All calls to the assert function are removed from release builds
+///                by default see :ref:`BuildMode` when :ref:`Target`.assert_mode is
+///                is not ``AlwaysEnabled``.
+///
+/// .. warning:: There is no argument validation in case the assert call is removed from compilation.
 assert :: fn (cond: bool, loc := #call_location) #compiler {
     if cond { return; }
     _context.print_log_fn(PrintLogKind.Assert, loc.file, loc.line, "Assertion failed!");

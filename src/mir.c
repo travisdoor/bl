@@ -578,6 +578,7 @@ static MirInstr *append_instr_const_bool(Context *cnt, Ast *node, bool val);
 static MirInstr *append_instr_const_string(Context *cnt, Ast *node, const char *str);
 static MirInstr *append_instr_const_char(Context *cnt, Ast *node, char c);
 static MirInstr *append_instr_const_null(Context *cnt, Ast *node);
+static MirInstr *append_instr_const_void(Context *cnt, Ast *node);
 static MirInstr *append_instr_ret(Context *cnt, Ast *node, MirInstr *value);
 static MirInstr *append_instr_store(Context *cnt, Ast *node, MirInstr *src, MirInstr *dest);
 static MirInstr *
@@ -865,10 +866,6 @@ static INLINE bool can_mutate_comptime_to_const(MirInstr *instr)
         return false;
     }
 }
-
-// @INCOMPLETE
-// @INCOMPLETE
-// @INCOMPLETE
 
 // Get struct base type if there is one.
 static INLINE MirType *get_base_type(const MirType *struct_type)
@@ -3822,9 +3819,7 @@ INLINE MirInstr *append_instr_const_char(Context *cnt, Ast *node, char c)
     tmp->value.is_comptime = true;
     tmp->value.type        = cnt->builtin_types->t_u8;
     tmp->value.addr_mode   = MIR_VAM_RVALUE;
-
     MIR_CEV_WRITE_AS(char, &tmp->value, c);
-
     append_current_block(cnt, tmp);
     return tmp;
 }
@@ -3835,9 +3830,18 @@ INLINE MirInstr *append_instr_const_null(Context *cnt, Ast *node)
     tmp->value.is_comptime = true;
     tmp->value.type        = create_type_null(cnt, cnt->builtin_types->t_u8_ptr);
     tmp->value.addr_mode   = MIR_VAM_RVALUE;
-
     MIR_CEV_WRITE_AS(void *, &tmp->value, NULL);
+    append_current_block(cnt, tmp);
+    return tmp;
+}
 
+INLINE MirInstr *append_instr_const_void(Context *cnt, Ast *node)
+{
+    MirInstr *tmp          = create_instr(cnt, MIR_INSTR_CONST, node);
+    tmp->value.is_comptime = true;
+    tmp->value.type        = cnt->builtin_types->t_void;
+    tmp->value.addr_mode   = MIR_VAM_RVALUE;
+    MIR_CEV_WRITE_AS(void *, &tmp->value, NULL);
     append_current_block(cnt, tmp);
     return tmp;
 }
@@ -4323,7 +4327,6 @@ AnalyzeResult analyze_instr_unroll(Context *cnt, MirInstrUnroll *unroll)
     MirInstr *src   = unroll->src;
     const s32 index = unroll->index;
     BL_ASSERT(src && "Missing unroll input!");
-    BL_ASSERT(src->kind == MIR_INSTR_CALL && "Unroll expects source to be CALL instruction!");
     BL_ASSERT(index >= 0);
     BL_ASSERT(src->value.type);
     MirType *src_type = src->value.type;
@@ -4337,6 +4340,8 @@ AnalyzeResult analyze_instr_unroll(Context *cnt, MirInstrUnroll *unroll)
                         "Expected more return values than function returns.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
+
+        BL_ASSERT(src->kind == MIR_INSTR_CALL && "Unroll expects source to be CALL instruction!");
         MirInstrCall *src_call = (MirInstrCall *)src;
         MirInstr *    tmp_var  = src_call->unroll_tmp_var;
         if (!tmp_var) {
@@ -6965,10 +6970,18 @@ AnalyzeResult analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_builtin_call(Context UNUSED(*cnt), MirInstrCall *call)
+AnalyzeResult analyze_builtin_call(Context *cnt, MirInstrCall *call)
 {
     ZONE();
-    // @CLEANUP: not used right now!
+    MirType *              callee_type = call->callee->value.type;
+    const MirBuiltinIdKind id          = callee_type->data.fn.builtin_id;
+    switch (id) {
+    case MIR_BUILTIN_ID_ASSERT_FN:
+    case MIR_BUILTIN_ID_ABORT_FN:
+        break;
+    default:
+        BL_ABORT("Unknown builtin call!");
+    }
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
@@ -9235,6 +9248,27 @@ MirInstr *ast_expr_call(Context *cnt, Ast *call)
     Ast *               ast_callee = call->data.expr_call.ref;
     TSmallArray_AstPtr *ast_args   = call->data.expr_call.args;
     BL_ASSERT(ast_callee);
+
+    if (ast_callee->kind == AST_REF &&
+        is_builtin(ast_callee->data.ref.ident, MIR_BUILTIN_ID_ASSERT_FN)) {
+        bool             remove_assert = false;
+        const bool       is_debug      = cnt->debug_mode;
+        const AssertMode mode          = cnt->assembly->target->assert_mode;
+        switch (mode) {
+        case ASSERT_DEFAULT:
+            remove_assert = !is_debug;
+            break;
+        case ASSERT_ALWAYS_ENABLED:
+            remove_assert = false;
+            break;
+        case ASSERT_ALWAYS_DISABLED:
+            remove_assert = true;
+            break;
+        }
+        if (remove_assert) {
+            return append_instr_const_void(cnt, call);
+        }
+    }
 
     TSmallArray_InstrPtr *args = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
 

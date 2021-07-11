@@ -104,6 +104,13 @@
 //! 
 //!     set_output_dir(exe, "bin");
 //!
+//! Compile target
+//! --------------
+//! 
+//! .. code-block:: bl
+//! 
+//!     compile(exe);
+//!
 //! Command line argumets
 //! ---------------------
 //! All argumets passed after `--build|-b` compiler flag are automatically forwarded into
@@ -112,7 +119,7 @@
 /// Target is representation of whole program workspace, it's a consist of Units, every unit represents 
 /// one source file.
 Target :: struct { // !!! ABI sync TargetOptions !!!
-    /// Target kind.
+    /// See :ref:`TargetKind`.
     kind: TargetKind;
     /// Specify build mode of the target. See :ref:`BuildMode`.
     build_mode: BuildMode;
@@ -144,10 +151,13 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
     no_llvm: bool;
     /// Disable analyze pass of code generation.
     no_analyze: bool;
+    /// See :ref:`AssertMode`.
+    assert_mode: AssertMode;
     /// Check only code syntax.
     syntax_only: bool;
 }
 
+/// Specification of compiler output binary kind.
 TargetKind :: enum {
     Executable    :: 1;
     SharedLibrary :: 2;
@@ -160,9 +170,11 @@ BuildMode :: enum s32 {
     Debug :: 1;
     /// Fast release mode; no debug symbols are produced, all possible optimizations
     /// are applied to produce binary as fast as possible.
+    /// The :ref:`assert` is disabled unless :ref:`Target`.assert_mode is ``AlwaysEnabled``.
     ReleaseFast :: 2;
     /// Small release mode; no debug symbols are produced, optimizations are applied
     /// to produce binary reasonably fast and as small as possible.
+    /// The :ref:`assert` is disabled unless :ref:`Target`.assert_mode is ``AlwaysEnabled``.
     ReleaseSmall :: 3;
 }
 
@@ -170,6 +182,17 @@ BuildMode :: enum s32 {
 DebugInfo :: enum s32 {
     Dwarf :: 1;
     Codeview :: 2;
+}
+
+/// Specification of :ref:`assert` mode used for :ref:`Target`.
+AssertMode :: enum s32 {
+    /// By default compiler emits  all assertions in :ref:`BuildMode`.Debug and skips all assertions
+    /// in all optimized release modes.
+    Default :: 0;
+    /// Force-enable assertion in all build modes.
+    AlwaysEnabled :: 1;
+    /// Force-disable assertion in all build modes.
+    AlwaysDisabled :: 2;
 }
 
 /// Add new executable target into the current compilation queue. Target with
@@ -208,14 +231,14 @@ add_library :: fn (name: string) *Target {
     return __add_target(auto name.ptr, cast(c_int) TargetKind.SharedLibrary);
 }
 
-/// Add new source file into the target. This basically load new source file into
-/// the :ref:`Target`.
+/// Add new source file into the target. 
 add_unit :: fn (target: *Target, filepath: string) {
     if !target { panic("Invalid target!"); }
     if filepath.len == 0 { panic("Invalid unit path!"); }
     __add_unit(target, auto filepath.ptr);
 }
 
+/// @INCOMPLETE
 compile :: fn (target: *Target) Error {
     if !target { panic("Invalid target!"); }
     state :: __compile(target);
@@ -223,6 +246,7 @@ compile :: fn (target: *Target) Error {
     return error("Compilation failed!", state);
 }
 
+/// @INCOMPLETE
 compile_all :: fn () Error {
     state :: __compile_all();
     if state == 0 { return ok(); }

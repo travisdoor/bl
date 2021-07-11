@@ -65,6 +65,12 @@ typedef enum {
     IMPORT_POLICY_BUNDLE_LATEST = 2,
 } ModuleImportPolicy;
 
+typedef enum {
+    ASSERT_DEFAULT         = 0,
+    ASSERT_ALWAYS_ENABLED  = 1,
+    ASSERT_ALWAYS_DISABLED = 2,
+} AssertMode;
+
 typedef struct NativeLib {
     u32           hash;
     DLLib *       handle;
@@ -95,6 +101,7 @@ typedef struct NativeLib {
     bool           no_bin;                                                                         \
     bool           no_llvm;                                                                        \
     bool           no_analyze;                                                                     \
+    AssertMode     assert_mode;                                                                    \
     bool           syntax_only;
 
 typedef struct Target {

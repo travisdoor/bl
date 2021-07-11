@@ -1,11 +1,15 @@
-#import "std/test"
-
 main :: fn () s32 {
+    print("pre assert\n");
+    assert(foo("A") && foo("B"));
+    print("post assert\n");
     return 0;
 }
 
-my_assert :: fn () {
-    print("hello!!!\n");
+foo :: fn (v: string) bool {
+    print("call %\n", v);
+    return false;
 }
+
+
 
 
