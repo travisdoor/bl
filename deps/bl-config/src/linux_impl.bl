@@ -27,7 +27,7 @@ pclose :: fn (f: c_void_ptr) #extern "pclose";
 ArgsImpl :: struct #base ArgParser.Ctx {
 }
     
-setup :: fn (parser: ArgParser) {}
+setup :: fn (parser: ArgParser.Parser) {}
 
 configure :: fn () Error {
     print_log("Generate configuration file");
