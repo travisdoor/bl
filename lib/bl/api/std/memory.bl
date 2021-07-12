@@ -36,29 +36,29 @@
 //! 
 //! Toolset for manipulation with system memory.
 
-/// Allocates count of bytes on heap using default allocator.
+/// Allocates `size` of bytes on heap using default allocator.
 /// Use :ref:`free` to free allocated memory when it's no longer
-/// needed. Cause panic when allocation is not possible. This
-/// function use allocator set in `_context.alloc_fn`
+/// needed. Cause panic when allocation is not possible or `size` is 
+/// zero. This function use allocator set in `_context.alloc_fn`
 alloc :: fn (size: usize, loc := #call_location) *u8 {
+    if size == 0 { panic("Attempt to allocate 0 bytes."); }
     mem :: _context.alloc_fn(AllocOp.Allocate, size, null, loc.file, loc.line); 
     if !mem { panic("Bad alloc"); }
     return mem;
 };
 
-/// Allocates count of bytes on heap using default allocator and
-/// return pointer to begin of this allocated block. Resulting
-/// block is set to 0 value.
-/// Use :ref:`free` to free allocated memory when it's no longer
-/// needed.
+/// @INCOMPLETE
 calloc :: fn (num: usize, size: usize, loc := #call_location) *u8 {
+    if size == 0 { panic("Attempt to allocate 0 bytes."); }
     mem :: _context.alloc_fn(AllocOp.Allocate, size * num, null, loc.file, loc.line); 
     return memset(mem, 0, size * num);
 };
 
 /// Free memory alocated on heap. This function use default deallocator 
 /// `_context.free_fn`.
+/// .. note:: Does nothing when passed `ptr` is `null`.
 free :: fn (ptr: *u8, loc := #call_location) {
+    if !ptr { return; }
     _context.alloc_fn(AllocOp.Free, 0, ptr, loc.file, loc.line); 
 };
 
@@ -93,6 +93,13 @@ memset :: fn (_dest: *u8, v: u8, size: usize) *u8 {
     }
 
     return dest.ptr;
+}
+
+/// Swaps content of memory at address `first` and `second`.
+swap :: fn (first: *?T, second: *T) #inline {
+    tmp :: ^first;
+    ^first = ^second;
+    ^second = tmp;
 }
 
 /// Allocate heap memory for `n` elements in `_v` slice. Allocated block is set to

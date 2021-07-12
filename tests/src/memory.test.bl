@@ -1,0 +1,35 @@
+#private
+
+swap_test_1 :: fn () #test {
+    a := 10;
+    b := 20;
+    swap(&a, &b);
+    test_eq(a, 20);
+    test_eq(b, 10);
+}
+
+swap_test_2 :: fn () #test {
+    Foo :: struct { a: s64; b: s64; c: s64; };
+    
+    a := {:Foo: 10, 20, 30};
+    b := {:Foo: 30, 20, 10};
+    swap(&a, &b);
+    test_eq(a.a, 30);
+    test_eq(a.b, 20);
+    test_eq(a.c, 10);
+    
+    test_eq(b.a, 10);
+    test_eq(b.b, 20);
+    test_eq(b.c, 30);
+}
+
+alloc_test_1 :: fn () #test {
+    v :: alloc(64);
+    defer free(v);
+    test_not_null(v);
+}
+
+free_test_1 :: fn () #test {
+    free(null);
+}
+
