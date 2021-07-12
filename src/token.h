@@ -64,9 +64,9 @@ typedef union {
 } TokenValue;
 
 typedef struct Token {
-    Sym        sym;
     Location   location;
     TokenValue value;
+    Sym        sym;
     bool       overflow;
 } Token;
 
