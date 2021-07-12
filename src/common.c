@@ -558,3 +558,20 @@ void color_print(FILE *stream, s32 color, const char *format, ...)
 #endif
     va_end(args);
 }
+
+void get_line_column(const char *str, const u32 cursor, s32 *out_line, s32 *out_column)
+{
+    if (!str) return;
+    s32 row = 1;
+    s32 col = 1;
+    for (u32 i = 0; str[i] != '\0' && cursor != i; ++i) {
+        const char c = str[i];
+        if (c == '\n') {
+            col = 1;
+            row += 1;
+        }
+        col += 1;
+    }
+    if (out_line) *out_line = row;
+    if (out_column) *out_column = col;
+}

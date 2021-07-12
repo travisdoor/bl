@@ -49,11 +49,18 @@ typedef enum {
 extern char *sym_strings[];
 
 struct Unit;
+
+// @PERFORMANCE
 typedef struct Location {
-    s32          line;
-    s32          col;
-    s32          len;
     struct Unit *unit;
+    // u32          start;
+    s32 len;
+    s32 line;
+    s32 col;
+#if BL_DEBUG
+    // s32 _line;
+    // s32 _col;
+#endif
 } Location;
 
 typedef union {

@@ -183,6 +183,7 @@ int  count_bits(u64 n);
 void platform_lib_name(const char *name, char *buffer, usize max_len);
 f64  get_tick_ms(void);
 s32  get_last_error(char *buf, s32 buf_len);
+void get_line_column(const char *str, const u32 cursor, s32 *out_line, s32 *out_column);
 
 // Creates TArray inside Assembly arena.
 // Note: no free is needed.
