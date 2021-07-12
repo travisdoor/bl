@@ -45,7 +45,6 @@
 #define sleep_ms(ms) usleep(ms * 1000)
 #endif
 
-#define MAX_MSG_LEN 1024
 #define MAX_ERROR_REPORTED 10
 #define MAX_THREAD 8
 
@@ -581,9 +580,14 @@ void builder_msg(BuilderMsgType type,
     if (type == BUILDER_MSG_LOG && !builder.options->verbose) goto DONE;
     if (type != BUILDER_MSG_ERROR && builder.options->silent) goto DONE;
     if (builder.options->no_warning && type == BUILDER_MSG_WARNING) goto DONE;
-    TString tmp;
-    tstring_init(&tmp);
-    char msg[MAX_MSG_LEN] = {0};
+
+    if (type == BUILDER_MSG_ERROR) {
+        builder.errorc++;
+        builder.max_error = code > builder.max_error ? code : builder.max_error;
+    }
+
+    TString *tmp       = get_tmpstr();
+    char     msg[1024] = {0};
     if (src) {
         s32 line = src->line;
         s32 col  = src->col;
@@ -603,100 +607,89 @@ void builder_msg(BuilderMsgType type,
             break;
         }
 
-        const char *prefix = "";
+        const char *filepath =
+            builder.options->full_path_reports ? src->unit->filepath : src->unit->filename;
+        tstring_appendf(tmp, "%s:%d:%d:", filepath, line, col);
+        color_print(stdout, BL_NO_COLOR, "%s", tmp->data);
+        tstring_clear(tmp);
         switch (type) {
-        case BUILDER_MSG_ERROR:
-            prefix = "error";
+        case BUILDER_MSG_ERROR: {
+            color_print(stderr, BL_RED, " error: ", tmp->data);
             break;
-        case BUILDER_MSG_WARNING:
-            prefix = "warning";
+        }
+        case BUILDER_MSG_WARNING: {
+            color_print(stdout, BL_YELLOW, " warning: ", tmp->data);
             break;
-        case BUILDER_MSG_NOTE:
-            prefix = "note";
+        }
+        case BUILDER_MSG_NOTE: {
+            color_print(stdout, BL_BLUE, " note: ", tmp->data);
             break;
+        }
+
         default:
             break;
         }
-        const char *filepath =
-            builder.options->full_path_reports ? src->unit->filepath : src->unit->filename;
-        snprintf(msg, MAX_MSG_LEN, "%s:%d:%d: %s: ", filepath, line, col, prefix);
 
         va_list args;
         va_start(args, format);
-        vsnprintf(msg + strlen(msg), MAX_MSG_LEN - strlen(msg), format, args);
+        vsnprintf(msg, TARRAY_SIZE(msg), format, args);
         va_end(args);
 
-        tstring_append(&tmp, &msg[0]);
+        tstring_append(tmp, &msg[0]);
 
         s32         pad      = sprintf(msg, "%d", src->line) + 2;
         long        line_len = 0;
         const char *line_str = unit_get_src_ln(src->unit, src->line - 1, &line_len);
         if (line_str && line_len) {
             sprintf(msg, "\n%*d", pad, src->line - 1);
-            tstring_append(&tmp, &msg[0]);
-            tstring_append(&tmp, " | ");
-            tstring_append_n(&tmp, line_str, line_len);
+            tstring_append(tmp, &msg[0]);
+            tstring_append(tmp, " | ");
+            tstring_append_n(tmp, line_str, line_len);
         }
 
         line_str = unit_get_src_ln(src->unit, src->line, &line_len);
         if (line_str && line_len) {
             sprintf(msg, "\n>%*d", pad - 1, src->line);
-            tstring_append(&tmp, &msg[0]);
-            tstring_append(&tmp, " | ");
-            tstring_append_n(&tmp, line_str, line_len);
+            tstring_append(tmp, &msg[0]);
+            tstring_append(tmp, " | ");
+            tstring_append_n(tmp, line_str, line_len);
         }
 
         if (pos != BUILDER_CUR_NONE) {
             sprintf(msg, "\n%*s", pad, "");
-            tstring_append(&tmp, &msg[0]);
-            tstring_append(&tmp, " | ");
-
+            tstring_append(tmp, &msg[0]);
+            tstring_append(tmp, " | ");
+            color_print(stderr, BL_NO_COLOR, "%s", tmp->data);
+            tstring_clear(tmp);
             for (s32 i = 0; i < col + len - 1; ++i) {
                 if (i < col - 1)
-                    tstring_append(&tmp, " ");
+                    tstring_append(tmp, " ");
                 else
-                    tstring_append(&tmp, "^");
+                    tstring_append(tmp, "^");
             }
+            color_print(stderr, BL_GREEN, "%s", tmp->data);
+            tstring_clear(tmp);
         }
 
         sprintf(msg, "\n%*d", pad, src->line + 1);
-        tstring_append(&tmp, &msg[0]);
-        tstring_append(&tmp, " | ");
+        tstring_append(tmp, &msg[0]);
+        tstring_append(tmp, " | ");
 
         line_str = unit_get_src_ln(src->unit, src->line + 1, &line_len);
         if (line_str && line_len) {
-            tstring_append_n(&tmp, line_str, line_len);
+            tstring_append_n(tmp, line_str, line_len);
         }
+
+        color_print(stdout, BL_NO_COLOR, "%s\n\n", tmp->data);
     } else {
         va_list args;
         va_start(args, format);
-        vsnprintf(msg + strlen(msg), MAX_MSG_LEN - strlen(msg), format, args);
+        vsnprintf(msg, TARRAY_SIZE(msg), format, args);
         va_end(args);
-        tstring_append(&tmp, &msg[0]);
+        tstring_append(tmp, &msg[0]);
+        color_print(stdout, BL_NO_COLOR, "%s\n", tmp->data);
     }
-
-    switch (type) {
-    case BUILDER_MSG_ERROR: {
-        builder.errorc++;
-        builder.max_error = code > builder.max_error ? code : builder.max_error;
-        color_print(stderr, BL_RED, "%s", tmp.data);
-        break;
-    }
-    case BUILDER_MSG_WARNING: {
-        color_print(stdout, BL_YELLOW, "%s", tmp.data);
-        break;
-    }
-    case BUILDER_MSG_NOTE: {
-        color_print(stdout, BL_GREEN, "%s", tmp.data);
-        break;
-    }
-
-    default: {
-        color_print(stdout, BL_NO_COLOR, "%s", tmp.data);
-    }
-    }
-
-    tstring_terminate(&tmp);
+    put_tmpstr(tmp);
 DONE:
     pthread_mutex_unlock(&threading->log_mutex);
 

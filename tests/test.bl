@@ -1,13 +1,15 @@
 main :: fn () s32 {
-    print("pre assert\n");
-    assert(foo("A") && foo("B"));
-    print("post assert\n");
+    foo(10);
     return 0;
 }
 
-foo :: fn (v: string) bool {
-    print("call %\n", v);
-    return false;
+foo :: fn (v: ?T) {
+    bar :: fn (v: ?T) {
+        print("bar = %\n", v);
+    };
+    
+    print("foo = %\n", v);
+    bar(true);
 }
 
 

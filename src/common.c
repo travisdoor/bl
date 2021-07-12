@@ -502,16 +502,19 @@ void color_print(FILE *stream, s32 color, const char *format, ...)
     s32 c;
     switch (color) {
     case BL_YELLOW:
-        c = (14 % 0x0F);
+        c = (0xE % 0x0F);
         break;
     case BL_RED:
-        c = FOREGROUND_RED;
+        c = (0xC % 0x0F);
         break;
     case BL_BLUE:
-        c = FOREGROUND_BLUE;
+        c = (0x9 % 0x0F);
         break;
     case BL_GREEN:
-        c = FOREGROUND_GREEN;
+        c = (0xA % 0x0F);
+        break;
+    case BL_CYAN:
+        c = (0xB % 0x0F);
         break;
 
     default:
@@ -531,30 +534,31 @@ void color_print(FILE *stream, s32 color, const char *format, ...)
     } else {
         vfprintf(stream, format, args);
     }
-    fprintf(stream, "\n");
 #else
     char *c;
     switch (color) {
-    case BL_YELLOW:
-        c = "\x1b[33m";
-        break;
     case BL_RED:
         c = "\x1b[31m";
-        break;
-    case BL_BLUE:
-        c = "\x1b[34m";
         break;
     case BL_GREEN:
         c = "\x1b[32m";
         break;
-
+    case BL_YELLOW:
+        c = "\x1b[33m";
+        break;
+    case BL_BLUE:
+        c = "\x1b[34m";
+        break;
+    case BL_CYAN:
+        c = "\x1b[36m";
+        break;
     default:
         c = "\x1b[0m";
     }
 
     fprintf(stream, "%s", c);
     vfprintf(stream, format, args);
-    fprintf(stream, "\x1b[0m\n");
+    fprintf(stream, "\x1b[0m");
 #endif
     va_end(args);
 }

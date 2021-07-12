@@ -94,11 +94,7 @@ struct Scope;
          _keep = !_keep, i++)                                                                      \
         for (it = (arr)[i]; _keep; _keep = !_keep)
 
-#define BL_RED 1
-#define BL_BLUE 2
-#define BL_YELLOW 3
-#define BL_GREEN 4
-#define BL_NO_COLOR -1
+enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
 #define RUNTIME_MEASURE_BEGIN_S(name) clock_t __##name = clock()
 #define RUNTIME_MEASURE_END_S(name) (f64)(clock() - __##name) / CLOCKS_PER_SEC;

@@ -124,6 +124,7 @@ void tstring_append_c(TString *str, const char v)
 void tstring_appendf(TString *str, const char *format, ...)
 {
     ensure_space(str, str->len + strlen(format));
+    char    buf[20];
     va_list argp;
     va_start(argp, format);
     while (*format != '\0') {
@@ -134,6 +135,10 @@ void tstring_appendf(TString *str, const char *format, ...)
             } else if (*format == 's') {
                 char *s = va_arg(argp, char *);
                 tstring_append(str, s);
+            } else if (*format == 'd') {
+                s32 num = va_arg(argp, s32);
+                itoa(num, buf, 10);
+                tstring_append(str, buf);
             } else {
                 fputs("Unsupported formatting character for 'tstring_setf'.", stdout);
             }
