@@ -70,12 +70,30 @@ typedef union {
     u64         u;
 } TokenValue;
 
+// @PERFORMANCE
+// 1) not every token needs value.
+// 2) only tokens with value needs overflow flag.
+// struct { TokenValue value; bool overflow; } // 16B
+// vs u64 index // 8B
 typedef struct Token {
     Location   location;
     TokenValue value;
     Sym        sym;
     bool       overflow;
 } Token;
+
+#if 0
+typedef struct Tokens {
+    TArray sym; // Sym
+    TArray location; // Location
+    TArray value_index; // u64
+} Tokens;
+
+TArray values;
+// push zero value as default.
+// token_get_value(token_index);
+// token_set_value(v);
+#endif
 
 // sizeof this structure is 8 bytes so it can be passed by value
 typedef struct {
