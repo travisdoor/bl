@@ -29,6 +29,7 @@
 #include "tlib/string.h"
 #include "tmemory.h"
 #include <stdarg.h>
+#include <stdlib.h>
 
 static void ensure_space(TString *str, usize space)
 {
@@ -137,7 +138,7 @@ void tstring_appendf(TString *str, const char *format, ...)
                 tstring_append(str, s);
             } else if (*format == 'd') {
                 s32 num = va_arg(argp, s32);
-                itoa(num, buf, 10);
+                snprintf(buf, TARRAY_SIZE(buf), "%d", num);
                 tstring_append(str, buf);
             } else {
                 fputs("Unsupported formatting character for 'tstring_setf'.", stdout);
