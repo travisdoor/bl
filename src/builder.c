@@ -586,8 +586,10 @@ void builder_msg(BuilderMsgType type,
         builder.max_error = code > builder.max_error ? code : builder.max_error;
     }
 
-    TString *tmp       = get_tmpstr();
-    char     msg[1024] = {0};
+    char     msg[1024];
+    FILE *stream = stdout;
+    if (type == BUILDER_MSG_ERROR) stream = stderr;
+
     if (src) {
         s32 line = src->line;
         s32 col  = src->col;
@@ -609,20 +611,18 @@ void builder_msg(BuilderMsgType type,
 
         const char *filepath =
             builder.options->full_path_reports ? src->unit->filepath : src->unit->filename;
-        tstring_appendf(tmp, "%s:%d:%d:", filepath, line, col);
-        color_print(stdout, BL_NO_COLOR, "%s", tmp->data);
-        tstring_clear(tmp);
+        fprintf(stream, "%s:%d:%d:", filepath, line, col);
         switch (type) {
         case BUILDER_MSG_ERROR: {
-            color_print(stderr, BL_RED, " error: ", tmp->data);
+            color_print(stream, BL_RED, " error: ");
             break;
         }
         case BUILDER_MSG_WARNING: {
-            color_print(stdout, BL_YELLOW, " warning: ", tmp->data);
+            color_print(stream, BL_YELLOW, " warning: ");
             break;
         }
         case BUILDER_MSG_NOTE: {
-            color_print(stdout, BL_BLUE, " note: ", tmp->data);
+            color_print(stream, BL_BLUE, " note: ");
             break;
         }
 
@@ -634,68 +634,53 @@ void builder_msg(BuilderMsgType type,
         va_start(args, format);
         vsnprintf(msg, TARRAY_SIZE(msg), format, args);
         va_end(args);
+        fprintf(stream, "%s", msg);
 
-        tstring_append(tmp, &msg[0]);
+        long      line_len = 0;
+        const s32 padding = ((src->line == 0) ? 1 : (log10(src->line) + 1)) + 2;
 
-        s32         pad      = sprintf(msg, "%d", src->line) + 2;
-        long        line_len = 0;
+        // Line one
         const char *line_str = unit_get_src_ln(src->unit, src->line - 1, &line_len);
         if (line_str && line_len) {
-            sprintf(msg, "\n%*d", pad, src->line - 1);
-            tstring_append(tmp, &msg[0]);
-            tstring_append(tmp, " | ");
-            tstring_append_n(tmp, line_str, line_len);
+            fprintf(stream, "\n%*d | %.*s", padding, src->line - 1, (int) line_len, line_str);
         }
 
+        // Line two
         line_str = unit_get_src_ln(src->unit, src->line, &line_len);
         if (line_str && line_len) {
-            sprintf(msg, "\n>%*d", pad - 1, src->line);
-            tstring_append(tmp, &msg[0]);
-            tstring_append(tmp, " | ");
-            tstring_append_n(tmp, line_str, line_len);
+            fprintf(stream, "\n>%*d | %.*s", padding-1, src->line, (int) line_len, line_str);
         }
-
+        // Line cursors
         if (pos != BUILDER_CUR_NONE) {
-            sprintf(msg, "\n%*s", pad, "");
-            tstring_append(tmp, &msg[0]);
-            tstring_append(tmp, " | ");
-            color_print(stderr, BL_NO_COLOR, "%s", tmp->data);
-            tstring_clear(tmp);
+            s32 written_bytes = 0;
             for (s32 i = 0; i < col + len - 1; ++i) {
-                if (i < col - 1)
-                    tstring_append(tmp, " ");
-                else
-                    tstring_append(tmp, "^");
+                written_bytes += snprintf(msg+written_bytes, TARRAY_SIZE(msg)-written_bytes, "%s", i >= col-1 ? "^" : " "); 
             }
-            color_print(stderr, BL_GREEN, "%s", tmp->data);
-            tstring_clear(tmp);
+            fprintf(stream, "\n%*s | ", padding, "");
+            color_print(stream, BL_GREEN, "%s", msg);
         }
 
-        sprintf(msg, "\n%*d", pad, src->line + 1);
-        tstring_append(tmp, &msg[0]);
-        tstring_append(tmp, " | ");
-
+        // Line three
         line_str = unit_get_src_ln(src->unit, src->line + 1, &line_len);
         if (line_str && line_len) {
-            tstring_append_n(tmp, line_str, line_len);
+            fprintf(stream, "\n%*d | %.*s", padding, src->line + 1, (int) line_len, line_str);
         }
-
-        color_print(stdout, BL_NO_COLOR, "%s\n\n", tmp->data);
+        fprintf(stream, "\n\n");
     } else {
         va_list args;
         va_start(args, format);
         vsnprintf(msg, TARRAY_SIZE(msg), format, args);
         va_end(args);
-        tstring_append(tmp, &msg[0]);
-        color_print(stdout, BL_NO_COLOR, "%s\n", tmp->data);
+        fprintf(stream, "%s\n", msg);
     }
-    put_tmpstr(tmp);
 DONE:
     pthread_mutex_unlock(&threading->log_mutex);
 
 #if ASSERT_ON_CMP_ERROR
     if (type == BUILDER_MSG_ERROR) BL_ASSERT(false);
 #endif
+#undef APPEND_MSG
+#undef APPEND_MSG_VARGS
 }
 
 TString *builder_create_cached_str(void)
