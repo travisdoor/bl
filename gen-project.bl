@@ -4,6 +4,7 @@
 #import "std/fs"
 
 Args :: struct #base ArgParser.Ctx {
+    generate: bool;
     is_debug: bool;
     make: bool;
     tracy_enable: bool;
@@ -13,22 +14,37 @@ DIR :: "build";
 CMAKE_CACHE :: "CMakeCache.txt";
 
 _args: Args;
+_root_dir: string;
 
 main :: fn () s32 {
     parser :: ArgParser.new();
     defer ArgParser.delete(parser);
 
+    _root_dir = Fs.get_cwd();
+    defer String.delete(_root_dir);
+        
+    ArgParser.add(
+        parser,
+        "-g",
+        "--generate",
+        "Generate project.",
+        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+            a: *Args = auto ctx;
+            a.generate = true;
+            return 1, ok();
+        });
+    
     ArgParser.add(
         parser,
         "-d",
         "--debug",
-        "Generate project in debug mode.",
+        "Set debug mode.",
         &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.is_debug = true;
             return 1, ok();
         });
-
+    
     ArgParser.add(
         parser,
         "-m",
@@ -44,7 +60,7 @@ main :: fn () s32 {
         parser,
         "-te",
         "--tracy-enable",
-        "Enable tracy profiler (available only in debug build).",
+        "Enable tracy profiler.",
         &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.tracy_enable = true;
@@ -59,18 +75,20 @@ main :: fn () s32 {
     }
     if _args.help { return 0; }
 
-    path :: String.new();
-    defer String.delete(path);
     Fs.dir_create(DIR);
-    Fs.remove(String.clear_concat(&path, DIR, "/", CMAKE_CACHE));
-    Fs.set_cwd(DIR);
 
     conf :: conf_name(_args.is_debug);
-    print("Generate configuration '%' in '%'.\n", conf, DIR);
-    cmake_generate();
+    if _args.generate {
+        print("Generate configuration '%' in '%'.\n", conf, DIR);
+        cmake_generate();
+    }
     if _args.make {
         print("Build configuration '%' in '%'.\n", conf, DIR);
         cmake_compile();
+    }
+    if _args.tracy_enable {
+        print("Build Tracy profiler client.\n");
+        tracy_compile();
     }
     return 0;
 }
@@ -85,6 +103,10 @@ cmake_generate :: fn () s32 #inline {
     conf :: conf_name(is_debug);
     cmd: string;
     defer String.delete(cmd);
+    
+    Fs.set_cwd(DIR);
+    defer Fs.set_cwd(_root_dir);
+    Fs.remove(CMAKE_CACHE);
     if OS_KIND == OSKind.Windows {
         cmd = sprint("cmake .. -G \"Visual Studio 16 2019\" -Thost=x64 -DCMAKE_BUILD_TYPE=", conf);
     } else {
@@ -101,10 +123,46 @@ cmake_compile :: fn () s32 #inline {
     conf :: conf_name(is_debug);
     cmd: string;
     defer String.delete(cmd);
+    Fs.set_cwd(DIR);
+    defer Fs.set_cwd(_root_dir);
     if OS_KIND == OSKind.Windows {
         cmd = sprint("cmake --build . --config ", conf);
     } else {
         cmd = sprint("make -j");
     }
     return os_execute(cmd);
+}
+
+tracy_compile :: fn () s32 {
+    Fs.set_cwd("deps/tracy-0.7.8");
+    defer Fs.set_cwd(_root_dir);
+    if OS_KIND == OSKind.Windows { 
+        { // Deps
+            print("Install Tracy dependencies...\n");
+            Fs.set_cwd("vcpkg");
+            defer Fs.set_cwd("..");
+            if os_execute("call install_vcpkg_dependencies.bat") != 0 {
+                print_err("Failed to install Tracy dependencies!");
+                return -1;
+            }
+        }
+        { // Profiler compilation
+            print("Compile Tracy profiler...\n");
+            if os_execute("msbuild profiler/build/win32/Tracy.sln /p:Configuration=Release") != 0 {
+                print_err("Failed to compile Tracy profiler!");
+                return -1;   
+            }
+            dest := sprint(_root_dir, "/bin/Tracy.exe");
+            defer String.delete(dest);
+            err :: Fs.copy("profiler/build/win32/x64/Release/Tracy.exe", dest, true);
+            if is_ok(err) {
+                print("Success, created executable 'bin/Tracy.exe'.\n");
+            } else {
+                print("%\n", err);
+            }
+        }
+    } else {
+        print_warn("Tracy compilation not implemented yet!");
+    }
+    return -1;
 }

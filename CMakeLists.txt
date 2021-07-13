@@ -33,7 +33,9 @@ else()
   add_definitions(-DBL_ASSERT_ENABLE=0)
 endif()
 
-option(TRACY_ENABLE "Turn on Tracy profiler" OFF)
+option(TRACY_ENABLE "Turn on Tracy profiler." OFF)
+set(TRACY_VER "0.7.8" CACHE STRING "Set tracy profiler version.")
+
 if(TRACY_ENABLE)
   add_definitions(-DTRACY_ENABLE)
   # add_definitions(-DTRACY_NO_EXIT)
@@ -49,6 +51,10 @@ set(BL_CONF_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.conf)
 
 add_subdirectory(deps/dyncall-1.0)
 add_subdirectory(deps/tlib-c)
+
+if(TRACY_ENABLE) 
+add_subdirectory(deps/tracy-${TRACY_VER})
+endif()
 
 # deps
 if(MSVC)
@@ -165,7 +171,7 @@ set(HEADER_FILES
 )
 
 set(SOURCE_FILES
-    deps/tracy/TracyClient.cpp
+    deps/tracy-${TRACY_VER}/TracyClient.cpp
     src/arena.c
     src/assembly.c
     src/ast.c
@@ -265,7 +271,7 @@ target_include_directories(
           deps/dyncall-1.0/dynload
           deps/dyncall-1.0/dyncallback
           deps/tlib-c/include
-          deps/tracy
+          deps/tracy-${TRACY_VER}
           ${LLVM_INCLUDE_DIRS})
 
 # 'make install' to the correct locations (provided by GNUInstallDirs).
