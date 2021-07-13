@@ -5,6 +5,7 @@
 
 Args :: struct #base ArgParser.Ctx {
     generate: bool;
+    cmake_cache_clear: bool;
     is_debug: bool;
     make: bool;
     tracy_enable: bool;
@@ -13,11 +14,17 @@ Args :: struct #base ArgParser.Ctx {
 DIR :: "build";
 CMAKE_CACHE :: "CMakeCache.txt";
 
+HELP_TEXT ::
+"Biscuit language developer project generator tool.\n"
+"Usage:\n"
+"  gen-project [options]";
+
 _args: Args;
 _root_dir: string;
 
+
 main :: fn () s32 {
-    parser :: ArgParser.new();
+    parser :: ArgParser.new(HELP_TEXT);
     defer ArgParser.delete(parser);
 
     _root_dir = Fs.get_cwd();
@@ -31,6 +38,7 @@ main :: fn () s32 {
         &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.generate = true;
+            a.cmake_cache_clear = true;
             return 1, ok();
         });
     
@@ -74,11 +82,18 @@ main :: fn () s32 {
         return 1;
     }
     if _args.help { return 0; }
+    if command_line_arguments.len == 1 {
+        _args.generate          = true;
+        _args.cmake_cache_clear = true;
+        _args.is_debug          = false;
+        _args.make              = true;
+        _args.tracy_enable      = false;
+    }
 
     Fs.dir_create(DIR);
 
     conf :: conf_name(_args.is_debug);
-    if _args.generate {
+    if _args.generate || _args.is_debug { 
         print("Generate configuration '%' in '%'.\n", conf, DIR);
         cmake_generate();
     }
@@ -106,7 +121,7 @@ cmake_generate :: fn () s32 #inline {
     
     Fs.set_cwd(DIR);
     defer Fs.set_cwd(_root_dir);
-    Fs.remove(CMAKE_CACHE);
+    if _args.cmake_cache_clear { Fs.remove(CMAKE_CACHE); }
     if OS_KIND == OSKind.Windows {
         cmd = sprint("cmake .. -G \"Visual Studio 16 2019\" -Thost=x64 -DCMAKE_BUILD_TYPE=", conf);
     } else {
@@ -148,7 +163,7 @@ tracy_compile :: fn () s32 {
         }
         { // Profiler compilation
             print("Compile Tracy profiler...\n");
-            if os_execute("msbuild profiler/build/win32/Tracy.sln /p:Configuration=Release") != 0 {
+            if os_execute("msbuild profiler/build/win32/Tracy.sln /p:Configuration=Release /consoleloggerparameters:ErrorsOnly /nologo") != 0 {
                 print_err("Failed to compile Tracy profiler!");
                 return -1;   
             }

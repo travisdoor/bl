@@ -103,6 +103,7 @@ remove :: fn (filepath: string) Error #inline {
 
 /// Copy existing file from `src` to `dest` and override existing file in destination
 /// if `override` is true. Return `ok` or `error`.
+/// @INCOIMPLETE Is using current dir + better descriptions.
 copy :: fn (src: string, dest: string, override := false) Error #inline {
     return _FsImpl.copy(src, dest, override);
 }
@@ -135,6 +136,7 @@ copy :: fn (src: string, dest: string, override := false) Error #inline {
 ///         return 0;
 ///     }
 ///
+/// @INCOIMPLETE Is using current dir + better descriptions.
 dir_copy :: fn (src: string, dest: string, opt: *CopyOpt = &COPY_OPT_DEFAULT, filter: DirScanFilterFn = &_default_file_filter) (s64, Error) {
     cc: s64;
     if !opt                   { return 0, error(ERR_INVALID_HANDLE, "Invalid copy options!"); }
