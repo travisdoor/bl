@@ -102,11 +102,11 @@ typedef struct {
     Tokens *               tokens;
 
     // tmps
-    bool     is_inside_loop;
-    Scope *  current_private_scope;
-    Scope *  current_named_scope;
-    Ast *    current_docs;
-    TString *unit_docs_tmp;
+    bool               is_inside_loop;
+    Scope *            current_private_scope;
+    Scope *            current_named_scope;
+    Ast *              current_docs;
+    TString *          unit_docs_tmp;
     TSmallArray_AstPtr current_fn_type_stack;
 } Context;
 
@@ -1674,6 +1674,9 @@ Ast *parse_expr_binary(Context *cnt, Ast *lhs, Ast *rhs, Token *op)
     binop->data.expr_binop.lhs  = lhs;
     binop->data.expr_binop.rhs  = rhs;
 
+    op->location.col = lhs->location->col;
+    op->location.len = rhs->location->col - lhs->location->col + rhs->location->len;
+
     return binop;
 }
 
@@ -2530,10 +2533,11 @@ Ast *parse_expr_call(Context *cnt, Ast *prev)
 {
     if (!prev) return NULL;
 
-    Token *tok = tokens_consume_if(cnt->tokens, SYM_LPAREN);
+    Token *location_token = tokens_peek_prev(cnt->tokens);
+    Token *tok            = tokens_consume_if(cnt->tokens, SYM_LPAREN);
     if (!tok) return NULL;
-
-    Ast *call                = ast_create_node(cnt->ast_arena, AST_EXPR_CALL, tok, SCOPE_GET(cnt));
+    if (location_token && location_token->sym != SYM_IDENT) location_token = tok;
+    Ast *call = ast_create_node(cnt->ast_arena, AST_EXPR_CALL, location_token, SCOPE_GET(cnt));
     call->data.expr_call.ref = prev;
     call->data.expr_call.run = false;
 

@@ -101,3 +101,14 @@ test_poly_local_1 :: fn () #test {
     };
     test_eq(local_poly(10), 10);
 }
+
+recursive :: fn (v: ?T) T {
+    if v < 10 { 
+        v = recursive(v+1);
+    }
+    return v;
+}
+
+test_recursive_poly :: fn () #test {
+    test_eq(recursive(0), 10);    
+}

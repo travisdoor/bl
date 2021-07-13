@@ -1,15 +1,27 @@
-foo :: fn (v: ?T) {
-    bar :: fn (v: ?T) {
-        print("bar = %\n", v);
+foo :: fn (outer: ?T) {
+    bar :: fn (inner: ?T) {
+        print("bar = %\n", inner);
     };
     
-    print("foo = %\n", v);
+    print("foo = %\n", outer);
     bar(true);
 }
-main :: fn () s32 {
-    foo(10);
-    return 0;
+
+/*
+homo :: fn (callback: *fn(i: ?T) = &fn(i: T) {
+    print("hello from default i = %!\n", i);
+}) {
+    callback(10);
+}
+*/
+
+bar :: fn (i: s32) {
+    uber :: fn (i: s32) {};
 }
 
-
+main :: fn () s32 {
+    //foo(10);
+    //homo();
+    return 0;
+}
 

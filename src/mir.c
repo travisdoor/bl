@@ -1674,7 +1674,7 @@ ScopeEntry *register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool 
 
     // Schedule usage check.
     if (!builder.options->no_usage_check) goto SKIP_USAGE_CHECK;
-    // No usage checking in general is done only for symbols in fuction local scope and symbols
+    // No usage checking in general is done only for symbols in function local scope and symbols
     // in global private scope.
     if (!scope_is_subtree_of_kind(scope, SCOPE_FN) &&
         scope_is_subtree_of_kind(scope, SCOPE_PRIVATE)) {
@@ -7186,6 +7186,7 @@ AnalyzeResult generate_fn_poly(Context *             cnt,
                 put_tmpstr(debug_replacement_str);
                 RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
             } else {
+                BL_ASSERT(matching_type->kind != MIR_TYPE_POLY);
                 // Stringify replacement to get better error reports.
                 char type_name1[256];
                 char type_name2[256];
@@ -9327,6 +9328,9 @@ MirInstr *ast_expr_lit_fn(Context *        cnt,
     fn_proto->type = CREATE_TYPE_RESOLVER_CALL(ast_fn_type);
     BL_ASSERT(fn_proto->type);
 
+    BL_ASSERT(!(cnt->polymorph.is_replacement_active && cnt->polymorph.replacement_queue.size));
+    cnt->polymorph.is_replacement_active = false;
+
     // Prepare new function context. Must be in sync with pop at the end of scope!
     // DON'T CALL FINISH BEFORE THIS!!!
     // DON'T CALL FINISH BEFORE THIS!!!
@@ -10182,15 +10186,14 @@ MirInstr *ast_type_poly(Context *cnt, Ast *poly)
     Scope *scope     = poly->owner_scope;
     BL_ASSERT(ast_ident);
 
-    ID *        T_id        = &ast_ident->data.ident.id;
-    ScopeEntry *scope_entry = register_symbol(cnt, ast_ident, T_id, scope, false);
-    if (!scope_entry) return NULL;
-
+    TSmallArray_TypePtr *queue       = &cnt->polymorph.replacement_queue;
+    ID *                 T_id        = &ast_ident->data.ident.id;
+    ScopeEntry *         scope_entry = register_symbol(cnt, ast_ident, T_id, scope, false);
+    if (!scope_entry) goto USE_DUMMY;
     if (cnt->polymorph.is_replacement_active) {
-        TSmallArray_TypePtr *queue = &cnt->polymorph.replacement_queue;
         if (queue->size == 0) {
             // Use s32 as dummy when polymorph replacement fails.
-            return append_instr_const_type(cnt, poly, cnt->builtin_types->t_s32);
+            goto USE_DUMMY;
         } else {
             // We are generating function specification -> we have replacement for polymorph
             // types.
@@ -10217,6 +10220,9 @@ MirInstr *ast_type_poly(Context *cnt, Ast *poly)
     MirInstr *instr_poly = append_instr_type_poly(cnt, poly, scope_entry->id);
     MIR_CEV_WRITE_AS(MirType *, &instr_poly->value, master_type);
     return instr_poly;
+USE_DUMMY:
+    queue->size = 0;
+    return append_instr_const_type(cnt, poly, cnt->builtin_types->t_s32);
 }
 
 MirInstr *ast_create_global_initializer2(Context *cnt, Ast *ast_value, TSmallArray_InstrPtr *decls)

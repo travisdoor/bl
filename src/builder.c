@@ -586,7 +586,7 @@ void builder_msg(BuilderMsgType type,
         builder.max_error = code > builder.max_error ? code : builder.max_error;
     }
 
-    char     msg[1024];
+    char  msg[1024];
     FILE *stream = stdout;
     if (type == BUILDER_MSG_ERROR) stream = stderr;
 
@@ -637,24 +637,27 @@ void builder_msg(BuilderMsgType type,
         fprintf(stream, "%s", msg);
 
         long      line_len = 0;
-        const s32 padding = ((src->line == 0) ? 1 : (log10(src->line) + 1)) + 2;
+        const s32 padding  = snprintf(NULL, 0, "%+d", src->line) + 2;
 
         // Line one
         const char *line_str = unit_get_src_ln(src->unit, src->line - 1, &line_len);
         if (line_str && line_len) {
-            fprintf(stream, "\n%*d | %.*s", padding, src->line - 1, (int) line_len, line_str);
+            fprintf(stream, "\n%*d | %.*s", padding, src->line - 1, (int)line_len, line_str);
         }
 
         // Line two
         line_str = unit_get_src_ln(src->unit, src->line, &line_len);
         if (line_str && line_len) {
-            fprintf(stream, "\n>%*d | %.*s", padding-1, src->line, (int) line_len, line_str);
+            fprintf(stream, "\n>%*d | %.*s", padding - 1, src->line, (int)line_len, line_str);
         }
         // Line cursors
         if (pos != BUILDER_CUR_NONE) {
             s32 written_bytes = 0;
             for (s32 i = 0; i < col + len - 1; ++i) {
-                written_bytes += snprintf(msg+written_bytes, TARRAY_SIZE(msg)-written_bytes, "%s", i >= col-1 ? "^" : " "); 
+                written_bytes += snprintf(msg + written_bytes,
+                                          TARRAY_SIZE(msg) - written_bytes,
+                                          "%s",
+                                          i >= col - 1 ? "^" : " ");
             }
             fprintf(stream, "\n%*s | ", padding, "");
             color_print(stream, BL_GREEN, "%s", msg);
@@ -663,7 +666,7 @@ void builder_msg(BuilderMsgType type,
         // Line three
         line_str = unit_get_src_ln(src->unit, src->line + 1, &line_len);
         if (line_str && line_len) {
-            fprintf(stream, "\n%*d | %.*s", padding, src->line + 1, (int) line_len, line_str);
+            fprintf(stream, "\n%*d | %.*s", padding, src->line + 1, (int)line_len, line_str);
         }
         fprintf(stream, "\n\n");
     } else {
@@ -679,8 +682,6 @@ DONE:
 #if ASSERT_ON_CMP_ERROR
     if (type == BUILDER_MSG_ERROR) BL_ASSERT(false);
 #endif
-#undef APPEND_MSG
-#undef APPEND_MSG_VARGS
 }
 
 TString *builder_create_cached_str(void)
