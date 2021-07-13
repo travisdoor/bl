@@ -52,10 +52,6 @@ set(BL_CONF_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.conf)
 add_subdirectory(deps/dyncall-1.0)
 add_subdirectory(deps/tlib-c)
 
-if(TRACY_ENABLE) 
-add_subdirectory(deps/tracy-${TRACY_VER})
-endif()
-
 # deps
 if(MSVC)
   # DOWNLOAD LLVM
