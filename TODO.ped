@@ -5,3 +5,28 @@
 * string support custom allocator
 * polymorph `...T` does not work.
 * polymorph functions cannot be export, extern, intrinsics
+
+-- gen-project --
+* rename to `baker`
+
+everytime: 
+    create bin directory if not exist
+
+baker
+    - clear cache
+    - generate release
+    - copile release
+    
+baker --make
+    - generate release
+    - compile in release
+    
+baker --debug
+    - generate debug
+    
+baker --tracy-enable
+    - enable tracy
+    - compile tracy
+    
+baker --cmake-clear-cache
+    - clear cmake cache
