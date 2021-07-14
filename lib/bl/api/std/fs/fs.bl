@@ -103,7 +103,8 @@ remove :: fn (filepath: string) Error #inline {
 
 /// Copy existing file from `src` to `dest` and override existing file in destination
 /// if `override` is true. Return `ok` or `error`.
-/// @INCOIMPLETE Is using current dir + better descriptions.
+///
+/// .. note:: `src` and `dest` path can be relative path to current working path set by :ref:`set_cwd`.
 copy :: fn (src: string, dest: string, override := false) Error #inline {
     return _FsImpl.copy(src, dest, override);
 }

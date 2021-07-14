@@ -146,6 +146,8 @@ append :: fn (v: *string, add: Any) {
 }
 
 /// Append string with multiple values passed as `args` and return `^v`.
+/// New allocation is done in case there is space no left in currently allocated
+/// string's memory to append `args`.
 concatenate :: fn (v: *string, args: ...) string {
     loop i := 0; i < args.len; i += 1 {
         append(v, args[i]);
@@ -153,7 +155,20 @@ concatenate :: fn (v: *string, args: ...) string {
     return ^v;
 }
 
-/// Clear string, append with multiple values passed as `args` and return `^v`.
+/// Clear the `v` string and append multiple values passed as `args`. Returned
+/// value is dereference of the original `v` string after new values are appended.
+/// New allocation is done in case there is space no left in currently allocated
+/// string's memory to append `args`.
+///
+/// .. hint:: Use this function in case you need create only temporary string i.e. file path.
+/// 
+/// .. code-block:: bl
+///
+///    VERSION :: "1.0.0";
+///
+///    path := String.new();
+///    defer String.delete(path);
+///    Fs.set_cwd(String.clear_concat(&path, "my-dir/project-", VERSION));
 clear_concat :: fn (v: *string, args: ...) string {
     clear(v);
     loop i := 0; i < args.len; i += 1 {

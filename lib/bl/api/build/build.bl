@@ -61,7 +61,7 @@
 //! 
 //! .. code-block:: bash
 //! 
-//!    $ blc -build
+//!    $ blc --build
 //! 
 //! Compiler will automatically use build.bl file as build script and execute build function in compile time.
 //! SDK file build/build.bl containing compiler API for build pipeline manipulation is loaded implicitly.
@@ -113,7 +113,7 @@
 //!
 //! Command line argumets
 //! ---------------------
-//! All argumets passed after `--build|-b` compiler flag are automatically forwarded into
+//! All argumets passed after ``--build|-b`` compiler flag are automatically forwarded into
 //! `command_line_arguments` global variable.
 
 /// Target is representation of whole program workspace, it's a consist of Units, every unit represents 
@@ -231,14 +231,16 @@ add_library :: fn (name: string) *Target {
     return __add_target(auto name.ptr, cast(c_int) TargetKind.SharedLibrary);
 }
 
-/// Add new source file into the target. 
+/// Add new source file into the `target`. Function does nothing when `filepath` is already
+/// present in the `target` assembly.
 add_unit :: fn (target: *Target, filepath: string) {
     if !target { panic("Invalid target!"); }
     if filepath.len == 0 { panic("Invalid unit path!"); }
     __add_unit(target, auto filepath.ptr);
 }
 
-/// @INCOMPLETE
+/// Start compilation of the `target` assembly and return `ok` or `error` in case
+/// compilation failed.
 compile :: fn (target: *Target) Error {
     if !target { panic("Invalid target!"); }
     state :: __compile(target);
@@ -246,7 +248,7 @@ compile :: fn (target: *Target) Error {
     return error("Compilation failed!", state);
 }
 
-/// @INCOMPLETE
+/// Compile all created targets one by one in order they were created. See also :ref:`compile`.
 compile_all :: fn () Error {
     state :: __compile_all();
     if state == 0 { return ok(); }
