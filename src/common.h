@@ -96,8 +96,8 @@ struct Scope;
 
 enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
-#define RUNTIME_MEASURE_BEGIN_S(name) clock_t __##name = clock()
-#define RUNTIME_MEASURE_END_S(name) (f64)(clock() - __##name) / CLOCKS_PER_SEC;
+#define RUNTIME_MEASURE_BEGIN_S(name) f64 __##name = get_tick_ms()
+#define RUNTIME_MEASURE_END_S(name) ((get_tick_ms() - __##name) / 1000.)
 
 #define LIB_NAME_MAX 256
 

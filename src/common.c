@@ -416,8 +416,9 @@ f64 get_tick_ms(void)
     uint64_t tick = mach_absolute_time();
     return (f64)((tick * convfact.numer) / (convfact.denom * 1000000));
 #elif BL_PLATFORM_LINUX
-    // @INCOMPLETE
-    return 0.;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (f64)ts.tv_sec * 1000. + (f64)ts.tv_nsec / 1000000.;
 #elif BL_PLATFORM_WIN
     LARGE_INTEGER f;
     LARGE_INTEGER t;
