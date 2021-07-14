@@ -7,5 +7,4 @@ REM build vcpkg
 if not exist vcpkg\vcpkg.exe call vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
 REM install required packages
-vcpkg\vcpkg.exe update 
 vcpkg\vcpkg.exe install --triplet x64-windows-static freetype glfw3 capstone[arm,arm64,x86]

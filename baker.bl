@@ -1,0 +1,207 @@
+#!/usr/local/bin/blc -rs
+
+#import "std/arg_parser"
+#import "std/fs"
+
+Args :: struct #base ArgParser.Ctx {
+    generate: bool;
+    cmake_cache_clear: bool;
+    is_debug: bool;
+    make: bool;
+    tracy_enable: bool;
+}
+
+TRACY_VERSION :: "0.7.8";
+BIN_DIR :: "bin";
+BUILD_DIR :: "build";
+CMAKE_CACHE :: "CMakeCache.txt";
+
+HELP_TEXT ::
+"Biscuit Baker Tool.\n\n"
+"This tool can be used for generation and compilation of Biscuit compiler\n"
+"project.\n\n"
+"Requirements:\n"
+"  - MS Build tools/gcc/clang\n"
+"  - CMake\n"
+"  - x64 development environment injected on Windows (use VS command line).\n\n"
+"Usage:\n"
+"  baker [options]\n";
+
+_args: Args;
+_root_dir: string;
+
+
+main :: fn () s32 {
+    parser :: ArgParser.new(HELP_TEXT);
+    defer ArgParser.delete(parser);
+
+    _root_dir = Fs.get_cwd();
+    defer String.delete(_root_dir);
+    
+    ArgParser.add(
+        parser,
+        "-m",
+        "--make",
+        "Make project.",
+        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+            a: *Args = auto ctx;
+            a.generate = true;
+            a.make = true;
+            return 1, ok();
+        });
+        
+    ArgParser.add(
+        parser,
+        "-g",
+        "--generate",
+        "Generate project.",
+        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+            a: *Args = auto ctx;
+            a.generate = true;
+            return 1, ok();
+        });
+    
+    ArgParser.add(
+        parser,
+        "-d",
+        "--debug",
+        "Switch from release to debug mode. (must be used with '--generate' or '--make').",
+        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+            a: *Args = auto ctx;
+            a.is_debug = true;
+            return 1, ok();
+        });
+    
+    ArgParser.add(
+        parser,
+        "-te",
+        "--tracy-enable",
+        "Enable and compile Tracy profiler.",
+        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+            a: *Args = auto ctx;
+            a.tracy_enable = true;
+            a.generate = true;
+            a.make = true;
+            return 1, ok();
+        });
+        
+    ArgParser.add(
+        parser,
+        "",
+        "--clear-cache",
+        "Clear the cmake cache.",
+        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+            a: *Args = auto ctx;
+            _args.cmake_cache_clear = true;
+            return 1, ok();
+        });
+   
+    state :: ArgParser.run(parser, command_line_arguments, &_args, 1);   
+    if !is_ok(state) {
+        print_err("%", state);
+        ArgParser.print_help(parser);
+        return 1;
+    }
+    if _args.help { return 0; }
+    if command_line_arguments.len == 1 {
+        _args.cmake_cache_clear = true;
+        _args.generate = true;
+        _args.make = true;
+    }
+     
+    Fs.dir_create(BUILD_DIR);
+    Fs.dir_create(BIN_DIR);
+    
+    conf :: conf_name(_args.is_debug);
+    if _args.generate { 
+        print("Generate configuration '%' in '%'.\n", conf, BUILD_DIR);
+        cmake_generate();
+    }
+    if _args.make {
+        print("Build configuration '%' in '%'.\n", conf, BUILD_DIR);
+        cmake_compile();
+    }
+    if _args.tracy_enable {
+        print("Build Tracy profiler client.\n");
+        tracy_compile();
+    }
+    return 0;
+}
+
+conf_name :: fn (is_debug: bool) string #inline {
+    if is_debug { return "Debug"; }
+    return "Release";
+}
+
+cmake_generate :: fn () s32 #inline {
+    is_debug :: _args.is_debug;
+    conf :: conf_name(is_debug);
+    cmd: string;
+    defer String.delete(cmd);
+    
+    Fs.set_cwd(BUILD_DIR);
+    defer Fs.set_cwd(_root_dir);
+    if _args.cmake_cache_clear { Fs.remove(CMAKE_CACHE); }
+    if OS_KIND == OSKind.Windows {
+        cmd = sprint("cmake .. -G \"Visual Studio 16 2019\" -Thost=x64 -DCMAKE_BUILD_TYPE=", conf);
+    } else {
+        cmd = sprint("cmake .. -DCMAKE_BUILD_TYPE=", conf);
+    }
+    if _args.tracy_enable {
+        String.append(&cmd, " -DTRACY_ENABLE=ON");
+        String.append(&cmd, " -DTRACY_VER=");
+        String.append(&cmd, TRACY_VERSION);
+    }
+    return os_execute(cmd);
+}
+
+cmake_compile :: fn () s32 #inline {
+    is_debug :: _args.is_debug;
+    conf :: conf_name(is_debug);
+    cmd: string;
+    defer String.delete(cmd);
+    Fs.set_cwd(BUILD_DIR);
+    defer Fs.set_cwd(_root_dir);
+    if OS_KIND == OSKind.Windows {
+        cmd = sprint("cmake --build . --config ", conf);
+    } else {
+        cmd = sprint("make -j");
+    }
+    return os_execute(cmd);
+}
+
+tracy_compile :: fn () s32 {
+    path := String.new();
+    defer String.delete(path);
+    
+    Fs.set_cwd(String.clear_concat(&path, "deps/tracy-", TRACY_VERSION));
+    defer Fs.set_cwd(_root_dir);
+    
+    if OS_KIND == OSKind.Windows { 
+        { // Deps
+            print("Install Tracy dependencies...\n");
+            Fs.set_cwd("vcpkg");
+            defer Fs.set_cwd("..");
+            if os_execute("call install_vcpkg_dependencies.bat") != 0 {
+                print_err("Failed to install Tracy dependencies!");
+                return -1;
+            }
+        }
+        { // Profiler compilation
+            print("Compile Tracy profiler...\n");
+            if os_execute("msbuild profiler/build/win32/Tracy.sln /p:Configuration=Release /property:Platform=x64 /consoleloggerparameters:ErrorsOnly /nologo") != 0 {
+                print_err("Failed to compile Tracy profiler!");
+                return -1;   
+            }
+            err :: Fs.copy("profiler/build/win32/x64/Release/Tracy.exe", String.clear_concat(&path, _root_dir, "/bin/Tracy.exe"), true);
+            if is_ok(err) {
+                print("Success, created executable 'bin/Tracy.exe'.\n");
+            } else {
+                print("%\n", err);
+            }
+        }
+    } else {
+        print_warn("Tracy compilation not implemented yet!");
+    }
+    return -1;
+}

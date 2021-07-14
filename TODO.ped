@@ -21,6 +21,9 @@ baker --make
     - generate release
     - compile in release
     
+baker --generate
+    - generate release
+        
 baker --debug
     - generate debug
     
