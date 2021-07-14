@@ -11,6 +11,7 @@ Fix invalid conversion of enum variants to Any.
 Fix DI information using Code View.
 Fix generation of unused LLVM IR code paths.
 Test cases are no longer reported as unused during compilation.
+Add compilation of Tracy profiler on Windows in baker development tool.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------
