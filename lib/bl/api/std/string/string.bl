@@ -83,10 +83,41 @@
 /// 
 /// Create copy of C zero terminated string.
 new :: fn {
-    new_default;
-    new_reserved;
-    new_copy;
-    new_cstr;
+    fn (allocator: AllocFn = null) string {
+        tmp : string #noinit;
+        tmp.ptr = alloc_block(0, null);
+        tmp.len = 0;
+        set_terminator(tmp);
+        return tmp;
+    };
+
+    fn (size: s64, allocator: AllocFn = null) string {
+        assert(size > 0);
+        tmp : string #noinit;
+        tmp.ptr = alloc_block(size, null);
+        tmp.len = 0;
+        set_terminator(tmp);
+        return tmp;
+    };
+
+    fn (v: string, allocator: AllocFn = null) string {
+        tmp : string #noinit;
+        tmp.ptr = alloc_block(auto v.len, null);
+        tmp.len = v.len;
+        memcpy(tmp.ptr, v.ptr, auto v.len);
+        set_terminator(tmp);
+        return tmp;
+    };
+
+    fn (cstr: *u8, allocator: AllocFn = null) string {
+        len :: c_strlen(auto cstr);
+        tmp: string #noinit;
+        tmp.ptr = alloc_block(len, null);
+        tmp.len = auto len;
+        memcpy(tmp.ptr, cstr, len * sizeof(u8));
+        set_terminator(tmp);
+        return tmp;
+    };
 }
 
 /// Delete dynamic string.
@@ -532,47 +563,6 @@ BlockHead :: struct {
     allocated_size: usize;
     allocator: AllocFn; // @CLEANUP is this properly used?
 };
-
-new_default :: fn () string {
-    tmp : string #noinit;
-    tmp.ptr = alloc_block(0, null);
-    tmp.len = 0;
-
-    set_terminator(tmp);
-    return tmp;
-};
-
-new_reserved :: fn (size: usize) string {
-    tmp : string #noinit;
-    tmp.ptr = alloc_block(size, null);
-    tmp.len = 0;
-
-    set_terminator(tmp);
-    return tmp;
-};
-
-new_copy :: fn (v: string) string {
-    tmp : string #noinit;
-    tmp.ptr = alloc_block(auto v.len, null);
-    tmp.len = v.len;
-
-    memcpy(tmp.ptr, v.ptr, auto v.len);
-
-    set_terminator(tmp);
-    return tmp;
-};
-
-new_cstr :: fn (cstr: *u8) string {
-    len :: c_strlen(auto cstr);
-    tmp: string #noinit;
-    tmp.ptr = alloc_block(len, null);
-    tmp.len = auto len;
-
-    memcpy(tmp.ptr, cstr, len * sizeof(u8));
-    set_terminator(tmp);
-
-    return tmp;
-}
 
 make_more_room_if_needed :: fn (ptr: *u8, size: usize) *u8 {
     head :: get_block_head(ptr);
