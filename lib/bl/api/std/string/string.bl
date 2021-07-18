@@ -52,7 +52,7 @@
 /// 
 /// ::
 /// 
-///     fn (size: usize) string
+///     fn (size: s64) string
 /// 
 /// Create new string with preallocated space. This type of string
 /// initialization can reduce count of allocations made later by extending
