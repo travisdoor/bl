@@ -231,9 +231,9 @@ typedef struct {
 
 struct MirFnPolyRecipe {
     // Function literal (used for function replacement generation).
-    Ast *      ast_lit_fn;
+    Ast *ast_lit_fn;
     // Scope layer solves symbol collisions in reused scopes.
-    s32        scope_layer;
+    s32 scope_layer;
     // Cache of already generated functions (replacement hash -> MirFn*).
     THashTable entries;
 
@@ -281,7 +281,7 @@ struct MirFn {
     MirInstrBlock *first_block;
     MirInstrBlock *last_block;
     MirInstrBlock *exit_block;
-    s32            block_count;
+    s32            block_count; // @CLEANUP is this used?
 
     // Temporary variable used for return value.
     MirInstr *ret_tmp;

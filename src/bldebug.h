@@ -35,7 +35,7 @@
 #include <stdlib.h>
 #include <tlib/tlib.h>
 
-#if BL_PLATFORM_MACOS
+#if BL_PLATFORM_MACOS || BL_PLATFORM_LINUX
 #include <signal.h>
 #endif
 
@@ -66,7 +66,7 @@ void print_trace(void);
 #if BL_COMPILER_MSVC
 #define BL_DEBUG_BREAK __debugbreak()
 #else
-#define BL_DEBUG_BREAK
+#define BL_DEBUG_BREAK raise(SIGTRAP)
 #endif
 
 #define BL_ASSERT(e)                                                                               \

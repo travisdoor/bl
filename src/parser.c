@@ -1956,9 +1956,18 @@ Ast *parse_type_ptr(Context *cnt)
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_ASTERISK);
     if (!tok_begin) return NULL;
 
-    Ast *ptr = ast_create_node(cnt->ast_arena, AST_TYPE_PTR, tok_begin, SCOPE_GET(cnt));
-    ptr->data.type_ptr.type = parse_type(cnt);
-    BL_ASSERT(ptr->data.type_ptr.type);
+    Ast *ptr      = ast_create_node(cnt->ast_arena, AST_TYPE_PTR, tok_begin, SCOPE_GET(cnt));
+    Ast *sub_type = parse_type(cnt);
+    if (!sub_type) {
+        Token *tok_err = tokens_peek(cnt->tokens);
+        PARSE_ERROR(ERR_EXPECTED_TYPE,
+                    tok_err,
+                    BUILDER_CUR_WORD,
+                    "Expected type after '*' pointer type declaration.");
+        CONSUME_TILL(cnt->tokens, SYM_COLON, SYM_SEMICOLON, SYM_IDENT);
+        return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
+    }
+    ptr->data.type_ptr.type = sub_type;
     return ptr;
 }
 

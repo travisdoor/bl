@@ -12,6 +12,7 @@ Fix DI information using Code View.
 Fix generation of unused LLVM IR code paths.
 Test cases are no longer reported as unused during compilation.
 Add compilation of Tracy profiler on Windows in baker development tool.
+Fix DWARF generation for local anonymous functions.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

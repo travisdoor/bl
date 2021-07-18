@@ -84,6 +84,7 @@ typedef struct {
     LLVMValueRef llvm_const_i8_zero;
 
     THashTable                 gstring_cache;
+    THashTable                 llvm_fn_cache; // u64 -> LLVMValueRef
     TSmallArray_RTTIIncomplete incomplete_rtti;
     TList                      incomplete_queue;
 
@@ -135,8 +136,8 @@ static LLVMValueRef rtti_emit_fn_array(Context *cnt, TSmallArray_TypePtr *fns);
 // =================================================================================================
 // Debug info
 // =================================================================================================
-static void            emit_DI_fn(Context *cnt, MirFn *fn);
-static void            emit_DI_var(Context *cnt, MirVar *var);
+static void            emit_DI_fn(Context *cnt, MirFn *fn);    // @CLEANUP rename
+static void            emit_DI_var(Context *cnt, MirVar *var); // @CLEANUP rename
 static LLVMMetadataRef DI_type_init(Context *cnt, MirType *type);
 static LLVMMetadataRef DI_complete_type(Context *cnt, MirType *type);
 static LLVMMetadataRef DI_scope_init(Context *cnt, Scope *scope);
@@ -221,6 +222,24 @@ static INLINE void emit_DI_instr_loc(Context *cnt, MirInstr *instr)
         !scope_is_local(scope) ? DI_unit_init(cnt, loc->unit) : DI_scope_init(cnt, scope);
     BL_ASSERT(llvm_scope && "Missing DI scope!");
     llvm_di_set_current_location(cnt->llvm_builder, (unsigned)loc->line, 0, llvm_scope, false);
+}
+
+static INLINE LLVMValueRef llvm_lookup_fn(Context *cnt, const char *name)
+{
+    const u64 hash  = thash_from_str(name);
+    TIterator found = thtbl_find(&cnt->llvm_fn_cache, hash);
+    TIterator end   = thtbl_end(&cnt->llvm_fn_cache);
+    if (!TITERATOR_EQUAL(found, end)) {
+        return thtbl_iter_peek_value(LLVMValueRef, found);
+    }
+    return NULL;
+}
+
+static INLINE LLVMValueRef llvm_cache_fn(Context *cnt, const char *name, LLVMValueRef llvm_fn)
+{
+    const u64 hash = thash_from_str(name);
+    thtbl_insert(&cnt->llvm_fn_cache, hash, llvm_fn);
+    return llvm_fn;
 }
 
 static INLINE MirInstr *push_back_incomplete(Context *cnt, MirInstr *instr)
@@ -605,16 +624,13 @@ LLVMMetadataRef DI_scope_init(Context *cnt, Scope *scope)
 {
     BL_ASSERT(scope && "Invalid scope!");
     if (scope->llvm_meta) return scope->llvm_meta;
-
     switch (scope->kind) {
     case SCOPE_LEXICAL: {
         BL_ASSERT(scope->location);
         LLVMMetadataRef llvm_parent_scope = DI_scope_init(cnt, scope->parent);
         LLVMMetadataRef llvm_unit         = DI_unit_init(cnt, scope->location->unit);
-
         BL_ASSERT(llvm_parent_scope);
         BL_ASSERT(llvm_unit);
-
         scope->llvm_meta = llvm_di_create_lexical_scope(cnt->llvm_di_builder,
                                                         llvm_parent_scope,
                                                         llvm_unit,
@@ -623,11 +639,9 @@ LLVMMetadataRef DI_scope_init(Context *cnt, Scope *scope)
                                                         0);
         break;
     }
-
     default:
         BL_ABORT("Unsuported scope '%s' for DI generation", scope_kind_name(scope));
     }
-
     return scope->llvm_meta;
 }
 
@@ -644,28 +658,20 @@ void emit_DI_fn(Context *cnt, MirFn *fn)
     if (!fn->decl_node) return;
     BL_ASSERT(fn->body_scope);
     if (fn->body_scope->llvm_meta) return;
-    //BL_ASSERT(!fn->body_scope->llvm_meta && "Attempt to regenerate function DI!");
-    Location *      location   = fn->decl_node->location;
-    LLVMMetadataRef llvm_file  = DI_unit_init(cnt, location->unit);
-    LLVMMetadataRef llvm_scope = NULL;
-    if (fn->is_global) {
-        llvm_scope = llvm_file;
-    } else {
-        Scope *scope = fn->decl_node->owner_scope;
-        BL_ASSERT(scope && "Function has no owner scope data!");
-        llvm_scope = DI_scope_init(cnt, scope);
-    }
-    BL_ASSERT(llvm_scope && "Invalid scope for DWARF!");
+    // We use file scope for debug info even for global functions to prevent some problems with
+    // DWARF generation, caused mainly by putting subprogram info into lexical scopes i.e. in case
+    // local function is generated.
+    Location *      location  = fn->decl_node->location;
+    LLVMMetadataRef llvm_file = DI_unit_init(cnt, location->unit);
+    BL_ASSERT(llvm_file && "Missing DI file scope data!");
     fn->body_scope->llvm_meta = llvm_di_create_fn(cnt->llvm_di_builder,
-                                                  llvm_scope,
+                                                  llvm_file,
                                                   fn->id ? fn->id->str : fn->linkage_name,
                                                   fn->linkage_name,
                                                   llvm_file,
                                                   (unsigned)location->line,
                                                   fn->type->llvm_meta,
                                                   (unsigned)location->line);
-
-    // llvm_di_reset_current_location(cnt->llvm_builder);
     llvm_di_set_subprogram(fn->llvm_value, fn->body_scope->llvm_meta);
 }
 
@@ -743,17 +749,22 @@ LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn, bool schedule_full_generatio
 {
     BL_ASSERT(fn);
     const char *linkage_name = NULL;
-    if (IS_NOT_FLAG(fn->flags, FLAG_INTRINSIC)) {
-        linkage_name = fn->linkage_name;
-    } else {
+    if (IS_FLAG(fn->flags, FLAG_INTRINSIC)) {
         linkage_name = get_intrinsic(fn->linkage_name);
         BL_ASSERT(linkage_name && "Unknown LLVM intrinsic!");
+    } else {
+        linkage_name = fn->linkage_name;
     }
 
     BL_ASSERT(linkage_name && "Invalid function name!");
-    fn->llvm_value = LLVMGetNamedFunction(cnt->llvm_module, linkage_name);
+    // @PERFORMANCE: Use custom hash table to resolve already generated functions, used LLVM version
+    // is quite BS.
+    fn->llvm_value = llvm_lookup_fn(cnt, linkage_name);
     if (fn->llvm_value) return fn->llvm_value;
-    fn->llvm_value = LLVMAddFunction(cnt->llvm_module, linkage_name, get_type(cnt, fn->type));
+    fn->llvm_value =
+        llvm_cache_fn(cnt,
+                      linkage_name,
+                      LLVMAddFunction(cnt->llvm_module, linkage_name, get_type(cnt, fn->type)));
 
     if (schedule_full_generation) {
         // Push function prototype instruction into generation queue.
@@ -2935,7 +2946,6 @@ State emit_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
     MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
     BL_MAGIC_ASSERT(fn);
-    BL_ASSERT(fn->ref_count && "Attempt to generate unused function!");
     emit_fn_proto(cnt, fn, false);
 
     // External functions does not have any body block.
@@ -3166,6 +3176,7 @@ void ir_run(Assembly *assembly)
     cnt.llvm_builder  = LLVMCreateBuilderInContext(assembly->llvm.cnt);
 
     thtbl_init(&cnt.gstring_cache, sizeof(LLVMValueRef), 1024);
+    thtbl_init(&cnt.llvm_fn_cache, sizeof(LLVMValueRef), 4096);
     tsa_init(&cnt.incomplete_rtti);
     tlist_init(&cnt.incomplete_queue, sizeof(MirInstr *));
     tlist_init(&cnt.queue, sizeof(MirInstr *));
@@ -3215,6 +3226,7 @@ void ir_run(Assembly *assembly)
     tlist_terminate(&cnt.incomplete_queue);
     tsa_terminate(&cnt.incomplete_rtti);
     thtbl_terminate(&cnt.gstring_cache);
+    thtbl_terminate(&cnt.llvm_fn_cache);
     assembly->stats.llvm_s = RUNTIME_MEASURE_END_S(llvm);
     RETURN_END_ZONE();
 }

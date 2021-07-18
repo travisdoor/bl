@@ -1,27 +1,19 @@
-foo :: fn (outer: ?T) {
-    bar :: fn (inner: ?T) {
-        print("bar = %\n", inner);
-    };
-    
-    print("foo = %\n", outer);
-    bar(true);
-}
-
 /*
-homo :: fn (callback: *fn(i: ?T) = &fn(i: T) {
-    print("hello from default i = %!\n", i);
-}) {
-    callback(10);
+// call_later :: fn (func: *fn(ctx: *?T), ctx: *T = null)
+call_later :: fn (func: *fn(ctx: *u8), ctx: *u8 = null) {
+    add_callback(&g_app.on_post_update, func, ctx);
 }
 */
 
-bar :: fn (i: s32) {
-    uber :: fn (i: s32) {};
-}
+question :: fn (f: *fn()) {}
 
 main :: fn () s32 {
-    //foo(10);
-    //homo();
+    {
+        question(
+            &fn () {
+            }
+        );
+    }
     return 0;
 }
 
