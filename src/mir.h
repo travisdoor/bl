@@ -281,7 +281,6 @@ struct MirFn {
     MirInstrBlock *first_block;
     MirInstrBlock *last_block;
     MirInstrBlock *exit_block;
-    s32            block_count; // @CLEANUP is this used?
 
     // Temporary variable used for return value.
     MirInstr *ret_tmp;
