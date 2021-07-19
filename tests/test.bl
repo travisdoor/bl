@@ -1,5 +1,24 @@
+<<<<<<< HEAD
 main :: fn () s32 {
     group(32);
+=======
+/*
+// call_later :: fn (func: *fn(ctx: *?T), ctx: *T = null)
+call_later :: fn (func: *fn(ctx: *u8), ctx: *u8 = null) {
+    add_callback(&g_app.on_post_update, func, ctx);
+}
+*/
+
+question :: fn (f: *fn()) {}
+
+main :: fn () s32 {
+    {
+        question(
+            &fn () {
+            }
+        );
+    }
+>>>>>>> master
     return 0;
 }
 
