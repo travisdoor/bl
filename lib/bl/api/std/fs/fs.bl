@@ -212,7 +212,7 @@ read_string :: fn (handle: File) (string, Error) {
         return String.empty, err1;
     }
     size += 1; // To handle zero terminator.
-    buf := String.new(cast(usize) size);
+    buf := String.new(cast(s64) size);
     read, err2 :: _FsImpl.read(handle, buf.ptr, auto size - 1);
     if !is_ok(err2) {
         String.delete(buf);
@@ -340,7 +340,7 @@ dir_remove :: fn (dirpath: string) Error #inline {
 dir_remove_all :: fn (dirpath: string, remove_root := true, filter: DirScanFilterFn = &_default_file_filter) Error {
     if String.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
     if !filter { return error(ERR_INVALID_HANDLE, "Invalid list filter!"); }
-    tmp :: String.new(cast(usize) dirpath.len);
+    tmp :: String.new( dirpath.len);
     defer String.delete(tmp);
     list, err :: _FsImpl.dir_scan(dirpath, filter);
     if !is_ok(err) { return err; }

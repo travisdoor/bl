@@ -1673,10 +1673,10 @@ Ast *parse_expr_binary(Context *cnt, Ast *lhs, Ast *rhs, Token *op)
     binop->data.expr_binop.kind = sym_to_binop_kind(op->sym);
     binop->data.expr_binop.lhs  = lhs;
     binop->data.expr_binop.rhs  = rhs;
-
-    op->location.col = lhs->location->col;
-    op->location.len = rhs->location->col - lhs->location->col + rhs->location->len;
-
+    if (lhs && rhs) {
+        op->location.col = lhs->location->col;
+        op->location.len = rhs->location->col - lhs->location->col + rhs->location->len;
+    }
     return binop;
 }
 

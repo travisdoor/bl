@@ -155,7 +155,7 @@ process_file :: fn (in_filepath: string) Error {
     }
     tu : CXTranslationUnit = null;
 
-    arg_include_path :: sprint("-I", _args.include_dir);
+    arg_include_path :: sprint("-I%", _args.include_dir);
     defer String.delete(arg_include_path);
     parser_args :: {:[1]*u8: arg_include_path.ptr};
 
@@ -174,7 +174,7 @@ process_file :: fn (in_filepath: string) Error {
     out_filepath := String.new(_args.out_filepath);
     defer String.delete(out_filepath);
     if String.is_empty(_args.out_filepath) {
-        out_filepath = sprint(Fs.remove_extension(ctx.filename), ".bl");
+        out_filepath = sprint("%.bl", Fs.remove_extension(ctx.filename));
     }
     out_file, err :: Fs.open(out_filepath, Fs.OpenMode.Create, Fs.OpenMode.Write);
     if !is_ok(err) {
@@ -190,7 +190,7 @@ process_file :: fn (in_filepath: string) Error {
     array_terminate(&ctx.sym_cache);
 
     if _args.check_syntax {
-        cmd :: sprint("blc -silent -syntax-only ", out_filepath);
+        cmd :: sprint("blc -silent -syntax-only %", out_filepath);
         defer String.delete(cmd);
         if os_execute(cmd) != 0 {
             return error("Code validation failed.");

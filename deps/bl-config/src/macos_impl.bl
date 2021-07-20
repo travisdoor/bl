@@ -59,7 +59,7 @@ configure :: fn () Error {
     defer String.delete(linker_opt_shared);    
     defer String.delete(lib_dir);
     
-    lib_dir = sprint(g_pwd, "/", LIB_DIR);
+    lib_dir = sprint("%/%", g_pwd, LIB_DIR);
     {
        err :: Fs.normalize(&lib_dir);
        if !is_ok(err) {
@@ -74,7 +74,7 @@ configure :: fn () Error {
     print_log("Found Command Line Tools on '%'.", COMMAND_LINE_TOOLS);
 
     if !g_args.use_lld {
-        linker_executable = sprint(COMMAND_LINE_TOOLS, "/", LINKER_EXEC);
+        linker_executable = sprint("%/%", COMMAND_LINE_TOOLS, LINKER_EXEC);
         if !Fs.exist(linker_executable) {
             return error("Cannot find linker on '%'.", linker_executable);
         }
@@ -93,8 +93,8 @@ configure :: fn () Error {
         String.append(&linker_lib_path, MACOS_SDK);
     }
     
-    linker_opt_exec = sprint("-macosx_version_min ", os_ver, " -sdk_version ", os_ver, " ", LINKER_OPT_EXEC);
-    linker_opt_shared = sprint("-macosx_version_min ", os_ver, " -sdk_version ", os_ver, " ", LINKER_OPT_SHARED);
+    linker_opt_exec = sprint("-macosx_version_min % -sdk_version % %", os_ver,  os_ver, LINKER_OPT_EXEC);
+    linker_opt_shared = sprint("-macosx_version_min % -sdk_version % %", os_ver,  os_ver, LINKER_OPT_SHARED);
 
     return write_config(
         CONFIG, 

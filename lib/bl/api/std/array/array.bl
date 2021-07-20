@@ -14,16 +14,18 @@ _Array :: struct {
     len: s64;
     ptr: *u8;
     allocated: usize;
-    allocator: AllocFn;
+    allocator: *Allocator;
 }
 
 /// Sets dynamic array to default state. If array contains already allocated memory 
 /// `array_terminate` must be called first. Custom `allocator` can be specified.
-array_init :: fn (_arr: *[..]?T, allocator: AllocFn = null) #inline {
+array_init :: fn (_arr: *[..]?T, allocator: *Allocator = null) #inline {
     arr := cast(*_Array) _arr;
     arr.ptr = null;
     arr.len = 0;
     arr.allocated = 0;
+
+    if !allocator { allocator = _context.allocator; }
     arr.allocator = allocator;
 }
 
@@ -32,11 +34,9 @@ array_init :: fn (_arr: *[..]?T, allocator: AllocFn = null) #inline {
 /// default state also.
 array_terminate :: fn (_arr: *[..]?T) #inline {
     arr := cast(*_Array) _arr;
-    if arr.allocator {
-        arr.allocator(AllocOp.Free, 0, arr.ptr, #file, #line);
-    } else {
-        free(arr.ptr);
-    }
+    allocator := arr.allocator;
+    if !allocator { allocator = _context.allocator; }
+    free_memory(allocator, arr.ptr);
     arr.ptr = null;
     arr.len = 0;
     arr.allocated = 0;
@@ -98,35 +98,24 @@ get_elem_ptr :: fn (arr: *_Array, elem_size: usize, i: s64) *u8 #inline {
     if i >= arr.len {
         panic("Element index out of range, index is % but array size is %.", i, arr.len);
     }
-
     return ptr_shift_bytes(arr.ptr, i * cast(s64) elem_size);
 };
 
 ensure_space :: fn (arr: *_Array, elem_size: usize, space: usize, exact: bool) {
     if space == 0 { return; }
     if arr.allocated >= space { return; }
-
+    allocator := arr.allocator;
+    if !allocator { allocator = _context.allocator; }
     if arr.allocated == 0 {
         if !exact { space = ALLOC_BLOCK_SIZE; }
     } else {
         space *= 2;
     }
-
     tmp := arr.ptr;
-
-    if arr.allocator {
-        arr.ptr = arr.allocator(AllocOp.Allocate, space * elem_size, null, #file, #line);
-    } else {
-        arr.ptr = alloc(space * elem_size); 
-    }
+    arr.ptr = allocate_memory(allocator, space * elem_size);
     if tmp != null {
         memcpy(arr.ptr, tmp, arr.allocated * elem_size);
-        if arr.allocator {
-            arr.allocator(AllocOp.Free, 0, tmp, #file, #line);
-        } else {
-            free(tmp);
-        }
+        free_memory(allocator, tmp);
     }
-    
     arr.allocated = space;
 };

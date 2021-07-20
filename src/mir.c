@@ -4777,11 +4777,11 @@ AnalyzeResult analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
     BL_ASSERT(arr_ptr->value.type);
 
     if (!mir_is_pointer_type(arr_ptr->value.type)) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    elem_ptr->arr_ptr->node->location,
-                    BUILDER_CUR_WORD,
-                    "Expected array type or slice.");
+        FULL_ERROR_REPORT(elem_ptr,
+                          ERR_INVALID_TYPE,
+                          elem_ptr->arr_ptr->node->location,
+                          BUILDER_CUR_WORD,
+                          "Expected array type or slice.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -4794,14 +4794,14 @@ AnalyzeResult analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
             const s64 len = arr_type->data.array.len;
             const s64 i   = MIR_CEV_READ_AS(s64, &elem_ptr->index->value);
             if (i >= len || i < 0) {
-                builder_msg(BUILDER_MSG_ERROR,
-                            ERR_BOUND_CHECK_FAILED,
-                            elem_ptr->index->node->location,
-                            BUILDER_CUR_WORD,
-                            "Array index is out of the bounds, array size is %lli "
-                            "so index must fit in range from 0 to %lli.",
-                            len,
-                            len - 1);
+                FULL_ERROR_REPORT(elem_ptr,
+                                  ERR_BOUND_CHECK_FAILED,
+                                  elem_ptr->index->node->location,
+                                  BUILDER_CUR_WORD,
+                                  "Array index is out of the bounds, array size is %lli "
+                                  "so index must fit in range from 0 to %lli.",
+                                  len,
+                                  len - 1);
                 RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
         }
@@ -4830,11 +4830,11 @@ AnalyzeResult analyze_instr_elem_ptr(Context *cnt, MirInstrElemPtr *elem_ptr)
         break;
     }
     default: {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    arr_ptr->node->location,
-                    BUILDER_CUR_WORD,
-                    "Expected array or slice type.");
+        FULL_ERROR_REPORT(elem_ptr,
+                          ERR_INVALID_TYPE,
+                          arr_ptr->node->location,
+                          BUILDER_CUR_WORD,
+                          "Expected array or slice type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     }

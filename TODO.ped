@@ -2,34 +2,7 @@
 * document hash table
 * test hash table
 * add hash table into API
-* string support custom allocator
 * polymorph `...T` does not work.
-* polymorph functions cannot be export, extern, intrinsics
 
--- gen-project --
-* rename to `baker`
-
-everytime: 
-    create bin directory if not exist
-
-baker
-    - clear cache
-    - generate release
-    - copile release
-    
-baker --make
-    - generate release
-    - compile in release
-    
-baker --generate
-    - generate release
-        
-baker --debug
-    - generate debug
-    
-baker --tracy-enable
-    - enable tracy
-    - compile tracy
-    
-baker --cmake-clear-cache
-    - clear cmake cache
+* Add implicit conversion string to slice.
+* Refactor sprint.

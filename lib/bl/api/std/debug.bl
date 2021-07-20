@@ -116,8 +116,8 @@ _print_log_default :: fn (kind: PrintLogKind, file: string, line: s32, format: s
         PrintLogKind.Panic   { tag = "panic: "; out = OS_STDERR; }
     }
     w = bprint(buf, tag, file, line);
-    w = boprint(buf, w, format, args);
-    w = boprint(buf, w, "\n");
+    w += bprint(slice_range(buf, w), format, args);
+    w += bprint(slice_range(buf, w), "\n");
     __os_write(out, buf.ptr, auto w);
 };
 

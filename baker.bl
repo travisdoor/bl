@@ -32,6 +32,8 @@ _root_dir: string;
 
 
 main :: fn () s32 {
+    defer temporary_release();
+    
     parser :: ArgParser.new(HELP_TEXT);
     defer ArgParser.delete(parser);
 
@@ -137,15 +139,14 @@ cmake_generate :: fn () s32 #inline {
     is_debug :: _args.is_debug;
     conf :: conf_name(is_debug);
     cmd: string;
-    defer String.delete(cmd);
     
     Fs.set_cwd(BUILD_DIR);
     defer Fs.set_cwd(_root_dir);
     if _args.cmake_cache_clear { Fs.remove(CMAKE_CACHE); }
     if OS_KIND == OSKind.Windows {
-        cmd = sprint("cmake .. -G \"Visual Studio 16 2019\" -Thost=x64 -DCMAKE_BUILD_TYPE=", conf);
+        cmd = tprint("cmake .. -G \"Visual Studio 16 2019\" -Thost=x64 -DCMAKE_BUILD_TYPE=%", conf);
     } else {
-        cmd = sprint("cmake .. -DCMAKE_BUILD_TYPE=", conf);
+        cmd = tprint("cmake .. -DCMAKE_BUILD_TYPE=%", conf);
     }
     if _args.tracy_enable {
         String.append(&cmd, " -DTRACY_ENABLE=ON");
@@ -159,13 +160,12 @@ cmake_compile :: fn () s32 #inline {
     is_debug :: _args.is_debug;
     conf :: conf_name(is_debug);
     cmd: string;
-    defer String.delete(cmd);
     Fs.set_cwd(BUILD_DIR);
     defer Fs.set_cwd(_root_dir);
     if OS_KIND == OSKind.Windows {
-        cmd = sprint("cmake --build . --config ", conf);
+        cmd = tprint("cmake --build . --config %", conf);
     } else {
-        cmd = sprint("make -j");
+        cmd = tprint("make -j");
     }
     return os_execute(cmd);
 }

@@ -126,15 +126,13 @@ _os_abort_default :: fn () {
 }
 
 __os_start :: fn () #entry {
-    /*
-    * Get command-line arguments passed to this executable.
-    * We need custom function here to convert UTF16 to UTF8,
-    * Windows api does not provide UTF8 version of CommandLineToArgv
-    * function.
-    * Internal allocation to handle argument strings is done
-    * in this method, so we must free memory used by return value
-    * by free(args.ptr) call.
-    */
+    // Get command-line arguments passed to this executable.
+    // We need custom function here to convert UTF16 to UTF8,
+    // Windows api does not provide UTF8 version of CommandLineToArgv
+    // function.
+    // Internal allocation to handle argument strings is done
+    // in this method, so we must free memory used by return value
+    // by free(args.ptr) call.
     get_command_line_args :: fn (out_args: *[]string) #no_inline {
         wargs: []*u16;
         cmd_line :: Win32.GetCommandLineW();
@@ -150,7 +148,7 @@ __os_start :: fn () #entry {
             tmp_size += auto Win32.WideCharToMultiByte(Win32.CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
         }
 
-        buffer :: _default_allocator(AllocOp.Allocate, result_size + tmp_size); 
+        buffer :: c_malloc(result_size + tmp_size); 
         if buffer == null { __os_abort(); }
 
         out_args.len = wargs.len;
@@ -176,7 +174,7 @@ __os_start :: fn () #entry {
     command_line_arguments.ptr = args.ptr;
 
     out :: cast(s32) main();
-    _default_allocator(AllocOp.Free, 0, auto args.ptr); 
+    c_free(auto args.ptr); 
     c_exit(out);
 }
 

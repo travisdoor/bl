@@ -1,7 +1,11 @@
 // Preallocate memory on stack
 _buffer: [4098]u8;
 _bi: usize;
-my_allocator :: fn (
+
+my_allocator :: {:Allocator: &my_allocator_handler };
+
+my_allocator_handler :: fn (
+    _: *Allocator,
     // Operation specify whether we do allocation or free
     operation: AllocOp, 
     // Count of bytes to be allocated, this value is set only when operation
@@ -37,9 +41,9 @@ my_allocator :: fn (
 
 main :: fn () s32 {
     // Store original allocator and set new one.
-    orig_allocator :: _context.alloc_fn;
-    _context.alloc_fn = &my_allocator;
-    defer _context.alloc_fn = orig_allocator;
+    orig_allocator :: _context.allocator;
+    _context.allocator = &my_allocator;
+    defer _context.allocator = orig_allocator;
 
     // All following allocations will use our custom allocator.
     str :: String.new("abc");

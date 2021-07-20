@@ -63,12 +63,15 @@
 //! 
 //! .. note:: Debug allocator is thread safe. Init and terminate must be called from main thread.
 
+debug_allocator :: {:Allocator: &debug_allocator_handler};
+
 /// Initialize Debug Allocator. This function internally swap current global context
 /// allocator to debug one. Deinitialization must be done by :ref:`DebugAllocator.terminate` call.
 init :: fn () {
-    _prev_alloc_fn = _context.alloc_fn;
-    _context.alloc_fn = &allocator;
-    _alloc_table = htbl_new(*Meta, 2048, &_default_allocator);
+    assert(!_prev_allocator);
+    _prev_allocator = _context.allocator;
+    _context.allocator = &debug_allocator;
+    _alloc_table = htbl_new(*Meta, 2048, &default_allocator);
     Sync.init(&_mutex);
 }
 
@@ -77,9 +80,11 @@ terminate :: fn (print_report := true) {
     if print_report {
         print_memory_report(true);
     }
-    _context.alloc_fn = _prev_alloc_fn;
+    assert(_prev_allocator);
+    _context.allocator = _prev_allocator;
     htbl_delete(_alloc_table);
     Sync.terminate(&_mutex);
+    _prev_allocator = null;
 }
 
 /// Invoke :ref:`DebugAllocator.debug_break` before allocation with defined serial ID.
@@ -149,7 +154,7 @@ print_memory_report :: fn (dump_leaks := false) {
 _mutex: Sync.Mutex;
 _allocation_count: s64;
 _total_allocated: s64;
-_prev_alloc_fn: AllocFn;
+_prev_allocator: *Allocator;
 _alloc_table: *HashTable;
 _serial: u64;
 _break_on: u64;
@@ -162,7 +167,7 @@ Meta :: struct {
     line: s32;
 }
 
-allocator :: fn (operation: AllocOp, size: usize, ptr : *u8 = null, file := String.empty, line := 0) *u8 {
+debug_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, file := String.empty, line := 0) *u8 {
     switch operation {
         AllocOp.Allocate {
             return debug_malloc(size, file, line);
@@ -185,7 +190,7 @@ debug_malloc :: fn (size: usize, file: string, line: s32) *u8 {
         debug_break();
     }
     total_size :: sizeof(Meta) + size;
-    mem := cast(*Meta) _default_allocator(AllocOp.Allocate, total_size);
+    mem := cast(*Meta) allocate_memory(&default_allocator, total_size);
     mem.allocated_size = size; 
     mem.used = auto mem;
     mem.file = file;
@@ -213,5 +218,5 @@ debug_free :: fn (ptr: *u8) {
         _allocation_count -= 1;
         htbl_erase(_alloc_table, cast(u64) meta);
     }
-    _default_allocator(AllocOp.Free, 0, auto meta);
+    free_memory(&default_allocator, auto meta);
 }

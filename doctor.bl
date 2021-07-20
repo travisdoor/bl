@@ -12,7 +12,7 @@ EXAMPLES_DOCS_DIR :: "examples/docs";
 EXPECT_FAIL_DIR :: "tests/src/expect_fail";
 ISSUES_DIR :: "tests/issues/closed";
 
-HARDCODED_MODULES :: {:[9]string:
+HARDCODED_MODULES :: {:[10]string:
                       "lib/bl/api/std/arg_parser/arg_parser.test.bl",
                       "lib/bl/api/std/array/array.test.bl",
                       "lib/bl/api/std/debug_allocator/debug_allocator.test.bl",
@@ -22,11 +22,13 @@ HARDCODED_MODULES :: {:[9]string:
                       "lib/bl/api/std/string/string.test.bl",
                       "lib/bl/api/std/sync/sync.test.bl",
                       "lib/bl/api/std/thread/thread.test.bl",
+                      "lib/bl/api/std/tmp_allocator/tmp_allocator.test.bl",
                      };
 
 main :: fn () s32 {
+    defer temporary_release();
+    
     wdir_init();
-    defer wdir_terminate();
     _args.test_count = 1;
     if !parse_args() { return 1; }
     if OS_KIND == OSKind.Windows {
@@ -34,17 +36,16 @@ main :: fn () s32 {
     } else {
         _compiler_path = get_path(BL_EXE_PATH_UNIX);
     }
-    defer String.delete(_compiler_path);
     start_time_ms :: os_tick_ms();
 
     loop c := 0; c < _args.test_count; c += 1 {
+        defer temporary_reset();
         print("---------------------------------- BL DOCTOR -----------------------------------\n");    
 
         // general
         print("Test general suite:\n");    
         {
             path :: get_path(MAIN_TEST_SUITE_FILEPATH);
-            defer String.delete(path);
             test_file(path, TestKind.Runtime);
             test_file(path, TestKind.Test);
         }
@@ -53,7 +54,6 @@ main :: fn () s32 {
         print("Test modules:\n");    
         loop i := 0; i < HARDCODED_MODULES.len; i += 1 {
             path :: get_path(HARDCODED_MODULES[i]);
-            defer String.delete(path);
             test_file(path, TestKind.Runtime);
             //test_file(file, TestKind.Test);
         }
@@ -61,20 +61,17 @@ main :: fn () s32 {
         { // examples
 
             path :: get_path(EXAMPLES_DIR);
-            defer String.delete(path);
             test_all_in_dir(path);
         }
 
         // examples docs
         {
             path :: get_path(EXAMPLES_DOCS_DIR);
-            defer String.delete(path);
             test_all_in_dir(path);
         }
         
         { 
             path :: get_path(ISSUES_DIR);
-            defer String.delete(path);
             test_all_in_dir(path);
         }
 
@@ -82,20 +79,17 @@ main :: fn () s32 {
         print("Test misc:\n");    
         { // gen-docs
             path :: get_path("gen-docs.bl");
-            defer String.delete(path);
             test_file(path, TestKind.Analyze);
         }
 
-        { // gen-project
-            path :: get_path("gen-project.bl");
-            defer String.delete(path);
+        { // baker
+            path :: get_path("baker.bl");
             test_file(path, TestKind.Analyze);
         }
 
         // expect fail to compile
         {
             path :: get_path(EXPECT_FAIL_DIR);
-            defer String.delete(path);
             test_all_in_dir(path, true);
         }
 
@@ -145,18 +139,14 @@ _errc := 0;
 wdir_init :: fn () {
     lhs: string;
     if String.split_by_last(#file, '/', &lhs, null) {
-        _wdir = String.new(lhs);
+        _wdir = String.new(lhs, &temporary_allocator);
     } else {
-        _wdir = String.new();
+        _wdir = String.new(&temporary_allocator);
     }
 }
 
-wdir_terminate :: fn () {
-    String.delete(_wdir);
-}
-
 get_path :: fn (sub: string) string {
-    return sprint(_wdir, "/", sub);
+    return tprint("%/%", _wdir, sub);
 }
 
 parse_args :: fn () bool {

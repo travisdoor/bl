@@ -27,6 +27,7 @@
 // =================================================================================================
 
 #import "std/string"
+#import "std/tmp_allocator"
 #load "std/math.bl"
 
 //! =====
@@ -75,39 +76,49 @@ eprint :: fn (format: string, args: ...) s32 {
     return w;
 };
 
-/// Write string to the input buffer. When passed buffer has not enough space to handle whole
-/// resulting string, function will print just part fitting into the buffer.  
+/// Write formatted input to the buffer. When passed buffer has not enough space to handle whole
+/// resulting string and terminal character, function will print just part tting into the buffer.
 /// 
 /// Returns count of characters written into buffer, this count does not include terminal
 /// character written at the end of the result string.
+///
+/// .. note:: String written into the buffer is always zero terminated.
 /// 
 /// See also :ref:`print`.
 bprint :: fn (buf: []u8, format: string, args: ...) s32 {
     w :: _print_impl(buf, format, args);
-    print_char(buf, w, '\0');
-    return w;
-};
-
-/// Same as :ref:`bprint` but with specified `offset` in output `buf`.
-///     
-/// When passed buffer has not enough space to handle whole resulting 
-/// string, function will print just part fitting into the buffer.  
-boprint :: fn (buf: []u8, offset: s32, format: string, args: ...) s32 {
-    w :: _print_impl(buf, format, args, offset);
-    print_char(buf, w, '\0');
-    return w;
-};
-
-/// Create new dynamic string with variable content.
-/// This instance must be freed by `string_delete` call.
-sprint :: fn (args: ...) string {
-    tmp := String.new();
-    loop i := 0; i < args.len; i += 1 {
-        String.append(&tmp, args[i]);
+    if buf.len > 0 {
+        assert(w < buf.len);
+        buf[w] = '\0';
     }
-
-    return tmp;
+    return w;
 };
+
+/// Write formatted input to the new string using :ref:`temporary_allocator`.
+///
+/// .. note:: There is no need to explicitly release memory used by temporary string.
+/// 
+/// .. note:: Created string is always zero terminated.
+///
+/// See also :ref:`print`.
+tprint :: fn (format: string, args: ...) string #inline {
+    buf := String.new(format.len, &temporary_allocator);
+    _print_impl(&buf, format, args);
+    return buf;
+};
+
+/// Write formatted input to the new heap-allocated string. 
+/// 
+/// .. note:: Use :ref:`String.delete` to free memory used by string.
+///
+/// .. note:: Created string is always zero terminated.
+///
+/// See also :ref:`print`.
+sprint :: fn (format: string, args: ...) string {
+    buf := String.new(format.len);
+    _print_impl(&buf, format, args);    
+    return buf;
+}
 
 /// Structure to hold information about custom real print formatting. Use
 /// :ref:`fmt_real` function to create formatted printable value.
@@ -179,14 +190,40 @@ fmt_int :: fn (v: Any, base: FmtIntBase, print_prefix := true) FmtInt #inline {
     return {:FmtInt: base, print_prefix, v};
 }
 
+/// Simple wrapper used for format `u8` value as character.
+FmtChar :: struct {
+    v: u8;
+}
+
+/// Create formatter for `u8` number to be later printed as character.
+/// 
+/// Example
+/// -------
+/// 
+/// .. code-block:: bl
+///
+///     print("% = %\n", 'c', fmt_char('c'));
+fmt_char :: fn (v: u8) FmtChar #inline {
+    return {:FmtChar: v};
+}
+
+_print_impl :: fn {
+    fn (buf: []u8, format: string, args: []Any, cur := 0) s32 {
+        if cur >= buf.len { return cur; }
+        return __print_impl(&buf, format, args, cur);
+    };
+    fn (buf: *string, format: string, args: []Any, cur := 0) s32 {
+        return __print_impl(buf, format, args, cur);
+    };
+}
+
 #private
 DEFAULT_REAL_TRAILING :: 6;
-_print_impl :: fn (buf: []u8, format: string, args: []Any, cur := 0) s32 {
+
+__print_impl :: fn (buf: *?T, format: string, args: []Any, cur: s32) s32 {
     argi := 0;
-    if cur >= buf.len { return cur; }
     loop i := 0; i < format.len; i += 1 {
         c := format[i];
-
         if c == '%' {
             // print argument if there is one
             if argi < args.len {
@@ -196,14 +233,13 @@ _print_impl :: fn (buf: []u8, format: string, args: []Any, cur := 0) s32 {
                 cur = print_string(buf, cur, "(null)");
             }
         } else {
-            cur = print_char(buf, cur, c);
+            cur = print_string(buf, cur, {:string: 1, &c});
         }
     }
-
     return cur;
 };
 
-print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
+print_any :: fn (buf: *?T, cur: s32, any: *Any) s32 {
     if any.type_info.kind == TypeKind.Int {
         // Integer
         info := cast(*TypeInfoInt) any.type_info;
@@ -276,6 +312,10 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
                 int = -int;
             }
             return print_u64(buf, cur, auto int, fmt.base, 1, fmt.print_prefix);
+        } else if any.type_info == typeinfo(FmtChar) {
+            fmt :: cast(*FmtChar) any.data;
+            char := cast(u8) u64_from_u8_ptr(&fmt.v, auto sizeof(u8) * 8);
+            return print_string(buf, cur, {:string: 1, &char});
         }
         
         info := cast(*TypeInfoStruct) any.type_info;
@@ -392,14 +432,10 @@ print_any :: fn (buf: []u8, cur: s32, any: *Any) s32 {
         print("unknown %\n", ^any.type_info);
         return print_string(buf, cur, "<unknown>");
     }
-
-
-    // TODO: support more types
-
     return cur;
 };
 
-print_type :: fn (buf: []u8, cur: s32, info: *TypeInfo) s32 {
+print_type :: fn (buf: *?T, cur: s32, info: *TypeInfo) s32 {
     if info.kind == TypeKind.Int {
         c := cast(*TypeInfoInt) info;
         if c.is_signed {
@@ -479,28 +515,22 @@ print_type :: fn (buf: []u8, cur: s32, info: *TypeInfo) s32 {
     return 0;
 };
 
-print_string :: fn (buf: []u8, cur: s32, str: string) s32 {
-    if str.ptr == null { return cur; }
-    i := 0;
-    loop ; i < str.len; i += 1 {
-        bi := cur + i;
-        if bi >= buf.len { break; }
+print_string :: fn {
+    fn (buf: *[]u8, cur: s32, str: string) s32 {
+        if str.ptr == null { return cur; }
+        written :: cast(s32) Math.min(buf.len-cur-1, str.len);
+        memcpy(ptr_shift_bytes(buf.ptr, cur), str.ptr, auto written);
+        return cur + written;
+    };
+    fn (buf: *string, cur: s32, str: string) s32 {
+        if str.ptr == null { return cur; }
+        return cur + String._append_str(buf, str);
+    };
+}
 
-        buf[bi] = str[i];
-    }
-    return cur + i;
-};
-
-print_char :: fn (buf: []u8, cur: s32, c: u8) s32 #inline {
-    if cur >= buf.len { return cur; }
-    buf[cur] = c;
-    return cur + 1;
-};
-
-print_u64 :: fn (buf: []u8, cur: s32, v: u64, base: FmtIntBase, digits: s32, print_prefix := true) s32 {
+print_u64 :: fn (buf: *?T, cur: s32, v: u64, base: FmtIntBase, digits: s32, print_prefix := true) s32 {
     tbl :: "0123456789abcdef";
     b: u64 #noinit;
-
     switch base {
         FmtIntBase.Dec { b = 10; }
         FmtIntBase.Bin { 
@@ -509,41 +539,36 @@ print_u64 :: fn (buf: []u8, cur: s32, v: u64, base: FmtIntBase, digits: s32, pri
         }
         FmtIntBase.Oct { 
             b = 8;  
-            if print_prefix { cur = print_char(buf, cur, '0'); }
+            if print_prefix { cur = print_string(buf, cur, "0"); }
         }
         FmtIntBase.Hex { 
             b = 16; 
             if print_prefix { cur = print_string(buf, cur, "0x"); }
         }
     }
-
     prev_cur :: cur;
     loop v > 0 {
         d :: v % b;
-        cur = print_char(buf, cur, tbl[auto d]);
+        cur = print_string(buf, cur, {:string: 1, &tbl[auto d]});
         v = v / b;
     }
-
     loop (cur - prev_cur) < digits {
-        cur = print_char(buf, cur, '0');
+        cur = print_string(buf, cur, "0");
     }
-    
     reverse(buf, prev_cur, cur - 1);
     return cur;
 }
 
-print_f64 :: fn (buf: []u8, cur: s32, v: f64, trailing: s32) s32 {
+print_f64 :: fn (buf: *?T, cur: s32, v: f64, trailing: s32) s32 {
     if trailing < 0 { trailing = DEFAULT_REAL_TRAILING; }
     ipart :: cast(u64) v;
     fpart := v - cast(f64) ipart;
     cur = print_u64(buf, cur, ipart, FmtIntBase.Dec, 1);
-
     if trailing != 0 { 
-        cur = print_char(buf, cur, '.');
+        cur = print_string(buf, cur, ".");
         fpart = fpart * Math.pow(10., auto trailing); 
         cur = print_u64(buf, cur, cast(u64) Math.ceil(fpart), FmtIntBase.Dec, trailing); 
     } 
-
     return cur;
 };
 
@@ -552,7 +577,6 @@ s64_from_u8_ptr :: fn (ptr: *u8, bit_count: s32) s64 {
     if bit_count == 32 { return ^ cast(*s32) ptr; }
     if bit_count == 16 { return ^ cast(*s16) ptr; }
     if bit_count ==  8 { return ^ cast(*s8)  ptr; }
-
     return 0;
 };
 
@@ -561,14 +585,12 @@ u64_from_u8_ptr :: fn (ptr: *u8, bit_count: s32) u64 {
     if bit_count == 32 { return ^ cast(*u32) ptr; }
     if bit_count == 16 { return ^ cast(*u16) ptr; }
     if bit_count ==  8 { return ^ cast(*u8)  ptr; }
-
     return 0;
 };
 
 f64_from_u8_ptr :: fn (ptr: *u8, bit_count: s32) f64 {
     if bit_count == 64 { return ^ cast(*f64) ptr; }
     if bit_count == 32 { return cast(f64) (^ cast(*f32) ptr); }
-
     return 0.;
 };
 
@@ -576,11 +598,11 @@ ptr_from_ptr :: fn (ptr: *u8) *u8 {
     return cast(*u8) ^ cast(*usize) ptr;
 };
 
-reverse :: fn (buf: []u8, start: s64, end: s64) #inline {
+reverse :: fn (buf: *?T, start: s64, end: s64) #inline {
     loop start < end {
-        temp :: buf[start]; 
-        buf[start] = buf[end]; 
-        buf[end] = temp; 
+        temp :: (^buf)[start]; 
+        (^buf)[start] = (^buf)[end]; 
+        (^buf)[end] = temp; 
         start += 1; 
         end   -= 1; 
     }

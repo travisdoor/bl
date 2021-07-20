@@ -83,36 +83,36 @@
 /// 
 /// Create copy of C zero terminated string.
 new :: fn {
-    fn (allocator: AllocFn = null) string {
+    fn (allocator: *Allocator = null) string {
         tmp : string #noinit;
-        tmp.ptr = alloc_block(0, null);
+        tmp.ptr = alloc_block(0, allocator);
         tmp.len = 0;
         set_terminator(tmp);
         return tmp;
     };
 
-    fn (size: s64, allocator: AllocFn = null) string {
+    fn (size: s64, allocator: *Allocator = null) string {
         assert(size > 0);
         tmp : string #noinit;
-        tmp.ptr = alloc_block(size, null);
+        tmp.ptr = alloc_block(auto size, allocator);
         tmp.len = 0;
         set_terminator(tmp);
         return tmp;
     };
 
-    fn (v: string, allocator: AllocFn = null) string {
+    fn (v: string, allocator: *Allocator = null) string {
         tmp : string #noinit;
-        tmp.ptr = alloc_block(auto v.len, null);
+        tmp.ptr = alloc_block(auto v.len, allocator);
         tmp.len = v.len;
         memcpy(tmp.ptr, v.ptr, auto v.len);
         set_terminator(tmp);
         return tmp;
     };
 
-    fn (cstr: *u8, allocator: AllocFn = null) string {
+    fn (cstr: *u8, allocator: *Allocator = null) string {
         len :: c_strlen(auto cstr);
         tmp: string #noinit;
-        tmp.ptr = alloc_block(len, null);
+        tmp.ptr = alloc_block(len, allocator);
         tmp.len = auto len;
         memcpy(tmp.ptr, cstr, len * sizeof(u8));
         set_terminator(tmp);
@@ -147,33 +147,26 @@ clear :: fn (v: *string) {
 };
 
 /// Append dynamic string with any value. Allocation is done in case there
-/// is not enough space reminding in string.
-append :: fn (v: *string, add: Any) {
-    new_len: s64;
-    add_len: s64;
-    add_ptr: *u8;
+/// is not enough space reminding in string. The `v` string is supposed to be
+/// allocated on heap.
+///
+/// Returns count of characters appended to the string excluding zero terminator.
+append :: fn {
+    _append_str;
+    _append_any;
+}
 
-    if add.type_info.kind == TypeKind.String {
-        str := ^ cast(*string) add.data;
-        new_len = v.len + str.len;
-        add_ptr = str.ptr;
-        add_len = str.len;
-    } else {
-        // other values than string
-        buf := {:[PRINT_MAX_LENGTH]u8: 0};
-        tmp := {:[]u8: buf.len, buf.ptr };
-
-        bprint(tmp, "%", add);
-        add_len = auto c_strlen(auto buf.ptr);
-        add_ptr = buf.ptr;
-        new_len = v.len + add_len;
-    }
-
-    v.ptr = make_more_room_if_needed(v.ptr, auto new_len);
-    memcpy(cast(*u8) (cast(u64) v.ptr + auto v.len) , add_ptr, auto add_len);
+_append_str :: fn (v: *string, other: string) s32 {
+    new_len :: v.len + other.len;
+    v.ptr = make_more_room_if_needed(v.ptr, auto new_len);        
+    memcpy(ptr_shift_bytes(v.ptr, auto v.len), other.ptr, auto other.len);
     v.len = new_len;
-
     set_terminator(^v);
+    return auto other.len;
+}
+
+_append_any :: fn (v: *string, add: Any) s32 #inline {
+    return _print_impl(v, "%", {:[]Any: 1, &add}, auto v.len);
 }
 
 /// Append string with multiple values passed as `args` and return `^v`.
@@ -200,6 +193,7 @@ concatenate :: fn (v: *string, args: ...) string {
 ///    path := String.new();
 ///    defer String.delete(path);
 ///    Fs.set_cwd(String.clear_concat(&path, "my-dir/project-", VERSION));
+/// @INCOMPLETE Remove this!
 clear_concat :: fn (v: *string, args: ...) string {
     clear(v);
     loop i := 0; i < args.len; i += 1 {
@@ -561,7 +555,7 @@ STRING_BLOCK_SIZE :: 32 - sizeof(BlockHead);
 
 BlockHead :: struct {
     allocated_size: usize;
-    allocator: AllocFn; // @CLEANUP is this properly used?
+    allocator: *Allocator;
 };
 
 make_more_room_if_needed :: fn (ptr: *u8, size: usize) *u8 {
@@ -571,20 +565,20 @@ make_more_room_if_needed :: fn (ptr: *u8, size: usize) *u8 {
     if size > allocated {
         new_ptr := alloc_block(size, allocator);
         memcpy(new_ptr, ptr, allocated);
-        free(get_allocation_ptr(ptr));
+        free_block(ptr);
         ptr = new_ptr;
     }
 
     return ptr;
 };
 
-alloc_block :: fn (size: usize, allocator: AllocFn) *u8 {
-    if !allocator { allocator = _context.alloc_fn; }
+alloc_block :: fn (size: usize, allocator: *Allocator) *u8 {
+    if !allocator { allocator = _context.allocator; }
     d := size / STRING_BLOCK_SIZE + 1;
     size = d * STRING_BLOCK_SIZE;
 
     alloc_size := size + sizeof(BlockHead) + sizeof(u8);
-    tmp := cast(*BlockHead) allocator(AllocOp.Allocate, alloc_size, null, #file, #line);
+    tmp := cast(*BlockHead) allocate_memory(allocator, alloc_size);
     if tmp == null { panic(); }
     tmp.allocated_size = size; 
     tmp.allocator = allocator;
@@ -595,7 +589,8 @@ alloc_block :: fn (size: usize, allocator: AllocFn) *u8 {
 free_block :: fn (ptr: *u8) {
     head :: get_block_head(ptr);
     allocator :: head.allocator;
-    allocator(AllocOp.Free, 0, get_allocation_ptr(ptr), #file, #line);
+    assert(allocator);
+    free_memory(allocator, get_allocation_ptr(ptr));
 };
 
 get_allocation_ptr :: fn (ptr: *u8) *u8 {

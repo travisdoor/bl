@@ -85,7 +85,7 @@ configure :: fn () Error {
     
     // Lookup build tools instalation.
     if String.is_empty(g_args.build_tools_path) {
-        build_tools_path = sprint(program_files_path, "/", BUILD_TOOLS);
+        build_tools_path = sprint("%/%", program_files_path, BUILD_TOOLS);
     } else {
         build_tools_path = String.new(g_args.build_tools_path);
     }
@@ -99,7 +99,7 @@ configure :: fn () Error {
     print_log("MS Build Tools instalation on '%'.", build_tools_path);
 
     // Lookup Windows SDK
-    win_sdk_path = sprint(program_files_path, "/", WIN_SDK);
+    win_sdk_path = sprint("%/%", program_files_path, WIN_SDK);
     {
         err :: Fs.normalize(&win_sdk_path);
         if !is_ok(err) { return error("Cannot find windows SDK on '%'", win_sdk_path); }
@@ -148,7 +148,7 @@ configure :: fn () Error {
     }
     
     // Lookup ucrt lib path
-    ucrt_path = sprint(win_sdk_path, "/", UCRT);
+    ucrt_path = sprint("%/%", win_sdk_path, UCRT);
     {
         err :: Fs.normalize(&ucrt_path);
         if !is_ok(err) {
@@ -157,7 +157,7 @@ configure :: fn () Error {
     }
     
     // Lookup ucrt lib path
-    um_path = sprint(win_sdk_path, "/", UM);
+    um_path = sprint("%/%", win_sdk_path, UM);
     {
         err :: Fs.normalize(&um_path);
         if !is_ok(err) {
@@ -166,7 +166,7 @@ configure :: fn () Error {
     }
 
     // Lookup MSVC lib tools
-    msvc_lib_path = sprint(build_tools_path, "/", MSVC_TOOLS);
+    msvc_lib_path = sprint("%/%", build_tools_path, MSVC_TOOLS);
     {
         err :: Fs.normalize(&msvc_lib_path);
         if !is_ok(err) { return error("Cannot find MSVC lib tools on '%'", msvc_lib_path); }
@@ -218,7 +218,7 @@ configure :: fn () Error {
     }
     
     // Lookup BL lib directory
-    lib_dir = sprint(g_pwd, "/", LIB_DIR);
+    lib_dir = sprint("%/%", g_pwd, LIB_DIR);
     {
         err :: Fs.normalize(&lib_dir);
         if !is_ok(err) {

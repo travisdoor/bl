@@ -276,12 +276,12 @@ AbortFn :: * fn ();
 /// containing basic context for whole assembly. This variable is mutable and can 
 /// be modified by user code. 
 Context :: struct {
-    /// Pointer to memory allocator function. 
-    alloc_fn: AllocFn;
     /// Pointer to log print function. 
     print_log_fn: PrintLogFn;
     /// Pointer to abort handler function. 
     abort_fn: AbortFn;
+    /// Default memory allocator used across the binary.
+    allocator: *Allocator;
 };
 
 /// Default implicit context. Implicit context is compiler internal global variable 
@@ -289,9 +289,9 @@ Context :: struct {
 /// be modified by user code. For example we can replace default memory allocator
 /// with custom one, this will affect all allocations made later.
 _context := {:Context: 
-                &_default_allocator, 
                 &_print_log_default, 
                 &_os_abort_default,
+                &default_allocator,
             };
 
 /// Contains all arguments passed from command line. First argument is executable name.

@@ -72,8 +72,8 @@ main :: fn () s32 {
     
     if g_args.help { return 0; }
 
-    g_etc_dir = sprint(g_pwd, "/", ETC_DIR);
-    g_conf_filepath = sprint(g_etc_dir, "/", CONF_FILE);
+    g_etc_dir = sprint("%/%", g_pwd, ETC_DIR);
+    g_conf_filepath = sprint("%/%", g_etc_dir, CONF_FILE);
     defer String.delete(g_etc_dir);
     defer String.delete(g_conf_filepath);
 

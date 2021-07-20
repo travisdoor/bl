@@ -1,0 +1,87 @@
+#import "std/test"
+#import "std/tmp_allocator"
+#import "std/debug_allocator"
+
+main :: fn () s32 {
+    DebugAllocator.init();
+    defer DebugAllocator.terminate();    
+    return test_run();    
+}
+
+#private
+simple_allocation_1 :: fn () #test {
+    defer temporary_release();
+    
+    ptr :: allocate_memory(&temporary_allocator, 64);
+    test_not_null(ptr);
+}
+
+simple_allocation_2 :: fn () #test {
+    defer temporary_release();
+    
+    loop i := 0; i < 100; i += 1 {
+        ptr :: allocate_memory(&temporary_allocator, 4);
+        test_not_null(ptr);
+    }    
+}
+
+simple_allocation_3 :: fn () #test {
+    defer temporary_release();
+    
+    loop i := 0; i < 100; i += 1 {
+        ptr :: allocate_memory(&temporary_allocator, 64);
+        test_not_null(ptr);
+    }    
+}
+
+large_allocation_1 :: fn () #test {
+    defer temporary_release();
+    
+    ptr :: allocate_memory(&temporary_allocator, 2048);
+    test_not_null(ptr);
+}
+
+reuse_allocation_1 :: fn () #test {
+    COUNT :: 100000;
+
+    ptrs: [..]*s32;
+    defer array_terminate(&ptrs);
+    loop i := 0; i < COUNT; i += 1 {
+        num_ptr := cast(*s32)allocate_memory(&temporary_allocator, sizeof(s32));
+        test_not_null(num_ptr);
+        test_true(is_aligned(num_ptr, alignof(s32)));
+        ^num_ptr = i;
+        array_push(&ptrs, num_ptr);
+    }    
+    test_eq(ptrs.len, COUNT);
+    allocated_bytes := temporary_allocated_bytes();
+    test_true(allocated_bytes > 0);
+    loop i := 0; i < ptrs.len; i += 1 {
+        num_ptr :: ptrs[i];
+        test_not_null(num_ptr);
+        test_true(is_aligned(num_ptr, alignof(s32)));
+        test_eq(^num_ptr, i);
+    }    
+    temporary_reset();
+    test_true(temporary_allocated_bytes() > 0);
+    allocated_bytes = temporary_allocated_bytes();
+
+    array_clear(&ptrs);
+    loop i := 0; i < COUNT; i += 1 {
+        num_ptr := cast(*s32)allocate_memory(&temporary_allocator, sizeof(s32));
+        test_not_null(num_ptr);
+        test_true(is_aligned(num_ptr, alignof(s32)));
+        ^num_ptr = i;
+        array_push(&ptrs, num_ptr);
+    }    
+    test_eq(ptrs.len, COUNT);
+    loop i := 0; i < ptrs.len; i += 1 {
+        num_ptr :: ptrs[i];
+        test_not_null(num_ptr);
+        test_true(is_aligned(num_ptr, alignof(s32)));
+        test_eq(^num_ptr, i);
+    }    
+    
+    temporary_release();
+    test_eq(temporary_allocated_bytes(), 0);
+}

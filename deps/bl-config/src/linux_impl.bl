@@ -42,7 +42,7 @@ configure :: fn () Error {
     defer String.delete(ld_linux_so);
     defer String.delete(lib_dir);
     
-    lib_dir = sprint(g_pwd, "/", LIB_DIR);
+    lib_dir = sprint("%/%", g_pwd, LIB_DIR);
     {
        err :: Fs.normalize(&lib_dir);
        if !is_ok(err) {
@@ -57,7 +57,7 @@ configure :: fn () Error {
     }
     print_log("Found ld-linux.so 64bit on '%'.", ld_linux_so);
     
-    blrt_64 = sprint(g_pwd, "/", BLRT_64);
+    blrt_64 = sprint("%/%", g_pwd, BLRT_64);
     {
        err :: Fs.normalize(&blrt_64);
        if !is_ok(err) {
@@ -66,8 +66,8 @@ configure :: fn () Error {
     }
     print_log("Found BL runtime on '%'.", blrt_64);
     
-    linker_opt_exec = sprint(blrt_64, " -dynamic-linker ", ld_linux_so, " ", LINKER_OPT_EXEC);
-    linker_opt_shared = sprint(LINKER_OPT_SHARED);
+    linker_opt_exec = sprint("% -dynamic-linker % %", blrt_64, ld_linux_so, LINKER_OPT_EXEC);
+    linker_opt_shared = sprint("%", LINKER_OPT_SHARED);
 
     return write_config(
         CONFIG, 
