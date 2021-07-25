@@ -1,0 +1,174 @@
+%//////////////////////////////////////////////////////////////////////////////
+%
+% Copyright (c) 2007-2019 Daniel Adler <dadler@uni-goettingen.de>, 
+%                         Tassilo Philipp <tphilipp@potion-studios.com>
+%
+% Permission to use, copy, modify, and distribute this software for any
+% purpose with or without fee is hereby granted, provided that the above
+% copyright notice and this permission notice appear in all copies.
+%
+% THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+% WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+% MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+% ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+% WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+% ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+% OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+%
+%//////////////////////////////////////////////////////////////////////////////
+
+% ==================================================
+% PowerPC 64
+% ==================================================
+\subsection{PowerPC (64bit) Calling Conventions}
+
+\paragraph{Overview}
+
+\begin{itemize}
+\item Word size is 32 bits for historical reasons
+\item Big endian (MSB) and litte endian (LSB) operating modes.
+\item Apple Mac OS X/Darwin PPC is specified in "Mac OS X ABI Function Call Guide"\cite{ppcMacOSX}. It uses Big Endian (MSB).
+\item Linux PPC 64-bit ABI is specified in "64-bit PowerPC ELF Application Binary Interface Supplement"\cite{ppcelf64abi} which is based on "System V ABI".
+\end{itemize}
+
+\paragraph{\product{dyncall} support}
+
+\product{Dyncall} and \product{dyncallback} are supported for PowerPC (64bit)
+Big Endian and Little Endian ELF ABIs on System V systems. Mac OS X is not
+supported.\\
+\product{Dyncall} can also be used to issue syscalls by using the syscall
+number as target parameter and selecting the correct mode.
+
+
+\subsubsection{PPC64 ELF ABI}
+
+\paragraph{Registers and register usage}
+
+\begin{table}[h]
+\begin{tabular*}{0.95\textwidth}{3 B}
+Name                & Brief description\\
+\hline
+{\bf gpr0}          & scratch\\
+{\bf gpr1}          & stack pointer\\
+{\bf gpr2}          & TOC base ptr (offset table and data for position independent code), scratch\\
+{\bf gpr3}          & return value, parameter 0 for integer or pointer, scratch\\
+{\bf gpr4-gpr10}    & parameter 1-7 for integer or pointer parameters, scratch\\
+
+{\bf gpr11}         & env pointer if needed, scratch\\
+{\bf gpr12}         & used for exception handling and glink code, scratch\\
+{\bf gpr13}         & used for system thread ID, preserve\\
+{\bf gpr14-31}      & preserve\\
+{\bf fpr0}          & scratch\\
+{\bf fpr1-fpr4}     & floating point return value, floating point parameter 0-3 (always double precision)\\
+{\bf fpr5-fpr13}    & floating point parameters 4-12 (always double precision)\\
+{\bf fpr14-fpr31}   & preserve\\
+{\bf v0-v1}         & scratch\\
+{\bf v2-v13}        & vector parameters\\
+{\bf v14-v19}       & scratch\\
+{\bf v20-v31}       & preserve\\
+{\bf lr}            & link-register, scratch\\
+{\bf ctr}           & count-register, scratch\\
+{\bf xer}           & fixed point exception register, scratch\\
+{\bf fpscr}         & floating point status and control register, scratch\\
+{\bf cr0-cr7}       & conditional register fields, each 4-bit wide (cr0-cr1 and cr5-cr7 are scratch)\\
+\end{tabular*}
+\caption{Register usage on PowerPC 64-Bit ELF ABI}
+\end{table}
+
+\paragraph{Parameter passing}
+
+\begin{itemize}
+\item stack grows down
+\item stack parameter order: right-to-left
+\item caller cleans up the stack
+\item stack is always 16 byte aligned
+\item the stack pointer must be atomically updated (to avoid any timing window in which an interrupt can occur with a partially updated stack), usually with the stdu (store doubleword with update) instruction
+\item the first 8 integer parameters are passed in registers gpr3-gpr10
+\item the first 13 floating point parameters are passed in registers fpr1-fpr13
+\item preserved registers are saved using a defined order (from high to low addresses):
+ fpr* (64bit aligned),
+ gpr*,
+ VRSAVE save word (32 bits),
+ padding for alignment (4 or 12 bytes),
+ v* (128bit aligned)
+\item if a floating point parameter is passed via a register, a gpr registers is skipped for subsequent integer parameters
+\item the caller pushes subsequent parameters onto the stack
+\item single precision floating point values use the second word in a doubleword 
+\item a quad precision floating point argument is passed as two consecutive double precision ones
+\item integer types \textless\ 64 bit are sign or zero extended and use a doubleword
+\item ellipsis calls take floating point values in int and float registers (single precision floats are promoted to double precision as
+required by ellipsis calls)
+\item space for all potential gpr* register passed arguments is reserved in the stack parameter area (in order to spill the parameters if
+needed - e.g. varargs), meaning a minimum of 64 bytes to hold gpr3-gpr10
+\item all nonvector parameters are aligned on 8-byte boundaries
+\item vector parameters are aligned on 16-byte boundaries
+\item integer parameters \textless\ 64 bit are right-justified (meaning occupy higher-address bytes) in their 8-byte slot on the stack, requiring extra-care for big-endian targets
+\end{itemize}
+
+
+\paragraph{Return values}
+
+\begin{itemize}
+\item return values of integer \textless=\ 32bit or pointer type use gpr3 and are zero or sign extended depending on their type
+\item 64 bit integers use gpr3
+\item floating point values are returned via fpr1
+\item character arrays \textless=\ 8 bytes use gpr3, and are right justified
+\item for all structs/unions (regardless of size) or character arrays \textgreater\ 8 bytes, a secret first parameter with an address to a caller allocated space is passed as first argument to the function (meaning in gpr3), which is written to by the callee
+\end{itemize}
+
+
+\paragraph{Stack layout}
+
+Stack frame is always 16-byte aligned.
+% verified/amended: TP nov 2019 (see also doc/disas_examples/ppc64.elfabi.disas)
+Stack directly after function prolog:\\
+
+\begin{figure}[h]
+\begin{tabular}{5|3|1 1}
+                                  & \vdots                        &                                      &                               \\
+\hhline{~=~~}
+register save area                & \hspace{4cm}                  &                                      & \mrrbrace{14}{caller's frame} \\
+\hhline{~-~~}
+local data                        &                               &                                      &                               \\
+\hhline{~-~~}
+\mrlbrace{6}{parameter area}      & last arg                      & \mrrbrace{3}{stack parameters}       &                               \\
+                                  & \ldots                        &                                      &                               \\
+                                  & arg 8                         &                                      &                               \\
+                                  & gpr10                         & \mrrbrace{3}{spill area (as needed)} &                               \\
+                                  & \ldots                        &                                      &                               \\
+                                  & gpr3                          &                                      &                               \\
+\hhline{~-~~}
+\mrlbrace{6}{linkage area}        & TOC ptr reg                   &                                      &                               \\
+                                  & reserved                      &                                      &                               \\
+                                  & reserved                      &                                      &                               \\
+                                  & return address (callee saved) &                                      &                               \\
+                                  & condition reg (callee saved)  &                                      &                               \\
+                                  & parent stack frame pointer    &                                      &                               \\
+\hhline{~=~~}
+register save area                &                               &                                      & \mrrbrace{4}{current frame}   \\
+\hhline{~-~~}
+local data                        &                               &                                      &                               \\
+\hhline{~-~~}
+parameter area                    &                               &                                      &                               \\
+\hhline{~-~~}
+linkage area                      & \vdots                        &                                      &                               \\
+\end{tabular}
+\caption{Stack layout on ppc64 ELF ABI}
+\end{figure}
+
+
+\newpage
+
+\subsubsection{System V syscalls}
+
+\paragraph{Parameter passing}
+
+\begin{itemize}
+\item syscall is issued via the {\em sc} instruction
+\item kernel destroys registers r13
+\item syscall number is set in r0
+\item params are passed in registers r3 through r10
+\item no stack in use, meaning syscalls are in theory limited to eight arguments
+\item register r3 holds the return value, overflow flag in conditional register cr0 signals errors in syscall
+\end{itemize}
+

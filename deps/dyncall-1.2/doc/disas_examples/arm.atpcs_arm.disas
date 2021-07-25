@@ -1,0 +1,191 @@
+; #include <stdlib.h>
+; 
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h)
+; {
+; }
+; 
+; void nonleaf_call(int a, int b, int c, int d, int e, int f, int g, int h)
+; {
+; 	/* use some local data */
+; 	*(char*)alloca(220) = 'L';
+; 	leaf_call(b, c, d, e, f, g, h);
+; }
+; 
+; int main()
+; {
+; 	nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7);
+; 	return 0;
+; }
+
+
+
+; output from netbsd-4.0.1-cats w/ gcc 4.1.2
+
+00000000 <leaf_call>:
+   0:   e1a0c00d        mov     ip, sp
+   4:   e92dd800        stmdb   sp!, {fp, ip, lr, pc}
+   8:   e24cb004        sub     fp, ip, #4      ; 0x4
+   c:   e24dd010        sub     sp, sp, #16     ; 0x10
+  10:   e50b0010        str     r0, [fp, #-16]
+  14:   e50b1014        str     r1, [fp, #-20]
+  18:   e50b2018        str     r2, [fp, #-24]
+  1c:   e50b301c        str     r3, [fp, #-28]
+  20:   e24bd00c        sub     sp, fp, #12     ; 0xc
+  24:   e89da800        ldmia   sp, {fp, sp, pc}
+
+00000028 <nonleaf_call>:
+  28:   e1a0c00d        mov     ip, sp                 ; |
+;spill here, if needed: stmdb   sp!, {r0, r1, r2, r3}  ; |         just for ref, if present this would change below offsets
+  2c:   e92dd800        stmdb   sp!, {fp, ip, lr, pc}  ; |
+  30:   e24cb004        sub     fp, ip, #4             ; | prolog
+  34:   e24dd020        sub     sp, sp, #32            ; |
+  38:   e50b0010        str     r0, [fp, #-16]         ; in arg 0 -> temp space in local area
+  3c:   e50b1014        str     r1, [fp, #-20]         ; in arg 1 -> temp space in local area
+  40:   e50b2018        str     r2, [fp, #-24]         ; in arg 2 -> temp space in local area
+  44:   e50b301c        str     r3, [fp, #-28]         ; in arg 3 -> temp space in local area
+  48:   e24dd0e0        sub     sp, sp, #224           ; alloca(220) - with padding to guarantee alignment
+  4c:   e28d200c        add     r2, sp, #12            ; |
+  50:   e50b2020        str     r2, [fp, #-32]         ; |        @@@ pointless push of r2 to local area to put it back ...
+  54:   e51b2020        ldr     r2, [fp, #-32]         ; |        @@@ ... into r2
+  58:   e2823003        add     r3, r2, #3             ; | start of (aligned) alloca()'d memory -> r3, leaving room at top of stack for param area
+  5c:   e1a03123        mov     r3, r3, lsr #2         ; |
+  60:   e1a03103        mov     r3, r3, lsl #2         ; /
+  64:   e50b3020        str     r3, [fp, #-32]         ; \
+  68:   e51b2020        ldr     r2, [fp, #-32]         ; | r2 -> r3, to free r2 (kinda pointless as followup code could use r2 and r3 the other way round)
+  6c:   e3a0304c        mov     r3, #76                ; 'L' -> r3, and ...
+  70:   e5c23000        strb    r3, [r2]               ; ... store in local area (of alloca()'d space)
+  74:   e59b3008        ldr     r3, [fp, #8]           ; arg 4 (fetched from prev frame's param area), and ...
+  78:   e58d3000        str     r3, [sp]               ; ... "pushed" onto stack
+  7c:   e59b300c        ldr     r3, [fp, #12]          ; arg 5 (fetched from prev frame's param area), and ...
+  80:   e58d3004        str     r3, [sp, #4]           ; ... "pushed" onto stack
+  84:   e59b3010        ldr     r3, [fp, #16]          ; arg 6 (fetched from prev frame's param area), and ...
+  88:   e58d3008        str     r3, [sp, #8]           ; ... "pushed" onto stack
+  8c:   e51b0014        ldr     r0, [fp, #-20]         ; arg 0
+  90:   e51b1018        ldr     r1, [fp, #-24]         ; arg 1
+  94:   e51b201c        ldr     r2, [fp, #-28]         ; arg 2
+  98:   e59b3004        ldr     r3, [fp, #4]           ; arg 3 (fetched from prev frame's param area)
+  9c:   ebfffffe        bl      9c <nonleaf_call+0x74> ; return address -> r14/lr, and call
+  a0:   e24bd00c        sub     sp, fp, #12            ; |
+  a4:   e89da800        ldmia   sp, {fp, sp, pc}       ; | epilog
+
+000000a8 <main>:
+  a8:   e1a0c00d        mov     ip, sp                 ; |
+  ac:   e92dd800        stmdb   sp!, {fp, ip, lr, pc}  ; |
+  b0:   e24cb004        sub     fp, ip, #4             ; | prolog
+  b4:   e24dd010        sub     sp, sp, #16            ; |
+  b8:   e3a03004        mov     r3, #4                 ; arg 4, and ...
+  bc:   e58d3000        str     r3, [sp]               ; ... "pushed" onto stack
+  c0:   e3a03005        mov     r3, #5                 ; arg 5, and ...
+  c4:   e58d3004        str     r3, [sp, #4]           ; ... "pushed" onto stack
+  c8:   e3a03006        mov     r3, #6                 ; arg 6, and ...
+  cc:   e58d3008        str     r3, [sp, #8]           ; ... "pushed" onto stack
+  d0:   e3a03007        mov     r3, #7                 ; arg 7, and ...
+  d4:   e58d300c        str     r3, [sp, #12]          ; ... "pushed" onto stack
+  d8:   e3a00000        mov     r0, #0                 ; arg 0
+  dc:   e3a01001        mov     r1, #1                 ; arg 1
+  e0:   e3a02002        mov     r2, #2                 ; arg 2
+  e4:   e3a03003        mov     r3, #3                 ; arg 3
+  e8:   ebfffffe        bl      e8 <main+0x40>         ; return address -> r14/lr, and call
+  ec:   e3a03000        mov     r3, #0                 ; return value via r3, ... (a bit unoptimal)
+  f0:   e1a00003        mov     r0, r3                 ; ... to r0
+  f4:   e24bd00c        sub     sp, fp, #12            ; |
+  f8:   e89da800        ldmia   sp, {fp, sp, pc}       ; | epilog
+
+
+
+; output from freebsd-11.0_r260099-raspberrypi w/ clang 3.3
+
+00000000 <leaf_call>:
+   0:   e24dd030        sub     sp, sp, #48     ; 0x30
+   4:   e58d002c        str     r0, [sp, #44]
+   8:   e58d1028        str     r1, [sp, #40]
+   c:   e58d2024        str     r2, [sp, #36]
+  10:   e58d3020        str     r3, [sp, #32]
+  14:   e59dc030        ldr     ip, [sp, #48]
+  18:   e58dc01c        str     ip, [sp, #28]
+  1c:   e59dc034        ldr     ip, [sp, #52]
+  20:   e58dc018        str     ip, [sp, #24]
+  24:   e59dc038        ldr     ip, [sp, #56]
+  28:   e58dc014        str     ip, [sp, #20]
+  2c:   e58d1010        str     r1, [sp, #16]
+  30:   e58d300c        str     r3, [sp, #12]
+  34:   e58d2008        str     r2, [sp, #8]
+  38:   e58d0004        str     r0, [sp, #4]
+  3c:   e28dd030        add     sp, sp, #48     ; 0x30
+  40:   e12fff1e        bx      lr
+
+00000044 <nonleaf_call>:
+  44:   e92d4bf0        push    {r4, r5, r6, r7, r8, r9, fp, lr}
+  48:   e28db018        add     fp, sp, #24     ; 0x18
+  4c:   e24ddf4a        sub     sp, sp, #296    ; 0x128
+  50:   e50b001c        str     r0, [fp, #-28]
+  54:   e50b1020        str     r1, [fp, #-32]
+  58:   e50b2024        str     r2, [fp, #-36]
+  5c:   e50b3028        str     r3, [fp, #-40]
+  60:   e59bc008        ldr     ip, [fp, #8]
+  64:   e50bc02c        str     ip, [fp, #-44]
+  68:   e59bc00c        ldr     ip, [fp, #12]
+  6c:   e50bc030        str     ip, [fp, #-48]
+  70:   e59bc010        ldr     ip, [fp, #16]
+  74:   e50bc034        str     ip, [fp, #-52]
+  78:   e59bc014        ldr     ip, [fp, #20]
+  7c:   e50bc038        str     ip, [fp, #-56]
+  80:   e3a0c04c        mov     ip, #76 ; 0x4c
+  84:   e5cdc02c        strb    ip, [sp, #44]
+  88:   e51bc020        ldr     ip, [fp, #-32]
+  8c:   e51be024        ldr     lr, [fp, #-36]
+  90:   e51b4028        ldr     r4, [fp, #-40]
+  94:   e51b502c        ldr     r5, [fp, #-44]
+  98:   e51b6030        ldr     r6, [fp, #-48]
+  9c:   e51b7034        ldr     r7, [fp, #-52]
+  a0:   e51b8038        ldr     r8, [fp, #-56]
+  a4:   e1a0900d        mov     r9, sp
+  a8:   e5898008        str     r8, [r9, #8]
+  ac:   e5897004        str     r7, [r9, #4]
+  b0:   e5896000        str     r6, [r9]
+  b4:   e58d0028        str     r0, [sp, #40]
+  b8:   e1a0000c        mov     r0, ip
+  bc:   e58d1024        str     r1, [sp, #36]
+  c0:   e1a0100e        mov     r1, lr
+  c4:   e58d2020        str     r2, [sp, #32]
+  c8:   e1a02004        mov     r2, r4
+  cc:   e58d301c        str     r3, [sp, #28]
+  d0:   e1a03005        mov     r3, r5
+  d4:   ebfffffe        bl      0 <leaf_call>
+  d8:   e59d001c        ldr     r0, [sp, #28]
+  dc:   e59d1020        ldr     r1, [sp, #32]
+  e0:   e59d2024        ldr     r2, [sp, #36]
+  e4:   e59d3028        ldr     r3, [sp, #40]
+  e8:   e58d0018        str     r0, [sp, #24]
+  ec:   e58d1014        str     r1, [sp, #20]
+  f0:   e58d2010        str     r2, [sp, #16]
+  f4:   e58d300c        str     r3, [sp, #12]
+  f8:   e24bd018        sub     sp, fp, #24     ; 0x18
+  fc:   e8bd8bf0        pop     {r4, r5, r6, r7, r8, r9, fp, pc}
+
+00000100 <main>:
+ 100:   e92d4800        push    {fp, lr}
+ 104:   e1a0b00d        mov     fp, sp
+ 108:   e24dd018        sub     sp, sp, #24     ; 0x18
+ 10c:   e3a00000        mov     r0, #0  ; 0x0
+ 110:   e50b0004        str     r0, [fp, #-4]
+ 114:   e3a01007        mov     r1, #7  ; 0x7
+ 118:   e1a0200d        mov     r2, sp
+ 11c:   e582100c        str     r1, [r2, #12]
+ 120:   e3a01006        mov     r1, #6  ; 0x6
+ 124:   e5821008        str     r1, [r2, #8]
+ 128:   e3a01005        mov     r1, #5  ; 0x5
+ 12c:   e5821004        str     r1, [r2, #4]
+ 130:   e3a01004        mov     r1, #4  ; 0x4
+ 134:   e5821000        str     r1, [r2]
+ 138:   e3a01001        mov     r1, #1  ; 0x1
+ 13c:   e3a02002        mov     r2, #2  ; 0x2
+ 140:   e3a03003        mov     r3, #3  ; 0x3
+ 144:   e50b0008        str     r0, [fp, #-8]
+ 148:   ebfffffe        bl      44 <nonleaf_call>
+ 14c:   e51b0008        ldr     r0, [fp, #-8]
+ 150:   e1a0d00b        mov     sp, fp
+ 154:   e8bd8800        pop     {fp, pc}
+
+; vim: ft=asm68k
+

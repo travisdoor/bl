@@ -1,0 +1,235 @@
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h)
+; {
+; }
+; 
+; void nonleaf_call(int a, int b, int c, int d, int e, int f, int g, int h)
+; {
+; 	/* use some local data */
+; 	char x = 'L';
+; 	leaf_call(b, c, d, e, f, g, h);
+; }
+; 
+; int main()
+; {
+; 	nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7);
+; 	return 0;
+; }
+
+
+
+; output from iOS 6 w/ clang 3.7.1, dumped with llvm-objdump -triple thumbv7-unknown-unknown-macho ...
+
+_leaf_call:
+       0:       80 b5           push    {r7, lr}
+       2:       6f 46           mov     r7, sp
+       4:       87 b0           sub     sp, #28
+       6:       d7 f8 10 90     ldr.w   r9, [r7, #16]
+       a:       d7 f8 0c c0     ldr.w   r12, [r7, #12]
+       e:       d7 f8 08 e0     ldr.w   lr, [r7, #8]
+      12:       06 90           str     r0, [sp, #24]
+      14:       05 91           str     r1, [sp, #20]
+      16:       04 92           str     r2, [sp, #16]
+      18:       03 93           str     r3, [sp, #12]
+      1a:       cd f8 08 e0     str.w   lr, [sp, #8]
+      1e:       cd f8 04 c0     str.w   r12, [sp, #4]
+      22:       cd f8 00 90     str.w   r9, [sp]
+      26:       07 b0           add     sp, #28
+      28:       80 bd           pop     {r7, pc}
+
+_nonleaf_call:
+      2a:       b0 b5           push    {r4, r5, r7, lr}
+      2c:       02 af           add     r7, sp, #8
+      2e:       8c b0           sub     sp, #48
+      30:       d7 f8 14 90     ldr.w   r9, [r7, #20]
+      34:       d7 f8 10 c0     ldr.w   r12, [r7, #16]
+      38:       d7 f8 0c e0     ldr.w   lr, [r7, #12]
+      3c:       bc 68           ldr     r4, [r7, #8]
+      3e:       4c 25           movs    r5, #76
+      40:       0b 90           str     r0, [sp, #44]
+      42:       0a 91           str     r1, [sp, #40]
+      44:       09 92           str     r2, [sp, #36]
+      46:       08 93           str     r3, [sp, #32]
+      48:       07 94           str     r4, [sp, #28]
+      4a:       cd f8 18 e0     str.w   lr, [sp, #24]
+      4e:       cd f8 14 c0     str.w   r12, [sp, #20]
+      52:       cd f8 10 90     str.w   r9, [sp, #16]
+      56:       07 f8 29 5c     strb    r5, [r7, #-41]
+      5a:       0a 98           ldr     r0, [sp, #40]
+      5c:       09 99           ldr     r1, [sp, #36]
+      5e:       08 9a           ldr     r2, [sp, #32]
+      60:       07 9b           ldr     r3, [sp, #28]
+      62:       dd f8 18 90     ldr.w   r9, [sp, #24]
+      66:       dd f8 14 c0     ldr.w   r12, [sp, #20]
+      6a:       dd f8 10 e0     ldr.w   lr, [sp, #16]
+      6e:       cd f8 00 90     str.w   r9, [sp]
+      72:       cd f8 04 c0     str.w   r12, [sp, #4]
+      76:       cd f8 08 e0     str.w   lr, [sp, #8]
+      7a:       ff f7 c1 ff     bl      #-126
+      7e:       0c b0           add     sp, #48
+      80:       b0 bd           pop     {r4, r5, r7, pc}
+
+_main:
+      82:       90 b5           push    {r4, r7, lr}
+      84:       01 af           add     r7, sp, #4
+      86:       85 b0           sub     sp, #20
+      88:       00 20           movs    r0, #0
+      8a:       01 21           movs    r1, #1
+      8c:       02 22           movs    r2, #2
+      8e:       03 23           movs    r3, #3
+      90:       40 f2 04 09     movw    r9, #4
+      94:       40 f2 05 0c     movw    r12, #5
+      98:       40 f2 06 0e     movw    lr, #6
+      9c:       07 24           movs    r4, #7
+      9e:       04 90           str     r0, [sp, #16]
+      a0:       cd f8 00 90     str.w   r9, [sp]
+      a4:       cd f8 04 c0     str.w   r12, [sp, #4]
+      a8:       cd f8 08 e0     str.w   lr, [sp, #8]
+      ac:       03 94           str     r4, [sp, #12]
+      ae:       ff f7 bc ff     bl      #-136
+      b2:       00 20           movs    r0, #0
+      b4:       05 b0           add     sp, #20
+      b6:       90 bd           pop     {r4, r7, pc}
+
+
+
+; ----------------- with spilling ------------->
+
+; #include <stdarg.h>
+;
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h)
+; {
+; }
+;
+; void nonleaf_call(int a, ...)
+; {
+; 	int b,c,d,e,f,g,h;
+; 	va_list ap;
+; 	va_start(ap,a);
+; 	b = va_arg(ap,int);
+; 	c = va_arg(ap,int);
+; 	d = va_arg(ap,int);
+; 	e = va_arg(ap,int);
+; 	f = va_arg(ap,int);
+; 	g = va_arg(ap,int);
+; 	h = va_arg(ap,int);
+; 	/* use some local data */
+; 	char x = 'L';
+; 	leaf_call(b,c,d,e,f,g,h);
+; }
+;
+; int main()
+; {
+; 	nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7);
+; 	return 0;
+; }
+
+
+
+; output from iOS 6 w/ clang 3.7.1, dumped with llvm-objdump -triple thumbv7-unknown-unknown-macho ...
+
+_leaf_call:
+       0:       80 b5           push    {r7, lr}
+       2:       6f 46           mov     r7, sp
+       4:       87 b0           sub     sp, #28
+       6:       d7 f8 10 90     ldr.w   r9, [r7, #16]
+       a:       d7 f8 0c c0     ldr.w   r12, [r7, #12]
+       e:       d7 f8 08 e0     ldr.w   lr, [r7, #8]
+      12:       06 90           str     r0, [sp, #24]
+      14:       05 91           str     r1, [sp, #20]
+      16:       04 92           str     r2, [sp, #16]
+      18:       03 93           str     r3, [sp, #12]
+      1a:       cd f8 08 e0     str.w   lr, [sp, #8]
+      1e:       cd f8 04 c0     str.w   r12, [sp, #4]
+      22:       cd f8 00 90     str.w   r9, [sp]
+      26:       07 b0           add     sp, #28
+      28:       80 bd           pop     {r7, pc}
+
+_nonleaf_call:
+      2a:       83 b0           sub     sp, #12        ; |        space for spill area (b/c pushing was apparently too easy)
+      2c:       80 b5           push    {r7, lr}       ; |
+      2e:       6f 46           mov     r7, sp         ; |
+      30:       8d b0           sub     sp, #52        ; | prolog
+      32:       3b 61           str     r3, [r7, #16]  ; |        |
+      34:       fa 60           str     r2, [r7, #12]  ; |        | spill (before reg save area)
+      36:       b9 60           str     r1, [r7, #8]   ; |        |
+      38:       4c 21           movs    r1, #76
+      3a:       0b aa           add     r2, sp, #44
+      3c:       0c 90           str     r0, [sp, #48]
+      3e:       07 f1 08 00     add.w   r0, r7, #8
+      42:       10 60           str     r0, [r2]
+      44:       0b 98           ldr     r0, [sp, #44]
+      46:       02 1d           adds    r2, r0, #4
+      48:       0b 92           str     r2, [sp, #44]
+      4a:       00 68           ldr     r0, [r0]
+      4c:       0a 90           str     r0, [sp, #40]
+      4e:       0b 98           ldr     r0, [sp, #44]
+      50:       02 1d           adds    r2, r0, #4
+      52:       0b 92           str     r2, [sp, #44]
+      54:       00 68           ldr     r0, [r0]
+      56:       09 90           str     r0, [sp, #36]
+      58:       0b 98           ldr     r0, [sp, #44]
+      5a:       02 1d           adds    r2, r0, #4
+      5c:       0b 92           str     r2, [sp, #44]
+      5e:       00 68           ldr     r0, [r0]
+      60:       08 90           str     r0, [sp, #32]
+      62:       0b 98           ldr     r0, [sp, #44]
+      64:       02 1d           adds    r2, r0, #4
+      66:       0b 92           str     r2, [sp, #44]
+      68:       00 68           ldr     r0, [r0]
+      6a:       07 90           str     r0, [sp, #28]
+      6c:       0b 98           ldr     r0, [sp, #44]
+      6e:       02 1d           adds    r2, r0, #4
+      70:       0b 92           str     r2, [sp, #44]
+      72:       00 68           ldr     r0, [r0]
+      74:       06 90           str     r0, [sp, #24]
+      76:       0b 98           ldr     r0, [sp, #44]
+      78:       02 1d           adds    r2, r0, #4
+      7a:       0b 92           str     r2, [sp, #44]
+      7c:       00 68           ldr     r0, [r0]
+      7e:       05 90           str     r0, [sp, #20]
+      80:       0b 98           ldr     r0, [sp, #44]
+      82:       02 1d           adds    r2, r0, #4
+      84:       0b 92           str     r2, [sp, #44]
+      86:       00 68           ldr     r0, [r0]
+      88:       04 90           str     r0, [sp, #16]
+      8a:       07 f8 25 1c     strb    r1, [r7, #-37]
+      8e:       0a 98           ldr     r0, [sp, #40]
+      90:       09 99           ldr     r1, [sp, #36]
+      92:       08 9a           ldr     r2, [sp, #32]
+      94:       07 9b           ldr     r3, [sp, #28]
+      96:       dd f8 18 90     ldr.w   r9, [sp, #24]
+      9a:       dd f8 14 c0     ldr.w   r12, [sp, #20]
+      9e:       dd f8 10 e0     ldr.w   lr, [sp, #16]
+      a2:       cd f8 00 90     str.w   r9, [sp]
+      a6:       cd f8 04 c0     str.w   r12, [sp, #4]
+      aa:       cd f8 08 e0     str.w   lr, [sp, #8]
+      ae:       ff f7 a7 ff     bl      #-178
+      b2:       0d b0           add     sp, #52
+      b4:       bd e8 80 40     pop.w   {r7, lr}
+      b8:       03 b0           add     sp, #12
+      ba:       70 47           bx      lr
+
+_main:
+      bc:       90 b5           push    {r4, r7, lr}
+      be:       01 af           add     r7, sp, #4
+      c0:       85 b0           sub     sp, #20
+      c2:       00 20           movs    r0, #0
+      c4:       01 21           movs    r1, #1
+      c6:       02 22           movs    r2, #2
+      c8:       03 23           movs    r3, #3
+      ca:       40 f2 04 09     movw    r9, #4
+      ce:       40 f2 05 0c     movw    r12, #5
+      d2:       40 f2 06 0e     movw    lr, #6
+      d6:       07 24           movs    r4, #7
+      d8:       04 90           str     r0, [sp, #16]
+      da:       cd f8 00 90     str.w   r9, [sp]
+      de:       cd f8 04 c0     str.w   r12, [sp, #4]
+      e2:       cd f8 08 e0     str.w   lr, [sp, #8]
+      e6:       03 94           str     r4, [sp, #12]
+      e8:       ff f7 9f ff     bl      #-194
+      ec:       00 20           movs    r0, #0
+      ee:       05 b0           add     sp, #20
+      f0:       90 bd           pop     {r4, r7, pc}
+
+; vim: ft=asm68k
+

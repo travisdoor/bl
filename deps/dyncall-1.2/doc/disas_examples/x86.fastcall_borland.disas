@@ -1,0 +1,41 @@
+; #pragma pack(push, 1)
+; struct TTest
+; {
+;     __int32 i1;
+;     __int32 i2;
+; };
+; #pragma pack(pop)
+; 
+; TTest __fastcall DoTest()
+; {
+;     TTest t;
+;     t.i1 = 1;
+;     t.i2 = 2;
+;     return t;
+; }
+; 
+; ...
+; TTest t = DoTest();
+
+; from http://codeverge.com/embarcadero.cppbuilder.cpp/does-fastcall-have-any-bearing-on/1043767
+
+
+DoTest():
+  push ebp                     ; |
+  mov ebp,esp                  ; | prolog
+  add esp,-0x0c                ; |
+  mov [ebp-0x04],eax           ; pointer to hidden param in eax -> local area
+  mov [ebp-0x0c],0x00000001    ; val 1 -> local area
+  mov [ebp-0x08],0x00000002    ; val 2 -> local area
+  mov eax,[ebp-0x04]           ; refetch eax (pointlessly)
+  mov edx,[ebp-0x0c]           ; get val 1 in edx and ...
+  mov [eax],edx                ; ... store at *eax
+  mov edx,[ebp-0x08]           ; get val 2 in edx and ...
+  mov [eax+0x04],edx           ; ... store at *(eax + 4)
+  mov eax, [ebp-0x04]          ; return value
+  mov esp,ebp                  ; |
+  pop ebp                      ; | epilog
+  ret                          ; |
+
+; vim: ft=asm
+

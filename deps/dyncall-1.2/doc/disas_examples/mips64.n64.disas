@@ -1,0 +1,690 @@
+; #include <stdlib.h>
+; 
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h)
+; {
+; }
+; 
+; void nonleaf_call(int a, int b, int c, int d, int e, int f, int g, int h)
+; {
+; 	/* use some local data */
+; 	*(char*)alloca(220) = 'L';
+; 	leaf_call(b, c, d, e, f, g, h);
+; }
+; 
+; int main()
+; {
+; 	nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7);
+; 	return 0;
+; }
+
+
+
+; output from freebsd-12.0_r333647-malta_mips64elhf w/ gcc 4.2.1
+
+0000000000000000 <leaf_call>:
+   0:   67bdffd0        daddiu  sp,sp,-48
+   4:   ffbe0028        sd      s8,40(sp)
+   8:   ffbc0020        sd      gp,32(sp)
+   c:   03a0f02d        move    s8,sp
+  10:   3c1c0000        lui     gp,0x0
+  14:   0399e02d        daddu   gp,gp,t9
+  18:   679c0000        daddiu  gp,gp,0
+  1c:   0080102d        move    v0,a0
+  20:   00a0182d        move    v1,a1
+  24:   00c0202d        move    a0,a2
+  28:   00e0282d        move    a1,a3
+  2c:   0100302d        move    a2,a4
+  30:   0120382d        move    a3,a5
+  34:   0140402d        move    a4,a6
+  38:   00021000        sll     v0,v0,0x0
+  3c:   afc20000        sw      v0,0(s8)
+  40:   00031000        sll     v0,v1,0x0
+  44:   afc20004        sw      v0,4(s8)
+  48:   00041000        sll     v0,a0,0x0
+  4c:   afc20008        sw      v0,8(s8)
+  50:   00051000        sll     v0,a1,0x0
+  54:   afc2000c        sw      v0,12(s8)
+  58:   00061000        sll     v0,a2,0x0
+  5c:   afc20010        sw      v0,16(s8)
+  60:   00071000        sll     v0,a3,0x0
+  64:   afc20014        sw      v0,20(s8)
+  68:   00081000        sll     v0,a4,0x0
+  6c:   afc20018        sw      v0,24(s8)
+  70:   03c0e82d        move    sp,s8
+  74:   dfbe0028        ld      s8,40(sp)
+  78:   dfbc0020        ld      gp,32(sp)
+  7c:   03e00008        jr      ra
+  80:   67bd0030        daddiu  sp,sp,48
+  84:   00000000        nop
+
+0000000000000088 <nonleaf_call>:
+  88:   67bdff90        daddiu  sp,sp,-112 ; |
+  8c:   ffbf0060        sd      ra,96(sp)  ; |
+  90:   ffbe0058        sd      s8,88(sp)  ; | prolog
+  94:   ffbc0050        sd      gp,80(sp)  ; |
+  98:   03a0f02d        move    s8,sp      ; |
+  9c:   3c1c0000        lui     gp,0x0     ; @@@ unsure
+  a0:   0399e02d        daddu   gp,gp,t9   ; @@@ unsure
+  a4:   679c0000        daddiu  gp,gp,0    ; @@@ unsure
+  a8:   0080102d        move    v0,a0      ; |
+  ac:   00a0182d        move    v1,a1      ; |
+  b0:   00c0202d        move    a0,a2      ; | pointlessly (?) moving a{0,1} to v{0,1} respectively,
+  b4:   00e0282d        move    a1,a3      ; | and all last 6 a? registers two regs down, freeing up
+  b8:   0100302d        move    a2,a4      ; | a{6,7}, which aren't used for anything though
+  bc:   0120382d        move    a3,a5      ; |
+  c0:   0140402d        move    a4,a6      ; |
+  c4:   0160482d        move    a5,a7      ; /
+  c8:   00021000        sll     v0,v0,0x0  ; \
+  cc:   afc20000        sw      v0,0(s8)   ; |
+  d0:   00031000        sll     v0,v1,0x0  ; |
+  d4:   afc20004        sw      v0,4(s8)   ; |
+  d8:   00041000        sll     v0,a0,0x0  ; |
+  dc:   afc20008        sw      v0,8(s8)   ; |
+  e0:   00051000        sll     v0,a1,0x0  ; |
+  e4:   afc2000c        sw      v0,12(s8)  ; | storing all register in args in local area on stack
+  e8:   00061000        sll     v0,a2,0x0  ; | (using the set of pointlessly moved-to regs, above)
+  ec:   afc20010        sw      v0,16(s8)  ; |
+  f0:   00071000        sll     v0,a3,0x0  ; |
+  f4:   afc20014        sw      v0,20(s8)  ; |
+  f8:   00081000        sll     v0,a4,0x0  ; |
+  fc:   afc20018        sw      v0,24(s8)  ; |
+ 100:   00091000        sll     v0,a5,0x0  ; |
+ 104:   afc2001c        sw      v0,28(s8)  ; |
+ 108:   67bdff10        daddiu  sp,sp,-240 ; alloca(220) - with padding to guarantee alignment
+ 10c:   ffdd0020        sd      sp,32(s8)  ; |
+ 110:   dfc30020        ld      v1,32(s8)  ; | start of alloca()'d memory -> v1, by ...
+ 114:   64620007        daddiu  v0,v1,7    ; | ... using v0 as helper to align to 8b, and some unnecessary stores/reloads instead of a move
+ 118:   000210fa        dsrl    v0,v0,0x3  ; |
+ 11c:   000210f8        dsll    v0,v0,0x3  ; |
+ 120:   ffc20020        sd      v0,32(s8)  ; move addr in v0 via local area ...
+ 124:   dfc30020        ld      v1,32(s8)  ; ... to v1
+ 128:   2402004c        li      v0,76      ; 'L' -> v0, and ...
+ 12c:   a0620000        sb      v0,0(v1)   ; ... store in local area (of alloca()'d space)
+ 130:   8fc20004        lw      v0,4(s8)   ; prep arg 0 (pointlessly) to move to a0 below
+ 134:   8fc30008        lw      v1,8(s8)   ; prep arg 1 (pointlessly) to move to a1 below
+ 138:   8fc6000c        lw      a2,12(s8)  ; arg 2
+ 13c:   8fc70010        lw      a3,16(s8)  ; arg 3
+ 140:   8fc80014        lw      a4,20(s8)  ; arg 4
+ 144:   8fc90018        lw      a5,24(s8)  ; arg 5
+ 148:   8fca001c        lw      a6,28(s8)  ; arg 6
+ 14c:   0040202d        move    a0,v0      ; arg 0
+ 150:   0060282d        move    a1,v1      ; arg 1
+ 154:   df990000        ld      t9,0(gp)   ; addr of callee -> t9
+ 158:   0320f809        jalr    t9         ; return address -> ra, and call
+ 15c:   00000000        nop                ; branch delay slot
+ 160:   03c0e82d        move    sp,s8      ; |
+ 164:   dfbf0060        ld      ra,96(sp)  ; |
+ 168:   dfbe0058        ld      s8,88(sp)  ; |
+ 16c:   dfbc0050        ld      gp,80(sp)  ; | epilog
+ 170:   03e00008        jr      ra         ; |
+ 174:   67bd0070        daddiu  sp,sp,112  ; |         branch delay slot style
+
+0000000000000178 <main>:
+ 178:   67bdffe0        daddiu  sp,sp,-32  ; |
+ 17c:   ffbf0010        sd      ra,16(sp)  ; |
+ 180:   ffbe0008        sd      s8,8(sp)   ; | prolog
+ 184:   ffbc0000        sd      gp,0(sp)   ; |
+ 188:   03a0f02d        move    s8,sp      ; |
+ 18c:   3c1c0000        lui     gp,0x0     ; @@@ unsure
+ 190:   0399e02d        daddu   gp,gp,t9   ; @@@ unsure
+ 194:   679c0000        daddiu  gp,gp,0    ; @@@ unsure
+ 198:   0000202d        move    a0,zero    ; arg 0
+ 19c:   24050001        li      a1,1       ; arg 1
+ 1a0:   24060002        li      a2,2       ; arg 2
+ 1a4:   24070003        li      a3,3       ; arg 3
+ 1a8:   24080004        li      a4,4       ; arg 4
+ 1ac:   24090005        li      a5,5       ; arg 5
+ 1b0:   240a0006        li      a6,6       ; arg 6
+ 1b4:   240b0007        li      a7,7       ; arg 7
+ 1b8:   df990000        ld      t9,0(gp)   ; address of callee -> t9
+ 1bc:   0320f809        jalr    t9         ; return address -> ra, and call
+ 1c0:   00000000        nop                ; branch delay slot
+ 1c4:   0000102d        move    v0,zero    ; return value
+ 1c8:   03c0e82d        move    sp,s8      ; |
+ 1cc:   dfbf0010        ld      ra,16(sp)  ; |
+ 1d0:   dfbe0008        ld      s8,8(sp)   ; |
+ 1d4:   dfbc0000        ld      gp,0(sp)   ; | epilog
+ 1d8:   03e00008        jr      ra         ; |
+ 1dc:   67bd0020        daddiu  sp,sp,32   ; |         branch delay slot style
+
+
+
+; output from debian-sid_20150616-malta_mips64el_n64 w/ gcc 4.9.2
+
+0000000000000000 <leaf_call>:
+   0:   67bdffd0        daddiu  sp,sp,-48
+   4:   ffbe0028        sd      s8,40(sp)
+   8:   03a0f02d        move    s8,sp
+   c:   0080602d        move    t0,a0
+  10:   00a0582d        move    a7,a1
+  14:   00e0282d        move    a1,a3
+  18:   0100202d        move    a0,a4
+  1c:   0120182d        move    v1,a5
+  20:   0140102d        move    v0,a6
+  24:   000c3800        sll     a3,t0,0x0
+  28:   afc70000        sw      a3,0(s8)
+  2c:   000b3800        sll     a3,a7,0x0
+  30:   afc70004        sw      a3,4(s8)
+  34:   00063000        sll     a2,a2,0x0
+  38:   afc60008        sw      a2,8(s8)
+  3c:   00052800        sll     a1,a1,0x0
+  40:   afc5000c        sw      a1,12(s8)
+  44:   00042000        sll     a0,a0,0x0
+  48:   afc40010        sw      a0,16(s8)
+  4c:   00031800        sll     v1,v1,0x0
+  50:   afc30014        sw      v1,20(s8)
+  54:   00021000        sll     v0,v0,0x0
+  58:   afc20018        sw      v0,24(s8)
+  5c:   03c0e82d        move    sp,s8
+  60:   dfbe0028        ld      s8,40(sp)
+  64:   67bd0030        daddiu  sp,sp,48
+  68:   03e00008        jr      ra
+  6c:   00200825        move    at,at
+
+0000000000000070 <nonleaf_call>:
+  70:   67bdffc0        daddiu  sp,sp,-64  ; |
+  74:   ffbf0038        sd      ra,56(sp)  ; |
+  78:   ffbe0030        sd      s8,48(sp)  ; | prolog
+  7c:   ffbc0028        sd      gp,40(sp)  ; |
+  80:   03a0f02d        move    s8,sp      ; |
+  84:   3c1c0000        lui     gp,0x0     ; @@@ unsure
+  88:   0399e02d        daddu   gp,gp,t9   ; @@@ unsure
+  8c:   679c0000        daddiu  gp,gp,0    ; @@@ unsure
+  90:   0080702d        move    t2,a0      ; |
+  94:   00a0682d        move    t1,a1      ; |
+  98:   00c0602d        move    t0,a2      ; | pointlessly (?) moving regs around, freeing effectively
+  9c:   00e0302d        move    a2,a3      ; | some registers for use below, still unnecessary though
+  a0:   0100282d        move    a1,a4      ; | with different code below
+  a4:   0120202d        move    a0,a5      ; |
+  a8:   0140182d        move    v1,a6      ; |
+  ac:   0160102d        move    v0,a7      ; /
+  b0:   000e3800        sll     a3,t2,0x0  ; \
+  b4:   afc70000        sw      a3,0(s8)   ; |
+  b8:   000d3800        sll     a3,t1,0x0  ; |
+  bc:   afc70004        sw      a3,4(s8)   ; |
+  c0:   000c3800        sll     a3,t0,0x0  ; |
+  c4:   afc70008        sw      a3,8(s8)   ; |
+  c8:   00063000        sll     a2,a2,0x0  ; |
+  cc:   afc6000c        sw      a2,12(s8)  ; | storing all register in args in local area on stack
+  d0:   00052800        sll     a1,a1,0x0  ; | (using the set of pointlessly moved-to regs, above)
+  d4:   afc50010        sw      a1,16(s8)  ; |
+  d8:   00042000        sll     a0,a0,0x0  ; |
+  dc:   afc40014        sw      a0,20(s8)  ; |
+  e0:   00031800        sll     v1,v1,0x0  ; |
+  e4:   afc30018        sw      v1,24(s8)  ; |
+  e8:   00021000        sll     v0,v0,0x0  ; |
+  ec:   afc2001c        sw      v0,28(s8)  ; |
+  f0:   67bdff10        daddiu  sp,sp,-240 ; alloca(220) - with padding to guarantee alignment
+  f4:   03a0102d        move    v0,sp      ; |
+  f8:   6442000f        daddiu  v0,v0,15   ; | start of alloca()'d memory -> v1, by ...
+  fc:   0002113a        dsrl    v0,v0,0x4  ; | ... using v0 as helper to align to 8b
+ 100:   00021138        dsll    v0,v0,0x4  ; |
+ 104:   0040182d        move    v1,v0      ; |
+ 108:   2402004c        li      v0,76      ; 'L' -> v0, and ...
+ 10c:   a0620000        sb      v0,0(v1)   ; ... store in local area (of alloca()'d space)
+ 110:   8fc40004        lw      a0,4(s8)   ; arg 0
+ 114:   8fc50008        lw      a1,8(s8)   ; arg 1
+ 118:   8fc6000c        lw      a2,12(s8)  ; arg 2
+ 11c:   8fc70010        lw      a3,16(s8)  ; arg 3
+ 120:   8fc80014        lw      a4,20(s8)  ; arg 4
+ 124:   8fc30018        lw      v1,24(s8)  ; prep arg 5 (pointlessly) to move to a5 below
+ 128:   8fc2001c        lw      v0,28(s8)  ; prep arg 5 (pointlessly) to move to a5 below
+ 12c:   0060482d        move    a5,v1      ; arg 5
+ 130:   0040502d        move    a6,v0      ; arg 6
+ 134:   df820000        ld      v0,0(gp)   ; addr of callee ...
+ 138:   0040c82d        move    t9,v0      ; ... -> t9
+ 13c:   0320f809        jalr    t9         ; return address -> ra, and call
+ 140:   00200825        move    at,at      ; branch delay slot (effectively nop)
+ 144:   03c0e82d        move    sp,s8      ; |
+ 148:   dfbf0038        ld      ra,56(sp)  ; |
+ 14c:   dfbe0030        ld      s8,48(sp)  ; |
+ 150:   dfbc0028        ld      gp,40(sp)  ; | epilog
+ 154:   67bd0040        daddiu  sp,sp,64   ; |
+ 158:   03e00008        jr      ra         ; |
+ 15c:   00200825        move    at,at      ; |         branch delay slot (effectively nop)
+
+0000000000000160 <main>:
+ 160:   67bdffe0        daddiu  sp,sp,-32  ; |
+ 164:   ffbf0018        sd      ra,24(sp)  ; |
+ 168:   ffbe0010        sd      s8,16(sp)  ; | prolog
+ 16c:   ffbc0008        sd      gp,8(sp)   ; |
+ 170:   03a0f02d        move    s8,sp      ; |
+ 174:   3c1c0000        lui     gp,0x0     ; @@@ unsure
+ 178:   0399e02d        daddu   gp,gp,t9   ; @@@ unsure
+ 17c:   679c0000        daddiu  gp,gp,0    ; @@@ unsure
+ 180:   0000202d        move    a0,zero    ; arg 0
+ 184:   24050001        li      a1,1       ; arg 1
+ 188:   24060002        li      a2,2       ; arg 2
+ 18c:   24070003        li      a3,3       ; arg 3
+ 190:   24080004        li      a4,4       ; arg 4
+ 194:   24090005        li      a5,5       ; arg 5
+ 198:   240a0006        li      a6,6       ; arg 6
+ 19c:   240b0007        li      a7,7       ; arg 7
+ 1a0:   df820000        ld      v0,0(gp)   ; address of callee, to ...
+ 1a4:   0040c82d        move    t9,v0      ; ... t9
+ 1a8:   0320f809        jalr    t9         ; return address -> ra, and call
+ 1ac:   00200825        move    at,at      ; branch delay slot (effectively nop)
+ 1b0:   0000102d        move    v0,zero    ; return value
+ 1b4:   03c0e82d        move    sp,s8      ; |
+ 1b8:   dfbf0018        ld      ra,24(sp)  ; |
+ 1bc:   dfbe0010        ld      s8,16(sp)  ; |
+ 1c0:   dfbc0008        ld      gp,8(sp)   ; | epilog
+ 1c4:   67bd0020        daddiu  sp,sp,32   ; |
+ 1c8:   03e00008        jr      ra         ; |
+ 1cc:   00200825        move    at,at      ; |         branch delay slot (effectively nop)
+
+
+
+; ------------- var args with ints and floats to see spilling (which remains only a?-a7 regs), b/c doubles are passed via them and floats are promoted to doubles in (...) ----------->
+
+; #include <stdlib.h>
+; #include <stdarg.h>
+; 
+; void leaf_call(int b, int c, int d, int e, float f, float g, int h, int i, float j)
+; {
+; }
+; 
+; void nonleaf_call(int a, ...)
+; {
+;     int b, c, d, e, h, i;
+;     float f, g, j;
+;     va_list ap;
+;     va_start(ap, a);
+;     b = va_arg(ap, int);
+;     c = va_arg(ap, int);
+;     d = va_arg(ap, int);
+;     e = va_arg(ap, int);
+;     f = (float)va_arg(ap, double);
+;     g = (float)va_arg(ap, double);
+;     h = va_arg(ap, int);
+;     i = va_arg(ap, int);
+;     j = (float)va_arg(ap, double);
+;     /* use some local data */
+;     *(char*)alloca(220) = 'L';
+;     leaf_call(b, c, d, e, f, g, h, i, j);
+; }
+; 
+; int main()
+; {
+;     nonleaf_call(0, 1, 2, 3, 4, 5.f, 6.f, 7, 8, 9.f);
+;     return 0;
+; }
+
+
+
+; output from freebsd-12.0_r333647-malta_mips64elhf w/ gcc 4.2.1
+
+0000000000000000 <leaf_call>:
+   0:   67bdffd0        daddiu  sp,sp,-48
+   4:   ffbe0028        sd      s8,40(sp)
+   8:   ffbc0020        sd      gp,32(sp)
+   c:   03a0f02d        move    s8,sp
+  10:   3c1c0000        lui     gp,0x0
+  14:   0399e02d        daddu   gp,gp,t9
+  18:   679c0000        daddiu  gp,gp,0
+  1c:   0080102d        move    v0,a0
+  20:   00a0182d        move    v1,a1
+  24:   00c0202d        move    a0,a2
+  28:   00e0302d        move    a2,a3
+  2c:   afc80010        sw      a4,16(s8)
+  30:   afc90014        sw      a5,20(s8)
+  34:   0140282d        move    a1,a6
+  38:   0160382d        move    a3,a7
+  3c:   00021000        sll     v0,v0,0x0
+  40:   afc20000        sw      v0,0(s8)
+  44:   00031000        sll     v0,v1,0x0
+  48:   afc20004        sw      v0,4(s8)
+  4c:   00041000        sll     v0,a0,0x0
+  50:   afc20008        sw      v0,8(s8)
+  54:   00061000        sll     v0,a2,0x0
+  58:   afc2000c        sw      v0,12(s8)
+  5c:   00051000        sll     v0,a1,0x0
+  60:   afc20018        sw      v0,24(s8)
+  64:   00071000        sll     v0,a3,0x0
+  68:   afc2001c        sw      v0,28(s8)
+  6c:   03c0e82d        move    sp,s8
+  70:   dfbe0028        ld      s8,40(sp)
+  74:   dfbc0020        ld      gp,32(sp)
+  78:   03e00008        jr      ra
+  7c:   67bd0030        daddiu  sp,sp,48
+
+0000000000000080 <nonleaf_call>:
+  80:   67bdff50        daddiu  sp,sp,-176
+  84:   ffbf0060        sd      ra,96(sp)
+  88:   ffbe0058        sd      s8,88(sp)
+  8c:   ffbc0050        sd      gp,80(sp)
+  90:   03a0f02d        move    s8,sp
+  94:   3c1c0000        lui     gp,0x0
+  98:   0399e02d        daddu   gp,gp,t9
+  9c:   679c0000        daddiu  gp,gp,0
+  a0:   ffc50078        sd      a1,120(s8)
+  a4:   ffc60080        sd      a2,128(s8)
+  a8:   ffc70088        sd      a3,136(s8)
+  ac:   ffc80090        sd      a4,144(s8)
+  b0:   ffc90098        sd      a5,152(s8)
+  b4:   ffca00a0        sd      a6,160(s8)
+  b8:   ffcb00a8        sd      a7,168(s8)
+  bc:   0080102d        move    v0,a0
+  c0:   00021000        sll     v0,v0,0x0
+  c4:   afc20040        sw      v0,64(s8)
+  c8:   67c200b0        daddiu  v0,s8,176
+  cc:   6442ffc8        daddiu  v0,v0,-56
+  d0:   ffc20038        sd      v0,56(s8)
+  d4:   dfc30038        ld      v1,56(s8)
+  d8:   64620008        daddiu  v0,v1,8
+  dc:   ffc20038        sd      v0,56(s8)
+  e0:   0060102d        move    v0,v1
+  e4:   8c420000        lw      v0,0(v0)
+  e8:   afc20030        sw      v0,48(s8)
+  ec:   dfc30038        ld      v1,56(s8)
+  f0:   64620008        daddiu  v0,v1,8
+  f4:   ffc20038        sd      v0,56(s8)
+  f8:   0060102d        move    v0,v1
+  fc:   8c420000        lw      v0,0(v0)
+ 100:   afc2002c        sw      v0,44(s8)
+ 104:   dfc30038        ld      v1,56(s8)
+ 108:   64620008        daddiu  v0,v1,8
+ 10c:   ffc20038        sd      v0,56(s8)
+ 110:   0060102d        move    v0,v1
+ 114:   8c420000        lw      v0,0(v0)
+ 118:   afc20028        sw      v0,40(s8)
+ 11c:   dfc30038        ld      v1,56(s8)
+ 120:   64620008        daddiu  v0,v1,8
+ 124:   ffc20038        sd      v0,56(s8)
+ 128:   0060102d        move    v0,v1
+ 12c:   8c420000        lw      v0,0(v0)
+ 130:   afc20024        sw      v0,36(s8)
+ 134:   dfc30038        ld      v1,56(s8)
+ 138:   64620008        daddiu  v0,v1,8
+ 13c:   ffc20038        sd      v0,56(s8)
+ 140:   0060102d        move    v0,v1
+ 144:   dc420000        ld      v0,0(v0)
+ 148:   0040202d        move    a0,v0
+ 14c:   df990000        ld      t9,0(gp)
+ 150:   0320f809        jalr    t9
+ 154:   00000000        nop
+ 158:   afc20018        sw      v0,24(s8)
+ 15c:   dfc30038        ld      v1,56(s8)
+ 160:   64620008        daddiu  v0,v1,8
+ 164:   ffc20038        sd      v0,56(s8)
+ 168:   0060102d        move    v0,v1
+ 16c:   dc420000        ld      v0,0(v0)
+ 170:   0040202d        move    a0,v0
+ 174:   df990000        ld      t9,0(gp)
+ 178:   0320f809        jalr    t9
+ 17c:   00000000        nop
+ 180:   afc20014        sw      v0,20(s8)
+ 184:   dfc30038        ld      v1,56(s8)
+ 188:   64620008        daddiu  v0,v1,8
+ 18c:   ffc20038        sd      v0,56(s8)
+ 190:   0060102d        move    v0,v1
+ 194:   8c420000        lw      v0,0(v0)
+ 198:   afc20020        sw      v0,32(s8)
+ 19c:   dfc30038        ld      v1,56(s8)
+ 1a0:   64620008        daddiu  v0,v1,8
+ 1a4:   ffc20038        sd      v0,56(s8)
+ 1a8:   0060102d        move    v0,v1
+ 1ac:   8c420000        lw      v0,0(v0)
+ 1b0:   afc2001c        sw      v0,28(s8)
+ 1b4:   dfc30038        ld      v1,56(s8)
+ 1b8:   64620008        daddiu  v0,v1,8
+ 1bc:   ffc20038        sd      v0,56(s8)
+ 1c0:   0060102d        move    v0,v1
+ 1c4:   dc420000        ld      v0,0(v0)
+ 1c8:   0040202d        move    a0,v0
+ 1cc:   df990000        ld      t9,0(gp)
+ 1d0:   0320f809        jalr    t9
+ 1d4:   00000000        nop
+ 1d8:   afc20010        sw      v0,16(s8)
+ 1dc:   67bdff10        daddiu  sp,sp,-240
+ 1e0:   67a20010        daddiu  v0,sp,16
+ 1e4:   ffc20048        sd      v0,72(s8)
+ 1e8:   dfc30048        ld      v1,72(s8)
+ 1ec:   64620007        daddiu  v0,v1,7
+ 1f0:   000210fa        dsrl    v0,v0,0x3
+ 1f4:   000210f8        dsll    v0,v0,0x3
+ 1f8:   ffc20048        sd      v0,72(s8)
+ 1fc:   dfc30048        ld      v1,72(s8)
+ 200:   2402004c        li      v0,76
+ 204:   a0620000        sb      v0,0(v1)
+ 208:   8fc30030        lw      v1,48(s8)
+ 20c:   8fc5002c        lw      a1,44(s8)
+ 210:   8fc60028        lw      a2,40(s8)
+ 214:   8fc70024        lw      a3,36(s8)
+ 218:   8fca0020        lw      a6,32(s8)
+ 21c:   8fcb001c        lw      a7,28(s8)
+ 220:   8fc20010        lw      v0,16(s8)
+ 224:   afa20000        sw      v0,0(sp)
+ 228:   0060202d        move    a0,v1
+ 22c:   8fc80018        lw      a4,24(s8)
+ 230:   8fc90014        lw      a5,20(s8)
+ 234:   df990000        ld      t9,0(gp)
+ 238:   0320f809        jalr    t9
+ 23c:   00000000        nop
+ 240:   03c0e82d        move    sp,s8
+ 244:   dfbf0060        ld      ra,96(sp)
+ 248:   dfbe0058        ld      s8,88(sp)
+ 24c:   dfbc0050        ld      gp,80(sp)
+ 250:   03e00008        jr      ra
+ 254:   67bd00b0        daddiu  sp,sp,176
+
+0000000000000258 <main>:
+ 258:   67bdffd0        daddiu  sp,sp,-48
+ 25c:   ffbf0020        sd      ra,32(sp)
+ 260:   ffbe0018        sd      s8,24(sp)
+ 264:   ffbc0010        sd      gp,16(sp)
+ 268:   03a0f02d        move    s8,sp
+ 26c:   3c1c0000        lui     gp,0x0
+ 270:   0399e02d        daddu   gp,gp,t9
+ 274:   679c0000        daddiu  gp,gp,0
+ 278:   df830000        ld      v1,0(gp)
+ 27c:   dc630000        ld      v1,0(v1)
+ 280:   df8a0000        ld      a6,0(gp)
+ 284:   dd4a0000        ld      a6,0(a6)
+ 288:   24020008        li      v0,8
+ 28c:   ffa20000        sd      v0,0(sp)
+ 290:   df820000        ld      v0,0(gp)
+ 294:   dc420000        ld      v0,0(v0)
+ 298:   ffa20008        sd      v0,8(sp)
+ 29c:   0000202d        move    a0,zero
+ 2a0:   24050001        li      a1,1
+ 2a4:   24060002        li      a2,2
+ 2a8:   24070003        li      a3,3
+ 2ac:   24080004        li      a4,4
+ 2b0:   0060482d        move    a5,v1
+ 2b4:   240b0007        li      a7,7
+ 2b8:   df990000        ld      t9,0(gp)
+ 2bc:   0320f809        jalr    t9
+ 2c0:   00000000        nop
+ 2c4:   03c0e82d        move    sp,s8
+ 2c8:   dfbf0020        ld      ra,32(sp)
+ 2cc:   dfbe0018        ld      s8,24(sp)
+ 2d0:   dfbc0010        ld      gp,16(sp)
+ 2d4:   03e00008        jr      ra
+ 2d8:   67bd0030        daddiu  sp,sp,48
+ 2dc:   00000000        nop
+
+
+
+; output from debian-sid_20150616-malta_mips64el_n64 w/ gcc 4.9.2
+
+0000000000000000 <leaf_call>:
+   0:   67bdffd0        daddiu  sp,sp,-48
+   4:   ffbe0028        sd      s8,40(sp)
+   8:   03a0f02d        move    s8,sp
+   c:   0080482d        move    a5,a0
+  10:   00a0402d        move    a4,a1
+  14:   00c0282d        move    a1,a2
+  18:   00e0202d        move    a0,a3
+  1c:   e7d00010        swc1    $f16,16(s8)
+  20:   e7d10014        swc1    $f17,20(s8)
+  24:   0140182d        move    v1,a6
+  28:   0160102d        move    v0,a7
+  2c:   00093000        sll     a2,a5,0x0
+  30:   afc60000        sw      a2,0(s8)
+  34:   00083000        sll     a2,a4,0x0
+  38:   afc60004        sw      a2,4(s8)
+  3c:   00052800        sll     a1,a1,0x0
+  40:   afc50008        sw      a1,8(s8)
+  44:   00042000        sll     a0,a0,0x0
+  48:   afc4000c        sw      a0,12(s8)
+  4c:   00031800        sll     v1,v1,0x0
+  50:   afc30018        sw      v1,24(s8)
+  54:   00021000        sll     v0,v0,0x0
+  58:   afc2001c        sw      v0,28(s8)
+  5c:   03c0e82d        move    sp,s8
+  60:   dfbe0028        ld      s8,40(sp)
+  64:   67bd0030        daddiu  sp,sp,48
+  68:   03e00008        jr      ra
+  6c:   00200825        move    at,at
+
+0000000000000070 <nonleaf_call>:
+  70:   67bdff50        daddiu  sp,sp,-176  ; |         leaving 64b extra space adjacent to prev frame's param area for spilling
+  74:   ffbf0068        sd      ra,104(sp)  ; |
+  78:   ffbe0060        sd      s8,96(sp)   ; | prolog
+  7c:   ffbc0058        sd      gp,88(sp)   ; |
+  80:   03a0f02d        move    s8,sp       ; |
+  84:   3c1c0000        lui     gp,0x0      ; @@@ unsure
+  88:   0399e02d        daddu   gp,gp,t9    ; @@@ unsure
+  8c:   679c0000        daddiu  gp,gp,0     ; @@@ unsure
+  90:   ffc50078        sd      a1,120(s8)  ; |
+  94:   ffc60080        sd      a2,128(s8)  ; |
+  98:   ffc70088        sd      a3,136(s8)  ; |
+  9c:   ffc80090        sd      a4,144(s8)  ; | in args 1,2,3,4,5,6,7 -> spill area in current frame (adjacent to prev frame's param area)
+  a0:   ffc90098        sd      a5,152(s8)  ; |
+  a4:   ffca00a0        sd      a6,160(s8)  ; |
+  a8:   ffcb00a8        sd      a7,168(s8)  ; /
+  ac:   0080102d        move    v0,a0       ; \
+  b0:   00021000        sll     v0,v0,0x0   ; |
+  b4:   afc20040        sw      v0,64(s8)   ; |
+  b8:   67c200b0        daddiu  v0,s8,176   ; |
+  bc:   6442ffc8        daddiu  v0,v0,-56   ; |
+  c0:   ffc20038        sd      v0,56(s8)   ; |
+  c4:   dfc20038        ld      v0,56(s8)   ; |
+  c8:   64430008        daddiu  v1,v0,8     ; |
+  cc:   ffc30038        sd      v1,56(s8)   ; |
+  d0:   8c420000        lw      v0,0(v0)    ; |
+  d4:   afc20010        sw      v0,16(s8)   ; |
+  d8:   dfc20038        ld      v0,56(s8)   ; |
+  dc:   64430008        daddiu  v1,v0,8     ; |
+  e0:   ffc30038        sd      v1,56(s8)   ; |
+  e4:   8c420000        lw      v0,0(v0)    ; |
+  e8:   afc20014        sw      v0,20(s8)   ; |
+  ec:   dfc20038        ld      v0,56(s8)   ; |
+  f0:   64430008        daddiu  v1,v0,8     ; |
+  f4:   ffc30038        sd      v1,56(s8)   ; |
+  f8:   8c420000        lw      v0,0(v0)    ; |
+  fc:   afc20018        sw      v0,24(s8)   ; |
+ 100:   dfc20038        ld      v0,56(s8)   ; |
+ 104:   64430008        daddiu  v1,v0,8     ; |
+ 108:   ffc30038        sd      v1,56(s8)   ; |
+ 10c:   8c420000        lw      v0,0(v0)    ; |
+ 110:   afc2001c        sw      v0,28(s8)   ; |
+ 114:   dfc20038        ld      v0,56(s8)   ; |
+ 118:   64430008        daddiu  v1,v0,8     ; |
+ 11c:   ffc30038        sd      v1,56(s8)   ; |
+ 120:   dc420000        ld      v0,0(v0)    ; |
+ 124:   44a20000        dmtc1   v0,$f0      ; | vararg stuff: pointer to beginning of spill area (constantly
+ 128:   46200020        cvt.s.d $f0,$f0     ; | stored and reloaded) to iterate over all params which are stored 
+ 12c:   44020000        mfc1    v0,$f0      ; | to a local space on stack, which they are refetched from, below
+ 130:   afc20020        sw      v0,32(s8)   ; | (see similar mips32 examples for detailed analysis)
+ 134:   dfc20038        ld      v0,56(s8)   ; |
+ 138:   64430008        daddiu  v1,v0,8     ; |
+ 13c:   ffc30038        sd      v1,56(s8)   ; |
+ 140:   dc420000        ld      v0,0(v0)    ; |
+ 144:   44a20000        dmtc1   v0,$f0      ; |
+ 148:   46200020        cvt.s.d $f0,$f0     ; |
+ 14c:   44020000        mfc1    v0,$f0      ; |
+ 150:   afc20024        sw      v0,36(s8)   ; |
+ 154:   dfc20038        ld      v0,56(s8)   ; |
+ 158:   64430008        daddiu  v1,v0,8     ; |
+ 15c:   ffc30038        sd      v1,56(s8)   ; |
+ 160:   8c420000        lw      v0,0(v0)    ; |
+ 164:   afc20028        sw      v0,40(s8)   ; |
+ 168:   dfc20038        ld      v0,56(s8)   ; |
+ 16c:   64430008        daddiu  v1,v0,8     ; |
+ 170:   ffc30038        sd      v1,56(s8)   ; |
+ 174:   8c420000        lw      v0,0(v0)    ; |
+ 178:   afc2002c        sw      v0,44(s8)   ; |
+ 17c:   dfc20038        ld      v0,56(s8)   ; |
+ 180:   64430008        daddiu  v1,v0,8     ; |
+ 184:   ffc30038        sd      v1,56(s8)   ; |
+ 188:   dc420000        ld      v0,0(v0)    ; |
+ 18c:   44a20000        dmtc1   v0,$f0      ; |
+ 190:   46200020        cvt.s.d $f0,$f0     ; |
+ 194:   44020000        mfc1    v0,$f0      ; |
+ 198:   afc20030        sw      v0,48(s8)   ; |
+ 19c:   67bdff10        daddiu  sp,sp,-240  ; alloca(220) - with padding to guarantee alignment
+ 1a0:   67a20010        daddiu  v0,sp,16    ; |
+ 1a4:   6442000f        daddiu  v0,v0,15    ; |
+ 1a8:   0002113a        dsrl    v0,v0,0x4   ; | start of alloca()'d memory -> v1, by ...
+ 1ac:   00021138        dsll    v0,v0,0x4   ; | ... using v0 as helper to align to 16b
+ 1b0:   0040182d        move    v1,v0       ; |
+ 1b4:   2402004c        li      v0,76       ; 'L' -> v0, and ...
+ 1b8:   a0620000        sb      v0,0(v1)    ; ... store in local area (of alloca()'d space)
+ 1bc:   8fc40010        lw      a0,16(s8)   ; arg 0
+ 1c0:   8fc50014        lw      a1,20(s8)   ; arg 1
+ 1c4:   8fc60018        lw      a2,24(s8)   ; arg 2
+ 1c8:   8fc7001c        lw      a3,28(s8)   ; arg 3
+ 1cc:   8fc80028        lw      a4,40(s8)   ; prepare arg 6 (using a4 only as temp reg), to move to a6 below
+ 1d0:   8fc3002c        lw      v1,44(s8)   ; prepare arg 7 (pointlessly) to move to a7 below
+ 1d4:   8fc20030        lw      v0,48(s8)   ; arg 8, and ...
+ 1d8:   afa20000        sw      v0,0(sp)    ; ... "pushed" onto stack
+ 1dc:   c7d00020        lwc1    $f16,32(s8) ; arg 4 (so skipping f12-f15)
+ 1e0:   c7d10024        lwc1    $f17,36(s8) ; arg 5 (so skipping f12-f15)
+ 1e4:   0100502d        move    a6,a4       ; arg 6 (from a4 used as temp reg, pointlessly)
+ 1e8:   0060582d        move    a7,v1       ; arg 7
+ 1ec:   df820000        ld      v0,0(gp)    ; address of callee, to ...
+ 1f0:   0040c82d        move    t9,v0       ; ... t9
+ 1f4:   0320f809        jalr    t9          ; return address -> ra, and call
+ 1f8:   00200825        move    at,at       ; branch delay slot (effectively nop)
+ 1fc:   03c0e82d        move    sp,s8       ; |
+ 200:   dfbf0068        ld      ra,104(sp)  ; |
+ 204:   dfbe0060        ld      s8,96(sp)   ; |
+ 208:   dfbc0058        ld      gp,88(sp)   ; | epilog
+ 20c:   67bd00b0        daddiu  sp,sp,176   ; |
+ 210:   03e00008        jr      ra          ; |
+ 214:   00200825        move    at,at       ; |         branch delay slot (effectively nop)
+
+0000000000000218 <main>:
+ 218:   67bdffd0        daddiu  sp,sp,-48   ; |
+ 21c:   ffbf0028        sd      ra,40(sp)   ; |
+ 220:   ffbe0020        sd      s8,32(sp)   ; | prolog
+ 224:   ffbc0018        sd      gp,24(sp)   ; |
+ 228:   03a0f02d        move    s8,sp       ; |
+ 22c:   3c1c0000        lui     gp,0x0      ; unsure@@@
+ 230:   0399e02d        daddu   gp,gp,t9    ; unsure@@@
+ 234:   679c0000        daddiu  gp,gp,0     ; unsure@@@
+ 238:   df820000        ld      v0,0(gp)    ; arg 6 (float promoted to double), from static data (0 b/c objdmp is from .o, not final linked exec), ...
+ 23c:   d4410000        ldc1    $f1,0(v0)   ; ... to f1
+ 240:   df820000        ld      v0,0(gp)    ; arg 5 (float promoted to double), from static data (0 b/c objdmp is from .o, not final linked exec), ...
+ 244:   d4400000        ldc1    $f0,0(v0)   ; ... to f0
+ 248:   24020008        li      v0,8        ; arg 8, ...
+ 24c:   ffa20000        sd      v0,0(sp)    ; ... "pushed" onto stack
+ 250:   df820000        ld      v0,0(gp)    ; arg 9 (float promoted to double), from static data (0 b/c objdmp is from .o, not final linked exec), ...
+ 254:   dc420000        ld      v0,0(v0)    ; ... via v0 ...
+ 258:   ffa20008        sd      v0,8(sp)    ; ... "pushed" onto stack
+ 25c:   0000202d        move    a0,zero     ; arg 0
+ 260:   24050001        li      a1,1        ; arg 1
+ 264:   24060002        li      a2,2        ; arg 2
+ 268:   24070003        li      a3,3        ; arg 3
+ 26c:   24080004        li      a4,4        ; arg 4
+ 270:   44290800        dmfc1   a5,$f1      ; arg 5 (note: passed in a5 b/c vararg)
+ 274:   442a0000        dmfc1   a6,$f0      ; arg 6 (note: passed in a6 b/c vararg)
+ 278:   240b0007        li      a7,7        ; arg 7
+ 27c:   df820000        ld      v0,0(gp)    ; address of callee, to ...
+ 280:   0040c82d        move    t9,v0       ; ... t9
+ 284:   0320f809        jalr    t9          ; return address -> ra, and call
+ 288:   00200825        move    at,at       ; branch delay slot (effectively nop)
+ 28c:   03c0e82d        move    sp,s8       ; |
+ 290:   dfbf0028        ld      ra,40(sp)   ; |
+ 294:   dfbe0020        ld      s8,32(sp)   ; |
+ 298:   dfbc0018        ld      gp,24(sp)   ; |
+ 29c:   67bd0030        daddiu  sp,sp,48    ; | epilog
+ 2a0:   03e00008        jr      ra          ; |
+ 2a4:   00200825        move    at,at       ; |         branch delay slot (effectively nop)
+ 2a8:   00200825        move    at,at       ; |         ? @@@
+ 2ac:   00200825        move    at,at       ; |         ? @@@
+
+; vim: ft=asm
+

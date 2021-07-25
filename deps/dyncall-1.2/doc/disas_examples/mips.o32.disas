@@ -1,0 +1,221 @@
+; #include <stdlib.h>
+; 
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h)
+; {
+; }
+; 
+; void nonleaf_call(int a, int b, int c, int d, int e, int f, int g, int h)
+; {
+; 	/* use some local data */
+; 	*(char*)alloca(220) = 'L';
+; 	leaf_call(b, c, d, e, f, g, h);
+; }
+; 
+; int main()
+; {
+; 	nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7);
+; 	return 0;
+; }
+
+
+
+; output from freebsd-12.0_r333647-malta_mipselhf w/ gcc 4.2.1 ----->
+
+00000000 <leaf_call>:
+   0:   3c1c0000        lui     gp,0x0
+   4:   279c0000        addiu   gp,gp,0
+   8:   0399e021        addu    gp,gp,t9
+   c:   27bdfff8        addiu   sp,sp,-8
+  10:   afbe0000        sw      s8,0(sp)
+  14:   03a0f021        move    s8,sp
+  18:   afc40008        sw      a0,8(s8)
+  1c:   afc5000c        sw      a1,12(s8)
+  20:   afc60010        sw      a2,16(s8)
+  24:   afc70014        sw      a3,20(s8)
+  28:   03c0e821        move    sp,s8
+  2c:   8fbe0000        lw      s8,0(sp)
+  30:   03e00008        jr      ra
+  34:   27bd0008        addiu   sp,sp,8
+
+00000038 <nonleaf_call>:
+  38:   3c1c0000        lui     gp,0x0     ; |
+  3c:   279c0000        addiu   gp,gp,0    ; |
+  40:   0399e021        addu    gp,gp,t9   ; |
+  44:   27bdffc8        addiu   sp,sp,-56  ; | prolog
+  48:   afbf0034        sw      ra,52(sp)  ; |
+  4c:   afbe0030        sw      s8,48(sp)  ; |
+  50:   03a0f021        move    s8,sp      ; |         frame pointer (note: with offset to frame start, but static compared to sp)
+  54:   afbc0020        sw      gp,32(sp)  ; /
+  58:   afc40038        sw      a0,56(s8)  ; \
+  5c:   afc5003c        sw      a1,60(s8)  ; |
+  60:   afc60040        sw      a2,64(s8)  ; | spill first 4 args into prev frame's reserved spill space in param area (although not actually needing to spill, here but just do a temp copy, but space is reserved for them anyways)
+  64:   afc70044        sw      a3,68(s8)  ; |
+  68:   27bdff18        addiu   sp,sp,-232 ; alloca(220) - with padding to guarantee alignment
+  6c:   27a20020        addiu   v0,sp,32   ; |
+  70:   afc20028        sw      v0,40(s8)  ; |
+  74:   8fc30028        lw      v1,40(s8)  ; | start of alloca()'d memory -> v1, by ...
+  78:   24620007        addiu   v0,v1,7    ; | ... using v0 as helper to align to 8b
+  7c:   000210c2        srl     v0,v0,0x3  ; |    @@@ unsure about use of helper space at 40(s8) in prev frame..?
+  80:   000210c0        sll     v0,v0,0x3  ; |
+  84:   afc20028        sw      v0,40(s8)  ; |
+  88:   8fc30028        lw      v1,40(s8)  ; |
+  8c:   2402004c        li      v0,76      ; 'L' -> v0, and...
+  90:   a0620000        sb      v0,0(v1)   ; ... store in local area (of alloca()'d space)
+  94:   8fc2004c        lw      v0,76(s8)  ; arg 4 (fetched from prev frame's param area), and ...
+  98:   afa20010        sw      v0,16(sp)  ; ... "pushed" onto stack
+  9c:   8fc20050        lw      v0,80(s8)  ; arg 5 (fetched from prev frame's param area), and ...
+  a0:   afa20014        sw      v0,20(sp)  ; ... "pushed" onto stack
+  a4:   8fc20054        lw      v0,84(s8)  ; arg 6 (fetched from prev frame's param area), and ...
+  a8:   afa20018        sw      v0,24(sp)  ; ... "pushed" onto stack
+  ac:   8fc4003c        lw      a0,60(s8)  ; arg 0 (fetched from spill area of prev frame)
+  b0:   8fc50040        lw      a1,64(s8)  ; arg 1 (fetched from spill area of prev frame)
+  b4:   8fc60044        lw      a2,68(s8)  ; arg 2 (fetched from spill area of prev frame)
+  b8:   8fc70048        lw      a3,72(s8)  ; arg 3 (fetched from prev frame's param area)
+  bc:   8f990000        lw      t9,0(gp)   ; func to call -> t9
+  c0:   0320f809        jalr    t9         ; call and ret addr -> ra
+  c4:   00000000        nop                ; branch delay slot
+  c8:   8fdc0020        lw      gp,32(s8)  ; |
+  cc:   03c0e821        move    sp,s8      ; |
+  d0:   8fbf0034        lw      ra,52(sp)  ; |
+  d4:   8fbe0030        lw      s8,48(sp)  ; | epilog
+  d8:   03e00008        jr      ra         ; |
+  dc:   27bd0038        addiu   sp,sp,56   ; |
+
+000000e0 <main>:
+  e0:   3c1c0000        lui     gp,0x0     ; |
+  e4:   279c0000        addiu   gp,gp,0    ; |
+  e8:   0399e021        addu    gp,gp,t9   ; |
+  ec:   27bdffd0        addiu   sp,sp,-48  ; | prolog
+  f0:   afbf002c        sw      ra,44(sp)  ; |
+  f4:   afbe0028        sw      s8,40(sp)  ; |
+  f8:   03a0f021        move    s8,sp      ; |         frame pointer (note: with offset to frame start, but static compared to sp)
+  fc:   afbc0020        sw      gp,32(sp)  ; |
+ 100:   24020004        li      v0,4       ; arg 4, and ...
+ 104:   afa20010        sw      v0,16(sp)  ; ... "pushed" onto stack
+ 108:   24020005        li      v0,5       ; arg 5, and ...
+ 10c:   afa20014        sw      v0,20(sp)  ; ... "pushed" onto stack
+ 110:   24020006        li      v0,6       ; arg 6, and ...
+ 114:   afa20018        sw      v0,24(sp)  ; ... "pushed" onto stack
+ 118:   24020007        li      v0,7       ; arg 7, and ...
+ 11c:   afa2001c        sw      v0,28(sp)  ; ... "pushed" onto stack
+ 120:   00002021        move    a0,zero    ; arg 0
+ 124:   24050001        li      a1,1       ; arg 1
+ 128:   24060002        li      a2,2       ; arg 2
+ 12c:   24070003        li      a3,3       ; arg 3
+ 130:   8f990000        lw      t9,0(gp)   ; func to call -> t9
+ 134:   0320f809        jalr    t9         ; call and ret addr -> ra
+ 138:   00000000        nop                ; branch delay slot
+ 13c:   8fdc0020        lw      gp,32(s8)  ; |
+ 140:   00001021        move    v0,zero    ; :        return value: not part of epilog, but unordered (branch delay slot style)
+ 144:   03c0e821        move    sp,s8      ; |
+ 148:   8fbf002c        lw      ra,44(sp)  ; | epilog
+ 14c:   8fbe0028        lw      s8,40(sp)  ; |
+ 150:   03e00008        jr      ra         ; |
+ 154:   27bd0030        addiu   sp,sp,48   ; |
+
+
+
+; output from netbsd-5.0.2-pmax_mipsel_o32 w/ gcc 4.1.3 ----->
+; nearly the same, equivalent to above except non-optimal use of branch delay slots and $gp preserving in leaf call
+
+00000000 <leaf_call>:
+   0:   27bdfff8        addiu   sp,sp,-8
+   4:   afbe0000        sw      s8,0(sp)
+   8:   03a0f021        move    s8,sp
+   c:   afc40008        sw      a0,8(s8)
+  10:   afc5000c        sw      a1,12(s8)
+  14:   afc60010        sw      a2,16(s8)
+  18:   afc70014        sw      a3,20(s8)
+  1c:   03c0e821        move    sp,s8
+  20:   8fbe0000        lw      s8,0(sp)
+  24:   27bd0008        addiu   sp,sp,8
+  28:   03e00008        jr      ra
+  2c:   00000000        nop
+
+00000030 <nonleaf_call>:
+  30:   3c1c0000        lui     gp,0x0
+  34:   279c0000        addiu   gp,gp,0
+  38:   0399e021        addu    gp,gp,t9
+  3c:   27bdffc8        addiu   sp,sp,-56
+  40:   afbf0034        sw      ra,52(sp)
+  44:   afbe0030        sw      s8,48(sp)
+  48:   03a0f021        move    s8,sp
+  4c:   afbc0020        sw      gp,32(sp)
+  50:   afc40038        sw      a0,56(s8)
+  54:   afc5003c        sw      a1,60(s8)
+  58:   afc60040        sw      a2,64(s8)
+  5c:   afc70044        sw      a3,68(s8)
+  60:   27bdff18        addiu   sp,sp,-232
+  64:   27a20020        addiu   v0,sp,32
+  68:   afc20028        sw      v0,40(s8)
+  6c:   8fc30028        lw      v1,40(s8)
+  70:   00000000        nop
+
+  74:   24620007        addiu   v0,v1,7
+  78:   000210c2        srl     v0,v0,0x3
+  7c:   000210c0        sll     v0,v0,0x3
+  80:   afc20028        sw      v0,40(s8)
+  84:   8fc30028        lw      v1,40(s8)
+  88:   2402004c        li      v0,76
+  8c:   a0620000        sb      v0,0(v1)
+  90:   8fc2004c        lw      v0,76(s8)
+  94:   00000000        nop
+  98:   afa20010        sw      v0,16(sp)
+  9c:   8fc20050        lw      v0,80(s8)
+  a0:   00000000        nop
+  a4:   afa20014        sw      v0,20(sp)
+  a8:   8fc20054        lw      v0,84(s8)
+  ac:   00000000        nop
+  b0:   afa20018        sw      v0,24(sp)
+  b4:   8fc4003c        lw      a0,60(s8)
+  b8:   8fc50040        lw      a1,64(s8)
+  bc:   8fc60044        lw      a2,68(s8)
+  c0:   8fc70048        lw      a3,72(s8)
+  c4:   8f990000        lw      t9,0(gp)
+  c8:   00000000        nop
+  cc:   0320f809        jalr    t9
+  d0:   00000000        nop
+  d4:   8fdc0020        lw      gp,32(s8)
+  d8:   03c0e821        move    sp,s8
+  dc:   8fbf0034        lw      ra,52(sp)
+  e0:   8fbe0030        lw      s8,48(sp)
+  e4:   27bd0038        addiu   sp,sp,56
+  e8:   03e00008        jr      ra
+  ec:   00000000        nop
+
+000000f0 <main>:
+  f0:   3c1c0000        lui     gp,0x0
+  f4:   279c0000        addiu   gp,gp,0
+  f8:   0399e021        addu    gp,gp,t9
+  fc:   27bdffd0        addiu   sp,sp,-48
+ 100:   afbf002c        sw      ra,44(sp)
+ 104:   afbe0028        sw      s8,40(sp)
+ 108:   03a0f021        move    s8,sp
+ 10c:   afbc0020        sw      gp,32(sp)
+ 110:   24020004        li      v0,4
+ 114:   afa20010        sw      v0,16(sp)
+ 118:   24020005        li      v0,5
+ 11c:   afa20014        sw      v0,20(sp)
+ 120:   24020006        li      v0,6
+ 124:   afa20018        sw      v0,24(sp)
+ 128:   24020007        li      v0,7
+ 12c:   afa2001c        sw      v0,28(sp)
+ 130:   00002021        move    a0,zero
+ 134:   24050001        li      a1,1
+ 138:   24060002        li      a2,2
+ 13c:   24070003        li      a3,3
+ 140:   8f990000        lw      t9,0(gp)
+ 144:   00000000        nop
+ 148:   0320f809        jalr    t9
+ 14c:   00000000        nop
+ 150:   8fdc0020        lw      gp,32(s8)
+ 154:   00001021        move    v0,zero
+ 158:   03c0e821        move    sp,s8
+ 15c:   8fbf002c        lw      ra,44(sp)
+ 160:   8fbe0028        lw      s8,40(sp)
+ 164:   27bd0030        addiu   sp,sp,48
+ 168:   03e00008        jr      ra
+ 16c:   00000000        nop
+
+; vim: ft=asm
+

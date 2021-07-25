@@ -1,0 +1,409 @@
+; #include <stdlib.h>
+; 
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h)
+; {
+; }
+; 
+; void nonleaf_call(int a, int b, int c, int d, int e, int f, int g, int h)
+; {
+; 	/* use some local data */
+; 	*(char*)alloca(220) = 'L';
+; 	leaf_call(b, c, d, e, f, g, h);
+; }
+; 
+; int main()
+; {
+; 	nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7);
+; 	return 0;
+; }
+
+
+
+; output from darwin-8.0.1-ppc w/ gcc 3.3
+
+_leaf_call:
+       0:       bf c1 ff f8     stmw 30, -8(1)
+       4:       94 21 ff d0     stwu 1, -48(1)
+       8:       7c 3e 0b 78     mr 30, 1
+       c:       90 7e 00 48     stw 3, 72(30)
+      10:       90 9e 00 4c     stw 4, 76(30)
+      14:       90 be 00 50     stw 5, 80(30)
+      18:       90 de 00 54     stw 6, 84(30)
+      1c:       90 fe 00 58     stw 7, 88(30)
+      20:       91 1e 00 5c     stw 8, 92(30)
+      24:       91 3e 00 60     stw 9, 96(30)
+      28:       80 21 00 00     lwz 1, 0(1)
+      2c:       bb c1 ff f8     lmw 30, -8(1)
+      30:       4e 80 00 20     blr
+
+_nonleaf_call:
+      34:       7c 08 02 a6     mflr 0          ; |         lr -> gpr0
+      38:       bf c1 ff f8     stmw 30, -8(1)  ; |         store gpr{30,31}
+      3c:       90 01 00 08     stw 0, 8(1)     ; | prolog  store lr
+      40:       94 21 ff b0     stwu 1, -80(1)  ; |         open frame and store sp at top of stack
+      44:       7c 3e 0b 78     mr 30, 1        ; /         sp -> gpr30, latter used for some fixed addressing below
+      48:       90 7e 00 68     stw 3, 104(30)  ; \
+      4c:       90 9e 00 6c     stw 4, 108(30)  ; |
+      50:       90 be 00 70     stw 5, 112(30)  ; |
+      54:       90 de 00 74     stw 6, 116(30)  ; |
+      58:       90 fe 00 78     stw 7, 120(30)  ; | all in args -> spill area in prev frame
+      5c:       91 1e 00 7c     stw 8, 124(30)  ; |
+      60:       91 3e 00 80     stw 9, 128(30)  ; |
+      64:       91 5e 00 84     stw 10, 132(30) ; |
+      68:       80 01 00 00     lwz 0, 0(1)     ; fetch back-chain ptr (parent frame's sp) from stack of top by prolog -> gpr0, and ...
+      6c:       94 01 ff 10     stwu 0, -240(1) ; ... update it further up the stack for alloca(220) - with padding to guarantee alignment
+      70:       38 41 00 40     addi 2, 1, 64   ; |
+      74:       38 02 00 0f     addi 0, 2, 15   ; | start of alloca()'d memory -> gpr2, by ...
+      78:       54 00 e1 3e     srwi 0, 0, 4    ; | ... using gpr0 as helper to align to 16b, leaving at least 64b at top of stack
+      7c:       54 02 20 36     slwi 2, 0, 4    ; |
+      80:       38 00 00 4c     li 0, 76        ; 'L' -> gpr0, and ...
+      84:       98 02 00 00     stb 0, 0(2)     ; ... store in local area (of alloca()'d space)
+      88:       80 7e 00 6c     lwz 3, 108(30)  ; |
+      8c:       80 9e 00 70     lwz 4, 112(30)  ; |
+      90:       80 be 00 74     lwz 5, 116(30)  ; |
+      94:       80 de 00 78     lwz 6, 120(30)  ; | arg 0,1,2,3,4,5,6 (fetched from spill area from prev frame)
+      98:       80 fe 00 7c     lwz 7, 124(30)  ; |
+      9c:       81 1e 00 80     lwz 8, 128(30)  ; |
+      a0:       81 3e 00 84     lwz 9, 132(30)  ; |
+      a4:       4b ff ff 5d     bl .+67108700   ; call and put return address -> lr
+      a8:       80 21 00 00     lwz 1, 0(1)     ; |
+      ac:       80 01 00 08     lwz 0, 8(1)     ; |
+      b0:       7c 08 03 a6     mtlr 0          ; | epilog
+      b4:       bb c1 ff f8     lmw 30, -8(1)   ; |
+      b8:       4e 80 00 20     blr             ; |
+
+_main:
+      bc:       7c 08 02 a6     mflr 0          ; |
+      c0:       bf c1 ff f8     stmw 30, -8(1)  ; |
+      c4:       90 01 00 08     stw 0, 8(1)     ; | prolog
+      c8:       94 21 ff b0     stwu 1, -80(1)  ; |
+      cc:       7c 3e 0b 78     mr 30, 1        ; |
+      d0:       38 60 00 00     li 3, 0         ; arg 0
+      d4:       38 80 00 01     li 4, 1         ; arg 1
+      d8:       38 a0 00 02     li 5, 2         ; arg 2
+      dc:       38 c0 00 03     li 6, 3         ; arg 3
+      e0:       38 e0 00 04     li 7, 4         ; arg 4
+      e4:       39 00 00 05     li 8, 5         ; arg 5
+      e8:       39 20 00 06     li 9, 6         ; arg 6
+      ec:       39 40 00 07     li 10, 7        ; arg 7
+      f0:       4b ff ff 45     bl .+67108676   ; call and put return address -> lr
+      f4:       38 00 00 00     li 0, 0         ; return value (pointlessly) via gpr0 ...
+      f8:       7c 03 03 78     mr 3, 0         ; ... to gpr3
+      fc:       80 21 00 00     lwz 1, 0(1)     ; |
+     100:       80 01 00 08     lwz 0, 8(1)     ; |
+     104:       7c 08 03 a6     mtlr 0          ; | epilog
+     108:       bb c1 ff f8     lmw 30, -8(1)   ; |
+     10c:       4e 80 00 20     blr             ; |
+
+
+
+; ------------- more than 8 int args ----------->
+
+; #include <stdlib.h>
+; 
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h, int i, int j)
+; {
+; }
+; 
+; void nonleaf_call(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j)
+; {
+; 	/* use some local data */
+; 	*(char*)alloca(220) = 'L';
+; 	leaf_call(b, c, d, e, f, g, h, i, j);
+; }
+; 
+; int main()
+; {
+; 	nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+; 	return 0;
+; }
+
+
+
+; output from darwin-8.0.1-ppc w/ gcc 3.3
+
+_leaf_call:
+       0:       bf c1 ff f8     stmw 30, -8(1)
+       4:       94 21 ff d0     stwu 1, -48(1)
+       8:       7c 3e 0b 78     mr 30, 1
+       c:       90 7e 00 48     stw 3, 72(30)
+      10:       90 9e 00 4c     stw 4, 76(30)
+      14:       90 be 00 50     stw 5, 80(30)
+      18:       90 de 00 54     stw 6, 84(30)
+      1c:       90 fe 00 58     stw 7, 88(30)
+      20:       91 1e 00 5c     stw 8, 92(30)
+      24:       91 3e 00 60     stw 9, 96(30)
+      28:       91 5e 00 64     stw 10, 100(30)
+      2c:       80 21 00 00     lwz 1, 0(1)
+      30:       bb c1 ff f8     lmw 30, -8(1)
+      34:       4e 80 00 20     blr
+
+_nonleaf_call:
+      38:       7c 08 02 a6     mflr 0          ; |
+      3c:       bf c1 ff f8     stmw 30, -8(1)  ; |
+      40:       90 01 00 08     stw 0, 8(1)     ; | prolog
+      44:       94 21 ff a0     stwu 1, -96(1)  ; |
+      48:       7c 3e 0b 78     mr 30, 1        ; /
+      4c:       90 7e 00 78     stw 3, 120(30)  ; \
+      50:       90 9e 00 7c     stw 4, 124(30)  ; |
+      54:       90 be 00 80     stw 5, 128(30)  ; |
+      58:       90 de 00 84     stw 6, 132(30)  ; |
+      5c:       90 fe 00 88     stw 7, 136(30)  ; | in args 0,1,2,3,4,5,6,7 -> spill area in prev frame
+      60:       91 1e 00 8c     stw 8, 140(30)  ; |
+      64:       91 3e 00 90     stw 9, 144(30)  ; |
+      68:       91 5e 00 94     stw 10, 148(30) ; |
+      6c:       80 01 00 00     lwz 0, 0(1)     ; fetch back-chain ptr (parent frame's sp) from stack of top by prolog -> gpr0, and ...
+      70:       94 01 ff 10     stwu 0, -240(1) ; ... update it further up the stack for alloca(220) - with padding to guarantee alignment
+      74:       38 41 00 50     addi 2, 1, 80   ; |
+      78:       38 02 00 0f     addi 0, 2, 15   ; | start of alloca()'d memory -> gpr2, by ...
+      7c:       54 00 e1 3e     srwi 0, 0, 4    ; | ... using gpr0 as helper to align to 16b, leaving at least 64b at top of stack
+      80:       54 02 20 36     slwi 2, 0, 4    ; |
+      84:       38 00 00 4c     li 0, 76        ; 'L' -> gpr0, and ...
+      88:       98 02 00 00     stb 0, 0(2)     ; ... store in local area (of alloca()'d space)
+      8c:       80 1e 00 9c     lwz 0, 156(30)  ; arg 7 (fetched from stack param area from prev frame), and ...
+      90:       90 01 00 38     stw 0, 56(1)    ; ... "pushed" onto stack
+      94:       80 7e 00 7c     lwz 3, 124(30)  ; |
+      98:       80 9e 00 80     lwz 4, 128(30)  ; |
+      9c:       80 be 00 84     lwz 5, 132(30)  ; |
+      a0:       80 de 00 88     lwz 6, 136(30)  ; | arg 0,1,2,3,4,5,6 (fetched from spill area from prev frame)
+      a4:       80 fe 00 8c     lwz 7, 140(30)  ; |
+      a8:       81 1e 00 90     lwz 8, 144(30)  ; |
+      ac:       81 3e 00 94     lwz 9, 148(30)  ; |
+      b0:       81 5e 00 98     lwz 10, 152(30) ; arg 7 (fetched from stack param area from prev frame)
+      b4:       4b ff ff 4d     bl .+67108684   ; call and put return address -> lr
+      b8:       80 21 00 00     lwz 1, 0(1)     ; |
+      bc:       80 01 00 08     lwz 0, 8(1)     ; |
+      c0:       7c 08 03 a6     mtlr 0          ; | epilog
+      c4:       bb c1 ff f8     lmw 30, -8(1)   ; |
+      c8:       4e 80 00 20     blr             ; |
+
+_main:
+      cc:       7c 08 02 a6     mflr 0          ; |
+      d0:       bf c1 ff f8     stmw 30, -8(1)  ; |
+      d4:       90 01 00 08     stw 0, 8(1)     ; | prolog
+      d8:       94 21 ff a0     stwu 1, -96(1)  ; |
+      dc:       7c 3e 0b 78     mr 30, 1        ; |
+      e0:       38 00 00 08     li 0, 8         ; arg 8, ...
+      e4:       90 01 00 38     stw 0, 56(1)    ; ... "pushed" onto stack
+      e8:       38 00 00 09     li 0, 9         ; arg 9, ...
+      ec:       90 01 00 3c     stw 0, 60(1)    ; ... "pushed" onto stack
+      f0:       38 60 00 00     li 3, 0         ; arg 0
+      f4:       38 80 00 01     li 4, 1         ; arg 1
+      f8:       38 a0 00 02     li 5, 2         ; arg 2
+      fc:       38 c0 00 03     li 6, 3         ; arg 3
+     100:       38 e0 00 04     li 7, 4         ; arg 4
+     104:       39 00 00 05     li 8, 5         ; arg 5
+     108:       39 20 00 06     li 9, 6         ; arg 6
+     10c:       39 40 00 07     li 10, 7        ; arg 7
+     110:       4b ff ff 29     bl .+67108648   ; call and put return address -> lr
+     114:       38 00 00 00     li 0, 0         ; return value (pointlessly) via gpr0 ...
+     118:       7c 03 03 78     mr 3, 0         ; ... to gpr3
+     11c:       80 21 00 00     lwz 1, 0(1)     ; |
+     120:       80 01 00 08     lwz 0, 8(1)     ; |
+     124:       7c 08 03 a6     mtlr 0          ; | epilog
+     128:       bb c1 ff f8     lmw 30, -8(1)   ; |
+     12c:       4e 80 00 20     blr             ; |
+
+
+
+; ------------- var args with ints and floats to see spilling (which remains only int regs), b/c doubles are passed via them and floats are promoted to doubles in (...) ----------->
+
+; #include <stdlib.h>
+; #include <stdarg.h>
+; 
+; void leaf_call(int b, int c, int d, int e, float f, float g, int h, int i, float j)
+; {
+; }
+; 
+; void nonleaf_call(int a, ...)
+; {
+;     int b, c, d, e, h, i;
+;     float f, g, j;
+;     va_list ap;
+;     va_start(ap, a);
+;     b = va_arg(ap, int);
+;     c = va_arg(ap, int);
+;     d = va_arg(ap, int);
+;     e = va_arg(ap, int);
+;     f = (float)va_arg(ap, double);
+;     g = (float)va_arg(ap, double);
+;     h = va_arg(ap, int);
+;     i = va_arg(ap, int);
+;     j = (float)va_arg(ap, double);
+;     /* use some local data */
+;     *(char*)alloca(220) = 'L';
+;     leaf_call(b, c, d, e, f, g, h, i, j);
+; }
+; 
+; int main()
+; {
+;     nonleaf_call(0, 1, 2, 3, 4, 5.f, 6.f, 7, 8, 9.f);
+;     return 0;
+; }
+
+
+
+; output from darwin-8.0.1-ppc w/ gcc 3.3
+
+_leaf_call:
+       0:       bf c1 ff f8     stmw 30, -8(1)
+       4:       94 21 ff d0     stwu 1, -48(1)
+       8:       7c 3e 0b 78     mr 30, 1
+       c:       90 7e 00 48     stw 3, 72(30)
+      10:       90 9e 00 4c     stw 4, 76(30)
+      14:       90 be 00 50     stw 5, 80(30)
+      18:       90 de 00 54     stw 6, 84(30)
+      1c:       d0 3e 00 58     stfs 1, 88(30)
+      20:       d0 5e 00 5c     stfs 2, 92(30)
+      24:       91 3e 00 60     stw 9, 96(30)
+      28:       91 5e 00 64     stw 10, 100(30)
+      2c:       d0 7e 00 68     stfs 3, 104(30)
+      30:       80 21 00 00     lwz 1, 0(1)
+      34:       bb c1 ff f8     lmw 30, -8(1)
+      38:       4e 80 00 20     blr
+
+_nonleaf_call:
+      3c:       7c 08 02 a6     mflr 0          ; |
+      40:       bf c1 ff f8     stmw 30, -8(1)  ; |
+      44:       90 01 00 08     stw 0, 8(1)     ; | prolog
+      48:       94 21 ff 70     stwu 1, -144(1) ; |
+      4c:       7c 3e 0b 78     mr 30, 1        ; /
+      50:       90 9e 00 ac     stw 4, 172(30)  ; \
+      54:       90 be 00 b0     stw 5, 176(30)  ; |
+      58:       90 de 00 b4     stw 6, 180(30)  ; |
+      5c:       90 fe 00 b8     stw 7, 184(30)  ; |
+      60:       91 1e 00 bc     stw 8, 188(30)  ; | in args ,1,2,3,4,5,6,7 -> spill area in prev frame
+      64:       91 3e 00 c0     stw 9, 192(30)  ; |
+      68:       91 5e 00 c4     stw 10, 196(30) ; |
+      6c:       90 7e 00 a8     stw 3, 168(30)  ; |                  <- this is in arg 0, the only named arg
+      70:       38 1e 00 ac     addi 0, 30, 172 ; get pointer to first unnamed arg in gpr0 for vararg iteration, ...
+      74:       90 1e 00 74     stw 0, 116(30)  ; ... and store read ptr in local area
+      78:       81 3e 00 74     lwz 9, 116(30)  ; \              read ptr -> gpr0
+      7c:       80 5e 00 74     lwz 2, 116(30)  ; |              use gpr2 as helper ...
+      80:       38 02 00 04     addi 0, 2, 4    ; |              ... to increment read ptr ...
+      84:       90 1e 00 74     stw 0, 116(30)  ; | in arg 1     ... and restore
+      88:       80 09 00 00     lwz 0, 0(9)     ; |              load in arg 1, and ...
+      8c:       90 1e 00 50     stw 0, 80(30)   ; /              ... store in temp space in local area
+      90:       81 3e 00 74     lwz 9, 116(30)  ; \
+      94:       80 5e 00 74     lwz 2, 116(30)  ; |
+      98:       38 02 00 04     addi 0, 2, 4    ; |
+      9c:       90 1e 00 74     stw 0, 116(30)  ; | in arg 2
+      a0:       80 09 00 00     lwz 0, 0(9)     ; |
+      a4:       90 1e 00 54     stw 0, 84(30)   ; /
+      a8:       81 3e 00 74     lwz 9, 116(30)  ; \
+      ac:       80 5e 00 74     lwz 2, 116(30)  ; |
+      b0:       38 02 00 04     addi 0, 2, 4    ; |
+      b4:       90 1e 00 74     stw 0, 116(30)  ; | in arg 3
+      b8:       80 09 00 00     lwz 0, 0(9)     ; |
+      bc:       90 1e 00 58     stw 0, 88(30)   ; /
+      c0:       81 3e 00 74     lwz 9, 116(30)  ; \
+      c4:       80 5e 00 74     lwz 2, 116(30)  ; |
+      c8:       38 02 00 04     addi 0, 2, 4    ; |
+      cc:       90 1e 00 74     stw 0, 116(30)  ; | in arg 4
+      d0:       80 09 00 00     lwz 0, 0(9)     ; |
+      d4:       90 1e 00 5c     stw 0, 92(30)   ; /
+      d8:       81 3e 00 74     lwz 9, 116(30)  ; \
+      dc:       80 5e 00 74     lwz 2, 116(30)  ; |
+      e0:       38 02 00 08     addi 0, 2, 8    ; |
+      e4:       90 1e 00 74     stw 0, 116(30)  ; | in arg 5 (float, promoted to double)
+      e8:       c8 09 00 00     lfd 0, 0(9)     ; |
+      ec:       fc 00 00 18     frsp 0, 0       ; |
+      f0:       d0 1e 00 68     stfs 0, 104(30) ; /
+      f4:       81 3e 00 74     lwz 9, 116(30)  ; \
+      f8:       80 5e 00 74     lwz 2, 116(30)  ; |
+      fc:       38 02 00 08     addi 0, 2, 8    ; |
+     100:       90 1e 00 74     stw 0, 116(30)  ; | in arg 6 (float, promoted to double)
+     104:       c8 09 00 00     lfd 0, 0(9)     ; |
+     108:       fc 00 00 18     frsp 0, 0       ; |
+     10c:       d0 1e 00 6c     stfs 0, 108(30) ; /
+     110:       81 3e 00 74     lwz 9, 116(30)  ; \
+     114:       80 5e 00 74     lwz 2, 116(30)  ; |
+     118:       38 02 00 04     addi 0, 2, 4    ; |
+     11c:       90 1e 00 74     stw 0, 116(30)  ; | in arg 7
+     120:       80 09 00 00     lwz 0, 0(9)     ; |
+     124:       90 1e 00 60     stw 0, 96(30)   ; /
+     128:       81 3e 00 74     lwz 9, 116(30)  ; \
+     12c:       80 5e 00 74     lwz 2, 116(30)  ; |
+     130:       38 02 00 04     addi 0, 2, 4    ; |
+     134:       90 1e 00 74     stw 0, 116(30)  ; | in arg 8
+     138:       80 09 00 00     lwz 0, 0(9)     ; |
+     13c:       90 1e 00 64     stw 0, 100(30)  ; /
+     140:       81 3e 00 74     lwz 9, 116(30)  ; \
+     144:       80 5e 00 74     lwz 2, 116(30)  ; |
+     148:       38 02 00 08     addi 0, 2, 8    ; |
+     14c:       90 1e 00 74     stw 0, 116(30)  ; | in arg 9 (float, promoted to double)
+     150:       c8 09 00 00     lfd 0, 0(9)     ; |
+     154:       fc 00 00 18     frsp 0, 0       ; |
+     158:       d0 1e 00 70     stfs 0, 112(30) ; /
+     15c:       80 01 00 00     lwz 0, 0(1)     ; fetch back-chain ptr (parent frame's sp) from stack of top by prolog -> gpr0, and ...
+     160:       94 01 ff 10     stwu 0, -240(1) ; ... update it further up the stack for alloca
+     164:       38 41 00 50     addi 2, 1, 80   ; |
+     168:       38 02 00 0f     addi 0, 2, 15   ; | start of alloca()'d memory -> gpr2, by ...
+     16c:       54 00 e1 3e     srwi 0, 0, 4    ; | ... using gpr0 as helper to align to 16b, l
+     170:       54 02 20 36     slwi 2, 0, 4    ; |
+     174:       38 00 00 4c     li 0, 76        ; 'L' -> gpr0, and ...
+     178:       98 02 00 00     stb 0, 0(2)     ; ... store in local area (of alloca()'d space)
+     17c:       80 7e 00 50     lwz 3, 80(30)   ; arg 0
+     180:       80 9e 00 54     lwz 4, 84(30)   ; arg 1
+     184:       80 be 00 58     lwz 5, 88(30)   ; arg 2
+     188:       80 de 00 5c     lwz 6, 92(30)   ; arg 3
+     18c:       c0 3e 00 68     lfs 1, 104(30)  ; arg 4 (float)
+     190:       c0 5e 00 6c     lfs 2, 108(30)  ; arg 5 (float)
+     194:       81 3e 00 60     lwz 9, 96(30)   ; arg 6
+     198:       81 5e 00 64     lwz 10, 100(30) ; arg 7
+     19c:       c0 7e 00 70     lfs 3, 112(30)  ; arg 8 (float)
+     1a0:       4b ff fe 61     bl .+67108448   ; call and put return address -> lr
+     1a4:       80 21 00 00     lwz 1, 0(1)     ; |
+     1a8:       80 01 00 08     lwz 0, 8(1)     ; |
+     1ac:       7c 08 03 a6     mtlr 0          ; | epilog
+     1b0:       bb c1 ff f8     lmw 30, -8(1)   ; |
+     1b4:       4e 80 00 20     blr             ; |
+
+_main:
+     1b8:       7c 08 02 a6     mflr 0          ; |
+     1bc:       bf c1 ff f8     stmw 30, -8(1)  ; |
+     1c0:       90 01 00 08     stw 0, 8(1)     ; | prolog
+     1c4:       94 21 ff 90     stwu 1, -112(1) ; |
+     1c8:       7c 3e 0b 78     mr 30, 1        ; |
+     1cc:       42 9f 00 05     bcl 20, 31, .+4 ; ppc way to get PC in ...
+     1d0:       7f e8 02 a6     mflr 31         ; ... gpr31
+     1d4:       38 00 00 07     li 0, 7         ; arg 7, ...
+     1d8:       90 01 00 3c     stw 0, 60(1)    ; ... "pushed" onto stack
+     1dc:       38 00 00 08     li 0, 8         ; arg 8, ...
+     1e0:       90 01 00 40     stw 0, 64(1)    ; ... "pushed" onto stack
+     1e4:       3c 40 40 22     lis 2, 16418    ; | arg 9, top-half (double b/c of vararg), and ...
+     1e8:       38 60 00 00     li 3, 0         ; | ... bottom-half ...
+     1ec:       90 41 00 44     stw 2, 68(1)    ; | ... "pushed" into stack
+     1f0:       90 61 00 48     stw 3, 72(1)    ; |         "
+     1f4:       38 00 00 00     li 0, 0         ; arg 6, bottom-half, ...
+     1f8:       90 01 00 38     stw 0, 56(1)    ; ... "pushed" onto stack (first word in param area, top-half passed via gpr10, see below)
+     1fc:       38 60 00 00     li 3, 0         ; arg 0
+     200:       38 80 00 01     li 4, 1         ; arg 1
+     204:       38 a0 00 02     li 5, 2         ; arg 2
+     208:       38 c0 00 03     li 6, 3         ; arg 3
+     20c:       38 e0 00 04     li 7, 4         ; arg 4
+     210:       3d 20 40 14     lis 9, 16404    ; | prep arg 5 (double b/c of vararg) for move to arg reg later: top-half -> gpr9
+     214:       39 40 00 00     li 10, 0        ; |                                                           bottom-half -> gpr10
+     218:       3c 5f 00 00     addis 2, 31, 0  ; PC -> gpr2, to ...
+     21c:       c8 02 00 98     lfd 0, 152(2)   ; ... load some static data (arg 5, the float) stored right after this function -> gpr0
+     220:       7d 28 4b 78     mr 8, 9         ; arg 5, top-half
+     224:       7d 49 53 78     mr 9, 10        ; arg 5, bottom-half
+     228:       fc 20 00 90     fmr 1, 0        ; arg 5 in 1st fp reg
+     22c:       3d 60 40 18     lis 11, 16408   ; | prep arg 6 (double b/c of vararg) for move to arg reg later: top-half -> gpr11
+     230:       39 80 00 00     li 12, 0        ; |                                                           bottom-half -> gpr12 (this one is pointless, unused, bottom-half already placed on stack)
+     234:       3c 5f 00 00     addis 2, 31, 0  ; PC -> gpr2, to ...
+     238:       c8 02 00 a0     lfd 0, 160(2)   ; ... load some static data (arg 6, the 2nd float) stored right after this function -> gpr0
+     23c:       7d 6a 5b 78     mr 10, 11       ; arg 6, top-half
+     240:       fc 40 00 90     fmr 2, 0        ; arg 5 in 2nd fp reg
+     244:       c8 01 00 44     lfd 0, 68(1)    ; arg 9, ...
+     248:       fc 60 00 90     fmr 3, 0        ; ... -> 3rd fp reg
+     24c:       4b ff fd f1     bl .+67108336   ; call and put return address -> lr
+     250:       7c 03 03 78     mr 3, 0         ; return value @@@unsure why gpr0 is guaranteed to be 0 here
+     254:       80 21 00 00     lwz 1, 0(1)     ; |
+     258:       80 01 00 08     lwz 0, 8(1)     ; |
+     25c:       7c 08 03 a6     mtlr 0          ; | epilog
+     260:       bb c1 ff f8     lmw 30, -8(1)   ; |
+     264:       4e 80 00 20     blr             ; |
+
+; vim: ft=asm
+

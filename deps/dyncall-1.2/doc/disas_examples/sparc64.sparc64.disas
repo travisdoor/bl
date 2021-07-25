@@ -1,0 +1,558 @@
+; #include <stdlib.h>
+; 
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h)
+; {
+; }
+; 
+; void nonleaf_call(int a, int b, int c, int d, int e, int f, int g, int h)
+; {
+;     /* use some local data */
+;     *(char*)alloca(220) = 'L';
+;     leaf_call(b, c, d, e, f, g, h);
+; }
+; 
+; int main()
+; {
+;     nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7);
+;     return 0;
+; }
+
+
+
+; output from debian-9.0-sparc64 w/ gcc 6.1.1
+
+0000000000000000 <leaf_call>:
+   0:   9d e3 bf 50     save  %sp, -176, %sp
+   4:   8a 10 00 19     mov  %i1, %g5
+   8:   88 10 00 1a     mov  %i2, %g4
+   c:   86 10 00 1b     mov  %i3, %g3
+  10:   84 10 00 1c     mov  %i4, %g2
+  14:   82 10 00 1d     mov  %i5, %g1
+  18:   f0 27 a8 7f     st  %i0, [ %fp + 0x87f ]
+  1c:   ca 27 a8 87     st  %g5, [ %fp + 0x887 ]
+  20:   c8 27 a8 8f     st  %g4, [ %fp + 0x88f ]
+  24:   c6 27 a8 97     st  %g3, [ %fp + 0x897 ]
+  28:   c4 27 a8 9f     st  %g2, [ %fp + 0x89f ]
+  2c:   c2 27 a8 a7     st  %g1, [ %fp + 0x8a7 ]
+  30:   01 00 00 00     nop
+  34:   81 cf e0 08     rett  %i7 + 8
+  38:   01 00 00 00     nop
+
+000000000000003c <nonleaf_call>:
+  3c:   9d e3 bf 40     save  %sp, -192, %sp         ; prolog
+  40:   8a 10 00 19     mov  %i1, %g5                ; |
+  44:   88 10 00 1a     mov  %i2, %g4                ; |
+  48:   86 10 00 1b     mov  %i3, %g3                ; |
+  4c:   84 10 00 1c     mov  %i4, %g2                ; |
+  50:   82 10 00 1d     mov  %i5, %g1                ; |
+  54:   f0 27 a8 7f     st  %i0, [ %fp + 0x87f ]     ; | write input to prev frame's spill area (e.g. offset = 128 for i0, jumping over i*/l* save area)
+  58:   ca 27 a8 87     st  %g5, [ %fp + 0x887 ]     ; | (pointlessly using an extra reg copy to g* for most)
+  5c:   c8 27 a8 8f     st  %g4, [ %fp + 0x88f ]     ; | 
+  60:   c6 27 a8 97     st  %g3, [ %fp + 0x897 ]     ; |
+  64:   c4 27 a8 9f     st  %g2, [ %fp + 0x89f ]     ; |
+  68:   c2 27 a8 a7     st  %g1, [ %fp + 0x8a7 ]     ; |
+  6c:   9c 03 bf 10     add  %sp, -240, %sp          ; alloca(220) - with padding, and ...
+  70:   82 03 a8 bf     add  %sp, 0x8bf, %g1         ; ... at least 192b at top of stack
+  74:   82 00 60 0f     add  %g1, 0xf, %g1           ; |
+  78:   83 30 70 04     srlx  %g1, 4, %g1            ; |
+  7c:   83 28 70 04     sllx  %g1, 4, %g1            ; | 16b alignment of alloca()'d space pointed to by g2
+  80:   84 10 00 01     mov  %g1, %g2                ; |
+  84:   82 10 20 4c     mov  0x4c, %g1               ; 'L' -> g1, and ...
+  88:   c2 28 80 00     stb  %g1, [ %g2 ]            ; ... store in aligned alloca()'d space
+  8c:   c2 07 a8 b3     ld  [ %fp + 0x8b3 ], %g1     ; arg 5 (fetched from prev frame's stack param area), ...
+  90:   b9 38 60 00     sra  %g1, 0, %i4             ; ... -> i4
+  94:   c2 07 a8 a7     ld  [ %fp + 0x8a7 ], %g1     ; arg 4 (fetched from prev frame's spill area), ...
+  98:   bb 38 60 00     sra  %g1, 0, %i5             ; ... -> i5
+  9c:   c2 07 a8 9f     ld  [ %fp + 0x89f ], %g1     ; arg 3 (fetched from prev frame's spill area), ...
+  a0:   8b 38 60 00     sra  %g1, 0, %g5             ; ... -> g5
+  a4:   c2 07 a8 97     ld  [ %fp + 0x897 ], %g1     ; arg 2 (fetched from prev frame's spill area), ...
+  a8:   89 38 60 00     sra  %g1, 0, %g4             ; ... -> g4
+  ac:   c2 07 a8 8f     ld  [ %fp + 0x88f ], %g1     ; arg 1 (fetched from prev frame's spill area), ...
+  b0:   87 38 60 00     sra  %g1, 0, %g3             ; ... -> g3
+  b4:   c2 07 a8 87     ld  [ %fp + 0x887 ], %g1     ; arg 0 (fetched from prev frame's spill area), ...
+  b8:   85 38 60 00     sra  %g1, 0, %g2             ; ... -> g2
+  bc:   c2 07 a8 bb     ld  [ %fp + 0x8bb ], %g1     ; arg 6 (fetched from prev frame's stack param area), ...
+  c0:   83 38 60 00     sra  %g1, 0, %g1             ; ... -> g1, and ...
+  c4:   c2 73 a8 af     stx  %g1, [ %sp + 0x8af ]    ; ... "pushed" onto stack
+  c8:   9a 10 00 1c     mov  %i4, %o5                ; |
+  cc:   98 10 00 1d     mov  %i5, %o4                ; |
+  d0:   96 10 00 05     mov  %g5, %o3                ; |
+  d4:   94 10 00 04     mov  %g4, %o2                ; | arg 0,1,2,3,4 (fetched from prev frame's spill area)
+  d8:   92 10 00 03     mov  %g3, %o1                ; |
+  dc:   90 10 00 02     mov  %g2, %o0                ; |
+  e0:   40 00 00 00     call  e0 <nonleaf_call+0xa4> ; call leaf_call (objdump not from final link but .o)
+  e4:   01 00 00 00     nop                          ; branch delay slot
+  e8:   01 00 00 00     nop                          ;
+  ec:   81 cf e0 08     rett  %i7 + 8                ; | epilog
+  f0:   01 00 00 00     nop                          ; |            branch delay slot
+
+00000000000000f4 <main>:
+  f4:   9d e3 bf 40     save  %sp, -192, %sp         ; prolog
+  f8:   82 10 20 07     mov  7, %g1                  ; arg 7, ...
+  fc:   c2 73 a8 b7     stx  %g1, [ %sp + 0x8b7 ]    ; ... "pushed" onto stack
+ 100:   82 10 20 06     mov  6, %g1                  ; arg 6, ...
+ 104:   c2 73 a8 af     stx  %g1, [ %sp + 0x8af ]    ; ... "pushed" onto stack
+ 108:   9a 10 20 05     mov  5, %o5                  ; arg 5
+ 10c:   98 10 20 04     mov  4, %o4                  ; arg 4
+ 110:   96 10 20 03     mov  3, %o3                  ; arg 3
+ 114:   94 10 20 02     mov  2, %o2                  ; arg 2
+ 118:   92 10 20 01     mov  1, %o1                  ; arg 1
+ 11c:   90 10 20 00     clr  %o0                     ; arg 0
+ 120:   40 00 00 00     call  120 <main+0x2c>        ; call nonleaf_call (objdump not from final link but .o)
+ 124:   01 00 00 00     nop                          ; branch delay slot
+ 128:   82 10 20 00     clr  %g1     ! 0 <leaf_call> ; |
+ 12c:   83 38 60 00     sra  %g1, 0, %g1             ; | return value
+ 130:   b0 10 00 01     mov  %g1, %i0                ; /
+ 134:   81 cf e0 08     rett  %i7 + 8                ; \ epilog
+ 138:   01 00 00 00     nop                          ; |            branch delay slot
+
+
+
+; output from freebsd-11.0-sparc64 w/ gcc 4.2.1
+
+0000000000000000 <leaf_call>:
+   0:   9d e3 bf 40     save  %sp, -192, %sp
+   4:   82 10 00 18     mov  %i0, %g1
+   8:   84 10 00 19     mov  %i1, %g2
+   c:   86 10 00 1a     mov  %i2, %g3
+  10:   88 10 00 1b     mov  %i3, %g4
+  14:   8a 10 00 1c     mov  %i4, %g5
+  18:   c2 27 a8 7f     st  %g1, [ %fp + 0x87f ]
+  1c:   c4 27 a8 87     st  %g2, [ %fp + 0x887 ]
+  20:   c6 27 a8 8f     st  %g3, [ %fp + 0x88f ]
+  24:   c8 27 a8 97     st  %g4, [ %fp + 0x897 ]
+  28:   ca 27 a8 9f     st  %g5, [ %fp + 0x89f ]
+  2c:   fa 27 a8 a7     st  %i5, [ %fp + 0x8a7 ]
+  30:   81 cf e0 08     rett  %i7 + 8
+  34:   01 00 00 00     nop
+  38:   01 00 00 00     nop
+  3c:   01 00 00 00     nop
+
+0000000000000040 <nonleaf_call>:
+  40:   9d e3 bf 20     save  %sp, -224, %sp
+  44:   82 10 00 18     mov  %i0, %g1
+  48:   84 10 00 19     mov  %i1, %g2
+  4c:   86 10 00 1a     mov  %i2, %g3
+  50:   88 10 00 1b     mov  %i3, %g4
+  54:   8a 10 00 1c     mov  %i4, %g5
+  58:   9a 10 00 1d     mov  %i5, %o5
+  5c:   c2 27 a8 7f     st  %g1, [ %fp + 0x87f ]
+  60:   c4 27 a8 87     st  %g2, [ %fp + 0x887 ]
+  64:   c6 27 a8 8f     st  %g3, [ %fp + 0x88f ]
+  68:   c8 27 a8 97     st  %g4, [ %fp + 0x897 ]
+  6c:   ca 27 a8 9f     st  %g5, [ %fp + 0x89f ]
+  70:   da 27 a8 a7     st  %o5, [ %fp + 0x8a7 ]
+  74:   9c 03 bf 20     add  %sp, -224, %sp
+  78:   82 03 a8 bf     add  %sp, 0x8bf, %g1
+  7c:   c2 77 a7 e7     stx  %g1, [ %fp + 0x7e7 ]
+  80:   c4 5f a7 e7     ldx  [ %fp + 0x7e7 ], %g2
+  84:   82 00 a0 0f     add  %g2, 0xf, %g1
+  88:   83 30 70 04     srlx  %g1, 4, %g1
+  8c:   83 28 70 04     sllx  %g1, 4, %g1
+  90:   c2 77 a7 e7     stx  %g1, [ %fp + 0x7e7 ]
+  94:   c4 5f a7 e7     ldx  [ %fp + 0x7e7 ], %g2
+  98:   82 10 20 4c     mov  0x4c, %g1
+  9c:   c2 28 80 00     stb  %g1, [ %g2 ]
+  a0:   c2 07 a8 87     ld  [ %fp + 0x887 ], %g1
+  a4:   89 38 60 00     sra  %g1, 0, %g4
+  a8:   c2 07 a8 8f     ld  [ %fp + 0x88f ], %g1
+  ac:   8b 38 60 00     sra  %g1, 0, %g5
+  b0:   c2 07 a8 97     ld  [ %fp + 0x897 ], %g1
+  b4:   9b 38 60 00     sra  %g1, 0, %o5
+  b8:   c2 07 a8 9f     ld  [ %fp + 0x89f ], %g1
+  bc:   99 38 60 00     sra  %g1, 0, %o4
+  c0:   c2 07 a8 a7     ld  [ %fp + 0x8a7 ], %g1
+  c4:   85 38 60 00     sra  %g1, 0, %g2
+  c8:   c2 07 a8 b3     ld  [ %fp + 0x8b3 ], %g1
+  cc:   87 38 60 00     sra  %g1, 0, %g3
+  d0:   c2 07 a8 bb     ld  [ %fp + 0x8bb ], %g1
+  d4:   83 38 60 00     sra  %g1, 0, %g1
+  d8:   c2 73 a8 af     stx  %g1, [ %sp + 0x8af ]
+  dc:   90 10 00 04     mov  %g4, %o0
+  e0:   92 10 00 05     mov  %g5, %o1
+  e4:   94 10 00 0d     mov  %o5, %o2
+  e8:   96 10 00 0c     mov  %o4, %o3
+  ec:   98 10 00 02     mov  %g2, %o4
+  f0:   9a 10 00 03     mov  %g3, %o5
+  f4:   40 00 00 00     call  f4 <nonleaf_call+0xb4>
+  f8:   01 00 00 00     nop
+  fc:   81 cf e0 08     rett  %i7 + 8
+ 100:   01 00 00 00     nop
+ 104:   30 68 00 07     b,a   %xcc, 120 <main>
+ 108:   01 00 00 00     nop
+ 10c:   01 00 00 00     nop
+ 110:   01 00 00 00     nop
+ 114:   01 00 00 00     nop
+ 118:   01 00 00 00     nop
+ 11c:   01 00 00 00     nop
+
+0000000000000120 <main>:
+ 120:   9d e3 bf 30     save  %sp, -208, %sp
+ 124:   82 10 20 06     mov  6, %g1
+ 128:   c2 73 a8 af     stx  %g1, [ %sp + 0x8af ]
+ 12c:   82 10 20 07     mov  7, %g1
+ 130:   c2 73 a8 b7     stx  %g1, [ %sp + 0x8b7 ]
+ 134:   90 10 20 00     clr  %o0
+ 138:   92 10 20 01     mov  1, %o1
+ 13c:   94 10 20 02     mov  2, %o2
+ 140:   96 10 20 03     mov  3, %o3
+ 144:   98 10 20 04     mov  4, %o4
+ 148:   9a 10 20 05     mov  5, %o5
+ 14c:   40 00 00 00     call  14c <main+0x2c>
+ 150:   01 00 00 00     nop
+ 154:   82 10 20 00     clr  %g1     ! 0 <leaf_call>
+ 158:   83 38 60 00     sra  %g1, 0, %g1
+ 15c:   b0 10 00 01     mov  %g1, %i0
+ 160:   81 cf e0 08     rett  %i7 + 8
+ 164:   01 00 00 00     nop
+ 168:   30 68 00 06     b,a   %xcc, 180 <main+0x60>
+ 16c:   01 00 00 00     nop
+ 170:   01 00 00 00     nop
+ 174:   01 00 00 00     nop
+ 178:   01 00 00 00     nop
+ 17c:   01 00 00 00     nop
+
+
+
+; output from netbsd-7.1-sparc64 w/ gcc 4.8.5
+
+0000000000000000 <leaf_call>:
+   0:   9d e3 bf 50     save  %sp, -176, %sp
+   4:   8a 10 00 19     mov  %i1, %g5
+   8:   88 10 00 1a     mov  %i2, %g4
+   c:   86 10 00 1b     mov  %i3, %g3
+  10:   84 10 00 1c     mov  %i4, %g2
+  14:   82 10 00 1d     mov  %i5, %g1
+  18:   f0 27 a8 7f     st  %i0, [ %fp + 0x87f ]
+  1c:   ca 27 a8 87     st  %g5, [ %fp + 0x887 ]
+  20:   c8 27 a8 8f     st  %g4, [ %fp + 0x88f ]
+  24:   c6 27 a8 97     st  %g3, [ %fp + 0x897 ]
+  28:   c4 27 a8 9f     st  %g2, [ %fp + 0x89f ]
+  2c:   c2 27 a8 a7     st  %g1, [ %fp + 0x8a7 ]
+  30:   81 cf e0 08     rett  %i7 + 8
+  34:   01 00 00 00     nop
+
+0000000000000038 <nonleaf_call>:
+  38:   9d e3 bf 40     save  %sp, -192, %sp
+  3c:   8a 10 00 19     mov  %i1, %g5
+  40:   88 10 00 1a     mov  %i2, %g4
+  44:   86 10 00 1b     mov  %i3, %g3
+  48:   84 10 00 1c     mov  %i4, %g2
+  4c:   82 10 00 1d     mov  %i5, %g1
+  50:   f0 27 a8 7f     st  %i0, [ %fp + 0x87f ]
+  54:   ca 27 a8 87     st  %g5, [ %fp + 0x887 ]
+  58:   c8 27 a8 8f     st  %g4, [ %fp + 0x88f ]
+  5c:   c6 27 a8 97     st  %g3, [ %fp + 0x897 ]
+  60:   c4 27 a8 9f     st  %g2, [ %fp + 0x89f ]
+  64:   c2 27 a8 a7     st  %g1, [ %fp + 0x8a7 ]
+  68:   9c 03 bf 10     add  %sp, -240, %sp
+  6c:   82 03 a8 bf     add  %sp, 0x8bf, %g1
+  70:   82 00 60 0f     add  %g1, 0xf, %g1
+  74:   83 30 70 04     srlx  %g1, 4, %g1
+  78:   83 28 70 04     sllx  %g1, 4, %g1
+  7c:   84 10 20 4c     mov  0x4c, %g2
+  80:   c4 28 40 00     stb  %g2, [ %g1 ]
+  84:   c2 07 a8 87     ld  [ %fp + 0x887 ], %g1
+  88:   bb 38 60 00     sra  %g1, 0, %i5
+  8c:   c2 07 a8 8f     ld  [ %fp + 0x88f ], %g1
+  90:   8b 38 60 00     sra  %g1, 0, %g5
+  94:   c2 07 a8 97     ld  [ %fp + 0x897 ], %g1
+  98:   89 38 60 00     sra  %g1, 0, %g4
+  9c:   c2 07 a8 9f     ld  [ %fp + 0x89f ], %g1
+  a0:   87 38 60 00     sra  %g1, 0, %g3
+  a4:   c2 07 a8 a7     ld  [ %fp + 0x8a7 ], %g1
+  a8:   85 38 60 00     sra  %g1, 0, %g2
+  ac:   c2 07 a8 b3     ld  [ %fp + 0x8b3 ], %g1
+  b0:   83 38 60 00     sra  %g1, 0, %g1
+  b4:   f8 07 a8 bb     ld  [ %fp + 0x8bb ], %i4
+  b8:   b9 3f 20 00     sra  %i4, 0, %i4
+  bc:   f8 73 a8 af     stx  %i4, [ %sp + 0x8af ]
+  c0:   90 10 00 1d     mov  %i5, %o0
+  c4:   92 10 00 05     mov  %g5, %o1
+  c8:   94 10 00 04     mov  %g4, %o2
+  cc:   96 10 00 03     mov  %g3, %o3
+  d0:   98 10 00 02     mov  %g2, %o4
+  d4:   9a 10 00 01     mov  %g1, %o5
+  d8:   40 00 00 00     call  d8 <nonleaf_call+0xa0>
+  dc:   01 00 00 00     nop
+  e0:   81 cf e0 08     rett  %i7 + 8
+  e4:   01 00 00 00     nop
+
+00000000000000e8 <main>:
+  e8:   9d e3 bf 40     save  %sp, -192, %sp
+  ec:   82 10 20 06     mov  6, %g1
+  f0:   c2 73 a8 af     stx  %g1, [ %sp + 0x8af ]
+  f4:   82 10 20 07     mov  7, %g1
+  f8:   c2 73 a8 b7     stx  %g1, [ %sp + 0x8b7 ]
+  fc:   90 10 20 00     clr  %o0
+ 100:   92 10 20 01     mov  1, %o1
+ 104:   94 10 20 02     mov  2, %o2
+ 108:   96 10 20 03     mov  3, %o3
+ 10c:   98 10 20 04     mov  4, %o4
+ 110:   9a 10 20 05     mov  5, %o5
+ 114:   40 00 00 00     call  114 <main+0x2c>
+ 118:   01 00 00 00     nop
+ 11c:   82 10 20 00     clr  %g1     ! 0 <leaf_call>
+ 120:   83 38 60 00     sra  %g1, 0, %g1
+ 124:   b0 10 00 01     mov  %g1, %i0
+ 128:   81 cf e0 08     rett  %i7 + 8
+ 12c:   01 00 00 00     nop
+
+
+
+; output from openbsd-7.1-sparc64 w/ gcc 4.2.1
+
+0000000000000000 <leaf_call>:
+   0:   9d e3 bf 30     save  %sp, -208, %sp
+   4:   82 10 00 18     mov  %i0, %g1
+   8:   84 10 00 19     mov  %i1, %g2
+   c:   86 10 00 1a     mov  %i2, %g3
+  10:   88 10 00 1b     mov  %i3, %g4
+  14:   8a 10 00 1c     mov  %i4, %g5
+  18:   c2 27 a8 7f     st  %g1, [ %fp + 0x87f ]
+  1c:   c4 27 a8 87     st  %g2, [ %fp + 0x887 ]
+  20:   c6 27 a8 8f     st  %g3, [ %fp + 0x88f ]
+  24:   c8 27 a8 97     st  %g4, [ %fp + 0x897 ]
+  28:   ca 27 a8 9f     st  %g5, [ %fp + 0x89f ]
+  2c:   fa 27 a8 a7     st  %i5, [ %fp + 0x8a7 ]
+  30:   81 cf e0 08     rett  %i7 + 8
+  34:   01 00 00 00     nop
+  38:   ae 03 c0 17     add  %o7, %l7, %l7
+  3c:   81 c3 e0 08     retl
+  40:   01 00 00 00     nop
+
+0000000000000044 <nonleaf_call>:
+  44:   9d e3 bf 10     save  %sp, -240, %sp
+  48:   2f 00 00 00     sethi  %hi(0), %l7
+  4c:   ae 05 e0 00     add  %l7, 0, %l7     ! 0 <leaf_call>
+  50:   7f ff ff fa     call  38 <leaf_call+0x38>
+  54:   01 00 00 00     nop
+  58:   82 10 00 18     mov  %i0, %g1
+  5c:   84 10 00 19     mov  %i1, %g2
+  60:   86 10 00 1a     mov  %i2, %g3
+  64:   88 10 00 1b     mov  %i3, %g4
+  68:   8a 10 00 1c     mov  %i4, %g5
+  6c:   9a 10 00 1d     mov  %i5, %o5
+  70:   c2 27 a8 7f     st  %g1, [ %fp + 0x87f ]
+  74:   c4 27 a8 87     st  %g2, [ %fp + 0x887 ]
+  78:   c6 27 a8 8f     st  %g3, [ %fp + 0x88f ]
+  7c:   c8 27 a8 97     st  %g4, [ %fp + 0x897 ]
+  80:   ca 27 a8 9f     st  %g5, [ %fp + 0x89f ]
+  84:   da 27 a8 a7     st  %o5, [ %fp + 0x8a7 ]
+  88:   03 00 00 00     sethi  %hi(0), %g1
+  8c:   82 10 60 00     mov  %g1, %g1   ! 0 <leaf_call>
+  90:   c2 5d c0 01     ldx  [ %l7 + %g1 ], %g1
+  94:   c4 58 40 00     ldx  [ %g1 ], %g2
+  98:   c4 77 a7 e7     stx  %g2, [ %fp + 0x7e7 ]
+  9c:   84 10 20 00     clr  %g2
+  a0:   9c 03 bf 20     add  %sp, -224, %sp
+  a4:   86 03 a8 bf     add  %sp, 0x8bf, %g3
+  a8:   c6 77 a7 d7     stx  %g3, [ %fp + 0x7d7 ]
+  ac:   c4 5f a7 d7     ldx  [ %fp + 0x7d7 ], %g2
+  b0:   82 00 a0 0f     add  %g2, 0xf, %g1
+  b4:   83 30 70 04     srlx  %g1, 4, %g1
+  b8:   83 28 70 04     sllx  %g1, 4, %g1
+  bc:   c2 77 a7 d7     stx  %g1, [ %fp + 0x7d7 ]
+  c0:   c4 5f a7 d7     ldx  [ %fp + 0x7d7 ], %g2
+  c4:   82 10 20 4c     mov  0x4c, %g1
+  c8:   c2 28 80 00     stb  %g1, [ %g2 ]
+  cc:   c2 07 a8 87     ld  [ %fp + 0x887 ], %g1
+  d0:   89 38 60 00     sra  %g1, 0, %g4
+  d4:   c2 07 a8 8f     ld  [ %fp + 0x88f ], %g1
+  d8:   8b 38 60 00     sra  %g1, 0, %g5
+  dc:   c2 07 a8 97     ld  [ %fp + 0x897 ], %g1
+  e0:   9b 38 60 00     sra  %g1, 0, %o5
+  e4:   c2 07 a8 9f     ld  [ %fp + 0x89f ], %g1
+  e8:   99 38 60 00     sra  %g1, 0, %o4
+  ec:   c2 07 a8 a7     ld  [ %fp + 0x8a7 ], %g1
+  f0:   85 38 60 00     sra  %g1, 0, %g2
+  f4:   c2 07 a8 b3     ld  [ %fp + 0x8b3 ], %g1
+  f8:   87 38 60 00     sra  %g1, 0, %g3
+  fc:   c2 07 a8 bb     ld  [ %fp + 0x8bb ], %g1
+ 100:   83 38 60 00     sra  %g1, 0, %g1
+ 104:   c2 73 a8 af     stx  %g1, [ %sp + 0x8af ]
+ 108:   90 10 00 04     mov  %g4, %o0
+ 10c:   92 10 00 05     mov  %g5, %o1
+ 110:   94 10 00 0d     mov  %o5, %o2
+ 114:   96 10 00 0c     mov  %o4, %o3
+ 118:   98 10 00 02     mov  %g2, %o4
+ 11c:   9a 10 00 03     mov  %g3, %o5
+ 120:   40 00 00 00     call  120 <nonleaf_call+0xdc>
+ 124:   01 00 00 00     nop
+ 128:   03 00 00 00     sethi  %hi(0), %g1
+ 12c:   82 10 60 00     mov  %g1, %g1   ! 0 <leaf_call>
+ 130:   c2 5d c0 01     ldx  [ %l7 + %g1 ], %g1
+ 134:   c6 5f a7 e7     ldx  [ %fp + 0x7e7 ], %g3
+ 138:   c4 58 40 00     ldx  [ %g1 ], %g2
+ 13c:   86 18 c0 02     xor  %g3, %g2, %g3
+ 140:   84 10 20 00     clr  %g2
+ 144:   82 10 00 03     mov  %g3, %g1
+ 148:   02 c8 40 08     brz  %g1, 168 <nonleaf_call+0x124>
+ 14c:   01 00 00 00     nop
+ 150:   03 00 00 00     sethi  %hi(0), %g1
+ 154:   82 10 60 00     mov  %g1, %g1   ! 0 <leaf_call>
+ 158:   c2 5d c0 01     ldx  [ %l7 + %g1 ], %g1
+ 15c:   90 10 00 01     mov  %g1, %o0
+ 160:   40 00 00 00     call  160 <nonleaf_call+0x11c>
+ 164:   01 00 00 00     nop
+ 168:   81 cf e0 08     rett  %i7 + 8
+ 16c:   01 00 00 00     nop
+
+0000000000000170 <main>:
+ 170:   9d e3 bf 20     save  %sp, -224, %sp
+ 174:   82 10 20 06     mov  6, %g1
+ 178:   c2 73 a8 af     stx  %g1, [ %sp + 0x8af ]
+ 17c:   82 10 20 07     mov  7, %g1
+ 180:   c2 73 a8 b7     stx  %g1, [ %sp + 0x8b7 ]
+ 184:   90 10 20 00     clr  %o0
+ 188:   92 10 20 01     mov  1, %o1
+ 18c:   94 10 20 02     mov  2, %o2
+ 190:   96 10 20 03     mov  3, %o3
+ 194:   98 10 20 04     mov  4, %o4
+ 198:   9a 10 20 05     mov  5, %o5
+ 19c:   40 00 00 00     call  19c <main+0x2c>
+ 1a0:   01 00 00 00     nop
+ 1a4:   82 10 20 00     clr  %g1     ! 0 <leaf_call>
+ 1a8:   83 38 60 00     sra  %g1, 0, %g1
+ 1ac:   b0 10 00 01     mov  %g1, %i0
+ 1b0:   81 cf e0 08     rett  %i7 + 8
+ 1b4:   01 00 00 00     nop
+
+
+
+; --------------------- with float params, aggregate return value (<32b, passed in regs) and ellipsis with float ------------------->
+
+; #include <stdlib.h>
+; #include <stdarg.h>
+;
+; void leaf_call(int b, float c, int d, float e, int f, int g, float h)
+; {
+; }
+;
+; struct aggr { int x; int y; int z; };
+;
+; struct aggr nonleaf_call(int a, int b, float c, int d, float e, int f, ...)
+; {
+;     va_list v;
+;     int g;
+;     float h;
+;     struct aggr st = { b, d, f };
+;     va_start(v, f);
+;     g = va_arg(v, int);
+;     h = va_arg(v, float);
+;     /* use some local data */
+;     *(char*)alloca(220) = 'L';
+;     leaf_call(b, c, d, e, f, g, h);
+;
+;     return st;
+; }
+;
+; int main()
+; {
+;     struct aggr st = nonleaf_call(0, 1, 2.f, 3, 4.f, 5, 6, 7.f);
+;     return 0;
+; }
+
+
+
+; output from netbsd-7.1-sparc64 w/ gcc 4.8.5
+
+0000000000000000 <leaf_call>:
+   0:   9d e3 bf 50     save  %sp, -176, %sp            ; prolog
+   4:   88 10 00 18     mov  %i0, %g4                   ; |
+   8:   c7 27 a8 87     st  %f3, [ %fp + 0x887 ]        ; |
+   c:   86 10 00 1a     mov  %i2, %g3                   ; |
+  10:   cf 27 a8 97     st  %f7, [ %fp + 0x897 ]        ; |
+  14:   84 10 00 1c     mov  %i4, %g2                   ; | write input to prev frame's spill area (e.g. offset = 128 for i0, jumping over i*/l* save area)
+  18:   82 10 00 1d     mov  %i5, %g1                   ; | (pointlessly using an extra reg copy to g* for most)
+  1c:   db 27 a8 af     st  %f13, [ %fp + 0x8af ]       ; | note: float args are spilled as are all others
+  20:   c8 27 a8 7f     st  %g4, [ %fp + 0x87f ]        ; | 
+  24:   c6 27 a8 8f     st  %g3, [ %fp + 0x88f ]        ; |
+  28:   c4 27 a8 9f     st  %g2, [ %fp + 0x89f ]        ; |
+  2c:   c2 27 a8 a7     st  %g1, [ %fp + 0x8a7 ]        ; /
+  30:   81 cf e0 08     rett  %i7 + 8                   ; \ trap epilog
+  34:   01 00 00 00     nop                             ; |              branch delay slot
+
+0000000000000038 <nonleaf_call>:
+  38:   9d e3 bf 20     save  %sp, -224, %sp            ; prolog
+  3c:   88 10 00 18     mov  %i0, %g4                   ; |
+  40:   86 10 00 19     mov  %i1, %g3                   ; |
+  44:   cb 27 a8 8f     st  %f5, [ %fp + 0x88f ]        ; |
+  48:   84 10 00 1b     mov  %i3, %g2                   ; |
+  4c:   d3 27 a8 9f     st  %f9, [ %fp + 0x89f ]        ; | write input to prev frame's spill area (e.g. offset = 128 for i0, jumping over i*/l* save area)
+  50:   82 10 00 1d     mov  %i5, %g1                   ; | (pointlessly using an extra reg copy to g* for most)
+  54:   c8 27 a8 7f     st  %g4, [ %fp + 0x87f ]        ; | note: float args are spilled as are all others
+  58:   c6 27 a8 87     st  %g3, [ %fp + 0x887 ]        ; | 
+  5c:   c4 27 a8 97     st  %g2, [ %fp + 0x897 ]        ; |
+  60:   c2 27 a8 a7     st  %g1, [ %fp + 0x8a7 ]        ; |
+  64:   c2 07 a8 87     ld  [ %fp + 0x887 ], %g1        ; in arg 1 (int b, fetched from prev frame's spill area), ...
+  68:   c2 27 a7 db     st  %g1, [ %fp + 0x7db ]        ; ... copied to local space (0x7db - bias = -36)
+  6c:   c2 07 a8 97     ld  [ %fp + 0x897 ], %g1        ; in arg 3 (int d, fetched from prev frame's spill area), ...
+  70:   c2 27 a7 df     st  %g1, [ %fp + 0x7df ]        ; ... copied to local space (0x7df - bias = -32)
+  74:   c2 07 a8 a7     ld  [ %fp + 0x8a7 ], %g1        ; in arg 5 (int f, fetched from prev frame's spill area), ...
+  78:   c2 27 a7 e3     st  %g1, [ %fp + 0x7e3 ]        ; ... copied to local space (0x7e3 - bias = -28)
+  7c:   82 07 a8 af     add  %fp, 0x8af, %g1            ; va_list: pointer to arg 5 -> g1 ...
+  80:   c2 77 a7 e7     stx  %g1, [ %fp + 0x7e7 ]       ; ... store to local space (0x7e7 - bias = -24)
+  84:   c2 5f a7 e7     ldx  [ %fp + 0x7e7 ], %g1       ; reread to start iteration (pointlessly)
+  88:   84 00 60 04     add  %g1, 4, %g2                ; point read ptr in g2 to first unnamed param (int)
+  8c:   c4 00 80 00     ld  [ %g2 ], %g2                ; in arg 6 (fetched from prev frame's stack param area), ...
+  90:   c4 27 a7 fb     st  %g2, [ %fp + 0x7fb ]        ; ... copied to local space (0x7fb - bias = -4) helper var (probably int g)
+  94:   82 00 60 08     add  %g1, 8, %g1                ; point read ptr in g1 to second unnamed param (float, promoted to double), ...
+  98:   c2 77 a7 e7     stx  %g1, [ %fp + 0x7e7 ]       ; ... store in local space (0x7fb - bias = -24)
+  9c:   91 d0 20 05     ta  5                           ; trap - not sure what else is involved (objdump was made from .o, not finally linked exec) - maybe just b/c objdump skipped this for the output?
+
+00000000000000a0 <main>:
+  a0:   9d e3 bf 30     save  %sp, -208, %sp            ; prolog
+  a4:   03 00 00 00     sethi  %hi(0), %g1              ; |
+  a8:   82 10 60 00     mov  %g1, %g1   ! 0 <leaf_call> ; |
+  ac:   83 28 70 0c     sllx  %g1, 0xc, %g1             ; | prep arg 2, load from static data into f11 (addr = 0 b/c objdumped .o, not final linked)
+  b0:   82 10 60 00     mov  %g1, %g1                   ; |
+  b4:   d7 00 40 00     ld  [ %g1 ], %f11               ; /
+  b8:   03 00 00 00     sethi  %hi(0), %g1              ; \
+  bc:   82 10 60 00     mov  %g1, %g1   ! 0 <leaf_call> ; | prep arg 4, load from static data into f10 (addr = 0 b/c objdumped .o, not final linked)
+  c0:   83 28 70 0c     sllx  %g1, 0xc, %g1             ; |
+  c4:   82 10 60 00     mov  %g1, %g1                   ; |
+  c8:   d5 00 40 00     ld  [ %g1 ], %f10               ; |
+  cc:   82 10 20 06     mov  6, %g1                     ; arg 6, ...
+  d0:   c2 73 a8 af     stx  %g1, [ %sp + 0x8af ]       ; ... "pushed" onto stack
+  d4:   03 00 00 00     sethi  %hi(0), %g1              ; |
+  d8:   82 10 60 00     mov  %g1, %g1   ! 0 <leaf_call> ; |
+  dc:   83 28 70 0c     sllx  %g1, 0xc, %g1             ; | prep arg 7, load from static data as double (b/c of vararg promotion) into d8 (addr = 0 b/c objdumped .o, not final linked)
+  e0:   82 10 60 00     mov  %g1, %g1                   ; |
+  e4:   d1 18 40 00     ldd  [ %g1 ], %f8               ; |
+  e8:   d1 3b a8 b7     std  %f8, [ %sp + 0x8b7 ]       ; arg 7 "pushed" onto stack as double
+  ec:   90 10 20 00     clr  %o0                        ; arg 0 (note, this is not the pointer to the aggregate return value, b/c latter <= 32b)
+  f0:   92 10 20 01     mov  1, %o1                     ; arg 1
+  f4:   8b a0 00 2b     fmovs  %f11, %f5                ; arg 2
+  f8:   96 10 20 03     mov  3, %o3                     ; arg 3
+  fc:   93 a0 00 2a     fmovs  %f10, %f9                ; arg 4
+ 100:   9a 10 20 05     mov  5, %o5                     ; arg 5
+ 104:   40 00 00 00     call  104 <main+0x64>           ; call nonleaf_call (objdump not from final link but .o)
+ 108:   01 00 00 00     nop                             ; branch delay slot
+ 10c:   84 10 00 08     mov  %o0, %g2                   ; |
+ 110:   82 10 00 09     mov  %o1, %g1                   ; / get return value (12b aggregate) out of 2 regs (16b)
+ 114:   87 30 b0 20     srlx  %g2, 0x20, %g3            ; \
+ 118:   c8 07 a7 f3     ld  [ %fp + 0x7f3 ], %g4        ; |
+ 11c:   88 09 20 00     and  %g4, 0, %g4                ; | store 1st struct field (int) by g2 >> 32 (and some other operations unnecessary here)
+ 120:   86 11 00 03     or  %g4, %g3, %g3               ; |
+ 124:   c6 27 a7 f3     st  %g3, [ %fp + 0x7f3 ]        ; /
+ 128:   86 10 3f ff     mov  -1, %g3                    ; \
+ 12c:   87 30 f0 20     srlx  %g3, 0x20, %g3            ; |
+ 130:   84 08 80 03     and  %g2, %g3, %g2              ; |
+ 134:   c6 07 a7 f7     ld  [ %fp + 0x7f7 ], %g3        ; | store 2nd struct field (int) by (-1 >> 32) & g2 (and then some other operations unnecessary here)
+ 138:   86 08 e0 00     and  %g3, 0, %g3                ; |
+ 13c:   84 10 c0 02     or  %g3, %g2, %g2               ; |
+ 140:   c4 27 a7 f7     st  %g2, [ %fp + 0x7f7 ]        ; /
+ 144:   83 38 70 20     srax  %g1, 0x20, %g1            ; \
+ 148:   c4 07 a7 fb     ld  [ %fp + 0x7fb ], %g2        ; |
+ 14c:   84 08 a0 00     and  %g2, 0, %g2                ; | store 3rd struct field (int) by g1 >> 32 (and then some other operations unnecessary here)
+ 150:   82 10 80 01     or  %g2, %g1, %g1               ; |
+ 154:   c2 27 a7 fb     st  %g1, [ %fp + 0x7fb ]        ; /
+ 158:   82 10 20 00     clr  %g1                        ; \
+ 15c:   83 38 60 00     sra  %g1, 0, %g1                ; / return value
+ 160:   b0 10 00 01     mov  %g1, %i0                   ; \
+ 164:   81 cf e0 08     rett  %i7 + 8                   ; | epilog
+ 168:   01 00 00 00     nop                             ; |            branch delay slot
+
+; vim: ft=asm
+

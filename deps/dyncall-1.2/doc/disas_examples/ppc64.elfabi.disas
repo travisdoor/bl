@@ -1,0 +1,273 @@
+; #include <stdlib.h>
+; 
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h)
+; {
+; }
+; 
+; void nonleaf_call(int a, int b, int c, int d, int e, int f, int g, int h)
+; {
+; 	/* use some local data */
+; 	*(char*)alloca(220) = 'L';
+; 	leaf_call(b, c, d, e, f, g, h);
+; }
+; 
+; int main()
+; {
+; 	nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7);
+; 	return 0;
+; }
+
+
+
+; output from freebsd-11.0-ppc64 w/ gcc 4.2.1
+
+0000000000000000 <.leaf_call>:
+   0:	fb e1 ff f8 	std     r31,-8(r1)
+   4:	f8 21 ff c1 	stdu    r1,-64(r1)
+   8:	7c 3f 0b 78 	mr      r31,r1
+   c:	7c 60 1b 78 	mr      r0,r3
+  10:	7c 8b 23 78 	mr      r11,r4
+  14:	7c aa 2b 78 	mr      r10,r5
+  18:	90 1f 00 70 	stw     r0,112(r31)
+  1c:	91 7f 00 78 	stw     r11,120(r31)
+  20:	91 5f 00 80 	stw     r10,128(r31)
+  24:	90 df 00 88 	stw     r6,136(r31)
+  28:	90 ff 00 90 	stw     r7,144(r31)
+  2c:	91 1f 00 98 	stw     r8,152(r31)
+  30:	91 3f 00 a0 	stw     r9,160(r31)
+  34:	e8 21 00 00 	ld      r1,0(r1)
+  38:	eb e1 ff f8 	ld      r31,-8(r1)
+  3c:	4e 80 00 20 	blr
+	...
+  48:	80 01 00 01 	lwz     r0,1(r1)
+
+000000000000004c <.nonleaf_call>:
+  4c:	7c 08 02 a6 	mflr    r0                       ; |
+  50:	fb e1 ff f8 	std     r31,-8(r1)               ; |
+  54:	f8 01 00 10 	std     r0,16(r1)                ; | prolog
+  58:	f8 21 ff 71 	stdu    r1,-144(r1)              ; |
+  5c:	7c 3f 0b 78 	mr      r31,r1                   ; use gpr31 as sort of frame pointer, below
+  60:	7c 60 1b 78 	mr      r0,r3                    ; in arg 0 -> gpr0
+  64:	7c 8b 23 78 	mr      r11,r4                   ; in arg 1 -> gpr11
+  68:	90 1f 00 c0 	stw     r0,192(r31)              ; |
+  6c:	91 7f 00 c8 	stw     r11,200(r31)             ; |
+  70:	90 bf 00 d0 	stw     r5,208(r31)              ; |
+  74:	90 df 00 d8 	stw     r6,216(r31)              ; |
+  78:	90 ff 00 e0 	stw     r7,224(r31)              ; | all in args -> spill area in prev frame (jump over own frame (144) + linkage area of prev frame (48) = 192)
+  7c:	91 1f 00 e8 	stw     r8,232(r31)              ; |
+  80:	91 3f 00 f0 	stw     r9,240(r31)              ; |
+  84:	91 5f 00 f8 	stw     r10,248(r31)             ; |
+  88:	e8 01 00 00 	ld      r0,0(r1)                 ; fetch back-chain ptr (parent frame's sp) from stack of top by prolog -> gpr0, and ...
+  8c:	f8 01 ff 11 	stdu    r0,-240(r1)              ; ... update it further up the stack for alloca(220) - with padding to guarantee alignment
+  90:	39 21 00 70 	addi    r9,r1,112                ; |
+  94:	f9 3f 00 70 	std     r9,112(r31)              ; |
+  98:	e9 3f 00 70 	ld      r9,112(r31)              ; |
+  9c:	38 09 00 0f 	addi    r0,r9,15                 ; | start of alloca()'d memory -> gpr9, by ...
+  a0:	78 00 e1 02 	rldicl  r0,r0,60,4               ; | ... using gpr0 as helper to align to 16b, leaving at least 112b at top of stack
+  a4:	78 00 26 e4 	rldicr  r0,r0,4,59               ; |
+  a8:	f8 1f 00 70 	std     r0,112(r31)              ; |
+  ac:	e9 3f 00 70 	ld      r9,112(r31)              ; |
+  b0:	38 00 00 4c 	li      r0,76                    ; 'L' -> gpr0, and ...
+  b4:	98 09 00 00 	stb     r0,0(r9)                 ; ... store in local area (of alloca()'d space)
+  b8:	80 1f 00 c8 	lwz     r0,200(r31)              ; prep arg 0 (from prev frame's spill area), ...
+  bc:	7c 08 07 b4 	extsw   r8,r0                    ; ... -> gpr8 (w/ sign extension b/c int param in 64bit reg)
+  c0:	80 1f 00 d0 	lwz     r0,208(r31)              ; prep arg 1 (from prev frame's spill area), ...
+  c4:	7c 07 07 b4 	extsw   r7,r0                    ; ... -> gpr7
+  c8:	80 1f 00 d8 	lwz     r0,216(r31)              ; prep arg 2 (from prev frame's spill area), ...
+  cc:	7c 06 07 b4 	extsw   r6,r0                    ; ... -> gpr6
+  d0:	80 1f 00 e0 	lwz     r0,224(r31)              ; prep arg 3 (from prev frame's spill area), ...
+  d4:	7c 09 07 b4 	extsw   r9,r0                    ; ... -> gpr9
+  d8:	80 1f 00 e8 	lwz     r0,232(r31)              ; prep arg 4 (from prev frame's spill area), ...
+  dc:	7c 0b 07 b4 	extsw   r11,r0                   ; ... -> gpr11
+  e0:	80 1f 00 f0 	lwz     r0,240(r31)              ; prep arg 5 (from prev frame's spill area), ...
+  e4:	7c 0a 07 b4 	extsw   r10,r0                   ; ... -> gpr10
+  e8:	80 1f 00 f8 	lwz     r0,248(r31)              ; prep arg 6 (from prev frame's spill area), ...
+  ec:	7c 00 07 b4 	extsw   r0,r0                    ; ... -> gpr0
+  f0:	7d 03 43 78 	mr      r3,r8                    ; arg 0
+  f4:	7c e4 3b 78 	mr      r4,r7                    ; arg 1
+  f8:	7c c5 33 78 	mr      r5,r6                    ; arg 2
+  fc:	7d 26 4b 78 	mr      r6,r9                    ; arg 3
+ 100:	7d 67 5b 78 	mr      r7,r11                   ; arg 4
+ 104:	7d 48 53 78 	mr      r8,r10                   ; arg 5
+ 108:	7c 09 03 78 	mr      r9,r0                    ; arg 6
+ 10c:	48 00 00 01 	bl      10c <.nonleaf_call+0xc0> ; call and put return address -> lr
+ 110:	e8 21 00 00 	ld      r1,0(r1)                 ; |
+ 114:	e8 01 00 10 	ld      r0,16(r1)                ; |
+ 118:	7c 08 03 a6 	mtlr    r0                       ; | epilog
+ 11c:	eb e1 ff f8 	ld      r31,-8(r1)               ; |
+ 120:	4e 80 00 20 	blr                              ; |
+ 124:	00 00 00 00 	.long 0x0                        ; data
+ 128:	00 00 00 01 	.long 0x1                        ; data
+ 12c:	80 01 00 01 	lwz     r0,1(r1)                 ; unsure@@@. data?
+
+0000000000000130 <.main>:
+ 130:	7c 08 02 a6 	mflr    r0                       ; |             lr -> gpr0
+ 134:	fb e1 ff f8 	std     r31,-8(r1)               ; |             preseve gpr31 (as used in func as helper addr)
+ 138:	f8 01 00 10 	std     r0,16(r1)                ; | prolog      store lr
+ 13c:	f8 21 ff 81 	stdu    r1,-128(r1)              ; |             open frame
+ 140:	7c 3f 0b 78 	mr      r31,r1                   ; use gpr31 as sort of frame pointer, below
+ 144:	38 60 00 00 	li      r3,0                     ; arg 0
+ 148:	38 80 00 01 	li      r4,1                     ; arg 1
+ 14c:	38 a0 00 02 	li      r5,2                     ; arg 2
+ 150:	38 c0 00 03 	li      r6,3                     ; arg 3
+ 154:	38 e0 00 04 	li      r7,4                     ; arg 4
+ 158:	39 00 00 05 	li      r8,5                     ; arg 5
+ 15c:	39 20 00 06 	li      r9,6                     ; arg 6
+ 160:	39 40 00 07 	li      r10,7                    ; arg 7
+ 164:	48 00 00 01 	bl      164 <.main+0x34>         ; call and put return address -> lr
+ 168:	38 00 00 00 	li      r0,0                     ; return value ...
+ 16c:	7c 03 03 78 	mr      r3,r0                    ; ... in gpr3
+ 170:	e8 21 00 00 	ld      r1,0(r1)                 ; |
+ 174:	e8 01 00 10 	ld      r0,16(r1)                ; |
+ 178:	7c 08 03 a6 	mtlr    r0                       ; | epilog
+ 17c:	eb e1 ff f8 	ld      r31,-8(r1)               ; |
+ 180:	4e 80 00 20 	blr                              ; |
+ 184:	00 00 00 00 	.long 0x0                        ; data
+ 188:	00 00 00 01 	.long 0x1                        ; data
+ 18c:	80 01 00 01 	lwz     r0,1(r1)                 ; unsure@@@. data?
+
+
+
+; ------------- ints and floats, var args, struct return value (meaning implicit first param), more than 8 params (11, with implicit return value ptr) ----------->
+
+; #include <stdlib.h>
+; #include <stdarg.h>
+; 
+; void leaf_call(int b, float c, int d, float e, int f, float g, float h, int i, float j)
+; {
+; }
+; 
+; struct aggr { int x; int y; int z; };
+; 
+; struct aggr nonleaf_call(int a, int b, float c, int d, float e, int f, ...)
+; {
+;     va_list v;
+;     int i;
+;     float g, h, j;
+;     struct aggr st = { b, d, f };
+;     va_start(v, f);
+;     g = va_arg(v, float);
+;     h = va_arg(v, float);
+;     i = va_arg(v, int);
+;     h = va_arg(v, float);
+;     /* use some local data */
+;     *(char*)alloca(220) = 'L';
+;     leaf_call(b, c, d, e, f, g, h, i, j);
+; 
+;     return st;
+; }
+; 
+; int main()
+; {
+;     struct aggr st = nonleaf_call(0, 1, 2.f, 3, 4.f, 5, 6.f, 7.f, 8, 9.f);
+;     return 0;
+; }
+
+
+
+; output from freebsd-11.0-ppc64 w/ gcc 4.2.1
+
+0000000000000000 <.leaf_call>:
+   0:	fb e1 ff f8 	std     r31,-8(r1)
+   4:	f8 21 ff c1 	stdu    r1,-64(r1)
+   8:	7c 3f 0b 78 	mr      r31,r1
+   c:	7c 69 1b 78 	mr      r9,r3
+  10:	d0 3f 00 78 	stfs    f1,120(r31)
+  14:	7c ab 2b 78 	mr      r11,r5
+  18:	d0 5f 00 88 	stfs    f2,136(r31)
+  1c:	7c e8 3b 78 	mr      r8,r7
+  20:	d0 7f 00 98 	stfs    f3,152(r31)
+  24:	d0 9f 00 a0 	stfs    f4,160(r31)
+  28:	7d 40 53 78 	mr      r0,r10
+  2c:	d0 bf 00 b0 	stfs    f5,176(r31)
+  30:	91 3f 00 70 	stw     r9,112(r31)
+  34:	91 7f 00 80 	stw     r11,128(r31)
+  38:	91 1f 00 90 	stw     r8,144(r31)
+  3c:	90 1f 00 a8 	stw     r0,168(r31)
+  40:	e8 21 00 00 	ld      r1,0(r1)
+  44:	eb e1 ff f8 	ld      r31,-8(r1)
+  48:	4e 80 00 20 	blr
+	...
+  54:	80 01 00 01 	lwz     r0,1(r1)
+
+0000000000000058 <.nonleaf_call>:
+  58:	fb e1 ff f8 	std     r31,-8(r1)       ; |
+  5c:	f8 21 ff 91 	stdu    r1,-112(r1)      ; | prolog
+  60:	7c 3f 0b 78 	mr      r31,r1           ; use gpr31 as sort of frame pointer, below
+  64:	7c 8b 23 78 	mr      r11,r4           ; in arg 1 (first explicit arg, b/c of struct return value ptr being arg0) -> r11
+  68:	7c a8 2b 78 	mr      r8,r5            ; in arg 2 -> r8 (free reg, was skipped for float param)
+  6c:	d0 3f 00 b8 	stfs    f1,184(r31)      ; |                  in arg 3 (float) -> prev frame's spill area: 184 = 112 (frame) + 48 (prev frame's linkage area) + 8 (arg 0 = return value ptr) + 16 (first two explicit args)
+  70:	d0 5f 00 c8 	stfs    f2,200(r31)      ; |                  in arg 5 (float) -> prev frame's spill area
+  74:	f9 5f 00 d8 	std     r10,216(r31)     ; |                  in arg 7 (float, also held in gpr reg b/c vararg) -> prev frame's spill area
+  78:	7d 20 4b 78 	mr      r0,r9            ; | spilling         in arg 6 in gpr0 (spilled below)
+  7c:	91 7f 00 a8 	stw     r11,168(r31)     ; |                  in arg 1 (int) -> prev frame's spill area
+  80:	91 1f 00 b0 	stw     r8,176(r31)      ; |                  in arg 2 (int) -> prev frame's spill area
+  84:	90 ff 00 c0 	stw     r7,192(r31)      ; |                  in arg 4 (int) -> prev frame's spill area
+  88:	90 1f 00 d0 	stw     r0,208(r31)      ; /                  in arg 6 (int) -> prev frame's spill area
+  8c:	80 1f 00 b0 	lwz     r0,176(r31)      ; \
+  90:	90 1f 00 48 	stw     r0,72(r31)       ; |
+  94:	80 1f 00 c0 	lwz     r0,192(r31)      ; |
+  98:	90 1f 00 4c 	stw     r0,76(r31)       ; | filling struct with 3 int input args
+  9c:	80 1f 00 d0 	lwz     r0,208(r31)      ; |
+  a0:	90 1f 00 50 	stw     r0,80(r31)       ; |
+  a4:	38 1f 00 d8 	addi    r0,r31,216       ;
+  a8:	f8 1f 00 40 	std     r0,64(r31)       ;     .
+  ac:	7f e0 00 08 	trap                     ;     .
+	...                                          ;     .
+  b8:	80 01 00 01 	lwz     r0,1(r1)         ;
+
+00000000000000bc <.main>:
+  bc:	7c 08 02 a6 	mflr    r0               ; |             lr -> gpr0
+  c0:	fb e1 ff f8 	std     r31,-8(r1)       ; |             preseve gpr31 (as used in func as helper addr)
+  c4:	f8 01 00 10 	std     r0,16(r1)        ; | prolog      store lr
+  c8:	f8 21 ff 41 	stdu    r1,-192(r1)      ; |             open frame
+  cc:	7c 3f 0b 78 	mr      r31,r1           ; use gpr31 as sort of frame pointer, below
+  d0:	39 61 00 30 	addi    r11,r1,48        ; ptr to param area -> r11
+  d4:	e9 22 00 00 	ld      r9,0(r2)         ; prep arg 3 (=explicit arg 2, b/c of implicit return value pointer), ... 
+  d8:	c1 a9 00 00 	lfs     f13,0(r9)        ; ... load from static data -> f13
+  dc:	e9 22 00 08 	ld      r9,8(r2)         ; prep arg 5, ...
+  e0:	c1 89 00 00 	lfs     f12,0(r9)        ; ... load from static data -> f12
+  e4:	e9 22 00 10 	ld      r9,16(r2)        ; prep arg 7, ...
+  e8:	c8 09 00 00 	lfd     f0,0(r9)         ; ... load from static data -> f0
+  ec:	d8 1f 00 a0 	stfd    f0,160(r31)      ; |
+  f0:	e8 1f 00 a0 	ld      r0,160(r31)      ; |
+  f4:	7c 09 03 78 	mr      r9,r0            ; | also hold it in f11 (temporarily, before copying to fpr3 below)
+  f8:	7d 2a 4b 78 	mr      r10,r9           ; | and gpr10 (instead of skipping that int reg, for straightforward spilling)
+  fc:	f8 1f 00 a0 	std     r0,160(r31)      ; | (uses temp space to copy between fpr and gpr regs)
+ 100:	c8 1f 00 a0 	lfd     f0,160(r31)      ; |
+ 104:	fd 60 00 90 	fmr     f11,f0           ; |
+ 108:	e9 22 00 18 	ld      r9,24(r2)        ; prep arg 8, ...
+ 10c:	c8 09 00 00 	lfd     f0,0(r9)         ; ... load from static data -> fpr0, and ...
+ 110:	d8 0b 00 40 	stfd    f0,64(r11)       ; ... "pushed" onto stack (in param area past spill area) and ...
+ 114:	c9 4b 00 40 	lfd     f10,64(r11)      ; ... also held in f10 (prep, see where it's used below)
+ 118:	38 00 00 08 	li      r0,8             ; arg 9, ...
+ 11c:	f8 0b 00 48 	std     r0,72(r11)       ; ... "pushed" onto stack
+ 120:	e9 22 00 20 	ld      r9,32(r2)        ; arg 10 (float, promoted to double), ...
+ 124:	c8 09 00 00 	lfd     f0,0(r9)         ; ... load from static data -> fpr0, and ...
+ 128:	d8 0b 00 50 	stfd    f0,80(r11)       ; ... "pushed" onto stack
+ 12c:	c8 0b 00 50 	lfd     f0,80(r11)       ; ... also held in f0 (prep, see where it's used below), in theory pointless reload of arg10 -> fpr0
+ 130:	38 1f 00 90 	addi    r0,r31,144       ; ptr to return value struct in local space -> gpr0
+ 134:	7c 03 03 78 	mr      r3,r0            ; arg 0 (this is the pointer to the struct return value)
+ 138:	38 80 00 00 	li      r4,0             ; arg 1
+ 13c:	38 a0 00 01 	li      r5,1             ; arg 2
+ 140:	fc 20 68 90 	fmr     f1,f13           ; arg 3 (float, in 1st double reg)
+ 144:	38 e0 00 03 	li      r7,3             ; arg 4 (skipping gpr6 b/c of float arg)
+ 148:	fc 40 60 90 	fmr     f2,f12           ; arg 5 (float, in 2nd double reg)
+ 14c:	39 20 00 05 	li      r9,5             ; arg 6 (skipping gpr8 b/c of float arg, vararg)
+ 150:	fc 60 58 90 	fmr     f3,f11           ; arg 7 (float, in 3rd double reg, promoted to double anyways b/c vararg)
+ 154:	fc 80 50 90 	fmr     f4,f10           ; arg 8 (float, in 4th double reg, promoted to double anyways b/c vararg)
+ 158:	fc a0 00 90 	fmr     f5,f0            ; arg 10 (float, in 5th double reg, promoted to double anyways b/c vararg)
+ 15c:	48 00 00 01 	bl      15c <.main+0xa0> ; call and put return address -> lr
+ 160:	38 00 00 00 	li      r0,0             ; return value ...
+ 164:	7c 03 03 78 	mr      r3,r0            ; ... in gpr3
+ 168:	e8 21 00 00 	ld      r1,0(r1)         ; |
+ 16c:	e8 01 00 10 	ld      r0,16(r1)        ; |
+ 170:	7c 08 03 a6 	mtlr    r0               ; | epilog
+ 174:	eb e1 ff f8 	ld      r31,-8(r1)       ; |
+ 178:	4e 80 00 20 	blr                      ; |
+ 17c:	00 00 00 00 	.long 0x0                ; data
+ 180:	00 00 00 01 	.long 0x1                ; data
+ 184:	80 01 00 01 	lwz     r0,1(r1)         ; unsure@@@. data?
+
+; vim: ft=asm
+

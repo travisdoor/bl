@@ -1,0 +1,613 @@
+; #include <stdlib.h>
+; 
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h)
+; {
+; }
+; 
+; void nonleaf_call(int a, int b, int c, int d, int e, int f, int g, int h)
+; {
+;     /* use some local data */
+;     *(char*)alloca(220) = 'L';
+;     leaf_call(b, c, d, e, f, g, h);
+; }
+; 
+; int main()
+; {
+;     nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7);
+;     return 0;
+; }
+
+
+
+; output from psptoolchain-20111215-psp w/ gcc 4.9.3
+
+00000000 <leaf_call>:
+   0:   27bdffd8        addiu   sp,sp,-40
+   4:   afbe0024        sw      s8,36(sp)
+   8:   03a0f021        move    s8,sp
+   c:   afc40000        sw      a0,0(s8)
+  10:   afc50004        sw      a1,4(s8)
+  14:   afc60008        sw      a2,8(s8)
+  18:   afc7000c        sw      a3,12(s8)
+  1c:   afc80010        sw      t0,16(s8)
+  20:   afc90014        sw      t1,20(s8)
+  24:   afca0018        sw      t2,24(s8)
+  28:   03c0e821        move    sp,s8
+  2c:   8fbe0024        lw      s8,36(sp)
+  30:   27bd0028        addiu   sp,sp,40
+  34:   03e00008        jr      ra
+  38:   00000000        nop
+
+0000003c <nonleaf_call>:
+  3c:   27bdffd8        addiu   sp,sp,-40     ; |
+  40:   afbf0024        sw      ra,36(sp)     ; |
+  44:   afbe0020        sw      s8,32(sp)     ; | prolog
+  48:   03a0f021        move    s8,sp         ; /         frame pointer (note: with offset to frame start, but static compared to sp)
+  4c:   afc40000        sw      a0,0(s8)      ; \
+  50:   afc50004        sw      a1,4(s8)      ; |
+  54:   afc60008        sw      a2,8(s8)      ; |
+  58:   afc7000c        sw      a3,12(s8)     ; |
+  5c:   afc80010        sw      t0,16(s8)     ; | in args 0,1,2,3,4,5,6,7 -> temp space in local area
+  60:   afc90014        sw      t1,20(s8)     ; |
+  64:   afca0018        sw      t2,24(s8)     ; |
+  68:   afcb001c        sw      t3,28(s8)     ; |
+  6c:   27bdff18        addiu   sp,sp,-232    ; alloca(220) - with padding to guarantee alignment
+  70:   03a01021        move    v0,sp         ; |
+  74:   24420007        addiu   v0,v0,7       ; |
+  78:   000210c2        srl     v0,v0,0x3     ; | start of alloca()'d memory -> v1, by ...
+  7c:   000210c0        sll     v0,v0,0x3     ; | ... using v0 as helper to align to 8b
+  80:   00401821        move    v1,v0         ; |
+  84:   2402004c        li      v0,76         ; 'L' -> v0, and...
+  88:   a0620000        sb      v0,0(v1)      ; ... store in local area (of alloca()'d space)
+  8c:   8fc40004        lw      a0,4(s8)      ; |
+  90:   8fc50008        lw      a1,8(s8)      ; |
+  94:   8fc6000c        lw      a2,12(s8)     ; |
+  98:   8fc70010        lw      a3,16(s8)     ; | arg 0,1,2,3,4,5,6 (fetched from local area stored to above)
+  9c:   8fc80014        lw      t0,20(s8)     ; |       (t0 = a4)
+  a0:   8fc90018        lw      t1,24(s8)     ; |       (t1 = a5)
+  a4:   8fca001c        lw      t2,28(s8)     ; |       (t2 = a6)
+  a8:   0c000000        jal     0 <leaf_call> ; call and ret addr -> ra
+  ac:   00000000        nop                   ; branch delay slot
+  b0:   03c0e821        move    sp,s8         ; |
+  b4:   8fbf0024        lw      ra,36(sp)     ; |
+  b8:   8fbe0020        lw      s8,32(sp)     ; |
+  bc:   27bd0028        addiu   sp,sp,40      ; | epilog
+  c0:   03e00008        jr      ra            ; |
+  c4:   00000000        nop                   ; |       branch delay slot
+
+000000c8 <main>:
+  c8:   27bdfff8        addiu   sp,sp,-8      ; |
+  cc:   afbf0004        sw      ra,4(sp)      ; |
+  d0:   afbe0000        sw      s8,0(sp)      ; | prolog
+  d4:   03a0f021        move    s8,sp         ; |         frame pointer (note: with offset to frame start, but static compared to sp)
+  d8:   00002021        move    a0,zero       ; arg 0
+  dc:   24050001        li      a1,1          ; arg 1
+  e0:   24060002        li      a2,2          ; arg 2
+  e4:   24070003        li      a3,3          ; arg 3
+  e8:   24080004        li      t0,4          ; arg 4 (t0 = a4)
+  ec:   24090005        li      t1,5          ; arg 5 (t1 = a5)
+  f0:   240a0006        li      t2,6          ; arg 6 (t2 = a6)
+  f4:   240b0007        li      t3,7          ; arg 7 (t3 = a7)
+  f8:   0c000000        jal     0 <leaf_call> ; call and ret addr -> ra
+  fc:   00000000        nop                   ; branch delay slot
+ 100:   00001021        move    v0,zero       ; return value
+ 104:   03c0e821        move    sp,s8         ; |
+ 108:   8fbf0004        lw      ra,4(sp)      ; |
+ 10c:   8fbe0000        lw      s8,0(sp)      ; |
+ 110:   27bd0008        addiu   sp,sp,8       ; | epilog
+ 114:   03e00008        jr      ra            ; |
+ 118:   00000000        nop                   ; |       branch delay slot
+
+
+
+; ------------- as above but more args to use stack params ----------->
+
+; #include <stdlib.h>
+; 
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h, int i, int j)
+; {
+; }
+; 
+; void nonleaf_call(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j)
+; {
+;     /* use some local data */
+;     *(char*)alloca(220) = 'L';
+;     leaf_call(b, c, d, e, f, g, h, i, j);
+; }
+; 
+; int main()
+; {
+;     nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+;     return 0;
+; }
+
+
+
+; output from psptoolchain-20111215-psp w/ gcc 4.9.3
+
+00000000 <leaf_call>:
+   0:   27bdffd8        addiu   sp,sp,-40
+   4:   afbe0024        sw      s8,36(sp)
+   8:   03a0f021        move    s8,sp
+   c:   afc40000        sw      a0,0(s8)
+  10:   afc50004        sw      a1,4(s8)
+  14:   afc60008        sw      a2,8(s8)
+  18:   afc7000c        sw      a3,12(s8)
+  1c:   afc80010        sw      t0,16(s8)
+  20:   afc90014        sw      t1,20(s8)
+  24:   afca0018        sw      t2,24(s8)
+  28:   afcb001c        sw      t3,28(s8)
+  2c:   03c0e821        move    sp,s8
+  30:   8fbe0024        lw      s8,36(sp)
+  34:   27bd0028        addiu   sp,sp,40
+  38:   03e00008        jr      ra
+  3c:   00000000        nop
+
+00000040 <nonleaf_call>:
+  40:   27bdffd0        addiu   sp,sp,-48     ; |
+  44:   afbf002c        sw      ra,44(sp)     ; |
+  48:   afbe0028        sw      s8,40(sp)     ; | prolog
+  4c:   03a0f021        move    s8,sp         ; /         frame pointer (note: with offset to frame start, but static compared to sp)
+  50:   afc40008        sw      a0,8(s8)      ; \
+  54:   afc5000c        sw      a1,12(s8)     ; |
+  58:   afc60010        sw      a2,16(s8)     ; |
+  5c:   afc70014        sw      a3,20(s8)     ; |
+  60:   afc80018        sw      t0,24(s8)     ; | in args 0,1,2,3,4,5,6,7 -> temp space in local area
+  64:   afc9001c        sw      t1,28(s8)     ; |
+  68:   afca0020        sw      t2,32(s8)     ; |
+  6c:   afcb0024        sw      t3,36(s8)     ; |
+  70:   27bdff18        addiu   sp,sp,-232    ; alloca(220) - with padding to guarantee alignment
+  74:   27a20008        addiu   v0,sp,8       ; |
+  78:   24420007        addiu   v0,v0,7       ; |
+  7c:   000210c2        srl     v0,v0,0x3     ; | start of alloca()'d memory -> v1, by ...
+  80:   000210c0        sll     v0,v0,0x3     ; | ... using v0 as helper to align to 8b
+  84:   00401821        move    v1,v0         ; |
+  88:   2402004c        li      v0,76         ; 'L' -> v0, and...
+  8c:   a0620000        sb      v0,0(v1)      ; ... store in local area (of alloca()'d space)
+  90:   8fc20034        lw      v0,52(s8)     ; arg 8 (fetched from prev frame's param area), and ...
+  94:   afa20000        sw      v0,0(sp)      ; ... "pushed" onto stack
+  98:   8fc4000c        lw      a0,12(s8)     ; |
+  9c:   8fc50010        lw      a1,16(s8)     ; |
+  a0:   8fc60014        lw      a2,20(s8)     ; |
+  a4:   8fc70018        lw      a3,24(s8)     ; | arg 0,1,2,3,4,5,6 (fetched from local area stored to above)
+  a8:   8fc8001c        lw      t0,28(s8)     ; |       (t0 = a4)
+  ac:   8fc90020        lw      t1,32(s8)     ; |       (t1 = a5)
+  b0:   8fca0024        lw      t2,36(s8)     ; |       (t2 = a6)
+  b4:   8fcb0030        lw      t3,48(s8)     ; |       (t3 = a7)
+  b8:   0c000000        jal     0 <leaf_call> ; call and ret addr -> ra
+  bc:   00000000        nop                   ; branch delay slot
+  c0:   03c0e821        move    sp,s8         ; |
+  c4:   8fbf002c        lw      ra,44(sp)     ; |
+  c8:   8fbe0028        lw      s8,40(sp)     ; |
+  cc:   27bd0030        addiu   sp,sp,48      ; | epilog
+  d0:   03e00008        jr      ra            ; |
+  d4:   00000000        nop                   ; |       branch delay slot
+
+000000d8 <main>:
+  d8:   27bdfff0        addiu   sp,sp,-16     ; |
+  dc:   afbf000c        sw      ra,12(sp)     ; |
+  e0:   afbe0008        sw      s8,8(sp)      ; | prolog
+  e4:   03a0f021        move    s8,sp         ; |         frame pointer (note: with offset to frame start, but static compared to sp)
+  e8:   24020008        li      v0,8          ; arg 8
+  ec:   afa20000        sw      v0,0(sp)      ; ... "pushed" onto stack
+  f0:   24020009        li      v0,9          ; arg 9
+  f4:   afa20004        sw      v0,4(sp)      ; ... "pushed" onto stack
+  f8:   00002021        move    a0,zero       ; arg 0
+  fc:   24050001        li      a1,1          ; arg 1
+ 100:   24060002        li      a2,2          ; arg 2
+ 104:   24070003        li      a3,3          ; arg 3
+ 108:   24080004        li      t0,4          ; arg 4 (t0 = a4)
+ 10c:   24090005        li      t1,5          ; arg 5 (t1 = a5)
+ 110:   240a0006        li      t2,6          ; arg 6 (t2 = a6)
+ 114:   240b0007        li      t3,7          ; arg 7 (t3 = a7)
+ 118:   0c000000        jal     0 <leaf_call> ; call and ret addr -> ra
+ 11c:   00000000        nop                   ; branch delay slot
+ 120:   00001021        move    v0,zero       ; return value
+ 124:   03c0e821        move    sp,s8         ; |
+ 128:   8fbf000c        lw      ra,12(sp)     ; |
+ 12c:   8fbe0008        lw      s8,8(sp)      ; |
+ 130:   27bd0010        addiu   sp,sp,16      ; | epilog
+ 134:   03e00008        jr      ra            ; |
+ 138:   00000000        nop                   ; |       branch delay slot
+
+
+
+; ------------- with var args to see spilling ----------->
+
+; #include <stdlib.h>
+; #include <stdarg.h>
+; 
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h, int i, int j)
+; {
+; }
+; 
+; void nonleaf_call(int a, ...)
+; {
+;     int b, c, d, e, f, g, h, i, j;
+;     va_list ap;
+;     va_start(ap, a);
+;     b = va_arg(ap, int);
+;     c = va_arg(ap, int);
+;     d = va_arg(ap, int);
+;     e = va_arg(ap, int);
+;     f = va_arg(ap, int);
+;     g = va_arg(ap, int);
+;     h = va_arg(ap, int);
+;     i = va_arg(ap, int);
+;     j = va_arg(ap, int);
+;     /* use some local data */
+;     *(char*)alloca(220) = 'L';
+;     leaf_call(b, c, d, e, f, g, h, i, j);
+; }
+; 
+; int main()
+; {
+;     nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+;     return 0;
+; }
+
+
+
+; output from psptoolchain-20111215-psp w/ gcc 4.9.3
+
+00000000 <leaf_call>:
+   0:   27bdffd8        addiu   sp,sp,-40
+   4:   afbe0024        sw      s8,36(sp)
+   8:   03a0f021        move    s8,sp
+   c:   afc40000        sw      a0,0(s8)
+  10:   afc50004        sw      a1,4(s8)
+  14:   afc60008        sw      a2,8(s8)
+  18:   afc7000c        sw      a3,12(s8)
+  1c:   afc80010        sw      t0,16(s8)
+  20:   afc90014        sw      t1,20(s8)
+  24:   afca0018        sw      t2,24(s8)
+  28:   afcb001c        sw      t3,28(s8)
+  2c:   03c0e821        move    sp,s8
+  30:   8fbe0024        lw      s8,36(sp)
+  34:   27bd0028        addiu   sp,sp,40
+  38:   03e00008        jr      ra
+  3c:   00000000        nop
+
+00000040 <nonleaf_call>:
+  40:   27bdffa0        addiu   sp,sp,-96     ; |         leaving 32b extra space adjacent to prev frame's param area for spilling
+  44:   afbf003c        sw      ra,60(sp)     ; |
+  48:   afbe0038        sw      s8,56(sp)     ; | prolog
+  4c:   03a0f021        move    s8,sp         ; /         frame pointer (note: with offset to frame start, but static compared to sp)
+  50:   afc50044        sw      a1,68(s8)     ; \
+  54:   afc60048        sw      a2,72(s8)     ; |
+  58:   afc7004c        sw      a3,76(s8)     ; |
+  5c:   afc80050        sw      t0,80(s8)     ; | in args 1,2,3,4,5,6,7 -> spill area in current frame (adjacent to prev frame's param area)
+  60:   afc90054        sw      t1,84(s8)     ; |
+  64:   afca0058        sw      t2,88(s8)     ; |
+  68:   afcb005c        sw      t3,92(s8)     ; |
+  6c:   afc40030        sw      a0,48(s8)     ; in arg 0 -> temp space in local area
+  70:   27c20060        addiu   v0,s8,96      ; v0 initialized to point ...
+  74:   2442ffe4        addiu   v0,v0,-28     ; ... to start of spill area (96 - 28 = 68, where we spilled a1)
+  78:   afc2002c        sw      v0,44(s8)     ; store read ptr in local area
+  7c:   8fc2002c        lw      v0,44(s8)     ; |            get read pointer in v0 (pointless here, but part of following pattern) ...
+  80:   24430004        addiu   v1,v0,4       ; |            ... advance ...
+  84:   afc3002c        sw      v1,44(s8)     ; | in arg 1   ... store again ...
+  88:   8c420000        lw      v0,0(v0)      ; |            ... arg -> v0 (using pre-inc read location), then ...
+  8c:   afc20008        sw      v0,8(s8)      ; /            ... write to local area on stack for later
+  90:   8fc2002c        lw      v0,44(s8)     ; \
+  94:   24430004        addiu   v1,v0,4       ; |
+  98:   afc3002c        sw      v1,44(s8)     ; | in arg 2
+  9c:   8c420000        lw      v0,0(v0)      ; |
+  a0:   afc2000c        sw      v0,12(s8)     ; /
+  a4:   8fc2002c        lw      v0,44(s8)     ; \
+  a8:   24430004        addiu   v1,v0,4       ; |
+  ac:   afc3002c        sw      v1,44(s8)     ; | in arg 3
+  b0:   8c420000        lw      v0,0(v0)      ; |
+  b4:   afc20010        sw      v0,16(s8)     ; /
+  b8:   8fc2002c        lw      v0,44(s8)     ; \
+  bc:   24430004        addiu   v1,v0,4       ; |
+  c0:   afc3002c        sw      v1,44(s8)     ; | in arg 4
+  c4:   8c420000        lw      v0,0(v0)      ; |
+  c8:   afc20014        sw      v0,20(s8)     ; /
+  cc:   8fc2002c        lw      v0,44(s8)     ; \
+  d0:   24430004        addiu   v1,v0,4       ; |
+  d4:   afc3002c        sw      v1,44(s8)     ; | in arg 5
+  d8:   8c420000        lw      v0,0(v0)      ; |
+  dc:   afc20018        sw      v0,24(s8)     ; /
+  e0:   8fc2002c        lw      v0,44(s8)     ; \
+  e4:   24430004        addiu   v1,v0,4       ; |
+  e8:   afc3002c        sw      v1,44(s8)     ; | in arg 6
+  ec:   8c420000        lw      v0,0(v0)      ; |
+  f0:   afc2001c        sw      v0,28(s8)     ; /
+  f4:   8fc2002c        lw      v0,44(s8)     ; \
+  f8:   24430004        addiu   v1,v0,4       ; |
+  fc:   afc3002c        sw      v1,44(s8)     ; | in arg 7
+ 100:   8c420000        lw      v0,0(v0)      ; |
+ 104:   afc20020        sw      v0,32(s8)     ; /
+ 108:   8fc2002c        lw      v0,44(s8)     ; \
+ 10c:   24430004        addiu   v1,v0,4       ; |
+ 110:   afc3002c        sw      v1,44(s8)     ; | in arg 8
+ 114:   8c420000        lw      v0,0(v0)      ; |
+ 118:   afc20024        sw      v0,36(s8)     ; /
+ 11c:   8fc2002c        lw      v0,44(s8)     ; \
+ 120:   24430004        addiu   v1,v0,4       ; |
+ 124:   afc3002c        sw      v1,44(s8)     ; | in arg 9
+ 128:   8c420000        lw      v0,0(v0)      ; |
+ 12c:   afc20028        sw      v0,40(s8)     ; /
+ 130:   27bdff18        addiu   sp,sp,-232    ; alloca(220) - with padding to guarantee alignment
+ 134:   27a20008        addiu   v0,sp,8       ; |
+ 138:   24420007        addiu   v0,v0,7       ; |
+ 13c:   000210c2        srl     v0,v0,0x3     ; | start of alloca()'d memory -> v1, by ...
+ 140:   000210c0        sll     v0,v0,0x3     ; | ... using v0 as helper to align to 8b
+ 144:   00401821        move    v1,v0         ; |
+ 148:   2402004c        li      v0,76         ; 'L' -> v0, and...
+ 14c:   a0620000        sb      v0,0(v1)      ; ... store in local area (of alloca()'d space)
+ 150:   8fc20028        lw      v0,40(s8)     ; arg 8 (fetched from local area stored to above) and ...
+ 154:   afa20000        sw      v0,0(sp)      ; ... "pushed" onto stack
+ 158:   8fc40008        lw      a0,8(s8)      ; |
+ 15c:   8fc5000c        lw      a1,12(s8)     ; |
+ 160:   8fc60010        lw      a2,16(s8)     ; |
+ 164:   8fc70014        lw      a3,20(s8)     ; | arg 0,1,2,3,4,5,6 (fetched from local area stored to above)
+ 168:   8fc80018        lw      t0,24(s8)     ; |       (t0 = a4)
+ 16c:   8fc9001c        lw      t1,28(s8)     ; |       (t1 = a5)
+ 170:   8fca0020        lw      t2,32(s8)     ; |       (t2 = a6)
+ 174:   8fcb0024        lw      t3,36(s8)     ; |       (t3 = a7)
+ 178:   0c000000        jal     0 <leaf_call> ; call and ret addr -> ra
+ 17c:   00000000        nop                   ; branch delay slot
+ 180:   03c0e821        move    sp,s8         ; |
+ 184:   8fbf003c        lw      ra,60(sp)     ; |
+ 188:   8fbe0038        lw      s8,56(sp)     ; |
+ 18c:   27bd0060        addiu   sp,sp,96      ; | epilog
+ 190:   03e00008        jr      ra            ; |
+ 194:   00000000        nop                     |       branch delay slot
+
+00000198 <main>:
+ 198:   27bdfff0        addiu   sp,sp,-16     ; |
+ 19c:   afbf000c        sw      ra,12(sp)     ; |
+ 1a0:   afbe0008        sw      s8,8(sp)      ; | prolog
+ 1a4:   03a0f021        move    s8,sp         ; |         frame pointer (note: with offset to frame start, but static compared to sp)
+ 1a8:   24020008        li      v0,8          ; arg 8
+ 1ac:   afa20000        sw      v0,0(sp)      ; ... "pushed" onto stack
+ 1b0:   24020009        li      v0,9          ; arg 9
+ 1b4:   afa20004        sw      v0,4(sp)      ; ... "pushed" onto stack
+ 1b8:   00002021        move    a0,zero       ; arg 0
+ 1bc:   24050001        li      a1,1          ; arg 1
+ 1c0:   24060002        li      a2,2          ; arg 2
+ 1c4:   24070003        li      a3,3          ; arg 3
+ 1c8:   24080004        li      t0,4          ; arg 4 (t0 = a4)
+ 1cc:   24090005        li      t1,5          ; arg 5 (t1 = a5)
+ 1d0:   240a0006        li      t2,6          ; arg 6 (t2 = a6)
+ 1d4:   240b0007        li      t3,7          ; arg 7 (t3 = a7)
+ 1d8:   0c000000        jal     0 <leaf_call> ; call and ret addr -> ra
+ 1dc:   00000000        nop                   ; branch delay slot
+ 1e0:   00001021        move    v0,zero       ; return value
+ 1e4:   03c0e821        move    sp,s8         ; |
+ 1e8:   8fbf000c        lw      ra,12(sp)     ; |
+ 1ec:   8fbe0008        lw      s8,8(sp)      ; |
+ 1f0:   27bd0010        addiu   sp,sp,16      ; | epilog
+ 1f4:   03e00008        jr      ra            ; |
+ 1f8:   00000000        nop                   ; |       branch delay slot
+
+
+
+; ------------- var args with ints and floats to see spilling (which remains only a?-a7 regs), b/c doubles are passed via them and floats are promoted to doubles in (...) ----------->
+
+; #include <stdlib.h>
+; #include <stdarg.h>
+; 
+; void leaf_call(int b, int c, int d, int e, float f, float g, int h, int i, float j)
+; {
+; }
+; 
+; void nonleaf_call(int a, ...)
+; {
+;     int b, c, d, e, h, i;
+;     float f, g, j;
+;     va_list ap;
+;     va_start(ap, a);
+;     b = va_arg(ap, int);
+;     c = va_arg(ap, int);
+;     d = va_arg(ap, int);
+;     e = va_arg(ap, int);
+;     f = (float)va_arg(ap, double);
+;     g = (float)va_arg(ap, double);
+;     h = va_arg(ap, int);
+;     i = va_arg(ap, int);
+;     j = (float)va_arg(ap, double);
+;     /* use some local data */
+;     *(char*)alloca(220) = 'L';
+;     leaf_call(b, c, d, e, f, g, h, i, j);
+; }
+; 
+; int main()
+; {
+;     nonleaf_call(0, 1, 2, 3, 4, 5.f, 6.f, 7, 8, 9.f);
+;     return 0;
+; }
+
+
+
+; output from psptoolchain-20111215-psp w/ gcc 4.9.3
+
+00000000 <leaf_call>:
+   0:   27bdffd0        addiu   sp,sp,-48
+   4:   afbe002c        sw      s8,44(sp)
+   8:   03a0f021        move    s8,sp
+   c:   afc40000        sw      a0,0(s8)
+  10:   afc50004        sw      a1,4(s8)
+  14:   afc60008        sw      a2,8(s8)
+  18:   afc7000c        sw      a3,12(s8)
+  1c:   e7cc0010        swc1    $f12,16(s8)
+  20:   e7cd0014        swc1    $f13,20(s8)
+  24:   afc80018        sw      t0,24(s8)
+  28:   afc9001c        sw      t1,28(s8)
+  2c:   e7ce0020        swc1    $f14,32(s8)
+  30:   03c0e821        move    sp,s8
+  34:   8fbe002c        lw      s8,44(sp)
+  38:   27bd0030        addiu   sp,sp,48
+  3c:   03e00008        jr      ra
+  40:   00000000        nop
+
+00000044 <nonleaf_call>:
+  44:   27bdffa8        addiu   sp,sp,-88     ; |         leaving 32b extra space adjacent to prev frame's param area for spilling
+  48:   afbf0034        sw      ra,52(sp)     ; |
+  4c:   afbe0030        sw      s8,48(sp)     ; | prolog
+  50:   03a0f021        move    s8,sp         ; /         frame pointer (note: with offset to frame start, but static compared to sp)
+  54:   afc5003c        sw      a1,60(s8)     ; \
+  58:   afc60040        sw      a2,64(s8)     ; |
+  5c:   afc70044        sw      a3,68(s8)     ; |
+  60:   afc80048        sw      t0,72(s8)     ; | in args 1,2,3,4,5 (spread out over 7 param regs) -> spill area in current frame (adjacent to prev frame's param area)
+  64:   afc9004c        sw      t1,76(s8)     ; |            this one is just padding
+  68:   afca0050        sw      t2,80(s8)     ; |            |
+  6c:   afcb0054        sw      t3,84(s8)     ; |            | this is arg 5, passed as a double, spilled like integers
+  70:   afc40028        sw      a0,40(s8)     ; in arg 0 -> temp space in local area
+  74:   27c20058        addiu   v0,s8,88      ; v0 initialized to point ...
+  78:   2442ffe4        addiu   v0,v0,-28     ; ... to start of spill area (88 - 28 = 60, where we spilled a1)
+  7c:   afc20024        sw      v0,36(s8)     ; store read ptr in local area
+  80:   8fc20024        lw      v0,36(s8)     ; |            get read pointer in v0 (pointless here, but part of following pattern) ...
+  84:   24430004        addiu   v1,v0,4       ; |            ... advance ...
+  88:   afc30024        sw      v1,36(s8)     ; | in arg 1   ... store again ...
+  8c:   8c420000        lw      v0,0(v0)      ; |            ... arg -> v0 (using pre-inc read location), then ...
+  90:   afc20000        sw      v0,0(s8)      ; /            ... write to local area on stack for later
+  94:   8fc20024        lw      v0,36(s8)     ; \
+  98:   24430004        addiu   v1,v0,4       ; |
+  9c:   afc30024        sw      v1,36(s8)     ; | in arg 2
+  a0:   8c420000        lw      v0,0(v0)      ; |
+  a4:   afc20004        sw      v0,4(s8)      ; /
+  a8:   8fc20024        lw      v0,36(s8)     ; \
+  ac:   24430004        addiu   v1,v0,4       ; |
+  b0:   afc30024        sw      v1,36(s8)     ; | in arg 3
+  b4:   8c420000        lw      v0,0(v0)      ; |
+  b8:   afc20008        sw      v0,8(s8)      ; /
+  bc:   8fc20024        lw      v0,36(s8)     ; \
+  c0:   24430004        addiu   v1,v0,4       ; |
+  c4:   afc30024        sw      v1,36(s8)     ; | in arg 4
+  c8:   8c420000        lw      v0,0(v0)      ; |
+  cc:   afc2000c        sw      v0,12(s8)     ; /
+  d0:   8fc20024        lw      v0,36(s8)     ; \            get read ptr in v0
+  d4:   24430007        addiu   v1,v0,7       ; |            |
+  d8:   2402fff8        li      v0,-8         ; |            | align
+  dc:   00621024        and     v0,v1,v0      ; |            |
+  e0:   24430008        addiu   v1,v0,8       ; |            advance read ptr to point to double
+  e4:   afc30024        sw      v1,36(s8)     ; |            restore read ptr
+  e8:   8c430004        lw      v1,4(v0)      ; | in arg 5   |
+  ec:   8c420000        lw      v0,0(v0)      ; |            | load both parts of double ...
+  f0:   00402021        move    a0,v0         ; |            | ... and store in a{0,1} pair (used to pass doubles, used in next call)
+  f4:   00602821        move    a1,v1         ; |            /
+  f8:   0c000000        jal     0 <leaf_call> ; |            \ call to cast double to float, returned in f0
+  fc:   00000000        nop                   ; |            | NOTE: not a call to leaf_call() (objdump done from .o file, not finally linked executable)
+ 100:   e7c00010        swc1    $f0,16(s8)    ; /            write float to local area on stack for later
+ 104:   8fc20024        lw      v0,36(s8)     ; \
+ 108:   24430007        addiu   v1,v0,7       ; |
+ 10c:   2402fff8        li      v0,-8         ; |
+ 110:   00621024        and     v0,v1,v0      ; |
+ 114:   24430008        addiu   v1,v0,8       ; |
+ 118:   afc30024        sw      v1,36(s8)     ; |
+ 11c:   8c430004        lw      v1,4(v0)      ; | in arg 6
+ 120:   8c420000        lw      v0,0(v0)      ; |
+ 124:   00402021        move    a0,v0         ; |
+ 128:   00602821        move    a1,v1         ; |
+ 12c:   0c000000        jal     0 <leaf_call> ; |
+ 130:   00000000        nop                   ; |
+ 134:   e7c00014        swc1    $f0,20(s8)    ; /
+ 138:   8fc20024        lw      v0,36(s8)     ; \
+ 13c:   24430004        addiu   v1,v0,4       ; |
+ 140:   afc30024        sw      v1,36(s8)     ; | in arg 7
+ 144:   8c420000        lw      v0,0(v0)      ; |
+ 148:   afc20018        sw      v0,24(s8)     ; /
+ 14c:   8fc20024        lw      v0,36(s8)     ; \
+ 150:   24430004        addiu   v1,v0,4       ; |
+ 154:   afc30024        sw      v1,36(s8)     ; | in arg 8
+ 158:   8c420000        lw      v0,0(v0)      ; |
+ 15c:   afc2001c        sw      v0,28(s8)     ; /
+ 160:   8fc20024        lw      v0,36(s8)     ; \
+ 164:   24430007        addiu   v1,v0,7       ; |
+ 168:   2402fff8        li      v0,-8         ; |
+ 16c:   00621024        and     v0,v1,v0      ; |
+ 170:   24430008        addiu   v1,v0,8       ; |
+ 174:   afc30024        sw      v1,36(s8)     ; |
+ 178:   8c430004        lw      v1,4(v0)      ; | in arg 9
+ 17c:   8c420000        lw      v0,0(v0)      ; |
+ 180:   00402021        move    a0,v0         ; |
+ 184:   00602821        move    a1,v1         ; |
+ 188:   0c000000        jal     0 <leaf_call> ; |
+ 18c:   00000000        nop                   ; |
+ 190:   e7c00020        swc1    $f0,32(s8)    ; /
+ 194:   27bdff18        addiu   sp,sp,-232    ; alloca(220) - with padding to guarantee alignment
+ 198:   03a01021        move    v0,sp         ; |
+ 19c:   24420007        addiu   v0,v0,7       ; |
+ 1a0:   000210c2        srl     v0,v0,0x3     ; | start of alloca()'d memory -> v1, by ...
+ 1a4:   000210c0        sll     v0,v0,0x3     ; | ... using v0 as helper to align to 8b
+ 1a8:   00401821        move    v1,v0         ; |
+ 1ac:   2402004c        li      v0,76         ; 'L' -> v0, and...
+ 1b0:   a0620000        sb      v0,0(v1)      ; ... store in local area (of alloca()'d space)
+ 1b4:   8fc40000        lw      a0,0(s8)      ; |
+ 1b8:   8fc50004        lw      a1,4(s8)      ; |
+ 1bc:   8fc60008        lw      a2,8(s8)      ; | arg 0,1,2,3 (int args, fetched from local area stored to above)
+ 1c0:   8fc7000c        lw      a3,12(s8)     ; |
+ 1c4:   c7cc0010        lwc1    $f12,16(s8)   ; arg 4 (float, fetched from local area stored to above)
+ 1c8:   c7cd0014        lwc1    $f13,20(s8)   ; arg 5 (float, fetched from local area stored to above)
+ 1cc:   8fc80018        lw      t0,24(s8)     ; arg 6 (int, fetched from local area stored to above, t0 = a4)
+ 1d0:   8fc9001c        lw      t1,28(s8)     ; arg 7 (int, fetched from local area stored to above, t1 = a5)
+ 1d4:   c7ce0020        lwc1    $f14,32(s8)   ; arg 9 (float, fetched from local area stored to above)
+ 1d8:   0c000000        jal     0 <leaf_call> ; call and ret addr -> ra
+ 1dc:   00000000        nop                   ; branch delay slot
+ 1e0:   03c0e821        move    sp,s8         ; |
+ 1e4:   8fbf0034        lw      ra,52(sp)     ; |
+ 1e8:   8fbe0030        lw      s8,48(sp)     ; |
+ 1ec:   27bd0058        addiu   sp,sp,88      ; | epilog
+ 1f0:   03e00008        jr      ra            ; |
+ 1f4:   00000000        nop                   ; |       branch delay slot
+
+000001f8 <main>:
+ 1f8:   27bdffe0        addiu   sp,sp,-32     ; |
+ 1fc:   afbf001c        sw      ra,28(sp)     ; |
+ 200:   afbe0018        sw      s8,24(sp)     ; | prolog
+ 204:   03a0f021        move    s8,sp         ; /         frame pointer (note: with offset to frame start, but static compared to sp)
+ 208:   8f8a0000        lw      t2,0(gp)      ; \
+ 20c:   8f8b0004        lw      t3,4(gp)      ; / arg 5 (t1,t2 = a4,a5), as double b/c of vararg, effectively skipping t1 (=a5)
+ 210:   8f820008        lw      v0,8(gp)      ; \
+ 214:   8f83000c        lw      v1,12(gp)     ; | arg 6, as double b/c of vararg, via v0 and v1 ...
+ 218:   afa20000        sw      v0,0(sp)      ; |
+ 21c:   afa30004        sw      v1,4(sp)      ; | ... "pushed" onto stack
+ 220:   24020007        li      v0,7          ; arg 7
+ 224:   afa20008        sw      v0,8(sp)      ; ... "pushed" onto stack
+ 228:   24020008        li      v0,8          ; arg 8
+ 22c:   afa2000c        sw      v0,12(sp)     ; ... "pushed" onto stack
+ 230:   8f820010        lw      v0,16(gp)     ; |
+ 234:   8f830014        lw      v1,20(gp)     ; | arg 9, as double b/c of vararg ...
+ 238:   afa20010        sw      v0,16(sp)     ; |
+ 23c:   afa30014        sw      v1,20(sp)     ; | ... "pushed" onto stack
+ 240:   00002021        move    a0,zero       ; arg 0
+ 244:   24050001        li      a1,1          ; arg 1
+ 248:   24060002        li      a2,2          ; arg 2
+ 24c:   24070003        li      a3,3          ; arg 3
+ 250:   24080004        li      t0,4          ; arg 4 (t0 = a4)
+ 254:   0c000000        jal     0 <leaf_call> ; call and ret addr -> ra
+ 258:   00000000        nop                   ; branch delay slot
+ 25c:   00001021        move    v0,zero       ; return value
+ 260:   03c0e821        move    sp,s8         ; |
+ 264:   8fbf001c        lw      ra,28(sp)     ; |
+ 268:   8fbe0018        lw      s8,24(sp)     ; |
+ 26c:   27bd0020        addiu   sp,sp,32      ; | epilog
+ 270:   03e00008        jr      ra            ; |
+ 274:   00000000        nop                   ; |       branch delay slot
+
+
+
+; --------------------- further notes ------------------->
+
+; when passing less arguments than stack params, involving an ellipsis, spill area still spills all registers,
+; excluding named ones, e.g.:
+;
+; void c(int a, ...) { ... }
+; c(0, 1, 2, 3, 4);
+;
+; contains as spilling code same as above:
+
+  84:   afc5002c        sw      a1,44(s8)
+  88:   afc60030        sw      a2,48(s8)
+  8c:   afc70034        sw      a3,52(s8)
+  90:   afc80038        sw      t0,56(s8)
+  94:   afc9003c        sw      t1,60(s8)
+  98:   afca0040        sw      t2,64(s8)
+  9c:   afcb0044        sw      t3,68(s8)
+
+
+; vim: ft=asm
+

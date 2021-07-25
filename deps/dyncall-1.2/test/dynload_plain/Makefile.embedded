@@ -1,0 +1,30 @@
+# path to default libc.so file, easier to do via shell than in code (see main() in dynload_plain.c)
+# for compat: first gmake style, then assignment op which will use ! as part of var name on gmake<4
+#             and thus not override previously set var
+DEF_C_DYLIB=$(shell ((ldd `which ls` | grep -o '/.*/libc.so[^ ]*' || ls /lib*/libc.so* || ls /usr/lib/libc.so*) | grep -v '\.a$$' | (sort -V -r || sort -t . -n -k 2)) 2>/dev/null | head -1)
+DEF_C_DYLIB!=((ldd `which ls` | grep -o '/.*/libc.so[^ ]*' || ls /lib*/libc.so* || ls /usr/lib/libc.so*) | grep -v '\.a$$' | (sort -V -r || sort -t . -n -k 2)) 2>/dev/null | head -1
+
+APP = dynload_plain
+OBJS = dynload_plain.o
+TEST_U8_SO = dynload_plain_ß_test # @@@ unsure if every platform handles ß, here (ANSI, UTF-8, ...)
+
+TOP = ../..
+CFLAGS  += -I${TOP}/dynload -DDEF_C_DYLIB=\"${DEF_C_DYLIB}\"
+LDFLAGS += -L${TOP}/dynload
+LDLIBS  += -ldynload_s
+# Works on: Darwin, NetBSD.
+# Linux: add '-ldl'
+
+all: ${APP} ${TEST_U8_SO}
+
+.PHONY: all clean
+
+${APP}: ${OBJS}
+	${CC} ${OBJS} ${LDFLAGS} ${LDLIBS} -o $@
+
+${TEST_U8_SO}:
+	echo 'int dynload_plain_testfunc() { return 5; }' | ${CC} -`[ \`uname\` = Darwin ] && echo dynamiclib || echo shared` -x c - -o ${TEST_U8_SO}
+
+clean:
+	rm -f ${APP} ${OBJS} ${TEST_U8_SO}
+

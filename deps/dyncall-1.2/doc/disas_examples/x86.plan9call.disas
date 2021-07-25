@@ -1,0 +1,64 @@
+; void leaf_call(int a, int b, int c, int d, int e, int f)
+; {
+; }
+; 
+; int nonleaf_call(int a, int b, int c, int d, int e, int f, int g)
+; {
+;   leaf_call(b,c,d,e,f,g);
+;   return 'x';
+; }
+; 
+; int main()
+; {
+;   nonleaf_call(0,1,2,3,4,5,6);
+;   return 0;
+; }
+
+
+
+; output from plan9-4th_edition-x86 w/ 8c x.c && 8l -a x.8
+
+001020                        (1) TEXT leaf_call+0(SB),$0
+001020    c3                  (3)       RET                         ,
+
+001021                        (5) TEXT nonleaf_call+0(SB),$28
+001021    83ec1c              (5)       SUBL                        $28,SP             ; prolog (note, there is no register save area at all)
+001024    8b442424            (7)       MOVL                        b+36(FP),AX        ; |
+001028    890424              (7)       MOVL                        AX,(SP)            ; |
+00102b    8b442428            (7)       MOVL                        c+40(FP),AX        ; |
+00102f    89442404            (7)       MOVL                        AX,4(SP)           ; |
+001033    8b44242c            (7)       MOVL                        d+44(FP),AX        ; |
+001037    89442408            (7)       MOVL                        AX,8(SP)           ; | fetch in args from prev frame's param area ...
+00103b    8b442430            (7)       MOVL                        e+48(FP),AX        ; | ... and "push" onto stack
+00103f    8944240c            (7)       MOVL                        AX,12(SP)          ; |
+001043    8b442434            (7)       MOVL                        f+52(FP),AX        ; |
+001047    89442410            (7)       MOVL                        AX,16(SP)          ; |
+00104b    8b442438            (7)       MOVL                        g+56(FP),AX        ; |
+00104f    89442414            (7)       MOVL                        AX,20(SP)          ; |
+001053    e8c8ffffff          (7)       CALL                        ,1020+leaf_call    ; push return addrss and call
+001058    b878000000          (8)       MOVL                        $120,AX            ; return value: 'x' -> eax
+00105d    83c41c              (8)       ADDL                        $28,SP             ; |
+001060    c3                  (8)       RET                         ,                  ; | epilog
+
+001061                        (11) TEXT main+0(SB),$32
+001061    83ec20              (11)      SUBL                        $32,SP             ; prolog (note, there is no register save area at all)
+001064    c7042400000000      (13)      MOVL                        $0,(SP)            ; arg 0 -> "push" onto stack
+00106b    b801000000          (13)      MOVL                        $1,AX              ; arg 1 -> eax, then ...
+001070    89442404            (13)      MOVL                        AX,4(SP)           ; ... "pushed" onto stack
+001074    b802000000          (13)      MOVL                        $2,AX              ; arg 2 -> eax, then ...
+001079    89442408            (13)      MOVL                        AX,8(SP)           ; ... "pushed" onto stack
+00107d    b803000000          (13)      MOVL                        $3,AX              ;    .
+001082    8944240c            (13)      MOVL                        AX,12(SP)          ;    .
+001086    b804000000          (13)      MOVL                        $4,AX              ;    .
+00108b    89442410            (13)      MOVL                        AX,16(SP)          ;    .
+00108f    b805000000          (13)      MOVL                        $5,AX              ;    .
+001094    89442414            (13)      MOVL                        AX,20(SP)          ;    .
+001098    b806000000          (13)      MOVL                        $6,AX              ; arg 6 -> eax, then ...
+00109d    89442418            (13)      MOVL                        AX,24(SP)          ; ... "pushed" onto stack
+0010a1    e87bffffff          (13)      CALL                        ,1021+nonleaf_call ; push return addrss and call
+0010a6    31c0                (14)      MOVL                        $0,AX              ; return value
+0010a8    83c420              (14)      ADDL                        $32,SP             ; |
+0010ab    c3                  (14)      RET                         ,                  ; | epilog
+
+; vim: ft=asm
+

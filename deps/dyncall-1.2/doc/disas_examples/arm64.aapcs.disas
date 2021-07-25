@@ -1,0 +1,990 @@
+; #include <stdlib.h>
+; 
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h)
+; {
+; }
+; 
+; void nonleaf_call(int a, int b, int c, int d, int e, int f, int g, int h)
+; {
+; 	/* use some local data */
+; 	*(char*)alloca(220) = 'L';
+; 	leaf_call(b, c, d, e, f, g, h);
+; }
+; 
+; int main()
+; {
+; 	nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7);
+; 	return 0;
+; }
+
+
+
+; output from freebsd-13.0_r348764-arm64 w/ clang 8.0.0
+
+leaf_call:
+   0:   ff 83 00 d1     sub     sp, sp, #32
+   4:   e0 1f 00 b9     str     w0, [sp, #28]
+   8:   e1 1b 00 b9     str     w1, [sp, #24]
+   c:   e2 17 00 b9     str     w2, [sp, #20]
+  10:   e3 13 00 b9     str     w3, [sp, #16]
+  14:   e4 0f 00 b9     str     w4, [sp, #12]
+  18:   e5 0b 00 b9     str     w5, [sp, #8]
+  1c:   e6 07 00 b9     str     w6, [sp, #4]
+  20:   ff 83 00 91     add     sp, sp, #32
+  24:   c0 03 5f d6     ret
+
+nonleaf_call:
+  28:   ff 83 04 d1     sub     sp, sp, #288         ; |        includes alloca()'d static space, already
+  2c:   fc 83 00 f9     str     x28, [sp, #256]      ; |        (unsure why r28 is preserved @@@)
+  30:   fd 7b 11 a9     stp     x29, x30, [sp, #272] ; | prolog
+  34:   fd 43 04 91     add     x29, sp, #272        ; |        adjust/set frame pointer (since sp was modified first)
+  38:   88 09 80 52     mov     w8, #76              ; 'L' -> w8
+  3c:   a0 c3 1e b8     stur    w0, [x29, #-20]      ; in arg 0 -> local area (as temp store)
+  40:   a1 83 1e b8     stur    w1, [x29, #-24]      ; in arg 1 -> local area (as temp store)
+  44:   a2 43 1e b8     stur    w2, [x29, #-28]      ; in arg 2 -> local area (as temp store)
+  48:   a3 03 1e b8     stur    w3, [x29, #-32]      ; in arg 3 -> local area (as temp store)
+  4c:   a4 c3 1d b8     stur    w4, [x29, #-36]      ; in arg 4 -> local area (as temp store)
+  50:   a5 83 1d b8     stur    w5, [x29, #-40]      ; in arg 5 -> local area (as temp store)
+  54:   a6 43 1d b8     stur    w6, [x29, #-44]      ; in arg 6 -> local area (as temp store)
+  58:   a7 03 1d b8     stur    w7, [x29, #-48]      ; in arg 7 -> local area (as temp store)
+  5c:   e8 03 00 39     strb    w8, [sp]             ; place 'L' on top of stack (at alloca()'d addr)
+  60:   a0 83 5e b8     ldur    w0, [x29, #-24]      ; arg 0
+  64:   a1 43 5e b8     ldur    w1, [x29, #-28]      ; arg 1
+  68:   a2 03 5e b8     ldur    w2, [x29, #-32]      ; arg 2
+  6c:   a3 c3 5d b8     ldur    w3, [x29, #-36]      ; arg 3
+  70:   a4 83 5d b8     ldur    w4, [x29, #-40]      ; arg 4
+  74:   a5 43 5d b8     ldur    w5, [x29, #-44]      ; arg 5
+  78:   a6 03 5d b8     ldur    w6, [x29, #-48]      ; arg 6
+  7c:   e1 ff ff 97     bl      #-124                ; return address -> r30/lr, and call
+  80:   fd 7b 51 a9     ldp     x29, x30, [sp, #272] ; |
+  84:   fc 83 40 f9     ldr     x28, [sp, #256]      ; |
+  88:   ff 83 04 91     add     sp, sp, #288         ; | epilog
+  8c:   c0 03 5f d6     ret                          ; |
+
+main:
+  90:   ff 83 00 d1     sub     sp, sp, #32          ; |
+  94:   fd 7b 01 a9     stp     x29, x30, [sp, #16]  ; | prolog
+  98:   fd 43 00 91     add     x29, sp, #16         ; |
+  9c:   08 00 80 52     mov     w8, #0               ; clearing r8 (indirect result location pointer)
+  a0:   e1 03 00 32     orr     w1, wzr, #0x1        ; arg 1
+  a4:   e2 03 1f 32     orr     w2, wzr, #0x2        ; arg 2
+  a8:   e3 07 00 32     orr     w3, wzr, #0x3        ; arg 3
+  ac:   e4 03 1e 32     orr     w4, wzr, #0x4        ; arg 4
+  b0:   a5 00 80 52     mov     w5, #5               ; arg 5
+  b4:   e6 07 1f 32     orr     w6, wzr, #0x6        ; arg 6
+  b8:   e7 0b 00 32     orr     w7, wzr, #0x7        ; arg 7
+  bc:   bf c3 1f b8     stur    wzr, [x29, #-4]      ; unsure... store a zero in local area@@@
+  c0:   e0 03 08 2a     mov     w0, w8               ; arg 0 (= 0 set in w8, above)
+  c4:   e8 0b 00 b9     str     w8, [sp, #8]         ; temp storing 0 in local area
+  c8:   d8 ff ff 97     bl      #-160                ; return address -> r30/lr, and call
+  cc:   e0 0b 40 b9     ldr     w0, [sp, #8]         ; return value (unsure why not just using immediate @@@)
+  d0:   fd 7b 41 a9     ldp     x29, x30, [sp, #16]  ; |
+  d4:   ff 83 00 91     add     sp, sp, #32          ; | epilog
+  d8:   c0 03 5f d6     ret                          ; |
+
+
+
+; ---------- same with more args so stack is also used ---------->
+
+; #include <stdlib.h>
+; 
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h, int i, int j)
+; {
+; }
+; 
+; void nonleaf_call(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j)
+; {
+;     /* use some local data */
+;     *(char*)alloca(220) = 'L';
+;     leaf_call(b, c, d, e, f, g, h, i, j);
+; }
+; 
+; int main()
+; {
+;     nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+;     return 0;
+; }
+
+
+
+; output from freebsd-13.0_r348764-arm64 w/ clang 8.0.0
+
+0000000000000000 leaf_call:
+       0:       ff c3 00 d1     sub     sp, sp, #48
+       4:       e8 33 40 b9     ldr     w8, [sp, #48]
+       8:       e0 2f 00 b9     str     w0, [sp, #44]
+       c:       e1 2b 00 b9     str     w1, [sp, #40]
+      10:       e2 27 00 b9     str     w2, [sp, #36]
+      14:       e3 23 00 b9     str     w3, [sp, #32]
+      18:       e4 1f 00 b9     str     w4, [sp, #28]
+      1c:       e5 1b 00 b9     str     w5, [sp, #24]
+      20:       e6 17 00 b9     str     w6, [sp, #20]
+      24:       e7 13 00 b9     str     w7, [sp, #16]
+      28:       e8 0f 00 b9     str     w8, [sp, #12]
+      2c:       ff c3 00 91     add     sp, sp, #48
+      30:       c0 03 5f d6     ret
+
+0000000000000034 nonleaf_call:
+      34:       ff 03 05 d1     sub     sp, sp, #320         ; |        includes alloca()'d static space, already
+      38:       fc 93 00 f9     str     x28, [sp, #288]      ; |        (unsure why r28 is preserved @@@)
+      3c:       fd 7b 13 a9     stp     x29, x30, [sp, #304] ; | prolog
+      40:       fd c3 04 91     add     x29, sp, #304        ; /        adjust/set frame pointer (since sp was modified first)
+      44:       a8 13 40 b9     ldr     w8, [x29, #16]       ; \
+      48:       a9 1b 40 b9     ldr     w9, [x29, #24]       ; | in args 8,9 from prev frame's param area -> regs, no we have args 0-9 all in r0-r9
+      4c:       8a 09 80 52     mov     w10, #76             ; 'L' -> w10
+      50:       a0 c3 1e b8     stur    w0, [x29, #-20]      ; |
+      54:       a1 83 1e b8     stur    w1, [x29, #-24]      ; |
+      58:       a2 43 1e b8     stur    w2, [x29, #-28]      ; |
+      5c:       a3 03 1e b8     stur    w3, [x29, #-32]      ; |
+      60:       a4 c3 1d b8     stur    w4, [x29, #-36]      ; | ... in args 0,1,2,3,4,5,6,7,8,9 -> temp space in local area ...
+      64:       a5 83 1d b8     stur    w5, [x29, #-40]      ; |
+      68:       a6 43 1d b8     stur    w6, [x29, #-44]      ; |
+      6c:       a7 03 1d b8     stur    w7, [x29, #-48]      ; |
+      70:       a8 c3 1c b8     stur    w8, [x29, #-52]      ; |
+      74:       a9 83 1c b8     stur    w9, [x29, #-56]      ; |
+      78:       ea 43 00 39     strb    w10, [sp, #16]       ; 'L' -> local area (alloca()'d memory)
+      7c:       a0 83 5e b8     ldur    w0, [x29, #-24]      ; arg 0
+      80:       a1 43 5e b8     ldur    w1, [x29, #-28]      ; arg 1
+      84:       a2 03 5e b8     ldur    w2, [x29, #-32]      ; arg 2
+      88:       a3 c3 5d b8     ldur    w3, [x29, #-36]      ; arg 3
+      8c:       a4 83 5d b8     ldur    w4, [x29, #-40]      ; arg 4
+      90:       a5 43 5d b8     ldur    w5, [x29, #-44]      ; arg 5
+      94:       a6 03 5d b8     ldur    w6, [x29, #-48]      ; arg 6
+      98:       a7 c3 5c b8     ldur    w7, [x29, #-52]      ; arg 7
+      9c:       a8 83 5c b8     ldur    w8, [x29, #-56]      ; arg 8 -> w8, and ...
+      a0:       eb 03 00 91     mov     x11, sp              ; ... with help of x11 (why?) ...
+      a4:       68 01 00 b9     str     w8, [x11]            ; ... "pushed" onto to of stack
+      a8:       d6 ff ff 97     bl      #-168 <leaf_call>    ; return address -> r30/lr, and call
+      ac:       fd 7b 53 a9     ldp     x29, x30, [sp, #304] ; |
+      b0:       fc 93 40 f9     ldr     x28, [sp, #288]      ; |
+      b4:       ff 03 05 91     add     sp, sp, #320         ; | epilog
+      b8:       c0 03 5f d6     ret                          ; |
+
+00000000000000bc main:
+      bc:       ff c3 00 d1     sub     sp, sp, #48          ; |
+      c0:       fd 7b 02 a9     stp     x29, x30, [sp, #32]  ; | prolog
+      c4:       fd 83 00 91     add     x29, sp, #32         ; |
+      c8:       08 00 80 52     mov     w8, #0               ; clearing r8 (indirect result location pointer)
+      cc:       e1 03 00 32     orr     w1, wzr, #0x1        ; arg 1
+      d0:       e2 03 1f 32     orr     w2, wzr, #0x2        ; arg 2
+      d4:       e3 07 00 32     orr     w3, wzr, #0x3        ; arg 3
+      d8:       e4 03 1e 32     orr     w4, wzr, #0x4        ; arg 4
+      dc:       a5 00 80 52     mov     w5, #5               ; arg 5
+      e0:       e6 07 1f 32     orr     w6, wzr, #0x6        ; arg 6
+      e4:       e7 0b 00 32     orr     w7, wzr, #0x7        ; arg 7
+      e8:       e9 03 1d 32     orr     w9, wzr, #0x8        ; arg 8 -> r9
+      ec:       2a 01 80 52     mov     w10, #9              ; arg 9 -> r10
+      f0:       bf c3 1f b8     stur    wzr, [x29, #-4]      ; unsure... store a zero in local area@@@
+      f4:       e0 03 08 2a     mov     w0, w8               ; arg 0 (= 0 set in w8, above)
+      f8:       eb 03 00 91     mov     x11, sp              ; use sp in x11 (why?), to ...
+      fc:       69 01 00 b9     str     w9, [x11]            ; ... place arg 8 on top of stack 
+     100:       eb 03 00 91     mov     x11, sp              ; use sp in x11 (why?), to ... (set again, pointlessly)
+     104:       6a 09 00 b9     str     w10, [x11, #8]       ; ... place arg 9 on stack (next to arg 8)
+     108:       a8 83 1f b8     stur    w8, [x29, #-8]       ; temp storing 0 in local area @@@ why?
+     10c:       ca ff ff 97     bl      #-216 <nonleaf_call> ; return address -> r30/lr, and call
+     110:       a0 83 5f b8     ldur    w0, [x29, #-8]       ; |
+     114:       fd 7b 42 a9     ldp     x29, x30, [sp, #32]  ; |
+     118:       ff c3 00 91     add     sp, sp, #48          ; | epilog
+     11c:       c0 03 5f d6     ret                          ; |
+
+
+
+; ---------- for spilling ---------->
+
+; #include <stdlib.h>
+; #include <stdarg.h>
+; 
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h, int i, int j)
+; {
+; }
+; 
+; void nonleaf_call(int a, ...)
+; {
+;     int b,c,d,e,f,g,h,i,j;
+;     va_list ap;
+;     va_start(ap, a);
+;     b = va_arg(ap, int);
+;     c = va_arg(ap, int);
+;     d = va_arg(ap, int);
+;     e = va_arg(ap, int);
+;     f = va_arg(ap, int);
+;     g = va_arg(ap, int);
+;     h = va_arg(ap, int);
+;     i = va_arg(ap, int);
+;     j = va_arg(ap, int);
+; 
+;     /* use some local data */
+;     *(char*)alloca(220) = 'L';
+;     leaf_call(b, c, d, e, f, g, h, i, j);
+; }
+; 
+; int main()
+; {
+;     nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+;     return 0;
+; }
+
+
+
+; output from freebsd-13.0_r348764-arm64 w/ clang 8.0.0
+
+0000000000000000 leaf_call:
+       0:       ff c3 00 d1     sub     sp, sp, #48
+       4:       e8 33 40 b9     ldr     w8, [sp, #48]
+       8:       e0 2f 00 b9     str     w0, [sp, #44]
+       c:       e1 2b 00 b9     str     w1, [sp, #40]
+      10:       e2 27 00 b9     str     w2, [sp, #36]
+      14:       e3 23 00 b9     str     w3, [sp, #32]
+      18:       e4 1f 00 b9     str     w4, [sp, #28]
+      1c:       e5 1b 00 b9     str     w5, [sp, #24]
+      20:       e6 17 00 b9     str     w6, [sp, #20]
+      24:       e7 13 00 b9     str     w7, [sp, #16]
+      28:       e8 0f 00 b9     str     w8, [sp, #12]
+      2c:       ff c3 00 91     add     sp, sp, #48
+      30:       c0 03 5f d6     ret
+
+0000000000000034 nonleaf_call:
+      34:       fc 4f be a9     stp     x28, x19, [sp, #-32]! ; |
+      38:       fd 7b 01 a9     stp     x29, x30, [sp, #16]   ; |
+      3c:       fd 43 00 91     add     x29, sp, #16          ; | prolog
+      40:       ff 83 07 d1     sub     sp, sp, #480          ; |
+      44:       f3 03 00 91     mov     x19, sp
+      48:       67 56 80 3d     str     q7, [x19, #336]       ; |
+      4c:       66 52 80 3d     str     q6, [x19, #320]       ; |
+      50:       65 4e 80 3d     str     q5, [x19, #304]       ; |
+      54:       64 4a 80 3d     str     q4, [x19, #288]       ; |
+      58:       63 46 80 3d     str     q3, [x19, #272]       ; | spill all flot regs (on top of spilled integers, below
+      5c:       62 42 80 3d     str     q2, [x19, #256]       ; |
+      60:       61 3e 80 3d     str     q1, [x19, #240]       ; |
+      64:       60 3a 80 3d     str     q0, [x19, #224]       ; /
+      68:       a7 03 1a f8     stur    x7, [x29, #-96]       ; \
+      6c:       a6 83 19 f8     stur    x6, [x29, #-104]      ; |
+      70:       a5 03 19 f8     stur    x5, [x29, #-112]      ; |
+      74:       a4 83 18 f8     stur    x4, [x29, #-120]      ; | spill integer args (adjacent to prev frame's param area)
+      78:       a3 03 18 f8     stur    x3, [x29, #-128]      ; | note: only needed ones are spilled
+      7c:       a2 83 17 f8     stur    x2, [x29, #-136]      ; |
+      80:       a1 03 17 f8     stur    x1, [x29, #-144]      ; |
+      84:       a0 c3 1e b8     stur    w0, [x29, #-20]
+      88:       e0 63 19 32     orr     w0, wzr, #0xffffff80
+      8c:       a0 43 1c b8     stur    w0, [x29, #-60]
+      90:       e0 06 80 12     mov     w0, #-56
+      94:       a0 03 1c b8     stur    w0, [x29, #-64]
+      98:       61 82 03 91     add     x1, x19, #224
+      9c:       21 00 02 91     add     x1, x1, #128
+      a0:       a1 83 1b f8     stur    x1, [x29, #-72]
+      a4:       a1 43 02 d1     sub     x1, x29, #144
+      a8:       21 e0 00 91     add     x1, x1, #56
+      ac:       a1 03 1b f8     stur    x1, [x29, #-80]
+      b0:       a1 43 00 91     add     x1, x29, #16
+      b4:       a1 83 1a f8     stur    x1, [x29, #-88]
+      b8:       a1 63 01 d1     sub     x1, x29, #88
+      bc:       21 60 00 91     add     x1, x1, #24
+      c0:       a0 03 5c b8     ldur    w0, [x29, #-64]
+      c4:       e8 03 00 2a     mov     w8, w0
+      c8:       61 6e 00 f9     str     x1, [x19, #216]
+      cc:       68 d6 00 b9     str     w8, [x19, #212]
+      d0:       e0 01 f8 36     tbz     w0, #31, #60 <nonleaf_call+0xd8>
+      d4:       01 00 00 14     b       #4 <nonleaf_call+0xa4>
+      d8:       68 d6 40 b9     ldr     w8, [x19, #212]
+      dc:       09 21 00 11     add     w9, w8, #8
+      e0:       6a 6e 40 f9     ldr     x10, [x19, #216]
+      e4:       49 01 00 b9     str     w9, [x10]
+      e8:       29 01 00 71     subs    w9, w9, #0
+      ec:       69 d2 00 b9     str     w9, [x19, #208]
+      f0:       ec 00 00 54     b.gt    #28 <nonleaf_call+0xd8>
+      f4:       01 00 00 14     b       #4 <nonleaf_call+0xc4>
+      f8:       a8 03 5b f8     ldur    x8, [x29, #-80]
+      fc:       69 d6 40 b9     ldr     w9, [x19, #212]
+     100:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     104:       68 66 00 f9     str     x8, [x19, #200]
+     108:       06 00 00 14     b       #24 <nonleaf_call+0xec>
+     10c:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     110:       09 21 00 91     add     x9, x8, #8
+     114:       a9 83 1a f8     stur    x9, [x29, #-88]
+     118:       68 66 00 f9     str     x8, [x19, #200]
+     11c:       01 00 00 14     b       #4 <nonleaf_call+0xec>
+     120:       68 66 40 f9     ldr     x8, [x19, #200]
+     124:       09 01 40 b9     ldr     w9, [x8]
+     128:       a9 83 1e b8     stur    w9, [x29, #-24]
+     12c:       a8 63 01 d1     sub     x8, x29, #88
+     130:       08 61 00 91     add     x8, x8, #24
+     134:       a9 03 5c b8     ldur    w9, [x29, #-64]
+     138:       ea 03 09 2a     mov     w10, w9
+     13c:       68 62 00 f9     str     x8, [x19, #192]
+     140:       6a be 00 b9     str     w10, [x19, #188]
+     144:       e9 01 f8 36     tbz     w9, #31, #60 <nonleaf_call+0x14c>
+     148:       01 00 00 14     b       #4 <nonleaf_call+0x118>
+     14c:       68 be 40 b9     ldr     w8, [x19, #188]
+     150:       09 21 00 11     add     w9, w8, #8
+     154:       6a 62 40 f9     ldr     x10, [x19, #192]
+     158:       49 01 00 b9     str     w9, [x10]
+     15c:       29 01 00 71     subs    w9, w9, #0
+     160:       69 ba 00 b9     str     w9, [x19, #184]
+     164:       ec 00 00 54     b.gt    #28 <nonleaf_call+0x14c>
+     168:       01 00 00 14     b       #4 <nonleaf_call+0x138>
+     16c:       a8 03 5b f8     ldur    x8, [x29, #-80]
+     170:       69 be 40 b9     ldr     w9, [x19, #188]
+     174:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     178:       68 5a 00 f9     str     x8, [x19, #176]
+     17c:       06 00 00 14     b       #24 <nonleaf_call+0x160>
+     180:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     184:       09 21 00 91     add     x9, x8, #8
+     188:       a9 83 1a f8     stur    x9, [x29, #-88]
+     18c:       68 5a 00 f9     str     x8, [x19, #176]
+     190:       01 00 00 14     b       #4 <nonleaf_call+0x160>
+     194:       68 5a 40 f9     ldr     x8, [x19, #176]
+     198:       09 01 40 b9     ldr     w9, [x8]
+     19c:       a9 43 1e b8     stur    w9, [x29, #-28]
+     1a0:       a8 63 01 d1     sub     x8, x29, #88
+     1a4:       08 61 00 91     add     x8, x8, #24
+     1a8:       a9 03 5c b8     ldur    w9, [x29, #-64]
+     1ac:       ea 03 09 2a     mov     w10, w9
+     1b0:       68 56 00 f9     str     x8, [x19, #168]
+     1b4:       6a a6 00 b9     str     w10, [x19, #164]
+     1b8:       e9 01 f8 36     tbz     w9, #31, #60 <nonleaf_call+0x1c0>
+     1bc:       01 00 00 14     b       #4 <nonleaf_call+0x18c>
+     1c0:       68 a6 40 b9     ldr     w8, [x19, #164]
+     1c4:       09 21 00 11     add     w9, w8, #8
+     1c8:       6a 56 40 f9     ldr     x10, [x19, #168]
+     1cc:       49 01 00 b9     str     w9, [x10]
+     1d0:       29 01 00 71     subs    w9, w9, #0
+     1d4:       69 a2 00 b9     str     w9, [x19, #160]
+     1d8:       ec 00 00 54     b.gt    #28 <nonleaf_call+0x1c0>
+     1dc:       01 00 00 14     b       #4 <nonleaf_call+0x1ac>
+     1e0:       a8 03 5b f8     ldur    x8, [x29, #-80]
+     1e4:       69 a6 40 b9     ldr     w9, [x19, #164]
+     1e8:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     1ec:       68 4e 00 f9     str     x8, [x19, #152]
+     1f0:       06 00 00 14     b       #24 <nonleaf_call+0x1d4>
+     1f4:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     1f8:       09 21 00 91     add     x9, x8, #8
+     1fc:       a9 83 1a f8     stur    x9, [x29, #-88]
+     200:       68 4e 00 f9     str     x8, [x19, #152]
+     204:       01 00 00 14     b       #4 <nonleaf_call+0x1d4>
+     208:       68 4e 40 f9     ldr     x8, [x19, #152]
+     20c:       09 01 40 b9     ldr     w9, [x8]
+     210:       a9 03 1e b8     stur    w9, [x29, #-32]
+     214:       a8 63 01 d1     sub     x8, x29, #88
+     218:       08 61 00 91     add     x8, x8, #24
+     21c:       a9 03 5c b8     ldur    w9, [x29, #-64]
+     220:       ea 03 09 2a     mov     w10, w9
+     224:       68 4a 00 f9     str     x8, [x19, #144]
+     228:       6a 8e 00 b9     str     w10, [x19, #140]
+     22c:       e9 01 f8 36     tbz     w9, #31, #60 <nonleaf_call+0x234>
+     230:       01 00 00 14     b       #4 <nonleaf_call+0x200>
+     234:       68 8e 40 b9     ldr     w8, [x19, #140]
+     238:       09 21 00 11     add     w9, w8, #8
+     23c:       6a 4a 40 f9     ldr     x10, [x19, #144]
+     240:       49 01 00 b9     str     w9, [x10]
+     244:       29 01 00 71     subs    w9, w9, #0
+     248:       69 8a 00 b9     str     w9, [x19, #136]
+     24c:       ec 00 00 54     b.gt    #28 <nonleaf_call+0x234>
+     250:       01 00 00 14     b       #4 <nonleaf_call+0x220>
+     254:       a8 03 5b f8     ldur    x8, [x29, #-80]
+     258:       69 8e 40 b9     ldr     w9, [x19, #140]
+     25c:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     260:       68 42 00 f9     str     x8, [x19, #128]
+     264:       06 00 00 14     b       #24 <nonleaf_call+0x248>
+     268:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     26c:       09 21 00 91     add     x9, x8, #8
+     270:       a9 83 1a f8     stur    x9, [x29, #-88]
+     274:       68 42 00 f9     str     x8, [x19, #128]
+     278:       01 00 00 14     b       #4 <nonleaf_call+0x248>
+     27c:       68 42 40 f9     ldr     x8, [x19, #128]
+     280:       09 01 40 b9     ldr     w9, [x8]
+     284:       a9 c3 1d b8     stur    w9, [x29, #-36]
+     288:       a8 63 01 d1     sub     x8, x29, #88
+     28c:       08 61 00 91     add     x8, x8, #24
+     290:       a9 03 5c b8     ldur    w9, [x29, #-64]
+     294:       ea 03 09 2a     mov     w10, w9
+     298:       68 3e 00 f9     str     x8, [x19, #120]
+     29c:       6a 76 00 b9     str     w10, [x19, #116]
+     2a0:       e9 01 f8 36     tbz     w9, #31, #60 <nonleaf_call+0x2a8>
+     2a4:       01 00 00 14     b       #4 <nonleaf_call+0x274>
+     2a8:       68 76 40 b9     ldr     w8, [x19, #116]
+     2ac:       09 21 00 11     add     w9, w8, #8
+     2b0:       6a 3e 40 f9     ldr     x10, [x19, #120]
+     2b4:       49 01 00 b9     str     w9, [x10]
+     2b8:       29 01 00 71     subs    w9, w9, #0
+     2bc:       69 72 00 b9     str     w9, [x19, #112]
+     2c0:       ec 00 00 54     b.gt    #28 <nonleaf_call+0x2a8>
+     2c4:       01 00 00 14     b       #4 <nonleaf_call+0x294>
+     2c8:       a8 03 5b f8     ldur    x8, [x29, #-80]
+     2cc:       69 76 40 b9     ldr     w9, [x19, #116]
+     2d0:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     2d4:       68 36 00 f9     str     x8, [x19, #104]
+     2d8:       06 00 00 14     b       #24 <nonleaf_call+0x2bc>
+     2dc:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     2e0:       09 21 00 91     add     x9, x8, #8
+     2e4:       a9 83 1a f8     stur    x9, [x29, #-88]
+     2e8:       68 36 00 f9     str     x8, [x19, #104]
+     2ec:       01 00 00 14     b       #4 <nonleaf_call+0x2bc>
+     2f0:       68 36 40 f9     ldr     x8, [x19, #104]
+     2f4:       09 01 40 b9     ldr     w9, [x8]
+     2f8:       a9 83 1d b8     stur    w9, [x29, #-40]
+     2fc:       a8 63 01 d1     sub     x8, x29, #88
+     300:       08 61 00 91     add     x8, x8, #24
+     304:       a9 03 5c b8     ldur    w9, [x29, #-64]
+     308:       ea 03 09 2a     mov     w10, w9
+     30c:       68 32 00 f9     str     x8, [x19, #96]
+     310:       6a 5e 00 b9     str     w10, [x19, #92]
+     314:       e9 01 f8 36     tbz     w9, #31, #60 <nonleaf_call+0x31c>
+     318:       01 00 00 14     b       #4 <nonleaf_call+0x2e8>
+     31c:       68 5e 40 b9     ldr     w8, [x19, #92]
+     320:       09 21 00 11     add     w9, w8, #8
+     324:       6a 32 40 f9     ldr     x10, [x19, #96]
+     328:       49 01 00 b9     str     w9, [x10]
+     32c:       29 01 00 71     subs    w9, w9, #0
+     330:       69 5a 00 b9     str     w9, [x19, #88]
+     334:       ec 00 00 54     b.gt    #28 <nonleaf_call+0x31c>
+     338:       01 00 00 14     b       #4 <nonleaf_call+0x308>
+     33c:       a8 03 5b f8     ldur    x8, [x29, #-80]
+     340:       69 5e 40 b9     ldr     w9, [x19, #92]
+     344:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     348:       68 2a 00 f9     str     x8, [x19, #80]
+     34c:       06 00 00 14     b       #24 <nonleaf_call+0x330>
+     350:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     354:       09 21 00 91     add     x9, x8, #8
+     358:       a9 83 1a f8     stur    x9, [x29, #-88]
+     35c:       68 2a 00 f9     str     x8, [x19, #80]
+     360:       01 00 00 14     b       #4 <nonleaf_call+0x330>
+     364:       68 2a 40 f9     ldr     x8, [x19, #80]
+     368:       09 01 40 b9     ldr     w9, [x8]
+     36c:       a9 43 1d b8     stur    w9, [x29, #-44]
+     370:       a8 63 01 d1     sub     x8, x29, #88
+     374:       08 61 00 91     add     x8, x8, #24
+     378:       a9 03 5c b8     ldur    w9, [x29, #-64]
+     37c:       ea 03 09 2a     mov     w10, w9
+     380:       68 26 00 f9     str     x8, [x19, #72]
+     384:       6a 46 00 b9     str     w10, [x19, #68]
+     388:       e9 01 f8 36     tbz     w9, #31, #60 <nonleaf_call+0x390>
+     38c:       01 00 00 14     b       #4 <nonleaf_call+0x35c>
+     390:       68 46 40 b9     ldr     w8, [x19, #68]
+     394:       09 21 00 11     add     w9, w8, #8
+     398:       6a 26 40 f9     ldr     x10, [x19, #72]
+     39c:       49 01 00 b9     str     w9, [x10]
+     3a0:       29 01 00 71     subs    w9, w9, #0
+     3a4:       69 42 00 b9     str     w9, [x19, #64]
+     3a8:       ec 00 00 54     b.gt    #28 <nonleaf_call+0x390>
+     3ac:       01 00 00 14     b       #4 <nonleaf_call+0x37c>
+     3b0:       a8 03 5b f8     ldur    x8, [x29, #-80]
+     3b4:       69 46 40 b9     ldr     w9, [x19, #68]
+     3b8:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     3bc:       68 1e 00 f9     str     x8, [x19, #56]
+     3c0:       06 00 00 14     b       #24 <nonleaf_call+0x3a4>
+     3c4:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     3c8:       09 21 00 91     add     x9, x8, #8
+     3cc:       a9 83 1a f8     stur    x9, [x29, #-88]
+     3d0:       68 1e 00 f9     str     x8, [x19, #56]
+     3d4:       01 00 00 14     b       #4 <nonleaf_call+0x3a4>
+     3d8:       68 1e 40 f9     ldr     x8, [x19, #56]
+     3dc:       09 01 40 b9     ldr     w9, [x8]
+     3e0:       a9 03 1d b8     stur    w9, [x29, #-48]
+     3e4:       a8 63 01 d1     sub     x8, x29, #88
+     3e8:       08 61 00 91     add     x8, x8, #24
+     3ec:       a9 03 5c b8     ldur    w9, [x29, #-64]
+     3f0:       ea 03 09 2a     mov     w10, w9
+     3f4:       68 1a 00 f9     str     x8, [x19, #48]
+     3f8:       6a 2e 00 b9     str     w10, [x19, #44]
+     3fc:       e9 01 f8 36     tbz     w9, #31, #60 <nonleaf_call+0x404>
+     400:       01 00 00 14     b       #4 <nonleaf_call+0x3d0>
+     404:       68 2e 40 b9     ldr     w8, [x19, #44]
+     408:       09 21 00 11     add     w9, w8, #8
+     40c:       6a 1a 40 f9     ldr     x10, [x19, #48]
+     410:       49 01 00 b9     str     w9, [x10]
+     414:       29 01 00 71     subs    w9, w9, #0
+     418:       69 2a 00 b9     str     w9, [x19, #40]
+     41c:       ec 00 00 54     b.gt    #28 <nonleaf_call+0x404>
+     420:       01 00 00 14     b       #4 <nonleaf_call+0x3f0>
+     424:       a8 03 5b f8     ldur    x8, [x29, #-80]
+     428:       69 2e 40 b9     ldr     w9, [x19, #44]
+     42c:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     430:       68 12 00 f9     str     x8, [x19, #32]
+     434:       06 00 00 14     b       #24 <nonleaf_call+0x418>
+     438:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     43c:       09 21 00 91     add     x9, x8, #8
+     440:       a9 83 1a f8     stur    x9, [x29, #-88]
+     444:       68 12 00 f9     str     x8, [x19, #32]
+     448:       01 00 00 14     b       #4 <nonleaf_call+0x418>
+     44c:       68 12 40 f9     ldr     x8, [x19, #32]
+     450:       09 01 40 b9     ldr     w9, [x8]
+     454:       a9 c3 1c b8     stur    w9, [x29, #-52]
+     458:       a8 63 01 d1     sub     x8, x29, #88
+     45c:       08 61 00 91     add     x8, x8, #24
+     460:       a9 03 5c b8     ldur    w9, [x29, #-64]
+     464:       ea 03 09 2a     mov     w10, w9
+     468:       68 0e 00 f9     str     x8, [x19, #24]
+     46c:       6a 16 00 b9     str     w10, [x19, #20]
+     470:       e9 01 f8 36     tbz     w9, #31, #60 <nonleaf_call+0x478>
+     474:       01 00 00 14     b       #4 <nonleaf_call+0x444>
+     478:       68 16 40 b9     ldr     w8, [x19, #20]
+     47c:       09 21 00 11     add     w9, w8, #8
+     480:       6a 0e 40 f9     ldr     x10, [x19, #24]
+     484:       49 01 00 b9     str     w9, [x10]
+     488:       29 01 00 71     subs    w9, w9, #0
+     48c:       69 12 00 b9     str     w9, [x19, #16]
+     490:       ec 00 00 54     b.gt    #28 <nonleaf_call+0x478>
+     494:       01 00 00 14     b       #4 <nonleaf_call+0x464>
+     498:       a8 03 5b f8     ldur    x8, [x29, #-80]
+     49c:       69 16 40 b9     ldr     w9, [x19, #20]
+     4a0:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     4a4:       68 06 00 f9     str     x8, [x19, #8]
+     4a8:       06 00 00 14     b       #24 <nonleaf_call+0x48c>
+     4ac:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     4b0:       09 21 00 91     add     x9, x8, #8
+     4b4:       a9 83 1a f8     stur    x9, [x29, #-88]
+     4b8:       68 06 00 f9     str     x8, [x19, #8]
+     4bc:       01 00 00 14     b       #4 <nonleaf_call+0x48c>
+     4c0:       68 06 40 f9     ldr     x8, [x19, #8]
+     4c4:       09 01 40 b9     ldr     w9, [x8]
+     4c8:       a9 83 1c b8     stur    w9, [x29, #-56]
+     4cc:       e8 03 00 91     mov     x8, sp
+     4d0:       0a 81 03 f1     subs    x10, x8, #224
+     4d4:       5f 01 00 91     mov     sp, x10
+     4d8:       89 09 80 52     mov     w9, #76
+     4dc:       09 01 12 38     sturb   w9, [x8, #-224]
+     4e0:       a0 83 5e b8     ldur    w0, [x29, #-24]
+     4e4:       a1 43 5e b8     ldur    w1, [x29, #-28]
+     4e8:       a2 03 5e b8     ldur    w2, [x29, #-32]
+     4ec:       a3 c3 5d b8     ldur    w3, [x29, #-36]
+     4f0:       a4 83 5d b8     ldur    w4, [x29, #-40]
+     4f4:       a5 43 5d b8     ldur    w5, [x29, #-44]
+     4f8:       a6 03 5d b8     ldur    w6, [x29, #-48]
+     4fc:       a7 c3 5c b8     ldur    w7, [x29, #-52]
+     500:       a9 83 5c b8     ldur    w9, [x29, #-56]
+     504:       ff 43 00 d1     sub     sp, sp, #16
+     508:       e8 03 00 91     mov     x8, sp
+     50c:       09 01 00 b9     str     w9, [x8]
+     510:       bc fe ff 97     bl      #-1296 <leaf_call>
+     514:       ff 43 00 91     add     sp, sp, #16
+     518:       bf 43 00 d1     sub     sp, x29, #16
+     51c:       fd 7b 41 a9     ldp     x29, x30, [sp, #16]
+     520:       fc 4f c2 a8     ldp     x28, x19, [sp], #32
+     524:       c0 03 5f d6     ret
+
+0000000000000528 main:
+     528:       ff c3 00 d1     sub     sp, sp, #48
+     52c:       fd 7b 02 a9     stp     x29, x30, [sp, #32]
+     530:       fd 83 00 91     add     x29, sp, #32
+     534:       08 00 80 52     mov     w8, #0
+     538:       e1 03 00 32     orr     w1, wzr, #0x1
+     53c:       e2 03 1f 32     orr     w2, wzr, #0x2
+     540:       e3 07 00 32     orr     w3, wzr, #0x3
+     544:       e4 03 1e 32     orr     w4, wzr, #0x4
+     548:       a5 00 80 52     mov     w5, #5
+     54c:       e6 07 1f 32     orr     w6, wzr, #0x6
+     550:       e7 0b 00 32     orr     w7, wzr, #0x7
+     554:       e9 03 1d 32     orr     w9, wzr, #0x8
+     558:       2a 01 80 52     mov     w10, #9
+     55c:       bf c3 1f b8     stur    wzr, [x29, #-4]
+     560:       e0 03 08 2a     mov     w0, w8
+     564:       eb 03 00 91     mov     x11, sp
+     568:       69 01 00 b9     str     w9, [x11]
+     56c:       eb 03 00 91     mov     x11, sp
+     570:       6a 09 00 b9     str     w10, [x11, #8]
+     574:       a8 83 1f b8     stur    w8, [x29, #-8]
+     578:       af fe ff 97     bl      #-1348 <nonleaf_call>
+     57c:       a0 83 5f b8     ldur    w0, [x29, #-8]
+     580:       fd 7b 42 a9     ldp     x29, x30, [sp, #32]
+     584:       ff c3 00 91     add     sp, sp, #48
+     588:       c0 03 5f d6     ret
+
+
+
+; ---------- for spilling with a float ---------->
+
+; #include <stdlib.h>
+; #include <stdarg.h>
+; 
+; void leaf_call(int b, int c, int d, int e, float f, int g, int h, int i, int j)
+; {
+; }
+; 
+; void nonleaf_call(int a, ...)
+; {
+;     int b,c,d,e,g,h,i,j;
+;     float f;
+;     va_list ap;
+;     va_start(ap, a);
+;     b = va_arg(ap, int);
+;     c = va_arg(ap, int);
+;     d = va_arg(ap, int);
+;     e = va_arg(ap, int);
+;     f = va_arg(ap, float);
+;     g = va_arg(ap, int);
+;     h = va_arg(ap, int);
+;     i = va_arg(ap, int);
+;     j = va_arg(ap, int);
+; 
+;     /* use some local data */
+;     *(char*)alloca(220) = 'L';
+;     leaf_call(b, c, d, e, f, g, h, i, j);
+; }
+; 
+; int main()
+; {
+;     nonleaf_call(0, 1, 2, 3, 4, 5.f, 6, 7, 8, 9);
+;     return 0;
+; }
+
+
+
+; output from freebsd-13.0_r348764-arm64 w/ clang 8.0.0
+
+0000000000000000 leaf_call:
+       0:       ff c3 00 d1     sub     sp, sp, #48
+       4:       e0 2f 00 b9     str     w0, [sp, #44]
+       8:       e1 2b 00 b9     str     w1, [sp, #40]
+       c:       e2 27 00 b9     str     w2, [sp, #36]
+      10:       e3 23 00 b9     str     w3, [sp, #32]
+      14:       e0 1f 00 bd     str     s0, [sp, #28]
+      18:       e4 1b 00 b9     str     w4, [sp, #24]
+      1c:       e5 17 00 b9     str     w5, [sp, #20]
+      20:       e6 13 00 b9     str     w6, [sp, #16]
+      24:       e7 0f 00 b9     str     w7, [sp, #12]
+      28:       ff c3 00 91     add     sp, sp, #48
+      2c:       c0 03 5f d6     ret
+
+0000000000000030 nonleaf_call:
+      30:       fc 4f be a9     stp     x28, x19, [sp, #-32]!
+      34:       fd 7b 01 a9     stp     x29, x30, [sp, #16]
+      38:       fd 43 00 91     add     x29, sp, #16
+      3c:       ff 83 07 d1     sub     sp, sp, #480
+      40:       f3 03 00 91     mov     x19, sp
+      44:       67 56 80 3d     str     q7, [x19, #336]
+      48:       66 52 80 3d     str     q6, [x19, #320]
+      4c:       65 4e 80 3d     str     q5, [x19, #304]
+      50:       64 4a 80 3d     str     q4, [x19, #288]
+      54:       63 46 80 3d     str     q3, [x19, #272]
+      58:       62 42 80 3d     str     q2, [x19, #256]
+      5c:       61 3e 80 3d     str     q1, [x19, #240]
+      60:       60 3a 80 3d     str     q0, [x19, #224]
+      64:       a7 03 1a f8     stur    x7, [x29, #-96]
+      68:       a6 83 19 f8     stur    x6, [x29, #-104]
+      6c:       a5 03 19 f8     stur    x5, [x29, #-112]
+      70:       a4 83 18 f8     stur    x4, [x29, #-120]
+      74:       a3 03 18 f8     stur    x3, [x29, #-128]
+      78:       a2 83 17 f8     stur    x2, [x29, #-136]
+      7c:       a1 03 17 f8     stur    x1, [x29, #-144]
+      80:       a0 c3 1e b8     stur    w0, [x29, #-20]
+      84:       e0 63 19 32     orr     w0, wzr, #0xffffff80
+      88:       a0 43 1c b8     stur    w0, [x29, #-60]
+      8c:       e0 06 80 12     mov     w0, #-56
+      90:       a0 03 1c b8     stur    w0, [x29, #-64]
+      94:       61 82 03 91     add     x1, x19, #224
+      98:       21 00 02 91     add     x1, x1, #128
+      9c:       a1 83 1b f8     stur    x1, [x29, #-72]
+      a0:       a1 43 02 d1     sub     x1, x29, #144
+      a4:       21 e0 00 91     add     x1, x1, #56
+      a8:       a1 03 1b f8     stur    x1, [x29, #-80]
+      ac:       a1 43 00 91     add     x1, x29, #16
+      b0:       a1 83 1a f8     stur    x1, [x29, #-88]
+      b4:       a1 63 01 d1     sub     x1, x29, #88
+      b8:       21 60 00 91     add     x1, x1, #24
+      bc:       a0 03 5c b8     ldur    w0, [x29, #-64]
+      c0:       e8 03 00 2a     mov     w8, w0
+      c4:       61 6e 00 f9     str     x1, [x19, #216]
+      c8:       68 d6 00 b9     str     w8, [x19, #212]
+      cc:       e0 01 f8 36     tbz     w0, #31, #60 <nonleaf_call+0xd8>
+      d0:       01 00 00 14     b       #4 <nonleaf_call+0xa4>
+      d4:       68 d6 40 b9     ldr     w8, [x19, #212]
+      d8:       09 21 00 11     add     w9, w8, #8
+      dc:       6a 6e 40 f9     ldr     x10, [x19, #216]
+      e0:       49 01 00 b9     str     w9, [x10]
+      e4:       29 01 00 71     subs    w9, w9, #0
+      e8:       69 d2 00 b9     str     w9, [x19, #208]
+      ec:       ec 00 00 54     b.gt    #28 <nonleaf_call+0xd8>
+      f0:       01 00 00 14     b       #4 <nonleaf_call+0xc4>
+      f4:       a8 03 5b f8     ldur    x8, [x29, #-80]
+      f8:       69 d6 40 b9     ldr     w9, [x19, #212]
+      fc:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     100:       68 66 00 f9     str     x8, [x19, #200]
+     104:       06 00 00 14     b       #24 <nonleaf_call+0xec>
+     108:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     10c:       09 21 00 91     add     x9, x8, #8
+     110:       a9 83 1a f8     stur    x9, [x29, #-88]
+     114:       68 66 00 f9     str     x8, [x19, #200]
+     118:       01 00 00 14     b       #4 <nonleaf_call+0xec>
+     11c:       68 66 40 f9     ldr     x8, [x19, #200]
+     120:       09 01 40 b9     ldr     w9, [x8]
+     124:       a9 83 1e b8     stur    w9, [x29, #-24]
+     128:       a8 63 01 d1     sub     x8, x29, #88
+     12c:       08 61 00 91     add     x8, x8, #24
+     130:       a9 03 5c b8     ldur    w9, [x29, #-64]
+     134:       ea 03 09 2a     mov     w10, w9
+     138:       68 62 00 f9     str     x8, [x19, #192]
+     13c:       6a be 00 b9     str     w10, [x19, #188]
+     140:       e9 01 f8 36     tbz     w9, #31, #60 <nonleaf_call+0x14c>
+     144:       01 00 00 14     b       #4 <nonleaf_call+0x118>
+     148:       68 be 40 b9     ldr     w8, [x19, #188]
+     14c:       09 21 00 11     add     w9, w8, #8
+     150:       6a 62 40 f9     ldr     x10, [x19, #192]
+     154:       49 01 00 b9     str     w9, [x10]
+     158:       29 01 00 71     subs    w9, w9, #0
+     15c:       69 ba 00 b9     str     w9, [x19, #184]
+     160:       ec 00 00 54     b.gt    #28 <nonleaf_call+0x14c>
+     164:       01 00 00 14     b       #4 <nonleaf_call+0x138>
+     168:       a8 03 5b f8     ldur    x8, [x29, #-80]
+     16c:       69 be 40 b9     ldr     w9, [x19, #188]
+     170:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     174:       68 5a 00 f9     str     x8, [x19, #176]
+     178:       06 00 00 14     b       #24 <nonleaf_call+0x160>
+     17c:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     180:       09 21 00 91     add     x9, x8, #8
+     184:       a9 83 1a f8     stur    x9, [x29, #-88]
+     188:       68 5a 00 f9     str     x8, [x19, #176]
+     18c:       01 00 00 14     b       #4 <nonleaf_call+0x160>
+     190:       68 5a 40 f9     ldr     x8, [x19, #176]
+     194:       09 01 40 b9     ldr     w9, [x8]
+     198:       a9 43 1e b8     stur    w9, [x29, #-28]
+     19c:       a8 63 01 d1     sub     x8, x29, #88
+     1a0:       08 61 00 91     add     x8, x8, #24
+     1a4:       a9 03 5c b8     ldur    w9, [x29, #-64]
+     1a8:       ea 03 09 2a     mov     w10, w9
+     1ac:       68 56 00 f9     str     x8, [x19, #168]
+     1b0:       6a a6 00 b9     str     w10, [x19, #164]
+     1b4:       e9 01 f8 36     tbz     w9, #31, #60 <nonleaf_call+0x1c0>
+     1b8:       01 00 00 14     b       #4 <nonleaf_call+0x18c>
+     1bc:       68 a6 40 b9     ldr     w8, [x19, #164]
+     1c0:       09 21 00 11     add     w9, w8, #8
+     1c4:       6a 56 40 f9     ldr     x10, [x19, #168]
+     1c8:       49 01 00 b9     str     w9, [x10]
+     1cc:       29 01 00 71     subs    w9, w9, #0
+     1d0:       69 a2 00 b9     str     w9, [x19, #160]
+     1d4:       ec 00 00 54     b.gt    #28 <nonleaf_call+0x1c0>
+     1d8:       01 00 00 14     b       #4 <nonleaf_call+0x1ac>
+     1dc:       a8 03 5b f8     ldur    x8, [x29, #-80]
+     1e0:       69 a6 40 b9     ldr     w9, [x19, #164]
+     1e4:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     1e8:       68 4e 00 f9     str     x8, [x19, #152]
+     1ec:       06 00 00 14     b       #24 <nonleaf_call+0x1d4>
+     1f0:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     1f4:       09 21 00 91     add     x9, x8, #8
+     1f8:       a9 83 1a f8     stur    x9, [x29, #-88]
+     1fc:       68 4e 00 f9     str     x8, [x19, #152]
+     200:       01 00 00 14     b       #4 <nonleaf_call+0x1d4>
+     204:       68 4e 40 f9     ldr     x8, [x19, #152]
+     208:       09 01 40 b9     ldr     w9, [x8]
+     20c:       a9 03 1e b8     stur    w9, [x29, #-32]
+     210:       a8 63 01 d1     sub     x8, x29, #88
+     214:       08 61 00 91     add     x8, x8, #24
+     218:       a9 03 5c b8     ldur    w9, [x29, #-64]
+     21c:       ea 03 09 2a     mov     w10, w9
+     220:       68 4a 00 f9     str     x8, [x19, #144]
+     224:       6a 8e 00 b9     str     w10, [x19, #140]
+     228:       e9 01 f8 36     tbz     w9, #31, #60 <nonleaf_call+0x234>
+     22c:       01 00 00 14     b       #4 <nonleaf_call+0x200>
+     230:       68 8e 40 b9     ldr     w8, [x19, #140]
+     234:       09 21 00 11     add     w9, w8, #8
+     238:       6a 4a 40 f9     ldr     x10, [x19, #144]
+     23c:       49 01 00 b9     str     w9, [x10]
+     240:       29 01 00 71     subs    w9, w9, #0
+     244:       69 8a 00 b9     str     w9, [x19, #136]
+     248:       ec 00 00 54     b.gt    #28 <nonleaf_call+0x234>
+     24c:       01 00 00 14     b       #4 <nonleaf_call+0x220>
+     250:       a8 03 5b f8     ldur    x8, [x29, #-80]
+     254:       69 8e 40 b9     ldr     w9, [x19, #140]
+     258:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     25c:       68 42 00 f9     str     x8, [x19, #128]
+     260:       06 00 00 14     b       #24 <nonleaf_call+0x248>
+     264:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     268:       09 21 00 91     add     x9, x8, #8
+     26c:       a9 83 1a f8     stur    x9, [x29, #-88]
+     270:       68 42 00 f9     str     x8, [x19, #128]
+     274:       01 00 00 14     b       #4 <nonleaf_call+0x248>
+     278:       68 42 40 f9     ldr     x8, [x19, #128]
+     27c:       09 01 40 b9     ldr     w9, [x8]
+     280:       a9 c3 1d b8     stur    w9, [x29, #-36]
+     284:       a8 63 01 d1     sub     x8, x29, #88
+     288:       08 71 00 91     add     x8, x8, #28
+     28c:       a9 43 5c b8     ldur    w9, [x29, #-60]
+     290:       ea 03 09 2a     mov     w10, w9
+     294:       68 3e 00 f9     str     x8, [x19, #120]
+     298:       6a 76 00 b9     str     w10, [x19, #116]
+     29c:       e9 01 f8 36     tbz     w9, #31, #60 <nonleaf_call+0x2a8>
+     2a0:       01 00 00 14     b       #4 <nonleaf_call+0x274>
+     2a4:       68 76 40 b9     ldr     w8, [x19, #116]
+     2a8:       09 41 00 11     add     w9, w8, #16
+     2ac:       6a 3e 40 f9     ldr     x10, [x19, #120]
+     2b0:       49 01 00 b9     str     w9, [x10]
+     2b4:       29 01 00 71     subs    w9, w9, #0
+     2b8:       69 72 00 b9     str     w9, [x19, #112]
+     2bc:       ec 00 00 54     b.gt    #28 <nonleaf_call+0x2a8>
+     2c0:       01 00 00 14     b       #4 <nonleaf_call+0x294>
+     2c4:       a8 83 5b f8     ldur    x8, [x29, #-72]
+     2c8:       69 76 40 b9     ldr     w9, [x19, #116]
+     2cc:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     2d0:       68 36 00 f9     str     x8, [x19, #104]
+     2d4:       06 00 00 14     b       #24 <nonleaf_call+0x2bc>
+     2d8:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     2dc:       09 21 00 91     add     x9, x8, #8
+     2e0:       a9 83 1a f8     stur    x9, [x29, #-88]
+     2e4:       68 36 00 f9     str     x8, [x19, #104]
+     2e8:       01 00 00 14     b       #4 <nonleaf_call+0x2bc>
+     2ec:       68 36 40 f9     ldr     x8, [x19, #104]
+     2f0:       00 01 40 bd     ldr     s0, [x8]
+     2f4:       a0 83 1c bc     stur    s0, [x29, #-56]
+     2f8:       a8 63 01 d1     sub     x8, x29, #88
+     2fc:       08 61 00 91     add     x8, x8, #24
+     300:       a9 03 5c b8     ldur    w9, [x29, #-64]
+     304:       ea 03 09 2a     mov     w10, w9
+     308:       68 32 00 f9     str     x8, [x19, #96]
+     30c:       6a 5e 00 b9     str     w10, [x19, #92]
+     310:       e9 01 f8 36     tbz     w9, #31, #60 <nonleaf_call+0x31c>
+     314:       01 00 00 14     b       #4 <nonleaf_call+0x2e8>
+     318:       68 5e 40 b9     ldr     w8, [x19, #92]
+     31c:       09 21 00 11     add     w9, w8, #8
+     320:       6a 32 40 f9     ldr     x10, [x19, #96]
+     324:       49 01 00 b9     str     w9, [x10]
+     328:       29 01 00 71     subs    w9, w9, #0
+     32c:       69 5a 00 b9     str     w9, [x19, #88]
+     330:       ec 00 00 54     b.gt    #28 <nonleaf_call+0x31c>
+     334:       01 00 00 14     b       #4 <nonleaf_call+0x308>
+     338:       a8 03 5b f8     ldur    x8, [x29, #-80]
+     33c:       69 5e 40 b9     ldr     w9, [x19, #92]
+     340:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     344:       68 2a 00 f9     str     x8, [x19, #80]
+     348:       06 00 00 14     b       #24 <nonleaf_call+0x330>
+     34c:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     350:       09 21 00 91     add     x9, x8, #8
+     354:       a9 83 1a f8     stur    x9, [x29, #-88]
+     358:       68 2a 00 f9     str     x8, [x19, #80]
+     35c:       01 00 00 14     b       #4 <nonleaf_call+0x330>
+     360:       68 2a 40 f9     ldr     x8, [x19, #80]
+     364:       09 01 40 b9     ldr     w9, [x8]
+     368:       a9 83 1d b8     stur    w9, [x29, #-40]
+     36c:       a8 63 01 d1     sub     x8, x29, #88
+     370:       08 61 00 91     add     x8, x8, #24
+     374:       a9 03 5c b8     ldur    w9, [x29, #-64]
+     378:       ea 03 09 2a     mov     w10, w9
+     37c:       68 26 00 f9     str     x8, [x19, #72]
+     380:       6a 46 00 b9     str     w10, [x19, #68]
+     384:       e9 01 f8 36     tbz     w9, #31, #60 <nonleaf_call+0x390>
+     388:       01 00 00 14     b       #4 <nonleaf_call+0x35c>
+     38c:       68 46 40 b9     ldr     w8, [x19, #68]
+     390:       09 21 00 11     add     w9, w8, #8
+     394:       6a 26 40 f9     ldr     x10, [x19, #72]
+     398:       49 01 00 b9     str     w9, [x10]
+     39c:       29 01 00 71     subs    w9, w9, #0
+     3a0:       69 42 00 b9     str     w9, [x19, #64]
+     3a4:       ec 00 00 54     b.gt    #28 <nonleaf_call+0x390>
+     3a8:       01 00 00 14     b       #4 <nonleaf_call+0x37c>
+     3ac:       a8 03 5b f8     ldur    x8, [x29, #-80]
+     3b0:       69 46 40 b9     ldr     w9, [x19, #68]
+     3b4:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     3b8:       68 1e 00 f9     str     x8, [x19, #56]
+     3bc:       06 00 00 14     b       #24 <nonleaf_call+0x3a4>
+     3c0:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     3c4:       09 21 00 91     add     x9, x8, #8
+     3c8:       a9 83 1a f8     stur    x9, [x29, #-88]
+     3cc:       68 1e 00 f9     str     x8, [x19, #56]
+     3d0:       01 00 00 14     b       #4 <nonleaf_call+0x3a4>
+     3d4:       68 1e 40 f9     ldr     x8, [x19, #56]
+     3d8:       09 01 40 b9     ldr     w9, [x8]
+     3dc:       a9 43 1d b8     stur    w9, [x29, #-44]
+     3e0:       a8 63 01 d1     sub     x8, x29, #88
+     3e4:       08 61 00 91     add     x8, x8, #24
+     3e8:       a9 03 5c b8     ldur    w9, [x29, #-64]
+     3ec:       ea 03 09 2a     mov     w10, w9
+     3f0:       68 1a 00 f9     str     x8, [x19, #48]
+     3f4:       6a 2e 00 b9     str     w10, [x19, #44]
+     3f8:       e9 01 f8 36     tbz     w9, #31, #60 <nonleaf_call+0x404>
+     3fc:       01 00 00 14     b       #4 <nonleaf_call+0x3d0>
+     400:       68 2e 40 b9     ldr     w8, [x19, #44]
+     404:       09 21 00 11     add     w9, w8, #8
+     408:       6a 1a 40 f9     ldr     x10, [x19, #48]
+     40c:       49 01 00 b9     str     w9, [x10]
+     410:       29 01 00 71     subs    w9, w9, #0
+     414:       69 2a 00 b9     str     w9, [x19, #40]
+     418:       ec 00 00 54     b.gt    #28 <nonleaf_call+0x404>
+     41c:       01 00 00 14     b       #4 <nonleaf_call+0x3f0>
+     420:       a8 03 5b f8     ldur    x8, [x29, #-80]
+     424:       69 2e 40 b9     ldr     w9, [x19, #44]
+     428:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     42c:       68 12 00 f9     str     x8, [x19, #32]
+     430:       06 00 00 14     b       #24 <nonleaf_call+0x418>
+     434:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     438:       09 21 00 91     add     x9, x8, #8
+     43c:       a9 83 1a f8     stur    x9, [x29, #-88]
+     440:       68 12 00 f9     str     x8, [x19, #32]
+     444:       01 00 00 14     b       #4 <nonleaf_call+0x418>
+     448:       68 12 40 f9     ldr     x8, [x19, #32]
+     44c:       09 01 40 b9     ldr     w9, [x8]
+     450:       a9 03 1d b8     stur    w9, [x29, #-48]
+     454:       a8 63 01 d1     sub     x8, x29, #88
+     458:       08 61 00 91     add     x8, x8, #24
+     45c:       a9 03 5c b8     ldur    w9, [x29, #-64]
+     460:       ea 03 09 2a     mov     w10, w9
+     464:       68 0e 00 f9     str     x8, [x19, #24]
+     468:       6a 16 00 b9     str     w10, [x19, #20]
+     46c:       e9 01 f8 36     tbz     w9, #31, #60 <nonleaf_call+0x478>
+     470:       01 00 00 14     b       #4 <nonleaf_call+0x444>
+     474:       68 16 40 b9     ldr     w8, [x19, #20]
+     478:       09 21 00 11     add     w9, w8, #8
+     47c:       6a 0e 40 f9     ldr     x10, [x19, #24]
+     480:       49 01 00 b9     str     w9, [x10]
+     484:       29 01 00 71     subs    w9, w9, #0
+     488:       69 12 00 b9     str     w9, [x19, #16]
+     48c:       ec 00 00 54     b.gt    #28 <nonleaf_call+0x478>
+     490:       01 00 00 14     b       #4 <nonleaf_call+0x464>
+     494:       a8 03 5b f8     ldur    x8, [x29, #-80]
+     498:       69 16 40 b9     ldr     w9, [x19, #20]
+     49c:       08 c1 29 8b     add     x8, x8, w9, sxtw
+     4a0:       68 06 00 f9     str     x8, [x19, #8]
+     4a4:       06 00 00 14     b       #24 <nonleaf_call+0x48c>
+     4a8:       a8 83 5a f8     ldur    x8, [x29, #-88]
+     4ac:       09 21 00 91     add     x9, x8, #8
+     4b0:       a9 83 1a f8     stur    x9, [x29, #-88]
+     4b4:       68 06 00 f9     str     x8, [x19, #8]
+     4b8:       01 00 00 14     b       #4 <nonleaf_call+0x48c>
+     4bc:       68 06 40 f9     ldr     x8, [x19, #8]
+     4c0:       09 01 40 b9     ldr     w9, [x8]
+     4c4:       a9 c3 1c b8     stur    w9, [x29, #-52]
+     4c8:       e8 03 00 91     mov     x8, sp
+     4cc:       0a 81 03 f1     subs    x10, x8, #224
+     4d0:       5f 01 00 91     mov     sp, x10
+     4d4:       89 09 80 52     mov     w9, #76
+     4d8:       09 01 12 38     sturb   w9, [x8, #-224]
+     4dc:       a0 83 5e b8     ldur    w0, [x29, #-24]
+     4e0:       a1 43 5e b8     ldur    w1, [x29, #-28]
+     4e4:       a2 03 5e b8     ldur    w2, [x29, #-32]
+     4e8:       a3 c3 5d b8     ldur    w3, [x29, #-36]
+     4ec:       a0 83 5c bc     ldur    s0, [x29, #-56]
+     4f0:       a4 83 5d b8     ldur    w4, [x29, #-40]
+     4f4:       a5 43 5d b8     ldur    w5, [x29, #-44]
+     4f8:       a6 03 5d b8     ldur    w6, [x29, #-48]
+     4fc:       a7 c3 5c b8     ldur    w7, [x29, #-52]
+     500:       c0 fe ff 97     bl      #-1280 <leaf_call>
+     504:       bf 43 00 d1     sub     sp, x29, #16
+     508:       fd 7b 41 a9     ldp     x29, x30, [sp, #16]
+     50c:       fc 4f c2 a8     ldp     x28, x19, [sp], #32
+     510:       c0 03 5f d6     ret
+
+0000000000000514 main:
+     514:       ff 83 00 d1     sub     sp, sp, #32
+     518:       fd 7b 01 a9     stp     x29, x30, [sp, #16]
+     51c:       fd 43 00 91     add     x29, sp, #16
+     520:       08 00 80 52     mov     w8, #0
+     524:       e1 03 00 32     orr     w1, wzr, #0x1
+     528:       e2 03 1f 32     orr     w2, wzr, #0x2
+     52c:       e3 07 00 32     orr     w3, wzr, #0x3
+     530:       e4 03 1e 32     orr     w4, wzr, #0x4
+     534:       89 02 e8 d2     mov     x9, #4617315517961601024
+     538:       20 01 67 9e     fmov    d0, x9
+     53c:       e5 07 1f 32     orr     w5, wzr, #0x6
+     540:       e6 0b 00 32     orr     w6, wzr, #0x7
+     544:       e7 03 1d 32     orr     w7, wzr, #0x8
+     548:       2a 01 80 52     mov     w10, #9
+     54c:       bf c3 1f b8     stur    wzr, [x29, #-4]
+     550:       e0 03 08 2a     mov     w0, w8
+     554:       e9 03 00 91     mov     x9, sp
+     558:       2a 01 00 b9     str     w10, [x9]
+     55c:       e8 0b 00 b9     str     w8, [sp, #8]
+     560:       b4 fe ff 97     bl      #-1328 <nonleaf_call>
+     564:       e0 0b 40 b9     ldr     w0, [sp, #8]
+     568:       fd 7b 41 a9     ldp     x29, x30, [sp, #16]
+     56c:       ff 83 00 91     add     sp, sp, #32
+     570:       c0 03 5f d6     ret
+
+; vim: ft=asm68k
+

@@ -1,0 +1,161 @@
+; #include <stdlib.h>
+; 
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h)
+; {
+; }
+; 
+; void nonleaf_call(int a, int b, int c, int d, int e, int f, int g, int h)
+; {
+; 	/* use some local data */
+; 	*(char*)alloca(10) = 'L';
+; 	leaf_call(b, c, d, e, f, g, h);
+; }
+; 
+; int main()
+; {
+; 	nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7);
+; 	return 0;
+; }
+
+
+
+; output from freebsd-12.0-x64 w/ clang 6.0.1
+
+0000000000000000 <leaf_call>:
+   0:   55                      push   %rbp
+   1:   48 89 e5                mov    %rsp,%rbp
+   4:   8b 45 10                mov    0x10(%rbp),%eax
+   7:   89 7d fc                mov    %edi,-0x4(%rbp)
+   a:   89 75 f8                mov    %esi,-0x8(%rbp)
+   d:   89 55 f4                mov    %edx,-0xc(%rbp)
+  10:   89 4d f0                mov    %ecx,-0x10(%rbp)
+  13:   44 89 45 ec             mov    %r8d,-0x14(%rbp)
+  17:   44 89 4d e8             mov    %r9d,-0x18(%rbp)
+  1b:   89 45 e4                mov    %eax,-0x1c(%rbp)
+  1e:   5d                      pop    %rbp
+  1f:   c3                      retq
+
+0000000000000020 <nonleaf_call>:
+  20:   55                      push   %rbp                 ; |
+  21:   48 89 e5                mov    %rsp,%rbp            ; | prolog
+  24:   48 83 ec 40             sub    $0x40,%rsp           ; |           open frame *with* static alloca() size included
+  28:   8b 45 18                mov    0x18(%rbp),%eax      ; unsure... get stack param from prev frame into some scratch reg... but why? see below @@@
+  2b:   44 8b 55 10             mov    0x10(%rbp),%r10d     ; unsure... get stack param from prev frame into some scratch reg... but why? see below @@@
+  2f:   89 7d fc                mov    %edi,-0x4(%rbp)      ; in arg 0 -> local area (as temp store)
+  32:   89 75 f8                mov    %esi,-0x8(%rbp)      ; in arg 1 -> local area (as temp store)
+  35:   89 55 f4                mov    %edx,-0xc(%rbp)      ; in arg 2 -> local area (as temp store)
+  38:   89 4d f0                mov    %ecx,-0x10(%rbp)     ; in arg 3 -> local area (as temp store)
+  3b:   44 89 45 ec             mov    %r8d,-0x14(%rbp)     ; in arg 4 -> local area (as temp store)
+  3f:   44 89 4d e8             mov    %r9d,-0x18(%rbp)     ; in arg 5 -> local area (as temp store)
+  43:   c6 45 d0 4c             movb   $0x4c,-0x30(%rbp)    ; 'L' -> local area (of alloca()'d space)
+  47:   8b 7d f8                mov    -0x8(%rbp),%edi      ; arg 0
+  4a:   8b 75 f4                mov    -0xc(%rbp),%esi      ; arg 1
+  4d:   8b 55 f0                mov    -0x10(%rbp),%edx     ; arg 2
+  50:   8b 4d ec                mov    -0x14(%rbp),%ecx     ; arg 3
+  53:   44 8b 45 e8             mov    -0x18(%rbp),%r8d     ; arg 4
+  57:   44 8b 4d 10             mov    0x10(%rbp),%r9d      ; arg 5 (fetched from prev frame's param area - behind return addr on 16b aligned stack)
+  5b:   44 8b 5d 18             mov    0x18(%rbp),%r11d     ; arg 6 (fetched from prev frame's param area), and ...
+  5f:   44 89 1c 24             mov    %r11d,(%rsp)         ; ... "pushed" onto stack
+  63:   44 89 55 cc             mov    %r10d,-0x34(%rbp)    ; unsure... write something to local area @@@?
+  67:   89 45 c8                mov    %eax,-0x38(%rbp)     ; unsure... write something to local area @@@?
+  6a:   e8 91 ff ff ff          callq  0 <leaf_call>        ; push return addr and call
+  6f:   48 83 c4 40             add    $0x40,%rsp           ; |
+  73:   5d                      pop    %rbp                 ; | epilog
+  74:   c3                      retq                        ; |
+  75:   66 66 2e 0f 1f 84 00    nopw   %cs:0x0(%rax,%rax,1) ; garbage data
+  7c:   00 00 00 00                                         ; garbage data
+
+0000000000000080 <main>:
+  80:   55                      push   %rbp                 ; |
+  81:   48 89 e5                mov    %rsp,%rbp            ; | prolog
+  84:   48 83 ec 20             sub    $0x20,%rsp           ; |
+  88:   31 ff                   xor    %edi,%edi            ; arg 0
+  8a:   be 01 00 00 00          mov    $0x1,%esi            ; arg 1
+  8f:   ba 02 00 00 00          mov    $0x2,%edx            ; arg 2
+  94:   b9 03 00 00 00          mov    $0x3,%ecx            ; arg 3
+  99:   41 b8 04 00 00 00       mov    $0x4,%r8d            ; arg 4
+  9f:   41 b9 05 00 00 00       mov    $0x5,%r9d            ; arg 5
+  a5:   b8 06 00 00 00          mov    $0x6,%eax            ; unsure... see below @@@?
+  aa:   41 ba 07 00 00 00       mov    $0x7,%r10d           ; unsure... see below @@@?
+  b0:   c7 45 fc 00 00 00 00    movl   $0x0,-0x4(%rbp)      ; unsure... write 0 to local area @@@?
+  b7:   c7 04 24 06 00 00 00    movl   $0x6,(%rsp)          ; "push" arg6 onto stack
+  be:   c7 44 24 08 07 00 00 00 movl   $0x7,0x8(%rsp)       ; "push" arg7 onto stack
+  c6:   44 89 55 f8             mov    %r10d,-0x8(%rbp)     ; unsure... write something to local area @@@?
+  ca:   89 45 f4                mov    %eax,-0xc(%rbp)      ; unsure... write something to local area @@@?
+  cd:   e8 4e ff ff ff          callq  20 <nonleaf_call>    ; push return addr and call
+  d2:   31 c0                   xor    %eax,%eax            ; return value
+  d4:   48 83 c4 20             add    $0x20,%rsp           ; |
+  d8:   5d                      pop    %rbp                 ; | epilog
+  d9:   c3                      retq                        ; |
+
+
+
+; output from arch_linux-2011.08.19-x64 w/ gcc 4.6.1 (w/ alloca(220) instead of 10)
+
+0000000000000000 <leaf_call>:
+   0:   55                      push   %rbp
+   1:   48 89 e5                mov    %rsp,%rbp
+   4:   89 7d fc                mov    %edi,-0x4(%rbp)
+   7:   89 75 f8                mov    %esi,-0x8(%rbp)
+   a:   89 55 f4                mov    %edx,-0xc(%rbp)
+   d:   89 4d f0                mov    %ecx,-0x10(%rbp)
+  10:   44 89 45 ec             mov    %r8d,-0x14(%rbp)
+  14:   44 89 4d e8             mov    %r9d,-0x18(%rbp)
+  18:   5d                      pop    %rbp
+  19:   c3                      retq
+
+000000000000001a <nonleaf_call>:
+  1a:   55                      push   %rbp
+  1b:   48 89 e5                mov    %rsp,%rbp
+  1e:   48 83 ec 30             sub    $0x30,%rsp
+  22:   89 7d fc                mov    %edi,-0x4(%rbp)
+  25:   89 75 f8                mov    %esi,-0x8(%rbp)
+  28:   89 55 f4                mov    %edx,-0xc(%rbp)
+  2b:   89 4d f0                mov    %ecx,-0x10(%rbp)
+  2e:   44 89 45 ec             mov    %r8d,-0x14(%rbp)
+  32:   44 89 4d e8             mov    %r9d,-0x18(%rbp)
+  36:   b8 10 00 00 00          mov    $0x10,%eax
+  3b:   48 83 e8 01             sub    $0x1,%rax
+  3f:   48 05 eb 00 00 00       add    $0xeb,%rax
+  45:   48 c7 45 e0 10 00 00 00 movq   $0x10,-0x20(%rbp)
+  4d:   ba 00 00 00 00          mov    $0x0,%edx
+  52:   48 f7 75 e0             divq   -0x20(%rbp)
+  56:   48 6b c0 10             imul   $0x10,%rax,%rax
+  5a:   48 29 c4                sub    %rax,%rsp
+  5d:   48 8d 44 24 08          lea    0x8(%rsp),%rax
+  62:   48 83 c0 0f             add    $0xf,%rax
+  66:   48 c1 e8 04             shr    $0x4,%rax
+  6a:   48 c1 e0 04             shl    $0x4,%rax
+  6e:   c6 00 4c                movb   $0x4c,(%rax)
+  71:   44 8b 45 e8             mov    -0x18(%rbp),%r8d
+  75:   8b 4d ec                mov    -0x14(%rbp),%ecx
+  78:   8b 55 f0                mov    -0x10(%rbp),%edx
+  7b:   8b 75 f4                mov    -0xc(%rbp),%esi
+  7e:   8b 45 f8                mov    -0x8(%rbp),%eax
+  81:   8b 7d 18                mov    0x18(%rbp),%edi
+  84:   89 3c 24                mov    %edi,(%rsp)
+  87:   44 8b 4d 10             mov    0x10(%rbp),%r9d
+  8b:   89 c7                   mov    %eax,%edi
+  8d:   e8 00 00 00 00          callq  92 <nonleaf_call+0x78>
+  92:   c9                      leaveq
+  93:   c3                      retq
+
+0000000000000094 <main>:
+  94:   55                      push   %rbp
+  95:   48 89 e5                mov    %rsp,%rbp
+  98:   48 83 ec 10             sub    $0x10,%rsp
+  9c:   c7 44 24 08 07 00 00 00 movl   $0x7,0x8(%rsp)
+  a4:   c7 04 24 06 00 00 00    movl   $0x6,(%rsp)
+  ab:   41 b9 05 00 00 00       mov    $0x5,%r9d
+  b1:   41 b8 04 00 00 00       mov    $0x4,%r8d
+  b7:   b9 03 00 00 00          mov    $0x3,%ecx
+  bc:   ba 02 00 00 00          mov    $0x2,%edx
+  c1:   be 01 00 00 00          mov    $0x1,%esi
+  c6:   bf 00 00 00 00          mov    $0x0,%edi
+  cb:   e8 00 00 00 00          callq  d0 <main+0x3c>
+  d0:   b8 00 00 00 00          mov    $0x0,%eax
+  d5:   c9                      leaveq
+  d6:   c3                      retq
+
+; vim: ft=asm
+

@@ -1,0 +1,91 @@
+; #include <stdlib.h>
+; 
+; void leaf_call(int b, int c, int d, int e, int f, int g, int h)
+; {
+; }
+; 
+; void nonleaf_call(int a, int b, int c, int d, int e, int f, int g, int h)
+; {
+; 	/* use some local data */
+; 	*(char*)alloca(220) = 'L';
+; 	leaf_call(b, c, d, e, f, g, h);
+; }
+; 
+; int main()
+; {
+; 	nonleaf_call(0, 1, 2, 3, 4, 5, 6, 7);
+; 	return 0;
+; }
+
+
+
+; output from raspbian-wheezy_20120715-raspberrypi w/ gcc 4.6.3
+; note: this is arm mode, -mthumb says "sorry, unimplemented: Thumb-1 hard-float VFP ABI" (however, -msoft-float -mthumb is supported)
+;       not sure about thumb-2 as there is no flag for it, but I don't think this exists if using the VFP
+
+00000000 <leaf_call>:
+   0:   e52db004        push    {fp} ; (str fp, [sp, #-4]!)
+   4:   e28db000        add     fp, sp, #0
+   8:   e24dd014        sub     sp, sp, #20
+   c:   e50b0008        str     r0, [fp, #-8]
+  10:   e50b100c        str     r1, [fp, #-12]
+  14:   e50b2010        str     r2, [fp, #-16]
+  18:   e50b3014        str     r3, [fp, #-20]
+  1c:   e28bd000        add     sp, fp, #0
+  20:   e8bd0800        pop     {fp}
+  24:   e12fff1e        bx      lr
+
+00000028 <nonleaf_call>:
+;spill here, if needed: push    {r0, r1, r2, r3}  ; |         just for ref, if present this would change below offsets
+  28:   e92d4800        push    {fp, lr}          ; |
+  2c:   e28db004        add     fp, sp, #4        ; | prolog
+  30:   e24dd020        sub     sp, sp, #32       ; |
+  34:   e50b0008        str     r0, [fp, #-8]     ; in arg 0 -> temp space in local area
+  38:   e50b100c        str     r1, [fp, #-12]    ; in arg 1 -> temp space in local area
+  3c:   e50b2010        str     r2, [fp, #-16]    ; in arg 2 -> temp space in local area
+  40:   e50b3014        str     r3, [fp, #-20]    ; in arg 3 -> temp space in local area
+  44:   e24dd0e8        sub     sp, sp, #232      ; alloca(220) - with padding to guarantee alignment
+  48:   e28d3010        add     r3, sp, #16       ; |
+  4c:   e2833007        add     r3, r3, #7        ; |
+  50:   e1a031a3        lsr     r3, r3, #3        ; | start of (aligned) alloca()'d memory -> r3, leaving room at top of stack for param area
+  54:   e1a03183        lsl     r3, r3, #3        ; |
+  58:   e3a0204c        mov     r2, #76           ; 'L' -> r2, and ...
+  5c:   e5c32000        strb    r2, [r3]          ; ... store in local area (of alloca()'d space) 
+  60:   e59b3008        ldr     r3, [fp, #8]      ; arg 4 (fetched from prev frame's param area), and ...
+  64:   e58d3000        str     r3, [sp]          ; ... "pushed" onto stack
+  68:   e59b300c        ldr     r3, [fp, #12]     ; arg 5 (fetched from prev frame's param area), and ...
+  6c:   e58d3004        str     r3, [sp, #4]      ; ... "pushed" onto stack
+  70:   e59b3010        ldr     r3, [fp, #16]     ; arg 6 (fetched from prev frame's param area), and ...
+  74:   e58d3008        str     r3, [sp, #8]      ; ... "pushed" onto stack
+  78:   e51b000c        ldr     r0, [fp, #-12]    ; arg 0
+  7c:   e51b1010        ldr     r1, [fp, #-16]    ; arg 1
+  80:   e51b2014        ldr     r2, [fp, #-20]    ; arg 2
+  84:   e59b3004        ldr     r3, [fp, #4]      ; arg 3 (fetched from prev frame's param area)
+  88:   ebfffffe        bl      0 <leaf_call>     ; return address -> r14/lr, and call
+  8c:   e24bd004        sub     sp, fp, #4        ; |
+  90:   e8bd8800        pop     {fp, pc}          ; | epilog
+
+00000094 <main>:
+  94:   e92d4800        push    {fp, lr}          ; |
+  98:   e28db004        add     fp, sp, #4        ; | prolog
+  9c:   e24dd010        sub     sp, sp, #16       ; |
+  a0:   e3a03004        mov     r3, #4            ; arg 4, and ...
+  a4:   e58d3000        str     r3, [sp]          ; ... "pushed" onto stack
+  a8:   e3a03005        mov     r3, #5            ; arg 5, and ...
+  ac:   e58d3004        str     r3, [sp, #4]      ; ... "pushed" onto stack
+  b0:   e3a03006        mov     r3, #6            ; arg 6, and ...
+  b4:   e58d3008        str     r3, [sp, #8]      ; ... "pushed" onto stack
+  b8:   e3a03007        mov     r3, #7            ; arg 7, and ...
+  bc:   e58d300c        str     r3, [sp, #12]     ; ... "pushed" onto stack
+  c0:   e3a00000        mov     r0, #0            ; arg 0
+  c4:   e3a01001        mov     r1, #1            ; arg 1
+  c8:   e3a02002        mov     r2, #2            ; arg 2
+  cc:   e3a03003        mov     r3, #3            ; arg 3
+  d0:   ebfffffe        bl      28 <nonleaf_call> ; return address -> r14/lr, and call
+  d4:   e3a03000        mov     r3, #0            ; return value (0) via r3 ... (a bit unoptimal)
+  d8:   e1a00003        mov     r0, r3            ; ... to r0
+  dc:   e24bd004        sub     sp, fp, #4        ; |
+  e0:   e8bd8800        pop     {fp, pc}          ; | epilog
+
+; vim: ft=asm68k
+
