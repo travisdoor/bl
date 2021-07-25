@@ -121,9 +121,13 @@ LLVMMetadataRef llvm_di_create_global_variable(LLVMDIBuilderRef builder_ref,
 LLVMMetadataRef llvm_di_create_global_variable_expression(LLVMDIBuilderRef builder_ref,
                                                           LLVMMetadataRef  scope_ref,
                                                           const char *     name,
+                                                          const char *     linkage_name,
                                                           LLVMMetadataRef  file_ref,
                                                           unsigned         line,
                                                           LLVMMetadataRef  type_ref);
+
+void llvm_global_variable_add_debug_info(LLVMValueRef    global_variable,
+                                         LLVMMetadataRef di_global_variable_expr);
 
 LLVMMetadataRef llvm_di_replace_temporary(LLVMDIBuilderRef builder_ref,
                                           LLVMMetadataRef  temp_ref,
@@ -217,7 +221,8 @@ void llvm_di_set_subprogram(LLVMValueRef fn_ref, LLVMMetadataRef subprogram_ref)
 
 void llvm_di_finalize_subprogram(LLVMDIBuilderRef builder_ref, LLVMMetadataRef subprogram_ref);
 
-void llvm_di_insert_declare(LLVMDIBuilderRef  builder_ref,
+void llvm_di_insert_declare(LLVMDIBuilderRef  di_builder_ref,
+                            LLVMBuilderRef    builder_ref,
                             LLVMValueRef      storage_ref,
                             LLVMMetadataRef   var_info_ref,
                             unsigned          line,

@@ -249,6 +249,11 @@ static void llvm_init(void)
     LLVMInitializeX86TargetMC();
     LLVMInitializeX86AsmPrinter();
 
+    LLVMInitializeAArch64Target();
+    LLVMInitializeAArch64TargetInfo();
+    LLVMInitializeAArch64TargetMC();
+    LLVMInitializeAArch64AsmPrinter();
+
     llvm_initialized = true;
 }
 

@@ -2173,7 +2173,7 @@ MirType *create_type_struct_dynarr(Context *cnt, ID *id, MirType *elem_ptr_type)
 
     { // .allocator
         tmp =
-            create_member(cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_ALLOCATOR], 3, elem_ptr_type);
+            create_member(cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_ALLOCATOR], 3, cnt->builtin_types->t_u8_ptr);
 
         tsa_push_MemberPtr(members, tmp);
         provide_builtin_member(cnt, body_scope, tmp);

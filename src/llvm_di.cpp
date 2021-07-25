@@ -202,7 +202,13 @@ void llvm_di_set_current_location(LLVMBuilderRef  builder_ref,
 {
     auto builder = CAST(IRBuilder<> *)(builder_ref);
     auto scope   = CAST(DIScope *)(scope_ref);
+
+#if LLVM_VERSION_MAJOR >= 12
+    builder->SetCurrentDebugLocation(
+        DILocation::get(builder->getContext(), line, col, scope, nullptr, implicit));
+#else
     builder->SetCurrentDebugLocation(DebugLoc::get(line, col, scope, nullptr, implicit));
+#endif
 }
 
 void llvm_di_reset_current_location(LLVMBuilderRef builder_ref)
@@ -317,16 +323,16 @@ LLVMMetadataRef llvm_di_create_struct_type(LLVMDIBuilderRef builder_ref,
                                            u64              elemsc)
 {
     auto builder = CAST(DIBuilder *)(builder_ref);
-    auto type =
-        builder->createStructType(CAST(DIScope *)(scope_ref),
-                                  {name, strlen(name)},
-                                  CAST(DIFile *)(file_ref),
-                                  line,
-                                  size_in_bits,
-                                  align_in_bits,
-                                  DINode::DIFlags::FlagZero,
-                                  nullptr,
-                                  builder->getOrCreateArray({CAST(Metadata **)(elems), (size_t)elemsc}));
+    auto type    = builder->createStructType(
+        CAST(DIScope *)(scope_ref),
+        {name, strlen(name)},
+        CAST(DIFile *)(file_ref),
+        line,
+        size_in_bits,
+        align_in_bits,
+        DINode::DIFlags::FlagZero,
+        nullptr,
+        builder->getOrCreateArray({CAST(Metadata **)(elems), (size_t)elemsc}));
 
     return CAST(LLVMMetadataRef)(type);
 }
@@ -342,15 +348,15 @@ LLVMMetadataRef llvm_di_create_union_type(LLVMDIBuilderRef builder_ref,
                                           u64              elemsc)
 {
     auto builder = CAST(DIBuilder *)(builder_ref);
-    auto type =
-        builder->createUnionType(CAST(DIScope *)(scope_ref),
-                                 {name, strlen(name)},
-                                 CAST(DIFile *)(file_ref),
-                                 line,
-                                 size_in_bits,
-                                 align_in_bits,
-                                 DINode::DIFlags::FlagZero,
-                                 builder->getOrCreateArray({CAST(Metadata **)(elems), (size_t)elemsc}));
+    auto type    = builder->createUnionType(
+        CAST(DIScope *)(scope_ref),
+        {name, strlen(name)},
+        CAST(DIFile *)(file_ref),
+        line,
+        size_in_bits,
+        align_in_bits,
+        DINode::DIFlags::FlagZero,
+        builder->getOrCreateArray({CAST(Metadata **)(elems), (size_t)elemsc}));
 
     return CAST(LLVMMetadataRef)(type);
 }
@@ -413,42 +419,39 @@ LLVMMetadataRef llvm_di_create_global_variable(LLVMDIBuilderRef builder_ref,
                                                unsigned         line,
                                                LLVMMetadataRef  type_ref)
 {
-
     auto builder = CAST(DIBuilder *)(builder_ref);
-
-    auto var = builder->createTempGlobalVariableFwdDecl(CAST(DIScope *)(scope_ref),
+    auto var     = builder->createTempGlobalVariableFwdDecl(CAST(DIScope *)(scope_ref),
                                                         {name, strlen(name)},
                                                         {name, strlen(name)},
                                                         CAST(DIFile *)(file_ref),
                                                         line,
                                                         CAST(DIType *)(type_ref),
                                                         false);
-
     return CAST(LLVMMetadataRef)(var);
 }
 
 LLVMMetadataRef llvm_di_create_global_variable_expression(LLVMDIBuilderRef builder_ref,
                                                           LLVMMetadataRef  scope_ref,
                                                           const char *     name,
+                                                          const char *     linkage_name,
                                                           LLVMMetadataRef  file_ref,
                                                           unsigned         line,
                                                           LLVMMetadataRef  type_ref)
 {
     auto builder = CAST(DIBuilder *)(builder_ref);
-
 #if LLVM_VERSION_MAJOR >= 10
     auto var = builder->createGlobalVariableExpression(CAST(DIScope *)(scope_ref),
                                                        {name, strlen(name)},
-                                                       {name, strlen(name)},
+                                                       {linkage_name, strlen(linkage_name)},
                                                        CAST(DIFile *)(file_ref),
                                                        line,
                                                        CAST(DIType *)(type_ref),
                                                        true,
-                                                       false);
+                                                       true);
 #else
     auto var = builder->createGlobalVariableExpression(CAST(DIScope *)(scope_ref),
                                                        {name, strlen(name)},
-                                                       {name, strlen(name)},
+                                                       {linkage_name, strlen(linkage_name)},
                                                        CAST(DIFile *)(file_ref),
                                                        line,
                                                        CAST(DIType *)(type_ref),
@@ -459,7 +462,16 @@ LLVMMetadataRef llvm_di_create_global_variable_expression(LLVMDIBuilderRef build
     return CAST(LLVMMetadataRef)(var);
 }
 
-void llvm_di_insert_declare(LLVMDIBuilderRef  builder_ref,
+void llvm_global_variable_add_debug_info(LLVMValueRef    global_variable,
+                                         LLVMMetadataRef di_global_variable_expr)
+{
+    auto gv  = CAST(GlobalVariable *)(global_variable);
+    auto gve = CAST(DIGlobalVariableExpression *)(di_global_variable_expr);
+    gv->addDebugInfo(gve);
+}
+
+void llvm_di_insert_declare(LLVMDIBuilderRef  di_builder_ref,
+                            LLVMBuilderRef    builder_ref,
                             LLVMValueRef      storage_ref,
                             LLVMMetadataRef   var_info_ref,
                             unsigned          line,
@@ -467,11 +479,22 @@ void llvm_di_insert_declare(LLVMDIBuilderRef  builder_ref,
                             LLVMMetadataRef   scope_ref,
                             LLVMBasicBlockRef bb_ref)
 {
-    auto builder = CAST(DIBuilder *)(builder_ref);
+    auto di_builder = CAST(DIBuilder *)(di_builder_ref);
 
-    builder->insertDeclare(CAST(Value *)(storage_ref),
-                           CAST(DILocalVariable *)(var_info_ref),
-                           builder->createExpression(),
-                           DebugLoc::get(line, col, CAST(DIScope *)(scope_ref)),
-                           CAST(BasicBlock *)(bb_ref));
+#if LLVM_VERSION_MAJOR >= 12
+    auto builder = CAST(IRBuilder<> *)(builder_ref);
+    di_builder->insertDeclare(
+        CAST(Value *)(storage_ref),
+        CAST(DILocalVariable *)(var_info_ref),
+        di_builder->createExpression(),
+        DILocation::get(builder->getContext(), line, col, CAST(DIScope *)(scope_ref)),
+        CAST(BasicBlock *)(bb_ref));
+#else
+    (void)builder_ref;
+    di_builder->insertDeclare(CAST(Value *)(storage_ref),
+                              CAST(DILocalVariable *)(var_info_ref),
+                              di_builder->createExpression(),
+                              DebugLoc::get(line, col, CAST(DIScope *)(scope_ref)),
+                              CAST(BasicBlock *)(bb_ref));
+#endif
 }

@@ -122,7 +122,7 @@ __os_start :: fn (argc: s64, argv: **u8, _: **u8) #entry {
     command_line_arguments.len = args.len;
 
     if is_allocated {
-        command_line_arguments.ptr = auto _default_allocator(AllocOp.Allocate, sizeof(string) * auto args.len);
+        command_line_arguments.ptr = auto c_malloc(sizeof(string) * auto args.len);
         if command_line_arguments.ptr == null { __os_abort(); }
     } else {
         command_line_arguments.ptr = tmp.ptr;
@@ -135,7 +135,7 @@ __os_start :: fn (argc: s64, argv: **u8, _: **u8) #entry {
     out :: cast(s32) main();
 
     if is_allocated {
-        _default_allocator(AllocOp.Free, 0, auto command_line_arguments.ptr);
+        c_free(auto command_line_arguments.ptr);
     }
 
     c_exit(out);

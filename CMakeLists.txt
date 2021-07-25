@@ -48,8 +48,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/bin")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/bin")
 set(BL_CONF_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.conf)
 
-
-add_subdirectory(deps/dyncall-1.0)
+add_subdirectory(deps/dyncall-1.2)
 add_subdirectory(deps/tlib-c)
 
 # deps
@@ -210,7 +209,7 @@ set(SOURCE_FILES
 add_definitions(${LLVM_DEFINITIONS})
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
 
-llvm_map_components_to_libnames(LLVM_LIBS core support X86 passes)
+llvm_map_components_to_libnames(LLVM_LIBS core support X86 AArch64 passes)
 
 if(MSVC)
   target_link_libraries(blc PUBLIC shlwapi DbgHelp)
@@ -255,7 +254,8 @@ target_link_libraries(
   blc
   PRIVATE dynload_s
           dyncall_s
-          dyncallback_s tlib
+          dyncallback_s
+          tlib
           ${CMAKE_DL_LIBS}
           #LLVM) #use only LLVM to link dynamically
           ${LLVM_LIBS})
@@ -263,9 +263,9 @@ target_link_libraries(
 target_include_directories(
   blc
   PRIVATE src
-          deps/dyncall-1.0/dyncall
-          deps/dyncall-1.0/dynload
-          deps/dyncall-1.0/dyncallback
+          deps/dyncall-1.2/dyncall
+          deps/dyncall-1.2/dynload
+          deps/dyncall-1.2/dyncallback
           deps/tlib-c/include
           deps/tracy-${TRACY_VER}
           ${LLVM_INCLUDE_DIRS})

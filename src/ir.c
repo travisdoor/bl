@@ -178,7 +178,7 @@ static State        emit_instr_vargs(Context *cnt, MirInstrVArgs *vargs);
 static State        emit_instr_toany(Context *cnt, MirInstrToAny *toany);
 static State        emit_instr_call_loc(Context *cnt, MirInstrCallLoc *loc);
 
-static LLVMValueRef emit_global_var_proto(Context *cnt, MirVar *var, bool schedule_full_generation);
+static LLVMValueRef emit_global_var_proto(Context *cnt, MirVar *var);
 static LLVMValueRef emit_fn_proto(Context *cnt, MirFn *fn, bool schedule_full_generation);
 static void         emit_allocas(Context *cnt, MirFn *fn);
 static void         emit_incomplete(Context *cnt);
@@ -682,19 +682,17 @@ void emit_DI_var(Context *cnt, MirVar *var)
     BL_ASSERT(!var->is_implicit && "Attempt to generate debug info for implicit variable!");
     Location *location = var->decl_node->location;
     BL_ASSERT(location);
-
-    // Global variable
     if (var->is_global) {
         LLVMMetadataRef llvm_scope = DI_unit_init(cnt, location->unit);
         LLVMMetadataRef llvm_meta =
             llvm_di_create_global_variable_expression(cnt->llvm_di_builder,
                                                       llvm_scope,
                                                       var->id->str,
+                                                      var->linkage_name,
                                                       llvm_scope,
                                                       (unsigned)location->line,
                                                       DI_type_init(cnt, var->value.type));
-
-        LLVMGlobalSetMetadata(var->llvm_value, 0, llvm_meta);
+        llvm_global_variable_add_debug_info(var->llvm_value, llvm_meta);
     } else { // Local variable
         BL_ASSERT(location->unit->llvm_file_meta);
         LLVMMetadataRef llvm_scope = DI_scope_init(cnt, var->decl_scope);
@@ -713,6 +711,7 @@ void emit_DI_var(Context *cnt, MirVar *var)
                                          DI_type_init(cnt, var->value.type));
 
         llvm_di_insert_declare(cnt->llvm_di_builder,
+                               cnt->llvm_builder,
                                var->llvm_value,
                                llvm_meta,
                                (unsigned)location->line,
@@ -723,16 +722,14 @@ void emit_DI_var(Context *cnt, MirVar *var)
     }
 }
 
-LLVMValueRef emit_global_var_proto(Context *cnt, MirVar *var, bool schedule_full_generation)
+LLVMValueRef emit_global_var_proto(Context *cnt, MirVar *var)
 {
     BL_ASSERT(var);
     if (var->llvm_value) return var->llvm_value;
-    if (schedule_full_generation) {
-        // Push initializer.
-        MirInstr *instr_init = var->initializer_block;
-        BL_ASSERT(instr_init && "Missing initializer block reference for IR global variable!");
-        push_back(cnt, instr_init);
-    }
+    // Push initializer.
+    MirInstr *instr_init = var->initializer_block;
+    BL_ASSERT(instr_init && "Missing initializer block reference for IR global variable!");
+    push_back(cnt, instr_init);
     LLVMTypeRef llvm_type = var->value.type->llvm_type;
     var->llvm_value       = LLVMAddGlobal(cnt->llvm_module, llvm_type, var->linkage_name);
     LLVMSetGlobalConstant(var->llvm_value, !var->is_mutable);
@@ -742,6 +739,8 @@ LLVMValueRef emit_global_var_proto(Context *cnt, MirVar *var, bool schedule_full
     if (IS_FLAG(var->flags, FLAG_THREAD_LOCAL)) {
         LLVMSetThreadLocalMode(var->llvm_value, LLVMGeneralDynamicTLSModel);
     }
+    const bool emit_DI = cnt->is_debug_mode && !var->is_implicit && var->decl_node;
+    if (emit_DI) emit_DI_var(cnt, var);
     return var->llvm_value;
 }
 
@@ -867,7 +866,7 @@ State emit_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     case SCOPE_ENTRY_VAR: {
         MirVar *var = entry->data.var;
         if (var->is_global) {
-            ref->base.llvm_value = emit_global_var_proto(cnt, var, true);
+            ref->base.llvm_value = emit_global_var_proto(cnt, var);
         } else {
             ref->base.llvm_value = var->llvm_value;
         }
@@ -890,7 +889,7 @@ State emit_instr_decl_direct_ref(Context UNUSED(*cnt), MirInstrDeclDirectRef *re
     MirVar *var = ((MirInstrDeclVar *)ref->ref)->var;
     BL_ASSERT(var);
     if (var->is_global) {
-        ref->base.llvm_value = emit_global_var_proto(cnt, var, true);
+        ref->base.llvm_value = emit_global_var_proto(cnt, var);
     } else {
         ref->base.llvm_value = var->llvm_value;
     }
@@ -2538,27 +2537,23 @@ State emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
     // Skip when we should not generate LLVM representation
     if (!mir_type_has_llvm_representation(var->value.type)) return STATE_PASSED;
-    if (var->is_global) {
-        // Global variables use set-initializer instruction for initialization.
-        emit_global_var_proto(cnt, var, false);
-        if (emit_DI) emit_DI_var(cnt, var);
-    } else { // local variable
-        BL_ASSERT(var->llvm_value);
-        if (decl->init) {
-            // There is special handling for initialization via compound instruction
-            if (decl->init->kind == MIR_INSTR_COMPOUND) {
-                emit_instr_compound(cnt, var->llvm_value, (MirInstrCompound *)decl->init);
-            } else if (decl->init->kind == MIR_INSTR_ARG) {
-                emit_instr_arg(cnt, var, (MirInstrArg *)decl->init);
-            } else {
-                // use simple store
-                LLVMValueRef llvm_init = decl->init->llvm_value;
-                BL_ASSERT(llvm_init);
-                LLVMBuildStore(cnt->llvm_builder, llvm_init, var->llvm_value);
-            }
+    BL_ASSERT(!var->is_global &&
+              "Global variable IR is supposed to lazy generated only as needed!");
+    BL_ASSERT(var->llvm_value);
+    if (decl->init) {
+        // There is special handling for initialization via compound instruction
+        if (decl->init->kind == MIR_INSTR_COMPOUND) {
+            emit_instr_compound(cnt, var->llvm_value, (MirInstrCompound *)decl->init);
+        } else if (decl->init->kind == MIR_INSTR_ARG) {
+            emit_instr_arg(cnt, var, (MirInstrArg *)decl->init);
+        } else {
+            // use simple store
+            LLVMValueRef llvm_init = decl->init->llvm_value;
+            BL_ASSERT(llvm_init);
+            LLVMBuildStore(cnt->llvm_builder, llvm_init, var->llvm_value);
         }
-        if (emit_DI) emit_DI_var(cnt, var);
     }
+    if (emit_DI) emit_DI_var(cnt, var);
     return STATE_PASSED;
 }
 

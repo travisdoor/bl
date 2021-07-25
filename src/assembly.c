@@ -109,6 +109,12 @@ static void llvm_init(Assembly *assembly)
     if (LLVMGetTargetFromTriple(triple, &llvm_target, &error_msg)) {
         builder_error("Cannot get target with error: %s!", error_msg);
         LLVMDisposeMessage(error_msg);
+        builder_error("Available targets are:");
+        LLVMTargetRef target = LLVMGetFirstTarget();
+        while (target) {
+            builder_error("  %s", LLVMGetTargetName(target));
+            target = LLVMGetNextTarget(target);
+        }
         BL_ABORT("Cannot get target");
     }
     LLVMContextRef llvm_context = LLVMContextCreate();
