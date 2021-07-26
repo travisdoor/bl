@@ -14,7 +14,7 @@ main :: fn () s32 {
         // Do something here with allocated memory.
         ^int_ptr = i;
 
-        // There is no need to free allocated memoty here.        
+        // There is no need to free allocated memory here.
     }
     return 0;
 }

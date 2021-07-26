@@ -34,7 +34,7 @@
 //! is needed; i.e. to build up file path from individual path components. The allocated memory
 //! is valid until :ref:`temporary_reset` or :ref:`temporary_release` is called.
 //!
-//! The allocator makes all allocations in bigger preallocated block; i.e. when N bytes are requested 
+//! The allocator makes all allocations in bigger preallocated block; i.e. when allocation is requested 
 //! for the first time, new block is allocated with predefined size ``DEFAULT_BLOCK_SIZE``, all following 
 //! allocations use the preallocated block if there is enough space. If the block is full and new 
 //! requested allocation does not fit, another block is allocated (with size slightly bigger then previous one).
