@@ -10,11 +10,13 @@ Change array API.
 Fix crash on unnamed function argument RTTI generation.
 Fix crash when invlid type of default argument value is provided by user.
 Fix invalid conversion of enum variants to Any.
-Fix DI information using Code View.
+Fix DI locations using Code View.
 Fix generation of unused LLVM IR code paths.
 Test cases are no longer reported as unused during compilation.
 Add compilation of Tracy profiler on Windows in baker development tool.
 Fix DWARF generation for local anonymous functions.
+Fix DI Generation of global variables using CodeView.
+Update dyncall to version 1.2 (due to experimental support of M1 Macs).
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

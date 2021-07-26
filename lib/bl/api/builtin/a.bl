@@ -36,12 +36,21 @@
 //! 
 //! Compiler builtins are automatically loaded into every assembly.
 
+// @INCOMPLETE OSKind for assembly is now set directly based on loaded os-depend file, 
+//             it should be rather set from the compiler based on target OS set in build settings.
 /// Describe supported platforms.
 OSKind :: enum u32 {
     Unknown :: 0;
     Windows :: 1 << 1;
     Linux   :: 1 << 2;
     MacOS   :: 1 << 3;
+}
+
+// @INCOMPLETE this is not used yet.
+Architecture :: enum u32 {
+    Unknown :: 0;
+    x86 :: 1;
+    AArch64 :: 2;
 }
 
 /// TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 

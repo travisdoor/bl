@@ -1964,8 +1964,6 @@ State emit_instr_load(Context *cnt, MirInstrLoad *load)
     // global
     // constants are referenced by value, so we need to fetch initializer instead of
     // load. */
-    // if (mir_is_global(&load->base) && mir_is_comptime(&load->base)) {
-    // if (mir_is_comptime(&load->base) && LLVMIsAGlobalObject(llvm_src)) {
     if (mir_is_global(load->src)) {
         // When we try to create comptime constant composition and load value,
         // initializer is needed. But loaded value could be in incomplete state
@@ -2537,6 +2535,9 @@ State emit_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 
     // Skip when we should not generate LLVM representation
     if (!mir_type_has_llvm_representation(var->value.type)) return STATE_PASSED;
+    // Since we introduced lazy generation of IR instructions (mainly to reduce size of generated
+    // binary and also to speed up compilation times) we do not generated global variables as they
+    // come in global scope, but only in case they are used. (see also emit_global_var_proto).
     BL_ASSERT(!var->is_global &&
               "Global variable IR is supposed to lazy generated only as needed!");
     BL_ASSERT(var->llvm_value);

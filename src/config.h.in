@@ -88,9 +88,9 @@
 
 #if BL_PLATFORM_WIN
 #define ENVPATH_SEPARATOR ';'
-#define MSVC_CRT "msvcrt"
-#define KERNEL32 "Kernel32"
-#define SHLWAPI "Shlwapi"
+#define MSVC_CRT "MSVCRT.dll"
+#define KERNEL32 "Kernel32.dll"
+#define SHLWAPI "Shlwapi.dll"
 #else
 #define ENVPATH_SEPARATOR ':'
 #endif

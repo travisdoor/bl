@@ -1,6 +1,8 @@
 #import "std/debug_allocator"
 #import "std/tmp_allocator"
 
+GGG := 10;
+
 main :: fn () s32 {
     DebugAllocator.init();
     defer DebugAllocator.terminate();
@@ -18,5 +20,5 @@ main :: fn () s32 {
     r :: slice_range(arr, 2);
     print_err("This is warnign: %.", 10);
 
-    return 0;
+    return GGG;
 }
