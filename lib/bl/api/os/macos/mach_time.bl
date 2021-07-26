@@ -1,0 +1,7 @@
+_MachTimebaseInfo :: struct {
+    numer: c_uint;
+    denom: c_uint;
+}
+
+_mach_timebase_info :: fn (info: *_MachTimebaseInfo) c_int #extern "mach_timebase_info";
+_mach_absolute_time :: fn () c_uint #extern "mach_absolute_time";

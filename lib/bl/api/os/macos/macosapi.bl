@@ -164,4 +164,3 @@ _FSEventStreamStop :: fn (streamRef: _FSEventStreamRef) #extern "FSEventStreamSt
 _FSEventStreamInvalidate :: fn (streamRef: _FSEventStreamRef) #extern "FSEventStreamInvalidate";
 _FSEventStreamRelease :: fn (streamRef: _FSEventStreamRef) #extern "FSEventStreamRelease";
 _NSGetExecutablePath :: fn (buf: *c_char, bufsize: *c_uint) c_int #extern "_NSGetExecutablePath";
-_mach_absolute_time :: fn () u64 #extern "mach_absolute_time";

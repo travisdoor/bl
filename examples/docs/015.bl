@@ -8,12 +8,13 @@ main :: fn () s32 {
          // Reset the allocator here (all previous alocation are invalid since now).
         defer temporary_reset();
         
-        // Allocate memory using temporary allocator
+        // Allocate memory using temporary allocator.
         int_ptr := cast(*s32) allocate_memory(&temporary_allocator, sizeof(s32));
+        
+        // Do something here with allocated memory.
         ^int_ptr = i;
 
         // There is no need to free allocated memoty here.        
-        os_sleep_ms(100.0);
     }
     return 0;
 }

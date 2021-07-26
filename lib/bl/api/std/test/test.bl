@@ -111,6 +111,20 @@ test_neq :: fn {
     };
 }
 
+/// Test whether §`v1` is greater than `v2`
+test_gt :: fn (v1: ?T, v2: T, loc := #call_location) {
+    if v1 > v2 { return; }
+    print_err("Value '%' is expected to be grater than '%'.", v1, v2);
+    stop(loc);
+}
+
+/// Test whether `v1` is less than `v2`
+test_lt :: fn (v1: ?T, v2: T, loc := #call_location) {
+    if v1 < v2 { return; }
+    print_err("Value '%' is expected to be less than '%'.", v1, v2);
+    stop(loc);
+}
+
 /// Test whether `v` value is `true`.
 test_true :: fn (v: bool, loc := #call_location) {
     if v { return; }

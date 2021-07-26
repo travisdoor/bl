@@ -30,6 +30,7 @@
 #load "macos/macosapi.bl"
 #load "macos/errno.bl"
 #load "macos/dirent.bl"
+#load "macos/mach_time.bl"
 #load "posix/unistd.bl"
 #load "posix/signal.bl"
 #load "posix/error.bl"
@@ -45,9 +46,7 @@ OS_STDERR :: C_STDERR;
 
 OS_PATH_MAX :: _DARWIN_MAXPATHLEN;
 
-/*
- * Platform depend C types compatible with C ABI.
- */
+// Platform depend C types compatible with C ABI.
 c_char      :: s8;
 c_uchar     :: u8;
 c_short     :: s16;
@@ -67,8 +66,10 @@ os_sleep_ms :: fn (ms: f64) {
 }
 
 os_tick_ms :: fn () f64 #inline {
-    t :: cast(f64) _mach_absolute_time();
-    return t * 0.00001;
+    convfact: _MachTimebaseInfo;
+    _mach_timebase_info(&convfact);
+    tick :: _mach_absolute_time();
+    return cast(f64)((tick * convfact.numer) / (convfact.denom * 1000000));
 }
 
 os_get_exec_path :: fn () string {
