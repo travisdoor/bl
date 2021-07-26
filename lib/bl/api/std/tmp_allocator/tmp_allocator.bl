@@ -39,12 +39,15 @@
 //! allocations use the preallocated block if there is enough space. If the block is full and new 
 //! requested allocation does not fit, another block is allocated (with size slightly bigger then previous one).
 //! When :ref:`temporary_reset` is called, allocator will release all smaller allocated blocks and keeps
-//! only biggest one (for later use).
+//! only the biggest one for later use.
 //!
 //! Example
 //! -------
 //! .. literalinclude:: /examples/docs/015.bl
 //!    :language: bl
+//!
+//! .. note:: Temporary allocator has it's internal context allocated per-thread, so the explicit release
+//!           of the allocated memory at the thread worker exit is mandatory.
 //!
 //! .. seealso:: :ref:`tprint`.
 
