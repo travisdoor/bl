@@ -1,0 +1,19 @@
+#import "std/tmp_allocator"
+
+main :: fn () s32 {
+    // Release allocated memory at the end of the scope.
+    defer temporary_release();
+    
+    loop i := 0; i < 1000; i += 1 {
+         // Reset the allocator here (all previous alocation are invalid since now).
+        defer temporary_reset();
+        
+        // Allocate memory using temporary allocator
+        int_ptr := cast(*s32) allocate_memory(&temporary_allocator, sizeof(s32));
+        ^int_ptr = i;
+
+        // There is no need to free allocated memoty here.        
+        os_sleep_ms(100.0);
+    }
+    return 0;
+}
