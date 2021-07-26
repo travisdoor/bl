@@ -1,0 +1,20 @@
+#load "std/utils.bl"
+
+#private
+test_random_number_range_1 :: fn () #test {
+    random_seed_time();
+    loop i := 0; i < 1000; i += 1 {
+        r :: random_number();
+        test_true(r >= 0);
+        test_true(r <= 1);
+    }
+}
+
+test_random_number_range_2 :: fn () #test {
+    random_seed_time();
+    loop i := 0; i < 1000; i += 1 {
+        r :: random_number(1, 99);
+        test_gt(r, 0);
+        test_lt(r, 100);
+    }
+}

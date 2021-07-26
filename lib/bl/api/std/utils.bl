@@ -71,3 +71,16 @@ env_set :: fn (var: string) #inline {
     c_putenv(auto var.ptr);
 }
 
+/// Sets seed for :ref:`Math.rand` or utility function :ref:`random_number` based
+/// on current system tick time.
+random_seed_time :: fn () #inline {
+    Math.srand(auto os_tick_ms());
+}
+
+/// Generates random number in specified range <min, max> using standart
+/// libc rand generator.
+/// Random number generator seed is supposed to be set by :ref:`random_seed_time`
+/// or by :ref:`Math.srand` call.
+random_number :: fn (min := 0, max := 1) s32 #inline {
+    return Math.rand() % (max + 1 - min) + min;
+}

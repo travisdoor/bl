@@ -38,6 +38,7 @@
 #load "error.test.bl"
 #load "scope.test.bl"
 #load "polymorph.test.bl"
+#load "utils.test.bl"
 /////////////////////////////////////////////////////
 
 main :: fn () s32 {

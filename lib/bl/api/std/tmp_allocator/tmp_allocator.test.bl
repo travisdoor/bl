@@ -85,3 +85,16 @@ reuse_allocation_1 :: fn () #test {
     temporary_release();
     test_eq(temporary_allocated_bytes(), 0);
 }
+
+test_continuous_random_allocation :: fn () #test {
+     defer temporary_release();
+     test_eq(temporary_allocated_bytes(), 0);
+     required_bytes : usize = 0;
+     loop i := 0; i < 10000; i += 1 {
+         allocate_bytes :: random_number(1, 1024);
+         required_bytes += auto allocate_bytes;
+         ptr :: allocate_memory(&temporary_allocator, required_bytes);
+         test_not_null(ptr);
+     }       
+     test_gt(temporary_allocated_bytes(), required_bytes);
+}
