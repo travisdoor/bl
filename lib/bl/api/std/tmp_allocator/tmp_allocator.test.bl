@@ -90,7 +90,7 @@ test_continuous_random_allocation :: fn () #test {
      defer temporary_release();
      test_eq(temporary_allocated_bytes(), 0);
      required_bytes : usize = 0;
-     loop i := 0; i < 10000; i += 1 {
+     loop i := 0; i < 100; i += 1 {
          allocate_bytes :: random_number(1, 1024);
          required_bytes += auto allocate_bytes;
          ptr :: allocate_memory(&temporary_allocator, required_bytes);
