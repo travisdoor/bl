@@ -434,7 +434,7 @@ LLVMMetadataRef DI_type_init(Context *cnt, MirType *type)
             LLVMMetadataRef llvm_variant =
                 llvm_di_create_enum_variant(cnt->llvm_di_builder,
                                             variant->id->str,
-                                            MIR_CEV_READ_AS(u64, variant->value),
+                                            variant->value2,
                                             !base_type->data.integer.is_signed);
 
             tsa_push_LLVMMetadata(&llvm_elems, llvm_variant);
@@ -1008,7 +1008,7 @@ LLVMValueRef rtti_emit_enum_variant(Context *cnt, MirVariant *variant)
     MirType *value_type = mir_get_struct_elem_type(rtti_type, 1);
     tsa_push_LLVMValue(&llvm_vals,
                        LLVMConstInt(get_type(cnt, value_type),
-                                    MIR_CEV_READ_AS(u64, variant->value),
+                                    variant->value2,
                                     value_type->data.integer.is_signed));
 
     LLVMValueRef llvm_result =

@@ -71,6 +71,39 @@ typedef enum {
     ASSERT_ALWAYS_DISABLED = 2,
 } AssertMode;
 
+typedef enum {
+    ARCH_UNKNOWN = 0,
+    ARCH_X86_64  = 1,
+    ARCH_AARCH64 = 2,
+} Arch;
+
+typedef enum {
+    VENDOR_UNKNOWN = 0,
+    VENDOR_PC      = 1,
+    VENDOR_APPLE   = 2,
+} Vendor;
+
+typedef enum {
+    OS_UNKNOWN = 0,
+    OS_WINDOWS = 1,
+    OS_LINUX   = 2,
+    OS_DARWIN  = 3,
+} OperatingSystem;
+
+typedef enum {
+    ENV_UNKNOWN = 0,
+    ENV_NONE    = 1,
+    ENV_GNU     = 2,
+    ENV_MSVC    = 3,
+} Environment;
+
+typedef struct {
+    Arch            arch;
+    Vendor          vendor;
+    OperatingSystem os;
+    Environment     env;
+} TargetTriple;
+
 typedef struct NativeLib {
     u32           hash;
     DLLib *       handle;
@@ -102,7 +135,8 @@ typedef struct NativeLib {
     bool           no_llvm;                                                                        \
     bool           no_analyze;                                                                     \
     AssertMode     assert_mode;                                                                    \
-    bool           syntax_only;
+    bool           syntax_only;                                                                    \
+    TargetTriple   triple;
 
 typedef struct Target {
     // Copyable content of target can be duplicated from default target, the default target is
@@ -213,28 +247,17 @@ void    target_append_linker_options(Target *target, const char *option);
 void    target_set_vm_args(Target *target, s32 argc, char **argv);
 void    target_set_output_dir(Target *target, const char *dirpath);
 void    target_set_module_dir(Target *target, const char *dir, ModuleImportPolicy policy);
+bool    target_is_triple_valid(TargetTriple *triple);
+bool    target_init_default_triple(TargetTriple *triple);
+char *  target_triple_to_string(const TargetTriple *triple);
 
-// Create new assembly instance.
 Assembly *assembly_new(const Target *target);
-
-// Delete created assembly instance and release all internally initialized resources.
-void assembly_delete(Assembly *assembly);
-
-// Add new unit into the assembly.
-Unit *assembly_add_unit(Assembly *assembly, const char *filepath, struct Token *load_from);
-
-// Add library path.
-void assembly_add_lib_path(Assembly *assembly, const char *path);
-
-// Append linker options string.
-void assembly_append_linker_options(Assembly *assembly, const char *opt);
-
-// Add native library.
+void      assembly_delete(Assembly *assembly);
+Unit *    assembly_add_unit(Assembly *assembly, const char *filepath, struct Token *load_from);
+void      assembly_add_lib_path(Assembly *assembly, const char *path);
+void      assembly_append_linker_options(Assembly *assembly, const char *opt);
 void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
-
-// Import module.
 bool assembly_import_module(Assembly *assembly, const char *modulepath, struct Token *import_from);
-
 DCpointer assembly_find_extern(Assembly *assembly, const char *symbol);
 
 static INLINE bool assembly_has_rtti(Assembly *assembly, u64 type_id)

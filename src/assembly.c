@@ -97,10 +97,77 @@ static void dl_terminate(Assembly *assembly)
     dcFree(assembly->dc_vm);
 }
 
+static void parse_triple(const char *normalized_triple, TargetTriple *out_triple)
+{
+    BL_ASSERT(out_triple);
+    // arch-vendor-os-evironment
+    char *arch, *vendor, *os, *env;
+    arch = vendor = os = env = "";
+    const char *delimiter    = "-";
+    char *      tmp          = strdup(normalized_triple);
+    char *      token        = strtok(tmp, delimiter);
+    s32         state        = 0;
+    while (token) {
+        switch (state++) {
+        case 0:
+            arch = token;
+            break;
+        case 1:
+            vendor = token;
+            break;
+        case 2:
+            os = token;
+            break;
+        case 3:
+            env = token;
+            break;
+        default:
+            break;
+        }
+        token = strtok(NULL, delimiter);
+    }
+
+    if (strcmp(arch, "x86_64") == 0)
+        out_triple->arch = ARCH_X86_64;
+    else if (strcmp(arch, "aarch64") == 0)
+        out_triple->arch = ARCH_AARCH64;
+    else
+        out_triple->arch = ARCH_UNKNOWN;
+
+    if (strcmp(vendor, "pc") == 0)
+        out_triple->vendor = VENDOR_PC;
+    else if (strcmp(vendor, "apple") == 0)
+        out_triple->vendor = VENDOR_APPLE;
+    else
+        out_triple->vendor = VENDOR_UNKNOWN;
+
+    if (strcmp(os, "windows") == 0)
+        out_triple->os = OS_WINDOWS;
+    else if (strcmp(os, "darwin") == 0)
+        out_triple->os = OS_DARWIN;
+    else if (strcmp(os, "linux") == 0)
+        out_triple->os = OS_LINUX;
+    else
+        out_triple->os = OS_UNKNOWN;
+
+    if (env) {
+        if (strcmp(env, "msvc") == 0)
+            out_triple->env = ENV_MSVC;
+        else if (strcmp(env, "gnu") == 0)
+            out_triple->env = ENV_GNU;
+        else
+            out_triple->env = ENV_UNKNOWN;
+    } else {
+        out_triple->env = ENV_NONE;
+    }
+
+    free(tmp);
+}
+
 static void llvm_init(Assembly *assembly)
 {
     // init LLVM
-    char *triple    = LLVMGetDefaultTargetTriple();
+    char *triple    = target_triple_to_string(&assembly->target->triple);
     char *cpu       = /*LLVMGetHostCPUName()*/ "";
     char *features  = /*LLVMGetHostCPUFeatures()*/ "";
     char *error_msg = NULL;
@@ -150,9 +217,9 @@ static void llvm_terminate(Assembly *assembly)
 {
     LLVMDisposeModule(assembly->llvm.module);
     LLVMDisposeTargetMachine(assembly->llvm.TM);
-    LLVMDisposeMessage(assembly->llvm.triple);
     LLVMDisposeTargetData(assembly->llvm.TD);
     LLVMContextDispose(assembly->llvm.cnt);
+    bl_free(assembly->llvm.triple);
 }
 
 static void native_lib_terminate(NativeLib *lib)
@@ -202,7 +269,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) BL_ABORT("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path = _path;
+    const char *path  = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {
@@ -346,6 +413,8 @@ Target *target_new(const char *name)
     target->di        = ASSEMBLY_DI_DWARF;
     target->copy_deps = false;
 #endif
+    target->triple = (TargetTriple){
+        .arch = ARCH_UNKNOWN, .vendor = VENDOR_UNKNOWN, .os = OS_UNKNOWN, .env = ENV_UNKNOWN};
     return target;
 }
 
@@ -443,6 +512,93 @@ void target_set_module_dir(Target *target, const char *dir, ModuleImportPolicy p
         return;
     }
     target->module_policy = policy;
+}
+
+bool target_is_triple_valid(TargetTriple *triple)
+{
+    if (triple->arch == ARCH_UNKNOWN) return false;
+    if (triple->os == OS_UNKNOWN) return false;
+    // @INCOMPLETE Consider validation of other fields???
+    return true;
+}
+
+bool target_init_default_triple(TargetTriple *triple)
+{
+    char *llvm_triple = LLVMGetDefaultTargetTriple();
+    parse_triple(llvm_triple, triple);
+    if (!target_is_triple_valid(triple)) {
+        builder_error("Default target triple '%s' is not supported by the compiler.", llvm_triple);
+        LLVMDisposeMessage(llvm_triple);
+        return false;
+    }
+    LLVMDisposeMessage(llvm_triple);
+    return true;
+}
+
+char *target_triple_to_string(const TargetTriple *triple)
+{
+    const char *arch   = "";
+    const char *vendor = "";
+    const char *os     = "";
+    const char *env    = "";
+    switch (triple->arch) {
+    case ARCH_X86_64:
+        arch = "x86_64";
+        break;
+    case ARCH_AARCH64:
+        arch = "aarch64";
+        break;
+    case ARCH_UNKNOWN:
+        arch = "unknown";
+    }
+
+    switch (triple->vendor) {
+    case VENDOR_PC:
+        vendor = "pc";
+        break;
+    case VENDOR_APPLE:
+        vendor = "apple";
+        break;
+    case VENDOR_UNKNOWN:
+        vendor = "unknown";
+    }
+
+    switch (triple->os) {
+    case OS_WINDOWS:
+        os = "windows";
+        break;
+    case OS_LINUX:
+        os = "linux";
+        break;
+    case OS_DARWIN:
+        os = "darwin";
+        break;
+    case OS_UNKNOWN:
+        os = "unknown";
+    }
+
+    switch (triple->env) {
+    case ENV_GNU:
+        env = "gnu";
+        break;
+    case ENV_MSVC:
+        env = "msvc";
+        break;
+    case ENV_UNKNOWN:
+        env = "unknown";
+    case ENV_NONE:
+        env = "";
+    }
+
+    const usize len =
+        strlen(arch) + strlen(vendor) + strlen(os) + strlen(env) + 4; // 3x'-' + terminator
+    char *str = bl_malloc(len);
+    if (triple->env == ENV_NONE) {
+        snprintf(str, len, "%s-%s-%s", arch, vendor, os);
+    } else {
+        snprintf(str, len, "%s-%s-%s-%s", arch, vendor, os, env);
+    }
+    return str;
 }
 
 Assembly *assembly_new(const Target *target)

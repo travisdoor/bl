@@ -451,9 +451,10 @@ struct MirConstExprValue {
 
 // VARIANT
 struct MirVariant {
-    ID *               id;
-    ScopeEntry *       entry;
-    MirConstExprValue *value;
+    ID *        id;
+    ScopeEntry *entry;
+    MirType *   value_type;
+    u64         value2;
 };
 
 // VAR

@@ -1,24 +1,4 @@
-#import "std/debug_allocator"
-#import "std/tmp_allocator"
-
-GGG := 10;
-
 main :: fn () s32 {
-    DebugAllocator.init();
-    defer DebugAllocator.terminate();
-
-    loop i := 0; i < 10; i += 1 {        
-        str :: tprint("% is %", "Value", i);
-        str2 :: tprint("Hello world this is pretty long string stored in tmp allocator, so we have to check if there is propper alignment of this");
-        print("%\n", str);
-    }
-
-    temporary_release();
-    print("% = %\n", 'c', fmt_char('c'));
-    
-    arr: [10]s32;
-    r :: slice_range(arr, 2);
-    print_err("This is warnign: %.", 10);
-
-    return GGG;
+    print("Arch = %\n", Arch.Unknown);
+    return 0;
 }

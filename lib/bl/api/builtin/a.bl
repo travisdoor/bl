@@ -47,9 +47,9 @@ OSKind :: enum u32 {
 }
 
 // @INCOMPLETE this is not used yet.
-Architecture :: enum u32 {
+Arch :: enum u32 #compiler {
     Unknown :: 0;
-    x86 :: 1;
+    x86_64  :: 1;
     AArch64 :: 2;
 }
 

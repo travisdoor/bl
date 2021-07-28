@@ -115,6 +115,7 @@ typedef enum {
     ERR_MISSING_PLATFORM         = 79,
     ERR_UNEXPECTED_FUNCTION_BODY = 80,
     ERR_INVALID_POLY_MATCH       = 81,
+    ERR_UNSUPPORTED_TARGET       = 82,
 } Error;
 
 #endif // BL_ERROR_H

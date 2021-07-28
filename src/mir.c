@@ -283,8 +283,9 @@ static ID *lookup_builtins_code_loc(Context *cnt);
 // set to base member type if entry was found in parent.
 static ScopeEntry *lookup_composit_member(MirType *type, ID *rid, MirType **out_base_type);
 
-// Provide global bool variable into the assembly.
+static MirVar *add_global_variable(Context *cnt, ID *id, bool is_mutable, MirInstr *initializer);
 static MirVar *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v);
+static MirVar *add_global_int(Context *cnt, ID *id, bool is_mutable, MirType *type, s32 v);
 
 // Initialize type ID. This function creates and set ID string and calculates integer hash from this
 // string. The type.id.str could be also used as name for unnamed types.
@@ -386,7 +387,7 @@ static MirFnPolyRecipe *create_fn_poly_recipe(Context *cnt, Ast *ast_lit_fn);
 static MirMember *      create_member(Context *cnt, Ast *node, ID *id, s64 index, MirType *type);
 static MirArg *
 create_arg(Context *cnt, Ast *node, ID *id, Scope *scope, MirType *type, MirInstr *value);
-static MirVariant *create_variant(Context *cnt, ID *id, MirConstExprValue *value);
+static MirVariant *create_variant(Context *cnt, ID *id, MirType *value_type, const u64 value);
 // Create block without owner function.
 static MirInstrBlock *create_block(Context *cnt, const char *name);
 // Create and append block into function specified.
@@ -1197,25 +1198,29 @@ static INLINE const char *create_unique_name(const char *prefix)
     return s->data;
 }
 
+static INLINE bool is_builtin2(ID *id, MirBuiltinIdKind kind)
+{
+    if (!id) return false;
+    return id->hash == builtin_ids[kind].hash;
+}
+
 static INLINE bool is_builtin(Ast *ident, MirBuiltinIdKind kind)
 {
     if (!ident) return false;
     BL_ASSERT(ident->kind == AST_IDENT);
-    return ident->data.ident.id.hash == builtin_ids[kind].hash;
+    return is_builtin2(&ident->data.ident.id, kind);
 }
 
 static MirBuiltinIdKind get_builtin_kind(Ast *ident)
 {
     if (!ident) return false;
     BL_ASSERT(ident->kind == AST_IDENT);
-
-    // PERFORMANCE: Eventually use hash table.
+    // @PERFORMANCE: Eventually use hash table.
     for (u32 i = 0; i < TARRAY_SIZE(builtin_ids); ++i) {
         if (builtin_ids[i].hash == ident->data.ident.id.hash) {
             return i;
         }
     }
-
     return MIR_BUILTIN_ID_NONE;
 }
 
@@ -1597,14 +1602,8 @@ void type_init_id(Context *cnt, MirType *type)
             MirVariant *variant;
             TSA_FOREACH(type->data.enm.variants, variant)
             {
-                BL_ASSERT(variant->value);
-
                 char value_str[35];
-                snprintf(value_str,
-                         TARRAY_SIZE(value_str),
-                         "%lld",
-                         MIR_CEV_READ_AS(long long, variant->value));
-
+                snprintf(value_str, TARRAY_SIZE(value_str), "%lld", variant->value2);
                 tstring_append(tmp, value_str);
                 if (i != type->data.enm.variants->size - 1) tstring_append(tmp, ",");
             }
@@ -1875,27 +1874,34 @@ ScopeEntry *lookup_composit_member(MirType *type, ID *rid, MirType **out_base_ty
     return found;
 }
 
-MirVar *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v)
+MirVar *add_global_variable(Context *cnt, ID *id, bool is_mutable, MirInstr *initializer)
 {
-    Scope *scope = cnt->assembly->gscope;
-
-    // 1) Create global variable.
-    // 2) Create initializer block.
-    // 3) Register new variable into scope.
+    BL_ASSERT(initializer);
+    Scope *   scope = cnt->assembly->gscope;
     MirInstr *decl_var =
         append_instr_decl_var(cnt, NULL, id, scope, NULL, NULL, is_mutable, 0, MIR_BUILTIN_ID_NONE);
 
     MirInstrBlock *prev_block = ast_current_block(cnt);
     MirInstrBlock *block      = append_global_block(cnt, INIT_VALUE_FN_NAME);
     set_current_block(cnt, block);
-    MirInstr *            init  = append_instr_const_bool(cnt, NULL, v);
+    append_current_block(cnt, initializer);
     TSmallArray_InstrPtr *decls = create_sarr(TSmallArray_InstrPtr, cnt->assembly);
     tsa_push_InstrPtr(decls, decl_var);
-    append_instr_set_initializer(cnt, NULL, decls, init);
+    append_instr_set_initializer(cnt, NULL, decls, initializer);
     set_current_block(cnt, prev_block);
     MirVar *var = ((MirInstrDeclVar *)decl_var)->var;
     var->entry  = register_symbol(cnt, NULL, id, scope, true);
     return var;
+}
+
+MirVar *add_global_bool(Context *cnt, ID *id, bool is_mutable, bool v)
+{
+    return add_global_variable(cnt, id, is_mutable, create_instr_const_bool(cnt, NULL, v));
+}
+
+MirVar *add_global_int(Context *cnt, ID *id, bool is_mutable, MirType *type, s32 v)
+{
+    return add_global_variable(cnt, id, is_mutable, create_instr_const_int(cnt, NULL, type, v));
 }
 
 MirType *create_type_type(Context *cnt)
@@ -2172,8 +2178,8 @@ MirType *create_type_struct_dynarr(Context *cnt, ID *id, MirType *elem_ptr_type)
     }
 
     { // .allocator
-        tmp =
-            create_member(cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_ALLOCATOR], 3, cnt->builtin_types->t_u8_ptr);
+        tmp = create_member(
+            cnt, NULL, &builtin_ids[MIR_BUILTIN_ID_ARR_ALLOCATOR], 3, cnt->builtin_types->t_u8_ptr);
 
         tsa_push_MemberPtr(members, tmp);
         provide_builtin_member(cnt, body_scope, tmp);
@@ -2644,11 +2650,12 @@ MirArg *create_arg(Context *cnt, Ast *node, ID *id, Scope *scope, MirType *type,
     return tmp;
 }
 
-MirVariant *create_variant(Context *cnt, ID *id, MirConstExprValue *value)
+MirVariant *create_variant(Context *cnt, ID *id, MirType *value_type, const u64 value)
 {
     MirVariant *tmp = arena_alloc(&cnt->assembly->arenas.mir.variant);
     tmp->id         = id;
-    tmp->value      = value;
+    tmp->value_type = value_type;
+    tmp->value2     = value;
     return tmp;
 }
 
@@ -3327,8 +3334,7 @@ MirInstr *create_default_value_for_type(Context *cnt, MirType *type)
         // Use first enum variant as default.
         MirType *   base_type = type->data.enm.base_type;
         MirVariant *variant   = type->data.enm.variants->data[0];
-        const u64   v         = MIR_CEV_READ_AS(u64, variant->value);
-        default_value         = create_instr_const_int(cnt, NULL, base_type, v);
+        default_value         = create_instr_const_int(cnt, NULL, base_type, variant->value2);
         break;
     }
 
@@ -3747,7 +3753,7 @@ MirInstr *append_instr_decl_variant(Context *cnt, Ast *node, MirInstr *value)
 
     BL_ASSERT(node && node->kind == AST_IDENT);
     ID *id       = &node->data.ident.id;
-    tmp->variant = create_variant(cnt, id, NULL);
+    tmp->variant = create_variant(cnt, id, NULL, 0);
 
     append_current_block(cnt, &tmp->base);
     return &tmp->base;
@@ -5321,7 +5327,7 @@ AnalyzeResult analyze_instr_decl_ref(Context *cnt, MirInstrDeclRef *ref)
     case SCOPE_ENTRY_VARIANT: {
         MirVariant *variant = found->data.variant;
         BL_ASSERT(variant);
-        MirType *type = variant->value->type;
+        MirType *type = variant->value_type;
         BL_ASSERT(type);
         type                        = create_type_ptr(cnt, type);
         ref->base.value.type        = type;
@@ -5893,7 +5899,7 @@ AnalyzeResult analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
             for (usize i2 = 0; i2 < sw->cases->size; ++i2) {
                 c                       = &sw->cases->data[i2];
                 const s64 on_value      = MIR_CEV_READ_AS(s64, &c->on_value->value);
-                const s64 variant_value = MIR_CEV_READ_AS(s64, variant->value);
+                const s64 variant_value = variant->value2;
                 if (on_value == variant_value) {
                     hit = true;
                     break;
@@ -6171,7 +6177,8 @@ AnalyzeResult analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *vari
         }
 
         // Setup value.
-        variant_instr->variant->value = &variant_instr->value->value;
+        variant_instr->variant->value2     = MIR_CEV_READ_AS(u64, &variant_instr->value->value);
+        variant_instr->variant->value_type = variant_instr->value->value.type;
     } else {
         // CLENUP: Automatic initialization value is set in parser, maybe we will
         // prefer to do automatic initialization here instead of doing so in parser
@@ -6571,9 +6578,9 @@ AnalyzeResult analyze_instr_type_enum(Context *cnt, MirInstrTypeEnum *type_enum)
         tsa_push_VariantPtr(variants, variant);
     }
 
-    MIR_CEV_WRITE_AS(MirType *,
-                     &type_enum->base.value,
-                     create_type_enum(cnt, type_enum->id, scope, base_type, variants));
+    MirType *type = create_type_enum(cnt, type_enum->id, scope, base_type, variants);
+    MIR_CEV_WRITE_AS(MirType *, &type_enum->base.value, type);
+
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
@@ -6952,7 +6959,7 @@ AnalyzeResult analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
         // Immutable and comptime initializer value.
         is_decl_comptime &= decl->init->value.is_comptime;
     } else if (IS_NOT_FLAG(var->flags, FLAG_NO_INIT)) {
-        // Create default initilializer for locals without explicit initialization.
+        // Create default initializer for locals without explicit initialization.
         MirType * type         = var->value.type;
         MirInstr *default_init = create_default_value_for_type(cnt, type);
         insert_instr_before(&decl->base, default_init);
@@ -6963,7 +6970,7 @@ AnalyzeResult analyze_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
     AnalyzeResult state                                   = analyze_var(cnt, decl->var);
     if (state.state != ANALYZE_PASSED) RETURN_END_ZONE(state);
     if (decl->base.value.is_comptime && decl->init) {
-        // initialize when known in compiletime
+        // initialize when known in compile-time
         var->value.data = decl->init->value.data;
         BL_ASSERT(var->value.data && "Incomplete comptime var initialization.");
     }
@@ -8497,7 +8504,7 @@ void rtti_gen_enum_variant(Context *cnt, VMStackPtr dest, MirVariant *variant)
     VMStackPtr dest_value      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
 
     vm_write_string(cnt->vm, dest_name_type, dest_name, variant->id->str, strlen(variant->id->str));
-    vm_write_int(dest_value_type, dest_value, MIR_CEV_READ_AS(u64, variant->value));
+    vm_write_int(dest_value_type, dest_value, variant->value2);
 }
 
 VMStackPtr rtti_gen_enum_variants_array(Context *cnt, TSmallArray_VariantPtr *variants)
@@ -10594,16 +10601,9 @@ static void _type_to_str(char *buf, usize len, const MirType *type, bool prefer_
             {
                 append_buf(buf, len, variant->id->str);
                 append_buf(buf, len, " :: ");
-                if (variant->value) {
-                    char value_str[35];
-                    snprintf(value_str,
-                             TARRAY_SIZE(value_str),
-                             "%lld",
-                             MIR_CEV_READ_AS(long long, variant->value));
-                    append_buf(buf, len, value_str);
-                } else {
-                    append_buf(buf, len, "<invalid>");
-                }
+                char value_str[35];
+                snprintf(value_str, TARRAY_SIZE(value_str), "%lld", variant->value2);
+                append_buf(buf, len, value_str);
                 if (i < variants->size - 1) append_buf(buf, len, ", ");
             }
         }
