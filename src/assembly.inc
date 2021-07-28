@@ -53,3 +53,8 @@ MirType *t_CodeLocation;
 MirType *t_CodeLocation_ptr;
 #endif
 
+#ifdef GEN_ARCH
+entry(unknown)
+entry(x86_64)
+entry(aarch64)
+#endif

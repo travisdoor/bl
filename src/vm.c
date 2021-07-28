@@ -2197,7 +2197,7 @@ void eval_instr_member_ptr(VM UNUSED(*vm), MirInstrMemberPtr *member_ptr)
 
     case SCOPE_ENTRY_VARIANT: {
         MirVariant *variant = member_ptr->scope_entry->data.variant;
-        MIR_CEV_WRITE_AS(u64, &member_ptr->base.value, variant->value2);
+        MIR_CEV_WRITE_AS(u64, &member_ptr->base.value, variant->value);
         break;
     }
 
@@ -2367,7 +2367,7 @@ void eval_instr_decl_ref(VM UNUSED(*vm), MirInstrDeclRef *decl_ref)
         break;
 
     case SCOPE_ENTRY_VARIANT:
-        MIR_CEV_WRITE_AS(u64 *, &decl_ref->base.value, &entry->data.variant->value2);
+        MIR_CEV_WRITE_AS(u64 *, &decl_ref->base.value, &entry->data.variant->value);
         break;
 
     case SCOPE_ENTRY_NAMED_SCOPE:

@@ -1,0 +1,14 @@
+#private
+arch_all :: fn () #test {
+    T :: cast(*TypeInfoEnum) typeinfo(Arch);
+    test_eq(T.base_type, typeinfo(s32));
+    test_eq(T.variants.len, 3);
+    loop i := 0; i < T.variants.len; i += 1 {
+        variant :: T.variants[i];
+        test_eq(variant.value, i);
+    }
+}
+
+arch_current :: fn () #test {
+    test_neq(ARCH, Arch.unknown);
+}

@@ -233,6 +233,8 @@ static ID builtin_ids[_MIR_BUILTIN_ID_COUNT] = {
 #undef GEN_BUILTIN_IDS
 };
 
+#define BID(name) &builtin_ids[MIR_BUILTIN_ID_##name]
+
 // Arena destructor for functions.
 static void fn_dtor(MirFn *fn)
 {
@@ -1319,6 +1321,16 @@ static INLINE void provide_builtin_member(Context *cnt, Scope *scope, MirMember 
     member->entry      = entry;
 }
 
+static INLINE void provide_builtin_variant(Context *cnt, Scope *scope, MirVariant *variant)
+{
+    ScopeEntry *entry = register_symbol(cnt, NULL, variant->id, scope, true);
+    if (!entry) return;
+    BL_ASSERT(entry->kind != SCOPE_ENTRY_VOID);
+    entry->kind         = SCOPE_ENTRY_VARIANT;
+    entry->data.variant = variant;
+    variant->entry      = entry;
+}
+
 static INLINE MirInstr *unref_instr(MirInstr *instr)
 {
     if (!instr) return NULL;
@@ -1603,7 +1615,7 @@ void type_init_id(Context *cnt, MirType *type)
             TSA_FOREACH(type->data.enm.variants, variant)
             {
                 char value_str[35];
-                snprintf(value_str, TARRAY_SIZE(value_str), "%lld", variant->value2);
+                snprintf(value_str, TARRAY_SIZE(value_str), "%lld", variant->value);
                 tstring_append(tmp, value_str);
                 if (i != type->data.enm.variants->size - 1) tstring_append(tmp, ",");
             }
@@ -2655,7 +2667,7 @@ MirVariant *create_variant(Context *cnt, ID *id, MirType *value_type, const u64 
     MirVariant *tmp = arena_alloc(&cnt->assembly->arenas.mir.variant);
     tmp->id         = id;
     tmp->value_type = value_type;
-    tmp->value2     = value;
+    tmp->value      = value;
     return tmp;
 }
 
@@ -3334,7 +3346,7 @@ MirInstr *create_default_value_for_type(Context *cnt, MirType *type)
         // Use first enum variant as default.
         MirType *   base_type = type->data.enm.base_type;
         MirVariant *variant   = type->data.enm.variants->data[0];
-        default_value         = create_instr_const_int(cnt, NULL, base_type, variant->value2);
+        default_value         = create_instr_const_int(cnt, NULL, base_type, variant->value);
         break;
     }
 
@@ -4856,6 +4868,7 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
     MirInstr *target_ptr = member_ptr->target_ptr;
     BL_ASSERT(target_ptr);
     MirType *target_type = target_ptr->value.type;
+    BL_ASSERT(target_type);
 
     MirValueAddressMode target_addr_mode = target_ptr->value.addr_mode;
     Ast *               ast_member_ident = member_ptr->member_ident;
@@ -4885,6 +4898,7 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
         RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     }
 
+#if 0
     if (target_type->kind != MIR_TYPE_PTR) {
         FULL_ERROR_REPORT(member_ptr,
                           ERR_INVALID_TYPE,
@@ -4893,8 +4907,11 @@ AnalyzeResult analyze_instr_member_ptr(Context *cnt, MirInstrMemberPtr *member_p
                           "Expected structure type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
+#endif
 
-    target_type = mir_deref_type(target_type);
+    if (mir_is_pointer_type(target_type)) {
+        target_type = mir_deref_type(target_type);
+    }
 
     // Array type
     if (target_type->kind == MIR_TYPE_ARRAY) {
@@ -5899,13 +5916,12 @@ AnalyzeResult analyze_instr_switch(Context *cnt, MirInstrSwitch *sw)
             for (usize i2 = 0; i2 < sw->cases->size; ++i2) {
                 c                       = &sw->cases->data[i2];
                 const s64 on_value      = MIR_CEV_READ_AS(s64, &c->on_value->value);
-                const s64 variant_value = variant->value2;
+                const s64 variant_value = variant->value;
                 if (on_value == variant_value) {
                     hit = true;
                     break;
                 }
             }
-
             if (!hit) {
                 builder_msg(BUILDER_MSG_NOTE,
                             0,
@@ -6177,7 +6193,7 @@ AnalyzeResult analyze_instr_decl_variant(Context *cnt, MirInstrDeclVariant *vari
         }
 
         // Setup value.
-        variant_instr->variant->value2     = MIR_CEV_READ_AS(u64, &variant_instr->value->value);
+        variant_instr->variant->value      = MIR_CEV_READ_AS(u64, &variant_instr->value->value);
         variant_instr->variant->value_type = variant_instr->value->value.type;
     } else {
         // CLENUP: Automatic initialization value is set in parser, maybe we will
@@ -8504,7 +8520,7 @@ void rtti_gen_enum_variant(Context *cnt, VMStackPtr dest, MirVariant *variant)
     VMStackPtr dest_value      = vm_get_struct_elem_ptr(cnt->assembly, rtti_type, dest, 1);
 
     vm_write_string(cnt->vm, dest_name_type, dest_name, variant->id->str, strlen(variant->id->str));
-    vm_write_int(dest_value_type, dest_value, variant->value2);
+    vm_write_int(dest_value_type, dest_value, variant->value);
 }
 
 VMStackPtr rtti_gen_enum_variants_array(Context *cnt, TSmallArray_VariantPtr *variants)
@@ -10602,7 +10618,7 @@ static void _type_to_str(char *buf, usize len, const MirType *type, bool prefer_
                 append_buf(buf, len, variant->id->str);
                 append_buf(buf, len, " :: ");
                 char value_str[35];
-                snprintf(value_str, TARRAY_SIZE(value_str), "%lld", variant->value2);
+                snprintf(value_str, TARRAY_SIZE(value_str), "%lld", variant->value);
                 append_buf(buf, len, value_str);
                 if (i < variants->size - 1) append_buf(buf, len, ", ");
             }
@@ -10684,9 +10700,30 @@ void mir_type_to_str(char *buf, usize len, const MirType *type, bool prefer_name
     _type_to_str(buf, len, type, prefer_name);
 }
 
+void static provide_builtin_arch(Context *cnt)
+{
+    struct BuiltinTypes *   bt       = cnt->builtin_types;
+    Scope *                 scope    = scope_create(&cnt->assembly->arenas.scope,
+                                SCOPE_TYPE_ENUM,
+                                cnt->assembly->gscope,
+                                TARRAY_SIZE(arch_names),
+                                NULL);
+    TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, cnt->assembly);
+    static ID               ids[TARRAY_SIZE(arch_names)];
+    for (s32 i = 0; i < TARRAY_SIZE(arch_names); ++i) {
+        MirVariant *variant = create_variant(cnt, id_init(&ids[i], arch_names[i]), bt->t_s32, i);
+        tsa_push_VariantPtr(variants, variant);
+        provide_builtin_variant(cnt, scope, variant);
+    }
+    MirType *t_arch = create_type_enum(cnt, BID(ARCH_ENUM), scope, bt->t_s32, variants);
+    provide_builtin_type(cnt, t_arch);
+    add_global_int(cnt, BID(ARCH), false, t_arch, cnt->assembly->target->triple.arch);
+}
+
 void builtin_inits(Context *cnt)
 {
-#define PROVIDE(N) provide_builtin_type(cnt, bt->t_##N) // initialize all hashes once
+#define PROVIDE(N) provide_builtin_type(cnt, bt->t_##N)
+
     for (s32 i = 0; i < _MIR_BUILTIN_ID_COUNT; ++i) {
         builtin_ids[i].hash = thash_from_str(builtin_ids[i].str);
     }
@@ -10696,21 +10733,20 @@ void builtin_inits(Context *cnt)
     bt->t_scope             = create_type_named_scope(cnt);
     bt->t_void              = create_type_void(cnt);
 
-    bt->t_s8     = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S8], 8, true);
-    bt->t_s16    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S16], 16, true);
-    bt->t_s32    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S32], 32, true);
-    bt->t_s64    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_S64], 64, true);
-    bt->t_u8     = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_U8], 8, false);
-    bt->t_u16    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_U16], 16, false);
-    bt->t_u32    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_U32], 32, false);
-    bt->t_u64    = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_U64], 64, false);
-    bt->t_usize  = create_type_int(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_USIZE], 64, false);
+    bt->t_s8     = create_type_int(cnt, BID(TYPE_S8), 8, true);
+    bt->t_s16    = create_type_int(cnt, BID(TYPE_S16), 16, true);
+    bt->t_s32    = create_type_int(cnt, BID(TYPE_S32), 32, true);
+    bt->t_s64    = create_type_int(cnt, BID(TYPE_S64), 64, true);
+    bt->t_u8     = create_type_int(cnt, BID(TYPE_U8), 8, false);
+    bt->t_u16    = create_type_int(cnt, BID(TYPE_U16), 16, false);
+    bt->t_u32    = create_type_int(cnt, BID(TYPE_U32), 32, false);
+    bt->t_u64    = create_type_int(cnt, BID(TYPE_U64), 64, false);
+    bt->t_usize  = create_type_int(cnt, BID(TYPE_USIZE), 64, false);
     bt->t_bool   = create_type_bool(cnt);
-    bt->t_f32    = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_F32], 32);
-    bt->t_f64    = create_type_real(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_F64], 64);
+    bt->t_f32    = create_type_real(cnt, BID(TYPE_F32), 32);
+    bt->t_f64    = create_type_real(cnt, BID(TYPE_F64), 64);
     bt->t_u8_ptr = create_type_ptr(cnt, bt->t_u8);
-    bt->t_string =
-        CREATE_TYPE_STRUCT_STRING(cnt, &builtin_ids[MIR_BUILTIN_ID_TYPE_STRING], bt->t_u8_ptr);
+    bt->t_string = CREATE_TYPE_STRUCT_STRING(cnt, BID(TYPE_STRING), bt->t_u8_ptr);
 
     bt->t_string_ptr = create_type_ptr(cnt, bt->t_string);
 
@@ -10718,6 +10754,8 @@ void builtin_inits(Context *cnt)
 
     bt->t_resolve_type_fn = create_type_fn(cnt, NULL, bt->t_type, NULL, false, false, false);
     bt->t_test_case_fn    = create_type_fn(cnt, NULL, bt->t_void, NULL, false, false, false);
+
+    provide_builtin_arch(cnt);
 
     // Provide types into global scope
     PROVIDE(type);
@@ -10737,12 +10775,12 @@ void builtin_inits(Context *cnt)
 
     // Add IS_DEBUG immutable into the global scope to provide information about enabled
     // debug mode.
-    add_global_bool(cnt, &builtin_ids[MIR_BUILTIN_ID_IS_DEBUG], false, cnt->debug_mode);
+    add_global_bool(cnt, BID(IS_DEBUG), false, cnt->debug_mode);
 
     // Add IS_COMPTIME_RUN immutable into the global scope to provide information about compile
     // time run.
     cnt->assembly->vm_run.is_comptime_run =
-        add_global_bool(cnt, &builtin_ids[MIR_BUILTIN_ID_IS_COMPTIME_RUN], false, false);
+        add_global_bool(cnt, BID(IS_COMPTIME_RUN), false, false);
 #undef PROVIDE
 }
 

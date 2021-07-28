@@ -1,61 +1,65 @@
 #private
-SimpleEnum :: enum {
-    A; B; C
-};
-
-CustomEnumType :: enum u8 {
-    A; B; C
-};
-
-CustomEnumValues :: enum {
-    A :: 10;
-    B :: 20;
-    C
-};
-
-CustomEnumValuesDeps :: enum {
-    A :: 10;
-    B :: A + 1;
-    C :: A + B
-};
 
 simple_enum :: fn () #test {
-    assert(cast(s32) SimpleEnum.A == 0);
-    assert(cast(s32) SimpleEnum.B == 1);
-    assert(cast(s32) SimpleEnum.C == 2);
+    E :: enum {
+        A; B; C
+    };
+
+    test_eq(E.A, cast(E) 0);
+    test_eq(E.B, cast(E) 1);
+    test_eq(E.C, cast(E) 2);
 };
 
 custom_enum_type :: fn () #test {
-    assert(cast(s32) CustomEnumType.A == 0);
-    assert(cast(s32) CustomEnumType.B == 1);
-    assert(cast(s32) CustomEnumType.C == 2);
+    E :: enum u8 {
+        A; B; C
+    };
+
+    test_eq(E.A, cast(E) 0);
+    test_eq(E.B, cast(E) 1);
+    test_eq(E.C, cast(E) 2);
 };
 
 custom_enum_values :: fn () #test {
-    assert(cast(s32) CustomEnumValues.A == 10);
-    assert(cast(s32) CustomEnumValues.B == 20);
-    assert(cast(s32) CustomEnumValues.C == 21);
-};
-
-passed_enum :: fn () #test {
-    foo :: fn (value: SimpleEnum) {
-        assert(value == SimpleEnum.B);
+    E :: enum {
+        A :: 10;
+        B :: 20;
+        C
     };
-
-    foo(SimpleEnum.B);
-};
-
-enum_struct :: fn () #test {
-    Foo :: struct {
-        value: SimpleEnum
-    };
-
-    foo := {:Foo: SimpleEnum.A};
-    assert(foo.value == SimpleEnum.A);
+    test_eq(E.A, cast(E) 10);
+    test_eq(E.B, cast(E) 20);    
+    test_eq(E.C, cast(E) 21);
 };
 
 enums_with_variant_references :: fn () #test {
-    assert(cast(s32) CustomEnumValuesDeps.A == 10);
-    assert(cast(s32) CustomEnumValuesDeps.B == 11);
-    assert(cast(s32) CustomEnumValuesDeps.C == 21);
+    E :: enum {
+        A :: 10;
+        B :: A + 1;
+        C :: A + B
+    };
+    test_eq(E.A, cast(E) 10);
+    test_eq(E.B, cast(E) 11);
+    test_eq(E.C, cast(E) 21);
 };
+
+enum_negative :: fn () #test {
+    E :: enum {
+        A :: -1;
+        B :: -2;
+        C :: -3;
+    };        
+    test_eq(E.A, cast(E) -1);
+    test_eq(E.B, cast(E) -2);
+    test_eq(E.C, cast(E) -3);
+}
+
+enum_negative_2 :: fn () #test {
+    E :: enum {
+        A :: -1;
+        B;
+        C;
+    };        
+    test_eq(E.A, cast(E) -1);
+    test_eq(E.B, cast(E) 0);
+    test_eq(E.C, cast(E) 1);
+}

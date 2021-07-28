@@ -46,13 +46,6 @@ OSKind :: enum u32 {
     MacOS   :: 1 << 3;
 }
 
-// @INCOMPLETE this is not used yet.
-Arch :: enum u32 #compiler {
-    Unknown :: 0;
-    x86_64  :: 1;
-    AArch64 :: 2;
-}
-
 /// TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 
 /// safe casting.
 TypeKind :: enum #compiler {

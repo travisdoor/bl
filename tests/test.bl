@@ -1,4 +1,9 @@
 main :: fn () s32 {
-    print("Arch = %\n", Arch.Unknown);
+    print("Arch = %\n", Arch);
+    print("Arch = %\n", Arch.x86_64);
+    print("Current arch = %\n", ARCH);
+    
+    T :: typeinfo(Arch);
+    print("%\n", ^T);
     return 0;
 }

@@ -454,7 +454,7 @@ struct MirVariant {
     ID *        id;
     ScopeEntry *entry;
     MirType *   value_type;
-    u64         value2;
+    u64         value;
 };
 
 // VAR

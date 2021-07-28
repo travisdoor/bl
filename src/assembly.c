@@ -43,6 +43,16 @@
 #define EXPECTED_GSCOPE_COUNT 4094
 #define EXPECTED_ARRAY_COUNT 256
 
+const char *arch_names[] = {
+#define GEN_ARCH
+#define entry(X) #X,
+#include "assembly.inc"
+#undef entry
+#undef GEN_ARCH
+};
+
+BL_STATIC_ASSERT(ARCH_unknown == 0);
+
 union _SmallArrays {
     TSmallArray_TypePtr       type;
     TSmallArray_MemberPtr     member;
@@ -127,12 +137,13 @@ static void parse_triple(const char *normalized_triple, TargetTriple *out_triple
         token = strtok(NULL, delimiter);
     }
 
-    if (strcmp(arch, "x86_64") == 0)
-        out_triple->arch = ARCH_X86_64;
-    else if (strcmp(arch, "aarch64") == 0)
-        out_triple->arch = ARCH_AARCH64;
-    else
-        out_triple->arch = ARCH_UNKNOWN;
+    out_triple->arch = ARCH_unknown;
+    for (s32 i = 0; i < TARRAY_SIZE(arch_names); ++i) {
+        if (strcmp(arch, arch_names[i]) == 0) {
+            out_triple->arch = i;
+            break;
+        }
+    }
 
     if (strcmp(vendor, "pc") == 0)
         out_triple->vendor = VENDOR_PC;
@@ -269,7 +280,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) BL_ABORT("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path  = _path;
+    const char *path = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {
@@ -414,7 +425,7 @@ Target *target_new(const char *name)
     target->copy_deps = false;
 #endif
     target->triple = (TargetTriple){
-        .arch = ARCH_UNKNOWN, .vendor = VENDOR_UNKNOWN, .os = OS_UNKNOWN, .env = ENV_UNKNOWN};
+        .arch = ARCH_unknown, .vendor = VENDOR_UNKNOWN, .os = OS_UNKNOWN, .env = ENV_UNKNOWN};
     return target;
 }
 
@@ -516,7 +527,7 @@ void target_set_module_dir(Target *target, const char *dir, ModuleImportPolicy p
 
 bool target_is_triple_valid(TargetTriple *triple)
 {
-    if (triple->arch == ARCH_UNKNOWN) return false;
+    if (triple->arch == ARCH_unknown) return false;
     if (triple->os == OS_UNKNOWN) return false;
     // @INCOMPLETE Consider validation of other fields???
     return true;
@@ -541,15 +552,8 @@ char *target_triple_to_string(const TargetTriple *triple)
     const char *vendor = "";
     const char *os     = "";
     const char *env    = "";
-    switch (triple->arch) {
-    case ARCH_X86_64:
-        arch = "x86_64";
-        break;
-    case ARCH_AARCH64:
-        arch = "aarch64";
-        break;
-    case ARCH_UNKNOWN:
-        arch = "unknown";
+    if (triple->arch < TARRAY_SIZE(arch_names)) {
+        arch = arch_names[triple->arch];
     }
 
     switch (triple->vendor) {

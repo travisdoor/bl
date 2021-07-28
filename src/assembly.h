@@ -72,10 +72,14 @@ typedef enum {
 } AssertMode;
 
 typedef enum {
-    ARCH_UNKNOWN = 0,
-    ARCH_X86_64  = 1,
-    ARCH_AARCH64 = 2,
+#define GEN_ARCH
+#define entry(X) ARCH_##X,
+#include "assembly.inc"
+#undef entry
+#undef GEN_ARCH
+    _ARCH_COUNT
 } Arch;
+extern const char *arch_names[_ARCH_COUNT];
 
 typedef enum {
     VENDOR_UNKNOWN = 0,

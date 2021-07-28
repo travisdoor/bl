@@ -3,6 +3,7 @@
 
 /////////////////////////////////////////////////////
 #import "std/debug_allocator"
+#load "arch.test.bl"
 #load "memory.test.bl"
 #load "defer.test.bl"
 #load "intrinsics.test.bl"

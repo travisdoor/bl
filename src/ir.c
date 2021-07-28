@@ -422,6 +422,10 @@ LLVMMetadataRef DI_type_init(Context *cnt, MirType *type)
     }
 
     case MIR_TYPE_ENUM: {
+        if (!type->data.enm.scope->location) {
+            // This applies for builtin types without source location.
+            return NULL;
+        }
         MirType *   base_type = type->data.enm.base_type;
         const char *enm_name  = type->user_id ? type->user_id->str : "enum";
 
@@ -434,7 +438,7 @@ LLVMMetadataRef DI_type_init(Context *cnt, MirType *type)
             LLVMMetadataRef llvm_variant =
                 llvm_di_create_enum_variant(cnt->llvm_di_builder,
                                             variant->id->str,
-                                            variant->value2,
+                                            variant->value,
                                             !base_type->data.integer.is_signed);
 
             tsa_push_LLVMMetadata(&llvm_elems, llvm_variant);
@@ -1008,7 +1012,7 @@ LLVMValueRef rtti_emit_enum_variant(Context *cnt, MirVariant *variant)
     MirType *value_type = mir_get_struct_elem_type(rtti_type, 1);
     tsa_push_LLVMValue(&llvm_vals,
                        LLVMConstInt(get_type(cnt, value_type),
-                                    variant->value2,
+                                    variant->value,
                                     value_type->data.integer.is_signed));
 
     LLVMValueRef llvm_result =
