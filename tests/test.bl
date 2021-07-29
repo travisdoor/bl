@@ -1,9 +1,8 @@
+func :: fn (v: Arch, v2: Arch) {
+    print("% - %\n", v, v2);
+}
+
 main :: fn () s32 {
-    print("Arch = %\n", Arch);
-    print("Arch = %\n", Arch.x86_64);
-    print("Current arch = %\n", ARCH);
-    
-    T :: typeinfo(Arch);
-    print("%\n", ^T);
+    func(ARCH, Arch.unknown);
     return 0;
 }

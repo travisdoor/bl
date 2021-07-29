@@ -10700,7 +10700,7 @@ void mir_type_to_str(char *buf, usize len, const MirType *type, bool prefer_name
     _type_to_str(buf, len, type, prefer_name);
 }
 
-void static provide_builtin_arch(Context *cnt)
+static void provide_builtin_arch(Context *cnt)
 {
     struct BuiltinTypes *   bt       = cnt->builtin_types;
     Scope *                 scope    = scope_create(&cnt->assembly->arenas.scope,
@@ -10710,7 +10710,7 @@ void static provide_builtin_arch(Context *cnt)
                                 NULL);
     TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, cnt->assembly);
     static ID               ids[TARRAY_SIZE(arch_names)];
-    for (s32 i = 0; i < TARRAY_SIZE(arch_names); ++i) {
+    for (usize i = 0; i < TARRAY_SIZE(arch_names); ++i) {
         MirVariant *variant = create_variant(cnt, id_init(&ids[i], arch_names[i]), bt->t_s32, i);
         tsa_push_VariantPtr(variants, variant);
         provide_builtin_variant(cnt, scope, variant);

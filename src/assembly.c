@@ -138,7 +138,7 @@ static void parse_triple(const char *normalized_triple, TargetTriple *out_triple
     }
 
     out_triple->arch = ARCH_unknown;
-    for (s32 i = 0; i < TARRAY_SIZE(arch_names); ++i) {
+    for (usize i = 0; i < TARRAY_SIZE(arch_names); ++i) {
         if (strcmp(arch, arch_names[i]) == 0) {
             out_triple->arch = i;
             break;
@@ -590,6 +590,7 @@ char *target_triple_to_string(const TargetTriple *triple)
         break;
     case ENV_UNKNOWN:
         env = "unknown";
+        break;
     case ENV_NONE:
         env = "";
     }
