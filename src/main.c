@@ -283,9 +283,12 @@ void print_where_is_api(FILE *stream)
 
 void print_host_triple(FILE *stream)
 {
-    char *triple = LLVMGetDefaultTargetTriple();
-    fprintf(stream, "%s", triple);
-    LLVMDisposeMessage(triple);
+    struct target_triple triple;
+    if (target_init_default_triple(&triple)) {
+        char *triple_str = target_triple_to_string(&triple);
+        fprintf(stream, "%s", triple_str);
+        bfree(triple_str);
+    }
 }
 
 void print_supported(FILE *stream)

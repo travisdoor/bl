@@ -49,6 +49,7 @@
 #endif
 
 #if BL_PLATFORM_MACOS
+#include <ctype.h>
 #include <errno.h>
 #include <mach-o/dyld.h>
 #include <mach/mach_time.h>
