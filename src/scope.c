@@ -129,7 +129,6 @@ Scope *_scope_create(ScopeArenas *    arenas,
     tarray_init(&scope->layers, sizeof(struct ScopeLayer));
     // For thread safe scope
     if (safe) scope->sync = sync_new();
-
     BL_MAGIC_SET(scope);
     return scope;
 }

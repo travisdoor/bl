@@ -121,7 +121,6 @@ LLVMMetadataRef llvm_di_create_lexical_scope(LLVMDIBuilderRef builder_ref,
     auto builder = CAST(DIBuilder *)(builder_ref);
     auto scope   = builder->createLexicalBlock(
         CAST(DIScope *)(scope_ref), CAST(DIFile *)(file_ref), line, col);
-
     return CAST(LLVMMetadataRef)(scope);
 }
 

@@ -425,7 +425,7 @@ LLVMMetadataRef DI_type_init(Context *cnt, MirType *type)
         LLVMMetadataRef scope_meta, file_meta;
         BL_ASSERT(type->data.enm.scope && "Missing enum scope!");
         const Location *location = type->data.enm.scope->location;
-        scope_meta               = type->data.enm.scope->parent->llvm_meta;
+        scope_meta               = DI_scope_init(cnt, type->data.enm.scope->parent);
         BL_ASSERT(scope_meta && "Missing scope LLVM metadata!");
         if (location) {
             file_meta = DI_unit_init(cnt, location->unit);
@@ -435,10 +435,8 @@ LLVMMetadataRef DI_type_init(Context *cnt, MirType *type)
         }
         MirType *   base_type = type->data.enm.base_type;
         const char *enm_name  = type->user_id ? type->user_id->str : "enum";
-
         TSmallArray_LLVMMetadata llvm_elems;
         tsa_init(&llvm_elems);
-
         MirVariant *variant;
         TSA_FOREACH(type->data.enm.variants, variant)
         {
@@ -450,7 +448,6 @@ LLVMMetadataRef DI_type_init(Context *cnt, MirType *type)
 
             tsa_push_LLVMMetadata(&llvm_elems, llvm_variant);
         }
-
         type->llvm_meta = llvm_di_create_enum_type(cnt->llvm_di_builder,
                                                    scope_meta,
                                                    enm_name,
@@ -461,7 +458,6 @@ LLVMMetadataRef DI_type_init(Context *cnt, MirType *type)
                                                    llvm_elems.data,
                                                    llvm_elems.size,
                                                    DI_type_init(cnt, base_type));
-
         tsa_terminate(&llvm_elems);
         break;
     }
@@ -469,10 +465,8 @@ LLVMMetadataRef DI_type_init(Context *cnt, MirType *type)
     case MIR_TYPE_FN: {
         TSmallArray_LLVMMetadata params;
         tsa_init(&params);
-
         // return type is first
         tsa_push_LLVMMetadata(&params, DI_type_init(cnt, type->data.fn.ret_type));
-
         if (type->data.fn.args) {
             MirArg *it;
             TSA_FOREACH(type->data.fn.args, it)
@@ -480,7 +474,6 @@ LLVMMetadataRef DI_type_init(Context *cnt, MirType *type)
                 tsa_push_LLVMMetadata(&params, DI_type_init(cnt, it->type));
             }
         }
-
         type->llvm_meta =
             llvm_di_create_function_type(cnt->llvm_di_builder, params.data, (unsigned)params.size);
 
@@ -492,7 +485,6 @@ LLVMMetadataRef DI_type_init(Context *cnt, MirType *type)
         BL_ABORT("Missing generation DI for type %d", type->kind);
     }
     }
-
     BL_ASSERT(type->llvm_meta);
     return type->llvm_meta;
 }
@@ -641,17 +633,19 @@ LLVMMetadataRef DI_scope_init(Context *cnt, Scope *scope)
         LLVMMetadataRef llvm_unit         = DI_unit_init(cnt, scope->location->unit);
         BL_ASSERT(llvm_parent_scope);
         BL_ASSERT(llvm_unit);
-        scope->llvm_meta = llvm_di_create_lexical_scope(cnt->llvm_di_builder,
-                                                        llvm_parent_scope,
-                                                        llvm_unit,
-                                                        (unsigned)scope->location->line,
-                                                        //(unsigned)scope->location->col
-                                                        0);
+        scope->llvm_meta = llvm_di_create_lexical_scope(
+            cnt->llvm_di_builder, llvm_parent_scope, llvm_unit, (unsigned)scope->location->line, 0);
+        break;
+    }
+    case SCOPE_PRIVATE:
+    case SCOPE_NAMED: {
+        scope->llvm_meta = cnt->assembly->gscope->llvm_meta;
         break;
     }
     default:
-        BL_ABORT("Unsuported scope '%s' for DI generation", scope_kind_name(scope));
+        BL_ABORT("Unsupported scope '%s' for DI generation", scope_kind_name(scope));
     }
+    BL_ASSERT(scope->llvm_meta);
     return scope->llvm_meta;
 }
 
