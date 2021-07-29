@@ -422,9 +422,16 @@ LLVMMetadataRef DI_type_init(Context *cnt, MirType *type)
     }
 
     case MIR_TYPE_ENUM: {
-        if (!type->data.enm.scope->location) {
+        LLVMMetadataRef scope_meta, file_meta;
+        BL_ASSERT(type->data.enm.scope && "Missing enum scope!");
+        const Location *location = type->data.enm.scope->location;
+        scope_meta               = type->data.enm.scope->parent->llvm_meta;
+        BL_ASSERT(scope_meta && "Missing scope LLVM metadata!");
+        if (location) {
+            file_meta = DI_unit_init(cnt, location->unit);
+        } else {
             // This applies for builtin types without source location.
-            return NULL;
+            file_meta = scope_meta;
         }
         MirType *   base_type = type->data.enm.base_type;
         const char *enm_name  = type->user_id ? type->user_id->str : "enum";
@@ -444,17 +451,16 @@ LLVMMetadataRef DI_type_init(Context *cnt, MirType *type)
             tsa_push_LLVMMetadata(&llvm_elems, llvm_variant);
         }
 
-        type->llvm_meta =
-            llvm_di_create_enum_type(cnt->llvm_di_builder,
-                                     type->data.enm.scope->parent->llvm_meta,
-                                     enm_name,
-                                     DI_unit_init(cnt, type->data.enm.scope->location->unit),
-                                     (unsigned)type->data.enm.scope->location->line,
-                                     type->size_bits,
-                                     (unsigned)type->alignment * 8,
-                                     llvm_elems.data,
-                                     llvm_elems.size,
-                                     DI_type_init(cnt, base_type));
+        type->llvm_meta = llvm_di_create_enum_type(cnt->llvm_di_builder,
+                                                   scope_meta,
+                                                   enm_name,
+                                                   file_meta,
+                                                   location ? (unsigned)location->line : 0,
+                                                   type->size_bits,
+                                                   (unsigned)type->alignment * 8,
+                                                   llvm_elems.data,
+                                                   llvm_elems.size,
+                                                   DI_type_init(cnt, base_type));
 
         tsa_terminate(&llvm_elems);
         break;

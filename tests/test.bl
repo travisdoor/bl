@@ -1,8 +1,11 @@
-func :: fn (v: Arch, v2: Arch) {
-    print("% - %\n", v, v2);
+func :: fn (v: Arch) {
+    print("%\n", v);
 }
 
 main :: fn () s32 {
-    func(ARCH, Arch.unknown);
+    func(ARCH);
+    //print("%\n", ARCH);
+    //print("%\n", Arch);
+    //print("%\n", Arch.unknown);
     return 0;
 }

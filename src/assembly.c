@@ -154,7 +154,7 @@ static void parse_triple(const char *normalized_triple, TargetTriple *out_triple
 
     if (strcmp(os, "windows") == 0)
         out_triple->os = OS_WINDOWS;
-    else if (strcmp(os, "darwin") == 0)
+    else if (strncmp(os, "darwin", strlen("darwin")) == 0)
         out_triple->os = OS_DARWIN;
     else if (strcmp(os, "linux") == 0)
         out_triple->os = OS_LINUX;

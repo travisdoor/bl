@@ -57,4 +57,5 @@ MirType *t_CodeLocation_ptr;
 entry(unknown)
 entry(x86_64)
 entry(aarch64)
+entry(arm64)
 #endif
