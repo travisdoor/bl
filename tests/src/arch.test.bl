@@ -59,7 +59,3 @@ env_all :: fn () #test {
         test_eq(expected_supported_env[i], variant.name);
     }
 }
-
-env_current :: fn () #test {
-    test_neq(ENV, Env.unknown);
-}

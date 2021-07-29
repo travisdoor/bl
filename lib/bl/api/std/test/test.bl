@@ -1,4 +1,4 @@
-/// =================================================================================================
+// =================================================================================================
 // bl
 //
 // File:   test.bl 
@@ -104,9 +104,9 @@ test_neq :: fn {
         print_err("Expected not to be '%'.", not_expected);
         stop(loc);
     };
-    fn (got: ?T, expected: T, loc := #call_location) {
-        if got != expected { return; }
-        print_err("Expected '%' got '%'.", expected, got);
+    fn (got: ?T, not_expected: T, loc := #call_location) {
+        if got != not_expected { return; }
+        print_err("Expected not to be '%'.", not_expected);
         stop(loc);
     };
 }
