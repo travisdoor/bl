@@ -37,7 +37,6 @@
 #load "posix/libc.bl"
 #load "std/error.bl"
 
-OS_KIND :: OSKind.MacOS;
 OS_NAME :: "MacOS";
 
 OS_STDIN  :: C_STDIN;

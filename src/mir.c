@@ -10720,6 +10720,46 @@ static void provide_builtin_arch(Context *cnt)
     add_global_int(cnt, BID(ARCH), false, t_arch, cnt->assembly->target->triple.arch);
 }
 
+static void provide_builtin_os(Context *cnt)
+{
+    struct BuiltinTypes *   bt       = cnt->builtin_types;
+    Scope *                 scope    = scope_create(&cnt->assembly->arenas.scope,
+                                SCOPE_TYPE_ENUM,
+                                cnt->assembly->gscope,
+                                TARRAY_SIZE(os_names),
+                                NULL);
+    TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, cnt->assembly);
+    static ID               ids[TARRAY_SIZE(os_names)];
+    for (usize i = 0; i < TARRAY_SIZE(os_names); ++i) {
+        MirVariant *variant = create_variant(cnt, id_init(&ids[i], os_names[i]), bt->t_s32, i);
+        tsa_push_VariantPtr(variants, variant);
+        provide_builtin_variant(cnt, scope, variant);
+    }
+    MirType *t_os = create_type_enum(cnt, BID(PLATFORM_ENUM), scope, bt->t_s32, variants);
+    provide_builtin_type(cnt, t_os);
+    add_global_int(cnt, BID(PLATFORM), false, t_os, cnt->assembly->target->triple.os);
+}
+
+static void provide_builtin_env(Context *cnt)
+{
+    struct BuiltinTypes *   bt       = cnt->builtin_types;
+    Scope *                 scope    = scope_create(&cnt->assembly->arenas.scope,
+                                SCOPE_TYPE_ENUM,
+                                cnt->assembly->gscope,
+                                TARRAY_SIZE(env_names),
+                                NULL);
+    TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, cnt->assembly);
+    static ID               ids[TARRAY_SIZE(env_names)];
+    for (usize i = 0; i < TARRAY_SIZE(env_names); ++i) {
+        MirVariant *variant = create_variant(cnt, id_init(&ids[i], env_names[i]), bt->t_s32, i);
+        tsa_push_VariantPtr(variants, variant);
+        provide_builtin_variant(cnt, scope, variant);
+    }
+    MirType *t_env = create_type_enum(cnt, BID(ENV_ENUM), scope, bt->t_s32, variants);
+    provide_builtin_type(cnt, t_env);
+    add_global_int(cnt, BID(ENV), false, t_env, cnt->assembly->target->triple.env);
+}
+
 void builtin_inits(Context *cnt)
 {
 #define PROVIDE(N) provide_builtin_type(cnt, bt->t_##N)
@@ -10756,6 +10796,8 @@ void builtin_inits(Context *cnt)
     bt->t_test_case_fn    = create_type_fn(cnt, NULL, bt->t_void, NULL, false, false, false);
 
     provide_builtin_arch(cnt);
+    provide_builtin_os(cnt);
+    provide_builtin_env(cnt);
 
     // Provide types into global scope
     PROVIDE(type);

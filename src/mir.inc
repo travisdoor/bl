@@ -155,6 +155,10 @@ union __INSTR_T {\
     MIR_BUILTIN_ID_IS_COMPTIME_RUN,
     MIR_BUILTIN_ID_ARCH_ENUM,
     MIR_BUILTIN_ID_ARCH,
+    MIR_BUILTIN_ID_PLATFORM_ENUM,
+    MIR_BUILTIN_ID_PLATFORM,
+    MIR_BUILTIN_ID_ENV_ENUM,
+    MIR_BUILTIN_ID_ENV,
 #endif
 
 #ifdef GEN_BUILTIN_IDS
@@ -211,4 +215,8 @@ union __INSTR_T {\
     {.str = "IS_COMPTIME_RUN",       .hash = 0},
     {.str = "Arch",                  .hash = 0},
     {.str = "ARCH",                  .hash = 0},
+    {.str = "Platform",              .hash = 0},
+    {.str = "PLATFORM",              .hash = 0},
+    {.str = "Env",                   .hash = 0},
+    {.str = "ENV",                   .hash = 0},
 #endif

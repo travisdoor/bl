@@ -51,6 +51,30 @@ const char *arch_names[] = {
 #undef GEN_ARCH
 };
 
+const char *os_names[] = {
+#define GEN_OS
+#define entry(X) #X,
+#include "assembly.inc"
+#undef entry
+#undef GEN_OS
+};
+
+const char *vendor_names[] = {
+#define GEN_VENDOR
+#define entry(X) #X,
+#include "assembly.inc"
+#undef entry
+#undef GEN_VENDOR
+};
+
+const char *env_names[] = {
+#define GEN_ENV
+#define entry(X) #X,
+#include "assembly.inc"
+#undef entry
+#undef GEN_ENV
+};
+
 BL_STATIC_ASSERT(ARCH_unknown == 0);
 
 union _SmallArrays {
@@ -145,33 +169,29 @@ static void parse_triple(const char *normalized_triple, TargetTriple *out_triple
         }
     }
 
-    if (strcmp(vendor, "pc") == 0)
-        out_triple->vendor = VENDOR_PC;
-    else if (strcmp(vendor, "apple") == 0)
-        out_triple->vendor = VENDOR_APPLE;
-    else
-        out_triple->vendor = VENDOR_UNKNOWN;
-
-    if (strcmp(os, "windows") == 0)
-        out_triple->os = OS_WINDOWS;
-    else if (strncmp(os, "darwin", strlen("darwin")) == 0)
-        out_triple->os = OS_DARWIN;
-    else if (strcmp(os, "linux") == 0)
-        out_triple->os = OS_LINUX;
-    else
-        out_triple->os = OS_UNKNOWN;
-
-    if (env) {
-        if (strcmp(env, "msvc") == 0)
-            out_triple->env = ENV_MSVC;
-        else if (strcmp(env, "gnu") == 0)
-            out_triple->env = ENV_GNU;
-        else
-            out_triple->env = ENV_UNKNOWN;
-    } else {
-        out_triple->env = ENV_NONE;
+    out_triple->vendor = VENDOR_unknown;
+    for (usize i = 0; i < TARRAY_SIZE(vendor_names); ++i) {
+        if (strcmp(vendor, vendor_names[i]) == 0) {
+            out_triple->vendor = i;
+            break;
+        }
     }
 
+    out_triple->os = OS_unknown;
+    for (usize i = 0; i < TARRAY_SIZE(os_names); ++i) {
+        if (strncmp(os, os_names[i], strlen(os_names[i])) == 0) {
+            out_triple->os = i;
+            break;
+        }
+    }
+
+    out_triple->env = ENV_unknown;
+    for (usize i = 0; i < TARRAY_SIZE(env_names); ++i) {
+        if (strcmp(env, env_names[i]) == 0) {
+            out_triple->env = i;
+            break;
+        }
+    }
     free(tmp);
 }
 
@@ -280,7 +300,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) BL_ABORT("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path = _path;
+    const char *path  = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {
@@ -425,7 +445,7 @@ Target *target_new(const char *name)
     target->copy_deps = false;
 #endif
     target->triple = (TargetTriple){
-        .arch = ARCH_unknown, .vendor = VENDOR_UNKNOWN, .os = OS_UNKNOWN, .env = ENV_UNKNOWN};
+        .arch = ARCH_unknown, .vendor = VENDOR_unknown, .os = OS_unknown, .env = ENV_unknown};
     return target;
 }
 
@@ -528,7 +548,7 @@ void target_set_module_dir(Target *target, const char *dir, ModuleImportPolicy p
 bool target_is_triple_valid(TargetTriple *triple)
 {
     if (triple->arch == ARCH_unknown) return false;
-    if (triple->os == OS_UNKNOWN) return false;
+    if (triple->os == OS_unknown) return false;
     // @INCOMPLETE Consider validation of other fields???
     return true;
 }
@@ -552,57 +572,14 @@ char *target_triple_to_string(const TargetTriple *triple)
     const char *vendor = "";
     const char *os     = "";
     const char *env    = "";
-    if (triple->arch < TARRAY_SIZE(arch_names)) {
-        arch = arch_names[triple->arch];
-    }
-
-    switch (triple->vendor) {
-    case VENDOR_PC:
-        vendor = "pc";
-        break;
-    case VENDOR_APPLE:
-        vendor = "apple";
-        break;
-    case VENDOR_UNKNOWN:
-        vendor = "unknown";
-    }
-
-    switch (triple->os) {
-    case OS_WINDOWS:
-        os = "windows";
-        break;
-    case OS_LINUX:
-        os = "linux";
-        break;
-    case OS_DARWIN:
-        os = "darwin";
-        break;
-    case OS_UNKNOWN:
-        os = "unknown";
-    }
-
-    switch (triple->env) {
-    case ENV_GNU:
-        env = "gnu";
-        break;
-    case ENV_MSVC:
-        env = "msvc";
-        break;
-    case ENV_UNKNOWN:
-        env = "unknown";
-        break;
-    case ENV_NONE:
-        env = "";
-    }
-
+    if (triple->arch < TARRAY_SIZE(arch_names)) arch = arch_names[triple->arch];
+    if (triple->vendor < TARRAY_SIZE(vendor_names)) vendor = vendor_names[triple->vendor];
+    if (triple->os < TARRAY_SIZE(os_names)) os = os_names[triple->os];
+    if (triple->env < TARRAY_SIZE(env_names)) env = env_names[triple->env];
     const usize len =
         strlen(arch) + strlen(vendor) + strlen(os) + strlen(env) + 4; // 3x'-' + terminator
     char *str = bl_malloc(len);
-    if (triple->env == ENV_NONE) {
-        snprintf(str, len, "%s-%s-%s", arch, vendor, os);
-    } else {
-        snprintf(str, len, "%s-%s-%s-%s", arch, vendor, os, env);
-    }
+    snprintf(str, len, "%s-%s-%s-%s", arch, vendor, os, env);
     return str;
 }
 

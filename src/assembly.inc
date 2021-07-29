@@ -59,3 +59,22 @@ entry(x86_64)
 entry(aarch64)
 entry(arm64)
 #endif
+
+#ifdef GEN_OS
+entry(unknown)
+entry(windows)
+entry(darwin)
+entry(linux)
+#endif
+
+#ifdef GEN_VENDOR
+entry(unknown)
+entry(pc)
+entry(apple)
+#endif
+
+#ifdef GEN_ENV
+entry(unknown)
+entry(msvc)
+entry(gnu)
+#endif

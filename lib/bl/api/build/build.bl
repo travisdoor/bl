@@ -287,9 +287,9 @@ add_lib_path :: fn (target: *Target, path: string) {
 ///         exe :: add_executable("MyGame");
 ///         add_unit(exe, "src/main.bl");
 /// 
-///         switch OS_KIND {
-///             OSKind.Windows { target_windows(exe); }
-///             default        { panic("Unknown build target!"); }
+///         switch PLATFORM {
+///             Platform.windows { target_windows(exe); }
+///             default          { panic("Unknown build target!"); }
 ///         }
 ///         compile(exe);
 ///     }

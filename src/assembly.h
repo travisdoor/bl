@@ -82,24 +82,34 @@ typedef enum {
 extern const char *arch_names[_ARCH_COUNT];
 
 typedef enum {
-    VENDOR_UNKNOWN = 0,
-    VENDOR_PC      = 1,
-    VENDOR_APPLE   = 2,
-} Vendor;
-
-typedef enum {
-    OS_UNKNOWN = 0,
-    OS_WINDOWS = 1,
-    OS_LINUX   = 2,
-    OS_DARWIN  = 3,
+#define GEN_OS
+#define entry(X) OS_##X,
+#include "assembly.inc"
+#undef entry
+#undef GEN_OS
+    _OS_COUNT
 } OperatingSystem;
+extern const char *os_names[_OS_COUNT];
 
 typedef enum {
-    ENV_UNKNOWN = 0,
-    ENV_NONE    = 1,
-    ENV_GNU     = 2,
-    ENV_MSVC    = 3,
+#define GEN_VENDOR
+#define entry(X) VENDOR_##X,
+#include "assembly.inc"
+#undef entry
+#undef GEN_VENDOR
+    _VENDOR_COUNT
+} Vendor;
+extern const char *vendor_names[_VENDOR_COUNT];
+
+typedef enum {
+#define GEN_ENV
+#define entry(X) ENV_##X,
+#include "assembly.inc"
+#undef entry
+#undef GEN_ENV
+    _ENV_COUNT
 } Environment;
+extern const char *env_names[_ENV_COUNT];
 
 typedef struct {
     Arch            arch;

@@ -205,7 +205,7 @@ fs_read_slice_test :: fn () #test {
 }
 
 fs_validate_filename_test :: fn () #test {
-    if OS_KIND == OSKind.Windows {
+    if PLATFORM == Platform.windows {
         test_false(Fs.validate_filename("<"));
         test_false(Fs.validate_filename(">"));
         test_false(Fs.validate_filename(":")); 

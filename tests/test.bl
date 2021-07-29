@@ -1,11 +1,11 @@
-func :: fn (v: Arch) {
-    print("%\n", v);
-}
-
 main :: fn () s32 {
-    func(ARCH);
-    //print("%\n", ARCH);
-    //print("%\n", Arch);
-    //print("%\n", Arch.unknown);
+    print("%\n", ARCH);
+    print("%\n", Arch);
+    
+    print("%\n", PLATFORM);
+    print("%\n", Platform);
+    
+    print("%\n", ENV);
+    print("%\n", Env);
     return 0;
 }

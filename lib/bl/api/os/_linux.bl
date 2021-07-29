@@ -35,7 +35,6 @@
 #load "posix/libc.bl"
 #load "std/error.bl"
 
-OS_KIND :: OSKind.Linux;
 OS_NAME :: "Linux";
 
 OS_STDIN  :: C_STDIN;

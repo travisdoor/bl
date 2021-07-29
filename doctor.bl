@@ -31,7 +31,7 @@ main :: fn () s32 {
     wdir_init();
     _args.test_count = 1;
     if !parse_args() { return 1; }
-    if OS_KIND == OSKind.Windows {
+    if PLATFORM == Platform.windows {
         _compiler_path = get_path(BL_EXE_PATH_WIN);
     } else {
         _compiler_path = get_path(BL_EXE_PATH_UNIX);
@@ -103,7 +103,7 @@ main :: fn () s32 {
     
     
     // cleanup
-    if OS_KIND == OSKind.Windows {
+    if PLATFORM == Platform.windows {
         Fs.remove("out.exe");
         Fs.remove("out.obj");
         Fs.remove("out.pdb");
@@ -216,7 +216,7 @@ parse_args :: fn () bool {
 
 get_verbosity :: fn () string #inline {
     if _args.diag_mode { return ""; } // print all
-    if OS_KIND == OSKind.Windows {
+    if PLATFORM == Platform.windows {
         return "2>nul 1>nul";
     }
     
@@ -276,7 +276,7 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
 
             tmp := String.new();
             defer String.delete(tmp);
-            if OS_KIND == OSKind.Windows { 
+            if PLATFORM == Platform.windows { 
                 String.append(&tmp, "out.exe ");
             } else {
                 String.append(&tmp, "./out ");
@@ -434,6 +434,7 @@ BlError :: enum s32 {
     ERR_MISSING_PLATFORM        :: 79;
     ERR_UNEXPECTED_FUNCTION_BODY :: 80;
     ERR_INVALID_POLY_MATCH       :: 81;
+    ERR_UNSUPPORTED_TARGET       :: 82;
 }
 
 strtoerr :: fn (s: string) s32 {

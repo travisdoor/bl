@@ -33,7 +33,6 @@
 #load "posix/signal.bl"
 #load "std/error.bl"
 
-OS_KIND :: OSKind.Windows;
 OS_NAME :: "Windows";
 
 OS_STDIN  :: C_STDIN;

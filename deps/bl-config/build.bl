@@ -3,11 +3,11 @@ build :: fn () #build_entry {
     add_unit(exe, "src/main.bl");
     add_unit(exe, "src/config.bl");
 
-    switch OS_KIND {
-        OSKind.Windows { target_windows(exe); }
-        OSKind.Linux   { target_linux(exe); }
-        OSKind.MacOS   { target_macos(exe); }
-        default        { panic("Unknown build target!"); }
+    switch PLATFORM {
+        Platform.windows { target_windows(exe); }
+        Platform.linux   { target_linux(exe); }
+        Platform.darwin  { target_macos(exe); }
+        default          { panic("Unknown build target!"); }
     }
     compile(exe);
 }

@@ -143,7 +143,7 @@ cmake_generate :: fn () s32 #inline {
     Fs.set_cwd(BUILD_DIR);
     defer Fs.set_cwd(_root_dir);
     if _args.cmake_cache_clear { Fs.remove(CMAKE_CACHE); }
-    if OS_KIND == OSKind.Windows {
+    if PLATFORM == Platform.windows {
         cmd = tprint("cmake .. -G \"Visual Studio 16 2019\" -Thost=x64 -DCMAKE_BUILD_TYPE=%", conf);
     } else {
         cmd = tprint("cmake .. -DCMAKE_BUILD_TYPE=%", conf);
@@ -162,7 +162,7 @@ cmake_compile :: fn () s32 #inline {
     cmd: string;
     Fs.set_cwd(BUILD_DIR);
     defer Fs.set_cwd(_root_dir);
-    if OS_KIND == OSKind.Windows {
+    if PLATFORM == Platform.windows {
         cmd = tprint("cmake --build . --config %", conf);
     } else {
         cmd = tprint("make -j");
@@ -177,7 +177,7 @@ tracy_compile :: fn () s32 {
     Fs.set_cwd(String.clear_concat(&path, "deps/tracy-", TRACY_VERSION));
     defer Fs.set_cwd(_root_dir);
     
-    if OS_KIND == OSKind.Windows { 
+    if PLATFORM == Platform.windows { 
         { // Deps
             print("Install Tracy dependencies...\n");
             Fs.set_cwd("vcpkg");

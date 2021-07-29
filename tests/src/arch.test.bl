@@ -20,3 +20,46 @@ arch_all :: fn () #test {
 arch_current :: fn () #test {
     test_neq(ARCH, Arch.unknown);
 }
+
+expected_supported_platforms :: {:[4]string:
+    "unknown",
+    "windows",
+    "darwin",
+    "linux",
+};
+
+platforms_all :: fn () #test {
+    T :: cast(*TypeInfoEnum) typeinfo(Platform);
+    test_eq(T.base_type, typeinfo(s32));
+    test_eq(T.variants.len, expected_supported_platforms.len);
+    loop i := 0; i < T.variants.len; i += 1 {
+        variant :: T.variants[i];
+        test_eq(variant.value, i);
+        test_eq(expected_supported_platforms[i], variant.name);
+    }
+}
+
+platform_current :: fn () #test {
+    test_neq(PLATFORM, Platform.unknown);
+}
+
+expected_supported_env :: {:[3]string:
+    "unknown",
+    "msvc",
+    "gnu",
+};
+
+env_all :: fn () #test {
+    T :: cast(*TypeInfoEnum) typeinfo(Env);
+    test_eq(T.base_type, typeinfo(s32));
+    test_eq(T.variants.len, expected_supported_env.len);
+    loop i := 0; i < T.variants.len; i += 1 {
+        variant :: T.variants[i];
+        test_eq(variant.value, i);
+        test_eq(expected_supported_env[i], variant.name);
+    }
+}
+
+env_current :: fn () #test {
+    test_neq(ENV, Env.unknown);
+}
