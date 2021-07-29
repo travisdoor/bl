@@ -1,11 +1,19 @@
 #private
+expected_supported_archs :: {:[4]string:
+    "unknown",
+    "x86_64",
+    "aarch64",
+    "arm64",
+};
+
 arch_all :: fn () #test {
     T :: cast(*TypeInfoEnum) typeinfo(Arch);
     test_eq(T.base_type, typeinfo(s32));
-    test_eq(T.variants.len, 3);
+    test_eq(T.variants.len, expected_supported_archs.len);
     loop i := 0; i < T.variants.len; i += 1 {
         variant :: T.variants[i];
         test_eq(variant.value, i);
+        test_eq(expected_supported_archs[i], variant.name);
     }
 }
 
