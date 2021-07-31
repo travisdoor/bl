@@ -71,6 +71,9 @@ typedef enum {
     BINOP_MUL_ASSIGN,
     BINOP_DIV_ASSIGN,
     BINOP_MOD_ASSIGN,
+    BINOP_AND_ASSIGN,
+    BINOP_OR_ASSIGN,
+    BINOP_XOR_ASSIGN,
     BINOP_ADD,
     BINOP_SUB,
     BINOP_MUL,
@@ -86,6 +89,7 @@ typedef enum {
     BINOP_LOGIC_OR,
     BINOP_AND,
     BINOP_OR,
+    BINOP_XOR,
     BINOP_SHR,
     BINOP_SHL,
 } BinopKind;

@@ -64,11 +64,11 @@ TokenPrecedence token_prec(Token *token)
     case SYM_TESTCASES:
         return (TokenPrecedence){.priority = 50, .associativity = TOKEN_ASSOC_RIGHT};
 
-        // * ^ / %
+        // * ^ / % @
     case SYM_ASTERISK:
-    case SYM_CARET:
     case SYM_SLASH:
     case SYM_PERCENT:
+    case SYM_AT:
         return (TokenPrecedence){.priority = 40, .associativity = TOKEN_ASSOC_LEFT};
 
         // + -
@@ -97,17 +97,21 @@ TokenPrecedence token_prec(Token *token)
     case SYM_AND:
         return (TokenPrecedence){.priority = 9, .associativity = TOKEN_ASSOC_LEFT};
 
+        // ^
+    case SYM_XOR:
+        return (TokenPrecedence){.priority = 8, .associativity = TOKEN_ASSOC_LEFT};
+
         // |
     case SYM_OR:
-        return (TokenPrecedence){.priority = 8, .associativity = TOKEN_ASSOC_LEFT};
+        return (TokenPrecedence){.priority = 7, .associativity = TOKEN_ASSOC_LEFT};
 
         // &&
     case SYM_LOGIC_AND:
-        return (TokenPrecedence){.priority = 6, .associativity = TOKEN_ASSOC_LEFT};
+        return (TokenPrecedence){.priority = 5, .associativity = TOKEN_ASSOC_LEFT};
 
         // ||
     case SYM_LOGIC_OR:
-        return (TokenPrecedence){.priority = 5, .associativity = TOKEN_ASSOC_LEFT};
+        return (TokenPrecedence){.priority = 4, .associativity = TOKEN_ASSOC_LEFT};
 
         // = += -= *= /=
     case SYM_ASSIGN:
@@ -116,7 +120,10 @@ TokenPrecedence token_prec(Token *token)
     case SYM_ASTERISK_ASSIGN:
     case SYM_SLASH_ASSIGN:
     case SYM_PERCENT_ASSIGN:
-        return (TokenPrecedence){.priority = 4, .associativity = TOKEN_ASSOC_RIGHT};
+    case SYM_AND_ASSIGN:
+    case SYM_OR_ASSIGN:
+    case SYM_XOR_ASSIGN:
+        return (TokenPrecedence){.priority = 3, .associativity = TOKEN_ASSOC_RIGHT};
 
     default:
         return (TokenPrecedence){.priority = 0, .associativity = TOKEN_ASSOC_NONE};

@@ -29,9 +29,9 @@ test_poly_3 :: fn () #test {
 }
 
 swap :: fn (a: *?T, b: *T) {
-    tmp :: ^a;
-    ^a = ^b;
-    ^b = tmp;
+    tmp :: @a;
+    @a = @b;
+    @b = tmp;
 }
 
 test_poly_swap_1 :: fn () #test {

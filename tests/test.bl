@@ -1,11 +1,6 @@
 main :: fn () s32 {
-    print("%\n", ARCH);
-    print("%\n", Arch);
-    
-    print("%\n", PLATFORM);
-    print("%\n", Platform);
-    
-    print("%\n", ENV);
-    print("%\n", Env);
+    value: s32;
+    int := &value;
+    @int = 20;
     return 0;
 }

@@ -7,6 +7,6 @@ Flags :: enum u32 {
 
 main :: fn () s32 {
     T :: cast(*TypeInfoEnum) typeinfo(Flags);
-    print("%\n", ^T);
+    print("%\n", @T);
     return 0;
 }

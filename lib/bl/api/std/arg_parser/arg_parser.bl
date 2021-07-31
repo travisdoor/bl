@@ -83,7 +83,7 @@ run :: fn (_parser: Parser, args: []string, ctx: *Ctx, start := 0) Error {
 
     loop args.len > 0 {
         arg :: &args[0];
-        if arg.len > 0 && (^arg)[0] != '-' {
+        if arg.len > 0 && (@arg)[0] != '-' {
             ctx.other.ptr = &args[0];
             ctx.other.len = args.len;
             break;
@@ -91,7 +91,7 @@ run :: fn (_parser: Parser, args: []string, ctx: *Ctx, start := 0) Error {
         found: bool;
         loop e := 0; e < parser.entries.len; e += 1 {
             entry :: &parser.entries[e];
-            if String.compare(^arg, entry.short) || String.compare(^arg, entry.long) {
+            if String.compare(@arg, entry.short) || String.compare(@arg, entry.long) {
                 found = true;
                 parsed, err :: entry.handler(_parser, args, ctx);
                 if !is_ok(err) {
@@ -106,7 +106,7 @@ run :: fn (_parser: Parser, args: []string, ctx: *Ctx, start := 0) Error {
             }
         }
         if !found {
-            return error("Invalid argument '%'.", ^arg);
+            return error("Invalid argument '%'.", @arg);
         }
     }
     return ok();

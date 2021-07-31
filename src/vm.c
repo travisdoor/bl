@@ -478,6 +478,9 @@ void calculate_binop(MirType    UNUSED(*dest_type),
         break;                                                                                     \
     case BINOP_OR:                                                                                 \
         vm_write_as(T, dest, vm_read_as(T, lhs) | vm_read_as(T, rhs));                             \
+        break;                                                                                     \
+    case BINOP_XOR:                                                                                \
+        vm_write_as(T, dest, vm_read_as(T, lhs) ^ vm_read_as(T, rhs));                             \
         break;
     //*********************************************************************************************/
 

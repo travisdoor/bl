@@ -1,5 +1,5 @@
 foo :: fn (loc: *CodeLocation = #call_location) {
-    print("%\n", ^loc);
+    print("%\n", @loc);
 }
 
 main :: fn () s32 {

@@ -159,8 +159,8 @@ __os_start :: fn () #entry {
             len :: Win32.WideCharToMultiByte(Win32.CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
             Win32.WideCharToMultiByte(Win32.CP_UTF8, null, wargs[i], auto c_wcslen(wargs[i]), &tmp[tmp_i], len, null, null); 
 
-            (^out_args)[i].len = len - 1;
-            (^out_args)[i].ptr = &tmp[tmp_i];
+            (@out_args)[i].len = len - 1;
+            (@out_args)[i].ptr = &tmp[tmp_i];
             tmp_i += len;
             tmp[tmp_i-1] = '\0';
         }

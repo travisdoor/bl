@@ -4,10 +4,10 @@ pointers :: fn () #test {
   ptr     := &i;
   ptr_ptr := &ptr;
 
-  j := ^^ptr_ptr;
+  j := @@ptr_ptr;
   assert(j == 666);
 
-  j = ^ptr;
+  j = @ptr;
   assert(j == 666);
 };
 
@@ -28,7 +28,7 @@ passed_pointer :: fn () #test {
   i := 0;
   
   fn (ptr: *s32, v: s32) {
-    ^ptr = v; 
+    @ptr = v; 
   } (&i, value);
 
   assert(i == value);

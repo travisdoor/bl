@@ -50,7 +50,7 @@ reuse_allocation_1 :: fn () #test {
         num_ptr := cast(*s32)allocate_memory(&temporary_allocator, sizeof(s32));
         test_not_null(num_ptr);
         test_true(is_aligned(num_ptr, alignof(s32)));
-        ^num_ptr = i;
+        @num_ptr = i;
         array_push(&ptrs, num_ptr);
     }    
     test_eq(ptrs.len, COUNT);
@@ -60,7 +60,7 @@ reuse_allocation_1 :: fn () #test {
         num_ptr :: ptrs[i];
         test_not_null(num_ptr);
         test_true(is_aligned(num_ptr, alignof(s32)));
-        test_eq(^num_ptr, i);
+        test_eq(@num_ptr, i);
     }    
     temporary_reset();
     test_true(temporary_allocated_bytes() > 0);
@@ -71,7 +71,7 @@ reuse_allocation_1 :: fn () #test {
         num_ptr := cast(*s32)allocate_memory(&temporary_allocator, sizeof(s32));
         test_not_null(num_ptr);
         test_true(is_aligned(num_ptr, alignof(s32)));
-        ^num_ptr = i;
+        @num_ptr = i;
         array_push(&ptrs, num_ptr);
     }    
     test_eq(ptrs.len, COUNT);
@@ -79,7 +79,7 @@ reuse_allocation_1 :: fn () #test {
         num_ptr :: ptrs[i];
         test_not_null(num_ptr);
         test_true(is_aligned(num_ptr, alignof(s32)));
-        test_eq(^num_ptr, i);
+        test_eq(@num_ptr, i);
     }    
     
     temporary_release();

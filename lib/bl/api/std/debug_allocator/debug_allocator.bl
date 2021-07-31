@@ -142,7 +142,7 @@ print_memory_report :: fn (dump_leaks := false) {
         iter := htbl_begin(_alloc_table);
         end  :: htbl_end(_alloc_table);
         loop !iter_equal(iter, end) {
-            meta :: ^cast(**Meta)htbl_iter_peek_value(iter);
+            meta :: @cast(**Meta)htbl_iter_peek_value(iter);
             htbl_iter_next(&iter);
             print("    [%] - %:% (% bytes)\n", meta.serial, meta.file, meta.line, meta.allocated_size);
         }

@@ -2324,6 +2324,10 @@ State emit_instr_binop(Context *cnt, MirInstrBinop *binop)
         binop->base.llvm_value = LLVMBuildOr(cnt->llvm_builder, lhs, rhs, "");
         break;
 
+    case BINOP_XOR:
+        binop->base.llvm_value = LLVMBuildXor(cnt->llvm_builder, lhs, rhs, "");
+        break;
+
     case BINOP_SHR:
         if (signed_integer)
             binop->base.llvm_value = LLVMBuildAShr(cnt->llvm_builder, lhs, rhs, "");
