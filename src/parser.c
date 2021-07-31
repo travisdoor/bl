@@ -218,6 +218,12 @@ BinopKind sym_to_binop_kind(Sym sm)
         return BINOP_DIV_ASSIGN;
     case SYM_PERCENT_ASSIGN:
         return BINOP_MOD_ASSIGN;
+    case SYM_AND_ASSIGN:
+        return BINOP_AND_ASSIGN;
+    case SYM_OR_ASSIGN:
+        return BINOP_OR_ASSIGN;
+    case SYM_XOR_ASSIGN:
+        return BINOP_XOR_ASSIGN;
     case SYM_PLUS:
         return BINOP_ADD;
     case SYM_MINUS:
@@ -248,6 +254,8 @@ BinopKind sym_to_binop_kind(Sym sm)
         return BINOP_AND;
     case SYM_OR:
         return BINOP_OR;
+    case SYM_XOR:
+        return BINOP_XOR;
     case SYM_SHR:
         return BINOP_SHR;
     case SYM_SHL:
@@ -1704,7 +1712,7 @@ Ast *parse_expr_addrof(Context *cnt)
 
 Ast *parse_expr_deref(Context *cnt)
 {
-    Token *tok = tokens_consume_if(cnt->tokens, SYM_CARET);
+    Token *tok = tokens_consume_if(cnt->tokens, SYM_AT);
     if (!tok) return NULL;
 
     Ast *deref = ast_create_node(cnt->ast_arena, AST_EXPR_DEREF, tok, SCOPE_GET(cnt));
@@ -1715,7 +1723,7 @@ Ast *parse_expr_deref(Context *cnt)
         PARSE_ERROR(ERR_EXPECTED_EXPR,
                     err_tok,
                     BUILDER_CUR_WORD,
-                    "Expected expression after '^' operator.");
+                    "Expected expression after '@' pointer dereference operator.");
         tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
         return ast_create_node(cnt->ast_arena, AST_BAD, tok, SCOPE_GET(cnt));
     }

@@ -9526,6 +9526,7 @@ MirInstr *ast_expr_binop(Context *cnt, Ast *binop)
         return append_instr_store(cnt, binop, rhs, lhs);
     }
 
+    // @CLEANUP Create helper function for these.
     case BINOP_ADD_ASSIGN: {
         MirInstr *rhs = ast(cnt, ast_rhs);
         MirInstr *lhs = ast(cnt, ast_lhs);
@@ -9566,6 +9567,33 @@ MirInstr *ast_expr_binop(Context *cnt, Ast *binop)
         MirInstr *rhs = ast(cnt, ast_rhs);
         MirInstr *lhs = ast(cnt, ast_lhs);
         MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_MOD);
+        lhs           = ast(cnt, ast_lhs);
+
+        return append_instr_store(cnt, binop, tmp, lhs);
+    }
+
+    case BINOP_AND_ASSIGN: {
+        MirInstr *rhs = ast(cnt, ast_rhs);
+        MirInstr *lhs = ast(cnt, ast_lhs);
+        MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_AND);
+        lhs           = ast(cnt, ast_lhs);
+
+        return append_instr_store(cnt, binop, tmp, lhs);
+    }
+
+    case BINOP_OR_ASSIGN: {
+        MirInstr *rhs = ast(cnt, ast_rhs);
+        MirInstr *lhs = ast(cnt, ast_lhs);
+        MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_OR);
+        lhs           = ast(cnt, ast_lhs);
+
+        return append_instr_store(cnt, binop, tmp, lhs);
+    }
+
+    case BINOP_XOR_ASSIGN: {
+        MirInstr *rhs = ast(cnt, ast_rhs);
+        MirInstr *lhs = ast(cnt, ast_lhs);
+        MirInstr *tmp = append_instr_binop(cnt, binop, lhs, rhs, BINOP_XOR);
         lhs           = ast(cnt, ast_lhs);
 
         return append_instr_store(cnt, binop, tmp, lhs);

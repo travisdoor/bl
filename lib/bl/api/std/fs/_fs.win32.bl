@@ -236,7 +236,7 @@ get_tmp :: fn () string #inline {
 
 normalize :: fn (filepath: *string) Error {
     if !filepath { return error(ERR_INVALID_HANDLE, "File path is null!"); }
-    if String.is_empty(^filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+    if String.is_empty(@filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     buf : [OS_PATH_MAX]u8 #noinit;
     if Win32.GetFullPathNameA(auto filepath.ptr, auto buf.len, buf.ptr, null) == 0 {
         ec, estr :: os_get_last_error();

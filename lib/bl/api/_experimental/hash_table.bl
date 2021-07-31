@@ -223,8 +223,8 @@ htbl_iter_next :: fn (iter: *Iterator) #inline {
 htbl_insert :: fn (tbl: *HashTable, key: u64, v: Any) *u8 {
     if (v.type_info != tbl.T) {
         panic("Invalid value type '%', expected is '%'.",
-              ^v.type_info,
-              ^tbl.T);
+              @v.type_info,
+              @tbl.T);
     }
 
     if v.data == null {

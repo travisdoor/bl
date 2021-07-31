@@ -24,8 +24,8 @@ insert_and_find :: fn () #test {
     loop i := 0; i < 1024; i += 1 {
         iter :: htbl_find(tbl, auto i);
         assert(htbl_iter_peek_key(iter) == auto i);
-        assert((^ cast(*s32) htbl_iter_peek_value(iter)) == i);
-        assert((^ cast(*s32) htbl_at(tbl, auto i)) == i);
+        assert((@ cast(*s32) htbl_iter_peek_value(iter)) == i);
+        assert((@ cast(*s32) htbl_at(tbl, auto i)) == i);
     }
 }
 
@@ -40,7 +40,7 @@ iterate :: fn () #test {
     iter := htbl_begin(tbl);
     end  :: htbl_end(tbl);
     loop !iter_equal(iter, end) {
-        v :: ^ cast(*s32) htbl_iter_peek_value(iter);
+        v :: @ cast(*s32) htbl_iter_peek_value(iter);
         assert(v >= 0 && v < 1024);
 
         htbl_iter_next(&iter);

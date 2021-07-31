@@ -71,8 +71,8 @@ arena_delete :: fn (arr: *Arena) {
 arena_push :: fn (arr: *Arena, v: Any) {
     if (v.type_info != arr.T) {
         panic("Invalid value type '%', expected is '%'.",
-              ^v.type_info,
-              ^arr.T);
+              @v.type_info,
+              @arr.T);
     }
 
     if v.data == null {

@@ -94,14 +94,14 @@ memcpy :: fn (dest: *u8, src: *u8, size: usize) {
 
     loop i : usize = 0; i < m; i += 1 {
         tmp := cast(*u64) dest;
-        ^tmp = ^cast(*u64) src;
+        @tmp = @cast(*u64) src;
 
         dest = ptr_shift_bytes(dest, auto sizeof(u64));
         src = ptr_shift_bytes(src, auto sizeof(u64));
     }
     
     loop i : usize = 0; i < d; i += 1 {
-        ^dest = ^src;
+        @dest = @src;
 
         dest = ptr_shift_bytes(dest, 1);
         src = ptr_shift_bytes(src, 1);
@@ -121,9 +121,9 @@ memset :: fn (_dest: *u8, v: u8, size: usize) *u8 {
 
 /// Swaps content of memory at address `first` and `second`.
 swap :: fn (first: *?T, second: *T) #inline {
-    tmp :: ^first;
-    ^first = ^second;
-    ^second = tmp;
+    tmp :: @first;
+    @first = @second;
+    @second = tmp;
 }
 
 /// Checks whether passed pointer `ptr` is properly aligned by `alignment`.

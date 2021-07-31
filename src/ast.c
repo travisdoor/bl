@@ -217,6 +217,12 @@ const char *ast_binop_to_str(BinopKind op)
         return "/=";
     case BINOP_MOD_ASSIGN:
         return "%=";
+    case BINOP_AND_ASSIGN:
+        return "&=";
+    case BINOP_OR_ASSIGN:
+        return "|=";
+    case BINOP_XOR_ASSIGN:
+        return "^=";
     case BINOP_ADD:
         return "+";
     case BINOP_SUB:
@@ -247,6 +253,8 @@ const char *ast_binop_to_str(BinopKind op)
         return "&";
     case BINOP_OR:
         return "|";
+    case BINOP_XOR:
+        return "^";
     case BINOP_SHR:
         return ">>";
     case BINOP_SHL:

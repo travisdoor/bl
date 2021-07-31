@@ -143,7 +143,7 @@ get_allocated_bytes :: fn (v: string) usize #inline {
 /// Clear dynamic string but keep allocated storage.
 clear :: fn (v: *string) {
     v.len = 0;
-    set_terminator(^v);
+    set_terminator(@v);
 };
 
 /// Append dynamic string with any value. Allocation is done in case there
@@ -161,7 +161,7 @@ _append_str :: fn (v: *string, other: string) s32 {
     v.ptr = make_more_room_if_needed(v.ptr, auto new_len);        
     memcpy(ptr_shift_bytes(v.ptr, auto v.len), other.ptr, auto other.len);
     v.len = new_len;
-    set_terminator(^v);
+    set_terminator(@v);
     return auto other.len;
 }
 
@@ -169,14 +169,14 @@ _append_any :: fn (v: *string, add: Any) s32 #inline {
     return _print_impl(v, "%", {:[]Any: 1, &add}, auto v.len);
 }
 
-/// Append string with multiple values passed as `args` and return `^v`.
+/// Append string with multiple values passed as `args` and return `@v`.
 /// New allocation is done in case there is space no left in currently allocated
 /// string's memory to append `args`.
 concatenate :: fn (v: *string, args: ...) string {
     loop i := 0; i < args.len; i += 1 {
         append(v, args[i]);
     }
-    return ^v;
+    return @v;
 }
 
 /// Clear the `v` string and append multiple values passed as `args`. Returned
@@ -199,7 +199,7 @@ clear_concat :: fn (v: *string, args: ...) string {
     loop i := 0; i < args.len; i += 1 {
         append(v, args[i]);
     }
-    return ^v;
+    return @v;
 }
 
 /// Compare `first` and `second` strings in specified range `n` and return `true` if they are same 
@@ -314,8 +314,8 @@ split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string = nu
     loop ; i >= 0 && str[i] != delimiter; i -= 1 {}
 
     if i < 0 { // not found
-        if lhs { ^lhs = str; }
-        if di { (^di) = auto i; }
+        if lhs { @lhs = str; }
+        if di { (@di) = auto i; }
         return false;
     }
 
@@ -329,7 +329,7 @@ split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string = nu
         rhs.ptr = ptr_shift_bytes(str.ptr, auto sizeof(u8) * auto i + 1);
     }
 
-    if di { (^di) = auto i; }
+    if di { (@di) = auto i; }
     return true;
 }
 
@@ -351,8 +351,8 @@ split_at_index :: fn (str: string, index: s32, lhs: *string = null, rhs: *string
     if index < 0 { return false; }
     lhsc :: cast(s64) index;
     rhsc :: cast(s64) str.len - index;
-    if lhs { ^lhs = {:string: lhsc, str.ptr}; }
-    if rhs { ^rhs = {:string: rhsc, ptr_shift_bytes(str.ptr, lhsc)}; }
+    if lhs { @lhs = {:string: lhsc, str.ptr}; }
+    if rhs { @rhs = {:string: rhsc, ptr_shift_bytes(str.ptr, lhsc)}; }
     return true;
 }
 
@@ -378,8 +378,8 @@ split_by_first :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string = n
     loop ; i < str.len && str[i] != delimiter; i += 1 {}
 
     if i >= str.len { // not found
-        if lhs { ^lhs = str; }
-        if di { (^di) = auto i; }
+        if lhs { @lhs = str; }
+        if di { (@di) = auto i; }
         return false;
     }
 
@@ -393,7 +393,7 @@ split_by_first :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string = n
         rhs.ptr = ptr_shift_bytes(str.ptr, auto sizeof(u8) * auto i + 1);
     }
 
-    if di { (^di) = auto i; }
+    if di { (@di) = auto i; }
     return true;
 }
 
@@ -427,10 +427,10 @@ erase :: fn (str: *string, index: s32) bool {
     if index >= str.len { return false; }
     index += 1;
     loop ; index < str.len; index += 1 {
-        (^str)[index-1] = (^str)[index];
+        (@str)[index-1] = (@str)[index];
     }
     str.len -= 1;
-    set_terminator(^str);
+    set_terminator(@str);
     return true;
 }
 
@@ -491,10 +491,10 @@ to_upper :: fn (str: string) #inline {
 /// Function return count of replaced characters or zero.
 replace_all :: fn (str: *string, c: u8, with := '\0') s32 {
     replaced := 0;
-    loop i := 0; i < (^str).len; i += 1 {
-        if (^str)[i] == c { 
+    loop i := 0; i < (@str).len; i += 1 {
+        if (@str)[i] == c { 
             replaced += 1;
-            (^str)[i] = with; 
+            (@str)[i] = with; 
         }
     }
     if with == '\0' {
@@ -505,10 +505,10 @@ replace_all :: fn (str: *string, c: u8, with := '\0') s32 {
 
 /// Calculates string `u32` hash.
 hash :: fn (str: string) u32 {
-	hash : u32 = 5381;
+    hash : u32 = 5381;
     loop i := 0; i < str.len; i += 1 {
         c :: cast(u32) str[i];
-		hash = ((hash << 5) + hash) + c;
+        hash = ((hash << 5) + hash) + c;
     }
     return hash;
 }
@@ -608,15 +608,15 @@ set_terminator :: fn (v: string) {
 };
 
 consume_char :: fn (s: *string) u8 #inline {
-    c :: (^s)[0];
-    if s.len > 1 { s.ptr = &(^s)[1]; }
+    c :: (@s)[0];
+    if s.len > 1 { s.ptr = &(@s)[1]; }
     s.len -= 1;
 
     return c;
 }
 
 shrink_by :: fn (str: *string, c := '\0') {
-    tmp := ^str;
+    tmp := @str;
     n := 0;
     is := -1;
     loop i := 0; i < tmp.len; i += 1 {
@@ -633,7 +633,7 @@ shrink_by :: fn (str: *string, c := '\0') {
         }
     }
     tmp.len -= n;
-    ^str = tmp;
+    @str = tmp;
 }
 
 _char_insert :: fn (str: *string, index: s32, v: u8) bool #inline {
@@ -654,11 +654,11 @@ _string_insert :: fn (str: *string, index: s32, v: string) bool {
     str.ptr = make_more_room_if_needed(str.ptr, auto new_len);
     str.len = new_len;
     loop i := orig_len-1; i >= index; i -= 1 {
-        (^str)[i+v.len] = (^str)[i];
+        (@str)[i+v.len] = (@str)[i];
     }
     loop i := 0; i < v.len; i += 1 {
-        (^str)[i+index] = v[i];
+        (@str)[i+index] = v[i];
     }
-    set_terminator(^str);
+    set_terminator(@str);
     return true;
 }
