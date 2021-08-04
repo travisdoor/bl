@@ -84,3 +84,16 @@ random_seed_time :: fn () #inline {
 random_number :: fn (min := 0, max := 1) s32 #inline {
     return Math.rand() % (max + 1 - min) + min;
 }
+
+/// Polymorph slice sorting utility.
+/// @INCOMPLETE
+sort :: fn (list: []?T, cmp: *fn(a: *T, b: *T) bool) {
+    assert(cmp);
+    loop i := 0; i < list.len; i += 1 {
+        loop j := i+1; j < list.len; j += 1 {
+            if cmp(&list[i], &list[j]) {
+                swap(&list[i], &list[j]);
+            }
+        }
+    }
+}
