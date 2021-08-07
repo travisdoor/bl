@@ -86,12 +86,6 @@ array_clear :: fn (_arr: *[..]?T) #inline {
 #private
 ALLOC_BLOCK_SIZE : usize : 32;
 
-get_elem_size :: fn (T: *TypeInfo) usize #inline {
-    a :: cast(*TypeInfoStruct) T;
-    elem_type :: a.members[1].base_type;
-    return (cast(*TypeInfoPtr) elem_type).pointee_type.size_bytes;
-}
-
 get_elem_ptr :: fn (arr: *_Array, elem_size: usize, i: s64) *u8 #inline {
     if i >= arr.len {
         panic("Element index out of range, index is % but array size is %.", i, arr.len);

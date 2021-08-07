@@ -1,8 +1,9 @@
-foo :: fn (callback: *fn(ctx: *?T, path: string), ctx: *T) {
-}
-
 main :: fn () s32 {
-    i: s32;
-    foo(&fn(ctx: *s32, path: string) {}, &i);
     return 0;
 }
+
+#private
+foo :: fn (i: s32) {
+    j := 10;
+}
+

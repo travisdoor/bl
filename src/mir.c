@@ -835,8 +835,18 @@ static INLINE Ast *get_last_instruction_node(MirInstrBlock *block)
 static INLINE void usage_check_push(Context *cnt, ScopeEntry *entry)
 {
     BL_ASSERT(entry);
+    Scope *scope = entry->parent_scope;
+    BL_ASSERT(scope);
+    if (builder.options->no_usage_check) return;
     if (!entry->id) return;
     if (!entry->node) return;
+    if (entry->kind != SCOPE_ENTRY_VAR && entry->kind != SCOPE_ENTRY_FN) return;
+    if (entry->kind == SCOPE_ENTRY_FN && IS_FLAG(entry->data.fn->flags, FLAG_TEST_FN)) return;
+    // No usage checking in general is done only for symbols in function local scope and symbols
+    // in global private scope.
+    if (!scope_is_subtree_of_kind(scope, SCOPE_FN) && !scope_is_subtree_of_kind(scope, SCOPE_PRIVATE)) {
+        return;
+    }
     tarray_push(&cnt->analyze.usage_check_queue, entry);
 }
 
@@ -1266,6 +1276,7 @@ static INLINE void commit_fn(Context *cnt, MirFn *fn)
     entry->kind    = SCOPE_ENTRY_FN;
     entry->data.fn = fn;
     analyze_notify_provided(cnt, id->hash);
+    usage_check_push(cnt, entry);
 }
 
 static INLINE void commit_variant(Context UNUSED(*cnt), MirVariant *variant)
@@ -1299,6 +1310,7 @@ static INLINE void commit_var(Context *cnt, MirVar *var)
     entry->data.var = var;
     BL_TRACY_MESSAGE("COMMIT_VAR", "%s", id->str);
     if (var->is_global || var->is_struct_typedef) analyze_notify_provided(cnt, id->hash);
+    usage_check_push(cnt, entry);
 }
 
 // Provide builtin type. Register & commit.
@@ -1682,24 +1694,6 @@ ScopeEntry *register_symbol(Context *cnt, Ast *node, ID *id, Scope *scope, bool 
     ScopeEntry *entry = scope_create_entry(
         &cnt->assembly->arenas.scope, SCOPE_ENTRY_INCOMPLETE, id, node, is_builtin);
     scope_insert(scope, layer_index, entry);
-
-    // Schedule usage check.
-    if (!builder.options->no_usage_check) goto SKIP_USAGE_CHECK;
-    // No usage checking in general is done only for symbols in function local scope and symbols
-    // in global private scope.
-    if (!scope_is_subtree_of_kind(scope, SCOPE_FN) &&
-        scope_is_subtree_of_kind(scope, SCOPE_PRIVATE)) {
-        goto SKIP_USAGE_CHECK;
-    }
-    if (entry->kind != SCOPE_ENTRY_VAR && entry->kind != SCOPE_ENTRY_FN) {
-        goto SKIP_USAGE_CHECK;
-    }
-    if (entry->kind == SCOPE_ENTRY_FN && IS_FLAG(entry->data.fn->flags, FLAG_TEST_FN)) {
-        goto SKIP_USAGE_CHECK;
-    }
-    usage_check_push(cnt, entry);
-
-SKIP_USAGE_CHECK:
     BL_TRACY_MESSAGE("REGISTER_SYMBOL", "%s", id->str);
     return entry;
 
