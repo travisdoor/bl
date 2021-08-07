@@ -7094,6 +7094,7 @@ poly_type_match(MirType *recipe, MirType *other, MirType **poly_type, MirType **
         case MIR_TYPE_REAL:
         case MIR_TYPE_INT:
         case MIR_TYPE_POLY:
+        case MIR_TYPE_STRING:
             break;
 
         default:

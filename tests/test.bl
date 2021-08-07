@@ -1,6 +1,8 @@
+foo :: fn (callback: *fn(ctx: *?T, path: string), ctx: *T) {
+}
+
 main :: fn () s32 {
-    value: s32;
-    int := &value;
-    @int = 20;
+    i: s32;
+    foo(&fn(ctx: *s32, path: string) {}, &i);
     return 0;
 }

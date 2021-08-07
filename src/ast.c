@@ -53,12 +53,13 @@ Ast *ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct Scope *p
     node->kind        = c;
     node->owner_scope = parent_scope;
     node->location    = tok ? &tok->location : NULL;
-
-#if BL_DEBUG && defined(TRACY_ENABLE)
+#if BL_DEBUG
     static u64 serial = 0;
     node->_serial     = serial++;
+#if defined(TRACY_ENABLE)
     TracyCPlot("AST", serial);
     BL_TRACY_MESSAGE("AST_CREATE", "size: %lluB", (unsigned long long)sizeof(Ast));
+#endif
 #endif
     return node;
 }
