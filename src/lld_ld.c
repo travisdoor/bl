@@ -46,7 +46,7 @@
 #define FLAG_OUT "-o"
 
 // Wrapper for ld linker on Unix platforms.
-static const char *get_out_extension(Assembly *assembly)
+static const char *get_out_extension(struct assembly *assembly)
 {
     switch (assembly->target->kind) {
     case ASSEMBLY_EXECUTABLE:
@@ -58,7 +58,7 @@ static const char *get_out_extension(Assembly *assembly)
     }
 }
 
-static const char *get_out_prefix(Assembly *assembly)
+static const char *get_out_prefix(struct assembly *assembly)
 {
     switch (assembly->target->kind) {
     case ASSEMBLY_EXECUTABLE:
@@ -71,7 +71,7 @@ static const char *get_out_prefix(Assembly *assembly)
     BL_ABORT("Unknown output kind!");
 }
 
-static void append_lib_paths(Assembly *assembly, TString *buf)
+static void append_lib_paths(struct assembly *assembly, TString *buf)
 {
     const char *dir;
     TARRAY_FOREACH(const char *, &assembly->lib_paths, dir)
@@ -80,7 +80,7 @@ static void append_lib_paths(Assembly *assembly, TString *buf)
     }
 }
 
-static void append_libs(Assembly *assembly, TString *buf)
+static void append_libs(struct assembly *assembly, TString *buf)
 {
     NativeLib *lib;
     for (usize i = 0; i < assembly->libs.size; ++i) {
@@ -91,7 +91,7 @@ static void append_libs(Assembly *assembly, TString *buf)
     }
 }
 
-static void append_default_opt(Assembly *assembly, TString *buf)
+static void append_default_opt(struct assembly *assembly, TString *buf)
 {
     const char *default_opt = "";
     switch (assembly->target->kind) {
@@ -107,7 +107,7 @@ static void append_default_opt(Assembly *assembly, TString *buf)
     tstring_appendf(buf, "%s ", default_opt);
 }
 
-static void append_custom_opt(Assembly *assembly, TString *buf)
+static void append_custom_opt(struct assembly *assembly, TString *buf)
 {
     const char *custom_opt = assembly->custom_linker_opt.data;
     if (custom_opt) tstring_appendf(buf, "%s ", custom_opt);
@@ -129,7 +129,7 @@ static void append_linker_exec(TString *buf)
 #endif
 }
 
-s32 lld_ld(Assembly *assembly)
+s32 lld_ld(struct assembly *assembly)
 {
     RUNTIME_MEASURE_BEGIN_S(linking);
     TString *     buf     = get_tmpstr();

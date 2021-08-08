@@ -43,13 +43,13 @@
     }
 
 typedef struct context {
-    Assembly *assembly;
-    Unit *    unit;
-    Tokens *  tokens;
-    jmp_buf   jmp_error;
-    char *    c;
-    s32       line;
-    s32       col;
+    struct assembly *assembly;
+    struct unit *    unit;
+    Tokens *         tokens;
+    jmp_buf          jmp_error;
+    char *           c;
+    s32              line;
+    s32              col;
 } Context;
 
 static void       scan(Context *cnt);
@@ -507,7 +507,7 @@ PUSH_TOKEN:
     goto SCAN;
 }
 
-void lexer_run(Assembly *assembly, Unit *unit)
+void lexer_run(struct assembly *assembly, struct unit *unit)
 {
     Context cnt = {
         .assembly = assembly,

@@ -38,13 +38,13 @@
 #endif
 
 typedef struct {
-    Assembly *assembly;
-    FILE *    stream;
+    struct assembly *assembly;
+    FILE *           stream;
 } Context;
 
 static void print_comptime_value_or_id(Context *cnt, MirInstr *instr);
 
-static INLINE void print_type(Context *cnt, struct bl_type *type, bool aligned, bool prefer_name)
+static INLINE void print_type(Context *cnt, struct mir_type *type, bool aligned, bool prefer_name)
 {
     char tmp[256];
     mir_type_to_str(tmp, TARRAY_SIZE(tmp), type, prefer_name);
@@ -87,7 +87,7 @@ static INLINE void print_flags(Context *cnt, u32 flags)
 
 #define print_const_value(C, V) _print_const_value((C), (V)->type, (V)->data)
 
-static INLINE void _print_const_value(Context *cnt, struct bl_type *type, VMStackPtr value)
+static INLINE void _print_const_value(Context *cnt, struct mir_type *type, VMStackPtr value)
 {
     if (!type) return;
     if (!value) {
@@ -157,14 +157,14 @@ static INLINE void _print_const_value(Context *cnt, struct bl_type *type, VMStac
     }
 
     case MIR_TYPE_TYPE: {
-        struct bl_type *type2 = vm_read_as(struct bl_type *, value);
+        struct mir_type *type2 = vm_read_as(struct mir_type *, value);
         print_type(cnt, type2, false, false);
         break;
     }
 
     case MIR_TYPE_PTR: {
         if (mir_deref_type(type)->kind == MIR_TYPE_FN) {
-            MirFn *fn = vm_read_as(MirFn *, value);
+            struct mir_fn *fn = vm_read_as(struct mir_fn *, value);
 
             if (fn) {
                 fprintf(cnt->stream, "&%s", fn->linkage_name);
@@ -185,8 +185,8 @@ static INLINE void _print_const_value(Context *cnt, struct bl_type *type, VMStac
     case MIR_TYPE_STRING:
         fprintf(cnt->stream, "{");
 
-        struct bl_type *elem_type = mir_get_struct_elem_type(type, 0);
-        ptrdiff_t       offset    = vm_get_struct_elem_offset(cnt->assembly, type, 0);
+        struct mir_type *elem_type = mir_get_struct_elem_type(type, 0);
+        ptrdiff_t        offset    = vm_get_struct_elem_offset(cnt->assembly, type, 0);
         _print_const_value(cnt, elem_type, value + offset);
 
         fprintf(cnt->stream, ",\"");
@@ -203,11 +203,11 @@ static INLINE void _print_const_value(Context *cnt, struct bl_type *type, VMStac
     case MIR_TYPE_STRUCT: {
         fprintf(cnt->stream, "{");
 
-        MirMember *it;
+        struct mir_member *it;
         TSA_FOREACH(type->data.strct.members, it)
         {
-            struct bl_type *member_type = it->type;
-            const ptrdiff_t offset2     = vm_get_struct_elem_offset(cnt->assembly, type, (u32)i);
+            struct mir_type *member_type = it->type;
+            const ptrdiff_t  offset2     = vm_get_struct_elem_offset(cnt->assembly, type, (u32)i);
             _print_const_value(cnt, member_type, value + offset2);
             if (i < (usize)type->data.strct.members->size - 1) fprintf(cnt->stream, ",");
         }
@@ -219,7 +219,7 @@ static INLINE void _print_const_value(Context *cnt, struct bl_type *type, VMStac
     case MIR_TYPE_ARRAY: {
         fprintf(cnt->stream, "[");
 
-        struct bl_type *elem_type2 = type->data.array.elem_type;
+        struct mir_type *elem_type2 = type->data.array.elem_type;
         for (u32 i = 0; i < (u32)type->data.array.len; ++i) {
             const ptrdiff_t offset2 = vm_get_array_elem_offset(type, i);
             _print_const_value(cnt, elem_type2, value + offset2);
@@ -716,7 +716,7 @@ void print_instr_addrof(Context *cnt, MirInstrAddrOf *addrof)
 
 void print_instr_decl_var(Context *cnt, MirInstrDeclVar *decl)
 {
-    MirVar *var = decl->var;
+    struct mir_var *var = decl->var;
     BL_ASSERT(var);
 
     const char *name = var->linkage_name ? var->linkage_name : "<UNKNOWN>";
@@ -755,7 +755,7 @@ void print_instr_decl_variant(Context *cnt, MirInstrDeclVariant *var)
     print_instr_head(cnt, &var->base, "declvariant");
     BL_ASSERT(var->variant);
 
-    MirVariant *variant = var->variant;
+    struct mir_variant *variant = var->variant;
     BL_ASSERT(variant);
 
     fprintf(cnt->stream, "%s", variant->id->str);
@@ -770,7 +770,7 @@ void print_instr_decl_arg(Context *cnt, MirInstrDeclArg *decl)
 {
     print_instr_head(cnt, &decl->base, "declarg");
 
-    MirArg *arg = decl->arg;
+    struct mir_arg *arg = decl->arg;
     BL_ASSERT(arg);
 
     fprintf(cnt->stream, "%s : ", arg->id ? arg->id->str : "-");
@@ -786,7 +786,7 @@ void print_instr_decl_member(Context *cnt, MirInstrDeclMember *decl)
 {
     print_instr_head(cnt, &decl->base, "declmember");
 
-    MirMember *member = decl->member;
+    struct mir_member *member = decl->member;
     BL_ASSERT(member);
 
     fprintf(cnt->stream, "%s : ", member->id->str);
@@ -820,9 +820,10 @@ void print_instr_call(Context *cnt, MirInstrCall *call)
 {
     print_instr_head(cnt, &call->base, "call");
 
-    MirFn *callee =
-        mir_is_comptime(call->callee) ? MIR_CEV_READ_AS(MirFn *, &call->callee->value) : NULL;
-    const char *callee_name = callee ? callee->linkage_name : NULL;
+    struct mir_fn *callee      = mir_is_comptime(call->callee)
+                                     ? MIR_CEV_READ_AS(struct mir_fn *, &call->callee->value)
+                                     : NULL;
+    const char *   callee_name = callee ? callee->linkage_name : NULL;
     if (callee_name)
         fprintf(cnt->stream, "@%s", callee_name);
     else
@@ -917,7 +918,7 @@ void print_instr_block(Context *cnt, MirInstrBlock *block)
 
 void print_instr_fn_proto(Context *cnt, MirInstrFnProto *fn_proto)
 {
-    MirFn *fn = MIR_CEV_READ_AS(MirFn *, &fn_proto->base.value);
+    struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &fn_proto->base.value);
     BL_ASSERT(fn);
 
     fprintf(cnt->stream, "\n");
@@ -1109,7 +1110,7 @@ void print_instr(Context *cnt, MirInstr *instr)
 
     if (cnt->assembly->target->opt == ASSEMBLY_OPT_DEBUG) {
         if (instr->node && instr->node->location) {
-            const Location *loc = instr->node->location;
+            const struct location *loc = instr->node->location;
             fprintf(cnt->stream,
                     " %s[%s:%d]",
                     has_comment ? "" : "// ",
@@ -1121,7 +1122,7 @@ void print_instr(Context *cnt, MirInstr *instr)
     fprintf(cnt->stream, "\n");
 }
 
-void mir_print_assembly(Assembly *assembly, FILE *stream)
+void mir_print_assembly(struct assembly *assembly, FILE *stream)
 {
     Context cnt = {.assembly = assembly, .stream = stream};
 

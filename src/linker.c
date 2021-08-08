@@ -45,8 +45,8 @@
     (void)0
 
 typedef struct {
-    Assembly *assembly;
-    TArray *  lib_paths;
+    struct assembly *assembly;
+    TArray *         lib_paths;
 } Context;
 
 static bool search_library(Context *   cnt,
@@ -149,7 +149,7 @@ static bool link_working_environment(Context *cnt, const char *lib_name)
     return true;
 }
 
-void linker_run(Assembly *assembly)
+void linker_run(struct assembly *assembly)
 {
     ZONE();
     Context cnt;

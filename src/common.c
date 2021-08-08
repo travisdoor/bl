@@ -463,14 +463,14 @@ s32 get_last_error(char *buf, s32 buf_len)
 #endif
 }
 
-TArray *create_arr(Assembly *assembly, usize size)
+TArray *create_arr(struct assembly *assembly, usize size)
 {
     TArray **tmp = arena_alloc(&assembly->arenas.array);
     *tmp         = tarray_new(size);
     return *tmp;
 }
 
-void *_create_sarr(Assembly *assembly, usize arr_size)
+void *_create_sarr(struct assembly *assembly, usize arr_size)
 {
     BL_ASSERT(arr_size <= assembly->arenas.small_array.elem_size_in_bytes &&
               "SmallArray is too big to be allocated inside arena, make array smaller "

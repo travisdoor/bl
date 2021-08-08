@@ -119,14 +119,14 @@ static void sync_delete(AssemblySyncImpl *impl)
     bl_free(impl);
 }
 
-static void dl_init(Assembly *assembly)
+static void dl_init(struct assembly *assembly)
 {
     DCCallVM *vm = dcNewCallVM(4096);
     dcMode(vm, DC_CALL_C_DEFAULT);
     assembly->dc_vm = vm;
 }
 
-static void dl_terminate(Assembly *assembly)
+static void dl_terminate(struct assembly *assembly)
 {
     dcFree(assembly->dc_vm);
 }
@@ -195,7 +195,7 @@ static void parse_triple(const char *normalized_triple, TargetTriple *out_triple
     free(tmp);
 }
 
-static void llvm_init(Assembly *assembly)
+static void llvm_init(struct assembly *assembly)
 {
     // init LLVM
     char *triple    = target_triple_to_string(&assembly->target->triple);
@@ -244,7 +244,7 @@ static void llvm_init(Assembly *assembly)
     assembly->llvm.triple = triple;
 }
 
-static void llvm_terminate(Assembly *assembly)
+static void llvm_terminate(struct assembly *assembly)
 {
     LLVMDisposeModule(assembly->llvm.module);
     LLVMDisposeTargetMachine(assembly->llvm.TM);
@@ -263,15 +263,15 @@ static void native_lib_terminate(NativeLib *lib)
     free(lib->user_name);
 }
 
-static void mir_init(Assembly *assembly)
+static void mir_init(struct assembly *assembly)
 {
     mir_arenas_init(&assembly->arenas.mir);
     tarray_init(&assembly->MIR.global_instrs, sizeof(MirInstr *));
     tarray_init(&assembly->MIR.exported_instrs, sizeof(MirInstr *));
-    thtbl_init(&assembly->MIR.RTTI_table, sizeof(MirVar *), 2048);
+    thtbl_init(&assembly->MIR.RTTI_table, sizeof(struct mir_var *), 2048);
 }
 
-static INLINE void mir_terminate(Assembly *assembly)
+static INLINE void mir_terminate(struct assembly *assembly)
 {
     thtbl_terminate(&assembly->MIR.RTTI_table);
     tarray_terminate(&assembly->MIR.global_instrs);
@@ -343,8 +343,10 @@ static INLINE s32 get_module_version(ConfData *config)
     return 0;
 }
 
-static bool
-import_module(Assembly *assembly, ConfData *config, const char *modulepath, Token *import_from)
+static bool import_module(struct assembly *assembly,
+                          ConfData *       config,
+                          const char *     modulepath,
+                          Token *          import_from)
 {
     BL_ASSERT(config);
     BL_ASSERT(modulepath);
@@ -414,7 +416,7 @@ import_module(Assembly *assembly, ConfData *config, const char *modulepath, Toke
 // =================================================================================================
 Target *target_new(const char *name)
 {
-    BL_ASSERT(name && "Assembly name not specified!");
+    BL_ASSERT(name && "struct assembly name not specified!");
     Target *target = bl_malloc(sizeof(Target));
     memset(target, 0, sizeof(Target));
     BL_MAGIC_SET(target);
@@ -583,20 +585,20 @@ char *target_triple_to_string(const TargetTriple *triple)
     return str;
 }
 
-Assembly *assembly_new(const Target *target)
+struct assembly *assembly_new(const Target *target)
 {
     BL_MAGIC_ASSERT(target);
-    Assembly *assembly = bl_malloc(sizeof(Assembly));
-    memset(assembly, 0, sizeof(Assembly));
+    struct assembly *assembly = bl_malloc(sizeof(struct assembly));
+    memset(assembly, 0, sizeof(struct assembly));
     assembly->target = target;
     assembly->sync   = sync_new();
 
     llvm_init(assembly);
-    tarray_init(&assembly->units, sizeof(Unit *));
+    tarray_init(&assembly->units, sizeof(struct unit *));
     tstring_init(&assembly->custom_linker_opt);
     tarray_init(&assembly->libs, sizeof(NativeLib));
     tarray_init(&assembly->lib_paths, sizeof(char *));
-    tarray_init(&assembly->testing.cases, sizeof(struct MirFn *));
+    tarray_init(&assembly->testing.cases, sizeof(struct mir_fn *));
     vm_init(&assembly->vm, VM_STACK_SIZE);
 
     // set defaults
@@ -666,11 +668,11 @@ Assembly *assembly_new(const Target *target)
     return assembly;
 }
 
-void assembly_delete(Assembly *assembly)
+void assembly_delete(struct assembly *assembly)
 {
     ZONE();
-    Unit *unit;
-    TARRAY_FOREACH(Unit *, &assembly->units, unit)
+    struct unit *unit;
+    TARRAY_FOREACH(struct unit *, &assembly->units, unit)
     {
         unit_delete(unit);
     }
@@ -703,7 +705,7 @@ void assembly_delete(Assembly *assembly)
     RETURN_END_ZONE();
 }
 
-void assembly_add_lib_path(Assembly *assembly, const char *path)
+void assembly_add_lib_path(struct assembly *assembly, const char *path)
 {
     if (!path) return;
     char *tmp = strdup(path);
@@ -711,29 +713,29 @@ void assembly_add_lib_path(Assembly *assembly, const char *path)
     tarray_push(&assembly->lib_paths, tmp);
 }
 
-void assembly_append_linker_options(Assembly *assembly, const char *opt)
+void assembly_append_linker_options(struct assembly *assembly, const char *opt)
 {
     if (!opt) return;
     tstring_append(&assembly->custom_linker_opt, opt);
     tstring_append(&assembly->custom_linker_opt, " ");
 }
 
-static INLINE bool assembly_has_unit(Assembly *assembly, const u64 hash)
+static INLINE bool assembly_has_unit(struct assembly *assembly, const u64 hash)
 {
-    Unit *unit;
-    TARRAY_FOREACH(Unit *, &assembly->units, unit)
+    struct unit *unit;
+    TARRAY_FOREACH(struct unit *, &assembly->units, unit)
     {
         if (hash == unit->hash) return true;
     }
     return false;
 }
 
-Unit *assembly_add_unit(Assembly *assembly, const char *filepath, Token *load_from)
+struct unit *assembly_add_unit(struct assembly *assembly, const char *filepath, Token *load_from)
 {
     AssemblySyncImpl *sync = assembly->sync;
     pthread_mutex_lock(&sync->units_lock);
-    Unit *    unit = NULL;
-    const u64 hash = unit_hash(filepath, load_from);
+    struct unit *unit = NULL;
+    const u64    hash = unit_hash(filepath, load_from);
     if (assembly_has_unit(assembly, hash)) {
         goto DONE;
     }
@@ -747,7 +749,9 @@ DONE:
     return unit;
 }
 
-void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token)
+void assembly_add_native_lib(struct assembly *assembly,
+                             const char *     lib_name,
+                             struct Token *   link_token)
 {
     const u64 hash = thash_from_str(lib_name);
     { // Search for duplicity.
@@ -773,7 +777,7 @@ static INLINE bool module_exist(const char *module_dir, const char *modulepath)
     return found;
 }
 
-bool assembly_import_module(Assembly *assembly, const char *modulepath, Token *import_from)
+bool assembly_import_module(struct assembly *assembly, const char *modulepath, Token *import_from)
 {
     AssemblySyncImpl *sync = assembly->sync;
     pthread_mutex_lock(&sync->import_module_lock);
@@ -866,7 +870,7 @@ DONE:
     return state;
 }
 
-DCpointer assembly_find_extern(Assembly *assembly, const char *symbol)
+DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol)
 {
     void *     handle = NULL;
     NativeLib *lib;

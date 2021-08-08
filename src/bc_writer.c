@@ -31,7 +31,7 @@
 #include "error.h"
 #include <string.h>
 
-void bc_writer_run(Assembly *assembly)
+void bc_writer_run(struct assembly *assembly)
 {
     ZONE();
     TString *     export_file = get_tmpstr();

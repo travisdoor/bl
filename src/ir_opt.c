@@ -31,7 +31,7 @@
 #include "error.h"
 #include "llvm_api.h"
 
-void ir_opt_run(Assembly *assembly)
+void ir_opt_run(struct assembly *assembly)
 {
     ZONE();
     LLVMModuleRef             llvm_module     = assembly->llvm.module;

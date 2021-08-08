@@ -30,7 +30,7 @@
 #include "common.h"
 #include <setjmp.h>
 
-TSMALL_ARRAY_TYPE(AstPtr64, struct bl_ast *, 64);
+TSMALL_ARRAY_TYPE(AstPtr64, struct ast *, 64);
 TSMALL_ARRAY_TYPE(ScopePtr64, Scope *, 64);
 
 #define EXPECTED_PRIVATE_SCOPE_COUNT 256
@@ -95,8 +95,8 @@ typedef enum {
 typedef struct {
     TSmallArray_AstPtr64   _decl_stack;
     TSmallArray_ScopePtr64 _scope_stack;
-    Assembly *             assembly;
-    Unit *                 unit;
+    struct assembly *      assembly;
+    struct unit *          unit;
     Arena *                ast_arena;
     ScopeArenas *          scope_arenas;
     Tokens *               tokens;
@@ -105,84 +105,82 @@ typedef struct {
     bool               is_inside_loop;
     Scope *            current_private_scope;
     Scope *            current_named_scope;
-    struct bl_ast *    current_docs;
+    struct ast *       current_docs;
     TString *          unit_docs_tmp;
     TSmallArray_AstPtr current_fn_type_stack;
 } Context;
 
 // helpers
 // fw decls
-static BinopKind sym_to_binop_kind(Sym sm);
-static UnopKind  sym_to_unop_kind(Sym sm);
-static bool      parse_docs(Context *cnt);
-static bool      parse_unit_docs(Context *cnt);
-static void      parse_ublock_content(Context *cnt, struct bl_ast *ublock);
-static struct bl_ast *
-parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied);
-static struct bl_ast *parse_unrecheable(Context *cnt);
-static struct bl_ast *parse_ident(Context *cnt);
-static struct bl_ast *parse_ident_group(Context *cnt);
-static struct bl_ast *parse_block(Context *cnt, bool create_scope);
-static struct bl_ast *parse_decl(Context *cnt);
-static struct bl_ast *parse_decl_member(Context *cnt, s32 index);
-static struct bl_ast *parse_decl_arg(Context *cnt, bool named);
-static struct bl_ast *parse_decl_variant(Context *cnt, struct bl_ast *prev);
-static struct bl_ast *parse_type(Context *cnt);
-static struct bl_ast *parse_ref(Context *cnt);
-static struct bl_ast *parse_ref_nested(Context *cnt, struct bl_ast *prev);
-static struct bl_ast *parse_type_polymorph(Context *cnt);
-static struct bl_ast *parse_type_arr(Context *cnt);
-static struct bl_ast *parse_type_slice(Context *cnt);
-static struct bl_ast *parse_type_dynarr(Context *cnt);
-static struct bl_ast *parse_type_fn(Context *cnt, bool named_args);
-static struct bl_ast *parse_type_fn_group(Context *cnt);
-static struct bl_ast *parse_type_fn_return(Context *cnt);
-static struct bl_ast *parse_type_struct(Context *cnt);
-static struct bl_ast *parse_type_enum(Context *cnt);
-static struct bl_ast *parse_type_ptr(Context *cnt);
-static struct bl_ast *parse_type_vargs(Context *cnt);
-static struct bl_ast *parse_stmt_return(Context *cnt);
-static struct bl_ast *parse_stmt_if(Context *cnt);
-static struct bl_ast *parse_stmt_loop(Context *cnt);
-static struct bl_ast *parse_stmt_break(Context *cnt);
-static struct bl_ast *parse_stmt_continue(Context *cnt);
-static struct bl_ast *parse_stmt_defer(Context *cnt);
-static struct bl_ast *parse_stmt_switch(Context *cnt);
-static struct bl_ast *parse_stmt_case(Context *cnt);
+static BinopKind   sym_to_binop_kind(Sym sm);
+static UnopKind    sym_to_unop_kind(Sym sm);
+static bool        parse_docs(Context *cnt);
+static bool        parse_unit_docs(Context *cnt);
+static void        parse_ublock_content(Context *cnt, struct ast *ublock);
+static struct ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied);
+static struct ast *parse_unrecheable(Context *cnt);
+static struct ast *parse_ident(Context *cnt);
+static struct ast *parse_ident_group(Context *cnt);
+static struct ast *parse_block(Context *cnt, bool create_scope);
+static struct ast *parse_decl(Context *cnt);
+static struct ast *parse_decl_member(Context *cnt, s32 index);
+static struct ast *parse_decl_arg(Context *cnt, bool named);
+static struct ast *parse_decl_variant(Context *cnt, struct ast *prev);
+static struct ast *parse_type(Context *cnt);
+static struct ast *parse_ref(Context *cnt);
+static struct ast *parse_ref_nested(Context *cnt, struct ast *prev);
+static struct ast *parse_type_polymorph(Context *cnt);
+static struct ast *parse_type_arr(Context *cnt);
+static struct ast *parse_type_slice(Context *cnt);
+static struct ast *parse_type_dynarr(Context *cnt);
+static struct ast *parse_type_fn(Context *cnt, bool named_args);
+static struct ast *parse_type_fn_group(Context *cnt);
+static struct ast *parse_type_fn_return(Context *cnt);
+static struct ast *parse_type_struct(Context *cnt);
+static struct ast *parse_type_enum(Context *cnt);
+static struct ast *parse_type_ptr(Context *cnt);
+static struct ast *parse_type_vargs(Context *cnt);
+static struct ast *parse_stmt_return(Context *cnt);
+static struct ast *parse_stmt_if(Context *cnt);
+static struct ast *parse_stmt_loop(Context *cnt);
+static struct ast *parse_stmt_break(Context *cnt);
+static struct ast *parse_stmt_continue(Context *cnt);
+static struct ast *parse_stmt_defer(Context *cnt);
+static struct ast *parse_stmt_switch(Context *cnt);
+static struct ast *parse_stmt_case(Context *cnt);
 
 // EXPRESSIONS
-static struct bl_ast *parse_expr(Context *cnt);
-static struct bl_ast *_parse_expr(Context *cnt, s32 p);
-static struct bl_ast *parse_expr_atom(Context *cnt);
-static struct bl_ast *parse_expr_primary(Context *cnt);
-static struct bl_ast *parse_expr_unary(Context *cnt);
-static struct bl_ast *
-parse_expr_binary(Context *cnt, struct bl_ast *lhs, struct bl_ast *rhs, Token *op);
-static struct bl_ast *parse_expr_addrof(Context *cnt);
-static struct bl_ast *parse_expr_deref(Context *cnt);
-static struct bl_ast *parse_expr_type(Context *cnt);
-static struct bl_ast *parse_expr_ref(Context *cnt);
-static struct bl_ast *parse_expr_nested(Context *cnt);
-static struct bl_ast *parse_expr_null(Context *cnt);
-static struct bl_ast *parse_expr_cast(Context *cnt);
-static struct bl_ast *parse_expr_cast_auto(Context *cnt);
-static struct bl_ast *parse_expr_lit(Context *cnt);
-static struct bl_ast *parse_expr_lit_fn(Context *cnt);
-static struct bl_ast *parse_expr_lit_fn_group(Context *cnt);
-static struct bl_ast *parse_expr_sizeof(Context *cnt);
-static struct bl_ast *parse_expr_type_info(Context *cnt);
-static struct bl_ast *parse_expr_test_cases(Context *cnt);
-static struct bl_ast *parse_expr_alignof(Context *cnt);
-static INLINE bool    parse_semicolon(Context *cnt);
-static INLINE bool    parse_semicolon_rq(Context *cnt);
-static INLINE bool    hash_directive_to_flags(HashDirective hd, u32 *out_flags);
-static struct bl_ast *parse_expr_call(Context *cnt, struct bl_ast *prev);
-static struct bl_ast *parse_expr_elem(Context *cnt, struct bl_ast *prev);
-static struct bl_ast *parse_expr_compound(Context *cnt);
+static struct ast *parse_expr(Context *cnt);
+static struct ast *_parse_expr(Context *cnt, s32 p);
+static struct ast *parse_expr_atom(Context *cnt);
+static struct ast *parse_expr_primary(Context *cnt);
+static struct ast *parse_expr_unary(Context *cnt);
+static struct ast *parse_expr_binary(Context *cnt, struct ast *lhs, struct ast *rhs, Token *op);
+static struct ast *parse_expr_addrof(Context *cnt);
+static struct ast *parse_expr_deref(Context *cnt);
+static struct ast *parse_expr_type(Context *cnt);
+static struct ast *parse_expr_ref(Context *cnt);
+static struct ast *parse_expr_nested(Context *cnt);
+static struct ast *parse_expr_null(Context *cnt);
+static struct ast *parse_expr_cast(Context *cnt);
+static struct ast *parse_expr_cast_auto(Context *cnt);
+static struct ast *parse_expr_lit(Context *cnt);
+static struct ast *parse_expr_lit_fn(Context *cnt);
+static struct ast *parse_expr_lit_fn_group(Context *cnt);
+static struct ast *parse_expr_sizeof(Context *cnt);
+static struct ast *parse_expr_type_info(Context *cnt);
+static struct ast *parse_expr_test_cases(Context *cnt);
+static struct ast *parse_expr_alignof(Context *cnt);
+static INLINE bool parse_semicolon(Context *cnt);
+static INLINE bool parse_semicolon_rq(Context *cnt);
+static INLINE bool hash_directive_to_flags(HashDirective hd, u32 *out_flags);
+static struct ast *parse_expr_call(Context *cnt, struct ast *prev);
+static struct ast *parse_expr_elem(Context *cnt, struct ast *prev);
+static struct ast *parse_expr_compound(Context *cnt);
 
 // impl
 
-static INLINE bool rq_semicolon_after_decl_entity(struct bl_ast *node)
+static INLINE bool rq_semicolon_after_decl_entity(struct ast *node)
 {
     BL_ASSERT(node);
     switch (node->kind) {
@@ -283,13 +281,13 @@ UnopKind sym_to_unop_kind(Sym sm)
     }
 }
 
-struct bl_ast *parse_expr_ref(Context *cnt)
+struct ast *parse_expr_ref(Context *cnt)
 {
-    Token *        tok   = tokens_peek(cnt->tokens);
-    struct bl_ast *ident = parse_ident(cnt);
+    Token *     tok   = tokens_peek(cnt->tokens);
+    struct ast *ident = parse_ident(cnt);
     if (!ident) return NULL;
 
-    struct bl_ast *ref  = ast_create_node(cnt->ast_arena, AST_REF, tok, SCOPE_GET(cnt));
+    struct ast *ref     = ast_create_node(cnt->ast_arena, AST_REF, tok, SCOPE_GET(cnt));
     ref->data.ref.ident = ident;
     return ref;
 }
@@ -305,7 +303,7 @@ bool parse_docs(Context *cnt)
         tstring_append(str, tok->value.str);
     }
 
-    struct bl_ast *docs  = ast_create_node(cnt->ast_arena, AST_DOCS, tok_begin, SCOPE_GET(cnt));
+    struct ast *docs     = ast_create_node(cnt->ast_arena, AST_DOCS, tok_begin, SCOPE_GET(cnt));
     docs->data.docs.text = str->data;
     cnt->current_docs    = docs;
     return true;
@@ -327,7 +325,7 @@ bool parse_unit_docs(Context *cnt)
 
 // Try to parse hash directive. List of enabled directives can be set by 'expected_mask',
 // 'satisfied' is optional output set to parsed directive id if there is one.
-struct bl_ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
+struct ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirective *satisfied)
 {
 #define set_satisfied(_hd)                                                                         \
     {                                                                                              \
@@ -394,8 +392,7 @@ struct bl_ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirecti
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
 
-        struct bl_ast *load =
-            ast_create_node(cnt->ast_arena, AST_LOAD, tok_directive, SCOPE_GET(cnt));
+        struct ast *load = ast_create_node(cnt->ast_arena, AST_LOAD, tok_directive, SCOPE_GET(cnt));
         load->data.load.filepath = tok_path->value.str;
         if (cnt->assembly->target->kind != ASSEMBLY_DOCS) {
             assembly_add_unit(cnt->assembly, load->data.load.filepath, tok_path);
@@ -422,7 +419,7 @@ struct bl_ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirecti
                         "Expected path \"some/path\" after 'import' directive.");
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
-        struct bl_ast *import =
+        struct ast *import =
             ast_create_node(cnt->ast_arena, AST_IMPORT, tok_directive, SCOPE_GET(cnt));
         import->data.import.filepath = tok_path->value.str;
         if (cnt->assembly->target->kind != ASSEMBLY_DOCS) {
@@ -451,8 +448,7 @@ struct bl_ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirecti
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
 
-        struct bl_ast *link =
-            ast_create_node(cnt->ast_arena, AST_LINK, tok_directive, SCOPE_GET(cnt));
+        struct ast *link = ast_create_node(cnt->ast_arena, AST_LINK, tok_directive, SCOPE_GET(cnt));
         link->data.link.lib = tok_path->value.str;
 
         assembly_add_native_lib(cnt->assembly, tok_path->value.str, tok_path);
@@ -485,7 +481,7 @@ struct bl_ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirecti
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
 
-        struct bl_ast *file =
+        struct ast *file =
             ast_create_node(cnt->ast_arena, AST_EXPR_LIT_STRING, tok_directive, SCOPE_GET(cnt));
         file->data.expr_string.val = tok_directive->location.unit->filepath;
         return file;
@@ -516,8 +512,8 @@ struct bl_ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirecti
         }
 
         // Tags can contain one or move references separated by comma
-        struct bl_ast *tag;
-        bool           rq = false;
+        struct ast *tag;
+        bool        rq = false;
 
         TSmallArray_AstPtr *values = create_sarr(TSmallArray_AstPtr, cnt->assembly);
 
@@ -548,8 +544,7 @@ struct bl_ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirecti
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
 
-        struct bl_ast *tags =
-            ast_create_node(cnt->ast_arena, AST_TAGS, tok_directive, SCOPE_GET(cnt));
+        struct ast *tags = ast_create_node(cnt->ast_arena, AST_TAGS, tok_directive, SCOPE_GET(cnt));
 
         tags->data.tags.values = values;
         return tags;
@@ -565,7 +560,7 @@ struct bl_ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirecti
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
 
-        struct bl_ast *line =
+        struct ast *line =
             ast_create_node(cnt->ast_arena, AST_EXPR_LIT_INT, tok_directive, SCOPE_GET(cnt));
         line->data.expr_integer.val = tok_directive->location.line;
         return line;
@@ -640,7 +635,7 @@ struct bl_ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirecti
         Token *tok_ext = tokens_consume_if(cnt->tokens, SYM_STRING);
         if (!tok_ext) return NULL;
         // Parse extension token.
-        struct bl_ast *ext = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ext, SCOPE_GET(cnt));
+        struct ast *ext = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ext, SCOPE_GET(cnt));
         id_init(&ext->data.ident.id, tok_ext->value.str);
         return ext;
     }
@@ -666,7 +661,7 @@ struct bl_ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirecti
         Token *tok_ext = tokens_consume_if(cnt->tokens, SYM_STRING);
         if (!tok_ext) return NULL;
         // Parse extension token.
-        struct bl_ast *ext = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ext, SCOPE_GET(cnt));
+        struct ast *ext = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ext, SCOPE_GET(cnt));
         id_init(&ext->data.ident.id, tok_ext->value.str);
         return ext;
     }
@@ -778,7 +773,7 @@ struct bl_ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirecti
                         "Unexpected directive. Scope name can be specified only in global scope.");
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
-        struct bl_ast *ident = parse_ident(cnt);
+        struct ast *ident = parse_ident(cnt);
         if (!ident) {
             PARSE_ERROR(ERR_INVALID_DIRECTIVE,
                         tok_directive,
@@ -786,7 +781,7 @@ struct bl_ast *parse_hash_directive(Context *cnt, s32 expected_mask, HashDirecti
                         "Expected scope name after #scope directive.");
             return ast_create_node(cnt->ast_arena, AST_BAD, tok_directive, SCOPE_GET(cnt));
         }
-        struct bl_ast *scope =
+        struct ast *scope =
             ast_create_node(cnt->ast_arena, AST_SCOPE, tok_directive, SCOPE_GET(cnt));
         scope->data.scope.ident = ident;
         ID *id                  = &ident->data.ident.id;
@@ -832,7 +827,7 @@ INVALID:
 #undef set_satisfied
 }
 
-struct bl_ast *parse_expr_compound(Context *cnt)
+struct ast *parse_expr_compound(Context *cnt)
 {
     if (!tokens_is_seq(cnt->tokens, 2, SYM_LBLOCK, SYM_COLON)) return NULL;
     // eat {
@@ -840,7 +835,7 @@ struct bl_ast *parse_expr_compound(Context *cnt)
     // eat :
     tokens_consume(cnt->tokens);
 
-    struct bl_ast *type = parse_type(cnt);
+    struct ast *type = parse_type(cnt);
     if (!type) {
         Token *tok_err = tokens_peek(cnt->tokens);
         PARSE_ERROR(ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD, "Expected type.");
@@ -854,13 +849,13 @@ struct bl_ast *parse_expr_compound(Context *cnt)
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
     }
 
-    struct bl_ast *compound =
+    struct ast *compound =
         ast_create_node(cnt->ast_arena, AST_EXPR_COMPOUND, tok_begin, SCOPE_GET(cnt));
     compound->data.expr_compound.type = type;
 
     // parse values
-    bool           rq = false;
-    struct bl_ast *tmp;
+    bool        rq = false;
+    struct ast *tmp;
 
 NEXT:
     tmp = parse_expr(cnt);
@@ -898,7 +893,7 @@ NEXT:
     return compound;
 }
 
-struct bl_ast *parse_expr_sizeof(Context *cnt)
+struct ast *parse_expr_sizeof(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_SIZEOF);
     if (!tok_begin) return NULL;
@@ -913,8 +908,7 @@ struct bl_ast *parse_expr_sizeof(Context *cnt)
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
     }
 
-    struct bl_ast *szof =
-        ast_create_node(cnt->ast_arena, AST_EXPR_SIZEOF, tok_begin, SCOPE_GET(cnt));
+    struct ast *szof = ast_create_node(cnt->ast_arena, AST_EXPR_SIZEOF, tok_begin, SCOPE_GET(cnt));
     szof->data.expr_sizeof.node = parse_expr(cnt);
     if (!szof->data.expr_sizeof.node) {
         Token *tok_err = tokens_peek(cnt->tokens);
@@ -934,7 +928,7 @@ struct bl_ast *parse_expr_sizeof(Context *cnt)
     return szof;
 }
 
-struct bl_ast *parse_expr_type_info(Context *cnt)
+struct ast *parse_expr_type_info(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_TYPEINFO);
     if (!tok_begin) return NULL;
@@ -949,7 +943,7 @@ struct bl_ast *parse_expr_type_info(Context *cnt)
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
     }
 
-    struct bl_ast *info =
+    struct ast *info =
         ast_create_node(cnt->ast_arena, AST_EXPR_TYPE_INFO, tok_begin, SCOPE_GET(cnt));
     info->data.expr_type_info.node = parse_expr(cnt);
     if (!info->data.expr_type_info.node) {
@@ -970,7 +964,7 @@ struct bl_ast *parse_expr_type_info(Context *cnt)
     return info;
 }
 
-struct bl_ast *parse_expr_test_cases(Context *cnt)
+struct ast *parse_expr_test_cases(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_TESTCASES);
     if (!tok_begin) return NULL;
@@ -985,7 +979,7 @@ struct bl_ast *parse_expr_test_cases(Context *cnt)
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
     }
 
-    struct bl_ast *tc =
+    struct ast *tc =
         ast_create_node(cnt->ast_arena, AST_EXPR_TEST_CASES, tok_begin, SCOPE_GET(cnt));
 
     tok = tokens_consume(cnt->tokens);
@@ -999,7 +993,7 @@ struct bl_ast *parse_expr_test_cases(Context *cnt)
     return tc;
 }
 
-struct bl_ast *parse_expr_alignof(Context *cnt)
+struct ast *parse_expr_alignof(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_ALIGNOF);
     if (!tok_begin) return NULL;
@@ -1012,8 +1006,7 @@ struct bl_ast *parse_expr_alignof(Context *cnt)
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
     }
 
-    struct bl_ast *alof =
-        ast_create_node(cnt->ast_arena, AST_EXPR_ALIGNOF, tok_begin, SCOPE_GET(cnt));
+    struct ast *alof = ast_create_node(cnt->ast_arena, AST_EXPR_ALIGNOF, tok_begin, SCOPE_GET(cnt));
     alof->data.expr_alignof.node = parse_expr(cnt);
     if (!alof->data.expr_alignof.node) {
         Token *tok_err = tokens_peek(cnt->tokens);
@@ -1033,12 +1026,12 @@ struct bl_ast *parse_expr_alignof(Context *cnt)
     return alof;
 }
 
-struct bl_ast *parse_expr_cast_auto(Context *cnt)
+struct ast *parse_expr_cast_auto(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_CAST_AUTO);
     if (!tok_begin) return NULL;
 
-    struct bl_ast *cast = ast_create_node(cnt->ast_arena, AST_EXPR_CAST, tok_begin, SCOPE_GET(cnt));
+    struct ast *cast = ast_create_node(cnt->ast_arena, AST_EXPR_CAST, tok_begin, SCOPE_GET(cnt));
     cast->data.expr_cast.auto_cast = true;
 
     cast->data.expr_cast.next = _parse_expr(cnt, token_prec(tok_begin).priority);
@@ -1053,7 +1046,7 @@ struct bl_ast *parse_expr_cast_auto(Context *cnt)
     return cast;
 }
 
-struct bl_ast *parse_expr_cast(Context *cnt)
+struct ast *parse_expr_cast(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_CAST);
     if (!tok_begin) return NULL;
@@ -1066,7 +1059,7 @@ struct bl_ast *parse_expr_cast(Context *cnt)
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
     }
 
-    struct bl_ast *cast = ast_create_node(cnt->ast_arena, AST_EXPR_CAST, tok_begin, SCOPE_GET(cnt));
+    struct ast *cast = ast_create_node(cnt->ast_arena, AST_EXPR_CAST, tok_begin, SCOPE_GET(cnt));
     cast->data.expr_cast.type = parse_type(cnt);
     if (!cast->data.expr_cast.type) {
         Token *tok_err = tokens_peek(cnt->tokens);
@@ -1095,12 +1088,12 @@ struct bl_ast *parse_expr_cast(Context *cnt)
     return cast;
 }
 
-struct bl_ast *parse_decl_member(Context *cnt, s32 UNUSED(index))
+struct ast *parse_decl_member(Context *cnt, s32 UNUSED(index))
 {
-    Token *        tok_begin = tokens_peek(cnt->tokens);
-    struct bl_ast *name      = NULL;
-    struct bl_ast *type      = NULL;
-    const bool     named     = tokens_peek_2nd(cnt->tokens)->sym == SYM_COLON;
+    Token *     tok_begin = tokens_peek(cnt->tokens);
+    struct ast *name      = NULL;
+    struct ast *type      = NULL;
+    const bool  named     = tokens_peek_2nd(cnt->tokens)->sym == SYM_COLON;
 
     if (named) {
         name = parse_ident(cnt);
@@ -1138,23 +1131,22 @@ struct bl_ast *parse_decl_member(Context *cnt, s32 UNUSED(index))
         id_init(&name->data.ident.id, ident_str->data);
     }
 
-    HashDirective  found_hd = HD_NONE;
-    struct bl_ast *tags     = parse_hash_directive(cnt, HD_TAGS, &found_hd);
-    struct bl_ast *mem =
-        ast_create_node(cnt->ast_arena, AST_DECL_MEMBER, tok_begin, SCOPE_GET(cnt));
-    mem->docs           = pop_docs(cnt);
+    HashDirective found_hd = HD_NONE;
+    struct ast *  tags     = parse_hash_directive(cnt, HD_TAGS, &found_hd);
+    struct ast *  mem = ast_create_node(cnt->ast_arena, AST_DECL_MEMBER, tok_begin, SCOPE_GET(cnt));
+    mem->docs         = pop_docs(cnt);
     mem->data.decl.type = type;
     mem->data.decl.name = name;
     mem->data.decl.tags = tags;
     return mem;
 }
 
-struct bl_ast *parse_decl_arg(Context *cnt, bool named)
+struct ast *parse_decl_arg(Context *cnt, bool named)
 {
-    Token *        tok_begin = tokens_peek(cnt->tokens);
-    struct bl_ast *name      = NULL;
-    struct bl_ast *type      = NULL;
-    struct bl_ast *value     = NULL;
+    Token *     tok_begin = tokens_peek(cnt->tokens);
+    struct ast *name      = NULL;
+    struct ast *type      = NULL;
+    struct ast *value     = NULL;
     if (tokens_current_is(cnt->tokens, SYM_RPAREN)) return NULL;
     if (tokens_is_seq(cnt->tokens, 2, SYM_IDENT, SYM_COLON)) {
         // <name> :
@@ -1202,22 +1194,21 @@ struct bl_ast *parse_decl_arg(Context *cnt, bool named)
                     "Expected argument type.");
         return ast_create_node(cnt->ast_arena, AST_BAD, tokens_peek(cnt->tokens), SCOPE_GET(cnt));
     }
-    struct bl_ast *arg = ast_create_node(cnt->ast_arena, AST_DECL_ARG, tok_begin, SCOPE_GET(cnt));
+    struct ast *arg = ast_create_node(cnt->ast_arena, AST_DECL_ARG, tok_begin, SCOPE_GET(cnt));
     arg->data.decl_arg.value = value;
     arg->data.decl.type      = type;
     arg->data.decl.name      = name;
     return arg;
 }
 
-struct bl_ast *parse_decl_variant(Context *cnt, struct bl_ast *prev)
+struct ast *parse_decl_variant(Context *cnt, struct ast *prev)
 {
-    Token *        tok_begin = tokens_peek(cnt->tokens);
-    struct bl_ast *name      = parse_ident(cnt);
+    Token *     tok_begin = tokens_peek(cnt->tokens);
+    struct ast *name      = parse_ident(cnt);
     if (!name) return NULL;
 
-    struct bl_ast *var =
-        ast_create_node(cnt->ast_arena, AST_DECL_VARIANT, tok_begin, SCOPE_GET(cnt));
-    var->docs = pop_docs(cnt);
+    struct ast *var = ast_create_node(cnt->ast_arena, AST_DECL_VARIANT, tok_begin, SCOPE_GET(cnt));
+    var->docs       = pop_docs(cnt);
 
     // TODO: Validate correcly '::'
     Token *tok_assign = tokens_consume_if(cnt->tokens, SYM_COLON);
@@ -1227,11 +1218,11 @@ struct bl_ast *parse_decl_variant(Context *cnt, struct bl_ast *prev)
         if (!var->data.decl_variant.value) BL_ABORT("Expected enum variant value");
     } else if (prev) {
         BL_ASSERT(prev->kind == AST_DECL_VARIANT);
-        struct bl_ast *addition =
+        struct ast *addition =
             ast_create_node(cnt->ast_arena, AST_EXPR_LIT_INT, tok_begin, SCOPE_GET(cnt));
         addition->data.expr_integer.val = 1;
 
-        struct bl_ast *binop =
+        struct ast *binop =
             ast_create_node(cnt->ast_arena, AST_EXPR_BINOP, tok_begin, SCOPE_GET(cnt));
         binop->data.expr_binop.kind = BINOP_ADD;
         binop->data.expr_binop.lhs  = prev->data.decl_variant.value;
@@ -1293,17 +1284,16 @@ bool hash_directive_to_flags(HashDirective hd, u32 *out_flags)
     return false;
 }
 
-struct bl_ast *parse_stmt_return(Context *cnt)
+struct ast *parse_stmt_return(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_RETURN);
     if (!tok_begin) return NULL;
-    struct bl_ast *ret =
-        ast_create_node(cnt->ast_arena, AST_STMT_RETURN, tok_begin, SCOPE_GET(cnt));
+    struct ast *ret = ast_create_node(cnt->ast_arena, AST_STMT_RETURN, tok_begin, SCOPE_GET(cnt));
     ret->data.stmt_return.fn_decl = DECL_GET(cnt);
     tok_begin                     = tokens_peek(cnt->tokens);
 
-    struct bl_ast *expr;
-    bool           rq = false;
+    struct ast *expr;
+    bool        rq = false;
 NEXT:
     expr = parse_expr(cnt);
     if (expr) {
@@ -1324,13 +1314,12 @@ NEXT:
     return ret;
 }
 
-struct bl_ast *parse_stmt_if(Context *cnt)
+struct ast *parse_stmt_if(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_IF);
     if (!tok_begin) return NULL;
 
-    struct bl_ast *stmt_if =
-        ast_create_node(cnt->ast_arena, AST_STMT_IF, tok_begin, SCOPE_GET(cnt));
+    struct ast *stmt_if = ast_create_node(cnt->ast_arena, AST_STMT_IF, tok_begin, SCOPE_GET(cnt));
 
     stmt_if->data.stmt_if.test = parse_expr(cnt);
     if (!stmt_if->data.stmt_if.test) {
@@ -1374,12 +1363,12 @@ struct bl_ast *parse_stmt_if(Context *cnt)
     return stmt_if;
 }
 
-struct bl_ast *parse_stmt_switch(Context *cnt)
+struct ast *parse_stmt_switch(Context *cnt)
 {
     Token *tok_switch = tokens_consume_if(cnt->tokens, SYM_SWITCH);
     if (!tok_switch) return NULL;
 
-    struct bl_ast *expr = parse_expr(cnt);
+    struct ast *expr = parse_expr(cnt);
     if (!expr) {
         Token *tok_err = tokens_consume(cnt->tokens);
         PARSE_ERROR(ERR_EXPECTED_EXPR,
@@ -1397,8 +1386,8 @@ struct bl_ast *parse_stmt_switch(Context *cnt)
     }
 
     TSmallArray_AstPtr *cases        = create_sarr(TSmallArray_AstPtr, cnt->assembly);
-    struct bl_ast *     stmt_case    = NULL;
-    struct bl_ast *     default_case = NULL;
+    struct ast *        stmt_case    = NULL;
+    struct ast *        default_case = NULL;
 NEXT:
     stmt_case = parse_stmt_case(cnt);
     if (AST_IS_OK(stmt_case)) {
@@ -1432,7 +1421,7 @@ NEXT:
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
     }
 
-    struct bl_ast *stmt_switch =
+    struct ast *stmt_switch =
         ast_create_node(cnt->ast_arena, AST_STMT_SWITCH, tok_switch, SCOPE_GET(cnt));
 
     stmt_switch->data.stmt_switch.expr  = expr;
@@ -1440,11 +1429,11 @@ NEXT:
     return stmt_switch;
 }
 
-struct bl_ast *parse_stmt_case(Context *cnt)
+struct ast *parse_stmt_case(Context *cnt)
 {
     TSmallArray_AstPtr *exprs = NULL;
-    struct bl_ast *     block = NULL;
-    struct bl_ast *     expr  = NULL;
+    struct ast *        block = NULL;
+    struct ast *        expr  = NULL;
     bool                rq    = false;
 
     if (tokens_current_is(cnt->tokens, SYM_RBLOCK)) return NULL;
@@ -1479,7 +1468,7 @@ SKIP_EXPRS:
         parse_semicolon(cnt);
     }
 
-    struct bl_ast *stmt_case =
+    struct ast *stmt_case =
         ast_create_node(cnt->ast_arena, AST_STMT_CASE, tok_case, SCOPE_GET(cnt));
     stmt_case->data.stmt_case.exprs      = exprs;
     stmt_case->data.stmt_case.is_default = !exprs;
@@ -1498,7 +1487,7 @@ static TokensLookaheadState cmp_stmt_loop(Token *curr)
     return TOK_LOOK_CONTINUE;
 }
 
-struct bl_ast *parse_stmt_loop(Context *cnt)
+struct ast *parse_stmt_loop(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LOOP);
     if (!tok_begin) return NULL;
@@ -1506,9 +1495,9 @@ struct bl_ast *parse_stmt_loop(Context *cnt)
     // Loop statement is immediately followed by block; this should act like while (true) {} in C.
     const bool while_true = tokens_current_is(cnt->tokens, SYM_LBLOCK);
 
-    struct bl_ast *loop = ast_create_node(cnt->ast_arena, AST_STMT_LOOP, tok_begin, SCOPE_GET(cnt));
-    const bool     prev_in_loop = cnt->is_inside_loop;
-    cnt->is_inside_loop         = true;
+    struct ast *loop = ast_create_node(cnt->ast_arena, AST_STMT_LOOP, tok_begin, SCOPE_GET(cnt));
+    const bool  prev_in_loop = cnt->is_inside_loop;
+    cnt->is_inside_loop      = true;
 
     Scope *scope =
         scope_create(cnt->scope_arenas, SCOPE_LEXICAL, SCOPE_GET(cnt), 128, &tok_begin->location);
@@ -1550,7 +1539,7 @@ struct bl_ast *parse_stmt_loop(Context *cnt)
     return loop;
 }
 
-struct bl_ast *parse_stmt_break(Context *cnt)
+struct ast *parse_stmt_break(Context *cnt)
 {
     Token *tok = tokens_consume_if(cnt->tokens, SYM_BREAK);
     if (!tok) return NULL;
@@ -1562,7 +1551,7 @@ struct bl_ast *parse_stmt_break(Context *cnt)
     return ast_create_node(cnt->ast_arena, AST_STMT_BREAK, tok, SCOPE_GET(cnt));
 }
 
-struct bl_ast *parse_stmt_continue(Context *cnt)
+struct ast *parse_stmt_continue(Context *cnt)
 {
     Token *tok = tokens_consume_if(cnt->tokens, SYM_CONTINUE);
     if (!tok) return NULL;
@@ -1575,13 +1564,13 @@ struct bl_ast *parse_stmt_continue(Context *cnt)
     return ast_create_node(cnt->ast_arena, AST_STMT_CONTINUE, tok, SCOPE_GET(cnt));
 }
 
-struct bl_ast *parse_stmt_defer(Context *cnt)
+struct ast *parse_stmt_defer(Context *cnt)
 {
     Token *tok = tokens_consume_if(cnt->tokens, SYM_DEFER);
     if (!tok) return NULL;
 
-    struct bl_ast *expr = NULL;
-    expr                = parse_expr(cnt);
+    struct ast *expr = NULL;
+    expr             = parse_expr(cnt);
 
     if (!expr) {
         PARSE_ERROR(ERR_EXPECTED_EXPR,
@@ -1593,21 +1582,21 @@ struct bl_ast *parse_stmt_defer(Context *cnt)
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_err, SCOPE_GET(cnt));
     }
 
-    struct bl_ast *defer = ast_create_node(cnt->ast_arena, AST_STMT_DEFER, tok, SCOPE_GET(cnt));
+    struct ast *defer = ast_create_node(cnt->ast_arena, AST_STMT_DEFER, tok, SCOPE_GET(cnt));
     defer->data.stmt_defer.expr = expr;
 
     return defer;
 }
 
-struct bl_ast *parse_expr(Context *cnt)
+struct ast *parse_expr(Context *cnt)
 {
     return _parse_expr(cnt, 0);
 }
 
-struct bl_ast *_parse_expr(Context *cnt, s32 p)
+struct ast *_parse_expr(Context *cnt, s32 p)
 {
-    struct bl_ast *lhs = parse_expr_atom(cnt);
-    struct bl_ast *tmp = NULL;
+    struct ast *lhs = parse_expr_atom(cnt);
+    struct ast *tmp = NULL;
     do {
         tmp = parse_expr_call(cnt, lhs);
         if (!tmp) tmp = parse_expr_elem(cnt, lhs);
@@ -1622,7 +1611,7 @@ struct bl_ast *_parse_expr(Context *cnt, s32 p)
         const s32 q = token_prec(op).associativity == TOKEN_ASSOC_LEFT ? token_prec(op).priority + 1
                                                                        : token_prec(op).priority;
 
-        struct bl_ast *rhs = _parse_expr(cnt, q);
+        struct ast *rhs = _parse_expr(cnt, q);
         if (!lhs || !rhs) {
             PARSE_ERROR(ERR_INVALID_EXPR, op, BUILDER_CUR_WORD, "Invalid binary operation.");
         }
@@ -1633,9 +1622,9 @@ struct bl_ast *_parse_expr(Context *cnt, s32 p)
     return lhs;
 }
 
-struct bl_ast *parse_expr_primary(Context *cnt)
+struct ast *parse_expr_primary(Context *cnt)
 {
-    struct bl_ast *expr = NULL;
+    struct ast *expr = NULL;
     if ((expr = parse_expr_nested(cnt))) return expr;
     if ((expr = parse_expr_ref(cnt))) return expr;
     if ((expr = parse_expr_lit(cnt))) return expr;
@@ -1649,13 +1638,13 @@ struct bl_ast *parse_expr_primary(Context *cnt)
     return NULL;
 }
 
-struct bl_ast *parse_expr_unary(Context *cnt)
+struct ast *parse_expr_unary(Context *cnt)
 {
     Token *op = tokens_peek(cnt->tokens);
     if (!token_is_unary(op)) return NULL;
 
     tokens_consume(cnt->tokens);
-    struct bl_ast *unary = ast_create_node(cnt->ast_arena, AST_EXPR_UNARY, op, SCOPE_GET(cnt));
+    struct ast *unary = ast_create_node(cnt->ast_arena, AST_EXPR_UNARY, op, SCOPE_GET(cnt));
     unary->data.expr_unary.next = _parse_expr(cnt, token_prec(op).priority);
     unary->data.expr_unary.kind = sym_to_unop_kind(op->sym);
 
@@ -1674,9 +1663,9 @@ struct bl_ast *parse_expr_unary(Context *cnt)
     return unary;
 }
 
-struct bl_ast *parse_expr_atom(Context *cnt)
+struct ast *parse_expr_atom(Context *cnt)
 {
-    struct bl_ast *expr = NULL;
+    struct ast *expr = NULL;
 
     if ((expr = parse_expr_primary(cnt))) return expr;
     if ((expr = parse_expr_unary(cnt))) return expr;
@@ -1692,11 +1681,11 @@ struct bl_ast *parse_expr_atom(Context *cnt)
     return NULL;
 }
 
-struct bl_ast *parse_expr_binary(Context *cnt, struct bl_ast *lhs, struct bl_ast *rhs, Token *op)
+struct ast *parse_expr_binary(Context *cnt, struct ast *lhs, struct ast *rhs, Token *op)
 {
     if (!token_is_binop(op)) return NULL;
 
-    struct bl_ast *binop = ast_create_node(cnt->ast_arena, AST_EXPR_BINOP, op, SCOPE_GET(cnt));
+    struct ast *binop = ast_create_node(cnt->ast_arena, AST_EXPR_BINOP, op, SCOPE_GET(cnt));
     binop->data.expr_binop.kind = sym_to_binop_kind(op->sym);
     binop->data.expr_binop.lhs  = lhs;
     binop->data.expr_binop.rhs  = rhs;
@@ -1707,12 +1696,12 @@ struct bl_ast *parse_expr_binary(Context *cnt, struct bl_ast *lhs, struct bl_ast
     return binop;
 }
 
-struct bl_ast *parse_expr_addrof(Context *cnt)
+struct ast *parse_expr_addrof(Context *cnt)
 {
     Token *tok = tokens_consume_if(cnt->tokens, SYM_AND);
     if (!tok) return NULL;
 
-    struct bl_ast *addrof = ast_create_node(cnt->ast_arena, AST_EXPR_ADDROF, tok, SCOPE_GET(cnt));
+    struct ast *addrof = ast_create_node(cnt->ast_arena, AST_EXPR_ADDROF, tok, SCOPE_GET(cnt));
     addrof->data.expr_addrof.next = _parse_expr(cnt, token_prec(tok).priority);
 
     if (addrof->data.expr_addrof.next == NULL) {
@@ -1729,12 +1718,12 @@ struct bl_ast *parse_expr_addrof(Context *cnt)
     return addrof;
 }
 
-struct bl_ast *parse_expr_deref(Context *cnt)
+struct ast *parse_expr_deref(Context *cnt)
 {
     Token *tok = tokens_consume_if(cnt->tokens, SYM_AT);
     if (!tok) return NULL;
 
-    struct bl_ast *deref = ast_create_node(cnt->ast_arena, AST_EXPR_DEREF, tok, SCOPE_GET(cnt));
+    struct ast *deref = ast_create_node(cnt->ast_arena, AST_EXPR_DEREF, tok, SCOPE_GET(cnt));
     deref->data.expr_deref.next = _parse_expr(cnt, token_prec(tok).priority);
 
     if (deref->data.expr_deref.next == NULL) {
@@ -1751,10 +1740,10 @@ struct bl_ast *parse_expr_deref(Context *cnt)
     return deref;
 }
 
-struct bl_ast *parse_expr_lit(Context *cnt)
+struct ast *parse_expr_lit(Context *cnt)
 {
-    Token *        tok = tokens_peek(cnt->tokens);
-    struct bl_ast *lit = NULL;
+    Token *     tok = tokens_peek(cnt->tokens);
+    struct ast *lit = NULL;
 
     switch (tok->sym) {
     case SYM_NUM:
@@ -1821,11 +1810,11 @@ struct bl_ast *parse_expr_lit(Context *cnt)
     return lit;
 }
 
-struct bl_ast *parse_expr_lit_fn(Context *cnt)
+struct ast *parse_expr_lit_fn(Context *cnt)
 {
     if (!tokens_is_seq(cnt->tokens, 2, SYM_FN, SYM_LPAREN)) return NULL;
-    Token *        tok_fn = tokens_peek(cnt->tokens);
-    struct bl_ast *fn = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FN, tok_fn, SCOPE_GET(cnt));
+    Token *     tok_fn = tokens_peek(cnt->tokens);
+    struct ast *fn     = ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FN, tok_fn, SCOPE_GET(cnt));
 
     Scope *   parent_scope = SCOPE_GET(cnt);
     ScopeKind scope_kind =
@@ -1837,18 +1826,18 @@ struct bl_ast *parse_expr_lit_fn(Context *cnt)
 
     SCOPE_PUSH(cnt, scope);
 
-    struct bl_ast *type = parse_type_fn(cnt, true);
+    struct ast *type = parse_type_fn(cnt, true);
     BL_ASSERT(type);
     fn->data.expr_fn.type = type;
     // parse flags
-    struct bl_ast *curr_decl = DECL_GET(cnt);
+    struct ast *curr_decl = DECL_GET(cnt);
     if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
         u32 accepted = HD_EXTERN | HD_NO_INLINE | HD_INLINE | HD_COMPILER | HD_ENTRY |
                        HD_BUILD_ENTRY | HD_INTRINSIC | HD_TEST_FN | HD_EXPORT;
         u32 flags = 0;
         while (true) {
-            HashDirective  found        = HD_NONE;
-            struct bl_ast *hd_extension = parse_hash_directive(cnt, accepted, &found);
+            HashDirective found        = HD_NONE;
+            struct ast *  hd_extension = parse_hash_directive(cnt, accepted, &found);
             if (!hash_directive_to_flags(found, &flags)) break;
             if ((found == HD_EXTERN || found == HD_INTRINSIC) && hd_extension) {
                 // Use extern flag extension on function declaration.
@@ -1869,17 +1858,17 @@ struct bl_ast *parse_expr_lit_fn(Context *cnt)
     return fn;
 }
 
-struct bl_ast *parse_expr_lit_fn_group(Context *cnt)
+struct ast *parse_expr_lit_fn_group(Context *cnt)
 {
     if (!tokens_is_seq(cnt->tokens, 2, SYM_FN, SYM_LBLOCK)) return NULL;
-    Token *        tok_group = tokens_consume(cnt->tokens); // eat fn
-    Token *        tok_begin = tokens_consume(cnt->tokens); // eat {
-    struct bl_ast *group =
+    Token *     tok_group = tokens_consume(cnt->tokens); // eat fn
+    Token *     tok_begin = tokens_consume(cnt->tokens); // eat {
+    struct ast *group =
         ast_create_node(cnt->ast_arena, AST_EXPR_LIT_FN_GROUP, tok_group, SCOPE_GET(cnt));
 
     TSmallArray_AstPtr *variants       = create_sarr(TSmallArray_AstPtr, cnt->assembly);
     group->data.expr_fn_group.variants = variants;
-    struct bl_ast *tmp;
+    struct ast *tmp;
 NEXT:
     if ((tmp = parse_expr(cnt))) {
         tsa_push_AstPtr(variants, tmp);
@@ -1896,10 +1885,10 @@ NEXT:
     return group;
 }
 
-struct bl_ast *parse_expr_nested(Context *cnt)
+struct ast *parse_expr_nested(Context *cnt)
 {
-    struct bl_ast *expr      = NULL;
-    Token *        tok_begin = tokens_consume_if(cnt->tokens, SYM_LPAREN);
+    struct ast *expr      = NULL;
+    Token *     tok_begin = tokens_consume_if(cnt->tokens, SYM_LPAREN);
     if (!tok_begin) return NULL;
 
     expr = parse_expr(cnt);
@@ -1922,13 +1911,13 @@ struct bl_ast *parse_expr_nested(Context *cnt)
     return expr;
 }
 
-struct bl_ast *parse_expr_elem(Context *cnt, struct bl_ast *prev)
+struct ast *parse_expr_elem(Context *cnt, struct ast *prev)
 {
     if (!prev) return NULL;
     Token *tok_elem = tokens_consume_if(cnt->tokens, SYM_LBRACKET);
     if (!tok_elem) return NULL;
 
-    struct bl_ast *elem = ast_create_node(cnt->ast_arena, AST_EXPR_ELEM, tok_elem, SCOPE_GET(cnt));
+    struct ast *elem = ast_create_node(cnt->ast_arena, AST_EXPR_ELEM, tok_elem, SCOPE_GET(cnt));
     elem->data.expr_elem.index = parse_expr(cnt);
     elem->data.expr_elem.next  = prev;
 
@@ -1945,21 +1934,21 @@ struct bl_ast *parse_expr_elem(Context *cnt, struct bl_ast *prev)
     return elem;
 }
 
-struct bl_ast *parse_ident(Context *cnt)
+struct ast *parse_ident(Context *cnt)
 {
     Token *tok_ident = tokens_consume_if(cnt->tokens, SYM_IDENT);
     if (!tok_ident) return NULL;
-    struct bl_ast *ident = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ident, SCOPE_GET(cnt));
+    struct ast *ident = ast_create_node(cnt->ast_arena, AST_IDENT, tok_ident, SCOPE_GET(cnt));
     id_init(&ident->data.ident.id, tok_ident->value.str);
     return ident;
 }
 
-struct bl_ast *parse_ident_group(Context *cnt)
+struct ast *parse_ident_group(Context *cnt)
 {
-    struct bl_ast *root = NULL;
-    struct bl_ast *prev = NULL;
-    bool           rq   = false;
-    struct bl_ast *ident;
+    struct ast *root = NULL;
+    struct ast *prev = NULL;
+    bool        rq   = false;
+    struct ast *ident;
 NEXT:
     ident = parse_ident(cnt);
     if (ident) {
@@ -1979,13 +1968,13 @@ NEXT:
     return root;
 }
 
-struct bl_ast *parse_type_ptr(Context *cnt)
+struct ast *parse_type_ptr(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_ASTERISK);
     if (!tok_begin) return NULL;
 
-    struct bl_ast *ptr = ast_create_node(cnt->ast_arena, AST_TYPE_PTR, tok_begin, SCOPE_GET(cnt));
-    struct bl_ast *sub_type = parse_type(cnt);
+    struct ast *ptr      = ast_create_node(cnt->ast_arena, AST_TYPE_PTR, tok_begin, SCOPE_GET(cnt));
+    struct ast *sub_type = parse_type(cnt);
     if (!sub_type) {
         Token *tok_err = tokens_peek(cnt->tokens);
         PARSE_ERROR(ERR_EXPECTED_TYPE,
@@ -1999,27 +1988,27 @@ struct bl_ast *parse_type_ptr(Context *cnt)
     return ptr;
 }
 
-struct bl_ast *parse_type_vargs(Context *cnt)
+struct ast *parse_type_vargs(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_VARGS);
     if (!tok_begin) return NULL;
 
-    struct bl_ast *ptr = ast_create_node(cnt->ast_arena, AST_TYPE_VARGS, tok_begin, SCOPE_GET(cnt));
+    struct ast *ptr = ast_create_node(cnt->ast_arena, AST_TYPE_VARGS, tok_begin, SCOPE_GET(cnt));
     ptr->data.type_ptr.type = parse_type(cnt);
     return ptr;
 }
 
-struct bl_ast *parse_type_enum(Context *cnt)
+struct ast *parse_type_enum(Context *cnt)
 {
     Token *tok_enum = tokens_consume_if(cnt->tokens, SYM_ENUM);
     if (!tok_enum) return NULL;
 
-    struct bl_ast *enm = ast_create_node(cnt->ast_arena, AST_TYPE_ENUM, tok_enum, SCOPE_GET(cnt));
+    struct ast *enm = ast_create_node(cnt->ast_arena, AST_TYPE_ENUM, tok_enum, SCOPE_GET(cnt));
     enm->data.type_enm.variants = create_sarr(TSmallArray_AstPtr, cnt->assembly);
     enm->data.type_enm.type     = parse_type(cnt);
 
     // parse flags
-    struct bl_ast *curr_decl = DECL_GET(cnt);
+    struct ast *curr_decl = DECL_GET(cnt);
     if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
         u32 accepted = HD_COMPILER;
         u32 flags    = 0;
@@ -2045,9 +2034,9 @@ struct bl_ast *parse_type_enum(Context *cnt)
     SCOPE_PUSH(cnt, scope);
 
     // parse enum varinats
-    bool           rq = false;
-    struct bl_ast *tmp;
-    struct bl_ast *prev_tmp = NULL;
+    bool        rq = false;
+    struct ast *tmp;
+    struct ast *prev_tmp = NULL;
 
 NEXT:
     if (parse_docs(cnt)) goto NEXT;
@@ -2085,14 +2074,14 @@ NEXT:
     return enm;
 }
 
-struct bl_ast *parse_ref(Context *cnt)
+struct ast *parse_ref(Context *cnt)
 {
-    Token *        tok   = tokens_peek(cnt->tokens);
-    struct bl_ast *ident = parse_ident(cnt);
+    Token *     tok   = tokens_peek(cnt->tokens);
+    struct ast *ident = parse_ident(cnt);
     if (!ident) return NULL;
-    struct bl_ast *lhs  = ast_create_node(cnt->ast_arena, AST_REF, tok, SCOPE_GET(cnt));
+    struct ast *lhs     = ast_create_node(cnt->ast_arena, AST_REF, tok, SCOPE_GET(cnt));
     lhs->data.ref.ident = ident;
-    struct bl_ast *tmp  = NULL;
+    struct ast *tmp     = NULL;
     do {
         tmp = parse_ref_nested(cnt, lhs);
         lhs = tmp ? tmp : lhs;
@@ -2100,20 +2089,20 @@ struct bl_ast *parse_ref(Context *cnt)
     return lhs;
 }
 
-struct bl_ast *parse_ref_nested(Context *cnt, struct bl_ast *prev)
+struct ast *parse_ref_nested(Context *cnt, struct ast *prev)
 {
     if (!prev) return NULL;
     Token *tok = tokens_consume_if(cnt->tokens, SYM_DOT);
     if (!tok) return NULL;
 
-    struct bl_ast *ident = parse_ident(cnt);
+    struct ast *ident = parse_ident(cnt);
     if (!ident) {
         Token *tok_err = tokens_peek(cnt->tokens);
         PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected name.");
         return ast_create_node(cnt->ast_arena, AST_BAD, tok, SCOPE_GET(cnt));
     }
 
-    struct bl_ast *ref  = ast_create_node(cnt->ast_arena, AST_REF, tok, SCOPE_GET(cnt));
+    struct ast *ref     = ast_create_node(cnt->ast_arena, AST_REF, tok, SCOPE_GET(cnt));
     ref->data.ref.ident = ident;
     ref->data.ref.next  = prev;
     return ref;
@@ -2123,14 +2112,14 @@ static INLINE void set_polymorph(Context *cnt)
 {
     TSmallArray_AstPtr *stack = &cnt->current_fn_type_stack;
     for (usize i = stack->size; i-- > 0;) {
-        struct bl_ast *fn_type = stack->data[i];
+        struct ast *fn_type = stack->data[i];
         BL_ASSERT(fn_type && fn_type->kind == AST_TYPE_FN);
         if (fn_type->data.type_fn.is_polymorph) return;
         fn_type->data.type_fn.is_polymorph = true;
     }
 }
 
-struct bl_ast *parse_type_polymorph(Context *cnt)
+struct ast *parse_type_polymorph(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_QUESTION);
     if (!tok_begin) return NULL;
@@ -2144,7 +2133,7 @@ struct bl_ast *parse_type_polymorph(Context *cnt)
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
     }
     set_polymorph(cnt);
-    struct bl_ast *ident = parse_ident(cnt);
+    struct ast *ident = parse_ident(cnt);
     if (!ident) {
         Token *tok_err = tokens_peek(cnt->tokens);
         PARSE_ERROR(
@@ -2152,17 +2141,17 @@ struct bl_ast *parse_type_polymorph(Context *cnt)
         tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
     }
-    struct bl_ast *poly = ast_create_node(cnt->ast_arena, AST_TYPE_POLY, tok_begin, SCOPE_GET(cnt));
+    struct ast *poly = ast_create_node(cnt->ast_arena, AST_TYPE_POLY, tok_begin, SCOPE_GET(cnt));
     poly->data.type_poly.ident = ident;
     return poly;
 }
 
-struct bl_ast *parse_type_arr(Context *cnt)
+struct ast *parse_type_arr(Context *cnt)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBRACKET);
     if (!tok_begin) return NULL;
 
-    struct bl_ast *arr = ast_create_node(cnt->ast_arena, AST_TYPE_ARR, tok_begin, SCOPE_GET(cnt));
+    struct ast *arr = ast_create_node(cnt->ast_arena, AST_TYPE_ARR, tok_begin, SCOPE_GET(cnt));
     arr->data.type_arr.len = parse_expr(cnt);
     if (!arr->data.type_arr.len) {
         Token *tok_err = tokens_peek(cnt->tokens);
@@ -2194,7 +2183,7 @@ struct bl_ast *parse_type_arr(Context *cnt)
     return arr;
 }
 
-struct bl_ast *parse_type_slice(Context *cnt)
+struct ast *parse_type_slice(Context *cnt)
 {
     if (tokens_peek(cnt->tokens)->sym != SYM_LBRACKET) return NULL;
     if (tokens_peek_2nd(cnt->tokens)->sym != SYM_RBRACKET) return NULL;
@@ -2203,8 +2192,7 @@ struct bl_ast *parse_type_slice(Context *cnt)
     Token *tok_begin = tokens_consume(cnt->tokens);
     tok_begin        = tokens_consume(cnt->tokens);
 
-    struct bl_ast *slice =
-        ast_create_node(cnt->ast_arena, AST_TYPE_SLICE, tok_begin, SCOPE_GET(cnt));
+    struct ast *slice = ast_create_node(cnt->ast_arena, AST_TYPE_SLICE, tok_begin, SCOPE_GET(cnt));
 
     slice->data.type_slice.elem_type = parse_type(cnt);
 
@@ -2216,7 +2204,7 @@ struct bl_ast *parse_type_slice(Context *cnt)
     return slice;
 }
 
-struct bl_ast *parse_type_dynarr(Context *cnt)
+struct ast *parse_type_dynarr(Context *cnt)
 {
     if (tokens_peek(cnt->tokens)->sym != SYM_LBRACKET) return NULL;
     if (tokens_peek_2nd(cnt->tokens)->sym != SYM_DYNARR) return NULL;
@@ -2237,8 +2225,7 @@ struct bl_ast *parse_type_dynarr(Context *cnt)
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_begin, SCOPE_GET(cnt));
     }
 
-    struct bl_ast *slice =
-        ast_create_node(cnt->ast_arena, AST_TYPE_DYNARR, tok_begin, SCOPE_GET(cnt));
+    struct ast *slice = ast_create_node(cnt->ast_arena, AST_TYPE_DYNARR, tok_begin, SCOPE_GET(cnt));
     slice->data.type_dynarr.elem_type = parse_type(cnt);
 
     if (!slice->data.type_dynarr.elem_type) {
@@ -2251,9 +2238,9 @@ struct bl_ast *parse_type_dynarr(Context *cnt)
     return slice;
 }
 
-struct bl_ast *parse_type(Context *cnt)
+struct ast *parse_type(Context *cnt)
 {
-    struct bl_ast *type = NULL;
+    struct ast *type = NULL;
 
     type = parse_type_ptr(cnt);
     // keep order
@@ -2277,7 +2264,7 @@ struct bl_ast *parse_type(Context *cnt)
     return type;
 }
 
-struct bl_ast *parse_type_fn_return(Context *cnt)
+struct ast *parse_type_fn_return(Context *cnt)
 {
     if (tokens_current_is(cnt->tokens, SYM_LPAREN)) {
         // multiple return type ( T1, T2 )
@@ -2287,13 +2274,13 @@ struct bl_ast *parse_type_fn_return(Context *cnt)
             cnt->scope_arenas, SCOPE_TYPE_STRUCT, SCOPE_GET(cnt), 16, &tok_begin->location);
         SCOPE_PUSH(cnt, scope);
 
-        struct bl_ast *type_struct =
+        struct ast *type_struct =
             ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_begin, SCOPE_GET(cnt));
         type_struct->data.type_strct.scope   = scope;
         type_struct->data.type_strct.members = create_sarr(TSmallArray_AstPtr, cnt->assembly);
         type_struct->data.type_strct.is_multiple_return_type = true;
-        struct bl_ast *tmp;
-        s32            index = 0;
+        struct ast *tmp;
+        s32         index = 0;
     NEXT:
         tmp = parse_decl_member(cnt, index++);
         if (tmp) {
@@ -2323,7 +2310,7 @@ struct bl_ast *parse_type_fn_return(Context *cnt)
     return parse_type(cnt);
 }
 
-struct bl_ast *parse_type_fn(Context *cnt, bool named_args)
+struct ast *parse_type_fn(Context *cnt, bool named_args)
 {
     Token *tok_fn = tokens_consume_if(cnt->tokens, SYM_FN);
     if (!tok_fn) return NULL;
@@ -2334,10 +2321,10 @@ struct bl_ast *parse_type_fn(Context *cnt, bool named_args)
             ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Expected function parameter list.");
         return ast_create_node(cnt->ast_arena, AST_BAD, tok_fn, SCOPE_GET(cnt));
     }
-    struct bl_ast *fn = ast_create_node(cnt->ast_arena, AST_TYPE_FN, tok_fn, SCOPE_GET(cnt));
+    struct ast *fn = ast_create_node(cnt->ast_arena, AST_TYPE_FN, tok_fn, SCOPE_GET(cnt));
     // parse arg types
-    bool           rq = false;
-    struct bl_ast *tmp;
+    bool        rq = false;
+    struct ast *tmp;
     tsa_push_AstPtr(&cnt->current_fn_type_stack, fn);
 NEXT:
     tmp = parse_decl_arg(cnt, named_args);
@@ -2374,17 +2361,17 @@ NEXT:
     return fn;
 }
 
-struct bl_ast *parse_type_fn_group(Context *cnt)
+struct ast *parse_type_fn_group(Context *cnt)
 {
     if (!tokens_is_seq(cnt->tokens, 2, SYM_FN, SYM_LBLOCK)) return NULL;
-    Token *        tok_group = tokens_consume(cnt->tokens); // eat fn
-    Token *        tok_begin = tokens_consume(cnt->tokens); // eat {
-    struct bl_ast *group =
+    Token *     tok_group = tokens_consume(cnt->tokens); // eat fn
+    Token *     tok_begin = tokens_consume(cnt->tokens); // eat {
+    struct ast *group =
         ast_create_node(cnt->ast_arena, AST_TYPE_FN_GROUP, tok_group, SCOPE_GET(cnt));
 
     TSmallArray_AstPtr *variants       = create_sarr(TSmallArray_AstPtr, cnt->assembly);
     group->data.type_fn_group.variants = variants;
-    struct bl_ast *tmp;
+    struct ast *tmp;
 NEXT:
     if (parse_semicolon(cnt)) goto NEXT;
     if ((tmp = parse_type(cnt))) {
@@ -2411,7 +2398,7 @@ NEXT:
     return group;
 }
 
-struct bl_ast *parse_type_struct(Context *cnt)
+struct ast *parse_type_struct(Context *cnt)
 {
     Token *tok_struct = tokens_consume_if(cnt->tokens, SYM_STRUCT);
     if (!tok_struct) tok_struct = tokens_consume_if(cnt->tokens, SYM_UNION);
@@ -2420,13 +2407,13 @@ struct bl_ast *parse_type_struct(Context *cnt)
     const bool is_union = tok_struct->sym == SYM_UNION;
 
     // parse flags
-    u32            accepted  = is_union ? 0 : HD_COMPILER | HD_BASE;
-    u32            flags     = 0;
-    struct bl_ast *base_type = NULL;
+    u32         accepted  = is_union ? 0 : HD_COMPILER | HD_BASE;
+    u32         flags     = 0;
+    struct ast *base_type = NULL;
     while (true) {
-        struct bl_ast *hd_extension;
-        HashDirective  found = HD_NONE;
-        hd_extension         = parse_hash_directive(cnt, accepted, &found);
+        struct ast *  hd_extension;
+        HashDirective found = HD_NONE;
+        hd_extension        = parse_hash_directive(cnt, accepted, &found);
         if (found == HD_BASE) {
             BL_ASSERT(hd_extension);
             base_type = hd_extension;
@@ -2436,7 +2423,7 @@ struct bl_ast *parse_type_struct(Context *cnt)
         accepted &= ~found;
     }
 
-    struct bl_ast *curr_decl = DECL_GET(cnt);
+    struct ast *curr_decl = DECL_GET(cnt);
     if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
         curr_decl->data.decl_entity.flags |= flags;
     }
@@ -2452,7 +2439,7 @@ struct bl_ast *parse_type_struct(Context *cnt)
         scope_create(cnt->scope_arenas, SCOPE_TYPE_STRUCT, SCOPE_GET(cnt), 128, &tok->location);
     SCOPE_PUSH(cnt, scope);
 
-    struct bl_ast *type_struct =
+    struct ast *type_struct =
         ast_create_node(cnt->ast_arena, AST_TYPE_STRUCT, tok_struct, SCOPE_GET(cnt));
     type_struct->data.type_strct.scope     = scope;
     type_struct->data.type_strct.members   = create_sarr(TSmallArray_AstPtr, cnt->assembly);
@@ -2460,8 +2447,8 @@ struct bl_ast *parse_type_struct(Context *cnt)
     type_struct->data.type_strct.is_union  = is_union;
 
     // parse members
-    struct bl_ast *tmp;
-    s32            index = 0;
+    struct ast *tmp;
+    s32         index = 0;
 NEXT:
     if (parse_docs(cnt)) goto NEXT;
     tmp = parse_decl_member(cnt, index++);
@@ -2499,19 +2486,18 @@ static TokensLookaheadState cmp_decl(Token *curr)
     }
 }
 
-struct bl_ast *parse_decl(Context *cnt)
+struct ast *parse_decl(Context *cnt)
 {
     // is value declaration?
     if (!tokens_lookahead(cnt->tokens, cmp_decl)) return NULL;
-    Token *        tok_begin = tokens_peek(cnt->tokens);
-    struct bl_ast *ident     = parse_ident_group(cnt);
+    Token *     tok_begin = tokens_peek(cnt->tokens);
+    struct ast *ident     = parse_ident_group(cnt);
     if (!ident) return NULL;
     // eat :
     tokens_consume(cnt->tokens);
 
-    struct bl_ast *decl =
-        ast_create_node(cnt->ast_arena, AST_DECL_ENTITY, tok_begin, SCOPE_GET(cnt));
-    decl->docs                 = pop_docs(cnt);
+    struct ast *decl = ast_create_node(cnt->ast_arena, AST_DECL_ENTITY, tok_begin, SCOPE_GET(cnt));
+    decl->docs       = pop_docs(cnt);
     decl->data.decl.name       = ident;
     decl->data.decl_entity.mut = true;
 
@@ -2544,7 +2530,7 @@ struct bl_ast *parse_decl(Context *cnt)
         hd_accepted |= HD_NO_INIT;
     }
 
-    struct bl_ast *init_value = decl->data.decl_entity.value;
+    struct ast *init_value = decl->data.decl_entity.value;
 
     if (!init_value || rq_semicolon_after_decl_entity(init_value)) {
         u32 flags = 0;
@@ -2571,7 +2557,7 @@ struct bl_ast *parse_decl(Context *cnt)
     return decl;
 }
 
-struct bl_ast *parse_expr_call(Context *cnt, struct bl_ast *prev)
+struct ast *parse_expr_call(Context *cnt, struct ast *prev)
 {
     if (!prev) return NULL;
 
@@ -2579,14 +2565,14 @@ struct bl_ast *parse_expr_call(Context *cnt, struct bl_ast *prev)
     Token *tok            = tokens_consume_if(cnt->tokens, SYM_LPAREN);
     if (!tok) return NULL;
     if (location_token && location_token->sym != SYM_IDENT) location_token = tok;
-    struct bl_ast *call =
+    struct ast *call =
         ast_create_node(cnt->ast_arena, AST_EXPR_CALL, location_token, SCOPE_GET(cnt));
     call->data.expr_call.ref = prev;
     call->data.expr_call.run = false;
 
     // parse args
-    bool           rq = false;
-    struct bl_ast *tmp;
+    bool        rq = false;
+    struct ast *tmp;
 
 arg:
     tmp = parse_expr(cnt);
@@ -2622,14 +2608,14 @@ arg:
     return call;
 }
 
-struct bl_ast *parse_expr_null(Context *cnt)
+struct ast *parse_expr_null(Context *cnt)
 {
     Token *tok_null = tokens_consume_if(cnt->tokens, SYM_NULL);
     if (!tok_null) return NULL;
     return ast_create_node(cnt->ast_arena, AST_EXPR_NULL, tok_null, SCOPE_GET(cnt));
 }
 
-struct bl_ast *parse_unrecheable(Context *cnt)
+struct ast *parse_unrecheable(Context *cnt)
 {
     Token *tok = tokens_consume_if(cnt->tokens, SYM_UNREACHABLE);
     if (!tok) return NULL;
@@ -2637,10 +2623,10 @@ struct bl_ast *parse_unrecheable(Context *cnt)
     return ast_create_node(cnt->ast_arena, AST_UNREACHABLE, tok, SCOPE_GET(cnt));
 }
 
-struct bl_ast *parse_expr_type(Context *cnt)
+struct ast *parse_expr_type(Context *cnt)
 {
-    Token *        tok  = tokens_peek(cnt->tokens);
-    struct bl_ast *type = NULL;
+    Token *     tok  = tokens_peek(cnt->tokens);
+    struct ast *type = NULL;
 
     type = parse_type_struct(cnt);
 
@@ -2654,7 +2640,7 @@ struct bl_ast *parse_expr_type(Context *cnt)
     if (!type) type = parse_type_ptr(cnt);
 
     if (type) {
-        struct bl_ast *expr = ast_create_node(cnt->ast_arena, AST_EXPR_TYPE, tok, SCOPE_GET(cnt));
+        struct ast *expr = ast_create_node(cnt->ast_arena, AST_EXPR_TYPE, tok, SCOPE_GET(cnt));
         expr->data.expr_type.type = type;
         return expr;
     }
@@ -2662,7 +2648,7 @@ struct bl_ast *parse_expr_type(Context *cnt)
     return NULL;
 }
 
-struct bl_ast *parse_block(Context *cnt, bool create_scope)
+struct ast *parse_block(Context *cnt, bool create_scope)
 {
     Token *tok_begin = tokens_consume_if(cnt->tokens, SYM_LBLOCK);
     if (!tok_begin) return NULL;
@@ -2674,10 +2660,10 @@ struct bl_ast *parse_block(Context *cnt, bool create_scope)
         SCOPE_PUSH(cnt, scope);
     }
 
-    struct bl_ast *block = ast_create_node(cnt->ast_arena, AST_BLOCK, tok_begin, SCOPE_GET(cnt));
+    struct ast *block = ast_create_node(cnt->ast_arena, AST_BLOCK, tok_begin, SCOPE_GET(cnt));
 
-    Token *        tok;
-    struct bl_ast *tmp;
+    Token *     tok;
+    struct ast *tmp;
     block->data.block.nodes = create_sarr(TSmallArray_AstPtr, cnt->assembly);
 
 NEXT:
@@ -2689,7 +2675,7 @@ NEXT:
 
     parse_hash_directive(cnt, HD_NONE, NULL);
 
-    if ((tmp = (struct bl_ast *)parse_decl(cnt))) {
+    if ((tmp = (struct ast *)parse_decl(cnt))) {
         if (AST_IS_OK(tmp)) parse_semicolon_rq(cnt);
         tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
@@ -2766,12 +2752,12 @@ NEXT:
     return block;
 }
 
-void parse_ublock_content(Context *cnt, struct bl_ast *ublock)
+void parse_ublock_content(Context *cnt, struct ast *ublock)
 {
     BL_ASSERT(ublock->kind == AST_UBLOCK);
-    ublock->data.ublock.nodes = tarray_new(sizeof(struct bl_ast *));
+    ublock->data.ublock.nodes = tarray_new(sizeof(struct ast *));
     tarray_reserve(ublock->data.ublock.nodes, 64);
-    struct bl_ast *tmp;
+    struct ast *tmp;
 NEXT:
     if (parse_semicolon(cnt)) goto NEXT;
     if (parse_docs(cnt)) goto NEXT;
@@ -2779,7 +2765,7 @@ NEXT:
 
     if ((tmp = parse_decl(cnt))) {
         if (AST_IS_OK(tmp)) {
-            struct bl_ast *decl = tmp->data.decl_entity.value;
+            struct ast *decl = tmp->data.decl_entity.value;
             if (decl && rq_semicolon_after_decl_entity(decl)) parse_semicolon_rq(cnt);
             // setup global scope flag for declaration
             tmp->data.decl_entity.is_global = true;
@@ -2807,7 +2793,7 @@ NEXT:
     }
 }
 
-void parser_run(Assembly *assembly, Unit *unit)
+void parser_run(struct assembly *assembly, struct unit *unit)
 {
     BL_ASSERT(assembly);
     BL_ASSERT(assembly->gscope && "Missing global scope for assembly.");
@@ -2827,7 +2813,7 @@ void parser_run(Assembly *assembly, Unit *unit)
 
     SCOPE_PUSH(&cnt, assembly->gscope);
 
-    struct bl_ast *root    = ast_create_node(cnt.ast_arena, AST_UBLOCK, NULL, SCOPE_GET(&cnt));
+    struct ast *root       = ast_create_node(cnt.ast_arena, AST_UBLOCK, NULL, SCOPE_GET(&cnt));
     root->data.ublock.unit = unit;
     unit->ast              = root;
 

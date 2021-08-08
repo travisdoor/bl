@@ -36,28 +36,24 @@
 
 struct Token;
 
-typedef struct Unit {
+struct unit {
     u64             hash;
-    Tokens          tokens;        // Unit tokens as lexer output.
-    struct bl_ast * ast;           // Abstract Syntax Tree
-    struct Scope *  private_scope; // Unit private scope (#private).
-    char *          filename;      // Loaded source file name.
-    char *          filepath;      // Loaded source file name with path.
-    char *          dirpath;       // Parent directory.
-    char *          name;          // Unit name
-    char *          src;           // Unit raw source data.
-    struct Token *  loaded_from;   // Optionally set when unit is loaded from another unit.
+    Tokens          tokens;
+    struct ast *    ast;
+    struct Scope *  private_scope;
+    char *          filename;
+    char *          filepath;
+    char *          dirpath;
+    char *          name;
+    char *          src;
+    struct Token *  loaded_from;
     LLVMMetadataRef llvm_file_meta;
-} Unit;
+};
 
 u64 unit_hash(const char *filepath, struct Token *load_from);
 
-// Create new Unit instance.
-Unit *unit_new(const char *filepath, struct Token *load_from);
-void  unit_delete(Unit *unit);
-
-// Get pointer to begin of desired line in source code. 'Line' must be greater then one. 'Len' is
-// optional output parameter set to line length.
-const char *unit_get_src_ln(Unit *unit, s32 line, long *len);
+struct unit *unit_new(const char *filepath, struct Token *load_from);
+void         unit_delete(struct unit *unit);
+const char * unit_get_src_ln(struct unit *unit, s32 line, long *len);
 
 #endif

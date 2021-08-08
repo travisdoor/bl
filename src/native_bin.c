@@ -35,12 +35,12 @@
 #include <unistd.h>
 #endif
 
-typedef s32 (*LinkerFn)(Assembly *);
+typedef s32 (*LinkerFn)(struct assembly *);
 
-s32 lld_link(Assembly *assembly);
-s32 lld_ld(Assembly *assembly);
+s32 lld_link(struct assembly *assembly);
+s32 lld_ld(struct assembly *assembly);
 
-static void copy_user_libs(Assembly *assembly)
+static void copy_user_libs(struct assembly *assembly)
 {
     TString *     dest_path = get_tmpstr();
     const Target *target    = assembly->target;
@@ -74,7 +74,7 @@ static void copy_user_libs(Assembly *assembly)
     put_tmpstr(dest_path);
 }
 
-void native_bin_run(Assembly *assembly)
+void native_bin_run(struct assembly *assembly)
 {
     builder_log("Running native linker...");
     LinkerFn linker = NULL;

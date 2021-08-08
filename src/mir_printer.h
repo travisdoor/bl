@@ -31,8 +31,8 @@
 
 #include "mir.h"
 
-struct Assembly;
+struct assembly;
 
-void mir_print_assembly(struct Assembly *assembly, FILE *stream);
+void mir_print_assembly(struct assembly *assembly, FILE *stream);
 
 #endif

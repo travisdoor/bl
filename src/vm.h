@@ -34,15 +34,15 @@
 // Stack data manipulation helper macros.
 #define VM_STACK_PTR_DEREF(ptr) ((VMStackPtr) * ((uintptr_t *)(ptr)))
 
-struct bl_type;
+struct mir_type;
 struct MirInstr;
 struct MirInstrBlock;
 struct MirInstrCall;
 struct MirInstrDeclVar;
-struct MirFn;
-struct MirVar;
-struct Builder;
-struct Assembly;
+struct mir_fn;
+struct mir_var;
+struct builder;
+struct assembly;
 
 typedef u8        VMValue[16];
 typedef ptrdiff_t VMRelativeStackPtr;
@@ -65,24 +65,24 @@ typedef struct VMStack {
 
 typedef struct VM {
     VMStack *        stack;
-    struct Assembly *assembly;
+    struct assembly *assembly;
     TSmallArray_Char dyncall_sig_tmp;
     bool             aborted;
 } VM;
 
 void vm_init(VM *vm, usize stack_size);
 void vm_terminate(VM *vm);
-void vm_execute_instr(VM *vm, struct Assembly *assembly, struct MirInstr *instr);
-bool vm_eval_instr(VM *vm, struct Assembly *assembly, struct MirInstr *instr);
-bool vm_execute_instr_top_level_call(VM *vm, struct Assembly *assembly, struct MirInstrCall *call);
-bool vm_execute_fn(VM *vm, struct Assembly *assembly, struct MirFn *fn, VMStackPtr *out_ptr);
+void vm_execute_instr(VM *vm, struct assembly *assembly, struct MirInstr *instr);
+bool vm_eval_instr(VM *vm, struct assembly *assembly, struct MirInstr *instr);
+bool vm_execute_instr_top_level_call(VM *vm, struct assembly *assembly, struct MirInstrCall *call);
+bool vm_execute_fn(VM *vm, struct assembly *assembly, struct mir_fn *fn, VMStackPtr *out_ptr);
 void vm_provide_command_line_arguments(VM *vm, s32 argc, char *argv[]);
-void vm_override_var(VM *vm, struct MirVar *var, u64 value);
-void vm_do_cast(VMStackPtr      dest,
-                VMStackPtr      src,
-                struct bl_type *dest_type,
-                struct bl_type *src_type,
-                s32             op);
+void vm_override_var(VM *vm, struct mir_var *var, u64 value);
+void vm_do_cast(VMStackPtr       dest,
+                VMStackPtr       src,
+                struct mir_type *dest_type,
+                struct mir_type *src_type,
+                s32              op);
 
 /// Allocates global variable.
 ///
@@ -91,33 +91,37 @@ void vm_do_cast(VMStackPtr      dest,
 /// instruction defined! When SetInitializer is used we can simply move memory pointer from
 /// initialization value to variable const expression value (to safe memory and time needed by
 /// copying).
-VMStackPtr vm_alloc_global(VM *vm, struct Assembly *assembly, struct MirVar *var);
+VMStackPtr vm_alloc_global(VM *vm, struct assembly *assembly, struct mir_var *var);
 
 /// Allocate raw memory on the stack to hold sizeof(type) value.
-VMStackPtr vm_alloc_raw(VM *vm, struct Assembly *assembly, struct bl_type *type);
+VMStackPtr vm_alloc_raw(VM *vm, struct assembly *assembly, struct mir_type *type);
 
 /// Return pointer to constant or stack allocated variable.
-VMStackPtr vm_read_var(VM *vm, const struct MirVar *var);
+VMStackPtr vm_read_var(VM *vm, const struct mir_var *var);
 
 #define vm_read_as(T, src) (*((T *)(src)))
 #define vm_write_as(T, dest, src) (*((T *)(dest)) = (src))
 
-u64        vm_read_int(const struct bl_type *type, VMStackPtr src);
-f64        vm_read_double(const struct bl_type *type, VMStackPtr src);
-f32        vm_read_float(const struct bl_type *type, VMStackPtr src);
-VMStackPtr vm_read_ptr(const struct bl_type *type, VMStackPtr src);
-void       vm_write_int(const struct bl_type *type, VMStackPtr dest, u64 i);
-void       vm_write_double(const struct bl_type *type, VMStackPtr dest, f64 i);
-void       vm_write_float(const struct bl_type *type, VMStackPtr dest, f32 i);
-void       vm_write_ptr(const struct bl_type *type, VMStackPtr dest, VMStackPtr ptr);
-void vm_write_string(VM *vm, const struct bl_type *type, VMStackPtr dest, const char *str, s64 len);
-void vm_write_slice(VM *vm, const struct bl_type *type, VMStackPtr dest, void *ptr, s64 len);
-ptrdiff_t  vm_get_struct_elem_offset(struct Assembly *assembly, const struct bl_type *type, u32 i);
-ptrdiff_t  vm_get_array_elem_offset(const struct bl_type *type, u32 i);
-VMStackPtr vm_get_struct_elem_ptr(struct Assembly *     assembly,
-                                  const struct bl_type *type,
-                                  VMStackPtr            ptr,
-                                  u32                   i);
-VMStackPtr vm_get_array_elem_ptr(const struct bl_type *type, VMStackPtr ptr, u32 i);
+u64        vm_read_int(const struct mir_type *type, VMStackPtr src);
+f64        vm_read_double(const struct mir_type *type, VMStackPtr src);
+f32        vm_read_float(const struct mir_type *type, VMStackPtr src);
+VMStackPtr vm_read_ptr(const struct mir_type *type, VMStackPtr src);
+void       vm_write_int(const struct mir_type *type, VMStackPtr dest, u64 i);
+void       vm_write_double(const struct mir_type *type, VMStackPtr dest, f64 i);
+void       vm_write_float(const struct mir_type *type, VMStackPtr dest, f32 i);
+void       vm_write_ptr(const struct mir_type *type, VMStackPtr dest, VMStackPtr ptr);
+void       vm_write_string(VM *                   vm,
+                           const struct mir_type *type,
+                           VMStackPtr             dest,
+                           const char *           str,
+                           s64                    len);
+void       vm_write_slice(VM *vm, const struct mir_type *type, VMStackPtr dest, void *ptr, s64 len);
+ptrdiff_t  vm_get_struct_elem_offset(struct assembly *assembly, const struct mir_type *type, u32 i);
+ptrdiff_t  vm_get_array_elem_offset(const struct mir_type *type, u32 i);
+VMStackPtr vm_get_struct_elem_ptr(struct assembly *      assembly,
+                                  const struct mir_type *type,
+                                  VMStackPtr             ptr,
+                                  u32                    i);
+VMStackPtr vm_get_array_elem_ptr(const struct mir_type *type, VMStackPtr ptr, u32 i);
 
 #endif

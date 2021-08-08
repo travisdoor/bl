@@ -37,7 +37,7 @@
 #include <dynload.h>
 
 struct MirModule;
-struct Builder;
+struct builder;
 struct BuilderOptions;
 
 typedef enum AssemblyKind {
@@ -173,7 +173,7 @@ typedef struct Target {
     BL_MAGIC_ADD
 } Target;
 
-typedef struct Assembly {
+struct assembly {
     const Target *target;
 
     TString custom_linker_opt;
@@ -206,16 +206,16 @@ typedef struct Assembly {
     } llvm;
 
     struct {
-        TArray  cases;    // Optionally contains list of test case functions.
-        MirVar *meta_var; // Optional variable containing runtime test case information.
+        TArray          cases;    // Optionally contains list of test case functions.
+        struct mir_var *meta_var; // Optional variable containing runtime test case information.
     } testing;
 
     struct {
-        MirFn * entry;                  // Main function
-        MirFn * build_entry;            // Set for build assembly
-        MirVar *command_line_arguments; // Command line arguments variable.
+        struct mir_fn * entry;                  // Main function
+        struct mir_fn * build_entry;            // Set for build assembly
+        struct mir_var *command_line_arguments; // Command line arguments variable.
         // Provide information whether application run in compile time or not.
-        MirVar *is_comptime_run;
+        struct mir_var *is_comptime_run;
 
         // Store status of last execution of this assembly.
         s32 last_execution_status;
@@ -249,7 +249,7 @@ typedef struct Assembly {
     } builtin_types;
 
     struct AssemblySyncImpl *sync;
-} Assembly;
+};
 
 Target *target_new(const char *name);
 Target *target_dup(const char *name, const Target *other);
@@ -265,26 +265,32 @@ bool    target_is_triple_valid(TargetTriple *triple);
 bool    target_init_default_triple(TargetTriple *triple);
 char *  target_triple_to_string(const TargetTriple *triple);
 
-Assembly *assembly_new(const Target *target);
-void      assembly_delete(Assembly *assembly);
-Unit *    assembly_add_unit(Assembly *assembly, const char *filepath, struct Token *load_from);
-void      assembly_add_lib_path(Assembly *assembly, const char *path);
-void      assembly_append_linker_options(Assembly *assembly, const char *opt);
-void assembly_add_native_lib(Assembly *assembly, const char *lib_name, struct Token *link_token);
-bool assembly_import_module(Assembly *assembly, const char *modulepath, struct Token *import_from);
-DCpointer assembly_find_extern(Assembly *assembly, const char *symbol);
+struct assembly *assembly_new(const Target *target);
+void             assembly_delete(struct assembly *assembly);
+struct unit *
+     assembly_add_unit(struct assembly *assembly, const char *filepath, struct Token *load_from);
+void assembly_add_lib_path(struct assembly *assembly, const char *path);
+void assembly_append_linker_options(struct assembly *assembly, const char *opt);
+void assembly_add_native_lib(struct assembly *assembly,
+                             const char *     lib_name,
+                             struct Token *   link_token);
+bool assembly_import_module(struct assembly *assembly,
+                            const char *     modulepath,
+                            struct Token *   import_from);
+DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol);
 
-static INLINE bool assembly_has_rtti(Assembly *assembly, u64 type_id)
+static INLINE bool assembly_has_rtti(struct assembly *assembly, u64 type_id)
 {
     return thtbl_has_key(&assembly->MIR.RTTI_table, type_id);
 }
 
-static INLINE MirVar *assembly_get_rtti(Assembly *assembly, u64 type_id)
+static INLINE struct mir_var *assembly_get_rtti(struct assembly *assembly, u64 type_id)
 {
-    return thtbl_at(MirVar *, &assembly->MIR.RTTI_table, type_id);
+    return thtbl_at(struct mir_var *, &assembly->MIR.RTTI_table, type_id);
 }
 
-static INLINE void assembly_add_rtti(Assembly *assembly, u64 type_id, MirVar *rtti_var)
+static INLINE void
+assembly_add_rtti(struct assembly *assembly, u64 type_id, struct mir_var *rtti_var)
 {
     thtbl_insert(&assembly->MIR.RTTI_table, type_id, rtti_var);
 }

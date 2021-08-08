@@ -39,7 +39,7 @@
 #endif
 
 // Emit assembly object file.
-void obj_writer_run(Assembly *assembly)
+void obj_writer_run(struct assembly *assembly)
 {
     ZONE();
     TString *     buf    = get_tmpstr();

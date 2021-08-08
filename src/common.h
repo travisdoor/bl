@@ -39,7 +39,7 @@
 #include <time.h>
 #include <tlib/tlib.h>
 
-struct Assembly;
+struct assembly;
 struct Scope;
 
 // =================================================================================================
@@ -101,16 +101,16 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
 #define LIB_NAME_MAX 256
 
-TSMALL_ARRAY_TYPE(AstPtr, struct bl_ast *, 16);
-TSMALL_ARRAY_TYPE(TypePtr, struct bl_type *, 16);
-TSMALL_ARRAY_TYPE(MemberPtr, struct MirMember *, 16);
-TSMALL_ARRAY_TYPE(VariantPtr, struct MirVariant *, 16);
-TSMALL_ARRAY_TYPE(ArgPtr, struct MirArg *, 16);
+TSMALL_ARRAY_TYPE(AstPtr, struct ast *, 16);
+TSMALL_ARRAY_TYPE(TypePtr, struct mir_type *, 16);
+TSMALL_ARRAY_TYPE(MemberPtr, struct mir_member *, 16);
+TSMALL_ARRAY_TYPE(VariantPtr, struct mir_variant *, 16);
+TSMALL_ARRAY_TYPE(ArgPtr, struct mir_arg *, 16);
 TSMALL_ARRAY_TYPE(InstrPtr, struct MirInstr *, 16);
 TSMALL_ARRAY_TYPE(ConstValuePtr, struct MirConstValue *, 16);
 TSMALL_ARRAY_TYPE(Char, char, 128);
 TSMALL_ARRAY_TYPE(CharPtr, char *, 8);
-TSMALL_ARRAY_TYPE(FnPtr, struct MirFn *, 8);
+TSMALL_ARRAY_TYPE(FnPtr, struct mir_fn *, 8);
 
 typedef struct ID {
     const char *str;
@@ -157,39 +157,33 @@ bool search_source_file(const char *filepath,
 // Replace all backslashes in passed path with forward slash, this is used as workaround on Windows
 // platform due to inconsistency 'Unix vs Windows' path separators. This function will modify passed
 // buffer.
-void win_path_to_unix(char *buf, usize buf_size);
-void unix_path_to_win(char *buf, usize buf_size);
-bool file_exists(const char *filepath);
-bool dir_exists(const char *dirpath);
-bool brealpath(const char *file, char *out, s32 out_len);
-bool get_current_working_dir(char *buf, usize buf_size);
-bool get_dir_from_filepath(char *buf, const usize l, const char *filepath);
-bool get_filename_from_filepath(char *buf, const usize l, const char *filepath);
-bool get_current_exec_path(char *buf, usize buf_size);
-bool get_current_exec_dir(char *buf, usize buf_size);
-bool create_dir(const char *dirpath);
-bool create_dir_tree(const char *dirpath);
-bool copy_dir(const char *src, const char *dest);
-bool copy_file(const char *src, const char *dest);
-bool remove_dir(const char *path);
-void date_time(char *buf, s32 len, const char *format);
-bool is_aligned(const void *p, usize alignment);
-void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment);
-void print_bits(s32 const size, void const *const ptr);
-int  count_bits(u64 n);
-void platform_lib_name(const char *name, char *buffer, usize max_len);
-f64  get_tick_ms(void);
-s32  get_last_error(char *buf, s32 buf_len);
-
-// Creates TArray inside Assembly arena.
-// Note: no free is needed.
-TArray *create_arr(struct Assembly *assembly, usize size);
-
-// Creates SmallArray inside Assembly arena.
-// Note: no free is needed.
-void *_create_sarr(struct Assembly *cnt, usize arr_size);
-u32   next_pow_2(u32 n);
-void  color_print(FILE *stream, s32 color, const char *format, ...);
+void    win_path_to_unix(char *buf, usize buf_size);
+void    unix_path_to_win(char *buf, usize buf_size);
+bool    file_exists(const char *filepath);
+bool    dir_exists(const char *dirpath);
+bool    brealpath(const char *file, char *out, s32 out_len);
+bool    get_current_working_dir(char *buf, usize buf_size);
+bool    get_dir_from_filepath(char *buf, const usize l, const char *filepath);
+bool    get_filename_from_filepath(char *buf, const usize l, const char *filepath);
+bool    get_current_exec_path(char *buf, usize buf_size);
+bool    get_current_exec_dir(char *buf, usize buf_size);
+bool    create_dir(const char *dirpath);
+bool    create_dir_tree(const char *dirpath);
+bool    copy_dir(const char *src, const char *dest);
+bool    copy_file(const char *src, const char *dest);
+bool    remove_dir(const char *path);
+void    date_time(char *buf, s32 len, const char *format);
+bool    is_aligned(const void *p, usize alignment);
+void    align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment);
+void    print_bits(s32 const size, void const *const ptr);
+int     count_bits(u64 n);
+void    platform_lib_name(const char *name, char *buffer, usize max_len);
+f64     get_tick_ms(void);
+s32     get_last_error(char *buf, s32 buf_len);
+TArray *create_arr(struct assembly *assembly, usize size);
+void *  _create_sarr(struct assembly *cnt, usize arr_size);
+u32     next_pow_2(u32 n);
+void    color_print(FILE *stream, s32 color, const char *format, ...);
 #define create_sarr(T, Asm) ((T *)_create_sarr((Asm), sizeof(T)))
 
 #endif

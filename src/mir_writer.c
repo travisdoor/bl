@@ -50,7 +50,7 @@ static void print_header(const char *name, const char *filename, FILE *stream)
             BL_VERSION);
 }
 
-void mir_writer_run(Assembly *assembly)
+void mir_writer_run(struct assembly *assembly)
 {
     const char *  name        = assembly->target->name;
     TString *     export_file = get_tmpstr();

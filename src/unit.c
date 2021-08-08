@@ -39,8 +39,8 @@
 
 u64 unit_hash(const char *filepath, struct Token *load_from)
 {
-    Unit *parent_unit = load_from ? load_from->location.unit : NULL;
-    char *real_path   = NULL;
+    struct unit *parent_unit = load_from ? load_from->location.unit : NULL;
+    char *       real_path   = NULL;
     search_source_file(
         filepath, SEARCH_FLAG_ALL, parent_unit ? parent_unit->dirpath : NULL, &real_path, NULL);
     const u64 hash = thash_from_str(real_path ? real_path : filepath);
@@ -49,11 +49,11 @@ u64 unit_hash(const char *filepath, struct Token *load_from)
 }
 
 // public
-Unit *unit_new(const char *filepath, Token *load_from)
+struct unit *unit_new(const char *filepath, Token *load_from)
 {
-    Unit *parent_unit = load_from ? load_from->location.unit : NULL;
-    Unit *unit        = bl_malloc(sizeof(Unit));
-    memset(unit, 0, sizeof(Unit));
+    struct unit *parent_unit = load_from ? load_from->location.unit : NULL;
+    struct unit *unit        = bl_malloc(sizeof(struct unit));
+    memset(unit, 0, sizeof(struct unit));
     search_source_file(filepath,
                        SEARCH_FLAG_ALL,
                        parent_unit ? parent_unit->dirpath : NULL,
@@ -72,7 +72,7 @@ Unit *unit_new(const char *filepath, Token *load_from)
     return unit;
 }
 
-void unit_delete(Unit *unit)
+void unit_delete(struct unit *unit)
 {
     free(unit->filepath);
     free(unit->dirpath);
@@ -83,7 +83,7 @@ void unit_delete(Unit *unit)
     bl_free(unit);
 }
 
-const char *unit_get_src_ln(Unit *unit, s32 line, long *len)
+const char *unit_get_src_ln(struct unit *unit, s32 line, long *len)
 {
     if (line < 1) return NULL;
     const char *c     = unit->src;

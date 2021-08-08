@@ -33,16 +33,16 @@
 
 #define TEXT_LINE "--------------------------------------------------------------------------------"
 
-void vm_tests_run(Assembly *assembly)
+void vm_tests_run(struct assembly *assembly)
 {
     VM *    vm    = &assembly->vm;
     TArray *cases = &assembly->testing.cases;
     printf("\nTesting start in compile time\n");
     printf(TEXT_LINE "\n");
 
-    const usize tc = cases->size;
-    s32         fc = 0;
-    MirFn *     test_fn;
+    const usize    tc = cases->size;
+    s32            fc = 0;
+    struct mir_fn *test_fn;
 
     typedef struct {
         const char *name;
@@ -52,7 +52,7 @@ void vm_tests_run(Assembly *assembly)
     TArray failed;
     tarray_init(&failed, sizeof(CaseMeta));
 
-    TARRAY_FOREACH(MirFn *, cases, test_fn)
+    TARRAY_FOREACH(struct mir_fn *, cases, test_fn)
     {
         BL_ASSERT(IS_FLAG(test_fn->flags, FLAG_TEST_FN));
         const f64   start      = get_tick_ms();
@@ -86,13 +86,13 @@ void vm_tests_run(Assembly *assembly)
     assembly->vm_run.last_execution_status = fc;
 }
 
-void vm_build_entry_run(Assembly *assembly)
+void vm_build_entry_run(struct assembly *assembly)
 {
-    VM *          vm     = &assembly->vm;
-    MirFn *       entry  = assembly->vm_run.build_entry;
-    const Target *target = assembly->target;
+    VM *           vm     = &assembly->vm;
+    struct mir_fn *entry  = assembly->vm_run.build_entry;
+    const Target * target = assembly->target;
     if (!entry) {
-        builder_error("Assembly '%s' has no build entry function!", assembly->target->name);
+        builder_error("struct assembly '%s' has no build entry function!", assembly->target->name);
         assembly->vm_run.last_execution_status = EXIT_FAILURE;
         return;
     }
@@ -105,18 +105,18 @@ void vm_build_entry_run(Assembly *assembly)
     assembly->vm_run.last_execution_status = EXIT_SUCCESS;
 }
 
-void vm_entry_run(Assembly *assembly)
+void vm_entry_run(struct assembly *assembly)
 {
-    VM *          vm     = &assembly->vm;
-    MirFn *       entry  = assembly->vm_run.entry;
-    const Target *target = assembly->target;
+    VM *           vm     = &assembly->vm;
+    struct mir_fn *entry  = assembly->vm_run.entry;
+    const Target * target = assembly->target;
     builder_note("\nExecuting 'main' in compile time...");
     if (!entry) {
-        builder_error("Assembly '%s' has no entry function!", assembly->target->name);
+        builder_error("struct assembly '%s' has no entry function!", assembly->target->name);
         assembly->vm_run.last_execution_status = EXIT_FAILURE;
         return;
     }
-    struct bl_type *fn_type = entry->type;
+    struct mir_type *fn_type = entry->type;
     BL_ASSERT(fn_type && fn_type->kind == MIR_TYPE_FN);
     BL_ASSERT(!fn_type->data.fn.args);
     if (target->vm.argc > 0) {
@@ -127,8 +127,8 @@ void vm_entry_run(Assembly *assembly)
     s32        result  = EXIT_SUCCESS;
     if (vm_execute_fn(vm, assembly, entry, &ret_ptr)) {
         if (ret_ptr) {
-            struct bl_type *ret_type = fn_type->data.fn.ret_type;
-            result                   = (s32)vm_read_int(ret_type, ret_ptr);
+            struct mir_type *ret_type = fn_type->data.fn.ret_type;
+            result                    = (s32)vm_read_int(ret_type, ret_ptr);
             builder_note("Execution finished with state: %d\n", result);
         } else {
             builder_note("Execution finished without errors");

@@ -89,7 +89,7 @@ static INLINE THashTable *get_layer(Scope *scope, s32 index)
 }
 
 // Only local scopes can have layers, for global ones, use only SCOPE_DEFAULT_LAYER index. Layered
-// scopes are used due to polymorph function generation. We basicaly reuse already existing 
+// scopes are used due to polymorph function generation. We basicaly reuse already existing
 // Ast tree for polymorphs of specified type; in this case we need new layer for every polymorph
 // variant of function.
 static INLINE THashTable *create_layer(Scope *scope, s32 index)
@@ -117,7 +117,7 @@ Scope *_scope_create(ScopeArenas *    arenas,
                      ScopeKind        kind,
                      Scope *          parent,
                      usize            size,
-                     struct Location *loc,
+                     struct location *loc,
                      const bool       safe)
 {
     BL_ASSERT(size > 0);
@@ -136,7 +136,7 @@ Scope *_scope_create(ScopeArenas *    arenas,
 ScopeEntry *scope_create_entry(ScopeArenas *  arenas,
                                ScopeEntryKind kind,
                                ID *           id,
-                               struct bl_ast *node,
+                               struct ast *   node,
                                bool           is_builtin)
 {
     ScopeEntry *entry = arena_alloc(&arenas->entries);

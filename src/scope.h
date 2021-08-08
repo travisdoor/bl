@@ -32,12 +32,12 @@
 #include "arena.h"
 #include "llvm_api.h"
 
-struct Location;
-struct bl_ast;
+struct location;
+struct ast;
 struct MirInstr;
-struct bl_type;
-struct MirFn;
-struct MirVar;
+struct mir_type;
+struct mir_fn;
+struct mir_var;
 
 typedef struct ScopeArenas {
     Arena scopes;
@@ -56,19 +56,19 @@ typedef enum ScopeEntryKind {
 } ScopeEntryKind;
 
 typedef union ScopeEntryData {
-    struct bl_type *   type;
-    struct MirFn *     fn;
-    struct MirVar *    var;
-    struct MirMember * member;
-    struct MirVariant *variant;
-    struct Scope *     scope;
+    struct mir_type *   type;
+    struct mir_fn *     fn;
+    struct mir_var *    var;
+    struct mir_member * member;
+    struct mir_variant *variant;
+    struct Scope *      scope;
 } ScopeEntryData;
 
 typedef struct ScopeEntry {
     ID *           id;
     ScopeEntryKind kind;
     struct Scope * parent_scope;
-    struct bl_ast *node;
+    struct ast *   node;
     bool           is_builtin;
     s32            ref_count;
 
@@ -103,7 +103,7 @@ typedef struct Scope {
     TArray        layers;
 
     struct ScopeSyncImpl *sync;
-    struct Location *     location;
+    struct location *     location;
     LLVMMetadataRef       llvm_meta;
     BL_MAGIC_ADD
 } Scope;
@@ -121,13 +121,13 @@ Scope *_scope_create(ScopeArenas *    arenas,
                      ScopeKind        kind,
                      Scope *          parent,
                      usize            size,
-                     struct Location *loc,
+                     struct location *loc,
                      const bool       safe);
 
 ScopeEntry *scope_create_entry(ScopeArenas *  arenas,
                                ScopeEntryKind kind,
                                ID *           id,
-                               struct bl_ast *node,
+                               struct ast *   node,
                                bool           is_builtin);
 
 void scope_insert(Scope *scope, s32 layer_index, ScopeEntry *entry);

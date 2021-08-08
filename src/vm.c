@@ -127,42 +127,44 @@
     }
 #endif
 
-TSMALL_ARRAY_TYPE(ConstExprValue, MirConstExprValue, 32);
+TSMALL_ARRAY_TYPE(ConstExprValue, struct mir_const_expr_value, 32);
 
 //*************/
 //* fwd decls */
 //*************/
-static void calculate_binop(struct bl_type *dest_type,
-                            struct bl_type *src_type,
-                            VMStackPtr      dest,
-                            VMStackPtr      lhs,
-                            VMStackPtr      rhs,
-                            BinopKind       op);
+static void calculate_binop(struct mir_type *dest_type,
+                            struct mir_type *src_type,
+                            VMStackPtr       dest,
+                            VMStackPtr       lhs,
+                            VMStackPtr       rhs,
+                            BinopKind        op);
 
-static void calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, struct bl_type *type);
+static void calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, struct mir_type *type);
 static void reset_stack(VMStack *stack);
 
 // zero max nesting = unlimited nesting
 static void print_call_stack(VM *vm, usize max_nesting);
-static void dyncall_cb_read_arg(VM *vm, MirConstExprValue *dest_value, DCArgs *src);
+static void dyncall_cb_read_arg(VM *vm, struct mir_const_expr_value *dest_value, DCArgs *src);
 static char dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata);
-static void _dyncall_generate_signature(VM *vm, struct bl_type *type);
-static const char *dyncall_generate_signature(VM *vm, struct bl_type *type);
-static DCCallback *dyncall_fetch_callback(VM *vm, MirFn *fn);
-static void        dyncall_push_arg(VM *vm, VMStackPtr val_ptr, struct bl_type *type);
+static void _dyncall_generate_signature(VM *vm, struct mir_type *type);
+static const char *dyncall_generate_signature(VM *vm, struct mir_type *type);
+static DCCallback *dyncall_fetch_callback(VM *vm, struct mir_fn *fn);
+static void        dyncall_push_arg(VM *vm, VMStackPtr val_ptr, struct mir_type *type);
 static bool        execute_fn_top_level(VM *vm, MirInstr *call, VMStackPtr *out_ptr);
-static bool
-execute_fn_impl_top_level(VM *vm, MirFn *fn, TSmallArray_ConstExprValue *args, VMStackPtr *out_ptr);
+static bool        execute_fn_impl_top_level(VM *                        vm,
+                                             struct mir_fn *             fn,
+                                             TSmallArray_ConstExprValue *args,
+                                             VMStackPtr *                out_ptr);
 
 static bool _execute_fn_top_level(VM *                        vm,
-                                  MirFn *                     fn,
+                                  struct mir_fn *             fn,
                                   MirInstr *                  call,       // Optional
                                   TSmallArray_ConstExprValue *arg_values, // Optional
                                   VMStackPtr *                out_ptr     // Optional
 );
 
 static void interp_instr(VM *vm, MirInstr *instr);
-static void interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call);
+static void interp_extern_call(VM *vm, struct mir_fn *fn, MirInstrCall *call);
 static void interp_instr_toany(VM *vm, MirInstrToAny *toany);
 static void interp_instr_unreachable(VM *vm, MirInstrUnreachable *unr);
 static void interp_instr_phi(VM *vm, MirInstrPhi *phi);
@@ -206,17 +208,17 @@ static void eval_instr_compound(VM *vm, MirInstrCompound *cmp);
 //***********/
 //* inlines */
 //***********/
-static INLINE bool needs_tmp_alloc(MirConstExprValue *v)
+static INLINE bool needs_tmp_alloc(struct mir_const_expr_value *v)
 {
     return v->type->store_size_bytes > sizeof(v->_tmp);
 }
 
-static INLINE MirFn *get_callee(MirInstrCall *call)
+static INLINE struct mir_fn *get_callee(MirInstrCall *call)
 {
-    MirConstExprValue *val = &call->callee->value;
+    struct mir_const_expr_value *val = &call->callee->value;
     BL_ASSERT(val->type && val->type->kind == MIR_TYPE_FN);
 
-    MirFn *fn = MIR_CEV_READ_AS(MirFn *, val);
+    struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, val);
     BL_ASSERT(fn);
     return fn;
 }
@@ -309,7 +311,7 @@ static INLINE MirInstr *pop_ra(VM *vm)
     return caller;
 }
 
-static INLINE VMStackPtr stack_push_empty(VM *vm, struct bl_type *type)
+static INLINE VMStackPtr stack_push_empty(VM *vm, struct mir_type *type)
 {
     BL_ASSERT(type);
     const usize size = type->store_size_bytes;
@@ -320,7 +322,7 @@ static INLINE VMStackPtr stack_push_empty(VM *vm, struct bl_type *type)
     return tmp;
 }
 
-static INLINE VMStackPtr stack_push(VM *vm, void *value, struct bl_type *type)
+static INLINE VMStackPtr stack_push(VM *vm, void *value, struct mir_type *type)
 {
     BL_ASSERT(value && "try to push NULL value");
     VMStackPtr tmp = stack_push_empty(vm, type);
@@ -330,7 +332,7 @@ static INLINE VMStackPtr stack_push(VM *vm, void *value, struct bl_type *type)
     return tmp;
 }
 
-static INLINE VMStackPtr stack_pop(VM *vm, struct bl_type *type)
+static INLINE VMStackPtr stack_pop(VM *vm, struct mir_type *type)
 {
     BL_ASSERT(type);
     const usize size = type->store_size_bytes;
@@ -341,7 +343,7 @@ static INLINE VMStackPtr stack_pop(VM *vm, struct bl_type *type)
     return stack_free(vm, size);
 }
 
-static INLINE VMStackPtr stack_peek(VM *vm, struct bl_type *type)
+static INLINE VMStackPtr stack_peek(VM *vm, struct mir_type *type)
 {
     usize size = type->store_size_bytes;
 #if CHCK_STACK
@@ -370,14 +372,14 @@ static INLINE VMStackPtr stack_rel_to_abs_ptr(VM *vm, VMRelativeStackPtr rel_ptr
 
 // Fetch value; use internal ConstExprValue storage if value is compile time known, otherwise use
 // stack.
-static INLINE VMStackPtr fetch_value(VM *vm, MirConstExprValue *v)
+static INLINE VMStackPtr fetch_value(VM *vm, struct mir_const_expr_value *v)
 {
     if (v->is_comptime) return v->data;
     return stack_pop(vm, v->type);
 }
 
 // Similar to fetch_value but in case value comes from stack we keep it there.
-static INLINE VMStackPtr peek_value(VM *vm, MirConstExprValue *v)
+static INLINE VMStackPtr peek_value(VM *vm, struct mir_const_expr_value *v)
 {
     if (v->is_comptime) return v->data;
     return stack_peek(vm, v->type);
@@ -398,7 +400,7 @@ static INLINE void set_pc(VM *vm, MirInstr *instr)
     vm->stack->pc = instr;
 }
 
-static INLINE VMRelativeStackPtr stack_alloc_var(VM *vm, MirVar *var)
+static INLINE VMRelativeStackPtr stack_alloc_var(VM *vm, struct mir_var *var)
 {
     BL_ASSERT(var);
     BL_ASSERT(!var->value.is_comptime && "cannot allocate compile time constant");
@@ -409,13 +411,13 @@ static INLINE VMRelativeStackPtr stack_alloc_var(VM *vm, MirVar *var)
     return var->rel_stack_ptr;
 }
 
-static INLINE void stack_alloc_local_vars(VM *vm, MirFn *fn)
+static INLINE void stack_alloc_local_vars(VM *vm, struct mir_fn *fn)
 {
     BL_ASSERT(fn);
     // Init all stack variables.
-    TArray *vars = fn->variables;
-    MirVar *var;
-    TARRAY_FOREACH(MirVar *, vars, var)
+    TArray *        vars = fn->variables;
+    struct mir_var *var;
+    TARRAY_FOREACH(struct mir_var *, vars, var)
     {
         if (var->value.is_comptime) continue;
         stack_alloc_var(vm, var);
@@ -425,12 +427,12 @@ static INLINE void stack_alloc_local_vars(VM *vm, MirFn *fn)
 //********/
 //* impl */
 //********/
-void calculate_binop(struct bl_type  UNUSED(*dest_type),
-                     struct bl_type *src_type,
-                     VMStackPtr      dest,
-                     VMStackPtr      lhs,
-                     VMStackPtr      rhs,
-                     BinopKind       op)
+void calculate_binop(struct mir_type  UNUSED(*dest_type),
+                     struct mir_type *src_type,
+                     VMStackPtr       dest,
+                     VMStackPtr       lhs,
+                     VMStackPtr       rhs,
+                     BinopKind        op)
 {
     //*********************************************************************************************/
 #define ARITHMETIC(T)                                                                              \
@@ -611,7 +613,7 @@ void calculate_binop(struct bl_type  UNUSED(*dest_type),
 #undef OTHER
 }
 
-void calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, struct bl_type *type)
+void calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, struct mir_type *type)
 {
     //*********************************************************************************************/
 #define UNOP_CASE(T)                                                                               \
@@ -734,10 +736,10 @@ void reset_stack(VMStack *stack)
     stack->top_ptr    = (u8 *)stack + size;
 }
 
-void dyncall_cb_read_arg(VM UNUSED(*vm), MirConstExprValue *dest_value, DCArgs *src)
+void dyncall_cb_read_arg(VM UNUSED(*vm), struct mir_const_expr_value *dest_value, DCArgs *src)
 {
-    VMStackPtr      dest = dest_value->data;
-    struct bl_type *type = dest_value->type;
+    VMStackPtr       dest = dest_value->data;
+    struct mir_type *type = dest_value->type;
 
     BL_ASSERT(dest && "Argument destination is invalid!");
     BL_ASSERT(type && "Argument destination has no type specified!");
@@ -806,12 +808,12 @@ char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result
     // now since interpreter is strictly single-threaded, but we must handle such situation in
     // future.
     DyncallCBContext *cnt = (DyncallCBContext *)userdata;
-    MirFn *           fn  = cnt->fn;
+    struct mir_fn *   fn  = cnt->fn;
     VM *              vm  = cnt->vm;
     BL_ASSERT(fn && vm);
 
-    struct bl_type *ret_type = fn->type->data.fn.ret_type;
-    const bool      is_extern =
+    struct mir_type *ret_type = fn->type->data.fn.ret_type;
+    const bool       is_extern =
         IS_FLAG(cnt->fn->flags, FLAG_EXTERN) || IS_FLAG(cnt->fn->flags, FLAG_INTRINSIC);
     const bool has_args   = fn->type->data.fn.args;
     const bool has_return = ret_type->kind != MIR_TYPE_VOID;
@@ -828,12 +830,12 @@ char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result
         TSmallArray_ArgPtr *args = fn->type->data.fn.args;
         tsa_resize_ConstExprValue(&arg_tmp, args->size);
 
-        MirArg *it;
+        struct mir_arg *it;
         TSA_FOREACH(args, it)
         {
-            MirConstExprValue *v = &arg_tmp.data[i];
-            v->type              = it->type;
-            v->data              = &v->_tmp[0];
+            struct mir_const_expr_value *v = &arg_tmp.data[i];
+            v->type                        = it->type;
+            v->data                        = &v->_tmp[0];
 
             dyncall_cb_read_arg(vm, v, dc_args);
         }
@@ -851,14 +853,14 @@ char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result
     return dyncall_generate_signature(vm, ret_type)[0];
 }
 
-void _dyncall_generate_signature(VM *vm, struct bl_type *type)
+void _dyncall_generate_signature(VM *vm, struct mir_type *type)
 {
     TSmallArray_Char *tmp = &vm->dyncall_sig_tmp;
 
     switch (type->kind) {
     case MIR_TYPE_FN: {
         if (type->data.fn.args) {
-            MirArg *arg;
+            struct mir_arg *arg;
             TSA_FOREACH(type->data.fn.args, arg)
             {
                 _dyncall_generate_signature(vm, arg->type);
@@ -913,7 +915,7 @@ void _dyncall_generate_signature(VM *vm, struct bl_type *type)
 
     case MIR_TYPE_STRUCT: {
         TSmallArray_MemberPtr *members = type->data.strct.members;
-        MirMember *            member;
+        struct mir_member *    member;
         TSA_FOREACH(members, member)
         {
             _dyncall_generate_signature(vm, member->type);
@@ -941,7 +943,7 @@ void _dyncall_generate_signature(VM *vm, struct bl_type *type)
     }
 }
 
-const char *dyncall_generate_signature(VM *vm, struct bl_type *type)
+const char *dyncall_generate_signature(VM *vm, struct mir_type *type)
 {
     TSmallArray_Char *tmp = &vm->dyncall_sig_tmp;
     tmp->size             = 0; // reset size
@@ -952,7 +954,7 @@ const char *dyncall_generate_signature(VM *vm, struct bl_type *type)
     return tmp->data;
 }
 
-DCCallback *dyncall_fetch_callback(VM *vm, MirFn *fn)
+DCCallback *dyncall_fetch_callback(VM *vm, struct mir_fn *fn)
 {
     if (fn->dyncall.extern_callback_handle) return fn->dyncall.extern_callback_handle;
 
@@ -966,7 +968,7 @@ DCCallback *dyncall_fetch_callback(VM *vm, MirFn *fn)
     return fn->dyncall.extern_callback_handle;
 }
 
-void dyncall_push_arg(VM *vm, VMStackPtr val_ptr, struct bl_type *type)
+void dyncall_push_arg(VM *vm, VMStackPtr val_ptr, struct mir_type *type)
 {
     BL_ASSERT(type);
 
@@ -1039,7 +1041,7 @@ void dyncall_push_arg(VM *vm, VMStackPtr val_ptr, struct bl_type *type)
         VMStackPtr tmp = vm_read_ptr(type, val_ptr);
         if (mir_deref_type(type)->kind == MIR_TYPE_FN) {
             // Function pointer!
-            MirFn *fn = (MirFn *)tmp;
+            struct mir_fn *fn = (struct mir_fn *)tmp;
             BL_ASSERT(fn);
             dcArgPointer(dvm, (DCpointer)dyncall_fetch_callback(vm, fn));
         } else {
@@ -1053,9 +1055,9 @@ void dyncall_push_arg(VM *vm, VMStackPtr val_ptr, struct bl_type *type)
     }
 }
 
-void interp_extern_call(VM *vm, MirFn *fn, MirInstrCall *call)
+void interp_extern_call(VM *vm, struct mir_fn *fn, MirInstrCall *call)
 {
-    struct bl_type *ret_type = fn->type->data.fn.ret_type;
+    struct mir_type *ret_type = fn->type->data.fn.ret_type;
     BL_ASSERT(ret_type);
 
     DCCallVM *dvm = vm->assembly->dc_vm;
@@ -1163,7 +1165,7 @@ bool execute_fn_top_level(VM *vm, MirInstr *call, VMStackPtr *out_ptr)
 }
 
 bool execute_fn_impl_top_level(VM *                        vm,
-                               MirFn *                     fn,
+                               struct mir_fn *             fn,
                                TSmallArray_ConstExprValue *args,
                                VMStackPtr *                out_ptr)
 {
@@ -1171,7 +1173,7 @@ bool execute_fn_impl_top_level(VM *                        vm,
 }
 
 bool _execute_fn_top_level(VM *                        vm,
-                           MirFn *                     fn,
+                           struct mir_fn *             fn,
                            MirInstr *                  call,
                            TSmallArray_ConstExprValue *arg_values,
                            VMStackPtr *                out_ptr)
@@ -1181,7 +1183,7 @@ bool _execute_fn_top_level(VM *                        vm,
     if (!fn->fully_analyzed)
         BL_ABORT("Function is not fully analyzed for compile time execution!!!");
 
-    struct bl_type *    ret_type = fn->type->data.fn.ret_type;
+    struct mir_type *   ret_type = fn->type->data.fn.ret_type;
     TSmallArray_ArgPtr *args     = fn->type->data.fn.args;
 
     const bool  does_return_value    = ret_type->kind != MIR_TYPE_VOID;
@@ -1327,29 +1329,29 @@ void interp_instr(VM *vm, MirInstr *instr)
 
 void interp_instr_toany(VM *vm, MirInstrToAny *toany)
 {
-    MirVar *dest_var  = toany->tmp;
-    MirVar *type_info = assembly_get_rtti(vm->assembly, toany->rtti_type->id.hash);
+    struct mir_var *dest_var  = toany->tmp;
+    struct mir_var *type_info = assembly_get_rtti(vm->assembly, toany->rtti_type->id.hash);
     BL_ASSERT(type_info->value.is_comptime);
 
-    struct bl_type *dest_type = dest_var->value.type;
-    VMStackPtr      dest      = vm_read_var(vm, dest_var);
+    struct mir_type *dest_type = dest_var->value.type;
+    VMStackPtr       dest      = vm_read_var(vm, dest_var);
 
     // type info
-    struct bl_type *dest_type_info_type = mir_get_struct_elem_type(dest_type, 0);
+    struct mir_type *dest_type_info_type = mir_get_struct_elem_type(dest_type, 0);
     VMStackPtr dest_type_info = vm_get_struct_elem_ptr(vm->assembly, dest_var->value.type, dest, 0);
 
     vm_write_ptr(dest_type_info_type, dest_type_info, vm_read_var(vm, type_info));
 
     // data
-    struct bl_type *dest_data_type = mir_get_struct_elem_type(dest_type, 1);
-    VMStackPtr      dest_data = vm_get_struct_elem_ptr(vm->assembly, dest_var->value.type, dest, 1);
+    struct mir_type *dest_data_type = mir_get_struct_elem_type(dest_type, 1);
+    VMStackPtr dest_data = vm_get_struct_elem_ptr(vm->assembly, dest_var->value.type, dest, 1);
 
-    struct bl_type *data_type = toany->expr->value.type;
+    struct mir_type *data_type = toany->expr->value.type;
 
     if (toany->expr_tmp) {
-        VMStackPtr data      = fetch_value(vm, &toany->expr->value);
-        MirVar *   expr_var  = toany->expr_tmp;
-        VMStackPtr dest_expr = vm_read_var(vm, expr_var);
+        VMStackPtr      data      = fetch_value(vm, &toany->expr->value);
+        struct mir_var *expr_var  = toany->expr_tmp;
+        VMStackPtr      dest_expr = vm_read_var(vm, expr_var);
 
         // copy value to the tmp variable
         memcpy(dest_expr, data, data_type->store_size_bytes);
@@ -1357,8 +1359,8 @@ void interp_instr_toany(VM *vm, MirInstrToAny *toany)
         // setup destination pointer
         memcpy(dest_data, &dest_expr, dest_data_type->store_size_bytes);
     } else if (toany->rtti_data) {
-        MirVar *   rtti_data_var = assembly_get_rtti(vm->assembly, toany->rtti_data->id.hash);
-        VMStackPtr rtti_data     = vm_read_var(vm, rtti_data_var);
+        struct mir_var *rtti_data_var = assembly_get_rtti(vm->assembly, toany->rtti_data->id.hash);
+        VMStackPtr      rtti_data     = vm_read_var(vm, rtti_data_var);
         // setup destination pointer
         memcpy(dest_data, &rtti_data, dest_data_type->store_size_bytes);
     } else {
@@ -1395,7 +1397,7 @@ void interp_instr_phi(VM *vm, MirInstrPhi *phi)
     // stack or used as constant value of phi when phi is compile time known
     // constant.
     {
-        struct bl_type *phi_type = phi->base.value.type;
+        struct mir_type *phi_type = phi->base.value.type;
         BL_ASSERT(phi_type);
 
         VMStackPtr value_ptr = fetch_value(vm, &value->value);
@@ -1405,8 +1407,8 @@ void interp_instr_phi(VM *vm, MirInstrPhi *phi)
 
 void interp_instr_addrof(VM *vm, MirInstrAddrOf *addrof)
 {
-    MirInstr *      src  = addrof->src;
-    struct bl_type *type = src->value.type;
+    MirInstr *       src  = addrof->src;
+    struct mir_type *type = src->value.type;
     BL_ASSERT(type);
     if (!mir_is_comptime(src) &&
         (src->kind == MIR_INSTR_ELEM_PTR || src->kind == MIR_INSTR_COMPOUND)) {
@@ -1422,10 +1424,10 @@ void interp_instr_addrof(VM *vm, MirInstrAddrOf *addrof)
 void interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 {
     // pop index from stack
-    struct bl_type *arr_type   = mir_deref_type(elem_ptr->arr_ptr->value.type);
-    VMStackPtr      index_ptr  = fetch_value(vm, &elem_ptr->index->value);
-    VMStackPtr      arr_ptr    = fetch_value(vm, &elem_ptr->arr_ptr->value);
-    VMStackPtr      result_ptr = NULL;
+    struct mir_type *arr_type   = mir_deref_type(elem_ptr->arr_ptr->value.type);
+    VMStackPtr       index_ptr  = fetch_value(vm, &elem_ptr->index->value);
+    VMStackPtr       arr_ptr    = fetch_value(vm, &elem_ptr->arr_ptr->value);
+    VMStackPtr       result_ptr = NULL;
     BL_ASSERT(arr_ptr && index_ptr);
 
     BL_ASSERT(elem_ptr->index->value.type->store_size_bytes == sizeof(s64));
@@ -1453,10 +1455,10 @@ void interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
     case MIR_TYPE_SLICE:
     case MIR_TYPE_STRING:
     case MIR_TYPE_VARGS: {
-        struct bl_type *len_type = mir_get_struct_elem_type(arr_type, MIR_SLICE_LEN_INDEX);
-        struct bl_type *ptr_type = mir_get_struct_elem_type(arr_type, MIR_SLICE_PTR_INDEX);
+        struct mir_type *len_type = mir_get_struct_elem_type(arr_type, MIR_SLICE_LEN_INDEX);
+        struct mir_type *ptr_type = mir_get_struct_elem_type(arr_type, MIR_SLICE_PTR_INDEX);
 
-        struct bl_type *elem_type = mir_deref_type(ptr_type);
+        struct mir_type *elem_type = mir_deref_type(ptr_type);
         BL_ASSERT(elem_type);
 
         VMStackPtr len_ptr = vm_get_struct_elem_ptr(vm->assembly, arr_type, arr_ptr, 0);
@@ -1493,7 +1495,7 @@ void interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 void interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 {
     BL_ASSERT(member_ptr->target_ptr);
-    struct bl_type *target_type = member_ptr->target_ptr->value.type;
+    struct mir_type *target_type = member_ptr->target_ptr->value.type;
 
     // lookup for base structure declaration type
     // IDEA: maybe we can store parent type to the member type? But what about
@@ -1511,7 +1513,7 @@ void interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 
     if (member_ptr->builtin_id == MIR_BUILTIN_ID_NONE) {
         BL_ASSERT(member_ptr->scope_entry && member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
-        MirMember *member = member_ptr->scope_entry->data.member;
+        struct mir_member *member = member_ptr->scope_entry->data.member;
         BL_ASSERT(member);
         const s64 index = member->index;
 
@@ -1537,8 +1539,8 @@ void interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
 void interp_instr_unroll(VM *vm, MirInstrUnroll *unroll)
 {
     BL_ASSERT(unroll->src);
-    struct bl_type *src_type = unroll->src->value.type;
-    const s32       index    = unroll->index;
+    struct mir_type *src_type = unroll->src->value.type;
+    const s32        index    = unroll->index;
     BL_ASSERT(src_type->kind == MIR_TYPE_PTR && "expected pointer");
     src_type = mir_deref_type(src_type);
     BL_ASSERT(mir_is_composit_type(src_type) && "expected structure");
@@ -1564,8 +1566,8 @@ void interp_instr_br(VM *vm, MirInstrBr *br)
 
 void interp_instr_switch(VM *vm, MirInstrSwitch *sw)
 {
-    struct bl_type *value_type = sw->value->value.type;
-    VMStackPtr      value_ptr  = fetch_value(vm, &sw->value->value);
+    struct mir_type *value_type = sw->value->value.type;
+    VMStackPtr       value_ptr  = fetch_value(vm, &sw->value->value);
     BL_ASSERT(value_ptr);
 
     const s64 value       = vm_read_int(value_type, value_ptr);
@@ -1588,10 +1590,10 @@ void interp_instr_switch(VM *vm, MirInstrSwitch *sw)
 void interp_instr_cast(VM *vm, MirInstrCast *cast)
 {
     if (cast->op == MIR_CAST_NONE) return;
-    struct bl_type *dest_type = cast->base.value.type;
-    struct bl_type *src_type  = cast->expr->value.type;
-    VMStackPtr      src_ptr   = fetch_value(vm, &cast->expr->value);
-    VMValue         tmp       = {0};
+    struct mir_type *dest_type = cast->base.value.type;
+    struct mir_type *src_type  = cast->expr->value.type;
+    VMStackPtr       src_ptr   = fetch_value(vm, &cast->expr->value);
+    VMValue          tmp       = {0};
     vm_do_cast((VMStackPtr)&tmp, src_ptr, dest_type, src_type, cast->op);
     stack_push(vm, &tmp, dest_type);
 }
@@ -1609,7 +1611,7 @@ void interp_instr_arg(VM *vm, MirInstrArg *arg)
         MirInstr *curr_arg_value = arg_values->data[arg->i];
 
         if (mir_is_comptime(curr_arg_value)) {
-            struct bl_type *type = curr_arg_value->value.type;
+            struct mir_type *type = curr_arg_value->value.type;
             stack_push(vm, curr_arg_value->value.data, type);
         } else {
             // Arguments are located in reverse order right before return address on the
@@ -1632,7 +1634,7 @@ void interp_instr_arg(VM *vm, MirInstrArg *arg)
     }
 
     // Caller instruction not specified!!!
-    MirFn *fn = arg->base.owner_block->owner_fn;
+    struct mir_fn *fn = arg->base.owner_block->owner_fn;
     BL_ASSERT(fn && "Arg instruction cannot determinate current function");
 
     // All arguments must be already on the stack in reverse order.
@@ -1651,7 +1653,7 @@ void interp_instr_arg(VM *vm, MirInstrArg *arg)
 void interp_instr_cond_br(VM *vm, MirInstrCondBr *br)
 {
     BL_ASSERT(br->cond);
-    struct bl_type *type = br->cond->value.type;
+    struct mir_type *type = br->cond->value.type;
     // pop condition from stack
     VMStackPtr cond_ptr = NULL;
     if (br->keep_stack_value) {
@@ -1677,7 +1679,7 @@ void interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref)
 
     switch (entry->kind) {
     case SCOPE_ENTRY_VAR: {
-        MirVar *var = entry->data.var;
+        struct mir_var *var = entry->data.var;
         BL_ASSERT(var);
 
         VMStackPtr real_ptr = vm_read_var(vm, var);
@@ -1699,7 +1701,7 @@ void interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref)
 void interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref)
 {
     BL_ASSERT(ref->ref->kind == MIR_INSTR_DECL_VAR);
-    MirVar *var = ((MirInstrDeclVar *)ref->ref)->var;
+    struct mir_var *var = ((MirInstrDeclVar *)ref->ref)->var;
     BL_ASSERT(var);
 
     VMStackPtr real_ptr = vm_read_var(vm, var);
@@ -1717,9 +1719,9 @@ void interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 
     BL_ASSERT(tmp_ptr);
 
-    struct bl_type *type = cmp->base.value.type;
-    struct bl_type *elem_type;
-    VMStackPtr      elem_ptr = tmp_ptr;
+    struct mir_type *type = cmp->base.value.type;
+    struct mir_type *elem_type;
+    VMStackPtr       elem_ptr = tmp_ptr;
 
     MirInstr *value;
     TSA_FOREACH(cmp->values, value)
@@ -1753,8 +1755,8 @@ void interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
 void interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 {
     TSmallArray_InstrPtr *values    = vargs->values;
-    MirVar *              arr_tmp   = vargs->arr_tmp;
-    MirVar *              vargs_tmp = vargs->vargs_tmp;
+    struct mir_var *      arr_tmp   = vargs->arr_tmp;
+    struct mir_var *      vargs_tmp = vargs->vargs_tmp;
 
     BL_ASSERT(vargs_tmp->value.type->kind == MIR_TYPE_VARGS);
     BL_ASSERT(vargs_tmp->rel_stack_ptr && "Unalocated vargs slice!!!");
@@ -1801,7 +1803,7 @@ void interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 
 void interp_instr_decl_var(VM *vm, MirInstrDeclVar *decl)
 {
-    MirVar *var = decl->var;
+    struct mir_var *var = decl->var;
     BL_ASSERT(var);
     BL_ASSERT(decl->base.value.type);
 
@@ -1826,7 +1828,7 @@ void interp_instr_load(VM *vm, MirInstrLoad *load)
 {
     // pop source from stack or load directly when src is declaration, push on
     // to stack dereferenced value of source
-    struct bl_type *dest_type = load->base.value.type;
+    struct mir_type *dest_type = load->base.value.type;
     BL_ASSERT(dest_type);
     BL_ASSERT(mir_is_pointer_type(load->src->value.type));
 
@@ -1853,7 +1855,7 @@ void interp_instr_store(VM *vm, MirInstrStore *store)
         interp_instr_compound(vm, dest_ptr, (MirInstrCompound *)store->src);
         return;
     }
-    struct bl_type *src_type = store->src->value.type;
+    struct mir_type *src_type = store->src->value.type;
     BL_ASSERT(src_type);
     dest_ptr                 = VM_STACK_PTR_DEREF(dest_ptr);
     VMStackPtr const src_ptr = fetch_value(vm, &store->src->value);
@@ -1866,15 +1868,15 @@ void interp_instr_call(VM *vm, MirInstrCall *call)
     BL_ASSERT(call->callee && call->base.value.type);
     BL_ASSERT(call->callee->value.type);
 
-    VMStackPtr      callee_ptr      = fetch_value(vm, &call->callee->value);
-    struct bl_type *callee_ptr_type = call->callee->value.type;
+    VMStackPtr       callee_ptr      = fetch_value(vm, &call->callee->value);
+    struct mir_type *callee_ptr_type = call->callee->value.type;
 
     // Function called via pointer.
     if (mir_is_pointer_type(call->callee->value.type)) {
         BL_ASSERT(mir_deref_type(call->callee->value.type)->kind == MIR_TYPE_FN);
     }
 
-    MirFn *callee = (MirFn *)vm_read_ptr(callee_ptr_type, callee_ptr);
+    struct mir_fn *callee = (struct mir_fn *)vm_read_ptr(callee_ptr_type, callee_ptr);
     BL_MAGIC_ASSERT(callee);
     if (callee == NULL) {
         builder_error("Function pointer not set!");
@@ -1900,13 +1902,13 @@ void interp_instr_call(VM *vm, MirInstrCall *call)
 
 void interp_instr_ret(VM *vm, MirInstrRet *ret)
 {
-    MirFn *fn = ret->base.owner_block->owner_fn;
+    struct mir_fn *fn = ret->base.owner_block->owner_fn;
     BL_ASSERT(fn);
 
     // read callee from frame stack
-    MirInstrCall *  caller       = (MirInstrCall *)get_ra(vm)->caller;
-    struct bl_type *ret_type     = fn->type->data.fn.ret_type;
-    VMStackPtr      ret_data_ptr = NULL;
+    MirInstrCall *   caller       = (MirInstrCall *)get_ra(vm)->caller;
+    struct mir_type *ret_type     = fn->type->data.fn.ret_type;
+    VMStackPtr       ret_data_ptr = NULL;
 
     // pop return value from stack
     if (ret->value) {
@@ -1936,7 +1938,7 @@ void interp_instr_ret(VM *vm, MirInstrRet *ret)
         // order, so now we have to pop them in order they are defined.
         TSmallArray_ArgPtr *args = fn->type->data.fn.args;
         if (args) {
-            MirArg *arg;
+            struct mir_arg *arg;
             TSA_FOREACH(args, arg)
             {
                 stack_pop(vm, arg->type);
@@ -1969,8 +1971,8 @@ void interp_instr_binop(VM *vm, MirInstrBinop *binop)
     VMStackPtr rhs_ptr = fetch_value(vm, &binop->rhs->value);
     BL_ASSERT(rhs_ptr && lhs_ptr);
 
-    struct bl_type *dest_type = binop->base.value.type;
-    struct bl_type *src_type  = binop->lhs->value.type;
+    struct mir_type *dest_type = binop->base.value.type;
+    struct mir_type *src_type  = binop->lhs->value.type;
 
     VMValue tmp = {0};
     calculate_binop(dest_type, src_type, (VMStackPtr)&tmp, lhs_ptr, rhs_ptr, binop->op);
@@ -1980,8 +1982,8 @@ void interp_instr_binop(VM *vm, MirInstrBinop *binop)
 
 void interp_instr_unop(VM *vm, MirInstrUnop *unop)
 {
-    struct bl_type *type  = unop->base.value.type;
-    VMStackPtr      v_ptr = fetch_value(vm, &unop->expr->value);
+    struct mir_type *type  = unop->base.value.type;
+    VMStackPtr       v_ptr = fetch_value(vm, &unop->expr->value);
 
     VMValue tmp = {0};
     calculate_unop((VMStackPtr)&tmp, v_ptr, unop->op, type);
@@ -2086,7 +2088,7 @@ void eval_instr(VM *vm, MirInstr *instr)
 void eval_instr_type_info(VM *vm, MirInstrTypeInfo *type_info)
 {
     BL_ASSERT(type_info->rtti_type && "Missing RTTI type!");
-    MirVar *rtti_var = assembly_get_rtti(vm->assembly, type_info->rtti_type->id.hash);
+    struct mir_var *rtti_var = assembly_get_rtti(vm->assembly, type_info->rtti_type->id.hash);
 
     MIR_CEV_WRITE_AS(VMStackPtr, &type_info->base.value, rtti_var->value.data);
 }
@@ -2099,11 +2101,11 @@ void eval_instr_call_loc(VM UNUSED(*vm), MirInstrCallLoc *loc)
 
 void eval_instr_test_cases(VM *vm, MirInstrTestCases *tc)
 {
-    MirVar *        var     = vm->assembly->testing.meta_var;
-    struct bl_type *tc_type = tc->base.value.type;
+    struct mir_var * var     = vm->assembly->testing.meta_var;
+    struct mir_type *tc_type = tc->base.value.type;
 
-    struct bl_type *len_type = mir_get_struct_elem_type(tc_type, MIR_SLICE_LEN_INDEX);
-    struct bl_type *ptr_type = mir_get_struct_elem_type(tc_type, MIR_SLICE_PTR_INDEX);
+    struct mir_type *len_type = mir_get_struct_elem_type(tc_type, MIR_SLICE_LEN_INDEX);
+    struct mir_type *ptr_type = mir_get_struct_elem_type(tc_type, MIR_SLICE_PTR_INDEX);
 
     VMStackPtr tc_ptr = tc->base.value.data;
 
@@ -2125,10 +2127,10 @@ void eval_instr_test_cases(VM *vm, MirInstrTestCases *tc)
 
 void eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
 {
-    struct bl_type *arr_type   = mir_deref_type(elem_ptr->arr_ptr->value.type);
-    VMStackPtr      arr_ptr    = MIR_CEV_READ_AS(VMStackPtr, &elem_ptr->arr_ptr->value);
-    VMStackPtr      result_ptr = NULL;
-    const s64       index      = MIR_CEV_READ_AS(s64, &elem_ptr->index->value);
+    struct mir_type *arr_type   = mir_deref_type(elem_ptr->arr_ptr->value.type);
+    VMStackPtr       arr_ptr    = MIR_CEV_READ_AS(VMStackPtr, &elem_ptr->arr_ptr->value);
+    VMStackPtr       result_ptr = NULL;
+    const s64        index      = MIR_CEV_READ_AS(s64, &elem_ptr->index->value);
 
     switch (arr_type->kind) {
     case MIR_TYPE_ARRAY: {
@@ -2140,10 +2142,10 @@ void eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
     case MIR_TYPE_SLICE:
     case MIR_TYPE_STRING:
     case MIR_TYPE_VARGS: {
-        struct bl_type *len_type = mir_get_struct_elem_type(arr_type, MIR_SLICE_LEN_INDEX);
-        struct bl_type *ptr_type = mir_get_struct_elem_type(arr_type, MIR_SLICE_PTR_INDEX);
+        struct mir_type *len_type = mir_get_struct_elem_type(arr_type, MIR_SLICE_LEN_INDEX);
+        struct mir_type *ptr_type = mir_get_struct_elem_type(arr_type, MIR_SLICE_PTR_INDEX);
 
-        struct bl_type *elem_type = mir_deref_type(ptr_type);
+        struct mir_type *elem_type = mir_deref_type(ptr_type);
         BL_ASSERT(elem_type);
 
         VMStackPtr len_ptr = vm_get_struct_elem_ptr(vm->assembly, arr_type, arr_ptr, 0);
@@ -2188,9 +2190,9 @@ void eval_instr_member_ptr(VM UNUSED(*vm), MirInstrMemberPtr *member_ptr)
 {
     switch (member_ptr->scope_entry->kind) {
     case SCOPE_ENTRY_MEMBER: {
-        MirMember *member     = member_ptr->scope_entry->data.member;
-        VMStackPtr strct_ptr  = MIR_CEV_READ_AS(VMStackPtr, &member_ptr->target_ptr->value);
-        VMStackPtr result_ptr = NULL;
+        struct mir_member *member     = member_ptr->scope_entry->data.member;
+        VMStackPtr         strct_ptr  = MIR_CEV_READ_AS(VMStackPtr, &member_ptr->target_ptr->value);
+        VMStackPtr         result_ptr = NULL;
 
         result_ptr = strct_ptr + member->offset_bytes;
 
@@ -2199,7 +2201,7 @@ void eval_instr_member_ptr(VM UNUSED(*vm), MirInstrMemberPtr *member_ptr)
     }
 
     case SCOPE_ENTRY_VARIANT: {
-        MirVariant *variant = member_ptr->scope_entry->data.variant;
+        struct mir_variant *variant = member_ptr->scope_entry->data.variant;
         MIR_CEV_WRITE_AS(u64, &member_ptr->base.value, variant->value);
         break;
     }
@@ -2211,7 +2213,7 @@ void eval_instr_member_ptr(VM UNUSED(*vm), MirInstrMemberPtr *member_ptr)
 
 void eval_instr_compound(VM *vm, MirInstrCompound *cmp)
 {
-    MirConstExprValue *value = &cmp->base.value;
+    struct mir_const_expr_value *value = &cmp->base.value;
     if (needs_tmp_alloc(value)) {
         // Compound data doesn't fit into default static memory register, we need to
         // allocate temporary block on the stack.
@@ -2244,8 +2246,8 @@ void eval_instr_compound(VM *vm, MirInstrCompound *cmp)
         case MIR_TYPE_STRING:
         case MIR_TYPE_SLICE:
         case MIR_TYPE_VARGS: {
-            struct bl_type *member_type = value->type->data.strct.members->data[i]->type;
-            ptrdiff_t       offset = vm_get_struct_elem_offset(vm->assembly, value->type, (u32)i);
+            struct mir_type *member_type = value->type->data.strct.members->data[i]->type;
+            ptrdiff_t        offset = vm_get_struct_elem_offset(vm->assembly, value->type, (u32)i);
             dest_ptr += offset;
             memcpy(dest_ptr, src_ptr, member_type->store_size_bytes);
             break;
@@ -2270,16 +2272,16 @@ void eval_instr_compound(VM *vm, MirInstrCompound *cmp)
 void eval_instr_decl_var(VM UNUSED(*vm), MirInstrDeclVar *decl_var)
 {
     BL_ASSERT(decl_var->init && "Missing variable initializer!");
-    MirVar *var     = decl_var->var;
-    var->value.data = decl_var->init->value.data;
+    struct mir_var *var = decl_var->var;
+    var->value.data     = decl_var->init->value.data;
     BL_ASSERT(var->value.data && "Invalid variable initializer!");
 }
 
 void eval_instr_cast(VM UNUSED(*vm), MirInstrCast *cast)
 {
-    struct bl_type *dest_type = cast->base.value.type;
-    struct bl_type *src_type  = cast->expr->value.type;
-    VMStackPtr      src       = cast->expr->value.data;
+    struct mir_type *dest_type = cast->base.value.type;
+    struct mir_type *src_type  = cast->expr->value.type;
+    VMStackPtr       src       = cast->expr->value.data;
     vm_do_cast(cast->base.value.data, src, dest_type, src_type, cast->op);
 }
 
@@ -2308,7 +2310,7 @@ void eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si)
     MirInstr *dest;
     TSA_FOREACH(si->dests, dest)
     {
-        MirVar *var = ((MirInstrDeclVar *)dest)->var;
+        struct mir_var *var = ((MirInstrDeclVar *)dest)->var;
         BL_ASSERT((var->is_global || var->is_struct_typedef) &&
                   "Only globals can be initialized by initializer!");
         if (var->value.is_comptime) {
@@ -2317,7 +2319,7 @@ void eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si)
             // comptime.
             var->value.data = si->src->value.data;
         } else {
-            struct bl_type *var_type = var->value.type;
+            struct mir_type *var_type = var->value.type;
             // Globals always use static segment allocation!!!
             VMStackPtr var_ptr = vm_read_var(vm, var);
             // Runtime variable needs it's own memory location so we must create copy of
@@ -2329,7 +2331,7 @@ void eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si)
 
 void eval_instr_unop(VM UNUSED(*vm), MirInstrUnop *unop)
 {
-    struct bl_type *type = unop->base.value.type;
+    struct mir_type *type = unop->base.value.type;
 
     VMStackPtr v_data    = unop->expr->value.data;
     VMStackPtr dest_data = unop->base.value.data;
@@ -2345,8 +2347,8 @@ void eval_instr_binop(VM UNUSED(*vm), MirInstrBinop *binop)
     VMStackPtr rhs_ptr  = binop->rhs->value.data;
     VMStackPtr dest_ptr = binop->base.value.data;
 
-    struct bl_type *dest_type = binop->base.value.type;
-    struct bl_type *src_type  = binop->lhs->value.type;
+    struct mir_type *dest_type = binop->base.value.type;
+    struct mir_type *src_type  = binop->lhs->value.type;
 
     calculate_binop(dest_type, src_type, dest_ptr, lhs_ptr, rhs_ptr, binop->op);
 }
@@ -2358,11 +2360,11 @@ void eval_instr_decl_ref(VM UNUSED(*vm), MirInstrDeclRef *decl_ref)
 
     switch (entry->kind) {
     case SCOPE_ENTRY_FN:
-        MIR_CEV_WRITE_AS(MirFn *, &decl_ref->base.value, entry->data.fn);
+        MIR_CEV_WRITE_AS(struct mir_fn *, &decl_ref->base.value, entry->data.fn);
         break;
 
     case SCOPE_ENTRY_TYPE:
-        MIR_CEV_WRITE_AS(struct bl_type *, &decl_ref->base.value, entry->data.type);
+        MIR_CEV_WRITE_AS(struct mir_type *, &decl_ref->base.value, entry->data.type);
         break;
 
     case SCOPE_ENTRY_VAR:
@@ -2384,7 +2386,7 @@ void eval_instr_decl_ref(VM UNUSED(*vm), MirInstrDeclRef *decl_ref)
 
 void eval_instr_decl_direct_ref(VM UNUSED(*vm), MirInstrDeclDirectRef *decl_ref)
 {
-    MirVar *var = ((MirInstrDeclVar *)decl_ref->ref)->var;
+    struct mir_var *var = ((MirInstrDeclVar *)decl_ref->ref)->var;
     MIR_CEV_WRITE_AS(VMStackPtr, &decl_ref->base.value, var->value.data);
 }
 
@@ -2413,7 +2415,7 @@ void vm_terminate(VM *vm)
     bl_free(vm->stack);
 }
 
-void vm_execute_instr(VM *vm, Assembly *assembly, MirInstr *instr)
+void vm_execute_instr(VM *vm, struct assembly *assembly, MirInstr *instr)
 {
     ZONE();
     vm->assembly = assembly;
@@ -2421,7 +2423,7 @@ void vm_execute_instr(VM *vm, Assembly *assembly, MirInstr *instr)
     RETURN_END_ZONE();
 }
 
-bool vm_eval_instr(VM *vm, Assembly *assembly, struct MirInstr *instr)
+bool vm_eval_instr(VM *vm, struct assembly *assembly, struct MirInstr *instr)
 {
     ZONE();
     vm->aborted  = false;
@@ -2434,11 +2436,11 @@ void vm_provide_command_line_arguments(VM *vm, const s32 argc, char *argv[])
 {
     BL_ASSERT(argc > 0 && "At least one command line argument must be provided!");
     BL_ASSERT(argv && "Invalid arguments value pointer!");
-    struct bl_type *slice_type;
-    VMStackPtr      slice_dest;
-    VMStackPtr      args_dest;
+    struct mir_type *slice_type;
+    VMStackPtr       slice_dest;
+    VMStackPtr       args_dest;
     { // Slice destination pointer.
-        MirVar *dest_var = vm->assembly->vm_run.command_line_arguments;
+        struct mir_var *dest_var = vm->assembly->vm_run.command_line_arguments;
         BL_ASSERT(dest_var && "Missing destination variable for command line arguments!");
         slice_dest = vm_read_var(vm, dest_var);
         BL_ASSERT(slice_dest && "Command line arguments not allocated!");
@@ -2446,10 +2448,10 @@ void vm_provide_command_line_arguments(VM *vm, const s32 argc, char *argv[])
     }
 
     { // Allocate temp for arguments.
-        struct bl_type *string_type      = vm->assembly->builtin_types.t_string;
-        const usize     string_size      = string_type->store_size_bytes;
-        const usize     total_array_size = string_size * argc;
-        args_dest                        = stack_alloc(vm, total_array_size);
+        struct mir_type *string_type      = vm->assembly->builtin_types.t_string;
+        const usize      string_size      = string_type->store_size_bytes;
+        const usize      total_array_size = string_size * argc;
+        args_dest                         = stack_alloc(vm, total_array_size);
         for (s32 i = 0; i < argc; ++i) {
             VMStackPtr dest_elem = args_dest + string_size * i;
             vm_write_string(vm, string_type, dest_elem, argv[i], strlen(argv[i]));
@@ -2459,23 +2461,23 @@ void vm_provide_command_line_arguments(VM *vm, const s32 argc, char *argv[])
     vm_write_slice(vm, slice_type, slice_dest, args_dest, argc);
 }
 
-void vm_override_var(VM *vm, struct MirVar *var, const u64 value)
+void vm_override_var(VM *vm, struct mir_var *var, const u64 value)
 {
     BL_ASSERT(var);
-    struct bl_type *type     = var->value.type;
-    VMStackPtr      dest_ptr = vm_read_var(vm, var);
+    struct mir_type *type     = var->value.type;
+    VMStackPtr       dest_ptr = vm_read_var(vm, var);
     BL_ASSERT(dest_ptr);
     vm_write_int(type, dest_ptr, value);
 }
 
-bool vm_execute_fn(VM *vm, Assembly *assembly, MirFn *fn, VMStackPtr *out_ptr)
+bool vm_execute_fn(VM *vm, struct assembly *assembly, struct mir_fn *fn, VMStackPtr *out_ptr)
 {
     vm->assembly       = assembly;
     vm->stack->aborted = false;
     return execute_fn_impl_top_level(vm, fn, NULL, out_ptr);
 }
 
-bool vm_execute_instr_top_level_call(VM *vm, Assembly *assembly, MirInstrCall *call)
+bool vm_execute_instr_top_level_call(VM *vm, struct assembly *assembly, MirInstrCall *call)
 {
     ZONE();
     vm->assembly = assembly;
@@ -2488,7 +2490,7 @@ bool vm_execute_instr_top_level_call(VM *vm, Assembly *assembly, MirInstrCall *c
     RETURN_END_ZONE(result);
 }
 
-VMStackPtr vm_alloc_global(VM *vm, Assembly *assembly, MirVar *var)
+VMStackPtr vm_alloc_global(VM *vm, struct assembly *assembly, struct mir_var *var)
 {
     vm->assembly = assembly;
     BL_ASSERT(var);
@@ -2510,8 +2512,9 @@ VMStackPtr vm_alloc_global(VM *vm, Assembly *assembly, MirVar *var)
     return (VMStackPtr)var->rel_stack_ptr;
 }
 
-VMStackPtr
-vm_alloc_const_expr_value(VM UNUSED(*vm), Assembly UNUSED(*assembly), MirConstExprValue *value)
+VMStackPtr vm_alloc_const_expr_value(VM                           UNUSED(*vm),
+                                     struct assembly              UNUSED(*assembly),
+                                     struct mir_const_expr_value *value)
 {
     BL_ASSERT(value->is_comptime);
     BL_ASSERT(value->type);
@@ -2519,7 +2522,7 @@ vm_alloc_const_expr_value(VM UNUSED(*vm), Assembly UNUSED(*assembly), MirConstEx
     return value->data;
 }
 
-VMStackPtr vm_alloc_raw(VM *vm, struct Assembly UNUSED(*assembly), struct bl_type *type)
+VMStackPtr vm_alloc_raw(VM *vm, struct assembly UNUSED(*assembly), struct mir_type *type)
 {
     return stack_push_empty(vm, type);
 }
@@ -2539,7 +2542,7 @@ void *_vm_read_value(usize size, VMStackPtr value)
 }
 
 // Try to fetch variable allocation pointer.
-VMStackPtr vm_read_var(VM *vm, const MirVar *var)
+VMStackPtr vm_read_var(VM *vm, const struct mir_var *var)
 {
     VMStackPtr ptr = NULL;
     if (var->value.is_comptime) {
@@ -2552,7 +2555,7 @@ VMStackPtr vm_read_var(VM *vm, const MirVar *var)
     return ptr;
 }
 
-u64 vm_read_int(struct bl_type const *type, VMStackPtr src)
+u64 vm_read_int(struct mir_type const *type, VMStackPtr src)
 {
     BL_ASSERT(src && "Attempt to read null source!");
     u64 result = 0;
@@ -2560,7 +2563,7 @@ u64 vm_read_int(struct bl_type const *type, VMStackPtr src)
     return result;
 }
 
-f64 vm_read_double(const struct bl_type *type, VMStackPtr src)
+f64 vm_read_double(const struct mir_type *type, VMStackPtr src)
 {
     const usize size = type->store_size_bytes;
     BL_ASSERT(src && "Attempt to read null source!");
@@ -2571,7 +2574,7 @@ f64 vm_read_double(const struct bl_type *type, VMStackPtr src)
     return result;
 }
 
-VMStackPtr vm_read_ptr(const struct bl_type *type, VMStackPtr src)
+VMStackPtr vm_read_ptr(const struct mir_type *type, VMStackPtr src)
 {
     const usize size = type->store_size_bytes;
     BL_ASSERT(src && "Attempt to read null source!");
@@ -2582,7 +2585,7 @@ VMStackPtr vm_read_ptr(const struct bl_type *type, VMStackPtr src)
     return result;
 }
 
-f32 vm_read_float(const struct bl_type *type, VMStackPtr src)
+f32 vm_read_float(const struct mir_type *type, VMStackPtr src)
 {
     const usize size = type->store_size_bytes;
     BL_ASSERT(src && "Attempt to read null source!");
@@ -2593,13 +2596,13 @@ f32 vm_read_float(const struct bl_type *type, VMStackPtr src)
     return result;
 }
 
-void vm_write_int(const struct bl_type *type, VMStackPtr dest, u64 i)
+void vm_write_int(const struct mir_type *type, VMStackPtr dest, u64 i)
 {
     BL_ASSERT(dest && "Attempt to write to the null destination!");
     memcpy(dest, &i, type->store_size_bytes);
 }
 
-void vm_write_double(const struct bl_type *type, VMStackPtr dest, f64 i)
+void vm_write_double(const struct mir_type *type, VMStackPtr dest, f64 i)
 {
     const usize size = type->store_size_bytes;
     BL_ASSERT(size == sizeof(f64) && "Target type is not f64 type!");
@@ -2607,7 +2610,7 @@ void vm_write_double(const struct bl_type *type, VMStackPtr dest, f64 i)
     memcpy(dest, &i, type->store_size_bytes);
 }
 
-void vm_write_float(const struct bl_type *type, VMStackPtr dest, f32 i)
+void vm_write_float(const struct mir_type *type, VMStackPtr dest, f32 i)
 {
     const usize size = type->store_size_bytes;
     BL_ASSERT(size == sizeof(f32) && "Target type is not f64 type!");
@@ -2615,7 +2618,7 @@ void vm_write_float(const struct bl_type *type, VMStackPtr dest, f32 i)
     memcpy(dest, &i, type->store_size_bytes);
 }
 
-void vm_write_ptr(const struct bl_type *type, VMStackPtr dest, VMStackPtr ptr)
+void vm_write_ptr(const struct mir_type *type, VMStackPtr dest, VMStackPtr ptr)
 {
     BL_ASSERT(dest && "Attempt to write to the null destination!");
     memcpy(dest, &ptr, type->store_size_bytes);
@@ -2627,7 +2630,7 @@ void _vm_write_value(usize dest_size, VMStackPtr dest, VMStackPtr src)
     memcpy(dest, src, dest_size);
 }
 
-void vm_write_string(VM *vm, const struct bl_type *type, VMStackPtr dest, const char *str, s64 len)
+void vm_write_string(VM *vm, const struct mir_type *type, VMStackPtr dest, const char *str, s64 len)
 {
     BL_ASSERT(str && "Invalid string constant!");
     BL_ASSERT(len >= 0 && "Invalid string constant length.");
@@ -2635,19 +2638,19 @@ void vm_write_string(VM *vm, const struct bl_type *type, VMStackPtr dest, const 
     vm_write_slice(vm, type, dest, (void *)str, len);
 }
 
-void vm_write_slice(VM *vm, const struct bl_type *type, VMStackPtr dest, void *ptr, s64 len)
+void vm_write_slice(VM *vm, const struct mir_type *type, VMStackPtr dest, void *ptr, s64 len)
 {
     BL_ASSERT((type->kind == MIR_TYPE_SLICE || type->kind == MIR_TYPE_STRING) &&
               "Expected slice or string type!");
-    struct bl_type *dest_len_type = mir_get_struct_elem_type(type, MIR_SLICE_LEN_INDEX);
-    struct bl_type *dest_ptr_type = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
+    struct mir_type *dest_len_type = mir_get_struct_elem_type(type, MIR_SLICE_LEN_INDEX);
+    struct mir_type *dest_ptr_type = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
     VMStackPtr dest_len = vm_get_struct_elem_ptr(vm->assembly, type, dest, MIR_SLICE_LEN_INDEX);
     VMStackPtr dest_ptr = vm_get_struct_elem_ptr(vm->assembly, type, dest, MIR_SLICE_PTR_INDEX);
     vm_write_int(dest_len_type, dest_len, (u64)len);
     vm_write_ptr(dest_ptr_type, dest_ptr, (VMStackPtr)ptr);
 }
 
-ptrdiff_t vm_get_struct_elem_offset(Assembly *assembly, const struct bl_type *type, u32 i)
+ptrdiff_t vm_get_struct_elem_offset(struct assembly *assembly, const struct mir_type *type, u32 i)
 {
     BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
     if (type->data.strct.is_union) {
@@ -2657,16 +2660,18 @@ ptrdiff_t vm_get_struct_elem_offset(Assembly *assembly, const struct bl_type *ty
     return (ptrdiff_t)LLVMOffsetOfElement(assembly->llvm.TD, type->llvm_type, i);
 }
 
-ptrdiff_t vm_get_array_elem_offset(const struct bl_type *type, u32 i)
+ptrdiff_t vm_get_array_elem_offset(const struct mir_type *type, u32 i)
 {
     BL_ASSERT(type->kind == MIR_TYPE_ARRAY && "Expected array type");
-    struct bl_type *elem_type = type->data.array.elem_type;
+    struct mir_type *elem_type = type->data.array.elem_type;
     BL_ASSERT(elem_type);
     return (ptrdiff_t)elem_type->store_size_bytes * i;
 }
 
-VMStackPtr
-vm_get_struct_elem_ptr(Assembly *assembly, const struct bl_type *type, VMStackPtr ptr, u32 i)
+VMStackPtr vm_get_struct_elem_ptr(struct assembly *      assembly,
+                                  const struct mir_type *type,
+                                  VMStackPtr             ptr,
+                                  u32                    i)
 {
     BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
     if (type->data.strct.is_union) {
@@ -2676,16 +2681,16 @@ vm_get_struct_elem_ptr(Assembly *assembly, const struct bl_type *type, VMStackPt
     return ptr + vm_get_struct_elem_offset(assembly, type, i);
 }
 
-VMStackPtr vm_get_array_elem_ptr(const struct bl_type *type, VMStackPtr ptr, u32 i)
+VMStackPtr vm_get_array_elem_ptr(const struct mir_type *type, VMStackPtr ptr, u32 i)
 {
     return ptr + vm_get_array_elem_offset(type, i);
 }
 
-void vm_do_cast(VMStackPtr      dest,
-                VMStackPtr      src,
-                struct bl_type *dest_type,
-                struct bl_type *src_type,
-                s32             op)
+void vm_do_cast(VMStackPtr       dest,
+                VMStackPtr       src,
+                struct mir_type *dest_type,
+                struct mir_type *src_type,
+                s32              op)
 {
     BL_ASSERT(dest && "Missing cast destination!");
     BL_ASSERT(src && "Missing cast source!");

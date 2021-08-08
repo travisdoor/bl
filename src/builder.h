@@ -39,8 +39,8 @@
 
 struct ThreadingImpl;
 
-typedef void (*UnitStageFn)(Assembly *, Unit *);
-typedef void (*AssemblyStageFn)(Assembly *);
+typedef void (*UnitStageFn)(struct assembly *, struct unit *);
+typedef void (*AssemblyStageFn)(struct assembly *);
 
 typedef struct BuilderOptions {
     bool verbose;
@@ -53,7 +53,7 @@ typedef struct BuilderOptions {
     bool time_report;
 } BuilderOptions;
 
-typedef struct Builder {
+struct builder {
     const BuilderOptions *options;
     const Target *        default_target;
     char *                exec_dir;
@@ -71,10 +71,10 @@ typedef struct Builder {
 
     struct ThreadingImpl *threading;
     bool                  is_initialized;
-} Builder;
+};
 
-// Builder global instance.
-extern Builder builder;
+// struct builder global instance.
+extern struct builder builder;
 
 typedef enum {
     BUILDER_MSG_ERROR,
@@ -90,7 +90,7 @@ typedef enum {
     BUILDER_CUR_NONE
 } BuilderCurPos;
 
-struct Location;
+struct location;
 
 // Initialize builder global instance with executable directory specified.
 void        builder_init(const BuilderOptions *options, const char *exec_dir);
@@ -109,7 +109,7 @@ s32 builder_compile_all(void);
 s32 builder_compile(const Target *target);
 
 // Submit new unit for async compilation, in case no-jobs flag is set, this function does nothing.
-void builder_async_submit_unit(Unit *unit);
+void builder_async_submit_unit(struct unit *unit);
 
 #define builder_log(format, ...)                                                                   \
     builder_msg(BUILDER_MSG_LOG, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
@@ -122,7 +122,7 @@ void builder_async_submit_unit(Unit *unit);
 
 void builder_msg(BuilderMsgType   type,
                  s32              code,
-                 struct Location *src,
+                 struct location *src,
                  BuilderCurPos    pos,
                  const char *     format,
                  ...);

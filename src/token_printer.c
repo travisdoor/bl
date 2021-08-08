@@ -29,7 +29,7 @@
 #include "builder.h"
 #include "common.h"
 
-void token_printer_run(Assembly *UNUSED(assembly), Unit *unit)
+void token_printer_run(struct assembly *UNUSED(assembly), struct unit *unit)
 {
     TArray *tokens_arr = &unit->tokens.buf;
 

@@ -32,7 +32,7 @@
 #include <stdio.h>
 #include <string.h>
 
-void file_loader_run(Assembly *UNUSED(assembly), Unit *unit)
+void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
 {
     ZONE();
     if (!unit->filepath) {

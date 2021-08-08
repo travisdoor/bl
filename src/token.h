@@ -48,13 +48,13 @@ typedef enum {
 
 extern char *sym_strings[];
 
-struct Unit;
-typedef struct Location {
+struct unit;
+struct location {
     s32          line;
     s32          col;
     s32          len;
-    struct Unit *unit;
-} Location;
+    struct unit *unit;
+};
 
 typedef union {
     const char *str;
@@ -64,10 +64,10 @@ typedef union {
 } TokenValue;
 
 typedef struct Token {
-    Location   location;
-    TokenValue value;
-    Sym        sym;
-    bool       overflow;
+    struct location location;
+    TokenValue      value;
+    Sym             sym;
+    bool            overflow;
 } Token;
 
 // sizeof this structure is 8 bytes so it can be passed by value
