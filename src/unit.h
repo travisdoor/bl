@@ -40,7 +40,7 @@ struct unit {
     u64             hash;
     Tokens          tokens;
     struct ast *    ast;
-    struct Scope *  private_scope;
+    struct scope *  private_scope;
     char *          filename;
     char *          filepath;
     char *          dirpath;

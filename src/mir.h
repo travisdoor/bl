@@ -149,7 +149,7 @@ enum mir_builtin_id_kind {
     _MIR_BUILTIN_ID_COUNT,
 };
 
-enum bl_type_kind {
+enum mir_type_kind {
     MIR_TYPE_INVALID     = 0,
     MIR_TYPE_TYPE        = 1,
     MIR_TYPE_VOID        = 2,
@@ -241,10 +241,10 @@ struct mir_fn_poly_recipe {
 // FN
 struct mir_fn {
     // Must be first!!!
-    struct mir_instr *prototype;
-    ID *              id;
-    struct ast *      decl_node;
-    ScopeEntry *      scope_entry;
+    struct mir_instr *  prototype;
+    ID *                id;
+    struct ast *        decl_node;
+    struct scope_entry *scope_entry;
 
     // Optional, set only for polymorphic functions.
     // @CLEANUP we can use this type directly without function to save some memory.
@@ -256,7 +256,7 @@ struct mir_fn {
     TString *   debug_poly_replacement;
 
     // function body scope if there is one (optional)
-    Scope *          body_scope;
+    struct scope *   body_scope;
     struct mir_type *type;
     TArray *         variables;
 
@@ -304,15 +304,15 @@ struct mir_fn_group {
 
 // MEMBER
 struct mir_member {
-    struct mir_type *type;
-    ID *             id;
-    struct ast *     decl_node;
-    ScopeEntry *     entry;
-    s64              index;
-    s32              offset_bytes;
-    s32              tags;
-    bool             is_base; // inherrited struct base
-    bool             is_parent_union;
+    struct mir_type *   type;
+    ID *                id;
+    struct ast *        decl_node;
+    struct scope_entry *entry;
+    s64                 index;
+    s32                 offset_bytes;
+    s32                 tags;
+    bool                is_base; // inherrited struct base
+    bool                is_parent_union;
     BL_MAGIC_ADD
 };
 
@@ -321,7 +321,7 @@ struct mir_arg {
     struct mir_type *type;
     ID *             id;
     struct ast *     decl_node;
-    Scope *          decl_scope;
+    struct scope *   decl_scope;
 
     // This is index of this argument in LLVM IR not in MIR, it can be different based on
     // compiler configuration (via. System V ABI)
@@ -376,7 +376,7 @@ struct mir_type_ptr {
 };
 
 struct mir_type_struct {
-    Scope *                scope; // struct body scope
+    struct scope *         scope; // struct body scope
     TSmallArray_MemberPtr *members;
     // This is optional base type, only structures with #base hash directive has this
     // information.
@@ -393,7 +393,7 @@ struct mir_type_struct {
 
 // Enum variants must be baked into enum type.
 struct mir_type_enum {
-    Scope *                 scope;
+    struct scope *          scope;
     struct mir_type *       base_type;
     TSmallArray_VariantPtr *variants; // struct mir_variant *
 };
@@ -408,15 +408,15 @@ struct mir_type_array {
 };
 
 struct mir_type {
-    ID *              user_id;
-    ID                id;
-    LLVMTypeRef       llvm_type;
-    LLVMMetadataRef   llvm_meta;
-    usize             size_bits;
-    usize             store_size_bytes;
-    enum bl_type_kind kind;
-    s8                alignment;
-    bool              checked_and_complete;
+    ID *               user_id;
+    ID                 id;
+    LLVMTypeRef        llvm_type;
+    LLVMMetadataRef    llvm_meta;
+    usize              size_bits;
+    usize              store_size_bytes;
+    enum mir_type_kind kind;
+    s8                 alignment;
+    bool               checked_and_complete;
 
     // Optionally set pointer to RTTI var used by VM.
     struct mir_var *vm_rtti_var_cache;
@@ -449,10 +449,10 @@ struct mir_const_expr_value {
 
 // VARIANT
 struct mir_variant {
-    ID *             id;
-    ScopeEntry *     entry;
-    struct mir_type *value_type;
-    u64              value;
+    ID *                id;
+    struct scope_entry *entry;
+    struct mir_type *   value_type;
+    u64                 value;
 };
 
 // VAR
@@ -460,8 +460,8 @@ struct mir_var {
     struct mir_const_expr_value value; // contains also allocated type
     ID *                        id;
     struct ast *                decl_node;
-    Scope *                     decl_scope;
-    ScopeEntry *                entry;
+    struct scope *              decl_scope;
+    struct scope_entry *        entry;
     struct mir_instr *          initializer_block;
     VMRelativeStackPtr          rel_stack_ptr;
     LLVMValueRef                llvm_value;
@@ -549,7 +549,7 @@ struct mir_instr_member_ptr {
 
     struct ast *             member_ident;
     struct mir_instr *       target_ptr;
-    ScopeEntry *             scope_entry;
+    struct scope_entry *     scope_entry;
     enum mir_builtin_id_kind builtin_id;
 };
 
@@ -674,7 +674,7 @@ struct mir_instr_type_struct {
     // fwd_decl is optional pointer to forward declaration of this structure type.
     struct mir_instr *    fwd_decl;
     ID *                  id;
-    Scope *               scope;
+    struct scope *        scope;
     TSmallArray_InstrPtr *members;
     bool                  is_packed;
     bool                  is_union;
@@ -686,7 +686,7 @@ struct mir_instr_type_enum {
     struct mir_instr base;
 
     ID *                  id;
-    Scope *               scope;
+    struct scope *        scope;
     TSmallArray_InstrPtr *variants;
     struct mir_instr *    base_type;
 };
@@ -743,11 +743,11 @@ struct mir_instr_call {
 struct mir_instr_decl_ref {
     struct mir_instr base;
 
-    struct unit *parent_unit;
-    ID *         rid;
-    Scope *      scope;
-    s32          scope_layer;
-    ScopeEntry * scope_entry;
+    struct unit *       parent_unit;
+    ID *                rid;
+    struct scope *      scope;
+    s32                 scope_layer;
+    struct scope_entry *scope_entry;
 
     // Set only for decl_refs inside struct member type resolvers.
     bool accept_incomplete_type;

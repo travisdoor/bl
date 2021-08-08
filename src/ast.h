@@ -35,7 +35,7 @@
 #define AST_IS_BAD(node) ((node) && (node)->kind == AST_BAD)
 #define AST_IS_OK(node) ((node) && (node)->kind != AST_BAD)
 
-struct Scope;
+struct scope;
 struct Token;
 struct location;
 struct ast;
@@ -245,7 +245,7 @@ struct AstTypeFnGroup {
 };
 
 struct AstTypeStruct {
-    struct Scope *      scope;
+    struct scope *      scope;
     TSmallArray_AstPtr *members;
     struct ast *        base_type;
     bool                is_union;
@@ -253,7 +253,7 @@ struct AstTypeStruct {
 };
 
 struct AstTypeEnum {
-    struct Scope *      scope;
+    struct scope *      scope;
     struct ast *        type;
     TSmallArray_AstPtr *variants;
 };
@@ -373,7 +373,7 @@ struct AstCallLoc {
 struct ast {
     AstKind          kind;
     struct location *location;
-    struct Scope *   owner_scope; // Scope in which is AST node.
+    struct scope *   owner_scope; // Scope in which is AST node.
     const char *     docs;        // Optional documentation string.
 
     union {
@@ -390,7 +390,7 @@ struct ast {
 void ast_arena_init(Arena *arena);
 void ast_arena_terminate(Arena *arena);
 struct ast *
-ast_create_node(struct Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope);
+ast_create_node(struct Arena *arena, AstKind c, struct Token *tok, struct scope *parent_scope);
 const char *ast_binop_to_str(BinopKind op);
 const char *ast_unop_to_str(UnopKind op);
 const char *ast_get_name(const struct ast *n);

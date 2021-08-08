@@ -57,32 +57,32 @@ static void sync_delete(ScopeSyncImpl *impl)
     bl_free(impl);
 }
 
-static void layer_init(struct ScopeLayer *layer, s32 index, usize expected_entry_count)
+static void layer_init(struct scope_layer *layer, s32 index, usize expected_entry_count)
 {
-    thtbl_init(&layer->entries, sizeof(ScopeEntry *), expected_entry_count);
+    thtbl_init(&layer->entries, sizeof(struct scope_entry *), expected_entry_count);
     layer->index = index;
 }
 
-static void layer_terminate(struct ScopeLayer *layer)
+static void layer_terminate(struct scope_layer *layer)
 {
     thtbl_terminate(&layer->entries);
 }
 
-static void scope_dtor(Scope *scope)
+static void scope_dtor(struct scope *scope)
 {
     BL_ASSERT(scope);
     for (usize i = 0; i < scope->layers.size; ++i) {
-        struct ScopeLayer *layer = &tarray_at(struct ScopeLayer, &scope->layers, i);
+        struct scope_layer *layer = &tarray_at(struct scope_layer, &scope->layers, i);
         layer_terminate(layer);
     }
     tarray_terminate(&scope->layers);
     sync_delete(scope->sync);
 }
 
-static INLINE THashTable *get_layer(Scope *scope, s32 index)
+static INLINE THashTable *get_layer(struct scope *scope, s32 index)
 {
     for (usize i = 0; i < scope->layers.size; ++i) {
-        struct ScopeLayer *layer = &tarray_at(struct ScopeLayer, &scope->layers, i);
+        struct scope_layer *layer = &tarray_at(struct scope_layer, &scope->layers, i);
         if (layer->index == index) return &layer->entries;
     }
     return NULL;
@@ -92,64 +92,69 @@ static INLINE THashTable *get_layer(Scope *scope, s32 index)
 // scopes are used due to polymorph function generation. We basicaly reuse already existing
 // Ast tree for polymorphs of specified type; in this case we need new layer for every polymorph
 // variant of function.
-static INLINE THashTable *create_layer(Scope *scope, s32 index)
+static INLINE THashTable *create_layer(struct scope *scope, s32 index)
 {
     BL_ASSERT(index == SCOPE_DEFAULT_LAYER || scope_is_local(scope));
     BL_ASSERT(get_layer(scope, index) == NULL && "Attempt to create existing layer!");
-    struct ScopeLayer *layer = tarray_push_empty(&scope->layers);
+    struct scope_layer *layer = tarray_push_empty(&scope->layers);
     layer_init(layer, index, scope->expected_entry_count);
     return &layer->entries;
 }
 
-void scope_arenas_init(ScopeArenas *arenas)
+void scope_arenas_init(struct scope_arenas *arenas)
 {
-    arena_init(&arenas->scopes, sizeof(Scope), alignment_of(Scope), 256, (ArenaElemDtor)scope_dtor);
-    arena_init(&arenas->entries, sizeof(ScopeEntry), alignment_of(ScopeEntry), 1024, NULL);
+    arena_init(&arenas->scopes,
+               sizeof(struct scope),
+               alignment_of(struct scope),
+               256,
+               (ArenaElemDtor)scope_dtor);
+    arena_init(
+        &arenas->entries, sizeof(struct scope_entry), alignment_of(struct scope_entry), 1024, NULL);
 }
 
-void scope_arenas_terminate(ScopeArenas *arenas)
+void scope_arenas_terminate(struct scope_arenas *arenas)
 {
     arena_terminate(&arenas->scopes);
     arena_terminate(&arenas->entries);
 }
 
-Scope *_scope_create(ScopeArenas *    arenas,
-                     ScopeKind        kind,
-                     Scope *          parent,
-                     usize            size,
-                     struct location *loc,
-                     const bool       safe)
+struct scope *_scope_create(struct scope_arenas *arenas,
+                            enum scope_kind      kind,
+                            struct scope *       parent,
+                            usize                size,
+                            struct location *    loc,
+                            const bool           safe)
 {
     BL_ASSERT(size > 0);
-    Scope *scope                = arena_alloc(&arenas->scopes);
+    struct scope *scope         = arena_alloc(&arenas->scopes);
     scope->parent               = parent;
     scope->kind                 = kind;
     scope->location             = loc;
     scope->expected_entry_count = size;
-    tarray_init(&scope->layers, sizeof(struct ScopeLayer));
+    tarray_init(&scope->layers, sizeof(struct scope_layer));
     // For thread safe scope
     if (safe) scope->sync = sync_new();
     BL_MAGIC_SET(scope);
     return scope;
 }
 
-ScopeEntry *scope_create_entry(ScopeArenas *  arenas,
-                               ScopeEntryKind kind,
-                               ID *           id,
-                               struct ast *   node,
-                               bool           is_builtin)
+struct scope_entry *scope_create_entry(struct scope_arenas * arenas,
+                                       enum scope_entry_kind kind,
+                                       ID *                  id,
+                                       struct ast *          node,
+                                       bool                  is_builtin)
 {
-    ScopeEntry *entry = arena_alloc(&arenas->entries);
-    entry->id         = id;
-    entry->kind       = kind;
-    entry->node       = node;
-    entry->is_builtin = is_builtin;
-    entry->ref_count  = 0;
+    struct scope_entry *entry = arena_alloc(&arenas->entries);
+    entry->id                 = id;
+    entry->kind               = kind;
+    entry->node               = node;
+    entry->is_builtin         = is_builtin;
+    entry->ref_count          = 0;
     BL_MAGIC_SET(entry);
     return entry;
 }
 
-void scope_insert(Scope *scope, s32 layer_index, ScopeEntry *entry)
+void scope_insert(struct scope *scope, s32 layer_index, struct scope_entry *entry)
 {
     BL_ASSERT(scope);
     BL_ASSERT(entry && entry->id);
@@ -162,12 +167,12 @@ void scope_insert(Scope *scope, s32 layer_index, ScopeEntry *entry)
     thtbl_insert(entries, entry->id->hash, entry);
 }
 
-ScopeEntry *scope_lookup(Scope *scope,
-                         s32    preferred_layer_index,
-                         ID *   id,
-                         bool   in_tree,
-                         bool   ignore_global,
-                         bool * out_of_fn_local_scope)
+struct scope_entry *scope_lookup(struct scope *scope,
+                                 s32           preferred_layer_index,
+                                 ID *          id,
+                                 bool          in_tree,
+                                 bool          ignore_global,
+                                 bool *        out_of_fn_local_scope)
 {
     ZONE();
     BL_ASSERT(scope && id);
@@ -182,7 +187,7 @@ ScopeEntry *scope_lookup(Scope *scope,
         if (entries) {
             iter = thtbl_find(entries, id->hash);
             if (!TITERATOR_EQUAL(iter, thtbl_end(entries))) {
-                RETURN_END_ZONE(thtbl_iter_peek_value(ScopeEntry *, iter));
+                RETURN_END_ZONE(thtbl_iter_peek_value(struct scope_entry *, iter));
             }
         }
         // Lookup in parent.
@@ -198,24 +203,24 @@ ScopeEntry *scope_lookup(Scope *scope,
     RETURN_END_ZONE(NULL);
 }
 
-void scope_dirty_clear_tree(Scope *scope)
+void scope_dirty_clear_tree(struct scope *scope)
 {
     BL_ASSERT(scope);
 }
 
-void scope_lock(Scope *scope)
+void scope_lock(struct scope *scope)
 {
     BL_ASSERT(scope && scope->sync);
     pthread_mutex_lock(&scope->sync->lock);
 }
 
-void scope_unlock(Scope *scope)
+void scope_unlock(struct scope *scope)
 {
     BL_ASSERT(scope && scope->sync);
     pthread_mutex_unlock(&scope->sync->lock);
 }
 
-bool scope_is_subtree_of_kind(const Scope *scope, ScopeKind kind)
+bool scope_is_subtree_of_kind(const struct scope *scope, enum scope_kind kind)
 {
     while (scope) {
         if (scope->kind == kind) return true;
@@ -225,7 +230,7 @@ bool scope_is_subtree_of_kind(const Scope *scope, ScopeKind kind)
     return false;
 }
 
-const char *scope_kind_name(const Scope *scope)
+const char *scope_kind_name(const struct scope *scope)
 {
     if (!scope) return "<INVALID>";
     switch (scope->kind) {
@@ -250,7 +255,7 @@ const char *scope_kind_name(const Scope *scope)
     return "<INVALID>";
 }
 
-void scope_get_full_name(TString *dest, Scope *scope)
+void scope_get_full_name(TString *dest, struct scope *scope)
 {
     BL_ASSERT(dest && scope);
     TSmallArray_CharPtr buffer;

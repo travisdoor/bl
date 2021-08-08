@@ -1675,7 +1675,7 @@ void interp_instr_cond_br(VM *vm, struct mir_instr_cond_br *br)
 
 void interp_instr_decl_ref(VM *vm, struct mir_instr_decl_ref *ref)
 {
-    ScopeEntry *entry = ref->scope_entry;
+    struct scope_entry *entry = ref->scope_entry;
     BL_ASSERT(entry);
 
     switch (entry->kind) {
@@ -2356,7 +2356,7 @@ void eval_instr_binop(VM UNUSED(*vm), struct mir_instr_binop *binop)
 
 void eval_instr_decl_ref(VM UNUSED(*vm), struct mir_instr_decl_ref *decl_ref)
 {
-    ScopeEntry *entry = decl_ref->scope_entry;
+    struct scope_entry *entry = decl_ref->scope_entry;
     BL_ASSERT(entry);
 
     switch (entry->kind) {
@@ -2377,7 +2377,7 @@ void eval_instr_decl_ref(VM UNUSED(*vm), struct mir_instr_decl_ref *decl_ref)
         break;
 
     case SCOPE_ENTRY_NAMED_SCOPE:
-        MIR_CEV_WRITE_AS(ScopeEntry *, &decl_ref->base.value, entry);
+        MIR_CEV_WRITE_AS(struct scope_entry *, &decl_ref->base.value, entry);
         break;
 
     default:

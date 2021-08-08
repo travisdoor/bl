@@ -158,9 +158,9 @@ struct context {
         THashTable          complete_check_visited;
 
         // Switch cases duplicity check
-        THashTable  presented_switch_cases;
-        TArray      usage_check_queue;
-        ScopeEntry *void_entry;
+        THashTable          presented_switch_cases;
+        TArray              usage_check_queue;
+        struct scope_entry *void_entry;
     } analyze;
 
     struct {
@@ -257,8 +257,11 @@ static struct mir_fn *group_select_overload(struct context *           ctx,
                                             const TSmallArray_TypePtr *expected_args);
 
 // Register incomplete scope entry for symbol.
-static ScopeEntry *
-register_symbol(struct context *ctx, struct ast *node, ID *id, Scope *scope, bool is_builtin);
+static struct scope_entry *register_symbol(struct context *ctx,
+                                           struct ast *    node,
+                                           ID *            id,
+                                           struct scope *  scope,
+                                           bool            is_builtin);
 
 // Lookup builtin by builtin kind in global scope. Return NULL even if builtin is valid symbol in
 // case when it's not been analyzed yet or is incomplete struct type. In such case caller must
@@ -280,7 +283,7 @@ static ID *lookup_builtins_code_loc(struct context *ctx);
 
 // Lookup member in composit structure type. Searching also in base types. When 'out_base_type' is
 // set to base member type if entry was found in parent.
-static ScopeEntry *
+static struct scope_entry *
 lookup_composit_member(struct mir_type *type, ID *rid, struct mir_type **out_base_type);
 
 static struct mir_var *
@@ -294,7 +297,7 @@ add_global_int(struct context *ctx, ID *id, bool is_mutable, struct mir_type *ty
 static void type_init_id(struct context *ctx, struct mir_type *type);
 
 // Create new type. The 'user_id' is optional.
-static struct mir_type *create_type(struct context *ctx, enum bl_type_kind kind, ID *user_id);
+static struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, ID *user_id);
 static struct mir_type *create_type_type(struct context *ctx);
 static struct mir_type *create_type_named_scope(struct context *ctx);
 static struct mir_type *create_type_null(struct context *ctx, struct mir_type *base_type);
@@ -316,9 +319,9 @@ create_type_fn_group(struct context *ctx, ID *id, TSmallArray_TypePtr *variants)
 static struct mir_type *
 create_type_array(struct context *ctx, ID *id, struct mir_type *elem_type, s64 len);
 static struct mir_type *create_type_struct(struct context *       ctx,
-                                           enum bl_type_kind      kind,
+                                           enum mir_type_kind     kind,
                                            ID *                   id,
-                                           Scope *                scope,
+                                           struct scope *         scope,
                                            TSmallArray_MemberPtr *members,   // struct mir_member
                                            struct mir_type *      base_type, // optional
                                            bool                   is_union,
@@ -329,7 +332,7 @@ static struct mir_type *create_type_struct(struct context *       ctx,
 // about struct to the forward declaration type.
 static struct mir_type *complete_type_struct(struct context *       ctx,
                                              struct mir_instr *     fwd_decl,
-                                             Scope *                scope,
+                                             struct scope *         scope,
                                              TSmallArray_MemberPtr *members,
                                              struct mir_type *      base_type, // optional
                                              bool                   is_packed,
@@ -341,14 +344,14 @@ static struct mir_type *
 create_type_struct_incomplete(struct context *ctx, ID *user_id, bool is_union);
 static struct mir_type *create_type_enum(struct context *        ctx,
                                          ID *                    id,
-                                         Scope *                 scope,
+                                         struct scope *          scope,
                                          struct mir_type *       base_type,
                                          TSmallArray_VariantPtr *variants);
 
-struct mir_type *_create_type_struct_slice(struct context *  ctx,
-                                           enum bl_type_kind kind,
-                                           ID *              id,
-                                           struct mir_type * elem_ptr_type);
+struct mir_type *_create_type_struct_slice(struct context *   ctx,
+                                           enum mir_type_kind kind,
+                                           ID *               id,
+                                           struct mir_type *  elem_ptr_type);
 struct mir_type *
             create_type_struct_dyarr(struct context *ctx, ID *id, struct mir_type *elem_ptr_type);
 static void type_init_llvm_int(struct context *ctx, struct mir_type *type);
@@ -365,7 +368,7 @@ static void type_init_llvm_dummy(struct context *ctx, struct mir_type *type);
 
 static struct mir_var *create_var(struct context *         ctx,
                                   struct ast *             decl_node,
-                                  Scope *                  scope,
+                                  struct scope *           scope,
                                   ID *                     id,
                                   struct mir_type *        alloc_type,
                                   bool                     is_mutable,
@@ -400,7 +403,7 @@ create_member(struct context *ctx, struct ast *node, ID *id, s64 index, struct m
 static struct mir_arg *create_arg(struct context *  ctx,
                                   struct ast *      node,
                                   ID *              id,
-                                  Scope *           scope,
+                                  struct scope *    scope,
                                   struct mir_type * type,
                                   struct mir_instr *value);
 static struct mir_variant *
@@ -463,7 +466,7 @@ static struct mir_instr *create_instr_member_ptr(struct context *         ctx,
                                                  struct ast *             node,
                                                  struct mir_instr *       target_ptr,
                                                  struct ast *             member_ident,
-                                                 ScopeEntry *             scope_entry,
+                                                 struct scope_entry *     scope_entry,
                                                  enum mir_builtin_id_kind builtin_id);
 static struct mir_instr *create_instr_phi(struct context *ctx, struct ast *node);
 
@@ -519,7 +522,7 @@ static struct mir_instr *append_instr_member_ptr(struct context *         ctx,
                                                  struct ast *             node,
                                                  struct mir_instr *       target_ptr,
                                                  struct ast *             member_ident,
-                                                 ScopeEntry *             scope_entry,
+                                                 struct scope_entry *     scope_entry,
                                                  enum mir_builtin_id_kind builtin_id);
 
 static struct mir_instr *append_instr_cond_br(struct context *        ctx,
@@ -553,7 +556,7 @@ static struct mir_instr *append_instr_type_struct(struct context *      ctx,
                                                   struct ast *          node,
                                                   ID *                  id,
                                                   struct mir_instr *    fwd_decl, // Optional
-                                                  Scope *               scope,
+                                                  struct scope *        scope,
                                                   TSmallArray_InstrPtr *members,
                                                   bool                  is_packed,
                                                   bool                  is_union,
@@ -562,7 +565,7 @@ static struct mir_instr *append_instr_type_struct(struct context *      ctx,
 static struct mir_instr *append_instr_type_enum(struct context *      ctx,
                                                 struct ast *          node,
                                                 ID *                  id,
-                                                Scope *               scope,
+                                                struct scope *        scope,
                                                 TSmallArray_InstrPtr *variants,
                                                 struct mir_instr *    base_type);
 
@@ -588,13 +591,13 @@ static struct mir_instr *append_instr_fn_proto(struct context *  ctx,
                                                bool              schedule_analyze);
 static struct mir_instr *
 append_instr_fn_group(struct context *ctx, struct ast *node, TSmallArray_InstrPtr *variants);
-static struct mir_instr *append_instr_decl_ref(struct context *ctx,
-                                               struct ast *    node,
-                                               struct unit *   parent_unit,
-                                               ID *            rid,
-                                               Scope *         scope,
-                                               s32             scope_layer,
-                                               ScopeEntry *    scope_entry);
+static struct mir_instr *append_instr_decl_ref(struct context *    ctx,
+                                               struct ast *        node,
+                                               struct unit *       parent_unit,
+                                               ID *                rid,
+                                               struct scope *      scope,
+                                               s32                 scope_layer,
+                                               struct scope_entry *scope_entry);
 
 static struct mir_instr *
 append_instr_decl_direct_ref(struct context *ctx, struct ast *node, struct mir_instr *ref);
@@ -607,7 +610,7 @@ static struct mir_instr *append_instr_call(struct context *      ctx,
 static struct mir_instr *append_instr_decl_var(struct context *         ctx,
                                                struct ast *             node, // Optional
                                                ID *                     id,
-                                               Scope *                  scope,
+                                               struct scope *           scope,
                                                struct mir_instr *       type,
                                                struct mir_instr *       init,
                                                bool                     is_mutable,
@@ -947,10 +950,10 @@ static INLINE struct ast *get_last_instruction_node(struct mir_instr_block *bloc
     return block->last_instr->node;
 }
 
-static INLINE void usage_check_push(struct context *ctx, ScopeEntry *entry)
+static INLINE void usage_check_push(struct context *ctx, struct scope_entry *entry)
 {
     BL_ASSERT(entry);
-    Scope *scope = entry->parent_scope;
+    struct scope *scope = entry->parent_scope;
     BL_ASSERT(scope);
     if (builder.options->no_usage_check) return;
     if (!entry->id) return;
@@ -1005,7 +1008,7 @@ static INLINE struct mir_type *get_base_type(const struct mir_type *struct_type)
 }
 
 // Get base type scope if there is one.
-static INLINE Scope *get_base_type_scope(struct mir_type *struct_type)
+static INLINE struct scope *get_base_type_scope(struct mir_type *struct_type)
 {
     struct mir_type *base_type = get_base_type(struct_type);
     if (!base_type) return NULL;
@@ -1389,7 +1392,7 @@ static INLINE void commit_fn(struct context *ctx, struct mir_fn *fn)
 {
     ID *id = fn->id;
     BL_ASSERT(id);
-    ScopeEntry *entry = fn->scope_entry;
+    struct scope_entry *entry = fn->scope_entry;
     BL_MAGIC_ASSERT(entry);
     BL_ASSERT(entry->kind != SCOPE_ENTRY_VOID);
     entry->kind    = SCOPE_ENTRY_FN;
@@ -1400,7 +1403,7 @@ static INLINE void commit_fn(struct context *ctx, struct mir_fn *fn)
 
 static INLINE void commit_variant(struct context UNUSED(*ctx), struct mir_variant *variant)
 {
-    ScopeEntry *entry = variant->entry;
+    struct scope_entry *entry = variant->entry;
     BL_MAGIC_ASSERT(entry);
     BL_ASSERT(entry->kind != SCOPE_ENTRY_VOID);
     entry->kind         = SCOPE_ENTRY_VARIANT;
@@ -1409,7 +1412,7 @@ static INLINE void commit_variant(struct context UNUSED(*ctx), struct mir_varian
 
 static INLINE void commit_member(struct context UNUSED(*ctx), struct mir_member *member)
 {
-    ScopeEntry *entry = member->entry;
+    struct scope_entry *entry = member->entry;
     BL_MAGIC_ASSERT(entry);
     // Do not commit void entries
     if (entry->kind == SCOPE_ENTRY_VOID) return;
@@ -1421,7 +1424,7 @@ static INLINE void commit_var(struct context *ctx, struct mir_var *var)
 {
     ID *id = var->id;
     BL_ASSERT(id);
-    ScopeEntry *entry = var->entry;
+    struct scope_entry *entry = var->entry;
     BL_MAGIC_ASSERT(entry);
     // Do not commit void entries
     if (entry->kind == SCOPE_ENTRY_VOID) return;
@@ -1435,7 +1438,8 @@ static INLINE void commit_var(struct context *ctx, struct mir_var *var)
 // Provide builtin type. Register & commit.
 static INLINE void provide_builtin_type(struct context *ctx, struct mir_type *type)
 {
-    ScopeEntry *entry = register_symbol(ctx, NULL, type->user_id, ctx->assembly->gscope, true);
+    struct scope_entry *entry =
+        register_symbol(ctx, NULL, type->user_id, ctx->assembly->gscope, true);
     if (!entry) return;
     BL_ASSERT(entry->kind != SCOPE_ENTRY_VOID);
     entry->kind      = SCOPE_ENTRY_TYPE;
@@ -1443,9 +1447,9 @@ static INLINE void provide_builtin_type(struct context *ctx, struct mir_type *ty
 }
 
 static INLINE void
-provide_builtin_member(struct context *ctx, Scope *scope, struct mir_member *member)
+provide_builtin_member(struct context *ctx, struct scope *scope, struct mir_member *member)
 {
-    ScopeEntry *entry = register_symbol(ctx, NULL, member->id, scope, true);
+    struct scope_entry *entry = register_symbol(ctx, NULL, member->id, scope, true);
     if (!entry) return;
     BL_ASSERT(entry->kind != SCOPE_ENTRY_VOID);
     entry->kind        = SCOPE_ENTRY_MEMBER;
@@ -1454,9 +1458,9 @@ provide_builtin_member(struct context *ctx, Scope *scope, struct mir_member *mem
 }
 
 static INLINE void
-provide_builtin_variant(struct context *ctx, Scope *scope, struct mir_variant *variant)
+provide_builtin_variant(struct context *ctx, struct scope *scope, struct mir_variant *variant)
 {
-    ScopeEntry *entry = register_symbol(ctx, NULL, variant->id, scope, true);
+    struct scope_entry *entry = register_symbol(ctx, NULL, variant->id, scope, true);
     if (!entry) return;
     BL_ASSERT(entry->kind != SCOPE_ENTRY_VOID);
     entry->kind         = SCOPE_ENTRY_VARIANT;
@@ -1781,7 +1785,7 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 #undef GEN_ID_STRUCT
 }
 
-struct mir_type *create_type(struct context *ctx, enum bl_type_kind kind, ID *user_id)
+struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, ID *user_id)
 {
     struct mir_type *type = arena_alloc(&ctx->assembly->arenas.mir.type);
     BL_MAGIC_SET(type);
@@ -1790,8 +1794,8 @@ struct mir_type *create_type(struct context *ctx, enum bl_type_kind kind, ID *us
     return type;
 }
 
-ScopeEntry *
-register_symbol(struct context *ctx, struct ast *node, ID *id, Scope *scope, bool is_builtin)
+struct scope_entry *
+register_symbol(struct context *ctx, struct ast *node, ID *id, struct scope *scope, bool is_builtin)
 {
     BL_ASSERT(id && "Missing symbol ID.");
     BL_ASSERT(scope && "Missing entry scope.");
@@ -1800,9 +1804,9 @@ register_symbol(struct context *ctx, struct ast *node, ID *id, Scope *scope, boo
         BL_ASSERT(!is_builtin);
         return ctx->analyze.void_entry;
     }
-    const bool  is_private  = scope->kind == SCOPE_PRIVATE;
-    const s32   layer_index = ctx->polymorph.current_scope_layer_index;
-    ScopeEntry *collision   = scope_lookup(scope, layer_index, id, is_private, false, NULL);
+    const bool          is_private  = scope->kind == SCOPE_PRIVATE;
+    const s32           layer_index = ctx->polymorph.current_scope_layer_index;
+    struct scope_entry *collision   = scope_lookup(scope, layer_index, id, is_private, false, NULL);
     if (collision) {
         if (!is_private) goto COLLIDE;
         const bool collision_in_same_unit =
@@ -1815,7 +1819,7 @@ register_symbol(struct context *ctx, struct ast *node, ID *id, Scope *scope, boo
     }
 
     // no collision
-    ScopeEntry *entry = scope_create_entry(
+    struct scope_entry *entry = scope_create_entry(
         &ctx->assembly->arenas.scope, SCOPE_ENTRY_INCOMPLETE, id, node, is_builtin);
     scope_insert(scope, layer_index, entry);
     BL_TRACY_MESSAGE("REGISTER_SYMBOL", "%s", id->str);
@@ -1846,9 +1850,9 @@ COLLIDE : {
 
 struct mir_type *lookup_builtin_type(struct context *ctx, enum mir_builtin_id_kind kind)
 {
-    ID *        id    = &builtin_ids[kind];
-    Scope *     scope = ctx->assembly->gscope;
-    ScopeEntry *found = scope_lookup(scope, SCOPE_DEFAULT_LAYER, id, true, false, NULL);
+    ID *                id    = &builtin_ids[kind];
+    struct scope *      scope = ctx->assembly->gscope;
+    struct scope_entry *found = scope_lookup(scope, SCOPE_DEFAULT_LAYER, id, true, false, NULL);
 
     if (!found) BL_ABORT("Missing compiler internal symbol '%s'", id->str);
     if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
@@ -1877,9 +1881,9 @@ struct mir_type *lookup_builtin_type(struct context *ctx, enum mir_builtin_id_ki
 
 struct mir_fn *lookup_builtin_fn(struct context *ctx, enum mir_builtin_id_kind kind)
 {
-    ID *        id    = &builtin_ids[kind];
-    Scope *     scope = ctx->assembly->gscope;
-    ScopeEntry *found = scope_lookup(scope, SCOPE_DEFAULT_LAYER, id, true, false, NULL);
+    ID *                id    = &builtin_ids[kind];
+    struct scope *      scope = ctx->assembly->gscope;
+    struct scope_entry *found = scope_lookup(scope, SCOPE_DEFAULT_LAYER, id, true, false, NULL);
 
     if (!found) BL_ABORT("Missing compiler internal symbol '%s'", id->str);
     if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
@@ -1985,13 +1989,14 @@ ID *lookup_builtins_code_loc(struct context *ctx)
     return NULL;
 }
 
-ScopeEntry *lookup_composit_member(struct mir_type *type, ID *rid, struct mir_type **out_base_type)
+struct scope_entry *
+lookup_composit_member(struct mir_type *type, ID *rid, struct mir_type **out_base_type)
 {
     BL_ASSERT(type);
     BL_ASSERT(mir_is_composit_type(type) && "Expected composit type!");
 
-    Scope *     scope = type->data.strct.scope;
-    ScopeEntry *found = NULL;
+    struct scope *      scope = type->data.strct.scope;
+    struct scope_entry *found = NULL;
 
     while (true) {
         found = scope_lookup(scope, SCOPE_DEFAULT_LAYER, rid, false, true, NULL);
@@ -2008,7 +2013,7 @@ struct mir_var *
 add_global_variable(struct context *ctx, ID *id, bool is_mutable, struct mir_instr *initializer)
 {
     BL_ASSERT(initializer);
-    Scope *           scope = ctx->assembly->gscope;
+    struct scope *    scope = ctx->assembly->gscope;
     struct mir_instr *decl_var =
         append_instr_decl_var(ctx, NULL, id, scope, NULL, NULL, is_mutable, 0, MIR_BUILTIN_ID_NONE);
 
@@ -2052,9 +2057,9 @@ struct mir_type *create_type_named_scope(struct context *ctx)
 {
     struct mir_type *tmp =
         create_type(ctx, MIR_TYPE_NAMED_SCOPE, &builtin_ids[MIR_BUILTIN_ID_TYPE_NAMED_SCOPE]);
-    tmp->alignment        = __alignof(ScopeEntry *);
-    tmp->size_bits        = sizeof(ScopeEntry *) * 8;
-    tmp->store_size_bytes = sizeof(ScopeEntry *);
+    tmp->alignment        = __alignof(struct scope_entry *);
+    tmp->size_bits        = sizeof(struct scope_entry *) * 8;
+    tmp->store_size_bytes = sizeof(struct scope_entry *);
     type_init_id(ctx, tmp);
     type_init_llvm_dummy(ctx, tmp);
     return tmp;
@@ -2178,9 +2183,9 @@ struct mir_type *create_type_array(struct context *ctx, ID *id, struct mir_type 
 }
 
 struct mir_type *create_type_struct(struct context *       ctx,
-                                    enum bl_type_kind      kind,
+                                    enum mir_type_kind     kind,
                                     ID *                   id, // optional
-                                    Scope *                scope,
+                                    struct scope *         scope,
                                     TSmallArray_MemberPtr *members,   // struct mir_member
                                     struct mir_type *      base_type, // optional
                                     bool                   is_union,
@@ -2201,7 +2206,7 @@ struct mir_type *create_type_struct(struct context *       ctx,
 
 struct mir_type *complete_type_struct(struct context *       ctx,
                                       struct mir_instr *     fwd_decl,
-                                      Scope *                scope,
+                                      struct scope *         scope,
                                       TSmallArray_MemberPtr *members,
                                       struct mir_type *      base_type,
                                       bool                   is_packed,
@@ -2249,10 +2254,10 @@ struct mir_type *create_type_struct_incomplete(struct context *ctx, ID *user_id,
     return type;
 }
 
-struct mir_type *_create_type_struct_slice(struct context *  ctx,
-                                           enum bl_type_kind kind,
-                                           ID *              id,
-                                           struct mir_type * elem_ptr_type)
+struct mir_type *_create_type_struct_slice(struct context *   ctx,
+                                           enum mir_type_kind kind,
+                                           ID *               id,
+                                           struct mir_type *  elem_ptr_type)
 {
     BL_ASSERT(mir_is_pointer_type(elem_ptr_type));
     BL_ASSERT(kind == MIR_TYPE_STRING || kind == MIR_TYPE_VARGS || kind == MIR_TYPE_SLICE);
@@ -2260,7 +2265,7 @@ struct mir_type *_create_type_struct_slice(struct context *  ctx,
     TSmallArray_MemberPtr *members = create_sarr(TSmallArray_MemberPtr, ctx->assembly);
 
     // Slice layout struct { s64, *T }
-    Scope *body_scope = scope_create(
+    struct scope *body_scope = scope_create(
         &ctx->assembly->arenas.scope, SCOPE_TYPE_STRUCT, ctx->assembly->gscope, 2, NULL);
 
     struct mir_member *tmp;
@@ -2286,7 +2291,7 @@ create_type_struct_dynarr(struct context *ctx, ID *id, struct mir_type *elem_ptr
     TSmallArray_MemberPtr *members = create_sarr(TSmallArray_MemberPtr, ctx->assembly);
 
     // Dynamic array layout struct { s64, *T, usize, allocator }
-    Scope *body_scope = scope_create(
+    struct scope *body_scope = scope_create(
         &ctx->assembly->arenas.scope, SCOPE_TYPE_STRUCT, ctx->assembly->gscope, 2, NULL);
 
     struct mir_member *tmp;
@@ -2327,7 +2332,7 @@ create_type_struct_dynarr(struct context *ctx, ID *id, struct mir_type *elem_ptr
 
 struct mir_type *create_type_enum(struct context *        ctx,
                                   ID *                    id,
-                                  Scope *                 scope,
+                                  struct scope *          scope,
                                   struct mir_type *       base_type,
                                   TSmallArray_VariantPtr *variants)
 {
@@ -2675,7 +2680,7 @@ static INLINE void push_var(struct context *ctx, struct mir_var *var)
 
 struct mir_var *create_var(struct context *         ctx,
                            struct ast *             decl_node,
-                           Scope *                  scope,
+                           struct scope *           scope,
                            ID *                     id,
                            struct mir_type *        alloc_type,
                            bool                     is_mutable,
@@ -2783,7 +2788,7 @@ create_member(struct context *ctx, struct ast *node, ID *id, s64 index, struct m
 struct mir_arg *create_arg(struct context *  ctx,
                            struct ast *      node,
                            ID *              id,
-                           Scope *           scope,
+                           struct scope *    scope,
                            struct mir_type * type,
                            struct mir_instr *value)
 {
@@ -3075,7 +3080,7 @@ struct mir_instr *create_instr_member_ptr(struct context *         ctx,
                                           struct ast *             node,
                                           struct mir_instr *       target_ptr,
                                           struct ast *             member_ident,
-                                          ScopeEntry *             scope_entry,
+                                          struct scope_entry *     scope_entry,
                                           enum mir_builtin_id_kind builtin_id)
 {
     struct mir_instr_member_ptr *tmp = create_instr(ctx, MIR_INSTR_MEMBER_PTR, node);
@@ -3311,7 +3316,7 @@ struct mir_instr *append_instr_type_struct(struct context *      ctx,
                                            struct ast *          node,
                                            ID *                  id,
                                            struct mir_instr *    fwd_decl,
-                                           Scope *               scope,
+                                           struct scope *        scope,
                                            TSmallArray_InstrPtr *members,
                                            bool                  is_packed,
                                            bool                  is_union,
@@ -3345,7 +3350,7 @@ struct mir_instr *append_instr_type_struct(struct context *      ctx,
 struct mir_instr *append_instr_type_enum(struct context *      ctx,
                                          struct ast *          node,
                                          ID *                  id,
-                                         Scope *               scope,
+                                         struct scope *        scope,
                                          TSmallArray_InstrPtr *variants,
                                          struct mir_instr *    base_type)
 {
@@ -3701,7 +3706,7 @@ struct mir_instr *append_instr_member_ptr(struct context *         ctx,
                                           struct ast *             node,
                                           struct mir_instr *       target_ptr,
                                           struct ast *             member_ident,
-                                          ScopeEntry *             scope_entry,
+                                          struct scope_entry *     scope_entry,
                                           enum mir_builtin_id_kind builtin_id)
 {
     struct mir_instr *tmp =
@@ -3768,13 +3773,13 @@ append_instr_fn_group(struct context *ctx, struct ast *node, TSmallArray_InstrPt
     return &tmp->base;
 }
 
-struct mir_instr *append_instr_decl_ref(struct context *ctx,
-                                        struct ast *    node,
-                                        struct unit *   parent_unit,
-                                        ID *            rid,
-                                        Scope *         scope,
-                                        s32             scope_layer,
-                                        ScopeEntry *    scope_entry)
+struct mir_instr *append_instr_decl_ref(struct context *    ctx,
+                                        struct ast *        node,
+                                        struct unit *       parent_unit,
+                                        ID *                rid,
+                                        struct scope *      scope,
+                                        s32                 scope_layer,
+                                        struct scope_entry *scope_entry)
 {
     BL_ASSERT(scope && rid);
     BL_ASSERT(scope_layer >= 0);
@@ -3829,7 +3834,7 @@ struct mir_instr *append_instr_call(struct context *      ctx,
 struct mir_instr *append_instr_decl_var(struct context *         ctx,
                                         struct ast *             node,
                                         ID *                     id,
-                                        Scope *                  scope,
+                                        struct scope *           scope,
                                         struct mir_instr *       type,
                                         struct mir_instr *       init,
                                         bool                     is_mutable,
@@ -4839,7 +4844,7 @@ AnalyzeResult analyze_var(struct context *ctx, struct mir_var *var)
         commit_var(ctx, var);
     }
     // Type declaration should not be generated in LLVM.
-    const enum bl_type_kind var_type_kind = var->value.type->kind;
+    const enum mir_type_kind var_type_kind = var->value.type->kind;
     var->emit_llvm = var_type_kind != MIR_TYPE_TYPE && var_type_kind != MIR_TYPE_FN_GROUP;
     // Just take note whether variable was fully analyzed.
     var->is_analyzed = true;
@@ -5080,11 +5085,11 @@ AnalyzeResult analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
     struct ast *                ast_member_ident = member_ptr->member_ident;
 
     if (target_type->kind == MIR_TYPE_NAMED_SCOPE) {
-        ScopeEntry *scope_entry = MIR_CEV_READ_AS(ScopeEntry *, &target_ptr->value);
+        struct scope_entry *scope_entry = MIR_CEV_READ_AS(struct scope_entry *, &target_ptr->value);
         BL_ASSERT(scope_entry);
         BL_MAGIC_ASSERT(scope_entry);
         BL_ASSERT(scope_entry->kind == SCOPE_ENTRY_NAMED_SCOPE && "Expected named scope.");
-        Scope *scope = scope_entry->data.scope;
+        struct scope *scope = scope_entry->data.scope;
         BL_ASSERT(scope);
         BL_MAGIC_ASSERT(scope);
         ID *         rid         = &ast_member_ident->data.ident.id;
@@ -5189,9 +5194,9 @@ AnalyzeResult analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
             ANALYZE_INSTR_RQ(member_ptr->target_ptr);
         }
 
-        ID *             rid   = &ast_member_ident->data.ident.id;
-        struct mir_type *type  = target_type;
-        ScopeEntry *     found = lookup_composit_member(target_type, rid, &type);
+        ID *                rid   = &ast_member_ident->data.ident.id;
+        struct mir_type *   type  = target_type;
+        struct scope_entry *found = lookup_composit_member(target_type, rid, &type);
 
         // Check if member was found in base type's scope.
         if (found && found->parent_scope != target_type->data.strct.scope) {
@@ -5249,10 +5254,10 @@ AnalyzeResult analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         }
 
         // lookup for member inside struct
-        Scope *     scope       = sub_type->data.enm.scope;
-        ID *        rid         = &ast_member_ident->data.ident.id;
-        const s32   layer_index = ctx->polymorph.current_scope_layer_index;
-        ScopeEntry *found       = scope_lookup(scope, layer_index, rid, false, true, NULL);
+        struct scope *      scope       = sub_type->data.enm.scope;
+        ID *                rid         = &ast_member_ident->data.ident.id;
+        const s32           layer_index = ctx->polymorph.current_scope_layer_index;
+        struct scope_entry *found       = scope_lookup(scope, layer_index, rid, false, true, NULL);
         if (!found) {
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_UNKNOWN_SYMBOL,
@@ -5475,9 +5480,9 @@ AnalyzeResult analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
     ZONE();
     BL_ASSERT(ref->rid && ref->scope);
 
-    ScopeEntry *found                        = ref->scope_entry;
-    Scope *     private_scope                = ref->parent_unit->private_scope;
-    bool        is_ref_out_of_fn_local_scope = false;
+    struct scope_entry *found                        = ref->scope_entry;
+    struct scope *      private_scope                = ref->parent_unit->private_scope;
+    bool                is_ref_out_of_fn_local_scope = false;
 
     if (!found) {
         if (private_scope && scope_is_subtree_of_kind(private_scope, SCOPE_NAMED) &&
@@ -5740,7 +5745,7 @@ AnalyzeResult analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 
     TString *name_prefix = get_tmpstr();
     if (fn->decl_node) {
-        Scope *owner_scope = fn->decl_node->owner_scope;
+        struct scope *owner_scope = fn->decl_node->owner_scope;
         BL_ASSERT(owner_scope);
         scope_get_full_name(name_prefix, owner_scope);
     }
@@ -6776,7 +6781,7 @@ AnalyzeResult analyze_instr_type_enum(struct context *ctx, struct mir_instr_type
 {
     ZONE();
     TSmallArray_InstrPtr *variant_instrs = type_enum->variants;
-    Scope *               scope          = type_enum->scope;
+    struct scope *        scope          = type_enum->scope;
     BL_ASSERT(variant_instrs);
     BL_ASSERT(scope);
     BL_ASSERT(variant_instrs->size);
@@ -8474,9 +8479,9 @@ void analyze_report_unresolved(struct context *ctx)
 
 void analyze_report_unused(struct context *ctx)
 {
-    TArray *    queue = &ctx->analyze.usage_check_queue;
-    ScopeEntry *entry;
-    TARRAY_FOREACH(ScopeEntry *, queue, entry)
+    TArray *            queue = &ctx->analyze.usage_check_queue;
+    struct scope_entry *entry;
+    TARRAY_FOREACH(struct scope_entry *, queue, entry)
     {
         if (entry->ref_count > 0) continue;
         if (!entry->node || !entry->id) continue;
@@ -9991,9 +9996,9 @@ static void ast_decl_fn(struct context *ctx, struct ast *ast_fn)
                     "Exported function cannot be declared in private scope.");
     }
 
-    ID *   id       = &ast_name->data.ident.id;
-    Scope *scope    = ast_name->owner_scope;
-    fn->scope_entry = register_symbol(ctx, ast_name, id, scope, is_compiler);
+    ID *          id    = &ast_name->data.ident.id;
+    struct scope *scope = ast_name->owner_scope;
+    fn->scope_entry     = register_symbol(ctx, ast_name, id, scope, is_compiler);
 }
 
 // Helper for local variable declaration generation.
@@ -10010,7 +10015,7 @@ static void ast_decl_var_local(struct context *ctx, struct ast *ast_local)
     const bool        is_unroll   = ast_value && ast_value->kind == AST_EXPR_CALL;
     const bool        is_mutable  = ast_local->data.decl_entity.mut;
 
-    Scope *scope = ast_name->owner_scope;
+    struct scope *scope = ast_name->owner_scope;
 
     // Generate variables for all declarations.
     //
@@ -10079,7 +10084,7 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
     const bool is_compiler = IS_FLAG(ast_global->data.decl_entity.flags, FLAG_COMPILER);
 
     struct mir_instr *value = NULL;
-    Scope *           scope = ast_name->owner_scope;
+    struct scope *    scope = ast_name->owner_scope;
 
     // Struct use forward type declarations!
     if (is_struct_decl) {
@@ -10253,9 +10258,9 @@ struct mir_instr *ast_ref(struct context *ctx, struct ast *ref)
     struct ast *ident = ref->data.ref.ident;
     struct ast *next  = ref->data.ref.next;
     BL_ASSERT(ident);
-    Scope *      scope       = ident->owner_scope;
-    const s32    layer_index = ctx->polymorph.current_scope_layer_index;
-    struct unit *unit        = ident->location->unit;
+    struct scope *scope       = ident->owner_scope;
+    const s32     layer_index = ctx->polymorph.current_scope_layer_index;
+    struct unit * unit        = ident->location->unit;
     BL_ASSERT(unit);
     BL_ASSERT(scope);
     if (next) {
@@ -10392,7 +10397,7 @@ struct mir_instr *ast_type_enum(struct context *ctx, struct ast *type_enum)
 
     struct mir_instr *base_type = ast(ctx, ast_base_type);
 
-    Scope *               scope    = type_enum->data.type_enm.scope;
+    struct scope *        scope    = type_enum->data.type_enm.scope;
     TSmallArray_InstrPtr *variants = create_sarr(TSmallArray_InstrPtr, ctx->assembly);
 
     // Build variant instructions
@@ -10436,7 +10441,7 @@ struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct)
     }
 
     TSmallArray_InstrPtr *members = create_sarr(TSmallArray_InstrPtr, ctx->assembly);
-    Scope *               scope   = type_struct->data.type_strct.scope;
+    struct scope *        scope   = type_struct->data.type_strct.scope;
     BL_ASSERT(scope);
 
     if (ast_base_type) {
@@ -10468,13 +10473,13 @@ struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct)
 
 struct mir_instr *ast_type_poly(struct context *ctx, struct ast *poly)
 {
-    struct ast *ast_ident = poly->data.type_poly.ident;
-    Scope *     scope     = poly->owner_scope;
+    struct ast *  ast_ident = poly->data.type_poly.ident;
+    struct scope *scope     = poly->owner_scope;
     BL_ASSERT(ast_ident);
 
     TSmallArray_TypePtr *queue       = &ctx->polymorph.replacement_queue;
     ID *                 T_id        = &ast_ident->data.ident.id;
-    ScopeEntry *         scope_entry = register_symbol(ctx, ast_ident, T_id, scope, false);
+    struct scope_entry * scope_entry = register_symbol(ctx, ast_ident, T_id, scope, false);
     if (!scope_entry) goto USE_DUMMY;
     if (ctx->polymorph.is_replacement_active) {
         if (queue->size == 0) {
@@ -10975,11 +10980,11 @@ void mir_type_to_str(char *buf, usize len, const struct mir_type *type, bool pre
 static void provide_builtin_arch(struct context *ctx)
 {
     struct BuiltinTypes *   bt       = ctx->builtin_types;
-    Scope *                 scope    = scope_create(&ctx->assembly->arenas.scope,
-                                SCOPE_TYPE_ENUM,
-                                ctx->assembly->gscope,
-                                TARRAY_SIZE(arch_names),
-                                NULL);
+    struct scope *          scope    = scope_create(&ctx->assembly->arenas.scope,
+                                       SCOPE_TYPE_ENUM,
+                                       ctx->assembly->gscope,
+                                       TARRAY_SIZE(arch_names),
+                                       NULL);
     TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
     static ID               ids[TARRAY_SIZE(arch_names)];
     for (usize i = 0; i < TARRAY_SIZE(arch_names); ++i) {
@@ -10996,11 +11001,11 @@ static void provide_builtin_arch(struct context *ctx)
 static void provide_builtin_os(struct context *ctx)
 {
     struct BuiltinTypes *   bt       = ctx->builtin_types;
-    Scope *                 scope    = scope_create(&ctx->assembly->arenas.scope,
-                                SCOPE_TYPE_ENUM,
-                                ctx->assembly->gscope,
-                                TARRAY_SIZE(os_names),
-                                NULL);
+    struct scope *          scope    = scope_create(&ctx->assembly->arenas.scope,
+                                       SCOPE_TYPE_ENUM,
+                                       ctx->assembly->gscope,
+                                       TARRAY_SIZE(os_names),
+                                       NULL);
     TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
     static ID               ids[TARRAY_SIZE(os_names)];
     for (usize i = 0; i < TARRAY_SIZE(os_names); ++i) {
@@ -11017,11 +11022,11 @@ static void provide_builtin_os(struct context *ctx)
 static void provide_builtin_env(struct context *ctx)
 {
     struct BuiltinTypes *   bt       = ctx->builtin_types;
-    Scope *                 scope    = scope_create(&ctx->assembly->arenas.scope,
-                                SCOPE_TYPE_ENUM,
-                                ctx->assembly->gscope,
-                                TARRAY_SIZE(env_names),
-                                NULL);
+    struct scope *          scope    = scope_create(&ctx->assembly->arenas.scope,
+                                       SCOPE_TYPE_ENUM,
+                                       ctx->assembly->gscope,
+                                       TARRAY_SIZE(env_names),
+                                       NULL);
     TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
     static ID               ids[TARRAY_SIZE(env_names)];
     for (usize i = 0; i < TARRAY_SIZE(env_names); ++i) {
@@ -11251,7 +11256,7 @@ void mir_run(struct assembly *assembly)
     tstring_init(&ctx.tmp_sh);
 
     tarray_init(&ctx.ast._fnctx_stack, sizeof(AstFnContext));
-    tarray_init(&ctx.analyze.usage_check_queue, sizeof(ScopeEntry *));
+    tarray_init(&ctx.analyze.usage_check_queue, sizeof(struct scope_entry *));
     tsa_init(&ctx.analyze.incomplete_rtti);
     tsa_init(&ctx.analyze.complete_check_type_stack);
     thtbl_init(&ctx.analyze.complete_check_visited, 0, 128);

@@ -47,7 +47,7 @@ static void small_array_dtor(TSmallArrayAny *arr)
     tsa_terminate(arr);
 }
 
-struct ast *ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope)
+struct ast *ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct scope *parent_scope)
 {
     struct ast *node  = arena_alloc(arena);
     node->kind        = c;

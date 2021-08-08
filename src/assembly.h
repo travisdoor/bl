@@ -180,11 +180,11 @@ struct assembly {
     TArray  libs;
 
     struct {
-        ScopeArenas       scope;
-        struct mir_arenas mir;
-        Arena             ast;
-        Arena             array;       // Used for all TArrays
-        Arena             small_array; // Used for all SmallArrays
+        struct scope_arenas scope;
+        struct mir_arenas   mir;
+        Arena               ast;
+        Arena               array;       // Used for all TArrays
+        Arena               small_array; // Used for all SmallArrays
     } arenas;
 
     struct {
@@ -234,8 +234,8 @@ struct assembly {
     DCCallVM *dc_vm;
     VM        vm;
 
-    TArray units;  // array of all units in assembly
-    Scope *gscope; // global scope of the assembly
+    TArray        units;  // array of all units in assembly
+    struct scope *gscope; // global scope of the assembly
 
     /* Builtins */
     struct BuiltinTypes {

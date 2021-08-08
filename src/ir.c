@@ -145,7 +145,7 @@ static void            emit_DI_fn(struct context *ctx, struct mir_fn *fn);    //
 static void            emit_DI_var(struct context *ctx, struct mir_var *var); // @CLEANUP rename
 static LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type);
 static LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type);
-static LLVMMetadataRef DI_scope_init(struct context *ctx, Scope *scope);
+static LLVMMetadataRef DI_scope_init(struct context *ctx, struct scope *scope);
 static LLVMMetadataRef DI_unit_init(struct context *ctx, struct unit *unit);
 
 // =================================================================================================
@@ -223,7 +223,7 @@ static INLINE void emit_DI_instr_loc(struct context *ctx, struct mir_instr *inst
 {
     BL_ASSERT(instr && "Invalid instruction!");
     BL_ASSERT(instr->node && "Invalid instruction ast node!");
-    Scope *          scope = instr->node->owner_scope;
+    struct scope *   scope = instr->node->owner_scope;
     struct location *loc   = instr->node->location;
     BL_ASSERT(scope && "Missing scope for DI!");
     BL_ASSERT(loc && "Missing location for DI!");
@@ -588,7 +588,7 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
         }
 
         LLVMMetadataRef llvm_parent_scope = NULL;
-        Scope *         parent_scope      = type->data.strct.scope->parent;
+        struct scope *  parent_scope      = type->data.strct.scope->parent;
         if (is_implicit || !scope_is_local(parent_scope)) {
             llvm_parent_scope = llvm_file;
         } else {
@@ -633,7 +633,7 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
     return type->llvm_meta;
 }
 
-LLVMMetadataRef DI_scope_init(struct context *ctx, Scope *scope)
+LLVMMetadataRef DI_scope_init(struct context *ctx, struct scope *scope)
 {
     BL_ASSERT(scope && "Invalid scope!");
     if (scope->llvm_meta) return scope->llvm_meta;
@@ -875,7 +875,7 @@ LLVMValueRef emit_const_string(struct context *ctx, const char *str, usize len)
 
 State emit_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref)
 {
-    ScopeEntry *entry = ref->scope_entry;
+    struct scope_entry *entry = ref->scope_entry;
     BL_ASSERT(entry);
     switch (entry->kind) {
     case SCOPE_ENTRY_VAR: {
@@ -3138,7 +3138,7 @@ static void DI_init(struct context *ctx)
     tarray_reserve(&ctx->di_incomplete_types, 1024);
 
     const char *  producer    = "blc version " BL_VERSION;
-    Scope *       gscope      = ctx->assembly->gscope;
+    struct scope *gscope      = ctx->assembly->gscope;
     LLVMModuleRef llvm_module = ctx->assembly->llvm.module;
 
     // setup module flags for debug

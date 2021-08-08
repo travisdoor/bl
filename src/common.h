@@ -40,7 +40,7 @@
 #include <tlib/tlib.h>
 
 struct assembly;
-struct Scope;
+struct scope;
 
 // =================================================================================================
 // Clang and gcc
