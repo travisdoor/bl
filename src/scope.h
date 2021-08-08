@@ -33,9 +33,9 @@
 #include "llvm_api.h"
 
 struct Location;
-struct Ast;
+struct bl_ast;
 struct MirInstr;
-struct MirType;
+struct bl_type;
 struct MirFn;
 struct MirVar;
 
@@ -56,7 +56,7 @@ typedef enum ScopeEntryKind {
 } ScopeEntryKind;
 
 typedef union ScopeEntryData {
-    struct MirType *   type;
+    struct bl_type *   type;
     struct MirFn *     fn;
     struct MirVar *    var;
     struct MirMember * member;
@@ -68,7 +68,7 @@ typedef struct ScopeEntry {
     ID *           id;
     ScopeEntryKind kind;
     struct Scope * parent_scope;
-    struct Ast *   node;
+    struct bl_ast *node;
     bool           is_builtin;
     s32            ref_count;
 
@@ -127,7 +127,7 @@ Scope *_scope_create(ScopeArenas *    arenas,
 ScopeEntry *scope_create_entry(ScopeArenas *  arenas,
                                ScopeEntryKind kind,
                                ID *           id,
-                               struct Ast *   node,
+                               struct bl_ast *node,
                                bool           is_builtin);
 
 void scope_insert(Scope *scope, s32 layer_index, ScopeEntry *entry);

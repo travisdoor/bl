@@ -34,7 +34,7 @@
 #define MAX_STR_BUF 256
 #define int_to_void_ptr(i) (void *)((intptr_t)(i))
 
-static INLINE void print_address(Ast *node, FILE *stream)
+static INLINE void print_address(struct bl_ast *node, FILE *stream)
 {
 #if BL_DEBUG
     if (node)
@@ -46,9 +46,9 @@ static INLINE void print_address(Ast *node, FILE *stream)
 #endif
 }
 
-#define print_head(_node, _pad, _stream) _print_head((Ast *)(_node), (_pad), (_stream))
+#define print_head(_node, _pad, _stream) _print_head((struct bl_ast *)(_node), (_pad), (_stream))
 
-static INLINE void _print_head(Ast *node, s32 pad, FILE *stream)
+static INLINE void _print_head(struct bl_ast *node, s32 pad, FILE *stream)
 {
     if (node->location)
         fprintf(stream,
@@ -73,168 +73,169 @@ static INLINE void print_flags(s32 flags, FILE *stream)
     if (IS_FLAG(flags, FLAG_PRIVATE)) fprintf(stream, " #private");
 }
 
-static void print_node(Ast *node, s32 pad, FILE *stream);
-static void print_ublock(Ast *ublock, s32 pad, FILE *stream);
-static void print_load(Ast *load, s32 pad, FILE *stream);
-static void print_import(Ast *import, s32 pad, FILE *stream);
-static void print_link(Ast *link, s32 pad, FILE *stream);
-static void print_private(Ast *private, s32 pad, FILE *stream);
-static void print_scope(Ast *scope, s32 pad, FILE *stream);
-static void print_call_loc(Ast *call_loc, s32 pad, FILE *stream);
-static void print_block(Ast *block, s32 pad, FILE *stream);
-static void print_unrecheable(Ast *unr, s32 pad, FILE *stream);
-static void print_ref(Ast *ref, s32 pad, FILE *stream);
-static void print_type_polymorph(Ast *poly, s32 pad, FILE *stream);
-static void print_type_struct(Ast *strct, s32 pad, FILE *stream);
-static void print_type_slice(Ast *slice, s32 pad, FILE *stream);
-static void print_type_enum(Ast *enm, s32 pad, FILE *stream);
-static void print_type_fn_group(Ast *group, s32 pad, FILE *stream);
-static void print_type_fn(Ast *fn, s32 pad, FILE *stream);
-static void print_stmt_if(Ast *stmt_if, s32 pad, FILE *stream);
-static void print_stmt_switch(Ast *stmt_switch, s32 pad, FILE *stream);
-static void print_stmt_case(Ast *stmt_case, s32 pad, FILE *stream);
-static void print_stmt_loop(Ast *loop, s32 pad, FILE *stream);
-static void print_stmt_break(Ast *br, s32 pad, FILE *stream);
-static void print_stmt_continue(Ast *cnt, s32 pad, FILE *stream);
-static void print_stmt_return(Ast *ret, s32 pad, FILE *stream);
-static void print_stmt_defer(Ast *defer, s32 pad, FILE *stream);
-static void print_decl_entity(Ast *entity, s32 pad, FILE *stream);
-static void print_decl_arg(Ast *arg, s32 pad, FILE *stream);
-static void print_decl_member(Ast *member, s32 pad, FILE *stream);
-static void print_decl_variant(Ast *variant, s32 pad, FILE *stream);
-static void print_bad(Ast *bad, s32 pad, FILE *stream);
-static void print_expr_line(Ast *line, s32 pad, FILE *stream);
-static void print_expr_file(Ast *file, s32 pad, FILE *stream);
-static void print_expr_unary(Ast *unary, s32 pad, FILE *stream);
-static void print_expr_cast(Ast *cast, s32 pad, FILE *stream);
-static void print_expr_addrof(Ast *addrof, s32 pad, FILE *stream);
-static void print_expr_sizeof(Ast *szof, s32 pad, FILE *stream);
-static void print_expr_type_info(Ast *type_info, s32 pad, FILE *stream);
-static void print_expr_test_cases(Ast *type_info, s32 pad, FILE *stream);
-static void print_expr_deref(Ast *deref, s32 pad, FILE *stream);
-static void print_expr_binop(Ast *binop, s32 pad, FILE *stream);
-static void print_expr_type(Ast *expr_type, s32 pad, FILE *stream);
-static void print_expr_compound(Ast *expr_compound, s32 pad, FILE *stream);
-static void print_expr_lit_int(Ast *lit, s32 pad, FILE *stream);
-static void print_expr_lit_float(Ast *lit, s32 pad, FILE *stream);
-static void print_expr_lit_double(Ast *lit, s32 pad, FILE *stream);
-static void print_expr_lit_char(Ast *lit, s32 pad, FILE *stream);
-static void print_expr_lit_bool(Ast *lit, s32 pad, FILE *stream);
-static void print_expr_lit_string(Ast *lit, s32 pad, FILE *stream);
-static void print_expr_lit_fn(Ast *fn, s32 pad, FILE *stream);
-static void print_expr_lit_fn_group(Ast *group, s32 pad, FILE *stream);
-static void print_expr_call(Ast *call, s32 pad, FILE *stream);
-static void print_expr_elem(Ast *elem, s32 pad, FILE *stream);
+static void print_node(struct bl_ast *node, s32 pad, FILE *stream);
+static void print_ublock(struct bl_ast *ublock, s32 pad, FILE *stream);
+static void print_load(struct bl_ast *load, s32 pad, FILE *stream);
+static void print_import(struct bl_ast *import, s32 pad, FILE *stream);
+static void print_link(struct bl_ast *link, s32 pad, FILE *stream);
+static void print_private(struct bl_ast *private, s32 pad, FILE *stream);
+static void print_scope(struct bl_ast *scope, s32 pad, FILE *stream);
+static void print_call_loc(struct bl_ast *call_loc, s32 pad, FILE *stream);
+static void print_block(struct bl_ast *block, s32 pad, FILE *stream);
+static void print_unrecheable(struct bl_ast *unr, s32 pad, FILE *stream);
+static void print_ref(struct bl_ast *ref, s32 pad, FILE *stream);
+static void print_type_polymorph(struct bl_ast *poly, s32 pad, FILE *stream);
+static void print_type_struct(struct bl_ast *strct, s32 pad, FILE *stream);
+static void print_type_slice(struct bl_ast *slice, s32 pad, FILE *stream);
+static void print_type_enum(struct bl_ast *enm, s32 pad, FILE *stream);
+static void print_type_fn_group(struct bl_ast *group, s32 pad, FILE *stream);
+static void print_type_fn(struct bl_ast *fn, s32 pad, FILE *stream);
+static void print_stmt_if(struct bl_ast *stmt_if, s32 pad, FILE *stream);
+static void print_stmt_switch(struct bl_ast *stmt_switch, s32 pad, FILE *stream);
+static void print_stmt_case(struct bl_ast *stmt_case, s32 pad, FILE *stream);
+static void print_stmt_loop(struct bl_ast *loop, s32 pad, FILE *stream);
+static void print_stmt_break(struct bl_ast *br, s32 pad, FILE *stream);
+static void print_stmt_continue(struct bl_ast *cnt, s32 pad, FILE *stream);
+static void print_stmt_return(struct bl_ast *ret, s32 pad, FILE *stream);
+static void print_stmt_defer(struct bl_ast *defer, s32 pad, FILE *stream);
+static void print_decl_entity(struct bl_ast *entity, s32 pad, FILE *stream);
+static void print_decl_arg(struct bl_ast *arg, s32 pad, FILE *stream);
+static void print_decl_member(struct bl_ast *member, s32 pad, FILE *stream);
+static void print_decl_variant(struct bl_ast *variant, s32 pad, FILE *stream);
+static void print_bad(struct bl_ast *bad, s32 pad, FILE *stream);
+static void print_expr_line(struct bl_ast *line, s32 pad, FILE *stream);
+static void print_expr_file(struct bl_ast *file, s32 pad, FILE *stream);
+static void print_expr_unary(struct bl_ast *unary, s32 pad, FILE *stream);
+static void print_expr_cast(struct bl_ast *cast, s32 pad, FILE *stream);
+static void print_expr_addrof(struct bl_ast *addrof, s32 pad, FILE *stream);
+static void print_expr_sizeof(struct bl_ast *szof, s32 pad, FILE *stream);
+static void print_expr_type_info(struct bl_ast *type_info, s32 pad, FILE *stream);
+static void print_expr_test_cases(struct bl_ast *type_info, s32 pad, FILE *stream);
+static void print_expr_deref(struct bl_ast *deref, s32 pad, FILE *stream);
+static void print_expr_binop(struct bl_ast *binop, s32 pad, FILE *stream);
+static void print_expr_type(struct bl_ast *expr_type, s32 pad, FILE *stream);
+static void print_expr_compound(struct bl_ast *expr_compound, s32 pad, FILE *stream);
+static void print_expr_lit_int(struct bl_ast *lit, s32 pad, FILE *stream);
+static void print_expr_lit_float(struct bl_ast *lit, s32 pad, FILE *stream);
+static void print_expr_lit_double(struct bl_ast *lit, s32 pad, FILE *stream);
+static void print_expr_lit_char(struct bl_ast *lit, s32 pad, FILE *stream);
+static void print_expr_lit_bool(struct bl_ast *lit, s32 pad, FILE *stream);
+static void print_expr_lit_string(struct bl_ast *lit, s32 pad, FILE *stream);
+static void print_expr_lit_fn(struct bl_ast *fn, s32 pad, FILE *stream);
+static void print_expr_lit_fn_group(struct bl_ast *group, s32 pad, FILE *stream);
+static void print_expr_call(struct bl_ast *call, s32 pad, FILE *stream);
+static void print_expr_elem(struct bl_ast *elem, s32 pad, FILE *stream);
 
 // impl
-void print_ublock(Ast *ublock, s32 pad, FILE *stream)
+void print_ublock(struct bl_ast *ublock, s32 pad, FILE *stream)
 {
     print_head(ublock, pad, stream);
     fprintf(stream, "%s", ublock->data.ublock.unit->name);
 
-    Ast *tmp = NULL;
-    TARRAY_FOREACH(Ast *, ublock->data.ublock.nodes, tmp) print_node(tmp, pad + 1, stream);
+    struct bl_ast *tmp = NULL;
+    TARRAY_FOREACH(struct bl_ast *, ublock->data.ublock.nodes, tmp)
+    print_node(tmp, pad + 1, stream);
 }
 
-void print_block(Ast *block, s32 pad, FILE *stream)
+void print_block(struct bl_ast *block, s32 pad, FILE *stream)
 {
     print_head(block, pad, stream);
-    Ast *tmp = NULL;
+    struct bl_ast *tmp = NULL;
     TSA_FOREACH(block->data.block.nodes, tmp) print_node(tmp, pad + 1, stream);
 }
 
-void print_load(Ast *load, s32 pad, FILE *stream)
+void print_load(struct bl_ast *load, s32 pad, FILE *stream)
 {
     print_head(load, pad, stream);
     fprintf(stream, "%s", load->data.load.filepath);
 }
 
-void print_import(Ast *import, s32 pad, FILE *stream)
+void print_import(struct bl_ast *import, s32 pad, FILE *stream)
 {
     print_head(import, pad, stream);
     fprintf(stream, "%s", import->data.load.filepath);
 }
 
-void print_link(Ast *link, s32 pad, FILE *stream)
+void print_link(struct bl_ast *link, s32 pad, FILE *stream)
 {
     print_head(link, pad, stream);
     fprintf(stream, "%s", link->data.link.lib);
 }
 
-void print_private(Ast *private, s32 pad, FILE *stream)
+void print_private(struct bl_ast *private, s32 pad, FILE *stream)
 {
     print_head(private, pad, stream);
 }
 
-void print_scope(Ast *scope, s32 pad, FILE *stream)
+void print_scope(struct bl_ast *scope, s32 pad, FILE *stream)
 {
     print_head(scope, pad, stream);
-    Ast *ident = scope->data.scope.ident;
+    struct bl_ast *ident = scope->data.scope.ident;
     if (ident) fprintf(stream, "'%s' ", ident->data.ident.id.str);
 }
 
-void print_call_loc(Ast *call_loc, s32 pad, FILE *stream)
+void print_call_loc(struct bl_ast *call_loc, s32 pad, FILE *stream)
 {
     print_head(call_loc, pad, stream);
 }
 
-void print_unrecheable(Ast *unr, s32 pad, FILE *stream)
+void print_unrecheable(struct bl_ast *unr, s32 pad, FILE *stream)
 {
     print_head(unr, pad, stream);
 }
 
-void print_type_polymorph(Ast *poly, s32 pad, FILE *stream)
+void print_type_polymorph(struct bl_ast *poly, s32 pad, FILE *stream)
 {
     print_head(poly, pad, stream);
-    Ast *ident = poly->data.type_poly.ident;
+    struct bl_ast *ident = poly->data.type_poly.ident;
     if (ident) fprintf(stream, "'%s' ", ident->data.ident.id.str);
 }
 
-void print_type_struct(Ast *strct, s32 pad, FILE *stream)
+void print_type_struct(struct bl_ast *strct, s32 pad, FILE *stream)
 {
     print_head(strct, pad, stream);
 
-    Ast *node;
+    struct bl_ast *node;
     TSA_FOREACH(strct->data.type_strct.members, node)
     {
         print_node(node, pad + 1, stream);
     }
 }
 
-void print_type_slice(Ast *slice, s32 pad, FILE *stream)
+void print_type_slice(struct bl_ast *slice, s32 pad, FILE *stream)
 {
     print_head(slice, pad, stream);
     print_node(slice->data.type_slice.elem_type, pad + 1, stream);
 }
 
-void print_ref(Ast *ref, s32 pad, FILE *stream)
+void print_ref(struct bl_ast *ref, s32 pad, FILE *stream)
 {
     print_head(ref, pad, stream);
 
-    Ast *ident = ref->data.ref.ident;
+    struct bl_ast *ident = ref->data.ref.ident;
     if (ident) fprintf(stream, "'%s' ", ident->data.ident.id.str);
 
-    Ast *next = ref->data.ref.next;
+    struct bl_ast *next = ref->data.ref.next;
     if (next) print_node(next, pad + 1, stream);
 }
 
-void print_type_fn_group(Ast *group, s32 pad, FILE *stream)
+void print_type_fn_group(struct bl_ast *group, s32 pad, FILE *stream)
 {
     print_head(group, pad, stream);
 
-    Ast *node;
+    struct bl_ast *node;
     TSA_FOREACH(group->data.type_fn_group.variants, node)
     {
         print_node(node, pad + 1, stream);
     }
 }
 
-void print_type_fn(Ast *fn, s32 pad, FILE *stream)
+void print_type_fn(struct bl_ast *fn, s32 pad, FILE *stream)
 {
     print_head(fn, pad, stream);
     TSmallArray_AstPtr *args = fn->data.type_fn.args;
     if (args) {
-        Ast *node;
+        struct bl_ast *node;
         TSA_FOREACH(args, node)
         {
             print_node(node, pad + 1, stream);
@@ -243,18 +244,18 @@ void print_type_fn(Ast *fn, s32 pad, FILE *stream)
     print_node(fn->data.type_fn.ret_type, pad + 1, stream);
 }
 
-void print_type_enum(Ast *enm, s32 pad, FILE *stream)
+void print_type_enum(struct bl_ast *enm, s32 pad, FILE *stream)
 {
     print_head(enm, pad, stream);
 
-    Ast *node;
+    struct bl_ast *node;
     TSA_FOREACH(enm->data.type_enm.variants, node)
     {
         print_node(node, pad + 1, stream);
     }
 }
 
-void print_stmt_if(Ast *stmt_if, s32 pad, FILE *stream)
+void print_stmt_if(struct bl_ast *stmt_if, s32 pad, FILE *stream)
 {
     print_head(stmt_if, pad, stream);
     print_node(stmt_if->data.stmt_if.test, pad + 1, stream);
@@ -262,13 +263,13 @@ void print_stmt_if(Ast *stmt_if, s32 pad, FILE *stream)
     print_node(stmt_if->data.stmt_if.false_stmt, pad + 1, stream);
 }
 
-void print_stmt_switch(Ast *stmt_switch, s32 pad, FILE *stream)
+void print_stmt_switch(struct bl_ast *stmt_switch, s32 pad, FILE *stream)
 {
     print_head(stmt_switch, pad, stream);
     print_node(stmt_switch->data.stmt_switch.expr, pad + 1, stream);
 
     TSmallArray_AstPtr *cases = stmt_switch->data.stmt_switch.cases;
-    Ast *               stmt_case;
+    struct bl_ast *     stmt_case;
 
     TSA_FOREACH(cases, stmt_case)
     {
@@ -276,14 +277,14 @@ void print_stmt_switch(Ast *stmt_switch, s32 pad, FILE *stream)
     }
 }
 
-void print_stmt_case(Ast *stmt_case, s32 pad, FILE *stream)
+void print_stmt_case(struct bl_ast *stmt_case, s32 pad, FILE *stream)
 {
     print_head(stmt_case, pad, stream);
     if (stmt_case->data.stmt_case.is_default) fprintf(stream, "default");
 
     if (stmt_case->data.stmt_case.exprs) {
         TSmallArray_AstPtr *exprs = stmt_case->data.stmt_case.exprs;
-        Ast *               expr;
+        struct bl_ast *     expr;
 
         TSA_FOREACH(exprs, expr)
         {
@@ -296,7 +297,7 @@ void print_stmt_case(Ast *stmt_case, s32 pad, FILE *stream)
     }
 }
 
-void print_stmt_loop(Ast *loop, s32 pad, FILE *stream)
+void print_stmt_loop(struct bl_ast *loop, s32 pad, FILE *stream)
 {
     print_head(loop, pad, stream);
     print_node(loop->data.stmt_loop.init, pad + 1, stream);
@@ -305,22 +306,22 @@ void print_stmt_loop(Ast *loop, s32 pad, FILE *stream)
     print_node(loop->data.stmt_loop.block, pad + 1, stream);
 }
 
-void print_stmt_break(Ast *br, s32 pad, FILE *stream)
+void print_stmt_break(struct bl_ast *br, s32 pad, FILE *stream)
 {
     print_head(br, pad, stream);
 }
 
-void print_stmt_continue(Ast *cnt, s32 pad, FILE *stream)
+void print_stmt_continue(struct bl_ast *cnt, s32 pad, FILE *stream)
 {
     print_head(cnt, pad, stream);
 }
 
-void print_stmt_return(Ast *ret, s32 pad, FILE *stream)
+void print_stmt_return(struct bl_ast *ret, s32 pad, FILE *stream)
 {
     print_head(ret, pad, stream);
     TSmallArray_AstPtr *exprs = ret->data.stmt_return.exprs;
     if (exprs) {
-        Ast *value;
+        struct bl_ast *value;
         TSA_FOREACH(exprs, value)
         {
             print_node(value, pad + 1, stream);
@@ -328,13 +329,13 @@ void print_stmt_return(Ast *ret, s32 pad, FILE *stream)
     }
 }
 
-void print_stmt_defer(Ast *defer, s32 pad, FILE *stream)
+void print_stmt_defer(struct bl_ast *defer, s32 pad, FILE *stream)
 {
     print_head(defer, pad, stream);
     print_node(defer->data.stmt_defer.expr, pad + 1, stream);
 }
 
-void print_decl_entity(Ast *entity, s32 pad, FILE *stream)
+void print_decl_entity(struct bl_ast *entity, s32 pad, FILE *stream)
 {
     print_head(entity, pad, stream);
 
@@ -344,37 +345,37 @@ void print_decl_entity(Ast *entity, s32 pad, FILE *stream)
             entity->data.decl_entity.mut ? "mutable" : "immutable");
 
     print_flags(entity->data.decl_entity.flags, stream);
-    print_node((Ast *)entity->data.decl.type, pad + 1, stream);
-    print_node((Ast *)entity->data.decl_entity.value, pad + 1, stream);
+    print_node((struct bl_ast *)entity->data.decl.type, pad + 1, stream);
+    print_node((struct bl_ast *)entity->data.decl_entity.value, pad + 1, stream);
 }
 
-void print_decl_arg(Ast *arg, s32 pad, FILE *stream)
+void print_decl_arg(struct bl_ast *arg, s32 pad, FILE *stream)
 {
     print_head(arg, pad, stream);
     fprintf(stream, "'%s'", arg->data.decl.name->data.ident.id.str);
     print_node(arg->data.decl.type, pad + 1, stream);
 }
 
-void print_decl_member(Ast *member, s32 pad, FILE *stream)
+void print_decl_member(struct bl_ast *member, s32 pad, FILE *stream)
 {
     print_head(member, pad, stream);
     fprintf(stream, "'%s'", member->data.decl.name->data.ident.id.str);
     print_node(member->data.decl.type, pad + 1, stream);
 }
 
-void print_decl_variant(Ast *variant, s32 pad, FILE *stream)
+void print_decl_variant(struct bl_ast *variant, s32 pad, FILE *stream)
 {
     print_head(variant, pad, stream);
     fprintf(stream, "'%s'", variant->data.decl.name->data.ident.id.str);
     print_node(variant->data.decl.type, pad + 1, stream);
 }
 
-void print_bad(Ast *bad, s32 pad, FILE *stream)
+void print_bad(struct bl_ast *bad, s32 pad, FILE *stream)
 {
     print_head(bad, pad, stream);
 }
 
-void print_expr_cast(Ast *cast, s32 pad, FILE *stream)
+void print_expr_cast(struct bl_ast *cast, s32 pad, FILE *stream)
 {
     print_head(cast, pad, stream);
     if (cast->data.expr_cast.auto_cast) {
@@ -385,17 +386,17 @@ void print_expr_cast(Ast *cast, s32 pad, FILE *stream)
     print_node(cast->data.expr_cast.next, pad + 1, stream);
 }
 
-void print_expr_line(Ast *line, s32 pad, FILE *stream)
+void print_expr_line(struct bl_ast *line, s32 pad, FILE *stream)
 {
     print_head(line, pad, stream);
 }
 
-void print_expr_file(Ast *file, s32 pad, FILE *stream)
+void print_expr_file(struct bl_ast *file, s32 pad, FILE *stream)
 {
     print_head(file, pad, stream);
 }
 
-void print_expr_unary(Ast *unary, s32 pad, FILE *stream)
+void print_expr_unary(struct bl_ast *unary, s32 pad, FILE *stream)
 {
     print_head(unary, pad, stream);
 
@@ -422,43 +423,43 @@ void print_expr_unary(Ast *unary, s32 pad, FILE *stream)
     print_node(unary->data.expr_unary.next, pad + 1, stream);
 }
 
-void print_expr_addrof(Ast *addrof, s32 pad, FILE *stream)
+void print_expr_addrof(struct bl_ast *addrof, s32 pad, FILE *stream)
 {
     print_head(addrof, pad, stream);
     print_node(addrof->data.expr_addrof.next, pad + 1, stream);
 }
 
-void print_expr_sizeof(Ast *szof, s32 pad, FILE *stream)
+void print_expr_sizeof(struct bl_ast *szof, s32 pad, FILE *stream)
 {
     print_head(szof, pad, stream);
     print_node(szof->data.expr_sizeof.node, pad + 1, stream);
 }
 
-void print_expr_type_info(Ast *type_info, s32 pad, FILE *stream)
+void print_expr_type_info(struct bl_ast *type_info, s32 pad, FILE *stream)
 {
     print_head(type_info, pad, stream);
     print_node(type_info->data.expr_type_info.node, pad + 1, stream);
 }
 
-void print_expr_test_cases(Ast *type_info, s32 pad, FILE *stream)
+void print_expr_test_cases(struct bl_ast *type_info, s32 pad, FILE *stream)
 {
     print_head(type_info, pad, stream);
 }
 
-void print_expr_deref(Ast *deref, s32 pad, FILE *stream)
+void print_expr_deref(struct bl_ast *deref, s32 pad, FILE *stream)
 {
     print_head(deref, pad, stream);
     print_node(deref->data.expr_deref.next, pad + 1, stream);
 }
 
-void print_expr_elem(Ast *elem, s32 pad, FILE *stream)
+void print_expr_elem(struct bl_ast *elem, s32 pad, FILE *stream)
 {
     print_head(elem, pad, stream);
     print_node(elem->data.expr_elem.index, pad + 1, stream);
     print_node(elem->data.expr_elem.next, pad + 1, stream);
 }
 
-void print_expr_binop(Ast *binop, s32 pad, FILE *stream)
+void print_expr_binop(struct bl_ast *binop, s32 pad, FILE *stream)
 {
     print_head(binop, pad, stream);
     fprintf(stream, "'%s' ", ast_binop_to_str(binop->data.expr_binop.kind));
@@ -466,43 +467,43 @@ void print_expr_binop(Ast *binop, s32 pad, FILE *stream)
     print_node(binop->data.expr_binop.rhs, pad + 1, stream);
 }
 
-void print_expr_type(Ast *expr_type, s32 pad, FILE *stream)
+void print_expr_type(struct bl_ast *expr_type, s32 pad, FILE *stream)
 {
     print_head(expr_type, pad, stream);
     print_node(expr_type->data.expr_type.type, pad + 1, stream);
 }
 
-void print_expr_lit_int(Ast *lit, s32 pad, FILE *stream)
+void print_expr_lit_int(struct bl_ast *lit, s32 pad, FILE *stream)
 {
     print_head(lit, pad, stream);
     fprintf(stream, "%llu ", (long long unsigned)lit->data.expr_integer.val);
 }
 
-void print_expr_lit_float(Ast *lit, s32 pad, FILE *stream)
+void print_expr_lit_float(struct bl_ast *lit, s32 pad, FILE *stream)
 {
     print_head(lit, pad, stream);
     fprintf(stream, "%f ", lit->data.expr_float.val);
 }
 
-void print_expr_lit_double(Ast *lit, s32 pad, FILE *stream)
+void print_expr_lit_double(struct bl_ast *lit, s32 pad, FILE *stream)
 {
     print_head(lit, pad, stream);
     fprintf(stream, "%f ", lit->data.expr_double.val);
 }
 
-void print_expr_lit_char(Ast *lit, s32 pad, FILE *stream)
+void print_expr_lit_char(struct bl_ast *lit, s32 pad, FILE *stream)
 {
     print_head(lit, pad, stream);
     fprintf(stream, "%c ", lit->data.expr_character.val);
 }
 
-void print_expr_lit_bool(Ast *lit, s32 pad, FILE *stream)
+void print_expr_lit_bool(struct bl_ast *lit, s32 pad, FILE *stream)
 {
     print_head(lit, pad, stream);
     fprintf(stream, "%s ", lit->data.expr_boolean.val ? "true" : "false");
 }
 
-void print_expr_lit_string(Ast *lit, s32 pad, FILE *stream)
+void print_expr_lit_string(struct bl_ast *lit, s32 pad, FILE *stream)
 {
     print_head(lit, pad, stream);
 
@@ -513,42 +514,42 @@ void print_expr_lit_string(Ast *lit, s32 pad, FILE *stream)
     free(tmp);
 }
 
-void print_expr_lit_fn(Ast *fn, s32 pad, FILE *stream)
+void print_expr_lit_fn(struct bl_ast *fn, s32 pad, FILE *stream)
 {
     print_head(fn, pad, stream);
     print_node(fn->data.expr_fn.type, pad + 1, stream);
     print_node(fn->data.expr_fn.block, pad + 1, stream);
 }
 
-void print_expr_lit_fn_group(Ast *group, s32 pad, FILE *stream)
+void print_expr_lit_fn_group(struct bl_ast *group, s32 pad, FILE *stream)
 {
     print_head(group, pad, stream);
-    Ast *tmp = NULL;
+    struct bl_ast *tmp = NULL;
     TSA_FOREACH(group->data.expr_fn_group.variants, tmp)
     {
         print_node(tmp, pad + 1, stream);
     }
 }
 
-void print_expr_call(Ast *call, s32 pad, FILE *stream)
+void print_expr_call(struct bl_ast *call, s32 pad, FILE *stream)
 {
     print_head(call, pad, stream);
 
     print_node(call->data.expr_call.ref, pad + 1, stream);
 
     if (call->data.expr_call.args) {
-        Ast *arg;
+        struct bl_ast *arg;
         TSA_FOREACH(call->data.expr_call.args, arg) print_node(arg, pad + 1, stream);
     }
 }
 
-void print_expr_compound(Ast *expr_compound, s32 pad, FILE *stream)
+void print_expr_compound(struct bl_ast *expr_compound, s32 pad, FILE *stream)
 {
     print_head(expr_compound, pad, stream);
 
     TSmallArray_AstPtr *exprs = expr_compound->data.expr_compound.values;
     if (exprs) {
-        Ast *value;
+        struct bl_ast *value;
         TSA_FOREACH(exprs, value)
         {
             print_node(value, pad + 1, stream);
@@ -556,7 +557,7 @@ void print_expr_compound(Ast *expr_compound, s32 pad, FILE *stream)
     }
 }
 
-void print_node(Ast *node, s32 pad, FILE *stream)
+void print_node(struct bl_ast *node, s32 pad, FILE *stream)
 {
     if (!node) return;
     switch (node->kind) {

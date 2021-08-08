@@ -39,7 +39,7 @@ struct Token;
 typedef struct Unit {
     u64             hash;
     Tokens          tokens;        // Unit tokens as lexer output.
-    Ast *           ast;           // Abstract Syntax Tree
+    struct bl_ast * ast;           // Abstract Syntax Tree
     struct Scope *  private_scope; // Unit private scope (#private).
     char *          filename;      // Loaded source file name.
     char *          filepath;      // Loaded source file name with path.

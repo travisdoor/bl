@@ -107,8 +107,8 @@ void vm_build_entry_run(Assembly *assembly)
 
 void vm_entry_run(Assembly *assembly)
 {
-    VM *   vm    = &assembly->vm;
-    MirFn *entry = assembly->vm_run.entry;
+    VM *          vm     = &assembly->vm;
+    MirFn *       entry  = assembly->vm_run.entry;
     const Target *target = assembly->target;
     builder_note("\nExecuting 'main' in compile time...");
     if (!entry) {
@@ -116,7 +116,7 @@ void vm_entry_run(Assembly *assembly)
         assembly->vm_run.last_execution_status = EXIT_FAILURE;
         return;
     }
-    MirType *fn_type = entry->type;
+    struct bl_type *fn_type = entry->type;
     BL_ASSERT(fn_type && fn_type->kind == MIR_TYPE_FN);
     BL_ASSERT(!fn_type->data.fn.args);
     if (target->vm.argc > 0) {
@@ -127,8 +127,8 @@ void vm_entry_run(Assembly *assembly)
     s32        result  = EXIT_SUCCESS;
     if (vm_execute_fn(vm, assembly, entry, &ret_ptr)) {
         if (ret_ptr) {
-            MirType *ret_type = fn_type->data.fn.ret_type;
-            result            = (s32)vm_read_int(ret_type, ret_ptr);
+            struct bl_type *ret_type = fn_type->data.fn.ret_type;
+            result                   = (s32)vm_read_int(ret_type, ret_ptr);
             builder_note("Execution finished with state: %d\n", result);
         } else {
             builder_note("Execution finished without errors");

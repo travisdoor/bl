@@ -64,7 +64,7 @@ LLVMAttributeRef  llvm_create_attribute(LLVMContextRef context_ref, LLVMAttribut
 LLVMAttributeRef
 llvm_create_attribute_int(LLVMContextRef context_ref, LLVMAttributeKind kind, s32 v);
 LLVMAttributeRef
-             llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef v);
+llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef v);
 LLVMValueRef llvm_const_string_in_context(LLVMContextRef context_ref,
                                           LLVMTypeRef    t,
                                           const char *   str,

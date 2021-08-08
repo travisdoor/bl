@@ -31,7 +31,7 @@
 
 #define ARENA_CHUNK_COUNT 256
 
-static void node_dtor(Ast *node)
+static void node_dtor(struct bl_ast *node)
 {
     switch (node->kind) {
     case AST_UBLOCK:
@@ -47,18 +47,19 @@ static void small_array_dtor(TSmallArrayAny *arr)
     tsa_terminate(arr);
 }
 
-Ast *ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope)
+struct bl_ast *
+ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct Scope *parent_scope)
 {
-    Ast *node         = arena_alloc(arena);
-    node->kind        = c;
-    node->owner_scope = parent_scope;
-    node->location    = tok ? &tok->location : NULL;
+    struct bl_ast *node = arena_alloc(arena);
+    node->kind          = c;
+    node->owner_scope   = parent_scope;
+    node->location      = tok ? &tok->location : NULL;
 #if BL_DEBUG
     static u64 serial = 0;
     node->_serial     = serial++;
 #if defined(TRACY_ENABLE)
     TracyCPlot("AST", serial);
-    BL_TRACY_MESSAGE("AST_CREATE", "size: %lluB", (unsigned long long)sizeof(Ast));
+    BL_TRACY_MESSAGE("AST_CREATE", "size: %lluB", (unsigned long long)sizeof(struct bl_ast));
 #endif
 #endif
     return node;
@@ -67,7 +68,11 @@ Ast *ast_create_node(Arena *arena, AstKind c, struct Token *tok, struct Scope *p
 // public
 void ast_arena_init(Arena *arena)
 {
-    arena_init(arena, sizeof(Ast), alignment_of(Ast), ARENA_CHUNK_COUNT, (ArenaElemDtor)node_dtor);
+    arena_init(arena,
+               sizeof(struct bl_ast),
+               alignment_of(struct bl_ast),
+               ARENA_CHUNK_COUNT,
+               (ArenaElemDtor)node_dtor);
 }
 
 void ast_arena_terminate(Arena *arena)
@@ -75,7 +80,7 @@ void ast_arena_terminate(Arena *arena)
     arena_terminate(arena);
 }
 
-const char *ast_get_name(const Ast *n)
+const char *ast_get_name(const struct bl_ast *n)
 {
     BL_ASSERT(n);
     switch (n->kind) {

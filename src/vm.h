@@ -34,7 +34,7 @@
 // Stack data manipulation helper macros.
 #define VM_STACK_PTR_DEREF(ptr) ((VMStackPtr) * ((uintptr_t *)(ptr)))
 
-struct MirType;
+struct bl_type;
 struct MirInstr;
 struct MirInstrBlock;
 struct MirInstrCall;
@@ -80,8 +80,8 @@ void vm_provide_command_line_arguments(VM *vm, s32 argc, char *argv[]);
 void vm_override_var(VM *vm, struct MirVar *var, u64 value);
 void vm_do_cast(VMStackPtr      dest,
                 VMStackPtr      src,
-                struct MirType *dest_type,
-                struct MirType *src_type,
+                struct bl_type *dest_type,
+                struct bl_type *src_type,
                 s32             op);
 
 /// Allocates global variable.
@@ -94,7 +94,7 @@ void vm_do_cast(VMStackPtr      dest,
 VMStackPtr vm_alloc_global(VM *vm, struct Assembly *assembly, struct MirVar *var);
 
 /// Allocate raw memory on the stack to hold sizeof(type) value.
-VMStackPtr vm_alloc_raw(VM *vm, struct Assembly *assembly, struct MirType *type);
+VMStackPtr vm_alloc_raw(VM *vm, struct Assembly *assembly, struct bl_type *type);
 
 /// Return pointer to constant or stack allocated variable.
 VMStackPtr vm_read_var(VM *vm, const struct MirVar *var);
@@ -102,22 +102,22 @@ VMStackPtr vm_read_var(VM *vm, const struct MirVar *var);
 #define vm_read_as(T, src) (*((T *)(src)))
 #define vm_write_as(T, dest, src) (*((T *)(dest)) = (src))
 
-u64        vm_read_int(const struct MirType *type, VMStackPtr src);
-f64        vm_read_double(const struct MirType *type, VMStackPtr src);
-f32        vm_read_float(const struct MirType *type, VMStackPtr src);
-VMStackPtr vm_read_ptr(const struct MirType *type, VMStackPtr src);
-void       vm_write_int(const struct MirType *type, VMStackPtr dest, u64 i);
-void       vm_write_double(const struct MirType *type, VMStackPtr dest, f64 i);
-void       vm_write_float(const struct MirType *type, VMStackPtr dest, f32 i);
-void       vm_write_ptr(const struct MirType *type, VMStackPtr dest, VMStackPtr ptr);
-void vm_write_string(VM *vm, const struct MirType *type, VMStackPtr dest, const char *str, s64 len);
-void vm_write_slice(VM *vm, const struct MirType *type, VMStackPtr dest, void *ptr, s64 len);
-ptrdiff_t  vm_get_struct_elem_offset(struct Assembly *assembly, const struct MirType *type, u32 i);
-ptrdiff_t  vm_get_array_elem_offset(const struct MirType *type, u32 i);
+u64        vm_read_int(const struct bl_type *type, VMStackPtr src);
+f64        vm_read_double(const struct bl_type *type, VMStackPtr src);
+f32        vm_read_float(const struct bl_type *type, VMStackPtr src);
+VMStackPtr vm_read_ptr(const struct bl_type *type, VMStackPtr src);
+void       vm_write_int(const struct bl_type *type, VMStackPtr dest, u64 i);
+void       vm_write_double(const struct bl_type *type, VMStackPtr dest, f64 i);
+void       vm_write_float(const struct bl_type *type, VMStackPtr dest, f32 i);
+void       vm_write_ptr(const struct bl_type *type, VMStackPtr dest, VMStackPtr ptr);
+void vm_write_string(VM *vm, const struct bl_type *type, VMStackPtr dest, const char *str, s64 len);
+void vm_write_slice(VM *vm, const struct bl_type *type, VMStackPtr dest, void *ptr, s64 len);
+ptrdiff_t  vm_get_struct_elem_offset(struct Assembly *assembly, const struct bl_type *type, u32 i);
+ptrdiff_t  vm_get_array_elem_offset(const struct bl_type *type, u32 i);
 VMStackPtr vm_get_struct_elem_ptr(struct Assembly *     assembly,
-                                  const struct MirType *type,
+                                  const struct bl_type *type,
                                   VMStackPtr            ptr,
                                   u32                   i);
-VMStackPtr vm_get_array_elem_ptr(const struct MirType *type, VMStackPtr ptr, u32 i);
+VMStackPtr vm_get_array_elem_ptr(const struct bl_type *type, VMStackPtr ptr, u32 i);
 
 #endif

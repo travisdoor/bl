@@ -26,8 +26,8 @@
 // SOFTWARE.
 // =================================================================================================
 
-#include "common.h"
 #include "builder.h"
+#include "common.h"
 
 typedef struct {
     Tokens *  tokens;

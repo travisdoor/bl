@@ -27,9 +27,9 @@
 // =================================================================================================
 
 #include "bldebug.h"
+#include "builder.h"
 #include "error.h"
 #include "llvm_api.h"
-#include "builder.h"
 
 void ir_opt_run(Assembly *assembly)
 {
