@@ -150,7 +150,7 @@ static void _dyncall_generate_signature(VM *vm, struct mir_type *type);
 static const char *dyncall_generate_signature(VM *vm, struct mir_type *type);
 static DCCallback *dyncall_fetch_callback(VM *vm, struct mir_fn *fn);
 static void        dyncall_push_arg(VM *vm, VMStackPtr val_ptr, struct mir_type *type);
-static bool        execute_fn_top_level(VM *vm, MirInstr *call, VMStackPtr *out_ptr);
+static bool        execute_fn_top_level(VM *vm, struct mir_instr *call, VMStackPtr *out_ptr);
 static bool        execute_fn_impl_top_level(VM *                        vm,
                                              struct mir_fn *             fn,
                                              TSmallArray_ConstExprValue *args,
@@ -158,52 +158,52 @@ static bool        execute_fn_impl_top_level(VM *                        vm,
 
 static bool _execute_fn_top_level(VM *                        vm,
                                   struct mir_fn *             fn,
-                                  MirInstr *                  call,       // Optional
+                                  struct mir_instr *          call,       // Optional
                                   TSmallArray_ConstExprValue *arg_values, // Optional
                                   VMStackPtr *                out_ptr     // Optional
 );
 
-static void interp_instr(VM *vm, MirInstr *instr);
-static void interp_extern_call(VM *vm, struct mir_fn *fn, MirInstrCall *call);
-static void interp_instr_toany(VM *vm, MirInstrToAny *toany);
-static void interp_instr_unreachable(VM *vm, MirInstrUnreachable *unr);
-static void interp_instr_phi(VM *vm, MirInstrPhi *phi);
-static void interp_instr_cast(VM *vm, MirInstrCast *cast);
-static void interp_instr_addrof(VM *vm, MirInstrAddrOf *addrof);
-static void interp_instr_br(VM *vm, MirInstrBr *br);
-static void interp_instr_switch(VM *vm, MirInstrSwitch *sw);
-static void interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr);
-static void interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr);
-static void interp_instr_unroll(VM *vm, MirInstrUnroll *unroll);
-static void interp_instr_arg(VM *vm, MirInstrArg *arg);
-static void interp_instr_cond_br(VM *vm, MirInstrCondBr *br);
-static void interp_instr_load(VM *vm, MirInstrLoad *load);
-static void interp_instr_store(VM *vm, MirInstrStore *store);
-static void interp_instr_binop(VM *vm, MirInstrBinop *binop);
-static void interp_instr_unop(VM *vm, MirInstrUnop *unop);
-static void interp_instr_call(VM *vm, MirInstrCall *call);
-static void interp_instr_ret(VM *vm, MirInstrRet *ret);
-static void interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *init);
-static void interp_instr_vargs(VM *vm, MirInstrVArgs *vargs);
-static void interp_instr_decl_var(VM *vm, MirInstrDeclVar *decl);
-static void interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref);
-static void interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref);
-static void eval_instr(VM *vm, MirInstr *instr);
-static void eval_instr_type_info(VM *vm, MirInstrTypeInfo *type_info);
-static void eval_instr_call_loc(VM *vm, MirInstrCallLoc *loc);
-static void eval_instr_test_cases(VM *vm, MirInstrTestCases *tc);
-static void eval_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr);
-static void eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr);
-static void eval_instr_decl_var(VM *vm, MirInstrDeclVar *decl_var);
-static void eval_instr_decl_ref(VM *vm, MirInstrDeclRef *decl_ref);
-static void eval_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *decl_ref);
-static void eval_instr_binop(VM *vm, MirInstrBinop *binop);
-static void eval_instr_unop(VM *vm, MirInstrUnop *unop);
-static void eval_instr_load(VM *vm, MirInstrLoad *load);
-static void eval_instr_addrof(VM *vm, MirInstrAddrOf *addrof);
-static void eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si);
-static void eval_instr_cast(VM *vm, MirInstrCast *cast);
-static void eval_instr_compound(VM *vm, MirInstrCompound *cmp);
+static void interp_instr(VM *vm, struct mir_instr *instr);
+static void interp_extern_call(VM *vm, struct mir_fn *fn, struct mir_instr_call *call);
+static void interp_instr_toany(VM *vm, struct mir_instr_to_any *toany);
+static void interp_instr_unreachable(VM *vm, struct mir_instr_unreachable *unr);
+static void interp_instr_phi(VM *vm, struct mir_instr_phi *phi);
+static void interp_instr_cast(VM *vm, struct mir_instr_cast *cast);
+static void interp_instr_addrof(VM *vm, struct mir_instr_addrof *addrof);
+static void interp_instr_br(VM *vm, struct mir_instr_br *br);
+static void interp_instr_switch(VM *vm, struct mir_instr_switch *sw);
+static void interp_instr_elem_ptr(VM *vm, struct mir_instr_elem_ptr *elem_ptr);
+static void interp_instr_member_ptr(VM *vm, struct mir_instr_member_ptr *member_ptr);
+static void interp_instr_unroll(VM *vm, struct mir_instr_unroll *unroll);
+static void interp_instr_arg(VM *vm, struct mir_instr_arg *arg);
+static void interp_instr_cond_br(VM *vm, struct mir_instr_cond_br *br);
+static void interp_instr_load(VM *vm, struct mir_instr_load *load);
+static void interp_instr_store(VM *vm, struct mir_instr_store *store);
+static void interp_instr_binop(VM *vm, struct mir_instr_binop *binop);
+static void interp_instr_unop(VM *vm, struct mir_instr_unop *unop);
+static void interp_instr_call(VM *vm, struct mir_instr_call *call);
+static void interp_instr_ret(VM *vm, struct mir_instr_ret *ret);
+static void interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, struct mir_instr_compound *init);
+static void interp_instr_vargs(VM *vm, struct mir_instr_vargs *vargs);
+static void interp_instr_decl_var(VM *vm, struct mir_instr_decl_var *decl);
+static void interp_instr_decl_ref(VM *vm, struct mir_instr_decl_ref *ref);
+static void interp_instr_decl_direct_ref(VM *vm, struct mir_instr_decl_direct_ref *ref);
+static void eval_instr(VM *vm, struct mir_instr *instr);
+static void eval_instr_type_info(VM *vm, struct mir_instr_type_info *type_info);
+static void eval_instr_call_loc(VM *vm, struct mir_instr_call_loc *loc);
+static void eval_instr_test_cases(VM *vm, struct mir_instr_test_case *tc);
+static void eval_instr_member_ptr(VM *vm, struct mir_instr_member_ptr *member_ptr);
+static void eval_instr_elem_ptr(VM *vm, struct mir_instr_elem_ptr *elem_ptr);
+static void eval_instr_decl_var(VM *vm, struct mir_instr_decl_var *decl_var);
+static void eval_instr_decl_ref(VM *vm, struct mir_instr_decl_ref *decl_ref);
+static void eval_instr_decl_direct_ref(VM *vm, struct mir_instr_decl_direct_ref *decl_ref);
+static void eval_instr_binop(VM *vm, struct mir_instr_binop *binop);
+static void eval_instr_unop(VM *vm, struct mir_instr_unop *unop);
+static void eval_instr_load(VM *vm, struct mir_instr_load *load);
+static void eval_instr_addrof(VM *vm, struct mir_instr_addrof *addrof);
+static void eval_instr_set_initializer(VM *vm, struct mir_instr_set_initializer *si);
+static void eval_instr_cast(VM *vm, struct mir_instr_cast *cast);
+static void eval_instr_compound(VM *vm, struct mir_instr_compound *cmp);
 
 //***********/
 //* inlines */
@@ -213,7 +213,7 @@ static INLINE bool needs_tmp_alloc(struct mir_const_expr_value *v)
     return v->type->store_size_bytes > sizeof(v->_tmp);
 }
 
-static INLINE struct mir_fn *get_callee(MirInstrCall *call)
+static INLINE struct mir_fn *get_callee(struct mir_instr_call *call)
 {
     struct mir_const_expr_value *val = &call->callee->value;
     BL_ASSERT(val->type && val->type->kind == MIR_TYPE_FN);
@@ -286,7 +286,7 @@ static INLINE VMStackPtr stack_free(VM *vm, usize size)
     return new_top;
 }
 
-static INLINE void push_ra(VM *vm, MirInstr *caller)
+static INLINE void push_ra(VM *vm, struct mir_instr *caller)
 {
     VMFrame *prev = vm->stack->ra;
     VMFrame *tmp  = (VMFrame *)stack_alloc(vm, sizeof(VMFrame));
@@ -296,10 +296,10 @@ static INLINE void push_ra(VM *vm, MirInstr *caller)
     LOG_PUSH_RA;
 }
 
-static INLINE MirInstr *pop_ra(VM *vm)
+static INLINE struct mir_instr *pop_ra(VM *vm)
 {
     if (!vm->stack->ra) return NULL;
-    MirInstr *caller = vm->stack->ra->caller;
+    struct mir_instr *caller = vm->stack->ra->caller;
 
     LOG_POP_RA;
 
@@ -385,7 +385,7 @@ static INLINE VMStackPtr peek_value(VM *vm, struct mir_const_expr_value *v)
     return stack_peek(vm, v->type);
 }
 
-static INLINE MirInstr *get_pc(VM *vm)
+static INLINE struct mir_instr *get_pc(VM *vm)
 {
     return vm->stack->pc;
 }
@@ -395,7 +395,7 @@ static INLINE VMFrame *get_ra(VM *vm)
     return vm->stack->ra;
 }
 
-static INLINE void set_pc(VM *vm, MirInstr *instr)
+static INLINE void set_pc(VM *vm, struct mir_instr *instr)
 {
     vm->stack->pc = instr;
 }
@@ -701,9 +701,9 @@ void calculate_unop(VMStackPtr dest, VMStackPtr v, UnopKind op, struct mir_type 
 
 void print_call_stack(VM *vm, usize max_nesting)
 {
-    MirInstr *instr = vm->stack->pc;
-    VMFrame * fr    = vm->stack->ra;
-    usize     n     = 0;
+    struct mir_instr *instr = vm->stack->pc;
+    VMFrame *         fr    = vm->stack->ra;
+    usize             n     = 0;
 
     if (!instr) return;
     // print last instruction
@@ -711,7 +711,7 @@ void print_call_stack(VM *vm, usize max_nesting)
     builder_error("called from:");
 
     while (fr) {
-        instr = (MirInstr *)fr->caller;
+        instr = (struct mir_instr *)fr->caller;
         fr    = fr->prev;
         if (!instr) break;
 
@@ -807,14 +807,14 @@ char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result
     // TODO: External callback can be invoked from different thread. This can cause problems for
     // now since interpreter is strictly single-threaded, but we must handle such situation in
     // future.
-    DyncallCBContext *cnt = (DyncallCBContext *)userdata;
-    struct mir_fn *   fn  = cnt->fn;
-    VM *              vm  = cnt->vm;
+    struct dyncall_cb_context *ctx = (struct dyncall_cb_context *)userdata;
+    struct mir_fn *            fn  = ctx->fn;
+    VM *                       vm  = ctx->vm;
     BL_ASSERT(fn && vm);
 
     struct mir_type *ret_type = fn->type->data.fn.ret_type;
     const bool       is_extern =
-        IS_FLAG(cnt->fn->flags, FLAG_EXTERN) || IS_FLAG(cnt->fn->flags, FLAG_INTRINSIC);
+        IS_FLAG(ctx->fn->flags, FLAG_EXTERN) || IS_FLAG(ctx->fn->flags, FLAG_INTRINSIC);
     const bool has_args   = fn->type->data.fn.args;
     const bool has_return = ret_type->kind != MIR_TYPE_VOID;
 
@@ -960,7 +960,7 @@ DCCallback *dyncall_fetch_callback(VM *vm, struct mir_fn *fn)
 
     const char *sig = dyncall_generate_signature(vm, fn->type);
 
-    fn->dyncall.context = (DyncallCBContext){.fn = fn, .vm = vm};
+    fn->dyncall.context = (struct dyncall_cb_context){.fn = fn, .vm = vm};
 
     fn->dyncall.extern_callback_handle =
         dcbNewCallback(sig, &dyncall_cb_handler, &fn->dyncall.context);
@@ -1055,7 +1055,7 @@ void dyncall_push_arg(VM *vm, VMStackPtr val_ptr, struct mir_type *type)
     }
 }
 
-void interp_extern_call(VM *vm, struct mir_fn *fn, MirInstrCall *call)
+void interp_extern_call(VM *vm, struct mir_fn *fn, struct mir_instr_call *call)
 {
     struct mir_type *ret_type = fn->type->data.fn.ret_type;
     BL_ASSERT(ret_type);
@@ -1077,7 +1077,7 @@ void interp_extern_call(VM *vm, struct mir_fn *fn, MirInstrCall *call)
     VMStackPtr            arg_ptr;
     TSmallArray_InstrPtr *arg_values = call->args;
     if (arg_values) {
-        MirInstr *arg_value;
+        struct mir_instr *arg_value;
         TSA_FOREACH(arg_values, arg_value)
         {
             arg_ptr = fetch_value(vm, &arg_value->value);
@@ -1159,9 +1159,10 @@ void interp_extern_call(VM *vm, struct mir_fn *fn, MirInstrCall *call)
     }
 }
 
-bool execute_fn_top_level(VM *vm, MirInstr *call, VMStackPtr *out_ptr)
+bool execute_fn_top_level(VM *vm, struct mir_instr *call, VMStackPtr *out_ptr)
 {
-    return _execute_fn_top_level(vm, get_callee((MirInstrCall *)call), call, NULL, out_ptr);
+    return _execute_fn_top_level(
+        vm, get_callee((struct mir_instr_call *)call), call, NULL, out_ptr);
 }
 
 bool execute_fn_impl_top_level(VM *                        vm,
@@ -1174,7 +1175,7 @@ bool execute_fn_impl_top_level(VM *                        vm,
 
 bool _execute_fn_top_level(VM *                        vm,
                            struct mir_fn *             fn,
-                           MirInstr *                  call,
+                           struct mir_instr *          call,
                            TSmallArray_ConstExprValue *arg_values,
                            VMStackPtr *                out_ptr)
 {
@@ -1214,7 +1215,7 @@ bool _execute_fn_top_level(VM *                        vm,
     set_pc(vm, fn->first_block->entry_instr);
 
     // iterate over entry block of executable
-    MirInstr *instr, *prev;
+    struct mir_instr *instr, *prev;
     while (true) {
         instr = get_pc(vm);
         prev  = instr;
@@ -1238,7 +1239,7 @@ bool _execute_fn_top_level(VM *                        vm,
     return true;
 }
 
-void interp_instr(VM *vm, MirInstr *instr)
+void interp_instr(VM *vm, struct mir_instr *instr)
 {
     if (!instr) return;
     if (!instr->is_analyzed) {
@@ -1250,76 +1251,76 @@ void interp_instr(VM *vm, MirInstr *instr)
 
     switch (instr->kind) {
     case MIR_INSTR_CAST:
-        interp_instr_cast(vm, (MirInstrCast *)instr);
+        interp_instr_cast(vm, (struct mir_instr_cast *)instr);
         break;
     case MIR_INSTR_ADDROF:
-        interp_instr_addrof(vm, (MirInstrAddrOf *)instr);
+        interp_instr_addrof(vm, (struct mir_instr_addrof *)instr);
         break;
     case MIR_INSTR_BINOP:
-        interp_instr_binop(vm, (MirInstrBinop *)instr);
+        interp_instr_binop(vm, (struct mir_instr_binop *)instr);
         break;
     case MIR_INSTR_UNOP:
-        interp_instr_unop(vm, (MirInstrUnop *)instr);
+        interp_instr_unop(vm, (struct mir_instr_unop *)instr);
         break;
     case MIR_INSTR_CALL:
-        interp_instr_call(vm, (MirInstrCall *)instr);
+        interp_instr_call(vm, (struct mir_instr_call *)instr);
         break;
     case MIR_INSTR_RET:
-        interp_instr_ret(vm, (MirInstrRet *)instr);
+        interp_instr_ret(vm, (struct mir_instr_ret *)instr);
         break;
     case MIR_INSTR_DECL_VAR:
-        interp_instr_decl_var(vm, (MirInstrDeclVar *)instr);
+        interp_instr_decl_var(vm, (struct mir_instr_decl_var *)instr);
         break;
     case MIR_INSTR_DECL_REF:
-        interp_instr_decl_ref(vm, (MirInstrDeclRef *)instr);
+        interp_instr_decl_ref(vm, (struct mir_instr_decl_ref *)instr);
         break;
     case MIR_INSTR_DECL_DIRECT_REF:
-        interp_instr_decl_direct_ref(vm, (MirInstrDeclDirectRef *)instr);
+        interp_instr_decl_direct_ref(vm, (struct mir_instr_decl_direct_ref *)instr);
         break;
     case MIR_INSTR_STORE:
-        interp_instr_store(vm, (MirInstrStore *)instr);
+        interp_instr_store(vm, (struct mir_instr_store *)instr);
         break;
     case MIR_INSTR_LOAD:
-        interp_instr_load(vm, (MirInstrLoad *)instr);
+        interp_instr_load(vm, (struct mir_instr_load *)instr);
         break;
     case MIR_INSTR_BR:
-        interp_instr_br(vm, (MirInstrBr *)instr);
+        interp_instr_br(vm, (struct mir_instr_br *)instr);
         break;
     case MIR_INSTR_COND_BR:
-        interp_instr_cond_br(vm, (MirInstrCondBr *)instr);
+        interp_instr_cond_br(vm, (struct mir_instr_cond_br *)instr);
         break;
     case MIR_INSTR_PHI:
-        interp_instr_phi(vm, (MirInstrPhi *)instr);
+        interp_instr_phi(vm, (struct mir_instr_phi *)instr);
         break;
     case MIR_INSTR_UNREACHABLE:
-        interp_instr_unreachable(vm, (MirInstrUnreachable *)instr);
+        interp_instr_unreachable(vm, (struct mir_instr_unreachable *)instr);
         break;
     case MIR_INSTR_ARG:
-        interp_instr_arg(vm, (MirInstrArg *)instr);
+        interp_instr_arg(vm, (struct mir_instr_arg *)instr);
         break;
     case MIR_INSTR_ELEM_PTR:
-        interp_instr_elem_ptr(vm, (MirInstrElemPtr *)instr);
+        interp_instr_elem_ptr(vm, (struct mir_instr_elem_ptr *)instr);
         break;
     case MIR_INSTR_MEMBER_PTR:
-        interp_instr_member_ptr(vm, (MirInstrMemberPtr *)instr);
+        interp_instr_member_ptr(vm, (struct mir_instr_member_ptr *)instr);
         break;
     case MIR_INSTR_UNROLL:
-        interp_instr_unroll(vm, (MirInstrUnroll *)instr);
+        interp_instr_unroll(vm, (struct mir_instr_unroll *)instr);
         break;
     case MIR_INSTR_VARGS:
-        interp_instr_vargs(vm, (MirInstrVArgs *)instr);
+        interp_instr_vargs(vm, (struct mir_instr_vargs *)instr);
         break;
     case MIR_INSTR_COMPOUND: {
-        MirInstrCompound *cmp = (MirInstrCompound *)instr;
+        struct mir_instr_compound *cmp = (struct mir_instr_compound *)instr;
         if (!cmp->is_naked) break;
         interp_instr_compound(vm, NULL, cmp);
         break;
     }
     case MIR_INSTR_TOANY:
-        interp_instr_toany(vm, (MirInstrToAny *)instr);
+        interp_instr_toany(vm, (struct mir_instr_to_any *)instr);
         break;
     case MIR_INSTR_SWITCH:
-        interp_instr_switch(vm, (MirInstrSwitch *)instr);
+        interp_instr_switch(vm, (struct mir_instr_switch *)instr);
         break;
 
     default:
@@ -1327,7 +1328,7 @@ void interp_instr(VM *vm, MirInstr *instr)
     }
 }
 
-void interp_instr_toany(VM *vm, MirInstrToAny *toany)
+void interp_instr_toany(VM *vm, struct mir_instr_to_any *toany)
 {
     struct mir_var *dest_var  = toany->tmp;
     struct mir_var *type_info = assembly_get_rtti(vm->assembly, toany->rtti_type->id.hash);
@@ -1372,9 +1373,9 @@ void interp_instr_toany(VM *vm, MirInstrToAny *toany)
     stack_push(vm, &dest, toany->base.value.type);
 }
 
-void interp_instr_phi(VM *vm, MirInstrPhi *phi)
+void interp_instr_phi(VM *vm, struct mir_instr_phi *phi)
 {
-    MirInstrBlock *prev_block = vm->stack->prev_block;
+    struct mir_instr_block *prev_block = vm->stack->prev_block;
     BL_ASSERT(prev_block && "Invalid previous block for phi instruction.");
     BL_ASSERT(phi->incoming_blocks && phi->incoming_values);
     BL_ASSERT(phi->incoming_blocks->size == phi->incoming_values->size);
@@ -1382,11 +1383,11 @@ void interp_instr_phi(VM *vm, MirInstrPhi *phi)
     const usize c = phi->incoming_values->size;
     BL_ASSERT(c > 0);
 
-    MirInstr *     value = NULL;
-    MirInstrBlock *block;
+    struct mir_instr *      value = NULL;
+    struct mir_instr_block *block;
     for (usize i = 0; i < c; ++i) {
         value = phi->incoming_values->data[i];
-        block = (MirInstrBlock *)phi->incoming_blocks->data[i];
+        block = (struct mir_instr_block *)phi->incoming_blocks->data[i];
 
         if (block->base.id == prev_block->base.id) break;
     }
@@ -1405,10 +1406,10 @@ void interp_instr_phi(VM *vm, MirInstrPhi *phi)
     }
 }
 
-void interp_instr_addrof(VM *vm, MirInstrAddrOf *addrof)
+void interp_instr_addrof(VM *vm, struct mir_instr_addrof *addrof)
 {
-    MirInstr *       src  = addrof->src;
-    struct mir_type *type = src->value.type;
+    struct mir_instr *src  = addrof->src;
+    struct mir_type * type = src->value.type;
     BL_ASSERT(type);
     if (!mir_is_comptime(src) &&
         (src->kind == MIR_INSTR_ELEM_PTR || src->kind == MIR_INSTR_COMPOUND)) {
@@ -1421,7 +1422,7 @@ void interp_instr_addrof(VM *vm, MirInstrAddrOf *addrof)
     stack_push(vm, (VMStackPtr)&ptr, type);
 }
 
-void interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
+void interp_instr_elem_ptr(VM *vm, struct mir_instr_elem_ptr *elem_ptr)
 {
     // pop index from stack
     struct mir_type *arr_type   = mir_deref_type(elem_ptr->arr_ptr->value.type);
@@ -1492,7 +1493,7 @@ void interp_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
     stack_push(vm, (VMStackPtr)&result_ptr, elem_ptr->base.value.type);
 }
 
-void interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
+void interp_instr_member_ptr(VM *vm, struct mir_instr_member_ptr *member_ptr)
 {
     BL_ASSERT(member_ptr->target_ptr);
     struct mir_type *target_type = member_ptr->target_ptr->value.type;
@@ -1536,7 +1537,7 @@ void interp_instr_member_ptr(VM *vm, MirInstrMemberPtr *member_ptr)
     stack_push(vm, (VMStackPtr)&result, member_ptr->base.value.type);
 }
 
-void interp_instr_unroll(VM *vm, MirInstrUnroll *unroll)
+void interp_instr_unroll(VM *vm, struct mir_instr_unroll *unroll)
 {
     BL_ASSERT(unroll->src);
     struct mir_type *src_type = unroll->src->value.type;
@@ -1551,20 +1552,20 @@ void interp_instr_unroll(VM *vm, MirInstrUnroll *unroll)
     stack_push(vm, (VMStackPtr)&result, unroll->base.value.type);
 }
 
-void interp_instr_unreachable(VM *vm, MirInstrUnreachable UNUSED(*unr))
+void interp_instr_unreachable(VM *vm, struct mir_instr_unreachable UNUSED(*unr))
 {
     builder_error("execution reached unreachable code");
     exec_abort(vm, 0);
 }
 
-void interp_instr_br(VM *vm, MirInstrBr *br)
+void interp_instr_br(VM *vm, struct mir_instr_br *br)
 {
     BL_ASSERT(br->then_block);
     vm->stack->prev_block = br->base.owner_block;
     set_pc(vm, br->then_block->entry_instr);
 }
 
-void interp_instr_switch(VM *vm, MirInstrSwitch *sw)
+void interp_instr_switch(VM *vm, struct mir_instr_switch *sw)
 {
     struct mir_type *value_type = sw->value->value.type;
     VMStackPtr       value_ptr  = fetch_value(vm, &sw->value->value);
@@ -1575,7 +1576,7 @@ void interp_instr_switch(VM *vm, MirInstrSwitch *sw)
 
     TSmallArray_SwitchCase *cases = sw->cases;
     for (usize i = 0; i < cases->size; ++i) {
-        MirSwitchCase *c = &cases->data[i];
+        struct mir_switch_case *c = &cases->data[i];
 
         const s64 on_value = vm_read_int(value_type, c->on_value->value.data);
         if (value == on_value) {
@@ -1587,7 +1588,7 @@ void interp_instr_switch(VM *vm, MirInstrSwitch *sw)
     set_pc(vm, sw->default_block->entry_instr);
 }
 
-void interp_instr_cast(VM *vm, MirInstrCast *cast)
+void interp_instr_cast(VM *vm, struct mir_instr_cast *cast)
 {
     if (cast->op == MIR_CAST_NONE) return;
     struct mir_type *dest_type = cast->base.value.type;
@@ -1598,17 +1599,17 @@ void interp_instr_cast(VM *vm, MirInstrCast *cast)
     stack_push(vm, &tmp, dest_type);
 }
 
-void interp_instr_arg(VM *vm, MirInstrArg *arg)
+void interp_instr_arg(VM *vm, struct mir_instr_arg *arg)
 {
     // Caller is optional, when we call function implicitly there is no call instruction which
     // we can use, so we need to handle also this situation. In such case we expect all
     // arguments to be already pushed on the stack.
-    MirInstrCall *caller = (MirInstrCall *)get_ra(vm)->caller;
+    struct mir_instr_call *caller = (struct mir_instr_call *)get_ra(vm)->caller;
 
     if (caller) {
         TSmallArray_InstrPtr *arg_values = caller->args;
         BL_ASSERT(arg_values);
-        MirInstr *curr_arg_value = arg_values->data[arg->i];
+        struct mir_instr *curr_arg_value = arg_values->data[arg->i];
 
         if (mir_is_comptime(curr_arg_value)) {
             struct mir_type *type = curr_arg_value->value.type;
@@ -1617,7 +1618,7 @@ void interp_instr_arg(VM *vm, MirInstrArg *arg)
             // Arguments are located in reverse order right before return address on the
             // stack
             // so we can find them inside loop adjusting address up on the stack.
-            MirInstr *arg_value = NULL;
+            struct mir_instr *arg_value = NULL;
             // starting point
             VMStackPtr arg_ptr = (VMStackPtr)vm->stack->ra;
             for (u32 i = 0; i <= arg->i; ++i) {
@@ -1650,7 +1651,7 @@ void interp_instr_arg(VM *vm, MirInstrArg *arg)
     stack_push(vm, (VMStackPtr)arg_ptr, arg->base.value.type);
 }
 
-void interp_instr_cond_br(VM *vm, MirInstrCondBr *br)
+void interp_instr_cond_br(VM *vm, struct mir_instr_cond_br *br)
 {
     BL_ASSERT(br->cond);
     struct mir_type *type = br->cond->value.type;
@@ -1672,7 +1673,7 @@ void interp_instr_cond_br(VM *vm, MirInstrCondBr *br)
     }
 }
 
-void interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref)
+void interp_instr_decl_ref(VM *vm, struct mir_instr_decl_ref *ref)
 {
     ScopeEntry *entry = ref->scope_entry;
     BL_ASSERT(entry);
@@ -1698,17 +1699,17 @@ void interp_instr_decl_ref(VM *vm, MirInstrDeclRef *ref)
     }
 }
 
-void interp_instr_decl_direct_ref(VM *vm, MirInstrDeclDirectRef *ref)
+void interp_instr_decl_direct_ref(VM *vm, struct mir_instr_decl_direct_ref *ref)
 {
     BL_ASSERT(ref->ref->kind == MIR_INSTR_DECL_VAR);
-    struct mir_var *var = ((MirInstrDeclVar *)ref->ref)->var;
+    struct mir_var *var = ((struct mir_instr_decl_var *)ref->ref)->var;
     BL_ASSERT(var);
 
     VMStackPtr real_ptr = vm_read_var(vm, var);
     stack_push(vm, &real_ptr, ref->base.value.type);
 }
 
-void interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
+void interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, struct mir_instr_compound *cmp)
 {
     BL_ASSERT(!mir_is_comptime(&cmp->base));
     const bool will_push = tmp_ptr == NULL;
@@ -1723,7 +1724,7 @@ void interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
     struct mir_type *elem_type;
     VMStackPtr       elem_ptr = tmp_ptr;
 
-    MirInstr *value;
+    struct mir_instr *value;
     TSA_FOREACH(cmp->values, value)
     {
         elem_type = value->value.type;
@@ -1752,7 +1753,7 @@ void interp_instr_compound(VM *vm, VMStackPtr tmp_ptr, MirInstrCompound *cmp)
     if (will_push) stack_push(vm, tmp_ptr, cmp->base.value.type);
 }
 
-void interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
+void interp_instr_vargs(VM *vm, struct mir_instr_vargs *vargs)
 {
     TSmallArray_InstrPtr *values    = vargs->values;
     struct mir_var *      arr_tmp   = vargs->arr_tmp;
@@ -1766,8 +1767,8 @@ void interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
 
     // Fill vargs tmp array with values from stack or constants.
     {
-        MirInstr * value;
-        VMStackPtr value_ptr;
+        struct mir_instr *value;
+        VMStackPtr        value_ptr;
         TSA_FOREACH(values, value)
         {
             BL_ASSERT(arr_tmp_ptr);
@@ -1801,7 +1802,7 @@ void interp_instr_vargs(VM *vm, MirInstrVArgs *vargs)
     }
 }
 
-void interp_instr_decl_var(VM *vm, MirInstrDeclVar *decl)
+void interp_instr_decl_var(VM *vm, struct mir_instr_decl_var *decl)
 {
     struct mir_var *var = decl->var;
     BL_ASSERT(var);
@@ -1815,7 +1816,7 @@ void interp_instr_decl_var(VM *vm, MirInstrDeclVar *decl)
 
         if (!mir_is_comptime(decl->init) && decl->init->kind == MIR_INSTR_COMPOUND) {
             // used compound initialization!!!
-            interp_instr_compound(vm, var_ptr, (MirInstrCompound *)decl->init);
+            interp_instr_compound(vm, var_ptr, (struct mir_instr_compound *)decl->init);
         } else {
             // read initialization value if there is one
             VMStackPtr init_ptr = fetch_value(vm, &decl->init->value);
@@ -1824,7 +1825,7 @@ void interp_instr_decl_var(VM *vm, MirInstrDeclVar *decl)
     }
 }
 
-void interp_instr_load(VM *vm, MirInstrLoad *load)
+void interp_instr_load(VM *vm, struct mir_instr_load *load)
 {
     // pop source from stack or load directly when src is declaration, push on
     // to stack dereferenced value of source
@@ -1843,7 +1844,7 @@ void interp_instr_load(VM *vm, MirInstrLoad *load)
     stack_push(vm, src_ptr, dest_type);
 }
 
-void interp_instr_store(VM *vm, MirInstrStore *store)
+void interp_instr_store(VM *vm, struct mir_instr_store *store)
 {
     // loads destination (in case it is not direct reference to declaration) and
     // source from stack
@@ -1852,7 +1853,7 @@ void interp_instr_store(VM *vm, MirInstrStore *store)
         // Compound initializers referenced by store instruction can be directly used as
         // destination initializer.
         dest_ptr = VM_STACK_PTR_DEREF(dest_ptr);
-        interp_instr_compound(vm, dest_ptr, (MirInstrCompound *)store->src);
+        interp_instr_compound(vm, dest_ptr, (struct mir_instr_compound *)store->src);
         return;
     }
     struct mir_type *src_type = store->src->value.type;
@@ -1863,7 +1864,7 @@ void interp_instr_store(VM *vm, MirInstrStore *store)
     memcpy(dest_ptr, src_ptr, src_type->store_size_bytes);
 }
 
-void interp_instr_call(VM *vm, MirInstrCall *call)
+void interp_instr_call(VM *vm, struct mir_instr_call *call)
 {
     BL_ASSERT(call->callee && call->base.value.type);
     BL_ASSERT(call->callee->value.type);
@@ -1900,15 +1901,15 @@ void interp_instr_call(VM *vm, MirInstrCall *call)
     }
 }
 
-void interp_instr_ret(VM *vm, MirInstrRet *ret)
+void interp_instr_ret(VM *vm, struct mir_instr_ret *ret)
 {
     struct mir_fn *fn = ret->base.owner_block->owner_fn;
     BL_ASSERT(fn);
 
     // read callee from frame stack
-    MirInstrCall *   caller       = (MirInstrCall *)get_ra(vm)->caller;
-    struct mir_type *ret_type     = fn->type->data.fn.ret_type;
-    VMStackPtr       ret_data_ptr = NULL;
+    struct mir_instr_call *caller       = (struct mir_instr_call *)get_ra(vm)->caller;
+    struct mir_type *      ret_type     = fn->type->data.fn.ret_type;
+    VMStackPtr             ret_data_ptr = NULL;
 
     // pop return value from stack
     if (ret->value) {
@@ -1919,13 +1920,13 @@ void interp_instr_ret(VM *vm, MirInstrRet *ret)
     }
 
     // do frame stack rollback
-    MirInstr *pc = (MirInstr *)pop_ra(vm);
+    struct mir_instr *pc = (struct mir_instr *)pop_ra(vm);
 
     // clean up all arguments from the stack
     if (caller) {
         TSmallArray_InstrPtr *arg_values = caller->args;
         if (arg_values) {
-            MirInstr *arg_value;
+            struct mir_instr *arg_value;
             TSA_FOREACH(arg_values, arg_value)
             {
                 if (mir_is_comptime(arg_value)) continue;
@@ -1963,7 +1964,7 @@ void interp_instr_ret(VM *vm, MirInstrRet *ret)
     set_pc(vm, pc);
 }
 
-void interp_instr_binop(VM *vm, MirInstrBinop *binop)
+void interp_instr_binop(VM *vm, struct mir_instr_binop *binop)
 {
     // binop expects lhs and rhs on stack in exact order and push result again
     // to the stack
@@ -1980,7 +1981,7 @@ void interp_instr_binop(VM *vm, MirInstrBinop *binop)
     stack_push(vm, &tmp, dest_type);
 }
 
-void interp_instr_unop(VM *vm, MirInstrUnop *unop)
+void interp_instr_unop(VM *vm, struct mir_instr_unop *unop)
 {
     struct mir_type *type  = unop->base.value.type;
     VMStackPtr       v_ptr = fetch_value(vm, &unop->expr->value);
@@ -1991,70 +1992,70 @@ void interp_instr_unop(VM *vm, MirInstrUnop *unop)
     stack_push(vm, &tmp, type);
 }
 
-void eval_instr(VM *vm, MirInstr *instr)
+void eval_instr(VM *vm, struct mir_instr *instr)
 {
     if (!instr) return;
     BL_ASSERT(instr->value.is_comptime);
 
     switch (instr->kind) {
     case MIR_INSTR_DECL_REF:
-        eval_instr_decl_ref(vm, (MirInstrDeclRef *)instr);
+        eval_instr_decl_ref(vm, (struct mir_instr_decl_ref *)instr);
         break;
 
     case MIR_INSTR_DECL_DIRECT_REF:
-        eval_instr_decl_direct_ref(vm, (MirInstrDeclDirectRef *)instr);
+        eval_instr_decl_direct_ref(vm, (struct mir_instr_decl_direct_ref *)instr);
         break;
 
     case MIR_INSTR_BINOP:
-        eval_instr_binop(vm, (MirInstrBinop *)instr);
+        eval_instr_binop(vm, (struct mir_instr_binop *)instr);
         break;
 
     case MIR_INSTR_UNOP:
-        eval_instr_unop(vm, (MirInstrUnop *)instr);
+        eval_instr_unop(vm, (struct mir_instr_unop *)instr);
         break;
 
     case MIR_INSTR_SET_INITIALIZER:
-        eval_instr_set_initializer(vm, (MirInstrSetInitializer *)instr);
+        eval_instr_set_initializer(vm, (struct mir_instr_set_initializer *)instr);
         break;
 
     case MIR_INSTR_LOAD:
-        eval_instr_load(vm, (MirInstrLoad *)instr);
+        eval_instr_load(vm, (struct mir_instr_load *)instr);
         break;
 
     case MIR_INSTR_ADDROF:
-        eval_instr_addrof(vm, (MirInstrAddrOf *)instr);
+        eval_instr_addrof(vm, (struct mir_instr_addrof *)instr);
         break;
 
     case MIR_INSTR_CAST:
-        eval_instr_cast(vm, (MirInstrCast *)instr);
+        eval_instr_cast(vm, (struct mir_instr_cast *)instr);
         break;
 
     case MIR_INSTR_DECL_VAR:
-        eval_instr_decl_var(vm, (MirInstrDeclVar *)instr);
+        eval_instr_decl_var(vm, (struct mir_instr_decl_var *)instr);
         break;
 
     case MIR_INSTR_COMPOUND:
-        eval_instr_compound(vm, (MirInstrCompound *)instr);
+        eval_instr_compound(vm, (struct mir_instr_compound *)instr);
         break;
 
     case MIR_INSTR_ELEM_PTR:
-        eval_instr_elem_ptr(vm, (MirInstrElemPtr *)instr);
+        eval_instr_elem_ptr(vm, (struct mir_instr_elem_ptr *)instr);
         break;
 
     case MIR_INSTR_MEMBER_PTR:
-        eval_instr_member_ptr(vm, (MirInstrMemberPtr *)instr);
+        eval_instr_member_ptr(vm, (struct mir_instr_member_ptr *)instr);
         break;
 
     case MIR_INSTR_TYPE_INFO:
-        eval_instr_type_info(vm, (MirInstrTypeInfo *)instr);
+        eval_instr_type_info(vm, (struct mir_instr_type_info *)instr);
         break;
 
     case MIR_INSTR_TEST_CASES:
-        eval_instr_test_cases(vm, (MirInstrTestCases *)instr);
+        eval_instr_test_cases(vm, (struct mir_instr_test_case *)instr);
         break;
 
     case MIR_INSTR_CALL_LOC:
-        eval_instr_call_loc(vm, (MirInstrCallLoc *)instr);
+        eval_instr_call_loc(vm, (struct mir_instr_call_loc *)instr);
         break;
 
     case MIR_INSTR_BLOCK:
@@ -2085,7 +2086,7 @@ void eval_instr(VM *vm, MirInstr *instr)
     }
 }
 
-void eval_instr_type_info(VM *vm, MirInstrTypeInfo *type_info)
+void eval_instr_type_info(VM *vm, struct mir_instr_type_info *type_info)
 {
     BL_ASSERT(type_info->rtti_type && "Missing RTTI type!");
     struct mir_var *rtti_var = assembly_get_rtti(vm->assembly, type_info->rtti_type->id.hash);
@@ -2093,13 +2094,13 @@ void eval_instr_type_info(VM *vm, MirInstrTypeInfo *type_info)
     MIR_CEV_WRITE_AS(VMStackPtr, &type_info->base.value, rtti_var->value.data);
 }
 
-void eval_instr_call_loc(VM UNUSED(*vm), MirInstrCallLoc *loc)
+void eval_instr_call_loc(VM UNUSED(*vm), struct mir_instr_call_loc *loc)
 {
     if (!loc->meta_var) return;
     MIR_CEV_WRITE_AS(VMStackPtr, &loc->base.value, loc->meta_var->value.data);
 }
 
-void eval_instr_test_cases(VM *vm, MirInstrTestCases *tc)
+void eval_instr_test_cases(VM *vm, struct mir_instr_test_case *tc)
 {
     struct mir_var * var     = vm->assembly->testing.meta_var;
     struct mir_type *tc_type = tc->base.value.type;
@@ -2125,7 +2126,7 @@ void eval_instr_test_cases(VM *vm, MirInstrTestCases *tc)
     }
 }
 
-void eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
+void eval_instr_elem_ptr(VM *vm, struct mir_instr_elem_ptr *elem_ptr)
 {
     struct mir_type *arr_type   = mir_deref_type(elem_ptr->arr_ptr->value.type);
     VMStackPtr       arr_ptr    = MIR_CEV_READ_AS(VMStackPtr, &elem_ptr->arr_ptr->value);
@@ -2186,7 +2187,7 @@ void eval_instr_elem_ptr(VM *vm, MirInstrElemPtr *elem_ptr)
     MIR_CEV_WRITE_AS(VMStackPtr, &elem_ptr->base.value, result_ptr);
 }
 
-void eval_instr_member_ptr(VM UNUSED(*vm), MirInstrMemberPtr *member_ptr)
+void eval_instr_member_ptr(VM UNUSED(*vm), struct mir_instr_member_ptr *member_ptr)
 {
     switch (member_ptr->scope_entry->kind) {
     case SCOPE_ENTRY_MEMBER: {
@@ -2211,7 +2212,7 @@ void eval_instr_member_ptr(VM UNUSED(*vm), MirInstrMemberPtr *member_ptr)
     }
 }
 
-void eval_instr_compound(VM *vm, MirInstrCompound *cmp)
+void eval_instr_compound(VM *vm, struct mir_instr_compound *cmp)
 {
     struct mir_const_expr_value *value = &cmp->base.value;
     if (needs_tmp_alloc(value)) {
@@ -2225,7 +2226,7 @@ void eval_instr_compound(VM *vm, MirInstrCompound *cmp)
         return;
     }
 
-    MirInstr *it;
+    struct mir_instr *it;
     TSA_FOREACH(cmp->values, it)
     {
         BL_ASSERT(mir_is_comptime(it) && "Expected compile time known value.");
@@ -2269,7 +2270,7 @@ void eval_instr_compound(VM *vm, MirInstrCompound *cmp)
     }
 }
 
-void eval_instr_decl_var(VM UNUSED(*vm), MirInstrDeclVar *decl_var)
+void eval_instr_decl_var(VM UNUSED(*vm), struct mir_instr_decl_var *decl_var)
 {
     BL_ASSERT(decl_var->init && "Missing variable initializer!");
     struct mir_var *var = decl_var->var;
@@ -2277,7 +2278,7 @@ void eval_instr_decl_var(VM UNUSED(*vm), MirInstrDeclVar *decl_var)
     BL_ASSERT(var->value.data && "Invalid variable initializer!");
 }
 
-void eval_instr_cast(VM UNUSED(*vm), MirInstrCast *cast)
+void eval_instr_cast(VM UNUSED(*vm), struct mir_instr_cast *cast)
 {
     struct mir_type *dest_type = cast->base.value.type;
     struct mir_type *src_type  = cast->expr->value.type;
@@ -2285,12 +2286,12 @@ void eval_instr_cast(VM UNUSED(*vm), MirInstrCast *cast)
     vm_do_cast(cast->base.value.data, src, dest_type, src_type, cast->op);
 }
 
-void eval_instr_addrof(VM UNUSED(*vm), MirInstrAddrOf *addrof)
+void eval_instr_addrof(VM UNUSED(*vm), struct mir_instr_addrof *addrof)
 {
     addrof->base.value.data = addrof->src->value.data;
 }
 
-void eval_instr_load(VM *vm, MirInstrLoad *load)
+void eval_instr_load(VM *vm, struct mir_instr_load *load)
 {
     VMStackPtr src = MIR_CEV_READ_AS(VMStackPtr, &load->src->value);
     if (!src) {
@@ -2305,12 +2306,12 @@ void eval_instr_load(VM *vm, MirInstrLoad *load)
     load->base.value.data = src;
 }
 
-void eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si)
+void eval_instr_set_initializer(VM *vm, struct mir_instr_set_initializer *si)
 {
-    MirInstr *dest;
+    struct mir_instr *dest;
     TSA_FOREACH(si->dests, dest)
     {
-        struct mir_var *var = ((MirInstrDeclVar *)dest)->var;
+        struct mir_var *var = ((struct mir_instr_decl_var *)dest)->var;
         BL_ASSERT((var->is_global || var->is_struct_typedef) &&
                   "Only globals can be initialized by initializer!");
         if (var->value.is_comptime) {
@@ -2329,7 +2330,7 @@ void eval_instr_set_initializer(VM *vm, MirInstrSetInitializer *si)
     }
 }
 
-void eval_instr_unop(VM UNUSED(*vm), MirInstrUnop *unop)
+void eval_instr_unop(VM UNUSED(*vm), struct mir_instr_unop *unop)
 {
     struct mir_type *type = unop->base.value.type;
 
@@ -2339,7 +2340,7 @@ void eval_instr_unop(VM UNUSED(*vm), MirInstrUnop *unop)
     calculate_unop(dest_data, v_data, unop->op, type);
 }
 
-void eval_instr_binop(VM UNUSED(*vm), MirInstrBinop *binop)
+void eval_instr_binop(VM UNUSED(*vm), struct mir_instr_binop *binop)
 {
     BL_ASSERT(binop->lhs->value.is_comptime && binop->rhs->value.is_comptime);
 
@@ -2353,7 +2354,7 @@ void eval_instr_binop(VM UNUSED(*vm), MirInstrBinop *binop)
     calculate_binop(dest_type, src_type, dest_ptr, lhs_ptr, rhs_ptr, binop->op);
 }
 
-void eval_instr_decl_ref(VM UNUSED(*vm), MirInstrDeclRef *decl_ref)
+void eval_instr_decl_ref(VM UNUSED(*vm), struct mir_instr_decl_ref *decl_ref)
 {
     ScopeEntry *entry = decl_ref->scope_entry;
     BL_ASSERT(entry);
@@ -2384,9 +2385,9 @@ void eval_instr_decl_ref(VM UNUSED(*vm), MirInstrDeclRef *decl_ref)
     }
 }
 
-void eval_instr_decl_direct_ref(VM UNUSED(*vm), MirInstrDeclDirectRef *decl_ref)
+void eval_instr_decl_direct_ref(VM UNUSED(*vm), struct mir_instr_decl_direct_ref *decl_ref)
 {
-    struct mir_var *var = ((MirInstrDeclVar *)decl_ref->ref)->var;
+    struct mir_var *var = ((struct mir_instr_decl_var *)decl_ref->ref)->var;
     MIR_CEV_WRITE_AS(VMStackPtr, &decl_ref->base.value, var->value.data);
 }
 
@@ -2415,7 +2416,7 @@ void vm_terminate(VM *vm)
     bl_free(vm->stack);
 }
 
-void vm_execute_instr(VM *vm, struct assembly *assembly, MirInstr *instr)
+void vm_execute_instr(VM *vm, struct assembly *assembly, struct mir_instr *instr)
 {
     ZONE();
     vm->assembly = assembly;
@@ -2423,7 +2424,7 @@ void vm_execute_instr(VM *vm, struct assembly *assembly, MirInstr *instr)
     RETURN_END_ZONE();
 }
 
-bool vm_eval_instr(VM *vm, struct assembly *assembly, struct MirInstr *instr)
+bool vm_eval_instr(VM *vm, struct assembly *assembly, struct mir_instr *instr)
 {
     ZONE();
     vm->aborted  = false;
@@ -2477,7 +2478,7 @@ bool vm_execute_fn(VM *vm, struct assembly *assembly, struct mir_fn *fn, VMStack
     return execute_fn_impl_top_level(vm, fn, NULL, out_ptr);
 }
 
-bool vm_execute_instr_top_level_call(VM *vm, struct assembly *assembly, MirInstrCall *call)
+bool vm_execute_instr_top_level_call(VM *vm, struct assembly *assembly, struct mir_instr_call *call)
 {
     ZONE();
     vm->assembly = assembly;

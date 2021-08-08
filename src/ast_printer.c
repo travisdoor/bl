@@ -95,7 +95,7 @@ static void print_stmt_switch(struct ast *stmt_switch, s32 pad, FILE *stream);
 static void print_stmt_case(struct ast *stmt_case, s32 pad, FILE *stream);
 static void print_stmt_loop(struct ast *loop, s32 pad, FILE *stream);
 static void print_stmt_break(struct ast *br, s32 pad, FILE *stream);
-static void print_stmt_continue(struct ast *cnt, s32 pad, FILE *stream);
+static void print_stmt_continue(struct ast *ctx, s32 pad, FILE *stream);
 static void print_stmt_return(struct ast *ret, s32 pad, FILE *stream);
 static void print_stmt_defer(struct ast *defer, s32 pad, FILE *stream);
 static void print_decl_entity(struct ast *entity, s32 pad, FILE *stream);
@@ -311,9 +311,9 @@ void print_stmt_break(struct ast *br, s32 pad, FILE *stream)
     print_head(br, pad, stream);
 }
 
-void print_stmt_continue(struct ast *cnt, s32 pad, FILE *stream)
+void print_stmt_continue(struct ast *ctx, s32 pad, FILE *stream)
 {
-    print_head(cnt, pad, stream);
+    print_head(ctx, pad, stream);
 }
 
 void print_stmt_return(struct ast *ret, s32 pad, FILE *stream)

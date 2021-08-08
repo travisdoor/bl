@@ -32,24 +32,24 @@
 #include "builder.h"
 #include "common.h"
 
-BL_EXPORT Target *__add_target(const char *name, AssemblyKind kind)
+BL_EXPORT struct target *__add_target(const char *name, enum assembly_kind kind)
 {
-    Target *target = builder_add_target(name);
-    target->kind   = kind;
+    struct target *target = builder_add_target(name);
+    target->kind          = kind;
     return target;
 }
 
-BL_EXPORT void __add_unit(Target *target, const char *filepath)
+BL_EXPORT void __add_unit(struct target *target, const char *filepath)
 {
     target_add_file(target, filepath);
 }
 
-BL_EXPORT void __add_lib_path(Target *target, const char *path)
+BL_EXPORT void __add_lib_path(struct target *target, const char *path)
 {
     target_add_lib_path(target, path);
 }
 
-BL_EXPORT s32 __compile(Target *target)
+BL_EXPORT s32 __compile(struct target *target)
 {
     return builder_compile(target);
 }
@@ -59,39 +59,39 @@ BL_EXPORT s32 __compile_all(void)
     return builder_compile_all();
 }
 
-BL_EXPORT void __link_library(Target *target, const char *name)
+BL_EXPORT void __link_library(struct target *target, const char *name)
 {
     target_add_lib(target, name);
 }
 
-BL_EXPORT void __append_linker_options(Target *target, const char *opt)
+BL_EXPORT void __append_linker_options(struct target *target, const char *opt)
 {
     target_append_linker_options(target, opt);
 }
 
-BL_EXPORT void __set_output_dir(Target *target, const char *dir)
+BL_EXPORT void __set_output_dir(struct target *target, const char *dir)
 {
     target_set_output_dir(target, dir);
 }
 
-BL_EXPORT const char *__get_output_dir(Target *target)
+BL_EXPORT const char *__get_output_dir(struct target *target)
 {
     BL_MAGIC_ASSERT(target);
     return target->out_dir.len > 0 ? target->out_dir.data : NULL;
 }
 
-BL_EXPORT void __set_module_dir(Target *target, const char *dir, const s32 policy)
+BL_EXPORT void __set_module_dir(struct target *target, const char *dir, const s32 policy)
 {
     target_set_module_dir(target, dir, policy);
 }
 
-BL_EXPORT const char *__get_module_dir(Target *target)
+BL_EXPORT const char *__get_module_dir(struct target *target)
 {
     BL_MAGIC_ASSERT(target);
     return target->module_dir.len > 0 ? target->module_dir.data : NULL;
 }
 
-BL_EXPORT s32 __get_module_import_policy(Target *target)
+BL_EXPORT s32 __get_module_import_policy(struct target *target)
 {
     BL_MAGIC_ASSERT(target);
     return target->module_policy;

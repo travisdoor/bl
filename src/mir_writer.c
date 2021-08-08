@@ -52,9 +52,9 @@ static void print_header(const char *name, const char *filename, FILE *stream)
 
 void mir_writer_run(struct assembly *assembly)
 {
-    const char *  name        = assembly->target->name;
-    TString *     export_file = get_tmpstr();
-    const Target *target      = assembly->target;
+    const char *         name        = assembly->target->name;
+    TString *            export_file = get_tmpstr();
+    const struct target *target      = assembly->target;
     tstring_setf(export_file, "%s/%s.blm", target->out_dir.data, name);
     FILE *f = fopen(export_file->data, "w");
     if (f == NULL) {

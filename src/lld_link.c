@@ -66,9 +66,9 @@ static void append_lib_paths(struct assembly *assembly, TString *buf)
 
 static void append_libs(struct assembly *assembly, TString *buf)
 {
-    NativeLib *lib;
+    struct native_lib *lib;
     for (usize i = 0; i < assembly->libs.size; ++i) {
-        lib = &tarray_at(NativeLib, &assembly->libs, i);
+        lib = &tarray_at(struct native_lib, &assembly->libs, i);
         if (lib->is_internal) continue;
         if (!lib->user_name) continue;
         tstring_appendf(buf, "%s.%s ", lib->user_name, LIB_EXT);
@@ -115,10 +115,10 @@ static void append_linker_exec(TString *buf)
 s32 lld_link(struct assembly *assembly)
 {
     RUNTIME_MEASURE_BEGIN_S(linking);
-    TString *     buf     = get_tmpstr();
-    const Target *target  = assembly->target;
-    const char *  out_dir = target->out_dir.data;
-    const char *  name    = target->name;
+    TString *            buf     = get_tmpstr();
+    const struct target *target  = assembly->target;
+    const char *         out_dir = target->out_dir.data;
+    const char *         name    = target->name;
 
     tstring_append(buf, "call ");
 

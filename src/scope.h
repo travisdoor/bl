@@ -34,7 +34,7 @@
 
 struct location;
 struct ast;
-struct MirInstr;
+struct mir_instr;
 struct mir_type;
 struct mir_fn;
 struct mir_var;

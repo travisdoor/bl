@@ -36,89 +36,88 @@
 #include <dyncall.h>
 #include <dynload.h>
 
-struct MirModule;
 struct builder;
-struct BuilderOptions;
+struct builder_options;
 
-typedef enum AssemblyKind {
+enum assembly_kind {
     ASSEMBLY_EXECUTABLE     = 1,
     ASSEMBLY_SHARED_LIB     = 2,
     ASSEMBLY_BUILD_PIPELINE = 3,
     ASSEMBLY_DOCS           = 4,
-} AssemblyKind;
+};
 
-typedef enum AssemblyOpt {
+enum assembly_opt {
     ASSEMBLY_OPT_DEBUG         = 1, // Standard debug mode. Opt: NONE
     ASSEMBLY_OPT_RELEASE_FAST  = 2, // Standard release mode. Opt: Aggressive
     ASSEMBLY_OPT_RELEASE_SMALL = 3, // Standard release mode. Opt: Default
-} AssemblyOpt;
+};
 
-typedef enum AssemblyDIKind {
+enum assembly_di_kind {
     ASSEMBLY_DI_DWARF    = 1, // Emit DWARF debug information in LLVM IR.
     ASSEMBLY_DI_CODEVIEW = 2, // Emit MS CodeView debug info (PDB file).
-} AssemblyDIKind;
+};
 
 // keep in sync with build.bl
-typedef enum {
+enum module_import_policy {
     IMPORT_POLICY_SYSTEM        = 0,
     IMPORT_POLICY_BUNDLE        = 1,
     IMPORT_POLICY_BUNDLE_LATEST = 2,
-} ModuleImportPolicy;
+};
 
-typedef enum {
+enum assert_mode {
     ASSERT_DEFAULT         = 0,
     ASSERT_ALWAYS_ENABLED  = 1,
     ASSERT_ALWAYS_DISABLED = 2,
-} AssertMode;
+};
 
-typedef enum {
+enum arch {
 #define GEN_ARCH
 #define entry(X) ARCH_##X,
 #include "assembly.inc"
 #undef entry
 #undef GEN_ARCH
     _ARCH_COUNT
-} Arch;
+};
 extern const char *arch_names[_ARCH_COUNT];
 
-typedef enum {
+enum operating_system {
 #define GEN_OS
 #define entry(X) OS_##X,
 #include "assembly.inc"
 #undef entry
 #undef GEN_OS
     _OS_COUNT
-} OperatingSystem;
+};
 extern const char *os_names[_OS_COUNT];
 
-typedef enum {
+enum vendor {
 #define GEN_VENDOR
 #define entry(X) VENDOR_##X,
 #include "assembly.inc"
 #undef entry
 #undef GEN_VENDOR
     _VENDOR_COUNT
-} Vendor;
+};
 extern const char *vendor_names[_VENDOR_COUNT];
 
-typedef enum {
+enum environment {
 #define GEN_ENV
 #define entry(X) ENV_##X,
 #include "assembly.inc"
 #undef entry
 #undef GEN_ENV
     _ENV_COUNT
-} Environment;
+};
 extern const char *env_names[_ENV_COUNT];
 
-typedef struct {
-    Arch            arch;
-    Vendor          vendor;
-    OperatingSystem os;
-    Environment     env;
-} TargetTriple;
+struct target_triple {
+    enum arch             arch;
+    enum vendor           vendor;
+    enum operating_system os;
+    enum environment      env;
+};
 
-typedef struct NativeLib {
+struct native_lib {
     u32           hash;
     DLLib *       handle;
     struct Token *linked_from;
@@ -128,64 +127,64 @@ typedef struct NativeLib {
     char *        dir;
     // Disable appending of this library to the linker options.
     bool is_internal;
-} NativeLib;
+};
 
-// ABI sync!!! Keep this updated with Target representation in build.bl.
+// ABI sync!!! Keep this updated with target representation in build.bl.
 #define TARGET_COPYABLE_CONTENT                                                                    \
-    AssemblyKind   kind;                                                                           \
-    AssemblyOpt    opt;                                                                            \
-    AssemblyDIKind di;                                                                             \
-    bool           reg_split;                                                                      \
-    bool           verify_llvm;                                                                    \
-    bool           run_tests;                                                                      \
-    bool           no_api;                                                                         \
-    bool           copy_deps;                                                                      \
-    bool           run;                                                                            \
-    bool           print_tokens;                                                                   \
-    bool           print_ast;                                                                      \
-    bool           emit_llvm;                                                                      \
-    bool           emit_mir;                                                                       \
-    bool           no_bin;                                                                         \
-    bool           no_llvm;                                                                        \
-    bool           no_analyze;                                                                     \
-    AssertMode     assert_mode;                                                                    \
-    bool           syntax_only;                                                                    \
-    TargetTriple   triple;
+    enum assembly_kind    kind;                                                                    \
+    enum assembly_opt     opt;                                                                     \
+    enum assembly_di_kind di;                                                                      \
+    bool                  reg_split;                                                               \
+    bool                  verify_llvm;                                                             \
+    bool                  run_tests;                                                               \
+    bool                  no_api;                                                                  \
+    bool                  copy_deps;                                                               \
+    bool                  run;                                                                     \
+    bool                  print_tokens;                                                            \
+    bool                  print_ast;                                                               \
+    bool                  emit_llvm;                                                               \
+    bool                  emit_mir;                                                                \
+    bool                  no_bin;                                                                  \
+    bool                  no_llvm;                                                                 \
+    bool                  no_analyze;                                                              \
+    enum assert_mode      assert_mode;                                                             \
+    bool                  syntax_only;                                                             \
+    struct target_triple  triple;
 
-typedef struct Target {
+struct target {
     // Copyable content of target can be duplicated from default target, the default target is
     // usually target containing some setup acquired from command line arguments of application.
     TARGET_COPYABLE_CONTENT
 
-    char *             name;
-    TArray             files;
-    TArray             default_lib_paths;
-    TArray             default_libs;
-    TString            default_custom_linker_opt;
-    TString            out_dir;
-    TString            module_dir;
-    ModuleImportPolicy module_policy;
+    char *                    name;
+    TArray                    files;
+    TArray                    default_lib_paths;
+    TArray                    default_libs;
+    TString                   default_custom_linker_opt;
+    TString                   out_dir;
+    TString                   module_dir;
+    enum module_import_policy module_policy;
 
     struct {
         s32    argc;
         char **argv;
     } vm;
     BL_MAGIC_ADD
-} Target;
+};
 
 struct assembly {
-    const Target *target;
+    const struct target *target;
 
     TString custom_linker_opt;
     TArray  lib_paths;
     TArray  libs;
 
     struct {
-        ScopeArenas scope;
-        MirArenas   mir;
-        Arena       ast;
-        Arena       array;       // Used for all TArrays
-        Arena       small_array; // Used for all SmallArrays
+        ScopeArenas       scope;
+        struct mir_arenas mir;
+        Arena             ast;
+        Arena             array;       // Used for all TArrays
+        Arena             small_array; // Used for all SmallArrays
     } arenas;
 
     struct {
@@ -198,11 +197,11 @@ struct assembly {
     } MIR;
 
     struct {
-        LLVMModuleRef        module; // LLVM Module.
-        LLVMContextRef       cnt;    // LLVM Context.
-        LLVMTargetDataRef    TD;     // LLVM Target data.
-        LLVMTargetMachineRef TM;     // LLVM Machine.
-        char *               triple; // LLVM triple.
+        LLVMModuleRef        module;
+        LLVMContextRef       ctx;
+        LLVMTargetDataRef    TD;
+        LLVMTargetMachineRef TM;
+        char *               triple;
     } llvm;
 
     struct {
@@ -251,21 +250,23 @@ struct assembly {
     struct AssemblySyncImpl *sync;
 };
 
-Target *target_new(const char *name);
-Target *target_dup(const char *name, const Target *other);
-void    target_delete(Target *target);
-void    target_add_file(Target *target, const char *filepath);
-void    target_add_lib_path(Target *target, const char *path);
-void    target_add_lib(Target *target, const char *lib);
-void    target_append_linker_options(Target *target, const char *option);
-void    target_set_vm_args(Target *target, s32 argc, char **argv);
-void    target_set_output_dir(Target *target, const char *dirpath);
-void    target_set_module_dir(Target *target, const char *dir, ModuleImportPolicy policy);
-bool    target_is_triple_valid(TargetTriple *triple);
-bool    target_init_default_triple(TargetTriple *triple);
-char *  target_triple_to_string(const TargetTriple *triple);
+struct target *target_new(const char *name);
+struct target *target_dup(const char *name, const struct target *other);
+void           target_delete(struct target *target);
+void           target_add_file(struct target *target, const char *filepath);
+void           target_add_lib_path(struct target *target, const char *path);
+void           target_add_lib(struct target *target, const char *lib);
+void           target_append_linker_options(struct target *target, const char *option);
+void           target_set_vm_args(struct target *target, s32 argc, char **argv);
+void           target_set_output_dir(struct target *target, const char *dirpath);
+void           target_set_module_dir(struct target *           target,
+                                     const char *              dir,
+                                     enum module_import_policy policy);
+bool           target_is_triple_valid(struct target_triple *triple);
+bool           target_init_default_triple(struct target_triple *triple);
+char *         target_triple_to_string(const struct target_triple *triple);
 
-struct assembly *assembly_new(const Target *target);
+struct assembly *assembly_new(const struct target *target);
 void             assembly_delete(struct assembly *assembly);
 struct unit *
      assembly_add_unit(struct assembly *assembly, const char *filepath, struct Token *load_from);
@@ -296,7 +297,7 @@ assembly_add_rtti(struct assembly *assembly, u64 type_id, struct mir_var *rtti_v
 }
 
 // Convert opt level to string.
-static INLINE const char *opt_to_str(AssemblyOpt opt)
+static INLINE const char *opt_to_str(enum assembly_opt opt)
 {
     switch (opt) {
     case ASSEMBLY_OPT_DEBUG:
@@ -310,7 +311,7 @@ static INLINE const char *opt_to_str(AssemblyOpt opt)
 }
 
 // Convert opt level to LLVM.
-static INLINE LLVMCodeGenOptLevel opt_to_LLVM(AssemblyOpt opt)
+static INLINE LLVMCodeGenOptLevel opt_to_LLVM(enum assembly_opt opt)
 {
     switch (opt) {
     case ASSEMBLY_OPT_DEBUG:

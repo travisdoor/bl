@@ -102,9 +102,9 @@ typedef struct ApplicationOptions {
 } ApplicationOptions;
 
 typedef struct Options {
-    ApplicationOptions app;
-    BuilderOptions     builder;
-    Target *           target;
+    ApplicationOptions     app;
+    struct builder_options builder;
+    struct target *        target;
 } Options;
 
 void print_help(FILE *stream)

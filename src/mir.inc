@@ -1,51 +1,51 @@
 #ifdef GEN_INSTR_SIZEOF
 union __INSTR_T {\
-    MirInstrBlock          block;\
-    MirInstrDeclVar        var;\
-    MirInstrDeclMember     member;\
-    MirInstrDeclVariant    variant;\
-    MirInstrDeclArg        decl_arg;\
-    MirInstrConst          cnst;\
-    MirInstrLoad           load;\
-    MirInstrStore          store;\
-    MirInstrRet            ret;\
-    MirInstrBinop          binop;\
-    MirInstrFnProto        fn_proto;\
-    MirInstrFnGroup        fn_group;\
-    MirInstrDeclRef        decl_ref;\
-    MirInstrDeclDirectRef  decl_direct_ref;\
-    MirInstrCall           call;\
-    MirInstrUnreachable    unreachable;\
-    MirInstrCondBr         cond_br;\
-    MirInstrBr             br;\
-    MirInstrUnop           unop;\
-    MirInstrArg            arg;\
-    MirInstrElemPtr        elem_ptr;\
-    MirInstrMemberPtr      member_ptr;\
-    MirInstrAddrOf         addrof;\
-    MirInstrTypeArray      type_array;\
-    MirInstrTypeSlice      type_slice;\
-    MirInstrTypeDynArr     type_dynarr;\
-    MirInstrTypeVArgs      type_vargs;\
-    MirInstrTypePtr        type_ptr;\
-    MirInstrTypeStruct     type_struct;\
-    MirInstrTypeFn         type_fn;\
-    MirInstrTypeEnum       type_enum;\
-    MirInstrTypeFnGroup    type_fn_group;\
-    MirInstrTypePoly       type_poly;\
-    MirInstrCast           cast;\
-    MirInstrSizeof         szof;\
-    MirInstrAlignof        alof;\
-    MirInstrCompound       init;\
-    MirInstrVArgs          vargs;\
-    MirInstrTypeInfo       type_info;\
-    MirInstrPhi            phi;\
-    MirInstrToAny          toany;\
-    MirInstrSwitch         sw;\
-    MirInstrSetInitializer si;\
-    MirInstrTestCases      tcs; \
-    MirInstrCallLoc        cl; \
-    MirInstrUnroll         unroll; \
+    struct mir_instr_block           block;\
+    struct mir_instr_decl_var        var;\
+    struct mir_instr_decl_member     member;\
+    struct mir_instr_decl_variant    variant;\
+    struct mir_instr_decl_arg        decl_arg;\
+    struct mir_instr_const           cnst;\
+    struct mir_instr_load            load;\
+    struct mir_instr_store           store;\
+    struct mir_instr_ret             ret;\
+    struct mir_instr_binop           binop;\
+    struct mir_instr_fn_proto        fn_proto;\
+    struct mir_instr_fn_group        fn_group;\
+    struct mir_instr_decl_ref        decl_ref;\
+    struct mir_instr_decl_direct_ref decl_direct_ref;\
+    struct mir_instr_call            call;\
+    struct mir_instr_unreachable     unreachable;\
+    struct mir_instr_cond_br         cond_br;\
+    struct mir_instr_br              br;\
+    struct mir_instr_unop            unop;\
+    struct mir_instr_arg             arg;\
+    struct mir_instr_elem_ptr        elem_ptr;\
+    struct mir_instr_member_ptr      member_ptr;\
+    struct mir_instr_addrof          addrof;\
+    struct mir_instr_type_array      type_array;\
+    struct mir_instr_type_slice      type_slice;\
+    struct mir_instr_type_dyn_arr     type_dynarr;\
+    struct mir_instr_type_vargs      type_vargs;\
+    struct mir_instr_type_ptr        type_ptr;\
+    struct mir_instr_type_struct     type_struct;\
+    struct mir_instr_type_fn         type_fn;\
+    struct mir_instr_type_enum       type_enum;\
+    struct mir_instr_type_fn_group   type_fn_group;\
+    struct mir_instr_type_poly       type_poly;\
+    struct mir_instr_cast            cast;\
+    struct mir_instr_sizeof          szof;\
+    struct mir_instr_alignof         alof;\
+    struct mir_instr_compound        init;\
+    struct mir_instr_vargs           vargs;\
+    struct mir_instr_type_info       type_info;\
+    struct mir_instr_phi             phi;\
+    struct mir_instr_to_any          toany;\
+    struct mir_instr_switch          sw;\
+    struct mir_instr_set_initializer si;\
+    struct mir_instr_test_case       tcs; \
+    struct mir_instr_call_loc        cl; \
+    struct mir_instr_unroll          unroll; \
 };
 
 #define SIZEOF_MIR_INSTR sizeof(union __INSTR_T)

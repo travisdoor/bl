@@ -35,10 +35,10 @@
 #define VM_STACK_PTR_DEREF(ptr) ((VMStackPtr) * ((uintptr_t *)(ptr)))
 
 struct mir_type;
-struct MirInstr;
-struct MirInstrBlock;
-struct MirInstrCall;
-struct MirInstrDeclVar;
+struct mir_instr;
+struct mir_instr_block;
+struct mir_instr_call;
+struct mir_instr_decl_var;
 struct mir_fn;
 struct mir_var;
 struct builder;
@@ -49,18 +49,18 @@ typedef ptrdiff_t VMRelativeStackPtr;
 typedef u8 *      VMStackPtr;
 
 typedef struct VMFrame {
-    struct VMFrame * prev;
-    struct MirInstr *caller; // Optional
+    struct VMFrame *  prev;
+    struct mir_instr *caller; // Optional
 } VMFrame;
 
 typedef struct VMStack {
-    VMStackPtr            top_ptr;         // pointer to top of the stack
-    usize                 used_bytes;      // size of the used stack in bytes
-    usize                 allocated_bytes; // total allocated size of the stack in bytes
-    VMFrame *             ra;              // current frame beginning (return address)
-    struct MirInstr *     pc;              // currently executed instruction (program counter)
-    struct MirInstrBlock *prev_block;      // used by phi instruction
-    bool                  aborted;         // true when execution was aborted
+    VMStackPtr              top_ptr;         // pointer to top of the stack
+    usize                   used_bytes;      // size of the used stack in bytes
+    usize                   allocated_bytes; // total allocated size of the stack in bytes
+    VMFrame *               ra;              // current frame beginning (return address)
+    struct mir_instr *      pc;              // currently executed instruction (program counter)
+    struct mir_instr_block *prev_block;      // used by phi instruction
+    bool                    aborted;         // true when execution was aborted
 } VMStack;
 
 typedef struct VM {
@@ -72,9 +72,11 @@ typedef struct VM {
 
 void vm_init(VM *vm, usize stack_size);
 void vm_terminate(VM *vm);
-void vm_execute_instr(VM *vm, struct assembly *assembly, struct MirInstr *instr);
-bool vm_eval_instr(VM *vm, struct assembly *assembly, struct MirInstr *instr);
-bool vm_execute_instr_top_level_call(VM *vm, struct assembly *assembly, struct MirInstrCall *call);
+void vm_execute_instr(VM *vm, struct assembly *assembly, struct mir_instr *instr);
+bool vm_eval_instr(VM *vm, struct assembly *assembly, struct mir_instr *instr);
+bool vm_execute_instr_top_level_call(VM *                   vm,
+                                     struct assembly *      assembly,
+                                     struct mir_instr_call *call);
 bool vm_execute_fn(VM *vm, struct assembly *assembly, struct mir_fn *fn, VMStackPtr *out_ptr);
 void vm_provide_command_line_arguments(VM *vm, s32 argc, char *argv[]);
 void vm_override_var(VM *vm, struct mir_var *var, u64 value);

@@ -88,9 +88,9 @@ void vm_tests_run(struct assembly *assembly)
 
 void vm_build_entry_run(struct assembly *assembly)
 {
-    VM *           vm     = &assembly->vm;
-    struct mir_fn *entry  = assembly->vm_run.build_entry;
-    const Target * target = assembly->target;
+    VM *                 vm     = &assembly->vm;
+    struct mir_fn *      entry  = assembly->vm_run.build_entry;
+    const struct target *target = assembly->target;
     if (!entry) {
         builder_error("struct assembly '%s' has no build entry function!", assembly->target->name);
         assembly->vm_run.last_execution_status = EXIT_FAILURE;
@@ -107,9 +107,9 @@ void vm_build_entry_run(struct assembly *assembly)
 
 void vm_entry_run(struct assembly *assembly)
 {
-    VM *           vm     = &assembly->vm;
-    struct mir_fn *entry  = assembly->vm_run.entry;
-    const Target * target = assembly->target;
+    VM *                 vm     = &assembly->vm;
+    struct mir_fn *      entry  = assembly->vm_run.entry;
+    const struct target *target = assembly->target;
     builder_note("\nExecuting 'main' in compile time...");
     if (!entry) {
         builder_error("struct assembly '%s' has no entry function!", assembly->target->name);

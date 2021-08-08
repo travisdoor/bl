@@ -44,16 +44,16 @@
     }                                                                                              \
     (void)0
 
-typedef struct {
+struct context {
     struct assembly *assembly;
     TArray *         lib_paths;
-} Context;
+};
 
-static bool search_library(Context *   cnt,
-                           const char *lib_name,
-                           char **     out_lib_name,
-                           char **     out_lib_dir,
-                           char **     out_lib_filepath)
+static bool search_library(struct context *ctx,
+                           const char *    lib_name,
+                           char **         out_lib_name,
+                           char **         out_lib_dir,
+                           char **         out_lib_filepath)
 {
     TString *lib_filepath                = get_tmpstr();
     char     lib_name_full[LIB_NAME_MAX] = {0};
@@ -61,7 +61,7 @@ static bool search_library(Context *   cnt,
     platform_lib_name(lib_name, lib_name_full, TARRAY_SIZE(lib_name_full));
     builder_log("- Looking for: '%s'", lib_name_full);
     const char *dir;
-    TARRAY_FOREACH(const char *, cnt->lib_paths, dir)
+    TARRAY_FOREACH(const char *, ctx->lib_paths, dir)
     {
         builder_log("- Search in: '%s'", dir);
         tstring_setf(lib_filepath, "%s/%s", dir, lib_name_full);
@@ -81,7 +81,7 @@ DONE:
     return found;
 }
 
-static void set_lib_paths(Context *cnt)
+static void set_lib_paths(struct context *ctx)
 {
     char        tmp[PATH_MAX] = {0};
     const char *lib_path      = conf_data_get_str(&builder.conf, CONF_LINKER_LIB_PATH_KEY);
@@ -109,7 +109,7 @@ static void set_lib_paths(Context *cnt)
                     win_path_to_unix(dup, len);
 #endif
 
-                    tarray_push(cnt->lib_paths, dup);
+                    tarray_push(ctx->lib_paths, dup);
                 } else {
                     builder_warning("Invalid LIB_PATH entry value '%s'.", tmp);
                 }
@@ -120,24 +120,24 @@ static void set_lib_paths(Context *cnt)
     }
 }
 
-static bool link_lib(Context *cnt, NativeLib *lib)
+static bool link_lib(struct context *ctx, struct native_lib *lib)
 {
     if (!lib) BL_ABORT("invalid lib");
     if (!lib->user_name) BL_ABORT("invalid lib name");
 
-    if (!search_library(cnt, lib->user_name, &lib->filename, &lib->dir, &lib->filepath))
+    if (!search_library(ctx, lib->user_name, &lib->filename, &lib->dir, &lib->filepath))
         return false;
 
     lib->handle = dlLoadLibrary(lib->filepath);
     return lib->handle;
 }
 
-static bool link_working_environment(Context *cnt, const char *lib_name)
+static bool link_working_environment(struct context *ctx, const char *lib_name)
 {
     DLLib *handle = dlLoadLibrary(lib_name);
     if (!handle) return false;
 
-    NativeLib native_lib;
+    struct native_lib native_lib;
     native_lib.handle      = handle;
     native_lib.linked_from = NULL;
     native_lib.user_name   = NULL;
@@ -145,22 +145,22 @@ static bool link_working_environment(Context *cnt, const char *lib_name)
     native_lib.filepath    = NULL;
     native_lib.is_internal = true;
 
-    tarray_push(&cnt->assembly->libs, native_lib);
+    tarray_push(&ctx->assembly->libs, native_lib);
     return true;
 }
 
 void linker_run(struct assembly *assembly)
 {
     ZONE();
-    Context cnt;
-    cnt.assembly  = assembly;
-    cnt.lib_paths = &assembly->lib_paths;
+    struct context ctx;
+    ctx.assembly  = assembly;
+    ctx.lib_paths = &assembly->lib_paths;
     builder_log("Running runtime linker...");
-    set_lib_paths(&cnt);
+    set_lib_paths(&ctx);
 
     for (usize i = 0; i < assembly->libs.size; ++i) {
-        NativeLib *lib = &tarray_at(NativeLib, &assembly->libs, i);
-        if (!link_lib(&cnt, lib)) {
+        struct native_lib *lib = &tarray_at(struct native_lib, &assembly->libs, i);
+        if (!link_lib(&ctx, lib)) {
             char      error_buffer[256];
             const s32 error_len = get_last_error(error_buffer, TARRAY_SIZE(error_buffer));
             link_error(ERR_LIB_NOT_FOUND,
@@ -173,23 +173,23 @@ void linker_run(struct assembly *assembly)
     }
 
 #if BL_PLATFORM_WIN
-    if (!link_working_environment(&cnt, MSVC_CRT)) {
+    if (!link_working_environment(&ctx, MSVC_CRT)) {
         Token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " MSVC_CRT);
         RETURN_END_ZONE();
     }
-    if (!link_working_environment(&cnt, KERNEL32)) {
+    if (!link_working_environment(&ctx, KERNEL32)) {
         Token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " KERNEL32);
         RETURN_END_ZONE();
     }
-    if (!link_working_environment(&cnt, SHLWAPI)) {
+    if (!link_working_environment(&ctx, SHLWAPI)) {
         Token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " SHLWAPI);
         RETURN_END_ZONE();
     }
 #endif
-    if (!link_working_environment(&cnt, NULL)) {
+    if (!link_working_environment(&ctx, NULL)) {
         Token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link working environment.");
         RETURN_END_ZONE();

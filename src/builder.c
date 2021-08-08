@@ -77,14 +77,14 @@ void vm_tests_run(struct assembly *assembly);
 // =================================================================================================
 // Builder
 // =================================================================================================
-static int  compile_unit(struct unit *unit, struct assembly *assembly, UnitStageFn *pipeline);
-static int  compile_assembly(struct assembly *assembly, AssemblyStageFn *pipeline);
+static int  compile_unit(struct unit *unit, struct assembly *assembly, unit_stage_fn_t *pipeline);
+static int  compile_assembly(struct assembly *assembly, assembly_stage_fn_t *pipeline);
 static bool llvm_initialized = false;
 
 // =================================================================================================
 // Threading
 // =================================================================================================
-typedef struct ThreadingImpl {
+struct threading_impl {
     struct assembly *assembly;
     pthread_t        workers[MAX_THREAD];
     TArray           queue;
@@ -99,12 +99,12 @@ typedef struct ThreadingImpl {
     pthread_mutex_t active_mutex;
     pthread_cond_t  active_condition;
 
-    UnitStageFn *unit_pipeline;
-} ThreadingImpl;
+    unit_stage_fn_t *unit_pipeline;
+};
 
 static void async_push(struct unit *unit)
 {
-    ThreadingImpl *threading = builder.threading;
+    struct threading_impl *threading = builder.threading;
     pthread_mutex_lock(&threading->queue_mutex);
     tarray_push(&threading->queue, unit);
     if (threading->is_compiling) pthread_cond_signal(&threading->queue_condition);
@@ -113,8 +113,8 @@ static void async_push(struct unit *unit)
 
 static struct unit *async_pop_unsafe(void)
 {
-    ThreadingImpl *threading = builder.threading;
-    struct unit *  unit      = NULL;
+    struct threading_impl *threading = builder.threading;
+    struct unit *          unit      = NULL;
     if (threading->queue.size) {
         unit = tarray_at(struct unit *, &threading->queue, threading->queue.size - 1);
         tarray_pop(&threading->queue);
@@ -122,10 +122,10 @@ static struct unit *async_pop_unsafe(void)
     return unit;
 }
 
-static ThreadingImpl *threading_new(void)
+static struct threading_impl *threading_new(void)
 {
-    ThreadingImpl *t = bl_malloc(sizeof(ThreadingImpl));
-    memset(t, 0, sizeof(ThreadingImpl));
+    struct threading_impl *t = bl_malloc(sizeof(struct threading_impl));
+    memset(t, 0, sizeof(struct threading_impl));
     pthread_mutex_init(&t->str_tmp_lock, NULL);
     pthread_mutex_init(&t->queue_mutex, NULL);
     pthread_mutex_init(&t->active_mutex, NULL);
@@ -136,9 +136,9 @@ static ThreadingImpl *threading_new(void)
     return t;
 }
 
-static void threading_delete(ThreadingImpl *t)
+static void threading_delete(struct threading_impl *t)
 {
-    ThreadingImpl *threading = builder.threading;
+    struct threading_impl *threading = builder.threading;
     pthread_mutex_lock(&threading->queue_mutex);
     threading->will_exit = true;
     pthread_cond_broadcast(&threading->queue_condition);
@@ -158,7 +158,7 @@ static void threading_delete(ThreadingImpl *t)
 
 static void *worker(void UNUSED(*args))
 {
-    ThreadingImpl *threading = builder.threading;
+    struct threading_impl *threading = builder.threading;
     while (true) {
         pthread_mutex_lock(&threading->queue_mutex);
         struct unit *unit;
@@ -188,15 +188,15 @@ static void *worker(void UNUSED(*args))
 
 static void start_threads()
 {
-    ThreadingImpl *threading = builder.threading;
+    struct threading_impl *threading = builder.threading;
     for (usize i = 0; i < TARRAY_SIZE(threading->workers); ++i) {
         pthread_create(&threading->workers[i], NULL, &worker, NULL);
     }
 }
 
-static void async_compile(struct assembly *assembly, UnitStageFn *unit_pipeline)
+static void async_compile(struct assembly *assembly, unit_stage_fn_t *unit_pipeline)
 {
-    ThreadingImpl *threading = builder.threading;
+    struct threading_impl *threading = builder.threading;
 
     struct unit *unit;
     TARRAY_FOREACH(struct unit *, &assembly->units, unit)
@@ -259,7 +259,7 @@ static void llvm_terminate(void)
     LLVMShutdown();
 }
 
-int compile_unit(struct unit *unit, struct assembly *assembly, UnitStageFn *pipeline)
+int compile_unit(struct unit *unit, struct assembly *assembly, unit_stage_fn_t *pipeline)
 {
     BL_ASSERT(pipeline && "Invalid unit pipeline!");
     if (unit->loaded_from) {
@@ -268,8 +268,8 @@ int compile_unit(struct unit *unit, struct assembly *assembly, UnitStageFn *pipe
     } else {
         builder_log("Compile: %s", unit->name);
     }
-    s32         i     = 0;
-    UnitStageFn stage = NULL;
+    s32             i     = 0;
+    unit_stage_fn_t stage = NULL;
     while ((stage = pipeline[i++])) {
         stage(assembly, unit);
         if (builder.errorc) return COMPILE_FAIL;
@@ -277,11 +277,11 @@ int compile_unit(struct unit *unit, struct assembly *assembly, UnitStageFn *pipe
     return COMPILE_OK;
 }
 
-int compile_assembly(struct assembly *assembly, AssemblyStageFn *pipeline)
+int compile_assembly(struct assembly *assembly, assembly_stage_fn_t *pipeline)
 {
     BL_ASSERT(pipeline && "Invalid assembly pipeline!");
-    s32             i     = 0;
-    AssemblyStageFn stage = NULL;
+    s32                 i     = 0;
+    assembly_stage_fn_t stage = NULL;
     while ((stage = pipeline[i++])) {
         stage(assembly);
         if (builder.errorc) return COMPILE_FAIL;
@@ -312,13 +312,13 @@ static void tests_run(struct assembly *assembly)
         stages[i++] = fn;                                                                          \
     }
 
-static void setup_unit_pipeline(struct assembly *assembly, UnitStageFn *stages, s32 stage_count)
+static void setup_unit_pipeline(struct assembly *assembly, unit_stage_fn_t *stages, s32 stage_count)
 {
 
-    const Target *t = assembly->target;
+    const struct target *t = assembly->target;
 
     s32 index = 0;
-    memset(stages, 0, stage_count * sizeof(UnitStageFn));
+    memset(stages, 0, stage_count * sizeof(unit_stage_fn_t));
     STAGE(index, &file_loader_run);
     STAGE(index, &lexer_run);
     if (t->print_tokens) STAGE(index, &token_printer_run);
@@ -326,12 +326,12 @@ static void setup_unit_pipeline(struct assembly *assembly, UnitStageFn *stages, 
 }
 
 static void
-setup_assembly_pipeline(struct assembly *assembly, AssemblyStageFn *stages, s32 stage_count)
+setup_assembly_pipeline(struct assembly *assembly, assembly_stage_fn_t *stages, s32 stage_count)
 {
-    const Target *t = assembly->target;
+    const struct target *t = assembly->target;
 
     s32 index = 0;
-    memset(stages, 0, stage_count * sizeof(AssemblyStageFn));
+    memset(stages, 0, stage_count * sizeof(assembly_stage_fn_t));
     if (t->print_ast) STAGE(index, &ast_printer_run);
     if (t->kind == ASSEMBLY_DOCS) {
         STAGE(index, &docs_run);
@@ -400,8 +400,8 @@ static int compile(struct assembly *assembly)
     s32 state           = COMPILE_OK;
     builder.total_lines = 0;
 
-    UnitStageFn     unit_pipeline[5];
-    AssemblyStageFn assembly_pipeline[14];
+    unit_stage_fn_t     unit_pipeline[5];
+    assembly_stage_fn_t assembly_pipeline[14];
     setup_unit_pipeline(assembly, unit_pipeline, TARRAY_SIZE(unit_pipeline));
     setup_assembly_pipeline(assembly, assembly_pipeline, TARRAY_SIZE(assembly_pipeline));
 
@@ -441,7 +441,7 @@ static int compile(struct assembly *assembly)
 // =================================================================================================
 // PUBLIC
 // =================================================================================================
-void builder_init(const BuilderOptions *options, const char *exec_dir)
+void builder_init(const struct builder_options *options, const char *exec_dir)
 {
     BL_ASSERT(options && "Invalid builder options!");
     BL_ASSERT(exec_dir && "Invalid executable directory!");
@@ -462,7 +462,7 @@ void builder_init(const BuilderOptions *options, const char *exec_dir)
 
     // initialize LLVM statics
     llvm_init();
-    tarray_init(&builder.targets, sizeof(Target *));
+    tarray_init(&builder.targets, sizeof(struct target *));
     tarray_init(&builder.tmp_strings, sizeof(TString *));
     start_threads();
     builder.is_initialized = true;
@@ -470,8 +470,8 @@ void builder_init(const BuilderOptions *options, const char *exec_dir)
 
 void builder_terminate(void)
 {
-    Target *target;
-    TARRAY_FOREACH(Target *, &builder.targets, target)
+    struct target *target;
+    TARRAY_FOREACH(struct target *, &builder.targets, target)
     {
         target_delete(target);
     }
@@ -532,9 +532,9 @@ int builder_load_config(const char *filepath)
     return builder_compile_config(filepath, &builder.conf, NULL);
 }
 
-Target *_builder_add_target(const char *name, bool is_default)
+struct target *_builder_add_target(const char *name, bool is_default)
 {
-    Target *target = NULL;
+    struct target *target = NULL;
     if (is_default) {
         target = target_new(name);
         if (!target_init_default_triple(&target->triple)) {
@@ -551,9 +551,9 @@ Target *_builder_add_target(const char *name, bool is_default)
 
 int builder_compile_all(void)
 {
-    s32     state = COMPILE_OK;
-    Target *target;
-    TARRAY_FOREACH(Target *, &builder.targets, target)
+    s32            state = COMPILE_OK;
+    struct target *target;
+    TARRAY_FOREACH(struct target *, &builder.targets, target)
     {
         if (target->kind == ASSEMBLY_BUILD_PIPELINE) continue;
         state = builder_compile(target);
@@ -562,7 +562,7 @@ int builder_compile_all(void)
     return state;
 }
 
-s32 builder_compile(const Target *target)
+s32 builder_compile(const struct target *target)
 {
     BL_MAGIC_ASSERT(target);
     struct assembly *assembly = assembly_new(target);
@@ -573,14 +573,14 @@ s32 builder_compile(const Target *target)
     return state;
 }
 
-void builder_msg(BuilderMsgType   type,
-                 s32              code,
-                 struct location *src,
-                 BuilderCurPos    pos,
-                 const char *     format,
+void builder_msg(enum builder_msg_type type,
+                 s32                   code,
+                 struct location *     src,
+                 enum builder_cur_pos  pos,
+                 const char *          format,
                  ...)
 {
-    ThreadingImpl *threading = builder.threading;
+    struct threading_impl *threading = builder.threading;
     pthread_mutex_lock(&threading->log_mutex);
     if (type == BUILDER_MSG_ERROR && builder.errorc > MAX_ERROR_REPORTED) goto DONE;
     if (type == BUILDER_MSG_LOG && !builder.options->verbose) goto DONE;
@@ -699,7 +699,7 @@ TString *builder_create_cached_str(void)
 
 TString *get_tmpstr(void)
 {
-    ThreadingImpl *threading = builder.threading;
+    struct threading_impl *threading = builder.threading;
     pthread_mutex_lock(&threading->str_tmp_lock);
     TString *   str  = NULL;
     const usize size = builder.tmp_strings.size;
@@ -719,7 +719,7 @@ void put_tmpstr(TString *str)
 {
     BL_ASSERT(str);
     tstring_clear(str);
-    ThreadingImpl *threading = builder.threading;
+    struct threading_impl *threading = builder.threading;
     pthread_mutex_lock(&threading->str_tmp_lock);
     tarray_push(&builder.tmp_strings, str);
     pthread_mutex_unlock(&threading->str_tmp_lock);
@@ -729,7 +729,7 @@ void builder_async_submit_unit(struct unit *unit)
 {
     BL_ASSERT(unit);
     if (builder.options->no_jobs) return;
-    ThreadingImpl *threading = builder.threading;
+    struct threading_impl *threading = builder.threading;
     if (!threading->is_compiling) return;
 
     async_push(unit);

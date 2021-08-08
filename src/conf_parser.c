@@ -29,14 +29,14 @@
 #include "builder.h"
 #include "common.h"
 
-typedef struct {
+struct context {
     Tokens *  tokens;
     ConfData *data;
-} Context;
+};
 
-static bool parse_key_value_rq(Context *cnt)
+static bool parse_key_value_rq(struct context *ctx)
 {
-    Token *tok_ident = tokens_consume(cnt->tokens);
+    Token *tok_ident = tokens_consume(ctx->tokens);
     if (token_is_not(tok_ident, SYM_IDENT)) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_UNEXPECTED_SYMBOL,
@@ -46,7 +46,7 @@ static bool parse_key_value_rq(Context *cnt)
         return false;
     }
 
-    Token *tok_value = tokens_consume(cnt->tokens);
+    Token *tok_value = tokens_consume(ctx->tokens);
 
     ConfDataValue tmp;
 
@@ -66,35 +66,35 @@ static bool parse_key_value_rq(Context *cnt)
                     BUILDER_CUR_AFTER,
                     "Expected value after key identificator.");
 
-        tokens_consume_till(cnt->tokens, SYM_SEMICOLON);
+        tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return false;
     }
 
     const char *key = tok_ident->value.str;
     BL_ASSERT(key);
-    if (conf_data_has_key(cnt->data, key)) {
+    if (conf_data_has_key(ctx->data, key)) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_DUPLICATE_SYMBOL,
                     &tok_ident->location,
                     BUILDER_CUR_WORD,
                     "Duplicate symbol in config scope.");
     } else {
-        conf_data_add(cnt->data, key, &tmp);
+        conf_data_add(ctx->data, key, &tmp);
     }
 
     return true;
 }
 
-static void parse_top_level(Context *cnt)
+static void parse_top_level(struct context *ctx)
 {
-    while (token_is_not(tokens_peek(cnt->tokens), SYM_EOF)) {
-        if (!parse_key_value_rq(cnt)) break;
+    while (token_is_not(tokens_peek(ctx->tokens), SYM_EOF)) {
+        if (!parse_key_value_rq(ctx)) break;
     }
 }
 
 void conf_parser_run(struct unit *unit, ConfData *out_data)
 {
     BL_ASSERT(out_data && "Missing output data buffer for config file parser!");
-    Context cnt = {.tokens = &unit->tokens, .data = out_data};
-    parse_top_level(&cnt);
+    struct context ctx = {.tokens = &unit->tokens, .data = out_data};
+    parse_top_level(&ctx);
 }

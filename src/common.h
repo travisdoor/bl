@@ -106,7 +106,7 @@ TSMALL_ARRAY_TYPE(TypePtr, struct mir_type *, 16);
 TSMALL_ARRAY_TYPE(MemberPtr, struct mir_member *, 16);
 TSMALL_ARRAY_TYPE(VariantPtr, struct mir_variant *, 16);
 TSMALL_ARRAY_TYPE(ArgPtr, struct mir_arg *, 16);
-TSMALL_ARRAY_TYPE(InstrPtr, struct MirInstr *, 16);
+TSMALL_ARRAY_TYPE(InstrPtr, struct mir_instr *, 16);
 TSMALL_ARRAY_TYPE(ConstValuePtr, struct MirConstValue *, 16);
 TSMALL_ARRAY_TYPE(Char, char, 128);
 TSMALL_ARRAY_TYPE(CharPtr, char *, 8);
@@ -181,7 +181,7 @@ void    platform_lib_name(const char *name, char *buffer, usize max_len);
 f64     get_tick_ms(void);
 s32     get_last_error(char *buf, s32 buf_len);
 TArray *create_arr(struct assembly *assembly, usize size);
-void *  _create_sarr(struct assembly *cnt, usize arr_size);
+void *  _create_sarr(struct assembly *ctx, usize arr_size);
 u32     next_pow_2(u32 n);
 void    color_print(FILE *stream, s32 color, const char *format, ...);
 #define create_sarr(T, Asm) ((T *)_create_sarr((Asm), sizeof(T)))

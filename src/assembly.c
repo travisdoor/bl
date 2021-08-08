@@ -131,7 +131,7 @@ static void dl_terminate(struct assembly *assembly)
     dcFree(assembly->dc_vm);
 }
 
-static void parse_triple(const char *normalized_triple, TargetTriple *out_triple)
+static void parse_triple(const char *normalized_triple, struct target_triple *out_triple)
 {
     BL_ASSERT(out_triple);
     // arch-vendor-os-evironment
@@ -237,7 +237,7 @@ static void llvm_init(struct assembly *assembly)
     LLVMTargetDataRef llvm_td = LLVMCreateTargetDataLayout(llvm_tm);
     LLVMSetModuleDataLayout(llvm_module, llvm_td);
     LLVMSetTarget(llvm_module, triple);
-    assembly->llvm.cnt    = llvm_context;
+    assembly->llvm.ctx    = llvm_context;
     assembly->llvm.module = llvm_module;
     assembly->llvm.TM     = llvm_tm;
     assembly->llvm.TD     = llvm_td;
@@ -249,11 +249,11 @@ static void llvm_terminate(struct assembly *assembly)
     LLVMDisposeModule(assembly->llvm.module);
     LLVMDisposeTargetMachine(assembly->llvm.TM);
     LLVMDisposeTargetData(assembly->llvm.TD);
-    LLVMContextDispose(assembly->llvm.cnt);
+    LLVMContextDispose(assembly->llvm.ctx);
     bl_free(assembly->llvm.triple);
 }
 
-static void native_lib_terminate(NativeLib *lib)
+static void native_lib_terminate(struct native_lib *lib)
 {
     if (lib->handle) dlFreeLibrary(lib->handle);
     if (lib->is_internal) return;
@@ -266,8 +266,8 @@ static void native_lib_terminate(NativeLib *lib)
 static void mir_init(struct assembly *assembly)
 {
     mir_arenas_init(&assembly->arenas.mir);
-    tarray_init(&assembly->MIR.global_instrs, sizeof(MirInstr *));
-    tarray_init(&assembly->MIR.exported_instrs, sizeof(MirInstr *));
+    tarray_init(&assembly->MIR.global_instrs, sizeof(struct mir_instr *));
+    tarray_init(&assembly->MIR.exported_instrs, sizeof(struct mir_instr *));
     thtbl_init(&assembly->MIR.RTTI_table, sizeof(struct mir_var *), 2048);
 }
 
@@ -414,11 +414,11 @@ static bool import_module(struct assembly *assembly,
 // =================================================================================================
 // PUBLIC
 // =================================================================================================
-Target *target_new(const char *name)
+struct target *target_new(const char *name)
 {
     BL_ASSERT(name && "struct assembly name not specified!");
-    Target *target = bl_malloc(sizeof(Target));
-    memset(target, 0, sizeof(Target));
+    struct target *target = bl_malloc(sizeof(struct target));
+    memset(target, 0, sizeof(struct target));
     BL_MAGIC_SET(target);
     tarray_init(&target->files, sizeof(char *));
     tarray_init(&target->default_lib_paths, sizeof(char *));
@@ -446,15 +446,15 @@ Target *target_new(const char *name)
     target->di        = ASSEMBLY_DI_DWARF;
     target->copy_deps = false;
 #endif
-    target->triple = (TargetTriple){
+    target->triple = (struct target_triple){
         .arch = ARCH_unknown, .vendor = VENDOR_unknown, .os = OS_unknown, .env = ENV_unknown};
     return target;
 }
 
-Target *target_dup(const char *name, const Target *other)
+struct target *target_dup(const char *name, const struct target *other)
 {
     BL_MAGIC_ASSERT(other);
-    Target *target = target_new(name);
+    struct target *target = target_new(name);
     memcpy(target, other, sizeof(struct {TARGET_COPYABLE_CONTENT}));
     target_set_output_dir(target, other->out_dir.data);
     target->vm = other->vm;
@@ -462,7 +462,7 @@ Target *target_dup(const char *name, const Target *other)
     return target;
 }
 
-void target_delete(Target *target)
+void target_delete(struct target *target)
 {
     char *file;
     TARRAY_FOREACH(char *, &target->files, file) free(file);
@@ -483,7 +483,7 @@ void target_delete(Target *target)
     bl_free(target);
 }
 
-void target_add_file(Target *target, const char *filepath)
+void target_add_file(struct target *target, const char *filepath)
 {
     BL_MAGIC_ASSERT(target);
     BL_ASSERT(filepath && "Invalid filepath!");
@@ -491,14 +491,14 @@ void target_add_file(Target *target, const char *filepath)
     tarray_push(&target->files, dup);
 }
 
-void target_set_vm_args(Target *target, s32 argc, char **argv)
+void target_set_vm_args(struct target *target, s32 argc, char **argv)
 {
     BL_MAGIC_ASSERT(target);
     target->vm.argc = argc;
     target->vm.argv = argv;
 }
 
-void target_add_lib_path(Target *target, const char *path)
+void target_add_lib_path(struct target *target, const char *path)
 {
     BL_MAGIC_ASSERT(target);
     if (!path) return;
@@ -507,7 +507,7 @@ void target_add_lib_path(Target *target, const char *path)
     tarray_push(&target->default_lib_paths, tmp);
 }
 
-void target_add_lib(Target *target, const char *lib)
+void target_add_lib(struct target *target, const char *lib)
 {
     BL_MAGIC_ASSERT(target);
     if (!lib) return;
@@ -516,7 +516,7 @@ void target_add_lib(Target *target, const char *lib)
     tarray_push(&target->default_libs, tmp);
 }
 
-void target_set_output_dir(Target *target, const char *dir)
+void target_set_output_dir(struct target *target, const char *dir)
 {
     BL_MAGIC_ASSERT(target);
     if (!dir) builder_error("Cannot create output directory.");
@@ -525,7 +525,7 @@ void target_set_output_dir(Target *target, const char *dir)
     }
 }
 
-void target_append_linker_options(Target *target, const char *option)
+void target_append_linker_options(struct target *target, const char *option)
 {
     BL_MAGIC_ASSERT(target);
     if (!option) return;
@@ -533,7 +533,7 @@ void target_append_linker_options(Target *target, const char *option)
     tstring_append(&target->default_custom_linker_opt, " ");
 }
 
-void target_set_module_dir(Target *target, const char *dir, ModuleImportPolicy policy)
+void target_set_module_dir(struct target *target, const char *dir, enum module_import_policy policy)
 {
     BL_MAGIC_ASSERT(target);
     if (!dir) {
@@ -547,7 +547,7 @@ void target_set_module_dir(Target *target, const char *dir, ModuleImportPolicy p
     target->module_policy = policy;
 }
 
-bool target_is_triple_valid(TargetTriple *triple)
+bool target_is_triple_valid(struct target_triple *triple)
 {
     if (triple->arch == ARCH_unknown) return false;
     if (triple->os == OS_unknown) return false;
@@ -555,7 +555,7 @@ bool target_is_triple_valid(TargetTriple *triple)
     return true;
 }
 
-bool target_init_default_triple(TargetTriple *triple)
+bool target_init_default_triple(struct target_triple *triple)
 {
     char *llvm_triple = LLVMGetDefaultTargetTriple();
     parse_triple(llvm_triple, triple);
@@ -568,7 +568,7 @@ bool target_init_default_triple(TargetTriple *triple)
     return true;
 }
 
-char *target_triple_to_string(const TargetTriple *triple)
+char *target_triple_to_string(const struct target_triple *triple)
 {
     const char *arch   = "";
     const char *vendor = "";
@@ -585,7 +585,7 @@ char *target_triple_to_string(const TargetTriple *triple)
     return str;
 }
 
-struct assembly *assembly_new(const Target *target)
+struct assembly *assembly_new(const struct target *target)
 {
     BL_MAGIC_ASSERT(target);
     struct assembly *assembly = bl_malloc(sizeof(struct assembly));
@@ -596,7 +596,7 @@ struct assembly *assembly_new(const Target *target)
     llvm_init(assembly);
     tarray_init(&assembly->units, sizeof(struct unit *));
     tstring_init(&assembly->custom_linker_opt);
-    tarray_init(&assembly->libs, sizeof(NativeLib));
+    tarray_init(&assembly->libs, sizeof(struct native_lib));
     tarray_init(&assembly->lib_paths, sizeof(char *));
     tarray_init(&assembly->testing.cases, sizeof(struct mir_fn *));
     vm_init(&assembly->vm, VM_STACK_SIZE);
@@ -677,9 +677,9 @@ void assembly_delete(struct assembly *assembly)
         unit_delete(unit);
     }
 
-    NativeLib *lib;
+    struct native_lib *lib;
     for (usize i = 0; i < assembly->libs.size; ++i) {
-        lib = &tarray_at(NativeLib, &assembly->libs, i);
+        lib = &tarray_at(struct native_lib, &assembly->libs, i);
         native_lib_terminate(lib);
     }
 
@@ -755,16 +755,16 @@ void assembly_add_native_lib(struct assembly *assembly,
 {
     const u64 hash = thash_from_str(lib_name);
     { // Search for duplicity.
-        NativeLib *lib;
+        struct native_lib *lib;
         for (usize i = 0; i < assembly->libs.size; ++i) {
-            lib = &tarray_at(NativeLib, &assembly->libs, i);
+            lib = &tarray_at(struct native_lib, &assembly->libs, i);
             if (lib->hash == hash) return;
         }
     }
-    NativeLib lib   = {0};
-    lib.hash        = hash;
-    lib.user_name   = strdup(lib_name);
-    lib.linked_from = link_token;
+    struct native_lib lib = {0};
+    lib.hash              = hash;
+    lib.user_name         = strdup(lib_name);
+    lib.linked_from       = link_token;
     tarray_push(&assembly->libs, lib);
 }
 
@@ -791,12 +791,12 @@ bool assembly_import_module(struct assembly *assembly, const char *modulepath, T
         goto DONE;
     }
 
-    TString *     local_path        = get_tmpstr();
-    ConfData *    config            = NULL;
-    const Target *target            = assembly->target;
-    const char *  module_dir        = target->module_dir.len > 0 ? target->module_dir.data : NULL;
-    const ModuleImportPolicy policy = assembly->target->module_policy;
-    const bool local_found          = module_dir ? module_exist(module_dir, modulepath) : false;
+    TString *            local_path = get_tmpstr();
+    ConfData *           config     = NULL;
+    const struct target *target     = assembly->target;
+    const char *         module_dir = target->module_dir.len > 0 ? target->module_dir.data : NULL;
+    const enum module_import_policy policy = assembly->target->module_policy;
+    const bool local_found = module_dir ? module_exist(module_dir, modulepath) : false;
     switch (policy) {
     case IMPORT_POLICY_SYSTEM: {
         if (local_found) {
@@ -872,10 +872,10 @@ DONE:
 
 DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol)
 {
-    void *     handle = NULL;
-    NativeLib *lib;
+    void *             handle = NULL;
+    struct native_lib *lib;
     for (usize i = 0; i < assembly->libs.size; ++i) {
-        lib    = &tarray_at(NativeLib, &assembly->libs, i);
+        lib    = &tarray_at(struct native_lib, &assembly->libs, i);
         handle = dlFindSymbol(lib->handle, symbol);
         if (handle) break;
     }
