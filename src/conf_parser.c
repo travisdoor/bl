@@ -36,7 +36,7 @@ struct context {
 
 static bool parse_key_value_rq(struct context *ctx)
 {
-    Token *tok_ident = tokens_consume(ctx->tokens);
+    struct token *tok_ident = tokens_consume(ctx->tokens);
     if (token_is_not(tok_ident, SYM_IDENT)) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_UNEXPECTED_SYMBOL,
@@ -46,7 +46,7 @@ static bool parse_key_value_rq(struct context *ctx)
         return false;
     }
 
-    Token *tok_value = tokens_consume(ctx->tokens);
+    struct token *tok_value = tokens_consume(ctx->tokens);
 
     ConfDataValue tmp;
 

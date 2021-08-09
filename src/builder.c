@@ -511,7 +511,7 @@ const char *builder_get_exec_dir(void)
     return builder.exec_dir;
 }
 
-int builder_compile_config(const char *filepath, ConfData *out_data, Token *import_from)
+int builder_compile_config(const char *filepath, ConfData *out_data, struct token *import_from)
 {
     struct unit *unit = unit_new(filepath, import_from);
     file_loader_run(NULL, unit);

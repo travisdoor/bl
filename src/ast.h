@@ -36,7 +36,7 @@
 #define AST_IS_OK(node) ((node) && (node)->kind != AST_BAD)
 
 struct scope;
-struct Token;
+struct token;
 struct location;
 struct ast;
 
@@ -390,7 +390,7 @@ struct ast {
 void ast_arena_init(Arena *arena);
 void ast_arena_terminate(Arena *arena);
 struct ast *
-ast_create_node(struct Arena *arena, AstKind c, struct Token *tok, struct scope *parent_scope);
+ast_create_node(struct Arena *arena, AstKind c, struct token *tok, struct scope *parent_scope);
 const char *ast_binop_to_str(BinopKind op);
 const char *ast_unop_to_str(UnopKind op);
 const char *ast_get_name(const struct ast *n);

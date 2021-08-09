@@ -322,7 +322,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     return true;
 }
 
-static ConfData *load_module_config(const char *modulepath, Token *import_from)
+static ConfData *load_module_config(const char *modulepath, struct token *import_from)
 {
     char tmp_path[PATH_MAX] = {0};
     snprintf(tmp_path, TARRAY_SIZE(tmp_path), "%s/%s", modulepath, MODULE_CONFIG_FILE);
@@ -346,7 +346,7 @@ static INLINE s32 get_module_version(ConfData *config)
 static bool import_module(struct assembly *assembly,
                           ConfData *       config,
                           const char *     modulepath,
-                          Token *          import_from)
+                          struct token *   import_from)
 {
     BL_ASSERT(config);
     BL_ASSERT(modulepath);
@@ -730,7 +730,8 @@ static INLINE bool assembly_has_unit(struct assembly *assembly, const u64 hash)
     return false;
 }
 
-struct unit *assembly_add_unit(struct assembly *assembly, const char *filepath, Token *load_from)
+struct unit *
+assembly_add_unit(struct assembly *assembly, const char *filepath, struct token *load_from)
 {
     AssemblySyncImpl *sync = assembly->sync;
     pthread_mutex_lock(&sync->units_lock);
@@ -751,7 +752,7 @@ DONE:
 
 void assembly_add_native_lib(struct assembly *assembly,
                              const char *     lib_name,
-                             struct Token *   link_token)
+                             struct token *   link_token)
 {
     const u64 hash = thash_from_str(lib_name);
     { // Search for duplicity.
@@ -777,7 +778,9 @@ static INLINE bool module_exist(const char *module_dir, const char *modulepath)
     return found;
 }
 
-bool assembly_import_module(struct assembly *assembly, const char *modulepath, Token *import_from)
+bool assembly_import_module(struct assembly *assembly,
+                            const char *     modulepath,
+                            struct token *   import_from)
 {
     AssemblySyncImpl *sync = assembly->sync;
     pthread_mutex_lock(&sync->import_module_lock);

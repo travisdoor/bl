@@ -92,7 +92,7 @@ void        builder_set_lib_dir(const char *lib_dir);
 const char *builder_get_lib_dir(void);
 const char *builder_get_exec_dir(void);
 int         builder_load_config(const char *filepath);
-int builder_compile_config(const char *filepath, ConfData *out_data, struct Token *import_from);
+int builder_compile_config(const char *filepath, ConfData *out_data, struct token *import_from);
 
 #define builder_add_target(name) _builder_add_target(name, false)
 #define builder_add_default_target(name) _builder_add_target(name, true)

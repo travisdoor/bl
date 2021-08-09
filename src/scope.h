@@ -100,9 +100,9 @@ struct scope {
     usize           expected_entry_count;
     TArray          layers;
 
-    struct ScopeSyncImpl *sync;
-    struct location *     location;
-    LLVMMetadataRef       llvm_meta;
+    struct scope_sync_impl *sync;
+    struct location *       location;
+    LLVMMetadataRef         llvm_meta;
     BL_MAGIC_ADD
 };
 

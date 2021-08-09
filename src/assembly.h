@@ -120,7 +120,7 @@ struct target_triple {
 struct native_lib {
     u32           hash;
     DLLib *       handle;
-    struct Token *linked_from;
+    struct token *linked_from;
     char *        user_name;
     char *        filename;
     char *        filepath;
@@ -269,15 +269,15 @@ char *         target_triple_to_string(const struct target_triple *triple);
 struct assembly *assembly_new(const struct target *target);
 void             assembly_delete(struct assembly *assembly);
 struct unit *
-     assembly_add_unit(struct assembly *assembly, const char *filepath, struct Token *load_from);
+     assembly_add_unit(struct assembly *assembly, const char *filepath, struct token *load_from);
 void assembly_add_lib_path(struct assembly *assembly, const char *path);
 void assembly_append_linker_options(struct assembly *assembly, const char *opt);
 void assembly_add_native_lib(struct assembly *assembly,
                              const char *     lib_name,
-                             struct Token *   link_token);
+                             struct token *   link_token);
 bool assembly_import_module(struct assembly *assembly,
                             const char *     modulepath,
-                            struct Token *   import_from);
+                            struct token *   import_from);
 DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol);
 
 static INLINE bool assembly_has_rtti(struct assembly *assembly, u64 type_id)

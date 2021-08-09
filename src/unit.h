@@ -34,7 +34,7 @@
 #include "scope.h"
 #include "tokens.h"
 
-struct Token;
+struct token;
 
 struct unit {
     u64             hash;
@@ -46,13 +46,13 @@ struct unit {
     char *          dirpath;
     char *          name;
     char *          src;
-    struct Token *  loaded_from;
+    struct token *  loaded_from;
     LLVMMetadataRef llvm_file_meta;
 };
 
-u64 unit_hash(const char *filepath, struct Token *load_from);
+u64 unit_hash(const char *filepath, struct token *load_from);
 
-struct unit *unit_new(const char *filepath, struct Token *load_from);
+struct unit *unit_new(const char *filepath, struct token *load_from);
 void         unit_delete(struct unit *unit);
 const char * unit_get_src_ln(struct unit *unit, s32 line, long *len);
 
