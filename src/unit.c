@@ -37,7 +37,7 @@
 #include <windows.h>
 #endif
 
-u64 unit_hash(const char *filepath, struct Token *load_from)
+u64 unit_hash(const char *filepath, struct token *load_from)
 {
     struct unit *parent_unit = load_from ? load_from->location.unit : NULL;
     char *       real_path   = NULL;
@@ -49,7 +49,7 @@ u64 unit_hash(const char *filepath, struct Token *load_from)
 }
 
 // public
-struct unit *unit_new(const char *filepath, Token *load_from)
+struct unit *unit_new(const char *filepath, struct token *load_from)
 {
     struct unit *parent_unit = load_from ? load_from->location.unit : NULL;
     struct unit *unit        = bl_malloc(sizeof(struct unit));

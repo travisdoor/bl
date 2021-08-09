@@ -35,11 +35,11 @@ void token_printer_run(struct assembly *UNUSED(assembly), struct unit *unit)
 
     fprintf(stdout, "Tokens: \n");
 
-    const usize c = tokens_arr->size;
-    Token *     tok;
-    s32         line = -1;
+    const usize   c = tokens_arr->size;
+    struct token *tok;
+    s32           line = -1;
     for (usize i = 0; i < c; ++i) {
-        tok = &tarray_at(Token, tokens_arr, i);
+        tok = &tarray_at(struct token, tokens_arr, i);
 
         if (line == -1) {
             line = tok->location.line;

@@ -53,16 +53,16 @@ struct context {
 };
 
 static void       scan(struct context *ctx);
-static bool       scan_comment(struct context *ctx, Token *tok, const char *term);
-static bool       scan_docs(struct context *ctx, Token *tok);
-static bool       scan_ident(struct context *ctx, Token *tok);
-static bool       scan_string(struct context *ctx, Token *tok);
-static bool       scan_char(struct context *ctx, Token *tok);
-static bool       scan_number(struct context *ctx, Token *tok);
+static bool       scan_comment(struct context *ctx, struct token *tok, const char *term);
+static bool       scan_docs(struct context *ctx, struct token *tok);
+static bool       scan_ident(struct context *ctx, struct token *tok);
+static bool       scan_string(struct context *ctx, struct token *tok);
+static bool       scan_char(struct context *ctx, struct token *tok);
+static bool       scan_number(struct context *ctx, struct token *tok);
 static INLINE int c_to_number(char c, s32 base);
 static char       scan_specch(char c);
 
-bool scan_comment(struct context *ctx, Token *tok, const char *term)
+bool scan_comment(struct context *ctx, struct token *tok, const char *term)
 {
     if (tok->sym == SYM_SHEBANG && ctx->line != 1) {
         // Unterminated comment
@@ -93,7 +93,7 @@ bool scan_comment(struct context *ctx, Token *tok, const char *term)
     return true;
 }
 
-bool scan_docs(struct context *ctx, Token *tok)
+bool scan_docs(struct context *ctx, struct token *tok)
 {
     BL_ASSERT(token_is(tok, SYM_DCOMMENT) || token_is(tok, SYM_DGCOMMENT));
     tok->location.line = ctx->line;
@@ -122,7 +122,7 @@ bool scan_docs(struct context *ctx, Token *tok)
     return true;
 }
 
-bool scan_ident(struct context *ctx, Token *tok)
+bool scan_ident(struct context *ctx, struct token *tok)
 {
     tok->location.line = ctx->line;
     tok->location.col  = ctx->col;
@@ -171,7 +171,7 @@ char scan_specch(char c)
     }
 }
 
-bool scan_string(struct context *ctx, Token *tok)
+bool scan_string(struct context *ctx, struct token *tok)
 {
     if (*ctx->c != '"') return false;
     tok->location.line = ctx->line;
@@ -221,7 +221,7 @@ DONE:
     return true;
 }
 
-bool scan_char(struct context *ctx, Token *tok)
+bool scan_char(struct context *ctx, struct token *tok)
 {
     if (*ctx->c != '\'') return false;
     tok->location.line = ctx->line;
@@ -303,7 +303,7 @@ int c_to_number(char c, s32 base)
 #endif
 }
 
-bool scan_number(struct context *ctx, Token *tok)
+bool scan_number(struct context *ctx, struct token *tok)
 {
     tok->location.line = ctx->line;
     tok->location.col  = ctx->col;
@@ -403,7 +403,7 @@ SCAN_DOUBLE : {
 
 void scan(struct context *ctx)
 {
-    Token tok = {0};
+    struct token tok = {0};
 SCAN:
     tok.location.line = ctx->line;
     tok.location.col  = ctx->col;

@@ -39,18 +39,18 @@
 #include <pthread.h>
 #endif
 
-typedef struct ScopeSyncImpl {
+typedef struct scope_sync_impl {
     pthread_mutex_t lock;
-} ScopeSyncImpl;
+} scope_sync_impl;
 
-static ScopeSyncImpl *sync_new(void)
+static scope_sync_impl *sync_new(void)
 {
-    ScopeSyncImpl *impl = bl_malloc(sizeof(ScopeSyncImpl));
+    scope_sync_impl *impl = bl_malloc(sizeof(scope_sync_impl));
     pthread_mutex_init(&impl->lock, NULL);
     return impl;
 }
 
-static void sync_delete(ScopeSyncImpl *impl)
+static void sync_delete(scope_sync_impl *impl)
 {
     if (!impl) return;
     pthread_mutex_destroy(&impl->lock);

@@ -157,7 +157,7 @@ static struct ast *parse_expr_atom(struct context *ctx);
 static struct ast *parse_expr_primary(struct context *ctx);
 static struct ast *parse_expr_unary(struct context *ctx);
 static struct ast *
-parse_expr_binary(struct context *ctx, struct ast *lhs, struct ast *rhs, Token *op);
+parse_expr_binary(struct context *ctx, struct ast *lhs, struct ast *rhs, struct token *op);
 static struct ast *parse_expr_addrof(struct context *ctx);
 static struct ast *parse_expr_deref(struct context *ctx);
 static struct ast *parse_expr_type(struct context *ctx);
@@ -285,8 +285,8 @@ UnopKind sym_to_unop_kind(Sym sm)
 
 struct ast *parse_expr_ref(struct context *ctx)
 {
-    Token *     tok   = tokens_peek(ctx->tokens);
-    struct ast *ident = parse_ident(ctx);
+    struct token *tok   = tokens_peek(ctx->tokens);
+    struct ast *  ident = parse_ident(ctx);
     if (!ident) return NULL;
 
     struct ast *ref     = ast_create_node(ctx->ast_arena, AST_REF, tok, SCOPE_GET(ctx));
@@ -296,10 +296,10 @@ struct ast *parse_expr_ref(struct context *ctx)
 
 bool parse_docs(struct context *ctx)
 {
-    Token *tok_begin = tokens_peek(ctx->tokens);
+    struct token *tok_begin = tokens_peek(ctx->tokens);
     if (token_is_not(tok_begin, SYM_DCOMMENT)) return false;
-    TString *str = builder_create_cached_str();
-    Token *  tok;
+    TString *     str = builder_create_cached_str();
+    struct token *tok;
     while ((tok = tokens_consume_if(ctx->tokens, SYM_DCOMMENT))) {
         if (str->len > 0) tstring_append(str, "\n");
         tstring_append(str, tok->value.str);
@@ -313,11 +313,11 @@ bool parse_docs(struct context *ctx)
 
 bool parse_unit_docs(struct context *ctx)
 {
-    Token *tok_begin = tokens_peek(ctx->tokens);
+    struct token *tok_begin = tokens_peek(ctx->tokens);
     if (token_is_not(tok_begin, SYM_DGCOMMENT)) return false;
     if (!ctx->unit_docs_tmp) ctx->unit_docs_tmp = builder_create_cached_str();
-    TString *str = ctx->unit_docs_tmp;
-    Token *  tok;
+    TString *     str = ctx->unit_docs_tmp;
+    struct token *tok;
     while ((tok = tokens_consume_if(ctx->tokens, SYM_DGCOMMENT))) {
         if (str->len > 0) tstring_append(str, "\n");
         tstring_append(str, tok->value.str);
@@ -336,19 +336,19 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
 
     set_satisfied(HD_NONE);
 
-    Token *tok_hash = tokens_consume_if(ctx->tokens, SYM_HASH);
+    struct token *tok_hash = tokens_consume_if(ctx->tokens, SYM_HASH);
     if (!tok_hash) return NULL;
 
-    Token *tok_directive = tokens_consume(ctx->tokens);
+    struct token *tok_directive = tokens_consume(ctx->tokens);
     if (tok_directive->sym != SYM_IDENT) goto INVALID;
 
     const char *directive = tok_directive->value.str;
     BL_ASSERT(directive);
 
     if (strcmp(directive, "warning") == 0) {
-        Token *tok_msg = tokens_consume_if(ctx->tokens, SYM_STRING);
+        struct token *tok_msg = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_msg) {
-            Token *tok_err = tokens_peek(ctx->tokens);
+            struct token *tok_err = tokens_peek(ctx->tokens);
             PARSE_ERROR(ERR_INVALID_DIRECTIVE,
                         tok_err,
                         BUILDER_CUR_WORD,
@@ -360,9 +360,9 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
     }
 
     if (strcmp(directive, "error") == 0) {
-        Token *tok_msg = tokens_consume_if(ctx->tokens, SYM_STRING);
+        struct token *tok_msg = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_msg) {
-            Token *tok_err = tokens_peek(ctx->tokens);
+            struct token *tok_err = tokens_peek(ctx->tokens);
             PARSE_ERROR(ERR_INVALID_DIRECTIVE,
                         tok_err,
                         BUILDER_CUR_WORD,
@@ -384,9 +384,9 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
             return ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx));
         }
 
-        Token *tok_path = tokens_consume_if(ctx->tokens, SYM_STRING);
+        struct token *tok_path = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_path) {
-            Token *tok_err = tokens_peek(ctx->tokens);
+            struct token *tok_err = tokens_peek(ctx->tokens);
             PARSE_ERROR(ERR_INVALID_DIRECTIVE,
                         tok_err,
                         BUILDER_CUR_WORD,
@@ -412,9 +412,9 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
             return ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx));
         }
 
-        Token *tok_path = tokens_consume_if(ctx->tokens, SYM_STRING);
+        struct token *tok_path = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_path) {
-            Token *tok_err = tokens_peek(ctx->tokens);
+            struct token *tok_err = tokens_peek(ctx->tokens);
             PARSE_ERROR(ERR_INVALID_DIRECTIVE,
                         tok_err,
                         BUILDER_CUR_WORD,
@@ -441,7 +441,7 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
             return ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx));
         }
 
-        Token *tok_path = tokens_consume(ctx->tokens);
+        struct token *tok_path = tokens_consume(ctx->tokens);
         if (!token_is(tok_path, SYM_STRING)) {
             PARSE_ERROR(ERR_INVALID_DIRECTIVE,
                         tok_path,
@@ -529,7 +529,7 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
                 goto VALUE;
             }
         } else if (rq) {
-            Token *tok_err = tokens_peek(ctx->tokens);
+            struct token *tok_err = tokens_peek(ctx->tokens);
             PARSE_ERROR(ERR_EXPECTED_NAME,
                         tok_err,
                         BUILDER_CUR_WORD,
@@ -539,7 +539,7 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
         }
 
         if (!values->size) {
-            Token *tok_err = tokens_peek(ctx->tokens);
+            struct token *tok_err = tokens_peek(ctx->tokens);
             PARSE_ERROR(
                 ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected tag value after #tags.");
 
@@ -634,7 +634,7 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
             return ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx));
         }
         // Extern flag extension could be linkage name as string
-        Token *tok_ext = tokens_consume_if(ctx->tokens, SYM_STRING);
+        struct token *tok_ext = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_ext) return NULL;
         // Parse extension token.
         struct ast *ext = ast_create_node(ctx->ast_arena, AST_IDENT, tok_ext, SCOPE_GET(ctx));
@@ -660,7 +660,7 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
             return ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx));
         }
         // Intrinsic flag extension could be linkage name as string
-        Token *tok_ext = tokens_consume_if(ctx->tokens, SYM_STRING);
+        struct token *tok_ext = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_ext) return NULL;
         // Parse extension token.
         struct ast *ext = ast_create_node(ctx->ast_arena, AST_IDENT, tok_ext, SCOPE_GET(ctx));
@@ -833,20 +833,20 @@ struct ast *parse_expr_compound(struct context *ctx)
 {
     if (!tokens_is_seq(ctx->tokens, 2, SYM_LBLOCK, SYM_COLON)) return NULL;
     // eat {
-    Token *tok_begin = tokens_consume(ctx->tokens);
+    struct token *tok_begin = tokens_consume(ctx->tokens);
     // eat :
     tokens_consume(ctx->tokens);
 
     struct ast *type = parse_type(ctx);
     if (!type) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD, "Expected type.");
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, SCOPE_GET(ctx));
     }
 
     // eat :
     if (!tokens_consume_if(ctx->tokens, SYM_COLON)) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD, "Expected colon after type.");
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, SCOPE_GET(ctx));
     }
@@ -872,7 +872,7 @@ NEXT:
             goto NEXT;
         }
     } else if (rq) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         if (tokens_peek_2nd(ctx->tokens)->sym == SYM_RBLOCK) {
             PARSE_ERROR(ERR_EXPECTED_NAME,
                         tok_err,
@@ -882,7 +882,7 @@ NEXT:
         }
     }
 
-    Token *tok = tokens_consume(ctx->tokens);
+    struct token *tok = tokens_consume(ctx->tokens);
     if (tok->sym != SYM_RBLOCK) {
         PARSE_ERROR(ERR_MISSING_BRACKET,
                     tok,
@@ -897,10 +897,10 @@ NEXT:
 
 struct ast *parse_expr_sizeof(struct context *ctx)
 {
-    Token *tok_begin = tokens_consume_if(ctx->tokens, SYM_SIZEOF);
+    struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_SIZEOF);
     if (!tok_begin) return NULL;
 
-    Token *tok = tokens_consume(ctx->tokens);
+    struct token *tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_LPAREN)) {
         PARSE_ERROR(ERR_MISSING_BRACKET,
                     tok_begin,
@@ -913,7 +913,7 @@ struct ast *parse_expr_sizeof(struct context *ctx)
     struct ast *szof = ast_create_node(ctx->ast_arena, AST_EXPR_SIZEOF, tok_begin, SCOPE_GET(ctx));
     szof->data.expr_sizeof.node = parse_expr(ctx);
     if (!szof->data.expr_sizeof.node) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "Expected expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_err, SCOPE_GET(ctx));
@@ -932,10 +932,10 @@ struct ast *parse_expr_sizeof(struct context *ctx)
 
 struct ast *parse_expr_type_info(struct context *ctx)
 {
-    Token *tok_begin = tokens_consume_if(ctx->tokens, SYM_TYPEINFO);
+    struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_TYPEINFO);
     if (!tok_begin) return NULL;
 
-    Token *tok = tokens_consume(ctx->tokens);
+    struct token *tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_LPAREN)) {
         PARSE_ERROR(ERR_MISSING_BRACKET,
                     tok_begin,
@@ -949,7 +949,7 @@ struct ast *parse_expr_type_info(struct context *ctx)
         ast_create_node(ctx->ast_arena, AST_EXPR_TYPE_INFO, tok_begin, SCOPE_GET(ctx));
     info->data.expr_type_info.node = parse_expr(ctx);
     if (!info->data.expr_type_info.node) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "Expected expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_err, SCOPE_GET(ctx));
@@ -968,10 +968,10 @@ struct ast *parse_expr_type_info(struct context *ctx)
 
 struct ast *parse_expr_test_cases(struct context *ctx)
 {
-    Token *tok_begin = tokens_consume_if(ctx->tokens, SYM_TESTCASES);
+    struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_TESTCASES);
     if (!tok_begin) return NULL;
 
-    Token *tok = tokens_consume(ctx->tokens);
+    struct token *tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_LPAREN)) {
         PARSE_ERROR(ERR_MISSING_BRACKET,
                     tok_begin,
@@ -997,10 +997,10 @@ struct ast *parse_expr_test_cases(struct context *ctx)
 
 struct ast *parse_expr_alignof(struct context *ctx)
 {
-    Token *tok_begin = tokens_consume_if(ctx->tokens, SYM_ALIGNOF);
+    struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_ALIGNOF);
     if (!tok_begin) return NULL;
 
-    Token *tok = tokens_consume(ctx->tokens);
+    struct token *tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_LPAREN)) {
         PARSE_ERROR(
             ERR_MISSING_BRACKET, tok_begin, BUILDER_CUR_WORD, "Expected '(' after cast operator.");
@@ -1011,7 +1011,7 @@ struct ast *parse_expr_alignof(struct context *ctx)
     struct ast *alof = ast_create_node(ctx->ast_arena, AST_EXPR_ALIGNOF, tok_begin, SCOPE_GET(ctx));
     alof->data.expr_alignof.node = parse_expr(ctx);
     if (!alof->data.expr_alignof.node) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "Expected expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_err, SCOPE_GET(ctx));
@@ -1030,7 +1030,7 @@ struct ast *parse_expr_alignof(struct context *ctx)
 
 struct ast *parse_expr_cast_auto(struct context *ctx)
 {
-    Token *tok_begin = tokens_consume_if(ctx->tokens, SYM_CAST_AUTO);
+    struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_CAST_AUTO);
     if (!tok_begin) return NULL;
 
     struct ast *cast = ast_create_node(ctx->ast_arena, AST_EXPR_CAST, tok_begin, SCOPE_GET(ctx));
@@ -1038,7 +1038,7 @@ struct ast *parse_expr_cast_auto(struct context *ctx)
 
     cast->data.expr_cast.next = _parse_expr(ctx, token_prec(tok_begin).priority);
     if (!cast->data.expr_cast.next) {
-        Token *tok = tokens_peek(ctx->tokens);
+        struct token *tok = tokens_peek(ctx->tokens);
         PARSE_ERROR(
             ERR_EXPECTED_EXPR, tok, BUILDER_CUR_WORD, "Expected expression after auto cast.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
@@ -1050,10 +1050,10 @@ struct ast *parse_expr_cast_auto(struct context *ctx)
 
 struct ast *parse_expr_cast(struct context *ctx)
 {
-    Token *tok_begin = tokens_consume_if(ctx->tokens, SYM_CAST);
+    struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_CAST);
     if (!tok_begin) return NULL;
 
-    Token *tok = tokens_consume(ctx->tokens);
+    struct token *tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_LPAREN)) {
         PARSE_ERROR(
             ERR_MISSING_BRACKET, tok_begin, BUILDER_CUR_WORD, "Expected '(' after expression.");
@@ -1064,7 +1064,7 @@ struct ast *parse_expr_cast(struct context *ctx)
     struct ast *cast = ast_create_node(ctx->ast_arena, AST_EXPR_CAST, tok_begin, SCOPE_GET(ctx));
     cast->data.expr_cast.type = parse_type(ctx);
     if (!cast->data.expr_cast.type) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(
             ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD, "Expected type name as cast parameter.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
@@ -1092,10 +1092,10 @@ struct ast *parse_expr_cast(struct context *ctx)
 
 struct ast *parse_decl_member(struct context *ctx, s32 UNUSED(index))
 {
-    Token *     tok_begin = tokens_peek(ctx->tokens);
-    struct ast *name      = NULL;
-    struct ast *type      = NULL;
-    const bool  named     = tokens_peek_2nd(ctx->tokens)->sym == SYM_COLON;
+    struct token *tok_begin = tokens_peek(ctx->tokens);
+    struct ast *  name      = NULL;
+    struct ast *  type      = NULL;
+    const bool    named     = tokens_peek_2nd(ctx->tokens)->sym == SYM_COLON;
 
     if (named) {
         name = parse_ident(ctx);
@@ -1145,17 +1145,17 @@ struct ast *parse_decl_member(struct context *ctx, s32 UNUSED(index))
 
 struct ast *parse_decl_arg(struct context *ctx, bool named)
 {
-    Token *     tok_begin = tokens_peek(ctx->tokens);
-    struct ast *name      = NULL;
-    struct ast *type      = NULL;
-    struct ast *value     = NULL;
+    struct token *tok_begin = tokens_peek(ctx->tokens);
+    struct ast *  name      = NULL;
+    struct ast *  type      = NULL;
+    struct ast *  value     = NULL;
     if (tokens_current_is(ctx->tokens, SYM_RPAREN)) return NULL;
     if (tokens_is_seq(ctx->tokens, 2, SYM_IDENT, SYM_COLON)) {
         // <name> :
         name = parse_ident(ctx);
         tokens_consume(ctx->tokens); // eat :
     } else if (named) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_EXPECTED_NAME,
                     &tok_err->location,
@@ -1167,7 +1167,7 @@ struct ast *parse_decl_arg(struct context *ctx, bool named)
     type = parse_type(ctx);
     // Parse optional default value expression.
     if (tokens_current_is(ctx->tokens, SYM_COLON)) {
-        Token *tok_err = tokens_consume(ctx->tokens);
+        struct token *tok_err = tokens_consume(ctx->tokens);
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_INVALID_MUTABILITY,
                     &tok_err->location,
@@ -1180,7 +1180,7 @@ struct ast *parse_decl_arg(struct context *ctx, bool named)
         value = parse_hash_directive(ctx, HD_CALL_LOC, NULL);
         if (!value) value = parse_expr(ctx);
         if (!value) {
-            Token *tok_err = tokens_peek(ctx->tokens);
+            struct token *tok_err = tokens_peek(ctx->tokens);
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_EXPECTED_NAME,
                         &tok_err->location,
@@ -1205,16 +1205,16 @@ struct ast *parse_decl_arg(struct context *ctx, bool named)
 
 struct ast *parse_decl_variant(struct context *ctx, struct ast *prev)
 {
-    Token *     tok_begin = tokens_peek(ctx->tokens);
-    struct ast *name      = parse_ident(ctx);
+    struct token *tok_begin = tokens_peek(ctx->tokens);
+    struct ast *  name      = parse_ident(ctx);
     if (!name) return NULL;
 
     struct ast *var = ast_create_node(ctx->ast_arena, AST_DECL_VARIANT, tok_begin, SCOPE_GET(ctx));
     var->docs       = pop_docs(ctx);
 
     // TODO: Validate correcly '::'
-    Token *tok_assign = tokens_consume_if(ctx->tokens, SYM_COLON);
-    tok_assign        = tokens_consume_if(ctx->tokens, SYM_COLON);
+    struct token *tok_assign = tokens_consume_if(ctx->tokens, SYM_COLON);
+    tok_assign               = tokens_consume_if(ctx->tokens, SYM_COLON);
     if (tok_assign) {
         var->data.decl_variant.value = parse_expr(ctx);
         if (!var->data.decl_variant.value) BL_ABORT("Expected enum variant value");
@@ -1250,7 +1250,7 @@ bool parse_semicolon(struct context *ctx)
 
 bool parse_semicolon_rq(struct context *ctx)
 {
-    Token *tok = tokens_consume_if(ctx->tokens, SYM_SEMICOLON);
+    struct token *tok = tokens_consume_if(ctx->tokens, SYM_SEMICOLON);
     if (!tok) {
         tok = tokens_peek_prev(ctx->tokens);
         PARSE_ERROR(ERR_MISSING_SEMICOLON, tok, BUILDER_CUR_AFTER, "Expected semicolon ';'.");
@@ -1288,7 +1288,7 @@ bool hash_directive_to_flags(HashDirective hd, u32 *out_flags)
 
 struct ast *parse_stmt_return(struct context *ctx)
 {
-    Token *tok_begin = tokens_consume_if(ctx->tokens, SYM_RETURN);
+    struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_RETURN);
     if (!tok_begin) return NULL;
     struct ast *ret = ast_create_node(ctx->ast_arena, AST_STMT_RETURN, tok_begin, SCOPE_GET(ctx));
     ret->data.stmt_return.fn_decl = DECL_GET(ctx);
@@ -1307,7 +1307,7 @@ NEXT:
             goto NEXT;
         }
     } else if (rq) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(
             ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "Expected expression after comma ','.");
         CONSUME_TILL(ctx->tokens, SYM_SEMICOLON, SYM_RBLOCK, SYM_IDENT);
@@ -1318,14 +1318,14 @@ NEXT:
 
 struct ast *parse_stmt_if(struct context *ctx)
 {
-    Token *tok_begin = tokens_consume_if(ctx->tokens, SYM_IF);
+    struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_IF);
     if (!tok_begin) return NULL;
 
     struct ast *stmt_if = ast_create_node(ctx->ast_arena, AST_STMT_IF, tok_begin, SCOPE_GET(ctx));
 
     stmt_if->data.stmt_if.test = parse_expr(ctx);
     if (!stmt_if->data.stmt_if.test) {
-        Token *tok_err = tokens_consume(ctx->tokens);
+        struct token *tok_err = tokens_consume(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_EXPR,
                     tok_err,
                     BUILDER_CUR_WORD,
@@ -1339,7 +1339,7 @@ struct ast *parse_stmt_if(struct context *ctx)
 
     stmt_if->data.stmt_if.true_stmt = parse_block(ctx, true);
     if (!stmt_if->data.stmt_if.true_stmt) {
-        Token *tok_err = tokens_consume(ctx->tokens);
+        struct token *tok_err = tokens_consume(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_STMT,
                     tok_err,
                     BUILDER_CUR_WORD,
@@ -1353,7 +1353,7 @@ struct ast *parse_stmt_if(struct context *ctx)
         if (!stmt_if->data.stmt_if.false_stmt)
             stmt_if->data.stmt_if.false_stmt = parse_block(ctx, true);
         if (!stmt_if->data.stmt_if.false_stmt) {
-            Token *tok_err = tokens_consume(ctx->tokens);
+            struct token *tok_err = tokens_consume(ctx->tokens);
             PARSE_ERROR(ERR_EXPECTED_STMT,
                         tok_err,
                         BUILDER_CUR_WORD,
@@ -1367,12 +1367,12 @@ struct ast *parse_stmt_if(struct context *ctx)
 
 struct ast *parse_stmt_switch(struct context *ctx)
 {
-    Token *tok_switch = tokens_consume_if(ctx->tokens, SYM_SWITCH);
+    struct token *tok_switch = tokens_consume_if(ctx->tokens, SYM_SWITCH);
     if (!tok_switch) return NULL;
 
     struct ast *expr = parse_expr(ctx);
     if (!expr) {
-        Token *tok_err = tokens_consume(ctx->tokens);
+        struct token *tok_err = tokens_consume(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_EXPR,
                     tok_err,
                     BUILDER_CUR_WORD,
@@ -1380,9 +1380,9 @@ struct ast *parse_stmt_switch(struct context *ctx)
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_err, SCOPE_GET(ctx));
     }
 
-    Token *tok = tokens_consume_if(ctx->tokens, SYM_LBLOCK);
+    struct token *tok = tokens_consume_if(ctx->tokens, SYM_LBLOCK);
     if (!tok) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "Expected switch body block.");
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_err, SCOPE_GET(ctx));
     }
@@ -1417,7 +1417,7 @@ NEXT:
 
     tok = tokens_consume_if(ctx->tokens, SYM_RBLOCK);
     if (!tok) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(
             ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "Expected end of switch body block.");
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_err, SCOPE_GET(ctx));
@@ -1440,7 +1440,7 @@ struct ast *parse_stmt_case(struct context *ctx)
 
     if (tokens_current_is(ctx->tokens, SYM_RBLOCK)) return NULL;
 
-    Token *tok_case = tokens_consume_if(ctx->tokens, SYM_DEFAULT);
+    struct token *tok_case = tokens_consume_if(ctx->tokens, SYM_DEFAULT);
     if (tok_case) goto SKIP_EXPRS;
 
     tok_case = tokens_peek(ctx->tokens);
@@ -1455,7 +1455,7 @@ NEXT:
             goto NEXT;
         }
     } else if (rq) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(
             ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected expression after comma.");
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_err, SCOPE_GET(ctx));
@@ -1464,7 +1464,7 @@ NEXT:
 SKIP_EXPRS:
     block = parse_block(ctx, true);
     if (!block && !parse_semicolon_rq(ctx)) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_err, SCOPE_GET(ctx));
     } else {
         parse_semicolon(ctx);
@@ -1479,7 +1479,7 @@ SKIP_EXPRS:
     return stmt_case;
 }
 
-static TokensLookaheadState cmp_stmt_loop(Token *curr)
+static TokensLookaheadState cmp_stmt_loop(struct token *curr)
 {
     if (token_is(curr, SYM_SEMICOLON))
         return TOK_LOOK_HIT;
@@ -1491,7 +1491,7 @@ static TokensLookaheadState cmp_stmt_loop(Token *curr)
 
 struct ast *parse_stmt_loop(struct context *ctx)
 {
-    Token *tok_begin = tokens_consume_if(ctx->tokens, SYM_LOOP);
+    struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_LOOP);
     if (!tok_begin) return NULL;
 
     // Loop statement is immediately followed by block; this should act like while (true) {} in C.
@@ -1529,7 +1529,7 @@ struct ast *parse_stmt_loop(struct context *ctx)
     // block
     loop->data.stmt_loop.block = parse_block(ctx, false);
     if (!loop->data.stmt_loop.block) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "Expected loop body block.");
         ctx->is_inside_loop = prev_in_loop;
         SCOPE_POP(ctx);
@@ -1543,7 +1543,7 @@ struct ast *parse_stmt_loop(struct context *ctx)
 
 struct ast *parse_stmt_break(struct context *ctx)
 {
-    Token *tok = tokens_consume_if(ctx->tokens, SYM_BREAK);
+    struct token *tok = tokens_consume_if(ctx->tokens, SYM_BREAK);
     if (!tok) return NULL;
 
     if (!ctx->is_inside_loop) {
@@ -1555,7 +1555,7 @@ struct ast *parse_stmt_break(struct context *ctx)
 
 struct ast *parse_stmt_continue(struct context *ctx)
 {
-    Token *tok = tokens_consume_if(ctx->tokens, SYM_CONTINUE);
+    struct token *tok = tokens_consume_if(ctx->tokens, SYM_CONTINUE);
     if (!tok) return NULL;
 
     if (!ctx->is_inside_loop) {
@@ -1568,7 +1568,7 @@ struct ast *parse_stmt_continue(struct context *ctx)
 
 struct ast *parse_stmt_defer(struct context *ctx)
 {
-    Token *tok = tokens_consume_if(ctx->tokens, SYM_DEFER);
+    struct token *tok = tokens_consume_if(ctx->tokens, SYM_DEFER);
     if (!tok) return NULL;
 
     struct ast *expr = NULL;
@@ -1580,7 +1580,7 @@ struct ast *parse_stmt_defer(struct context *ctx)
                     BUILDER_CUR_WORD,
                     "Expected expression after 'defer' statement.");
 
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_err, SCOPE_GET(ctx));
     }
 
@@ -1608,7 +1608,7 @@ struct ast *_parse_expr(struct context *ctx, s32 p)
 
     while (token_is_binop(tokens_peek(ctx->tokens)) &&
            token_prec(tokens_peek(ctx->tokens)).priority >= p) {
-        Token *op = tokens_consume(ctx->tokens);
+        struct token *op = tokens_consume(ctx->tokens);
 
         const s32 q = token_prec(op).associativity == TOKEN_ASSOC_LEFT ? token_prec(op).priority + 1
                                                                        : token_prec(op).priority;
@@ -1642,7 +1642,7 @@ struct ast *parse_expr_primary(struct context *ctx)
 
 struct ast *parse_expr_unary(struct context *ctx)
 {
-    Token *op = tokens_peek(ctx->tokens);
+    struct token *op = tokens_peek(ctx->tokens);
     if (!token_is_unary(op)) return NULL;
 
     tokens_consume(ctx->tokens);
@@ -1651,7 +1651,7 @@ struct ast *parse_expr_unary(struct context *ctx)
     unary->data.expr_unary.kind = sym_to_unop_kind(op->sym);
 
     if (unary->data.expr_unary.next == NULL) {
-        Token *err_tok = tokens_peek(ctx->tokens);
+        struct token *err_tok = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_EXPR,
                     err_tok,
                     BUILDER_CUR_WORD,
@@ -1683,7 +1683,8 @@ struct ast *parse_expr_atom(struct context *ctx)
     return NULL;
 }
 
-struct ast *parse_expr_binary(struct context *ctx, struct ast *lhs, struct ast *rhs, Token *op)
+struct ast *
+parse_expr_binary(struct context *ctx, struct ast *lhs, struct ast *rhs, struct token *op)
 {
     if (!token_is_binop(op)) return NULL;
 
@@ -1700,14 +1701,14 @@ struct ast *parse_expr_binary(struct context *ctx, struct ast *lhs, struct ast *
 
 struct ast *parse_expr_addrof(struct context *ctx)
 {
-    Token *tok = tokens_consume_if(ctx->tokens, SYM_AND);
+    struct token *tok = tokens_consume_if(ctx->tokens, SYM_AND);
     if (!tok) return NULL;
 
     struct ast *addrof = ast_create_node(ctx->ast_arena, AST_EXPR_ADDROF, tok, SCOPE_GET(ctx));
     addrof->data.expr_addrof.next = _parse_expr(ctx, token_prec(tok).priority);
 
     if (addrof->data.expr_addrof.next == NULL) {
-        Token *err_tok = tokens_peek(ctx->tokens);
+        struct token *err_tok = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_EXPR,
                     err_tok,
                     BUILDER_CUR_WORD,
@@ -1722,14 +1723,14 @@ struct ast *parse_expr_addrof(struct context *ctx)
 
 struct ast *parse_expr_deref(struct context *ctx)
 {
-    Token *tok = tokens_consume_if(ctx->tokens, SYM_AT);
+    struct token *tok = tokens_consume_if(ctx->tokens, SYM_AT);
     if (!tok) return NULL;
 
     struct ast *deref = ast_create_node(ctx->ast_arena, AST_EXPR_DEREF, tok, SCOPE_GET(ctx));
     deref->data.expr_deref.next = _parse_expr(ctx, token_prec(tok).priority);
 
     if (deref->data.expr_deref.next == NULL) {
-        Token *err_tok = tokens_peek(ctx->tokens);
+        struct token *err_tok = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_EXPR,
                     err_tok,
                     BUILDER_CUR_WORD,
@@ -1744,8 +1745,8 @@ struct ast *parse_expr_deref(struct context *ctx)
 
 struct ast *parse_expr_lit(struct context *ctx)
 {
-    Token *     tok = tokens_peek(ctx->tokens);
-    struct ast *lit = NULL;
+    struct token *tok = tokens_peek(ctx->tokens);
+    struct ast *  lit = NULL;
 
     switch (tok->sym) {
     case SYM_NUM:
@@ -1785,9 +1786,9 @@ struct ast *parse_expr_lit(struct context *ctx)
     case SYM_STRING: {
         // There is special case for string literals, those can be split into multiple lines and we
         // should handle such situation here, so some pre-scan is needed.
-        lit             = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_STRING, tok, SCOPE_GET(ctx));
-        const char *str = tok->value.str;
-        Token *     tok_next = tokens_peek_2nd(ctx->tokens);
+        lit = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_STRING, tok, SCOPE_GET(ctx));
+        const char *  str      = tok->value.str;
+        struct token *tok_next = tokens_peek_2nd(ctx->tokens);
         if (tok_next->sym == SYM_STRING) {
             TString *tmp = builder_create_cached_str();
             while ((tok = tokens_consume_if(ctx->tokens, SYM_STRING))) {
@@ -1815,8 +1816,8 @@ struct ast *parse_expr_lit(struct context *ctx)
 struct ast *parse_expr_lit_fn(struct context *ctx)
 {
     if (!tokens_is_seq(ctx->tokens, 2, SYM_FN, SYM_LPAREN)) return NULL;
-    Token *     tok_fn = tokens_peek(ctx->tokens);
-    struct ast *fn     = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_FN, tok_fn, SCOPE_GET(ctx));
+    struct token *tok_fn = tokens_peek(ctx->tokens);
+    struct ast *  fn     = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_FN, tok_fn, SCOPE_GET(ctx));
 
     struct scope *  parent_scope = SCOPE_GET(ctx);
     enum scope_kind scope_kind =
@@ -1863,9 +1864,9 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
 struct ast *parse_expr_lit_fn_group(struct context *ctx)
 {
     if (!tokens_is_seq(ctx->tokens, 2, SYM_FN, SYM_LBLOCK)) return NULL;
-    Token *     tok_group = tokens_consume(ctx->tokens); // eat fn
-    Token *     tok_begin = tokens_consume(ctx->tokens); // eat {
-    struct ast *group =
+    struct token *tok_group = tokens_consume(ctx->tokens); // eat fn
+    struct token *tok_begin = tokens_consume(ctx->tokens); // eat {
+    struct ast *  group =
         ast_create_node(ctx->ast_arena, AST_EXPR_LIT_FN_GROUP, tok_group, SCOPE_GET(ctx));
 
     TSmallArray_AstPtr *variants       = create_sarr(TSmallArray_AstPtr, ctx->assembly);
@@ -1877,7 +1878,7 @@ NEXT:
         parse_semicolon_rq(ctx);
         goto NEXT;
     }
-    Token *tok = tokens_consume_if(ctx->tokens, SYM_RBLOCK);
+    struct token *tok = tokens_consume_if(ctx->tokens, SYM_RBLOCK);
     if (!tok) {
         tok = tokens_peek_prev(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_BODY_END, tok, BUILDER_CUR_AFTER, "Expected end of block '}'.");
@@ -1889,8 +1890,8 @@ NEXT:
 
 struct ast *parse_expr_nested(struct context *ctx)
 {
-    struct ast *expr      = NULL;
-    Token *     tok_begin = tokens_consume_if(ctx->tokens, SYM_LPAREN);
+    struct ast *  expr      = NULL;
+    struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_LPAREN);
     if (!tok_begin) return NULL;
 
     expr = parse_expr(ctx);
@@ -1899,9 +1900,9 @@ struct ast *parse_expr_nested(struct context *ctx)
     }
 
     // eat )
-    Token *tok_end = tokens_consume_if(ctx->tokens, SYM_RPAREN);
+    struct token *tok_end = tokens_consume_if(ctx->tokens, SYM_RPAREN);
     if (!tok_end) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_MISSING_BRACKET,
                     tok_err,
                     BUILDER_CUR_WORD,
@@ -1916,7 +1917,7 @@ struct ast *parse_expr_nested(struct context *ctx)
 struct ast *parse_expr_elem(struct context *ctx, struct ast *prev)
 {
     if (!prev) return NULL;
-    Token *tok_elem = tokens_consume_if(ctx->tokens, SYM_LBRACKET);
+    struct token *tok_elem = tokens_consume_if(ctx->tokens, SYM_LBRACKET);
     if (!tok_elem) return NULL;
 
     struct ast *elem = ast_create_node(ctx->ast_arena, AST_EXPR_ELEM, tok_elem, SCOPE_GET(ctx));
@@ -1928,7 +1929,7 @@ struct ast *parse_expr_elem(struct context *ctx, struct ast *prev)
             ERR_EXPECTED_EXPR, tok_elem, BUILDER_CUR_WORD, "Expected array index expression.");
     }
 
-    Token *tok = tokens_consume(ctx->tokens);
+    struct token *tok = tokens_consume(ctx->tokens);
     if (tok->sym != SYM_RBRACKET) {
         PARSE_ERROR(ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Missing bracket ']'.");
     }
@@ -1938,7 +1939,7 @@ struct ast *parse_expr_elem(struct context *ctx, struct ast *prev)
 
 struct ast *parse_ident(struct context *ctx)
 {
-    Token *tok_ident = tokens_consume_if(ctx->tokens, SYM_IDENT);
+    struct token *tok_ident = tokens_consume_if(ctx->tokens, SYM_IDENT);
     if (!tok_ident) return NULL;
     struct ast *ident = ast_create_node(ctx->ast_arena, AST_IDENT, tok_ident, SCOPE_GET(ctx));
     id_init(&ident->data.ident.id, tok_ident->value.str);
@@ -1962,7 +1963,7 @@ NEXT:
             goto NEXT;
         }
     } else if (rq) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected name after comma ','.");
         CONSUME_TILL(ctx->tokens, SYM_COLON, SYM_SEMICOLON, SYM_IDENT);
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_err, SCOPE_GET(ctx));
@@ -1972,13 +1973,13 @@ NEXT:
 
 struct ast *parse_type_ptr(struct context *ctx)
 {
-    Token *tok_begin = tokens_consume_if(ctx->tokens, SYM_ASTERISK);
+    struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_ASTERISK);
     if (!tok_begin) return NULL;
 
     struct ast *ptr      = ast_create_node(ctx->ast_arena, AST_TYPE_PTR, tok_begin, SCOPE_GET(ctx));
     struct ast *sub_type = parse_type(ctx);
     if (!sub_type) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_TYPE,
                     tok_err,
                     BUILDER_CUR_WORD,
@@ -1992,7 +1993,7 @@ struct ast *parse_type_ptr(struct context *ctx)
 
 struct ast *parse_type_vargs(struct context *ctx)
 {
-    Token *tok_begin = tokens_consume_if(ctx->tokens, SYM_VARGS);
+    struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_VARGS);
     if (!tok_begin) return NULL;
 
     struct ast *ptr = ast_create_node(ctx->ast_arena, AST_TYPE_VARGS, tok_begin, SCOPE_GET(ctx));
@@ -2002,7 +2003,7 @@ struct ast *parse_type_vargs(struct context *ctx)
 
 struct ast *parse_type_enum(struct context *ctx)
 {
-    Token *tok_enum = tokens_consume_if(ctx->tokens, SYM_ENUM);
+    struct token *tok_enum = tokens_consume_if(ctx->tokens, SYM_ENUM);
     if (!tok_enum) return NULL;
 
     struct ast *enm = ast_create_node(ctx->ast_arena, AST_TYPE_ENUM, tok_enum, SCOPE_GET(ctx));
@@ -2024,7 +2025,7 @@ struct ast *parse_type_enum(struct context *ctx)
         curr_decl->data.decl_entity.flags |= flags;
     }
 
-    Token *tok = tokens_consume(ctx->tokens);
+    struct token *tok = tokens_consume(ctx->tokens);
     if (token_is_not(tok, SYM_LBLOCK)) {
         PARSE_ERROR(ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Expected enum variant list.");
         return ast_create_node(ctx->ast_arena, AST_BAD, tok, SCOPE_GET(ctx));
@@ -2052,7 +2053,7 @@ NEXT:
             goto NEXT;
         }
     } else if (rq) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         if (tokens_peek_2nd(ctx->tokens)->sym == SYM_RBLOCK) {
             PARSE_ERROR(
                 ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected variant after semicolon.");
@@ -2078,8 +2079,8 @@ NEXT:
 
 struct ast *parse_ref(struct context *ctx)
 {
-    Token *     tok   = tokens_peek(ctx->tokens);
-    struct ast *ident = parse_ident(ctx);
+    struct token *tok   = tokens_peek(ctx->tokens);
+    struct ast *  ident = parse_ident(ctx);
     if (!ident) return NULL;
     struct ast *lhs     = ast_create_node(ctx->ast_arena, AST_REF, tok, SCOPE_GET(ctx));
     lhs->data.ref.ident = ident;
@@ -2094,12 +2095,12 @@ struct ast *parse_ref(struct context *ctx)
 struct ast *parse_ref_nested(struct context *ctx, struct ast *prev)
 {
     if (!prev) return NULL;
-    Token *tok = tokens_consume_if(ctx->tokens, SYM_DOT);
+    struct token *tok = tokens_consume_if(ctx->tokens, SYM_DOT);
     if (!tok) return NULL;
 
     struct ast *ident = parse_ident(ctx);
     if (!ident) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected name.");
         return ast_create_node(ctx->ast_arena, AST_BAD, tok, SCOPE_GET(ctx));
     }
@@ -2123,7 +2124,7 @@ static INLINE void set_polymorph(struct context *ctx)
 
 struct ast *parse_type_polymorph(struct context *ctx)
 {
-    Token *tok_begin = tokens_consume_if(ctx->tokens, SYM_QUESTION);
+    struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_QUESTION);
     if (!tok_begin) return NULL;
 
     if (ctx->current_fn_type_stack.size == 0) {
@@ -2137,7 +2138,7 @@ struct ast *parse_type_polymorph(struct context *ctx)
     set_polymorph(ctx);
     struct ast *ident = parse_ident(ctx);
     if (!ident) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(
             ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected name of polymorph type.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
@@ -2150,22 +2151,22 @@ struct ast *parse_type_polymorph(struct context *ctx)
 
 struct ast *parse_type_arr(struct context *ctx)
 {
-    Token *tok_begin = tokens_consume_if(ctx->tokens, SYM_LBRACKET);
+    struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_LBRACKET);
     if (!tok_begin) return NULL;
 
     struct ast *arr = ast_create_node(ctx->ast_arena, AST_TYPE_ARR, tok_begin, SCOPE_GET(ctx));
     arr->data.type_arr.len = parse_expr(ctx);
     if (!arr->data.type_arr.len) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(
             ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "Expected array size expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, SCOPE_GET(ctx));
     }
 
-    Token *tok_end = tokens_consume_if(ctx->tokens, SYM_RBRACKET);
+    struct token *tok_end = tokens_consume_if(ctx->tokens, SYM_RBRACKET);
     if (!tok_end) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_MISSING_BRACKET,
                     tok_err,
                     BUILDER_CUR_WORD,
@@ -2177,7 +2178,7 @@ struct ast *parse_type_arr(struct context *ctx)
 
     arr->data.type_arr.elem_type = parse_type(ctx);
     if (!arr->data.type_arr.elem_type) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_INVALID_TYPE, tok_err, BUILDER_CUR_WORD, "Expected array element type.");
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, SCOPE_GET(ctx));
     }
@@ -2191,8 +2192,8 @@ struct ast *parse_type_slice(struct context *ctx)
     if (tokens_peek_2nd(ctx->tokens)->sym != SYM_RBRACKET) return NULL;
 
     // eat []
-    Token *tok_begin = tokens_consume(ctx->tokens);
-    tok_begin        = tokens_consume(ctx->tokens);
+    struct token *tok_begin = tokens_consume(ctx->tokens);
+    tok_begin               = tokens_consume(ctx->tokens);
 
     struct ast *slice = ast_create_node(ctx->ast_arena, AST_TYPE_SLICE, tok_begin, SCOPE_GET(ctx));
 
@@ -2212,12 +2213,12 @@ struct ast *parse_type_dynarr(struct context *ctx)
     if (tokens_peek_2nd(ctx->tokens)->sym != SYM_DYNARR) return NULL;
 
     // eat [..
-    Token *tok_begin = tokens_consume(ctx->tokens);
+    struct token *tok_begin = tokens_consume(ctx->tokens);
     tokens_consume(ctx->tokens);
 
-    Token *tok_end = tokens_consume_if(ctx->tokens, SYM_RBRACKET);
+    struct token *tok_end = tokens_consume_if(ctx->tokens, SYM_RBRACKET);
     if (!tok_end) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_MISSING_BRACKET,
                     tok_err,
                     BUILDER_CUR_WORD,
@@ -2271,7 +2272,7 @@ struct ast *parse_type_fn_return(struct context *ctx)
     if (tokens_current_is(ctx->tokens, SYM_LPAREN)) {
         // multiple return type ( T1, T2 )
         // eat (
-        Token *       tok_begin = tokens_consume(ctx->tokens);
+        struct token *tok_begin = tokens_consume(ctx->tokens);
         struct scope *scope     = scope_create(
             ctx->scope_arenas, SCOPE_TYPE_STRUCT, SCOPE_GET(ctx), 16, &tok_begin->location);
         SCOPE_PUSH(ctx, scope);
@@ -2290,7 +2291,7 @@ struct ast *parse_type_fn_return(struct context *ctx)
             tsa_push_AstPtr(type_struct->data.type_strct.members, tmp);
             if (tokens_consume_if(ctx->tokens, SYM_COMMA)) goto NEXT;
         }
-        Token *tok = tokens_consume_if(ctx->tokens, SYM_RPAREN);
+        struct token *tok = tokens_consume_if(ctx->tokens, SYM_RPAREN);
         if (!tok) {
             PARSE_ERROR(ERR_MISSING_BRACKET,
                         tokens_peek(ctx->tokens),
@@ -2314,10 +2315,10 @@ struct ast *parse_type_fn_return(struct context *ctx)
 
 struct ast *parse_type_fn(struct context *ctx, bool named_args)
 {
-    Token *tok_fn = tokens_consume_if(ctx->tokens, SYM_FN);
+    struct token *tok_fn = tokens_consume_if(ctx->tokens, SYM_FN);
     if (!tok_fn) return NULL;
 
-    Token *tok = tokens_consume(ctx->tokens);
+    struct token *tok = tokens_consume(ctx->tokens);
     if (tok->sym != SYM_LPAREN) {
         PARSE_ERROR(
             ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Expected function parameter list.");
@@ -2339,7 +2340,7 @@ NEXT:
             goto NEXT;
         }
     } else if (rq) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         if (tokens_peek_2nd(ctx->tokens)->sym == SYM_RBLOCK) {
             PARSE_ERROR(
                 ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected type after comma ','.");
@@ -2366,9 +2367,9 @@ NEXT:
 struct ast *parse_type_fn_group(struct context *ctx)
 {
     if (!tokens_is_seq(ctx->tokens, 2, SYM_FN, SYM_LBLOCK)) return NULL;
-    Token *     tok_group = tokens_consume(ctx->tokens); // eat fn
-    Token *     tok_begin = tokens_consume(ctx->tokens); // eat {
-    struct ast *group =
+    struct token *tok_group = tokens_consume(ctx->tokens); // eat fn
+    struct token *tok_begin = tokens_consume(ctx->tokens); // eat {
+    struct ast *  group =
         ast_create_node(ctx->ast_arena, AST_TYPE_FN_GROUP, tok_group, SCOPE_GET(ctx));
 
     TSmallArray_AstPtr *variants       = create_sarr(TSmallArray_AstPtr, ctx->assembly);
@@ -2390,7 +2391,7 @@ NEXT:
         goto NEXT;
     }
 
-    Token *tok = tokens_consume_if(ctx->tokens, SYM_RBLOCK);
+    struct token *tok = tokens_consume_if(ctx->tokens, SYM_RBLOCK);
     if (!tok) {
         tok = tokens_peek_prev(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_BODY_END, tok, BUILDER_CUR_AFTER, "Expected end of block '}'.");
@@ -2402,7 +2403,7 @@ NEXT:
 
 struct ast *parse_type_struct(struct context *ctx)
 {
-    Token *tok_struct = tokens_consume_if(ctx->tokens, SYM_STRUCT);
+    struct token *tok_struct = tokens_consume_if(ctx->tokens, SYM_STRUCT);
     if (!tok_struct) tok_struct = tokens_consume_if(ctx->tokens, SYM_UNION);
     if (!tok_struct) return NULL;
 
@@ -2430,7 +2431,7 @@ struct ast *parse_type_struct(struct context *ctx)
         curr_decl->data.decl_entity.flags |= flags;
     }
 
-    Token *tok = tokens_consume_if(ctx->tokens, SYM_LBLOCK);
+    struct token *tok = tokens_consume_if(ctx->tokens, SYM_LBLOCK);
     if (!tok) {
         PARSE_ERROR(
             ERR_MISSING_BRACKET, tok_struct, BUILDER_CUR_AFTER, "Expected struct member list.");
@@ -2475,7 +2476,7 @@ NEXT:
     return type_struct;
 }
 
-static TokensLookaheadState cmp_decl(Token *curr)
+static TokensLookaheadState cmp_decl(struct token *curr)
 {
     switch (curr->sym) {
     case SYM_COLON:
@@ -2492,8 +2493,8 @@ struct ast *parse_decl(struct context *ctx)
 {
     // is value declaration?
     if (!tokens_lookahead(ctx->tokens, cmp_decl)) return NULL;
-    Token *     tok_begin = tokens_peek(ctx->tokens);
-    struct ast *ident     = parse_ident_group(ctx);
+    struct token *tok_begin = tokens_peek(ctx->tokens);
+    struct ast *  ident     = parse_ident_group(ctx);
     if (!ident) return NULL;
     // eat :
     tokens_consume(ctx->tokens);
@@ -2505,8 +2506,8 @@ struct ast *parse_decl(struct context *ctx)
 
     DECL_PUSH(ctx, decl);
 
-    decl->data.decl.type = parse_type(ctx);
-    Token *tok_assign    = tokens_consume_if(ctx->tokens, SYM_ASSIGN);
+    decl->data.decl.type     = parse_type(ctx);
+    struct token *tok_assign = tokens_consume_if(ctx->tokens, SYM_ASSIGN);
     if (!tok_assign) tok_assign = tokens_consume_if(ctx->tokens, SYM_COLON);
 
     // Parse hash directives.
@@ -2563,8 +2564,8 @@ struct ast *parse_expr_call(struct context *ctx, struct ast *prev)
 {
     if (!prev) return NULL;
 
-    Token *location_token = tokens_peek_prev(ctx->tokens);
-    Token *tok            = tokens_consume_if(ctx->tokens, SYM_LPAREN);
+    struct token *location_token = tokens_peek_prev(ctx->tokens);
+    struct token *tok            = tokens_consume_if(ctx->tokens, SYM_LPAREN);
     if (!tok) return NULL;
     if (location_token && location_token->sym != SYM_IDENT) location_token = tok;
     struct ast *call =
@@ -2588,7 +2589,7 @@ arg:
             goto arg;
         }
     } else if (rq) {
-        Token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek(ctx->tokens);
         if (tokens_peek_2nd(ctx->tokens)->sym == SYM_RBLOCK) {
             PARSE_ERROR(ERR_EXPECTED_NAME,
                         tok_err,
@@ -2612,14 +2613,14 @@ arg:
 
 struct ast *parse_expr_null(struct context *ctx)
 {
-    Token *tok_null = tokens_consume_if(ctx->tokens, SYM_NULL);
+    struct token *tok_null = tokens_consume_if(ctx->tokens, SYM_NULL);
     if (!tok_null) return NULL;
     return ast_create_node(ctx->ast_arena, AST_EXPR_NULL, tok_null, SCOPE_GET(ctx));
 }
 
 struct ast *parse_unrecheable(struct context *ctx)
 {
-    Token *tok = tokens_consume_if(ctx->tokens, SYM_UNREACHABLE);
+    struct token *tok = tokens_consume_if(ctx->tokens, SYM_UNREACHABLE);
     if (!tok) return NULL;
 
     return ast_create_node(ctx->ast_arena, AST_UNREACHABLE, tok, SCOPE_GET(ctx));
@@ -2627,8 +2628,8 @@ struct ast *parse_unrecheable(struct context *ctx)
 
 struct ast *parse_expr_type(struct context *ctx)
 {
-    Token *     tok  = tokens_peek(ctx->tokens);
-    struct ast *type = NULL;
+    struct token *tok  = tokens_peek(ctx->tokens);
+    struct ast *  type = NULL;
 
     type = parse_type_struct(ctx);
 
@@ -2652,7 +2653,7 @@ struct ast *parse_expr_type(struct context *ctx)
 
 struct ast *parse_block(struct context *ctx, bool create_scope)
 {
-    Token *tok_begin = tokens_consume_if(ctx->tokens, SYM_LBLOCK);
+    struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_LBLOCK);
     if (!tok_begin) return NULL;
 
     if (create_scope) {
@@ -2664,8 +2665,8 @@ struct ast *parse_block(struct context *ctx, bool create_scope)
 
     struct ast *block = ast_create_node(ctx->ast_arena, AST_BLOCK, tok_begin, SCOPE_GET(ctx));
 
-    Token *     tok;
-    struct ast *tmp;
+    struct token *tok;
+    struct ast *  tmp;
     block->data.block.nodes = create_sarr(TSmallArray_AstPtr, ctx->assembly);
 
 NEXT:
@@ -2785,7 +2786,7 @@ NEXT:
         goto NEXT;
     }
 
-    Token *tok = tokens_peek(ctx->tokens);
+    struct token *tok = tokens_peek(ctx->tokens);
     if (!token_is(tok, SYM_EOF)) {
         PARSE_ERROR(ERR_UNEXPECTED_SYMBOL,
                     tok,

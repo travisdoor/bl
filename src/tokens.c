@@ -32,7 +32,7 @@
 
 void tokens_init(Tokens *tokens)
 {
-    tarray_init(&tokens->buf, sizeof(Token));
+    tarray_init(&tokens->buf, sizeof(struct token));
     tarray_reserve(&tokens->buf, 512);
 }
 
@@ -41,54 +41,55 @@ void tokens_terminate(Tokens *tokens)
     tarray_terminate(&tokens->buf);
 }
 
-void tokens_push(Tokens *tokens, Token *t)
+void tokens_push(Tokens *tokens, struct token *t)
 {
     tarray_push(&tokens->buf, *t);
 }
 
-Token *tokens_peek(Tokens *tokens)
+struct token *tokens_peek(Tokens *tokens)
 {
     return tokens_peek_nth(tokens, 1);
 }
 
-Token *tokens_peek_2nd(Tokens *tokens)
+struct token *tokens_peek_2nd(Tokens *tokens)
 {
     return tokens_peek_nth(tokens, 2);
 }
 
-Token *tokens_peek_last(Tokens *tokens)
+struct token *tokens_peek_last(Tokens *tokens)
 {
     const usize i = tokens->buf.size;
     if (i == 0) BL_ABORT("Peeking empty tokens!");
-    return &tarray_at(Token, &tokens->buf, i - 1);
+    return &tarray_at(struct token, &tokens->buf, i - 1);
 }
 
-Token *tokens_peek_prev(Tokens *tokens)
+struct token *tokens_peek_prev(Tokens *tokens)
 {
     if (tokens->iter > 0) {
-        return &tarray_at(Token, &tokens->buf, tokens->iter - 1);
+        return &tarray_at(struct token, &tokens->buf, tokens->iter - 1);
     }
     return NULL;
 }
 
-Token *tokens_peek_nth(Tokens *tokens, usize n)
+struct token *tokens_peek_nth(Tokens *tokens, usize n)
 {
     const usize i = tokens->iter + n - 1;
-    if (i < tokens->buf.size) return &tarray_at(Token, &tokens->buf, i);
+    if (i < tokens->buf.size) return &tarray_at(struct token, &tokens->buf, i);
     return tokens_peek_last(tokens);
 }
 
-Token *tokens_consume(Tokens *tokens)
+struct token *tokens_consume(Tokens *tokens)
 {
-    if (tokens->iter < tokens->buf.size) return &tarray_at(Token, &tokens->buf, tokens->iter++);
+    if (tokens->iter < tokens->buf.size)
+        return &tarray_at(struct token, &tokens->buf, tokens->iter++);
     return NULL;
 }
 
-Token *tokens_consume_if(Tokens *tokens, Sym sym)
+struct token *tokens_consume_if(Tokens *tokens, Sym sym)
 {
-    Token *tok;
+    struct token *tok;
     if (tokens->iter < tokens->buf.size) {
-        tok = &tarray_at(Token, &tokens->buf, tokens->iter);
+        tok = &tarray_at(struct token, &tokens->buf, tokens->iter);
         if (tok->sym == sym) {
             tokens->iter++;
             return tok;
@@ -100,28 +101,29 @@ Token *tokens_consume_if(Tokens *tokens, Sym sym)
 
 bool tokens_current_is(Tokens *tokens, Sym sym)
 {
-    return (&tarray_at(Token, &tokens->buf, tokens->iter))->sym == sym;
+    return (&tarray_at(struct token, &tokens->buf, tokens->iter))->sym == sym;
 }
 
 bool tokens_previous_is(Tokens *tokens, Sym sym)
 {
-    if (tokens->iter > 0) return (&tarray_at(Token, &tokens->buf, tokens->iter - 1))->sym == sym;
+    if (tokens->iter > 0)
+        return (&tarray_at(struct token, &tokens->buf, tokens->iter - 1))->sym == sym;
     return false;
 }
 
 bool tokens_next_is(Tokens *tokens, Sym sym)
 {
-    return (&tarray_at(Token, &tokens->buf, tokens->iter + 1))->sym == sym;
+    return (&tarray_at(struct token, &tokens->buf, tokens->iter + 1))->sym == sym;
 }
 
 bool tokens_current_is_not(Tokens *tokens, Sym sym)
 {
-    return (&tarray_at(Token, &tokens->buf, tokens->iter))->sym != sym;
+    return (&tarray_at(struct token, &tokens->buf, tokens->iter))->sym != sym;
 }
 
 bool tokens_next_is_not(Tokens *tokens, Sym sym)
 {
-    return (&tarray_at(Token, &tokens->buf, tokens->iter + 1))->sym != sym;
+    return (&tarray_at(struct token, &tokens->buf, tokens->iter + 1))->sym != sym;
 }
 
 bool tokens_is_seq(Tokens *tokens, usize argc, ...)
@@ -136,7 +138,7 @@ bool tokens_is_seq(Tokens *tokens, usize argc, ...)
 
     for (usize i = tokens->iter; i < argc && i < c; ++i) {
         sym = va_arg(valist, Sym);
-        if ((&tarray_at(Token, &tokens->buf, i))->sym != sym) {
+        if ((&tarray_at(struct token, &tokens->buf, i))->sym != sym) {
             ret = false;
             break;
         }
@@ -210,7 +212,7 @@ bool tokens_lookahead(Tokens *tokens, TokenCmpFunc cmp)
     BL_ASSERT(cmp);
     bool                 found  = false;
     usize                marker = tokens_get_marker(tokens);
-    Token *              curr   = NULL;
+    struct token *       curr   = NULL;
     TokensLookaheadState state  = TOK_LOOK_TERMINAL;
     while (true) {
         curr  = tokens_peek(tokens);

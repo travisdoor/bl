@@ -174,23 +174,23 @@ void linker_run(struct assembly *assembly)
 
 #if BL_PLATFORM_WIN
     if (!link_working_environment(&ctx, MSVC_CRT)) {
-        Token *dummy = NULL;
+        struct token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " MSVC_CRT);
         RETURN_END_ZONE();
     }
     if (!link_working_environment(&ctx, KERNEL32)) {
-        Token *dummy = NULL;
+        struct token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " KERNEL32);
         RETURN_END_ZONE();
     }
     if (!link_working_environment(&ctx, SHLWAPI)) {
-        Token *dummy = NULL;
+        struct token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " SHLWAPI);
         RETURN_END_ZONE();
     }
 #endif
     if (!link_working_environment(&ctx, NULL)) {
-        Token *dummy = NULL;
+        struct token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link working environment.");
         RETURN_END_ZONE();
     }
