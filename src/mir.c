@@ -59,13 +59,13 @@
 
 #define ANALYZE_INSTR_RQ(i)                                                                        \
     {                                                                                              \
-        const AnalyzeResult r = analyze_instr(ctx, (i));                                           \
+        const struct result r = analyze_instr(ctx, (i));                                           \
         BL_ASSERT(r.state == ANALYZE_PASSED);                                                      \
         (void)r;                                                                                   \
     }
 
 #define ANALYZE_RESULT(_state, _waiting_for)                                                       \
-    (AnalyzeResult)                                                                                \
+    (struct result)                                                                                \
     {                                                                                              \
         .state = ANALYZE_##_state, .waiting_for = (_waiting_for)                                   \
     }
@@ -113,10 +113,10 @@ typedef struct {
 
 // Instance in run method is zero initialized, no need to set default values explicitly.
 struct context {
-    VM *             vm;
-    struct assembly *assembly;
-    TString          tmp_sh;
-    bool             debug_mode;
+    struct virtual_machine *vm;
+    struct assembly *       assembly;
+    TString                 tmp_sh;
+    bool                    debug_mode;
 
     // Ast -> MIR generation
     struct {
@@ -128,7 +128,7 @@ struct context {
         struct mir_instr_block *break_block;
         struct mir_instr_block *continue_block;
         AstFnContext *          current_fn_context;
-        ID *                    current_entity_id;
+        struct id *             current_entity_id;
         struct mir_instr *      current_fwd_struct_decl;
     } ast;
 
@@ -143,8 +143,8 @@ struct context {
         // Instructions waiting for analyze.
         TList queue;
 
-        // Hash table of arrays. Hash is ID of symbol and array contains queue
-        // of waiting instructions (DeclRefs).
+        // Hash table of arrays. Hash is id of symbol and array contains queue of waiting
+        // instructions (DeclRefs).
         THashTable waiting;
 
         // Structure members can sometimes point to self, in such case we end up with
@@ -178,7 +178,7 @@ struct context {
     struct BuiltinTypes *builtin_types;
 };
 
-typedef enum {
+enum result_state {
     // Analyze pass failed.
     ANALYZE_FAILED = 0,
 
@@ -190,40 +190,40 @@ typedef enum {
     // such case we push analyzed instruction at the end of analyze queue.
     ANALYZE_POSTPONE = 2,
 
-    // In this case AnalyzeResult will contain hash of desired symbol which be satisfied later,
+    // In this case struct result will contain hash of desired symbol which be satisfied later,
     // instruction is pushed into waiting table.
     ANALYZE_WAITING = 3,
 
     // Completely skip analyze of instruction.
     ANALYZE_SKIP = 4,
-} AnalyzeState;
+};
 
-typedef struct {
-    AnalyzeState state;
-    u64          waiting_for;
-} AnalyzeResult;
+struct result {
+    enum result_state state;
+    u64               waiting_for;
+};
 
-typedef enum {
+enum stage_state {
     ANALYZE_STAGE_BREAK,
     ANALYZE_STAGE_CONTINUE,
     ANALYZE_STAGE_FAILED,
-} AnalyzeStageState;
+};
 
 // Argument list used in slot analyze functions
 #define ANALYZE_STAGE_ARGS                                                                         \
     struct context UNUSED(*ctx), struct mir_instr UNUSED(**input),                                 \
         struct mir_type UNUSED(*slot_type), bool UNUSED(is_initializer)
 
-#define ANALYZE_STAGE_FN(N) AnalyzeStageState analyze_stage_##N(ANALYZE_STAGE_ARGS)
-typedef AnalyzeStageState (*AnalyzeStageFn)(ANALYZE_STAGE_ARGS);
+#define ANALYZE_STAGE_FN(N) enum stage_state analyze_stage_##N(ANALYZE_STAGE_ARGS)
+typedef enum stage_state (*AnalyzeStageFn)(ANALYZE_STAGE_ARGS);
 
-typedef struct {
+struct slot_config {
     s32            count;
     AnalyzeStageFn stages[];
-} AnalyzeSlotConfig;
+};
 
 // Ids of builtin symbols, hash is calculated inside builtin_inits function later.
-static ID builtin_ids[_MIR_BUILTIN_ID_COUNT] = {
+static struct id builtin_ids[_MIR_BUILTIN_ID_COUNT] = {
 #define GEN_BUILTIN_IDS
 #include "mir.inc"
 #undef GEN_BUILTIN_IDS
@@ -259,7 +259,7 @@ static struct mir_fn *group_select_overload(struct context *           ctx,
 // Register incomplete scope entry for symbol.
 static struct scope_entry *register_symbol(struct context *ctx,
                                            struct ast *    node,
-                                           ID *            id,
+                                           struct id *     id,
                                            struct scope *  scope,
                                            bool            is_builtin);
 
@@ -276,51 +276,52 @@ static struct mir_fn *  lookup_builtin_fn(struct context *ctx, enum mir_builtin_
 
 // Try to complete cached RTTI related types, return NULL if all types are resolved or return ID for
 // first missing type.
-static ID *lookup_builtins_rtti(struct context *ctx);
-static ID *lookup_builtins_any(struct context *ctx);
-static ID *lookup_builtins_test_cases(struct context *ctx);
-static ID *lookup_builtins_code_loc(struct context *ctx);
+static struct id *lookup_builtins_rtti(struct context *ctx);
+static struct id *lookup_builtins_any(struct context *ctx);
+static struct id *lookup_builtins_test_cases(struct context *ctx);
+static struct id *lookup_builtins_code_loc(struct context *ctx);
 
 // Lookup member in composit structure type. Searching also in base types. When 'out_base_type' is
 // set to base member type if entry was found in parent.
 static struct scope_entry *
-lookup_composit_member(struct mir_type *type, ID *rid, struct mir_type **out_base_type);
+lookup_composit_member(struct mir_type *type, struct id *rid, struct mir_type **out_base_type);
 
+static struct mir_var *add_global_variable(struct context *  ctx,
+                                           struct id *       id,
+                                           bool              is_mutable,
+                                           struct mir_instr *initializer);
+static struct mir_var *add_global_bool(struct context *ctx, struct id *id, bool is_mutable, bool v);
 static struct mir_var *
-add_global_variable(struct context *ctx, ID *id, bool is_mutable, struct mir_instr *initializer);
-static struct mir_var *add_global_bool(struct context *ctx, ID *id, bool is_mutable, bool v);
-static struct mir_var *
-add_global_int(struct context *ctx, ID *id, bool is_mutable, struct mir_type *type, s32 v);
-
-// Initialize type ID. This function creates and set ID string and calculates integer hash from this
-// string. The type.id.str could be also used as name for unnamed types.
+add_global_int(struct context *ctx, struct id *id, bool is_mutable, struct mir_type *type, s32 v);
 static void type_init_id(struct context *ctx, struct mir_type *type);
 
 // Create new type. The 'user_id' is optional.
-static struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, ID *user_id);
+static struct mir_type *
+create_type(struct context *ctx, enum mir_type_kind kind, struct id *user_id);
 static struct mir_type *create_type_type(struct context *ctx);
 static struct mir_type *create_type_named_scope(struct context *ctx);
 static struct mir_type *create_type_null(struct context *ctx, struct mir_type *base_type);
 static struct mir_type *create_type_void(struct context *ctx);
 static struct mir_type *create_type_bool(struct context *ctx);
-static struct mir_type *create_type_poly(struct context *ctx, ID *user_id, bool is_master);
-static struct mir_type *create_type_int(struct context *ctx, ID *id, s32 bitcount, bool is_signed);
-static struct mir_type *create_type_real(struct context *ctx, ID *id, s32 bitcount);
+static struct mir_type *create_type_poly(struct context *ctx, struct id *user_id, bool is_master);
+static struct mir_type *
+create_type_int(struct context *ctx, struct id *id, s32 bitcount, bool is_signed);
+static struct mir_type *create_type_real(struct context *ctx, struct id *id, s32 bitcount);
 static struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type);
 static struct mir_type *create_type_fn(struct context *    ctx,
-                                       ID *                id,
+                                       struct id *         id,
                                        struct mir_type *   ret_type,
                                        TSmallArray_ArgPtr *args,
                                        bool                is_vargs,
                                        bool                has_default_args,
                                        bool                is_polymorph);
 static struct mir_type *
-create_type_fn_group(struct context *ctx, ID *id, TSmallArray_TypePtr *variants);
+create_type_fn_group(struct context *ctx, struct id *id, TSmallArray_TypePtr *variants);
 static struct mir_type *
-create_type_array(struct context *ctx, ID *id, struct mir_type *elem_type, s64 len);
+create_type_array(struct context *ctx, struct id *id, struct mir_type *elem_type, s64 len);
 static struct mir_type *create_type_struct(struct context *       ctx,
                                            enum mir_type_kind     kind,
-                                           ID *                   id,
+                                           struct id *            id,
                                            struct scope *         scope,
                                            TSmallArray_MemberPtr *members,   // struct mir_member
                                            struct mir_type *      base_type, // optional
@@ -341,19 +342,19 @@ static struct mir_type *complete_type_struct(struct context *       ctx,
 
 // Create incomplete struct type placeholder to be filled later.
 static struct mir_type *
-create_type_struct_incomplete(struct context *ctx, ID *user_id, bool is_union);
+create_type_struct_incomplete(struct context *ctx, struct id *user_id, bool is_union);
 static struct mir_type *create_type_enum(struct context *        ctx,
-                                         ID *                    id,
+                                         struct id *             id,
                                          struct scope *          scope,
                                          struct mir_type *       base_type,
                                          TSmallArray_VariantPtr *variants);
 
 struct mir_type *_create_type_struct_slice(struct context *   ctx,
                                            enum mir_type_kind kind,
-                                           ID *               id,
+                                           struct id *        id,
                                            struct mir_type *  elem_ptr_type);
 struct mir_type *
-            create_type_struct_dyarr(struct context *ctx, ID *id, struct mir_type *elem_ptr_type);
+create_type_struct_dyarr(struct context *ctx, struct id *id, struct mir_type *elem_ptr_type);
 static void type_init_llvm_int(struct context *ctx, struct mir_type *type);
 static void type_init_llvm_real(struct context *ctx, struct mir_type *type);
 static void type_init_llvm_ptr(struct context *ctx, struct mir_type *type);
@@ -369,7 +370,7 @@ static void type_init_llvm_dummy(struct context *ctx, struct mir_type *type);
 static struct mir_var *create_var(struct context *         ctx,
                                   struct ast *             decl_node,
                                   struct scope *           scope,
-                                  ID *                     id,
+                                  struct id *              id,
                                   struct mir_type *        alloc_type,
                                   bool                     is_mutable,
                                   bool                     is_global,
@@ -387,7 +388,7 @@ static struct mir_var *create_var_impl(struct context * ctx,
 
 static struct mir_fn *create_fn(struct context *           ctx,
                                 struct ast *               node,
-                                ID *                       id,
+                                struct id *                id,
                                 const char *               linkage_name,
                                 u32                        flags,
                                 struct mir_instr_fn_proto *prototype,
@@ -398,16 +399,19 @@ static struct mir_fn_group *
 create_fn_group(struct context *ctx, struct ast *decl_node, TSmallArray_FnPtr *variants);
 static struct mir_fn_poly_recipe *create_fn_poly_recipe(struct context *ctx,
                                                         struct ast *    ast_lit_fn);
-static struct mir_member *
-create_member(struct context *ctx, struct ast *node, ID *id, s64 index, struct mir_type *type);
-static struct mir_arg *create_arg(struct context *  ctx,
-                                  struct ast *      node,
-                                  ID *              id,
-                                  struct scope *    scope,
-                                  struct mir_type * type,
-                                  struct mir_instr *value);
+static struct mir_member *        create_member(struct context * ctx,
+                                                struct ast *     node,
+                                                struct id *      id,
+                                                s64              index,
+                                                struct mir_type *type);
+static struct mir_arg *           create_arg(struct context *  ctx,
+                                             struct ast *      node,
+                                             struct id *       id,
+                                             struct scope *    scope,
+                                             struct mir_type * type,
+                                             struct mir_instr *value);
 static struct mir_variant *
-create_variant(struct context *ctx, ID *id, struct mir_type *value_type, const u64 value);
+create_variant(struct context *ctx, struct id *id, struct mir_type *value_type, const u64 value);
 // Create block without owner function.
 static struct mir_instr_block *create_block(struct context *ctx, const char *name);
 // Create and append block into function specified.
@@ -427,7 +431,7 @@ create_instr_const_int(struct context *ctx, struct ast *node, struct mir_type *t
 static struct mir_instr *create_instr_const_ptr(struct context * ctx,
                                                 struct ast *     node,
                                                 struct mir_type *type,
-                                                VMStackPtr       ptr);
+                                                vm_stack_ptr_t   ptr);
 static struct mir_instr *create_instr_const_float(struct context *ctx, struct ast *node, float val);
 static struct mir_instr *
 create_instr_const_double(struct context *ctx, struct ast *node, double val);
@@ -549,12 +553,12 @@ static struct mir_instr *append_instr_type_fn(struct context *      ctx,
                                               bool                  is_polymorph);
 static struct mir_instr *append_instr_type_fn_group(struct context *      ctx,
                                                     struct ast *          node,
-                                                    ID *                  id,
+                                                    struct id *           id,
                                                     TSmallArray_InstrPtr *variants);
 
 static struct mir_instr *append_instr_type_struct(struct context *      ctx,
                                                   struct ast *          node,
-                                                  ID *                  id,
+                                                  struct id *           id,
                                                   struct mir_instr *    fwd_decl, // Optional
                                                   struct scope *        scope,
                                                   TSmallArray_InstrPtr *members,
@@ -564,17 +568,18 @@ static struct mir_instr *append_instr_type_struct(struct context *      ctx,
 
 static struct mir_instr *append_instr_type_enum(struct context *      ctx,
                                                 struct ast *          node,
-                                                ID *                  id,
+                                                struct id *           id,
                                                 struct scope *        scope,
                                                 TSmallArray_InstrPtr *variants,
                                                 struct mir_instr *    base_type);
 
 static struct mir_instr *
 append_instr_type_ptr(struct context *ctx, struct ast *node, struct mir_instr *type);
-static struct mir_instr *append_instr_type_poly(struct context *ctx, struct ast *node, ID *T_id);
+static struct mir_instr *
+append_instr_type_poly(struct context *ctx, struct ast *node, struct id *T_id);
 static struct mir_instr *append_instr_type_array(struct context *  ctx,
                                                  struct ast *      node,
-                                                 ID *              id,
+                                                 struct id *       id,
                                                  struct mir_instr *elem_type,
                                                  struct mir_instr *len);
 
@@ -594,7 +599,7 @@ append_instr_fn_group(struct context *ctx, struct ast *node, TSmallArray_InstrPt
 static struct mir_instr *append_instr_decl_ref(struct context *    ctx,
                                                struct ast *        node,
                                                struct unit *       parent_unit,
-                                               ID *                rid,
+                                               struct id *         rid,
                                                struct scope *      scope,
                                                s32                 scope_layer,
                                                struct scope_entry *scope_entry);
@@ -609,7 +614,7 @@ static struct mir_instr *append_instr_call(struct context *      ctx,
 
 static struct mir_instr *append_instr_decl_var(struct context *         ctx,
                                                struct ast *             node, // Optional
-                                               ID *                     id,
+                                               struct id *              id,
                                                struct scope *           scope,
                                                struct mir_instr *       type,
                                                struct mir_instr *       init,
@@ -640,7 +645,7 @@ static struct mir_instr *append_instr_decl_member(struct context *      ctx,
 
 static struct mir_instr *append_instr_decl_member_impl(struct context *      ctx,
                                                        struct ast *          node,
-                                                       ID *                  id,
+                                                       struct id *           id,
                                                        struct mir_instr *    type,
                                                        TSmallArray_InstrPtr *tags);
 
@@ -673,10 +678,12 @@ static struct mir_instr *append_instr_binop(struct context *  ctx,
                                             struct ast *      node,
                                             struct mir_instr *lhs,
                                             struct mir_instr *rhs,
-                                            BinopKind         op);
+                                            enum binop_kind   op);
 
-static struct mir_instr *
-append_instr_unop(struct context *ctx, struct ast *node, struct mir_instr *instr, UnopKind op);
+static struct mir_instr *append_instr_unop(struct context *  ctx,
+                                           struct ast *      node,
+                                           struct mir_instr *instr,
+                                           enum unop_kind    op);
 static struct mir_instr *append_instr_unrecheable(struct context *ctx, struct ast *node);
 static struct mir_instr *
 append_instr_addrof(struct context *ctx, struct ast *node, struct mir_instr *src);
@@ -759,8 +766,8 @@ static struct mir_instr *ast_call_loc(struct context *ctx, struct ast *loc);
 
 // analyze
 static bool          evaluate(struct context *ctx, struct mir_instr *instr);
-static AnalyzeResult analyze_var(struct context *ctx, struct mir_var *var);
-static AnalyzeResult analyze_instr(struct context *ctx, struct mir_instr *instr);
+static struct result analyze_var(struct context *ctx, struct mir_var *var);
+static struct result analyze_instr(struct context *ctx, struct mir_instr *instr);
 
 #define analyze_slot(ctx, conf, input, slot_type)                                                  \
     _analyze_slot((ctx), (conf), (input), (slot_type), false)
@@ -768,11 +775,11 @@ static AnalyzeResult analyze_instr(struct context *ctx, struct mir_instr *instr)
 #define analyze_slot_initializer(ctx, conf, input, slot_type)                                      \
     _analyze_slot((ctx), (conf), (input), (slot_type), true)
 
-static AnalyzeState _analyze_slot(struct context *         ctx,
-                                  const AnalyzeSlotConfig *conf,
-                                  struct mir_instr **      input,
-                                  struct mir_type *        slot_type,
-                                  bool                     is_initilizer);
+static enum result_state _analyze_slot(struct context *          ctx,
+                                       const struct slot_config *conf,
+                                       struct mir_instr **       input,
+                                       struct mir_type *         slot_type,
+                                       bool                      is_initilizer);
 
 static ANALYZE_STAGE_FN(load);
 static ANALYZE_STAGE_FN(toany);
@@ -785,115 +792,115 @@ static ANALYZE_STAGE_FN(set_volatile_expr);
 static ANALYZE_STAGE_FN(set_null);
 static ANALYZE_STAGE_FN(set_auto);
 
-static const AnalyzeSlotConfig analyze_slot_conf_dummy = {.count = 0};
+static const struct slot_config analyze_slot_conf_dummy = {.count = 0};
 
-static const AnalyzeSlotConfig analyze_slot_conf_basic = {
+static const struct slot_config analyze_slot_conf_basic = {
     .count  = 2,
     .stages = {analyze_stage_unroll, analyze_stage_load}};
 
-static const AnalyzeSlotConfig analyze_slot_conf_default = {.count  = 8,
-                                                            .stages = {
-                                                                analyze_stage_set_volatile_expr,
-                                                                analyze_stage_set_null,
-                                                                analyze_stage_set_auto,
-                                                                analyze_stage_arrtoslice,
-                                                                analyze_stage_dynarrtoslice,
-                                                                analyze_stage_load,
-                                                                analyze_stage_implicit_cast,
-                                                                analyze_stage_report_type_mismatch,
-                                                            }};
+static const struct slot_config analyze_slot_conf_default = {.count  = 8,
+                                                             .stages = {
+                                                                 analyze_stage_set_volatile_expr,
+                                                                 analyze_stage_set_null,
+                                                                 analyze_stage_set_auto,
+                                                                 analyze_stage_arrtoslice,
+                                                                 analyze_stage_dynarrtoslice,
+                                                                 analyze_stage_load,
+                                                                 analyze_stage_implicit_cast,
+                                                                 analyze_stage_report_type_mismatch,
+                                                             }};
 
-static const AnalyzeSlotConfig analyze_slot_conf_full = {.count  = 9,
-                                                         .stages = {
-                                                             analyze_stage_set_volatile_expr,
-                                                             analyze_stage_set_null,
-                                                             analyze_stage_set_auto,
-                                                             analyze_stage_toany,
-                                                             analyze_stage_arrtoslice,
-                                                             analyze_stage_dynarrtoslice,
-                                                             analyze_stage_load,
-                                                             analyze_stage_implicit_cast,
-                                                             analyze_stage_report_type_mismatch,
-                                                         }};
+static const struct slot_config analyze_slot_conf_full = {.count  = 9,
+                                                          .stages = {
+                                                              analyze_stage_set_volatile_expr,
+                                                              analyze_stage_set_null,
+                                                              analyze_stage_set_auto,
+                                                              analyze_stage_toany,
+                                                              analyze_stage_arrtoslice,
+                                                              analyze_stage_dynarrtoslice,
+                                                              analyze_stage_load,
+                                                              analyze_stage_implicit_cast,
+                                                              analyze_stage_report_type_mismatch,
+                                                          }};
 
 // This function produce analyze of implicit call to the type resolver function in MIR and set
 // out_type when analyze passed without problems. When analyze does not pass postpone is returned
 // and out_type stay unchanged.
-static AnalyzeResult analyze_resolve_type(struct context *  ctx,
+static struct result analyze_resolve_type(struct context *  ctx,
                                           struct mir_instr *resolver_call,
                                           struct mir_type **out_type);
-static AnalyzeResult analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll);
-static AnalyzeResult analyze_instr_compound(struct context *ctx, struct mir_instr_compound *cmp);
-static AnalyzeResult analyze_instr_set_initializer(struct context *                  ctx,
+static struct result analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll);
+static struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compound *cmp);
+static struct result analyze_instr_set_initializer(struct context *                  ctx,
                                                    struct mir_instr_set_initializer *si);
-static AnalyzeResult analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi);
-static AnalyzeResult analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *toany);
-static AnalyzeResult analyze_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs);
-static AnalyzeResult analyze_instr_elem_ptr(struct context *           ctx,
+static struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi);
+static struct result analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *toany);
+static struct result analyze_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs);
+static struct result analyze_instr_elem_ptr(struct context *           ctx,
                                             struct mir_instr_elem_ptr *elem_ptr);
-static AnalyzeResult analyze_instr_member_ptr(struct context *             ctx,
+static struct result analyze_instr_member_ptr(struct context *             ctx,
                                               struct mir_instr_member_ptr *member_ptr);
-static AnalyzeResult analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof);
-static AnalyzeResult analyze_instr_block(struct context *ctx, struct mir_instr_block *block);
-static AnalyzeResult analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret);
-static AnalyzeResult analyze_instr_arg(struct context *ctx, struct mir_instr_arg *arg);
-static AnalyzeResult analyze_instr_unop(struct context *ctx, struct mir_instr_unop *unop);
-static AnalyzeResult analyze_instr_test_cases(struct context *ctx, struct mir_instr_test_case *tc);
-static AnalyzeResult analyze_instr_unreachable(struct context *              ctx,
+static struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof);
+static struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *block);
+static struct result analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret);
+static struct result analyze_instr_arg(struct context *ctx, struct mir_instr_arg *arg);
+static struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *unop);
+static struct result analyze_instr_test_cases(struct context *ctx, struct mir_instr_test_case *tc);
+static struct result analyze_instr_unreachable(struct context *              ctx,
                                                struct mir_instr_unreachable *unr);
-static AnalyzeResult analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br);
-static AnalyzeResult analyze_instr_br(struct context *ctx, struct mir_instr_br *br);
-static AnalyzeResult analyze_instr_switch(struct context *ctx, struct mir_instr_switch *sw);
-static AnalyzeResult analyze_instr_load(struct context *ctx, struct mir_instr_load *load);
-static AnalyzeResult analyze_instr_store(struct context *ctx, struct mir_instr_store *store);
-static AnalyzeResult analyze_instr_fn_proto(struct context *           ctx,
+static struct result analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br);
+static struct result analyze_instr_br(struct context *ctx, struct mir_instr_br *br);
+static struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch *sw);
+static struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *load);
+static struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *store);
+static struct result analyze_instr_fn_proto(struct context *           ctx,
                                             struct mir_instr_fn_proto *fn_proto);
-static AnalyzeResult analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_group *group);
-static AnalyzeResult analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_fn *type_fn);
-static AnalyzeResult analyze_instr_type_fn_group(struct context *                ctx,
+static struct result analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_group *group);
+static struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_fn *type_fn);
+static struct result analyze_instr_type_fn_group(struct context *                ctx,
                                                  struct mir_instr_type_fn_group *group);
-static AnalyzeResult analyze_instr_type_struct(struct context *              ctx,
+static struct result analyze_instr_type_struct(struct context *              ctx,
                                                struct mir_instr_type_struct *type_struct);
-static AnalyzeResult analyze_instr_type_slice(struct context *             ctx,
+static struct result analyze_instr_type_slice(struct context *             ctx,
                                               struct mir_instr_type_slice *type_slice);
-static AnalyzeResult analyze_instr_type_dynarr(struct context *               ctx,
+static struct result analyze_instr_type_dynarr(struct context *               ctx,
                                                struct mir_instr_type_dyn_arr *type_dynarr);
-static AnalyzeResult analyze_instr_type_vargs(struct context *             ctx,
+static struct result analyze_instr_type_vargs(struct context *             ctx,
                                               struct mir_instr_type_vargs *type_vargs);
-static AnalyzeResult analyze_instr_type_ptr(struct context *           ctx,
+static struct result analyze_instr_type_ptr(struct context *           ctx,
                                             struct mir_instr_type_ptr *type_ptr);
-static AnalyzeResult analyze_instr_type_array(struct context *             ctx,
+static struct result analyze_instr_type_array(struct context *             ctx,
                                               struct mir_instr_type_array *type_arr);
-static AnalyzeResult analyze_instr_type_enum(struct context *            ctx,
+static struct result analyze_instr_type_enum(struct context *            ctx,
                                              struct mir_instr_type_enum *type_enum);
-static AnalyzeResult analyze_instr_type_poly(struct context *            ctx,
+static struct result analyze_instr_type_poly(struct context *            ctx,
                                              struct mir_instr_type_poly *type_poly);
-static AnalyzeResult analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl);
-static AnalyzeResult analyze_instr_decl_member(struct context *              ctx,
+static struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl);
+static struct result analyze_instr_decl_member(struct context *              ctx,
                                                struct mir_instr_decl_member *decl);
-static AnalyzeResult analyze_instr_decl_variant(struct context *               ctx,
+static struct result analyze_instr_decl_variant(struct context *               ctx,
                                                 struct mir_instr_decl_variant *variant_instr);
-static AnalyzeResult analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_arg *decl);
-static AnalyzeResult analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref);
-static AnalyzeResult analyze_instr_decl_direct_ref(struct context *                  ctx,
+static struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_arg *decl);
+static struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref);
+static struct result analyze_instr_decl_direct_ref(struct context *                  ctx,
                                                    struct mir_instr_decl_direct_ref *ref);
-static AnalyzeResult analyze_instr_const(struct context *ctx, struct mir_instr_const *cnst);
-static AnalyzeResult analyze_builtin_call(struct context *ctx, struct mir_instr_call *call);
-static AnalyzeResult analyze_instr_call(struct context *ctx, struct mir_instr_call *call);
-static AnalyzeResult
+static struct result analyze_instr_const(struct context *ctx, struct mir_instr_const *cnst);
+static struct result analyze_builtin_call(struct context *ctx, struct mir_instr_call *call);
+static struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *call);
+static struct result
 analyze_instr_cast(struct context *ctx, struct mir_instr_cast *cast, bool analyze_op_only);
-static AnalyzeResult analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof *szof);
-static AnalyzeResult analyze_instr_type_info(struct context *            ctx,
+static struct result analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof *szof);
+static struct result analyze_instr_type_info(struct context *            ctx,
                                              struct mir_instr_type_info *type_info);
-static AnalyzeResult analyze_instr_alignof(struct context *ctx, struct mir_instr_alignof *alof);
-static AnalyzeResult analyze_instr_binop(struct context *ctx, struct mir_instr_binop *binop);
-static AnalyzeResult analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc);
+static struct result analyze_instr_alignof(struct context *ctx, struct mir_instr_alignof *alof);
+static struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *binop);
+static struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc);
 static void          analyze_report_unresolved(struct context *ctx);
 static void          analyze_report_unused(struct context *ctx);
 
 // Find or generate implementation of polymorph function template. Function will try to find already
 // generated function based on expected argument list or create new one.
-static AnalyzeResult generate_fn_poly(struct context *            ctx,
+static struct result generate_fn_poly(struct context *            ctx,
                                       struct ast *                call,
                                       struct mir_fn *             fn,
                                       TSmallArray_InstrPtr *      expected_args,
@@ -915,26 +922,29 @@ static struct mir_var *
 rtti_gen_empty(struct context *ctx, struct mir_type *type, struct mir_type *rtti_type);
 static struct mir_var *rtti_gen_enum(struct context *ctx, struct mir_type *type);
 static void
-rtti_gen_enum_variant(struct context *ctx, VMStackPtr dest, struct mir_variant *variant);
-static VMStackPtr rtti_gen_enum_variants_array(struct context *        ctx,
-                                               TSmallArray_VariantPtr *variants);
-static void       rtti_gen_enum_variants_slice(struct context *        ctx,
-                                               VMStackPtr              dest,
-                                               TSmallArray_VariantPtr *variants);
+rtti_gen_enum_variant(struct context *ctx, vm_stack_ptr_t dest, struct mir_variant *variant);
+static vm_stack_ptr_t rtti_gen_enum_variants_array(struct context *        ctx,
+                                                   TSmallArray_VariantPtr *variants);
+static void           rtti_gen_enum_variants_slice(struct context *        ctx,
+                                                   vm_stack_ptr_t          dest,
+                                                   TSmallArray_VariantPtr *variants);
 
-static void rtti_gen_struct_member(struct context *ctx, VMStackPtr dest, struct mir_member *member);
-static VMStackPtr rtti_gen_struct_members_array(struct context *       ctx,
-                                                TSmallArray_MemberPtr *members);
 static void
-rtti_gen_struct_members_slice(struct context *ctx, VMStackPtr dest, TSmallArray_MemberPtr *members);
+rtti_gen_struct_member(struct context *ctx, vm_stack_ptr_t dest, struct mir_member *member);
+static vm_stack_ptr_t rtti_gen_struct_members_array(struct context *       ctx,
+                                                    TSmallArray_MemberPtr *members);
+static void           rtti_gen_struct_members_slice(struct context *       ctx,
+                                                    vm_stack_ptr_t         dest,
+                                                    TSmallArray_MemberPtr *members);
 
 static struct mir_var *rtti_gen_struct(struct context *ctx, struct mir_type *type);
-static void            rtti_gen_fn_arg(struct context *ctx, VMStackPtr dest, struct mir_arg *arg);
-static VMStackPtr      rtti_gen_fn_args_array(struct context *ctx, TSmallArray_ArgPtr *args);
-static VMStackPtr      rtti_gen_fns_array(struct context *ctx, TSmallArray_TypePtr *fns);
-static void rtti_gen_fn_args_slice(struct context *ctx, VMStackPtr dest, TSmallArray_ArgPtr *args);
+static void rtti_gen_fn_arg(struct context *ctx, vm_stack_ptr_t dest, struct mir_arg *arg);
+static vm_stack_ptr_t rtti_gen_fn_args_array(struct context *ctx, TSmallArray_ArgPtr *args);
+static vm_stack_ptr_t rtti_gen_fns_array(struct context *ctx, TSmallArray_TypePtr *fns);
+static void
+rtti_gen_fn_args_slice(struct context *ctx, vm_stack_ptr_t dest, TSmallArray_ArgPtr *args);
 static struct mir_var *rtti_gen_fn(struct context *ctx, struct mir_type *type);
-static void rtti_gen_fn_slice(struct context *ctx, VMStackPtr dest, TSmallArray_TypePtr *fns);
+static void rtti_gen_fn_slice(struct context *ctx, vm_stack_ptr_t dest, TSmallArray_TypePtr *fns);
 static struct mir_var *rtti_gen_fn_group(struct context *ctx, struct mir_type *type);
 
 // INLINES
@@ -1329,7 +1339,7 @@ static INLINE const char *create_unique_name(const char *prefix)
     return s->data;
 }
 
-static INLINE bool is_builtin2(ID *id, enum mir_builtin_id_kind kind)
+static INLINE bool is_builtin2(struct id *id, enum mir_builtin_id_kind kind)
 {
     if (!id) return false;
     return id->hash == builtin_ids[kind].hash;
@@ -1390,7 +1400,7 @@ static INLINE void error_types(struct mir_instr *instr,
 
 static INLINE void commit_fn(struct context *ctx, struct mir_fn *fn)
 {
-    ID *id = fn->id;
+    struct id *id = fn->id;
     BL_ASSERT(id);
     struct scope_entry *entry = fn->scope_entry;
     BL_MAGIC_ASSERT(entry);
@@ -1422,7 +1432,7 @@ static INLINE void commit_member(struct context UNUSED(*ctx), struct mir_member 
 
 static INLINE void commit_var(struct context *ctx, struct mir_var *var)
 {
-    ID *id = var->id;
+    struct id *id = var->id;
     BL_ASSERT(id);
     struct scope_entry *entry = var->entry;
     BL_MAGIC_ASSERT(entry);
@@ -1785,7 +1795,7 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 #undef GEN_ID_STRUCT
 }
 
-struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, ID *user_id)
+struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, struct id *user_id)
 {
     struct mir_type *type = arena_alloc(&ctx->assembly->arenas.mir.type);
     BL_MAGIC_SET(type);
@@ -1794,8 +1804,11 @@ struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, ID *u
     return type;
 }
 
-struct scope_entry *
-register_symbol(struct context *ctx, struct ast *node, ID *id, struct scope *scope, bool is_builtin)
+struct scope_entry *register_symbol(struct context *ctx,
+                                    struct ast *    node,
+                                    struct id *     id,
+                                    struct scope *  scope,
+                                    bool            is_builtin)
 {
     BL_ASSERT(id && "Missing symbol ID.");
     BL_ASSERT(scope && "Missing entry scope.");
@@ -1850,7 +1863,7 @@ COLLIDE : {
 
 struct mir_type *lookup_builtin_type(struct context *ctx, enum mir_builtin_id_kind kind)
 {
-    ID *                id    = &builtin_ids[kind];
+    struct id *         id    = &builtin_ids[kind];
     struct scope *      scope = ctx->assembly->gscope;
     struct scope_entry *found = scope_lookup(scope, SCOPE_DEFAULT_LAYER, id, true, false, NULL);
 
@@ -1881,7 +1894,7 @@ struct mir_type *lookup_builtin_type(struct context *ctx, enum mir_builtin_id_ki
 
 struct mir_fn *lookup_builtin_fn(struct context *ctx, enum mir_builtin_id_kind kind)
 {
-    ID *                id    = &builtin_ids[kind];
+    struct id *         id    = &builtin_ids[kind];
     struct scope *      scope = ctx->assembly->gscope;
     struct scope_entry *found = scope_lookup(scope, SCOPE_DEFAULT_LAYER, id, true, false, NULL);
 
@@ -1901,7 +1914,7 @@ struct mir_fn *lookup_builtin_fn(struct context *ctx, enum mir_builtin_id_kind k
     return found->data.fn;
 }
 
-ID *lookup_builtins_rtti(struct context *ctx)
+struct id *lookup_builtins_rtti(struct context *ctx)
 {
 //*********************************************************************************************/
 #define LOOKUP_TYPE(N, K)                                                                          \
@@ -1952,7 +1965,7 @@ ID *lookup_builtins_rtti(struct context *ctx)
 #undef LOOKUP_TYPE
 }
 
-ID *lookup_builtins_any(struct context *ctx)
+struct id *lookup_builtins_any(struct context *ctx)
 {
     if (ctx->builtin_types->is_any_ready) return NULL;
     ctx->builtin_types->t_Any = lookup_builtin_type(ctx, MIR_BUILTIN_ID_ANY);
@@ -1964,7 +1977,7 @@ ID *lookup_builtins_any(struct context *ctx)
     return NULL;
 }
 
-ID *lookup_builtins_test_cases(struct context *ctx)
+struct id *lookup_builtins_test_cases(struct context *ctx)
 {
     if (ctx->builtin_types->is_test_cases_ready) return NULL;
     ctx->builtin_types->t_TestCase = lookup_builtin_type(ctx, MIR_BUILTIN_ID_TYPE_TEST_CASES);
@@ -1976,7 +1989,7 @@ ID *lookup_builtins_test_cases(struct context *ctx)
     return NULL;
 }
 
-ID *lookup_builtins_code_loc(struct context *ctx)
+struct id *lookup_builtins_code_loc(struct context *ctx)
 {
     if (ctx->builtin_types->t_CodeLocation) return NULL;
     ctx->builtin_types->t_CodeLocation =
@@ -1990,7 +2003,7 @@ ID *lookup_builtins_code_loc(struct context *ctx)
 }
 
 struct scope_entry *
-lookup_composit_member(struct mir_type *type, ID *rid, struct mir_type **out_base_type)
+lookup_composit_member(struct mir_type *type, struct id *rid, struct mir_type **out_base_type)
 {
     BL_ASSERT(type);
     BL_ASSERT(mir_is_composit_type(type) && "Expected composit type!");
@@ -2009,8 +2022,10 @@ lookup_composit_member(struct mir_type *type, ID *rid, struct mir_type **out_bas
     return found;
 }
 
-struct mir_var *
-add_global_variable(struct context *ctx, ID *id, bool is_mutable, struct mir_instr *initializer)
+struct mir_var *add_global_variable(struct context *  ctx,
+                                    struct id *       id,
+                                    bool              is_mutable,
+                                    struct mir_instr *initializer)
 {
     BL_ASSERT(initializer);
     struct scope *    scope = ctx->assembly->gscope;
@@ -2030,13 +2045,13 @@ add_global_variable(struct context *ctx, ID *id, bool is_mutable, struct mir_ins
     return var;
 }
 
-struct mir_var *add_global_bool(struct context *ctx, ID *id, bool is_mutable, bool v)
+struct mir_var *add_global_bool(struct context *ctx, struct id *id, bool is_mutable, bool v)
 {
     return add_global_variable(ctx, id, is_mutable, create_instr_const_bool(ctx, NULL, v));
 }
 
 struct mir_var *
-add_global_int(struct context *ctx, ID *id, bool is_mutable, struct mir_type *type, s32 v)
+add_global_int(struct context *ctx, struct id *id, bool is_mutable, struct mir_type *type, s32 v)
 {
     return add_global_variable(ctx, id, is_mutable, create_instr_const_int(ctx, NULL, type, v));
 }
@@ -2091,7 +2106,7 @@ struct mir_type *create_type_bool(struct context *ctx)
     return tmp;
 }
 
-struct mir_type *create_type_poly(struct context *ctx, ID *user_id, bool is_master)
+struct mir_type *create_type_poly(struct context *ctx, struct id *user_id, bool is_master)
 {
     BL_ASSERT(user_id);
     struct mir_type *tmp     = create_type(ctx, MIR_TYPE_POLY, user_id);
@@ -2101,7 +2116,7 @@ struct mir_type *create_type_poly(struct context *ctx, ID *user_id, bool is_mast
     return tmp;
 }
 
-struct mir_type *create_type_int(struct context *ctx, ID *id, s32 bitcount, bool is_signed)
+struct mir_type *create_type_int(struct context *ctx, struct id *id, s32 bitcount, bool is_signed)
 {
     BL_ASSERT(id);
     BL_ASSERT(bitcount > 0);
@@ -2115,7 +2130,7 @@ struct mir_type *create_type_int(struct context *ctx, ID *id, s32 bitcount, bool
     return tmp;
 }
 
-struct mir_type *create_type_real(struct context *ctx, ID *id, s32 bitcount)
+struct mir_type *create_type_real(struct context *ctx, struct id *id, s32 bitcount)
 {
     BL_ASSERT(bitcount > 0);
     struct mir_type *tmp    = create_type(ctx, MIR_TYPE_REAL, id);
@@ -2138,7 +2153,7 @@ struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type)
 }
 
 struct mir_type *create_type_fn(struct context *    ctx,
-                                ID *                id,
+                                struct id *         id,
                                 struct mir_type *   ret_type,
                                 TSmallArray_ArgPtr *args,
                                 bool                is_vargs,
@@ -2158,7 +2173,8 @@ struct mir_type *create_type_fn(struct context *    ctx,
     return tmp;
 }
 
-struct mir_type *create_type_fn_group(struct context *ctx, ID *id, TSmallArray_TypePtr *variants)
+struct mir_type *
+create_type_fn_group(struct context *ctx, struct id *id, TSmallArray_TypePtr *variants)
 {
     BL_ASSERT(variants);
     struct mir_type *tmp        = create_type(ctx, MIR_TYPE_FN_GROUP, id);
@@ -2171,7 +2187,8 @@ struct mir_type *create_type_fn_group(struct context *ctx, ID *id, TSmallArray_T
     return tmp;
 }
 
-struct mir_type *create_type_array(struct context *ctx, ID *id, struct mir_type *elem_type, s64 len)
+struct mir_type *
+create_type_array(struct context *ctx, struct id *id, struct mir_type *elem_type, s64 len)
 {
     BL_ASSERT(elem_type);
     struct mir_type *tmp      = create_type(ctx, MIR_TYPE_ARRAY, id);
@@ -2184,7 +2201,7 @@ struct mir_type *create_type_array(struct context *ctx, ID *id, struct mir_type 
 
 struct mir_type *create_type_struct(struct context *       ctx,
                                     enum mir_type_kind     kind,
-                                    ID *                   id, // optional
+                                    struct id *            id, // optional
                                     struct scope *         scope,
                                     TSmallArray_MemberPtr *members,   // struct mir_member
                                     struct mir_type *      base_type, // optional
@@ -2243,7 +2260,8 @@ struct mir_type *complete_type_struct(struct context *       ctx,
     return incomplete_type;
 }
 
-struct mir_type *create_type_struct_incomplete(struct context *ctx, ID *user_id, bool is_union)
+struct mir_type *
+create_type_struct_incomplete(struct context *ctx, struct id *user_id, bool is_union)
 {
     struct mir_type *type          = create_type(ctx, MIR_TYPE_STRUCT, user_id);
     type->data.strct.is_incomplete = true;
@@ -2256,7 +2274,7 @@ struct mir_type *create_type_struct_incomplete(struct context *ctx, ID *user_id,
 
 struct mir_type *_create_type_struct_slice(struct context *   ctx,
                                            enum mir_type_kind kind,
-                                           ID *               id,
+                                           struct id *        id,
                                            struct mir_type *  elem_ptr_type)
 {
     BL_ASSERT(mir_is_pointer_type(elem_ptr_type));
@@ -2284,7 +2302,7 @@ struct mir_type *_create_type_struct_slice(struct context *   ctx,
 }
 
 struct mir_type *
-create_type_struct_dynarr(struct context *ctx, ID *id, struct mir_type *elem_ptr_type)
+create_type_struct_dynarr(struct context *ctx, struct id *id, struct mir_type *elem_ptr_type)
 {
     BL_ASSERT(mir_is_pointer_type(elem_ptr_type));
 
@@ -2331,7 +2349,7 @@ create_type_struct_dynarr(struct context *ctx, ID *id, struct mir_type *elem_ptr
 }
 
 struct mir_type *create_type_enum(struct context *        ctx,
-                                  ID *                    id,
+                                  struct id *             id,
                                   struct scope *          scope,
                                   struct mir_type *       base_type,
                                   TSmallArray_VariantPtr *variants)
@@ -2681,7 +2699,7 @@ static INLINE void push_var(struct context *ctx, struct mir_var *var)
 struct mir_var *create_var(struct context *         ctx,
                            struct ast *             decl_node,
                            struct scope *           scope,
-                           ID *                     id,
+                           struct id *              id,
                            struct mir_type *        alloc_type,
                            bool                     is_mutable,
                            bool                     is_global,
@@ -2731,7 +2749,7 @@ struct mir_var *create_var_impl(struct context * ctx,
 
 struct mir_fn *create_fn(struct context *           ctx,
                          struct ast *               node,
-                         ID *                       id,
+                         struct id *                id,
                          const char *               linkage_name,
                          u32                        flags,
                          struct mir_instr_fn_proto *prototype,
@@ -2773,8 +2791,11 @@ struct mir_fn_poly_recipe *create_fn_poly_recipe(struct context *ctx, struct ast
     return tmp;
 }
 
-struct mir_member *
-create_member(struct context *ctx, struct ast *node, ID *id, s64 index, struct mir_type *type)
+struct mir_member *create_member(struct context * ctx,
+                                 struct ast *     node,
+                                 struct id *      id,
+                                 s64              index,
+                                 struct mir_type *type)
 {
     struct mir_member *tmp = arena_alloc(&ctx->assembly->arenas.mir.member);
     BL_MAGIC_SET(tmp);
@@ -2787,7 +2808,7 @@ create_member(struct context *ctx, struct ast *node, ID *id, s64 index, struct m
 
 struct mir_arg *create_arg(struct context *  ctx,
                            struct ast *      node,
-                           ID *              id,
+                           struct id *       id,
                            struct scope *    scope,
                            struct mir_type * type,
                            struct mir_instr *value)
@@ -2802,7 +2823,7 @@ struct mir_arg *create_arg(struct context *  ctx,
 }
 
 struct mir_variant *
-create_variant(struct context *ctx, ID *id, struct mir_type *value_type, const u64 value)
+create_variant(struct context *ctx, struct id *id, struct mir_type *value_type, const u64 value)
 {
     struct mir_variant *tmp = arena_alloc(&ctx->assembly->arenas.mir.variant);
     tmp->id                 = id;
@@ -3002,7 +3023,7 @@ static u64 _id_counter = 1;
 void *create_instr(struct context *ctx, enum mir_instr_kind kind, struct ast *node)
 {
     struct mir_instr *tmp = arena_alloc(&ctx->assembly->arenas.mir.instr);
-    tmp->value.data       = (VMStackPtr)&tmp->value._tmp;
+    tmp->value.data       = (vm_stack_ptr_t)&tmp->value._tmp;
     tmp->kind             = kind;
     tmp->node             = node;
     tmp->id               = _id_counter++;
@@ -3160,15 +3181,17 @@ struct mir_instr *create_instr_const_bool(struct context *ctx, struct ast *node,
     return tmp;
 }
 
-struct mir_instr *
-create_instr_const_ptr(struct context *ctx, struct ast *node, struct mir_type *type, VMStackPtr ptr)
+struct mir_instr *create_instr_const_ptr(struct context * ctx,
+                                         struct ast *     node,
+                                         struct mir_type *type,
+                                         vm_stack_ptr_t   ptr)
 {
     BL_ASSERT(mir_is_pointer_type(type) && "Expected pointer type!");
     struct mir_instr *tmp  = create_instr(ctx, MIR_INSTR_CONST, node);
     tmp->value.is_comptime = true;
     tmp->value.type        = type;
     tmp->value.addr_mode   = MIR_VAM_LVALUE_CONST;
-    MIR_CEV_WRITE_AS(VMStackPtr, &tmp->value, ptr);
+    MIR_CEV_WRITE_AS(vm_stack_ptr_t, &tmp->value, ptr);
     return tmp;
 }
 
@@ -3291,7 +3314,7 @@ struct mir_instr *append_instr_type_fn(struct context *      ctx,
 
 struct mir_instr *append_instr_type_fn_group(struct context *      ctx,
                                              struct ast *          node,
-                                             ID *                  id,
+                                             struct id *           id,
                                              TSmallArray_InstrPtr *variants)
 {
     BL_ASSERT(variants);
@@ -3314,7 +3337,7 @@ struct mir_instr *append_instr_type_fn_group(struct context *      ctx,
 
 struct mir_instr *append_instr_type_struct(struct context *      ctx,
                                            struct ast *          node,
-                                           ID *                  id,
+                                           struct id *           id,
                                            struct mir_instr *    fwd_decl,
                                            struct scope *        scope,
                                            TSmallArray_InstrPtr *members,
@@ -3349,7 +3372,7 @@ struct mir_instr *append_instr_type_struct(struct context *      ctx,
 
 struct mir_instr *append_instr_type_enum(struct context *      ctx,
                                          struct ast *          node,
-                                         ID *                  id,
+                                         struct id *           id,
                                          struct scope *        scope,
                                          TSmallArray_InstrPtr *variants,
                                          struct mir_instr *    base_type)
@@ -3387,7 +3410,7 @@ append_instr_type_ptr(struct context *ctx, struct ast *node, struct mir_instr *t
     return &tmp->base;
 }
 
-struct mir_instr *append_instr_type_poly(struct context *ctx, struct ast *node, ID *T_id)
+struct mir_instr *append_instr_type_poly(struct context *ctx, struct ast *node, struct id *T_id)
 {
     BL_ASSERT(T_id && "Missing id for polymorph type!");
     struct mir_instr_type_poly *tmp = create_instr(ctx, MIR_INSTR_TYPE_POLY, node);
@@ -3401,7 +3424,7 @@ struct mir_instr *append_instr_type_poly(struct context *ctx, struct ast *node, 
 
 struct mir_instr *append_instr_type_array(struct context *  ctx,
                                           struct ast *      node,
-                                          ID *              id,
+                                          struct id *       id,
                                           struct mir_instr *elem_type,
                                           struct mir_instr *len)
 {
@@ -3776,7 +3799,7 @@ append_instr_fn_group(struct context *ctx, struct ast *node, TSmallArray_InstrPt
 struct mir_instr *append_instr_decl_ref(struct context *    ctx,
                                         struct ast *        node,
                                         struct unit *       parent_unit,
-                                        ID *                rid,
+                                        struct id *         rid,
                                         struct scope *      scope,
                                         s32                 scope_layer,
                                         struct scope_entry *scope_entry)
@@ -3833,7 +3856,7 @@ struct mir_instr *append_instr_call(struct context *      ctx,
 
 struct mir_instr *append_instr_decl_var(struct context *         ctx,
                                         struct ast *             node,
-                                        ID *                     id,
+                                        struct id *              id,
                                         struct scope *           scope,
                                         struct mir_instr *       type,
                                         struct mir_instr *       init,
@@ -3903,13 +3926,13 @@ struct mir_instr *append_instr_decl_member(struct context *      ctx,
                                            struct mir_instr *    type,
                                            TSmallArray_InstrPtr *tags)
 {
-    ID *id = node ? &node->data.ident.id : NULL;
+    struct id *id = node ? &node->data.ident.id : NULL;
     return append_instr_decl_member_impl(ctx, node, id, type, tags);
 }
 
 struct mir_instr *append_instr_decl_member_impl(struct context *      ctx,
                                                 struct ast *          node,
-                                                ID *                  id,
+                                                struct id *           id,
                                                 struct mir_instr *    type,
                                                 TSmallArray_InstrPtr *tags)
 {
@@ -3939,8 +3962,8 @@ struct mir_instr *append_instr_decl_arg(struct context *  ctx,
     tmp->base.ref_count = NO_REF_COUNTING;
     tmp->type           = ref_instr(type);
 
-    ID *id   = node ? &node->data.ident.id : NULL;
-    tmp->arg = create_arg(ctx, node, id, NULL, NULL, value);
+    struct id *id = node ? &node->data.ident.id : NULL;
+    tmp->arg      = create_arg(ctx, node, id, NULL, NULL, value);
 
     append_current_block(ctx, &tmp->base);
     return &tmp->base;
@@ -3957,8 +3980,8 @@ append_instr_decl_variant(struct context *ctx, struct ast *node, struct mir_inst
     tmp->value                         = value;
 
     BL_ASSERT(node && node->kind == AST_IDENT);
-    ID *id       = &node->data.ident.id;
-    tmp->variant = create_variant(ctx, id, NULL, 0);
+    struct id *id = &node->data.ident.id;
+    tmp->variant  = create_variant(ctx, id, NULL, 0);
 
     append_current_block(ctx, &tmp->base);
     return &tmp->base;
@@ -4010,7 +4033,7 @@ struct mir_instr *append_instr_const_string(struct context *ctx, struct ast *nod
     struct mir_instr *len =
         create_instr_const_int(ctx, node, ctx->builtin_types->t_s64, strlen(str));
     struct mir_instr *ptr =
-        create_instr_const_ptr(ctx, node, ctx->builtin_types->t_u8_ptr, (VMStackPtr)str);
+        create_instr_const_ptr(ctx, node, ctx->builtin_types->t_u8_ptr, (vm_stack_ptr_t)str);
 
     ANALYZE_INSTR_RQ(len);
     ANALYZE_INSTR_RQ(ptr);
@@ -4099,7 +4122,7 @@ struct mir_instr *append_instr_binop(struct context *  ctx,
                                      struct ast *      node,
                                      struct mir_instr *lhs,
                                      struct mir_instr *rhs,
-                                     BinopKind         op)
+                                     enum binop_kind   op)
 {
     BL_ASSERT(lhs && rhs);
     struct mir_instr_binop *tmp = create_instr(ctx, MIR_INSTR_BINOP, node);
@@ -4111,7 +4134,7 @@ struct mir_instr *append_instr_binop(struct context *  ctx,
 }
 
 struct mir_instr *
-append_instr_unop(struct context *ctx, struct ast *node, struct mir_instr *instr, UnopKind op)
+append_instr_unop(struct context *ctx, struct ast *node, struct mir_instr *instr, enum unop_kind op)
 {
     BL_ASSERT(instr);
     struct mir_instr_unop *tmp = create_instr(ctx, MIR_INSTR_UNOP, node);
@@ -4399,7 +4422,7 @@ bool evaluate(struct context *ctx, struct mir_instr *instr)
     return true;
 }
 
-AnalyzeResult analyze_resolve_type(struct context *  ctx,
+struct result analyze_resolve_type(struct context *  ctx,
                                    struct mir_instr *resolver_call,
                                    struct mir_type **out_type)
 {
@@ -4420,7 +4443,7 @@ AnalyzeResult analyze_resolve_type(struct context *  ctx,
     }
 }
 
-AnalyzeResult analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *toany)
+struct result analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *toany)
 {
     ZONE();
     struct mir_instr *expr      = toany->expr;
@@ -4429,7 +4452,7 @@ AnalyzeResult analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *
 
     BL_ASSERT(any_type && expr && expr_type);
 
-    ID *missing_rtti_type_id = lookup_builtins_rtti(ctx);
+    struct id *missing_rtti_type_id = lookup_builtins_rtti(ctx);
     if (missing_rtti_type_id) {
         RETURN_END_ZONE(ANALYZE_RESULT(WAITING, missing_rtti_type_id->hash));
     }
@@ -4465,11 +4488,11 @@ AnalyzeResult analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *
         BL_ASSERT(mir_is_comptime(expr));
         BL_ASSERT(!is_tmp_needed);
 
-        VMStackPtr expr_data = NULL;
+        vm_stack_ptr_t expr_data = NULL;
         if (is_deref_needed) {
-            expr_data = *MIR_CEV_READ_AS(VMStackPtr *, &expr->value);
+            expr_data = *MIR_CEV_READ_AS(vm_stack_ptr_t *, &expr->value);
         } else {
-            expr_data = MIR_CEV_READ_AS(VMStackPtr, &expr->value);
+            expr_data = MIR_CEV_READ_AS(vm_stack_ptr_t, &expr->value);
         }
 
         struct mir_type *rtti_data = NULL;
@@ -4504,7 +4527,7 @@ AnalyzeResult analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_phi(struct context UNUSED(*ctx), struct mir_instr_phi *phi)
+struct result analyze_instr_phi(struct context UNUSED(*ctx), struct mir_instr_phi *phi)
 {
     ZONE();
     // PHI instruction accept income values of two kinds, one is direct value and second reference
@@ -4533,7 +4556,7 @@ AnalyzeResult analyze_instr_phi(struct context UNUSED(*ctx), struct mir_instr_ph
             BL_ASSERT(value_ref && *value_ref);
             BL_ASSERT((*value_ref)->is_analyzed && "Phi incomming value is not analyzed!");
         } else {
-            const AnalyzeSlotConfig *conf =
+            const struct slot_config *conf =
                 type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
             if (analyze_slot(ctx, conf, value_ref, type) != ANALYZE_PASSED)
                 RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
@@ -4549,7 +4572,7 @@ AnalyzeResult analyze_instr_phi(struct context UNUSED(*ctx), struct mir_instr_ph
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll)
+struct result analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll)
 {
     ZONE();
     struct mir_instr *src   = unroll->src;
@@ -4601,7 +4624,7 @@ AnalyzeResult analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll 
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_compound(struct context *ctx, struct mir_instr_compound *cmp)
+struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compound *cmp)
 {
     ZONE();
     TSmallArray_InstrPtr *values = cmp->values;
@@ -4765,8 +4788,8 @@ AnalyzeResult analyze_instr_compound(struct context *ctx, struct mir_instr_compo
                         "One value only is expected for non-aggregate types.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
-        struct mir_instr **      value_ref = &values->data[0];
-        const AnalyzeSlotConfig *conf =
+        struct mir_instr **       value_ref = &values->data[0];
+        const struct slot_config *conf =
             type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
         if (analyze_slot(ctx, conf, value_ref, type) != ANALYZE_PASSED)
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
@@ -4786,7 +4809,7 @@ SKIP_IMPLICIT:
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_var(struct context *ctx, struct mir_var *var)
+struct result analyze_var(struct context *ctx, struct mir_var *var)
 {
     ZONE();
     BL_TRACY_MESSAGE("ANALYZE_VAR", "%s", var->linkage_name);
@@ -4851,7 +4874,7 @@ AnalyzeResult analyze_var(struct context *ctx, struct mir_var *var)
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_set_initializer(struct context *                  ctx,
+struct result analyze_instr_set_initializer(struct context *                  ctx,
                                             struct mir_instr_set_initializer *si)
 {
     ZONE();
@@ -4872,7 +4895,7 @@ AnalyzeResult analyze_instr_set_initializer(struct context *                  ct
     // initialization value slot analyze pass.
     const bool is_default = !si->src;
     if (!is_default) {
-        const AnalyzeSlotConfig *config =
+        const struct slot_config *config =
             type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
 
         if (analyze_slot(ctx, config, &si->src, type) != ANALYZE_PASSED) {
@@ -4932,7 +4955,7 @@ AnalyzeResult analyze_instr_set_initializer(struct context *                  ct
             }
         }
 
-        AnalyzeResult state = analyze_var(ctx, var);
+        struct result state = analyze_var(ctx, var);
         if (state.state != ANALYZE_PASSED) return state;
 
         if (!var->value.is_comptime) {
@@ -4957,7 +4980,7 @@ AnalyzeResult analyze_instr_set_initializer(struct context *                  ct
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs)
+struct result analyze_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs)
 {
     ZONE();
     struct mir_type *     type   = vargs->type;
@@ -4992,7 +5015,7 @@ AnalyzeResult analyze_instr_vargs(struct context *ctx, struct mir_instr_vargs *v
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_ptr)
+struct result analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_ptr)
 {
     ZONE();
     if (analyze_slot(
@@ -5073,7 +5096,7 @@ AnalyzeResult analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *member_ptr)
+struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *member_ptr)
 {
     ZONE();
     struct mir_instr *target_ptr = member_ptr->target_ptr;
@@ -5092,7 +5115,7 @@ AnalyzeResult analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         struct scope *scope = scope_entry->data.scope;
         BL_ASSERT(scope);
         BL_MAGIC_ASSERT(scope);
-        ID *         rid         = &ast_member_ident->data.ident.id;
+        struct id *  rid         = &ast_member_ident->data.ident.id;
         struct unit *parent_unit = ast_member_ident->location->unit;
         BL_ASSERT(rid);
         BL_ASSERT(parent_unit);
@@ -5194,7 +5217,7 @@ AnalyzeResult analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
             ANALYZE_INSTR_RQ(member_ptr->target_ptr);
         }
 
-        ID *                rid   = &ast_member_ident->data.ident.id;
+        struct id *         rid   = &ast_member_ident->data.ident.id;
         struct mir_type *   type  = target_type;
         struct scope_entry *found = lookup_composit_member(target_type, rid, &type);
 
@@ -5255,7 +5278,7 @@ AnalyzeResult analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 
         // lookup for member inside struct
         struct scope *      scope       = sub_type->data.enm.scope;
-        ID *                rid         = &ast_member_ident->data.ident.id;
+        struct id *         rid         = &ast_member_ident->data.ident.id;
         const s32           layer_index = ctx->polymorph.current_scope_layer_index;
         struct scope_entry *found       = scope_lookup(scope, layer_index, rid, false, true, NULL);
         if (!found) {
@@ -5287,7 +5310,7 @@ INVALID:
     RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
 }
 
-AnalyzeResult analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof)
+struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof)
 {
     ZONE();
     struct mir_instr *src = addrof->src;
@@ -5329,7 +5352,7 @@ AnalyzeResult analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult
+struct result
 analyze_instr_cast(struct context *ctx, struct mir_instr_cast *cast, bool analyze_op_only)
 {
     ZONE();
@@ -5337,11 +5360,11 @@ analyze_instr_cast(struct context *ctx, struct mir_instr_cast *cast, bool analyz
 
     if (!analyze_op_only) {
         if (!dest_type && !cast->auto_cast) {
-            AnalyzeResult result = analyze_resolve_type(ctx, cast->type, &dest_type);
+            struct result result = analyze_resolve_type(ctx, cast->type, &dest_type);
             if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(result);
         }
 
-        const AnalyzeSlotConfig *config =
+        const struct slot_config *config =
             cast->base.is_implicit ? &analyze_slot_conf_dummy : &analyze_slot_conf_basic;
 
         if (analyze_slot(ctx, config, &cast->expr, dest_type) != ANALYZE_PASSED) {
@@ -5381,7 +5404,7 @@ DONE:
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof *szof)
+struct result analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof *szof)
 {
     ZONE();
     BL_ASSERT(szof->expr);
@@ -5407,12 +5430,12 @@ AnalyzeResult analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof 
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_type_info(struct context *ctx, struct mir_instr_type_info *type_info)
+struct result analyze_instr_type_info(struct context *ctx, struct mir_instr_type_info *type_info)
 {
     ZONE();
     if (!type_info->rtti_type) {
         BL_ASSERT(type_info->expr);
-        ID *missing_rtti_type_id = lookup_builtins_rtti(ctx);
+        struct id *missing_rtti_type_id = lookup_builtins_rtti(ctx);
         if (missing_rtti_type_id) {
             RETURN_END_ZONE(ANALYZE_RESULT(WAITING, missing_rtti_type_id->hash));
         }
@@ -5454,7 +5477,7 @@ AnalyzeResult analyze_instr_type_info(struct context *ctx, struct mir_instr_type
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_alignof(struct context *ctx, struct mir_instr_alignof *alof)
+struct result analyze_instr_alignof(struct context *ctx, struct mir_instr_alignof *alof)
 {
     ZONE();
     BL_ASSERT(alof->expr);
@@ -5475,7 +5498,7 @@ AnalyzeResult analyze_instr_alignof(struct context *ctx, struct mir_instr_aligno
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref)
+struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref)
 {
     ZONE();
     BL_ASSERT(ref->rid && ref->scope);
@@ -5619,7 +5642,7 @@ AnalyzeResult analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_decl_direct_ref(struct context *                  ctx,
+struct result analyze_instr_decl_direct_ref(struct context *                  ctx,
                                             struct mir_instr_decl_direct_ref *ref)
 {
     ZONE();
@@ -5645,7 +5668,7 @@ AnalyzeResult analyze_instr_decl_direct_ref(struct context *                  ct
         struct mir_instr_const *replacement =
             (struct mir_instr_const *)mutate_instr(&ref->base, MIR_INSTR_CONST);
         replacement->volatile_type   = false;
-        replacement->base.value.data = (VMStackPtr)&ref->base.value._tmp;
+        replacement->base.value.data = (vm_stack_ptr_t)&ref->base.value._tmp;
 
         replacement->base.value.type = fn->type;
         MIR_CEV_WRITE_AS(struct mir_fn *, &replacement->base.value, fn);
@@ -5653,7 +5676,7 @@ AnalyzeResult analyze_instr_decl_direct_ref(struct context *                  ct
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_arg *arg)
+struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_arg *arg)
 {
     ZONE();
     struct mir_fn *fn = arg->base.owner_block->owner_fn;
@@ -5666,7 +5689,7 @@ AnalyzeResult analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *unr)
+struct result analyze_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *unr)
 {
     ZONE();
     struct mir_fn *abort_fn = lookup_builtin_fn(ctx, MIR_BUILTIN_ID_ABORT_FN);
@@ -5677,10 +5700,10 @@ AnalyzeResult analyze_instr_unreachable(struct context *ctx, struct mir_instr_un
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_test_cases(struct context *ctx, struct mir_instr_test_case UNUSED(*tc))
+struct result analyze_instr_test_cases(struct context *ctx, struct mir_instr_test_case UNUSED(*tc))
 {
     ZONE();
-    ID *missing = lookup_builtins_test_cases(ctx);
+    struct id *missing = lookup_builtins_test_cases(ctx);
     if (missing) RETURN_END_ZONE(ANALYZE_RESULT(WAITING, missing->hash));
     tc->base.value.type = ctx->builtin_types->t_TestCases_slice;
     if (ctx->testing.expected_test_count == 0) RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
@@ -5688,13 +5711,13 @@ AnalyzeResult analyze_instr_test_cases(struct context *ctx, struct mir_instr_tes
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_proto)
+struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_proto)
 {
     ZONE();
     // resolve type
     if (!fn_proto->base.value.type) {
         struct mir_type *fn_type = NULL;
-        AnalyzeResult    result  = analyze_resolve_type(ctx, fn_proto->type, &fn_type);
+        struct result    result  = analyze_resolve_type(ctx, fn_proto->type, &fn_type);
         if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(result);
 
         // Analyze user defined type (this must be compared with infered type).
@@ -5725,7 +5748,7 @@ AnalyzeResult analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 
     if (IS_FLAG(fn->flags, FLAG_TEST_FN)) {
         // We must wait for builtin types for test cases.
-        ID *missing = lookup_builtins_test_cases(ctx);
+        struct id *missing = lookup_builtins_test_cases(ctx);
         if (missing) RETURN_END_ZONE(ANALYZE_RESULT(WAITING, missing->hash));
     }
     fn->type          = value->type;
@@ -5733,8 +5756,8 @@ AnalyzeResult analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 
     BL_ASSERT(fn->type);
 
-    // Set builtin ID to type if there is one. We must store this information in function type
-    // because we need it during call analyze pass, in this case function can be called via
+    // Set builtin ID to type if there is one. We must store this information in function
+    // type because we need it during call analyze pass, in this case function can be called via
     // pointer or directly, so we don't have access to struct mir_fn instance.
     fn->type->data.fn.builtin_id = fn->builtin_id;
 
@@ -5940,7 +5963,7 @@ int _group_compare(const void *_first, const void *_second)
     return first->type->data.fn.argument_hash - second->type->data.fn.argument_hash;
 }
 
-AnalyzeResult analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_group *group)
+struct result analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_group *group)
 {
     ZONE();
     TSmallArray_InstrPtr *variants = group->variants;
@@ -5951,7 +5974,7 @@ AnalyzeResult analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_gr
         struct mir_instr *variant_ref = variants->data[i];
         if (!variant_ref->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     }
-    AnalyzeResult        result        = ANALYZE_RESULT(PASSED, 0);
+    struct result        result        = ANALYZE_RESULT(PASSED, 0);
     TSmallArray_TypePtr *variant_types = create_sarr(TSmallArray_TypePtr, ctx->assembly);
     TSmallArray_FnPtr *  variant_fns   = create_sarr(TSmallArray_FnPtr, ctx->assembly);
     TSmallArray_FnPtr    validation_queue;
@@ -6018,7 +6041,7 @@ FINALLY:
     RETURN_END_ZONE(result);
 }
 
-AnalyzeResult analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br)
+struct result analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br)
 {
     ZONE();
     BL_ASSERT(br->cond && br->then_block && br->else_block);
@@ -6035,14 +6058,14 @@ AnalyzeResult analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_b
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_br(struct context UNUSED(*ctx), struct mir_instr_br *br)
+struct result analyze_instr_br(struct context UNUSED(*ctx), struct mir_instr_br *br)
 {
     ZONE();
     BL_ASSERT(br->then_block);
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_switch(struct context *ctx, struct mir_instr_switch *sw)
+struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch *sw)
 {
     ZONE();
     if (analyze_slot(ctx, &analyze_slot_conf_basic, &sw->value, NULL) != ANALYZE_PASSED) {
@@ -6154,7 +6177,7 @@ AnalyzeResult analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_load(struct context UNUSED(*ctx), struct mir_instr_load *load)
+struct result analyze_instr_load(struct context UNUSED(*ctx), struct mir_instr_load *load)
 {
     ZONE();
     struct mir_instr *src = load->src;
@@ -6176,7 +6199,7 @@ AnalyzeResult analyze_instr_load(struct context UNUSED(*ctx), struct mir_instr_l
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_fn *type_fn)
+struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_fn *type_fn)
 {
     ZONE();
     BL_ASSERT(type_fn->ret_type ? type_fn->ret_type->is_analyzed : true);
@@ -6300,7 +6323,7 @@ AnalyzeResult analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_type_fn_group(struct context *                ctx,
+struct result analyze_instr_type_fn_group(struct context *                ctx,
                                           struct mir_instr_type_fn_group *group)
 {
     ZONE();
@@ -6349,7 +6372,7 @@ AnalyzeResult analyze_instr_type_fn_group(struct context *                ctx,
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_decl_member(struct context *ctx, struct mir_instr_decl_member *decl)
+struct result analyze_instr_decl_member(struct context *ctx, struct mir_instr_decl_member *decl)
 {
     ZONE();
     struct mir_member *   member    = decl->member;
@@ -6393,7 +6416,7 @@ AnalyzeResult analyze_instr_decl_member(struct context *ctx, struct mir_instr_de
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_decl_variant(struct context *               ctx,
+struct result analyze_instr_decl_variant(struct context *               ctx,
                                          struct mir_instr_decl_variant *variant_instr)
 {
     ZONE();
@@ -6437,7 +6460,7 @@ AnalyzeResult analyze_instr_decl_variant(struct context *               ctx,
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_arg *decl)
+struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_arg *decl)
 {
     ZONE();
     struct mir_arg *arg = decl->arg;
@@ -6445,7 +6468,7 @@ AnalyzeResult analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
     if (decl->type) {
         // Variable type is explicitly defined.
         if (decl->type->kind == MIR_INSTR_CALL) {
-            AnalyzeResult result = analyze_resolve_type(ctx, decl->type, &arg->type);
+            struct result result = analyze_resolve_type(ctx, decl->type, &arg->type);
             if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(result);
         } else {
             if (analyze_slot(ctx, &analyze_slot_conf_basic, &decl->type, NULL) != ANALYZE_PASSED) {
@@ -6479,7 +6502,7 @@ AnalyzeResult analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_type_struct(struct context *              ctx,
+struct result analyze_instr_type_struct(struct context *              ctx,
                                         struct mir_instr_type_struct *type_struct)
 {
     ZONE();
@@ -6572,7 +6595,7 @@ AnalyzeResult analyze_instr_type_struct(struct context *              ctx,
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_type_slice(struct context *ctx, struct mir_instr_type_slice *type_slice)
+struct result analyze_instr_type_slice(struct context *ctx, struct mir_instr_type_slice *type_slice)
 {
     ZONE();
     BL_ASSERT(type_slice->elem_type);
@@ -6582,7 +6605,7 @@ AnalyzeResult analyze_instr_type_slice(struct context *ctx, struct mir_instr_typ
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
-    ID *id = NULL;
+    struct id *id = NULL;
     if (type_slice->base.node && type_slice->base.node->kind == AST_IDENT) {
         id = &type_slice->base.node->data.ident.id;
     }
@@ -6617,12 +6640,12 @@ AnalyzeResult analyze_instr_type_slice(struct context *ctx, struct mir_instr_typ
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_type_dynarr(struct context *               ctx,
+struct result analyze_instr_type_dynarr(struct context *               ctx,
                                         struct mir_instr_type_dyn_arr *type_dynarr)
 {
     ZONE();
     // We need TypeInfo initialized because it's needed as member of dynamic array type!
-    ID *missing_rtti_type_id = lookup_builtins_rtti(ctx);
+    struct id *missing_rtti_type_id = lookup_builtins_rtti(ctx);
     if (missing_rtti_type_id) {
         RETURN_END_ZONE(ANALYZE_RESULT(WAITING, missing_rtti_type_id->hash));
     }
@@ -6634,7 +6657,7 @@ AnalyzeResult analyze_instr_type_dynarr(struct context *               ctx,
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
-    ID *id = NULL;
+    struct id *id = NULL;
     if (type_dynarr->base.node && type_dynarr->base.node->kind == AST_IDENT) {
         id = &type_dynarr->base.node->data.ident.id;
     }
@@ -6669,7 +6692,7 @@ AnalyzeResult analyze_instr_type_dynarr(struct context *               ctx,
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_type_vargs(struct context *ctx, struct mir_instr_type_vargs *type_vargs)
+struct result analyze_instr_type_vargs(struct context *ctx, struct mir_instr_type_vargs *type_vargs)
 {
     ZONE();
     struct mir_type *elem_type = NULL;
@@ -6705,7 +6728,7 @@ AnalyzeResult analyze_instr_type_vargs(struct context *ctx, struct mir_instr_typ
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_type_array(struct context *ctx, struct mir_instr_type_array *type_arr)
+struct result analyze_instr_type_array(struct context *ctx, struct mir_instr_type_array *type_arr)
 {
     ZONE();
     BL_ASSERT(type_arr->base.value.type);
@@ -6770,14 +6793,14 @@ AnalyzeResult analyze_instr_type_array(struct context *ctx, struct mir_instr_typ
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_type_poly(struct context *ctx, struct mir_instr_type_poly *type_poly)
+struct result analyze_instr_type_poly(struct context *ctx, struct mir_instr_type_poly *type_poly)
 {
     ZONE();
     // nothing to do here...
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_type_enum(struct context *ctx, struct mir_instr_type_enum *type_enum)
+struct result analyze_instr_type_enum(struct context *ctx, struct mir_instr_type_enum *type_enum)
 {
     ZONE();
     TSmallArray_InstrPtr *variant_instrs = type_enum->variants;
@@ -6827,7 +6850,7 @@ AnalyzeResult analyze_instr_type_enum(struct context *ctx, struct mir_instr_type
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_type_ptr(struct context *ctx, struct mir_instr_type_ptr *type_ptr)
+struct result analyze_instr_type_ptr(struct context *ctx, struct mir_instr_type_ptr *type_ptr)
 {
     ZONE();
     BL_ASSERT(type_ptr->type);
@@ -6871,7 +6894,7 @@ AnalyzeResult analyze_instr_type_ptr(struct context *ctx, struct mir_instr_type_
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-static INLINE bool is_type_valid_for_binop(const struct mir_type *type, const BinopKind op)
+static INLINE bool is_type_valid_for_binop(const struct mir_type *type, const enum binop_kind op)
 {
     BL_ASSERT(type);
     switch (type->kind) {
@@ -6891,7 +6914,7 @@ static INLINE bool is_type_valid_for_binop(const struct mir_type *type, const Bi
     return false;
 }
 
-AnalyzeResult analyze_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
+struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
 {
     ZONE();
 
@@ -6965,10 +6988,10 @@ AnalyzeResult analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc)
+struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc)
 {
     ZONE();
-    ID *missing = lookup_builtins_code_loc(ctx);
+    struct id *missing = lookup_builtins_code_loc(ctx);
     if (missing) RETURN_END_ZONE(ANALYZE_RESULT(WAITING, missing->hash));
     loc->base.value.type = ctx->builtin_types->t_CodeLocation_ptr;
     if (!loc->call_location) RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
@@ -6977,13 +7000,13 @@ AnalyzeResult analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
     struct mir_var * var  = create_var_impl(ctx, NULL, IMPL_CALL_LOC, type, false, true, true);
     vm_alloc_global(ctx->vm, ctx->assembly, var);
 
-    VMStackPtr       dest           = vm_read_var(ctx->vm, var);
+    vm_stack_ptr_t   dest           = vm_read_var(ctx->vm, var);
     struct mir_type *dest_file_type = mir_get_struct_elem_type(type, 0);
-    VMStackPtr       dest_file      = vm_get_struct_elem_ptr(ctx->assembly, type, dest, 0);
+    vm_stack_ptr_t   dest_file      = vm_get_struct_elem_ptr(ctx->assembly, type, dest, 0);
     struct mir_type *dest_line_type = mir_get_struct_elem_type(type, 1);
-    VMStackPtr       dest_line      = vm_get_struct_elem_ptr(ctx->assembly, type, dest, 1);
+    vm_stack_ptr_t   dest_line      = vm_get_struct_elem_ptr(ctx->assembly, type, dest, 1);
     struct mir_type *dest_hash_type = mir_get_struct_elem_type(type, 2);
-    VMStackPtr       dest_hash      = vm_get_struct_elem_ptr(ctx->assembly, type, dest, 2);
+    vm_stack_ptr_t   dest_hash      = vm_get_struct_elem_ptr(ctx->assembly, type, dest, 2);
 
     const char *filepath = loc->call_location->unit->filepath;
     BL_ASSERT(filepath);
@@ -7005,11 +7028,11 @@ AnalyzeResult analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_unop(struct context *ctx, struct mir_instr_unop *unop)
+struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *unop)
 {
     ZONE();
     struct mir_type *expected_type = unop->op == UNOP_NOT ? ctx->builtin_types->t_bool : NULL;
-    const AnalyzeSlotConfig *conf =
+    const struct slot_config *conf =
         unop->op == UNOP_NOT ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
 
     if (analyze_slot(ctx, conf, &unop->expr, expected_type) != ANALYZE_PASSED) {
@@ -7077,14 +7100,14 @@ AnalyzeResult analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_const(struct context UNUSED(*ctx), struct mir_instr_const *cnst)
+struct result analyze_instr_const(struct context UNUSED(*ctx), struct mir_instr_const *cnst)
 {
     ZONE();
     BL_ASSERT(cnst->base.value.type);
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
+struct result analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
 {
     ZONE();
     // compare return value with current function type
@@ -7138,7 +7161,7 @@ AnalyzeResult analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
+struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
 {
     ZONE();
     struct mir_var *var = decl->var;
@@ -7152,7 +7175,7 @@ AnalyzeResult analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     // Resolve declaration type if not set implicitly to the target variable by
     // compiler.
     if (decl->type && !var->value.type) {
-        AnalyzeResult result = analyze_resolve_type(ctx, decl->type, &var->value.type);
+        struct result result = analyze_resolve_type(ctx, decl->type, &var->value.type);
         if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(result);
     }
 
@@ -7212,7 +7235,7 @@ AnalyzeResult analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
         decl->init = default_init;
     }
     decl->base.value.is_comptime = var->value.is_comptime = is_decl_comptime;
-    AnalyzeResult state                                   = analyze_var(ctx, decl->var);
+    struct result state                                   = analyze_var(ctx, decl->var);
     if (state.state != ANALYZE_PASSED) RETURN_END_ZONE(state);
     if (decl->base.value.is_comptime && decl->init) {
         // initialize when known in compile-time
@@ -7222,7 +7245,7 @@ AnalyzeResult analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_builtin_call(struct context *ctx, struct mir_instr_call *call)
+struct result analyze_builtin_call(struct context *ctx, struct mir_instr_call *call)
 {
     ZONE();
     struct mir_type *              callee_type = call->callee->value.type;
@@ -7353,7 +7376,7 @@ static INLINE u64 get_current_poly_replacement_hash(struct context *ctx)
     RETURN_END_ZONE(hash);
 }
 
-AnalyzeResult generate_fn_poly(struct context *            ctx,
+struct result generate_fn_poly(struct context *            ctx,
                                struct ast *                call,
                                struct mir_fn *             fn,
                                TSmallArray_InstrPtr *      expected_args,
@@ -7505,12 +7528,12 @@ AnalyzeResult generate_fn_poly(struct context *            ctx,
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_call(struct context *ctx, struct mir_instr_call *call)
+struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *call)
 {
     ZONE();
     BL_ASSERT(call->callee);
     if (!call->callee_analyzed) {
-        ID *missing_any = lookup_builtins_any(ctx);
+        struct id *missing_any = lookup_builtins_any(ctx);
         if (missing_any) RETURN_END_ZONE(ANALYZE_RESULT(WAITING, missing_any->hash));
 
         // callee has not been analyzed yet -> postpone call analyze
@@ -7623,7 +7646,7 @@ AnalyzeResult analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         struct mir_instr_const *callee_replacement =
             (struct mir_instr_const *)mutate_instr(call->callee, MIR_INSTR_CONST);
         callee_replacement->volatile_type   = false;
-        callee_replacement->base.value.data = (VMStackPtr)&call->callee->value._tmp;
+        callee_replacement->base.value.data = (vm_stack_ptr_t)&call->callee->value._tmp;
         callee_replacement->base.node       = selected_overload_fn->decl_node;
         type = callee_replacement->base.value.type = selected_overload_fn->type;
         MIR_CEV_WRITE_AS(struct mir_fn *, &callee_replacement->base.value, selected_overload_fn);
@@ -7637,7 +7660,7 @@ AnalyzeResult analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         BL_MAGIC_ASSERT(fn);
         struct mir_instr_fn_proto *instr_replacement_fn_proto = NULL;
         RUNTIME_MEASURE_BEGIN_S(poly);
-        AnalyzeResult state =
+        struct result state =
             generate_fn_poly(ctx, call->base.node, fn, call->args, &instr_replacement_fn_proto);
         if (state.state != ANALYZE_PASSED) RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         ctx->assembly->stats.polymorph_s += RUNTIME_MEASURE_END_S(poly);
@@ -7756,7 +7779,7 @@ AnalyzeResult analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
 
                 tsa_push_InstrPtr(call->args, call_default_arg);
                 insert_instr_before(insert_location, call_default_arg);
-                const AnalyzeResult result = analyze_instr(ctx, call_default_arg);
+                const struct result result = analyze_instr(ctx, call_default_arg);
                 // Default value reference MUST be analyzed before any call to owner
                 // function!
                 if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
@@ -7769,7 +7792,7 @@ AnalyzeResult analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     }
 
     if (type->data.fn.builtin_id != MIR_BUILTIN_ID_NONE) {
-        AnalyzeResult result = analyze_builtin_call(ctx, call);
+        struct result result = analyze_builtin_call(ctx, call);
         if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(result);
     }
 
@@ -7808,7 +7831,7 @@ REPORT_OVERLOAD_LOCATION:
     RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
 }
 
-AnalyzeResult analyze_instr_store(struct context *ctx, struct mir_instr_store *store)
+struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *store)
 {
     ZONE();
     struct mir_instr *dest = store->dest;
@@ -7852,7 +7875,7 @@ AnalyzeResult analyze_instr_store(struct context *ctx, struct mir_instr_store *s
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeResult analyze_instr_block(struct context *ctx, struct mir_instr_block *block)
+struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *block)
 {
     ZONE();
     BL_ASSERT(block);
@@ -7903,13 +7926,13 @@ AnalyzeResult analyze_instr_block(struct context *ctx, struct mir_instr_block *b
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-AnalyzeState _analyze_slot(struct context *         ctx,
-                           const AnalyzeSlotConfig *conf,
-                           struct mir_instr **      input,
-                           struct mir_type *        slot_type,
-                           bool                     is_initializer)
+enum result_state _analyze_slot(struct context *          ctx,
+                                const struct slot_config *conf,
+                                struct mir_instr **       input,
+                                struct mir_type *         slot_type,
+                                bool                      is_initializer)
 {
-    AnalyzeStageState state;
+    enum stage_state state;
     for (s32 i = 0; i < conf->count; ++i) {
         state = conf->stages[i](ctx, input, slot_type, is_initializer);
         switch (state) {
@@ -7929,7 +7952,7 @@ ANALYZE_STAGE_FN(load)
     if (is_load_needed(*input)) {
         *input = insert_instr_load(ctx, *input);
 
-        AnalyzeResult r = analyze_instr(ctx, *input);
+        struct result r = analyze_instr(ctx, *input);
         if (r.state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
     }
 
@@ -8009,7 +8032,7 @@ ANALYZE_STAGE_FN(toany)
     // check any
     if (!is_to_any_needed(ctx, *input, slot_type)) return ANALYZE_STAGE_CONTINUE;
 
-    AnalyzeResult result;
+    struct result result;
     *input = insert_instr_toany(ctx, *input);
     result = analyze_instr(ctx, *input);
     if (result.state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
@@ -8133,9 +8156,9 @@ ANALYZE_STAGE_FN(set_volatile_expr)
     const enum mir_cast_op op = get_cast_op((*input)->value.type, slot_type);
     BL_ASSERT(op != MIR_CAST_INVALID);
     struct mir_const_expr_value *value = &(*input)->value;
-    VMValue                      tmp   = {0};
-    vm_do_cast((VMStackPtr)&tmp[0], value->data, slot_type, value->type, op);
-    memcpy(&value->_tmp[0], &tmp[0], sizeof(VMValue));
+    vm_value_t                   tmp   = {0};
+    vm_do_cast((vm_stack_ptr_t)&tmp[0], value->data, slot_type, value->type, op);
+    memcpy(&value->_tmp[0], &tmp[0], sizeof(vm_value_t));
     (*input)->value.type = slot_type;
     return ANALYZE_STAGE_BREAK;
 }
@@ -8147,7 +8170,7 @@ ANALYZE_STAGE_FN(implicit_cast)
 
     *input = insert_instr_cast(ctx, *input, slot_type);
 
-    AnalyzeResult r = analyze_instr(ctx, *input);
+    struct result r = analyze_instr(ctx, *input);
     if (r.state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
     return ANALYZE_STAGE_BREAK;
 }
@@ -8158,14 +8181,14 @@ ANALYZE_STAGE_FN(report_type_mismatch)
     return ANALYZE_STAGE_FAILED;
 }
 
-AnalyzeResult analyze_instr(struct context *ctx, struct mir_instr *instr)
+struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
 {
     ZONE();
     if (!instr) RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 
     // skip already analyzed instructions
     if (instr->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
-    AnalyzeResult state = ANALYZE_RESULT(PASSED, 0);
+    struct result state = ANALYZE_RESULT(PASSED, 0);
 
     BL_TRACY_MESSAGE("ANALYZE", "[%llu] %s", instr->id, mir_instr_name(instr));
 
@@ -8365,7 +8388,7 @@ void analyze(struct context *ctx)
     ZONE();
     // PERFORMANCE: use array???
     TList *           q = &ctx->analyze.queue;
-    AnalyzeResult     result;
+    struct result     result;
     usize             postpone_loop_count = 0;
     struct mir_instr *ip                  = NULL;
     struct mir_instr *prev_ip             = NULL;
@@ -8518,7 +8541,7 @@ INLINE void testing_add_test_case(struct context *ctx, struct mir_fn *fn)
     tarray_push(&ctx->assembly->testing.cases, fn);
     const s64 i = ctx->assembly->testing.cases.size - 1;
 
-    VMStackPtr       var_ptr  = vm_read_var(ctx->vm, var);
+    vm_stack_ptr_t   var_ptr  = vm_read_var(ctx->vm, var);
     struct mir_type *var_type = var->value.type;
     BL_ASSERT(var_type->kind == MIR_TYPE_ARRAY);
     struct mir_type *elem_type = var_type->data.array.elem_type;
@@ -8527,12 +8550,12 @@ INLINE void testing_add_test_case(struct context *ctx, struct mir_fn *fn)
     struct mir_type *func_type = mir_get_struct_elem_type(elem_type, 0);
     struct mir_type *name_type = mir_get_struct_elem_type(elem_type, 1);
 
-    VMStackPtr func_ptr = vm_get_struct_elem_ptr(ctx->assembly, elem_type, var_ptr + offset, 0);
-    VMStackPtr name_ptr = vm_get_struct_elem_ptr(ctx->assembly, elem_type, var_ptr + offset, 1);
+    vm_stack_ptr_t func_ptr = vm_get_struct_elem_ptr(ctx->assembly, elem_type, var_ptr + offset, 0);
+    vm_stack_ptr_t name_ptr = vm_get_struct_elem_ptr(ctx->assembly, elem_type, var_ptr + offset, 1);
 
     BL_ASSERT(fn->id);
 
-    vm_write_ptr(func_type, func_ptr, (VMStackPtr)fn);
+    vm_write_ptr(func_type, func_ptr, (vm_stack_ptr_t)fn);
     vm_write_string(ctx->vm, name_type, name_ptr, fn->id->str, strlen(fn->id->str));
 }
 
@@ -8646,14 +8669,15 @@ INLINE struct mir_var *rtti_create_and_alloc_var(struct context *ctx, struct mir
     return var;
 }
 
-static INLINE void rtti_gen_base(struct context *ctx, VMStackPtr dest, u8 kind, usize size_bytes)
+static INLINE void
+rtti_gen_base(struct context *ctx, vm_stack_ptr_t dest, u8 kind, usize size_bytes)
 {
     struct mir_type *rtti_type      = ctx->builtin_types->t_TypeInfo;
     struct mir_type *dest_kind_type = mir_get_struct_elem_type(rtti_type, 0);
-    VMStackPtr       dest_kind      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
+    vm_stack_ptr_t   dest_kind      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
 
     struct mir_type *dest_size_bytes_type = mir_get_struct_elem_type(rtti_type, 1);
-    VMStackPtr       dest_size_bytes = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
+    vm_stack_ptr_t   dest_size_bytes = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
 
     vm_write_int(dest_kind_type, dest_kind, (u64)kind);
     vm_write_int(dest_size_bytes_type, dest_size_bytes, (u64)size_bytes);
@@ -8663,14 +8687,14 @@ struct mir_var *rtti_gen_integer(struct context *ctx, struct mir_type *type)
 {
     struct mir_type *rtti_type = ctx->builtin_types->t_TypeInfoInt;
     struct mir_var * rtti_var  = rtti_create_and_alloc_var(ctx, rtti_type);
-    VMStackPtr       dest      = vm_read_var(ctx->vm, rtti_var);
+    vm_stack_ptr_t   dest      = vm_read_var(ctx->vm, rtti_var);
     rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
 
     struct mir_type *dest_bit_count_type = mir_get_struct_elem_type(rtti_type, 1);
-    VMStackPtr       dest_bit_count = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
+    vm_stack_ptr_t   dest_bit_count = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
 
     struct mir_type *dest_is_signed_type = mir_get_struct_elem_type(rtti_type, 2);
-    VMStackPtr       dest_is_signed = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 2);
+    vm_stack_ptr_t   dest_is_signed = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 2);
 
     vm_write_int(dest_bit_count_type, dest_bit_count, (u64)type->data.integer.bitcount);
     vm_write_int(dest_is_signed_type, dest_is_signed, (u64)type->data.integer.is_signed);
@@ -8682,11 +8706,11 @@ struct mir_var *rtti_gen_real(struct context *ctx, struct mir_type *type)
 {
     struct mir_type *rtti_type = ctx->builtin_types->t_TypeInfoReal;
     struct mir_var * rtti_var  = rtti_create_and_alloc_var(ctx, rtti_type);
-    VMStackPtr       dest      = vm_read_var(ctx->vm, rtti_var);
+    vm_stack_ptr_t   dest      = vm_read_var(ctx->vm, rtti_var);
     rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
 
     struct mir_type *dest_bit_count_type = mir_get_struct_elem_type(rtti_type, 1);
-    VMStackPtr       dest_bit_count = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
+    vm_stack_ptr_t   dest_bit_count = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
 
     vm_write_int(dest_bit_count_type, dest_bit_count, (u64)type->data.real.bitcount);
     return rtti_var;
@@ -8697,12 +8721,12 @@ struct mir_var *rtti_gen_ptr(struct context *ctx, struct mir_type *type, struct 
     struct mir_var *rtti_var =
         incomplete ? incomplete : rtti_create_and_alloc_var(ctx, ctx->builtin_types->t_TypeInfoPtr);
 
-    VMStackPtr dest = vm_read_var(ctx->vm, rtti_var);
+    vm_stack_ptr_t dest = vm_read_var(ctx->vm, rtti_var);
     rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
 
     struct mir_type *dest_pointee_type =
         mir_get_struct_elem_type(ctx->builtin_types->t_TypeInfoPtr, 1);
-    VMStackPtr dest_pointee =
+    vm_stack_ptr_t dest_pointee =
         vm_get_struct_elem_ptr(ctx->assembly, ctx->builtin_types->t_TypeInfoPtr, dest, 1);
 
     struct mir_var *pointee = _rtti_gen(ctx, type->data.ptr.expr);
@@ -8715,26 +8739,26 @@ struct mir_var *rtti_gen_array(struct context *ctx, struct mir_type *type)
 {
     struct mir_type *rtti_type = ctx->builtin_types->t_TypeInfoArray;
     struct mir_var * rtti_var  = rtti_create_and_alloc_var(ctx, rtti_type);
-    VMStackPtr       dest      = vm_read_var(ctx->vm, rtti_var);
+    vm_stack_ptr_t   dest      = vm_read_var(ctx->vm, rtti_var);
     rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
 
     // name
     struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
-    VMStackPtr       dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
+    vm_stack_ptr_t   dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
     const char *     name           = type->user_id ? type->user_id->str : type->id.str;
 
     vm_write_string(ctx->vm, dest_name_type, dest_name, name, strlen(name));
 
     // elem_type
     struct mir_type *dest_elem_type = mir_get_struct_elem_type(rtti_type, 2);
-    VMStackPtr       dest_elem      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 2);
+    vm_stack_ptr_t   dest_elem      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 2);
 
     struct mir_var *elem = _rtti_gen(ctx, type->data.array.elem_type);
     vm_write_ptr(dest_elem_type, dest_elem, vm_read_var(ctx->vm, elem));
 
     // len
     struct mir_type *dest_len_type = mir_get_struct_elem_type(rtti_type, 3);
-    VMStackPtr       dest_len      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 3);
+    vm_stack_ptr_t   dest_len      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 3);
 
     vm_write_int(dest_len_type, dest_len, (u64)type->data.array.len);
 
@@ -8745,35 +8769,36 @@ struct mir_var *
 rtti_gen_empty(struct context *ctx, struct mir_type *type, struct mir_type *rtti_type)
 {
     struct mir_var *rtti_var = rtti_create_and_alloc_var(ctx, rtti_type);
-    VMStackPtr      dest     = vm_read_var(ctx->vm, rtti_var);
+    vm_stack_ptr_t  dest     = vm_read_var(ctx->vm, rtti_var);
     rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
     return rtti_var;
 }
 
-void rtti_gen_enum_variant(struct context *ctx, VMStackPtr dest, struct mir_variant *variant)
+void rtti_gen_enum_variant(struct context *ctx, vm_stack_ptr_t dest, struct mir_variant *variant)
 {
     struct mir_type *rtti_type      = ctx->builtin_types->t_TypeInfoEnumVariant;
     struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 0);
-    VMStackPtr       dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
+    vm_stack_ptr_t   dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
 
     struct mir_type *dest_value_type = mir_get_struct_elem_type(rtti_type, 1);
-    VMStackPtr       dest_value      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
+    vm_stack_ptr_t   dest_value      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
 
     vm_write_string(ctx->vm, dest_name_type, dest_name, variant->id->str, strlen(variant->id->str));
     vm_write_int(dest_value_type, dest_value, variant->value);
 }
 
-VMStackPtr rtti_gen_enum_variants_array(struct context *ctx, TSmallArray_VariantPtr *variants)
+vm_stack_ptr_t rtti_gen_enum_variants_array(struct context *ctx, TSmallArray_VariantPtr *variants)
 {
     struct mir_type *rtti_type    = ctx->builtin_types->t_TypeInfoEnumVariant;
     struct mir_type *arr_tmp_type = create_type_array(ctx, NULL, rtti_type, variants->size);
 
-    VMStackPtr dest_arr_tmp = vm_alloc_raw(ctx->vm, ctx->assembly, arr_tmp_type);
+    vm_stack_ptr_t dest_arr_tmp = vm_alloc_raw(ctx->vm, ctx->assembly, arr_tmp_type);
 
     struct mir_variant *it;
     TSA_FOREACH(variants, it)
     {
-        VMStackPtr dest_arr_tmp_elem = vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32)i);
+        vm_stack_ptr_t dest_arr_tmp_elem =
+            vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32)i);
         rtti_gen_enum_variant(ctx, dest_arr_tmp_elem, it);
     }
 
@@ -8781,17 +8806,17 @@ VMStackPtr rtti_gen_enum_variants_array(struct context *ctx, TSmallArray_Variant
 }
 
 void rtti_gen_enum_variants_slice(struct context *        ctx,
-                                  VMStackPtr              dest,
+                                  vm_stack_ptr_t          dest,
                                   TSmallArray_VariantPtr *variants)
 {
     struct mir_type *rtti_type     = ctx->builtin_types->t_TypeInfoEnumVariants_slice;
     struct mir_type *dest_len_type = mir_get_struct_elem_type(rtti_type, 0);
-    VMStackPtr       dest_len      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
+    vm_stack_ptr_t   dest_len      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
 
     struct mir_type *dest_ptr_type = mir_get_struct_elem_type(rtti_type, 1);
-    VMStackPtr       dest_ptr      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
+    vm_stack_ptr_t   dest_ptr      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
 
-    VMStackPtr variants_ptr = rtti_gen_enum_variants_array(ctx, variants);
+    vm_stack_ptr_t variants_ptr = rtti_gen_enum_variants_array(ctx, variants);
 
     vm_write_int(dest_len_type, dest_len, (u64)variants->size);
     vm_write_ptr(dest_ptr_type, dest_ptr, variants_ptr);
@@ -8801,76 +8826,77 @@ struct mir_var *rtti_gen_enum(struct context *ctx, struct mir_type *type)
 {
     struct mir_type *rtti_type = ctx->builtin_types->t_TypeInfoEnum;
     struct mir_var * rtti_var  = rtti_create_and_alloc_var(ctx, rtti_type);
-    VMStackPtr       dest      = vm_read_var(ctx->vm, rtti_var);
+    vm_stack_ptr_t   dest      = vm_read_var(ctx->vm, rtti_var);
     rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
 
     // name
     struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
-    VMStackPtr       dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
+    vm_stack_ptr_t   dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
     const char *     name           = type->user_id ? type->user_id->str : type->id.str;
     vm_write_string(ctx->vm, dest_name_type, dest_name, name, strlen(name));
 
     // base_type
     struct mir_type *dest_base_type_type = mir_get_struct_elem_type(rtti_type, 2);
-    VMStackPtr       dest_base_type = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 2);
+    vm_stack_ptr_t   dest_base_type = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 2);
 
     struct mir_var *base_type = _rtti_gen(ctx, type->data.enm.base_type);
     vm_write_ptr(dest_base_type_type, dest_base_type, vm_read_var(ctx->vm, base_type));
 
     // variants
-    VMStackPtr dest_variants = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 3);
+    vm_stack_ptr_t dest_variants = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 3);
     rtti_gen_enum_variants_slice(ctx, dest_variants, type->data.enm.variants);
 
     return rtti_var;
 }
 
-void rtti_gen_struct_member(struct context *ctx, VMStackPtr dest, struct mir_member *member)
+void rtti_gen_struct_member(struct context *ctx, vm_stack_ptr_t dest, struct mir_member *member)
 {
     struct mir_type *rtti_type = ctx->builtin_types->t_TypeInfoStructMember;
 
     // name
     struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 0);
-    VMStackPtr       dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
+    vm_stack_ptr_t   dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
     vm_write_string(ctx->vm, dest_name_type, dest_name, member->id->str, strlen(member->id->str));
 
     // base_type
     struct mir_type *dest_base_type_type = mir_get_struct_elem_type(rtti_type, 1);
-    VMStackPtr       dest_base_type = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
+    vm_stack_ptr_t   dest_base_type = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
     struct mir_var * base_type      = _rtti_gen(ctx, member->type);
     vm_write_ptr(dest_base_type_type, dest_base_type, vm_read_var(ctx->vm, base_type));
 
     // offset_bytes
     struct mir_type *dest_offset_type = mir_get_struct_elem_type(rtti_type, 2);
-    VMStackPtr       dest_offset      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 2);
+    vm_stack_ptr_t   dest_offset      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 2);
     vm_write_int(dest_offset_type, dest_offset, (u64)member->offset_bytes);
 
     // index
     struct mir_type *dest_index_type = mir_get_struct_elem_type(rtti_type, 3);
-    VMStackPtr       dest_index      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 3);
+    vm_stack_ptr_t   dest_index      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 3);
     vm_write_int(dest_index_type, dest_index, (u64)member->index);
 
     // tag
     struct mir_type *dest_tags_type = mir_get_struct_elem_type(rtti_type, 4);
-    VMStackPtr       dest_tags      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 4);
+    vm_stack_ptr_t   dest_tags      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 4);
     vm_write_int(dest_tags_type, dest_tags, (u64)member->tags);
 
     // is_base
     struct mir_type *dest_is_base_type = mir_get_struct_elem_type(rtti_type, 5);
-    VMStackPtr       dest_is_base      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 5);
+    vm_stack_ptr_t   dest_is_base      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 5);
     vm_write_int(dest_is_base_type, dest_is_base, (u64)member->is_base);
 }
 
-VMStackPtr rtti_gen_struct_members_array(struct context *ctx, TSmallArray_MemberPtr *members)
+vm_stack_ptr_t rtti_gen_struct_members_array(struct context *ctx, TSmallArray_MemberPtr *members)
 {
     struct mir_type *rtti_type    = ctx->builtin_types->t_TypeInfoStructMember;
     struct mir_type *arr_tmp_type = create_type_array(ctx, NULL, rtti_type, (s64)members->size);
 
-    VMStackPtr dest_arr_tmp = vm_alloc_raw(ctx->vm, ctx->assembly, arr_tmp_type);
+    vm_stack_ptr_t dest_arr_tmp = vm_alloc_raw(ctx->vm, ctx->assembly, arr_tmp_type);
 
     struct mir_member *it;
     TSA_FOREACH(members, it)
     {
-        VMStackPtr dest_arr_tmp_elem = vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32)i);
+        vm_stack_ptr_t dest_arr_tmp_elem =
+            vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32)i);
         rtti_gen_struct_member(ctx, dest_arr_tmp_elem, it);
     }
 
@@ -8878,17 +8904,17 @@ VMStackPtr rtti_gen_struct_members_array(struct context *ctx, TSmallArray_Member
 }
 
 void rtti_gen_struct_members_slice(struct context *       ctx,
-                                   VMStackPtr             dest,
+                                   vm_stack_ptr_t         dest,
                                    TSmallArray_MemberPtr *members)
 {
     struct mir_type *rtti_type     = ctx->builtin_types->t_TypeInfoStructMembers_slice;
     struct mir_type *dest_len_type = mir_get_struct_elem_type(rtti_type, 0);
-    VMStackPtr       dest_len      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
+    vm_stack_ptr_t   dest_len      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
 
     struct mir_type *dest_ptr_type = mir_get_struct_elem_type(rtti_type, 1);
-    VMStackPtr       dest_ptr      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
+    vm_stack_ptr_t   dest_ptr      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
 
-    VMStackPtr members_ptr = rtti_gen_struct_members_array(ctx, members);
+    vm_stack_ptr_t members_ptr = rtti_gen_struct_members_array(ctx, members);
 
     vm_write_int(dest_len_type, dest_len, (u64)members->size);
     vm_write_ptr(dest_ptr_type, dest_ptr, members_ptr);
@@ -8900,116 +8926,118 @@ struct mir_var *rtti_gen_struct(struct context *ctx, struct mir_type *type)
               "Attempt to generate RTTI for incomplete struct type!");
     struct mir_type *rtti_type = ctx->builtin_types->t_TypeInfoStruct;
     struct mir_var * rtti_var  = rtti_create_and_alloc_var(ctx, rtti_type);
-    VMStackPtr       dest      = vm_read_var(ctx->vm, rtti_var);
+    vm_stack_ptr_t   dest      = vm_read_var(ctx->vm, rtti_var);
     rtti_gen_base(ctx, dest, MIR_TYPE_STRUCT, type->store_size_bytes);
 
     // name
     struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
-    VMStackPtr       dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
+    vm_stack_ptr_t   dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
     const char *     name           = type->user_id ? type->user_id->str : type->id.str;
     vm_write_string(ctx->vm, dest_name_type, dest_name, name, strlen(name));
 
     // members
-    VMStackPtr dest_members = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 2);
+    vm_stack_ptr_t dest_members = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 2);
     rtti_gen_struct_members_slice(ctx, dest_members, type->data.strct.members);
 
     // is_slice
     struct mir_type *dest_is_slice_type = mir_get_struct_elem_type(rtti_type, 3);
-    VMStackPtr       dest_is_slice      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 3);
+    vm_stack_ptr_t   dest_is_slice      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 3);
     const bool       is_slice = type->kind == MIR_TYPE_SLICE || type->kind == MIR_TYPE_VARGS;
     vm_write_int(dest_is_slice_type, dest_is_slice, (u64)is_slice);
 
     // is_union
     struct mir_type *dest_is_union_type = mir_get_struct_elem_type(rtti_type, 4);
-    VMStackPtr       dest_is_union      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 4);
+    vm_stack_ptr_t   dest_is_union      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 4);
     vm_write_int(dest_is_union_type, dest_is_union, (u64)type->data.strct.is_union);
 
     // is_dynamic_array
     struct mir_type *dest_is_da_type = mir_get_struct_elem_type(rtti_type, 5);
-    VMStackPtr       dest_is_da      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 5);
+    vm_stack_ptr_t   dest_is_da      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 5);
     const bool       is_da           = type->kind == MIR_TYPE_DYNARR;
     vm_write_int(dest_is_da_type, dest_is_da, (u64)is_da);
 
     return rtti_var;
 }
 
-void rtti_gen_fn_arg(struct context *ctx, VMStackPtr dest, struct mir_arg *arg)
+void rtti_gen_fn_arg(struct context *ctx, vm_stack_ptr_t dest, struct mir_arg *arg)
 {
     struct mir_type *rtti_type = ctx->builtin_types->t_TypeInfoFnArg;
 
     // name
     struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 0);
-    VMStackPtr       dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
+    vm_stack_ptr_t   dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
     const char *     arg_name       = arg->id ? arg->id->str : "";
     vm_write_string(ctx->vm, dest_name_type, dest_name, arg_name, strlen(arg_name));
 
     // base_type
     struct mir_type *dest_base_type_type = mir_get_struct_elem_type(rtti_type, 1);
-    VMStackPtr       dest_base_type = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
+    vm_stack_ptr_t   dest_base_type = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
     struct mir_var * base_type      = _rtti_gen(ctx, arg->type);
     vm_write_ptr(dest_base_type_type, dest_base_type, base_type->value.data);
 }
 
-VMStackPtr rtti_gen_fn_args_array(struct context *ctx, TSmallArray_ArgPtr *args)
+vm_stack_ptr_t rtti_gen_fn_args_array(struct context *ctx, TSmallArray_ArgPtr *args)
 {
     struct mir_type *rtti_type    = ctx->builtin_types->t_TypeInfoFnArg;
     struct mir_type *arr_tmp_type = create_type_array(ctx, NULL, rtti_type, (s64)args->size);
 
-    VMStackPtr dest_arr_tmp = vm_alloc_raw(ctx->vm, ctx->assembly, arr_tmp_type);
+    vm_stack_ptr_t dest_arr_tmp = vm_alloc_raw(ctx->vm, ctx->assembly, arr_tmp_type);
 
     struct mir_arg *it;
     TSA_FOREACH(args, it)
     {
-        VMStackPtr dest_arr_tmp_elem = vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32)i);
+        vm_stack_ptr_t dest_arr_tmp_elem =
+            vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32)i);
         rtti_gen_fn_arg(ctx, dest_arr_tmp_elem, it);
     }
 
     return dest_arr_tmp;
 }
 
-VMStackPtr rtti_gen_fns_array(struct context *ctx, TSmallArray_TypePtr *fns)
+vm_stack_ptr_t rtti_gen_fns_array(struct context *ctx, TSmallArray_TypePtr *fns)
 {
     struct mir_type *rtti_type    = ctx->builtin_types->t_TypeInfoFn_ptr;
     struct mir_type *arr_tmp_type = create_type_array(ctx, NULL, rtti_type, (s64)fns->size);
-    VMStackPtr       dest_arr_tmp = vm_alloc_raw(ctx->vm, ctx->assembly, arr_tmp_type);
+    vm_stack_ptr_t   dest_arr_tmp = vm_alloc_raw(ctx->vm, ctx->assembly, arr_tmp_type);
     struct mir_type *it;
     TSA_FOREACH(fns, it)
     {
-        VMStackPtr dest_arr_tmp_elem = vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32)i);
-        struct mir_var *fn           = _rtti_gen(ctx, it);
+        vm_stack_ptr_t dest_arr_tmp_elem =
+            vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32)i);
+        struct mir_var *fn = _rtti_gen(ctx, it);
         vm_write_ptr(rtti_type, dest_arr_tmp_elem, vm_read_var(ctx->vm, fn));
     }
     return dest_arr_tmp;
 }
 
-void rtti_gen_fn_args_slice(struct context *ctx, VMStackPtr dest, TSmallArray_ArgPtr *args)
+void rtti_gen_fn_args_slice(struct context *ctx, vm_stack_ptr_t dest, TSmallArray_ArgPtr *args)
 {
     struct mir_type *rtti_type     = ctx->builtin_types->t_TypeInfoFnArgs_slice;
     struct mir_type *dest_len_type = mir_get_struct_elem_type(rtti_type, 0);
-    VMStackPtr       dest_len      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
+    vm_stack_ptr_t   dest_len      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
 
     struct mir_type *dest_ptr_type = mir_get_struct_elem_type(rtti_type, 1);
-    VMStackPtr       dest_ptr      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
+    vm_stack_ptr_t   dest_ptr      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
 
-    const usize argc     = args ? args->size : 0;
-    VMStackPtr  args_ptr = NULL;
+    const usize    argc     = args ? args->size : 0;
+    vm_stack_ptr_t args_ptr = NULL;
     if (argc) args_ptr = rtti_gen_fn_args_array(ctx, args);
 
     vm_write_int(dest_len_type, dest_len, (u64)argc);
     vm_write_ptr(dest_ptr_type, dest_ptr, args_ptr);
 }
 
-void rtti_gen_fn_slice(struct context *ctx, VMStackPtr dest, TSmallArray_TypePtr *fns)
+void rtti_gen_fn_slice(struct context *ctx, vm_stack_ptr_t dest, TSmallArray_TypePtr *fns)
 {
     struct mir_type *rtti_type     = ctx->builtin_types->t_TypeInfoFn_ptr_slice;
     struct mir_type *dest_len_type = mir_get_struct_elem_type(rtti_type, 0);
-    VMStackPtr       dest_len      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
+    vm_stack_ptr_t   dest_len      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
 
     struct mir_type *dest_ptr_type = mir_get_struct_elem_type(rtti_type, 1);
-    VMStackPtr       dest_ptr      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
+    vm_stack_ptr_t   dest_ptr      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
 
-    const usize fnc     = fns ? fns->size : 0;
-    VMStackPtr  fns_ptr = NULL;
+    const usize    fnc     = fns ? fns->size : 0;
+    vm_stack_ptr_t fns_ptr = NULL;
     if (fnc) fns_ptr = rtti_gen_fns_array(ctx, fns);
 
     vm_write_int(dest_len_type, dest_len, (u64)fnc);
@@ -9020,30 +9048,30 @@ struct mir_var *rtti_gen_fn(struct context *ctx, struct mir_type *type)
 {
     struct mir_type *rtti_type = ctx->builtin_types->t_TypeInfoFn;
     struct mir_var * rtti_var  = rtti_create_and_alloc_var(ctx, rtti_type);
-    VMStackPtr       dest      = vm_read_var(ctx->vm, rtti_var);
+    vm_stack_ptr_t   dest      = vm_read_var(ctx->vm, rtti_var);
     rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
 
 #if 0
 	// name
 	struct mir_type *   dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
-	VMStackPtr  dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
+	vm_stack_ptr_t  dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
 	const char *name           = type->user_id ? type->user_id->str : type->id.str;
 	vm_write_string(ctx->vm, dest_name_type, dest_name, name, strlen(name));
 #endif
 
     // args
-    VMStackPtr dest_args = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
+    vm_stack_ptr_t dest_args = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
     rtti_gen_fn_args_slice(ctx, dest_args, type->data.fn.args);
 
     // ret_type
     struct mir_type *dest_ret_type_type = mir_get_struct_elem_type(rtti_type, 2);
-    VMStackPtr       dest_ret_type      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 2);
+    vm_stack_ptr_t   dest_ret_type      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 2);
     struct mir_var * ret_type           = _rtti_gen(ctx, type->data.fn.ret_type);
     vm_write_ptr(dest_ret_type_type, dest_ret_type, ret_type->value.data);
 
     // is_vargs
     struct mir_type *dest_is_vargs_type = mir_get_struct_elem_type(rtti_type, 3);
-    VMStackPtr       dest_is_vargs      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 3);
+    vm_stack_ptr_t   dest_is_vargs      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 3);
     const bool       is_vargs           = IS_FLAG(type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_VARGS);
     vm_write_int(dest_is_vargs_type, dest_is_vargs, (u64)is_vargs);
 
@@ -9054,11 +9082,11 @@ struct mir_var *rtti_gen_fn_group(struct context *ctx, struct mir_type *type)
 {
     struct mir_type *rtti_type = ctx->builtin_types->t_TypeInfoFnGroup;
     struct mir_var * rtti_var  = rtti_create_and_alloc_var(ctx, rtti_type);
-    VMStackPtr       dest      = vm_read_var(ctx->vm, rtti_var);
+    vm_stack_ptr_t   dest      = vm_read_var(ctx->vm, rtti_var);
     rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
 
     // variants
-    VMStackPtr dest_args = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
+    vm_stack_ptr_t dest_args = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
     rtti_gen_fn_slice(ctx, dest_args, type->data.fn_group.variants);
 
     return rtti_var;
@@ -9579,7 +9607,7 @@ struct mir_instr *ast_expr_lit_fn(struct context *         ctx,
     // creates function prototype
     struct ast *ast_block   = lit_fn->data.expr_fn.block;
     struct ast *ast_fn_type = lit_fn->data.expr_fn.type;
-    ID *        id          = decl_node ? &decl_node->data.ident.id : NULL;
+    struct id * id          = decl_node ? &decl_node->data.ident.id : NULL;
     BL_ASSERT(ast_fn_type->kind == AST_TYPE_FN);
     const bool is_polymorph =
         ast_fn_type->data.type_fn.is_polymorph && !ctx->polymorph.is_replacement_active;
@@ -9752,7 +9780,7 @@ struct mir_instr *ast_expr_binop(struct context *ctx, struct ast *binop)
     struct ast *ast_rhs = binop->data.expr_binop.rhs;
     BL_ASSERT(ast_lhs && ast_rhs);
 
-    const BinopKind op = binop->data.expr_binop.kind;
+    const enum binop_kind op = binop->data.expr_binop.kind;
 
     switch (op) {
     case BINOP_ASSIGN: {
@@ -9996,7 +10024,7 @@ static void ast_decl_fn(struct context *ctx, struct ast *ast_fn)
                     "Exported function cannot be declared in private scope.");
     }
 
-    ID *          id    = &ast_name->data.ident.id;
+    struct id *   id    = &ast_name->data.ident.id;
     struct scope *scope = ast_name->owner_scope;
     fn->scope_entry     = register_symbol(ctx, ast_name, id, scope, is_compiler);
 }
@@ -10051,7 +10079,7 @@ static void ast_decl_var_local(struct context *ctx, struct ast *ast_local)
         } else if (prev_var) {
             current_value = append_instr_decl_direct_ref(ctx, NULL, prev_var);
         }
-        ID *              id  = &ast_current_name->data.ident.id;
+        struct id *       id  = &ast_current_name->data.ident.id;
         struct mir_instr *var = append_instr_decl_var(ctx,
                                                       ast_current_name,
                                                       id,
@@ -10113,7 +10141,7 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
     while (ast_current_name) {
         enum mir_builtin_id_kind builtin_id = MIR_BUILTIN_ID_NONE;
         if (is_compiler) builtin_id = check_symbol_marked_compiler(ast_name);
-        ID *              id   = &ast_current_name->data.ident.id;
+        struct id *       id   = &ast_current_name->data.ident.id;
         struct mir_instr *decl = append_instr_decl_var(ctx,
                                                        ast_current_name,
                                                        id,
@@ -10319,14 +10347,14 @@ struct mir_instr *ast_type_fn_group(struct context *ctx, struct ast *group)
         variants->data[i] = ast(ctx, it);
     }
     // Consume declaration identificator.
-    ID *id                     = ctx->ast.current_entity_id;
+    struct id *id              = ctx->ast.current_entity_id;
     ctx->ast.current_entity_id = NULL;
     return append_instr_type_fn_group(ctx, group, id, variants);
 }
 
 struct mir_instr *ast_type_arr(struct context *ctx, struct ast *type_arr)
 {
-    ID *id                     = ctx->ast.current_entity_id;
+    struct id *id              = ctx->ast.current_entity_id;
     ctx->ast.current_entity_id = NULL;
 
     struct ast *ast_elem_type = type_arr->data.type_arr.elem_type;
@@ -10410,7 +10438,7 @@ struct mir_instr *ast_type_enum(struct context *ctx, struct ast *type_enum)
         tsa_push_InstrPtr(variants, variant);
     }
     // Consume declaration identificator.
-    ID *id                     = ctx->ast.current_entity_id;
+    struct id *id              = ctx->ast.current_entity_id;
     ctx->ast.current_entity_id = NULL;
     return append_instr_type_enum(ctx, type_enum, id, scope, variants, base_type);
 }
@@ -10418,7 +10446,7 @@ struct mir_instr *ast_type_enum(struct context *ctx, struct ast *type_enum)
 struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct)
 {
     // Consume declaration identificator.
-    ID *id                     = ctx->ast.current_entity_id;
+    struct id *id              = ctx->ast.current_entity_id;
     ctx->ast.current_entity_id = NULL;
 
     // Consume current struct fwd decl.
@@ -10448,7 +10476,7 @@ struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct)
         // Structure has base type, in such case we generate implicit first member
         // 'base'.
         struct mir_instr *base_type = ast(ctx, ast_base_type);
-        ID *              id2       = &builtin_ids[MIR_BUILTIN_ID_STRUCT_BASE];
+        struct id *       id2       = &builtin_ids[MIR_BUILTIN_ID_STRUCT_BASE];
         base_type = append_instr_decl_member_impl(ctx, ast_base_type, id2, base_type, NULL);
 
         struct mir_member *base_member = ((struct mir_instr_decl_member *)base_type)->member;
@@ -10478,7 +10506,7 @@ struct mir_instr *ast_type_poly(struct context *ctx, struct ast *poly)
     BL_ASSERT(ast_ident);
 
     TSmallArray_TypePtr *queue       = &ctx->polymorph.replacement_queue;
-    ID *                 T_id        = &ast_ident->data.ident.id;
+    struct id *          T_id        = &ast_ident->data.ident.id;
     struct scope_entry * scope_entry = register_symbol(ctx, ast_ident, T_id, scope, false);
     if (!scope_entry) goto USE_DUMMY;
     if (ctx->polymorph.is_replacement_active) {
@@ -10961,7 +10989,7 @@ static void _type_to_str(char *buf, usize len, const struct mir_type *type, bool
 }
 
 #if BL_DEBUG
-VMStackPtr _mir_cev_read(struct mir_const_expr_value *value)
+vm_stack_ptr_t _mir_cev_read(struct mir_const_expr_value *value)
 {
     BL_ASSERT(value && "Attempt to read null value!");
     BL_ASSERT(value->is_comptime && "Attempt to read non-comptime value!");
@@ -10986,7 +11014,7 @@ static void provide_builtin_arch(struct context *ctx)
                                        TARRAY_SIZE(arch_names),
                                        NULL);
     TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
-    static ID               ids[TARRAY_SIZE(arch_names)];
+    static struct id        ids[TARRAY_SIZE(arch_names)];
     for (usize i = 0; i < TARRAY_SIZE(arch_names); ++i) {
         struct mir_variant *variant =
             create_variant(ctx, id_init(&ids[i], arch_names[i]), bt->t_s32, i);
@@ -11007,7 +11035,7 @@ static void provide_builtin_os(struct context *ctx)
                                        TARRAY_SIZE(os_names),
                                        NULL);
     TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
-    static ID               ids[TARRAY_SIZE(os_names)];
+    static struct id        ids[TARRAY_SIZE(os_names)];
     for (usize i = 0; i < TARRAY_SIZE(os_names); ++i) {
         struct mir_variant *variant =
             create_variant(ctx, id_init(&ids[i], os_names[i]), bt->t_s32, i);
@@ -11028,7 +11056,7 @@ static void provide_builtin_env(struct context *ctx)
                                        TARRAY_SIZE(env_names),
                                        NULL);
     TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
-    static ID               ids[TARRAY_SIZE(env_names)];
+    static struct id        ids[TARRAY_SIZE(env_names)];
     for (usize i = 0; i < TARRAY_SIZE(env_names); ++i) {
         struct mir_variant *variant =
             create_variant(ctx, id_init(&ids[i], env_names[i]), bt->t_s32, i);
@@ -11197,12 +11225,12 @@ void mir_arenas_init(struct mir_arenas *arenas)
                sizeof(struct mir_fn_poly_recipe),
                alignment_of(struct mir_fn_poly_recipe),
                ARENA_CHUNK_COUNT,
-               (ArenaElemDtor)&fn_poly_dtor);
+               (arena_elem_dtor_t)&fn_poly_dtor);
     arena_init(&arenas->fn,
                sizeof(struct mir_fn),
                alignment_of(struct mir_fn),
                ARENA_CHUNK_COUNT,
-               (ArenaElemDtor)&fn_dtor);
+               (arena_elem_dtor_t)&fn_dtor);
     arena_init(&arenas->member,
                sizeof(struct mir_member),
                alignment_of(struct mir_member),

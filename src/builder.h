@@ -58,13 +58,13 @@ struct builder {
     const struct target *         default_target;
     char *                        exec_dir;
     char *                        lib_dir;
-    Arena                         str_cache;
+    struct arena                  str_cache;
     volatile s32                  total_lines;
     s32                           errorc;
     s32                           max_error;
     s32                           test_failc;
     s32                           last_script_mode_run_status;
-    ConfData                      conf;
+    conf_data_t                   conf;
     TArray                        targets;
     TArray                        tmp_strings;
     struct threading_impl *       threading;
@@ -92,7 +92,7 @@ void        builder_set_lib_dir(const char *lib_dir);
 const char *builder_get_lib_dir(void);
 const char *builder_get_exec_dir(void);
 int         builder_load_config(const char *filepath);
-int builder_compile_config(const char *filepath, ConfData *out_data, struct token *import_from);
+int builder_compile_config(const char *filepath, conf_data_t *out_data, struct token *import_from);
 
 #define builder_add_target(name) _builder_add_target(name, false)
 #define builder_add_default_target(name) _builder_add_target(name, true)

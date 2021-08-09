@@ -32,9 +32,7 @@
 void token_printer_run(struct assembly *UNUSED(assembly), struct unit *unit)
 {
     TArray *tokens_arr = &unit->tokens.buf;
-
     fprintf(stdout, "Tokens: \n");
-
     const usize   c = tokens_arr->size;
     struct token *tok;
     s32           line = -1;
@@ -48,10 +46,8 @@ void token_printer_run(struct assembly *UNUSED(assembly), struct unit *unit)
             line = tok->location.line;
             fprintf(stdout, "\n%d: ", line);
         }
-
         fprintf(
             stdout, "['%s' %i:%i], ", sym_strings[tok->sym], tok->location.line, tok->location.col);
     }
-
     fprintf(stdout, "\n");
 }

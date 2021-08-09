@@ -35,8 +35,8 @@
 
 void vm_tests_run(struct assembly *assembly)
 {
-    VM *    vm    = &assembly->vm;
-    TArray *cases = &assembly->testing.cases;
+    struct virtual_machine *vm    = &assembly->vm;
+    TArray *                cases = &assembly->testing.cases;
     printf("\nTesting start in compile time\n");
     printf(TEXT_LINE "\n");
 
@@ -88,9 +88,9 @@ void vm_tests_run(struct assembly *assembly)
 
 void vm_build_entry_run(struct assembly *assembly)
 {
-    VM *                 vm     = &assembly->vm;
-    struct mir_fn *      entry  = assembly->vm_run.build_entry;
-    const struct target *target = assembly->target;
+    struct virtual_machine *vm     = &assembly->vm;
+    struct mir_fn *         entry  = assembly->vm_run.build_entry;
+    const struct target *   target = assembly->target;
     if (!entry) {
         builder_error("struct assembly '%s' has no build entry function!", assembly->target->name);
         assembly->vm_run.last_execution_status = EXIT_FAILURE;
@@ -107,9 +107,9 @@ void vm_build_entry_run(struct assembly *assembly)
 
 void vm_entry_run(struct assembly *assembly)
 {
-    VM *                 vm     = &assembly->vm;
-    struct mir_fn *      entry  = assembly->vm_run.entry;
-    const struct target *target = assembly->target;
+    struct virtual_machine *vm     = &assembly->vm;
+    struct mir_fn *         entry  = assembly->vm_run.entry;
+    const struct target *   target = assembly->target;
     builder_note("\nExecuting 'main' in compile time...");
     if (!entry) {
         builder_error("struct assembly '%s' has no entry function!", assembly->target->name);
@@ -123,8 +123,8 @@ void vm_entry_run(struct assembly *assembly)
         vm_provide_command_line_arguments(vm, target->vm.argc, target->vm.argv);
     }
     vm_override_var(vm, assembly->vm_run.is_comptime_run, true);
-    VMStackPtr ret_ptr = NULL;
-    s32        result  = EXIT_SUCCESS;
+    vm_stack_ptr_t ret_ptr = NULL;
+    s32            result  = EXIT_SUCCESS;
     if (vm_execute_fn(vm, assembly, entry, &ret_ptr)) {
         if (ret_ptr) {
             struct mir_type *ret_type = fn_type->data.fn.ret_type;

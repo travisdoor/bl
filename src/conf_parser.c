@@ -30,8 +30,8 @@
 #include "common.h"
 
 struct context {
-    Tokens *  tokens;
-    ConfData *data;
+    struct tokens *tokens;
+    conf_data_t *  data;
 };
 
 static bool parse_key_value_rq(struct context *ctx)
@@ -48,7 +48,7 @@ static bool parse_key_value_rq(struct context *ctx)
 
     struct token *tok_value = tokens_consume(ctx->tokens);
 
-    ConfDataValue tmp;
+    struct conf_data_value tmp;
 
     switch (tok_value->sym) {
     case SYM_STRING:
@@ -92,7 +92,7 @@ static void parse_top_level(struct context *ctx)
     }
 }
 
-void conf_parser_run(struct unit *unit, ConfData *out_data)
+void conf_parser_run(struct unit *unit, conf_data_t *out_data)
 {
     BL_ASSERT(out_data && "Missing output data buffer for config file parser!");
     struct context ctx = {.tokens = &unit->tokens, .data = out_data};

@@ -31,32 +31,32 @@
 
 #include "common.h"
 
-typedef enum ConfDataValueKind {
+enum conf_data_value_kind {
     CDV_UNKNOWN,
     CDV_STRING,
     CDV_INT,
-} ConfDataValueKind;
+};
 
-typedef struct ConfDataValue {
+struct conf_data_value {
     union {
         const char *v_str;
         int         v_int;
     } data;
 
-    ConfDataValueKind kind;
-} ConfDataValue;
+    enum conf_data_value_kind kind;
+};
 
-typedef THashTable ConfData;
+typedef THashTable conf_data_t;
 
-ConfData *     conf_data_new();
-void           conf_data_delete(ConfData *data);
-void           conf_data_init(ConfData *data);
-void           conf_data_terminate(ConfData *data);
-void           conf_data_clear(ConfData *data);
-bool           conf_data_has_key(ConfData *data, const char *key);
-void           conf_data_add(ConfData *data, const char *key, ConfDataValue *value);
-ConfDataValue *conf_data_get(ConfData *data, const char *key);
-const char *   conf_data_get_str(ConfData *data, const char *key);
-int            conf_data_get_int(ConfData *data, const char *key);
+conf_data_t *conf_data_new();
+void         conf_data_delete(conf_data_t *data);
+void         conf_data_init(conf_data_t *data);
+void         conf_data_terminate(conf_data_t *data);
+void         conf_data_clear(conf_data_t *data);
+bool         conf_data_has_key(conf_data_t *data, const char *key);
+void         conf_data_add(conf_data_t *data, const char *key, struct conf_data_value *value);
+struct conf_data_value *conf_data_get(conf_data_t *data, const char *key);
+const char *            conf_data_get_str(conf_data_t *data, const char *key);
+int                     conf_data_get_int(conf_data_t *data, const char *key);
 
 #endif

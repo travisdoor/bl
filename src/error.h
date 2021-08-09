@@ -31,7 +31,7 @@
 
 #include "config.h"
 
-typedef enum {
+enum error {
     NO_ERR = 0,
 
     ERR_FILE_NOT_FOUND           = 1,
@@ -116,6 +116,6 @@ typedef enum {
     ERR_UNEXPECTED_FUNCTION_BODY = 80,
     ERR_INVALID_POLY_MATCH       = 81,
     ERR_UNSUPPORTED_TARGET       = 82,
-} Error;
+};
 
 #endif // BL_ERROR_H

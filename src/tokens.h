@@ -31,44 +31,44 @@
 
 #include "token.h"
 
-typedef struct Tokens {
+struct tokens {
     TArray buf;
     usize  iter;
-} Tokens;
+};
 
-typedef enum {
+enum tokens_lookahead_state {
     TOK_LOOK_HIT,
     TOK_LOOK_CONTINUE,
     TOK_LOOK_TERMINAL,
-} TokensLookaheadState;
+};
 
-typedef TokensLookaheadState (*TokenCmpFunc)(struct token *curr);
+typedef enum tokens_lookahead_state (*token_cmp_func_t)(struct token *curr);
 
-void          tokens_init(Tokens *tokens);
-void          tokens_terminate(Tokens *tokens);
-int           tokens_count(Tokens *tokens);
-void          tokens_push(Tokens *tokens, struct token *t);
-struct token *tokens_peek(Tokens *tokens);
-struct token *tokens_peek_last(Tokens *tokens);
-struct token *tokens_peek_2nd(Tokens *tokens);
-struct token *tokens_peek_nth(Tokens *tokens, usize n);
-struct token *tokens_peek_prev(Tokens *tokens);
-struct token *tokens_consume(Tokens *tokens);
-struct token *tokens_consume_if(Tokens *tokens, Sym sym);
-bool          tokens_current_is(Tokens *tokens, Sym sym);
-bool          tokens_previous_is(Tokens *tokens, Sym sym);
-bool          tokens_next_is(Tokens *tokens, Sym sym);
-bool          tokens_current_is_not(Tokens *tokens, Sym sym);
-bool          tokens_next_is_not(Tokens *tokens, Sym sym);
-bool          tokens_is_seq(Tokens *tokens, usize argc, ...);
-void          tokens_reset_iter(Tokens *tokens);
-usize         tokens_get_marker(Tokens *tokens);
-void          tokens_back_to_marker(Tokens *tokens, usize marker);
-void          tokens_consume_till(Tokens *tokens, Sym sym);
-void          tokens_consume_till2(Tokens *tokens, usize argc, Sym *args);
-bool          tokens_lookahead_till(Tokens *tokens, Sym lookup, Sym terminal);
-bool          tokens_lookahead(Tokens *tokens, TokenCmpFunc cmp);
+void          tokens_init(struct tokens *tokens);
+void          tokens_terminate(struct tokens *tokens);
+int           tokens_count(struct tokens *tokens);
+void          tokens_push(struct tokens *tokens, struct token *t);
+struct token *tokens_peek(struct tokens *tokens);
+struct token *tokens_peek_last(struct tokens *tokens);
+struct token *tokens_peek_2nd(struct tokens *tokens);
+struct token *tokens_peek_nth(struct tokens *tokens, usize n);
+struct token *tokens_peek_prev(struct tokens *tokens);
+struct token *tokens_consume(struct tokens *tokens);
+struct token *tokens_consume_if(struct tokens *tokens, enum sym sym);
+bool          tokens_current_is(struct tokens *tokens, enum sym sym);
+bool          tokens_previous_is(struct tokens *tokens, enum sym sym);
+bool          tokens_next_is(struct tokens *tokens, enum sym sym);
+bool          tokens_current_is_not(struct tokens *tokens, enum sym sym);
+bool          tokens_next_is_not(struct tokens *tokens, enum sym sym);
+bool          tokens_is_seq(struct tokens *tokens, usize argc, ...);
+void          tokens_reset_iter(struct tokens *tokens);
+usize         tokens_get_marker(struct tokens *tokens);
+void          tokens_back_to_marker(struct tokens *tokens, usize marker);
+void          tokens_consume_till(struct tokens *tokens, enum sym sym);
+void          tokens_consume_till2(struct tokens *tokens, usize argc, enum sym *args);
+bool          tokens_lookahead_till(struct tokens *tokens, enum sym lookup, enum sym terminal);
+bool          tokens_lookahead(struct tokens *tokens, token_cmp_func_t cmp);
 
-TArray *tokens_get_all(Tokens *tokens);
+TArray *tokens_get_all(struct tokens *tokens);
 
 #endif

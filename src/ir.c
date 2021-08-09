@@ -2706,8 +2706,8 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
     }
 
     case MIR_TYPE_STRING: {
-        VMStackPtr len_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 0);
-        VMStackPtr str_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 1);
+        vm_stack_ptr_t len_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 0);
+        vm_stack_ptr_t str_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 1);
 
         const s64   len = vm_read_as(s64, len_ptr);
         const char *str = vm_read_as(const char *, str_ptr);

@@ -38,7 +38,7 @@ struct token;
 
 struct unit {
     u64             hash;
-    Tokens          tokens;
+    struct tokens   tokens;
     struct ast *    ast;
     struct scope *  private_scope;
     char *          filename;

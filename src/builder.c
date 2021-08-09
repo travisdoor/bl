@@ -53,7 +53,7 @@ struct builder builder;
 // =================================================================================================
 // Stages
 // =================================================================================================
-void conf_parser_run(struct unit *unit, ConfData *out_data);
+void conf_parser_run(struct unit *unit, conf_data_t *out_data);
 
 void file_loader_run(struct assembly *assembly, struct unit *unit);
 void lexer_run(struct assembly *assembly, struct unit *unit);
@@ -69,7 +69,7 @@ void bc_writer_run(struct assembly *assembly);
 void native_bin_run(struct assembly *assembly);
 void mir_writer_run(struct assembly *assembly);
 
-// VM
+// Virtual Machine
 void vm_entry_run(struct assembly *assembly);
 void vm_build_entry_run(struct assembly *assembly);
 void vm_tests_run(struct assembly *assembly);
@@ -458,7 +458,7 @@ void builder_init(const struct builder_options *options, const char *exec_dir)
                sizeof(TString),
                alignment_of(TString),
                1024,
-               (ArenaElemDtor)str_cache_dtor);
+               (arena_elem_dtor_t)str_cache_dtor);
 
     // initialize LLVM statics
     llvm_init();
@@ -511,7 +511,7 @@ const char *builder_get_exec_dir(void)
     return builder.exec_dir;
 }
 
-int builder_compile_config(const char *filepath, ConfData *out_data, struct token *import_from)
+int builder_compile_config(const char *filepath, conf_data_t *out_data, struct token *import_from)
 {
     struct unit *unit = unit_new(filepath, import_from);
     file_loader_run(NULL, unit);

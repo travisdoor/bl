@@ -40,8 +40,8 @@ struct mir_fn;
 struct mir_var;
 
 struct scope_arenas {
-    Arena scopes;
-    Arena entries;
+    struct arena scopes;
+    struct arena entries;
 };
 
 enum scope_entry_kind {
@@ -65,7 +65,7 @@ union scope_entry_data {
 };
 
 struct scope_entry {
-    ID *                   id;
+    struct id *            id;
     enum scope_entry_kind  kind;
     struct scope *         parent_scope;
     struct ast *           node;
@@ -124,7 +124,7 @@ struct scope *_scope_create(struct scope_arenas *arenas,
 
 struct scope_entry *scope_create_entry(struct scope_arenas * arenas,
                                        enum scope_entry_kind kind,
-                                       ID *                  id,
+                                       struct id *           id,
                                        struct ast *          node,
                                        bool                  is_builtin);
 
@@ -134,7 +134,7 @@ void scope_unlock(struct scope *scope);
 
 struct scope_entry *scope_lookup(struct scope *scope,
                                  s32           preferred_layer_index,
-                                 ID *          id,
+                                 struct id *   id,
                                  bool          in_tree,
                                  bool          ignore_global,
                                  bool *        out_of_fn_local_scope);

@@ -63,7 +63,7 @@ TSMALL_ARRAY_TYPE(ScopePtr64, struct scope *, 64);
 
 #define CONSUME_TILL(tokens, ...)                                                                  \
     {                                                                                              \
-        Sym _[] = {__VA_ARGS__};                                                                   \
+        enum sym _[] = {__VA_ARGS__};                                                              \
         tokens_consume_till2((tokens), TARRAY_SIZE(_), &_[0]);                                     \
     }
 
@@ -97,9 +97,9 @@ struct context {
     TSmallArray_ScopePtr64 _scope_stack;
     struct assembly *      assembly;
     struct unit *          unit;
-    Arena *                ast_arena;
+    struct arena *         ast_arena;
     struct scope_arenas *  scope_arenas;
-    Tokens *               tokens;
+    struct tokens *        tokens;
 
     // tmps
     bool               is_inside_loop;
@@ -112,11 +112,11 @@ struct context {
 
 // helpers
 // fw decls
-static BinopKind sym_to_binop_kind(Sym sm);
-static UnopKind  sym_to_unop_kind(Sym sm);
-static bool      parse_docs(struct context *ctx);
-static bool      parse_unit_docs(struct context *ctx);
-static void      parse_ublock_content(struct context *ctx, struct ast *ublock);
+static enum binop_kind sym_to_binop_kind(enum sym sm);
+static enum unop_kind  sym_to_unop_kind(enum sym sm);
+static bool            parse_docs(struct context *ctx);
+static bool            parse_unit_docs(struct context *ctx);
+static void            parse_ublock_content(struct context *ctx, struct ast *ublock);
 static struct ast *
 parse_hash_directive(struct context *ctx, s32 expected_mask, HashDirective *satisfied);
 static struct ast *parse_unrecheable(struct context *ctx);
@@ -205,7 +205,7 @@ static INLINE const char *pop_docs(struct context *ctx)
     return text;
 }
 
-BinopKind sym_to_binop_kind(Sym sm)
+enum binop_kind sym_to_binop_kind(enum sym sm)
 {
     switch (sm) {
     case SYM_ASSIGN:
@@ -267,7 +267,7 @@ BinopKind sym_to_binop_kind(Sym sm)
     }
 }
 
-UnopKind sym_to_unop_kind(Sym sm)
+enum unop_kind sym_to_unop_kind(enum sym sm)
 {
     switch (sm) {
     case SYM_MINUS:
@@ -786,7 +786,7 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
         struct ast *scope =
             ast_create_node(ctx->ast_arena, AST_SCOPE, tok_directive, SCOPE_GET(ctx));
         scope->data.scope.ident = ident;
-        ID *id                  = &ident->data.ident.id;
+        struct id *id           = &ident->data.ident.id;
 
         // Perform lookup of named scope here, in case named scope already exist in global scope
         // we can reuse it!.
@@ -1479,7 +1479,7 @@ SKIP_EXPRS:
     return stmt_case;
 }
 
-static TokensLookaheadState cmp_stmt_loop(struct token *curr)
+static enum tokens_lookahead_state cmp_stmt_loop(struct token *curr)
 {
     if (token_is(curr, SYM_SEMICOLON))
         return TOK_LOOK_HIT;
@@ -2476,7 +2476,7 @@ NEXT:
     return type_struct;
 }
 
-static TokensLookaheadState cmp_decl(struct token *curr)
+static enum tokens_lookahead_state cmp_decl(struct token *curr)
 {
     switch (curr->sym) {
     case SYM_COLON:

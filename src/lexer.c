@@ -45,7 +45,7 @@
 struct context {
     struct assembly *assembly;
     struct unit *    unit;
-    Tokens *         tokens;
+    struct tokens *  tokens;
     jmp_buf          jmp_error;
     char *           c;
     s32              line;
@@ -441,7 +441,7 @@ SCAN:
         len = strlen(sym_strings[i]);
         if (strncmp(ctx->c, sym_strings[i], len) == 0) {
             ctx->c += len;
-            tok.sym          = (Sym)i;
+            tok.sym          = (enum sym)i;
             tok.location.len = (s32)len;
 
             // Two joined symbols will be parsed as identifier.

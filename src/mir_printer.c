@@ -88,7 +88,8 @@ static INLINE void print_flags(struct context *ctx, u32 flags)
 
 #define print_const_value(C, V) _print_const_value((C), (V)->type, (V)->data)
 
-static INLINE void _print_const_value(struct context *ctx, struct mir_type *type, VMStackPtr value)
+static INLINE void
+_print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t value)
 {
     if (!type) return;
     if (!value) {
@@ -173,7 +174,7 @@ static INLINE void _print_const_value(struct context *ctx, struct mir_type *type
                 fprintf(ctx->stream, "null");
             }
         } else {
-            VMStackPtr ptr = vm_read_as(VMStackPtr, value);
+            vm_stack_ptr_t ptr = vm_read_as(vm_stack_ptr_t, value);
             fprintf(ctx->stream, "%p", ptr);
         }
         break;
@@ -192,9 +193,9 @@ static INLINE void _print_const_value(struct context *ctx, struct mir_type *type
 
         fprintf(ctx->stream, ",\"");
 
-        offset             = vm_get_struct_elem_offset(ctx->assembly, type, 1);
-        VMStackPtr str_ptr = value + offset;
-        str_ptr            = VM_STACK_PTR_DEREF(str_ptr);
+        offset                 = vm_get_struct_elem_offset(ctx->assembly, type, 1);
+        vm_stack_ptr_t str_ptr = value + offset;
+        str_ptr                = VM_STACK_PTR_DEREF(str_ptr);
         fprintf(ctx->stream, "%s\"}", (char *)str_ptr);
         break;
 
@@ -734,7 +735,7 @@ void print_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
         } else {
             // HACK: globals use static allocation segment on the stack so relative
             // pointer = absolute pointer.
-            VMStackPtr data_ptr = (VMStackPtr)var->rel_stack_ptr;
+            vm_stack_ptr_t data_ptr = (vm_stack_ptr_t)var->rel_stack_ptr;
             _print_const_value(ctx, var->value.type, data_ptr);
         }
     } else {

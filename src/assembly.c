@@ -300,7 +300,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) BL_ABORT("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path = _path;
+    const char *path  = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {
@@ -322,11 +322,11 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     return true;
 }
 
-static ConfData *load_module_config(const char *modulepath, struct token *import_from)
+static conf_data_t *load_module_config(const char *modulepath, struct token *import_from)
 {
     char tmp_path[PATH_MAX] = {0};
     snprintf(tmp_path, TARRAY_SIZE(tmp_path), "%s/%s", modulepath, MODULE_CONFIG_FILE);
-    ConfData *config = conf_data_new();
+    conf_data_t *config = conf_data_new();
     if (builder_compile_config(tmp_path, config, import_from) != COMPILE_OK) {
         conf_data_delete(config);
         return false;
@@ -334,7 +334,7 @@ static ConfData *load_module_config(const char *modulepath, struct token *import
     return config;
 }
 
-static INLINE s32 get_module_version(ConfData *config)
+static INLINE s32 get_module_version(conf_data_t *config)
 {
     BL_ASSERT(config);
     if (conf_data_has_key(config, CONF_MODULE_VERSION)) { // optional version
@@ -344,7 +344,7 @@ static INLINE s32 get_module_version(ConfData *config)
 }
 
 static bool import_module(struct assembly *assembly,
-                          ConfData *       config,
+                          conf_data_t *    config,
                           const char *     modulepath,
                           struct token *   import_from)
 {
@@ -608,12 +608,12 @@ struct assembly *assembly_new(const struct target *target)
                sizeof(TArray *),
                alignment_of(TArray *),
                EXPECTED_ARRAY_COUNT,
-               (ArenaElemDtor)tarray_dtor);
+               (arena_elem_dtor_t)tarray_dtor);
     arena_init(&assembly->arenas.small_array,
                sizeof(union _SmallArrays),
                alignment_of(union _SmallArrays),
                EXPECTED_ARRAY_COUNT,
-               (ArenaElemDtor)small_array_dtor);
+               (arena_elem_dtor_t)small_array_dtor);
     assembly->gscope =
         scope_create_safe(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT, NULL);
 
@@ -795,7 +795,7 @@ bool assembly_import_module(struct assembly *assembly,
     }
 
     TString *            local_path = get_tmpstr();
-    ConfData *           config     = NULL;
+    conf_data_t *        config     = NULL;
     const struct target *target     = assembly->target;
     const char *         module_dir = target->module_dir.len > 0 ? target->module_dir.data : NULL;
     const enum module_import_policy policy = assembly->target->module_policy;
@@ -828,7 +828,7 @@ bool assembly_import_module(struct assembly *assembly,
             tstring_setf(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
             config = load_module_config(system_path->data, import_from);
             if (config) system_version = get_module_version(config);
-            ConfData *local_config = load_module_config(local_path->data, import_from);
+            conf_data_t *local_config = load_module_config(local_path->data, import_from);
             if (local_config) local_version = get_module_version(local_config);
             conf_data_delete(local_config);
             do_copy = system_version > local_version;

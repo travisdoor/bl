@@ -47,7 +47,8 @@ static void small_array_dtor(TSmallArrayAny *arr)
     tsa_terminate(arr);
 }
 
-struct ast *ast_create_node(Arena *arena, AstKind c, struct token *tok, struct scope *parent_scope)
+struct ast *
+ast_create_node(struct arena *arena, enum ast_kind c, struct token *tok, struct scope *parent_scope)
 {
     struct ast *node  = arena_alloc(arena);
     node->kind        = c;
@@ -65,16 +66,16 @@ struct ast *ast_create_node(Arena *arena, AstKind c, struct token *tok, struct s
 }
 
 // public
-void ast_arena_init(Arena *arena)
+void ast_arena_init(struct arena *arena)
 {
     arena_init(arena,
                sizeof(struct ast),
                alignment_of(struct ast),
                ARENA_CHUNK_COUNT,
-               (ArenaElemDtor)node_dtor);
+               (arena_elem_dtor_t)node_dtor);
 }
 
-void ast_arena_terminate(Arena *arena)
+void ast_arena_terminate(struct arena *arena)
 {
     arena_terminate(arena);
 }
@@ -205,7 +206,7 @@ const char *ast_get_name(const struct ast *n)
     }
 }
 
-const char *ast_binop_to_str(BinopKind op)
+const char *ast_binop_to_str(enum binop_kind op)
 {
     switch (op) {
     case BINOP_INVALID:
@@ -269,7 +270,7 @@ const char *ast_binop_to_str(BinopKind op)
     return "invalid";
 }
 
-const char *ast_unop_to_str(UnopKind op)
+const char *ast_unop_to_str(enum unop_kind op)
 {
     switch (op) {
     case UNOP_NEG:

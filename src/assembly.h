@@ -182,9 +182,9 @@ struct assembly {
     struct {
         struct scope_arenas scope;
         struct mir_arenas   mir;
-        Arena               ast;
-        Arena               array;       // Used for all TArrays
-        Arena               small_array; // Used for all SmallArrays
+        struct arena        ast;
+        struct arena        array;       // Used for all TArrays
+        struct arena        small_array; // Used for all SmallArrays
     } arenas;
 
     struct {
@@ -231,8 +231,8 @@ struct assembly {
     } stats;
 
     // DynCall/Lib data used for external method execution in compile time
-    DCCallVM *dc_vm;
-    VM        vm;
+    DCCallVM *             dc_vm;
+    struct virtual_machine vm;
 
     TArray        units;  // array of all units in assembly
     struct scope *gscope; // global scope of the assembly

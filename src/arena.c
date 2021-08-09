@@ -34,52 +34,53 @@
 #include <pthread.h>
 #endif
 
-typedef struct ArenaChunk {
-    struct ArenaChunk *next;
-    s32                count;
-} ArenaChunk;
+struct arena_chunk {
+    struct arena_chunk *next;
+    s32                 count;
+};
 
-typedef struct ArenaSyncImpl {
+struct arena_sync_impl {
     pthread_mutex_t mtx;
-} ArenaSyncImpl;
+};
 
-static ArenaSyncImpl *sync_new(void)
+static struct arena_sync_impl *sync_new(void)
 {
-    ArenaSyncImpl *s = bl_malloc(sizeof(ArenaSyncImpl));
+    struct arena_sync_impl *s = bl_malloc(sizeof(struct arena_sync_impl));
     pthread_mutex_init(&s->mtx, NULL);
     return s;
 }
 
-static void sync_delete(ArenaSyncImpl *s)
+static void sync_delete(struct arena_sync_impl *s)
 {
     pthread_mutex_destroy(&s->mtx);
     bl_free(s);
 }
 
-static INLINE ArenaChunk *alloc_chunk(Arena *arena)
+static INLINE struct arena_chunk *alloc_chunk(struct arena *arena)
 {
     const usize chunk_size_in_bytes =
-        sizeof(ArenaChunk) + arena->elem_size_in_bytes * arena->elems_per_chunk;
-    ArenaChunk *chunk = bl_malloc(chunk_size_in_bytes);
+        sizeof(struct arena_chunk) + arena->elem_size_in_bytes * arena->elems_per_chunk;
+    struct arena_chunk *chunk = bl_malloc(chunk_size_in_bytes);
     if (!chunk) BL_ABORT("bad alloc");
     memset(chunk, 0, chunk_size_in_bytes);
     return chunk;
 }
 
-static INLINE void *get_from_chunk(Arena *arena, ArenaChunk *chunk, s32 i)
+static INLINE void *get_from_chunk(struct arena *arena, struct arena_chunk *chunk, s32 i)
 {
     BL_ASSERT(i >= 0 && i < arena->elems_per_chunk);
-    void *    elem = (void *)((char *)chunk + sizeof(ArenaChunk) + i * arena->elem_size_in_bytes);
+    void *elem =
+        (void *)((char *)chunk + sizeof(struct arena_chunk) + i * arena->elem_size_in_bytes);
     ptrdiff_t adj;
     align_ptr_up(&elem, arena->elem_alignment, &adj);
     BL_ASSERT(adj < arena->elem_alignment);
     return elem;
 }
 
-static INLINE ArenaChunk *free_chunk(Arena *arena, ArenaChunk *chunk)
+static INLINE struct arena_chunk *free_chunk(struct arena *arena, struct arena_chunk *chunk)
 {
     if (!chunk) return NULL;
-    ArenaChunk *next = chunk->next;
+    struct arena_chunk *next = chunk->next;
     if (arena->elem_dtor) {
         for (s32 i = 0; i < chunk->count; ++i) {
             arena->elem_dtor(get_from_chunk(arena, chunk, i));
@@ -89,11 +90,11 @@ static INLINE ArenaChunk *free_chunk(Arena *arena, ArenaChunk *chunk)
     return next;
 }
 
-void arena_init(Arena *       arena,
-                usize         elem_size_in_bytes,
-                s32           elem_alignment,
-                s32           elems_per_chunk,
-                ArenaElemDtor elem_dtor)
+void arena_init(struct arena *    arena,
+                usize             elem_size_in_bytes,
+                s32               elem_alignment,
+                s32               elems_per_chunk,
+                arena_elem_dtor_t elem_dtor)
 {
     arena->elem_size_in_bytes = elem_size_in_bytes + elem_alignment;
     arena->elems_per_chunk    = elems_per_chunk;
@@ -104,16 +105,16 @@ void arena_init(Arena *       arena,
     arena->sync               = sync_new();
 }
 
-void arena_terminate(Arena *arena)
+void arena_terminate(struct arena *arena)
 {
-    ArenaChunk *chunk = arena->first_chunk;
+    struct arena_chunk *chunk = arena->first_chunk;
     while (chunk) {
         chunk = free_chunk(arena, chunk);
     }
     sync_delete(arena->sync);
 }
 
-void *arena_alloc(Arena *arena)
+void *arena_alloc(struct arena *arena)
 {
     pthread_mutex_lock(&arena->sync->mtx);
     if (!arena->current_chunk) {
@@ -123,7 +124,7 @@ void *arena_alloc(Arena *arena)
 
     if (arena->current_chunk->count == arena->elems_per_chunk) {
         // last chunk node
-        ArenaChunk *chunk          = alloc_chunk(arena);
+        struct arena_chunk *chunk  = alloc_chunk(arena);
         arena->current_chunk->next = chunk;
         arena->current_chunk       = chunk;
     }

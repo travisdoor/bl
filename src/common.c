@@ -472,10 +472,9 @@ TArray *create_arr(struct assembly *assembly, usize size)
 
 void *_create_sarr(struct assembly *assembly, usize arr_size)
 {
-    BL_ASSERT(arr_size <= assembly->arenas.small_array.elem_size_in_bytes &&
-              "SmallArray is too big to be allocated inside arena, make array smaller "
-              "or arena "
-              "bigger.");
+    BL_ASSERT(
+        arr_size <= assembly->arenas.small_array.elem_size_in_bytes &&
+        "SmallArray is too big to be allocated inside arena, make array smaller or arena bigger.");
 
     TSmallArrayAny *tmp = arena_alloc(&assembly->arenas.small_array);
     tsa_init(tmp);

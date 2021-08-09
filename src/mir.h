@@ -123,15 +123,15 @@ struct mir_instr_call_loc;
 struct mir_instr_unroll;
 
 struct mir_arenas {
-    Arena instr;
-    Arena type;
-    Arena var;
-    Arena fn;
-    Arena member;
-    Arena variant;
-    Arena arg;
-    Arena fn_group;
-    Arena fn_poly;
+    struct arena instr;
+    struct arena type;
+    struct arena var;
+    struct arena fn;
+    struct arena member;
+    struct arena variant;
+    struct arena arg;
+    struct arena fn_group;
+    struct arena fn_poly;
 };
 
 struct mir_switch_case {
@@ -223,8 +223,8 @@ enum mir_cast_op {
 };
 
 struct dyncall_cb_context {
-    VM *           vm;
-    struct mir_fn *fn;
+    struct virtual_machine *vm;
+    struct mir_fn *         fn;
 };
 
 struct mir_fn_poly_recipe {
@@ -242,7 +242,7 @@ struct mir_fn_poly_recipe {
 struct mir_fn {
     // Must be first!!!
     struct mir_instr *  prototype;
-    ID *                id;
+    struct id *         id;
     struct ast *        decl_node;
     struct scope_entry *scope_entry;
 
@@ -305,7 +305,7 @@ struct mir_fn_group {
 // MEMBER
 struct mir_member {
     struct mir_type *   type;
-    ID *                id;
+    struct id *         id;
     struct ast *        decl_node;
     struct scope_entry *entry;
     s64                 index;
@@ -319,7 +319,7 @@ struct mir_member {
 // FUNCTION ARGUMENT
 struct mir_arg {
     struct mir_type *type;
-    ID *             id;
+    struct id *      id;
     struct ast *     decl_node;
     struct scope *   decl_scope;
 
@@ -408,8 +408,8 @@ struct mir_type_array {
 };
 
 struct mir_type {
-    ID *               user_id;
-    ID                 id;
+    struct id *        user_id;
+    struct id          id;
     LLVMTypeRef        llvm_type;
     LLVMMetadataRef    llvm_meta;
     usize              size_bits;
@@ -418,7 +418,7 @@ struct mir_type {
     s8                 alignment;
     bool               checked_and_complete;
 
-    // Optionally set pointer to RTTI var used by VM.
+    // Optionally set pointer to RTTI var used by Virtual Machine.
     struct mir_var *vm_rtti_var_cache;
 
     union {
@@ -440,8 +440,8 @@ struct mir_type {
 
 // VALUE
 struct mir_const_expr_value {
-    VMValue                     _tmp;
-    VMStackPtr                  data;
+    vm_value_t                  _tmp;
+    vm_stack_ptr_t              data;
     struct mir_type *           type;
     enum mir_value_address_mode addr_mode;
     bool                        is_comptime;
@@ -449,7 +449,7 @@ struct mir_const_expr_value {
 
 // VARIANT
 struct mir_variant {
-    ID *                id;
+    struct id *         id;
     struct scope_entry *entry;
     struct mir_type *   value_type;
     u64                 value;
@@ -458,12 +458,12 @@ struct mir_variant {
 // VAR
 struct mir_var {
     struct mir_const_expr_value value; // contains also allocated type
-    ID *                        id;
+    struct id *                 id;
     struct ast *                decl_node;
     struct scope *              decl_scope;
     struct scope_entry *        entry;
     struct mir_instr *          initializer_block;
-    VMRelativeStackPtr          rel_stack_ptr;
+    vm_relative_stack_ptr_t     rel_stack_ptr;
     LLVMValueRef                llvm_value;
     const char *                linkage_name;
     enum mir_builtin_id_kind    builtin_id;
@@ -624,7 +624,7 @@ struct mir_instr_set_initializer {
 struct mir_instr_binop {
     struct mir_instr base;
 
-    BinopKind         op;
+    enum binop_kind   op;
     struct mir_instr *lhs;
     struct mir_instr *rhs;
     bool              volatile_type;
@@ -633,7 +633,7 @@ struct mir_instr_binop {
 struct mir_instr_unop {
     struct mir_instr base;
 
-    UnopKind          op;
+    enum unop_kind    op;
     struct mir_instr *expr;
     bool              volatile_type;
 };
@@ -664,7 +664,7 @@ struct mir_instr_type_fn {
 struct mir_instr_type_fn_group {
     struct mir_instr base;
 
-    ID *                  id;
+    struct id *           id;
     TSmallArray_InstrPtr *variants;
 };
 
@@ -673,7 +673,7 @@ struct mir_instr_type_struct {
 
     // fwd_decl is optional pointer to forward declaration of this structure type.
     struct mir_instr *    fwd_decl;
-    ID *                  id;
+    struct id *           id;
     struct scope *        scope;
     TSmallArray_InstrPtr *members;
     bool                  is_packed;
@@ -685,7 +685,7 @@ struct mir_instr_type_struct {
 struct mir_instr_type_enum {
     struct mir_instr base;
 
-    ID *                  id;
+    struct id *           id;
     struct scope *        scope;
     TSmallArray_InstrPtr *variants;
     struct mir_instr *    base_type;
@@ -702,7 +702,7 @@ struct mir_instr_type_array {
 
     struct mir_instr *elem_type;
     struct mir_instr *len;
-    ID *              id;
+    struct id *       id;
 };
 
 struct mir_instr_type_slice {
@@ -726,7 +726,7 @@ struct mir_instr_type_vargs {
 struct mir_instr_type_poly {
     struct mir_instr base;
 
-    ID *T_id;
+    struct id *T_id;
 };
 
 struct mir_instr_call {
@@ -744,7 +744,7 @@ struct mir_instr_decl_ref {
     struct mir_instr base;
 
     struct unit *       parent_unit;
-    ID *                rid;
+    struct id *         rid;
     struct scope *      scope;
     s32                 scope_layer;
     struct scope_entry *scope_entry;
@@ -772,9 +772,9 @@ struct mir_instr_cond_br {
     struct mir_instr_block *then_block;
     struct mir_instr_block *else_block;
 
-    // This value is used only during execution in VM, when conditional break is generated to be
-    // used as pre-instruction to PHI, we must keep condition value on stack (if it's not compile
-    // time known) in order to be used as resolution of PHI expression.
+    // This value is used only during execution in Virtual Machine, when conditional break is
+    // generated to be used as pre-instruction to PHI, we must keep condition value on stack (if
+    // it's not compile time known) in order to be used as resolution of PHI expression.
     bool keep_stack_value;
 };
 
@@ -941,7 +941,7 @@ const char *mir_instr_name(const struct mir_instr *instr);
 void        mir_run(struct assembly *assembly);
 
 #if BL_DEBUG
-VMStackPtr _mir_cev_read(struct mir_const_expr_value *value);
+vm_stack_ptr_t _mir_cev_read(struct mir_const_expr_value *value);
 #endif
 
 #endif

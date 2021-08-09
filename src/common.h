@@ -112,12 +112,12 @@ TSMALL_ARRAY_TYPE(Char, char, 128);
 TSMALL_ARRAY_TYPE(CharPtr, char *, 8);
 TSMALL_ARRAY_TYPE(FnPtr, struct mir_fn *, 8);
 
-typedef struct ID {
+struct id {
     const char *str;
     u64         hash;
-} ID;
+};
 
-static INLINE ID *id_init(ID *id, const char *str)
+static INLINE struct id *id_init(struct id *id, const char *str)
 {
     BL_ASSERT(id);
     id->hash = thash_from_str(str);
@@ -125,19 +125,19 @@ static INLINE ID *id_init(ID *id, const char *str)
     return id;
 }
 
-static INLINE bool is_ignored_id(const ID *id)
+static INLINE bool is_ignored_id(const struct id *id)
 {
     BL_ASSERT(id);
     return strcmp(id->str, "_") == 0;
 }
 
-typedef enum {
+enum search_flags {
     SEARCH_FLAG_ABS         = 0,
     SEARCH_FLAG_WDIR        = 1,
     SEARCH_FLAG_LIB_DIR     = 2,
     SEARCH_FLAG_SYSTEM_PATH = 4,
     SEARCH_FLAG_ALL         = SEARCH_FLAG_WDIR | SEARCH_FLAG_LIB_DIR | SEARCH_FLAG_SYSTEM_PATH,
-} SearchFlags;
+};
 
 // Search file specified by 'filepath' and sets output filepath (full file location) and output
 // directory path (path without file name).
