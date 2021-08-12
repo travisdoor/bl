@@ -18,3 +18,87 @@ test_random_number_range_2 :: fn () #test {
         test_lt(r, 100);
     }
 }
+
+flags_1 :: fn () #test {
+    F1 : u32 : 1;
+    F2 : u32 : 2;
+    F3 : u32 : 4;
+    f: u32;
+    test_false(is_flag(f, F1));
+    test_false(is_flag(f, F2));
+    test_false(is_flag(f, F3));
+    
+    set_flag(&f, F1);
+    test_true(is_flag(f, F1));
+    test_false(is_flag(f, F2));
+    test_false(is_flag(f, F3));
+    
+    set_flag(&f, F2);
+    test_true(is_flag(f, F1));
+    test_true(is_flag(f, F2));
+    test_false(is_flag(f, F3));
+    
+    set_flag(&f, F3);
+    test_true(is_flag(f, F1));
+    test_true(is_flag(f, F2));
+    test_true(is_flag(f, F3));
+    
+    clr_flag(&f, F3);
+    test_true(is_flag(f, F1));
+    test_true(is_flag(f, F2));
+    test_false(is_flag(f, F3));
+
+    clr_flag(&f, F2);
+    test_true(is_flag(f, F1));
+    test_false(is_flag(f, F2));
+    test_false(is_flag(f, F3));
+
+    clr_flag(&f, F1);
+    test_false(is_flag(f, F1));
+    test_false(is_flag(f, F2));
+    test_false(is_flag(f, F3));
+}
+
+flags_enum :: fn () #test {
+    F :: enum { // @Incomplete: Use #flags enum tag when it gets implemented.
+        F0 :: 0;
+        F1 :: 1;
+        F2 :: 2;
+        F3 :: 4;
+    };
+    
+    f: F;
+    test_false(is_flag(f, F.F1));
+    test_false(is_flag(f, F.F2));
+    test_false(is_flag(f, F.F3));
+    
+    set_flag(&f, F.F1);
+    test_true(is_flag(f, F.F1));
+    test_false(is_flag(f, F.F2));
+    test_false(is_flag(f, F.F3));
+    
+    set_flag(&f, F.F2);
+    test_true(is_flag(f, F.F1));
+    test_true(is_flag(f, F.F2));
+    test_false(is_flag(f, F.F3));
+    
+    set_flag(&f, F.F3);
+    test_true(is_flag(f, F.F1));
+    test_true(is_flag(f, F.F2));
+    test_true(is_flag(f, F.F3));
+    
+    clr_flag(&f, F.F3);
+    test_true(is_flag(f, F.F1));
+    test_true(is_flag(f, F.F2));
+    test_false(is_flag(f, F.F3));
+
+    clr_flag(&f, F.F2);
+    test_true(is_flag(f, F.F1));
+    test_false(is_flag(f, F.F2));
+    test_false(is_flag(f, F.F3));
+
+    clr_flag(&f, F.F1);
+    test_false(is_flag(f, F.F1));
+    test_false(is_flag(f, F.F2));
+    test_false(is_flag(f, F.F3));
+}
