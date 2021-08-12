@@ -6111,7 +6111,7 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
-        if (analyze_slot(ctx, &analyze_slot_conf_basic, &c->on_value, expected_case_type) !=
+        if (analyze_slot(ctx, &analyze_slot_conf_default, &c->on_value, expected_case_type) !=
             ANALYZE_PASSED) {
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }

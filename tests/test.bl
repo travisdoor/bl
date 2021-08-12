@@ -1,7 +1,13 @@
 main :: fn () s32 {
-    flags: u32 = 0;
-    set_flag(&flags, 1);
-    return auto flags;
+    switch sizeof(s32) {
+        4 { print("4\n");}
+        default { print("default!\n");}
+    }
+    
+    f: u32;
+    set_flag(&f, 1);
+        
+    return 0;
 }
 
 

@@ -41,7 +41,7 @@ set_flag :: fn (flags: *?T, flag: T) T #inline {
     assert(flags);
     assert(is_integer(typeinfo(T)) || is_enum(typeinfo(T))); // @Incomplete: Use static assert.
     // @Incomplete: Check enums for #flags tag.
-    switch cast(s32) sizeof(T) { // @Cleanup: This is needed only for enums, we can create separate compile
+    switch sizeof(T) { // @Cleanup: This is needed only for enums, we can create separate compile
                        //           time branch later.
         1 { f := cast(*u8)flags;  @f |= cast(u8) flag;  }
         2 { f := cast(*u16)flags; @f |= cast(u16) flag; }
