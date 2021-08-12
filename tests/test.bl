@@ -1,49 +1,7 @@
-Flags :: enum {
-    None :: 0;
-    A :: 1; // 1
-    B :: 2; // 2
-    C :: 4; // 4
-    D :: A | B;
-}
-
-_set_flag :: fn (flags: *?T, flag: T) T #inline {
-    assert(flags);
-    assert(is_integer(typeinfo(T)) || is_enum(typeinfo(T))); // @Incomplete: Use static assert.
-    iflags := cast(*u64)flags; // @Incomplete: Casting to u64 can be unsafe here?
-    @iflags |= cast(u64) flag;
-    return @flags;
-}
-
-_clr_flag :: fn (flags: *?T, flag: T) T #inline {
-    assert(flags);
-    assert(is_integer(typeinfo(T)) || is_enum(typeinfo(T))); // @Incomplete: Use static assert.
-    iflags := cast(*u64)flags; // @Incomplete: Casting to u64 can be unsafe here?
-    @iflags &= ~cast(u64)flag;
-    return @flags;
-}
-
-_is_flag :: fn (flags: ?T, flag: T) bool #inline {
-    assert(is_integer(typeinfo(T)) || is_enum(typeinfo(T))); // @Incomplete: Use static assert.
-    return (cast(u64)flags & cast(u64)flag) == cast(u64) flag;
-}
-
-is_number :: fn (info: *TypeInfo) bool {
-    assert(info);
-    return info.kind == TypeKind.Int;
-}
-
-is_enum :: fn (info: *TypeInfo) bool {
-    assert(info);
-    return info.kind == TypeKind.Enum;
-}
-
 main :: fn () s32 {
-    flags: Flags;
-    print("%\n", fmt_int(cast(u32) flags, FmtIntBase.Bin));
-    _set_flag(&flags, Flags.A);
-    _set_flag(&flags, Flags.C);
-    print("%\n", fmt_int(cast(u32) flags, FmtIntBase.Bin));
-    return 0;
+    flags: u32 = 0;
+    set_flag(&flags, 1);
+    return auto flags;
 }
 
 
