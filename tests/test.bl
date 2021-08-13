@@ -1,12 +1,12 @@
+Flags :: enum #flags {
+    A; // 0
+    B; // 1
+    C; // 2
+    D; // 4 ...
+}
+
 main :: fn () s32 {
-    switch sizeof(s32) {
-        4 { print("4\n");}
-        default { print("default!\n");}
-    }
-    
-    f: u32;
-    set_flag(&f, 1);
-        
+    print("%\n", Flags);
     return 0;
 }
 

@@ -90,6 +90,7 @@ typedef enum {
     HD_EXPORT       = 1 << 20,
     HD_SCOPE        = 1 << 21,
     HD_THREAD_LOCAL = 1 << 22,
+    HD_FLAGS        = 1 << 23,
 } HashDirective;
 
 struct context {
@@ -495,8 +496,7 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
                         tok_directive,
                         BUILDER_CUR_WORD,
-                        "Unexpected directive. Base can be used only in context with "
-                        "struct literal.");
+                        "Unexpected directive. Base can be used only for structures.");
             return ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx));
         }
 
@@ -566,6 +566,18 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
             ast_create_node(ctx->ast_arena, AST_EXPR_LIT_INT, tok_directive, SCOPE_GET(ctx));
         line->data.expr_integer.val = tok_directive->location.line;
         return line;
+    }
+
+    if (strcmp(directive, "flags") == 0) {
+        set_satisfied(HD_FLAGS);
+        if (IS_NOT_FLAG(expected_mask, HD_FLAGS)) {
+            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
+                        tok_directive,
+                        BUILDER_CUR_WORD,
+                        "Unexpected directive. Flags can be used only for enums.");
+            return ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx));
+        }
+        return NULL;
     }
 
     if (strcmp(directive, "entry") == 0) {
@@ -1208,39 +1220,37 @@ struct ast *parse_decl_variant(struct context *ctx, struct ast *prev)
     struct token *tok_begin = tokens_peek(ctx->tokens);
     struct ast *  name      = parse_ident(ctx);
     if (!name) return NULL;
-
-    struct ast *var = ast_create_node(ctx->ast_arena, AST_DECL_VARIANT, tok_begin, SCOPE_GET(ctx));
-    var->docs       = pop_docs(ctx);
+    struct ast *variant =
+        ast_create_node(ctx->ast_arena, AST_DECL_VARIANT, tok_begin, SCOPE_GET(ctx));
+    variant->docs = pop_docs(ctx);
 
     // TODO: Validate correcly '::'
     struct token *tok_assign = tokens_consume_if(ctx->tokens, SYM_COLON);
     tok_assign               = tokens_consume_if(ctx->tokens, SYM_COLON);
     if (tok_assign) {
-        var->data.decl_variant.value = parse_expr(ctx);
-        if (!var->data.decl_variant.value) BL_ABORT("Expected enum variant value");
+        variant->data.decl_variant.value = parse_expr(ctx);
+        if (!variant->data.decl_variant.value) BL_ABORT("Expected enum variant value");
     } else if (prev) {
         BL_ASSERT(prev->kind == AST_DECL_VARIANT);
         struct ast *addition =
             ast_create_node(ctx->ast_arena, AST_EXPR_LIT_INT, tok_begin, SCOPE_GET(ctx));
         addition->data.expr_integer.val = 1;
-
         struct ast *binop =
             ast_create_node(ctx->ast_arena, AST_EXPR_BINOP, tok_begin, SCOPE_GET(ctx));
-        binop->data.expr_binop.kind = BINOP_ADD;
-        binop->data.expr_binop.lhs  = prev->data.decl_variant.value;
-        binop->data.expr_binop.rhs  = addition;
-
-        var->data.decl_variant.value = binop;
+        binop->data.expr_binop.kind      = BINOP_ADD;
+        binop->data.expr_binop.lhs       = prev->data.decl_variant.value;
+        binop->data.expr_binop.rhs       = addition;
+        variant->data.decl_variant.value = binop;
     } else {
         // first variant is allways 0
-        var->data.decl_variant.value =
+        variant->data.decl_variant.value =
             ast_create_node(ctx->ast_arena, AST_EXPR_LIT_INT, NULL, SCOPE_GET(ctx));
-        var->data.decl_variant.value->data.expr_integer.val = 0;
+        variant->data.decl_variant.value->data.expr_integer.val = 0;
     }
 
-    BL_ASSERT(var->data.decl_variant.value);
-    var->data.decl.name = name;
-    return var;
+    BL_ASSERT(variant->data.decl_variant.value);
+    variant->data.decl.name = name;
+    return variant;
 }
 
 bool parse_semicolon(struct context *ctx)
@@ -2013,7 +2023,7 @@ struct ast *parse_type_enum(struct context *ctx)
     // parse flags
     struct ast *curr_decl = DECL_GET(ctx);
     if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
-        u32 accepted = HD_COMPILER;
+        u32 accepted = HD_COMPILER | HD_FLAGS;
         u32 flags    = 0;
         while (true) {
             HashDirective found = HD_NONE;
