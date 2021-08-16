@@ -5,7 +5,7 @@ Foo :: struct {
 }
 
 Bar :: enum {
-    A :: 1;
+    A = 1;
     B;
     C;
 }

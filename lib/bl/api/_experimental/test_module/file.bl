@@ -1,3 +1,0 @@
-test_module_function :: fn () {
-    print("Hello!!!\n");
-}

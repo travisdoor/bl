@@ -1224,12 +1224,21 @@ struct ast *parse_decl_variant(struct context *ctx, struct ast *prev)
         ast_create_node(ctx->ast_arena, AST_DECL_VARIANT, tok_begin, SCOPE_GET(ctx));
     variant->docs = pop_docs(ctx);
 
-    // TODO: Validate correcly '::'
-    struct token *tok_assign = tokens_consume_if(ctx->tokens, SYM_COLON);
-    tok_assign               = tokens_consume_if(ctx->tokens, SYM_COLON);
+    struct token *tok_assign = tokens_consume_if(ctx->tokens, SYM_ASSIGN);
     if (tok_assign) {
-        variant->data.decl_variant.value = parse_expr(ctx);
-        if (!variant->data.decl_variant.value) BL_ABORT("Expected enum variant value");
+        struct ast *expr = parse_expr(ctx);
+        if (!expr) {
+            struct token *tok_err = tokens_peek(ctx->tokens);
+            builder_msg(BUILDER_MSG_ERROR,
+                        ERR_EXPECTED_NAME,
+                        &tok_err->location,
+                        BUILDER_CUR_AFTER,
+                        "Expected enumerator variant value.");
+
+            return ast_create_node(ctx->ast_arena, AST_BAD, tok_err, SCOPE_GET(ctx));
+        }
+        variant->data.decl_variant.value = expr;
+#if 0 // @Cleanup
     } else if (prev) {
         BL_ASSERT(prev->kind == AST_DECL_VARIANT);
         struct ast *addition =
@@ -1246,9 +1255,10 @@ struct ast *parse_decl_variant(struct context *ctx, struct ast *prev)
         variant->data.decl_variant.value =
             ast_create_node(ctx->ast_arena, AST_EXPR_LIT_INT, NULL, SCOPE_GET(ctx));
         variant->data.decl_variant.value->data.expr_integer.val = 0;
+#endif
     }
 
-    BL_ASSERT(variant->data.decl_variant.value);
+    // BL_ASSERT(variant->data.decl_variant.value); // @Cleanup
     variant->data.decl.name = name;
     return variant;
 }

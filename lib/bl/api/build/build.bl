@@ -159,40 +159,40 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
 
 /// Specification of compiler output binary kind.
 TargetKind :: enum {
-    Executable    :: 1;
-    SharedLibrary :: 2;
+    Executable    = 1;
+    SharedLibrary = 2;
 }
 
 /// Specify target build mode. Every :ref:`Target` can be compiled with various configuration options.
 /// The `BuildMode` can specify which set of options compiler should use.
 BuildMode :: enum s32 {
     /// Generates debug symbols and produce binary without any optimizations.
-    Debug :: 1;
+    Debug = 1;
     /// Fast release mode; no debug symbols are produced, all possible optimizations
     /// are applied to produce binary as fast as possible.
     /// The :ref:`assert` is disabled unless :ref:`Target`.assert_mode is ``AlwaysEnabled``.
-    ReleaseFast :: 2;
+    ReleaseFast = 2;
     /// Small release mode; no debug symbols are produced, optimizations are applied
     /// to produce binary reasonably fast and as small as possible.
     /// The :ref:`assert` is disabled unless :ref:`Target`.assert_mode is ``AlwaysEnabled``.
-    ReleaseSmall :: 3;
+    ReleaseSmall = 3;
 }
 
 /// Debug information format.
 DebugInfo :: enum s32 {
-    Dwarf :: 1;
-    Codeview :: 2;
+    Dwarf = 1;
+    Codeview = 2;
 }
 
 /// Specification of :ref:`assert` mode used for :ref:`Target`.
 AssertMode :: enum s32 {
     /// By default compiler emits  all assertions in :ref:`BuildMode`.Debug and skips all assertions
     /// in all optimized release modes.
-    Default :: 0;
+    Default = 0;
     /// Force-enable assertion in all build modes.
-    AlwaysEnabled :: 1;
+    AlwaysEnabled = 1;
     /// Force-disable assertion in all build modes.
-    AlwaysDisabled :: 2;
+    AlwaysDisabled = 2;
 }
 
 /// Add new executable target into the current compilation queue. Target with
@@ -344,18 +344,18 @@ ModuleImportPolicy :: enum s32 {
     /// Use system modules but prefer local ones in module directory. This option
     /// disables any copying and version check. Local module directory can contain custom
     /// project related modules you don't want to expose to the whole system.
-    System :: 0;
+    System = 0;
  
     /// Bundle only missing modules from system into the local module folder and ignore
     /// if there is newer version available. Individual module updates can be done by
     /// renaming old one and re-run compilation. Custom modules (not comming from main
     /// API folder are kept untouched.)
-    Bundle :: 1;
+    Bundle = 1;
 
     /// Bundle all missing modules from system into the local module folder and update
     /// old ones also. Custom modules (not comming from main API folder are kept untouched.)
     /// Compiler will create `.bak` backup directory for every module before any updates.
-    BundleLatest :: 2;
+    BundleLatest = 2;
 }
 
 /// Sets module directory `dir` for `target`. All imported modules will be copied into

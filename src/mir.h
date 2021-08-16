@@ -527,6 +527,7 @@ struct mir_instr_decl_variant {
 
     struct mir_variant *variant;
     struct mir_instr *  value; // Optional.
+    struct mir_instr *  base_type;
 };
 
 struct mir_instr_decl_arg {

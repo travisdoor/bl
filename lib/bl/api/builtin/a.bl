@@ -82,31 +82,31 @@
 /// safe casting.
 TypeKind :: enum #compiler {
     /// Base type of all types in type system.
-    Type    :: 1;
+    Type    = 1;
     /// Void type. (Implicitly used for functions without return value)
-    Void    :: 2;
+    Void    = 2;
     /// Any integer type: `s8`, `s16`, `s32`, `s64`, `u8`, `u16`, `u32`, `u64`, `usize`.
-    Int     :: 3;
+    Int     = 3;
     /// Any real type: `f32`, `f64`.
-    Real    :: 4;
+    Real    = 4;
     /// Function type. 
-    Fn      :: 5;
+    Fn      = 5;
     /// Pointer type. 
-    Ptr     :: 6;
+    Ptr     = 6;
     /// Boolean type. 
-    Bool    :: 7;
+    Bool    = 7;
     /// Array type. 
-    Array   :: 8;
+    Array   = 8;
     /// Structure type. 
-    Struct  :: 9;
+    Struct  = 9;
     /// Enumerator type. 
-    Enum    :: 10;
+    Enum    = 10;
     /// Null-value type. 
-    Null    :: 11;
+    Null    = 11;
     /// String type. 
-    String  :: 12;
+    String  = 12;
     /// Function group type. 
-    FnGroup :: 16;
+    FnGroup = 16;
 };
 
 /// Base `TypeInfo` structure returned by `typeinfo` operator. This structure pointer can be casted to 

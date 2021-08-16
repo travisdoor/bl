@@ -61,10 +61,10 @@ flags_1 :: fn () #test {
 
 flags_enum :: fn () #test {
     F :: enum { // @Incomplete: Use #flags enum tag when it gets implemented.
-        F0 :: 0;
-        F1 :: 1;
-        F2 :: 2;
-        F3 :: 4;
+        F0 = 0;
+        F1 = 1;
+        F2 = 2;
+        F3 = 4;
     };
     
     f: F;

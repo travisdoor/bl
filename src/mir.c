@@ -722,7 +722,10 @@ static void              ast_stmt_switch(struct context *ctx, struct ast *stmt_s
 static struct mir_instr *ast_decl_entity(struct context *ctx, struct ast *entity);
 static struct mir_instr *ast_decl_arg(struct context *ctx, struct ast *arg);
 static struct mir_instr *ast_decl_member(struct context *ctx, struct ast *arg);
-static struct mir_instr *ast_decl_variant(struct context *ctx, struct ast *variant);
+static struct mir_instr *ast_decl_variant(struct context *  ctx,
+                                          struct ast *      variant,
+                                          struct mir_instr *base_type,
+                                          struct mit_instr *prev_variant);
 static struct mir_instr *ast_ref(struct context *ctx, struct ast *ref);
 static struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct);
 static struct mir_instr *ast_type_fn(struct context *ctx, struct ast *type_fn);
@@ -10268,7 +10271,10 @@ struct mir_instr *ast_decl_member(struct context *ctx, struct ast *arg)
     return result;
 }
 
-struct mir_instr *ast_decl_variant(struct context *ctx, struct ast *variant)
+struct mir_instr *ast_decl_variant(struct context *  ctx,
+                                   struct ast *      variant,
+                                   struct mir_instr *base_type,
+                                   struct mir_instr *prev_variant)
 {
     struct ast *ast_name  = variant->data.decl.name;
     struct ast *ast_value = variant->data.decl_variant.value;
@@ -10430,12 +10436,15 @@ struct mir_instr *ast_type_enum(struct context *ctx, struct ast *type_enum)
 
     // Build variant instructions
     struct mir_instr *variant;
+    struct mir_instr *prev_variant = NULL;
     struct ast *      ast_variant;
     TSA_FOREACH(ast_variants, ast_variant)
     {
-        variant = ast(ctx, ast_variant);
+        BL_ASSERT(ast_variant->kind == AST_DECL_VARIANT);
+        variant = ast_decl_variant(ctx, ast_variant, base_type, prev_variant);
         BL_ASSERT(variant);
         tsa_push_InstrPtr(variants, variant);
+        prev_variant = variant;
     }
     // Consume declaration identificator.
     struct id *id              = ctx->ast.current_entity_id;
@@ -10642,7 +10651,7 @@ struct mir_instr *ast(struct context *ctx, struct ast *node)
     case AST_DECL_MEMBER:
         return ast_decl_member(ctx, node);
     case AST_DECL_VARIANT:
-        return ast_decl_variant(ctx, node);
+        BL_UNIMPLEMENTED;
     case AST_REF:
         return ast_ref(ctx, node);
     case AST_TYPE_STRUCT:

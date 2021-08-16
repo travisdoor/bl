@@ -1,4 +1,4 @@
-Flags :: enum #flags {
+Flags :: enum u32 #flags {
     A; // 0
     B; // 1
     C; // 2

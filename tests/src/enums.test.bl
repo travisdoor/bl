@@ -22,8 +22,8 @@ custom_enum_type :: fn () #test {
 
 custom_enum_values :: fn () #test {
     E :: enum {
-        A :: 10;
-        B :: 20;
+        A = 10;
+        B = 20;
         C
     };
     test_eq(E.A, cast(E) 10);
@@ -33,9 +33,9 @@ custom_enum_values :: fn () #test {
 
 enums_with_variant_references :: fn () #test {
     E :: enum {
-        A :: 10;
-        B :: A + 1;
-        C :: A + B
+        A = 10;
+        B = A + 1;
+        C = A + B
     };
     test_eq(E.A, cast(E) 10);
     test_eq(E.B, cast(E) 11);
@@ -44,9 +44,9 @@ enums_with_variant_references :: fn () #test {
 
 enum_negative :: fn () #test {
     E :: enum {
-        A :: -1;
-        B :: -2;
-        C :: -3;
+        A = -1;
+        B = -2;
+        C = -3;
     };        
     test_eq(E.A, cast(E) -1);
     test_eq(E.B, cast(E) -2);
@@ -55,7 +55,7 @@ enum_negative :: fn () #test {
 
 enum_negative_2 :: fn () #test {
     E :: enum {
-        A :: -1;
+        A = -1;
         B;
         C;
     };        

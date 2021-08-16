@@ -68,7 +68,7 @@ union_type_default_init :: fn () #test {
 
 enum_type_default_init :: fn () #test {
     Bar :: enum {
-        A :: 1;
+        A = 1;
         B;
         C;
     };
