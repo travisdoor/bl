@@ -407,16 +407,32 @@ print_any :: fn (buf: *?T, cur: s32, any: *Any) s32 {
         info_base_type := cast(*TypeInfoInt) info.base_type;
 
         value := s64_from_u8_ptr(any.data, info_base_type.bit_count); 
-
-        loop i := 0; i < info.variants.len; i += 1 {
-            if info.variants[i].value == value {
-                cur = print_string(buf, cur, info.name);
-                cur = print_string(buf, cur, ".");
-                return print_string(buf, cur, info.variants[i].name);
+        if info.is_flags && value > 0 { 
+            is_first := true;
+            loop i := 0; i < info.variants.len; i += 1 {
+                variant_value :: info.variants[i].value;
+                if variant_value == 0 { continue; }
+                if (variant_value & (variant_value - 1)) != 0 { continue; }
+                if is_flag(value, variant_value) {
+                    if !is_first { cur = print_string(buf, cur, " | "); }
+                    is_first = false;
+                    cur = print_string(buf, cur, info.name);
+                    cur = print_string(buf, cur, ".");
+                    cur = print_string(buf, cur, info.variants[i].name);
+                }
+            }
+            if !is_first { return cur; }
+        } else {
+            loop i := 0; i < info.variants.len; i += 1 {
+                if info.variants[i].value == value {
+                    cur = print_string(buf, cur, info.name);
+                    cur = print_string(buf, cur, ".");
+                    return print_string(buf, cur, info.variants[i].name);
+                }
             }
         }
 
-        if value < 0 { // negative number
+        if value < 0 {
             cur = print_string(buf, cur, "-");
             value = -value;
         }

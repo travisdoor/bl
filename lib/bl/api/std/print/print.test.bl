@@ -259,3 +259,32 @@ test_bprint_1 :: fn () #test {
     test_eq(w, auto buf.len-1);
     test_eq(buf[9], '\0');
 }
+
+print_enum_1 :: fn () #test {
+    F :: enum #flags {
+        A = 0; B; C; D = B | C; E; F = D | E;
+    };
+    a :: sprint("%", F.A);
+    defer String.delete(a);
+    test_eq(a, "F.A");
+    
+    b :: sprint("%", F.B);
+    defer String.delete(b);
+    test_eq(b, "F.B");
+    
+    c :: sprint("%", F.C);
+    defer String.delete(c);
+    test_eq(c, "F.C");
+
+    d :: sprint("%", F.D);
+    defer String.delete(d);
+    test_eq(d, "F.B | F.C");
+
+    e :: sprint("%", F.E);
+    defer String.delete(e);
+    test_eq(e, "F.E");
+    
+    f :: sprint("%", F.F);
+    defer String.delete(f);
+    test_eq(f, "F.B | F.C | F.E");
+}

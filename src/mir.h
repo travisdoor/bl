@@ -396,6 +396,7 @@ struct mir_type_enum {
     struct scope *          scope;
     struct mir_type *       base_type;
     TSmallArray_VariantPtr *variants; // struct mir_variant *
+    bool                    is_flags;
 };
 
 struct mir_type_null {
@@ -529,6 +530,7 @@ struct mir_instr_decl_variant {
     struct mir_variant *prev_variant; // Optional.
     struct mir_instr *  value;        // Optional.
     struct mir_instr *  base_type;    // Optional.
+    bool                is_flags;
 };
 
 struct mir_instr_decl_arg {
@@ -691,6 +693,7 @@ struct mir_instr_type_enum {
     struct scope *        scope;
     TSmallArray_InstrPtr *variants;
     struct mir_instr *    base_type;
+    bool                  is_flags;
 };
 
 struct mir_instr_type_ptr {

@@ -1234,31 +1234,10 @@ struct ast *parse_decl_variant(struct context *ctx, struct ast *prev)
                         &tok_err->location,
                         BUILDER_CUR_AFTER,
                         "Expected enumerator variant value.");
-
             return ast_create_node(ctx->ast_arena, AST_BAD, tok_err, SCOPE_GET(ctx));
         }
         variant->data.decl_variant.value = expr;
-#if 0 // @Cleanup
-    } else if (prev) {
-        BL_ASSERT(prev->kind == AST_DECL_VARIANT);
-        struct ast *addition =
-            ast_create_node(ctx->ast_arena, AST_EXPR_LIT_INT, tok_begin, SCOPE_GET(ctx));
-        addition->data.expr_integer.val = 1;
-        struct ast *binop =
-            ast_create_node(ctx->ast_arena, AST_EXPR_BINOP, tok_begin, SCOPE_GET(ctx));
-        binop->data.expr_binop.kind      = BINOP_ADD;
-        binop->data.expr_binop.lhs       = prev->data.decl_variant.value;
-        binop->data.expr_binop.rhs       = addition;
-        variant->data.decl_variant.value = binop;
-    } else {
-        // first variant is allways 0
-        variant->data.decl_variant.value =
-            ast_create_node(ctx->ast_arena, AST_EXPR_LIT_INT, NULL, SCOPE_GET(ctx));
-        variant->data.decl_variant.value->data.expr_integer.val = 0;
-#endif
     }
-
-    // BL_ASSERT(variant->data.decl_variant.value); // @Cleanup
     variant->data.decl.name = name;
     return variant;
 }
@@ -1299,6 +1278,7 @@ bool hash_directive_to_flags(HashDirective hd, u32 *out_flags)
         FLAG_CASE(HD_TEST_FN, FLAG_TEST_FN);
         FLAG_CASE(HD_EXPORT, FLAG_EXPORT);
         FLAG_CASE(HD_THREAD_LOCAL, FLAG_THREAD_LOCAL);
+        FLAG_CASE(HD_FLAGS, FLAG_FLAGS);
     default:
         break;
     }
@@ -2031,8 +2011,7 @@ struct ast *parse_type_enum(struct context *ctx)
     enm->data.type_enm.type     = parse_type(ctx);
 
     // parse flags
-    struct ast *curr_decl = DECL_GET(ctx);
-    if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
+    {
         u32 accepted = HD_COMPILER | HD_FLAGS;
         u32 flags    = 0;
         while (true) {
@@ -2041,8 +2020,11 @@ struct ast *parse_type_enum(struct context *ctx)
             if (!hash_directive_to_flags(found, &flags)) break;
             accepted &= ~found;
         }
-
-        curr_decl->data.decl_entity.flags |= flags;
+        struct ast *curr_decl = DECL_GET(ctx);
+        if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
+            curr_decl->data.decl_entity.flags |= flags;
+        }
+        enm->data.type_enm.is_flags = IS_FLAG(flags, FLAG_FLAGS);
     }
 
     struct token *tok = tokens_consume(ctx->tokens);

@@ -63,3 +63,51 @@ enum_negative_2 :: fn () #test {
     test_eq(E.B, cast(E) 0);
     test_eq(E.C, cast(E) 1);
 }
+
+enum_flags_1 :: fn () #test {
+    F :: enum u8 #flags {
+        A; B; C; D;
+    };
+    f: F;
+    test_eq(f, F.A);
+    test_eq(cast(s32)f, 1);
+    test_eq(cast(s32)F.A, 0b1);
+    test_eq(cast(s32)F.B, 0b10);
+    test_eq(cast(s32)F.C, 0b100);
+    test_eq(cast(s32)F.D, 0b1000);
+}
+
+enum_flags_2 :: fn () #test {
+    F :: enum u8 #flags {
+        A = 0; B; C; D;
+    };
+    f: F;
+    test_eq(f, F.A);
+    test_eq(cast(s32)f, 0);
+    test_eq(cast(s32)F.A, 0);
+    test_eq(cast(s32)F.B, 0b1);
+    test_eq(cast(s32)F.C, 0b10);
+    test_eq(cast(s32)F.D, 0b100);
+}
+
+enum_flags_3 :: fn () #test {
+    F :: enum #flags {
+        A; B; C; D = B | C; E;
+    };
+    f: F;
+    test_eq(f, F.A);
+    test_eq(cast(s32)f, 1);
+    test_eq(cast(s32)F.A, 0b0001);
+    test_eq(cast(s32)F.B, 0b0010);
+    test_eq(cast(s32)F.C, 0b0100);
+    test_eq(cast(s32)F.D, 0b0110);
+    test_eq(cast(s32)F.E, 0b1000);
+}
+
+enum_flags_4 :: fn () #test {
+    F :: enum #flags {
+        A; B; C; D = B | C; E;
+    };
+    info :: cast(*TypeInfoEnum) typeinfo(F);
+    test_true(info.is_flags);
+}

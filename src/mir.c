@@ -347,7 +347,8 @@ static struct mir_type *create_type_enum(struct context *        ctx,
                                          struct id *             id,
                                          struct scope *          scope,
                                          struct mir_type *       base_type,
-                                         TSmallArray_VariantPtr *variants);
+                                         TSmallArray_VariantPtr *variants,
+                                         const bool              is_flags);
 
 struct mir_type *_create_type_struct_slice(struct context *   ctx,
                                            enum mir_type_kind kind,
@@ -571,7 +572,8 @@ static struct mir_instr *append_instr_type_enum(struct context *      ctx,
                                                 struct id *           id,
                                                 struct scope *        scope,
                                                 TSmallArray_InstrPtr *variants,
-                                                struct mir_instr *    base_type);
+                                                struct mir_instr *    base_type,
+                                                const bool            is_flags);
 
 static struct mir_instr *
 append_instr_type_ptr(struct context *ctx, struct ast *node, struct mir_instr *type);
@@ -657,7 +659,8 @@ static struct mir_instr *append_instr_decl_variant(struct context *    ctx,
                                                    struct ast *        node,
                                                    struct mir_instr *  value,
                                                    struct mir_instr *  base_type,
-                                                   struct mir_variant *prev_variant);
+                                                   struct mir_variant *prev_variant,
+                                                   const bool          is_flags);
 static struct mir_instr *
 append_instr_const_type(struct context *ctx, struct ast *node, struct mir_type *type);
 static struct mir_instr *
@@ -728,7 +731,8 @@ static struct mir_instr *ast_decl_member(struct context *ctx, struct ast *arg);
 static struct mir_instr *ast_decl_variant(struct context *    ctx,
                                           struct ast *        variant,
                                           struct mir_instr *  base_type,
-                                          struct mir_variant *prev_variant);
+                                          struct mir_variant *prev_variant,
+                                          const bool          is_flags);
 static struct mir_instr *ast_ref(struct context *ctx, struct ast *ref);
 static struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct);
 static struct mir_instr *ast_type_fn(struct context *ctx, struct ast *type_fn);
@@ -2358,13 +2362,15 @@ struct mir_type *create_type_enum(struct context *        ctx,
                                   struct id *             id,
                                   struct scope *          scope,
                                   struct mir_type *       base_type,
-                                  TSmallArray_VariantPtr *variants)
+                                  TSmallArray_VariantPtr *variants,
+                                  const bool              is_flags)
 {
     BL_ASSERT(base_type);
     struct mir_type *tmp    = create_type(ctx, MIR_TYPE_ENUM, id);
     tmp->data.enm.scope     = scope;
     tmp->data.enm.base_type = base_type;
     tmp->data.enm.variants  = variants;
+    tmp->data.enm.is_flags  = is_flags;
 
     type_init_id(ctx, tmp);
     type_init_llvm_enum(ctx, tmp);
@@ -3381,7 +3387,8 @@ struct mir_instr *append_instr_type_enum(struct context *      ctx,
                                          struct id *           id,
                                          struct scope *        scope,
                                          TSmallArray_InstrPtr *variants,
-                                         struct mir_instr *    base_type)
+                                         struct mir_instr *    base_type,
+                                         const bool            is_flags)
 {
     struct mir_instr_type_enum *tmp = create_instr(ctx, MIR_INSTR_TYPE_ENUM, node);
     tmp->base.value.type            = ctx->builtin_types->t_type;
@@ -3391,6 +3398,7 @@ struct mir_instr *append_instr_type_enum(struct context *      ctx,
     tmp->scope                      = scope;
     tmp->id                         = id;
     tmp->base_type                  = base_type;
+    tmp->is_flags                   = is_flags;
 
     if (variants) {
         struct mir_instr *it;
@@ -3979,7 +3987,8 @@ struct mir_instr *append_instr_decl_variant(struct context *    ctx,
                                             struct ast *        node,
                                             struct mir_instr *  value,
                                             struct mir_instr *  base_type,
-                                            struct mir_variant *prev_variant)
+                                            struct mir_variant *prev_variant,
+                                            const bool          is_flags)
 {
     struct mir_instr_decl_variant *tmp = create_instr(ctx, MIR_INSTR_DECL_VARIANT, node);
     tmp->base.value.is_comptime        = true;
@@ -3989,6 +3998,7 @@ struct mir_instr *append_instr_decl_variant(struct context *    ctx,
     tmp->value                         = value;
     tmp->base_type                     = base_type;
     tmp->prev_variant                  = prev_variant;
+    tmp->is_flags                      = is_flags;
 
     BL_ASSERT(node && node->kind == AST_IDENT);
     struct id *id = &node->data.ident.id;
@@ -6442,17 +6452,17 @@ struct result analyze_instr_decl_variant(struct context *               ctx,
     ZONE();
     struct mir_variant *variant = variant_instr->variant;
     BL_ASSERT(variant && "Missing variant.");
-
+    const bool       is_flags  = variant_instr->is_flags;
     struct mir_type *base_type = NULL;
     if (variant_instr->base_type && variant_instr->base_type->kind == MIR_INSTR_CONST) {
         // In case the type resolver was already called (call in supposed to be converted into the
-        // compile time constant containin resolved type).
+        // compile time constant containing resolved type).
         base_type = MIR_CEV_READ_AS(struct mir_type *, &variant_instr->base_type->value);
     } else if (variant_instr->base_type) {
         struct result result = analyze_resolve_type(ctx, variant_instr->base_type, &base_type);
         if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(result);
     } else {
-        base_type = ctx->builtin_types->t_s32;
+        base_type = is_flags ? ctx->builtin_types->t_u32 : ctx->builtin_types->t_s32;
     }
     BL_MAGIC_ASSERT(base_type);
 
@@ -6474,10 +6484,37 @@ struct result analyze_instr_decl_variant(struct context *               ctx,
         variant_instr->variant->value      = MIR_CEV_READ_AS(u64, &variant_instr->value->value);
         variant_instr->variant->value_type = variant_instr->value->value.type;
     } else if (variant_instr->prev_variant) {
-        variant_instr->variant->value      = variant_instr->prev_variant->value + 1;
+        u64       value      = 0;
+        const u64 prev_value = variant_instr->prev_variant->value;
+        const s32 bitcount   = base_type->data.integer.bitcount;
+        const u64 max_value  = bitcount == 64 ? ULLONG_MAX : (1ull << bitcount) - 1;
+        if (is_flags && prev_value == 0) {
+            value = 1;
+        } else if (is_flags) {
+            value = (prev_value << 1) & ~prev_value;
+        } else {
+            value = prev_value + 1;
+        }
+        const bool u64overflow = value == 0;
+        if (is_flags && (value > max_value || u64overflow)) {
+            // @Incomplete: Detect overflow also for regular enums?
+            char base_type_name[256];
+            mir_type_to_str(base_type_name, 256, base_type, true);
+            builder_msg(BUILDER_MSG_ERROR,
+                        ERR_NUM_LIT_OVERFLOW,
+                        variant_instr->base.node->location,
+                        BUILDER_CUR_WORD,
+                        "Enum variant value overflow on variant '%s', maximum value for type "
+                        "'%s' is %llu.",
+                        variant->id->str,
+                        base_type_name,
+                        max_value);
+            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        }
+        variant_instr->variant->value      = value;
         variant_instr->variant->value_type = variant_instr->prev_variant->value_type;
     } else {
-        variant_instr->variant->value      = 0;
+        variant_instr->variant->value      = is_flags ? 1 : 0;
         variant_instr->variant->value_type = base_type;
     }
     if (variant->entry->kind == SCOPE_ENTRY_VOID) {
@@ -6837,12 +6874,14 @@ struct result analyze_instr_type_enum(struct context *ctx, struct mir_instr_type
     ZONE();
     TSmallArray_InstrPtr *variant_instrs = type_enum->variants;
     struct scope *        scope          = type_enum->scope;
+    const bool            is_flags       = type_enum->is_flags;
     BL_ASSERT(variant_instrs);
     BL_ASSERT(scope);
     BL_ASSERT(variant_instrs->size);
     // Validate and setup enum base type.
     struct mir_type *base_type;
     if (type_enum->base_type) {
+        // @Incomplete: Enum should probably use type resoler as well?
         base_type = MIR_CEV_READ_AS(struct mir_type *, &type_enum->base_type->value);
         BL_MAGIC_ASSERT(base_type);
 
@@ -6855,9 +6894,15 @@ struct result analyze_instr_type_enum(struct context *ctx, struct mir_instr_type
                         "Base type of enumerator must be an integer type.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
+        if (is_flags && base_type->data.integer.is_signed) {
+            builder_msg(BUILDER_MSG_WARNING,
+                        0,
+                        type_enum->base_type->node->location,
+                        BUILDER_CUR_WORD,
+                        "Base type of 'flags' enumerator should be unsigned number.");
+        }
     } else {
-        // Use s32 by default.
-        base_type = ctx->builtin_types->t_s32;
+        base_type = is_flags ? ctx->builtin_types->t_u32 : ctx->builtin_types->t_s32;
     }
     BL_ASSERT(base_type && "Invalid enum base type.");
     TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
@@ -6869,7 +6914,8 @@ struct result analyze_instr_type_enum(struct context *ctx, struct mir_instr_type
         BL_ASSERT(variant && "Missing variant.");
         tsa_push_VariantPtr(variants, variant);
     }
-    struct mir_type *type = create_type_enum(ctx, type_enum->id, scope, base_type, variants);
+    struct mir_type *type =
+        create_type_enum(ctx, type_enum->id, scope, base_type, variants, is_flags);
     MIR_CEV_WRITE_AS(struct mir_type *, &type_enum->base.value, type);
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
@@ -7926,9 +7972,9 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
     // block is not terminated
     if (!is_block_terminated(block)) {
         // Exit block and it's terminal break instruction are generated during ast
-        // instruction pass and it must be already terminated. Here we generate only breaks to the
-        // exit block in case analyzed block is not correctly terminated (it's pretty common since
-        // instruction generation is just appending blocks).
+        // instruction pass and it must be already terminated. Here we generate only breaks to
+        // the exit block in case analyzed block is not correctly terminated (it's pretty common
+        // since instruction generation is just appending blocks).
         BL_ASSERT(block != fn->exit_block && "Exit block must be terminated!");
 
         if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
@@ -8862,13 +8908,17 @@ struct mir_var *rtti_gen_enum(struct context *ctx, struct mir_type *type)
     // base_type
     struct mir_type *dest_base_type_type = mir_get_struct_elem_type(rtti_type, 2);
     vm_stack_ptr_t   dest_base_type = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 2);
-
-    struct mir_var *base_type = _rtti_gen(ctx, type->data.enm.base_type);
+    struct mir_var * base_type      = _rtti_gen(ctx, type->data.enm.base_type);
     vm_write_ptr(dest_base_type_type, dest_base_type, vm_read_var(ctx->vm, base_type));
 
     // variants
     vm_stack_ptr_t dest_variants = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 3);
     rtti_gen_enum_variants_slice(ctx, dest_variants, type->data.enm.variants);
+
+    // is_flags
+    struct mir_type *dest_is_flags_type = mir_get_struct_elem_type(rtti_type, 4);
+    vm_stack_ptr_t   dest_is_flags      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 4);
+    vm_write_int(dest_is_flags_type, dest_is_flags, (u64)type->data.enm.is_flags);
 
     return rtti_var;
 }
@@ -10273,9 +10323,7 @@ struct mir_instr *ast_decl_member(struct context *ctx, struct ast *arg)
         TSmallArray_AstPtr *ast_values = ast_tags->data.tags.values;
         BL_ASSERT(ast_values && "Invalid tag values array.");
         BL_ASSERT(ast_values->size && "Tag array must contains one value at least.");
-
         tags = create_sarr(TSmallArray_InstrPtr, ctx->assembly);
-
         struct ast *ast_value;
         TSA_FOREACH(ast_values, ast_value)
         {
@@ -10295,7 +10343,8 @@ struct mir_instr *ast_decl_member(struct context *ctx, struct ast *arg)
 struct mir_instr *ast_decl_variant(struct context *    ctx,
                                    struct ast *        variant,
                                    struct mir_instr *  base_type,
-                                   struct mir_variant *prev_variant)
+                                   struct mir_variant *prev_variant,
+                                   const bool          is_flags)
 {
     struct ast *ast_name  = variant->data.decl.name;
     struct ast *ast_value = variant->data.decl_variant.value;
@@ -10303,7 +10352,7 @@ struct mir_instr *ast_decl_variant(struct context *    ctx,
     struct mir_instr *             value = ast(ctx, ast_value);
     struct mir_instr_decl_variant *variant_instr =
         (struct mir_instr_decl_variant *)append_instr_decl_variant(
-            ctx, ast_name, value, base_type, prev_variant);
+            ctx, ast_name, value, base_type, prev_variant, is_flags);
     variant_instr->variant->entry =
         register_symbol(ctx, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false);
     return (struct mir_instr *)variant_instr;
@@ -10439,6 +10488,7 @@ struct mir_instr *ast_type_enum(struct context *ctx, struct ast *type_enum)
 {
     TSmallArray_AstPtr *ast_variants  = type_enum->data.type_enm.variants;
     struct ast *        ast_base_type = type_enum->data.type_enm.type;
+    const bool          is_flags      = type_enum->data.type_enm.is_flags;
     BL_ASSERT(ast_variants);
 
     const usize varc = ast_variants->size;
@@ -10451,6 +10501,7 @@ struct mir_instr *ast_type_enum(struct context *ctx, struct ast *type_enum)
         return NULL;
     }
 
+    // @Incomplete: Enum should probably use type resoler as well?
     struct mir_instr *base_type = ast(ctx, ast_base_type);
 
     struct scope *        scope    = type_enum->data.type_enm.scope;
@@ -10463,7 +10514,7 @@ struct mir_instr *ast_type_enum(struct context *ctx, struct ast *type_enum)
     TSA_FOREACH(ast_variants, ast_variant)
     {
         BL_ASSERT(ast_variant->kind == AST_DECL_VARIANT);
-        variant = ast_decl_variant(ctx, ast_variant, base_type, prev_variant);
+        variant = ast_decl_variant(ctx, ast_variant, base_type, prev_variant, is_flags);
         BL_ASSERT(variant);
         tsa_push_InstrPtr(variants, variant);
         prev_variant = ((struct mir_instr_decl_variant *)variant)->variant;
@@ -10471,7 +10522,7 @@ struct mir_instr *ast_type_enum(struct context *ctx, struct ast *type_enum)
     // Consume declaration identificator.
     struct id *id              = ctx->ast.current_entity_id;
     ctx->ast.current_entity_id = NULL;
-    return append_instr_type_enum(ctx, type_enum, id, scope, variants, base_type);
+    return append_instr_type_enum(ctx, type_enum, id, scope, variants, base_type, is_flags);
 }
 
 struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct)
@@ -11052,7 +11103,8 @@ static void provide_builtin_arch(struct context *ctx)
         tsa_push_VariantPtr(variants, variant);
         provide_builtin_variant(ctx, scope, variant);
     }
-    struct mir_type *t_arch = create_type_enum(ctx, BID(ARCH_ENUM), scope, bt->t_s32, variants);
+    struct mir_type *t_arch =
+        create_type_enum(ctx, BID(ARCH_ENUM), scope, bt->t_s32, variants, false);
     provide_builtin_type(ctx, t_arch);
     add_global_int(ctx, BID(ARCH), false, t_arch, ctx->assembly->target->triple.arch);
 }
@@ -11073,7 +11125,8 @@ static void provide_builtin_os(struct context *ctx)
         tsa_push_VariantPtr(variants, variant);
         provide_builtin_variant(ctx, scope, variant);
     }
-    struct mir_type *t_os = create_type_enum(ctx, BID(PLATFORM_ENUM), scope, bt->t_s32, variants);
+    struct mir_type *t_os =
+        create_type_enum(ctx, BID(PLATFORM_ENUM), scope, bt->t_s32, variants, false);
     provide_builtin_type(ctx, t_os);
     add_global_int(ctx, BID(PLATFORM), false, t_os, ctx->assembly->target->triple.os);
 }
@@ -11094,7 +11147,8 @@ static void provide_builtin_env(struct context *ctx)
         tsa_push_VariantPtr(variants, variant);
         provide_builtin_variant(ctx, scope, variant);
     }
-    struct mir_type *t_env = create_type_enum(ctx, BID(ENV_ENUM), scope, bt->t_s32, variants);
+    struct mir_type *t_env =
+        create_type_enum(ctx, BID(ENV_ENUM), scope, bt->t_s32, variants, false);
     provide_builtin_type(ctx, t_env);
     add_global_int(ctx, BID(ENV), false, t_env, ctx->assembly->target->triple.env);
 }

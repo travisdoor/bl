@@ -190,7 +190,8 @@ TypeInfoEnum :: struct #base TypeInfo #compiler {
     /// Base type info.
     base_type: *TypeInfo; 
     /// Slice of all enumerator variants.
-    variants: []TypeInfoEnumVariant
+    variants: []TypeInfoEnumVariant;
+    is_flags: bool;
 };
 
 /// Placeholer for information about `void` type.

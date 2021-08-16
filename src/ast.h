@@ -60,6 +60,7 @@ enum ast_flag {
     FLAG_TEST_FN      = 1 << 10, // test function
     FLAG_EXPORT       = 1 << 11, // symbols marked for dll export
     FLAG_THREAD_LOCAL = 1 << 12, // symbols marked as thread local
+    FLAG_FLAGS        = 1 << 13, // enum flags
 };
 
 // map symbols to binary operation kind
@@ -251,6 +252,7 @@ struct ast_type_enum {
     struct scope *      scope;
     struct ast *        type;
     TSmallArray_AstPtr *variants;
+    bool                is_flags;
 };
 
 struct ast_type_ptr {

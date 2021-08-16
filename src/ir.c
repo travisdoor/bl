@@ -1002,6 +1002,14 @@ LLVMValueRef rtti_emit_enum(struct context *ctx, struct mir_type *type)
     // variants
     tsa_push_LLVMValue(&llvm_vals, rtti_emit_enum_variants_slice(ctx, type->data.enm.variants));
 
+    // is_flags
+    const bool       is_flags      = type->data.enm.is_flags;
+    struct mir_type *is_flags_type = mir_get_struct_elem_type(rtti_type, 4);
+    tsa_push_LLVMValue(&llvm_vals,
+                       LLVMConstInt(get_type(ctx, is_flags_type),
+                                    (u64)is_flags,
+                                    is_flags_type->data.integer.is_signed));
+
     LLVMValueRef llvm_result =
         LLVMConstNamedStruct(get_type(ctx, rtti_type), llvm_vals.data, (u32)llvm_vals.size);
 
