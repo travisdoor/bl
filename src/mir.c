@@ -653,8 +653,11 @@ static struct mir_instr *append_instr_decl_arg(struct context *  ctx,
                                                struct ast *      node,
                                                struct mir_instr *type,
                                                struct mir_instr *value);
-static struct mir_instr *
-append_instr_decl_variant(struct context *ctx, struct ast *node, struct mir_instr *value);
+static struct mir_instr *append_instr_decl_variant(struct context *    ctx,
+                                                   struct ast *        node,
+                                                   struct mir_instr *  value,
+                                                   struct mir_instr *  base_type,
+                                                   struct mir_variant *prev_variant);
 static struct mir_instr *
 append_instr_const_type(struct context *ctx, struct ast *node, struct mir_type *type);
 static struct mir_instr *
@@ -722,10 +725,10 @@ static void              ast_stmt_switch(struct context *ctx, struct ast *stmt_s
 static struct mir_instr *ast_decl_entity(struct context *ctx, struct ast *entity);
 static struct mir_instr *ast_decl_arg(struct context *ctx, struct ast *arg);
 static struct mir_instr *ast_decl_member(struct context *ctx, struct ast *arg);
-static struct mir_instr *ast_decl_variant(struct context *  ctx,
-                                          struct ast *      variant,
-                                          struct mir_instr *base_type,
-                                          struct mit_instr *prev_variant);
+static struct mir_instr *ast_decl_variant(struct context *    ctx,
+                                          struct ast *        variant,
+                                          struct mir_instr *  base_type,
+                                          struct mir_variant *prev_variant);
 static struct mir_instr *ast_ref(struct context *ctx, struct ast *ref);
 static struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct);
 static struct mir_instr *ast_type_fn(struct context *ctx, struct ast *type_fn);
@@ -3972,8 +3975,11 @@ struct mir_instr *append_instr_decl_arg(struct context *  ctx,
     return &tmp->base;
 }
 
-struct mir_instr *
-append_instr_decl_variant(struct context *ctx, struct ast *node, struct mir_instr *value)
+struct mir_instr *append_instr_decl_variant(struct context *    ctx,
+                                            struct ast *        node,
+                                            struct mir_instr *  value,
+                                            struct mir_instr *  base_type,
+                                            struct mir_variant *prev_variant)
 {
     struct mir_instr_decl_variant *tmp = create_instr(ctx, MIR_INSTR_DECL_VARIANT, node);
     tmp->base.value.is_comptime        = true;
@@ -3981,6 +3987,8 @@ append_instr_decl_variant(struct context *ctx, struct ast *node, struct mir_inst
     tmp->base.value.addr_mode          = MIR_VAM_LVALUE_CONST;
     tmp->base.ref_count                = NO_REF_COUNTING;
     tmp->value                         = value;
+    tmp->base_type                     = base_type;
+    tmp->prev_variant                  = prev_variant;
 
     BL_ASSERT(node && node->kind == AST_IDENT);
     struct id *id = &node->data.ident.id;
@@ -4433,13 +4441,22 @@ struct result analyze_resolve_type(struct context *  ctx,
     BL_ASSERT(resolver_call->kind == MIR_INSTR_CALL &&
               "Type resolver is expected to be call to resolve function.");
 
-    if (analyze_instr(ctx, resolver_call).state != ANALYZE_PASSED)
+    if (!resolver_call->is_analyzed && analyze_instr(ctx, resolver_call).state != ANALYZE_PASSED) {
         return ANALYZE_RESULT(POSTPONE, 0);
+    }
 
+    struct mir_type *resolved_type = MIR_CEV_READ_AS(struct mir_type *, &resolver_call->value);
+    if (resolved_type) {
+        // Use cached type here in case the type resolver was already called.
+        BL_MAGIC_ASSERT(resolved_type);
+        *out_type = resolved_type;
+        return ANALYZE_RESULT(PASSED, 0);
+    }
     if (vm_execute_instr_top_level_call(
             ctx->vm, ctx->assembly, (struct mir_instr_call *)resolver_call)) {
-        *out_type = MIR_CEV_READ_AS(struct mir_type *, &resolver_call->value);
-        BL_MAGIC_ASSERT(*out_type);
+        resolved_type = MIR_CEV_READ_AS(struct mir_type *, &resolver_call->value);
+        BL_MAGIC_ASSERT(resolved_type);
+        *out_type = resolved_type;
         return ANALYZE_RESULT(PASSED, 0);
     } else {
         return ANALYZE_RESULT(FAILED, 0);
@@ -6426,6 +6443,19 @@ struct result analyze_instr_decl_variant(struct context *               ctx,
     struct mir_variant *variant = variant_instr->variant;
     BL_ASSERT(variant && "Missing variant.");
 
+    struct mir_type *base_type = NULL;
+    if (variant_instr->base_type && variant_instr->base_type->kind == MIR_INSTR_CONST) {
+        // In case the type resolver was already called (call in supposed to be converted into the
+        // compile time constant containin resolved type).
+        base_type = MIR_CEV_READ_AS(struct mir_type *, &variant_instr->base_type->value);
+    } else if (variant_instr->base_type) {
+        struct result result = analyze_resolve_type(ctx, variant_instr->base_type, &base_type);
+        if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(result);
+    } else {
+        base_type = ctx->builtin_types->t_s32;
+    }
+    BL_MAGIC_ASSERT(base_type);
+
     if (variant_instr->value) {
         // User defined initialization value.
         if (!mir_is_comptime(variant_instr->value)) {
@@ -6436,20 +6466,19 @@ struct result analyze_instr_decl_variant(struct context *               ctx,
                         "Enum variant value must be compile time known.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
-
-        if (analyze_slot(ctx, &analyze_slot_conf_basic, &variant_instr->value, NULL) !=
+        if (analyze_slot(ctx, &analyze_slot_conf_default, &variant_instr->value, base_type) !=
             ANALYZE_PASSED) {
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
-
         // Setup value.
         variant_instr->variant->value      = MIR_CEV_READ_AS(u64, &variant_instr->value->value);
         variant_instr->variant->value_type = variant_instr->value->value.type;
+    } else if (variant_instr->prev_variant) {
+        variant_instr->variant->value      = variant_instr->prev_variant->value + 1;
+        variant_instr->variant->value_type = variant_instr->prev_variant->value_type;
     } else {
-        // CLENUP: Automatic initialization value is set in parser, maybe we will
-        // prefer to do automatic initialization here instead of doing so in parser
-        // pass.
-        BL_UNIMPLEMENTED;
+        variant_instr->variant->value      = 0;
+        variant_instr->variant->value_type = base_type;
     }
     if (variant->entry->kind == SCOPE_ENTRY_VOID) {
         builder_msg(BUILDER_MSG_ERROR,
@@ -6832,24 +6861,16 @@ struct result analyze_instr_type_enum(struct context *ctx, struct mir_instr_type
     }
     BL_ASSERT(base_type && "Invalid enum base type.");
     TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
-    // Iterate over all enum variants and validate them.
-    struct mir_instr *  it;
-    struct mir_variant *variant;
+    struct mir_instr *      it;
     TSA_FOREACH(variant_instrs, it)
     {
         struct mir_instr_decl_variant *variant_instr = (struct mir_instr_decl_variant *)it;
-        variant                                      = variant_instr->variant;
+        struct mir_variant *           variant       = variant_instr->variant;
         BL_ASSERT(variant && "Missing variant.");
-        if (analyze_slot(ctx, &analyze_slot_conf_default, &variant_instr->value, base_type) !=
-            ANALYZE_PASSED) {
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
-        }
         tsa_push_VariantPtr(variants, variant);
     }
-
     struct mir_type *type = create_type_enum(ctx, type_enum->id, scope, base_type, variants);
     MIR_CEV_WRITE_AS(struct mir_type *, &type_enum->base.value, type);
-
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
@@ -10271,17 +10292,18 @@ struct mir_instr *ast_decl_member(struct context *ctx, struct ast *arg)
     return result;
 }
 
-struct mir_instr *ast_decl_variant(struct context *  ctx,
-                                   struct ast *      variant,
-                                   struct mir_instr *base_type,
-                                   struct mir_instr *prev_variant)
+struct mir_instr *ast_decl_variant(struct context *    ctx,
+                                   struct ast *        variant,
+                                   struct mir_instr *  base_type,
+                                   struct mir_variant *prev_variant)
 {
     struct ast *ast_name  = variant->data.decl.name;
     struct ast *ast_value = variant->data.decl_variant.value;
     BL_ASSERT(ast_name && "Missing enum variant name!");
     struct mir_instr *             value = ast(ctx, ast_value);
     struct mir_instr_decl_variant *variant_instr =
-        (struct mir_instr_decl_variant *)append_instr_decl_variant(ctx, ast_name, value);
+        (struct mir_instr_decl_variant *)append_instr_decl_variant(
+            ctx, ast_name, value, base_type, prev_variant);
     variant_instr->variant->entry =
         register_symbol(ctx, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false);
     return (struct mir_instr *)variant_instr;
@@ -10435,16 +10457,16 @@ struct mir_instr *ast_type_enum(struct context *ctx, struct ast *type_enum)
     TSmallArray_InstrPtr *variants = create_sarr(TSmallArray_InstrPtr, ctx->assembly);
 
     // Build variant instructions
-    struct mir_instr *variant;
-    struct mir_instr *prev_variant = NULL;
-    struct ast *      ast_variant;
+    struct mir_instr *  variant;
+    struct mir_variant *prev_variant = NULL;
+    struct ast *        ast_variant;
     TSA_FOREACH(ast_variants, ast_variant)
     {
         BL_ASSERT(ast_variant->kind == AST_DECL_VARIANT);
         variant = ast_decl_variant(ctx, ast_variant, base_type, prev_variant);
         BL_ASSERT(variant);
         tsa_push_InstrPtr(variants, variant);
-        prev_variant = variant;
+        prev_variant = ((struct mir_instr_decl_variant *)variant)->variant;
     }
     // Consume declaration identificator.
     struct id *id              = ctx->ast.current_entity_id;
