@@ -1,0 +1,26 @@
+OpenMode :: enum #flags {
+    Read;   // 1
+    Write;  // 2
+    Append; // 4
+    Create; // 8
+    WriteAppend = Write | Append;
+    WriteCreate = Write | Create;
+}
+
+main :: fn () s32 {
+    mode: OpenMode; // Set to OpenMode.Read by default
+    mode = OpenMode.WriteCreate;
+    print("mode = %\n", mode);
+    
+    // Set flag
+    set_flag(&mode, OpenMode.Append);
+    print("mode = %\n", mode);
+    
+    // Check flag
+    if is_flag(mode, OpenMode.Append) { print("Append is enabled!\n"); }
+    
+    // Clear flag
+    clr_flag(&mode, OpenMode.Append);
+    
+    return 0;
+}
