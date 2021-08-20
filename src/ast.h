@@ -325,7 +325,7 @@ struct ast_expr_binop {
 struct ast_expr_call {
     struct ast *        ref;
     TSmallArray_AstPtr *args;
-    bool                run;
+    bool                call_in_compile_time;
 };
 
 struct ast_expr_elem {

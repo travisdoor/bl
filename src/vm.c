@@ -1202,62 +1202,47 @@ bool _execute_fn_top_level(struct virtual_machine *    vm,
                            vm_stack_ptr_t *            out_ptr)
 {
     BL_ASSERT(fn);
-
-    if (!fn->fully_analyzed)
+    if (!fn->is_fully_analyzed)
         BL_ABORT("Function is not fully analyzed for compile time execution!!!");
-
-    struct mir_type *   ret_type = fn->type->data.fn.ret_type;
-    TSmallArray_ArgPtr *args     = fn->type->data.fn.args;
-
-    const bool  does_return_value    = ret_type->kind != MIR_TYPE_VOID;
-    const bool  is_return_value_used = call ? call->ref_count > 1 : true;
-    const bool  is_caller_comptime   = call ? call->value.is_comptime : false;
+    struct mir_type *   ret_type             = fn->type->data.fn.ret_type;
+    TSmallArray_ArgPtr *args                 = fn->type->data.fn.args;
+    const bool          does_return_value    = ret_type->kind != MIR_TYPE_VOID;
+    const bool          is_return_value_used = call ? call->ref_count > 1 : true;
+    const bool          is_caller_comptime   = call ? call->value.is_comptime : false;
     const bool  pop_return_value = does_return_value && is_return_value_used && !is_caller_comptime;
     const usize argc             = args ? args->size : 0;
-
     if (args) {
         BL_ASSERT(!call &&
                   "Caller instruction cannot be used when call arguments are passed explicitly.");
-
         BL_ASSERT(argc == args->size && "Invalid count of eplicitly passed arguments");
-
         // Push all arguments in reverse order on the stack.
         for (usize i = argc; i-- > 0;) {
             stack_push(vm, arg_values->data[i].data, arg_values->data[i].type);
         }
     }
-
     // push terminal frame on stack
     push_ra(vm, call);
-
     // allocate local variables
     stack_alloc_local_vars(vm, fn);
-
     // setup entry instruction
     set_pc(vm, fn->first_block->entry_instr);
-
     // iterate over entry block of executable
     struct mir_instr *instr, *prev;
     while (true) {
         instr = get_pc(vm);
         prev  = instr;
         if (!instr || vm->stack->aborted) break;
-
         interp_instr(vm, instr);
-
         // stack head can be changed by br instructions
         if (!get_pc(vm) || get_pc(vm) == prev) set_pc(vm, instr->next);
     }
-
     if (vm->stack->aborted) return false;
-
     if (pop_return_value) {
         vm_stack_ptr_t ret_ptr = stack_pop(vm, ret_type);
         if (out_ptr) (*out_ptr) = ret_ptr;
     } else if (is_caller_comptime) {
         if (out_ptr) (*out_ptr) = (vm_stack_ptr_t)&call->value.data;
     }
-
     return true;
 }
 
@@ -1265,7 +1250,7 @@ void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
 {
     if (!instr) return;
     if (!instr->is_analyzed) {
-        BL_ABORT("instruction %s has not been analyzed!", mir_instr_name(instr));
+        BL_ABORT("Instruction %s has not been analyzed!", mir_instr_name(instr));
     }
 
     // Skip all comptimes.
@@ -1904,6 +1889,8 @@ void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
 
     struct mir_fn *callee = (struct mir_fn *)vm_read_ptr(callee_ptr_type, callee_ptr);
     BL_MAGIC_ASSERT(callee);
+    BL_ASSERT(callee->is_fully_analyzed &&
+              "Functions called in compile time must be fully analyzed!");
     if (callee == NULL) {
         builder_error("Function pointer not set!");
         exec_abort(vm, 0);

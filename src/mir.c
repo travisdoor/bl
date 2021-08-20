@@ -30,7 +30,6 @@
 #include "ast.h"
 #include "builder.h"
 #include "common.h"
-#include "mir_printer.h"
 #include "unit.h"
 
 #ifdef _MSC_VER
@@ -612,7 +611,8 @@ append_instr_decl_direct_ref(struct context *ctx, struct ast *node, struct mir_i
 static struct mir_instr *append_instr_call(struct context *      ctx,
                                            struct ast *          node,
                                            struct mir_instr *    callee,
-                                           TSmallArray_InstrPtr *args);
+                                           TSmallArray_InstrPtr *args,
+                                           const bool            call_in_compile_time);
 
 static struct mir_instr *append_instr_decl_var(struct context *         ctx,
                                                struct ast *             node, // Optional
@@ -3843,27 +3843,25 @@ append_instr_decl_direct_ref(struct context *ctx, struct ast *node, struct mir_i
 struct mir_instr *append_instr_call(struct context *      ctx,
                                     struct ast *          node,
                                     struct mir_instr *    callee,
-                                    TSmallArray_InstrPtr *args)
+                                    TSmallArray_InstrPtr *args,
+                                    const bool            call_in_compile_time)
 {
     BL_ASSERT(callee);
     struct mir_instr_call *tmp = create_instr(ctx, MIR_INSTR_CALL, node);
     tmp->base.value.addr_mode  = MIR_VAM_RVALUE;
     tmp->args                  = args;
     tmp->callee                = callee;
-
+    tmp->call_in_compile_time  = call_in_compile_time;
     ref_instr(&tmp->base);
-
     // Callee must be referenced even if we call no-ref counted fn_proto instructions, because
     // sometimes callee is declaration reference pointing to variable containing pointer to some
     // function.
     ref_instr(callee);
-
     // reference all arguments
     if (args) {
         struct mir_instr *instr;
         TSA_FOREACH(args, instr) ref_instr(instr);
     }
-
     append_current_block(ctx, &tmp->base);
     return &tmp->base;
 }
@@ -5871,7 +5869,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     if (IS_FLAG(fn->flags, FLAG_EXTERN)) {
         // lookup external function exec handle
         fn->dyncall.extern_entry = assembly_find_extern(ctx->assembly, fn->linkage_name);
-        fn->fully_analyzed       = true;
+        fn->is_fully_analyzed    = true;
     } else if (IS_FLAG(fn->flags, FLAG_INTRINSIC)) {
         // For intrinsics we use shorter names defined in user code, so we need username ->
         // internal name mapping in this case.
@@ -5888,7 +5886,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         }
 
         fn->dyncall.extern_entry = assembly_find_extern(ctx->assembly, intrinsic_name);
-        fn->fully_analyzed       = true;
+        fn->is_fully_analyzed    = true;
     } else if (is_polymorph) {
         // Nothing to do
     } else {
@@ -7626,18 +7624,24 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     // Direct call is call without any reference lookup, usually call to anonymous
     // function, type resolver or variable initializer. Constant value of callee
     // instruction must containt pointer to the struct mir_fn object.
-    const bool       is_direct_call = call->callee->kind == MIR_INSTR_FN_PROTO;
-    struct mir_type *type           = call->callee->value.type;
+    const bool is_direct_call = call->callee->kind == MIR_INSTR_FN_PROTO;
+    // Functions called in compile time are supposed to be called right after successful analyze
+    // pass and should be replaced by constant in MIR. Keep in mind that such function must be fully
+    // analyzed before call.
+    const bool       call_in_compile_time = call->call_in_compile_time;
+    struct mir_type *type                 = call->callee->value.type;
     BL_ASSERT(type && "invalid type of called object");
 
-    bool is_called_via_pointer = mir_is_pointer_type(type);
+    bool       is_called_via_pointer = mir_is_pointer_type(type);
+    const bool is_fn                 = type->kind == MIR_TYPE_FN;
+    const bool is_group              = type->kind == MIR_TYPE_FN_GROUP;
     if (is_called_via_pointer) {
         // we want to make calls also via pointer to functions so in such case
         // we need to resolve pointed function
         type = mir_deref_type(type);
     }
 
-    if (type->kind != MIR_TYPE_FN_GROUP && type->kind != MIR_TYPE_FN) {
+    if (!is_group && !is_fn) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_EXPECTED_FUNC,
                     call->callee->node->location,
@@ -7646,14 +7650,42 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
+    union fn_or_group {
+        struct mir_fn *      fn;
+        struct mir_fn_group *group;
+    };
+
+    union fn_or_group optional_fn_or_group = {0};
+    if (is_fn) {
+        optional_fn_or_group.fn = MIR_CEV_READ_AS(struct mir_fn *, &call->callee->value);
+    } else if (is_group) {
+        optional_fn_or_group.group = MIR_CEV_READ_AS(struct mir_fn_group *, &call->callee->value);
+    } else {
+        BL_ASSERT("Expected function or function group!");
+    }
+
+    if (is_direct_call) {
+        struct mir_fn *fn = optional_fn_or_group.fn;
+        BL_MAGIC_ASSERT(fn);
+        if (call->base.value.is_comptime && !fn->is_fully_analyzed)
+            RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+        // Direct call of anonymous function.
+        // NOTE: We increase ref count of called function here, but this
+        // will not work for functions called by pointer in obtained in
+        // runtime
+        if (fn->ref_count == 0) {
+            ++fn->ref_count;
+        }
+    }
+
     // Pre-scan of all arguments passed to function call is needed in case we want to convert
     // some arguments to Any type, because to Any conversion requires generation of rtti
     // metadata about argument value type, we must check all argument types for it's
     // completeness.
 
-    // @PERFORMANCE This is really needed only in case the function argument list contains
+    // @Performance: This is really needed only in case the function argument list contains
     // conversion to Any, there is no need to scan everything, also there is possible option do
-    // this check in analyze_instr_decl_ref pass. @travis  14-Oct-2020
+    // this check in analyze_instr_decl_ref pass. @travis 14-Oct-2020
     if (call->args) {
         struct mir_instr *it;
         TSA_FOREACH(call->args, it)
@@ -7670,30 +7702,14 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         }
     }
 
-    if (is_direct_call) {
-        struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &call->callee->value);
-        BL_MAGIC_ASSERT(fn);
-        if (call->base.value.is_comptime) {
-            if (!fn->fully_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
-        } else if (call->callee->kind == MIR_INSTR_FN_PROTO) {
-            // Direct call of anonymous function.
-
-            // NOTE: We increase ref count of called function here, but this
-            // will not work for functions called by pointer in obtained in
-            // runtime
-            ++fn->ref_count;
-        }
-    }
-
-    const bool is_group = type->kind == MIR_TYPE_FN_GROUP;
     if (is_group) {
         // Function group will be replaced with constant function reference. Best callee
         // candidate selection is based on call arguments not on return type! The best
         // function is selected but it could be still invalid so we have to validate it as
         // usual.
-        struct mir_fn_group *group = MIR_CEV_READ_AS(struct mir_fn_group *, &call->callee->value);
+        struct mir_fn_group *group = optional_fn_or_group.group;
         BL_MAGIC_ASSERT(group);
-        struct mir_fn *selected_overload_fn = NULL;
+        struct mir_fn *selected_overload_fn;
         { // lookup best call candidate in group
             TSmallArray_TypePtr arg_types;
             tsa_init(&arg_types);
@@ -7867,7 +7883,6 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     }
 
     // validate argument types
-    if (!callee_argc) RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
     for (u32 i = 0; i < callee_argc; ++i) {
         struct mir_instr **call_arg   = &call->args->data[i];
         struct mir_arg *   callee_arg = type->data.fn.args->data[i];
@@ -7876,6 +7891,19 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         if (analyze_slot(ctx, &analyze_slot_conf_full, call_arg, callee_arg->type) !=
             ANALYZE_PASSED) {
             goto REPORT_OVERLOAD_LOCATION;
+        }
+    }
+
+    if (call_in_compile_time) {
+        struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &call->callee->value);
+        BL_MAGIC_ASSERT(fn);
+        vm_stack_ptr_t result = NULL;
+        BL_LOG("Call: '%s'.", fn->linkage_name);
+        if (vm_execute_fn(ctx->vm, ctx->assembly, fn, &result)) {
+            BL_LOG("    OK");
+        } else {
+            BL_LOG("    FAIL");
+            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
     }
 
@@ -8439,7 +8467,7 @@ static INLINE struct mir_instr *analyze_try_get_next(struct mir_instr *instr)
             // Instruction is last instruction of the function body, so the
             // function can be executed in compile time if needed, we need to
             // set flag with this information here.
-            owner_block->owner_fn->fully_analyzed = true;
+            owner_block->owner_fn->is_fully_analyzed = true;
 #if BL_DEBUG && VERBOSE_ANALYZE
             printf("Analyze: " BLUE("Function '%s' completely analyzed.\n"),
                    owner_block->owner_fn->linkage_name);
@@ -9655,7 +9683,7 @@ struct mir_instr *ast_expr_call(struct context *ctx, struct ast *call)
         }
     }
     struct mir_instr *callee = ast(ctx, ast_callee);
-    return append_instr_call(ctx, call, callee, args);
+    return append_instr_call(ctx, call, callee, args, call->data.expr_call.call_in_compile_time);
 }
 
 struct mir_instr *ast_expr_elem(struct context *ctx, struct ast *elem)

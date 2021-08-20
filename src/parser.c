@@ -91,6 +91,7 @@ typedef enum {
     HD_SCOPE        = 1 << 21,
     HD_THREAD_LOCAL = 1 << 22,
     HD_FLAGS        = 1 << 23,
+    HD_ASSERT       = 1 << 24,
 } HashDirective;
 
 struct context {
@@ -289,7 +290,6 @@ struct ast *parse_expr_ref(struct context *ctx)
     struct token *tok   = tokens_peek(ctx->tokens);
     struct ast *  ident = parse_ident(ctx);
     if (!ident) return NULL;
-
     struct ast *ref     = ast_create_node(ctx->ast_arena, AST_REF, tok, SCOPE_GET(ctx));
     ref->data.ref.ident = ident;
     return ref;
@@ -429,6 +429,27 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
             assembly_import_module(ctx->assembly, tok_path->value.str, tok_path);
         }
         return import;
+    }
+
+    if (strcmp(directive, "assert_test") == 0) {
+        set_satisfied(HD_ASSERT);
+        if (IS_NOT_FLAG(expected_mask, HD_ASSERT)) {
+            PARSE_ERROR(
+                ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
+            return ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx));
+        }
+        // @Cleanup: This is supposed to be generalized in some way. i.e. every call starting with #
+        // should be compile time call?
+        BL_ASSERT(tok_directive->sym == SYM_IDENT);
+        struct ast *ident =
+            ast_create_node(ctx->ast_arena, AST_IDENT, tok_directive, SCOPE_GET(ctx));
+        id_init(&ident->data.ident.id, tok_directive->value.str);
+        struct ast *ref     = ast_create_node(ctx->ast_arena, AST_REF, tok_directive, SCOPE_GET(ctx));
+        ref->data.ref.ident = ident;
+        struct ast *call = parse_expr_call(ctx, ref);
+        BL_ASSERT(call); // @Incomplete
+        call->data.expr_call.call_in_compile_time = true;
+        return call;        
     }
 
     if (strcmp(directive, "link") == 0) {
@@ -1635,7 +1656,7 @@ struct ast *parse_expr_primary(struct context *ctx)
     if ((expr = parse_expr_type(ctx))) return expr;
     if ((expr = parse_expr_null(ctx))) return expr;
     if ((expr = parse_expr_compound(ctx))) return expr;
-    if ((expr = parse_hash_directive(ctx, HD_FILE | HD_LINE, NULL))) return expr;
+    if ((expr = parse_hash_directive(ctx, HD_FILE | HD_LINE | HD_ASSERT, NULL))) return expr;
 
     return NULL;
 }
@@ -2573,12 +2594,9 @@ struct ast *parse_expr_call(struct context *ctx, struct ast *prev)
     struct ast *call =
         ast_create_node(ctx->ast_arena, AST_EXPR_CALL, location_token, SCOPE_GET(ctx));
     call->data.expr_call.ref = prev;
-    call->data.expr_call.run = false;
-
     // parse args
     bool        rq = false;
     struct ast *tmp;
-
 arg:
     tmp = parse_expr(ctx);
     if (tmp) {
@@ -2678,14 +2696,11 @@ NEXT:
         goto NEXT;
     }
 
-    parse_hash_directive(ctx, HD_NONE, NULL);
-
     if ((tmp = (struct ast *)parse_decl(ctx))) {
         if (AST_IS_OK(tmp)) parse_semicolon_rq(ctx);
         tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
-
     if ((tmp = parse_stmt_return(ctx))) {
         if (!AST_IS_BAD(tmp)) parse_semicolon_rq(ctx);
         tsa_push_AstPtr(block->data.block.nodes, tmp);
@@ -2693,57 +2708,48 @@ NEXT:
         tmp->data.stmt_return.owner_block = block;
         goto NEXT;
     }
-
     if ((tmp = parse_stmt_if(ctx))) {
         tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
-
     if ((tmp = parse_stmt_switch(ctx))) {
         tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
-
     if ((tmp = parse_stmt_loop(ctx))) {
         tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
-
     if ((tmp = parse_stmt_break(ctx))) {
         if (AST_IS_OK(tmp)) parse_semicolon_rq(ctx);
         tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
-
     if ((tmp = parse_stmt_continue(ctx))) {
         if (AST_IS_OK(tmp)) parse_semicolon_rq(ctx);
         tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
-
     if ((tmp = parse_stmt_defer(ctx))) {
         if (AST_IS_OK(tmp)) parse_semicolon_rq(ctx);
         tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
-
     if ((tmp = parse_expr(ctx))) {
         if (AST_IS_OK(tmp)) parse_semicolon_rq(ctx);
         tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
-
     if ((tmp = parse_block(ctx, true))) {
         tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
-
     if ((tmp = parse_unrecheable(ctx))) {
         tsa_push_AstPtr(block->data.block.nodes, tmp);
         parse_semicolon_rq(ctx);
         goto NEXT;
     }
-
+    parse_hash_directive(ctx, HD_NONE, NULL);
     tok = tokens_consume_if(ctx->tokens, SYM_RBLOCK);
     if (!tok) {
         tok = tokens_peek_prev(ctx->tokens);

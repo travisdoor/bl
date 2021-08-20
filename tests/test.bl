@@ -1,13 +1,12 @@
-Flags :: enum u32 #flags {
-    A; // 0
-    B; // 1
-    C; // 2
-    D; // 4 ...
+assert_test :: fn () {
+    foo();
 }
 
 main :: fn () s32 {
-    print("%\n", Flags);
+    #assert_test();
     return 0;
 }
 
-
+foo :: fn () {
+    print("hello!");
+}
