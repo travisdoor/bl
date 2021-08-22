@@ -7891,7 +7891,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     }
 
     if (call_in_compile_time) {
-        struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &call->callee->value);
+        struct mir_fn *fn = optional_fn_or_group.fn;
         BL_MAGIC_ASSERT(fn);
         vm_stack_ptr_t result = NULL;
         BL_LOG("Call: '%s'.", fn->linkage_name);
