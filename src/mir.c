@@ -7632,15 +7632,14 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     struct mir_type *type                 = call->callee->value.type;
     BL_ASSERT(type && "invalid type of called object");
 
-    bool       is_called_via_pointer = mir_is_pointer_type(type);
-    const bool is_fn                 = type->kind == MIR_TYPE_FN;
-    const bool is_group              = type->kind == MIR_TYPE_FN_GROUP;
+    const bool is_called_via_pointer = mir_is_pointer_type(type);
     if (is_called_via_pointer) {
         // we want to make calls also via pointer to functions so in such case
         // we need to resolve pointed function
         type = mir_deref_type(type);
     }
-
+    bool is_fn    = type->kind == MIR_TYPE_FN;
+    bool is_group = type->kind == MIR_TYPE_FN_GROUP;
     if (!is_group && !is_fn) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_EXPECTED_FUNC,
@@ -7653,30 +7652,12 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     union fn_or_group {
         struct mir_fn *      fn;
         struct mir_fn_group *group;
+        void *               any;
     };
 
-    union fn_or_group optional_fn_or_group = {0};
-    if (is_fn) {
-        optional_fn_or_group.fn = MIR_CEV_READ_AS(struct mir_fn *, &call->callee->value);
-    } else if (is_group) {
-        optional_fn_or_group.group = MIR_CEV_READ_AS(struct mir_fn_group *, &call->callee->value);
-    } else {
-        BL_ASSERT("Expected function or function group!");
-    }
-
-    if (is_direct_call) {
-        struct mir_fn *fn = optional_fn_or_group.fn;
-        BL_MAGIC_ASSERT(fn);
-        if (call->base.value.is_comptime && !fn->is_fully_analyzed)
-            RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
-        // Direct call of anonymous function.
-        // NOTE: We increase ref count of called function here, but this
-        // will not work for functions called by pointer in obtained in
-        // runtime
-        if (fn->ref_count == 0) {
-            ++fn->ref_count;
-        }
-    }
+    union fn_or_group optional_fn_or_group;
+    optional_fn_or_group.any =
+        call->callee->value.is_comptime ? MIR_CEV_READ_AS(void *, &call->callee->value) : NULL;
 
     // Pre-scan of all arguments passed to function call is needed in case we want to convert
     // some arguments to Any type, because to Any conversion requires generation of rtti
@@ -7736,13 +7717,28 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         callee_replacement->base.node       = selected_overload_fn->decl_node;
         type = callee_replacement->base.value.type = selected_overload_fn->type;
         MIR_CEV_WRITE_AS(struct mir_fn *, &callee_replacement->base.value, selected_overload_fn);
+        optional_fn_or_group.fn = selected_overload_fn;
+        is_fn                   = true;
+        is_group                = false;
     }
 
-    BL_ASSERT(type->kind == MIR_TYPE_FN && "Expected function type!");
+    if (is_direct_call) {
+        struct mir_fn *fn = optional_fn_or_group.fn;
+        BL_MAGIC_ASSERT(fn);
+        if (call->base.value.is_comptime && !fn->is_fully_analyzed)
+            RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+        // Direct call of anonymous function.
+        // NOTE: We increase ref count of called function here, but this
+        // will not work for functions called by pointer in obtained in
+        // runtime
+        if (fn->ref_count == 0) {
+            ++fn->ref_count;
+        }
+    }
+    BL_ASSERT(is_fn && !is_group);
     const bool is_polymorph = IS_FLAG(type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_POLYMORPH);
-
     if (is_polymorph) {
-        struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &call->callee->value);
+        struct mir_fn *fn = optional_fn_or_group.fn;
         BL_MAGIC_ASSERT(fn);
         struct mir_instr_fn_proto *instr_replacement_fn_proto = NULL;
         RUNTIME_MEASURE_BEGIN_S(poly);
