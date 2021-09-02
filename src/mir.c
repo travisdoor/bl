@@ -8036,12 +8036,24 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
         block->entry_instr->node) {
         // Report unreachable code if there is one only once inside function body.
         fn->first_unreachable_loc = block->entry_instr->node->location;
-
-        builder_msg(BUILDER_MSG_WARNING,
-                    0,
-                    fn->first_unreachable_loc,
-                    BUILDER_CUR_NONE,
-                    "Unreachable code detected.");
+        TString *poly             = fn->debug_poly_replacement;
+        if (poly) {
+            builder_msg(
+                BUILDER_MSG_WARNING,
+                0,
+                fn->first_unreachable_loc,
+                BUILDER_CUR_NONE,
+                "Unreachable code detected in the function '%s' with polymorph replacement: %s",
+                mir_get_fn_readable_name(fn),
+                poly->data);
+        } else {
+            builder_msg(BUILDER_MSG_WARNING,
+                        0,
+                        fn->first_unreachable_loc,
+                        BUILDER_CUR_NONE,
+                        "Unreachable code detected in the function '%s'.",
+                        mir_get_fn_readable_name(fn));
+        }
     }
 
     // Append implicit return for void functions or generate error when last
@@ -10979,6 +10991,15 @@ const char *mir_instr_name(const struct mir_instr *instr)
 // =================================================================================================
 // public
 // =================================================================================================
+const char *mir_get_fn_readable_name(struct mir_fn *fn)
+{
+    BL_ASSERT(fn);
+    if (fn->id) {
+        return fn->id->str;
+    }
+    return fn->linkage_name;
+}
+
 static void _type_to_str(char *buf, usize len, const struct mir_type *type, bool prefer_name)
 {
 #define append_buf(buf, len, str)                                                                  \
