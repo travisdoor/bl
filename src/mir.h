@@ -788,6 +788,8 @@ struct mir_instr_cond_br {
     // generated to be used as pre-instruction to PHI, we must keep condition value on stack (if
     // it's not compile time known) in order to be used as resolution of PHI expression.
     bool keep_stack_value;
+    // Conditional break generated from static if.
+    bool is_static;
 };
 
 struct mir_instr_br {

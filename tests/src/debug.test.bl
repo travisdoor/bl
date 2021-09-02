@@ -115,14 +115,14 @@ test_logger :: fn (kind: PrintLogKind, file: string, line: s32, format: string, 
 }
 
 static_assert :: fn () #test {
-    #assert(sizeof(s32) == sizeof(s32));
-    #assert(sizeof(s32) == 4);
-    #assert(true);    
+    #assert(sizeof(s32) == sizeof(s32))
+    #assert(sizeof(s32) == 4)
+    #assert(true)
     
     i :: 10;
-    #assert(i == 10);
+    #assert(i == 10)
     print("%\n", i);
     
     arr: [10]s32;
-    #assert(arr.len == 10);
+    #assert(arr.len == 10)
 }

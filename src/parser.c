@@ -82,7 +82,8 @@ typedef enum {
     HD_BASE         = 1 << 11,
     HD_ENTRY        = 1 << 12,
     HD_BUILD_ENTRY  = 1 << 13,
-    HD_TAGS         = 1 << 14,
+    HD_STATIC_IF    = 1 << 14,
+    HD_TAGS         = 1 << 15,
     HD_NO_INIT      = 1 << 16,
     HD_INTRINSIC    = 1 << 17,
     HD_TEST_FN      = 1 << 18,
@@ -334,11 +335,26 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
     {                                                                                              \
         if (satisfied) *satisfied = _hd;                                                           \
     }
-
     set_satisfied(HD_NONE);
-
     struct token *tok_hash = tokens_consume_if(ctx->tokens, SYM_HASH);
     if (!tok_hash) return NULL;
+    // Special case for static if
+    {
+        struct ast *if_stmt = parse_stmt_if(ctx);
+        if (if_stmt) {
+            set_satisfied(HD_STATIC_IF);
+            if (IS_NOT_FLAG(expected_mask, HD_STATIC_IF)) {
+                builder_msg(BUILDER_MSG_ERROR,
+                            0,
+                            if_stmt->location,
+                            BUILDER_CUR_WORD,
+                            "Static if is not allowed in this context.");
+                return ast_create_node(ctx->ast_arena, AST_BAD, tok_hash, SCOPE_GET(ctx));
+            }
+            if_stmt->data.stmt_if.is_static = true;
+            return if_stmt;
+        }
+    }
 
     struct token *tok_directive = tokens_consume(ctx->tokens);
     if (tok_directive->sym != SYM_IDENT) goto INVALID;
@@ -1656,7 +1672,7 @@ struct ast *parse_expr_primary(struct context *ctx)
     if ((expr = parse_expr_type(ctx))) return expr;
     if ((expr = parse_expr_null(ctx))) return expr;
     if ((expr = parse_expr_compound(ctx))) return expr;
-    if ((expr = parse_hash_directive(ctx, HD_FILE | HD_LINE | HD_ASSERT, NULL))) return expr;
+    if ((expr = parse_hash_directive(ctx, HD_FILE | HD_LINE, NULL))) return expr;
 
     return NULL;
 }
@@ -2689,7 +2705,10 @@ NEXT:
         PARSE_WARNING(tok, BUILDER_CUR_WORD, "extra semicolon can be removed ';'");
         goto NEXT;
     }
-
+    if ((tmp = parse_hash_directive(ctx, HD_STATIC_IF | HD_ASSERT, NULL))) {
+        tsa_push_AstPtr(block->data.block.nodes, tmp);
+        goto NEXT;
+    }
     if ((tmp = (struct ast *)parse_decl(ctx))) {
         if (AST_IS_OK(tmp)) parse_semicolon_rq(ctx);
         tsa_push_AstPtr(block->data.block.nodes, tmp);
@@ -2743,7 +2762,6 @@ NEXT:
         parse_semicolon_rq(ctx);
         goto NEXT;
     }
-    parse_hash_directive(ctx, HD_NONE, NULL);
     tok = tokens_consume_if(ctx->tokens, SYM_RBLOCK);
     if (!tok) {
         tok = tokens_peek_prev(ctx->tokens);

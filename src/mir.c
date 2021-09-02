@@ -523,7 +523,8 @@ static struct mir_instr *append_instr_cond_br(struct context *        ctx,
                                               struct ast *            node,
                                               struct mir_instr *      cond,
                                               struct mir_instr_block *then_block,
-                                              struct mir_instr_block *else_block);
+                                              struct mir_instr_block *else_block,
+                                              const bool              is_static);
 
 static struct mir_instr *
 append_instr_br(struct context *ctx, struct ast *node, struct mir_instr_block *then_block);
@@ -1245,6 +1246,7 @@ static INLINE void *mutate_instr(struct mir_instr *instr, enum mir_instr_kind ki
 
 static INLINE void erase_instr(struct mir_instr *instr)
 {
+    BL_ASSERT(instr->kind != MIR_INSTR_BLOCK && "Use erase_block instead.");
     if (!instr) return;
     struct mir_instr_block *block = instr->owner_block;
     if (!block) return;
@@ -1254,6 +1256,17 @@ static INLINE void erase_instr(struct mir_instr *instr)
     if (instr->prev) instr->prev->next = instr->next;
     if (instr->next) instr->next->prev = instr->prev;
 
+    instr->prev = NULL;
+    instr->next = NULL;
+}
+
+static INLINE void erase_block(struct mir_instr *instr)
+{
+    BL_ASSERT(instr->kind == MIR_INSTR_BLOCK && "Use erase_instr instead.");
+    BL_ASSERT(instr->ref_count == 0 && "Cannot erase referenced block!");
+    if (!instr) return;
+    if (instr->prev) instr->prev->next = instr->next;
+    if (instr->next) instr->next->prev = instr->prev;
     instr->prev = NULL;
     instr->next = NULL;
 }
@@ -3647,21 +3660,20 @@ struct mir_instr *append_instr_cond_br(struct context *        ctx,
                                        struct ast *            node,
                                        struct mir_instr *      cond,
                                        struct mir_instr_block *then_block,
-                                       struct mir_instr_block *else_block)
+                                       struct mir_instr_block *else_block,
+                                       const bool              is_static)
 {
     BL_ASSERT(cond && then_block && else_block);
     ref_instr(&then_block->base);
     ref_instr(&else_block->base);
-
     struct mir_instr_cond_br *tmp = create_instr(ctx, MIR_INSTR_COND_BR, node);
     tmp->base.value.type          = ctx->builtin_types->t_void;
     tmp->base.ref_count           = NO_REF_COUNTING;
     tmp->cond                     = ref_instr(cond);
     tmp->then_block               = then_block;
     tmp->else_block               = else_block;
-
+    tmp->is_static                = is_static;
     append_current_block(ctx, &tmp->base);
-
     struct mir_instr_block *block = ast_current_block(ctx);
     if (!is_block_terminated(block)) terminate_block(block, &tmp->base);
     return &tmp->base;
@@ -4452,6 +4464,8 @@ bool evaluate(struct context *ctx, struct mir_instr *instr)
         struct mir_instr_block *  discard_block = !cond ? cond_br->then_block : cond_br->else_block;
         unref_instr(&discard_block->base);
         unref_instr(cond_br->cond);
+        if (cond_br->is_static && discard_block->base.ref_count == 0)
+            erase_block(&discard_block->base);
         // erase_instr(cond_br->cond);
         struct mir_instr_br *br    = mutate_instr(&cond_br->base, MIR_INSTR_BR);
         br->then_block             = continue_block;
@@ -6121,6 +6135,16 @@ struct result analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_b
     if (analyze_slot(ctx, &analyze_slot_conf_default, &br->cond, ctx->builtin_types->t_bool) !=
         ANALYZE_PASSED) {
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+    }
+    if (br->is_static) {
+        if (!mir_is_comptime(br->cond)) {
+            builder_msg(BUILDER_MSG_ERROR,
+                        ERR_EXPECTED_COMPTIME,
+                        br->cond->node->location,
+                        BUILDER_CUR_WORD,
+                        "Static if expression is supposed to be known in compile time.");
+            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        }
     }
     // Compile-time known conditional break can be later evaluated into direct break.
     br->base.value.is_comptime = mir_is_comptime(br->cond);
@@ -9296,6 +9320,7 @@ void ast_stmt_if(struct context *ctx, struct ast *stmt_if)
     struct mir_fn *fn = ast_current_fn(ctx);
     BL_ASSERT(fn);
 
+    const bool              is_static      = stmt_if->data.stmt_if.is_static;
     struct mir_instr_block *tmp_block      = NULL;
     struct mir_instr_block *then_block     = append_block(ctx, fn, "if_then");
     struct mir_instr_block *continue_block = append_block(ctx, fn, "if_continue");
@@ -9310,9 +9335,9 @@ void ast_stmt_if(struct context *ctx, struct ast *stmt_if)
     struct mir_instr_block *else_block      = NULL;
     if (has_else_branch) {
         else_block = append_block(ctx, fn, "if_else");
-        append_instr_cond_br(ctx, stmt_if, cond, then_block, else_block);
+        append_instr_cond_br(ctx, stmt_if, cond, then_block, else_block, is_static);
     } else {
-        append_instr_cond_br(ctx, stmt_if, cond, then_block, continue_block);
+        append_instr_cond_br(ctx, stmt_if, cond, then_block, continue_block, is_static);
     }
 
     // then block
@@ -9371,7 +9396,7 @@ void ast_stmt_loop(struct context *ctx, struct ast *loop)
     set_current_block(ctx, decide_block);
     struct mir_instr *condition =
         ast_condition ? ast(ctx, ast_condition) : append_instr_const_bool(ctx, NULL, true);
-    append_instr_cond_br(ctx, ast_condition, condition, body_block, continue_block);
+    append_instr_cond_br(ctx, ast_condition, condition, body_block, continue_block, false);
     // loop body
     set_current_block(ctx, body_block);
     ast(ctx, ast_block);
@@ -9832,7 +9857,7 @@ struct mir_instr *ast_expr_lit_fn(struct context *     ctx,
 
     // create block for initialization locals and arguments
     struct mir_instr_block *init_block = append_block(ctx, fn, "entry");
-
+    init_block->base.ref_count         = NO_REF_COUNTING;
     // Every user generated function must contain exit block; this block is invoked last
     // in every function eventually can return .ret value stored in temporary storage.
     // When ast parser hit user defined 'return' statement it sets up .ret temporary if
@@ -10046,9 +10071,9 @@ struct mir_instr *ast_expr_binop(struct context *ctx, struct ast *binop)
         struct mir_instr *lhs = ast(ctx, ast_lhs);
         struct mir_instr *brk = NULL;
         if (swap_condition) {
-            brk = append_instr_cond_br(ctx, NULL, lhs, rhs_block, end_block);
+            brk = append_instr_cond_br(ctx, NULL, lhs, rhs_block, end_block, false);
         } else {
-            brk = append_instr_cond_br(ctx, NULL, lhs, end_block, rhs_block);
+            brk = append_instr_cond_br(ctx, NULL, lhs, end_block, rhs_block, false);
         }
         phi_add_income(phi, brk, ast_current_block(ctx));
         set_current_block(ctx, rhs_block);
@@ -10752,6 +10777,7 @@ struct mir_instr *ast_create_impl_fn_call(struct context * ctx,
     MIR_CEV_WRITE_AS(struct mir_fn *, &fn_proto->value, fn);
     fn->type                      = fn_type;
     struct mir_instr_block *entry = append_block(ctx, fn, "entry");
+    entry->base.ref_count         = NO_REF_COUNTING;
     set_current_block(ctx, entry);
     struct mir_instr *result = ast(ctx, node);
     append_instr_ret(ctx, NULL, result);

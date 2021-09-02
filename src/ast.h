@@ -164,6 +164,7 @@ struct ast_stmt_if {
     struct ast *test;
     struct ast *true_stmt;
     struct ast *false_stmt;
+    bool        is_static;
 };
 
 struct ast_stmt_switch {

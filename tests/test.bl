@@ -1,6 +1,19 @@
 main :: fn () s32 {
-    return 0;
+    flags: string;
+    set_flag(&flags, "hello");    
+    return 10;
+}
+
+cmp :: fn (a: ?T, b: T) bool {
+    is_string :: typeinfo(T).kind == TypeKind.String;
+    #if is_string {
+        return String.compare(a, b);
+    } else {
+        #assert(typeinfo(T).kind == TypeKind.Int)
+        return a == b;
+    }
 }
 
 // TODO: first_char :: fn (str: string #readonly) u8 {}
 // TODO: #using Enum + use UPPERCASE for variants.
+// TODO: #switch ?
