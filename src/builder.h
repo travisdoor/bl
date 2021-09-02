@@ -41,18 +41,6 @@ struct threading_impl;
 typedef void (*unit_stage_fn_t)(struct assembly *, struct unit *);
 typedef void (*assembly_stage_fn_t)(struct assembly *);
 
-enum builtin_id_kind {
-    BUILTIN_ID_NONE = -1,
-#define GEN_BUILTIN_NAMES
-#include "builtin.inc"
-#undef GEN_BUILTIN_NAMES
-    _BUILTIN_ID_COUNT,
-};
-
-extern struct id builtin_ids[_BUILTIN_ID_COUNT];
-
-#define BID(name) &builtin_ids[BUILTIN_ID_##name]
-
 struct builder_options {
     bool verbose;
     bool no_color;

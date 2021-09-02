@@ -4432,7 +4432,7 @@ bool evaluate(struct context *ctx, struct mir_instr *instr)
         // Comptime PHI instruction must be resolvable in this stage; it must have only one possible
         // income. It's converted to constant value containing resolved phi value.
         struct mir_instr_phi *phi = (struct mir_instr_phi *)instr;
-        BL_ASSERT(phi->incoming_blocks->size == phi->incoming_values->size == 1);
+        BL_ASSERT((phi->incoming_blocks->size == phi->incoming_values->size) == 1);
         struct mir_instr *value = phi->incoming_values->data[0];
         BL_ASSERT(value);
         // @Incomplete: Check if the value is constant?
@@ -10991,6 +10991,13 @@ const char *mir_instr_name(const struct mir_instr *instr)
 // =================================================================================================
 // public
 // =================================================================================================
+
+struct id builtin_ids[_BUILTIN_ID_COUNT] = {
+#define GEN_BUILTIN_IDS
+#include "builtin.inc"
+#undef GEN_BUILTIN_IDS
+};
+
 const char *mir_get_fn_readable_name(struct mir_fn *fn)
 {
     BL_ASSERT(fn);

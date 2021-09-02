@@ -129,8 +129,6 @@
 
 TSMALL_ARRAY_TYPE(ConstExprValue, struct mir_const_expr_value, 32);
 
-static struct virtual_machine *current_vm = NULL;
-
 //*************/
 //* fwd decls */
 //*************/
@@ -1206,9 +1204,7 @@ bool _execute_fn_top_level(struct virtual_machine *    vm,
     const bool pop_return_value = does_return_value && is_return_value_used && !is_caller_comptime;
     struct mir_instr *fn_entry_instr    = fn->first_block->entry_instr;
     struct mir_instr *fn_terminal_instr = &fn->terminal_instr->base;
-    BL_ASSERT(fn_entry_instr,
-              "Attempt to execute empty function '%s' in compile time!",
-              fn->linkage_name);
+    BL_ASSERT(fn_entry_instr && "Attempt to execute empty function in compile time!");
     BL_ASSERT(fn_terminal_instr && "Function is not terminated!");
     BL_ASSERT((call && !arg_values) || !call);
     if (arg_values) {

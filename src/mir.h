@@ -214,6 +214,18 @@ enum mir_cast_op {
     MIR_CAST_PTRTOBOOL,
 };
 
+enum builtin_id_kind {
+    BUILTIN_ID_NONE = -1,
+#define GEN_BUILTIN_NAMES
+#include "builtin.inc"
+#undef GEN_BUILTIN_NAMES
+    _BUILTIN_ID_COUNT,
+};
+
+extern struct id builtin_ids[_BUILTIN_ID_COUNT];
+
+#define BID(name) &builtin_ids[BUILTIN_ID_##name]
+
 struct dyncall_cb_context {
     struct virtual_machine *vm;
     struct mir_fn *         fn;

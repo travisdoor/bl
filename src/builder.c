@@ -50,12 +50,6 @@
 
 struct builder builder;
 
-struct id builtin_ids[_BUILTIN_ID_COUNT] = {
-#define GEN_BUILTIN_IDS
-#include "builtin.inc"
-#undef GEN_BUILTIN_IDS
-};
-
 // =================================================================================================
 // Stages
 // =================================================================================================
