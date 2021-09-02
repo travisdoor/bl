@@ -50,6 +50,12 @@
 
 struct builder builder;
 
+struct id builtin_ids[_BUILTIN_ID_COUNT] = {
+#define GEN_BUILTIN_IDS
+#include "builtin.inc"
+#undef GEN_BUILTIN_IDS
+};
+
 // =================================================================================================
 // Stages
 // =================================================================================================
@@ -279,12 +285,15 @@ int compile_unit(struct unit *unit, struct assembly *assembly, unit_stage_fn_t *
 
 int compile_assembly(struct assembly *assembly, assembly_stage_fn_t *pipeline)
 {
+    BL_ASSERT(assembly);
     BL_ASSERT(pipeline && "Invalid assembly pipeline!");
     s32                 i     = 0;
     assembly_stage_fn_t stage = NULL;
     while ((stage = pipeline[i++])) {
         stage(assembly);
-        if (builder.errorc) return COMPILE_FAIL;
+        if (builder.errorc) {
+            return COMPILE_FAIL;
+        }
     }
     return COMPILE_OK;
 }
@@ -465,6 +474,10 @@ void builder_init(const struct builder_options *options, const char *exec_dir)
     tarray_init(&builder.targets, sizeof(struct target *));
     tarray_init(&builder.tmp_strings, sizeof(TString *));
     start_threads();
+    // Generate hashes for builtin ids.
+    for (s32 i = 0; i < _BUILTIN_ID_COUNT; ++i) {
+        builtin_ids[i].hash = thash_from_str(builtin_ids[i].str);
+    }
     builder.is_initialized = true;
 }
 
@@ -617,18 +630,14 @@ void builder_msg(enum builder_msg_type type,
 
         const char *filepath =
             builder.options->full_path_reports ? src->unit->filepath : src->unit->filename;
-        fprintf(stream, "%s:%d:%d:", filepath, line, col);
+        fprintf(stream, "%s:%d:%d: ", filepath, line, col);
         switch (type) {
         case BUILDER_MSG_ERROR: {
-            color_print(stream, BL_RED, " error: ");
+            color_print(stream, BL_RED, "error: ");
             break;
         }
         case BUILDER_MSG_WARNING: {
-            color_print(stream, BL_YELLOW, " warning: ");
-            break;
-        }
-        case BUILDER_MSG_NOTE: {
-            color_print(stream, BL_BLUE, " note: ");
+            color_print(stream, BL_YELLOW, "warning: ");
             break;
         }
 
@@ -676,6 +685,18 @@ void builder_msg(enum builder_msg_type type,
         }
         fprintf(stream, "\n\n");
     } else {
+        switch (type) {
+        case BUILDER_MSG_ERROR: {
+            color_print(stream, BL_RED, "error: ");
+            break;
+        }
+        case BUILDER_MSG_WARNING: {
+            color_print(stream, BL_YELLOW, "warning: ");
+            break;
+        }
+        default:
+            break;
+        }
         va_list args;
         va_start(args, format);
         vsnprintf(msg, TARRAY_SIZE(msg), format, args);

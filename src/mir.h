@@ -141,14 +141,6 @@ struct mir_switch_case {
 
 TSMALL_ARRAY_TYPE(SwitchCase, struct mir_switch_case, 64);
 
-enum mir_builtin_id_kind {
-    MIR_BUILTIN_ID_NONE = -1,
-#define GEN_BUILTIN_NAMES
-#include "mir.inc"
-#undef GEN_BUILTIN_NAMES
-    _MIR_BUILTIN_ID_COUNT,
-};
-
 enum mir_type_kind {
     MIR_TYPE_INVALID     = 0,
     MIR_TYPE_TYPE        = 1,
@@ -272,8 +264,8 @@ struct mir_fn {
     bool         is_global;
     s32          ref_count;
 
-    u32                      flags;
-    enum mir_builtin_id_kind builtin_id;
+    u32                  flags;
+    enum builtin_id_kind builtin_id;
 
     // pointer to the first block inside function body
     struct mir_instr_block *first_block;
@@ -352,11 +344,11 @@ enum mir_type_fn_flags {
 };
 
 struct mir_type_fn {
-    struct mir_type *        ret_type;
-    TSmallArray_ArgPtr *     args;
-    u64                      argument_hash;
-    enum mir_builtin_id_kind builtin_id;
-    u32                      flags;
+    struct mir_type *    ret_type;
+    TSmallArray_ArgPtr * args;
+    u64                  argument_hash;
+    enum builtin_id_kind builtin_id;
+    u32                  flags;
 };
 
 struct mir_type_poly {
@@ -467,7 +459,7 @@ struct mir_var {
     vm_relative_stack_ptr_t     rel_stack_ptr;
     LLVMValueRef                llvm_value;
     const char *                linkage_name;
-    enum mir_builtin_id_kind    builtin_id;
+    enum builtin_id_kind        builtin_id;
     s32                         ref_count;
     u32                         flags;
     bool                        is_mutable;
@@ -553,10 +545,10 @@ struct mir_instr_elem_ptr {
 struct mir_instr_member_ptr {
     struct mir_instr base;
 
-    struct ast *             member_ident;
-    struct mir_instr *       target_ptr;
-    struct scope_entry *     scope_entry;
-    enum mir_builtin_id_kind builtin_id;
+    struct ast *         member_ident;
+    struct mir_instr *   target_ptr;
+    struct scope_entry * scope_entry;
+    enum builtin_id_kind builtin_id;
 };
 
 struct mir_instr_cast {
@@ -661,10 +653,10 @@ struct mir_instr_fn_group {
 struct mir_instr_type_fn {
     struct mir_instr base;
 
-    struct mir_instr *       ret_type;
-    TSmallArray_InstrPtr *   args;
-    enum mir_builtin_id_kind builtin_id;
-    bool                     is_polymorph;
+    struct mir_instr *    ret_type;
+    TSmallArray_InstrPtr *args;
+    enum builtin_id_kind  builtin_id;
+    bool                  is_polymorph;
 };
 
 struct mir_instr_type_fn_group {

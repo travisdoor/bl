@@ -18,6 +18,8 @@ Fix DWARF generation for local anonymous functions.
 Fix DI Generation of global variables using CodeView.
 Update dyncall to version 1.2 (due to experimental support of M1 Macs).
 Add missing operators and change deref operator to @.
+Add evaluation of compile time known conditional breaks.
+Add static assert.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

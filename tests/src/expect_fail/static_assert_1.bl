@@ -1,0 +1,5 @@
+// @ERR_COMPILE_TIME_ABORT@
+main :: fn () s32 { 
+    #assert(false);
+    return 0; 
+}

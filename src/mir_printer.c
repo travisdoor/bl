@@ -29,6 +29,7 @@
 #include "mir_printer.h"
 #include "assembly.h"
 #include "ast.h"
+#include "builder.h"
 #include "mir.h"
 
 #if BL_DEBUG
@@ -603,7 +604,7 @@ void print_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *me
         fprintf(ctx->stream, ".");
     }
 
-    if (member_ptr->builtin_id == MIR_BUILTIN_ID_NONE) {
+    if (member_ptr->builtin_id == BUILTIN_ID_NONE) {
         if (member_ptr->member_ident) {
             fprintf(ctx->stream, "%s", member_ptr->member_ident->data.ident.id.str);
         } else {
@@ -611,10 +612,10 @@ void print_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *me
         }
     } else {
         switch (member_ptr->builtin_id) {
-        case MIR_BUILTIN_ID_ARR_LEN:
+        case BUILTIN_ID_ARR_LEN:
             fprintf(ctx->stream, "len");
             break;
-        case MIR_BUILTIN_ID_ARR_PTR:
+        case BUILTIN_ID_ARR_PTR:
             fprintf(ctx->stream, "ptr");
             break;
 
@@ -887,7 +888,6 @@ void print_instr_block(struct context *ctx, struct mir_instr_block *block)
 {
     const bool is_global = !block->owner_fn;
     if (block->base.prev || is_global) fprintf(ctx->stream, "\n");
-
 #if BL_DEBUG
     fprintf(ctx->stream,
             "%%%s_%llu (%u):",
@@ -897,7 +897,6 @@ void print_instr_block(struct context *ctx, struct mir_instr_block *block)
 #else
     fprintf(ctx->stream, "%%%s_%llu:", block->name, (unsigned long long)block->base.id);
 #endif
-
     if (is_global) {
         fprintf(ctx->stream, " {\n");
     } else {
@@ -906,14 +905,11 @@ void print_instr_block(struct context *ctx, struct mir_instr_block *block)
         else
             fprintf(ctx->stream, "\n");
     }
-
     struct mir_instr *tmp = block->entry_instr;
-
     while (tmp) {
         print_instr(ctx, tmp);
         tmp = tmp->next;
     }
-
     if (is_global) {
         fprintf(ctx->stream, "}");
     }

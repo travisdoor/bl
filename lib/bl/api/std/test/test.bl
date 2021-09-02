@@ -215,11 +215,11 @@ test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) 
 ///         return test_run(); 
 ///     } 
 test_run :: fn () s32 {
-    sighup :: fn (v: c_int) {};
+    sighup :: fn (_: c_int) {};
     _signal(_SIGHUP, &sighup);
 
     cases :: testcases();
-    if cases.len == 0 { return 0; }
+    if cases.len == 0 { return 0; } // @Incomplete: use static if.
         
     print("\n");
     prev_abort_handler :: _context.abort_fn;
@@ -290,7 +290,7 @@ abort_handler :: fn () {
     _os_abort_default();
 }
 
-worker :: fn (args: *u8) s32 {
+worker :: fn (_: *u8) s32 {
     loop _ci < _queue.len {
         _current = &_queue[_ci];
         _ci += 1; 

@@ -129,6 +129,8 @@
 
 TSMALL_ARRAY_TYPE(ConstExprValue, struct mir_const_expr_value, 32);
 
+static struct virtual_machine *current_vm = NULL;
+
 //*************/
 //* fwd decls */
 //*************/
@@ -230,9 +232,8 @@ static INLINE struct mir_fn *get_callee(struct mir_instr_call *call)
 {
     struct mir_const_expr_value *val = &call->callee->value;
     BL_ASSERT(val->type && val->type->kind == MIR_TYPE_FN);
-
     struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, val);
-    BL_ASSERT(fn);
+    BL_MAGIC_ASSERT(fn);
     return fn;
 }
 
@@ -258,7 +259,6 @@ static INLINE usize stack_alloc_size(usize size)
 static INLINE vm_stack_ptr_t stack_alloc(struct virtual_machine *vm, usize size)
 {
     BL_ASSERT(size && "trying to allocate 0 bits on stack");
-
 #if CHCK_STACK
     const usize orig_size = size;
 #endif
@@ -268,16 +268,12 @@ static INLINE vm_stack_ptr_t stack_alloc(struct virtual_machine *vm, usize size)
         builder_error("Stack overflow!!!");
         exec_abort(vm, 10);
     }
-
     vm_stack_ptr_t mem = (vm_stack_ptr_t)vm->stack->top_ptr;
     vm->stack->top_ptr = vm->stack->top_ptr + size;
-
     if (!is_aligned(mem, VM_MAX_ALIGNMENT)) {
         BL_WARNING("BAD ALIGNMENT %p, %d bytes", mem, size);
     }
-
     CHCK_WRITE(mem, orig_size);
-
     return mem;
 }
 
@@ -287,15 +283,12 @@ static INLINE vm_stack_ptr_t stack_free(struct virtual_machine *vm, usize size)
 #if CHCK_STACK
     const usize orig_size = size;
 #endif
-
     size                   = stack_alloc_size(size);
     vm_stack_ptr_t new_top = vm->stack->top_ptr - size;
     if (new_top < (u8 *)(vm->stack->ra + 1)) BL_ABORT("Stack underflow!!!");
     vm->stack->top_ptr = new_top;
     vm->stack->used_bytes -= size;
-
     CHCK_VALIDATE(new_top, orig_size);
-
     return new_top;
 }
 
@@ -313,9 +306,7 @@ static INLINE struct mir_instr *pop_ra(struct virtual_machine *vm)
 {
     if (!vm->stack->ra) return NULL;
     struct mir_instr *caller = vm->stack->ra->caller;
-
     LOG_POP_RA;
-
     // rollback
     vm_stack_ptr_t new_top_ptr = (vm_stack_ptr_t)vm->stack->ra;
     vm->stack->used_bytes      = vm->stack->top_ptr - new_top_ptr;
@@ -330,7 +321,6 @@ static INLINE vm_stack_ptr_t stack_push_empty(struct virtual_machine *vm, struct
     const usize size = type->store_size_bytes;
     BL_ASSERT(size && "pushing zero sized data on stack");
     vm_stack_ptr_t tmp = stack_alloc(vm, size);
-
     LOG_PUSH_STACK;
     return tmp;
 }
@@ -342,7 +332,6 @@ static INLINE vm_stack_ptr_t stack_push(struct virtual_machine *vm,
     BL_ASSERT(value && "try to push NULL value");
     vm_stack_ptr_t tmp = stack_push_empty(vm, type);
     memcpy(tmp, value, type->store_size_bytes);
-
     // pointer relative to frame top
     return tmp;
 }
@@ -352,9 +341,7 @@ static INLINE vm_stack_ptr_t stack_pop(struct virtual_machine *vm, struct mir_ty
     BL_ASSERT(type);
     const usize size = type->store_size_bytes;
     BL_ASSERT(size && "popping zero sized data from stack");
-
     LOG_POP_STACK;
-
     return stack_free(vm, size);
 }
 
@@ -381,7 +368,6 @@ static INLINE vm_stack_ptr_t stack_rel_to_abs_ptr(struct virtual_machine *vm,
 {
     if (ignore) return (vm_stack_ptr_t)rel_ptr;
     BL_ASSERT(rel_ptr);
-
     vm_stack_ptr_t base = (vm_stack_ptr_t)vm->stack->ra;
     BL_ASSERT(base);
     return base + rel_ptr;
@@ -722,23 +708,29 @@ void print_call_stack(struct virtual_machine *vm, usize max_nesting)
     struct mir_instr *instr = vm->stack->pc;
     struct vm_frame * fr    = vm->stack->ra;
     usize             n     = 0;
-
     if (!instr) return;
-    // print last instruction
-    builder_msg(BUILDER_MSG_ERROR, 0, instr->node->location, BUILDER_CUR_WORD, "");
-    builder_error("called from:");
-
+    // Print the last instruction
+    builder_msg(BUILDER_MSG_NOTE, 0, instr->node->location, BUILDER_CUR_WORD, "Last called:");
     while (fr) {
-        instr = (struct mir_instr *)fr->caller;
+        instr = fr->caller;
         fr    = fr->prev;
         if (!instr) break;
-
         if (max_nesting && n == max_nesting) {
-            builder_error("continue...");
+            builder_log("continue...");
             break;
         }
-
-        builder_msg(BUILDER_MSG_ERROR, 0, instr->node->location, BUILDER_CUR_WORD, "");
+        struct mir_fn *fn = instr->owner_block->owner_fn;
+        if (fn && fn->debug_poly_replacement) {
+            builder_msg(BUILDER_MSG_NOTE,
+                        0,
+                        instr->node->location,
+                        BUILDER_CUR_WORD,
+                        "Called from following location with polymorph replacement: %s",
+                        fn->debug_poly_replacement->data);
+        } else {
+            builder_msg(
+                BUILDER_MSG_NOTE, 0, instr->node->location, BUILDER_CUR_WORD, "Called from:");
+        }
         ++n;
     }
 }
@@ -1202,21 +1194,28 @@ bool _execute_fn_top_level(struct virtual_machine *    vm,
                            vm_stack_ptr_t *            out_ptr)
 {
     BL_ASSERT(fn);
-    if (!fn->is_fully_analyzed)
-        BL_ABORT("Function is not fully analyzed for compile time execution!!!");
-    struct mir_type *   ret_type             = fn->type->data.fn.ret_type;
+    if (!fn->is_fully_analyzed) {
+        BL_ABORT("Function '%s' is not fully analyzed for compile time execution!!!",
+                 fn->linkage_name);
+    }
     TSmallArray_ArgPtr *args                 = fn->type->data.fn.args;
+    struct mir_type *   ret_type             = fn->type->data.fn.ret_type;
     const bool          does_return_value    = ret_type->kind != MIR_TYPE_VOID;
     const bool          is_return_value_used = call ? call->ref_count > 1 : true;
     const bool          is_caller_comptime   = call ? call->value.is_comptime : false;
-    const bool  pop_return_value = does_return_value && is_return_value_used && !is_caller_comptime;
-    const usize argc             = args ? args->size : 0;
-    if (args) {
-        BL_ASSERT(!call &&
-                  "Caller instruction cannot be used when call arguments are passed explicitly.");
-        BL_ASSERT(argc == args->size && "Invalid count of eplicitly passed arguments");
+    const bool pop_return_value = does_return_value && is_return_value_used && !is_caller_comptime;
+    struct mir_instr *fn_entry_instr    = fn->first_block->entry_instr;
+    struct mir_instr *fn_terminal_instr = &fn->terminal_instr->base;
+    BL_ASSERT(fn_entry_instr,
+              "Attempt to execute empty function '%s' in compile time!",
+              fn->linkage_name);
+    BL_ASSERT(fn_terminal_instr && "Function is not terminated!");
+    BL_ASSERT((call && !arg_values) || !call);
+    if (arg_values) {
+        BL_ASSERT(args);
+        BL_ASSERT(arg_values->size == args->size && "Invalid count of explicitly passed arguments");
         // Push all arguments in reverse order on the stack.
-        for (usize i = argc; i-- > 0;) {
+        for (usize i = args->size; i-- > 0;) {
             stack_push(vm, arg_values->data[i].data, arg_values->data[i].type);
         }
     }
@@ -1225,7 +1224,7 @@ bool _execute_fn_top_level(struct virtual_machine *    vm,
     // allocate local variables
     stack_alloc_local_vars(vm, fn);
     // setup entry instruction
-    set_pc(vm, fn->first_block->entry_instr);
+    set_pc(vm, fn_entry_instr);
     // iterate over entry block of executable
     struct mir_instr *instr, *prev;
     while (true) {
@@ -1233,7 +1232,11 @@ bool _execute_fn_top_level(struct virtual_machine *    vm,
         prev  = instr;
         if (!instr || vm->stack->aborted) break;
         interp_instr(vm, instr);
-        // stack head can be changed by br instructions
+        // When we reach terminal instruction of this function, we must stop the execution,
+        // otherwise when the interpreted call lives in scope of other function, interpreter will
+        // continue with execution.
+        if (instr == fn_terminal_instr) break;
+        // Stack head can be changed by br instructions.
         if (!get_pc(vm) || get_pc(vm) == prev) set_pc(vm, instr->next);
     }
     if (vm->stack->aborted) return false;
@@ -1254,7 +1257,7 @@ void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
     }
 
     // Skip all comptimes.
-    if (instr->value.is_comptime) return;
+    if (mir_is_comptime(instr)) return;
 
     switch (instr->kind) {
     case MIR_INSTR_CAST:
@@ -1396,19 +1399,15 @@ void interp_instr_phi(struct virtual_machine *vm, struct mir_instr_phi *phi)
     for (usize i = 0; i < c; ++i) {
         value = phi->incoming_values->data[i];
         block = (struct mir_instr_block *)phi->incoming_blocks->data[i];
-
         if (block->base.id == prev_block->base.id) break;
     }
-
     BL_ASSERT(value && "Invalid value for phi income.");
-
     // Pop used value from stack or use constant. Result will be pushed on the
     // stack or used as constant value of phi when phi is compile time known
     // constant.
     {
         struct mir_type *phi_type = phi->base.value.type;
         BL_ASSERT(phi_type);
-
         vm_stack_ptr_t value_ptr = fetch_value(vm, &value->value);
         stack_push(vm, value_ptr, phi_type);
     }
@@ -1520,7 +1519,7 @@ void interp_instr_member_ptr(struct virtual_machine *vm, struct mir_instr_member
 
     vm_stack_ptr_t result = NULL;
 
-    if (member_ptr->builtin_id == MIR_BUILTIN_ID_NONE) {
+    if (member_ptr->builtin_id == BUILTIN_ID_NONE) {
         BL_ASSERT(member_ptr->scope_entry && member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
         struct mir_member *member = member_ptr->scope_entry->data.member;
         BL_ASSERT(member);
@@ -1530,10 +1529,10 @@ void interp_instr_member_ptr(struct virtual_machine *vm, struct mir_instr_member
         result = vm_get_struct_elem_ptr(vm->assembly, target_type, ptr, (u32)index);
     } else {
         // builtin member
-        if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR) {
+        if (member_ptr->builtin_id == BUILTIN_ID_ARR_PTR) {
             // slice .ptr
             result = vm_get_struct_elem_ptr(vm->assembly, target_type, ptr, 1);
-        } else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN) {
+        } else if (member_ptr->builtin_id == BUILTIN_ID_ARR_LEN) {
             // slice .len
             result = vm_get_struct_elem_ptr(vm->assembly, target_type, ptr, 0);
         } else {
@@ -1560,9 +1559,13 @@ void interp_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *un
     stack_push(vm, (vm_stack_ptr_t)&result, unroll->base.value.type);
 }
 
-void interp_instr_unreachable(struct virtual_machine *vm, struct mir_instr_unreachable UNUSED(*unr))
+void interp_instr_unreachable(struct virtual_machine *vm, struct mir_instr_unreachable *unr)
 {
-    builder_error("execution reached unreachable code");
+    builder_msg(BUILDER_MSG_ERROR,
+                ERR_COMPILE_TIME_ABORT,
+                NULL,
+                BUILDER_CUR_AFTER,
+                "Execution reached unreachable code.");
     exec_abort(vm, 0);
 }
 
@@ -1896,18 +1899,14 @@ void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
         exec_abort(vm, 0);
         return;
     }
-
     BL_ASSERT(callee->type);
-
     if (IS_FLAG(callee->flags, FLAG_EXTERN) || IS_FLAG(callee->flags, FLAG_INTRINSIC)) {
         interp_extern_call(vm, callee, call);
     } else {
         // Push current frame stack top. (Later poped by ret instruction)
         push_ra(vm, &call->base);
         BL_ASSERT(callee->first_block->entry_instr);
-
         stack_alloc_local_vars(vm, callee);
-
         // setup entry instruction
         set_pc(vm, callee->first_block->entry_instr);
     }
@@ -2070,11 +2069,13 @@ void eval_instr(struct virtual_machine *vm, struct mir_instr *instr)
         eval_instr_call_loc(vm, (struct mir_instr_call_loc *)instr);
         break;
 
+    case MIR_INSTR_PHI:
+    case MIR_INSTR_COND_BR:
+    case MIR_INSTR_CALL:
     case MIR_INSTR_BLOCK:
     case MIR_INSTR_CONST:
     case MIR_INSTR_FN_PROTO:
     case MIR_INSTR_FN_GROUP:
-    case MIR_INSTR_CALL:
     case MIR_INSTR_TYPE_ARRAY:
     case MIR_INSTR_TYPE_PTR:
     case MIR_INSTR_TYPE_FN:
@@ -2091,6 +2092,7 @@ void eval_instr(struct virtual_machine *vm, struct mir_instr *instr)
     case MIR_INSTR_SIZEOF:
     case MIR_INSTR_UNROLL:
     case MIR_INSTR_ALIGNOF:
+    case MIR_INSTR_BR:
         break;
 
     default:
@@ -2405,7 +2407,9 @@ void eval_instr_decl_direct_ref(struct virtual_machine            UNUSED(*vm),
     MIR_CEV_WRITE_AS(vm_stack_ptr_t, &decl_ref->base.value, var->value.data);
 }
 
-// public
+// =================================================================================================
+// Public
+// =================================================================================================
 void vm_init(struct virtual_machine *vm, usize stack_size)
 {
     if (stack_size == 0) BL_ABORT("invalid frame stack size");
@@ -2504,10 +2508,7 @@ bool vm_execute_instr_top_level_call(struct virtual_machine *vm,
     ZONE();
     vm->assembly = assembly;
     BL_ASSERT(call && call->base.is_analyzed);
-
-    assert(call->base.value.is_comptime && "Top level call is expected to be comptime.");
-    if (call->args) BL_ABORT("exec call top level has not implemented passing of arguments");
-
+    BL_ASSERT(mir_is_comptime(&call->base) && "Top level call is expected to be comptime.");
     bool result = execute_fn_top_level(vm, &call->base, NULL);
     RETURN_END_ZONE(result);
 }
@@ -2518,20 +2519,16 @@ vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, struct mi
     vm->assembly = assembly;
     BL_ASSERT(var);
     BL_ASSERT(var->is_global && "Allocated variable is supposed to be global variable.");
-
     if (var->value.is_comptime) {
         if (needs_tmp_alloc(&var->value)) {
             var->value.data = stack_push_empty(vm, var->value.type);
         } else {
             var->value.data = (vm_stack_ptr_t)&var->value._tmp;
         }
-
         return var->value.data;
     }
-
     var->rel_stack_ptr = stack_alloc_var(vm, var);
-
-    // HACK: we can ignore relative pointers for globals.
+    // @Hack: we can ignore relative pointers for globals.
     return (vm_stack_ptr_t)var->rel_stack_ptr;
 }
 
@@ -2541,7 +2538,6 @@ vm_stack_ptr_t vm_alloc_const_expr_value(struct virtual_machine       UNUSED(*vm
 {
     BL_ASSERT(value->is_comptime);
     BL_ASSERT(value->type);
-
     return value->data;
 }
 
@@ -2554,13 +2550,10 @@ vm_alloc_raw(struct virtual_machine *vm, struct assembly UNUSED(*assembly), stru
 void *_vm_read_value(usize size, vm_stack_ptr_t value)
 {
     BL_ASSERT(value);
-
     static vm_value_t tmp;
     memset(&tmp, 0, sizeof(tmp));
-
     if (size == 0) BL_ABORT("Reading value of zero size is invalid!!!");
     if (size > sizeof(tmp)) BL_ABORT("Cannot read value bigger then %sB", sizeof(tmp));
-
     memcpy(&tmp, value, size);
     return &tmp;
 }
@@ -2574,7 +2567,6 @@ vm_stack_ptr_t vm_read_var(struct virtual_machine *vm, const struct mir_var *var
     } else {
         ptr = stack_rel_to_abs_ptr(vm, var->rel_stack_ptr, var->is_global);
     }
-
     BL_ASSERT(ptr && "Attept to get allocation pointer of unallocated variable!");
     return ptr;
 }
@@ -2592,7 +2584,6 @@ f64 vm_read_double(const struct mir_type *type, vm_stack_ptr_t src)
     const usize size = type->store_size_bytes;
     BL_ASSERT(src && "Attempt to read null source!");
     BL_ASSERT(size == sizeof(f64) && "Target type is not f64 type!");
-
     f64 result = 0;
     memcpy(&result, src, size);
     return result;
@@ -2603,7 +2594,6 @@ vm_stack_ptr_t vm_read_ptr(const struct mir_type *type, vm_stack_ptr_t src)
     const usize size = type->store_size_bytes;
     BL_ASSERT(src && "Attempt to read null source!");
     BL_ASSERT(size == sizeof(vm_stack_ptr_t) && "Target type is not pointer type!");
-
     vm_stack_ptr_t result = 0;
     memcpy(&result, src, size);
     return result;

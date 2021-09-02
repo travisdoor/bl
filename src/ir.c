@@ -1935,7 +1935,7 @@ State emit_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *me
     LLVMValueRef llvm_target_ptr = member_ptr->target_ptr->llvm_value;
     BL_ASSERT(llvm_target_ptr);
 
-    if (member_ptr->builtin_id == MIR_BUILTIN_ID_NONE) {
+    if (member_ptr->builtin_id == BUILTIN_ID_NONE) {
         BL_ASSERT(member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
         struct mir_member *member = member_ptr->scope_entry->data.member;
         BL_ASSERT(member);
@@ -1958,10 +1958,10 @@ State emit_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *me
     // builtin member
 
     // Valid only for slice types, we generate direct replacement for arrays.
-    if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_LEN) {
+    if (member_ptr->builtin_id == BUILTIN_ID_ARR_LEN) {
         // .len
         member_ptr->base.llvm_value = LLVMBuildStructGEP(ctx->llvm_builder, llvm_target_ptr, 0, "");
-    } else if (member_ptr->builtin_id == MIR_BUILTIN_ID_ARR_PTR) {
+    } else if (member_ptr->builtin_id == BUILTIN_ID_ARR_PTR) {
         // .ptr
         member_ptr->base.llvm_value = LLVMBuildStructGEP(ctx->llvm_builder, llvm_target_ptr, 1, "");
     }
@@ -2663,10 +2663,8 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
         // Named scope is just mir related temporary type, it has no LLVM representation!
         return STATE_PASSED;
     }
-
     LLVMValueRef llvm_value = NULL;
     LLVMTypeRef  llvm_type  = get_type(ctx, type);
-
     switch (type->kind) {
     case MIR_TYPE_ENUM: {
         type = type->data.enm.base_type;
@@ -2675,19 +2673,16 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
         llvm_value  = LLVMConstInt(llvm_type, i, type->data.integer.is_signed);
         break;
     }
-
     case MIR_TYPE_INT: {
         const u64 i = MIR_CEV_READ_AS(u64, &c->base.value);
         llvm_value  = LLVMConstInt(llvm_type, i, type->data.integer.is_signed);
         break;
     }
-
     case MIR_TYPE_BOOL: {
         const bool i = MIR_CEV_READ_AS(bool, &c->base.value);
         llvm_value   = LLVMConstInt(llvm_type, i, false);
         break;
     }
-
     case MIR_TYPE_REAL: {
         switch (type->store_size_bytes) {
         case 4: {
@@ -2695,46 +2690,40 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
             llvm_value    = LLVMConstReal(llvm_type, (double)i);
             break;
         }
-
         case 8: {
             const double i = MIR_CEV_READ_AS(double, &c->base.value);
             llvm_value     = LLVMConstReal(llvm_type, i);
             break;
         }
-
         default:
             BL_ABORT("Unknown real type!");
         }
         break;
     }
-
     case MIR_TYPE_NULL: {
         llvm_value = LLVMConstNull(llvm_type);
         break;
     }
-
     case MIR_TYPE_STRING: {
         vm_stack_ptr_t len_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 0);
         vm_stack_ptr_t str_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 1);
-
         const s64   len = vm_read_as(s64, len_ptr);
         const char *str = vm_read_as(const char *, str_ptr);
-
         llvm_value = emit_const_string(ctx, str, len);
         break;
     }
-
     case MIR_TYPE_FN: {
         struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &c->base.value);
         BL_MAGIC_ASSERT(fn);
         llvm_value = emit_fn_proto(ctx, fn, true);
         break;
     }
-
+    case MIR_TYPE_VOID: {
+        return STATE_PASSED;
+    }
     default:
         BL_UNIMPLEMENTED;
     }
-
     BL_ASSERT(llvm_value && "Incomplete const value generation!");
     c->base.llvm_value = llvm_value;
     return STATE_PASSED;

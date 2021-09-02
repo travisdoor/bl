@@ -39,7 +39,7 @@
 /// Set `flag` in `flags` input. This function is valid for numeric and enum types (checked by assert).
 set_flag :: fn (flags: *?T, flag: T) T #inline {
     assert(flags);
-    assert(is_integer(typeinfo(T)) || is_enum(typeinfo(T))); // @Incomplete: Use static assert.
+    #assert(typeinfo(T).kind == TypeKind.Int || typeinfo(T).kind == TypeKind.Enum); 
     // @Incomplete: Check enums for #flags tag.
     switch sizeof(T) { // @Cleanup: This is needed only for enums, we can create separate compile
                        //           time branch later.
@@ -55,7 +55,7 @@ set_flag :: fn (flags: *?T, flag: T) T #inline {
 /// Clear `flag` in `flags` input. This function is valid for numeric and enum types (checked by assert).
 clr_flag :: fn (flags: *?T, flag: T) T #inline {
     assert(flags);
-    assert(is_integer(typeinfo(T)) || is_enum(typeinfo(T))); // @Incomplete: Use static assert.
+    #assert(typeinfo(T).kind == TypeKind.Int || typeinfo(T).kind == TypeKind.Enum); 
     // @Incomplete: Check enums for #flags tag.
     switch sizeof(T) { // @Cleanup: This is needed only for enums, we can create separate compile
                        //           time branch later.
@@ -70,7 +70,7 @@ clr_flag :: fn (flags: *?T, flag: T) T #inline {
 
 /// Check whether `flag` is set in `flags`. This function is valid for numeric and enum types (checked by assert).
 is_flag :: fn (flags: ?T, flag: T) bool #inline {
-    assert(is_integer(typeinfo(T)) || is_enum(typeinfo(T))); // @Incomplete: Use static assert.
+    #assert(typeinfo(T).kind == TypeKind.Int || typeinfo(T).kind == TypeKind.Enum); 
     // @Incomplete: Check enums for #flags tag.
     result := false;
     switch sizeof(T) { // @Cleanup: This is needed only for enums, we can create separate compile

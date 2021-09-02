@@ -1,0 +1,10 @@
+// @ERR_COMPILE_TIME_ABORT@
+foo :: fn (v: ?T) {
+    #assert(typeinfo(v).kind == TypeKind.Int);   
+}
+
+main :: fn () s32 { 
+    foo(10);
+    foo("hello");
+    return 0; 
+}

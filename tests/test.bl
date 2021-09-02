@@ -1,12 +1,6 @@
-assert_test :: fn () {
-    foo();
-}
-
 main :: fn () s32 {
-    #assert_test();
     return 0;
 }
 
-foo :: fn () {
-    print("hello!");
-}
+// TODO: first_char :: fn (str: string #readonly) u8 {}
+// TODO: #using Enum + use UPPERCASE for variants.

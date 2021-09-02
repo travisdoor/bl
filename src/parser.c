@@ -431,25 +431,29 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
         return import;
     }
 
-    if (strcmp(directive, "assert_test") == 0) {
+    if (strcmp(directive, "assert") == 0) {
         set_satisfied(HD_ASSERT);
         if (IS_NOT_FLAG(expected_mask, HD_ASSERT)) {
             PARSE_ERROR(
                 ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
             return ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx));
         }
-        // @Cleanup: This is supposed to be generalized in some way. i.e. every call starting with #
-        // should be compile time call?
         BL_ASSERT(tok_directive->sym == SYM_IDENT);
         struct ast *ident =
             ast_create_node(ctx->ast_arena, AST_IDENT, tok_directive, SCOPE_GET(ctx));
-        id_init(&ident->data.ident.id, tok_directive->value.str);
-        struct ast *ref     = ast_create_node(ctx->ast_arena, AST_REF, tok_directive, SCOPE_GET(ctx));
+        ident->data.ident.id = *BID(STATIC_ASSERT_FN);
+        struct ast *ref = ast_create_node(ctx->ast_arena, AST_REF, tok_directive, SCOPE_GET(ctx));
         ref->data.ref.ident = ident;
-        struct ast *call = parse_expr_call(ctx, ref);
-        BL_ASSERT(call); // @Incomplete
+        struct ast *call    = parse_expr_call(ctx, ref);
+        if (!call) {
+            PARSE_ERROR(ERR_INVALID_DIRECTIVE,
+                        tok_directive,
+                        BUILDER_CUR_WORD,
+                        "Static assert is supposed to be a function call '#assert(false)'.");
+            return ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx));
+        }
         call->data.expr_call.call_in_compile_time = true;
-        return call;        
+        return call;
     }
 
     if (strcmp(directive, "link") == 0) {
@@ -1630,18 +1634,14 @@ struct ast *_parse_expr(struct context *ctx, s32 p)
     while (token_is_binop(tokens_peek(ctx->tokens)) &&
            token_prec(tokens_peek(ctx->tokens)).priority >= p) {
         struct token *op = tokens_consume(ctx->tokens);
-
         const s32 q = token_prec(op).associativity == TOKEN_ASSOC_LEFT ? token_prec(op).priority + 1
                                                                        : token_prec(op).priority;
-
         struct ast *rhs = _parse_expr(ctx, q);
         if (!lhs || !rhs) {
             PARSE_ERROR(ERR_INVALID_EXPR, op, BUILDER_CUR_WORD, "Invalid binary operation.");
         }
-
         lhs = parse_expr_binary(ctx, lhs, rhs, op);
     }
-
     return lhs;
 }
 
@@ -1713,10 +1713,6 @@ parse_expr_binary(struct context *ctx, struct ast *lhs, struct ast *rhs, struct 
     binop->data.expr_binop.kind = sym_to_binop_kind(op->sym);
     binop->data.expr_binop.lhs  = lhs;
     binop->data.expr_binop.rhs  = rhs;
-    if (lhs && rhs) {
-        op->location.col = lhs->location->col;
-        op->location.len = rhs->location->col - lhs->location->col + rhs->location->len;
-    }
     return binop;
 }
 
@@ -2682,9 +2678,7 @@ struct ast *parse_block(struct context *ctx, bool create_scope)
 
         SCOPE_PUSH(ctx, scope);
     }
-
-    struct ast *block = ast_create_node(ctx->ast_arena, AST_BLOCK, tok_begin, SCOPE_GET(ctx));
-
+    struct ast *  block = ast_create_node(ctx->ast_arena, AST_BLOCK, tok_begin, SCOPE_GET(ctx));
     struct token *tok;
     struct ast *  tmp;
     block->data.block.nodes = create_sarr(TSmallArray_AstPtr, ctx->assembly);

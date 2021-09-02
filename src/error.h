@@ -116,6 +116,7 @@ enum error {
     ERR_UNEXPECTED_FUNCTION_BODY = 80,
     ERR_INVALID_POLY_MATCH       = 81,
     ERR_UNSUPPORTED_TARGET       = 82,
+    ERR_COMPILE_TIME_ABORT       = 83,
 };
 
 #endif // BL_ERROR_H
