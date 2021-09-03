@@ -284,6 +284,7 @@ static void print_instr_arg(struct context *ctx, struct mir_instr_arg *arg);
 static void print_instr_test_cases(struct context *ctx, struct mir_instr_test_case *tc);
 static void print_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc);
 static void print_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll);
+static void print_instr_msg(struct context *ctx, struct mir_instr_msg *msg);
 static void print_instr(struct context *ctx, struct mir_instr *instr);
 
 // impl
@@ -673,6 +674,12 @@ void print_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll)
     print_comptime_value_or_id(ctx, unroll->src);
     fprintf(ctx->stream, ".%d : ", unroll->index);
     print_comptime_value_or_id(ctx, unroll->remove_src);
+}
+
+void print_instr_msg(struct context *ctx, struct mir_instr_msg *msg)
+{
+    print_instr_head(ctx, &msg->base, "msg");
+    fprintf(ctx->stream, "'%s'", msg->text);
 }
 
 void print_instr_br(struct context *ctx, struct mir_instr_br *br)
@@ -1102,6 +1109,9 @@ void print_instr(struct context *ctx, struct mir_instr *instr)
         break;
     case MIR_INSTR_UNROLL:
         print_instr_unroll(ctx, (struct mir_instr_unroll *)instr);
+        break;
+    case MIR_INSTR_MSG:
+        print_instr_msg(ctx, (struct mir_instr_msg *)instr);
         break;
     }
 

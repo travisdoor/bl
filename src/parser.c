@@ -93,6 +93,8 @@ typedef enum {
     HD_THREAD_LOCAL = 1 << 22,
     HD_FLAGS        = 1 << 23,
     HD_ASSERT       = 1 << 24,
+    HD_COMPTIME     = 1 << 25,
+    HD_MSG          = 1 << 26,
 } HashDirective;
 
 struct context {
@@ -145,7 +147,7 @@ static struct ast *parse_type_enum(struct context *ctx);
 static struct ast *parse_type_ptr(struct context *ctx);
 static struct ast *parse_type_vargs(struct context *ctx);
 static struct ast *parse_stmt_return(struct context *ctx);
-static struct ast *parse_stmt_if(struct context *ctx);
+static struct ast *parse_stmt_if(struct context *ctx, bool is_static);
 static struct ast *parse_stmt_loop(struct context *ctx);
 static struct ast *parse_stmt_break(struct context *ctx);
 static struct ast *parse_stmt_continue(struct context *ctx);
@@ -340,7 +342,7 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
     if (!tok_hash) return NULL;
     // Special case for static if
     {
-        struct ast *if_stmt = parse_stmt_if(ctx);
+        struct ast *if_stmt = parse_stmt_if(ctx, true);
         if (if_stmt) {
             set_satisfied(HD_STATIC_IF);
             if (IS_NOT_FLAG(expected_mask, HD_STATIC_IF)) {
@@ -351,7 +353,6 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
                             "Static if is not allowed in this context.");
                 return ast_create_node(ctx->ast_arena, AST_BAD, tok_hash, SCOPE_GET(ctx));
             }
-            if_stmt->data.stmt_if.is_static = true;
             return if_stmt;
         }
     }
@@ -362,21 +363,13 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
     const char *directive = tok_directive->value.str;
     BL_ASSERT(directive);
 
-    if (strcmp(directive, "warning") == 0) {
-        struct token *tok_msg = tokens_consume_if(ctx->tokens, SYM_STRING);
-        if (!tok_msg) {
-            struct token *tok_err = tokens_peek(ctx->tokens);
-            PARSE_ERROR(ERR_INVALID_DIRECTIVE,
-                        tok_err,
-                        BUILDER_CUR_WORD,
-                        "Expected message after 'warning' directive.");
+    if (strcmp(directive, "error") == 0) {
+        set_satisfied(HD_MSG);
+        if (IS_NOT_FLAG(expected_mask, HD_MSG)) {
+            PARSE_ERROR(
+                ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
             return ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx));
         }
-        PARSE_WARNING(tok_msg, BUILDER_CUR_WORD, "");
-        return NULL;
-    }
-
-    if (strcmp(directive, "error") == 0) {
         struct token *tok_msg = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_msg) {
             struct token *tok_err = tokens_peek(ctx->tokens);
@@ -386,12 +379,35 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, HashDir
                         "Expected message after 'error' directive.");
             return ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx));
         }
-        PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE, tok_msg, BUILDER_CUR_WORD, "");
-        return ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx));
+        struct ast *msg = ast_create_node(ctx->ast_arena, AST_MSG, tok_directive, SCOPE_GET(ctx));
+        msg->data.msg.text = tok_msg->value.str;
+        msg->data.msg.kind = AST_MSG_ERROR;
+        return msg;
+    }
+
+    if (strcmp(directive, "warning") == 0) {
+        set_satisfied(HD_MSG);
+        if (IS_NOT_FLAG(expected_mask, HD_MSG)) {
+            PARSE_ERROR(
+                ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
+            return ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx));
+        }
+        struct token *tok_msg = tokens_consume_if(ctx->tokens, SYM_STRING);
+        if (!tok_msg) {
+            struct token *tok_err = tokens_peek(ctx->tokens);
+            PARSE_ERROR(ERR_INVALID_DIRECTIVE,
+                        tok_err,
+                        BUILDER_CUR_WORD,
+                        "Expected message after 'warning' directive.");
+            return ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx));
+        }
+        struct ast *msg = ast_create_node(ctx->ast_arena, AST_MSG, tok_directive, SCOPE_GET(ctx));
+        msg->data.msg.text = tok_msg->value.str;
+        msg->data.msg.kind = AST_MSG_WARNING;
+        return msg;
     }
 
     if (strcmp(directive, "load") == 0) {
-        // load <string>
         set_satisfied(HD_LOAD);
         if (IS_NOT_FLAG(expected_mask, HD_LOAD)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -1357,14 +1373,14 @@ NEXT:
     return ret;
 }
 
-struct ast *parse_stmt_if(struct context *ctx)
+struct ast *parse_stmt_if(struct context *ctx, bool is_static)
 {
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_IF);
     if (!tok_begin) return NULL;
 
     struct ast *stmt_if = ast_create_node(ctx->ast_arena, AST_STMT_IF, tok_begin, SCOPE_GET(ctx));
-
-    stmt_if->data.stmt_if.test = parse_expr(ctx);
+    stmt_if->data.stmt_if.is_static = is_static;
+    stmt_if->data.stmt_if.test      = parse_expr(ctx);
     if (!stmt_if->data.stmt_if.test) {
         struct token *tok_err = tokens_consume(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_EXPR,
@@ -1390,7 +1406,7 @@ struct ast *parse_stmt_if(struct context *ctx)
 
     stmt_if->data.stmt_if.false_stmt = NULL;
     if (tokens_consume_if(ctx->tokens, SYM_ELSE)) {
-        stmt_if->data.stmt_if.false_stmt = parse_stmt_if(ctx);
+        stmt_if->data.stmt_if.false_stmt = parse_stmt_if(ctx, is_static);
         if (!stmt_if->data.stmt_if.false_stmt)
             stmt_if->data.stmt_if.false_stmt = parse_block(ctx, true);
         if (!stmt_if->data.stmt_if.false_stmt) {
@@ -2705,7 +2721,7 @@ NEXT:
         PARSE_WARNING(tok, BUILDER_CUR_WORD, "extra semicolon can be removed ';'");
         goto NEXT;
     }
-    if ((tmp = parse_hash_directive(ctx, HD_STATIC_IF | HD_ASSERT, NULL))) {
+    if ((tmp = parse_hash_directive(ctx, HD_STATIC_IF | HD_ASSERT | HD_MSG, NULL))) {
         tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
@@ -2721,7 +2737,7 @@ NEXT:
         tmp->data.stmt_return.owner_block = block;
         goto NEXT;
     }
-    if ((tmp = parse_stmt_if(ctx))) {
+    if ((tmp = parse_stmt_if(ctx, false))) {
         tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }

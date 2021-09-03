@@ -46,6 +46,7 @@ union __INSTR_T {\
     struct mir_instr_test_case       tcs; \
     struct mir_instr_call_loc        cl; \
     struct mir_instr_unroll          unroll; \
+    struct mir_instr_msg             msg; \
 };
 
 #define SIZEOF_MIR_INSTR sizeof(union __INSTR_T)
@@ -99,5 +100,6 @@ union __INSTR_T {\
     MIR_INSTR_TEST_CASES,
     MIR_INSTR_CALL_LOC,
     MIR_INSTR_UNROLL,
+    MIR_INSTR_MSG,
 #endif
 

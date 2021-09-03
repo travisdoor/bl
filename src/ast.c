@@ -106,6 +106,8 @@ const char *ast_get_name(const struct ast *n)
         return "Block";
     case AST_DOCS:
         return "Docs";
+    case AST_MSG:
+        return "Message";
     case AST_REF:
         return "Ref";
     case AST_UNREACHABLE:

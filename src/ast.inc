@@ -12,6 +12,7 @@
     AST_TAGS,
     AST_CALL_LOC,
     AST_DOCS,
+    AST_MSG,
     AST_REF,
     AST_DECL_ENTITY,
     AST_DECL_MEMBER,
@@ -114,4 +115,5 @@
     struct ast_expr_addrof     expr_addrof;
     struct ast_expr_deref      expr_deref;
     struct ast_expr_compound   expr_compound;
+    struct ast_msg             msg;
 #endif

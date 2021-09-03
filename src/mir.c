@@ -27,7 +27,6 @@
 // =================================================================================================
 
 #include "mir.h"
-#include "ast.h"
 #include "builder.h"
 #include "common.h"
 #include "unit.h"
@@ -689,6 +688,7 @@ append_instr_addrof(struct context *ctx, struct ast *node, struct mir_instr *src
 // ref_count is ignored.
 static void              erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force);
 static struct mir_instr *append_instr_call_loc(struct context *ctx, struct ast *node);
+static struct mir_instr *append_instr_msg(struct context *ctx, struct ast *node);
 
 // struct ast
 static struct mir_instr *ast_create_global_initializer2(struct context *      ctx,
@@ -764,6 +764,7 @@ static struct mir_instr *ast_expr_binop(struct context *ctx, struct ast *binop);
 static struct mir_instr *ast_expr_unary(struct context *ctx, struct ast *unop);
 static struct mir_instr *ast_expr_compound(struct context *ctx, struct ast *cmp);
 static struct mir_instr *ast_call_loc(struct context *ctx, struct ast *loc);
+static struct mir_instr *ast_msg(struct context *ctx, struct ast *msg);
 
 // analyze
 static bool          evaluate(struct context *ctx, struct mir_instr *instr);
@@ -896,6 +897,7 @@ static struct result analyze_instr_type_info(struct context *            ctx,
 static struct result analyze_instr_alignof(struct context *ctx, struct mir_instr_alignof *alof);
 static struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *binop);
 static struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc);
+static struct result analyze_instr_msg(struct context *ctx, struct mir_instr_msg *msg);
 static void          analyze_report_unresolved(struct context *ctx);
 static void          analyze_report_unused(struct context *ctx);
 
@@ -1244,31 +1246,71 @@ static INLINE void *mutate_instr(struct mir_instr *instr, enum mir_instr_kind ki
     return instr;
 }
 
+static INLINE struct mir_instr *unref_instr(struct mir_instr *instr)
+{
+    if (!instr) return NULL;
+    if (instr->ref_count == NO_REF_COUNTING) return instr;
+    --instr->ref_count;
+    return instr;
+}
+
+static INLINE struct mir_instr *ref_instr(struct mir_instr *instr)
+{
+    if (!instr) return NULL;
+    if (instr->ref_count == NO_REF_COUNTING) return instr;
+    ++instr->ref_count;
+    return instr;
+}
+
 static INLINE void erase_instr(struct mir_instr *instr)
 {
-    BL_ASSERT(instr->kind != MIR_INSTR_BLOCK && "Use erase_block instead.");
     if (!instr) return;
-    struct mir_instr_block *block = instr->owner_block;
-    if (!block) return;
-
-    // first in block
-    if (block->entry_instr == instr) block->entry_instr = instr->next;
+    if (instr->owner_block) {
+        struct mir_instr_block *block = instr->owner_block;
+        if (block->entry_instr == instr) block->entry_instr = instr->next;
+    }
     if (instr->prev) instr->prev->next = instr->next;
     if (instr->next) instr->next->prev = instr->prev;
-
     instr->prev = NULL;
     instr->next = NULL;
 }
 
 static INLINE void erase_block(struct mir_instr *instr)
 {
-    BL_ASSERT(instr->kind == MIR_INSTR_BLOCK && "Use erase_instr instead.");
-    BL_ASSERT(instr->ref_count == 0 && "Cannot erase referenced block!");
-    if (!instr) return;
-    if (instr->prev) instr->prev->next = instr->next;
-    if (instr->next) instr->next->prev = instr->prev;
-    instr->prev = NULL;
-    instr->next = NULL;
+    TSmallArray_InstrPtr64 queue;
+    tsa_init(&queue);
+    tsa_push_InstrPtr64(&queue, instr);
+    while (queue.size) {
+        struct mir_instr *block = tsa_pop_InstrPtr64(&queue);
+        BL_ASSERT(block);
+        BL_ASSERT(block->kind == MIR_INSTR_BLOCK && "Use erase_instr instead.");
+        BL_ASSERT(block->ref_count == 0 && "Cannot erase referenced block!");
+        erase_instr(block);
+        struct mir_instr *terminal = ((struct mir_instr_block *)block)->terminal;
+        BL_ASSERT(terminal && "Unterminated block!");
+        switch (terminal->kind) {
+        case MIR_INSTR_BR: {
+            struct mir_instr_br *br = (struct mir_instr_br *)terminal;
+            if (unref_instr(&br->then_block->base)->ref_count == 0) {
+                tsa_push_InstrPtr64(&queue, &br->then_block->base);
+            }
+            break;
+        }
+        case MIR_INSTR_COND_BR: {
+            struct mir_instr_cond_br *br = (struct mir_instr_cond_br *)terminal;
+            if (unref_instr(&br->then_block->base)->ref_count == 0) {
+                tsa_push_InstrPtr64(&queue, &br->then_block->base);
+            }
+            if (unref_instr(&br->else_block->base)->ref_count == 0) {
+                tsa_push_InstrPtr64(&queue, &br->else_block->base);
+            }
+            break;
+        }
+        default:
+            break;
+        }
+    }
+    tsa_terminate(&queue);
 }
 
 static INLINE void insert_instr_after(struct mir_instr *after, struct mir_instr *instr)
@@ -1492,22 +1534,6 @@ provide_builtin_variant(struct context *ctx, struct scope *scope, struct mir_var
     entry->kind         = SCOPE_ENTRY_VARIANT;
     entry->data.variant = variant;
     variant->entry      = entry;
-}
-
-static INLINE struct mir_instr *unref_instr(struct mir_instr *instr)
-{
-    if (!instr) return NULL;
-    if (instr->ref_count == NO_REF_COUNTING) return instr;
-    --instr->ref_count;
-    return instr;
-}
-
-static INLINE struct mir_instr *ref_instr(struct mir_instr *instr)
-{
-    if (!instr) return NULL;
-    if (instr->ref_count == NO_REF_COUNTING) return instr;
-    ++instr->ref_count;
-    return instr;
 }
 
 static INLINE void
@@ -1858,7 +1884,6 @@ COLLIDE : {
     char *err_msg = (collision->is_builtin || is_builtin)
                         ? "Symbol name collision with compiler builtin '%s'."
                         : "Duplicate symbol";
-
     builder_msg(BUILDER_MSG_ERROR,
                 ERR_DUPLICATE_SYMBOL,
                 node ? node->location : NULL,
@@ -4185,6 +4210,15 @@ struct mir_instr *append_instr_call_loc(struct context *ctx, struct ast *node)
     return tmp;
 }
 
+struct mir_instr *append_instr_msg(struct context *ctx, struct ast *node)
+{
+    struct mir_instr_msg *tmp = create_instr(ctx, MIR_INSTR_MSG, node);
+    tmp->kind                 = node->data.msg.kind;
+    tmp->text                 = node->data.msg.text;
+    append_current_block(ctx, &tmp->base);
+    return &tmp->base;
+}
+
 // analyze
 void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
 {
@@ -4412,6 +4446,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         case MIR_INSTR_CALL_LOC:
         case MIR_INSTR_UNROLL:
         case MIR_INSTR_TYPE_POLY:
+        case MIR_INSTR_MSG:
             break;
 
         default:
@@ -4464,8 +4499,9 @@ bool evaluate(struct context *ctx, struct mir_instr *instr)
         struct mir_instr_block *  discard_block = !cond ? cond_br->then_block : cond_br->else_block;
         unref_instr(&discard_block->base);
         unref_instr(cond_br->cond);
-        if (cond_br->is_static && discard_block->base.ref_count == 0)
+        if (cond_br->is_static && discard_block->base.ref_count == 0) {
             erase_block(&discard_block->base);
+        }
         // erase_instr(cond_br->cond);
         struct mir_instr_br *br    = mutate_instr(&cond_br->base, MIR_INSTR_BR);
         br->then_block             = continue_block;
@@ -7038,6 +7074,7 @@ static INLINE bool is_type_valid_for_binop(const struct mir_type *type, const en
         return true;
     case MIR_TYPE_BOOL:
         return ast_binop_is_logic(op);
+    case MIR_TYPE_TYPE:
     case MIR_TYPE_ENUM:
         return op == BINOP_EQ || op == BINOP_NEQ;
     default:
@@ -7087,16 +7124,13 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
             }
         }
     }
-
     struct mir_instr *lhs = binop->lhs;
     struct mir_instr *rhs = binop->rhs;
     BL_ASSERT(lhs && rhs);
     BL_ASSERT(lhs->is_analyzed);
     BL_ASSERT(rhs->is_analyzed);
-
     const bool lhs_valid = is_type_valid_for_binop(lhs->value.type, binop->op);
     const bool rhs_valid = is_type_valid_for_binop(rhs->value.type, binop->op);
-
     if (!(lhs_valid && rhs_valid)) {
         error_types(&binop->base,
                     lhs->value.type,
@@ -7105,12 +7139,10 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
                     "Invalid operation for %s type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
-
     struct mir_type *type =
         ast_binop_is_logic(binop->op) ? ctx->builtin_types->t_bool : lhs->value.type;
     BL_ASSERT(type);
     binop->base.value.type = type;
-
     // when binary operation has lhs and rhs values known in compile it is known
     // in compile time also
     binop->base.value.is_comptime = lhs->value.is_comptime && rhs->value.is_comptime;
@@ -7160,6 +7192,25 @@ struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
+struct result analyze_instr_msg(struct context *ctx, struct mir_instr_msg *msg)
+{
+    switch (msg->kind) {
+    case AST_MSG_WARNING:
+        builder_msg(
+            BUILDER_MSG_WARNING, 0, msg->base.node->location, BUILDER_CUR_WORD, "%s", msg->text);
+        RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    case AST_MSG_ERROR:
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_USER,
+                    msg->base.node->location,
+                    BUILDER_CUR_WORD,
+                    "%s",
+                    msg->text);
+        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+    }
+    BL_UNREACHABLE;
+}
+
 struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *unop)
 {
     ZONE();
@@ -7186,7 +7237,6 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
         if (expr_type->kind != MIR_TYPE_INT) {
             char tmp[256];
             mir_type_to_str(tmp, 256, expr_type, true);
-
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_INVALID_TYPE,
                         unop->base.node->location,
@@ -7194,7 +7244,6 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
                         "Invalid operation for type '%s'. This operation "
                         "is valid for integer types only.",
                         tmp);
-
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         break;
@@ -8401,6 +8450,9 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
     case MIR_INSTR_CALL:
         state = analyze_instr_call(ctx, (struct mir_instr_call *)instr);
         break;
+    case MIR_INSTR_MSG:
+        state = analyze_instr_msg(ctx, (struct mir_instr_msg *)instr);
+        break;
     case MIR_INSTR_CONST:
         state = analyze_instr_const(ctx, (struct mir_instr_const *)instr);
         break;
@@ -9553,6 +9605,11 @@ void ast_stmt_defer(struct context *ctx, struct ast *defer)
 struct mir_instr *ast_call_loc(struct context *ctx, struct ast *loc)
 {
     return append_instr_call_loc(ctx, loc);
+}
+
+struct mir_instr *ast_msg(struct context *ctx, struct ast *msg)
+{
+    return append_instr_msg(ctx, msg);
 }
 
 struct mir_instr *ast_expr_compound(struct context *ctx, struct ast *cmp)
@@ -10895,6 +10952,8 @@ struct mir_instr *ast(struct context *ctx, struct ast *node)
         return ast_expr_test_cases(ctx, node);
     case AST_CALL_LOC:
         return ast_call_loc(ctx, node);
+    case AST_MSG:
+        return ast_msg(ctx, node);
 
     case AST_LOAD:
     case AST_IMPORT:
@@ -10915,6 +10974,8 @@ const char *mir_instr_name(const struct mir_instr *instr)
     switch (instr->kind) {
     case MIR_INSTR_INVALID:
         return "InstrInvalid";
+    case MIR_INSTR_MSG:
+        return "InstrMsg";
     case MIR_INSTR_BLOCK:
         return "InstrBlock";
     case MIR_INSTR_DECL_VAR:

@@ -158,7 +158,17 @@ void print_trace(void);
         print_trace();                                                                             \
         BL_DEBUG_BREAK;                                                                            \
         abort();                                                                                   \
-    }
+    }                                                                                              \
+    (void)0
+
+#define BL_UNREACHABLE                                                                             \
+    {                                                                                              \
+        _log(LOG_ABORT, __FILENAME__, __LINE__, "unreachable");                                    \
+        print_trace();                                                                             \
+        BL_DEBUG_BREAK;                                                                            \
+        abort();                                                                                   \
+    }                                                                                              \
+    (void)0
 
 #if TRACY_ENABLE
 #define BL_TRACY_MESSAGE(tag, format, ...)                                                         \

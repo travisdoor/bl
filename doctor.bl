@@ -429,6 +429,7 @@ BlError :: enum s32 {
     ERR_INVALID_POLY_MATCH       = 81;
     ERR_UNSUPPORTED_TARGET       = 82;
     ERR_COMPILE_TIME_ABORT       = 83;
+    ERR_USER                     = 84;
 }
 
 strtoerr :: fn (s: string) s32 {

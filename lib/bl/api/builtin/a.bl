@@ -263,66 +263,6 @@ TypeInfoFnArg :: struct #compiler {
     base_type: *TypeInfo
 };
 
-is_void :: fn (info: *TypeInfo) bool #inline {
-    assert(info);
-    return info.kind == TypeKind.Void;
-}
-
-is_integer :: fn (info: *TypeInfo) bool #inline {
-    assert(info);
-    return info.kind == TypeKind.Int;
-}
-
-is_real :: fn (info: *TypeInfo) bool #inline {
-    assert(info);
-    return info.kind == TypeKind.Real;
-}
-
-is_function :: fn (info: *TypeInfo) bool #inline {
-    assert(info);
-    return info.kind == TypeKind.Fn;
-}
-
-is_pointer :: fn (info: *TypeInfo) bool #inline {
-    assert(info);
-    return info.kind == TypeKind.Ptr;
-}
-
-is_boolean :: fn (info: *TypeInfo) bool #inline {
-    assert(info);
-    return info.kind == TypeKind.Bool;
-}
-
-is_array :: fn (info: *TypeInfo) bool #inline {
-    assert(info);
-    return info.kind == TypeKind.Array;
-}
-
-is_struct :: fn (info: *TypeInfo) bool #inline {
-    assert(info);
-    return info.kind == TypeKind.Struct;
-}
-
-is_enum :: fn (info: *TypeInfo) bool #inline {
-    assert(info);
-    return info.kind == TypeKind.Enum;
-}
-
-is_null :: fn (info: *TypeInfo) bool #inline {
-    assert(info);
-    return info.kind == TypeKind.Null;
-}
-
-is_string :: fn (info: *TypeInfo) bool #inline {
-    assert(info);
-    return info.kind == TypeKind.String;
-}
-
-is_function_group :: fn (info: *TypeInfo) bool #inline {
-    assert(info);
-    return info.kind == TypeKind.FnGroup;
-}
-
 /// Any type is special builtin type used for passing value of "any" type as function argument. 
 Any :: struct #compiler {
     /// Type info associated to data type.

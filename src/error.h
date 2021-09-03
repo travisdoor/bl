@@ -117,6 +117,7 @@ enum error {
     ERR_INVALID_POLY_MATCH       = 81,
     ERR_UNSUPPORTED_TARGET       = 82,
     ERR_COMPILE_TIME_ABORT       = 83,
+    ERR_USER                     = 84,
 };
 
 #endif // BL_ERROR_H

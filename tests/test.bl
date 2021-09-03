@@ -1,16 +1,19 @@
 main :: fn () s32 {
-    flags: string;
-    set_flag(&flags, "hello");    
-    return 10;
+    bar("hello");
+    bar("hello");
+    return 0;
 }
 
-cmp :: fn (a: ?T, b: T) bool {
-    is_string :: typeinfo(T).kind == TypeKind.String;
-    #if is_string {
-        return String.compare(a, b);
+bar :: fn (t: ?T) {
+    #if T == s32 {
+        #warning "A"
+        if sizeof(T) == 1000 {
+            #warning "NOOO"
+        }
+    } else if T == f32 {
+        #warning "B"
     } else {
-        #assert(typeinfo(T).kind == TypeKind.Int)
-        return a == b;
+        #warning "C"
     }
 }
 

@@ -39,8 +39,7 @@
 /// Set `flag` in `flags` input. This function is valid for numeric and enum types (checked by assert).
 set_flag :: fn (flags: *?T, flag: T) T #inline {
     assert(flags);
-    is_enum :: typeinfo(T).kind == TypeKind.Enum;
-    #if is_enum {
+    #if typeinfo(T).kind == TypeKind.Enum {
         // @Incomplete: Check enums for #flags tag.
         switch sizeof(T) {
             1 { f := cast(*u8)flags;  @f |= cast(u8) flag;  }
@@ -49,9 +48,10 @@ set_flag :: fn (flags: *?T, flag: T) T #inline {
             8 { f := cast(*u64)flags; @f |= cast(u64) flag; }
             default { panic("Unsupported type in 'set_flag' %.", T); }
         }
-    } else {
-        #assert(typeinfo(T).kind == TypeKind.Int)
+    } else if typeinfo(T).kind == TypeKind.Int {
         @flags |= flag;
+    } else {
+        #error "Expected flags type is enum or number."
     }
     return @flags;
 }

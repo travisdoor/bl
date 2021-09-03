@@ -49,6 +49,21 @@ compare_operators :: fn () #test {
     test_true(i < 11);
     test_true(i >= 10);
     test_true(i <= 10);
+    
+    test_true(s32 == s32);
+    test_true(s32 != u8);
+    
+    T :: string;
+    test_true(T == string);
+    test_true(T != s32);
+    
+    Foo :: struct { i: s32; j: string };
+    Baz :: struct { i: s32; j: string };
+    Bar :: Foo;
+    test_true(Foo == Bar);
+    test_true(Foo != Baz);
+    test_true(Bar != Baz);
+    test_true(Foo != s32);
 }
 
 bitwise_operators :: fn () #test {
