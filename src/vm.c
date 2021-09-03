@@ -422,6 +422,7 @@ static INLINE void stack_alloc_local_vars(struct virtual_machine *vm, struct mir
     TARRAY_FOREACH(struct mir_var *, vars, var)
     {
         if (var->value.is_comptime) continue;
+        if (var->ref_count == 0) continue;
         stack_alloc_var(vm, var);
     }
 }
@@ -1816,9 +1817,7 @@ void interp_instr_decl_var(struct virtual_machine *vm, struct mir_instr_decl_var
     struct mir_var *var = decl->var;
     BL_ASSERT(var);
     BL_ASSERT(decl->base.value.type);
-
-    if (var->is_global || var->value.is_comptime) return;
-
+    if (var->is_global || var->value.is_comptime || var->ref_count == 0) return;
     // initialize variable if there is some init value
     if (decl->init) {
         vm_stack_ptr_t var_ptr = vm_read_var(vm, var);

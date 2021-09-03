@@ -2944,6 +2944,7 @@ void emit_allocas(struct context *ctx, struct mir_fn *fn)
     {
         BL_ASSERT(var);
         if (!var->emit_llvm) continue;
+        if (var->ref_count == 0) continue;
 #if NAMED_VARS
         var_name = var->linkage_name;
 #else
