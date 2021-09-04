@@ -51,7 +51,7 @@ set_flag :: fn (flags: *?T, flag: T) T #inline {
     } else if typeinfo(T).kind == TypeKind.Int {
         @flags |= flag;
     } else {
-        #error "Expected flags type is enum or number."
+        #error "Expected number or enumerator type."
     }
     return @flags;
 }
