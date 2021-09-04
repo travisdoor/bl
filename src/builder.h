@@ -74,13 +74,18 @@ struct builder {
 extern struct builder builder;
 
 enum builder_msg_type {
-    BUILDER_MSG_ERROR,
-    BUILDER_MSG_WARNING,
+    BUILDER_MSG_LOG = 0,
     BUILDER_MSG_NOTE,
-    BUILDER_MSG_LOG,
+    BUILDER_MSG_WARNING,
+    BUILDER_MSG_ERROR,
 };
 
-enum builder_cur_pos { BUILDER_CUR_AFTER, BUILDER_CUR_WORD, BUILDER_CUR_BEFORE, BUILDER_CUR_NONE };
+enum builder_cur_pos {
+    BUILDER_CUR_WORD = 0,
+    BUILDER_CUR_BEFORE,
+    BUILDER_CUR_AFTER,
+    BUILDER_CUR_NONE
+};
 
 struct location;
 
@@ -111,6 +116,13 @@ void builder_async_submit_unit(struct unit *unit);
     builder_msg(BUILDER_MSG_WARNING, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
 #define builder_error(format, ...)                                                                 \
     builder_msg(BUILDER_MSG_ERROR, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
+
+void _builder_msg(enum builder_msg_type type,
+                  s32                   code,
+                  struct location *     src,
+                  enum builder_cur_pos  pos,
+                  const char *          format,
+                  va_list               args);
 
 void builder_msg(enum builder_msg_type type,
                  s32                   code,

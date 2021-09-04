@@ -580,12 +580,12 @@ s32 builder_compile(const struct target *target)
     return state;
 }
 
-void builder_msg(enum builder_msg_type type,
-                 s32                   code,
-                 struct location *     src,
-                 enum builder_cur_pos  pos,
-                 const char *          format,
-                 ...)
+void _builder_msg(enum builder_msg_type type,
+                  s32                   code,
+                  struct location *     src,
+                  enum builder_cur_pos  pos,
+                  const char *          format,
+                  va_list               args)
 {
     struct threading_impl *threading = builder.threading;
     pthread_mutex_lock(&threading->log_mutex);
@@ -599,11 +599,12 @@ void builder_msg(enum builder_msg_type type,
         builder.max_error = code > builder.max_error ? code : builder.max_error;
     }
 
-    char  msg[1024];
     FILE *stream = stdout;
     if (type == BUILDER_MSG_ERROR) stream = stderr;
 
     if (src) {
+        const char *filepath =
+            builder.options->full_path_reports ? src->unit->filepath : src->unit->filename;
         s32 line = src->line;
         s32 col  = src->col;
         s32 len  = src->len;
@@ -612,18 +613,14 @@ void builder_msg(enum builder_msg_type type,
             col += len;
             len = 1;
             break;
-        case BUILDER_CUR_WORD:
             break;
         case BUILDER_CUR_BEFORE:
             col -= col < 1 ? 0 : 1;
             len = 1;
             break;
-        case BUILDER_CUR_NONE:
+        default:
             break;
         }
-
-        const char *filepath =
-            builder.options->full_path_reports ? src->unit->filepath : src->unit->filename;
         fprintf(stream, "%s:%d:%d: ", filepath, line, col);
         switch (type) {
         case BUILDER_MSG_ERROR: {
@@ -638,22 +635,14 @@ void builder_msg(enum builder_msg_type type,
         default:
             break;
         }
-
-        va_list args;
-        va_start(args, format);
-        vsnprintf(msg, TARRAY_SIZE(msg), format, args);
-        va_end(args);
-        fprintf(stream, "%s", msg);
-
+        vfprintf(stream, format, args);
         long      line_len = 0;
         const s32 padding  = snprintf(NULL, 0, "%+d", src->line) + 2;
-
         // Line one
         const char *line_str = unit_get_src_ln(src->unit, src->line - 1, &line_len);
         if (line_str && line_len) {
             fprintf(stream, "\n%*d | %.*s", padding, src->line - 1, (int)line_len, line_str);
         }
-
         // Line two
         line_str = unit_get_src_ln(src->unit, src->line, &line_len);
         if (line_str && line_len) {
@@ -661,15 +650,16 @@ void builder_msg(enum builder_msg_type type,
         }
         // Line cursors
         if (pos != BUILDER_CUR_NONE) {
-            s32 written_bytes = 0;
+            char buf[256];
+            s32  written_bytes = 0;
             for (s32 i = 0; i < col + len - 1; ++i) {
-                written_bytes += snprintf(msg + written_bytes,
-                                          TARRAY_SIZE(msg) - written_bytes,
+                written_bytes += snprintf(buf + written_bytes,
+                                          TARRAY_SIZE(buf) - written_bytes,
                                           "%s",
                                           i >= col - 1 ? "^" : " ");
             }
             fprintf(stream, "\n%*s | ", padding, "");
-            color_print(stream, BL_GREEN, "%s", msg);
+            color_print(stream, BL_GREEN, "%s", buf);
         }
 
         // Line three
@@ -691,11 +681,8 @@ void builder_msg(enum builder_msg_type type,
         default:
             break;
         }
-        va_list args;
-        va_start(args, format);
-        vsnprintf(msg, TARRAY_SIZE(msg), format, args);
-        va_end(args);
-        fprintf(stream, "%s\n", msg);
+        vfprintf(stream, format, args);
+        fprintf(stream, "\n");
     }
 DONE:
     pthread_mutex_unlock(&threading->log_mutex);
@@ -703,6 +690,19 @@ DONE:
 #if ASSERT_ON_CMP_ERROR
     if (type == BUILDER_MSG_ERROR) BL_ASSERT(false);
 #endif
+}
+
+void builder_msg(enum builder_msg_type type,
+                 s32                   code,
+                 struct location *     src,
+                 enum builder_cur_pos  pos,
+                 const char *          format,
+                 ...)
+{
+    va_list args;
+    va_start(args, format);
+    _builder_msg(type, code, src, pos, format, args);
+    va_end(args);
 }
 
 TString *builder_create_cached_str(void)
