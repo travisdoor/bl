@@ -30,6 +30,7 @@
 #include "builder.h"
 #include "common.h"
 #include "unit.h"
+#include <stdarg.h>
 
 #ifdef _MSC_VER
 #pragma warning(disable : 6001)
@@ -159,6 +160,7 @@ struct context {
         THashTable          presented_switch_cases;
         TArray              usage_check_queue;
         struct scope_entry *void_entry;
+        struct mir_instr *  last_analyzed_instr;
     } analyze;
 
     struct {
@@ -234,6 +236,7 @@ static void fn_poly_dtor(struct mir_fn_poly_recipe *recipe)
 }
 
 // FW decls
+static void            report_poly(struct mir_instr *instr);
 static void            initialize_builtins(struct context *ctx);
 static void            testing_add_test_case(struct context *ctx, struct mir_fn *fn);
 static struct mir_var *testing_gen_meta(struct context *ctx);
@@ -954,8 +957,27 @@ static struct mir_var *rtti_gen_fn_group(struct context *ctx, struct mir_type *t
 #define FULL_ERROR_REPORT(instr, e, loc, cursor, format, ...)                                      \
     {                                                                                              \
         builder_msg(BUILDER_MSG_ERROR, (e), (loc), (cursor), (format), ##__VA_ARGS__);             \
-        _report_poly((struct mir_instr *)(instr));                                                 \
+        report_poly((struct mir_instr *)(instr));                                                  \
     }
+
+static INLINE void report_error(struct context *ctx, struct ast *node, const char *format, ...)
+{
+    struct location *loc = node ? node->location : NULL;
+    va_list          args;
+    va_start(args, format);
+    builder_vmsg(BUILDER_MSG_ERROR, 1, loc, BUILDER_CUR_WORD, format, args);
+    va_end(args);
+    report_poly(ctx->analyze.last_analyzed_instr);
+}
+
+static INLINE void report_warning(struct context *ctx, struct ast *node, const char *format, ...)
+{
+    struct location *loc = node ? node->location : NULL;
+    va_list          args;
+    va_start(args, format);
+    builder_vmsg(BUILDER_MSG_WARNING, 0, loc, BUILDER_CUR_WORD, format, args);
+    va_end(args);
+}
 
 static INLINE struct ast *get_last_instruction_node(struct mir_instr_block *block)
 {
@@ -1182,36 +1204,6 @@ static INLINE struct mir_fn *instr_owner_fn(struct mir_instr *instr)
     return instr->owner_block->owner_fn;
 }
 
-static INLINE void _report_poly(struct mir_instr *instr)
-{
-    if (!instr) return;
-    struct mir_fn *owner_fn = instr_owner_fn(instr);
-    if (!owner_fn) return;
-    if (!owner_fn->first_poly_call_node) return;
-    if (!owner_fn->first_poly_call_node->location) return;
-    const char *info =
-        owner_fn->debug_poly_replacement ? owner_fn->debug_poly_replacement->data : NULL;
-    if (info) {
-        builder_msg(BUILDER_MSG_NOTE,
-                    0,
-                    owner_fn->decl_node->location,
-                    BUILDER_CUR_WORD,
-                    "In polymorph function, with substitution: %s",
-                    info);
-    } else {
-        builder_msg(BUILDER_MSG_NOTE,
-                    0,
-                    owner_fn->decl_node->location,
-                    BUILDER_CUR_WORD,
-                    "In polymorph function.");
-    }
-    builder_msg(BUILDER_MSG_NOTE,
-                0,
-                owner_fn->first_poly_call_node->location,
-                BUILDER_CUR_WORD,
-                "First called here:");
-}
-
 static INLINE struct mir_instr_block *ast_current_block(struct context *ctx)
 {
     return ctx->ast.current_block;
@@ -1435,10 +1427,11 @@ static INLINE void set_current_block(struct context *ctx, struct mir_instr_block
     ctx->ast.current_block = block;
 }
 
-static INLINE void error_types(struct mir_instr *instr,
+static INLINE void error_types(struct context *  ctx,
+                               struct mir_instr *instr,
                                struct mir_type * from,
                                struct mir_type * to,
-                               struct ast *      loc,
+                               struct ast *      node,
                                const char *      msg)
 {
     BL_ASSERT(from && to);
@@ -1447,13 +1440,7 @@ static INLINE void error_types(struct mir_instr *instr,
     char tmp_to[256];
     mir_type_to_str(tmp_from, 256, from, true);
     mir_type_to_str(tmp_to, 256, to, true);
-    FULL_ERROR_REPORT(instr,
-                      ERR_INVALID_TYPE,
-                      loc ? loc->location : NULL,
-                      BUILDER_CUR_WORD,
-                      msg,
-                      tmp_from,
-                      tmp_to);
+    report_error(ctx, node, msg, tmp_from, tmp_to);
 }
 
 static INLINE void commit_fn(struct context *ctx, struct mir_fn *fn)
@@ -5151,11 +5138,7 @@ struct result analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_
     BL_ASSERT(arr_ptr->value.type);
 
     if (!mir_is_pointer_type(arr_ptr->value.type)) {
-        FULL_ERROR_REPORT(elem_ptr,
-                          ERR_INVALID_TYPE,
-                          elem_ptr->arr_ptr->node->location,
-                          BUILDER_CUR_WORD,
-                          "Expected array type or slice.");
+        report_error(ctx, elem_ptr->arr_ptr->node, "Expected array type or slice.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -5514,8 +5497,12 @@ analyze_instr_cast(struct context *ctx, struct mir_instr_cast *cast, bool analyz
 
     cast->op = get_cast_op(expr_type, dest_type);
     if (cast->op == MIR_CAST_INVALID) {
-        error_types(
-            &cast->base, expr_type, dest_type, cast->base.node, "Invalid cast from '%s' to '%s'.");
+        error_types(ctx,
+                    &cast->base,
+                    expr_type,
+                    dest_type,
+                    cast->base.node,
+                    "Invalid cast from '%s' to '%s'.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -5850,7 +5837,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 
             if (!type_cmp(fn_type, user_fn_type)) {
                 error_types(
-                    &fn_proto->base, fn_type, user_fn_type, fn_proto->user_type->node, NULL);
+                    ctx, &fn_proto->base, fn_type, user_fn_type, fn_proto->user_type->node, NULL);
             }
         }
 
@@ -7132,7 +7119,8 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
     const bool lhs_valid = is_type_valid_for_binop(lhs->value.type, binop->op);
     const bool rhs_valid = is_type_valid_for_binop(rhs->value.type, binop->op);
     if (!(lhs_valid && rhs_valid)) {
-        error_types(&binop->base,
+        error_types(ctx,
+                    &binop->base,
                     lhs->value.type,
                     rhs->value.type,
                     binop->base.node,
@@ -7196,16 +7184,10 @@ struct result analyze_instr_msg(struct context *ctx, struct mir_instr_msg *msg)
 {
     switch (msg->kind) {
     case AST_MSG_WARNING:
-        builder_msg(
-            BUILDER_MSG_WARNING, 0, msg->base.node->location, BUILDER_CUR_WORD, "%s", msg->text);
+        report_warning(ctx, msg->base.node, "%s", msg->text);
         RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
     case AST_MSG_ERROR:
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_USER,
-                    msg->base.node->location,
-                    BUILDER_CUR_WORD,
-                    "%s",
-                    msg->text);
+        report_error(ctx, msg->base.node, "%s", msg->text);
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     BL_UNREACHABLE;
@@ -8404,7 +8386,7 @@ ANALYZE_STAGE_FN(implicit_cast)
 
 ANALYZE_STAGE_FN(report_type_mismatch)
 {
-    error_types(*input, (*input)->value.type, slot_type, (*input)->node, NULL);
+    error_types(ctx, *input, (*input)->value.type, slot_type, (*input)->node, NULL);
     return ANALYZE_STAGE_FAILED;
 }
 
@@ -8418,7 +8400,7 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
     struct result state = ANALYZE_RESULT(PASSED, 0);
 
     BL_TRACY_MESSAGE("ANALYZE", "[%llu] %s", instr->id, mir_instr_name(instr));
-
+    ctx->analyze.last_analyzed_instr = instr;
     if (instr->owner_block) set_current_block(ctx, instr->owner_block);
 
     switch (instr->kind) {
@@ -8567,6 +8549,7 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
     default:
         BL_ABORT("Missing analyze of instruction!");
     }
+    ctx->analyze.last_analyzed_instr = NULL;
     if (state.state == ANALYZE_PASSED) {
         instr->is_analyzed = true;
         if (instr->kind == MIR_INSTR_CAST && ((struct mir_instr_cast *)instr)->auto_cast) {
@@ -10186,6 +10169,36 @@ static INLINE enum builtin_id_kind check_symbol_marked_compiler(struct ast *iden
                     "Symbol marked as #compiler is not known compiler internal.");
     }
     return builtin_id;
+}
+
+void report_poly(struct mir_instr *instr)
+{
+    if (!instr) return;
+    struct mir_fn *owner_fn = instr_owner_fn(instr);
+    if (!owner_fn) return;
+    if (!owner_fn->first_poly_call_node) return;
+    if (!owner_fn->first_poly_call_node->location) return;
+    const char *info =
+        owner_fn->debug_poly_replacement ? owner_fn->debug_poly_replacement->data : NULL;
+    if (info) {
+        builder_msg(BUILDER_MSG_NOTE,
+                    0,
+                    owner_fn->decl_node->location,
+                    BUILDER_CUR_WORD,
+                    "In polymorph function, with substitution: %s",
+                    info);
+    } else {
+        builder_msg(BUILDER_MSG_NOTE,
+                    0,
+                    owner_fn->decl_node->location,
+                    BUILDER_CUR_WORD,
+                    "In polymorph function.");
+    }
+    builder_msg(BUILDER_MSG_NOTE,
+                0,
+                owner_fn->first_poly_call_node->location,
+                BUILDER_CUR_WORD,
+                "First called here:");
 }
 
 // Helper for function declaration generation.

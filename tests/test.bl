@@ -4,7 +4,7 @@ main :: fn () s32 {
     return 0;
 }
 
-bar :: fn (t: ?T) {
+bar :: fn (_: ?T) {
     #if T == s32 {
         #warning "A"
         if sizeof(T) == 1000 {
@@ -13,7 +13,8 @@ bar :: fn (t: ?T) {
     } else if T == f32 {
         #warning "B"
     } else {
-        #warning "C"
+        #warning "Here is a warning!"
+        #error "Here is an error!"
     }
 }
 

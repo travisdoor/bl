@@ -580,7 +580,7 @@ s32 builder_compile(const struct target *target)
     return state;
 }
 
-void _builder_msg(enum builder_msg_type type,
+void builder_vmsg(enum builder_msg_type type,
                   s32                   code,
                   struct location *     src,
                   enum builder_cur_pos  pos,
@@ -701,7 +701,7 @@ void builder_msg(enum builder_msg_type type,
 {
     va_list args;
     va_start(args, format);
-    _builder_msg(type, code, src, pos, format, args);
+    builder_vmsg(type, code, src, pos, format, args);
     va_end(args);
 }
 

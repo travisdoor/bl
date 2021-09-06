@@ -117,7 +117,7 @@ void builder_async_submit_unit(struct unit *unit);
 #define builder_error(format, ...)                                                                 \
     builder_msg(BUILDER_MSG_ERROR, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
 
-void _builder_msg(enum builder_msg_type type,
+void builder_vmsg(enum builder_msg_type type,
                   s32                   code,
                   struct location *     src,
                   enum builder_cur_pos  pos,
