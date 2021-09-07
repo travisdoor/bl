@@ -1,11 +1,17 @@
 main :: fn () s32 {
-    result := compare(10, 20);
-    print("result = %\n", result);
+    compare(10, 20);
+    compare("Hello", "Hello");
     return 0;
 }
 
-compare :: fn (a: s32, b: s32) bool {
-    return a == b;
+compare :: fn (a: ?T, b: T) bool {
+    #if typeinfo(T).kind == TypeKind.Int {
+        return a == b;
+    } else if T == string {
+        return String.compare(a, b);
+    } else {
+        #error "Invalid type!"
+    }
 }
 
 

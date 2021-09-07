@@ -29,8 +29,17 @@
 #include "mir.h"
 #include "builder.h"
 #include "common.h"
+#include "mir_printer.h"
 #include "unit.h"
 #include <stdarg.h>
+
+#if BL_DEBUG
+#define DEBUG_PRINT_MIR(instr) mir_print_fn(ctx->assembly, instr_owner_fn(instr), stdout);
+#else
+#define DEBUG_PRINT_MIR(instr)                                                                     \
+    while (0) {                                                                                    \
+    }
+#endif
 
 #ifdef _MSC_VER
 #pragma warning(disable : 6001)
@@ -954,6 +963,17 @@ static void rtti_gen_fn_slice(struct context *ctx, vm_stack_ptr_t dest, TSmallAr
 static struct mir_var *rtti_gen_fn_group(struct context *ctx, struct mir_type *type);
 
 // INLINES
+
+static INLINE struct mir_fn *instr_owner_fn(struct mir_instr *instr)
+{
+    BL_ASSERT(instr);
+    if (instr->kind == MIR_INSTR_BLOCK) {
+        return ((struct mir_instr_block *)instr)->owner_fn;
+    }
+    if (!instr->owner_block) return NULL;
+    return instr->owner_block->owner_fn;
+}
+
 #define report_error(ctx, node, format, ...)                                                       \
     _report((ctx)->analyze.last_analyzed_instr,                                                    \
             BUILDER_MSG_ERROR,                                                                     \
@@ -1225,12 +1245,6 @@ static INLINE bool can_impl_cast(const struct mir_type *from, const struct mir_t
     return true;
 }
 
-static INLINE struct mir_fn *instr_owner_fn(struct mir_instr *instr)
-{
-    if (!instr->owner_block) return NULL;
-    return instr->owner_block->owner_fn;
-}
-
 static INLINE struct mir_instr_block *ast_current_block(struct context *ctx)
 {
     return ctx->ast.current_block;
@@ -1306,7 +1320,8 @@ static INLINE void erase_block(struct mir_instr *instr)
         BL_ASSERT(block->ref_count == 0 && "Cannot erase referenced block!");
         erase_instr(block);
         struct mir_instr *terminal = ((struct mir_instr_block *)block)->terminal;
-        BL_ASSERT(terminal && "Unterminated block!");
+        if (!terminal) continue;
+        // BL_ASSERT(terminal && "Unterminated block!");
         switch (terminal->kind) {
         case MIR_INSTR_BR: {
             struct mir_instr_br *br = (struct mir_instr_br *)terminal;
@@ -4834,12 +4849,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
         const usize memc                    = type->data.strct.members->size;
 
         if (is_union) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_INITIALIZER,
-                        cmp->base.node->location,
-                        BUILDER_CUR_WORD,
-                        "Union can be zero initialized only, this is related to Issue: "
-                        "https://github.com/travisdoor/bl/issues/105");
+            report_error(ctx, cmp->base.node, "Union can be zero initialized only.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         } else {
             if (values->size != memc) {
@@ -4849,13 +4859,11 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
                         : "Structure initializer must explicitly set all members of the "
                           "structure or initialize structure to 0 by zero initializer "
                           "{0}. Expected is %llu but given %llu.";
-                builder_msg(BUILDER_MSG_ERROR,
-                            ERR_INVALID_INITIALIZER,
-                            cmp->base.node->location,
-                            BUILDER_CUR_WORD,
-                            msg,
-                            (unsigned long long)memc,
-                            (unsigned long long)values->size);
+                report_error(ctx,
+                             cmp->base.node,
+                             msg,
+                             (unsigned long long)memc,
+                             (unsigned long long)values->size);
                 RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
 
@@ -4882,11 +4890,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
         // Non-aggregate type.
         if (values->size > 1) {
             struct mir_instr *value = values->data[1];
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_INITIALIZER,
-                        value->node->location,
-                        BUILDER_CUR_WORD,
-                        "One value only is expected for non-aggregate types.");
+            report_error(ctx, value->node, "One value only is expected for non-aggregate types.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         struct mir_instr **       value_ref = &values->data[0];
@@ -4922,35 +4926,21 @@ struct result analyze_var(struct context *ctx, struct mir_var *var)
         // Disable LLVM generation of typedefs.
         if (!var->is_mutable) break;
         // Typedef must be immutable!
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_MUTABILITY,
-                    var->decl_node ? var->decl_node->location : NULL,
-                    BUILDER_CUR_WORD,
-                    "Type declaration must be immutable.");
+        report_error(ctx, var->decl_node, "Type declaration must be immutable.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     case MIR_TYPE_FN:
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    var->decl_node ? var->decl_node->location : NULL,
-                    BUILDER_CUR_WORD,
-                    "Invalid type of the variable, functions can be referenced "
-                    "only by pointers.");
+        report_error(ctx,
+                     var->decl_node,
+                     "Invalid type of the variable, functions can be referenced "
+                     "only by pointers.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     case MIR_TYPE_FN_GROUP:
         if (!var->is_mutable) break;
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    var->decl_node ? var->decl_node->location : NULL,
-                    BUILDER_CUR_WORD,
-                    "Function group must be immutable.");
+        report_error(ctx, var->decl_node, "Function group must be immutable.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     case MIR_TYPE_VOID:
         // Allocated type is void type.
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    var->decl_node ? var->decl_node->location : NULL,
-                    BUILDER_CUR_WORD,
-                    "Cannot allocate unsized type.");
+        report_error(ctx, var->decl_node, "Cannot allocate unsized type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     default:
         break;
@@ -4958,11 +4948,7 @@ struct result analyze_var(struct context *ctx, struct mir_var *var)
 
     if (!var->is_implicit) {
         if (var->is_global && var->entry->kind == SCOPE_ENTRY_VOID) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_NAME,
-                        var->decl_node->location,
-                        BUILDER_CUR_WORD,
-                        "Global variable cannot be explicitly unnamed.");
+            report_error(ctx, var->decl_node, "Global variable cannot be explicitly unnamed.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         commit_var(ctx, var);
@@ -5019,11 +5005,9 @@ struct result analyze_instr_set_initializer(struct context *                  ct
     BL_ASSERT(si->src && "Invalid global initializer source value.");
     // Global initializer must be compile time known.
     if (!si->src->value.is_comptime) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_EXPECTED_COMPTIME,
-                    si->src->node->location,
-                    BUILDER_CUR_WORD,
-                    "Global variables must be initialized with compile time known value.");
+        report_error(ctx,
+                     si->src->node,
+                     "Global variables must be initialized with compile time known value.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -5045,11 +5029,7 @@ struct result analyze_instr_set_initializer(struct context *                  ct
             case MIR_TYPE_FN:
             case MIR_TYPE_FN_GROUP:
             case MIR_TYPE_TYPE:
-                builder_msg(BUILDER_MSG_ERROR,
-                            ERR_INVALID_TYPE,
-                            var->decl_node->location,
-                            BUILDER_CUR_WORD,
-                            "Invalid type of thread local variable.");
+                report_error(ctx, var->decl_node, "Invalid type of thread local variable.");
                 return ANALYZE_RESULT(FAILED, 0);
             default:
                 break;
@@ -5267,11 +5247,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
             addrof_elem->src              = elem_ptr;
             ANALYZE_INSTR_RQ(&addrof_elem->base);
         } else {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_MEMBER_ACCESS,
-                        ast_member_ident->location,
-                        BUILDER_CUR_WORD,
-                        "Unknown member.");
+            report_error(ctx, ast_member_ident, "Unknown member.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
@@ -5319,11 +5295,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 
         if (!found) {
             // Member not found!
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_UNKNOWN_SYMBOL,
-                        member_ptr->member_ident->location,
-                        BUILDER_CUR_WORD,
-                        "Unknown structure member.");
+            report_error(ctx, member_ptr->member_ident, "Unknown structure member.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
@@ -5362,11 +5334,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         const s32           layer_index = ctx->polymorph.current_scope_layer_index;
         struct scope_entry *found       = scope_lookup(scope, layer_index, rid, false, true, NULL);
         if (!found) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_UNKNOWN_SYMBOL,
-                        member_ptr->member_ident->location,
-                        BUILDER_CUR_WORD,
-                        "Unknown enumerator variant.");
+            report_error(ctx, member_ptr->member_ident, "Unknown enumerator variant.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
@@ -5401,11 +5369,7 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
          (src->value.type->kind == MIR_TYPE_FN && !is_source_polymorph));
 
     if (!can_grab_address) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_EXPECTED_DECL,
-                    addrof->base.node->location,
-                    BUILDER_CUR_WORD,
-                    "Cannot take the address of unallocated object.");
+        report_error(ctx, addrof->base.node, "Cannot take the address of unallocated object.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -5534,20 +5498,13 @@ struct result analyze_instr_type_info(struct context *ctx, struct mir_instr_type
         RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     }
     if (type_info->rtti_type->kind == MIR_TYPE_NAMED_SCOPE) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    type_info->expr->node->location,
-                    BUILDER_CUR_WORD,
-                    "No type info available for scope type.");
+        report_error(ctx, type_info->expr->node, "No type info available for scope type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     if (type_info->rtti_type->kind == MIR_TYPE_FN &&
         IS_FLAG(type_info->rtti_type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_POLYMORPH)) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    type_info->expr->node->location,
-                    BUILDER_CUR_WORD,
-                    "No type info available for polymorph function recipe.");
+        report_error(
+            ctx, type_info->expr->node, "No type info available for polymorph function recipe.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     rtti_gen(ctx, type_info->rtti_type);
@@ -8092,11 +8049,8 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
             set_current_block(ctx, block);
             append_instr_br(ctx, block->base.node, block);
         } else {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_MISSING_RETURN,
-                        fn->decl_node->location,
-                        BUILDER_CUR_WORD,
-                        "Not every path inside function return value.");
+            report_error(ctx, fn->decl_node, "Not every path inside function return value.");
+            DEBUG_PRINT_MIR(&block->base);
         }
     }
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));

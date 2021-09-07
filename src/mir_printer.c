@@ -959,7 +959,7 @@ void print_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
     fprintf(ctx->stream, "}");
 }
 
-/* public */
+// public
 void print_instr(struct context *ctx, struct mir_instr *instr)
 {
 #if !PRINT_ANALYZED_COMPTIMES
@@ -1135,10 +1135,17 @@ void print_instr(struct context *ctx, struct mir_instr *instr)
     fprintf(ctx->stream, "\n");
 }
 
+void mir_print_fn(struct assembly *assembly, struct mir_fn *fn, FILE *stream)
+{
+    if (!fn) return;
+    if (!fn->prototype) return;
+    struct context ctx = {.assembly = assembly, .stream = stream};
+    print_instr(&ctx, fn->prototype);
+}
+
 void mir_print_assembly(struct assembly *assembly, FILE *stream)
 {
-    struct context ctx = {.assembly = assembly, .stream = stream};
-
+    struct context    ctx = {.assembly = assembly, .stream = stream};
     struct mir_instr *instr;
     TARRAY_FOREACH(struct mir_instr *, &assembly->MIR.global_instrs, instr)
     {
