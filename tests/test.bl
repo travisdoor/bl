@@ -1,22 +1,14 @@
 main :: fn () s32 {
-    bar("hello");
-    bar("hello");
+    result := compare(10, 20);
+    print("result = %\n", result);
     return 0;
 }
 
-bar :: fn (_: ?T) {
-    #if T == s32 {
-        #warning "A"
-        if sizeof(T) == 1000 {
-            #warning "NOOO"
-        }
-    } else if T == f32 {
-        #warning "B"
-    } else {
-        #warning "Here is a warning!"
-        #error "Here is an error!"
-    }
+compare :: fn (a: s32, b: s32) bool {
+    return a == b;
 }
+
+
 
 // TODO: first_char :: fn (str: string #readonly) u8 {}
 // TODO: #using Enum + use UPPERCASE for variants.
