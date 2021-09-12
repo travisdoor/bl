@@ -28,6 +28,7 @@
 
 #include "builder.h"
 #include "common.h"
+#include "tokens_inline_utils.h"
 
 struct context {
     struct tokens *tokens;

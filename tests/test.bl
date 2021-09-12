@@ -1,21 +1,14 @@
 main :: fn () s32 {
-    compare(10, 20);
-    compare("Hello", "Hello");
+    foo(10);
     return 0;
 }
 
-compare :: fn (a: ?T, b: T) bool {
-    #if typeinfo(T).kind == TypeKind.Int {
-        return a == b;
-    } else if T == string {
-        return String.compare(a, b);
-    } else {
-        #error "Invalid type!"
-    }
+foo :: fn (v: ?T) {
+    arr: [10]s32;
+    arr[11] = 0;    
 }
 
-
-
-// TODO: first_char :: fn (str: string #readonly) u8 {}
-// TODO: #using Enum + use UPPERCASE for variants.
-// TODO: #switch ?
+// - first_char :: fn (str: string #readonly) u8 {}
+// - #using Enum + use UPPERCASE for variants.
+// - #switch ?
+// - intel/amd/arm intrinsics???

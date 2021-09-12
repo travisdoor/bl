@@ -28,7 +28,18 @@
 
 #include "tokens.h"
 #include "common.h"
-#include <stdarg.h>
+
+char *sym_strings[] = {
+#define sm(tok, str, len) str,
+#include "tokens.inc"
+#undef sm
+};
+
+s32 sym_lens[] = {
+#define sm(tok, str, len) len,
+#include "tokens.inc"
+#undef sm
+};
 
 void tokens_init(struct tokens *tokens)
 {
@@ -41,190 +52,98 @@ void tokens_terminate(struct tokens *tokens)
     tarray_terminate(&tokens->buf);
 }
 
-void tokens_push(struct tokens *tokens, struct token *t)
+bool token_is_unary(struct token *token)
 {
-    tarray_push(&tokens->buf, *t);
-}
-
-struct token *tokens_peek(struct tokens *tokens)
-{
-    return tokens_peek_nth(tokens, 1);
-}
-
-struct token *tokens_peek_2nd(struct tokens *tokens)
-{
-    return tokens_peek_nth(tokens, 2);
-}
-
-struct token *tokens_peek_last(struct tokens *tokens)
-{
-    const usize i = tokens->buf.size;
-    if (i == 0) BL_ABORT("Peeking empty tokens!");
-    return &tarray_at(struct token, &tokens->buf, i - 1);
-}
-
-struct token *tokens_peek_prev(struct tokens *tokens)
-{
-    if (tokens->iter > 0) {
-        return &tarray_at(struct token, &tokens->buf, tokens->iter - 1);
-    }
-    return NULL;
-}
-
-struct token *tokens_peek_nth(struct tokens *tokens, usize n)
-{
-    const usize i = tokens->iter + n - 1;
-    if (i < tokens->buf.size) return &tarray_at(struct token, &tokens->buf, i);
-    return tokens_peek_last(tokens);
-}
-
-struct token *tokens_consume(struct tokens *tokens)
-{
-    if (tokens->iter < tokens->buf.size)
-        return &tarray_at(struct token, &tokens->buf, tokens->iter++);
-    return NULL;
-}
-
-struct token *tokens_consume_if(struct tokens *tokens, enum sym sym)
-{
-    struct token *tok;
-    if (tokens->iter < tokens->buf.size) {
-        tok = &tarray_at(struct token, &tokens->buf, tokens->iter);
-        if (tok->sym == sym) {
-            tokens->iter++;
-            return tok;
-        }
-    }
-
-    return NULL;
-}
-
-bool tokens_current_is(struct tokens *tokens, enum sym sym)
-{
-    return (&tarray_at(struct token, &tokens->buf, tokens->iter))->sym == sym;
-}
-
-bool tokens_previous_is(struct tokens *tokens, enum sym sym)
-{
-    if (tokens->iter > 0)
-        return (&tarray_at(struct token, &tokens->buf, tokens->iter - 1))->sym == sym;
-    return false;
-}
-
-bool tokens_next_is(struct tokens *tokens, enum sym sym)
-{
-    return (&tarray_at(struct token, &tokens->buf, tokens->iter + 1))->sym == sym;
-}
-
-bool tokens_current_is_not(struct tokens *tokens, enum sym sym)
-{
-    return (&tarray_at(struct token, &tokens->buf, tokens->iter))->sym != sym;
-}
-
-bool tokens_next_is_not(struct tokens *tokens, enum sym sym)
-{
-    return (&tarray_at(struct token, &tokens->buf, tokens->iter + 1))->sym != sym;
-}
-
-bool tokens_is_seq(struct tokens *tokens, usize argc, ...)
-{
-    bool     ret = true;
-    usize    c   = tokens->buf.size;
-    enum sym sym = SYM_EOF;
-    argc += (int)tokens->iter;
-
-    va_list valist;
-    va_start(valist, argc);
-
-    for (usize i = tokens->iter; i < argc && i < c; ++i) {
-        sym = va_arg(valist, enum sym);
-        if ((&tarray_at(struct token, &tokens->buf, i))->sym != sym) {
-            ret = false;
-            break;
-        }
-    }
-
-    va_end(valist);
-    return ret;
-}
-
-usize tokens_get_marker(struct tokens *tokens)
-{
-    return tokens->iter;
-}
-
-void tokens_back_to_marker(struct tokens *tokens, usize marker)
-{
-    tokens->iter = marker;
-}
-
-void tokens_reset_iter(struct tokens *tokens)
-{
-    tokens->iter = 0;
-}
-
-TArray *tokens_get_all(struct tokens *tokens)
-{
-    return &tokens->buf;
-}
-
-int tokens_count(struct tokens *tokens)
-{
-    return (int)tokens->buf.size;
-}
-
-void tokens_consume_till(struct tokens *tokens, enum sym sym)
-{
-    while (tokens_current_is_not(tokens, sym) && tokens_current_is_not(tokens, SYM_EOF)) {
-        tokens_consume(tokens);
+    switch (token->sym) {
+    case SYM_MINUS:
+    case SYM_PLUS:
+    case SYM_NOT:
+    case SYM_BIT_NOT:
+        return true;
+    default:
+        return false;
     }
 }
 
-void tokens_consume_till2(struct tokens *tokens, usize argc, enum sym *args)
+struct token_precedence token_prec(struct token *token)
 {
-    BL_ASSERT(argc && args);
-    while (tokens_current_is_not(tokens, SYM_EOF)) {
-        for (usize i = 0; i < argc; ++i) {
-            if (tokens_current_is(tokens, args[i])) return;
-        }
-        tokens_consume(tokens);
-    }
-}
+    switch (token->sym) {
+        // . [ (
+    case SYM_DOT:
+    case SYM_LBRACKET:
+    case SYM_LPAREN:
+        return (struct token_precedence){.priority = 60, .associativity = TOKEN_ASSOC_LEFT};
 
-bool tokens_lookahead_till(struct tokens *tokens, enum sym lookup, enum sym terminal)
-{
-    bool  found  = false;
-    usize marker = tokens_get_marker(tokens);
-    while (tokens_current_is_not(tokens, terminal) && tokens_current_is_not(tokens, SYM_EOF)) {
-        if (tokens_current_is(tokens, lookup)) {
-            found = true;
-            break;
-        }
+        // cast sizeof alignof typeinfo
+    case SYM_CAST:
+    case SYM_SIZEOF:
+    case SYM_ALIGNOF:
+    case SYM_TYPEINFO:
+    case SYM_TESTCASES:
+        return (struct token_precedence){.priority = 50, .associativity = TOKEN_ASSOC_RIGHT};
 
-        tokens_consume(tokens);
-    }
-    tokens_back_to_marker(tokens, marker);
-    return found;
-}
+        // * ^ / % @
+    case SYM_ASTERISK:
+    case SYM_SLASH:
+    case SYM_PERCENT:
+    case SYM_AT:
+        return (struct token_precedence){.priority = 40, .associativity = TOKEN_ASSOC_LEFT};
 
-bool tokens_lookahead(struct tokens *tokens, token_cmp_func_t cmp)
-{
-    BL_ASSERT(cmp);
-    bool                        found  = false;
-    usize                       marker = tokens_get_marker(tokens);
-    struct token *              curr   = NULL;
-    enum tokens_lookahead_state state  = TOK_LOOK_TERMINAL;
-    while (true) {
-        curr  = tokens_peek(tokens);
-        state = cmp(curr);
-        if (curr->sym == SYM_EOF || state == TOK_LOOK_TERMINAL) {
-            break;
-        } else if (state == TOK_LOOK_HIT) {
-            found = true;
-            break;
-        }
-        tokens_consume(tokens);
+        // + -
+    case SYM_PLUS:
+    case SYM_MINUS:
+        return (struct token_precedence){.priority = 20, .associativity = TOKEN_ASSOC_LEFT};
+
+        // >> <<
+    case SYM_SHR:
+    case SYM_SHL:
+        return (struct token_precedence){.priority = 18, .associativity = TOKEN_ASSOC_LEFT};
+
+        // < > <= >=
+    case SYM_LESS:
+    case SYM_GREATER:
+    case SYM_LESS_EQ:
+    case SYM_GREATER_EQ:
+        return (struct token_precedence){.priority = 15, .associativity = TOKEN_ASSOC_LEFT};
+
+        // == !=
+    case SYM_EQ:
+    case SYM_NEQ:
+        return (struct token_precedence){.priority = 10, .associativity = TOKEN_ASSOC_LEFT};
+
+        // &
+    case SYM_AND:
+        return (struct token_precedence){.priority = 9, .associativity = TOKEN_ASSOC_LEFT};
+
+        // ^
+    case SYM_XOR:
+        return (struct token_precedence){.priority = 8, .associativity = TOKEN_ASSOC_LEFT};
+
+        // |
+    case SYM_OR:
+        return (struct token_precedence){.priority = 7, .associativity = TOKEN_ASSOC_LEFT};
+
+        // &&
+    case SYM_LOGIC_AND:
+        return (struct token_precedence){.priority = 5, .associativity = TOKEN_ASSOC_LEFT};
+
+        // ||
+    case SYM_LOGIC_OR:
+        return (struct token_precedence){.priority = 4, .associativity = TOKEN_ASSOC_LEFT};
+
+        // = += -= *= /=
+    case SYM_ASSIGN:
+    case SYM_PLUS_ASSIGN:
+    case SYM_MINUS_ASSIGN:
+    case SYM_ASTERISK_ASSIGN:
+    case SYM_SLASH_ASSIGN:
+    case SYM_PERCENT_ASSIGN:
+    case SYM_AND_ASSIGN:
+    case SYM_OR_ASSIGN:
+    case SYM_XOR_ASSIGN:
+        return (struct token_precedence){.priority = 3, .associativity = TOKEN_ASSOC_RIGHT};
+
+    default:
+        return (struct token_precedence){.priority = 0, .associativity = TOKEN_ASSOC_NONE};
     }
-    tokens_back_to_marker(tokens, marker);
-    return found;
 }

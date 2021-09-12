@@ -29,11 +29,12 @@
 #include "mir.h"
 #include "builder.h"
 #include "common.h"
-#include "mir_printer.h"
+#include "tokens.h"
 #include "unit.h"
 #include <stdarg.h>
 
 #if BL_DEBUG
+#include "mir_printer.h"
 #define DEBUG_PRINT_MIR(instr) mir_print_fn(ctx->assembly, instr_owner_fn(instr), stdout);
 #else
 #define DEBUG_PRINT_MIR(instr)                                                                     \
@@ -974,26 +975,26 @@ static INLINE struct mir_fn *instr_owner_fn(struct mir_instr *instr)
     return instr->owner_block->owner_fn;
 }
 
-#define report_error(ctx, node, format, ...)                                                       \
-    _report((ctx)->analyze.last_analyzed_instr,                                                    \
+#define report_error(code, node, format, ...)                                                      \
+    _report(ctx->analyze.last_analyzed_instr,                                                      \
             BUILDER_MSG_ERROR,                                                                     \
-            1,                                                                                     \
+            ERR_##code,                                                                            \
             (node),                                                                                \
             BUILDER_CUR_WORD,                                                                      \
             (format),                                                                              \
             ##__VA_ARGS__)
 
-#define report_error_after(ctx, node, format, ...)                                                 \
-    _report((ctx)->analyze.last_analyzed_instr,                                                    \
+#define report_error_after(code, node, format, ...)                                                \
+    _report(ctx->analyze.last_analyzed_instr,                                                      \
             BUILDER_MSG_ERROR,                                                                     \
-            1,                                                                                     \
+            ERR_##code,                                                                            \
             (node),                                                                                \
             BUILDER_CUR_AFTER,                                                                     \
             (format),                                                                              \
             ##__VA_ARGS__)
 
-#define report_warning(ctx, node, format, ...)                                                     \
-    _report((ctx)->analyze.last_analyzed_instr,                                                    \
+#define report_warning(node, format, ...)                                                          \
+    _report(ctx->analyze.last_analyzed_instr,                                                      \
             BUILDER_MSG_WARNING,                                                                   \
             0,                                                                                     \
             (node),                                                                                \
@@ -1001,8 +1002,8 @@ static INLINE struct mir_fn *instr_owner_fn(struct mir_instr *instr)
             (format),                                                                              \
             ##__VA_ARGS__)
 
-#define report_note(ctx, node, format, ...)                                                        \
-    _report((ctx)->analyze.last_analyzed_instr,                                                    \
+#define report_note(node, format, ...)                                                             \
+    _report(ctx->analyze.last_analyzed_instr,                                                      \
             BUILDER_MSG_NOTE,                                                                      \
             0,                                                                                     \
             (node),                                                                                \
@@ -1013,7 +1014,7 @@ static INLINE struct mir_fn *instr_owner_fn(struct mir_instr *instr)
 static INLINE void _report(struct mir_instr *    current_instr,
                            enum builder_msg_type type,
                            s32                   code,
-                           struct ast *          node,
+                           const struct ast *    node,
                            enum builder_cur_pos  cursor_position,
                            const char *          format,
                            ...)
@@ -1482,7 +1483,7 @@ static INLINE void error_types(struct context *  ctx,
     char tmp_to[256];
     mir_type_to_str(tmp_from, 256, from, true);
     mir_type_to_str(tmp_to, 256, to, true);
-    report_error(ctx, node, msg, tmp_from, tmp_to);
+    report_error(INVALID_TYPE, node, msg, tmp_from, tmp_to);
 }
 
 static INLINE void commit_fn(struct context *ctx, struct mir_fn *fn)
@@ -1913,9 +1914,9 @@ COLLIDE : {
     char *err_msg = (collision->is_builtin || is_builtin)
                         ? "Symbol name collision with compiler builtin '%s'."
                         : "Duplicate symbol";
-    report_error(ctx, node, err_msg, id->str);
+    report_error(DUPLICATE_SYMBOL, node, err_msg, id->str);
     if (collision->node) {
-        report_note(ctx, collision->node, "Previous declaration found here.");
+        report_note(collision->node, "Previous declaration found here.");
     }
     return NULL;
 }
@@ -1931,7 +1932,7 @@ struct mir_type *lookup_builtin_type(struct context *ctx, enum builtin_id_kind k
     if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
 
     if (!found->is_builtin) {
-        report_warning(ctx, found->node, "Builtins used by compiler must have '#compiler' flag!");
+        report_warning(found->node, "Builtins used by compiler must have '#compiler' flag!");
     }
 
     BL_ASSERT(found->kind == SCOPE_ENTRY_VAR);
@@ -1958,7 +1959,7 @@ struct mir_fn *lookup_builtin_fn(struct context *ctx, enum builtin_id_kind kind)
     if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
 
     if (!found->is_builtin) {
-        report_warning(ctx, found->node, "Builtins used by compiler must have '#compiler' flag!");
+        report_warning(found->node, "Builtins used by compiler must have '#compiler' flag!");
     }
 
     BL_ASSERT(found->kind == SCOPE_ENTRY_FN);
@@ -4587,8 +4588,9 @@ struct result analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *
     const bool is_tmp_needed = expr->value.addr_mode == MIR_VAM_RVALUE && !is_type;
 
     if (rtti_type->kind == MIR_TYPE_VOID) {
-        report_error(
-            ctx, expr->node, "Expression yields 'void' value and cannot be converted to Any.");
+        report_error(INVALID_TYPE,
+                     expr->node,
+                     "Expression yields 'void' value and cannot be converted to Any.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -4714,7 +4716,7 @@ struct result analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll 
     struct mir_type *type     = src_type;
     if (mir_is_composit_type(src_type) && src_type->data.strct.is_multiple_return_type) {
         if (index >= (s32)src_type->data.strct.members->size) {
-            report_error(ctx, unroll->base.node, "Expected more return values.");
+            report_error(INVALID_MEMBER_ACCESS, unroll->base.node, "Expected more return values.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
@@ -4780,7 +4782,8 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
 
         struct mir_instr *instr_type = cmp->type;
         if (instr_type->value.type->kind != MIR_TYPE_TYPE) {
-            report_error(ctx, instr_type->node, "Expected type before compound expression.");
+            report_error(
+                INVALID_TYPE, instr_type->node, "Expected type before compound expression.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         type = MIR_CEV_READ_AS(struct mir_type *, &instr_type->value);
@@ -4790,7 +4793,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
     BL_ASSERT(type);
 
     if (!values) {
-        report_error_after(ctx, cmp->type->node, "Expected expression.");
+        report_error_after(INVALID_INITIALIZER, cmp->type->node, "Expected expression.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -4811,7 +4814,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
         if (cmp->is_zero_initialized) break;
 
         if (values->size != (usize)type->data.array.len) {
-            report_error(ctx,
+            report_error(INVALID_INITIALIZER,
                          cmp->base.node,
                          "Array initializer must explicitly set all array elements or "
                          "initialize array to 0 by zero initializer {0}. Expected is "
@@ -4849,7 +4852,8 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
         const usize memc                    = type->data.strct.members->size;
 
         if (is_union) {
-            report_error(ctx, cmp->base.node, "Union can be zero initialized only.");
+            report_error(
+                INVALID_INITIALIZER, cmp->base.node, "Union can be zero initialized only.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         } else {
             if (values->size != memc) {
@@ -4859,7 +4863,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
                         : "Structure initializer must explicitly set all members of the "
                           "structure or initialize structure to 0 by zero initializer "
                           "{0}. Expected is %llu but given %llu.";
-                report_error(ctx,
+                report_error(INVALID_INITIALIZER,
                              cmp->base.node,
                              msg,
                              (unsigned long long)memc,
@@ -4890,7 +4894,9 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
         // Non-aggregate type.
         if (values->size > 1) {
             struct mir_instr *value = values->data[1];
-            report_error(ctx, value->node, "One value only is expected for non-aggregate types.");
+            report_error(INVALID_INITIALIZER,
+                         value->node,
+                         "One value only is expected for non-aggregate types.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         struct mir_instr **       value_ref = &values->data[0];
@@ -4926,21 +4932,21 @@ struct result analyze_var(struct context *ctx, struct mir_var *var)
         // Disable LLVM generation of typedefs.
         if (!var->is_mutable) break;
         // Typedef must be immutable!
-        report_error(ctx, var->decl_node, "Type declaration must be immutable.");
+        report_error(INVALID_MUTABILITY, var->decl_node, "Type declaration must be immutable.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     case MIR_TYPE_FN:
-        report_error(ctx,
+        report_error(INVALID_TYPE,
                      var->decl_node,
                      "Invalid type of the variable, functions can be referenced "
                      "only by pointers.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     case MIR_TYPE_FN_GROUP:
         if (!var->is_mutable) break;
-        report_error(ctx, var->decl_node, "Function group must be immutable.");
+        report_error(INVALID_TYPE, var->decl_node, "Function group must be immutable.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     case MIR_TYPE_VOID:
         // Allocated type is void type.
-        report_error(ctx, var->decl_node, "Cannot allocate unsized type.");
+        report_error(INVALID_TYPE, var->decl_node, "Cannot allocate unsized type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     default:
         break;
@@ -4948,7 +4954,8 @@ struct result analyze_var(struct context *ctx, struct mir_var *var)
 
     if (!var->is_implicit) {
         if (var->is_global && var->entry->kind == SCOPE_ENTRY_VOID) {
-            report_error(ctx, var->decl_node, "Global variable cannot be explicitly unnamed.");
+            report_error(
+                INVALID_NAME, var->decl_node, "Global variable cannot be explicitly unnamed.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         commit_var(ctx, var);
@@ -5005,7 +5012,7 @@ struct result analyze_instr_set_initializer(struct context *                  ct
     BL_ASSERT(si->src && "Invalid global initializer source value.");
     // Global initializer must be compile time known.
     if (!si->src->value.is_comptime) {
-        report_error(ctx,
+        report_error(EXPECTED_COMPTIME,
                      si->src->node,
                      "Global variables must be initialized with compile time known value.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
@@ -5029,7 +5036,8 @@ struct result analyze_instr_set_initializer(struct context *                  ct
             case MIR_TYPE_FN:
             case MIR_TYPE_FN_GROUP:
             case MIR_TYPE_TYPE:
-                report_error(ctx, var->decl_node, "Invalid type of thread local variable.");
+                report_error(
+                    INVALID_TYPE, var->decl_node, "Invalid type of thread local variable.");
                 return ANALYZE_RESULT(FAILED, 0);
             default:
                 break;
@@ -5110,7 +5118,7 @@ struct result analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_
     BL_ASSERT(arr_ptr->value.type);
 
     if (!mir_is_pointer_type(arr_ptr->value.type)) {
-        report_error(ctx, elem_ptr->arr_ptr->node, "Expected array type or slice.");
+        report_error(INVALID_TYPE, elem_ptr->arr_ptr->node, "Expected array type or slice.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -5123,7 +5131,7 @@ struct result analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_
             const s64 len = arr_type->data.array.len;
             const s64 i   = MIR_CEV_READ_AS(s64, &elem_ptr->index->value);
             if (i >= len || i < 0) {
-                report_error(ctx,
+                report_error(BOUND_CHECK_FAILED,
                              elem_ptr->index->node,
                              "Array index is out of the bounds, array size is %lli so index must "
                              "fit in range from 0 to %lli.",
@@ -5157,7 +5165,7 @@ struct result analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_
         break;
     }
     default: {
-        report_error(ctx, arr_ptr->node, "Expected array or slice type.");
+        report_error(INVALID_TYPE, arr_ptr->node, "Expected array or slice type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     }
@@ -5247,7 +5255,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
             addrof_elem->src              = elem_ptr;
             ANALYZE_INSTR_RQ(&addrof_elem->base);
         } else {
-            report_error(ctx, ast_member_ident, "Unknown member.");
+            report_error(INVALID_MEMBER_ACCESS, ast_member_ident, "Unknown member.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
@@ -5295,7 +5303,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 
         if (!found) {
             // Member not found!
-            report_error(ctx, member_ptr->member_ident, "Unknown structure member.");
+            report_error(UNKNOWN_SYMBOL, member_ptr->member_ident, "Unknown structure member.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
@@ -5334,7 +5342,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         const s32           layer_index = ctx->polymorph.current_scope_layer_index;
         struct scope_entry *found       = scope_lookup(scope, layer_index, rid, false, true, NULL);
         if (!found) {
-            report_error(ctx, member_ptr->member_ident, "Unknown enumerator variant.");
+            report_error(UNKNOWN_SYMBOL, member_ptr->member_ident, "Unknown enumerator variant.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
@@ -5350,7 +5358,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 
     // Invalid
 INVALID:
-    report_error(ctx, target_ptr->node, "Expected structure or enumerator type.");
+    report_error(INVALID_TYPE, target_ptr->node, "Expected structure or enumerator type.");
     RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
 }
 
@@ -5369,7 +5377,8 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
          (src->value.type->kind == MIR_TYPE_FN && !is_source_polymorph));
 
     if (!can_grab_address) {
-        report_error(ctx, addrof->base.node, "Cannot take the address of unallocated object.");
+        report_error(
+            EXPECTED_DECL, addrof->base.node, "Cannot take the address of unallocated object.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -5498,13 +5507,14 @@ struct result analyze_instr_type_info(struct context *ctx, struct mir_instr_type
         RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     }
     if (type_info->rtti_type->kind == MIR_TYPE_NAMED_SCOPE) {
-        report_error(ctx, type_info->expr->node, "No type info available for scope type.");
+        report_error(INVALID_TYPE, type_info->expr->node, "No type info available for scope type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     if (type_info->rtti_type->kind == MIR_TYPE_FN &&
         IS_FLAG(type_info->rtti_type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_POLYMORPH)) {
-        report_error(
-            ctx, type_info->expr->node, "No type info available for polymorph function recipe.");
+        report_error(INVALID_TYPE,
+                     type_info->expr->node,
+                     "No type info available for polymorph function recipe.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     rtti_gen(ctx, type_info->rtti_type);
@@ -5647,19 +5657,11 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
             // declared in parent functions of local functions. (We try to
             // implicitly capture those variables and this leads to invalid LLVM
             // IR.)
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_REFERENCE,
-                        ref->base.node->location,
-                        BUILDER_CUR_WORD,
-                        "Attempt to reference variable from parent "
-                        "function. This is not allowed.");
-
-            builder_msg(BUILDER_MSG_NOTE,
-                        0,
-                        var->decl_node->location,
-                        BUILDER_CUR_NONE,
-                        "Variable declared here.");
-
+            report_error(INVALID_REFERENCE,
+                         ref->base.node,
+                         "Attempt to reference variable from parent "
+                         "function. This is not allowed.");
+            report_note(var->decl_node, "Variable declared here.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         ref->base.value.type        = create_type_ptr(ctx, type);
@@ -5844,31 +5846,24 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     // Check build entry function.
     if (IS_FLAG(fn->flags, FLAG_BUILD_ENTRY)) {
         if (fn->type->data.fn.args) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_ARG_COUNT,
-                        fn_proto->base.node->location,
-                        BUILDER_CUR_WORD,
-                        "Build entry function cannot take arguments.");
+            report_error(INVALID_ARG_COUNT,
+                         fn_proto->base.node,
+                         "Build entry function cannot take arguments.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         if (fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_TYPE,
-                        fn_proto->base.node->location,
-                        BUILDER_CUR_WORD,
-                        "Build entry function cannot return value.");
+            report_error(
+                INVALID_TYPE, fn_proto->base.node, "Build entry function cannot return value.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         if (ctx->assembly->target->kind == ASSEMBLY_BUILD_PIPELINE) {
             ctx->assembly->vm_run.build_entry = fn;
         } else {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_DUPLICATE_ENTRY,
-                        fn_proto->base.node->location,
-                        BUILDER_CUR_WORD,
-                        "More than one build entry per assembly is not allowed.");
+            report_error(DUPLICATE_ENTRY,
+                         fn_proto->base.node,
+                         "More than one build entry per assembly is not allowed.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
     }
@@ -5884,12 +5879,10 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         // internal name mapping in this case.
         const char *intrinsic_name = get_intrinsic(fn->linkage_name);
         if (!intrinsic_name) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_UNKNOWN_SYMBOL,
-                        fn_proto->base.node->location,
-                        BUILDER_CUR_WORD,
-                        "Unknown compiler intrinsic '%s'.",
-                        fn->linkage_name);
+            report_error(UNKNOWN_SYMBOL,
+                         fn_proto->base.node,
+                         "Unknown compiler intrinsic '%s'.",
+                         fn->linkage_name);
 
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
@@ -5904,11 +5897,8 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         if (!entry_block) {
             // INCOMPLETE: not the best place to do this check, move into struct ast
             // generation later
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_EXPECTED_BODY,
-                        fn_proto->base.node->location,
-                        BUILDER_CUR_WORD,
-                        "Missing function body.");
+            report_error(
+                EXPECTED_BODY, fn_proto->base.node, BUILDER_CUR_WORD, "Missing function body.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
@@ -5920,12 +5910,9 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         schedule_llvm_generation = true;
         ++fn->ref_count;
         if (is_polymorph) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_UNEXPECTED_DIRECTIVE,
-                        fn_proto->base.node->location,
-                        BUILDER_CUR_WORD,
-                        "Polymorph function cannot be exported.");
-
+            report_error(UNEXPECTED_DIRECTIVE,
+                         fn_proto->base.node,
+                         "Polymorph function cannot be exported.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
     }
@@ -5941,22 +5928,15 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         BL_ASSERT(fn->id && "Test case without name!");
 
         if (fn->type->data.fn.args != NULL) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_ARG_COUNT,
-                        fn_proto->base.node->location,
-                        BUILDER_CUR_WORD,
-                        "Test case function cannot have arguments.");
-
+            report_error(INVALID_ARG_COUNT,
+                         fn_proto->base.node,
+                         "Test case function cannot have arguments.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         if (fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_UNEXPECTED_RETURN,
-                        fn_proto->base.node->location,
-                        BUILDER_CUR_WORD,
-                        "Test case function cannot return value.");
-
+            report_error(
+                UNEXPECTED_RETURN, fn_proto->base.node, "Test case function cannot return value.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
@@ -5966,11 +5946,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 
     if (fn->id && fn->scope_entry) {
         if (fn->scope_entry->kind == SCOPE_ENTRY_VOID) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_NAME,
-                        fn->decl_node->location,
-                        BUILDER_CUR_WORD,
-                        "Functions cannot be explicitly unnamed.");
+            report_error(INVALID_NAME, fn->decl_node, "Functions cannot be explicitly unnamed.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         commit_fn(ctx, fn);
@@ -6027,11 +6003,7 @@ struct result analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_gr
         }
         struct mir_instr *variant = *variant_ref;
         if (variant->value.type->kind != MIR_TYPE_FN) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_EXPECTED_FUNC,
-                        variant->node->location,
-                        BUILDER_CUR_WORD,
-                        "Expected a function name.");
+            report_error(EXPECTED_FUNC, variant->node, "Expected a function name.");
             result = ANALYZE_RESULT(FAILED, 0);
             goto FINALLY;
         }
@@ -6056,16 +6028,8 @@ struct result analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_gr
         const u64      h1 = it->type->data.fn.argument_hash;
         const u64      h2 = prev_fn ? prev_fn->type->data.fn.argument_hash : 0;
         if (h1 == h2) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_AMBIGUOUS,
-                        it->decl_node->location,
-                        BUILDER_CUR_WORD,
-                        "Function overload is ambiguous in group.");
-            builder_msg(BUILDER_MSG_NOTE,
-                        0,
-                        group->base.node->location,
-                        BUILDER_CUR_WORD,
-                        "Group defined here:");
+            report_error(AMBIGUOUS, it->decl_node, "Function overload is ambiguous in group.");
+            report_note(group->base.node, "Group defined here:");
         }
         prev_fn = it;
     }
@@ -6089,8 +6053,9 @@ struct result analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_b
     }
     const bool is_condition_comptime = mir_is_comptime(br->cond);
     if (br->is_static && !is_condition_comptime) {
-        report_error(
-            ctx, br->cond->node, "Static if expression is supposed to be known in compile time.");
+        report_error(EXPECTED_COMPTIME,
+                     br->cond->node,
+                     "Static if expression is supposed to be known in compile time.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     // Compile-time known conditional break can be later evaluated into direct break.
@@ -6116,23 +6081,15 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
     BL_ASSERT(expected_case_type);
 
     if (expected_case_type->kind != MIR_TYPE_INT && expected_case_type->kind != MIR_TYPE_ENUM) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    sw->value->node->location,
-                    BUILDER_CUR_WORD,
-                    "Invalid type of switch expression. Only integer types and "
-                    "enums can be used.");
-
+        report_error(INVALID_TYPE,
+                     sw->value->node,
+                     "Invalid type of switch expression. Only integer types and "
+                     "enums can be used.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     if (!sw->cases->size) {
-        builder_msg(BUILDER_MSG_WARNING,
-                    0,
-                    sw->base.node->location,
-                    BUILDER_CUR_WORD,
-                    "Empty switch statement.");
-
+        report_warning(sw->base.node, "Empty switch statement.");
         RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
     }
 
@@ -6143,11 +6100,9 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
         c = &sw->cases->data[i];
 
         if (!mir_is_comptime(c->on_value)) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_EXPECTED_COMPTIME,
-                        c->on_value->node->location,
-                        BUILDER_CUR_WORD,
-                        "Switch case value must be compile-time known.");
+            report_error(EXPECTED_COMPTIME,
+                         c->on_value->node,
+                         "Switch case value must be compile-time known.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
@@ -6161,18 +6116,11 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
             TIterator iter = thtbl_find(presented, v);
             TIterator end  = thtbl_end(presented);
             if (!TITERATOR_EQUAL(iter, end)) {
-                builder_msg(BUILDER_MSG_ERROR,
-                            ERR_DUPLICIT_SWITCH_CASE,
-                            c->on_value->node->location,
-                            BUILDER_CUR_WORD,
-                            "Switch already contains case for this value!");
-
+                report_error(DUPLICIT_SWITCH_CASE,
+                             c->on_value->node,
+                             "Switch already contains case for this value!");
                 struct mir_switch_case *ce = thtbl_iter_peek_value(struct mir_switch_case *, iter);
-                builder_msg(BUILDER_MSG_NOTE,
-                            0,
-                            ce->on_value->node->location,
-                            BUILDER_CUR_WORD,
-                            "Same value found here.");
+                report_note(ce->on_value->node, "Same value found here.");
                 RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
             thtbl_insert(presented, (u64)v, c);
@@ -6184,11 +6132,7 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
                                   : -1;
 
     if ((expected_case_count > (s64)sw->cases->size) && !sw->has_user_defined_default) {
-        builder_msg(BUILDER_MSG_WARNING,
-                    0,
-                    sw->base.node->location,
-                    BUILDER_CUR_WORD,
-                    "Switch does not handle all possible enumerator values.");
+        report_warning(sw->base.node, "Switch does not handle all possible enumerator values.");
 
         BL_ASSERT(expected_case_type->kind == MIR_TYPE_ENUM);
         struct mir_variant *variant;
@@ -6223,7 +6167,7 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
     struct mir_instr *src = load->src;
     BL_ASSERT(src);
     if (!mir_is_pointer_type(src->value.type)) {
-        report_error(ctx, src->node, "Expected pointer.");
+        report_error(INVALID_TYPE, src->node, "Expected pointer.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -6284,12 +6228,10 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
             case MIR_TYPE_NAMED_SCOPE: {
                 char type_name[256];
                 mir_type_to_str(type_name, 256, arg->type, true);
-                builder_msg(BUILDER_MSG_ERROR,
-                            ERR_INVALID_TYPE,
-                            arg->decl_node->location,
-                            BUILDER_CUR_WORD,
-                            "Invalid function argument type '%s'.",
-                            type_name);
+                report_error(INVALID_TYPE,
+                             arg->decl_node,
+                             "Invalid function argument type '%s'.",
+                             type_name);
                 RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
             default:
@@ -6299,33 +6241,27 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
             is_vargs         = arg->type->kind == MIR_TYPE_VARGS ? true : is_vargs;
             has_default_args = arg->value ? true : has_default_args;
             if (is_vargs && i != type_fn->args->size - 1) {
-                builder_msg(BUILDER_MSG_ERROR,
-                            ERR_INVALID_TYPE,
-                            arg->decl_node->location,
-                            BUILDER_CUR_WORD,
-                            "VArgs function argument must be last in "
-                            "the argument list.");
+                report_error(INVALID_TYPE,
+                             arg->decl_node,
+                             "VArgs function argument must be last in "
+                             "the argument list.");
                 RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
             if (is_vargs && has_default_args) {
                 struct mir_instr *arg_prev = type_fn->args->data[i - 1];
-                builder_msg(BUILDER_MSG_ERROR,
-                            ERR_INVALID_TYPE,
-                            arg_prev->node->location,
-                            BUILDER_CUR_WORD,
-                            "Argument with default value cannot be used with VArgs "
-                            "presented in the function argument list.");
+                report_error(INVALID_TYPE,
+                             arg_prev->node,
+                             "Argument with default value cannot be used with VArgs "
+                             "presented in the function argument list.");
                 RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
             if (!arg->value && has_default_args) {
                 struct mir_instr *arg_prev = type_fn->args->data[i - 1];
-                builder_msg(BUILDER_MSG_ERROR,
-                            ERR_INVALID_TYPE,
-                            arg_prev->node->location,
-                            BUILDER_CUR_WORD,
-                            "All arguments with default value must be listed last "
-                            "in the function argument list. Before arguments "
-                            "without default value.");
+                report_error(INVALID_TYPE,
+                             arg_prev->node,
+                             "All arguments with default value must be listed last "
+                             "in the function argument list. Before arguments "
+                             "without default value.");
                 RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
             tsa_push_ArgPtr(args, arg);
@@ -6344,11 +6280,9 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
         BL_MAGIC_ASSERT(ret_type);
         // Disable polymorph master as return type.
         if (ret_type->kind == MIR_TYPE_POLY && ret_type->data.poly.is_master) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_TYPE,
-                        type_fn->ret_type->node->location,
-                        BUILDER_CUR_WORD,
-                        "Polymorph master type cannot be used as return type.");
+            report_error(INVALID_TYPE,
+                         type_fn->ret_type->node,
+                         "Polymorph master type cannot be used as return type.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
     }
@@ -6367,11 +6301,9 @@ struct result analyze_instr_type_fn_group(struct context *                ctx,
     BL_ASSERT(variants);
     const usize varc = variants->size;
     if (varc == 0) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    group->base.node->location,
-                    BUILDER_CUR_WORD,
-                    "Function group type must contain one function type at least.");
+        report_error(INVALID_TYPE,
+                     group->base.node,
+                     "Function group type must contain one function type at least.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     TSmallArray_TypePtr *variant_types = create_sarr(TSmallArray_TypePtr, ctx->assembly);
@@ -6384,21 +6316,17 @@ struct result analyze_instr_type_fn_group(struct context *                ctx,
         struct mir_instr *variant = *variant_ref;
         BL_ASSERT(variant->value.type);
         if (variant->value.type->kind != MIR_TYPE_TYPE) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_TYPE,
-                        variant->node->location,
-                        BUILDER_CUR_WORD,
-                        "Function group type variant is supposed to be function type.");
+            report_error(INVALID_TYPE,
+                         variant->node,
+                         "Function group type variant is supposed to be function type.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         struct mir_type *variant_type = MIR_CEV_READ_AS(struct mir_type *, &variant->value);
         BL_MAGIC_ASSERT(variant_type);
         if (variant_type->kind != MIR_TYPE_FN) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_TYPE,
-                        variant->node->location,
-                        BUILDER_CUR_WORD,
-                        "Function group type variant is supposed to be function type.");
+            report_error(INVALID_TYPE,
+                         variant->node,
+                         "Function group type variant is supposed to be function type.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         variant_types->data[i] = variant_type;
@@ -6425,11 +6353,9 @@ struct result analyze_instr_decl_member(struct context *ctx, struct mir_instr_de
             }
 
             if (!mir_is_comptime(*tag)) {
-                builder_msg(BUILDER_MSG_ERROR,
-                            ERR_EXPECTED_CONST,
-                            (*tag)->node->location,
-                            BUILDER_CUR_WORD,
-                            "Struct member tag must be compile-time constant.");
+                report_error(EXPECTED_CONST,
+                             (*tag)->node,
+                             "Struct member tag must be compile-time constant.");
                 RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
 
@@ -6475,11 +6401,9 @@ struct result analyze_instr_decl_variant(struct context *               ctx,
     if (variant_instr->value) {
         // User defined initialization value.
         if (!mir_is_comptime(variant_instr->value)) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_EXPR,
-                        variant_instr->value->node->location,
-                        BUILDER_CUR_WORD,
-                        "Enum variant value must be compile time known.");
+            report_error(INVALID_EXPR,
+                         variant_instr->value->node,
+                         "Enum variant value must be compile time known.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         if (analyze_slot(ctx, &analyze_slot_conf_default, &variant_instr->value, base_type) !=
@@ -6506,15 +6430,13 @@ struct result analyze_instr_decl_variant(struct context *               ctx,
             // @Incomplete: Detect overflow also for regular enums?
             char base_type_name[256];
             mir_type_to_str(base_type_name, 256, base_type, true);
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_NUM_LIT_OVERFLOW,
-                        variant_instr->base.node->location,
-                        BUILDER_CUR_WORD,
-                        "Enum variant value overflow on variant '%s', maximum value for type "
-                        "'%s' is %llu.",
-                        variant->id->str,
-                        base_type_name,
-                        max_value);
+            report_error(NUM_LIT_OVERFLOW,
+                         variant_instr->base.node,
+                         "Enum variant value overflow on variant '%s', maximum value for type "
+                         "'%s' is %llu.",
+                         variant->id->str,
+                         base_type_name,
+                         max_value);
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         variant_instr->variant->value      = value;
@@ -6524,11 +6446,8 @@ struct result analyze_instr_decl_variant(struct context *               ctx,
         variant_instr->variant->value_type = base_type;
     }
     if (variant->entry->kind == SCOPE_ENTRY_VOID) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_NAME,
-                    variant_instr->base.node->location,
-                    BUILDER_CUR_WORD,
-                    "Enum variant cannot be explicitly unnamed.");
+        report_error(
+            INVALID_NAME, variant_instr->base.node, "Enum variant cannot be explicitly unnamed.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     commit_variant(ctx, variant);
@@ -6604,20 +6523,16 @@ struct result analyze_instr_type_struct(struct context *              ctx,
             member_type = MIR_CEV_READ_AS(struct mir_type *, &decl_member->type->value);
             BL_MAGIC_ASSERT(member_type);
             if (member_type->kind == MIR_TYPE_FN) {
-                builder_msg(BUILDER_MSG_ERROR,
-                            ERR_INVALID_TYPE,
-                            (*member_instr)->node->location,
-                            BUILDER_CUR_WORD,
-                            "Invalid type of the structure member, functions can "
-                            "be referenced only by pointers.");
+                report_error(INVALID_TYPE,
+                             (*member_instr)->node,
+                             "Invalid type of the structure member, functions can "
+                             "be referenced only by pointers.");
                 RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
             if (member_type->kind == MIR_TYPE_TYPE) {
-                builder_msg(BUILDER_MSG_ERROR,
-                            ERR_INVALID_TYPE,
-                            decl_member->type->node->location,
-                            BUILDER_CUR_WORD,
-                            "Generic 'type' cannot be used as struct member type.");
+                report_error(INVALID_TYPE,
+                             decl_member->type->node,
+                             "Generic 'type' cannot be used as struct member type.");
                 RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
 
@@ -6686,11 +6601,7 @@ struct result analyze_instr_type_slice(struct context *ctx, struct mir_instr_typ
     }
 
     if (type_slice->elem_type->value.type->kind != MIR_TYPE_TYPE) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    type_slice->elem_type->node->location,
-                    BUILDER_CUR_WORD,
-                    "Expected type.");
+        report_error(INVALID_TYPE, type_slice->elem_type->node, "Expected type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -6699,11 +6610,9 @@ struct result analyze_instr_type_slice(struct context *ctx, struct mir_instr_typ
     BL_MAGIC_ASSERT(elem_type);
 
     if (elem_type->kind == MIR_TYPE_TYPE) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    type_slice->elem_type->node->location,
-                    BUILDER_CUR_WORD,
-                    "Generic 'type' cannot be used as slice base type.");
+        report_error(INVALID_TYPE,
+                     type_slice->elem_type->node,
+                     "Generic 'type' cannot be used as slice base type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -6738,11 +6647,7 @@ struct result analyze_instr_type_dynarr(struct context *               ctx,
     }
 
     if (type_dynarr->elem_type->value.type->kind != MIR_TYPE_TYPE) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    type_dynarr->elem_type->node->location,
-                    BUILDER_CUR_WORD,
-                    "Expected type.");
+        report_error(INVALID_TYPE, type_dynarr->elem_type->node, "Expected type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -6751,11 +6656,9 @@ struct result analyze_instr_type_dynarr(struct context *               ctx,
     BL_MAGIC_ASSERT(elem_type);
 
     if (elem_type->kind == MIR_TYPE_TYPE) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    type_dynarr->elem_type->node->location,
-                    BUILDER_CUR_WORD,
-                    "Generic 'type' cannot be used as dynamic array base type.");
+        report_error(INVALID_TYPE,
+                     type_dynarr->elem_type->node,
+                     "Generic 'type' cannot be used as dynamic array base type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -6778,11 +6681,7 @@ struct result analyze_instr_type_vargs(struct context *ctx, struct mir_instr_typ
         }
 
         if (type_vargs->elem_type->value.type->kind != MIR_TYPE_TYPE) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_TYPE,
-                        type_vargs->elem_type->node->location,
-                        BUILDER_CUR_WORD,
-                        "Expected type.");
+            report_error(INVALID_TYPE, type_vargs->elem_type->node, "Expected type.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
@@ -6819,30 +6718,19 @@ struct result analyze_instr_type_array(struct context *ctx, struct mir_instr_typ
 
     // len
     if (!mir_is_comptime(type_arr->len)) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_EXPECTED_CONST,
-                    type_arr->len->node->location,
-                    BUILDER_CUR_WORD,
-                    "Array size must be compile-time constant.");
+        report_error(
+            EXPECTED_CONST, type_arr->len->node, "Array size must be compile-time constant.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     if (type_arr->elem_type->value.type->kind != MIR_TYPE_TYPE) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    type_arr->elem_type->node->location,
-                    BUILDER_CUR_WORD,
-                    "Expected type.");
+        report_error(INVALID_TYPE, type_arr->elem_type->node, "Expected type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     const s64 len = MIR_CEV_READ_AS(s64, &type_arr->len->value);
     if (len == 0) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_ARR_SIZE,
-                    type_arr->len->node->location,
-                    BUILDER_CUR_WORD,
-                    "Array size cannot be 0.");
+        report_error(INVALID_ARR_SIZE, type_arr->len->node, "Array size cannot be 0.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -6853,11 +6741,9 @@ struct result analyze_instr_type_array(struct context *ctx, struct mir_instr_typ
     BL_MAGIC_ASSERT(elem_type);
 
     if (elem_type->kind == MIR_TYPE_TYPE) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    type_arr->elem_type->node->location,
-                    BUILDER_CUR_WORD,
-                    "Generic 'type' cannot be used as array element type.");
+        report_error(INVALID_TYPE,
+                     type_arr->elem_type->node,
+                     "Generic 'type' cannot be used as array element type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -6892,19 +6778,14 @@ struct result analyze_instr_type_enum(struct context *ctx, struct mir_instr_type
 
         // Enum type must be integer!
         if (base_type->kind != MIR_TYPE_INT) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_TYPE,
-                        type_enum->base_type->node->location,
-                        BUILDER_CUR_WORD,
-                        "Base type of enumerator must be an integer type.");
+            report_error(INVALID_TYPE,
+                         type_enum->base_type->node,
+                         "Base type of enumerator must be an integer type.");
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         if (is_flags && base_type->data.integer.is_signed) {
-            builder_msg(BUILDER_MSG_WARNING,
-                        0,
-                        type_enum->base_type->node->location,
-                        BUILDER_CUR_WORD,
-                        "Base type of 'flags' enumerator should be unsigned number.");
+            report_warning(type_enum->base_type->node,
+                           "Base type of 'flags' enumerator should be unsigned number.");
         }
     } else {
         base_type = is_flags ? ctx->builtin_types->t_u32 : ctx->builtin_types->t_s32;
@@ -6935,20 +6816,14 @@ struct result analyze_instr_type_ptr(struct context *ctx, struct mir_instr_type_
     }
 
     if (!mir_is_comptime(type_ptr->type)) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    type_ptr->type->node->location,
-                    BUILDER_CUR_WORD,
-                    "Expected compile time known type after '*' pointer type declaration.");
+        report_error(INVALID_TYPE,
+                     type_ptr->type->node,
+                     "Expected compile time known type after '*' pointer type declaration.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     if (type_ptr->type->value.type->kind != MIR_TYPE_TYPE) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    type_ptr->type->node->location,
-                    BUILDER_CUR_WORD,
-                    "Expected type name.");
+        report_error(INVALID_TYPE, type_ptr->type->node, "Expected type name.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -6956,11 +6831,7 @@ struct result analyze_instr_type_ptr(struct context *ctx, struct mir_instr_type_
     BL_MAGIC_ASSERT(src_type_value);
 
     if (src_type_value->kind == MIR_TYPE_TYPE) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_TYPE,
-                    type_ptr->base.node->location,
-                    BUILDER_CUR_WORD,
-                    "Cannot create pointer to type.");
+        report_error(INVALID_TYPE, type_ptr->base.node, "Cannot create pointer to type.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -7104,10 +6975,10 @@ struct result analyze_instr_msg(struct context *ctx, struct mir_instr_msg *msg)
 {
     switch (msg->kind) {
     case AST_MSG_WARNING:
-        report_warning(ctx, msg->base.node, "%s", msg->text);
+        report_warning(msg->base.node, "%s", msg->text);
         RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
     case AST_MSG_ERROR:
-        report_error(ctx, msg->base.node, "%s", msg->text);
+        report_error(USER, msg->base.node, "%s", msg->text);
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     BL_UNREACHABLE;
@@ -7139,13 +7010,11 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
         if (expr_type->kind != MIR_TYPE_INT) {
             char tmp[256];
             mir_type_to_str(tmp, 256, expr_type, true);
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_TYPE,
-                        unop->base.node->location,
-                        BUILDER_CUR_AFTER,
-                        "Invalid operation for type '%s'. This operation "
-                        "is valid for integer types only.",
-                        tmp);
+            report_error_after(INVALID_TYPE,
+                               unop->base.node,
+                               "Invalid operation for type '%s'. This operation "
+                               "is valid for integer types only.",
+                               tmp);
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         break;
@@ -7156,15 +7025,11 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
         if (expr_type->kind != MIR_TYPE_INT && expr_type->kind != MIR_TYPE_REAL) {
             char tmp[256];
             mir_type_to_str(tmp, 256, expr_type, true);
-
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_TYPE,
-                        unop->base.node->location,
-                        BUILDER_CUR_AFTER,
-                        "Invalid operation for type '%s'. This operation "
-                        "is valid for integer or real types only.",
-                        tmp);
-
+            report_error_after(INVALID_TYPE,
+                               unop->base.node,
+                               "Invalid operation for type '%s'. This operation "
+                               "is valid for integer or real types only.",
+                               tmp);
             RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         break;
@@ -7223,21 +7088,13 @@ struct result analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
 
     // return value is expected, but it's not provided
     if (expected_ret_value && !value) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_EXPR,
-                    ret->base.node->location,
-                    BUILDER_CUR_AFTER,
-                    "Expected return value.");
+        report_error_after(INVALID_EXPR, ret->base.node, "Expected return value.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     // return value is not expected, but it's provided
     if (!expected_ret_value && value) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_EXPR,
-                    ret->value->node->location,
-                    BUILDER_CUR_WORD,
-                    "Unexpected return value.");
+        report_error(INVALID_EXPR, ret->value->node, "Unexpected return value.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -7276,11 +7133,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     }
 
     if (IS_FLAG(var->flags, FLAG_THREAD_LOCAL)) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_DIRECTIVE,
-                    var->decl_node->location,
-                    BUILDER_CUR_WORD,
-                    "Thread local variable must be global.");
+        report_error(INVALID_DIRECTIVE, var->decl_node, "Thread local variable must be global.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     // Continue only with local variables and struct typedefs.
@@ -7521,16 +7374,13 @@ struct result generate_fn_poly(struct context *            ctx,
                 if (call_arg_type) {
                     char arg_type_name[256];
                     mir_type_to_str(arg_type_name, 256, call_arg_type, true);
-
-                    builder_msg(BUILDER_MSG_ERROR,
-                                ERR_INVALID_POLY_MATCH,
-                                ast_poly_arg->data.decl.type->location,
-                                BUILDER_CUR_WORD,
-                                "Cannot deduce polymorph function argument type '%s'. Expected is "
-                                "'%s' but call-side argument type is '%s'.",
-                                poly_type->user_id->str,
-                                recipe_type_name,
-                                arg_type_name);
+                    report_error(INVALID_POLY_MATCH,
+                                 ast_poly_arg->data.decl.type,
+                                 "Cannot deduce polymorph function argument type '%s'. Expected is "
+                                 "'%s' but call-side argument type is '%s'.",
+                                 poly_type->user_id->str,
+                                 recipe_type_name,
+                                 arg_type_name);
 
                     struct location *call_arg_loc = call->data.expr_call.args->data[i]->location;
                     if (!call_arg_loc) call_arg_loc = call->location;
@@ -7538,15 +7388,11 @@ struct result generate_fn_poly(struct context *            ctx,
                         BUILDER_MSG_NOTE, 0, call_arg_loc, BUILDER_CUR_WORD, "Called from here.");
                 } else {
                     // Missing argument on call side required for polymorph deduction.
-                    builder_msg(BUILDER_MSG_ERROR,
-                                ERR_INVALID_POLY_MATCH,
-                                ast_poly_arg->data.decl.type->location,
-                                BUILDER_CUR_WORD,
-                                "Cannot deduce polymorph function argument type '%s'.",
-                                poly_type->user_id->str);
-
-                    builder_msg(
-                        BUILDER_MSG_NOTE, 0, call->location, BUILDER_CUR_WORD, "Called from here.");
+                    report_error(INVALID_POLY_MATCH,
+                                 ast_poly_arg->data.decl.type,
+                                 "Cannot deduce polymorph function argument type '%s'.",
+                                 poly_type->user_id->str);
+                    report_note(call, "Called from here.");
                 }
                 tsa_push_TypePtr(queue, ctx->builtin_types->t_s32);
                 put_tmpstr(debug_replacement_str);
@@ -7658,11 +7504,8 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     bool is_fn    = type->kind == MIR_TYPE_FN;
     bool is_group = type->kind == MIR_TYPE_FN_GROUP;
     if (!is_group && !is_fn) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_EXPECTED_FUNC,
-                    call->callee->node->location,
-                    BUILDER_CUR_WORD,
-                    "Expected a function of function group name.");
+        report_error(
+            EXPECTED_FUNC, call->callee->node, "Expected a function of function group name.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -7913,41 +7756,29 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             goto REPORT_OVERLOAD_LOCATION;
         }
         if (call->call_in_compile_time && !mir_is_comptime(*call_arg)) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_EXPECTED_COMPTIME,
-                        (*call_arg)->node->location,
-                        BUILDER_CUR_WORD,
-                        "Function argument is supposed to be compile-time known since function is "
-                        "called in compile-time.");
+            report_error(EXPECTED_COMPTIME,
+                         (*call_arg)->node,
+                         "Function argument is supposed to be compile-time known since function is "
+                         "called in compile-time.");
             goto REPORT_OVERLOAD_LOCATION;
         }
     }
     RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
     // ERROR
 INVALID_ARGC:
-    builder_msg(BUILDER_MSG_ERROR,
-                ERR_INVALID_ARG_COUNT,
-                call->base.node->location,
-                BUILDER_CUR_WORD,
-                "Expected %u %s, but called with %u.",
-                callee_argc,
-                callee_argc == 1 ? "argument" : "arguments",
-                call_argc);
+    report_error(INVALID_ARG_COUNT,
+                 call->base.node,
+                 "Expected %u %s, but called with %u.",
+                 callee_argc,
+                 callee_argc == 1 ? "argument" : "arguments",
+                 call_argc);
 
     if (optional_fn_or_group.fn && optional_fn_or_group.fn->decl_node) {
-        builder_msg(BUILDER_MSG_NOTE,
-                    0,
-                    optional_fn_or_group.fn->decl_node->location,
-                    BUILDER_CUR_WORD,
-                    "Function is declared here:");
+        report_note(optional_fn_or_group.fn->decl_node, "Function is declared here:");
     }
 REPORT_OVERLOAD_LOCATION:
     if (is_group) {
-        builder_msg(BUILDER_MSG_NOTE,
-                    0,
-                    call->callee->node->location,
-                    BUILDER_CUR_WORD,
-                    "Overloaded function implementation:");
+        report_note(call->callee->node, "Overloaded function implementation:");
     }
     RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
 }
@@ -7960,20 +7791,13 @@ struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *s
     BL_ASSERT(dest->is_analyzed);
 
     if (!mir_is_pointer_type(dest->value.type)) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_EXPR,
-                    store->base.node->location,
-                    BUILDER_CUR_WORD,
-                    "Left hand side of the expression cannot be assigned.");
+        report_error(
+            INVALID_EXPR, store->base.node, "Left hand side of the expression cannot be assigned.");
         RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     if (dest->value.addr_mode == MIR_VAM_LVALUE_CONST || dest->value.addr_mode == MIR_VAM_RVALUE) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_EXPR,
-                    store->base.node->location,
-                    BUILDER_CUR_WORD,
-                    "Cannot assign to constant.");
+        report_error(INVALID_EXPR, store->base.node, "Cannot assign to constant.");
     }
 
     struct mir_type *dest_type = mir_deref_type(dest->value.type);
@@ -8049,7 +7873,8 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
             set_current_block(ctx, block);
             append_instr_br(ctx, block->base.node, block);
         } else {
-            report_error(ctx, fn->decl_node, "Not every path inside function return value.");
+            report_error(
+                MISSING_RETURN, fn->decl_node, "Not every path inside function return value.");
             DEBUG_PRINT_MIR(&block->base);
         }
     }
@@ -8128,11 +7953,7 @@ ANALYZE_STAGE_FN(set_null)
         return ANALYZE_STAGE_BREAK;
     }
 
-    builder_msg(BUILDER_MSG_ERROR,
-                ERR_INVALID_TYPE,
-                _input->node->location,
-                BUILDER_CUR_WORD,
-                "Invalid use of null constant.");
+    report_error(INVALID_TYPE, _input->node, "Invalid use of null constant.");
 
     return ANALYZE_STAGE_FAILED;
 }
@@ -8609,21 +8430,14 @@ void analyze_report_unresolved(struct context *ctx)
                 continue;
             }
             BL_ASSERT(sym_name && "Invalid unresolved symbol name!");
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_UNKNOWN_SYMBOL,
-                        instr->node->location,
-                        BUILDER_CUR_WORD,
-                        "Unknown symbol '%s'.",
-                        sym_name);
+            report_error(UNKNOWN_SYMBOL, instr->node, "Unknown symbol '%s'.", sym_name);
             ++reported;
         }
     }
     if (ctx->analyze.waiting.size && !reported) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_UNKNOWN_SYMBOL,
-                    NULL,
-                    BUILDER_CUR_WORD,
-                    "Unknown symbol/s detected but not correctly reported, this is compiler bug!");
+        report_error(UNKNOWN_SYMBOL,
+                     NULL,
+                     "Unknown symbol/s detected but not correctly reported, this is compiler bug!");
     }
 }
 
@@ -8636,12 +8450,9 @@ void analyze_report_unused(struct context *ctx)
         if (entry->ref_count > 0) continue;
         if (!entry->node || !entry->id) continue;
         BL_ASSERT(entry->node->location);
-        builder_msg(BUILDER_MSG_WARNING,
-                    0,
-                    entry->node->location,
-                    BUILDER_CUR_WORD,
-                    "Unused symbol '%s'. (Use unnamed identificator '_' if this is intentional)",
-                    entry->id->str);
+        report_warning(entry->node,
+                       "Unused symbol '%s'. (Use unnamed identificator '_' if this is intentional)",
+                       entry->id->str);
     }
 }
 
@@ -9473,21 +9284,13 @@ void ast_stmt_return(struct context *ctx, struct ast *ret)
         BL_ASSERT(fn);
         if (fn->ret_tmp) {
             if (!value) {
-                builder_msg(BUILDER_MSG_ERROR,
-                            ERR_EXPECTED_EXPR,
-                            ret->location,
-                            BUILDER_CUR_AFTER,
-                            "Expected return value.");
+                report_error_after(EXPECTED_EXPR, ret, "Expected return value.");
                 return;
             }
             struct mir_instr *ref = append_instr_decl_direct_ref(ctx, NULL, fn->ret_tmp);
             append_instr_store(ctx, ret, value, ref);
         } else if (value) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_UNEXPECTED_EXPR,
-                        value->node->location,
-                        BUILDER_CUR_WORD,
-                        "Unexpected return value.");
+            report_error(UNEXPECTED_EXPR, value->node, "Unexpected return value.");
         }
         ast_defer_block(ctx, ret->data.stmt_return.owner_block, true);
     }
@@ -9609,12 +9412,10 @@ struct mir_instr *ast_expr_lit_int(struct context *ctx, struct ast *expr)
     u64 val = expr->data.expr_integer.val;
 
     if (expr->data.expr_integer.overflow) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_NUM_LIT_OVERFLOW,
-                    expr->location,
-                    BUILDER_CUR_WORD,
-                    "Integer literal is too big and cannot be represented as any "
-                    "integer type.");
+        report_error(NUM_LIT_OVERFLOW,
+                     expr,
+                     "Integer literal is too big and cannot be represented as any "
+                     "integer type.");
     }
 
     struct mir_type *type         = NULL;
@@ -9636,11 +9437,8 @@ struct mir_instr *ast_expr_lit_int(struct context *ctx, struct ast *expr)
 struct mir_instr *ast_expr_lit_float(struct context *ctx, struct ast *expr)
 {
     if (expr->data.expr_float.overflow) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_NUM_LIT_OVERFLOW,
-                    expr->location,
-                    BUILDER_CUR_WORD,
-                    "Float literal is too big and cannot be represented as f32.");
+        report_error(
+            NUM_LIT_OVERFLOW, expr, "Float literal is too big and cannot be represented as f32.");
     }
 
     return append_instr_const_float(ctx, expr, expr->data.expr_float.val);
@@ -9649,11 +9447,8 @@ struct mir_instr *ast_expr_lit_float(struct context *ctx, struct ast *expr)
 struct mir_instr *ast_expr_lit_double(struct context *ctx, struct ast *expr)
 {
     if (expr->data.expr_double.overflow) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_NUM_LIT_OVERFLOW,
-                    expr->location,
-                    BUILDER_CUR_WORD,
-                    "Double literal is too big and cannot be represented as f64.");
+        report_error(
+            NUM_LIT_OVERFLOW, expr, "Double literal is too big and cannot be represented as f64.");
     }
 
     return append_instr_const_double(ctx, expr, expr->data.expr_double.val);
@@ -9785,12 +9580,10 @@ struct mir_instr *ast_expr_lit_fn(struct context *     ctx,
     // External or intrinsic function declaration has no body so we can skip body generation.
     if (IS_FLAG(flags, FLAG_EXTERN) || IS_FLAG(flags, FLAG_INTRINSIC)) {
         if (ast_block) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_UNEXPECTED_FUNCTION_BODY,
-                        ast_block->location,
-                        BUILDER_CUR_WORD,
-                        "Unexpected body, for %s function.",
-                        IS_FLAG(flags, FLAG_EXTERN) ? "external" : "intrinsic");
+            report_error(UNEXPECTED_FUNCTION_BODY,
+                         ast_block,
+                         "Unexpected body, for %s function.",
+                         IS_FLAG(flags, FLAG_EXTERN) ? "external" : "intrinsic");
         }
         goto FINISH;
     }
@@ -9801,11 +9594,7 @@ struct mir_instr *ast_expr_lit_fn(struct context *     ctx,
     }
 
     if (!ast_block) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_EXPECTED_BODY,
-                    decl_node ? decl_node->location : lit_fn->location,
-                    BUILDER_CUR_WORD,
-                    "Missing function body.");
+        report_error(EXPECTED_BODY, decl_node ? decl_node : lit_fn, "Missing function body.");
         goto FINISH;
     }
 
@@ -10074,16 +9863,14 @@ struct mir_instr *ast_expr_type(struct context *ctx, struct ast *type)
     return ast(ctx, next_type);
 }
 
-static INLINE enum builtin_id_kind check_symbol_marked_compiler(struct ast *ident)
+static INLINE enum builtin_id_kind check_symbol_marked_compiler(struct context *ctx,
+                                                                struct ast *    ident)
 {
     // Check builtin ids for symbols marked as compiler.
     enum builtin_id_kind builtin_id = get_builtin_kind(ident);
     if (builtin_id == BUILTIN_ID_NONE) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_UNKNOWN_SYMBOL,
-                    ident->location,
-                    BUILDER_CUR_WORD,
-                    "Symbol marked as #compiler is not known compiler internal.");
+        report_error(
+            UNKNOWN_SYMBOL, ident, "Symbol marked as #compiler is not known compiler internal.");
     }
     return builtin_id;
 }
@@ -10102,7 +9889,7 @@ void report_poly(struct mir_instr *instr)
                     0,
                     owner_fn->decl_node->location,
                     BUILDER_CUR_WORD,
-                    "In polymorph of function, with substitution: %s",
+                    "In polymorph of function with substitution: %s",
                     info);
     } else {
         builder_msg(BUILDER_MSG_NOTE,
@@ -10136,26 +9923,19 @@ static void ast_decl_fn(struct context *ctx, struct ast *ast_fn)
         return;
     }
     if (is_mutable) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_MUTABILITY,
-                    ast_name->location,
-                    BUILDER_CUR_WORD,
-                    "Function declaration is expected to be immutable.");
+        report_error(
+            INVALID_MUTABILITY, ast_name, "Function declaration is expected to be immutable.");
     }
 
     const bool is_multidecl = ast_name->data.ident.next;
     if (is_multidecl) {
         const struct ast *ast_next_name = ast_name->data.ident.next;
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_INVALID_NAME,
-                    ast_next_name->location,
-                    BUILDER_CUR_WORD,
-                    "Function cannot be multi-declared.");
+        report_error(INVALID_NAME, ast_next_name, "Function cannot be multi-declared.");
     }
 
     enum builtin_id_kind builtin_id  = BUILTIN_ID_NONE;
     const bool           is_compiler = IS_FLAG(ast_fn->data.decl_entity.flags, FLAG_COMPILER);
-    if (is_compiler) builtin_id = check_symbol_marked_compiler(ast_name);
+    if (is_compiler) builtin_id = check_symbol_marked_compiler(ctx, ast_name);
     const bool  is_global = ast_fn->data.decl_entity.is_global;
     const char *optional_explicit_linkage_name =
         ast_explicit_linkage_name ? ast_explicit_linkage_name->data.ident.id.str : NULL;
@@ -10175,21 +9955,17 @@ static void ast_decl_fn(struct context *ctx, struct ast *ast_fn)
         // This is reported as an error.
         ctx->assembly->vm_run.entry = fn;
         if (scope_is_subtree_of_kind(ast_name->owner_scope, SCOPE_PRIVATE)) {
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_UNEXPECTED_DIRECTIVE,
-                        ast_name->location,
-                        BUILDER_CUR_WORD,
-                        "Main function cannot be declared in private scope.");
+            report_error(UNEXPECTED_DIRECTIVE,
+                         ast_name,
+                         "Main function cannot be declared in private scope.");
         }
     }
 
     if (IS_FLAG(flags, FLAG_EXPORT) &&
         scope_is_subtree_of_kind(ast_name->owner_scope, SCOPE_PRIVATE)) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_UNEXPECTED_DIRECTIVE,
-                    ast_name->location,
-                    BUILDER_CUR_WORD,
-                    "Exported function cannot be declared in private scope.");
+        report_error(UNEXPECTED_DIRECTIVE,
+                     ast_name,
+                     "Exported function cannot be declared in private scope.");
     }
 
     struct id *   id    = &ast_name->data.ident.id;
@@ -10241,7 +10017,7 @@ static void ast_decl_var_local(struct context *ctx, struct ast *ast_local)
     s32               index            = 0;
     while (ast_current_name) {
         enum builtin_id_kind builtin_id = BUILTIN_ID_NONE;
-        if (is_compiler) builtin_id = check_symbol_marked_compiler(ast_current_name);
+        if (is_compiler) builtin_id = check_symbol_marked_compiler(ctx, ast_current_name);
         if (is_unroll) {
             current_value = append_instr_unroll(ctx, ast_current_name, value, prev_var, index++);
         } else if (prev_var) {
@@ -10287,11 +10063,7 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
         const bool is_multidecl = ast_name->data.ident.next;
         if (is_multidecl) {
             const struct ast *ast_next_name = ast_name->data.ident.next;
-            builder_msg(BUILDER_MSG_ERROR,
-                        ERR_INVALID_NAME,
-                        ast_next_name->location,
-                        BUILDER_CUR_WORD,
-                        " cannot be multi-declared.");
+            report_error(INVALID_NAME, ast_next_name, " cannot be multi-declared.");
         }
         // Set to const type fwd decl
         struct mir_type *fwd_decl_type =
@@ -10308,7 +10080,7 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
     struct ast *          ast_current_name = ast_name;
     while (ast_current_name) {
         enum builtin_id_kind builtin_id = BUILTIN_ID_NONE;
-        if (is_compiler) builtin_id = check_symbol_marked_compiler(ast_name);
+        if (is_compiler) builtin_id = check_symbol_marked_compiler(ctx, ast_name);
         struct id *       id   = &ast_current_name->data.ident.id;
         struct mir_instr *decl = append_instr_decl_var(ctx,
                                                        ast_current_name,
@@ -10587,11 +10359,7 @@ struct mir_instr *ast_type_enum(struct context *ctx, struct ast *type_enum)
 
     const usize varc = ast_variants->size;
     if (varc == 0) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_EMPTY_ENUM,
-                    type_enum->location,
-                    BUILDER_CUR_WORD,
-                    "Empty enumerator.");
+        report_error(EMPTY_ENUM, type_enum, "Empty enumerator.");
         return NULL;
     }
 
@@ -10636,11 +10404,7 @@ struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct)
     struct ast *ast_base_type = type_struct->data.type_strct.base_type;
     const usize memc          = ast_members->size;
     if (!memc && !ast_base_type) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_EMPTY_STRUCT,
-                    type_struct->location,
-                    BUILDER_CUR_WORD,
-                    "Empty structure.");
+        report_error(EMPTY_STRUCT, type_struct, "Empty structure.");
         return NULL;
     }
 

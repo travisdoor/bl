@@ -46,6 +46,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/bin")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/bin")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBUG "${CMAKE_SOURCE_DIR}/bin")
 set(BL_CONF_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.conf)
 
 add_subdirectory(deps/dyncall-1.2)
@@ -159,7 +160,7 @@ set(HEADER_FILES
     src/mir.h
     src/mir_printer.h
     src/scope.h
-    src/token.h
+    src/tokens_inline_utils.h
     src/tokens.h
     src/unit.h
     src/vm.h
@@ -198,7 +199,6 @@ set(SOURCE_FILES
     src/obj_writer.c
     src/parser.c
     src/scope.c
-    src/token.c
     src/token_printer.c
     src/tokens.c
     src/unit.c

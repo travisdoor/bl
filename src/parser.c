@@ -28,6 +28,7 @@
 
 #include "builder.h"
 #include "common.h"
+#include "tokens_inline_utils.h"
 #include <setjmp.h>
 
 TSMALL_ARRAY_TYPE(AstPtr64, struct ast *, 64);

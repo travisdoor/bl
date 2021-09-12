@@ -68,7 +68,7 @@ void print_trace(void);
 #if BL_COMPILER_MSVC
 #define BL_DEBUG_BREAK __debugbreak()
 #else
-#define BL_DEBUG_BREAK raise(SIGTRAP)
+#define BL_DEBUG_BREAK __builtin_debugtrap()
 #endif
 
 #define BL_ASSERT(e)                                                                               \

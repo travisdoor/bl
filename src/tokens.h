@@ -29,46 +29,87 @@
 #ifndef BL_TOKENS_H
 #define BL_TOKENS_H
 
-#include "token.h"
+#include "common.h"
+
+#define TOKEN_OPTIONAL_LOCATION(tok) ((tok) ? &(tok)->location : NULL)
+
+enum sym {
+#define sm(tok, str, len) SYM_##tok,
+#include "tokens.inc"
+#undef sm
+};
+
+extern char *sym_strings[];
+extern s32   sym_lens[];
+
+struct unit;
+struct location {
+    u16          line;
+    u16          col;
+    u32          len;
+    struct unit *unit;
+};
+
+BL_STATIC_ASSERT(sizeof(struct location) == 16);
+
+union token_value {
+    const char *str;
+    char        c;
+    f64         d;
+    u64         u;
+};
+
+BL_STATIC_ASSERT(sizeof(union token_value) == 8);
+
+struct token {
+    enum sym          sym;
+    bool              overflow;
+    struct location   location;
+    union token_value value;
+};
+
+BL_STATIC_ASSERT(sizeof(struct token) == 32);
+
+enum token_associativity {
+    TOKEN_ASSOC_NONE,
+    TOKEN_ASSOC_RIGHT,
+    TOKEN_ASSOC_LEFT,
+};
+
+struct token_precedence {
+    s32                      priority;
+    enum token_associativity associativity;
+};
 
 struct tokens {
     TArray buf;
     usize  iter;
 };
 
-enum tokens_lookahead_state {
-    TOK_LOOK_HIT,
-    TOK_LOOK_CONTINUE,
-    TOK_LOOK_TERMINAL,
-};
+static INLINE bool sym_is_binop(enum sym sym)
+{
+    return sym >= SYM_EQ && sym <= SYM_ASTERISK;
+}
 
-typedef enum tokens_lookahead_state (*token_cmp_func_t)(struct token *curr);
+static INLINE bool token_is_binop(struct token *token)
+{
+    return sym_is_binop(token->sym);
+}
 
-void          tokens_init(struct tokens *tokens);
-void          tokens_terminate(struct tokens *tokens);
-int           tokens_count(struct tokens *tokens);
-void          tokens_push(struct tokens *tokens, struct token *t);
-struct token *tokens_peek(struct tokens *tokens);
-struct token *tokens_peek_last(struct tokens *tokens);
-struct token *tokens_peek_2nd(struct tokens *tokens);
-struct token *tokens_peek_nth(struct tokens *tokens, usize n);
-struct token *tokens_peek_prev(struct tokens *tokens);
-struct token *tokens_consume(struct tokens *tokens);
-struct token *tokens_consume_if(struct tokens *tokens, enum sym sym);
-bool          tokens_current_is(struct tokens *tokens, enum sym sym);
-bool          tokens_previous_is(struct tokens *tokens, enum sym sym);
-bool          tokens_next_is(struct tokens *tokens, enum sym sym);
-bool          tokens_current_is_not(struct tokens *tokens, enum sym sym);
-bool          tokens_next_is_not(struct tokens *tokens, enum sym sym);
-bool          tokens_is_seq(struct tokens *tokens, usize argc, ...);
-void          tokens_reset_iter(struct tokens *tokens);
-usize         tokens_get_marker(struct tokens *tokens);
-void          tokens_back_to_marker(struct tokens *tokens, usize marker);
-void          tokens_consume_till(struct tokens *tokens, enum sym sym);
-void          tokens_consume_till2(struct tokens *tokens, usize argc, enum sym *args);
-bool          tokens_lookahead_till(struct tokens *tokens, enum sym lookup, enum sym terminal);
-bool          tokens_lookahead(struct tokens *tokens, token_cmp_func_t cmp);
+static INLINE bool token_is(struct token *token, enum sym sym)
+{
+    if (!token) return false;
+    return token->sym == sym;
+}
 
-TArray *tokens_get_all(struct tokens *tokens);
+static INLINE bool token_is_not(struct token *token, enum sym sym)
+{
+    return !token_is(token, sym);
+}
+
+void                    tokens_init(struct tokens *tokens);
+void                    tokens_terminate(struct tokens *tokens);
+bool                    token_is_unary(struct token *token);
+struct token_precedence token_prec(struct token *token);
 
 #endif

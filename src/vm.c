@@ -268,9 +268,7 @@ static INLINE vm_stack_ptr_t stack_alloc(struct virtual_machine *vm, usize size)
     }
     vm_stack_ptr_t mem = (vm_stack_ptr_t)vm->stack->top_ptr;
     vm->stack->top_ptr = vm->stack->top_ptr + size;
-    if (!is_aligned(mem, VM_MAX_ALIGNMENT)) {
-        BL_WARNING("BAD ALIGNMENT %p, %d bytes", mem, size);
-    }
+    BL_ASSERT(is_aligned(mem, VM_MAX_ALIGNMENT));
     CHCK_WRITE(mem, orig_size);
     return mem;
 }

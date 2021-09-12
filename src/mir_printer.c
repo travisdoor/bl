@@ -29,7 +29,6 @@
 #include "mir_printer.h"
 #include "assembly.h"
 #include "ast.h"
-#include "builder.h"
 #include "mir.h"
 
 #if BL_DEBUG

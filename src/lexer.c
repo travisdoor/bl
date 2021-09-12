@@ -28,6 +28,7 @@
 
 #include "builder.h"
 #include "common.h"
+#include "tokens_inline_utils.h"
 #include <float.h>
 #include <setjmp.h>
 #include <string.h>
@@ -149,7 +150,7 @@ bool scan_ident(struct context *ctx, struct token *tok)
     return true;
 }
 
-char scan_specch(char c)
+INLINE char scan_specch(char c)
 {
     switch (c) {
     case 'n':
@@ -269,7 +270,7 @@ bool scan_char(struct context *ctx, struct token *tok)
     return true;
 }
 
-int c_to_number(char c, s32 base)
+INLINE int c_to_number(char c, s32 base)
 {
 #ifndef _MSC_VER
 #pragma GCC diagnostic push
@@ -436,10 +437,14 @@ SCAN:
     }
 
     // Scan symbols described directly as strings.
-    usize len = 0;
-    for (s32 i = SYM_IF; i < SYM_NONE; ++i) {
-        len = strlen(sym_strings[i]);
-        if (strncmp(ctx->c, sym_strings[i], len) == 0) {
+    usize      len                   = 0;
+    const bool is_current_char_ident = IS_IDENT(*ctx->c);
+    const s32  start                 = is_current_char_ident ? SYM_IF : SYM_UNREACHABLE + 1;
+    const s32  end                   = is_current_char_ident ? SYM_UNREACHABLE + 1 : SYM_NONE;
+    for (s32 i = start; i < end; ++i) {
+        len = sym_lens[i];
+        BL_ASSERT(len > 0);
+        if (ctx->c[0] == sym_strings[i][0] && strncmp(ctx->c, sym_strings[i], len) == 0) {
             ctx->c += len;
             tok.sym          = (enum sym)i;
             tok.location.len = (s32)len;

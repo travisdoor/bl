@@ -32,7 +32,7 @@
 #include "assembly.h"
 #include "builder.h"
 #include "common.h"
-#include "token.h"
+#include "tokens.h"
 #include "unit.h"
 
 #if BL_PLATFORM_WIN
@@ -624,7 +624,10 @@ void builder_vmsg(enum builder_msg_type type,
         fprintf(stream, "%s:%d:%d: ", filepath, line, col);
         switch (type) {
         case BUILDER_MSG_ERROR: {
-            color_print(stream, BL_RED, "error: ");
+            if (code > NO_ERR)
+                color_print(stream, BL_RED, "error(%04d): ", code);
+            else
+                color_print(stream, BL_RED, "error: ");
             break;
         }
         case BUILDER_MSG_WARNING: {
@@ -671,7 +674,10 @@ void builder_vmsg(enum builder_msg_type type,
     } else {
         switch (type) {
         case BUILDER_MSG_ERROR: {
-            color_print(stream, BL_RED, "error: ");
+            if (code > NO_ERR)
+                color_print(stream, BL_RED, "error(%04d): ", code);
+            else
+                color_print(stream, BL_RED, "error: ");
             break;
         }
         case BUILDER_MSG_WARNING: {
