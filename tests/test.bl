@@ -12,3 +12,4 @@ foo :: fn (v: ?T) {
 // - #using Enum + use UPPERCASE for variants.
 // - #switch ?
 // - intel/amd/arm intrinsics???
+// - use flat hash table for small scopes for faster lookup? (structs, functions, ...)
