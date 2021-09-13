@@ -49,7 +49,7 @@ typedef struct THashTable {
     usize               bucket_count;
     usize               data_size; // Size of data in bytes.
     usize               size;      // Count of entries in the hash table.
-    struct THtblNode    end;
+    struct THtblNode *  end;
     struct THtblNode *  begin;
     struct THtblBucket *buckets;
 } THashTable;

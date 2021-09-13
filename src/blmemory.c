@@ -28,7 +28,6 @@
 
 #include "blmemory.h"
 #include "TracyC.h"
-#include "bldebug.h"
 #include <memory.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,17 +39,6 @@ void *_bl_malloc(const size_t size, const char UNUSED(*filename), s32 UNUSED(lin
         fprintf(stderr, "Bad alloc!");
         abort();
     }
-
-#if BL_DEBUG && defined(TRACY_ENABLE)
-    static u64 id = 0;
-    BL_TRACY_MESSAGE("ALLOC",
-                     "%lluB <%llu> %s:%d",
-                     (unsigned long long)size,
-                     (unsigned long long)id++,
-                     filename,
-                     line);
-    // if (id == 15298) BL_DEBUG_BREAK;
-#endif
     TracyCAlloc(mem, size);
     return mem;
 }

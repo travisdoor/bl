@@ -28,7 +28,6 @@
 
 #include "scope.h"
 #include "arena.h"
-#include "ast.h"
 #include "common.h"
 #include "unit.h"
 
@@ -57,33 +56,32 @@ static void sync_delete(scope_sync_impl *impl)
     bl_free(impl);
 }
 
-static void layer_init(struct scope_layer *layer, s32 index, usize expected_entry_count)
+static INLINE void layer_init(struct scope_layer *layer, s32 index, usize expected_entry_count)
 {
     thtbl_init(&layer->entries, sizeof(struct scope_entry *), expected_entry_count);
     layer->index = index;
 }
 
-static void layer_terminate(struct scope_layer *layer)
+static INLINE void layer_terminate(struct scope_layer *layer)
 {
     thtbl_terminate(&layer->entries);
 }
 
 static void scope_dtor(struct scope *scope)
 {
-    BL_ASSERT(scope);
+    BL_MAGIC_ASSERT(scope);
     for (usize i = 0; i < scope->layers.size; ++i) {
-        struct scope_layer *layer = &tarray_at(struct scope_layer, &scope->layers, i);
+        struct scope_layer *layer = &scope->layers.data[i];
         layer_terminate(layer);
     }
-    tarray_terminate(&scope->layers);
+    tsa_terminate(&scope->layers);
     sync_delete(scope->sync);
 }
 
 static INLINE THashTable *get_layer(struct scope *scope, s32 index)
 {
     for (usize i = 0; i < scope->layers.size; ++i) {
-        struct scope_layer *layer = &tarray_at(struct scope_layer, &scope->layers, i);
-        if (layer->index == index) return &layer->entries;
+        if (scope->layers.data[i].index == index) return &scope->layers.data[i].entries;
     }
     return NULL;
 }
@@ -96,7 +94,7 @@ static INLINE THashTable *create_layer(struct scope *scope, s32 index)
 {
     BL_ASSERT(index == SCOPE_DEFAULT_LAYER || scope_is_local(scope));
     BL_ASSERT(get_layer(scope, index) == NULL && "Attempt to create existing layer!");
-    struct scope_layer *layer = tarray_push_empty(&scope->layers);
+    struct scope_layer *layer = tsa_push_empty_ScopeLayer(&scope->layers);
     layer_init(layer, index, scope->expected_entry_count);
     return &layer->entries;
 }
@@ -121,9 +119,9 @@ void scope_arenas_terminate(struct scope_arenas *arenas)
 struct scope *_scope_create(struct scope_arenas *arenas,
                             enum scope_kind      kind,
                             struct scope *       parent,
-                            usize                size,
+                            u32                  size,
                             struct location *    loc,
-                            const bool           safe)
+                            const bool           is_safe)
 {
     BL_ASSERT(size > 0);
     struct scope *scope         = arena_alloc(&arenas->scopes);
@@ -131,9 +129,9 @@ struct scope *_scope_create(struct scope_arenas *arenas,
     scope->kind                 = kind;
     scope->location             = loc;
     scope->expected_entry_count = size;
-    tarray_init(&scope->layers, sizeof(struct scope_layer));
+    tsa_init(&scope->layers);
     // For thread safe scope
-    if (safe) scope->sync = sync_new();
+    if (is_safe) scope->sync = sync_new();
     BL_MAGIC_SET(scope);
     return scope;
 }

@@ -40,6 +40,7 @@ extern "C" {
 #include "tlib/list.h"
 #include "tlib/small_array.h"
 #include "tlib/string.h"
+#include "tlib/array_table.h"
 
 #ifdef __cplusplus
 }

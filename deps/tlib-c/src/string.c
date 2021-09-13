@@ -83,7 +83,7 @@ void tstring_init(TString *str)
 
 void tstring_terminate(TString *str)
 {
-    if (str->allocated) free(str->data);
+    if (str->allocated) tfree(str->data);
     str->allocated = 0;
     str->len       = 0;
     str->_tmp[0]   = '\0';

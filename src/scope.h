@@ -93,12 +93,16 @@ struct scope_layer {
     s32        index;
 };
 
+// In most cases we need only one scope layer so we use small array as workaround here.
+TSMALL_ARRAY_TYPE(ScopeLayer, struct scope_layer, 1);
+
 struct scope {
     enum scope_kind kind;
+    u32             expected_entry_count;
     const char *    name; // optional
     struct scope *  parent;
-    usize           expected_entry_count;
-    TArray          layers;
+    // TArray                 layers; @Cleanup
+    TSmallArray_ScopeLayer layers;
 
     struct scope_sync_impl *sync;
     struct location *       location;
@@ -118,9 +122,9 @@ void scope_arenas_terminate(struct scope_arenas *arenas);
 struct scope *_scope_create(struct scope_arenas *arenas,
                             enum scope_kind      kind,
                             struct scope *       parent,
-                            usize                size,
+                            u32                  size,
                             struct location *    loc,
-                            const bool           safe);
+                            const bool           is_safe);
 
 struct scope_entry *scope_create_entry(struct scope_arenas * arenas,
                                        enum scope_entry_kind kind,

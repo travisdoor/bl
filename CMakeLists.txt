@@ -43,10 +43,9 @@ endif()
 
 # setup output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
+set(PDB_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/bin")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/bin")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBUG "${CMAKE_SOURCE_DIR}/bin")
 set(BL_CONF_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.conf)
 
 add_subdirectory(deps/dyncall-1.2)
@@ -215,11 +214,11 @@ if(MSVC)
   target_link_libraries(blc PUBLIC shlwapi DbgHelp)
 
   # C
-  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /wd4996 /MD /Oi")
+  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /Oi /wd4996 /MD")
   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd /W3 /WX /GS")
 
   # CXX
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /wd4996 /MD /Oi")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Oi /wd4996 /MD")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Z7 /wd4996 /MDd /W3 /WX /GS")
 else()
   set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -252,7 +251,7 @@ endif()
 
 target_link_libraries(
   blc
-  PRIVATE dynload_s
+  PUBLIC dynload_s
           dyncall_s
           dyncallback_s
           tlib

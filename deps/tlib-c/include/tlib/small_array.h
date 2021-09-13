@@ -76,15 +76,13 @@ typedef struct TSmallArrayAny {
         arr->size = desired_size;                                                                  \
     }                                                                                              \
                                                                                                    \
-    static inline void tsa_push_##N(TSmallArray_##N *arr, T v)                                     \
+    static inline T *tsa_push_empty_##N(TSmallArray_##N *arr)                                      \
     {                                                                                              \
         const bool on_heap = arr->allocated;                                                       \
         if (!on_heap && arr->size == S) {                                                          \
             arr->allocated = S * 2;                                                                \
             arr->data      = (T *)malloc(sizeof(T) * arr->allocated);                              \
-            if (!arr->data) {                                                                      \
-                abort();                                                                           \
-            }                                                                                      \
+            if (!arr->data) abort();                                                               \
             memcpy(arr->data, arr->tmp, sizeof(T) * S);                                            \
         } else if (on_heap && arr->size == arr->allocated) {                                       \
             arr->allocated *= 2;                                                                   \
@@ -94,7 +92,13 @@ typedef struct TSmallArrayAny {
                 abort();                                                                           \
             }                                                                                      \
         }                                                                                          \
-        arr->data[arr->size++] = v;                                                                \
+        return &arr->data[arr->size++];                                                            \
+    }                                                                                              \
+                                                                                                   \
+    static inline void tsa_push_##N(TSmallArray_##N *arr, T v)                                     \
+    {                                                                                              \
+        T *dest = tsa_push_empty_##N(arr);                                                         \
+        memcpy(dest, &v, sizeof(T));                                                               \
     }                                                                                              \
                                                                                                    \
     static inline T tsa_pop_##N(TSmallArray_##N *arr)                                              \

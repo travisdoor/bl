@@ -70,8 +70,9 @@ typedef float              f32;
 typedef double             f64;
 
 // Iterator handle.
-typedef struct TIterator {
+typedef union TIterator {
     void *opaque;
+    usize index;
 } TIterator;
 
 typedef void *(*TAllocFn)(usize bytes, const char *filename, s32 line);

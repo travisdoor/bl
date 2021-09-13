@@ -83,6 +83,9 @@ endfunction()
 
 
 if(MSVC)
+  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /Oi /MD")
+  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /MDd")
+
   if("${CMAKE_GENERATOR_PLATFORM}" MATCHES "ARM64")
     # Explicitly specify the assembler to be used for Arm64 compile
     file(TO_CMAKE_PATH "$ENV{VCToolsInstallDir}\\bin\\HostX64\\arm64\\armasm64.exe" CMAKE_ASM_COMPILER)

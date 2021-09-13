@@ -100,15 +100,15 @@ static TIterator erase_node(THashTable *tbl, struct THtblNode *node, struct THtb
 void thtbl_init(THashTable *tbl, usize data_size, usize expected_size)
 {
     tbl->data_size = data_size;
-    tbl->end       = (struct THtblNode){
+    tbl->end       = tmalloc(sizeof(struct THtblNode));
 #ifndef NDEBUG
-        ._this = &tbl->end,
+    tbl->end->_this = tbl->end;
 #endif
-        .key  = 0,
-        .prev = NULL,
-        .next = NULL};
+    tbl->end->key  = 0;
+    tbl->end->prev = NULL;
+    tbl->end->next = NULL;
 
-    tbl->begin = &tbl->end;
+    tbl->begin = tbl->end;
 
     // init buckets
     if (!expected_size) expected_size = DEFAULT_EXPECTED_SIZE;
@@ -123,8 +123,9 @@ void thtbl_terminate(THashTable *tbl)
 {
     thtbl_clear(tbl);
     tfree(tbl->buckets);
+    tfree(tbl->end);
     tbl->size  = 0;
-    tbl->begin = &tbl->end;
+    tbl->begin = NULL;
 }
 
 THashTable *thtbl_new(usize data_size, usize expected_size)
@@ -190,7 +191,7 @@ TIterator thtbl_find(THashTable *tbl, u64 key)
         node = node->next;
     }
 
-    return (TIterator){.opaque = &tbl->end};
+    return (TIterator){.opaque = tbl->end};
 }
 
 void *_thtbl_at(THashTable *tbl, u64 key)
@@ -205,8 +206,8 @@ TIterator thtbl_erase(THashTable *tbl, TIterator iter)
 {
     VALIDATE_ITER(&iter);
 
-    if (iter.opaque == &tbl->end) {
-        return (TIterator){.opaque = &tbl->end};
+    if (iter.opaque == tbl->end) {
+        return (TIterator){.opaque = tbl->end};
     }
 
     struct THtblNode *  node   = (struct THtblNode *)iter.opaque;
@@ -245,7 +246,7 @@ TIterator thtbl_begin(THashTable *tbl)
 
 TIterator thtbl_end(THashTable *tbl)
 {
-    return (TIterator){.opaque = &tbl->end};
+    return (TIterator){.opaque = tbl->end};
 }
 
 void thtbl_iter_next(TIterator *iter)
@@ -281,15 +282,7 @@ void thtbl_clear(THashTable *tbl)
         tfree(node);
     }
     memset(tbl->buckets, 0, tbl->bucket_count * sizeof(struct THtblBucket));
-
-    tbl->end = (struct THtblNode){
-#ifndef NDEBUG
-        ._this = &tbl->end,
-#endif
-        .key  = 0,
-        .prev = NULL,
-        .next = NULL};
-
-    tbl->begin = &tbl->end;
+    tbl->end->prev = NULL;
+    tbl->begin = tbl->end;
     tbl->size  = 0;
 }

@@ -8,27 +8,15 @@ set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-    set(ENABLE_TESTS TRUE)
-    set(ENABLE_INSTALLATION TRUE)
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
-else()
-    set(ENABLE_TESTING FALSE)
-    set(ENABLE_INSTALLATION FALSE)
-endif()
-
-set(DEFAULT_BUILD_TYPE "Release")
-if(NOT CMAKE_BUILD_TYPE)
-    message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
-    set(CMAKE_BUILD_TYPE ${DEFAULT_BUILD_TYPE})
-endif()
+set(ENABLE_TESTING FALSE)
+set(ENABLE_INSTALLATION FALSE)
 
 set(SOURCE_FILES 
 	src/common.c
 	src/string.c
 	src/array.c
 	src/hash_table.c
+	src/array_table.c
 	src/list.c
   )
 
@@ -39,6 +27,7 @@ set(HEADER_FILES
 	include/tlib/string.h
 	include/tlib/array.h
 	include/tlib/hash_table.h
+	include/tlib/array_table.h
 	include/tlib/small_array.h
 	include/tlib/list.h
 	include/tlib/hash.h
@@ -46,8 +35,8 @@ set(HEADER_FILES
   )
 
 if (MSVC)
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Od")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /Oi /MD")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /MDd /Z7")
 else()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wno-missing-braces")

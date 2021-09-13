@@ -6976,10 +6976,10 @@ struct result analyze_instr_msg(struct context *ctx, struct mir_instr_msg *msg)
     switch (msg->kind) {
     case AST_MSG_WARNING:
         report_warning(msg->base.node, "%s", msg->text);
-        RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+        return ANALYZE_RESULT(PASSED, 0);
     case AST_MSG_ERROR:
         report_error(USER, msg->base.node, "%s", msg->text);
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        return ANALYZE_RESULT(FAILED, 0);
     }
     BL_UNREACHABLE;
 }
