@@ -615,7 +615,7 @@ struct assembly *assembly_new(const struct target *target)
                EXPECTED_ARRAY_COUNT,
                (arena_elem_dtor_t)small_array_dtor);
     assembly->gscope =
-        scope_create_safe(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT, NULL);
+        scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT, NULL);
 
     dl_init(assembly);
     mir_init(assembly);

@@ -116,22 +116,22 @@ void scope_arenas_terminate(struct scope_arenas *arenas)
     arena_terminate(&arenas->entries);
 }
 
-struct scope *_scope_create(struct scope_arenas *arenas,
-                            enum scope_kind      kind,
-                            struct scope *       parent,
-                            u32                  size,
-                            struct location *    loc,
-                            const bool           is_safe)
+struct scope *scope_create(struct scope_arenas *arenas,
+                           enum scope_kind      kind,
+                           struct scope *       parent,
+                           u32                  expected_entry_count,
+                           struct location *    loc)
 {
-    BL_ASSERT(size > 0);
+    BL_ASSERT(expected_entry_count > 0);
     struct scope *scope         = arena_alloc(&arenas->scopes);
     scope->parent               = parent;
     scope->kind                 = kind;
     scope->location             = loc;
-    scope->expected_entry_count = size;
+    scope->expected_entry_count = expected_entry_count;
     tsa_init(&scope->layers);
-    // For thread safe scope
-    if (is_safe) scope->sync = sync_new();
+
+    // Global scopes must be thread safe!
+    if (kind == SCOPE_GLOBAL) scope->sync = sync_new();
     BL_MAGIC_SET(scope);
     return scope;
 }
@@ -179,7 +179,7 @@ struct scope_entry *scope_lookup(struct scope *scope,
     while (scope) {
         if (ignore_global && scope->kind == SCOPE_GLOBAL) break;
         // Lookup in current scope first
-        THashTable *entries = get_layer(scope, preferred_layer_index);
+        TArrayTable *entries = get_layer(scope, preferred_layer_index);
         // We can implicitly switch to default layer when scope is not local.
         if (!entries && !scope_is_local(scope)) entries = get_layer(scope, SCOPE_DEFAULT_LAYER);
         if (entries) {

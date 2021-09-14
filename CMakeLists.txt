@@ -251,7 +251,7 @@ endif()
 
 target_link_libraries(
   blc
-  PUBLIC dynload_s
+  PRIVATE dynload_s
           dyncall_s
           dyncallback_s
           tlib

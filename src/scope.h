@@ -97,34 +97,26 @@ struct scope_layer {
 TSMALL_ARRAY_TYPE(ScopeLayer, struct scope_layer, 1);
 
 struct scope {
-    enum scope_kind kind;
-    u32             expected_entry_count;
-    const char *    name; // optional
-    struct scope *  parent;
-    // TArray                 layers; @Cleanup
-    TSmallArray_ScopeLayer layers;
-
+    enum scope_kind         kind;
+    u32                     expected_entry_count;
+    const char *            name; // optional
+    struct scope *          parent;
     struct scope_sync_impl *sync;
     struct location *       location;
     LLVMMetadataRef         llvm_meta;
+    TSmallArray_ScopeLayer  layers;
+
     BL_MAGIC_ADD
 };
 
 void scope_arenas_init(struct scope_arenas *arenas);
 void scope_arenas_terminate(struct scope_arenas *arenas);
 
-#define scope_create(arenas, kind, parent, size, loc)                                              \
-    _scope_create(arenas, kind, parent, size, loc, false);
-
-#define scope_create_safe(arenas, kind, parent, size, loc)                                         \
-    _scope_create(arenas, kind, parent, size, loc, true);
-
-struct scope *_scope_create(struct scope_arenas *arenas,
-                            enum scope_kind      kind,
-                            struct scope *       parent,
-                            u32                  size,
-                            struct location *    loc,
-                            const bool           is_safe);
+struct scope *scope_create(struct scope_arenas *arenas,
+                           enum scope_kind      kind,
+                           struct scope *       parent,
+                           u32                  expected_entry_count,
+                           struct location *    loc);
 
 struct scope_entry *scope_create_entry(struct scope_arenas * arenas,
                                        enum scope_entry_kind kind,
