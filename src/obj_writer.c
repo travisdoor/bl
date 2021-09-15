@@ -54,5 +54,5 @@ void obj_writer_run(struct assembly *assembly)
         LLVMDisposeMessage(error_msg);
     }
     put_tmpstr(buf);
-    RETURN_END_ZONE();
+    RETURN_ZONE();
 }

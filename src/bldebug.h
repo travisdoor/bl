@@ -190,7 +190,7 @@ void print_trace(void);
     (void)0
 
 #define _BL_VARGS(...) __VA_ARGS__
-#define RETURN_END_ZONE(...)                                                                       \
+#define RETURN_ZONE(...)                                                                       \
     {                                                                                              \
         TracyCZoneEnd(_tctx) return _BL_VARGS(__VA_ARGS__);                                        \
     }                                                                                              \

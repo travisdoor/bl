@@ -179,13 +179,13 @@ struct scope_entry *scope_lookup(struct scope *scope,
     while (scope) {
         if (ignore_global && scope->kind == SCOPE_GLOBAL) break;
         // Lookup in current scope first
-        TArrayTable *entries = get_layer(scope, preferred_layer_index);
+        THashTable *entries = get_layer(scope, preferred_layer_index);
         // We can implicitly switch to default layer when scope is not local.
         if (!entries && !scope_is_local(scope)) entries = get_layer(scope, SCOPE_DEFAULT_LAYER);
         if (entries) {
             iter = thtbl_find(entries, id->hash);
             if (!TITERATOR_EQUAL(iter, thtbl_end(entries))) {
-                RETURN_END_ZONE(thtbl_iter_peek_value(struct scope_entry *, iter));
+                RETURN_ZONE(thtbl_iter_peek_value(struct scope_entry *, iter));
             }
         }
         // Lookup in parent.
@@ -198,7 +198,7 @@ struct scope_entry *scope_lookup(struct scope *scope,
             break;
         }
     }
-    RETURN_END_ZONE(NULL);
+    RETURN_ZONE(NULL);
 }
 
 void scope_dirty_clear_tree(struct scope *scope)

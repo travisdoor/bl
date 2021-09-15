@@ -102,5 +102,5 @@ void native_bin_run(struct assembly *assembly)
         copy_user_libs(assembly);
     }
 DONE:
-    RETURN_END_ZONE();
+    RETURN_ZONE();
 }

@@ -167,7 +167,7 @@ struct context {
         THashTable          complete_check_visited;
 
         // Switch cases duplicity check
-        THashTable          presented_switch_cases;
+        TArrayTable         presented_switch_cases;
         TArray              usage_check_queue;
         struct scope_entry *void_entry;
         struct mir_instr *  last_analyzed_instr;
@@ -1171,7 +1171,7 @@ DONE:
     stack->size = 0;
     thtbl_clear(visited);
     type->checked_and_complete = result;
-    RETURN_END_ZONE(result);
+    RETURN_ZONE(result);
 }
 
 // Determinate if instruction has volatile type, that means we can change type of the value during
@@ -4577,7 +4577,7 @@ struct result analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *
 
     struct id *missing_rtti_type_id = lookup_builtins_rtti(ctx);
     if (missing_rtti_type_id) {
-        RETURN_END_ZONE(ANALYZE_RESULT(WAITING, missing_rtti_type_id->hash));
+        RETURN_ZONE(ANALYZE_RESULT(WAITING, missing_rtti_type_id->hash));
     }
 
     struct mir_type *rtti_type       = expr_type;
@@ -4591,7 +4591,7 @@ struct result analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *
         report_error(INVALID_TYPE,
                      expr->node,
                      "Expression yields 'void' value and cannot be converted to Any.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     if (is_tmp_needed && expr_type->store_size_bytes > 0) {
@@ -4645,7 +4645,7 @@ struct result analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *
     const char *tmp_var_name = create_unique_name(IMPL_ANY_TMP);
     toany->tmp = create_var_impl(ctx, NULL, tmp_var_name, any_type, false, false, false);
 
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
@@ -4688,7 +4688,7 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
             const struct slot_config *conf =
                 type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
             if (analyze_slot(ctx, conf, value_ref, type) != ANALYZE_PASSED)
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         if (!type) type = (*value_ref)->value.type;
         is_comptime = is_comptime ? (*value_ref)->value.is_comptime : false;
@@ -4701,7 +4701,7 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
     phi->base.value.type        = type;
     phi->base.value.addr_mode   = MIR_VAM_RVALUE;
     phi->base.value.is_comptime = is_comptime;
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll)
@@ -4717,7 +4717,7 @@ struct result analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll 
     if (mir_is_composit_type(src_type) && src_type->data.strct.is_multiple_return_type) {
         if (index >= (s32)src_type->data.strct.members->size) {
             report_error(INVALID_MEMBER_ACCESS, unroll->base.node, "Expected more return values.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         BL_ASSERT(src->kind == MIR_INSTR_CALL && "Unroll expects source to be CALL instruction!");
@@ -4749,7 +4749,7 @@ struct result analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll 
     unroll->base.value.type        = type;
     unroll->base.value.is_comptime = src->value.is_comptime;
     unroll->base.value.addr_mode   = src->value.addr_mode;
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compound *cmp)
@@ -4778,13 +4778,13 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
         // generate load instruction if needed
         BL_ASSERT(cmp->type->is_analyzed);
         if (analyze_slot(ctx, &analyze_slot_conf_basic, &cmp->type, NULL) != ANALYZE_PASSED)
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
 
         struct mir_instr *instr_type = cmp->type;
         if (instr_type->value.type->kind != MIR_TYPE_TYPE) {
             report_error(
                 INVALID_TYPE, instr_type->node, "Expected type before compound expression.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         type = MIR_CEV_READ_AS(struct mir_type *, &instr_type->value);
         BL_MAGIC_ASSERT(type);
@@ -4794,7 +4794,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
 
     if (!values) {
         report_error_after(INVALID_INITIALIZER, cmp->type->node, "Expected expression.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     cmp->base.value.type        = type;
@@ -4821,7 +4821,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
                          "%llu but given %llu.",
                          (unsigned long long)type->data.array.len,
                          (unsigned long long)values->size);
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         // Else iterate over values
@@ -4832,7 +4832,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
             if (analyze_slot(
                     ctx, &analyze_slot_conf_default, value_ref, type->data.array.elem_type) !=
                 ANALYZE_PASSED)
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
 
             cmp->base.value.is_comptime =
                 (*value_ref)->value.is_comptime ? cmp->base.value.is_comptime : false;
@@ -4854,7 +4854,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
         if (is_union) {
             report_error(
                 INVALID_INITIALIZER, cmp->base.node, "Union can be zero initialized only.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         } else {
             if (values->size != memc) {
                 const char *msg =
@@ -4868,7 +4868,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
                              msg,
                              (unsigned long long)memc,
                              (unsigned long long)values->size);
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
 
             // Else iterate over values
@@ -4880,7 +4880,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
 
                 if (analyze_slot(ctx, &analyze_slot_conf_default, value_ref, member_type) !=
                     ANALYZE_PASSED)
-                    RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                    RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
 
                 cmp->base.value.is_comptime =
                     (*value_ref)->value.is_comptime ? cmp->base.value.is_comptime : false;
@@ -4897,13 +4897,13 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
             report_error(INVALID_INITIALIZER,
                          value->node,
                          "One value only is expected for non-aggregate types.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         struct mir_instr **       value_ref = &values->data[0];
         const struct slot_config *conf =
             type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
         if (analyze_slot(ctx, conf, value_ref, type) != ANALYZE_PASSED)
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         cmp->base.value.is_comptime = (*value_ref)->value.is_comptime;
     }
     }
@@ -4917,7 +4917,7 @@ SKIP_IMPLICIT:
         cmp->tmp_var = tmp_var;
     }
 
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_var(struct context *ctx, struct mir_var *var)
@@ -4933,21 +4933,21 @@ struct result analyze_var(struct context *ctx, struct mir_var *var)
         if (!var->is_mutable) break;
         // Typedef must be immutable!
         report_error(INVALID_MUTABILITY, var->decl_node, "Type declaration must be immutable.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     case MIR_TYPE_FN:
         report_error(INVALID_TYPE,
                      var->decl_node,
                      "Invalid type of the variable, functions can be referenced "
                      "only by pointers.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     case MIR_TYPE_FN_GROUP:
         if (!var->is_mutable) break;
         report_error(INVALID_TYPE, var->decl_node, "Function group must be immutable.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     case MIR_TYPE_VOID:
         // Allocated type is void type.
         report_error(INVALID_TYPE, var->decl_node, "Cannot allocate unsized type.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     default:
         break;
     }
@@ -4956,7 +4956,7 @@ struct result analyze_var(struct context *ctx, struct mir_var *var)
         if (var->is_global && var->entry->kind == SCOPE_ENTRY_VOID) {
             report_error(
                 INVALID_NAME, var->decl_node, "Global variable cannot be explicitly unnamed.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         commit_var(ctx, var);
     }
@@ -4965,7 +4965,7 @@ struct result analyze_var(struct context *ctx, struct mir_var *var)
     var->emit_llvm = var_type_kind != MIR_TYPE_TYPE && var_type_kind != MIR_TYPE_FN_GROUP;
     // Just take note whether variable was fully analyzed.
     var->is_analyzed = true;
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_set_initializer(struct context *                  ctx,
@@ -4981,7 +4981,7 @@ struct result analyze_instr_set_initializer(struct context *                  ct
         // Just pre-scan to check if all destination variables are analyzed.
         BL_ASSERT(dest && dest->kind == MIR_INSTR_DECL_VAR);
         if (!dest->is_analyzed)
-            RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0)); // PERFORMANCE: use wait???
+            RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0)); // PERFORMANCE: use wait???
     }
 
     struct mir_type *type = ((struct mir_instr_decl_var *)dests->data[0])->var->value.type;
@@ -4993,7 +4993,7 @@ struct result analyze_instr_set_initializer(struct context *                  ct
             type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
 
         if (analyze_slot(ctx, config, &si->src, type) != ANALYZE_PASSED) {
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         // Infer variable type if needed.
@@ -5015,7 +5015,7 @@ struct result analyze_instr_set_initializer(struct context *                  ct
         report_error(EXPECTED_COMPTIME,
                      si->src->node,
                      "Global variables must be initialized with compile time known value.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     SET_IS_NAKED_IF_COMPOUND(si->src, false);
@@ -5066,7 +5066,7 @@ struct result analyze_instr_set_initializer(struct context *                  ct
             ctx->assembly->vm_run.command_line_arguments = var;
         }
     }
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs)
@@ -5097,11 +5097,11 @@ struct result analyze_instr_vargs(struct context *ctx, struct mir_instr_vargs *v
         value = &values->data[i];
 
         if (analyze_slot(ctx, &analyze_slot_conf_full, value, vargs->type) != ANALYZE_PASSED)
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     vargs->base.value.type = type;
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_ptr)
@@ -5110,7 +5110,7 @@ struct result analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_
     if (analyze_slot(
             ctx, &analyze_slot_conf_default, &elem_ptr->index, ctx->builtin_types->t_s64) !=
         ANALYZE_PASSED) {
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     struct mir_instr *arr_ptr = elem_ptr->arr_ptr;
@@ -5119,7 +5119,7 @@ struct result analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_
 
     if (!mir_is_pointer_type(arr_ptr->value.type)) {
         report_error(INVALID_TYPE, elem_ptr->arr_ptr->node, "Expected array type or slice.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     struct mir_type *arr_type = mir_deref_type(arr_ptr->value.type);
@@ -5137,7 +5137,7 @@ struct result analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_
                              "fit in range from 0 to %lli.",
                              len,
                              len - 1);
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
         }
 
@@ -5166,13 +5166,13 @@ struct result analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_
     }
     default: {
         report_error(INVALID_TYPE, arr_ptr->node, "Expected array or slice type.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     }
 
     elem_ptr->base.value.addr_mode   = arr_ptr->value.addr_mode;
     elem_ptr->base.value.is_comptime = mir_is_comptime(arr_ptr) && mir_is_comptime(elem_ptr->index);
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *member_ptr)
@@ -5208,7 +5208,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         decl_ref->rid                    = rid;
         unref_instr(target_ptr);
         erase_instr_tree(target_ptr, false, false);
-        RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+        RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     }
 
     if (mir_is_pointer_type(target_type)) {
@@ -5256,11 +5256,11 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
             ANALYZE_INSTR_RQ(&addrof_elem->base);
         } else {
             report_error(INVALID_MEMBER_ACCESS, ast_member_ident, "Unknown member.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         member_ptr->base.value.addr_mode = target_addr_mode;
-        RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
     }
 
     bool additional_load_needed = false;
@@ -5274,7 +5274,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
     if (mir_is_composit_type(target_type)) {
         // Check if structure type is complete, if not analyzer must wait for it!
         if (is_incomplete_struct_type(target_type))
-            RETURN_END_ZONE(ANALYZE_RESULT(WAITING, target_type->user_id->hash));
+            RETURN_ZONE(ANALYZE_RESULT(WAITING, target_type->user_id->hash));
 
         if (additional_load_needed) {
             member_ptr->target_ptr = insert_instr_load(ctx, member_ptr->target_ptr);
@@ -5304,7 +5304,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         if (!found) {
             // Member not found!
             report_error(UNKNOWN_SYMBOL, member_ptr->member_ident, "Unknown structure member.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         BL_ASSERT(found->kind == SCOPE_ENTRY_MEMBER);
@@ -5317,7 +5317,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         member_ptr->base.value.is_comptime = target_ptr->value.is_comptime;
         member_ptr->scope_entry            = found;
 
-        RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
     }
 
     // Sub type member.
@@ -5325,7 +5325,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         // generate load instruction if needed
         if (analyze_slot(ctx, &analyze_slot_conf_basic, &member_ptr->target_ptr, NULL) !=
             ANALYZE_PASSED) {
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         struct mir_type *sub_type =
@@ -5343,7 +5343,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         struct scope_entry *found       = scope_lookup(scope, layer_index, rid, false, true, NULL);
         if (!found) {
             report_error(UNKNOWN_SYMBOL, member_ptr->member_ident, "Unknown enumerator variant.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         BL_ASSERT(found->kind == SCOPE_ENTRY_VARIANT);
@@ -5353,13 +5353,13 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         member_ptr->base.value.addr_mode   = target_addr_mode;
         member_ptr->base.value.is_comptime = true;
 
-        RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
     }
 
     // Invalid
 INVALID:
     report_error(INVALID_TYPE, target_ptr->node, "Expected structure or enumerator type.");
-    RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
 }
 
 struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof)
@@ -5367,7 +5367,7 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
     ZONE();
     struct mir_instr *src = addrof->src;
     BL_ASSERT(src);
-    if (!src->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+    if (!src->is_analyzed) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     const enum mir_value_address_mode src_addr_mode = src->value.addr_mode;
     const bool                        is_source_polymorph =
         src->value.type->kind == MIR_TYPE_FN &&
@@ -5379,7 +5379,7 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
     if (!can_grab_address) {
         report_error(
             EXPECTED_DECL, addrof->base.node, "Cannot take the address of unallocated object.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     // setup type
@@ -5398,7 +5398,7 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
     addrof->base.value.is_comptime = addrof->src->value.is_comptime && mir_is_global(addrof->src);
     addrof->base.value.addr_mode   = MIR_VAM_RVALUE;
     BL_ASSERT(addrof->base.value.type && "invalid type");
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result
@@ -5410,14 +5410,14 @@ analyze_instr_cast(struct context *ctx, struct mir_instr_cast *cast, bool analyz
     if (!analyze_op_only) {
         if (!dest_type && !cast->auto_cast) {
             struct result result = analyze_resolve_type(ctx, cast->type, &dest_type);
-            if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(result);
+            if (result.state != ANALYZE_PASSED) RETURN_ZONE(result);
         }
 
         const struct slot_config *config =
             cast->base.is_implicit ? &analyze_slot_conf_dummy : &analyze_slot_conf_basic;
 
         if (analyze_slot(ctx, config, &cast->expr, dest_type) != ANALYZE_PASSED) {
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         BL_ASSERT(cast->expr->value.type && "invalid cast source type");
@@ -5447,14 +5447,14 @@ analyze_instr_cast(struct context *ctx, struct mir_instr_cast *cast, bool analyz
                     dest_type,
                     cast->base.node,
                     "Invalid cast from '%s' to '%s'.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
 DONE:
     cast->base.value.type        = dest_type;
     cast->base.value.is_comptime = cast->expr->value.is_comptime;
 
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof *szof)
@@ -5463,7 +5463,7 @@ struct result analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof 
     BL_ASSERT(szof->expr);
 
     if (analyze_slot(ctx, &analyze_slot_conf_basic, &szof->expr, NULL) != ANALYZE_PASSED) {
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     struct mir_type *type = szof->expr->value.type;
@@ -5480,7 +5480,7 @@ struct result analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof 
     erase_instr_tree(szof->expr, false, false);
 
     MIR_CEV_WRITE_AS(u64, &szof->base.value, type->store_size_bytes);
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_type_info(struct context *ctx, struct mir_instr_type_info *type_info)
@@ -5490,10 +5490,10 @@ struct result analyze_instr_type_info(struct context *ctx, struct mir_instr_type
         BL_ASSERT(type_info->expr);
         struct id *missing_rtti_type_id = lookup_builtins_rtti(ctx);
         if (missing_rtti_type_id) {
-            RETURN_END_ZONE(ANALYZE_RESULT(WAITING, missing_rtti_type_id->hash));
+            RETURN_ZONE(ANALYZE_RESULT(WAITING, missing_rtti_type_id->hash));
         }
         if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_info->expr, NULL) != ANALYZE_PASSED) {
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         struct mir_type *type = type_info->expr->value.type;
         BL_MAGIC_ASSERT(type);
@@ -5504,24 +5504,24 @@ struct result analyze_instr_type_info(struct context *ctx, struct mir_instr_type
         type_info->rtti_type = type;
     }
     if (!is_complete_type(ctx, type_info->rtti_type)) {
-        RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+        RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     }
     if (type_info->rtti_type->kind == MIR_TYPE_NAMED_SCOPE) {
         report_error(INVALID_TYPE, type_info->expr->node, "No type info available for scope type.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     if (type_info->rtti_type->kind == MIR_TYPE_FN &&
         IS_FLAG(type_info->rtti_type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_POLYMORPH)) {
         report_error(INVALID_TYPE,
                      type_info->expr->node,
                      "No type info available for polymorph function recipe.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     rtti_gen(ctx, type_info->rtti_type);
     type_info->base.value.type = ctx->builtin_types->t_TypeInfo_ptr;
 
     erase_instr_tree(type_info->expr, false, true);
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_alignof(struct context *ctx, struct mir_instr_alignof *alof)
@@ -5530,7 +5530,7 @@ struct result analyze_instr_alignof(struct context *ctx, struct mir_instr_aligno
     BL_ASSERT(alof->expr);
 
     if (analyze_slot(ctx, &analyze_slot_conf_basic, &alof->expr, NULL) != ANALYZE_PASSED) {
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     struct mir_type *type = alof->expr->value.type;
@@ -5542,7 +5542,7 @@ struct result analyze_instr_alignof(struct context *ctx, struct mir_instr_aligno
     }
 
     MIR_CEV_WRITE_AS(s32, &alof->base.value, type->alignment);
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref)
@@ -5586,7 +5586,7 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
     ref->scope_entry = found;
     if (found->kind == SCOPE_ENTRY_INCOMPLETE) {
         BL_TRACY_MESSAGE("INCOMPLETE_DECL_REF", "%s", ref->rid->str);
-        RETURN_END_ZONE(ANALYZE_RESULT(WAITING, ref->rid->hash));
+        RETURN_ZONE(ANALYZE_RESULT(WAITING, ref->rid->hash));
     }
     scope_entry_ref(found);
     switch (found->kind) {
@@ -5650,7 +5650,7 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
             BL_MAGIC_ASSERT(t);
             if (!ref->accept_incomplete_type && is_incomplete_struct_type(t)) {
                 BL_ASSERT(t->user_id);
-                RETURN_END_ZONE(ANALYZE_RESULT(WAITING, t->user_id->hash));
+                RETURN_ZONE(ANALYZE_RESULT(WAITING, t->user_id->hash));
             }
         } else if (!var->is_global && is_ref_out_of_fn_local_scope) {
             // Here we must handle situation when we try to reference variables
@@ -5662,7 +5662,7 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
                          "Attempt to reference variable from parent "
                          "function. This is not allowed.");
             report_note(var->decl_node, "Variable declared here.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         ref->base.value.type        = create_type_ptr(ctx, type);
         ref->base.value.is_comptime = var->value.is_comptime;
@@ -5678,7 +5678,7 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
         BL_ABORT("invalid scope entry kind");
     }
 
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_decl_direct_ref(struct context *                  ctx,
@@ -5687,7 +5687,7 @@ struct result analyze_instr_decl_direct_ref(struct context *                  ct
     ZONE();
     BL_ASSERT(ref->ref && "Missing declaration reference for direct ref.");
     if (ref->ref->kind == MIR_INSTR_DECL_VAR) {
-        if (!ref->ref->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+        if (!ref->ref->is_analyzed) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
         struct mir_var *var = ((struct mir_instr_decl_var *)ref->ref)->var;
         BL_ASSERT(var);
         ++var->ref_count;
@@ -5698,7 +5698,7 @@ struct result analyze_instr_decl_direct_ref(struct context *                  ct
         ref->base.value.is_comptime = var->value.is_comptime;
         ref->base.value.addr_mode   = var->is_mutable ? MIR_VAM_LVALUE : MIR_VAM_LVALUE_CONST;
     } else if (ref->ref->kind == MIR_INSTR_FN_PROTO) {
-        if (!ref->ref->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+        if (!ref->ref->is_analyzed) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
         struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &ref->ref->value);
         BL_MAGIC_ASSERT(fn);
         BL_ASSERT(fn->type && fn->type == ref->ref->value.type);
@@ -5712,7 +5712,7 @@ struct result analyze_instr_decl_direct_ref(struct context *                  ct
         replacement->base.value.type = fn->type;
         MIR_CEV_WRITE_AS(struct mir_fn *, &replacement->base.value, fn);
     }
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_arg *arg)
@@ -5725,29 +5725,29 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
     BL_ASSERT(type);
     arg->base.value.type = type;
 
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *unr)
 {
     ZONE();
     struct mir_fn *abort_fn = lookup_builtin_fn(ctx, BUILTIN_ID_ABORT_FN);
-    if (!abort_fn) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+    if (!abort_fn) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     ++abort_fn->ref_count;
     unr->abort_fn = abort_fn;
 
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_test_cases(struct context *ctx, struct mir_instr_test_case UNUSED(*tc))
 {
     ZONE();
     struct id *missing = lookup_builtins_test_cases(ctx);
-    if (missing) RETURN_END_ZONE(ANALYZE_RESULT(WAITING, missing->hash));
+    if (missing) RETURN_ZONE(ANALYZE_RESULT(WAITING, missing->hash));
     tc->base.value.type = ctx->builtin_types->t_TestCases_slice;
-    if (ctx->testing.expected_test_count == 0) RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    if (ctx->testing.expected_test_count == 0) RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
     testing_gen_meta(ctx);
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_proto)
@@ -5757,13 +5757,13 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     if (!fn_proto->base.value.type) {
         struct mir_type *fn_type = NULL;
         struct result    result  = analyze_resolve_type(ctx, fn_proto->type, &fn_type);
-        if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(result);
+        if (result.state != ANALYZE_PASSED) RETURN_ZONE(result);
 
         // Analyze user defined type (this must be compared with infered type).
         if (fn_proto->user_type) {
             struct mir_type *user_fn_type = NULL;
             result = analyze_resolve_type(ctx, fn_proto->user_type, &user_fn_type);
-            if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(result);
+            if (result.state != ANALYZE_PASSED) RETURN_ZONE(result);
 
             if (!type_cmp(fn_type, user_fn_type)) {
                 error_types(
@@ -5788,7 +5788,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     if (IS_FLAG(fn->flags, FLAG_TEST_FN)) {
         // We must wait for builtin types for test cases.
         struct id *missing = lookup_builtins_test_cases(ctx);
-        if (missing) RETURN_END_ZONE(ANALYZE_RESULT(WAITING, missing->hash));
+        if (missing) RETURN_ZONE(ANALYZE_RESULT(WAITING, missing->hash));
     }
     fn->type          = value->type;
     fn->type->user_id = fn->id;
@@ -5849,13 +5849,13 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
             report_error(INVALID_ARG_COUNT,
                          fn_proto->base.node,
                          "Build entry function cannot take arguments.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         if (fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID) {
             report_error(
                 INVALID_TYPE, fn_proto->base.node, "Build entry function cannot return value.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         if (ctx->assembly->target->kind == ASSEMBLY_BUILD_PIPELINE) {
@@ -5864,7 +5864,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
             report_error(DUPLICATE_ENTRY,
                          fn_proto->base.node,
                          "More than one build entry per assembly is not allowed.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
     }
 
@@ -5884,7 +5884,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
                          "Unknown compiler intrinsic '%s'.",
                          fn->linkage_name);
 
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         fn->dyncall.extern_entry = assembly_find_extern(ctx->assembly, intrinsic_name);
@@ -5899,7 +5899,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
             // generation later
             report_error(
                 EXPECTED_BODY, fn_proto->base.node, BUILDER_CUR_WORD, "Missing function body.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         analyze_push_front(ctx, entry_block);
@@ -5913,7 +5913,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
             report_error(UNEXPECTED_DIRECTIVE,
                          fn_proto->base.node,
                          "Polymorph function cannot be exported.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
     }
 
@@ -5931,13 +5931,13 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
             report_error(INVALID_ARG_COUNT,
                          fn_proto->base.node,
                          "Test case function cannot have arguments.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         if (fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID) {
             report_error(
                 UNEXPECTED_RETURN, fn_proto->base.node, "Test case function cannot return value.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         testing_add_test_case(ctx, fn);
@@ -5947,7 +5947,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     if (fn->id && fn->scope_entry) {
         if (fn->scope_entry->kind == SCOPE_ENTRY_VOID) {
             report_error(INVALID_NAME, fn->decl_node, "Functions cannot be explicitly unnamed.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         commit_fn(ctx, fn);
     } else if (fn->id) {
@@ -5963,7 +5963,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         tarray_push(&ctx->assembly->MIR.exported_instrs, fn_proto);
     }
 
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 int _group_compare(const void *_first, const void *_second)
@@ -5985,7 +5985,7 @@ struct result analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_gr
     BL_ASSERT(vc);
     for (usize i = 0; i < vc; ++i) {
         struct mir_instr *variant_ref = variants->data[i];
-        if (!variant_ref->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+        if (!variant_ref->is_analyzed) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     }
     struct result        result        = ANALYZE_RESULT(PASSED, 0);
     TSmallArray_TypePtr *variant_types = create_sarr(TSmallArray_TypePtr, ctx->assembly);
@@ -6039,7 +6039,7 @@ struct result analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_gr
                      create_fn_group(ctx, group->base.node, variant_fns));
 FINALLY:
     tsa_terminate(&validation_queue);
-    RETURN_END_ZONE(result);
+    RETURN_ZONE(result);
 }
 
 struct result analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br)
@@ -6049,32 +6049,32 @@ struct result analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_b
     BL_ASSERT(br->cond->is_analyzed);
     if (analyze_slot(ctx, &analyze_slot_conf_default, &br->cond, ctx->builtin_types->t_bool) !=
         ANALYZE_PASSED) {
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     const bool is_condition_comptime = mir_is_comptime(br->cond);
     if (br->is_static && !is_condition_comptime) {
         report_error(EXPECTED_COMPTIME,
                      br->cond->node,
                      "Static if expression is supposed to be known in compile time.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     // Compile-time known conditional break can be later evaluated into direct break.
     br->base.value.is_comptime = is_condition_comptime;
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_br(struct context UNUSED(*ctx), struct mir_instr_br *br)
 {
     ZONE();
     BL_ASSERT(br->then_block);
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch *sw)
 {
     ZONE();
     if (analyze_slot(ctx, &analyze_slot_conf_basic, &sw->value, NULL) != ANALYZE_PASSED) {
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     struct mir_type *expected_case_type = sw->value->value.type;
@@ -6085,17 +6085,17 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
                      sw->value->node,
                      "Invalid type of switch expression. Only integer types and "
                      "enums can be used.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     if (!sw->cases->size) {
         report_warning(sw->base.node, "Empty switch statement.");
-        RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
     }
 
     struct mir_switch_case *c;
-    THashTable *            presented = &ctx->analyze.presented_switch_cases;
-    thtbl_clear(presented);
+    TArrayTable *           presented = &ctx->analyze.presented_switch_cases;
+    tatbl_clear(presented);
     for (usize i = sw->cases->size; i-- > 0;) {
         c = &sw->cases->data[i];
 
@@ -6103,27 +6103,28 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
             report_error(EXPECTED_COMPTIME,
                          c->on_value->node,
                          "Switch case value must be compile-time known.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         if (analyze_slot(ctx, &analyze_slot_conf_default, &c->on_value, expected_case_type) !=
             ANALYZE_PASSED) {
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         { // validate value
             const s64 v    = MIR_CEV_READ_AS(s64, &c->on_value->value);
-            TIterator iter = thtbl_find(presented, v);
-            TIterator end  = thtbl_end(presented);
+            TIterator iter = tatbl_find(presented, v);
+            TIterator end  = tatbl_end(presented);
             if (!TITERATOR_EQUAL(iter, end)) {
                 report_error(DUPLICIT_SWITCH_CASE,
                              c->on_value->node,
                              "Switch already contains case for this value!");
-                struct mir_switch_case *ce = thtbl_iter_peek_value(struct mir_switch_case *, iter);
+                struct mir_switch_case *ce =
+                    tatbl_iter_peek_value(struct mir_switch_case *, presented, iter);
                 report_note(ce->on_value->node, "Same value found here.");
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
-            thtbl_insert(presented, (u64)v, c);
+            tatbl_insert(presented, (u64)v, c);
         }
     }
 
@@ -6158,7 +6159,7 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
             }
         }
     }
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *load)
@@ -6168,7 +6169,7 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
     BL_ASSERT(src);
     if (!mir_is_pointer_type(src->value.type)) {
         report_error(INVALID_TYPE, src->node, "Expected pointer.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     struct mir_type *type = mir_deref_type(src->value.type);
@@ -6176,7 +6177,7 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
     load->base.value.type        = type;
     load->base.value.is_comptime = src->value.is_comptime;
     load->base.value.addr_mode   = src->value.addr_mode;
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_fn *type_fn)
@@ -6198,7 +6199,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
                 (struct mir_instr_decl_arg *)type_fn->args->data[i];
             struct mir_arg *arg = decl_arg->arg;
             if (arg->value && !arg->value->is_analyzed) {
-                RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+                RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
             }
         }
 
@@ -6211,7 +6212,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
 
             if (analyze_slot(ctx, &analyze_slot_conf_basic, (struct mir_instr **)arg_ref, NULL) !=
                 ANALYZE_PASSED) {
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
 
             struct mir_arg *arg = (*arg_ref)->arg;
@@ -6232,7 +6233,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
                              arg->decl_node,
                              "Invalid function argument type '%s'.",
                              type_name);
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
             default:
                 break;
@@ -6245,7 +6246,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
                              arg->decl_node,
                              "VArgs function argument must be last in "
                              "the argument list.");
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
             if (is_vargs && has_default_args) {
                 struct mir_instr *arg_prev = type_fn->args->data[i - 1];
@@ -6253,7 +6254,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
                              arg_prev->node,
                              "Argument with default value cannot be used with VArgs "
                              "presented in the function argument list.");
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
             if (!arg->value && has_default_args) {
                 struct mir_instr *arg_prev = type_fn->args->data[i - 1];
@@ -6262,7 +6263,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
                              "All arguments with default value must be listed last "
                              "in the function argument list. Before arguments "
                              "without default value.");
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
             tsa_push_ArgPtr(args, arg);
         }
@@ -6272,7 +6273,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
     if (type_fn->ret_type) {
         if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_fn->ret_type, NULL) !=
             ANALYZE_PASSED) {
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         BL_ASSERT(type_fn->ret_type->value.is_comptime);
@@ -6283,14 +6284,14 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
             report_error(INVALID_TYPE,
                          type_fn->ret_type->node,
                          "Polymorph master type cannot be used as return type.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
     }
 
     struct mir_type *result_type =
         create_type_fn(ctx, NULL, ret_type, args, is_vargs, has_default_args, is_polymorph);
     MIR_CEV_WRITE_AS(struct mir_type *, &type_fn->base.value, result_type);
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_type_fn_group(struct context *                ctx,
@@ -6304,14 +6305,14 @@ struct result analyze_instr_type_fn_group(struct context *                ctx,
         report_error(INVALID_TYPE,
                      group->base.node,
                      "Function group type must contain one function type at least.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     TSmallArray_TypePtr *variant_types = create_sarr(TSmallArray_TypePtr, ctx->assembly);
     tsa_resize_TypePtr(variant_types, varc);
     for (usize i = 0; i < varc; ++i) {
         struct mir_instr **variant_ref = &variants->data[i];
         if (analyze_slot(ctx, &analyze_slot_conf_basic, variant_ref, NULL) != ANALYZE_PASSED) {
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         struct mir_instr *variant = *variant_ref;
         BL_ASSERT(variant->value.type);
@@ -6319,7 +6320,7 @@ struct result analyze_instr_type_fn_group(struct context *                ctx,
             report_error(INVALID_TYPE,
                          variant->node,
                          "Function group type variant is supposed to be function type.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         struct mir_type *variant_type = MIR_CEV_READ_AS(struct mir_type *, &variant->value);
         BL_MAGIC_ASSERT(variant_type);
@@ -6327,13 +6328,13 @@ struct result analyze_instr_type_fn_group(struct context *                ctx,
             report_error(INVALID_TYPE,
                          variant->node,
                          "Function group type variant is supposed to be function type.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         variant_types->data[i] = variant_type;
     }
     MIR_CEV_WRITE_AS(
         struct mir_type *, &group->base.value, create_type_fn_group(ctx, NULL, variant_types));
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_decl_member(struct context *ctx, struct mir_instr_decl_member *decl)
@@ -6349,14 +6350,14 @@ struct result analyze_instr_decl_member(struct context *ctx, struct mir_instr_de
             struct mir_instr **tag = &tags->data[i];
             if (analyze_slot(ctx, &analyze_slot_conf_default, tag, ctx->builtin_types->t_s32) !=
                 ANALYZE_PASSED) {
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
 
             if (!mir_is_comptime(*tag)) {
                 report_error(EXPECTED_CONST,
                              (*tag)->node,
                              "Struct member tag must be compile-time constant.");
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
 
             // NOTE:
@@ -6369,13 +6370,13 @@ struct result analyze_instr_decl_member(struct context *ctx, struct mir_instr_de
     member->tags = tag_group;
 
     if (analyze_slot(ctx, &analyze_slot_conf_basic, &decl->type, NULL) != ANALYZE_PASSED) {
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     // NOTE: Members will be provided by instr type struct because we need to
     // know right ordering of members inside structure layout. (index and llvm
     // element offet need to be calculated)
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_decl_variant(struct context *               ctx,
@@ -6392,7 +6393,7 @@ struct result analyze_instr_decl_variant(struct context *               ctx,
         base_type = MIR_CEV_READ_AS(struct mir_type *, &variant_instr->base_type->value);
     } else if (variant_instr->base_type) {
         struct result result = analyze_resolve_type(ctx, variant_instr->base_type, &base_type);
-        if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(result);
+        if (result.state != ANALYZE_PASSED) RETURN_ZONE(result);
     } else {
         base_type = is_flags ? ctx->builtin_types->t_u32 : ctx->builtin_types->t_s32;
     }
@@ -6404,11 +6405,11 @@ struct result analyze_instr_decl_variant(struct context *               ctx,
             report_error(INVALID_EXPR,
                          variant_instr->value->node,
                          "Enum variant value must be compile time known.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         if (analyze_slot(ctx, &analyze_slot_conf_default, &variant_instr->value, base_type) !=
             ANALYZE_PASSED) {
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         // Setup value.
         variant_instr->variant->value      = MIR_CEV_READ_AS(u64, &variant_instr->value->value);
@@ -6437,7 +6438,7 @@ struct result analyze_instr_decl_variant(struct context *               ctx,
                          variant->id->str,
                          base_type_name,
                          max_value);
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         variant_instr->variant->value      = value;
         variant_instr->variant->value_type = variant_instr->prev_variant->value_type;
@@ -6448,10 +6449,10 @@ struct result analyze_instr_decl_variant(struct context *               ctx,
     if (variant->entry->kind == SCOPE_ENTRY_VOID) {
         report_error(
             INVALID_NAME, variant_instr->base.node, "Enum variant cannot be explicitly unnamed.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     commit_variant(ctx, variant);
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_arg *decl)
@@ -6463,10 +6464,10 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
         // Variable type is explicitly defined.
         if (decl->type->kind == MIR_INSTR_CALL) {
             struct result result = analyze_resolve_type(ctx, decl->type, &arg->type);
-            if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(result);
+            if (result.state != ANALYZE_PASSED) RETURN_ZONE(result);
         } else {
             if (analyze_slot(ctx, &analyze_slot_conf_basic, &decl->type, NULL) != ANALYZE_PASSED) {
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
             arg->type = MIR_CEV_READ_AS(struct mir_type *, &decl->type->value);
             BL_MAGIC_ASSERT(arg->type);
@@ -6481,19 +6482,19 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
         if (!arg->value->is_analyzed) {
             // @PERFORMANCE: WAITING is preferred here, but we don't have ID to wait
             // for.
-            RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+            RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
         }
         if (arg->value->kind == MIR_INSTR_DECL_VAR) {
             struct mir_var *var = ((struct mir_instr_decl_var *)arg->value)->var;
             BL_ASSERT(var);
-            if (!var->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+            if (!var->is_analyzed) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
             arg->type = var->value.type;
         } else {
             arg->type = arg->value->value.type;
         }
     }
     BL_ASSERT(arg->type && "Invalid argument type!");
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_type_struct(struct context *              ctx,
@@ -6513,7 +6514,7 @@ struct result analyze_instr_type_struct(struct context *              ctx,
         for (usize i = 0; i < memc; ++i) {
             member_instr = &type_struct->members->data[i];
             if (analyze_slot(ctx, &analyze_slot_conf_basic, member_instr, NULL) != ANALYZE_PASSED) {
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
             decl_member = (struct mir_instr_decl_member *)*member_instr;
             BL_ASSERT(decl_member->base.kind == MIR_INSTR_DECL_MEMBER);
@@ -6527,13 +6528,13 @@ struct result analyze_instr_type_struct(struct context *              ctx,
                              (*member_instr)->node,
                              "Invalid type of the structure member, functions can "
                              "be referenced only by pointers.");
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
             if (member_type->kind == MIR_TYPE_TYPE) {
                 report_error(INVALID_TYPE,
                              decl_member->type->node,
                              "Generic 'type' cannot be used as struct member type.");
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
 
             // setup and provide member
@@ -6582,7 +6583,7 @@ struct result analyze_instr_type_struct(struct context *              ctx,
 
     BL_ASSERT(result_type);
     MIR_CEV_WRITE_AS(struct mir_type *, &type_struct->base.value, result_type);
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_type_slice(struct context *ctx, struct mir_instr_type_slice *type_slice)
@@ -6592,7 +6593,7 @@ struct result analyze_instr_type_slice(struct context *ctx, struct mir_instr_typ
 
     if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_slice->elem_type, NULL) !=
         ANALYZE_PASSED) {
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     struct id *id = NULL;
@@ -6602,7 +6603,7 @@ struct result analyze_instr_type_slice(struct context *ctx, struct mir_instr_typ
 
     if (type_slice->elem_type->value.type->kind != MIR_TYPE_TYPE) {
         report_error(INVALID_TYPE, type_slice->elem_type->node, "Expected type.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     BL_ASSERT(mir_is_comptime(type_slice->elem_type) && "This should be an error");
@@ -6613,7 +6614,7 @@ struct result analyze_instr_type_slice(struct context *ctx, struct mir_instr_typ
         report_error(INVALID_TYPE,
                      type_slice->elem_type->node,
                      "Generic 'type' cannot be used as slice base type.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     elem_type = create_type_ptr(ctx, elem_type);
@@ -6621,7 +6622,7 @@ struct result analyze_instr_type_slice(struct context *ctx, struct mir_instr_typ
     MIR_CEV_WRITE_AS(
         struct mir_type *, &type_slice->base.value, CREATE_TYPE_STRUCT_SLICE(ctx, id, elem_type));
 
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_type_dynarr(struct context *               ctx,
@@ -6631,14 +6632,14 @@ struct result analyze_instr_type_dynarr(struct context *               ctx,
     // We need TypeInfo initialized because it's needed as member of dynamic array type!
     struct id *missing_rtti_type_id = lookup_builtins_rtti(ctx);
     if (missing_rtti_type_id) {
-        RETURN_END_ZONE(ANALYZE_RESULT(WAITING, missing_rtti_type_id->hash));
+        RETURN_ZONE(ANALYZE_RESULT(WAITING, missing_rtti_type_id->hash));
     }
 
     BL_ASSERT(type_dynarr->elem_type);
 
     if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_dynarr->elem_type, NULL) !=
         ANALYZE_PASSED) {
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     struct id *id = NULL;
@@ -6648,7 +6649,7 @@ struct result analyze_instr_type_dynarr(struct context *               ctx,
 
     if (type_dynarr->elem_type->value.type->kind != MIR_TYPE_TYPE) {
         report_error(INVALID_TYPE, type_dynarr->elem_type->node, "Expected type.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     BL_ASSERT(mir_is_comptime(type_dynarr->elem_type) && "This should be an error");
@@ -6659,7 +6660,7 @@ struct result analyze_instr_type_dynarr(struct context *               ctx,
         report_error(INVALID_TYPE,
                      type_dynarr->elem_type->node,
                      "Generic 'type' cannot be used as dynamic array base type.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     elem_type = create_type_ptr(ctx, elem_type);
@@ -6667,7 +6668,7 @@ struct result analyze_instr_type_dynarr(struct context *               ctx,
     MIR_CEV_WRITE_AS(
         struct mir_type *, &type_dynarr->base.value, create_type_struct_dynarr(ctx, id, elem_type));
 
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_type_vargs(struct context *ctx, struct mir_instr_type_vargs *type_vargs)
@@ -6677,12 +6678,12 @@ struct result analyze_instr_type_vargs(struct context *ctx, struct mir_instr_typ
     if (type_vargs->elem_type) {
         if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_vargs->elem_type, NULL) !=
             ANALYZE_PASSED) {
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         if (type_vargs->elem_type->value.type->kind != MIR_TYPE_TYPE) {
             report_error(INVALID_TYPE, type_vargs->elem_type->node, "Expected type.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         BL_ASSERT(mir_is_comptime(type_vargs->elem_type) && "This should be an error");
@@ -6691,14 +6692,14 @@ struct result analyze_instr_type_vargs(struct context *ctx, struct mir_instr_typ
     } else {
         // use Any
         elem_type = lookup_builtin_type(ctx, BUILTIN_ID_ANY);
-        if (!elem_type) RETURN_END_ZONE(ANALYZE_RESULT(WAITING, builtin_ids[BUILTIN_ID_ANY].hash));
+        if (!elem_type) RETURN_ZONE(ANALYZE_RESULT(WAITING, builtin_ids[BUILTIN_ID_ANY].hash));
     }
     BL_ASSERT(elem_type);
     elem_type = create_type_ptr(ctx, elem_type);
     MIR_CEV_WRITE_AS(
         struct mir_type *, &type_vargs->base.value, CREATE_TYPE_STRUCT_VARGS(ctx, NULL, elem_type));
 
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_type_array(struct context *ctx, struct mir_instr_type_array *type_arr)
@@ -6709,29 +6710,29 @@ struct result analyze_instr_type_array(struct context *ctx, struct mir_instr_typ
 
     if (analyze_slot(ctx, &analyze_slot_conf_default, &type_arr->len, ctx->builtin_types->t_s64) !=
         ANALYZE_PASSED) {
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_arr->elem_type, NULL) != ANALYZE_PASSED) {
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     // len
     if (!mir_is_comptime(type_arr->len)) {
         report_error(
             EXPECTED_CONST, type_arr->len->node, "Array size must be compile-time constant.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     if (type_arr->elem_type->value.type->kind != MIR_TYPE_TYPE) {
         report_error(INVALID_TYPE, type_arr->elem_type->node, "Expected type.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     const s64 len = MIR_CEV_READ_AS(s64, &type_arr->len->value);
     if (len == 0) {
         report_error(INVALID_ARR_SIZE, type_arr->len->node, "Array size cannot be 0.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     // elem type
@@ -6744,20 +6745,20 @@ struct result analyze_instr_type_array(struct context *ctx, struct mir_instr_typ
         report_error(INVALID_TYPE,
                      type_arr->elem_type->node,
                      "Generic 'type' cannot be used as array element type.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     MIR_CEV_WRITE_AS(struct mir_type *,
                      &type_arr->base.value,
                      create_type_array(ctx, type_arr->id, elem_type, len));
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_type_poly(struct context *ctx, struct mir_instr_type_poly *type_poly)
 {
     ZONE();
     // nothing to do here...
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_type_enum(struct context *ctx, struct mir_instr_type_enum *type_enum)
@@ -6781,7 +6782,7 @@ struct result analyze_instr_type_enum(struct context *ctx, struct mir_instr_type
             report_error(INVALID_TYPE,
                          type_enum->base_type->node,
                          "Base type of enumerator must be an integer type.");
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         if (is_flags && base_type->data.integer.is_signed) {
             report_warning(type_enum->base_type->node,
@@ -6803,7 +6804,7 @@ struct result analyze_instr_type_enum(struct context *ctx, struct mir_instr_type
     struct mir_type *type =
         create_type_enum(ctx, type_enum->id, scope, base_type, variants, is_flags);
     MIR_CEV_WRITE_AS(struct mir_type *, &type_enum->base.value, type);
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_type_ptr(struct context *ctx, struct mir_instr_type_ptr *type_ptr)
@@ -6812,19 +6813,19 @@ struct result analyze_instr_type_ptr(struct context *ctx, struct mir_instr_type_
     BL_ASSERT(type_ptr->type);
 
     if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_ptr->type, NULL) != ANALYZE_PASSED) {
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     if (!mir_is_comptime(type_ptr->type)) {
         report_error(INVALID_TYPE,
                      type_ptr->type->node,
                      "Expected compile time known type after '*' pointer type declaration.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     if (type_ptr->type->value.type->kind != MIR_TYPE_TYPE) {
         report_error(INVALID_TYPE, type_ptr->type->node, "Expected type name.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     struct mir_type *src_type_value = MIR_CEV_READ_AS(struct mir_type *, &type_ptr->type->value);
@@ -6832,12 +6833,12 @@ struct result analyze_instr_type_ptr(struct context *ctx, struct mir_instr_type_
 
     if (src_type_value->kind == MIR_TYPE_TYPE) {
         report_error(INVALID_TYPE, type_ptr->base.node, "Cannot create pointer to type.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     MIR_CEV_WRITE_AS(
         struct mir_type *, &type_ptr->base.value, create_type_ptr(ctx, src_type_value));
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 static INLINE bool is_type_valid_for_binop(const struct mir_type *type, const enum binop_kind op)
@@ -6880,25 +6881,25 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
             // Propagate right hand side expression type to the left.
             if (analyze_slot(ctx, &analyze_slot_conf_default, &binop->lhs, rhs_type) !=
                 ANALYZE_PASSED)
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
 
             if (analyze_slot(ctx, &analyze_slot_conf_basic, &binop->rhs, NULL) != ANALYZE_PASSED)
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         } else {
             // Propagate left hand side expression type to the right.
             if (analyze_slot(ctx, &analyze_slot_conf_basic, &binop->lhs, NULL) != ANALYZE_PASSED)
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
 
             if (analyze_slot(ctx,
                              lhs_is_null ? &analyze_slot_conf_basic : &analyze_slot_conf_default,
                              &binop->rhs,
                              lhs_is_null ? NULL : binop->lhs->value.type) != ANALYZE_PASSED)
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
 
             if (lhs_is_null) {
                 if (analyze_stage_set_null(ctx, &binop->lhs, binop->rhs->value.type, false) !=
                     ANALYZE_STAGE_BREAK)
-                    RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                    RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
         }
     }
@@ -6916,7 +6917,7 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
                     rhs->value.type,
                     binop->base.node,
                     "Invalid operation for %s type.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     struct mir_type *type =
         ast_binop_is_logic(binop->op) ? ctx->builtin_types->t_bool : lhs->value.type;
@@ -6928,16 +6929,16 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
     binop->base.value.addr_mode   = MIR_VAM_RVALUE;
     binop->volatile_type          = is_instr_type_volatile(lhs) && is_instr_type_volatile(rhs);
 
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc)
 {
     ZONE();
     struct id *missing = lookup_builtins_code_loc(ctx);
-    if (missing) RETURN_END_ZONE(ANALYZE_RESULT(WAITING, missing->hash));
+    if (missing) RETURN_ZONE(ANALYZE_RESULT(WAITING, missing->hash));
     loc->base.value.type = ctx->builtin_types->t_CodeLocation_ptr;
-    if (!loc->call_location) RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    if (!loc->call_location) RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 
     struct mir_type *type = ctx->builtin_types->t_CodeLocation;
     struct mir_var * var  = create_var_impl(ctx, NULL, IMPL_CALL_LOC, type, false, true, true);
@@ -6968,7 +6969,7 @@ struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
 
     loc->meta_var = var;
     loc->hash     = hash;
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_msg(struct context *ctx, struct mir_instr_msg *msg)
@@ -6992,7 +6993,7 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
         unop->op == UNOP_NOT ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
 
     if (analyze_slot(ctx, conf, &unop->expr, expected_type) != ANALYZE_PASSED) {
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     BL_ASSERT(unop->expr && unop->expr->is_analyzed);
@@ -7002,7 +7003,7 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
 
     switch (unop->op) {
     case UNOP_NOT: {
-        if (expr_type->kind != MIR_TYPE_BOOL) RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        if (expr_type->kind != MIR_TYPE_BOOL) RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         break;
     }
 
@@ -7015,7 +7016,7 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
                                "Invalid operation for type '%s'. This operation "
                                "is valid for integer types only.",
                                tmp);
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         break;
     }
@@ -7030,7 +7031,7 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
                                "Invalid operation for type '%s'. This operation "
                                "is valid for integer or real types only.",
                                tmp);
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         break;
     }
@@ -7045,14 +7046,14 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
 
     unop->volatile_type = is_instr_type_volatile(unop->expr);
 
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_const(struct context UNUSED(*ctx), struct mir_instr_const *cnst)
 {
     ZONE();
     BL_ASSERT(cnst->base.value.type);
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
@@ -7069,7 +7070,7 @@ struct result analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
     if (ret->value) {
         if (analyze_slot(ctx, &analyze_slot_conf_default, &ret->value, fn_type->data.fn.ret_type) !=
             ANALYZE_PASSED) {
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
     }
 
@@ -7083,22 +7084,22 @@ struct result analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
 
     // return value is not expected, and it's not provided
     if (!expected_ret_value && !value) {
-        RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
     }
 
     // return value is expected, but it's not provided
     if (expected_ret_value && !value) {
         report_error_after(INVALID_EXPR, ret->base.node, "Expected return value.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     // return value is not expected, but it's provided
     if (!expected_ret_value && value) {
         report_error(INVALID_EXPR, ret->value->node, "Unexpected return value.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
@@ -7116,7 +7117,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     // compiler.
     if (decl->type && !var->value.type) {
         struct result result = analyze_resolve_type(ctx, decl->type, &var->value.type);
-        if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(result);
+        if (result.state != ANALYZE_PASSED) RETURN_ZONE(result);
     }
 
     if (var->is_global && !var->is_struct_typedef) {
@@ -7129,12 +7130,12 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
         // we use init value as temporary value for incomplete structure
         // declarations (struct can use pointer to self type inside it's body). This
         // value is later replaced by initializer instruction.
-        RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
     }
 
     if (IS_FLAG(var->flags, FLAG_THREAD_LOCAL)) {
         report_error(INVALID_DIRECTIVE, var->decl_node, "Thread local variable must be global.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
     // Continue only with local variables and struct typedefs.
     bool has_initializer = decl->init;
@@ -7145,12 +7146,12 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
             if (analyze_slot_initializer(
                     ctx, &analyze_slot_conf_default, &decl->init, var->value.type) !=
                 ANALYZE_PASSED) {
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
         } else {
             if (analyze_slot_initializer(ctx, &analyze_slot_conf_basic, &decl->init, NULL) !=
                 ANALYZE_PASSED) {
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
 
             // infer type
@@ -7172,13 +7173,13 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     }
     decl->base.value.is_comptime = var->value.is_comptime = is_decl_comptime;
     struct result state                                   = analyze_var(ctx, decl->var);
-    if (state.state != ANALYZE_PASSED) RETURN_END_ZONE(state);
+    if (state.state != ANALYZE_PASSED) RETURN_ZONE(state);
     if (decl->base.value.is_comptime && decl->init) {
         // initialize when known in compile-time
         var->value.data = decl->init->value.data;
         BL_ASSERT(var->value.data && "Incomplete comptime var initialization.");
     }
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_builtin_call(struct context *ctx, struct mir_instr_call *call)
@@ -7196,7 +7197,7 @@ struct result analyze_builtin_call(struct context *ctx, struct mir_instr_call *c
     default:
         BL_ABORT("Unknown builtin call!");
     }
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 static void poly_type_match(struct mir_type * recipe,
@@ -7312,7 +7313,7 @@ static INLINE u64 get_current_poly_replacement_hash(struct context *ctx)
 
     const u64 hash = thash_from_str(str->data);
     put_tmpstr(str);
-    RETURN_END_ZONE(hash);
+    RETURN_ZONE(hash);
 }
 
 struct result generate_fn_poly(struct context *            ctx,
@@ -7396,7 +7397,7 @@ struct result generate_fn_poly(struct context *            ctx,
                 }
                 tsa_push_TypePtr(queue, ctx->builtin_types->t_s32);
                 put_tmpstr(debug_replacement_str);
-                RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             } else {
                 BL_ASSERT(matching_type->kind != MIR_TYPE_POLY);
                 // Stringify replacement to get better error reports.
@@ -7457,7 +7458,7 @@ struct result generate_fn_poly(struct context *            ctx,
     }
     queue->size = 0; // clear
     put_tmpstr(debug_replacement_str);
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *call)
@@ -7466,7 +7467,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     BL_ASSERT(call->callee);
     if (!call->callee_analyzed) {
         struct id *missing_any = lookup_builtins_any(ctx);
-        if (missing_any) RETURN_END_ZONE(ANALYZE_RESULT(WAITING, missing_any->hash));
+        if (missing_any) RETURN_ZONE(ANALYZE_RESULT(WAITING, missing_any->hash));
 
         // callee has not been analyzed yet -> postpone call analyze
         if (!call->callee->is_analyzed) {
@@ -7476,11 +7477,11 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
                 fn_proto->pushed_for_analyze = true;
                 analyze_push_back(ctx, call->callee);
             }
-            RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+            RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
         }
 
         if (analyze_slot(ctx, &analyze_slot_conf_basic, &call->callee, NULL) != ANALYZE_PASSED) {
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         call->callee_analyzed = true;
     }
@@ -7506,7 +7507,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     if (!is_group && !is_fn) {
         report_error(
             EXPECTED_FUNC, call->callee->node, "Expected a function of function group name.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     union fn_or_group {
@@ -7537,8 +7538,8 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
                 BL_MAGIC_ASSERT(t);
             }
             if (!is_complete_type(ctx, t)) {
-                if (t->user_id) RETURN_END_ZONE(ANALYZE_RESULT(WAITING, t->user_id->hash));
-                RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+                if (t->user_id) RETURN_ZONE(ANALYZE_RESULT(WAITING, t->user_id->hash));
+                RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
             }
         }
     }
@@ -7586,7 +7587,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         struct mir_fn *fn = optional_fn_or_group.fn;
         BL_MAGIC_ASSERT(fn);
         if (call->base.value.is_comptime && !fn->is_fully_analyzed)
-            RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+            RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
         // Direct call of anonymous function.
         // NOTE: We increase ref count of called function here, but this
         // will not work for functions called by pointer in obtained in
@@ -7604,7 +7605,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         RUNTIME_MEASURE_BEGIN_S(poly);
         struct result state =
             generate_fn_poly(ctx, call->base.node, fn, call->args, &instr_replacement_fn_proto);
-        if (state.state != ANALYZE_PASSED) RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        if (state.state != ANALYZE_PASSED) RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         ctx->assembly->stats.polymorph_s += RUNTIME_MEASURE_END_S(poly);
         BL_ASSERT(instr_replacement_fn_proto);
 
@@ -7619,7 +7620,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         // yet; however we've changed kind of callee instruction, so we have to roll-back in
         // analyze stack by re-sumbit callee to analyze again.
         analyze_push_back(ctx, &callee_replacement->base);
-        RETURN_END_ZONE(ANALYZE_RESULT(SKIP, 0));
+        RETURN_ZONE(ANALYZE_RESULT(SKIP, 0));
     }
 
     struct mir_type *result_type = type->data.fn.ret_type;
@@ -7634,7 +7635,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         // "not fully analyzed", we have to check it somehow before evaluation.
         struct mir_fn *fn = optional_fn_or_group.fn;
         BL_MAGIC_ASSERT(fn);
-        if (!fn->is_fully_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+        if (!fn->is_fully_analyzed) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     }
 
     // validate arguments
@@ -7688,7 +7689,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         }
 
         if (analyze_instr_vargs(ctx, (struct mir_instr_vargs *)vargs).state != ANALYZE_PASSED)
-            RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+            RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         vargs->is_analyzed = true;
         // Erase vargs from arguments. @NOTE: function does nothing when array size is equal
         // to callee_argc.
@@ -7735,7 +7736,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
                 const struct result result = analyze_instr(ctx, call_default_arg);
                 // Default value reference MUST be analyzed before any call to owner
                 // function!
-                if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+                if (result.state != ANALYZE_PASSED) RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
             }
         }
     } else if (callee_argc != call_argc) {
@@ -7743,7 +7744,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     }
     if (type->data.fn.builtin_id != BUILTIN_ID_NONE) {
         struct result result = analyze_builtin_call(ctx, call);
-        if (result.state != ANALYZE_PASSED) RETURN_END_ZONE(result);
+        if (result.state != ANALYZE_PASSED) RETURN_ZONE(result);
     }
 
     // validate argument types
@@ -7763,7 +7764,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             goto REPORT_OVERLOAD_LOCATION;
         }
     }
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
     // ERROR
 INVALID_ARGC:
     report_error(INVALID_ARG_COUNT,
@@ -7780,7 +7781,7 @@ REPORT_OVERLOAD_LOCATION:
     if (is_group) {
         report_note(call->callee->node, "Overloaded function implementation:");
     }
-    RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
 }
 
 struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *store)
@@ -7793,7 +7794,7 @@ struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *s
     if (!mir_is_pointer_type(dest->value.type)) {
         report_error(
             INVALID_EXPR, store->base.node, "Left hand side of the expression cannot be assigned.");
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     if (dest->value.addr_mode == MIR_VAM_LVALUE_CONST || dest->value.addr_mode == MIR_VAM_RVALUE) {
@@ -7804,7 +7805,7 @@ struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *s
     BL_ASSERT(dest_type && "store destination has invalid base type");
 
     if (analyze_slot(ctx, &analyze_slot_conf_default, &store->src, dest_type) != ANALYZE_PASSED) {
-        RETURN_END_ZONE(ANALYZE_RESULT(FAILED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
     // @BUG Global immutable array converted implicitly to slice cause problems when this check
@@ -7817,7 +7818,7 @@ struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *s
     }
 #endif
 
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *block)
@@ -7827,7 +7828,7 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
 
     struct mir_fn *fn = block->owner_fn;
     if (!fn) { // block in global scope
-        RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+        RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
     }
 
     block->base.is_unreachable = block->base.ref_count == 0;
@@ -7878,7 +7879,7 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
             DEBUG_PRINT_MIR(&block->base);
         }
     }
-    RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
 enum result_state _analyze_slot(struct context *          ctx,
@@ -8131,10 +8132,10 @@ ANALYZE_STAGE_FN(report_type_mismatch)
 struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
 {
     ZONE();
-    if (!instr) RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    if (!instr) RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 
     // skip already analyzed instructions
-    if (instr->is_analyzed) RETURN_END_ZONE(ANALYZE_RESULT(PASSED, 0));
+    if (instr->is_analyzed) RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
     struct result state = ANALYZE_RESULT(PASSED, 0);
 
     BL_TRACY_MESSAGE("ANALYZE", "[%llu] %s", instr->id, mir_instr_name(instr));
@@ -8293,13 +8294,13 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
         if (instr->kind == MIR_INSTR_CAST && ((struct mir_instr_cast *)instr)->auto_cast) {
             // An auto cast cannot be directly evaluated because it's destination type
             // could change based on usage.
-            RETURN_END_ZONE(state);
+            RETURN_ZONE(state);
         }
         if (!evaluate(ctx, instr)) {
             state = ANALYZE_RESULT(FAILED, 0);
         }
     }
-    RETURN_END_ZONE(state);
+    RETURN_ZONE(state);
 }
 
 static INLINE struct mir_instr *analyze_try_get_next(struct mir_instr *instr)
@@ -8396,7 +8397,7 @@ void analyze(struct context *ctx)
         }
         }
     }
-    RETURN_END_ZONE();
+    RETURN_ZONE();
 }
 
 void analyze_report_unresolved(struct context *ctx)
@@ -11241,7 +11242,7 @@ void mir_run(struct assembly *assembly)
     tsa_init(&ctx.analyze.incomplete_rtti);
     tsa_init(&ctx.analyze.complete_check_type_stack);
     thtbl_init(&ctx.analyze.complete_check_visited, 0, 128);
-    thtbl_init(&ctx.analyze.presented_switch_cases, sizeof(struct mir_switch_case *), 64);
+    tatbl_init(&ctx.analyze.presented_switch_cases, sizeof(struct mir_switch_case *), 64);
     tsa_init(&ctx.polymorph.replacement_queue);
 
     ctx.analyze.void_entry =
@@ -11279,6 +11280,6 @@ SKIP:
     tsa_terminate(&ctx.analyze.incomplete_rtti);
     tsa_terminate(&ctx.analyze.complete_check_type_stack);
     thtbl_terminate(&ctx.analyze.complete_check_visited);
-    thtbl_terminate(&ctx.analyze.presented_switch_cases);
-    RETURN_END_ZONE();
+    tatbl_terminate(&ctx.analyze.presented_switch_cases);
+    RETURN_ZONE();
 }

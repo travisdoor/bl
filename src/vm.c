@@ -2434,7 +2434,7 @@ void vm_execute_instr(struct virtual_machine *vm,
     ZONE();
     vm->assembly = assembly;
     interp_instr(vm, instr);
-    RETURN_END_ZONE();
+    RETURN_ZONE();
 }
 
 bool vm_eval_instr(struct virtual_machine *vm, struct assembly *assembly, struct mir_instr *instr)
@@ -2443,7 +2443,7 @@ bool vm_eval_instr(struct virtual_machine *vm, struct assembly *assembly, struct
     vm->aborted  = false;
     vm->assembly = assembly;
     eval_instr(vm, instr);
-    RETURN_END_ZONE(!vm->aborted);
+    RETURN_ZONE(!vm->aborted);
 }
 
 void vm_provide_command_line_arguments(struct virtual_machine *vm, const s32 argc, char *argv[])
@@ -2503,7 +2503,7 @@ bool vm_execute_instr_top_level_call(struct virtual_machine *vm,
     BL_ASSERT(call && call->base.is_analyzed);
     BL_ASSERT(mir_is_comptime(&call->base) && "Top level call is expected to be comptime.");
     bool result = execute_fn_top_level(vm, &call->base, NULL);
-    RETURN_END_ZONE(result);
+    RETURN_ZONE(result);
 }
 
 vm_stack_ptr_t

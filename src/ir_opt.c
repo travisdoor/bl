@@ -46,5 +46,5 @@ void ir_opt_run(struct assembly *assembly)
     LLVMRunPassManager(llvm_pm, llvm_module);
     LLVMDisposePassManager(llvm_pm);
     LLVMPassManagerBuilderDispose(llvm_pm_builder);
-    RETURN_END_ZONE();
+    RETURN_ZONE();
 }

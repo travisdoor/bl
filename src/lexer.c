@@ -530,5 +530,5 @@ void lexer_run(struct assembly *assembly, struct unit *unit)
     scan(&ctx);
 
     builder.total_lines += ctx.line;
-    RETURN_END_ZONE();
+    RETURN_ZONE();
 }
