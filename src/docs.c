@@ -526,5 +526,5 @@ void docs_run(struct assembly *assembly)
     tstring_terminate(&ctx.section_members);
 
     builder_note("Documentation written into '%s' directory.", OUT_DIR);
-    RETURN_END_ZONE();
+    RETURN_ZONE();
 }

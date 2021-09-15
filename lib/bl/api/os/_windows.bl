@@ -132,7 +132,7 @@ __os_start :: fn () #entry {
     // Internal allocation to handle argument strings is done
     // in this method, so we must free memory used by return value
     // by free(args.ptr) call.
-    get_command_line_args :: fn (out_args: *[]string) #no_inline {
+    get_command_line_args :: fn (out_args: *[]string) #noinline {
         wargs: []*u16;
         cmd_line :: Win32.GetCommandLineW();
         wargs.ptr = Win32.CommandLineToArgvW(cmd_line, auto &wargs.len);

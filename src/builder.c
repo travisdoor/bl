@@ -465,13 +465,14 @@ void builder_init(const struct builder_options *options, const char *exec_dir)
 
     // initialize LLVM statics
     llvm_init();
-    tarray_init(&builder.targets, sizeof(struct target *));
-    tarray_init(&builder.tmp_strings, sizeof(TString *));
-    start_threads();
     // Generate hashes for builtin ids.
     for (s32 i = 0; i < _BUILTIN_ID_COUNT; ++i) {
         builtin_ids[i].hash = thash_from_str(builtin_ids[i].str);
     }
+    tarray_init(&builder.targets, sizeof(struct target *));
+    tarray_init(&builder.tmp_strings, sizeof(TString *));
+    start_threads();
+
     builder.is_initialized = true;
 }
 

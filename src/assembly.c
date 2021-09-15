@@ -702,7 +702,7 @@ void assembly_delete(struct assembly *assembly)
     mir_terminate(assembly);
     sync_delete(assembly->sync);
     bl_free(assembly);
-    RETURN_END_ZONE();
+    RETURN_ZONE();
 }
 
 void assembly_add_lib_path(struct assembly *assembly, const char *path)

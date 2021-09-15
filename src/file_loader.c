@@ -42,7 +42,7 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
                     BUILDER_CUR_WORD,
                     "File not found '%s'.",
                     unit->name);
-        RETURN_END_ZONE();
+        RETURN_ZONE();
     }
 
     FILE *f = fopen(unit->filepath, "rb");
@@ -55,7 +55,7 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
                     "Cannot read file '%s'.",
                     unit->name);
 
-        RETURN_END_ZONE();
+        RETURN_ZONE();
     }
 
     fseek(f, 0, SEEK_END);
@@ -69,7 +69,7 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
                     "Invalid or empty source file '%s'.",
                     unit->name);
 
-        RETURN_END_ZONE();
+        RETURN_ZONE();
     }
 
     fseek(f, 0, SEEK_SET);
@@ -82,5 +82,5 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
     fclose(f);
 
     unit->src = src;
-    RETURN_END_ZONE();
+    RETURN_ZONE();
 }

@@ -3244,5 +3244,5 @@ void ir_run(struct assembly *assembly)
     thtbl_terminate(&ctx.gstring_cache);
     thtbl_terminate(&ctx.llvm_fn_cache);
     assembly->stats.llvm_s = RUNTIME_MEASURE_END_S(llvm);
-    RETURN_END_ZONE();
+    RETURN_ZONE();
 }
