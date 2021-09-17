@@ -29,6 +29,7 @@
 #ifndef BL_TOKENS_INLINE_UTILS_H
 #define BL_TOKENS_INLINE_UTILS_H
 
+#include <stdarg.h>
 #include "tokens.h"
 
 enum tokens_lookahead_state {

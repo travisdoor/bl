@@ -43,8 +43,6 @@
 extern "C" {
 #endif
 
-#define BL_STATIC_ASSERT(x) typedef int __bl_static_assert[(x) ? 1 : -1]
-
 #if BL_COMPILER_GNUC || BL_COMPILER_CLANG
 #ifndef __FILENAME__
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)

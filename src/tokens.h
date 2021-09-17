@@ -50,8 +50,6 @@ struct location {
     struct unit *unit;
 };
 
-BL_STATIC_ASSERT(sizeof(struct location) == 16);
-
 union token_value {
     const char *str;
     char        c;
@@ -59,16 +57,12 @@ union token_value {
     u64         u;
 };
 
-BL_STATIC_ASSERT(sizeof(union token_value) == 8);
-
 struct token {
     enum sym          sym;
     bool              overflow;
     struct location   location;
     union token_value value;
 };
-
-BL_STATIC_ASSERT(sizeof(struct token) == 32);
 
 enum token_associativity {
     TOKEN_ASSOC_NONE,

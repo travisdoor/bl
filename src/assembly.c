@@ -75,8 +75,6 @@ const char *env_names[] = {
 #undef GEN_ENV
 };
 
-BL_STATIC_ASSERT(ARCH_unknown == 0);
-
 union _SmallArrays {
     TSmallArray_TypePtr       type;
     TSmallArray_MemberPtr     member;
