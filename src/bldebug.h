@@ -35,10 +35,6 @@
 #include <stdlib.h>
 #include <tlib/tlib.h>
 
-#if BL_PLATFORM_MACOS || BL_PLATFORM_LINUX
-#include <signal.h>
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -65,8 +61,11 @@ void print_trace(void);
 // =================================================================================================
 #if BL_COMPILER_MSVC
 #define BL_DEBUG_BREAK __debugbreak()
-#else
+#elif BL_PLATFORM_MACOS
 #define BL_DEBUG_BREAK __builtin_debugtrap()
+#else
+#include <signal.h>
+#define BL_DEBUG_BREAK raise(SIGTRAP)
 #endif
 
 #define BL_ASSERT(e)                                                                               \
@@ -188,7 +187,7 @@ void print_trace(void);
     (void)0
 
 #define _BL_VARGS(...) __VA_ARGS__
-#define RETURN_ZONE(...)                                                                       \
+#define RETURN_ZONE(...)                                                                           \
     {                                                                                              \
         TracyCZoneEnd(_tctx) return _BL_VARGS(__VA_ARGS__);                                        \
     }                                                                                              \

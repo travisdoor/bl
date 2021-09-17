@@ -5897,8 +5897,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         if (!entry_block) {
             // INCOMPLETE: not the best place to do this check, move into struct ast
             // generation later
-            report_error(
-                EXPECTED_BODY, fn_proto->base.node, BUILDER_CUR_WORD, "Missing function body.");
+            report_error(EXPECTED_BODY, fn_proto->base.node, "Missing function body.");
             RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
