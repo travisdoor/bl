@@ -103,7 +103,7 @@ __os_abort :: fn () #compiler {
     if _context.abort_fn {
         _context.abort_fn();
     } else {
-        if IS_DEBUG { _os_debug_break(); }
+        #if IS_DEBUG { _os_debug_break(); }
         _os_abort_default();
     }
 }

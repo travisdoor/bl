@@ -1341,7 +1341,19 @@ static INLINE void erase_block(struct mir_instr *instr)
             }
             break;
         }
+        case MIR_INSTR_SWITCH: {
+            struct mir_instr_switch *sw = (struct mir_instr_switch *)terminal;
+            BL_ASSERT(sw->cases);
+            for (usize i = 0; i < sw->cases->size; ++i) {
+                struct mir_switch_case *c = &sw->cases->data[i];
+                if (unref_instr(&c->block->base)->ref_count == 0) {
+                    tsa_push_InstrPtr64(&queue, &c->block->base);
+                }
+            }
+            break;
+        }
         default:
+            BL_ASSERT(false && "Unhandled terminal instruction!");
             break;
         }
     }
@@ -1484,6 +1496,7 @@ static INLINE void error_types(struct context *  ctx,
     mir_type_to_str(tmp_from, 256, from, true);
     mir_type_to_str(tmp_to, 256, to, true);
     report_error(INVALID_TYPE, node, msg, tmp_from, tmp_to);
+    DEBUG_PRINT_MIR(instr);
 }
 
 static INLINE void commit_fn(struct context *ctx, struct mir_fn *fn)

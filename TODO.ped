@@ -1,8 +1,0 @@
--- TODO --
-* document hash table
-* test hash table
-* add hash table into API
-* polymorph `...T` does not work.
-
-* Add implicit conversion string to slice.
-* Refactor sprint.

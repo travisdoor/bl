@@ -1,11 +1,7 @@
 main :: fn () s32 {
-    foo(10);
+    flags: string;
+    set_flag(&flags, "hello");
     return 0;
-}
-
-foo :: fn (v: ?T) {
-    arr: [10]s32;
-    arr[11] = 0;    
 }
 
 // - first_char :: fn (str: string #readonly) u8 {}
