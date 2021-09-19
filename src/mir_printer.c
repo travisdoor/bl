@@ -294,7 +294,7 @@ void print_comptime_value_or_id(struct context *ctx, struct mir_instr *instr)
         return;
     }
 
-    if (!instr->value.is_comptime || !instr->is_analyzed) {
+    if (!instr->value.is_comptime || IS_NOT_FLAG(instr->flags, MIR_IS_ANALYZED)) {
         fprintf(ctx->stream, "%%%llu", (unsigned long long)instr->id);
         return;
     }
@@ -931,7 +931,7 @@ void print_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
     BL_ASSERT(fn);
 
     fprintf(ctx->stream, "\n");
-    if (fn_proto->base.is_analyzed) fprintf(ctx->stream, "/* analyzed */\n");
+    if (IS_FLAG(fn_proto->base.flags, MIR_IS_ANALYZED)) fprintf(ctx->stream, "/* analyzed */\n");
     if (fn->linkage_name)
         fprintf(ctx->stream, "@%s ", fn->linkage_name);
     else
@@ -963,7 +963,8 @@ void print_instr(struct context *ctx, struct mir_instr *instr)
 {
 #if !PRINT_ANALYZED_COMPTIMES
     if ((instr->owner_block || instr->kind == MIR_INSTR_BLOCK) &&
-        (instr->kind != MIR_INSTR_DECL_VAR) && instr->value.is_comptime && instr->is_analyzed)
+        (instr->kind != MIR_INSTR_DECL_VAR) && instr->value.is_comptime &&
+        IS_FLAG(instr->flags, MIR_IS_ANALYZED))
         return;
 #endif
 

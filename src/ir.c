@@ -2970,7 +2970,7 @@ State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
         // Generate all blocks in the function body.
         struct mir_instr *block = (struct mir_instr *)fn->first_block;
         while (block) {
-            if (!block->is_unreachable) {
+            if (IS_NOT_FLAG(block->flags, MIR_IS_UNREACHABLE)) {
                 const State s = emit_instr(ctx, block);
                 if (s != STATE_PASSED) BL_ABORT("Postpone for whole block is not supported!");
             }
@@ -2984,7 +2984,7 @@ State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
 State emit_instr(struct context *ctx, struct mir_instr *instr)
 {
     State state = STATE_PASSED;
-    BL_ASSERT(instr->is_analyzed && "Attempt to emit not-analyzed instruction!");
+    BL_ASSERT(IS_FLAG(instr->flags, MIR_IS_ANALYZED) && "Attempt to emit not-analyzed instruction!");
     if (!mir_type_has_llvm_representation((instr->value.type))) return state;
     switch (instr->kind) {
     case MIR_INSTR_INVALID:

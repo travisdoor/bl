@@ -99,21 +99,18 @@ static void small_array_dtor(TSmallArrayAny *arr)
 
 typedef struct AssemblySyncImpl {
     pthread_mutex_t units_lock;
-    pthread_mutex_t import_module_lock;
 } AssemblySyncImpl;
 
 static AssemblySyncImpl *sync_new(void)
 {
     AssemblySyncImpl *impl = bl_malloc(sizeof(AssemblySyncImpl));
     pthread_mutex_init(&impl->units_lock, NULL);
-    pthread_mutex_init(&impl->import_module_lock, NULL);
     return impl;
 }
 
 static void sync_delete(AssemblySyncImpl *impl)
 {
     pthread_mutex_destroy(&impl->units_lock);
-    pthread_mutex_destroy(&impl->import_module_lock);
     bl_free(impl);
 }
 
@@ -298,7 +295,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) BL_ABORT("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path  = _path;
+    const char *path = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {
@@ -346,6 +343,7 @@ static bool import_module(struct assembly *assembly,
                           const char *     modulepath,
                           struct token *   import_from)
 {
+    ZONE();
     BL_ASSERT(config);
     BL_ASSERT(modulepath);
     const s32 version = get_module_version(config);
@@ -359,7 +357,7 @@ static bool import_module(struct assembly *assembly,
             "Module doesn't support current target platform, configuration entry ('%s') not "
             "found in module config file.",
             CONF_MODULE_ENTRY);
-        return false;
+        RETURN_ZONE(false);
     }
 
     { // entry file
@@ -367,7 +365,7 @@ static bool import_module(struct assembly *assembly,
         BL_ASSERT(entry_file && strlen(entry_file) > 0);
         TString *entry_file_path = get_tmpstr();
         tstring_setf(entry_file_path, "%s/%s", modulepath, entry_file);
-        assembly_add_unit(assembly, entry_file_path->data, NULL);
+        assembly_add_unit_safe(assembly, entry_file_path->data, NULL);
         put_tmpstr(entry_file_path);
     }
 
@@ -386,7 +384,7 @@ static bool import_module(struct assembly *assembly,
                         path->data,
                         CONF_MODULE_LIB_PATH);
             put_tmpstr(path);
-            return false;
+            RETURN_ZONE(false);
         }
         assembly_add_lib_path(assembly, path->data);
         put_tmpstr(path);
@@ -405,8 +403,7 @@ static bool import_module(struct assembly *assembly,
         BL_ASSERT(lib && strlen(lib) > 0);
         assembly_add_native_lib(assembly, lib, NULL);
     }
-
-    return true;
+    RETURN_ZONE(true);
 }
 
 // =================================================================================================
@@ -621,26 +618,26 @@ struct assembly *assembly_new(const struct target *target)
     // Add units from target
     for (usize i = 0; i < target->files.size; ++i) {
         char *file = tarray_at(char *, (TArray *)&target->files, i);
-        assembly_add_unit(assembly, file, NULL);
+        assembly_add_unit_safe(assembly, file, NULL);
     }
 
     // Add default units based on assembly kind
     switch (assembly->target->kind) {
     case ASSEMBLY_EXECUTABLE:
         if (assembly->target->no_api) break;
-        assembly_add_unit(assembly, BUILTIN_FILE, NULL);
-        assembly_add_unit(assembly, OS_PRELOAD_FILE, NULL);
+        assembly_add_unit_safe(assembly, BUILTIN_FILE, NULL);
+        assembly_add_unit_safe(assembly, OS_PRELOAD_FILE, NULL);
         break;
     case ASSEMBLY_SHARED_LIB:
         if (assembly->target->no_api) break;
-        assembly_add_unit(assembly, BUILTIN_FILE, NULL);
-        assembly_add_unit(assembly, OS_PRELOAD_FILE, NULL);
+        assembly_add_unit_safe(assembly, BUILTIN_FILE, NULL);
+        assembly_add_unit_safe(assembly, OS_PRELOAD_FILE, NULL);
         break;
     case ASSEMBLY_BUILD_PIPELINE:
-        assembly_add_unit(assembly, BUILTIN_FILE, NULL);
-        assembly_add_unit(assembly, OS_PRELOAD_FILE, NULL);
-        assembly_add_unit(assembly, BUILD_API_FILE, NULL);
-        assembly_add_unit(assembly, BUILD_SCRIPT_FILE, NULL);
+        assembly_add_unit_safe(assembly, BUILTIN_FILE, NULL);
+        assembly_add_unit_safe(assembly, OS_PRELOAD_FILE, NULL);
+        assembly_add_unit_safe(assembly, BUILD_API_FILE, NULL);
+        assembly_add_unit_safe(assembly, BUILD_SCRIPT_FILE, NULL);
         break;
     case ASSEMBLY_DOCS:
         break;
@@ -723,29 +720,28 @@ static INLINE bool assembly_has_unit(struct assembly *assembly, const u64 hash)
     struct unit *unit;
     TARRAY_FOREACH(struct unit *, &assembly->units, unit)
     {
-        if (hash == unit->hash) return true;
+        if (hash == unit->hash) {
+            return true;
+        }
     }
     return false;
 }
 
 struct unit *
-assembly_add_unit(struct assembly *assembly, const char *filepath, struct token *load_from)
+assembly_add_unit_safe(struct assembly *assembly, const char *filepath, struct token *load_from)
 {
+    ZONE();
+    struct unit *     unit = NULL;
+    const u64         hash = unit_hash(filepath, load_from);
     AssemblySyncImpl *sync = assembly->sync;
     pthread_mutex_lock(&sync->units_lock);
-    struct unit *unit = NULL;
-    const u64    hash = unit_hash(filepath, load_from);
-    if (assembly_has_unit(assembly, hash)) {
-        goto DONE;
-    }
-
+    if (assembly_has_unit(assembly, hash)) goto DONE;
     unit = unit_new(filepath, load_from);
     tarray_push(&assembly->units, unit);
     builder_async_submit_unit(unit);
-
 DONE:
     pthread_mutex_unlock(&sync->units_lock);
-    return unit;
+    RETURN_ZONE(unit);
 }
 
 void assembly_add_native_lib(struct assembly *assembly,
@@ -780,8 +776,7 @@ bool assembly_import_module(struct assembly *assembly,
                             const char *     modulepath,
                             struct token *   import_from)
 {
-    AssemblySyncImpl *sync = assembly->sync;
-    pthread_mutex_lock(&sync->import_module_lock);
+    ZONE();
     bool state = false;
     if (!strlen(modulepath)) {
         builder_msg(BUILDER_MSG_ERROR,
@@ -867,8 +862,7 @@ bool assembly_import_module(struct assembly *assembly,
     put_tmpstr(local_path);
     conf_data_delete(config);
 DONE:
-    pthread_mutex_unlock(&sync->import_module_lock);
-    return state;
+    RETURN_ZONE(state);
 }
 
 DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol)

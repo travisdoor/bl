@@ -1,11 +1,28 @@
 main :: fn () s32 {
-    flags: string;
-    set_flag(&flags, "hello");
     return 0;
 }
+
+// 152B
+// 403ms with mutex
 
 // - first_char :: fn (str: string #readonly) u8 {}
 // - #using Enum + use UPPERCASE for variants.
 // - #switch ?
 // - intel/amd/arm intrinsics???
 // - use flat hash table for small scopes for faster lookup? (structs, functions, ...)
+// - polymorph struct types
+// - allow static if in global scope
+// - modules should use regular load scripts written in BL executed during import
+// - lazy load/import of sources (during analyze pass)
+
+/*
+
+module :: fn (bin: *Assembly) #module_entry {
+    #if PLATFORM == Platform.windows {
+        add_unit(bin, "_windows_impl.bl"
+    } else {
+        #error "Module does not support current target platform"
+    }
+}
+
+*/

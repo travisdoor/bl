@@ -191,6 +191,7 @@ TypeInfoEnum :: struct #base TypeInfo #compiler {
     base_type: *TypeInfo; 
     /// Slice of all enumerator variants.
     variants: []TypeInfoEnumVariant;
+    /// True when enumerator was defined with #flags directive.
     is_flags: bool;
 };
 

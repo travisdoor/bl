@@ -104,11 +104,13 @@ struct threading_impl {
 
 static void async_push(struct unit *unit)
 {
+    ZONE();
     struct threading_impl *threading = builder.threading;
     pthread_mutex_lock(&threading->queue_mutex);
     tarray_push(&threading->queue, unit);
     if (threading->is_compiling) pthread_cond_signal(&threading->queue_condition);
     pthread_mutex_unlock(&threading->queue_mutex);
+    RETURN_ZONE();
 }
 
 static struct unit *async_pop_unsafe(void)
@@ -753,6 +755,5 @@ void builder_async_submit_unit(struct unit *unit)
     if (builder.options->no_jobs) return;
     struct threading_impl *threading = builder.threading;
     if (!threading->is_compiling) return;
-
     async_push(unit);
 }

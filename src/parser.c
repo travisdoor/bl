@@ -269,9 +269,10 @@ enum unop_kind sym_to_unop_kind(enum sym sm)
 struct ast *parse_expr_ref(struct context *ctx)
 {
     ZONE();
-    struct token *tok   = tokens_peek(ctx->tokens);
-    struct ast *  ident = parse_ident(ctx);
-    if (!ident) RETURN_ZONE(NULL);
+    struct token *tok = tokens_peek(ctx->tokens);
+    if (tok->sym != SYM_IDENT) RETURN_ZONE(NULL);
+    struct ast *ident = parse_ident(ctx);
+    BL_ASSERT(ident);
     struct ast *ref     = ast_create_node(ctx->ast_arena, AST_REF, tok, SCOPE_GET(ctx));
     ref->data.ref.ident = ident;
     RETURN_ZONE(ref);
@@ -343,7 +344,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 
     TArrayTable *lookup    = &ctx->hash_directives_lookup;
     const char * directive = tok_directive->value.str;
-    TIterator    iter        = tatbl_find(lookup, thash_from_str(directive));
+    TIterator    iter      = tatbl_find(lookup, thash_from_str(directive));
     if (TITERATOR_EQUAL(iter, tatbl_end(lookup))) goto INVALID;
     const enum hash_directive_flags hd_flag = tatbl_iter_peek_value(u32, lookup, iter);
     BL_ASSERT(directive);
@@ -354,6 +355,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     case HD_COMPTIME:
         BL_ABORT("Invalid directive!");
     case HD_ERROR: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#error");
         set_satisfied(HD_ERROR);
         if (IS_NOT_FLAG(expected_mask, HD_ERROR)) {
             PARSE_ERROR(
@@ -376,6 +378,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_WARNING: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#warning");
         set_satisfied(HD_WARNING);
         if (IS_NOT_FLAG(expected_mask, HD_WARNING)) {
             PARSE_ERROR(
@@ -398,6 +401,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_LOAD: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#load");
         set_satisfied(HD_LOAD);
         if (IS_NOT_FLAG(expected_mask, HD_LOAD)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -420,7 +424,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         struct ast *load = ast_create_node(ctx->ast_arena, AST_LOAD, tok_directive, SCOPE_GET(ctx));
         load->data.load.filepath = tok_path->value.str;
         if (ctx->assembly->target->kind != ASSEMBLY_DOCS) {
-            assembly_add_unit(ctx->assembly, load->data.load.filepath, tok_path);
+            assembly_add_unit_safe(ctx->assembly, load->data.load.filepath, tok_path);
         }
         RETURN_ZONE(load);
     }
@@ -447,6 +451,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         struct ast *import =
             ast_create_node(ctx->ast_arena, AST_IMPORT, tok_directive, SCOPE_GET(ctx));
         import->data.import.filepath = tok_path->value.str;
+        BL_TRACY_MESSAGE("HD_FLAG", "#import (%s)", tok_path->value.str);
         if (ctx->assembly->target->kind != ASSEMBLY_DOCS) {
             assembly_import_module(ctx->assembly, tok_path->value.str, tok_path);
         }
@@ -454,6 +459,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_ASSERT: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#assert");
         set_satisfied(HD_ASSERT);
         if (IS_NOT_FLAG(expected_mask, HD_ASSERT)) {
             PARSE_ERROR(
@@ -479,7 +485,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_LINK: {
-        // link <string>
+        BL_TRACY_MESSAGE("HD_FLAG", "#link");
         set_satisfied(HD_LINK);
         if (IS_NOT_FLAG(expected_mask, HD_LINK)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -511,6 +517,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_TEST_FN: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#test");
         set_satisfied(HD_TEST_FN);
         if (IS_NOT_FLAG(expected_mask, HD_TEST_FN)) {
             PARSE_ERROR(
@@ -522,6 +529,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_FILE: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#file");
         set_satisfied(HD_FILE);
         if (IS_NOT_FLAG(expected_mask, HD_FILE)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -538,6 +546,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_BASE: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#line");
         set_satisfied(HD_BASE);
         if (IS_NOT_FLAG(expected_mask, HD_BASE)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -551,6 +560,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_TAGS: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#tags");
         set_satisfied(HD_TAGS);
         if (IS_NOT_FLAG(expected_mask, HD_TAGS)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -600,6 +610,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_LINE: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#line");
         set_satisfied(HD_LINE);
         if (IS_NOT_FLAG(expected_mask, HD_LINE)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -616,6 +627,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_FLAGS: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#flags");
         set_satisfied(HD_FLAGS);
         if (IS_NOT_FLAG(expected_mask, HD_FLAGS)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -628,6 +640,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_ENTRY: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#entry");
         set_satisfied(HD_ENTRY);
         if (IS_NOT_FLAG(expected_mask, HD_ENTRY)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -642,6 +655,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_NO_INIT: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#init");
         set_satisfied(HD_NO_INIT);
         if (IS_NOT_FLAG(expected_mask, HD_NO_INIT)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -656,6 +670,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_BUILD_ENTRY: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#entry");
         set_satisfied(HD_BUILD_ENTRY);
         if (IS_NOT_FLAG(expected_mask, HD_BUILD_ENTRY)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -670,6 +685,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_CALL_LOC: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#call_location");
         set_satisfied(HD_CALL_LOC);
         if (IS_NOT_FLAG(expected_mask, HD_CALL_LOC)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -684,6 +700,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_EXTERN: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#extern");
         set_satisfied(HD_EXTERN);
         if (IS_NOT_FLAG(expected_mask, HD_EXTERN)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -702,6 +719,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_EXPORT: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#export");
         set_satisfied(HD_EXPORT);
         if (IS_NOT_FLAG(expected_mask, HD_EXPORT)) {
             PARSE_ERROR(
@@ -712,6 +730,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_INTRINSIC: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#intrinsic");
         set_satisfied(HD_INTRINSIC);
         if (IS_NOT_FLAG(expected_mask, HD_INTRINSIC)) {
             PARSE_ERROR(
@@ -728,6 +747,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_COMPILER: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#compiler");
         set_satisfied(HD_COMPILER);
         if (IS_NOT_FLAG(expected_mask, HD_COMPILER)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -742,6 +762,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_INLINE: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#inline");
         set_satisfied(HD_INLINE);
         if (IS_NOT_FLAG(expected_mask, HD_INLINE)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -756,6 +777,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_NO_INLINE: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#noinline");
         set_satisfied(HD_NO_INLINE);
         if (IS_NOT_FLAG(expected_mask, HD_NO_INLINE)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -770,6 +792,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_THREAD_LOCAL: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#thread_local");
         set_satisfied(HD_THREAD_LOCAL);
         if (IS_NOT_FLAG(expected_mask, HD_THREAD_LOCAL)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -784,8 +807,8 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_PRIVATE: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#private");
         set_satisfied(HD_PRIVATE);
-
         if (IS_NOT_FLAG(expected_mask, HD_PRIVATE)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
                         tok_directive,
@@ -825,6 +848,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_PRIVATE, tok_directive, SCOPE_GET(ctx)));
     }
     case HD_SCOPE: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#scope");
         set_satisfied(HD_SCOPE);
         if (IS_NOT_FLAG(expected_mask, HD_SCOPE)) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
@@ -1688,16 +1712,30 @@ struct ast *_parse_expr(struct context *ctx, s32 p)
 struct ast *parse_expr_primary(struct context *ctx)
 {
     struct ast *expr = NULL;
-    if ((expr = parse_expr_nested(ctx))) return expr;
-    if ((expr = parse_expr_ref(ctx))) return expr;
+    switch (tokens_peek_sym(ctx->tokens)) {
+    case SYM_LPAREN:
+        expr = parse_expr_nested(ctx);
+        break;
+    case SYM_IDENT:
+        expr = parse_expr_ref(ctx);
+        break;
+    case SYM_NULL:
+        expr = parse_expr_null(ctx);
+        break;
+    case SYM_HASH:
+        expr = parse_hash_directive(ctx, HD_FILE | HD_LINE, NULL);
+        break;
+    case SYM_FN:
+        if ((expr = parse_expr_lit_fn(ctx))) break;
+        expr = parse_expr_lit_fn_group(ctx);
+        break;
+    default:
+        break;
+    }
+    if (expr) return expr;
     if ((expr = parse_expr_lit(ctx))) return expr;
-    if ((expr = parse_expr_lit_fn(ctx))) return expr;
-    if ((expr = parse_expr_lit_fn_group(ctx))) return expr;
     if ((expr = parse_expr_type(ctx))) return expr;
-    if ((expr = parse_expr_null(ctx))) return expr;
     if ((expr = parse_expr_compound(ctx))) return expr;
-    if ((expr = parse_hash_directive(ctx, HD_FILE | HD_LINE, NULL))) return expr;
-
     return NULL;
 }
 
@@ -1730,18 +1768,37 @@ struct ast *parse_expr_unary(struct context *ctx)
 struct ast *parse_expr_atom(struct context *ctx)
 {
     struct ast *expr = NULL;
-
+    switch (tokens_peek_sym(ctx->tokens)) {
+    case SYM_AT:
+        expr = parse_expr_deref(ctx);
+        break;
+    case SYM_AND:
+        expr = parse_expr_addrof(ctx);
+        break;
+    case SYM_CAST:
+        expr = parse_expr_cast(ctx);
+        break;
+    case SYM_CAST_AUTO:
+        expr = parse_expr_cast_auto(ctx);
+        break;
+    case SYM_SIZEOF:
+        expr = parse_expr_sizeof(ctx);
+        break;
+    case SYM_ALIGNOF:
+        expr = parse_expr_alignof(ctx);
+        break;
+    case SYM_TYPEINFO:
+        expr = parse_expr_type_info(ctx);
+        break;
+    case SYM_TESTCASES:
+        expr = parse_expr_test_cases(ctx);
+        break;
+    default:
+        break;
+    }
+    if (expr) return expr;
     if ((expr = parse_expr_primary(ctx))) return expr;
     if ((expr = parse_expr_unary(ctx))) return expr;
-    if ((expr = parse_expr_deref(ctx))) return expr;
-    if ((expr = parse_expr_addrof(ctx))) return expr;
-    if ((expr = parse_expr_cast(ctx))) return expr;
-    if ((expr = parse_expr_cast_auto(ctx))) return expr;
-    if ((expr = parse_expr_sizeof(ctx))) return expr;
-    if ((expr = parse_expr_alignof(ctx))) return expr;
-    if ((expr = parse_expr_type_info(ctx))) return expr;
-    if ((expr = parse_expr_test_cases(ctx))) return expr;
-
     return NULL;
 }
 
@@ -2003,7 +2060,7 @@ struct ast *parse_expr_elem(struct context *ctx, struct ast *prev)
     RETURN_ZONE(elem);
 }
 
-struct ast *parse_ident(struct context *ctx)
+INLINE struct ast *parse_ident(struct context *ctx)
 {
     ZONE();
     struct token *tok_ident = tokens_consume_if(ctx->tokens, SYM_IDENT);
@@ -2746,54 +2803,65 @@ struct ast *parse_block(struct context *ctx, bool create_scope)
     }
     struct ast *  block = ast_create_node(ctx->ast_arena, AST_BLOCK, tok_begin, SCOPE_GET(ctx));
     struct token *tok;
-    struct ast *  tmp;
+    struct ast *  tmp       = NULL;
     block->data.block.nodes = create_sarr(TSmallArray_AstPtr, ctx->assembly);
 
 NEXT:
-    if (tokens_current_is(ctx->tokens, SYM_SEMICOLON)) {
+    switch (tokens_peek_sym(ctx->tokens)) {
+    case SYM_SEMICOLON:
         tok = tokens_consume(ctx->tokens);
-        PARSE_WARNING(tok, BUILDER_CUR_WORD, "extra semicolon can be removed ';'");
+        PARSE_WARNING(tok, BUILDER_CUR_WORD, "Extra semicolon can be removed ';'.");
         goto NEXT;
-    }
-    if ((tmp = parse_hash_directive(ctx, HD_STATIC_IF | HD_ASSERT | HD_ERROR | HD_WARNING, NULL))) {
-        tsa_push_AstPtr(block->data.block.nodes, tmp);
-        goto NEXT;
-    }
-    if ((tmp = (struct ast *)parse_decl(ctx))) {
-        if (AST_IS_OK(tmp)) parse_semicolon_rq(ctx);
-        tsa_push_AstPtr(block->data.block.nodes, tmp);
-        goto NEXT;
-    }
-    if ((tmp = parse_stmt_return(ctx))) {
+    case SYM_HASH:
+        tmp = parse_hash_directive(ctx, HD_STATIC_IF | HD_ASSERT | HD_ERROR | HD_WARNING, NULL);
+        break;
+    case SYM_RETURN:
+        tmp = parse_stmt_return(ctx);
         if (!AST_IS_BAD(tmp)) parse_semicolon_rq(ctx);
-        tsa_push_AstPtr(block->data.block.nodes, tmp);
         block->data.block.has_return      = true;
         tmp->data.stmt_return.owner_block = block;
-        goto NEXT;
-    }
-    if ((tmp = parse_stmt_if(ctx, false))) {
-        tsa_push_AstPtr(block->data.block.nodes, tmp);
-        goto NEXT;
-    }
-    if ((tmp = parse_stmt_switch(ctx))) {
-        tsa_push_AstPtr(block->data.block.nodes, tmp);
-        goto NEXT;
-    }
-    if ((tmp = parse_stmt_loop(ctx))) {
-        tsa_push_AstPtr(block->data.block.nodes, tmp);
-        goto NEXT;
-    }
-    if ((tmp = parse_stmt_break(ctx))) {
+        break;
+    case SYM_IF:
+        tmp = parse_stmt_if(ctx, false);
+        break;
+    case SYM_SWITCH:
+        tmp = parse_stmt_switch(ctx);
+        break;
+    case SYM_LOOP:
+        tmp = parse_stmt_loop(ctx);
+        break;
+    case SYM_BREAK:
+        tmp = parse_stmt_break(ctx);
         if (AST_IS_OK(tmp)) parse_semicolon_rq(ctx);
-        tsa_push_AstPtr(block->data.block.nodes, tmp);
-        goto NEXT;
-    }
-    if ((tmp = parse_stmt_continue(ctx))) {
+
+        break;
+    case SYM_CONTINUE:
+        tmp = parse_stmt_continue(ctx);
         if (AST_IS_OK(tmp)) parse_semicolon_rq(ctx);
+        break;
+    case SYM_DEFER:
+        tmp = parse_stmt_defer(ctx);
+        if (AST_IS_OK(tmp)) parse_semicolon_rq(ctx);
+        break;
+    case SYM_LBLOCK:
+        tmp = parse_block(ctx, true);
+        break;
+    case SYM_UNREACHABLE:
+        tmp = parse_unrecheable(ctx);
+        parse_semicolon_rq(ctx);
+        break;
+    default:
+        tmp = NULL;
+        break;
+    }
+
+    // Others
+    if (tmp) {
         tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
-    if ((tmp = parse_stmt_defer(ctx))) {
+
+    if ((tmp = (struct ast *)parse_decl(ctx))) {
         if (AST_IS_OK(tmp)) parse_semicolon_rq(ctx);
         tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
@@ -2803,15 +2871,7 @@ NEXT:
         tsa_push_AstPtr(block->data.block.nodes, tmp);
         goto NEXT;
     }
-    if ((tmp = parse_block(ctx, true))) {
-        tsa_push_AstPtr(block->data.block.nodes, tmp);
-        goto NEXT;
-    }
-    if ((tmp = parse_unrecheable(ctx))) {
-        tsa_push_AstPtr(block->data.block.nodes, tmp);
-        parse_semicolon_rq(ctx);
-        goto NEXT;
-    }
+
     tok = tokens_consume_if(ctx->tokens, SYM_RBLOCK);
     if (!tok) {
         tok = tokens_peek_prev(ctx->tokens);

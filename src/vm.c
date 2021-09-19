@@ -1247,7 +1247,7 @@ bool _execute_fn_top_level(struct virtual_machine *    vm,
 void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
 {
     if (!instr) return;
-    if (!instr->is_analyzed) {
+    if (IS_NOT_FLAG(instr->flags, MIR_IS_ANALYZED)) {
         BL_ABORT("Instruction %s has not been analyzed!", mir_instr_name(instr));
     }
 
@@ -2500,7 +2500,7 @@ bool vm_execute_instr_top_level_call(struct virtual_machine *vm,
 {
     ZONE();
     vm->assembly = assembly;
-    BL_ASSERT(call && call->base.is_analyzed);
+    BL_ASSERT(call && IS_FLAG(call->base.flags, MIR_IS_ANALYZED));
     BL_ASSERT(mir_is_comptime(&call->base) && "Top level call is expected to be comptime.");
     bool result = execute_fn_top_level(vm, &call->base, NULL);
     RETURN_ZONE(result);

@@ -1054,7 +1054,7 @@ static INLINE void usage_check_push(struct context *ctx, struct scope_entry *ent
 
 static INLINE bool can_mutate_comptime_to_const(struct mir_instr *instr)
 {
-    BL_ASSERT(instr->is_analyzed && "Non-analyzed instruction.");
+    BL_ASSERT(IS_FLAG(instr->flags, MIR_IS_ANALYZED) && "Non-analyzed instruction.");
     BL_ASSERT(mir_is_comptime(instr));
 
     switch (instr->kind) {
@@ -2923,9 +2923,9 @@ insert_instr_cast(struct context *ctx, struct mir_instr *src, struct mir_type *t
 {
     struct mir_instr_cast *tmp = create_instr(ctx, MIR_INSTR_CAST, src->node);
     tmp->base.value.type       = to_type;
-    tmp->base.is_implicit      = true;
-    tmp->expr                  = src;
-    tmp->op                    = MIR_CAST_INVALID;
+    SET_FLAG(tmp->base.flags, MIR_IS_IMPLICIT);
+    tmp->expr = src;
+    tmp->op   = MIR_CAST_INVALID;
     ref_instr(&tmp->base);
 
     insert_instr_after(src, &tmp->base);
@@ -2935,8 +2935,7 @@ insert_instr_cast(struct context *ctx, struct mir_instr *src, struct mir_type *t
 struct mir_instr *insert_instr_addrof(struct context *ctx, struct mir_instr *src)
 {
     struct mir_instr *tmp = create_instr_addrof(ctx, src->node, src);
-    tmp->is_implicit      = true;
-
+    SET_FLAG(tmp->flags, MIR_IS_IMPLICIT);
     insert_instr_after(src, tmp);
     return tmp;
 }
@@ -2948,8 +2947,8 @@ struct mir_instr *insert_instr_toany(struct context *ctx, struct mir_instr *expr
 
     struct mir_instr_to_any *tmp = create_instr(ctx, MIR_INSTR_TOANY, expr->node);
     tmp->base.value.type         = ctx->builtin_types->t_Any_ptr;
-    tmp->base.is_implicit        = true;
-    tmp->expr                    = expr;
+    SET_FLAG(tmp->base.flags, MIR_IS_IMPLICIT);
+    tmp->expr = expr;
     ref_instr(&tmp->base);
 
     insert_instr_after(expr, &tmp->base);
@@ -2962,8 +2961,8 @@ struct mir_instr *insert_instr_load(struct context *ctx, struct mir_instr *src)
     BL_ASSERT(src->value.type);
     BL_ASSERT(src->value.type->kind == MIR_TYPE_PTR);
     struct mir_instr_load *tmp = create_instr(ctx, MIR_INSTR_LOAD, src->node);
-    tmp->base.is_implicit      = true;
-    tmp->src                   = src;
+    SET_FLAG(tmp->base.flags, MIR_IS_IMPLICIT);
+    tmp->src = src;
 
     ref_instr(&tmp->base);
     insert_instr_after(src, &tmp->base);
@@ -3138,7 +3137,7 @@ struct mir_instr *create_instr_compound_impl(struct context *      ctx,
 {
     struct mir_instr *tmp = create_instr_compound(ctx, node, NULL, values, false);
     tmp->value.type       = type;
-    tmp->is_implicit      = true;
+    SET_FLAG(tmp->flags, MIR_IS_IMPLICIT);
     return tmp;
 }
 
@@ -3349,7 +3348,7 @@ struct mir_instr *append_instr_set_initializer_impl(struct context *      ctx,
                                                     struct mir_instr *    src)
 {
     struct mir_instr *tmp = append_instr_set_initializer(ctx, NULL, dests, src);
-    tmp->is_implicit      = true;
+    SET_FLAG(tmp->flags, MIR_IS_IMPLICIT);
     return tmp;
 }
 
@@ -3590,8 +3589,7 @@ struct mir_instr *append_instr_compound_impl(struct context *      ctx,
 {
     struct mir_instr *tmp = append_instr_compound(ctx, node, NULL, values, false);
     tmp->value.type       = type;
-    tmp->is_implicit      = true;
-
+    SET_FLAG(tmp->flags, MIR_IS_IMPLICIT);
     return tmp;
 }
 
@@ -4256,7 +4254,8 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         top = tsa_pop_InstrPtr64(&queue);
         if (!top) continue;
 
-        BL_ASSERT(top->is_analyzed && "Trying to erase not analyzed instruction.");
+        BL_ASSERT(IS_FLAG(top->flags, MIR_IS_ANALYZED) &&
+                  "Trying to erase not analyzed instruction.");
         if (!force) {
             if (top->ref_count == NO_REF_COUNTING) continue;
             if (top->ref_count > 0) continue;
@@ -4487,7 +4486,8 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
 bool evaluate(struct context *ctx, struct mir_instr *instr)
 {
     if (!instr) return true;
-    BL_ASSERT(instr->is_analyzed && "Non-analyzed instruction cannot be evaluated!");
+    BL_ASSERT(IS_FLAG(instr->flags, MIR_IS_ANALYZED) &&
+              "Non-analyzed instruction cannot be evaluated!");
     // We can evaluate compile time know instructions only.
     if (!instr->value.is_comptime) return true;
     // Special cases
@@ -4557,7 +4557,8 @@ struct result analyze_resolve_type(struct context *  ctx,
     BL_ASSERT(resolver_call->kind == MIR_INSTR_CALL &&
               "Type resolver is expected to be call to resolve function.");
 
-    if (!resolver_call->is_analyzed && analyze_instr(ctx, resolver_call).state != ANALYZE_PASSED) {
+    if (IS_NOT_FLAG(resolver_call->flags, MIR_IS_ANALYZED) &&
+        analyze_instr(ctx, resolver_call).state != ANALYZE_PASSED) {
         return ANALYZE_RESULT(POSTPONE, 0);
     }
 
@@ -4678,11 +4679,13 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
         struct mir_instr **value_ref = &phi->incoming_values->data[i];
         struct mir_instr * block     = phi->incoming_blocks->data[i];
         BL_ASSERT(block && block->kind == MIR_INSTR_BLOCK);
-        BL_ASSERT((*value_ref)->is_analyzed && "Phi incoming value is not analyzed!");
+        BL_ASSERT(IS_FLAG((*value_ref)->flags, MIR_IS_ANALYZED) &&
+                  "Phi incoming value is not analyzed!");
         if ((*value_ref)->kind == MIR_INSTR_COND_BR) {
             *value_ref = ((struct mir_instr_cond_br *)(*value_ref))->cond;
             BL_ASSERT(value_ref && *value_ref);
-            BL_ASSERT((*value_ref)->is_analyzed && "Phi incoming value is not analyzed!");
+            BL_ASSERT(IS_FLAG((*value_ref)->flags, MIR_IS_ANALYZED) &&
+                      "Phi incoming value is not analyzed!");
         } else if ((*value_ref)->kind == MIR_INSTR_BR) {
             const struct mir_instr_br *br = (struct mir_instr_br *)(*value_ref);
             BL_ASSERT(is_comptime);
@@ -4779,7 +4782,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
     }
 
     struct mir_type *type = cmp->base.value.type;
-    if (cmp->base.is_implicit) {
+    if (IS_FLAG(cmp->base.flags, MIR_IS_IMPLICIT)) {
         BL_ASSERT(type && "Missing type for implicit compound!");
         BL_ASSERT((cmp->is_zero_initialized || values->size) &&
                   "Missing type for implicit compound!");
@@ -4789,7 +4792,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
     // Setup compound type.
     if (!type) {
         // generate load instruction if needed
-        BL_ASSERT(cmp->type->is_analyzed);
+        BL_ASSERT(IS_FLAG(cmp->type->flags, MIR_IS_ANALYZED));
         if (analyze_slot(ctx, &analyze_slot_conf_basic, &cmp->type, NULL) != ANALYZE_PASSED)
             RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
 
@@ -4993,7 +4996,7 @@ struct result analyze_instr_set_initializer(struct context *                  ct
     {
         // Just pre-scan to check if all destination variables are analyzed.
         BL_ASSERT(dest && dest->kind == MIR_INSTR_DECL_VAR);
-        if (!dest->is_analyzed)
+        if (IS_NOT_FLAG(dest->flags, MIR_IS_ANALYZED))
             RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0)); // PERFORMANCE: use wait???
     }
 
@@ -5264,8 +5267,8 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 
             struct mir_instr_addrof *addrof_elem =
                 (struct mir_instr_addrof *)mutate_instr(&member_ptr->base, MIR_INSTR_ADDROF);
-            addrof_elem->base.is_analyzed = false;
-            addrof_elem->src              = elem_ptr;
+            CLR_FLAG(addrof_elem->base.flags, MIR_IS_ANALYZED);
+            addrof_elem->src = elem_ptr;
             ANALYZE_INSTR_RQ(&addrof_elem->base);
         } else {
             report_error(INVALID_MEMBER_ACCESS, ast_member_ident, "Unknown member.");
@@ -5380,7 +5383,7 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
     ZONE();
     struct mir_instr *src = addrof->src;
     BL_ASSERT(src);
-    if (!src->is_analyzed) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+    if (IS_NOT_FLAG(src->flags, MIR_IS_ANALYZED)) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     const enum mir_value_address_mode src_addr_mode = src->value.addr_mode;
     const bool                        is_source_polymorph =
         src->value.type->kind == MIR_TYPE_FN &&
@@ -5426,8 +5429,9 @@ analyze_instr_cast(struct context *ctx, struct mir_instr_cast *cast, bool analyz
             if (result.state != ANALYZE_PASSED) RETURN_ZONE(result);
         }
 
-        const struct slot_config *config =
-            cast->base.is_implicit ? &analyze_slot_conf_dummy : &analyze_slot_conf_basic;
+        const struct slot_config *config = IS_FLAG(cast->base.flags, MIR_IS_IMPLICIT)
+                                               ? &analyze_slot_conf_dummy
+                                               : &analyze_slot_conf_basic;
 
         if (analyze_slot(ctx, config, &cast->expr, dest_type) != ANALYZE_PASSED) {
             RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
@@ -5700,7 +5704,7 @@ struct result analyze_instr_decl_direct_ref(struct context *                  ct
     ZONE();
     BL_ASSERT(ref->ref && "Missing declaration reference for direct ref.");
     if (ref->ref->kind == MIR_INSTR_DECL_VAR) {
-        if (!ref->ref->is_analyzed) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+        if (IS_NOT_FLAG(ref->ref->flags, MIR_IS_ANALYZED)) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
         struct mir_var *var = ((struct mir_instr_decl_var *)ref->ref)->var;
         BL_ASSERT(var);
         ++var->ref_count;
@@ -5711,7 +5715,7 @@ struct result analyze_instr_decl_direct_ref(struct context *                  ct
         ref->base.value.is_comptime = var->value.is_comptime;
         ref->base.value.addr_mode   = var->is_mutable ? MIR_VAM_LVALUE : MIR_VAM_LVALUE_CONST;
     } else if (ref->ref->kind == MIR_INSTR_FN_PROTO) {
-        if (!ref->ref->is_analyzed) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+        if (IS_NOT_FLAG(ref->ref->flags, MIR_IS_ANALYZED)) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
         struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &ref->ref->value);
         BL_MAGIC_ASSERT(fn);
         BL_ASSERT(fn->type && fn->type == ref->ref->value.type);
@@ -5997,7 +6001,8 @@ struct result analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_gr
     BL_ASSERT(vc);
     for (usize i = 0; i < vc; ++i) {
         struct mir_instr *variant_ref = variants->data[i];
-        if (!variant_ref->is_analyzed) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+        if (IS_NOT_FLAG(variant_ref->flags, MIR_IS_ANALYZED))
+            RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     }
     struct result        result        = ANALYZE_RESULT(PASSED, 0);
     TSmallArray_TypePtr *variant_types = create_sarr(TSmallArray_TypePtr, ctx->assembly);
@@ -6058,7 +6063,7 @@ struct result analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_b
 {
     ZONE();
     BL_ASSERT(br->cond && br->then_block && br->else_block);
-    BL_ASSERT(br->cond->is_analyzed);
+    BL_ASSERT(IS_FLAG(br->cond->flags, MIR_IS_ANALYZED));
     if (analyze_slot(ctx, &analyze_slot_conf_default, &br->cond, ctx->builtin_types->t_bool) !=
         ANALYZE_PASSED) {
         RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
@@ -6195,7 +6200,7 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
 struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_fn *type_fn)
 {
     ZONE();
-    BL_ASSERT(type_fn->ret_type ? type_fn->ret_type->is_analyzed : true);
+    BL_ASSERT(type_fn->ret_type ? IS_FLAG(type_fn->ret_type->flags, MIR_IS_ANALYZED) : true);
 
     bool       is_vargs         = false;
     bool       has_default_args = false;
@@ -6210,7 +6215,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
             struct mir_instr_decl_arg *decl_arg =
                 (struct mir_instr_decl_arg *)type_fn->args->data[i];
             struct mir_arg *arg = decl_arg->arg;
-            if (arg->value && !arg->value->is_analyzed) {
+            if (arg->value && IS_NOT_FLAG(arg->value->flags, MIR_IS_ANALYZED)) {
                 RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
             }
         }
@@ -6491,7 +6496,7 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
         // There is no explicitly defined argument type, but we have default argument value
         // to infer type from.
         BL_ASSERT(arg->value);
-        if (!arg->value->is_analyzed) {
+        if (IS_NOT_FLAG(arg->value->flags, MIR_IS_ANALYZED)) {
             // @PERFORMANCE: WAITING is preferred here, but we don't have ID to wait
             // for.
             RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
@@ -6718,7 +6723,7 @@ struct result analyze_instr_type_array(struct context *ctx, struct mir_instr_typ
 {
     ZONE();
     BL_ASSERT(type_arr->base.value.type);
-    BL_ASSERT(type_arr->elem_type->is_analyzed);
+    BL_ASSERT(IS_FLAG(type_arr->elem_type->flags, MIR_IS_ANALYZED));
 
     if (analyze_slot(ctx, &analyze_slot_conf_default, &type_arr->len, ctx->builtin_types->t_s64) !=
         ANALYZE_PASSED) {
@@ -6918,8 +6923,8 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
     struct mir_instr *lhs = binop->lhs;
     struct mir_instr *rhs = binop->rhs;
     BL_ASSERT(lhs && rhs);
-    BL_ASSERT(lhs->is_analyzed);
-    BL_ASSERT(rhs->is_analyzed);
+    BL_ASSERT(IS_FLAG(lhs->flags, MIR_IS_ANALYZED));
+    BL_ASSERT(IS_FLAG(rhs->flags, MIR_IS_ANALYZED));
     const bool lhs_valid = is_type_valid_for_binop(lhs->value.type, binop->op);
     const bool rhs_valid = is_type_valid_for_binop(rhs->value.type, binop->op);
     if (!(lhs_valid && rhs_valid)) {
@@ -7008,7 +7013,7 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
         RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
     }
 
-    BL_ASSERT(unop->expr && unop->expr->is_analyzed);
+    BL_ASSERT(unop->expr && IS_FLAG(unop->expr->flags, MIR_IS_ANALYZED));
 
     struct mir_type *expr_type = unop->expr->value.type;
     BL_ASSERT(expr_type);
@@ -7088,7 +7093,7 @@ struct result analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
 
     struct mir_instr *value = ret->value;
     if (value) {
-        BL_ASSERT(value->is_analyzed);
+        BL_ASSERT(IS_FLAG(value->flags, MIR_IS_ANALYZED));
     }
 
     const bool expected_ret_value =
@@ -7482,7 +7487,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         if (missing_any) RETURN_ZONE(ANALYZE_RESULT(WAITING, missing_any->hash));
 
         // callee has not been analyzed yet -> postpone call analyze
-        if (!call->callee->is_analyzed) {
+        if (IS_NOT_FLAG(call->callee->flags, MIR_IS_ANALYZED)) {
             BL_ASSERT(call->callee->kind == MIR_INSTR_FN_PROTO);
             struct mir_instr_fn_proto *fn_proto = (struct mir_instr_fn_proto *)call->callee;
             if (!fn_proto->pushed_for_analyze) {
@@ -7625,8 +7630,8 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         struct mir_instr_decl_direct_ref *callee_replacement =
             (struct mir_instr_decl_direct_ref *)mutate_instr(call->callee,
                                                              MIR_INSTR_DECL_DIRECT_REF);
-        callee_replacement->ref              = ref_instr(&instr_replacement_fn_proto->base);
-        callee_replacement->base.is_analyzed = false;
+        callee_replacement->ref = ref_instr(&instr_replacement_fn_proto->base);
+        CLR_FLAG(callee_replacement->base.flags, MIR_IS_ANALYZED);
 
         // We skip analyze of this instruction, newly created polymorph function is not analyzed
         // yet; however we've changed kind of callee instruction, so we have to roll-back in
@@ -7702,7 +7707,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
 
         if (analyze_instr_vargs(ctx, (struct mir_instr_vargs *)vargs).state != ANALYZE_PASSED)
             RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
-        vargs->is_analyzed = true;
+        SET_FLAG(vargs->flags, MIR_IS_ANALYZED);
         // Erase vargs from arguments. @NOTE: function does nothing when array size is equal
         // to callee_argc.
         tsa_resize_InstrPtr(call->args, callee_argc);
@@ -7801,7 +7806,7 @@ struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *s
     ZONE();
     struct mir_instr *dest = store->dest;
     BL_ASSERT(dest);
-    BL_ASSERT(dest->is_analyzed);
+    BL_ASSERT(IS_FLAG(dest->flags, MIR_IS_ANALYZED));
 
     if (!mir_is_pointer_type(dest->value.type)) {
         report_error(
@@ -7843,9 +7848,13 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
         RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
     }
 
-    block->base.is_unreachable = block->base.ref_count == 0;
-    if (!fn->first_unreachable_loc && block->base.is_unreachable && block->entry_instr &&
-        block->entry_instr->node) {
+    if (block->base.ref_count == 0)
+        SET_FLAG(block->base.flags, MIR_IS_UNREACHABLE);
+    else
+        CLR_FLAG(block->base.flags, MIR_IS_UNREACHABLE);
+
+    if (!fn->first_unreachable_loc && IS_FLAG(block->base.flags, MIR_IS_UNREACHABLE) &&
+        block->entry_instr && block->entry_instr->node) {
         // Report unreachable code if there is one only once inside function body.
         fn->first_unreachable_loc = block->entry_instr->node->location;
         TString *poly             = fn->debug_poly_replacement;
@@ -7882,7 +7891,7 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
             BL_ASSERT(fn->exit_block &&
                       "Current function does not have exit block set or even generated!");
             append_instr_br(ctx, block->base.node, fn->exit_block);
-        } else if (block->base.is_unreachable) {
+        } else if (IS_FLAG(block->base.flags, MIR_IS_UNREACHABLE)) {
             set_current_block(ctx, block);
             append_instr_br(ctx, block->base.node, block);
         } else {
@@ -8147,7 +8156,7 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
     if (!instr) RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 
     // skip already analyzed instructions
-    if (instr->is_analyzed) RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
+    if (IS_FLAG(instr->flags, MIR_IS_ANALYZED)) RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
     struct result state = ANALYZE_RESULT(PASSED, 0);
 
     BL_TRACY_MESSAGE("ANALYZE", "[%llu] %s", instr->id, mir_instr_name(instr));
@@ -8302,7 +8311,7 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
     }
     ctx->analyze.last_analyzed_instr = NULL;
     if (state.state == ANALYZE_PASSED) {
-        instr->is_analyzed = true;
+        SET_FLAG(instr->flags, MIR_IS_ANALYZED);
         if (instr->kind == MIR_INSTR_CAST && ((struct mir_instr_cast *)instr)->auto_cast) {
             // An auto cast cannot be directly evaluated because it's destination type
             // could change based on usage.
@@ -8361,7 +8370,7 @@ void analyze(struct context *ctx)
     while (true) {
         prev_ip = ip;
         ip      = skip ? NULL : analyze_try_get_next(ip);
-        if (prev_ip && prev_ip->is_analyzed) {
+        if (prev_ip && IS_FLAG(prev_ip->flags, MIR_IS_ANALYZED)) {
             // Remove unused instructions here!
             erase_instr_tree(prev_ip, false, false);
         }

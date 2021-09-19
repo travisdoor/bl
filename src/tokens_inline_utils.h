@@ -29,8 +29,8 @@
 #ifndef BL_TOKENS_INLINE_UTILS_H
 #define BL_TOKENS_INLINE_UTILS_H
 
-#include <stdarg.h>
 #include "tokens.h"
+#include <stdarg.h>
 
 enum tokens_lookahead_state {
     TOK_LOOK_HIT,
@@ -62,6 +62,11 @@ static INLINE struct token *tokens_peek_nth(struct tokens *tokens, usize n)
 static INLINE struct token *tokens_peek(struct tokens *tokens)
 {
     return tokens_peek_nth(tokens, 1);
+}
+
+static INLINE enum sym tokens_peek_sym(struct tokens *tokens)
+{
+    return tarray_at(struct token, &tokens->buf, tokens->iter).sym;
 }
 
 static INLINE struct token *tokens_peek_2nd(struct tokens *tokens)

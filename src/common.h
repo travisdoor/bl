@@ -88,6 +88,7 @@ struct scope;
 #define IS_FLAG(_v, _flag) ((bool)(((_v) & (_flag)) == (_flag)))
 #define IS_NOT_FLAG(_v, _flag) ((bool)(((_v) & (_flag)) != (_flag)))
 #define SET_FLAG(_v, _flag) ((_v) |= (_flag))
+#define CLR_FLAG(_v, _flag) ((_v) &= ~(_flag))
 
 #define ARRAY_FOREACH(arr, it)                                                                     \
     for (usize _keep = 1, i = 0, _size = TARRAY_SIZE((arr)); _keep && i != _size;                  \
