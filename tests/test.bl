@@ -14,6 +14,7 @@ main :: fn () s32 {
 // - allow static if in global scope
 // - modules should use regular load scripts written in BL executed during import
 // - lazy load/import of sources (during analyze pass)
+// - use static end for all hash tables.
 
 /*
 
