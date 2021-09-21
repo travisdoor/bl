@@ -152,3 +152,14 @@ sort :: fn (list: []?T, cmp: *fn(a: *T, b: *T) bool) {
         }
     }
 }
+
+/// Combine two or more hashes into one, T is expected to be an integer type.
+hash_combine :: fn (first: ?T, second: T, more: ...T) T #inline {
+    #assert(typeinfo(T).kind == TypeKind.Int)
+    result := first ^ (second + (cast(T)0x9e3779b9) + (first << 6) + (first >> 2));
+    loop i := 0; i < more.len; i += 1 {
+        // Just copy paste this again to avoid recursion.
+        result = result ^ (more[i] + (cast(T)0x9e3779b9) + (result << 6) + (result >> 2));
+    }
+    return result;
+}
