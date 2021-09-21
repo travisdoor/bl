@@ -39,6 +39,13 @@
 #define VALIDATE_ITER(_iter)                                                                       \
     assert((_iter) != NULL && ((struct THtblNode *)((_iter)->opaque))->_this == ((_iter)->opaque))
 
+// @Hack we can use this one static end node for all tables until we do not need reverse iteration.
+static struct THtblNode shared_global_end = {
+    .key  = 0,
+    .prev = NULL,
+    .next = NULL,
+};
+
 static inline s32 next_prime(s32 num)
 {
     num++;
@@ -100,14 +107,10 @@ static TIterator erase_node(THashTable *tbl, struct THtblNode *node, struct THtb
 void thtbl_init(THashTable *tbl, usize data_size, usize expected_size)
 {
     tbl->data_size = data_size;
-    tbl->end       = tmalloc(sizeof(struct THtblNode));
+    tbl->end       = &shared_global_end;
 #ifndef NDEBUG
     tbl->end->_this = tbl->end;
 #endif
-    tbl->end->key  = 0;
-    tbl->end->prev = NULL;
-    tbl->end->next = NULL;
-
     tbl->begin = tbl->end;
 
     // init buckets
@@ -123,7 +126,6 @@ void thtbl_terminate(THashTable *tbl)
 {
     thtbl_clear(tbl);
     tfree(tbl->buckets);
-    tfree(tbl->end);
     tbl->size  = 0;
     tbl->begin = NULL;
 }
@@ -283,6 +285,6 @@ void thtbl_clear(THashTable *tbl)
     }
     memset(tbl->buckets, 0, tbl->bucket_count * sizeof(struct THtblBucket));
     tbl->end->prev = NULL;
-    tbl->begin = tbl->end;
-    tbl->size  = 0;
+    tbl->begin     = tbl->end;
+    tbl->size      = 0;
 }
