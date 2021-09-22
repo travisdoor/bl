@@ -2,19 +2,13 @@ main :: fn () s32 {
     return 0;
 }
 
-// 152B
-// 403ms with mutex
-
 // - first_char :: fn (str: string #readonly) u8 {}
 // - #using Enum + use UPPERCASE for variants.
 // - #switch ?
-// - intel/amd/arm intrinsics???
-// - use flat hash table for small scopes for faster lookup? (structs, functions, ...)
 // - polymorph struct types
 // - allow static if in global scope
 // - modules should use regular load scripts written in BL executed during import
 // - lazy load/import of sources (during analyze pass)
-// - use static end for all hash tables.
 
 /*
 
@@ -25,17 +19,4 @@ module :: fn (bin: *Assembly) #module_entry {
         #error "Module does not support current target platform"
     }
 }
-
-
-template <typename... TMore>
-INLINE constexpr uint64 combineHash(const uint64 hash1, const uint64 hash2, TMore&&... moreHashes) {
-    // borrowed from boost::hash_combine
-    const uint64 result = hash1 ^ (hash2 + 0x9e3779b9 + (hash1 << 6) + (hash1 >> 2));
-    if constexpr (sizeof...(TMore) > 0) {
-        return combineHash(result, std::forward<TMore>(moreHashes)...);
-    } else {
-        return result;
-    }
-}
-
 */
