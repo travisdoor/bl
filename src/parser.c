@@ -159,7 +159,7 @@ static struct ast *parse_expr_alignof(struct context *ctx);
 static INLINE bool parse_semicolon(struct context *ctx);
 static INLINE bool parse_semicolon_rq(struct context *ctx);
 static INLINE bool hash_directive_to_flags(enum hash_directive_flags hd, u32 *out_flags);
-static struct ast *parse_expr_call(struct context *ctx, struct ast *prev);
+static struct ast *parse_expr_call(struct context *ctx, struct ast *prev, const bool is_comptime);
 static struct ast *parse_expr_elem(struct context *ctx, struct ast *prev);
 static struct ast *parse_expr_compound(struct context *ctx);
 
@@ -318,7 +318,9 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 #define set_satisfied(_hd)                                                                         \
     {                                                                                              \
         if (satisfied) *satisfied = _hd;                                                           \
-    }
+    }                                                                                              \
+    (void)0
+
     set_satisfied(HD_NONE);
     struct token *tok_hash = tokens_consume_if(ctx->tokens, SYM_HASH);
     if (!tok_hash) RETURN_ZONE(NULL);
@@ -349,19 +351,50 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     const enum hash_directive_flags hd_flag = tatbl_iter_peek_value(u32, lookup, iter);
     BL_ASSERT(directive);
 
+    if (IS_NOT_FLAG(expected_mask, hd_flag)) {
+        PARSE_ERROR(
+            ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
+        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
+    }
+    set_satisfied(hd_flag);
+
     switch (hd_flag) {
     case HD_NONE:
     case HD_STATIC_IF:
-    case HD_COMPTIME:
         BL_ABORT("Invalid directive!");
-    case HD_ERROR: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#error");
-        set_satisfied(HD_ERROR);
-        if (IS_NOT_FLAG(expected_mask, HD_ERROR)) {
-            PARSE_ERROR(
-                ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
+    case HD_TEST_FN:
+    case HD_BUILD_ENTRY:
+    case HD_NO_INIT:
+    case HD_FLAGS:
+    case HD_INLINE:
+    case HD_NO_INLINE:
+    case HD_THREAD_LOCAL:
+    case HD_ENTRY:
+    case HD_EXPORT:
+    case HD_COMPILER: {
+        // only flags
+        return NULL;
+    }
+
+    case HD_COMPTIME: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#comptime");
+        struct ast *ref = parse_expr_ref(ctx);
+        if (!ref) {
+            struct token *tok_err = tokens_peek(ctx->tokens);
+            PARSE_ERROR(ERR_INVALID_EXPR, tok_err, BUILDER_CUR_WORD, "Expected call.");
             RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
         }
+        struct ast *call = parse_expr_call(ctx, ref, true);
+        if (!call) {
+            struct token *tok_err = tokens_peek(ctx->tokens);
+            PARSE_ERROR(ERR_INVALID_EXPR, tok_err, BUILDER_CUR_WORD, "Expected call.");
+            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
+        }
+        RETURN_ZONE(call);
+    }
+
+    case HD_ERROR: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#error");
         struct token *tok_msg = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_msg) {
             struct token *tok_err = tokens_peek(ctx->tokens);
@@ -379,12 +412,6 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 
     case HD_WARNING: {
         BL_TRACY_MESSAGE("HD_FLAG", "#warning");
-        set_satisfied(HD_WARNING);
-        if (IS_NOT_FLAG(expected_mask, HD_WARNING)) {
-            PARSE_ERROR(
-                ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
         struct token *tok_msg = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_msg) {
             struct token *tok_err = tokens_peek(ctx->tokens);
@@ -402,15 +429,6 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 
     case HD_LOAD: {
         BL_TRACY_MESSAGE("HD_FLAG", "#load");
-        set_satisfied(HD_LOAD);
-        if (IS_NOT_FLAG(expected_mask, HD_LOAD)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Load can be used only in global scope.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
         struct token *tok_path = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_path) {
             struct token *tok_err = tokens_peek(ctx->tokens);
@@ -430,15 +448,6 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
 
     case HD_IMPORT: {
-        set_satisfied(HD_IMPORT);
-        if (IS_NOT_FLAG(expected_mask, HD_IMPORT)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Import can be used only in global scope.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
         struct token *tok_path = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_path) {
             struct token *tok_err = tokens_peek(ctx->tokens);
@@ -460,19 +469,13 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 
     case HD_ASSERT: {
         BL_TRACY_MESSAGE("HD_FLAG", "#assert");
-        set_satisfied(HD_ASSERT);
-        if (IS_NOT_FLAG(expected_mask, HD_ASSERT)) {
-            PARSE_ERROR(
-                ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
         BL_ASSERT(tok_directive->sym == SYM_IDENT);
         struct ast *ident =
             ast_create_node(ctx->ast_arena, AST_IDENT, tok_directive, SCOPE_GET(ctx));
         ident->data.ident.id = *BID(STATIC_ASSERT_FN);
         struct ast *ref = ast_create_node(ctx->ast_arena, AST_REF, tok_directive, SCOPE_GET(ctx));
         ref->data.ref.ident = ident;
-        struct ast *call    = parse_expr_call(ctx, ref);
+        struct ast *call    = parse_expr_call(ctx, ref, true);
         if (!call) {
             PARSE_ERROR(ERR_INVALID_DIRECTIVE,
                         tok_directive,
@@ -480,21 +483,11 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
                         "Static assert is supposed to be a function call '#assert(false)'.");
             RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
         }
-        call->data.expr_call.call_in_compile_time = true;
         RETURN_ZONE(call);
     }
 
     case HD_LINK: {
         BL_TRACY_MESSAGE("HD_FLAG", "#link");
-        set_satisfied(HD_LINK);
-        if (IS_NOT_FLAG(expected_mask, HD_LINK)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Link can be used only in global scope.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
         struct token *tok_path = tokens_consume(ctx->tokens);
         if (!token_is(tok_path, SYM_STRING)) {
             PARSE_ERROR(ERR_INVALID_DIRECTIVE,
@@ -516,29 +509,8 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         RETURN_ZONE(link);
     }
 
-    case HD_TEST_FN: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#test");
-        set_satisfied(HD_TEST_FN);
-        if (IS_NOT_FLAG(expected_mask, HD_TEST_FN)) {
-            PARSE_ERROR(
-                ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
-        RETURN_ZONE(NULL);
-    }
-
     case HD_FILE: {
         BL_TRACY_MESSAGE("HD_FLAG", "#file");
-        set_satisfied(HD_FILE);
-        if (IS_NOT_FLAG(expected_mask, HD_FILE)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. File can be used only as an expression.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
         struct ast *file =
             ast_create_node(ctx->ast_arena, AST_EXPR_LIT_STRING, tok_directive, SCOPE_GET(ctx));
         file->data.expr_string.val = tok_directive->location.unit->filepath;
@@ -547,29 +519,11 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 
     case HD_BASE: {
         BL_TRACY_MESSAGE("HD_FLAG", "#line");
-        set_satisfied(HD_BASE);
-        if (IS_NOT_FLAG(expected_mask, HD_BASE)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Base can be used only for structures.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
         RETURN_ZONE(parse_type(ctx));
     }
 
     case HD_TAGS: {
         BL_TRACY_MESSAGE("HD_FLAG", "#tags");
-        set_satisfied(HD_TAGS);
-        if (IS_NOT_FLAG(expected_mask, HD_TAGS)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Tags can be used only for struct members.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
         // Tags can contain one or move references separated by comma
         struct ast *tag;
         bool        rq = false;
@@ -611,104 +565,19 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 
     case HD_LINE: {
         BL_TRACY_MESSAGE("HD_FLAG", "#line");
-        set_satisfied(HD_LINE);
-        if (IS_NOT_FLAG(expected_mask, HD_LINE)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Line can be used only as an expression.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
         struct ast *line =
             ast_create_node(ctx->ast_arena, AST_EXPR_LIT_INT, tok_directive, SCOPE_GET(ctx));
         line->data.expr_integer.val = tok_directive->location.line;
         RETURN_ZONE(line);
     }
 
-    case HD_FLAGS: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#flags");
-        set_satisfied(HD_FLAGS);
-        if (IS_NOT_FLAG(expected_mask, HD_FLAGS)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Flags can be used only for enums.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-        RETURN_ZONE(NULL);
-    }
-
-    case HD_ENTRY: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#entry");
-        set_satisfied(HD_ENTRY);
-        if (IS_NOT_FLAG(expected_mask, HD_ENTRY)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Entry can be used only in context of "
-                        "function literal.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
-        RETURN_ZONE(NULL);
-    }
-
-    case HD_NO_INIT: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#init");
-        set_satisfied(HD_NO_INIT);
-        if (IS_NOT_FLAG(expected_mask, HD_NO_INIT)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Noinit can be used only with "
-                        "uninitialized variables.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
-        RETURN_ZONE(NULL);
-    }
-
-    case HD_BUILD_ENTRY: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#entry");
-        set_satisfied(HD_BUILD_ENTRY);
-        if (IS_NOT_FLAG(expected_mask, HD_BUILD_ENTRY)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Build entry can be used only in context "
-                        "of function literal.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
-        RETURN_ZONE(NULL);
-    }
-
     case HD_CALL_LOC: {
         BL_TRACY_MESSAGE("HD_FLAG", "#call_location");
-        set_satisfied(HD_CALL_LOC);
-        if (IS_NOT_FLAG(expected_mask, HD_CALL_LOC)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Call location can be used only as "
-                        "function argument default value.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
         RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_CALL_LOC, tok_directive, SCOPE_GET(ctx)));
     }
 
     case HD_EXTERN: {
         BL_TRACY_MESSAGE("HD_FLAG", "#extern");
-        set_satisfied(HD_EXTERN);
-        if (IS_NOT_FLAG(expected_mask, HD_EXTERN)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Extern can be used only for external entities.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
         // Extern flag extension could be linkage name as string
         struct token *tok_ext = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_ext) RETURN_ZONE(NULL);
@@ -718,25 +587,8 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         RETURN_ZONE(ext);
     }
 
-    case HD_EXPORT: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#export");
-        set_satisfied(HD_EXPORT);
-        if (IS_NOT_FLAG(expected_mask, HD_EXPORT)) {
-            PARSE_ERROR(
-                ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-        RETURN_ZONE(NULL);
-    }
-
     case HD_INTRINSIC: {
         BL_TRACY_MESSAGE("HD_FLAG", "#intrinsic");
-        set_satisfied(HD_INTRINSIC);
-        if (IS_NOT_FLAG(expected_mask, HD_INTRINSIC)) {
-            PARSE_ERROR(
-                ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
         // Intrinsic flag extension could be linkage name as string
         struct token *tok_ext = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_ext) RETURN_ZONE(NULL);
@@ -746,77 +598,8 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         RETURN_ZONE(ext);
     }
 
-    case HD_COMPILER: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#compiler");
-        set_satisfied(HD_COMPILER);
-        if (IS_NOT_FLAG(expected_mask, HD_COMPILER)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Compiler can be used only for compiler "
-                        "internal entities.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
-        RETURN_ZONE(NULL);
-    }
-
-    case HD_INLINE: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#inline");
-        set_satisfied(HD_INLINE);
-        if (IS_NOT_FLAG(expected_mask, HD_INLINE)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Inline can be used only in context of "
-                        "function literal.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
-        RETURN_ZONE(NULL);
-    }
-
-    case HD_NO_INLINE: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#noinline");
-        set_satisfied(HD_NO_INLINE);
-        if (IS_NOT_FLAG(expected_mask, HD_NO_INLINE)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. No inline can be used only in context of "
-                        "function literal.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
-        RETURN_ZONE(NULL);
-    }
-
-    case HD_THREAD_LOCAL: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#thread_local");
-        set_satisfied(HD_THREAD_LOCAL);
-        if (IS_NOT_FLAG(expected_mask, HD_THREAD_LOCAL)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Thread local can be used only in context of "
-                        "global variables.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
-        RETURN_ZONE(NULL);
-    }
-
     case HD_PRIVATE: {
         BL_TRACY_MESSAGE("HD_FLAG", "#private");
-        set_satisfied(HD_PRIVATE);
-        if (IS_NOT_FLAG(expected_mask, HD_PRIVATE)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Private can be used only in global scope.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
-
         if (ctx->current_private_scope) {
             PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
                         tok_directive,
@@ -849,14 +632,6 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
     case HD_SCOPE: {
         BL_TRACY_MESSAGE("HD_FLAG", "#scope");
-        set_satisfied(HD_SCOPE);
-        if (IS_NOT_FLAG(expected_mask, HD_SCOPE)) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        BUILDER_CUR_WORD,
-                        "Unexpected directive. Scope name can be specified only in global scope.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, SCOPE_GET(ctx)));
-        }
         struct ast *ident = parse_ident(ctx);
         if (!ident) {
             PARSE_ERROR(ERR_INVALID_DIRECTIVE,
@@ -1689,7 +1464,7 @@ struct ast *_parse_expr(struct context *ctx, s32 p)
     struct ast *lhs = parse_expr_atom(ctx);
     struct ast *tmp = NULL;
     do {
-        tmp = parse_expr_call(ctx, lhs);
+        tmp = parse_expr_call(ctx, lhs, false);
         if (!tmp) tmp = parse_expr_elem(ctx, lhs);
         if (!tmp) tmp = parse_ref_nested(ctx, lhs);
         lhs = tmp ? tmp : lhs;
@@ -1723,7 +1498,7 @@ struct ast *parse_expr_primary(struct context *ctx)
         expr = parse_expr_null(ctx);
         break;
     case SYM_HASH:
-        expr = parse_hash_directive(ctx, HD_FILE | HD_LINE, NULL);
+        expr = parse_hash_directive(ctx, HD_FILE | HD_LINE | HD_COMPTIME, NULL);
         break;
     case SYM_FN:
         if ((expr = parse_expr_lit_fn(ctx))) break;
@@ -2701,7 +2476,7 @@ struct ast *parse_decl(struct context *ctx)
     RETURN_ZONE(decl);
 }
 
-struct ast *parse_expr_call(struct context *ctx, struct ast *prev)
+struct ast *parse_expr_call(struct context *ctx, struct ast *prev, const bool is_comptime)
 {
     ZONE();
     if (!prev) RETURN_ZONE(NULL);
@@ -2712,7 +2487,8 @@ struct ast *parse_expr_call(struct context *ctx, struct ast *prev)
     if (location_token && location_token->sym != SYM_IDENT) location_token = tok;
     struct ast *call =
         ast_create_node(ctx->ast_arena, AST_EXPR_CALL, location_token, SCOPE_GET(ctx));
-    call->data.expr_call.ref = prev;
+    call->data.expr_call.ref                  = prev;
+    call->data.expr_call.call_in_compile_time = is_comptime;
     // parse args
     bool        rq = false;
     struct ast *tmp;
@@ -2813,7 +2589,11 @@ NEXT:
         PARSE_WARNING(tok, BUILDER_CUR_WORD, "Extra semicolon can be removed ';'.");
         goto NEXT;
     case SYM_HASH:
-        tmp = parse_hash_directive(ctx, HD_STATIC_IF | HD_ASSERT | HD_ERROR | HD_WARNING, NULL);
+        enum hash_directive_flags satisfied;
+        tmp = parse_hash_directive(
+            ctx, HD_STATIC_IF | HD_ASSERT | HD_ERROR | HD_WARNING | HD_COMPTIME, &satisfied);
+        // This is little bit ugly but probably faster than parsing expressions first.
+        if (AST_IS_OK(tmp) && satisfied == HD_COMPTIME) parse_semicolon_rq(ctx);
         break;
     case SYM_RETURN:
         tmp = parse_stmt_return(ctx);

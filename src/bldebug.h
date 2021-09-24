@@ -35,6 +35,10 @@
 #include <stdlib.h>
 #include <tlib/tlib.h>
 
+#if BL_PLATFORM_LINUX
+#include <signal.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -59,14 +63,18 @@ void print_trace(void);
 
 #if defined(BL_DEBUG) || BL_ASSERT_ENABLE
 // =================================================================================================
-#if BL_COMPILER_MSVC
-#define BL_DEBUG_BREAK __debugbreak()
+static inline void bl_debug_break(void)
+{
+#if BL_PLATFORM_WIN
+    __debugbreak();
 #elif BL_PLATFORM_MACOS
-#define BL_DEBUG_BREAK __builtin_debugtrap()
+    __builtin_debugtrap();
 #else
-#include <signal.h>
-#define BL_DEBUG_BREAK raise(SIGTRAP)
+    raise(SIGTRAP);
 #endif
+}
+
+#define BL_DEBUG_BREAK bl_debug_break()
 
 #define BL_ASSERT(e)                                                                               \
     if (!(e)) {                                                                                    \

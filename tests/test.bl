@@ -1,8 +1,10 @@
-foo :: fn () {
+foo :: fn () s32 {
+    return 10;
 }
 
 main :: fn () s32 {
-    #comptime foo();
+    v :: #comptime foo();
+    print("v [%] = %\n", @typeinfo(v), v);
     return 0;
 }
 
@@ -17,6 +19,8 @@ main :: fn () s32 {
 // - allow static if in global scope
 // - modules should use regular load scripts written in BL executed during import
 // - lazy load/import of sources (during analyze pass)
+// - bigger compile time constants can be eventually converted to static arrays casted to required type
+//   in LLVM?
 
 
 // =================================================================================================

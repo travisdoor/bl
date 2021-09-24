@@ -42,11 +42,6 @@ static void node_dtor(struct ast *node)
     }
 }
 
-static void small_array_dtor(TSmallArrayAny *arr)
-{
-    tsa_terminate(arr);
-}
-
 struct ast *
 ast_create_node(struct arena *arena, enum ast_kind c, struct token *tok, struct scope *parent_scope)
 {

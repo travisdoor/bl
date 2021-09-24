@@ -881,19 +881,19 @@ struct mir_instr_switch {
 };
 
 // public
-static bool mir_is_pointer_type(const struct mir_type *type)
+static INLINE bool mir_is_pointer_type(const struct mir_type *type)
 {
     BL_ASSERT(type);
     return type->kind == MIR_TYPE_PTR;
 }
 
-static struct mir_type *mir_deref_type(const struct mir_type *ptr)
+static INLINE struct mir_type *mir_deref_type(const struct mir_type *ptr)
 {
     if (!mir_is_pointer_type(ptr)) return NULL;
     return ptr->data.ptr.expr;
 }
 
-static bool mir_is_composit_type(const struct mir_type *type)
+static INLINE bool mir_is_composit_type(const struct mir_type *type)
 {
     switch (type->kind) {
     case MIR_TYPE_STRUCT:

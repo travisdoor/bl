@@ -28,7 +28,6 @@
 
 #include "vm.h"
 #include "builder.h"
-#include "mir.h"
 
 #define VM_MAX_ALIGNMENT 8
 #define VERBOSE_EXEC false
@@ -129,9 +128,9 @@
 
 TSMALL_ARRAY_TYPE(ConstExprValue, struct mir_const_expr_value, 32);
 
-//*************/
-//* fwd decls */
-//*************/
+// =================================================================================================
+// fwd decls
+// =================================================================================================
 static void calculate_binop(struct mir_type *dest_type,
                             struct mir_type *src_type,
                             vm_stack_ptr_t   dest,
@@ -218,9 +217,9 @@ static void eval_instr_set_initializer(struct virtual_machine *          vm,
 static void eval_instr_cast(struct virtual_machine *vm, struct mir_instr_cast *cast);
 static void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *cmp);
 
-//***********/
-//* inlines */
-//***********/
+// =================================================================================================
+// Inlines
+// =================================================================================================
 static INLINE bool needs_tmp_alloc(struct mir_const_expr_value *v)
 {
     return v->type->store_size_bytes > sizeof(v->_tmp);
@@ -635,7 +634,7 @@ void calculate_unop(vm_stack_ptr_t dest, vm_stack_ptr_t v, enum unop_kind op, st
         default:                                                                                   \
             BL_UNIMPLEMENTED;                                                                      \
         }                                                                                          \
-    } break;
+    } break
     //*********************************************************************************************/
 
     //*********************************************************************************************/
@@ -654,7 +653,7 @@ void calculate_unop(vm_stack_ptr_t dest, vm_stack_ptr_t v, enum unop_kind op, st
         default:                                                                                   \
             BL_UNIMPLEMENTED;                                                                      \
         }                                                                                          \
-    } break;
+    } break
     //*********************************************************************************************/
 
     const usize s = type->store_size_bytes;
@@ -698,6 +697,7 @@ void calculate_unop(vm_stack_ptr_t dest, vm_stack_ptr_t v, enum unop_kind op, st
         BL_ABORT("invalid unop type");
     }
 #undef UNOP_CASE
+#undef UNOP_CASE_REAL
 }
 
 void print_call_stack(struct virtual_machine *vm, usize max_nesting)
@@ -814,8 +814,8 @@ void dyncall_cb_read_arg(struct virtual_machine       UNUSED(*vm),
 char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result, void *userdata)
 {
     // TODO: External callback can be invoked from different thread. This can cause problems for
-    // now since interpreter is strictly single-threaded, but we must handle such situation in
-    // future.
+    //  now since interpreter is strictly single-threaded, but we must handle such situation in
+    //  future.
     struct dyncall_cb_context *ctx = (struct dyncall_cb_context *)userdata;
     struct mir_fn *            fn  = ctx->fn;
     struct virtual_machine *   vm  = ctx->vm;
@@ -1238,8 +1238,8 @@ bool _execute_fn_top_level(struct virtual_machine *    vm,
     if (pop_return_value) {
         vm_stack_ptr_t ret_ptr = stack_pop(vm, ret_type);
         if (out_ptr) (*out_ptr) = ret_ptr;
-    } else if (is_caller_comptime) {
-        if (out_ptr) (*out_ptr) = (vm_stack_ptr_t)&call->value.data;
+    } else if (is_caller_comptime && out_ptr) {
+        (*out_ptr) = (vm_stack_ptr_t)&call->value.data;
     }
     return true;
 }
@@ -2427,16 +2427,6 @@ void vm_terminate(struct virtual_machine *vm)
     bl_free(vm->stack);
 }
 
-void vm_execute_instr(struct virtual_machine *vm,
-                      struct assembly *       assembly,
-                      struct mir_instr *      instr)
-{
-    ZONE();
-    vm->assembly = assembly;
-    interp_instr(vm, instr);
-    RETURN_ZONE();
-}
-
 bool vm_eval_instr(struct virtual_machine *vm, struct assembly *assembly, struct mir_instr *instr)
 {
     ZONE();
@@ -2523,15 +2513,6 @@ vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, struct mi
     var->rel_stack_ptr = stack_alloc_var(vm, var);
     // @Hack: we can ignore relative pointers for globals.
     return (vm_stack_ptr_t)var->rel_stack_ptr;
-}
-
-vm_stack_ptr_t vm_alloc_const_expr_value(struct virtual_machine       UNUSED(*vm),
-                                         struct assembly              UNUSED(*assembly),
-                                         struct mir_const_expr_value *value)
-{
-    BL_ASSERT(value->is_comptime);
-    BL_ASSERT(value->type);
-    return value->data;
 }
 
 vm_stack_ptr_t

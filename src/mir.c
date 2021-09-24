@@ -28,9 +28,6 @@
 
 #include "mir.h"
 #include "builder.h"
-#include "common.h"
-#include "tokens.h"
-#include "unit.h"
 #include <stdarg.h>
 
 #if BL_DEBUG
@@ -272,8 +269,8 @@ static struct mir_type *lookup_builtin_type(struct context *ctx, enum builtin_id
 static struct mir_fn *  lookup_builtin_fn(struct context *ctx, enum builtin_id_kind kind);
 
 // @HACK: Better way to do this will be enable compiler to have default preload file; we need to
-// make lexing, parsing, MIR generation and analyze of this file first and then process rest of the
-// source base. Then it will be guaranteed that all desired builtins are ready to use.
+//  make lexing, parsing, MIR generation and analyze of this file first and then process rest of the
+//  source base. Then it will be guaranteed that all desired builtins are ready to use.
 
 // Try to complete cached RTTI related types, return NULL if all types are resolved or return ID for
 // first missing type.
@@ -355,8 +352,6 @@ struct mir_type *_create_type_struct_slice(struct context *   ctx,
                                            enum mir_type_kind kind,
                                            struct id *        id,
                                            struct mir_type *  elem_ptr_type);
-struct mir_type *
-create_type_struct_dyarr(struct context *ctx, struct id *id, struct mir_type *elem_ptr_type);
 static void type_init_llvm_int(struct context *ctx, struct mir_type *type);
 static void type_init_llvm_real(struct context *ctx, struct mir_type *type);
 static void type_init_llvm_ptr(struct context *ctx, struct mir_type *type);
@@ -7649,7 +7644,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             BL_ABORT("Function called in compile time must be comptime.");
         // Postpone analyze in case the function is not fully analyzed -> it cannot be executed yet.
         // @Incomplete: In case the function calls internally another function(s), those can be also
-        // "not fully analyzed", we have to check it somehow before evaluation.
+        //  "not fully analyzed", we have to check it somehow before evaluation.
         struct mir_fn *fn = optional_fn_or_group.fn;
         BL_MAGIC_ASSERT(fn);
         if (!fn->is_fully_analyzed) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
