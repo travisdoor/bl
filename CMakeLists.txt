@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.3)
 project(bl VERSION 1.0.0)
 
 # Must use GNUInstallDirs to install libraries into correct locations on all
@@ -211,6 +211,7 @@ add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
 llvm_map_components_to_libnames(LLVM_LIBS core support X86 AArch64 passes)
 
 if(MSVC)
+  add_definitions(-DNOMINMAX)
   target_link_libraries(blc PUBLIC shlwapi DbgHelp)
 
   # C

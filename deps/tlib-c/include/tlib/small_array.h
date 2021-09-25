@@ -54,7 +54,7 @@ typedef struct TSmallArrayAny {
         T      tmp[S];                                                                             \
     } TSmallArray_##N;                                                                             \
                                                                                                    \
-    static inline void tsa_resize_##N(TSmallArray_##N *arr, size_t desired_size)                   \
+    static TINLINE void tsa_resize_##N(TSmallArray_##N *arr, size_t desired_size)                  \
     {                                                                                              \
         if (desired_size <= S) goto SETUP;                                                         \
         if (desired_size <= arr->allocated) goto SETUP;                                            \
@@ -76,7 +76,7 @@ typedef struct TSmallArrayAny {
         arr->size = desired_size;                                                                  \
     }                                                                                              \
                                                                                                    \
-    static inline T *tsa_push_empty_##N(TSmallArray_##N *arr)                                      \
+    static TINLINE T *tsa_push_empty_##N(TSmallArray_##N *arr)                                     \
     {                                                                                              \
         const bool on_heap = arr->allocated;                                                       \
         if (!on_heap && arr->size == S) {                                                          \
@@ -95,18 +95,18 @@ typedef struct TSmallArrayAny {
         return &arr->data[arr->size++];                                                            \
     }                                                                                              \
                                                                                                    \
-    static inline void tsa_push_##N(TSmallArray_##N *arr, T v)                                     \
+    static TINLINE void tsa_push_##N(TSmallArray_##N *arr, T v)                                    \
     {                                                                                              \
         T *dest = tsa_push_empty_##N(arr);                                                         \
         memcpy(dest, &v, sizeof(T));                                                               \
     }                                                                                              \
                                                                                                    \
-    static inline T tsa_pop_##N(TSmallArray_##N *arr)                                              \
+    static TINLINE T tsa_pop_##N(TSmallArray_##N *arr)                                             \
     {                                                                                              \
         return arr->data[--arr->size];                                                             \
     }                                                                                              \
                                                                                                    \
-    static inline T tsa_last_##N(TSmallArray_##N *arr)                                             \
+    static TINLINE T tsa_last_##N(TSmallArray_##N *arr)                                            \
     {                                                                                              \
         if (!arr->size) TABORT("Cannot get last element from empty array.");                       \
         return arr->data[arr->size - 1];                                                           \
@@ -114,7 +114,7 @@ typedef struct TSmallArrayAny {
 
 /* Initialize small array. */
 #define tsa_init(Arr) _tsa_init((TSmallArrayAny *)(Arr))
-static inline void _tsa_init(TSmallArrayAny *arr)
+static TINLINE void _tsa_init(TSmallArrayAny *arr)
 {
     arr->data      = &arr->tmp[0];
     arr->allocated = 0;
@@ -123,7 +123,7 @@ static inline void _tsa_init(TSmallArrayAny *arr)
 
 /* Initialize terminate small array. */
 #define tsa_terminate(Arr) _tsa_terminate((TSmallArrayAny *)(Arr))
-static inline void _tsa_terminate(TSmallArrayAny *arr)
+static TINLINE void _tsa_terminate(TSmallArrayAny *arr)
 {
     if (arr->allocated > 0) {
         free(arr->data);

@@ -48,12 +48,13 @@
         fprintf(stderr, (_msg), ##__VA_ARGS__);                                                    \
         abort();                                                                                   \
     }
-
-#ifdef _MSC_VER
-#define TAPI __declspec(dllexport)
-#pragma warning(disable : 4706)
-#else
+#if defined(__clang__) || defined(__GNUC__)
 #define TAPI __attribute__((__visibility__("default")))
+#define TINLINE __attribute__((always_inline, unused))
+#else
+#pragma warning(disable : 4706)
+#define TAPI __declspec(dllexport)
+#define TINLINE __forceinline
 #endif
 
 // Common tlib types.

@@ -32,7 +32,7 @@
 #include <stdarg.h>
 #include <time.h>
 
-#if !BL_COMPILER_MSVC
+#if !BL_PLATFORM_WIN
 #include "unistd.h"
 #include <sys/stat.h>
 #endif
@@ -48,6 +48,7 @@
 #endif
 
 #if BL_PLATFORM_WIN
+#include <shlwapi.h>
 #include <windows.h>
 #endif
 

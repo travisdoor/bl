@@ -3,7 +3,7 @@
  Package: dyncall
  Library: dynload
  File: dynload/dynload_syms_pe.c
- Description: 
+ Description:
  License:
 
    Copyright (c) 2007-2018 Daniel Adler <dadler@uni-goettingen.de>,
@@ -24,101 +24,89 @@
 
 */
 
-
-
 #include "dynload.h"
 #include "dynload_alloc.h"
 
 #include <windows.h>
 
-struct DLSyms_
-{
-  DLLib*                pLib;
-  const char*           pBase;
-  const DWORD*          pNames;
-  const DWORD*          pFuncs;
-  const unsigned short* pOrds;
-  size_t                count;
+struct DLSyms_ {
+    DLLib *               pLib;
+    const char *          pBase;
+    const DWORD *         pNames;
+    const DWORD *         pFuncs;
+    const unsigned short *pOrds;
+    size_t                count;
 };
 
-
-DLSyms* dlSymsInit(const char* libPath)
+DLSyms *dlSymsInit(const char *libPath)
 {
-  DLLib*                  pLib;
-  DLSyms*                 pSyms;
-  IMAGE_DOS_HEADER*       pDOSHeader;
-  IMAGE_NT_HEADERS*       pNTHeader;
-  IMAGE_DATA_DIRECTORY*   pExportsDataDir;
-  IMAGE_EXPORT_DIRECTORY* pExports;
-  const char*             base;
+    DLLib *                 pLib;
+    DLSyms *                pSyms;
+    IMAGE_DOS_HEADER *      pDOSHeader;
+    IMAGE_NT_HEADERS *      pNTHeader;
+    IMAGE_DATA_DIRECTORY *  pExportsDataDir;
+    IMAGE_EXPORT_DIRECTORY *pExports;
+    const char *            base;
 
-  pLib = dlLoadLibrary(libPath);
-  if(!pLib)
-    return NULL;
+    pLib = dlLoadLibrary(libPath);
+    if (!pLib) return NULL;
 
-  base            = (const char*)pLib;
-  pDOSHeader      = (IMAGE_DOS_HEADER*)base;
-  pNTHeader       = (IMAGE_NT_HEADERS*)(base + pDOSHeader->e_lfanew);
+    base       = (const char *)pLib;
+    pDOSHeader = (IMAGE_DOS_HEADER *)base;
+    pNTHeader  = (IMAGE_NT_HEADERS *)(base + pDOSHeader->e_lfanew);
 
-  /* optional header present and big enough? this header should exist as it's only optional for object files */
-  if(pNTHeader->FileHeader.SizeOfOptionalHeader < (&pNTHeader->OptionalHeader.DataDirectory - &pNTHeader->OptionalHeader))
-      return NULL;
+    /* optional header present and big enough? this header should exist as it's only optional for
+     * object files */
+    if (pNTHeader->FileHeader.SizeOfOptionalHeader <
+        ((intptr_t *)&pNTHeader->OptionalHeader.DataDirectory - (intptr_t *)&pNTHeader->OptionalHeader))
+        return NULL;
 
-  /* export table available? */
-  if(pNTHeader->OptionalHeader.NumberOfRvaAndSizes <= IMAGE_DIRECTORY_ENTRY_EXPORT)
-      return NULL;
+    /* export table available? */
+    if (pNTHeader->OptionalHeader.NumberOfRvaAndSizes <= IMAGE_DIRECTORY_ENTRY_EXPORT) return NULL;
 
-  pExportsDataDir = &pNTHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
-  if(!pExportsDataDir->VirtualAddress)
-    return NULL;
+    pExportsDataDir = &pNTHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+    if (!pExportsDataDir->VirtualAddress) return NULL;
 
-  pExports        = (IMAGE_EXPORT_DIRECTORY*)(base + pExportsDataDir->VirtualAddress);
+    pExports = (IMAGE_EXPORT_DIRECTORY *)(base + pExportsDataDir->VirtualAddress);
 
-  pSyms         = (DLSyms*)dlAllocMem(sizeof(DLSyms));
-  pSyms->pBase  = base;
-  pSyms->pNames = (DWORD*)(base + pExports->AddressOfNames);
-  pSyms->pFuncs = (DWORD*)(base + pExports->AddressOfFunctions);
-  pSyms->pOrds  = (unsigned short*)(base + pExports->AddressOfNameOrdinals);
-  pSyms->count  = (size_t)pExports->NumberOfNames;
-  pSyms->pLib   = pLib;
+    pSyms         = (DLSyms *)dlAllocMem(sizeof(DLSyms));
+    pSyms->pBase  = base;
+    pSyms->pNames = (DWORD *)(base + pExports->AddressOfNames);
+    pSyms->pFuncs = (DWORD *)(base + pExports->AddressOfFunctions);
+    pSyms->pOrds  = (unsigned short *)(base + pExports->AddressOfNameOrdinals);
+    pSyms->count  = (size_t)pExports->NumberOfNames;
+    pSyms->pLib   = pLib;
 
-  return pSyms;
+    return pSyms;
 }
 
-
-void dlSymsCleanup(DLSyms* pSyms)
+void dlSymsCleanup(DLSyms *pSyms)
 {
-  if(pSyms) {
-    dlFreeLibrary(pSyms->pLib);
-    dlFreeMem(pSyms);
-  }
+    if (pSyms) {
+        dlFreeLibrary(pSyms->pLib);
+        dlFreeMem(pSyms);
+    }
 }
 
-
-int dlSymsCount(DLSyms* pSyms)
+int dlSymsCount(DLSyms *pSyms)
 {
     return pSyms ? (int)pSyms->count : 0;
 }
 
-
-const char* dlSymsName(DLSyms* pSyms, int index)
+const char *dlSymsName(DLSyms *pSyms, int index)
 {
-  if(!pSyms || index < 0 || index >= pSyms->count)
+    if (!pSyms || index < 0 || index >= pSyms->count) return NULL;
+    return pSyms->pBase + pSyms->pNames[index];
+}
+
+const char *dlSymsNameFromValue(DLSyms *pSyms, void *value)
+{
+    int i, c = dlSymsCount(pSyms);
+    for (i = 0; i < c; ++i) {
+        if ((void *)(pSyms->pBase + pSyms->pFuncs[pSyms->pOrds[i]]) == value)
+            return dlSymsName(pSyms, i);
+    }
+
+    /* Not found. */
     return NULL;
-  return pSyms->pBase + pSyms->pNames[index];
 }
-
-
-const char* dlSymsNameFromValue(DLSyms* pSyms, void* value)
-{
-  int i, c=dlSymsCount(pSyms);
-  for(i=0; i<c; ++i)
-  {
-    if((void*)(pSyms->pBase + pSyms->pFuncs[pSyms->pOrds[i]]) == value)
-      return dlSymsName(pSyms, i);
-  }
-
-  /* Not found. */
-  return NULL;
-}
-

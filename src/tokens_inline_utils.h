@@ -166,7 +166,7 @@ static INLINE struct token *tokens_consume_if(struct tokens *tokens, enum sym sy
     return token;
 }
 
-static bool tokens_is_seq(struct tokens *tokens, usize argc, ...)
+static INLINE bool tokens_is_seq(struct tokens *tokens, usize argc, ...)
 {
     bool     ret = true;
     usize    c   = tokens->buf.size;
@@ -188,7 +188,7 @@ static bool tokens_is_seq(struct tokens *tokens, usize argc, ...)
     return ret;
 }
 
-static bool tokens_lookahead_till(struct tokens *tokens, enum sym lookup, enum sym terminal)
+static INLINE bool tokens_lookahead_till(struct tokens *tokens, enum sym lookup, enum sym terminal)
 {
     bool  found  = false;
     usize marker = tokens_get_marker(tokens);
@@ -204,7 +204,7 @@ static bool tokens_lookahead_till(struct tokens *tokens, enum sym lookup, enum s
     return found;
 }
 
-static bool tokens_lookahead(struct tokens *tokens, token_cmp_func_t cmp)
+static INLINE bool tokens_lookahead(struct tokens *tokens, token_cmp_func_t cmp)
 {
     BL_ASSERT(cmp);
     bool                        found  = false;

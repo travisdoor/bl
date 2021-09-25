@@ -103,8 +103,6 @@ static void print_decl_arg(struct ast *arg, s32 pad, FILE *stream);
 static void print_decl_member(struct ast *member, s32 pad, FILE *stream);
 static void print_decl_variant(struct ast *variant, s32 pad, FILE *stream);
 static void print_bad(struct ast *bad, s32 pad, FILE *stream);
-static void print_expr_line(struct ast *line, s32 pad, FILE *stream);
-static void print_expr_file(struct ast *file, s32 pad, FILE *stream);
 static void print_expr_unary(struct ast *unary, s32 pad, FILE *stream);
 static void print_expr_cast(struct ast *cast, s32 pad, FILE *stream);
 static void print_expr_addrof(struct ast *addrof, s32 pad, FILE *stream);
@@ -384,16 +382,6 @@ void print_expr_cast(struct ast *cast, s32 pad, FILE *stream)
         print_node(cast->data.expr_cast.type, pad + 1, stream);
     }
     print_node(cast->data.expr_cast.next, pad + 1, stream);
-}
-
-void print_expr_line(struct ast *line, s32 pad, FILE *stream)
-{
-    print_head(line, pad, stream);
-}
-
-void print_expr_file(struct ast *file, s32 pad, FILE *stream)
-{
-    print_head(file, pad, stream);
 }
 
 void print_expr_unary(struct ast *unary, s32 pad, FILE *stream)
