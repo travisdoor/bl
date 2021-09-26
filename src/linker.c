@@ -27,12 +27,6 @@
 // =================================================================================================
 
 #include "builder.h"
-#include "common.h"
-#include "error.h"
-
-#if BL_PLATFORM_WIN
-#include <windows.h>
-#endif
 
 #define link_error(code, tok, pos, format, ...)                                                    \
     {                                                                                              \

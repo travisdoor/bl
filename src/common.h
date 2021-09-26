@@ -34,6 +34,7 @@
 #include "blmemory.h"
 #include "config.h"
 #include "error.h"
+#include "math.h"
 #include <limits.h>
 #include <stddef.h>
 #include <time.h>
@@ -41,6 +42,11 @@
 
 struct assembly;
 struct scope;
+
+#if BL_PLATFORM_WIN
+#include <shlwapi.h>
+#define PATH_MAX MAX_PATH
+#endif
 
 // =================================================================================================
 // Clang and gcc

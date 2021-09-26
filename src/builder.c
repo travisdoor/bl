@@ -26,23 +26,14 @@
 // SOFTWARE.
 // =================================================================================================
 
-#include <stdarg.h>
-#include <time.h>
-
-#include "assembly.h"
 #include "builder.h"
-#include "common.h"
-#include "tokens.h"
-#include "unit.h"
+#include <stdarg.h>
 
 #if BL_PLATFORM_WIN
 #include "winpthreads.h"
-#include <windows.h>
-#define sleep_ms(ms) Sleep(ms)
 #else
 #include <pthread.h>
 #include <unistd.h>
-#define sleep_ms(ms) usleep(ms * 1000)
 #endif
 
 #define MAX_ERROR_REPORTED 10

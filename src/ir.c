@@ -28,14 +28,7 @@
 
 #include "assembly.h"
 #include "builder.h"
-#include "common.h"
-#include "llvm_api.h"
 #include "llvm_di.h"
-#include "mir.h"
-#include "unit.h"
-
-// CLANUP: not the best solution!!!
-#define ABORT_FN_NAME "__abort"
 
 #if BL_DEBUG
 #define NAMED_VARS true
@@ -2984,7 +2977,8 @@ State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
 State emit_instr(struct context *ctx, struct mir_instr *instr)
 {
     State state = STATE_PASSED;
-    BL_ASSERT(IS_FLAG(instr->flags, MIR_IS_ANALYZED) && "Attempt to emit not-analyzed instruction!");
+    BL_ASSERT(IS_FLAG(instr->flags, MIR_IS_ANALYZED) &&
+              "Attempt to emit not-analyzed instruction!");
     if (!mir_type_has_llvm_representation((instr->value.type))) return state;
     switch (instr->kind) {
     case MIR_INSTR_INVALID:

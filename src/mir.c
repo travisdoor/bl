@@ -352,17 +352,17 @@ struct mir_type *_create_type_struct_slice(struct context *   ctx,
                                            enum mir_type_kind kind,
                                            struct id *        id,
                                            struct mir_type *  elem_ptr_type);
-static void type_init_llvm_int(struct context *ctx, struct mir_type *type);
-static void type_init_llvm_real(struct context *ctx, struct mir_type *type);
-static void type_init_llvm_ptr(struct context *ctx, struct mir_type *type);
-static void type_init_llvm_null(struct context *ctx, struct mir_type *type);
-static void type_init_llvm_void(struct context *ctx, struct mir_type *type);
-static void type_init_llvm_bool(struct context *ctx, struct mir_type *type);
-static void type_init_llvm_fn(struct context *ctx, struct mir_type *type);
-static void type_init_llvm_array(struct context *ctx, struct mir_type *type);
-static void type_init_llvm_struct(struct context *ctx, struct mir_type *type);
-static void type_init_llvm_enum(struct context *ctx, struct mir_type *type);
-static void type_init_llvm_dummy(struct context *ctx, struct mir_type *type);
+static void      type_init_llvm_int(struct context *ctx, struct mir_type *type);
+static void      type_init_llvm_real(struct context *ctx, struct mir_type *type);
+static void      type_init_llvm_ptr(struct context *ctx, struct mir_type *type);
+static void      type_init_llvm_null(struct context *ctx, struct mir_type *type);
+static void      type_init_llvm_void(struct context *ctx, struct mir_type *type);
+static void      type_init_llvm_bool(struct context *ctx, struct mir_type *type);
+static void      type_init_llvm_fn(struct context *ctx, struct mir_type *type);
+static void      type_init_llvm_array(struct context *ctx, struct mir_type *type);
+static void      type_init_llvm_struct(struct context *ctx, struct mir_type *type);
+static void      type_init_llvm_enum(struct context *ctx, struct mir_type *type);
+static void      type_init_llvm_dummy(struct context *ctx, struct mir_type *type);
 
 static struct mir_var *create_var(struct context *     ctx,
                                   struct ast *         decl_node,
@@ -4492,7 +4492,7 @@ bool evaluate(struct context *ctx, struct mir_instr *instr)
         // supposed to be called in compile time, otherwise we leave it as it is.
         struct mir_instr_call *call = (struct mir_instr_call *)instr;
         if (!call->call_in_compile_time) return true;
-        if (!vm_execute_instr_top_level_call(ctx->vm, ctx->assembly, call)) return false;
+        if (!vm_execute_comptime_call(ctx->vm, ctx->assembly, call)) return false;
         break;
     }
     case MIR_INSTR_PHI: {
@@ -4564,8 +4564,7 @@ struct result analyze_resolve_type(struct context *  ctx,
         *out_type = resolved_type;
         return ANALYZE_RESULT(PASSED, 0);
     }
-    if (vm_execute_instr_top_level_call(
-            ctx->vm, ctx->assembly, (struct mir_instr_call *)resolver_call)) {
+    if (vm_execute_comptime_call(ctx->vm, ctx->assembly, (struct mir_instr_call *)resolver_call)) {
         resolved_type = MIR_CEV_READ_AS(struct mir_type *, &resolver_call->value);
         BL_MAGIC_ASSERT(resolved_type);
         *out_type = resolved_type;

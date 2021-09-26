@@ -28,7 +28,6 @@
 
 #include "bldebug.h"
 #include "builder.h"
-#include "error.h"
 #include "mir_printer.h"
 
 static void print_header(const char *name, const char *filename, FILE *stream)

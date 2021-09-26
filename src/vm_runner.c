@@ -28,8 +28,6 @@
 
 #include "bldebug.h"
 #include "builder.h"
-#include "error.h"
-#include "vm.h"
 
 #define TEXT_LINE "--------------------------------------------------------------------------------"
 

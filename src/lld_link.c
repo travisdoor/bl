@@ -28,7 +28,6 @@
 
 #include "assembly.h"
 #include "builder.h"
-#include "config.h"
 
 // Wrapper for lld.exe on Windows platform.
 

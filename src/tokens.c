@@ -27,7 +27,6 @@
 // =================================================================================================
 
 #include "tokens.h"
-#include "common.h"
 
 char *sym_strings[] = {
 #define sm(tok, str, len) str,

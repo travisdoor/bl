@@ -28,7 +28,6 @@
 
 #include "bldebug.h"
 #include "builder.h"
-#include "error.h"
 #include <string.h>
 
 void bc_writer_run(struct assembly *assembly)

@@ -28,7 +28,6 @@
 
 #include "assembly.h"
 #include "builder.h"
-#include "config.h"
 
 #if BL_PLATFORM_MACOS
 #define SHARED_EXT "dylib"

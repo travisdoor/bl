@@ -29,7 +29,6 @@
 #include "arena.h"
 #if BL_PLATFORM_WIN
 #include "winpthreads.h"
-#include <windows.h>
 #else
 #include <pthread.h>
 #endif

@@ -30,6 +30,7 @@
 #define BL_SCOPE_H
 
 #include "arena.h"
+#include "common.h"
 #include "llvm_api.h"
 
 struct location;
@@ -94,7 +95,7 @@ struct scope_layer {
 };
 
 // In most cases we need only one scope layer so we use small array as workaround here.
-TSMALL_ARRAY_TYPE(ScopeLayer, struct scope_layer, 1);
+TSMALL_ARRAY_TYPE(ScopeLayer, struct scope_layer, 1)
 
 struct scope {
     enum scope_kind         kind;

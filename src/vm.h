@@ -73,9 +73,9 @@ struct virtual_machine {
 void vm_init(struct virtual_machine *vm, usize stack_size);
 void vm_terminate(struct virtual_machine *vm);
 bool vm_eval_instr(struct virtual_machine *vm, struct assembly *assembly, struct mir_instr *instr);
-bool vm_execute_instr_top_level_call(struct virtual_machine *vm,
-                                     struct assembly *       assembly,
-                                     struct mir_instr_call * call);
+bool vm_execute_comptime_call(struct virtual_machine *vm,
+                              struct assembly *       assembly,
+                              struct mir_instr_call * call);
 bool vm_execute_fn(struct virtual_machine *vm,
                    struct assembly *       assembly,
                    struct mir_fn *         fn,

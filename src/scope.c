@@ -27,13 +27,8 @@
 // =================================================================================================
 
 #include "scope.h"
-#include "arena.h"
-#include "common.h"
-#include "unit.h"
-
 #if BL_PLATFORM_WIN
 #include "winpthreads.h"
-#include <windows.h>
 #else
 #include <pthread.h>
 #endif

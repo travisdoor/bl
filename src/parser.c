@@ -27,7 +27,6 @@
 // =================================================================================================
 
 #include "builder.h"
-#include "common.h"
 #include "tokens_inline_utils.h"
 #include <setjmp.h>
 

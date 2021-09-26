@@ -28,8 +28,6 @@
 
 #include "bldebug.h"
 #include "builder.h"
-#include "error.h"
-#include "llvm_api.h"
 
 void ir_opt_run(struct assembly *assembly)
 {

@@ -31,19 +31,16 @@
 
 _SHUT_UP_BEGIN
 #include <llvm/ADT/StringSwitch.h>
-#include <llvm/Config/llvm-config.h>
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Intrinsics.h>
-#include <llvm/IR/Type.h>
 _SHUT_UP_END
 
 #define CAST(T) reinterpret_cast<T>
 
 using namespace llvm;
 
-#define GET_ATTR_KIND_FROM_NAME
 #include "llvm/IR/Attributes.inc"
 
 LLVMAttributeKind llvm_get_attribute_kind(const char *name)

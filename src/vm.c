@@ -30,9 +30,8 @@
 #include "builder.h"
 
 #define VM_MAX_ALIGNMENT 8
-#define VERBOSE_EXEC false
+#define VERBOSE_EXEC true
 #define CHCK_STACK (BL_DEBUG || BL_ASSERT_ENABLE)
-#define PTR_SIZE sizeof(void *) // HACK: can cause problems with different build targets.
 
 // Debug helpers
 #if BL_DEBUG && VERBOSE_EXEC
@@ -153,8 +152,6 @@ static const char *dyncall_generate_signature(struct virtual_machine *vm, struct
 static DCCallback *dyncall_fetch_callback(struct virtual_machine *vm, struct mir_fn *fn);
 static void
 dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct mir_type *type);
-static bool
-execute_fn_top_level(struct virtual_machine *vm, struct mir_instr *call, vm_stack_ptr_t *out_ptr);
 static bool execute_fn_impl_top_level(struct virtual_machine *    vm,
                                       struct mir_fn *             fn,
                                       TSmallArray_ConstExprValue *args,
@@ -166,6 +163,7 @@ static bool _execute_fn_top_level(struct virtual_machine *    vm,
                                   TSmallArray_ConstExprValue *arg_values, // Optional
                                   vm_stack_ptr_t *            out_ptr     // Optional
 );
+static bool execute_function(struct virtual_machine *vm, struct mir_fn *fn);
 
 static void interp_instr(struct virtual_machine *vm, struct mir_instr *instr);
 static void
@@ -225,7 +223,7 @@ static INLINE bool needs_tmp_alloc(struct mir_const_expr_value *v)
     return v->type->store_size_bytes > sizeof(v->_tmp);
 }
 
-static INLINE struct mir_fn *get_callee(struct mir_instr_call *call)
+static INLINE struct mir_fn *get_callee(const struct mir_instr_call *call)
 {
     struct mir_const_expr_value *val = &call->callee->value;
     BL_ASSERT(val->type && val->type->kind == MIR_TYPE_FN);
@@ -1168,14 +1166,6 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mi
     }
 }
 
-bool execute_fn_top_level(struct virtual_machine *vm,
-                          struct mir_instr *      call,
-                          vm_stack_ptr_t *        out_ptr)
-{
-    return _execute_fn_top_level(
-        vm, get_callee((struct mir_instr_call *)call), call, NULL, out_ptr);
-}
-
 bool execute_fn_impl_top_level(struct virtual_machine *    vm,
                                struct mir_fn *             fn,
                                TSmallArray_ConstExprValue *args,
@@ -1184,6 +1174,36 @@ bool execute_fn_impl_top_level(struct virtual_machine *    vm,
     return _execute_fn_top_level(vm, fn, NULL, args, out_ptr);
 }
 
+// Expects all arguments already on stack.
+// Return value can be eventually pushed on the stack after execution.
+bool execute_function(struct virtual_machine *vm, struct mir_fn *fn)
+{
+    struct mir_instr *      fn_entry_instr    = fn->first_block->entry_instr;
+    const struct mir_instr *fn_terminal_instr = &fn->terminal_instr->base;
+    // push terminal frame on stack
+    push_ra(vm, NULL);
+    // allocate local variables
+    stack_alloc_local_vars(vm, fn);
+    // setup entry instruction
+    set_pc(vm, fn_entry_instr);
+    // iterate over entry block of executable
+    struct mir_instr *instr, *prev;
+    while (true) {
+        instr = get_pc(vm);
+        prev  = instr;
+        if (!instr || vm->stack->aborted) break;
+        interp_instr(vm, instr);
+        // When we reach terminal instruction of this function, we must stop the execution,
+        // otherwise when the interpreted call lives in scope of other function, interpreter will
+        // continue with execution.
+        if (instr == fn_terminal_instr) break;
+        // Stack head can be changed by br instructions.
+        if (!get_pc(vm) || get_pc(vm) == prev) set_pc(vm, instr->next);
+    }
+    return !vm->stack->aborted;
+}
+
+// @Cleanup: split into two functions (one for call using instr call and one for direct calls?)
 bool _execute_fn_top_level(struct virtual_machine *    vm,
                            struct mir_fn *             fn,
                            struct mir_instr *          call,
@@ -1872,6 +1892,7 @@ void interp_instr_store(struct virtual_machine *vm, struct mir_instr_store *stor
 
 void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
 {
+    // Call instruction expects all arguments already pushed on the stack in reverse order.
     BL_ASSERT(call->callee && call->base.value.type);
     BL_ASSERT(call->callee->value.type);
 
@@ -1883,85 +1904,65 @@ void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
         BL_ASSERT(mir_deref_type(call->callee->value.type)->kind == MIR_TYPE_FN);
     }
 
-    struct mir_fn *callee = (struct mir_fn *)vm_read_ptr(callee_ptr_type, callee_ptr);
-    BL_MAGIC_ASSERT(callee);
-    BL_ASSERT(callee->is_fully_analyzed &&
-              "Functions called in compile time must be fully analyzed!");
-    if (callee == NULL) {
+    struct mir_fn *fn = (struct mir_fn *)vm_read_ptr(callee_ptr_type, callee_ptr);
+    BL_MAGIC_ASSERT(fn);
+    BL_ASSERT(fn->is_fully_analyzed && "Functions called in compile time must be fully analyzed!");
+    if (!fn) {
         builder_error("Function pointer not set!");
         exec_abort(vm, 0);
         return;
     }
-    BL_ASSERT(callee->type);
-    if (IS_FLAG(callee->flags, FLAG_EXTERN) || IS_FLAG(callee->flags, FLAG_INTRINSIC)) {
-        interp_extern_call(vm, callee, call);
+    BL_ASSERT(fn->type);
+    if (IS_FLAG(fn->flags, FLAG_EXTERN) || IS_FLAG(fn->flags, FLAG_INTRINSIC)) {
+        interp_extern_call(vm, fn, call);
     } else {
-        // Push current frame stack top. (Later poped by ret instruction)
+        // Push current frame stack top. (Later popped by ret instruction)
         push_ra(vm, &call->base);
-        BL_ASSERT(callee->first_block->entry_instr);
-        stack_alloc_local_vars(vm, callee);
+        BL_ASSERT(fn->first_block->entry_instr);
+        stack_alloc_local_vars(vm, fn);
         // setup entry instruction
-        set_pc(vm, callee->first_block->entry_instr);
+        set_pc(vm, fn->first_block->entry_instr);
     }
+
+    // Cleanup args.
+    TSmallArray_InstrPtr *arg_values = call->args;
+    if (arg_values) {
+        struct mir_instr *arg_value;
+        TSA_FOREACH(arg_values, arg_value)
+        {
+            if (mir_is_comptime(arg_value)) continue;
+            stack_pop(vm, arg_value->value.type);
+        }
+    }
+
+    // Cleanup return value if it's not used!
+    struct mir_type *ret_type = fn->type->data.fn.ret_type;
+    const bool       is_used  = call->base.ref_count > 0;
+    if (ret_type->kind != MIR_TYPE_VOID && !is_used) {
+        stack_pop(vm, ret_type);
+    }
+    // @Incomplete: handle comptime calls.
+    BL_UNREACHABLE;
 }
 
 void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret)
 {
     struct mir_fn *fn = ret->base.owner_block->owner_fn;
     BL_ASSERT(fn);
-
-    // read callee from frame stack
-    struct mir_instr_call *caller       = (struct mir_instr_call *)get_ra(vm)->caller;
-    struct mir_type *      ret_type     = fn->type->data.fn.ret_type;
-    vm_stack_ptr_t         ret_data_ptr = NULL;
-
+    struct mir_type *ret_type     = fn->type->data.fn.ret_type;
+    vm_stack_ptr_t   ret_data_ptr = NULL;
     // pop return value from stack
     if (ret->value) {
+        BL_ASSERT(ret_type->kind != MIR_TYPE_VOID && "Void return cannot have specified value.");
         ret_data_ptr = fetch_value(vm, &ret->value->value);
         BL_ASSERT(ret_data_ptr);
-
-        if (caller ? caller->base.ref_count == 1 : false) ret_data_ptr = NULL;
     }
 
     // do frame stack rollback
     struct mir_instr *pc = (struct mir_instr *)pop_ra(vm);
 
-    // clean up all arguments from the stack
-    if (caller) {
-        TSmallArray_InstrPtr *arg_values = caller->args;
-        if (arg_values) {
-            struct mir_instr *arg_value;
-            TSA_FOREACH(arg_values, arg_value)
-            {
-                if (mir_is_comptime(arg_value)) continue;
-                stack_pop(vm, arg_value->value.type);
-            }
-        }
-    } else {
-        // When caller was not specified we expect all arguments to be pushed on the
-        // stack so we must clear them all. Remember they were pushed in reverse
-        // order, so now we have to pop them in order they are defined.
-        TSmallArray_ArgPtr *args = fn->type->data.fn.args;
-        if (args) {
-            struct mir_arg *arg;
-            TSA_FOREACH(args, arg)
-            {
-                stack_pop(vm, arg->type);
-            }
-        }
-    }
-
     // push return value on the stack if there is one
-    if (ret_data_ptr) {
-        // Determinate if caller instruction is comptime, if caller does not exist
-        // we are going to push result on the stack.
-        const bool is_caller_comptime = caller ? caller->base.value.is_comptime : false;
-        if (is_caller_comptime) {
-            caller->base.value.data = ret->value->value.data;
-        } else {
-            stack_push(vm, ret_data_ptr, ret_type);
-        }
-    }
+    if (ret_data_ptr) stack_push(vm, ret_data_ptr, ret_type);
 
     // set program counter to next instruction
     pc = pc ? pc->next : NULL;
@@ -2484,15 +2485,27 @@ bool vm_execute_fn(struct virtual_machine *vm,
     return execute_fn_impl_top_level(vm, fn, NULL, out_ptr);
 }
 
-bool vm_execute_instr_top_level_call(struct virtual_machine *vm,
-                                     struct assembly *       assembly,
-                                     struct mir_instr_call * call)
+bool vm_execute_comptime_call(struct virtual_machine *vm,
+                              struct assembly *       assembly,
+                              struct mir_instr_call * call)
 {
     ZONE();
     vm->assembly = assembly;
     BL_ASSERT(call && IS_FLAG(call->base.flags, MIR_IS_ANALYZED));
     BL_ASSERT(mir_is_comptime(&call->base) && "Top level call is expected to be comptime.");
-    bool result = execute_fn_top_level(vm, &call->base, NULL);
+    struct mir_fn *fn = get_callee(call);
+    BL_ASSERT(fn && "Calle of compile time executed top level function not found!");
+    // @Incomplete: push args?
+    BL_ASSERT(fn->type->data.fn.args == NULL);
+    const bool result = execute_function(vm, fn);
+    // @Incomplete: claenup args?
+    // Pop return value.
+    struct mir_type *ret_type = fn->type->data.fn.ret_type;
+    if (ret_type->kind != MIR_TYPE_VOID) {
+        call->base.value.data = stack_pop(vm, ret_type);
+    } else {
+        call->base.value.data = NULL;
+    }
     RETURN_ZONE(result);
 }
 

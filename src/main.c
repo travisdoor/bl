@@ -27,18 +27,10 @@
 // =================================================================================================
 
 #include "assembly.h"
-#include "bldebug.h"
 #include "builder.h"
-#include "error.h"
-#include "unit.h"
 #include <locale.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
-
-#if BL_PLATFORM_WIN
-#include <windows.h>
-#endif
 
 static char *get_exec_dir(void)
 {
@@ -232,6 +224,7 @@ s32 parse_input_files(Options *opt, s32 argc, char *argv[])
 // =================================================================================================
 int main(s32 argc, char *argv[])
 {
+    setvbuf(stdout, NULL, _IONBF, 0);
     // =============================================================================================
 #define EXIT(_state)                                                                               \
     state = _state;                                                                                \

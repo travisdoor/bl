@@ -27,15 +27,14 @@
 // =================================================================================================
 
 #include "assembly.h"
-#include "builder.h"
-#include <string.h>
-
 #if BL_PLATFORM_WIN
 #include "winpthreads.h"
-#include <windows.h>
 #else
 #include <pthread.h>
 #endif
+
+#include "builder.h"
+#include <string.h>
 
 #define EXPECTED_GSCOPE_COUNT 4094
 #define EXPECTED_ARRAY_COUNT 256
@@ -292,7 +291,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) BL_ABORT("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path = _path;
+    const char *path  = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {

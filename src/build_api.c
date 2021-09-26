@@ -30,7 +30,6 @@
 // are needed here.
 
 #include "builder.h"
-#include "common.h"
 
 BL_EXPORT struct target *__add_target(const char *name, enum assembly_kind kind)
 {

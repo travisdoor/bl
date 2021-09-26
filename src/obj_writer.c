@@ -27,9 +27,6 @@
 // =================================================================================================
 
 #include "builder.h"
-#include "common.h"
-#include "error.h"
-#include "llvm_api.h"
 
 #if BL_PLATFORM_WIN
 #define OBJ_EXT "obj"

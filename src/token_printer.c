@@ -27,7 +27,6 @@
 // =================================================================================================
 
 #include "builder.h"
-#include "common.h"
 
 void token_printer_run(struct assembly *UNUSED(assembly), struct unit *unit)
 {

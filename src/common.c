@@ -49,7 +49,6 @@
 
 #if BL_PLATFORM_WIN
 #include <shlwapi.h>
-#include <windows.h>
 #endif
 
 u64 main_thread_id = 0;

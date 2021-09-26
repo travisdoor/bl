@@ -139,7 +139,7 @@ struct mir_switch_case {
     struct mir_instr_block *block;
 };
 
-TSMALL_ARRAY_TYPE(SwitchCase, struct mir_switch_case, 64);
+TSMALL_ARRAY_TYPE(SwitchCase, struct mir_switch_case, 64)
 
 enum mir_type_kind {
     MIR_TYPE_INVALID     = 0,

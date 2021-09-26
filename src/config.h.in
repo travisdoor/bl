@@ -76,15 +76,7 @@
 #define BL_COMPILER_MSVC 1
 #endif
 
-#if BL_COMPILER_MSVC
-#define NOMINMAX /* WTF??? */
-#endif
-
 #define ENV_PATH "PATH"
-#if BL_PLATFORM_WIN
-#include <windows.h>
-#define PATH_MAX MAX_PATH
-#endif
 
 #if BL_PLATFORM_WIN
 #define ENVPATH_SEPARATOR ';'

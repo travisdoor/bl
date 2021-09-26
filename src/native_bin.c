@@ -27,7 +27,6 @@
 // =================================================================================================
 
 #include "builder.h"
-#include "config.h"
 
 #if !BL_PLATFORM_WIN
 #include <errno.h>

@@ -28,11 +28,7 @@
 
 #include "ast.h"
 #include "builder.h"
-#include "common.h"
 #include <stdio.h>
-
-#define MAX_STR_BUF 256
-#define int_to_void_ptr(i) (void *)((intptr_t)(i))
 
 static INLINE void print_address(struct ast *node, FILE *stream)
 {
