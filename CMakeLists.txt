@@ -168,6 +168,7 @@ set(HEADER_FILES
 set(SOURCE_FILES
     deps/tracy-${TRACY_VER}/TracyClient.cpp
     src/arena.c
+    src/vmdbg.c
     src/assembly.c
     src/ast.c
     src/ast_printer.c

@@ -30,17 +30,19 @@
 #include "builder.h"
 
 #define VM_MAX_ALIGNMENT 8
-#define VERBOSE_EXEC true
+#define VERBOSE_EXEC (BL_DEBUG && false)
 #define CHCK_STACK (BL_DEBUG || BL_ASSERT_ENABLE)
 
 // Debug helpers
-#if BL_DEBUG && VERBOSE_EXEC
+#if VERBOSE_EXEC
 // =================================================================================================*/
 #define LOG_PUSH_RA                                                                                \
     {                                                                                              \
         if (vm->stack->pc) {                                                                       \
-            fprintf(                                                                               \
-                stdout, "%6zu %20s  PUSH RA\n", vm->stack->pc->id, mir_instr_name(vm->stack->pc)); \
+            fprintf(stdout,                                                                        \
+                    "%6zu %20s  PUSH RA\n",                                                        \
+                    (size_t)vm->stack->pc->id,                                                     \
+                    mir_instr_name(vm->stack->pc));                                                \
         } else {                                                                                   \
             fprintf(stdout, "     - %20s  PUSH RA\n", "Terminal");                                 \
         }                                                                                          \
@@ -126,6 +128,14 @@
 #endif
 
 TSMALL_ARRAY_TYPE(ConstExprValue, struct mir_const_expr_value, 32);
+
+// =================================================================================================
+// VMDBG API
+// =================================================================================================
+void vmdbg_attach(struct virtual_machine *vm);
+void vmdbg_detach(void);
+void vmdbg_break(void);
+void vmdbg_notify_instr(struct mir_instr *instr);
 
 // =================================================================================================
 // fwd decls
@@ -221,15 +231,6 @@ static void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_com
 static INLINE bool needs_tmp_alloc(struct mir_const_expr_value *v)
 {
     return v->type->store_size_bytes > sizeof(v->_tmp);
-}
-
-static INLINE struct mir_fn *get_callee(const struct mir_instr_call *call)
-{
-    struct mir_const_expr_value *val = &call->callee->value;
-    BL_ASSERT(val->type && val->type->kind == MIR_TYPE_FN);
-    struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, val);
-    BL_MAGIC_ASSERT(fn);
-    return fn;
 }
 
 static INLINE void exec_abort(struct virtual_machine *vm, s32 report_stack_nesting)
@@ -1270,9 +1271,9 @@ void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
     if (IS_NOT_FLAG(instr->flags, MIR_IS_ANALYZED)) {
         BL_ABORT("Instruction %s has not been analyzed!", mir_instr_name(instr));
     }
-
     // Skip all comptimes.
     if (mir_is_comptime(instr)) return;
+    vmdbg_notify_instr(instr);
 
     switch (instr->kind) {
     case MIR_INSTR_CAST:
@@ -1906,6 +1907,9 @@ void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
 
     struct mir_fn *fn = (struct mir_fn *)vm_read_ptr(callee_ptr_type, callee_ptr);
     BL_MAGIC_ASSERT(fn);
+#if VERBOSE_EXEC
+    printf("\n%s:\n", fn->linkage_name);
+#endif
     BL_ASSERT(fn->is_fully_analyzed && "Functions called in compile time must be fully analyzed!");
     if (!fn) {
         builder_error("Function pointer not set!");
@@ -1939,10 +1943,12 @@ void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
     struct mir_type *ret_type = fn->type->data.fn.ret_type;
     const bool       is_used  = call->base.ref_count > 0;
     if (ret_type->kind != MIR_TYPE_VOID && !is_used) {
+        if (mir_is_comptime(&call->base)) {
+            // @Incomplete: handle comptime calls.
+            BL_UNREACHABLE;
+        }
         stack_pop(vm, ret_type);
     }
-    // @Incomplete: handle comptime calls.
-    BL_UNREACHABLE;
 }
 
 void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret)
@@ -1953,17 +1959,22 @@ void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret)
     vm_stack_ptr_t   ret_data_ptr = NULL;
     // pop return value from stack
     if (ret->value) {
+        BL_ASSERT(ret_type == ret->value->value.type);
         BL_ASSERT(ret_type->kind != MIR_TYPE_VOID && "Void return cannot have specified value.");
         ret_data_ptr = fetch_value(vm, &ret->value->value);
         BL_ASSERT(ret_data_ptr);
+#if BL_DEBUG
+    } else {
+        BL_ASSERT(ret_type->kind == MIR_TYPE_VOID);
+#endif
     }
 
     // do frame stack rollback
     struct mir_instr *pc = (struct mir_instr *)pop_ra(vm);
-
     // push return value on the stack if there is one
-    if (ret_data_ptr) stack_push(vm, ret_data_ptr, ret_type);
-
+    if (ret_data_ptr) {
+        stack_push(vm, ret_data_ptr, ret_type);
+    }
     // set program counter to next instruction
     pc = pc ? pc->next : NULL;
     set_pc(vm, pc);
@@ -2404,6 +2415,11 @@ void eval_instr_decl_direct_ref(struct virtual_machine            UNUSED(*vm),
 // =================================================================================================
 // Public
 // =================================================================================================
+BL_EXPORT void __bl_builtin_comptime_break(void)
+{
+    vmdbg_break();
+}
+
 void vm_init(struct virtual_machine *vm, usize stack_size)
 {
     if (stack_size == 0) BL_ABORT("invalid frame stack size");
@@ -2475,14 +2491,35 @@ void vm_override_var(struct virtual_machine *vm, struct mir_var *var, const u64 
     vm_write_int(type, dest_ptr, value);
 }
 
-bool vm_execute_fn(struct virtual_machine *vm,
-                   struct assembly *       assembly,
-                   struct mir_fn *         fn,
-                   vm_stack_ptr_t *        out_ptr)
+static INLINE bool does_return(struct mir_fn *fn)
 {
+    return fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID;
+}
+
+bool vm_execute_fn(struct virtual_machine *   vm,
+                   struct assembly *          assembly,
+                   struct mir_fn *            fn,
+                   TSmallArray_ConstValuePtr *optional_args,
+                   vm_stack_ptr_t *           optional_return)
+{
+    BL_MAGIC_ASSERT(fn);
     vm->assembly       = assembly;
     vm->stack->aborted = false;
-    return execute_fn_impl_top_level(vm, fn, NULL, out_ptr);
+    vmdbg_attach(vm);
+    // @Incomplete: push args on stack.
+    if (execute_function(vm, fn)) {
+        // @Incomplete: cleanup args.
+        vm_stack_ptr_t return_ptr = NULL;
+        if (does_return(fn)) {
+            struct mir_type *ret_type = fn->type->data.fn.ret_type;
+            return_ptr                = stack_pop(vm, ret_type);
+        }
+        if (optional_return) (*optional_return) = return_ptr;
+        vmdbg_detach();
+        return true;
+    }
+    vmdbg_detach();
+    return false;
 }
 
 bool vm_execute_comptime_call(struct virtual_machine *vm,
@@ -2493,20 +2530,22 @@ bool vm_execute_comptime_call(struct virtual_machine *vm,
     vm->assembly = assembly;
     BL_ASSERT(call && IS_FLAG(call->base.flags, MIR_IS_ANALYZED));
     BL_ASSERT(mir_is_comptime(&call->base) && "Top level call is expected to be comptime.");
-    struct mir_fn *fn = get_callee(call);
+    struct mir_fn *fn = mir_get_callee(call);
     BL_ASSERT(fn && "Calle of compile time executed top level function not found!");
     // @Incomplete: push args?
     BL_ASSERT(fn->type->data.fn.args == NULL);
-    const bool result = execute_function(vm, fn);
-    // @Incomplete: claenup args?
-    // Pop return value.
-    struct mir_type *ret_type = fn->type->data.fn.ret_type;
-    if (ret_type->kind != MIR_TYPE_VOID) {
-        call->base.value.data = stack_pop(vm, ret_type);
-    } else {
-        call->base.value.data = NULL;
+    if (execute_function(vm, fn)) {
+        // @Incomplete: claenup args?
+        // Pop return value.
+        if (does_return(fn)) {
+            struct mir_type *ret_type = fn->type->data.fn.ret_type;
+            call->base.value.data     = stack_pop(vm, ret_type);
+        } else {
+            call->base.value.data = NULL;
+        }
+        RETURN_ZONE(true);
     }
-    RETURN_ZONE(result);
+    RETURN_ZONE(false);
 }
 
 vm_stack_ptr_t

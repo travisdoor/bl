@@ -2587,13 +2587,14 @@ NEXT:
         tok = tokens_consume(ctx->tokens);
         PARSE_WARNING(tok, BUILDER_CUR_WORD, "Extra semicolon can be removed ';'.");
         goto NEXT;
-    case SYM_HASH:
+    case SYM_HASH: {
         enum hash_directive_flags satisfied;
         tmp = parse_hash_directive(
             ctx, HD_STATIC_IF | HD_ASSERT | HD_ERROR | HD_WARNING | HD_COMPTIME, &satisfied);
         // This is little bit ugly but probably faster than parsing expressions first.
         if (AST_IS_OK(tmp) && satisfied == HD_COMPTIME) parse_semicolon_rq(ctx);
         break;
+    }
     case SYM_RETURN:
         tmp = parse_stmt_return(ctx);
         if (!AST_IS_BAD(tmp)) parse_semicolon_rq(ctx);

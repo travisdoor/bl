@@ -54,7 +54,7 @@ void vm_tests_run(struct assembly *assembly)
     {
         BL_ASSERT(IS_FLAG(test_fn->flags, FLAG_TEST_FN));
         const f64   start      = get_tick_ms();
-        const bool  passed     = vm_execute_fn(vm, assembly, test_fn, NULL);
+        const bool  passed     = vm_execute_fn(vm, assembly, test_fn, NULL, NULL);
         const f64   runtime_ms = get_tick_ms() - start;
         const char *name       = test_fn->id->str;
         if (passed) {
@@ -98,7 +98,7 @@ void vm_build_entry_run(struct assembly *assembly)
         vm_provide_command_line_arguments(vm, target->vm.argc, target->vm.argv);
     }
     vm_override_var(vm, assembly->vm_run.is_comptime_run, true);
-    vm_execute_fn(vm, assembly, entry, NULL);
+    vm_execute_fn(vm, assembly, entry, NULL, NULL);
     vm_override_var(vm, assembly->vm_run.is_comptime_run, false);
     assembly->vm_run.last_execution_status = EXIT_SUCCESS;
 }
@@ -123,7 +123,7 @@ void vm_entry_run(struct assembly *assembly)
     vm_override_var(vm, assembly->vm_run.is_comptime_run, true);
     vm_stack_ptr_t ret_ptr = NULL;
     s32            result  = EXIT_SUCCESS;
-    if (vm_execute_fn(vm, assembly, entry, &ret_ptr)) {
+    if (vm_execute_fn(vm, assembly, entry, NULL, &ret_ptr)) {
         if (ret_ptr) {
             struct mir_type *ret_type = fn_type->data.fn.ret_type;
             result                    = (s32)vm_read_int(ret_type, ret_ptr);

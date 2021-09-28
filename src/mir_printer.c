@@ -1135,7 +1135,13 @@ void print_instr(struct context *ctx, struct mir_instr *instr)
     fprintf(ctx->stream, "\n");
 }
 
-void mir_print_fn(struct assembly *assembly, struct mir_fn *fn, FILE *stream)
+void mir_print_instr(FILE *stream, struct assembly *assembly, struct mir_instr *instr)
+{
+    struct context ctx = {.assembly = assembly, .stream = stream};
+    print_instr(&ctx, instr);
+}
+
+void mir_print_fn(FILE *stream, struct assembly *assembly, struct mir_fn *fn)
 {
     if (!fn) return;
     if (!fn->prototype) return;
@@ -1143,7 +1149,7 @@ void mir_print_fn(struct assembly *assembly, struct mir_fn *fn, FILE *stream)
     print_instr(&ctx, fn->prototype);
 }
 
-void mir_print_assembly(struct assembly *assembly, FILE *stream)
+void mir_print_assembly(FILE *stream, struct assembly *assembly)
 {
     struct context    ctx = {.assembly = assembly, .stream = stream};
     struct mir_instr *instr;

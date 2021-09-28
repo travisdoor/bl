@@ -134,5 +134,6 @@ void builder_msg(enum builder_msg_type type,
 TString *builder_create_cached_str(void);
 TString *get_tmpstr(void);
 void     put_tmpstr(TString *str);
+void     builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len);
 
 #endif

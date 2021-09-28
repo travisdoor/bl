@@ -1,4 +1,5 @@
 #ifdef GEN_BUILTIN_TYPES
+struct mir_type *t_dummy_ptr;
 struct mir_type *t_type;
 struct mir_type *t_scope;
 struct mir_type *t_s8;

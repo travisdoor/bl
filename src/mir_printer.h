@@ -33,7 +33,8 @@
 
 struct assembly;
 
-void mir_print_fn(struct assembly *assembly, struct mir_fn *fn, FILE *stream);
-void mir_print_assembly(struct assembly *assembly, FILE *stream);
+void mir_print_instr(FILE *stream, struct assembly *assembly, struct mir_instr *instr);
+void mir_print_fn(FILE *stream, struct assembly *assembly, struct mir_fn *fn);
+void mir_print_assembly(FILE *stream, struct assembly *assembly);
 
 #endif

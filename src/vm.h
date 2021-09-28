@@ -73,13 +73,19 @@ struct virtual_machine {
 void vm_init(struct virtual_machine *vm, usize stack_size);
 void vm_terminate(struct virtual_machine *vm);
 bool vm_eval_instr(struct virtual_machine *vm, struct assembly *assembly, struct mir_instr *instr);
+
+// Execute top level call instruction, called function must be fully analyzed. Return value is set
+// into call value data pinter and is valid until other stack operations are done.
 bool vm_execute_comptime_call(struct virtual_machine *vm,
                               struct assembly *       assembly,
                               struct mir_instr_call * call);
-bool vm_execute_fn(struct virtual_machine *vm,
-                   struct assembly *       assembly,
-                   struct mir_fn *         fn,
-                   vm_stack_ptr_t *        out_ptr);
+
+bool vm_execute_fn(struct virtual_machine *   vm,
+                   struct assembly *          assembly,
+                   struct mir_fn *            fn,
+                   TSmallArray_ConstValuePtr *optional_args,
+                   vm_stack_ptr_t *           optional_return);
+
 void vm_provide_command_line_arguments(struct virtual_machine *vm, s32 argc, char *argv[]);
 void vm_override_var(struct virtual_machine *vm, struct mir_var *var, u64 value);
 void vm_do_cast(vm_stack_ptr_t   dest,

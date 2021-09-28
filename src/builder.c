@@ -574,6 +574,42 @@ s32 builder_compile(const struct target *target)
     return state;
 }
 
+void builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len)
+{
+    long      line_len = 0;
+    const s32 padding  = snprintf(NULL, 0, "%+d", loc->line) + 2;
+    // Line one
+    const char *line_str = unit_get_src_ln(loc->unit, loc->line - 1, &line_len);
+    if (line_str && line_len) {
+        fprintf(stream, "\n%*d | %.*s", padding, loc->line - 1, (int)line_len, line_str);
+    }
+    // Line two
+    line_str = unit_get_src_ln(loc->unit, loc->line, &line_len);
+    if (line_str && line_len) {
+        color_print(
+            stream, BL_YELLOW, "\n>%*d | %.*s", padding - 1, loc->line, (int)line_len, line_str);
+    }
+    // Line cursors
+    if (len > 0) {
+        char buf[256];
+        s32  written_bytes = 0;
+        for (s32 i = 0; i < col + len - 1; ++i) {
+            written_bytes += snprintf(buf + written_bytes,
+                                      TARRAY_SIZE(buf) - written_bytes,
+                                      "%s",
+                                      i >= col - 1 ? "^" : " ");
+        }
+        fprintf(stream, "\n%*s | ", padding, "");
+        color_print(stream, BL_GREEN, "%s", buf);
+    }
+
+    // Line three
+    line_str = unit_get_src_ln(loc->unit, loc->line + 1, &line_len);
+    if (line_str && line_len) {
+        fprintf(stream, "\n%*d | %.*s\n\n", padding, loc->line + 1, (int)line_len, line_str);
+    }
+}
+
 void builder_vmsg(enum builder_msg_type type,
                   s32                   code,
                   struct location *     src,
@@ -633,38 +669,7 @@ void builder_vmsg(enum builder_msg_type type,
             break;
         }
         vfprintf(stream, format, args);
-        long      line_len = 0;
-        const s32 padding  = snprintf(NULL, 0, "%+d", src->line) + 2;
-        // Line one
-        const char *line_str = unit_get_src_ln(src->unit, src->line - 1, &line_len);
-        if (line_str && line_len) {
-            fprintf(stream, "\n%*d | %.*s", padding, src->line - 1, (int)line_len, line_str);
-        }
-        // Line two
-        line_str = unit_get_src_ln(src->unit, src->line, &line_len);
-        if (line_str && line_len) {
-            fprintf(stream, "\n>%*d | %.*s", padding - 1, src->line, (int)line_len, line_str);
-        }
-        // Line cursors
-        if (pos != BUILDER_CUR_NONE) {
-            char buf[256];
-            s32  written_bytes = 0;
-            for (s32 i = 0; i < col + len - 1; ++i) {
-                written_bytes += snprintf(buf + written_bytes,
-                                          TARRAY_SIZE(buf) - written_bytes,
-                                          "%s",
-                                          i >= col - 1 ? "^" : " ");
-            }
-            fprintf(stream, "\n%*s | ", padding, "");
-            color_print(stream, BL_GREEN, "%s", buf);
-        }
-
-        // Line three
-        line_str = unit_get_src_ln(src->unit, src->line + 1, &line_len);
-        if (line_str && line_len) {
-            fprintf(stream, "\n%*d | %.*s", padding, src->line + 1, (int)line_len, line_str);
-        }
-        fprintf(stream, "\n\n");
+        builder_print_location(stream, src, col, len);
     } else {
         switch (type) {
         case BUILDER_MSG_ERROR: {

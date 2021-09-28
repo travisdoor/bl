@@ -32,7 +32,7 @@
 
 #if BL_DEBUG
 #include "mir_printer.h"
-#define DEBUG_PRINT_MIR(instr) mir_print_fn(ctx->assembly, instr_owner_fn(instr), stdout);
+#define DEBUG_PRINT_MIR(instr) mir_print_fn(stdout, ctx->assembly, instr_owner_fn(instr));
 #else
 #define DEBUG_PRINT_MIR(instr)                                                                     \
     while (0) {                                                                                    \
@@ -2118,10 +2118,6 @@ add_global_int(struct context *ctx, struct id *id, bool is_mutable, struct mir_t
 struct mir_type *create_type_type(struct context *ctx)
 {
     struct mir_type *tmp = create_type(ctx, MIR_TYPE_TYPE, &builtin_ids[BUILTIN_ID_TYPE_TYPE]);
-    // NOTE: TypeType has no LLVM representation
-    tmp->alignment        = __alignof(struct mir_type *);
-    tmp->size_bits        = sizeof(struct mir_type *) * 8;
-    tmp->store_size_bytes = sizeof(struct mir_type *);
     type_init_id(ctx, tmp);
     type_init_llvm_dummy(ctx, tmp);
     return tmp;
@@ -2131,9 +2127,6 @@ struct mir_type *create_type_named_scope(struct context *ctx)
 {
     struct mir_type *tmp =
         create_type(ctx, MIR_TYPE_NAMED_SCOPE, &builtin_ids[BUILTIN_ID_TYPE_NAMED_SCOPE]);
-    tmp->alignment        = __alignof(struct scope_entry *);
-    tmp->size_bits        = sizeof(struct scope_entry *) * 8;
-    tmp->store_size_bytes = sizeof(struct scope_entry *);
     type_init_id(ctx, tmp);
     type_init_llvm_dummy(ctx, tmp);
     return tmp;
@@ -2238,9 +2231,6 @@ create_type_fn_group(struct context *ctx, struct id *id, TSmallArray_TypePtr *va
     BL_ASSERT(variants);
     struct mir_type *tmp        = create_type(ctx, MIR_TYPE_FN_GROUP, id);
     tmp->data.fn_group.variants = variants;
-    tmp->alignment              = __alignof(struct mir_fn_group *);
-    tmp->size_bits              = sizeof(struct mir_fn_group *) * 8;
-    tmp->store_size_bytes       = sizeof(struct mir_fn_group *);
     type_init_id(ctx, tmp);
     type_init_llvm_dummy(ctx, tmp);
     return tmp;
@@ -2432,7 +2422,7 @@ void type_init_llvm_int(struct context *ctx, struct mir_type *type)
         LLVMIntTypeInContext(ctx->assembly->llvm.ctx, (unsigned int)type->data.integer.bitcount);
     type->size_bits        = LLVMSizeOfTypeInBits(ctx->assembly->llvm.TD, type->llvm_type);
     type->store_size_bytes = LLVMStoreSizeOfType(ctx->assembly->llvm.TD, type->llvm_type);
-    type->alignment        = LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
+    type->alignment        = (s8)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
 }
 
 void type_init_llvm_real(struct context *ctx, struct mir_type *type)
@@ -2446,7 +2436,7 @@ void type_init_llvm_real(struct context *ctx, struct mir_type *type)
 
     type->size_bits        = LLVMSizeOfTypeInBits(ctx->assembly->llvm.TD, type->llvm_type);
     type->store_size_bytes = LLVMStoreSizeOfType(ctx->assembly->llvm.TD, type->llvm_type);
-    type->alignment        = (s32)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
+    type->alignment        = (s8)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
 }
 
 void type_init_llvm_ptr(struct context *ctx, struct mir_type *type)
@@ -2459,7 +2449,7 @@ void type_init_llvm_ptr(struct context *ctx, struct mir_type *type)
     type->llvm_type        = LLVMPointerType(tmp->llvm_type, 0);
     type->size_bits        = LLVMSizeOfTypeInBits(ctx->assembly->llvm.TD, type->llvm_type);
     type->store_size_bytes = LLVMStoreSizeOfType(ctx->assembly->llvm.TD, type->llvm_type);
-    type->alignment        = (s32)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
+    type->alignment        = (s8)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
 }
 
 void type_init_llvm_void(struct context *ctx, struct mir_type *type)
@@ -2472,18 +2462,12 @@ void type_init_llvm_void(struct context *ctx, struct mir_type *type)
 
 void type_init_llvm_dummy(struct context *ctx, struct mir_type *type)
 {
-    struct mir_type *dummy = ctx->builtin_types->t_s32;
-    if (dummy) {
-        type->llvm_type        = dummy->llvm_type;
-        type->size_bits        = dummy->size_bits;
-        type->store_size_bytes = dummy->store_size_bytes;
-        type->alignment        = dummy->alignment;
-    } else {
-        type->llvm_type        = LLVMIntTypeInContext(ctx->assembly->llvm.ctx, 32);
-        type->size_bits        = LLVMSizeOfTypeInBits(ctx->assembly->llvm.TD, type->llvm_type);
-        type->store_size_bytes = LLVMStoreSizeOfType(ctx->assembly->llvm.TD, type->llvm_type);
-        type->alignment        = LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
-    }
+    struct mir_type *dummy = ctx->builtin_types->t_dummy_ptr;
+    BL_ASSERT(dummy);
+    type->llvm_type        = dummy->llvm_type;
+    type->size_bits        = dummy->size_bits;
+    type->store_size_bytes = dummy->store_size_bytes;
+    type->alignment        = dummy->alignment;
 }
 
 void type_init_llvm_null(struct context UNUSED(*ctx), struct mir_type *type)
@@ -2502,7 +2486,7 @@ void type_init_llvm_bool(struct context *ctx, struct mir_type *type)
     type->llvm_type        = LLVMIntTypeInContext(ctx->assembly->llvm.ctx, 1);
     type->size_bits        = LLVMSizeOfTypeInBits(ctx->assembly->llvm.TD, type->llvm_type);
     type->store_size_bytes = LLVMStoreSizeOfType(ctx->assembly->llvm.TD, type->llvm_type);
-    type->alignment        = (s32)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
+    type->alignment        = (s8)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
 }
 
 static INLINE usize struct_split_fit(struct context * ctx,
@@ -2659,7 +2643,7 @@ void type_init_llvm_array(struct context *ctx, struct mir_type *type)
     type->llvm_type        = LLVMArrayType(llvm_elem_type, len);
     type->size_bits        = LLVMSizeOfTypeInBits(ctx->assembly->llvm.TD, type->llvm_type);
     type->store_size_bytes = LLVMStoreSizeOfType(ctx->assembly->llvm.TD, type->llvm_type);
-    type->alignment        = (s32)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
+    type->alignment        = (s8)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
 }
 
 void type_init_llvm_struct(struct context *ctx, struct mir_type *type)
@@ -2722,7 +2706,7 @@ void type_init_llvm_struct(struct context *ctx, struct mir_type *type)
 
     type->size_bits        = LLVMSizeOfTypeInBits(ctx->assembly->llvm.TD, type->llvm_type);
     type->store_size_bytes = LLVMStoreSizeOfType(ctx->assembly->llvm.TD, type->llvm_type);
-    type->alignment        = (s32)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
+    type->alignment        = (s8)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
 
     tsa_terminate(&llvm_members);
 
@@ -2744,7 +2728,7 @@ void type_init_llvm_enum(struct context *ctx, struct mir_type *type)
     type->llvm_type        = llvm_base_type;
     type->size_bits        = LLVMSizeOfTypeInBits(ctx->assembly->llvm.TD, type->llvm_type);
     type->store_size_bytes = LLVMStoreSizeOfType(ctx->assembly->llvm.TD, type->llvm_type);
-    type->alignment        = (s32)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
+    type->alignment        = (s8)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
 }
 
 static INLINE void push_var(struct context *ctx, struct mir_var *var)
@@ -4557,15 +4541,8 @@ struct result analyze_resolve_type(struct context *  ctx,
         return ANALYZE_RESULT(POSTPONE, 0);
     }
 
-    struct mir_type *resolved_type = MIR_CEV_READ_AS(struct mir_type *, &resolver_call->value);
-    if (resolved_type) {
-        // Use cached type here in case the type resolver was already called.
-        BL_MAGIC_ASSERT(resolved_type);
-        *out_type = resolved_type;
-        return ANALYZE_RESULT(PASSED, 0);
-    }
     if (vm_execute_comptime_call(ctx->vm, ctx->assembly, (struct mir_instr_call *)resolver_call)) {
-        resolved_type = MIR_CEV_READ_AS(struct mir_type *, &resolver_call->value);
+        struct mir_type *resolved_type = MIR_CEV_READ_AS(struct mir_type *, &resolver_call->value);
         BL_MAGIC_ASSERT(resolved_type);
         *out_type = resolved_type;
         return ANALYZE_RESULT(PASSED, 0);
@@ -10804,6 +10781,15 @@ const char *mir_get_fn_readable_name(struct mir_fn *fn)
     return fn->linkage_name;
 }
 
+struct mir_fn *mir_get_callee(const struct mir_instr_call *call)
+{
+    struct mir_const_expr_value *val = &call->callee->value;
+    BL_ASSERT(val->type && val->type->kind == MIR_TYPE_FN);
+    struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, val);
+    BL_MAGIC_ASSERT(fn);
+    return fn;
+}
+
 static void _type_to_str(char *buf, usize len, const struct mir_type *type, bool prefer_name)
 {
 #define append_buf(buf, len, str)                                                                  \
@@ -11047,22 +11033,24 @@ void initialize_builtins(struct context *ctx)
 #define PROVIDE(N) provide_builtin_type(ctx, bt->t_##N)
 
     struct BuiltinTypes *bt = ctx->builtin_types;
-    bt->t_type              = create_type_type(ctx);
-    bt->t_scope             = create_type_named_scope(ctx);
-    bt->t_void              = create_type_void(ctx);
+    bt->t_s8                = create_type_int(ctx, BID(TYPE_S8), 8, true);
+    bt->t_s16               = create_type_int(ctx, BID(TYPE_S16), 16, true);
+    bt->t_s32               = create_type_int(ctx, BID(TYPE_S32), 32, true);
+    bt->t_s64               = create_type_int(ctx, BID(TYPE_S64), 64, true);
+    bt->t_u8                = create_type_int(ctx, BID(TYPE_U8), 8, false);
+    bt->t_u16               = create_type_int(ctx, BID(TYPE_U16), 16, false);
+    bt->t_u32               = create_type_int(ctx, BID(TYPE_U32), 32, false);
+    bt->t_u64               = create_type_int(ctx, BID(TYPE_U64), 64, false);
+    bt->t_usize             = create_type_int(ctx, BID(TYPE_USIZE), 64, false);
+    bt->t_bool              = create_type_bool(ctx);
+    bt->t_f32               = create_type_real(ctx, BID(TYPE_F32), 32);
+    bt->t_f64               = create_type_real(ctx, BID(TYPE_F64), 64);
 
-    bt->t_s8     = create_type_int(ctx, BID(TYPE_S8), 8, true);
-    bt->t_s16    = create_type_int(ctx, BID(TYPE_S16), 16, true);
-    bt->t_s32    = create_type_int(ctx, BID(TYPE_S32), 32, true);
-    bt->t_s64    = create_type_int(ctx, BID(TYPE_S64), 64, true);
-    bt->t_u8     = create_type_int(ctx, BID(TYPE_U8), 8, false);
-    bt->t_u16    = create_type_int(ctx, BID(TYPE_U16), 16, false);
-    bt->t_u32    = create_type_int(ctx, BID(TYPE_U32), 32, false);
-    bt->t_u64    = create_type_int(ctx, BID(TYPE_U64), 64, false);
-    bt->t_usize  = create_type_int(ctx, BID(TYPE_USIZE), 64, false);
-    bt->t_bool   = create_type_bool(ctx);
-    bt->t_f32    = create_type_real(ctx, BID(TYPE_F32), 32);
-    bt->t_f64    = create_type_real(ctx, BID(TYPE_F64), 64);
+    bt->t_dummy_ptr = create_type_ptr(ctx, bt->t_u8);
+    bt->t_type      = create_type_type(ctx);
+    bt->t_scope     = create_type_named_scope(ctx);
+    bt->t_void      = create_type_void(ctx);
+
     bt->t_u8_ptr = create_type_ptr(ctx, bt->t_u8);
     bt->t_string = CREATE_TYPE_STRUCT_STRING(ctx, BID(TYPE_STRING), bt->t_u8_ptr);
 
@@ -11100,7 +11088,7 @@ void initialize_builtins(struct context *ctx)
     // Add IS_COMPTIME_RUN immutable into the global scope to provide information about compile
     // time run.
     ctx->assembly->vm_run.is_comptime_run =
-        add_global_bool(ctx, BID(IS_COMPTIME_RUN), false, false);
+        add_global_bool(ctx, BID(IS_COMPTIME_RUN), true, false);
 #undef PROVIDE
 }
 

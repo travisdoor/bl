@@ -62,7 +62,7 @@ void mir_writer_run(struct assembly *assembly)
         return;
     }
     print_header(name, export_file->data, f);
-    mir_print_assembly(assembly, f);
+    mir_print_assembly(f, assembly);
     fclose(f);
     builder_note("Mir code written into %s", export_file->data);
     put_tmpstr(export_file);
