@@ -157,6 +157,7 @@ static State emit_instr_cast(struct context *ctx, struct mir_instr_cast *cast);
 static State emit_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof);
 static State emit_instr_unop(struct context *ctx, struct mir_instr_unop *unop);
 static State emit_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *unr);
+static State emit_instr_debugbreak(struct context *ctx, struct mir_instr_debugbreak *debug_break);
 static State emit_instr_store(struct context *ctx, struct mir_instr_store *store);
 static State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_proto);
 static State emit_instr_block(struct context *ctx, struct mir_instr_block *block);
@@ -930,6 +931,17 @@ State emit_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
     return STATE_PASSED;
 }
 
+State emit_instr_debugbreak(struct context *ctx, struct mir_instr_debugbreak *debug_break)
+{
+    struct mir_fn *break_fn = debug_break->break_fn;
+    BL_ASSERT(break_fn);
+    if (!break_fn->llvm_value) emit_fn_proto(ctx, break_fn, true);
+    DI_LOCATION_SET(&debug_break->base);
+    LLVMBuildCall(ctx->llvm_builder, break_fn->llvm_value, NULL, 0, "");
+    DI_LOCATION_RESET();
+    return STATE_PASSED;
+}
+
 State emit_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *unreachable)
 {
     struct mir_fn *abort_fn = unreachable->abort_fn;
@@ -1676,8 +1688,8 @@ struct mir_var *testing_fetch_meta(struct context *ctx)
         tsa_push_LLVMValue(&llvm_vals, testing_emit_meta_case(ctx, it));
     }
 
-    LLVMValueRef llvm_init =
-        LLVMConstArray(get_type(ctx, ctx->builtin_types->t_TestCase), llvm_vals.data, len);
+    LLVMValueRef llvm_init = LLVMConstArray(
+        get_type(ctx, ctx->builtin_types->t_TestCase), llvm_vals.data, (unsigned int)len);
 
     LLVMSetInitializer(llvm_var, llvm_init);
     tsa_terminate(&llvm_vals);
@@ -3041,6 +3053,9 @@ State emit_instr(struct context *ctx, struct mir_instr *instr)
         break;
     case MIR_INSTR_UNREACHABLE:
         state = emit_instr_unreachable(ctx, (struct mir_instr_unreachable *)instr);
+        break;
+    case MIR_INSTR_DEBUGBREAK:
+        state = emit_instr_debugbreak(ctx, (struct mir_instr_debugbreak *)instr);
         break;
     case MIR_INSTR_MEMBER_PTR:
         state = emit_instr_member_ptr(ctx, (struct mir_instr_member_ptr *)instr);

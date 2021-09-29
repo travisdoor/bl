@@ -79,6 +79,7 @@ static void print_scope(struct ast *scope, s32 pad, FILE *stream);
 static void print_call_loc(struct ast *call_loc, s32 pad, FILE *stream);
 static void print_block(struct ast *block, s32 pad, FILE *stream);
 static void print_unrecheable(struct ast *unr, s32 pad, FILE *stream);
+static void print_debugbreak(struct ast *debug_break, s32 pad, FILE *stream);
 static void print_ref(struct ast *ref, s32 pad, FILE *stream);
 static void print_type_polymorph(struct ast *poly, s32 pad, FILE *stream);
 static void print_type_struct(struct ast *strct, s32 pad, FILE *stream);
@@ -176,6 +177,11 @@ void print_call_loc(struct ast *call_loc, s32 pad, FILE *stream)
 void print_unrecheable(struct ast *unr, s32 pad, FILE *stream)
 {
     print_head(unr, pad, stream);
+}
+
+void print_debugbreak(struct ast *debug_break, s32 pad, FILE *stream)
+{
+    print_head(debug_break, pad, stream);
 }
 
 void print_type_polymorph(struct ast *poly, s32 pad, FILE *stream)
@@ -586,6 +592,10 @@ void print_node(struct ast *node, s32 pad, FILE *stream)
 
     case AST_UNREACHABLE:
         print_unrecheable(node, pad, stream);
+        break;
+
+    case AST_DEBUGBREAK:
+        print_debugbreak(node, pad, stream);
         break;
 
     case AST_TYPE_STRUCT:

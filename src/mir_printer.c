@@ -254,6 +254,7 @@ static void print_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs
 static void print_instr_br(struct context *ctx, struct mir_instr_br *br);
 static void print_instr_switch(struct context *ctx, struct mir_instr_switch *sw);
 static void print_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *unr);
+static void print_instr_debugbreak(struct context *ctx, struct mir_instr_debugbreak *debug_break);
 static void print_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_proto);
 static void print_instr_fn_group(struct context *ctx, struct mir_instr_fn_group *group);
 static void print_instr_type_fn(struct context *ctx, struct mir_instr_type_fn *type_fn);
@@ -657,6 +658,11 @@ void print_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *
     print_instr_head(ctx, &unr->base, "unreachable");
 }
 
+void print_instr_debugbreak(struct context *ctx, struct mir_instr_debugbreak *debug_break)
+{
+    print_instr_head(ctx, &debug_break->base, "debugbreak");
+}
+
 void print_instr_test_cases(struct context *ctx, struct mir_instr_test_case *tc)
 {
     print_instr_head(ctx, &tc->base, "testcases");
@@ -978,6 +984,9 @@ void print_instr(struct context *ctx, struct mir_instr *instr)
     case MIR_INSTR_UNREACHABLE:
         print_instr_unreachable(ctx, (struct mir_instr_unreachable *)instr);
         break;
+    case MIR_INSTR_DEBUGBREAK:
+        print_instr_debugbreak(ctx, (struct mir_instr_debugbreak *)instr);
+        break;
     case MIR_INSTR_DECL_VAR:
         print_instr_decl_var(ctx, (struct mir_instr_decl_var *)instr);
         break;
@@ -1137,6 +1146,7 @@ void print_instr(struct context *ctx, struct mir_instr *instr)
 
 void mir_print_instr(FILE *stream, struct assembly *assembly, struct mir_instr *instr)
 {
+    if (!instr) return;
     struct context ctx = {.assembly = assembly, .stream = stream};
     print_instr(&ctx, instr);
 }

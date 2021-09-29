@@ -3,7 +3,7 @@ foo :: fn () s32 {
 }
 
 main :: fn () s32 {
-    debug_break();
+    debugbreak;
     //v :: #comptime foo();
     v :: 10;
     print("v [%] = %\n", @typeinfo(v), v);

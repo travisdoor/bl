@@ -49,8 +49,8 @@ typedef ptrdiff_t vm_relative_stack_ptr_t;
 typedef u8 *      vm_stack_ptr_t;
 
 struct vm_frame {
-    struct vm_frame * prev;
-    struct mir_instr *caller; // Optional
+    struct vm_frame *      prev;
+    struct mir_instr_call *caller; // Optional
 };
 
 struct vm_stack {

@@ -91,7 +91,8 @@ os_get_last_error :: fn () (s32, string) #inline {
     return ec, str;
 }
 
-_os_debug_break :: fn () #inline {
+__os_debug_break :: fn () #inline #compiler {
+    // @Incomplete: I'm not sure what to do here.
     //_posix_raise(SIGTRAP);
 }
 
@@ -100,15 +101,15 @@ __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
 }
 
 __os_abort :: fn () #compiler {
+    #if IS_DEBUG { _os_debug_break(); }
     if _context.abort_fn {
         _context.abort_fn();
     } else {
-        #if IS_DEBUG { _os_debug_break(); }
-        _os_abort_default();
+        __os_abort_default();
     }
 }
 
-_os_abort_default :: fn () {
+__os_abort_default :: fn () {
     _raise(_SIGABRT);
 }
 

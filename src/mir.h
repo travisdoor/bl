@@ -76,6 +76,7 @@ struct mir_const_expr_value;
 
 struct mir_instr;
 struct mir_instr_unreachable;
+struct mir_instr_debugbreak;
 struct mir_instr_block;
 struct mir_instr_decl_var;
 struct mir_instr_decl_member;
@@ -782,6 +783,12 @@ struct mir_instr_unreachable {
     struct mir_instr base;
 
     struct mir_fn *abort_fn;
+};
+
+struct mir_instr_debugbreak {
+    struct mir_instr base;
+
+    struct mir_fn *break_fn;
 };
 
 struct mir_instr_cond_br {

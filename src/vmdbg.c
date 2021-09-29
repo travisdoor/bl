@@ -26,28 +26,35 @@
 // SOFTWARE.
 // =================================================================================================
 
+#include "vmdbg.h"
 #include "builder.h"
-#include "common.h"
 #include "mir_printer.h"
-#include "vm.h"
 
 enum state {
     CONTINUE,
     STEPPING,
 };
 
-static enum state              state      = CONTINUE;
-static bool                    mir_mode   = false;
-static struct virtual_machine *current_vm = NULL;
-
-void vmdbg_detach(void);
+static enum state              state         = CONTINUE;
+static bool                    mir_mode      = false;
+static bool                    verbose_stack = false;
+static struct virtual_machine *current_vm    = NULL;
 
 static void print(struct mir_instr *instr)
 {
     if (!mir_mode && instr->node && instr->node->location) {
         builder_print_location(stdout, instr->node->location, 0, 0);
     } else {
+        if (instr->prev) {
+            printf("  ");
+            mir_print_instr(stdout, current_vm->assembly, instr->prev);
+        }
+        printf("> ");
         mir_print_instr(stdout, current_vm->assembly, instr);
+        if (instr->next) {
+            printf("  ");
+            mir_print_instr(stdout, current_vm->assembly, instr->next);
+        }
     }
 }
 
@@ -93,20 +100,27 @@ NEXT:
     } else if (CMD("bt", "backtrace")) {
         print_backtrace();
         goto NEXT;
-    } else if (CMD("mir-on", "mir-mode-on")) {
+    } else if (CMD("vs=on", "verbose-stack=on")) {
+        verbose_stack = true;
+        goto NEXT;
+    } else if (CMD("vs=off", "verbose-stack=off")) {
+        verbose_stack = false;
+        goto NEXT;
+    } else if (CMD("mir=on", "mir-mode=on")) {
         mir_mode = true;
         goto NEXT;
-    } else if (CMD("mir-off", "mir-mode-off")) {
+    } else if (CMD("mir=off", "mir-mode=off")) {
         mir_mode = false;
         goto NEXT;
     } else if (CMD("h", "help")) {
-        printf("  h, help                         = Show this help.\n"
-               "  q, quit                         = Stop debugging.\n"
-               "  n, next                         = Step to next instruction.\n"
-               "  c, continue                     = Continue execution.\n"
-               "  p, print                        = Print current instruction.\n"
-               "  bt, backtrace                   = Print current backtrace.\n"
-               "  mir-<on|off>, mir-mode-<on|off> = Enable/disable mir instruction level "
+        printf("  h, help                             = Show this help.\n"
+               "  q, quit                             = Stop debugging.\n"
+               "  n, next                             = Step to next instruction.\n"
+               "  c, continue                         = Continue execution.\n"
+               "  p, print                            = Print current instruction.\n"
+               "  bt, backtrace                       = Print current backtrace.\n"
+               "  vs=<on|off>, verbose-stack=<on|off> = Log stack operations.\n"
+               "  mir=<on|off>, mir-mode=<on|off>     = Enable/disable mir instruction level "
                "debugging.\n");
         goto NEXT;
     } else {
@@ -152,6 +166,79 @@ void vmdbg_notify_instr(struct mir_instr *instr)
         return;
     }
     cmd();
+}
+
+void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *ptr)
+{
+    if (!current_vm) return;
+    if (!verbose_stack) return;
+    struct virtual_machine *vm = current_vm;
+    switch (op) {
+    case VMDBG_PUSH_RA:
+        if (vm->stack->pc) {
+            color_print(stdout,
+                        BL_RED,
+                        "%6zu %20s  PUSH RA\n",
+                        (size_t)vm->stack->pc->id,
+                        mir_instr_name(vm->stack->pc));
+        } else {
+            color_print(stdout, BL_RED, "     - %20s  PUSH RA\n", "Terminal");
+        }
+        break;
+    case VMDBG_POP_RA:
+        color_print(stdout,
+                    BL_BLUE,
+                    "%6llu %20s  POP RA\n",
+                    vm->stack->pc->id,
+                    mir_instr_name(vm->stack->pc));
+        break;
+    case VMDBG_PUSH: {
+        unsigned long long size = type->store_size_bytes;
+        char               type_name[256];
+        mir_type_to_str(type_name, 256, type, true);
+        if (vm->stack->pc) {
+            color_print(stdout,
+                        BL_RED,
+                        "%6llu %20s  PUSH    (%lluB, %p) %s\n",
+                        (unsigned long long)vm->stack->pc->id,
+                        mir_instr_name(vm->stack->pc),
+                        size,
+                        ptr,
+                        type_name);
+        } else {
+            color_print(stdout,
+                        BL_RED,
+                        "     -                       PUSH    (%lluB, %p) %s\n",
+                        size,
+                        ptr,
+                        type_name);
+        }
+        break;
+    }
+    case VMDBG_POP: {
+        unsigned long long size = type->store_size_bytes;
+        char               type_name[256];
+        mir_type_to_str(type_name, 256, type, true);
+        if (vm->stack->pc) {
+            color_print(stdout,
+                        BL_BLUE,
+                        "%6llu %20s  POP     (%lluB, %p) %s\n",
+                        vm->stack->pc->id,
+                        mir_instr_name(vm->stack->pc),
+                        size,
+                        vm->stack->top_ptr - size,
+                        type_name);
+        } else {
+            color_print(stdout,
+                        BL_BLUE,
+                        "     -                       POP     (%lluB, %p) %s\n",
+                        size,
+                        vm->stack->top_ptr - size,
+                        type_name);
+        }
+        break;
+    }
+    }
 }
 
 void vmdbg_break(void)

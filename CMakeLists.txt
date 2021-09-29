@@ -163,6 +163,7 @@ set(HEADER_FILES
     src/tokens.h
     src/unit.h
     src/vm.h
+    src/vmdbg.h
 )
 
 set(SOURCE_FILES

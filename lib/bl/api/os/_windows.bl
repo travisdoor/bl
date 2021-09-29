@@ -101,26 +101,31 @@ os_get_last_error :: fn () (s32, string) #inline {
     return ec, str;
 }
 
-_os_debug_break :: fn () #inline {
+__os_write :: fn (fd: s32, buf: *u8, count: usize) s64 {
+    return _write(fd, auto buf, count);
+};
+
+// This is internally called from runtime when `debugbreak` is reached. Basically this when execution
+// reach the `debugbreak` builtin expression, compiler will use internal break handling for compile-time
+// execution (using interpreter) and replace this expression with call to this function in runtime.
+__os_debug_break :: fn () #inline #compiler {
     if Win32.IsDebuggerPresent() != 0 {
         Win32.DebugBreak();
     }
 }
 
-__os_write :: fn (fd: s32, buf: *u8, count: usize) s64 {
-    return _write(fd, auto buf, count);
-};
-
+// This is internally called from runtime when execution reach unreachable code path.
+// Should not be called from interpreter.
 __os_abort :: fn () #compiler {
-    #if IS_DEBUG { _os_debug_break(); }
+    #if IS_DEBUG { __os_debug_break(); }
     if _context.abort_fn {
         _context.abort_fn();
     } else {
-        _os_abort_default();
+        __os_abort_default();
     }
 }
 
-_os_abort_default :: fn () {
+__os_abort_default :: fn () #inline {
     _raise(_SIGABRT);
 }
 

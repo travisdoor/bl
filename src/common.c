@@ -171,7 +171,7 @@ bool get_current_exec_dir(char *buf, usize buf_size)
 
 bool get_current_working_dir(char *buf, usize buf_size)
 {
-    return brealpath(".", buf, buf_size);
+    return brealpath(".", buf, (s32)buf_size);
 }
 
 bool file_exists(const char *filepath)

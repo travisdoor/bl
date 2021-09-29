@@ -16,6 +16,7 @@ union __INSTR_T {\
     struct mir_instr_decl_direct_ref decl_direct_ref;\
     struct mir_instr_call            call;\
     struct mir_instr_unreachable     unreachable;\
+    struct mir_instr_debugbreak      debugbreak;\
     struct mir_instr_cond_br         cond_br;\
     struct mir_instr_br              br;\
     struct mir_instr_unop            unop;\
@@ -80,6 +81,7 @@ union __INSTR_T {\
     MIR_INSTR_DECL_REF,
     MIR_INSTR_DECL_DIRECT_REF,
     MIR_INSTR_UNREACHABLE,
+    MIR_INSTR_DEBUGBREAK,
     MIR_INSTR_COND_BR,
     MIR_INSTR_BR,
     MIR_INSTR_UNOP,

@@ -57,6 +57,7 @@
     BUILTIN_ID_ENV_ENUM,
     BUILTIN_ID_ENV,
     BUILTIN_ID_STATIC_ASSERT_FN,
+    BUILTIN_ID_OS_DEBUG_BREAK_FN,
 #endif
 
 #ifdef GEN_BUILTIN_IDS
@@ -118,4 +119,5 @@
     {.str = "Env",                   .hash = 0},
     {.str = "ENV",                   .hash = 0},
     {.str = "__static_assert",       .hash = 0},
+    {.str = "__os_debug_break",      .hash = 0},
 #endif

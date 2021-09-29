@@ -688,7 +688,8 @@ static struct mir_instr *append_instr_unop(struct context *  ctx,
                                            struct ast *      node,
                                            struct mir_instr *instr,
                                            enum unop_kind    op);
-static struct mir_instr *append_instr_unrecheable(struct context *ctx, struct ast *node);
+static struct mir_instr *append_instr_unreachable(struct context *ctx, struct ast *node);
+static struct mir_instr *append_instr_debugbreak(struct context *ctx, struct ast *node);
 static struct mir_instr *
 append_instr_addrof(struct context *ctx, struct ast *node, struct mir_instr *src);
 
@@ -714,7 +715,8 @@ static void              ast_push_fn_context(struct context *ctx);
 static void              ast_pop_fn_context(struct context *ctx);
 static struct mir_instr *ast(struct context *ctx, struct ast *node);
 static void              ast_ublock(struct context *ctx, struct ast *ublock);
-static void              ast_unrecheable(struct context *ctx, struct ast *unr);
+static void              ast_unreachable(struct context *ctx, struct ast *unr);
+static void              ast_debugbreak(struct context *ctx, struct ast *debug_break);
 static void              ast_defer_block(struct context *ctx, struct ast *block, bool whole_tree);
 static void              ast_block(struct context *ctx, struct ast *block);
 static void              ast_stmt_if(struct context *ctx, struct ast *stmt_if);
@@ -858,6 +860,8 @@ static struct result analyze_instr_unop(struct context *ctx, struct mir_instr_un
 static struct result analyze_instr_test_cases(struct context *ctx, struct mir_instr_test_case *tc);
 static struct result analyze_instr_unreachable(struct context *              ctx,
                                                struct mir_instr_unreachable *unr);
+static struct result analyze_instr_debugbreak(struct context *             ctx,
+                                              struct mir_instr_debugbreak *debug_break);
 static struct result analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br);
 static struct result analyze_instr_br(struct context *ctx, struct mir_instr_br *br);
 static struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch *sw);
@@ -895,7 +899,6 @@ static struct result analyze_instr_decl_ref(struct context *ctx, struct mir_inst
 static struct result analyze_instr_decl_direct_ref(struct context *                  ctx,
                                                    struct mir_instr_decl_direct_ref *ref);
 static struct result analyze_instr_const(struct context *ctx, struct mir_instr_const *cnst);
-static struct result analyze_builtin_call(struct context *ctx, struct mir_instr_call *call);
 static struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *call);
 static struct result
 analyze_instr_cast(struct context *ctx, struct mir_instr_cast *cast, bool analyze_op_only);
@@ -3797,11 +3800,20 @@ struct mir_instr *append_instr_addrof(struct context *ctx, struct ast *node, str
     return tmp;
 }
 
-struct mir_instr *append_instr_unrecheable(struct context *ctx, struct ast *node)
+struct mir_instr *append_instr_unreachable(struct context *ctx, struct ast *node)
 {
     struct mir_instr_unreachable *tmp = create_instr(ctx, MIR_INSTR_UNREACHABLE, node);
     tmp->base.value.type              = ctx->builtin_types->t_void;
     tmp->base.ref_count               = NO_REF_COUNTING;
+    append_current_block(ctx, &tmp->base);
+    return &tmp->base;
+}
+
+struct mir_instr *append_instr_debugbreak(struct context *ctx, struct ast *node)
+{
+    struct mir_instr_debugbreak *tmp = create_instr(ctx, MIR_INSTR_DEBUGBREAK, node);
+    tmp->base.value.type             = ctx->builtin_types->t_void;
+    tmp->base.ref_count              = NO_REF_COUNTING;
     append_current_block(ctx, &tmp->base);
     return &tmp->base;
 }
@@ -5723,7 +5735,17 @@ struct result analyze_instr_unreachable(struct context *ctx, struct mir_instr_un
     if (!abort_fn) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     ++abort_fn->ref_count;
     unr->abort_fn = abort_fn;
+    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
+}
 
+struct result analyze_instr_debugbreak(struct context *             ctx,
+                                       struct mir_instr_debugbreak *debug_break)
+{
+    ZONE();
+    struct mir_fn *break_fn = lookup_builtin_fn(ctx, BUILTIN_ID_OS_DEBUG_BREAK_FN);
+    if (!break_fn) RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
+    ++break_fn->ref_count;
+    debug_break->break_fn = break_fn;
     RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
@@ -5953,14 +5975,14 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-int _group_compare(const void *_first, const void *_second)
+s32 _group_compare(const void *_first, const void *_second)
 {
     struct mir_fn *first  = *(struct mir_fn **)_first;
     struct mir_fn *second = *(struct mir_fn **)_second;
     BL_MAGIC_ASSERT(first);
     BL_MAGIC_ASSERT(second);
     BL_ASSERT(first->type && second->type);
-    return first->type->data.fn.argument_hash - second->type->data.fn.argument_hash;
+    return (s32)(first->type->data.fn.argument_hash - second->type->data.fn.argument_hash);
 }
 
 struct result analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_group *group)
@@ -7170,24 +7192,6 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
-struct result analyze_builtin_call(struct context *ctx, struct mir_instr_call *call)
-{
-    // @Cleanup: Is this function still needed?
-    ZONE();
-    struct mir_type *          callee_type = call->callee->value.type;
-    const enum builtin_id_kind id          = callee_type->data.fn.builtin_id;
-    switch (id) {
-    case BUILTIN_ID_ASSERT_FN:
-    case BUILTIN_ID_ABORT_FN:
-    case BUILTIN_ID_STATIC_ASSERT_FN: {
-        break;
-    }
-    default:
-        BL_ABORT("Unknown builtin call!");
-    }
-    RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
-}
-
 static void poly_type_match(struct mir_type * recipe,
                             struct mir_type * other,
                             struct mir_type **poly_type,
@@ -7731,8 +7735,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         goto INVALID_ARGC;
     }
     if (type->data.fn.builtin_id != BUILTIN_ID_NONE) {
-        struct result result = analyze_builtin_call(ctx, call);
-        if (result.state != ANALYZE_PASSED) RETURN_ZONE(result);
+        RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
     }
 
     // validate argument types
@@ -8229,6 +8232,9 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
     case MIR_INSTR_UNREACHABLE:
         state = analyze_instr_unreachable(ctx, (struct mir_instr_unreachable *)instr);
         break;
+    case MIR_INSTR_DEBUGBREAK:
+        state = analyze_instr_debugbreak(ctx, (struct mir_instr_debugbreak *)instr);
+        break;
     case MIR_INSTR_ARG:
         state = analyze_instr_arg(ctx, (struct mir_instr_arg *)instr);
         break;
@@ -8476,7 +8482,7 @@ INLINE void testing_add_test_case(struct context *ctx, struct mir_fn *fn)
     struct mir_type *var_type = var->value.type;
     BL_ASSERT(var_type->kind == MIR_TYPE_ARRAY);
     struct mir_type *elem_type = var_type->data.array.elem_type;
-    const ptrdiff_t  offset    = vm_get_array_elem_offset(var_type, i);
+    const ptrdiff_t  offset    = vm_get_array_elem_offset(var_type, (u32)i);
 
     struct mir_type *func_type = mir_get_struct_elem_type(elem_type, 0);
     struct mir_type *name_type = mir_get_struct_elem_type(elem_type, 1);
@@ -9062,9 +9068,14 @@ void ast_block(struct context *ctx, struct ast *block)
     if (!block->data.block.has_return) ast_defer_block(ctx, block, false);
 }
 
-void ast_unrecheable(struct context *ctx, struct ast *unr)
+void ast_unreachable(struct context *ctx, struct ast *unr)
 {
-    append_instr_unrecheable(ctx, unr);
+    append_instr_unreachable(ctx, unr);
+}
+
+void ast_debugbreak(struct context *ctx, struct ast *debug_break)
+{
+    append_instr_debugbreak(ctx, debug_break);
 }
 
 void ast_stmt_if(struct context *ctx, struct ast *stmt_if)
@@ -10540,7 +10551,10 @@ struct mir_instr *ast(struct context *ctx, struct ast *node)
         ast_block(ctx, node);
         break;
     case AST_UNREACHABLE:
-        ast_unrecheable(ctx, node);
+        ast_unreachable(ctx, node);
+        break;
+    case AST_DEBUGBREAK:
+        ast_debugbreak(ctx, node);
         break;
     case AST_STMT_DEFER:
         ast_stmt_defer(ctx, node);
@@ -11087,8 +11101,7 @@ void initialize_builtins(struct context *ctx)
 
     // Add IS_COMPTIME_RUN immutable into the global scope to provide information about compile
     // time run.
-    ctx->assembly->vm_run.is_comptime_run =
-        add_global_bool(ctx, BID(IS_COMPTIME_RUN), true, false);
+    ctx->assembly->vm_run.is_comptime_run = add_global_bool(ctx, BID(IS_COMPTIME_RUN), true, false);
 #undef PROVIDE
 }
 

@@ -118,7 +118,7 @@ struct target_triple {
 };
 
 struct native_lib {
-    u32           hash;
+    u64           hash;
     DLLib *       handle;
     struct token *linked_from;
     char *        user_name;
@@ -149,6 +149,7 @@ struct native_lib {
     bool                  no_analyze;                                                              \
     enum assert_mode      assert_mode;                                                             \
     bool                  syntax_only;                                                             \
+    bool                  vmdbg_enabled;                                                           \
     struct target_triple  triple;
 
 struct target {

@@ -61,7 +61,8 @@ typedef struct {
     _ARG(NO_USAGE_CHECK, "", "-no-usage-check", "Disable checking of unused symbols.")             \
     _ARG(TIME_REPORT, "", "-time-report", "Print compilation time report.")                        \
     _ARG(DI_DWARF, "", "-di-dwarf", "Set debug info to use DWARF format.")                         \
-    _ARG(DI_CODEVIEW, "", "-di-codeview", "Set debug info to use Codeview format.")
+    _ARG(DI_CODEVIEW, "", "-di-codeview", "Set debug info to use Codeview format.")                \
+    _ARG(VMDBG_ATTACH, "", "-vmdbg-attach", "Attach compile-time execution debugger.")
 
 #define _ARG(k, s, l, h) ARG_##k,
 typedef enum { _ARGS _ARG_COUNT } ArgKind;

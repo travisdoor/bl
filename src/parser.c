@@ -102,6 +102,7 @@ static void            parse_ublock_content(struct context *ctx, struct ast *ubl
 static struct ast *
 parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive_flags *satisfied);
 static struct ast *parse_unrecheable(struct context *ctx);
+static struct ast *parse_debugbreak(struct context *ctx);
 static struct ast *parse_ident(struct context *ctx);
 static struct ast *parse_ident_group(struct context *ctx);
 static struct ast *parse_block(struct context *ctx, bool create_scope);
@@ -2540,6 +2541,13 @@ struct ast *parse_unrecheable(struct context *ctx)
     return ast_create_node(ctx->ast_arena, AST_UNREACHABLE, tok, SCOPE_GET(ctx));
 }
 
+struct ast *parse_debugbreak(struct context *ctx)
+{
+    struct token *tok = tokens_consume_if(ctx->tokens, SYM_DEBUGBREAK);
+    if (!tok) return NULL;
+    return ast_create_node(ctx->ast_arena, AST_DEBUGBREAK, tok, SCOPE_GET(ctx));
+}
+
 struct ast *parse_expr_type(struct context *ctx)
 {
     struct token *tok  = tokens_peek(ctx->tokens);
@@ -2628,6 +2636,10 @@ NEXT:
         break;
     case SYM_UNREACHABLE:
         tmp = parse_unrecheable(ctx);
+        parse_semicolon_rq(ctx);
+        break;
+    case SYM_DEBUGBREAK:
+        tmp = parse_debugbreak(ctx);
         parse_semicolon_rq(ctx);
         break;
     default:

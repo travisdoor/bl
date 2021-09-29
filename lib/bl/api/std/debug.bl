@@ -39,6 +39,7 @@
 //! ::
 //!
 //! Set of common debugging tools.
+//! @Incomplete: documentation of `debugbreak` builtin.
 
 /// Print debug log using `_context.print_log_fn` function. See also :ref:`print`.
 print_log :: fn (format: string, args: ...) #inline {
@@ -73,15 +74,6 @@ __static_assert :: fn (expr: bool) #compiler {
     if !expr { unreachable; }
 }
 
-/// Triggers breakpoint, when debbuging, at curent call location.
-debug_break :: fn () #inline {
-    if IS_COMPTIME_RUN {
-        __bl_builtin_comptime_break();
-    } else {
-        _os_debug_break();
-    }
-}
-
 /// Abort execution and eventually print panic message if there is one specified. First
 /// passed argument in 'args' will act like format string and can be eventually followed
 /// by any additional values required.
@@ -113,7 +105,7 @@ PrintLogKind :: enum u8 {
     Panic;
 };
 
-_print_log_default :: fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...) {
+__print_log_default :: fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...) {
     out := OS_STDOUT;
     buf: [PRINT_MAX_LENGTH]u8 #noinit;
     tag: string;
@@ -159,7 +151,6 @@ measure_elapsed_ms_end :: fn (name := String.empty) f64 #inline {
 }
 
 #private
-__bl_builtin_comptime_break :: fn () #extern;
 _elapsed_ms_stack: [..]f64 #thread_local;
 
 panic_empty :: fn () {

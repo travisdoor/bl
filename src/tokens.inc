@@ -27,6 +27,7 @@ sm(ALIGNOF,        "alignof", 7)
 sm(CONTINUE,       "continue", 8)
 sm(TYPEINFO,       "typeinfo", 8)
 sm(TESTCASES,      "testcases", 9)
+sm(DEBUGBREAK,     "debugbreak", 10)
 sm(UNREACHABLE,    "unreachable", 11) /* last ident */
 sm(DCOMMENT,       "///", 3)
 sm(DGCOMMENT,      "//!", 3)

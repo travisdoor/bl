@@ -155,6 +155,8 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
     assert_mode: AssertMode;
     /// Check only code syntax.
     syntax_only: bool;
+    /// Enable virtual machine debugger.
+    vmdbg_enabled: bool;
 }
 
 /// Specification of compiler output binary kind.

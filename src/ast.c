@@ -107,6 +107,8 @@ const char *ast_get_name(const struct ast *n)
         return "Ref";
     case AST_UNREACHABLE:
         return "Unreachable";
+    case AST_DEBUGBREAK:
+        return "DebugBreak";
     case AST_CALL_LOC:
         return "CallLocation";
     case AST_STMT_RETURN:

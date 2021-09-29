@@ -28,86 +28,10 @@
 
 #include "vm.h"
 #include "builder.h"
+#include "vmdbg.h"
 
 #define VM_MAX_ALIGNMENT 8
-#define VERBOSE_EXEC (BL_DEBUG && false)
 #define CHCK_STACK (BL_DEBUG || BL_ASSERT_ENABLE)
-
-// Debug helpers
-#if VERBOSE_EXEC
-// =================================================================================================*/
-#define LOG_PUSH_RA                                                                                \
-    {                                                                                              \
-        if (vm->stack->pc) {                                                                       \
-            fprintf(stdout,                                                                        \
-                    "%6zu %20s  PUSH RA\n",                                                        \
-                    (size_t)vm->stack->pc->id,                                                     \
-                    mir_instr_name(vm->stack->pc));                                                \
-        } else {                                                                                   \
-            fprintf(stdout, "     - %20s  PUSH RA\n", "Terminal");                                 \
-        }                                                                                          \
-    }
-// =================================================================================================*/
-
-// =================================================================================================*/
-#define LOG_POP_RA                                                                                 \
-    {                                                                                              \
-        fprintf(stdout, "%6llu %20s  POP RA\n", vm->stack->pc->id, mir_instr_name(vm->stack->pc)); \
-    }
-// =================================================================================================*/
-
-// =================================================================================================*/
-#define LOG_PUSH_STACK                                                                             \
-    {                                                                                              \
-        char type_name[256];                                                                       \
-        mir_type_to_str(type_name, 256, type, true);                                               \
-        if (vm->stack->pc) {                                                                       \
-            fprintf(stdout,                                                                        \
-                    "%6llu %20s  PUSH    (%lluB, %p) %s\n",                                        \
-                    (unsigned long long)vm->stack->pc->id,                                         \
-                    mir_instr_name(vm->stack->pc),                                                 \
-                    (unsigned long long)size,                                                      \
-                    tmp,                                                                           \
-                    type_name);                                                                    \
-        } else {                                                                                   \
-            fprintf(stdout,                                                                        \
-                    "     -                       PUSH    (%lluB, %p) %s\n",                       \
-                    (unsigned long long)size,                                                      \
-                    tmp,                                                                           \
-                    type_name);                                                                    \
-        }                                                                                          \
-    }
-// =================================================================================================*/
-
-// =================================================================================================*/
-#define LOG_POP_STACK                                                                              \
-    {                                                                                              \
-        char type_name[256];                                                                       \
-        mir_type_to_str(type_name, 256, type, true);                                               \
-        if (vm->stack->pc) {                                                                       \
-            fprintf(stdout,                                                                        \
-                    "%6llu %20s  POP     (%lluB, %p) %s\n",                                        \
-                    vm->stack->pc->id,                                                             \
-                    mir_instr_name(vm->stack->pc),                                                 \
-                    (unsigned long long)size,                                                      \
-                    vm->stack->top_ptr - size,                                                     \
-                    type_name);                                                                    \
-        } else {                                                                                   \
-            fprintf(stdout,                                                                        \
-                    "     -                       POP     (%lluB, %p) %s\n",                       \
-                    (unsigned long long)size,                                                      \
-                    vm->stack->top_ptr - size,                                                     \
-                    type_name);                                                                    \
-        }                                                                                          \
-    }
-// =================================================================================================*/
-
-#else
-#define LOG_PUSH_RA
-#define LOG_POP_RA
-#define LOG_PUSH_STACK
-#define LOG_POP_STACK
-#endif
 
 #if CHCK_STACK
 #define CHCK_SIZE() sizeof(void *)
@@ -128,14 +52,6 @@
 #endif
 
 TSMALL_ARRAY_TYPE(ConstExprValue, struct mir_const_expr_value, 32);
-
-// =================================================================================================
-// VMDBG API
-// =================================================================================================
-void vmdbg_attach(struct virtual_machine *vm);
-void vmdbg_detach(void);
-void vmdbg_break(void);
-void vmdbg_notify_instr(struct mir_instr *instr);
 
 // =================================================================================================
 // fwd decls
@@ -180,6 +96,8 @@ static void
 interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mir_instr_call *call);
 static void interp_instr_toany(struct virtual_machine *vm, struct mir_instr_to_any *toany);
 static void interp_instr_unreachable(struct virtual_machine *vm, struct mir_instr_unreachable *unr);
+static void interp_instr_debugbreak(struct virtual_machine *     vm,
+                                    struct mir_instr_debugbreak *debug_break);
 static void interp_instr_phi(struct virtual_machine *vm, struct mir_instr_phi *phi);
 static void interp_instr_cast(struct virtual_machine *vm, struct mir_instr_cast *cast);
 static void interp_instr_addrof(struct virtual_machine *vm, struct mir_instr_addrof *addrof);
@@ -199,7 +117,7 @@ static void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call 
 static void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret);
 static void interp_instr_compound(struct virtual_machine *   vm,
                                   vm_stack_ptr_t             tmp_ptr,
-                                  struct mir_instr_compound *init);
+                                  struct mir_instr_compound *cmp);
 static void interp_instr_vargs(struct virtual_machine *vm, struct mir_instr_vargs *vargs);
 static void interp_instr_decl_var(struct virtual_machine *vm, struct mir_instr_decl_var *decl);
 static void interp_instr_decl_ref(struct virtual_machine *vm, struct mir_instr_decl_ref *ref);
@@ -286,21 +204,21 @@ static INLINE vm_stack_ptr_t stack_free(struct virtual_machine *vm, usize size)
     return new_top;
 }
 
-static INLINE void push_ra(struct virtual_machine *vm, struct mir_instr *caller)
+static INLINE void push_ra(struct virtual_machine *vm, struct mir_instr_call *caller)
 {
     struct vm_frame *prev = vm->stack->ra;
     struct vm_frame *tmp  = (struct vm_frame *)stack_alloc(vm, sizeof(struct vm_frame));
     tmp->caller           = caller;
     tmp->prev             = prev;
     vm->stack->ra         = tmp;
-    LOG_PUSH_RA;
+    vmdbg_notify_stack_op(VMDBG_PUSH_RA, NULL, NULL);
 }
 
-static INLINE struct mir_instr *pop_ra(struct virtual_machine *vm)
+static INLINE struct mir_instr_call *pop_ra(struct virtual_machine *vm)
 {
     if (!vm->stack->ra) return NULL;
-    struct mir_instr *caller = vm->stack->ra->caller;
-    LOG_POP_RA;
+    struct mir_instr_call *caller = vm->stack->ra->caller;
+    vmdbg_notify_stack_op(VMDBG_POP_RA, NULL, NULL);
     // rollback
     vm_stack_ptr_t new_top_ptr = (vm_stack_ptr_t)vm->stack->ra;
     vm->stack->used_bytes      = vm->stack->top_ptr - new_top_ptr;
@@ -315,7 +233,7 @@ static INLINE vm_stack_ptr_t stack_push_empty(struct virtual_machine *vm, struct
     const usize size = type->store_size_bytes;
     BL_ASSERT(size && "pushing zero sized data on stack");
     vm_stack_ptr_t tmp = stack_alloc(vm, size);
-    LOG_PUSH_STACK;
+    vmdbg_notify_stack_op(VMDBG_PUSH, type, tmp);
     return tmp;
 }
 
@@ -335,7 +253,7 @@ static INLINE vm_stack_ptr_t stack_pop(struct virtual_machine *vm, struct mir_ty
     BL_ASSERT(type);
     const usize size = type->store_size_bytes;
     BL_ASSERT(size && "popping zero sized data from stack");
-    LOG_POP_STACK;
+    vmdbg_notify_stack_op(VMDBG_POP, type, NULL);
     return stack_free(vm, size);
 }
 
@@ -708,7 +626,7 @@ void print_call_stack(struct virtual_machine *vm, usize max_nesting)
     // Print the last instruction
     builder_msg(BUILDER_MSG_NOTE, 0, instr->node->location, BUILDER_CUR_WORD, "Last called:");
     while (fr) {
-        instr = fr->caller;
+        instr = &fr->caller->base;
         fr    = fr->prev;
         if (!instr) break;
         if (max_nesting && n == max_nesting) {
@@ -989,7 +907,7 @@ void dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct
 
     switch (type->kind) {
     case MIR_TYPE_BOOL: {
-        dcArgBool(dvm, vm_read_int(type, val_ptr));
+        dcArgBool(dvm, (DCbool)vm_read_int(type, val_ptr));
         break;
     }
 
@@ -997,16 +915,16 @@ void dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct
         const u64 v = vm_read_int(type, val_ptr);
         switch (type->store_size_bytes) {
         case 1:
-            dcArgChar(dvm, v);
+            dcArgChar(dvm, (DCchar)v);
             break;
         case 2:
-            dcArgShort(dvm, v);
+            dcArgShort(dvm, (DCshort)v);
             break;
         case 4:
-            dcArgInt(dvm, v);
+            dcArgInt(dvm, (DCint)v);
             break;
         case 8:
-            dcArgLongLong(dvm, v);
+            dcArgLongLong(dvm, (DClonglong)v);
             break;
         default:
             BL_ABORT("unsupported external call integer argument type");
@@ -1236,7 +1154,7 @@ bool _execute_fn_top_level(struct virtual_machine *    vm,
         }
     }
     // push terminal frame on stack
-    push_ra(vm, call);
+    push_ra(vm, (struct mir_instr_call *)call);
     // allocate local variables
     stack_alloc_local_vars(vm, fn);
     // setup entry instruction
@@ -1273,7 +1191,6 @@ void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
     }
     // Skip all comptimes.
     if (mir_is_comptime(instr)) return;
-    vmdbg_notify_instr(instr);
 
     switch (instr->kind) {
     case MIR_INSTR_CAST:
@@ -1321,6 +1238,9 @@ void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
     case MIR_INSTR_UNREACHABLE:
         interp_instr_unreachable(vm, (struct mir_instr_unreachable *)instr);
         break;
+    case MIR_INSTR_DEBUGBREAK:
+        interp_instr_debugbreak(vm, (struct mir_instr_debugbreak *)instr);
+        break;
     case MIR_INSTR_ARG:
         interp_instr_arg(vm, (struct mir_instr_arg *)instr);
         break;
@@ -1352,6 +1272,8 @@ void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
     default:
         BL_ABORT("missing execution for instruction: %s", mir_instr_name(instr));
     }
+
+    vmdbg_notify_instr(instr);
 }
 
 void interp_instr_toany(struct virtual_machine *vm, struct mir_instr_to_any *toany)
@@ -1471,7 +1393,7 @@ void interp_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr
             exec_abort(vm, 0);
         }
 
-        result_ptr = vm_get_array_elem_ptr(arr_type, arr_ptr, index);
+        result_ptr = vm_get_array_elem_ptr(arr_type, arr_ptr, (u32)index);
         break;
     }
 
@@ -1577,12 +1499,19 @@ void interp_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *un
 
 void interp_instr_unreachable(struct virtual_machine *vm, struct mir_instr_unreachable *unr)
 {
+    vmdbg_break();
     builder_msg(BUILDER_MSG_ERROR,
                 ERR_COMPILE_TIME_ABORT,
                 NULL,
                 BUILDER_CUR_AFTER,
                 "Execution reached unreachable code.");
     exec_abort(vm, 0);
+}
+
+void interp_instr_debugbreak(struct virtual_machine *    vm,
+                             struct mir_instr_debugbreak UNUSED(*debug_break))
+{
+    vmdbg_break();
 }
 
 void interp_instr_br(struct virtual_machine *vm, struct mir_instr_br *br)
@@ -1921,33 +1850,11 @@ void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
         interp_extern_call(vm, fn, call);
     } else {
         // Push current frame stack top. (Later popped by ret instruction)
-        push_ra(vm, &call->base);
+        push_ra(vm, call);
         BL_ASSERT(fn->first_block->entry_instr);
         stack_alloc_local_vars(vm, fn);
         // setup entry instruction
         set_pc(vm, fn->first_block->entry_instr);
-    }
-
-    // Cleanup args.
-    TSmallArray_InstrPtr *arg_values = call->args;
-    if (arg_values) {
-        struct mir_instr *arg_value;
-        TSA_FOREACH(arg_values, arg_value)
-        {
-            if (mir_is_comptime(arg_value)) continue;
-            stack_pop(vm, arg_value->value.type);
-        }
-    }
-
-    // Cleanup return value if it's not used!
-    struct mir_type *ret_type = fn->type->data.fn.ret_type;
-    const bool       is_used  = call->base.ref_count > 0;
-    if (ret_type->kind != MIR_TYPE_VOID && !is_used) {
-        if (mir_is_comptime(&call->base)) {
-            // @Incomplete: handle comptime calls.
-            BL_UNREACHABLE;
-        }
-        stack_pop(vm, ret_type);
     }
 }
 
@@ -1970,14 +1877,49 @@ void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret)
     }
 
     // do frame stack rollback
-    struct mir_instr *pc = (struct mir_instr *)pop_ra(vm);
+    struct mir_instr_call *pc = pop_ra(vm);
+
+    // clean up all arguments from the stack
+    if (pc) {
+        TSmallArray_InstrPtr *arg_values = pc->args;
+        if (arg_values) {
+            struct mir_instr *arg_value;
+            TSA_FOREACH(arg_values, arg_value)
+            {
+                if (mir_is_comptime(arg_value)) continue;
+                stack_pop(vm, arg_value->value.type);
+            }
+        }
+    } else {
+        // When caller was not specified we expect all arguments to be pushed on the
+        // stack so we must clear them all. Remember they were pushed in reverse
+        // order, so now we have to pop them in order they are defined.
+        TSmallArray_ArgPtr *args = fn->type->data.fn.args;
+        if (args) {
+            BL_ABORT("Move this block into execute functions.");
+            struct mir_arg *arg;
+            TSA_FOREACH(args, arg)
+            {
+                stack_pop(vm, arg->type);
+            }
+        }
+    }
+
     // push return value on the stack if there is one
     if (ret_data_ptr) {
-        stack_push(vm, ret_data_ptr, ret_type);
+        if (pc) {
+            if (mir_is_comptime(&pc->base)) {
+                pc->base.value.data = ret->value->value.data;
+            } else if (pc->base.ref_count > 0) {
+                stack_push(vm, ret_data_ptr, ret_type);
+            }
+        } else {
+            stack_push(vm, ret_data_ptr, ret_type);
+        }
     }
+
     // set program counter to next instruction
-    pc = pc ? pc->next : NULL;
-    set_pc(vm, pc);
+    set_pc(vm, pc ? pc->base.next : NULL);
 }
 
 void interp_instr_binop(struct virtual_machine *vm, struct mir_instr_binop *binop)
@@ -2154,7 +2096,7 @@ void eval_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr *
 
     switch (arr_type->kind) {
     case MIR_TYPE_ARRAY: {
-        result_ptr = vm_get_array_elem_ptr(arr_type, arr_ptr, index);
+        result_ptr = vm_get_array_elem_ptr(arr_type, arr_ptr, (u32)index);
         break;
     }
 
@@ -2256,7 +2198,7 @@ void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *
 
         switch (value->type->kind) {
         case MIR_TYPE_ARRAY: {
-            ptrdiff_t offset = vm_get_array_elem_offset(value->type, i);
+            ptrdiff_t offset = vm_get_array_elem_offset(value->type, (u32)i);
             dest_ptr += offset;
             memcpy(dest_ptr, src_ptr, value->type->data.array.elem_type->store_size_bytes);
             break;
@@ -2415,11 +2357,6 @@ void eval_instr_decl_direct_ref(struct virtual_machine            UNUSED(*vm),
 // =================================================================================================
 // Public
 // =================================================================================================
-BL_EXPORT void __bl_builtin_comptime_break(void)
-{
-    vmdbg_break();
-}
-
 void vm_init(struct virtual_machine *vm, usize stack_size)
 {
     if (stack_size == 0) BL_ABORT("invalid frame stack size");
@@ -2491,7 +2428,7 @@ void vm_override_var(struct virtual_machine *vm, struct mir_var *var, const u64 
     vm_write_int(type, dest_ptr, value);
 }
 
-static INLINE bool does_return(struct mir_fn *fn)
+static INLINE bool fn_does_return(struct mir_fn *fn)
 {
     return fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID;
 }
@@ -2505,20 +2442,17 @@ bool vm_execute_fn(struct virtual_machine *   vm,
     BL_MAGIC_ASSERT(fn);
     vm->assembly       = assembly;
     vm->stack->aborted = false;
-    vmdbg_attach(vm);
     // @Incomplete: push args on stack.
     if (execute_function(vm, fn)) {
         // @Incomplete: cleanup args.
         vm_stack_ptr_t return_ptr = NULL;
-        if (does_return(fn)) {
+        if (fn_does_return(fn)) {
             struct mir_type *ret_type = fn->type->data.fn.ret_type;
             return_ptr                = stack_pop(vm, ret_type);
         }
         if (optional_return) (*optional_return) = return_ptr;
-        vmdbg_detach();
         return true;
     }
-    vmdbg_detach();
     return false;
 }
 
@@ -2537,7 +2471,7 @@ bool vm_execute_comptime_call(struct virtual_machine *vm,
     if (execute_function(vm, fn)) {
         // @Incomplete: claenup args?
         // Pop return value.
-        if (does_return(fn)) {
+        if (fn_does_return(fn)) {
             struct mir_type *ret_type = fn->type->data.fn.ret_type;
             call->base.value.data     = stack_pop(vm, ret_type);
         } else {
@@ -2571,17 +2505,6 @@ vm_stack_ptr_t
 vm_alloc_raw(struct virtual_machine *vm, struct assembly UNUSED(*assembly), struct mir_type *type)
 {
     return stack_push_empty(vm, type);
-}
-
-void *_vm_read_value(usize size, vm_stack_ptr_t value)
-{
-    BL_ASSERT(value);
-    static vm_value_t tmp;
-    memset(&tmp, 0, sizeof(tmp));
-    if (size == 0) BL_ABORT("Reading value of zero size is invalid!!!");
-    if (size > sizeof(tmp)) BL_ABORT("Cannot read value bigger then %sB", sizeof(tmp));
-    memcpy(&tmp, value, size);
-    return &tmp;
 }
 
 // Try to fetch variable allocation pointer.
@@ -2800,12 +2723,12 @@ void vm_do_cast(vm_stack_ptr_t   dest,
         // real to signed integer same size
         switch (src_size) {
         case 4: {
-            vm_write_int(dest_type, dest, vm_read_as(f32, src));
+            vm_write_int(dest_type, dest, (u64)vm_read_as(f32, src));
             break;
         }
 
         case 8: {
-            vm_write_int(dest_type, dest, vm_read_as(f64, src));
+            vm_write_int(dest_type, dest, (u64)vm_read_as(f64, src));
             break;
         }
         default:
@@ -2815,52 +2738,47 @@ void vm_do_cast(vm_stack_ptr_t   dest,
     }
 
     case MIR_CAST_SITOFP: {
-        //*****************************************************************************************/
-#define FP_WRITE(V)                                                                                \
-    if (dest_size == 4)                                                                            \
-        vm_write_as(f32, dest, (V));                                                               \
-    else                                                                                           \
-        vm_write_as(f64, dest, (V));
-        //*****************************************************************************************/
-
         // signed integer real
         switch (src_size) {
         case 1: {
-            FP_WRITE(vm_read_as(s8, src));
+            if (dest_size == 4) vm_write_as(f32, dest, vm_read_as(s8, src));
+            else vm_write_as(f64, dest, vm_read_as(s8, src));
             break;
         }
 
         case 2: {
-            FP_WRITE(vm_read_as(s16, src));
+            if (dest_size == 4) vm_write_as(f32, dest, vm_read_as(s16, src));
+            else vm_write_as(f64, dest, vm_read_as(s16, src));
             break;
         }
 
         case 4: {
-            FP_WRITE(vm_read_as(s32, src));
+            if (dest_size == 4) vm_write_as(f32, dest, (f32)vm_read_as(s32, src));
+            else vm_write_as(f64, dest, (f64)vm_read_as(s32, src));
             break;
         }
 
         case 8: {
-            FP_WRITE(vm_read_as(s64, src));
+            if (dest_size == 4) vm_write_as(f32, dest, (f32)vm_read_as(s64, src));
+            else vm_write_as(f64, dest, (f64)vm_read_as(s64, src));
             break;
         }
         default:
             BL_ABORT("Invalid!");
         }
         break;
-#undef FP_WRITE
     }
 
     case MIR_CAST_UITOFP: {
         const u64 v = vm_read_int(src_type, src);
         switch (dest_size) {
         case 4: {
-            vm_write_as(f32, dest, v);
+            vm_write_as(f32, dest, (f32)v);
             break;
         }
 
         case 8: {
-            vm_write_as(f64, dest, v);
+            vm_write_as(f64, dest, (f64)v);
             break;
         }
         default:

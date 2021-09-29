@@ -27,6 +27,7 @@
 // =================================================================================================
 
 #include "builder.h"
+#include "vmdbg.h"
 #include <stdarg.h>
 
 #if BL_PLATFORM_WIN
@@ -302,11 +303,22 @@ static void tests_run(struct assembly *assembly)
     builder.test_failc = assembly->vm_run.last_execution_status;
 }
 
+static void attach_dbg(struct assembly *assembly)
+{
+    vmdbg_attach(&assembly->vm);
+}
+
+static void detach_dbg(struct assembly *assembly)
+{
+    vmdbg_detach();
+}
+
 #define STAGE(i, fn)                                                                               \
     {                                                                                              \
         BL_ASSERT(i < stage_count - 1 && "Stage out of bounds!");                                  \
         stages[i++] = fn;                                                                          \
-    }
+    }                                                                                              \
+    (void)0
 
 static void setup_unit_pipeline(struct assembly *assembly, unit_stage_fn_t *stages, s32 stage_count)
 {
@@ -336,9 +348,11 @@ setup_assembly_pipeline(struct assembly *assembly, assembly_stage_fn_t *stages, 
     if (t->syntax_only) return;
     STAGE(index, &linker_run);
     STAGE(index, &mir_run);
+    if (t->vmdbg_enabled) STAGE(index, &attach_dbg);
     if (t->run) STAGE(index, &entry_run);
     if (t->kind == ASSEMBLY_BUILD_PIPELINE) STAGE(index, build_entry_run);
     if (t->run_tests) STAGE(index, tests_run);
+    if (t->vmdbg_enabled) STAGE(index, &detach_dbg);
     if (t->emit_mir) STAGE(index, &mir_writer_run);
     if (t->no_analyze) return;
     if (t->no_llvm) return;
@@ -397,7 +411,7 @@ static int compile(struct assembly *assembly)
     builder.total_lines = 0;
 
     unit_stage_fn_t     unit_pipeline[5];
-    assembly_stage_fn_t assembly_pipeline[14];
+    assembly_stage_fn_t assembly_pipeline[16];
     setup_unit_pipeline(assembly, unit_pipeline, TARRAY_SIZE(unit_pipeline));
     setup_assembly_pipeline(assembly, assembly_pipeline, TARRAY_SIZE(assembly_pipeline));
 

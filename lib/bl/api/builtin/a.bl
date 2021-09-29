@@ -325,8 +325,8 @@ Context :: struct {
 /// be modified by user code. For example we can replace default memory allocator
 /// with custom one, this will affect all allocations made later.
 _context := {:Context: 
-                &_print_log_default, 
-                &_os_abort_default,
+                &__print_log_default, 
+                &__os_abort_default,
                 &default_allocator,
             };
 

@@ -197,6 +197,7 @@ s32 parse_arguments(Options *opt, s32 argc, char *argv[])
         ARG(ARG_NO_ANALYZE, opt->target->no_analyze = true;)
         ARG(ARG_DOCS, opt->target->kind = ASSEMBLY_DOCS;)
         ARG(ARG_SYNTAX_ONLY, opt->target->syntax_only = true;)
+        ARG(ARG_VMDBG_ATTACH, opt->target->vmdbg_enabled = true;)
 
         builder_error("Invalid argument '%s'", argv[i]);
         return INVALID_ARGS;
