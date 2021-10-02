@@ -62,6 +62,7 @@
 #define IMPL_UNROLL_TMP ".unroll"
 #define NO_REF_COUNTING -1
 #define VERBOSE_ANALYZE false
+#define STORE_REPLACE_SIZE_BYTES 16
 
 #define ANALYZE_INSTR_RQ(i)                                                                        \
     {                                                                                              \
@@ -3952,6 +3953,7 @@ struct mir_instr *create_instr_decl_var_impl(struct context *  ctx,
     tmp->type                      = ref_instr(type);
     tmp->init                      = ref_instr(init);
     tmp->var = create_var_impl(ctx, node, name, NULL, is_mutable, is_global, false);
+    if (!init) SET_FLAG(tmp->var->flags, FLAG_NO_INIT);
     SET_IS_NAKED_IF_COMPOUND(init, false);
     return &tmp->base;
 }
@@ -7734,10 +7736,6 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     } else if (callee_argc != call_argc) {
         goto INVALID_ARGC;
     }
-    if (type->data.fn.builtin_id != BUILTIN_ID_NONE) {
-        RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
-    }
-
     // validate argument types
     for (u32 i = 0; i < callee_argc; ++i) {
         struct mir_instr **call_arg   = &call->args->data[i];
@@ -11108,6 +11106,7 @@ void initialize_builtins(struct context *ctx)
 const char *get_intrinsic(const char *name)
 {
     if (!name) return NULL;
+    if (strcmp(name, "memset.p0i8.i64") == 0) return "__intrinsic_memset_p0i8_i64";
     if (strcmp(name, "sin.f32") == 0) return "__intrinsic_sin_f32";
     if (strcmp(name, "sin.f64") == 0) return "__intrinsic_sin_f64";
     if (strcmp(name, "cos.f32") == 0) return "__intrinsic_cos_f32";

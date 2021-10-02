@@ -29,6 +29,11 @@
 #include "common.h"
 #include <math.h>
 
+BL_EXPORT u8 *__intrinsic_p0i8_i64(u8 *dest, u8 v, usize size)
+{
+    return memset(dest, v, size);
+}
+
 BL_EXPORT f32 __intrinsic_sin_f32(f32 v)
 {
     return sinf(v);

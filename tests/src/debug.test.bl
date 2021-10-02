@@ -28,7 +28,7 @@ debug_print_log :: fn () #test {
         print_log("hello", 10, true);
     }
 
-    _context.print_log_fn = &_print_log_default;
+    _context.print_log_fn = &__print_log_default;
 }
 
 debug_print_warn :: fn () #test {
@@ -60,7 +60,7 @@ debug_print_warn :: fn () #test {
         print_warn("hello", 10, true);
     }
 
-    _context.print_log_fn = &_print_log_default;
+    _context.print_log_fn = &__print_log_default;
 }
 
 debug_print_err :: fn () #test {
@@ -92,7 +92,7 @@ debug_print_err :: fn () #test {
         print_err("hello", 10, true);
     }
 
-    _context.print_log_fn = &_print_log_default;
+    _context.print_log_fn = &__print_log_default;
 }
 
 _expected_kind: PrintLogKind;

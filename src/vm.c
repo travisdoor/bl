@@ -51,8 +51,6 @@
     }
 #endif
 
-TSMALL_ARRAY_TYPE(ConstExprValue, struct mir_const_expr_value, 32);
-
 // =================================================================================================
 // fwd decls
 // =================================================================================================
@@ -78,19 +76,7 @@ static const char *dyncall_generate_signature(struct virtual_machine *vm, struct
 static DCCallback *dyncall_fetch_callback(struct virtual_machine *vm, struct mir_fn *fn);
 static void
 dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct mir_type *type);
-static bool execute_fn_impl_top_level(struct virtual_machine *    vm,
-                                      struct mir_fn *             fn,
-                                      TSmallArray_ConstExprValue *args,
-                                      vm_stack_ptr_t *            out_ptr);
-
-static bool _execute_fn_top_level(struct virtual_machine *    vm,
-                                  struct mir_fn *             fn,
-                                  struct mir_instr *          call,       // Optional
-                                  TSmallArray_ConstExprValue *arg_values, // Optional
-                                  vm_stack_ptr_t *            out_ptr     // Optional
-);
 static bool execute_function(struct virtual_machine *vm, struct mir_fn *fn);
-
 static void interp_instr(struct virtual_machine *vm, struct mir_instr *instr);
 static void
 interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mir_instr_call *call);
@@ -146,6 +132,11 @@ static void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_com
 // =================================================================================================
 // Inlines
 // =================================================================================================
+static INLINE bool fn_does_return(struct mir_fn *fn)
+{
+    return fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID;
+}
+
 static INLINE bool needs_tmp_alloc(struct mir_const_expr_value *v)
 {
     return v->type->store_size_bytes > sizeof(v->_tmp);
@@ -741,8 +732,7 @@ char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result
     struct mir_type *ret_type = fn->type->data.fn.ret_type;
     const bool       is_extern =
         IS_FLAG(ctx->fn->flags, FLAG_EXTERN) || IS_FLAG(ctx->fn->flags, FLAG_INTRINSIC);
-    const bool has_args   = fn->type->data.fn.args;
-    const bool has_return = ret_type->kind != MIR_TYPE_VOID;
+    const bool has_args = fn->type->data.fn.args;
 
     if (is_extern) {
         // TODO: external callback
@@ -768,9 +758,10 @@ char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result
     }
 
     vm_stack_ptr_t ret_ptr = NULL;
-    if (!execute_fn_impl_top_level(vm, fn, &arg_tmp, &ret_ptr)) {
+    if (!vm_execute_fn(vm, vm->assembly, fn, &arg_tmp, &ret_ptr)) {
         result->L = 0;
-    } else if (has_return) {
+    } else if (fn_does_return(fn)) {
+        // @Incomplete: Does this work with other types than 64bit ints???
         BL_ASSERT(ret_ptr && "Function is supposed to return some value.");
         result->L = vm_read_int(ret_type, ret_ptr);
     }
@@ -1085,14 +1076,6 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mi
     }
 }
 
-bool execute_fn_impl_top_level(struct virtual_machine *    vm,
-                               struct mir_fn *             fn,
-                               TSmallArray_ConstExprValue *args,
-                               vm_stack_ptr_t *            out_ptr)
-{
-    return _execute_fn_top_level(vm, fn, NULL, args, out_ptr);
-}
-
 // Expects all arguments already on stack.
 // Return value can be eventually pushed on the stack after execution.
 bool execute_function(struct virtual_machine *vm, struct mir_fn *fn)
@@ -1120,67 +1103,6 @@ bool execute_function(struct virtual_machine *vm, struct mir_fn *fn)
         if (!get_pc(vm) || get_pc(vm) == prev) set_pc(vm, instr->next);
     }
     return !vm->stack->aborted;
-}
-
-// @Cleanup: split into two functions (one for call using instr call and one for direct calls?)
-bool _execute_fn_top_level(struct virtual_machine *    vm,
-                           struct mir_fn *             fn,
-                           struct mir_instr *          call,
-                           TSmallArray_ConstExprValue *arg_values,
-                           vm_stack_ptr_t *            out_ptr)
-{
-    BL_ASSERT(fn);
-    if (!fn->is_fully_analyzed) {
-        BL_ABORT("Function '%s' is not fully analyzed for compile time execution!!!",
-                 fn->linkage_name);
-    }
-    TSmallArray_ArgPtr *args                 = fn->type->data.fn.args;
-    struct mir_type *   ret_type             = fn->type->data.fn.ret_type;
-    const bool          does_return_value    = ret_type->kind != MIR_TYPE_VOID;
-    const bool          is_return_value_used = call ? call->ref_count > 1 : true;
-    const bool          is_caller_comptime   = call ? call->value.is_comptime : false;
-    const bool pop_return_value = does_return_value && is_return_value_used && !is_caller_comptime;
-    struct mir_instr *fn_entry_instr    = fn->first_block->entry_instr;
-    struct mir_instr *fn_terminal_instr = &fn->terminal_instr->base;
-    BL_ASSERT(fn_entry_instr && "Attempt to execute empty function in compile time!");
-    BL_ASSERT(fn_terminal_instr && "Function is not terminated!");
-    BL_ASSERT((call && !arg_values) || !call);
-    if (arg_values) {
-        BL_ASSERT(args);
-        BL_ASSERT(arg_values->size == args->size && "Invalid count of explicitly passed arguments");
-        // Push all arguments in reverse order on the stack.
-        for (usize i = args->size; i-- > 0;) {
-            stack_push(vm, arg_values->data[i].data, arg_values->data[i].type);
-        }
-    }
-    // push terminal frame on stack
-    push_ra(vm, (struct mir_instr_call *)call);
-    // allocate local variables
-    stack_alloc_local_vars(vm, fn);
-    // setup entry instruction
-    set_pc(vm, fn_entry_instr);
-    // iterate over entry block of executable
-    struct mir_instr *instr, *prev;
-    while (true) {
-        instr = get_pc(vm);
-        prev  = instr;
-        if (!instr || vm->stack->aborted) break;
-        interp_instr(vm, instr);
-        // When we reach terminal instruction of this function, we must stop the execution,
-        // otherwise when the interpreted call lives in scope of other function, interpreter will
-        // continue with execution.
-        if (instr == fn_terminal_instr) break;
-        // Stack head can be changed by br instructions.
-        if (!get_pc(vm) || get_pc(vm) == prev) set_pc(vm, instr->next);
-    }
-    if (vm->stack->aborted) return false;
-    if (pop_return_value) {
-        vm_stack_ptr_t ret_ptr = stack_pop(vm, ret_type);
-        if (out_ptr) (*out_ptr) = ret_ptr;
-    } else if (is_caller_comptime && out_ptr) {
-        (*out_ptr) = (vm_stack_ptr_t)&call->value.data;
-    }
-    return true;
 }
 
 void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
@@ -1890,19 +1812,6 @@ void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret)
                 stack_pop(vm, arg_value->value.type);
             }
         }
-    } else {
-        // When caller was not specified we expect all arguments to be pushed on the
-        // stack so we must clear them all. Remember they were pushed in reverse
-        // order, so now we have to pop them in order they are defined.
-        TSmallArray_ArgPtr *args = fn->type->data.fn.args;
-        if (args) {
-            BL_ABORT("Move this block into execute functions.");
-            struct mir_arg *arg;
-            TSA_FOREACH(args, arg)
-            {
-                stack_pop(vm, arg->type);
-            }
-        }
     }
 
     // push return value on the stack if there is one
@@ -2428,29 +2337,39 @@ void vm_override_var(struct virtual_machine *vm, struct mir_var *var, const u64 
     vm_write_int(type, dest_ptr, value);
 }
 
-static INLINE bool fn_does_return(struct mir_fn *fn)
-{
-    return fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID;
-}
-
-bool vm_execute_fn(struct virtual_machine *   vm,
-                   struct assembly *          assembly,
-                   struct mir_fn *            fn,
-                   TSmallArray_ConstValuePtr *optional_args,
-                   vm_stack_ptr_t *           optional_return)
+bool vm_execute_fn(struct virtual_machine *    vm,
+                   struct assembly *           assembly,
+                   struct mir_fn *             fn,
+                   TSmallArray_ConstExprValue *optional_args,
+                   vm_stack_ptr_t *            optional_return)
 {
     BL_MAGIC_ASSERT(fn);
     vm->assembly       = assembly;
     vm->stack->aborted = false;
-    // @Incomplete: push args on stack.
+    if (optional_args) {
+        BL_ASSERT(fn->type->data.fn.args);
+        BL_ASSERT(fn->type->data.fn.args->size == optional_args->size &&
+                  "Invalid count of explicitly passed arguments");
+        // Push all arguments in reverse order on the stack.
+        for (usize i = optional_args->size; i-- > 0;) {
+            struct mir_const_expr_value *value = &optional_args->data[i];
+            stack_push(vm, value->data, value->type);
+        }
+    }
     if (execute_function(vm, fn)) {
-        // @Incomplete: cleanup args.
         vm_stack_ptr_t return_ptr = NULL;
         if (fn_does_return(fn)) {
             struct mir_type *ret_type = fn->type->data.fn.ret_type;
             return_ptr                = stack_pop(vm, ret_type);
         }
         if (optional_return) (*optional_return) = return_ptr;
+        if (optional_args) {
+            // Cleanup
+            for (usize i = 0; i < optional_args->size; ++i) {
+                struct mir_const_expr_value *value = &optional_args->data[i];
+                stack_pop(vm, value->type);
+            }
+        }
         return true;
     }
     return false;
@@ -2465,17 +2384,30 @@ bool vm_execute_comptime_call(struct virtual_machine *vm,
     BL_ASSERT(call && IS_FLAG(call->base.flags, MIR_IS_ANALYZED));
     BL_ASSERT(mir_is_comptime(&call->base) && "Top level call is expected to be comptime.");
     struct mir_fn *fn = mir_get_callee(call);
-    BL_ASSERT(fn && "Calle of compile time executed top level function not found!");
-    // @Incomplete: push args?
-    BL_ASSERT(fn->type->data.fn.args == NULL);
+    BL_ASSERT(fn && "Callee of compile time executed top level function not found!");
+    TSmallArray_InstrPtr *args = call->args;
+    if (args) {
+        BL_ASSERT(args->size == fn->type->data.fn.args->size);
+        // Push all arguments in reverse order on the stack.
+        for (usize i = args->size; i-- > 0;) {
+            struct mir_const_expr_value *value = &args->data[i]->value;
+            stack_push(vm, value->data, value->type);
+        }
+    }
     if (execute_function(vm, fn)) {
-        // @Incomplete: claenup args?
         // Pop return value.
         if (fn_does_return(fn)) {
             struct mir_type *ret_type = fn->type->data.fn.ret_type;
             call->base.value.data     = stack_pop(vm, ret_type);
         } else {
             call->base.value.data = NULL;
+        }
+        // Cleanup previously pushed args from the stack.
+        if (args) {
+            for (usize i = 0; i < args->size; ++i) {
+                struct mir_const_expr_value *value = &args->data[i]->value;
+                stack_pop(vm, value->type);
+            }
         }
         RETURN_ZONE(true);
     }
@@ -2741,26 +2673,34 @@ void vm_do_cast(vm_stack_ptr_t   dest,
         // signed integer real
         switch (src_size) {
         case 1: {
-            if (dest_size == 4) vm_write_as(f32, dest, vm_read_as(s8, src));
-            else vm_write_as(f64, dest, vm_read_as(s8, src));
+            if (dest_size == 4)
+                vm_write_as(f32, dest, vm_read_as(s8, src));
+            else
+                vm_write_as(f64, dest, vm_read_as(s8, src));
             break;
         }
 
         case 2: {
-            if (dest_size == 4) vm_write_as(f32, dest, vm_read_as(s16, src));
-            else vm_write_as(f64, dest, vm_read_as(s16, src));
+            if (dest_size == 4)
+                vm_write_as(f32, dest, vm_read_as(s16, src));
+            else
+                vm_write_as(f64, dest, vm_read_as(s16, src));
             break;
         }
 
         case 4: {
-            if (dest_size == 4) vm_write_as(f32, dest, (f32)vm_read_as(s32, src));
-            else vm_write_as(f64, dest, (f64)vm_read_as(s32, src));
+            if (dest_size == 4)
+                vm_write_as(f32, dest, (f32)vm_read_as(s32, src));
+            else
+                vm_write_as(f64, dest, (f64)vm_read_as(s32, src));
             break;
         }
 
         case 8: {
-            if (dest_size == 4) vm_write_as(f32, dest, (f32)vm_read_as(s64, src));
-            else vm_write_as(f64, dest, (f64)vm_read_as(s64, src));
+            if (dest_size == 4)
+                vm_write_as(f32, dest, (f32)vm_read_as(s64, src));
+            else
+                vm_write_as(f64, dest, (f64)vm_read_as(s64, src));
             break;
         }
         default:

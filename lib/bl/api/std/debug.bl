@@ -111,13 +111,17 @@ __print_log_default :: fn (kind: PrintLogKind, file: string, line: s32, format: 
     tag: string;
     w: s32;
     switch kind {
-        PrintLogKind.Message { tag = "log: "; }
-        PrintLogKind.Warning { tag = "warn: "; }
-        PrintLogKind.Error   { tag = "error: "; out = OS_STDERR; }
-        PrintLogKind.Assert  { tag = "assert [%:%]: "; out = OS_STDERR; }
-        PrintLogKind.Panic   { tag = "panic: "; out = OS_STDERR; }
+        PrintLogKind.Message { tag = "log"; }
+        PrintLogKind.Warning { tag = "warning"; }
+        PrintLogKind.Error   { tag = "error"; out = OS_STDERR; }
+        PrintLogKind.Assert  { tag = "assert"; out = OS_STDERR; }
+        PrintLogKind.Panic   { tag = "panic"; out = OS_STDERR; }
     }
-    w = bprint(buf, tag, file, line);
+    if file.len > 0 {
+        w = bprint(slice_range(buf, w), "% [%:%]: ", tag, file, line);
+    } else {
+        w = bprint(buf, "%: ", tag);
+    }
     w += bprint(slice_range(buf, w), format, args);
     w += bprint(slice_range(buf, w), "\n");
     __os_write(out, buf.ptr, auto w);
@@ -145,7 +149,8 @@ measure_elapsed_ms_end :: fn (name := String.empty) f64 #inline {
     start_ms :: _elapsed_ms_stack[index];
     _elapsed_ms_stack.len -= 1;
     elapsed_ms :: os_tick_ms() - start_ms;
-    if !String.is_empty(name) { print_log("% took %ms.\n", name, elapsed_ms); }
+    if !String.is_empty(name) { print_log("% took % ms.", name, elapsed_ms); }
+    else { print_log("elapsed % ms.", elapsed_ms); }
     if index == 0 { array_terminate(&_elapsed_ms_stack); }
     return elapsed_ms;
 }

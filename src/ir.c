@@ -33,9 +33,10 @@
 #if BL_DEBUG
 #define NAMED_VARS true
 #else
-#define NAMED_VARS false
+#define NAMED_VARS true
 #endif
 
+#define STORE_MAX_SIZE_BYTES 16
 #define DI_LOCATION_SET(instr)                                                                     \
     if (ctx->is_debug_mode && (instr)->node) {                                                     \
         emit_DI_instr_loc(ctx, (instr));                                                           \
@@ -98,6 +99,12 @@ struct context {
 // =================================================================================================
 static struct mir_var *testing_fetch_meta(struct context *ctx);
 static LLVMValueRef    testing_emit_meta_case(struct context *ctx, struct mir_fn *fn);
+
+// =================================================================================================
+// Intrinsic helpers
+// =================================================================================================
+static LLVMValueRef
+build_call_memcpy(struct context *ctx, LLVMValueRef src, LLVMValueRef dest, const usize size_bytes);
 
 // =================================================================================================
 // RTTI
@@ -317,6 +324,7 @@ static void process_queue(struct context *ctx)
 const char *get_intrinsic(const char *name)
 {
     if (!name) return NULL;
+    if (strcmp(name, "memset.inline.p0i8.i64") == 0) return "llvm.memset.inline.p0i8.i64";
     if (strcmp(name, "sin.f32") == 0) return "llvm.sin.f32";
     if (strcmp(name, "sin.f64") == 0) return "llvm.sin.f64";
     if (strcmp(name, "cos.f32") == 0) return "llvm.cos.f32";
@@ -2011,25 +2019,51 @@ State emit_instr_load(struct context *ctx, struct mir_instr_load *load)
     return STATE_PASSED;
 }
 
+static LLVMValueRef
+build_call_memcpy(struct context *ctx, LLVMValueRef src, LLVMValueRef dest, const usize size_bytes)
+{
+    LLVMValueRef llvm_args[4];
+    llvm_args[0] =
+        LLVMBuildBitCast(ctx->llvm_builder, dest, ctx->builtin_types->t_u8_ptr->llvm_type, "");
+    llvm_args[1] =
+        LLVMBuildBitCast(ctx->llvm_builder, src, ctx->builtin_types->t_u8_ptr->llvm_type, "");
+    llvm_args[2] = LLVMConstInt(ctx->builtin_types->t_u64->llvm_type, size_bytes, true);
+    llvm_args[3] = LLVMConstInt(ctx->builtin_types->t_bool->llvm_type, 0, true);
+    return LLVMBuildCall(
+        ctx->llvm_builder, ctx->intrinsic_memcpy, llvm_args, TARRAY_SIZE(llvm_args), "");
+}
+
+static LLVMValueRef
+build_optimized_store(struct context *ctx, struct mir_instr *src, struct mir_instr *dest)
+{
+    BL_ASSERT(mir_is_pointer_type(src->value.type));
+    BL_ASSERT(mir_is_pointer_type(dest->value.type));
+    LLVMValueRef llvm_src   = src->llvm_value;
+    LLVMValueRef llvm_dest  = dest->llvm_value;
+    const usize  size_bytes = (usize)mir_deref_type(dest->value.type)->store_size_bytes;
+    if (size_bytes > STORE_MAX_SIZE_BYTES && src->kind == MIR_INSTR_LOAD) {
+        struct mir_instr_load *load = (struct mir_instr_load *)src;
+        llvm_src                    = load->src->llvm_value;
+        LLVMInstructionEraseFromParent(load->base.llvm_value);
+        return build_call_memcpy(ctx, llvm_src, llvm_dest, size_bytes);
+    }
+    const unsigned alignment  = (unsigned)src->value.type->alignment;
+    LLVMValueRef    llvm_store = LLVMBuildStore(ctx->llvm_builder, llvm_src, llvm_dest);
+    LLVMSetAlignment(llvm_store, alignment);
+    return llvm_store;
+}
+
 State emit_instr_store(struct context *ctx, struct mir_instr_store *store)
 {
-    LLVMValueRef ptr = store->dest->llvm_value;
-    BL_ASSERT(ptr && "Missing LLVM store destination value!");
+    LLVMValueRef dest = store->dest->llvm_value;
+    BL_ASSERT(dest && "Missing LLVM store destination value!");
     if (store->src->kind == MIR_INSTR_COMPOUND) {
-        emit_instr_compound(ctx, ptr, (struct mir_instr_compound *)store->src);
+        emit_instr_compound(ctx, dest, (struct mir_instr_compound *)store->src);
         return STATE_PASSED;
     }
-    LLVMValueRef val = store->src->llvm_value;
-    BL_ASSERT(val && "Missing LLVM store source value!");
-    const unsigned alignment = (unsigned)store->src->value.type->alignment;
     DI_LOCATION_SET(&store->base);
-    store->base.llvm_value = LLVMBuildStore(ctx->llvm_builder, val, ptr);
+    store->base.llvm_value = build_optimized_store(ctx, store->src, store->dest);
     DI_LOCATION_RESET();
-    LLVMSetAlignment(store->base.llvm_value, alignment);
-    // PERFORMANCE: We can use memcpy intrinsic for larger values, but in such case we
-    // don't need generate load for source value. This change require additional work in
-    // compiler pipeline to be done, so we keep current naive solution and change it in
-    // case of any issues occur in future.
     return STATE_PASSED;
 }
 
@@ -2402,10 +2436,10 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
     BL_ASSERT(callee_type);
     BL_ASSERT(callee_type->kind == MIR_TYPE_FN);
 
-    struct mir_fn *callee_fn =
+    struct mir_fn *fn =
         mir_is_comptime(callee) ? MIR_CEV_READ_AS(struct mir_fn *, &callee->value) : NULL;
     LLVMValueRef llvm_called_fn =
-        callee->llvm_value ? callee->llvm_value : emit_fn_proto(ctx, callee_fn, true);
+        callee->llvm_value ? callee->llvm_value : emit_fn_proto(ctx, fn, true);
 
     bool       has_byval_arg = false;
     const bool has_args      = call->args->size > 0;
@@ -2490,8 +2524,9 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 
             case LLVM_EASGM_BYVAL: { // Struct is too big and must be passed by value.
                 if (!has_byval_arg) has_byval_arg = true;
-                // PERFORMANCE: insert only when llvm_arg is not alloca???
+                // @Performance: insert only when llvm_arg is not alloca???
                 INSERT_TMP(llvm_tmp, get_type(ctx, arg->type));
+                // emit_optimized_store(ctx, llvm_tmp, llvm_arg);
                 LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
                 tsa_push_LLVMValue(&llvm_args, llvm_tmp);
                 break;
@@ -2512,7 +2547,7 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
         llvm_result = LLVMBuildLoad(ctx->llvm_builder, llvm_args.data[LLVM_SRET_INDEX], "");
     }
 
-    // PERFORMANCE: LLVM API requires to set call side attributes after call is created.
+    // @Performance: LLVM API requires to set call side attributes after call is created.
     if (has_byval_arg) {
         BL_ASSERT(has_args);
         TSmallArray_ArgPtr *args = callee_type->data.fn.args;
@@ -2586,7 +2621,13 @@ State emit_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
             // use simple store
             LLVMValueRef llvm_init = decl->init->llvm_value;
             BL_ASSERT(llvm_init);
-            LLVMBuildStore(ctx->llvm_builder, llvm_init, var->llvm_value);
+            const usize size_bytes = var->value.type->store_size_bytes;
+            if (false && size_bytes > STORE_MAX_SIZE_BYTES && !var->is_global) {
+                build_call_memcpy(ctx, llvm_init, var->llvm_value, size_bytes);
+                // emit_optimized_store(ctx, var->llvm_value, llvm_init);
+            } else {
+                LLVMBuildStore(ctx->llvm_builder, llvm_init, var->llvm_value);
+            }
         }
     }
     if (emit_DI) emit_DI_var(ctx, var);
@@ -2605,6 +2646,7 @@ State emit_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
     if (IS_FLAG(fn_type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
         LLVMValueRef llvm_ret_value = ret->value->llvm_value;
         LLVMValueRef llvm_sret      = LLVMGetParam(fn->llvm_value, LLVM_SRET_INDEX);
+        // emit_optimized_store(ctx, llvm_sret, llvm_ret_value);
         LLVMBuildStore(ctx->llvm_builder, llvm_ret_value, llvm_sret);
         ret->base.llvm_value = LLVMBuildRetVoid(ctx->llvm_builder);
         goto FINALIZE;
@@ -3133,7 +3175,7 @@ static void intrinsics_init(struct context *ctx)
         pt[2] = get_type(ctx, ctx->builtin_types->t_u64);
 
         ctx->intrinsic_memcpy = llvm_get_intrinsic_decl(
-            ctx->llvm_module, llvm_lookup_intrinsic_id("llvm.memcpy"), pt, TARRAY_SIZE(pt));
+            ctx->llvm_module, llvm_lookup_intrinsic_id("llvm.memcpy.inline"), pt, TARRAY_SIZE(pt));
 
         BL_ASSERT(ctx->intrinsic_memcpy && "Invalid memcpy intrinsic!");
     }

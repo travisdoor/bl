@@ -144,6 +144,7 @@ struct native_lib {
     bool                  print_ast;                                                               \
     bool                  emit_llvm;                                                               \
     bool                  emit_mir;                                                                \
+    bool                  emit_asm;                                                                \
     bool                  no_bin;                                                                  \
     bool                  no_llvm;                                                                 \
     bool                  no_analyze;                                                              \

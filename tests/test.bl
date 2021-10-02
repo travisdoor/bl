@@ -3,10 +3,6 @@ foo :: fn () s32 {
 }
 
 main :: fn () s32 {
-    debugbreak;
-    //v :: #comptime foo();
-    v :: 10;
-    print("v [%] = %\n", @typeinfo(v), v);
     return 0;
 }
 
@@ -23,6 +19,9 @@ main :: fn () s32 {
 // - lazy load/import of sources (during analyze pass)
 // - bigger compile time constants can be eventually converted to static arrays casted to required type
 //   in LLVM?
+// - Make return tmp variable #noinit.
+// - Implement zeroset helper and measure runtime performance compared to memset. (compile time branches for
+//   posible sizes?)
 
 
 // =================================================================================================

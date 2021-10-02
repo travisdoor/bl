@@ -70,6 +70,17 @@ struct virtual_machine {
     bool             aborted;
 };
 
+// This should not be there but whatever.
+struct mir_const_expr_value {
+    vm_value_t                  _tmp;
+    vm_stack_ptr_t              data;
+    struct mir_type *           type;
+    enum mir_value_address_mode addr_mode;
+    bool                        is_comptime;
+};
+
+TSMALL_ARRAY_TYPE(ConstExprValue, struct mir_const_expr_value, 32);
+
 void vm_init(struct virtual_machine *vm, usize stack_size);
 void vm_terminate(struct virtual_machine *vm);
 bool vm_eval_instr(struct virtual_machine *vm, struct assembly *assembly, struct mir_instr *instr);
@@ -80,11 +91,11 @@ bool vm_execute_comptime_call(struct virtual_machine *vm,
                               struct assembly *       assembly,
                               struct mir_instr_call * call);
 
-bool vm_execute_fn(struct virtual_machine *   vm,
-                   struct assembly *          assembly,
-                   struct mir_fn *            fn,
-                   TSmallArray_ConstValuePtr *optional_args,
-                   vm_stack_ptr_t *           optional_return);
+bool vm_execute_fn(struct virtual_machine *    vm,
+                   struct assembly *           assembly,
+                   struct mir_fn *             fn,
+                   TSmallArray_ConstExprValue *optional_args,
+                   vm_stack_ptr_t *            optional_return);
 
 void vm_provide_command_line_arguments(struct virtual_machine *vm, s32 argc, char *argv[]);
 void vm_override_var(struct virtual_machine *vm, struct mir_var *var, u64 value);

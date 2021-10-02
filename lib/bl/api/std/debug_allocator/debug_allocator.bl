@@ -187,7 +187,7 @@ debug_malloc :: fn (size: usize, file: string, line: s32) *u8 {
     defer Sync.unlock(&_mutex);
     _serial += 1;
     if _break_on == _serial {
-        debug_break();
+        debugbreak;
     }
     total_size :: sizeof(Meta) + size;
     mem := cast(*Meta) allocate_memory(&default_allocator, total_size);

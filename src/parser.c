@@ -373,7 +373,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     case HD_EXPORT:
     case HD_COMPILER: {
         // only flags
-        return NULL;
+        RETURN_ZONE(NULL);
     }
 
     case HD_COMPTIME: {

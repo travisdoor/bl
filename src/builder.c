@@ -60,6 +60,7 @@ void linker_run(struct assembly *assembly);
 void bc_writer_run(struct assembly *assembly);
 void native_bin_run(struct assembly *assembly);
 void mir_writer_run(struct assembly *assembly);
+void asm_writer_run(struct assembly *assembly);
 
 // Virtual Machine
 void vm_entry_run(struct assembly *assembly);
@@ -360,6 +361,7 @@ setup_assembly_pipeline(struct assembly *assembly, assembly_stage_fn_t *stages, 
     STAGE(index, &ir_run);
     STAGE(index, &ir_opt_run);
     if (t->emit_llvm) STAGE(index, &bc_writer_run);
+    if (t->emit_asm) STAGE(index, &asm_writer_run);
     if (t->no_bin) return;
     STAGE(index, &obj_writer_run);
     STAGE(index, &native_bin_run);
@@ -411,7 +413,7 @@ static int compile(struct assembly *assembly)
     builder.total_lines = 0;
 
     unit_stage_fn_t     unit_pipeline[5];
-    assembly_stage_fn_t assembly_pipeline[16];
+    assembly_stage_fn_t assembly_pipeline[17];
     setup_unit_pipeline(assembly, unit_pipeline, TARRAY_SIZE(unit_pipeline));
     setup_assembly_pipeline(assembly, assembly_pipeline, TARRAY_SIZE(assembly_pipeline));
 

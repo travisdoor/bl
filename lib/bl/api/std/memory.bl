@@ -89,17 +89,14 @@ free :: fn (ptr: *u8, loc := #call_location) {
 /// Copy memory of defined `size` from `src` to `dest`. Destination
 /// and source size must be at least `size` bytes.
 memcpy :: fn (dest: *u8, src: *u8, size: usize) {
-    m := size / sizeof(u64);
-    d := size - m * sizeof(u64);
-
+    m :: size / sizeof(u64);
+    d :: size - m * sizeof(u64);
     loop i : usize = 0; i < m; i += 1 {
         tmp := cast(*u64) dest;
         @tmp = @cast(*u64) src;
-
         dest = ptr_shift_bytes(dest, auto sizeof(u64));
         src = ptr_shift_bytes(src, auto sizeof(u64));
     }
-    
     loop i : usize = 0; i < d; i += 1 {
         @dest = @src;
 
@@ -115,9 +112,15 @@ memset :: fn (_dest: *u8, v: u8, size: usize) *u8 {
     loop i := 0; i < dest.len; i += 1 {
         dest[i] = v;
     }
-
     return dest.ptr;
 }
+
+init_default :: fn (dest: *?T) *T #inline {
+    return auto memset(auto dest, 0, sizeof(T));
+}
+
+// This is actually slower on Windows.
+// memset :: fn (dest: *u8, v: u8, size: usize) *u8 #intrinsic "memset.p0i8.i64";
 
 /// Swaps content of memory at address `first` and `second`.
 swap :: fn (first: *?T, second: *T) #inline {

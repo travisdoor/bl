@@ -37,6 +37,7 @@ typedef struct {
     _ARG(ASSERT_OFF, "", "-assert=off", "Disable assert.")                                         \
     _ARG(SYNTAX_ONLY, "", "-syntax-only", "Check syntax and exit.")                                \
     _ARG(EMIT_LLVM, "", "-emit-llvm", "Write LLVM-IR to file.")                                    \
+    _ARG(EMIT_ASM, "", "-emit-asm", "Write assembly to file.")                                     \
     _ARG(EMIT_MIR, "", "-emit-mir", "Write MIR to file.")                                          \
     _ARG(AST_DUMP, "", "-ast-dump", "Print AST.")                                                  \
     _ARG(LEX_DUMP, "", "-lex-dump", "Print output of lexer.")                                      \

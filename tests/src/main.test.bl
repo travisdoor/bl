@@ -40,6 +40,7 @@
 #load "scope.test.bl"
 #load "polymorph.test.bl"
 #load "utils.test.bl"
+#load "extern_call.test.bl"
 /////////////////////////////////////////////////////
 
 main :: fn () s32 {

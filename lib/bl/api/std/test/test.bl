@@ -287,7 +287,7 @@ abort_handler :: fn () {
     _current.passed = false;
     print("[      | FAIL ] % (% ms)\n", _current.case.name, _current.runtime_ms);
     Thread.exit(1);
-    _os_abort_default();
+    __os_abort_default();
 }
 
 worker :: fn (_: *u8) s32 {

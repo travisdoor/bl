@@ -143,6 +143,8 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
     print_ast: bool;
     /// Emit LLVM IR code into file.
     emit_llvm: bool;
+    /// Emit asm code into file.
+    emit_asm: bool;
     /// Emit MIR code into file.
     emit_mir: bool;
     /// Disable generation of native binary.

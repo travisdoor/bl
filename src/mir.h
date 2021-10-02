@@ -444,15 +444,6 @@ struct mir_type {
     BL_MAGIC_ADD
 };
 
-// VALUE
-struct mir_const_expr_value {
-    vm_value_t                  _tmp;
-    vm_stack_ptr_t              data;
-    struct mir_type *           type;
-    enum mir_value_address_mode addr_mode;
-    bool                        is_comptime;
-};
-
 // VARIANT
 struct mir_variant {
     struct id *         id;
@@ -475,10 +466,11 @@ struct mir_var {
     enum builtin_id_kind        builtin_id;
     s32                         ref_count;
     u32                         flags;
-    bool                        is_mutable;
-    bool                        is_global;
-    bool                        is_implicit;
-    bool                        is_struct_typedef;
+    // @Performance use flags to reduce size?
+    bool is_mutable;
+    bool is_global;
+    bool is_implicit;
+    bool is_struct_typedef;
     bool emit_llvm; // Keep this, we sometimes have i.e. type defs in scope of the function.
     bool is_analyzed;
 };
@@ -607,9 +599,9 @@ struct mir_instr_const {
 struct mir_instr_load {
     struct mir_instr base;
 
-    // This flag is set when load is user-level dereference.
-    bool              is_deref;
     struct mir_instr *src;
+    // This flag is set when load is user-level dereference.
+    bool is_deref;
 };
 
 struct mir_instr_store {

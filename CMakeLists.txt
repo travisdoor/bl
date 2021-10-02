@@ -198,6 +198,7 @@ set(SOURCE_FILES
     src/mir_writer.c
     src/native_bin.c
     src/obj_writer.c
+    src/asm_writer.c
     src/parser.c
     src/scope.c
     src/token_printer.c
