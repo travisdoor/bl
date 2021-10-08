@@ -1,8 +1,12 @@
-foo :: fn () s32 {
-    return 10;
-}
+#import "std/fs"
 
 main :: fn () s32 {
+    f, e :: Fs.open("foo.txt", Fs.OpenMode.Create);
+    if !is_ok(e) { print("%\n", e); }
+    Fs.close(f);
+    
+    e2 :: Fs.dir_create("my-dir");
+    if !is_ok(e2) { print("%\n", e2); }
     return 0;
 }
 

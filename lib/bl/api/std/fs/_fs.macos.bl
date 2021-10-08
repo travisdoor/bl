@@ -18,12 +18,17 @@ exist :: fn (filepath: string) bool #inline {
 
 open :: fn (filepath: string, mode: ...Fs.OpenMode) (Fs.File, Error) {
     if String.is_empty(filepath) { return 0, error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    flags := modes_to_flags(mode);
-    mode_flags :: _S_IRUSR | _S_IWUSR | _S_IROTH | _S_IWOTH;
-    handle :: _open(auto filepath.ptr, flags, mode_flags);
+    flags :: modes_to_flags(mode);
+    mode_flags : _mode_t : 0x1A4; // 0644
+    handle :: _open(auto filepath.ptr, flags, 0);
     if handle < 0 { // error
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot open file '%': %.", filepath, estr);
+    }    
+    // This is for some reason required on some versions on macOS.
+    if _fchmod(handle, mode_flags) < 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot set file permissions '%': %.", filepath, estr);
     }    
     return handle, ok();   
 }
@@ -105,7 +110,8 @@ write :: fn (handle: Fs.File, src: *u8, size: s64) (s64, Error) {
 
 dir_create :: fn (dirpath: string) Error {
     if String.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
-    if _mkdir(auto dirpath.ptr, _S_IRWXU | _S_IRWXG | _S_IROTH | _S_IXOTH) != 0 {
+    mode : _mode_t : 0x1ED; // 0755
+    if _mkdir(auto dirpath.ptr, mode) != 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot create directory '%': %.", dirpath, estr);
     }

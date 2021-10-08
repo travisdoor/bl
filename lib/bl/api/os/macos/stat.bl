@@ -1,18 +1,20 @@
 #load "_types.bl"
 
-_S_IRUSR :: 0x100;
-_S_IWUSR :: 0x80;
-_S_IXUSR :: 0x40;
-_S_IRWXU :: (_S_IRUSR|_S_IWUSR|_S_IXUSR);
-_S_IRGRP :: _S_IRUSR >> 3;
-_S_IWGRP :: _S_IWUSR >> 3;
-_S_IXGRP :: _S_IXUSR >> 3;
-_S_IRWXG :: _S_IRWXU >> 3;
-_S_IROTH :: _S_IRGRP >> 3;
-_S_IWOTH :: _S_IWGRP >> 3;
-_S_IXOTH :: _S_IXGRP >> 3;
-_S_IRWXO :: _S_IRWXG >> 3;
-
+_S_IRWXU : _mode_t : 0x1C0;
+_S_IRUSR : _mode_t : 0x100;
+_S_IWUSR : _mode_t : 0x80;
+_S_IXUSR : _mode_t : 0x40;
+_S_IRWXG : _mode_t : 0x38;
+_S_IRGRP : _mode_t : 0x20;
+_S_IWGRP : _mode_t : 0x10;
+_S_IXGRP : _mode_t : 0x8;
+_S_IRWXO : _mode_t : 0x7;
+_S_IROTH : _mode_t : 0x4;
+_S_IWOTH : _mode_t : 0x2;
+_S_IXOTH : _mode_t : 0x1;
+_S_ISUID : _mode_t : 0x800;
+_S_ISGID : _mode_t : 0x400;
+_S_ISVTX : _mode_t : 0x200;
 
 __S_IFMT : u32 : 0xf000;
 __S_IFDIR : u32 : 0x4000;
@@ -53,4 +55,4 @@ _stat_t :: struct {
 }
 _stat :: fn (path: *c_char, buf: *_stat_t) c_int #extern "stat$INODE64";
 _fstat :: fn (fd: c_int, stat: *_stat_t) c_int #extern "fstat$INODE64";
-_mkdir :: fn (path: *c_char, mode: c_int) c_int #extern "mkdir";
+_mkdir :: fn (path: *c_char, mode: _mode_t) c_int #extern "mkdir";

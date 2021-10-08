@@ -70,6 +70,18 @@ struct virtual_machine {
     bool             aborted;
 };
 
+enum mir_value_address_mode {
+    MIR_VAM_UNKNOWN,
+
+    // Value points to memory allocation on the stack or heap.
+    MIR_VAM_LVALUE,
+    // Value points to memory allocation on the stack or heap but value itself is immutable and
+    // cannot be modified.
+    MIR_VAM_LVALUE_CONST,
+    // Does not point to allocated memory (ex: const literals).
+    MIR_VAM_RVALUE,
+};
+
 // This should not be there but whatever.
 struct mir_const_expr_value {
     vm_value_t                  _tmp;

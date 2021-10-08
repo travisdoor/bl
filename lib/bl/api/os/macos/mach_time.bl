@@ -4,4 +4,4 @@ _MachTimebaseInfo :: struct {
 }
 
 _mach_timebase_info :: fn (info: *_MachTimebaseInfo) c_int #extern "mach_timebase_info";
-_mach_absolute_time :: fn () c_uint #extern "mach_absolute_time";
+_mach_absolute_time :: fn () u64 #extern "mach_absolute_time";

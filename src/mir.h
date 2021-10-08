@@ -164,18 +164,6 @@ enum mir_type_kind {
     MIR_TYPE_POLY        = 18,
 };
 
-enum mir_value_address_mode {
-    MIR_VAM_UNKNOWN,
-
-    // Value points to memory allocation on the stack or heap.
-    MIR_VAM_LVALUE,
-    // Value points to memory allocation on the stack or heap but value itself is immutable and
-    // cannot be modified.
-    MIR_VAM_LVALUE_CONST,
-    // Does not point to allocated memory (ex: const literals).
-    MIR_VAM_RVALUE,
-};
-
 // External function arguments passing composit types by value needs special handling in IR.
 enum llvm_extern_arg_struct_generation_mode {
     LLVM_EASGM_NONE,  // No special handling

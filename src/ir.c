@@ -2036,7 +2036,6 @@ build_call_memcpy(struct context *ctx, LLVMValueRef src, LLVMValueRef dest, cons
 static LLVMValueRef
 build_optimized_store(struct context *ctx, struct mir_instr *src, struct mir_instr *dest)
 {
-    BL_ASSERT(mir_is_pointer_type(src->value.type));
     BL_ASSERT(mir_is_pointer_type(dest->value.type));
     LLVMValueRef llvm_src   = src->llvm_value;
     LLVMValueRef llvm_dest  = dest->llvm_value;

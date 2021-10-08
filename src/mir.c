@@ -30,7 +30,7 @@
 #include "builder.h"
 #include <stdarg.h>
 
-#if BL_DEBUG
+#if BL_DEBUG && false
 #include "mir_printer.h"
 #define DEBUG_PRINT_MIR(instr) mir_print_fn(stdout, ctx->assembly, instr_owner_fn(instr));
 #else
@@ -10673,6 +10673,8 @@ const char *mir_instr_name(const struct mir_instr *instr)
     switch (instr->kind) {
     case MIR_INSTR_INVALID:
         return "InstrInvalid";
+    case MIR_INSTR_DEBUGBREAK:
+        return "InstrDebugBreak";
     case MIR_INSTR_MSG:
         return "InstrMsg";
     case MIR_INSTR_BLOCK:
