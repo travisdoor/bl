@@ -56,3 +56,4 @@ _stat_t :: struct {
 _stat :: fn (path: *c_char, buf: *_stat_t) c_int #extern "stat$INODE64";
 _fstat :: fn (fd: c_int, stat: *_stat_t) c_int #extern "fstat$INODE64";
 _mkdir :: fn (path: *c_char, mode: _mode_t) c_int #extern "mkdir";
+_fchmod :: fn (fd: c_int, mode: _mode_t) c_int #extern "fchmod";
