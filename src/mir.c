@@ -28,6 +28,7 @@
 
 #include "mir.h"
 #include "builder.h"
+#include "stb_ds.h"
 #include <stdarg.h>
 
 #if BL_DEBUG && false
@@ -114,9 +115,9 @@ TSMALL_ARRAY_TYPE(InstrPtr64, struct mir_instr *, 64);
 TSMALL_ARRAY_TYPE(String, char *, 64);
 TSMALL_ARRAY_TYPE(RTTIIncomplete, RTTIIncomplete, 64);
 
-typedef struct {
+struct ast_fn_context {
     TSmallArray_DeferStack defer_stack;
-} AstFnContext;
+};
 
 // Instance in run method is zero initialized, no need to set default values explicitly.
 struct context {
@@ -134,7 +135,7 @@ struct context {
         struct mir_instr_phi *  current_phi;
         struct mir_instr_block *break_block;
         struct mir_instr_block *continue_block;
-        AstFnContext *          current_fn_context;
+        struct ast_fn_context * current_fn_context;
         struct id *             current_entity_id;
         struct mir_instr *      current_fwd_struct_decl;
     } ast;
@@ -1653,14 +1654,14 @@ is_to_any_needed(struct context *ctx, struct mir_instr *src, struct mir_type *de
 
 void ast_push_fn_context(struct context *ctx)
 {
-    AstFnContext *fnctx;
+    struct ast_fn_context *fnctx;
     {
-        TArray *     stack = &ctx->ast._fnctx_stack;
-        AstFnContext _fnctx;
+        TArray *              stack = &ctx->ast._fnctx_stack;
+        struct ast_fn_context _fnctx;
         tarray_push(stack, _fnctx);
-        fnctx = &tarray_at(AstFnContext, stack, stack->size - 1);
+        fnctx = &tarray_at(struct ast_fn_context, stack, stack->size - 1);
     }
-    memset(fnctx, 0, sizeof(AstFnContext));
+    memset(fnctx, 0, sizeof(struct ast_fn_context));
     tsa_init(&fnctx->defer_stack);
     ctx->ast.current_fn_context = fnctx;
 }
@@ -1669,13 +1670,13 @@ void ast_pop_fn_context(struct context *ctx)
 {
     TArray *stack = &ctx->ast._fnctx_stack;
     BL_ASSERT(stack->size);
-    AstFnContext *fnctx = &tarray_at(AstFnContext, stack, stack->size - 1);
+    struct ast_fn_context *fnctx = &tarray_at(struct ast_fn_context, stack, stack->size - 1);
     BL_ASSERT(fnctx == ctx->ast.current_fn_context &&
               "Ast function generation context malformed, push and pop out of sycn?");
     tsa_terminate(&fnctx->defer_stack);
     tarray_pop(stack);
     ctx->ast.current_fn_context =
-        stack->size ? &tarray_at(AstFnContext, stack, stack->size - 1) : NULL;
+        stack->size ? &tarray_at(struct ast_fn_context, stack, stack->size - 1) : NULL;
 }
 
 void type_init_id(struct context *ctx, struct mir_type *type)
@@ -11254,7 +11255,7 @@ void mir_run(struct assembly *assembly)
     tlist_init(&ctx.analyze.queue, sizeof(struct mir_instr *));
     tstring_init(&ctx.tmp_sh);
 
-    tarray_init(&ctx.ast._fnctx_stack, sizeof(AstFnContext));
+    tarray_init(&ctx.ast._fnctx_stack, sizeof(struct ast_fn_context));
     tarray_init(&ctx.analyze.usage_check_queue, sizeof(struct scope_entry *));
     tsa_init(&ctx.analyze.incomplete_rtti);
     tsa_init(&ctx.analyze.complete_check_type_stack);

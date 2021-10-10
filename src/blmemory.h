@@ -29,8 +29,7 @@
 #ifndef BL_BLMEMORY_H
 #define BL_BLMEMORY_H
 
-#include "common.h"
-#include <memory.h>
+#include <tlib/tlib.h>
 
 #define bl_malloc(size) _bl_malloc(size, __FILE__, __LINE__)
 #define bl_realloc(ptr, size) _bl_realloc(ptr, size, __FILE__, __LINE__)

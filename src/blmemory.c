@@ -28,6 +28,7 @@
 
 #include "blmemory.h"
 #include "TracyC.h"
+#include "common.h"
 #include <memory.h>
 #include <stdio.h>
 #include <stdlib.h>

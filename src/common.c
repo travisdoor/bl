@@ -26,6 +26,15 @@
 // SOFTWARE.
 // =================================================================================================
 
+// =================================================================================================
+// STB
+// =================================================================================================
+#include "blmemory.h"
+#define STB_DS_IMPLEMENTATION
+#define STBDS_REALLOC(context, ptr, size) bl_realloc(ptr, size)
+#define STBDS_FREE(context, ptr) bl_free(ptr)
+#include "stb_ds.h"
+
 #include "common.h"
 #include "assembly.h"
 #include "builder.h"
