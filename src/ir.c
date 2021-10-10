@@ -2527,7 +2527,15 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
                 if (!has_byval_arg) has_byval_arg = true;
                 // @Performance: insert only when llvm_arg is not alloca???
                 INSERT_TMP(llvm_tmp, get_type(ctx, arg->type));
-                LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
+                if (arg_instr->kind == MIR_INSTR_LOAD) {
+                    BL_LOG("remove load!");
+                    struct mir_instr_load *load = (struct mir_instr_load *)arg_instr;
+                    llvm_arg                    = load->src->llvm_value;
+                    LLVMInstructionEraseFromParent(load->base.llvm_value);
+                    build_call_memcpy(ctx, llvm_arg, llvm_tmp, arg->type->store_size_bytes);
+                } else {
+                    LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
+                }
                 tsa_push_LLVMValue(&llvm_args, llvm_tmp);
                 break;
             }
