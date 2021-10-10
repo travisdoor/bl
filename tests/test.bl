@@ -1,14 +1,23 @@
 #import "std/fs"
 
+COUNT :: 10000;
+
+Foo :: struct {
+    arr: [COUNT]u8;
+}
+
+set :: fn (foo: Foo) {
+    foo.arr[0] = 1;
+}
+
 main :: fn () s32 {
-    f, e :: Fs.open("foo.txt", Fs.OpenMode.Create);
-    if !is_ok(e) { print("%\n", e); }
-    Fs.close(f);
-    
-    e2 :: Fs.dir_create("my-dir");
-    if !is_ok(e2) { print("%\n", e2); }
+    foo: Foo;
+    set(foo);
     return 0;
 }
+
+// 333k
+// 320k
 
 // =================================================================================================
 // TODO

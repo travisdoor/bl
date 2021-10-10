@@ -41,13 +41,12 @@ set_flag :: fn (flags: *?T, flag: T) T #inline {
     assert(flags);
     #if typeinfo(T).kind == TypeKind.Enum {
         // @Incomplete: Check enums for #flags tag.
-        switch sizeof(T) {
-            1 { f := cast(*u8)flags;  @f |= cast(u8) flag;  }
-            2 { f := cast(*u16)flags; @f |= cast(u16) flag; }
-            4 { f := cast(*u32)flags; @f |= cast(u32) flag; }
-            8 { f := cast(*u64)flags; @f |= cast(u64) flag; }
-            default { panic("Unsupported type in 'set_flag' %.", T); }
-        }
+        // @Incomplete: Use static switch.
+        #if sizeof(T)     == 1 { f := cast(*u8)flags; @f  |= cast(u8) flag;  }
+        else if sizeof(T) == 2 { f := cast(*u16)flags; @f |= cast(u16) flag; }
+        else if sizeof(T) == 4 { f := cast(*u32)flags; @f |= cast(u32) flag; }
+        else if sizeof(T) == 8 { f := cast(*u64)flags; @f |= cast(u64) flag; }
+        else { #error "Unsupported type in 'set_flag'" }
     } else if typeinfo(T).kind == TypeKind.Int {
         @flags |= flag;
     } else {
@@ -61,13 +60,12 @@ clr_flag :: fn (flags: *?T, flag: T) T #inline {
     assert(flags);
     #if typeinfo(T).kind == TypeKind.Enum {
         // @Incomplete: Check enums for #flags tag.
-        switch sizeof(T) { 
-            1 { f := cast(*u8)flags;  @f &= ~cast(u8) flag;  }
-            2 { f := cast(*u16)flags; @f &= ~cast(u16) flag; }
-            4 { f := cast(*u32)flags; @f &= ~cast(u32) flag; }
-            8 { f := cast(*u64)flags; @f &= ~cast(u64) flag; }
-            default { panic("Unsupported type in 'clr_flag' %.", T); }
-        } 
+        // @Incomplete: Use static switch.
+        #if sizeof(T)     == 1 { f := cast(*u8)flags; @f  &= ~cast(u8) flag;  }
+        else if sizeof(T) == 2 { f := cast(*u16)flags; @f &= ~cast(u16) flag; }
+        else if sizeof(T) == 4 { f := cast(*u32)flags; @f &= ~cast(u32) flag; }
+        else if sizeof(T) == 8 { f := cast(*u64)flags; @f &= ~cast(u64) flag; }
+        else { panic("Unsupported type in 'clr_flag' %.", T); }
     } else if typeinfo(T).kind == TypeKind.Int {
         @flags &= ~flag;
     } else {
@@ -81,18 +79,25 @@ is_flag :: fn (flags: ?T, flag: T) bool #inline {
     result := false;
     #if typeinfo(T).kind == TypeKind.Enum {
         // @Incomplete: Check enums for #flags tag.
-        switch sizeof(T) {
-            1 { result = (cast(u8)flags & cast(u8)flag) == cast(u8) flag;     }
-            2 { result = (cast(u16)flags & cast(u16)flag) == cast(u16) flag;  }
-            4 { result = (cast(u32)flags & cast(u32)flag) == cast(u32) flag;  }
-            8 { result = (cast(u64)flags & cast(u64)flag) == cast(u64) flag;  }
-            default { panic("Unsupported type in 'is_flag' %.", T); }
-        }
+        // @Incomplete: Use static switch.
+        #if sizeof(T)     == 1 { result = (cast(u8)flags & cast(u8)flag) == cast(u8) flag;    }
+        else if sizeof(T) == 2 { result = (cast(u16)flags & cast(u16)flag) == cast(u16) flag; }
+        else if sizeof(T) == 4 { result = (cast(u32)flags & cast(u32)flag) == cast(u32) flag; }
+        else if sizeof(T) == 8 { result = (cast(u64)flags & cast(u64)flag) == cast(u64) flag; }
+        else { panic("Unsupported type in 'is_flag' %.", T); }
     } else if typeinfo(T).kind == TypeKind.Int {
         result = (flags & flag) == flag;        
     } else {
         #error "Expected number or enumerator type."
     }        
+    return result;
+}
+
+make_flags :: fn (f1: ?T, other: ...T) T {
+    result := f1;
+    loop i := 0; i < other.len; i += 1 {
+        set_flag(&result, other[i]);
+    }
     return result;
 }
 

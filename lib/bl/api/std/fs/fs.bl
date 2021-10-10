@@ -19,7 +19,7 @@ File :: _FsImpl.File;
 FILE_INVALID :: _FsImpl.FILE_INVALID;
 
 /// Specify operation with opened file.
-OpenMode :: enum {
+OpenMode :: enum #flags {
     /// Open file for reading.
     Read;
     /// Open file for writing and truncate its content.
@@ -28,17 +28,6 @@ OpenMode :: enum {
     Append;
     /// Create file if it does not exist.
     Create;
-}
-
-OpenOpt :: struct {
-    /// Open file for reading.
-    read: bool;
-    /// Open file for writing and truncate its content.
-    write: bool;
-    /// Open file for appending (keeps current content).
-    append: bool;
-    /// Create file if it does not exist.
-    create: bool;
 }
 
 /// Specify behavior of :ref:`Fs.dir_copy`.
@@ -83,6 +72,8 @@ exist :: fn (filepath: string) bool #inline {
 /// -------
 /// .. literalinclude:: /examples/docs/004.bl
 ///    :language: bl
+///
+/// .. todo:: Mode should be passed as flags in the future.
 open :: fn (filepath: string, mode: ...OpenMode) (File, Error) #inline {
     return _FsImpl.open(filepath, mode);
 }

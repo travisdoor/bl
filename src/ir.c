@@ -1884,8 +1884,10 @@ State emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr
 
     case LLVM_EASGM_BYVAL: {
         LLVMValueRef llvm_arg = LLVMGetParam(llvm_fn, arg->llvm_index);
-        llvm_arg              = LLVMBuildLoad(ctx->llvm_builder, llvm_arg, "");
-        LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_dest);
+        //llvm_arg              = LLVMBuildLoad(ctx->llvm_builder, llvm_arg, "");
+        //LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_dest);
+        builder_note("memcpy!");
+        build_call_memcpy(ctx, llvm_arg, llvm_dest, dest->value.type->store_size_bytes);
         break;
     }
     }
@@ -2047,7 +2049,7 @@ build_optimized_store(struct context *ctx, struct mir_instr *src, struct mir_ins
         return build_call_memcpy(ctx, llvm_src, llvm_dest, size_bytes);
     }
     const unsigned alignment  = (unsigned)src->value.type->alignment;
-    LLVMValueRef    llvm_store = LLVMBuildStore(ctx->llvm_builder, llvm_src, llvm_dest);
+    LLVMValueRef   llvm_store = LLVMBuildStore(ctx->llvm_builder, llvm_src, llvm_dest);
     LLVMSetAlignment(llvm_store, alignment);
     return llvm_store;
 }
@@ -2525,7 +2527,6 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
                 if (!has_byval_arg) has_byval_arg = true;
                 // @Performance: insert only when llvm_arg is not alloca???
                 INSERT_TMP(llvm_tmp, get_type(ctx, arg->type));
-                // emit_optimized_store(ctx, llvm_tmp, llvm_arg);
                 LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
                 tsa_push_LLVMValue(&llvm_args, llvm_tmp);
                 break;
@@ -2623,7 +2624,6 @@ State emit_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
             const usize size_bytes = var->value.type->store_size_bytes;
             if (false && size_bytes > STORE_MAX_SIZE_BYTES && !var->is_global) {
                 build_call_memcpy(ctx, llvm_init, var->llvm_value, size_bytes);
-                // emit_optimized_store(ctx, var->llvm_value, llvm_init);
             } else {
                 LLVMBuildStore(ctx->llvm_builder, llvm_init, var->llvm_value);
             }
@@ -2645,7 +2645,6 @@ State emit_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
     if (IS_FLAG(fn_type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
         LLVMValueRef llvm_ret_value = ret->value->llvm_value;
         LLVMValueRef llvm_sret      = LLVMGetParam(fn->llvm_value, LLVM_SRET_INDEX);
-        // emit_optimized_store(ctx, llvm_sret, llvm_ret_value);
         LLVMBuildStore(ctx->llvm_builder, llvm_ret_value, llvm_sret);
         ret->base.llvm_value = LLVMBuildRetVoid(ctx->llvm_builder);
         goto FINALIZE;
