@@ -1,22 +1,6 @@
-#import "std/fs"
-
-COUNT :: 10000;
-
-Foo :: struct {
-    arr: [COUNT]u8;
-}
-
-set :: fn (foo: Foo) {
-    foo.arr[0] = 1;
-}
-
 main :: fn () s32 {
-    foo: Foo;
-    set(foo);
     return 0;
 }
-
-// 50k
 
 // =================================================================================================
 // TODO
@@ -29,8 +13,6 @@ main :: fn () s32 {
 // - allow static if in global scope
 // - modules should use regular load scripts written in BL executed during import
 // - lazy load/import of sources (during analyze pass)
-// - bigger compile time constants can be eventually converted to static arrays casted to required type
-//   in LLVM?
 // - Make return tmp variable #noinit.
 // - Implement zeroset helper and measure runtime performance compared to memset. (compile time branches for
 //   posible sizes?)

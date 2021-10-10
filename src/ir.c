@@ -2528,7 +2528,6 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
                 // @Performance: insert only when llvm_arg is not alloca???
                 INSERT_TMP(llvm_tmp, get_type(ctx, arg->type));
                 if (arg_instr->kind == MIR_INSTR_LOAD) {
-                    BL_LOG("remove load!");
                     struct mir_instr_load *load = (struct mir_instr_load *)arg_instr;
                     llvm_arg                    = load->src->llvm_value;
                     LLVMInstructionEraseFromParent(load->base.llvm_value);

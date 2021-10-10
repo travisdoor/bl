@@ -32,6 +32,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void *_bl_realloc(void *ptr, const size_t size, const char UNUSED(*filename), s32 UNUSED(line))
+{
+    void *mem = realloc(ptr, size);
+    if (!mem) {
+        fprintf(stderr, "Bad alloc!");
+        abort();
+    }
+    TracyCAlloc(mem, size);
+    TracyCFree(ptr);
+    free(ptr);
+    return mem;
+}
+
 void *_bl_malloc(const size_t size, const char UNUSED(*filename), s32 UNUSED(line))
 {
     void *mem = malloc(size);
