@@ -52,7 +52,7 @@ struct scope;
 // Clang and gcc
 // =================================================================================================
 #if BL_COMPILER_CLANG || BL_COMPILER_GNUC
-#define INLINE __attribute__((always_inline, unused))
+#define INLINE inline 
 #define _SHUT_UP_BEGIN
 #define _SHUT_UP_END
 #define UNUSED(x) __attribute__((unused)) x
@@ -71,7 +71,7 @@ struct scope;
 //#pragma warning(disable : 4204)
 //#pragma warning(disable : 4706)
 
-#define INLINE __forceinline
+#define INLINE inline 
 #define _SHUT_UP_BEGIN __pragma(warning(push, 0))
 #define _SHUT_UP_END __pragma(warning(pop))
 #define UNUSED(x) __pragma(warning(suppress : 4100)) x

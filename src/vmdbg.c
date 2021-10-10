@@ -86,7 +86,7 @@ static void cmd(void)
     static char buf[256];
 NEXT:
     printf(": ");
-    scanf("%s", buf);
+    if (scanf("%s", buf) != 1) goto NEXT;
     if (CMD("q", "quit")) {
         printf("exiting...\n");
         vmdbg_detach();

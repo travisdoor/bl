@@ -50,11 +50,11 @@
     }
 #if defined(__clang__) || defined(__GNUC__)
 #define TAPI __attribute__((__visibility__("default")))
-#define TINLINE __attribute__((always_inline, unused))
+#define TINLINE inline 
 #else
 #pragma warning(disable : 4706)
 #define TAPI __declspec(dllexport)
-#define TINLINE __forceinline
+#define TINLINE inline
 #endif
 
 // Common tlib types.
