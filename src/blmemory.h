@@ -34,6 +34,7 @@
 #define bl_malloc(size) _bl_malloc(size, __FILE__, __LINE__)
 #define bl_realloc(ptr, size) _bl_realloc(ptr, size, __FILE__, __LINE__)
 
+u64   get_total_allocated_bytes(void);
 void *_bl_realloc(void *ptr, const size_t size, const char *filename, s32 line);
 void *_bl_malloc(const size_t size, const char *filename, s32 line);
 void  bl_free(void *ptr);

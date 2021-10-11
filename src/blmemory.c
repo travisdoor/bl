@@ -33,6 +33,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#if BL_DEBUG
+static u64 total_allocated_bytes = 0;
+#endif
+
+u64 get_total_allocated_bytes(void)
+{
+#if BL_DEBUG
+    return total_allocated_bytes;
+#else
+    return 0;
+#endif;
+}
+
 void *_bl_realloc(void *ptr, const size_t size, const char UNUSED(*filename), s32 UNUSED(line))
 {
     void *mem = realloc(ptr, size);
@@ -40,9 +53,11 @@ void *_bl_realloc(void *ptr, const size_t size, const char UNUSED(*filename), s3
         fprintf(stderr, "Bad alloc!");
         abort();
     }
+#if BL_DEBUG
+    total_allocated_bytes += size;
+#endif
     TracyCAlloc(mem, size);
     TracyCFree(ptr);
-    free(ptr);
     return mem;
 }
 
@@ -53,6 +68,9 @@ void *_bl_malloc(const size_t size, const char UNUSED(*filename), s32 UNUSED(lin
         fprintf(stderr, "Bad alloc!");
         abort();
     }
+#if BL_DEBUG
+    total_allocated_bytes += size;
+#endif
     TracyCAlloc(mem, size);
     return mem;
 }

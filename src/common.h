@@ -102,6 +102,11 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
 #define LIB_NAME_MAX 256
 
+
+// =================================================================================================
+// STB utils
+// =================================================================================================
+
 TSMALL_ARRAY_TYPE(AstPtr, struct ast *, 16);
 TSMALL_ARRAY_TYPE(TypePtr, struct mir_type *, 16);
 TSMALL_ARRAY_TYPE(MemberPtr, struct mir_member *, 16);

@@ -96,7 +96,7 @@ typedef struct ApplicationOptions {
 typedef struct Options {
     ApplicationOptions     app;
     struct builder_options builder;
-    struct target *        target;
+    struct target         *target;
 } Options;
 
 void print_help(FILE *stream)
@@ -315,6 +315,7 @@ RELEASE:
     builder_terminate();
     free(exec_dir);
     free(conf_file);
+    BL_LOG("Total allocated: %llu kB", get_total_allocated_bytes() / 1024);
     BL_LOG("Exit with state %d.", state);
     return state;
 #undef EXIT
