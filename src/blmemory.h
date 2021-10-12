@@ -33,10 +33,10 @@
 
 #define bl_malloc(size) _bl_malloc(size, __FILE__, __LINE__)
 #define bl_realloc(ptr, size) _bl_realloc(ptr, size, __FILE__, __LINE__)
-#define bl_free(ptr) _bl_free(ptr, __FILE__, __LINE__)
+#define bl_free(ptr) _bl_free(ptr)
 
 void *_bl_realloc(void *ptr, const size_t size, const char *filename, s32 line);
 void *_bl_malloc(const size_t size, const char *filename, s32 line);
-void  _bl_free(void *ptr, const char *filename, s32 line);
+void  _bl_free(void *ptr);
 
 #endif // BL_BLMEMORY_H

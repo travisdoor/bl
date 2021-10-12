@@ -61,7 +61,7 @@ void *_bl_malloc(const size_t size, const char UNUSED(*filename), s32 UNUSED(lin
     return mem;
 }
 
-void _bl_free(void *ptr, const char UNUSED(*filename), s32 UNUSED(line))
+void _bl_free(void *ptr)
 {
     TracyCFree(ptr);
     free(ptr);

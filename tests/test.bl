@@ -16,6 +16,7 @@ main :: fn () s32 {
 // - Make return tmp variable #noinit.
 // - Implement zeroset helper and measure runtime performance compared to memset. (compile time branches for
 //   posible sizes?)
+// - type of thash_from_str is inconsistent, should it be u64 or u32?
 
 
 // =================================================================================================
