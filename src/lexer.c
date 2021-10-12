@@ -412,7 +412,7 @@ SCAN:
     switch (*ctx->c) {
     case '\0':
         tok.sym = SYM_EOF;
-        tokens_push(ctx->tokens, &tok);
+        tokens_push(ctx->tokens, tok);
         return;
     case '\r':
         ctx->c++;
@@ -506,7 +506,7 @@ SCAN:
                *ctx->c);
 PUSH_TOKEN:
     tok.location.unit = ctx->unit;
-    tokens_push(ctx->tokens, &tok);
+    tokens_push(ctx->tokens, tok);
 
     goto SCAN;
 }

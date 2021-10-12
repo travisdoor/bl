@@ -238,7 +238,7 @@ int main(s32 argc, char *argv[])
 #endif
     Options opt = {0};
     setlocale(LC_ALL, "C");
-    tlib_set_allocator(&_bl_malloc, &bl_free);
+    tlib_set_allocator(&_bl_malloc, &_bl_free);
 
     s32   state     = EXIT_SUCCESS;
     char *exec_dir  = NULL;
@@ -315,7 +315,6 @@ RELEASE:
     builder_terminate();
     free(exec_dir);
     free(conf_file);
-    BL_LOG("Total allocated: %llu kB", get_total_allocated_bytes() / 1024);
     BL_LOG("Exit with state %d.", state);
     return state;
 #undef EXIT

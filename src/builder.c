@@ -622,8 +622,9 @@ void builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len
     // Line three
     line_str = unit_get_src_ln(loc->unit, loc->line + 1, &line_len);
     if (line_str && line_len) {
-        fprintf(stream, "\n%*d | %.*s\n\n", padding, loc->line + 1, (int)line_len, line_str);
+        fprintf(stream, "\n%*d | %.*s", padding, loc->line + 1, (int)line_len, line_str);
     }
+    fprintf(stream, "\n\n");
 }
 
 void builder_vmsg(enum builder_msg_type type,

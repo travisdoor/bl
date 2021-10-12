@@ -27,16 +27,17 @@
 // =================================================================================================
 
 #include "builder.h"
+#include "stb_ds.h"
 
 void token_printer_run(struct assembly *UNUSED(assembly), struct unit *unit)
 {
-    TArray *tokens_arr = &unit->tokens.buf;
+    struct token *tokens_arr = unit->tokens.buf;
     fprintf(stdout, "Tokens: \n");
-    const usize   c = tokens_arr->size;
+    const s64     c = arrlen(tokens_arr);
     struct token *tok;
     s32           line = -1;
-    for (usize i = 0; i < c; ++i) {
-        tok = &tarray_at(struct token, tokens_arr, i);
+    for (s64 i = 0; i < c; ++i) {
+        tok = &tokens_arr[i];
 
         if (line == -1) {
             line = tok->location.line;
