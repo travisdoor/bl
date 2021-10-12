@@ -1884,9 +1884,6 @@ State emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr
 
     case LLVM_EASGM_BYVAL: {
         LLVMValueRef llvm_arg = LLVMGetParam(llvm_fn, arg->llvm_index);
-        // llvm_arg              = LLVMBuildLoad(ctx->llvm_builder, llvm_arg, "");
-        // LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_dest);
-        builder_note("memcpy!");
         build_call_memcpy(ctx, llvm_arg, llvm_dest, dest->value.type->store_size_bytes);
         break;
     }
