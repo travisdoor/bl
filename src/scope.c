@@ -27,6 +27,7 @@
 // =================================================================================================
 
 #include "scope.h"
+#include "stb_ds.h"
 #if BL_PLATFORM_WIN
 #include "winpthreads.h"
 #else
@@ -51,47 +52,34 @@ static void sync_delete(scope_sync_impl *impl)
     bl_free(impl);
 }
 
-static INLINE void layer_init(struct scope_layer *layer, s32 index, usize expected_entry_count)
-{
-    thtbl_init(&layer->entries, sizeof(struct scope_entry *), expected_entry_count);
-    layer->index = index;
-}
-
-static INLINE void layer_terminate(struct scope_layer *layer)
-{
-    thtbl_terminate(&layer->entries);
-}
-
 static void scope_dtor(struct scope *scope)
 {
     BL_MAGIC_ASSERT(scope);
-    for (usize i = 0; i < scope->layers.size; ++i) {
-        struct scope_layer *layer = &scope->layers.data[i];
-        layer_terminate(layer);
+    for (s64 i = 0; i < arrlen(scope->layers); ++i) {
+        hmfree(scope->layers[i].entries);
     }
-    tsa_terminate(&scope->layers);
+    arrfree(scope->layers);
     sync_delete(scope->sync);
 }
 
-static INLINE THashTable *get_layer(struct scope *scope, s32 index)
+static INLINE struct scope_layer *get_layer(struct scope *scope, s32 index)
 {
-    for (usize i = 0; i < scope->layers.size; ++i) {
-        if (scope->layers.data[i].index == index) return &scope->layers.data[i].entries;
+    for (s64 i = 0; i < arrlen(scope->layers); ++i) {
+        if (scope->layers[i].index == index) return &scope->layers[i];
     }
     return NULL;
 }
 
 // Only local scopes can have layers, for global ones, use only SCOPE_DEFAULT_LAYER index. Layered
-// scopes are used due to polymorph function generation. We basicaly reuse already existing
+// scopes are used due to polymorph function generation. We basically reuse already existing
 // Ast tree for polymorphs of specified type; in this case we need new layer for every polymorph
 // variant of function.
-static INLINE THashTable *create_layer(struct scope *scope, s32 index)
+static INLINE struct scope_layer *create_layer(struct scope *scope, s32 index)
 {
     BL_ASSERT(index == SCOPE_DEFAULT_LAYER || scope_is_local(scope));
     BL_ASSERT(get_layer(scope, index) == NULL && "Attempt to create existing layer!");
-    struct scope_layer *layer = tsa_push_empty_ScopeLayer(&scope->layers);
-    layer_init(layer, index, scope->expected_entry_count);
-    return &layer->entries;
+    arrput(scope->layers, ((struct scope_layer){.entries = NULL, .index = index}));
+    return &arrlast(scope->layers);
 }
 
 void scope_arenas_init(struct scope_arenas *arenas)
@@ -123,7 +111,6 @@ struct scope *scope_create(struct scope_arenas *arenas,
     scope->kind                 = kind;
     scope->location             = loc;
     scope->expected_entry_count = expected_entry_count;
-    tsa_init(&scope->layers);
 
     // Global scopes must be thread safe!
     if (kind == SCOPE_GLOBAL) scope->sync = sync_new();
@@ -152,12 +139,12 @@ void scope_insert(struct scope *scope, s32 layer_index, struct scope_entry *entr
     BL_ASSERT(scope);
     BL_ASSERT(entry && entry->id);
     BL_ASSERT(layer_index >= 0);
-    THashTable *entries = get_layer(scope, layer_index);
-    if (!entries) entries = create_layer(scope, layer_index);
-    BL_ASSERT(entries);
-    BL_ASSERT(!thtbl_has_key(entries, entry->id->hash) && "Duplicate scope entry key!!!");
+    struct scope_layer *layer = get_layer(scope, layer_index);
+    if (!layer) layer = create_layer(scope, layer_index);
+    BL_ASSERT(layer);
+    BL_ASSERT(hmgeti(layer->entries, entry->id->hash) == -1 && "Duplicate scope entry key!!!");
     entry->parent_scope = scope;
-    thtbl_insert(entries, entry->id->hash, entry);
+    hmput(layer->entries, entry->id->hash, entry);
 }
 
 struct scope_entry *scope_lookup(struct scope *scope,
@@ -170,17 +157,16 @@ struct scope_entry *scope_lookup(struct scope *scope,
     ZONE();
     BL_ASSERT(scope && id);
     BL_ASSERT(preferred_layer_index >= 0);
-    TIterator iter;
     while (scope) {
         if (ignore_global && scope->kind == SCOPE_GLOBAL) break;
         // Lookup in current scope first
-        THashTable *entries = get_layer(scope, preferred_layer_index);
+        struct scope_layer *layer = get_layer(scope, preferred_layer_index);
         // We can implicitly switch to default layer when scope is not local.
-        if (!entries && !scope_is_local(scope)) entries = get_layer(scope, SCOPE_DEFAULT_LAYER);
-        if (entries) {
-            iter = thtbl_find(entries, id->hash);
-            if (!TITERATOR_EQUAL(iter, thtbl_end(entries))) {
-                RETURN_ZONE(thtbl_iter_peek_value(struct scope_entry *, iter));
+        if (!layer && !scope_is_local(scope)) layer = get_layer(scope, SCOPE_DEFAULT_LAYER);
+        if (layer) {
+            const s64 i = hmgeti(layer->entries, id->hash);
+            if (i != -1) {
+                RETURN_ZONE(layer->entries[i].value);
             }
         }
         // Lookup in parent.

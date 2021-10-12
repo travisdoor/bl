@@ -36,27 +36,16 @@
 void *_bl_realloc(void *ptr, const size_t size, const char UNUSED(*filename), s32 UNUSED(line))
 {
     void *mem = realloc(ptr, size);
-    if (!mem) {
-        fprintf(stderr, "Bad alloc!");
-        abort();
-    }
-    if (ptr != mem) {
-        TracyCAlloc(mem, size);
-    } else {
-        TracyCFree(mem);
-        TracyCAlloc(mem, size);
-    }
-
+    if (!mem) abort();
+    TracyCFree(ptr);
+    TracyCAlloc(mem, size);
     return mem;
 }
 
 void *_bl_malloc(const size_t size, const char UNUSED(*filename), s32 UNUSED(line))
 {
     void *mem = malloc(size);
-    if (!mem) {
-        fprintf(stderr, "Bad alloc!");
-        abort();
-    }
+    if (!mem) abort();
     TracyCAlloc(mem, size);
     return mem;
 }

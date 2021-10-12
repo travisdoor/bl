@@ -52,10 +52,6 @@ ast_create_node(struct arena *arena, enum ast_kind c, struct token *tok, struct 
 #if BL_DEBUG
     static u64 serial = 0;
     node->_serial     = serial++;
-#if defined(TRACY_ENABLE)
-    TracyCPlot("AST", serial);
-    BL_TRACY_MESSAGE("AST_CREATE", "size: %lluB", (unsigned long long)sizeof(struct ast));
-#endif
 #endif
     return node;
 }

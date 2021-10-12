@@ -6116,11 +6116,13 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
             report_error(EXPECTED_COMPTIME,
                          c->on_value->node,
                          "Switch case value must be compile-time known.");
+            hmfree(presented);
             RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
 
         if (analyze_slot(ctx, &analyze_slot_conf_default, &c->on_value, expected_case_type) !=
             ANALYZE_PASSED) {
+            hmfree(presented);
             RETURN_ZONE(ANALYZE_RESULT(FAILED, 0));
         }
         { // validate value

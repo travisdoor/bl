@@ -90,12 +90,12 @@ enum scope_kind {
 #define SCOPE_DEFAULT_LAYER 0
 
 struct scope_layer {
-    THashTable entries;
-    s32        index;
+    struct {
+        u64                 key;
+        struct scope_entry *value;
+    } * entries;
+    s32 index;
 };
-
-// In most cases we need only one scope layer so we use small array as workaround here.
-TSMALL_ARRAY_TYPE(ScopeLayer, struct scope_layer, 1)
 
 struct scope {
     enum scope_kind         kind;
@@ -105,7 +105,7 @@ struct scope {
     struct scope_sync_impl *sync;
     struct location *       location;
     LLVMMetadataRef         llvm_meta;
-    TSmallArray_ScopeLayer  layers;
+    struct scope_layer *    layers;
 
     BL_MAGIC_ADD
 };

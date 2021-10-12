@@ -45,6 +45,8 @@ struct token *token_end = &(struct token){.sym = SYM_EOF};
 
 void tokens_init(struct tokens *tokens)
 {
+    tokens->buf  = NULL;
+    tokens->iter = 0;
     arrsetcap(tokens->buf, 512);
 }
 
