@@ -120,15 +120,15 @@ static LLVMValueRef
 rtti_emit_empty(struct context *ctx, struct mir_type *type, struct mir_type *rtti_type);
 static LLVMValueRef rtti_emit_enum(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_enum_variant(struct context *ctx, struct mir_variant *variant);
-static LLVMValueRef rtti_emit_enum_variants_array(struct context *        ctx,
+static LLVMValueRef rtti_emit_enum_variants_array(struct context         *ctx,
                                                   TSmallArray_VariantPtr *variants);
-static LLVMValueRef rtti_emit_enum_variants_slice(struct context *        ctx,
+static LLVMValueRef rtti_emit_enum_variants_slice(struct context         *ctx,
                                                   TSmallArray_VariantPtr *variants);
 static LLVMValueRef rtti_emit_struct(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_struct_member(struct context *ctx, struct mir_member *member);
-static LLVMValueRef rtti_emit_struct_members_array(struct context *       ctx,
+static LLVMValueRef rtti_emit_struct_members_array(struct context        *ctx,
                                                    TSmallArray_MemberPtr *members);
-static LLVMValueRef rtti_emit_struct_members_slice(struct context *       ctx,
+static LLVMValueRef rtti_emit_struct_members_slice(struct context        *ctx,
                                                    TSmallArray_MemberPtr *members);
 static LLVMValueRef rtti_emit_fn(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_fn_arg(struct context *ctx, struct mir_arg *arg);
@@ -195,10 +195,10 @@ emit_instr_compound(struct context *ctx, LLVMValueRef llvm_dest, struct mir_inst
 static LLVMValueRef _emit_instr_compound_zero_initialized(struct context *ctx,
                                                           LLVMValueRef    llvm_dest, // optional
                                                           struct mir_instr_compound *cmp);
-static LLVMValueRef _emit_instr_compound_comptime(struct context *           ctx,
+static LLVMValueRef _emit_instr_compound_comptime(struct context            *ctx,
                                                   struct mir_instr_compound *cmp);
 
-static INLINE LLVMValueRef emit_instr_compound_global(struct context *           ctx,
+static INLINE LLVMValueRef emit_instr_compound_global(struct context            *ctx,
                                                       struct mir_instr_compound *cmp)
 {
     BL_ASSERT(mir_is_global(&cmp->base) && "Expected global compound expression!");
@@ -224,7 +224,7 @@ static INLINE void emit_DI_instr_loc(struct context *ctx, struct mir_instr *inst
 {
     BL_ASSERT(instr && "Invalid instruction!");
     BL_ASSERT(instr->node && "Invalid instruction ast node!");
-    struct scope *   scope = instr->node->owner_scope;
+    struct scope    *scope = instr->node->owner_scope;
     struct location *loc   = instr->node->location;
     BL_ASSERT(scope && "Missing scope for DI!");
     BL_ASSERT(loc && "Missing location for DI!");
@@ -236,9 +236,9 @@ static INLINE void emit_DI_instr_loc(struct context *ctx, struct mir_instr *inst
 
 static INLINE LLVMValueRef llvm_lookup_fn(struct context *ctx, const char *name)
 {
-    const u64 hash  = thash_from_str(name);
-    TIterator found = thtbl_find(&ctx->llvm_fn_cache, hash);
-    TIterator end   = thtbl_end(&ctx->llvm_fn_cache);
+    const hash_t hash  = strhash(name);
+    TIterator    found = thtbl_find(&ctx->llvm_fn_cache, hash);
+    TIterator    end   = thtbl_end(&ctx->llvm_fn_cache);
     if (!TITERATOR_EQUAL(found, end)) {
         return thtbl_iter_peek_value(LLVMValueRef, found);
     }
@@ -246,10 +246,10 @@ static INLINE LLVMValueRef llvm_lookup_fn(struct context *ctx, const char *name)
 }
 
 static INLINE LLVMValueRef llvm_cache_fn(struct context *ctx,
-                                         const char *    name,
+                                         const char     *name,
                                          LLVMValueRef    llvm_fn)
 {
-    const u64 hash = thash_from_str(name);
+    const hash_t hash = strhash(name);
     thtbl_insert(&ctx->llvm_fn_cache, hash, llvm_fn);
     return llvm_fn;
 }
@@ -264,7 +264,7 @@ static INLINE struct mir_instr *push_back_incomplete(struct context *ctx, struct
 static INLINE struct mir_instr *pop_front_incomplete(struct context *ctx)
 {
     struct mir_instr *instr = NULL;
-    TList *           queue = &ctx->incomplete_queue;
+    TList            *queue = &ctx->incomplete_queue;
     if (!tlist_empty(queue)) {
         instr = tlist_front(struct mir_instr *, queue);
         tlist_pop_front(queue);
@@ -312,7 +312,7 @@ static INLINE LLVMBasicBlockRef emit_basic_block(struct context *ctx, struct mir
 static void process_queue(struct context *ctx)
 {
     struct mir_instr *instr = NULL;
-    TList *           queue = &ctx->queue;
+    TList            *queue = &ctx->queue;
     while (!tlist_empty(queue)) {
         instr = tlist_front(struct mir_instr *, queue);
         tlist_pop_front(queue);
@@ -446,8 +446,8 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
             // This applies for builtin types without source location.
             file_meta = scope_meta;
         }
-        struct mir_type *        base_type = type->data.enm.base_type;
-        const char *             enm_name  = type->user_id ? type->user_id->str : "enum";
+        struct mir_type         *base_type = type->data.enm.base_type;
+        const char              *enm_name  = type->user_id ? type->user_id->str : "enum";
         TSmallArray_LLVMMetadata llvm_elems;
         tsa_init(&llvm_elems);
         struct mir_variant *variant;
@@ -590,7 +590,7 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
         }
 
         LLVMMetadataRef llvm_parent_scope = NULL;
-        struct scope *  parent_scope      = type->data.strct.scope->parent;
+        struct scope   *parent_scope      = type->data.strct.scope->parent;
         if (is_implicit || !scope_is_local(parent_scope)) {
             llvm_parent_scope = llvm_file;
         } else {
@@ -837,7 +837,7 @@ LLVMValueRef emit_const_string(struct context *ctx, const char *str, usize len)
     LLVMValueRef     llvm_str = NULL;
     if (str) {
         struct mir_type *raw_str_elem_type = mir_deref_type(mir_get_struct_elem_type(type, 1));
-        u64              hash              = thash_from_str(str);
+        const hash_t     hash              = strhash(str);
         TIterator        found             = thtbl_find(&ctx->gstring_cache, hash);
         TIterator        end               = thtbl_end(&ctx->gstring_cache);
 
@@ -862,8 +862,8 @@ LLVMValueRef emit_const_string(struct context *ctx, const char *str, usize len)
         // @PERFORMANCE: Can we reuse same string null constant here???
         llvm_str = LLVMConstNull(get_type(ctx, str_type));
     }
-    struct mir_type *     len_type = mir_get_struct_elem_type(type, 0);
-    struct mir_type *     ptr_type = mir_get_struct_elem_type(type, 1);
+    struct mir_type      *len_type = mir_get_struct_elem_type(type, 0);
+    struct mir_type      *ptr_type = mir_get_struct_elem_type(type, 1);
     LLVMValueRef          llvm_len = LLVMConstInt(get_type(ctx, len_type), (u64)len, true);
     TSmallArray_LLVMValue llvm_members;
     tsa_init(&llvm_members);
@@ -921,7 +921,7 @@ State emit_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
     TSmallArray_LLVMValue llvm_ib;
     tsa_init(&llvm_iv);
     tsa_init(&llvm_ib);
-    struct mir_instr *      value;
+    struct mir_instr       *value;
     struct mir_instr_block *block;
     for (usize i = 0; i < count; ++i) {
         value = phi->incoming_values->data[i];
@@ -996,7 +996,7 @@ LLVMValueRef rtti_emit_empty(struct context *ctx, struct mir_type *type, struct 
 
 LLVMValueRef rtti_emit_enum(struct context *ctx, struct mir_type *type)
 {
-    struct mir_type *     rtti_type = ctx->builtin_types->t_TypeInfoEnum;
+    struct mir_type      *rtti_type = ctx->builtin_types->t_TypeInfoEnum;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1032,7 +1032,7 @@ LLVMValueRef rtti_emit_enum(struct context *ctx, struct mir_type *type)
 
 LLVMValueRef rtti_emit_enum_variant(struct context *ctx, struct mir_variant *variant)
 {
-    struct mir_type *     rtti_type = ctx->builtin_types->t_TypeInfoEnumVariant;
+    struct mir_type      *rtti_type = ctx->builtin_types->t_TypeInfoEnumVariant;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1056,7 +1056,7 @@ LLVMValueRef rtti_emit_enum_variant(struct context *ctx, struct mir_variant *var
 
 LLVMValueRef rtti_emit_enum_variants_array(struct context *ctx, TSmallArray_VariantPtr *variants)
 {
-    struct mir_type *     elem_type = ctx->builtin_types->t_TypeInfoEnumVariant;
+    struct mir_type      *elem_type = ctx->builtin_types->t_TypeInfoEnumVariant;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1081,7 +1081,7 @@ LLVMValueRef rtti_emit_enum_variants_array(struct context *ctx, TSmallArray_Vari
 
 LLVMValueRef rtti_emit_enum_variants_slice(struct context *ctx, TSmallArray_VariantPtr *variants)
 {
-    struct mir_type *     type = ctx->builtin_types->t_TypeInfoEnumVariants_slice;
+    struct mir_type      *type = ctx->builtin_types->t_TypeInfoEnumVariants_slice;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1104,7 +1104,7 @@ LLVMValueRef rtti_emit_enum_variants_slice(struct context *ctx, TSmallArray_Vari
 
 LLVMValueRef rtti_emit_struct(struct context *ctx, struct mir_type *type)
 {
-    struct mir_type *     rtti_type = ctx->builtin_types->t_TypeInfoStruct;
+    struct mir_type      *rtti_type = ctx->builtin_types->t_TypeInfoStruct;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1151,7 +1151,7 @@ LLVMValueRef rtti_emit_struct(struct context *ctx, struct mir_type *type)
 
 LLVMValueRef rtti_emit_struct_member(struct context *ctx, struct mir_member *member)
 {
-    struct mir_type *     rtti_type = ctx->builtin_types->t_TypeInfoStructMember;
+    struct mir_type      *rtti_type = ctx->builtin_types->t_TypeInfoStructMember;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1199,7 +1199,7 @@ LLVMValueRef rtti_emit_struct_member(struct context *ctx, struct mir_member *mem
 
 LLVMValueRef rtti_emit_struct_members_array(struct context *ctx, TSmallArray_MemberPtr *members)
 {
-    struct mir_type *     elem_type = ctx->builtin_types->t_TypeInfoStructMember;
+    struct mir_type      *elem_type = ctx->builtin_types->t_TypeInfoStructMember;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1224,7 +1224,7 @@ LLVMValueRef rtti_emit_struct_members_array(struct context *ctx, TSmallArray_Mem
 
 LLVMValueRef rtti_emit_struct_members_slice(struct context *ctx, TSmallArray_MemberPtr *members)
 {
-    struct mir_type *     type = ctx->builtin_types->t_TypeInfoStructMembers_slice;
+    struct mir_type      *type = ctx->builtin_types->t_TypeInfoStructMembers_slice;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1247,7 +1247,7 @@ LLVMValueRef rtti_emit_struct_members_slice(struct context *ctx, TSmallArray_Mem
 
 LLVMValueRef rtti_emit_fn(struct context *ctx, struct mir_type *type)
 {
-    struct mir_type *     rtti_type = ctx->builtin_types->t_TypeInfoFn;
+    struct mir_type      *rtti_type = ctx->builtin_types->t_TypeInfoFn;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1285,7 +1285,7 @@ LLVMValueRef rtti_emit_fn(struct context *ctx, struct mir_type *type)
 
 LLVMValueRef rtti_emit_fn_group(struct context *ctx, struct mir_type *type)
 {
-    struct mir_type *     rtti_type = ctx->builtin_types->t_TypeInfoFnGroup;
+    struct mir_type      *rtti_type = ctx->builtin_types->t_TypeInfoFnGroup;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1304,7 +1304,7 @@ LLVMValueRef rtti_emit_fn_group(struct context *ctx, struct mir_type *type)
 
 LLVMValueRef rtti_emit_fn_slice(struct context *ctx, TSmallArray_TypePtr *fns)
 {
-    struct mir_type *     type = ctx->builtin_types->t_TypeInfoFn_ptr_slice;
+    struct mir_type      *type = ctx->builtin_types->t_TypeInfoFn_ptr_slice;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
     const usize      argc     = fns ? fns->size : 0;
@@ -1326,7 +1326,7 @@ LLVMValueRef rtti_emit_fn_slice(struct context *ctx, TSmallArray_TypePtr *fns)
 
 LLVMValueRef rtti_emit_fn_array(struct context *ctx, TSmallArray_TypePtr *fns)
 {
-    struct mir_type *     elem_type = ctx->builtin_types->t_TypeInfoFn_ptr;
+    struct mir_type      *elem_type = ctx->builtin_types->t_TypeInfoFn_ptr;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1352,7 +1352,7 @@ LLVMValueRef rtti_emit_fn_array(struct context *ctx, TSmallArray_TypePtr *fns)
 
 LLVMValueRef rtti_emit_fn_arg(struct context *ctx, struct mir_arg *arg)
 {
-    struct mir_type *     rtti_type = ctx->builtin_types->t_TypeInfoFnArg;
+    struct mir_type      *rtti_type = ctx->builtin_types->t_TypeInfoFnArg;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
     // name
@@ -1368,7 +1368,7 @@ LLVMValueRef rtti_emit_fn_arg(struct context *ctx, struct mir_arg *arg)
 
 LLVMValueRef rtti_emit_fn_args_array(struct context *ctx, TSmallArray_ArgPtr *args)
 {
-    struct mir_type *     elem_type = ctx->builtin_types->t_TypeInfoFnArg;
+    struct mir_type      *elem_type = ctx->builtin_types->t_TypeInfoFnArg;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1393,7 +1393,7 @@ LLVMValueRef rtti_emit_fn_args_array(struct context *ctx, TSmallArray_ArgPtr *ar
 
 LLVMValueRef rtti_emit_fn_args_slice(struct context *ctx, TSmallArray_ArgPtr *args)
 {
-    struct mir_type *     type = ctx->builtin_types->t_TypeInfoFnArgs_slice;
+    struct mir_type      *type = ctx->builtin_types->t_TypeInfoFnArgs_slice;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1421,7 +1421,7 @@ LLVMValueRef rtti_emit_fn_args_slice(struct context *ctx, TSmallArray_ArgPtr *ar
 
 LLVMValueRef rtti_emit_integer(struct context *ctx, struct mir_type *type)
 {
-    struct mir_type *     rtti_type = ctx->builtin_types->t_TypeInfoInt;
+    struct mir_type      *rtti_type = ctx->builtin_types->t_TypeInfoInt;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1448,7 +1448,7 @@ LLVMValueRef rtti_emit_integer(struct context *ctx, struct mir_type *type)
 
 LLVMValueRef rtti_emit_real(struct context *ctx, struct mir_type *type)
 {
-    struct mir_type *     rtti_type = ctx->builtin_types->t_TypeInfoReal;
+    struct mir_type      *rtti_type = ctx->builtin_types->t_TypeInfoReal;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1470,7 +1470,7 @@ LLVMValueRef rtti_emit_real(struct context *ctx, struct mir_type *type)
 
 LLVMValueRef rtti_emit_ptr(struct context *ctx, struct mir_type *type)
 {
-    struct mir_type *     rtti_type = ctx->builtin_types->t_TypeInfoPtr;
+    struct mir_type      *rtti_type = ctx->builtin_types->t_TypeInfoPtr;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1490,7 +1490,7 @@ LLVMValueRef rtti_emit_ptr(struct context *ctx, struct mir_type *type)
 
 LLVMValueRef rtti_emit_array(struct context *ctx, struct mir_type *type)
 {
-    struct mir_type *     rtti_type = ctx->builtin_types->t_TypeInfoArray;
+    struct mir_type      *rtti_type = ctx->builtin_types->t_TypeInfoArray;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1650,7 +1650,7 @@ State emit_instr_type_info(struct context *ctx, struct mir_instr_type_info *type
 
 LLVMValueRef testing_emit_meta_case(struct context *ctx, struct mir_fn *fn)
 {
-    struct mir_type *     type = ctx->builtin_types->t_TestCase;
+    struct mir_type      *type = ctx->builtin_types->t_TestCase;
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
@@ -1709,7 +1709,7 @@ State emit_instr_test_cases(struct context *ctx, struct mir_instr_test_case *tc)
 {
     // Test case metadata variable is optional an can be null in case there are no test cases.
     // In such case we generate empty slice with zero lenght.
-    struct mir_var * var  = testing_fetch_meta(ctx);
+    struct mir_var  *var  = testing_fetch_meta(ctx);
     struct mir_type *type = ctx->builtin_types->t_TestCases_slice;
 
     TSmallArray_LLVMValue llvm_vals;
@@ -1819,7 +1819,7 @@ State emit_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof)
 {
     if (addrof->src->kind == MIR_INSTR_FN_PROTO) {
         struct mir_instr_fn_proto *fn_proto = (struct mir_instr_fn_proto *)addrof->src;
-        struct mir_fn *            fn = MIR_CEV_READ_AS(struct mir_fn *, &fn_proto->base.value);
+        struct mir_fn             *fn = MIR_CEV_READ_AS(struct mir_fn *, &fn_proto->base.value);
         BL_MAGIC_ASSERT(fn);
         addrof->base.llvm_value = emit_fn_proto(ctx, fn, true);
     } else {
@@ -2103,7 +2103,7 @@ State emit_instr_unop(struct context *ctx, struct mir_instr_unop *unop)
 // Generates zero initialized value from compound expression, `llvm_dest` is optional
 // specification of destination variable or GEP to be set to zero. Result LLVM value is either
 // compile time constant or `llvm_dest` if provided.
-LLVMValueRef _emit_instr_compound_zero_initialized(struct context *           ctx,
+LLVMValueRef _emit_instr_compound_zero_initialized(struct context            *ctx,
                                                    LLVMValueRef               llvm_dest, // optional
                                                    struct mir_instr_compound *cmp)
 {
@@ -2218,7 +2218,7 @@ LLVMValueRef _emit_instr_compound_comptime(struct context *ctx, struct mir_instr
     return cmp->base.llvm_value;
 }
 
-void emit_instr_compound(struct context *           ctx,
+void emit_instr_compound(struct context            *ctx,
                          LLVMValueRef               llvm_dest,
                          struct mir_instr_compound *cmp)
 {
@@ -2239,7 +2239,7 @@ void emit_instr_compound(struct context *           ctx,
     BL_ASSERT(type);
 
     TSmallArray_InstrPtr *values = cmp->values;
-    struct mir_instr *    value;
+    struct mir_instr     *value;
     LLVMValueRef          llvm_value;
     LLVMValueRef          llvm_indices[2];
     LLVMValueRef          llvm_value_dest = llvm_dest;
@@ -2460,7 +2460,7 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 
     if (has_args) {
         struct mir_instr *arg_instr;
-        struct mir_arg *  arg;
+        struct mir_arg   *arg;
         LLVMTypeRef       llvm_callee_type = get_type(ctx, callee_type);
 
         // Get real argument types of LLMV function.
@@ -2555,7 +2555,7 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
     if (has_byval_arg) {
         BL_ASSERT(has_args);
         TSmallArray_ArgPtr *args = callee_type->data.fn.args;
-        struct mir_arg *    arg;
+        struct mir_arg     *arg;
         TSA_FOREACH(args, arg)
         {
             if (arg->llvm_easgm != LLVM_EASGM_BYVAL) continue;
@@ -2688,7 +2688,7 @@ State emit_instr_br(struct context *ctx, struct mir_instr_br *br)
 
 State emit_instr_switch(struct context *ctx, struct mir_instr_switch *sw)
 {
-    struct mir_instr *      value              = sw->value;
+    struct mir_instr       *value              = sw->value;
     struct mir_instr_block *default_block      = sw->default_block;
     TSmallArray_SwitchCase *cases              = sw->cases;
     LLVMValueRef            llvm_value         = value->llvm_value;
@@ -2757,7 +2757,7 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
         vm_stack_ptr_t len_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 0);
         vm_stack_ptr_t str_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 1);
         const s64      len     = vm_read_as(s64, len_ptr);
-        const char *   str     = vm_read_as(const char *, str_ptr);
+        const char    *str     = vm_read_as(const char *, str_ptr);
         llvm_value             = emit_const_string(ctx, str, len);
         break;
     }
@@ -2780,7 +2780,7 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
 
 State emit_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br)
 {
-    struct mir_instr *      cond       = br->cond;
+    struct mir_instr       *cond       = br->cond;
     struct mir_instr_block *then_block = br->then_block;
     struct mir_instr_block *else_block = br->else_block;
     BL_ASSERT(cond && then_block);
@@ -2796,7 +2796,7 @@ State emit_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br)
 
 State emit_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs)
 {
-    struct mir_type *     vargs_type = vargs->base.value.type;
+    struct mir_type      *vargs_type = vargs->base.value.type;
     TSmallArray_InstrPtr *values     = vargs->values;
     BL_ASSERT(values);
     const usize vargsc = values->size;
@@ -2914,7 +2914,7 @@ State emit_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc)
 State emit_instr_block(struct context *ctx, struct mir_instr_block *block)
 {
     // We don't want to generate type resolvers for typedefs!!!
-    struct mir_fn *   fn              = block->owner_fn;
+    struct mir_fn    *fn              = block->owner_fn;
     const bool        is_global       = fn == NULL;
     LLVMBasicBlockRef llvm_prev_block = LLVMGetInsertBlock(ctx->llvm_builder);
 
@@ -2985,7 +2985,7 @@ void emit_incomplete(struct context *ctx)
 void emit_allocas(struct context *ctx, struct mir_fn *fn)
 {
     BL_ASSERT(fn);
-    const char *    var_name;
+    const char     *var_name;
     LLVMTypeRef     var_type;
     unsigned        var_alignment;
     struct mir_var *var;
@@ -3188,7 +3188,7 @@ static void DI_init(struct context *ctx)
     tarray_init(&ctx->di_incomplete_types, sizeof(struct mir_type *));
     tarray_reserve(&ctx->di_incomplete_types, 1024);
 
-    const char *  producer    = "blc version " BL_VERSION;
+    const char   *producer    = "blc version " BL_VERSION;
     struct scope *gscope      = ctx->assembly->gscope;
     LLVMModuleRef llvm_module = ctx->assembly->llvm.module;
 
@@ -3219,7 +3219,7 @@ static void DI_terminate(struct context *ctx)
 
 static void DI_complete_types(struct context *ctx)
 {
-    TArray *         stack = &ctx->di_incomplete_types;
+    TArray          *stack = &ctx->di_incomplete_types;
     struct mir_type *t;
 
     // Use for instead foreach, DI_complete_type can push another incomplete sub types.

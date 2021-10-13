@@ -92,7 +92,6 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
 #define LIB_NAME_MAX 256
 
-
 // =================================================================================================
 // STB utils
 // =================================================================================================
@@ -108,15 +107,26 @@ TSMALL_ARRAY_TYPE(Char, char, 128);
 TSMALL_ARRAY_TYPE(CharPtr, char *, 8);
 TSMALL_ARRAY_TYPE(FnPtr, struct mir_fn *, 8);
 
+typedef u32 hash_t;
+
 struct id {
     const char *str;
-    u64         hash;
+    hash_t      hash;
 };
+
+static INLINE hash_t strhash(const char *str)
+{
+    hash_t hash = 5381;
+    s32    c;
+    while ((c = *str++))
+        hash = ((hash << 5) + hash) + c;
+    return hash;
+}
 
 static INLINE struct id *id_init(struct id *id, const char *str)
 {
     BL_ASSERT(id);
-    id->hash = thash_from_str(str);
+    id->hash = strhash(str);
     id->str  = str;
     return id;
 }
@@ -147,8 +157,8 @@ enum search_flags {
 bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,
-                        char **     out_filepath,
-                        char **     out_dirpath);
+                        char      **out_filepath,
+                        char      **out_dirpath);
 
 // Replace all backslashes in passed path with forward slash, this is used as workaround on Windows
 // platform due to inconsistency 'Unix vs Windows' path separators. This function will modify passed
@@ -177,7 +187,7 @@ void    platform_lib_name(const char *name, char *buffer, usize max_len);
 f64     get_tick_ms(void);
 s32     get_last_error(char *buf, s32 buf_len);
 TArray *create_arr(struct assembly *assembly, usize size);
-void *  _create_sarr(struct assembly *ctx, usize arr_size);
+void   *_create_sarr(struct assembly *ctx, usize arr_size);
 u32     next_pow_2(u32 n);
 void    color_print(FILE *stream, s32 color, const char *format, ...);
 #define create_sarr(T, Asm) ((T *)_create_sarr((Asm), sizeof(T)))

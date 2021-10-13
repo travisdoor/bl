@@ -59,11 +59,13 @@ static void scope_dtor(struct scope *scope)
         hmfree(scope->layers[i].entries);
     }
     arrfree(scope->layers);
+    hmfree(scope->default_layer.entries);
     sync_delete(scope->sync);
 }
 
 static INLINE struct scope_layer *get_layer(struct scope *scope, s32 index)
 {
+    if (index == SCOPE_DEFAULT_LAYER) return &scope->default_layer;
     for (s64 i = 0; i < arrlen(scope->layers); ++i) {
         if (scope->layers[i].index == index) return &scope->layers[i];
     }
@@ -101,9 +103,9 @@ void scope_arenas_terminate(struct scope_arenas *arenas)
 
 struct scope *scope_create(struct scope_arenas *arenas,
                            enum scope_kind      kind,
-                           struct scope *       parent,
+                           struct scope        *parent,
                            u32                  expected_entry_count,
-                           struct location *    loc)
+                           struct location     *loc)
 {
     BL_ASSERT(expected_entry_count > 0);
     struct scope *scope         = arena_alloc(&arenas->scopes);
@@ -118,10 +120,10 @@ struct scope *scope_create(struct scope_arenas *arenas,
     return scope;
 }
 
-struct scope_entry *scope_create_entry(struct scope_arenas * arenas,
+struct scope_entry *scope_create_entry(struct scope_arenas  *arenas,
                                        enum scope_entry_kind kind,
-                                       struct id *           id,
-                                       struct ast *          node,
+                                       struct id            *id,
+                                       struct ast           *node,
                                        bool                  is_builtin)
 {
     struct scope_entry *entry = arena_alloc(&arenas->entries);
@@ -149,10 +151,10 @@ void scope_insert(struct scope *scope, s32 layer_index, struct scope_entry *entr
 
 struct scope_entry *scope_lookup(struct scope *scope,
                                  s32           preferred_layer_index,
-                                 struct id *   id,
+                                 struct id    *id,
                                  bool          in_tree,
                                  bool          ignore_global,
-                                 bool *        out_of_fn_local_scope)
+                                 bool         *out_of_fn_local_scope)
 {
     ZONE();
     BL_ASSERT(scope && id);

@@ -55,26 +55,24 @@ void conf_data_clear(conf_data_t *data)
 
 bool conf_data_has_key(conf_data_t *data, const char *key)
 {
-    const u64 hash = thash_from_str(key);
+    const hash_t hash = strhash(key);
     return thtbl_has_key(data, hash);
 }
 
 void conf_data_add(conf_data_t *data, const char *key, struct conf_data_value *value)
 {
-    const u64 hash = thash_from_str(key);
+    const hash_t hash = strhash(key);
     thtbl_insert(data, hash, *value);
 }
 
 struct conf_data_value *conf_data_get(conf_data_t *data, const char *key)
 {
-    const u64 hash = thash_from_str(key);
+    const hash_t hash = strhash(key);
     TIterator it   = thtbl_find(data, hash);
     TIterator end  = thtbl_end(data);
-
     if (TITERATOR_EQUAL(it, end)) {
         BL_ABORT("Missing conf entry '%s'.", key);
     }
-
     return &thtbl_iter_peek_value(struct conf_data_value, it);
 }
 

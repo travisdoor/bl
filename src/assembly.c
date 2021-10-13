@@ -129,8 +129,8 @@ static void parse_triple(const char *normalized_triple, struct target_triple *ou
     char *arch, *vendor, *os, *env;
     arch = vendor = os = env = "";
     const char *delimiter    = "-";
-    char *      tmp          = strdup(normalized_triple);
-    char *      token        = strtok(tmp, delimiter);
+    char       *tmp          = strdup(normalized_triple);
+    char       *token        = strtok(tmp, delimiter);
     s32         state        = 0;
     while (token) {
         switch (state++) {
@@ -335,9 +335,9 @@ static INLINE s32 get_module_version(conf_data_t *config)
 }
 
 static bool import_module(struct assembly *assembly,
-                          conf_data_t *    config,
-                          const char *     modulepath,
-                          struct token *   import_from)
+                          conf_data_t     *config,
+                          const char      *modulepath,
+                          struct token    *import_from)
 {
     ZONE();
     BL_ASSERT(config);
@@ -711,7 +711,7 @@ void assembly_append_linker_options(struct assembly *assembly, const char *opt)
     tstring_append(&assembly->custom_linker_opt, " ");
 }
 
-static INLINE bool assembly_has_unit(struct assembly *assembly, const u64 hash)
+static INLINE bool assembly_has_unit(struct assembly *assembly, const hash_t hash)
 {
     struct unit *unit;
     TARRAY_FOREACH(struct unit *, &assembly->units, unit)
@@ -727,8 +727,8 @@ struct unit *
 assembly_add_unit_safe(struct assembly *assembly, const char *filepath, struct token *load_from)
 {
     ZONE();
-    struct unit *     unit = NULL;
-    const u64         hash = unit_hash(filepath, load_from);
+    struct unit      *unit = NULL;
+    const hash_t      hash = unit_hash(filepath, load_from);
     AssemblySyncImpl *sync = assembly->sync;
     pthread_mutex_lock(&sync->units_lock);
     if (assembly_has_unit(assembly, hash)) goto DONE;
@@ -741,10 +741,10 @@ DONE:
 }
 
 void assembly_add_native_lib(struct assembly *assembly,
-                             const char *     lib_name,
-                             struct token *   link_token)
+                             const char      *lib_name,
+                             struct token    *link_token)
 {
-    const u64 hash = thash_from_str(lib_name);
+    const hash_t hash = strhash(lib_name);
     { // Search for duplicity.
         struct native_lib *lib;
         for (usize i = 0; i < assembly->libs.size; ++i) {
@@ -769,8 +769,8 @@ static INLINE bool module_exist(const char *module_dir, const char *modulepath)
 }
 
 bool assembly_import_module(struct assembly *assembly,
-                            const char *     modulepath,
-                            struct token *   import_from)
+                            const char      *modulepath,
+                            struct token    *import_from)
 {
     ZONE();
     bool state = false;
@@ -783,10 +783,10 @@ bool assembly_import_module(struct assembly *assembly,
         goto DONE;
     }
 
-    TString *            local_path = get_tmpstr();
-    conf_data_t *        config     = NULL;
+    TString             *local_path = get_tmpstr();
+    conf_data_t         *config     = NULL;
     const struct target *target     = assembly->target;
-    const char *         module_dir = target->module_dir.len > 0 ? target->module_dir.data : NULL;
+    const char          *module_dir = target->module_dir.len > 0 ? target->module_dir.data : NULL;
     const enum module_import_policy policy = assembly->target->module_policy;
     const bool local_found = module_dir ? module_exist(module_dir, modulepath) : false;
     switch (policy) {
@@ -804,7 +804,7 @@ bool assembly_import_module(struct assembly *assembly,
     case IMPORT_POLICY_BUNDLE_LATEST:
     case IMPORT_POLICY_BUNDLE: {
         BL_ASSERT(module_dir);
-        TString *  system_path   = get_tmpstr();
+        TString   *system_path   = get_tmpstr();
         const bool check_version = policy == IMPORT_POLICY_BUNDLE_LATEST;
         tstring_setf(local_path, "%s/%s", module_dir, modulepath);
         tstring_setf(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
@@ -863,7 +863,7 @@ DONE:
 
 DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol)
 {
-    void *             handle = NULL;
+    void              *handle = NULL;
     struct native_lib *lib;
     for (usize i = 0; i < assembly->libs.size; ++i) {
         lib    = &tarray_at(struct native_lib, &assembly->libs, i);

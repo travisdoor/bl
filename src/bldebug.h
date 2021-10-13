@@ -180,7 +180,7 @@ static inline void bl_debug_break(void)
     {                                                                                              \
         char buf[256];                                                                             \
         snprintf(buf, TARRAY_SIZE(buf), "#%s " format, tag, ##__VA_ARGS__);                        \
-        TracyCMessageC(buf, strlen(buf), thash_from_str(tag));                                     \
+        TracyCMessageC(buf, strlen(buf), strhash(tag));                                            \
     }                                                                                              \
     (void)0
 #else
