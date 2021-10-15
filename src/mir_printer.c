@@ -30,6 +30,7 @@
 #include "assembly.h"
 #include "ast.h"
 #include "mir.h"
+#include "stb_ds.h"
 
 #if BL_DEBUG
 #define PRINT_ANALYZED_COMPTIMES true
@@ -39,7 +40,7 @@
 
 struct context {
     struct assembly *assembly;
-    FILE *           stream;
+    FILE            *stream;
 };
 
 static void print_comptime_value_or_id(struct context *ctx, struct mir_instr *instr);
@@ -265,7 +266,7 @@ static void print_instr_type_ptr(struct context *ctx, struct mir_instr_type_ptr 
 static void print_instr_type_poly(struct context *ctx, struct mir_instr_type_poly *type_poly);
 static void print_instr_type_array(struct context *ctx, struct mir_instr_type_array *type_array);
 static void print_instr_type_slice(struct context *ctx, struct mir_instr_type_slice *type_slice);
-static void print_instr_type_dynarr(struct context *               ctx,
+static void print_instr_type_dynarr(struct context                *ctx,
                                     struct mir_instr_type_dyn_arr *type_dynarr);
 static void print_instr_type_vargs(struct context *ctx, struct mir_instr_type_vargs *type_vargs);
 static void print_instr_block(struct context *ctx, struct mir_instr_block *block);
@@ -370,7 +371,7 @@ void print_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
         return;
     }
 
-    struct mir_instr *      value;
+    struct mir_instr       *value;
     struct mir_instr_block *block;
     const usize             c = phi->incoming_values->size;
 
@@ -402,7 +403,7 @@ void print_instr_type_struct(struct context *ctx, struct mir_instr_type_struct *
     fprintf(ctx->stream, "{");
 
     TSmallArray_InstrPtr *members = type_struct->members;
-    struct mir_instr *    member;
+    struct mir_instr     *member;
     TSA_FOREACH(members, member)
     {
         print_comptime_value_or_id(ctx, member);
@@ -418,7 +419,7 @@ void print_instr_type_enum(struct context *ctx, struct mir_instr_type_enum *type
     fprintf(ctx->stream, "{");
 
     TSmallArray_InstrPtr *variants = type_enum->variants;
-    struct mir_instr *    variant;
+    struct mir_instr     *variant;
     TSA_FOREACH(variants, variant)
     {
         fprintf(ctx->stream, "%%%llu", (unsigned long long)variant->id);
@@ -839,7 +840,7 @@ void print_instr_call(struct context *ctx, struct mir_instr_call *call)
     struct mir_fn *callee      = mir_is_comptime(call->callee)
                                      ? MIR_CEV_READ_AS(struct mir_fn *, &call->callee->value)
                                      : NULL;
-    const char *   callee_name = callee ? callee->linkage_name : NULL;
+    const char    *callee_name = callee ? callee->linkage_name : NULL;
     if (callee_name)
         fprintf(ctx->stream, "@%s", callee_name);
     else
@@ -887,7 +888,7 @@ void print_instr_fn_group(struct context *ctx, struct mir_instr_fn_group *group)
     print_instr_head(ctx, &group->base, "const fn");
     fprintf(ctx->stream, "{");
     TSmallArray_InstrPtr *variants = group->variants;
-    struct mir_instr *    variant;
+    struct mir_instr     *variant;
     TSA_FOREACH(variants, variant)
     {
         fprintf(ctx->stream, "%%%llu", (unsigned long long)variant->id);
@@ -1161,10 +1162,7 @@ void mir_print_fn(FILE *stream, struct assembly *assembly, struct mir_fn *fn)
 
 void mir_print_assembly(FILE *stream, struct assembly *assembly)
 {
-    struct context    ctx = {.assembly = assembly, .stream = stream};
-    struct mir_instr *instr;
-    TARRAY_FOREACH(struct mir_instr *, &assembly->MIR.global_instrs, instr)
-    {
-        print_instr(&ctx, instr);
-    }
+    struct context ctx = {.assembly = assembly, .stream = stream};
+    for (s64 i = 0; i < arrlen(assembly->MIR.global_instrs); ++i)
+        print_instr(&ctx, assembly->MIR.global_instrs[i]);
 }

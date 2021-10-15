@@ -54,9 +54,9 @@ struct builder_options {
 
 struct builder {
     const struct builder_options *options;
-    const struct target *         default_target;
-    char *                        exec_dir;
-    char *                        lib_dir;
+    const struct target          *default_target;
+    char                         *exec_dir;
+    char                         *lib_dir;
     struct arena                  str_cache;
     volatile s32                  total_lines;
     s32                           errorc;
@@ -64,9 +64,9 @@ struct builder {
     s32                           test_failc;
     s32                           last_script_mode_run_status;
     conf_data_t                   conf;
-    TArray                        targets;
-    TArray                        tmp_strings;
-    struct threading_impl *       threading;
+    struct target               **targets;
+    TString                     **tmp_strings;
+    struct threading_impl        *threading;
     bool                          is_initialized;
 };
 
@@ -119,16 +119,16 @@ void builder_async_submit_unit(struct unit *unit);
 
 void builder_vmsg(enum builder_msg_type type,
                   s32                   code,
-                  struct location *     src,
+                  struct location      *src,
                   enum builder_cur_pos  pos,
-                  const char *          format,
+                  const char           *format,
                   va_list               args);
 
 void builder_msg(enum builder_msg_type type,
                  s32                   code,
-                 struct location *     src,
+                 struct location      *src,
                  enum builder_cur_pos  pos,
-                 const char *          format,
+                 const char           *format,
                  ...);
 
 TString *builder_create_cached_str(void);

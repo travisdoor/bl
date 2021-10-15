@@ -110,7 +110,7 @@ enum ast_msg_kind {
 
 struct ast_msg {
     enum ast_msg_kind kind;
-    const char *      text;
+    const char       *text;
 };
 
 struct ast_docs {
@@ -150,7 +150,7 @@ struct ast_ref {
 };
 
 struct ast_ublock {
-    TArray *     nodes;
+    struct ast **nodes;
     struct unit *unit;
 };
 
@@ -162,8 +162,8 @@ struct ast_block {
 struct ast_stmt_return {
     // Optional return values.
     TSmallArray_AstPtr *exprs;
-    struct ast *        fn_decl;
-    struct ast *        owner_block;
+    struct ast         *fn_decl;
+    struct ast         *owner_block;
 };
 
 struct ast_stmt_defer {
@@ -178,13 +178,13 @@ struct ast_stmt_if {
 };
 
 struct ast_stmt_switch {
-    struct ast *        expr;
+    struct ast         *expr;
     TSmallArray_AstPtr *cases;
 };
 
 struct ast_stmt_case {
     TSmallArray_AstPtr *exprs;
-    struct ast *        block;
+    struct ast         *block;
     bool                is_default;
 };
 
@@ -203,8 +203,8 @@ struct ast_decl {
 
 struct ast_decl_entity {
     struct ast_decl base;
-    struct ast *    value;
-    struct ast *    explicit_linkage_name; // Optional.
+    struct ast     *value;
+    struct ast     *explicit_linkage_name; // Optional.
     u32             flags;
     bool            is_global;
     bool            mut;
@@ -216,12 +216,12 @@ struct ast_decl_member {
 
 struct ast_decl_arg {
     struct ast_decl base;
-    struct ast *    value;
+    struct ast     *value;
 };
 
 struct ast_decl_variant {
     struct ast_decl base;
-    struct ast *    value;
+    struct ast     *value;
 };
 
 struct ast_type_arr {
@@ -242,7 +242,7 @@ struct ast_type_dynarr {
 };
 
 struct ast_type_fn {
-    struct ast *        ret_type;
+    struct ast         *ret_type;
     TSmallArray_AstPtr *args;
     bool                is_polymorph;
 };
@@ -252,16 +252,16 @@ struct ast_type_fn_group {
 };
 
 struct ast_type_struct {
-    struct scope *      scope;
+    struct scope       *scope;
     TSmallArray_AstPtr *members;
-    struct ast *        base_type;
+    struct ast         *base_type;
     bool                is_union;
     bool                is_multiple_return_type;
 };
 
 struct ast_type_enum {
-    struct scope *      scope;
-    struct ast *        type;
+    struct scope       *scope;
+    struct ast         *type;
     TSmallArray_AstPtr *variants;
     bool                is_flags;
 };
@@ -279,7 +279,7 @@ struct ast_expr_type {
 };
 
 struct ast_expr_compound {
-    struct ast *        type;
+    struct ast         *type;
     TSmallArray_AstPtr *values;
     // Allow type infer from function return type.
     bool is_multiple_return_value;
@@ -328,13 +328,13 @@ struct ast_expr_cast {
 };
 
 struct ast_expr_binop {
-    struct ast *    lhs;
-    struct ast *    rhs;
+    struct ast     *lhs;
+    struct ast     *rhs;
     enum binop_kind kind;
 };
 
 struct ast_expr_call {
-    struct ast *        ref;
+    struct ast         *ref;
     TSmallArray_AstPtr *args;
     bool                call_in_compile_time;
 };
@@ -358,7 +358,7 @@ struct ast_expr_alignof {
 
 struct ast_expr_unary {
     enum unop_kind kind;
-    struct ast *   next;
+    struct ast    *next;
 };
 
 struct ast_expr_addrof {
@@ -381,8 +381,8 @@ struct ast_call_loc {
 struct ast {
     enum ast_kind    kind;
     struct location *location;
-    struct scope *   owner_scope; // Scope in which is AST node.
-    const char *     docs;        // Optional documentation string.
+    struct scope    *owner_scope; // Scope in which is AST node.
+    const char      *docs;        // Optional documentation string.
 
     union {
 #define GEN_AST_DATA

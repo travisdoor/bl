@@ -193,10 +193,8 @@ static void start_threads()
 static void async_compile(struct assembly *assembly, unit_stage_fn_t *unit_pipeline)
 {
     struct threading_impl *threading = builder.threading;
-
-    struct unit *unit;
-    TARRAY_FOREACH(struct unit *, &assembly->units, unit)
-    {
+    for (s64 i = 0; i < arrlen(assembly->units); ++i) {
+        struct unit *unit = assembly->units[i];
         async_push(unit);
     }
 
@@ -420,9 +418,8 @@ static int compile(struct assembly *assembly)
 
     if (builder.options->no_jobs) {
         BL_LOG("Running in single thread mode!");
-        struct unit *unit;
-        TARRAY_FOREACH(struct unit *, &assembly->units, unit)
-        {
+        for (s64 i = 0; i < arrlen(assembly->units); ++i) {
+            struct unit *unit = assembly->units[i];
             if ((state = compile_unit(unit, assembly, unit_pipeline)) != COMPILE_OK) break;
         }
     } else {
@@ -479,8 +476,7 @@ void builder_init(const struct builder_options *options, const char *exec_dir)
     for (s32 i = 0; i < _BUILTIN_ID_COUNT; ++i) {
         builtin_ids[i].hash = strhash(builtin_ids[i].str);
     }
-    tarray_init(&builder.targets, sizeof(struct target *));
-    tarray_init(&builder.tmp_strings, sizeof(TString *));
+    arrsetcap(builder.tmp_strings, 256);
     start_threads();
 
     builder.is_initialized = true;
@@ -488,19 +484,14 @@ void builder_init(const struct builder_options *options, const char *exec_dir)
 
 void builder_terminate(void)
 {
-    struct target *target;
-    TARRAY_FOREACH(struct target *, &builder.targets, target)
-    {
-        target_delete(target);
+    for (s64 i = 0; i < arrlen(builder.targets); ++i) {
+        target_delete(builder.targets[i]);
     }
-    tarray_terminate(&builder.targets);
-
-    TString *str;
-    TARRAY_FOREACH(TString *, &builder.tmp_strings, str)
-    {
-        tstring_delete(str);
+    arrfree(builder.targets);
+    for (s64 i = 0; i < arrlen(builder.tmp_strings); ++i) {
+        tstring_delete(builder.tmp_strings[i]);
     }
-    BL_LOG("Used %llu temp-strings.", builder.tmp_strings.size);
+    BL_LOG("Used %llu temp-strings.", arrlen(builder.tmp_strings));
     conf_data_terminate(&builder.conf);
     arena_terminate(&builder.str_cache);
 
@@ -563,16 +554,15 @@ struct target *_builder_add_target(const char *name, bool is_default)
         target = target_dup(name, builder.default_target);
     }
     BL_ASSERT(target);
-    tarray_push(&builder.targets, target);
+    arrput(builder.targets, target);
     return target;
 }
 
 int builder_compile_all(void)
 {
-    s32            state = COMPILE_OK;
-    struct target *target;
-    TARRAY_FOREACH(struct target *, &builder.targets, target)
-    {
+    s32 state = COMPILE_OK;
+    for (s64 i = 0; i < arrlen(builder.targets); ++i) {
+        struct target *target = builder.targets[i];
         if (target->kind == ASSEMBLY_BUILD_PIPELINE) continue;
         state = builder_compile(target);
         if (state != COMPILE_OK) break;
@@ -739,11 +729,10 @@ TString *get_tmpstr(void)
 {
     struct threading_impl *threading = builder.threading;
     pthread_mutex_lock(&threading->str_tmp_lock);
-    TString    *str  = NULL;
-    const usize size = builder.tmp_strings.size;
+    TString  *str  = NULL;
+    const s64 size = arrlen(builder.tmp_strings);
     if (size) {
-        str = tarray_at(TString *, &builder.tmp_strings, size - 1);
-        tarray_pop(&builder.tmp_strings);
+        str = arrpop(builder.tmp_strings);
     } else {
         str = tstring_new();
         tstring_reserve(str, 256);
@@ -759,7 +748,7 @@ void put_tmpstr(TString *str)
     tstring_clear(str);
     struct threading_impl *threading = builder.threading;
     pthread_mutex_lock(&threading->str_tmp_lock);
-    tarray_push(&builder.tmp_strings, str);
+    arrput(builder.tmp_strings, str);
     pthread_mutex_unlock(&threading->str_tmp_lock);
 }
 

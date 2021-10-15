@@ -27,6 +27,7 @@
 // =================================================================================================
 
 #include "builder.h"
+#include "stb_ds.h"
 
 #define link_error(code, tok, pos, format, ...)                                                    \
     {                                                                                              \
@@ -40,23 +41,21 @@
 
 struct context {
     struct assembly *assembly;
-    TArray *         lib_paths;
 };
 
 static bool search_library(struct context *ctx,
-                           const char *    lib_name,
-                           char **         out_lib_name,
-                           char **         out_lib_dir,
-                           char **         out_lib_filepath)
+                           const char     *lib_name,
+                           char          **out_lib_name,
+                           char          **out_lib_dir,
+                           char          **out_lib_filepath)
 {
     TString *lib_filepath                = get_tmpstr();
     char     lib_name_full[LIB_NAME_MAX] = {0};
     bool     found                       = false;
     platform_lib_name(lib_name, lib_name_full, TARRAY_SIZE(lib_name_full));
     builder_log("- Looking for: '%s'", lib_name_full);
-    const char *dir;
-    TARRAY_FOREACH(const char *, ctx->lib_paths, dir)
-    {
+    for (s64 i = 0; i < arrlen(ctx->assembly->lib_paths); ++i) {
+        char *dir = ctx->assembly->lib_paths[i];
         builder_log("- Search in: '%s'", dir);
         tstring_setf(lib_filepath, "%s/%s", dir, lib_name_full);
         if (file_exists(lib_filepath->data)) {
@@ -103,7 +102,7 @@ static void set_lib_paths(struct context *ctx)
                     win_path_to_unix(dup, len);
 #endif
 
-                    tarray_push(ctx->lib_paths, dup);
+                    arrput(ctx->assembly->lib_paths, dup);
                 } else {
                     builder_warning("Invalid LIB_PATH entry value '%s'.", tmp);
                 }
@@ -139,7 +138,7 @@ static bool link_working_environment(struct context *ctx, const char *lib_name)
     native_lib.filepath    = NULL;
     native_lib.is_internal = true;
 
-    tarray_push(&ctx->assembly->libs, native_lib);
+    arrput(ctx->assembly->libs, native_lib);
     return true;
 }
 
@@ -147,13 +146,12 @@ void linker_run(struct assembly *assembly)
 {
     ZONE();
     struct context ctx;
-    ctx.assembly  = assembly;
-    ctx.lib_paths = &assembly->lib_paths;
+    ctx.assembly = assembly;
     builder_log("Running runtime linker...");
     set_lib_paths(&ctx);
 
-    for (usize i = 0; i < assembly->libs.size; ++i) {
-        struct native_lib *lib = &tarray_at(struct native_lib, &assembly->libs, i);
+    for (s64 i = 0; i < arrlen(assembly->libs); ++i) {
+        struct native_lib *lib = &assembly->libs[i];
         if (!link_lib(&ctx, lib)) {
             char      error_buffer[256];
             const s32 error_len = get_last_error(error_buffer, TARRAY_SIZE(error_buffer));

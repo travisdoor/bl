@@ -84,11 +84,6 @@ union _SmallArrays {
     TSmallArray_FnPtr         fn;
 };
 
-static void tarray_dtor(TArray **arr)
-{
-    tarray_delete(*arr);
-}
-
 static void small_array_dtor(TSmallArrayAny *arr)
 {
     tsa_terminate(arr);
@@ -255,16 +250,15 @@ static void native_lib_terminate(struct native_lib *lib)
 static void mir_init(struct assembly *assembly)
 {
     mir_arenas_init(&assembly->arenas.mir);
-    tarray_init(&assembly->MIR.global_instrs, sizeof(struct mir_instr *));
-    tarray_init(&assembly->MIR.exported_instrs, sizeof(struct mir_instr *));
-    thtbl_init(&assembly->MIR.RTTI_table, sizeof(struct mir_var *), 2048);
+    arrsetcap(assembly->MIR.global_instrs, 1024);
+    arrsetcap(assembly->MIR.exported_instrs, 256);
 }
 
 static INLINE void mir_terminate(struct assembly *assembly)
 {
-    thtbl_terminate(&assembly->MIR.RTTI_table);
-    tarray_terminate(&assembly->MIR.global_instrs);
-    tarray_terminate(&assembly->MIR.exported_instrs);
+    hmfree(assembly->MIR.rtti_table);
+    arrfree(assembly->MIR.global_instrs);
+    arrfree(assembly->MIR.exported_instrs);
     mir_arenas_terminate(&assembly->arenas.mir);
 }
 
@@ -409,9 +403,6 @@ struct target *target_new(const char *name)
     struct target *target = bl_malloc(sizeof(struct target));
     memset(target, 0, sizeof(struct target));
     BL_MAGIC_SET(target);
-    tarray_init(&target->files, sizeof(char *));
-    tarray_init(&target->default_lib_paths, sizeof(char *));
-    tarray_init(&target->default_libs, sizeof(char *));
     tstring_init(&target->default_custom_linker_opt);
     tstring_init(&target->module_dir);
     tstring_init(&target->out_dir);
@@ -453,18 +444,16 @@ struct target *target_dup(const char *name, const struct target *other)
 
 void target_delete(struct target *target)
 {
-    char *file;
-    TARRAY_FOREACH(char *, &target->files, file) free(file);
+    for (s64 i = 0; i < arrlen(target->files); ++i)
+        free(target->files[i]);
+    for (s64 i = 0; i < arrlen(target->default_lib_paths); ++i)
+        free(target->default_lib_paths[i]);
+    for (s64 i = 0; i < arrlen(target->default_libs); ++i)
+        free(target->default_libs[i]);
 
-    char *path;
-    TARRAY_FOREACH(char *, &target->default_lib_paths, path) free(path);
-
-    char *lib;
-    TARRAY_FOREACH(char *, &target->default_libs, lib) free(lib);
-
-    tarray_terminate(&target->files);
-    tarray_terminate(&target->default_lib_paths);
-    tarray_terminate(&target->default_libs);
+    arrfree(target->files);
+    arrfree(target->default_lib_paths);
+    arrfree(target->default_libs);
     tstring_terminate(&target->out_dir);
     tstring_terminate(&target->default_custom_linker_opt);
     tstring_terminate(&target->module_dir);
@@ -477,7 +466,7 @@ void target_add_file(struct target *target, const char *filepath)
     BL_MAGIC_ASSERT(target);
     BL_ASSERT(filepath && "Invalid filepath!");
     char *dup = strdup(filepath);
-    tarray_push(&target->files, dup);
+    arrput(target->files, dup);
 }
 
 void target_set_vm_args(struct target *target, s32 argc, char **argv)
@@ -493,7 +482,7 @@ void target_add_lib_path(struct target *target, const char *path)
     if (!path) return;
     char *tmp = strdup(path);
     if (!tmp) return;
-    tarray_push(&target->default_lib_paths, tmp);
+    arrput(target->default_lib_paths, tmp);
 }
 
 void target_add_lib(struct target *target, const char *lib)
@@ -502,7 +491,7 @@ void target_add_lib(struct target *target, const char *lib)
     if (!lib) return;
     char *tmp = strdup(lib);
     if (!tmp) return;
-    tarray_push(&target->default_libs, tmp);
+    arrput(target->default_libs, tmp);
 }
 
 void target_set_output_dir(struct target *target, const char *dir)
@@ -583,21 +572,13 @@ struct assembly *assembly_new(const struct target *target)
     assembly->sync   = sync_new();
 
     llvm_init(assembly);
-    tarray_init(&assembly->units, sizeof(struct unit *));
+    arrsetcap(assembly->units, 64);
     tstring_init(&assembly->custom_linker_opt);
-    tarray_init(&assembly->libs, sizeof(struct native_lib));
-    tarray_init(&assembly->lib_paths, sizeof(char *));
-    tarray_init(&assembly->testing.cases, sizeof(struct mir_fn *));
     vm_init(&assembly->vm, VM_STACK_SIZE);
 
     // set defaults
     scope_arenas_init(&assembly->arenas.scope);
     ast_arena_init(&assembly->arenas.ast);
-    arena_init(&assembly->arenas.array,
-               sizeof(TArray *),
-               alignment_of(TArray *),
-               EXPECTED_ARRAY_COUNT,
-               (arena_elem_dtor_t)tarray_dtor);
     arena_init(&assembly->arenas.small_array,
                sizeof(union _SmallArrays),
                alignment_of(union _SmallArrays),
@@ -610,9 +591,8 @@ struct assembly *assembly_new(const struct target *target)
     mir_init(assembly);
 
     // Add units from target
-    for (usize i = 0; i < target->files.size; ++i) {
-        char *file = tarray_at(char *, (TArray *)&target->files, i);
-        assembly_add_unit_safe(assembly, file, NULL);
+    for (s64 i = 0; i < arrlen(target->files); ++i) {
+        assembly_add_unit_safe(assembly, target->files[i], NULL);
     }
 
     // Add default units based on assembly kind
@@ -638,18 +618,12 @@ struct assembly *assembly_new(const struct target *target)
     }
 
     // Duplicate default library paths
-    char *lib_path;
-    TARRAY_FOREACH(char *, (TArray *)&target->default_lib_paths, lib_path)
-    {
-        assembly_add_lib_path(assembly, lib_path);
-    }
+    for (s64 i = 0; i < arrlen(target->default_lib_paths); ++i)
+        assembly_add_lib_path(assembly, target->default_lib_paths[i]);
 
     // Duplicate default libs
-    char *lib;
-    TARRAY_FOREACH(char *, (TArray *)&target->default_libs, lib)
-    {
-        assembly_add_native_lib(assembly, lib, NULL);
-    }
+    for (s64 i = 0; i < arrlen(target->default_libs); ++i)
+        assembly_add_native_lib(assembly, target->default_libs[i], NULL);
 
     // Append custom linker options
     assembly_append_linker_options(assembly, target->default_custom_linker_opt.data);
@@ -660,30 +634,21 @@ struct assembly *assembly_new(const struct target *target)
 void assembly_delete(struct assembly *assembly)
 {
     ZONE();
-    struct unit *unit;
-    TARRAY_FOREACH(struct unit *, &assembly->units, unit)
-    {
-        unit_delete(unit);
-    }
+    for (s64 i = 0; i < arrlen(assembly->units); ++i)
+        unit_delete(assembly->units[i]);
+    for (s64 i = 0; i < arrlen(assembly->libs); ++i)
+        native_lib_terminate(&assembly->libs[i]);
+    for (s64 i = 0; i < arrlen(assembly->lib_paths); ++i)
+        free(assembly->lib_paths[i]);
 
-    struct native_lib *lib;
-    for (usize i = 0; i < assembly->libs.size; ++i) {
-        lib = &tarray_at(struct native_lib, &assembly->libs, i);
-        native_lib_terminate(lib);
-    }
-
-    char *p;
-    TARRAY_FOREACH(char *, &assembly->lib_paths, p) free(p);
-
-    tarray_terminate(&assembly->libs);
-    tarray_terminate(&assembly->lib_paths);
-    tarray_terminate(&assembly->testing.cases);
-    tarray_terminate(&assembly->units);
+    arrfree(assembly->libs);
+    arrfree(assembly->lib_paths);
+    arrfree(assembly->testing.cases);
+    arrfree(assembly->units);
 
     tstring_terminate(&assembly->custom_linker_opt);
     vm_terminate(&assembly->vm);
     arena_terminate(&assembly->arenas.small_array);
-    arena_terminate(&assembly->arenas.array);
     ast_arena_terminate(&assembly->arenas.ast);
     scope_arenas_terminate(&assembly->arenas.scope);
     llvm_terminate(assembly);
@@ -699,7 +664,7 @@ void assembly_add_lib_path(struct assembly *assembly, const char *path)
     if (!path) return;
     char *tmp = strdup(path);
     if (!tmp) return;
-    tarray_push(&assembly->lib_paths, tmp);
+    arrput(assembly->lib_paths, tmp);
 }
 
 void assembly_append_linker_options(struct assembly *assembly, const char *opt)
@@ -711,9 +676,8 @@ void assembly_append_linker_options(struct assembly *assembly, const char *opt)
 
 static INLINE bool assembly_has_unit(struct assembly *assembly, const hash_t hash)
 {
-    struct unit *unit;
-    TARRAY_FOREACH(struct unit *, &assembly->units, unit)
-    {
+    for (s64 i = 0; i < arrlen(assembly->units); ++i) {
+        struct unit *unit = assembly->units[i];
         if (hash == unit->hash) {
             return true;
         }
@@ -731,7 +695,7 @@ assembly_add_unit_safe(struct assembly *assembly, const char *filepath, struct t
     pthread_mutex_lock(&sync->units_lock);
     if (assembly_has_unit(assembly, hash)) goto DONE;
     unit = unit_new(filepath, load_from);
-    tarray_push(&assembly->units, unit);
+    arrput(assembly->units, unit);
     builder_async_submit_unit(unit);
 DONE:
     pthread_mutex_unlock(&sync->units_lock);
@@ -744,9 +708,8 @@ void assembly_add_native_lib(struct assembly *assembly,
 {
     const hash_t hash = strhash(lib_name);
     { // Search for duplicity.
-        struct native_lib *lib;
-        for (usize i = 0; i < assembly->libs.size; ++i) {
-            lib = &tarray_at(struct native_lib, &assembly->libs, i);
+        for (s64 i = 0; i < arrlen(assembly->libs); ++i) {
+            struct native_lib *lib = &assembly->libs[i];
             if (lib->hash == hash) return;
         }
     }
@@ -754,7 +717,7 @@ void assembly_add_native_lib(struct assembly *assembly,
     lib.hash              = hash;
     lib.user_name         = strdup(lib_name);
     lib.linked_from       = link_token;
-    tarray_push(&assembly->libs, lib);
+    arrput(assembly->libs, lib);
 }
 
 static INLINE bool module_exist(const char *module_dir, const char *modulepath)
@@ -863,8 +826,8 @@ DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol)
 {
     void              *handle = NULL;
     struct native_lib *lib;
-    for (usize i = 0; i < assembly->libs.size; ++i) {
-        lib    = &tarray_at(struct native_lib, &assembly->libs, i);
+    for (s64 i = 0; i < arrlen(assembly->libs); ++i) {
+        lib    = &assembly->libs[i];
         handle = dlFindSymbol(lib->handle, symbol);
         if (handle) break;
     }

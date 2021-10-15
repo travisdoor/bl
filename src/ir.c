@@ -31,6 +31,24 @@
 #include "llvm_di.h"
 #include "stb_ds.h"
 
+#define queue_t(T)                                                                                 \
+    struct {                                                                                       \
+        T  *q[2];                                                                                  \
+        s64 i;                                                                                     \
+        s32 qi;                                                                                    \
+    }
+
+#define _qcurrent(Q) ((Q)->q[(Q)->qi])
+#define _qother(Q) ((Q)->q[(Q)->qi ^ 1])
+#define qmaybeswap(Q)                                                                              \
+    ((Q)->i >= arrlen(_qcurrent(Q))                                                                \
+         ? (arrsetlen(_qcurrent(Q), 0), (Q)->qi ^= 1, (Q)->i = 0, arrlen(_qcurrent(Q)) > 0)        \
+         : (true))
+#define qfree(Q) (arrfree((Q)->q[0]), arrfree((Q)->q[1]))
+#define qpush_back(Q, V) arrput(_qother(Q), (V))
+#define qpop_front(Q) (_qcurrent(Q)[(Q)->i++])
+#define qsetcap(Q, c) (arrsetcap(_qother(Q), c))
+
 #if BL_DEBUG
 #define NAMED_VARS true
 #else
@@ -50,23 +68,30 @@
     }                                                                                              \
     (void)0
 
-typedef struct {
+struct rtti_incomplete {
     LLVMValueRef     llvm_var;
     struct mir_type *type;
-} RTTIIncomplete;
+};
 
 typedef enum { STATE_PASSED, STATE_POSTPONE } State;
 
 TSMALL_ARRAY_TYPE(LLVMValue, LLVMValueRef, 32);
 TSMALL_ARRAY_TYPE(LLVMValue64, LLVMValueRef, 64);
 TSMALL_ARRAY_TYPE(LLVMType, LLVMTypeRef, 32);
-TSMALL_ARRAY_TYPE(RTTIIncomplete, RTTIIncomplete, 64);
 TSMALL_ARRAY_TYPE(LLVMMetadata, LLVMMetadataRef, 16);
+
+struct map {
+    hash_t       key;
+    LLVMValueRef value;
+};
 
 struct context {
     struct assembly *assembly;
 
-    TList queue;
+    // Used for the 1st pass.
+    queue_t(struct mir_instr *) queue;
+    // Used for the 2nd pass.
+    queue_t(struct mir_instr *) incomplete_queue;
 
     LLVMContextRef    llvm_cnt;
     LLVMModuleRef     llvm_module;
@@ -78,14 +103,13 @@ struct context {
     LLVMValueRef llvm_const_i64_zero;
     LLVMValueRef llvm_const_i8_zero;
 
-    THashTable                 gstring_cache;
-    THashTable                 llvm_fn_cache; // u64 -> LLVMValueRef
-    TSmallArray_RTTIIncomplete incomplete_rtti;
-    TList                      incomplete_queue;
+    struct map             *gstring_cache;
+    struct map             *llvm_fn_cache;
+    struct rtti_incomplete *incomplete_rtti;
 
     struct BuiltinTypes *builtin_types;
     bool                 is_debug_mode;
-    TArray               di_incomplete_types;
+    struct mir_type    **di_incomplete_types;
 
     // intrinsics
     LLVMValueRef intrinsic_memset;
@@ -111,7 +135,7 @@ build_call_memcpy(struct context *ctx, LLVMValueRef src, LLVMValueRef dest, cons
 // RTTI
 // =================================================================================================
 static LLVMValueRef rtti_emit(struct context *ctx, struct mir_type *type);
-static void         rtti_satisfy_incomplete(struct context *ctx, RTTIIncomplete *incomplete);
+static void         rtti_satisfy_incomplete(struct context *ctx, struct rtti_incomplete incomplete);
 static LLVMValueRef _rtti_emit(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_base(struct context *ctx, struct mir_type *type, u8 kind, usize size);
 static LLVMValueRef rtti_emit_integer(struct context *ctx, struct mir_type *type);
@@ -238,12 +262,9 @@ static INLINE void emit_DI_instr_loc(struct context *ctx, struct mir_instr *inst
 static INLINE LLVMValueRef llvm_lookup_fn(struct context *ctx, const char *name)
 {
     const hash_t hash  = strhash(name);
-    TIterator    found = thtbl_find(&ctx->llvm_fn_cache, hash);
-    TIterator    end   = thtbl_end(&ctx->llvm_fn_cache);
-    if (!TITERATOR_EQUAL(found, end)) {
-        return thtbl_iter_peek_value(LLVMValueRef, found);
-    }
-    return NULL;
+    const s64    index = hmgeti(ctx->llvm_fn_cache, hash);
+    if (index == -1) return NULL;
+    return ctx->llvm_fn_cache[index].value;
 }
 
 static INLINE LLVMValueRef llvm_cache_fn(struct context *ctx,
@@ -251,34 +272,8 @@ static INLINE LLVMValueRef llvm_cache_fn(struct context *ctx,
                                          LLVMValueRef    llvm_fn)
 {
     const hash_t hash = strhash(name);
-    thtbl_insert(&ctx->llvm_fn_cache, hash, llvm_fn);
+    hmput(ctx->llvm_fn_cache, hash, llvm_fn);
     return llvm_fn;
-}
-
-static INLINE struct mir_instr *push_back_incomplete(struct context *ctx, struct mir_instr *instr)
-{
-    BL_ASSERT(instr && "Attempt to push null instruction into incomplete queue!");
-    tlist_push_back(&ctx->incomplete_queue, instr);
-    return instr;
-}
-
-static INLINE struct mir_instr *pop_front_incomplete(struct context *ctx)
-{
-    struct mir_instr *instr = NULL;
-    TList            *queue = &ctx->incomplete_queue;
-    if (!tlist_empty(queue)) {
-        instr = tlist_front(struct mir_instr *, queue);
-        tlist_pop_front(queue);
-    }
-
-    return instr;
-}
-
-static INLINE struct mir_instr *push_back(struct context *ctx, struct mir_instr *instr)
-{
-    BL_ASSERT(instr && "Attempt to push null instruction into generation queue!");
-    tlist_push_back(&ctx->queue, instr);
-    return instr;
 }
 
 static INLINE LLVMTypeRef get_type(struct context *ctx, struct mir_type *t)
@@ -312,11 +307,9 @@ static INLINE LLVMBasicBlockRef emit_basic_block(struct context *ctx, struct mir
 
 static void process_queue(struct context *ctx)
 {
-    struct mir_instr *instr = NULL;
-    TList            *queue = &ctx->queue;
-    while (!tlist_empty(queue)) {
-        instr = tlist_front(struct mir_instr *, queue);
-        tlist_pop_front(queue);
+    struct mir_instr *instr;
+    while (qmaybeswap(&ctx->queue)) {
+        instr = qpop_front(&ctx->queue);
         BL_ASSERT(instr);
         emit_instr(ctx, instr);
     }
@@ -431,7 +424,7 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
             llvm_di_create_replecable_composite_type(
                 ctx->llvm_di_builder, dw_tag, "", NULL, NULL, 0);
 
-        tarray_push(&ctx->di_incomplete_types, type);
+        arrput(ctx->di_incomplete_types, type);
         break;
     }
 
@@ -747,7 +740,7 @@ LLVMValueRef emit_global_var_proto(struct context *ctx, struct mir_var *var)
     // Push initializer.
     struct mir_instr *instr_init = var->initializer_block;
     BL_ASSERT(instr_init && "Missing initializer block reference for IR global variable!");
-    push_back(ctx, instr_init);
+    qpush_back(&ctx->queue, instr_init);
     LLVMTypeRef llvm_type = var->value.type->llvm_type;
     var->llvm_value       = LLVMAddGlobal(ctx->llvm_module, llvm_type, var->linkage_name);
     LLVMSetGlobalConstant(var->llvm_value, !var->is_mutable);
@@ -787,7 +780,7 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
         // Push function prototype instruction into generation queue.
         struct mir_instr *instr_fn_proto = fn->prototype;
         BL_ASSERT(instr_fn_proto && "Missing function prototype!");
-        push_back(ctx, instr_fn_proto);
+        qpush_back(&ctx->queue, instr_fn_proto);
     }
 
     // Setup attributes for sret.
@@ -839,13 +832,10 @@ LLVMValueRef emit_const_string(struct context *ctx, const char *str, usize len)
     if (str) {
         struct mir_type *raw_str_elem_type = mir_deref_type(mir_get_struct_elem_type(type, 1));
         const hash_t     hash              = strhash(str);
-        TIterator        found             = thtbl_find(&ctx->gstring_cache, hash);
-        TIterator        end               = thtbl_end(&ctx->gstring_cache);
-
-        if (!TITERATOR_EQUAL(found, end)) {
-            llvm_str = thtbl_iter_peek_value(LLVMValueRef, found);
+        const s64        index             = hmgeti(ctx->gstring_cache, hash);
+        if (index != -1) {
+            llvm_str = ctx->gstring_cache[index].value;
         } else {
-
             LLVMValueRef llvm_str_content = llvm_const_string_in_context(
                 ctx->llvm_cnt, get_type(ctx, raw_str_elem_type), str, true);
 
@@ -853,9 +843,7 @@ LLVMValueRef emit_const_string(struct context *ctx, const char *str, usize len)
             LLVMSetInitializer(llvm_str, llvm_str_content);
             LLVMSetLinkage(llvm_str, LLVMPrivateLinkage);
             LLVMSetGlobalConstant(llvm_str, true);
-
-            // Store for reuse into the cache!
-            thtbl_insert(&ctx->gstring_cache, hash, llvm_str);
+            hmput(ctx->gstring_cache, hash, llvm_str);
         }
     } else {
         // null string content
@@ -1524,19 +1512,17 @@ LLVMValueRef rtti_emit(struct context *ctx, struct mir_type *type)
 {
     LLVMValueRef llvm_value = _rtti_emit(ctx, type);
 
-    TSmallArray_RTTIIncomplete *pending = &ctx->incomplete_rtti;
-    while (pending->size) {
-        RTTIIncomplete incomplete = tsa_pop_RTTIIncomplete(pending);
-        rtti_satisfy_incomplete(ctx, &incomplete);
+    while (arrlen(ctx->incomplete_rtti)) {
+        rtti_satisfy_incomplete(ctx, arrpop(ctx->incomplete_rtti));
     }
 
     return llvm_value;
 }
 
-void rtti_satisfy_incomplete(struct context *ctx, RTTIIncomplete *incomplete)
+void rtti_satisfy_incomplete(struct context *ctx, struct rtti_incomplete incomplete)
 {
-    struct mir_type *type          = incomplete->type;
-    LLVMValueRef     llvm_rtti_var = incomplete->llvm_var;
+    struct mir_type *type          = incomplete.type;
+    LLVMValueRef     llvm_rtti_var = incomplete.llvm_var;
 
     BL_ASSERT(type->kind == MIR_TYPE_PTR);
     LLVMValueRef llvm_value = rtti_emit_ptr(ctx, type);
@@ -1596,8 +1582,8 @@ LLVMValueRef _rtti_emit(struct context *ctx, struct mir_type *type)
         break;
 
     case MIR_TYPE_PTR:
-        tsa_push_RTTIIncomplete(&ctx->incomplete_rtti,
-                                (RTTIIncomplete){.llvm_var = llvm_rtti_var, .type = type});
+        arrput(ctx->incomplete_rtti,
+               ((struct rtti_incomplete){.llvm_var = llvm_rtti_var, .type = type}));
         goto SKIP;
         break;
 
@@ -1671,10 +1657,8 @@ struct mir_var *testing_fetch_meta(struct context *ctx)
     if (!var) return NULL;
 
     BL_ASSERT(var->value.type && var->value.type->kind == MIR_TYPE_ARRAY);
-
     const s64 len = var->value.type->data.array.len;
-    BL_ASSERT((u64)len == ctx->assembly->testing.cases.size);
-
+    BL_ASSERT(len == arrlen(ctx->assembly->testing.cases));
     if (var->llvm_value) {
         return var;
     }
@@ -1691,10 +1675,9 @@ struct mir_var *testing_fetch_meta(struct context *ctx)
     TSmallArray_LLVMValue llvm_vals;
     tsa_init(&llvm_vals);
 
-    struct mir_fn *it;
-    TARRAY_FOREACH(struct mir_fn *, &ctx->assembly->testing.cases, it)
-    {
-        tsa_push_LLVMValue(&llvm_vals, testing_emit_meta_case(ctx, it));
+    for (s64 i = 0; i < arrlen(ctx->assembly->testing.cases); ++i) {
+        struct mir_fn *fn = ctx->assembly->testing.cases[i];
+        tsa_push_LLVMValue(&llvm_vals, testing_emit_meta_case(ctx, fn));
     }
 
     LLVMValueRef llvm_init = LLVMConstArray(
@@ -2009,6 +1992,7 @@ State emit_instr_load(struct context *ctx, struct mir_instr_load *load)
             return STATE_POSTPONE;
         }
         load->base.llvm_value = LLVMGetInitializer(llvm_src);
+        BL_ASSERT(load->base.llvm_value);
         return STATE_PASSED;
     }
     DI_LOCATION_SET(&load->base);
@@ -2943,7 +2927,7 @@ State emit_instr_block(struct context *ctx, struct mir_instr_block *block)
     while (instr) {
         const State s = emit_instr(ctx, instr);
         if (s == STATE_POSTPONE) {
-            push_back_incomplete(ctx, instr);
+            qpush_back(&ctx->incomplete_queue, instr);
             goto SKIP;
         }
         instr = instr->next;
@@ -2956,42 +2940,34 @@ SKIP:
 
 void emit_incomplete(struct context *ctx)
 {
-    struct mir_instr *instr   = pop_front_incomplete(ctx);
     LLVMBasicBlockRef prev_bb = LLVMGetInsertBlock(ctx->llvm_builder);
-
-    while (instr) {
-        struct mir_instr_block *bb = instr->owner_block;
-
-        if (!mir_is_global_block(bb)) {
-            LLVMBasicBlockRef llvm_bb = LLVMValueAsBasicBlock(bb->base.llvm_value);
-            LLVMPositionBuilderAtEnd(ctx->llvm_builder, llvm_bb);
-        }
-
-        const State s = emit_instr(ctx, instr);
-        if (s == STATE_POSTPONE) {
-            push_back_incomplete(ctx, instr);
-        }
-
-        if (s != STATE_POSTPONE && instr->next) {
+    while (qmaybeswap(&ctx->incomplete_queue)) {
+        struct mir_instr *instr = qpop_front(&ctx->incomplete_queue);
+        while (instr) {
+            struct mir_instr_block *bb = instr->owner_block;
+            if (!mir_is_global_block(bb)) {
+                LLVMBasicBlockRef llvm_bb = LLVMValueAsBasicBlock(bb->base.llvm_value);
+                LLVMPositionBuilderAtEnd(ctx->llvm_builder, llvm_bb);
+            }
+            if (emit_instr(ctx, instr) == STATE_POSTPONE) {
+                qpush_back(&ctx->incomplete_queue, instr);
+                break;
+            }
             instr = instr->next;
-        } else {
-            instr = NULL;
-            instr = pop_front_incomplete(ctx);
         }
     }
-
     LLVMPositionBuilderAtEnd(ctx->llvm_builder, prev_bb);
 }
 
 void emit_allocas(struct context *ctx, struct mir_fn *fn)
 {
     BL_ASSERT(fn);
-    const char     *var_name;
-    LLVMTypeRef     var_type;
-    unsigned        var_alignment;
-    struct mir_var *var;
-    TARRAY_FOREACH(struct mir_var *, fn->variables, var)
-    {
+    const char *var_name;
+    LLVMTypeRef var_type;
+    unsigned    var_alignment;
+
+    for (s64 i = 0; i < arrlen(fn->variables); ++i) {
+        struct mir_var *var = fn->variables[i];
         BL_ASSERT(var);
         if (!var->emit_llvm) continue;
         if (var->ref_count == 0) continue;
@@ -3199,9 +3175,7 @@ static void intrinsics_init(struct context *ctx)
 
 static void DI_init(struct context *ctx)
 {
-    tarray_init(&ctx->di_incomplete_types, sizeof(struct mir_type *));
-    tarray_reserve(&ctx->di_incomplete_types, 1024);
-
+    arrsetcap(ctx->di_incomplete_types, 1024);
     const char   *producer    = "blc version " BL_VERSION;
     struct scope *gscope      = ctx->assembly->gscope;
     LLVMModuleRef llvm_module = ctx->assembly->llvm.modules[0];
@@ -3227,19 +3201,15 @@ static void DI_init(struct context *ctx)
 
 static void DI_terminate(struct context *ctx)
 {
-    tarray_terminate(&ctx->di_incomplete_types);
+    arrfree(ctx->di_incomplete_types);
     llvm_di_delete_di_builder(ctx->llvm_di_builder);
 }
 
 static void DI_complete_types(struct context *ctx)
 {
-    TArray          *stack = &ctx->di_incomplete_types;
-    struct mir_type *t;
-
     // Use for instead foreach, DI_complete_type can push another incomplete sub types.
-    for (usize i = 0; i < stack->size; ++i) {
-        t = tarray_at(struct mir_type *, stack, i);
-        DI_complete_type(ctx, t);
+    for (s64 i = 0; i < arrlen(ctx->di_incomplete_types); ++i) {
+        DI_complete_type(ctx, ctx->di_incomplete_types[i]);
     }
 }
 
@@ -3257,11 +3227,8 @@ void ir_run(struct assembly *assembly)
     ctx.llvm_td       = assembly->llvm.TD;
     ctx.llvm_builder  = LLVMCreateBuilderInContext(assembly->llvm.ctx);
 
-    thtbl_init(&ctx.gstring_cache, sizeof(LLVMValueRef), 1024);
-    thtbl_init(&ctx.llvm_fn_cache, sizeof(LLVMValueRef), 4096);
-    tsa_init(&ctx.incomplete_rtti);
-    tlist_init(&ctx.incomplete_queue, sizeof(struct mir_instr *));
-    tlist_init(&ctx.queue, sizeof(struct mir_instr *));
+    qsetcap(&ctx.incomplete_queue, 256);
+    qsetcap(&ctx.queue, 256);
 
     init_llvm_moules(&ctx);
 
@@ -3273,13 +3240,9 @@ void ir_run(struct assembly *assembly)
     ctx.llvm_const_i8_zero  = LLVMConstInt(get_type(&ctx, ctx.builtin_types->t_u8), 0, false);
 
     intrinsics_init(&ctx);
-
-    struct mir_instr *instr;
-    TARRAY_FOREACH(struct mir_instr *, &assembly->MIR.exported_instrs, instr)
-    {
-        push_back(&ctx, instr);
+    for (s64 i = 0; i < arrlen(assembly->MIR.exported_instrs); ++i) {
+        qpush_back(&ctx.queue, assembly->MIR.exported_instrs[i]);
     }
-
     process_queue(&ctx);
     emit_incomplete(&ctx);
 
@@ -3306,11 +3269,11 @@ void ir_run(struct assembly *assembly)
     }
 
     BL_LOG("Generated %d instructions.", ctx.emit_instruction_count);
-    tlist_terminate(&ctx.queue);
-    tlist_terminate(&ctx.incomplete_queue);
-    tsa_terminate(&ctx.incomplete_rtti);
-    thtbl_terminate(&ctx.gstring_cache);
-    thtbl_terminate(&ctx.llvm_fn_cache);
+    qfree(&ctx.queue);
+    qfree(&ctx.incomplete_queue);
+    arrfree(ctx.incomplete_rtti);
+    hmfree(ctx.gstring_cache);
+    hmfree(ctx.llvm_fn_cache);
     assembly->stats.llvm_s = RUNTIME_MEASURE_END_S(llvm);
     RETURN_ZONE();
 }

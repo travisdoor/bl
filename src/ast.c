@@ -28,6 +28,7 @@
 
 #include "ast.h"
 #include "tokens.h"
+#include "stb_ds.h"
 
 #define ARENA_CHUNK_COUNT 256
 
@@ -35,7 +36,7 @@ static void node_dtor(struct ast *node)
 {
     switch (node->kind) {
     case AST_UBLOCK:
-        tarray_delete(node->data.ublock.nodes);
+        arrfree(node->data.ublock.nodes);
         break;
     default:
         break;

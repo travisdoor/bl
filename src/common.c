@@ -472,13 +472,6 @@ s32 get_last_error(char *buf, s32 buf_len)
 #endif
 }
 
-TArray *create_arr(struct assembly *assembly, usize size)
-{
-    TArray **tmp = arena_alloc(&assembly->arenas.array);
-    *tmp         = tarray_new(size);
-    return *tmp;
-}
-
 void *_create_sarr(struct assembly *assembly, usize arr_size)
 {
     BL_ASSERT(

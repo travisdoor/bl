@@ -251,7 +251,7 @@ struct mir_fn {
     // function body scope if there is one (optional)
     struct scope    *body_scope;
     struct mir_type *type;
-    TArray          *variables;
+    struct mir_var **variables;
 
     // Linkage name of the function, this name is used during linking to identify function,
     // actual implementation can be external, internal or intrinsic embedded in compiler,

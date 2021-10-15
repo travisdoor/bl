@@ -27,6 +27,7 @@
 // =================================================================================================
 
 #include "builder.h"
+#include "stb_ds.h"
 
 #define OUT_DIR "out"
 
@@ -86,7 +87,7 @@
 
 struct context {
     struct unit *unit;
-    FILE *       stream;
+    FILE        *stream;
     TString      path_unit_dir;
     TString      path_tmp;
     s32          pad;
@@ -125,8 +126,9 @@ void append_section(struct context *ctx, const char *name, const char *content)
 
 void doc_ublock(struct context *ctx, struct ast *block)
 {
-    struct ast *tmp;
-    TARRAY_FOREACH(struct ast *, block->data.ublock.nodes, tmp) doc(ctx, tmp);
+    for (s64 i = 0; i < arrlen(block->data.ublock.nodes); ++i) {
+        doc(ctx, block->data.ublock.nodes[i]);
+    }
 }
 
 void doc_lit_int(struct context *ctx, struct ast *lit)
@@ -515,8 +517,10 @@ void docs_run(struct assembly *assembly)
     // prepare output directory
     if (!dir_exists(OUT_DIR)) create_dir(OUT_DIR);
 
-    struct unit *unit;
-    TARRAY_FOREACH(struct unit *, &assembly->units, unit) doc_unit(&ctx, unit);
+    for (s64 i = 0; i < arrlen(assembly->units); ++i) {
+        struct unit *unit = assembly->units[i];
+        doc_unit(&ctx, unit);
+    }
 
     // cleanup
     tstring_terminate(&ctx.path_tmp);

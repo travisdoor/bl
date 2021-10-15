@@ -28,6 +28,7 @@
 
 #include "ast.h"
 #include "builder.h"
+#include "stb_ds.h"
 #include <stdio.h>
 
 static INLINE void print_address(struct ast *node, FILE *stream)
@@ -126,10 +127,9 @@ void print_ublock(struct ast *ublock, s32 pad, FILE *stream)
 {
     print_head(ublock, pad, stream);
     fprintf(stream, "%s", ublock->data.ublock.unit->name);
-
-    struct ast *tmp = NULL;
-    TARRAY_FOREACH(struct ast *, ublock->data.ublock.nodes, tmp)
-    print_node(tmp, pad + 1, stream);
+    for (s64 i = 0; i < arrlen(ublock->data.ublock.nodes); ++i) {
+        print_node(ublock->data.ublock.nodes[i], pad + 1, stream);
+    }
 }
 
 void print_block(struct ast *block, s32 pad, FILE *stream)
@@ -269,7 +269,7 @@ void print_stmt_switch(struct ast *stmt_switch, s32 pad, FILE *stream)
     print_node(stmt_switch->data.stmt_switch.expr, pad + 1, stream);
 
     TSmallArray_AstPtr *cases = stmt_switch->data.stmt_switch.cases;
-    struct ast *        stmt_case;
+    struct ast         *stmt_case;
 
     TSA_FOREACH(cases, stmt_case)
     {
@@ -284,7 +284,7 @@ void print_stmt_case(struct ast *stmt_case, s32 pad, FILE *stream)
 
     if (stmt_case->data.stmt_case.exprs) {
         TSmallArray_AstPtr *exprs = stmt_case->data.stmt_case.exprs;
-        struct ast *        expr;
+        struct ast         *expr;
 
         TSA_FOREACH(exprs, expr)
         {
@@ -764,9 +764,8 @@ void print_node(struct ast *node, s32 pad, FILE *stream)
 
 void ast_printer_run(struct assembly *assembly)
 {
-    struct unit *unit;
-    TARRAY_FOREACH(struct unit *, &assembly->units, unit)
-    {
+    for (s64 i = 0; i < arrlen(assembly->units); ++i) {
+        struct unit *unit = assembly->units[i];
         print_node(unit->ast, 0, stdout);
     }
     fprintf(stdout, "\n\n");

@@ -28,6 +28,7 @@
 
 #include "assembly.h"
 #include "builder.h"
+#include "stb_ds.h"
 
 // Wrapper for lld.exe on Windows platform.
 
@@ -56,18 +57,15 @@ static const char *get_out_extension(struct assembly *assembly)
 
 static void append_lib_paths(struct assembly *assembly, TString *buf)
 {
-    const char *dir;
-    TARRAY_FOREACH(const char *, &assembly->lib_paths, dir)
-    {
-        tstring_appendf(buf, "%s:\"%s\" ", FLAG_LIBPATH, dir);
+    for (s64 i = 0; i < arrlen(assembly->lib_paths); ++i) {
+        tstring_appendf(buf, "%s:\"%s\" ", FLAG_LIBPATH, assembly->lib_paths[i]);
     }
 }
 
 static void append_libs(struct assembly *assembly, TString *buf)
 {
-    struct native_lib *lib;
-    for (usize i = 0; i < assembly->libs.size; ++i) {
-        lib = &tarray_at(struct native_lib, &assembly->libs, i);
+    for (s64 i = 0; i < arrlen(assembly->libs); ++i) {
+        struct native_lib *lib = &assembly->libs[i];
         if (lib->is_internal) continue;
         if (!lib->user_name) continue;
         tstring_appendf(buf, "%s.%s ", lib->user_name, LIB_EXT);
@@ -114,10 +112,10 @@ static void append_linker_exec(TString *buf)
 s32 lld_link(struct assembly *assembly)
 {
     RUNTIME_MEASURE_BEGIN_S(linking);
-    TString *            buf     = get_tmpstr();
+    TString             *buf     = get_tmpstr();
     const struct target *target  = assembly->target;
-    const char *         out_dir = target->out_dir.data;
-    const char *         name    = target->name;
+    const char          *out_dir = target->out_dir.data;
+    const char          *name    = target->name;
 
     tstring_append(buf, "call ");
 

@@ -172,12 +172,12 @@ struct context {
 
     struct {
         // Same as assembly->testing.cases.
-        TArray *cases;
+        struct mir_fn **cases;
 
         // Expected unit test count is evaluated before analyze pass. We need this
         // information before we analyze all test functions because metadata runtime
         // variable must be preallocated (testcases builtin operator cannot wait for all
-        // test case functions to be analyzed). This count must match cases->size.
+        // test case functions to be analyzed). This count must match cases len.
         s32 expected_test_count;
     } testing;
 
@@ -1391,8 +1391,8 @@ static INLINE void insert_instr_before(struct mir_instr *before, struct mir_inst
 static INLINE void push_into_gscope(struct context *ctx, struct mir_instr *instr)
 {
     BL_ASSERT(instr);
-    instr->id = ctx->assembly->MIR.global_instrs.size;
-    tarray_push(&ctx->assembly->MIR.global_instrs, instr);
+    instr->id = arrlen(ctx->assembly->MIR.global_instrs);
+    arrput(ctx->assembly->MIR.global_instrs, instr);
 };
 
 // =================================================================================================
@@ -2742,7 +2742,7 @@ static INLINE void push_var(struct context *ctx, struct mir_var *var)
     if (var->is_global) return;
     struct mir_fn *fn = ast_current_fn(ctx);
     BL_ASSERT(fn);
-    tarray_push(fn->variables, var);
+    arrput(fn->variables, var);
 }
 
 struct mir_var *create_var(struct context      *ctx,
@@ -2807,7 +2807,6 @@ struct mir_fn *create_fn(struct context            *ctx,
 {
     struct mir_fn *tmp = arena_alloc(&ctx->assembly->arenas.mir.fn);
     BL_MAGIC_SET(tmp);
-    tmp->variables    = create_arr(ctx->assembly, sizeof(struct mir_var *));
     tmp->linkage_name = linkage_name;
     tmp->id           = id;
     tmp->flags        = flags;
@@ -2815,6 +2814,7 @@ struct mir_fn *create_fn(struct context            *ctx,
     tmp->prototype    = &prototype->base;
     tmp->is_global    = is_global;
     tmp->builtin_id   = builtin_id;
+    arrsetcap(tmp->variables, 8);
     return tmp;
 }
 
@@ -5964,9 +5964,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         analyze_notify_provided(ctx, fn->id->hash);
     }
 
-    if (schedule_llvm_generation) {
-        tarray_push(&ctx->assembly->MIR.exported_instrs, fn_proto);
-    }
+    if (schedule_llvm_generation) arrput(ctx->assembly->MIR.exported_instrs, &fn_proto->base);
 
     RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
@@ -8463,8 +8461,8 @@ INLINE void testing_add_test_case(struct context *ctx, struct mir_fn *fn)
     BL_ASSERT(var);
     BL_ASSERT(var->value.data);
 
-    tarray_push(&ctx->assembly->testing.cases, fn);
-    const s64 i = ctx->assembly->testing.cases.size - 1;
+    arrput(ctx->assembly->testing.cases, fn);
+    const s64 i = arrlen(ctx->assembly->testing.cases) - 1;
 
     vm_stack_ptr_t   var_ptr  = vm_read_var(ctx->vm, var);
     struct mir_type *var_type = var->value.type;
@@ -9039,8 +9037,9 @@ void ast_defer_block(struct context *ctx, struct ast *block, bool whole_tree)
 
 void ast_ublock(struct context *ctx, struct ast *ublock)
 {
-    struct ast *tmp;
-    TARRAY_FOREACH(struct ast *, ublock->data.ublock.nodes, tmp) ast(ctx, tmp);
+    for (s64 i = 0; i < arrlen(ublock->data.ublock.nodes); ++i) {
+        ast(ctx, ublock->data.ublock.nodes[i]);
+    }
 }
 
 void ast_block(struct context *ctx, struct ast *block)
@@ -11237,7 +11236,7 @@ void mir_run(struct assembly *assembly)
     ctx.debug_mode                          = assembly->target->opt == ASSEMBLY_OPT_DEBUG;
     ctx.builtin_types                       = &assembly->builtin_types;
     ctx.vm                                  = &assembly->vm;
-    ctx.testing.cases                       = &assembly->testing.cases;
+    ctx.testing.cases                       = assembly->testing.cases;
     ctx.polymorph.current_scope_layer_index = SCOPE_DEFAULT_LAYER;
 
     thtbl_init(&ctx.analyze.waiting, sizeof(TArray), ANALYZE_TABLE_SIZE);
@@ -11260,9 +11259,11 @@ void mir_run(struct assembly *assembly)
     initialize_builtins(&ctx);
 
     // Gen MIR from ast pass
-    struct unit *unit;
-    TARRAY_FOREACH(struct unit *, &assembly->units, unit) ast(&ctx, unit->ast);
-
+    for (s64 i = 0; i < arrlen(assembly->units); ++i) {
+        struct unit *unit = assembly->units[i];
+        ast(&ctx, unit->ast);
+    }
+    
     if (builder.errorc) goto SKIP;
 
     // Skip analyze if no_analyze is set by user.

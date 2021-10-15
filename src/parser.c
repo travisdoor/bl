@@ -2679,8 +2679,7 @@ NEXT:
 void parse_ublock_content(struct context *ctx, struct ast *ublock)
 {
     BL_ASSERT(ublock->kind == AST_UBLOCK);
-    ublock->data.ublock.nodes = tarray_new(sizeof(struct ast *));
-    tarray_reserve(ublock->data.ublock.nodes, 64);
+    arrsetcap(ublock->data.ublock.nodes, 64);
     struct ast *tmp;
 NEXT:
     if (parse_semicolon(ctx)) goto NEXT;
@@ -2696,14 +2695,14 @@ NEXT:
             if (ctx->current_private_scope) tmp->data.decl_entity.flags |= FLAG_PRIVATE;
         }
 
-        tarray_push(ublock->data.ublock.nodes, tmp);
+        arrput(ublock->data.ublock.nodes, tmp);
         goto NEXT;
     }
 
     // load, import, link, test, private - enabled in global scope
     const int enabled_hd = HD_LOAD | HD_LINK | HD_PRIVATE | HD_IMPORT | HD_SCOPE;
     if ((tmp = parse_hash_directive(ctx, enabled_hd, NULL))) {
-        tarray_push(ublock->data.ublock.nodes, tmp);
+        arrput(ublock->data.ublock.nodes, tmp);
         goto NEXT;
     }
 

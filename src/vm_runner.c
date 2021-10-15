@@ -28,30 +28,29 @@
 
 #include "bldebug.h"
 #include "builder.h"
+#include "stb_ds.h"
 
 #define TEXT_LINE "--------------------------------------------------------------------------------"
 
 void vm_tests_run(struct assembly *assembly)
 {
     struct virtual_machine *vm    = &assembly->vm;
-    TArray *                cases = &assembly->testing.cases;
+    struct mir_fn         **cases = assembly->testing.cases;
     printf("\nTesting start in compile time\n");
     printf(TEXT_LINE "\n");
 
-    const usize    tc = cases->size;
-    s32            fc = 0;
-    struct mir_fn *test_fn;
+    const s64 tc = arrlen(cases);
+    s32       fc = 0;
 
-    typedef struct {
+    struct case_meta {
         const char *name;
         f64         runtime_ms;
-    } CaseMeta;
+    };
 
-    TArray failed;
-    tarray_init(&failed, sizeof(CaseMeta));
+    struct case_meta *failed = NULL;
 
-    TARRAY_FOREACH(struct mir_fn *, cases, test_fn)
-    {
+    for (s64 i = 0; i < tc; ++i) {
+        struct mir_fn *test_fn = cases[i];
         BL_ASSERT(IS_FLAG(test_fn->flags, FLAG_TEST_FN));
         const f64   start      = get_tick_ms();
         const bool  passed     = vm_execute_fn(vm, assembly, test_fn, NULL, NULL);
@@ -61,8 +60,7 @@ void vm_tests_run(struct assembly *assembly)
             printf("[ PASS |      ] %s (%f ms)\n", name, runtime_ms);
         } else {
             printf("[      | FAIL ] %s (%f ms)\n", name, runtime_ms);
-            CaseMeta tmp = {.name = name, .runtime_ms = runtime_ms};
-            tarray_push(&failed, tmp);
+            arrput(failed, ((struct case_meta){.name = name, .runtime_ms = runtime_ms}));
             builder.errorc = 0;
             ++fc;
         }
@@ -72,23 +70,23 @@ void vm_tests_run(struct assembly *assembly)
     if (fc > 0) perc = (s32)((f32)(tc - fc) / ((f32)tc * 0.01f));
     printf("\nResults:\n");
     printf(TEXT_LINE "\n");
-    for (usize i = 0; i < failed.size; ++i) {
-        CaseMeta *f = &tarray_at(CaseMeta, &failed, i);
+    for (s64 i = 0; i < arrlen(failed); ++i) {
+        struct case_meta *f = &failed[i];
         printf("[      | FAIL ] %s (%f ms)\n", f->name, f->runtime_ms);
     }
 
-    if (failed.size) printf(TEXT_LINE "\n");
+    if (arrlen(failed)) printf(TEXT_LINE "\n");
     printf("Executed: %llu, passed %d%%.\n", (unsigned long long)tc, perc);
     printf(TEXT_LINE "\n");
-    tarray_terminate(&failed);
+    arrfree(failed);
     assembly->vm_run.last_execution_status = fc;
 }
 
 void vm_build_entry_run(struct assembly *assembly)
 {
     struct virtual_machine *vm     = &assembly->vm;
-    struct mir_fn *         entry  = assembly->vm_run.build_entry;
-    const struct target *   target = assembly->target;
+    struct mir_fn          *entry  = assembly->vm_run.build_entry;
+    const struct target    *target = assembly->target;
     if (!entry) {
         builder_error("struct assembly '%s' has no build entry function!", assembly->target->name);
         assembly->vm_run.last_execution_status = EXIT_FAILURE;
@@ -106,8 +104,8 @@ void vm_build_entry_run(struct assembly *assembly)
 void vm_entry_run(struct assembly *assembly)
 {
     struct virtual_machine *vm     = &assembly->vm;
-    struct mir_fn *         entry  = assembly->vm_run.entry;
-    const struct target *   target = assembly->target;
+    struct mir_fn          *entry  = assembly->vm_run.entry;
+    const struct target    *target = assembly->target;
     builder_note("\nExecuting 'main' in compile time...");
     if (!entry) {
         builder_error("struct assembly '%s' has no entry function!", assembly->target->name);

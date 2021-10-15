@@ -158,13 +158,14 @@ struct target {
     // usually target containing some setup acquired from command line arguments of application.
     TARGET_COPYABLE_CONTENT
 
-    char                     *name;
-    TArray                    files;
-    TArray                    default_lib_paths;
-    TArray                    default_libs;
-    TString                   default_custom_linker_opt;
-    TString                   out_dir;
-    TString                   module_dir;
+    char   *name;
+    char  **files;
+    char  **default_lib_paths;
+    char  **default_libs;
+    TString default_custom_linker_opt;
+    TString out_dir;
+    TString module_dir;
+
     enum module_import_policy module_policy;
 
     struct {
@@ -178,24 +179,24 @@ struct assembly {
     const struct target *target;
 
     TString custom_linker_opt;
-    TArray  lib_paths;
-    TArray  libs;
+    char  **lib_paths;
+
+    struct native_lib *libs;
 
     struct {
         struct scope_arenas scope;
         struct mir_arenas   mir;
         struct arena        ast;
-        struct arena        array;       // Used for all TArrays
         struct arena        small_array; // Used for all SmallArrays
     } arenas;
 
     struct {
-        TArray global_instrs; // All global instructions.
-
-        // Map type ids to RTTI variables.
-        THashTable RTTI_table;
-        // Instructions for exported symbols (function prototypes).
-        TArray exported_instrs;
+        struct mir_instr **global_instrs; // All global instructions.
+        struct {
+            u64             key;
+            struct mir_var *value;
+        } * rtti_table; // Map type ids to RTTI variables.
+        struct mir_instr **exported_instrs;
     } MIR;
 
     struct {
@@ -207,8 +208,8 @@ struct assembly {
     } llvm;
 
     struct {
-        TArray          cases;    // Optionally contains list of test case functions.
-        struct mir_var *meta_var; // Optional variable containing runtime test case information.
+        struct mir_fn **cases;
+        struct mir_var *meta_var;
     } testing;
 
     struct {
@@ -236,7 +237,7 @@ struct assembly {
     DCCallVM              *dc_vm;
     struct virtual_machine vm;
 
-    TArray        units;  // array of all units in assembly
+    struct unit **units;  // array of all units in assembly
     struct scope *gscope; // global scope of the assembly
 
     /* Builtins */
@@ -282,21 +283,10 @@ bool      assembly_import_module(struct assembly *assembly,
                                  struct token    *import_from);
 DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol);
 
-static INLINE bool assembly_has_rtti(struct assembly *assembly, u64 type_id)
-{
-    return thtbl_has_key(&assembly->MIR.RTTI_table, type_id);
-}
-
-static INLINE struct mir_var *assembly_get_rtti(struct assembly *assembly, u64 type_id)
-{
-    return thtbl_at(struct mir_var *, &assembly->MIR.RTTI_table, type_id);
-}
-
-static INLINE void
-assembly_add_rtti(struct assembly *assembly, u64 type_id, struct mir_var *rtti_var)
-{
-    thtbl_insert(&assembly->MIR.RTTI_table, type_id, rtti_var);
-}
+#define assembly_has_rtti(assembly, type_id) (hmgeti((assembly)->MIR.rtti_table, type_id) != -1)
+#define assembly_get_rtti(assembly, type_id) (hmget((assembly)->MIR.rtti_table, type_id))
+#define assembly_add_rtti(assembly, type_id, rtti_var)                                             \
+    hmput((assembly)->MIR.rtti_table, type_id, rtti_var);
 
 // Convert opt level to string.
 static INLINE const char *opt_to_str(enum assembly_opt opt)
