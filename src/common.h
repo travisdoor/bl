@@ -190,6 +190,7 @@ TArray *create_arr(struct assembly *assembly, usize size);
 void   *_create_sarr(struct assembly *ctx, usize arr_size);
 u32     next_pow_2(u32 n);
 void    color_print(FILE *stream, s32 color, const char *format, ...);
+s32     cpu_thread_count(void);
 #define create_sarr(T, Asm) ((T *)_create_sarr((Asm), sizeof(T)))
 
 #endif

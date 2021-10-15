@@ -96,7 +96,7 @@ typedef struct ApplicationOptions {
 typedef struct Options {
     ApplicationOptions     app;
     struct builder_options builder;
-    struct target *        target;
+    struct target         *target;
 } Options;
 
 void print_help(FILE *stream)
@@ -226,8 +226,8 @@ s32 parse_input_files(Options *opt, s32 argc, char *argv[])
 // =================================================================================================
 int main(s32 argc, char *argv[])
 {
-    //setvbuf(stdout, NULL, _IONBF, 0);
-    // =============================================================================================
+    // setvbuf(stdout, NULL, _IONBF, 0);
+    //  =============================================================================================
 #define EXIT(_state)                                                                               \
     state = _state;                                                                                \
     goto RELEASE;                                                                                  \
@@ -235,6 +235,7 @@ int main(s32 argc, char *argv[])
 
 #ifdef BL_DEBUG
     puts("Running in DEBUG mode");
+    printf("CPU count: %d\n", cpu_thread_count());
 #endif
     Options opt = {0};
     setlocale(LC_ALL, "C");

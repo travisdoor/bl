@@ -27,6 +27,7 @@
 // =================================================================================================
 
 #include "builder.h"
+#include "stb_ds.h"
 #include "vmdbg.h"
 #include <stdarg.h>
 
@@ -38,7 +39,6 @@
 #endif
 
 #define MAX_ERROR_REPORTED 10
-#define MAX_THREAD 8
 
 struct builder builder;
 
@@ -79,8 +79,8 @@ static bool llvm_initialized = false;
 // =================================================================================================
 struct threading_impl {
     struct assembly *assembly;
-    pthread_t        workers[MAX_THREAD];
-    TArray           queue;
+    pthread_t       *workers;
+    struct unit    **queue;
     volatile s32     active;       // count of currently active workers
     volatile s32     will_exit;    // true when main thread will exit
     volatile bool    is_compiling; // true when async compilation is running
@@ -100,7 +100,7 @@ static void async_push(struct unit *unit)
     ZONE();
     struct threading_impl *threading = builder.threading;
     pthread_mutex_lock(&threading->queue_mutex);
-    tarray_push(&threading->queue, unit);
+    arrput(threading->queue, unit);
     if (threading->is_compiling) pthread_cond_signal(&threading->queue_condition);
     pthread_mutex_unlock(&threading->queue_mutex);
     RETURN_ZONE();
@@ -109,12 +109,10 @@ static void async_push(struct unit *unit)
 static struct unit *async_pop_unsafe(void)
 {
     struct threading_impl *threading = builder.threading;
-    struct unit *          unit      = NULL;
-    if (threading->queue.size) {
-        unit = tarray_at(struct unit *, &threading->queue, threading->queue.size - 1);
-        tarray_pop(&threading->queue);
+    if (arrlen(threading->queue)) {
+        return arrpop(threading->queue);
     }
-    return unit;
+    return NULL;
 }
 
 static struct threading_impl *threading_new(void)
@@ -127,7 +125,7 @@ static struct threading_impl *threading_new(void)
     pthread_mutex_init(&t->log_mutex, NULL);
     pthread_cond_init(&t->queue_condition, NULL);
     pthread_cond_init(&t->active_condition, NULL);
-    tarray_init(&t->queue, sizeof(struct unit *));
+    arrsetcap(t->queue, 64);
     return t;
 }
 
@@ -138,7 +136,7 @@ static void threading_delete(struct threading_impl *t)
     threading->will_exit = true;
     pthread_cond_broadcast(&threading->queue_condition);
     pthread_mutex_unlock(&threading->queue_mutex);
-    for (usize i = 0; i < TARRAY_SIZE(t->workers); ++i) {
+    for (s64 i = 0; i < arrlen(t->workers); ++i) {
         pthread_join(t->workers[i], NULL);
     }
     pthread_mutex_destroy(&t->queue_mutex);
@@ -147,7 +145,8 @@ static void threading_delete(struct threading_impl *t)
     pthread_mutex_destroy(&t->str_tmp_lock);
     pthread_cond_destroy(&t->queue_condition);
     pthread_cond_destroy(&t->active_condition);
-    tarray_terminate(&t->queue);
+    arrfree(t->queue);
+    arrfree(t->workers);
     bl_free(t);
 }
 
@@ -183,8 +182,10 @@ static void *worker(void UNUSED(*args))
 
 static void start_threads()
 {
+    const s32              cpu_count = cpu_thread_count();
     struct threading_impl *threading = builder.threading;
-    for (usize i = 0; i < TARRAY_SIZE(threading->workers); ++i) {
+    arraddnptr(threading->workers, cpu_count);
+    for (s32 i = 0; i < cpu_count; ++i) {
         pthread_create(&threading->workers[i], NULL, &worker, NULL);
     }
 }
@@ -208,7 +209,7 @@ static void async_compile(struct assembly *assembly, unit_stage_fn_t *unit_pipel
     while (true) {
         pthread_mutex_lock(&threading->queue_mutex);
         pthread_mutex_lock(&threading->active_mutex);
-        if (threading->active || threading->queue.size) {
+        if (threading->active || arrlen(threading->queue)) {
             pthread_mutex_unlock(&threading->queue_mutex);
             pthread_cond_wait(&threading->active_condition, &threading->active_mutex);
         } else {
@@ -221,7 +222,7 @@ static void async_compile(struct assembly *assembly, unit_stage_fn_t *unit_pipel
     threading->is_compiling = false;
     // Eventually use asserts here when there will be no threading-related errors.
     if (threading->active) BL_ABORT("Not all units processed! (active)");
-    if (threading->queue.size) BL_ABORT("Not all units processed! (queued)");
+    if (arrlen(threading->queue)) BL_ABORT("Not all units processed! (queued)");
 }
 
 // =================================================================================================
@@ -629,9 +630,9 @@ void builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len
 
 void builder_vmsg(enum builder_msg_type type,
                   s32                   code,
-                  struct location *     src,
+                  struct location      *src,
                   enum builder_cur_pos  pos,
-                  const char *          format,
+                  const char           *format,
                   va_list               args)
 {
     struct threading_impl *threading = builder.threading;
@@ -716,9 +717,9 @@ DONE:
 
 void builder_msg(enum builder_msg_type type,
                  s32                   code,
-                 struct location *     src,
+                 struct location      *src,
                  enum builder_cur_pos  pos,
-                 const char *          format,
+                 const char           *format,
                  ...)
 {
     va_list args;
@@ -738,7 +739,7 @@ TString *get_tmpstr(void)
 {
     struct threading_impl *threading = builder.threading;
     pthread_mutex_lock(&threading->str_tmp_lock);
-    TString *   str  = NULL;
+    TString    *str  = NULL;
     const usize size = builder.tmp_strings.size;
     if (size) {
         str = tarray_at(TString *, &builder.tmp_strings, size - 1);

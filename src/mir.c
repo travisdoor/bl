@@ -695,7 +695,8 @@ append_instr_addrof(struct context *ctx, struct ast *node, struct mir_instr *src
 
 // This will erase whole instruction tree of instruction with ref_count == 0. When force is set
 // ref_count is ignored.
-static void              erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force);
+static void
+erase_instr_tree(struct context *ctx, struct mir_instr *instr, bool keep_root, bool force);
 static struct mir_instr *append_instr_call_loc(struct context *ctx, struct ast *node);
 static struct mir_instr *append_instr_msg(struct context *ctx, struct ast *node);
 
@@ -1294,7 +1295,7 @@ static INLINE struct mir_instr *ref_instr(struct mir_instr *instr)
     return instr;
 }
 
-static INLINE void erase_instr(struct mir_instr *instr)
+static INLINE void erase_instr(struct context *ctx, struct mir_instr *instr)
 {
     if (!instr) return;
     if (instr->owner_block) {
@@ -1305,9 +1306,11 @@ static INLINE void erase_instr(struct mir_instr *instr)
     if (instr->next) instr->next->prev = instr->prev;
     instr->prev = NULL;
     instr->next = NULL;
+
+    ctx->assembly->MIR.instr_count--;
 }
 
-static INLINE void erase_block(struct mir_instr *instr)
+static INLINE void erase_block(struct context *ctx, struct mir_instr *instr)
 {
     TSmallArray_InstrPtr64 queue;
     tsa_init(&queue);
@@ -1317,7 +1320,7 @@ static INLINE void erase_block(struct mir_instr *instr)
         BL_ASSERT(block);
         BL_ASSERT(block->kind == MIR_INSTR_BLOCK && "Use erase_instr instead.");
         BL_ASSERT(block->ref_count == 0 && "Cannot erase referenced block!");
-        erase_instr(block);
+        erase_instr(ctx, block);
         struct mir_instr *terminal = ((struct mir_instr_block *)block)->terminal;
         if (!terminal) continue;
         // BL_ASSERT(terminal && "Unterminated block!");
@@ -3075,11 +3078,7 @@ void *create_instr(struct context *ctx, enum mir_instr_kind kind, struct ast *no
     tmp->kind             = kind;
     tmp->node             = node;
     tmp->id               = _id_counter++;
-#if BL_DEBUG && defined(TRACY_ENABLE)
-    static int ic = 0;
-    TracyCPlot("INSTR", ++ic);
-    BL_TRACY_MESSAGE("INSTR_CREATE", "size: %lluB", (unsigned long long)SIZEOF_MIR_INSTR);
-#endif
+    ctx->assembly->MIR.instr_count++;
     return tmp;
 }
 
@@ -4237,7 +4236,7 @@ struct mir_instr *append_instr_msg(struct context *ctx, struct ast *node)
 }
 
 // analyze
-void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
+void erase_instr_tree(struct context *ctx, struct mir_instr *instr, bool keep_root, bool force)
 {
     if (!instr) return;
     TSmallArray_InstrPtr64 queue;
@@ -4472,7 +4471,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         }
 
         if (keep_root && top == instr) continue;
-        erase_instr(top);
+        erase_instr(ctx, top);
     }
     tsa_terminate(&queue);
 }
@@ -4519,7 +4518,7 @@ bool evaluate(struct context *ctx, struct mir_instr *instr)
         unref_instr(&discard_block->base);
         unref_instr(cond_br->cond);
         if (cond_br->is_static && discard_block->base.ref_count == 0) {
-            erase_block(&discard_block->base);
+            erase_block(ctx, &discard_block->base);
         }
         // erase_instr(cond_br->cond);
         struct mir_instr_br *br    = mutate_instr(&cond_br->base, MIR_INSTR_BR);
@@ -4536,7 +4535,7 @@ bool evaluate(struct context *ctx, struct mir_instr *instr)
     }
     if (can_mutate_comptime_to_const(instr)) {
         const bool is_volatile = is_instr_type_volatile(instr);
-        erase_instr_tree(instr, true, true);
+        erase_instr_tree(ctx, instr, true, true);
         mutate_instr(instr, MIR_INSTR_CONST);
         ((struct mir_instr_const *)instr)->volatile_type = is_volatile;
     }
@@ -4638,7 +4637,7 @@ struct result analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *
         toany->rtti_data = rtti_data;
 
         rtti_gen(ctx, rtti_data);
-        erase_instr_tree(expr, false, true);
+        erase_instr_tree(ctx, expr, false, true);
     }
 
     // This is temporary variable used for Any data.
@@ -5209,7 +5208,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         decl_ref->parent_unit            = parent_unit;
         decl_ref->rid                    = rid;
         unref_instr(target_ptr);
-        erase_instr_tree(target_ptr, false, false);
+        erase_instr_tree(ctx, target_ptr, false, false);
         RETURN_ZONE(ANALYZE_RESULT(POSTPONE, 0));
     }
 
@@ -5225,7 +5224,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
             // .len
             // mutate instruction into constant
             unref_instr(member_ptr->target_ptr);
-            erase_instr_tree(member_ptr->target_ptr, false, false);
+            erase_instr_tree(ctx, member_ptr->target_ptr, false, false);
             struct mir_instr_const *len =
                 (struct mir_instr_const *)mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
             len->volatile_type          = false;
@@ -5480,7 +5479,7 @@ struct result analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof 
     // sizeof operator needs only type of input expression so we can erase whole call
     // tree generated to get this expression
     unref_instr(szof->expr);
-    erase_instr_tree(szof->expr, false, false);
+    erase_instr_tree(ctx, szof->expr, false, false);
 
     MIR_CEV_WRITE_AS(u64, &szof->base.value, type->store_size_bytes);
     RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
@@ -5523,7 +5522,7 @@ struct result analyze_instr_type_info(struct context *ctx, struct mir_instr_type
     rtti_gen(ctx, type_info->rtti_type);
     type_info->base.value.type = ctx->builtin_types->t_TypeInfo_ptr;
 
-    erase_instr_tree(type_info->expr, false, true);
+    erase_instr_tree(ctx, type_info->expr, false, true);
     RETURN_ZONE(ANALYZE_RESULT(PASSED, 0));
 }
 
@@ -7568,7 +7567,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         BL_MAGIC_ASSERT(selected_overload_fn);
 
         // Replace callee instruction with constant containing found overload function.
-        erase_instr_tree(call->callee, true, true);
+        erase_instr_tree(ctx, call->callee, true, true);
         struct mir_instr_const *callee_replacement =
             (struct mir_instr_const *)mutate_instr(call->callee, MIR_INSTR_CONST);
         callee_replacement->volatile_type   = false;
@@ -7928,7 +7927,7 @@ ANALYZE_STAGE_FN(unroll)
             (*input) = unroll->src;
         }
         unref_instr(&unroll->base);
-        erase_instr_tree(&unroll->base, false, false);
+        erase_instr_tree(ctx, &unroll->base, false, false);
     }
     return ANALYZE_STAGE_CONTINUE;
 }
@@ -8338,7 +8337,7 @@ void analyze(struct context *ctx)
         pip = ip;
         ip  = skip ? NULL : analyze_try_get_next(ip);
         // Remove unused instructions here!
-        if (pip && IS_FLAG(pip->flags, MIR_IS_ANALYZED)) erase_instr_tree(pip, false, false);
+        if (pip && IS_FLAG(pip->flags, MIR_IS_ANALYZED)) erase_instr_tree(ctx, pip, false, false);
         if (ip == NULL) {
             if (i >= arrlen(ctx->analyze.stack[si])) {
                 // No other instructions in current analyzed stack, let's try the other one.
@@ -11284,6 +11283,7 @@ void mir_run(struct assembly *assembly)
     analyze_report_unused(&ctx);
 
     BL_LOG("Analyze queue push count: %i", push_count);
+    BL_LOG("Generated instructions: %llu", assembly->MIR.instr_count);
 SKIP:
     assembly->stats.mir_s = RUNTIME_MEASURE_END_S(mir);
     arrfree(ctx.analyze.stack[0]);

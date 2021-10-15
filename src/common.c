@@ -35,9 +35,9 @@
 #define STBDS_FREE(context, ptr) bl_free(ptr)
 #include "stb_ds.h"
 
-#include "common.h"
 #include "assembly.h"
 #include "builder.h"
+#include "common.h"
 #include <stdarg.h>
 #include <time.h>
 
@@ -65,8 +65,8 @@ u64 main_thread_id = 0;
 bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,
-                        char **     out_filepath,
-                        char **     out_dirpath)
+                        char      **out_filepath,
+                        char      **out_dirpath)
 {
     TString *tmp = get_tmpstr();
     if (!filepath) goto NOT_FOUND;
@@ -570,4 +570,15 @@ void color_print(FILE *stream, s32 color, const char *format, ...)
     fprintf(stream, "\x1b[0m");
 #endif
     va_end(args);
+}
+
+s32 cpu_thread_count(void)
+{
+#if BL_PLATFORM_WIN
+    SYSTEM_INFO sysinfo;
+    GetSystemInfo(&sysinfo);
+    return sysinfo.dwNumberOfProcessors;
+#else
+    return 8; // @Incomplete: Detect for platform.
+#endif
 }
