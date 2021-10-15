@@ -29,6 +29,7 @@
 #include "assembly.h"
 #include "builder.h"
 #include "llvm_di.h"
+#include "stb_ds.h"
 
 #if BL_DEBUG
 #define NAMED_VARS true
@@ -3156,6 +3157,19 @@ State emit_instr(struct context *ctx, struct mir_instr *instr)
     return state;
 }
 
+static void init_llvm_moules(struct context *ctx)
+{
+    // const s32 cpu_count = cpu_thread_count();
+    struct assembly *assembly = ctx->assembly;
+    LLVMModuleRef    llvm_module =
+        LLVMModuleCreateWithNameInContext(assembly->target->name, assembly->llvm.ctx);
+    LLVMSetTarget(llvm_module, assembly->llvm.triple);
+    LLVMSetModuleDataLayout(llvm_module, assembly->llvm.TD);
+
+    arrput(assembly->llvm.modules, llvm_module);
+    ctx->llvm_module = llvm_module;
+}
+
 static void intrinsics_init(struct context *ctx)
 {
     // lookup intrinsics
@@ -3190,7 +3204,7 @@ static void DI_init(struct context *ctx)
 
     const char   *producer    = "blc version " BL_VERSION;
     struct scope *gscope      = ctx->assembly->gscope;
-    LLVMModuleRef llvm_module = ctx->assembly->llvm.module;
+    LLVMModuleRef llvm_module = ctx->assembly->llvm.modules[0];
 
     // setup module flags for debug
     llvm_add_module_flag_int(
@@ -3240,7 +3254,6 @@ void ir_run(struct assembly *assembly)
     ctx.builtin_types = &assembly->builtin_types;
     ctx.is_debug_mode = assembly->target->opt == ASSEMBLY_OPT_DEBUG;
     ctx.llvm_cnt      = assembly->llvm.ctx;
-    ctx.llvm_module   = assembly->llvm.module;
     ctx.llvm_td       = assembly->llvm.TD;
     ctx.llvm_builder  = LLVMCreateBuilderInContext(assembly->llvm.ctx);
 
@@ -3249,6 +3262,8 @@ void ir_run(struct assembly *assembly)
     tsa_init(&ctx.incomplete_rtti);
     tlist_init(&ctx.incomplete_queue, sizeof(struct mir_instr *));
     tlist_init(&ctx.queue, sizeof(struct mir_instr *));
+
+    init_llvm_moules(&ctx);
 
     if (ctx.is_debug_mode) {
         DI_init(&ctx);

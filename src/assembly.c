@@ -34,6 +34,7 @@
 #endif
 
 #include "builder.h"
+#include "stb_ds.h"
 #include <string.h>
 
 #define EXPECTED_GSCOPE_COUNT 4094
@@ -207,9 +208,7 @@ static void llvm_init(struct assembly *assembly)
         BL_ABORT("Cannot get target");
     }
     LLVMContextRef llvm_context = LLVMContextCreate();
-    LLVMModuleRef  llvm_module =
-        LLVMModuleCreateWithNameInContext(assembly->target->name, llvm_context);
-    LLVMRelocMode reloc_mode = LLVMRelocDefault;
+    LLVMRelocMode  reloc_mode   = LLVMRelocDefault;
     switch (assembly->target->kind) {
     case ASSEMBLY_SHARED_LIB:
         reloc_mode = LLVMRelocPIC;
@@ -226,18 +225,17 @@ static void llvm_init(struct assembly *assembly)
                                                            LLVMCodeModelDefault);
 
     LLVMTargetDataRef llvm_td = LLVMCreateTargetDataLayout(llvm_tm);
-    LLVMSetModuleDataLayout(llvm_module, llvm_td);
-    LLVMSetTarget(llvm_module, triple);
-    assembly->llvm.ctx    = llvm_context;
-    assembly->llvm.module = llvm_module;
-    assembly->llvm.TM     = llvm_tm;
-    assembly->llvm.TD     = llvm_td;
-    assembly->llvm.triple = triple;
+    assembly->llvm.ctx        = llvm_context;
+    assembly->llvm.TM         = llvm_tm;
+    assembly->llvm.TD         = llvm_td;
+    assembly->llvm.triple     = triple;
 }
 
 static void llvm_terminate(struct assembly *assembly)
 {
-    LLVMDisposeModule(assembly->llvm.module);
+    for (s32 i = 0; i < arrlen(assembly->llvm.modules); ++i) {
+        LLVMDisposeModule(assembly->llvm.modules[i]);
+    }
     LLVMDisposeTargetMachine(assembly->llvm.TM);
     LLVMDisposeTargetData(assembly->llvm.TD);
     LLVMContextDispose(assembly->llvm.ctx);

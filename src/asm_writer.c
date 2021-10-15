@@ -34,15 +34,18 @@
 void asm_writer_run(struct assembly *assembly)
 {
     ZONE();
-    TString *            buf    = get_tmpstr();
+    TString             *buf    = get_tmpstr();
     const struct target *target = assembly->target;
-    const char *         name   = target->name;
+    const char          *name   = target->name;
     BL_LOG("out_dir = %s", target->out_dir.data);
     BL_LOG("name = %s", name);
     tstring_setf(buf, "%s/%s.%s", target->out_dir.data, name, ASM_EXT);
     char *error_msg = NULL;
-    if (LLVMTargetMachineEmitToFile(
-            assembly->llvm.TM, assembly->llvm.module, buf->data, LLVMAssemblyFile, &error_msg)) {
+    if (LLVMTargetMachineEmitToFile(assembly->llvm.TM,
+                                    assembly->llvm.modules[0],
+                                    buf->data,
+                                    LLVMAssemblyFile,
+                                    &error_msg)) {
         builder_error("Cannot emit assembly file: %s with error: %s", buf->data, error_msg);
         LLVMDisposeMessage(error_msg);
     }

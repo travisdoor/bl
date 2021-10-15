@@ -46,7 +46,7 @@ void obj_writer_run(struct assembly *assembly)
     tstring_setf(buf, "%s/%s.%s", target->out_dir.data, name, OBJ_EXT);
     char *error_msg = NULL;
     if (LLVMTargetMachineEmitToFile(
-            assembly->llvm.TM, assembly->llvm.module, buf->data, LLVMObjectFile, &error_msg)) {
+            assembly->llvm.TM, assembly->llvm.modules[0], buf->data, LLVMObjectFile, &error_msg)) {
         builder_error("Cannot emit object file: %s with error: %s", buf->data, error_msg);
         LLVMDisposeMessage(error_msg);
     }

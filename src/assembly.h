@@ -196,11 +196,10 @@ struct assembly {
         THashTable RTTI_table;
         // Instructions for exported symbols (function prototypes).
         TArray exported_instrs;
-        u64    instr_count;
     } MIR;
 
     struct {
-        LLVMModuleRef        module;
+        LLVMModuleRef       *modules;
         LLVMContextRef       ctx;
         LLVMTargetDataRef    TD;
         LLVMTargetMachineRef TM;
