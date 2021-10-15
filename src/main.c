@@ -226,7 +226,7 @@ s32 parse_input_files(Options *opt, s32 argc, char *argv[])
 // =================================================================================================
 int main(s32 argc, char *argv[])
 {
-    setvbuf(stdout, NULL, _IONBF, 0);
+    //setvbuf(stdout, NULL, _IONBF, 0);
     // =============================================================================================
 #define EXIT(_state)                                                                               \
     state = _state;                                                                                \
