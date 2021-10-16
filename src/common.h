@@ -81,7 +81,7 @@ struct scope;
 #define CLR_FLAG(_v, _flag) ((_v) &= ~(_flag))
 
 #define ARRAY_FOREACH(arr, it)                                                                     \
-    for (usize _keep = 1, i = 0, _size = static_arrlen((arr)); _keep && i != _size;                  \
+    for (usize _keep = 1, i = 0, _size = static_arrlen((arr)); _keep && i != _size;                \
          _keep = !_keep, i++)                                                                      \
         for (it = (arr)[i]; _keep; _keep = !_keep)
 
@@ -124,20 +124,26 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
     struct {                                                                                       \
         s32 len;                                                                                   \
         s32 cap;                                                                                   \
-        T  *data;                                                                                  \
-        T   buf[C];                                                                                \
+        T  *_data;                                                                                 \
+        T   _buf[C];                                                                               \
     }
 
+#define SARR_ZERO                                                                                  \
+    {                                                                                              \
+        .len = 0, .cap = 0, ._data = NULL                                                          \
+    }
 #define sarradd(A)                                                                                 \
-    (sarradd_impl((A), sizeof((A)->buf[0]), sizeof((A)->buf) / sizeof((A)->buf[0])),               \
-     &(A)->data[sarrlen(A) - 1])
+    (sarradd_impl((A), sizeof((A)->_buf[0]), sizeof((A)->_buf) / sizeof((A)->_buf[0])),            \
+     &sarrpeek(A, sarrlen(A) - 1))
 #define sarrput(A, V) (*sarradd(A) = (V))
-#define sarrpop(A) ((A)->data[--(A)->len])
+#define sarrpop(A) (sarrpeek(A, --(A)->len))
 #define sarrlen(A) ((A)->len)
+#define sarrdata(A) ((A)->_data ? ((A)->_data) : ((A)->_buf))
+#define sarrpeek(A, I) (sarrdata(A)[I])
+#define sarrclear(A) ((A)->len = 0)
 #define sarrfree(A)                                                                                \
-    (((A)->cap > 0) ? (bl_free((A)->data), (A)->data = NULL, (A)->len = 0, (A)->cap = 0) : (void)0)
+    ((A)->_data ? bl_free((A)->_data) : (void)0, (A)->_data = NULL, (A)->len = 0, (A)->cap = 0)
 
-void sarrinit(void *ptr);
 void sarradd_impl(void *ptr, s32 elem_size, s32 elem_count);
 
 TSMALL_ARRAY_TYPE(AstPtr, struct ast *, 16);

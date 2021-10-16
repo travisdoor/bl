@@ -107,6 +107,8 @@ struct rtti_incomplete {
     struct mir_type *type;
 };
 
+typedef sarr_t(struct mir_instr *, 32) instrs_t;
+
 TSMALL_ARRAY_TYPE(LLVMType, LLVMTypeRef, 8);
 TSMALL_ARRAY_TYPE(LLVMMetadata, LLVMMetadataRef, 16);
 TSMALL_ARRAY_TYPE(DeferStack, struct ast *, 64);
@@ -114,9 +116,7 @@ TSMALL_ARRAY_TYPE(InstrPtr64, struct mir_instr *, 64);
 TSMALL_ARRAY_TYPE(String, char *, 64);
 TSMALL_ARRAY_TYPE(RTTIIncomplete, struct rtti_incomplete, 64);
 
-struct ast_fn_context {
-    TSmallArray_DeferStack defer_stack;
-};
+typedef sarr_t(struct ast *, 16) defer_stack_t;
 
 // Instance in run method is zero initialized, no need to set default values explicitly.
 struct context {
@@ -127,16 +127,17 @@ struct context {
 
     // Ast -> MIR generation
     struct {
-        TArray _fnctx_stack;
 
         struct mir_instr_block *current_block;
         struct mir_instr_block *current_phi_end_block;
         struct mir_instr_phi   *current_phi;
         struct mir_instr_block *break_block;
         struct mir_instr_block *continue_block;
-        struct ast_fn_context  *current_fn_context;
         struct id              *current_entity_id;
         struct mir_instr       *current_fwd_struct_decl;
+
+        defer_stack_t *defer_stack;
+        s32            current_defer_stack_index;
     } ast;
 
     struct {
@@ -153,7 +154,10 @@ struct context {
 
         // Hash table of arrays. Hash is id of symbol and array contains queue of waiting
         // instructions (DeclRefs).
-        THashTable waiting;
+        struct {
+            hash_t   key;
+            instrs_t value;
+        } * waiting;
 
         // Structure members can sometimes point to self, in such case we end up with
         // endless looping RTTI generation, to solve this problem we create dummy RTTI
@@ -207,7 +211,7 @@ enum result_state {
 
 struct result {
     enum result_state state;
-    u64               waiting_for;
+    hash_t            waiting_for;
 };
 
 enum stage_state {
@@ -711,8 +715,9 @@ static struct mir_instr *ast_create_impl_fn_call(struct context  *ctx,
                                                  struct mir_type *fn_type,
                                                  bool             schedule_analyze);
 
-static void              ast_push_fn_context(struct context *ctx);
-static void              ast_pop_fn_context(struct context *ctx);
+static void              ast_push_defer_stack(struct context *ctx);
+static void              ast_pop_defer_stack(struct context *ctx);
+static void              ast_free_defer_stack(struct context *ctx);
 static struct mir_instr *ast(struct context *ctx, struct ast *node);
 static void              ast_ublock(struct context *ctx, struct ast *ublock);
 static void              ast_unreachable(struct context *ctx, struct ast *unr);
@@ -1416,22 +1421,19 @@ static INLINE void analyze_schedule(struct context *ctx, struct mir_instr *instr
 
 static INLINE void analyze_notify_provided(struct context *ctx, hash_t hash)
 {
-    TIterator iter = thtbl_find(&ctx->analyze.waiting, hash);
-    TIterator end  = thtbl_end(&ctx->analyze.waiting);
-    if (TITERATOR_EQUAL(iter, end)) return; // No one is waiting for this...
+    const s64 index = hmgeti(ctx->analyze.waiting, hash);
+    if (index == -1) return; // No one is waiting for this...
 
-    TArray *wq = &thtbl_iter_peek_value(TArray, iter);
+    instrs_t *wq = &ctx->analyze.waiting[index].value;
     BL_ASSERT(wq);
 
-    struct mir_instr *instr;
-    TARRAY_FOREACH(struct mir_instr *, wq, instr)
-    {
-        analyze_schedule(ctx, instr);
+    for (s64 i = 0; i < sarrlen(wq); ++i) {
+        analyze_schedule(ctx, sarrpeek(wq, i));
     }
 
     // Also clear element content!
-    tarray_terminate(wq);
-    thtbl_erase(&ctx->analyze.waiting, iter);
+    sarrfree(wq);
+    hmdel(ctx->analyze.waiting, hash);
 }
 // =================================================================================================
 
@@ -1652,31 +1654,26 @@ is_to_any_needed(struct context *ctx, struct mir_instr *src, struct mir_type *de
     return true;
 }
 
-void ast_push_fn_context(struct context *ctx)
+void ast_push_defer_stack(struct context *ctx)
 {
-    struct ast_fn_context *fnctx;
-    {
-        TArray               *stack = &ctx->ast._fnctx_stack;
-        struct ast_fn_context _fnctx;
-        tarray_push(stack, _fnctx);
-        fnctx = &tarray_at(struct ast_fn_context, stack, stack->size - 1);
+    if (++ctx->ast.current_defer_stack_index == arrlen(ctx->ast.defer_stack)) {
+        arrput(ctx->ast.defer_stack, (defer_stack_t){0});
     }
-    memset(fnctx, 0, sizeof(struct ast_fn_context));
-    tsa_init(&fnctx->defer_stack);
-    ctx->ast.current_fn_context = fnctx;
 }
 
-void ast_pop_fn_context(struct context *ctx)
+void ast_pop_defer_stack(struct context *ctx)
 {
-    TArray *stack = &ctx->ast._fnctx_stack;
-    BL_ASSERT(stack->size);
-    struct ast_fn_context *fnctx = &tarray_at(struct ast_fn_context, stack, stack->size - 1);
-    BL_ASSERT(fnctx == ctx->ast.current_fn_context &&
-              "Ast function generation context malformed, push and pop out of sycn?");
-    tsa_terminate(&fnctx->defer_stack);
-    tarray_pop(stack);
-    ctx->ast.current_fn_context =
-        stack->size ? &tarray_at(struct ast_fn_context, stack, stack->size - 1) : NULL;
+    BL_ASSERT(ctx->ast.current_defer_stack_index >= 0);
+    sarrclear(&ctx->ast.defer_stack[ctx->ast.current_defer_stack_index]);
+    ctx->ast.current_defer_stack_index--;
+}
+
+void ast_free_defer_stack(struct context *ctx)
+{
+    for (s64 i = 0; i < arrlen(ctx->ast.defer_stack); ++i) {
+        sarrfree(&ctx->ast.defer_stack[i]);
+    }
+    arrfree(ctx->ast.defer_stack);
 }
 
 void type_init_id(struct context *ctx, struct mir_type *type)
@@ -8365,19 +8362,19 @@ void analyze(struct context *ctx)
             break;
 
         case ANALYZE_WAITING: {
-            TArray   *wq   = NULL;
-            TIterator iter = thtbl_find(&ctx->analyze.waiting, result.waiting_for);
-            TIterator end  = thtbl_end(&ctx->analyze.waiting);
-            if (TITERATOR_EQUAL(iter, end)) {
-                wq = thtbl_insert_empty(&ctx->analyze.waiting, result.waiting_for);
-                tarray_init(wq, sizeof(struct mir_instr *));
-                tarray_reserve(wq, 16);
+            instrs_t    *wq;
+            const hash_t hash  = result.waiting_for;
+            s64          index = hmgeti(ctx->analyze.waiting, hash);
+            if (index == -1) {
+                hmput(ctx->analyze.waiting, hash, ((instrs_t)SARR_ZERO));
+                index = hmgeti(ctx->analyze.waiting, hash);
+                BL_ASSERT(index >= -1);
+                wq = &ctx->analyze.waiting[index].value;
             } else {
-                wq = &thtbl_iter_peek_value(TArray, iter);
+                wq = &ctx->analyze.waiting[index].value;
             }
-
             BL_ASSERT(wq);
-            tarray_push(wq, ip);
+            sarrput(wq, ip);
             skip = true;
             pc   = 0;
         }
@@ -8388,17 +8385,13 @@ void analyze(struct context *ctx)
 
 void analyze_report_unresolved(struct context *ctx)
 {
-    struct mir_instr *instr;
-    TArray           *wq;
-    TIterator         iter;
-    s32               reported = 0;
+    s32 reported = 0;
 
-    THTBL_FOREACH(&ctx->analyze.waiting, iter)
-    {
-        wq = &thtbl_iter_peek_value(TArray, iter);
+    for (s64 i = 0; i < hmlen(ctx->analyze.waiting); ++i) {
+        instrs_t *wq = &ctx->analyze.waiting[i].value;
         BL_ASSERT(wq);
-        TARRAY_FOREACH(struct mir_instr *, wq, instr)
-        {
+        for (s64 j = 0; j < sarrlen(wq); ++j) {
+            struct mir_instr *instr = sarrpeek(wq, j);
             BL_ASSERT(instr);
             const char *sym_name = NULL;
             switch (instr->kind) {
@@ -8421,7 +8414,7 @@ void analyze_report_unresolved(struct context *ctx)
             ++reported;
         }
     }
-    if (ctx->analyze.waiting.size && !reported) {
+    if (hmlen(ctx->analyze.waiting) && !reported) {
         report_error(UNKNOWN_SYMBOL,
                      NULL,
                      "Unknown symbol/s detected but not correctly reported, this is compiler bug!");
@@ -9022,12 +9015,13 @@ struct mir_var *rtti_gen_fn_group(struct context *ctx, struct mir_type *type)
 // MIR builting
 void ast_defer_block(struct context *ctx, struct ast *block, bool whole_tree)
 {
-    TSmallArray_DeferStack *stack = &ctx->ast.current_fn_context->defer_stack;
-    struct ast             *defer;
-    for (usize i = stack->size; i-- > 0;) {
-        defer = stack->data[i];
+    BL_ASSERT(ctx->ast.current_defer_stack_index >= 0);
+    defer_stack_t *stack = &ctx->ast.defer_stack[ctx->ast.current_defer_stack_index];
+    struct ast    *defer;
+    for (s64 i = sarrlen(stack); i-- > 0;) {
+        defer = sarrpeek(stack, i);
         if (defer->owner_scope == block->owner_scope) {
-            tsa_pop_DeferStack(stack);
+            sarrpop(stack);
         } else if (!whole_tree) {
             break;
         }
@@ -9293,7 +9287,7 @@ void ast_stmt_return(struct context *ctx, struct ast *ret)
 void ast_stmt_defer(struct context *ctx, struct ast *defer)
 {
     // push new defer record
-    tsa_push_DeferStack(&ctx->ast.current_fn_context->defer_stack, defer);
+    sarrput(&ctx->ast.defer_stack[ctx->ast.current_defer_stack_index], defer);
 }
 
 struct mir_instr *ast_call_loc(struct context *ctx, struct ast *loc)
@@ -9548,9 +9542,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 
     // Prepare new function context. Must be in sync with pop at the end of scope!
     // DON'T CALL FINISH BEFORE THIS!!!
-    // DON'T CALL FINISH BEFORE THIS!!!
-    // DON'T CALL FINISH BEFORE THIS!!!
-    ast_push_fn_context(ctx);
+    ast_push_defer_stack(ctx);
     struct mir_instr_block *prev_block = ast_current_block(ctx);
 
     const char *linkage_name = explicit_linkage_name;
@@ -9660,7 +9652,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 
 FINISH:
     set_current_block(ctx, prev_block);
-    ast_pop_fn_context(ctx);
+    ast_pop_defer_stack(ctx);
     return &fn_proto->base;
 }
 
@@ -11238,11 +11230,10 @@ void mir_run(struct assembly *assembly)
     ctx.vm                                  = &assembly->vm;
     ctx.testing.cases                       = assembly->testing.cases;
     ctx.polymorph.current_scope_layer_index = SCOPE_DEFAULT_LAYER;
+    ctx.ast.current_defer_stack_index       = -1;
 
-    thtbl_init(&ctx.analyze.waiting, sizeof(TArray), ANALYZE_TABLE_SIZE);
     tstring_init(&ctx.tmp_sh);
 
-    tarray_init(&ctx.ast._fnctx_stack, sizeof(struct ast_fn_context));
     arrsetcap(ctx.analyze.usage_check_arr, 256);
     arrsetcap(ctx.analyze.stack[0], 256);
     arrsetcap(ctx.analyze.stack[1], 256);
@@ -11263,7 +11254,7 @@ void mir_run(struct assembly *assembly)
         struct unit *unit = assembly->units[i];
         ast(&ctx, unit->ast);
     }
-    
+
     if (builder.errorc) goto SKIP;
 
     // Skip analyze if no_analyze is set by user.
@@ -11280,14 +11271,14 @@ void mir_run(struct assembly *assembly)
     BL_LOG("Analyze queue push count: %i", push_count);
 SKIP:
     assembly->stats.mir_s = RUNTIME_MEASURE_END_S(mir);
+    ast_free_defer_stack(&ctx);
     arrfree(ctx.analyze.stack[0]);
     arrfree(ctx.analyze.stack[1]);
     tsa_terminate(&ctx.polymorph.replacement_queue);
-    thtbl_terminate(&ctx.analyze.waiting);
+    hmfree(ctx.analyze.waiting);
     tstring_terminate(&ctx.tmp_sh);
 
     arrfree(ctx.analyze.usage_check_arr);
-    tarray_terminate(&ctx.ast._fnctx_stack);
     tsa_terminate(&ctx.analyze.incomplete_rtti);
     tsa_terminate(&ctx.analyze.complete_check_type_stack);
     thtbl_terminate(&ctx.analyze.complete_check_visited);

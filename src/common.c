@@ -76,15 +76,6 @@ struct sarr_any {
     u8  buf[1];
 };
 
-void sarrinit(void *ptr)
-{
-    BL_ASSERT(ptr);
-    struct sarr_any *arr = (struct sarr_any *)ptr;
-    arr->data            = arr->buf;
-    arr->len             = 0;
-    arr->cap             = 0;
-}
-
 void sarradd_impl(void *ptr, s32 elem_size, s32 elem_count)
 {
     struct sarr_any *arr     = (struct sarr_any *)ptr;
