@@ -61,6 +61,54 @@
 #endif
 
 u64 main_thread_id = 0;
+// =================================================================================================
+// PUBLIC
+// =================================================================================================
+
+// =================================================================================================
+// Small Array
+// =================================================================================================
+
+struct sarr_any {
+    s32 len;
+    s32 cap;
+    u8 *data;
+    u8  buf[1];
+};
+
+void sarrinit(void *ptr)
+{
+    BL_ASSERT(ptr);
+    struct sarr_any *arr = (struct sarr_any *)ptr;
+    arr->data            = arr->buf;
+    arr->len             = 0;
+    arr->cap             = 0;
+}
+
+void sarradd_impl(void *ptr, s32 elem_size, s32 elem_count)
+{
+    struct sarr_any *arr     = (struct sarr_any *)ptr;
+    const bool       on_heap = arr->cap;
+    if (!on_heap && arr->len == elem_count) {
+        arr->cap        = elem_count * 2;
+        const s32 bytes = elem_size * arr->cap;
+        arr->data       = bl_malloc(bytes);
+        if (!arr->data) abort();
+        memcpy(arr->data, arr->buf, bytes);
+    } else if (on_heap && arr->len == arr->cap) {
+        arr->cap *= 2;
+        void *tmp = arr->data;
+        if ((arr->data = bl_realloc(arr->data, arr->cap * elem_size)) == NULL) {
+            bl_free(tmp);
+            abort();
+        }
+    }
+    arr->len++;
+}
+
+// =================================================================================================
+// Utils
+// =================================================================================================
 
 bool search_source_file(const char *filepath,
                         const u32   flags,
@@ -72,7 +120,7 @@ bool search_source_file(const char *filepath,
     if (!filepath) goto NOT_FOUND;
     char        tmp_result[PATH_MAX] = {0};
     const char *result               = NULL;
-    if (brealpath(filepath, tmp_result, TARRAY_SIZE(tmp_result))) {
+    if (brealpath(filepath, tmp_result, static_arrlen(tmp_result))) {
         result = &tmp_result[0];
         goto FOUND;
     }
@@ -80,7 +128,7 @@ bool search_source_file(const char *filepath,
     // Lookup in working directory.
     if (wdir && IS_FLAG(flags, SEARCH_FLAG_WDIR)) {
         tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", wdir, filepath);
-        if (brealpath(tmp->data, tmp_result, TARRAY_SIZE(tmp_result))) {
+        if (brealpath(tmp->data, tmp_result, static_arrlen(tmp_result))) {
             result = &tmp_result[0];
             goto FOUND;
         }
@@ -89,7 +137,7 @@ bool search_source_file(const char *filepath,
     // file has not been found in current working directory -> search in LIB_DIR
     if (builder_get_lib_dir() && IS_FLAG(flags, SEARCH_FLAG_LIB_DIR)) {
         tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", builder_get_lib_dir(), filepath);
-        if (brealpath(tmp->data, tmp_result, TARRAY_SIZE(tmp_result))) {
+        if (brealpath(tmp->data, tmp_result, static_arrlen(tmp_result))) {
             result = &tmp_result[0];
             goto FOUND;
         }
@@ -106,7 +154,7 @@ bool search_source_file(const char *filepath,
                 p[0] = 0;
             }
             tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", s, filepath);
-            if (brealpath(tmp->data, tmp_result, TARRAY_SIZE(tmp_result))) result = &tmp_result[0];
+            if (brealpath(tmp->data, tmp_result, static_arrlen(tmp_result))) result = &tmp_result[0];
             s = p + 1;
         } while (p && !result);
         free(env);
@@ -123,7 +171,7 @@ FOUND:
     if (out_dirpath) {
         // Absolute directory path.
         char dirpath[PATH_MAX] = {0};
-        if (get_dir_from_filepath(dirpath, TARRAY_SIZE(dirpath), result)) {
+        if (get_dir_from_filepath(dirpath, static_arrlen(dirpath), result)) {
             *out_dirpath = strdup(dirpath);
         }
     }

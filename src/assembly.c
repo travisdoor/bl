@@ -149,7 +149,7 @@ static void parse_triple(const char *normalized_triple, struct target_triple *ou
     }
 
     out_triple->arch = ARCH_unknown;
-    for (usize i = 0; i < TARRAY_SIZE(arch_names); ++i) {
+    for (usize i = 0; i < static_arrlen(arch_names); ++i) {
         if (strcmp(arch, arch_names[i]) == 0) {
             out_triple->arch = i;
             break;
@@ -157,7 +157,7 @@ static void parse_triple(const char *normalized_triple, struct target_triple *ou
     }
 
     out_triple->vendor = VENDOR_unknown;
-    for (usize i = 0; i < TARRAY_SIZE(vendor_names); ++i) {
+    for (usize i = 0; i < static_arrlen(vendor_names); ++i) {
         if (strcmp(vendor, vendor_names[i]) == 0) {
             out_triple->vendor = i;
             break;
@@ -165,7 +165,7 @@ static void parse_triple(const char *normalized_triple, struct target_triple *ou
     }
 
     out_triple->os = OS_unknown;
-    for (usize i = 0; i < TARRAY_SIZE(os_names); ++i) {
+    for (usize i = 0; i < static_arrlen(os_names); ++i) {
         if (strncmp(os, os_names[i], strlen(os_names[i])) == 0) {
             out_triple->os = i;
             break;
@@ -173,7 +173,7 @@ static void parse_triple(const char *normalized_triple, struct target_triple *ou
     }
 
     out_triple->env = ENV_unknown;
-    for (usize i = 0; i < TARRAY_SIZE(env_names); ++i) {
+    for (usize i = 0; i < static_arrlen(env_names); ++i) {
         if (strcmp(env, env_names[i]) == 0) {
             out_triple->env = i;
             break;
@@ -308,7 +308,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
 static conf_data_t *load_module_config(const char *modulepath, struct token *import_from)
 {
     char tmp_path[PATH_MAX] = {0};
-    snprintf(tmp_path, TARRAY_SIZE(tmp_path), "%s/%s", modulepath, MODULE_CONFIG_FILE);
+    snprintf(tmp_path, static_arrlen(tmp_path), "%s/%s", modulepath, MODULE_CONFIG_FILE);
     conf_data_t *config = conf_data_new();
     if (builder_compile_config(tmp_path, config, import_from) != COMPILE_OK) {
         conf_data_delete(config);
@@ -552,10 +552,10 @@ char *target_triple_to_string(const struct target_triple *triple)
     const char *vendor = "";
     const char *os     = "";
     const char *env    = "";
-    if (triple->arch < TARRAY_SIZE(arch_names)) arch = arch_names[triple->arch];
-    if (triple->vendor < TARRAY_SIZE(vendor_names)) vendor = vendor_names[triple->vendor];
-    if (triple->os < TARRAY_SIZE(os_names)) os = os_names[triple->os];
-    if (triple->env < TARRAY_SIZE(env_names)) env = env_names[triple->env];
+    if (triple->arch < static_arrlen(arch_names)) arch = arch_names[triple->arch];
+    if (triple->vendor < static_arrlen(vendor_names)) vendor = vendor_names[triple->vendor];
+    if (triple->os < static_arrlen(os_names)) os = os_names[triple->os];
+    if (triple->env < static_arrlen(env_names)) env = env_names[triple->env];
     const usize len =
         strlen(arch) + strlen(vendor) + strlen(os) + strlen(env) + 4; // 3x'-' + terminator
     char *str = bl_malloc(len);
@@ -788,7 +788,7 @@ bool assembly_import_module(struct assembly *assembly,
             if (local_found) {
                 TString *backup_name = get_tmpstr();
                 char     date[26];
-                date_time(date, TARRAY_SIZE(date), "%d-%m-%Y_%H-%M-%S");
+                date_time(date, static_arrlen(date), "%d-%m-%Y_%H-%M-%S");
                 tstring_setf(backup_name, "%s_%s.bak", local_path->data, date);
                 copy_dir(local_path->data, backup_name->data);
                 remove_dir(local_path->data);

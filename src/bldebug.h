@@ -179,7 +179,7 @@ static inline void bl_debug_break(void)
 #define BL_TRACY_MESSAGE(tag, format, ...)                                                         \
     {                                                                                              \
         char buf[256];                                                                             \
-        snprintf(buf, TARRAY_SIZE(buf), "#%s " format, tag, ##__VA_ARGS__);                        \
+        snprintf(buf, static_arrlen(buf), "#%s " format, tag, ##__VA_ARGS__);                        \
         TracyCMessageC(buf, strlen(buf), strhash(tag));                                            \
     }                                                                                              \
     (void)0

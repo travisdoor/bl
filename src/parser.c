@@ -60,7 +60,7 @@
 #define CONSUME_TILL(tokens, ...)                                                                  \
     {                                                                                              \
         enum sym _[] = {__VA_ARGS__};                                                              \
-        tokens_consume_till2((tokens), TARRAY_SIZE(_), &_[0]);                                     \
+        tokens_consume_till2((tokens), static_arrlen(_), &_[0]);                                     \
     }
 
 enum hash_directive_flags {
@@ -2724,13 +2724,13 @@ void init_hash_directives(struct context *ctx)
 #undef HD_GEN
     };
 
-    static u32 hash_directive_flags[TARRAY_SIZE(hash_directive_names)] = {
+    static u32 hash_directive_flags[static_arrlen(hash_directive_names)] = {
 #define HD_GEN(kind, name, flag) flag,
 #include "parser.inc"
 #undef HD_GEN
     };
 
-    for (usize i = 0; i < TARRAY_SIZE(hash_directive_names); ++i) {
+    for (usize i = 0; i < static_arrlen(hash_directive_names); ++i) {
         const hash_t hash = strhash(hash_directive_names[i]);
         hmput(ctx->hash_directive_table, hash, hash_directive_flags[i]);
     }

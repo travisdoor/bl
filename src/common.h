@@ -81,7 +81,7 @@ struct scope;
 #define CLR_FLAG(_v, _flag) ((_v) &= ~(_flag))
 
 #define ARRAY_FOREACH(arr, it)                                                                     \
-    for (usize _keep = 1, i = 0, _size = TARRAY_SIZE((arr)); _keep && i != _size;                  \
+    for (usize _keep = 1, i = 0, _size = static_arrlen((arr)); _keep && i != _size;                  \
          _keep = !_keep, i++)                                                                      \
         for (it = (arr)[i]; _keep; _keep = !_keep)
 
@@ -92,9 +92,53 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
 #define LIB_NAME_MAX 256
 
+// Return size of of static array.
+#define static_arrlen(A) (sizeof(A) / sizeof((A)[0]))
+
 // =================================================================================================
 // STB utils
 // =================================================================================================
+
+#define queue_t(T)                                                                                 \
+    struct {                                                                                       \
+        T  *q[2];                                                                                  \
+        s64 i;                                                                                     \
+        s32 qi;                                                                                    \
+    }
+
+#define _qcurrent(Q) ((Q)->q[(Q)->qi])
+#define _qother(Q) ((Q)->q[(Q)->qi ^ 1])
+#define qmaybeswap(Q)                                                                              \
+    ((Q)->i >= arrlen(_qcurrent(Q))                                                                \
+         ? (arrsetlen(_qcurrent(Q), 0), (Q)->qi ^= 1, (Q)->i = 0, arrlen(_qcurrent(Q)) > 0)        \
+         : (true))
+#define qfree(Q) (arrfree((Q)->q[0]), arrfree((Q)->q[1]))
+#define qpush_back(Q, V) arrput(_qother(Q), (V))
+#define qpop_front(Q) (_qcurrent(Q)[(Q)->i++])
+#define qsetcap(Q, c) (arrsetcap(_qother(Q), c))
+
+// =================================================================================================
+// Small Array
+// =================================================================================================
+#define sarr_t(T, C)                                                                               \
+    struct {                                                                                       \
+        s32 len;                                                                                   \
+        s32 cap;                                                                                   \
+        T  *data;                                                                                  \
+        T   buf[C];                                                                                \
+    }
+
+#define sarradd(A)                                                                                 \
+    (sarradd_impl((A), sizeof((A)->buf[0]), sizeof((A)->buf) / sizeof((A)->buf[0])),               \
+     &(A)->data[sarrlen(A) - 1])
+#define sarrput(A, V) (*sarradd(A) = (V))
+#define sarrpop(A) ((A)->data[--(A)->len])
+#define sarrlen(A) ((A)->len)
+#define sarrfree(A)                                                                                \
+    (((A)->cap > 0) ? (bl_free((A)->data), (A)->data = NULL, (A)->len = 0, (A)->cap = 0) : (void)0)
+
+void sarrinit(void *ptr);
+void sarradd_impl(void *ptr, s32 elem_size, s32 elem_count);
 
 TSMALL_ARRAY_TYPE(AstPtr, struct ast *, 16);
 TSMALL_ARRAY_TYPE(TypePtr, struct mir_type *, 16);
@@ -107,6 +151,9 @@ TSMALL_ARRAY_TYPE(Char, char, 128);
 TSMALL_ARRAY_TYPE(CharPtr, char *, 8);
 TSMALL_ARRAY_TYPE(FnPtr, struct mir_fn *, 8);
 
+// =================================================================================================
+// Hashing
+// =================================================================================================
 typedef u32 hash_t;
 
 struct id {
@@ -137,6 +184,9 @@ static INLINE bool is_ignored_id(const struct id *id)
     return strcmp(id->str, "_") == 0;
 }
 
+// =================================================================================================
+// Utils
+// =================================================================================================
 enum search_flags {
     SEARCH_FLAG_ABS         = 0,
     SEARCH_FLAG_WDIR        = 1,

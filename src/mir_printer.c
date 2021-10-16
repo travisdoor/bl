@@ -49,7 +49,7 @@ static INLINE void
 print_type(struct context *ctx, struct mir_type *type, bool aligned, bool prefer_name)
 {
     char tmp[256];
-    mir_type_to_str(tmp, TARRAY_SIZE(tmp), type, prefer_name);
+    mir_type_to_str(tmp, static_arrlen(tmp), type, prefer_name);
     if (aligned)
         fprintf(ctx->stream, "%16s", tmp);
     else

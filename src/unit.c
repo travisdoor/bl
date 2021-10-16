@@ -57,7 +57,7 @@ struct unit *unit_new(const char *filepath, struct token *load_from)
                        &unit->dirpath);
     unit->name         = strdup(filepath);
     char tmp[PATH_MAX] = {0};
-    if (get_filename_from_filepath(tmp, TARRAY_SIZE(tmp), filepath)) {
+    if (get_filename_from_filepath(tmp, static_arrlen(tmp), filepath)) {
         unit->filename = strdup(tmp);
     } else {
         BL_ABORT("invalid file");

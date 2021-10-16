@@ -55,7 +55,7 @@ static void copy_user_libs(struct assembly *assembly)
         lstat(lib->filepath, &statbuf);
         if (S_ISLNK(statbuf.st_mode)) {
             char buf[PATH_MAX] = {0};
-            if (readlink(lib->filepath, buf, TARRAY_SIZE(buf)) == -1) {
+            if (readlink(lib->filepath, buf, static_arrlen(buf)) == -1) {
                 builder_error("Cannot follow symlink '%s' with error: %d", lib->filepath, errno);
                 continue;
             }

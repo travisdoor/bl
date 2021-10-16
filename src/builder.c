@@ -413,8 +413,8 @@ static int compile(struct assembly *assembly)
 
     unit_stage_fn_t     unit_pipeline[5];
     assembly_stage_fn_t assembly_pipeline[17];
-    setup_unit_pipeline(assembly, unit_pipeline, TARRAY_SIZE(unit_pipeline));
-    setup_assembly_pipeline(assembly, assembly_pipeline, TARRAY_SIZE(assembly_pipeline));
+    setup_unit_pipeline(assembly, unit_pipeline, static_arrlen(unit_pipeline));
+    setup_assembly_pipeline(assembly, assembly_pipeline, static_arrlen(assembly_pipeline));
 
     if (builder.options->no_jobs) {
         BL_LOG("Running in single thread mode!");
@@ -602,7 +602,7 @@ void builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len
         s32  written_bytes = 0;
         for (s32 i = 0; i < col + len - 1; ++i) {
             written_bytes += snprintf(buf + written_bytes,
-                                      TARRAY_SIZE(buf) - written_bytes,
+                                      static_arrlen(buf) - written_bytes,
                                       "%s",
                                       i >= col - 1 ? "^" : " ");
         }

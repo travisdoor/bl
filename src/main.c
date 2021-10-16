@@ -44,7 +44,7 @@ static char *get_exec_dir(void)
 static bool load_conf_file(const char *exec_dir)
 {
     char path[PATH_MAX] = {0};
-    snprintf(path, TARRAY_SIZE(path), "%s/../%s", exec_dir, BL_CONF_FILE);
+    snprintf(path, static_arrlen(path), "%s/../%s", exec_dir, BL_CONF_FILE);
     if (!file_exists(path)) {
         builder_error("Configuration file '%s' not found, run 'blc --configure' or 'bl-config' to "
                       "generate one.",
@@ -106,12 +106,12 @@ void print_help(FILE *stream)
     fprintf(stream, "%s", text);
 
     char buf[256];
-    for (u32 i = 0; i < TARRAY_SIZE(ARGS); ++i) {
+    for (u32 i = 0; i < static_arrlen(ARGS); ++i) {
         const Arg *arg = &ARGS[i];
         if (strlen(arg->s)) {
-            snprintf(buf, TARRAY_SIZE(buf), "-%s, -%s", arg->s, arg->l);
+            snprintf(buf, static_arrlen(buf), "-%s, -%s", arg->s, arg->l);
         } else {
-            snprintf(buf, TARRAY_SIZE(buf), "-%s", arg->l);
+            snprintf(buf, static_arrlen(buf), "-%s", arg->l);
         }
         fprintf(stream, "  %-30s = %s\n", buf, arg->help);
     }

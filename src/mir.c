@@ -1464,7 +1464,7 @@ static enum builtin_id_kind get_builtin_kind(struct ast *ident)
     if (!ident) return false;
     BL_ASSERT(ident->kind == AST_IDENT);
     // @PERFORMANCE: Eventually use hash table.
-    for (u32 i = 0; i < TARRAY_SIZE(builtin_ids); ++i) {
+    for (u32 i = 0; i < static_arrlen(builtin_ids); ++i) {
         if (builtin_ids[i].hash == ident->data.ident.id.hash) {
             return i;
         }
@@ -1728,7 +1728,7 @@ void type_init_id(struct context *ctx, struct mir_type *type)
         static u64 serial = 0;
         BL_ASSERT(type->user_id);
         char prefix[37];
-        snprintf(prefix, TARRAY_SIZE(prefix), "?%llu.", ++serial);
+        snprintf(prefix, static_arrlen(prefix), "?%llu.", ++serial);
         tstring_append(tmp, prefix);
         tstring_append(tmp, type->user_id->str);
         break;
@@ -1825,7 +1825,7 @@ void type_init_id(struct context *ctx, struct mir_type *type)
         const bool is_union = type->data.strct.is_union;
         if (type->user_id) {
             char prefix[37];
-            snprintf(prefix, TARRAY_SIZE(prefix), "%s%llu.", is_union ? "u" : "s", ++serial);
+            snprintf(prefix, static_arrlen(prefix), "%s%llu.", is_union ? "u" : "s", ++serial);
 
             tstring_append(tmp, prefix);
             tstring_append(tmp, type->user_id->str);
@@ -1849,7 +1849,7 @@ void type_init_id(struct context *ctx, struct mir_type *type)
             TSA_FOREACH(type->data.enm.variants, variant)
             {
                 char value_str[35];
-                snprintf(value_str, TARRAY_SIZE(value_str), "%lld", variant->value);
+                snprintf(value_str, static_arrlen(value_str), "%lld", variant->value);
                 tstring_append(tmp, value_str);
                 if (i != type->data.enm.variants->size - 1) tstring_append(tmp, ",");
             }
@@ -6965,7 +6965,7 @@ struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
     TString *str_hash = get_tmpstr();
     tstring_append(str_hash, filepath);
     char str_line[10];
-    snprintf(str_line, TARRAY_SIZE(str_line), "%d", loc->call_location->line);
+    snprintf(str_line, static_arrlen(str_line), "%d", loc->call_location->line);
     tstring_append(str_hash, str_line);
     const hash_t hash = strhash(str_hash->data);
     put_tmpstr(str_hash);
@@ -10883,7 +10883,7 @@ static void _type_to_str(char *buf, usize len, const struct mir_type *type, bool
                 append_buf(buf, len, variant->id->str);
                 append_buf(buf, len, " :: ");
                 char value_str[35];
-                snprintf(value_str, TARRAY_SIZE(value_str), "%lld", variant->value);
+                snprintf(value_str, static_arrlen(value_str), "%lld", variant->value);
                 append_buf(buf, len, value_str);
                 if (i < variants->size - 1) append_buf(buf, len, ", ");
             }
@@ -10971,11 +10971,11 @@ static void provide_builtin_arch(struct context *ctx)
     struct scope           *scope    = scope_create(&ctx->assembly->arenas.scope,
                                        SCOPE_TYPE_ENUM,
                                        ctx->assembly->gscope,
-                                       TARRAY_SIZE(arch_names),
+                                       static_arrlen(arch_names),
                                        NULL);
     TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
-    static struct id        ids[TARRAY_SIZE(arch_names)];
-    for (usize i = 0; i < TARRAY_SIZE(arch_names); ++i) {
+    static struct id        ids[static_arrlen(arch_names)];
+    for (usize i = 0; i < static_arrlen(arch_names); ++i) {
         struct mir_variant *variant =
             create_variant(ctx, id_init(&ids[i], arch_names[i]), bt->t_s32, i);
         tsa_push_VariantPtr(variants, variant);
@@ -10993,11 +10993,11 @@ static void provide_builtin_os(struct context *ctx)
     struct scope           *scope    = scope_create(&ctx->assembly->arenas.scope,
                                        SCOPE_TYPE_ENUM,
                                        ctx->assembly->gscope,
-                                       TARRAY_SIZE(os_names),
+                                       static_arrlen(os_names),
                                        NULL);
     TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
-    static struct id        ids[TARRAY_SIZE(os_names)];
-    for (usize i = 0; i < TARRAY_SIZE(os_names); ++i) {
+    static struct id        ids[static_arrlen(os_names)];
+    for (usize i = 0; i < static_arrlen(os_names); ++i) {
         struct mir_variant *variant =
             create_variant(ctx, id_init(&ids[i], os_names[i]), bt->t_s32, i);
         tsa_push_VariantPtr(variants, variant);
@@ -11015,11 +11015,11 @@ static void provide_builtin_env(struct context *ctx)
     struct scope           *scope    = scope_create(&ctx->assembly->arenas.scope,
                                        SCOPE_TYPE_ENUM,
                                        ctx->assembly->gscope,
-                                       TARRAY_SIZE(env_names),
+                                       static_arrlen(env_names),
                                        NULL);
     TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
-    static struct id        ids[TARRAY_SIZE(env_names)];
-    for (usize i = 0; i < TARRAY_SIZE(env_names); ++i) {
+    static struct id        ids[static_arrlen(env_names)];
+    for (usize i = 0; i < static_arrlen(env_names); ++i) {
         struct mir_variant *variant =
             create_variant(ctx, id_init(&ids[i], env_names[i]), bt->t_s32, i);
         tsa_push_VariantPtr(variants, variant);

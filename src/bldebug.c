@@ -75,7 +75,7 @@ void print_trace(void)
     char **strings;
     usize  i;
 
-    size    = backtrace(tmp, TARRAY_SIZE(tmp));
+    size    = backtrace(tmp, static_arrlen(tmp));
     strings = backtrace_symbols(tmp, size);
 
     printf("Obtained stack trace:\n");

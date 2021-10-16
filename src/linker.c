@@ -52,7 +52,7 @@ static bool search_library(struct context *ctx,
     TString *lib_filepath                = get_tmpstr();
     char     lib_name_full[LIB_NAME_MAX] = {0};
     bool     found                       = false;
-    platform_lib_name(lib_name, lib_name_full, TARRAY_SIZE(lib_name_full));
+    platform_lib_name(lib_name, lib_name_full, static_arrlen(lib_name_full));
     builder_log("- Looking for: '%s'", lib_name_full);
     for (s64 i = 0; i < arrlen(ctx->assembly->lib_paths); ++i) {
         char *dir = ctx->assembly->lib_paths[i];
@@ -154,7 +154,7 @@ void linker_run(struct assembly *assembly)
         struct native_lib *lib = &assembly->libs[i];
         if (!link_lib(&ctx, lib)) {
             char      error_buffer[256];
-            const s32 error_len = get_last_error(error_buffer, TARRAY_SIZE(error_buffer));
+            const s32 error_len = get_last_error(error_buffer, static_arrlen(error_buffer));
             link_error(ERR_LIB_NOT_FOUND,
                        lib->linked_from,
                        BUILDER_CUR_WORD,

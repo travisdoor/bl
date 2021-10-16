@@ -198,10 +198,6 @@ bool scan_string(struct context *ctx, struct token *tok)
         }
         case '\\':
             // special character
-
-            // @INCOMPLETE: this can fail!!!
-            // @INCOMPLETE: this can fail!!!
-            // @INCOMPLETE: this can fail!!!
             c = scan_specch(*(ctx->c + 1));
             ctx->c += 2;
             len += 2;
