@@ -136,7 +136,7 @@ NEXT:
 // =================================================================================================
 void vmdbg_attach(struct virtual_machine *vm)
 {
-    BL_ASSERT(current_vm == NULL);
+    bassert(current_vm == NULL);
     current_vm = vm;
 }
 

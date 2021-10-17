@@ -71,7 +71,7 @@ struct conf_data_value *conf_data_get(conf_data_t *data, const char *key)
     TIterator it   = thtbl_find(data, hash);
     TIterator end  = thtbl_end(data);
     if (TITERATOR_EQUAL(it, end)) {
-        BL_ABORT("Missing conf entry '%s'.", key);
+        babort("Missing conf entry '%s'.", key);
     }
     return &thtbl_iter_peek_value(struct conf_data_value, it);
 }
@@ -79,13 +79,13 @@ struct conf_data_value *conf_data_get(conf_data_t *data, const char *key)
 const char *conf_data_get_str(conf_data_t *data, const char *key)
 {
     struct conf_data_value *value = conf_data_get(data, key);
-    if (value->kind != CDV_STRING) BL_ABORT("Invalid type of conf value '%s', expected is string.");
+    if (value->kind != CDV_STRING) babort("Invalid type of conf value '%s', expected is string.");
     return value->data.v_str;
 }
 
 int conf_data_get_int(conf_data_t *data, const char *key)
 {
     struct conf_data_value *value = conf_data_get(data, key);
-    if (value->kind != CDV_INT) BL_ABORT("Invalid type of conf value '%s', expected is int.");
+    if (value->kind != CDV_INT) babort("Invalid type of conf value '%s', expected is int.");
     return value->data.v_int;
 }

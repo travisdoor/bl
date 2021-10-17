@@ -206,19 +206,19 @@ static LLVMValueRef _emit_instr_compound_comptime(struct context            *ctx
 static INLINE LLVMValueRef emit_instr_compound_global(struct context            *ctx,
                                                       struct mir_instr_compound *cmp)
 {
-    BL_ASSERT(mir_is_global(&cmp->base) && "Expected global compound expression!");
-    BL_ASSERT(mir_is_comptime(&cmp->base) && "Expected compile time known compound expression!");
-    BL_ASSERT(!cmp->is_naked && "Global compound expression cannot be naked!");
+    bassert(mir_is_global(&cmp->base) && "Expected global compound expression!");
+    bassert(mir_is_comptime(&cmp->base) && "Expected compile time known compound expression!");
+    bassert(!cmp->is_naked && "Global compound expression cannot be naked!");
     return _emit_instr_compound_comptime(ctx, cmp);
 }
 
 static State emit_instr_compound_naked(struct context *ctx, struct mir_instr_compound *cmp)
 {
-    BL_ASSERT(cmp->is_naked && "Expected naked compound initializer!");
-    BL_ASSERT(cmp->tmp_var && "Missing tmp variable for naked compound instruction!");
-    BL_ASSERT(!mir_is_global(&cmp->base) && "Global compound cannot be naked!");
+    bassert(cmp->is_naked && "Expected naked compound initializer!");
+    bassert(cmp->tmp_var && "Missing tmp variable for naked compound instruction!");
+    bassert(!mir_is_global(&cmp->base) && "Global compound cannot be naked!");
     LLVMValueRef llvm_tmp = cmp->tmp_var->llvm_value;
-    BL_ASSERT(llvm_tmp && "Missing LLVM representation for compound tmp variable!");
+    bassert(llvm_tmp && "Missing LLVM representation for compound tmp variable!");
 
     emit_instr_compound(ctx, llvm_tmp, cmp);
     cmp->base.llvm_value = LLVMBuildLoad(ctx->llvm_builder, llvm_tmp, "");
@@ -227,15 +227,15 @@ static State emit_instr_compound_naked(struct context *ctx, struct mir_instr_com
 
 static INLINE void emit_DI_instr_loc(struct context *ctx, struct mir_instr *instr)
 {
-    BL_ASSERT(instr && "Invalid instruction!");
-    BL_ASSERT(instr->node && "Invalid instruction ast node!");
+    bassert(instr && "Invalid instruction!");
+    bassert(instr->node && "Invalid instruction ast node!");
     struct scope    *scope = instr->node->owner_scope;
     struct location *loc   = instr->node->location;
-    BL_ASSERT(scope && "Missing scope for DI!");
-    BL_ASSERT(loc && "Missing location for DI!");
+    bassert(scope && "Missing scope for DI!");
+    bassert(loc && "Missing location for DI!");
     LLVMMetadataRef llvm_scope =
         !scope_is_local(scope) ? DI_unit_init(ctx, loc->unit) : DI_scope_init(ctx, scope);
-    BL_ASSERT(llvm_scope && "Missing DI scope!");
+    bassert(llvm_scope && "Missing DI scope!");
     llvm_di_set_current_location(ctx->llvm_builder, (unsigned)loc->line, 0, llvm_scope, false);
 }
 
@@ -258,7 +258,7 @@ static INLINE LLVMValueRef llvm_cache_fn(struct context *ctx,
 
 static INLINE LLVMTypeRef get_type(struct context *ctx, struct mir_type *t)
 {
-    BL_ASSERT(t->llvm_type && "Invalid type reference for LLVM!");
+    bassert(t->llvm_type && "Invalid type reference for LLVM!");
     if (ctx->is_debug_mode && !t->llvm_meta) {
         DI_type_init(ctx, t);
     }
@@ -290,7 +290,7 @@ static void process_queue(struct context *ctx)
     struct mir_instr *instr;
     while (qmaybeswap(&ctx->queue)) {
         instr = qpop_front(&ctx->queue);
-        BL_ASSERT(instr);
+        bassert(instr);
         emit_instr(ctx, instr);
     }
 }
@@ -410,10 +410,10 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
 
     case MIR_TYPE_ENUM: {
         LLVMMetadataRef scope_meta, file_meta;
-        BL_ASSERT(type->data.enm.scope && "Missing enum scope!");
+        bassert(type->data.enm.scope && "Missing enum scope!");
         const struct location *location = type->data.enm.scope->location;
         scope_meta                      = DI_scope_init(ctx, type->data.enm.scope->parent);
-        BL_ASSERT(scope_meta && "Missing scope LLVM metadata!");
+        bassert(scope_meta && "Missing scope LLVM metadata!");
         if (location) {
             file_meta = DI_unit_init(ctx, location->unit);
         } else {
@@ -466,16 +466,16 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
     }
 
     default: {
-        BL_ABORT("Missing generation DI for type %d", type->kind);
+        babort("Missing generation DI for type %d", type->kind);
     }
     }
-    BL_ASSERT(type->llvm_meta);
+    bassert(type->llvm_meta);
     return type->llvm_meta;
 }
 
 LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
 {
-    BL_ASSERT(type->llvm_meta && "Incomplete DI type must have forward declaration.");
+    bassert(type->llvm_meta && "Incomplete DI type must have forward declaration.");
 
     switch (type->kind) {
     case MIR_TYPE_STRING:
@@ -483,7 +483,7 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
     case MIR_TYPE_SLICE:
     case MIR_TYPE_DYNARR:
     case MIR_TYPE_STRUCT: {
-        BL_ASSERT(type->data.strct.scope->llvm_meta && "Missing composit type fwd Di decl!!!");
+        bassert(type->data.strct.scope->llvm_meta && "Missing composit type fwd Di decl!!!");
         const bool      is_union    = type->data.strct.is_union;
         const bool      is_implicit = !type->data.strct.scope->location;
         LLVMMetadataRef llvm_file;
@@ -500,8 +500,8 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
 
         const LLVMMetadataRef llvm_scope = type->data.strct.scope->llvm_meta;
 
-        BL_ASSERT(llvm_file);
-        BL_ASSERT(llvm_scope);
+        bassert(llvm_file);
+        bassert(llvm_scope);
         const char *struct_name = "<implicit_struct>";
         if (type->user_id) {
             struct_name = type->user_id->str;
@@ -598,7 +598,7 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
     }
 
     default: {
-        BL_ABORT("Missing DI completition for type %d", type->kind);
+        babort("Missing DI completition for type %d", type->kind);
     }
     }
 
@@ -607,15 +607,15 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
 
 LLVMMetadataRef DI_scope_init(struct context *ctx, struct scope *scope)
 {
-    BL_ASSERT(scope && "Invalid scope!");
+    bassert(scope && "Invalid scope!");
     if (scope->llvm_meta) return scope->llvm_meta;
     switch (scope->kind) {
     case SCOPE_LEXICAL: {
-        BL_ASSERT(scope->location);
+        bassert(scope->location);
         LLVMMetadataRef llvm_parent_scope = DI_scope_init(ctx, scope->parent);
         LLVMMetadataRef llvm_unit         = DI_unit_init(ctx, scope->location->unit);
-        BL_ASSERT(llvm_parent_scope);
-        BL_ASSERT(llvm_unit);
+        bassert(llvm_parent_scope);
+        bassert(llvm_unit);
         scope->llvm_meta = llvm_di_create_lexical_scope(
             ctx->llvm_di_builder, llvm_parent_scope, llvm_unit, (unsigned)scope->location->line, 0);
         break;
@@ -626,9 +626,9 @@ LLVMMetadataRef DI_scope_init(struct context *ctx, struct scope *scope)
         break;
     }
     default:
-        BL_ABORT("Unsupported scope '%s' for DI generation", scope_kind_name(scope));
+        babort("Unsupported scope '%s' for DI generation", scope_kind_name(scope));
     }
-    BL_ASSERT(scope->llvm_meta);
+    bassert(scope->llvm_meta);
     return scope->llvm_meta;
 }
 
@@ -643,14 +643,14 @@ LLVMMetadataRef DI_unit_init(struct context *ctx, struct unit *unit)
 void emit_DI_fn(struct context *ctx, struct mir_fn *fn)
 {
     if (!fn->decl_node) return;
-    BL_ASSERT(fn->body_scope);
+    bassert(fn->body_scope);
     if (fn->body_scope->llvm_meta) return;
     // We use file scope for debug info even for global functions to prevent some problems with
     // DWARF generation, caused mainly by putting subprogram info into lexical scopes i.e. in case
     // local function is generated.
     struct location *location  = fn->decl_node->location;
     LLVMMetadataRef  llvm_file = DI_unit_init(ctx, location->unit);
-    BL_ASSERT(llvm_file && "Missing DI file scope data!");
+    bassert(llvm_file && "Missing DI file scope data!");
     fn->body_scope->llvm_meta = llvm_di_create_fn(ctx->llvm_di_builder,
                                                   llvm_file,
                                                   fn->id ? fn->id->str : fn->linkage_name,
@@ -664,11 +664,11 @@ void emit_DI_fn(struct context *ctx, struct mir_fn *fn)
 
 void emit_DI_var(struct context *ctx, struct mir_var *var)
 {
-    BL_ASSERT(var->decl_node && "Variable has no declaration node!");
-    BL_ASSERT(var->id && "Variable has no id!");
-    BL_ASSERT(!var->is_implicit && "Attempt to generate debug info for implicit variable!");
+    bassert(var->decl_node && "Variable has no declaration node!");
+    bassert(var->id && "Variable has no id!");
+    bassert(!var->is_implicit && "Attempt to generate debug info for implicit variable!");
     struct location *location = var->decl_node->location;
-    BL_ASSERT(location);
+    bassert(location);
     if (var->is_global) {
         LLVMMetadataRef llvm_scope = DI_unit_init(ctx, location->unit);
         LLVMMetadataRef llvm_meta =
@@ -681,13 +681,13 @@ void emit_DI_var(struct context *ctx, struct mir_var *var)
                                                       DI_type_init(ctx, var->value.type));
         llvm_global_variable_add_debug_info(var->llvm_value, llvm_meta);
     } else { // Local variable
-        BL_ASSERT(location->unit->llvm_file_meta);
+        bassert(location->unit->llvm_file_meta);
         LLVMMetadataRef llvm_scope = DI_scope_init(ctx, var->decl_scope);
         LLVMMetadataRef llvm_file  = DI_unit_init(ctx, location->unit);
 
-        BL_ASSERT(llvm_file && "Invalid DI file for variable DI!");
-        BL_ASSERT(llvm_scope && "Invalid DI scope for variable DI!");
-        BL_ASSERT(var->llvm_value);
+        bassert(llvm_file && "Invalid DI file for variable DI!");
+        bassert(llvm_scope && "Invalid DI scope for variable DI!");
+        bassert(var->llvm_value);
 
         LLVMMetadataRef llvm_meta =
             llvm_di_create_auto_variable(ctx->llvm_di_builder,
@@ -711,11 +711,11 @@ void emit_DI_var(struct context *ctx, struct mir_var *var)
 
 LLVMValueRef emit_global_var_proto(struct context *ctx, struct mir_var *var)
 {
-    BL_ASSERT(var);
+    bassert(var);
     if (var->llvm_value) return var->llvm_value;
     // Push initializer.
     struct mir_instr *instr_init = var->initializer_block;
-    BL_ASSERT(instr_init && "Missing initializer block reference for IR global variable!");
+    bassert(instr_init && "Missing initializer block reference for IR global variable!");
     qpush_back(&ctx->queue, instr_init);
     LLVMTypeRef llvm_type = var->value.type->llvm_type;
     var->llvm_value       = LLVMAddGlobal(ctx->llvm_module, llvm_type, var->linkage_name);
@@ -733,16 +733,16 @@ LLVMValueRef emit_global_var_proto(struct context *ctx, struct mir_var *var)
 
 LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule_full_generation)
 {
-    BL_ASSERT(fn);
+    bassert(fn);
     const char *linkage_name = NULL;
     if (IS_FLAG(fn->flags, FLAG_INTRINSIC)) {
         linkage_name = get_intrinsic(fn->linkage_name);
-        BL_ASSERT(linkage_name && "Unknown LLVM intrinsic!");
+        bassert(linkage_name && "Unknown LLVM intrinsic!");
     } else {
         linkage_name = fn->linkage_name;
     }
 
-    BL_ASSERT(linkage_name && "Invalid function name!");
+    bassert(linkage_name && "Invalid function name!");
     // @PERFORMANCE: Use custom hash table to resolve already generated functions, used LLVM version
     // is quite BS.
     fn->llvm_value = llvm_lookup_fn(ctx, linkage_name);
@@ -755,7 +755,7 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
     if (schedule_full_generation) {
         // Push function prototype instruction into generation queue.
         struct mir_instr *instr_fn_proto = fn->prototype;
-        BL_ASSERT(instr_fn_proto && "Missing function prototype!");
+        bassert(instr_fn_proto && "Missing function prototype!");
         qpush_back(&ctx->queue, instr_fn_proto);
     }
 
@@ -772,7 +772,7 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
     // Setup attributes for byval.
     if (IS_FLAG(fn->type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_BYVAL)) {
         TSmallArray_ArgPtr *args = fn->type->data.fn.args;
-        BL_ASSERT(args);
+        bassert(args);
         struct mir_arg *arg;
         TSA_FOREACH(args, arg)
         {
@@ -842,7 +842,7 @@ LLVMValueRef emit_const_string(struct context *ctx, const char *str, usize len)
 State emit_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref)
 {
     struct scope_entry *entry = ref->scope_entry;
-    BL_ASSERT(entry);
+    bassert(entry);
     switch (entry->kind) {
     case SCOPE_ENTRY_VAR: {
         struct mir_var *var = entry->data.var;
@@ -860,21 +860,21 @@ State emit_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref)
     default:
         BL_UNIMPLEMENTED;
     }
-    BL_ASSERT(ref->base.llvm_value);
+    bassert(ref->base.llvm_value);
     return STATE_PASSED;
 }
 
 State emit_instr_decl_direct_ref(struct context UNUSED(*ctx), struct mir_instr_decl_direct_ref *ref)
 {
-    BL_ASSERT(ref->ref && ref->ref->kind == MIR_INSTR_DECL_VAR);
+    bassert(ref->ref && ref->ref->kind == MIR_INSTR_DECL_VAR);
     struct mir_var *var = ((struct mir_instr_decl_var *)ref->ref)->var;
-    BL_ASSERT(var);
+    bassert(var);
     if (var->is_global) {
         ref->base.llvm_value = emit_global_var_proto(ctx, var);
     } else {
         ref->base.llvm_value = var->llvm_value;
     }
-    BL_ASSERT(ref->base.llvm_value);
+    bassert(ref->base.llvm_value);
     return STATE_PASSED;
 }
 
@@ -888,7 +888,7 @@ State emit_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
     for (usize i = 0; i < count; ++i) {
         value = phi->incoming_values->data[i];
         block = (struct mir_instr_block *)phi->incoming_blocks->data[i];
-        BL_ASSERT(value->llvm_value);
+        bassert(value->llvm_value);
         sarrput(&llvm_iv, value->llvm_value);
         sarrput(&llvm_ib, LLVMBasicBlockAsValue(emit_basic_block(ctx, block)));
     }
@@ -905,7 +905,7 @@ State emit_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
 State emit_instr_debugbreak(struct context *ctx, struct mir_instr_debugbreak *debug_break)
 {
     struct mir_fn *break_fn = debug_break->break_fn;
-    BL_ASSERT(break_fn);
+    bassert(break_fn);
     if (!break_fn->llvm_value) emit_fn_proto(ctx, break_fn, true);
     DI_LOCATION_SET(&debug_break->base);
     LLVMBuildCall(ctx->llvm_builder, break_fn->llvm_value, NULL, 0, "");
@@ -916,7 +916,7 @@ State emit_instr_debugbreak(struct context *ctx, struct mir_instr_debugbreak *de
 State emit_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *unreachable)
 {
     struct mir_fn *abort_fn = unreachable->abort_fn;
-    BL_ASSERT(abort_fn);
+    bassert(abort_fn);
     if (!abort_fn->llvm_value) emit_fn_proto(ctx, abort_fn, true);
     DI_LOCATION_SET(&unreachable->base);
     LLVMBuildCall(ctx->llvm_builder, abort_fn->llvm_value, NULL, 0, "");
@@ -1345,17 +1345,17 @@ void rtti_satisfy_incomplete(struct context *ctx, struct rtti_incomplete incompl
     struct mir_type *type          = incomplete.type;
     LLVMValueRef     llvm_rtti_var = incomplete.llvm_var;
 
-    BL_ASSERT(type->kind == MIR_TYPE_PTR);
+    bassert(type->kind == MIR_TYPE_PTR);
     LLVMValueRef llvm_value = rtti_emit_ptr(ctx, type);
 
-    BL_ASSERT(llvm_value);
+    bassert(llvm_value);
     LLVMSetInitializer(llvm_rtti_var, llvm_value);
 }
 
 LLVMValueRef _rtti_emit(struct context *ctx, struct mir_type *type)
 {
-    BL_ASSERT(type);
-    BL_ASSERT(assembly_has_rtti(ctx->assembly, type->id.hash));
+    bassert(type);
+    bassert(assembly_has_rtti(ctx->assembly, type->id.hash));
 
     struct mir_var *rtti_var = assembly_get_rtti(ctx->assembly, type->id.hash);
     if (rtti_var->llvm_value) {
@@ -1430,11 +1430,11 @@ LLVMValueRef _rtti_emit(struct context *ctx, struct mir_type *type)
     default: {
         char type_name[256];
         mir_type_to_str(type_name, 256, type, true);
-        BL_ABORT("Missing LLVM RTTI generation for type '%s'", type_name);
+        babort("Missing LLVM RTTI generation for type '%s'", type_name);
     }
     }
 
-    BL_ASSERT(llvm_value);
+    bassert(llvm_value);
 
     LLVMSetInitializer(llvm_rtti_var, llvm_value);
 
@@ -1451,7 +1451,7 @@ SKIP:
 
 State emit_instr_type_info(struct context *ctx, struct mir_instr_type_info *type_info)
 {
-    BL_ASSERT(type_info->rtti_type);
+    bassert(type_info->rtti_type);
     type_info->base.llvm_value = rtti_emit(ctx, type_info->rtti_type);
     return STATE_PASSED;
 }
@@ -1471,9 +1471,9 @@ struct mir_var *testing_fetch_meta(struct context *ctx)
     struct mir_var *var = ctx->assembly->testing.meta_var;
     if (!var) return NULL;
 
-    BL_ASSERT(var->value.type && var->value.type->kind == MIR_TYPE_ARRAY);
+    bassert(var->value.type && var->value.type->kind == MIR_TYPE_ARRAY);
     const s64 len = var->value.type->data.array.len;
-    BL_ASSERT(len == arrlen(ctx->assembly->testing.cases));
+    bassert(len == arrlen(ctx->assembly->testing.cases));
     if (var->llvm_value) {
         return var;
     }
@@ -1536,7 +1536,7 @@ State emit_instr_cast(struct context *ctx, struct mir_instr_cast *cast)
     LLVMValueRef llvm_src       = cast->expr->llvm_value;
     LLVMTypeRef  llvm_dest_type = get_type(ctx, cast->base.value.type);
     LLVMOpcode   llvm_op;
-    BL_ASSERT(llvm_src && llvm_dest_type);
+    bassert(llvm_src && llvm_dest_type);
 
     switch (cast->op) {
     case MIR_CAST_NONE:
@@ -1602,7 +1602,7 @@ State emit_instr_cast(struct context *ctx, struct mir_instr_cast *cast)
     }
 
     default:
-        BL_ABORT("invalid cast type");
+        babort("invalid cast type");
     }
 
     cast->base.llvm_value = LLVMBuildCast(ctx->llvm_builder, llvm_op, llvm_src, llvm_dest_type, "");
@@ -1619,22 +1619,22 @@ State emit_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof)
     } else {
         addrof->base.llvm_value = addrof->src->llvm_value;
     }
-    BL_ASSERT(addrof->base.llvm_value);
+    bassert(addrof->base.llvm_value);
     return STATE_PASSED;
 }
 
 State emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr_arg *arg_instr)
 {
-    BL_ASSERT(dest);
+    bassert(dest);
     struct mir_fn *fn = arg_instr->base.owner_block->owner_fn;
-    BL_ASSERT(fn);
+    bassert(fn);
     struct mir_type *fn_type = fn->type;
     LLVMValueRef     llvm_fn = fn->llvm_value;
-    BL_ASSERT(llvm_fn);
+    bassert(llvm_fn);
 
     struct mir_arg *arg       = fn_type->data.fn.args->data[arg_instr->i];
     LLVMValueRef    llvm_dest = dest->llvm_value;
-    BL_ASSERT(llvm_dest);
+    bassert(llvm_dest);
 
     switch (arg->llvm_easgm) {
     case LLVM_EASGM_NONE: { // Default. Arg value unchanged.
@@ -1692,7 +1692,7 @@ State emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_p
     struct mir_type *arr_type     = mir_deref_type(elem_ptr->arr_ptr->value.type);
     LLVMValueRef     llvm_arr_ptr = elem_ptr->arr_ptr->llvm_value;
     LLVMValueRef     llvm_index   = elem_ptr->index->llvm_value;
-    BL_ASSERT(llvm_arr_ptr && llvm_index);
+    bassert(llvm_arr_ptr && llvm_index);
 
     const bool is_global = mir_is_global(&elem_ptr->base);
 
@@ -1703,7 +1703,7 @@ State emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_p
         llvm_indices[1] = llvm_index;
 
         if (is_global) {
-            BL_ASSERT(LLVMIsConstant(llvm_arr_ptr) && "Expected constant!");
+            bassert(LLVMIsConstant(llvm_arr_ptr) && "Expected constant!");
             elem_ptr->base.llvm_value =
                 LLVMConstGEP(llvm_arr_ptr, llvm_indices, static_arrlen(llvm_indices));
         } else {
@@ -1720,7 +1720,7 @@ State emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_p
         // special case for slices
         llvm_arr_ptr = LLVMBuildStructGEP(ctx->llvm_builder, llvm_arr_ptr, 1, "");
         llvm_arr_ptr = LLVMBuildLoad(ctx->llvm_builder, llvm_arr_ptr, "");
-        BL_ASSERT(llvm_arr_ptr);
+        bassert(llvm_arr_ptr);
 
         LLVMValueRef llvm_indices[1];
         llvm_indices[0]           = llvm_index;
@@ -1731,7 +1731,7 @@ State emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_p
     }
 
     default:
-        BL_ABORT("Invalid elem ptr target type!");
+        babort("Invalid elem ptr target type!");
     }
     return STATE_PASSED;
 }
@@ -1739,12 +1739,12 @@ State emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_p
 State emit_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *member_ptr)
 {
     LLVMValueRef llvm_target_ptr = member_ptr->target_ptr->llvm_value;
-    BL_ASSERT(llvm_target_ptr);
+    bassert(llvm_target_ptr);
 
     if (member_ptr->builtin_id == BUILTIN_ID_NONE) {
-        BL_ASSERT(member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
+        bassert(member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
         struct mir_member *member = member_ptr->scope_entry->data.member;
-        BL_ASSERT(member);
+        bassert(member);
 
         if (member->is_parent_union) {
             // Union's member produce bitcast only.
@@ -1757,7 +1757,7 @@ State emit_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *me
                 LLVMBuildStructGEP(ctx->llvm_builder, llvm_target_ptr, index, "");
         }
 
-        BL_ASSERT(member_ptr->base.llvm_value);
+        bassert(member_ptr->base.llvm_value);
         return STATE_PASSED;
     }
 
@@ -1777,7 +1777,7 @@ State emit_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *me
 State emit_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll)
 {
     LLVMValueRef llvm_src_ptr = unroll->src->llvm_value;
-    BL_ASSERT(llvm_src_ptr);
+    bassert(llvm_src_ptr);
     const unsigned int index = (const unsigned int)unroll->index;
     unroll->base.llvm_value  = LLVMBuildStructGEP(ctx->llvm_builder, llvm_src_ptr, index, "");
     return STATE_PASSED;
@@ -1785,9 +1785,9 @@ State emit_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll)
 
 State emit_instr_load(struct context *ctx, struct mir_instr_load *load)
 {
-    BL_ASSERT(load->base.value.type && "invalid type of load instruction");
+    bassert(load->base.value.type && "invalid type of load instruction");
     LLVMValueRef llvm_src = load->src->llvm_value;
-    BL_ASSERT(llvm_src);
+    bassert(llvm_src);
 
     // Check if we deal with global constant, in such case no load is needed, LLVM
     // global
@@ -1802,7 +1802,7 @@ State emit_instr_load(struct context *ctx, struct mir_instr_load *load)
             return STATE_POSTPONE;
         }
         load->base.llvm_value = LLVMGetInitializer(llvm_src);
-        BL_ASSERT(load->base.llvm_value);
+        bassert(load->base.llvm_value);
         return STATE_PASSED;
     }
     DI_LOCATION_SET(&load->base);
@@ -1830,7 +1830,7 @@ build_call_memcpy(struct context *ctx, LLVMValueRef src, LLVMValueRef dest, cons
 static LLVMValueRef
 build_optimized_store(struct context *ctx, struct mir_instr *src, struct mir_instr *dest)
 {
-    BL_ASSERT(mir_is_pointer_type(dest->value.type));
+    bassert(mir_is_pointer_type(dest->value.type));
     LLVMValueRef llvm_src   = src->llvm_value;
     LLVMValueRef llvm_dest  = dest->llvm_value;
     const usize  size_bytes = (usize)mir_deref_type(dest->value.type)->store_size_bytes;
@@ -1849,7 +1849,7 @@ build_optimized_store(struct context *ctx, struct mir_instr *src, struct mir_ins
 State emit_instr_store(struct context *ctx, struct mir_instr_store *store)
 {
     LLVMValueRef dest = store->dest->llvm_value;
-    BL_ASSERT(dest && "Missing LLVM store destination value!");
+    bassert(dest && "Missing LLVM store destination value!");
     if (store->src->kind == MIR_INSTR_COMPOUND) {
         emit_instr_compound(ctx, dest, (struct mir_instr_compound *)store->src);
         return STATE_PASSED;
@@ -1863,7 +1863,7 @@ State emit_instr_store(struct context *ctx, struct mir_instr_store *store)
 State emit_instr_unop(struct context *ctx, struct mir_instr_unop *unop)
 {
     LLVMValueRef llvm_val = unop->expr->llvm_value;
-    BL_ASSERT(llvm_val);
+    bassert(llvm_val);
 
     LLVMTypeKind lhs_kind   = LLVMGetTypeKind(LLVMTypeOf(llvm_val));
     const bool   float_kind = lhs_kind == LLVMFloatTypeKind || lhs_kind == LLVMDoubleTypeKind;
@@ -1871,7 +1871,7 @@ State emit_instr_unop(struct context *ctx, struct mir_instr_unop *unop)
     switch (unop->op) {
     case UNOP_BIT_NOT:
     case UNOP_NOT: {
-        BL_ASSERT(!float_kind && "Invalid negation of floating point type.");
+        bassert(!float_kind && "Invalid negation of floating point type.");
         unop->base.llvm_value = LLVMBuildNot(ctx->llvm_builder, llvm_val, "");
         break;
     }
@@ -1903,8 +1903,8 @@ LLVMValueRef _emit_instr_compound_zero_initialized(struct context            *ct
                                                    struct mir_instr_compound *cmp)
 {
     struct mir_type *type = cmp->base.value.type;
-    BL_ASSERT(type);
-    BL_ASSERT(mir_is_comptime(&cmp->base) &&
+    bassert(type);
+    bassert(mir_is_comptime(&cmp->base) &&
               "Zero initialized compound expression is supposed to be compile time known!");
     if (!llvm_dest) {
         cmp->base.llvm_value = LLVMConstNull(get_type(ctx, type));
@@ -1917,7 +1917,7 @@ LLVMValueRef _emit_instr_compound_zero_initialized(struct context            *ct
         cmp->base.llvm_value = LLVMConstNull(get_type(ctx, type));
         LLVMBuildStore(ctx->llvm_builder, cmp->base.llvm_value, llvm_dest);
     } else {
-        BL_ASSERT(!mir_is_global(&cmp->base) &&
+        bassert(!mir_is_global(&cmp->base) &&
                   "Cannot use memset for global zero initialization!");
         // Use memset intrinsic for zero initialization of variable
         LLVMValueRef args[4];
@@ -1935,35 +1935,35 @@ LLVMValueRef _emit_instr_compound_zero_initialized(struct context            *ct
 
 #define EMIT_NESTED_COMPOUND_IF_NEEDED(ctx, instr)                                                 \
     if (!(instr)->llvm_value) {                                                                    \
-        BL_ASSERT((instr)->kind == MIR_INSTR_COMPOUND);                                            \
+        bassert((instr)->kind == MIR_INSTR_COMPOUND);                                            \
         _emit_instr_compound_comptime(ctx, ((struct mir_instr_compound *)instr));                  \
-        BL_ASSERT((instr)->llvm_value);                                                            \
+        bassert((instr)->llvm_value);                                                            \
     }
 
 // Generates comptime compound expression value, every nested member must be compile time known.
 LLVMValueRef _emit_instr_compound_comptime(struct context *ctx, struct mir_instr_compound *cmp)
 {
-    BL_ASSERT(mir_is_comptime(&cmp->base) && "Expected comptime known compound expression!");
+    bassert(mir_is_comptime(&cmp->base) && "Expected comptime known compound expression!");
     if (cmp->is_zero_initialized) {
         cmp->base.llvm_value = _emit_instr_compound_zero_initialized(ctx, NULL, cmp);
-        BL_ASSERT(cmp->base.llvm_value);
+        bassert(cmp->base.llvm_value);
         return cmp->base.llvm_value;
     }
 
     struct mir_type *type = cmp->base.value.type;
-    BL_ASSERT(type);
+    bassert(type);
     switch (type->kind) {
     case MIR_TYPE_ARRAY: {
         const usize len            = type->data.array.len;
         LLVMTypeRef llvm_elem_type = get_type(ctx, type->data.array.elem_type);
-        BL_ASSERT(len && llvm_elem_type);
+        bassert(len && llvm_elem_type);
         llvm_values_t     llvm_elems = SARR_ZERO;
         struct mir_instr *it;
         TSA_FOREACH(cmp->values, it)
         {
             EMIT_NESTED_COMPOUND_IF_NEEDED(ctx, it);
             LLVMValueRef llvm_elem = it->llvm_value;
-            BL_ASSERT(LLVMIsConstant(llvm_elem) && "Expected constant!");
+            bassert(LLVMIsConstant(llvm_elem) && "Expected constant!");
             sarrput(&llvm_elems, llvm_elem);
         }
         cmp->base.llvm_value =
@@ -1989,7 +1989,7 @@ LLVMValueRef _emit_instr_compound_comptime(struct context *ctx, struct mir_instr
         {
             EMIT_NESTED_COMPOUND_IF_NEEDED(ctx, it);
             LLVMValueRef llvm_member = it->llvm_value;
-            BL_ASSERT(LLVMIsConstant(llvm_member) && "Expected constant!");
+            bassert(LLVMIsConstant(llvm_member) && "Expected constant!");
             sarrput(&llvm_members, llvm_member);
         }
         cmp->base.llvm_value = LLVMConstNamedStruct(
@@ -1999,16 +1999,16 @@ LLVMValueRef _emit_instr_compound_comptime(struct context *ctx, struct mir_instr
     }
 
     default: {
-        BL_ASSERT(cmp->values->size == 1 && "Expected only one compound initializer value!");
+        bassert(cmp->values->size == 1 && "Expected only one compound initializer value!");
         struct mir_instr *it = cmp->values->data[0];
         EMIT_NESTED_COMPOUND_IF_NEEDED(ctx, it);
         LLVMValueRef llvm_value = it->llvm_value;
-        BL_ASSERT(LLVMIsConstant(llvm_value) && "Expected constant!");
+        bassert(LLVMIsConstant(llvm_value) && "Expected constant!");
         cmp->base.llvm_value = llvm_value;
     }
     }
 
-    BL_ASSERT(cmp->base.llvm_value);
+    bassert(cmp->base.llvm_value);
     return cmp->base.llvm_value;
 }
 
@@ -2016,7 +2016,7 @@ void emit_instr_compound(struct context            *ctx,
                          LLVMValueRef               llvm_dest,
                          struct mir_instr_compound *cmp)
 {
-    BL_ASSERT(llvm_dest && "Missing temp storage for compound value!");
+    bassert(llvm_dest && "Missing temp storage for compound value!");
     if (cmp->is_zero_initialized) {
         // Set tmp variable to zero.
         _emit_instr_compound_zero_initialized(ctx, llvm_dest, cmp);
@@ -2024,13 +2024,13 @@ void emit_instr_compound(struct context            *ctx,
     }
     if (mir_is_comptime(&cmp->base) && mir_is_global(&cmp->base)) {
         LLVMValueRef llvm_value = _emit_instr_compound_comptime(ctx, cmp);
-        BL_ASSERT(llvm_value);
+        bassert(llvm_value);
         LLVMBuildStore(ctx->llvm_builder, llvm_value, llvm_dest);
         return;
     }
 
     struct mir_type *type = cmp->base.value.type;
-    BL_ASSERT(type);
+    bassert(type);
 
     TSmallArray_InstrPtr *values = cmp->values;
     struct mir_instr     *value;
@@ -2056,18 +2056,18 @@ void emit_instr_compound(struct context            *ctx,
             break;
 
         default:
-            BL_ASSERT(i == 0);
+            bassert(i == 0);
             llvm_value_dest = llvm_dest;
             break;
         }
 
         if (value->kind == MIR_INSTR_COMPOUND) {
             struct mir_instr_compound *nested_cmp = (struct mir_instr_compound *)value;
-            BL_ASSERT(!nested_cmp->is_naked && "Directly nested compounds cannot be naked!");
+            bassert(!nested_cmp->is_naked && "Directly nested compounds cannot be naked!");
             emit_instr_compound(ctx, llvm_value_dest, nested_cmp);
         } else {
             llvm_value = value->llvm_value;
-            BL_ASSERT(llvm_value && "Missing LLVM value for nested compound expression member.");
+            bassert(llvm_value && "Missing LLVM value for nested compound expression member.");
             LLVMBuildStore(ctx->llvm_builder, llvm_value, llvm_value_dest);
         }
     }
@@ -2077,7 +2077,7 @@ State emit_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
 {
     LLVMValueRef lhs = binop->lhs->llvm_value;
     LLVMValueRef rhs = binop->rhs->llvm_value;
-    BL_ASSERT(lhs && rhs);
+    bassert(lhs && rhs);
 
     struct mir_type *type           = binop->lhs->value.type;
     const bool       real_type      = type->kind == MIR_TYPE_REAL;
@@ -2192,7 +2192,7 @@ State emit_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
         break;
 
     default:
-        BL_ABORT("Invalid binary operation.");
+        babort("Invalid binary operation.");
     }
     DI_LOCATION_RESET();
     return STATE_PASSED;
@@ -2220,13 +2220,13 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
     //*********************************************************************************************/
 
     struct mir_instr *callee = call->callee;
-    BL_ASSERT(callee);
-    BL_ASSERT(callee->value.type);
+    bassert(callee);
+    bassert(callee->value.type);
     struct mir_type *callee_type = callee->value.type->kind == MIR_TYPE_FN
                                        ? callee->value.type
                                        : mir_deref_type(callee->value.type);
-    BL_ASSERT(callee_type);
-    BL_ASSERT(callee_type->kind == MIR_TYPE_FN);
+    bassert(callee_type);
+    bassert(callee_type->kind == MIR_TYPE_FN);
 
     struct mir_fn *fn =
         mir_is_comptime(callee) ? MIR_CEV_READ_AS(struct mir_fn *, &callee->value) : NULL;
@@ -2343,7 +2343,7 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 
     // @Performance: LLVM API requires to set call side attributes after call is created.
     if (has_byval_arg) {
-        BL_ASSERT(has_args);
+        bassert(has_args);
         TSmallArray_ArgPtr *args = callee_type->data.fn.args;
         struct mir_arg     *arg;
         TSA_FOREACH(args, arg)
@@ -2353,7 +2353,7 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
             LLVMAttributeRef llvm_atrbt = llvm_create_attribute_type(
                 ctx->llvm_cnt, LLVM_ATTR_BYVAL, get_type(ctx, arg->type));
 
-            BL_ASSERT(llvm_atrbt && "Invalid call side attribute!");
+            bassert(llvm_atrbt && "Invalid call side attribute!");
             LLVMAddCallSiteAttribute(llvm_call, arg->llvm_index + 1, llvm_atrbt);
         }
     }
@@ -2372,13 +2372,13 @@ State emit_instr_set_initializer(struct context UNUSED(*ctx), struct mir_instr_s
         struct mir_var *var = ((struct mir_instr_decl_var *)dest)->var;
         if (var->ref_count == 0) return STATE_PASSED;
 
-        BL_ASSERT(var->llvm_value);
+        bassert(var->llvm_value);
         LLVMValueRef llvm_init_value = si->src->llvm_value;
         if (!llvm_init_value) {
-            BL_ASSERT(si->src->kind == MIR_INSTR_COMPOUND);
+            bassert(si->src->kind == MIR_INSTR_COMPOUND);
             llvm_init_value = emit_instr_compound_global(ctx, (struct mir_instr_compound *)si->src);
         }
-        BL_ASSERT(llvm_init_value);
+        bassert(llvm_init_value);
         LLVMSetInitializer(var->llvm_value, llvm_init_value);
     }
     return STATE_PASSED;
@@ -2387,7 +2387,7 @@ State emit_instr_set_initializer(struct context UNUSED(*ctx), struct mir_instr_s
 State emit_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
 {
     struct mir_var *var = decl->var;
-    BL_ASSERT(var);
+    bassert(var);
     if (var->ref_count == 0) return STATE_PASSED;
 
     // Implicit variables are not supposed to have debug info, but even non-implicit ones could have
@@ -2402,9 +2402,9 @@ State emit_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
     // Since we introduced lazy generation of IR instructions (mainly to reduce size of generated
     // binary and also to speed up compilation times) we do not generated global variables as they
     // come in global scope, but only in case they are used. (see also emit_global_var_proto).
-    BL_ASSERT(!var->is_global &&
+    bassert(!var->is_global &&
               "Global variable IR is supposed to lazy generated only as needed!");
-    BL_ASSERT(var->llvm_value);
+    bassert(var->llvm_value);
     if (decl->init) {
         // There is special handling for initialization via compound instruction
         if (decl->init->kind == MIR_INSTR_COMPOUND) {
@@ -2414,7 +2414,7 @@ State emit_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
         } else {
             // use simple store
             LLVMValueRef llvm_init = decl->init->llvm_value;
-            BL_ASSERT(llvm_init);
+            bassert(llvm_init);
             const usize size_bytes = var->value.type->store_size_bytes;
             if (false && size_bytes > STORE_MAX_SIZE_BYTES && !var->is_global) {
                 build_call_memcpy(ctx, llvm_init, var->llvm_value, size_bytes);
@@ -2430,10 +2430,10 @@ State emit_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
 State emit_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
 {
     struct mir_fn *fn = ret->base.owner_block->owner_fn;
-    BL_ASSERT(fn);
+    bassert(fn);
 
     struct mir_type *fn_type = fn->type;
-    BL_ASSERT(fn_type);
+    bassert(fn_type);
     DI_LOCATION_SET(&ret->base);
 
     if (IS_FLAG(fn_type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
@@ -2446,7 +2446,7 @@ State emit_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
 
     if (ret->value) {
         LLVMValueRef llvm_ret_value = ret->value->llvm_value;
-        BL_ASSERT(llvm_ret_value);
+        bassert(llvm_ret_value);
         ret->base.llvm_value = LLVMBuildRet(ctx->llvm_builder, llvm_ret_value);
         goto FINALIZE;
     }
@@ -2456,7 +2456,7 @@ State emit_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
 FINALIZE:
     DI_LOCATION_RESET();
     if (ctx->is_debug_mode) {
-        BL_ASSERT(fn->body_scope->llvm_meta);
+        bassert(fn->body_scope->llvm_meta);
         llvm_di_finalize_subprogram(ctx->llvm_di_builder, fn->body_scope->llvm_meta);
     }
 
@@ -2466,9 +2466,9 @@ FINALIZE:
 State emit_instr_br(struct context *ctx, struct mir_instr_br *br)
 {
     struct mir_instr_block *then_block = br->then_block;
-    BL_ASSERT(then_block);
+    bassert(then_block);
     LLVMBasicBlockRef llvm_then_block = emit_basic_block(ctx, then_block);
-    BL_ASSERT(llvm_then_block);
+    bassert(llvm_then_block);
     DI_LOCATION_SET(&br->base);
     br->base.llvm_value = LLVMBuildBr(ctx->llvm_builder, llvm_then_block);
     DI_LOCATION_RESET();
@@ -2507,7 +2507,7 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
     switch (type->kind) {
     case MIR_TYPE_ENUM: {
         type = type->data.enm.base_type;
-        BL_ASSERT(type->kind == MIR_TYPE_INT);
+        bassert(type->kind == MIR_TYPE_INT);
         const u64 i = MIR_CEV_READ_AS(u64, &c->base.value);
         llvm_value  = LLVMConstInt(llvm_type, i, type->data.integer.is_signed);
         break;
@@ -2535,7 +2535,7 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
             break;
         }
         default:
-            BL_ABORT("Unknown real type!");
+            babort("Unknown real type!");
         }
         break;
     }
@@ -2563,7 +2563,7 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
     default:
         BL_UNIMPLEMENTED;
     }
-    BL_ASSERT(llvm_value && "Incomplete const value generation!");
+    bassert(llvm_value && "Incomplete const value generation!");
     c->base.llvm_value = llvm_value;
     return STATE_PASSED;
 }
@@ -2573,7 +2573,7 @@ State emit_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br)
     struct mir_instr       *cond       = br->cond;
     struct mir_instr_block *then_block = br->then_block;
     struct mir_instr_block *else_block = br->else_block;
-    BL_ASSERT(cond && then_block);
+    bassert(cond && then_block);
     LLVMValueRef      llvm_cond       = cond->llvm_value;
     LLVMBasicBlockRef llvm_then_block = emit_basic_block(ctx, then_block);
     LLVMBasicBlockRef llvm_else_block = emit_basic_block(ctx, else_block);
@@ -2588,9 +2588,9 @@ State emit_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs)
 {
     struct mir_type      *vargs_type = vargs->base.value.type;
     TSmallArray_InstrPtr *values     = vargs->values;
-    BL_ASSERT(values);
+    bassert(values);
     const usize vargsc = values->size;
-    BL_ASSERT(vargs_type && vargs_type->kind == MIR_TYPE_VARGS);
+    bassert(vargs_type && vargs_type->kind == MIR_TYPE_VARGS);
     // Setup tmp array values.
     if (vargsc > 0) {
         struct mir_instr *value;
@@ -2602,7 +2602,7 @@ State emit_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs)
         TSA_FOREACH(values, value)
         {
             llvm_value = value->llvm_value;
-            BL_ASSERT(llvm_value);
+            bassert(llvm_value);
             llvm_indices[1] = LLVMConstInt(get_type(ctx, ctx->builtin_types->t_s64), i, true);
             llvm_value_dest = LLVMBuildGEP(ctx->llvm_builder,
                                            vargs->arr_tmp->llvm_value,
@@ -2637,7 +2637,7 @@ State emit_instr_toany(struct context *ctx, struct mir_instr_to_any *toany)
     LLVMValueRef llvm_dest      = toany->tmp->llvm_value;
     LLVMValueRef llvm_type_info = rtti_emit(ctx, toany->rtti_type);
 
-    BL_ASSERT(llvm_dest && llvm_type_info);
+    bassert(llvm_dest && llvm_type_info);
     // Setup tmp variable pointer to type info
     LLVMValueRef llvm_dest_type_info = LLVMBuildStructGEP(ctx->llvm_builder, llvm_dest, 0, "");
     LLVMBuildStore(ctx->llvm_builder, llvm_type_info, llvm_dest_type_info);
@@ -2649,7 +2649,7 @@ State emit_instr_toany(struct context *ctx, struct mir_instr_to_any *toany)
 
     if (toany->expr_tmp) {
         LLVMValueRef llvm_dest_tmp = toany->expr_tmp->llvm_value;
-        BL_ASSERT(llvm_dest_tmp && "Missing tmp variable!");
+        bassert(llvm_dest_tmp && "Missing tmp variable!");
         LLVMBuildStore(ctx->llvm_builder, toany->expr->llvm_value, llvm_dest_tmp);
         LLVMValueRef llvm_data =
             LLVMBuildPointerCast(ctx->llvm_builder, llvm_dest_tmp, llvm_dest_data_type, "");
@@ -2672,7 +2672,7 @@ State emit_instr_toany(struct context *ctx, struct mir_instr_to_any *toany)
 State emit_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc)
 {
     struct mir_var *meta_var = loc->meta_var;
-    BL_ASSERT(meta_var);
+    bassert(meta_var);
     struct mir_type *type = meta_var->value.type;
     LLVMValueRef     llvm_var =
         LLVMAddGlobal(ctx->llvm_module, get_type(ctx, type), meta_var->linkage_name);
@@ -2705,14 +2705,14 @@ State emit_instr_block(struct context *ctx, struct mir_instr_block *block)
     const bool        is_global       = fn == NULL;
     LLVMBasicBlockRef llvm_prev_block = LLVMGetInsertBlock(ctx->llvm_builder);
 
-    if (!block->terminal) BL_ABORT("Block '%s', is not terminated", block->name);
+    if (!block->terminal) babort("Block '%s', is not terminated", block->name);
 
     // Global-scope blocks does not have LLVM equivalent, we can generate just the
     // content of our block, but every instruction must be comptime constant.
     if (!is_global) {
-        BL_ASSERT(fn->llvm_value);
+        bassert(fn->llvm_value);
         LLVMBasicBlockRef llvm_block = emit_basic_block(ctx, block);
-        BL_ASSERT(llvm_block);
+        bassert(llvm_block);
 
         LLVMPositionBuilderAtEnd(ctx->llvm_builder, llvm_block);
 
@@ -2721,7 +2721,7 @@ State emit_instr_block(struct context *ctx, struct mir_instr_block *block)
             emit_allocas(ctx, fn);
         }
     } else {
-        BL_ASSERT(block->base.value.is_comptime);
+        bassert(block->base.value.is_comptime);
     }
 
     // Generate all instructions in the block.
@@ -2763,14 +2763,14 @@ void emit_incomplete(struct context *ctx)
 
 void emit_allocas(struct context *ctx, struct mir_fn *fn)
 {
-    BL_ASSERT(fn);
+    bassert(fn);
     const char *var_name;
     LLVMTypeRef var_type;
     unsigned    var_alignment;
 
     for (s64 i = 0; i < arrlen(fn->variables); ++i) {
         struct mir_var *var = fn->variables[i];
-        BL_ASSERT(var);
+        bassert(var);
         if (!var->emit_llvm) continue;
         if (var->ref_count == 0) continue;
 #if NAMED_VARS
@@ -2780,7 +2780,7 @@ void emit_allocas(struct context *ctx, struct mir_fn *fn)
 #endif
         var_type      = get_type(ctx, var->value.type);
         var_alignment = (unsigned int)var->value.type->alignment;
-        BL_ASSERT(var_type);
+        bassert(var_type);
         var->llvm_value = LLVMBuildAlloca(ctx->llvm_builder, var_type, var_name);
         LLVMSetAlignment(var->llvm_value, var_alignment);
     }
@@ -2800,7 +2800,7 @@ State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
         while (block) {
             if (IS_NOT_FLAG(block->flags, MIR_IS_UNREACHABLE)) {
                 const State s = emit_instr(ctx, block);
-                if (s != STATE_PASSED) BL_ABORT("Postpone for whole block is not supported!");
+                if (s != STATE_PASSED) babort("Postpone for whole block is not supported!");
             }
             block = block->next;
         }
@@ -2812,12 +2812,12 @@ State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
 State emit_instr(struct context *ctx, struct mir_instr *instr)
 {
     State state = STATE_PASSED;
-    BL_ASSERT(IS_FLAG(instr->flags, MIR_IS_ANALYZED) &&
+    bassert(IS_FLAG(instr->flags, MIR_IS_ANALYZED) &&
               "Attempt to emit not-analyzed instruction!");
     if (!mir_type_has_llvm_representation((instr->value.type))) return state;
     switch (instr->kind) {
     case MIR_INSTR_INVALID:
-        BL_ABORT("Invalid instruction");
+        babort("Invalid instruction");
 
     case MIR_INSTR_SIZEOF:
     case MIR_INSTR_ALIGNOF:
@@ -2929,7 +2929,7 @@ State emit_instr(struct context *ctx, struct mir_instr *instr)
         state = emit_instr_unroll(ctx, (struct mir_instr_unroll *)instr);
         break;
     default:
-        BL_ABORT("Missing emit instruction!");
+        babort("Missing emit instruction!");
     }
     if (state == STATE_PASSED) ctx->emit_instruction_count++;
     return state;
@@ -2959,7 +2959,7 @@ static void intrinsics_init(struct context *ctx)
         ctx->intrinsic_memset = llvm_get_intrinsic_decl(
             ctx->llvm_module, llvm_lookup_intrinsic_id("llvm.memset"), pt, static_arrlen(pt));
 
-        BL_ASSERT(ctx->intrinsic_memset && "Invalid memset intrinsic!");
+        bassert(ctx->intrinsic_memset && "Invalid memset intrinsic!");
     }
 
     { // memcpy
@@ -2974,7 +2974,7 @@ static void intrinsics_init(struct context *ctx)
                                     pt,
                                     static_arrlen(pt));
 
-        BL_ASSERT(ctx->intrinsic_memcpy && "Invalid memcpy intrinsic!");
+        bassert(ctx->intrinsic_memcpy && "Invalid memcpy intrinsic!");
     }
 }
 
@@ -3021,7 +3021,7 @@ static void DI_complete_types(struct context *ctx)
 // public
 void ir_run(struct assembly *assembly)
 {
-    ZONE();
+    zone();
     RUNTIME_MEASURE_BEGIN_S(llvm);
     struct context ctx;
     memset(&ctx, 0, sizeof(struct context));
@@ -3054,7 +3054,7 @@ void ir_run(struct assembly *assembly)
     if (ctx.is_debug_mode) {
         DI_complete_types(&ctx);
 
-        BL_LOG("DI finalize!");
+        blog("DI finalize!");
         llvm_di_builder_finalize(ctx.llvm_di_builder);
     }
 
@@ -3073,12 +3073,12 @@ void ir_run(struct assembly *assembly)
         DI_terminate(&ctx);
     }
 
-    BL_LOG("Generated %d instructions.", ctx.emit_instruction_count);
+    blog("Generated %d instructions.", ctx.emit_instruction_count);
     qfree(&ctx.queue);
     qfree(&ctx.incomplete_queue);
     arrfree(ctx.incomplete_rtti);
     hmfree(ctx.gstring_cache);
     hmfree(ctx.llvm_fn_cache);
     assembly->stats.llvm_s = RUNTIME_MEASURE_END_S(llvm);
-    RETURN_ZONE();
+    return_zone();
 }

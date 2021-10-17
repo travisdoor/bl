@@ -246,7 +246,7 @@ struct mir_fn {
     // Optional, this is set to first call location used for generation of this function from
     // polymorph recipe.
     struct ast *first_poly_call_node;
-    TString    *debug_poly_replacement;
+    const char *debug_poly_replacement;
 
     // function body scope if there is one (optional)
     struct scope    *body_scope;
@@ -870,7 +870,7 @@ struct mir_instr_switch {
 // public
 static INLINE bool mir_is_pointer_type(const struct mir_type *type)
 {
-    BL_ASSERT(type);
+    bassert(type);
     return type->kind == MIR_TYPE_PTR;
 }
 
@@ -899,19 +899,19 @@ static INLINE bool mir_is_composit_type(const struct mir_type *type)
 
 static INLINE struct mir_type *mir_get_struct_elem_type(const struct mir_type *type, u32 i)
 {
-    BL_ASSERT(mir_is_composit_type(type) && "Expected structure type");
+    bassert(mir_is_composit_type(type) && "Expected structure type");
     TSmallArray_MemberPtr *members = type->data.strct.members;
-    BL_ASSERT(members && members->size > i);
+    bassert(members && members->size > i);
 
     return members->data[i]->type;
 }
 
 static INLINE struct mir_type *mir_get_fn_arg_type(const struct mir_type *type, u32 i)
 {
-    BL_ASSERT(type->kind == MIR_TYPE_FN && "Expected function type");
+    bassert(type->kind == MIR_TYPE_FN && "Expected function type");
     TSmallArray_ArgPtr *args = type->data.fn.args;
     if (!args) return NULL;
-    BL_ASSERT(args->size > i);
+    bassert(args->size > i);
 
     return args->data[i]->type;
 }
@@ -937,7 +937,7 @@ static INLINE bool mir_is_global(const struct mir_instr *instr)
 
 static INLINE bool mir_type_has_llvm_representation(const struct mir_type *type)
 {
-    BL_ASSERT(type);
+    bassert(type);
     return type->kind != MIR_TYPE_TYPE && type->kind != MIR_TYPE_FN_GROUP &&
            type->kind != MIR_TYPE_NAMED_SCOPE && type->kind != MIR_TYPE_POLY;
 }

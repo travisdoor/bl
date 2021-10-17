@@ -506,7 +506,7 @@ void doc_unit(struct context *ctx, struct unit *unit)
 
 void docs_run(struct assembly *assembly)
 {
-    ZONE();
+    zone();
     struct context ctx;
     memset(&ctx, 0, sizeof(struct context));
     tstring_init(&ctx.path_tmp);
@@ -529,5 +529,5 @@ void docs_run(struct assembly *assembly)
     tstring_terminate(&ctx.section_members);
 
     builder_note("Documentation written into '%s' directory.", OUT_DIR);
-    RETURN_ZONE();
+    return_zone();
 }

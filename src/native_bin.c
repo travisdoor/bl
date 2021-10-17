@@ -86,7 +86,7 @@ void native_bin_run(struct assembly *assembly)
 #endif
 
     const char *out_dir = assembly->target->out_dir.data;
-    ZONE();
+    zone();
     if (linker(assembly) != 0) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_LIB_NOT_FOUND,
@@ -101,5 +101,5 @@ void native_bin_run(struct assembly *assembly)
         copy_user_libs(assembly);
     }
 DONE:
-    RETURN_ZONE();
+    return_zone();
 }

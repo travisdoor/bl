@@ -29,9 +29,11 @@
 #ifndef BL_COMMON_H
 #define BL_COMMON_H
 
+// clang-format off
+#include "blmemory.h"
+// clang-format on
 #include "TracyC.h"
 #include "bldebug.h"
-#include "blmemory.h"
 #include "config.h"
 #include "error.h"
 #include "math.h"
@@ -53,6 +55,7 @@ struct scope;
 // =================================================================================================
 #if BL_COMPILER_CLANG || BL_COMPILER_GNUC
 #define INLINE inline
+#define FORCEINLINE inline
 #define _SHUT_UP_BEGIN
 #define _SHUT_UP_END
 #define UNUSED(x) __attribute__((unused)) x
@@ -61,7 +64,8 @@ struct scope;
 // MSVC
 // =================================================================================================
 #elif BL_COMPILER_MSVC
-#define INLINE inline
+#define INLINE __inline
+#define FORCEINLINE __forceinline
 #define _SHUT_UP_BEGIN __pragma(warning(push, 0))
 #define _SHUT_UP_END __pragma(warning(pop))
 #define UNUSED(x) __pragma(warning(suppress : 4100)) x
@@ -142,7 +146,7 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 #define sarrpeek(A, I) (sarrdata(A)[I])
 #define sarrclear(A) ((A)->len = 0)
 #define sarrfree(A)                                                                                \
-    ((A)->_data ? bl_free((A)->_data) : (void)0, (A)->_data = NULL, (A)->len = 0, (A)->cap = 0)
+    ((A)->_data ? bfree((A)->_data) : (void)0, (A)->_data = NULL, (A)->len = 0, (A)->cap = 0)
 
 void sarradd_impl(void *ptr, s32 elem_size, s32 elem_count);
 
@@ -158,6 +162,19 @@ TSMALL_ARRAY_TYPE(CharPtr, char *, 8);
 TSMALL_ARRAY_TYPE(FnPtr, struct mir_fn *, 8);
 
 // =================================================================================================
+// String cache
+// =================================================================================================
+struct string_cache;
+
+// Allocate string inside the sting cache, passed cache pointer must be initialized to NULL for the
+// first time. The malloc is called only in case there is not enough space left for the string
+// inside the preallocated block. Internally len+1 is allocated to hold zero terminator. When 'str'
+// is NULL no data copy is done.
+char *scdup(struct string_cache **cache, const char *str, usize len);
+void  scfree(struct string_cache **cache);
+char *scprint(struct string_cache **cache, const char *fmt, ...);
+
+// =================================================================================================
 // Hashing
 // =================================================================================================
 typedef u32 hash_t;
@@ -167,7 +184,7 @@ struct id {
     hash_t      hash;
 };
 
-static INLINE hash_t strhash(const char *str)
+static FORCEINLINE hash_t strhash(const char *str)
 {
     hash_t hash = 5381;
     s32    c;
@@ -176,17 +193,17 @@ static INLINE hash_t strhash(const char *str)
     return hash;
 }
 
-static INLINE struct id *id_init(struct id *id, const char *str)
+static FORCEINLINE struct id *id_init(struct id *id, const char *str)
 {
-    BL_ASSERT(id);
+    bassert(id);
     id->hash = strhash(str);
     id->str  = str;
     return id;
 }
 
-static INLINE bool is_ignored_id(const struct id *id)
+static FORCEINLINE bool is_ignored_id(const struct id *id)
 {
-    BL_ASSERT(id);
+    bassert(id);
     return strcmp(id->str, "_") == 0;
 }
 

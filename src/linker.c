@@ -94,7 +94,7 @@ static void set_lib_paths(struct context *ctx)
                 tmp[len] = '\0';
                 if (file_exists(tmp)) {
                     char *dup = malloc(sizeof(char) * len + 1);
-                    if (!dup) BL_ABORT("Bad alloc!");
+                    if (!dup) babort("Bad alloc!");
                     memcpy(dup, begin, len);
                     dup[len] = '\0';
 
@@ -115,8 +115,8 @@ static void set_lib_paths(struct context *ctx)
 
 static bool link_lib(struct context *ctx, struct native_lib *lib)
 {
-    if (!lib) BL_ABORT("invalid lib");
-    if (!lib->user_name) BL_ABORT("invalid lib name");
+    if (!lib) babort("invalid lib");
+    if (!lib->user_name) babort("invalid lib name");
 
     if (!search_library(ctx, lib->user_name, &lib->filename, &lib->dir, &lib->filepath))
         return false;
@@ -144,7 +144,7 @@ static bool link_working_environment(struct context *ctx, const char *lib_name)
 
 void linker_run(struct assembly *assembly)
 {
-    ZONE();
+    zone();
     struct context ctx;
     ctx.assembly = assembly;
     builder_log("Running runtime linker...");
@@ -168,23 +168,23 @@ void linker_run(struct assembly *assembly)
     if (!link_working_environment(&ctx, MSVC_CRT)) {
         struct token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " MSVC_CRT);
-        RETURN_ZONE();
+        return_zone();
     }
     if (!link_working_environment(&ctx, KERNEL32)) {
         struct token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " KERNEL32);
-        RETURN_ZONE();
+        return_zone();
     }
     if (!link_working_environment(&ctx, SHLWAPI)) {
         struct token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " SHLWAPI);
-        RETURN_ZONE();
+        return_zone();
     }
 #endif
     if (!link_working_environment(&ctx, NULL)) {
         struct token *dummy = NULL;
         link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link working environment.");
-        RETURN_ZONE();
+        return_zone();
     }
-    RETURN_ZONE();
+    return_zone();
 }

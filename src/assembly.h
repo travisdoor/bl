@@ -181,7 +181,8 @@ struct assembly {
     TString custom_linker_opt;
     char  **lib_paths;
 
-    struct native_lib *libs;
+    struct native_lib   *libs;
+    struct string_cache *string_cache;
 
     struct {
         struct scope_arenas scope;
@@ -299,7 +300,7 @@ static INLINE const char *opt_to_str(enum assembly_opt opt)
     case ASSEMBLY_OPT_RELEASE_SMALL:
         return "RELEASE-SMALL";
     }
-    BL_ABORT("Invalid build mode");
+    babort("Invalid build mode");
 }
 
 // Convert opt level to LLVM.
@@ -313,7 +314,7 @@ static INLINE LLVMCodeGenOptLevel opt_to_LLVM(enum assembly_opt opt)
     case ASSEMBLY_OPT_RELEASE_SMALL:
         return LLVMCodeGenLevelDefault;
     }
-    BL_ABORT("Invalid build mode");
+    babort("Invalid build mode");
 }
 
 #endif

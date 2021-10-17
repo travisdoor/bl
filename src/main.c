@@ -28,15 +28,20 @@
 
 #include "assembly.h"
 #include "builder.h"
+#include "stb_ds.h"
 #include <locale.h>
 #include <stdio.h>
 #include <string.h>
+
+#if BL_CRTDBG_ALLOC
+#include <crtdbg.h>
+#endif
 
 static char *get_exec_dir(void)
 {
     char tmp[PATH_MAX] = {0};
     if (!get_current_exec_dir(tmp, PATH_MAX)) {
-        BL_ABORT("Cannot locate compiler executable path.");
+        babort("Cannot locate compiler executable path.");
     }
     return strdup(tmp);
 }
@@ -135,7 +140,7 @@ void print_where_is_api(FILE *stream)
 
 s32 parse_arguments(Options *opt, s32 argc, char *argv[])
 {
-    BL_ASSERT(opt->target && "Target not initialized!");
+    bassert(opt->target && "Target not initialized!");
 #define ARG(kind, action)                                                                          \
     if ((strcmp(&argv[i][1], ARGS[kind].s) == 0) || (strcmp(&argv[i][1], ARGS[kind].l) == 0)) {    \
         action;                                                                                    \
@@ -226,6 +231,7 @@ s32 parse_input_files(Options *opt, s32 argc, char *argv[])
 // =================================================================================================
 int main(s32 argc, char *argv[])
 {
+    // _crtBreakAlloc = 1782;
     // setvbuf(stdout, NULL, _IONBF, 0);
     //  =============================================================================================
 #define EXIT(_state)                                                                               \
@@ -316,7 +322,10 @@ RELEASE:
     builder_terminate();
     free(exec_dir);
     free(conf_file);
-    BL_LOG("Exit with state %d.", state);
+    blog("Exit with state %d.", state);
+#if BL_CRTDBG_ALLOC
+    _CrtDumpMemoryLeaks();
+#endif
     return state;
 #undef EXIT
 }

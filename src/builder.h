@@ -57,7 +57,6 @@ struct builder {
     const struct target          *default_target;
     char                         *exec_dir;
     char                         *lib_dir;
-    struct arena                  str_cache;
     volatile s32                  total_lines;
     s32                           errorc;
     s32                           max_error;
@@ -67,7 +66,9 @@ struct builder {
     struct target               **targets;
     TString                     **tmp_strings;
     struct threading_impl        *threading;
-    bool                          is_initialized;
+    struct string_cache          *string_cache;
+
+    bool is_initialized;
 };
 
 // struct builder global instance.
@@ -131,7 +132,7 @@ void builder_msg(enum builder_msg_type type,
                  const char           *format,
                  ...);
 
-TString *builder_create_cached_str(void);
+// This is not thread-safe!
 TString *get_tmpstr(void);
 void     put_tmpstr(TString *str);
 void     builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len);

@@ -65,7 +65,7 @@ static INLINE void tokens_consume_till(struct tokens *tokens, enum sym sym)
 
 static INLINE void tokens_consume_till2(struct tokens *tokens, s64 argc, enum sym *args)
 {
-    BL_ASSERT(argc && args);
+    bassert(argc && args);
     while (tokens_current_is_not(tokens, SYM_EOF)) {
         for (s64 i = 0; i < argc; ++i) {
             if (tokens_current_is(tokens, args[i])) return;
@@ -122,7 +122,7 @@ static INLINE bool tokens_lookahead_till(struct tokens *tokens, enum sym lookup,
 
 static INLINE bool tokens_lookahead(struct tokens *tokens, token_cmp_func_t cmp)
 {
-    BL_ASSERT(cmp);
+    bassert(cmp);
     bool                        found  = false;
     const s64                   marker = tokens->iter;
     struct token *              curr   = NULL;

@@ -33,12 +33,12 @@
 // Emit assembly file.
 void asm_writer_run(struct assembly *assembly)
 {
-    ZONE();
+    zone();
     TString             *buf    = get_tmpstr();
     const struct target *target = assembly->target;
     const char          *name   = target->name;
-    BL_LOG("out_dir = %s", target->out_dir.data);
-    BL_LOG("name = %s", name);
+    blog("out_dir = %s", target->out_dir.data);
+    blog("name = %s", name);
     tstring_setf(buf, "%s/%s.%s", target->out_dir.data, name, ASM_EXT);
     char *error_msg = NULL;
     if (LLVMTargetMachineEmitToFile(assembly->llvm.TM,
@@ -51,5 +51,5 @@ void asm_writer_run(struct assembly *assembly)
     }
     builder_note("Assembly code written into %s", buf->data);
     put_tmpstr(buf);
-    RETURN_ZONE();
+    return_zone();
 }

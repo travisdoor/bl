@@ -32,7 +32,7 @@
 
 void bc_writer_run(struct assembly *assembly)
 {
-    ZONE();
+    zone();
     TString             *export_file = get_tmpstr();
     const struct target *target      = assembly->target;
     const char          *name        = target->name;
@@ -42,7 +42,7 @@ void bc_writer_run(struct assembly *assembly)
     if (f == NULL) {
         builder_error("Cannot open file %s", export_file->data);
         put_tmpstr(export_file);
-        RETURN_ZONE();
+        return_zone();
     }
     fprintf(f, "%s\n", str);
     fclose(f);
@@ -51,5 +51,5 @@ void bc_writer_run(struct assembly *assembly)
     builder_note("Byte code written into %s", export_file->data);
 
     put_tmpstr(export_file);
-    RETURN_ZONE();
+    return_zone();
 }

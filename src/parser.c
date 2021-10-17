@@ -60,7 +60,7 @@
 #define CONSUME_TILL(tokens, ...)                                                                  \
     {                                                                                              \
         enum sym _[] = {__VA_ARGS__};                                                              \
-        tokens_consume_till2((tokens), static_arrlen(_), &_[0]);                                     \
+        tokens_consume_till2((tokens), static_arrlen(_), &_[0]);                                   \
     }
 
 enum hash_directive_flags {
@@ -89,7 +89,7 @@ struct context {
     struct scope  *current_private_scope;
     struct scope  *current_named_scope;
     struct ast    *current_docs;
-    TString       *unit_docs_tmp;
+    char          *unit_docs_tmp;
 };
 
 // helpers
@@ -103,7 +103,6 @@ static struct ast *
 parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive_flags *satisfied);
 static struct ast *parse_unrecheable(struct context *ctx);
 static struct ast *parse_debugbreak(struct context *ctx);
-static struct ast *parse_ident(struct context *ctx);
 static struct ast *parse_ident_group(struct context *ctx);
 static struct ast *parse_block(struct context *ctx, bool create_scope);
 static struct ast *parse_decl(struct context *ctx);
@@ -164,10 +163,20 @@ static struct ast *parse_expr_elem(struct context *ctx, struct ast *prev);
 static struct ast *parse_expr_compound(struct context *ctx);
 
 // impl
+#define parse_ident(ctx) (tokens_peek((ctx)->tokens)->sym == SYM_IDENT ? _parse_ident(ctx) : NULL)
+static INLINE struct ast *_parse_ident(struct context *ctx)
+{
+    zone();
+    struct token *tok_ident = tokens_consume(ctx->tokens);
+    assert(tok_ident->sym == SYM_IDENT);
+    struct ast *ident = ast_create_node(ctx->ast_arena, AST_IDENT, tok_ident, scope_get(ctx));
+    id_init(&ident->data.ident.id, tok_ident->value.str);
+    return_zone(ident);
+}
 
 static INLINE bool rq_semicolon_after_decl_entity(struct ast *node)
 {
-    BL_ASSERT(node);
+    bassert(node);
     switch (node->kind) {
     case AST_EXPR_LIT_FN:
     case AST_EXPR_LIT_FN_GROUP:
@@ -246,7 +255,7 @@ enum binop_kind sym_to_binop_kind(enum sym sm)
     case SYM_SHL:
         return BINOP_SHL;
     default:
-        BL_ABORT("unknown binop operation!!!");
+        babort("unknown binop operation!!!");
     }
 }
 
@@ -262,51 +271,61 @@ enum unop_kind sym_to_unop_kind(enum sym sm)
     case SYM_BIT_NOT:
         return UNOP_BIT_NOT;
     default:
-        BL_ABORT("unknown unop operation!!!");
+        babort("unknown unop operation!!!");
     }
 }
 
 struct ast *parse_expr_ref(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok = tokens_peek(ctx->tokens);
-    if (tok->sym != SYM_IDENT) RETURN_ZONE(NULL);
+    if (tok->sym != SYM_IDENT) return_zone(NULL);
     struct ast *ident = parse_ident(ctx);
-    BL_ASSERT(ident);
+    bassert(ident);
     struct ast *ref     = ast_create_node(ctx->ast_arena, AST_REF, tok, scope_get(ctx));
     ref->data.ref.ident = ident;
-    RETURN_ZONE(ref);
+    return_zone(ref);
 }
 
 bool parse_docs(struct context *ctx)
 {
     struct token *tok_begin = tokens_peek(ctx->tokens);
     if (token_is_not(tok_begin, SYM_DCOMMENT)) return false;
-    TString      *str = builder_create_cached_str();
-    struct token *tok;
-    while ((tok = tokens_consume_if(ctx->tokens, SYM_DCOMMENT))) {
-        if (str->len > 0) tstring_append(str, "\n");
-        tstring_append(str, tok->value.str);
+    zone();
+    const char *str = tok_begin->value.str;
+    if (tokens_peek_2nd(ctx->tokens)->sym == SYM_DCOMMENT) {
+        char         *tmp = NULL;
+        struct token *tok;
+        while ((tok = tokens_consume_if(ctx->tokens, SYM_DCOMMENT))) {
+            if (arrlen(tmp) > 0) arrput(tmp, '\n');
+            const usize len  = strlen(tok->value.str);
+            char       *dest = arraddnptr(tmp, len);
+            memcpy(dest, tok->value.str, len);
+        }
+        arrput(tmp, '\0');
+        arrput(ctx->unit->large_string_cache, tmp);
+        str = tmp;
     }
 
     struct ast *docs     = ast_create_node(ctx->ast_arena, AST_DOCS, tok_begin, scope_get(ctx));
-    docs->data.docs.text = str->data;
+    docs->data.docs.text = str;
     ctx->current_docs    = docs;
-    return true;
+    return_zone(true);
 }
 
 bool parse_unit_docs(struct context *ctx)
 {
     struct token *tok_begin = tokens_peek(ctx->tokens);
     if (token_is_not(tok_begin, SYM_DGCOMMENT)) return false;
-    if (!ctx->unit_docs_tmp) ctx->unit_docs_tmp = builder_create_cached_str();
-    TString      *str = ctx->unit_docs_tmp;
+    zone();
     struct token *tok;
     while ((tok = tokens_consume_if(ctx->tokens, SYM_DGCOMMENT))) {
-        if (str->len > 0) tstring_append(str, "\n");
-        tstring_append(str, tok->value.str);
+        if (arrlen(ctx->unit_docs_tmp) > 0) arrput(ctx->unit_docs_tmp, '\n');
+        const usize len  = strlen(tok->value.str);
+        char       *dest = arraddnptr(ctx->unit_docs_tmp, len);
+        memcpy(dest, tok->value.str, len);
     }
-    return true;
+    return_zone(true);
 }
 
 // Try to parse hash directive. List of enabled directives can be set by 'expected_mask',
@@ -314,7 +333,7 @@ bool parse_unit_docs(struct context *ctx)
 struct ast *
 parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive_flags *satisfied)
 {
-    ZONE();
+    zone();
 #define set_satisfied(_hd)                                                                         \
     {                                                                                              \
         if (satisfied) *satisfied = _hd;                                                           \
@@ -323,7 +342,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 
     set_satisfied(HD_NONE);
     struct token *tok_hash = tokens_consume_if(ctx->tokens, SYM_HASH);
-    if (!tok_hash) RETURN_ZONE(NULL);
+    if (!tok_hash) return_zone(NULL);
     // Special case for static if
     {
         struct ast *if_stmt = parse_stmt_if(ctx, true);
@@ -335,9 +354,9 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
                             if_stmt->location,
                             BUILDER_CUR_WORD,
                             "Static if is not allowed in this context.");
-                RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_hash, scope_get(ctx)));
+                return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_hash, scope_get(ctx)));
             }
-            RETURN_ZONE(if_stmt);
+            return_zone(if_stmt);
         }
     }
 
@@ -349,19 +368,19 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     const s64    index     = hmgeti(ctx->hash_directive_table, hash);
     if (index == -1) goto INVALID;
     const enum hash_directive_flags hd_flag = ctx->hash_directive_table[index].value;
-    BL_ASSERT(directive);
+    bassert(directive);
 
     if (IS_NOT_FLAG(expected_mask, hd_flag)) {
         PARSE_ERROR(
             ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
     }
     set_satisfied(hd_flag);
 
     switch (hd_flag) {
     case HD_NONE:
     case HD_STATIC_IF:
-        BL_ABORT("Invalid directive!");
+        babort("Invalid directive!");
     case HD_TEST_FN:
     case HD_BUILD_ENTRY:
     case HD_NO_INIT:
@@ -373,7 +392,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     case HD_EXPORT:
     case HD_COMPILER: {
         // only flags
-        RETURN_ZONE(NULL);
+        return_zone(NULL);
     }
 
     case HD_COMPTIME: {
@@ -382,15 +401,15 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         if (!ref) {
             struct token *tok_err = tokens_peek(ctx->tokens);
             PARSE_ERROR(ERR_INVALID_EXPR, tok_err, BUILDER_CUR_WORD, "Expected call.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
         struct ast *call = parse_expr_call(ctx, ref, true);
         if (!call) {
             struct token *tok_err = tokens_peek(ctx->tokens);
             PARSE_ERROR(ERR_INVALID_EXPR, tok_err, BUILDER_CUR_WORD, "Expected call.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
-        RETURN_ZONE(call);
+        return_zone(call);
     }
 
     case HD_ERROR: {
@@ -402,12 +421,12 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
                         tok_err,
                         BUILDER_CUR_WORD,
                         "Expected message after 'error' directive.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
         struct ast *msg = ast_create_node(ctx->ast_arena, AST_MSG, tok_directive, scope_get(ctx));
         msg->data.msg.text = tok_msg->value.str;
         msg->data.msg.kind = AST_MSG_ERROR;
-        RETURN_ZONE(msg);
+        return_zone(msg);
     }
 
     case HD_WARNING: {
@@ -419,12 +438,12 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
                         tok_err,
                         BUILDER_CUR_WORD,
                         "Expected message after 'warning' directive.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
         struct ast *msg = ast_create_node(ctx->ast_arena, AST_MSG, tok_directive, scope_get(ctx));
         msg->data.msg.text = tok_msg->value.str;
         msg->data.msg.kind = AST_MSG_WARNING;
-        RETURN_ZONE(msg);
+        return_zone(msg);
     }
 
     case HD_LOAD: {
@@ -436,7 +455,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
                         tok_err,
                         BUILDER_CUR_WORD,
                         "Expected path \"some/path\" after 'load' directive.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
 
         struct ast *load = ast_create_node(ctx->ast_arena, AST_LOAD, tok_directive, scope_get(ctx));
@@ -444,7 +463,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         if (ctx->assembly->target->kind != ASSEMBLY_DOCS) {
             assembly_add_unit_safe(ctx->assembly, load->data.load.filepath, tok_path);
         }
-        RETURN_ZONE(load);
+        return_zone(load);
     }
 
     case HD_IMPORT: {
@@ -455,7 +474,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
                         tok_err,
                         BUILDER_CUR_WORD,
                         "Expected path \"some/path\" after 'import' directive.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
         struct ast *import =
             ast_create_node(ctx->ast_arena, AST_IMPORT, tok_directive, scope_get(ctx));
@@ -464,12 +483,12 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         if (ctx->assembly->target->kind != ASSEMBLY_DOCS) {
             assembly_import_module(ctx->assembly, tok_path->value.str, tok_path);
         }
-        RETURN_ZONE(import);
+        return_zone(import);
     }
 
     case HD_ASSERT: {
         BL_TRACY_MESSAGE("HD_FLAG", "#assert");
-        BL_ASSERT(tok_directive->sym == SYM_IDENT);
+        bassert(tok_directive->sym == SYM_IDENT);
         struct ast *ident =
             ast_create_node(ctx->ast_arena, AST_IDENT, tok_directive, scope_get(ctx));
         ident->data.ident.id = *BID(STATIC_ASSERT_FN);
@@ -481,9 +500,9 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
                         tok_directive,
                         BUILDER_CUR_WORD,
                         "Static assert is supposed to be a function call '#assert(false)'.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
-        RETURN_ZONE(call);
+        return_zone(call);
     }
 
     case HD_LINK: {
@@ -494,7 +513,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
                         tok_path,
                         BUILDER_CUR_WORD,
                         "Expected path \"some/path\" after 'link' directive.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
 
         struct ast *link = ast_create_node(ctx->ast_arena, AST_LINK, tok_directive, scope_get(ctx));
@@ -506,7 +525,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
                       BUILDER_CUR_WORD,
                       "Link directive is deprecated and will be removed in next release. Please "
                       "use build system to link dependencies or module import.");
-        RETURN_ZONE(link);
+        return_zone(link);
     }
 
     case HD_FILE: {
@@ -514,12 +533,12 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         struct ast *file =
             ast_create_node(ctx->ast_arena, AST_EXPR_LIT_STRING, tok_directive, scope_get(ctx));
         file->data.expr_string.val = tok_directive->location.unit->filepath;
-        RETURN_ZONE(file);
+        return_zone(file);
     }
 
     case HD_BASE: {
         BL_TRACY_MESSAGE("HD_FLAG", "#line");
-        RETURN_ZONE(parse_type(ctx));
+        return_zone(parse_type(ctx));
     }
 
     case HD_TAGS: {
@@ -546,7 +565,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
                         BUILDER_CUR_WORD,
                         "Expected another tag after comma ','.");
 
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
 
         if (!values->size) {
@@ -554,13 +573,13 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
             PARSE_ERROR(
                 ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected tag value after #tags.");
 
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
 
         struct ast *tags = ast_create_node(ctx->ast_arena, AST_TAGS, tok_directive, scope_get(ctx));
 
         tags->data.tags.values = values;
-        RETURN_ZONE(tags);
+        return_zone(tags);
     }
 
     case HD_LINE: {
@@ -568,34 +587,34 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         struct ast *line =
             ast_create_node(ctx->ast_arena, AST_EXPR_LIT_INT, tok_directive, scope_get(ctx));
         line->data.expr_integer.val = tok_directive->location.line;
-        RETURN_ZONE(line);
+        return_zone(line);
     }
 
     case HD_CALL_LOC: {
         BL_TRACY_MESSAGE("HD_FLAG", "#call_location");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_CALL_LOC, tok_directive, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_CALL_LOC, tok_directive, scope_get(ctx)));
     }
 
     case HD_EXTERN: {
         BL_TRACY_MESSAGE("HD_FLAG", "#extern");
         // Extern flag extension could be linkage name as string
         struct token *tok_ext = tokens_consume_if(ctx->tokens, SYM_STRING);
-        if (!tok_ext) RETURN_ZONE(NULL);
+        if (!tok_ext) return_zone(NULL);
         // Parse extension token.
         struct ast *ext = ast_create_node(ctx->ast_arena, AST_IDENT, tok_ext, scope_get(ctx));
         id_init(&ext->data.ident.id, tok_ext->value.str);
-        RETURN_ZONE(ext);
+        return_zone(ext);
     }
 
     case HD_INTRINSIC: {
         BL_TRACY_MESSAGE("HD_FLAG", "#intrinsic");
         // Intrinsic flag extension could be linkage name as string
         struct token *tok_ext = tokens_consume_if(ctx->tokens, SYM_STRING);
-        if (!tok_ext) RETURN_ZONE(NULL);
+        if (!tok_ext) return_zone(NULL);
         // Parse extension token.
         struct ast *ext = ast_create_node(ctx->ast_arena, AST_IDENT, tok_ext, scope_get(ctx));
         id_init(&ext->data.ident.id, tok_ext->value.str);
-        RETURN_ZONE(ext);
+        return_zone(ext);
     }
 
     case HD_PRIVATE: {
@@ -605,7 +624,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
                         tok_directive,
                         BUILDER_CUR_WORD,
                         "Unexpected directive. File already contains private scope block.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
 
         // Here we create private scope for the current unit. (only when source file
@@ -628,7 +647,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         ctx->unit->private_scope   = scope;
         scope_set(ctx, scope);
 
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_PRIVATE, tok_directive, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_PRIVATE, tok_directive, scope_get(ctx)));
     }
     case HD_SCOPE: {
         BL_TRACY_MESSAGE("HD_FLAG", "#scope");
@@ -638,7 +657,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
                         tok_directive,
                         BUILDER_CUR_AFTER,
                         "Expected scope name after #scope directive.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
         struct ast *scope =
             ast_create_node(ctx->ast_arena, AST_SCOPE, tok_directive, scope_get(ctx));
@@ -651,9 +670,9 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         struct scope_entry *scope_entry =
             scope_lookup(scope_get(ctx), SCOPE_DEFAULT_LAYER, id, false, false, NULL);
         if (scope_entry) {
-            BL_ASSERT(scope_entry->kind == SCOPE_ENTRY_NAMED_SCOPE &&
-                      "Found scope entry is expected to be named scope!");
-            BL_ASSERT(scope_entry->data.scope && scope_entry->data.scope->kind == SCOPE_NAMED);
+            bassert(scope_entry->kind == SCOPE_ENTRY_NAMED_SCOPE &&
+                    "Found scope entry is expected to be named scope!");
+            bassert(scope_entry->data.scope && scope_entry->data.scope->kind == SCOPE_NAMED);
         } else {
             scope_entry = scope_create_entry(
                 &ctx->assembly->arenas.scope, SCOPE_ENTRY_NAMED_SCOPE, id, scope, false);
@@ -672,24 +691,24 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
                         tok_directive,
                         BUILDER_CUR_WORD,
                         "Unexpected directive. File already contains named scope block.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
-        BL_ASSERT(scope_entry->data.scope);
+        bassert(scope_entry->data.scope);
         ctx->current_named_scope = scope_entry->data.scope;
         scope_set(ctx, ctx->current_named_scope);
-        RETURN_ZONE(scope);
+        return_zone(scope);
     }
     }
 INVALID:
     PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unknown directive.");
-    RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
+    return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
 #undef set_satisfied
 }
 
 struct ast *parse_expr_compound(struct context *ctx)
 {
-    ZONE();
-    if (!tokens_is_seq(ctx->tokens, 2, SYM_LBLOCK, SYM_COLON)) RETURN_ZONE(NULL);
+    zone();
+    if (!tokens_is_seq(ctx->tokens, 2, SYM_LBLOCK, SYM_COLON)) return_zone(NULL);
     // eat {
     struct token *tok_begin = tokens_consume(ctx->tokens);
     // eat :
@@ -699,14 +718,14 @@ struct ast *parse_expr_compound(struct context *ctx)
     if (!type) {
         struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD, "Expected type.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
     // eat :
     if (!tokens_consume_if(ctx->tokens, SYM_COLON)) {
         struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD, "Expected colon after type.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
     struct ast *compound =
@@ -736,7 +755,7 @@ NEXT:
                         tok_err,
                         BUILDER_CUR_WORD,
                         "Expected expression after comma ','.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
         }
     }
 
@@ -747,16 +766,16 @@ NEXT:
                     BUILDER_CUR_WORD,
                     "Expected end of initialization list '}' or another expression "
                     "separated by comma.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
-    RETURN_ZONE(compound);
+    return_zone(compound);
 }
 
 struct ast *parse_expr_sizeof(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_SIZEOF);
-    if (!tok_begin) RETURN_ZONE(NULL);
+    if (!tok_begin) return_zone(NULL);
 
     struct token *tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_LPAREN)) {
@@ -765,7 +784,7 @@ struct ast *parse_expr_sizeof(struct context *ctx)
                     BUILDER_CUR_WORD,
                     "Expected '(' after sizeof operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
     struct ast *szof = ast_create_node(ctx->ast_arena, AST_EXPR_SIZEOF, tok_begin, scope_get(ctx));
@@ -774,7 +793,7 @@ struct ast *parse_expr_sizeof(struct context *ctx)
         struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "Expected expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     tok = tokens_consume(ctx->tokens);
@@ -782,17 +801,17 @@ struct ast *parse_expr_sizeof(struct context *ctx)
         PARSE_ERROR(
             ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Expected ')' after sizeof operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
 
-    RETURN_ZONE(szof);
+    return_zone(szof);
 }
 
 struct ast *parse_expr_type_info(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_TYPEINFO);
-    if (!tok_begin) RETURN_ZONE(NULL);
+    if (!tok_begin) return_zone(NULL);
 
     struct token *tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_LPAREN)) {
@@ -801,7 +820,7 @@ struct ast *parse_expr_type_info(struct context *ctx)
                     BUILDER_CUR_WORD,
                     "Expected '(' after typeinfo operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
     struct ast *info =
@@ -811,7 +830,7 @@ struct ast *parse_expr_type_info(struct context *ctx)
         struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "Expected expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     tok = tokens_consume(ctx->tokens);
@@ -819,17 +838,17 @@ struct ast *parse_expr_type_info(struct context *ctx)
         PARSE_ERROR(
             ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Expected ')' after typeinfo operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
 
-    RETURN_ZONE(info);
+    return_zone(info);
 }
 
 struct ast *parse_expr_test_cases(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_TESTCASES);
-    if (!tok_begin) RETURN_ZONE(NULL);
+    if (!tok_begin) return_zone(NULL);
 
     struct token *tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_LPAREN)) {
@@ -838,7 +857,7 @@ struct ast *parse_expr_test_cases(struct context *ctx)
                     BUILDER_CUR_WORD,
                     "Expected '(' after testcases operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
     struct ast *tc =
@@ -849,24 +868,24 @@ struct ast *parse_expr_test_cases(struct context *ctx)
         PARSE_ERROR(
             ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Expected ')' after testcases operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
 
-    RETURN_ZONE(tc);
+    return_zone(tc);
 }
 
 struct ast *parse_expr_alignof(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_ALIGNOF);
-    if (!tok_begin) RETURN_ZONE(NULL);
+    if (!tok_begin) return_zone(NULL);
 
     struct token *tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_LPAREN)) {
         PARSE_ERROR(
             ERR_MISSING_BRACKET, tok_begin, BUILDER_CUR_WORD, "Expected '(' after cast operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
     struct ast *alof = ast_create_node(ctx->ast_arena, AST_EXPR_ALIGNOF, tok_begin, scope_get(ctx));
@@ -875,7 +894,7 @@ struct ast *parse_expr_alignof(struct context *ctx)
         struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "Expected expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     tok = tokens_consume(ctx->tokens);
@@ -883,17 +902,17 @@ struct ast *parse_expr_alignof(struct context *ctx)
         PARSE_ERROR(
             ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Expected ')' after alignof operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
 
-    RETURN_ZONE(alof);
+    return_zone(alof);
 }
 
 struct ast *parse_expr_cast_auto(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_CAST_AUTO);
-    if (!tok_begin) RETURN_ZONE(NULL);
+    if (!tok_begin) return_zone(NULL);
 
     struct ast *cast = ast_create_node(ctx->ast_arena, AST_EXPR_CAST, tok_begin, scope_get(ctx));
     cast->data.expr_cast.auto_cast = true;
@@ -904,24 +923,24 @@ struct ast *parse_expr_cast_auto(struct context *ctx)
         PARSE_ERROR(
             ERR_EXPECTED_EXPR, tok, BUILDER_CUR_WORD, "Expected expression after auto cast.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
 
-    RETURN_ZONE(cast);
+    return_zone(cast);
 }
 
 struct ast *parse_expr_cast(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_CAST);
-    if (!tok_begin) RETURN_ZONE(NULL);
+    if (!tok_begin) return_zone(NULL);
 
     struct token *tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_LPAREN)) {
         PARSE_ERROR(
             ERR_MISSING_BRACKET, tok_begin, BUILDER_CUR_WORD, "Expected '(' after expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
     struct ast *cast = ast_create_node(ctx->ast_arena, AST_EXPR_CAST, tok_begin, scope_get(ctx));
@@ -931,7 +950,7 @@ struct ast *parse_expr_cast(struct context *ctx)
         PARSE_ERROR(
             ERR_EXPECTED_TYPE, tok_err, BUILDER_CUR_WORD, "Expected type name as cast parameter.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     tok = tokens_consume(ctx->tokens);
@@ -939,7 +958,7 @@ struct ast *parse_expr_cast(struct context *ctx)
         PARSE_ERROR(
             ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Expected ')' after cast expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
 
     cast->data.expr_cast.next = _parse_expr(ctx, token_prec(tok_begin).priority);
@@ -947,15 +966,15 @@ struct ast *parse_expr_cast(struct context *ctx)
         tok = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_EXPR, tok, BUILDER_CUR_WORD, "Expected expression after cast.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
 
-    RETURN_ZONE(cast);
+    return_zone(cast);
 }
 
 struct ast *parse_decl_member(struct context *ctx, s32 UNUSED(index))
 {
-    ZONE();
+    zone();
     struct token *tok_begin = tokens_peek(ctx->tokens);
     struct ast   *name      = NULL;
     struct ast   *type      = NULL;
@@ -971,7 +990,7 @@ struct ast *parse_decl_member(struct context *ctx, s32 UNUSED(index))
                         "Expected member name.");
             tokens_consume(ctx->tokens);
         }
-        BL_ASSERT(tokens_current_is(ctx->tokens, SYM_COLON));
+        bassert(tokens_current_is(ctx->tokens, SYM_COLON));
         tokens_consume(ctx->tokens);
         type = parse_type(ctx);
         if (!type) {
@@ -980,21 +999,21 @@ struct ast *parse_decl_member(struct context *ctx, s32 UNUSED(index))
                         name->location,
                         BUILDER_CUR_AFTER,
                         "Expected type.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
         }
     } else {
         type = parse_type(ctx);
-        if (!type) RETURN_ZONE(NULL);
+        if (!type) return_zone(NULL);
     }
 
     if (!name) {
-        BL_ASSERT(index >= 0);
-        char index_str[22];
-        sprintf(index_str, "_%d", index);
-        TString *ident_str = builder_create_cached_str();
-        tstring_append(ident_str, index_str);
-        name = ast_create_node(ctx->ast_arena, AST_IDENT, tok_begin, scope_get(ctx));
-        id_init(&name->data.ident.id, ident_str->data);
+        bassert(index >= 0);
+        char      buf[64]; // More than enough.
+        const s32 c = snprintf(buf, static_arrlen(buf), "_%d", index);
+        bassert(c >= 0 && c < static_arrlen(buf) && "Buffer overflow!");
+        char *ident = scdup(&ctx->unit->string_cache, buf, c);
+        name        = ast_create_node(ctx->ast_arena, AST_IDENT, tok_begin, scope_get(ctx));
+        id_init(&name->data.ident.id, ident);
     }
 
     enum hash_directive_flags found_hd = HD_NONE;
@@ -1004,17 +1023,17 @@ struct ast *parse_decl_member(struct context *ctx, s32 UNUSED(index))
     mem->data.decl.type = type;
     mem->data.decl.name = name;
     mem->data.decl.tags = tags;
-    RETURN_ZONE(mem);
+    return_zone(mem);
 }
 
 struct ast *parse_decl_arg(struct context *ctx, bool named)
 {
-    ZONE();
+    zone();
     struct token *tok_begin = tokens_peek(ctx->tokens);
     struct ast   *name      = NULL;
     struct ast   *type      = NULL;
     struct ast   *value     = NULL;
-    if (tokens_current_is(ctx->tokens, SYM_RPAREN)) RETURN_ZONE(NULL);
+    if (tokens_current_is(ctx->tokens, SYM_RPAREN)) return_zone(NULL);
     if (tokens_is_seq(ctx->tokens, 2, SYM_IDENT, SYM_COLON)) {
         // <name> :
         name = parse_ident(ctx);
@@ -1027,7 +1046,7 @@ struct ast *parse_decl_arg(struct context *ctx, bool named)
                     BUILDER_CUR_AFTER,
                     "Expected argument name followed by colon.");
 
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
     type = parse_type(ctx);
     // Parse optional default value expression.
@@ -1039,7 +1058,7 @@ struct ast *parse_decl_arg(struct context *ctx, bool named)
                     BUILDER_CUR_WORD,
                     "Function argument cannot be constant (this maybe shoule be possible "
                     "in future).");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
     if (tokens_consume_if(ctx->tokens, SYM_ASSIGN)) {
         value = parse_hash_directive(ctx, HD_CALL_LOC, NULL);
@@ -1051,7 +1070,7 @@ struct ast *parse_decl_arg(struct context *ctx, bool named)
                         &tok_err->location,
                         BUILDER_CUR_AFTER,
                         "Expected .");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
         }
     } else if (!type) {
         builder_msg(BUILDER_MSG_ERROR,
@@ -1059,22 +1078,22 @@ struct ast *parse_decl_arg(struct context *ctx, bool named)
                     name->location,
                     BUILDER_CUR_AFTER,
                     "Expected argument type.");
-        RETURN_ZONE(
+        return_zone(
             ast_create_node(ctx->ast_arena, AST_BAD, tokens_peek(ctx->tokens), scope_get(ctx)));
     }
     struct ast *arg = ast_create_node(ctx->ast_arena, AST_DECL_ARG, tok_begin, scope_get(ctx));
     arg->data.decl_arg.value = value;
     arg->data.decl.type      = type;
     arg->data.decl.name      = name;
-    RETURN_ZONE(arg);
+    return_zone(arg);
 }
 
 struct ast *parse_decl_variant(struct context *ctx, struct ast *prev)
 {
-    ZONE();
+    zone();
     struct token *tok_begin = tokens_peek(ctx->tokens);
     struct ast   *name      = parse_ident(ctx);
-    if (!name) RETURN_ZONE(NULL);
+    if (!name) return_zone(NULL);
     struct ast *variant =
         ast_create_node(ctx->ast_arena, AST_DECL_VARIANT, tok_begin, scope_get(ctx));
     variant->docs = pop_docs(ctx);
@@ -1089,12 +1108,12 @@ struct ast *parse_decl_variant(struct context *ctx, struct ast *prev)
                         &tok_err->location,
                         BUILDER_CUR_AFTER,
                         "Expected enumerator variant value.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
         }
         variant->data.decl_variant.value = expr;
     }
     variant->data.decl.name = name;
-    RETURN_ZONE(variant);
+    return_zone(variant);
 }
 
 bool parse_semicolon(struct context *ctx)
@@ -1143,9 +1162,9 @@ bool hash_directive_to_flags(enum hash_directive_flags hd, u32 *out_flags)
 
 struct ast *parse_stmt_return(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_RETURN);
-    if (!tok_begin) RETURN_ZONE(NULL);
+    if (!tok_begin) return_zone(NULL);
     struct ast *ret = ast_create_node(ctx->ast_arena, AST_STMT_RETURN, tok_begin, scope_get(ctx));
     ret->data.stmt_return.fn_decl = decl_get(ctx);
     tok_begin                     = tokens_peek(ctx->tokens);
@@ -1167,16 +1186,16 @@ NEXT:
         PARSE_ERROR(
             ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "Expected expression after comma ','.");
         CONSUME_TILL(ctx->tokens, SYM_SEMICOLON, SYM_RBLOCK, SYM_IDENT);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
-    RETURN_ZONE(ret);
+    return_zone(ret);
 }
 
 struct ast *parse_stmt_if(struct context *ctx, bool is_static)
 {
-    ZONE();
+    zone();
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_IF);
-    if (!tok_begin) RETURN_ZONE(NULL);
+    if (!tok_begin) return_zone(NULL);
 
     struct ast *stmt_if = ast_create_node(ctx->ast_arena, AST_STMT_IF, tok_begin, scope_get(ctx));
     stmt_if->data.stmt_if.is_static = is_static;
@@ -1187,7 +1206,7 @@ struct ast *parse_stmt_if(struct context *ctx, bool is_static)
                     tok_err,
                     BUILDER_CUR_WORD,
                     "Expected expression for the if statement.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     if (AST_IS_OK(stmt_if->data.stmt_if.test)) {
@@ -1201,7 +1220,7 @@ struct ast *parse_stmt_if(struct context *ctx, bool is_static)
                     tok_err,
                     BUILDER_CUR_WORD,
                     "Expected compound statement for true result of the if expression test.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     stmt_if->data.stmt_if.false_stmt = NULL;
@@ -1215,18 +1234,18 @@ struct ast *parse_stmt_if(struct context *ctx, bool is_static)
                         tok_err,
                         BUILDER_CUR_WORD,
                         "Expected statement for false result of the if expression test.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
         }
     }
 
-    RETURN_ZONE(stmt_if);
+    return_zone(stmt_if);
 }
 
 struct ast *parse_stmt_switch(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok_switch = tokens_consume_if(ctx->tokens, SYM_SWITCH);
-    if (!tok_switch) RETURN_ZONE(NULL);
+    if (!tok_switch) return_zone(NULL);
 
     struct ast *expr = parse_expr(ctx);
     if (!expr) {
@@ -1235,14 +1254,14 @@ struct ast *parse_stmt_switch(struct context *ctx)
                     tok_err,
                     BUILDER_CUR_WORD,
                     "Expected expression for the switch statement.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     struct token *tok = tokens_consume_if(ctx->tokens, SYM_LBLOCK);
     if (!tok) {
         struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "Expected switch body block.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     TSmallArray_AstPtr *cases        = create_sarr(TSmallArray_AstPtr, ctx->assembly);
@@ -1278,7 +1297,7 @@ NEXT:
         struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(
             ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "Expected end of switch body block.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     struct ast *stmt_switch =
@@ -1286,18 +1305,18 @@ NEXT:
 
     stmt_switch->data.stmt_switch.expr  = expr;
     stmt_switch->data.stmt_switch.cases = cases;
-    RETURN_ZONE(stmt_switch);
+    return_zone(stmt_switch);
 }
 
 struct ast *parse_stmt_case(struct context *ctx)
 {
-    ZONE();
+    zone();
     TSmallArray_AstPtr *exprs = NULL;
     struct ast         *block = NULL;
     struct ast         *expr  = NULL;
     bool                rq    = false;
 
-    if (tokens_current_is(ctx->tokens, SYM_RBLOCK)) RETURN_ZONE(NULL);
+    if (tokens_current_is(ctx->tokens, SYM_RBLOCK)) return_zone(NULL);
 
     struct token *tok_case = tokens_consume_if(ctx->tokens, SYM_DEFAULT);
     if (tok_case) goto SKIP_EXPRS;
@@ -1317,14 +1336,14 @@ NEXT:
         struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(
             ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected expression after comma.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
 SKIP_EXPRS:
     block = parse_block(ctx, true);
     if (!block && !parse_semicolon_rq(ctx)) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     } else {
         parse_semicolon(ctx);
     }
@@ -1335,7 +1354,7 @@ SKIP_EXPRS:
     stmt_case->data.stmt_case.is_default = !exprs;
     stmt_case->data.stmt_case.block      = block;
 
-    RETURN_ZONE(stmt_case);
+    return_zone(stmt_case);
 }
 
 static enum tokens_lookahead_state cmp_stmt_loop(struct token *curr)
@@ -1350,9 +1369,9 @@ static enum tokens_lookahead_state cmp_stmt_loop(struct token *curr)
 
 struct ast *parse_stmt_loop(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_LOOP);
-    if (!tok_begin) RETURN_ZONE(NULL);
+    if (!tok_begin) return_zone(NULL);
 
     // Loop statement is immediately followed by block; this should act like while (true) {} in C.
     const bool while_true = tokens_current_is(ctx->tokens, SYM_LBLOCK);
@@ -1371,12 +1390,12 @@ struct ast *parse_stmt_loop(struct context *ctx)
             // for loop construct loop [init]; [condition]; [increment] {}
             loop->data.stmt_loop.init = parse_decl(ctx);
             if (!parse_semicolon_rq(ctx)) {
-                BL_ASSERT(false);
+                bassert(false);
             }
 
             loop->data.stmt_loop.condition = parse_expr(ctx);
             if (!parse_semicolon_rq(ctx)) {
-                BL_ASSERT(false);
+                bassert(false);
             }
 
             loop->data.stmt_loop.increment = parse_expr(ctx);
@@ -1393,46 +1412,46 @@ struct ast *parse_stmt_loop(struct context *ctx)
         PARSE_ERROR(ERR_EXPECTED_BODY, tok_err, BUILDER_CUR_WORD, "Expected loop body block.");
         ctx->is_inside_loop = prev_in_loop;
         scope_pop(ctx);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     ctx->is_inside_loop = prev_in_loop;
     scope_pop(ctx);
-    RETURN_ZONE(loop);
+    return_zone(loop);
 }
 
 struct ast *parse_stmt_break(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok = tokens_consume_if(ctx->tokens, SYM_BREAK);
-    if (!tok) RETURN_ZONE(NULL);
+    if (!tok) return_zone(NULL);
 
     if (!ctx->is_inside_loop) {
         PARSE_ERROR(
             ERR_BREAK_OUTSIDE_LOOP, tok, BUILDER_CUR_WORD, "Break statement outside a loop.");
     }
-    RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_STMT_BREAK, tok, scope_get(ctx)));
+    return_zone(ast_create_node(ctx->ast_arena, AST_STMT_BREAK, tok, scope_get(ctx)));
 }
 
 struct ast *parse_stmt_continue(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok = tokens_consume_if(ctx->tokens, SYM_CONTINUE);
-    if (!tok) RETURN_ZONE(NULL);
+    if (!tok) return_zone(NULL);
 
     if (!ctx->is_inside_loop) {
         PARSE_ERROR(
             ERR_CONTINUE_OUTSIDE_LOOP, tok, BUILDER_CUR_WORD, "Continue statement outside a loop.");
     }
 
-    RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_STMT_CONTINUE, tok, scope_get(ctx)));
+    return_zone(ast_create_node(ctx->ast_arena, AST_STMT_CONTINUE, tok, scope_get(ctx)));
 }
 
 struct ast *parse_stmt_defer(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok = tokens_consume_if(ctx->tokens, SYM_DEFER);
-    if (!tok) RETURN_ZONE(NULL);
+    if (!tok) return_zone(NULL);
 
     struct ast *expr = NULL;
     expr             = parse_expr(ctx);
@@ -1444,13 +1463,13 @@ struct ast *parse_stmt_defer(struct context *ctx)
                     "Expected expression after 'defer' statement.");
 
         struct token *tok_err = tokens_peek(ctx->tokens);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     struct ast *defer = ast_create_node(ctx->ast_arena, AST_STMT_DEFER, tok, scope_get(ctx));
     defer->data.stmt_defer.expr = expr;
 
-    RETURN_ZONE(defer);
+    return_zone(defer);
 }
 
 struct ast *parse_expr(struct context *ctx)
@@ -1460,7 +1479,7 @@ struct ast *parse_expr(struct context *ctx)
 
 struct ast *_parse_expr(struct context *ctx, s32 p)
 {
-    ZONE();
+    zone();
     struct ast *lhs = parse_expr_atom(ctx);
     struct ast *tmp = NULL;
     do {
@@ -1481,7 +1500,7 @@ struct ast *_parse_expr(struct context *ctx, s32 p)
         }
         lhs = parse_expr_binary(ctx, lhs, rhs, op);
     }
-    RETURN_ZONE(lhs);
+    return_zone(lhs);
 }
 
 struct ast *parse_expr_primary(struct context *ctx)
@@ -1516,9 +1535,9 @@ struct ast *parse_expr_primary(struct context *ctx)
 
 struct ast *parse_expr_unary(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *op = tokens_peek(ctx->tokens);
-    if (!token_is_unary(op)) RETURN_ZONE(NULL);
+    if (!token_is_unary(op)) return_zone(NULL);
 
     tokens_consume(ctx->tokens);
     struct ast *unary = ast_create_node(ctx->ast_arena, AST_EXPR_UNARY, op, scope_get(ctx));
@@ -1532,12 +1551,12 @@ struct ast *parse_expr_unary(struct context *ctx)
                     BUILDER_CUR_WORD,
                     "Expected expression after unary operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, op, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, op, scope_get(ctx)));
     }
 
-    if (unary->data.expr_unary.next->kind == AST_BAD) RETURN_ZONE(unary->data.expr_unary.next);
+    if (unary->data.expr_unary.next->kind == AST_BAD) return_zone(unary->data.expr_unary.next);
 
-    RETURN_ZONE(unary);
+    return_zone(unary);
 }
 
 struct ast *parse_expr_atom(struct context *ctx)
@@ -1580,21 +1599,21 @@ struct ast *parse_expr_atom(struct context *ctx)
 struct ast *
 parse_expr_binary(struct context *ctx, struct ast *lhs, struct ast *rhs, struct token *op)
 {
-    ZONE();
-    if (!token_is_binop(op)) RETURN_ZONE(NULL);
+    zone();
+    if (!token_is_binop(op)) return_zone(NULL);
 
     struct ast *binop = ast_create_node(ctx->ast_arena, AST_EXPR_BINOP, op, scope_get(ctx));
     binop->data.expr_binop.kind = sym_to_binop_kind(op->sym);
     binop->data.expr_binop.lhs  = lhs;
     binop->data.expr_binop.rhs  = rhs;
-    RETURN_ZONE(binop);
+    return_zone(binop);
 }
 
 struct ast *parse_expr_addrof(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok = tokens_consume_if(ctx->tokens, SYM_AND);
-    if (!tok) RETURN_ZONE(NULL);
+    if (!tok) return_zone(NULL);
 
     struct ast *addrof = ast_create_node(ctx->ast_arena, AST_EXPR_ADDROF, tok, scope_get(ctx));
     addrof->data.expr_addrof.next = _parse_expr(ctx, token_prec(tok).priority);
@@ -1606,18 +1625,18 @@ struct ast *parse_expr_addrof(struct context *ctx)
                     BUILDER_CUR_WORD,
                     "Expected expression after '&' operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
 
-    if (addrof->data.expr_addrof.next->kind == AST_BAD) RETURN_ZONE(addrof->data.expr_addrof.next);
-    RETURN_ZONE(addrof);
+    if (addrof->data.expr_addrof.next->kind == AST_BAD) return_zone(addrof->data.expr_addrof.next);
+    return_zone(addrof);
 }
 
 struct ast *parse_expr_deref(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok = tokens_consume_if(ctx->tokens, SYM_AT);
-    if (!tok) RETURN_ZONE(NULL);
+    if (!tok) return_zone(NULL);
 
     struct ast *deref = ast_create_node(ctx->ast_arena, AST_EXPR_DEREF, tok, scope_get(ctx));
     deref->data.expr_deref.next = _parse_expr(ctx, token_prec(tok).priority);
@@ -1629,16 +1648,16 @@ struct ast *parse_expr_deref(struct context *ctx)
                     BUILDER_CUR_WORD,
                     "Expected expression after '@' pointer dereference operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
 
-    if (deref->data.expr_deref.next->kind == AST_BAD) RETURN_ZONE(deref->data.expr_deref.next);
-    RETURN_ZONE(deref);
+    if (deref->data.expr_deref.next->kind == AST_BAD) return_zone(deref->data.expr_deref.next);
+    return_zone(deref);
 }
 
 struct ast *parse_expr_lit(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok = tokens_peek(ctx->tokens);
     struct ast   *lit = NULL;
 
@@ -1681,36 +1700,40 @@ struct ast *parse_expr_lit(struct context *ctx)
         // There is special case for string literals, those can be split into multiple lines and we
         // should handle such situation here, so some pre-scan is needed.
         lit = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_STRING, tok, scope_get(ctx));
-        const char   *str      = tok->value.str;
+        char         *tmp      = NULL;
         struct token *tok_next = tokens_peek_2nd(ctx->tokens);
         if (tok_next->sym == SYM_STRING) {
-            TString *tmp = builder_create_cached_str();
             while ((tok = tokens_consume_if(ctx->tokens, SYM_STRING))) {
-                BL_ASSERT(tok->value.str);
-                tstring_append(tmp, tok->value.str);
+                bassert(tok->value.str);
+                const usize len  = strlen(tok->value.str);
+                char       *dest = arraddnptr(tmp, len);
+                memcpy(dest, tok->value.str, len);
             }
-            str = tmp->data;
+            arrput(tmp, '\0'); // !!!
+            // Store into unit's cache to be freed later.
+            arrput(ctx->unit->large_string_cache, tmp);
         } else {
             tokens_consume(ctx->tokens);
+            tmp = (char *)tok->value.str;
         }
-        BL_ASSERT(str);
-        lit->data.expr_string.val = str;
+        bassert(tmp);
+        lit->data.expr_string.val = tmp;
         // Directly return, all tokens were consumed.
-        RETURN_ZONE(lit);
+        return_zone(lit);
     }
 
     default:
-        RETURN_ZONE(NULL);
+        return_zone(NULL);
     }
 
     tokens_consume(ctx->tokens);
-    RETURN_ZONE(lit);
+    return_zone(lit);
 }
 
 struct ast *parse_expr_lit_fn(struct context *ctx)
 {
-    ZONE();
-    if (!tokens_is_seq(ctx->tokens, 2, SYM_FN, SYM_LPAREN)) RETURN_ZONE(NULL);
+    zone();
+    if (!tokens_is_seq(ctx->tokens, 2, SYM_FN, SYM_LPAREN)) return_zone(NULL);
     struct token *tok_fn = tokens_peek(ctx->tokens);
     struct ast   *fn     = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_FN, tok_fn, scope_get(ctx));
 
@@ -1725,7 +1748,7 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
     scope_push(ctx, scope);
 
     struct ast *type = parse_type_fn(ctx, true);
-    BL_ASSERT(type);
+    bassert(type);
     fn->data.expr_fn.type = type;
     // parse flags
     struct ast *curr_decl = decl_get(ctx);
@@ -1739,9 +1762,8 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
             if (!hash_directive_to_flags(found, &flags)) break;
             if ((found == HD_EXTERN || found == HD_INTRINSIC) && hd_extension) {
                 // Use extern flag extension on function declaration.
-                BL_ASSERT(hd_extension->kind == AST_IDENT &&
-                          "Expected ident as #extern extension.");
-                BL_ASSERT(curr_decl->data.decl_entity.explicit_linkage_name == NULL);
+                bassert(hd_extension->kind == AST_IDENT && "Expected ident as #extern extension.");
+                bassert(curr_decl->data.decl_entity.explicit_linkage_name == NULL);
                 curr_decl->data.decl_entity.explicit_linkage_name = hd_extension;
             }
             accepted &= ~found;
@@ -1753,13 +1775,13 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
     fn->data.expr_fn.block = parse_block(ctx, false);
 
     scope_pop(ctx);
-    RETURN_ZONE(fn);
+    return_zone(fn);
 }
 
 struct ast *parse_expr_lit_fn_group(struct context *ctx)
 {
-    ZONE();
-    if (!tokens_is_seq(ctx->tokens, 2, SYM_FN, SYM_LBLOCK)) RETURN_ZONE(NULL);
+    zone();
+    if (!tokens_is_seq(ctx->tokens, 2, SYM_FN, SYM_LBLOCK)) return_zone(NULL);
     struct token *tok_group = tokens_consume(ctx->tokens); // eat fn
     struct token *tok_begin = tokens_consume(ctx->tokens); // eat {
     struct ast   *group =
@@ -1779,17 +1801,17 @@ NEXT:
         tok = tokens_peek_prev(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_BODY_END, tok, BUILDER_CUR_AFTER, "Expected end of block '}'.");
         PARSE_NOTE(tok_begin, BUILDER_CUR_WORD, "Block starting here.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
-    RETURN_ZONE(group);
+    return_zone(group);
 }
 
 struct ast *parse_expr_nested(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct ast   *expr      = NULL;
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_LPAREN);
-    if (!tok_begin) RETURN_ZONE(NULL);
+    if (!tok_begin) return_zone(NULL);
 
     expr = parse_expr(ctx);
     if (expr == NULL) {
@@ -1805,18 +1827,18 @@ struct ast *parse_expr_nested(struct context *ctx)
                     BUILDER_CUR_WORD,
                     "Unterminated sub-expression, missing ')'.");
         PARSE_NOTE(tok_begin, BUILDER_CUR_WORD, "starting here");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
-    RETURN_ZONE(expr);
+    return_zone(expr);
 }
 
 struct ast *parse_expr_elem(struct context *ctx, struct ast *prev)
 {
-    ZONE();
-    if (!prev) RETURN_ZONE(NULL);
+    zone();
+    if (!prev) return_zone(NULL);
     struct token *tok_elem = tokens_consume_if(ctx->tokens, SYM_LBRACKET);
-    if (!tok_elem) RETURN_ZONE(NULL);
+    if (!tok_elem) return_zone(NULL);
 
     struct ast *elem = ast_create_node(ctx->ast_arena, AST_EXPR_ELEM, tok_elem, scope_get(ctx));
     elem->data.expr_elem.index = parse_expr(ctx);
@@ -1832,22 +1854,12 @@ struct ast *parse_expr_elem(struct context *ctx, struct ast *prev)
         PARSE_ERROR(ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Missing bracket ']'.");
     }
 
-    RETURN_ZONE(elem);
-}
-
-INLINE struct ast *parse_ident(struct context *ctx)
-{
-    ZONE();
-    struct token *tok_ident = tokens_consume_if(ctx->tokens, SYM_IDENT);
-    if (!tok_ident) RETURN_ZONE(NULL);
-    struct ast *ident = ast_create_node(ctx->ast_arena, AST_IDENT, tok_ident, scope_get(ctx));
-    id_init(&ident->data.ident.id, tok_ident->value.str);
-    RETURN_ZONE(ident);
+    return_zone(elem);
 }
 
 struct ast *parse_ident_group(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct ast *root = NULL;
     struct ast *prev = NULL;
     bool        rq   = false;
@@ -1866,16 +1878,16 @@ NEXT:
         struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected name after comma ','.");
         CONSUME_TILL(ctx->tokens, SYM_COLON, SYM_SEMICOLON, SYM_IDENT);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
-    RETURN_ZONE(root);
+    return_zone(root);
 }
 
 struct ast *parse_type_ptr(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_ASTERISK);
-    if (!tok_begin) RETURN_ZONE(NULL);
+    if (!tok_begin) return_zone(NULL);
 
     struct ast *ptr      = ast_create_node(ctx->ast_arena, AST_TYPE_PTR, tok_begin, scope_get(ctx));
     struct ast *sub_type = parse_type(ctx);
@@ -1886,28 +1898,28 @@ struct ast *parse_type_ptr(struct context *ctx)
                     BUILDER_CUR_WORD,
                     "Expected type after '*' pointer type declaration.");
         CONSUME_TILL(ctx->tokens, SYM_COLON, SYM_SEMICOLON, SYM_IDENT);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
     ptr->data.type_ptr.type = sub_type;
-    RETURN_ZONE(ptr);
+    return_zone(ptr);
 }
 
 struct ast *parse_type_vargs(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_VARGS);
-    if (!tok_begin) RETURN_ZONE(NULL);
+    if (!tok_begin) return_zone(NULL);
 
     struct ast *ptr = ast_create_node(ctx->ast_arena, AST_TYPE_VARGS, tok_begin, scope_get(ctx));
     ptr->data.type_ptr.type = parse_type(ctx);
-    RETURN_ZONE(ptr);
+    return_zone(ptr);
 }
 
 struct ast *parse_type_enum(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok_enum = tokens_consume_if(ctx->tokens, SYM_ENUM);
-    if (!tok_enum) RETURN_ZONE(NULL);
+    if (!tok_enum) return_zone(NULL);
 
     struct ast *enm = ast_create_node(ctx->ast_arena, AST_TYPE_ENUM, tok_enum, scope_get(ctx));
     enm->data.type_enm.variants = create_sarr(TSmallArray_AstPtr, ctx->assembly);
@@ -1933,7 +1945,7 @@ struct ast *parse_type_enum(struct context *ctx)
     struct token *tok = tokens_consume(ctx->tokens);
     if (token_is_not(tok, SYM_LBLOCK)) {
         PARSE_ERROR(ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Expected enum variant list.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
 
     struct scope *scope =
@@ -1963,7 +1975,7 @@ NEXT:
             PARSE_ERROR(
                 ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected variant after semicolon.");
             scope_pop(ctx);
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
         }
     }
 
@@ -1975,19 +1987,19 @@ NEXT:
                     "Expected end of variant list '}' or another variant separated by semicolon.");
         scope_pop(ctx);
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
 
     scope_pop(ctx);
-    RETURN_ZONE(enm);
+    return_zone(enm);
 }
 
 struct ast *parse_ref(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok   = tokens_peek(ctx->tokens);
     struct ast   *ident = parse_ident(ctx);
-    if (!ident) RETURN_ZONE(NULL);
+    if (!ident) return_zone(NULL);
     struct ast *lhs     = ast_create_node(ctx->ast_arena, AST_REF, tok, scope_get(ctx));
     lhs->data.ref.ident = ident;
     struct ast *tmp     = NULL;
@@ -1995,34 +2007,34 @@ struct ast *parse_ref(struct context *ctx)
         tmp = parse_ref_nested(ctx, lhs);
         lhs = tmp ? tmp : lhs;
     } while (tmp);
-    RETURN_ZONE(lhs);
+    return_zone(lhs);
 }
 
 struct ast *parse_ref_nested(struct context *ctx, struct ast *prev)
 {
-    ZONE();
-    if (!prev) RETURN_ZONE(NULL);
+    zone();
+    if (!prev) return_zone(NULL);
     struct token *tok = tokens_consume_if(ctx->tokens, SYM_DOT);
-    if (!tok) RETURN_ZONE(NULL);
+    if (!tok) return_zone(NULL);
 
     struct ast *ident = parse_ident(ctx);
     if (!ident) {
         struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected name.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
 
     struct ast *ref     = ast_create_node(ctx->ast_arena, AST_REF, tok, scope_get(ctx));
     ref->data.ref.ident = ident;
     ref->data.ref.next  = prev;
-    RETURN_ZONE(ref);
+    return_zone(ref);
 }
 
 static INLINE void set_polymorph(struct context *ctx)
 {
     for (usize i = arrlenu(ctx->fn_type_stack); i-- > 0;) {
         struct ast *fn_type = ctx->fn_type_stack[i];
-        BL_ASSERT(fn_type && fn_type->kind == AST_TYPE_FN);
+        bassert(fn_type && fn_type->kind == AST_TYPE_FN);
         if (fn_type->data.type_fn.is_polymorph) return;
         fn_type->data.type_fn.is_polymorph = true;
     }
@@ -2030,9 +2042,9 @@ static INLINE void set_polymorph(struct context *ctx)
 
 struct ast *parse_type_polymorph(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_QUESTION);
-    if (!tok_begin) RETURN_ZONE(NULL);
+    if (!tok_begin) return_zone(NULL);
 
     if (!arrlenu(ctx->fn_type_stack)) {
         PARSE_ERROR(ERR_INVALID_ARG_TYPE,
@@ -2040,7 +2052,7 @@ struct ast *parse_type_polymorph(struct context *ctx)
                     BUILDER_CUR_WORD,
                     "Polymorph type can be specified only in function argument list.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
     set_polymorph(ctx);
     struct ast *ident = parse_ident(ctx);
@@ -2049,18 +2061,18 @@ struct ast *parse_type_polymorph(struct context *ctx)
         PARSE_ERROR(
             ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected name of polymorph type.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
     struct ast *poly = ast_create_node(ctx->ast_arena, AST_TYPE_POLY, tok_begin, scope_get(ctx));
     poly->data.type_poly.ident = ident;
-    RETURN_ZONE(poly);
+    return_zone(poly);
 }
 
 struct ast *parse_type_arr(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_LBRACKET);
-    if (!tok_begin) RETURN_ZONE(NULL);
+    if (!tok_begin) return_zone(NULL);
 
     struct ast *arr = ast_create_node(ctx->ast_arena, AST_TYPE_ARR, tok_begin, scope_get(ctx));
     arr->data.type_arr.len = parse_expr(ctx);
@@ -2069,7 +2081,7 @@ struct ast *parse_type_arr(struct context *ctx)
         PARSE_ERROR(
             ERR_EXPECTED_EXPR, tok_err, BUILDER_CUR_WORD, "Expected array size expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
     struct token *tok_end = tokens_consume_if(ctx->tokens, SYM_RBRACKET);
@@ -2081,24 +2093,24 @@ struct ast *parse_type_arr(struct context *ctx)
                     "Expected closing ']' after array size expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
 
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
     arr->data.type_arr.elem_type = parse_type(ctx);
     if (!arr->data.type_arr.elem_type) {
         struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_INVALID_TYPE, tok_err, BUILDER_CUR_WORD, "Expected array element type.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
-    RETURN_ZONE(arr);
+    return_zone(arr);
 }
 
 struct ast *parse_type_slice(struct context *ctx)
 {
-    ZONE();
-    if (tokens_peek(ctx->tokens)->sym != SYM_LBRACKET) RETURN_ZONE(NULL);
-    if (tokens_peek_2nd(ctx->tokens)->sym != SYM_RBRACKET) RETURN_ZONE(NULL);
+    zone();
+    if (tokens_peek(ctx->tokens)->sym != SYM_LBRACKET) return_zone(NULL);
+    if (tokens_peek_2nd(ctx->tokens)->sym != SYM_RBRACKET) return_zone(NULL);
 
     // eat []
     struct token *tok_begin = tokens_consume(ctx->tokens);
@@ -2110,17 +2122,17 @@ struct ast *parse_type_slice(struct context *ctx)
 
     if (!slice->data.type_slice.elem_type) {
         PARSE_ERROR(ERR_INVALID_TYPE, tok_begin, BUILDER_CUR_AFTER, "Expected slice element type.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
-    RETURN_ZONE(slice);
+    return_zone(slice);
 }
 
 struct ast *parse_type_dynarr(struct context *ctx)
 {
-    ZONE();
-    if (tokens_peek(ctx->tokens)->sym != SYM_LBRACKET) RETURN_ZONE(NULL);
-    if (tokens_peek_2nd(ctx->tokens)->sym != SYM_DYNARR) RETURN_ZONE(NULL);
+    zone();
+    if (tokens_peek(ctx->tokens)->sym != SYM_LBRACKET) return_zone(NULL);
+    if (tokens_peek_2nd(ctx->tokens)->sym != SYM_DYNARR) return_zone(NULL);
 
     // eat [..
     struct token *tok_begin = tokens_consume(ctx->tokens);
@@ -2135,7 +2147,7 @@ struct ast *parse_type_dynarr(struct context *ctx)
                     "Expected closing ']' after dynamic array signature.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
 
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
     struct ast *slice = ast_create_node(ctx->ast_arena, AST_TYPE_DYNARR, tok_begin, scope_get(ctx));
@@ -2145,10 +2157,10 @@ struct ast *parse_type_dynarr(struct context *ctx)
         PARSE_ERROR(
             ERR_INVALID_TYPE, tok_end, BUILDER_CUR_AFTER, "Expected dynami array element type.");
 
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
-    RETURN_ZONE(slice);
+    return_zone(slice);
 }
 
 struct ast *parse_type(struct context *ctx)
@@ -2179,7 +2191,7 @@ struct ast *parse_type(struct context *ctx)
 
 struct ast *parse_type_fn_return(struct context *ctx)
 {
-    ZONE();
+    zone();
     if (tokens_current_is(ctx->tokens, SYM_LPAREN)) {
         // multiple return type ( T1, T2 )
         // eat (
@@ -2209,7 +2221,7 @@ struct ast *parse_type_fn_return(struct context *ctx)
                         BUILDER_CUR_WORD,
                         "Expected end of return list or another return type separated by comma.");
             scope_pop(ctx);
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
         }
         scope_pop(ctx);
         if (!type_struct->data.type_strct.members->size) {
@@ -2219,22 +2231,22 @@ struct ast *parse_type_fn_return(struct context *ctx)
                         "Expected at least one return type inside parenthesis, if function should "
                         "return 'void' remove parenthesis and leave return type unspecified.");
         }
-        RETURN_ZONE(type_struct);
+        return_zone(type_struct);
     }
-    RETURN_ZONE(parse_type(ctx));
+    return_zone(parse_type(ctx));
 }
 
 struct ast *parse_type_fn(struct context *ctx, bool named_args)
 {
-    ZONE();
+    zone();
     struct token *tok_fn = tokens_consume_if(ctx->tokens, SYM_FN);
-    if (!tok_fn) RETURN_ZONE(NULL);
+    if (!tok_fn) return_zone(NULL);
 
     struct token *tok = tokens_consume(ctx->tokens);
     if (tok->sym != SYM_LPAREN) {
         PARSE_ERROR(
             ERR_MISSING_BRACKET, tok, BUILDER_CUR_WORD, "Expected function parameter list.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_fn, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_fn, scope_get(ctx)));
     }
     struct ast *fn = ast_create_node(ctx->ast_arena, AST_TYPE_FN, tok_fn, scope_get(ctx));
     // parse arg types
@@ -2257,7 +2269,7 @@ NEXT:
             PARSE_ERROR(
                 ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected type after comma ','.");
             arrpop(ctx->fn_type_stack);
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_fn, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_fn, scope_get(ctx)));
         }
     }
 
@@ -2269,17 +2281,17 @@ NEXT:
                     "Expected end of argument type list ')' or another argument separated "
                     "by comma.");
         arrpop(ctx->fn_type_stack);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_fn, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_fn, scope_get(ctx)));
     }
     fn->data.type_fn.ret_type = parse_type_fn_return((ctx));
     arrpop(ctx->fn_type_stack);
-    RETURN_ZONE(fn);
+    return_zone(fn);
 }
 
 struct ast *parse_type_fn_group(struct context *ctx)
 {
-    ZONE();
-    if (!tokens_is_seq(ctx->tokens, 2, SYM_FN, SYM_LBLOCK)) RETURN_ZONE(NULL);
+    zone();
+    if (!tokens_is_seq(ctx->tokens, 2, SYM_FN, SYM_LBLOCK)) return_zone(NULL);
     struct token *tok_group = tokens_consume(ctx->tokens); // eat fn
     struct token *tok_begin = tokens_consume(ctx->tokens); // eat {
     struct ast   *group =
@@ -2309,17 +2321,17 @@ NEXT:
         tok = tokens_peek_prev(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_BODY_END, tok, BUILDER_CUR_AFTER, "Expected end of block '}'.");
         PARSE_NOTE(tok_begin, BUILDER_CUR_WORD, "Block starting here.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
-    RETURN_ZONE(group);
+    return_zone(group);
 }
 
 struct ast *parse_type_struct(struct context *ctx)
 {
-    ZONE();
+    zone();
     struct token *tok_struct = tokens_consume_if(ctx->tokens, SYM_STRUCT);
     if (!tok_struct) tok_struct = tokens_consume_if(ctx->tokens, SYM_UNION);
-    if (!tok_struct) RETURN_ZONE(NULL);
+    if (!tok_struct) return_zone(NULL);
 
     const bool is_union = tok_struct->sym == SYM_UNION;
 
@@ -2332,7 +2344,7 @@ struct ast *parse_type_struct(struct context *ctx)
         enum hash_directive_flags found = HD_NONE;
         hd_extension                    = parse_hash_directive(ctx, accepted, &found);
         if (found == HD_BASE) {
-            BL_ASSERT(hd_extension);
+            bassert(hd_extension);
             base_type = hd_extension;
         } else if (!hash_directive_to_flags(found, &flags)) {
             break;
@@ -2349,7 +2361,7 @@ struct ast *parse_type_struct(struct context *ctx)
     if (!tok) {
         PARSE_ERROR(
             ERR_MISSING_BRACKET, tok_struct, BUILDER_CUR_AFTER, "Expected struct member list.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_struct, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_struct, scope_get(ctx)));
     }
 
     struct scope *scope =
@@ -2383,11 +2395,11 @@ NEXT:
                     "Expected end of member list '}' or another memeber separated by semicolon.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         scope_pop(ctx);
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_struct, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_struct, scope_get(ctx)));
     }
 
     scope_pop(ctx);
-    RETURN_ZONE(type_struct);
+    return_zone(type_struct);
 }
 
 static enum tokens_lookahead_state cmp_decl(struct token *curr)
@@ -2405,12 +2417,12 @@ static enum tokens_lookahead_state cmp_decl(struct token *curr)
 
 struct ast *parse_decl(struct context *ctx)
 {
-    ZONE();
+    zone();
     // is value declaration?
-    if (!tokens_lookahead(ctx->tokens, cmp_decl)) RETURN_ZONE(NULL);
+    if (!tokens_lookahead(ctx->tokens, cmp_decl)) return_zone(NULL);
     struct token *tok_begin = tokens_peek(ctx->tokens);
     struct ast   *ident     = parse_ident_group(ctx);
-    if (!ident) RETURN_ZONE(NULL);
+    if (!ident) return_zone(NULL);
     // eat :
     tokens_consume(ctx->tokens);
 
@@ -2441,7 +2453,7 @@ struct ast *parse_decl(struct context *ctx)
                             BUILDER_CUR_AFTER,
                             "Expected binding of declaration to some value.");
                 decl_pop(ctx);
-                RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+                return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
             }
         }
     } else {
@@ -2472,17 +2484,17 @@ struct ast *parse_decl(struct context *ctx)
     }
 
     decl_pop(ctx);
-    RETURN_ZONE(decl);
+    return_zone(decl);
 }
 
 struct ast *parse_expr_call(struct context *ctx, struct ast *prev, const bool is_comptime)
 {
-    ZONE();
-    if (!prev) RETURN_ZONE(NULL);
+    zone();
+    if (!prev) return_zone(NULL);
 
     struct token *location_token = tokens_peek_prev(ctx->tokens);
     struct token *tok            = tokens_consume_if(ctx->tokens, SYM_LPAREN);
-    if (!tok) RETURN_ZONE(NULL);
+    if (!tok) return_zone(NULL);
     if (location_token && location_token->sym != SYM_IDENT) location_token = tok;
     struct ast *call =
         ast_create_node(ctx->ast_arena, AST_EXPR_CALL, location_token, scope_get(ctx));
@@ -2509,7 +2521,7 @@ arg:
                         tok_err,
                         BUILDER_CUR_WORD,
                         "Expected function argument after comma ','.");
-            RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
         }
     }
 
@@ -2519,10 +2531,10 @@ arg:
                     tok,
                     BUILDER_CUR_WORD,
                     "Expected end of parameter list ')' or another parameter separated by comma.");
-        RETURN_ZONE(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
 
-    RETURN_ZONE(call);
+    return_zone(call);
 }
 
 struct ast *parse_expr_null(struct context *ctx)
@@ -2678,7 +2690,7 @@ NEXT:
 
 void parse_ublock_content(struct context *ctx, struct ast *ublock)
 {
-    BL_ASSERT(ublock->kind == AST_UBLOCK);
+    bassert(ublock->kind == AST_UBLOCK);
     arrsetcap(ublock->data.ublock.nodes, 64);
     struct ast *tmp;
 NEXT:
@@ -2705,6 +2717,9 @@ NEXT:
         arrput(ublock->data.ublock.nodes, tmp);
         goto NEXT;
     }
+
+    bassert(ctx->unit->ublock_ast == NULL);
+    ctx->unit->ublock_ast = ublock->data.ublock.nodes;
 
     struct token *tok = tokens_peek(ctx->tokens);
     if (!token_is(tok, SYM_EOF)) {
@@ -2738,10 +2753,10 @@ void init_hash_directives(struct context *ctx)
 
 void parser_run(struct assembly *assembly, struct unit *unit)
 {
-    BL_ASSERT(assembly);
-    BL_ASSERT(assembly->gscope && "Missing global scope for assembly.");
+    bassert(assembly);
+    bassert(assembly->gscope && "Missing global scope for assembly.");
 
-    ZONE();
+    zone();
     struct context ctx = {
         .assembly     = assembly,
         .unit         = unit,
@@ -2758,11 +2773,14 @@ void parser_run(struct assembly *assembly, struct unit *unit)
     unit->ast              = root;
 
     parse_ublock_content(&ctx, unit->ast);
-    if (ctx.unit_docs_tmp) unit->ast->docs = ctx.unit_docs_tmp->data;
+    if (ctx.unit_docs_tmp) {
+        arrput(ctx.unit_docs_tmp, '\0');
+        unit->ast->docs = ctx.unit_docs_tmp;
+    }
 
     hmfree(ctx.hash_directive_table);
     arrfree(ctx.decl_stack);
     arrfree(ctx.scope_stack);
     arrfree(ctx.fn_type_stack);
-    RETURN_ZONE();
+    return_zone();
 }

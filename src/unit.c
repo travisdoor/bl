@@ -27,6 +27,7 @@
 // =================================================================================================
 
 #include "unit.h"
+#include "stb_ds.h"
 #include <string.h>
 
 #if BL_PLATFORM_WIN
@@ -48,7 +49,7 @@ hash_t unit_hash(const char *filepath, struct token *load_from)
 struct unit *unit_new(const char *filepath, struct token *load_from)
 {
     struct unit *parent_unit = load_from ? load_from->location.unit : NULL;
-    struct unit *unit        = bl_malloc(sizeof(struct unit));
+    struct unit *unit        = bmalloc(sizeof(struct unit));
     memset(unit, 0, sizeof(struct unit));
     search_source_file(filepath,
                        SEARCH_FLAG_ALL,
@@ -60,7 +61,7 @@ struct unit *unit_new(const char *filepath, struct token *load_from)
     if (get_filename_from_filepath(tmp, static_arrlen(tmp), filepath)) {
         unit->filename = strdup(tmp);
     } else {
-        BL_ABORT("invalid file");
+        babort("invalid file");
     }
     unit->loaded_from = load_from;
     unit->hash        = strhash(unit->filepath ? unit->filepath : unit->name);
@@ -70,13 +71,19 @@ struct unit *unit_new(const char *filepath, struct token *load_from)
 
 void unit_delete(struct unit *unit)
 {
+    for (s64 i = 0; i < arrlen(unit->large_string_cache); ++i) {
+        arrfree(unit->large_string_cache[i]);
+    }
+    arrfree(unit->large_string_cache);
+    arrfree(unit->ublock_ast);
+    scfree(&unit->string_cache);
+    bfree(unit->src);
     free(unit->filepath);
     free(unit->dirpath);
-    free(unit->src);
     free(unit->name);
     free(unit->filename);
     tokens_terminate(&unit->tokens);
-    bl_free(unit);
+    bfree(unit);
 }
 
 const char *unit_get_src_ln(struct unit *unit, s32 line, long *len)
@@ -99,7 +106,7 @@ const char *unit_get_src_ln(struct unit *unit, s32 line, long *len)
     if (line > 0) return NULL;
     if (len) {
         (*len) = (long)(c - begin);
-        BL_ASSERT(*len >= 0);
+        bassert(*len >= 0);
     }
     return begin;
 }

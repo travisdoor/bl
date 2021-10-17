@@ -1,7 +1,7 @@
 main :: fn () s32 {
     return 0;
 }
-
+// 5974
 // =================================================================================================
 // TODO
 // =================================================================================================
@@ -16,6 +16,7 @@ main :: fn () s32 {
 // - Make return tmp variable #noinit.
 // - Implement zeroset helper and measure runtime performance compared to memset. (compile time branches for
 //   posible sizes?)
+// - use union for small array
 
 // =================================================================================================
 // Module loader

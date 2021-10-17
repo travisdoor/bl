@@ -30,9 +30,87 @@
 #include <stdio.h>
 #include <string.h>
 
+#if BL_PLATFORM_WIN
+static void last_error(char *buf, DWORD len)
+{
+    bassert(len > 0);
+    DWORD ec = GetLastError();
+    if (ec == 0) buf[0] = '\0';
+    FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS |
+                       FORMAT_MESSAGE_MAX_WIDTH_MASK,
+                   NULL,
+                   ec,
+                   0,
+                   buf,
+                   len,
+                   NULL);
+}
+
 void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
 {
-    ZONE();
+    char error_buf[256];
+    zone();
+    const char *path = unit->filepath;
+    if (!path) {
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_FILE_NOT_FOUND,
+                    TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
+                    BUILDER_CUR_WORD,
+                    "File not found '%s'.",
+                    path);
+        return_zone();
+    }
+
+    HANDLE f = CreateFileA(
+        path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (f == INVALID_HANDLE_VALUE) {
+        last_error(error_buf, static_arrlen(error_buf));
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_FILE_NOT_FOUND,
+                    TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
+                    BUILDER_CUR_WORD,
+                    "Cannot open file '%s': %s",
+                    path,
+                    error_buf);
+        return_zone();
+    }
+
+    DWORD bytes = GetFileSize(f, NULL);
+    if (bytes == INVALID_FILE_SIZE) {
+        CloseHandle(f);
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_FILE_NOT_FOUND,
+                    TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
+                    BUILDER_CUR_WORD,
+                    "Cannot get size of file '%s'.",
+                    path);
+        return_zone();
+    }
+    char *data = bmalloc(bytes + 1);
+    DWORD rbytes;
+    if (!ReadFile(f, data, bytes, &rbytes, NULL)) {
+        bfree(data);
+        CloseHandle(f);
+        last_error(error_buf, static_arrlen(error_buf));
+        builder_msg(BUILDER_MSG_ERROR,
+                    ERR_FILE_NOT_FOUND,
+                    TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
+                    BUILDER_CUR_WORD,
+                    "Cannot read file '%s': %s",
+                    path,
+                    error_buf);
+        return_zone();
+    }
+    assert(rbytes == bytes);
+    data[rbytes] = '\0';
+    CloseHandle(f);
+    unit->src = data;
+    return_zone();
+}
+#else
+void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
+{
+    zone();
     if (!unit->filepath) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_FILE_NOT_FOUND,
@@ -40,11 +118,10 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
                     BUILDER_CUR_WORD,
                     "File not found '%s'.",
                     unit->name);
-        RETURN_ZONE();
+        return_zone();
     }
 
     FILE *f = fopen(unit->filepath, "rb");
-
     if (f == NULL) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_FILE_READ,
@@ -53,7 +130,7 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
                     "Cannot read file '%s'.",
                     unit->name);
 
-        RETURN_ZONE();
+        return_zone();
     }
 
     fseek(f, 0, SEEK_END);
@@ -67,18 +144,15 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
                     "Invalid or empty source file '%s'.",
                     unit->name);
 
-        RETURN_ZONE();
+        return_zone();
     }
-
     fseek(f, 0, SEEK_SET);
 
-    char *src = calloc(fsize + 1, sizeof(char));
-    if (src == NULL) BL_ABORT("bad alloc");
-    if (!fread(src, sizeof(char), fsize, f)) BL_ABORT("Cannot read file '%s'.", unit->name);
-
+    char *src = bmalloc(fsize + 1);
+    if (!fread(src, sizeof(char), fsize, f)) babort("Cannot read file '%s'.", unit->name);
     src[fsize] = '\0';
     fclose(f);
-
     unit->src = src;
-    RETURN_ZONE();
+    return_zone();
 }
+#endif

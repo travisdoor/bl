@@ -51,7 +51,7 @@ void vm_tests_run(struct assembly *assembly)
 
     for (s64 i = 0; i < tc; ++i) {
         struct mir_fn *test_fn = cases[i];
-        BL_ASSERT(IS_FLAG(test_fn->flags, FLAG_TEST_FN));
+        bassert(IS_FLAG(test_fn->flags, FLAG_TEST_FN));
         const f64   start      = get_tick_ms();
         const bool  passed     = vm_execute_fn(vm, assembly, test_fn, NULL, NULL);
         const f64   runtime_ms = get_tick_ms() - start;
@@ -113,8 +113,8 @@ void vm_entry_run(struct assembly *assembly)
         return;
     }
     struct mir_type *fn_type = entry->type;
-    BL_ASSERT(fn_type && fn_type->kind == MIR_TYPE_FN);
-    BL_ASSERT(!fn_type->data.fn.args);
+    bassert(fn_type && fn_type->kind == MIR_TYPE_FN);
+    bassert(!fn_type->data.fn.args);
     if (target->vm.argc > 0) {
         vm_provide_command_line_arguments(vm, target->vm.argc, target->vm.argv);
     }

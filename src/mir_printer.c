@@ -734,7 +734,7 @@ void print_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof)
 void print_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
 {
     struct mir_var *var = decl->var;
-    BL_ASSERT(var);
+    bassert(var);
 
     const char *name = var->linkage_name ? var->linkage_name : "<UNKNOWN>";
 
@@ -770,10 +770,10 @@ void print_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
 void print_instr_decl_variant(struct context *ctx, struct mir_instr_decl_variant *var)
 {
     print_instr_head(ctx, &var->base, "declvariant");
-    BL_ASSERT(var->variant);
+    bassert(var->variant);
 
     struct mir_variant *variant = var->variant;
-    BL_ASSERT(variant);
+    bassert(variant);
 
     fprintf(ctx->stream, "%s", variant->id->str);
 
@@ -788,7 +788,7 @@ void print_instr_decl_arg(struct context *ctx, struct mir_instr_decl_arg *decl)
     print_instr_head(ctx, &decl->base, "declarg");
 
     struct mir_arg *arg = decl->arg;
-    BL_ASSERT(arg);
+    bassert(arg);
 
     fprintf(ctx->stream, "%s : ", arg->id ? arg->id->str : "-");
     print_comptime_value_or_id(ctx, decl->type);
@@ -804,7 +804,7 @@ void print_instr_decl_member(struct context *ctx, struct mir_instr_decl_member *
     print_instr_head(ctx, &decl->base, "declmember");
 
     struct mir_member *member = decl->member;
-    BL_ASSERT(member);
+    bassert(member);
 
     fprintf(ctx->stream, "%s : ", member->id->str);
     print_comptime_value_or_id(ctx, decl->type);
@@ -867,7 +867,7 @@ void print_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
 void print_instr_store(struct context *ctx, struct mir_instr_store *store)
 {
     print_instr_head(ctx, &store->base, "store");
-    BL_ASSERT(store->src);
+    bassert(store->src);
     print_comptime_value_or_id(ctx, store->src);
     fprintf(ctx->stream, " -> %%%llu", (unsigned long long)store->dest->id);
     // print_comptime_value_or_id(ctx,store->dest);
@@ -876,7 +876,7 @@ void print_instr_store(struct context *ctx, struct mir_instr_store *store)
 void print_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
 {
     print_instr_head(ctx, &binop->base, "binop");
-    BL_ASSERT(binop->lhs && binop->rhs);
+    bassert(binop->lhs && binop->rhs);
     const char *op = ast_binop_to_str(binop->op);
     print_comptime_value_or_id(ctx, binop->lhs);
     fprintf(ctx->stream, " %s ", op);
@@ -935,7 +935,7 @@ void print_instr_block(struct context *ctx, struct mir_instr_block *block)
 void print_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_proto)
 {
     struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &fn_proto->base.value);
-    BL_ASSERT(fn);
+    bassert(fn);
 
     fprintf(ctx->stream, "\n");
     if (IS_FLAG(fn_proto->base.flags, MIR_IS_ANALYZED)) fprintf(ctx->stream, "/* analyzed */\n");

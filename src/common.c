@@ -31,14 +31,15 @@
 // =================================================================================================
 #include "blmemory.h"
 #define STB_DS_IMPLEMENTATION
-#define STBDS_REALLOC(context, ptr, size) bl_realloc(ptr, size)
-#define STBDS_FREE(context, ptr) bl_free(ptr)
+#define STBDS_REALLOC(context, ptr, size) brealloc(ptr, size)
+#define STBDS_FREE(context, ptr) bfree(ptr)
 #include "stb_ds.h"
 
 #include "assembly.h"
 #include "builder.h"
 #include "common.h"
 #include <stdarg.h>
+#include <stdio.h>
 #include <time.h>
 
 #if !BL_PLATFORM_WIN
@@ -83,20 +84,81 @@ void sarradd_impl(void *ptr, s32 elem_size, s32 elem_count)
     if (!on_heap && arr->len == elem_count) {
         arr->cap        = elem_count * 2;
         const s32 bytes = elem_size * arr->cap;
-        arr->data       = bl_malloc(bytes);
+        arr->data       = bmalloc(bytes);
         if (!arr->data) abort();
         memcpy(arr->data, arr->buf, bytes);
     } else if (on_heap && arr->len == arr->cap) {
         arr->cap *= 2;
         void *tmp = arr->data;
-        if ((arr->data = bl_realloc(arr->data, arr->cap * elem_size)) == NULL) {
-            bl_free(tmp);
+        if ((arr->data = brealloc(arr->data, arr->cap * elem_size)) == NULL) {
+            bfree(tmp);
             abort();
         }
     }
     arr->len++;
 }
 
+// =================================================================================================
+// String cache
+// =================================================================================================
+#define SC_BLOCK_BYTES 512
+
+struct string_cache {
+    u32 len;
+    u32 cap;
+
+    struct string_cache *prev;
+};
+
+static struct string_cache *new_block(usize len, struct string_cache *prev)
+{
+    const usize          cap   = len > SC_BLOCK_BYTES ? len : SC_BLOCK_BYTES;
+    struct string_cache *cache = bmalloc(sizeof(struct string_cache) + cap);
+    cache->cap                 = (u32)cap;
+    cache->prev                = prev;
+    cache->len                 = 0;
+    return cache;
+}
+
+char *scdup(struct string_cache **cache, const char *str, usize len)
+{
+    len += 1; // +zero terminator
+    if (!*cache) {
+        (*cache) = new_block(len, NULL);
+    } else if ((*cache)->len + len >= (*cache)->cap) {
+        (*cache) = new_block(len, *cache);
+    }
+    char *mem = ((char *)((*cache) + 1)) + (*cache)->len;
+    if (str) {
+        memcpy(mem, str, len - 1); // Do not copy zero terminator.
+        mem[len - 1] = '\0';       // Set zero terminator.
+    }
+    (*cache)->len += (u32)len;
+    return mem;
+}
+
+void scfree(struct string_cache **cache)
+{
+    struct string_cache *c = (*cache);
+    while (c) {
+        struct string_cache *prev = c->prev;
+        bfree(c);
+        c = prev;
+    }
+    (*cache) = NULL;
+}
+
+char *scprint(struct string_cache **cache, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    const s32 len = vsnprintf(NULL, 0, fmt, args);
+    bassert(len > 0);
+    char *buf = scdup(cache, NULL, len);
+    vsprintf(buf, fmt, args);
+    va_end(args);
+    return buf;
+}
 // =================================================================================================
 // Utils
 // =================================================================================================
@@ -145,7 +207,8 @@ bool search_source_file(const char *filepath,
                 p[0] = 0;
             }
             tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", s, filepath);
-            if (brealpath(tmp->data, tmp_result, static_arrlen(tmp_result))) result = &tmp_result[0];
+            if (brealpath(tmp->data, tmp_result, static_arrlen(tmp_result)))
+                result = &tmp_result[0];
             s = p + 1;
         } while (p && !result);
         free(env);
@@ -245,8 +308,8 @@ bool dir_exists(const char *dirpath)
 
 bool brealpath(const char *file, char *out, s32 out_len)
 {
-    BL_ASSERT(out);
-    BL_ASSERT(out_len);
+    bassert(out);
+    bassert(out_len);
     if (!file) return false;
 #if BL_PLATFORM_WIN
     const DWORD len = GetFullPathNameA(file, out_len, out, NULL);
@@ -310,7 +373,7 @@ bool copy_dir(const char *src, const char *dest)
     free(_dest);
 #else
     tstring_setf(tmp, "mkdir -p %s && cp -rf %s/* %s", dest, src, dest);
-    BL_LOG("%s", tmp->data);
+    blog("%s", tmp->data);
 #endif
     const bool result = system(tmp->data) == 0;
     put_tmpstr(tmp);
@@ -353,7 +416,7 @@ bool remove_dir(const char *path)
 }
 void date_time(char *buf, s32 len, const char *format)
 {
-    BL_ASSERT(buf && len);
+    bassert(buf && len);
     time_t     timer;
     struct tm *tm_info;
     time(&timer);
@@ -375,7 +438,7 @@ void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment)
     }
 
     const usize mask = alignment - 1;
-    BL_ASSERT((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
+    bassert((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
     const uintptr_t i_unaligned  = (uintptr_t)(*p);
     const uintptr_t misalignment = i_unaligned & mask;
 
@@ -419,7 +482,7 @@ bool get_dir_from_filepath(char *buf, const usize l, const char *filepath)
         return true;
     }
     usize len = ptr - filepath;
-    if (len + 1 > l) BL_ABORT("path too long!!!");
+    if (len + 1 > l) babort("path too long!!!");
     strncpy(buf, filepath, len);
     return true;
 }
@@ -435,7 +498,7 @@ bool get_filename_from_filepath(char *buf, const usize l, const char *filepath)
     }
 
     usize len = strlen(filepath) - (ptr - filepath);
-    if (len + 1 > l) BL_ABORT("path too long!!!");
+    if (len + 1 > l) babort("path too long!!!");
     strncpy(buf, ptr + 1, len);
 
     return true;
@@ -452,7 +515,7 @@ void platform_lib_name(const char *name, char *buffer, usize max_len)
 #elif BL_PLATFORM_WIN
     snprintf(buffer, max_len, "%s.dll", name);
 #else
-    BL_ABORT("Unknown dynamic library format.");
+    babort("Unknown dynamic library format.");
 #endif
 }
 
@@ -476,7 +539,7 @@ f64 get_tick_ms(void)
 
     return ((f64)t.QuadPart / (f64)f.QuadPart) * 1000.;
 #else
-    BL_ABORT("Unknown dynamic library format.");
+    babort("Unknown dynamic library format.");
 #endif
 }
 
@@ -507,13 +570,13 @@ s32 get_last_error(char *buf, s32 buf_len)
         NULL);
     return msg_len;
 #else
-    BL_ABORT("Cannot get last error!");
+    babort("Cannot get last error!");
 #endif
 }
 
 void *_create_sarr(struct assembly *assembly, usize arr_size)
 {
-    BL_ASSERT(
+    bassert(
         arr_size <= assembly->arenas.small_array.elem_size_in_bytes &&
         "SmallArray is too big to be allocated inside arena, make array smaller or arena bigger.");
 

@@ -40,7 +40,7 @@ typedef struct scope_sync_impl {
 
 static scope_sync_impl *sync_new(void)
 {
-    scope_sync_impl *impl = bl_malloc(sizeof(scope_sync_impl));
+    scope_sync_impl *impl = bmalloc(sizeof(scope_sync_impl));
     pthread_mutex_init(&impl->lock, NULL);
     return impl;
 }
@@ -49,7 +49,7 @@ static void sync_delete(scope_sync_impl *impl)
 {
     if (!impl) return;
     pthread_mutex_destroy(&impl->lock);
-    bl_free(impl);
+    bfree(impl);
 }
 
 static void scope_dtor(struct scope *scope)
@@ -78,8 +78,8 @@ static INLINE struct scope_layer *get_layer(struct scope *scope, s32 index)
 // variant of function.
 static INLINE struct scope_layer *create_layer(struct scope *scope, s32 index)
 {
-    BL_ASSERT(index == SCOPE_DEFAULT_LAYER || scope_is_local(scope));
-    BL_ASSERT(get_layer(scope, index) == NULL && "Attempt to create existing layer!");
+    bassert(index == SCOPE_DEFAULT_LAYER || scope_is_local(scope));
+    bassert(get_layer(scope, index) == NULL && "Attempt to create existing layer!");
     arrput(scope->layers, ((struct scope_layer){.entries = NULL, .index = index}));
     return &arrlast(scope->layers);
 }
@@ -107,7 +107,7 @@ struct scope *scope_create(struct scope_arenas *arenas,
                            u32                  expected_entry_count,
                            struct location     *loc)
 {
-    BL_ASSERT(expected_entry_count > 0);
+    bassert(expected_entry_count > 0);
     struct scope *scope         = arena_alloc(&arenas->scopes);
     scope->parent               = parent;
     scope->kind                 = kind;
@@ -138,13 +138,13 @@ struct scope_entry *scope_create_entry(struct scope_arenas  *arenas,
 
 void scope_insert(struct scope *scope, s32 layer_index, struct scope_entry *entry)
 {
-    BL_ASSERT(scope);
-    BL_ASSERT(entry && entry->id);
-    BL_ASSERT(layer_index >= 0);
+    bassert(scope);
+    bassert(entry && entry->id);
+    bassert(layer_index >= 0);
     struct scope_layer *layer = get_layer(scope, layer_index);
     if (!layer) layer = create_layer(scope, layer_index);
-    BL_ASSERT(layer);
-    BL_ASSERT(hmgeti(layer->entries, entry->id->hash) == -1 && "Duplicate scope entry key!!!");
+    bassert(layer);
+    bassert(hmgeti(layer->entries, entry->id->hash) == -1 && "Duplicate scope entry key!!!");
     entry->parent_scope = scope;
     hmput(layer->entries, entry->id->hash, entry);
 }
@@ -156,9 +156,9 @@ struct scope_entry *scope_lookup(struct scope *scope,
                                  bool          ignore_global,
                                  bool         *out_of_fn_local_scope)
 {
-    ZONE();
-    BL_ASSERT(scope && id);
-    BL_ASSERT(preferred_layer_index >= 0);
+    zone();
+    bassert(scope && id);
+    bassert(preferred_layer_index >= 0);
     while (scope) {
         if (ignore_global && scope->kind == SCOPE_GLOBAL) break;
         // Lookup in current scope first
@@ -168,7 +168,7 @@ struct scope_entry *scope_lookup(struct scope *scope,
         if (layer) {
             const s64 i = hmgeti(layer->entries, id->hash);
             if (i != -1) {
-                RETURN_ZONE(layer->entries[i].value);
+                return_zone(layer->entries[i].value);
             }
         }
         // Lookup in parent.
@@ -181,23 +181,23 @@ struct scope_entry *scope_lookup(struct scope *scope,
             break;
         }
     }
-    RETURN_ZONE(NULL);
+    return_zone(NULL);
 }
 
 void scope_dirty_clear_tree(struct scope *scope)
 {
-    BL_ASSERT(scope);
+    bassert(scope);
 }
 
 void scope_lock(struct scope *scope)
 {
-    BL_ASSERT(scope && scope->sync);
+    bassert(scope && scope->sync);
     pthread_mutex_lock(&scope->sync->lock);
 }
 
 void scope_unlock(struct scope *scope)
 {
-    BL_ASSERT(scope && scope->sync);
+    bassert(scope && scope->sync);
     pthread_mutex_unlock(&scope->sync->lock);
 }
 
@@ -238,7 +238,7 @@ const char *scope_kind_name(const struct scope *scope)
 
 void scope_get_full_name(TString *dest, struct scope *scope)
 {
-    BL_ASSERT(dest && scope);
+    bassert(dest && scope);
     TSmallArray_CharPtr buffer;
     tsa_init(&buffer);
     while (scope) {

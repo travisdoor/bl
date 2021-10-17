@@ -37,19 +37,19 @@
 // Emit assembly object file.
 void obj_writer_run(struct assembly *assembly)
 {
-    ZONE();
-    TString *            buf    = get_tmpstr();
+    zone();
+    TString             *buf    = get_tmpstr();
     const struct target *target = assembly->target;
-    const char *         name   = target->name;
-    BL_LOG("out_dir = %s", target->out_dir.data);
-    BL_LOG("name = %s", name);
+    const char          *name   = target->name;
+    blog("out_dir = %s", target->out_dir.data);
+    blog("name = %s", name);
     tstring_setf(buf, "%s/%s.%s", target->out_dir.data, name, OBJ_EXT);
     char *error_msg = NULL;
     if (LLVMTargetMachineEmitToFile(
             assembly->llvm.TM, assembly->llvm.modules[0], buf->data, LLVMObjectFile, &error_msg)) {
         builder_error("Cannot emit object file: %s with error: %s", buf->data, error_msg);
-        LLVMDisposeMessage(error_msg);
     }
+    LLVMDisposeMessage(error_msg);
     put_tmpstr(buf);
-    RETURN_ZONE();
+    return_zone();
 }

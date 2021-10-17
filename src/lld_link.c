@@ -51,7 +51,7 @@ static const char *get_out_extension(struct assembly *assembly)
     case ASSEMBLY_SHARED_LIB:
         return DLL_EXT;
     default:
-        BL_ABORT("Unknown output kind!");
+        babort("Unknown output kind!");
     }
 }
 
@@ -85,7 +85,7 @@ static void append_default_opt(struct assembly *assembly, TString *buf)
         default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_SHARED_KEY);
         break;
     default:
-        BL_ABORT("Unknown output kind!");
+        babort("Unknown output kind!");
     }
     tstring_appendf(buf, "%s ", default_opt);
 }
