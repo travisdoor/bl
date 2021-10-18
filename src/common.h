@@ -193,6 +193,11 @@ static FORCEINLINE hash_t strhash(const char *str)
     return hash;
 }
 
+static FORCEINLINE hash_t hashcomb(hash_t first, hash_t second)
+{
+    return first ^ (second + 0x9e3779b9 + (first << 6) + (first >> 2));
+}
+
 static FORCEINLINE struct id *id_init(struct id *id, const char *str)
 {
     bassert(id);

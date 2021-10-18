@@ -165,9 +165,7 @@ struct context {
         TSmallArray_RTTIIncomplete incomplete_rtti;
 
         // Incomplete type check stack.
-        TSmallArray_TypePtr complete_check_type_stack;
-        THashTable          complete_check_visited;
-
+        TSmallArray_TypePtr  complete_check_type_stack;
         struct scope_entry **usage_check_arr;
         struct scope_entry  *void_entry;
         struct mir_instr    *last_analyzed_instr;
@@ -1120,8 +1118,13 @@ static INLINE bool is_incomplete_struct_type(struct mir_type *type)
 static bool is_complete_type(struct context *ctx, struct mir_type *type)
 {
     zone();
-    TSmallArray_TypePtr *stack   = &ctx->analyze.complete_check_type_stack;
-    THashTable          *visited = &ctx->analyze.complete_check_visited;
+
+    struct {
+        struct mir_type *key;
+        u8               value; // this is not used
+    } *visited = NULL;
+
+    TSmallArray_TypePtr *stack = &ctx->analyze.complete_check_type_stack;
     tsa_push_TypePtr(stack, type);
     bool result = true;
     while (stack->size > 0) {
@@ -1157,8 +1160,9 @@ static bool is_complete_type(struct context *ctx, struct mir_type *type)
         case MIR_TYPE_STRING:
         case MIR_TYPE_VARGS:
         case MIR_TYPE_STRUCT: {
-            if (thtbl_has_key(visited, (u64)top)) break;
-            thtbl_insert_empty(visited, (u64)top);
+            const s64 index = hmgeti(visited, top);
+            if (index != -1) break;
+            hmput(visited, top, 0);
             struct mir_member *member;
             TSA_FOREACH(top->data.strct.members, member)
             {
@@ -1172,7 +1176,7 @@ static bool is_complete_type(struct context *ctx, struct mir_type *type)
     }
 DONE:
     stack->size = 0;
-    thtbl_clear(visited);
+    hmfree(visited);
     type->checked_and_complete = result;
     return_zone(result);
 }
@@ -7286,18 +7290,16 @@ static void poly_type_match(struct mir_type  *recipe,
 
 static INLINE hash_t get_current_poly_replacement_hash(struct context *ctx)
 {
-    zone();
-    TString             *str   = get_tmpstr();
     TSmallArray_TypePtr *queue = &ctx->polymorph.replacement_queue;
-    struct mir_type     *type;
-    TSA_FOREACH(queue, type)
-    {
-        bassert(type && type->id.str);
-        tstring_setf(str, "%s##", type->id.str);
-    }
+    if (!queue->size) return 0;
 
-    const hash_t hash = strhash(str->data);
-    put_tmpstr(str);
+    zone();
+    hash_t hash = queue->data[0]->id.hash;
+    for (usize i = 1; i < queue->size; ++i) {
+        struct mir_type *type = queue->data[i];
+        bassert(type->id.hash != 0);
+        hash = hashcomb(hash, type->id.hash);
+    }
     return_zone(hash);
 }
 
@@ -11236,7 +11238,6 @@ void mir_run(struct assembly *assembly)
     arrsetcap(ctx.analyze.stack[1], 256);
     tsa_init(&ctx.analyze.incomplete_rtti);
     tsa_init(&ctx.analyze.complete_check_type_stack);
-    thtbl_init(&ctx.analyze.complete_check_visited, 0, 128);
 
     tsa_init(&ctx.polymorph.replacement_queue);
 
@@ -11277,6 +11278,5 @@ SKIP:
     arrfree(ctx.analyze.usage_check_arr);
     tsa_terminate(&ctx.analyze.incomplete_rtti);
     tsa_terminate(&ctx.analyze.complete_check_type_stack);
-    thtbl_terminate(&ctx.analyze.complete_check_visited);
     return_zone();
 }

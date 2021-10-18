@@ -56,12 +56,11 @@ static bool parse_key_value_rq(struct context *ctx)
         tmp.kind = CDV_STRING;
         // Use builder level cache here, because token string value is stored in the unit, and
         // builder can outlive the unit in this case.
-        tmp.data.v_str =
-            scdup(&builder.string_cache, tok_value->value.str, strlen(tok_value->value.str));
+        tmp.v_str = scdup(&ctx->data->cache, tok_value->value.str, strlen(tok_value->value.str));
         break;
     case SYM_NUM:
-        tmp.kind       = CDV_INT;
-        tmp.data.v_int = (int)tok_value->value.u;
+        tmp.kind  = CDV_INT;
+        tmp.v_int = (int)tok_value->value.u;
         break;
     default:
         builder_msg(BUILDER_MSG_ERROR,

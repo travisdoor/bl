@@ -66,7 +66,6 @@ struct builder {
     struct target               **targets;
     TString                     **tmp_strings;
     struct threading_impl        *threading;
-    struct string_cache          *string_cache;
 
     bool is_initialized;
 };

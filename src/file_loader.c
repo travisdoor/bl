@@ -31,21 +31,6 @@
 #include <string.h>
 
 #if BL_PLATFORM_WIN
-static void last_error(char *buf, DWORD len)
-{
-    bassert(len > 0);
-    DWORD ec = GetLastError();
-    if (ec == 0) buf[0] = '\0';
-    FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS |
-                       FORMAT_MESSAGE_MAX_WIDTH_MASK,
-                   NULL,
-                   ec,
-                   0,
-                   buf,
-                   len,
-                   NULL);
-}
-
 void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
 {
     char error_buf[256];
@@ -57,14 +42,14 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
                     TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
                     BUILDER_CUR_WORD,
                     "File not found '%s'.",
-                    path);
+                    unit->filename);
         return_zone();
     }
 
     HANDLE f = CreateFileA(
         path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (f == INVALID_HANDLE_VALUE) {
-        last_error(error_buf, static_arrlen(error_buf));
+        get_last_error(error_buf, static_arrlen(error_buf));
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_FILE_NOT_FOUND,
                     TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
@@ -91,7 +76,7 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
     if (!ReadFile(f, data, bytes, &rbytes, NULL)) {
         bfree(data);
         CloseHandle(f);
-        last_error(error_buf, static_arrlen(error_buf));
+        get_last_error(error_buf, static_arrlen(error_buf));
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_FILE_NOT_FOUND,
                     TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
@@ -101,7 +86,7 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
                     error_buf);
         return_zone();
     }
-    assert(rbytes == bytes);
+    bassert(rbytes == bytes);
     data[rbytes] = '\0';
     CloseHandle(f);
     unit->src = data;

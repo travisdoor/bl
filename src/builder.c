@@ -487,7 +487,6 @@ void builder_terminate(void)
 
     llvm_terminate();
     threading_delete(builder.threading);
-    scfree(&builder.string_cache);
     free(builder.exec_dir);
     free(builder.lib_dir);
 }
@@ -528,7 +527,6 @@ INTERRUPT:
 
 int builder_load_config(const char *filepath)
 {
-    conf_data_clear(&builder.conf);
     return builder_compile_config(filepath, &builder.conf, NULL);
 }
 
@@ -730,9 +728,9 @@ TString *get_tmpstr(void)
 void put_tmpstr(TString *str)
 {
     bassert(str);
-    tstring_clear(str);
     struct threading_impl *threading = builder.threading;
     pthread_mutex_lock(&threading->str_tmp_lock);
+    tstring_clear(str);
     arrput(builder.tmp_strings, str);
     pthread_mutex_unlock(&threading->str_tmp_lock);
 }

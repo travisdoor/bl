@@ -27,65 +27,63 @@
 // =================================================================================================
 
 #include "conf_data.h"
+#include "stb_ds.h"
 
 conf_data_t *conf_data_new()
 {
-    return thtbl_new(sizeof(struct conf_data_value), 32);
+    conf_data_t *conf = bmalloc(sizeof(conf_data_t));
+    conf_data_init(conf);
+    return conf;
 }
 
 void conf_data_delete(conf_data_t *data)
 {
-    thtbl_delete(data);
+    conf_data_terminate(data);
+    bfree(data);
 }
 
 void conf_data_init(conf_data_t *data)
 {
-    thtbl_init(data, sizeof(struct conf_data_value), 32);
+    data->cache  = NULL;
+    data->values = NULL;
 }
 
 void conf_data_terminate(conf_data_t *data)
 {
-    thtbl_terminate(data);
-}
-
-void conf_data_clear(conf_data_t *data)
-{
-    thtbl_clear(data);
+    hmfree(data->values);
+    scfree(&data->cache);
 }
 
 bool conf_data_has_key(conf_data_t *data, const char *key)
 {
     const hash_t hash = strhash(key);
-    return thtbl_has_key(data, hash);
+    return hmgeti(data->values, hash) != -1;
 }
 
 void conf_data_add(conf_data_t *data, const char *key, struct conf_data_value *value)
 {
     const hash_t hash = strhash(key);
-    thtbl_insert(data, hash, *value);
+    hmput(data->values, hash, *value);
 }
 
 struct conf_data_value *conf_data_get(conf_data_t *data, const char *key)
 {
-    const hash_t hash = strhash(key);
-    TIterator it   = thtbl_find(data, hash);
-    TIterator end  = thtbl_end(data);
-    if (TITERATOR_EQUAL(it, end)) {
-        babort("Missing conf entry '%s'.", key);
-    }
-    return &thtbl_iter_peek_value(struct conf_data_value, it);
+    const hash_t hash  = strhash(key);
+    const s64    index = hmgeti(data->values, hash);
+    if (index == -1) babort("Missing conf entry '%s'.", key);
+    return &data->values[index].value;
 }
 
 const char *conf_data_get_str(conf_data_t *data, const char *key)
 {
     struct conf_data_value *value = conf_data_get(data, key);
     if (value->kind != CDV_STRING) babort("Invalid type of conf value '%s', expected is string.");
-    return value->data.v_str;
+    return value->v_str;
 }
 
 int conf_data_get_int(conf_data_t *data, const char *key)
 {
     struct conf_data_value *value = conf_data_get(data, key);
     if (value->kind != CDV_INT) babort("Invalid type of conf value '%s', expected is int.");
-    return value->data.v_int;
+    return value->v_int;
 }
