@@ -38,6 +38,7 @@ conf_data_t *conf_data_new()
 
 void conf_data_delete(conf_data_t *data)
 {
+    if (!data) return;
     conf_data_terminate(data);
     bfree(data);
 }
