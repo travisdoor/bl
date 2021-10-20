@@ -178,14 +178,14 @@ struct ast_stmt_if {
 };
 
 struct ast_stmt_switch {
-    struct ast         *expr;
-    TSmallArray_AstPtr *cases;
+    struct ast  *expr;
+    ast_nodes_t *cases;
 };
 
 struct ast_stmt_case {
-    TSmallArray_AstPtr *exprs;
-    struct ast         *block;
-    bool                is_default;
+    ast_nodes_t *exprs;
+    struct ast  *block;
+    bool         is_default;
 };
 
 struct ast_stmt_loop {
@@ -242,13 +242,13 @@ struct ast_type_dynarr {
 };
 
 struct ast_type_fn {
-    struct ast         *ret_type;
-    TSmallArray_AstPtr *args;
-    bool                is_polymorph;
+    struct ast  *ret_type;
+    ast_nodes_t *args;
+    bool         is_polymorph;
 };
 
 struct ast_type_fn_group {
-    TSmallArray_AstPtr *variants;
+    ast_nodes_t *variants;
 };
 
 struct ast_type_struct {
@@ -291,7 +291,7 @@ struct ast_expr_lit_fn {
 };
 
 struct ast_expr_lit_fn_group {
-    TSmallArray_AstPtr *variants;
+    ast_nodes_t *variants;
 };
 
 struct ast_expr_lit_int {

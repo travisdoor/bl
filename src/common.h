@@ -121,17 +121,18 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 // =================================================================================================
 #define sarr_t(T, C)                                                                               \
     struct {                                                                                       \
-        s32 len;                                                                                   \
-        s32 cap;                                                                                   \
-        T  *_data;                                                                                 \
-        T   _buf[C];                                                                               \
+        s32 len, cap;                                                                              \
+        union {                                                                                    \
+            T *_data;                                                                              \
+            T  _buf[C];                                                                            \
+        };                                                                                         \
     }
 
 typedef sarr_t(u8, 1) sarr_any_t;
 
 #define SARR_ZERO                                                                                  \
     {                                                                                              \
-        .len = 0, .cap = 0, ._data = NULL                                                          \
+        .len = 0, .cap = 0                                                                         \
     }
 
 #define sarradd(A)                                                                                 \
@@ -140,11 +141,10 @@ typedef sarr_t(u8, 1) sarr_any_t;
 #define sarrput(A, V) (*sarradd(A) = (V))
 #define sarrpop(A) (sarrpeek(A, --(A)->len))
 #define sarrlen(A) ((A) ? (A)->len : 0)
-#define sarrdata(A) ((A)->_data ? ((A)->_data) : ((A)->_buf))
+#define sarrdata(A) ((A)->cap ? ((A)->_data) : ((A)->_buf))
 #define sarrpeek(A, I) (sarrdata(A)[I])
 #define sarrclear(A) ((A)->len = 0)
-#define sarrfree(A)                                                                                \
-    ((A)->_data ? bfree((A)->_data) : (void)0, (A)->_data = NULL, (A)->len = 0, (A)->cap = 0)
+#define sarrfree(A) ((A)->cap ? bfree((A)->_data) : (void)0, (A)->len = 0, (A)->cap = 0)
 
 void sarradd_impl(void *ptr, s32 elem_size, s32 elem_count);
 
@@ -264,10 +264,10 @@ int   count_bits(u64 n);
 void  platform_lib_name(const char *name, char *buffer, usize max_len);
 f64   get_tick_ms(void);
 s32   get_last_error(char *buf, s32 buf_len);
-void *_create_sarr(struct assembly *ctx, usize arr_size);
+void *_create_sarr(struct assembly *ctx, usize arr_size); // @Cleanup
 u32   next_pow_2(u32 n);
 void  color_print(FILE *stream, s32 color, const char *format, ...);
 s32   cpu_thread_count(void);
-#define create_sarr(T, Asm) ((T *)_create_sarr((Asm), sizeof(T)))
+#define create_sarr(T, Asm) ((T *)_create_sarr((Asm), sizeof(T))) // @Cleanup
 
 #endif

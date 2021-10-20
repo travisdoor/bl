@@ -225,9 +225,9 @@ void print_type_fn_group(struct ast *group, s32 pad, FILE *stream)
 {
     print_head(group, pad, stream);
 
-    struct ast *node;
-    TSA_FOREACH(group->data.type_fn_group.variants, node)
-    {
+    ast_nodes_t *variants = group->data.type_fn_group.variants;
+    for (s64 i = 0; i < sarrlen(variants); ++i) {
+        struct ast *node = sarrpeek(variants, i);
         print_node(node, pad + 1, stream);
     }
 }
@@ -235,13 +235,10 @@ void print_type_fn_group(struct ast *group, s32 pad, FILE *stream)
 void print_type_fn(struct ast *fn, s32 pad, FILE *stream)
 {
     print_head(fn, pad, stream);
-    TSmallArray_AstPtr *args = fn->data.type_fn.args;
-    if (args) {
-        struct ast *node;
-        TSA_FOREACH(args, node)
-        {
-            print_node(node, pad + 1, stream);
-        }
+    ast_nodes_t *args = fn->data.type_fn.args;
+    for (s64 i = 0; i < sarrlen(args); ++i) {
+        struct ast *node = sarrpeek(args, i);
+        print_node(node, pad + 1, stream);
     }
     print_node(fn->data.type_fn.ret_type, pad + 1, stream);
 }
@@ -270,11 +267,9 @@ void print_stmt_switch(struct ast *stmt_switch, s32 pad, FILE *stream)
     print_head(stmt_switch, pad, stream);
     print_node(stmt_switch->data.stmt_switch.expr, pad + 1, stream);
 
-    TSmallArray_AstPtr *cases = stmt_switch->data.stmt_switch.cases;
-    struct ast         *stmt_case;
-
-    TSA_FOREACH(cases, stmt_case)
-    {
+    ast_nodes_t *cases = stmt_switch->data.stmt_switch.cases;
+    for (s64 i = 0; i < sarrlen(cases); ++i) {
+        struct ast *stmt_case = sarrpeek(cases, i);
         print_node(stmt_case, pad + 1, stream);
     }
 }
@@ -284,14 +279,10 @@ void print_stmt_case(struct ast *stmt_case, s32 pad, FILE *stream)
     print_head(stmt_case, pad, stream);
     if (stmt_case->data.stmt_case.is_default) fprintf(stream, "default");
 
-    if (stmt_case->data.stmt_case.exprs) {
-        TSmallArray_AstPtr *exprs = stmt_case->data.stmt_case.exprs;
-        struct ast         *expr;
-
-        TSA_FOREACH(exprs, expr)
-        {
-            print_node(expr, pad + 1, stream);
-        }
+    ast_nodes_t *exprs = stmt_case->data.stmt_case.exprs;
+    for (s64 i = 0; i < sarrlen(exprs); ++i) {
+        struct ast *expr = sarrpeek(exprs, i);
+        print_node(expr, pad + 1, stream);
     }
 
     if (stmt_case->data.stmt_case.block) {
@@ -512,9 +503,9 @@ void print_expr_lit_fn(struct ast *fn, s32 pad, FILE *stream)
 void print_expr_lit_fn_group(struct ast *group, s32 pad, FILE *stream)
 {
     print_head(group, pad, stream);
-    struct ast *tmp = NULL;
-    TSA_FOREACH(group->data.expr_fn_group.variants, tmp)
-    {
+    ast_nodes_t *variants = group->data.expr_fn_group.variants;
+    for (s64 i = 0; i < sarrlen(variants); ++i) {
+        struct ast *tmp = sarrpeek(variants, i);
         print_node(tmp, pad + 1, stream);
     }
 }

@@ -1265,9 +1265,9 @@ struct ast *parse_stmt_switch(struct context *ctx)
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
-    TSmallArray_AstPtr *cases        = create_sarr(TSmallArray_AstPtr, ctx->assembly);
-    struct ast         *stmt_case    = NULL;
-    struct ast         *default_case = NULL;
+    ast_nodes_t *cases        = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+    struct ast  *stmt_case    = NULL;
+    struct ast  *default_case = NULL;
 NEXT:
     stmt_case = parse_stmt_case(ctx);
     if (AST_IS_OK(stmt_case)) {
@@ -1289,7 +1289,7 @@ NEXT:
             }
         }
 
-        tsa_push_AstPtr(cases, stmt_case);
+        sarrput(cases, stmt_case);
         if (tokens_current_is_not(ctx->tokens, SYM_RBLOCK)) goto NEXT;
     }
 
@@ -1312,10 +1312,10 @@ NEXT:
 struct ast *parse_stmt_case(struct context *ctx)
 {
     zone();
-    TSmallArray_AstPtr *exprs = NULL;
-    struct ast         *block = NULL;
-    struct ast         *expr  = NULL;
-    bool                rq    = false;
+    ast_nodes_t *exprs = NULL;
+    struct ast  *block = NULL;
+    struct ast  *expr  = NULL;
+    bool         rq    = false;
 
     if (tokens_current_is(ctx->tokens, SYM_RBLOCK)) return_zone(NULL);
 
@@ -1323,11 +1323,11 @@ struct ast *parse_stmt_case(struct context *ctx)
     if (tok_case) goto SKIP_EXPRS;
 
     tok_case = tokens_peek(ctx->tokens);
-    exprs    = create_sarr(TSmallArray_AstPtr, ctx->assembly);
+    exprs    = arena_safe_alloc(&ctx->assembly->arenas.sarr);
 NEXT:
     expr = parse_expr(ctx);
     if (expr) {
-        tsa_push_AstPtr(exprs, expr);
+        sarrput(exprs, expr);
 
         if (tokens_consume_if(ctx->tokens, SYM_COMMA)) {
             rq = true;
@@ -1788,12 +1788,12 @@ struct ast *parse_expr_lit_fn_group(struct context *ctx)
     struct ast   *group =
         ast_create_node(ctx->ast_arena, AST_EXPR_LIT_FN_GROUP, tok_group, scope_get(ctx));
 
-    TSmallArray_AstPtr *variants       = create_sarr(TSmallArray_AstPtr, ctx->assembly);
+    ast_nodes_t *variants              = arena_safe_alloc(&ctx->assembly->arenas.sarr);
     group->data.expr_fn_group.variants = variants;
     struct ast *tmp;
 NEXT:
     if ((tmp = parse_expr(ctx))) {
-        tsa_push_AstPtr(variants, tmp);
+        sarrput(variants, tmp);
         parse_semicolon_rq(ctx);
         goto NEXT;
     }
@@ -2257,9 +2257,10 @@ struct ast *parse_type_fn(struct context *ctx, bool named_args)
 NEXT:
     tmp = parse_decl_arg(ctx, named_args);
     if (tmp) {
-        if (!fn->data.type_fn.args)
-            fn->data.type_fn.args = create_sarr(TSmallArray_AstPtr, ctx->assembly);
-        tsa_push_AstPtr(fn->data.type_fn.args, tmp);
+        if (!fn->data.type_fn.args) {
+            fn->data.type_fn.args = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+        }
+        sarrput(fn->data.type_fn.args, tmp);
         if (tokens_consume_if(ctx->tokens, SYM_COMMA)) {
             rq = true;
             goto NEXT;
@@ -2298,7 +2299,7 @@ struct ast *parse_type_fn_group(struct context *ctx)
     struct ast   *group =
         ast_create_node(ctx->ast_arena, AST_TYPE_FN_GROUP, tok_group, scope_get(ctx));
 
-    TSmallArray_AstPtr *variants       = create_sarr(TSmallArray_AstPtr, ctx->assembly);
+    ast_nodes_t *variants              = arena_safe_alloc(&ctx->assembly->arenas.sarr);
     group->data.type_fn_group.variants = variants;
     struct ast *tmp;
 NEXT:
@@ -2313,7 +2314,7 @@ NEXT:
                         BUILDER_CUR_WORD,
                         "Expected function type.");
         }
-        tsa_push_AstPtr(variants, tmp);
+        sarrput(variants, tmp);
         goto NEXT;
     }
 

@@ -77,9 +77,10 @@ void sarradd_impl(void *ptr, s32 elem_size, s32 elem_count)
     if (!on_heap && arr->len == elem_count) {
         arr->cap        = elem_count * 2;
         const s32 bytes = elem_size * arr->cap;
-        arr->_data       = bmalloc(bytes);
-        if (!arr->_data) abort();
-        memcpy(arr->_data, arr->_buf, bytes);
+        void     *data  = bmalloc(bytes);
+        if (!data) abort();
+        memcpy(data, arr->_buf, bytes);
+        arr->_data = data;
     } else if (on_heap && arr->len == arr->cap) {
         arr->cap *= 2;
         void *tmp = arr->_data;

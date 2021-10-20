@@ -271,13 +271,12 @@ void doc_type_fn(struct context *ctx, struct ast *type)
     struct ast *ret_type = type->data.type_fn.ret_type;
     fprintf(ctx->stream, "fn (");
     PUSH_IS_INLINE(ctx);
-    if (type->data.type_fn.args) {
-        struct ast *arg;
-        TSA_FOREACH(type->data.type_fn.args, arg)
-        {
-            doc(ctx, arg);
-            if (i + 1 < type->data.type_fn.args->size) fprintf(ctx->stream, ", ");
-        }
+
+    ast_nodes_t *args = type->data.type_fn.args;
+    for (s64 i = 0; i < sarrlen(args); ++i) {
+        struct ast *arg = sarrpeek(args, i);
+        doc(ctx, arg);
+        if (i + 1 < sarrlen(args)) fprintf(ctx->stream, ", ");
     }
     fprintf(ctx->stream, ") ");
     PUSH_IS_MULTI_RETURN(ctx);
@@ -387,13 +386,12 @@ void doc_type_poly(struct context *ctx, struct ast *type)
 
 void doc_expr_lit_fn_group(struct context *ctx, struct ast *lit)
 {
-    TSmallArray_AstPtr *variants = lit->data.expr_fn_group.variants;
+    ast_nodes_t *variants = lit->data.expr_fn_group.variants;
     fprintf(ctx->stream, "fn { ");
-    struct ast *iter;
-    TSA_FOREACH(variants, iter)
-    {
-        doc(ctx, iter);
-        if (i < variants->size) fprintf(ctx->stream, "; ");
+    for (s64 i = 0; i < sarrlen(variants); ++i) {
+        struct ast *variant = sarrpeek(variants, i);
+        doc(ctx, variant);
+        if (i < sarrlen(variants)) fprintf(ctx->stream, "; ");
     }
     fprintf(ctx->stream, "}");
 }

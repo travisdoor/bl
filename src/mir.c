@@ -7352,9 +7352,9 @@ struct result generate_fn_poly(struct context             *ctx,
         poly_type_match(recipe_arg_type, call_arg_type, &poly_type, &matching_type);
         if (poly_type) {
             if (!matching_type) {
-                struct ast *ast_poly_arg =
-                    ast_recipe->data.expr_fn.type->data.type_fn.args->data[i];
-                char recipe_type_name[256];
+                ast_nodes_t *ast_poly_args = ast_recipe->data.expr_fn.type->data.type_fn.args;
+                struct ast  *ast_poly_arg  = sarrpeek(ast_poly_args, i);
+                char         recipe_type_name[256];
                 mir_type_to_str(recipe_type_name, 256, recipe_arg_type, true);
                 if (call_arg_type) {
                     char arg_type_name[256];
@@ -9175,7 +9175,7 @@ void ast_stmt_continue(struct context *ctx, struct ast *cont)
 
 void ast_stmt_switch(struct context *ctx, struct ast *stmt_switch)
 {
-    TSmallArray_AstPtr *ast_cases = stmt_switch->data.stmt_switch.cases;
+    ast_nodes_t *ast_cases = stmt_switch->data.stmt_switch.cases;
     bassert(ast_cases);
 
     TSmallArray_SwitchCase *cases = create_sarr(TSmallArray_SwitchCase, ctx->assembly);
@@ -9188,8 +9188,8 @@ void ast_stmt_switch(struct context *ctx, struct ast *stmt_switch)
     struct mir_instr_block *default_block        = cont_block;
     bool                    user_defined_default = false;
 
-    for (usize i = ast_cases->size; i-- > 0;) {
-        struct ast *ast_case   = ast_cases->data[i];
+    for (s64 i = sarrlen(ast_cases); i-- > 0;) {
+        struct ast *ast_case   = sarrpeek(ast_cases, i);
         const bool  is_default = ast_case->data.stmt_case.is_default;
 
         struct mir_instr_block *case_block = NULL;
@@ -9216,10 +9216,10 @@ void ast_stmt_switch(struct context *ctx, struct ast *stmt_switch)
             continue;
         }
 
-        TSmallArray_AstPtr *ast_exprs = ast_case->data.stmt_case.exprs;
+        ast_nodes_t *ast_exprs = ast_case->data.stmt_case.exprs;
 
-        for (usize i2 = ast_exprs->size; i2-- > 0;) {
-            struct ast *ast_expr = ast_exprs->data[i2];
+        for (s64 i2 = sarrlen(ast_exprs); i2-- > 0;) {
+            struct ast *ast_expr = sarrpeek(ast_exprs, i2);
 
             set_current_block(ctx, src_block);
             struct mir_switch_case c = {.on_value = ast(ctx, ast_expr), .block = case_block};
@@ -9610,14 +9610,14 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     set_current_block(ctx, init_block);
 
     // build MIR for fn arguments
-    TSmallArray_AstPtr *ast_args = ast_fn_type->data.type_fn.args;
+    ast_nodes_t *ast_args = ast_fn_type->data.type_fn.args;
     if (ast_args) {
         struct ast *ast_arg;
         struct ast *ast_arg_name;
 
-        const usize argc = ast_args->size;
-        for (usize i = argc; i-- > 0;) {
-            ast_arg = ast_args->data[i];
+        const s64 argc = sarrlen(ast_args);
+        for (s64 i = argc; i-- > 0;) {
+            ast_arg = sarrpeek(ast_args, i);
             bassert(ast_arg->kind == AST_DECL_ARG);
             ast_arg_name = ast_arg->data.decl.name;
             bassert(ast_arg_name);
@@ -9656,14 +9656,13 @@ FINISH:
 
 struct mir_instr *ast_expr_lit_fn_group(struct context *ctx, struct ast *group)
 {
-    TSmallArray_AstPtr *ast_variants = group->data.expr_fn_group.variants;
+    ast_nodes_t *ast_variants = group->data.expr_fn_group.variants;
     bassert(ast_variants);
-    bassert(ast_variants->size);
+    bassert(sarrlen(ast_variants));
     TSmallArray_InstrPtr *variants = create_sarr(TSmallArray_InstrPtr, ctx->assembly);
-    tsa_resize_InstrPtr(variants, ast_variants->size);
-    struct ast *it;
-    TSA_FOREACH(group->data.expr_fn_group.variants, it)
-    {
+    tsa_resize_InstrPtr(variants, sarrlen(ast_variants));
+    for (s64 i = 0; i < sarrlen(ast_variants); ++i) {
+        struct ast       *it = sarrpeek(ast_variants, i);
         struct mir_instr *variant;
         if (it->kind == AST_EXPR_LIT_FN) {
             variant = ast_expr_lit_fn(ctx, it, NULL, NULL, true, 0, BUILTIN_ID_NONE);
@@ -10224,9 +10223,9 @@ struct mir_instr *ast_ref(struct context *ctx, struct ast *ref)
 struct mir_instr *ast_type_fn(struct context *ctx, struct ast *type_fn)
 {
     bassert(type_fn->kind == AST_TYPE_FN);
-    struct ast         *ast_ret_type  = type_fn->data.type_fn.ret_type;
-    TSmallArray_AstPtr *ast_arg_types = type_fn->data.type_fn.args;
-    const bool          is_polymorph =
+    struct ast  *ast_ret_type  = type_fn->data.type_fn.ret_type;
+    ast_nodes_t *ast_arg_types = type_fn->data.type_fn.args;
+    const bool   is_polymorph =
         type_fn->data.type_fn.is_polymorph && !ctx->polymorph.is_replacement_active;
     // Discard current entity ID to fix bug when multi-return structure takes this name as an
     // alias. There should be probably better way to solve this issue, but lets keep this for
@@ -10239,15 +10238,15 @@ struct mir_instr *ast_type_fn(struct context *ctx, struct ast *type_fn)
         ref_instr(ret_type);
     }
     TSmallArray_InstrPtr *args = NULL;
-    if (ast_arg_types && ast_arg_types->size) {
-        const usize c = ast_arg_types->size;
-        args          = create_sarr(TSmallArray_InstrPtr, ctx->assembly);
+    if (sarrlen(ast_arg_types) > 0) {
+        const s64 c = sarrlen(ast_arg_types);
+        args        = create_sarr(TSmallArray_InstrPtr, ctx->assembly);
         tsa_resize_InstrPtr(args, c);
 
         struct ast       *ast_arg_type;
         struct mir_instr *arg;
-        for (usize i = c; i-- > 0;) {
-            ast_arg_type = ast_arg_types->data[i];
+        for (s64 i = c; i-- > 0;) {
+            ast_arg_type = sarrpeek(ast_arg_types, i);
             arg          = ast(ctx, ast_arg_type);
             ref_instr(arg);
             args->data[i] = arg;
@@ -10258,15 +10257,13 @@ struct mir_instr *ast_type_fn(struct context *ctx, struct ast *type_fn)
 
 struct mir_instr *ast_type_fn_group(struct context *ctx, struct ast *group)
 {
-    TSmallArray_AstPtr *ast_variants = group->data.type_fn_group.variants;
+    ast_nodes_t *ast_variants = group->data.type_fn_group.variants;
     bassert(ast_variants);
-    const usize           c        = ast_variants->size;
     TSmallArray_InstrPtr *variants = create_sarr(TSmallArray_InstrPtr, ctx->assembly);
-    tsa_resize_InstrPtr(variants, c);
+    tsa_resize_InstrPtr(variants, sarrlen(ast_variants));
 
-    struct ast *it;
-    TSA_FOREACH(ast_variants, it)
-    {
+    for (s64 i = 0; i < sarrlen(ast_variants); ++i) {
+        struct ast *it    = sarrpeek(ast_variants, i);
         variants->data[i] = ast(ctx, it);
     }
     // Consume declaration identificator.
