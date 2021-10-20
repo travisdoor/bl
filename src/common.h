@@ -150,7 +150,6 @@ void sarradd_impl(void *ptr, s32 elem_size, s32 elem_count);
 
 typedef sarr_t(struct ast *, 16) ast_nodes_t;
 
-TSMALL_ARRAY_TYPE(AstPtr, struct ast *, 16);
 TSMALL_ARRAY_TYPE(TypePtr, struct mir_type *, 16);
 TSMALL_ARRAY_TYPE(MemberPtr, struct mir_member *, 16);
 TSMALL_ARRAY_TYPE(VariantPtr, struct mir_variant *, 16);

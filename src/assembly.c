@@ -78,7 +78,6 @@ union _SmallArrays {
     TSmallArray_VariantPtr    variant;
     TSmallArray_InstrPtr      instr;
     TSmallArray_ConstValuePtr cv;
-    TSmallArray_AstPtr        ast;
     TSmallArray_ArgPtr        arg;
     TSmallArray_SwitchCase    switch_case;
     TSmallArray_FnPtr         fn;
